@@ -61,8 +61,8 @@ import {
   type SmartListLoadPage
 } from '../../../shared/ui/components/smart-list';
 import {
-  ConfirmationDialogStore
-} from '../../../shared/ui/context/stores/confirmation-dialog.store';
+  DialogStore
+} from '../../../shared/ui/context/stores/dialog.store';
 import {
   AdminPopupStore
 } from '../../../shared/ui/context/stores/admin-popup.store';
@@ -144,7 +144,7 @@ export class AdminIdeaEditorPopupComponent {
   private readonly userProfileStore = inject(UserProfileStore);
   private readonly runtimeStore = inject(AppRuntimeStore);
   private readonly ideaPosts = inject(IdeaPostsService);
-  private readonly confirmationDialog = inject(ConfirmationDialogStore);
+  private readonly dialogStore = inject(DialogStore);
   private readonly changeDetectorRef = inject(ChangeDetectorRef);
   private readonly appMenuDispatcher = inject(AppMenuDispatcher);
 
@@ -466,7 +466,7 @@ export class AdminIdeaEditorPopupComponent {
 
   protected deletePost(post: IdeaPostDto, event?: Event): void {
     event?.stopPropagation();
-    this.confirmationDialog.open({
+    this.dialogStore.open({
       title: 'Move article to trash?',
       message: post.title,
       confirmLabel: 'Move to trash',
@@ -504,7 +504,7 @@ export class AdminIdeaEditorPopupComponent {
       return;
     }
     const nextPublished = !post.published;
-    this.confirmationDialog.open({
+    this.dialogStore.open({
       title: nextPublished ? 'Publish article?' : 'Unpublish article?',
       message: post.title,
       cancelLabel: 'Cancel',
@@ -521,7 +521,7 @@ export class AdminIdeaEditorPopupComponent {
     if (!post.trashed || this.saving) {
       return;
     }
-    this.confirmationDialog.open({
+    this.dialogStore.open({
       title: 'Restore article?',
       message: post.title,
       cancelLabel: 'Cancel',
@@ -599,7 +599,7 @@ export class AdminIdeaEditorPopupComponent {
       return;
     }
     const nextFeatured = !post.featured;
-    this.confirmationDialog.open({
+    this.dialogStore.open({
       title: nextFeatured ? 'Feature article?' : 'Remove featured article?',
       message: post.title,
       cancelLabel: 'Cancel',

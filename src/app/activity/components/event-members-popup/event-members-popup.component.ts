@@ -52,8 +52,8 @@ import {
   type SmartListStateChange
 } from '../../../shared/ui';
 import {
-  ConfirmationDialogStore
-} from '../../../shared/ui/context/stores/confirmation-dialog.store';
+  DialogStore
+} from '../../../shared/ui/context/stores/dialog.store';
 import {
   NavigatorStore
 } from '../../../shared/ui/context/stores/navigator.store';
@@ -101,7 +101,7 @@ type MembersSummaryState = {
 })
 export class EventMembersPopupComponent {
   private readonly cdr = inject(ChangeDetectorRef);
-  private readonly confirmationDialogStore = inject(ConfirmationDialogStore);
+  private readonly dialogStore = inject(DialogStore);
   private readonly activityMembersService = inject(ActivityMembersService);
   private readonly chatsService = inject(ChatsService);
   private readonly eventsService = inject(EventsService);
@@ -238,7 +238,7 @@ export class EventMembersPopupComponent {
     if (!this.isOpen || keyboardEvent.defaultPrevented || this.isSuspendedForAssetInvite()) {
       return;
     }
-    if (this.confirmationDialogStore.dialog()) {
+    if (this.dialogStore.dialog()) {
       return;
     }
     keyboardEvent.preventDefault();
@@ -443,7 +443,7 @@ export class EventMembersPopupComponent {
     }
     this.membersSmartList?.closeMenu();
     this.cdr.markForCheck();
-    this.confirmationDialogStore.open({
+    this.dialogStore.open({
       title: 'Approve request?',
       message: `Approve ${entry.name} for this ${this.ownerScopeLabel()}?`,
       cancelLabel: 'Cancel',
@@ -462,7 +462,7 @@ export class EventMembersPopupComponent {
     }
     this.membersSmartList?.closeMenu();
     this.cdr.markForCheck();
-    this.confirmationDialogStore.open({
+    this.dialogStore.open({
       title: this.memberRemovalTitle(entry),
       message: this.memberRemovalMessage(entry),
       cancelLabel: 'Cancel',
@@ -481,7 +481,7 @@ export class EventMembersPopupComponent {
     }
     this.membersSmartList?.closeMenu();
     this.cdr.markForCheck();
-    this.confirmationDialogStore.open({
+    this.dialogStore.open({
       title: 'Disqualify member?',
       message: `Disqualify ${entry.name} from this ${this.ownerScopeLabel()}?`,
       cancelLabel: 'Cancel',
@@ -500,7 +500,7 @@ export class EventMembersPopupComponent {
     }
     this.membersSmartList?.closeMenu();
     this.cdr.markForCheck();
-    this.confirmationDialogStore.open({
+    this.dialogStore.open({
       title: 'Reinstate member?',
       message: `Reinstate ${entry.name} to this ${this.ownerScopeLabel()}?`,
       cancelLabel: 'Cancel',

@@ -1306,13 +1306,13 @@
   max-width: min(28rem, calc(100vw - 1.2rem));
 }
 
-.app-menu__rating-item {
+.app-menu__rate-item {
   display: block;
   min-width: 0;
   padding: 0.1rem;
 }
 
-.app-menu__rating-item--disabled {
+.app-menu__rate-item--disabled {
   opacity: 0.64;
   pointer-events: none;
 }

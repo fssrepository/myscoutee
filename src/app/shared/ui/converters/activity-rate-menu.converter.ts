@@ -1,7 +1,7 @@
 import type {
   AppMenuItem,
   AppMenuItemSelectEvent,
-  RatingStarBarConfig
+  AppMenuRateConfig
 } from '../components';
 import type { UiConverter } from './converter.types';
 
@@ -11,7 +11,7 @@ export interface ActivityRateMenuSubject {
   menu: 'activity-rate-card';
   id: string;
   value: number;
-  ratingBarConfig: RatingStarBarConfig;
+  ratingBarConfig: AppMenuRateConfig;
 }
 
 export interface ActivityRateMenuContext {
@@ -29,13 +29,13 @@ export class ActivityRateMenuConverter {
     if (!subject) {
       return [];
     }
-    const { value: _configuredValue, ...ratingBarConfig } = subject.ratingBarConfig;
+    const { value: _configuredValue, ...rateConfig } = subject.ratingBarConfig;
     return [{
       id: ACTIVITY_RATE_MENU_RATING_ITEM_ID,
-      kind: 'rating-bar',
+      kind: 'rate',
       closeOnSelect: true,
       value: subject.value,
-      ratingBarConfig,
+      rateConfig,
       context: {
         menu: 'activity-rate-card',
         subject

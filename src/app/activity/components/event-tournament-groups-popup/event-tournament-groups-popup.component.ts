@@ -52,8 +52,8 @@ import {
   type EventTournamentGroupsStageMenuContext
 } from '../../../shared/ui/converters';
 import {
-  ConfirmationDialogStore
-} from '../../../shared/ui/context/stores/confirmation-dialog.store';
+  DialogStore
+} from '../../../shared/ui/context/stores/dialog.store';
 import {
   EventEditorPopupStore
 } from '../../../shared/ui/context/stores/event-editor-popup.store';
@@ -163,7 +163,7 @@ export class EventTournamentGroupsPopupComponent {
   private readonly activityResourcesService = inject(ActivityResourcesService);
   private readonly assetStore = inject(AssetStore);
   private readonly eventEditorStore = inject(EventEditorPopupStore);
-  private readonly confirmationDialog = inject(ConfirmationDialogStore);
+  private readonly dialogStore = inject(DialogStore);
   private readonly cdr = inject(ChangeDetectorRef);
 
   protected state: ContractTypes.EventTournamentGroupsStateDTO | null = null;
@@ -1439,7 +1439,7 @@ export class EventTournamentGroupsPopupComponent {
     if (!this.canManageGroups()) {
       return;
     }
-    this.confirmationDialog.open({
+    this.dialogStore.open({
       title: 'Delete Group',
       message: `Delete ${group.name}?`,
       cancelLabel: 'Cancel',

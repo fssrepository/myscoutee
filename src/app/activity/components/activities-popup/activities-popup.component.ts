@@ -94,8 +94,8 @@ import type {
   ActivityEventInfoCardMenuSubject
 } from '../../../shared/ui/converters';
 import {
-  ConfirmationDialogStore
-} from '../../../shared/ui/context/stores/confirmation-dialog.store';
+  DialogStore
+} from '../../../shared/ui/context/stores/dialog.store';
 import {
   EventCheckoutDialogStore
 } from '../../../shared/ui/context/stores/event-checkout-dialog.store';
@@ -259,7 +259,7 @@ export class ActivitiesPopupComponent implements OnDestroy {
   private readonly popupStore = inject(PopupStore);
   private readonly assetStore = inject(AssetStore);
   private readonly usersService = inject(UsersService);
-  protected readonly confirmationDialogStore = inject(ConfirmationDialogStore);
+  protected readonly dialogStore = inject(DialogStore);
   protected readonly eventCheckoutDialogStore = inject(EventCheckoutDialogStore);
   protected readonly navigatorStore = inject(NavigatorStore);
   private readonly eventCheckoutDraftStore = inject(EventCheckoutDraftStore);
@@ -278,7 +278,8 @@ export class ActivitiesPopupComponent implements OnDestroy {
     getRateItems: () => this.rateItems,
     getSmartListCursorItem: () => this.activitiesSmartList?.cursorItem() ?? null,
     getActivitiesListScrollElement: () => this.activitiesListScrollElement(),
-    getPaginationHostElement: () => this.activitiesSmartList?.paginationHostElement() ?? null,
+    getPaginationMenuHeight: () => this.activitiesSmartList?.paginationMenuHeightPx() ?? 0,
+    isPaginationMenuTarget: target => this.activitiesSmartList?.isPaginationMenuTarget(target) ?? false,
     isMobileView: () => this.isMobileView,
     isCalendarLayoutView: () => this.isCalendarLayoutView(),
     shouldShowFullscreenToggle: () => this.shouldShowRatesFullscreenToggle(),
@@ -873,7 +874,7 @@ export class ActivitiesPopupComponent implements OnDestroy {
     if (!this.activitiesStore.activitiesOpen()) {
       return;
     }
-    if (this.confirmationDialogStore.dialog()) {
+    if (this.dialogStore.dialog()) {
       return;
     }
     if (this.eventEditorStore.isOpen()) {
@@ -1037,7 +1038,7 @@ export class ActivitiesPopupComponent implements OnDestroy {
       if (!this.activitiesStore.activitiesOpen() || !this.isAdminServiceChatMode()) {
         return;
       }
-      if (this.confirmationDialogStore.dialog() || this.activitiesStore.eventChatSession()) {
+      if (this.dialogStore.dialog() || this.activitiesStore.eventChatSession()) {
         return;
       }
       this.activitiesSmartList?.reload();
@@ -1974,7 +1975,7 @@ export class ActivitiesPopupComponent implements OnDestroy {
       return;
     }
     const config = this.supportCaseActionDialogConfig(action);
-    this.confirmationDialogStore.open({
+    this.dialogStore.open({
       title: this.i18n(config.titleKey),
       message: this.i18n(config.messageKey),
       cancelLabel: this.i18n('cancel'),
@@ -3519,8 +3520,7 @@ export class ActivitiesPopupComponent implements OnDestroy {
       return;
     }
     if (
-      target.closest('[data-rating-star-bar-dock]')
-      || target.closest('.app-menu__rating-item')
+      this.activitiesSmartList?.isPaginationMenuTarget(target)
       || target.closest('.activities-rate-score-badge')
       || target.closest('.activities-rate-profile-card.is-rate-editor-selected')
     ) {

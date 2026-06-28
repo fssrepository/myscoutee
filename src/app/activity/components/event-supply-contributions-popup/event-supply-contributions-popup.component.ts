@@ -52,8 +52,8 @@ import {
   SubEventResourcePopupStore
 } from '../../../shared/ui/context/stores/sub-event-resource-popup.store';
 import {
-  ConfirmationDialogStore
-} from '../../../shared/ui/context/stores/confirmation-dialog.store';
+  DialogStore
+} from '../../../shared/ui/context/stores/dialog.store';
 import type { ResourcePopupContext } from '../../../shared/ui/context/stores/sub-event-resource-popup.store';
 import { UserProfileStore } from '../../../shared/ui/context/stores/user-profile.store';
 
@@ -102,7 +102,7 @@ export class EventSupplyContributionsPopupComponent implements DoCheck {
   private readonly assetStore = inject(AssetStore);
   private readonly activityResourcesService = inject(ActivityResourcesService);
   private readonly usersService = inject(UsersService);
-  private readonly confirmationDialogStore = inject(ConfirmationDialogStore);
+  private readonly dialogStore = inject(DialogStore);
   private pendingSupplyBringAbortController: AbortController | null = null;
   private pendingSupplyBringRequestVersion = 0;
   private lastRowsSignature = '';
@@ -441,7 +441,7 @@ export class EventSupplyContributionsPopupComponent implements DoCheck {
       entryId: row.id,
       label: `${row.name} · ${row.quantity}`
     };
-    this.confirmationDialogStore.open({
+    this.dialogStore.open({
       title: 'Delete quantity row',
       message: `Delete "${pending.label}" from supplies?`,
       cancelLabel: 'Cancel',

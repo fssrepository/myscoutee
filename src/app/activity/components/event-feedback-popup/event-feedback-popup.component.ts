@@ -58,9 +58,9 @@ import {
   EventsService
 } from '../../../shared/core/base';
 import {
-  ConfirmationDialogStore,
-  type ConfirmationDialogConfig
-} from '../../../shared/ui/context/stores/confirmation-dialog.store';
+  DialogStore,
+  type DialogConfig
+} from '../../../shared/ui/context/stores/dialog.store';
 import { UserProfileStore } from '../../../shared/ui/context/stores/user-profile.store';
 import { AppRuntimeStore } from '../../../shared/ui/context/stores/app-runtime.store';
 import { ActivityStore } from '../../../shared/ui/context/stores/activity.store';
@@ -79,9 +79,9 @@ type EventFeedbackMenuContext = EventFeedbackFilterMenuContext | {
   action: CardMenuAction;
 };
 
-type EventFeedbackConfirmationDialogAction = 'remove' | 'restore';
+type EventFeedbackDialogAction = 'remove' | 'restore';
 
-interface EventFeedbackConfirmationDialogContent extends Omit<ConfirmationDialogConfig, 'onConfirm' | 'onCancel'> {}
+interface EventFeedbackDialogContent extends Omit<DialogConfig, 'onConfirm' | 'onCancel'> {}
 
 @Component({
   selector: 'app-event-feedback-popup',
@@ -105,7 +105,7 @@ export class EventFeedbackPopupComponent {
   private readonly activityStore = inject(ActivityStore);
   private readonly popupStore = inject(PopupStore);
   private readonly eventsService = inject(EventsService);
-  private readonly confirmationDialogStore = inject(ConfirmationDialogStore);
+  private readonly dialogStore = inject(DialogStore);
   private lastHandledNavigatorEventFeedbackRequestMs = 0;
   private lastAppliedEventFeedbackSubmitUpdatedMs = 0;
   protected readonly isPopupOpen = signal(false);
@@ -537,8 +537,8 @@ export class EventFeedbackPopupComponent {
   }
 
   private openRemoveEventFeedbackDialog(item: ActivityContracts.EventFeedbackDto): void {
-    this.openEventFeedbackConfirmationDialog(
-      this.eventFeedbackConfirmationDialogContent('remove'),
+    this.openEventFeedbackDialog(
+      this.eventFeedbackDialogContent('remove'),
       async () => {
         await this.eventsService.removeEventFeedbackEvent(this.activeUserId(), item.eventId);
         this.applyEventFeedbackItemRemoved(item);
@@ -548,8 +548,8 @@ export class EventFeedbackPopupComponent {
   }
 
   private openRestoreEventFeedbackDialog(item: ActivityContracts.EventFeedbackDto): void {
-    this.openEventFeedbackConfirmationDialog(
-      this.eventFeedbackConfirmationDialogContent('restore'),
+    this.openEventFeedbackDialog(
+      this.eventFeedbackDialogContent('restore'),
       async () => {
         await this.eventsService.restoreEventFeedbackEvent(this.activeUserId(), item.eventId);
         this.applyEventFeedbackItemRestored(item);
@@ -558,19 +558,19 @@ export class EventFeedbackPopupComponent {
     );
   }
 
-  private openEventFeedbackConfirmationDialog(
-    content: EventFeedbackConfirmationDialogContent,
+  private openEventFeedbackDialog(
+    content: EventFeedbackDialogContent,
     onConfirm: () => Promise<void>
   ): void {
-    this.confirmationDialogStore.open({
+    this.dialogStore.open({
       ...content,
       onConfirm
     });
   }
 
-  private eventFeedbackConfirmationDialogContent(
-    action: EventFeedbackConfirmationDialogAction
-  ): EventFeedbackConfirmationDialogContent {
+  private eventFeedbackDialogContent(
+    action: EventFeedbackDialogAction
+  ): EventFeedbackDialogContent {
     if (action === 'remove') {
       return {
         title: 'event.feedback.confirm.remove.title',

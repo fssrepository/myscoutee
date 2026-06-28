@@ -2,73 +2,58 @@
 import { ChangeDetectionStrategy, ChangeDetectorRef, Component, EventEmitter, HostBinding, Input, OnDestroy, Output, inject } from '@angular/core';
 import { MatIconModule } from '@angular/material/icon';
 
-import { I18nPipe } from '../../pipes';
-
-export type RatingStarBarPresentation = 'list' | 'fullscreen';
-export type RatingStarBarAnimation = 'default' | 'blink' | 'none';
-export type RatingStarBarDockState = 'hidden' | 'open' | 'closing' | 'permanent';
-
-export interface RatingStarBarDockConfig {
-  enabled?: boolean;
-  state?: RatingStarBarDockState;
-}
-
-export interface RatingStarBarConfig {
-  scale?: readonly number[];
-  value?: number | null;
-  readonly?: boolean;
-  label?: string | null;
-  actionLabel?: string | null;
-  presentation?: RatingStarBarPresentation;
-  animation?: RatingStarBarAnimation;
-  blinkOnSelect?: boolean;
-  dock?: RatingStarBarDockConfig | null;
-}
+import { I18nPipe } from '../../../../pipes';
+import type {
+  AppMenuRateAnimation,
+  AppMenuRateConfig,
+  AppMenuRateDockState,
+  AppMenuRatePresentation
+} from '../../menu.types';
 
 @Component({
-  selector: 'app-rating-star-bar',
+  selector: 'app-menu-rate',
   standalone: true,
   imports: [MatIconModule, I18nPipe],
-  templateUrl: './rating-star-bar.component.html',
-  styleUrl: './rating-star-bar.component.scss',
+  templateUrl: './rate.component.html',
+  styleUrl: './rate.component.scss',
   changeDetection: ChangeDetectionStrategy.OnPush
 })
-export class RatingStarBarComponent implements OnDestroy {
+export class RateComponent implements OnDestroy {
   private readonly cdr = inject(ChangeDetectorRef);
   private blinkTimer: ReturnType<typeof setTimeout> | null = null;
   private transientBlink = false;
   private stagedValue = 0;
   private dirty = false;
 
-  @HostBinding('class.rating-star-bar-host')
+  @HostBinding('class.rate-host')
   protected readonly hostClass = true;
 
-  @HostBinding('class.rating-star-bar-host--dockable')
+  @HostBinding('class.rate-host--dockable')
   protected get hostDockableClass(): boolean {
     return this.dockEnabled;
   }
 
-  @HostBinding('class.rating-star-bar-host--dock-open')
+  @HostBinding('class.rate-host--dock-open')
   protected get hostDockOpenClass(): boolean {
     return this.dockEnabled && this.dockState === 'open';
   }
 
-  @HostBinding('class.rating-star-bar-host--dock-closing')
+  @HostBinding('class.rate-host--dock-closing')
   protected get hostDockClosingClass(): boolean {
     return this.dockEnabled && this.dockState === 'closing';
   }
 
-  @HostBinding('class.rating-star-bar-host--dock-permanent')
+  @HostBinding('class.rate-host--dock-permanent')
   protected get hostDockPermanentClass(): boolean {
     return this.dockEnabled && this.dockState === 'permanent';
   }
 
-  @HostBinding('attr.data-rating-star-bar-dock')
+  @HostBinding('attr.data-rate-dock')
   protected get hostDockAttr(): string | null {
     return this.dockEnabled ? 'true' : null;
   }
 
-  @Input() config: RatingStarBarConfig | null = null;
+  @Input() config: AppMenuRateConfig | null = null;
   @Input() value = 0;
 
   @Output() readonly valueChange = new EventEmitter<number>();
@@ -90,11 +75,11 @@ export class RatingStarBarComponent implements OnDestroy {
     return this.config?.actionLabel?.trim() || 'Go';
   }
 
-  protected get resolvedPresentation(): RatingStarBarPresentation {
+  protected get resolvedPresentation(): AppMenuRatePresentation {
     return this.config?.presentation ?? 'list';
   }
 
-  protected get resolvedAnimation(): RatingStarBarAnimation {
+  protected get resolvedAnimation(): AppMenuRateAnimation {
     if (this.transientBlink) {
       return 'blink';
     }
@@ -105,7 +90,7 @@ export class RatingStarBarComponent implements OnDestroy {
     return this.config?.dock?.enabled ?? false;
   }
 
-  protected get dockState(): RatingStarBarDockState {
+  protected get dockState(): AppMenuRateDockState {
     return this.dockEnabled ? (this.config?.dock?.state ?? 'hidden') : 'hidden';
   }
 

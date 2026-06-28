@@ -1,0 +1,50 @@
+<div
+  class="rate"
+  [class.rate--list]="resolvedPresentation === 'list'"
+  [class.rate--fullscreen]="resolvedPresentation === 'fullscreen'"
+  [class.rate--blink]="resolvedAnimation === 'blink'"
+  [class.rate--readonly]="resolvedReadonly"
+  [style.--rate-slider-accent]="sliderAccentColor"
+  [style.--rate-slider-accent-shadow]="sliderAccentShadow"
+  [style.--rate-slider-accent-text]="sliderAccentTextColor"
+  [style.--rate-slider-accent-text-shadow]="sliderAccentTextShadow"
+  >
+  @if (resolvedLabel) {
+    <div class="rate__head">
+      <span class="rate__label">
+        <span>{{ resolvedLabel | i18n }}</span>
+        <span aria-hidden="true">:</span>
+        <span class="rate__value" aria-live="polite">{{ displayValue }}</span>
+      </span>
+      @if (shouldShowCommitButton) {
+        <button
+          type="button"
+          class="rate__commit"
+          (click)="commitScore($event)"
+          [attr.aria-label]="resolvedActionLabel | i18n"
+          >
+          <span>{{ resolvedActionLabel | i18n }}</span>
+          <mat-icon>arrow_forward</mat-icon>
+        </button>
+      }
+    </div>
+  }
+
+  <div class="rate__slider-shell">
+    <div class="rate__track" aria-hidden="true">
+      <span class="rate__track-fill" [style.width.%]="valuePercent"></span>
+    </div>
+    <input
+      type="range"
+      class="rate__slider"
+      [min]="minimumScore"
+      [max]="maximumScore"
+      step="1"
+      [value]="displayValue"
+      [disabled]="resolvedReadonly"
+      (input)="onSliderInput($event)"
+      (click)="$event.stopPropagation()"
+      [attr.aria-label]="resolvedLabel || 'Affinity rating'"
+    />
+  </div>
+</div>

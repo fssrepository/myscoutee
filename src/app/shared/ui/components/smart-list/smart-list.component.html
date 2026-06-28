@@ -224,17 +224,19 @@
                   class="smart-list__fullscreen-card smart-list__fullscreen-card--slot-2 smart-list__fullscreen-card--preview"
                   aria-hidden="true"
                 >
-                  <ng-container
-                    [ngTemplateOutlet]="fullscreenTemplateRef"
-                    [ngTemplateOutletInjector]="itemTemplateInjector"
-                    [ngTemplateOutletContext]="
-                      hostedFullscreenItemContext(
-                        thirdItem,
-                        hostedFullscreenStackRenderState(2),
-                        hostedFullscreenStackItemIndex(2)
-                      )
-                    "
-                  ></ng-container>
+                  <div class="smart-list__fullscreen-card-content">
+                    <ng-container
+                      [ngTemplateOutlet]="fullscreenTemplateRef"
+                      [ngTemplateOutletInjector]="itemTemplateInjector"
+                      [ngTemplateOutletContext]="
+                        hostedFullscreenItemContext(
+                          thirdItem,
+                          hostedFullscreenStackRenderState(2),
+                          hostedFullscreenStackItemIndex(2)
+                        )
+                      "
+                    ></ng-container>
+                  </div>
                 </div>
               }
 
@@ -243,17 +245,19 @@
                   class="smart-list__fullscreen-card smart-list__fullscreen-card--slot-1 smart-list__fullscreen-card--preview"
                   aria-hidden="true"
                 >
-                  <ng-container
-                    [ngTemplateOutlet]="fullscreenTemplateRef"
-                    [ngTemplateOutletInjector]="itemTemplateInjector"
-                    [ngTemplateOutletContext]="
-                      hostedFullscreenItemContext(
-                        nextItem,
-                        hostedFullscreenStackRenderState(1),
-                        hostedFullscreenStackItemIndex(1)
-                      )
-                    "
-                  ></ng-container>
+                  <div class="smart-list__fullscreen-card-content">
+                    <ng-container
+                      [ngTemplateOutlet]="fullscreenTemplateRef"
+                      [ngTemplateOutletInjector]="itemTemplateInjector"
+                      [ngTemplateOutletContext]="
+                        hostedFullscreenItemContext(
+                          nextItem,
+                          hostedFullscreenStackRenderState(1),
+                          hostedFullscreenStackItemIndex(1)
+                        )
+                      "
+                    ></ng-container>
+                  </div>
                 </div>
               }
 
@@ -263,13 +267,19 @@
                 [class.smart-list__fullscreen-card--curling-backward]="hostedFullscreenIsCurlingBackwards()"
                 (animationend)="onHostedFullscreenActiveCardAnimationEnd($event)"
               >
-                <ng-container
-                  [ngTemplateOutlet]="fullscreenTemplateRef"
-                  [ngTemplateOutletInjector]="itemTemplateInjector"
-                  [ngTemplateOutletContext]="
-                    hostedFullscreenItemContext(currentItem, hostedFullscreenCurrentRenderState())
-                  "
-                ></ng-container>
+                <div class="smart-list__fullscreen-card-content">
+                  <ng-container
+                    [ngTemplateOutlet]="fullscreenTemplateRef"
+                    [ngTemplateOutletInjector]="itemTemplateInjector"
+                    [ngTemplateOutletContext]="
+                      hostedFullscreenItemContext(
+                        currentItem,
+                        hostedFullscreenCurrentRenderState(),
+                        hostedFullscreenCurrentItemIndex()
+                      )
+                    "
+                  ></ng-container>
+                </div>
               </div>
             } @else {
               <ng-container [ngTemplateOutlet]="fullscreenEmptyState"></ng-container>
@@ -333,6 +343,7 @@
 
   @let ratingPaginationMenu = paginationRatingMenu();
   <app-menu-outlet
+    #paginationMenuOutlet
     [menu]="ratingPaginationMenu"
     [items]="ratingPaginationMenu ? paginationRatingMenuItems() : dispatchedMenuItems()"
     (itemSelect)="onMenuOutletItemSelect($event)"

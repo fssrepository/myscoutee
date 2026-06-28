@@ -54,8 +54,8 @@ import {
 } from '../../../shared/core';
 import type { SubEventResourceFilter } from '../../../shared/core/common/constants';
 import {
-  ConfirmationDialogStore
-} from '../../../shared/ui/context/stores/confirmation-dialog.store';
+  DialogStore
+} from '../../../shared/ui/context/stores/dialog.store';
 import {
   EventEditorPopupStore
 } from '../../../shared/ui/context/stores/event-editor-popup.store';
@@ -103,7 +103,7 @@ interface EventSubeventsSlotSection {
 export class EventSubeventsListPopupComponent {
   private readonly eventsService = inject(EventsService);
   private readonly eventEditorStore = inject(EventEditorPopupStore);
-  private readonly confirmationDialogStore = inject(ConfirmationDialogStore);
+  private readonly dialogStore = inject(DialogStore);
   private readonly userProfileStore = inject(UserProfileStore);
   private readonly activityStore = inject(ActivityStore);
   private readonly popupStore = inject(PopupStore);
@@ -597,7 +597,7 @@ export class EventSubeventsListPopupComponent {
     if (!this.canManageRuntimeActions()) {
       return;
     }
-    this.confirmationDialogStore.open({
+    this.dialogStore.open({
       title: context.title,
       message: context.description,
       cancelLabel: 'Cancel',

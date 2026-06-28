@@ -92,15 +92,27 @@
   z-index: 3;
 }
 
-.smart-list__fullscreen-card--active > * {
+.smart-list__fullscreen-card-content {
+  display: block;
   width: 100%;
   height: 100%;
+  min-width: 0;
+  min-height: 0;
+}
+
+:host ::ng-deep .smart-list__fullscreen-card-content > * {
+  display: block;
+  width: 100%;
+  height: 100%;
+  min-width: 0;
+  min-height: 0;
+}
+
+.smart-list__fullscreen-card--active .smart-list__fullscreen-card-content {
   pointer-events: auto;
 }
 
-.smart-list__fullscreen-card--preview > * {
-  width: 100%;
-  height: 100%;
+.smart-list__fullscreen-card--preview .smart-list__fullscreen-card-content {
   pointer-events: none;
 }
 

@@ -4,7 +4,6 @@ import type {
   ProgressIndicatorState,
   ProgressIndicatorTone
 } from '../progress-indicator';
-import type { RatingStarBarConfig } from '../rating-star-bar';
 
 export type AppMenuKind =
   | 'fab'
@@ -17,7 +16,7 @@ export type AppMenuItemKind =
   | 'checkbox'
   | 'divider'
   | 'radio'
-  | 'rating-bar'
+  | 'rate'
   | 'section'
   | 'select-trigger'
   | 'toggle';
@@ -67,6 +66,26 @@ export type AppMenuPanelAlign = 'auto' | 'start' | 'end';
 export type AppMenuPanelMode = 'auto' | 'anchored' | 'sheet' | 'dock' | 'fixed';
 export type AppMenuSummaryCounter = 'overflow' | 'count' | 'none';
 export type AppMenuValueKey = string | ((value: unknown) => unknown);
+export type AppMenuRatePresentation = 'list' | 'fullscreen';
+export type AppMenuRateAnimation = 'default' | 'blink' | 'none';
+export type AppMenuRateDockState = 'hidden' | 'open' | 'closing' | 'permanent';
+
+export interface AppMenuRateDockConfig {
+  enabled?: boolean;
+  state?: AppMenuRateDockState;
+}
+
+export interface AppMenuRateConfig {
+  scale?: readonly number[];
+  value?: number | null;
+  readonly?: boolean;
+  label?: string | null;
+  actionLabel?: string | null;
+  presentation?: AppMenuRatePresentation;
+  animation?: AppMenuRateAnimation;
+  blinkOnSelect?: boolean;
+  dock?: AppMenuRateDockConfig | null;
+}
 
 export type AppMenuLiveValue<T> = T | Signal<T> | (() => T);
 export type AppMenuCounterValue = AppMenuLiveValue<number | string | null | undefined>;
@@ -143,7 +162,7 @@ export interface AppMenuItem<TId extends string = string, TContext = unknown> {
   href?: AppMenuLiveValue<string | null | undefined>;
   target?: AppMenuLiveValue<string | null | undefined>;
   rel?: AppMenuLiveValue<string | null | undefined>;
-  ratingBarConfig?: RatingStarBarConfig | null;
+  rateConfig?: AppMenuRateConfig | null;
   progress?: AppMenuItemProgress | null;
   segments?: readonly AppMenuSegment[];
   span?: AppMenuLiveValue<number | null | undefined>;

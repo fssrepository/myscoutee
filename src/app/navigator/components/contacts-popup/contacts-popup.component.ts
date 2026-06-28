@@ -45,8 +45,8 @@ import {
   type SmartListLoadPage
 } from '../../../shared/ui';
 import {
-  ConfirmationDialogStore
-} from '../../../shared/ui/context/stores/confirmation-dialog.store';
+  DialogStore
+} from '../../../shared/ui/context/stores/dialog.store';
 import {
   NavigatorStore
 } from '../../../shared/ui/context/stores/navigator.store';
@@ -208,7 +208,7 @@ export class ContactsPopupComponent implements OnDestroy {
   private readonly userProfileStore = inject(UserProfileStore);
   private readonly runtimeStore = inject(AppRuntimeStore);
   private readonly popupStore = inject(PopupStore);
-  private readonly confirmationDialogStore = inject(ConfirmationDialogStore);
+  private readonly dialogStore = inject(DialogStore);
   private readonly navigatorStore = inject(NavigatorStore);
   private readonly usersService = inject(UsersService);
   private readonly explanationGuide = inject(ExplanationGuideService);
@@ -540,7 +540,7 @@ export class ContactsPopupComponent implements OnDestroy {
   protected confirmDelete(contact: ContactListItem, event?: Event): void {
     event?.stopPropagation();
     this.closeActionMenu();
-    this.confirmationDialogStore.open({
+    this.dialogStore.open({
       title: `Delete ${contact.name}?`,
       message: 'This removes the contact and all saved availability methods from your local list.',
       confirmLabel: 'Delete',

@@ -157,7 +157,7 @@ export class ActivitiesEventsController {
   private get activityMembersService() { return this.host.activityMembersService; }
   private get chatsService() { return this.host.chatsService; }
   private get cdr() { return this.host.cdr; }
-  private get confirmationDialogStore() { return this.host.confirmationDialogStore; }
+  private get dialogStore() { return this.host.dialogStore; }
   private get eventCheckoutDraftStore() { return this.host.eventCheckoutDraftStore; }
   private get eventCheckoutDialogStore() { return this.host.eventCheckoutDialogStore; }
   private get eventsService() { return this.host.eventsService; }
@@ -381,7 +381,7 @@ export class ActivitiesEventsController {
       if (!token) {
         return;
       }
-      this.confirmationDialogStore.open({
+      this.dialogStore.open({
         title: 'Share event',
         message: token,
         confirmLabel: 'Copy link',
@@ -558,7 +558,7 @@ export class ActivitiesEventsController {
       });
       return;
     }
-    this.confirmationDialogStore.open({
+    this.dialogStore.open({
       title: 'Accept invitation?',
       message: row.title,
       cancelLabel: 'Cancel',
@@ -572,7 +572,7 @@ export class ActivitiesEventsController {
 
   public runActivityItemRestoreAction(row: ActivityEventCardData, event?: Event, action?: CardMenuAction | null): void {
     event?.stopPropagation();
-    this.confirmationDialogStore.open({
+    this.dialogStore.open({
       title: 'Restore event?',
       message: row.title,
       cancelLabel: 'Cancel',
@@ -587,7 +587,7 @@ export class ActivitiesEventsController {
 
   public runActivityItemSecondaryAction(row: ActivityEventCardData, event?: Event, action?: CardMenuAction | null): void {
     event?.stopPropagation();
-    this.confirmationDialogStore.open({
+    this.dialogStore.open({
       title: this.activitySecondaryConfirmTitle(row),
       message: row.title,
       cancelLabel: 'Cancel',
@@ -602,7 +602,7 @@ export class ActivitiesEventsController {
 
   public runActivityItemPublishAction(row: ActivityEventCardData, event?: Event, action?: CardMenuAction | null): void {
     event?.stopPropagation();
-    this.confirmationDialogStore.open({
+    this.dialogStore.open({
       title: 'Publish event?',
       message: row.title,
       cancelLabel: 'Cancel',
@@ -617,7 +617,7 @@ export class ActivitiesEventsController {
 
   public runActivityItemUnpublishAction(row: ActivityEventCardData, event?: Event, action?: CardMenuAction | null): void {
     event?.stopPropagation();
-    this.confirmationDialogStore.open({
+    this.dialogStore.open({
       title: 'Unpublish event?',
       message: row.title,
       cancelLabel: 'Cancel',
@@ -632,7 +632,7 @@ export class ActivitiesEventsController {
 
   public runActivityItemTakeOverAction(row: ActivityEventCardData, event?: Event, action?: CardMenuAction | null): void {
     event?.stopPropagation();
-    this.confirmationDialogStore.open({
+    this.dialogStore.open({
       title: 'Take over event?',
       message: row.title,
       cancelLabel: 'Cancel',

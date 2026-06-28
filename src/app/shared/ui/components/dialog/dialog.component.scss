@@ -2,7 +2,7 @@
   display: contents;
 }
 
-.confirmation-dialog {
+.dialog {
   position: fixed;
   inset: 0;
   z-index: 20000;
@@ -12,14 +12,14 @@
   padding: 1.25rem;
 }
 
-.confirmation-dialog-backdrop {
+.dialog-backdrop {
   position: absolute;
   inset: 0;
   background: rgba(17, 24, 39, 0.42);
   backdrop-filter: blur(6px);
 }
 
-.confirmation-dialog-panel {
+.dialog-panel {
   position: relative;
   z-index: 1;
   width: min(100%, 440px);
@@ -31,13 +31,13 @@
   padding: 1.35rem;
 }
 
-.confirmation-dialog-panel h3 {
+.dialog-panel h3 {
   margin: 0;
   font-size: 1.1rem;
   font-weight: 800;
 }
 
-.confirmation-dialog-panel p {
+.dialog-panel p {
   margin: 0.45rem 0 0;
   color: rgba(34, 50, 74, 0.72);
   font-size: 0.95rem;
@@ -45,28 +45,28 @@
   white-space: pre-line;
 }
 
-.confirmation-dialog-error {
+.dialog-error {
   color: #9b2c37 !important;
   font-weight: 700;
 }
 
-.confirmation-dialog-warning {
+.dialog-warning {
   color: #b42335 !important;
   font-weight: 800;
 }
 
-.confirmation-dialog-actions {
+.dialog-actions {
   display: flex;
   justify-content: flex-end;
   gap: 0.65rem;
   margin-top: 1.15rem;
 }
 
-.confirmation-dialog-actions.confirmation-dialog-actions-single {
+.dialog-actions.dialog-actions-single {
   justify-content: flex-end;
 }
 
-.confirmation-dialog-actions-menu {
+.dialog-actions-menu {
   position: relative;
   display: inline-flex;
   align-items: stretch;
@@ -74,17 +74,17 @@
   min-width: 260px;
 }
 
-.confirmation-dialog-actions-menu ::ng-deep .app-menu {
+.dialog-actions-menu ::ng-deep .app-menu {
   width: 100%;
 }
 
-.confirmation-dialog-actions-menu ::ng-deep .app-menu__button-row {
+.dialog-actions-menu ::ng-deep .app-menu__button-row {
   justify-content: flex-end;
   gap: 0.65rem;
 }
 
-.confirmation-dialog-actions-menu ::ng-deep .app-menu__button-row-item--action.app-menu__button-row-item--labelled,
-.confirmation-dialog-actions-menu ::ng-deep .app-menu__button-row-item--action {
+.dialog-actions-menu ::ng-deep .app-menu__button-row-item--action.app-menu__button-row-item--labelled,
+.dialog-actions-menu ::ng-deep .app-menu__button-row-item--action {
   flex: 0 1 auto;
   min-width: 108px;
   min-height: 42px;
@@ -93,21 +93,21 @@
   padding-inline: 1rem;
 }
 
-.confirmation-dialog-actions-menu ::ng-deep .app-menu__button-row-item--action .app-menu__button-row-label {
+.dialog-actions-menu ::ng-deep .app-menu__button-row-item--action .app-menu__button-row-label {
   text-align: center;
 }
 
 @media (max-width: 760px) {
-  .confirmation-dialog {
+  .dialog {
     padding: 0.9rem;
   }
 
-  .confirmation-dialog-panel {
+  .dialog-panel {
     width: 100%;
     border-radius: 22px;
   }
 
-  .confirmation-dialog-actions-menu {
+  .dialog-actions-menu {
     min-width: min(100%, 260px);
   }
 }

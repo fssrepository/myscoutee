@@ -20,7 +20,7 @@ import {
   PairCardComponent,
   type CardProfileViewData,
   type RateCardPerson,
-  type RatingStarBarConfig,
+  type AppMenuRateConfig,
   SingleCardComponent,
   type CardBadgeConfig,
   type ImageCardData,
@@ -297,7 +297,8 @@ interface ActivitiesRatesControllerDeps {
   getRateItems: () => readonly ActivityRateDTO[];
   getSmartListCursorItem: () => ImageCardData | null;
   getActivitiesListScrollElement: () => HTMLElement | null;
-  getPaginationHostElement: () => HTMLElement | null;
+  getPaginationMenuHeight: () => number;
+  isPaginationMenuTarget: (target: EventTarget | null | undefined) => boolean;
   isMobileView: () => boolean;
   isCalendarLayoutView: () => boolean;
   shouldShowFullscreenToggle: () => boolean;
@@ -383,7 +384,7 @@ export class ActivitiesRatesController {
     });
   }
 
-  ratingBarConfig(): RatingStarBarConfig {
+  ratingBarConfig(): AppMenuRateConfig {
     return {
       ...this.rateEditorPresenter.barConfig(),
       blinkOnSelect: false,
@@ -391,7 +392,7 @@ export class ActivitiesRatesController {
     };
   }
 
-  ratingMenuConfig(row: ImageCardData): RatingStarBarConfig {
+  ratingMenuConfig(row: ImageCardData): AppMenuRateConfig {
     const modeLabel = row.mode === 'pair' ? 'Pair' : 'Single';
     return {
       scale: this.deps.getRatingScale(),
@@ -463,7 +464,7 @@ export class ActivitiesRatesController {
 
   closeEditorFromUserScroll(event?: Event): void {
     const target = event?.target;
-    if (target instanceof Element && target.closest('[data-rating-star-bar-dock], .app-menu__rating-item')) {
+    if (this.deps.isPaginationMenuTarget(target)) {
       return;
     }
     if (!this.isEditorOpen()) {
@@ -859,12 +860,11 @@ export class ActivitiesRatesController {
     const rateRows = Array.from(scrollElement.querySelectorAll<HTMLElement>('.activities-rate-profile-card.activities-row-item'));
     const rowTop = targetRow.offsetTop;
     const sameRowCards = rateRows.filter(card => Math.abs(card.offsetTop - rowTop) <= 1);
-    const dock = this.deps.getPaginationHostElement();
     const scrollRect = scrollElement.getBoundingClientRect();
     const rowBottom = (sameRowCards.length > 0 ? sameRowCards : [targetRow]).reduce((maxBottom, card) => {
       return Math.max(maxBottom, card.getBoundingClientRect().bottom);
     }, targetRow.getBoundingClientRect().bottom);
-    const dockHeight = Math.max(72, dock?.offsetHeight ?? 72);
+    const dockHeight = Math.max(72, this.deps.getPaginationMenuHeight() || 72);
     const dockTop = scrollRect.bottom - dockHeight;
     const breathingRoom = this.deps.isMobileView() ? 6 : 8;
     const revealBottom = dockTop - breathingRoom;

@@ -77,8 +77,8 @@ import {
   ActivitiesPopupStore
 } from '../../../../shared/ui/context/stores/activities-popup.store';
 import {
-  ConfirmationDialogStore
-} from '../../../../shared/ui/context/stores/confirmation-dialog.store';
+  DialogStore
+} from '../../../../shared/ui/context/stores/dialog.store';
 import {
   AssetStore
 } from '../../../../shared/ui/context/stores/asset.store';
@@ -198,7 +198,7 @@ export class EventResourceAssetExploreComponent implements DoCheck {
   private readonly eventsService = inject(EventsService);
   private readonly usersService = inject(UsersService);
   private readonly assetStore = inject(AssetStore);
-  private readonly confirmationDialogStore = inject(ConfirmationDialogStore);
+  private readonly dialogStore = inject(DialogStore);
   private readonly shareTokensService = inject(ShareTokensService);
   private readonly navigatorStore = inject(NavigatorStore);
   private readonly appMenuDispatcher = inject(AppMenuDispatcher);
@@ -2313,7 +2313,7 @@ export class EventResourceAssetExploreComponent implements DoCheck {
   }
 
   private openShareLinkDialog(title: string, shareToken: string): void {
-    this.confirmationDialogStore.open({
+    this.dialogStore.open({
       title,
       message: shareToken,
       confirmLabel: 'Copy link',

@@ -58,8 +58,8 @@ import {
   type ProfileFormFlowMenuContext
 } from '../../../shared/ui/converters';
 import {
-  ConfirmationDialogStore
-} from '../../../shared/ui/context/stores/confirmation-dialog.store';
+  DialogStore
+} from '../../../shared/ui/context/stores/dialog.store';
 import {
   NavigatorStore
 } from '../../../shared/ui/context/stores/navigator.store';
@@ -97,7 +97,7 @@ type ProfileEditorMenuContext = { kind: 'profileSave' };
 export class ProfileEditorComponent {
   @ViewChild(ProfileExperienceManagerComponent) private experienceManager?: ProfileExperienceManagerComponent;
 
-  private readonly confirmationDialogStore = inject(ConfirmationDialogStore);
+  private readonly dialogStore = inject(DialogStore);
   private readonly userProfileStore = inject(UserProfileStore);
   private readonly runtimeStore = inject(AppRuntimeStore);
   private readonly menuDispatcher = inject(AppMenuDispatcher);
@@ -458,7 +458,7 @@ export class ProfileEditorComponent {
     }
     await this.usersService.saveUserProfileExt(this.profileEditorData);
     if (showAlert) {
-      this.confirmationDialogStore.openInfo('Profile saved', {
+      this.dialogStore.openInfo('Profile saved', {
         title: 'Profile updated',
         confirmTone: 'neutral'
       });

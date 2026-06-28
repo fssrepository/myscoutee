@@ -51,8 +51,8 @@ import {
   LazyBgImageDirective
 } from '../../../shared/ui/directives';
 import {
-  ConfirmationDialogStore
-} from '../../../shared/ui/context/stores/confirmation-dialog.store';
+  DialogStore
+} from '../../../shared/ui/context/stores/dialog.store';
 import {
   AdminPopupStore
 } from '../../../shared/ui/context/stores/admin-popup.store';
@@ -170,7 +170,7 @@ export class AdminHelpEditorPopupComponent {
   protected readonly admin = inject(AdminPopupStore);
   private readonly userProfileStore = inject(UserProfileStore);
   private readonly helpCenter = inject(HelpCenterService);
-  private readonly confirmationDialog = inject(ConfirmationDialogStore);
+  private readonly dialogStore = inject(DialogStore);
   private readonly i18n = inject(I18nService);
   private readonly changeDetectorRef = inject(ChangeDetectorRef);
 
@@ -1023,7 +1023,7 @@ export class AdminHelpEditorPopupComponent {
     if (this.saving || this.activatingRevisionId) {
       return;
     }
-    this.confirmationDialog.open({
+    this.dialogStore.open({
       title: `Delete v${revision.version}?`,
       message: revision.title,
       confirmLabel: 'Delete',

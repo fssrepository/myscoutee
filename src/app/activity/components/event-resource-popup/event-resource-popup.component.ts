@@ -68,8 +68,8 @@ import {
   NavigatorStore
 } from '../../../shared/ui/context/stores/navigator.store';
 import {
-  ConfirmationDialogStore
-} from '../../../shared/ui/context/stores/confirmation-dialog.store';
+  DialogStore
+} from '../../../shared/ui/context/stores/dialog.store';
 import {
   ActivitiesPopupStore
 } from '../../../shared/ui/context/stores/activities-popup.store';
@@ -156,7 +156,7 @@ export class EventResourcePopupComponent {
   private readonly eventsService = inject(EventsService);
   private readonly usersService = inject(UsersService);
   private readonly navigatorStore = inject(NavigatorStore);
-  private readonly confirmationDialogStore = inject(ConfirmationDialogStore);
+  private readonly dialogStore = inject(DialogStore);
   private readonly shareTokensService = inject(ShareTokensService);
   private readonly activityResourcesService = inject(ActivityResourcesService);
   private readonly eventEditorStore = inject(EventEditorPopupStore);
@@ -377,7 +377,7 @@ export class EventResourcePopupComponent {
   }
 
   private openShareLinkDialog(title: string, shareToken: string): void {
-    this.confirmationDialogStore.open({
+    this.dialogStore.open({
       title,
       message: shareToken,
       confirmLabel: 'Copy link',
@@ -1874,7 +1874,7 @@ export class EventResourcePopupComponent {
       type: card.type,
       title: card.title
     };
-    this.confirmationDialogStore.open({
+    this.dialogStore.open({
       title: 'Remove assignment',
       message: `Remove "${pending.title}" from this event assignment?`,
       cancelLabel: 'Cancel',

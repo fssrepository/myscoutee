@@ -23,8 +23,8 @@ import {
   SessionService
 } from './session.service';
 import {
-  ConfirmationDialogStore
-} from '../../../ui/context/stores/confirmation-dialog.store';
+  DialogStore
+} from '../../../ui/context/stores/dialog.store';
 import {
   appLocationStorageKey
 } from '../../common/storage-scope';
@@ -44,7 +44,7 @@ export class AppLocationService {
   private readonly injector = inject(Injector);
   private readonly router = inject(Router);
   private readonly sessionService = inject(SessionService);
-  private readonly confirmationDialogStore = inject(ConfirmationDialogStore);
+  private readonly dialogStore = inject(DialogStore);
   private httpUsersServicePromise: Promise<HttpUsersServiceInstance> | null = null;
   private readonly syncingUserIds = new Set<string>();
   private readonly blockedUserIds = new Set<string>();
@@ -386,7 +386,7 @@ export class AppLocationService {
       if (this.isIneligibleRegionError(error)) {
         if (!this.blockedUserIds.has(userId)) {
           this.blockedUserIds.add(userId);
-          this.confirmationDialogStore.openInfo(this.resolveIneligibleRegionMessage(error), {
+          this.dialogStore.openInfo(this.resolveIneligibleRegionMessage(error), {
             title: AppLocationService.ACCESS_RESTRICTED_TITLE,
             confirmLabel: 'OK',
             allowBackdropClose: false,

@@ -36,8 +36,8 @@ import {
 } from '../../../shared/core/base/services/session.service';
 import type { AdminBootstrapProcessState, AdminDashboardDto } from '../../../shared/core/contracts/admin.interface';
 import {
-  ConfirmationDialogComponent
-} from '../../../shared/ui/components/confirmation-dialog/confirmation-dialog.component';
+  DialogComponent
+} from '../../../shared/ui/components/dialog/dialog.component';
 import {
   AdminPopupStore
 } from '../../../shared/ui/context/stores/admin-popup.store';
@@ -57,7 +57,7 @@ import { PopupStore } from '../../../shared/ui/context/stores/popup.store';
     MatIconModule,
     MatRippleModule,
     NavigatorComponent,
-    ConfirmationDialogComponent
+    DialogComponent
   ],
   templateUrl: './admin-page.component.html',
   styleUrl: './admin-page.component.scss'

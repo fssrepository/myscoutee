@@ -36,7 +36,7 @@ import {
   type ListQuery,
   type PageResult,
   type PairCardData,
-  type RatingStarBarConfig,
+  type AppMenuRateConfig,
   type SingleCardData,
   type SmartListConfig,
   type SmartListLoadPage,
@@ -623,7 +623,7 @@ export class HomeComponent implements OnDestroy {
     return Array.from({ length: 10 }, (_, index) => index + 1);
   }
 
-  protected get gameRatingBarConfig(): RatingStarBarConfig {
+  protected get gameRatingBarConfig(): AppMenuRateConfig {
     return {
       scale: this.ratingScale,
       label: 'Affinity',

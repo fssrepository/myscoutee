@@ -67,11 +67,11 @@ import {
   type SmartListConfig,
   type SmartListItemSelectEvent,
   type SmartListStateChange,
-  ConfirmationDialogComponent
+  DialogComponent
 } from '../../../shared/ui';
 import {
-  ConfirmationDialogStore
-} from '../../../shared/ui/context/stores/confirmation-dialog.store';
+  DialogStore
+} from '../../../shared/ui/context/stores/dialog.store';
 import {
   AssetPopupStore
 } from '../../../shared/ui/context/stores/asset-popup.store';
@@ -142,7 +142,7 @@ type AssetPopupMenuContext =
     InfoCardComponent,
     PopupComponent,
     SmartListComponent,
-    ConfirmationDialogComponent,
+    DialogComponent,
     I18nPipe,
     AssetEditorPopupComponent,
     AssetTicketScanPopupComponent
@@ -158,7 +158,7 @@ export class AssetPopupComponent {
   private readonly assetsService = inject(AssetsService);
   private readonly assetTicketsService = inject(AssetTicketsService);
   private readonly shareTokensService = inject(ShareTokensService);
-  private readonly confirmationDialogStore = inject(ConfirmationDialogStore);
+  private readonly dialogStore = inject(DialogStore);
   private readonly appMenuDispatcher = inject(AppMenuDispatcher);
   private readonly i18n = inject(I18nService);
   private readonly cdr = inject(ChangeDetectorRef);
@@ -614,7 +614,7 @@ export class AssetPopupComponent {
       return;
     }
     if (event.actionId === 'takeOver') {
-      this.confirmationDialogStore.open({
+      this.dialogStore.open({
         title: 'Take over asset?',
         message: card.title,
         cancelLabel: 'Cancel',
@@ -1167,7 +1167,7 @@ export class AssetPopupComponent {
       assetType: card.type,
       ownerUserId: card.ownerUserId ?? null
     }).then(token => {
-      this.confirmationDialogStore.open({
+      this.dialogStore.open({
         title: 'Share asset',
         message: token,
         confirmLabel: 'Copy link',

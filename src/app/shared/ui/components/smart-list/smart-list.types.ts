@@ -14,9 +14,9 @@ import type {
   AppMenuItem,
   AppMenuKind,
   AppMenuPanelAlign,
-  AppMenuPanelMode
+  AppMenuPanelMode,
+  AppMenuRateConfig
 } from '../menu';
-import type { RatingStarBarConfig } from '../rating-star-bar';
 
 export type SmartListViewMode = 'list' | 'month' | 'week';
 export type SmartListPresentation = 'list' | 'fullscreen';
@@ -275,7 +275,7 @@ export interface SmartListConfig<T, TFilters extends SmartListFilters = SmartLis
     step?: SmartListConfigValue<SmartListPaginationStep, TFilters>;
     headerControls?: SmartListConfigValue<boolean, TFilters>;
     autoplayMs?: SmartListConfigValue<number | null, TFilters>;
-    ratingBarConfig?: (item: T | null, query: ListQuery<TFilters>) => RatingStarBarConfig | null;
+    ratingBarConfig?: (item: T | null, query: ListQuery<TFilters>) => AppMenuRateConfig | null;
     ratingBarValue?: (item: T | null, query: ListQuery<TFilters>) => number;
     onRatingSelect?: (item: T | null, score: number, query: ListQuery<TFilters>) => void | Promise<void>;
   };

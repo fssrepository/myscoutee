@@ -456,18 +456,18 @@
                   </button>
                 }
               </div>
-            } @else if (isRatingBarItem(item)) {
+            } @else if (isRateItem(item)) {
               <div
-                class="app-menu__rating-item"
-                [class.app-menu__rating-item--disabled]="isItemDisabled(item)"
+                class="app-menu__rate-item"
+                [class.app-menu__rate-item--disabled]="isItemDisabled(item)"
                 role="none"
                 (click)="$event.stopPropagation()"
                 >
-                <app-rating-star-bar
-                  [config]="itemRatingBarConfig(item)"
-                  (valueChange)="updateRatingBarItemValue(item, $event)"
-                  (scoreSelect)="selectRatingBarItem(item, $event)"
-                ></app-rating-star-bar>
+                <app-menu-rate
+                  [config]="itemRateConfig(item)"
+                  (valueChange)="updateRateItemValue(item, $event)"
+                  (scoreSelect)="selectRateItem(item, $event)"
+                ></app-menu-rate>
               </div>
             } @else if (itemHref(item)) {
               <a

@@ -32,14 +32,12 @@ import {
 } from './card/calendar-card';
 import { ROUTE_CONFIG } from '../../../core/base/config';
 import {
-  type RatingStarBarConfig
-} from '../rating-star-bar';
-import {
   AppMenuDispatcher,
   AppMenuOutletComponent,
   type AppMenuDispatchState,
   type AppMenuItem,
-  type AppMenuItemSelectEvent
+  type AppMenuItemSelectEvent,
+  type AppMenuRateConfig
 } from '../menu';
 import {
   type AnySmartListPageAdapter,
@@ -123,6 +121,9 @@ export class SmartListComponent<T, TFilters extends SmartListFilters = SmartList
 
   @ViewChild('scrollHost', { read: ElementRef })
   private scrollHostRef?: ElementRef<HTMLDivElement>;
+
+  @ViewChild('paginationMenuOutlet')
+  private paginationMenuOutlet?: AppMenuOutletComponent<string, unknown>;
 
   @Input() config: SmartListConfig<T, TFilters> = {};
   @Input() loadPage: SmartListLoadPage<T, TFilters> | null = null;
@@ -615,7 +616,7 @@ export class SmartListComponent<T, TFilters extends SmartListFilters = SmartList
     void this.setCursorIndex(index);
   }
 
-  protected resolvedPaginationRatingBarConfig(): RatingStarBarConfig | null {
+  protected resolvedPaginationRatingBarConfig(): AppMenuRateConfig | null {
     const baseConfig = this.config.pagination?.ratingBarConfig?.(this.cursorItem(), this.currentQuery()) ?? null;
     if (!baseConfig) {
       return null;
@@ -671,10 +672,10 @@ export class SmartListComponent<T, TFilters extends SmartListFilters = SmartList
     }
     return [{
       id: SmartListComponent.PAGINATION_RATING_ITEM_ID,
-      kind: 'rating-bar',
+      kind: 'rate',
       closeOnSelect: false,
       value: this.resolvedPaginationRatingBarValue(),
-      ratingBarConfig: config,
+      rateConfig: config,
       context: { menu: SmartListComponent.PAGINATION_RATING_MENU_ID }
     }];
   }
@@ -724,8 +725,15 @@ export class SmartListComponent<T, TFilters extends SmartListFilters = SmartList
     return this.items;
   }
 
-  public paginationHostElement(): HTMLElement | null {
-    return this.hostRef.nativeElement.querySelector('.rating-star-bar-host') as HTMLElement | null;
+  public paginationMenuHeightPx(): number {
+    return this.shouldRenderPaginationRatingBar()
+      ? this.paginationMenuOutlet?.heightPx() ?? 0
+      : 0;
+  }
+
+  public isPaginationMenuTarget(target: EventTarget | null | undefined): boolean {
+    return this.shouldRenderPaginationRatingBar()
+      && (this.paginationMenuOutlet?.containsTarget(target) ?? false);
   }
 
   public cursorState(): SmartListCursorState<T> {
@@ -1090,7 +1098,11 @@ export class SmartListComponent<T, TFilters extends SmartListFilters = SmartList
   }
 
   protected hostedFullscreenCurrentItem(): T | null {
-    return this.finiteStepper.leavingItem ?? this.cursorItem();
+    return this.finiteStepper.leavingItem ?? this.hostedFullscreenResolvedCursor().item;
+  }
+
+  protected hostedFullscreenCurrentItemIndex(): number {
+    return this.hostedFullscreenResolvedCursor().index;
   }
 
   protected hostedFullscreenCurrentRenderState(): SmartListItemRenderState {
@@ -1145,6 +1157,19 @@ export class SmartListComponent<T, TFilters extends SmartListFilters = SmartList
       renderState,
       selectItem: event => this.selectSmartListItem(item, event),
       openMenu: request => this.openItemMenu(item, request)
+    };
+  }
+
+  private hostedFullscreenResolvedCursor(): SmartListCursorState<T> {
+    const cursor = this.finiteStepper.state();
+    if (cursor.item !== null || this.items.length === 0) {
+      return cursor;
+    }
+    const fallbackIndex = Math.max(0, Math.min(cursor.index, this.items.length - 1));
+    return {
+      ...cursor,
+      index: fallbackIndex,
+      item: this.items[fallbackIndex] ?? null
     };
   }
 
@@ -2761,12 +2786,8 @@ export class SmartListComponent<T, TFilters extends SmartListFilters = SmartList
   }
 
   private activeDockedMenuHeightPx(): number {
-    const dock = (this.hostRef.nativeElement as HTMLElement).querySelector('.app-menu-outlet--dock') as HTMLElement | null;
-    if (!dock) {
-      return 0;
-    }
-    const height = dock.getBoundingClientRect().height;
-    return Number.isFinite(height) ? Math.max(0, Math.ceil(height)) : 0;
+    const outlet = this.paginationMenuOutlet;
+    return outlet?.isDocked() ? outlet.heightPx() : 0;
   }
 
   private listCardSnapTargets(scrollElement: HTMLDivElement): HTMLElement[] {

@@ -38,10 +38,10 @@ export {
   type EventEditorSubEventResourcePopupRequest,
   type EventEditorSubEventResourceType
 } from './event-editor-popup.store';
-export { ConfirmationDialogStore } from './confirmation-dialog.store';
+export { DialogStore } from './dialog.store';
 export { EventCheckoutDialogStore } from './event-checkout-dialog.store';
 export { EventCheckoutDraftStore } from './event-checkout-draft.store';
-export type { ConfirmationDialogConfig, ConfirmationDialogState, ConfirmationDialogTone } from './confirmation-dialog.store';
+export type { DialogConfig, DialogState, DialogTone } from './dialog.store';
 export type { EventCheckoutDialogConfig, EventCheckoutDialogState } from './event-checkout-dialog.store';
 export type { EventCheckoutDraft } from './event-checkout-draft.store';
 export { HelpCenterStore } from './help-center.store';

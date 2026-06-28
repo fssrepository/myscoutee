@@ -126,6 +126,19 @@ export class AppMenuOutletComponent<TId extends string = string, TContext = unkn
     this.dispatcher.refreshActiveRect();
   }
 
+  public containsTarget(target: EventTarget | null | undefined): boolean {
+    return target instanceof Node && this.hostRef.nativeElement.contains(target);
+  }
+
+  public heightPx(): number {
+    const height = this.hostRef.nativeElement.getBoundingClientRect().height;
+    return Number.isFinite(height) ? Math.max(0, Math.ceil(height)) : 0;
+  }
+
+  public isDocked(): boolean {
+    return this.activeMenu()?.panelMode === 'dock';
+  }
+
   protected onOpenChange(open: boolean, menu: AppMenuDispatchState<TId, TContext>): void {
     if (this.isControlledMenu(menu)) {
       return;

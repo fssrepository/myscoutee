@@ -55,8 +55,8 @@ import {
 import type { ChatDTO } from '../../../shared/core/contracts/chat.interface';
 import type { UserDto } from '../../../shared/core/contracts/user.interface';
 import {
-  ConfirmationDialogStore
-} from '../../../shared/ui/context/stores/confirmation-dialog.store';
+  DialogStore
+} from '../../../shared/ui/context/stores/dialog.store';
 import {
   AdminPopupStore
 } from '../../../shared/ui/context/stores/admin-popup.store';
@@ -130,7 +130,7 @@ export class AdminReportsPopupComponent {
   private readonly workspaceData = inject(AdminWorkspaceDataService);
   private readonly moderationData = inject(AdminModerationService);
   private readonly activitiesStore = inject(ActivitiesPopupStore);
-  private readonly confirmationDialog = inject(ConfirmationDialogStore);
+  private readonly dialogStore = inject(DialogStore);
   private readonly location = inject(Location);
   private readonly warnedUserIdsRef = signal<Set<string>>(new Set());
   protected reportDetail: AdminReportListItem | null = null;
@@ -287,7 +287,7 @@ export class AdminReportsPopupComponent {
   }
 
   protected blockUser(user: AdminReportedUserDto): void {
-    this.confirmationDialog.open({
+    this.dialogStore.open({
       title: `Block ${user.name}?`,
       message: 'The user will be blocked and a support chat message will be sent.',
       confirmLabel: 'Block',
@@ -399,7 +399,7 @@ export class AdminReportsPopupComponent {
   protected unblockUser(user: AdminReportedUserDto, event?: Event): void {
     event?.preventDefault();
     event?.stopPropagation();
-    this.confirmationDialog.open({
+    this.dialogStore.open({
       title: `Unblock ${user.name}?`,
       message: 'The user profile status will be restored and they can use MyScoutee again.',
       confirmLabel: 'Unblock',

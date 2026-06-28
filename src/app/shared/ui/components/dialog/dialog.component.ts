@@ -1,7 +1,7 @@
 
 import { Component, HostListener, Input, inject } from '@angular/core';
 
-import { ConfirmationDialogStore, type ConfirmationDialogState, type ConfirmationDialogTone } from '../../context/stores/confirmation-dialog.store';
+import { DialogStore, type DialogState, type DialogTone } from '../../context/stores/dialog.store';
 import {
   AppMenuComponent,
   type AppMenuItem,
@@ -10,7 +10,7 @@ import {
 } from '../menu';
 import { I18nPipe } from '../../pipes';
 
-export interface ConfirmationDialogLocalConfig {
+export interface DialogLocalConfig {
   visible?: boolean;
   title?: string;
   message?: string;
@@ -18,7 +18,7 @@ export interface ConfirmationDialogLocalConfig {
   cancelLabel?: string | null;
   confirmLabel?: string;
   busyConfirmLabel?: string;
-  confirmTone?: ConfirmationDialogTone;
+  confirmTone?: DialogTone;
   confirmPalette?: AppMenuPalette | null;
   allowBackdropClose?: boolean;
   allowEscapeClose?: boolean;
@@ -29,14 +29,14 @@ export interface ConfirmationDialogLocalConfig {
   confirmAction?: (() => void | Promise<void>) | null;
 }
 
-type RenderedConfirmationDialogState = {
+type RenderedDialogState = {
   title: string;
   message: string;
   warningMessage: string;
   cancelLabel: string | null;
   confirmLabel: string;
   busyConfirmLabel: string;
-  confirmTone: ConfirmationDialogTone;
+  confirmTone: DialogTone;
   confirmPalette: AppMenuPalette | null;
   allowBackdropClose: boolean;
   allowEscapeClose: boolean;
@@ -46,17 +46,17 @@ type RenderedConfirmationDialogState = {
 };
 
 @Component({
-  selector: 'app-confirmation-dialog',
+  selector: 'app-dialog',
   standalone: true,
   imports: [AppMenuComponent, I18nPipe],
-  templateUrl: './confirmation-dialog.component.html',
-  styleUrl: './confirmation-dialog.component.scss'
+  templateUrl: './dialog.component.html',
+  styleUrl: './dialog.component.scss'
 })
-export class ConfirmationDialogComponent {
+export class DialogComponent {
   @Input() useStore = true;
-  @Input() dialog: ConfirmationDialogLocalConfig | null = null;
+  @Input() dialog: DialogLocalConfig | null = null;
 
-  protected readonly dialogStore = inject(ConfirmationDialogStore);
+  protected readonly dialogStore = inject(DialogStore);
 
   @HostListener('window:keydown.escape', ['$event'])
   protected onEscapePressed(event: Event): void {
@@ -70,7 +70,7 @@ export class ConfirmationDialogComponent {
     this.cancel();
   }
 
-  protected dialogState(): RenderedConfirmationDialogState | null {
+  protected dialogState(): RenderedDialogState | null {
     if (!this.useStore) {
       const dialog = this.dialog;
       if (!dialog?.visible) {
@@ -98,15 +98,15 @@ export class ConfirmationDialogComponent {
     return state ? this.mapStoreState(state) : null;
   }
 
-  protected confirmText(state: RenderedConfirmationDialogState): string {
+  protected confirmText(state: RenderedDialogState): string {
     return state.busy ? state.busyConfirmLabel : state.confirmLabel;
   }
 
-  protected confirmRingState(state: RenderedConfirmationDialogState): 'loading' | 'error' {
+  protected confirmRingState(state: RenderedDialogState): 'loading' | 'error' {
     return state.busy ? 'loading' : 'error';
   }
 
-  protected dialogActionItems(state: RenderedConfirmationDialogState): readonly AppMenuItem<string>[] {
+  protected dialogActionItems(state: RenderedDialogState): readonly AppMenuItem<string>[] {
     const items: AppMenuItem<string>[] = [];
     if (state.cancelLabel) {
       items.push({
@@ -180,7 +180,7 @@ export class ConfirmationDialogComponent {
     void this.dialogStore.confirm();
   }
 
-  private confirmPalette(state: RenderedConfirmationDialogState): AppMenuPalette {
+  private confirmPalette(state: RenderedDialogState): AppMenuPalette {
     if (state.errorMessage) {
       return 'danger';
     }
@@ -196,7 +196,7 @@ export class ConfirmationDialogComponent {
     return 'blue';
   }
 
-  private mapStoreState(state: ConfirmationDialogState): RenderedConfirmationDialogState {
+  private mapStoreState(state: DialogState): RenderedDialogState {
     return {
       title: state.title,
       message: state.message,

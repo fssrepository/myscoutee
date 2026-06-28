@@ -68,8 +68,8 @@ import {
   USER_LOGOUT_CONTEXT_KEY
 } from '../../../shared/core/base/services/users.service';
 import {
-  ConfirmationDialogComponent
-} from '../../../shared/ui/components/confirmation-dialog/confirmation-dialog.component';
+  DialogComponent
+} from '../../../shared/ui/components/dialog/dialog.component';
 import {
   NavigatorSettingsPopupsComponent
 } from '../navigator-settings-popups/navigator-settings-popups.component';
@@ -82,8 +82,8 @@ import {
 } from './navigator-presenters';
 import type { ChatDTO } from '../../../shared/core/contracts/chat.interface';
 import {
-  ConfirmationDialogStore
-} from '../../../shared/ui/context/stores/confirmation-dialog.store';
+  DialogStore
+} from '../../../shared/ui/context/stores/dialog.store';
 import {
   APP_STORAGE_KEYS
 } from '../../../shared/core/common/storage-scope';
@@ -157,7 +157,7 @@ type NavigatorHeaderActionMenuItemId =
     AppMenuComponent,
     HeaderCardComponent,
     NavigatorSettingsPopupsComponent,
-    ConfirmationDialogComponent
+    DialogComponent
   ],
   templateUrl: './navigator.component.html',
   styleUrl: './navigator.component.scss'
@@ -178,7 +178,7 @@ export class NavigatorComponent implements OnDestroy {
   private readonly termsPolicy = inject(TermsPolicyService);
   private readonly usersService = inject(UsersService);
   private readonly sessionService = inject(SessionService);
-  private readonly confirmationDialogStore = inject(ConfirmationDialogStore);
+  private readonly dialogStore = inject(DialogStore);
   private readonly navigatorStore = inject(NavigatorStore);
   private readonly activitiesStore = inject(ActivitiesPopupStore);
   private readonly assetPopupStore = inject(AssetPopupStore);
@@ -1509,7 +1509,7 @@ export class NavigatorComponent implements OnDestroy {
       return;
     }
     this.reactivationPromptUserId = userId;
-    this.confirmationDialogStore.open({
+    this.dialogStore.open({
       title: 'Reactivate account?',
       message: 'This account is scheduled for deletion. You can reactivate it within 30 days and continue using MyScoutee normally.',
       cancelLabel: 'Cancel',
@@ -1657,7 +1657,7 @@ export class NavigatorComponent implements OnDestroy {
 
   private openDeleteAccountConfirm(): void {
     const activeUserName = this.userProfileStore.activeUserProfile()?.name?.trim() || 'this account';
-    this.confirmationDialogStore.open({
+    this.dialogStore.open({
       title: 'Delete account?',
       message: activeUserName,
       warningMessage: 'You can reactivate within 30 days. After that, the account is permanently purged.',
@@ -1683,7 +1683,7 @@ export class NavigatorComponent implements OnDestroy {
         if (activeUserId) {
           const result = await this.usersService.deleteUser(activeUserId);
           if (!result.submitted) {
-            this.confirmationDialogStore.openInfo(
+            this.dialogStore.openInfo(
               result.message ?? 'Unable to delete account.',
               {
                 title: 'Delete account',
@@ -1702,7 +1702,7 @@ export class NavigatorComponent implements OnDestroy {
 
   private openLogoutConfirm(): void {
     const activeUserName = this.userProfileStore.activeUserProfile()?.name?.trim() || '';
-    this.confirmationDialogStore.open({
+    this.dialogStore.open({
       title: 'Biztosan kilép?',
       message: activeUserName,
       cancelLabel: 'Mégsem',
@@ -1719,7 +1719,7 @@ export class NavigatorComponent implements OnDestroy {
           if (activeUserId) {
             const result = await this.usersService.logoutUser(activeUserId);
             if (!result.submitted) {
-              this.confirmationDialogStore.openInfo(
+              this.dialogStore.openInfo(
                 result.message ?? 'Unable to log out.',
                 {
                   title: 'Logout',
@@ -1741,7 +1741,7 @@ export class NavigatorComponent implements OnDestroy {
         if (activeUserId) {
           const result = await this.usersService.logoutUser(activeUserId);
           if (!result.submitted) {
-            this.confirmationDialogStore.openInfo(
+            this.dialogStore.openInfo(
               result.message ?? 'Unable to log out.',
               {
                 title: 'Logout',

@@ -22,10 +22,7 @@ import { MatIconModule } from '@angular/material/icon';
 
 import { I18nPipe } from '../../pipes';
 import { I18nService } from '../../../core';
-import {
-  RatingStarBarComponent,
-  type RatingStarBarConfig
-} from '../rating-star-bar';
+import { RateComponent } from './items/rate/rate.component';
 import {
   ProgressIndicatorComponent,
   type ProgressIndicatorShape,
@@ -47,6 +44,7 @@ import type {
   AppMenuPanelAlign,
   AppMenuPanelMode,
   AppMenuPalette,
+  AppMenuRateConfig,
   AppMenuSegment,
   AppMenuTrigger,
   AppMenuTriggerLayout,
@@ -69,7 +67,7 @@ type AppMenuFilterTextPart = {
 @Component({
   selector: 'app-menu',
   standalone: true,
-  imports: [CommonModule, MatIconModule, I18nPipe, RatingStarBarComponent, ProgressIndicatorComponent],
+  imports: [CommonModule, MatIconModule, I18nPipe, RateComponent, ProgressIndicatorComponent],
   templateUrl: './menu.component.html',
   styleUrl: './menu.component.scss',
   providers: [
@@ -832,18 +830,18 @@ export class AppMenuComponent<TId extends string = string, TContext = unknown>
     }
   }
 
-  protected updateRatingBarItemValue(item: AppMenuItem<TId, TContext>, value: unknown): void {
-    if (!this.isRatingBarItem(item)) {
+  protected updateRateItemValue(item: AppMenuItem<TId, TContext>, value: unknown): void {
+    if (!this.isRateItem(item)) {
       return;
     }
     item.value = value;
   }
 
-  protected selectRatingBarItem(item: AppMenuItem<TId, TContext>, score: number): void {
+  protected selectRateItem(item: AppMenuItem<TId, TContext>, score: number): void {
     if (this.isItemDisabled(item) || this.isPassiveItem(item)) {
       return;
     }
-    this.updateRatingBarItemValue(item, score);
+    this.updateRateItemValue(item, score);
     const controlValue = this.selectControlItem(item);
     this.itemSelect.emit({
       id: item.id,
@@ -1243,28 +1241,28 @@ export class AppMenuComponent<TId extends string = string, TContext = unknown>
     return item.kind === 'section';
   }
 
-  protected isRatingBarItem(item: AppMenuItem<TId, TContext>): boolean {
-    return item.kind === 'rating-bar';
+  protected isRateItem(item: AppMenuItem<TId, TContext>): boolean {
+    return item.kind === 'rate';
   }
 
-  protected itemRatingBarConfig(item: AppMenuItem<TId, TContext>): RatingStarBarConfig | null {
-    if (!this.isRatingBarItem(item)) {
+  protected itemRateConfig(item: AppMenuItem<TId, TContext>): AppMenuRateConfig | null {
+    if (!this.isRateItem(item)) {
       return null;
     }
     return {
-      ...(item.ratingBarConfig ?? {}),
-      value: this.ratingBarItemValue(item),
-      readonly: this.isItemDisabled(item) || (item.ratingBarConfig?.readonly ?? false),
+      ...(item.rateConfig ?? {}),
+      value: this.rateItemValue(item),
+      readonly: this.isItemDisabled(item) || (item.rateConfig?.readonly ?? false),
       dock: null
     };
   }
 
-  private ratingBarItemValue(item: AppMenuItem<TId, TContext>): number | null {
+  private rateItemValue(item: AppMenuItem<TId, TContext>): number | null {
     const itemValue = Number(item.value);
     if (Number.isFinite(itemValue)) {
       return itemValue;
     }
-    const configuredValue = Number(item.ratingBarConfig?.value);
+    const configuredValue = Number(item.rateConfig?.value);
     return Number.isFinite(configuredValue) ? configuredValue : null;
   }
 

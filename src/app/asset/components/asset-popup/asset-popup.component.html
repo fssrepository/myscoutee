@@ -35,7 +35,7 @@
           <app-asset-editor-popup></app-asset-editor-popup>
         }
         @if (!isBasketMode()) {
-          <app-confirmation-dialog
+          <app-dialog
             [useStore]="false"
             [dialog]="{
               visible: !!assetStore.pendingAssetDeleteCardId(),
@@ -49,7 +49,7 @@
               cancelAction: cancelOwnedAssetDelete,
               confirmAction: confirmOwnedAssetDelete
             }"
-          ></app-confirmation-dialog>
+          ></app-dialog>
         }
       </div>
     </app-popup>

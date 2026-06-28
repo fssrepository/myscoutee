@@ -2,16 +2,16 @@ import { Injectable, signal } from '@angular/core';
 
 import type { AppMenuPalette } from '../../components/menu';
 
-export type ConfirmationDialogTone = 'accent' | 'danger' | 'neutral';
+export type DialogTone = 'accent' | 'danger' | 'neutral';
 
-export interface ConfirmationDialogConfig {
+export interface DialogConfig {
   title: string;
   message?: string | null;
   warningMessage?: string | null;
   cancelLabel?: string | null;
   confirmLabel?: string;
   busyConfirmLabel?: string;
-  confirmTone?: ConfirmationDialogTone;
+  confirmTone?: DialogTone;
   confirmPalette?: AppMenuPalette | null;
   allowBackdropClose?: boolean;
   allowEscapeClose?: boolean;
@@ -21,7 +21,7 @@ export interface ConfirmationDialogConfig {
   onCancel?: (() => void | Promise<void>) | null;
 }
 
-export interface ConfirmationDialogState {
+export interface DialogState {
   id: number;
   title: string;
   message: string;
@@ -29,7 +29,7 @@ export interface ConfirmationDialogState {
   cancelLabel: string | null;
   confirmLabel: string;
   busyConfirmLabel: string;
-  confirmTone: ConfirmationDialogTone;
+  confirmTone: DialogTone;
   confirmPalette: AppMenuPalette | null;
   allowBackdropClose: boolean;
   allowEscapeClose: boolean;
@@ -44,13 +44,13 @@ export interface ConfirmationDialogState {
 @Injectable({
   providedIn: 'root'
 })
-export class ConfirmationDialogStore {
-  private readonly stateRef = signal<ConfirmationDialogState | null>(null);
+export class DialogStore {
+  private readonly stateRef = signal<DialogState | null>(null);
   private nextId = 0;
 
   readonly dialog = this.stateRef.asReadonly();
 
-  open(config: ConfirmationDialogConfig): void {
+  open(config: DialogConfig): void {
     this.stateRef.set({
       id: ++this.nextId,
       title: config.title.trim() || 'Confirmation',
@@ -74,7 +74,7 @@ export class ConfirmationDialogStore {
 
   openInfo(
     message: string,
-    options: Omit<ConfirmationDialogConfig, 'message' | 'cancelLabel'> = { title: 'Notice' }
+    options: Omit<DialogConfig, 'message' | 'cancelLabel'> = { title: 'Notice' }
   ): void {
     this.open({
       ...options,

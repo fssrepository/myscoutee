@@ -72,8 +72,8 @@ import {
   type SmartListStateChange
 } from '../../../shared/ui';
 import {
-  ConfirmationDialogStore
-} from '../../../shared/ui/context/stores/confirmation-dialog.store';
+  DialogStore
+} from '../../../shared/ui/context/stores/dialog.store';
 import {
   EventCheckoutDraftStore,
   type EventCheckoutDraft
@@ -136,7 +136,7 @@ export class EventExplorePopupComponent {
   private readonly shareTokensService = inject(ShareTokensService);
   private readonly usersService = inject(UsersService);
   private readonly navigatorStore = inject(NavigatorStore);
-  private readonly confirmationDialogStore = inject(ConfirmationDialogStore);
+  private readonly dialogStore = inject(DialogStore);
   private readonly appMenuDispatcher = inject(AppMenuDispatcher);
   private readonly eventCheckoutDraftStore = inject(EventCheckoutDraftStore);
   private readonly eventCheckoutDialogStore = inject(EventCheckoutDialogStore);
@@ -743,14 +743,14 @@ export class EventExplorePopupComponent {
       return;
     }
     if (record.creatorUserId === activeUserId) {
-      this.confirmationDialogStore.openInfo(`You already host ${record.title}.`, {
+      this.dialogStore.openInfo(`You already host ${record.title}.`, {
         title: 'Already hosting',
         confirmTone: 'neutral'
       });
       return;
     }
     if (this.hasTrackedMembership(record, activeUserId)) {
-      this.confirmationDialogStore.openInfo(`A membership entry already exists for ${record.title}.`, {
+      this.dialogStore.openInfo(`A membership entry already exists for ${record.title}.`, {
         title: 'Already requested',
         confirmTone: 'neutral'
       });
@@ -760,7 +760,7 @@ export class EventExplorePopupComponent {
       this.openEventExploreCheckout(record);
       return;
     }
-    this.confirmationDialogStore.open({
+    this.dialogStore.open({
       title: this.eventExploreJoinDialogTitle(record),
       message: record.title,
       cancelLabel: 'Cancel',
@@ -919,7 +919,7 @@ export class EventExplorePopupComponent {
       ?? await this.eventsService.queryKnownRecordById(this.activeUserId, draft.sourceId);
     if (!record) {
       this.eventCheckoutDraftStore.clear(this.activeUserId, draft.sourceId);
-      this.confirmationDialogStore.openInfo('This checkout draft can no longer be restored.', {
+      this.dialogStore.openInfo('This checkout draft can no longer be restored.', {
         title: 'Basket unavailable',
         confirmTone: 'neutral'
       });
@@ -966,7 +966,7 @@ export class EventExplorePopupComponent {
       ?? this.eventsService.peekKnownRecordById(this.activeUserId, sourceId)
       ?? await this.eventsService.queryKnownRecordById(this.activeUserId, sourceId);
     if (!record) {
-      this.confirmationDialogStore.openInfo('This event can no longer be opened.', {
+      this.dialogStore.openInfo('This event can no longer be opened.', {
         title: 'Event unavailable',
         confirmTone: 'neutral'
       });
@@ -1143,7 +1143,7 @@ export class EventExplorePopupComponent {
   }
 
   private openShareLinkDialog(title: string, shareToken: string): void {
-    this.confirmationDialogStore.open({
+    this.dialogStore.open({
       title,
       message: shareToken,
       confirmLabel: 'Copy link',
@@ -1166,7 +1166,7 @@ export class EventExplorePopupComponent {
     if (!record) {
       return;
     }
-    this.confirmationDialogStore.open({
+    this.dialogStore.open({
       title: this.eventExploreJoinDialogTitle(record),
       message: `${record.title}\n${slot.timeframe}`,
       cancelLabel: 'Cancel',
