@@ -4,6 +4,7 @@
       <article
         class="ui-accordion__item"
         [class.is-open]="isOpen(item)"
+        [class.is-selected]="isSelected(item)"
         [class.is-disabled]="item.disabled"
         [attr.data-palette]="itemPalette(item)"
       >
@@ -29,15 +30,60 @@
               <small>{{ item.subtitle }}</small>
             }
           </span>
-          @if (item.badge !== null && item.badge !== undefined && item.badge !== '') {
-            <span class="ui-accordion__badge">{{ item.badge }}</span>
+          @if (badges(item); as itemBadges) {
+            @if (itemBadges.length > 0) {
+              <span class="ui-accordion__badges">
+                @for (badge of itemBadges; track trackByBadge($index, badge)) {
+                  <span
+                    class="ui-accordion__badge"
+                    [attr.data-palette]="badge.palette ?? null"
+                    [attr.aria-label]="badge.ariaLabel ?? null"
+                    [attr.title]="badge.title ?? null"
+                  >
+                    @if (badge.icon) {
+                      <mat-icon>{{ badge.icon }}</mat-icon>
+                    }
+                    <span>{{ badge.label }}</span>
+                  </span>
+                }
+              </span>
+            }
           }
-          @if (actionTemplate) {
-            <span class="ui-accordion__actions" (click)="$event.stopPropagation()">
-              <ng-container
-                [ngTemplateOutlet]="actionTemplate"
-                [ngTemplateOutletContext]="{ $implicit: item, item: item }"
-              ></ng-container>
+          @if (isSelectable(item)) {
+            <button
+              type="button"
+              class="ui-accordion__select"
+              [class.is-selected]="isSelected(item)"
+              [attr.aria-pressed]="isSelected(item)"
+              [attr.aria-label]="selectionAriaLabel(item)"
+              (keydown)="$event.stopPropagation()"
+              (click)="toggleSelection(item, $event)"
+            >
+              @if (isSelected(item)) {
+                <mat-icon>check</mat-icon>
+              } @else {
+                <span class="ui-accordion__select-glyph" aria-hidden="true"></span>
+              }
+            </button>
+          }
+          @if (actionMenu(item); as menu) {
+            <span
+              class="ui-accordion__model-actions"
+              (click)="$event.stopPropagation()"
+              (keydown)="$event.stopPropagation()"
+            >
+              <app-menu
+                class="ui-accordion__action-menu"
+                [kind]="menu.kind ?? 'select'"
+                [trigger]="menu.trigger ?? null"
+                [items]="menu.items ?? []"
+                [model]="menu.model ?? null"
+                [panelAlign]="menu.panelAlign ?? 'auto'"
+                [panelMode]="menu.panelMode ?? 'auto'"
+                [mobileBreakpointPx]="menu.mobileBreakpointPx ?? 760"
+                [closeOnSelect]="menu.closeOnSelect ?? true"
+                (itemSelect)="onActionMenuSelect(item, $event)"
+              ></app-menu>
             </span>
           }
           <span class="ui-accordion__caret-btn" aria-hidden="true">

@@ -9,7 +9,14 @@ import { APP_STATIC_DATA } from '../../../app-static-data';
 import { HelpCenterService, I18nService } from '../../../core';
 import type { HelpCenterDocumentKind, HelpCenterRevisionDto } from '../../../core/contracts';
 import { LazyBgImageDirective } from '../../directives';
-import { AppMenuComponent, type AppMenuItem, type AppMenuItemSelectEvent } from '../menu';
+import {
+  AccordionComponent,
+  type UiAccordionItem,
+  type UiAccordionModel,
+  type UiAccordionSelectionToggleEvent,
+  type UiAccordionToggleEvent
+} from '../accordion';
+import { AppMenuComponent, type AppMenuItem, type AppMenuItemSelectEvent, type AppMenuPalette } from '../menu';
 import { ProgressIndicatorComponent } from '../progress-indicator';
 import type {
   DocumentViewerAction,
@@ -30,6 +37,7 @@ import type {
     MatIconModule,
     MatRippleModule,
     LazyBgImageDirective,
+    AccordionComponent,
     ProgressIndicatorComponent,
     AppMenuComponent
   ],
@@ -127,19 +135,6 @@ export class DocumentViewerComponent implements OnChanges, OnInit {
     this.requestClose(sourceEvent);
   }
 
-  protected toggleSection(sectionId: string, event?: Event): void {
-    event?.stopPropagation();
-    this.openSectionId = this.openSectionId === sectionId ? '' : sectionId;
-  }
-
-  protected onSectionKeydown(sectionId: string, event: KeyboardEvent): void {
-    if (event.key !== 'Enter' && event.key !== ' ') {
-      return;
-    }
-    event.preventDefault();
-    this.toggleSection(sectionId, event);
-  }
-
   protected toggleSectionSelection(section: DocumentViewerSection, event?: Event): void {
     event?.preventDefault();
     event?.stopPropagation();
@@ -156,17 +151,54 @@ export class DocumentViewerComponent implements OnChanges, OnInit {
     this.selectedSectionIds = next;
   }
 
-  protected stopNestedEvent(event?: Event): void {
-    event?.stopPropagation();
-    event?.stopImmediatePropagation();
+  protected documentAccordionModel(): UiAccordionModel<string, DocumentViewerSection> {
+    const config = this.activeConfig();
+    return {
+      items: (config?.sections ?? []).map(section => ({
+        id: section.id,
+        title: section.title,
+        icon: section.icon,
+        palette: this.sectionAccordionPalette(section),
+        open: this.openSectionId === section.id,
+        selectable: section.toggleable === true,
+        selected: this.isSectionSelected(section),
+        selectionAriaLabel: this.selectionAriaLabel(section),
+        context: section
+      })),
+      multi: false
+    };
+  }
+
+  protected documentSectionFromItem(
+    item: UiAccordionItem<string, DocumentViewerSection>
+  ): DocumentViewerSection | null {
+    return item.context ?? this.activeConfig()?.sections.find(section => section.id === item.id) ?? null;
+  }
+
+  protected onDocumentAccordionToggle(event: UiAccordionToggleEvent<string, DocumentViewerSection>): void {
+    this.openSectionId = event.open ? event.id : '';
+  }
+
+  protected onDocumentAccordionSelectionToggle(event: UiAccordionSelectionToggleEvent<string, DocumentViewerSection>): void {
+    const section = this.documentSectionFromItem(event.item);
+    if (!section) {
+      return;
+    }
+    this.toggleSectionSelection(section, event.sourceEvent);
   }
 
   protected isSectionSelected(section: DocumentViewerSection): boolean {
     return this.selectedSectionIds.has(section.id);
   }
 
-  protected sectionToneClass(section: DocumentViewerSection): string {
-    return `document-viewer-section-tone-${section.tone ?? 'default'}`;
+  private sectionAccordionPalette(section: DocumentViewerSection): AppMenuPalette {
+    if (section.tone === 'mandatory') {
+      return 'amber';
+    }
+    if (section.tone === 'optional') {
+      return 'blue';
+    }
+    return 'slate';
   }
 
   protected selectionAriaLabel(section: DocumentViewerSection): string {

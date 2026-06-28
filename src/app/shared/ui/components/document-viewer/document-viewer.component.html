@@ -55,95 +55,45 @@
             <span>{{ loadingLabel() }}</span>
           </article>
         } @else if (activeConfig()?.sections?.length) {
-          <div class="document-viewer-accordion">
-            @for (section of activeConfig()?.sections ?? []; track section.id) {
-              <article
-                class="document-viewer-section"
-                [ngClass]="sectionToneClass(section)"
-                [class.is-open]="openSectionId === section.id"
-                [class.is-selected]="isSectionSelected(section)"
-                [class.is-toggleable]="section.toggleable === true"
-                >
-                <div class="document-viewer-section-head">
-                  <button
-                    type="button"
-                    class="document-viewer-section-toggle"
-                    [attr.aria-expanded]="openSectionId === section.id"
-                    (click)="toggleSection(section.id, $event)"
-                    (keydown)="onSectionKeydown(section.id, $event)"
-                    >
-                    <span class="document-viewer-section-title">
-                      @if (section.icon) {
-                        <mat-icon>{{ section.icon }}</mat-icon>
-                      }
-                      <span data-i18n-ignore>{{ section.title }}</span>
-                    </span>
-                  </button>
-                  <span class="document-viewer-section-actions">
-                    @if (section.toggleable) {
-                      <button
-                        type="button"
-                        class="document-viewer-section-check"
-                        [class.is-selected]="isSectionSelected(section)"
-                        [attr.aria-pressed]="isSectionSelected(section)"
-                        [attr.aria-label]="selectionAriaLabel(section)"
-                        (pointerover)="stopNestedEvent($event)"
-                        (mouseover)="stopNestedEvent($event)"
-                        (mousedown)="stopNestedEvent($event)"
-                        (keydown)="stopNestedEvent($event)"
-                        (click)="toggleSectionSelection(section, $event)"
-                        >
-                        @if (isSectionSelected(section)) {
-                          <mat-icon>check</mat-icon>
-                        } @else {
-                          <span class="document-viewer-section-check-glyph" aria-hidden="true"></span>
-                        }
-                      </button>
-                    }
-                    <button
-                      type="button"
-                      class="document-viewer-section-caret-btn"
-                      [attr.aria-expanded]="openSectionId === section.id"
-                      [attr.aria-label]="uiText(openSectionId === section.id ? 'Collapse section' : 'Expand section')"
-                      (click)="toggleSection(section.id, $event)"
-                      >
-                      <mat-icon class="document-viewer-section-caret">expand_more</mat-icon>
-                    </button>
-                  </span>
-                </div>
-                @if (openSectionId === section.id) {
-                  <div class="document-viewer-section-body">
-                    @if (section.blurb) {
-                      <p class="document-viewer-lead" data-i18n-ignore>{{ section.blurb }}</p>
-                    }
-                    @if (section.contentHtml) {
-                      <div
-                        class="document-viewer-html"
-                        appLazyBgImage
-                        [appLazyHtmlImages]="true"
-                        data-i18n-ignore
-                        [innerHTML]="section.contentHtml"
-                      ></div>
-                    }
-                    @if (section.points?.length) {
-                      <ul class="document-viewer-list">
-                        @for (point of section.points; track point) {
-                          <li data-i18n-ignore>{{ point }}</li>
-                        }
-                      </ul>
-                    }
-                    @if (section.details?.length) {
-                      <ul class="document-viewer-list">
-                        @for (detail of section.details; track detail) {
-                          <li data-i18n-ignore>{{ detail }}</li>
-                        }
-                      </ul>
-                    }
-                  </div>
+          <app-accordion
+            class="document-viewer-accordion"
+            [model]="documentAccordionModel()"
+            [itemTemplate]="documentSectionTemplate"
+            (itemToggle)="onDocumentAccordionToggle($event)"
+            (itemSelectionToggle)="onDocumentAccordionSelectionToggle($event)"
+          ></app-accordion>
+          <ng-template #documentSectionTemplate let-item>
+            @if (documentSectionFromItem(item); as section) {
+              <div class="document-viewer-section-body">
+                @if (section.blurb) {
+                  <p class="document-viewer-lead" data-i18n-ignore>{{ section.blurb }}</p>
                 }
-              </article>
+                @if (section.contentHtml) {
+                  <div
+                    class="document-viewer-html"
+                    appLazyBgImage
+                    [appLazyHtmlImages]="true"
+                    data-i18n-ignore
+                    [innerHTML]="section.contentHtml"
+                  ></div>
+                }
+                @if (section.points?.length) {
+                  <ul class="document-viewer-list">
+                    @for (point of section.points; track point) {
+                      <li data-i18n-ignore>{{ point }}</li>
+                    }
+                  </ul>
+                }
+                @if (section.details?.length) {
+                  <ul class="document-viewer-list">
+                    @for (detail of section.details; track detail) {
+                      <li data-i18n-ignore>{{ detail }}</li>
+                    }
+                  </ul>
+                }
+              </div>
             }
-          </div>
+          </ng-template>
         } @else {
           <article class="document-viewer-status">
             <mat-icon>{{ emptyIcon() }}</mat-icon>

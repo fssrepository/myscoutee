@@ -42,25 +42,12 @@
         } @else {
           <app-accordion
             class="event-tournament-groups-accordion"
-            [model]="vm.accordion"
+            [model]="accordionModel(vm)"
             [itemTemplate]="groupBodyTemplate"
-            [actionTemplate]="groupActionTemplate"
             (itemToggle)="onAccordionToggle($event)"
+            (itemActionSelect)="onAccordionActionSelect($event)"
           ></app-accordion>
         }
-
-        <ng-template #groupActionTemplate let-item>
-          @if (selectedGroupFromItem(item); as group) {
-            <app-menu
-              class="event-tournament-group-action-menu"
-              kind="select"
-              [trigger]="groupActionTrigger(group)"
-              [model]="groupActionModel(item)"
-              panelAlign="auto"
-              (itemSelect)="onGroupActionSelect($event)"
-            ></app-menu>
-          }
-        </ng-template>
 
         <ng-template #groupBodyTemplate let-item>
           @if (selectedGroupFromItem(item); as group) {

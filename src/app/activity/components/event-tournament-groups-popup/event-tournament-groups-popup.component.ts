@@ -20,7 +20,9 @@ import {
   type AppMenuTrigger,
   type FormFlowControlModel,
   type FormFlowModel,
+  type UiAccordionActionMenuSelectEvent,
   type UiAccordionItem,
+  type UiAccordionModel,
   type UiAccordionToggleEvent
 } from '../../../shared/ui';
 import { AppContext, AppPopupContext } from '../../../shared/ui/context';
@@ -252,6 +254,36 @@ export class EventTournamentGroupsPopupComponent {
     });
   }
 
+  protected accordionModel(
+    vm: EventTournamentGroupsPopupModel
+  ): UiAccordionModel<string, EventTournamentGroupsAccordionContext, TournamentGroupsActionContext> {
+    return {
+      ...vm.accordion,
+      items: vm.accordion.items.map(item => {
+        const accordionItem = item as UiAccordionItem<
+          string,
+          EventTournamentGroupsAccordionContext,
+          TournamentGroupsActionContext
+        >;
+        const groupId = item.context?.groupId ?? item.id;
+        const group = this.groupById(vm.selectedStage, groupId);
+        if (!vm.selectedStage || !group) {
+          return accordionItem;
+        }
+        return {
+          ...accordionItem,
+          actionMenu: {
+            kind: 'select',
+            trigger: this.groupActionTrigger(group),
+            model: this.groupActionModelFor(vm.selectedStage, group),
+            panelAlign: 'auto',
+            mobileBreakpointPx: 900
+          }
+        };
+      })
+    };
+  }
+
   protected headerActionItems(): readonly AppMenuItem<string, TournamentGroupsHeaderActionContext>[] {
     const canManage = this.viewModel().canManage && Boolean(this.viewModel().selectedStage);
     if (!canManage) {
@@ -305,6 +337,12 @@ export class EventTournamentGroupsPopupComponent {
     this.cdr.markForCheck();
   }
 
+  protected onAccordionActionSelect(
+    event: UiAccordionActionMenuSelectEvent<string, EventTournamentGroupsAccordionContext, TournamentGroupsActionContext>
+  ): void {
+    this.onGroupActionSelect(event.itemSelect);
+  }
+
   protected groupActionTrigger(group: ContractTypes.EventTournamentGroupDTO): AppMenuTrigger {
     return {
       icon: 'more_vert',
@@ -315,14 +353,10 @@ export class EventTournamentGroupsPopupComponent {
     };
   }
 
-  protected groupActionModel(
-    item: UiAccordionItem<string, EventTournamentGroupsAccordionContext>
+  private groupActionModelFor(
+    stage: ContractTypes.EventTournamentStageDTO,
+    group: ContractTypes.EventTournamentGroupDTO
   ): AppMenuModel<string, TournamentGroupsActionContext> {
-    const stage = this.viewModel().selectedStage;
-    const group = this.groupForItem(item);
-    if (!stage || !group) {
-      return { nodes: [] };
-    }
     const contextBase = { stageId: stage.subEventId, groupId: group.id };
     const actionItems: AppMenuItem<string, TournamentGroupsActionContext>[] = [];
     if (this.canManageGroups()) {

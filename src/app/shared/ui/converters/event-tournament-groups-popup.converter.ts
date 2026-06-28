@@ -130,7 +130,14 @@ export class EventTournamentGroupsPopupConverter
       title: group.name || `Group ${String.fromCharCode(65 + (index % 26))}`,
       subtitle: group.source === 'manual' ? `Manual · ${capacity}` : capacity,
       icon: 'groups',
-      badge: `${group.membersAccepted} / ${group.capacityMin} - ${group.capacityMax}`,
+      badges: [
+        {
+          id: 'members-capacity',
+          label: `${group.membersAccepted} / ${group.capacityMin} - ${group.capacityMax}`,
+          palette: this.groupPalette(index),
+          ariaLabel: `Members ${group.membersAccepted} of ${group.capacityMin} to ${group.capacityMax}`
+        }
+      ],
       palette: this.groupPalette(index),
       open: openIds.has(group.id),
       context: {
