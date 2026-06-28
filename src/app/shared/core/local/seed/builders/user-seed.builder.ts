@@ -1,11 +1,12 @@
 import { AppUtils } from '../../../../app-utils';
+import { environment } from '../../../../../../environments/environment';
 import type { UserDto } from '../../../contracts/user.interface';
 import type { LocationCoordinates } from '../../../contracts/user.interface';
-import { SeedScheduleBuilder } from './seed-schedule.builder';
+import type { UserRecord } from '../../source/entity/user.entity';
 
 
 function buildDemoPortraitStack(
-  gender: UserDto['gender'],
+  gender: UserRecord['gender'],
   seedIndex: number,
   count = 3
 ): string[] {
@@ -26,7 +27,7 @@ function buildDemoPortraitStack(
 
 const CURRENT_PROFILE_FORM_VERSION = 2;
 
-const BASE_DEMO_USERS: UserDto[] = [
+const BASE_DEMO_USERS: UserRecord[] = [
   {
     id: 'u1',
     name: 'Farkas Anna',
@@ -294,8 +295,6 @@ const BASE_DEMO_USERS: UserDto[] = [
 ];
 
 export class SeedUserBuilder {
-  private static readonly INSIDE_NETWORK_GAME_PROFILE_STATUSES = new Set(['public', 'friends only']);
-  private static readonly HARD_HIDDEN_PROFILE_STATUSES = new Set(['blocked', 'inactive', 'deleted']);
   private static readonly CITY_LOCATION_COORDINATES_BY_NAME: Record<string, LocationCoordinates> = {
     Austin: { latitude: 30.2672, longitude: -97.7431 },
     Seattle: { latitude: 47.6062, longitude: -122.3321 },
@@ -309,12 +308,12 @@ export class SeedUserBuilder {
     Portland: { latitude: 45.5152, longitude: -122.6784 }
   };
 
-  static buildExpandedDemoUsers(totalCount: number, baseUsers: readonly UserDto[] = BASE_DEMO_USERS): UserDto[] {
+  static buildExpandedDemoUsers(totalCount: number, baseUsers: readonly UserRecord[] = BASE_DEMO_USERS): UserRecord[] {
     const normalizedBaseUsers = baseUsers.map(user => this.withResolvedLocationCoordinates(user));
     if (baseUsers.length >= totalCount) {
       return normalizedBaseUsers.slice(0, totalCount);
     }
-    const expanded: UserDto[] = [...normalizedBaseUsers];
+    const expanded: UserRecord[] = [...normalizedBaseUsers];
     const firstNamesWomen = ['Emma', 'Sophia', 'Olivia', 'Mia', 'Lina', 'Nora', 'Chloe', 'Ivy', 'Ava', 'Zoe'];
     const firstNamesMen = ['Liam', 'Noah', 'Ethan', 'Mason', 'Lucas', 'Owen', 'Elijah', 'Leo', 'Ryan', 'Alex'];
     const lastNames = ['Parker', 'Reed', 'Stone', 'Lane', 'Baker', 'Hale', 'Rivera', 'Turner', 'Brooks', 'Grant'];
@@ -357,7 +356,7 @@ export class SeedUserBuilder {
   }
 
   private static buildUniquePrimaryPortraitStack(
-    gender: UserDto['gender'],
+    gender: UserRecord['gender'],
     seedIndex: number,
     usedPrimaryPortraitUrls: Set<string>
   ): string[] {
@@ -377,7 +376,7 @@ export class SeedUserBuilder {
     return images;
   }
 
-  private static demoLifecycleStatusForIndex(index: number, totalCount: number): Partial<UserDto> {
+  private static demoLifecycleStatusForIndex(index: number, totalCount: number): Partial<UserRecord> {
     if (index === totalCount - 2) {
       return {
         profileStatus: 'blocked',
@@ -388,7 +387,7 @@ export class SeedUserBuilder {
     if (index === totalCount - 1) {
       return {
         profileStatus: 'deleted',
-        deletedAtIso: SeedScheduleBuilder.anchorDate().toISOString(),
+        deletedAtIso: AppUtils.anchorDate(environment.bootstrapOffsetInDays).toISOString(),
         statusText: 'Deleted',
         activities: { game: 0, chat: 0, invitations: 0, events: 0, hosting: 0 }
       };
@@ -444,98 +443,7 @@ export class SeedUserBuilder {
     );
   }
 
-  static isFriendOfActiveUser(userId: string, activeUserId: string): boolean {
-    if (
-      !userId
-      || userId === activeUserId
-      || this.isEmptyOnboardingProfileUserId(userId)
-      || this.isEmptyOnboardingProfileUserId(activeUserId)
-    ) {
-      return false;
-    }
-    const [firstId, secondId] = [activeUserId.trim(), userId.trim()].sort();
-    const seed = AppUtils.hashText(`friend-pair:${firstId}:${secondId}`);
-    return (seed % 100) < 32;
-  }
-
-  static isPublicGameProfile(user: Pick<UserDto, 'profileStatus'> | null | undefined): boolean {
-    return user?.profileStatus === 'public';
-  }
-
-  static isInsideNetworkGameProfile(user: Pick<UserDto, 'profileStatus'> | null | undefined): boolean {
-    return this.INSIDE_NETWORK_GAME_PROFILE_STATUSES.has(user?.profileStatus ?? '');
-  }
-
-  static isActivityRateVisibleProfile(user: Pick<UserDto, 'profileStatus'> | null | undefined): boolean {
-    return Boolean(user) && !this.HARD_HIDDEN_PROFILE_STATUSES.has(user?.profileStatus ?? '');
-  }
-
-  static isEmptyOnboardingProfileUserId(userId: string): boolean {
-    void userId;
-    return false;
-  }
-
-  static isEmptyOnboardingProfile(
-    user: Partial<Pick<
-      UserDto,
-      | 'id'
-      | 'name'
-      | 'birthday'
-      | 'city'
-      | 'height'
-      | 'physique'
-      | 'languages'
-      | 'statusText'
-      | 'completion'
-      | 'profileFormVersion'
-      | 'images'
-      | 'profileDetails'
-    >>
-  ): boolean {
-    const statusText = `${user.statusText ?? ''}`.trim().toLowerCase();
-    const completion = Math.max(0, Math.trunc(Number(user.completion) || 0));
-    const profileFormVersion = Math.max(0, Math.trunc(Number(user.profileFormVersion) || 0));
-    const hasSeededProfileData = Boolean(
-      `${user.name ?? ''}`.trim()
-      || `${user.birthday ?? ''}`.trim()
-      || `${user.city ?? ''}`.trim()
-      || `${user.height ?? ''}`.trim()
-      || `${user.physique ?? ''}`.trim()
-      || (user.languages ?? []).some(language => language.trim().length > 0)
-      || (user.images ?? []).some(image => image.trim().length > 0)
-      || (user.profileDetails ?? []).some(group => (group.rows ?? []).some(row => `${row.value ?? ''}`.trim().length > 0))
-    );
-    return !hasSeededProfileData
-      && (
-        statusText === 'new'
-        || statusText === 'new profile'
-        || (completion === 0 && profileFormVersion === 0)
-      );
-  }
-
-  static friendUsersForActiveUser<T extends Pick<UserDto, 'id' | 'city' | 'gender'>>(
-    users: readonly T[],
-    activeUserId: string,
-    limit = 12
-  ): T[] {
-    const normalizedActiveUserId = activeUserId.trim();
-    if (!normalizedActiveUserId || limit <= 0 || this.isEmptyOnboardingProfileUserId(normalizedActiveUserId)) {
-      return [];
-    }
-    const seedableUsers = users.filter(user => !this.isEmptyOnboardingProfileUserId(user.id) && !this.isEmptyOnboardingProfile(user));
-    const activeUser = seedableUsers.find(user => user.id === normalizedActiveUserId) ?? null;
-    return seedableUsers
-      .filter(user => user.id.trim().length > 0 && user.id !== normalizedActiveUserId)
-      .map(user => ({
-        user,
-        score: this.friendAffinityScore(activeUser, user)
-      }))
-      .sort((left, right) => right.score - left.score || left.user.id.localeCompare(right.user.id))
-      .slice(0, Math.max(0, Math.trunc(limit)))
-      .map(entry => entry.user);
-  }
-
-  private static withResolvedLocationCoordinates(user: UserDto): UserDto {
+  private static withResolvedLocationCoordinates(user: UserRecord): UserRecord {
     const nextUser = {
       ...user,
       profileFormVersion: this.resolveSeedProfileFormVersion(user.profileFormVersion),
@@ -594,19 +502,4 @@ export class SeedUserBuilder {
     return Math.round(value * 1_000_000) / 1_000_000;
   }
 
-  private static friendAffinityScore<T extends Pick<UserDto, 'id' | 'city' | 'gender'>>(
-    activeUser: T | null,
-    candidate: T
-  ): number {
-    const normalizedCandidateId = candidate.id.trim();
-    if (!normalizedCandidateId) {
-      return Number.NEGATIVE_INFINITY;
-    }
-    const normalizedActiveUserId = activeUser?.id?.trim() ?? '';
-    const [firstId, secondId] = [normalizedActiveUserId, normalizedCandidateId].sort();
-    const pairSeed = AppUtils.hashText(`friend-pair:${firstId}:${secondId}`);
-    const cityBonus = activeUser?.city?.trim() && activeUser.city === candidate.city ? 220 : 0;
-    const genderBonus = activeUser?.gender && activeUser.gender === candidate.gender ? 40 : 0;
-    return 10_000 - pairSeed + cityBonus + genderBonus;
-  }
 }

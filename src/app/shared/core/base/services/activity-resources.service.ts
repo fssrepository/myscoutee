@@ -1,32 +1,59 @@
-import { Injectable, inject } from '@angular/core';
+import {
+  Injectable,
+  inject
+} from '@angular/core';
 
-import type * as AppTypes from '../../../core/base/models';
-import type { InfoCardData } from '../../../ui';
-import { AppContext } from '../../../ui/context';
-import { ActivityResourceBuilder, type ActivitySubEventResourceInfoCardOptions } from '../builders';
-import { LocalActivityResourcesService } from '../../local/source/services/activity-resources.service';
-import { HttpActivityResourcesService } from '../../http/services/activity-resources.service';
-import { BaseRouteModeService } from './base-route-mode.service';
+import {
+  ActivitySubEventResourceInfoCardConverter,
+  type ActivitySubEventResourceInfoCardConverterOptions,
+  type InfoCardData
+} from '../../../ui';
+import {
+  LocalActivityResourcesService
+} from '../../local/source/services/activity-resources.service';
+import {
+  HttpActivityResourcesService
+} from '../../http/services/activity-resources.service';
+import {
+  BaseRouteModeService
+} from './base-route-mode.service';
+import {
+  RouteDelayService
+} from './route-delay.service';
 
-import type * as AppDTOs from '../dto';
+import type * as AppDTOs from '../../contracts';
+import { UserProfileStore } from '../../../ui/context/stores/user-profile.store';
+import { ActivityStore } from '../../../ui/context/stores/activity.store';
+const ACTIVITY_SUB_EVENT_RESOURCES_ROUTE = '/activities/events/subevent-resources';
+
 @Injectable({
   providedIn: 'root'
 })
 export class ActivityResourcesService extends BaseRouteModeService {
   private readonly localActivityResourcesService = inject(LocalActivityResourcesService);
   private readonly httpActivityResourcesService = inject(HttpActivityResourcesService);
-  private readonly appCtx = inject(AppContext);
+  private readonly userProfileStore = inject(UserProfileStore);
+  private readonly activityStore = inject(ActivityStore);
+  private readonly routeDelay = inject(RouteDelayService);
 
   private get activityResourcesService(): LocalActivityResourcesService | HttpActivityResourcesService {
     return this.resolveRouteService(
-      '/activities/events/subevent-resources',
+      ACTIVITY_SUB_EVENT_RESOURCES_ROUTE,
       this.localActivityResourcesService,
       this.httpActivityResourcesService
     );
   }
 
   activeAssetOwnerUserId(): string {
-    return this.normalizeId(this.appCtx.activeUserId());
+    return this.normalizeId(this.userProfileStore.activeUserId());
+  }
+
+  waitForResourceRouteDelay(signal?: AbortSignal): Promise<void> {
+    return this.routeDelay.waitForRouteDelay(
+      ACTIVITY_SUB_EVENT_RESOURCES_ROUTE,
+      signal,
+      'Activity resources request aborted.'
+    );
   }
 
   peekSubEventResourceState(
@@ -52,7 +79,7 @@ export class ActivityResourcesService extends BaseRouteModeService {
     }
     const state = await this.activityResourcesService.querySubEventResourceState(ref);
     if (state) {
-      this.appCtx.emitActivityResourceSync(ref);
+      this.activityStore.emitActivityResourceSync(ref);
     }
     return state;
   }
@@ -75,7 +102,7 @@ export class ActivityResourcesService extends BaseRouteModeService {
       assetOwnerUserId: normalizedState.assetOwnerUserId
     }, signal);
     if (savedState) {
-      this.appCtx.emitActivityResourceSync({
+      this.activityStore.emitActivityResourceSync({
         ownerId: savedState.ownerId,
         subEventId: savedState.subEventId,
         assetOwnerUserId: savedState.assetOwnerUserId
@@ -86,9 +113,9 @@ export class ActivityResourcesService extends BaseRouteModeService {
 
   subEventResourceInfoCard(
     card: AppDTOs.SubEventResourceCardDTO,
-    options: ActivitySubEventResourceInfoCardOptions
+    options: ActivitySubEventResourceInfoCardConverterOptions
   ): InfoCardData {
-    return ActivityResourceBuilder.buildSubEventResourceInfoCard(card, options);
+    return ActivitySubEventResourceInfoCardConverter.convert(card, options);
   }
 
   private normalizeRef(

@@ -1,12 +1,17 @@
 @if (error) {
-  <app-demo-bootstrap-selector
-    [open]="true"
-    [title]="'Demo felhasználó választása'"
-    [subtitle]="'Bejelentkezés nélküli mód. Válassz demo felhasználót a nézőpont szerinti adatok megnyitásához.'"
-    [errorMessage]="error"
-    (closeRequested)="goAdmin()"
-    (retryRequested)="retry()"
-  ></app-demo-bootstrap-selector>
-} @else {
-  <app-demo-bootstrap-selector></app-demo-bootstrap-selector>
+  <section class="admin-help-session-error" role="alert">
+    <div class="admin-help-session-error__panel">
+      <p>{{ error }}</p>
+      <div class="admin-help-session-error__actions">
+        <button type="button" (click)="retry()">Try again</button>
+        <button type="button" (click)="goAdmin()">Admin</button>
+      </div>
+    </div>
+  </section>
+}
+
+@if (demoBootstrapSelector()) {
+  @if (demoBootstrapSelectorComponent(); as component) {
+    <ng-container *ngComponentOutlet="component"></ng-container>
+  }
 }

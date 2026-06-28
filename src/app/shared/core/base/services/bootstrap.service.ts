@@ -22,6 +22,7 @@ export type BootstrapProcessStage =
   | 'ready'
   | 'session'
   | 'sessionChats'
+  | 'sessionFeedback'
   | 'sessionIndexedDb'
   | 'sessionReady';
 
@@ -66,6 +67,7 @@ export const BOOTSTRAP_PROCESS_STEPS: readonly BootstrapProcessStep[] = [
 export const SESSION_PROCESS_STEPS: readonly BootstrapProcessStep[] = [
   { stage: 'session', percent: 0, label: 'Preparing demo session' },
   { stage: 'sessionChats', percent: 38, label: 'Preparing chat threads' },
+  { stage: 'sessionFeedback', percent: 62, label: 'Preparing event feedback' },
   { stage: 'sessionIndexedDb', percent: 84, label: 'Syncing demo IndexedDB' },
   { stage: 'sessionReady', percent: 100, label: 'Demo session ready' }
 ];

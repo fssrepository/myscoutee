@@ -1,9 +1,8 @@
 import { CONTACTS_TABLE_NAME } from '../../source/entity/profile.entity';
 import { Injectable, inject } from '@angular/core';
 
-import type * as AppTypes from '../../../base/models';
 import { LocalMemoryDb } from '../../../common/app.db';
-import type { UserDto } from '../../../contracts/user.interface';
+import type { UserRecord } from '../../source/entity/user.entity';
 
 import type * as ContactContracts from '../../../contracts/contact.interface';
 
@@ -35,7 +34,7 @@ const DEMO_CONTACT_CREATED_AT_BY_USER_ID: Record<string, string> = {
 export class SeedContactsRepository {
   private readonly memoryDb = inject(LocalMemoryDb);
 
-  seedDefaultContacts(users: readonly UserDto[]): boolean {
+  seedDefaultContacts(users: readonly UserRecord[]): boolean {
     const ownerUserId = DEMO_CONTACT_OWNER_USER_ID;
     const table = this.memoryDb.read()[CONTACTS_TABLE_NAME];
     if ((table.byOwnerUserId[ownerUserId] ?? []).length > 0) {
@@ -65,7 +64,7 @@ export class SeedContactsRepository {
   }
 
   private toSeedContact(
-    user: UserDto | undefined,
+    user: UserRecord | undefined,
     methods: readonly ContactContracts.ContactMethodDraft[]
   ): ContactContracts.StoredContact | null {
     const userId = user?.id?.trim() ?? '';

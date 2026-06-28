@@ -1,11 +1,14 @@
-import type * as AppTypes from '../models';
 import { AssetDefaultsBuilder } from './asset-defaults.builder';
 import { PricingBuilder } from './pricing.builder';
 
-import type * as AppDTOs from '../dto';
+import { AssetDto } from '../../contracts';
+import type * as AppDTOs from '../../contracts';
 import type * as AppConstants from '../../common/constants';
+
+export type AssetCardFormValue = Omit<AppDTOs.AssetDetailDTO, 'id' | 'requests'>;
+
 export class AssetCardBuilder {
-  static buildEmptyAssetForm(type: AppConstants.AssetType): Omit<AppDTOs.AssetCardDTO, 'id' | 'requests'> {
+  static buildEmptyAssetForm(type: AppConstants.AssetType): AssetCardFormValue {
     return {
       type,
       title: '',
@@ -24,6 +27,124 @@ export class AssetCardBuilder {
     };
   }
 
+  static buildAssetFormFromCard(card: AppDTOs.AssetDTO | AppDTOs.AssetDetailDTO): AssetCardFormValue {
+    const detailCard = this.asDetail(card);
+    const imageUrl = this.normalizeAssetLink(card.imageUrl);
+    const sourceLink = this.normalizeAssetLink(detailCard?.sourceLink, imageUrl);
+    return {
+      type: card.type,
+      title: card.title,
+      subtitle: card.subtitle,
+      category: AssetDefaultsBuilder.normalizeCategory(card.type, card.category),
+      city: card.city,
+      capacityTotal: card.capacityTotal,
+      quantity: card.quantity,
+      details: detailCard?.details ?? ('description' in card ? card.description : ''),
+      imageUrl,
+      sourceLink,
+      routes: this.normalizeAssetRoutes(card.type, detailCard?.routes),
+      topics: [...(detailCard?.topics ?? [])],
+      policies: (detailCard?.policies ?? []).map(item => ({ ...item })),
+      pricing: PricingBuilder.clonePricingConfig(detailCard?.pricing ?? PricingBuilder.createDefaultPricingConfig('asset'))
+    };
+  }
+
+  static buildAssetSavePayload(
+    assetForm: AssetCardFormValue,
+    resolvedImageUrl: string | null | undefined = null
+  ): AssetCardFormValue {
+    const title = assetForm.title.trim();
+    const city = assetForm.city.trim();
+    const routes = this.normalizeAssetRoutes(assetForm.type, assetForm.routes);
+    const accommodationLocation = routes.find(stop => stop.trim().length > 0)?.trim() || '';
+    const imageUrl = this.normalizeAssetLink(resolvedImageUrl || assetForm.imageUrl);
+    const sourceLink = this.normalizeAssetLink(assetForm.sourceLink, imageUrl);
+    return {
+      type: assetForm.type,
+      title,
+      subtitle: assetForm.subtitle.trim(),
+      category: AssetDefaultsBuilder.normalizeCategory(assetForm.type, assetForm.category),
+      city: assetForm.type === 'Accommodation' ? accommodationLocation : city,
+      capacityTotal: Math.max(1, Number(assetForm.capacityTotal) || (assetForm.type === 'Supplies' ? 6 : 4)),
+      quantity: this.normalizeQuantity(assetForm.type, assetForm.quantity, assetForm.capacityTotal),
+      details: assetForm.details.trim(),
+      imageUrl,
+      sourceLink,
+      routes,
+      topics: [...(assetForm.topics ?? [])],
+      policies: this.normalizePolicies(assetForm.policies),
+      pricing: PricingBuilder.compactPricingConfig(
+        assetForm.pricing ?? PricingBuilder.createDefaultPricingConfig('asset'),
+        { context: 'asset', allowSlotFeatures: false }
+      )
+    };
+  }
+
+  static visibilityFromCard(card: Pick<AppDTOs.AssetDTO, 'visibility'>): AppConstants.EventVisibility {
+    return card.visibility === 'Friends only'
+      ? 'Friends only'
+      : card.visibility === 'Invitation only'
+        ? 'Invitation only'
+        : 'Public';
+  }
+
+  static activeAssetTypeFromFilter(filter: AppConstants.AssetFilterType): AppConstants.AssetType {
+    if (filter === 'Accommodation') {
+      return 'Accommodation';
+    }
+    if (filter === 'Supplies') {
+      return 'Supplies';
+    }
+    return 'Car';
+  }
+
+  static cloneCard(card: AppDTOs.AssetDTO | AppDTOs.AssetDetailDTO): AppDTOs.AssetDTO {
+    return AssetDto.clone(card);
+  }
+
+  static cloneCards(cards: readonly (AppDTOs.AssetDTO | AppDTOs.AssetDetailDTO)[]): AppDTOs.AssetDTO[] {
+    return cards.map(card => this.cloneCard(card));
+  }
+
+  static cloneRequest(request: AppDTOs.AssetMemberRequestDTO): AppDTOs.AssetMemberRequestDTO {
+    return {
+      ...request,
+      menuActions: [...(request.menuActions ?? [])],
+      booking: request.booking
+        ? {
+            ...request.booking,
+            acceptedPolicyIds: [...(request.booking.acceptedPolicyIds ?? [])]
+          }
+        : null
+    };
+  }
+
+  static normalizeAssetStatus(status: string | null | undefined): string {
+    const normalized = `${status ?? ''}`.trim();
+    switch (normalized) {
+      case 'active':
+        return 'A';
+      case 'under-review':
+      case 'under review':
+        return 'UR';
+      case 'blocked':
+        return 'B';
+      case 'deleted':
+        return 'D';
+      case 'inactive':
+        return 'I';
+      case 'trashed':
+      case 'trash':
+        return 'T';
+      default:
+        return normalized || 'A';
+    }
+  }
+
+  static restoredAssetStatus(_card: AppDTOs.AssetDTO): string {
+    return 'A';
+  }
+
   static normalizeAssetRoutes(type: AppConstants.AssetType, routes: string[] | undefined | null): string[] {
     if (type === 'Supplies') {
       return [];
@@ -37,72 +158,55 @@ export class AssetCardBuilder {
     return cleaned.length > 0 ? cleaned : [''];
   }
 
-  static normalizeAssetImageLink(
-    type: AppConstants.AssetType,
-    imageUrl: string | null | undefined,
-    options: { fallbackImageUrl?: string | null } = {}
+  static normalizeAssetLink(
+    value: string | null | undefined,
+    fallbackLink: string | null | undefined = ''
   ): string {
-    const trimmed = (imageUrl ?? '').trim();
+    const trimmed = (value ?? '').trim();
     if (!trimmed || this.isGoogleMapsLikeLink(trimmed) || this.isLegacyGeneratedAssetImage(trimmed)) {
-      return `${options.fallbackImageUrl ?? ''}`.trim();
-    }
-    return trimmed;
-  }
-
-  static normalizeAssetSourceLink(
-    sourceLink: string | null | undefined,
-    fallbackImageUrl: string
-  ): string {
-    const trimmed = (sourceLink ?? '').trim();
-    if (!trimmed || this.isGoogleMapsLikeLink(trimmed) || this.isLegacyGeneratedAssetImage(trimmed)) {
-      return fallbackImageUrl.trim();
+      return `${fallbackLink ?? ''}`.trim();
     }
     return trimmed;
   }
 
   static normalizeAssetMedia(
-    card: AppDTOs.AssetCardDTO,
+    card: AppDTOs.AssetDTO | AppDTOs.AssetDetailDTO,
     options: { fallbackImageUrl?: string | null } = {}
-  ): AppDTOs.AssetCardDTO {
-    const imageUrl = this.normalizeAssetImageLink(card.type, card.imageUrl, options);
-    const sourceLink = this.normalizeAssetSourceLink(card.sourceLink, imageUrl);
+  ): AppDTOs.AssetDTO {
+    const imageUrl = this.normalizeAssetLink(card.imageUrl, options.fallbackImageUrl);
     return {
-      ...card,
-      imageUrl,
-      sourceLink,
-      topics: [...(card.topics ?? [])],
-      policies: (card.policies ?? []).map(item => ({ ...item })),
-      pricing: PricingBuilder.clonePricingConfig(card.pricing ?? PricingBuilder.createDefaultPricingConfig('asset'))
+      ...AssetDto.clone(card),
+      imageUrl
     };
   }
 
   static normalizeAssetMediaCards(
-    cards: readonly AppDTOs.AssetCardDTO[],
-    options: { fallbackImageUrl?: (card: AppDTOs.AssetCardDTO) => string | null | undefined } = {}
-  ): AppDTOs.AssetCardDTO[] {
+    cards: readonly (AppDTOs.AssetDTO | AppDTOs.AssetDetailDTO)[],
+    options: { fallbackImageUrl?: (card: AppDTOs.AssetDTO | AppDTOs.AssetDetailDTO) => string | null | undefined } = {}
+  ): AppDTOs.AssetDTO[] {
     return cards.map(card => this.normalizeAssetMedia(card, {
       fallbackImageUrl: options.fallbackImageUrl?.(card) ?? ''
     }));
   }
 
-  static capacityLabel(card: AppDTOs.AssetCardDTO): string {
+  static capacityLabel(card: AppDTOs.AssetDTO): string {
     return `${this.capacityValue(card)}`;
   }
 
-  static quantityLabel(card: AppDTOs.AssetCardDTO): string {
+  static quantityLabel(card: AppDTOs.AssetDTO): string {
     return `${this.quantityValue(card)}`;
   }
 
-  static capacityValue(card: Pick<AppDTOs.AssetCardDTO, 'capacityTotal'>): number {
+  static capacityValue(card: Pick<AppDTOs.AssetDTO, 'capacityTotal'>): number {
     return Math.max(1, Math.trunc(Number(card.capacityTotal) || 0));
   }
 
-  static quantityValue(card: Pick<AppDTOs.AssetCardDTO, 'type' | 'quantity' | 'capacityTotal'>): number {
+  static quantityValue(card: Pick<AppDTOs.AssetDTO, 'type' | 'quantity' | 'capacityTotal'>): number {
     return this.normalizeQuantity(card.type, card.quantity, card.capacityTotal);
   }
 
   static storedQuantityValue(
-    card: Pick<AppDTOs.AssetCardDTO, 'type' | 'capacityTotal'> & { quantity: unknown }
+    card: Pick<AppDTOs.AssetDTO, 'type' | 'capacityTotal'> & { quantity: unknown }
   ): number {
     const parsed = Math.trunc(Number(card.quantity));
     if (Number.isFinite(parsed) && parsed >= 0) {
@@ -130,18 +234,27 @@ export class AssetCardBuilder {
     return this.defaultQuantity(type);
   }
 
-  static primaryLocation(card: AppDTOs.AssetCardDTO): string {
-    if (card.type !== 'Accommodation') {
-      return '';
-    }
-    return (card.routes ?? [])
-      .map(route => route.trim())
-      .find(route => route.length > 0)
-      ?? card.city.trim();
+  static primaryLocation(card: AppDTOs.AssetDTO): string {
+    return card.type === 'Accommodation'
+      ? (card.locationLabel?.trim() || card.city.trim())
+      : '';
   }
 
-  static canOpenMap(card: AppDTOs.AssetCardDTO): boolean {
+  static canOpenMap(card: AppDTOs.AssetDTO): boolean {
     return card.type === 'Accommodation' && this.primaryLocation(card).length > 0;
+  }
+
+  private static normalizePolicies(
+    policies: readonly AppDTOs.EventPolicyItemDTO[] | null | undefined
+  ): AppDTOs.EventPolicyItemDTO[] {
+    return (policies ?? [])
+      .map(item => ({
+        id: `${item.id ?? ''}`.trim(),
+        title: `${item.title ?? ''}`.trim(),
+        description: `${item.description ?? ''}`.trim(),
+        required: item.required !== false
+      }))
+      .filter(item => item.id || item.title || item.description);
   }
 
   static isGoogleMapsLikeLink(value: string): boolean {
@@ -160,5 +273,9 @@ export class AssetCardBuilder {
       return false;
     }
     return normalized.includes('loremflickr.com/');
+  }
+
+  private static asDetail(card: AppDTOs.AssetDTO | AppDTOs.AssetDetailDTO): AppDTOs.AssetDetailDTO | null {
+    return 'details' in card && 'sourceLink' in card ? card : null;
   }
 }

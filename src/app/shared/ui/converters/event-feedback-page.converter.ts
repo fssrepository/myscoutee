@@ -8,7 +8,7 @@ import type {
   EventFeedbackReceivedEntryDto,
   SubmittedEventFeedbackAnswer
 } from '../../core/contracts/activity.interface';
-import type { AppMenuItem, AppMenuPalette, AppMenuTrigger } from '../components/menu';
+import type { AppMenuItem, AppMenuPalette, AppMenuTrigger } from '../components/core/menu';
 import type { UiConverter, UiListConverter } from './converter.types';
 
 export interface EventFeedbackFilterOption {

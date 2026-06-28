@@ -2,7 +2,6 @@ import { CHATS_TABLE_NAME } from '../entity/chat.entity';
 import type { ChatThreadRecord } from '../entity/chat.entity';
 import { TestBed } from '@angular/core/testing';
 
-import type * as AppTypes from '../../../base/models';
 import type * as ContractTypes from '../../../contracts';
 import { LocalMemoryDb } from '../../../common/app.db';
 import type { ChatPopupMessage } from '../../../contracts/chat.interface';
@@ -121,20 +120,24 @@ describe('LocalChatsRepository chat pages', () => {
 });
 
 function pageRequest(
-  overrides: Partial<ContractTypes.ActivitiesPageRequest> = {}
-): ContractTypes.ActivitiesPageRequest {
+  overrides: Partial<ContractTypes.ListQuery<ContractTypes.ActivitiesFeedFilters>> = {}
+): ContractTypes.ListQuery<ContractTypes.ActivitiesFeedFilters> {
+  const { filters, ...queryOverrides } = overrides;
   return {
-    primaryFilter: 'chats',
-    secondaryFilter: 'recent',
-    chatContextFilter: 'all',
-    hostingPublicationFilter: 'all',
-    rateFilter: 'individual-given',
-    view: 'day',
     page: 0,
     pageSize: 10,
     sort: 'date',
     direction: 'desc',
-    ...overrides
+    view: 'day',
+    filters: {
+      primaryFilter: 'chats',
+      secondaryFilter: 'recent',
+      chatContextFilter: 'all',
+      hostingPublicationFilter: 'all',
+      rateFilter: 'individual-given',
+      ...filters
+    },
+    ...queryOverrides
   };
 }
 

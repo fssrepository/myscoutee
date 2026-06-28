@@ -2,7 +2,7 @@ import { Injectable, inject } from '@angular/core';
 
 import type { StoredContact } from '../../../contracts/contact.interface';
 import type { ProfileViewData } from '../../../contracts/profile.interface';
-import { LocalContactsMapper, LocalProfileExperiencesMapper } from '../mappers';
+import { LocalContactsMapper, LocalProfileExperiencesMapper, LocalUsersMapper } from '../mappers';
 import { LocalContactsRepository } from '../repositories/contacts.repository';
 import { LocalProfileExperiencesRepository } from '../repositories/profile-experiences.repository';
 import { LocalUsersRepository } from '../repositories/users.repository';
@@ -30,7 +30,7 @@ export class LocalContactsService extends LocalRouteDelayService {
     }
     const user = this.usersRepository.queryUserById(normalizedUserId);
     return {
-      user: user ? this.clone(user) : null,
+      user: user ? LocalUsersMapper.toDto(user) : null,
       experiences: LocalProfileExperiencesMapper.cloneEntries(
         this.profileExperiencesRepository.queryUserExperienceRecords(normalizedUserId)
       )
@@ -62,7 +62,4 @@ export class LocalContactsService extends LocalRouteDelayService {
     };
   }
 
-  private clone<T>(value: T): T {
-    return JSON.parse(JSON.stringify(value)) as T;
-  }
 }

@@ -1,7 +1,9 @@
 import type * as AppConstants from '../common/constants';
+import type * as AssetContracts from './asset.interface';
 import type * as ChatContracts from './chat.interface';
 import type { DateRangeDto } from './date.interface';
 import type * as EventContracts from './event.interface';
+import type { ListQuery } from './list.interface';
 import type * as PricingContracts from './pricing.interface';
 import type * as UserContracts from './user.interface';
 
@@ -49,7 +51,8 @@ export interface ActivityRatePageResultDTO {
 
 export interface IEventsService {
   queryActivitiesEventDTOPage(
-    query: ActivityEventActivitiesQuery,
+    userId: string,
+    query: ListQuery<ActivitiesFeedFilters>,
     signal?: AbortSignal
   ): Promise<ActivityEventPageResultDTO>;
   loadEventDetailById(userId: string, eventId: string): Promise<ActivityEventDetailDTO | null>;
@@ -71,13 +74,19 @@ export interface IEventsService {
   saveActivityEvent(
     payload: ActivityEventDetailDTO
   ): Promise<ActivityEventDTO | null>;
+  applyStageAction(request: ActivityEventStageActionRequestDTO): Promise<ActivityEventStageActionResultDTO | null>;
+  queryTournamentGroups(query: EventContracts.EventTournamentGroupsQueryDTO): Promise<EventContracts.EventTournamentGroupsStateDTO | null>;
+  queryTournamentStageGroups(query: EventContracts.EventTournamentStageGroupsQueryDTO): Promise<EventContracts.EventTournamentGroupDTO[]>;
+  saveTournamentGroup(request: EventContracts.EventTournamentGroupUpsertRequestDTO): Promise<EventContracts.EventTournamentGroupsStateDTO | null>;
+  deleteTournamentGroup(request: EventContracts.EventTournamentGroupDeleteRequestDTO): Promise<EventContracts.EventTournamentGroupsStateDTO | null>;
+  upsertSubEventLeaderboardEntry(request: EventContracts.SubEventLeaderboardEntryUpsertRequestDTO): Promise<EventContracts.SubEventLeaderboardState | null>;
 }
 
 export interface IChatsService {
   queryActivitiesChatPage(
     userId: string,
-    request: ActivitiesPageRequest,
-    options?: { chatItems?: readonly ChatContracts.ChatRecord[] }
+    query: ListQuery<ActivitiesFeedFilters>,
+    options?: { chatItems?: readonly ChatContracts.ChatDTO[] }
   ): Promise<ChatContracts.ActivitiesChatPageResultDTO>;
 }
 
@@ -85,7 +94,7 @@ export interface IRatesService {
   queryRateItemsByUser(userId: string): Promise<ActivityRateDTO[]>;
   queryActivitiesRatePage(
     userId: string,
-    request: ActivitiesPageRequest,
+    query: ListQuery<ActivitiesFeedFilters>,
     signal?: AbortSignal
   ): Promise<ActivityRatePageResultDTO>;
 }
@@ -110,28 +119,6 @@ export interface EventExploreFeedFilters {
   openSpotsOnly: boolean;
   topic: string;
   excludedSourceIds?: string[];
-}
-
-export interface ActivitiesPageRequest {
-  primaryFilter: ActivitiesPrimaryFilter;
-  eventScopeFilter?: ActivitiesEventScope;
-  secondaryFilter: ActivitiesSecondaryFilter;
-  chatContextFilter: ChatContracts.ActivitiesChatContextFilter;
-  hostingPublicationFilter: HostingPublicationFilter;
-  rateFilter: RateFilterKey;
-  rateSocialBadgeEnabled?: boolean;
-  view: ActivitiesView;
-  page: number;
-  pageSize: number;
-  cursor?: string | null;
-  sort?: string;
-  direction?: 'asc' | 'desc';
-  groupBy?: string;
-  anchorDate?: string;
-  rangeStart?: string;
-  rangeEnd?: string;
-  adminServiceOnly?: boolean;
-  supportCaseFilter?: ChatContracts.SupportCaseFilter;
 }
 
 export type ActivityEventScopeFilter = ActivitiesEventScope;
@@ -182,6 +169,7 @@ export interface ActivityEventRecord {
   frequency?: string;
   ticketing: boolean;
   pricing?: PricingContracts.PricingConfig | null;
+  policiesEnabled?: boolean;
   policies?: EventContracts.EventPolicyDTO[];
   slotsEnabled?: boolean;
   slotTemplates?: EventContracts.EventSlotTemplateDTO[];
@@ -206,6 +194,110 @@ export interface ActivityEventRecord {
   rating: number;
   boost: number;
   affinity: number;
+}
+
+export interface ActivityEventStageActionRequestDTO {
+  userId: string;
+  sourceId: string;
+  subEventId?: string | null;
+  subEventIndex?: number | null;
+  action: string;
+  reason?: string | null;
+}
+
+export interface ActivityEventStageActionResultDTO {
+  sourceId: string;
+  subEventId: string | null;
+  subEventIndex: number;
+  action: string;
+  stageStatus: EventContracts.TournamentStageStatus | string;
+  stageStatusReason?: string | null;
+  stageStatusUpdatedAt?: string | null;
+  stageFinalizedAt?: string | null;
+  stageFinalizedByUserId?: string | null;
+  autoInviter?: boolean | null;
+}
+
+export interface EventParticipationActionResultDTO {
+  sourceId: string;
+  slotSourceId?: string | null;
+  action: 'join' | string;
+  membershipStatus: 'accepted' | 'pending' | 'unchanged' | string;
+  pendingReason?: AppConstants.ActivityPendingReason;
+  acceptedMembers: number;
+  pendingMembers: number;
+  capacityTotal: number;
+  full: boolean;
+  paymentSessionId?: string | null;
+}
+
+export interface SubEventResourceCardDTO {
+  id: string;
+  type: AppConstants.SubEventResourceFilter;
+  sourceAssetId: string | null;
+  title: string;
+  subtitle: string;
+  city: string;
+  details: string;
+  imageUrl: string;
+  sourceLink: string;
+  routes: string[];
+  capacityTotal: number;
+  accepted: number;
+  pending: number;
+  isMembers: boolean;
+}
+
+export interface SubEventAssignedAssetSettingsDTO {
+  capacityMin: number;
+  capacityMax: number;
+  addedByUserId: string;
+  routes: string[];
+}
+
+export interface SubEventAssetMembersContextDTO {
+  subEventId: string;
+  assetId: string;
+  type: 'Car' | 'Accommodation';
+  ownerUserId: string | null;
+}
+
+export interface SubEventSupplyContributionEntryDTO {
+  id: string;
+  userId: string;
+  quantity: number;
+  addedAtIso: string;
+}
+
+export interface SubEventSupplyContributionRowDTO {
+  id: string;
+  userId: string;
+  name: string;
+  initials: string;
+  gender: AppConstants.UserGender;
+  age: number;
+  city: string;
+  addedAtIso: string;
+  quantity: number;
+}
+
+export type ActivitySubEventAssetAssignmentIdsDTO = Partial<Record<AppConstants.AssetType, string[]>>;
+export type ActivitySubEventAssetSettingsByTypeDTO = Partial<
+  Record<AppConstants.AssetType, Record<string, SubEventAssignedAssetSettingsDTO>>
+>;
+export type ActivitySubEventSupplyContributionsByAssetIdDTO = Record<string, SubEventSupplyContributionEntryDTO[]>;
+
+export interface ActivitySubEventResourceStateRefDTO {
+  ownerId: string;
+  subEventId: string;
+  assetOwnerUserId: string;
+}
+
+export interface ActivitySubEventResourceStateDTO extends ActivitySubEventResourceStateRefDTO {
+  assetAssignmentIds: ActivitySubEventAssetAssignmentIdsDTO;
+  assetSettingsByType: ActivitySubEventAssetSettingsByTypeDTO;
+  supplyContributionEntriesByAssetId: ActivitySubEventSupplyContributionsByAssetIdDTO;
+  fallbackAssetCardsByType?: Partial<Record<AppConstants.AssetType, AssetContracts.AssetDetailDTO[]>>;
 }
 
 export interface ActivityEventDTO {
@@ -328,6 +420,7 @@ export class ActivityEventDetailDTO {
   frequency = 'One-time';
   ticketing = false;
   pricing: PricingContracts.PricingConfig | null = null;
+  policiesEnabled = false;
   policies: EventContracts.EventPolicyDTO[] = [];
   slotsEnabled = false;
   slotTemplates: EventContracts.EventSlotTemplateDTO[] = [];
@@ -399,6 +492,7 @@ export class ActivityEventDetailDTO {
     this.frequency = update.frequency ?? this.frequency;
     this.ticketing = update.ticketing ?? this.ticketing;
     this.pricing = ActivityEventDetailDTO.clonePricingConfig(update.pricing ?? this.pricing);
+    this.policiesEnabled = update.policiesEnabled ?? this.policiesEnabled;
     this.applyPolicies(update.policies ?? this.policies);
     this.slotsEnabled = update.slotsEnabled ?? this.slotsEnabled;
     this.applySlotTemplates(update.slotTemplates ?? this.slotTemplates);
@@ -813,26 +907,6 @@ export interface ActivityEventExploreQueryResult {
   nextCursor: string | null;
 }
 
-export interface ActivityEventActivitiesQuery {
-  userId: string;
-  filter: ActivityEventScopeFilter;
-  hostingPublicationFilter?: HostingPublicationFilter;
-  secondaryFilter: ActivitiesSecondaryFilter;
-  sort: ActivityEventActivitiesSort;
-  view: ActivitiesView;
-  limit: number;
-  cursor?: string | null;
-  anchorDate?: string;
-  rangeStart?: string;
-  rangeEnd?: string;
-}
-
-export interface ActivityEventActivitiesListQueryResult {
-  records: ActivityEventDTO[];
-  total: number;
-  nextCursor: string | null;
-}
-
 export interface ActivityMemberEntry {
   id: string;
   userId: string;
@@ -859,7 +933,7 @@ export interface ActivityMemberOwnerRef {
   ownerId: string;
 }
 
-export interface ActivityMembersSummary {
+export interface ActivityMembersSummaryDto {
   ownerType: AppConstants.ActivityMemberOwnerType;
   ownerId: string;
   acceptedMembers: number;
@@ -935,6 +1009,32 @@ export interface UserGameFilterPreferencesDto {
   communicationStyles?: string[];
   sexualOrientations?: string[];
   religions?: string[];
+}
+
+export function defaultUserGameFilterPreferences(): UserGameFilterPreferencesDto {
+  return {
+    ageMin: 18,
+    ageMax: 120,
+    heightMinCm: 40,
+    heightMaxCm: 250,
+    interests: [],
+    values: [],
+    physiques: [],
+    languages: [],
+    genders: [],
+    horoscopes: [],
+    traitLabels: [],
+    smoking: [],
+    drinking: [],
+    workout: [],
+    pets: [],
+    familyPlans: [],
+    children: [],
+    loveStyles: [],
+    communicationStyles: [],
+    sexualOrientations: [],
+    religions: []
+  };
 }
 
 export interface UserGameCardsQueryRequest {

@@ -33,7 +33,7 @@
   (authRequested)="onRequestFirebaseAuth($event)"
 ></app-entry-firebase-auth-popup>
 
-<app-confirmation-dialog></app-confirmation-dialog>
+<app-dialog></app-dialog>
 
 <app-profile-onboarding-popup
   [open]="onboardingOpen"
@@ -44,3 +44,9 @@
   (completed)="onOnboardingCompleted($event)"
   (dismissed)="onOnboardingDismissed()"
 ></app-profile-onboarding-popup>
+
+@if (demoBootstrapSelector()) {
+  @if (demoBootstrapSelectorComponent(); as component) {
+    <ng-container *ngComponentOutlet="component"></ng-container>
+  }
+}

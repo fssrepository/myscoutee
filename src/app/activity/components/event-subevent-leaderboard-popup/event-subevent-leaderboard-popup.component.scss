@@ -1,9 +1,7 @@
-@use '../activity-interactions.shared' as shared;
+@use '../../../shared/ui/styles' as ui;
 
-@include shared.host-motion-vars();
-@include shared.interactive-feedback(
-  '.popup-header-add-btn, .experience-form-close-btn, .subevent-leaderboard-group-add, .subevent-leaderboard-history-back-btn'
-);
+@include ui.popup-shell();
+@include ui.interactive-motion();
 
 .experience-form-overlay {
   position: fixed;
@@ -58,9 +56,6 @@
   align-items: center;
   gap: 0.44rem;
 }
-
-@include shared.popup-header-add-btn-base();
-@include shared.experience-form-close-btn-base();
 
 .experience-form-panel {
   border: 1px solid rgba(43, 71, 107, 0.2);

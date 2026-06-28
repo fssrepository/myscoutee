@@ -6,7 +6,6 @@ export { SeedEventFeedbackBuilder } from './event-feedback-seed.builder';
 export { SeedEventsBuilder } from './events-seed.builder';
 export { SeedIdeaPostsBuilder } from './idea-posts-seed.builder';
 export { SeedProfileExperienceBuilder } from './profile-experience-seed.builder';
-export { SeedScheduleBuilder } from './seed-schedule.builder';
 export { SeedUserImpressionsBuilder } from './user-impressions-seed.builder';
 export { SeedUserRatesBuilder } from './user-rates-seed.builder';
 export { SeedUserBuilder } from './user-seed.builder';

@@ -68,16 +68,16 @@
                   [attr.aria-valuenow]="loadingUserList ? null : loadingProgress"
                   >
                   @if (loadingUserList) {
-                    <app-progress-indicator
+                    <app-indicator
                       kind="load-ring"
                       state="loading"
                       [durationMs]="userListLoadDurationMs()"
-                    ></app-progress-indicator>
+                    ></app-indicator>
                   } @else {
-                    <app-progress-indicator
+                    <app-indicator
                       kind="pill-bar"
                       [position]="loadingPosition()"
-                    ></app-progress-indicator>
+                    ></app-indicator>
                   }
                 </div>
                 @if (!loadingUserList) {

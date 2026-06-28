@@ -1,11 +1,11 @@
 import { APP_STATIC_DATA } from '../../app-static-data';
-import type * as AppTypes from '../../core/base/models';
+import type * as AppTypes from '../models';
 import type { ActivityMemberRole } from '../../core/common/constants';
 import type {
   EventFeedbackCardDto,
   EventFeedbackDetailDto
 } from '../../core/contracts/activity.interface';
-import type { ImageCardData, InfoCardData } from '../components/smart-list/card';
+import type { ImageCardData, InfoCardData } from '../components/core/smart-list/card';
 import type { UiConverter } from './converter.types';
 
 export class EventFeedbackDetailConverter {

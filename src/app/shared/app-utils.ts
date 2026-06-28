@@ -1,10 +1,17 @@
 import type { ActivitiesView } from './core/contracts';
-import type { AssetMemberRequestDTO } from './core/base/dto';
+import type { AssetMemberRequestDTO } from './core/contracts';
 import type { UserDto } from './core/contracts/user.interface';
 
 interface ActivityGroupableModel {
   dateIso?: string | null;
   distanceMetersExact?: number | null;
+}
+
+export type AppDateValue = string | number | Date | null | undefined;
+
+export interface AppDateRange {
+  start: Date;
+  end: Date;
 }
 
 export interface AsciiEmojiConversion {
@@ -134,6 +141,39 @@ export class AppUtils {
       return '/';
     }
     return normalized.startsWith('/') ? normalized : `/${normalized}`;
+  }
+
+  static normalizeHttpUrl(value: string | null | undefined): string {
+    const raw = `${value ?? ''}`.trim();
+    if (!raw) {
+      return '';
+    }
+    const candidate = /^[a-zA-Z][a-zA-Z0-9+.-]*:\/\//.test(raw) ? raw : `https://${raw}`;
+    let parsed: URL;
+    try {
+      parsed = new URL(candidate);
+    } catch {
+      return '';
+    }
+    if (parsed.protocol !== 'http:' && parsed.protocol !== 'https:') {
+      return '';
+    }
+    return parsed.hostname.trim() ? parsed.toString() : '';
+  }
+
+  static openExternalUrl(url: string, target = '_blank'): void {
+    const normalized = `${url ?? ''}`.trim();
+    if (!normalized || typeof window === 'undefined') {
+      return;
+    }
+    window.open(normalized, target, 'noopener,noreferrer');
+  }
+
+  static revokeObjectUrl(value: string | null | undefined): void {
+    const normalized = `${value ?? ''}`.trim();
+    if (normalized.startsWith('blob:')) {
+      URL.revokeObjectURL(normalized);
+    }
   }
 
   static hashText(value: string): number {
@@ -322,6 +362,129 @@ export class AppUtils {
     return parsed ? this.dateOnly(parsed) : null;
   }
 
+  static parseDateOnlyLocal(value: unknown): Date | null {
+    const raw = `${value ?? ''}`.trim();
+    if (!raw) {
+      return null;
+    }
+    const match = raw.match(/^(\d{4})-(\d{2})-(\d{2})$/);
+    if (match) {
+      const year = Number.parseInt(match[1], 10);
+      const month = Number.parseInt(match[2], 10) - 1;
+      const day = Number.parseInt(match[3], 10);
+      const parsed = new Date(year, month, day);
+      return parsed.getFullYear() === year && parsed.getMonth() === month && parsed.getDate() === day
+        ? parsed
+        : null;
+    }
+    const parsed = this.parseDate(value);
+    return parsed ? this.dateOnly(parsed) : null;
+  }
+
+  static parseDateOnlyRange(
+    startValue: AppDateValue,
+    endValue: AppDateValue
+  ): AppDateRange | null {
+    const start = this.parseDateOnlyLocal(startValue);
+    const end = this.parseDateOnlyLocal(endValue);
+    return start && end ? { start, end } : null;
+  }
+
+  static parseDateRange(
+    startValue: AppDateValue,
+    endValue: AppDateValue,
+    defaultDurationMs = 2 * 60 * 60 * 1000
+  ): AppDateRange | null {
+    const start = this.parseDate(startValue);
+    if (!start) {
+      return null;
+    }
+    const hasEndValue = `${endValue ?? ''}`.trim().length > 0;
+    const parsedEnd = hasEndValue ? this.parseDate(endValue) : null;
+    if (hasEndValue && !parsedEnd) {
+      return null;
+    }
+    const durationMs = Math.max(0, Math.trunc(Number(defaultDurationMs) || 0));
+    const end = parsedEnd && parsedEnd.getTime() > start.getTime()
+      ? parsedEnd
+      : new Date(start.getTime() + durationMs);
+    return Number.isFinite(end.getTime()) ? { start, end } : null;
+  }
+
+  static dateRangeValuesOverlap(
+    startValue: AppDateValue,
+    endValue: AppDateValue,
+    rangeStart: Date,
+    rangeEnd: Date,
+    defaultDurationMs = 2 * 60 * 60 * 1000
+  ): boolean {
+    const range = this.parseDateRange(startValue, endValue, defaultDurationMs);
+    if (!range) {
+      return false;
+    }
+    return this.dateRangeOverlaps(
+      this.dateOnly(range.start),
+      this.dateOnly(range.end),
+      rangeStart,
+      rangeEnd
+    );
+  }
+
+  static filterItemsByDateOnlyRange<T>(
+    items: readonly T[],
+    rangeStartValue: AppDateValue,
+    rangeEndValue: AppDateValue,
+    resolveStartValue: (item: T) => AppDateValue,
+    resolveEndValue: (item: T) => AppDateValue,
+    defaultDurationMs = 2 * 60 * 60 * 1000
+  ): T[] {
+    const range = this.parseDateOnlyRange(rangeStartValue, rangeEndValue);
+    if (!range) {
+      return [...items];
+    }
+    return items.filter(item => this.dateRangeValuesOverlap(
+      resolveStartValue(item),
+      resolveEndValue(item),
+      range.start,
+      range.end,
+      defaultDurationMs
+    ));
+  }
+
+  static anchorDate(offsetInDays: number | null | undefined = 0, now = new Date(Date.now())): Date {
+    const base = this.parseDate(now) ?? new Date(Date.now());
+    const today = new Date(base.getFullYear(), base.getMonth(), base.getDate(), 0, 0, 0, 0);
+    const normalizedOffsetDays = Math.trunc(Number(offsetInDays) || 0);
+    return this.addDays(today, normalizedOffsetDays);
+  }
+
+  static shiftDate(
+    value: string | number | Date | null | undefined,
+    referenceDate: string | number | Date | null | undefined,
+    offsetInDays: number | null | undefined = 0,
+    now = new Date(Date.now())
+  ): Date {
+    const parsedValue = this.parseDate(value);
+    const parsedReferenceDate = this.parseDate(referenceDate);
+    if (!parsedValue || !parsedReferenceDate) {
+      return new Date(Number.NaN);
+    }
+    return new Date(
+      this.anchorDate(offsetInDays, now).getTime()
+      + (parsedValue.getTime() - parsedReferenceDate.getTime())
+    );
+  }
+
+  static rebaseDateTime(
+    value: string | number | Date | null | undefined,
+    referenceDate: string | number | Date | null | undefined,
+    offsetInDays: number | null | undefined = 0,
+    now = new Date(Date.now())
+  ): string | undefined {
+    const shifted = this.shiftDate(value, referenceDate, offsetInDays, now);
+    return Number.isFinite(shifted.getTime()) ? this.toIsoDateTimeLocal(shifted) : undefined;
+  }
+
   static dateTimeMs(value: string | number | Date | null | undefined): number | null {
     return this.parseDate(value)?.getTime() ?? null;
   }
@@ -458,6 +621,10 @@ export class AppUtils {
 
   static dateOnly(value: Date): Date {
     return new Date(value.getFullYear(), value.getMonth(), value.getDate());
+  }
+
+  static dateRangeOverlaps(startA: Date, endA: Date, startB: Date, endB: Date): boolean {
+    return startA.getTime() <= endB.getTime() && endA.getTime() >= startB.getTime();
   }
 
   static addDays(value: Date, days: number): Date {

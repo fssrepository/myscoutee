@@ -64,6 +64,9 @@ self.addEventListener('fetch', event => {
   }
 
   if (isImageRequest(request)) {
+    if (url.origin !== self.location.origin && url.hostname !== 'api.qrserver.com') {
+      return;
+    }
     event.respondWith(cacheFirst(request, MEDIA_CACHE));
     return;
   }

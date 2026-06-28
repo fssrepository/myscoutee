@@ -1,35 +1,73 @@
-import { ChangeDetectorRef, Component, HostListener, NgZone, OnDestroy, OnInit, inject } from '@angular/core';
-import { ActivatedRoute, Router } from '@angular/router';
-import { Subscription } from 'rxjs';
-
-import { AppUtils } from '../../../shared/app-utils';
-import { AppPopupContext } from '../../../shared/ui';
 import {
-  HelpCenterService,
-  LandingContentService,
-  PrivacyPolicyService,
-  SessionService,
-  TermsPolicyService,
-  UsersService,
-  type AppSession,
-  type UserDto,
-  type UserLocationEligibilityResponseDto
-} from '../../../shared/core';
+  NgComponentOutlet
+} from '@angular/common';
+import {
+  ChangeDetectorRef,
+  Component,
+  HostListener,
+  Injector,
+  NgZone,
+  OnDestroy,
+  OnInit,
+  inject
+} from '@angular/core';
+import {
+  ActivatedRoute,
+  Router
+} from '@angular/router';
+import {
+  Subscription
+} from 'rxjs';
+
+import {
+  AppUtils
+} from '../../../shared/app-utils';
+import {
+  CURRENT_PROFILE_FORM_VERSION,
+  type AuthMode
+} from '../../../shared/core/common/constants';
+import {
+  APP_STORAGE_KEYS
+} from '../../../shared/core/common/storage-scope';
+import type { HelpCenterRevisionDto, HelpCenterSectionDto } from '../../../shared/core/contracts/content.interface';
 import type {
   EntryConsentAuditRecordDto,
   EntryConsentStateDto,
   FirebaseAuthProfileDto,
   FirebaseAuthRequestDto,
-  LocationCoordinates
+  LocationCoordinates,
+  UserDto,
+  UserLocationEligibilityResponseDto
 } from '../../../shared/core/contracts/user.interface';
-import type { HelpCenterRevisionDto, HelpCenterSectionDto } from '../../../shared/core/contracts';
-import { CURRENT_PROFILE_FORM_VERSION, type AuthMode } from '../../../shared/core/common/constants';
-import { APP_STORAGE_KEYS } from '../../../shared/core/common/storage-scope';
-import { ConfirmationDialogComponent } from '../../../shared/ui/components/confirmation-dialog/confirmation-dialog.component';
-import { ConfirmationDialogService } from '../../../shared/ui/services/confirmation-dialog.service';
-import { I18nService } from '../../../shared/core';
-import { SeedStaticContentService } from '../../../shared/core/local/seed';
-import type { InfoCardData } from '../../../shared/ui';
+import {
+  HelpCenterService
+} from '../../../shared/core/base/services/help-center.service';
+import {
+  I18nService
+} from '../../../shared/core/base/services/i18n.service';
+import {
+  LandingContentService
+} from '../../../shared/core/base/services/landing-content.service';
+import {
+  PrivacyPolicyService
+} from '../../../shared/core/base/services/privacy-policy.service';
+import {
+  SessionService,
+  type AppSession
+} from '../../../shared/core/base/services/session.service';
+import {
+  TermsPolicyService
+} from '../../../shared/core/base/services/terms-policy.service';
+import {
+  UsersService
+} from '../../../shared/core/base/services/users.service';
+import {
+  DialogComponent
+} from '../../../shared/ui/components/core/dialog/dialog.component';
+import {
+  DialogStore
+} from '../../../shared/ui/context/stores/dialog.store';
+import type { InfoCardData } from '../../../shared/ui/components/core/smart-list/card/card.types';
 import {
   DocumentViewerComponent,
   type DocumentViewerAction,
@@ -37,10 +75,19 @@ import {
   type DocumentViewerActionVisibility,
   type DocumentViewerConfig
 } from '../../../shared/ui/components/document-viewer';
-import { HelpCenterRevisionDocumentViewerConfigConverter } from '../../../shared/ui/converters';
-import { EntryFirebaseAuthPopupComponent } from '../entry-firebase-auth-popup/entry-firebase-auth-popup.component';
-import { EntryLandingComponent } from '../entry-landing/entry-landing.component';
-import { ProfileOnboardingPopupComponent } from '../profile-onboarding-popup/profile-onboarding-popup.component';
+import {
+  HelpCenterRevisionDocumentViewerConfigConverter
+} from '../../../shared/ui/converters/help-center-revision-document-viewer.converter';
+import {
+  EntryFirebaseAuthPopupComponent
+} from '../entry-firebase-auth-popup/entry-firebase-auth-popup.component';
+import {
+  EntryLandingComponent
+} from '../entry-landing/entry-landing.component';
+import {
+  ProfileOnboardingPopupComponent
+} from '../profile-onboarding-popup/profile-onboarding-popup.component';
+import { PopupStore } from '../../../shared/ui/context/stores/popup.store';
 
 interface EntryDemoUserSelectionEvent {
   userId: string;
@@ -57,10 +104,11 @@ interface EntryDemoNewProfileRequestEvent {
   selector: 'app-entry-page',
   standalone: true,
   imports: [
+    NgComponentOutlet,
     EntryLandingComponent,
     DocumentViewerComponent,
     EntryFirebaseAuthPopupComponent,
-    ConfirmationDialogComponent,
+    DialogComponent,
     ProfileOnboardingPopupComponent
   ],
   templateUrl: './entry-page.component.html',
@@ -75,16 +123,16 @@ export class EntryPageComponent implements OnInit, OnDestroy {
 
   private readonly router = inject(Router);
   private readonly route = inject(ActivatedRoute);
+  private readonly injector = inject(Injector);
   private readonly changeDetectorRef = inject(ChangeDetectorRef);
   private readonly ngZone = inject(NgZone);
-  private readonly popupCtx = inject(AppPopupContext);
+  private readonly popupStore = inject(PopupStore);
   private readonly helpCenter = inject(HelpCenterService);
   private readonly privacyPolicy = inject(PrivacyPolicyService);
   protected readonly sessionService = inject(SessionService);
   private readonly termsPolicy = inject(TermsPolicyService);
   private readonly landingContent = inject(LandingContentService);
-  private readonly staticContentSeed = inject(SeedStaticContentService);
-  private readonly confirmationDialogService = inject(ConfirmationDialogService);
+  private readonly dialogStore = inject(DialogStore);
   private readonly i18n = inject(I18nService);
   private readonly usersService = inject(UsersService);
   private loginEligibilityBusy = false;
@@ -106,6 +154,8 @@ export class EntryPageComponent implements OnInit, OnDestroy {
   protected entryNetworkUnavailable = false;
   protected entryNetworkUnavailableLabel = 'No network';
   protected showFirebaseAuthPopup = false;
+  protected readonly demoBootstrapSelector = this.popupStore.demoBootstrapSelector;
+  protected readonly demoBootstrapSelectorComponent = this.popupStore.demoBootstrapSelectorComponent;
   protected isMobileView = typeof window !== 'undefined' ? window.innerWidth <= 760 : false;
   protected onboardingOpen = false;
   protected onboardingUser: UserDto | null = null;
@@ -387,6 +437,7 @@ export class EntryPageComponent implements OnInit, OnDestroy {
     this.showEntryConsentPopup = !this.entryPrivacyLoading && this.shouldPromptEntryConsent();
     this.landingArticlesLoading = true;
     this.syncLandingLoginAvailability(null, 'reset');
+    this.resolveBrowserLocationAccessIfNeeded(true);
     this.showFirebaseAuthPopup = false;
     void this.loadEntryContent();
   }
@@ -419,7 +470,7 @@ export class EntryPageComponent implements OnInit, OnDestroy {
         return true;
       }
       if (this.locationEligibilityResolvedFromCoordinates && gateState && gateState.eligible === false) {
-        this.confirmationDialogService.openInfo(
+        this.dialogStore.openInfo(
           this.loginUnavailableMessage(gateState),
           {
             title: 'please.register',
@@ -431,7 +482,7 @@ export class EntryPageComponent implements OnInit, OnDestroy {
 
       return await this.requestLocationAccessFromDialog();
     } catch {
-      this.confirmationDialogService.openInfo(
+      this.dialogStore.openInfo(
         'We could not complete the region-based check right now. Please try again later.',
         {
           title: 'Check Unavailable',
@@ -445,7 +496,7 @@ export class EntryPageComponent implements OnInit, OnDestroy {
   }
 
   private openDemoUserSelectorPopup(): void {
-    this.popupCtx.openDemoBootstrapSelector({
+    this.popupStore.openDemoBootstrapSelector({
       mode: 'member',
       onSelect: userId => new Promise<boolean>(resolve => {
         this.ngZone.run(() => {
@@ -857,7 +908,7 @@ export class EntryPageComponent implements OnInit, OnDestroy {
         setTimeout(() => resolve(allowed), 0);
       };
 
-      this.confirmationDialogService.open({
+      this.dialogStore.open({
         title: this.uiText('Location Required For Login'),
         message: this.uiText('We need your location before login so we can apply the region-based security check.'),
         cancelLabel: this.uiText('Not now'),
@@ -880,7 +931,7 @@ export class EntryPageComponent implements OnInit, OnDestroy {
             this.markEntryNetworkUnavailable();
             settle(false);
             setTimeout(() => {
-              this.confirmationDialogService.openInfo(
+              this.dialogStore.openInfo(
                 this.uiText('The server is not reachable right now. Please try again when the network is back.'),
                 {
                   title: this.uiText('No network'),
@@ -898,7 +949,7 @@ export class EntryPageComponent implements OnInit, OnDestroy {
 
           settle(false);
           setTimeout(() => {
-            this.confirmationDialogService.openInfo(
+            this.dialogStore.openInfo(
               this.uiText(result.message?.trim() || 'Login is currently unavailable from your country or region for security reasons. Please come back later.'),
               {
                 title: this.uiText('please.register'),
@@ -1010,7 +1061,7 @@ export class EntryPageComponent implements OnInit, OnDestroy {
     this.entryContentLoadPromise = (async () => {
       try {
         if (this.landingContent.usesLocalContent()) {
-          await this.staticContentSeed.ensureReady();
+          await this.ensureLocalStaticContentReady();
         }
         const displayState = await this.landingContent.loadDisplayState();
         this.ngZone.run(() => {
@@ -1047,6 +1098,13 @@ export class EntryPageComponent implements OnInit, OnDestroy {
       this.entryContentLoadPromise = null;
     });
     return this.entryContentLoadPromise;
+  }
+
+  private async ensureLocalStaticContentReady(): Promise<void> {
+    const { SeedStaticContentService } = await import(
+      '../../../shared/core/local/seed/services/static-content.service'
+    );
+    await this.injector.get(SeedStaticContentService).ensureReady();
   }
 
   private finishEntryPrivacyLoad(requestToken: number): void {
@@ -1283,7 +1341,7 @@ export class EntryPageComponent implements OnInit, OnDestroy {
   }
 
   private openBundledLoginUnavailableInfo(): void {
-    this.confirmationDialogService.openInfo(this.loginUnavailableMessage(this.landingLoginAvailability), {
+    this.dialogStore.openInfo(this.loginUnavailableMessage(this.landingLoginAvailability), {
       title: 'please.register',
       confirmLabel: 'OK'
     });
@@ -1294,8 +1352,8 @@ export class EntryPageComponent implements OnInit, OnDestroy {
       || 'Login is currently unavailable from your country or region for security reasons. Please come back later.';
   }
 
-  private resolveBrowserLocationAccessIfNeeded(): void {
-    if (!this.entryAuthLocationRequired || this.grantedLocationEligibilityPromise || this.browserLocationAutoRequestAttempted) {
+  private resolveBrowserLocationAccessIfNeeded(force = false): void {
+    if ((!force && !this.entryAuthLocationRequired) || this.grantedLocationEligibilityPromise || this.browserLocationAutoRequestAttempted) {
       return;
     }
 
@@ -1328,11 +1386,8 @@ export class EntryPageComponent implements OnInit, OnDestroy {
 
   private async resolveBrowserLocationAccess(requestToken: number): Promise<void> {
     try {
-      const permissionState = await this.queryGeolocationPermissionState();
+      await this.queryGeolocationPermissionState();
       if (requestToken !== this.grantedLocationEligibilityRequestToken) {
-        return;
-      }
-      if (permissionState !== 'granted') {
         return;
       }
 

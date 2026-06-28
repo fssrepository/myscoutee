@@ -6,8 +6,8 @@ import type { ActivityMemberRecord } from '../entity/activity.entity';
 import { LocalRouteDelayService } from './route-delay.service';
 import { LocalActivityMembersRepository } from '../repositories/activity-members.repository';
 import { LocalUsersRepository } from '../repositories/users.repository';
-import { LocalActivityMembersMapper, type ActivityMemberProfileFallback } from '../mappers';
-import type { ActivityMemberEntry, ActivityMemberOwnerRef, ActivityMembersSummary } from '../../../contracts/activity.interface';
+import { LocalActivityMembersBuilder, type ActivityMemberProfileFallback, type LocalActivityMembersOwnerSnapshot } from '../mappers';
+import type { ActivityMemberEntry, ActivityMemberOwnerRef, ActivityMembersSummaryDto } from '../../../contracts/activity.interface';
 
 @Injectable({
   providedIn: 'root'
@@ -26,15 +26,15 @@ export class LocalActivityMembersService extends LocalRouteDelayService {
     return this.entriesFromRecords(await this.activityMembersRepository.queryRecordsByOwner(owner));
   }
 
-  peekSummaryByOwner(owner: ActivityMemberOwnerRef): ActivityMembersSummary | null {
+  peekSummaryByOwner(owner: ActivityMemberOwnerRef): ActivityMembersSummaryDto | null {
     return this.summaryFromOwner(owner);
   }
 
-  async querySummariesByOwners(owners: readonly ActivityMemberOwnerRef[]): Promise<ActivityMembersSummary[]> {
+  async querySummariesByOwners(owners: readonly ActivityMemberOwnerRef[]): Promise<ActivityMembersSummaryDto[]> {
     await this.waitForRouteDelay(LocalActivityMembersService.MEMBERS_ROUTE);
     return this.activityMembersRepository.normalizeOwners(owners)
       .map(owner => this.summaryFromOwner(owner))
-      .filter((summary): summary is ActivityMembersSummary => Boolean(summary));
+      .filter((summary): summary is ActivityMembersSummaryDto => Boolean(summary));
   }
 
   async replaceMembersByOwner(
@@ -50,17 +50,17 @@ export class LocalActivityMembersService extends LocalRouteDelayService {
     await this.waitForRouteDelay(LocalActivityMembersService.MEMBERS_ROUTE);
     void actorUserId;
     const existingRecordsById = this.existingRecordsById(normalizedOwner);
-    const records = members.map(member => LocalActivityMembersMapper.toRecord(
+    const records = members.map(member => LocalActivityMembersBuilder.toRecord(
       normalizedOwner,
       member,
       existingRecordsById.get(member.id) ?? null
     ));
-    const summary = this.summaryFromRecords(
+    const ownerSnapshot = this.ownerSnapshotFromOwner(normalizedOwner);
+    this.activityMembersRepository.replaceRecordsByOwner(
       normalizedOwner,
       records,
-      capacityTotal ?? this.summaryFromOwner(normalizedOwner)?.capacityTotal ?? null
+      capacityTotal ?? ownerSnapshot?.capacityTotal ?? null
     );
-    this.activityMembersRepository.replaceRecordsByOwner(normalizedOwner, records, summary, true);
   }
 
   async applyMemberAction(
@@ -116,30 +116,35 @@ export class LocalActivityMembersService extends LocalRouteDelayService {
     }
 
     const previousRecordsById = new Map(previousRecords.map(record => [record.id, record] as const));
-    const nextRecords = nextMembers.map(member => LocalActivityMembersMapper.toRecord(
+    const nextRecords = nextMembers.map(member => LocalActivityMembersBuilder.toRecord(
       normalizedOwner,
       member,
       previousRecordsById.get(member.id) ?? null
     ));
-    const summary = this.summaryFromRecords(
+    const ownerSnapshot = this.ownerSnapshotFromOwner(normalizedOwner);
+    this.activityMembersRepository.replaceRecordsByOwner(
       normalizedOwner,
       nextRecords,
-      this.summaryFromOwner(normalizedOwner)?.capacityTotal ?? null
+      ownerSnapshot?.capacityTotal ?? null
     );
-    this.activityMembersRepository.replaceRecordsByOwner(normalizedOwner, nextRecords, summary, true);
     return this.entriesFromRecords(nextRecords);
   }
 
   private entriesFromRecords(records: readonly ActivityMemberRecord[]): ActivityMemberEntry[] {
-    return LocalActivityMembersMapper.sortEntriesByActionTime(
-      records.map(record => LocalActivityMembersMapper.toEntry(
+    return LocalActivityMembersBuilder.sortEntriesByActionTime(
+      records.map(record => LocalActivityMembersBuilder.toEntry(
         record,
         (userId, fallback) => this.resolveDemoUser(userId, fallback)
       ))
     );
   }
 
-  private summaryFromOwner(owner: ActivityMemberOwnerRef): ActivityMembersSummary | null {
+  private summaryFromOwner(owner: ActivityMemberOwnerRef): ActivityMembersSummaryDto | null {
+    const snapshot = this.ownerSnapshotFromOwner(owner);
+    return snapshot ? LocalActivityMembersBuilder.ownerSnapshotToSummary(snapshot) : null;
+  }
+
+  private ownerSnapshotFromOwner(owner: ActivityMemberOwnerRef): LocalActivityMembersOwnerSnapshot | null {
     const normalizedOwner = this.activityMembersRepository.normalizeOwnerRef(owner);
     if (!normalizedOwner) {
       return null;
@@ -147,15 +152,15 @@ export class LocalActivityMembersService extends LocalRouteDelayService {
     const records = this.activityMembersRepository.peekRecordsByOwner(normalizedOwner);
     const acceptedMembers = records.filter(record => record.status === 'accepted').length;
     const capacityTotal = this.activityMembersRepository.resolveOwnerCapacityTotal(normalizedOwner, acceptedMembers);
-    return this.summaryFromRecords(normalizedOwner, records, capacityTotal);
+    return this.ownerSnapshotFromRecords(normalizedOwner, records, capacityTotal);
   }
 
-  private summaryFromRecords(
+  private ownerSnapshotFromRecords(
     owner: ActivityMemberOwnerRef,
     records: readonly ActivityMemberRecord[],
     capacityTotal?: number | null
-  ): ActivityMembersSummary {
-    return LocalActivityMembersMapper.recordsToSummary(owner, records, capacityTotal);
+  ): LocalActivityMembersOwnerSnapshot {
+    return LocalActivityMembersBuilder.recordsToOwnerSnapshot(owner, records, capacityTotal);
   }
 
   private existingRecordsById(owner: ActivityMemberOwnerRef): ReadonlyMap<string, ActivityMemberRecord> {

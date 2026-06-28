@@ -12,6 +12,11 @@ import type {
 import type { ActivityPendingReason, EventVisibility } from '../../../common/constants';
 import type { PricingConfig } from '../../../contracts/pricing.interface';
 
+export interface SeedActivityDateTimeRange {
+  startIso: string;
+  endIso: string;
+}
+
 export interface ActivityInvitationSeedItem {
   id: string;
   status?: ActivityEventStatus;
@@ -39,6 +44,7 @@ export interface ActivityInvitationSeedItem {
   location?: string;
   locationCoordinates?: LocationCoordinates;
   policies?: EventPolicyDTO[];
+  policiesEnabled?: boolean;
 }
 
 export interface ActivityEventSeedItem {
@@ -87,6 +93,7 @@ export interface ActivityEventSeedItem {
   subEvents?: SubEventDTO[];
   mode?: EventMode;
   policies?: EventPolicyDTO[];
+  policiesEnabled?: boolean;
   rating?: number;
   boost?: number;
   affinity?: number;

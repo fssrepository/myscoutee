@@ -1,0 +1,492 @@
+@use '../../../../shared/ui/styles' as ui;
+
+@include ui.popup-shell();
+@include ui.form-controls();
+@include ui.interactive-motion();
+
+app-event-resource-asset-explore {
+  display: contents;
+}
+
+.app-popup.event-resource-popup-shell.asset-explore-shell {
+  z-index: 2630;
+  padding: var(--event-resource-shell-gap, 0.6rem);
+}
+
+.asset-explore-shell .app-popup-backdrop {
+  background: rgba(8, 16, 30, 0.44);
+  backdrop-filter: blur(2px);
+}
+
+.asset-explore-shell .app-popup-panel.popup-panel-asset-members {
+  position: relative;
+  width: min(var(--event-resource-panel-max-width, 1080px), calc(100vw - (var(--event-resource-shell-gap, 0.6rem) * 2)));
+  max-width: calc(100vw - (var(--event-resource-shell-gap, 0.6rem) * 2));
+  height: calc(100vh - (var(--event-resource-shell-gap, 0.6rem) * 2));
+  height: calc(100dvh - (var(--event-resource-shell-gap, 0.6rem) * 2));
+  max-height: calc(100vh - (var(--event-resource-shell-gap, 0.6rem) * 2));
+  max-height: calc(100dvh - (var(--event-resource-shell-gap, 0.6rem) * 2));
+}
+
+.asset-explore-shell .asset-explore-shell-panel {
+  display: grid;
+  grid-template-rows: auto minmax(0, 1fr);
+  overflow: hidden;
+}
+
+.asset-explore-shell .asset-explore-shell-header {
+  z-index: 32;
+}
+
+.asset-explore-shell .asset-explore-header-controls {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  margin-left: auto;
+}
+
+.asset-explore-shell .asset-explore-order-picker {
+  position: relative;
+  z-index: 20;
+}
+
+.asset-explore-shell .asset-explore-shell-body {
+  padding: 0.4rem 0.4rem 0.4rem 0.2rem;
+  gap: 0.46rem;
+  position: relative;
+  overflow: visible;
+}
+
+.asset-explore-shell .asset-explore-popup-screen {
+  position: relative;
+  display: grid;
+  grid-template-rows: auto minmax(0, 1fr);
+  height: 100%;
+  min-height: 0;
+  gap: 0.46rem;
+  overflow: visible;
+}
+
+.asset-explore-shell .asset-explore-filter-bar {
+  min-height: 2.2rem;
+  height: auto;
+  display: flex;
+  align-items: center;
+  gap: 0.18rem;
+  flex-wrap: nowrap;
+  overflow-x: auto;
+  overflow-y: visible;
+  padding: 0.08rem 0;
+  scrollbar-width: none;
+  -ms-overflow-style: none;
+}
+
+.asset-explore-shell .asset-explore-filter-bar::-webkit-scrollbar {
+  display: none;
+}
+
+.asset-explore-shell .asset-explore-date-range-field {
+  width: 232px;
+  min-width: 232px;
+  margin-left: auto;
+  flex: 0 0 auto;
+  overflow: visible;
+}
+
+.asset-explore-shell .asset-explore-date-range-pill {
+  max-width: none;
+  overflow: visible;
+  --mat-form-field-state-layer-color: transparent;
+  --mat-form-field-hover-state-layer-opacity: 0;
+  --mat-form-field-focus-state-layer-opacity: 0;
+}
+
+.asset-explore-shell .asset-explore-date-range-pill .mat-mdc-text-field-wrapper {
+  min-height: 34px;
+  height: 34px;
+  border-radius: 999px;
+  background: #f7fbff;
+  border-color: rgba(42, 83, 141, 0.26);
+  overflow: visible;
+  padding: 0 !important;
+}
+
+.asset-explore-shell .asset-explore-date-range-pill .mat-date-range-input-container {
+  grid-template-columns: minmax(68px, 1fr) auto minmax(68px, 1fr);
+  column-gap: 0.08rem;
+  min-height: 34px;
+  height: 34px;
+  align-items: center;
+  overflow: visible;
+}
+
+.asset-explore-shell .asset-explore-date-range-pill .mat-date-range-input-separator {
+  margin: 0;
+  color: #5f7899;
+  min-height: 34px;
+  height: 34px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  line-height: 34px;
+}
+
+.asset-explore-shell .asset-explore-date-range-pill .mat-date-range-input-inner,
+.asset-explore-shell .asset-explore-date-range-pill input {
+  font-size: 0.78rem;
+  font-weight: 700;
+  color: #2c4c74;
+  height: 34px;
+  line-height: 34px;
+  text-align: center;
+  align-self: center;
+}
+
+.asset-explore-shell .asset-explore-date-range-pill .mat-mdc-form-field-subscript-wrapper,
+.asset-explore-shell .asset-explore-date-range-pill .mdc-line-ripple,
+.asset-explore-shell .asset-explore-date-range-pill .mat-mdc-form-field-line-ripple,
+.asset-explore-shell .asset-explore-date-range-pill .mat-mdc-form-field-bottom-align {
+  display: none !important;
+}
+
+.asset-explore-shell .asset-explore-date-range-pill .mat-mdc-form-field-flex,
+.asset-explore-shell .asset-explore-date-range-pill .mat-mdc-form-field-infix,
+.asset-explore-shell .asset-explore-date-range-pill .mat-date-range-input-wrapper,
+.asset-explore-shell .asset-explore-date-range-pill .mat-date-range-input-end-wrapper {
+  min-width: 0;
+  min-height: 34px;
+  height: 34px;
+  overflow: visible;
+  border-bottom: 0 !important;
+  box-shadow: none !important;
+}
+
+.asset-explore-shell .asset-explore-date-range-pill .mat-mdc-form-field-flex,
+.asset-explore-shell .asset-explore-date-range-pill .mat-date-range-input-wrapper,
+.asset-explore-shell .asset-explore-date-range-pill .mat-date-range-input-end-wrapper,
+.asset-explore-shell .asset-explore-date-range-pill .mat-date-range-input-mirror {
+  display: flex;
+  align-items: center;
+}
+
+.asset-explore-shell .asset-explore-date-range-pill .mat-mdc-form-field-infix {
+  padding-top: 0 !important;
+  padding-bottom: 0 !important;
+  width: auto !important;
+  flex: 1 1 auto;
+}
+
+.asset-explore-shell .asset-explore-date-range-pill .mat-mdc-form-field-focus-overlay {
+  background: transparent !important;
+  opacity: 0 !important;
+}
+
+.asset-explore-shell .asset-explore-date-range-pill .mat-mdc-form-field-icon-suffix {
+  align-self: center;
+  flex: 0 0 auto;
+  min-width: 0;
+  display: inline-flex;
+  align-items: center;
+  padding-right: 0.14rem;
+}
+
+.asset-explore-shell .asset-explore-date-range-pill .mat-datepicker-toggle {
+  margin: 0 !important;
+  align-self: center !important;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.asset-explore-shell .asset-explore-date-range-pill .mat-datepicker-toggle .mat-mdc-icon-button {
+  width: 28px;
+  height: 28px;
+  min-width: 28px;
+  min-height: 28px;
+  padding: 0;
+  border-radius: 999px;
+  --mdc-icon-button-state-layer-size: 28px;
+  color: #365677;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  overflow: hidden;
+  transition: background-color 0.16s ease, color 0.16s ease, box-shadow 0.16s ease;
+}
+
+.asset-explore-shell .asset-explore-date-range-pill .mat-datepicker-toggle .mat-mdc-icon-button:hover {
+  background: rgba(61, 104, 167, 0.1);
+  color: #24486e;
+}
+
+.asset-explore-shell .asset-explore-panel {
+  position: relative;
+  z-index: 0;
+  min-height: 0;
+  padding: 0;
+  display: grid;
+  gap: 0.9rem;
+}
+
+.asset-explore-shell .asset-explore-grid,
+.asset-explore-shell .asset-explore-smart-list {
+  min-height: 0;
+  height: 100%;
+}
+
+.asset-explore-shell .asset-explore-card-list {
+  min-height: 0;
+  padding-right: 0.12rem;
+  padding-bottom: 0.3rem;
+  overscroll-behavior-y: contain;
+}
+
+.asset-explore-shell .asset-explore-empty-state {
+  grid-column: 1 / -1;
+  display: grid;
+  place-items: center;
+  gap: 0.55rem;
+  min-height: 220px;
+  border: 1px dashed rgba(118, 137, 165, 0.34);
+  border-radius: 18px;
+  background: rgba(255, 255, 255, 0.76);
+  color: rgba(51, 72, 103, 0.78);
+  text-align: center;
+  padding: 1.2rem;
+}
+
+.asset-explore-shell .asset-explore-empty-state .mat-icon {
+  width: 26px;
+  height: 26px;
+  font-size: 26px;
+  line-height: 26px;
+}
+
+.asset-explore-shell .asset-explore-empty-state-error {
+  border-color: rgba(185, 79, 79, 0.34);
+  color: rgba(146, 45, 45, 0.84);
+  background: rgba(255, 244, 244, 0.88);
+}
+
+.asset-explore-shell .asset-explore-sticky-header {
+  z-index: 18;
+  margin-bottom: 0;
+  box-shadow: 0 0.34rem 0 rgba(255, 255, 255, 0.98);
+}
+
+.asset-explore-shell .asset-explore-basket {
+  position: absolute;
+  right: 0.75rem;
+  bottom: 0.9rem;
+  z-index: 18;
+  display: grid;
+  gap: 0.6rem;
+  justify-items: end;
+  pointer-events: none;
+}
+
+.asset-explore-shell .asset-explore-basket-fab,
+.asset-explore-shell .asset-explore-basket-panel,
+.asset-explore-shell .asset-explore-basket-panel__close,
+.asset-explore-shell .asset-explore-basket-item__btn {
+  pointer-events: auto;
+}
+
+.asset-explore-shell .asset-explore-basket-fab {
+  width: 58px;
+  height: 58px;
+  border: 1px solid rgba(201, 145, 54, 0.48);
+  border-radius: 999px;
+  background: linear-gradient(180deg, rgba(255, 248, 225, 0.99) 0%, rgba(255, 218, 148, 0.99) 100%);
+  color: #8f4d0c;
+  box-shadow: 0 18px 34px rgba(122, 74, 18, 0.24);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  position: relative;
+  cursor: pointer;
+}
+
+.asset-explore-shell .asset-explore-basket-fab.is-open {
+  background: linear-gradient(180deg, rgba(244, 141, 79, 0.99) 0%, rgba(214, 95, 48, 0.99) 100%);
+  color: #fff;
+}
+
+.asset-explore-shell .asset-explore-basket-fab .mat-icon {
+  width: 24px;
+  height: 24px;
+  font-size: 24px;
+  line-height: 24px;
+}
+
+.asset-explore-shell .asset-explore-basket-fab__count {
+  position: absolute;
+  top: -4px;
+  right: -3px;
+  min-width: 24px;
+  height: 24px;
+  padding: 0 0.35rem;
+  border-radius: 999px;
+  background: linear-gradient(180deg, #ff8a5f 0%, #e0583f 100%);
+  color: #fff;
+  font-size: 0.78rem;
+  font-weight: 800;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  box-shadow: 0 10px 18px rgba(148, 55, 38, 0.28);
+}
+
+.asset-explore-shell .asset-explore-basket-panel {
+  width: min(340px, calc(100vw - 2rem));
+  border-radius: 20px;
+  border: 1px solid rgba(211, 184, 128, 0.84);
+  background: linear-gradient(180deg, rgba(255, 252, 244, 0.99) 0%, rgba(255, 244, 224, 0.98) 100%);
+  box-shadow: 0 22px 46px rgba(82, 54, 22, 0.2);
+  padding: 0.9rem;
+  display: grid;
+  gap: 0.8rem;
+}
+
+.asset-explore-shell .asset-explore-basket-panel__head {
+  display: flex;
+  align-items: start;
+  justify-content: space-between;
+  gap: 0.75rem;
+}
+
+.asset-explore-shell .asset-explore-basket-panel__head strong {
+  display: block;
+  color: #1f3f68;
+  font-size: 0.98rem;
+}
+
+.asset-explore-shell .asset-explore-basket-panel__head span {
+  display: block;
+  margin-top: 0.15rem;
+  color: rgba(31, 63, 104, 0.68);
+  font-size: 0.8rem;
+}
+
+.asset-explore-shell .asset-explore-basket-panel__close {
+  width: 34px;
+  height: 34px;
+  border-radius: 999px;
+  border: 1px solid rgba(186, 205, 229, 0.88);
+  background: rgba(248, 251, 255, 0.95);
+  color: #4b688b;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+}
+
+.asset-explore-shell .asset-explore-basket-panel__close .mat-icon {
+  width: 18px;
+  height: 18px;
+  font-size: 18px;
+  line-height: 18px;
+  margin: 0;
+}
+
+.asset-explore-shell .asset-explore-basket-panel__list {
+  display: grid;
+  gap: 0.65rem;
+  max-height: min(46vh, 320px);
+  overflow: auto;
+}
+
+.asset-explore-shell .asset-explore-basket-item {
+  border-radius: 16px;
+  border: 1px solid rgba(190, 211, 232, 0.84);
+  background: rgba(255, 255, 255, 0.94);
+  padding: 0.8rem;
+  display: grid;
+  gap: 0.65rem;
+}
+
+.asset-explore-shell .asset-explore-basket-item__copy {
+  display: grid;
+  gap: 0.18rem;
+}
+
+.asset-explore-shell .asset-explore-basket-item__copy strong {
+  color: #264a73;
+}
+
+.asset-explore-shell .asset-explore-basket-item__copy span {
+  color: rgba(39, 72, 109, 0.76);
+  font-size: 0.82rem;
+}
+
+.asset-explore-shell .asset-explore-basket-item__actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 0.45rem;
+}
+
+.asset-explore-shell .asset-explore-basket-item__btn {
+  min-height: 34px;
+  padding: 0 0.8rem;
+  border-radius: 999px;
+  border: 1px solid rgba(182, 202, 226, 0.88);
+  background: linear-gradient(180deg, rgba(249, 252, 255, 0.98) 0%, rgba(236, 244, 252, 0.98) 100%);
+  color: #2f5d96;
+  font-weight: 800;
+  cursor: pointer;
+}
+
+.asset-explore-shell .asset-explore-basket-item__btn--clear {
+  color: #a04844;
+}
+
+@media (max-width: 760px) {
+  .asset-explore-shell .asset-explore-category-field {
+    width: fit-content !important;
+    min-width: 0 !important;
+    max-width: 154px;
+  }
+
+  .asset-explore-shell .asset-explore-date-range-field,
+  .asset-explore-shell .assets-badge-form-field {
+    width: min(286px, calc(100vw - 8rem));
+    min-width: min(286px, calc(100vw - 8rem));
+    max-width: none;
+  }
+
+  .asset-explore-shell .asset-explore-date-range-pill .mat-date-range-input-container {
+    grid-template-columns: minmax(72px, 1fr) auto minmax(72px, 1fr);
+    column-gap: 0.08rem;
+  }
+
+  .asset-explore-shell .asset-explore-date-range-pill .mat-date-range-input-inner,
+  .asset-explore-shell .asset-explore-date-range-pill input {
+    font-size: 0.74rem;
+  }
+
+  .asset-explore-shell .asset-explore-date-range-pill .mat-mdc-form-field-icon-suffix {
+    padding-right: 0.06rem;
+  }
+
+  .asset-explore-shell .asset-explore-date-range-pill .mat-datepicker-toggle .mat-mdc-icon-button {
+    width: 26px;
+    height: 26px;
+    min-width: 26px;
+    min-height: 26px;
+    --mdc-icon-button-state-layer-size: 26px;
+  }
+
+  .asset-explore-shell .asset-explore-smart-list,
+  .asset-explore-shell .asset-explore-card-list {
+    min-height: 0;
+  }
+
+  .asset-explore-shell .asset-explore-basket {
+    right: 0.55rem;
+    bottom: 0.7rem;
+  }
+
+  .asset-explore-shell .asset-explore-basket-panel {
+    width: min(320px, calc(100vw - 1.2rem));
+  }
+}

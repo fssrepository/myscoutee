@@ -1,21 +1,36 @@
-import { Injectable, inject } from '@angular/core';
-
-import { AppUtils } from '../../../app-utils';
-import type * as ContractTypes from '../../contracts';
-import type { ActivitiesFeedFilters, EventExploreFeedFilters } from '../../contracts';
-import type { ChatDTO, ChatRecord } from '../../contracts/chat.interface';
-import type { UserDto } from '../../contracts/user.interface';
-import type { ListQuery, PageResult } from '../../../ui';
 import {
-  toActivitiesPageRequest
-} from '../mappers';
-import { AppContext } from '../../../ui/context';
+  Injectable,
+  inject
+} from '@angular/core';
+
+import {
+  AppUtils
+} from '../../../app-utils';
+import type * as ContractTypes from '../../contracts';
+import type { ActivitiesFeedFilters, EventExploreFeedFilters, ListQuery, PageResult } from '../../contracts';
+import type { ChatDTO } from '../../contracts/chat.interface';
+import type { UserDto } from '../../contracts/user.interface';
 import type { ActivityEventRecord, ActivityRateDTO } from '../../contracts/activity.interface';
-import { ChatsService } from './chats.service';
-import { EventsService } from './events.service';
-import { RatesService } from './rates.service';
-import { UsersService } from './users.service';
-import { BaseRouteModeService } from './base-route-mode.service';
+import {
+  ChatsService
+} from './chats.service';
+import {
+  EventsService
+} from './events.service';
+import {
+  RatesService
+} from './rates.service';
+import {
+  UsersService
+} from './users.service';
+import {
+  BaseRouteModeService
+} from './base-route-mode.service';
+import type {
+  RouteIntervalStop,
+  RouteIntervalTask
+} from './route-interval-scheduler.service';
+import { UserProfileStore } from '../../../ui/context/stores/user-profile.store';
 
 @Injectable({
   providedIn: 'root'
@@ -24,7 +39,7 @@ export class ActivitiesService extends BaseRouteModeService {
   private readonly eventsService = inject(EventsService);
   private readonly chatsService = inject(ChatsService);
   private readonly ratesService = inject(RatesService);
-  private readonly appCtx = inject(AppContext);
+  private readonly userProfileStore = inject(UserProfileStore);
   private readonly usersService = inject(UsersService);
 
   async loadExplore(query: ListQuery<EventExploreFeedFilters>): Promise<PageResult<ActivityEventRecord>> {
@@ -43,21 +58,23 @@ export class ActivitiesService extends BaseRouteModeService {
 
   async loadActivityChats(
     query: ListQuery<ActivitiesFeedFilters>,
-    options: { chatItems?: readonly ChatRecord[]; signal?: AbortSignal } = {}
+    options: { chatItems?: readonly ChatDTO[]; signal?: AbortSignal } = {}
   ): Promise<PageResult<ChatDTO>> {
-    const request = toActivitiesPageRequest(query);
-    return this.chatsService.queryActivitiesChatPage(this.resolveActiveUserId(), request, {
+    return this.chatsService.queryActivitiesChatPage(this.resolveActiveUserId(), query, {
       chatItems: options.chatItems
     });
+  }
+
+  startActivityChatsPoll(task: RouteIntervalTask): RouteIntervalStop {
+    return this.chatsService.startActivityChatsPoll(task);
   }
 
   async loadActivityRates(
     query: ListQuery<ActivitiesFeedFilters>,
     options: { signal?: AbortSignal } = {}
   ): Promise<PageResult<ActivityRateDTO, { users: UserDto[] }>> {
-    const request = toActivitiesPageRequest(query);
     const activeUserId = this.resolveActiveUserId();
-    const page = await this.ratesService.queryActivitiesRatePage(activeUserId, request, options.signal);
+    const page = await this.ratesService.queryActivitiesRatePage(activeUserId, query, options.signal);
     const users = this.resolveActivityUsers(page.users);
     this.cacheActivityUsers(users);
     return {
@@ -69,11 +86,11 @@ export class ActivitiesService extends BaseRouteModeService {
   }
 
   private resolveActiveUserId(): string {
-    const activeUserProfileId = this.appCtx.activeUserProfile()?.id?.trim();
+    const activeUserProfileId = this.userProfileStore.activeUserProfile()?.id?.trim();
     if (activeUserProfileId) {
       return activeUserProfileId;
     }
-    const activeUserId = this.appCtx.getActiveUserId().trim();
+    const activeUserId = this.userProfileStore.getActiveUserId().trim();
     if (activeUserId) {
       return activeUserId;
     }
@@ -146,7 +163,7 @@ export class ActivitiesService extends BaseRouteModeService {
       if (!user?.id?.trim()) {
         continue;
       }
-      this.appCtx.setUserProfile(user);
+      this.userProfileStore.setUserProfile(user);
     }
   }
 

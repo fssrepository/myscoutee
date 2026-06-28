@@ -1,25 +1,45 @@
-import { CommonModule } from '@angular/common';
-import { Component, inject } from '@angular/core';
-import { FormsModule } from '@angular/forms';
-import { MatIconModule } from '@angular/material/icon';
+import {
+  CommonModule
+} from '@angular/common';
+import {
+  Component,
+  inject
+} from '@angular/core';
+import {
+  FormsModule
+} from '@angular/forms';
+import {
+  MatIconModule
+} from '@angular/material/icon';
 
-import { AppContext } from '../../../shared/ui';
-import { AdminModerationService as CoreAdminModerationService, type AdminChatMessageDto, type AdminModerationActionResult, type AdminReportedUserDto } from '../../../shared/core';
-import { ProgressIndicatorComponent } from '../../../shared/ui/components/progress-indicator';
-import { AdminShellService } from '../../services/admin-shell.service';
-import { AdminWorkspaceService } from '../../services/admin-workspace.service';
+import {
+  AdminModerationService as CoreAdminModerationService,
+  type AdminChatMessageDto,
+  type AdminModerationActionResult,
+  type AdminReportedUserDto
+} from '../../../shared/core';
+import {
+  IndicatorComponent
+} from '../../../shared/ui/components/core/indicator';
+import {
+  AdminPopupStore
+} from '../../../shared/ui/context/stores/admin-popup.store';
+import {
+  AdminWorkspaceStore
+} from '../../../shared/ui/context/stores/admin-workspace.store';
+import { UserProfileStore } from '../../../shared/ui/context/stores/user-profile.store';
 
 @Component({
   selector: 'app-admin-chat-review-popup',
   standalone: true,
-  imports: [CommonModule, FormsModule, MatIconModule, ProgressIndicatorComponent],
+  imports: [CommonModule, FormsModule, MatIconModule, IndicatorComponent],
   templateUrl: './admin-chat-review-popup.component.html',
-  styleUrl: '../admin-popups.scss'
+  styleUrl: './admin-chat-review-popup.component.scss'
 })
 export class AdminChatReviewPopupComponent {
-  protected readonly admin = inject(AdminShellService);
-  private readonly appCtx = inject(AppContext);
-  private readonly workspace = inject(AdminWorkspaceService);
+  protected readonly admin = inject(AdminPopupStore);
+  private readonly userProfileStore = inject(UserProfileStore);
+  private readonly workspace = inject(AdminWorkspaceStore);
   private readonly moderationData = inject(CoreAdminModerationService);
   protected warnMessage = 'Please update the reported behavior before your account is blocked.';
   protected sending = false;
@@ -63,7 +83,7 @@ export class AdminChatReviewPopupComponent {
     }
     const result = await this.moderationData.warnUser(
       normalizedUserId,
-      this.appCtx.activeAdminUser(),
+      this.userProfileStore.activeAdminUser(),
       message
     );
     this.applyModerationActionResult(normalizedUserId, result);

@@ -1,4 +1,5 @@
-import { ChangeDetectorRef, Component, HostListener, OnDestroy, inject } from '@angular/core';
+import { NgComponentOutlet } from '@angular/common';
+import { ChangeDetectorRef, Component, HostListener, OnDestroy, Type, computed, inject, signal } from '@angular/core';
 import {
   NavigationCancel,
   NavigationEnd,
@@ -7,28 +8,18 @@ import {
   Router,
   RouterOutlet
 } from '@angular/router';
-import { DateAdapter, MAT_DATE_FORMATS } from '@angular/material/core';
-import { NavigatorBindings, NavigatorComponent, NavigatorService } from './navigator';
-import { AppCalendarDateAdapter, AppCalendarDateFormats } from './shared/app-calendar-date-adapter';
 import { Subscription } from 'rxjs';
-import { AppInstallPromptComponent } from './shared/ui/components/app-install-prompt/app-install-prompt.component';
-import { AppLocationService } from './shared/core/base/services/app-location.service';
-import { FirebaseMessagingService } from './shared/core/base/services/firebase-messaging.service';
+import { PromptComponent, type PromptModel } from './shared/ui/components/core/prompt';
 import { PwaService } from './shared/core/base/services/pwa.service';
-import { I18nService } from './shared/core';
-import { DemoBootstrapSelectorComponent } from './shared/ui';
+import { I18nService } from './shared/core/base/services/i18n.service';
+import { AppLocationService } from './shared/core/base/services/app-location.service';
 
 @Component({
   selector: 'app-root',
   imports: [
     RouterOutlet,
-    NavigatorComponent,
-    AppInstallPromptComponent,
-    DemoBootstrapSelectorComponent
-  ],
-  providers: [
-    { provide: DateAdapter, useClass: AppCalendarDateAdapter },
-    { provide: MAT_DATE_FORMATS, useValue: AppCalendarDateFormats.dateTime }
+    NgComponentOutlet,
+    PromptComponent
   ],
   templateUrl: './app.html',
   styleUrl: './app.scss'
@@ -54,28 +45,51 @@ export class App implements OnDestroy {
   private readonly router = inject(Router);
   private readonly changeDetectorRef = inject(ChangeDetectorRef);
   private readonly pwaService = inject(PwaService);
-  private readonly appLocationService = inject(AppLocationService);
-  private readonly firebaseMessagingService = inject(FirebaseMessagingService);
   private readonly i18nService = inject(I18nService);
-  protected readonly navigatorService = inject(NavigatorService);
-  private readonly navigatorBindings: NavigatorBindings = {};
+  private readonly appLocationService = inject(AppLocationService);
   private readonly routerEventsSubscription: Subscription;
+  private readonly navigatorComponentRef = signal<Type<unknown> | null>(null);
+  private navigatorComponentLoadPromise: Promise<void> | null = null;
   private routeWarmupHideTimer: ReturnType<typeof setTimeout> | null = null;
   private routeWarmupWatchdogTimer: ReturnType<typeof setTimeout> | null = null;
   private mobileResumeRecoveryTimer: ReturnType<typeof setTimeout> | null = null;
   private initialLandingWarmupPending = false;
   protected showNavigator = false;
+  protected readonly navigatorComponent = this.navigatorComponentRef.asReadonly();
   protected routeWarmupVisible = false;
   protected readonly installPromptVisible = this.pwaService.installPromptVisible;
   protected readonly installPromptBusy = this.pwaService.installBusy;
+  protected readonly installPromptModel = computed<PromptModel>(() => {
+    const visible = this.installPromptVisible();
+    const busy = this.installPromptBusy();
+    this.i18nService.revision();
+    return {
+      visible,
+      busy,
+      tone: 'info',
+      icon: {
+        kind: 'image',
+        src: 'assets/icon/android-chrome-192x192.png',
+        alt: ''
+      },
+      title: this.i18nService.translate('add.myscoutee.to.your.home.screen'),
+      description: this.i18nService.translate('install.prompt.description'),
+      ariaLabel: this.i18nService.translate('add.myscoutee.to.your.home.screen'),
+      closeAriaLabel: this.i18nService.translate('dismiss', 'Dismiss'),
+      action: {
+        icon: 'add_to_home_screen',
+        label: this.i18nService.translate('add.to.home.screen'),
+        busyLabel: this.i18nService.translate('opening'),
+        ariaLabel: this.i18nService.translate('add.to.home.screen')
+      }
+    };
+  });
 
   constructor() {
     const initialRouteUrl = this.resolveInitialRouteUrl();
     this.i18nService.initialize();
-    void this.pwaService.initialize();
     this.appLocationService.initialize();
-    this.firebaseMessagingService.initialize();
-    this.navigatorService.registerBindings(this.navigatorBindings);
+    void this.pwaService.initialize();
     this.syncNavigatorVisibility(initialRouteUrl);
     this.initialLandingWarmupPending = this.shouldShowLandingWarmup(initialRouteUrl);
     this.routeWarmupVisible = this.initialLandingWarmupPending;
@@ -110,7 +124,6 @@ export class App implements OnDestroy {
     this.clearRouteWarmupWatchdogTimer();
     this.clearMobileResumeRecoveryTimer();
     this.routerEventsSubscription.unsubscribe();
-    this.navigatorService.clearBindings(this.navigatorBindings);
   }
 
   @HostListener('window:pageshow')
@@ -135,6 +148,26 @@ export class App implements OnDestroy {
 
   private syncNavigatorVisibility(url: string): void {
     this.showNavigator = this.shouldShowNavigator(url);
+    if (this.showNavigator) {
+      void this.ensureNavigatorComponentLoaded();
+    }
+  }
+
+  private async ensureNavigatorComponentLoaded(): Promise<void> {
+    if (this.navigatorComponentRef()) {
+      return;
+    }
+    if (this.navigatorComponentLoadPromise) {
+      return this.navigatorComponentLoadPromise;
+    }
+    this.navigatorComponentLoadPromise = import('./navigator/components/navigator/navigator.component')
+      .then(module => {
+        this.navigatorComponentRef.set(module.NavigatorComponent);
+      })
+      .finally(() => {
+        this.navigatorComponentLoadPromise = null;
+      });
+    return this.navigatorComponentLoadPromise;
   }
 
   private showCloseActionRipple(event: PointerEvent): void {
@@ -282,7 +315,7 @@ export class App implements OnDestroy {
   protected async onInstallRequested(): Promise<void> {
     const accepted = await this.pwaService.promptInstall();
     if (accepted) {
-      await this.firebaseMessagingService.requestAndRegisterForActiveUser();
+      await this.pwaService.requestNotificationRegistrationForActiveUser();
     }
   }
 

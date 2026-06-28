@@ -2,25 +2,41 @@ import { CHATS_TABLE_NAME } from '../../source/entity/chat.entity';
 import { EVENT_FEEDBACK_TABLE_NAME, EVENTS_TABLE_NAME } from '../../source/entity/event.entity';
 import { USER_FILTER_PREFERENCES_TABLE_NAME, USER_RATES_OUTBOX_TABLE_NAME, USER_RATES_TABLE_NAME } from '../../source/entity/rate.entity';
 import { USERS_TABLE_NAME } from '../../source/entity/user.entity';
-import type { UsersRecordCollection } from '../../source/entity/user.entity';
+import type { UserRecord, UsersRecordCollection } from '../../source/entity/user.entity';
 import { Injectable, inject } from '@angular/core';
 
 import { LocalMemoryDb } from '../../../common/app.db';
-import type { UserDto } from '../../../contracts/user.interface';
 import { ASSETS_TABLE_NAME, type AssetRecord, type AssetsRecordCollection } from '../../source/entity/asset.entity';
 
 
-import type { ActivityEventRecord } from '../../../contracts/activity.interface';
+import {
+  defaultUserGameFilterPreferences,
+  type ActivityEventRecord
+} from '../../../contracts/activity.interface';
 
-import { UserFilterPreferencesBuilder, UserProfileStateBuilder, UserRecordsBuilder } from '../../../base/builders';
+import { UserProfileState } from '../../../common/user-profile-state';
+import { LocalUserFilterPreferencesMapper } from '../../source/mappers';
 import { SeedUserBuilder, SeedUserImpressionsBuilder } from '../builders';
+
+interface SeededActivityCountSources {
+  chatItems?: ReadonlyArray<{ unread: number }>;
+  invitationItems?: ReadonlyArray<{ unread: number }>;
+  eventsCount?: number;
+  hostingItems?: ReadonlyArray<{ activity: number }>;
+  rateItems?: readonly unknown[];
+  carsCount?: number;
+  accommodationCount?: number;
+  suppliesCount?: number;
+  ticketsCount?: number;
+  contactsCount?: number;
+  feedbackCount?: number;
+}
 
 @Injectable({
   providedIn: 'root'
 })
 export class SeedUsersRepository {
   private static readonly DEFAULT_DEMO_USERS_COUNT = 50;
-  private static readonly MIN_DEMO_EVENT_ITEMS_PER_USER = 30;
   private static readonly INITIAL_EVENT_FEEDBACK_UNLOCK_DELAY_MS = 2 * 60 * 60 * 1000;
 
   private readonly memoryDb = inject(LocalMemoryDb);
@@ -30,21 +46,21 @@ export class SeedUsersRepository {
     await this.memoryDb.whenReady();
   }
 
-  queryUserById(userId: string): UserDto | null {
+  queryUserById(userId: string): UserRecord | null {
     const normalizedUserId = `${userId ?? ''}`.trim();
     if (!normalizedUserId) {
       return null;
     }
     const user = this.memoryDb.read()[USERS_TABLE_NAME].byId[normalizedUserId];
-    return user ? UserRecordsBuilder.cloneUser(user) : null;
+    return user ?? null;
   }
 
-  upsertUser(user: UserDto): UserDto {
+  upsertUser(user: UserRecord): UserRecord {
     const userId = `${user.id ?? ''}`.trim();
     if (!userId) {
-      return UserRecordsBuilder.cloneUser(user);
+      return user;
     }
-    const saved = UserRecordsBuilder.cloneUser({ ...user, id: userId });
+    const saved = user.id === userId ? user : { ...user, id: userId };
     this.memoryDb.write(currentState => {
       const usersTable = currentState[USERS_TABLE_NAME];
       return {
@@ -60,17 +76,18 @@ export class SeedUsersRepository {
         }
       };
     });
-    return UserRecordsBuilder.cloneUser(saved);
+    return saved;
   }
 
-  seedDefaults(users?: readonly UserDto[]): UserDto[] {
+  seedDefaults(): UserRecord[] {
     if (this.initialized) {
       return this.queryUsersFromTable();
     }
     const state = this.memoryDb.read();
     const usersTable = state[USERS_TABLE_NAME];
-    const sourceUsers = users ?? SeedUserBuilder.buildExpandedDemoUsers(SeedUsersRepository.DEFAULT_DEMO_USERS_COUNT);
-    const seededUsers = sourceUsers.map(user => UserRecordsBuilder.cloneUser(user));
+    const seededUsers = SeedUserBuilder.buildExpandedDemoUsers(
+      SeedUsersRepository.DEFAULT_DEMO_USERS_COUNT
+    );
     if (usersTable.ids.length > 0) {
       const migration = this.mergeSeededUsers(usersTable, seededUsers);
       if (migration.changed) {
@@ -85,7 +102,7 @@ export class SeedUsersRepository {
 
     this.memoryDb.write(currentState => ({
       ...currentState,
-      [USERS_TABLE_NAME]: UserRecordsBuilder.buildRecordCollection(seededUsers)
+      [USERS_TABLE_NAME]: this.buildUsersTable(seededUsers)
     }));
     this.initialized = true;
 
@@ -114,7 +131,7 @@ export class SeedUsersRepository {
         [USER_FILTER_PREFERENCES_TABLE_NAME]: {
           byId: {
             ...currentFilterTable.byId,
-            [normalizedUserId]: UserFilterPreferencesBuilder.buildDefaultFilterPreferences(user)
+            [normalizedUserId]: LocalUserFilterPreferencesMapper.toRecord(defaultUserGameFilterPreferences())
           },
           ids: currentFilterTable.ids.includes(normalizedUserId)
             ? [...currentFilterTable.ids]
@@ -135,7 +152,7 @@ export class SeedUsersRepository {
     if (!user) {
       return false;
     }
-    const stampedUser = this.applySeededActivityCounts(UserRecordsBuilder.cloneUser(user));
+    const stampedUser = this.applySeededActivityCounts(user);
     if (this.sameActivityCounts(user, stampedUser)) {
       return false;
     }
@@ -163,9 +180,7 @@ export class SeedUsersRepository {
     if (!user) {
       return false;
     }
-    const stampedUser = SeedUserImpressionsBuilder.withSeededImpressions(
-      UserRecordsBuilder.cloneUser(user)
-    );
+    const stampedUser = SeedUserImpressionsBuilder.withSeededImpressions(user) as UserRecord;
     if (this.sameImpressions(user, stampedUser)) {
       return false;
     }
@@ -185,7 +200,7 @@ export class SeedUsersRepository {
 
   private mergeSeededUsers(
     currentTable: UsersRecordCollection,
-    seededUsers: readonly UserDto[]
+    seededUsers: readonly UserRecord[]
   ): { table: UsersRecordCollection; changed: boolean } {
     const nextById = { ...currentTable.byId };
     const nextIds = [...currentTable.ids];
@@ -198,7 +213,7 @@ export class SeedUsersRepository {
       }
       const existing = currentTable.byId[userId];
       if (!existing) {
-        nextById[userId] = UserRecordsBuilder.cloneUser(seededUser);
+        nextById[userId] = seededUser;
         nextIds.push(userId);
         changed = true;
         continue;
@@ -221,7 +236,24 @@ export class SeedUsersRepository {
     };
   }
 
-  private shouldStampCurrentProfileFormVersion(existing: UserDto, seeded: UserDto): boolean {
+  private buildUsersTable(users: readonly UserRecord[]): UsersRecordCollection {
+    const byId: UsersRecordCollection['byId'] = {};
+    const ids: string[] = [];
+    for (const user of users) {
+      const userId = user.id.trim();
+      if (!userId) {
+        continue;
+      }
+      byId[userId] = user;
+      ids.push(userId);
+    }
+    return {
+      byId,
+      ids
+    };
+  }
+
+  private shouldStampCurrentProfileFormVersion(existing: UserRecord, seeded: UserRecord): boolean {
     const existingVersion = Math.trunc(Number(existing.profileFormVersion) || 0);
     const seededVersion = Math.trunc(Number(seeded.profileFormVersion) || 0);
     return existingVersion <= 0
@@ -229,7 +261,7 @@ export class SeedUsersRepository {
       && this.hasRequiredProfileFields(existing);
   }
 
-  private hasRequiredProfileFields(user: UserDto): boolean {
+  private hasRequiredProfileFields(user: UserRecord): boolean {
     return Boolean(
       user.name?.trim()
       && user.birthday?.trim()
@@ -240,16 +272,15 @@ export class SeedUsersRepository {
     );
   }
 
-  private queryUsersFromTable(): UserDto[] {
+  private queryUsersFromTable(): UserRecord[] {
     const users = this.memoryDb.read()[USERS_TABLE_NAME];
     return users.ids
       .map(id => users.byId[id])
-      .filter((user): user is UserDto => Boolean(user))
-      .map(user => UserRecordsBuilder.cloneUser(user));
+      .filter((user): user is UserRecord => Boolean(user));
   }
 
-  private applySeededActivityCounts(user: UserDto): UserDto {
-    if (UserProfileStateBuilder.isEmptyOnboardingProfile(user)) {
+  private applySeededActivityCounts(user: UserRecord): UserRecord {
+    if (UserProfileState.isEmptyOnboardingProfile(user)) {
       return {
         ...user,
         activities: {
@@ -290,7 +321,7 @@ export class SeedUsersRepository {
         }
       };
     }
-    return UserRecordsBuilder.applyDerivedActivityCounts(user, {
+    return this.applyDerivedActivityCounts(user, {
       chatItems: this.queryChatItemsByUser(user.id),
       invitationItems: this.queryInvitationItemsByUser(user.id),
       eventsCount: this.countUpcomingActiveEventItemsByUser(user.id),
@@ -302,9 +333,106 @@ export class SeedUsersRepository {
       feedbackCount: this.countPendingEventFeedbackByUser(
         user.id,
         SeedUsersRepository.INITIAL_EVENT_FEEDBACK_UNLOCK_DELAY_MS
-      ),
-      minDemoEventItemsPerUser: SeedUsersRepository.MIN_DEMO_EVENT_ITEMS_PER_USER
+      )
     });
+  }
+
+  private applyDerivedActivityCounts(
+    user: UserRecord,
+    sources: SeededActivityCountSources
+  ): UserRecord {
+    const normalizeCounter = (value: unknown): number => {
+      const count = Number(value);
+      return Number.isFinite(count) ? Math.max(0, Math.trunc(count)) : 0;
+    };
+
+    const activities = user.activities;
+    const chat = sources.chatItems
+      ? this.resolveSectionBadge(sources.chatItems.map(item => item.unread), sources.chatItems.length)
+      : activities.chat;
+    const invitations = sources.invitationItems ? sources.invitationItems.length : activities.invitations;
+    const events = Number.isFinite(sources.eventsCount)
+      ? normalizeCounter(sources.eventsCount)
+      : activities.events;
+    const hosting = sources.hostingItems ? sources.hostingItems.length : activities.hosting;
+    const game = sources.rateItems ? sources.rateItems.length : activities.game;
+    const cars = Number.isFinite(sources.carsCount) ? normalizeCounter(sources.carsCount) : activities.cars;
+    const accommodation = Number.isFinite(sources.accommodationCount) ? normalizeCounter(sources.accommodationCount) : activities.accommodation;
+    const supplies = Number.isFinite(sources.suppliesCount) ? normalizeCounter(sources.suppliesCount) : activities.supplies;
+    const tickets = Number.isFinite(sources.ticketsCount) ? normalizeCounter(sources.ticketsCount) : activities.tickets;
+    const contacts = Number.isFinite(sources.contactsCount) ? normalizeCounter(sources.contactsCount) : activities.contacts;
+    const feedback = Number.isFinite(sources.feedbackCount) ? normalizeCounter(sources.feedbackCount) : activities.feedback;
+    const event = activities.event;
+    const asset = activities.asset;
+    const eventFeedback = activities.eventFeedback;
+    const hasEventSources = Boolean(sources.invitationItems)
+      || Number.isFinite(sources.eventsCount)
+      || Boolean(sources.hostingItems);
+    const eventPending = normalizeCounter(event?.pending);
+    const eventDrafts = normalizeCounter(event?.drafts);
+    const eventTrash = normalizeCounter(event?.trash);
+    const eventActive = hasEventSources ? events : normalizeCounter(event?.active ?? events);
+    const eventInvitations = hasEventSources ? invitations : normalizeCounter(event?.invitations ?? invitations);
+    const eventHosting = hasEventSources ? hosting : normalizeCounter(event?.hosting ?? hosting);
+    const eventAll = hasEventSources
+      ? eventActive + eventPending + eventInvitations + eventHosting + eventDrafts
+      : normalizeCounter(event?.all ?? events + invitations + hosting);
+    const assetCars = Number.isFinite(sources.carsCount) ? cars : normalizeCounter(asset?.cars ?? cars);
+    const assetAccommodation = Number.isFinite(sources.accommodationCount)
+      ? accommodation
+      : normalizeCounter(asset?.accommodation ?? accommodation);
+    const assetSupplies = Number.isFinite(sources.suppliesCount) ? supplies : normalizeCounter(asset?.supplies ?? supplies);
+    const assetTickets = Number.isFinite(sources.ticketsCount) ? tickets : normalizeCounter(asset?.tickets ?? tickets);
+    const eventFeedbackPending = Number.isFinite(sources.feedbackCount)
+      ? feedback
+      : normalizeCounter(eventFeedback?.pending ?? feedback);
+
+    return {
+      ...user,
+      activities: {
+        ...activities,
+        chat,
+        invitations,
+        events,
+        hosting,
+        game,
+        cars,
+        accommodation,
+        supplies,
+        tickets,
+        contacts,
+        feedback,
+        event: {
+          all: eventAll,
+          active: eventActive,
+          pending: eventPending,
+          invitations: eventInvitations,
+          hosting: eventHosting,
+          drafts: eventDrafts,
+          trash: eventTrash,
+        },
+        asset: {
+          cars: assetCars,
+          accommodation: assetAccommodation,
+          supplies: assetSupplies,
+          tickets: assetTickets,
+        },
+        eventFeedback: {
+          ownEvents: normalizeCounter(eventFeedback?.ownEvents),
+          pending: eventFeedbackPending,
+          feedbacked: normalizeCounter(eventFeedback?.feedbacked),
+          removed: normalizeCounter(eventFeedback?.removed),
+        }
+      }
+    };
+  }
+
+  private resolveSectionBadge(values: number[], itemCount: number): number {
+    const positiveTotal = values.reduce((sum, value) => sum + (value > 0 ? value : 0), 0);
+    if (positiveTotal > 0) {
+      return positiveTotal;
+    }
+    return itemCount;
   }
 
   private queryChatItemsByUser(userId: string): ReadonlyArray<{ unread: number }> {
@@ -361,6 +489,7 @@ export class SeedUsersRepository {
       if (
         this.isEventAdminRecord(item, normalizedUserId)
         || this.eventInvitedMemberUserIds(item).includes(normalizedUserId)
+        || !this.eventAcceptedMemberUserIds(item).includes(normalizedUserId)
         || item.status === 'T'
       ) {
         return false;
@@ -382,7 +511,7 @@ export class SeedUsersRepository {
 
   private queryActivityRateItemsByUserId(userId: string): readonly unknown[] {
     const normalizedUserId = userId.trim();
-    if (!normalizedUserId || UserProfileStateBuilder.isEmptyOnboardingProfileUserId(normalizedUserId)) {
+    if (!normalizedUserId) {
       return [];
     }
     const state = this.memoryDb.read();
@@ -570,7 +699,7 @@ export class SeedUsersRepository {
     };
   }
 
-  private sameActivityCounts(left: UserDto, right: UserDto): boolean {
+  private sameActivityCounts(left: UserRecord, right: UserRecord): boolean {
     const normalizeCounter = (value: number | undefined | null): number => {
       return Number.isFinite(Math.trunc(Number(value))) ? Math.trunc(Number(value)) : 0;
     };
@@ -614,7 +743,7 @@ export class SeedUsersRepository {
       && normalizeCounter(left.activities.adminMetrics) === normalizeCounter(right.activities.adminMetrics);
   }
 
-  private sameImpressions(left: UserDto, right: UserDto): boolean {
+  private sameImpressions(left: UserRecord, right: UserRecord): boolean {
     return JSON.stringify(left.impressions ?? null) === JSON.stringify(right.impressions ?? null);
   }
 }

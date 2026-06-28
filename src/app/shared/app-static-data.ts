@@ -17,9 +17,8 @@ import type {
 } from './core/contracts';
 import type {
   EventFeedbackOption,
-  EventFeedbackTraitOption,
-  RateFilterEntry
-} from './core/base/models';
+  EventFeedbackTraitOption
+} from './ui/models';
 import { EVENT_FEEDBACK_LIST_FILTERS, EVENT_VISIBILITIES, SUB_EVENT_RESOURCE_FILTERS } from './core/common/constants';
 import type {
   AssetCategory,
@@ -38,6 +37,10 @@ import type {
   InterestOptionGroup,
   ValuesOptionGroup
 } from './core/contracts/profile.interface';
+
+export type RateFilterEntry =
+  | { kind: 'group'; label: string }
+  | { kind: 'item'; key: RateFilterKey; label: string };
 
 interface PersonalityTraitCatalogEntry {
   id: string;

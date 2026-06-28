@@ -77,7 +77,7 @@ describe('Demo bootstrap seeding', () => {
     expect(flushedTables).toContain(USERS_TABLE_NAME);
     expect(flushedTables).toContain(CONTACTS_TABLE_NAME);
     expect(flushedTables).toContain(PROFILE_EXPERIENCES_TABLE_NAME);
-    expect(flushedTables).toContain(EVENT_FEEDBACK_TABLE_NAME);
+    expect(flushedTables).not.toContain(EVENT_FEEDBACK_TABLE_NAME);
     expect(flushedTables).toContain(USER_RATES_TABLE_NAME);
     expect(flushedTables).toContain(ACTIVITY_MEMBERS_TABLE_NAME);
     expect(flushedTables).toContain(EVENTS_TABLE_NAME);
@@ -87,6 +87,28 @@ describe('Demo bootstrap seeding', () => {
     expect(flushedTables.indexOf(EVENTS_TABLE_NAME)).toBeGreaterThan(flushedTables.indexOf(ACTIVITY_MEMBERS_TABLE_NAME));
     expect(flushedTables.filter(tableName => tableName === ASSETS_TABLE_NAME).length).toBe(1);
     expect(flushedTables.indexOf(ASSETS_TABLE_NAME)).toBeGreaterThan(flushedTables.indexOf(ACTIVITY_RESOURCES_TABLE_NAME));
+  });
+
+  it('seeds event feedback state for a selected demo session without rewriting events', async () => {
+    const bootstrap = TestBed.inject(SeedDemoBootstrapService);
+    const tableWriteSpy = vi.spyOn(memoryDb, 'writeIndexedDbTableEntry');
+
+    await bootstrap.ensureDemoSelectorReady('member');
+    const eventsBefore = memoryDb.read()[EVENTS_TABLE_NAME];
+    const eventIdsBefore = [...eventsBefore.ids];
+    const eventRecordsBefore = JSON.stringify(eventsBefore.byId);
+    tableWriteSpy.mockClear();
+
+    await bootstrap.ensureUserReady('u3', 'member');
+
+    const state = memoryDb.read();
+    const flushedTables = tableWriteSpy.mock.calls.map(([tableName]: [string, unknown]) => tableName);
+    expect(flushedTables).toContain(EVENT_FEEDBACK_TABLE_NAME);
+    expect(flushedTables).toContain(USERS_TABLE_NAME);
+    expect(flushedTables).not.toContain(EVENTS_TABLE_NAME);
+    expect(state[EVENT_FEEDBACK_TABLE_NAME].ids.length).toBeGreaterThan(0);
+    expect(state[EVENTS_TABLE_NAME].ids).toEqual(eventIdsBefore);
+    expect(JSON.stringify(state[EVENTS_TABLE_NAME].byId)).toBe(eventRecordsBefore);
   });
 
   it('seeds common collections before admin-specific support data', async () => {
@@ -237,8 +259,8 @@ function signatures(records: readonly ActivityEventRecord[]): string[] {
     record.userId,
     record.type,
     record.id,
-    record.isAdmin ? 'admin' : 'member',
-    record.isInvitation ? 'invitation' : 'direct',
+    record.adminIds?.join(',') ?? '',
+    record.inviter ? 'invitation' : 'direct',
     record.pendingReason ?? ''
   ].join('|'));
 }

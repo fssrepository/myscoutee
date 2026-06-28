@@ -1,17 +1,17 @@
 import { Injectable } from '@angular/core';
 
-import type { UserDto } from '../../../contracts/user.interface';
 import type { ActivityEventRecord } from '../../../contracts/activity.interface';
-import type { AssetCardDTO } from '../../../base/dto';
+import type { UserRecord } from '../../source/entity/user.entity';
+import type { AssetDTO } from '../../../contracts';
 
 @Injectable({
   providedIn: 'root'
 })
 export class SeedBootstrapRegistryService {
-  private users: readonly UserDto[] = [];
+  private users: readonly UserRecord[] = [];
   private userIds: readonly string[] = [];
   private eventsByUserId = new Map<string, readonly ActivityEventRecord[]>();
-  private assetsByUserId = new Map<string, readonly AssetCardDTO[]>();
+  private assetsByUserId = new Map<string, readonly AssetDTO[]>();
 
   clear(): void {
     this.users = [];
@@ -20,14 +20,14 @@ export class SeedBootstrapRegistryService {
     this.assetsByUserId.clear();
   }
 
-  registerUsers(users: readonly UserDto[]): void {
+  registerUsers(users: readonly UserRecord[]): void {
     this.users = users.map(user => ({ ...user, images: [...(user.images ?? [])] }));
     this.userIds = this.users
       .map(user => user.id.trim())
       .filter(userId => userId.length > 0);
   }
 
-  getUsers(): readonly UserDto[] {
+  getUsers(): readonly UserRecord[] {
     return this.users;
   }
 
@@ -43,11 +43,11 @@ export class SeedBootstrapRegistryService {
     return this.eventsByUserId;
   }
 
-  registerAssetsByUserId(assetsByUserId: ReadonlyMap<string, readonly AssetCardDTO[]>): void {
+  registerAssetsByUserId(assetsByUserId: ReadonlyMap<string, readonly AssetDTO[]>): void {
     this.assetsByUserId = new Map(assetsByUserId);
   }
 
-  getAssetsByUserId(): ReadonlyMap<string, readonly AssetCardDTO[]> {
+  getAssetsByUserId(): ReadonlyMap<string, readonly AssetDTO[]> {
     return this.assetsByUserId;
   }
 }

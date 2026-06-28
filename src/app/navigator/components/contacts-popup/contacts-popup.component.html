@@ -1,174 +1,111 @@
 @if (contactsPopupOpen()) {
-  <section class="app-popup contacts-popup-shell">
-    <div class="app-popup-backdrop" (click)="closePopup($event)"></div>
-    <div class="app-popup-panel popup-panel-wide popup-panel-full-height popup-panel-contacts" (click)="$event.stopPropagation()">
-      <div class="popup-header popup-header-with-progress popup-header-contacts">
-        <div class="popup-title">
-          <h2>Contacts</h2>
-          <p class="popup-subtitle-activities">{{ summaryLabel() }}</p>
-        </div>
-        <div class="contacts-header-actions">
-          <button
-            type="button"
-            class="popup-view-fab contacts-create-trigger"
-            (click)="openCreateContactPicker($event)"
-            aria-label="Create contact"
-            >
-            <mat-icon>person_add</mat-icon>
-            <span>Create contact</span>
-          </button>
-          <button type="button" class="popup-close" (click)="closePopup($event)" aria-label="Close contacts">
-            <mat-icon>close</mat-icon>
-          </button>
-        </div>
-      </div>
-
-      <div class="popup-body popup-body-contacts">
-        <section class="contacts-toolbar">
-          <label class="contacts-search-field">
-            <mat-icon>search</mat-icon>
-            <input
-              type="text"
-              [ngModel]="searchText()"
-              (ngModelChange)="searchText.set(($event ?? '').toString())"
-              placeholder="Filter contacts A-Z"
-              aria-label="Filter contacts"
-              />
-            @if (searchText()) {
-              <button type="button" class="contacts-search-clear" (click)="clearSearch($event)" aria-label="Clear contact filter">
-                <mat-icon>close</mat-icon>
-              </button>
-            }
-          </label>
-        </section>
-
-        <app-smart-list
-          #contactsSmartList
-          class="contacts-smart-list"
-          [config]="contactSmartListConfig()"
-          [loadPage]="contactSmartListLoadPage"
-          [itemTemplate]="contactItemTemplate"
-          [query]="contactSmartListQuery()"
-          (menuItemSelect)="onContactsMenuSelect($event)"
-        ></app-smart-list>
-
-        <ng-template #contactItemTemplate let-contact>
-          <article class="contact-card" [class.is-menu-open]="isActionMenuOpen(contact)">
-            <div class="contact-avatar-shell">
-              <span
-                class="contact-avatar"
-                [ngClass]="['user-color-' + contact.gender, contact.avatarUrl ? 'has-photo' : '']"
-                [style.backgroundImage]="contact.avatarUrl ? 'url(' + contact.avatarUrl + ')' : null"
-                >
-                @if (!contact.avatarUrl) {
-                  {{ contact.initials }}
-                }
-              </span>
-            </div>
-
-            <div class="contact-copy">
-              <div class="contact-title-row">
-                <div class="contact-title-wrap">
-                  <h3>{{ contact.name }}</h3>
-                  @if (contact.headline) {
-                    <p class="contact-headline">{{ contact.headline }}</p>
-                  } @else {
-                    <p class="contact-headline contact-headline-muted">Quick reach card</p>
-                  }
-                </div>
-                <div class="contact-menu-anchor">
-                  <button
-                    type="button"
-                    class="experience-action-btn contact-profile-trigger"
-                    aria-label="View profile"
-                    (click)="viewContactProfile(contact, $event)"
-                    >
-                    <mat-icon>visibility</mat-icon>
-                  </button>
-                  <app-menu-trigger
-                    class="contact-action-menu-trigger"
-                    [menuId]="contactActionMenuId(contact)"
-                    kind="select"
-                    [title]="contact.name"
-                    [trigger]="contactActionMenuTrigger(contact)"
-                    [items]="contactActionMenuItems(contact)"
-                    [panelAlign]="'auto'"
-                    [mobileBreakpointPx]="900"
-                  ></app-menu-trigger>
-                </div>
-              </div>
-
-              <p class="contact-city">
-                <mat-icon>location_on</mat-icon>
-                <span>{{ contact.city || 'City not set yet' }}</span>
-              </p>
-
-              @if (contact.methods.length > 0) {
-                <div class="contact-method-chips">
-                  @for (method of visibleMethodChips(contact); track method.id) {
-                    <button type="button" class="contact-method-chip" [ngClass]="methodToneClass(method.type)" (click)="runMethod(method, $event)">
-                      <mat-icon>{{ method.icon }}</mat-icon>
-                      <span>{{ method.displayValue || method.label }}</span>
-                    </button>
-                  }
-                  @if (hiddenMethodCount(contact) > 0) {
-                    <span class="contact-method-chip contact-method-chip-more">
-                      +{{ hiddenMethodCount(contact) }}
-                    </span>
-                  }
-                </div>
-              } @else {
-                <p class="contact-empty-methods">No availability methods yet. Use Edit to add phone, Facebook, email, and more.</p>
-              }
-            </div>
-          </article>
-        </ng-template>
-      </div>
-    </div>
-  </section>
-
-  @if (editingContact(); as contactForm) {
-    <section class="app-popup app-popup-stacked contacts-popup-shell contacts-form-shell">
-      <div class="app-popup-backdrop" (click)="closeFormPopup($event)"></div>
-      <div class="experience-form-popup contact-form-popup" (click)="$event.stopPropagation()">
-        <div class="experience-form-header contact-form-header">
-          <div class="contact-form-heading">
-            <span
-              class="contact-form-avatar"
-              [ngClass]="['user-color-' + contactForm.gender, contactForm.avatarUrl ? 'has-photo' : '']"
-              [style.backgroundImage]="contactForm.avatarUrl ? 'url(' + contactForm.avatarUrl + ')' : null"
-              >
-              @if (!contactForm.avatarUrl) {
-                {{ contactForm.initials }}
-              }
-            </span>
-            <div class="contact-form-heading-copy">
-              <h3>Edit Contact</h3>
-              <p>{{ contactForm.name }}{{ contactForm.city ? ' · ' + contactForm.city : '' }}</p>
-            </div>
-          </div>
-          <div class="experience-form-header-controls">
-            <button
-              type="button"
-              class="popup-header-add-btn subevent-leaderboard-save-btn"
-              [class.is-loading]="isFormSavePending()"
-              [disabled]="isFormSavePending()"
-              (click)="saveForm($event)"
-              aria-label="Save contact"
-              >
-              <mat-icon>done</mat-icon>
-              @if (isFormSavePending()) {
-                <span class="contact-save-ring" aria-hidden="true">
-                  <app-progress-indicator kind="action-ring" shape="circle" state="loading"></app-progress-indicator>
-                </span>
-              }
-            </button>
-            <button type="button" class="experience-form-close-btn" (click)="closeFormPopup($event)" aria-label="Close contact form">
+  <app-popup [model]="contactsPopupModel()" [zIndex]="contactsPopupZIndex()">
+    <div class="contacts-popup-content">
+      <section class="contacts-toolbar">
+        <label class="contacts-search-field">
+          <mat-icon>search</mat-icon>
+          <input
+            type="text"
+            [ngModel]="searchText()"
+            (ngModelChange)="searchText.set(($event ?? '').toString())"
+            placeholder="Filter contacts A-Z"
+            aria-label="Filter contacts"
+            />
+          @if (searchText()) {
+            <button type="button" class="contacts-search-clear" (click)="clearSearch($event)" aria-label="Clear contact filter">
               <mat-icon>close</mat-icon>
             </button>
-          </div>
-        </div>
+          }
+        </label>
+      </section>
 
+      <app-smart-list
+        #contactsSmartList
+        class="contacts-smart-list"
+        [config]="contactSmartListConfig()"
+        [loadPage]="contactSmartListLoadPage"
+        [itemTemplate]="contactItemTemplate"
+        [query]="contactSmartListQuery()"
+        (menuItemSelect)="onContactsMenuSelect($event)"
+      ></app-smart-list>
+
+      <ng-template #contactItemTemplate let-contact>
+        <article class="contact-card" [class.is-menu-open]="isActionMenuOpen(contact)">
+          <div class="contact-avatar-shell">
+            <span
+              class="contact-avatar"
+              [ngClass]="['user-color-' + contact.gender, contact.avatarUrl ? 'has-photo' : '']"
+              [style.backgroundImage]="contact.avatarUrl ? 'url(' + contact.avatarUrl + ')' : null"
+              >
+              @if (!contact.avatarUrl) {
+                {{ contact.initials }}
+              }
+            </span>
+          </div>
+
+          <div class="contact-copy">
+            <div class="contact-title-row">
+              <div class="contact-title-wrap">
+                <h3>{{ contact.name }}</h3>
+                @if (contact.headline) {
+                  <p class="contact-headline">{{ contact.headline }}</p>
+                } @else {
+                  <p class="contact-headline contact-headline-muted">Quick reach card</p>
+                }
+              </div>
+              <div class="contact-menu-anchor">
+                <button
+                  type="button"
+                  class="experience-action-btn contact-profile-trigger"
+                  aria-label="View profile"
+                  (click)="viewContactProfile(contact, $event)"
+                  >
+                  <mat-icon>visibility</mat-icon>
+                </button>
+                <app-menu-trigger
+                  class="contact-action-menu-trigger"
+                  [menuId]="contactActionMenuId(contact)"
+                  kind="select"
+                  [title]="contact.name"
+                  [trigger]="contactActionMenuTrigger(contact)"
+                  [items]="contactActionMenuItems(contact)"
+                  [panelAlign]="'auto'"
+                  [mobileBreakpointPx]="900"
+                ></app-menu-trigger>
+              </div>
+            </div>
+
+            <p class="contact-city">
+              <mat-icon>location_on</mat-icon>
+              <span>{{ contact.city || 'City not set yet' }}</span>
+            </p>
+
+            @if (contact.methods.length > 0) {
+              <div class="contact-method-chips">
+                @for (method of visibleMethodChips(contact); track method.id) {
+                  <button type="button" class="contact-method-chip" [ngClass]="methodToneClass(method.type)" (click)="runMethod(method, $event)">
+                    <mat-icon>{{ method.icon }}</mat-icon>
+                    <span>{{ method.displayValue || method.label }}</span>
+                  </button>
+                }
+                @if (hiddenMethodCount(contact) > 0) {
+                  <span class="contact-method-chip contact-method-chip-more">
+                    +{{ hiddenMethodCount(contact) }}
+                  </span>
+                }
+              </div>
+            } @else {
+              <p class="contact-empty-methods">No availability methods yet. Use Edit to add phone, Facebook, email, and more.</p>
+            }
+          </div>
+        </article>
+      </ng-template>
+    </div>
+  </app-popup>
+
+  @if (editingContact(); as contactForm) {
+    <app-popup [model]="contactFormPopupModel(contactForm)" [zIndex]="contactFormPopupZIndex()">
+      <div class="contact-form-popup contacts-form-content">
         <div class="experience-form-panel contact-form-panel">
           <section class="contact-form-summary">
             <div>
@@ -241,6 +178,6 @@
           }
       </div>
     </div>
-  </section>
+  </app-popup>
   }
 }

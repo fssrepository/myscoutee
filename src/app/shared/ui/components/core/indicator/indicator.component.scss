@@ -1,0 +1,343 @@
+:host {
+  display: block;
+  min-width: 0;
+  pointer-events: none;
+}
+
+:host(.app-indicator-host--kind-bar.app-indicator-host--placement-edge) {
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: -1px;
+}
+
+:host(.app-indicator-host--kind-bar.app-indicator-host--placement-inline) {
+  position: relative;
+  width: 100%;
+}
+
+:host(.app-indicator-host--kind-pill-bar) {
+  display: block;
+  width: 100%;
+}
+
+:host(.app-indicator-host--kind-load-ring) {
+  display: inline-flex;
+  width: 58px;
+  height: 58px;
+  align-items: center;
+  justify-content: center;
+}
+
+:host(.app-indicator-host--kind-action-ring) {
+  position: absolute;
+  inset: 0;
+  z-index: 2;
+}
+
+:host(.app-indicator-host--kind-spinner-ring) {
+  display: inline-flex;
+  width: 46px;
+  height: 46px;
+  align-items: center;
+  justify-content: center;
+}
+
+:host(.app-indicator-host--kind-spinner-ring.app-indicator-host--size-sm) {
+  width: 34px;
+  height: 34px;
+}
+
+.app-indicator {
+  display: block;
+}
+
+.app-indicator--bar {
+  position: relative;
+  width: 100%;
+  height: 2px;
+  overflow: hidden;
+  background: rgba(46, 114, 184, 0.12);
+}
+
+:host(.app-indicator-host--placement-inline) .app-indicator--bar {
+  border-radius: 999px;
+}
+
+.app-indicator__bar-fill,
+.app-indicator__bar-loading {
+  position: absolute;
+  inset: 0;
+}
+
+.app-indicator__bar-fill {
+  background: linear-gradient(90deg, rgba(67, 96, 205, 0.98) 0%, rgba(52, 88, 206, 0.98) 100%);
+  transform-origin: left center;
+  transform: scaleX(0);
+  transition: transform 120ms ease-out, opacity 100ms ease-out;
+}
+
+.app-indicator__bar-loading {
+  background: linear-gradient(270deg, rgba(235, 147, 33, 0.98) 0%, rgba(247, 190, 52, 0.98) 100%);
+  opacity: 0;
+  transform-origin: right center;
+  transform: scaleX(0);
+  transition: transform 140ms linear, opacity 90ms ease-out;
+}
+
+.app-indicator--bar.is-state-loading .app-indicator__bar-fill,
+.app-indicator--bar.is-state-loading-overdue .app-indicator__bar-fill,
+.app-indicator--bar.is-state-inactive .app-indicator__bar-fill {
+  opacity: 0;
+}
+
+.app-indicator--bar.is-state-loading .app-indicator__bar-loading,
+.app-indicator--bar.is-state-loading-overdue .app-indicator__bar-loading,
+.app-indicator--bar.is-state-inactive .app-indicator__bar-loading {
+  opacity: 1;
+}
+
+.app-indicator--bar.is-state-loading-overdue .app-indicator__bar-loading {
+  transform: scaleX(1) !important;
+  background: linear-gradient(270deg, rgba(213, 54, 68, 0.98) 0%, rgba(196, 29, 42, 0.98) 100%);
+}
+
+.app-indicator--bar.is-state-inactive .app-indicator__bar-loading {
+  transform: scaleX(1) !important;
+  background: linear-gradient(180deg, rgba(165, 173, 184, 0.92) 0%, rgba(145, 154, 167, 0.96) 100%);
+}
+
+:host(.app-indicator-host--tone-chat) .app-indicator--bar {
+  background: rgba(64, 110, 180, 0.12);
+}
+
+:host(.app-indicator-host--tone-chat) .app-indicator__bar-fill {
+  background: linear-gradient(90deg, rgba(70, 121, 201, 0.98) 0%, rgba(52, 94, 173, 0.98) 100%);
+}
+
+:host(.app-indicator-host--tone-chat) .app-indicator__bar-loading {
+  background: linear-gradient(270deg, rgba(243, 166, 54, 0.98) 0%, rgba(233, 133, 37, 0.98) 100%);
+}
+
+.app-indicator--pill-bar {
+  --app-indicator-pill-fill: linear-gradient(90deg, #57ba7c 0%, #3f8fe1 52%, #7d6be8 100%);
+  --app-indicator-pill-glow: rgba(73, 132, 213, 0.18);
+  --app-indicator-pill-track-stripe-strong: rgba(97, 126, 178, 0.12);
+  --app-indicator-pill-track-stripe-soft: rgba(97, 126, 178, 0.04);
+  position: relative;
+  width: 100%;
+  height: 0.9rem;
+  overflow: hidden;
+  border-radius: 999px;
+  border: 1px solid rgba(58, 91, 144, 0.18);
+  background: rgba(227, 237, 249, 0.78);
+  box-shadow: inset 0 1px 2px rgba(31, 52, 86, 0.08);
+}
+
+.app-indicator__pill-bar-track,
+.app-indicator__pill-bar-segments,
+.app-indicator__pill-bar-fill {
+  position: absolute;
+  inset: 0;
+  height: 100%;
+}
+
+.app-indicator__pill-bar-track {
+  z-index: 0;
+  background:
+    linear-gradient(90deg, rgba(255, 255, 255, 0.28), rgba(255, 255, 255, 0)),
+    repeating-linear-gradient(
+      -55deg,
+      var(--app-indicator-pill-track-stripe-strong) 0,
+      var(--app-indicator-pill-track-stripe-strong) 12px,
+      var(--app-indicator-pill-track-stripe-soft) 12px,
+      var(--app-indicator-pill-track-stripe-soft) 24px
+    );
+  background-size: auto, 24px 24px;
+  animation: app-indicator-pill-track-shift 1.4s linear infinite;
+}
+
+.app-indicator__pill-bar-segments {
+  top: 0.12rem;
+  bottom: 0.12rem;
+  height: auto;
+  z-index: 1;
+  border-radius: 999px;
+  opacity: 0.48;
+  pointer-events: none;
+  background:
+    repeating-linear-gradient(
+      90deg,
+      transparent 0,
+      transparent calc(12.5% - 1px),
+      rgba(25, 44, 74, 0.14) calc(12.5% - 1px),
+      rgba(25, 44, 74, 0.14) 12.5%
+    ),
+    linear-gradient(
+      90deg,
+      rgba(85, 194, 136, 0.18) 0%,
+      rgba(85, 194, 136, 0.18) 12.5%,
+      rgba(76, 196, 214, 0.18) 12.5%,
+      rgba(76, 196, 214, 0.18) 25%,
+      rgba(63, 178, 232, 0.18) 25%,
+      rgba(63, 178, 232, 0.18) 37.5%,
+      rgba(87, 163, 255, 0.16) 37.5%,
+      rgba(87, 163, 255, 0.16) 50%,
+      rgba(240, 191, 86, 0.18) 50%,
+      rgba(240, 191, 86, 0.18) 62.5%,
+      rgba(255, 169, 95, 0.24) 62.5%,
+      rgba(255, 169, 95, 0.24) 75%,
+      rgba(126, 113, 244, 0.24) 75%,
+      rgba(126, 113, 244, 0.24) 87.5%,
+      rgba(99, 123, 160, 0.2) 87.5%,
+      rgba(99, 123, 160, 0.2) 100%
+    );
+}
+
+.app-indicator__pill-bar-fill {
+  display: block;
+  width: 100%;
+  z-index: 2;
+  border-radius: inherit;
+  background: var(--app-indicator-pill-fill);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.28),
+    0 0 14px var(--app-indicator-pill-glow);
+  transition: transform 0.28s ease;
+  transform: scaleX(0);
+  transform-origin: left center;
+  will-change: transform;
+}
+
+.app-indicator--load-ring,
+.app-indicator__load-ring-svg {
+  width: 100%;
+  height: 100%;
+}
+
+.app-indicator__load-ring-svg {
+  display: block;
+  filter: drop-shadow(0 8px 18px rgba(29, 81, 139, 0.16));
+}
+
+.app-indicator__load-ring-track,
+.app-indicator__load-ring-progress {
+  fill: none;
+  stroke-width: 5;
+}
+
+.app-indicator__load-ring-track {
+  stroke: rgba(42, 81, 129, 0.16);
+}
+
+.app-indicator__load-ring-progress {
+  stroke: #2f75bc;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+  transform: rotate(-90deg);
+  transform-origin: 50% 50%;
+  transition: stroke-dashoffset 120ms linear;
+}
+
+.app-indicator--load-ring.is-state-success .app-indicator__load-ring-progress {
+  stroke-dashoffset: 0;
+}
+
+.app-indicator--spinner-ring,
+.app-indicator__spinner-ring-svg {
+  width: 100%;
+  height: 100%;
+}
+
+.app-indicator__spinner-ring-svg {
+  display: block;
+  filter: drop-shadow(0 8px 18px rgba(31, 61, 96, 0.18));
+  animation: app-indicator-spinner-ring-spin 1.05s linear infinite;
+}
+
+.app-indicator__spinner-ring-track,
+.app-indicator__spinner-ring-progress {
+  fill: none;
+  stroke-width: 4;
+}
+
+.app-indicator__spinner-ring-track {
+  stroke: rgba(47, 86, 139, 0.16);
+}
+
+.app-indicator__spinner-ring-progress {
+  stroke: #2f75c2;
+  stroke-linecap: round;
+  stroke-dasharray: 70 38;
+}
+
+.app-indicator--action-ring,
+.app-indicator__action-ring-svg {
+  width: 100%;
+  height: 100%;
+}
+
+.app-indicator__action-ring-svg {
+  display: block;
+  overflow: visible;
+  filter: drop-shadow(0 4px 12px rgba(22, 94, 51, 0.12));
+}
+
+:host(.app-indicator-host--shape-button) .app-indicator__action-ring-svg {
+  filter: drop-shadow(0 8px 20px rgba(68, 18, 18, 0.16));
+}
+
+.app-indicator__action-ring-track,
+.app-indicator__action-ring-progress {
+  fill: none;
+  stroke-width: 3;
+}
+
+:host(.app-indicator-host--shape-button) .app-indicator__action-ring-track,
+:host(.app-indicator-host--shape-button) .app-indicator__action-ring-progress {
+  stroke-width: 4;
+}
+
+.app-indicator__action-ring-track {
+  stroke: rgba(133, 100, 42, 0.18);
+}
+
+.app-indicator__action-ring-progress {
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+.app-indicator__action-ring-progress--circle {
+  transform: rotate(-90deg);
+  transform-origin: 50% 50%;
+}
+
+.app-indicator__action-ring-progress.is-loading {
+  animation: app-indicator-action-progress var(--app-indicator-duration) linear forwards;
+}
+
+@keyframes app-indicator-action-progress {
+  from {
+    stroke-dashoffset: 100;
+  }
+
+  to {
+    stroke-dashoffset: 0;
+  }
+}
+
+@keyframes app-indicator-pill-track-shift {
+  from {
+    transform: translateX(0);
+  }
+
+  to {
+    transform: translateX(24px);
+  }
+}
+
+@keyframes app-indicator-spinner-ring-spin {
+  to {
+    transform: rotate(360deg);
+  }
+}

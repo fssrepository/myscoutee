@@ -2,6 +2,7 @@ import { EVENTS_TABLE_NAME } from '../../source/entity/event.entity';
 import type { ActivityEventRecordCollection } from '../../source/entity/event.entity';
 import { USERS_TABLE_NAME } from '../../source/entity/user.entity';
 import { Injectable, inject } from '@angular/core';
+import { environment } from '../../../../../../environments/environment';
 
 import { APP_STATIC_DATA } from '../../../../app-static-data';
 import { AppUtils } from '../../../../app-utils';
@@ -11,15 +12,19 @@ import {
 } from '../../../base/builders/activity-members.builder';
 import { LocalMemoryDb } from '../../../common/app.db';
 import type { UserDto } from '../../../contracts/user.interface';
+import type { UserRecord } from '../../source/entity/user.entity';
 import { ACTIVITY_MEMBERS_TABLE_NAME, type ActivityMemberRecord, type ActivityMembersRecordCollection } from '../../source/entity/activity.entity';
 import { ASSETS_TABLE_NAME, type AssetRecord } from '../../source/entity/asset.entity';
+import { LocalAssetsMapper } from '../../source/mappers/asset.mapper';
 import type { ActivityEventRecord } from '../../../contracts/activity.interface';
+import { UserProfileState } from '../../../common/user-profile-state';
 
-import { SeedEventBuilder, SeedEventsBuilder, SeedScheduleBuilder, SeedUserBuilder } from '../builders';
+import { SeedEventBuilder, SeedEventsBuilder } from '../builders';
+import { SEED_SCHEDULE_REFERENCE_DATE } from '../seed-constants';
 import type { ActivityMemberOwnerRef } from '../../../contracts/activity.interface';
 import type * as ActivityContracts from '../../../contracts/activity.interface';
 
-import type * as AppDTOs from '../../../base/dto';
+import type * as AppDTOs from '../../../contracts';
 import type * as AppConstants from '../../../common/constants';
 interface ExplicitSeedMemberUserIds {
   accepted: string[];
@@ -39,8 +44,8 @@ export class SeedActivityMembersRepository {
 
   seedDefaults(
     ownerUserIds?: readonly string[],
-    assetsByUserId?: ReadonlyMap<string, readonly AppDTOs.AssetCardDTO[]>,
-    seedUsers: readonly UserDto[] = []
+    assetsByUserId?: ReadonlyMap<string, readonly AppDTOs.AssetDTO[]>,
+    seedUsers: readonly UserRecord[] = []
   ): void {
     const state = this.memoryDb.read();
     const users = this.resolveSeedUsers(seedUsers);
@@ -48,7 +53,6 @@ export class SeedActivityMembersRepository {
       (ownerUserIds ?? users.map(user => user.id))
         .map(userId => `${userId ?? ''}`.trim())
         .filter(userId => userId.length > 0)
-        .filter(userId => !SeedUserBuilder.isEmptyOnboardingProfileUserId(userId))
     ));
     const eventsTable = state[EVENTS_TABLE_NAME];
     const currentTable = this.normalizeCollection(state[ACTIVITY_MEMBERS_TABLE_NAME]);
@@ -121,14 +125,13 @@ export class SeedActivityMembersRepository {
     ].join(':');
   }
 
-  private resolveSeedUsers(seedUsers: readonly UserDto[]): UserDto[] {
+  private resolveSeedUsers(seedUsers: readonly UserRecord[]): UserDto[] {
     const source = seedUsers.length > 0
       ? seedUsers
       : this.memoryDb.read()[USERS_TABLE_NAME].ids
         .map(id => this.memoryDb.read()[USERS_TABLE_NAME].byId[id])
         .filter((user): user is UserDto => Boolean(user));
     return source
-      .filter(user => !SeedUserBuilder.isEmptyOnboardingProfileUserId(user.id))
       .map(user => ({ ...user, images: [...(user.images ?? [])] }));
   }
 
@@ -405,7 +408,11 @@ export class SeedActivityMembersRepository {
       const owner: ActivityMemberOwnerRef = { ownerType: 'group', ownerId: group.ownerId };
       for (const userId of group.userIds) {
         const user = this.resolveDemoUser(userId, [...usersById.values()], usersById);
-        const metAtIso = SeedScheduleBuilder.rebaseDateTime('2026-03-22T18:00:00.000Z')
+        const metAtIso = AppUtils.rebaseDateTime(
+          '2026-03-22T18:00:00.000Z',
+          SEED_SCHEDULE_REFERENCE_DATE,
+          environment.bootstrapOffsetInDays
+        )
           ?? '2026-03-22T18:00:00.000Z';
         records.push(this.toRecord(owner, {
           id: `home-fic-seed:${group.ownerId}:${user.id}`.toLowerCase().replace(/[^a-z0-9:-]+/g, '-'),
@@ -434,7 +441,7 @@ export class SeedActivityMembersRepository {
 
   private buildSeededAssetOwnerRecordsForUser(
     ownerUserId: string,
-    assets: readonly AppDTOs.AssetCardDTO[],
+    assets: readonly AppDTOs.AssetDTO[],
     users: readonly UserDto[],
     usersById: ReadonlyMap<string, UserDto>
   ): ActivityMemberRecord[] {
@@ -446,11 +453,15 @@ export class SeedActivityMembersRepository {
 
   private buildSeededEntriesForAsset(
     ownerUserId: string,
-    asset: AppDTOs.AssetCardDTO,
+    asset: AppDTOs.AssetDTO,
     users: readonly UserDto[],
     usersById: ReadonlyMap<string, UserDto>
   ): ActivityContracts.ActivityMemberEntry[] {
-    const seedBaseDate = SeedScheduleBuilder.shiftDate(new Date('2026-02-24T12:00:00.000Z'));
+    const seedBaseDate = AppUtils.shiftDate(
+      new Date('2026-02-24T12:00:00.000Z'),
+      SEED_SCHEDULE_REFERENCE_DATE,
+      environment.bootstrapOffsetInDays
+    );
     const owner = this.resolveDemoUser(ownerUserId, users, usersById, asset.ownerName?.trim() || 'Asset owner', '', asset.city);
     const ownerEntry: ActivityContracts.ActivityMemberEntry = {
       id: `${asset.id}:owner`,
@@ -512,10 +523,10 @@ export class SeedActivityMembersRepository {
 
   private buildFallbackAssetRequests(
     ownerUserId: string,
-    asset: AppDTOs.AssetCardDTO,
+    asset: AppDTOs.AssetDTO,
     users: readonly UserDto[]
   ): AppDTOs.AssetMemberRequestDTO[] {
-    const requestUsers = SeedUserBuilder.friendUsersForActiveUser(users, ownerUserId, 2);
+    const requestUsers = UserProfileState.friendUsersForActiveUser(users, ownerUserId, 2);
     return requestUsers.map((user, index) => ({
       id: `${asset.id}:request:${index + 1}`,
       userId: user.id,
@@ -724,13 +735,13 @@ export class SeedActivityMembersRepository {
     };
   }
 
-  private readOwnedAssetsByUser(ownerUserId: string): AppDTOs.AssetCardDTO[] {
+  private readOwnedAssetsByUser(ownerUserId: string): AppDTOs.AssetDTO[] {
     const table = this.memoryDb.read()[ASSETS_TABLE_NAME];
     return (table.idsByOwnerUserId[ownerUserId] ?? [])
       .map(id => table.byId[id])
       .filter((record): record is AssetRecord => Boolean(record))
       .filter(record => !this.isSuppressedAssetStatus(record.status))
-      .map(record => ({ ...record, requests: [...(record.requests ?? [])] }));
+      .map(record => LocalAssetsMapper.toAssetDto(record));
   }
 
   private normalizeCollection(value: unknown): ActivityMembersRecordCollection {

@@ -1,8 +1,7 @@
-import type * as AppTypes from '../../../base/models';
 import type { UserDto } from '../../../contracts/user.interface';
 import { PricingBuilder } from '../../../base/builders/pricing.builder';
 
-import type * as AppDTOs from '../../../base/dto';
+import type * as AppDTOs from '../../../contracts';
 import type * as AppConstants from '../../../common/constants';
 export class SeedAssetBuilder {
   static defaultAssetImage(type: AppConstants.AssetType, seed = type.toLowerCase()): string {
@@ -35,7 +34,7 @@ export class SeedAssetBuilder {
     return 'Item condition, handoff location, and timing are confirmed.';
   }
 
-  static buildSampleAssetCards(users: readonly UserDto[]): AppDTOs.AssetCardDTO[] {
+  static buildSampleAssetCards(users: readonly UserDto[]): AppDTOs.AssetDetailDTO[] {
     void users;
     const sampleSpecs: Array<{
       id: string;

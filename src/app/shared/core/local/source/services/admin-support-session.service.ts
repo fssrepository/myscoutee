@@ -1,12 +1,13 @@
-import type { ChatThreadRecord } from '../entity/chat.entity';
+import type { ChatRecord, ChatThreadRecord } from '../entity/chat.entity';
 import { Injectable, inject } from '@angular/core';
 
 import type { UserDto } from '../../../contracts/user.interface';
-import type { ChatMessageMutation, ChatPopupMessage, ChatRecord } from '../../../contracts/chat.interface';
+import type { ChatMessageMutation, ChatPopupMessage } from '../../../contracts/chat.interface';
 
 import { LocalChatsRepository } from '../repositories/chats.repository';
 import { LocalShareTokensRepository } from '../repositories/share-tokens.repository';
 import { LocalUsersRepository } from '../repositories/users.repository';
+import { LocalUsersMapper } from '../mappers';
 
 @Injectable({
   providedIn: 'root'
@@ -17,11 +18,14 @@ export class LocalAdminSupportSessionService {
   private readonly shareTokensRepository = inject(LocalShareTokensRepository);
 
   findUser(userId: string): UserDto | null {
-    return this.usersRepository.queryUserById(userId);
+    const user = this.usersRepository.queryUserById(userId);
+    return user ? LocalUsersMapper.toDto(user) : null;
   }
 
   async saveUser(user: UserDto): Promise<UserDto> {
-    const saved = this.usersRepository.upsertUser(user);
+    const saved = LocalUsersMapper.toDto(
+      this.usersRepository.upsertUser(LocalUsersMapper.toRecord(user))
+    );
     await this.usersRepository.flushToIndexedDb();
     return saved;
   }

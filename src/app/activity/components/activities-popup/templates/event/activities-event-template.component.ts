@@ -1,15 +1,32 @@
 import type * as ActivityContracts from '../../../../../shared/core/contracts/activity.interface';
 
-import { ChangeDetectionStrategy, Component, EventEmitter, Input, OnChanges, Output, SimpleChanges } from '@angular/core';
+import {
+  ChangeDetectionStrategy,
+  Component,
+  EventEmitter,
+  Input,
+  OnChanges,
+  Output,
+  SimpleChanges,
+  inject
+} from '@angular/core';
 
-import { AppUtils } from '../../../../../shared/app-utils';
-import type { ChatRecord } from '../../../../../shared/core/contracts/chat.interface';
-import { ActivityEventDetailDTO } from '../../../../../shared/core/contracts/activity.interface';
+import {
+  AppUtils
+} from '../../../../../shared/app-utils';
+import type { ChatDTO } from '../../../../../shared/core/contracts/chat.interface';
+import {
+  ActivityEventDetailDTO
+} from '../../../../../shared/core/contracts/activity.interface';
 import type * as ContractTypes from '../../../../../shared/core/contracts';
-import { ActivityMembersBuilder } from '../../../../../shared/core';
+import {
+  ActivityMembersBuilder
+} from '../../../../../shared/core';
 import {
   InfoCardComponent,
   type InfoCardData,
+  type AppMenuPalette,
+  type CardMenuAction,
   type CardMenuActionEvent,
   type CardMenuRequestEvent
 } from '../../../../../shared/ui';
@@ -19,6 +36,7 @@ import {
 } from '../../../../../shared/ui/converters';
 
 import type * as AppConstants from '../../../../../shared/core/common/constants';
+import { PopupStore } from '../../../../../shared/ui/context/stores/popup.store';
 
 type ActivityEventCardType = 'events' | 'hosting' | 'invitations';
 type ActivityEventCardData = InfoCardData & {
@@ -50,9 +68,11 @@ type ActivityEventCardData = InfoCardData & {
   standalone: true,
   imports: [InfoCardComponent],
   templateUrl: './activities-event-template.component.html',
+  styleUrl: './activities-event-template.component.scss',
   changeDetection: ChangeDetectionStrategy.OnPush
 })
 export class ActivitiesEventTemplateComponent implements OnChanges {
+  private readonly popupStore = inject(PopupStore);
   @Input() row: ActivityEventCardData | null = null;
   @Input() groupLabel: string | null = null;
   @Input() cardRevision = 0;
@@ -128,7 +148,7 @@ export class ActivitiesEventsController {
   constructor(private readonly host: ActivitiesEventsHost) {}
 
   private get activeUser() { return this.host.activeUser as any; }
-  private get activitiesContext() { return this.host.activitiesContext; }
+  private get activitiesStore() { return this.host.activitiesStore; }
   private get activitiesEventScope() { return this.host.activitiesEventScope as ContractTypes.ActivitiesEventScope; }
   private set activitiesEventScope(value: ContractTypes.ActivitiesEventScope) { this.host.activitiesEventScope = value; }
   private get activitiesRates() { return this.host.activitiesRates; }
@@ -137,18 +157,16 @@ export class ActivitiesEventsController {
   private get activityMembersService() { return this.host.activityMembersService; }
   private get chatsService() { return this.host.chatsService; }
   private get cdr() { return this.host.cdr; }
-  private get confirmationDialogService() { return this.host.confirmationDialogService; }
-  private get eventCheckoutDraftService() { return this.host.eventCheckoutDraftService; }
-  private get eventCheckoutDialogService() { return this.host.eventCheckoutDialogService; }
-  private get eventEditorService() { return this.host.eventEditorService; }
-  private get eventSubeventsListPopupService() { return this.host.eventSubeventsListPopupService; }
+  private get dialogStore() { return this.host.dialogStore; }
+  private get eventCheckoutDraftStore() { return this.host.eventCheckoutDraftStore; }
+  private get eventCheckoutDialogStore() { return this.host.eventCheckoutDialogStore; }
   private get eventsService() { return this.host.eventsService; }
   private get hostingPublicationFilter() { return this.host.hostingPublicationFilter as ContractTypes.HostingPublicationFilter; }
   private get isMobileView() { return this.host.isMobileView as boolean; }
   private get pendingActivityMemberDelete() { return this.host.pendingActivityMemberDelete as ActivityContracts.ActivityMemberEntry | null; }
   private set pendingActivityMemberDelete(value: ActivityContracts.ActivityMemberEntry | null) { this.host.pendingActivityMemberDelete = value; }
-  private get popupCtx() { return this.host.popupCtx; }
-  private get navigatorService() { return this.host.navigatorService; }
+  private get popupStore() { return this.host.popupStore as PopupStore; }
+  private get navigatorStore() { return this.host.navigatorStore; }
   private get shareTokensService() { return this.host.shareTokensService; }
   private get activeHostingIds() { return this.host.activeHostingIds as ReadonlySet<string>; }
   private set activeHostingIds(value: ReadonlySet<string>) { this.host.activeHostingIds = value; }
@@ -163,9 +181,20 @@ export class ActivitiesEventsController {
   private applyActivityEventSave(sync: ActivityContracts.ActivityEventDTO): void {
     this.host.applyActivityEventSave(sync);
   }
+  private emitActivityEventSave(payload: ActivityEventDetailDTO): Promise<void> {
+    return this.eventsService.saveActivityEvent(payload)
+      .then((displaySync: ActivityContracts.ActivityEventDTO | null) => {
+        if (displaySync) {
+          this.activitiesStore.emitActivityEventSaveResult(displaySync);
+        }
+      })
+      .catch(() => {
+        // Demo persistence is best-effort; UI state stays optimistic.
+      });
+  }
   private chatCountValue(value: unknown): number { return this.host.chatCountValue(value); }
   private cloneSyncedSubEventForms(items: ContractTypes.SubEventDTO[]): ContractTypes.SubEventDTO[] { return this.host.cloneSyncedSubEventForms(items); }
-  private openActivityChat(chat: ChatRecord): void { this.host.openActivityChat(chat); }
+  private openActivityChat(chat: ChatDTO): void { this.host.openActivityChat(chat); }
   private persistSelectedActivityMembers(): void { this.host.persistSelectedActivityMembers(); }
   private refreshSectionBadges(): void { this.host.refreshSectionBadges(); }
   private removeVisibleActivityRow(row: ActivityEventCardData): void { this.host.removeVisibleActivityRow(row); }
@@ -245,13 +274,13 @@ export class ActivitiesEventsController {
   public onActivityEventCardMenuAction(row: ActivityEventCardData, action: CardMenuActionEvent<InfoCardData>): void {
     switch (action.actionId as ActivityInfoCardActionId) {
       case 'publish':
-        this.runActivityItemPublishAction(row);
+        this.runActivityItemPublishAction(row, undefined, action.action);
         break;
       case 'unpublish':
-        this.runActivityItemUnpublishAction(row);
+        this.runActivityItemUnpublishAction(row, undefined, action.action);
         break;
       case 'takeOver':
-        this.runActivityItemTakeOverAction(row);
+        this.runActivityItemTakeOverAction(row, undefined, action.action);
         break;
       case 'editEvent':
       case 'manageEvent':
@@ -278,10 +307,10 @@ export class ActivitiesEventsController {
       case 'leaveEvent':
       case 'deleteEvent':
       case 'rejectInvitation':
-        this.runActivityItemSecondaryAction(row);
+        this.runActivityItemSecondaryAction(row, undefined, action.action);
         break;
       case 'restore':
-        this.runActivityItemRestoreAction(row);
+        this.runActivityItemRestoreAction(row, undefined, action.action);
         break;
     }
   }
@@ -293,7 +322,7 @@ export class ActivitiesEventsController {
 
   public runActivityItemViewAction(row: ActivityEventCardData, event?: Event): void {
     event?.stopPropagation();
-    this.eventSubeventsListPopupService.open({
+    this.popupStore.openEventSubeventsListPopup({
       eventId: row.id,
       target: row.isAdmin === true || row.type === 'hosting' ? 'hosting' : 'events',
       title: row.title,
@@ -352,7 +381,7 @@ export class ActivitiesEventsController {
       if (!token) {
         return;
       }
-      this.confirmationDialogService.open({
+      this.dialogStore.open({
         title: 'Share event',
         message: token,
         confirmLabel: 'Copy link',
@@ -380,7 +409,7 @@ export class ActivitiesEventsController {
       return;
     }
     const entityId = this.resolveActivityShareEntityId(row, card);
-    this.navigatorService.openReportUserPopup({
+    this.navigatorStore.openReportUserPopup({
       targetUserId: target.userId,
       targetName: target.name,
       eventId: entityId || row.id,
@@ -421,7 +450,7 @@ export class ActivitiesEventsController {
     };
   }
 
-  private resolveActivityServiceChat(row: ActivityEventCardData, card: InfoCardData | null = null): ChatRecord | null {
+  private resolveActivityServiceChat(row: ActivityEventCardData, card: InfoCardData | null = null): ChatDTO | null {
     const activeUserId = this.activeUser.id.trim();
     if (!activeUserId) {
       return null;
@@ -508,14 +537,14 @@ export class ActivitiesEventsController {
 
   private async openInvitationApprovalFlow(row: ActivityEventCardData): Promise<void> {
     const activeUserId = this.activeUser.id.trim();
-    const record = activeUserId ? await this.eventsService.queryKnownItemById(activeUserId, row.id) : null;
+    const record = activeUserId ? await this.eventsService.queryKnownRecordById(activeUserId, row.id) : null;
     const relatedSource = this.activityDisplaySourceForRow(row);
     const requiresAdminApproval = await this.resolveInvitationRequiresAdminApproval(
       row.id,
       record?.creatorUserId ?? relatedSource.creatorUserId
     );
     if (record && this.shouldUseCheckoutFlow(record)) {
-      this.eventCheckoutDialogService.open({
+      this.eventCheckoutDialogStore.open({
         mode: 'invitation',
         userId: activeUserId,
         record,
@@ -529,7 +558,7 @@ export class ActivitiesEventsController {
       });
       return;
     }
-    this.confirmationDialogService.open({
+    this.dialogStore.open({
       title: 'Accept invitation?',
       message: row.title,
       cancelLabel: 'Cancel',
@@ -541,71 +570,76 @@ export class ActivitiesEventsController {
     });
   }
 
-  public runActivityItemRestoreAction(row: ActivityEventCardData, event?: Event): void {
+  public runActivityItemRestoreAction(row: ActivityEventCardData, event?: Event, action?: CardMenuAction | null): void {
     event?.stopPropagation();
-    this.confirmationDialogService.open({
+    this.dialogStore.open({
       title: 'Restore event?',
       message: row.title,
       cancelLabel: 'Cancel',
       confirmLabel: 'Restore',
       busyConfirmLabel: 'Restoring...',
       confirmTone: 'accent',
+      confirmPalette: this.confirmationPaletteForCardAction(action),
       failureMessage: 'Unable to restore event.',
       onConfirm: () => this.restoreActivityRow(row)
     });
   }
 
-  public runActivityItemSecondaryAction(row: ActivityEventCardData, event?: Event): void {
+  public runActivityItemSecondaryAction(row: ActivityEventCardData, event?: Event, action?: CardMenuAction | null): void {
     event?.stopPropagation();
-    this.confirmationDialogService.open({
+    this.dialogStore.open({
       title: this.activitySecondaryConfirmTitle(row),
       message: row.title,
       cancelLabel: 'Cancel',
       confirmLabel: this.activitySecondaryConfirmActionLabel(row),
       busyConfirmLabel: this.activitySecondaryConfirmBusyLabel(row),
       confirmTone: 'danger',
+      confirmPalette: this.confirmationPaletteForCardAction(action),
       failureMessage: this.activitySecondaryConfirmFailureMessage(row),
       onConfirm: () => this.confirmActivitySecondaryAction(row)
     });
   }
 
-  public runActivityItemPublishAction(row: ActivityEventCardData, event?: Event): void {
+  public runActivityItemPublishAction(row: ActivityEventCardData, event?: Event, action?: CardMenuAction | null): void {
     event?.stopPropagation();
-    this.confirmationDialogService.open({
+    this.dialogStore.open({
       title: 'Publish event?',
       message: row.title,
       cancelLabel: 'Cancel',
       confirmLabel: 'Publish',
       busyConfirmLabel: 'Publishing...',
       confirmTone: 'accent',
+      confirmPalette: this.confirmationPaletteForCardAction(action),
       failureMessage: 'Unable to publish event.',
       onConfirm: () => this.confirmActivityPublish(row)
     });
   }
 
-  public runActivityItemUnpublishAction(row: ActivityEventCardData, event?: Event): void {
+  public runActivityItemUnpublishAction(row: ActivityEventCardData, event?: Event, action?: CardMenuAction | null): void {
     event?.stopPropagation();
-    this.confirmationDialogService.open({
+    this.dialogStore.open({
       title: 'Unpublish event?',
       message: row.title,
       cancelLabel: 'Cancel',
       confirmLabel: 'Unpublish',
       busyConfirmLabel: 'Unpublishing...',
       confirmTone: 'neutral',
+      confirmPalette: this.confirmationPaletteForCardAction(action),
       failureMessage: 'Unable to unpublish event.',
       onConfirm: () => this.confirmActivityUnpublish(row)
     });
   }
 
-  public runActivityItemTakeOverAction(row: ActivityEventCardData, event?: Event): void {
+  public runActivityItemTakeOverAction(row: ActivityEventCardData, event?: Event, action?: CardMenuAction | null): void {
     event?.stopPropagation();
-    this.confirmationDialogService.open({
+    this.dialogStore.open({
       title: 'Take over event?',
       message: row.title,
       cancelLabel: 'Cancel',
       confirmLabel: 'Take Over',
       busyConfirmLabel: 'Taking over...',
       confirmTone: 'accent',
+      confirmPalette: this.confirmationPaletteForCardAction(action),
       failureMessage: 'Unable to take over event.',
       onConfirm: () => this.confirmActivityTakeOver(row)
     });
@@ -636,6 +670,20 @@ export class ActivitiesEventsController {
 
   private restoredActivityStatus(row: ActivityEventCardData): string {
     return 'A';
+  }
+
+  private confirmationPaletteForCardAction(action: CardMenuAction | null | undefined): AppMenuPalette | null {
+    switch (action?.tone) {
+      case 'accent':
+        return 'brown';
+      case 'warning':
+      case 'review':
+        return 'orange';
+      case 'destructive':
+        return 'danger';
+      default:
+        return null;
+    }
   }
 
   private async confirmActivityPublish(row: ActivityEventCardData): Promise<void> {
@@ -753,14 +801,14 @@ export class ActivitiesEventsController {
     }
     const eventDetailDTO = await this.buildLeftActivityEventDetailDTO(row);
     if (!eventDetailDTO) {
-      this.eventCheckoutDraftService.clear(activeUserId, row.id);
+      this.eventCheckoutDraftStore.clear(activeUserId, row.id);
       this.removeVisibleActivityRow(row);
       this.refreshSectionBadges();
       this.cdr.markForCheck();
       return;
     }
 
-    this.eventCheckoutDraftService.clear(activeUserId, row.id);
+    this.eventCheckoutDraftStore.clear(activeUserId, row.id);
     const currentMembers = await this.activityMembersService.queryMembersByOwnerId(row.id);
     const nextMembers = currentMembers.filter((member: ActivityContracts.ActivityMemberEntry) => member.userId !== activeUserId);
     const capacityTotal = Math.max(
@@ -768,7 +816,7 @@ export class ActivitiesEventsController {
       Math.max(0, Math.trunc(Number(eventDetailDTO.capacityTotal) || 0))
     );
     const persistence = Promise.all([
-      this.activitiesContext.emitActivityEventSave(eventDetailDTO),
+      this.emitActivityEventSave(eventDetailDTO),
       currentMembers.length > nextMembers.length
         ? this.activityMembersService.replaceMembersByOwnerId(row.id, nextMembers, capacityTotal)
         : Promise.resolve()
@@ -787,6 +835,7 @@ export class ActivitiesEventsController {
 
   private shouldUseCheckoutFlow(record: {
     upcomingSlots?: ContractTypes.EventSlotOccurrenceDTO[] | null;
+    policiesEnabled?: boolean | null;
     policies?: ContractTypes.EventPolicyDTO[] | null;
     subEvents?: ContractTypes.SubEventDTO[] | null;
     pricing?: ContractTypes.PricingConfig | null;
@@ -794,7 +843,7 @@ export class ActivitiesEventsController {
     if ((record?.upcomingSlots?.length ?? 0) > 0) {
       return true;
     }
-    if ((record?.policies?.length ?? 0) > 0) {
+    if (record?.policiesEnabled === true && (record?.policies?.length ?? 0) > 0) {
       return true;
     }
     if ((record?.subEvents ?? []).some((item: ContractTypes.SubEventDTO) => item.optional)) {
@@ -832,7 +881,7 @@ export class ActivitiesEventsController {
     }
 
     const relatedSource = this.activityDisplaySourceForRow(row);
-    const record = await this.eventsService.queryKnownItemById(activeUserId, row.id);
+    const record = await this.eventsService.queryKnownRecordById(activeUserId, row.id);
     const currentMembers = await this.activityMembersService.queryMembersByOwnerId(row.id);
     const activeInviteEntry = currentMembers.find((member: ActivityContracts.ActivityMemberEntry) =>
       member.userId === activeUserId
@@ -918,6 +967,7 @@ export class ActivitiesEventsController {
         frequency: record?.frequency ?? relatedSource.frequency,
         ticketing: record?.ticketing ?? relatedSource.ticketing,
         pricing: record?.pricing ?? relatedSource.pricing,
+        policiesEnabled: record?.policiesEnabled ?? relatedSource.policiesEnabled ?? false,
         policies: Array.isArray(record?.policies)
           ? record.policies.map((item: ContractTypes.EventPolicyDTO) => ({ ...item }))
           : (Array.isArray(relatedSource.policies) ? relatedSource.policies.map((item: ContractTypes.EventPolicyDTO) => ({ ...item })) : undefined),
@@ -1044,7 +1094,7 @@ export class ActivitiesEventsController {
     }
 
     const relatedSource = this.activityDisplaySourceForRow(row);
-    const record = await this.eventsService.queryKnownItemById(activeUserId, row.id);
+    const record = await this.eventsService.queryKnownRecordById(activeUserId, row.id);
     const source = relatedSource;
     const creatorUserId = record?.creatorUserId ?? source.creatorUserId ?? row.ownerId ?? row.ownerUserId ?? '';
     if (!creatorUserId.trim()) {
@@ -1127,6 +1177,7 @@ export class ActivitiesEventsController {
       frequency: record?.frequency ?? source.frequency,
       ticketing: record?.ticketing ?? source.ticketing,
       pricing: record?.pricing ?? source.pricing,
+      policiesEnabled: record?.policiesEnabled ?? source.policiesEnabled ?? false,
       policies: Array.isArray(record?.policies)
         ? record.policies.map((item: ContractTypes.EventPolicyDTO) => ({ ...item }))
         : (Array.isArray(source.policies) ? source.policies.map((item: ContractTypes.EventPolicyDTO) => ({ ...item })) : undefined),
@@ -1223,7 +1274,7 @@ export class ActivitiesEventsController {
 
   public openActivityMembers(row: ActivityEventCardData, event?: Event): void {
     event?.stopPropagation();
-    this.popupCtx.requestActivitiesNavigation({
+    this.popupStore.requestActivitiesNavigation({
       type: 'members',
       ownerId: row.id,
       ownerType: 'event',
@@ -1361,7 +1412,7 @@ export class ActivitiesEventsController {
   }
 
   public openActivityRowInEventModule(row: ActivityEventCardData, readOnly: boolean): void {
-    this.popupCtx.requestActivitiesNavigation({
+    this.popupStore.requestActivitiesNavigation({
       type: 'eventEditor',
       eventId: row.id,
       target: row.isAdmin === true || row.type === 'hosting' ? 'hosting' : 'events',

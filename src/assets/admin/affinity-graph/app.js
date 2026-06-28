@@ -5,12 +5,16 @@ const GRAPH_DATA = normalizeGraphData(await loadInitialGraphData());
 const GRAPH_MEMBER_LABEL = GRAPH_DATA.source === 'http' ? 'Mongo members' : 'demo members';
 const GRAPH_LAZY_ENABLED = GRAPH_DATA.source === 'http' || (window.parent && window.parent !== window);
 const GRAPH_LAYOUT_VERSION = GRAPH_DATA.layoutVersion || null;
-const COMPONENT_CORE_NODE_BUDGET = 20;
-const COMPONENT_CORE_EDGE_BUDGET = 56;
+const COMPONENT_CORE_NODE_BUDGET = 16;
+const COMPONENT_CORE_NODE_MIN_BUDGET = 7;
+const COMPONENT_CORE_NODE_AREA_PX = 86000;
+const COMPONENT_CORE_EDGE_BUDGET = 42;
 const REFIT_ANIMATION_MS = 620;
 const SEMANTIC_RENDER_NODE_LIMIT = 1200;
 const SEMANTIC_RENDER_EDGE_LIMIT = 5000;
-const FOREST_OVERVIEW_BASE_BUDGET = 16;
+const FOREST_OVERVIEW_BASE_BUDGET = 12;
+const FOREST_OVERVIEW_MIN_BUDGET = 4;
+const FOREST_OVERVIEW_AREA_PX = 132000;
 const FOREST_OVERVIEW_LOAD_BUFFER = 4;
 const GRAPH_LABEL_KEYS = {
   graphView: 'admin.affinity.graph.view',
@@ -463,7 +467,7 @@ function updateForestBadges(options = {}) {
     const center = forestPositions.get(component.id) ?? new THREE.Vector3();
     component.forestPosition = center.clone();
 
-    const memberCount = component.memberCountEstimate ?? component.nodes.length;
+    const memberCount = componentMemberCount(component);
     const scale = forestBadgeScale(memberCount);
     component.forestScale = scale;
 
@@ -497,9 +501,11 @@ function updateForestBadges(options = {}) {
 function forestOverviewPositions() {
   const sortedComponents = sortedForestComponents();
   const positions = new Map();
-  const mainCount = sortedComponents[0]?.memberCountEstimate ?? sortedComponents[0]?.nodes.length ?? 1;
-  const mainScale = forestBadgeScale(mainCount);
-  const step = Math.max(13, mainScale * 0.54 + 8);
+  const scales = sortedComponents.map(component =>
+    forestBadgeScale(componentMemberCount(component))
+  );
+  const mainScale = scales[0] ?? forestBadgeScale(1);
+  const step = Math.max(20, mainScale * 0.78 + 10);
   const goldenAngle = Math.PI * (3 - Math.sqrt(5));
 
   sortedComponents.forEach((component, index) => {
@@ -509,7 +515,7 @@ function forestOverviewPositions() {
     }
 
     const angle = index * goldenAngle;
-    const radius = Math.sqrt(index) * step;
+    const radius = Math.sqrt(index) * step + (scales[index] ?? mainScale) * 0.32;
     positions.set(component.id, new THREE.Vector3(
       Math.cos(angle) * radius,
       0,
@@ -562,6 +568,7 @@ function rebuildEdges() {
   }
   rebuildSelectedEdges();
   applyNodeState();
+  updateStatBadges();
 
   publishPreviewState();
 }
@@ -1039,9 +1046,7 @@ function applyNodeState() {
     const visualScore = clamp((Math.sqrt(visualWeight) * 0.68) + (visualDegree * 0.32), 0, 1);
     const nodeDepth = visibleNodeDepths.get(node.id) ?? 0;
     const depthFade = selectedNode ? Math.max(0.68, 1 - nodeDepth * 0.1) : 1;
-    const baseScale = selectedNode || activeComponentId !== null
-      ? 0.82 + visualScore * 0.58
-      : 1;
+    const baseScale = nodeGraphScale(visualScore);
     node.badge.visible = !showForestOverview && !graphRevealPending && isVisible;
     node.badge.material.opacity = isSelected ? 1 : clamp((0.62 + visualScore * 0.36) * depthFade, 0.56, 0.98);
     node.badge.scale.setScalar(node.badgeScale * (isSelected ? 1.46 : baseScale * depthFade));
@@ -1054,6 +1059,16 @@ function applyNodeState() {
   } else {
     selectionSprite.visible = false;
   }
+}
+
+function nodeGraphScale(visualScore) {
+  if (selectedNode) {
+    return 0.82 + visualScore * 0.58;
+  }
+  if (activeComponentId !== null || fullGraphExpanded) {
+    return 0.58 + visualScore * 0.34;
+  }
+  return 0.82;
 }
 
 function updateInteractionMode(showForestOverview = isForestOverview()) {
@@ -1072,10 +1087,103 @@ function updateGraphTotals(data = {}) {
 }
 
 function updateStatBadges() {
-  memberCountEl.textContent = String(Math.max(graphTotals.members, nodes.length));
-  linkCountEl.textContent = String(Math.max(graphTotals.links, edges.length));
-  componentCountEl.textContent = String(Math.max(graphTotals.components, components.length));
-  isolatedCountEl.textContent = String(Math.max(graphTotals.isolated, nodes.filter(node => node.degree === 0).length));
+  const stats = currentViewStats();
+  setMetricValue(memberCountEl, stats.members.visible, stats.members.total, 'members');
+  setMetricValue(linkCountEl, stats.links.visible, stats.links.total, 'links');
+  setMetricValue(componentCountEl, stats.components.visible, stats.components.total, 'components');
+  setMetricValue(isolatedCountEl, stats.isolated.visible, stats.isolated.total, 'isolated');
+}
+
+function currentViewStats() {
+  if (isForestOverview()) {
+    const visibleComponents = visibleForestComponents();
+    const visibleMembers = visibleComponents.reduce((total, component) => total + componentMemberCount(component), 0);
+    const visibleLinks = visibleComponents.reduce((total, component) => total + componentEdgeCount(component), 0);
+    const visibleIsolated = visibleComponents.filter(component => componentMemberCount(component) <= 1).length;
+    return {
+      members: { visible: visibleMembers, total: graphTotals.members },
+      links: { visible: visibleLinks, total: graphTotals.links },
+      components: { visible: visibleComponents.length, total: forestTotalCount() },
+      isolated: { visible: visibleIsolated, total: graphTotals.isolated }
+    };
+  }
+
+  if (selectedNode) {
+    const weightRange = currentWeightRange();
+    const thresholdEdges = edges.filter(edge => isEdgeInWeightRange(edge, weightRange));
+    const selectedNodeDepths = selectedNodeDepthMap(thresholdEdges);
+    const selectedNodeIds = new Set(selectedNodeDepths.keys());
+    const selectedEdges = thresholdEdges.filter(edge => selectedNodeIds.has(edge.source) && selectedNodeIds.has(edge.target));
+    const visibleIsolated = [...visibleNodeIds]
+      .map(nodeId => nodeById.get(nodeId))
+      .filter(node => node && (node.visibleDegree ?? 0) <= 0)
+      .length;
+    return {
+      members: { visible: visibleNodeIds.size, total: selectedNodeIds.size },
+      links: { visible: visibleEdgeCount, total: selectedEdges.length },
+      components: { visible: 1, total: 1 },
+      isolated: { visible: visibleIsolated, total: visibleIsolated }
+    };
+  }
+
+  if (activeComponentId !== null) {
+    const component = componentForId(activeComponentId);
+    const totalMembers = componentMemberCount(component);
+    const totalLinks = componentEdgeCount(component);
+    const totalIsolated = (component?.nodes ?? []).filter(node => node.degree === 0).length;
+    const visibleIsolated = [...visibleNodeIds]
+      .map(nodeId => nodeById.get(nodeId))
+      .filter(node => String(node?.componentId) === String(activeComponentId) && node.degree === 0)
+      .length;
+    return {
+      members: { visible: visibleNodeIds.size, total: totalMembers },
+      links: { visible: visibleEdgeCount, total: totalLinks },
+      components: { visible: component ? 1 : 0, total: component ? 1 : 0 },
+      isolated: { visible: visibleIsolated, total: totalIsolated }
+    };
+  }
+
+  if (fullGraphExpanded) {
+    const visibleComponents = new Set(
+      [...visibleNodeIds]
+        .map(nodeId => nodeById.get(nodeId)?.componentId)
+        .filter(componentId => componentId !== null && componentId !== undefined)
+        .map(String)
+    );
+    const visibleIsolated = [...visibleNodeIds]
+      .map(nodeId => nodeById.get(nodeId))
+      .filter(node => node?.degree === 0)
+      .length;
+    return {
+      members: { visible: visibleNodeIds.size, total: graphTotals.members },
+      links: { visible: visibleEdgeCount, total: graphTotals.links },
+      components: { visible: visibleComponents.size, total: graphTotals.components },
+      isolated: { visible: visibleIsolated, total: graphTotals.isolated }
+    };
+  }
+
+  return {
+    members: { visible: graphTotals.members, total: graphTotals.members },
+    links: { visible: graphTotals.links, total: graphTotals.links },
+    components: { visible: graphTotals.components, total: graphTotals.components },
+    isolated: { visible: graphTotals.isolated, total: graphTotals.isolated }
+  };
+}
+
+function setMetricValue(element, visible, total, label) {
+  if (!element) {
+    return;
+  }
+  const normalizedTotal = Math.max(0, Math.trunc(Number(total) || 0));
+  const normalizedVisible = Math.max(0, Math.min(normalizedTotal || Infinity, Math.trunc(Number(visible) || 0)));
+  const pruned = normalizedTotal > 0 && normalizedVisible < normalizedTotal;
+  element.textContent = pruned
+    ? `${normalizedVisible}/${normalizedTotal}`
+    : String(normalizedTotal || normalizedVisible);
+  element.classList.toggle('is-pruned', pruned);
+  element.title = pruned
+    ? `${normalizedVisible} visible of ${normalizedTotal} ${label}`
+    : `${normalizedTotal || normalizedVisible} ${label}`;
 }
 
 function publishPreviewState() {
@@ -1259,24 +1367,30 @@ function renderMemberPanel(node) {
       return;
     }
     if (isForestOverview()) {
-      const visibleForests = visibleForestComponentIds.size || visibleForestComponents().length;
+      const forestComponents = visibleForestComponents();
+      const visibleForests = visibleForestComponentIds.size || forestComponents.length;
       const totalForests = forestTotalCount();
+      const visibleMembers = forestComponents.reduce((total, component) => total + componentMemberCount(component), 0);
+      const totalMembers = Math.max(graphTotals.members, visibleMembers);
       const forestLabel = visibleForests >= totalForests
         ? `${totalForests} clusters`
         : `${visibleForests} of ${totalForests} clusters`;
+      const memberLabel = visibleMembers >= totalMembers
+        ? `${totalMembers} ${GRAPH_MEMBER_LABEL}`
+        : `${visibleMembers} of ${totalMembers} ${GRAPH_MEMBER_LABEL}`;
       setPanelCompactSummary(
-        `compact-overview:${visibleForests}:${totalForests}:${graphTotals.members}:${graphTotals.isolated}`,
+        `compact-overview:${visibleForests}:${totalForests}:${visibleMembers}:${totalMembers}:${graphTotals.isolated}`,
         {
           avatarHtml: graphCompactAvatarHtml('AG'),
           eyebrow: 'Affinity graph view',
           viewLabel: 'Forest overview',
           title: 'Forest overview',
-          detail: `${forestLabel} · ${graphTotals.members} ${GRAPH_MEMBER_LABEL}`
+          detail: `${forestLabel} · ${memberLabel}`
         }
       );
       setMemberPanelHtml(
-        `overview:${visibleForests}:${totalForests}:${graphTotals.members}:${graphTotals.isolated}`,
-        `<p class="empty-state">${forestLabel} · ${graphTotals.members} ${GRAPH_MEMBER_LABEL} · ${graphTotals.isolated} isolated.</p>`
+        `overview:${visibleForests}:${totalForests}:${visibleMembers}:${totalMembers}:${graphTotals.isolated}`,
+        `<p class="empty-state">${forestLabel} · ${memberLabel} · ${graphTotals.isolated} isolated.</p>`
       );
       return;
     }
@@ -1455,8 +1569,8 @@ function renderForestPanel(component) {
     return;
   }
 
-  const memberCount = component.memberCountEstimate ?? component.nodes.length;
-  const edgeCount = component.edgeCountEstimate ?? component.edges.length;
+  const memberCount = componentMemberCount(component);
+  const edgeCount = componentEdgeCount(component);
   const visibleMembers = visibleNodeIds.size;
   const collapsedMembers = Math.max(0, memberCount - visibleMembers);
   const representative = forestRepresentativeForComponent(component);
@@ -2160,7 +2274,7 @@ function forestTotalCount() {
 
 function forestSemanticMaxZoomLevel(totalCount = forestTotalCount()) {
   const total = Math.max(1, Number(totalCount) || 1);
-  return Math.max(0, Math.ceil(Math.log2(total / FOREST_OVERVIEW_BASE_BUDGET)));
+  return Math.max(0, Math.ceil(Math.log2(total / forestOverviewBaseBudget())));
 }
 
 function forestSemanticLevelForProgress(progress, totalCount = forestTotalCount()) {
@@ -2173,7 +2287,7 @@ function forestSemanticBudget(level = semanticZoomLevel) {
   const total = forestTotalCount();
   const maxLevel = forestSemanticMaxZoomLevel(total);
   const clampedLevel = Math.trunc(clamp(level, 0, maxLevel));
-  const requestedBudget = FOREST_OVERVIEW_BASE_BUDGET * (2 ** clampedLevel);
+  const requestedBudget = forestOverviewBaseBudget() * (2 ** clampedLevel);
   return Math.min(loadedTotal, total, Math.max(1, Math.round(requestedBudget)));
 }
 
@@ -2181,7 +2295,14 @@ function forestLoadLimitForLevel(level = semanticZoomLevel) {
   const total = forestTotalCount();
   const maxLevel = forestSemanticMaxZoomLevel(total);
   const clampedLevel = Math.trunc(clamp(level, 0, maxLevel));
-  return Math.min(total, Math.max(1, Math.round(FOREST_OVERVIEW_BASE_BUDGET * (2 ** clampedLevel) + FOREST_OVERVIEW_LOAD_BUFFER)));
+  return Math.min(total, Math.max(1, Math.round(forestOverviewBaseBudget() * (2 ** clampedLevel) + FOREST_OVERVIEW_LOAD_BUFFER)));
+}
+
+function forestOverviewBaseBudget() {
+  const viewport = graphViewportMetrics();
+  const usableArea = viewport.safeWidth * viewport.fullHeight;
+  const byArea = Math.floor(usableArea / FOREST_OVERVIEW_AREA_PX);
+  return Math.trunc(clamp(byArea, FOREST_OVERVIEW_MIN_BUDGET, FOREST_OVERVIEW_BASE_BUDGET));
 }
 
 function forestIdsForSemanticLevel(level = semanticZoomLevel) {
@@ -2211,9 +2332,9 @@ function syncForestBadgeVisibility() {
   }
 }
 
-function semanticMaxZoomLevel(totalCount) {
+function semanticMaxZoomLevel(totalCount, baseBudget = semanticBaseNodeBudget()) {
   const total = Math.max(1, Number(totalCount) || 1);
-  return Math.max(0, Math.ceil(Math.log2(total / COMPONENT_CORE_NODE_BUDGET)));
+  return Math.max(0, Math.ceil(Math.log2(total / Math.max(1, baseBudget))));
 }
 
 function semanticLevelForProgress(progress, totalCount) {
@@ -2223,14 +2344,22 @@ function semanticLevelForProgress(progress, totalCount) {
 
 function semanticNodeBudget(totalCount) {
   const total = Math.max(1, Math.trunc(Number(totalCount) || 1));
-  const maxLevel = semanticMaxZoomLevel(total);
+  const baseBudget = semanticBaseNodeBudget();
+  const maxLevel = semanticMaxZoomLevel(total, baseBudget);
   const level = Math.trunc(clamp(semanticZoomLevel, 0, maxLevel));
-  const budget = COMPONENT_CORE_NODE_BUDGET * (2 ** level);
+  const budget = baseBudget * (2 ** level);
   return Math.min(total, SEMANTIC_RENDER_NODE_LIMIT, Math.max(1, Math.round(budget)));
 }
 
+function semanticBaseNodeBudget() {
+  const viewport = graphViewportMetrics();
+  const usableArea = viewport.safeWidth * viewport.fullHeight;
+  const byArea = Math.floor(usableArea / COMPONENT_CORE_NODE_AREA_PX);
+  return Math.trunc(clamp(byArea, COMPONENT_CORE_NODE_MIN_BUDGET, COMPONENT_CORE_NODE_BUDGET));
+}
+
 function semanticEdgeBudget(nodeBudget) {
-  return Math.min(SEMANTIC_RENDER_EDGE_LIMIT, Math.max(COMPONENT_CORE_EDGE_BUDGET, Math.round(nodeBudget * 3.2)));
+  return Math.min(SEMANTIC_RENDER_EDGE_LIMIT, Math.max(COMPONENT_CORE_EDGE_BUDGET, Math.round(nodeBudget * 2.8)));
 }
 
 function currentViewRadius() {
@@ -2291,14 +2420,47 @@ function radiusForPoints(points) {
 }
 
 function resize() {
+  const previousVisibleNodeIds = new Set(visibleNodeIds);
+  const previousVisibleForestIds = new Set(visibleForestComponentIds);
+  const previousSceneSignature = visibleSceneSignature();
   const width = window.innerWidth;
   const height = window.innerHeight;
   renderer.setSize(width, height, false);
   camera.aspect = width / Math.max(1, height);
   camera.updateProjectionMatrix();
   refreshGraphVisualSizing();
+  reflowSemanticVisibilityForViewport(previousVisibleNodeIds, previousVisibleForestIds, previousSceneSignature);
   clampViewportPanOffset();
   applyViewportOffset();
+}
+
+function reflowSemanticVisibilityForViewport(previousVisibleNodeIds, previousVisibleForestIds, previousSceneSignature) {
+  if (isForestOverview()) {
+    updateVisibleForestComponents();
+    const changed = !sameSet(previousVisibleForestIds, visibleForestComponentIds);
+    if (changed) {
+      syncForestBadgeVisibility();
+      renderMemberPanel(null);
+      scheduleLazyForestLoad(120);
+    }
+    updateStatBadges();
+    return;
+  }
+
+  rebuildEdges();
+  const nextSceneSignature = visibleSceneSignature();
+  if (nextSceneSignature !== previousSceneSignature) {
+    renderMemberPanel(selectedNode);
+    startVisibleRefit({
+      fitCamera: false,
+      previousVisibleNodeIds,
+      durationMs: Math.min(360, REFIT_ANIMATION_MS)
+    });
+    return;
+  }
+
+  applyNodeState();
+  updateStatBadges();
 }
 
 function fitCamera(animateTarget) {
@@ -2313,14 +2475,24 @@ function fitCameraToVisible(animateTarget) {
   const points = nodes
     .filter(node => visibleNodeIds.has(node.id))
     .map(node => node.position);
-  fitCameraToPoints(points.length ? points : nodes.map(node => node.position), animateTarget);
+  fitCameraToPoints(
+    points.length ? points : nodes.map(node => node.position),
+    animateTarget,
+    undefined,
+    selectedNodeFitCameraOptions()
+  );
 }
 
 function fitCameraToVisibleTargets(animateTarget, durationMs) {
   const points = nodes
     .filter(node => visibleNodeIds.has(node.id))
     .map(node => node.targetPosition ?? node.position);
-  fitCameraToPoints(points.length ? points : nodes.map(node => node.position), animateTarget, durationMs);
+  fitCameraToPoints(
+    points.length ? points : nodes.map(node => node.position),
+    animateTarget,
+    durationMs,
+    selectedNodeFitCameraOptions()
+  );
 }
 
 function fitCameraToForestOverview(animateTarget) {
@@ -2332,11 +2504,43 @@ function fitCameraToForestOverview(animateTarget) {
   });
 }
 
-function fitCameraToPoints(points, animateTarget, durationMs) {
+function fitCameraToPoints(points, animateTarget, durationMs, options = {}) {
   const box = new THREE.Box3().setFromPoints(points);
   const center = box.getCenter(new THREE.Vector3());
   const sphere = box.getBoundingSphere(new THREE.Sphere());
-  fitCameraToCenterRadius(center, sphere.radius, animateTarget, durationMs);
+  fitCameraToCenterRadius(center, sphere.radius, animateTarget, durationMs, options);
+}
+
+function selectedNodeFitCameraOptions() {
+  if (!selectedNode) {
+    return {};
+  }
+  return {
+    fitPadding: selectedNodeFitPadding(),
+    minFitDistance: selectedNodeMinimumFitDistance()
+  };
+}
+
+function selectedNodeFitPadding() {
+  const width = Math.max(1, window.innerWidth || 1);
+  if (width >= 1280) {
+    return 0.82;
+  }
+  if (width >= 760) {
+    return 0.78;
+  }
+  return 0.74;
+}
+
+function selectedNodeMinimumFitDistance() {
+  const width = Math.max(1, window.innerWidth || 1);
+  if (width >= 1280) {
+    return 15;
+  }
+  if (width >= 760) {
+    return 13;
+  }
+  return 10;
 }
 
 function fitCameraToCenterRadius(center, radius, animateTarget, durationMs, options = {}) {
@@ -2348,7 +2552,8 @@ function fitCameraToCenterRadius(center, radius, animateTarget, durationMs, opti
   const fitPadding = options.fitPadding ?? 1.12;
   const verticalDistance = (radius * fitPadding) / Math.max(0.001, tanHalfFov);
   const horizontalDistance = (radius * fitPadding) / Math.max(0.001, tanHalfFov * aspect * safeWidthRatio);
-  const distance = Math.max(graphMinimumFitDistance(), verticalDistance, horizontalDistance);
+  const minimumFitDistance = options.minFitDistance ?? graphMinimumFitDistance();
+  const distance = Math.max(minimumFitDistance, verticalDistance, horizontalDistance);
   const target = center.clone();
   const defaultDirection = new THREE.Vector3(0.24, 0.34, 1);
   const fittedOrbitDistance = distance * defaultDirection.length();
@@ -3645,8 +3850,28 @@ function representativeFromForest(forest) {
 
 function sortedForestComponents() {
   return [...components].sort((a, b) =>
-    (b.memberCountEstimate ?? b.nodes.length) - (a.memberCountEstimate ?? a.nodes.length)
+    componentMemberCount(b) - componentMemberCount(a)
     || String(a.id).localeCompare(String(b.id))
+  );
+}
+
+function componentMemberCount(component) {
+  if (!component) {
+    return 0;
+  }
+  return Math.max(
+    component.nodes?.length ?? 0,
+    positiveInteger(component.memberCountEstimate, component.nodes?.length ?? 0)
+  );
+}
+
+function componentEdgeCount(component) {
+  if (!component) {
+    return 0;
+  }
+  return Math.max(
+    component.edges?.length ?? 0,
+    positiveInteger(component.edgeCountEstimate, component.edges?.length ?? 0)
   );
 }
 
@@ -3718,7 +3943,7 @@ function colorForGender(gender) {
 
 function updateNodeBadgeSizing(node) {
   const visualScale = graphVisualScaleMultiplier();
-  node.radius = node.degree === 0 ? 2.45 : 2.1 + Math.min(0.85, Math.sqrt(node.degree) * 0.1);
+  node.radius = node.degree === 0 ? 2.05 : 1.72 + Math.min(0.72, Math.sqrt(node.degree) * 0.075);
   node.badgeScale = node.radius * 2 * visualScale;
 }
 
@@ -3732,22 +3957,22 @@ function refreshGraphVisualSizing() {
 
 function forestBadgeScale(memberCount) {
   const count = Math.max(1, Math.trunc(Number(memberCount) || 1));
-  const baseScale = count === 1 ? 8.8 : 11.2 + Math.sqrt(count) * 2.05;
+  const baseScale = count === 1 ? 7.4 : 8.9 + Math.sqrt(count) * 1.62;
   return baseScale * graphVisualScaleMultiplier();
 }
 
 function graphVisualScaleMultiplier() {
   const width = Math.max(1, window.innerWidth || 1);
   if (width >= 1280) {
-    return 1.32;
+    return 1.08;
   }
   if (width >= 900) {
-    return 1.22;
+    return 1.03;
   }
   if (width >= 700) {
-    return 1.14;
+    return 0.98;
   }
-  return 1.08;
+  return 0.94;
 }
 
 function graphMinimumFitDistance() {
@@ -3953,7 +4178,7 @@ function nodeBadgeCount(node) {
 
 function createForestTexture(component, fillColor) {
   const representative = forestRepresentativeForComponent(component) ?? { initials: '?' };
-  const memberCount = component.memberCountEstimate ?? component.nodes.length;
+  const memberCount = componentMemberCount(component);
   const glowColor = fillColor.clone().lerp(new THREE.Color(0xffffff), 0.2).getStyle();
   const canvasEl = document.createElement('canvas');
   canvasEl.width = 256;
@@ -3993,7 +4218,7 @@ function createForestTexture(component, fillColor) {
 
 function forestCounterRange() {
   const counts = components
-    .map(component => Math.max(1, Math.trunc(Number(component.memberCountEstimate ?? component.nodes?.length ?? 1))))
+    .map(component => Math.max(1, componentMemberCount(component)))
     .filter(Number.isFinite);
   return {
     min: counts.length ? Math.min(...counts) : 1,

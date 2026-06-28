@@ -1,19 +1,50 @@
-import { ChangeDetectorRef, Component, EventEmitter, HostListener, Input, NgZone, Output, effect, inject } from '@angular/core';
-import { CommonModule } from '@angular/common';
-import { MatButtonModule } from '@angular/material/button';
-import { MatRippleModule } from '@angular/material/core';
+import {
+  ChangeDetectorRef,
+  Component,
+  EventEmitter,
+  HostListener,
+  Input,
+  NgZone,
+  Output,
+  effect,
+  inject
+} from '@angular/core';
+import {
+  CommonModule
+} from '@angular/common';
+import {
+  MatButtonModule
+} from '@angular/material/button';
+import {
+  MatRippleModule
+} from '@angular/material/core';
 
-import { AppPopupContext, type DemoBootstrapSelectorState } from '../../context/app-popup.context';
-import { ProgressIndicatorComponent } from '../progress-indicator';
+import {
+  type DemoBootstrapSelectorState
+} from '../../context/stores/popup.store';
+import {
+  IndicatorComponent
+} from '../core/indicator';
 import {
   AppMenuComponent,
   type AppMenuItem,
   type AppMenuItemSelectEvent
-} from '../menu';
-import { I18nPipe } from '../../pipes';
-import { UsersService, type BootstrapProcessStage, type UserSelectorListItemDto } from '../../../core';
-import { UserProfileStateBuilder } from '../../../core/base/builders';
-import { SeedDemoBootstrapService } from '../../../core/local/seed';
+} from '../core/menu';
+import {
+  I18nPipe
+} from '../../pipes';
+import {
+  UsersService,
+  type BootstrapProcessStage,
+  type UserSelectorListItemDto
+} from '../../../core';
+import {
+  UserProfileState
+} from '../../../core/common/user-profile-state';
+import {
+  SeedDemoBootstrapService
+} from '../../../core/local/seed/services/demo-bootstrap.service';
+import { PopupStore } from '../../context/stores/popup.store';
 
 type DemoSelectorHeaderMenuItemId = 'new-profile';
 
@@ -29,14 +60,14 @@ interface DemoSelectorHeaderMenuContext {
     MatButtonModule,
     MatRippleModule,
     AppMenuComponent,
-    ProgressIndicatorComponent,
+    IndicatorComponent,
     I18nPipe
   ],
   templateUrl: './demo-bootstrap-selector.component.html',
   styleUrl: './demo-bootstrap-selector.component.scss'
 })
 export class DemoBootstrapSelectorComponent {
-  private readonly popupCtx = inject(AppPopupContext);
+  private readonly popupStore = inject(PopupStore);
   private readonly usersService = inject(UsersService);
   private readonly seedBootstrap = inject(SeedDemoBootstrapService);
   private readonly changeDetectorRef = inject(ChangeDetectorRef);
@@ -65,7 +96,7 @@ export class DemoBootstrapSelectorComponent {
 
   constructor() {
     effect(() => {
-      const request = this.popupCtx.demoBootstrapSelector();
+      const request = this.popupStore.demoBootstrapSelector();
       if (!request) {
         this.resetContextState();
         return;
@@ -155,7 +186,7 @@ export class DemoBootstrapSelectorComponent {
   }
 
   protected isNewProfile(user: UserSelectorListItemDto): boolean {
-    return UserProfileStateBuilder.isEmptyOnboardingProfile(user);
+    return UserProfileState.isEmptyOnboardingProfile(user);
   }
 
   protected newProfileMenuItems(): readonly AppMenuItem<DemoSelectorHeaderMenuItemId, DemoSelectorHeaderMenuContext>[] {

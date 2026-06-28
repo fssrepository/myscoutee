@@ -1,4 +1,4 @@
-import { Injectable, computed, signal } from '@angular/core';
+import { Injectable, Injector, computed, inject, signal } from '@angular/core';
 
 import { environment } from '../../../../../environments/environment';
 import { APP_CACHE_KEYS, APP_STORAGE_KEYS } from '../../common/storage-scope';
@@ -29,6 +29,7 @@ export class PwaService {
   private static readonly APP_VERSION_URL = 'app-version.json';
   private static readonly CACHE_PREFIX = APP_CACHE_KEYS.runtimePrefix;
 
+  private readonly injector = inject(Injector);
   private readonly installPromptRef = signal<BeforeInstallPromptEvent | null>(null);
   private readonly installBusyRef = signal(false);
   private readonly installDismissedRef = signal(this.loadInstallDismissed());
@@ -96,6 +97,14 @@ export class PwaService {
     }
   }
 
+  async requestNotificationRegistrationForActiveUser(): Promise<void> {
+    if (!this.shouldEnableNotificationRegistration()) {
+      return;
+    }
+    const { FirebaseMessagingService } = await import('./firebase-messaging.service');
+    await this.injector.get(FirebaseMessagingService).requestAndRegisterForActiveUser();
+  }
+
   dismissInstallPrompt(): void {
     this.installPromptRef.set(null);
     this.setInstallDismissed(true);
@@ -127,6 +136,24 @@ export class PwaService {
       return true;
     }
     return localStorage.getItem(PwaService.DEV_OVERRIDE_STORAGE_KEY) === 'enabled';
+  }
+
+  private shouldEnableNotificationRegistration(): boolean {
+    return environment.activitiesDataSource === 'http'
+      && environment.firebaseMessagingEnabled
+      && !this.isLoopbackBrowserHost();
+  }
+
+  private isLoopbackBrowserHost(): boolean {
+    if (typeof window === 'undefined') {
+      return false;
+    }
+    const hostname = window.location.hostname.toLowerCase();
+    return hostname === 'localhost'
+      || hostname === '127.0.0.1'
+      || hostname === '[::1]'
+      || hostname === '::1'
+      || hostname.endsWith('.localhost');
   }
 
   private async registerServiceWorker(): Promise<void> {

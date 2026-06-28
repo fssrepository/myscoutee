@@ -1,7 +1,7 @@
 import { AppUtils } from '../../app-utils';
 import type { ActivityRateDTO } from '../../core/contracts/activity.interface';
 import type { UserDto } from '../../core/contracts/user.interface';
-import type { ImageCardData, ImageCardPerson, PairCardSlot } from '../components/smart-list/card';
+import type { ImageCardData, ImageCardPerson, PairCardSlot } from '../components/core/smart-list/card';
 import type { UiListConverter } from './converter.types';
 
 export interface ActivityRateImageCardConverterOptions {

@@ -1,0 +1,186 @@
+<ng-template #assetExploreItemTemplate let-card let-groupLabel="groupLabel">
+  <app-info-card
+    [card]="itemInfoCard(card, { groupLabel })"
+    [useSharedMenu]="true"
+    (mediaEndClick)="openBorrowFromBadge(card)"
+    (menuAction)="onCardMenuAction(card, $event)"
+    (menuRequest)="openInfoCardMenu(card, $event)"
+  ></app-info-card>
+</ng-template>
+
+@if (popupViewState(); as explore) {
+  <section class="app-popup app-popup-stacked app-popup-stacked-over-subevents event-resource-popup-shell asset-explore-shell">
+    <div class="app-popup-backdrop" (click)="closeExplorePopup($event)"></div>
+    <div class="app-popup-panel popup-panel-asset-members asset-explore-shell-panel" (click)="$event.stopPropagation()">
+      <div class="popup-header popup-header-with-progress asset-explore-shell-header">
+        <div class="popup-title">
+          <h2>{{ explore.title }}</h2>
+          <p class="popup-subtitle">{{ explore.subtitle }}</p>
+        </div>
+        <div class="event-explore-header-controls asset-explore-header-controls">
+          <app-menu
+            class="event-explore-order-picker asset-explore-order-picker"
+            kind="select"
+            [trigger]="orderMenuTrigger()"
+            [items]="orderMenuItems()"
+            (itemSelect)="onMenuSelect($event)"
+          ></app-menu>
+        </div>
+        <button type="button" class="popup-close" (click)="closeExplorePopup($event)" aria-label="Close asset explore">
+          <mat-icon>close</mat-icon>
+        </button>
+      </div>
+
+      <div class="popup-body popup-body-members asset-explore-shell-body">
+        <div class="asset-explore-popup-screen">
+          <div class="asset-explore-filter-bar popup-filter-bar">
+            <app-menu
+              class="asset-explore-category-menu"
+              kind="select"
+              [trigger]="categoryMenuTrigger(explore)"
+              [items]="categoryMenuItems(explore)"
+              (itemSelect)="onMenuSelect($event)"
+            ></app-menu>
+
+            <mat-form-field appearance="fill" class="asset-explore-date-range-field experience-date-range-field asset-explore-date-range-pill" subscriptSizing="dynamic">
+              <mat-date-range-input
+                [rangePicker]="assetExploreRangePicker"
+                [comparisonStart]="explore.windowStartDate"
+                [comparisonEnd]="explore.windowEndDate"
+                [dateFilter]="dateFilter"
+              >
+                <input
+                  matStartDate
+                  [min]="explore.windowStartDate"
+                  [max]="explore.windowEndDate"
+                  [ngModel]="explore.startDate"
+                  (ngModelChange)="onDateRangeChange($event, explore.endDate)"
+                  placeholder="Start date"
+                />
+                <input
+                  matEndDate
+                  [min]="explore.windowStartDate"
+                  [max]="explore.windowEndDate"
+                  [ngModel]="explore.endDate"
+                  (ngModelChange)="onDateRangeChange(explore.startDate, $event)"
+                  placeholder="End date"
+                />
+              </mat-date-range-input>
+              <mat-datepicker-toggle matIconSuffix [for]="assetExploreRangePicker"></mat-datepicker-toggle>
+              <mat-date-range-picker #assetExploreRangePicker></mat-date-range-picker>
+            </mat-form-field>
+          </div>
+
+          <section class="asset-explore-panel">
+            <div class="asset-explore-grid">
+              @if (explore.error && explore.cards.length > 0) {
+                <section class="asset-explore-empty-state asset-explore-empty-state-error">
+                  <mat-icon>error</mat-icon>
+                  <span>{{ explore.error }}</span>
+                </section>
+              }
+              @if (explore.error && explore.cards.length === 0) {
+                <section class="asset-explore-empty-state asset-explore-empty-state-error">
+                  <mat-icon>error</mat-icon>
+                  <span>{{ explore.error }}</span>
+                </section>
+              } @else if (explore.cards.length === 0 && !explore.loading) {
+                <section class="asset-explore-empty-state">
+                  <mat-icon>travel_explore</mat-icon>
+                  <span>No visible assets match this date range and category yet.</span>
+                </section>
+              } @else {
+                <app-smart-list
+                  #assetExploreSmartList
+                  class="asset-explore-smart-list"
+                  [config]="smartListConfig"
+                  [loadPage]="smartListLoadPage"
+                  [itemTemplate]="assetExploreItemTemplate"
+                  [query]="smartListQuery"
+                  (stateChange)="onSmartListStateChange($event)"
+                ></app-smart-list>
+              }
+            </div>
+          </section>
+
+          @if (borrowDraftCount() > 0) {
+            <div class="asset-explore-basket">
+              @if (showBorrowBasket) {
+                <section class="asset-explore-basket-panel">
+                  <header class="asset-explore-basket-panel__head">
+                    <div>
+                      <strong>Basket</strong>
+                      <span>{{ borrowDraftCount() }} pending {{ borrowDraftCount() === 1 ? 'request' : 'requests' }}</span>
+                    </div>
+                    <button
+                      type="button"
+                      class="asset-explore-basket-panel__close"
+                      (click)="toggleBorrowBasket($event)"
+                      aria-label="Close basket"
+                    >
+                      <mat-icon>close</mat-icon>
+                    </button>
+                  </header>
+                  <div class="asset-explore-basket-panel__list">
+                    @for (entry of borrowDrafts(); track entry.cardId) {
+                      <article class="asset-explore-basket-item">
+                        <div class="asset-explore-basket-item__copy">
+                          <strong>{{ entry.title }}</strong>
+                          <span>{{ entry.timeframe }}</span>
+                          <span>Quantity {{ entry.quantity }} · {{ entry.availabilityLabel }}</span>
+                        </div>
+                        <div class="asset-explore-basket-item__actions">
+                          <button type="button" class="asset-explore-basket-item__btn" (click)="continueBorrowDraft(entry.cardId, $event)">
+                            Continue
+                          </button>
+                          <button
+                            type="button"
+                            class="asset-explore-basket-item__btn asset-explore-basket-item__btn--clear"
+                            (click)="clearBorrowDraft(entry.cardId, $event)"
+                          >
+                            Clear
+                          </button>
+                        </div>
+                      </article>
+                    }
+                  </div>
+                </section>
+              }
+              <button
+                type="button"
+                class="asset-explore-basket-fab"
+                [class.is-open]="showBorrowBasket"
+                (click)="toggleBorrowBasket($event)"
+                aria-label="Open basket"
+              >
+                <mat-icon>shopping_basket</mat-icon>
+                <span class="asset-explore-basket-fab__count">{{ borrowDraftCount() }}</span>
+              </button>
+            </div>
+          }
+
+          <app-event-resource-asset-view
+            [view]="assetView()"
+            (closeRequested)="closeAssetView($event)"
+            (routeViewRequested)="openAssetViewRoutePopup($event)"
+          ></app-event-resource-asset-view>
+
+          <app-event-resource-asset-explore-borrow-dialog
+            [dialog]="borrowDialogViewState()"
+            [canSubmit]="canSubmitBorrow()"
+            (closeRequested)="closeBorrowDialog($event)"
+            (backRequested)="backToBorrowDetails($event)"
+            (dateRangeChanged)="setBorrowDateRange($event.start, $event.end)"
+            (timeChanged)="setBorrowTime($event.edge, $event.value)"
+            (quantityChanged)="onBorrowQuantityChange($event)"
+            (quantityBlurred)="normalizeBorrowQuantityOnBlur($event)"
+            (policyToggled)="toggleBorrowPolicy($event)"
+            (confirmRequested)="confirmBorrow($event)"
+          ></app-event-resource-asset-explore-borrow-dialog>
+        </div>
+      </div>
+    </div>
+  </section>
+}
+
+<app-menu-outlet (itemSelect)="onMenuSelect($event)"></app-menu-outlet>

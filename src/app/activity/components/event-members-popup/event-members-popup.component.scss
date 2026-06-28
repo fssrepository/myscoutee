@@ -30,11 +30,6 @@
   max-height: calc(100dvh - 1.2rem);
 }
 
-.activity-members-popup-shell .app-popup-backdrop {
-  background: rgba(8, 16, 30, 0.44);
-  backdrop-filter: blur(2px);
-}
-
 .activity-members-popup-shell .popup-body {
   overflow: hidden;
 }

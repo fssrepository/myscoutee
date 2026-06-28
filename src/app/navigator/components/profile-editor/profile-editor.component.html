@@ -52,28 +52,30 @@
                 [model]="profileHeaderCardModel()"
                 (edit)="openImageEditor()"
               ></app-header-card>
-              <div class="profile-editor-flow-area">
-                <app-form-flow
-                  class="profile-editor-flow"
-                  [model]="profileEditorFlowModel"
-                  [(ngModel)]="profileEditorData"
-                  [saving]="isProfileSaving()"
-                  [disabled]="isProfileSaving()"
-                  (action)="onProfileEditorFlowAction($event)"
-                  (percent)="onProfileCompletionPercentChange($event)"
-                ></app-form-flow>
+              <div class="profile-editor-scroll-area">
+                <div class="profile-editor-flow-area">
+                  <app-form-flow
+                    class="profile-editor-flow"
+                    [model]="profileEditorFlowModel"
+                    [(ngModel)]="profileEditorData"
+                    [saving]="isProfileSaving()"
+                    [disabled]="isProfileSaving()"
+                    (action)="onProfileEditorFlowAction($event)"
+                    (percent)="onProfileCompletionPercentChange($event)"
+                  ></app-form-flow>
+                </div>
               </div>
             </div>
           }
           <app-menu-outlet (itemSelect)="onProfileEditorDispatchedMenuSelect($event)"></app-menu-outlet>
           @if (panel === 'image') {
             <div class="image-editor-wrap">
-              <app-editable-image-carousel
+              <app-image-carousel
                 [previewMode]="true"
                 [ngModel]="profileEditorData.profile.images"
                 (ngModelChange)="onProfileImagesChange($event)"
                 [uploadOwnerId]="user.id"
-              ></app-editable-image-carousel>
+              ></app-image-carousel>
             </div>
           }
           @if (panel === 'experience') {

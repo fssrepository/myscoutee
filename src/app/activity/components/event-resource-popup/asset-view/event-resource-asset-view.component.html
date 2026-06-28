@@ -1,0 +1,243 @@
+@if (view; as view) {
+  <section class="experience-form-overlay subevent-form-overlay subevent-group-form-overlay subevent-asset-view-overlay">
+    <div class="experience-form-overlay-backdrop" (click)="close($event)"></div>
+    <div class="experience-form-popup subevent-form-popup subevent-asset-view-popup" (click)="$event.stopPropagation()">
+      <div class="experience-form-header subevent-group-header">
+        <div class="subevent-group-header-main">
+          <h3>{{ title(view) }}</h3>
+          <p class="subevent-group-stage-subtitle">{{ view.card.title }}</p>
+        </div>
+        <div class="experience-form-header-controls">
+          <button
+            type="button"
+            class="chat-members-stack chat-members-stack-large chat-header-members event-editor-members-trigger event-editor-members-trigger-members subevent-asset-view-members-btn"
+            [disabled]="!view.canOpenMembers"
+            (click)="requestMembers(view, $event)"
+          >
+            <span class="event-editor-members-invite">
+              <mat-icon>groups</mat-icon>
+              <span>Members</span>
+            </span>
+            @if (view.pendingCount > 0) {
+              <span class="card-badge event-editor-members-pending-badge">
+                {{ view.pendingCount | counterBadge }}
+              </span>
+            }
+          </button>
+          <button type="button" class="experience-form-close-btn" (click)="close($event)" aria-label="Close asset view">
+            <mat-icon>close</mat-icon>
+          </button>
+        </div>
+      </div>
+      <section class="experience-form-panel subevent-form-panel subevent-asset-view-panel" [ngClass]="resourceTypeClass(view.card.type)">
+        <div class="subevent-asset-view-image-field">
+          <span>Image</span>
+          <div class="subevent-asset-view-media">
+            <img [src]="imageUrl(view)" [alt]="view.card.title" loading="lazy" decoding="async" />
+          </div>
+        </div>
+        <label class="subevent-asset-view-source-field">
+          <span>Source Link</span>
+          <input type="text" [ngModel]="sourceLink(view)" disabled />
+        </label>
+        <div class="experience-form-grid subevent-asset-view-grid">
+          <label>
+            <span>Type</span>
+            <div class="profile-status-select-wrap selector-like experience-type-select subevent-asset-view-selector" [ngClass]="resourceTypeClass(view.card.type)">
+              <span class="status-option-content">
+                <mat-icon [class]="resourceTypeClass(view.card.type)">{{ resourceTypeIcon(view.card.type) }}</mat-icon>
+                <span>{{ resourceTypeLabel(view.card.type) }}</span>
+              </span>
+              <mat-icon>expand_more</mat-icon>
+            </div>
+          </label>
+          <label>
+            <span>Title</span>
+            <input type="text" [ngModel]="view.card.title" disabled />
+          </label>
+          <label>
+            <span>Subtitle</span>
+            <input type="text" [ngModel]="view.card.subtitle" disabled />
+          </label>
+          <label>
+            <span>Category</span>
+            <div class="profile-status-select-wrap selector-like experience-type-select subevent-asset-view-selector" [ngClass]="categoryClass(view)">
+              <span class="status-option-content">
+                <mat-icon [class]="categoryClass(view)">{{ categoryIcon(view) }}</mat-icon>
+                <span>{{ categoryLabel(view) }}</span>
+              </span>
+              <mat-icon>expand_more</mat-icon>
+            </div>
+          </label>
+          <label>
+            <span>Total capacity</span>
+            <input type="text" [ngModel]="totalCapacity(view)" disabled />
+          </label>
+          <label>
+            <span>Quantity</span>
+            <input type="text" [ngModel]="quantity(view)" disabled />
+          </label>
+          <label>
+            <span>City</span>
+            <input type="text" [ngModel]="view.card.city" disabled />
+          </label>
+          <label class="experience-description-field">
+            <span>Details</span>
+            <textarea rows="3" [ngModel]="view.card.details" disabled></textarea>
+          </label>
+          @if (view.card.type === 'Car') {
+            <section class="experience-description-field subevent-asset-view-summary-panel subevent-asset-view-route">
+              <div class="event-policies-panel-head">
+                <div class="event-policies-panel-title-wrap">
+                  <span class="event-policies-panel-title">
+                    <mat-icon>route</mat-icon>
+                    <span>Route</span>
+                  </span>
+                  <p class="event-policies-panel-subtitle">Route for this event asset.</p>
+                </div>
+              </div>
+              <div class="subevent-asset-view-summary-body">
+                @if (view.mode === 'edit' && view.canEditRoute) {
+                  <button type="button" class="event-slots-open-btn event-slots-open-btn-inline" (click)="requestRouteSetup(view, $event)">
+                    <mat-icon>tune</mat-icon>
+                    <span>Open Route Setup</span>
+                  </button>
+                } @else {
+                  <button
+                    type="button"
+                    class="event-slots-open-btn event-slots-open-btn-inline"
+                    [disabled]="!hasRoute(view)"
+                    (click)="requestRouteView(view, $event)"
+                  >
+                    <mat-icon>route</mat-icon>
+                    <span>View Route</span>
+                  </button>
+                }
+                <div class="event-slots-summary">
+                  <section class="event-slots-summary-block">
+                    <span class="event-slots-summary-label">Summary</span>
+                    @if (hasRoute(view)) {
+                      <div class="event-slots-summary-list">
+                        <article class="event-slots-summary-item">
+                          <span class="event-slots-summary-title">{{ routeSummaryTitle(view) }}</span>
+                          <span class="event-slots-summary-meta">{{ routeSummaryMeta(view) }}</span>
+                        </article>
+                      </div>
+                    } @else {
+                      <p class="event-slots-summary-note">No route is set for this event asset.</p>
+                    }
+                  </section>
+                </div>
+              </div>
+            </section>
+          }
+          <section class="experience-description-field subevent-asset-view-summary-panel subevent-asset-view-pricing">
+            <div class="event-policies-panel-head">
+              <div class="event-policies-panel-title-wrap">
+                <span class="event-policies-panel-title">
+                  <mat-icon>monetization_on</mat-icon>
+                  <span>Asset Pricing</span>
+                </span>
+                @if (view.mode === 'edit') {
+                  <p class="event-policies-panel-subtitle">Default charge preview for using this asset.</p>
+                }
+              </div>
+            </div>
+            <div class="subevent-asset-view-summary-body">
+              <div class="subevent-asset-view-summary-card">
+                <span class="event-slots-summary-label">Current Price Review</span>
+                <div class="subevent-asset-view-price-row">
+                  <span>Base</span>
+                  <strong>{{ pricingEnabled(view) ? pricingBaseLabel(view) : 'Included' }}</strong>
+                </div>
+                <div class="subevent-asset-view-price-final">
+                  <span>Final price</span>
+                  <strong>{{ pricingEnabled(view) ? pricingBaseLabel(view) : 'Included' }}</strong>
+                </div>
+                <p>{{ pricingEnabled(view) ? pricingModeLabel(view) + ' · ' + pricingChargeLabel(view) : pricingWhyLabel(view) }}</p>
+              </div>
+              <div class="subevent-asset-view-summary-card subevent-asset-view-summary-card-muted">
+                <span class="event-slots-summary-label">Why this price?</span>
+                <p>{{ pricingWhyLabel(view) }}</p>
+              </div>
+            </div>
+          </section>
+          <section class="experience-description-field subevent-asset-view-summary-panel subevent-asset-view-policies">
+            <div class="event-policies-panel-head">
+              <div class="event-policies-panel-title-wrap">
+                <span class="event-policies-panel-title">
+                  <mat-icon>policy</mat-icon>
+                  <span>Lending Policies</span>
+                </span>
+                @if (view.mode === 'edit') {
+                  <p class="event-policies-panel-subtitle">Rules borrowers need to read and approve before borrowing this asset.</p>
+                }
+              </div>
+            </div>
+            <div class="subevent-asset-view-summary-body">
+              <button type="button" class="event-slots-open-btn event-slots-open-btn-inline" (click)="openPoliciesPopup($event)">
+                <mat-icon>gavel</mat-icon>
+                <span>View Policies</span>
+              </button>
+              @if (policies(view).length > 0) {
+                <div class="event-slots-summary">
+                  <section class="event-slots-summary-block">
+                    <span class="event-slots-summary-label">Summary</span>
+                    <div class="event-slots-summary-list">
+                      <article class="event-slots-summary-item">
+                        <span class="event-slots-summary-title">{{ policies(view).length }} {{ policies(view).length === 1 ? 'policy' : 'policies' }}</span>
+                        <span class="event-slots-summary-meta">
+                          {{ requiredPoliciesCount(view) }} required · {{ optionalPoliciesCount(view) }} optional
+                        </span>
+                      </article>
+                    </div>
+                  </section>
+                </div>
+              } @else {
+                <div class="event-slots-summary">
+                  <section class="event-slots-summary-block">
+                    <span class="event-slots-summary-label">Summary</span>
+                    <p class="event-slots-summary-note">No lending policies are configured for this asset.</p>
+                  </section>
+                </div>
+              }
+            </div>
+          </section>
+        </div>
+      </section>
+    </div>
+    @if (showPoliciesPopup) {
+      <div class="subevent-asset-view-policy-backdrop" (click)="closePoliciesPopup($event)"></div>
+      <section class="subevent-asset-view-policy-popup" role="dialog" aria-modal="true" aria-label="Lending policies">
+        <header class="subevent-asset-view-policy-popup-head">
+          <div>
+            <span class="subevent-asset-view-policy-popup-title">Lending Policies</span>
+            <span class="subevent-asset-view-policy-popup-subtitle">Policies borrowers need to review for {{ view.card.title }}.</span>
+          </div>
+          <button type="button" class="experience-form-close-btn" (click)="closePoliciesPopup($event)" aria-label="Close policies">
+            <mat-icon>close</mat-icon>
+          </button>
+        </header>
+        <div class="subevent-asset-view-policy-popup-body">
+          @if (policies(view).length > 0) {
+            <div class="subevent-asset-view-policy-list">
+              @for (policy of policies(view); track policy.id) {
+                <article class="subevent-asset-view-policy-row">
+                  <div>
+                    <strong>{{ policy.title }}</strong>
+                    <span>{{ policyMetaLabel(policy) }}</span>
+                  </div>
+                  <p>{{ policyPreview(policy) }}</p>
+                </article>
+              }
+            </div>
+          } @else {
+            <div class="event-slot-empty-state event-policy-empty-state">
+              <span>No policies yet.</span>
+            </div>
+          }
+        </div>
+      </section>
+    }
+  </section>
+}

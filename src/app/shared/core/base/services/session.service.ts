@@ -1,11 +1,11 @@
-import { Injectable, computed, inject, signal } from '@angular/core';
+import { Injectable, Injector, computed, inject, signal } from '@angular/core';
 
 import { environment } from '../../../../../environments/environment';
 import type { FirebaseAuthProfileDto, FirebaseAuthRequestDto } from '../../contracts/user.interface';
 import type { AuthMode } from '../../common/constants';
-import { AppContext } from '../../../ui/context';
 import { APP_STORAGE_KEYS } from '../../common/storage-scope';
-import { FirebaseAuthService } from './firebase-auth.service';
+
+type FirebaseAuthServiceInstance = import('./firebase-auth.service').FirebaseAuthService;
 
 export interface SupportSessionContext {
   kind: 'admin-support';
@@ -23,11 +23,11 @@ export class SessionService {
   private static readonly SESSION_STORAGE_KEY = APP_STORAGE_KEYS.session;
   private static readonly DEMO_ACTIVE_USER_KEY = APP_STORAGE_KEYS.demoActiveUser;
 
-  private readonly firebaseAuthService = inject(FirebaseAuthService);
-  private readonly appCtx = inject(AppContext);
+  private readonly injector = inject(Injector);
   private readonly sessionRef = signal<AppSession | null>(this.loadStoredSession());
   private readonly firebaseBusyRef = signal(false);
   private readonly firebaseNoticeRef = signal('');
+  private firebaseAuthServicePromise: Promise<FirebaseAuthServiceInstance> | null = null;
 
   readonly session = this.sessionRef.asReadonly();
   readonly firebaseBusy = this.firebaseBusyRef.asReadonly();
@@ -36,11 +36,17 @@ export class SessionService {
     const current = this.sessionRef();
     return current?.kind === 'firebase' ? current.profile : null;
   });
+  readonly activeUserId = computed(() => {
+    const current = this.sessionRef();
+    if (current?.kind === 'demo') {
+      return current.userId.trim();
+    }
+    if (current?.kind === 'firebase') {
+      return current.profile.id.trim();
+    }
+    return '';
+  });
   readonly authMode: AuthMode = environment.firebaseLoginEnabled ? 'firebase' : 'selector';
-
-  constructor() {
-    this.syncActiveUserIdWithSession(this.sessionRef());
-  }
 
   currentSession(): AppSession | null {
     return this.sessionRef();
@@ -54,17 +60,18 @@ export class SessionService {
     if (current.kind === 'demo') {
       return current;
     }
-    const restoredProfile = await this.firebaseAuthService.restoreSessionProfile();
+    const restoredProfile = await (await this.firebaseAuthService()).restoreSessionProfile();
     if (!restoredProfile) {
       this.clearStoredSession();
       return null;
     }
-    const nextSession: AppSession = {
-      kind: 'firebase',
-      profile: restoredProfile
-    };
-    this.persistSession(nextSession);
-    return nextSession;
+      const nextSession: AppSession = {
+        kind: 'firebase',
+        profile: restoredProfile
+      };
+      this.persistSession(nextSession);
+      void this.initializeFirebaseMessagingForSession(nextSession);
+      return nextSession;
   }
 
   startDemoSession(
@@ -92,7 +99,7 @@ export class SessionService {
     this.firebaseBusyRef.set(true);
     this.firebaseNoticeRef.set('');
     try {
-      const result = await this.firebaseAuthService.signIn(request);
+      const result = await (await this.firebaseAuthService()).signIn(request);
       if (result.emailVerificationSent) {
         const email = result.email?.trim();
         this.firebaseNoticeRef.set(email
@@ -113,6 +120,7 @@ export class SessionService {
         profile: result.profile
       };
       this.persistSession(session);
+      void this.initializeFirebaseMessagingForSession(session);
       return session;
     } finally {
       this.firebaseBusyRef.set(false);
@@ -126,7 +134,7 @@ export class SessionService {
     this.firebaseBusyRef.set(true);
     this.firebaseNoticeRef.set('');
     try {
-      const profile = await this.firebaseAuthService.restoreSessionProfile();
+      const profile = await (await this.firebaseAuthService()).restoreSessionProfile();
       if (!profile) {
         this.clearStoredSession();
         return null;
@@ -136,6 +144,7 @@ export class SessionService {
         profile
       };
       this.persistSession(session);
+      void this.initializeFirebaseMessagingForSession(session);
       return session;
     } finally {
       this.firebaseBusyRef.set(false);
@@ -148,32 +157,56 @@ export class SessionService {
     this.clearStoredSession();
     localStorage.removeItem(SessionService.DEMO_ACTIVE_USER_KEY);
     if (current?.kind === 'firebase') {
-      await this.firebaseAuthService.signOut();
+      await (await this.firebaseAuthService()).signOut();
     }
+  }
+
+  async getFirebaseIdToken(): Promise<string | null> {
+    if (!environment.firebaseLoginEnabled || this.sessionRef()?.kind !== 'firebase') {
+      return null;
+    }
+    return (await this.firebaseAuthService()).getIdToken();
+  }
+
+  private async firebaseAuthService(): Promise<FirebaseAuthServiceInstance> {
+    if (!this.firebaseAuthServicePromise) {
+      this.firebaseAuthServicePromise = import('./firebase-auth.service')
+        .then(module => this.injector.get(module.FirebaseAuthService));
+    }
+    return this.firebaseAuthServicePromise;
+  }
+
+  private async initializeFirebaseMessagingForSession(session: AppSession): Promise<void> {
+    if (session.kind !== 'firebase'
+      || environment.activitiesDataSource !== 'http'
+      || !environment.firebaseMessagingEnabled
+      || this.isLoopbackBrowserHost()) {
+      return;
+    }
+    const { FirebaseMessagingService } = await import('./firebase-messaging.service');
+    this.injector.get(FirebaseMessagingService).initialize();
   }
 
   private persistSession(session: AppSession): void {
     this.sessionRef.set(session);
-    this.syncActiveUserIdWithSession(session);
     localStorage.setItem(SessionService.SESSION_STORAGE_KEY, JSON.stringify(session));
   }
 
   private clearStoredSession(): void {
     this.sessionRef.set(null);
-    this.syncActiveUserIdWithSession(null);
     localStorage.removeItem(SessionService.SESSION_STORAGE_KEY);
   }
 
-  private syncActiveUserIdWithSession(session: AppSession | null): void {
-    if (session?.kind === 'demo') {
-      this.appCtx.setActiveUserId(session.userId.trim());
-      return;
+  private isLoopbackBrowserHost(): boolean {
+    if (typeof window === 'undefined') {
+      return false;
     }
-    if (session?.kind === 'firebase') {
-      this.appCtx.setActiveUserId(session.profile.id.trim());
-      return;
-    }
-    this.appCtx.setActiveUserId('');
+    const hostname = window.location.hostname.toLowerCase();
+    return hostname === 'localhost'
+      || hostname === '127.0.0.1'
+      || hostname === '[::1]'
+      || hostname === '::1'
+      || hostname.endsWith('.localhost');
   }
 
   private loadStoredSession(): AppSession | null {

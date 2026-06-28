@@ -1,52 +1,25 @@
 @use '../../../shared/ui/styles' as ui;
 
-@include ui.popup-shell();
 @include ui.form-controls();
 
 :host {
-  --contacts-shell-z-index: 12340;
-  --contacts-form-z-index: 12420;
+  display: contents;
 }
 
-.contacts-popup-shell {
-  z-index: var(--contacts-shell-z-index);
-}
-
-.contacts-form-shell {
-  z-index: var(--contacts-form-z-index);
-}
-
-.contacts-popup-shell .app-popup-backdrop {
-  background: rgba(12, 24, 40, 0.56);
-  backdrop-filter: blur(4px);
-}
-
-.contacts-popup-shell .popup-panel-contacts {
-  background:
-    radial-gradient(circle at top right, rgba(173, 220, 255, 0.3), transparent 32%),
-    linear-gradient(180deg, #ffffff 0%, #f6f9ff 100%);
-}
-
-.contacts-popup-shell .popup-header-contacts {
-  align-items: center;
-}
-
-.contacts-header-actions {
-  display: inline-flex;
-  align-items: center;
-  gap: 0.4rem;
-}
-
-.contacts-create-trigger {
-  background: linear-gradient(180deg, #ecf8ff 0%, #d8ebff 100%);
-  border-color: rgba(41, 112, 171, 0.26);
-  color: #184d80;
-}
-
-.popup-body-contacts {
-  padding: 0.65rem;
+.contacts-popup-content {
+  width: 100%;
+  min-height: 0;
+  flex: 1 1 auto;
+  display: flex;
+  flex-direction: column;
   gap: 0.8rem;
-  overflow-x: hidden;
+  overflow: hidden;
+}
+
+.contacts-smart-list {
+  display: flex;
+  flex: 1 1 auto;
+  min-height: 0;
 }
 
 .contacts-toolbar {
@@ -344,42 +317,28 @@
   color: #46617c;
 }
 
-.contact-form-popup {
-  width: min(760px, calc(100vw - 1.8rem));
-}
-
-.contact-form-header {
-  background:
-    radial-gradient(circle at top right, rgba(173, 220, 255, 0.26), transparent 34%),
-    linear-gradient(180deg, #ffffff 0%, #f4f8ff 100%);
-}
-
-.contact-form-heading {
-  min-width: 0;
-  display: inline-flex;
-  align-items: center;
-  gap: 0.75rem;
-}
-
-.contact-form-heading-copy {
-  min-width: 0;
-}
-
-.contact-form-heading-copy h3 {
-  margin: 0;
-  color: #203a5e;
-  font-size: 1.06rem;
-}
-
-.contact-form-heading-copy p {
-  margin: 0.14rem 0 0;
-  color: rgba(35, 59, 92, 0.72);
-  font-size: 0.78rem;
-  font-weight: 700;
+.contact-form-popup,
+.contacts-form-content {
+  width: 100%;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
 }
 
 .contact-form-panel {
+  width: 100%;
+  min-height: 0;
+  display: grid;
+  align-content: start;
+  align-items: start;
   gap: 0.82rem;
+  padding: 0.74rem;
+  box-sizing: border-box;
+  overflow-y: auto;
+  overflow-x: hidden;
+  border: 1px solid rgba(43, 71, 107, 0.2);
+  border-radius: 14px;
+  background: #f8fbff;
 }
 
 .contact-form-summary,
@@ -533,15 +492,6 @@
     flex: 0 0 auto;
   }
 
-  .contact-form-popup {
-    width: 100vw;
-    max-width: 100vw;
-    min-width: 0;
-    height: 100dvh;
-    max-height: 100dvh;
-    border-radius: 0;
-  }
-
   .contact-form-panel {
     padding-bottom: calc(0.9rem + env(safe-area-inset-bottom));
   }
@@ -549,26 +499,4 @@
   .contact-form-summary-pill {
     justify-content: center;
   }
-}
-
-.subevent-leaderboard-save-btn {
-  position: relative;
-  overflow: visible !important;
-
-  &.is-loading {
-    border-color: rgba(181, 117, 23, 0.76) !important;
-    background: linear-gradient(180deg, #ffe7bf 0%, #ffd085 100%) !important;
-    color: #8e4f0d !important;
-    cursor: wait !important;
-    box-shadow: none !important;
-    transform: none !important;
-    filter: none !important;
-  }
-}
-
-.contact-save-ring {
-  position: absolute;
-  inset: -4px;
-  pointer-events: none;
-  z-index: 10;
 }

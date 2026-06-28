@@ -206,159 +206,11 @@
 }
 
 .document-viewer-accordion {
-  display: grid;
-  gap: 10px;
-}
-
-.document-viewer-section {
-  overflow: hidden;
-  border: 1px solid rgba(71, 95, 130, 0.18);
-  border-radius: 8px;
-  background: #fff;
-  box-shadow: 0 10px 28px rgba(38, 52, 82, 0.08);
-}
-
-.document-viewer-section.is-open {
-  border-color: rgba(70, 129, 209, 0.34);
-}
-
-.document-viewer-section.is-selected {
-  border-color: rgba(67, 155, 106, 0.36);
-  background: linear-gradient(180deg, #f8fffb 0%, #fff 100%);
-}
-
-.document-viewer-section-tone-mandatory {
-  border-color: rgba(205, 112, 63, 0.3);
-}
-
-.document-viewer-section-tone-mandatory .document-viewer-section-head {
-  background: linear-gradient(180deg, rgba(255, 244, 236, 0.96) 0%, rgba(255, 250, 246, 0.94) 100%);
-}
-
-.document-viewer-section-tone-mandatory .document-viewer-section-title,
-.document-viewer-section-tone-mandatory .document-viewer-section-title .mat-icon {
-  color: #9a4d17;
-}
-
-.document-viewer-section-tone-optional {
-  border-color: rgba(70, 129, 209, 0.28);
-}
-
-.document-viewer-section-tone-optional .document-viewer-section-head {
-  background: linear-gradient(180deg, rgba(239, 246, 255, 0.94) 0%, rgba(246, 250, 255, 0.92) 100%);
-}
-
-.document-viewer-section-tone-optional .document-viewer-section-title,
-.document-viewer-section-tone-optional .document-viewer-section-title .mat-icon {
-  color: #36547d;
-}
-
-.document-viewer-section.is-selected.document-viewer-section-tone-optional .document-viewer-section-head {
-  background: linear-gradient(180deg, rgba(224, 240, 255, 0.98) 0%, rgba(238, 247, 255, 0.96) 100%);
-}
-
-.document-viewer-section.is-selected.document-viewer-section-tone-optional .document-viewer-section-title,
-.document-viewer-section.is-selected.document-viewer-section-tone-optional .document-viewer-section-title .mat-icon {
-  color: #254a78;
-}
-
-.document-viewer-section-head {
-  display: flex;
-  align-items: stretch;
-  min-height: 58px;
-  background: rgba(244, 248, 253, 0.88);
-}
-
-.document-viewer-section.is-open .document-viewer-section-head {
-  border-bottom: 1px solid rgba(77, 98, 133, 0.14);
-}
-
-.document-viewer-section-toggle {
-  flex: 1;
-  min-width: 0;
-  border: 0;
-  background: transparent;
-  color: inherit;
-  cursor: pointer;
-  padding: 0;
-  text-align: left;
-}
-
-.document-viewer-section-title {
-  display: inline-flex;
-  align-items: center;
-  gap: 10px;
-  min-width: 0;
-  padding: 14px 14px 14px 16px;
-  color: #36547d;
-  font-weight: 800;
-}
-
-.document-viewer-section-title span {
-  min-width: 0;
-  overflow-wrap: anywhere;
-}
-
-.document-viewer-section-title .mat-icon {
-  flex: 0 0 auto;
-  width: 20px;
-  height: 20px;
-  color: #4b6892;
-  font-size: 20px;
-}
-
-.document-viewer-section-actions {
-  display: inline-flex;
-  align-items: center;
-  gap: 6px;
-  padding: 8px 10px 8px 0;
-}
-
-.document-viewer-section-check,
-.document-viewer-section-caret-btn {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  width: 36px;
-  height: 36px;
-  border-radius: 999px;
-  border: 1px solid rgba(71, 95, 130, 0.16);
-  background: #fff;
-  color: #476078;
-  cursor: pointer;
-}
-
-.document-viewer-section-check.is-selected {
-  border-color: rgba(55, 145, 92, 0.34);
-  background: #e7f8ed;
-  color: #237346;
-}
-
-.document-viewer-section-check-glyph {
-  width: 12px;
-  height: 12px;
-  border-radius: 999px;
-  border: 2px solid currentColor;
-  opacity: 0.72;
-}
-
-.document-viewer-section-check .mat-icon,
-.document-viewer-section-caret-btn .mat-icon {
-  width: 20px;
-  height: 20px;
-  font-size: 20px;
-}
-
-.document-viewer-section-caret {
-  transition: transform 160ms ease;
-}
-
-.document-viewer-section.is-open .document-viewer-section-caret {
-  transform: rotate(180deg);
+  display: block;
 }
 
 .document-viewer-section-body {
-  padding: 16px 18px 18px;
+  padding: 0.1rem 0.25rem 0.2rem;
   color: #33405a;
   line-height: 1.62;
 }
@@ -491,21 +343,6 @@
 
   .document-viewer-content {
     padding: 0.8rem;
-  }
-
-  .document-viewer-section-head {
-    min-height: 54px;
-    padding-top: 0.35rem;
-    padding-bottom: 0.35rem;
-  }
-
-  .document-viewer-section-title {
-    padding-left: 12px;
-  }
-
-  .document-viewer-section-actions {
-    gap: 4px;
-    padding-right: 8px;
   }
 
   .document-viewer-actions {

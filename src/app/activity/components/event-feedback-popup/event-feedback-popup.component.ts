@@ -1,14 +1,26 @@
-import { Component, TemplateRef, ViewChild, computed, effect, inject, signal } from '@angular/core';
-import { CommonModule } from '@angular/common';
-import { FormsModule } from '@angular/forms';
-import { MatIconModule } from '@angular/material/icon';
-import { MatButtonModule } from '@angular/material/button';
-import { from } from 'rxjs';
+import {
+  Component,
+  TemplateRef,
+  ViewChild,
+  computed,
+  effect,
+  inject,
+  signal
+} from '@angular/core';
+import {
+  CommonModule
+} from '@angular/common';
+import {
+  FormsModule
+} from '@angular/forms';
+import {
+  MatIconModule
+} from '@angular/material/icon';
+import {
+  from
+} from 'rxjs';
 
 import {
-  AppMenuComponent,
-  AppContext,
-  AppPopupContext,
   EventFeedbackFormFlowConverter,
   EventFeedbackFilterMenuConverter,
   EventFeedbackInfoCardConverter,
@@ -18,30 +30,41 @@ import {
   EventFeedbackOrganizerItemConverter,
   EventFeedbackOrganizerMessageGroupConverter,
   FormFlowComponent,
-  ProgressIndicatorComponent,
+  IndicatorComponent,
   type FormFlowSaveEvent,
+  type AppMenuItem,
   type AppMenuItemSelectEvent,
   type EventFeedbackFilterMenuContext,
   type EventFeedbackOrganizerCarouselSectionData,
   type EventFeedbackOrganizerItemData,
   InfoCardComponent,
+  PopupComponent,
   SmartListComponent,
   type InfoCardData,
   type CardMenuActionEvent,
   type CardMenuAction,
   type ListQuery,
   type PageResult,
+  type PopupControl,
+  type PopupMenuSelectEvent,
+  type PopupModel,
   type SmartListConfig,
   type SmartListItemTemplateContext,
   type SmartListLoadPage
 } from '../../../shared/ui';
 import * as ActivityContracts from '../../../shared/core/contracts/activity.interface';
 import type { EventFeedbackListFilter } from '../../../shared/core/common/constants';
-import { EventFeedbackBuilder, EventsService } from '../../../shared/core/base';
 import {
-  ConfirmationDialogService,
-  type ConfirmationDialogConfig
-} from '../../../shared/ui/services/confirmation-dialog.service';
+  EventsService
+} from '../../../shared/core/base';
+import {
+  DialogStore,
+  type DialogConfig
+} from '../../../shared/ui/context/stores/dialog.store';
+import { UserProfileStore } from '../../../shared/ui/context/stores/user-profile.store';
+import { AppRuntimeStore } from '../../../shared/ui/context/stores/app-runtime.store';
+import { ActivityStore } from '../../../shared/ui/context/stores/activity.store';
+import { PopupStore } from '../../../shared/ui/context/stores/popup.store';
 
 type EventFeedbackStackedPopupMode = 'eventFeedback' | 'eventFeedbackNote' | 'organizerEventFeedback' | null;
 
@@ -56,9 +79,9 @@ type EventFeedbackMenuContext = EventFeedbackFilterMenuContext | {
   action: CardMenuAction;
 };
 
-type EventFeedbackConfirmationDialogAction = 'remove' | 'restore';
+type EventFeedbackDialogAction = 'remove' | 'restore';
 
-interface EventFeedbackConfirmationDialogContent extends Omit<ConfirmationDialogConfig, 'onConfirm' | 'onCancel'> {}
+interface EventFeedbackDialogContent extends Omit<DialogConfig, 'onConfirm' | 'onCancel'> {}
 
 @Component({
   selector: 'app-event-feedback-popup',
@@ -67,10 +90,9 @@ interface EventFeedbackConfirmationDialogContent extends Omit<ConfirmationDialog
     CommonModule,
     FormsModule,
     MatIconModule,
-    MatButtonModule,
-    AppMenuComponent,
     FormFlowComponent,
-    ProgressIndicatorComponent,
+    IndicatorComponent,
+    PopupComponent,
     SmartListComponent,
     InfoCardComponent
   ],
@@ -78,10 +100,12 @@ interface EventFeedbackConfirmationDialogContent extends Omit<ConfirmationDialog
   styleUrl: './event-feedback-popup.component.scss'
 })
 export class EventFeedbackPopupComponent {
-  private readonly appCtx = inject(AppContext);
-  private readonly popupCtx = inject(AppPopupContext);
+  private readonly userProfileStore = inject(UserProfileStore);
+  private readonly runtimeStore = inject(AppRuntimeStore);
+  private readonly activityStore = inject(ActivityStore);
+  private readonly popupStore = inject(PopupStore);
   private readonly eventsService = inject(EventsService);
-  private readonly confirmationDialogService = inject(ConfirmationDialogService);
+  private readonly dialogStore = inject(DialogStore);
   private lastHandledNavigatorEventFeedbackRequestMs = 0;
   private lastAppliedEventFeedbackSubmitUpdatedMs = 0;
   protected readonly isPopupOpen = signal(false);
@@ -181,7 +205,7 @@ export class EventFeedbackPopupComponent {
     defaultView: 'list',
     headerProgress: {
       enabled: true,
-      state: () => this.appCtx.isOnline() ? 'active' : 'inactive'
+      state: () => this.runtimeStore.isOnline() ? 'active' : 'inactive'
     },
     emptyLabel: 'Event Feedback',
     emptyDescription: (query) => EventFeedbackListPresentationConverter.convert({
@@ -208,6 +232,79 @@ export class EventFeedbackPopupComponent {
     trackBy: (_index, item) => item.id
   };
 
+  protected eventFeedbackPopupModel(): PopupModel<EventFeedbackMenuContext> {
+    return {
+      title: 'Event Feedback',
+      ariaLabel: 'Event Feedback',
+      closeAriaLabel: 'Close',
+      size: 'wide',
+      height: 'full',
+      headerTone: 'accent',
+      bodyLayout: 'fill',
+      headerControls: this.eventFeedbackPopupHeaderControls(),
+      onClose: event => this.closePopup(event),
+      onMenuSelect: event => this.onEventFeedbackPopupMenuSelect(event)
+    };
+  }
+
+  protected eventFeedbackPopupZIndex(): number {
+    return 12500;
+  }
+
+  protected eventFeedbackStackedPopupModel(): PopupModel<EventFeedbackMenuContext> {
+    const isFullHeight = this.stackedPopupMode() === 'eventFeedback'
+      || this.stackedPopupMode() === 'organizerEventFeedback';
+    return {
+      title: this.eventFeedbackStackedPopupTitle(),
+      subtitle: this.eventFeedbackStackedPopupSubtitle(),
+      ariaLabel: this.eventFeedbackStackedPopupTitle(),
+      closeAriaLabel: 'Close',
+      size: isFullHeight ? 'wide' : 'default',
+      height: isFullHeight ? 'full' : 'auto',
+      headerTone: 'accent',
+      bodyLayout: isFullHeight ? 'fill' : 'default',
+      backdropTone: 'dim',
+      onClose: event => this.closeStackedPopup(event)
+    };
+  }
+
+  protected eventFeedbackStackedPopupZIndex(): number {
+    return 12600;
+  }
+
+  private eventFeedbackPopupHeaderControls(): PopupControl<EventFeedbackMenuContext>[] {
+    const filterMenu = this.eventFeedbackFilterMenu();
+    return [{
+      kind: 'menu',
+      id: 'event-feedback-filter',
+      trigger: filterMenu.trigger,
+      items: filterMenu.items as readonly AppMenuItem<string, EventFeedbackMenuContext>[],
+      mobileBreakpointPx: 900
+    }];
+  }
+
+  private eventFeedbackStackedPopupTitle(): string {
+    switch (this.stackedPopupMode()) {
+      case 'eventFeedback':
+        return 'Event Feedback';
+      case 'organizerEventFeedback':
+        return 'Own Event Feedback';
+      default:
+        return 'Organizer Feedback';
+    }
+  }
+
+  private eventFeedbackStackedPopupSubtitle(): string | null {
+    if (this.stackedPopupMode() !== 'eventFeedback' && this.stackedPopupMode() !== 'organizerEventFeedback') {
+      return null;
+    }
+    return this.eventFeedbackCurrentEventTitle();
+  }
+
+  private onEventFeedbackPopupMenuSelect(event: PopupMenuSelectEvent<EventFeedbackMenuContext>): void {
+    this.onEventFeedbackMenuSelect(event.itemSelect);
+  }
+
   protected onEventFeedbackMenuSelect(event: AppMenuItemSelectEvent<string, EventFeedbackMenuContext>): void {
     if (event.context?.menu !== 'filter') {
       return;
@@ -230,18 +327,18 @@ export class EventFeedbackPopupComponent {
 
   constructor() {
     effect(() => {
-      const request = this.popupCtx.navigatorEventFeedbackRequest();
+      const request = this.popupStore.navigatorEventFeedbackRequest();
       if (!request || request.updatedMs <= this.lastHandledNavigatorEventFeedbackRequestMs) {
         return;
       }
       this.lastHandledNavigatorEventFeedbackRequestMs = request.updatedMs;
-      this.popupCtx.clearNavigatorEventFeedbackRequest();
+      this.popupStore.clearNavigatorEventFeedbackRequest();
       this.openPopup();
     });
 
     effect(() => {
       const filter = this.eventFeedbackListFilter();
-      const userId = this.appCtx.activeUserId().trim();
+      const userId = this.userProfileStore.activeUserId().trim();
       const currentFilters = this.eventFeedbackSmartListQuery.filters;
       if (currentFilters?.filter === filter && currentFilters?.userId === userId) {
         return;
@@ -279,7 +376,7 @@ export class EventFeedbackPopupComponent {
     });
 
     effect(() => {
-      const sync = this.appCtx.activityEventFeedbackSubmitSync();
+      const sync = this.activityStore.activityEventFeedbackSubmitSync();
       if (!sync || sync.updatedMs <= this.lastAppliedEventFeedbackSubmitUpdatedMs) {
         return;
       }
@@ -298,11 +395,13 @@ export class EventFeedbackPopupComponent {
     this.isPopupOpen.set(true);
   }
 
-  protected closePopup(): void {
+  protected closePopup(event?: Event): void {
+    event?.stopPropagation();
     this.isPopupOpen.set(false);
   }
 
-  protected closeStackedPopup(): void {
+  protected closeStackedPopup(event?: Event): void {
+    event?.stopPropagation();
     this.isStackedPopupOpen.set(false);
     this.stackedPopupMode.set(null);
     this.selectedOrganizerEventFeedbackEventId.set(null);
@@ -438,8 +537,8 @@ export class EventFeedbackPopupComponent {
   }
 
   private openRemoveEventFeedbackDialog(item: ActivityContracts.EventFeedbackDto): void {
-    this.openEventFeedbackConfirmationDialog(
-      this.eventFeedbackConfirmationDialogContent('remove'),
+    this.openEventFeedbackDialog(
+      this.eventFeedbackDialogContent('remove'),
       async () => {
         await this.eventsService.removeEventFeedbackEvent(this.activeUserId(), item.eventId);
         this.applyEventFeedbackItemRemoved(item);
@@ -449,8 +548,8 @@ export class EventFeedbackPopupComponent {
   }
 
   private openRestoreEventFeedbackDialog(item: ActivityContracts.EventFeedbackDto): void {
-    this.openEventFeedbackConfirmationDialog(
-      this.eventFeedbackConfirmationDialogContent('restore'),
+    this.openEventFeedbackDialog(
+      this.eventFeedbackDialogContent('restore'),
       async () => {
         await this.eventsService.restoreEventFeedbackEvent(this.activeUserId(), item.eventId);
         this.applyEventFeedbackItemRestored(item);
@@ -459,19 +558,19 @@ export class EventFeedbackPopupComponent {
     );
   }
 
-  private openEventFeedbackConfirmationDialog(
-    content: EventFeedbackConfirmationDialogContent,
+  private openEventFeedbackDialog(
+    content: EventFeedbackDialogContent,
     onConfirm: () => Promise<void>
   ): void {
-    this.confirmationDialogService.open({
+    this.dialogStore.open({
       ...content,
       onConfirm
     });
   }
 
-  private eventFeedbackConfirmationDialogContent(
-    action: EventFeedbackConfirmationDialogAction
-  ): EventFeedbackConfirmationDialogContent {
+  private eventFeedbackDialogContent(
+    action: EventFeedbackDialogAction
+  ): EventFeedbackDialogContent {
     if (action === 'remove') {
       return {
         title: 'event.feedback.confirm.remove.title',
@@ -529,7 +628,7 @@ export class EventFeedbackPopupComponent {
     if (this.activeUserId() !== normalizedUserId) {
       return { items: [], total: 0 };
     }
-    const pageResult = EventFeedbackBuilder.clonePageResult(result);
+    const pageResult = new ActivityContracts.EventFeedbackPageResultDto(result);
     this.eventFeedbackPageResult.set(pageResult);
     this.eventFeedbackFilterCountDelta.set({});
     return {
@@ -539,7 +638,7 @@ export class EventFeedbackPopupComponent {
   }
 
   private activeUserId(): string {
-    return this.appCtx.activeUserProfile()?.id?.trim() || this.appCtx.activeUserId().trim();
+    return this.userProfileStore.activeUserProfile()?.id?.trim() || this.userProfileStore.activeUserId().trim();
   }
 
   private async startEventFeedback(item: ActivityContracts.EventFeedbackDto, event?: Event): Promise<void> {
@@ -584,7 +683,7 @@ export class EventFeedbackPopupComponent {
       return;
     }
     const submittedAtIso = new Date().toISOString();
-    const feedback = EventFeedbackBuilder.cloneDetail(
+    const feedback = new ActivityContracts.EventFeedbackDetailDto(
       this.eventFeedbackDetailDto()
     ).withFormValue(event.value).submitted({ submittedAtIso });
     if (!feedback.eventId || feedback.cards.length === 0) {
@@ -594,7 +693,7 @@ export class EventFeedbackPopupComponent {
     this.eventFeedbackSubmitting.set(true);
     try {
       await this.eventsService.submitEventFeedback(this.activeUserId(), feedback);
-      this.appCtx.emitActivityEventFeedbackSubmit(feedback);
+      this.activityStore.emitActivityEventFeedbackSubmit(feedback);
       this.eventFeedbackSubmitted.set(true);
       this.eventFeedbackSubmitMessage.set(`Feedback submitted successfully for ${this.eventFeedbackCurrentEventTitle()}.`);
       this.clearLoadedEventFeedbackDetail(feedback.eventId);

@@ -1,12 +1,31 @@
-import { HttpClient } from '@angular/common/http';
-import { Injectable, effect, inject } from '@angular/core';
-import { deleteToken, getMessaging, getToken, isSupported, onMessage } from 'firebase/messaging';
+import {
+  HttpClient
+} from '@angular/common/http';
+import {
+  Injectable,
+  Injector,
+  effect,
+  inject
+} from '@angular/core';
+import {
+  deleteToken,
+  getMessaging,
+  getToken,
+  isSupported,
+  onMessage,
+  type Messaging
+} from 'firebase/messaging';
 
-import { environment } from '../../../../../environments/environment';
-import { AppContext } from '../../../ui/context';
-import { FirebaseAuthService } from './firebase-auth.service';
-import { PwaService } from './pwa.service';
-import { APP_STORAGE_KEYS } from '../../common/storage-scope';
+import {
+  environment
+} from '../../../../../environments/environment';
+import {
+  APP_STORAGE_KEYS
+} from '../../common/storage-scope';
+import {
+  FirebaseAppService
+} from './firebase-app.service';
+import { UserProfileStore } from '../../../ui/context/stores/user-profile.store';
 
 @Injectable({
   providedIn: 'root'
@@ -17,9 +36,9 @@ export class FirebaseMessagingService {
   private static readonly TOKEN_USER_ID_STORAGE_KEY = APP_STORAGE_KEYS.messagingUserId;
 
   private readonly http = inject(HttpClient);
-  private readonly appCtx = inject(AppContext);
-  private readonly firebaseAuthService = inject(FirebaseAuthService);
-  private readonly pwaService = inject(PwaService);
+  private readonly injector = inject(Injector);
+  private readonly userProfileStore = inject(UserProfileStore);
+  private readonly firebaseAppService = inject(FirebaseAppService);
   private readonly apiBaseUrl = environment.apiBaseUrl ?? '/api';
   private initialized = false;
   private foregroundListenerBound = false;
@@ -30,18 +49,21 @@ export class FirebaseMessagingService {
     }
     this.initialized = true;
 
-    effect(() => {
-      const userId = this.appCtx.activeUserId().trim();
-      if (!userId || !this.enabled) {
-        return;
-      }
-      if (typeof Notification === 'undefined') {
-        return;
-      }
-      if (Notification.permission === 'granted') {
-        void this.registerActiveDevice();
-      }
-    });
+    effect(
+      () => {
+        const userId = this.userProfileStore.activeUserId().trim();
+        if (!userId || !this.enabled) {
+          return;
+        }
+        if (typeof Notification === 'undefined') {
+          return;
+        }
+        if (Notification.permission === 'granted') {
+          void this.registerActiveDevice();
+        }
+      },
+      { injector: this.injector }
+    );
   }
 
   async requestAndRegisterForActiveUser(): Promise<void> {
@@ -66,7 +88,7 @@ export class FirebaseMessagingService {
     if (!this.enabled) {
       return;
     }
-    const userId = this.appCtx.activeUserId().trim();
+    const userId = this.userProfileStore.activeUserId().trim();
     if (!userId) {
       return;
     }
@@ -75,7 +97,7 @@ export class FirebaseMessagingService {
     if (previousUserId && previousUserId !== userId && previousToken) {
       await this.deleteDeviceRegistration(previousUserId, previousToken);
     }
-    const serviceWorkerRegistration = await this.pwaService.waitForServiceWorkerReady();
+    const serviceWorkerRegistration = await this.waitForServiceWorkerReady();
     if (!serviceWorkerRegistration) {
       return;
     }
@@ -83,11 +105,11 @@ export class FirebaseMessagingService {
     if (!messagingSupported) {
       return;
     }
-    const firebaseConfig = await this.firebaseAuthService.loadFirebaseConfig();
+    const firebaseConfig = await this.firebaseAppService.loadFirebaseConfig();
     if (!firebaseConfig?.vapidKey) {
       return;
     }
-    const firebaseApp = await this.firebaseAuthService.ensureFirebaseApp();
+    const firebaseApp = await this.firebaseAppService.ensureFirebaseApp();
     if (!firebaseApp) {
       return;
     }
@@ -105,7 +127,7 @@ export class FirebaseMessagingService {
         {
           userId,
           deviceId: this.resolveDeviceId(),
-          platform: this.pwaService.isStandalone() ? 'web-pwa' : 'web-browser',
+          platform: this.isStandalone() ? 'web-pwa' : 'web-browser',
           firebaseToken,
           notificationsEnabled: true
         }
@@ -117,7 +139,7 @@ export class FirebaseMessagingService {
     }
   }
 
-  private bindForegroundMessages(messaging: ReturnType<typeof getMessaging>): void {
+  private bindForegroundMessages(messaging: Messaging): void {
     if (this.foregroundListenerBound) {
       return;
     }
@@ -132,7 +154,7 @@ export class FirebaseMessagingService {
       const title = payload.notification?.title?.trim() || payload.data?.['title'] || 'MyScoutee';
       const body = payload.notification?.body?.trim() || payload.data?.['body'] || '';
       const icon = payload.notification?.icon?.trim() || 'assets/logo/heart.png';
-      void this.pwaService.waitForServiceWorkerReady().then(registration => {
+      void this.waitForServiceWorkerReady().then(registration => {
         if (!registration) {
           return;
         }
@@ -154,7 +176,7 @@ export class FirebaseMessagingService {
       return;
     }
 
-    const firebaseApp = await this.firebaseAuthService.ensureFirebaseApp();
+    const firebaseApp = await this.firebaseAppService.ensureFirebaseApp();
     if (firebaseApp) {
       const messagingSupported = await isSupported().catch(() => false);
       if (messagingSupported) {
@@ -196,6 +218,25 @@ export class FirebaseMessagingService {
   private storeToken(firebaseToken: string, userId: string): void {
     localStorage.setItem(FirebaseMessagingService.TOKEN_STORAGE_KEY, firebaseToken);
     localStorage.setItem(FirebaseMessagingService.TOKEN_USER_ID_STORAGE_KEY, userId);
+  }
+
+  private async waitForServiceWorkerReady(): Promise<ServiceWorkerRegistration | null> {
+    if (typeof window === 'undefined' || !('serviceWorker' in navigator)) {
+      return null;
+    }
+    try {
+      return await navigator.serviceWorker.ready;
+    } catch {
+      return null;
+    }
+  }
+
+  private isStandalone(): boolean {
+    if (typeof window === 'undefined') {
+      return false;
+    }
+    return window.matchMedia('(display-mode: standalone)').matches
+      || ((window.navigator as Navigator & { standalone?: boolean }).standalone === true);
   }
 
   private async deleteDeviceRegistration(userId: string, firebaseToken: string): Promise<void> {

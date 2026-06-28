@@ -1,4 +1,4 @@
-import type { ImageCardData, RatingStarBarConfig } from '../../../../../shared/ui';
+import type { ImageCardData, AppMenuRateConfig } from '../../../../../shared/ui';
 
 interface ActivitiesRateEditorPresenterDeps {
   getActivitiesRateFilter: () => string;
@@ -20,7 +20,7 @@ export class ActivitiesRateEditorPresenter {
     return row ? this.deps.getOwnRatingValue(row) : 0;
   }
 
-  barConfig(): RatingStarBarConfig {
+  barConfig(): AppMenuRateConfig {
     return {
       scale: this.deps.getRatingScale(),
       readonly: this.isSelectedReadOnly(),
