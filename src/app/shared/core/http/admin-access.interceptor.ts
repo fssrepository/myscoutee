@@ -1,11 +1,28 @@
-import { HttpErrorResponse, HttpInterceptorFn } from '@angular/common/http';
-import { Injector, inject } from '@angular/core';
-import { Router } from '@angular/router';
-import { catchError, throwError } from 'rxjs';
+import {
+  HttpErrorResponse,
+  HttpInterceptorFn
+} from '@angular/common/http';
+import {
+  inject
+} from '@angular/core';
+import {
+  Router
+} from '@angular/router';
+import {
+  catchError,
+  throwError
+} from 'rxjs';
 
-import { environment } from '../../../../environments/environment';
-import { SessionService } from '../base/services/session.service';
-import { APP_STORAGE_KEYS } from '../common/storage-scope';
+import {
+  environment
+} from '../../../../environments/environment';
+import {
+  SessionService
+} from '../base/services/session.service';
+import {
+  APP_STORAGE_KEYS
+} from '../common/storage-scope';
+import { UserProfileStore } from '../../ui/context/stores/user-profile.store';
 
 const ADMIN_SESSION_STORAGE_KEY = APP_STORAGE_KEYS.adminSession;
 const apiBaseUrl = (environment.apiBaseUrl ?? '/api').trim() || '/api';
@@ -41,8 +58,8 @@ function isAdminRequest(url: string): boolean {
 
 export const adminAccessInterceptor: HttpInterceptorFn = (req, next) => {
   const router = inject(Router);
-  const injector = inject(Injector);
   const sessionService = inject(SessionService);
+  const userProfileStore = inject(UserProfileStore);
 
   return next(req).pipe(
     catchError(error => {
@@ -51,12 +68,9 @@ export const adminAccessInterceptor: HttpInterceptorFn = (req, next) => {
         if (typeof localStorage !== 'undefined') {
           localStorage.removeItem(ADMIN_SESSION_STORAGE_KEY);
         }
-        void import('../../ui/context/app.context')
-          .then(module => {
-            injector.get(module.AppContext).userProfileStore.setActiveUserId(
-              session?.kind === 'firebase' ? session.profile.id.trim() : ''
-            );
-          });
+        userProfileStore.setActiveUserId(
+          session?.kind === 'firebase' ? session.profile.id.trim() : ''
+        );
         if (typeof window !== 'undefined') {
           window.dispatchEvent(new CustomEvent('adminAccessDenied'));
         }

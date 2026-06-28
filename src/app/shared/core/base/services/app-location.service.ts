@@ -1,15 +1,34 @@
-import { Injectable, Injector, effect, inject } from '@angular/core';
-import { HttpErrorResponse } from '@angular/common/http';
-import { Router } from '@angular/router';
+import {
+  Injectable,
+  Injector,
+  effect,
+  inject
+} from '@angular/core';
+import {
+  HttpErrorResponse
+} from '@angular/common/http';
+import {
+  Router
+} from '@angular/router';
 
-import { AppContext } from '../../../ui/context/app.context';
-import { environment } from '../../../../../environments/environment';
+import {
+  environment
+} from '../../../../../environments/environment';
 import type { LocationCoordinates } from '../../contracts/user.interface';
 import type { UserDto } from '../../contracts/user.interface';
-import { resolveRouteConfig } from '../config';
-import { SessionService } from './session.service';
-import { ConfirmationDialogStore } from '../../../ui/context/stores/confirmation-dialog.store';
-import { appLocationStorageKey } from '../../common/storage-scope';
+import {
+  resolveRouteConfig
+} from '../config';
+import {
+  SessionService
+} from './session.service';
+import {
+  ConfirmationDialogStore
+} from '../../../ui/context/stores/confirmation-dialog.store';
+import {
+  appLocationStorageKey
+} from '../../common/storage-scope';
+import { UserProfileStore } from '../../../ui/context/stores/user-profile.store';
 
 type HttpUsersServiceInstance = import('../../http/services/users.service').HttpUsersService;
 
@@ -21,7 +40,7 @@ export class AppLocationService {
   private static readonly ACCESS_RESTRICTED_MESSAGE = 'Login is currently unavailable from your country or region for security reasons. Please come back later.';
   private static readonly LOCATION_SYNC_DISTANCE_METERS = 5000;
 
-  private readonly appCtx = inject(AppContext);
+  private readonly userProfileStore = inject(UserProfileStore);
   private readonly injector = inject(Injector);
   private readonly router = inject(Router);
   private readonly sessionService = inject(SessionService);
@@ -42,7 +61,7 @@ export class AppLocationService {
     this.initialized = true;
 
     effect(() => {
-      const activeUserId = this.appCtx.userProfileStore.activeUserId().trim();
+      const activeUserId = this.userProfileStore.activeUserId().trim();
       if (!activeUserId) {
         this.stopCoordinateWatch();
         return;
@@ -66,12 +85,12 @@ export class AppLocationService {
       return null;
     }
 
-    const activeUser = this.appCtx.userProfileStore.activeUserProfile();
+    const activeUser = this.userProfileStore.activeUserProfile();
     if (activeUser?.id?.trim() === normalizedUserId) {
       return activeUser;
     }
 
-    const cachedUser = this.appCtx.userProfileStore.getUserProfile(normalizedUserId);
+    const cachedUser = this.userProfileStore.getUserProfile(normalizedUserId);
     if (cachedUser) {
       return cachedUser;
     }
@@ -87,7 +106,7 @@ export class AppLocationService {
       session.profile.initials,
       session.profile.imageUrl
     );
-    this.appCtx.userProfileStore.setUserProfile(bootstrapUser);
+    this.userProfileStore.setUserProfile(bootstrapUser);
     return bootstrapUser;
   }
 
@@ -141,7 +160,7 @@ export class AppLocationService {
 
     const stored = this.readStoredCoordinates(userId);
     if (stored && !this.sameCoordinates(activeUser.locationCoordinates, stored)) {
-      this.appCtx.userProfileStore.setUserProfile({
+      this.userProfileStore.setUserProfile({
         ...activeUser,
         locationCoordinates: stored
       });
@@ -202,7 +221,7 @@ export class AppLocationService {
       return;
     }
 
-    this.appCtx.userProfileStore.setUserProfile({
+    this.userProfileStore.setUserProfile({
       ...activeUser,
       locationCoordinates: coordinates
     });
@@ -355,7 +374,7 @@ export class AppLocationService {
         locationCoordinates: normalizedCoordinates
       });
       if (savedUser?.id?.trim()) {
-        this.appCtx.userProfileStore.setUserProfile(savedUser);
+        this.userProfileStore.setUserProfile(savedUser);
         this.lastPersistedCoordinatesByUserId.set(
           userId,
           this.normalizeCoordinates(savedUser.locationCoordinates) ?? normalizedCoordinates

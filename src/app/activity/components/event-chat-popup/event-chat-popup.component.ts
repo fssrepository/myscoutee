@@ -9,22 +9,50 @@ import {
   effect,
   inject
 } from '@angular/core';
-import { AppContext, AppPopupContext } from '../../../shared/ui';
-import { CommonModule, Location } from '@angular/common';
-import { FormsModule } from '@angular/forms';
-import { MatButtonModule } from '@angular/material/button';
-import { MatIconModule } from '@angular/material/icon';
-import { from, of } from 'rxjs';
+import {
+  CommonModule,
+  Location
+} from '@angular/common';
+import {
+  FormsModule
+} from '@angular/forms';
+import {
+  MatButtonModule
+} from '@angular/material/button';
+import {
+  MatIconModule
+} from '@angular/material/icon';
+import {
+  from,
+  of
+} from 'rxjs';
 
 import type * as AppUiTypes from '../../../shared/ui/models';
 import type * as ContractTypes from '../../../shared/core/contracts';
-import { AppUtils, type AsciiEmojiConversion } from '../../../shared/app-utils';
-import type { EventChatSession } from '../../../shared/ui/context/activities-popup.types';
-import { ActivitiesPopupStore } from '../../../shared/ui/context/stores/activities-popup.store';
-import { ActivityResourceBuilder, ActivityResourcesService, ChatsService, ChatVoiceClipsService, EventsService, MediaService, ShareTokensService } from '../../../shared/core';
+import {
+  AppUtils,
+  type AsciiEmojiConversion
+} from '../../../shared/app-utils';
+import type { EventChatSession } from '../../../shared/ui/context/stores/activities-popup.store';
+import {
+  ActivitiesPopupStore
+} from '../../../shared/ui/context/stores/activities-popup.store';
+import {
+  ActivityResourceBuilder,
+  ActivityResourcesService,
+  ChatsService,
+  ChatVoiceClipsService,
+  EventsService,
+  MediaService,
+  ShareTokensService
+} from '../../../shared/core';
 import type { ChatDTO } from '../../../shared/core/contracts/chat.interface';
 import type { ActivityEventRecord } from '../../../shared/core/contracts/activity.interface';
-import { ASSET_TYPES, type AssetType, type SubEventResourceFilter } from '../../../shared/core/common/constants';
+import {
+  ASSET_TYPES,
+  type AssetType,
+  type SubEventResourceFilter
+} from '../../../shared/core/common/constants';
 import {
   AppMenuComponent,
   AppMenuTriggerComponent,
@@ -40,11 +68,18 @@ import {
   type SmartListConfig,
   type SmartListLoadPage
 } from '../../../shared/ui';
-import { ConfirmationDialogStore } from '../../../shared/ui/context/stores/confirmation-dialog.store';
-import { NavigatorStore } from '../../../shared/ui/context/stores/navigator.store';
+import {
+  ConfirmationDialogStore
+} from '../../../shared/ui/context/stores/confirmation-dialog.store';
+import {
+  NavigatorStore
+} from '../../../shared/ui/context/stores/navigator.store';
 
 import type * as AppDTOs from '../../../shared/core/contracts';
 import type * as AppConstants from '../../../shared/core/common/constants';
+import { UserProfileStore } from '../../../shared/ui/context/stores/user-profile.store';
+import { AppRuntimeStore } from '../../../shared/ui/context/stores/app-runtime.store';
+import { PopupStore } from '../../../shared/ui/context/stores/popup.store';
 interface ChatThreadFilters {
   revision?: number;
   sessionKey?: string;
@@ -127,8 +162,9 @@ interface SelectedChatNavigationState {
 export class EventChatPopupComponent implements OnDestroy {
   private readonly cdr = inject(ChangeDetectorRef);
   protected readonly activitiesStore = inject(ActivitiesPopupStore);
-  private readonly appCtx = inject(AppContext);
-  private readonly popupCtx = inject(AppPopupContext);
+  private readonly userProfileStore = inject(UserProfileStore);
+  private readonly runtimeStore = inject(AppRuntimeStore);
+  private readonly popupStore = inject(PopupStore);
   private readonly chatsService = inject(ChatsService);
   private readonly activityResourcesService = inject(ActivityResourcesService);
   private readonly eventsService = inject(EventsService);
@@ -228,7 +264,7 @@ export class EventChatPopupComponent implements OnDestroy {
     headerProgress: {
       enabled: true,
       tone: 'chat',
-      state: () => this.appCtx.runtimeStore.isOnline() ? 'active' : 'inactive'
+      state: () => this.runtimeStore.isOnline() ? 'active' : 'inactive'
     },
     emptyLabel: () => this.chatInitialLoadPending ? '' : 'No messages yet',
     emptyDescription: () => this.chatInitialLoadPending ? '' : 'Start the conversation.',
@@ -416,7 +452,7 @@ export class EventChatPopupComponent implements OnDestroy {
     if (!ownerId) {
       return;
     }
-    this.popupCtx.popupStore.requestActivitiesNavigation({
+    this.popupStore.requestActivitiesNavigation({
       type: 'members',
       ownerId,
       subtitle: this.chatHeaderContext?.title ?? this.session()?.item.title ?? 'Chat',
@@ -657,7 +693,7 @@ export class EventChatPopupComponent implements OnDestroy {
     if (!eventId) {
       return;
     }
-    this.popupCtx.popupStore.requestActivitiesNavigation({
+    this.popupStore.requestActivitiesNavigation({
       type: 'eventEditor',
       eventId,
       target: this.selectedChatNavigationState?.eventTarget ?? 'events',
@@ -690,7 +726,7 @@ export class EventChatPopupComponent implements OnDestroy {
     if (!eventId) {
       return;
     }
-    this.popupCtx.popupStore.openEventSubeventsListPopup({
+    this.popupStore.openEventSubeventsListPopup({
       eventId,
       target: state?.eventTarget ?? 'events',
       title: state?.eventTitle ?? this.session()?.item.title ?? null,
@@ -716,7 +752,7 @@ export class EventChatPopupComponent implements OnDestroy {
       return;
     }
     this.chatThreadSmartList?.closeMenu();
-    this.popupCtx.popupStore.requestActivitiesNavigation({
+    this.popupStore.requestActivitiesNavigation({
       type: 'chatResource',
       ownerId: state.eventId ?? session.item.eventId,
       item: session.item,
@@ -1203,13 +1239,13 @@ export class EventChatPopupComponent implements OnDestroy {
 
   protected shareCurrentEvent(event?: Event): void {
     event?.stopPropagation();
-    this.popupCtx.popupStore.requestActivitiesNavigation({ type: 'eventExplore', stacked: true });
+    this.popupStore.requestActivitiesNavigation({ type: 'eventExplore', stacked: true });
   }
 
   protected shareFirstAvailableAsset(event?: Event): void {
     event?.stopPropagation();
     const resourceType = this.firstAvailableAssetType();
-    this.popupCtx.popupStore.requestActivitiesNavigation({
+    this.popupStore.requestActivitiesNavigation({
       type: 'assetExplore',
       assetType: resourceType ?? 'Car'
     });
@@ -1472,7 +1508,7 @@ export class EventChatPopupComponent implements OnDestroy {
     const knownOwnIds = new Set([
       `${activeUserId ?? ''}`.trim(),
       `${presentation.senderAvatar.id ?? ''}`.trim(),
-      `${this.appCtx.userProfileStore.activeUserProfile()?.id ?? ''}`.trim(),
+      `${this.userProfileStore.activeUserProfile()?.id ?? ''}`.trim(),
       'self',
       'me'
     ].filter(Boolean));
@@ -1738,7 +1774,7 @@ export class EventChatPopupComponent implements OnDestroy {
   }
 
   private isAdminRoleActive(): boolean {
-    const hostTier = `${this.appCtx.userProfileStore.activeUserProfile()?.hostTier ?? ''}`.trim().toLowerCase();
+    const hostTier = `${this.userProfileStore.activeUserProfile()?.hostTier ?? ''}`.trim().toLowerCase();
     if (hostTier === 'admin') {
       return true;
     }
@@ -2090,7 +2126,7 @@ export class EventChatPopupComponent implements OnDestroy {
       );
       return;
     }
-    this.popupCtx.popupStore.requestActivitiesNavigation({
+    this.popupStore.requestActivitiesNavigation({
       type: 'assetExplore',
       assetType: this.normalizeAttachmentAssetType(attachment.assetType) ?? 'Car',
       assetId: `${attachment.entityId ?? ''}`.trim() || undefined,
@@ -2194,7 +2230,7 @@ export class EventChatPopupComponent implements OnDestroy {
       });
       return;
     }
-    this.popupCtx.popupStore.requestActivitiesNavigation({
+    this.popupStore.requestActivitiesNavigation({
       type: 'eventEditor',
       eventId: eventRecord.id,
       target: this.eventEditorTargetForRecord(eventRecord),
@@ -3199,7 +3235,7 @@ export class EventChatPopupComponent implements OnDestroy {
   }
 
   private activeUserId(): string {
-    return this.appCtx.userProfileStore.activeUserId().trim();
+    return this.userProfileStore.activeUserId().trim();
   }
 
   private clearOpenChatUnreadState(): void {
@@ -3363,7 +3399,7 @@ export class EventChatPopupComponent implements OnDestroy {
   private resolveOptimisticSenderPresentation(
     activeUserId: string
   ): Pick<ContractTypes.ChatPopupMessage, 'sender' | 'senderAvatar'> {
-    const activeUser = this.appCtx.userProfileStore.activeUserProfile() ?? (activeUserId ? this.appCtx.userProfileStore.getUserProfile(activeUserId) : null);
+    const activeUser = this.userProfileStore.activeUserProfile() ?? (activeUserId ? this.userProfileStore.getUserProfile(activeUserId) : null);
     const initials = activeUser?.initials?.trim()
       || AppUtils.initialsFromText(activeUser?.name ?? 'Me');
     return {

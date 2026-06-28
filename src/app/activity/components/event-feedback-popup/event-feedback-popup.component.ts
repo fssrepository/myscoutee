@@ -1,12 +1,26 @@
-import { Component, TemplateRef, ViewChild, computed, effect, inject, signal } from '@angular/core';
-import { CommonModule } from '@angular/common';
-import { FormsModule } from '@angular/forms';
-import { MatIconModule } from '@angular/material/icon';
-import { from } from 'rxjs';
+import {
+  Component,
+  TemplateRef,
+  ViewChild,
+  computed,
+  effect,
+  inject,
+  signal
+} from '@angular/core';
+import {
+  CommonModule
+} from '@angular/common';
+import {
+  FormsModule
+} from '@angular/forms';
+import {
+  MatIconModule
+} from '@angular/material/icon';
+import {
+  from
+} from 'rxjs';
 
 import {
-  AppContext,
-  AppPopupContext,
   EventFeedbackFormFlowConverter,
   EventFeedbackFilterMenuConverter,
   EventFeedbackInfoCardConverter,
@@ -40,11 +54,17 @@ import {
 } from '../../../shared/ui';
 import * as ActivityContracts from '../../../shared/core/contracts/activity.interface';
 import type { EventFeedbackListFilter } from '../../../shared/core/common/constants';
-import { EventsService } from '../../../shared/core/base';
+import {
+  EventsService
+} from '../../../shared/core/base';
 import {
   ConfirmationDialogStore,
   type ConfirmationDialogConfig
 } from '../../../shared/ui/context/stores/confirmation-dialog.store';
+import { UserProfileStore } from '../../../shared/ui/context/stores/user-profile.store';
+import { AppRuntimeStore } from '../../../shared/ui/context/stores/app-runtime.store';
+import { ActivityStore } from '../../../shared/ui/context/stores/activity.store';
+import { PopupStore } from '../../../shared/ui/context/stores/popup.store';
 
 type EventFeedbackStackedPopupMode = 'eventFeedback' | 'eventFeedbackNote' | 'organizerEventFeedback' | null;
 
@@ -80,8 +100,10 @@ interface EventFeedbackConfirmationDialogContent extends Omit<ConfirmationDialog
   styleUrl: './event-feedback-popup.component.scss'
 })
 export class EventFeedbackPopupComponent {
-  private readonly appCtx = inject(AppContext);
-  private readonly popupCtx = inject(AppPopupContext);
+  private readonly userProfileStore = inject(UserProfileStore);
+  private readonly runtimeStore = inject(AppRuntimeStore);
+  private readonly activityStore = inject(ActivityStore);
+  private readonly popupStore = inject(PopupStore);
   private readonly eventsService = inject(EventsService);
   private readonly confirmationDialogStore = inject(ConfirmationDialogStore);
   private lastHandledNavigatorEventFeedbackRequestMs = 0;
@@ -183,7 +205,7 @@ export class EventFeedbackPopupComponent {
     defaultView: 'list',
     headerProgress: {
       enabled: true,
-      state: () => this.appCtx.runtimeStore.isOnline() ? 'active' : 'inactive'
+      state: () => this.runtimeStore.isOnline() ? 'active' : 'inactive'
     },
     emptyLabel: 'Event Feedback',
     emptyDescription: (query) => EventFeedbackListPresentationConverter.convert({
@@ -305,18 +327,18 @@ export class EventFeedbackPopupComponent {
 
   constructor() {
     effect(() => {
-      const request = this.popupCtx.popupStore.navigatorEventFeedbackRequest();
+      const request = this.popupStore.navigatorEventFeedbackRequest();
       if (!request || request.updatedMs <= this.lastHandledNavigatorEventFeedbackRequestMs) {
         return;
       }
       this.lastHandledNavigatorEventFeedbackRequestMs = request.updatedMs;
-      this.popupCtx.popupStore.clearNavigatorEventFeedbackRequest();
+      this.popupStore.clearNavigatorEventFeedbackRequest();
       this.openPopup();
     });
 
     effect(() => {
       const filter = this.eventFeedbackListFilter();
-      const userId = this.appCtx.userProfileStore.activeUserId().trim();
+      const userId = this.userProfileStore.activeUserId().trim();
       const currentFilters = this.eventFeedbackSmartListQuery.filters;
       if (currentFilters?.filter === filter && currentFilters?.userId === userId) {
         return;
@@ -354,7 +376,7 @@ export class EventFeedbackPopupComponent {
     });
 
     effect(() => {
-      const sync = this.appCtx.activityStore.activityEventFeedbackSubmitSync();
+      const sync = this.activityStore.activityEventFeedbackSubmitSync();
       if (!sync || sync.updatedMs <= this.lastAppliedEventFeedbackSubmitUpdatedMs) {
         return;
       }
@@ -616,7 +638,7 @@ export class EventFeedbackPopupComponent {
   }
 
   private activeUserId(): string {
-    return this.appCtx.userProfileStore.activeUserProfile()?.id?.trim() || this.appCtx.userProfileStore.activeUserId().trim();
+    return this.userProfileStore.activeUserProfile()?.id?.trim() || this.userProfileStore.activeUserId().trim();
   }
 
   private async startEventFeedback(item: ActivityContracts.EventFeedbackDto, event?: Event): Promise<void> {
@@ -671,7 +693,7 @@ export class EventFeedbackPopupComponent {
     this.eventFeedbackSubmitting.set(true);
     try {
       await this.eventsService.submitEventFeedback(this.activeUserId(), feedback);
-      this.appCtx.activityStore.emitActivityEventFeedbackSubmit(feedback);
+      this.activityStore.emitActivityEventFeedbackSubmit(feedback);
       this.eventFeedbackSubmitted.set(true);
       this.eventFeedbackSubmitMessage.set(`Feedback submitted successfully for ${this.eventFeedbackCurrentEventTitle()}.`);
       this.clearLoadedEventFeedbackDetail(feedback.eventId);

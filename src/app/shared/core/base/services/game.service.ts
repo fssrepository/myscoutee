@@ -1,7 +1,11 @@
-import { Injectable, inject } from '@angular/core';
+import {
+  Injectable,
+  inject
+} from '@angular/core';
 
-import { type LoadStatus } from '../../../ui/context';
-import { AppContext } from '../../../ui/context';
+import {
+  type LoadStatus
+} from '../../../ui/context';
 import type {
   UserGameCardsDto,
   UserGameCardsQueryRequest,
@@ -10,12 +14,23 @@ import type {
   UserGameDataService,
   UserGameMode
 } from '../../contracts/activity.interface';
-import { LocalGameService } from '../../local';
-import { LocalRatesRepository } from '../../local/source/repositories/rates.repository';
-import { HttpGameService } from '../../http';
+import {
+  LocalGameService
+} from '../../local';
+import {
+  LocalRatesRepository
+} from '../../local/source/repositories/rates.repository';
+import {
+  HttpGameService
+} from '../../http';
 import type { UserDto } from '../../contracts/user.interface';
-import { BaseRouteModeService } from './base-route-mode.service';
-import { RateOutboxService } from './rate-outbox.service';
+import {
+  BaseRouteModeService
+} from './base-route-mode.service';
+import {
+  RateOutboxService
+} from './rate-outbox.service';
+import { AppRuntimeStore } from '../../../ui/context/stores/app-runtime.store';
 
 export const USER_GAME_CARDS_LOAD_CONTEXT_KEY = 'user-game-cards';
 
@@ -37,7 +52,7 @@ export class GameService extends BaseRouteModeService {
   private readonly localRatesRepository = inject(LocalRatesRepository);
   private readonly httpGameService = inject(HttpGameService);
   private readonly rateOutboxService = inject(RateOutboxService);
-  private readonly appCtx = inject(AppContext);
+  private readonly runtimeStore = inject(AppRuntimeStore);
   private readonly userGameCardsStackStateByUserId: Record<string, UserGameCardsStackState> = {};
   private userRatesOutboxSyncInFlight = false;
   private userRatesOutboxSyncTimer: ReturnType<typeof setInterval> | null = null;
@@ -626,7 +641,7 @@ export class GameService extends BaseRouteModeService {
 
 
   private setLoadStatus(contextKey: string, status: LoadStatus, message?: string): void {
-    this.appCtx.runtimeStore.setStatus(contextKey, status, message);
+    this.runtimeStore.setStatus(contextKey, status, message);
   }
 
 }

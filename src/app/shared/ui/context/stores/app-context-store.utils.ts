@@ -1,12 +1,12 @@
 import type { HelpCenterRevisionDto, HelpCenterStateDto } from '../../../core/contracts';
+import type { UserGameFilterPreferencesDto } from '../../../core/contracts/activity.interface';
 import type { ProfileExtDto, UserDto, UserImpressionsDto, UserImpressionsSectionDto } from '../../../core/contracts/user.interface';
 import type {
   ActivityAssetCounters,
   ActivityEventCounters,
-  ActivityEventFeedbackCounters,
-  AppContextAdminUserDto,
-  UserGameFilterPreferencesDto
-} from '../app-context.types';
+  ActivityEventFeedbackCounters
+} from './activity.store';
+import type { UserProfileAdminUserDto } from './user-profile.store';
 
 export function normalizeCounterValue(value: unknown): number {
   if (!Number.isFinite(value)) {
@@ -176,7 +176,7 @@ export function cloneUserProfile(user: UserDto): UserDto {
   };
 }
 
-export function adminUserFromProfile(profile: UserDto | null): AppContextAdminUserDto | null {
+export function adminUserFromProfile(profile: UserDto | null): UserProfileAdminUserDto | null {
   const id = `${profile?.id ?? ''}`.trim();
   if (!id || !profile) {
     return null;

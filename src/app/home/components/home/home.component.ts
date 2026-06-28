@@ -1,9 +1,29 @@
-import { ChangeDetectionStrategy, ChangeDetectorRef, Component, HostListener, OnDestroy, ViewChild, effect, signal } from '@angular/core';
-import { CommonModule } from '@angular/common';
-import { MatIconModule } from '@angular/material/icon';
-import { from } from 'rxjs';
-import { ActivitiesPopupStore } from '../../../shared/ui/context/stores/activities-popup.store';
-import { NavigatorStore } from '../../../shared/ui/context/stores/navigator.store';
+import {
+  ChangeDetectionStrategy,
+  ChangeDetectorRef,
+  Component,
+  HostListener,
+  OnDestroy,
+  ViewChild,
+  effect,
+  signal,
+  inject
+} from '@angular/core';
+import {
+  CommonModule
+} from '@angular/common';
+import {
+  MatIconModule
+} from '@angular/material/icon';
+import {
+  from
+} from 'rxjs';
+import {
+  ActivitiesPopupStore
+} from '../../../shared/ui/context/stores/activities-popup.store';
+import {
+  NavigatorStore
+} from '../../../shared/ui/context/stores/navigator.store';
 import {
   AppMenuComponent,
   type AppMenuItem,
@@ -22,11 +42,24 @@ import {
   type SmartListLoadPage,
   type SmartListStateChange
 } from '../../../shared/ui';
-import { APP_STATIC_DATA } from '../../../shared/app-static-data';
-import { AppContext } from '../../../shared/ui';
-import { ExplanationGuideService, GameService, USER_BY_ID_LOAD_CONTEXT_KEY, UsersService, type UserDto, type UserGameMode, type UserGameSocialCard } from '../../../shared/core';
-import { HomeGameFilterPopupComponent } from '../home-game-filter-popup/home-game-filter-popup.component';
-import { I18nPipe } from '../../../shared/ui';
+import {
+  APP_STATIC_DATA
+} from '../../../shared/app-static-data';
+import {
+  ExplanationGuideService,
+  GameService,
+  USER_BY_ID_LOAD_CONTEXT_KEY,
+  UsersService,
+  type UserDto,
+  type UserGameMode,
+  type UserGameSocialCard
+} from '../../../shared/core';
+import {
+  HomeGameFilterPopupComponent
+} from '../home-game-filter-popup/home-game-filter-popup.component';
+import {
+  I18nPipe
+} from '../../../shared/ui';
 import {
   GameFilterForm,
   GameFilterOptionGroup,
@@ -41,6 +74,9 @@ import {
   normalizeGameFilter,
   parseGameHeightCm
 } from '../../shared/home-game-filter.shared';
+import { UserProfileStore } from '../../../shared/ui/context/stores/user-profile.store';
+import { AppRuntimeStore } from '../../../shared/ui/context/stores/app-runtime.store';
+import { ActivityStore } from '../../../shared/ui/context/stores/activity.store';
 
 type LocalPopup = 'history' | 'filter' | null;
 
@@ -140,6 +176,9 @@ const PUBLIC_PROFILE_DETAIL_KEYS = new Set(
   styleUrls: ['./home.component.scss']
 })
 export class HomeComponent implements OnDestroy {
+  private readonly userProfileStore = inject(UserProfileStore);
+  private readonly runtimeStore = inject(AppRuntimeStore);
+  private readonly activityStore = inject(ActivityStore);
   private static readonly MOBILE_VIEWPORT_MAX_WIDTH_PX = 760;
   private static readonly PAIR_MODE_SPLIT_DEFAULT_PERCENT = 50;
   private static readonly PAIR_MODE_SPLIT_MIN_PERCENT = 0;
@@ -231,7 +270,7 @@ export class HomeComponent implements OnDestroy {
     showBackgroundLoadingProgress: true,
     headerProgress: {
       enabled: true,
-      state: () => this.appCtx.runtimeStore.isOnline() ? 'active' : 'inactive'
+      state: () => this.runtimeStore.isOnline() ? 'active' : 'inactive'
     },
     trackBy: (_index, row) => row.id,
     emptyLabel: () => this.noCandidateTitle,
@@ -266,7 +305,6 @@ export class HomeComponent implements OnDestroy {
     private readonly cdr: ChangeDetectorRef,
     private readonly activitiesStore: ActivitiesPopupStore,
     private readonly navigatorStore: NavigatorStore,
-    private readonly appCtx: AppContext,
     private readonly explanationGuide: ExplanationGuideService,
     private readonly gameService: GameService,
     private readonly usersService: UsersService
@@ -283,8 +321,8 @@ export class HomeComponent implements OnDestroy {
       this.syncHomeSmartListQuery();
       this.homeSmartListQueryReady = true;
     }
-    const activeUserIdSignal = this.appCtx.userProfileStore.activeUserId;
-    const userByIdLoadState = this.appCtx.runtimeStore.selectLoadingState(USER_BY_ID_LOAD_CONTEXT_KEY);
+    const activeUserIdSignal = this.userProfileStore.activeUserId;
+    const userByIdLoadState = this.runtimeStore.selectLoadingState(USER_BY_ID_LOAD_CONTEXT_KEY);
     effect(() => {
       const targetUserId = activeUserIdSignal().trim();
       if (!targetUserId || targetUserId === this.lastHandledActiveUserId) {
@@ -298,7 +336,7 @@ export class HomeComponent implements OnDestroy {
         return;
       }
       const status = userByIdLoadState().status;
-      const activeProfile = this.appCtx.userProfileStore.activeUserProfile();
+      const activeProfile = this.userProfileStore.activeUserProfile();
       const alreadyLoaded = activeProfile?.id === this.activeUserId;
       if (status === 'loading') {
         this.awaitingUserByIdLoadingSeen = true;
@@ -317,7 +355,7 @@ export class HomeComponent implements OnDestroy {
       const previousReloadKey = this.serviceCardStackReloadKey();
       this.awaitingUserBootstrapRef.set(false);
       this.awaitingUserByIdLoadingSeen = false;
-      this.applyFilterPreferencesFromAppContext();
+      this.applyFilterPreferencesFromUserProfileStore();
       if (this.gameInitialCardsLoadPending) {
         if (previousReloadKey !== this.serviceCardStackReloadKey()) {
           this.resetServiceCardState();
@@ -357,7 +395,7 @@ export class HomeComponent implements OnDestroy {
 
   protected get activeUser(): UserDto {
     const localUser = this.users.find(user => user.id === this.activeUserId) ?? this.users[0] ?? null;
-    const contextUser = this.appCtx.userProfileStore.activeUserProfile();
+    const contextUser = this.userProfileStore.activeUserProfile();
     if (!localUser) {
       return contextUser ? this.toHomeUser(contextUser) : this.createFallbackActiveUser();
     }
@@ -384,7 +422,7 @@ export class HomeComponent implements OnDestroy {
   }
 
   protected get isAvatarProfileSettled(): boolean {
-    return this.appCtx.runtimeStore.getLoadingState(USER_BY_ID_LOAD_CONTEXT_KEY).status === 'success';
+    return this.runtimeStore.getLoadingState(USER_BY_ID_LOAD_CONTEXT_KEY).status === 'success';
   }
 
   protected get isBlockedUserStatusPending(): boolean {
@@ -421,7 +459,7 @@ export class HomeComponent implements OnDestroy {
   }
 
   private get avatarLoadedUser(): UserDto | null {
-    const user = this.appCtx.userProfileStore.activeUserProfile();
+    const user = this.userProfileStore.activeUserProfile();
     return user?.id === this.activeUserId ? user : null;
   }
 
@@ -433,7 +471,7 @@ export class HomeComponent implements OnDestroy {
     if (!this.canOpenHistory) {
       return 0;
     }
-    return this.appCtx.activityStore.resolveUserCounter(this.activeUser.id, 'game', this.activeUser.activities.game);
+    return this.activityStore.resolveUserCounter(this.activeUser.id, 'game', this.activeUser.activities.game);
   }
 
   protected gamePageStatusClass(): string {
@@ -854,7 +892,7 @@ export class HomeComponent implements OnDestroy {
     }
     this.stopPairModeSplitDrag();
     this.selectedHomeMode = normalizedMode;
-    this.appCtx.userProfileStore.clearUserFilterCountOverride(this.activeUserId);
+    this.userProfileStore.clearUserFilterCountOverride(this.activeUserId);
     this.resetServiceCardState();
     this.cardIndex = 0;
     this.leftSocialQuery = '';
@@ -925,7 +963,7 @@ export class HomeComponent implements OnDestroy {
     }
     this.gameFilterPopupContext = null;
     this.localPopup = null;
-    this.appCtx.userProfileStore.clearUserFilterCountOverride(this.activeUserId);
+    this.userProfileStore.clearUserFilterCountOverride(this.activeUserId);
     this.resetServiceCardState();
     this.cardIndex = 0;
     this.resetCandidateImageState();
@@ -1350,7 +1388,7 @@ export class HomeComponent implements OnDestroy {
     this.resetServiceCardState();
     const initialFilter = createInitialGameFilter(this.activeUser);
     this.gameFilter = cloneGameFilter(initialFilter);
-    this.applyFilterPreferencesFromAppContext();
+    this.applyFilterPreferencesFromUserProfileStore();
     this.homeSmartListQueryReady = false;
     this.cardIndex = 0;
     this.resetCandidateImageState();
@@ -1374,8 +1412,8 @@ export class HomeComponent implements OnDestroy {
     this.selectedRating = 0;
   }
 
-  private applyFilterPreferencesFromAppContext(): void {
-    const next = this.appCtx.userProfileStore.resolveUserFilterPreferences(this.activeUserId, createInitialGameFilter(this.activeUser));
+  private applyFilterPreferencesFromUserProfileStore(): void {
+    const next = this.userProfileStore.resolveUserFilterPreferences(this.activeUserId, createInitialGameFilter(this.activeUser));
     this.gameFilter = normalizeGameFilter(next);
   }
 
@@ -1469,7 +1507,7 @@ export class HomeComponent implements OnDestroy {
   }
 
   private getActiveUserId(): string {
-    const activeUserId = this.appCtx.userProfileStore.activeUserId().trim();
+    const activeUserId = this.userProfileStore.activeUserId().trim();
     if (activeUserId) {
       return activeUserId;
     }
@@ -1939,7 +1977,7 @@ export class HomeComponent implements OnDestroy {
     if (!this.isSeparatedFriendsMode && !this.isFriendsInCommonMode) {
       return;
     }
-    this.appCtx.userProfileStore.clearUserFilterCountOverride(this.activeUserId);
+    this.userProfileStore.clearUserFilterCountOverride(this.activeUserId);
     this.resetServiceCardState();
     this.cardIndex = 0;
     this.resetCandidateImageState();
@@ -2727,7 +2765,7 @@ export class HomeComponent implements OnDestroy {
 
   private createFallbackActiveUser(): UserDto {
     return {
-      id: this.activeUserId || this.appCtx.userProfileStore.activeUserId().trim(),
+      id: this.activeUserId || this.userProfileStore.activeUserId().trim(),
       name: '',
       age: 30,
       birthday: '',

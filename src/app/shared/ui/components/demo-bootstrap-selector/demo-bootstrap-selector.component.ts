@@ -1,19 +1,50 @@
-import { ChangeDetectorRef, Component, EventEmitter, HostListener, Input, NgZone, Output, effect, inject } from '@angular/core';
-import { CommonModule } from '@angular/common';
-import { MatButtonModule } from '@angular/material/button';
-import { MatRippleModule } from '@angular/material/core';
+import {
+  ChangeDetectorRef,
+  Component,
+  EventEmitter,
+  HostListener,
+  Input,
+  NgZone,
+  Output,
+  effect,
+  inject
+} from '@angular/core';
+import {
+  CommonModule
+} from '@angular/common';
+import {
+  MatButtonModule
+} from '@angular/material/button';
+import {
+  MatRippleModule
+} from '@angular/material/core';
 
-import { AppPopupContext, type DemoBootstrapSelectorState } from '../../context/app-popup.context';
-import { ProgressIndicatorComponent } from '../progress-indicator';
+import {
+  type DemoBootstrapSelectorState
+} from '../../context/stores/popup.store';
+import {
+  ProgressIndicatorComponent
+} from '../progress-indicator';
 import {
   AppMenuComponent,
   type AppMenuItem,
   type AppMenuItemSelectEvent
 } from '../menu';
-import { I18nPipe } from '../../pipes';
-import { UsersService, type BootstrapProcessStage, type UserSelectorListItemDto } from '../../../core';
-import { UserProfileState } from '../../../core/common/user-profile-state';
-import { SeedDemoBootstrapService } from '../../../core/local/seed/services/demo-bootstrap.service';
+import {
+  I18nPipe
+} from '../../pipes';
+import {
+  UsersService,
+  type BootstrapProcessStage,
+  type UserSelectorListItemDto
+} from '../../../core';
+import {
+  UserProfileState
+} from '../../../core/common/user-profile-state';
+import {
+  SeedDemoBootstrapService
+} from '../../../core/local/seed/services/demo-bootstrap.service';
+import { PopupStore } from '../../context/stores/popup.store';
 
 type DemoSelectorHeaderMenuItemId = 'new-profile';
 
@@ -36,7 +67,7 @@ interface DemoSelectorHeaderMenuContext {
   styleUrl: './demo-bootstrap-selector.component.scss'
 })
 export class DemoBootstrapSelectorComponent {
-  private readonly popupCtx = inject(AppPopupContext);
+  private readonly popupStore = inject(PopupStore);
   private readonly usersService = inject(UsersService);
   private readonly seedBootstrap = inject(SeedDemoBootstrapService);
   private readonly changeDetectorRef = inject(ChangeDetectorRef);
@@ -65,7 +96,7 @@ export class DemoBootstrapSelectorComponent {
 
   constructor() {
     effect(() => {
-      const request = this.popupCtx.popupStore.demoBootstrapSelector();
+      const request = this.popupStore.demoBootstrapSelector();
       if (!request) {
         this.resetContextState();
         return;

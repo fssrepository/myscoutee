@@ -1,12 +1,27 @@
 import type * as ActivityContracts from '../../../../../shared/core/contracts/activity.interface';
 
-import { ChangeDetectionStrategy, Component, EventEmitter, Input, OnChanges, Output, SimpleChanges } from '@angular/core';
+import {
+  ChangeDetectionStrategy,
+  Component,
+  EventEmitter,
+  Input,
+  OnChanges,
+  Output,
+  SimpleChanges,
+  inject
+} from '@angular/core';
 
-import { AppUtils } from '../../../../../shared/app-utils';
+import {
+  AppUtils
+} from '../../../../../shared/app-utils';
 import type { ChatDTO } from '../../../../../shared/core/contracts/chat.interface';
-import { ActivityEventDetailDTO } from '../../../../../shared/core/contracts/activity.interface';
+import {
+  ActivityEventDetailDTO
+} from '../../../../../shared/core/contracts/activity.interface';
 import type * as ContractTypes from '../../../../../shared/core/contracts';
-import { ActivityMembersBuilder } from '../../../../../shared/core';
+import {
+  ActivityMembersBuilder
+} from '../../../../../shared/core';
 import {
   InfoCardComponent,
   type InfoCardData,
@@ -21,6 +36,7 @@ import {
 } from '../../../../../shared/ui/converters';
 
 import type * as AppConstants from '../../../../../shared/core/common/constants';
+import { PopupStore } from '../../../../../shared/ui/context/stores/popup.store';
 
 type ActivityEventCardType = 'events' | 'hosting' | 'invitations';
 type ActivityEventCardData = InfoCardData & {
@@ -56,6 +72,7 @@ type ActivityEventCardData = InfoCardData & {
   changeDetection: ChangeDetectionStrategy.OnPush
 })
 export class ActivitiesEventTemplateComponent implements OnChanges {
+  private readonly popupStore = inject(PopupStore);
   @Input() row: ActivityEventCardData | null = null;
   @Input() groupLabel: string | null = null;
   @Input() cardRevision = 0;
@@ -148,7 +165,7 @@ export class ActivitiesEventsController {
   private get isMobileView() { return this.host.isMobileView as boolean; }
   private get pendingActivityMemberDelete() { return this.host.pendingActivityMemberDelete as ActivityContracts.ActivityMemberEntry | null; }
   private set pendingActivityMemberDelete(value: ActivityContracts.ActivityMemberEntry | null) { this.host.pendingActivityMemberDelete = value; }
-  private get popupCtx() { return this.host.popupCtx; }
+  private get popupStore() { return this.host.popupStore as PopupStore; }
   private get navigatorStore() { return this.host.navigatorStore; }
   private get shareTokensService() { return this.host.shareTokensService; }
   private get activeHostingIds() { return this.host.activeHostingIds as ReadonlySet<string>; }
@@ -305,7 +322,7 @@ export class ActivitiesEventsController {
 
   public runActivityItemViewAction(row: ActivityEventCardData, event?: Event): void {
     event?.stopPropagation();
-    this.popupCtx.popupStore.openEventSubeventsListPopup({
+    this.popupStore.openEventSubeventsListPopup({
       eventId: row.id,
       target: row.isAdmin === true || row.type === 'hosting' ? 'hosting' : 'events',
       title: row.title,
@@ -1257,7 +1274,7 @@ export class ActivitiesEventsController {
 
   public openActivityMembers(row: ActivityEventCardData, event?: Event): void {
     event?.stopPropagation();
-    this.popupCtx.popupStore.requestActivitiesNavigation({
+    this.popupStore.requestActivitiesNavigation({
       type: 'members',
       ownerId: row.id,
       ownerType: 'event',
@@ -1395,7 +1412,7 @@ export class ActivitiesEventsController {
   }
 
   public openActivityRowInEventModule(row: ActivityEventCardData, readOnly: boolean): void {
-    this.popupCtx.popupStore.requestActivitiesNavigation({
+    this.popupStore.requestActivitiesNavigation({
       type: 'eventEditor',
       eventId: row.id,
       target: row.isAdmin === true || row.type === 'hosting' ? 'hosting' : 'events',

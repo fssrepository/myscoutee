@@ -1,12 +1,22 @@
-import { Injectable, inject } from '@angular/core';
+import {
+  Injectable,
+  inject
+} from '@angular/core';
 
-import { AppContext } from '../../../ui/context';
-import { LocalActivityMembersService } from '../../local/source/services/activity-members.service';
-import { HttpActivityMembersService } from '../../http/services/activity-members.service';
-import { BaseRouteModeService } from './base-route-mode.service';
+import {
+  LocalActivityMembersService
+} from '../../local/source/services/activity-members.service';
+import {
+  HttpActivityMembersService
+} from '../../http/services/activity-members.service';
+import {
+  BaseRouteModeService
+} from './base-route-mode.service';
 import type { ActivityMemberOwnerType } from '../../common/constants';
 import type { ActivityMemberOwnerRef, ActivityMembersSummaryDto } from '../../contracts/activity.interface';
 import type * as ActivityContracts from '../../contracts/activity.interface';
+import { UserProfileStore } from '../../../ui/context/stores/user-profile.store';
+import { ActivityStore } from '../../../ui/context/stores/activity.store';
 
 @Injectable({
   providedIn: 'root'
@@ -15,9 +25,8 @@ export class ActivityMembersService extends BaseRouteModeService {
   private static readonly OWNER_TYPES: readonly ActivityMemberOwnerType[] = ['event', 'subEvent', 'group', 'asset'];
   private readonly localActivityMembersService = inject(LocalActivityMembersService);
   private readonly httpActivityMembersService = inject(HttpActivityMembersService);
-  private readonly appCtx = inject(AppContext);
-
-
+  private readonly userProfileStore = inject(UserProfileStore);
+  private readonly activityStore = inject(ActivityStore);
   private get activityMembersService(): LocalActivityMembersService | HttpActivityMembersService {
     return this.resolveRouteService('/activities/events/members', this.localActivityMembersService, this.httpActivityMembersService);
   }
@@ -82,7 +91,7 @@ export class ActivityMembersService extends BaseRouteModeService {
     members: readonly ActivityContracts.ActivityMemberEntry[],
     capacityTotal?: number | null
   ): Promise<void> {
-    const actorUserId = this.appCtx.userProfileStore.activeUserId().trim() || this.appCtx.userProfileStore.getActiveUserId().trim();
+    const actorUserId = this.userProfileStore.activeUserId().trim() || this.userProfileStore.getActiveUserId().trim();
     await this.activityMembersService.replaceMembersByOwner(
       owner,
       this.prepareMembersForPersistence(members),
@@ -117,7 +126,7 @@ export class ActivityMembersService extends BaseRouteModeService {
     }
     const members = this.presentMembers(await this.activityMembersService.applyMemberAction(
       normalizedOwner,
-      this.appCtx.userProfileStore.activeUserId().trim(),
+      this.userProfileStore.activeUserId().trim(),
       targetUserId,
       action,
       reason
@@ -140,7 +149,7 @@ export class ActivityMembersService extends BaseRouteModeService {
     pendingMembers: number,
     capacityTotal: number
   ): void {
-    this.appCtx.activityStore.emitActivityMembersSync({
+    this.activityStore.emitActivityMembersSync({
       id,
       acceptedMembers,
       pendingMembers,
@@ -170,7 +179,7 @@ export class ActivityMembersService extends BaseRouteModeService {
   }
 
   private presentMembers(entries: readonly ActivityContracts.ActivityMemberEntry[]): ActivityContracts.ActivityMemberEntry[] {
-    const activeUserId = this.appCtx.userProfileStore.activeUserId().trim();
+    const activeUserId = this.userProfileStore.activeUserId().trim();
     return entries.map(entry => {
       const invitedByUserId = `${entry.invitedByUserId ?? ''}`.trim() || null;
       return {
@@ -184,7 +193,7 @@ export class ActivityMembersService extends BaseRouteModeService {
   private prepareMembersForPersistence(
     entries: readonly ActivityContracts.ActivityMemberEntry[]
   ): ActivityContracts.ActivityMemberEntry[] {
-    const activeUserId = this.appCtx.userProfileStore.activeUserId().trim();
+    const activeUserId = this.userProfileStore.activeUserId().trim();
     return entries.map(entry => {
       const isPendingInvite = entry.status === 'pending'
         && (entry.requestKind === 'invite' || entry.requestKind === 'waitlist-invite');

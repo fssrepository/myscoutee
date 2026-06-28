@@ -1,17 +1,32 @@
-import { Injectable, inject } from '@angular/core';
+import {
+  Injectable,
+  inject
+} from '@angular/core';
 
-import { AppUtils } from '../../../app-utils';
+import {
+  AppUtils
+} from '../../../app-utils';
 import type * as ContractTypes from '../../contracts';
 import type { ActivitiesFeedFilters, EventExploreFeedFilters, ListQuery, PageResult } from '../../contracts';
 import type { ChatDTO } from '../../contracts/chat.interface';
 import type { UserDto } from '../../contracts/user.interface';
-import { AppContext } from '../../../ui/context';
 import type { ActivityEventRecord, ActivityRateDTO } from '../../contracts/activity.interface';
-import { ChatsService } from './chats.service';
-import { EventsService } from './events.service';
-import { RatesService } from './rates.service';
-import { UsersService } from './users.service';
-import { BaseRouteModeService } from './base-route-mode.service';
+import {
+  ChatsService
+} from './chats.service';
+import {
+  EventsService
+} from './events.service';
+import {
+  RatesService
+} from './rates.service';
+import {
+  UsersService
+} from './users.service';
+import {
+  BaseRouteModeService
+} from './base-route-mode.service';
+import { UserProfileStore } from '../../../ui/context/stores/user-profile.store';
 
 @Injectable({
   providedIn: 'root'
@@ -20,7 +35,7 @@ export class ActivitiesService extends BaseRouteModeService {
   private readonly eventsService = inject(EventsService);
   private readonly chatsService = inject(ChatsService);
   private readonly ratesService = inject(RatesService);
-  private readonly appCtx = inject(AppContext);
+  private readonly userProfileStore = inject(UserProfileStore);
   private readonly usersService = inject(UsersService);
 
   async loadExplore(query: ListQuery<EventExploreFeedFilters>): Promise<PageResult<ActivityEventRecord>> {
@@ -63,11 +78,11 @@ export class ActivitiesService extends BaseRouteModeService {
   }
 
   private resolveActiveUserId(): string {
-    const activeUserProfileId = this.appCtx.userProfileStore.activeUserProfile()?.id?.trim();
+    const activeUserProfileId = this.userProfileStore.activeUserProfile()?.id?.trim();
     if (activeUserProfileId) {
       return activeUserProfileId;
     }
-    const activeUserId = this.appCtx.userProfileStore.getActiveUserId().trim();
+    const activeUserId = this.userProfileStore.getActiveUserId().trim();
     if (activeUserId) {
       return activeUserId;
     }
@@ -140,7 +155,7 @@ export class ActivitiesService extends BaseRouteModeService {
       if (!user?.id?.trim()) {
         continue;
       }
-      this.appCtx.userProfileStore.setUserProfile(user);
+      this.userProfileStore.setUserProfile(user);
     }
   }
 

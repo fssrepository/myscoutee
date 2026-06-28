@@ -1,16 +1,39 @@
-import { CommonModule } from '@angular/common';
-import { Component, inject } from '@angular/core';
-import { FormsModule } from '@angular/forms';
-import { MatIconModule } from '@angular/material/icon';
-
-import { environment } from '../../../../environments/environment';
-import { APP_STATIC_DATA } from '../../../shared/app-static-data';
-import { AppUtils } from '../../../shared/app-utils';
-import { AssetCardBuilder, AssetDefaultsBuilder } from '../../../shared/core/base/builders';
-import { AssetsService, MediaService } from '../../../shared/core';
-import { OwnedAssetsStore, type OwnedAssetFormState } from '../../../shared/ui/context/stores/owned-assets.store';
 import {
-  AppContext,
+  CommonModule
+} from '@angular/common';
+import {
+  Component,
+  inject
+} from '@angular/core';
+import {
+  FormsModule
+} from '@angular/forms';
+import {
+  MatIconModule
+} from '@angular/material/icon';
+
+import {
+  environment
+} from '../../../../environments/environment';
+import {
+  APP_STATIC_DATA
+} from '../../../shared/app-static-data';
+import {
+  AppUtils
+} from '../../../shared/app-utils';
+import {
+  AssetCardBuilder,
+  AssetDefaultsBuilder
+} from '../../../shared/core/base/builders';
+import {
+  AssetsService,
+  MediaService
+} from '../../../shared/core';
+import {
+  AssetStore,
+  type AssetFormState
+} from '../../../shared/ui/context/stores/asset.store';
+import {
   AppMenuComponent,
   EditableImageCarouselComponent,
   EventPoliciesInputComponent,
@@ -28,6 +51,7 @@ import {
 
 import type * as AppConstants from '../../../shared/core/common/constants';
 import type * as AppDTOs from '../../../shared/core/contracts';
+import { UserProfileStore } from '../../../shared/ui/context/stores/user-profile.store';
 type AssetEditorMenuContext =
   | { menu: 'visibility'; visibility: AppConstants.EventVisibility }
   | { menu: 'category'; category: AppConstants.AssetCategory }
@@ -51,10 +75,10 @@ type AssetEditorMenuContext =
   styleUrl: './asset-editor-popup.component.scss'
 })
 export class AssetEditorPopupComponent {
-  private readonly appCtx = inject(AppContext);
+  private readonly userProfileStore = inject(UserProfileStore);
   private readonly assetsService = inject(AssetsService);
   private readonly mediaService = inject(MediaService);
-  protected readonly ownedAssetsStore = inject(OwnedAssetsStore);
+  protected readonly assetStore = inject(AssetStore);
   protected readonly assetVisibilityOptions = APP_STATIC_DATA.eventVisibilityOptions;
   private assetImageUrlsCacheKey = '';
   private assetImageUrlsCache: string[] = [];
@@ -89,42 +113,42 @@ export class AssetEditorPopupComponent {
     requiredCheckboxLabel: 'Borrowers must approve this policy'
   };
 
-  protected get assetForm(): OwnedAssetFormState {
-    return this.ownedAssetsStore.assetForm();
+  protected get assetForm(): AssetFormState {
+    return this.assetStore.assetForm();
   }
 
   protected get title(): string {
-    const mode = this.ownedAssetsStore.editingAssetId() ? 'Edit' : 'Add';
+    const mode = this.assetStore.editingAssetId() ? 'Edit' : 'Add';
     return `${mode} ${AssetDefaultsBuilder.assetTypeLabel(this.assetForm.type)}`;
   }
 
   protected get isLoading(): boolean {
-    return this.ownedAssetsStore.assetFormLoading();
+    return this.assetStore.assetFormLoading();
   }
 
   protected get isSavePending(): boolean {
-    return this.ownedAssetsStore.assetFormSavePending();
+    return this.assetStore.assetFormSavePending();
   }
 
   protected get assetFormVisibility(): AppConstants.EventVisibility {
-    return this.ownedAssetsStore.assetFormVisibility();
+    return this.assetStore.assetFormVisibility();
   }
 
   protected get sourceRefreshEnabled(): boolean {
     return environment.activitiesDataSource === 'http'
-      && !this.ownedAssetsStore.assetFormLoading()
+      && !this.assetStore.assetFormLoading()
       && Boolean(AppUtils.normalizeHttpUrl(this.assetForm.sourceLink));
   }
 
   protected get assetImageUploadOwnerId(): string {
-    return this.ownedAssetsStore.activeOwnerUserId().trim() || this.appCtx.userProfileStore.getActiveUserId().trim();
+    return this.assetStore.activeOwnerUserId().trim() || this.userProfileStore.getActiveUserId().trim();
   }
 
   protected requestClose(): void {
     if (this.isSavePending) {
       return;
     }
-    this.ownedAssetsStore.closeAssetEditor();
+    this.assetStore.closeAssetEditor();
   }
 
   protected submitForm(): void {
@@ -212,7 +236,7 @@ export class AssetEditorPopupComponent {
       return;
     }
     if (context.menu === 'visibility') {
-      this.ownedAssetsStore.setAssetEditorVisibility(context.visibility);
+      this.assetStore.setAssetEditorVisibility(context.visibility);
       return;
     }
     if (context.menu === 'save') {
@@ -227,14 +251,14 @@ export class AssetEditorPopupComponent {
   }
 
   protected setAssetEditorRouteStop(index: number, value: string): void {
-    const assetForm = this.ownedAssetsStore.assetFormRef();
+    const assetForm = this.assetStore.assetFormRef();
     const routes = [...AssetCardBuilder.normalizeAssetRoutes(assetForm.type, assetForm.routes)];
     if (index < 0 || index >= routes.length) {
       return;
     }
     routes[index] = value;
     assetForm.routes = AssetCardBuilder.normalizeAssetRoutes(assetForm.type, routes);
-    this.ownedAssetsStore.touchUiState();
+    this.assetStore.touchUiState();
   }
 
   protected refreshAssetFromSourceLink(): void {
@@ -242,46 +266,46 @@ export class AssetEditorPopupComponent {
   }
 
   private async refreshAssetFromSourceLinkAction(): Promise<void> {
-    if (this.ownedAssetsStore.assetFormLoadingRef()) {
+    if (this.assetStore.assetFormLoadingRef()) {
       return;
     }
     const sourceUrl = this.normalizedAssetSourcePreviewUrl(true);
     if (!sourceUrl) {
       return;
     }
-    const ownerUserId = this.ownedAssetsStore.activeOwnerUserIdRef().trim()
-      || this.appCtx.userProfileStore.getActiveUserId().trim();
-    const assetForm = this.ownedAssetsStore.assetFormRef();
+    const ownerUserId = this.assetStore.activeOwnerUserIdRef().trim()
+      || this.userProfileStore.getActiveUserId().trim();
+    const assetForm = this.assetStore.assetFormRef();
     const preview = await this.assetsService.refreshAssetSourcePreview(ownerUserId, assetForm.type, sourceUrl);
     if (!preview || preview.enabled === false) {
       return;
     }
-    const replacedImageUrl = this.ownedAssetsStore.applyAssetSourcePreview(preview, sourceUrl);
+    const replacedImageUrl = this.assetStore.applyAssetSourcePreview(preview, sourceUrl);
     if (environment.activitiesDataSource === 'http') {
       AppUtils.revokeObjectUrl(replacedImageUrl);
     }
   }
 
   private async saveAssetCard(): Promise<void> {
-    if (!this.canSubmitAssetEditor() || !this.ownedAssetsStore.beginAssetEditorSave()) {
+    if (!this.canSubmitAssetEditor() || !this.assetStore.beginAssetEditorSave()) {
       return;
     }
     try {
-      const assetForm = this.ownedAssetsStore.assetFormRef();
-      const ownerUserId = this.ownedAssetsStore.activeOwnerUserIdRef().trim()
-        || this.appCtx.userProfileStore.getActiveUserId().trim();
-      const ownerName = this.appCtx.userProfileStore.activeUserProfile()?.name?.trim() || undefined;
-      const editingAssetId = this.ownedAssetsStore.editingAssetIdRef();
-      const assetId = editingAssetId || this.ownedAssetsStore.assetFormDraftIdRef() || `asset-${Date.now()}`;
+      const assetForm = this.assetStore.assetFormRef();
+      const ownerUserId = this.assetStore.activeOwnerUserIdRef().trim()
+        || this.userProfileStore.getActiveUserId().trim();
+      const ownerName = this.userProfileStore.activeUserProfile()?.name?.trim() || undefined;
+      const editingAssetId = this.assetStore.editingAssetIdRef();
+      const assetId = editingAssetId || this.assetStore.assetFormDraftIdRef() || `asset-${Date.now()}`;
       const resolvedImageUrl = await this.resolvePersistedAssetImageUrl(ownerUserId, assetId);
       if (environment.activitiesDataSource === 'http' && this.hasPendingAssetSourceImage() && !resolvedImageUrl) {
         throw new Error('Unable to upload asset image.');
       }
       const payload = AssetCardBuilder.buildAssetSavePayload(assetForm, resolvedImageUrl || assetForm.imageUrl);
-      const resolvedVisibility: AppConstants.EventVisibility = this.ownedAssetsStore.assetFormVisibilityRef();
+      const resolvedVisibility: AppConstants.EventVisibility = this.assetStore.assetFormVisibilityRef();
 
       if (editingAssetId) {
-        const existing = this.ownedAssetsStore.assetCards().find(card => card.id === editingAssetId);
+        const existing = this.assetStore.assetCards().find(card => card.id === editingAssetId);
         const nextCard: AppDTOs.AssetDetailDTO = {
           id: editingAssetId,
           ...payload,
@@ -291,15 +315,15 @@ export class AssetEditorPopupComponent {
           requests: existing?.requests.map(request => ({ ...request })) ?? [],
           menuActions: [...(existing?.menuActions ?? [])]
         };
-        this.ownedAssetsStore.applyAssetCards(this.ownedAssetsStore.assetCards().map(card =>
+        this.assetStore.applyAssetCards(this.assetStore.assetCards().map(card =>
           card.id === editingAssetId
             ? nextCard
             : card
         ), { reloadList: false, mutation: true });
         const persistPromise = ownerUserId
           ? this.assetsService.saveOwnedAsset(ownerUserId, nextCard).then(savedCard => {
-              if (this.ownedAssetsStore.isActiveOwnerUser(ownerUserId)) {
-                this.ownedAssetsStore.replaceAssetCard(savedCard, { reloadList: false });
+              if (this.assetStore.isActiveOwnerUser(ownerUserId)) {
+                this.assetStore.replaceAssetCard(savedCard, { reloadList: false });
               }
             })
           : Promise.resolve();
@@ -314,32 +338,32 @@ export class AssetEditorPopupComponent {
           requests: [],
           menuActions: ['share', 'edit', 'delete']
         };
-        this.ownedAssetsStore.applyAssetCards([nextCard, ...this.ownedAssetsStore.assetCards()], {
+        this.assetStore.applyAssetCards([nextCard, ...this.assetStore.assetCards()], {
           reloadList: false,
           mutation: true
         });
         const persistPromise = ownerUserId
           ? this.assetsService.saveOwnedAsset(ownerUserId, nextCard).then(savedCard => {
-              if (this.ownedAssetsStore.isActiveOwnerUser(ownerUserId)) {
-                this.ownedAssetsStore.replaceAssetCard(savedCard, { reloadList: false });
+              if (this.assetStore.isActiveOwnerUser(ownerUserId)) {
+                this.assetStore.replaceAssetCard(savedCard, { reloadList: false });
               }
             })
           : Promise.resolve();
         await persistPromise;
       }
-      this.ownedAssetsStore.completeAssetEditorSave();
+      this.assetStore.completeAssetEditorSave();
     } catch {
-      this.ownedAssetsStore.failAssetEditorSave();
+      this.assetStore.failAssetEditorSave();
     }
   }
 
   private async resolvePersistedAssetImageUrl(ownerUserId: string, assetId: string): Promise<string | null> {
-    const assetForm = this.ownedAssetsStore.assetFormRef();
-    const pendingSourceImageUrl = this.ownedAssetsStore.pendingAssetSourceImageUrlRef().trim();
+    const assetForm = this.assetStore.assetFormRef();
+    const pendingSourceImageUrl = this.assetStore.pendingAssetSourceImageUrlRef().trim();
     if (pendingSourceImageUrl && pendingSourceImageUrl === assetForm.imageUrl.trim()) {
       const importResult = await this.mediaService.importImage(ownerUserId, assetId, pendingSourceImageUrl);
       if (importResult.uploaded && importResult.imageUrl) {
-        this.ownedAssetsStore.applyPersistedAssetImage(importResult.imageUrl);
+        this.assetStore.applyPersistedAssetImage(importResult.imageUrl);
         return importResult.imageUrl;
       }
       return null;
@@ -348,8 +372,8 @@ export class AssetEditorPopupComponent {
   }
 
   private hasPendingAssetSourceImage(): boolean {
-    const assetForm = this.ownedAssetsStore.assetFormRef();
-    const pendingSourceImageUrl = this.ownedAssetsStore.pendingAssetSourceImageUrlRef().trim();
+    const assetForm = this.assetStore.assetFormRef();
+    const pendingSourceImageUrl = this.assetStore.pendingAssetSourceImageUrlRef().trim();
     return Boolean(pendingSourceImageUrl && pendingSourceImageUrl === assetForm.imageUrl.trim());
   }
 
@@ -357,14 +381,14 @@ export class AssetEditorPopupComponent {
     if (environment.activitiesDataSource !== 'http') {
       return '';
     }
-    const assetForm = this.ownedAssetsStore.assetFormRef();
+    const assetForm = this.assetStore.assetFormRef();
     const raw = assetForm.sourceLink.trim();
     const normalizedUrl = AppUtils.normalizeHttpUrl(raw);
     if (!normalizedUrl) {
       return '';
     }
     if (updateForm && normalizedUrl !== raw) {
-      this.ownedAssetsStore.setAssetEditorSourceLink(normalizedUrl);
+      this.assetStore.setAssetEditorSourceLink(normalizedUrl);
     }
     return normalizedUrl;
   }
@@ -373,9 +397,9 @@ export class AssetEditorPopupComponent {
     if (this.isLoading || this.isSavePending) {
       return;
     }
-    const assetForm = this.ownedAssetsStore.assetFormRef();
+    const assetForm = this.assetStore.assetFormRef();
     assetForm.category = AssetDefaultsBuilder.normalizeCategory(assetForm.type, category);
-    this.ownedAssetsStore.touchUiState();
+    this.assetStore.touchUiState();
   }
 
   private canSubmitAssetEditor(): boolean {
@@ -423,13 +447,13 @@ export class AssetEditorPopupComponent {
 
   protected onAssetImageUrlsChange(imageUrls: readonly string[] | null | undefined): void {
     const imageUrl = `${imageUrls?.[0] ?? ''}`.trim();
-    this.ownedAssetsStore.setAssetEditorImageUrl(imageUrl);
+    this.assetStore.setAssetEditorImageUrl(imageUrl);
     this.assetImageUrlsCacheKey = imageUrl;
     this.assetImageUrlsCache = imageUrl ? [imageUrl] : [];
   }
 
   protected assetImageUploadEntity(): string {
-    return this.ownedAssetsStore.editingAssetId()?.trim() || this.ownedAssetsStore.assetFormDraftId().trim() || 'asset-draft';
+    return this.assetStore.editingAssetId()?.trim() || this.assetStore.assetFormDraftId().trim() || 'asset-draft';
   }
 
   protected assetEditorReadOnly(): boolean {

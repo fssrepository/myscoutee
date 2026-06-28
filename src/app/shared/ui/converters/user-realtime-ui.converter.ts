@@ -5,9 +5,11 @@ import type {
   UserRealtimeLongPollResponseDto
 } from '../../core/contracts/user.interface';
 import type {
-  ActivityCounters,
+  ActivityCounters
+} from '../context/stores/activity.store';
+import type {
   UserImpressionChangeFlags
-} from '../context/app-context.types';
+} from '../context/stores/user-profile.store';
 
 export interface UserRealtimeUiPatchInput {
   snapshot: UserRealtimeLongPollResponseDto;

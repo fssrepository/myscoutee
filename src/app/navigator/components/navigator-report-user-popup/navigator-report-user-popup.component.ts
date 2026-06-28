@@ -1,15 +1,31 @@
 
-import { Component, OnDestroy, computed, effect, inject } from '@angular/core';
-import { FormsModule } from '@angular/forms';
-import { APP_STATIC_DATA } from '../../../shared/app-static-data';
-import { AppContext } from '../../../shared/ui';
-import { USER_REPORT_USER_SUBMIT_CONTEXT_KEY, UsersService } from '../../../shared/core';
+import {
+  Component,
+  OnDestroy,
+  computed,
+  effect,
+  inject
+} from '@angular/core';
+import {
+  FormsModule
+} from '@angular/forms';
+import {
+  APP_STATIC_DATA
+} from '../../../shared/app-static-data';
+import {
+  USER_REPORT_USER_SUBMIT_CONTEXT_KEY,
+  UsersService
+} from '../../../shared/core';
 import {
   AppMenuComponent,
   type AppMenuItem,
   type AppMenuItemSelectEvent
 } from '../../../shared/ui';
-import { NavigatorStore } from '../../../shared/ui/context/stores/navigator.store';
+import {
+  NavigatorStore
+} from '../../../shared/ui/context/stores/navigator.store';
+import { UserProfileStore } from '../../../shared/ui/context/stores/user-profile.store';
+import { AppRuntimeStore } from '../../../shared/ui/context/stores/app-runtime.store';
 
 @Component({
   selector: 'app-navigator-report-user-popup',
@@ -21,8 +37,9 @@ import { NavigatorStore } from '../../../shared/ui/context/stores/navigator.stor
 export class NavigatorReportUserPopupComponent implements OnDestroy {
   private readonly navigatorStore = inject(NavigatorStore);
   private readonly usersService = inject(UsersService);
-  private readonly appCtx = inject(AppContext);
-  private readonly submitLoadState = this.appCtx.runtimeStore.selectLoadingState(USER_REPORT_USER_SUBMIT_CONTEXT_KEY);
+  private readonly userProfileStore = inject(UserProfileStore);
+  private readonly runtimeStore = inject(AppRuntimeStore);
+  private readonly submitLoadState = this.runtimeStore.selectLoadingState(USER_REPORT_USER_SUBMIT_CONTEXT_KEY);
   private lastContextKey = '';
   private submitAbortController: AbortController | null = null;
   private submitRequestVersion = 0;
@@ -53,7 +70,7 @@ export class NavigatorReportUserPopupComponent implements OnDestroy {
   protected reportUserSubmitted = false;
 
   constructor() {
-    this.appCtx.runtimeStore.resetLoadingState(USER_REPORT_USER_SUBMIT_CONTEXT_KEY);
+    this.runtimeStore.resetLoadingState(USER_REPORT_USER_SUBMIT_CONTEXT_KEY);
     effect(() => {
       const context = this.reportUserContext();
       const contextKey = [
@@ -76,13 +93,13 @@ export class NavigatorReportUserPopupComponent implements OnDestroy {
       this.reportUserForm = this.createInitialForm();
       this.reportUserSubmitMessage = '';
       this.reportUserSubmitted = false;
-      this.appCtx.runtimeStore.resetLoadingState(USER_REPORT_USER_SUBMIT_CONTEXT_KEY);
+      this.runtimeStore.resetLoadingState(USER_REPORT_USER_SUBMIT_CONTEXT_KEY);
     });
   }
 
   ngOnDestroy(): void {
     this.abortActiveSubmit();
-    this.appCtx.runtimeStore.resetLoadingState(USER_REPORT_USER_SUBMIT_CONTEXT_KEY);
+    this.runtimeStore.resetLoadingState(USER_REPORT_USER_SUBMIT_CONTEXT_KEY);
   }
 
   protected closePopup(): void {
@@ -185,19 +202,19 @@ export class NavigatorReportUserPopupComponent implements OnDestroy {
     if (this.isSubmitBusy() || this.reportUserSubmitted) {
       return;
     }
-    this.appCtx.runtimeStore.resetLoadingState(USER_REPORT_USER_SUBMIT_CONTEXT_KEY);
+    this.runtimeStore.resetLoadingState(USER_REPORT_USER_SUBMIT_CONTEXT_KEY);
   }
 
   protected async submitReportUser(): Promise<void> {
     const context = this.reportUserContext();
-    const activeUserId = this.appCtx.userProfileStore.activeUserId().trim();
+    const activeUserId = this.userProfileStore.activeUserId().trim();
     const target = this.reportUserForm.handle.trim();
     const details = this.reportUserForm.details.trim();
     if (!context || !activeUserId || !this.canSubmitReportUser() || this.isSubmitting()) {
       return;
     }
 
-    this.appCtx.runtimeStore.resetLoadingState(USER_REPORT_USER_SUBMIT_CONTEXT_KEY);
+    this.runtimeStore.resetLoadingState(USER_REPORT_USER_SUBMIT_CONTEXT_KEY);
     const requestVersion = ++this.submitRequestVersion;
     const abortController = new AbortController();
     this.submitAbortController = abortController;
@@ -255,6 +272,6 @@ export class NavigatorReportUserPopupComponent implements OnDestroy {
     const controller = this.submitAbortController;
     this.submitAbortController = null;
     controller.abort();
-    this.appCtx.runtimeStore.resetLoadingState(USER_REPORT_USER_SUBMIT_CONTEXT_KEY);
+    this.runtimeStore.resetLoadingState(USER_REPORT_USER_SUBMIT_CONTEXT_KEY);
   }
 }

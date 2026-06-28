@@ -1,22 +1,63 @@
-import { Component, inject, OnInit, OnDestroy, HostListener, effect, signal } from '@angular/core';
-import { CommonModule } from '@angular/common';
-import { FormsModule } from '@angular/forms';
-import { MatButtonModule } from '@angular/material/button';
-import { MatIconModule } from '@angular/material/icon';
-import { MatFormFieldModule } from '@angular/material/form-field';
-import { MatInputModule } from '@angular/material/input';
-import { AppContext, AppPopupContext } from '../../../shared/ui';
-import { Subscription } from 'rxjs';
-import { ActivitiesPopupStore } from '../../../shared/ui/context/stores/activities-popup.store';
-import { EventEditorPopupStore } from '../../../shared/ui/context/stores/event-editor-popup.store';
-import { EventCheckoutDraftStore, type EventCheckoutDraft } from '../../../shared/ui/context/stores/event-checkout-draft.store';
-import { APP_STATIC_DATA } from '../../../shared/app-static-data';
-import { AppUtils } from '../../../shared/app-utils';
-import { PricingBuilder } from '../../../shared/core/base/builders';
+import {
+  Component,
+  inject,
+  OnInit,
+  OnDestroy,
+  HostListener,
+  effect,
+  signal
+} from '@angular/core';
+import {
+  CommonModule
+} from '@angular/common';
+import {
+  FormsModule
+} from '@angular/forms';
+import {
+  MatButtonModule
+} from '@angular/material/button';
+import {
+  MatIconModule
+} from '@angular/material/icon';
+import {
+  MatFormFieldModule
+} from '@angular/material/form-field';
+import {
+  MatInputModule
+} from '@angular/material/input';
+import {
+  Subscription
+} from 'rxjs';
+import {
+  ActivitiesPopupStore
+} from '../../../shared/ui/context/stores/activities-popup.store';
+import {
+  EventEditorPopupStore
+} from '../../../shared/ui/context/stores/event-editor-popup.store';
+import {
+  EventCheckoutDraftStore,
+  type EventCheckoutDraft
+} from '../../../shared/ui/context/stores/event-checkout-draft.store';
+import {
+  APP_STATIC_DATA
+} from '../../../shared/app-static-data';
+import {
+  AppUtils
+} from '../../../shared/app-utils';
+import {
+  PricingBuilder
+} from '../../../shared/core/base/builders';
 import type * as ContractTypes from '../../../shared/core/contracts';
 import {
-  ActivityMembersService, EventsService, ExplanationGuideService, RouteDelayService, RouteIntervalSchedulerService } from '../../../shared/core';
-import { ActivityEventDetailDTO } from '../../../shared/core/contracts/activity.interface';
+  ActivityMembersService,
+  EventsService,
+  ExplanationGuideService,
+  RouteDelayService,
+  RouteIntervalSchedulerService
+} from '../../../shared/core';
+import {
+  ActivityEventDetailDTO
+} from '../../../shared/core/contracts/activity.interface';
 import {
   AppMenuComponent,
   buildTabbedMenuModel,
@@ -38,10 +79,15 @@ import {
   type PricingEditorConfig,
   ProgressIndicatorComponent
 } from '../../../shared/ui';
-import { EventSubeventDefinitionsPanelComponent } from '../event-subevent-definitions-panel';
+import {
+  EventSubeventDefinitionsPanelComponent
+} from '../event-subevent-definitions-panel';
 import type * as ActivityContracts from '../../../shared/core/contracts/activity.interface';
 
 import type * as AppConstants from '../../../shared/core/common/constants';
+import { UserProfileStore } from '../../../shared/ui/context/stores/user-profile.store';
+import { ActivityStore } from '../../../shared/ui/context/stores/activity.store';
+import { PopupStore } from '../../../shared/ui/context/stores/popup.store';
 type EventEditorMenuContext =
   | { menu: 'visibility'; visibility: AppConstants.EventVisibility }
   | { menu: 'event-intel'; action: 'toggle-blind-mode' | 'toggle-auto-inviter' | 'toggle-ticketing' }
@@ -87,8 +133,9 @@ export class EventEditorPopupComponent implements OnInit, OnDestroy {
   private readonly eventsService = inject(EventsService);
   private readonly activityMembersService = inject(ActivityMembersService);
   private readonly eventCheckoutDraftStore = inject(EventCheckoutDraftStore);
-  private readonly appCtx = inject(AppContext);
-  private readonly popupCtx = inject(AppPopupContext);
+  private readonly userProfileStore = inject(UserProfileStore);
+  private readonly activityStore = inject(ActivityStore);
+  private readonly popupStore = inject(PopupStore);
   private readonly explanationGuide = inject(ExplanationGuideService);
   private readonly routeDelay = inject(RouteDelayService);
   private readonly routeIntervalScheduler = inject(RouteIntervalSchedulerService);
@@ -118,11 +165,11 @@ export class EventEditorPopupComponent implements OnInit, OnDestroy {
 
   constructor() {
     effect(() => {
-      const request = this.popupCtx.popupStore.activitiesNavigationRequest();
+      const request = this.popupStore.activitiesNavigationRequest();
       if (!request || (request.type !== 'eventEditorCreate' && request.type !== 'eventEditor')) {
         return;
       }
-      this.popupCtx.popupStore.clearActivitiesNavigationRequest();
+      this.popupStore.clearActivitiesNavigationRequest();
       if (request.type === 'eventEditorCreate') {
         this.openCreateRequest(request.target);
         return;
@@ -159,7 +206,7 @@ export class EventEditorPopupComponent implements OnInit, OnDestroy {
     });
 
     effect(() => {
-      const sync = this.appCtx.activityStore.activityMembersSync();
+      const sync = this.activityStore.activityMembersSync();
       const isOpen = this.eventEditorStore.isOpen();
       if (!isOpen || !sync || sync.updatedMs <= this.lastHandledActivityMembersSyncMs) {
         return;
@@ -790,7 +837,7 @@ export class EventEditorPopupComponent implements OnInit, OnDestroy {
     if (!draft || !this.eventEditorCanContinueCheckoutDraft(draft)) {
       return;
     }
-    this.popupCtx.popupStore.requestActivitiesNavigation({
+    this.popupStore.requestActivitiesNavigation({
       type: 'eventCheckoutDraft',
       sourceId: draft.sourceId
     });
@@ -1565,7 +1612,7 @@ export class EventEditorPopupComponent implements OnInit, OnDestroy {
   }
 
   private activeUserId(): string {
-    return this.appCtx.userProfileStore.activeUserId().trim() || this.appCtx.userProfileStore.getActiveUserId().trim();
+    return this.userProfileStore.activeUserId().trim() || this.userProfileStore.getActiveUserId().trim();
   }
 
   private eventDetailDTOBelongsToActiveAdmin(eventDetailDTO: ActivityEventDetailDTO): boolean {
@@ -1650,7 +1697,7 @@ export class EventEditorPopupComponent implements OnInit, OnDestroy {
     const start = new Date();
     const end = new Date(start.getTime() + (60 * 60 * 1000));
     const activeUserId = this.activeUserId();
-    const activeUserProfile = activeUserId ? this.appCtx.userProfileStore.getUserProfile(activeUserId) : null;
+    const activeUserProfile = activeUserId ? this.userProfileStore.getUserProfile(activeUserId) : null;
 
     this.currentSourcePublished = false;
     this.publishedCapacityMaxFloor = 0;

@@ -1,12 +1,36 @@
-import { CommonModule } from '@angular/common';
-import { ChangeDetectorRef, Component, HostListener, ViewChild, effect, inject } from '@angular/core';
-import { MatIconModule } from '@angular/material/icon';
-import { from } from 'rxjs';
+import {
+  CommonModule
+} from '@angular/common';
+import {
+  ChangeDetectorRef,
+  Component,
+  HostListener,
+  ViewChild,
+  effect,
+  inject
+} from '@angular/core';
+import {
+  MatIconModule
+} from '@angular/material/icon';
+import {
+  from
+} from 'rxjs';
 
-import { APP_STATIC_DATA } from '../../../shared/app-static-data';
-import { AppUtils } from '../../../shared/app-utils';
-import { AssetCardBuilder, AssetDefaultsBuilder } from '../../../shared/core/base/builders';
-import { AppContext, AssetInfoCardConverter, AssetTicketInfoCardConverter, type ActivityCounterKey } from '../../../shared/ui';
+import {
+  APP_STATIC_DATA
+} from '../../../shared/app-static-data';
+import {
+  AppUtils
+} from '../../../shared/app-utils';
+import {
+  AssetCardBuilder,
+  AssetDefaultsBuilder
+} from '../../../shared/core/base/builders';
+import {
+  AssetInfoCardConverter,
+  AssetTicketInfoCardConverter,
+  type ActivityCounterKey
+} from '../../../shared/ui';
 import {
   ActivityResourceBuilder,
   ActivityResourcesService,
@@ -15,8 +39,12 @@ import {
   ExplanationGuideService,
   ShareTokensService
 } from '../../../shared/core';
-import { AssetEditorPopupComponent } from '../asset-editor-popup/asset-editor-popup.component';
-import { AssetTicketScanPopupComponent } from '../asset-ticket-scan-popup/asset-ticket-scan-popup.component';
+import {
+  AssetEditorPopupComponent
+} from '../asset-editor-popup/asset-editor-popup.component';
+import {
+  AssetTicketScanPopupComponent
+} from '../asset-ticket-scan-popup/asset-ticket-scan-popup.component';
 import {
   AppMenuDispatcher,
   AppMenuOutletComponent,
@@ -41,17 +69,35 @@ import {
   type SmartListStateChange,
   ConfirmationDialogComponent
 } from '../../../shared/ui';
-import { ConfirmationDialogStore } from '../../../shared/ui/context/stores/confirmation-dialog.store';
-import { AssetPopupStore } from '../../../shared/ui/context/stores/asset-popup.store';
-import { OwnedAssetsStore, type OwnedAssetsVisibleListPatch } from '../../../shared/ui/context/stores/owned-assets.store';
-import { SubEventResourcePopupStore } from '../../../shared/ui/context/stores/sub-event-resource-popup.store';
-import { I18nService } from '../../../shared/core';
-import { I18nPipe } from '../../../shared/ui';
-import { AssetDto } from '../../../shared/core/contracts';
+import {
+  ConfirmationDialogStore
+} from '../../../shared/ui/context/stores/confirmation-dialog.store';
+import {
+  AssetPopupStore
+} from '../../../shared/ui/context/stores/asset-popup.store';
+import {
+  AssetStore,
+  type AssetVisibleListPatch
+} from '../../../shared/ui/context/stores/asset.store';
+import {
+  SubEventResourcePopupStore
+} from '../../../shared/ui/context/stores/sub-event-resource-popup.store';
+import {
+  I18nService
+} from '../../../shared/core';
+import {
+  I18nPipe
+} from '../../../shared/ui';
+import {
+  AssetDto
+} from '../../../shared/core/contracts';
 
 import type * as AppDTOs from '../../../shared/core/contracts';
 import type * as AssetContracts from '../../../shared/core/contracts/asset.interface';
 import type * as AppConstants from '../../../shared/core/common/constants';
+import { UserProfileStore } from '../../../shared/ui/context/stores/user-profile.store';
+import { AppRuntimeStore } from '../../../shared/ui/context/stores/app-runtime.store';
+import { ActivityStore } from '../../../shared/ui/context/stores/activity.store';
 interface AssetTicketListFilters {
   userId?: string;
   order?: AppConstants.AssetTicketOrder;
@@ -106,7 +152,9 @@ type AssetPopupMenuContext =
   providers: [AppMenuDispatcher]
 })
 export class AssetPopupComponent {
-  private readonly appCtx = inject(AppContext);
+  private readonly userProfileStore = inject(UserProfileStore);
+  private readonly runtimeStore = inject(AppRuntimeStore);
+  private readonly activityStore = inject(ActivityStore);
   private readonly assetsService = inject(AssetsService);
   private readonly assetTicketsService = inject(AssetTicketsService);
   private readonly shareTokensService = inject(ShareTokensService);
@@ -115,7 +163,7 @@ export class AssetPopupComponent {
   private readonly i18n = inject(I18nService);
   private readonly cdr = inject(ChangeDetectorRef);
   protected readonly assetPopupStore = inject(AssetPopupStore);
-  protected readonly ownedAssetsStore = inject(OwnedAssetsStore);
+  protected readonly assetStore = inject(AssetStore);
   private readonly resourcePopupStore = inject(SubEventResourcePopupStore);
   private readonly activityResourcesService = inject(ActivityResourcesService);
   private readonly explanationGuide = inject(ExplanationGuideService);
@@ -123,7 +171,7 @@ export class AssetPopupComponent {
   protected selectedSupplyAssetId: string | null = null;
   protected supplyRequestFilter: AssetSupplyRequestFilter = 'all';
   protected supplyRequestBusyKey = '';
-  protected readonly cancelOwnedAssetDelete = (): void => this.ownedAssetsStore.cancelAssetDelete();
+  protected readonly cancelOwnedAssetDelete = (): void => this.assetStore.cancelAssetDelete();
   protected readonly confirmOwnedAssetDelete = (): void => { void this.confirmOwnedAssetDeleteAction(); };
   protected readonly assetFilterOptions = APP_STATIC_DATA.assetFilterOptions;
   protected readonly supplyRequestFilters: Array<{ key: AssetSupplyRequestFilter; labelKey: string; icon: string }> = [
@@ -159,7 +207,7 @@ export class AssetPopupComponent {
     emptyDescription: query => AssetDefaultsBuilder.ownedAssetEmptyDescription(query.filters?.type ?? 'Car'),
     headerProgress: {
       enabled: true,
-      state: () => this.appCtx.runtimeStore.isOnline() ? 'active' : 'inactive'
+      state: () => this.runtimeStore.isOnline() ? 'active' : 'inactive'
     },
     showStickyHeader: false,
     showGroupMarker: () => false,
@@ -182,7 +230,7 @@ export class AssetPopupComponent {
     emptyStickyLabel: 'No tickets',
     headerProgress: {
       enabled: true,
-      state: () => this.appCtx.runtimeStore.isOnline() ? 'active' : 'inactive'
+      state: () => this.runtimeStore.isOnline() ? 'active' : 'inactive'
     },
     showStickyHeader: true,
     stickyHeaderClass: 'activities-sticky-header',
@@ -205,30 +253,30 @@ export class AssetPopupComponent {
   constructor() {
     this.syncSmartListQueries();
     effect(() => {
-      this.initializeOwnedAssetsFromUser(this.appCtx.userProfileStore.activeUserProfile()?.id?.trim() || this.appCtx.userProfileStore.activeUserId().trim());
+      this.initializeOwnedAssetsFromUser(this.userProfileStore.activeUserProfile()?.id?.trim() || this.userProfileStore.activeUserId().trim());
     });
     effect(() => {
-      const activeFilter = this.ownedAssetsStore.activePopupFilter();
+      const activeFilter = this.assetStore.activePopupFilter();
       if (!activeFilter) {
         return;
       }
       if (activeFilter === 'Ticket') {
         this.assetPopupStore.prepareTicketPopupOpen(
-          this.assetTicketsService.peekTicketCountByUser(this.appCtx.userProfileStore.activeUserId().trim())
+          this.assetTicketsService.peekTicketCountByUser(this.userProfileStore.activeUserId().trim())
         );
       } else {
         void this.refreshOwnedAssetsFromRepository(
-          this.ownedAssetsStore.activeOwnerUserIdRef().trim() || this.appCtx.userProfileStore.getActiveUserId().trim(),
+          this.assetStore.activeOwnerUserIdRef().trim() || this.userProfileStore.getActiveUserId().trim(),
           { trackLoading: true }
         );
       }
       this.setAssetsExplanationContext(this.assetExplanationContextForFilter(activeFilter));
       this.assetPopupStore.primaryVisibleRef.set(true);
-      this.ownedAssetsStore.touchUiState();
+      this.assetStore.touchUiState();
     });
     effect(() => {
-      this.ownedAssetsStore.assetListRevision();
-      this.ownedAssetsStore.assetListReloadRevision();
+      this.assetStore.assetListRevision();
+      this.assetStore.assetListReloadRevision();
       this.assetPopupStore.primaryVisibleRef();
       this.resourcePopupStore.assignContextRef();
       this.resourcePopupStore.selectedAssignAssetIdsRef();
@@ -248,7 +296,7 @@ export class AssetPopupComponent {
       const stageLabel = this.subEventStageLabel(this.resourcePopupStore.popupContextRef()?.subEvent);
       return stageLabel ? `Assign ${context.type} - ${stageLabel}` : `Assign ${context.type}`;
     }
-    const filter = this.ownedAssetsStore.activePopupFilter() ?? this.ownedAssetsStore.assetFilter();
+    const filter = this.assetStore.activePopupFilter() ?? this.assetStore.assetFilter();
     return `Assets · ${AssetDefaultsBuilder.assetTypeLabel(filter)}`;
   }
 
@@ -264,7 +312,7 @@ export class AssetPopupComponent {
       }
       return context.parentTitle || subEventName || 'Event';
     }
-    return this.ownedAssetsStore.ticketPopup() ? this.assetPopupStore.ticketHeaderSummary() : '';
+    return this.assetStore.ticketPopup() ? this.assetPopupStore.ticketHeaderSummary() : '';
   }
 
   protected assetPopupModel(): PopupModel<AssetPopupMenuContext> {
@@ -328,7 +376,7 @@ export class AssetPopupComponent {
         closeOnSelect: false
       }];
     }
-    if (!this.ownedAssetsStore.ticketPopup()) {
+    if (!this.assetStore.ticketPopup()) {
       return [];
     }
     return [{
@@ -350,7 +398,7 @@ export class AssetPopupComponent {
       items: this.assetFilterMenuItems(),
       mobileBreakpointPx: 900
     }];
-    if (this.ownedAssetsStore.ticketPopup()) {
+    if (this.assetStore.ticketPopup()) {
       controls.push({
         id: 'ticket-scan',
         align: 'end',
@@ -386,15 +434,15 @@ export class AssetPopupComponent {
   }
 
   protected pendingOwnedAssetDeleteLabel(): string {
-    const pendingLabel = this.ownedAssetsStore.pendingAssetDeleteLabel();
+    const pendingLabel = this.assetStore.pendingAssetDeleteLabel();
     if (pendingLabel) {
       return pendingLabel;
     }
-    const pendingCardId = this.ownedAssetsStore.pendingAssetDeleteCardId();
+    const pendingCardId = this.assetStore.pendingAssetDeleteCardId();
     if (!pendingCardId) {
       return '';
     }
-    const card = this.ownedAssetsStore.findAsset(pendingCardId);
+    const card = this.assetStore.findAsset(pendingCardId);
     return card ? `Delete ${card.title}?` : 'Delete this item?';
   }
 
@@ -465,7 +513,7 @@ export class AssetPopupComponent {
       return [];
     }
     const assignedIds = new Set(this.currentAssignedAssetIds(context.subEventId, context.type));
-    return this.ownedAssetsStore.assetCards()
+    return this.assetStore.assetCards()
       .filter(card => card.type === context.type)
       .sort((left, right) => {
         const assignedDelta = Number(assignedIds.has(right.id)) - Number(assignedIds.has(left.id));
@@ -478,7 +526,7 @@ export class AssetPopupComponent {
 
   private currentAssignedAssetIds(subEventId: string, type: AppConstants.AssetType): string[] {
     const eligibleIds = new Set([
-      ...this.ownedAssetsStore.assetCards().filter(card => card.type === type).map(card => card.id),
+      ...this.assetStore.assetCards().filter(card => card.type === type).map(card => card.id),
       ...(this.resourcePopupStore.popupContextRef()?.subEvent.id === subEventId
         ? this.resourcePopupStore.popupContextRef()?.fallbackCardsByType[type]?.map(card => card.id) ?? []
         : [])
@@ -488,7 +536,7 @@ export class AssetPopupComponent {
   }
 
   private normalizedSelectedAssignAssetIds(type: AppConstants.AssetType): string[] {
-    const allowedIds = new Set(this.ownedAssetsStore.assetCards().filter(card => card.type === type).map(card => card.id));
+    const allowedIds = new Set(this.assetStore.assetCards().filter(card => card.type === type).map(card => card.id));
     return this.resourcePopupStore.selectedAssignAssetIdsRef()
       .filter((id, index, ids) => allowedIds.has(id) && ids.indexOf(id) === index);
   }
@@ -562,7 +610,7 @@ export class AssetPopupComponent {
       return;
     }
     if (event.actionId === 'delete') {
-      this.ownedAssetsStore.requestAssetDelete(card);
+      this.assetStore.requestAssetDelete(card);
       return;
     }
     if (event.actionId === 'takeOver') {
@@ -584,9 +632,9 @@ export class AssetPopupComponent {
   }
 
   private async openAssetEditor(card: AppDTOs.AssetDTO): Promise<void> {
-    const ownerUserId = this.ownedAssetsStore.activeOwnerUserIdRef().trim()
-      || this.appCtx.userProfileStore.getActiveUserId().trim();
-    const generation = this.ownedAssetsStore.openAssetEditorEdit({
+    const ownerUserId = this.assetStore.activeOwnerUserIdRef().trim()
+      || this.userProfileStore.getActiveUserId().trim();
+    const generation = this.assetStore.openAssetEditorEdit({
       cardId: card.id,
       form: AssetCardBuilder.buildAssetFormFromCard(card),
       visibility: AssetCardBuilder.visibilityFromCard(card),
@@ -594,48 +642,48 @@ export class AssetPopupComponent {
     });
 
     if (!ownerUserId) {
-      this.ownedAssetsStore.setAssetEditorLoading(false);
+      this.assetStore.setAssetEditorLoading(false);
       return;
     }
 
     try {
       const loadedCard = await this.assetsService.loadOwnedAssetDetailById(ownerUserId, card.id);
-      if (!this.ownedAssetsStore.isCurrentAssetEditorLoad(generation, card.id)) {
+      if (!this.assetStore.isCurrentAssetEditorLoad(generation, card.id)) {
         return;
       }
       if (loadedCard) {
-        this.ownedAssetsStore.replaceAssetCard(loadedCard, { reloadList: false });
-        this.ownedAssetsStore.applyAssetEditorForm(
+        this.assetStore.replaceAssetCard(loadedCard, { reloadList: false });
+        this.assetStore.applyAssetEditorForm(
           loadedCard.id,
           AssetCardBuilder.visibilityFromCard(loadedCard),
           AssetCardBuilder.buildAssetFormFromCard(loadedCard)
         );
       }
-      this.ownedAssetsStore.setAssetEditorLoading(false);
+      this.assetStore.setAssetEditorLoading(false);
     } catch {
-      if (this.ownedAssetsStore.isCurrentAssetEditorLoad(generation, card.id)) {
-        this.ownedAssetsStore.setAssetEditorLoading(false);
+      if (this.assetStore.isCurrentAssetEditorLoad(generation, card.id)) {
+        this.assetStore.setAssetEditorLoading(false);
       }
     }
   }
 
   protected openAssetEditorCreate(): void {
-    this.ownedAssetsStore.openAssetEditorCreate(
-      AssetCardBuilder.buildEmptyAssetForm(AssetCardBuilder.activeAssetTypeFromFilter(this.ownedAssetsStore.assetFilter())),
+    this.assetStore.openAssetEditorCreate(
+      AssetCardBuilder.buildEmptyAssetForm(AssetCardBuilder.activeAssetTypeFromFilter(this.assetStore.assetFilter())),
       `asset-${Date.now()}`
     );
   }
 
   private async confirmOwnedAssetDeleteAction(): Promise<void> {
-    const pendingCardId = this.ownedAssetsStore.beginAssetDelete();
+    const pendingCardId = this.assetStore.beginAssetDelete();
     if (!pendingCardId) {
       return;
     }
     try {
       await this.deleteAssetCardById(pendingCardId);
-      this.ownedAssetsStore.completeAssetDelete();
+      this.assetStore.completeAssetDelete();
     } catch (error) {
-      this.ownedAssetsStore.failAssetDelete(this.resolveAssetDeleteErrorMessage(error));
+      this.assetStore.failAssetDelete(this.resolveAssetDeleteErrorMessage(error));
     }
   }
 
@@ -662,7 +710,7 @@ export class AssetPopupComponent {
     if (!normalizedAssetId || !normalizedRequestId || (action !== 'accept' && action !== 'remove')) {
       return;
     }
-    const existing = this.ownedAssetsStore.assetCards().find(card => card.id === normalizedAssetId) ?? null;
+    const existing = this.assetStore.assetCards().find(card => card.id === normalizedAssetId) ?? null;
     if (!existing) {
       return;
     }
@@ -699,9 +747,9 @@ export class AssetPopupComponent {
       requests: nextRequests
     };
 
-    const ownerUserId = this.ownedAssetsStore.activeOwnerUserIdRef().trim()
-      || this.appCtx.userProfileStore.getActiveUserId().trim();
-    this.ownedAssetsStore.applyAssetCards(this.ownedAssetsStore.assetCards().map(card => (
+    const ownerUserId = this.assetStore.activeOwnerUserIdRef().trim()
+      || this.userProfileStore.getActiveUserId().trim();
+    this.assetStore.applyAssetCards(this.assetStore.assetCards().map(card => (
       card.id === normalizedAssetId ? nextCard : card
     )), { reloadList: false, mutation: true });
     if (!ownerUserId) {
@@ -716,8 +764,8 @@ export class AssetPopupComponent {
       quantity: nextQuantity,
       requests: nextRequests
     });
-    if (this.ownedAssetsStore.isActiveOwnerUser(ownerUserId)) {
-      this.ownedAssetsStore.replaceAssetCard(savedCard, { reloadList: false });
+    if (this.assetStore.isActiveOwnerUser(ownerUserId)) {
+      this.assetStore.replaceAssetCard(savedCard, { reloadList: false });
     }
   }
 
@@ -727,11 +775,11 @@ export class AssetPopupComponent {
     if (!normalizedAssetId || !normalizedRequestId) {
       return;
     }
-    const existing = this.ownedAssetsStore.assetCards().find(card => card.id === normalizedAssetId) ?? null;
+    const existing = this.assetStore.assetCards().find(card => card.id === normalizedAssetId) ?? null;
     const request = existing?.requests.find(item => item.id === normalizedRequestId) ?? null;
     const targetUserId = `${request?.userId ?? ''}`.trim();
-    const ownerUserId = this.ownedAssetsStore.activeOwnerUserIdRef().trim()
-      || this.appCtx.userProfileStore.getActiveUserId().trim();
+    const ownerUserId = this.assetStore.activeOwnerUserIdRef().trim()
+      || this.userProfileStore.getActiveUserId().trim();
     if (!existing || !request || !targetUserId || !ownerUserId) {
       return;
     }
@@ -739,38 +787,38 @@ export class AssetPopupComponent {
     if (!savedCard) {
       return;
     }
-    this.ownedAssetsStore.replaceAssetCard(savedCard, { reloadList: false, mutation: true });
-    this.ownedAssetsStore.touchUiState();
+    this.assetStore.replaceAssetCard(savedCard, { reloadList: false, mutation: true });
+    this.assetStore.touchUiState();
   }
 
   private async deleteAssetCardById(cardId: string): Promise<boolean> {
     const normalizedCardId = cardId.trim();
-    if (!normalizedCardId || !this.ownedAssetsStore.assetCards().some(card => card.id === normalizedCardId)) {
+    if (!normalizedCardId || !this.assetStore.assetCards().some(card => card.id === normalizedCardId)) {
       return false;
     }
-    const ownerUserId = this.ownedAssetsStore.activeOwnerUserIdRef().trim()
-      || this.appCtx.userProfileStore.getActiveUserId().trim();
+    const ownerUserId = this.assetStore.activeOwnerUserIdRef().trim()
+      || this.userProfileStore.getActiveUserId().trim();
     if (ownerUserId) {
       await this.assetsService.deleteOwnedAsset(ownerUserId, normalizedCardId);
     }
-    this.ownedAssetsStore.removeAssetCard(normalizedCardId, { reloadList: false, mutation: true });
-    this.ownedAssetsStore.recordAssetDeleted(normalizedCardId);
+    this.assetStore.removeAssetCard(normalizedCardId, { reloadList: false, mutation: true });
+    this.assetStore.recordAssetDeleted(normalizedCardId);
     return true;
   }
 
   private async takeOverAssetCardById(cardId: string): Promise<void> {
     const normalizedCardId = cardId.trim();
-    const ownerUserId = this.ownedAssetsStore.activeOwnerUserIdRef().trim()
-      || this.appCtx.userProfileStore.getActiveUserId().trim();
+    const ownerUserId = this.assetStore.activeOwnerUserIdRef().trim()
+      || this.userProfileStore.getActiveUserId().trim();
     if (!normalizedCardId || !ownerUserId) {
       return;
     }
-    const current = this.ownedAssetsStore.assetCards().find(card => card.id === normalizedCardId);
+    const current = this.assetStore.assetCards().find(card => card.id === normalizedCardId);
     if (!current) {
       return;
     }
     const nextStatus = AssetCardBuilder.restoredAssetStatus(current);
-    const ownerName = this.appCtx.userProfileStore.activeUserProfile()?.name?.trim() || current.ownerName;
+    const ownerName = this.userProfileStore.activeUserProfile()?.name?.trim() || current.ownerName;
     const nextCard: AppDTOs.AssetDTO = {
       ...current,
       ownerUserId,
@@ -778,18 +826,18 @@ export class AssetPopupComponent {
       status: nextStatus,
       menuActions: this.restoredTakeOverMenuActions(current, null)
     };
-    this.ownedAssetsStore.replaceAssetCard(nextCard, { reloadList: false, mutation: true });
-    this.ownedAssetsStore.touchUiState();
+    this.assetStore.replaceAssetCard(nextCard, { reloadList: false, mutation: true });
+    this.assetStore.touchUiState();
 
     const savedCard = await this.assetsService.takeOverOwnedAsset(ownerUserId, normalizedCardId);
     if (
-      (this.ownedAssetsStore.activeOwnerUserIdRef().trim() || this.appCtx.userProfileStore.getActiveUserId().trim()) !== ownerUserId
+      (this.assetStore.activeOwnerUserIdRef().trim() || this.userProfileStore.getActiveUserId().trim()) !== ownerUserId
       || !savedCard
     ) {
       return;
     }
     const resolvedStatus = AssetCardBuilder.normalizeAssetStatus(savedCard.status);
-    this.ownedAssetsStore.replaceAssetCard({
+    this.assetStore.replaceAssetCard({
       ...nextCard,
       ...savedCard,
       ownerUserId: savedCard.ownerUserId ?? ownerUserId,
@@ -797,7 +845,7 @@ export class AssetPopupComponent {
       status: resolvedStatus === 'UR' ? nextStatus : resolvedStatus,
       menuActions: this.restoredTakeOverMenuActions(nextCard, savedCard)
     }, { reloadList: false });
-    this.ownedAssetsStore.touchUiState();
+    this.assetStore.touchUiState();
   }
 
   private restoredTakeOverMenuActions(
@@ -858,7 +906,7 @@ export class AssetPopupComponent {
   }
 
   protected assetFilterMenuTrigger(): AppMenuTrigger {
-    const filter = this.ownedAssetsStore.assetFilter();
+    const filter = this.assetStore.assetFilter();
     const count = this.assetFilterCount(filter);
     return {
       label: AssetDefaultsBuilder.assetTypeLabel(filter),
@@ -877,7 +925,7 @@ export class AssetPopupComponent {
         label: AssetDefaultsBuilder.assetTypeLabel(option),
         icon: AssetDefaultsBuilder.assetTypeIcon(option),
         kind: 'radio',
-        active: option === this.ownedAssetsStore.assetFilter(),
+        active: option === this.assetStore.assetFilter(),
         palette: this.assetFilterPalette(option),
         surface: 'tinted',
         counter: count > 0 ? count : null,
@@ -887,11 +935,11 @@ export class AssetPopupComponent {
   }
 
   protected assetFilterCount(type: AppConstants.AssetFilterType): number {
-    const ownerUserId = this.appCtx.userProfileStore.activeUserProfile()?.id?.trim()
-      || this.appCtx.userProfileStore.activeUserId().trim();
-    const source = this.appCtx.userProfileStore.getUserProfile(ownerUserId);
-    const activeUser = source ?? this.appCtx.userProfileStore.activeUserProfile();
-    const overrides = ownerUserId ? this.appCtx.activityStore.getUserCounterOverrides(ownerUserId) : {};
+    const ownerUserId = this.userProfileStore.activeUserProfile()?.id?.trim()
+      || this.userProfileStore.activeUserId().trim();
+    const source = this.userProfileStore.getUserProfile(ownerUserId);
+    const activeUser = source ?? this.userProfileStore.activeUserProfile();
+    const overrides = ownerUserId ? this.activityStore.getUserCounterOverrides(ownerUserId) : {};
     const grouped = overrides.asset ?? activeUser?.activities?.asset;
     const key = this.assetFilterCounterKey(type);
     switch (key) {
@@ -1173,7 +1221,7 @@ export class AssetPopupComponent {
     if (!assetId) {
       return null;
     }
-    return this.ownedAssetsStore.findAsset(assetId);
+    return this.assetStore.findAsset(assetId);
   }
 
   protected assetRequestListSubtitle(): string {
@@ -1632,12 +1680,12 @@ export class AssetPopupComponent {
     if (this.isBasketMode()) {
       return;
     }
-    this.ownedAssetsStore.selectAssetFilter(filter);
+    this.assetStore.selectAssetFilter(filter);
     this.assetSmartListQuery = {
       filters: {
-        userId: this.appCtx.userProfileStore.activeUserId().trim(),
+        userId: this.userProfileStore.activeUserId().trim(),
         type: filter === 'Ticket' ? 'Car' : filter,
-        refreshToken: this.ownedAssetsStore.assetListReloadRevision()
+        refreshToken: this.assetStore.assetListReloadRevision()
       }
     };
   }
@@ -1646,7 +1694,7 @@ export class AssetPopupComponent {
     event?.stopPropagation();
     this.assetPopupStore.selectTicketDateOrder(
       order,
-      this.assetTicketsService.peekTicketCountByUser(this.appCtx.userProfileStore.activeUserId().trim())
+      this.assetTicketsService.peekTicketCountByUser(this.userProfileStore.activeUserId().trim())
     );
   }
 
@@ -1672,12 +1720,12 @@ export class AssetPopupComponent {
   }
 
   protected onAssetSmartListStateChange(change: SmartListStateChange<AppDTOs.AssetDTO, OwnedAssetListFilters>): void {
-    if (this.ownedAssetsStore.ticketPopup()) {
+    if (this.assetStore.ticketPopup()) {
       return;
     }
     const cards = this.orderedOwnedAssetCards(this.currentAssetSmartListType());
     this.applyVisibleOwnedAssetPatch(
-      this.ownedAssetsStore.trackVisibleAssetListState(change, cards)
+      this.assetStore.trackVisibleAssetListState(change, cards)
     );
   }
 
@@ -1692,11 +1740,11 @@ export class AssetPopupComponent {
       return;
     }
     this.appMenuDispatcher.close();
-    this.ownedAssetsStore.closeAssetPopup();
+    this.assetStore.closeAssetPopup();
     this.assetPopupStore.resetTicketState();
     this.clearAssetsExplanationContext();
     this.assetPopupStore.primaryVisibleRef.set(false);
-    this.ownedAssetsStore.touchUiState();
+    this.assetStore.touchUiState();
   }
 
   protected confirmBasketSelection(event?: Event): void {
@@ -1716,7 +1764,7 @@ export class AssetPopupComponent {
     this.resourcePopupStore.assignContextRef.set(null);
     this.resourcePopupStore.selectedAssignAssetIdsRef.set([]);
     this.assetPopupStore.basketVisibleRef.set(false);
-    this.ownedAssetsStore.closeAssetPopup();
+    this.assetStore.closeAssetPopup();
     this.assetPopupStore.resetTicketState();
     this.assetPopupStore.primaryVisibleRef.set(false);
   }
@@ -1804,7 +1852,7 @@ export class AssetPopupComponent {
     }
     const ownerId = context.ownerId.trim();
     const subEventId = context.subEvent.id.trim();
-    const assetOwnerUserId = this.appCtx.userProfileStore.activeUserId().trim();
+    const assetOwnerUserId = this.userProfileStore.activeUserId().trim();
     if (!ownerId || !subEventId || !assetOwnerUserId) {
       return null;
     }
@@ -1844,7 +1892,7 @@ export class AssetPopupComponent {
     const previousSettings = this.resourcePopupStore.assignedAssetSettingsByKey[key] ?? {};
     const nextSettings: Record<string, AppDTOs.SubEventAssignedAssetSettingsDTO> = {};
     for (const assetId of nextIds) {
-      const source = this.ownedAssetsStore.assetCards().find(card => card.id === assetId && card.type === context.type);
+      const source = this.assetStore.assetCards().find(card => card.id === assetId && card.type === context.type);
       if (!source) {
         continue;
       }
@@ -1855,7 +1903,7 @@ export class AssetPopupComponent {
       nextSettings[assetId] = {
         capacityMin,
         capacityMax,
-        addedByUserId: previous?.addedByUserId ?? this.appCtx.userProfileStore.activeUserId().trim(),
+        addedByUserId: previous?.addedByUserId ?? this.userProfileStore.activeUserId().trim(),
         routes: this.normalizeAssetRoutes(context.type, this.assetRoutes(source, previous?.routes))
       };
     }
@@ -1964,13 +2012,13 @@ export class AssetPopupComponent {
 
   private syncSubEventManualAssetRequests(subEvent: AppDTOs.SubEventDTO, persist = false): void {
     const context = this.resourcePopupStore.popupContextRef();
-    const activeUser = this.appCtx.userProfileStore.activeUserProfile();
+    const activeUser = this.userProfileStore.activeUserProfile();
     if (!context || !activeUser) {
       return;
     }
     let changed = false;
     const dirtyCards: AppDTOs.AssetDTO[] = [];
-    const nextCards = this.ownedAssetsStore.assetCards().map(card => {
+    const nextCards = this.assetStore.assetCards().map(card => {
       const nextManualRequest = this.buildManualAssignmentRequest(card, subEvent, context.ownerId, context.parentTitle, activeUser);
       const preservedRequests = card.requests
         .filter(request => !ActivityResourceBuilder.isSubEventManualAssignmentRequest(request, subEvent.id))
@@ -1997,12 +2045,12 @@ export class AssetPopupComponent {
     if (!changed) {
       return;
     }
-    this.ownedAssetsStore.applyAssetCards(nextCards, { mutation: persist, reloadList: false });
+    this.assetStore.applyAssetCards(nextCards, { mutation: persist, reloadList: false });
     if (!persist) {
       return;
     }
-    const ownerUserId = this.ownedAssetsStore.activeOwnerUserIdRef().trim()
-      || this.appCtx.userProfileStore.getActiveUserId().trim();
+    const ownerUserId = this.assetStore.activeOwnerUserIdRef().trim()
+      || this.userProfileStore.getActiveUserId().trim();
     if (!ownerUserId) {
       return;
     }
@@ -2108,8 +2156,8 @@ export class AssetPopupComponent {
       ...detail,
       requests: card.requests.map(request => this.cloneAssetRequest(request))
     });
-    if (this.ownedAssetsStore.isActiveOwnerUser(ownerUserId)) {
-      this.ownedAssetsStore.replaceAssetCard(savedCard, { reloadList: false });
+    if (this.assetStore.isActiveOwnerUser(ownerUserId)) {
+      this.assetStore.replaceAssetCard(savedCard, { reloadList: false });
     }
   }
 
@@ -2133,7 +2181,7 @@ export class AssetPopupComponent {
       next[assetId] = {
         capacityMin,
         capacityMax,
-        addedByUserId: previous?.addedByUserId ?? this.appCtx.userProfileStore.activeUserId().trim(),
+        addedByUserId: previous?.addedByUserId ?? this.userProfileStore.activeUserId().trim(),
         routes: this.normalizeAssetRoutes(type, this.assetRoutes(source, previous?.routes))
       };
     }
@@ -2152,7 +2200,7 @@ export class AssetPopupComponent {
     type: AppConstants.AssetType,
     assetId: string
   ): AppDTOs.AssetDTO | null {
-    return this.ownedAssetsStore.assetCards().find(card => card.id === assetId && card.type === type)
+    return this.assetStore.assetCards().find(card => card.id === assetId && card.type === type)
       ?? this.subEventFallbackAssetCards(subEventId, type).find(card => card.id === assetId && card.type === type)
       ?? null;
   }
@@ -2170,7 +2218,7 @@ export class AssetPopupComponent {
     type: AppConstants.AssetType
   ): AppDTOs.AssetDetailDTO[] {
     const assignedIds = new Set(this.currentAssignedAssetIds(context.subEvent.id, type));
-    const ownedIds = new Set(this.ownedAssetsStore.assetCards().filter(card => card.type === type).map(card => card.id));
+    const ownedIds = new Set(this.assetStore.assetCards().filter(card => card.type === type).map(card => card.id));
     return (context.fallbackCardsByType[type] ?? [])
       .filter(card => assignedIds.has(card.id) && !ownedIds.has(card.id))
       .map(card => this.toAssetDetailDto(card));
@@ -2289,10 +2337,10 @@ export class AssetPopupComponent {
       this.closeSupplyRequestList();
       return;
     }
-    if (this.ownedAssetsStore.pendingAssetDeleteCardId()) {
+    if (this.assetStore.pendingAssetDeleteCardId()) {
       return;
     }
-    if (this.ownedAssetsStore.popupOpen()) {
+    if (this.assetStore.popupOpen()) {
       keyboardEvent.preventDefault();
       keyboardEvent.stopPropagation();
       this.closeAssetPopup();
@@ -2300,10 +2348,10 @@ export class AssetPopupComponent {
   }
 
   private syncSmartListQueries(): void {
-    const activeUserId = this.appCtx.userProfileStore.activeUserId().trim();
+    const activeUserId = this.userProfileStore.activeUserId().trim();
     const assetType = this.currentAssetSmartListType();
     const basketMode = this.isBasketMode();
-    const assetKey = `${activeUserId}:${assetType}:${basketMode ? 'basket' : 'assets'}:${this.ownedAssetsStore.assetListReloadRevision()}`;
+    const assetKey = `${activeUserId}:${assetType}:${basketMode ? 'basket' : 'assets'}:${this.assetStore.assetListReloadRevision()}`;
     if (assetKey !== this.assetSmartListQueryKey) {
       this.assetSmartListQueryKey = assetKey;
       this.assetSmartListQueryRevision += 1;
@@ -2333,15 +2381,15 @@ export class AssetPopupComponent {
 
   private initializeOwnedAssetsFromUser(userId: string): void {
     const normalizedUserId = userId.trim();
-    if (!this.ownedAssetsStore.setActiveOwnerUserId(normalizedUserId)) {
+    if (!this.assetStore.setActiveOwnerUserId(normalizedUserId)) {
       return;
     }
-    this.ownedAssetsStore.resetAssetDeleteDialog();
+    this.assetStore.resetAssetDeleteDialog();
     if (!normalizedUserId) {
-      this.ownedAssetsStore.applyAssetCards([], { reloadList: false });
+      this.assetStore.applyAssetCards([], { reloadList: false });
       return;
     }
-    this.ownedAssetsStore.applyAssetCards(this.assetsService.peekOwnedAssetsByUser(normalizedUserId), { reloadList: false });
+    this.assetStore.applyAssetCards(this.assetsService.peekOwnedAssetsByUser(normalizedUserId), { reloadList: false });
     void this.refreshOwnedAssetsFromRepository(normalizedUserId);
   }
 
@@ -2364,30 +2412,30 @@ export class AssetPopupComponent {
     if (!normalizedOwnerUserId) {
       return Promise.resolve();
     }
-    const requestMutationVersion = this.ownedAssetsStore.currentAssetMutationVersion();
+    const requestMutationVersion = this.assetStore.currentAssetMutationVersion();
     const trackLoading = options.trackLoading === true;
     const trackedToken = trackLoading ? ++this.trackedAssetRefreshToken : 0;
     if (trackLoading) {
       this.trackedAssetRefreshOwnerUserId = normalizedOwnerUserId;
-      this.ownedAssetsStore.setAssetListLoading(true);
+      this.assetStore.setAssetListLoading(true);
     }
     const refreshPromise = (async () => {
       try {
         const cards = await this.assetsService.queryOwnedAssetsByUser(normalizedOwnerUserId);
         if (
-          !this.ownedAssetsStore.isActiveOwnerUser(normalizedOwnerUserId)
-          || requestMutationVersion !== this.ownedAssetsStore.currentAssetMutationVersion()
+          !this.assetStore.isActiveOwnerUser(normalizedOwnerUserId)
+          || requestMutationVersion !== this.assetStore.currentAssetMutationVersion()
         ) {
           return;
         }
-        this.ownedAssetsStore.applyAssetCards(cards, { reloadList: false });
+        this.assetStore.applyAssetCards(cards, { reloadList: false });
       } catch {
         // Keep the popup usable with the already-peeked cache if the refresh fails.
       } finally {
         if (trackLoading && this.trackedAssetRefreshToken === trackedToken) {
           this.trackedAssetRefreshPromise = null;
           this.trackedAssetRefreshOwnerUserId = '';
-          this.ownedAssetsStore.setAssetListLoading(false);
+          this.assetStore.setAssetListLoading(false);
         }
       }
     })();
@@ -2431,19 +2479,19 @@ export class AssetPopupComponent {
     if (assignType) {
       return assignType;
     }
-    const currentFilter = this.ownedAssetsStore.assetFilter();
+    const currentFilter = this.assetStore.assetFilter();
     return currentFilter === 'Accommodation' || currentFilter === 'Supplies' ? currentFilter : 'Car';
   }
 
   private syncVisibleOwnedAssetListFromStore(): void {
-    const active = this.ownedAssetsStore.popupOpen() && !this.ownedAssetsStore.ticketPopup();
+    const active = this.assetStore.popupOpen() && !this.assetStore.ticketPopup();
     const assetType = this.currentAssetSmartListType();
     const selectedAssetKey = this.isBasketMode()
       ? this.assetAssignBasketCards().map(card => card.id).join('|')
       : '';
-    const contextKey = `${this.appCtx.userProfileStore.activeUserId().trim()}:${assetType}:${this.isBasketMode() ? `basket:${selectedAssetKey}` : 'assets'}`;
+    const contextKey = `${this.userProfileStore.activeUserId().trim()}:${assetType}:${this.isBasketMode() ? `basket:${selectedAssetKey}` : 'assets'}`;
     this.applyVisibleOwnedAssetPatch(
-      this.ownedAssetsStore.syncVisibleAssetList({
+      this.assetStore.syncVisibleAssetList({
         active,
         contextKey,
         cards: this.orderedOwnedAssetCards(assetType),
@@ -2452,7 +2500,7 @@ export class AssetPopupComponent {
     );
   }
 
-  private applyVisibleOwnedAssetPatch(patch: OwnedAssetsVisibleListPatch | null): void {
+  private applyVisibleOwnedAssetPatch(patch: AssetVisibleListPatch | null): void {
     if (!patch || !this.assetSmartList) {
       return;
     }
@@ -2466,13 +2514,13 @@ export class AssetPopupComponent {
     const selectedAssetIds = this.isBasketMode()
       ? new Set(this.resourcePopupStore.selectedAssignAssetIdsRef().map(id => id.trim()).filter(Boolean))
       : null;
-    return this.ownedAssetsStore.orderedCardsByType(type, selectedAssetIds);
+    return this.assetStore.orderedCardsByType(type, selectedAssetIds);
   }
 
   private async loadTicketSmartListPage(
     query: ListQuery<AssetTicketListFilters>
   ): Promise<{ items: AssetContracts.AssetTicketDTO[]; total: number }> {
-    const userId = query.filters?.userId?.trim() || this.appCtx.userProfileStore.activeUserId().trim();
+    const userId = query.filters?.userId?.trim() || this.userProfileStore.activeUserId().trim();
     if (!userId) {
       return {
         items: [],
@@ -2494,7 +2542,7 @@ export class AssetPopupComponent {
   private async loadOwnedAssetSmartListPage(
     query: ListQuery<OwnedAssetListFilters>
   ): Promise<{ items: AppDTOs.AssetDTO[]; total: number }> {
-    const userId = query.filters?.userId?.trim() || this.appCtx.userProfileStore.activeUserId().trim();
+    const userId = query.filters?.userId?.trim() || this.userProfileStore.activeUserId().trim();
     const type = query.filters?.type;
     if (!userId || (type !== 'Car' && type !== 'Accommodation' && type !== 'Supplies')) {
       return {

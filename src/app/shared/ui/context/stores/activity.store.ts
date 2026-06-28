@@ -1,20 +1,106 @@
 import { Injectable, signal } from '@angular/core';
 
 import { EventFeedbackDetailDto } from '../../../core/contracts/activity.interface';
-import type {
-  ActivityCounterKey,
-  ActivityCounters,
-  ActivityEventFeedbackSubmitSyncState,
-  ActivityMembersSyncState,
-  ActivityResourceSyncState
-} from '../app-context.types';
-import { ACTIVITY_COUNTER_KEYS } from '../app-context.types';
 import {
   cloneAssetCounters,
   cloneEventCounters,
   cloneEventFeedbackCounters,
   normalizeCounterValue
 } from './app-context-store.utils';
+
+export type ActivityCounterKey =
+  | 'game'
+  | 'chat'
+  | 'invitations'
+  | 'events'
+  | 'hosting'
+  | 'cars'
+  | 'accommodation'
+  | 'supplies'
+  | 'tickets'
+  | 'contacts'
+  | 'feedback'
+  | 'adminJobs'
+  | 'adminMetrics';
+
+export interface ActivityCounters {
+  game: number;
+  chat: number;
+  invitations: number;
+  events: number;
+  hosting: number;
+  cars: number;
+  accommodation: number;
+  supplies: number;
+  tickets: number;
+  contacts: number;
+  feedback: number;
+  event?: ActivityEventCounters;
+  asset?: ActivityAssetCounters;
+  eventFeedback?: ActivityEventFeedbackCounters;
+  adminJobs: number;
+  adminMetrics: number;
+}
+
+export interface ActivityEventCounters {
+  all: number;
+  active: number;
+  pending: number;
+  invitations: number;
+  hosting: number;
+  drafts: number;
+  trash: number;
+}
+
+export interface ActivityAssetCounters {
+  cars: number;
+  accommodation: number;
+  supplies: number;
+  tickets: number;
+}
+
+export interface ActivityEventFeedbackCounters {
+  ownEvents: number;
+  pending: number;
+  feedbacked: number;
+  removed: number;
+}
+
+export interface ActivityMembersSyncState {
+  updatedMs: number;
+  id: string;
+  acceptedMembers: number;
+  pendingMembers: number;
+  capacityTotal: number;
+}
+
+export interface ActivityResourceSyncState {
+  updatedMs: number;
+  ownerId: string;
+  subEventId: string;
+  assetOwnerUserId: string;
+}
+
+export interface ActivityEventFeedbackSubmitSyncState {
+  updatedMs: number;
+  dto: EventFeedbackDetailDto;
+}
+
+export const ACTIVITY_COUNTER_KEYS: ActivityCounterKey[] = [
+  'game',
+  'chat',
+  'invitations',
+  'events',
+  'hosting',
+  'cars',
+  'accommodation',
+  'supplies',
+  'tickets',
+  'contacts',
+  'feedback',
+  'adminJobs',
+  'adminMetrics'
+];
 
 @Injectable({
   providedIn: 'root'

@@ -1,4 +1,6 @@
-import { CommonModule } from '@angular/common';
+import {
+  CommonModule
+} from '@angular/common';
 import {
   ChangeDetectionStrategy,
   ChangeDetectorRef,
@@ -9,15 +11,27 @@ import {
   effect,
   inject
 } from '@angular/core';
-import { MatButtonModule } from '@angular/material/button';
-import { MatIconModule } from '@angular/material/icon';
-import { from } from 'rxjs';
+import {
+  MatButtonModule
+} from '@angular/material/button';
+import {
+  MatIconModule
+} from '@angular/material/icon';
+import {
+  from
+} from 'rxjs';
 
 import type * as AppUiTypes from '../../../shared/ui/models';
-import { AppUtils } from '../../../shared/app-utils';
+import {
+  AppUtils
+} from '../../../shared/app-utils';
 import type { ActivityMembersSyncState } from '../../../shared/ui';
-import { AppContext, AppPopupContext } from '../../../shared/ui';
-import { ActivityMembersService, ChatsService, EventsService, UsersService } from '../../../shared/core';
+import {
+  ActivityMembersService,
+  ChatsService,
+  EventsService,
+  UsersService
+} from '../../../shared/core';
 import type { ActivityEventRecord } from '../../../shared/core/contracts/activity.interface';
 import {
   CounterBadgePipe,
@@ -37,11 +51,19 @@ import {
   type SmartListLoaders,
   type SmartListStateChange
 } from '../../../shared/ui';
-import { ConfirmationDialogStore } from '../../../shared/ui/context/stores/confirmation-dialog.store';
-import { NavigatorStore } from '../../../shared/ui/context/stores/navigator.store';
+import {
+  ConfirmationDialogStore
+} from '../../../shared/ui/context/stores/confirmation-dialog.store';
+import {
+  NavigatorStore
+} from '../../../shared/ui/context/stores/navigator.store';
 import type { ActivityMemberOwnerType } from '../../../shared/core/common/constants';
 import type { ActivityMemberOwnerRef } from '../../../shared/core/contracts/activity.interface';
 import type * as ActivityContracts from '../../../shared/core/contracts/activity.interface';
+import { UserProfileStore } from '../../../shared/ui/context/stores/user-profile.store';
+import { AppRuntimeStore } from '../../../shared/ui/context/stores/app-runtime.store';
+import { ActivityStore } from '../../../shared/ui/context/stores/activity.store';
+import { PopupStore } from '../../../shared/ui/context/stores/popup.store';
 
 interface MembersSmartListFilters {
   ownerId?: string;
@@ -83,8 +105,10 @@ export class EventMembersPopupComponent {
   private readonly activityMembersService = inject(ActivityMembersService);
   private readonly chatsService = inject(ChatsService);
   private readonly eventsService = inject(EventsService);
-  private readonly appCtx = inject(AppContext);
-  private readonly popupCtx = inject(AppPopupContext);
+  private readonly userProfileStore = inject(UserProfileStore);
+  private readonly runtimeStore = inject(AppRuntimeStore);
+  private readonly activityStore = inject(ActivityStore);
+  private readonly popupStore = inject(PopupStore);
   private readonly usersService = inject(UsersService);
   private readonly navigatorStore = inject(NavigatorStore);
   private readonly membersCacheByOwnerId = new Map<string, ActivityContracts.ActivityMemberEntry[]>();
@@ -141,7 +165,7 @@ export class EventMembersPopupComponent {
     defaultView: 'list',
     headerProgress: {
       enabled: true,
-      state: () => this.appCtx.runtimeStore.isOnline() ? 'active' : 'inactive'
+      state: () => this.runtimeStore.isOnline() ? 'active' : 'inactive'
     },
     showStickyHeader: false,
     showGroupMarker: () => false,
@@ -166,11 +190,11 @@ export class EventMembersPopupComponent {
     this.syncMobileViewFromViewport();
 
     effect(() => {
-      const request = this.popupCtx.popupStore.activitiesNavigationRequest();
+      const request = this.popupStore.activitiesNavigationRequest();
       if (!request || (request.type !== 'members' && request.type !== 'eventEditorMembers')) {
         return;
       }
-      this.popupCtx.popupStore.clearActivitiesNavigationRequest();
+      this.popupStore.clearActivitiesNavigationRequest();
       if (request.type === 'members') {
         this.openMembersPopup(request.ownerId, {
           ownerType: request.ownerType ?? 'event',
@@ -194,7 +218,7 @@ export class EventMembersPopupComponent {
     });
 
     effect(() => {
-      const sync = this.appCtx.activityStore.activityMembersSync();
+      const sync = this.activityStore.activityMembersSync();
       if (!sync || sync.updatedMs <= this.lastAppliedActivityMembersUpdatedMs) {
         return;
       }
@@ -284,7 +308,7 @@ export class EventMembersPopupComponent {
     if (!this.canShowInviteButton || !this.ownerId) {
       return;
     }
-    this.popupCtx.popupStore.openActivityInvitePopup({
+    this.popupStore.openActivityInvitePopup({
       ownerId: this.ownerId,
       ownerType: this.ownerRef?.ownerType ?? 'event',
       title: this.subtitle,
@@ -294,7 +318,7 @@ export class EventMembersPopupComponent {
   }
 
   protected isSuspendedForAssetInvite(): boolean {
-    const invitePopup = this.popupCtx.popupStore.activityInvitePopup();
+    const invitePopup = this.popupStore.activityInvitePopup();
     return !!invitePopup && invitePopup.ownerId === this.ownerId;
   }
 
@@ -1320,7 +1344,7 @@ export class EventMembersPopupComponent {
   }
 
   private activeUserId(): string {
-    return this.appCtx.userProfileStore.activeUserId().trim();
+    return this.userProfileStore.activeUserId().trim();
   }
 
   private resetSummaryState(): void {

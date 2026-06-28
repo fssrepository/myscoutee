@@ -1,12 +1,36 @@
-import { CommonModule } from '@angular/common';
-import { Component, DoCheck, HostListener, ViewChild, ViewEncapsulation, computed, inject } from '@angular/core';
-import { FormsModule } from '@angular/forms';
-import { MatNativeDateModule } from '@angular/material/core';
-import { MatDatepickerModule } from '@angular/material/datepicker';
-import { MatFormFieldModule } from '@angular/material/form-field';
-import { MatIconModule } from '@angular/material/icon';
-import { MatInputModule } from '@angular/material/input';
-import { from } from 'rxjs';
+import {
+  CommonModule
+} from '@angular/common';
+import {
+  Component,
+  DoCheck,
+  HostListener,
+  ViewChild,
+  ViewEncapsulation,
+  computed,
+  inject
+} from '@angular/core';
+import {
+  FormsModule
+} from '@angular/forms';
+import {
+  MatNativeDateModule
+} from '@angular/material/core';
+import {
+  MatDatepickerModule
+} from '@angular/material/datepicker';
+import {
+  MatFormFieldModule
+} from '@angular/material/form-field';
+import {
+  MatIconModule
+} from '@angular/material/icon';
+import {
+  MatInputModule
+} from '@angular/material/input';
+import {
+  from
+} from 'rxjs';
 
 import {
   AppMenuComponent,
@@ -29,9 +53,17 @@ import {
   type SmartListLoadPage,
   type SmartListStateChange
 } from '../../../../shared/ui';
-import { AppContext, AssetInfoCardConverter } from '../../../../shared/ui';
-import { AppUtils } from '../../../../shared/app-utils';
-import { AssetCardBuilder, AssetDefaultsBuilder, PricingBuilder } from '../../../../shared/core/base/builders';
+import {
+  AssetInfoCardConverter
+} from '../../../../shared/ui';
+import {
+  AppUtils
+} from '../../../../shared/app-utils';
+import {
+  AssetCardBuilder,
+  AssetDefaultsBuilder,
+  PricingBuilder
+} from '../../../../shared/core/base/builders';
 import {
   ActivityResourceBuilder,
   ActivityResourcesService,
@@ -41,11 +73,21 @@ import {
   UsersService,
   type UserDto
 } from '../../../../shared/core';
-import { ActivitiesPopupStore } from '../../../../shared/ui/context/stores/activities-popup.store';
-import { ConfirmationDialogStore } from '../../../../shared/ui/context/stores/confirmation-dialog.store';
-import { OwnedAssetsStore } from '../../../../shared/ui/context/stores/owned-assets.store';
-import { SubEventResourcePopupStore } from '../../../../shared/ui/context/stores/sub-event-resource-popup.store';
-import { NavigatorStore } from '../../../../shared/ui/context/stores/navigator.store';
+import {
+  ActivitiesPopupStore
+} from '../../../../shared/ui/context/stores/activities-popup.store';
+import {
+  ConfirmationDialogStore
+} from '../../../../shared/ui/context/stores/confirmation-dialog.store';
+import {
+  AssetStore
+} from '../../../../shared/ui/context/stores/asset.store';
+import {
+  SubEventResourcePopupStore
+} from '../../../../shared/ui/context/stores/sub-event-resource-popup.store';
+import {
+  NavigatorStore
+} from '../../../../shared/ui/context/stores/navigator.store';
 import type * as ActivityContracts from '../../../../shared/core/contracts/activity.interface';
 import type * as AppConstants from '../../../../shared/core/common/constants';
 import type * as AppDTOs from '../../../../shared/core/contracts';
@@ -58,7 +100,7 @@ import type {
   AssetExplorePopupState,
   ResourceAssetDTO,
   ResourcePopupContext
-} from '../../../../shared/ui/context/sub-event-resource-popup.types';
+} from '../../../../shared/ui/context/stores/sub-event-resource-popup.store';
 import {
   EventResourceAssetExploreBorrowDialogComponent,
   type AssetExploreBorrowDialogViewState
@@ -68,6 +110,7 @@ import {
   type EventResourceAssetViewModel,
   type EventResourceAssetViewRequest
 } from '../asset-view/event-resource-asset-view.component';
+import { UserProfileStore } from '../../../../shared/ui/context/stores/user-profile.store';
 
 interface AssetExploreSmartListFilters {
   revision?: number;
@@ -148,13 +191,13 @@ interface AssetExploreBorrowDraftViewState {
 })
 export class EventResourceAssetExploreComponent implements DoCheck {
   private readonly resourcePopupStore = inject(SubEventResourcePopupStore);
-  private readonly appCtx = inject(AppContext);
+  private readonly userProfileStore = inject(UserProfileStore);
   private readonly activitiesStore = inject(ActivitiesPopupStore);
   private readonly activityResourcesService = inject(ActivityResourcesService);
   private readonly assetsService = inject(SharedAssetsService);
   private readonly eventsService = inject(EventsService);
   private readonly usersService = inject(UsersService);
-  private readonly ownedAssetsStore = inject(OwnedAssetsStore);
+  private readonly assetStore = inject(AssetStore);
   private readonly confirmationDialogStore = inject(ConfirmationDialogStore);
   private readonly shareTokensService = inject(ShareTokensService);
   private readonly navigatorStore = inject(NavigatorStore);
@@ -1588,8 +1631,8 @@ export class EventResourceAssetExploreComponent implements DoCheck {
   }
 
   private activeUser(): UserDto {
-    const activeUserId = this.appCtx.userProfileStore.activeUserId().trim();
-    return this.appCtx.userProfileStore.activeUserProfile()
+    const activeUserId = this.userProfileStore.activeUserId().trim();
+    return this.userProfileStore.activeUserProfile()
       ?? this.usersService.peekCachedUserById(activeUserId)
       ?? this.users[0]
       ?? this.createFallbackUser(activeUserId);
@@ -1600,7 +1643,7 @@ export class EventResourceAssetExploreComponent implements DoCheck {
   }
 
   private ownedAssetCards(): ResourceAssetDTO[] {
-    return this.ownedAssetsStore.assetCards();
+    return this.assetStore.assetCards();
   }
 
   private popupSubtitle(): string {
@@ -2309,7 +2352,7 @@ export class EventResourceAssetExploreComponent implements DoCheck {
 
   private reportTargetName(userId: string, fallback: string): string {
     const normalizedUserId = userId.trim();
-    return this.appCtx.userProfileStore.getUserProfile(normalizedUserId)?.name?.trim()
+    return this.userProfileStore.getUserProfile(normalizedUserId)?.name?.trim()
       || (normalizedUserId === this.activeUser().id.trim() ? this.activeUser().name?.trim() : '')
       || fallback;
   }

@@ -1,6 +1,11 @@
-import { Injectable, inject } from '@angular/core';
+import {
+  Injectable,
+  inject
+} from '@angular/core';
 
-import { AppUtils } from '../../../app-utils';
+import {
+  AppUtils
+} from '../../../app-utils';
 import type {
   EventTournamentGroupDeleteRequestDTO,
   EventTournamentGroupsQueryDTO,
@@ -26,8 +31,12 @@ import type {
   EventFeedbackPageResultDto,
   EventFeedbackStateDto
 } from '../../contracts/activity.interface';
-import { LocalEventsService } from '../../local';
-import { HttpEventsService } from '../../http';
+import {
+  LocalEventsService
+} from '../../local';
+import {
+  HttpEventsService
+} from '../../http';
 import type {
   ActivityEventDetailDTO,
   ActivityEventDTO,
@@ -41,9 +50,13 @@ import type {
   ActivityEventSubEventsResultDTO
 } from '../../contracts/activity.interface';
 import type { IEventsService } from '../../contracts/activity.interface';
-import { AppContext } from '../../../ui/context';
-import { BaseRouteModeService } from './base-route-mode.service';
-import { UsersService } from './users.service';
+import {
+  BaseRouteModeService
+} from './base-route-mode.service';
+import {
+  UsersService
+} from './users.service';
+import { UserProfileStore } from '../../../ui/context/stores/user-profile.store';
 
 @Injectable({
   providedIn: 'root'
@@ -51,7 +64,7 @@ import { UsersService } from './users.service';
 export class EventsService extends BaseRouteModeService implements IEventsService {
   private readonly localEventsService = inject(LocalEventsService);
   private readonly httpEventsService = inject(HttpEventsService);
-  private readonly appCtx = inject(AppContext);
+  private readonly userProfileStore = inject(UserProfileStore);
   private readonly usersService = inject(UsersService);
 
   get localModeEnabled(): boolean {
@@ -322,11 +335,11 @@ export class EventsService extends BaseRouteModeService implements IEventsServic
   }
 
   private resolveActiveUserId(): string {
-    const activeUserProfileId = this.appCtx.userProfileStore.activeUserProfile()?.id?.trim();
+    const activeUserProfileId = this.userProfileStore.activeUserProfile()?.id?.trim();
     if (activeUserProfileId) {
       return activeUserProfileId;
     }
-    const activeUserId = this.appCtx.userProfileStore.getActiveUserId().trim();
+    const activeUserId = this.userProfileStore.getActiveUserId().trim();
     if (activeUserId) {
       return activeUserId;
     }

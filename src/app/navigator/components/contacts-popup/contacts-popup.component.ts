@@ -1,19 +1,73 @@
-import { Component, HostListener, OnDestroy, ViewChild, computed, effect, inject, signal, untracked } from '@angular/core';
-import { AppPopupContext } from '../../../shared/ui';
-import { CommonModule } from '@angular/common';
-import { FormsModule } from '@angular/forms';
-import { MatIconModule } from '@angular/material/icon';
-import { from } from 'rxjs';
-import { tap } from 'rxjs/operators';
-
-import { AppUtils } from '../../../shared/app-utils';
 import {
-  AppMenuComponent, AppMenuTriggerComponent, PopupComponent, SmartListComponent, type AppMenuItem, type AppMenuItemSelectEvent, type AppMenuPalette, type AppMenuTrigger, type ListQuery, type PageResult, type PopupActionEvent, type PopupModel, type SmartListConfig, type SmartListLoadPage
+  Component,
+  HostListener,
+  OnDestroy,
+  ViewChild,
+  computed,
+  effect,
+  inject,
+  signal,
+  untracked
+} from '@angular/core';
+import {
+  CommonModule
+} from '@angular/common';
+import {
+  FormsModule
+} from '@angular/forms';
+import {
+  MatIconModule
+} from '@angular/material/icon';
+import {
+  from
+} from 'rxjs';
+import {
+  tap
+} from 'rxjs/operators';
+
+import {
+  AppUtils
+} from '../../../shared/app-utils';
+import {
+  AppMenuComponent,
+  AppMenuTriggerComponent,
+  PopupComponent,
+  SmartListComponent,
+  type AppMenuItem,
+  type AppMenuItemSelectEvent,
+  type AppMenuPalette,
+  type AppMenuTrigger,
+  type ListQuery,
+  type PageResult,
+  type PopupActionEvent,
+  type PopupModel,
+  type SmartListConfig,
+  type SmartListLoadPage
 } from '../../../shared/ui';
-import { ConfirmationDialogStore } from '../../../shared/ui/context/stores/confirmation-dialog.store';
-import { NavigatorStore } from '../../../shared/ui/context/stores/navigator.store';
-import { AppContext } from '../../../shared/ui';
-import { ContactsService as ContactsDataService, ExplanationGuideService, UsersService, type ActivityMemberEntry, type ContactFormValue, type ContactListFilters, type ContactListItem, type ContactMethodDraft, type ContactMethodItem, type ContactMethodOption, type ContactMethodType, type StoredContact, type UserDto } from '../../../shared/core';
+import {
+  ConfirmationDialogStore
+} from '../../../shared/ui/context/stores/confirmation-dialog.store';
+import {
+  NavigatorStore
+} from '../../../shared/ui/context/stores/navigator.store';
+import {
+  ContactsService as ContactsDataService,
+  ExplanationGuideService,
+  UsersService,
+  type ActivityMemberEntry,
+  type ContactFormValue,
+  type ContactListFilters,
+  type ContactListItem,
+  type ContactMethodDraft,
+  type ContactMethodItem,
+  type ContactMethodOption,
+  type ContactMethodType,
+  type StoredContact,
+  type UserDto
+} from '../../../shared/core';
+import { UserProfileStore } from '../../../shared/ui/context/stores/user-profile.store';
+import { AppRuntimeStore } from '../../../shared/ui/context/stores/app-runtime.store';
+import { PopupStore } from '../../../shared/ui/context/stores/popup.store';
 
 const CONTACT_METHOD_OPTIONS: readonly ContactMethodOption[] = [
   {
@@ -151,8 +205,9 @@ type ContactsMenuContext =
   styleUrl: './contacts-popup.component.scss'
 })
 export class ContactsPopupComponent implements OnDestroy {
-  private readonly appCtx = inject(AppContext);
-  private readonly popupCtx = inject(AppPopupContext);
+  private readonly userProfileStore = inject(UserProfileStore);
+  private readonly runtimeStore = inject(AppRuntimeStore);
+  private readonly popupStore = inject(PopupStore);
   private readonly confirmationDialogStore = inject(ConfirmationDialogStore);
   private readonly navigatorStore = inject(NavigatorStore);
   private readonly usersService = inject(UsersService);
@@ -248,7 +303,7 @@ export class ContactsPopupComponent implements OnDestroy {
     emptyStickyLabel: 'No contacts',
     headerProgress: {
       enabled: true,
-      state: () => this.appCtx.runtimeStore.isOnline() ? 'active' : 'inactive'
+      state: () => this.runtimeStore.isOnline() ? 'active' : 'inactive'
     },
     showStickyHeader: true,
     stickyHeaderClass: 'activities-sticky-header',
@@ -646,7 +701,7 @@ export class ContactsPopupComponent implements OnDestroy {
       return;
     }
 
-    this.popupCtx.popupStore.openActivityInvitePopup({
+    this.popupStore.openActivityInvitePopup({
       ownerId: activeUserId,
       ownerType: 'asset',
       title: 'Create contact',
@@ -1091,7 +1146,7 @@ export class ContactsPopupComponent implements OnDestroy {
   }
 
   private activeUserId(): string {
-    return this.appCtx.userProfileStore.activeUserId().trim();
+    return this.userProfileStore.activeUserId().trim();
   }
 
   private randomId(prefix: string): string {

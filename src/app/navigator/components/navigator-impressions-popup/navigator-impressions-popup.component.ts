@@ -1,17 +1,39 @@
-import { CommonModule } from '@angular/common';
-import { Component, HostListener, OnDestroy, computed, effect, inject, signal } from '@angular/core';
-import { MatButtonModule } from '@angular/material/button';
-import { MatRippleModule } from '@angular/material/core';
-import { MatIconModule } from '@angular/material/icon';
-import { APP_STATIC_DATA } from '../../../shared/app-static-data';
-import { AppUtils } from '../../../shared/app-utils';
-import { AppContext } from '../../../shared/ui';
+import {
+  CommonModule
+} from '@angular/common';
+import {
+  Component,
+  HostListener,
+  OnDestroy,
+  computed,
+  effect,
+  inject,
+  signal
+} from '@angular/core';
+import {
+  MatButtonModule
+} from '@angular/material/button';
+import {
+  MatRippleModule
+} from '@angular/material/core';
+import {
+  MatIconModule
+} from '@angular/material/icon';
+import {
+  APP_STATIC_DATA
+} from '../../../shared/app-static-data';
+import {
+  AppUtils
+} from '../../../shared/app-utils';
 import type { UserDto, UserImpressionsDto, UserImpressionsSectionDto } from '../../../shared/core';
 import {
   resolveNavigatorPresentation,
   type NavigatorPresentation
 } from '../navigator/navigator-presenters';
-import { NavigatorStore } from '../../../shared/ui/context/stores/navigator.store';
+import {
+  NavigatorStore
+} from '../../../shared/ui/context/stores/navigator.store';
+import { UserProfileStore } from '../../../shared/ui/context/stores/user-profile.store';
 
 interface NavigatorImpressionsPulseFlags {
   hostTop: boolean;
@@ -78,7 +100,7 @@ export class NavigatorImpressionsPopupComponent implements OnDestroy {
     memberChips: false
   };
 
-  private readonly appCtx = inject(AppContext);
+  private readonly userProfileStore = inject(UserProfileStore);
   private readonly navigatorStore = inject(NavigatorStore);
   private readonly personalityTraitCatalog = APP_STATIC_DATA.personalityTraitCatalog;
   private readonly pulseFlagsRef = signal<NavigatorImpressionsPulseFlags>({
@@ -95,9 +117,9 @@ export class NavigatorImpressionsPopupComponent implements OnDestroy {
 
   protected readonly popupOpen = this.navigatorStore.impressionsPopupOpen;
   protected readonly viewModel = computed<NavigatorImpressionsViewModel | null>(() => {
-    const selectedUserId = this.navigatorStore.impressionsPopupUserId().trim() || this.appCtx.userProfileStore.activeUserId().trim();
+    const selectedUserId = this.navigatorStore.impressionsPopupUserId().trim() || this.userProfileStore.activeUserId().trim();
     const user = selectedUserId
-      ? (this.appCtx.userProfileStore.getUserProfile(selectedUserId) ?? (selectedUserId === this.appCtx.userProfileStore.activeUserId().trim() ? this.appCtx.userProfileStore.activeUserProfile() : null))
+      ? (this.userProfileStore.getUserProfile(selectedUserId) ?? (selectedUserId === this.userProfileStore.activeUserId().trim() ? this.userProfileStore.activeUserProfile() : null))
       : null;
     if (!user) {
       return null;
@@ -143,13 +165,13 @@ export class NavigatorImpressionsPopupComponent implements OnDestroy {
   constructor() {
     effect(() => {
       const isOpen = this.popupOpen();
-      const selectedUserId = this.navigatorStore.impressionsPopupUserId().trim() || this.appCtx.userProfileStore.activeUserId().trim();
+      const selectedUserId = this.navigatorStore.impressionsPopupUserId().trim() || this.userProfileStore.activeUserId().trim();
       const user = selectedUserId
-        ? (this.appCtx.userProfileStore.getUserProfile(selectedUserId) ?? (selectedUserId === this.appCtx.userProfileStore.activeUserId().trim() ? this.appCtx.userProfileStore.activeUserProfile() : null))
+        ? (this.userProfileStore.getUserProfile(selectedUserId) ?? (selectedUserId === this.userProfileStore.activeUserId().trim() ? this.userProfileStore.activeUserProfile() : null))
         : null;
       const userId = user?.id.trim() ?? selectedUserId;
       const currentImpressions = userId
-        ? (this.appCtx.userProfileStore.getUserImpressions(userId) ?? user?.impressions ?? null)
+        ? (this.userProfileStore.getUserImpressions(userId) ?? user?.impressions ?? null)
         : null;
 
       if (!isOpen || !userId) {
@@ -208,8 +230,8 @@ export class NavigatorImpressionsPopupComponent implements OnDestroy {
   }
 
   protected closePopup(): void {
-    const userId = this.navigatorStore.impressionsPopupUserId().trim() || this.appCtx.userProfileStore.activeUserId().trim();
-    this.appCtx.userProfileStore.markUserRealtimeImpressionsClosed(userId);
+    const userId = this.navigatorStore.impressionsPopupUserId().trim() || this.userProfileStore.activeUserId().trim();
+    this.userProfileStore.markUserRealtimeImpressionsClosed(userId);
     this.navigatorStore.closeImpressionsPopup();
   }
 
@@ -219,7 +241,7 @@ export class NavigatorImpressionsPopupComponent implements OnDestroy {
 
   private hasUserImpressionsData(user: UserDto): boolean {
     return this.hasImpressionsData(
-      this.appCtx.userProfileStore.getUserImpressions(user.id) ?? user.impressions
+      this.userProfileStore.getUserImpressions(user.id) ?? user.impressions
     );
   }
 
@@ -271,7 +293,7 @@ export class NavigatorImpressionsPopupComponent implements OnDestroy {
   }
 
   private activeUserImpressionsSection(user: UserDto, kind: 'host' | 'member'): UserImpressionsSectionDto | null {
-    const impressions = this.appCtx.userProfileStore.getUserImpressions(user.id) ?? user.impressions ?? null;
+    const impressions = this.userProfileStore.getUserImpressions(user.id) ?? user.impressions ?? null;
     if (!impressions) {
       return null;
     }
@@ -279,10 +301,10 @@ export class NavigatorImpressionsPopupComponent implements OnDestroy {
   }
 
   private finalizePopupSession(userId: string): void {
-    this.appCtx.userProfileStore.clearUserImpressionChangeFlags(userId);
-    const current = this.appCtx.userProfileStore.getUserImpressions(userId);
+    this.userProfileStore.clearUserImpressionChangeFlags(userId);
+    const current = this.userProfileStore.getUserImpressions(userId);
     if (current) {
-      this.appCtx.userProfileStore.setUserImpressions(userId, {
+      this.userProfileStore.setUserImpressions(userId, {
         ...current,
         host: current.host
           ? {

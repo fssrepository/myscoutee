@@ -1,13 +1,26 @@
-import { CommonModule } from '@angular/common';
-import { Component, HostListener, OnDestroy, computed, effect, inject, signal } from '@angular/core';
-import { MatIconModule } from '@angular/material/icon';
-import { NavigationEnd, Router } from '@angular/router';
+import {
+  CommonModule
+} from '@angular/common';
+import {
+  Component,
+  HostListener,
+  OnDestroy,
+  computed,
+  effect,
+  inject,
+  signal
+} from '@angular/core';
+import {
+  MatIconModule
+} from '@angular/material/icon';
+import {
+  NavigationEnd,
+  Router
+} from '@angular/router';
 import type { Subscription } from 'rxjs';
 import {
   type ActivityCounters,
-  AppContext,
   AppMenuComponent,
-  AppPopupContext,
   type ActivityCounterKey,
   type AppMenuItem,
   type AppMenuItemSelectEvent,
@@ -17,13 +30,27 @@ import {
   type HeaderCardModel,
   type UserImpressionChangeFlags
 } from '../../../shared/ui';
-import { ProfileHeaderCardConverter } from '../../../shared/ui/converters';
-import { AppUtils } from '../../../shared/app-utils';
-import { AssetPopupStore } from '../../../shared/ui/context/stores/asset-popup.store';
-import { ActivitiesPopupStore } from '../../../shared/ui/context/stores/activities-popup.store';
-import { EventEditorPopupStore } from '../../../shared/ui/context/stores/event-editor-popup.store';
-import { OwnedAssetsStore } from '../../../shared/ui/context/stores/owned-assets.store';
-import { SubEventResourcePopupStore } from '../../../shared/ui/context/stores/sub-event-resource-popup.store';
+import {
+  ProfileHeaderCardConverter
+} from '../../../shared/ui/converters';
+import {
+  AppUtils
+} from '../../../shared/app-utils';
+import {
+  AssetPopupStore
+} from '../../../shared/ui/context/stores/asset-popup.store';
+import {
+  ActivitiesPopupStore
+} from '../../../shared/ui/context/stores/activities-popup.store';
+import {
+  EventEditorPopupStore
+} from '../../../shared/ui/context/stores/event-editor-popup.store';
+import {
+  AssetStore
+} from '../../../shared/ui/context/stores/asset.store';
+import {
+  SubEventResourcePopupStore
+} from '../../../shared/ui/context/stores/sub-event-resource-popup.store';
 import {
   ExplanationGuideService,
   HelpCenterService,
@@ -37,14 +64,33 @@ import {
   type PrivacyConsentDto,
   type UserDto
 } from '../../../shared/core';
-import { USER_LOGOUT_CONTEXT_KEY } from '../../../shared/core/base/services/users.service';
-import { ConfirmationDialogComponent } from '../../../shared/ui/components/confirmation-dialog/confirmation-dialog.component';
-import { NavigatorSettingsPopupsComponent } from '../navigator-settings-popups/navigator-settings-popups.component';
-import { NavigatorStore, type NavigatorBindings } from '../../../shared/ui/context/stores/navigator.store';
-import { resolveNavigatorPresentation } from './navigator-presenters';
+import {
+  USER_LOGOUT_CONTEXT_KEY
+} from '../../../shared/core/base/services/users.service';
+import {
+  ConfirmationDialogComponent
+} from '../../../shared/ui/components/confirmation-dialog/confirmation-dialog.component';
+import {
+  NavigatorSettingsPopupsComponent
+} from '../navigator-settings-popups/navigator-settings-popups.component';
+import {
+  NavigatorStore,
+  type NavigatorBindings
+} from '../../../shared/ui/context/stores/navigator.store';
+import {
+  resolveNavigatorPresentation
+} from './navigator-presenters';
 import type { ChatDTO } from '../../../shared/core/contracts/chat.interface';
-import { ConfirmationDialogStore } from '../../../shared/ui/context/stores/confirmation-dialog.store';
-import { APP_STORAGE_KEYS } from '../../../shared/core/common/storage-scope';
+import {
+  ConfirmationDialogStore
+} from '../../../shared/ui/context/stores/confirmation-dialog.store';
+import {
+  APP_STORAGE_KEYS
+} from '../../../shared/core/common/storage-scope';
+import { UserProfileStore } from '../../../shared/ui/context/stores/user-profile.store';
+import { AppRuntimeStore } from '../../../shared/ui/context/stores/app-runtime.store';
+import { ActivityStore } from '../../../shared/ui/context/stores/activity.store';
+import { PopupStore } from '../../../shared/ui/context/stores/popup.store';
 
 interface NavigatorAvatarState {
   badgeCount: number;
@@ -122,8 +168,10 @@ export class NavigatorComponent implements OnDestroy {
   private static readonly USER_MENU_LOAD_DURATION_MS = 3000;
 
   private readonly router = inject(Router);
-  private readonly appCtx = inject(AppContext);
-  private readonly popupCtx = inject(AppPopupContext);
+  private readonly userProfileStore = inject(UserProfileStore);
+  private readonly runtimeStore = inject(AppRuntimeStore);
+  private readonly activityStore = inject(ActivityStore);
+  private readonly popupStore = inject(PopupStore);
   private readonly explanationGuide = inject(ExplanationGuideService);
   private readonly helpCenterService = inject(HelpCenterService);
   private readonly privacyPolicy = inject(PrivacyPolicyService);
@@ -134,14 +182,14 @@ export class NavigatorComponent implements OnDestroy {
   private readonly navigatorStore = inject(NavigatorStore);
   private readonly activitiesStore = inject(ActivitiesPopupStore);
   private readonly assetPopupStore = inject(AssetPopupStore);
-  private readonly ownedAssetsStore = inject(OwnedAssetsStore);
+  private readonly assetStore = inject(AssetStore);
   private readonly eventEditorStore = inject(EventEditorPopupStore);
   protected readonly subEventResourceStore = inject(SubEventResourcePopupStore);
   private readonly currentRoutePathRef = signal(AppUtils.normalizeRoutePath(this.router.url));
   private readonly userMenuLoadOverdueRef = signal(false);
-  private readonly activeUserLoadState = this.appCtx.runtimeStore.selectLoadingState(USER_BY_ID_LOAD_CONTEXT_KEY);
-  private readonly profileSaveLoadState = this.appCtx.runtimeStore.selectLoadingState(USER_PROFILE_SAVE_CONTEXT_KEY);
-  private readonly userLogoutLoadState = this.appCtx.runtimeStore.selectLoadingState(USER_LOGOUT_CONTEXT_KEY);
+  private readonly activeUserLoadState = this.runtimeStore.selectLoadingState(USER_BY_ID_LOAD_CONTEXT_KEY);
+  private readonly profileSaveLoadState = this.runtimeStore.selectLoadingState(USER_PROFILE_SAVE_CONTEXT_KEY);
+  private readonly userLogoutLoadState = this.runtimeStore.selectLoadingState(USER_LOGOUT_CONTEXT_KEY);
   private readonly routerEventsSubscription: Subscription;
   private readonly hydrationRequestKeyRef = signal('');
   private readonly privacyConsentCheckKeyRef = signal('');
@@ -164,8 +212,8 @@ export class NavigatorComponent implements OnDestroy {
   protected readonly eventSupplyContributionsPopupComponent = this.subEventResourceStore.eventSupplyContributionsPopupComponent;
   protected readonly assetMemberPickerPopupComponent = this.assetPopupStore.assetMemberPickerPopupComponent;
   protected readonly eventEditorPopupComponent = this.eventEditorStore.eventEditorPopupComponent;
-  protected readonly eventSubeventsListPopupComponent = this.popupCtx.popupStore.eventSubeventsListPopupComponent;
-  protected readonly eventTournamentGroupsPopupComponent = this.popupCtx.popupStore.eventTournamentGroupsPopupComponent;
+  protected readonly eventSubeventsListPopupComponent = this.popupStore.eventSubeventsListPopupComponent;
+  protected readonly eventTournamentGroupsPopupComponent = this.popupStore.eventTournamentGroupsPopupComponent;
   protected readonly eventChatPopupComponent = this.activitiesStore.eventChatPopupComponent;
   protected readonly eventExplorePopupComponent = this.activitiesStore.eventExplorePopupComponent;
   protected readonly activitiesPopupComponent = this.activitiesStore.activitiesPopupComponent;
@@ -174,13 +222,13 @@ export class NavigatorComponent implements OnDestroy {
   protected readonly contactsPopupComponent = this.navigatorStore.contactsPopupComponent;
   protected readonly explanationPopupComponent = this.navigatorStore.explanationPopupComponent;
   protected readonly bindings = this.navigatorStore.bindings;
-  protected readonly activeUser = this.appCtx.userProfileStore.activeUserProfile;
+  protected readonly activeUser = this.userProfileStore.activeUserProfile;
   protected readonly explanationGuideEnabled = this.explanationGuide.enabled;
   protected readonly helpVersionLabel = this.helpCenterService.activeVersionLabel;
   protected readonly hasActiveHelpRevision = this.helpCenterService.hasActiveRevision;
   protected readonly privacyVersionLabel = this.privacyPolicy.activeVersionLabel;
   protected readonly termsVersionLabel = this.termsPolicy.activeVersionLabel;
-  protected readonly isOnline = this.appCtx.runtimeStore.isOnline;
+  protected readonly isOnline = this.runtimeStore.isOnline;
   protected readonly avatarState = computed<NavigatorAvatarState>(() => {
     const user = this.activeUser();
     return {
@@ -191,7 +239,7 @@ export class NavigatorComponent implements OnDestroy {
   protected readonly menuUiState = this.navigatorStore.menuUiState;
   protected readonly isCoveredByAssetPopup = computed(() =>
     this.assetPopupStore.visible()
-    || this.popupCtx.popupStore.activityInvitePopup() !== null
+    || this.popupStore.activityInvitePopup() !== null
   );
   protected readonly avatarVisible = computed(() => {
     const path = this.currentRoutePathRef();
@@ -200,7 +248,7 @@ export class NavigatorComponent implements OnDestroy {
   protected readonly hasBindings = computed(() => this.bindings() !== null);
   protected readonly isMenuOpen = computed(() => this.menuUiState().open);
   protected readonly hasOfflineProfile = computed(() =>
-    !this.appCtx.runtimeStore.isOnline() && this.activeUser() !== null
+    !this.runtimeStore.isOnline() && this.activeUser() !== null
   );
   protected readonly canToggleAvatarMenu = computed(() =>
     this.avatarVisible()
@@ -302,11 +350,11 @@ export class NavigatorComponent implements OnDestroy {
     }];
   });
   protected readonly menuUser = computed<NavigatorMenuUser | null>(() => {
-    const activeUser = this.appCtx.userProfileStore.activeUserProfile();
+    const activeUser = this.userProfileStore.activeUserProfile();
     if (!activeUser) {
       return null;
     }
-    const activityOverrides = this.appCtx.activityStore.getUserCounterOverrides(activeUser.id);
+    const activityOverrides = this.activityStore.getUserCounterOverrides(activeUser.id);
     const mergedActivities: ActivityCounters = {
       game: activityOverrides.game ?? activeUser.activities?.game ?? 0,
       chat: activityOverrides.chat ?? activeUser.activities?.chat ?? 0,
@@ -322,9 +370,9 @@ export class NavigatorComponent implements OnDestroy {
       adminJobs: activityOverrides.adminJobs ?? activeUser.activities?.adminJobs ?? 0,
       adminMetrics: activityOverrides.adminMetrics ?? activeUser.activities?.adminMetrics ?? 0
     };
-    const impressionChangeFlags = this.appCtx.userProfileStore.getUserImpressionChangeFlags(activeUser.id);
+    const impressionChangeFlags = this.userProfileStore.getUserImpressionChangeFlags(activeUser.id);
     const traitPresentation = resolveNavigatorPresentation('trait', activeUser.traitLabel ?? '');
-    const totalBadgeCount = this.appCtx.userProfileStore.isAdminUserProfile(activeUser)
+    const totalBadgeCount = this.userProfileStore.isAdminUserProfile(activeUser)
       ? (
         mergedActivities.game +
         mergedActivities.feedback +
@@ -350,7 +398,7 @@ export class NavigatorComponent implements OnDestroy {
     return {
       ...activeUser,
       completion: this.resolveCompletionPercent(activeUser),
-      impressions: this.appCtx.userProfileStore.getUserImpressions(activeUser.id) ?? activeUser.impressions,
+      impressions: this.userProfileStore.getUserImpressions(activeUser.id) ?? activeUser.impressions,
       activities: mergedActivities,
       impressionChangeFlags,
       memberImpressionTitle: traitPresentation.memberTitle ?? 'Attendee',
@@ -757,20 +805,20 @@ export class NavigatorComponent implements OnDestroy {
 
     effect(() => {
       const session = this.sessionService.session();
-      if (!session || this.appCtx.userProfileStore.activeUserId().trim()) {
+      if (!session || this.userProfileStore.activeUserId().trim()) {
         return;
       }
       const bootstrapUserId = session.kind === 'firebase'
         ? session.profile.id.trim()
         : session.userId.trim();
       if (bootstrapUserId) {
-        this.appCtx.userProfileStore.setActiveUserId(bootstrapUserId);
+        this.userProfileStore.setActiveUserId(bootstrapUserId);
       }
     });
 
     effect(() => {
       const session = this.sessionService.session();
-      const activeUserId = this.appCtx.userProfileStore.activeUserId().trim();
+      const activeUserId = this.userProfileStore.activeUserId().trim();
       const routeUrl = this.currentRoutePathRef();
 
       if (!session) {
@@ -796,7 +844,7 @@ export class NavigatorComponent implements OnDestroy {
 
     effect(() => {
       const session = this.sessionService.session();
-      const activeUserId = this.appCtx.userProfileStore.activeUserId().trim();
+      const activeUserId = this.userProfileStore.activeUserId().trim();
 
       if (!session || !activeUserId) {
         this.stopUserRealtimeLongPoll();
@@ -804,7 +852,7 @@ export class NavigatorComponent implements OnDestroy {
         this.navigatorStore.closeContactsPopup();
         return;
       }
-      if (this.isAdminWorkspaceRoute() || this.appCtx.userProfileStore.activeUserIsAdmin()) {
+      if (this.isAdminWorkspaceRoute() || this.userProfileStore.activeUserIsAdmin()) {
         this.navigatorStore.closeImpressionsPopup();
         this.navigatorStore.closeContactsPopup();
         this.activateUserRealtimeLongPoll(activeUserId);
@@ -816,7 +864,7 @@ export class NavigatorComponent implements OnDestroy {
 
     effect(() => {
       const session = this.sessionService.session();
-      const activeUserId = this.appCtx.userProfileStore.activeUserId().trim();
+      const activeUserId = this.userProfileStore.activeUserId().trim();
       const revision = this.privacyPolicy.activeRevision();
       const shouldCheckPrivacyConsent = Boolean(activeUserId)
         && (Boolean(session) || this.isAdminWorkspaceRoute());
@@ -894,21 +942,21 @@ export class NavigatorComponent implements OnDestroy {
     });
 
     effect(() => {
-      const request = this.popupCtx.popupStore.eventSubeventsListPopup();
+      const request = this.popupStore.eventSubeventsListPopup();
       if (request) {
-        void this.popupCtx.popupStore.ensureEventSubeventsListPopupLoaded();
+        void this.popupStore.ensureEventSubeventsListPopupLoaded();
       }
     });
 
     effect(() => {
-      const request = this.popupCtx.popupStore.eventTournamentGroupsPopup();
+      const request = this.popupStore.eventTournamentGroupsPopup();
       if (request) {
-        void this.popupCtx.popupStore.ensureEventTournamentGroupsPopupLoaded();
+        void this.popupStore.ensureEventTournamentGroupsPopupLoaded();
       }
     });
 
     effect(() => {
-      const request = this.popupCtx.popupStore.activitiesNavigationRequest();
+      const request = this.popupStore.activitiesNavigationRequest();
       if (!request || (request.type !== 'eventEditorCreate' && request.type !== 'eventEditor')) {
         return;
       }
@@ -916,7 +964,7 @@ export class NavigatorComponent implements OnDestroy {
     });
 
     effect(() => {
-      const request = this.popupCtx.popupStore.activitiesNavigationRequest();
+      const request = this.popupStore.activitiesNavigationRequest();
       if (!request || (request.type !== 'members' && request.type !== 'eventEditorMembers')) {
         return;
       }
@@ -924,7 +972,7 @@ export class NavigatorComponent implements OnDestroy {
     });
 
     effect(() => {
-      const request = this.popupCtx.popupStore.activitiesNavigationRequest();
+      const request = this.popupStore.activitiesNavigationRequest();
       if (!request || (request.type !== 'eventExplore' && request.type !== 'eventCheckoutDraft')) {
         return;
       }
@@ -932,7 +980,7 @@ export class NavigatorComponent implements OnDestroy {
     });
 
     effect(() => {
-      const request = this.popupCtx.popupStore.activitiesNavigationRequest();
+      const request = this.popupStore.activitiesNavigationRequest();
       if (!request || (request.type !== 'chatResource' && request.type !== 'assetExplore')) {
         return;
       }
@@ -999,14 +1047,14 @@ export class NavigatorComponent implements OnDestroy {
     });
 
     effect(() => {
-      const activityInvitePopup = this.popupCtx.popupStore.activityInvitePopup();
+      const activityInvitePopup = this.popupStore.activityInvitePopup();
       if (activityInvitePopup?.ownerId?.trim()) {
         void this.assetPopupStore.ensureAssetMemberPickerPopupLoaded();
       }
     });
 
     effect(() => {
-      const request = this.popupCtx.popupStore.navigatorActivitiesRequest();
+      const request = this.popupStore.navigatorActivitiesRequest();
       if (!request || request.updatedMs <= this.lastHandledActivitiesRequestMs) {
         return;
       }
@@ -1014,22 +1062,22 @@ export class NavigatorComponent implements OnDestroy {
       this.activitiesStore.openActivities(request.primaryFilter, request.eventScope, undefined, false, {
         adminServiceOnly: request.adminServiceOnly === true
       });
-      this.popupCtx.popupStore.clearNavigatorActivitiesRequest();
+      this.popupStore.clearNavigatorActivitiesRequest();
     });
 
     effect(() => {
-      const request = this.popupCtx.popupStore.navigatorAssetRequest();
+      const request = this.popupStore.navigatorAssetRequest();
       if (!request || request.updatedMs <= this.lastHandledAssetRequestMs) {
         return;
       }
       this.lastHandledAssetRequestMs = request.updatedMs;
-      this.ownedAssetsStore.openAssetPopup(request.assetFilter);
+      this.assetStore.openAssetPopup(request.assetFilter);
       this.assetPopupStore.primaryVisibleRef.set(true);
-      this.popupCtx.popupStore.clearNavigatorAssetRequest();
+      this.popupStore.clearNavigatorAssetRequest();
     });
 
     effect(() => {
-      const request = this.popupCtx.popupStore.navigatorEventFeedbackRequest();
+      const request = this.popupStore.navigatorEventFeedbackRequest();
       if (!request || request.updatedMs <= this.lastHandledEventFeedbackRequestMs) {
         return;
       }
@@ -1047,12 +1095,12 @@ export class NavigatorComponent implements OnDestroy {
 
   @HostListener('window:online')
   protected onWindowOnline(): void {
-    this.appCtx.runtimeStore.setOnlineState(true);
+    this.runtimeStore.setOnlineState(true);
   }
 
   @HostListener('window:offline')
   protected onWindowOffline(): void {
-    this.appCtx.runtimeStore.setOnlineState(false);
+    this.runtimeStore.setOnlineState(false);
   }
 
   protected onAvatarMenuSelect(
@@ -1232,7 +1280,7 @@ export class NavigatorComponent implements OnDestroy {
       return;
     }
     if (this.isAdminMode()) {
-      this.popupCtx.popupStore.openAdminNavigatorRequest('profile');
+      this.popupStore.openAdminNavigatorRequest('profile');
       return;
     }
     this.navigatorStore.openProfileEditor();
@@ -1284,7 +1332,7 @@ export class NavigatorComponent implements OnDestroy {
     if (!this.isOnline() || this.isBlockedUser()) {
       return;
     }
-    this.popupCtx.popupStore.openNavigatorAssetRequest('Car');
+    this.popupStore.openNavigatorAssetRequest('Car');
   }
 
   protected openAssetAccommodationPopup(event?: Event): void {
@@ -1292,7 +1340,7 @@ export class NavigatorComponent implements OnDestroy {
     if (!this.isOnline() || this.isBlockedUser()) {
       return;
     }
-    this.popupCtx.popupStore.openNavigatorAssetRequest('Accommodation');
+    this.popupStore.openNavigatorAssetRequest('Accommodation');
   }
 
   protected openAssetSuppliesPopup(event?: Event): void {
@@ -1300,17 +1348,17 @@ export class NavigatorComponent implements OnDestroy {
     if (!this.isOnline() || this.isBlockedUser()) {
       return;
     }
-    this.popupCtx.popupStore.openNavigatorAssetRequest('Supplies');
+    this.popupStore.openNavigatorAssetRequest('Supplies');
   }
 
   protected openAssetTicketsPopup(event?: Event): void {
     event?.stopPropagation();
-    this.popupCtx.popupStore.openNavigatorAssetRequest('Ticket');
+    this.popupStore.openNavigatorAssetRequest('Ticket');
   }
 
   protected openContactsPopup(event?: Event): void {
     event?.stopPropagation();
-    if (this.appCtx.userProfileStore.activeUserId().trim()) {
+    if (this.userProfileStore.activeUserId().trim()) {
       this.navigatorStore.openContactsPopup();
     }
   }
@@ -1320,7 +1368,7 @@ export class NavigatorComponent implements OnDestroy {
     if (!this.isOnline() || this.isBlockedUser()) {
       return;
     }
-    this.popupCtx.popupStore.openNavigatorEventFeedbackRequest();
+    this.popupStore.openNavigatorEventFeedbackRequest();
   }
 
   protected isAdminMode(): boolean {
@@ -1332,7 +1380,7 @@ export class NavigatorComponent implements OnDestroy {
     if (!this.isOnline()) {
       return;
     }
-    this.popupCtx.popupStore.openAdminNavigatorRequest('reports');
+    this.popupStore.openAdminNavigatorRequest('reports');
   }
 
   protected openAdminFeedbackShortcut(event?: Event): void {
@@ -1340,7 +1388,7 @@ export class NavigatorComponent implements OnDestroy {
     if (!this.isOnline()) {
       return;
     }
-    this.popupCtx.popupStore.openAdminNavigatorRequest('feedback');
+    this.popupStore.openAdminNavigatorRequest('feedback');
   }
 
   protected openAdminChatShortcut(event?: Event): void {
@@ -1348,7 +1396,7 @@ export class NavigatorComponent implements OnDestroy {
     if (!this.isOnline()) {
       return;
     }
-    this.popupCtx.popupStore.openAdminNavigatorRequest('chat');
+    this.popupStore.openAdminNavigatorRequest('chat');
   }
 
   protected openAdminProfileShortcut(event?: Event): void {
@@ -1356,7 +1404,7 @@ export class NavigatorComponent implements OnDestroy {
     if (!this.isOnline()) {
       return;
     }
-    this.popupCtx.popupStore.openAdminNavigatorRequest('profile');
+    this.popupStore.openAdminNavigatorRequest('profile');
   }
 
   protected openAdminHelpEditorShortcut(event?: Event): void {
@@ -1364,7 +1412,7 @@ export class NavigatorComponent implements OnDestroy {
     if (!this.isOnline()) {
       return;
     }
-    this.popupCtx.popupStore.openAdminNavigatorRequest('help-editor');
+    this.popupStore.openAdminNavigatorRequest('help-editor');
   }
 
   protected openAdminIdeaEditorShortcut(event?: Event): void {
@@ -1372,7 +1420,7 @@ export class NavigatorComponent implements OnDestroy {
     if (!this.isOnline()) {
       return;
     }
-    this.popupCtx.popupStore.openAdminNavigatorRequest('idea-editor');
+    this.popupStore.openAdminNavigatorRequest('idea-editor');
   }
 
   protected openAdminNotificationsShortcut(event?: Event): void {
@@ -1380,7 +1428,7 @@ export class NavigatorComponent implements OnDestroy {
     if (!this.isOnline()) {
       return;
     }
-    this.popupCtx.popupStore.openAdminNavigatorRequest('notifications');
+    this.popupStore.openAdminNavigatorRequest('notifications');
   }
 
   protected openAdminParamsShortcut(event?: Event): void {
@@ -1388,7 +1436,7 @@ export class NavigatorComponent implements OnDestroy {
     if (!this.isOnline()) {
       return;
     }
-    this.popupCtx.popupStore.openAdminNavigatorRequest('params');
+    this.popupStore.openAdminNavigatorRequest('params');
   }
 
   protected openAdminStatsShortcut(event?: Event): void {
@@ -1396,7 +1444,7 @@ export class NavigatorComponent implements OnDestroy {
     if (!this.isOnline()) {
       return;
     }
-    this.popupCtx.popupStore.openAdminNavigatorRequest('stats');
+    this.popupStore.openAdminNavigatorRequest('stats');
   }
 
   protected openAdminAffinityGraphShortcut(event?: Event): void {
@@ -1404,7 +1452,7 @@ export class NavigatorComponent implements OnDestroy {
     if (!this.isOnline()) {
       return;
     }
-    this.popupCtx.popupStore.openAdminNavigatorRequest('affinity-graph');
+    this.popupStore.openAdminNavigatorRequest('affinity-graph');
   }
 
   protected openAdminMonitoringShortcut(event?: Event): void {
@@ -1412,7 +1460,7 @@ export class NavigatorComponent implements OnDestroy {
     if (!this.isOnline()) {
       return;
     }
-    this.popupCtx.popupStore.openAdminNavigatorRequest('monitoring');
+    this.popupStore.openAdminNavigatorRequest('monitoring');
   }
 
   ngOnDestroy(): void {
@@ -1552,7 +1600,7 @@ export class NavigatorComponent implements OnDestroy {
 
   private isActivePrivacyConsentRequired(): boolean {
     const requiredKey = this.navigatorStore.privacyConsentRequiredKey();
-    const activeUserId = this.appCtx.userProfileStore.activeUserId().trim();
+    const activeUserId = this.userProfileStore.activeUserId().trim();
     const revision = this.privacyPolicy.activeRevision();
     if (!requiredKey || !activeUserId || !revision) {
       return false;
@@ -1574,7 +1622,7 @@ export class NavigatorComponent implements OnDestroy {
   }
 
   private syncHydratedUser(user: UserDto): void {
-    this.appCtx.userProfileStore.setActiveUserProfile(user);
+    this.userProfileStore.setActiveUserProfile(user);
     this.navigatorStore.bindings()?.syncHydratedUser?.(user);
   }
 
@@ -1595,11 +1643,11 @@ export class NavigatorComponent implements OnDestroy {
   }
 
   private openImpressionsPopup(userId?: string): void {
-    const normalizedUserId = `${userId ?? ''}`.trim() || this.appCtx.userProfileStore.activeUserId().trim();
-    const activeUserId = this.appCtx.userProfileStore.activeUserId().trim();
+    const normalizedUserId = `${userId ?? ''}`.trim() || this.userProfileStore.activeUserId().trim();
+    const activeUserId = this.userProfileStore.activeUserId().trim();
     const cachedUser = normalizedUserId
-      ? (this.appCtx.userProfileStore.getUserProfile(normalizedUserId)
-        ?? (normalizedUserId === activeUserId ? this.appCtx.userProfileStore.activeUserProfile() : null))
+      ? (this.userProfileStore.getUserProfile(normalizedUserId)
+        ?? (normalizedUserId === activeUserId ? this.userProfileStore.activeUserProfile() : null))
       : null;
     if (normalizedUserId && !cachedUser) {
       void this.usersService.loadUserById(normalizedUserId);
@@ -1608,7 +1656,7 @@ export class NavigatorComponent implements OnDestroy {
   }
 
   private openDeleteAccountConfirm(): void {
-    const activeUserName = this.appCtx.userProfileStore.activeUserProfile()?.name?.trim() || 'this account';
+    const activeUserName = this.userProfileStore.activeUserProfile()?.name?.trim() || 'this account';
     this.confirmationDialogStore.open({
       title: 'Delete account?',
       message: activeUserName,
@@ -1631,7 +1679,7 @@ export class NavigatorComponent implements OnDestroy {
           await this.sessionService.logout().finally(() => this.router.navigate(['/admin']));
           return;
         }
-        const activeUserId = this.appCtx.userProfileStore.activeUserId().trim();
+        const activeUserId = this.userProfileStore.activeUserId().trim();
         if (activeUserId) {
           const result = await this.usersService.deleteUser(activeUserId);
           if (!result.submitted) {
@@ -1653,7 +1701,7 @@ export class NavigatorComponent implements OnDestroy {
   }
 
   private openLogoutConfirm(): void {
-    const activeUserName = this.appCtx.userProfileStore.activeUserProfile()?.name?.trim() || '';
+    const activeUserName = this.userProfileStore.activeUserProfile()?.name?.trim() || '';
     this.confirmationDialogStore.open({
       title: 'Biztosan kilép?',
       message: activeUserName,
@@ -1666,7 +1714,7 @@ export class NavigatorComponent implements OnDestroy {
         this.navigatorStore.closeProfileEditor();
         this.closeImpressionsPopup();
         this.navigatorStore.closeContactsPopup();
-        const activeUserId = this.appCtx.userProfileStore.activeUserId().trim();
+        const activeUserId = this.userProfileStore.activeUserId().trim();
         if (AppUtils.normalizeRoutePath(this.router.url).startsWith('/admin')) {
           if (activeUserId) {
             const result = await this.usersService.logoutUser(activeUserId);
@@ -1711,14 +1759,14 @@ export class NavigatorComponent implements OnDestroy {
   }
 
   private closeImpressionsPopup(): void {
-    const userId = this.navigatorStore.impressionsPopupUserId().trim() || this.appCtx.userProfileStore.activeUserId().trim();
-    this.appCtx.userProfileStore.markUserRealtimeImpressionsClosed(userId);
+    const userId = this.navigatorStore.impressionsPopupUserId().trim() || this.userProfileStore.activeUserId().trim();
+    this.userProfileStore.markUserRealtimeImpressionsClosed(userId);
     this.navigatorStore.closeImpressionsPopup();
   }
 
   private activateUserRealtimeLongPoll(userId: string): void {
     const normalizedUserId = userId.trim();
-    if (!normalizedUserId || this.appCtx.userProfileStore.activeUserId().trim() !== normalizedUserId) {
+    if (!normalizedUserId || this.userProfileStore.activeUserId().trim() !== normalizedUserId) {
       return;
     }
     this.startUserRealtimeLongPoll();
@@ -1735,7 +1783,7 @@ export class NavigatorComponent implements OnDestroy {
     this.stopUserRealtimeLongPollInterval?.();
     this.stopUserRealtimeLongPollInterval = null;
     this.userRealtimeLongPollInFlight = false;
-    this.appCtx.userProfileStore.setUserRealtimePollInFlight(false);
+    this.userProfileStore.setUserRealtimePollInFlight(false);
   }
 
   private isAdminWorkspaceRoute(routeUrl = this.currentRoutePathRef()): boolean {
@@ -1755,22 +1803,22 @@ export class NavigatorComponent implements OnDestroy {
     if (this.userRealtimeLongPollInFlight) {
       return;
     }
-    const userId = this.appCtx.userProfileStore.activeUserId().trim();
+    const userId = this.userProfileStore.activeUserId().trim();
     if (!userId) {
       return;
     }
     this.userRealtimeLongPollInFlight = true;
-    this.appCtx.userProfileStore.setUserRealtimePollInFlight(true);
+    this.userProfileStore.setUserRealtimePollInFlight(true);
     try {
-      const cursor = this.appCtx.userProfileStore.getUserRealtimeCursor(userId);
+      const cursor = this.userProfileStore.getUserRealtimeCursor(userId);
       const snapshot = await this.usersService.pollUserRealtimeSnapshot(userId, cursor);
-      if (!snapshot || this.appCtx.userProfileStore.activeUserId().trim() !== userId) {
+      if (!snapshot || this.userProfileStore.activeUserId().trim() !== userId) {
         return;
       }
-      this.appCtx.userProfileStore.applyUserRealtimeSnapshot(userId, snapshot);
+      this.userProfileStore.applyUserRealtimeSnapshot(userId, snapshot);
     } finally {
       this.userRealtimeLongPollInFlight = false;
-      this.appCtx.userProfileStore.setUserRealtimePollInFlight(false);
+      this.userProfileStore.setUserRealtimePollInFlight(false);
     }
   }
 
@@ -1802,7 +1850,7 @@ export class NavigatorComponent implements OnDestroy {
   }
 
   private resolveUserBadgeCount(user: UserDto): number {
-    if (this.appCtx.userProfileStore.isAdminUserProfile(user)) {
+    if (this.userProfileStore.isAdminUserProfile(user)) {
       return (
         this.resolveActivityBadge(user, 'game') +
         this.resolveActivityBadge(user, 'chat') +
@@ -1811,7 +1859,7 @@ export class NavigatorComponent implements OnDestroy {
         this.resolveActivityBadge(user, 'adminMetrics')
       );
     }
-    const impressionFlags = this.appCtx.userProfileStore.getUserImpressionChangeFlags(user.id);
+    const impressionFlags = this.userProfileStore.getUserImpressionChangeFlags(user.id);
     return (
       (impressionFlags.host ? 1 : 0) +
       (impressionFlags.member ? 1 : 0) +
@@ -1830,7 +1878,7 @@ export class NavigatorComponent implements OnDestroy {
   }
 
   private resolveActivityBadge(user: UserDto, key: ActivityCounterKey): number {
-    const override = this.appCtx.activityStore.getUserCounterOverride(user.id, key);
+    const override = this.activityStore.getUserCounterOverride(user.id, key);
     if (override !== null) {
       return override;
     }
@@ -1863,7 +1911,7 @@ export class NavigatorComponent implements OnDestroy {
     if (!this.isOnline() || (primaryFilter !== 'chats' && this.isBlockedUser())) {
       return;
     }
-    this.popupCtx.popupStore.openNavigatorActivitiesRequest(primaryFilter, eventScope);
+    this.popupStore.openNavigatorActivitiesRequest(primaryFilter, eventScope);
   }
 
   private openBlockedUserSupportChat(): void {
@@ -1902,14 +1950,14 @@ export class NavigatorComponent implements OnDestroy {
   protected onGlobalPopupRequest(event: Event): void {
     const popupEvent = event as CustomEvent<{ type?: 'eventEditor' | 'eventExplore' }>;
     if (popupEvent.detail?.type === 'eventExplore') {
-      this.popupCtx.popupStore.requestActivitiesNavigation({ type: 'eventExplore' });
+      this.popupStore.requestActivitiesNavigation({ type: 'eventExplore' });
       void this.activitiesStore.ensureEventExplorePopupLoaded();
       return;
     }
     if (popupEvent.detail?.type !== 'eventEditor') {
       return;
     }
-    this.popupCtx.popupStore.requestActivitiesNavigation({
+    this.popupStore.requestActivitiesNavigation({
       type: 'eventEditorCreate',
       target: 'events'
     });

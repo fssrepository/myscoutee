@@ -1,15 +1,40 @@
-import { CommonModule } from '@angular/common';
-import { Location } from '@angular/common';
-import { Component, TemplateRef, ViewChild, inject, signal } from '@angular/core';
-import { MatIconModule } from '@angular/material/icon';
-import { from } from 'rxjs';
-
-import { ActivitiesPopupStore } from '../../../shared/ui/context/stores/activities-popup.store';
-import { APP_STATIC_DATA } from '../../../shared/app-static-data';
-import { AppUtils } from '../../../shared/app-utils';
-import { AdminModerationService, AdminWorkspaceDataService, type AdminModerationActionResult, type AdminReportedUserDto, type AdminReportDto } from '../../../shared/core';
 import {
-  AppContext,
+  CommonModule
+} from '@angular/common';
+import {
+  Location
+} from '@angular/common';
+import {
+  Component,
+  TemplateRef,
+  ViewChild,
+  inject,
+  signal
+} from '@angular/core';
+import {
+  MatIconModule
+} from '@angular/material/icon';
+import {
+  from
+} from 'rxjs';
+
+import {
+  ActivitiesPopupStore
+} from '../../../shared/ui/context/stores/activities-popup.store';
+import {
+  APP_STATIC_DATA
+} from '../../../shared/app-static-data';
+import {
+  AppUtils
+} from '../../../shared/app-utils';
+import {
+  AdminModerationService,
+  AdminWorkspaceDataService,
+  type AdminModerationActionResult,
+  type AdminReportedUserDto,
+  type AdminReportDto
+} from '../../../shared/core';
+import {
   AppMenuDispatcher,
   AppMenuOutletComponent,
   ActivityChatSingleRowConverter,
@@ -29,11 +54,23 @@ import {
 } from '../../../shared/ui';
 import type { ChatDTO } from '../../../shared/core/contracts/chat.interface';
 import type { UserDto } from '../../../shared/core/contracts/user.interface';
-import { ConfirmationDialogStore } from '../../../shared/ui/context/stores/confirmation-dialog.store';
-import { AdminPopupStore } from '../../../shared/ui/context/stores/admin-popup.store';
-import { AdminWorkspaceStore } from '../../../shared/ui/context/stores/admin-workspace.store';
-import { AdminChatReviewPopupComponent } from '../chat-review-popup/admin-chat-review-popup.component';
-import { AdminItemPreviewPopupComponent } from '../item-preview-popup/admin-item-preview-popup.component';
+import {
+  ConfirmationDialogStore
+} from '../../../shared/ui/context/stores/confirmation-dialog.store';
+import {
+  AdminPopupStore
+} from '../../../shared/ui/context/stores/admin-popup.store';
+import {
+  AdminWorkspaceStore
+} from '../../../shared/ui/context/stores/admin-workspace.store';
+import {
+  AdminChatReviewPopupComponent
+} from '../chat-review-popup/admin-chat-review-popup.component';
+import {
+  AdminItemPreviewPopupComponent
+} from '../item-preview-popup/admin-item-preview-popup.component';
+import { UserProfileStore } from '../../../shared/ui/context/stores/user-profile.store';
+import { AppRuntimeStore } from '../../../shared/ui/context/stores/app-runtime.store';
 
 interface AdminReportListItem {
   id: string;
@@ -87,7 +124,8 @@ interface AdminReportActionsMenuContext {
 })
 export class AdminReportsPopupComponent {
   protected readonly admin = inject(AdminPopupStore);
-  private readonly appCtx = inject(AppContext);
+  private readonly userProfileStore = inject(UserProfileStore);
+  private readonly runtimeStore = inject(AppRuntimeStore);
   private readonly workspace = inject(AdminWorkspaceStore);
   private readonly workspaceData = inject(AdminWorkspaceDataService);
   private readonly moderationData = inject(AdminModerationService);
@@ -134,7 +172,7 @@ export class AdminReportsPopupComponent {
     scrollPaddingTop: '2.6rem',
     headerProgress: {
       enabled: true,
-      state: () => this.appCtx.runtimeStore.isOnline() ? 'active' : 'inactive'
+      state: () => this.runtimeStore.isOnline() ? 'active' : 'inactive'
     },
     containerClass: {
       'experience-card-list': true,
@@ -164,7 +202,7 @@ export class AdminReportsPopupComponent {
     scrollPaddingTop: '2.6rem',
     headerProgress: {
       enabled: true,
-      state: () => this.appCtx.runtimeStore.isOnline() ? 'active' : 'inactive'
+      state: () => this.runtimeStore.isOnline() ? 'active' : 'inactive'
     },
     containerClass: {
       'experience-card-list': true,
@@ -678,7 +716,7 @@ export class AdminReportsPopupComponent {
     }
     const result = await this.moderationData.blockUser(
       normalizedUserId,
-      this.appCtx.userProfileStore.activeAdminUser(),
+      this.userProfileStore.activeAdminUser(),
       message
     );
     this.applyModerationActionResult(normalizedUserId, result, { markWarned: true });
@@ -691,7 +729,7 @@ export class AdminReportsPopupComponent {
     }
     const result = await this.moderationData.unblockUser(
       normalizedUserId,
-      this.appCtx.userProfileStore.activeAdminUser()
+      this.userProfileStore.activeAdminUser()
     );
     this.applyModerationActionResult(normalizedUserId, result);
   }
@@ -758,7 +796,7 @@ export class AdminReportsPopupComponent {
   }
 
   private buildAdminSupportChat(user: AdminReportedUserDto): (ChatDTO & { ownerUserId?: string }) | null {
-    const admin = this.appCtx.userProfileStore.activeAdminUser();
+    const admin = this.userProfileStore.activeAdminUser();
     if (!admin) {
       return null;
     }

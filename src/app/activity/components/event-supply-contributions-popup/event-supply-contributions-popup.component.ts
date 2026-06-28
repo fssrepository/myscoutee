@@ -2,11 +2,25 @@ import type * as AppDTOs from '../../../shared/core/contracts';
 import type * as ContractTypes from '../../../shared/core/contracts';
 import type * as AppConstants from '../../../shared/core/common/constants';
 
-import { Component, DoCheck, TemplateRef, ViewChild, inject } from '@angular/core';
-import { FormsModule } from '@angular/forms';
-import { MatButtonModule } from '@angular/material/button';
-import { MatIconModule } from '@angular/material/icon';
-import { from } from 'rxjs';
+import {
+  Component,
+  DoCheck,
+  TemplateRef,
+  ViewChild,
+  inject
+} from '@angular/core';
+import {
+  FormsModule
+} from '@angular/forms';
+import {
+  MatButtonModule
+} from '@angular/material/button';
+import {
+  MatIconModule
+} from '@angular/material/icon';
+import {
+  from
+} from 'rxjs';
 import {
   ProgressIndicatorComponent,
   SingleRowComponent,
@@ -19,14 +33,29 @@ import {
   type SmartListLoadPage,
   type SmartListStateChange
 } from '../../../shared/ui';
-import { AppContext } from '../../../shared/ui';
-import { APP_STATIC_DATA } from '../../../shared/app-static-data';
-import { AppUtils } from '../../../shared/app-utils';
-import { ActivityResourceBuilder, ActivityResourcesService, UsersService, type UserDto } from '../../../shared/core';
-import { OwnedAssetsStore } from '../../../shared/ui/context/stores/owned-assets.store';
-import { SubEventResourcePopupStore } from '../../../shared/ui/context/stores/sub-event-resource-popup.store';
-import { ConfirmationDialogStore } from '../../../shared/ui/context/stores/confirmation-dialog.store';
-import type { ResourcePopupContext } from '../../../shared/ui/context/sub-event-resource-popup.types';
+import {
+  APP_STATIC_DATA
+} from '../../../shared/app-static-data';
+import {
+  AppUtils
+} from '../../../shared/app-utils';
+import {
+  ActivityResourceBuilder,
+  ActivityResourcesService,
+  UsersService,
+  type UserDto
+} from '../../../shared/core';
+import {
+  AssetStore
+} from '../../../shared/ui/context/stores/asset.store';
+import {
+  SubEventResourcePopupStore
+} from '../../../shared/ui/context/stores/sub-event-resource-popup.store';
+import {
+  ConfirmationDialogStore
+} from '../../../shared/ui/context/stores/confirmation-dialog.store';
+import type { ResourcePopupContext } from '../../../shared/ui/context/stores/sub-event-resource-popup.store';
+import { UserProfileStore } from '../../../shared/ui/context/stores/user-profile.store';
 
 type ResourceAssetDTO = (AppDTOs.AssetDTO | AppDTOs.AssetDetailDTO) & {
   description?: string;
@@ -69,8 +98,8 @@ interface SupplyContributionRemovalRequest {
 export class EventSupplyContributionsPopupComponent implements DoCheck {
   protected readonly resourcePopupStore = inject(SubEventResourcePopupStore);
 
-  private readonly appCtx = inject(AppContext);
-  private readonly ownedAssetsStore = inject(OwnedAssetsStore);
+  private readonly userProfileStore = inject(UserProfileStore);
+  private readonly assetStore = inject(AssetStore);
   private readonly activityResourcesService = inject(ActivityResourcesService);
   private readonly usersService = inject(UsersService);
   private readonly confirmationDialogStore = inject(ConfirmationDialogStore);
@@ -87,7 +116,7 @@ export class EventSupplyContributionsPopupComponent implements DoCheck {
   }
 
   private ownedAssetCards(): ResourceAssetDTO[] {
-    return this.ownedAssetsStore.assetCards();
+    return this.assetStore.assetCards();
   }
 
   private get userById(): Map<string, UserDto> {
@@ -462,8 +491,8 @@ export class EventSupplyContributionsPopupComponent implements DoCheck {
   }
 
   private activeUser(): UserDto {
-    const activeUserId = this.appCtx.userProfileStore.activeUserId().trim();
-    return this.appCtx.userProfileStore.activeUserProfile()
+    const activeUserId = this.userProfileStore.activeUserId().trim();
+    return this.userProfileStore.activeUserProfile()
       ?? this.usersService.peekCachedUserById(activeUserId)
       ?? this.users[0]
       ?? this.createFallbackUser(activeUserId);

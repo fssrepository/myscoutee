@@ -1,20 +1,45 @@
-import { CommonModule } from '@angular/common';
-import { Component, OnDestroy, computed, inject, signal } from '@angular/core';
-import { AppContext } from '../../../shared/ui';
-import { FormsModule } from '@angular/forms';
-import { MatIconModule } from '@angular/material/icon';
+import {
+  CommonModule
+} from '@angular/common';
+import {
+  Component,
+  OnDestroy,
+  computed,
+  inject,
+  signal
+} from '@angular/core';
+import {
+  FormsModule
+} from '@angular/forms';
+import {
+  MatIconModule
+} from '@angular/material/icon';
 
 import {
-  AdminParamsService, type AdminParamFieldDto, type AdminParamOptionDto, type AdminParamsHistoryDto, type AdminParamsHistoryItemDto, type AdminParamsSectionDto, type AdminParamsStateDto } from '../../../shared/core';
-import { I18nPipe } from '../../../shared/ui';
+  AdminParamsService,
+  type AdminParamFieldDto,
+  type AdminParamOptionDto,
+  type AdminParamsHistoryDto,
+  type AdminParamsHistoryItemDto,
+  type AdminParamsSectionDto,
+  type AdminParamsStateDto
+} from '../../../shared/core';
+import {
+  I18nPipe
+} from '../../../shared/ui';
 import {
   AppMenuComponent,
   type AppMenuItem,
   type AppMenuItemSelectEvent,
   type AppMenuTrigger
 } from '../../../shared/ui/components/menu';
-import { ProgressIndicatorComponent } from '../../../shared/ui/components/progress-indicator';
-import { AdminPopupStore } from '../../../shared/ui/context/stores/admin-popup.store';
+import {
+  ProgressIndicatorComponent
+} from '../../../shared/ui/components/progress-indicator';
+import {
+  AdminPopupStore
+} from '../../../shared/ui/context/stores/admin-popup.store';
+import { UserProfileStore } from '../../../shared/ui/context/stores/user-profile.store';
 
 type AdminParamOption = Readonly<AdminParamOptionDto>;
 type AdminParamSelectMenuItemId = `param-option:${string}:${string}`;
@@ -34,7 +59,7 @@ interface AdminParamSelectMenuContext {
 export class AdminParamsPopupComponent implements OnDestroy {
   protected readonly admin = inject(AdminPopupStore);
   protected readonly paramsService = inject(AdminParamsService);
-  private readonly appCtx = inject(AppContext);
+  private readonly userProfileStore = inject(UserProfileStore);
   protected readonly loading = signal(false);
   protected readonly saving = signal(false);
   protected readonly reverting = signal(false);
@@ -326,6 +351,6 @@ export class AdminParamsPopupComponent implements OnDestroy {
   }
 
   private activeAdminId(): string {
-    return this.appCtx.userProfileStore.activeUserId().trim();
+    return this.userProfileStore.activeUserId().trim();
   }
 }

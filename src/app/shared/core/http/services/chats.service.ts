@@ -1,23 +1,35 @@
 import type { ChatThreadRecord } from '../../local/source/entity/chat.entity';
-import { HttpClient, HttpParams } from '@angular/common/http';
-import { Injectable, inject } from '@angular/core';
+import {
+  HttpClient,
+  HttpParams
+} from '@angular/common/http';
+import {
+  Injectable,
+  inject
+} from '@angular/core';
 
-import { environment } from '../../../../../environments/environment';
+import {
+  environment
+} from '../../../../../environments/environment';
 import type * as ContractTypes from '../../contracts';
-import { AppUtils } from '../../../app-utils';
+import {
+  AppUtils
+} from '../../../app-utils';
 import type {
   ActivitiesChatPageResultDTO,
   ChatDTO
 } from '../../contracts/chat.interface';
 import type { IChatsService } from '../../contracts/activity.interface';
 import type { ActivitiesFeedFilters, ListQuery } from '../../contracts';
-import { AppContext } from '../../../ui/context';
-import { SessionService } from '../../base/services/session.service';
+import {
+  SessionService
+} from '../../base/services/session.service';
 
 import type * as ActivityContracts from '../../contracts/activity.interface';
 
 import type * as AppDTOs from '../../contracts';
 import type * as AppConstants from '../../common/constants';
+import { UserProfileStore } from '../../../ui/context/stores/user-profile.store';
 
 interface HttpChatSummaryDto {
   id: string;
@@ -185,7 +197,7 @@ export class HttpChatsService implements IChatsService {
   private static readonly SOCKET_MESSAGE_ACK_TIMEOUT_MS = 3000;
 
   private readonly http = inject(HttpClient);
-  private readonly appCtx = inject(AppContext);
+  private readonly userProfileStore = inject(UserProfileStore);
   private readonly sessionService = inject(SessionService);
   private readonly apiBaseUrl = environment.apiBaseUrl ?? '/api';
   private readonly chatItemsByUserId = new Map<string, ChatThreadRecord[]>();
@@ -1379,7 +1391,7 @@ export class HttpChatsService implements IChatsService {
   }
 
   private activeUserId(): string {
-    return this.appCtx.userProfileStore.activeUserId().trim();
+    return this.userProfileStore.activeUserId().trim();
   }
 
   private activeUserParams(): HttpParams {

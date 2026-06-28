@@ -1,15 +1,32 @@
-import { NgComponentOutlet } from '@angular/common';
-import { Component, OnInit, inject } from '@angular/core';
-import { ActivatedRoute, Router } from '@angular/router';
+import {
+  NgComponentOutlet
+} from '@angular/common';
+import {
+  Component,
+  OnInit,
+  inject
+} from '@angular/core';
+import {
+  ActivatedRoute,
+  Router
+} from '@angular/router';
 
-import { AssetDefaultsBuilder } from '../../../shared/core/base/builders/asset-defaults.builder';
-import { AdminWorkspaceDataService } from '../../../shared/core/base/services/admin-workspace-data.service';
-import { EventsService } from '../../../shared/core/base/services/events.service';
-import { SessionService } from '../../../shared/core/base/services/session.service';
+import {
+  AssetDefaultsBuilder
+} from '../../../shared/core/base/builders/asset-defaults.builder';
+import {
+  AdminWorkspaceDataService
+} from '../../../shared/core/base/services/admin-workspace-data.service';
+import {
+  EventsService
+} from '../../../shared/core/base/services/events.service';
+import {
+  SessionService
+} from '../../../shared/core/base/services/session.service';
 import type { AssetDTO } from '../../../shared/core/contracts/asset.interface';
 import type { ShareTokenResolvedItem } from '../../../shared/core/contracts/share.interface';
 import type { AssetType } from '../../../shared/core/common/constants';
-import { AppPopupContext } from '../../../shared/ui/context/app-popup.context';
+import { PopupStore } from '../../../shared/ui/context/stores/popup.store';
 
 @Component({
   selector: 'app-admin-help-session-page',
@@ -24,11 +41,10 @@ export class AdminHelpSessionPageComponent implements OnInit {
   private readonly sessionService = inject(SessionService);
   private readonly workspaceData = inject(AdminWorkspaceDataService);
   private readonly eventsService = inject(EventsService);
-  private readonly popupCtx = inject(AppPopupContext);
-
+  private readonly popupStore = inject(PopupStore);
   protected error = '';
-  protected readonly demoBootstrapSelector = this.popupCtx.popupStore.demoBootstrapSelector;
-  protected readonly demoBootstrapSelectorComponent = this.popupCtx.popupStore.demoBootstrapSelectorComponent;
+  protected readonly demoBootstrapSelector = this.popupStore.demoBootstrapSelector;
+  protected readonly demoBootstrapSelectorComponent = this.popupStore.demoBootstrapSelectorComponent;
 
   async ngOnInit(): Promise<void> {
     await this.openSharedUserView();
@@ -81,7 +97,7 @@ export class AdminHelpSessionPageComponent implements OnInit {
   }
 
   private openSharedUserSelector(userId: string, targetUrl: string): void {
-    this.popupCtx.popupStore.openDemoBootstrapSelector({
+    this.popupStore.openDemoBootstrapSelector({
       mode: 'member',
       title: 'Demo felhasználó választása',
       subtitle: 'Bejelentkezés nélküli mód. Válassz demo felhasználót a nézőpont szerinti adatok megnyitásához.',
@@ -113,7 +129,7 @@ export class AdminHelpSessionPageComponent implements OnInit {
   }
 
   private fail(message: string): void {
-    this.popupCtx.popupStore.closeDemoBootstrapSelector();
+    this.popupStore.closeDemoBootstrapSelector();
     this.error = message;
   }
 
@@ -223,11 +239,11 @@ export class AdminHelpSessionPageComponent implements OnInit {
     }
     const supportTarget = `${parsed.searchParams.get('supportTarget') ?? ''}`.trim();
     if (supportTarget === 'service-chat' || supportTarget === 'chats' || supportTarget === 'chat-message') {
-      this.popupCtx.popupStore.openNavigatorActivitiesRequest('chats');
+      this.popupStore.openNavigatorActivitiesRequest('chats');
     } else if (supportTarget === 'member') {
       const ownerId = `${parsed.searchParams.get('ownerId') ?? ''}`.trim();
       if (ownerId) {
-        this.popupCtx.popupStore.requestActivitiesNavigation({
+        this.popupStore.requestActivitiesNavigation({
           type: 'members',
           ownerId,
           ownerType: 'event',
@@ -236,30 +252,30 @@ export class AdminHelpSessionPageComponent implements OnInit {
           subtitle: 'Reported member context'
         });
       } else {
-        this.popupCtx.popupStore.openNavigatorActivitiesRequest('events');
+        this.popupStore.openNavigatorActivitiesRequest('events');
       }
     } else if (supportTarget === 'event') {
       const eventId = `${parsed.searchParams.get('eventId') ?? ''}`.trim();
       const eventRecord = eventId ? await this.eventsService.queryKnownRecordById(userId, eventId) : null;
       if (eventRecord) {
-        this.popupCtx.popupStore.requestActivitiesNavigation({
+        this.popupStore.requestActivitiesNavigation({
           type: 'eventEditor',
           eventId: eventRecord.id,
           target: eventRecord.type === 'hosting' || eventRecord.creatorUserId === userId ? 'hosting' : 'events',
           readOnly: true
         });
       } else {
-        this.popupCtx.popupStore.openNavigatorActivitiesRequest('events');
+        this.popupStore.openNavigatorActivitiesRequest('events');
       }
     } else if (supportTarget === 'events') {
-      this.popupCtx.popupStore.openNavigatorActivitiesRequest('events');
+      this.popupStore.openNavigatorActivitiesRequest('events');
     } else if (supportTarget === 'rates') {
-      this.popupCtx.popupStore.openNavigatorActivitiesRequest('rates');
+      this.popupStore.openNavigatorActivitiesRequest('rates');
     } else if (supportTarget === 'asset') {
       const assetFilter = this.toAssetFilter(parsed.searchParams.get('assetFilter'));
       if (assetFilter) {
         const assetId = `${parsed.searchParams.get('assetId') ?? ''}`.trim();
-        this.popupCtx.popupStore.requestActivitiesNavigation({
+        this.popupStore.requestActivitiesNavigation({
           type: 'assetExplore',
           assetType: assetFilter,
           assetId: assetId || undefined,

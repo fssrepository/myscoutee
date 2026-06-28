@@ -1,12 +1,29 @@
-import { CommonModule } from '@angular/common';
-import { Component, HostListener, effect, inject } from '@angular/core';
-import { MatButtonModule } from '@angular/material/button';
-import { MatIconModule } from '@angular/material/icon';
+import {
+  CommonModule
+} from '@angular/common';
+import {
+  Component,
+  HostListener,
+  effect,
+  inject
+} from '@angular/core';
+import {
+  MatButtonModule
+} from '@angular/material/button';
+import {
+  MatIconModule
+} from '@angular/material/icon';
 
-import { AppUtils } from '../../../shared/app-utils';
-import { APP_STATIC_DATA } from '../../../shared/app-static-data';
-import { AppContext } from '../../../shared/ui';
-import { HelpCenterService, PrivacyPolicyService } from '../../../shared/core';
+import {
+  AppUtils
+} from '../../../shared/app-utils';
+import {
+  APP_STATIC_DATA
+} from '../../../shared/app-static-data';
+import {
+  HelpCenterService,
+  PrivacyPolicyService
+} from '../../../shared/core';
 import type { HelpCenterRevisionDto, HelpCenterSectionDto } from '../../../shared/core/contracts';
 import {
   DocumentViewerComponent,
@@ -15,10 +32,20 @@ import {
   type DocumentViewerActionVisibility,
   type DocumentViewerConfig
 } from '../../../shared/ui/components/document-viewer';
-import { HelpCenterRevisionDocumentViewerConfigConverter } from '../../../shared/ui/converters';
-import { NavigatorStore, type NavigatorSettingsPopup } from '../../../shared/ui/context/stores/navigator.store';
-import { NavigatorFeedbackPopupComponent } from '../navigator-feedback-popup/navigator-feedback-popup.component';
-import { NavigatorReportUserPopupComponent } from '../navigator-report-user-popup/navigator-report-user-popup.component';
+import {
+  HelpCenterRevisionDocumentViewerConfigConverter
+} from '../../../shared/ui/converters';
+import {
+  NavigatorStore,
+  type NavigatorSettingsPopup
+} from '../../../shared/ui/context/stores/navigator.store';
+import {
+  NavigatorFeedbackPopupComponent
+} from '../navigator-feedback-popup/navigator-feedback-popup.component';
+import {
+  NavigatorReportUserPopupComponent
+} from '../navigator-report-user-popup/navigator-report-user-popup.component';
+import { UserProfileStore } from '../../../shared/ui/context/stores/user-profile.store';
 
 @Component({
   selector: 'app-navigator-settings-popups',
@@ -38,10 +65,9 @@ export class NavigatorSettingsPopupsComponent {
   private readonly navigatorStore = inject(NavigatorStore);
   private readonly helpCenter = inject(HelpCenterService);
   private readonly privacyPolicy = inject(PrivacyPolicyService);
-  private readonly appCtx = inject(AppContext);
-
+  private readonly userProfileStore = inject(UserProfileStore);
   protected readonly activePopup = this.navigatorStore.settingsPopup;
-  protected readonly activeUserId = this.appCtx.userProfileStore.activeUserId;
+  protected readonly activeUserId = this.userProfileStore.activeUserId;
   protected readonly privacyConsentRequired = this.navigatorStore.privacyConsentRequired;
   protected settingsPrivacySaving = false;
   protected settingsPrivacySaveMessage = '';

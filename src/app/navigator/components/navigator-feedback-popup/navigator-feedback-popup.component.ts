@@ -1,15 +1,30 @@
 
-import { Component, OnDestroy, computed, inject } from '@angular/core';
-import { FormsModule } from '@angular/forms';
-import { APP_STATIC_DATA } from '../../../shared/app-static-data';
-import { AppContext } from '../../../shared/ui';
-import { USER_FEEDBACK_SUBMIT_CONTEXT_KEY, UsersService } from '../../../shared/core';
+import {
+  Component,
+  OnDestroy,
+  computed,
+  inject
+} from '@angular/core';
+import {
+  FormsModule
+} from '@angular/forms';
+import {
+  APP_STATIC_DATA
+} from '../../../shared/app-static-data';
+import {
+  USER_FEEDBACK_SUBMIT_CONTEXT_KEY,
+  UsersService
+} from '../../../shared/core';
 import {
   AppMenuComponent,
   type AppMenuItem,
   type AppMenuItemSelectEvent
 } from '../../../shared/ui';
-import { NavigatorStore } from '../../../shared/ui/context/stores/navigator.store';
+import {
+  NavigatorStore
+} from '../../../shared/ui/context/stores/navigator.store';
+import { UserProfileStore } from '../../../shared/ui/context/stores/user-profile.store';
+import { AppRuntimeStore } from '../../../shared/ui/context/stores/app-runtime.store';
 
 @Component({
   selector: 'app-navigator-feedback-popup',
@@ -21,8 +36,9 @@ import { NavigatorStore } from '../../../shared/ui/context/stores/navigator.stor
 export class NavigatorFeedbackPopupComponent implements OnDestroy {
   private readonly navigatorStore = inject(NavigatorStore);
   private readonly usersService = inject(UsersService);
-  private readonly appCtx = inject(AppContext);
-  private readonly submitLoadState = this.appCtx.runtimeStore.selectLoadingState(USER_FEEDBACK_SUBMIT_CONTEXT_KEY);
+  private readonly userProfileStore = inject(UserProfileStore);
+  private readonly runtimeStore = inject(AppRuntimeStore);
+  private readonly submitLoadState = this.runtimeStore.selectLoadingState(USER_FEEDBACK_SUBMIT_CONTEXT_KEY);
   private submitAbortController: AbortController | null = null;
   private submitRequestVersion = 0;
 
@@ -46,12 +62,12 @@ export class NavigatorFeedbackPopupComponent implements OnDestroy {
   protected feedbackSubmitted = false;
 
   constructor() {
-    this.appCtx.runtimeStore.resetLoadingState(USER_FEEDBACK_SUBMIT_CONTEXT_KEY);
+    this.runtimeStore.resetLoadingState(USER_FEEDBACK_SUBMIT_CONTEXT_KEY);
   }
 
   ngOnDestroy(): void {
     this.abortActiveSubmit();
-    this.appCtx.runtimeStore.resetLoadingState(USER_FEEDBACK_SUBMIT_CONTEXT_KEY);
+    this.runtimeStore.resetLoadingState(USER_FEEDBACK_SUBMIT_CONTEXT_KEY);
   }
 
   protected closePopup(): void {
@@ -99,18 +115,18 @@ export class NavigatorFeedbackPopupComponent implements OnDestroy {
     if (this.isSubmitBusy() || this.feedbackSubmitted) {
       return;
     }
-    this.appCtx.runtimeStore.resetLoadingState(USER_FEEDBACK_SUBMIT_CONTEXT_KEY);
+    this.runtimeStore.resetLoadingState(USER_FEEDBACK_SUBMIT_CONTEXT_KEY);
   }
 
   protected async submitFeedback(): Promise<void> {
-    const activeUserId = this.appCtx.userProfileStore.activeUserId().trim();
+    const activeUserId = this.userProfileStore.activeUserId().trim();
     const subject = this.feedbackForm.subject.trim();
     const details = this.feedbackForm.details.trim();
     if (!activeUserId || !subject || details.length < this.feedbackDetailsMinLength || this.isSubmitting()) {
       return;
     }
 
-    this.appCtx.runtimeStore.resetLoadingState(USER_FEEDBACK_SUBMIT_CONTEXT_KEY);
+    this.runtimeStore.resetLoadingState(USER_FEEDBACK_SUBMIT_CONTEXT_KEY);
     const requestVersion = ++this.submitRequestVersion;
     const abortController = new AbortController();
     this.submitAbortController = abortController;
@@ -155,6 +171,6 @@ export class NavigatorFeedbackPopupComponent implements OnDestroy {
     const controller = this.submitAbortController;
     this.submitAbortController = null;
     controller.abort();
-    this.appCtx.runtimeStore.resetLoadingState(USER_FEEDBACK_SUBMIT_CONTEXT_KEY);
+    this.runtimeStore.resetLoadingState(USER_FEEDBACK_SUBMIT_CONTEXT_KEY);
   }
 }

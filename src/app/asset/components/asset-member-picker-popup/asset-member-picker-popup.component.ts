@@ -10,12 +10,19 @@ import {
   effect,
   inject
 } from '@angular/core';
-import { AppContext, AppPopupContext } from '../../../shared/ui';
-import { MatButtonModule } from '@angular/material/button';
-import { MatIconModule } from '@angular/material/icon';
-import { from } from 'rxjs';
+import {
+  MatButtonModule
+} from '@angular/material/button';
+import {
+  MatIconModule
+} from '@angular/material/icon';
+import {
+  from
+} from 'rxjs';
 
-import { AppUtils } from '../../../shared/app-utils';
+import {
+  AppUtils
+} from '../../../shared/app-utils';
 import {
   AppMenuComponent,
   ImageCardComponent,
@@ -34,12 +41,23 @@ import {
   type SmartListStateChange
 } from '../../../shared/ui';
 import {
-  ActivityInviteCandidatesService, ActivityMembersService } from '../../../shared/core';
-import { NavigatorStore } from '../../../shared/ui/context/stores/navigator.store';
-import { AssetPopupStore } from '../../../shared/ui/context/stores/asset-popup.store';
-import { OwnedAssetsStore } from '../../../shared/ui/context/stores/owned-assets.store';
+  ActivityInviteCandidatesService,
+  ActivityMembersService
+} from '../../../shared/core';
+import {
+  NavigatorStore
+} from '../../../shared/ui/context/stores/navigator.store';
+import {
+  AssetPopupStore
+} from '../../../shared/ui/context/stores/asset-popup.store';
+import {
+  AssetStore
+} from '../../../shared/ui/context/stores/asset.store';
 
 import type * as AppConstants from '../../../shared/core/common/constants';
+import { UserProfileStore } from '../../../shared/ui/context/stores/user-profile.store';
+import { AppRuntimeStore } from '../../../shared/ui/context/stores/app-runtime.store';
+import { PopupStore } from '../../../shared/ui/context/stores/popup.store';
 interface ActivityInviteFilters {
   ownerId?: string;
   sort?: AppConstants.ActivityInviteSort;
@@ -67,12 +85,13 @@ type AssetMemberPickerMenuContext =
 })
 export class AssetMemberPickerPopupComponent {
   private readonly cdr = inject(ChangeDetectorRef);
-  private readonly appCtx = inject(AppContext);
-  private readonly popupCtx = inject(AppPopupContext);
+  private readonly userProfileStore = inject(UserProfileStore);
+  private readonly runtimeStore = inject(AppRuntimeStore);
+  private readonly popupStore = inject(PopupStore);
   private readonly activityInviteCandidatesService = inject(ActivityInviteCandidatesService);
   private readonly activityMembersService = inject(ActivityMembersService);
   private readonly assetPopupStore = inject(AssetPopupStore);
-  private readonly ownedAssetsStore = inject(OwnedAssetsStore);
+  private readonly assetStore = inject(AssetStore);
   private readonly navigatorStore = inject(NavigatorStore);
 
   protected isOpen = false;
@@ -113,7 +132,7 @@ export class AssetMemberPickerPopupComponent {
     defaultView: 'list',
     headerProgress: {
       enabled: true,
-      state: () => this.appCtx.runtimeStore.isOnline() ? 'active' : 'inactive'
+      state: () => this.runtimeStore.isOnline() ? 'active' : 'inactive'
     },
     showStickyHeader: false,
     showGroupMarker: () => false,
@@ -131,7 +150,7 @@ export class AssetMemberPickerPopupComponent {
 
   constructor() {
     effect(() => {
-      const context = this.popupCtx.popupStore.activityInvitePopup();
+      const context = this.popupStore.activityInvitePopup();
       if (!context?.ownerId?.trim()) {
         this.resetState();
         return;
@@ -186,10 +205,10 @@ export class AssetMemberPickerPopupComponent {
       return;
     }
     const shouldCloseOwnerPopup = this.closeOwnerPopupOnClose;
-    this.popupCtx.popupStore.closeActivityInvitePopup();
+    this.popupStore.closeActivityInvitePopup();
     this.resetState();
     if (shouldCloseOwnerPopup) {
-      this.ownedAssetsStore.closeAssetPopup();
+      this.assetStore.closeAssetPopup();
       this.assetPopupStore.resetTicketState();
       this.assetPopupStore.primaryVisibleRef.set(false);
     }
@@ -507,7 +526,7 @@ export class AssetMemberPickerPopupComponent {
     const inviteSort = query.filters?.sort === 'relevant' ? 'relevant' : 'recent';
     const queryKey = `${ownerId}:${this.ownerType}:${inviteSort}:${query.filters?.fallbackTitle ?? ''}:${this.isLocalCandidateSource ? 'local' : 'shared'}`;
     if (queryKey !== this.candidateQueryKey) {
-      const activeUserId = this.appCtx.userProfileStore.activeUserId().trim();
+      const activeUserId = this.userProfileStore.activeUserId().trim();
       if (this.isLocalCandidateSource) {
         this.persistedSelectedUserIds = new Set<string>();
         this.currentCandidates = this.sortLocalCandidates(inviteSort);

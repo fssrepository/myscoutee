@@ -1,10 +1,23 @@
-import { CommonModule } from '@angular/common';
-import { Component, OnDestroy, effect, inject, signal } from '@angular/core';
-import { AppContext } from '../../../shared/ui';
-import { FormsModule } from '@angular/forms';
-import { MatIconModule } from '@angular/material/icon';
+import {
+  CommonModule
+} from '@angular/common';
+import {
+  Component,
+  OnDestroy,
+  effect,
+  inject,
+  signal
+} from '@angular/core';
+import {
+  FormsModule
+} from '@angular/forms';
+import {
+  MatIconModule
+} from '@angular/material/icon';
 
-import { AdminNotificationsService } from '../../../shared/core';
+import {
+  AdminNotificationsService
+} from '../../../shared/core';
 import type {
   AdminNotificationCenterState,
   AdminNotificationRule,
@@ -15,14 +28,21 @@ import type {
   AdminNotificationScheduleSlot,
   AdminNotificationIntervalUnit
 } from '../../../shared/core';
-import { I18nPipe } from '../../../shared/ui';
+import {
+  I18nPipe
+} from '../../../shared/ui';
 import {
   AppMenuComponent,
   type AppMenuItemSelectEvent,
   type AppMenuModel
 } from '../../../shared/ui/components/menu';
-import { ProgressIndicatorComponent } from '../../../shared/ui/components/progress-indicator';
-import { AdminPopupStore } from '../../../shared/ui/context/stores/admin-popup.store';
+import {
+  ProgressIndicatorComponent
+} from '../../../shared/ui/components/progress-indicator';
+import {
+  AdminPopupStore
+} from '../../../shared/ui/context/stores/admin-popup.store';
+import { UserProfileStore } from '../../../shared/ui/context/stores/user-profile.store';
 
 const PROCESS_LIST_FILTER = {
   all: 'all',
@@ -316,7 +336,7 @@ const STATUS_CLASS_PREFIX = 'is-';
 export class AdminNotificationsPopupComponent implements OnDestroy {
   protected readonly admin = inject(AdminPopupStore);
   protected readonly notificationsService = inject(AdminNotificationsService);
-  private readonly appCtx = inject(AppContext);
+  private readonly userProfileStore = inject(UserProfileStore);
   protected readonly popupKey = ADMIN_POPUP_KEY;
   protected readonly jobI18n = JOB_I18N;
   protected readonly processRowAction = PROCESS_ROW_ACTION;
@@ -1410,7 +1430,7 @@ export class AdminNotificationsPopupComponent implements OnDestroy {
   }
 
   private activeAdminId(fallback?: string | null): string {
-    return this.appCtx.userProfileStore.activeUserId().trim() || `${fallback ?? ''}`.trim();
+    return this.userProfileStore.activeUserId().trim() || `${fallback ?? ''}`.trim();
   }
 
   private hasFinishedCurrentRun(rule: AdminNotificationRule): boolean {

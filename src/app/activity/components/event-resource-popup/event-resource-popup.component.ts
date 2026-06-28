@@ -1,44 +1,101 @@
-import { CommonModule } from '@angular/common';
-import { Component, HostListener, computed, effect, inject } from '@angular/core';
-import { FormsModule } from '@angular/forms';
-import { MatButtonModule } from '@angular/material/button';
-import { MatIconModule } from '@angular/material/icon';
+import {
+  CommonModule
+} from '@angular/common';
+import {
+  Component,
+  HostListener,
+  computed,
+  effect,
+  inject
+} from '@angular/core';
+import {
+  FormsModule
+} from '@angular/forms';
+import {
+  MatButtonModule
+} from '@angular/material/button';
+import {
+  MatIconModule
+} from '@angular/material/icon';
 
-import { ActivityResourceBuilder } from '../../../shared/core/base/builders/activity-resource.builder';
-import { AssetCardBuilder } from '../../../shared/core/base/builders/asset-card.builder';
-import { AssetDefaultsBuilder } from '../../../shared/core/base/builders/asset-defaults.builder';
-import { PricingBuilder } from '../../../shared/core/base/builders/pricing.builder';
-import { ActivityResourcesService } from '../../../shared/core/base/services/activity-resources.service';
-import { AssetsService as SharedAssetsService } from '../../../shared/core/base/services/assets.service';
-import { EventsService } from '../../../shared/core/base/services/events.service';
-import { ShareTokensService } from '../../../shared/core/base/services/share-tokens.service';
-import { UsersService } from '../../../shared/core/base/services/users.service';
+import {
+  ActivityResourceBuilder
+} from '../../../shared/core/base/builders/activity-resource.builder';
+import {
+  AssetCardBuilder
+} from '../../../shared/core/base/builders/asset-card.builder';
+import {
+  AssetDefaultsBuilder
+} from '../../../shared/core/base/builders/asset-defaults.builder';
+import {
+  PricingBuilder
+} from '../../../shared/core/base/builders/pricing.builder';
+import {
+  ActivityResourcesService
+} from '../../../shared/core/base/services/activity-resources.service';
+import {
+  AssetsService as SharedAssetsService
+} from '../../../shared/core/base/services/assets.service';
+import {
+  EventsService
+} from '../../../shared/core/base/services/events.service';
+import {
+  ShareTokensService
+} from '../../../shared/core/base/services/share-tokens.service';
+import {
+  UsersService
+} from '../../../shared/core/base/services/users.service';
 import type * as ContractTypes from '../../../shared/core/contracts';
 import type * as ActivityContracts from '../../../shared/core/contracts/activity.interface';
 import type { UserDto } from '../../../shared/core/contracts/user.interface';
-import { AppUtils } from '../../../shared/app-utils';
-import { APP_STATIC_DATA } from '../../../shared/app-static-data';
+import {
+  AppUtils
+} from '../../../shared/app-utils';
+import {
+  APP_STATIC_DATA
+} from '../../../shared/app-static-data';
 import type { CardMenuActionEvent, InfoCardData } from '../../../shared/ui/components/smart-list/card/card.types';
-import { AppContext } from '../../../shared/ui/context/app.context';
-import { AppPopupContext, type ActivitiesNavigationRequest } from '../../../shared/ui/context/app-popup.context';
-import { OwnedAssetsStore } from '../../../shared/ui/context/stores/owned-assets.store';
-import { AssetPopupStore } from '../../../shared/ui/context/stores/asset-popup.store';
-import { NavigatorStore } from '../../../shared/ui/context/stores/navigator.store';
-import { ConfirmationDialogStore } from '../../../shared/ui/context/stores/confirmation-dialog.store';
-import { ActivitiesPopupStore } from '../../../shared/ui/context/stores/activities-popup.store';
-import { EventEditorPopupStore } from '../../../shared/ui/context/stores/event-editor-popup.store';
-import { SubEventResourcePopupStore } from '../../../shared/ui/context/stores/sub-event-resource-popup.store';
-import type { EventEditorSubEventResourcePopupRequest } from '../../../shared/ui/context/event-editor-popup.types';
+import {
+  type ActivitiesNavigationRequest
+} from '../../../shared/ui/context/stores/popup.store';
+import {
+  AssetStore
+} from '../../../shared/ui/context/stores/asset.store';
+import {
+  AssetPopupStore
+} from '../../../shared/ui/context/stores/asset-popup.store';
+import {
+  NavigatorStore
+} from '../../../shared/ui/context/stores/navigator.store';
+import {
+  ConfirmationDialogStore
+} from '../../../shared/ui/context/stores/confirmation-dialog.store';
+import {
+  ActivitiesPopupStore
+} from '../../../shared/ui/context/stores/activities-popup.store';
+import {
+  EventEditorPopupStore
+} from '../../../shared/ui/context/stores/event-editor-popup.store';
+import {
+  SubEventResourcePopupStore
+} from '../../../shared/ui/context/stores/sub-event-resource-popup.store';
+import type { EventEditorSubEventResourcePopupRequest } from '../../../shared/ui/context/stores/event-editor-popup.store';
 import type {
   AssignedAssetJoinPricingPreview,
   ResourceAssetDTO,
   ResourcePopupContext,
   RouteEditorState
-} from '../../../shared/ui/context/sub-event-resource-popup.types';
+} from '../../../shared/ui/context/stores/sub-event-resource-popup.store';
 import type { ChatDTO } from '../../../shared/core/contracts/chat.interface';
-import { EventResourceAssetViewComponent } from './asset-view/event-resource-asset-view.component';
-import { EventResourceCapacityEditorComponent } from './capacity-editor/event-resource-capacity-editor.component';
-import { EventResourceRouteEditorComponent } from './route-editor/event-resource-route-editor.component';
+import {
+  EventResourceAssetViewComponent
+} from './asset-view/event-resource-asset-view.component';
+import {
+  EventResourceCapacityEditorComponent
+} from './capacity-editor/event-resource-capacity-editor.component';
+import {
+  EventResourceRouteEditorComponent
+} from './route-editor/event-resource-route-editor.component';
 import {
   EventResourceAssignedAssetJoinDialogComponent,
   type AssignedAssetJoinDialogViewState
@@ -50,6 +107,8 @@ import {
 
 import type * as AppDTOs from '../../../shared/core/contracts';
 import type * as AppConstants from '../../../shared/core/common/constants';
+import { UserProfileStore } from '../../../shared/ui/context/stores/user-profile.store';
+import { PopupStore } from '../../../shared/ui/context/stores/popup.store';
 export interface ResourceAssetViewState {
   card: AppDTOs.SubEventResourceCardDTO;
   mode: 'view' | 'edit';
@@ -88,11 +147,11 @@ interface ResourceAssignmentRemovalRequest {
 export class EventResourcePopupComponent {
   protected readonly resourcePopupStore = inject(SubEventResourcePopupStore);
 
-  private readonly appCtx = inject(AppContext);
-  private readonly popupCtx = inject(AppPopupContext);
+  private readonly userProfileStore = inject(UserProfileStore);
+  private readonly popupStore = inject(PopupStore);
   private readonly activitiesStore = inject(ActivitiesPopupStore);
   private readonly assetPopupStore = inject(AssetPopupStore);
-  private readonly ownedAssetsStore = inject(OwnedAssetsStore);
+  private readonly assetStore = inject(AssetStore);
   private readonly assetsService = inject(SharedAssetsService);
   private readonly eventsService = inject(EventsService);
   private readonly usersService = inject(UsersService);
@@ -107,7 +166,7 @@ export class EventResourcePopupComponent {
   }
 
   private ownedAssetCards(): ResourceAssetDTO[] {
-    return this.ownedAssetsStore.assetCards();
+    return this.assetStore.assetCards();
   }
 
   private get userById(): Map<string, UserDto> {
@@ -124,12 +183,12 @@ export class EventResourcePopupComponent {
 
   constructor() {
     effect(() => {
-      this.ownedAssetsStore.assetListRevision();
+      this.assetStore.assetListRevision();
       this.handleOwnedAssetsChanged();
     });
 
     effect(() => {
-      const deletedAssetEvent = this.ownedAssetsStore.deletedAssetEvent();
+      const deletedAssetEvent = this.assetStore.deletedAssetEvent();
       if (!deletedAssetEvent) {
         return;
       }
@@ -137,11 +196,11 @@ export class EventResourcePopupComponent {
     });
 
     effect(() => {
-      const request = this.popupCtx.popupStore.activitiesNavigationRequest();
+      const request = this.popupStore.activitiesNavigationRequest();
       if (!request || (request.type !== 'chatResource' && request.type !== 'assetExplore')) {
         return;
       }
-      this.popupCtx.popupStore.clearActivitiesNavigationRequest();
+      this.popupStore.clearActivitiesNavigationRequest();
       if (request.type === 'assetExplore') {
         this.openStandaloneAssetExploreRequest(request);
         return;
@@ -424,7 +483,7 @@ export class EventResourcePopupComponent {
 
   private reportTargetName(userId: string, fallback: string): string {
     const normalizedUserId = userId.trim();
-    return this.appCtx.userProfileStore.getUserProfile(normalizedUserId)?.name?.trim()
+    return this.userProfileStore.getUserProfile(normalizedUserId)?.name?.trim()
       || (normalizedUserId === this.activeUser().id.trim() ? this.activeUser().name?.trim() : '')
       || fallback;
   }
@@ -467,8 +526,8 @@ export class EventResourcePopupComponent {
   }
 
   private activeUser(): UserDto {
-    const activeUserId = this.appCtx.userProfileStore.activeUserId().trim();
-    return this.appCtx.userProfileStore.activeUserProfile()
+    const activeUserId = this.userProfileStore.activeUserId().trim();
+    return this.userProfileStore.activeUserProfile()
       ?? this.usersService.peekCachedUserById(activeUserId)
       ?? this.users[0]
       ?? this.createFallbackUser(activeUserId);
@@ -476,7 +535,7 @@ export class EventResourcePopupComponent {
 
   private openFromChatRequest(request: Extract<ActivitiesNavigationRequest, { type: 'chatResource' }>): void {
     if (request.resourceType === 'Members') {
-      this.popupCtx.popupStore.requestActivitiesNavigation({
+      this.popupStore.requestActivitiesNavigation({
         type: 'members',
         ownerId: request.group?.id?.trim() || request.subEvent.id,
         ownerType: request.group?.id ? 'group' : 'subEvent'
@@ -552,7 +611,7 @@ export class EventResourcePopupComponent {
       const group = request.group ?? null;
       const ownerId = group?.id?.trim() || `${request.subEvent.id ?? ''}`.trim();
       const groupLabel = group?.groupLabel?.trim() ?? '';
-      this.popupCtx.popupStore.requestActivitiesNavigation({
+      this.popupStore.requestActivitiesNavigation({
         type: 'members',
         ownerId,
         ownerType: group?.id ? 'group' : 'subEvent',
@@ -668,7 +727,7 @@ export class EventResourcePopupComponent {
     this.resourcePopupStore.assignContextRef.set(null);
     this.resourcePopupStore.selectedAssignAssetIdsRef.set([]);
     this.assetPopupStore.basketVisibleRef.set(false);
-    this.ownedAssetsStore.closeAssetPopup();
+    this.assetStore.closeAssetPopup();
     this.assetPopupStore.resetTicketState();
     this.assetPopupStore.primaryVisibleRef.set(false);
   }
@@ -769,7 +828,7 @@ export class EventResourcePopupComponent {
     this.resourcePopupStore.assignContextRef.set(null);
     this.resourcePopupStore.selectedAssignAssetIdsRef.set([]);
     this.assetPopupStore.basketVisibleRef.set(false);
-    this.ownedAssetsStore.closeAssetPopup();
+    this.assetStore.closeAssetPopup();
     this.assetPopupStore.resetTicketState();
     this.assetPopupStore.primaryVisibleRef.set(false);
   }
@@ -899,7 +958,7 @@ export class EventResourcePopupComponent {
     const pendingMembers = fallbackMembers.filter(member => member.status === 'pending').length;
     const capacityTotal = settings[card.sourceAssetId]?.capacityMax ?? Math.max(0, sourceCard.capacityTotal);
     const subtitle = `${sourceCard.title} · ${this.subEventDisplayName(context.subEvent) || 'Sub Event'}`;
-    this.popupCtx.popupStore.requestActivitiesNavigation({
+    this.popupStore.requestActivitiesNavigation({
       type: 'members',
       ownerId: sourceCard.id,
       ownerType: 'asset',
@@ -1303,11 +1362,11 @@ export class EventResourcePopupComponent {
             }
           : asset
       ));
-      if (this.ownedAssetsStore.applyAssetCards(nextCards, { mutation: true, reloadList: false })) {
-        const ownerUserId = this.ownedAssetsStore.activeOwnerUserIdRef().trim()
-          || this.appCtx.userProfileStore.getActiveUserId().trim();
+      if (this.assetStore.applyAssetCards(nextCards, { mutation: true, reloadList: false })) {
+        const ownerUserId = this.assetStore.activeOwnerUserIdRef().trim()
+          || this.userProfileStore.getActiveUserId().trim();
         if (ownerUserId) {
-          void this.assetsService.replaceOwnedAssets(ownerUserId, this.ownedAssetsStore.assetCards());
+          void this.assetsService.replaceOwnedAssets(ownerUserId, this.assetStore.assetCards());
         }
       }
       this.syncPopupSubEventMetrics();
@@ -1460,11 +1519,11 @@ export class EventResourcePopupComponent {
             }
           : asset
       ));
-      if (this.ownedAssetsStore.applyAssetCards(nextCards, { mutation: true, reloadList: false })) {
-        const ownerUserId = this.ownedAssetsStore.activeOwnerUserIdRef().trim()
-          || this.appCtx.userProfileStore.getActiveUserId().trim();
+      if (this.assetStore.applyAssetCards(nextCards, { mutation: true, reloadList: false })) {
+        const ownerUserId = this.assetStore.activeOwnerUserIdRef().trim()
+          || this.userProfileStore.getActiveUserId().trim();
         if (ownerUserId) {
-          void this.assetsService.replaceOwnedAssets(ownerUserId, this.ownedAssetsStore.assetCards());
+          void this.assetsService.replaceOwnedAssets(ownerUserId, this.assetStore.assetCards());
         }
       }
       this.resourcePopupStore.assignedAssetJoinDialogRef.set(null);
@@ -1884,7 +1943,7 @@ export class EventResourcePopupComponent {
     const type = this.resourcePopupStore.resourceFilterRef();
     this.resourcePopupStore.assignContextRef.set({ subEventId: context.subEvent.id, type });
     this.resourcePopupStore.selectedAssignAssetIdsRef.set([...this.resolveSubEventAssignedAssetIds(context.subEvent.id, type)]);
-    this.ownedAssetsStore.openAssetPopup(type);
+    this.assetStore.openAssetPopup(type);
     this.assetPopupStore.primaryVisibleRef.set(true);
     this.assetPopupStore.stackedVisibleRef.set(false);
     this.assetPopupStore.basketVisibleRef.set(true);
@@ -2251,11 +2310,11 @@ export class EventResourcePopupComponent {
         ? { ...card, requests: nextRequests }
         : card
     );
-    if (this.ownedAssetsStore.applyAssetCards(nextCards, { mutation: true, reloadList: false })) {
-      const ownerUserId = this.ownedAssetsStore.activeOwnerUserIdRef().trim()
-        || this.appCtx.userProfileStore.getActiveUserId().trim();
+    if (this.assetStore.applyAssetCards(nextCards, { mutation: true, reloadList: false })) {
+      const ownerUserId = this.assetStore.activeOwnerUserIdRef().trim()
+        || this.userProfileStore.getActiveUserId().trim();
       if (ownerUserId) {
-        void this.assetsService.replaceOwnedAssets(ownerUserId, this.ownedAssetsStore.assetCards());
+        void this.assetsService.replaceOwnedAssets(ownerUserId, this.assetStore.assetCards());
       }
     }
     this.syncPopupSubEventMetrics();
@@ -2361,7 +2420,7 @@ export class EventResourcePopupComponent {
       return nextCard;
     });
     if (changed) {
-      this.ownedAssetsStore.applyAssetCards(nextCards, { mutation: persist });
+      this.assetStore.applyAssetCards(nextCards, { mutation: persist });
       if (persist) {
         for (const dirtyCard of dirtyCards) {
           void this.assetsService.saveOwnedAsset(activeUser.id, this.toAssetDetailDto(dirtyCard));

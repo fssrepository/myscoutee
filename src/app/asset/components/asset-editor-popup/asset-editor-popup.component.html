@@ -1,4 +1,4 @@
-@if (ownedAssetsStore.showAssetForm()) {
+@if (assetStore.showAssetForm()) {
   <section class="experience-form-overlay asset-editor-overlay">
     <div class="experience-form-overlay-backdrop" (click)="requestClose()"></div>
     <div class="experience-form-popup asset-editor-popup" (click)="$event.stopPropagation()">

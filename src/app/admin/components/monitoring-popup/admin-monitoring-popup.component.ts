@@ -1,18 +1,40 @@
-import { CommonModule } from '@angular/common';
-import { Component, OnInit, computed, inject, signal } from '@angular/core';
-import { AppContext } from '../../../shared/ui';
-import { MatIconModule } from '@angular/material/icon';
+import {
+  CommonModule
+} from '@angular/common';
+import {
+  Component,
+  OnInit,
+  computed,
+  inject,
+  signal
+} from '@angular/core';
+import {
+  MatIconModule
+} from '@angular/material/icon';
 
 import {
-  AdminMonitoringService, type AdminMonitoringStateDto, AdminMonitoringCategoryDto, AdminMonitoringEdgeDto, AdminMonitoringHealth, AdminMonitoringMetricDto } from '../../../shared/core';
-import { I18nPipe } from '../../../shared/ui';
+  AdminMonitoringService,
+  type AdminMonitoringStateDto,
+  AdminMonitoringCategoryDto,
+  AdminMonitoringEdgeDto,
+  AdminMonitoringHealth,
+  AdminMonitoringMetricDto
+} from '../../../shared/core';
+import {
+  I18nPipe
+} from '../../../shared/ui';
 import {
   AppMenuComponent,
   type AppMenuItemSelectEvent,
   type AppMenuModel
 } from '../../../shared/ui/components/menu';
-import { ProgressIndicatorComponent } from '../../../shared/ui/components/progress-indicator';
-import { AdminPopupStore } from '../../../shared/ui/context/stores/admin-popup.store';
+import {
+  ProgressIndicatorComponent
+} from '../../../shared/ui/components/progress-indicator';
+import {
+  AdminPopupStore
+} from '../../../shared/ui/context/stores/admin-popup.store';
+import { UserProfileStore } from '../../../shared/ui/context/stores/user-profile.store';
 
 const MONITORING_POPUP_KEY = 'monitoring';
 
@@ -56,7 +78,7 @@ const MONITORING_FILTER_CATEGORIES: Record<MonitoringFilter, ReadonlySet<string>
 export class AdminMonitoringPopupComponent implements OnInit {
   protected readonly admin = inject(AdminPopupStore);
   protected readonly monitoringService = inject(AdminMonitoringService);
-  private readonly appCtx = inject(AppContext);
+  private readonly userProfileStore = inject(UserProfileStore);
   protected readonly popupKey = MONITORING_POPUP_KEY;
   protected readonly filterOptions = MONITORING_FILTER_OPTIONS;
   protected readonly loading = signal(false);
@@ -171,7 +193,7 @@ export class AdminMonitoringPopupComponent implements OnInit {
     this.loading.set(true);
     this.error.set('');
     try {
-      const state = await this.monitoringService.loadMonitoringState(this.appCtx.userProfileStore.activeUserId().trim());
+      const state = await this.monitoringService.loadMonitoringState(this.userProfileStore.activeUserId().trim());
       this.state.set(state);
     } catch {
       this.error.set('admin.monitoring.error.load');

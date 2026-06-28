@@ -1,17 +1,44 @@
-import { CommonModule } from '@angular/common';
-import { Component, NgZone, OnDestroy, computed, effect, inject, untracked } from '@angular/core';
-import { MatButtonModule } from '@angular/material/button';
-import { MatIconModule } from '@angular/material/icon';
+import {
+  CommonModule
+} from '@angular/common';
+import {
+  Component,
+  NgZone,
+  OnDestroy,
+  computed,
+  effect,
+  inject,
+  untracked
+} from '@angular/core';
+import {
+  MatButtonModule
+} from '@angular/material/button';
+import {
+  MatIconModule
+} from '@angular/material/icon';
 
-import { AssetTicketBuilder } from '../../../shared/core/base/builders';
-import { AppContext } from '../../../shared/ui';
-import { UsersService, type UserDto } from '../../../shared/core';
-import { AssetPopupStore } from '../../../shared/ui/context/stores/asset-popup.store';
-import { AssetTicketScanConverter } from '../../../shared/ui/converters/asset-ticket-scan.converter';
-import { AssetTicketCodePopupComponent } from '../asset-ticket-code-popup/asset-ticket-code-popup.component';
-import { AssetTicketScannerPopupComponent } from '../asset-ticket-scanner-popup/asset-ticket-scanner-popup.component';
+import {
+  AssetTicketBuilder
+} from '../../../shared/core/base/builders';
+import {
+  UsersService,
+  type UserDto
+} from '../../../shared/core';
+import {
+  AssetPopupStore
+} from '../../../shared/ui/context/stores/asset-popup.store';
+import {
+  AssetTicketScanConverter
+} from '../../../shared/ui/converters/asset-ticket-scan.converter';
+import {
+  AssetTicketCodePopupComponent
+} from '../asset-ticket-code-popup/asset-ticket-code-popup.component';
+import {
+  AssetTicketScannerPopupComponent
+} from '../asset-ticket-scanner-popup/asset-ticket-scanner-popup.component';
 
 import type * as AssetContracts from '../../../shared/core/contracts/asset.interface';
+import { UserProfileStore } from '../../../shared/ui/context/stores/user-profile.store';
 
 type TicketPerson = Pick<UserDto, 'id' | 'name' | 'age' | 'city' | 'gender' | 'initials' | 'images'>;
 
@@ -42,7 +69,7 @@ interface BrowserBarcodeDetectorConstructor {
 })
 export class AssetTicketScanPopupComponent implements OnDestroy {
   private readonly ngZone = inject(NgZone);
-  private readonly appCtx = inject(AppContext);
+  private readonly userProfileStore = inject(UserProfileStore);
   private readonly usersService = inject(UsersService);
   protected readonly store = inject(AssetPopupStore);
 
@@ -167,12 +194,12 @@ export class AssetTicketScanPopupComponent implements OnDestroy {
   }
 
   private currentActiveUserId(): string {
-    return this.appCtx.userProfileStore.getActiveUserId().trim();
+    return this.userProfileStore.getActiveUserId().trim();
   }
 
   private resolveActiveTicketHolder(): TicketPerson | null {
     const activeUserId = this.currentActiveUserId();
-    const activeProfile = this.appCtx.userProfileStore.activeUserProfile();
+    const activeProfile = this.userProfileStore.activeUserProfile();
     if (activeProfile && activeProfile.id.trim() === activeUserId) {
       return activeProfile;
     }
@@ -197,7 +224,7 @@ export class AssetTicketScanPopupComponent implements OnDestroy {
     if (!normalizedUserId) {
       return null;
     }
-    const cachedProfile = this.appCtx.userProfileStore.getUserProfile(normalizedUserId);
+    const cachedProfile = this.userProfileStore.getUserProfile(normalizedUserId);
     if (cachedProfile) {
       return cachedProfile;
     }

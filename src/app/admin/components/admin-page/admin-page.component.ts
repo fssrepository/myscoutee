@@ -1,19 +1,53 @@
-import { CommonModule, DOCUMENT } from '@angular/common';
-import { Component, HostListener, OnDestroy, OnInit, Type, effect, inject, signal } from '@angular/core';
-import { Router } from '@angular/router';
-import { MatIconModule } from '@angular/material/icon';
-import { MatRippleModule } from '@angular/material/core';
+import {
+  CommonModule,
+  DOCUMENT
+} from '@angular/common';
+import {
+  Component,
+  HostListener,
+  OnDestroy,
+  OnInit,
+  Type,
+  effect,
+  inject,
+  signal
+} from '@angular/core';
+import {
+  Router
+} from '@angular/router';
+import {
+  MatIconModule
+} from '@angular/material/icon';
+import {
+  MatRippleModule
+} from '@angular/material/core';
 
-import { NavigatorComponent } from '../../../navigator/components/navigator/navigator.component';
-import { AdminWorkspaceDataService } from '../../../shared/core/base/services/admin-workspace-data.service';
-import { HelpCenterService } from '../../../shared/core/base/services/help-center.service';
-import { SessionService } from '../../../shared/core/base/services/session.service';
+import {
+  NavigatorComponent
+} from '../../../navigator/components/navigator/navigator.component';
+import {
+  AdminWorkspaceDataService
+} from '../../../shared/core/base/services/admin-workspace-data.service';
+import {
+  HelpCenterService
+} from '../../../shared/core/base/services/help-center.service';
+import {
+  SessionService
+} from '../../../shared/core/base/services/session.service';
 import type { AdminBootstrapProcessState, AdminDashboardDto } from '../../../shared/core/contracts/admin.interface';
-import { ConfirmationDialogComponent } from '../../../shared/ui/components/confirmation-dialog/confirmation-dialog.component';
-import { AppPopupContext } from '../../../shared/ui/context/app-popup.context';
-import { AdminPopupStore } from '../../../shared/ui/context/stores/admin-popup.store';
-import { AdminWorkspaceStore } from '../../../shared/ui/context/stores/admin-workspace.store';
-import { NavigatorStore } from '../../../shared/ui/context/stores/navigator.store';
+import {
+  ConfirmationDialogComponent
+} from '../../../shared/ui/components/confirmation-dialog/confirmation-dialog.component';
+import {
+  AdminPopupStore
+} from '../../../shared/ui/context/stores/admin-popup.store';
+import {
+  AdminWorkspaceStore
+} from '../../../shared/ui/context/stores/admin-workspace.store';
+import {
+  NavigatorStore
+} from '../../../shared/ui/context/stores/navigator.store';
+import { PopupStore } from '../../../shared/ui/context/stores/popup.store';
 
 @Component({
   selector: 'app-admin-page',
@@ -37,7 +71,7 @@ export class AdminPageComponent implements OnInit, OnDestroy {
   private readonly document = inject(DOCUMENT);
   private readonly router = inject(Router);
   private readonly navigatorStore = inject(NavigatorStore);
-  private readonly popupCtx = inject(AppPopupContext);
+  private readonly popupStore = inject(PopupStore);
   private lastHandledAdminRequestMs = 0;
   private readonly reportsPopupComponentRef = signal<Type<unknown> | null>(null);
   private readonly feedbackPopupComponentRef = signal<Type<unknown> | null>(null);
@@ -59,8 +93,8 @@ export class AdminPageComponent implements OnInit, OnDestroy {
   protected readonly statsPopupComponent = this.statsPopupComponentRef.asReadonly();
   protected readonly affinityGraphPopupComponent = this.affinityGraphPopupComponentRef.asReadonly();
   protected readonly monitoringPopupComponent = this.monitoringPopupComponentRef.asReadonly();
-  protected readonly demoBootstrapSelector = this.popupCtx.popupStore.demoBootstrapSelector;
-  protected readonly demoBootstrapSelectorComponent = this.popupCtx.popupStore.demoBootstrapSelectorComponent;
+  protected readonly demoBootstrapSelector = this.popupStore.demoBootstrapSelector;
+  protected readonly demoBootstrapSelectorComponent = this.popupStore.demoBootstrapSelectorComponent;
 
   constructor() {
     this.document.documentElement.classList.add('admin-document-no-scroll');
@@ -99,12 +133,12 @@ export class AdminPageComponent implements OnInit, OnDestroy {
     });
 
     effect(() => {
-      const request = this.popupCtx.popupStore.adminNavigatorRequest();
+      const request = this.popupStore.adminNavigatorRequest();
       if (!request || request.updatedMs <= this.lastHandledAdminRequestMs) {
         return;
       }
       this.lastHandledAdminRequestMs = request.updatedMs;
-      this.popupCtx.popupStore.clearAdminNavigatorRequest();
+      this.popupStore.clearAdminNavigatorRequest();
       switch (request.popup) {
         case 'reports':
           this.adminPopup.openReports(this.workspace.dashboard()?.reportedUsers[0] ?? null);
@@ -113,7 +147,7 @@ export class AdminPageComponent implements OnInit, OnDestroy {
           this.adminPopup.openFeedback();
           break;
         case 'chat':
-          this.popupCtx.popupStore.openNavigatorActivitiesRequest('chats', undefined, { adminServiceOnly: true });
+          this.popupStore.openNavigatorActivitiesRequest('chats', undefined, { adminServiceOnly: true });
           break;
         case 'profile':
           this.navigatorStore.openProfileEditor();
@@ -274,7 +308,7 @@ export class AdminPageComponent implements OnInit, OnDestroy {
   }
 
   private openAdminSelector(): void {
-    this.popupCtx.popupStore.openDemoBootstrapSelector({
+    this.popupStore.openDemoBootstrapSelector({
       mode: 'admin',
       title: 'Select admin user',
       subtitle: 'Login disabled mode. Choose an admin user to open moderation data.',

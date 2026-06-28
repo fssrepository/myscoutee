@@ -1,11 +1,34 @@
-import { NgComponentOutlet } from '@angular/common';
-import { ChangeDetectorRef, Component, HostListener, Injector, NgZone, OnDestroy, OnInit, inject } from '@angular/core';
-import { ActivatedRoute, Router } from '@angular/router';
-import { Subscription } from 'rxjs';
+import {
+  NgComponentOutlet
+} from '@angular/common';
+import {
+  ChangeDetectorRef,
+  Component,
+  HostListener,
+  Injector,
+  NgZone,
+  OnDestroy,
+  OnInit,
+  inject
+} from '@angular/core';
+import {
+  ActivatedRoute,
+  Router
+} from '@angular/router';
+import {
+  Subscription
+} from 'rxjs';
 
-import { AppUtils } from '../../../shared/app-utils';
-import { CURRENT_PROFILE_FORM_VERSION, type AuthMode } from '../../../shared/core/common/constants';
-import { APP_STORAGE_KEYS } from '../../../shared/core/common/storage-scope';
+import {
+  AppUtils
+} from '../../../shared/app-utils';
+import {
+  CURRENT_PROFILE_FORM_VERSION,
+  type AuthMode
+} from '../../../shared/core/common/constants';
+import {
+  APP_STORAGE_KEYS
+} from '../../../shared/core/common/storage-scope';
 import type { HelpCenterRevisionDto, HelpCenterSectionDto } from '../../../shared/core/contracts/content.interface';
 import type {
   EntryConsentAuditRecordDto,
@@ -16,16 +39,34 @@ import type {
   UserDto,
   UserLocationEligibilityResponseDto
 } from '../../../shared/core/contracts/user.interface';
-import { HelpCenterService } from '../../../shared/core/base/services/help-center.service';
-import { I18nService } from '../../../shared/core/base/services/i18n.service';
-import { LandingContentService } from '../../../shared/core/base/services/landing-content.service';
-import { PrivacyPolicyService } from '../../../shared/core/base/services/privacy-policy.service';
-import { SessionService, type AppSession } from '../../../shared/core/base/services/session.service';
-import { TermsPolicyService } from '../../../shared/core/base/services/terms-policy.service';
-import { UsersService } from '../../../shared/core/base/services/users.service';
-import { ConfirmationDialogComponent } from '../../../shared/ui/components/confirmation-dialog/confirmation-dialog.component';
-import { ConfirmationDialogStore } from '../../../shared/ui/context/stores/confirmation-dialog.store';
-import { AppPopupContext } from '../../../shared/ui/context/app-popup.context';
+import {
+  HelpCenterService
+} from '../../../shared/core/base/services/help-center.service';
+import {
+  I18nService
+} from '../../../shared/core/base/services/i18n.service';
+import {
+  LandingContentService
+} from '../../../shared/core/base/services/landing-content.service';
+import {
+  PrivacyPolicyService
+} from '../../../shared/core/base/services/privacy-policy.service';
+import {
+  SessionService,
+  type AppSession
+} from '../../../shared/core/base/services/session.service';
+import {
+  TermsPolicyService
+} from '../../../shared/core/base/services/terms-policy.service';
+import {
+  UsersService
+} from '../../../shared/core/base/services/users.service';
+import {
+  ConfirmationDialogComponent
+} from '../../../shared/ui/components/confirmation-dialog/confirmation-dialog.component';
+import {
+  ConfirmationDialogStore
+} from '../../../shared/ui/context/stores/confirmation-dialog.store';
 import type { InfoCardData } from '../../../shared/ui/components/smart-list/card/card.types';
 import {
   DocumentViewerComponent,
@@ -34,10 +75,19 @@ import {
   type DocumentViewerActionVisibility,
   type DocumentViewerConfig
 } from '../../../shared/ui/components/document-viewer';
-import { HelpCenterRevisionDocumentViewerConfigConverter } from '../../../shared/ui/converters/help-center-revision-document-viewer.converter';
-import { EntryFirebaseAuthPopupComponent } from '../entry-firebase-auth-popup/entry-firebase-auth-popup.component';
-import { EntryLandingComponent } from '../entry-landing/entry-landing.component';
-import { ProfileOnboardingPopupComponent } from '../profile-onboarding-popup/profile-onboarding-popup.component';
+import {
+  HelpCenterRevisionDocumentViewerConfigConverter
+} from '../../../shared/ui/converters/help-center-revision-document-viewer.converter';
+import {
+  EntryFirebaseAuthPopupComponent
+} from '../entry-firebase-auth-popup/entry-firebase-auth-popup.component';
+import {
+  EntryLandingComponent
+} from '../entry-landing/entry-landing.component';
+import {
+  ProfileOnboardingPopupComponent
+} from '../profile-onboarding-popup/profile-onboarding-popup.component';
+import { PopupStore } from '../../../shared/ui/context/stores/popup.store';
 
 interface EntryDemoUserSelectionEvent {
   userId: string;
@@ -76,7 +126,7 @@ export class EntryPageComponent implements OnInit, OnDestroy {
   private readonly injector = inject(Injector);
   private readonly changeDetectorRef = inject(ChangeDetectorRef);
   private readonly ngZone = inject(NgZone);
-  private readonly popupCtx = inject(AppPopupContext);
+  private readonly popupStore = inject(PopupStore);
   private readonly helpCenter = inject(HelpCenterService);
   private readonly privacyPolicy = inject(PrivacyPolicyService);
   protected readonly sessionService = inject(SessionService);
@@ -104,8 +154,8 @@ export class EntryPageComponent implements OnInit, OnDestroy {
   protected entryNetworkUnavailable = false;
   protected entryNetworkUnavailableLabel = 'No network';
   protected showFirebaseAuthPopup = false;
-  protected readonly demoBootstrapSelector = this.popupCtx.popupStore.demoBootstrapSelector;
-  protected readonly demoBootstrapSelectorComponent = this.popupCtx.popupStore.demoBootstrapSelectorComponent;
+  protected readonly demoBootstrapSelector = this.popupStore.demoBootstrapSelector;
+  protected readonly demoBootstrapSelectorComponent = this.popupStore.demoBootstrapSelectorComponent;
   protected isMobileView = typeof window !== 'undefined' ? window.innerWidth <= 760 : false;
   protected onboardingOpen = false;
   protected onboardingUser: UserDto | null = null;
@@ -446,7 +496,7 @@ export class EntryPageComponent implements OnInit, OnDestroy {
   }
 
   private openDemoUserSelectorPopup(): void {
-    this.popupCtx.popupStore.openDemoBootstrapSelector({
+    this.popupStore.openDemoBootstrapSelector({
       mode: 'member',
       onSelect: userId => new Promise<boolean>(resolve => {
         this.ngZone.run(() => {

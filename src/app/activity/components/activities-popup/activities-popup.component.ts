@@ -10,11 +10,20 @@ import {
   OnDestroy,
   ViewChild
 } from '@angular/core';
-import { CommonModule } from '@angular/common';
-import { MatIconModule } from '@angular/material/icon';
-import { from } from 'rxjs';
+import {
+  CommonModule
+} from '@angular/common';
+import {
+  MatIconModule
+} from '@angular/material/icon';
+import {
+  from
+} from 'rxjs';
 
-import { APP_STATIC_DATA, type RateFilterEntry } from '../../../shared/app-static-data';
+import {
+  APP_STATIC_DATA,
+  type RateFilterEntry
+} from '../../../shared/app-static-data';
 import type { ChatDTO } from '../../../shared/core/contracts/chat.interface';
 import {
   type ActivityMemberOwnerRef,
@@ -25,15 +34,54 @@ import type {
   ActivityRateDTO
 } from '../../../shared/core/contracts/activity.interface';
 import type { UserDto } from '../../../shared/core/contracts/user.interface';
-import { AppUtils } from '../../../shared/app-utils';
-import { AppContext, AppPopupContext, type ActivityCounterKey, type ActivityCounters, type ActivityMembersSyncState } from '../../../shared/ui';
-import { ActivitiesPopupStore } from '../../../shared/ui/context/stores/activities-popup.store';
-import { EventEditorPopupStore } from '../../../shared/ui/context/stores/event-editor-popup.store';
-import { OwnedAssetsStore } from '../../../shared/ui/context/stores/owned-assets.store';
+import {
+  AppUtils
+} from '../../../shared/app-utils';
+import {
+  type ActivityCounterKey,
+  type ActivityCounters,
+  type ActivityMembersSyncState
+} from '../../../shared/ui';
+import {
+  ActivitiesPopupStore
+} from '../../../shared/ui/context/stores/activities-popup.store';
+import {
+  EventEditorPopupStore
+} from '../../../shared/ui/context/stores/event-editor-popup.store';
+import {
+  AssetStore
+} from '../../../shared/ui/context/stores/asset.store';
 import type { ActivitiesFeedFilters } from '../../../shared/core/contracts';
 import type * as ContractTypes from '../../../shared/core/contracts';
 import {
-  AppMenuDispatcher, type AppMenuGroup, type AppMenuItem, type AppMenuItemSelectEvent, type AppMenuModel, type AppMenuPalette, type AppMenuTrigger, EventCheckoutPopupComponent, type CardProfileViewData, type ImageCardData, type InfoCardData, PopupComponent, type PopupActionEvent, type PopupControl, type PopupMenuSelectEvent, type PopupModel, SmartListComponent, type CardMenuActionEvent, type ListQuery, type PageResult, type SingleRowData, type SmartListConfig, type SmartListLoadContext, type SmartListLoadPage, type SmartListMenuItemsContext, type SmartListItemSelectEvent, type SmartListPresentation, type SmartListStateChange
+  AppMenuDispatcher,
+  type AppMenuGroup,
+  type AppMenuItem,
+  type AppMenuItemSelectEvent,
+  type AppMenuModel,
+  type AppMenuPalette,
+  type AppMenuTrigger,
+  EventCheckoutPopupComponent,
+  type CardProfileViewData,
+  type ImageCardData,
+  type InfoCardData,
+  PopupComponent,
+  type PopupActionEvent,
+  type PopupControl,
+  type PopupMenuSelectEvent,
+  type PopupModel,
+  SmartListComponent,
+  type CardMenuActionEvent,
+  type ListQuery,
+  type PageResult,
+  type SingleRowData,
+  type SmartListConfig,
+  type SmartListLoadContext,
+  type SmartListLoadPage,
+  type SmartListMenuItemsContext,
+  type SmartListItemSelectEvent,
+  type SmartListPresentation,
+  type SmartListStateChange
 } from '../../../shared/ui';
 import {
   ActivityChatSingleRowConverter,
@@ -45,26 +93,55 @@ import type {
   ActivityEventInfoCardMenuContext,
   ActivityEventInfoCardMenuSubject
 } from '../../../shared/ui/converters';
-import { ConfirmationDialogStore } from '../../../shared/ui/context/stores/confirmation-dialog.store';
-import { EventCheckoutDialogStore } from '../../../shared/ui/context/stores/event-checkout-dialog.store';
-import { EventCheckoutDraftStore, type EventCheckoutDraft } from '../../../shared/ui/context/stores/event-checkout-draft.store';
-import { NavigatorStore } from '../../../shared/ui/context/stores/navigator.store';
 import {
-  ActivitiesChatTemplateComponent, ActivitiesChatsController
+  ConfirmationDialogStore
+} from '../../../shared/ui/context/stores/confirmation-dialog.store';
+import {
+  EventCheckoutDialogStore
+} from '../../../shared/ui/context/stores/event-checkout-dialog.store';
+import {
+  EventCheckoutDraftStore,
+  type EventCheckoutDraft
+} from '../../../shared/ui/context/stores/event-checkout-draft.store';
+import {
+  NavigatorStore
+} from '../../../shared/ui/context/stores/navigator.store';
+import {
+  ActivitiesChatTemplateComponent,
+  ActivitiesChatsController
 } from './templates/chat/activities-chat-template.component';
 import {
-  ActivitiesEventTemplateComponent, ActivitiesEventsController
+  ActivitiesEventTemplateComponent,
+  ActivitiesEventsController
 } from './templates/event/activities-event-template.component';
 import {
-  ActivitiesRateTemplateComponent, ActivitiesRatesController, type ActivitiesRateTemplateContext
+  ActivitiesRateTemplateComponent,
+  ActivitiesRatesController,
+  type ActivitiesRateTemplateContext
 } from './templates/rate/activities-rate-template.component';
 import {
-  ActivityMembersBuilder, ActivitiesService, ActivityMembersService, ActivityResourcesService, ChatsService, EventsService, ExplanationGuideService, RatesService, ShareTokensService, UsersService } from '../../../shared/core';
-import { I18nService } from '../../../shared/core';
+  ActivityMembersBuilder,
+  ActivitiesService,
+  ActivityMembersService,
+  ActivityResourcesService,
+  ChatsService,
+  EventsService,
+  ExplanationGuideService,
+  RatesService,
+  ShareTokensService,
+  UsersService
+} from '../../../shared/core';
+import {
+  I18nService
+} from '../../../shared/core';
 import type * as ActivityContracts from '../../../shared/core/contracts/activity.interface';
 
 import type * as AppDTOs from '../../../shared/core/contracts';
 import type * as AppConstants from '../../../shared/core/common/constants';
+import { UserProfileStore } from '../../../shared/ui/context/stores/user-profile.store';
+import { AppRuntimeStore } from '../../../shared/ui/context/stores/app-runtime.store';
+import { ActivityStore } from '../../../shared/ui/context/stores/activity.store';
+import { PopupStore } from '../../../shared/ui/context/stores/popup.store';
 // ---------------------------------------------------------------------------
 
 type ActivitiesSmartListFilters = ActivitiesFeedFilters;
@@ -176,9 +253,11 @@ export class ActivitiesPopupComponent implements OnDestroy {
   private readonly chatsService = inject(ChatsService);
   protected readonly eventsService = inject(EventsService);
   protected readonly shareTokensService = inject(ShareTokensService);
-  protected readonly appCtx = inject(AppContext);
-  protected readonly popupCtx = inject(AppPopupContext);
-  private readonly ownedAssetsStore = inject(OwnedAssetsStore);
+  private readonly userProfileStore = inject(UserProfileStore);
+  private readonly runtimeStore = inject(AppRuntimeStore);
+  private readonly activityStore = inject(ActivityStore);
+  private readonly popupStore = inject(PopupStore);
+  private readonly assetStore = inject(AssetStore);
   private readonly usersService = inject(UsersService);
   protected readonly confirmationDialogStore = inject(ConfirmationDialogStore);
   protected readonly eventCheckoutDialogStore = inject(EventCheckoutDialogStore);
@@ -243,7 +322,7 @@ export class ActivitiesPopupComponent implements OnDestroy {
   protected get users(): UserDto[] {
     return this.usersService.peekCachedUsers() as UserDto[];
   }
-  protected activeUser: UserDto = (this.appCtx.userProfileStore.activeUserProfile() as UserDto | null)
+  protected activeUser: UserDto = (this.userProfileStore.activeUserProfile() as UserDto | null)
     ?? this.users[0]
     ?? this.createFallbackActiveUser();
 
@@ -289,26 +368,26 @@ export class ActivitiesPopupComponent implements OnDestroy {
   private activitiesExplanationContextKey: string | null = null;
 
   protected get assetCards(): AppDTOs.AssetDTO[] {
-    return this.ownedAssetsStore.assetCards();
+    return this.assetStore.assetCards();
   }
 
   private activityCounterValue(key: ActivityCounterKey): number {
-    const activeUser = this.appCtx.userProfileStore.activeUserProfile();
+    const activeUser = this.userProfileStore.activeUserProfile();
     const activeUserId = activeUser?.id?.trim() ?? '';
     if (!activeUser || !activeUserId) {
       return 0;
     }
-    const overrides = this.appCtx.activityStore.getUserCounterOverrides(activeUserId);
+    const overrides = this.activityStore.getUserCounterOverrides(activeUserId);
     return this.normalizeBadgeCounter(overrides[key] ?? activeUser.activities?.[key]);
   }
 
   private eventCounterValue(key: ActivityEventCounterKey): number {
-    const activeUser = this.appCtx.userProfileStore.activeUserProfile();
+    const activeUser = this.userProfileStore.activeUserProfile();
     const activeUserId = activeUser?.id?.trim() ?? '';
     if (!activeUser || !activeUserId) {
       return 0;
     }
-    const overrides = this.appCtx.activityStore.getUserCounterOverrides(activeUserId);
+    const overrides = this.activityStore.getUserCounterOverrides(activeUserId);
     return this.normalizeBadgeCounter(overrides.event?.[key] ?? activeUser.activities?.event?.[key]);
   }
 
@@ -332,7 +411,7 @@ export class ActivitiesPopupComponent implements OnDestroy {
   protected activitiesPairRateSocialBadgeEnabled = false;
 
   protected get isBlockedUser(): boolean {
-    return this.appCtx.userProfileStore.activeUserProfile()?.profileStatus === 'blocked';
+    return this.userProfileStore.activeUserProfile()?.profileStatus === 'blocked';
   }
 
   // ── Filter / view state – backed by popup store signals ───────────
@@ -374,7 +453,7 @@ export class ActivitiesPopupComponent implements OnDestroy {
     footerSpacerHeight: null,
     headerProgress: {
       enabled: true,
-      state: () => this.appCtx.runtimeStore.isOnline() ? 'active' : 'inactive'
+      state: () => this.runtimeStore.isOnline() ? 'active' : 'inactive'
     },
     pagination: {
       mode: () => {
@@ -551,7 +630,7 @@ export class ActivitiesPopupComponent implements OnDestroy {
     }
     const owner = this.activityMembersOwnerForRow(membersRow);
     const summary = this.resolveActivityMembersPopupSummary(membersRow);
-    this.popupCtx.popupStore.requestActivitiesNavigation({
+    this.popupStore.requestActivitiesNavigation({
       type: 'members',
       ownerId: owner.ownerId,
       ownerType: owner.ownerType,
@@ -577,7 +656,7 @@ export class ActivitiesPopupComponent implements OnDestroy {
     if (!subject) {
       return context.menu.items;
     }
-    const activeUserId = this.appCtx.userProfileStore.activeUserId().trim() || this.activeUser.id;
+    const activeUserId = this.userProfileStore.activeUserId().trim() || this.activeUser.id;
     return ActivityEventInfoCardMenuConverter.convert(subject, {
       activeUserId,
       hiddenActions: ['editEvent', 'manageEvent']
@@ -679,8 +758,8 @@ export class ActivitiesPopupComponent implements OnDestroy {
     });
 
     effect(() => {
-      const activeUserId = this.appCtx.userProfileStore.activeUserId().trim();
-      const nextActiveUser = (this.appCtx.userProfileStore.activeUserProfile() as UserDto | null)
+      const activeUserId = this.userProfileStore.activeUserId().trim();
+      const nextActiveUser = (this.userProfileStore.activeUserProfile() as UserDto | null)
         ?? this.users.find(user => user.id === activeUserId)
         ?? this.users[0]
         ?? this.createFallbackActiveUser();
@@ -766,7 +845,7 @@ export class ActivitiesPopupComponent implements OnDestroy {
     });
 
     effect(() => {
-      const sync = this.appCtx.activityStore.activityMembersSync();
+      const sync = this.activityStore.activityMembersSync();
       if (!sync || sync.updatedMs <= this.lastAppliedActivityMembersUpdatedMs) {
         return;
       }
@@ -779,7 +858,7 @@ export class ActivitiesPopupComponent implements OnDestroy {
     });
 
     effect(() => {
-      this.ownedAssetsStore.assetListRevision();
+      this.assetStore.assetListRevision();
       this.cdr.markForCheck();
     });
 
@@ -858,7 +937,7 @@ export class ActivitiesPopupComponent implements OnDestroy {
 
   private createFallbackActiveUser(): UserDto {
     return {
-      id: this.appCtx.userProfileStore.activeUserId().trim(),
+      id: this.userProfileStore.activeUserId().trim(),
       name: 'Demo User',
       age: 0,
       birthday: '',
@@ -883,7 +962,7 @@ export class ActivitiesPopupComponent implements OnDestroy {
 
   private hydrateStandaloneFallbackState(): void {
     if (!this.activeUser) {
-      this.activeUser = (this.appCtx.userProfileStore.activeUserProfile() as UserDto | null)
+      this.activeUser = (this.userProfileStore.activeUserProfile() as UserDto | null)
         ?? this.users[0]
         ?? this.createFallbackActiveUser();
     }
@@ -3058,7 +3137,7 @@ export class ActivitiesPopupComponent implements OnDestroy {
       ? (this.activitiesEventScope === 'my-events' || this.activitiesEventScope === 'drafts' ? 'hosting' : 'events')
       : 'events';
     this.showActivitiesQuickActionsMenu = false;
-    this.popupCtx.popupStore.requestActivitiesNavigation({
+    this.popupStore.requestActivitiesNavigation({
       type: 'eventEditorCreate',
       target
     });
@@ -3075,7 +3154,7 @@ export class ActivitiesPopupComponent implements OnDestroy {
 
   requestOpenEventExplore(): void {
     this.showActivitiesQuickActionsMenu = false;
-    this.popupCtx.popupStore.requestActivitiesNavigation({ type: 'eventExplore' });
+    this.popupStore.requestActivitiesNavigation({ type: 'eventExplore' });
   }
 
   // =========================================================================

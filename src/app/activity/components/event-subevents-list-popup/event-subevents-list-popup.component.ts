@@ -1,10 +1,28 @@
-import { CommonModule } from '@angular/common';
-import { ChangeDetectionStrategy, ChangeDetectorRef, Component, HostListener, effect, inject } from '@angular/core';
-import { MatIconModule } from '@angular/material/icon';
-import { from, of } from 'rxjs';
+import {
+  CommonModule
+} from '@angular/common';
+import {
+  ChangeDetectionStrategy,
+  ChangeDetectorRef,
+  Component,
+  HostListener,
+  effect,
+  inject
+} from '@angular/core';
+import {
+  MatIconModule
+} from '@angular/material/icon';
+import {
+  from,
+  of
+} from 'rxjs';
 
-import { AppUtils } from '../../../shared/app-utils';
-import { APP_STATIC_DATA } from '../../../shared/app-static-data';
+import {
+  AppUtils
+} from '../../../shared/app-utils';
+import {
+  APP_STATIC_DATA
+} from '../../../shared/app-static-data';
 import {
   ActivityEventDetailDTO,
   type ActivityEventStageActionResultDTO,
@@ -25,17 +43,25 @@ import {
   type SmartListConfig,
   type SmartListLoadPage
 } from '../../../shared/ui';
-import { AppContext, AppPopupContext } from '../../../shared/ui/context';
 import {
   EventSubeventRuntimeInfoCardConverter,
   EventSubeventRuntimeMenuConverter,
   type EventSubeventRuntimeMenuContext,
   type EventSubeventRuntimeMenuItemId
 } from '../../../shared/ui/converters';
-import { EventsService } from '../../../shared/core';
+import {
+  EventsService
+} from '../../../shared/core';
 import type { SubEventResourceFilter } from '../../../shared/core/common/constants';
-import { ConfirmationDialogStore } from '../../../shared/ui/context/stores/confirmation-dialog.store';
-import { EventEditorPopupStore } from '../../../shared/ui/context/stores/event-editor-popup.store';
+import {
+  ConfirmationDialogStore
+} from '../../../shared/ui/context/stores/confirmation-dialog.store';
+import {
+  EventEditorPopupStore
+} from '../../../shared/ui/context/stores/event-editor-popup.store';
+import { UserProfileStore } from '../../../shared/ui/context/stores/user-profile.store';
+import { ActivityStore } from '../../../shared/ui/context/stores/activity.store';
+import { PopupStore } from '../../../shared/ui/context/stores/popup.store';
 
 type EventSubeventsListView = 'day' | 'week' | 'month';
 type EventSubeventsListOrder = 'upcoming' | 'past';
@@ -75,8 +101,9 @@ export class EventSubeventsListPopupComponent {
   private readonly eventsService = inject(EventsService);
   private readonly eventEditorStore = inject(EventEditorPopupStore);
   private readonly confirmationDialogStore = inject(ConfirmationDialogStore);
-  private readonly appCtx = inject(AppContext);
-  private readonly popupCtx = inject(AppPopupContext);
+  private readonly userProfileStore = inject(UserProfileStore);
+  private readonly activityStore = inject(ActivityStore);
+  private readonly popupStore = inject(PopupStore);
   private readonly cdr = inject(ChangeDetectorRef);
 
   protected isLoading = false;
@@ -182,7 +209,7 @@ export class EventSubeventsListPopupComponent {
   constructor() {
     this.syncMobileViewFromViewport();
     effect(() => {
-      const request = this.popupCtx.popupStore.eventSubeventsListPopup();
+      const request = this.popupStore.eventSubeventsListPopup();
       if (!request) {
         this.lastLoadedEventId = '';
         this.loadedEventId = '';
@@ -223,11 +250,11 @@ export class EventSubeventsListPopupComponent {
   }
 
   protected isOpen(): boolean {
-    return Boolean(this.popupCtx.popupStore.eventSubeventsListPopup());
+    return Boolean(this.popupStore.eventSubeventsListPopup());
   }
 
   protected close(): void {
-    this.popupCtx.popupStore.closeEventSubeventsListPopup();
+    this.popupStore.closeEventSubeventsListPopup();
   }
 
   protected popupTitle(): string {
@@ -235,7 +262,7 @@ export class EventSubeventsListPopupComponent {
   }
 
   protected popupSubtitle(): string {
-    const requestTitle = this.popupCtx.popupStore.eventSubeventsListPopup()?.title ?? '';
+    const requestTitle = this.popupStore.eventSubeventsListPopup()?.title ?? '';
     return this.event?.title || requestTitle || 'Event';
   }
 
@@ -295,7 +322,7 @@ export class EventSubeventsListPopupComponent {
   }
 
   protected contextMenuItems(): readonly AppMenuItem<EventSubeventsListContextAction>[] {
-    const canEdit = this.popupCtx.popupStore.eventSubeventsListPopup()?.canEdit === true;
+    const canEdit = this.popupStore.eventSubeventsListPopup()?.canEdit === true;
     const memberCount = this.eventMembersCount();
     return [
       {
@@ -328,12 +355,12 @@ export class EventSubeventsListPopupComponent {
   }
 
   protected openEventEditor(): void {
-    const request = this.popupCtx.popupStore.eventSubeventsListPopup();
+    const request = this.popupStore.eventSubeventsListPopup();
     if (!request) {
       return;
     }
     const canEdit = request.canEdit === true;
-    this.popupCtx.popupStore.requestActivitiesNavigation({
+    this.popupStore.requestActivitiesNavigation({
       type: 'eventEditor',
       eventId: request.eventId,
       target: request.target ?? 'events',
@@ -346,12 +373,12 @@ export class EventSubeventsListPopupComponent {
     if (!event || this.membersDisabled()) {
       return;
     }
-    this.popupCtx.popupStore.requestActivitiesNavigation({
+    this.popupStore.requestActivitiesNavigation({
       type: 'members',
       ownerId: event.id,
       ownerType: 'event',
       subtitle: event.title,
-      canManage: this.popupCtx.popupStore.eventSubeventsListPopup()?.canEdit === true,
+      canManage: this.popupStore.eventSubeventsListPopup()?.canEdit === true,
       acceptedMembers: event.acceptedMembers,
       pendingMembers: event.pendingMembers,
       capacityTotal: event.capacityTotal
@@ -368,7 +395,7 @@ export class EventSubeventsListPopupComponent {
       return 0;
     }
     const eventId = `${event.id ?? ''}`.trim();
-    const sync = this.appCtx.activityStore.activityMembersSync();
+    const sync = this.activityStore.activityMembersSync();
     const pendingRaw = sync && eventId && sync.id === eventId
       ? sync.pendingMembers
       : (event as any).pendingMembersCount
@@ -550,7 +577,7 @@ export class EventSubeventsListPopupComponent {
     if (!eventId) {
       return;
     }
-    this.popupCtx.popupStore.openEventTournamentGroupsPopup({
+    this.popupStore.openEventTournamentGroupsPopup({
       eventId,
       slotId,
       title: this.popupSubtitle(),
@@ -666,7 +693,7 @@ export class EventSubeventsListPopupComponent {
   }
 
   private activeUserId(): string {
-    return this.appCtx.userProfileStore.activeUserProfile()?.id?.trim() || this.appCtx.userProfileStore.activeUserId().trim() || this.appCtx.userProfileStore.getActiveUserId().trim();
+    return this.userProfileStore.activeUserProfile()?.id?.trim() || this.userProfileStore.activeUserId().trim() || this.userProfileStore.getActiveUserId().trim();
   }
 
   private invalidateLoadedRuntime(): void {
@@ -711,7 +738,7 @@ export class EventSubeventsListPopupComponent {
   private async loadSubEventsPageResult(
     query: ListQuery<EventSubeventsListFilters>
   ): Promise<PageResult<EventSubeventsSlotSection>> {
-    const eventId = this.popupCtx.popupStore.eventSubeventsListPopup()?.eventId.trim() ?? '';
+    const eventId = this.popupStore.eventSubeventsListPopup()?.eventId.trim() ?? '';
     if (!eventId) {
       return { items: [], total: 0, nextCursor: null };
     }
@@ -739,7 +766,7 @@ export class EventSubeventsListPopupComponent {
     if (this.loadingEventId === eventId && this.loadingQueryKey === queryKey && this.loadingPromise) {
       return this.loadingPromise;
     }
-    const userId = this.appCtx.userProfileStore.activeUserProfile()?.id?.trim() ?? '';
+    const userId = this.userProfileStore.activeUserProfile()?.id?.trim() ?? '';
     if (!userId) {
       this.event = null;
       this.items = [];
@@ -755,7 +782,7 @@ export class EventSubeventsListPopupComponent {
     this.cdr.markForCheck();
     this.loadingPromise = (async () => {
       const result = await this.eventsService.loadSubEventsById(userId, eventId, this.subEventsLoadQuery(eventId, query));
-      if (this.popupCtx.popupStore.eventSubeventsListPopup()?.eventId !== eventId) {
+      if (this.popupStore.eventSubeventsListPopup()?.eventId !== eventId) {
         return;
       }
       this.event = result?.event ?? null;
@@ -1046,7 +1073,7 @@ export class EventSubeventsListPopupComponent {
     query: ListQuery<EventSubeventsListFilters>
   ): ActivityEventSubEventsQueryDTO {
     return {
-      userId: this.appCtx.userProfileStore.activeUserProfile()?.id?.trim() ?? '',
+      userId: this.userProfileStore.activeUserProfile()?.id?.trim() ?? '',
       eventId,
       order: this.order,
       view: (query.view as EventSubeventsListView | undefined) ?? this.view,

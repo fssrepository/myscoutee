@@ -1,7 +1,14 @@
-import { HttpClient } from '@angular/common/http';
-import { Injectable, inject } from '@angular/core';
+import {
+  HttpClient
+} from '@angular/common/http';
+import {
+  Injectable,
+  inject
+} from '@angular/core';
 
-import { environment } from '../../../../../environments/environment';
+import {
+  environment
+} from '../../../../../environments/environment';
 import type {
   ProfileExtDto,
   ProfileExtByIdQueryResponse,
@@ -25,12 +32,23 @@ import type {
 } from '../../contracts/user.interface';
 import type { UserGameFilterPreferencesDto } from '../../contracts/activity.interface';
 import type { LocationCoordinates } from '../../contracts/user.interface';
-import { AppContext } from '../../../ui/context';
-import { bootstrapProcessStep, type BootstrapProcessState } from '../../base/services/bootstrap.service';
-import { OfflineCacheService } from '../../base/services/offline-cache.service';
-import { RouteDelayService } from '../../base/services/route-delay.service';
-import { RouteIntervalSchedulerService } from '../../base/services/route-interval-scheduler.service';
-import { SessionService } from '../../base/services/session.service';
+import {
+  bootstrapProcessStep,
+  type BootstrapProcessState
+} from '../../base/services/bootstrap.service';
+import {
+  OfflineCacheService
+} from '../../base/services/offline-cache.service';
+import {
+  RouteDelayService
+} from '../../base/services/route-delay.service';
+import {
+  RouteIntervalSchedulerService
+} from '../../base/services/route-interval-scheduler.service';
+import {
+  SessionService
+} from '../../base/services/session.service';
+import { UserProfileStore } from '../../../ui/context/stores/user-profile.store';
 
 @Injectable({
   providedIn: 'root'
@@ -46,7 +64,7 @@ export class HttpUsersService implements UserService {
   private static readonly USER_DELETE_ROUTE = '/auth/me/delete';
   private static readonly USER_REALTIME_LONG_POLL_ROUTE = '/auth/me/realtime/long-poll';
   private readonly http = inject(HttpClient);
-  private readonly appCtx = inject(AppContext);
+  private readonly userProfileStore = inject(UserProfileStore);
   private readonly offlineCache = inject(OfflineCacheService);
   private readonly routeDelay = inject(RouteDelayService);
   private readonly routeIntervalScheduler = inject(RouteIntervalSchedulerService);
@@ -482,7 +500,7 @@ export class HttpUsersService implements UserService {
       return null;
     }
 
-    const activeProfile = this.appCtx.userProfileStore.activeUserProfile();
+    const activeProfile = this.userProfileStore.activeUserProfile();
     if (activeProfile) {
       return {
         user: activeProfile

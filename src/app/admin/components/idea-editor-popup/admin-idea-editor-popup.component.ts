@@ -1,12 +1,35 @@
-import { CommonModule } from '@angular/common';
-import { ChangeDetectorRef, Component, HostListener, ViewChild, effect, inject, signal } from '@angular/core';
-import { FormsModule } from '@angular/forms';
-import { MatIconModule } from '@angular/material/icon';
-import { Observable, from } from 'rxjs';
+import {
+  CommonModule
+} from '@angular/common';
+import {
+  ChangeDetectorRef,
+  Component,
+  HostListener,
+  ViewChild,
+  effect,
+  inject,
+  signal
+} from '@angular/core';
+import {
+  FormsModule
+} from '@angular/forms';
+import {
+  MatIconModule
+} from '@angular/material/icon';
+import {
+  Observable,
+  from
+} from 'rxjs';
 
-import { APP_STATIC_DATA } from '../../../shared/app-static-data';
-import { AppContext } from '../../../shared/ui';
-import { IdeaPostsService, type IdeaArticleDetailDto, type IdeaPostDto, type IdeaPostSaveRequestDto } from '../../../shared/core';
+import {
+  APP_STATIC_DATA
+} from '../../../shared/app-static-data';
+import {
+  IdeaPostsService,
+  type IdeaArticleDetailDto,
+  type IdeaPostDto,
+  type IdeaPostSaveRequestDto
+} from '../../../shared/core';
 import {
   CARD_MENU_ACTIONS,
   InfoCardComponent,
@@ -15,7 +38,9 @@ import {
   type CardMenuRequestEvent,
   type CardMenuAction
 } from '../../../shared/ui/components/smart-list/card';
-import { EditableImageCarouselComponent } from '../../../shared/ui/components/editable-image-carousel';
+import {
+  EditableImageCarouselComponent
+} from '../../../shared/ui/components/editable-image-carousel';
 import {
   AppMenuDispatcher,
   AppMenuComponent,
@@ -25,7 +50,9 @@ import {
   type AppMenuModel,
   type AppMenuPalette
 } from '../../../shared/ui/components/menu';
-import { ProgressIndicatorComponent } from '../../../shared/ui/components/progress-indicator';
+import {
+  ProgressIndicatorComponent
+} from '../../../shared/ui/components/progress-indicator';
 import {
   SmartListComponent,
   type ListQuery,
@@ -33,8 +60,14 @@ import {
   type SmartListConfig,
   type SmartListLoadPage
 } from '../../../shared/ui/components/smart-list';
-import { ConfirmationDialogStore } from '../../../shared/ui/context/stores/confirmation-dialog.store';
-import { AdminPopupStore } from '../../../shared/ui/context/stores/admin-popup.store';
+import {
+  ConfirmationDialogStore
+} from '../../../shared/ui/context/stores/confirmation-dialog.store';
+import {
+  AdminPopupStore
+} from '../../../shared/ui/context/stores/admin-popup.store';
+import { UserProfileStore } from '../../../shared/ui/context/stores/user-profile.store';
+import { AppRuntimeStore } from '../../../shared/ui/context/stores/app-runtime.store';
 
 type IdeaEditorMode = 'html' | 'preview';
 type IdeaPostFilter = 'all' | 'featured' | 'published' | 'drafts' | 'trashed';
@@ -108,7 +141,8 @@ export class AdminIdeaEditorPopupComponent {
   private ideaSmartList?: SmartListComponent<IdeaInfoCard, IdeaSmartListFilters>;
 
   protected readonly admin = inject(AdminPopupStore);
-  private readonly appCtx = inject(AppContext);
+  private readonly userProfileStore = inject(UserProfileStore);
+  private readonly runtimeStore = inject(AppRuntimeStore);
   private readonly ideaPosts = inject(IdeaPostsService);
   private readonly confirmationDialog = inject(ConfirmationDialogStore);
   private readonly changeDetectorRef = inject(ChangeDetectorRef);
@@ -168,7 +202,7 @@ export class AdminIdeaEditorPopupComponent {
     scrollPaddingTop: '2.6rem',
     headerProgress: {
       enabled: true,
-      state: () => this.appCtx.runtimeStore.isOnline() ? 'active' : 'inactive'
+      state: () => this.runtimeStore.isOnline() ? 'active' : 'inactive'
     },
     pagination: {
       mode: 'scroll'
@@ -1116,7 +1150,7 @@ export class AdminIdeaEditorPopupComponent {
   }
 
   protected actorUserId(): string {
-    return this.appCtx.userProfileStore.activeUserId().trim();
+    return this.userProfileStore.activeUserId().trim();
   }
 
   private beginArticlePanelLoad(mode: IdeaPanelLoadingMode): number {

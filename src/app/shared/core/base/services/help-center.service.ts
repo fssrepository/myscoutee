@@ -1,7 +1,16 @@
-import { Injectable, computed, inject, signal } from '@angular/core';
+import {
+  Injectable,
+  computed,
+  inject,
+  signal
+} from '@angular/core';
 
-import { LocalHelpCenterService } from '../../local/source/services/help-center.service';
-import { HttpHelpCenterService } from '../../http/services/help-center.service';
+import {
+  LocalHelpCenterService
+} from '../../local/source/services/help-center.service';
+import {
+  HttpHelpCenterService
+} from '../../http/services/help-center.service';
 import type {
   HelpCenterDocumentKind,
   HelpCenterRevisionSaveRequestDto,
@@ -9,8 +18,10 @@ import type {
   PrivacyConsentDto,
   PrivacyConsentSaveRequestDto
 } from '../../contracts';
-import { AppContext } from '../../../ui/context/app.context';
-import { BaseRouteModeService } from './base-route-mode.service';
+import {
+  BaseRouteModeService
+} from './base-route-mode.service';
+import { HelpCenterStore } from '../../../ui/context/stores/help-center.store';
 
 export const HELP_CENTER_LOAD_CONTEXT_KEY = 'help-center-load';
 
@@ -20,7 +31,7 @@ export const HELP_CENTER_LOAD_CONTEXT_KEY = 'help-center-load';
 export class HelpCenterService extends BaseRouteModeService {
   private readonly localHelpCenterService = inject(LocalHelpCenterService);
   private readonly httpHelpCenterService = inject(HttpHelpCenterService);
-  private readonly appCtx = inject(AppContext);
+  private readonly helpCenterStore = inject(HelpCenterStore);
   private readonly helpStateRef = signal<HelpCenterStateDto | null>(null);
   private readonly privacyStateRef = signal<HelpCenterStateDto | null>(null);
   private readonly termsStateRef = signal<HelpCenterStateDto | null>(null);
@@ -134,7 +145,7 @@ export class HelpCenterService extends BaseRouteModeService {
     const cloned = this.cloneState(state);
     if (kind === 'privacy') {
       this.privacyStateRef.set(cloned);
-      this.appCtx.helpCenterStore.setPrivacyState(cloned);
+      this.helpCenterStore.setPrivacyState(cloned);
       return;
     }
     if (kind === 'terms') {

@@ -1,11 +1,19 @@
 import { Injectable, computed, signal } from '@angular/core';
 
-import {
-  DEFAULT_LOAD_STATE,
-  type ConnectivityState,
-  type LoadState,
-  type LoadStatus
-} from '../app-context.types';
+export type LoadStatus = 'idle' | 'loading' | 'success' | 'error' | 'timeout';
+export type ConnectivityState = 'online' | 'offline';
+
+export interface LoadState {
+  status: LoadStatus;
+  error: string | null;
+  loadedAtIso: string | null;
+}
+
+export const DEFAULT_LOAD_STATE: LoadState = {
+  status: 'idle',
+  error: null,
+  loadedAtIso: null
+};
 
 function detectInitialConnectivityState(): ConnectivityState {
   if (typeof navigator !== 'undefined' && navigator.onLine === false) {

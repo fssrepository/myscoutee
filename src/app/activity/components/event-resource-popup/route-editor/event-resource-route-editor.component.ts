@@ -7,7 +7,7 @@ import { MatIconModule } from '@angular/material/icon';
 import { AppMenuComponent } from '../../../../shared/ui/components/menu/menu.component';
 import type { AppMenuItem, AppMenuItemSelectEvent } from '../../../../shared/ui/components/menu/menu.types';
 import { SubEventResourcePopupStore } from '../../../../shared/ui/context/stores/sub-event-resource-popup.store';
-import type { RouteEditorState } from '../../../../shared/ui/context/sub-event-resource-popup.types';
+import type { RouteEditorState } from '../../../../shared/ui/context/stores/sub-event-resource-popup.store';
 
 type RouteEditorMenuContext = { menu: 'save' };
 

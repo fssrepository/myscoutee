@@ -8,20 +8,44 @@ import {
   effect,
   inject
 } from '@angular/core';
-import { AppContext, AppPopupContext, type ActivityMembersSyncState } from '../../../shared/ui';
-import { CommonModule } from '@angular/common';
-import { MatIconModule } from '@angular/material/icon';
-import { from } from 'rxjs';
+import {
+  type ActivityMembersSyncState
+} from '../../../shared/ui';
+import {
+  CommonModule
+} from '@angular/common';
+import {
+  MatIconModule
+} from '@angular/material/icon';
+import {
+  from
+} from 'rxjs';
 
 import type { EventExploreFeedFilters } from '../../../shared/core/contracts';
 import type { ActivityPendingReason } from '../../../shared/core/common/constants';
-import { APP_STATIC_DATA } from '../../../shared/app-static-data';
-import type * as ContractTypes from '../../../shared/core/contracts';
-import { ActivityEventDetailDTO } from '../../../shared/core/contracts/activity.interface';
-import { AppUtils } from '../../../shared/app-utils';
 import {
-  ActivityMembersBuilder, ActivityMembersService, ActivitiesService, EventsService, GameService, ShareTokensService, UsersService, type UserDto } from '../../../shared/core';
-import { ActivitiesPopupStore } from '../../../shared/ui/context/stores/activities-popup.store';
+  APP_STATIC_DATA
+} from '../../../shared/app-static-data';
+import type * as ContractTypes from '../../../shared/core/contracts';
+import {
+  ActivityEventDetailDTO
+} from '../../../shared/core/contracts/activity.interface';
+import {
+  AppUtils
+} from '../../../shared/app-utils';
+import {
+  ActivityMembersBuilder,
+  ActivityMembersService,
+  ActivitiesService,
+  EventsService,
+  GameService,
+  ShareTokensService,
+  UsersService,
+  type UserDto
+} from '../../../shared/core';
+import {
+  ActivitiesPopupStore
+} from '../../../shared/ui/context/stores/activities-popup.store';
 import {
   AppMenuDispatcher,
   AppMenuComponent,
@@ -47,14 +71,27 @@ import {
   type SmartListItemTemplateContext,
   type SmartListStateChange
 } from '../../../shared/ui';
-import { ConfirmationDialogStore } from '../../../shared/ui/context/stores/confirmation-dialog.store';
-import { EventCheckoutDraftStore, type EventCheckoutDraft } from '../../../shared/ui/context/stores/event-checkout-draft.store';
-import { EventCheckoutDialogStore } from '../../../shared/ui/context/stores/event-checkout-dialog.store';
-import { NavigatorStore } from '../../../shared/ui/context/stores/navigator.store';
+import {
+  ConfirmationDialogStore
+} from '../../../shared/ui/context/stores/confirmation-dialog.store';
+import {
+  EventCheckoutDraftStore,
+  type EventCheckoutDraft
+} from '../../../shared/ui/context/stores/event-checkout-draft.store';
+import {
+  EventCheckoutDialogStore
+} from '../../../shared/ui/context/stores/event-checkout-dialog.store';
+import {
+  NavigatorStore
+} from '../../../shared/ui/context/stores/navigator.store';
 import type { ActivityEventDTO, ActivityEventRecord } from '../../../shared/core/contracts/activity.interface';
 import type { ChatDTO } from '../../../shared/core/contracts/chat.interface';
 import type { ActivityMemberOwnerRef } from '../../../shared/core/contracts/activity.interface';
 import type * as ActivityContracts from '../../../shared/core/contracts/activity.interface';
+import { UserProfileStore } from '../../../shared/ui/context/stores/user-profile.store';
+import { AppRuntimeStore } from '../../../shared/ui/context/stores/app-runtime.store';
+import { ActivityStore } from '../../../shared/ui/context/stores/activity.store';
+import { PopupStore } from '../../../shared/ui/context/stores/popup.store';
 
 type CheckoutDraftEntry = {
   draft: EventCheckoutDraft;
@@ -103,8 +140,10 @@ export class EventExplorePopupComponent {
   private readonly appMenuDispatcher = inject(AppMenuDispatcher);
   private readonly eventCheckoutDraftStore = inject(EventCheckoutDraftStore);
   private readonly eventCheckoutDialogStore = inject(EventCheckoutDialogStore);
-  private readonly appCtx = inject(AppContext);
-  private readonly popupCtx = inject(AppPopupContext);
+  private readonly userProfileStore = inject(UserProfileStore);
+  private readonly runtimeStore = inject(AppRuntimeStore);
+  private readonly activityStore = inject(ActivityStore);
+  private readonly popupStore = inject(PopupStore);
   private readonly activitiesStore = inject(ActivitiesPopupStore);
 
   protected readonly eventExploreOrderOptions = APP_STATIC_DATA.eventExploreOrderOptions;
@@ -170,7 +209,7 @@ export class EventExplorePopupComponent {
     emptyDescription: 'Try another filter or check back later.',
     headerProgress: {
       enabled: true,
-      state: () => this.appCtx.runtimeStore.isOnline() ? 'active' : 'inactive'
+      state: () => this.runtimeStore.isOnline() ? 'active' : 'inactive'
     },
     presentation: 'list',
     listLayout: 'card-grid',
@@ -196,11 +235,11 @@ export class EventExplorePopupComponent {
     this.refreshUsersDirectory();
 
     effect(() => {
-      const request = this.popupCtx.popupStore.activitiesNavigationRequest();
+      const request = this.popupStore.activitiesNavigationRequest();
       if (!request || (request.type !== 'eventExplore' && request.type !== 'eventCheckoutDraft')) {
         return;
       }
-      this.popupCtx.popupStore.clearActivitiesNavigationRequest();
+      this.popupStore.clearActivitiesNavigationRequest();
       if (request.type === 'eventCheckoutDraft') {
         void this.continueCheckoutDraftBySourceId(request.sourceId);
         return;
@@ -209,7 +248,7 @@ export class EventExplorePopupComponent {
     });
 
     effect(() => {
-      const nextActiveUserId = this.appCtx.userProfileStore.activeUserId().trim();
+      const nextActiveUserId = this.userProfileStore.activeUserId().trim();
       if (nextActiveUserId === this.activeUserId) {
         return;
       }
@@ -223,7 +262,7 @@ export class EventExplorePopupComponent {
     });
 
     effect(() => {
-      const sync = this.appCtx.activityStore.activityMembersSync();
+      const sync = this.activityStore.activityMembersSync();
       if (!sync || sync.updatedMs <= this.lastAppliedActivityMembersUpdatedMs) {
         return;
       }
@@ -637,7 +676,7 @@ export class EventExplorePopupComponent {
     if (!this.canPreviewEventExploreMembers(record)) {
       return;
     }
-    this.popupCtx.popupStore.requestActivitiesNavigation({
+    this.popupStore.requestActivitiesNavigation({
       type: 'members',
       ownerId: record.id,
       ownerType: 'event',
@@ -685,7 +724,7 @@ export class EventExplorePopupComponent {
     event?: { stopPropagation?: () => void; preventDefault?: () => void }
   ): void {
     this.stopDomEvent(event);
-    this.popupCtx.popupStore.requestActivitiesNavigation({
+    this.popupStore.requestActivitiesNavigation({
       type: 'eventEditor',
       eventId: record.id,
       target: record.type === 'hosting' ? 'hosting' : 'events',
@@ -738,7 +777,7 @@ export class EventExplorePopupComponent {
     event?: { stopPropagation?: () => void; preventDefault?: () => void }
   ): void {
     this.stopDomEvent(event);
-    this.appCtx.userProfileStore.setUserProfile(this.resolveUser(record.creatorUserId, record));
+    this.userProfileStore.setUserProfile(this.resolveUser(record.creatorUserId, record));
     void this.usersService.loadUserById(record.creatorUserId);
     this.navigatorStore.openImpressionsPopup(record.creatorUserId);
   }
@@ -897,7 +936,7 @@ export class EventExplorePopupComponent {
     if (!normalizedSourceId) {
       return;
     }
-    const activeUserId = this.activeUserId.trim() || this.appCtx.userProfileStore.activeUserId().trim() || this.appCtx.userProfileStore.getActiveUserId().trim();
+    const activeUserId = this.activeUserId.trim() || this.userProfileStore.activeUserId().trim() || this.userProfileStore.getActiveUserId().trim();
     if (!activeUserId) {
       return;
     }
@@ -2016,7 +2055,7 @@ export class EventExplorePopupComponent {
 
   private refreshUsersDirectory(): void {
     const users = this.gameService.getGameCardsUsersSnapshot();
-    const activeProfile = this.appCtx.userProfileStore.activeUserProfile();
+    const activeProfile = this.userProfileStore.activeUserProfile();
     const nextUsers = [...users];
 
     if (activeProfile && !nextUsers.some(user => user.id === activeProfile.id)) {

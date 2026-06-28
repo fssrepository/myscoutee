@@ -1,5 +1,11 @@
-import { HttpErrorResponse } from '@angular/common/http';
-import { Injectable, inject, signal } from '@angular/core';
+import {
+  HttpErrorResponse
+} from '@angular/common/http';
+import {
+  Injectable,
+  inject,
+  signal
+} from '@angular/core';
 
 import {
   USER_BY_ID_LOAD_CONTEXT_KEY,
@@ -10,9 +16,15 @@ import {
   type AdminUserDto,
   type UserDto
 } from '../../../core';
-import { APP_STORAGE_KEYS } from '../../../core/common/storage-scope';
-import { AppContext } from '../app.context';
-import { AdminPopupStore } from './admin-popup.store';
+import {
+  APP_STORAGE_KEYS
+} from '../../../core/common/storage-scope';
+import {
+  AdminPopupStore
+} from './admin-popup.store';
+import { UserProfileStore } from './user-profile.store';
+import { AppRuntimeStore } from './app-runtime.store';
+import { ActivityStore } from './activity.store';
 
 const ADMIN_SESSION_STORAGE_KEY = APP_STORAGE_KEYS.adminSession;
 
@@ -20,7 +32,9 @@ const ADMIN_SESSION_STORAGE_KEY = APP_STORAGE_KEYS.adminSession;
   providedIn: 'root'
 })
 export class AdminWorkspaceStore {
-  private readonly appCtx = inject(AppContext);
+  private readonly userProfileStore = inject(UserProfileStore);
+  private readonly runtimeStore = inject(AppRuntimeStore);
+  private readonly activityStore = inject(ActivityStore);
   private readonly adminPopupStore = inject(AdminPopupStore);
   private readonly dashboardRef = signal<AdminDashboardDto | null>(null);
   private readonly busyRef = signal(false);
@@ -86,12 +100,12 @@ export class AdminWorkspaceStore {
     if (!normalizedAdminUserId) {
       return;
     }
-    this.appCtx.activityStore.patchUserCounterOverrides(normalizedAdminUserId, counters);
-    const currentUser = this.appCtx.userProfileStore.getUserProfile(normalizedAdminUserId);
+    this.activityStore.patchUserCounterOverrides(normalizedAdminUserId, counters);
+    const currentUser = this.userProfileStore.getUserProfile(normalizedAdminUserId);
     if (!currentUser) {
       return;
     }
-    this.appCtx.userProfileStore.setUserProfile({
+    this.userProfileStore.setUserProfile({
       ...currentUser,
       activities: {
         ...currentUser.activities,
@@ -151,7 +165,7 @@ export class AdminWorkspaceStore {
     this.dashboardRef.set(null);
     this.adminPopupStore.clear();
     this.accessDeniedRef.set(false);
-    this.appCtx.userProfileStore.setActiveUserId('');
+    this.userProfileStore.setActiveUserId('');
     this.clearStoredAdminSession();
   }
 
@@ -161,7 +175,7 @@ export class AdminWorkspaceStore {
     this.accessDeniedRef.set(true);
     this.errorRef.set('This account does not have admin access.');
     this.clearStoredAdminSession();
-    this.appCtx.userProfileStore.setActiveUserId(sessionUserId.trim());
+    this.userProfileStore.setActiveUserId(sessionUserId.trim());
   }
 
   currentAdminUserId(): string | undefined {
@@ -282,10 +296,10 @@ export class AdminWorkspaceStore {
     const admin = dashboard.activeAdmin;
     const user = this.buildAdminProfile(admin, dashboard);
     const chatUnread = this.adminChatUnreadCount(dashboard);
-    this.appCtx.userProfileStore.setUserProfile(user);
-    this.appCtx.userProfileStore.setActiveUserId(user.id);
-    this.appCtx.runtimeStore.setStatus(USER_BY_ID_LOAD_CONTEXT_KEY, 'success');
-    this.appCtx.activityStore.patchUserCounterOverrides(user.id, {
+    this.userProfileStore.setUserProfile(user);
+    this.userProfileStore.setActiveUserId(user.id);
+    this.runtimeStore.setStatus(USER_BY_ID_LOAD_CONTEXT_KEY, 'success');
+    this.activityStore.patchUserCounterOverrides(user.id, {
       game: dashboard.reportedUsers.reduce((total, item) => total + item.reportCount, 0),
       chat: chatUnread,
       events: dashboard.reportedUsers.length,
@@ -312,7 +326,7 @@ export class AdminWorkspaceStore {
   }
 
   private buildAdminProfile(admin: AdminUserDto, dashboard: AdminDashboardDto): UserDto {
-    const existingAdminProfile = this.appCtx.userProfileStore.getUserProfile(admin.id) ?? dashboard.activeAdminProfile ?? null;
+    const existingAdminProfile = this.userProfileStore.getUserProfile(admin.id) ?? dashboard.activeAdminProfile ?? null;
     const name = `${existingAdminProfile?.name ?? admin.name}`.trim() || admin.name;
     const initials = `${existingAdminProfile?.initials ?? admin.initials}`.trim() || this.initialsFromName(name, admin.initials);
     const headline = `${existingAdminProfile?.headline ?? admin.headline ?? ''}`.trim() || 'Moderation workspace';

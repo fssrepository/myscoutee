@@ -4,28 +4,28 @@ import { AssetDto } from '../../../core/contracts';
 import type * as AppConstants from '../../../core/common/constants';
 import type * as AppDTOs from '../../../core/contracts';
 
-export interface OwnedAssetsVisibleListState {
+export interface AssetVisibleListState {
   items: readonly AppDTOs.AssetDTO[];
   total: number;
   initialLoading: boolean;
 }
 
-export interface OwnedAssetsVisibleListPatch {
+export interface AssetVisibleListPatch {
   items: AppDTOs.AssetDTO[];
   total: number;
 }
 
-export interface OwnedAssetDeletedEvent {
+export interface AssetDeletedEvent {
   cardId: string;
   revision: number;
 }
 
-export type OwnedAssetFormState = Omit<AppDTOs.AssetDetailDTO, 'id' | 'requests'>;
+export type AssetFormState = Omit<AppDTOs.AssetDetailDTO, 'id' | 'requests'>;
 
 @Injectable({
   providedIn: 'root'
 })
-export class OwnedAssetsStore {
+export class AssetStore {
   private readonly assetCardsRef = signal<AppDTOs.AssetDTO[]>([]);
   private assetMutationVersion = 0;
   private visibleListContextKey = '';
@@ -45,7 +45,7 @@ export class OwnedAssetsStore {
   readonly assetDeletePendingRef = signal(false);
   readonly pendingAssetDeleteLabelRef = signal('');
   readonly pendingAssetDeleteErrorRef = signal('');
-  readonly assetFormRef = signal<OwnedAssetFormState>({
+  readonly assetFormRef = signal<AssetFormState>({
     type: 'Car',
     title: '',
     subtitle: '',
@@ -64,7 +64,7 @@ export class OwnedAssetsStore {
   readonly assetListReloadRevisionRef = signal(0);
   readonly assetListLoadingRef = signal(false);
   readonly uiRevisionRef = signal(0);
-  readonly deletedAssetEventRef = signal<OwnedAssetDeletedEvent | null>(null);
+  readonly deletedAssetEventRef = signal<AssetDeletedEvent | null>(null);
 
   readonly assetCards = this.assetCardsRef.asReadonly();
   readonly assetCount = computed(() => this.assetCardsRef().length);
@@ -251,7 +251,7 @@ export class OwnedAssetsStore {
     this.touchUiState();
   }
 
-  openAssetEditorCreate(form: OwnedAssetFormState, draftId: string): number {
+  openAssetEditorCreate(form: AssetFormState, draftId: string): number {
     const generation = this.bumpAssetEditorGeneration();
     this.showAssetFormRef.set(true);
     this.assetFormLoadingRef.set(false);
@@ -267,7 +267,7 @@ export class OwnedAssetsStore {
 
   openAssetEditorEdit(options: {
     cardId: string;
-    form: OwnedAssetFormState;
+    form: AssetFormState;
     visibility: AppConstants.EventVisibility;
     loading: boolean;
   }): number {
@@ -287,7 +287,7 @@ export class OwnedAssetsStore {
   applyAssetEditorForm(
     cardId: string,
     visibility: AppConstants.EventVisibility,
-    form: OwnedAssetFormState
+    form: AssetFormState
   ): void {
     this.editingAssetIdRef.set(cardId);
     this.assetFormVisibilityRef.set(visibility);
@@ -445,9 +445,9 @@ export class OwnedAssetsStore {
   }
 
   trackVisibleAssetListState(
-    state: OwnedAssetsVisibleListState,
+    state: AssetVisibleListState,
     cards: readonly AppDTOs.AssetDTO[]
-  ): OwnedAssetsVisibleListPatch | null {
+  ): AssetVisibleListPatch | null {
     this.visibleListRenderedCount = state.items.length;
     this.visibleListReady = !state.initialLoading;
     if (!this.visibleListReady || state.total === cards.length) {
@@ -463,7 +463,7 @@ export class OwnedAssetsStore {
       cards: readonly AppDTOs.AssetDTO[];
       renderedCount: number;
     }
-  ): OwnedAssetsVisibleListPatch | null {
+  ): AssetVisibleListPatch | null {
     if (!options.active) {
       this.resetVisibleAssetListSync();
       return null;
@@ -490,7 +490,7 @@ export class OwnedAssetsStore {
     cards: readonly AppDTOs.AssetDTO[],
     previousCardCount: number,
     renderedCount: number
-  ): OwnedAssetsVisibleListPatch | null {
+  ): AssetVisibleListPatch | null {
     if (!this.visibleListReady) {
       return null;
     }

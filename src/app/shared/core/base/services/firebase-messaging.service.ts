@@ -1,11 +1,31 @@
-import { HttpClient } from '@angular/common/http';
-import { Injectable, Injector, effect, inject } from '@angular/core';
-import { deleteToken, getMessaging, getToken, isSupported, onMessage, type Messaging } from 'firebase/messaging';
+import {
+  HttpClient
+} from '@angular/common/http';
+import {
+  Injectable,
+  Injector,
+  effect,
+  inject
+} from '@angular/core';
+import {
+  deleteToken,
+  getMessaging,
+  getToken,
+  isSupported,
+  onMessage,
+  type Messaging
+} from 'firebase/messaging';
 
-import { environment } from '../../../../../environments/environment';
-import { AppContext } from '../../../ui/context/app.context';
-import { APP_STORAGE_KEYS } from '../../common/storage-scope';
-import { FirebaseAppService } from './firebase-app.service';
+import {
+  environment
+} from '../../../../../environments/environment';
+import {
+  APP_STORAGE_KEYS
+} from '../../common/storage-scope';
+import {
+  FirebaseAppService
+} from './firebase-app.service';
+import { UserProfileStore } from '../../../ui/context/stores/user-profile.store';
 
 @Injectable({
   providedIn: 'root'
@@ -17,7 +37,7 @@ export class FirebaseMessagingService {
 
   private readonly http = inject(HttpClient);
   private readonly injector = inject(Injector);
-  private readonly appCtx = inject(AppContext);
+  private readonly userProfileStore = inject(UserProfileStore);
   private readonly firebaseAppService = inject(FirebaseAppService);
   private readonly apiBaseUrl = environment.apiBaseUrl ?? '/api';
   private initialized = false;
@@ -31,7 +51,7 @@ export class FirebaseMessagingService {
 
     effect(
       () => {
-        const userId = this.appCtx.userProfileStore.activeUserId().trim();
+        const userId = this.userProfileStore.activeUserId().trim();
         if (!userId || !this.enabled) {
           return;
         }
@@ -68,7 +88,7 @@ export class FirebaseMessagingService {
     if (!this.enabled) {
       return;
     }
-    const userId = this.appCtx.userProfileStore.activeUserId().trim();
+    const userId = this.userProfileStore.activeUserId().trim();
     if (!userId) {
       return;
     }

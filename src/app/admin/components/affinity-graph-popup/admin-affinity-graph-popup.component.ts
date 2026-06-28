@@ -1,13 +1,37 @@
-import { CommonModule, DOCUMENT } from '@angular/common';
-import { Component, OnDestroy, computed, effect, inject, signal } from '@angular/core';
-import { AppContext } from '../../../shared/ui';
-import { MatIconModule } from '@angular/material/icon';
-import { DomSanitizer, SafeResourceUrl } from '@angular/platform-browser';
+import {
+  CommonModule,
+  DOCUMENT
+} from '@angular/common';
+import {
+  Component,
+  OnDestroy,
+  computed,
+  effect,
+  inject,
+  signal
+} from '@angular/core';
+import {
+  MatIconModule
+} from '@angular/material/icon';
+import {
+  DomSanitizer,
+  SafeResourceUrl
+} from '@angular/platform-browser';
 
-import { AdminPopupStore } from '../../../shared/ui/context/stores/admin-popup.store';
-import { AdminAffinityGraphService } from '../../../shared/core';
-import { LazyBgImageDirective } from '../../../shared/ui/directives';
-import { ProgressIndicatorComponent } from '../../../shared/ui/components';
+import {
+  AdminPopupStore
+} from '../../../shared/ui/context/stores/admin-popup.store';
+import {
+  AdminAffinityGraphService
+} from '../../../shared/core';
+import {
+  LazyBgImageDirective
+} from '../../../shared/ui/directives';
+import {
+  ProgressIndicatorComponent
+} from '../../../shared/ui/components';
+import { UserProfileStore } from '../../../shared/ui/context/stores/user-profile.store';
+import { AppRuntimeStore } from '../../../shared/ui/context/stores/app-runtime.store';
 
 @Component({
   selector: 'app-admin-affinity-graph-popup',
@@ -18,7 +42,8 @@ import { ProgressIndicatorComponent } from '../../../shared/ui/components';
 })
 export class AdminAffinityGraphPopupComponent implements OnDestroy {
   protected readonly admin = inject(AdminPopupStore);
-  private readonly appCtx = inject(AppContext);
+  private readonly userProfileStore = inject(UserProfileStore);
+  private readonly runtimeStore = inject(AppRuntimeStore);
   protected readonly graphUrl = signal<SafeResourceUrl | null>(null);
   protected readonly popupKey = 'affinity-graph';
   private readonly document = inject(DOCUMENT);
@@ -70,7 +95,7 @@ export class AdminAffinityGraphPopupComponent implements OnDestroy {
   }
 
   protected graphProgressState(loading: boolean): 'loading' | 'scrolling' | 'inactive' {
-    if (!this.appCtx.runtimeStore.isOnline()) {
+    if (!this.runtimeStore.isOnline()) {
       return 'inactive';
     }
     return loading ? 'loading' : 'scrolling';
@@ -147,7 +172,7 @@ export class AdminAffinityGraphPopupComponent implements OnDestroy {
   }
 
   private resolveGraphRequest(method: string, params: Record<string, unknown>): Promise<unknown> {
-    const adminUserId = this.appCtx.userProfileStore.activeUserId().trim();
+    const adminUserId = this.userProfileStore.activeUserId().trim();
     switch (method) {
       case 'initialGraph':
         return this.withGraphDataLoading(() => this.affinityGraph.loadInitialGraph(adminUserId));

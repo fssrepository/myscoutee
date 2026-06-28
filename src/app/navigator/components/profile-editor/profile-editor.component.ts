@@ -1,16 +1,37 @@
-import { CommonModule } from '@angular/common';
-import { Component, HostListener, ViewChild, computed, effect, inject } from '@angular/core';
-import { FormsModule } from '@angular/forms';
-import { MatButtonModule } from '@angular/material/button';
-import { MatIconModule } from '@angular/material/icon';
-import { APP_STATIC_DATA } from '../../../shared/app-static-data';
-import { AppUtils } from '../../../shared/app-utils';
-import { AppContext } from '../../../shared/ui';
+import {
+  CommonModule
+} from '@angular/common';
+import {
+  Component,
+  HostListener,
+  ViewChild,
+  computed,
+  effect,
+  inject
+} from '@angular/core';
+import {
+  FormsModule
+} from '@angular/forms';
+import {
+  MatButtonModule
+} from '@angular/material/button';
+import {
+  MatIconModule
+} from '@angular/material/icon';
+import {
+  APP_STATIC_DATA
+} from '../../../shared/app-static-data';
+import {
+  AppUtils
+} from '../../../shared/app-utils';
 import {
   USER_PROFILE_SAVE_CONTEXT_KEY,
   UsersService
 } from '../../../shared/core';
-import { ProfileExtDto, UserDto } from '../../../shared/core/contracts/user.interface';
+import {
+  ProfileExtDto,
+  UserDto
+} from '../../../shared/core/contracts/user.interface';
 import {
   EditableImageCarouselComponent,
   HeaderCardComponent,
@@ -36,11 +57,17 @@ import {
   ProfileHeaderCardConverter,
   type ProfileFormFlowMenuContext
 } from '../../../shared/ui/converters';
-import { ConfirmationDialogStore } from '../../../shared/ui/context/stores/confirmation-dialog.store';
-import { NavigatorStore } from '../../../shared/ui/context/stores/navigator.store';
+import {
+  ConfirmationDialogStore
+} from '../../../shared/ui/context/stores/confirmation-dialog.store';
+import {
+  NavigatorStore
+} from '../../../shared/ui/context/stores/navigator.store';
 import type * as ProfileContracts from '../../../shared/core/contracts/profile.interface';
 
 import type * as AppConstants from '../../../shared/core/common/constants';
+import { UserProfileStore } from '../../../shared/ui/context/stores/user-profile.store';
+import { AppRuntimeStore } from '../../../shared/ui/context/stores/app-runtime.store';
 type ProfileEditorPanel = 'profile' | 'image' | 'experience';
 type ProfileEditorMenuId = string;
 
@@ -71,15 +98,16 @@ export class ProfileEditorComponent {
   @ViewChild(ProfileExperienceManagerComponent) private experienceManager?: ProfileExperienceManagerComponent;
 
   private readonly confirmationDialogStore = inject(ConfirmationDialogStore);
-  private readonly appCtx = inject(AppContext);
+  private readonly userProfileStore = inject(UserProfileStore);
+  private readonly runtimeStore = inject(AppRuntimeStore);
   private readonly menuDispatcher = inject(AppMenuDispatcher);
   private readonly navigatorStore = inject(NavigatorStore);
   private readonly usersService = inject(UsersService);
-  private readonly profileSaveLoadState = this.appCtx.runtimeStore.selectLoadingState(USER_PROFILE_SAVE_CONTEXT_KEY);
+  private readonly profileSaveLoadState = this.runtimeStore.selectLoadingState(USER_PROFILE_SAVE_CONTEXT_KEY);
   private lastLoadedUserId = '';
 
   protected readonly isOpen = this.navigatorStore.profileEditorOpen;
-  protected readonly activeUserIsAdmin = this.appCtx.userProfileStore.activeUserIsAdmin;
+  protected readonly activeUserIsAdmin = this.userProfileStore.activeUserIsAdmin;
   protected readonly isProfileSaving = computed(() => this.profileSaveLoadState().status === 'loading');
   protected readonly hasProfileSaveError = computed(() => {
     const status = this.profileSaveLoadState().status;
@@ -96,8 +124,8 @@ export class ProfileEditorComponent {
   constructor() {
     effect(() => {
       const isOpen = this.navigatorStore.profileEditorOpen();
-      const activeProfileExt = this.appCtx.userProfileStore.activeUserProfileExt();
-      const activeUser = activeProfileExt?.profile ?? this.appCtx.userProfileStore.activeUserProfile();
+      const activeProfileExt = this.userProfileStore.activeUserProfileExt();
+      const activeUser = activeProfileExt?.profile ?? this.userProfileStore.activeUserProfile();
       const activeUserId = activeUser?.id.trim() ?? '';
 
       if (!isOpen) {

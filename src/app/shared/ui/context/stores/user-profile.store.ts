@@ -1,20 +1,24 @@
-import { Injectable, computed, inject, signal } from '@angular/core';
+import {
+  Injectable,
+  computed,
+  inject,
+  signal
+} from '@angular/core';
 
+import type { UserGameFilterPreferencesDto } from '../../../core/contracts/activity.interface';
 import type {
   ProfileExtDto,
   UserDto,
   UserImpressionsDto,
   UserRealtimeLongPollResponseDto
 } from '../../../core/contracts/user.interface';
-import { UserRealtimeUiConverter } from '../../converters/user-realtime-ui.converter';
+import {
+  UserRealtimeUiConverter
+} from '../../converters/user-realtime-ui.converter';
 import {
   ACTIVITY_COUNTER_KEYS,
-  type ActivityCounters,
-  DEFAULT_USER_IMPRESSION_CHANGE_FLAGS,
-  type AppContextAdminUserDto,
-  type UserGameFilterPreferencesDto,
-  type UserImpressionChangeFlags
-} from '../app-context.types';
+  type ActivityCounters
+} from './activity.store';
 import {
   adminUserFromProfile,
   cloneAssetCounters,
@@ -26,7 +30,29 @@ import {
   normalizeCounterValue,
   normalizeFilterPreferences
 } from './app-context-store.utils';
-import { ActivityStore } from './activity.store';
+import {
+  ActivityStore
+} from './activity.store';
+
+export interface UserImpressionChangeFlags {
+  host: boolean;
+  member: boolean;
+}
+
+export interface UserProfileAdminUserDto {
+  id: string;
+  name: string;
+  initials: string;
+  email: string;
+  headline?: string | null;
+  about?: string | null;
+  images?: string[] | null;
+}
+
+export const DEFAULT_USER_IMPRESSION_CHANGE_FLAGS: UserImpressionChangeFlags = {
+  host: false,
+  member: false
+};
 
 export interface UserRealtimeProfilePatch {
   counterPatch: Partial<ActivityCounters>;
@@ -187,7 +213,7 @@ export class UserProfileStore {
     return this.getUserProfile(current.id);
   }
 
-  getActiveAdminUser(): AppContextAdminUserDto | null {
+  getActiveAdminUser(): UserProfileAdminUserDto | null {
     return this.activeAdminUser();
   }
 

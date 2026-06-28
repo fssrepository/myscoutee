@@ -1,10 +1,29 @@
-import { CommonModule } from '@angular/common';
-import { ChangeDetectionStrategy, ChangeDetectorRef, Component, HostListener, effect, inject } from '@angular/core';
-import { FormsModule } from '@angular/forms';
-import { MatIconModule } from '@angular/material/icon';
+import {
+  CommonModule
+} from '@angular/common';
+import {
+  ChangeDetectionStrategy,
+  ChangeDetectorRef,
+  Component,
+  HostListener,
+  effect,
+  inject
+} from '@angular/core';
+import {
+  FormsModule
+} from '@angular/forms';
+import {
+  MatIconModule
+} from '@angular/material/icon';
 
-import { AppUtils } from '../../../shared/app-utils';
-import { ActivityResourceBuilder, ActivityResourcesService, EventsService } from '../../../shared/core';
+import {
+  AppUtils
+} from '../../../shared/app-utils';
+import {
+  ActivityResourceBuilder,
+  ActivityResourcesService,
+  EventsService
+} from '../../../shared/core';
 import type * as AppDTOs from '../../../shared/core/contracts';
 import type * as ContractTypes from '../../../shared/core/contracts';
 import type { AssetType, SubEventResourceFilter } from '../../../shared/core/common/constants';
@@ -25,18 +44,28 @@ import {
   type UiAccordionModel,
   type UiAccordionToggleEvent
 } from '../../../shared/ui';
-import { AppContext, AppPopupContext } from '../../../shared/ui/context';
-import type { EventTournamentGroupsPopupRequest } from '../../../shared/ui/context/app-popup.context';
+import type { EventTournamentGroupsPopupRequest } from '../../../shared/ui/context/stores/popup.store';
 import {
   EventTournamentGroupsPopupConverter,
   type EventTournamentGroupsAccordionContext,
   type EventTournamentGroupsPopupModel,
   type EventTournamentGroupsStageMenuContext
 } from '../../../shared/ui/converters';
-import { ConfirmationDialogStore } from '../../../shared/ui/context/stores/confirmation-dialog.store';
-import { EventEditorPopupStore } from '../../../shared/ui/context/stores/event-editor-popup.store';
-import { OwnedAssetsStore } from '../../../shared/ui/context/stores/owned-assets.store';
-import { EventSubeventGroupFormPopupComponent } from '../event-subevent-group-form-popup/event-subevent-group-form-popup.component';
+import {
+  ConfirmationDialogStore
+} from '../../../shared/ui/context/stores/confirmation-dialog.store';
+import {
+  EventEditorPopupStore
+} from '../../../shared/ui/context/stores/event-editor-popup.store';
+import {
+  AssetStore
+} from '../../../shared/ui/context/stores/asset.store';
+import {
+  EventSubeventGroupFormPopupComponent
+} from '../event-subevent-group-form-popup/event-subevent-group-form-popup.component';
+import { UserProfileStore } from '../../../shared/ui/context/stores/user-profile.store';
+import { ActivityStore } from '../../../shared/ui/context/stores/activity.store';
+import { PopupStore } from '../../../shared/ui/context/stores/popup.store';
 
 type TournamentGroupsAction =
   | 'add-entry'
@@ -127,11 +156,12 @@ interface FifaRow {
   changeDetection: ChangeDetectionStrategy.OnPush
 })
 export class EventTournamentGroupsPopupComponent {
-  private readonly popupCtx = inject(AppPopupContext);
-  private readonly appCtx = inject(AppContext);
+  private readonly popupStore = inject(PopupStore);
+  private readonly userProfileStore = inject(UserProfileStore);
+  private readonly activityStore = inject(ActivityStore);
   private readonly eventsService = inject(EventsService);
   private readonly activityResourcesService = inject(ActivityResourcesService);
-  private readonly ownedAssetsStore = inject(OwnedAssetsStore);
+  private readonly assetStore = inject(AssetStore);
   private readonly eventEditorStore = inject(EventEditorPopupStore);
   private readonly confirmationDialog = inject(ConfirmationDialogStore);
   private readonly cdr = inject(ChangeDetectorRef);
@@ -164,7 +194,7 @@ export class EventTournamentGroupsPopupComponent {
 
   constructor() {
     effect(() => {
-      const request = this.popupCtx.popupStore.eventTournamentGroupsPopup();
+      const request = this.popupStore.eventTournamentGroupsPopup();
       if (!request) {
         this.resetState();
         return;
@@ -184,7 +214,7 @@ export class EventTournamentGroupsPopupComponent {
     });
 
     effect(() => {
-      const sync = this.appCtx.activityStore.activityMembersSync();
+      const sync = this.activityStore.activityMembersSync();
       if (!sync || sync.updatedMs === this.handledMembersSyncMs) {
         return;
       }
@@ -200,7 +230,7 @@ export class EventTournamentGroupsPopupComponent {
     });
 
     effect(() => {
-      const sync = this.appCtx.activityStore.activityResourceSync();
+      const sync = this.activityStore.activityResourceSync();
       if (!sync || sync.updatedMs === this.handledResourceSyncMs) {
         return;
       }
@@ -212,7 +242,7 @@ export class EventTournamentGroupsPopupComponent {
     });
 
     effect(() => {
-      this.ownedAssetsStore.assetListRevision();
+      this.assetStore.assetListRevision();
       if (!this.isOpen()) {
         return;
       }
@@ -239,11 +269,11 @@ export class EventTournamentGroupsPopupComponent {
   }
 
   protected isOpen(): boolean {
-    return Boolean(this.popupCtx.popupStore.eventTournamentGroupsPopup());
+    return Boolean(this.popupStore.eventTournamentGroupsPopup());
   }
 
   protected close(): void {
-    this.popupCtx.popupStore.closeEventTournamentGroupsPopup();
+    this.popupStore.closeEventTournamentGroupsPopup();
   }
 
   protected viewModel(): EventTournamentGroupsPopupModel {
@@ -1020,7 +1050,7 @@ export class EventTournamentGroupsPopupComponent {
   }
 
   private async loadGroupsForStage(stageId: string): Promise<void> {
-    const request = this.popupCtx.popupStore.eventTournamentGroupsPopup();
+    const request = this.popupStore.eventTournamentGroupsPopup();
     const eventId = `${request?.eventId ?? ''}`.trim();
     const normalizedStageId = `${stageId ?? ''}`.trim();
     if (!eventId || !normalizedStageId) {
@@ -1154,7 +1184,7 @@ export class EventTournamentGroupsPopupComponent {
     state: AppDTOs.ActivitySubEventResourceStateDTO | null
   ): TournamentResourceMetricsByType {
     const subEvent = this.resourceSubEventForStage(stage);
-    const assets = this.ownedAssetsStore.assetCards();
+    const assets = this.assetStore.assetCards();
     return Object.fromEntries(TOURNAMENT_RESOURCE_TYPES.map(type => {
       const joined = ActivityResourceBuilder.resourceAcceptedCount(subEvent, type, state, assets);
       const pending = ActivityResourceBuilder.resourcePendingCount(subEvent, type, state, assets);
@@ -1257,20 +1287,20 @@ export class EventTournamentGroupsPopupComponent {
   }
 
   private activeUserId(): string {
-    return this.appCtx.userProfileStore.activeUserProfile()?.id?.trim() || this.appCtx.userProfileStore.activeUserId().trim() || this.appCtx.userProfileStore.getActiveUserId().trim();
+    return this.userProfileStore.activeUserProfile()?.id?.trim() || this.userProfileStore.activeUserId().trim() || this.userProfileStore.getActiveUserId().trim();
   }
 
   private eventId(): string {
-    const request = this.popupCtx.popupStore.eventTournamentGroupsPopup();
+    const request = this.popupStore.eventTournamentGroupsPopup();
     return `${request?.slotId ?? request?.eventId ?? ''}`.trim();
   }
 
   private requestEventId(): string {
-    return `${this.popupCtx.popupStore.eventTournamentGroupsPopup()?.eventId ?? ''}`.trim();
+    return `${this.popupStore.eventTournamentGroupsPopup()?.eventId ?? ''}`.trim();
   }
 
   private requestSlotId(): string | null {
-    const slotId = `${this.popupCtx.popupStore.eventTournamentGroupsPopup()?.slotId ?? ''}`.trim();
+    const slotId = `${this.popupStore.eventTournamentGroupsPopup()?.slotId ?? ''}`.trim();
     return slotId || null;
   }
 

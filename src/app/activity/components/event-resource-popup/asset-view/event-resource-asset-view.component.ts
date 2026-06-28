@@ -18,7 +18,7 @@ import type * as AppConstants from '../../../../shared/core/common/constants';
 import type * as AppDTOs from '../../../../shared/core/contracts';
 import type * as ContractTypes from '../../../../shared/core/contracts';
 import { CounterBadgePipe } from '../../../../shared/ui/pipes/counter-badge.pipe';
-import type { ResourceAssetDTO } from '../../../../shared/ui/context/sub-event-resource-popup.types';
+import type { ResourceAssetDTO } from '../../../../shared/ui/context/stores/sub-event-resource-popup.store';
 
 export interface EventResourceAssetViewModel {
   card: AppDTOs.SubEventResourceCardDTO;

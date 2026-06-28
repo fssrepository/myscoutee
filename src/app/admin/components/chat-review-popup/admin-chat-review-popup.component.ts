@@ -1,13 +1,33 @@
-import { CommonModule } from '@angular/common';
-import { Component, inject } from '@angular/core';
-import { FormsModule } from '@angular/forms';
-import { MatIconModule } from '@angular/material/icon';
+import {
+  CommonModule
+} from '@angular/common';
+import {
+  Component,
+  inject
+} from '@angular/core';
+import {
+  FormsModule
+} from '@angular/forms';
+import {
+  MatIconModule
+} from '@angular/material/icon';
 
-import { AppContext } from '../../../shared/ui';
-import { AdminModerationService as CoreAdminModerationService, type AdminChatMessageDto, type AdminModerationActionResult, type AdminReportedUserDto } from '../../../shared/core';
-import { ProgressIndicatorComponent } from '../../../shared/ui/components/progress-indicator';
-import { AdminPopupStore } from '../../../shared/ui/context/stores/admin-popup.store';
-import { AdminWorkspaceStore } from '../../../shared/ui/context/stores/admin-workspace.store';
+import {
+  AdminModerationService as CoreAdminModerationService,
+  type AdminChatMessageDto,
+  type AdminModerationActionResult,
+  type AdminReportedUserDto
+} from '../../../shared/core';
+import {
+  ProgressIndicatorComponent
+} from '../../../shared/ui/components/progress-indicator';
+import {
+  AdminPopupStore
+} from '../../../shared/ui/context/stores/admin-popup.store';
+import {
+  AdminWorkspaceStore
+} from '../../../shared/ui/context/stores/admin-workspace.store';
+import { UserProfileStore } from '../../../shared/ui/context/stores/user-profile.store';
 
 @Component({
   selector: 'app-admin-chat-review-popup',
@@ -18,7 +38,7 @@ import { AdminWorkspaceStore } from '../../../shared/ui/context/stores/admin-wor
 })
 export class AdminChatReviewPopupComponent {
   protected readonly admin = inject(AdminPopupStore);
-  private readonly appCtx = inject(AppContext);
+  private readonly userProfileStore = inject(UserProfileStore);
   private readonly workspace = inject(AdminWorkspaceStore);
   private readonly moderationData = inject(CoreAdminModerationService);
   protected warnMessage = 'Please update the reported behavior before your account is blocked.';
@@ -63,7 +83,7 @@ export class AdminChatReviewPopupComponent {
     }
     const result = await this.moderationData.warnUser(
       normalizedUserId,
-      this.appCtx.userProfileStore.activeAdminUser(),
+      this.userProfileStore.activeAdminUser(),
       message
     );
     this.applyModerationActionResult(normalizedUserId, result);

@@ -1,9 +1,9 @@
-<div class="asset-popup" [attr.data-owned-assets-ui-rev]="ownedAssetsStore.uiRevision()">
-  @if (ownedAssetsStore.popupOpen()) {
+<div class="asset-popup" [attr.data-owned-assets-ui-rev]="assetStore.uiRevision()">
+  @if (assetStore.popupOpen()) {
     <app-popup [model]="assetPopupModel()" [zIndex]="assetPopupZIndex()">
       <div
         class="experience-popup assets-popup assets-popup-smart-list asset-popup-content"
-        [class.assets-popup-tickets]="ownedAssetsStore.ticketPopup()"
+        [class.assets-popup-tickets]="assetStore.ticketPopup()"
         [class.assets-popup-basket]="isBasketMode()"
         >
         @if (isBasketMode()) {
@@ -11,7 +11,7 @@
             <p class="asset-popup-basket-error">{{ basketSaveErrorMessage() }}</p>
           }
         }
-        @if (ownedAssetsStore.ticketPopup() && !isBasketMode()) {
+        @if (assetStore.ticketPopup() && !isBasketMode()) {
           <app-smart-list
             [config]="ticketSmartListConfig"
             [loadPage]="ticketSmartListLoadPage"
@@ -38,14 +38,14 @@
           <app-confirmation-dialog
             [useStore]="false"
             [dialog]="{
-              visible: !!ownedAssetsStore.pendingAssetDeleteCardId(),
+              visible: !!assetStore.pendingAssetDeleteCardId(),
               title: 'Delete asset',
               message: pendingOwnedAssetDeleteLabel(),
               confirmLabel: 'Delete',
               busyConfirmLabel: 'Deleting...',
               confirmTone: 'danger',
-              busy: ownedAssetsStore.assetDeletePending(),
-              errorMessage: ownedAssetsStore.pendingAssetDeleteError(),
+              busy: assetStore.assetDeletePending(),
+              errorMessage: assetStore.pendingAssetDeleteError(),
               cancelAction: cancelOwnedAssetDelete,
               confirmAction: confirmOwnedAssetDelete
             }"
