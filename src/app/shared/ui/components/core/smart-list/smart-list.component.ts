@@ -610,12 +610,6 @@ export class SmartListComponent<T, TFilters extends SmartListFilters = SmartList
     return this.finiteStepper.state().index === index;
   }
 
-  protected onHorizontalPaginationDotClick(index: number, event: Event): void {
-    event.stopPropagation();
-    this.pausePaginationAutoplay();
-    void this.setCursorIndex(index);
-  }
-
   protected resolvedPaginationRatingBarConfig(): AppMenuRateConfig | null {
     const baseConfig = this.config.pagination?.ratingBarConfig?.(this.cursorItem(), this.currentQuery()) ?? null;
     if (!baseConfig) {

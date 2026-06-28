@@ -327,16 +327,12 @@
   }
 
   @if (shouldRenderHorizontalPaginationDots()) {
-    <div class="smart-list__horizontal-dots" aria-label="List pages">
+    <div class="smart-list__horizontal-dots" aria-hidden="true">
       @for (dotIndex of horizontalPaginationDotIndexes(); track dotIndex) {
-        <button
-          type="button"
+        <span
           class="smart-list__horizontal-dot"
           [class.is-active]="isHorizontalPaginationDotActive(dotIndex)"
-          [attr.aria-current]="isHorizontalPaginationDotActive(dotIndex) ? 'true' : null"
-          [attr.aria-label]="'Show item ' + (dotIndex + 1)"
-          (click)="onHorizontalPaginationDotClick(dotIndex, $event)"
-        ></button>
+        ></span>
       }
     </div>
   }

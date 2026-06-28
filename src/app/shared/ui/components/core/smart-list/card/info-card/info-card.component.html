@@ -330,6 +330,7 @@
       class="ui-info-card__description"
       [attr.data-i18n-ignore]="card?.i18nIgnoreContent ? '' : null"
       [style.--ui-info-card-description-lines]="descriptionLines()"
+      [style.--ui-info-card-description-max-height]="descriptionMaxHeight()"
       >
       {{ card?.description }}
     </p>

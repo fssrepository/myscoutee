@@ -378,6 +378,10 @@ export class InfoCardComponent implements OnDestroy {
     return Number.isFinite(value) && value > 0 ? value : 3;
   }
 
+  protected descriptionMaxHeight(): string {
+    return `${this.descriptionLines() * 1.4}em`;
+  }
+
   protected detailStyle(): InfoCardDetailStyle {
     return this.card?.detailStyle ?? 'default';
   }

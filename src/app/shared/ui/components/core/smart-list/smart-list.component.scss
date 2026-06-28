@@ -442,13 +442,13 @@
   align-items: center;
   justify-content: center;
   gap: 0.36rem;
-  pointer-events: auto;
+  pointer-events: none;
 }
 
 .smart-list__horizontal-dot {
+  display: block;
   width: 0.48rem;
   height: 0.48rem;
-  padding: 0;
   border: 1px solid rgba(64, 105, 157, 0.2);
   border-radius: 999px;
   background: #d7e1ef;

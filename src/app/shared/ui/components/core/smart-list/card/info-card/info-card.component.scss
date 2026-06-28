@@ -438,6 +438,7 @@ button.asset-occupancy-badge:active::after,
   line-height: 1.4;
   color: rgba(20, 37, 61, 0.84);
   display: -webkit-box;
+  max-height: var(--ui-info-card-description-max-height, 4.2em);
   overflow: hidden;
   -webkit-line-clamp: var(--ui-info-card-description-lines, 3);
   -webkit-box-orient: vertical;
@@ -1157,6 +1158,8 @@ button.ui-info-card__overlay-action {
 }
 
 .ui-info-card__footer-chips {
+  position: relative;
+  z-index: 1;
   display: flex;
   flex-wrap: wrap;
   gap: 0.28rem;
