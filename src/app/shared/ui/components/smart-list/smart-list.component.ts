@@ -28,10 +28,8 @@ import {
   type ProgressIndicatorPlacement
 } from '../progress-indicator';
 import {
-  SmartListPageCardComponent,
-  SmartListPageCardConverter,
-  type SmartListPageCardModel
-} from './smart-list-page-card';
+  CalendarCardComponent as SmartListPageCardComponent
+} from './card/calendar-card';
 import { ROUTE_CONFIG } from '../../../core/base/config';
 import {
   type RatingStarBarConfig
@@ -46,6 +44,7 @@ import {
 import {
   type AnySmartListPageAdapter,
   type SmartListPage,
+  type SmartListPageCardModel,
   type SmartListPageMode
 } from './smart-list-page.adapter';
 import { SmartListCalendarAdapter } from './smart-list-calendar.adapter';
@@ -55,7 +54,7 @@ import {
   type InfiniteStepperSnapshot as StepperSnapshot,
   type InfiniteStepperSurfaceState as StepperSurfaceState
 } from './infinite-stepper';
-import { SmartListPaginationHelper } from './pagination';
+import { SmartListPaginationHelper } from './smart-list-pagination.helper';
 import type {
   ListDirection,
   ListQuery,
@@ -1229,8 +1228,8 @@ export class SmartListComponent<T, TFilters extends SmartListFilters = SmartList
   }
 
   protected pageCardModel(): SmartListPageCardModel<T, TFilters> {
-    return SmartListPageCardConverter.convert({
-      viewMode: this.currentViewMode,
+    return {
+      mode: this.currentViewMode as SmartListPageMode,
       pages: this.pages,
       config: this.activePageAdapter?.config(this.config) ?? null,
       query: this.currentQuery(),
@@ -1238,7 +1237,7 @@ export class SmartListComponent<T, TFilters extends SmartListFilters = SmartList
       touching: this.isTouchingSurface,
       trackByItem: (index, item) => this.pageTrackKey(index, item),
       onItemSelect: this.selectPageCardItem
-    });
+    };
   }
 
   private readonly selectPageCardItem = (item: T, event?: Event): void => {

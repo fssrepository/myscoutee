@@ -18,6 +18,17 @@ export interface SmartListPage<T> {
   anchor: Date;
 }
 
+export interface SmartListPageCardModel<T, TFilters extends SmartListFilters = SmartListFilters> {
+  mode: SmartListPageMode;
+  pages: readonly SmartListPage<T>[];
+  config: unknown | null;
+  query: ListQuery<TFilters>;
+  variant: SmartListPageVariant;
+  touching: boolean;
+  trackByItem?: ((index: number, item: T) => unknown) | null;
+  onItemSelect?: ((item: T, event?: Event) => void) | null;
+}
+
 export type SmartListPageBuildContext<
   T,
   TFilters extends SmartListFilters = SmartListFilters,
