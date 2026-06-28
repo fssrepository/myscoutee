@@ -1,0 +1,171 @@
+<div class="ui-popup" [style.z-index]="zIndex ?? null">
+  <div class="ui-popup__backdrop" (click)="onBackdropClick($event)"></div>
+  <section
+    class="ui-popup__panel"
+    [ngClass]="[panelSizeClass(), panelHeightClass()]"
+    role="dialog"
+    aria-modal="true"
+    [attr.aria-label]="ariaLabel"
+    (click)="onPanelClick($event)"
+  >
+    @if (hasHeader) {
+      <header class="ui-popup__header" [ngClass]="headerToneClass()">
+        <div class="ui-popup__title">
+          @if (popupModel.title) {
+            <h2>{{ popupModel.title | i18n }}</h2>
+          }
+          @if (popupModel.subtitle) {
+            <p class="ui-popup__subtitle">{{ popupModel.subtitle | i18n }}</p>
+          }
+          @if (popupModel.secondarySubtitle) {
+            <p class="ui-popup__subtitle ui-popup__subtitle--secondary">
+              {{ popupModel.secondarySubtitle | i18n }}
+            </p>
+          }
+        </div>
+        @if (hasHeaderControls) {
+          <div class="ui-popup__header-controls">
+            @for (control of headerControls; track control.id) {
+              @if (isMenuControl(control)) {
+                <app-menu
+                  class="ui-popup__control"
+                  [kind]="control.menuKind ?? 'select'"
+                  [trigger]="control.trigger"
+                  [items]="control.items ?? []"
+                  [model]="control.model ?? null"
+                  [panelAlign]="control.panelAlign ?? 'auto'"
+                  [panelMode]="control.panelMode ?? 'auto'"
+                  [closeOnSelect]="control.closeOnSelect ?? true"
+                  (itemSelect)="selectMenuItem(control, $event)"
+                ></app-menu>
+              } @else {
+                <button
+                  type="button"
+                  class="ui-popup__action"
+                  [ngClass]="actionPaletteClass(control)"
+                  [class.ui-popup__action--active]="control.active"
+                  [class.ui-popup__action--icon-only]="!control.label"
+                  [class.ui-popup__action--compact-mobile]="control.compactOnMobile"
+                  [disabled]="control.disabled"
+                  [attr.aria-label]="control.ariaLabel || control.label || control.id"
+                  (click)="selectAction(control, $event)"
+                >
+                  <mat-icon>{{ control.icon }}</mat-icon>
+                  @if (control.label) {
+                    <span>{{ control.label | i18n }}</span>
+                  }
+                </button>
+              }
+            }
+          </div>
+        }
+        <div class="ui-popup__header-actions" [class.ui-popup__header-actions--empty]="!hasHeaderActions && !showClose">
+          @for (headerAction of headerActions; track headerAction.id) {
+            <button
+              type="button"
+              class="ui-popup__action"
+              [ngClass]="actionPaletteClass(headerAction)"
+              [class.ui-popup__action--active]="headerAction.active"
+              [class.ui-popup__action--icon-only]="!headerAction.label"
+              [class.ui-popup__action--compact-mobile]="headerAction.compactOnMobile"
+              [disabled]="headerAction.disabled"
+              [attr.aria-label]="headerAction.ariaLabel || headerAction.label || headerAction.id"
+              (click)="selectAction(headerAction, $event)"
+            >
+              <mat-icon>{{ headerAction.icon }}</mat-icon>
+              @if (headerAction.label) {
+                <span>{{ headerAction.label | i18n }}</span>
+              }
+            </button>
+          }
+          @if (showClose) {
+            <button type="button" class="ui-popup__close" (click)="emitClose($event)" [attr.aria-label]="closeAriaLabel">
+              <mat-icon>close</mat-icon>
+            </button>
+          }
+        </div>
+      </header>
+    }
+
+    @if (hasToolbar) {
+      <div class="ui-popup__toolbar">
+        @if (hasToolbarStartControls) {
+          <div class="ui-popup__toolbar-group ui-popup__toolbar-group--start">
+            @for (control of toolbarStartControls; track control.id) {
+              @if (isMenuControl(control)) {
+                <app-menu
+                  class="ui-popup__control"
+                  [kind]="control.menuKind ?? 'select'"
+                  [trigger]="control.trigger"
+                  [items]="control.items ?? []"
+                  [model]="control.model ?? null"
+                  [panelAlign]="control.panelAlign ?? 'auto'"
+                  [panelMode]="control.panelMode ?? 'auto'"
+                  [closeOnSelect]="control.closeOnSelect ?? true"
+                  (itemSelect)="selectMenuItem(control, $event)"
+                ></app-menu>
+              } @else {
+                <button
+                  type="button"
+                  class="ui-popup__action"
+                  [ngClass]="actionPaletteClass(control)"
+                  [class.ui-popup__action--active]="control.active"
+                  [class.ui-popup__action--icon-only]="!control.label"
+                  [class.ui-popup__action--compact-mobile]="control.compactOnMobile"
+                  [disabled]="control.disabled"
+                  [attr.aria-label]="control.ariaLabel || control.label || control.id"
+                  (click)="selectAction(control, $event)"
+                >
+                  <mat-icon>{{ control.icon }}</mat-icon>
+                  @if (control.label) {
+                    <span>{{ control.label | i18n }}</span>
+                  }
+                </button>
+              }
+            }
+          </div>
+        }
+        @if (hasToolbarEndControls) {
+          <div class="ui-popup__toolbar-group ui-popup__toolbar-group--end">
+            @for (control of toolbarEndControls; track control.id) {
+              @if (isMenuControl(control)) {
+                <app-menu
+                  class="ui-popup__control"
+                  [kind]="control.menuKind ?? 'select'"
+                  [trigger]="control.trigger"
+                  [items]="control.items ?? []"
+                  [model]="control.model ?? null"
+                  [panelAlign]="control.panelAlign ?? 'auto'"
+                  [panelMode]="control.panelMode ?? 'auto'"
+                  [closeOnSelect]="control.closeOnSelect ?? true"
+                  (itemSelect)="selectMenuItem(control, $event)"
+                ></app-menu>
+              } @else {
+                <button
+                  type="button"
+                  class="ui-popup__action"
+                  [ngClass]="actionPaletteClass(control)"
+                  [class.ui-popup__action--active]="control.active"
+                  [class.ui-popup__action--icon-only]="!control.label"
+                  [class.ui-popup__action--compact-mobile]="control.compactOnMobile"
+                  [disabled]="control.disabled"
+                  [attr.aria-label]="control.ariaLabel || control.label || control.id"
+                  (click)="selectAction(control, $event)"
+                >
+                  <mat-icon>{{ control.icon }}</mat-icon>
+                  @if (control.label) {
+                    <span>{{ control.label | i18n }}</span>
+                  }
+                </button>
+              }
+            }
+          </div>
+        }
+      </div>
+    }
+
+    <div class="ui-popup__body" [ngClass]="bodyLayoutClass()">
+      <ng-content></ng-content>
+    </div>
+  </section>
+</div>

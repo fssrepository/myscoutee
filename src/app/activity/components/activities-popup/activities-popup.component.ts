@@ -14,7 +14,7 @@ import { CommonModule } from '@angular/common';
 import { MatIconModule } from '@angular/material/icon';
 import { from } from 'rxjs';
 
-import { APP_STATIC_DATA } from '../../../shared/app-static-data';
+import { APP_STATIC_DATA, type RateFilterEntry } from '../../../shared/app-static-data';
 import type { ChatDTO } from '../../../shared/core/contracts/chat.interface';
 import {
   type ActivityMemberOwnerRef,
@@ -33,7 +33,7 @@ import { OwnedAssetsStore } from '../../../shared/ui/context/stores/owned-assets
 import type { ActivitiesFeedFilters } from '../../../shared/core/contracts';
 import type * as ContractTypes from '../../../shared/core/contracts';
 import {
-  AppMenuDispatcher, type AppMenuItem, type AppMenuItemSelectEvent, EventCheckoutPopupComponent, type CardProfileViewData, type ImageCardData, type InfoCardData, SmartListComponent, type CardMenuActionEvent, type ListQuery, type PageResult, type SingleRowData, type SmartListConfig, type SmartListLoadContext, type SmartListLoadPage, type SmartListMenuItemsContext, type SmartListItemSelectEvent, type SmartListPresentation, type SmartListStateChange
+  AppMenuDispatcher, type AppMenuGroup, type AppMenuItem, type AppMenuItemSelectEvent, type AppMenuModel, type AppMenuPalette, type AppMenuTrigger, EventCheckoutPopupComponent, type CardProfileViewData, type ImageCardData, type InfoCardData, PopupComponent, type PopupActionEvent, type PopupControl, type PopupMenuSelectEvent, type PopupModel, SmartListComponent, type CardMenuActionEvent, type ListQuery, type PageResult, type SingleRowData, type SmartListConfig, type SmartListLoadContext, type SmartListLoadPage, type SmartListMenuItemsContext, type SmartListItemSelectEvent, type SmartListPresentation, type SmartListStateChange
 } from '../../../shared/ui';
 import {
   ActivityChatSingleRowConverter,
@@ -58,11 +58,6 @@ import {
 import {
   ActivitiesRateTemplateComponent, ActivitiesRatesController, type ActivitiesRateTemplateContext
 } from './templates/rate/activities-rate-template.component';
-import {
-  ActivitiesPopupControlsComponent,
-  type ActivitiesPopupControlsAction,
-  type ActivitiesPopupControlsModel
-} from './controls/activities-popup-controls.component';
 import {
   ActivityMembersBuilder, ActivitiesService, ActivityMembersService, ActivityResourcesService, ChatsService, EventsService, ExplanationGuideService, RatesService, ShareTokensService, UsersService } from '../../../shared/core';
 import { I18nService } from '../../../shared/core';
@@ -135,6 +130,17 @@ type ActivityPopupCard =
   | ActivityPopupRateCard
   | ActivityPopupChatCard;
 
+type ActivitiesPopupMenuContext =
+  | { menu: 'primary'; value: ContractTypes.ActivitiesPrimaryFilter }
+  | { menu: 'event-scope'; value: ContractTypes.ActivitiesEventScope }
+  | { menu: 'chat-context'; value: ContractTypes.ActivitiesChatContextFilter }
+  | { menu: 'rate'; value: ContractTypes.RateFilterKey }
+  | { menu: 'rate-social'; value: string }
+  | { menu: 'secondary'; value: ContractTypes.ActivitiesSecondaryFilter }
+  | { menu: 'view'; value: ContractTypes.ActivitiesView }
+  | { menu: 'support-case'; value: ContractTypes.SupportCaseFilter }
+  | { menu: 'quick-action'; value: 'explore' | 'create' };
+
 @Component({
   selector: 'app-activities-popup',
   standalone: true,
@@ -145,8 +151,8 @@ type ActivityPopupCard =
     ActivitiesEventTemplateComponent,
     ActivitiesChatTemplateComponent,
     ActivitiesRateTemplateComponent,
-    ActivitiesPopupControlsComponent,
     EventCheckoutPopupComponent,
+    PopupComponent,
   ],
   templateUrl: './activities-popup.component.html',
   styleUrl: './activities-popup.component.scss',
@@ -1011,71 +1017,777 @@ export class ActivitiesPopupComponent implements OnDestroy {
     return this.activitiesStore.activitiesAdminServiceOnly();
   }
 
-  protected activitiesControlsModel(): ActivitiesPopupControlsModel {
+  protected activitiesPopupModel(): PopupModel<ActivitiesPopupMenuContext> {
     return {
-      primaryFilter: this.activitiesPrimaryFilter,
-      eventScope: this.activitiesEventScope,
-      chatContextFilter: this.activitiesChatContextFilter,
-      supportCaseFilter: this.activitiesSupportCaseFilter,
-      secondaryFilter: this.activitiesSecondaryFilter,
-      rateFilter: this.activitiesRateFilter,
-      view: this.activitiesView,
-      isMobileView: this.isMobileView,
-      adminServiceMode: this.isAdminServiceChatMode(),
-      calendarLayout: this.isCalendarLayoutView(),
-      ratesFullscreenActive: this.isRatesFullscreenModeActive(),
-      showRatesFullscreenToggle: this.shouldShowRatesFullscreenToggle(),
-      individualRateSocialBadgeEnabled: this.activitiesIndividualRateSocialBadgeEnabled,
-      pairRateSocialBadgeEnabled: this.activitiesPairRateSocialBadgeEnabled,
-      primaryCounts: this.activitiesToolbarPrimaryCounts(),
-      eventScopeCounts: this.activitiesToolbarEventScopeCounts(),
-      chatContextCounts: this.activitiesToolbarChatContextCounts(),
-      supportCaseCounts: this.activitiesToolbarSupportCaseCounts(),
-      rateFilterCounts: this.activitiesToolbarRateFilterCounts()
+      title: 'Activities',
+      subtitle: this.activitiesHeaderLineOne(),
+      secondarySubtitle: this.activitiesHeaderLineTwo(),
+      ariaLabel: 'Activities',
+      closeAriaLabel: 'Close activities',
+      size: 'wide',
+      height: 'full',
+      headerTone: 'accent',
+      bodyLayout: 'fill',
+      headerControls: this.activitiesPopupHeaderControls(),
+      toolbarControls: this.activitiesPopupToolbarControls(),
+      onClose: () => this.closeActivitiesPopup(),
+      onAction: event => this.onActivitiesPopupAction(event),
+      onMenuSelect: event => this.onActivitiesPopupMenuSelect(event)
     };
   }
 
-  protected onActivitiesControlsAction(action: ActivitiesPopupControlsAction): void {
-    switch (action.type) {
-      case 'close':
-        this.closeActivitiesPopup();
-        return;
-      case 'primaryFilter':
-        this.selectActivitiesPrimaryFilter(action.value);
-        return;
-      case 'eventScope':
-        this.selectActivitiesEventScope(action.value);
-        return;
-      case 'chatContextFilter':
-        this.selectActivitiesChatContextFilter(action.value);
-        return;
-      case 'rateFilter':
-        this.selectActivitiesRateFilter(action.value);
-        return;
-      case 'rateSocialBadgeGroup':
-        this.toggleRateSocialBadgeForGroup(action.value);
-        return;
-      case 'secondaryFilter':
-        this.selectActivitiesSecondaryFilter(action.value);
-        return;
-      case 'view':
-        this.setActivitiesView(action.value, action.sourceEvent);
-        return;
-      case 'supportCaseFilter':
-        this.selectActivitiesSupportCaseFilter(action.value);
-        return;
-      case 'eventExplore':
+  private onActivitiesPopupAction(event: PopupActionEvent): void {
+    switch (event.action.id) {
+      case 'event-explore':
         this.requestOpenEventExplore();
         return;
-      case 'eventEditor':
-        this.requestOpenEventEditor();
-        return;
-      case 'ratesFullscreenToggle':
-        this.activitiesRates.toggleFullscreenMode(action.sourceEvent);
+      case 'rates-fullscreen-toggle':
+        this.activitiesRates.toggleFullscreenMode(event.sourceEvent);
         return;
       default:
         return;
     }
+  }
+
+  private onActivitiesPopupMenuSelect(event: PopupMenuSelectEvent<ActivitiesPopupMenuContext>): void {
+    const context = event.itemSelect.context;
+    if (!context) {
+      return;
+    }
+    switch (context.menu) {
+      case 'primary':
+        this.selectActivitiesPrimaryFilter(context.value);
+        return;
+      case 'event-scope':
+        this.selectActivitiesEventScope(context.value);
+        return;
+      case 'chat-context':
+        this.selectActivitiesChatContextFilter(context.value);
+        return;
+      case 'rate':
+        this.selectActivitiesRateFilter(context.value);
+        return;
+      case 'rate-social':
+        this.toggleRateSocialBadgeForGroup(context.value);
+        return;
+      case 'secondary':
+        this.selectActivitiesSecondaryFilter(context.value);
+        return;
+      case 'view':
+        this.setActivitiesView(context.value, event.itemSelect.sourceEvent);
+        return;
+      case 'support-case':
+        this.selectActivitiesSupportCaseFilter(context.value);
+        return;
+      case 'quick-action':
+        if (context.value === 'explore') {
+          this.requestOpenEventExplore();
+          return;
+        }
+        this.requestOpenEventEditor();
+        return;
+      default:
+        return;
+    }
+  }
+
+  private activitiesPopupHeaderControls(): PopupControl<ActivitiesPopupMenuContext>[] {
+    const controls: PopupControl<ActivitiesPopupMenuContext>[] = [];
+    if (this.activitiesPrimaryFilter === 'chats' && this.isAdminServiceChatMode()) {
+      controls.push({
+        kind: 'menu',
+        id: 'support-case',
+        trigger: this.activitiesSupportCaseMenuTrigger(),
+        items: this.activitiesSupportCaseMenuItems()
+      });
+    }
+    if (!this.isCalendarLayoutView() && this.activitiesPrimaryFilter !== 'chats') {
+      controls.push({
+        kind: 'menu',
+        id: 'secondary',
+        trigger: this.activitiesSecondaryMenuTrigger(),
+        items: this.activitiesSecondaryMenuItems()
+      });
+    }
+    if (this.activitiesPrimaryFilter !== 'chats') {
+      controls.push({
+        kind: 'menu',
+        id: 'view',
+        trigger: this.activitiesViewMenuTrigger(),
+        items: this.activitiesViewMenuItems()
+      });
+    }
+    return controls;
+  }
+
+  private activitiesPopupToolbarControls(): PopupControl<ActivitiesPopupMenuContext>[] {
+    const controls: PopupControl<ActivitiesPopupMenuContext>[] = [];
+    if (!this.isAdminServiceChatMode()) {
+      controls.push({
+        kind: 'menu',
+        id: 'primary',
+        trigger: this.activitiesPrimaryMenuTrigger(),
+        items: this.activitiesPrimaryMenuItems()
+      });
+    }
+    if (this.isEventActivitiesPrimaryFilter()) {
+      controls.push({
+        kind: 'menu',
+        id: 'event-scope',
+        trigger: this.activitiesEventScopeMenuTrigger(),
+        items: this.activitiesEventScopeMenuItems()
+      });
+    }
+    if (this.activitiesPrimaryFilter === 'chats' && !this.isAdminServiceChatMode()) {
+      controls.push({
+        kind: 'menu',
+        id: 'chat-context',
+        trigger: this.activitiesChatContextMenuTrigger(),
+        items: this.activitiesChatContextMenuItems()
+      });
+    }
+    if (this.activitiesPrimaryFilter === 'rates') {
+      controls.push({
+        kind: 'menu',
+        id: 'rate',
+        trigger: this.activitiesRateMenuTrigger(),
+        model: this.activitiesRateMenuModel()
+      });
+    }
+    if (this.shouldShowStandaloneEventExploreAction()) {
+      controls.push({
+        id: 'event-explore',
+        align: 'end',
+        icon: 'explore',
+        label: 'Explore',
+        ariaLabel: 'Open event explore',
+        palette: 'violet',
+        compactOnMobile: true
+      });
+    }
+    if (this.shouldShowRatesFullscreenToggle()) {
+      controls.push({
+        id: 'rates-fullscreen-toggle',
+        align: 'end',
+        icon: this.isRatesFullscreenModeActive() ? 'fullscreen_exit' : 'fullscreen',
+        ariaLabel: this.isRatesFullscreenModeActive() ? 'Exit rates fullscreen mode' : 'Open rates fullscreen mode',
+        palette: this.isRatesFullscreenModeActive() ? 'blue' : 'gold',
+        active: this.isRatesFullscreenModeActive()
+      });
+    }
+    if (this.shouldShowActivitiesQuickActions()) {
+      controls.push({
+        kind: 'menu',
+        id: 'quick-actions',
+        align: 'end',
+        trigger: this.activitiesQuickActionsMenuTrigger(),
+        items: this.activitiesQuickActionsMenuItems(),
+        panelAlign: 'end'
+      });
+    }
+    return controls;
+  }
+
+  private activitiesHeaderLineOne(): string {
+    if (this.activitiesPrimaryFilter === 'chats') {
+      return this.activitiesChatsHeaderLabel();
+    }
+    if (this.activitiesPrimaryFilter === 'rates') {
+      const group = this.rateGroupLabelKeyForKey(this.activitiesRateFilter);
+      const label = this.rateFilterLabelForKey(this.activitiesRateFilter);
+      return `${group} · ${label}`;
+    }
+    if (this.isEventActivitiesPrimaryFilter()) {
+      if (this.isCalendarLayoutView()) {
+        return `Events · ${this.activitiesEventScopeLabel()}`;
+      }
+      return this.activitiesEventScopeLabel();
+    }
+    if (this.isCalendarLayoutView()) {
+      return this.activitiesPrimaryFilterLabel();
+    }
+    return `${this.activitiesPrimaryFilterLabel()} · ${this.activitiesSecondaryFilterLabel()}`;
+  }
+
+  private activitiesHeaderLineTwo(): string {
+    return '';
+  }
+
+  private activitiesSupportCaseMenuTrigger(): AppMenuTrigger {
+    return this.activitiesSelectTrigger({
+      label: this.supportCaseFilterLabelKey(),
+      icon: this.supportCaseFilterIcon(),
+      palette: this.supportCasePalette(this.activitiesSupportCaseFilter),
+      counter: this.supportCaseFilterCount(this.activitiesSupportCaseFilter),
+      layout: 'pill'
+    });
+  }
+
+  private activitiesSupportCaseMenuItems(): readonly AppMenuItem<string, ActivitiesPopupMenuContext>[] {
+    return this.activitiesSupportCaseFilters().map(option => this.activitiesMenuItem({
+      id: `support-case:${option.key}`,
+      label: option.labelKey,
+      icon: option.icon,
+      palette: this.supportCasePalette(option.key),
+      counter: this.supportCaseFilterCount(option.key),
+      active: option.key === this.activitiesSupportCaseFilter,
+      context: { menu: 'support-case', value: option.key }
+    }));
+  }
+
+  private activitiesPrimaryMenuTrigger(): AppMenuTrigger {
+    return this.activitiesSelectTrigger({
+      label: this.activitiesPrimaryFilterLabel(),
+      icon: this.activitiesPrimaryFilterIcon(),
+      palette: this.activitiesPrimaryPalette(this.activitiesPrimaryFilter),
+      counter: this.activitiesPrimaryFilterCount(this.activitiesPrimaryFilter)
+    });
+  }
+
+  private activitiesPrimaryMenuItems(): readonly AppMenuItem<string, ActivitiesPopupMenuContext>[] {
+    return this.activitiesPrimaryFilters().map(option => this.activitiesMenuItem({
+      id: `primary:${option.key}`,
+      label: option.label,
+      icon: option.icon,
+      palette: this.activitiesPrimaryPalette(option.key),
+      counter: this.activitiesPrimaryFilterCount(option.key),
+      active: option.key === this.activitiesPrimaryFilter,
+      context: { menu: 'primary', value: option.key }
+    }));
+  }
+
+  private activitiesEventScopeMenuTrigger(): AppMenuTrigger {
+    return this.activitiesSelectTrigger({
+      label: this.activitiesEventScopeLabel(),
+      icon: this.activitiesEventScopeIcon(),
+      palette: this.activitiesEventScopePalette(this.activitiesEventScope),
+      counter: this.activitiesEventScopeCount(this.activitiesEventScope)
+    });
+  }
+
+  private activitiesEventScopeMenuItems(): readonly AppMenuItem<string, ActivitiesPopupMenuContext>[] {
+    return this.activitiesEventScopeFilters().map(option => this.activitiesMenuItem({
+      id: `event-scope:${option.key}`,
+      label: option.label,
+      icon: option.icon,
+      palette: this.activitiesEventScopePalette(option.key),
+      counter: this.activitiesEventScopeCount(option.key),
+      active: option.key === this.activitiesEventScope,
+      context: { menu: 'event-scope', value: option.key }
+    }));
+  }
+
+  private activitiesChatContextMenuTrigger(): AppMenuTrigger {
+    return this.activitiesSelectTrigger({
+      label: this.activitiesChatContextFilterLabel(),
+      icon: this.activitiesChatContextFilterIcon(),
+      palette: this.activitiesChatContextPalette(this.activitiesChatContextFilter),
+      counter: this.activitiesChatContextFilterCount(this.activitiesChatContextFilter)
+    });
+  }
+
+  private activitiesChatContextMenuItems(): readonly AppMenuItem<string, ActivitiesPopupMenuContext>[] {
+    return APP_STATIC_DATA.activitiesChatContextFilters.map(option => this.activitiesMenuItem({
+      id: `chat-context:${option.key}`,
+      label: option.label,
+      icon: option.icon,
+      palette: this.activitiesChatContextPalette(option.key),
+      counter: this.activitiesChatContextFilterCount(option.key),
+      active: option.key === this.activitiesChatContextFilter,
+      context: { menu: 'chat-context', value: option.key }
+    }));
+  }
+
+  private activitiesRateMenuTrigger(): AppMenuTrigger {
+    return this.activitiesSelectTrigger({
+      label: this.activitiesRateFilterLabel(),
+      icon: this.activitiesRateFilterIcon(this.activitiesRateFilter),
+      palette: this.activitiesRatePalette(this.activitiesRateFilter),
+      counter: this.rateFilterCount(this.activitiesRateFilter)
+    });
+  }
+
+  private activitiesRateMenuModel(): AppMenuModel<string, ActivitiesPopupMenuContext> {
+    type RateMenuNode = Omit<AppMenuGroup<string, ActivitiesPopupMenuContext>, 'items' | 'headerActions'> & {
+      items: AppMenuItem<string, ActivitiesPopupMenuContext>[];
+      headerActions?: AppMenuItem<string, ActivitiesPopupMenuContext>[];
+    };
+    const nodes: RateMenuNode[] = [];
+    let currentNode: RateMenuNode | null = null;
+    for (const option of APP_STATIC_DATA.rateFilterEntries as RateFilterEntry[]) {
+      if (option.kind === 'group') {
+        const groupLabel = option.label;
+        const groupPalette = this.activitiesRateGroupPalette(groupLabel);
+        currentNode = {
+          id: `rate-group:${groupLabel}`,
+          label: this.rateGroupOptionLabelKey(groupLabel),
+          icon: this.rateSocialBadgeGroupIconForGroup(groupLabel),
+          palette: groupPalette,
+          items: [],
+          headerActions: this.shouldShowRateSocialBadgeToggleForGroup(groupLabel)
+            ? [{
+              id: `rate-social:${groupLabel}`,
+              label: this.rateSocialBadgeButtonLabelForGroup(groupLabel),
+              icon: this.rateSocialBadgeToggleIconForGroup(groupLabel),
+              kind: 'toggle',
+              active: this.isRateSocialBadgeToggleActiveForGroup(groupLabel),
+              closeOnSelect: false,
+              palette: groupPalette,
+              context: { menu: 'rate-social', value: groupLabel }
+            }]
+            : []
+        };
+        nodes.push(currentNode);
+        continue;
+      }
+      if (!currentNode) {
+        currentNode = {
+          id: 'rate-group:default',
+          label: 'rate.type',
+          icon: 'list',
+          palette: 'gold',
+          items: []
+        };
+        nodes.push(currentNode);
+      }
+      currentNode.items.push(this.activitiesMenuItem({
+        id: `rate:${option.key}`,
+        label: this.rateFilterOptionLabel(option.key),
+        icon: this.activitiesRateFilterIcon(option.key),
+        palette: this.activitiesRatePalette(option.key),
+        counter: this.rateFilterCount(option.key),
+        active: option.key === this.activitiesRateFilter,
+        context: { menu: 'rate', value: option.key }
+      }));
+    }
+    return { nodes };
+  }
+
+  private activitiesSecondaryMenuTrigger(): AppMenuTrigger {
+    const filter = this.effectiveActivitiesSecondaryFilter();
+    return this.activitiesSelectTrigger({
+      label: this.activitiesSecondaryFilterLabel(),
+      icon: this.activitiesSecondaryFilterIcon(),
+      palette: this.activitiesSecondaryPalette(filter),
+      layout: 'pill',
+      hideLabel: this.isMobileView
+    });
+  }
+
+  private activitiesSecondaryMenuItems(): readonly AppMenuItem<string, ActivitiesPopupMenuContext>[] {
+    return this.availableActivitiesSecondaryFilters().map(option => this.activitiesMenuItem({
+      id: `secondary:${option.key}`,
+      label: this.activitiesSecondaryFilterOptionLabel(option.key),
+      icon: option.icon,
+      palette: this.activitiesSecondaryPalette(option.key),
+      active: option.key === this.effectiveActivitiesSecondaryFilter(),
+      context: { menu: 'secondary', value: option.key }
+    }));
+  }
+
+  private activitiesViewMenuTrigger(): AppMenuTrigger {
+    return this.activitiesSelectTrigger({
+      label: this.activityViewLabel(),
+      icon: APP_STATIC_DATA.activitiesViewOptions.find(option => option.key === this.activitiesView)?.icon ?? 'view_agenda',
+      palette: this.activitiesViewPalette(this.activitiesView),
+      layout: 'pill',
+      hideLabel: this.isMobileView
+    });
+  }
+
+  private activitiesViewMenuItems(): readonly AppMenuItem<string, ActivitiesPopupMenuContext>[] {
+    return APP_STATIC_DATA.activitiesViewOptions.map(option => this.activitiesMenuItem({
+      id: `view:${option.key}`,
+      label: option.label,
+      icon: option.icon,
+      palette: this.activitiesViewPalette(option.key),
+      active: option.key === this.activitiesView,
+      context: { menu: 'view', value: option.key }
+    }));
+  }
+
+  private activitiesQuickActionsMenuTrigger(): AppMenuTrigger {
+    return {
+      icon: 'add',
+      closeIcon: 'close',
+      ariaLabel: 'Open event actions',
+      hideLabel: true,
+      layout: 'icon',
+      palette: 'green'
+    };
+  }
+
+  private activitiesQuickActionsMenuItems(): readonly AppMenuItem<string, ActivitiesPopupMenuContext>[] {
+    return [
+      {
+        id: 'quick-action:explore',
+        label: 'Explore',
+        icon: 'explore',
+        palette: 'violet',
+        surface: 'tinted',
+        context: { menu: 'quick-action', value: 'explore' }
+      },
+      {
+        id: 'quick-action:create',
+        label: 'Create Event',
+        icon: 'add_circle',
+        palette: 'green',
+        surface: 'tinted',
+        context: { menu: 'quick-action', value: 'create' }
+      }
+    ];
+  }
+
+  private shouldShowStandaloneEventExploreAction(): boolean {
+    return this.isEventActivitiesPrimaryFilter()
+      && (this.activitiesEventScope === 'all' || this.activitiesEventScope === 'active-events');
+  }
+
+  private activitiesSupportCaseFilters(): Array<{ key: ContractTypes.SupportCaseFilter; labelKey: string; icon: string }> {
+    return [
+      { key: 'all', labelKey: 'activities.support.case.filter.all', icon: 'list' },
+      { key: 'pending', labelKey: 'activities.support.case.filter.pending', icon: 'pending_actions' },
+      { key: 'picked', labelKey: 'activities.support.case.filter.picked', icon: 'assignment_ind' },
+      { key: 'solved', labelKey: 'activities.support.case.filter.solved', icon: 'check_circle' },
+      { key: 'blocked', labelKey: 'activities.support.case.filter.blocked', icon: 'block' }
+    ];
+  }
+
+  private activitiesPrimaryFilters(): Array<{ key: ContractTypes.ActivitiesPrimaryFilter; label: string; icon: string }> {
+    return [
+      { key: 'rates', label: 'Rates', icon: 'star' },
+      { key: 'chats', label: 'Chats', icon: 'chat' },
+      { key: 'events', label: 'Events', icon: 'event' }
+    ];
+  }
+
+  private activitiesEventScopeFilters(): ReadonlyArray<{ key: ContractTypes.ActivitiesEventScope; label: string; icon: string }> {
+    return [
+      { key: 'all', label: 'All', icon: 'widgets' },
+      { key: 'active-events', label: 'Active Events', icon: 'event' },
+      { key: 'pending', label: 'Pending', icon: 'pending_actions' },
+      { key: 'invitations', label: 'Invitations', icon: 'mail' },
+      { key: 'my-events', label: 'My Events', icon: 'stadium' },
+      { key: 'drafts', label: 'Drafts', icon: 'drafts' },
+      { key: 'trash', label: 'Trash', icon: 'delete' }
+    ];
+  }
+
+  private supportCaseFilterLabelKey(filter: ContractTypes.SupportCaseFilter = this.activitiesSupportCaseFilter): string {
+    return this.activitiesSupportCaseFilters().find(option => option.key === filter)?.labelKey ?? 'activities.support.case.filter.all';
+  }
+
+  private supportCaseFilterIcon(filter: ContractTypes.SupportCaseFilter = this.activitiesSupportCaseFilter): string {
+    return this.activitiesSupportCaseFilters().find(option => option.key === filter)?.icon ?? 'list';
+  }
+
+  private activitiesPrimaryFilterLabel(): string {
+    return this.activitiesPrimaryFilters().find(option => option.key === this.activitiesPrimaryFilter)?.label ?? 'Chats';
+  }
+
+  private activitiesPrimaryFilterIcon(): string {
+    return this.activitiesPrimaryFilters().find(option => option.key === this.activitiesPrimaryFilter)?.icon ?? 'chat';
+  }
+
+  private activitiesPrimaryFilterCount(filter: ContractTypes.ActivitiesPrimaryFilter): number {
+    return this.countFrom(this.activitiesToolbarPrimaryCounts(), filter);
+  }
+
+  private activitiesEventScopeIcon(): string {
+    return this.activitiesEventScopeFilters().find(option => option.key === this.activitiesEventScope)?.icon ?? 'event';
+  }
+
+  private activitiesEventScopeCount(scope: ContractTypes.ActivitiesEventScope = this.activitiesEventScope): number {
+    return this.countFrom(this.activitiesToolbarEventScopeCounts(), scope);
+  }
+
+  private activitiesChatContextFilterLabel(): string {
+    return APP_STATIC_DATA.activitiesChatContextFilters.find(option => option.key === this.activitiesChatContextFilter)?.label ?? 'All';
+  }
+
+  private activitiesChatContextFilterIcon(): string {
+    return APP_STATIC_DATA.activitiesChatContextFilters.find(option => option.key === this.activitiesChatContextFilter)?.icon ?? 'forum';
+  }
+
+  private activitiesChatsHeaderLabel(): string {
+    const primary = this.activitiesPrimaryFilterLabel();
+    if (this.activitiesChatContextFilter === 'all') {
+      return primary;
+    }
+    return `${primary} · ${this.activitiesChatContextFilterLabel()}`;
+  }
+
+  private activitiesSecondaryFilterLabel(): string {
+    return this.activitiesSecondaryFilterOptionLabel(this.effectiveActivitiesSecondaryFilter());
+  }
+
+  private activitiesSecondaryFilterOptionLabel(filter: ContractTypes.ActivitiesSecondaryFilter): string {
+    if (filter === 'recent') {
+      return this.activitiesPrimaryFilter === 'rates' ? 'Recent' : 'Upcoming';
+    }
+    return APP_STATIC_DATA.activitiesSecondaryFilters.find(option => option.key === filter)?.label ?? 'Relevant';
+  }
+
+  private activitiesSecondaryFilterIcon(): string {
+    return APP_STATIC_DATA.activitiesSecondaryFilters.find(option => option.key === this.effectiveActivitiesSecondaryFilter())?.icon ?? 'schedule';
+  }
+
+  private activitiesRateFilterLabel(): string {
+    const label = this.rateFilterLabelForKey(this.activitiesRateFilter);
+    if (!label) {
+      return `${this.rateGroupLabelKeyForKey('individual-given')} · Given`;
+    }
+    const group = this.rateGroupLabelKeyForKey(this.activitiesRateFilter);
+    return `${group} · ${label}`;
+  }
+
+  private rateFilterOptionLabel(key: ContractTypes.RateFilterKey): string {
+    return this.rateFilterLabelForKey(key);
+  }
+
+  private rateGroupOptionLabelKey(label: string): string {
+    const normalized = label.trim().toLowerCase();
+    if (normalized === 'preferences') {
+      return 'activity.rates.group.preferences';
+    }
+    if (normalized === 'suggestions') {
+      return 'activity.rates.group.suggestions';
+    }
+    return label;
+  }
+
+  private activitiesRateFilterIcon(key: ContractTypes.RateFilterKey = this.activitiesRateFilter): string {
+    const icons: Record<ContractTypes.RateFilterKey, string> = {
+      'individual-given': 'north_east',
+      'individual-received': 'south_west',
+      'individual-mutual': 'sync_alt',
+      'individual-met': 'handshake',
+      'pair-given': 'group_add',
+      'pair-received': 'groups_2'
+    };
+    return icons[key] ?? 'star';
+  }
+
+  private shouldShowRateSocialBadgeToggle(): boolean {
+    return this.activitiesPrimaryFilter === 'rates';
+  }
+
+  private shouldShowRateSocialBadgeToggleForGroup(label: string): boolean {
+    if (!this.shouldShowRateSocialBadgeToggle()) {
+      return false;
+    }
+    const normalized = label.trim().toLowerCase();
+    return normalized === 'individual'
+      || normalized === 'pair'
+      || normalized === 'preferences'
+      || normalized === 'suggestions'
+      || normalized === this.rateGroupLabelKeyForKey('individual-given')
+      || normalized === this.rateGroupLabelKeyForKey('pair-given');
+  }
+
+  private rateSocialBadgeButtonLabelForGroup(label: string): string {
+    return this.isRateSocialBadgeToggleActiveForGroup(label) ? 'Social on' : 'Social off';
+  }
+
+  private rateSocialBadgeToggleIconForGroup(label: string): string {
+    return this.isRateSocialBadgeToggleActiveForGroup(label) ? 'sell' : 'sell_off';
+  }
+
+  private rateSocialBadgeGroupIconForGroup(label: string): string {
+    return this.rateSocialGroupForLabel(label) === 'pair' ? 'groups_2' : 'person';
+  }
+
+  private isRateSocialBadgeToggleActiveForGroup(label: string): boolean {
+    const group = this.rateSocialGroupForLabel(label);
+    return group === 'pair'
+      ? this.activitiesPairRateSocialBadgeEnabled
+      : this.activitiesIndividualRateSocialBadgeEnabled;
+  }
+
+  private rateFilterLabelForKey(key: ContractTypes.RateFilterKey): string {
+    return APP_STATIC_DATA.rateFilters.find(option => option.key === key)?.label ?? 'Given';
+  }
+
+  private rateGroupLabelKeyForKey(key: ContractTypes.RateFilterKey): string {
+    return key.startsWith('individual')
+      ? 'activity.rates.group.preferences'
+      : 'activity.rates.group.suggestions';
+  }
+
+  private activityViewLabel(): string {
+    return APP_STATIC_DATA.activitiesViewOptions.find(option => option.key === this.activitiesView)?.label ?? 'View';
+  }
+
+  private availableActivitiesSecondaryFilters(): ReadonlyArray<{ key: ContractTypes.ActivitiesSecondaryFilter; label: string; icon: string }> {
+    return this.isEventActivitiesPrimaryFilter()
+      ? APP_STATIC_DATA.activitiesSecondaryFilters.filter(option => option.key !== 'relevant')
+      : APP_STATIC_DATA.activitiesSecondaryFilters;
+  }
+
+  private activitiesSelectTrigger(options: {
+    label: string;
+    icon: string;
+    palette: AppMenuPalette;
+    counter?: number;
+    layout?: AppMenuTrigger['layout'];
+    hideLabel?: boolean;
+  }): AppMenuTrigger {
+    const counter = Math.max(0, Math.trunc(Number(options.counter) || 0));
+    return {
+      label: options.label,
+      icon: options.icon,
+      palette: options.palette,
+      layout: options.layout ?? 'pill',
+      hideLabel: options.hideLabel,
+      counter: counter > 0 ? { value: counter, max: 99 } : null
+    };
+  }
+
+  private activitiesMenuItem(options: {
+    id: string;
+    label: string;
+    icon: string;
+    palette: AppMenuPalette;
+    counter?: number;
+    active: boolean;
+    context: ActivitiesPopupMenuContext;
+  }): AppMenuItem<string, ActivitiesPopupMenuContext> {
+    const counter = Math.max(0, Math.trunc(Number(options.counter) || 0));
+    return {
+      id: options.id,
+      label: options.label,
+      icon: options.icon,
+      kind: 'radio',
+      active: options.active,
+      palette: options.palette,
+      surface: 'tinted',
+      counter: counter > 0 ? { value: counter, max: 99 } : null,
+      context: options.context
+    };
+  }
+
+  private activitiesPrimaryPalette(filter: ContractTypes.ActivitiesPrimaryFilter): AppMenuPalette {
+    switch (filter) {
+      case 'rates':
+        return 'gold';
+      case 'events':
+        return 'orange';
+      case 'hosting':
+        return 'green';
+      case 'invitations':
+        return 'violet';
+      case 'chats':
+      default:
+        return 'blue';
+    }
+  }
+
+  private activitiesEventScopePalette(scope: ContractTypes.ActivitiesEventScope): AppMenuPalette {
+    switch (scope) {
+      case 'trash':
+        return 'danger';
+      case 'drafts':
+        return 'slate';
+      case 'invitations':
+        return 'violet';
+      case 'my-events':
+        return 'green';
+      case 'pending':
+        return 'amber';
+      case 'all':
+        return 'blue';
+      case 'active-events':
+      default:
+        return 'orange';
+    }
+  }
+
+  private activitiesChatContextPalette(filter: ContractTypes.ActivitiesChatContextFilter): AppMenuPalette {
+    switch (filter) {
+      case 'event':
+        return 'orange';
+      case 'subEvent':
+        return 'violet';
+      case 'group':
+        return 'green';
+      case 'service':
+        return 'slate';
+      case 'all':
+      default:
+        return 'blue';
+    }
+  }
+
+  private activitiesViewPalette(view: ContractTypes.ActivitiesView): AppMenuPalette {
+    switch (view) {
+      case 'distance':
+        return 'teal';
+      case 'month':
+        return 'gold';
+      case 'week':
+        return 'green';
+      case 'day':
+      default:
+        return 'blue';
+    }
+  }
+
+  private activitiesSecondaryPalette(filter: ContractTypes.ActivitiesSecondaryFilter): AppMenuPalette {
+    switch (filter) {
+      case 'past':
+        return 'slate';
+      case 'relevant':
+        return 'violet';
+      case 'recent':
+      default:
+        return 'blue';
+    }
+  }
+
+  private activitiesRatePalette(filter: ContractTypes.RateFilterKey): AppMenuPalette {
+    switch (filter) {
+      case 'individual-given':
+        return 'pink';
+      case 'individual-received':
+        return 'blue';
+      case 'individual-mutual':
+        return 'violet';
+      case 'individual-met':
+        return 'green';
+      case 'pair-given':
+        return 'brown';
+      case 'pair-received':
+      default:
+        return 'success';
+    }
+  }
+
+  private supportCasePalette(filter: ContractTypes.SupportCaseFilter): AppMenuPalette {
+    switch (filter) {
+      case 'pending':
+        return 'amber';
+      case 'picked':
+        return 'blue';
+      case 'solved':
+        return 'green';
+      case 'blocked':
+        return 'danger';
+      case 'all':
+      default:
+        return 'neutral';
+    }
+  }
+
+  private activitiesRateGroupPalette(label: string): AppMenuPalette {
+    return this.rateSocialGroupForLabel(label) === 'pair' ? 'violet' : 'blue';
+  }
+
+  private countFrom<T extends string>(counts: Partial<Record<T, number>>, key: T): number {
+    const value = Number(counts[key] ?? 0);
+    if (!Number.isFinite(value)) {
+      return 0;
+    }
+    return Math.max(0, Math.trunc(value));
   }
 
   protected activitiesToolbarPrimaryCounts(): Partial<Record<ContractTypes.ActivitiesPrimaryFilter, number>> {

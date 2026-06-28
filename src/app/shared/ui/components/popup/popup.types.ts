@@ -1,0 +1,77 @@
+import type {
+  AppMenuItem,
+  AppMenuItemSelectEvent,
+  AppMenuKind,
+  AppMenuModel,
+  AppMenuPanelAlign,
+  AppMenuPanelMode,
+  AppMenuPalette,
+  AppMenuTrigger
+} from '../menu';
+
+export type PopupSize = 'default' | 'wide';
+export type PopupHeight = 'auto' | 'full';
+export type PopupHeaderTone = 'default' | 'accent';
+export type PopupBodyLayout = 'default' | 'fill';
+export type PopupControlAlign = 'start' | 'end';
+
+export interface PopupControlBase {
+  id: string;
+  align?: PopupControlAlign;
+}
+
+export interface PopupAction extends PopupControlBase {
+  icon: string;
+  label?: string | null;
+  ariaLabel?: string | null;
+  palette?: AppMenuPalette;
+  active?: boolean;
+  disabled?: boolean;
+  compactOnMobile?: boolean;
+}
+
+export interface PopupMenuControl<TContext = unknown> extends PopupControlBase {
+  kind: 'menu';
+  menuKind?: AppMenuKind;
+  trigger: AppMenuTrigger;
+  items?: readonly AppMenuItem<string, TContext>[];
+  model?: AppMenuModel<string, TContext> | null;
+  panelAlign?: AppMenuPanelAlign;
+  panelMode?: AppMenuPanelMode;
+  closeOnSelect?: boolean;
+}
+
+export type PopupControl<TContext = unknown> =
+  | PopupAction
+  | PopupMenuControl<TContext>;
+
+export interface PopupModel<TContext = unknown> {
+  title?: string | null;
+  subtitle?: string | null;
+  secondarySubtitle?: string | null;
+  ariaLabel?: string | null;
+  closeAriaLabel?: string | null;
+  closeOnBackdrop?: boolean;
+  showHeader?: boolean;
+  showClose?: boolean;
+  size?: PopupSize;
+  height?: PopupHeight;
+  headerTone?: PopupHeaderTone;
+  bodyLayout?: PopupBodyLayout;
+  headerControls?: readonly PopupControl<TContext>[];
+  toolbarControls?: readonly PopupControl<TContext>[];
+  headerActions?: readonly PopupAction[];
+  onClose?: ((event: Event) => void) | null;
+  onAction?: ((event: PopupActionEvent) => void) | null;
+  onMenuSelect?: ((event: PopupMenuSelectEvent<TContext>) => void) | null;
+}
+
+export interface PopupMenuSelectEvent<TContext = unknown> {
+  control: PopupMenuControl<TContext>;
+  itemSelect: AppMenuItemSelectEvent<string, TContext>;
+}
+
+export interface PopupActionEvent {
+  action: PopupAction;
+  sourceEvent: Event;
+}

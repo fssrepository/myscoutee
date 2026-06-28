@@ -1,86 +1,69 @@
 @if (activitiesStore.activitiesOpenBoolean()) {
-  <div class="app-popup">
-    <div class="app-popup-backdrop" (click)="closeActivitiesPopup()"></div>
-    <div class="app-popup-panel popup-panel-activities popup-panel-wide popup-panel-full-height" (click)="$event.stopPropagation()">
-      <app-activities-popup-controls
-        mode="header"
-        [model]="activitiesControlsModel()"
-        (action)="onActivitiesControlsAction($event)"
-      ></app-activities-popup-controls>
-      <div class="popup-body popup-body-activities">
-        <div class="activities-popup" [class.activities-popup-rates-fullscreen]="activitiesSmartListPresentation() === 'fullscreen'" [class.activities-popup-blocked-user]="isBlockedUser" (click)="onActivitiesPopupSurfaceClick($event)">
-          <!-- ───── Toolbar ───── -->
-          <app-activities-popup-controls
-            mode="toolbar"
-            [model]="activitiesControlsModel()"
-            (action)="onActivitiesControlsAction($event)"
-          ></app-activities-popup-controls>
-          <ng-template #activitiesRateFullscreenSmartListItemTemplate let-row let-renderState="renderState">
-            @if (row) {
-            <app-activities-rate-template
-              [row]="row"
-              [presentation]="'fullscreen'"
-              [state]="renderState"
-              [context]="activitiesRateTemplateContext"
-              [cardRevision]="activitiesRateCardRevisionForRow(row)"
-              (detailClick)="openProfileView($event)"
-            ></app-activities-rate-template>
-          }
-        </ng-template>
-          <!-- ───── List / Calendar layout ───── -->
-          <app-smart-list
-            #activitiesSmartList
-            [config]="activitiesSmartListConfig"
-            [loadPage]="activitiesSmartListLoadPage"
-      [itemTemplate]="activitiesPrimaryFilter === 'rates'
-        ? activitiesRateSmartListItemTemplate
-        : (activitiesPrimaryFilter === 'chats'
-          ? activitiesChatSmartListItemTemplate
-          : activitiesEventSmartListItemTemplate)"
-            [fullscreenItemTemplate]="activitiesRateFullscreenSmartListItemTemplate"
-            [presentation]="activitiesSmartListPresentation()"
-            [view]="activitiesView"
-            [query]="activitiesSmartListQuery"
-            (itemSelect)="onActivitiesSmartListItemSelect($event)"
-            (menuItemSelect)="onActivityEventSharedMenuSelect($event)"
-            (stateChange)="onActivitiesSmartListStateChange($event)"
-            (wheel)="activitiesRates.closeEditorFromUserScroll($event)"
-            (touchmove)="activitiesRates.closeEditorFromUserScroll($event)"
-          ></app-smart-list>
-          <ng-template #activitiesEventSmartListItemTemplate let-row let-groupLabel="groupLabel" let-openMenu="openMenu">
-            <app-activities-event-template
-              [row]="row"
-              [groupLabel]="groupLabel"
-              [cardRevision]="activitiesEventCardRevisionForRow(row)"
-              (mediaEndClick)="openActivityMembers(row)"
-              (menuAction)="onActivityEventCardMenuAction(row, $event)"
-              (menuRequest)="openMenu($event)"
-            ></app-activities-event-template>
-          </ng-template>
-          <ng-template #activitiesChatSmartListItemTemplate let-row let-groupLabel="groupLabel">
-            <app-activities-chat-template
-              [row]="row"
-              [groupLabel]="groupLabel"
-              [activeUserInitials]="activeUser.initials"
-              [adminServiceMode]="isAdminServiceChatMode()"
-              (rowClick)="onActivityRowClick(row, $event)"
-              (supportCaseAction)="onSupportCaseAction(row, $event)"
-            ></app-activities-chat-template>
-          </ng-template>
-          <ng-template #activitiesRateSmartListItemTemplate let-row let-groupLabel="groupLabel" let-openMenu="openMenu">
-            <app-activities-rate-template
-              [row]="row"
-              [groupLabel]="groupLabel"
-              [context]="activitiesRateTemplateContext"
-              [openMenu]="openMenu"
-              [cardRevision]="activitiesRateCardRevisionForRow(row)"
-              (detailClick)="openProfileView($event)"
-            ></app-activities-rate-template>
-          </ng-template>
-        </div><!-- /activities-popup -->
-      </div><!-- /popup-body -->
-    </div><!-- /app-popup-panel -->
-  </div>
-  }<!-- /app-popup -->
+  <app-popup [model]="activitiesPopupModel()">
+    <div class="activities-popup" [class.activities-popup-rates-fullscreen]="activitiesSmartListPresentation() === 'fullscreen'" [class.activities-popup-blocked-user]="isBlockedUser" (click)="onActivitiesPopupSurfaceClick($event)">
+      <ng-template #activitiesRateFullscreenSmartListItemTemplate let-row let-renderState="renderState">
+        @if (row) {
+          <app-activities-rate-template
+            [row]="row"
+            [presentation]="'fullscreen'"
+            [state]="renderState"
+            [context]="activitiesRateTemplateContext"
+            [cardRevision]="activitiesRateCardRevisionForRow(row)"
+            (detailClick)="openProfileView($event)"
+          ></app-activities-rate-template>
+        }
+      </ng-template>
+      <app-smart-list
+        #activitiesSmartList
+        [config]="activitiesSmartListConfig"
+        [loadPage]="activitiesSmartListLoadPage"
+        [itemTemplate]="activitiesPrimaryFilter === 'rates'
+          ? activitiesRateSmartListItemTemplate
+          : (activitiesPrimaryFilter === 'chats'
+            ? activitiesChatSmartListItemTemplate
+            : activitiesEventSmartListItemTemplate)"
+        [fullscreenItemTemplate]="activitiesRateFullscreenSmartListItemTemplate"
+        [presentation]="activitiesSmartListPresentation()"
+        [view]="activitiesView"
+        [query]="activitiesSmartListQuery"
+        (itemSelect)="onActivitiesSmartListItemSelect($event)"
+        (menuItemSelect)="onActivityEventSharedMenuSelect($event)"
+        (stateChange)="onActivitiesSmartListStateChange($event)"
+        (wheel)="activitiesRates.closeEditorFromUserScroll($event)"
+        (touchmove)="activitiesRates.closeEditorFromUserScroll($event)"
+      ></app-smart-list>
+      <ng-template #activitiesEventSmartListItemTemplate let-row let-groupLabel="groupLabel" let-openMenu="openMenu">
+        <app-activities-event-template
+          [row]="row"
+          [groupLabel]="groupLabel"
+          [cardRevision]="activitiesEventCardRevisionForRow(row)"
+          (mediaEndClick)="openActivityMembers(row)"
+          (menuAction)="onActivityEventCardMenuAction(row, $event)"
+          (menuRequest)="openMenu($event)"
+        ></app-activities-event-template>
+      </ng-template>
+      <ng-template #activitiesChatSmartListItemTemplate let-row let-groupLabel="groupLabel">
+        <app-activities-chat-template
+          [row]="row"
+          [groupLabel]="groupLabel"
+          [activeUserInitials]="activeUser.initials"
+          [adminServiceMode]="isAdminServiceChatMode()"
+          (rowClick)="onActivityRowClick(row, $event)"
+          (supportCaseAction)="onSupportCaseAction(row, $event)"
+        ></app-activities-chat-template>
+      </ng-template>
+      <ng-template #activitiesRateSmartListItemTemplate let-row let-groupLabel="groupLabel" let-openMenu="openMenu">
+        <app-activities-rate-template
+          [row]="row"
+          [groupLabel]="groupLabel"
+          [context]="activitiesRateTemplateContext"
+          [openMenu]="openMenu"
+          [cardRevision]="activitiesRateCardRevisionForRow(row)"
+          (detailClick)="openProfileView($event)"
+        ></app-activities-rate-template>
+      </ng-template>
+    </div>
+  </app-popup>
+}
 
   <app-event-checkout-popup></app-event-checkout-popup>
