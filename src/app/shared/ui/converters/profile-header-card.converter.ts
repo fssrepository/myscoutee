@@ -1,5 +1,5 @@
-import type { IndicatorState } from '../components/indicator';
-import type { HeaderCardModel } from '../components/smart-list/card/header-card';
+import type { IndicatorState } from '../components/core/indicator';
+import type { HeaderCardModel } from '../components/core/smart-list/card/header-card';
 import type { UserDto } from '../../core/contracts/user.interface';
 
 export interface ProfileHeaderCardConverterOptions {

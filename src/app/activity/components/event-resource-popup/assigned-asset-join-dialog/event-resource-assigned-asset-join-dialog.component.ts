@@ -4,7 +4,7 @@ import { MatIconModule } from '@angular/material/icon';
 
 import type * as ActivityContracts from '../../../../shared/core/contracts/activity.interface';
 import type * as ContractTypes from '../../../../shared/core/contracts';
-import { IndicatorComponent } from '../../../../shared/ui/components/indicator/indicator.component';
+import { IndicatorComponent } from '../../../../shared/ui/components/core/indicator/indicator.component';
 
 export interface AssignedAssetJoinDialogViewState {
   title: string;

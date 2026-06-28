@@ -37,10 +37,10 @@ import {
   type CardMenuActionEvent,
   type CardMenuRequestEvent,
   type CardMenuAction
-} from '../../../shared/ui/components/smart-list/card';
+} from '../../../shared/ui/components/core/smart-list/card';
 import {
   ImageCarouselComponent
-} from '../../../shared/ui/components/image-carousel';
+} from '../../../shared/ui/components/core/image-carousel';
 import {
   AppMenuDispatcher,
   AppMenuComponent,
@@ -49,17 +49,17 @@ import {
   type AppMenuItemSelectEvent,
   type AppMenuModel,
   type AppMenuPalette
-} from '../../../shared/ui/components/menu';
+} from '../../../shared/ui/components/core/menu';
 import {
   IndicatorComponent
-} from '../../../shared/ui/components/indicator';
+} from '../../../shared/ui/components/core/indicator';
 import {
   SmartListComponent,
   type ListQuery,
   type PageResult,
   type SmartListConfig,
   type SmartListLoadPage
-} from '../../../shared/ui/components/smart-list';
+} from '../../../shared/ui/components/core/smart-list';
 import {
   DialogStore
 } from '../../../shared/ui/context/stores/dialog.store';

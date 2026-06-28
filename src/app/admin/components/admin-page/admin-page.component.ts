@@ -37,7 +37,7 @@ import {
 import type { AdminBootstrapProcessState, AdminDashboardDto } from '../../../shared/core/contracts/admin.interface';
 import {
   DialogComponent
-} from '../../../shared/ui/components/dialog/dialog.component';
+} from '../../../shared/ui/components/core/dialog/dialog.component';
 import {
   AdminPopupStore
 } from '../../../shared/ui/context/stores/admin-popup.store';

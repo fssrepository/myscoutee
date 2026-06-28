@@ -63,11 +63,11 @@ import {
 } from '../../../shared/core/base/services/users.service';
 import {
   DialogComponent
-} from '../../../shared/ui/components/dialog/dialog.component';
+} from '../../../shared/ui/components/core/dialog/dialog.component';
 import {
   DialogStore
 } from '../../../shared/ui/context/stores/dialog.store';
-import type { InfoCardData } from '../../../shared/ui/components/smart-list/card/card.types';
+import type { InfoCardData } from '../../../shared/ui/components/core/smart-list/card/card.types';
 import {
   DocumentViewerComponent,
   type DocumentViewerAction,

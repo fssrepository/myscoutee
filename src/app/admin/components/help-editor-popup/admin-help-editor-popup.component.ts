@@ -37,16 +37,16 @@ import type {
 } from '../../../shared/core/contracts';
 import {
   ImageCarouselComponent
-} from '../../../shared/ui/components/image-carousel';
+} from '../../../shared/ui/components/core/image-carousel';
 import {
   IndicatorComponent
-} from '../../../shared/ui/components/indicator';
+} from '../../../shared/ui/components/core/indicator';
 import {
   AppMenuComponent,
   type AppMenuItem,
   type AppMenuItemSelectEvent,
   type AppMenuModel
-} from '../../../shared/ui/components/menu';
+} from '../../../shared/ui/components/core/menu';
 import {
   LazyBgImageDirective
 } from '../../../shared/ui/directives';

@@ -4,9 +4,9 @@ import type {
   SmartListCalendarVariant,
   SmartListFilters,
   SmartListViewMode
-} from '../components/smart-list/smart-list.types';
-import type { CalendarCardModel } from '../components/smart-list/card/calendar-card';
-import type { SmartListPage } from '../components/smart-list/smart-list-page.adapter';
+} from '../components/core/smart-list/smart-list.types';
+import type { CalendarCardModel } from '../components/core/smart-list/card/calendar-card';
+import type { SmartListPage } from '../components/core/smart-list/smart-list-page.adapter';
 import type { UiConverter } from './converter.types';
 
 export interface CalendarCardConverterInput<T, TFilters extends SmartListFilters = SmartListFilters> {

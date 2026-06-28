@@ -24,12 +24,12 @@ import {
 } from '../../context/stores/popup.store';
 import {
   IndicatorComponent
-} from '../indicator';
+} from '../core/indicator';
 import {
   AppMenuComponent,
   type AppMenuItem,
   type AppMenuItemSelectEvent
-} from '../menu';
+} from '../core/menu';
 import {
   I18nPipe
 } from '../../pipes';

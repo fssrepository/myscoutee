@@ -4,7 +4,7 @@ import type {
   ActivityEventSubEventRuntimeDTO
 } from '../../core/contracts/activity.interface';
 import type { EventMode, TournamentStageStatus } from '../../core/contracts/event.interface';
-import type { InfoCardData, InfoCardOverlayAction, InfoCardOverlayTone } from '../components/smart-list/card';
+import type { InfoCardData, InfoCardOverlayAction, InfoCardOverlayTone } from '../components/core/smart-list/card';
 import type { UiListConverter } from './converter.types';
 
 export interface EventSubeventRuntimeInfoCardConverterOptions {

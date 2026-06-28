@@ -15,9 +15,9 @@ import {
   type UiAccordionModel,
   type UiAccordionSelectionToggleEvent,
   type UiAccordionToggleEvent
-} from '../accordion';
-import { AppMenuComponent, type AppMenuItem, type AppMenuItemSelectEvent, type AppMenuPalette } from '../menu';
-import { IndicatorComponent } from '../indicator';
+} from '../core/accordion';
+import { AppMenuComponent, type AppMenuItem, type AppMenuItemSelectEvent, type AppMenuPalette } from '../core/menu';
+import { IndicatorComponent } from '../core/indicator';
 import type {
   DocumentViewerAction,
   DocumentViewerActionEvent,

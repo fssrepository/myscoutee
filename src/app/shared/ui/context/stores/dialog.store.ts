@@ -1,6 +1,6 @@
 import { Injectable, signal } from '@angular/core';
 
-import type { AppMenuPalette } from '../../components/menu';
+import type { AppMenuPalette } from '../../components/core/menu';
 
 export type DialogTone = 'accent' | 'danger' | 'neutral';
 

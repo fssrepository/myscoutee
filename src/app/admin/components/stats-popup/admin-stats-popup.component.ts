@@ -28,7 +28,7 @@ import {
 } from '../../../shared/ui';
 import {
   IndicatorComponent
-} from '../../../shared/ui/components/indicator';
+} from '../../../shared/ui/components/core/indicator';
 import {
   AdminPopupStore
 } from '../../../shared/ui/context/stores/admin-popup.store';

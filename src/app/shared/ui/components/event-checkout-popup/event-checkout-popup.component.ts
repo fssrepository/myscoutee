@@ -22,7 +22,7 @@ import {
   AppMenuComponent,
   type AppMenuItem,
   type AppMenuItemSelectEvent
-} from '../menu';
+} from '../core/menu';
 
 import type * as AppConstants from '../../../core/common/constants';
 type PricingSnapshot = {

@@ -7,8 +7,8 @@ import type {
   AppMenuItem,
   AppMenuPalette,
   AppMenuTrigger
-} from '../components/menu/menu.types';
-import { buildTabbedMenuModel } from '../components/menu/menu-option-groups';
+} from '../components/core/menu/menu.types';
+import { buildTabbedMenuModel } from '../components/core/menu/menu-option-groups';
 import type {
   FormFlowCompletionItemConfig,
   FormFlowControlModel,
@@ -16,8 +16,8 @@ import type {
   FormFlowMenuControlConfig,
   FormFlowModel,
   FormFlowStepModel
-} from '../components/form/flow/form-flow.types';
-import { formFlowCompletionPercent } from '../components/form/flow/form-flow.utils';
+} from '../components/core/form/flow/form-flow.types';
+import { formFlowCompletionPercent } from '../components/core/form/flow/form-flow.utils';
 import type { UiConverter } from './converter.types';
 
 export interface ProfileFormFlowPrivacyOptions {

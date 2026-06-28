@@ -45,13 +45,13 @@ import {
   type AppMenuItem,
   type AppMenuItemSelectEvent,
   type AppMenuPalette
-} from '../../../shared/ui/components/menu';
+} from '../../../shared/ui/components/core/menu';
 import {
   FormFlowComponent,
   type FormFlowActionEvent,
   type FormFlowDraft,
   type FormFlowModel
-} from '../../../shared/ui/components/form/flow';
+} from '../../../shared/ui/components/core/form/flow';
 import {
   ProfileFormFlowConverter,
   ProfileHeaderCardConverter,

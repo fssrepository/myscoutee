@@ -3,7 +3,7 @@ import { FormsModule } from '@angular/forms';
 import { MatIconModule } from '@angular/material/icon';
 
 import { AppMenuComponent, type AppMenuItem, type AppMenuItemSelectEvent } from '../../../shared/ui';
-import { FormFlowComponent, type FormFlowModel } from '../../../shared/ui/components/form/flow';
+import { FormFlowComponent, type FormFlowModel } from '../../../shared/ui/components/core/form/flow';
 
 export interface GroupFormModel {
   name: string;

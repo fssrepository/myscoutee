@@ -6,7 +6,7 @@ import { ExplanationGuideService } from '../../../core';
 import type { HelpCenterSectionDto } from '../../../core/contracts';
 import { I18nPipe } from '../../pipes';
 import { LazyBgImageDirective } from '../../directives';
-import { IndicatorComponent } from '../indicator';
+import { IndicatorComponent } from '../core/indicator';
 
 type HomeFilterModeOption = Readonly<{
   key: string;

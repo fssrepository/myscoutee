@@ -4,8 +4,8 @@ import type {
   AppMenuItem,
   AppMenuModel,
   AppMenuPalette
-} from '../components/menu';
-import type { FormFlowMenuControlConfig, FormFlowModel } from '../components/form/flow';
+} from '../components/core/menu';
+import type { FormFlowMenuControlConfig, FormFlowModel } from '../components/core/form/flow';
 import type { UiConverter } from './converter.types';
 import {
   EventFeedbackDetailConverter,

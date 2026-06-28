@@ -54,7 +54,7 @@ import {
 import {
   APP_STATIC_DATA
 } from '../../../shared/app-static-data';
-import type { CardMenuActionEvent, InfoCardData } from '../../../shared/ui/components/smart-list/card/card.types';
+import type { CardMenuActionEvent, InfoCardData } from '../../../shared/ui/components/core/smart-list/card/card.types';
 import {
   type ActivitiesNavigationRequest
 } from '../../../shared/ui/context/stores/popup.store';

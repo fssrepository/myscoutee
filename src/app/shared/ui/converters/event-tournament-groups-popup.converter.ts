@@ -4,8 +4,8 @@ import type {
   EventTournamentGroupsStateDTO,
   EventTournamentStageDTO
 } from '../../core/contracts/event.interface';
-import type { UiAccordionItem, UiAccordionModel } from '../components/accordion';
-import type { AppMenuItem, AppMenuPalette, AppMenuTrigger } from '../components/menu';
+import type { UiAccordionItem, UiAccordionModel } from '../components/core/accordion';
+import type { AppMenuItem, AppMenuPalette, AppMenuTrigger } from '../components/core/menu';
 import type { UiConverter } from './converter.types';
 
 export interface EventTournamentGroupsPopupConverterInput {

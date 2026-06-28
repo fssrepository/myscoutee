@@ -69,7 +69,7 @@ import {
 } from '../../../shared/core/base/services/users.service';
 import {
   DialogComponent
-} from '../../../shared/ui/components/dialog/dialog.component';
+} from '../../../shared/ui/components/core/dialog/dialog.component';
 import {
   NavigatorSettingsPopupsComponent
 } from '../navigator-settings-popups/navigator-settings-popups.component';

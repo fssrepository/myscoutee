@@ -17,29 +17,29 @@ import type * as AppConstants from '../../../../shared/core/common/constants';
 import type * as AppDTOs from '../../../../shared/core/contracts/activity.interface';
 import { ActivityResourcesService } from '../../../../shared/core/base/services/activity-resources.service';
 import type { ListQuery, PageResult } from '../../../../shared/core/contracts/list.interface';
-import { AppMenuComponent } from '../../../../shared/ui/components/menu/menu.component';
-import { AppMenuDispatcher } from '../../../../shared/ui/components/menu/menu-dispatcher.service';
-import { AppMenuOutletComponent } from '../../../../shared/ui/components/menu/outlet/menu-outlet.component';
+import { AppMenuComponent } from '../../../../shared/ui/components/core/menu/menu.component';
+import { AppMenuDispatcher } from '../../../../shared/ui/components/core/menu/menu-dispatcher.service';
+import { AppMenuOutletComponent } from '../../../../shared/ui/components/core/menu/outlet/menu-outlet.component';
 import type {
   AppMenuItem,
   AppMenuItemSelectEvent,
   AppMenuPalette,
   AppMenuTrigger
-} from '../../../../shared/ui/components/menu/menu.types';
+} from '../../../../shared/ui/components/core/menu/menu.types';
 import {
   CARD_MENU_ACTIONS,
   type CardMenuAction,
   type CardMenuActionEvent,
   type CardMenuRequestEvent,
   type InfoCardData
-} from '../../../../shared/ui/components/smart-list/card/card.types';
-import { InfoCardComponent } from '../../../../shared/ui/components/smart-list/card/info-card/info-card.component';
-import { SmartListComponent } from '../../../../shared/ui/components/smart-list/smart-list.component';
+} from '../../../../shared/ui/components/core/smart-list/card/card.types';
+import { InfoCardComponent } from '../../../../shared/ui/components/core/smart-list/card/info-card/info-card.component';
+import { SmartListComponent } from '../../../../shared/ui/components/core/smart-list/smart-list.component';
 import type {
   SmartListConfig,
   SmartListLoadPage,
   SmartListStateChange
-} from '../../../../shared/ui/components/smart-list/smart-list.types';
+} from '../../../../shared/ui/components/core/smart-list/smart-list.types';
 
 export interface EventResourceListItem {
   card: AppDTOs.SubEventResourceCardDTO;

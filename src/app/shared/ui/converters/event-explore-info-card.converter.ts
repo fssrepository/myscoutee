@@ -2,7 +2,7 @@ import { AppUtils } from '../../app-utils';
 import type * as ContractTypes from '../../core/contracts';
 import type * as AppConstants from '../../core/common/constants';
 import type { ActivityEventRecord } from '../../core/contracts/activity.interface';
-import type { CardMenuActionId, CardRenderState, InfoCardData } from '../components/smart-list/card';
+import type { CardMenuActionId, CardRenderState, InfoCardData } from '../components/core/smart-list/card';
 import type { UiListConverter } from './converter.types';
 
 export type EventExploreTopicToneGroup = {

@@ -4,8 +4,8 @@ import { FormsModule } from '@angular/forms';
 import { MatIconModule } from '@angular/material/icon';
 
 import { AppUtils } from '../../../../shared/app-utils';
-import { AppMenuComponent } from '../../../../shared/ui/components/menu/menu.component';
-import type { AppMenuItem, AppMenuItemSelectEvent } from '../../../../shared/ui/components/menu/menu.types';
+import { AppMenuComponent } from '../../../../shared/ui/components/core/menu/menu.component';
+import type { AppMenuItem, AppMenuItemSelectEvent } from '../../../../shared/ui/components/core/menu/menu.types';
 import { SubEventResourcePopupStore } from '../../../../shared/ui/context/stores/sub-event-resource-popup.store';
 import type { CapacityEditorState } from '../../../../shared/ui/context/stores/sub-event-resource-popup.store';
 

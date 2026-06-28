@@ -14,7 +14,7 @@ import {
 } from '@angular/core';
 
 import { I18nService } from '../../core';
-import { IndicatorComponent } from '../components/indicator';
+import { IndicatorComponent } from '../components/core/indicator';
 
 @Directive({
   selector: '[appLazyBgImage]',
