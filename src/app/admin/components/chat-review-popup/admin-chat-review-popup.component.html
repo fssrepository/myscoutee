@@ -51,12 +51,12 @@
                   <span>Send warning</span>
                 </button>
                 @if (sendState === 'sending' || sendState === 'error') {
-                  <app-progress-indicator
+                  <app-indicator
                     kind="action-ring"
                     shape="button"
                     tone="accent"
                     [state]="warningSendRingState()"
-                  ></app-progress-indicator>
+                  ></app-indicator>
                 }
               </span>
               </div>

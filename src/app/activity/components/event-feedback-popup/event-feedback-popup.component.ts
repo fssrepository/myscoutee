@@ -30,7 +30,7 @@ import {
   EventFeedbackOrganizerItemConverter,
   EventFeedbackOrganizerMessageGroupConverter,
   FormFlowComponent,
-  ProgressIndicatorComponent,
+  IndicatorComponent,
   type FormFlowSaveEvent,
   type AppMenuItem,
   type AppMenuItemSelectEvent,
@@ -91,7 +91,7 @@ interface EventFeedbackDialogContent extends Omit<DialogConfig, 'onConfirm' | 'o
     FormsModule,
     MatIconModule,
     FormFlowComponent,
-    ProgressIndicatorComponent,
+    IndicatorComponent,
     PopupComponent,
     SmartListComponent,
     InfoCardComponent

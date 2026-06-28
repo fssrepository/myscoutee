@@ -20,7 +20,7 @@
         >
           @if (saving) {
             <span class="form-flow__save-ring" aria-hidden="true">
-              <app-progress-indicator kind="action-ring" shape="button" state="loading"></app-progress-indicator>
+              <app-indicator kind="action-ring" shape="button" state="loading"></app-indicator>
             </span>
           }
           <mat-icon>{{ saveIcon() }}</mat-icon>
@@ -86,7 +86,7 @@
 
   @if (loading) {
     <article class="form-flow__loading">
-      <app-progress-indicator kind="load-ring" state="loading"></app-progress-indicator>
+      <app-indicator kind="load-ring" state="loading"></app-indicator>
       <span>{{ model?.loadingLabel || 'Loading form' }}</span>
     </article>
   } @else if (model && totalPageCount() > 0) {

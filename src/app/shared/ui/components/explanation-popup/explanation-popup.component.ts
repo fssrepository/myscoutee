@@ -6,7 +6,7 @@ import { ExplanationGuideService } from '../../../core';
 import type { HelpCenterSectionDto } from '../../../core/contracts';
 import { I18nPipe } from '../../pipes';
 import { LazyBgImageDirective } from '../../directives';
-import { ProgressIndicatorComponent } from '../progress-indicator';
+import { IndicatorComponent } from '../indicator';
 
 type HomeFilterModeOption = Readonly<{
   key: string;
@@ -19,7 +19,7 @@ type ExplanationSectionLayout = 'span-1' | 'span-2' | 'span-3';
 @Component({
   selector: 'app-explanation-popup',
   standalone: true,
-  imports: [CommonModule, MatIconModule, LazyBgImageDirective, ProgressIndicatorComponent, I18nPipe],
+  imports: [CommonModule, MatIconModule, LazyBgImageDirective, IndicatorComponent, I18nPipe],
   templateUrl: './explanation-popup.component.html',
   styleUrl: './explanation-popup.component.scss',
   changeDetection: ChangeDetectionStrategy.OnPush

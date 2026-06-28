@@ -76,10 +76,10 @@
       <div class="idea-editor-nested-backdrop" (click)="closeViewer($event)"></div>
       <article class="idea-editor-nested-panel idea-editor-viewer-panel idea-editor-panel-loading" aria-busy="true">
         <div class="idea-editor-panel-loading-card">
-          <app-progress-indicator
+          <app-indicator
             kind="load-ring"
             state="loading"
-          ></app-progress-indicator>
+          ></app-indicator>
           <span>{{ articlePanelLoadingLabel() }}</span>
         </div>
       </article>
@@ -118,10 +118,10 @@
       <div class="idea-editor-nested-backdrop" (click)="closeEditor($event)"></div>
       <article class="idea-editor-nested-panel idea-editor-form-panel idea-editor-panel-loading" aria-busy="true">
         <div class="idea-editor-panel-loading-card">
-          <app-progress-indicator
+          <app-indicator
             kind="load-ring"
             state="loading"
-          ></app-progress-indicator>
+          ></app-indicator>
           <span>{{ articlePanelLoadingLabel() }}</span>
         </div>
       </article>
@@ -150,7 +150,7 @@
             </button>
             <span class="idea-editor-action-ring-shell idea-editor-circle-ring-shell" [class.is-loading]="saving">
               @if (saving) {
-                <app-progress-indicator kind="action-ring" shape="circle" state="loading"></app-progress-indicator>
+                <app-indicator kind="action-ring" shape="circle" state="loading"></app-indicator>
               }
               <button
                 type="submit"
@@ -185,10 +185,10 @@
         @if (articlePanelLoading && articlePanelLoadingMode === 'editor') {
           <div class="idea-editor-form-loading-overlay" aria-busy="true">
             <div class="idea-editor-panel-loading-card">
-              <app-progress-indicator
+              <app-indicator
                 kind="load-ring"
                 state="loading"
-              ></app-progress-indicator>
+              ></app-indicator>
               <span>{{ articlePanelLoadingLabel() }}</span>
             </div>
           </div>

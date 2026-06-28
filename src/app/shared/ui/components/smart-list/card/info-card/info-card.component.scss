@@ -296,7 +296,7 @@ button.asset-occupancy-badge:active::after,
   transition: opacity 120ms ease;
 }
 
-.ui-info-card__image-loader app-progress-indicator {
+.ui-info-card__image-loader app-indicator {
   position: relative;
   z-index: 1;
 }

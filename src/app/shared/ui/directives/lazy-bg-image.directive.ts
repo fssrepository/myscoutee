@@ -14,7 +14,7 @@ import {
 } from '@angular/core';
 
 import { I18nService } from '../../core';
-import { ProgressIndicatorComponent } from '../components/progress-indicator';
+import { IndicatorComponent } from '../components/indicator';
 
 @Directive({
   selector: '[appLazyBgImage]',
@@ -56,7 +56,7 @@ export class LazyBgImageDirective implements AfterViewInit, OnChanges, OnDestroy
   private observer: IntersectionObserver | null = null;
   private htmlImageObserver: MutationObserver | null = null;
   private backgroundVisibilityCheckId: number | null = null;
-  private readonly htmlImageFrameSpinners = new Map<HTMLElement, ComponentRef<ProgressIndicatorComponent>>();
+  private readonly htmlImageFrameSpinners = new Map<HTMLElement, ComponentRef<IndicatorComponent>>();
   private readonly htmlImageTimeouts = new Map<HTMLImageElement, number>();
   private hasLoaded = false;
   private isViewReady = false;
@@ -593,7 +593,7 @@ export class LazyBgImageDirective implements AfterViewInit, OnChanges, OnDestroy
     if (!frame || this.htmlImageFrameSpinners.has(frame)) {
       return;
     }
-    const spinnerRef = this.viewContainerRef.createComponent(ProgressIndicatorComponent);
+    const spinnerRef = this.viewContainerRef.createComponent(IndicatorComponent);
     spinnerRef.setInput('kind', 'spinner-ring');
     spinnerRef.setInput('size', 'sm');
     spinnerRef.setInput('state', 'loading');

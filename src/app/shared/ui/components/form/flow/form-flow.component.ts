@@ -30,7 +30,7 @@ import type {
   AppMenuValueKey
 } from '../../menu/menu.types';
 import { ImageCarouselComponent } from '../../image-carousel';
-import { ProgressIndicatorComponent } from '../../progress-indicator';
+import { IndicatorComponent } from '../../indicator';
 import { ImageCardComponent, InfoCardComponent } from '../../smart-list/card';
 import { DateInputComponent, type DateInputModel, type DateInputValue } from '../inputs/date-input';
 import { LocationInputComponent, type LocationInputConfig } from '../inputs/location-input';
@@ -70,7 +70,7 @@ interface FormFlowSelectedMenuItem {
     LocationInputComponent,
     PricingEditorInputComponent,
     ImageCarouselComponent,
-    ProgressIndicatorComponent,
+    IndicatorComponent,
     ImageCardComponent,
     InfoCardComponent
   ],

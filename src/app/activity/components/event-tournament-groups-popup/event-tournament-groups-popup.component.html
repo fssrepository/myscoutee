@@ -33,7 +33,7 @@
       <div class="popup-body event-tournament-groups-body">
         @if (isLoading) {
           <div class="event-tournament-groups-loading">
-            <app-progress-indicator kind="load-ring" state="loading" tone="accent"></app-progress-indicator>
+            <app-indicator kind="load-ring" state="loading" tone="accent"></app-indicator>
           </div>
         } @else if (loadError) {
           <div class="event-tournament-groups-empty">

@@ -27,11 +27,11 @@
       <div class="popup-body monitoring-body">
         @if (loading()) {
           <div class="monitoring-state monitoring-loading-state" aria-busy="true">
-            <app-progress-indicator
+            <app-indicator
               kind="load-ring"
               state="loading"
               [durationMs]="monitoringService.monitoringLoadProgressWindowMs()"
-            ></app-progress-indicator>
+            ></app-indicator>
             <span>{{ 'admin.monitoring.loading' | i18n }}</span>
           </div>
         } @else {

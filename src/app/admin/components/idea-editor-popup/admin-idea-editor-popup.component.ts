@@ -51,8 +51,8 @@ import {
   type AppMenuPalette
 } from '../../../shared/ui/components/menu';
 import {
-  ProgressIndicatorComponent
-} from '../../../shared/ui/components/progress-indicator';
+  IndicatorComponent
+} from '../../../shared/ui/components/indicator';
 import {
   SmartListComponent,
   type ListQuery,
@@ -128,7 +128,7 @@ interface IdeaPostLangCache {
     SmartListComponent,
     InfoCardComponent,
     ImageCarouselComponent,
-    ProgressIndicatorComponent
+    IndicatorComponent
   ],
   templateUrl: './admin-idea-editor-popup.component.html',
   styleUrl: './admin-idea-editor-popup.component.scss',

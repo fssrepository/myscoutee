@@ -23,10 +23,10 @@ import { firstValueFrom } from 'rxjs';
 
 import { AppUtils } from '../../../app-utils';
 import {
-  ProgressIndicatorComponent,
-  type ProgressIndicatorBarConfig,
-  type ProgressIndicatorPlacement
-} from '../progress-indicator';
+  IndicatorComponent,
+  type IndicatorBarConfig,
+  type IndicatorPlacement
+} from '../indicator';
 import {
   CalendarCardComponent as SmartListPageCardComponent
 } from './card/calendar-card';
@@ -89,7 +89,7 @@ import type {
   imports: [
     CommonModule,
     MatIconModule,
-    ProgressIndicatorComponent,
+    IndicatorComponent,
     AppMenuOutletComponent,
     SmartListPageCardComponent
   ],
@@ -533,10 +533,10 @@ export class SmartListComponent<T, TFilters extends SmartListFilters = SmartList
     this.reload();
   }
 
-  public progressIndicatorBarConfig(
-    overrides: Partial<ProgressIndicatorBarConfig> = {},
+  public indicatorBarConfig(
+    overrides: Partial<IndicatorBarConfig> = {},
     mode: 'surface' | 'cursor' = 'surface'
-  ): ProgressIndicatorBarConfig {
+  ): IndicatorBarConfig {
     const cursor = this.finiteStepper.state();
     const loadingActive = this.isLoadingActive();
     const position = mode === 'cursor'
@@ -551,17 +551,17 @@ export class SmartListComponent<T, TFilters extends SmartListFilters = SmartList
     };
   }
 
-  protected shouldRenderHostedProgressIndicator(): boolean {
+  protected shouldRenderHostedIndicator(): boolean {
     if (this.config.headerProgress && this.config.headerProgress.enabled !== undefined) {
       return this.resolveConfigValue(this.config.headerProgress.enabled, false);
     }
     return this.resolvedLoadingDelayMs() > 0;
   }
 
-  protected hostedProgressIndicatorConfig(): ProgressIndicatorBarConfig {
-    const placement = this.resolveConfigValue<ProgressIndicatorPlacement>(this.config.headerProgress?.placement, 'inline');
+  protected hostedIndicatorConfig(): IndicatorBarConfig {
+    const placement = this.resolveConfigValue<IndicatorPlacement>(this.config.headerProgress?.placement, 'inline');
     const state = this.resolveConfigValue<SmartListHeaderProgressState>(this.config.headerProgress?.state, 'active');
-    return this.progressIndicatorBarConfig({
+    return this.indicatorBarConfig({
       tone: this.resolveConfigValue(this.config.headerProgress?.tone, 'default'),
       placement,
       ...(state === 'inactive' ? { state: 'inactive' } : {})

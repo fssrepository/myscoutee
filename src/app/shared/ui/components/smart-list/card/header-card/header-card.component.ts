@@ -1,7 +1,7 @@
 import { CommonModule } from '@angular/common';
 import { Component, EventEmitter, Input, Output } from '@angular/core';
 import { MatIconModule } from '@angular/material/icon';
-import { ProgressIndicatorComponent, type ProgressIndicatorState } from '../../../progress-indicator';
+import { IndicatorComponent, type IndicatorState } from '../../../indicator';
 
 export interface HeaderCardModel {
   title?: string | null;
@@ -17,7 +17,7 @@ export interface HeaderCardModel {
   showEdit?: boolean | null;
   editDisabled?: boolean | null;
   showRing?: boolean | null;
-  ringState?: ProgressIndicatorState | null;
+  ringState?: IndicatorState | null;
   ringTitle?: string | null;
   admin?: boolean | null;
 }
@@ -25,7 +25,7 @@ export interface HeaderCardModel {
 @Component({
   selector: 'app-header-card',
   standalone: true,
-  imports: [CommonModule, MatIconModule, ProgressIndicatorComponent],
+  imports: [CommonModule, MatIconModule, IndicatorComponent],
   templateUrl: './header-card.component.html',
   styleUrl: './header-card.component.scss'
 })

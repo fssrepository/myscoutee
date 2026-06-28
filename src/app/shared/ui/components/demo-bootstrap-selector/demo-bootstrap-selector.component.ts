@@ -23,8 +23,8 @@ import {
   type DemoBootstrapSelectorState
 } from '../../context/stores/popup.store';
 import {
-  ProgressIndicatorComponent
-} from '../progress-indicator';
+  IndicatorComponent
+} from '../indicator';
 import {
   AppMenuComponent,
   type AppMenuItem,
@@ -60,7 +60,7 @@ interface DemoSelectorHeaderMenuContext {
     MatButtonModule,
     MatRippleModule,
     AppMenuComponent,
-    ProgressIndicatorComponent,
+    IndicatorComponent,
     I18nPipe
   ],
   templateUrl: './demo-bootstrap-selector.component.html',

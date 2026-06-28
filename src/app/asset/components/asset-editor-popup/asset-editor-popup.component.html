@@ -26,10 +26,10 @@
       </div>
       @if (isLoading) {
         <div class="popup-loading-overlay" aria-busy="true">
-          <app-progress-indicator
+          <app-indicator
             kind="load-ring"
             state="loading"
-          ></app-progress-indicator>
+          ></app-indicator>
         </div>
       } @else {
         <section class="experience-form-panel asset-editor-panel" [ngClass]="eventVisibilityClass(assetFormVisibility)" [class.is-saving]="isSavePending">

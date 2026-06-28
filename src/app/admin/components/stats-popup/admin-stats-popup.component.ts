@@ -27,8 +27,8 @@ import {
   I18nPipe
 } from '../../../shared/ui';
 import {
-  ProgressIndicatorComponent
-} from '../../../shared/ui/components/progress-indicator';
+  IndicatorComponent
+} from '../../../shared/ui/components/indicator';
 import {
   AdminPopupStore
 } from '../../../shared/ui/context/stores/admin-popup.store';
@@ -43,7 +43,7 @@ type AdminStatsGraphAction = { key: string; labelKey: string; icon: string; tone
 @Component({
   selector: 'app-admin-stats-popup',
   standalone: true,
-  imports: [CommonModule, MatIconModule, ProgressIndicatorComponent, I18nPipe],
+  imports: [CommonModule, MatIconModule, IndicatorComponent, I18nPipe],
   templateUrl: './admin-stats-popup.component.html',
   styleUrl: './admin-stats-popup.component.scss'
 })

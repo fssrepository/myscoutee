@@ -34,8 +34,8 @@ import {
   type AppMenuTrigger
 } from '../../../shared/ui/components/menu';
 import {
-  ProgressIndicatorComponent
-} from '../../../shared/ui/components/progress-indicator';
+  IndicatorComponent
+} from '../../../shared/ui/components/indicator';
 import {
   AdminPopupStore
 } from '../../../shared/ui/context/stores/admin-popup.store';
@@ -52,7 +52,7 @@ interface AdminParamSelectMenuContext {
 @Component({
   selector: 'app-admin-params-popup',
   standalone: true,
-  imports: [CommonModule, FormsModule, MatIconModule, AppMenuComponent, ProgressIndicatorComponent, I18nPipe],
+  imports: [CommonModule, FormsModule, MatIconModule, AppMenuComponent, IndicatorComponent, I18nPipe],
   templateUrl: './admin-params-popup.component.html',
   styleUrl: './admin-params-popup.component.scss'
 })

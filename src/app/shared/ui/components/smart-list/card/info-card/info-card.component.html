@@ -26,7 +26,7 @@
       }
       @if (card?.imageUrl && !isTitleMedia()) {
         <span class="ui-info-card__image-loader" aria-hidden="true">
-          <app-progress-indicator kind="spinner-ring" size="sm"></app-progress-indicator>
+          <app-indicator kind="spinner-ring" size="sm"></app-indicator>
         </span>
       }
       @if (!card?.imageUrl && !isTitleMedia()) {
@@ -172,7 +172,7 @@
             }
             @if (overlayProgressRing(mediaEnd)) {
               <span class="ui-info-card__overlay-action-ring" aria-hidden="true">
-                <app-progress-indicator kind="action-ring" shape="button" state="loading" [durationMs]="1500"></app-progress-indicator>
+                <app-indicator kind="action-ring" shape="button" state="loading" [durationMs]="1500"></app-indicator>
               </span>
             }
           </button>

@@ -48,10 +48,10 @@
       <div class="popup-body help-editor-body">
         @if (loading()) {
           <div class="help-editor-state-card help-editor-loading-state" aria-busy="true">
-            <app-progress-indicator
+            <app-indicator
               kind="load-ring"
               state="loading"
-            ></app-progress-indicator>
+            ></app-indicator>
             <span>{{ loadingRevisionsLabel() }}</span>
           </div>
         } @else {
@@ -88,7 +88,7 @@
                             <div class="help-editor-revision-actions help-editor-draft-header-actions">
                               <span class="help-editor-action-ring-shell help-editor-circle-ring-shell" [class.is-loading]="saving">
                                 @if (saving) {
-                                  <app-progress-indicator kind="action-ring" shape="circle" state="loading"></app-progress-indicator>
+                                  <app-indicator kind="action-ring" shape="circle" state="loading"></app-indicator>
                                 }
                                 <button
                                   type="submit"
@@ -378,7 +378,7 @@
                           </button>
                           <span class="help-editor-action-ring-shell help-editor-circle-ring-shell" [class.is-loading]="activatingRevisionId === revision.id">
                             @if (activatingRevisionId === revision.id) {
-                              <app-progress-indicator kind="action-ring" shape="circle" state="loading"></app-progress-indicator>
+                              <app-indicator kind="action-ring" shape="circle" state="loading"></app-indicator>
                             }
                             <button
                               type="button"

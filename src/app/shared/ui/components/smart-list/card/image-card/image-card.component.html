@@ -6,7 +6,7 @@
     <div class="ui-image-card__media" [appLazyBgImage]="resolvedImageUrl() || null">
       @if (resolvedImageUrl()) {
         <span class="ui-image-card__image-loader" aria-hidden="true">
-          <app-progress-indicator kind="spinner-ring"></app-progress-indicator>
+          <app-indicator kind="spinner-ring"></app-indicator>
         </span>
       }
       @if (!resolvedImageUrl()) {
@@ -28,7 +28,7 @@
   } @else {
     @if (resolvedImageUrl()) {
       <span class="ui-image-card__image-loader ui-image-card__image-loader--overlay" aria-hidden="true">
-        <app-progress-indicator kind="spinner-ring"></app-progress-indicator>
+        <app-indicator kind="spinner-ring"></app-indicator>
       </span>
     }
 

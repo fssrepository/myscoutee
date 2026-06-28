@@ -1,5 +1,5 @@
 export * from './image-carousel';
-export * from './progress-indicator';
+export * from './indicator';
 export * from './accordion';
 export * from './document-viewer';
 export * from './popup';

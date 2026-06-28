@@ -1,30 +1,30 @@
 @if (isBarKind) {
   <div
-    class="app-progress-indicator app-progress-indicator--bar"
+    class="app-indicator app-indicator--bar"
     [class.is-state-scrolling]="isScrollingState"
     [class.is-state-loading]="isLoadingState"
     [class.is-state-loading-overdue]="isLoadingOverdueState"
     [class.is-state-inactive]="isInactiveState"
   >
-    <span class="app-progress-indicator__bar-fill" [style.transform]="progressTransform()"></span>
-    <span class="app-progress-indicator__bar-loading" [style.transform]="progressTransform()"></span>
+    <span class="app-indicator__bar-fill" [style.transform]="progressTransform()"></span>
+    <span class="app-indicator__bar-loading" [style.transform]="progressTransform()"></span>
   </div>
 } @else if (isPillBarKind) {
-  <div class="app-progress-indicator app-progress-indicator--pill-bar">
-    <span class="app-progress-indicator__pill-bar-track" aria-hidden="true"></span>
-    <span class="app-progress-indicator__pill-bar-segments" aria-hidden="true"></span>
-    <span class="app-progress-indicator__pill-bar-fill" [style.transform]="progressTransform()"></span>
+  <div class="app-indicator app-indicator--pill-bar">
+    <span class="app-indicator__pill-bar-track" aria-hidden="true"></span>
+    <span class="app-indicator__pill-bar-segments" aria-hidden="true"></span>
+    <span class="app-indicator__pill-bar-fill" [style.transform]="progressTransform()"></span>
   </div>
 } @else if (isLoadRingKind) {
   <span
-    class="app-progress-indicator app-progress-indicator--load-ring"
+    class="app-indicator app-indicator--load-ring"
     [class.is-state-loading]="isLoadingState"
     [class.is-state-success]="isSuccessState"
   >
-    <svg viewBox="0 0 58 58" class="app-progress-indicator__load-ring-svg">
-      <circle class="app-progress-indicator__load-ring-track" cx="29" cy="29" r="25"></circle>
+    <svg viewBox="0 0 58 58" class="app-indicator__load-ring-svg">
+      <circle class="app-indicator__load-ring-track" cx="29" cy="29" r="25"></circle>
       <circle
-        class="app-progress-indicator__load-ring-progress"
+        class="app-indicator__load-ring-progress"
         cx="29"
         cy="29"
         r="25"
@@ -35,16 +35,16 @@
     </svg>
   </span>
 } @else if (isSpinnerRingKind) {
-  <span class="app-progress-indicator app-progress-indicator--spinner-ring">
-    <svg viewBox="0 0 44 44" class="app-progress-indicator__spinner-ring-svg">
-      <circle class="app-progress-indicator__spinner-ring-track" cx="22" cy="22" r="17"></circle>
-      <circle class="app-progress-indicator__spinner-ring-progress" cx="22" cy="22" r="17"></circle>
+  <span class="app-indicator app-indicator--spinner-ring">
+    <svg viewBox="0 0 44 44" class="app-indicator__spinner-ring-svg">
+      <circle class="app-indicator__spinner-ring-track" cx="22" cy="22" r="17"></circle>
+      <circle class="app-indicator__spinner-ring-progress" cx="22" cy="22" r="17"></circle>
     </svg>
   </span>
 } @else if (isActionRingKind) {
-  <span class="app-progress-indicator app-progress-indicator--action-ring">
+  <span class="app-indicator app-indicator--action-ring">
     @if (isActionButtonShape) {
-      <svg [attr.viewBox]="actionButtonViewBox()" preserveAspectRatio="none" class="app-progress-indicator__action-ring-svg">
+      <svg [attr.viewBox]="actionButtonViewBox()" preserveAspectRatio="none" class="app-indicator__action-ring-svg">
         <defs>
           <linearGradient [attr.id]="actionGradientId" x1="0%" y1="0%" x2="100%" y2="100%">
             <stop offset="0%" stop-color="rgb(235, 147, 33)"></stop>
@@ -60,11 +60,11 @@
           </linearGradient>
         </defs>
         <path
-          class="app-progress-indicator__action-ring-track"
+          class="app-indicator__action-ring-track"
           [attr.d]="actionButtonPath()"
         ></path>
         <path
-          class="app-progress-indicator__action-ring-progress"
+          class="app-indicator__action-ring-progress"
           [class.is-loading]="isLoadingState"
           [attr.d]="actionButtonPath()"
           pathLength="100"
@@ -74,7 +74,7 @@
         ></path>
       </svg>
     } @else {
-      <svg viewBox="0 0 34 34" preserveAspectRatio="none" class="app-progress-indicator__action-ring-svg">
+      <svg viewBox="0 0 34 34" preserveAspectRatio="none" class="app-indicator__action-ring-svg">
         <defs>
           <linearGradient [attr.id]="actionGradientId" x1="0%" y1="0%" x2="100%" y2="100%">
             <stop offset="0%" stop-color="rgb(235, 147, 33)"></stop>
@@ -89,9 +89,9 @@
             <stop offset="100%" stop-color="rgb(47, 111, 214)"></stop>
           </linearGradient>
         </defs>
-        <circle class="app-progress-indicator__action-ring-track" cx="17" cy="17" r="15"></circle>
+        <circle class="app-indicator__action-ring-track" cx="17" cy="17" r="15"></circle>
         <circle
-          class="app-progress-indicator__action-ring-progress app-progress-indicator__action-ring-progress--circle"
+          class="app-indicator__action-ring-progress app-indicator__action-ring-progress--circle"
           [class.is-loading]="isLoadingState"
           cx="17"
           cy="17"

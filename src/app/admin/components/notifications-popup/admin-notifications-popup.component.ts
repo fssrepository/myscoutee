@@ -37,8 +37,8 @@ import {
   type AppMenuModel
 } from '../../../shared/ui/components/menu';
 import {
-  ProgressIndicatorComponent
-} from '../../../shared/ui/components/progress-indicator';
+  IndicatorComponent
+} from '../../../shared/ui/components/indicator';
 import {
   AdminPopupStore
 } from '../../../shared/ui/context/stores/admin-popup.store';
@@ -329,7 +329,7 @@ const STATUS_CLASS_PREFIX = 'is-';
 @Component({
   selector: 'app-admin-notifications-popup',
   standalone: true,
-  imports: [CommonModule, FormsModule, MatIconModule, AppMenuComponent, ProgressIndicatorComponent, I18nPipe],
+  imports: [CommonModule, FormsModule, MatIconModule, AppMenuComponent, IndicatorComponent, I18nPipe],
   templateUrl: './admin-notifications-popup.component.html',
   styleUrl: './admin-notifications-popup.component.scss'
 })

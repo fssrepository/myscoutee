@@ -19,8 +19,8 @@ import {
   type AdminReportedUserDto
 } from '../../../shared/core';
 import {
-  ProgressIndicatorComponent
-} from '../../../shared/ui/components/progress-indicator';
+  IndicatorComponent
+} from '../../../shared/ui/components/indicator';
 import {
   AdminPopupStore
 } from '../../../shared/ui/context/stores/admin-popup.store';
@@ -32,7 +32,7 @@ import { UserProfileStore } from '../../../shared/ui/context/stores/user-profile
 @Component({
   selector: 'app-admin-chat-review-popup',
   standalone: true,
-  imports: [CommonModule, FormsModule, MatIconModule, ProgressIndicatorComponent],
+  imports: [CommonModule, FormsModule, MatIconModule, IndicatorComponent],
   templateUrl: './admin-chat-review-popup.component.html',
   styleUrl: './admin-chat-review-popup.component.scss'
 })

@@ -29,8 +29,8 @@ import {
   type AppMenuModel
 } from '../../../shared/ui/components/menu';
 import {
-  ProgressIndicatorComponent
-} from '../../../shared/ui/components/progress-indicator';
+  IndicatorComponent
+} from '../../../shared/ui/components/indicator';
 import {
   AdminPopupStore
 } from '../../../shared/ui/context/stores/admin-popup.store';
@@ -71,7 +71,7 @@ const MONITORING_FILTER_CATEGORIES: Record<MonitoringFilter, ReadonlySet<string>
 @Component({
   selector: 'app-admin-monitoring-popup',
   standalone: true,
-  imports: [CommonModule, MatIconModule, AppMenuComponent, ProgressIndicatorComponent, I18nPipe],
+  imports: [CommonModule, MatIconModule, AppMenuComponent, IndicatorComponent, I18nPipe],
   templateUrl: './admin-monitoring-popup.component.html',
   styleUrl: './admin-monitoring-popup.component.scss'
 })

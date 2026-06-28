@@ -31,7 +31,7 @@ import {
   AccordionComponent,
   AppMenuComponent,
   FormFlowComponent,
-  ProgressIndicatorComponent,
+  IndicatorComponent,
   type AppMenuItem,
   type AppMenuItemSelectEvent,
   type AppMenuModel,
@@ -148,7 +148,7 @@ interface FifaRow {
     AppMenuComponent,
     AccordionComponent,
     FormFlowComponent,
-    ProgressIndicatorComponent,
+    IndicatorComponent,
     EventSubeventGroupFormPopupComponent
   ],
   templateUrl: './event-tournament-groups-popup.component.html',

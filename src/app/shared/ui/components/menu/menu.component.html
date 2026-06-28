@@ -70,14 +70,14 @@
             >
             @if (itemProgressState(item); as progressState) {
               <span class="app-menu__button-row-ring" aria-hidden="true">
-                <app-progress-indicator
+                <app-indicator
                   kind="action-ring"
                   [shape]="itemProgressShape(item)"
                   [state]="progressState"
                   [tone]="itemProgressTone(item)"
                   [perimeter]="itemProgressPerimeter(item)"
                   [durationMs]="itemProgressDurationMs(item)"
-                ></app-progress-indicator>
+                ></app-indicator>
               </span>
             }
             @if (isImageLayoutItem(item)) {

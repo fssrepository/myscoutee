@@ -39,8 +39,8 @@ import {
   ImageCarouselComponent
 } from '../../../shared/ui/components/image-carousel';
 import {
-  ProgressIndicatorComponent
-} from '../../../shared/ui/components/progress-indicator';
+  IndicatorComponent
+} from '../../../shared/ui/components/indicator';
 import {
   AppMenuComponent,
   type AppMenuItem,
@@ -134,7 +134,7 @@ interface HelpEditorLanguageMenuContext {
     MatIconModule,
     AppMenuComponent,
     ImageCarouselComponent,
-    ProgressIndicatorComponent,
+    IndicatorComponent,
     LazyBgImageDirective
   ],
   templateUrl: './admin-help-editor-popup.component.html',

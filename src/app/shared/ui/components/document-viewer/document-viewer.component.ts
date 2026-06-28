@@ -17,7 +17,7 @@ import {
   type UiAccordionToggleEvent
 } from '../accordion';
 import { AppMenuComponent, type AppMenuItem, type AppMenuItemSelectEvent, type AppMenuPalette } from '../menu';
-import { ProgressIndicatorComponent } from '../progress-indicator';
+import { IndicatorComponent } from '../indicator';
 import type {
   DocumentViewerAction,
   DocumentViewerActionEvent,
@@ -38,7 +38,7 @@ import type {
     MatRippleModule,
     LazyBgImageDirective,
     AccordionComponent,
-    ProgressIndicatorComponent,
+    IndicatorComponent,
     AppMenuComponent
   ],
   templateUrl: './document-viewer.component.html',

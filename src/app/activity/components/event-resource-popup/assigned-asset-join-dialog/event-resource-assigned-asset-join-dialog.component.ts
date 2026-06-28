@@ -4,7 +4,7 @@ import { MatIconModule } from '@angular/material/icon';
 
 import type * as ActivityContracts from '../../../../shared/core/contracts/activity.interface';
 import type * as ContractTypes from '../../../../shared/core/contracts';
-import { ProgressIndicatorComponent } from '../../../../shared/ui/components/progress-indicator/progress-indicator.component';
+import { IndicatorComponent } from '../../../../shared/ui/components/indicator/indicator.component';
 
 export interface AssignedAssetJoinDialogViewState {
   title: string;
@@ -30,7 +30,7 @@ export interface AssignedAssetJoinDialogViewState {
 @Component({
   selector: 'app-event-resource-assigned-asset-join-dialog',
   standalone: true,
-  imports: [CommonModule, MatIconModule, ProgressIndicatorComponent],
+  imports: [CommonModule, MatIconModule, IndicatorComponent],
   templateUrl: './event-resource-assigned-asset-join-dialog.component.html',
   styleUrl: './event-resource-assigned-asset-join-dialog.component.scss',
   encapsulation: ViewEncapsulation.None,

@@ -22,7 +22,7 @@ import {
   from
 } from 'rxjs';
 import {
-  ProgressIndicatorComponent,
+  IndicatorComponent,
   SingleRowComponent,
   SmartListComponent,
   type CardMenuActionEvent,
@@ -88,7 +88,7 @@ interface SupplyContributionRemovalRequest {
     FormsModule,
     MatButtonModule,
     MatIconModule,
-    ProgressIndicatorComponent,
+    IndicatorComponent,
     SingleRowComponent,
     SmartListComponent
   ],

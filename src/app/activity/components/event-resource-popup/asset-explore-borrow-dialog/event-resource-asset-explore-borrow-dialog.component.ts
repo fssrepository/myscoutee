@@ -8,7 +8,7 @@ import { MatIconModule } from '@angular/material/icon';
 import { MatInputModule } from '@angular/material/input';
 import { MatTimepickerModule } from '@angular/material/timepicker';
 
-import { ProgressIndicatorComponent } from '../../../../shared/ui';
+import { IndicatorComponent } from '../../../../shared/ui';
 import { AppUtils } from '../../../../shared/app-utils';
 import type * as ActivityContracts from '../../../../shared/core/contracts/activity.interface';
 import type * as ContractTypes from '../../../../shared/core/contracts';
@@ -60,7 +60,7 @@ export interface AssetExploreBorrowTimeChange {
     MatInputModule,
     MatNativeDateModule,
     MatTimepickerModule,
-    ProgressIndicatorComponent
+    IndicatorComponent
   ],
   templateUrl: './event-resource-asset-explore-borrow-dialog.component.html',
   styleUrl: './event-resource-asset-explore-borrow-dialog.component.scss',

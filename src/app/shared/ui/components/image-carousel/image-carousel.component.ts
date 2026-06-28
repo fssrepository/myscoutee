@@ -17,12 +17,12 @@ import { MatIconModule } from '@angular/material/icon';
 
 import { MediaService } from '../../../core';
 import { LazyBgImageDirective } from '../../directives';
-import { ProgressIndicatorComponent } from '../progress-indicator';
+import { IndicatorComponent } from '../indicator';
 
 @Component({
   selector: 'app-image-carousel',
   standalone: true,
-  imports: [CommonModule, MatIconModule, LazyBgImageDirective, ProgressIndicatorComponent],
+  imports: [CommonModule, MatIconModule, LazyBgImageDirective, IndicatorComponent],
   providers: [
     {
       provide: NG_VALUE_ACCESSOR,

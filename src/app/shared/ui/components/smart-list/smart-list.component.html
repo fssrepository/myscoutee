@@ -290,16 +290,16 @@
     }
   </div>
 
-  @if (shouldRenderHostedProgressIndicator()) {
+  @if (shouldRenderHostedIndicator()) {
     <div class="smart-list__header-progress-shell">
-      @let headerProgressConfig = hostedProgressIndicatorConfig();
-      <app-progress-indicator
+      @let headerProgressConfig = hostedIndicatorConfig();
+      <app-indicator
         kind="bar"
         [placement]="headerProgressConfig.placement ?? 'inline'"
         [tone]="headerProgressConfig.tone ?? 'default'"
         [state]="headerProgressConfig.state ?? 'scrolling'"
         [position]="headerProgressConfig.position ?? 0"
-      ></app-progress-indicator>
+      ></app-indicator>
     </div>
   }
 

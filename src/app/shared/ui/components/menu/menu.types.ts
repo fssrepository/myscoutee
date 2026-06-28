@@ -1,9 +1,9 @@
 import type { Signal } from '@angular/core';
 import type {
-  ProgressIndicatorShape,
-  ProgressIndicatorState,
-  ProgressIndicatorTone
-} from '../progress-indicator';
+  IndicatorShape,
+  IndicatorState,
+  IndicatorTone
+} from '../indicator';
 
 export type AppMenuKind =
   | 'fab'
@@ -118,9 +118,9 @@ export interface AppMenuTrigger {
 }
 
 export interface AppMenuItemProgress {
-  state: AppMenuLiveValue<ProgressIndicatorState | null | undefined>;
-  tone?: AppMenuLiveValue<ProgressIndicatorTone | null | undefined>;
-  shape?: ProgressIndicatorShape;
+  state: AppMenuLiveValue<IndicatorState | null | undefined>;
+  tone?: AppMenuLiveValue<IndicatorTone | null | undefined>;
+  shape?: IndicatorShape;
   perimeter?: AppMenuLiveValue<number | null | undefined>;
   durationMs?: AppMenuLiveValue<number | null | undefined>;
 }

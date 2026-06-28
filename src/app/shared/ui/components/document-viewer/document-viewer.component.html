@@ -48,10 +48,10 @@
       <div class="document-viewer-content">
         @if (loading()) {
           <article class="document-viewer-status document-viewer-status-loading">
-            <app-progress-indicator
+            <app-indicator
               kind="load-ring"
               state="loading"
-            ></app-progress-indicator>
+            ></app-indicator>
             <span>{{ loadingLabel() }}</span>
           </article>
         } @else if (activeConfig()?.sections?.length) {

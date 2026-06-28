@@ -41,7 +41,7 @@ import {
   type EventPoliciesInputConfig,
   type LocationInputConfig,
   PricingEditorInputComponent,
-  ProgressIndicatorComponent,
+  IndicatorComponent,
   type AppMenuItem,
   type AppMenuItemSelectEvent,
   type AppMenuPalette,
@@ -69,7 +69,7 @@ type AssetEditorMenuContext =
     EventPoliciesInputComponent,
     LocationInputComponent,
     PricingEditorInputComponent,
-    ProgressIndicatorComponent
+    IndicatorComponent
   ],
   templateUrl: './asset-editor-popup.component.html',
   styleUrl: './asset-editor-popup.component.scss'

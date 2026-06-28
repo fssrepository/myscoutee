@@ -11,11 +11,11 @@
     <div class="header-card__avatar-stack" [attr.title]="card?.ringTitle || null">
       @if (card?.showRing === true) {
         <span class="header-card__ring" aria-hidden="true">
-          <app-progress-indicator
+          <app-indicator
             kind="action-ring"
             shape="circle"
             [state]="card?.ringState || 'loading'"
-          ></app-progress-indicator>
+          ></app-indicator>
         </span>
       }
       <span

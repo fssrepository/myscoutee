@@ -16,7 +16,7 @@ import type { UserDto } from '../../../shared/core/contracts/user.interface';
 import {
   AppMenuComponent,
   I18nPipe,
-  ProgressIndicatorComponent,
+  IndicatorComponent,
   buildTabbedMenuModel,
   type AppMenuItemSelectEvent,
   type AppMenuModel,
@@ -59,7 +59,7 @@ type GameFilterMenuContext = {
     I18nPipe,
     MatIconModule,
     MatSliderModule,
-    ProgressIndicatorComponent
+    IndicatorComponent
   ],
   templateUrl: './home-game-filter-popup.component.html',
   styleUrl: './home-game-filter-popup.component.scss'

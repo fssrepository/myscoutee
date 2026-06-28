@@ -270,11 +270,11 @@
             >
               @if (dialog.busy || dialog.error) {
                 <span class="asset-explore-borrow-confirm-ring" aria-hidden="true">
-                  <app-progress-indicator
+                  <app-indicator
                     kind="action-ring"
                     shape="button"
                     [state]="dialog.busy ? 'loading' : 'error'"
-                  ></app-progress-indicator>
+                  ></app-indicator>
                 </span>
               }
               <button

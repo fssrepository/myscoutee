@@ -14,7 +14,7 @@
       }
       @if (isSelectedPreviewUploading(slots)) {
         <span class="image-carousel__preview-ring" aria-label="Uploading image">
-          <app-progress-indicator kind="spinner-ring"></app-progress-indicator>
+          <app-indicator kind="spinner-ring"></app-indicator>
         </span>
       }
     </div>
@@ -56,7 +56,7 @@
 
                 @if (isUploading(slotIndex)) {
                   <span class="image-carousel__upload-ring" aria-label="Uploading image">
-                    <app-progress-indicator kind="spinner-ring" [size]="compact ? 'sm' : 'md'"></app-progress-indicator>
+                    <app-indicator kind="spinner-ring" [size]="compact ? 'sm' : 'md'"></app-indicator>
                   </span>
                 } @else if (imageUrl) {
                   <button

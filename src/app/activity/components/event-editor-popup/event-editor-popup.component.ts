@@ -77,7 +77,7 @@ import {
   type LocationInputConfig,
   PricingEditorInputComponent,
   type PricingEditorConfig,
-  ProgressIndicatorComponent
+  IndicatorComponent
 } from '../../../shared/ui';
 import {
   EventSubeventDefinitionsPanelComponent
@@ -121,7 +121,7 @@ interface SlotOverrideEditorState {
     LocationInputComponent,
     EventSubeventDefinitionsPanelComponent,
     PricingEditorInputComponent,
-    ProgressIndicatorComponent
+    IndicatorComponent
   ],
   templateUrl: './event-editor-popup.component.html',
   styleUrls: ['./event-editor-popup.component.scss']

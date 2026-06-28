@@ -16,7 +16,7 @@ import { MatIconModule } from '@angular/material/icon';
 import { AppUtils } from '../../../../../app-utils';
 import { LazyBgImageDirective } from '../../../../directives/lazy-bg-image.directive';
 import { I18nPipe } from '../../../../pipes';
-import { ProgressIndicatorComponent } from '../../../progress-indicator';
+import { IndicatorComponent } from '../../../indicator';
 import { CounterBadgePipe } from '../../../../pipes/counter-badge.pipe';
 import {
   AppMenuTriggerComponent,
@@ -52,7 +52,7 @@ import { CARD_MENU_ACTIONS } from '../card.types';
     CommonModule,
     MatIconModule,
     LazyBgImageDirective,
-    ProgressIndicatorComponent,
+    IndicatorComponent,
     CounterBadgePipe,
     I18nPipe,
     AppMenuTriggerComponent

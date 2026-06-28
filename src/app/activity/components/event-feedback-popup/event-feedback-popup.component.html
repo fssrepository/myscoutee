@@ -49,7 +49,7 @@
               @if (!eventFeedbackSubmitted()) {
                 @if (eventFeedbackDetailLoading()) {
                   <article class="editor-list-card support-card event-feedback-loading-card">
-                    <app-progress-indicator kind="load-ring" state="loading"></app-progress-indicator>
+                    <app-indicator kind="load-ring" state="loading"></app-indicator>
                     <span>Loading feedback</span>
                   </article>
                 } @else if (hasEventFeedbackCards()) {

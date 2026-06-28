@@ -24,11 +24,11 @@ import { I18nPipe } from '../../pipes';
 import { I18nService } from '../../../core';
 import { RateComponent } from './items/rate/rate.component';
 import {
-  ProgressIndicatorComponent,
-  type ProgressIndicatorShape,
-  type ProgressIndicatorState,
-  type ProgressIndicatorTone
-} from '../progress-indicator';
+  IndicatorComponent,
+  type IndicatorShape,
+  type IndicatorState,
+  type IndicatorTone
+} from '../indicator';
 import type {
   AppMenuCounter,
   AppMenuCounterValue,
@@ -67,7 +67,7 @@ type AppMenuFilterTextPart = {
 @Component({
   selector: 'app-menu',
   standalone: true,
-  imports: [CommonModule, MatIconModule, I18nPipe, RateComponent, ProgressIndicatorComponent],
+  imports: [CommonModule, MatIconModule, I18nPipe, RateComponent, IndicatorComponent],
   templateUrl: './menu.component.html',
   styleUrl: './menu.component.scss',
   providers: [
@@ -961,16 +961,16 @@ export class AppMenuComponent<TId extends string = string, TContext = unknown>
     return this.itemAriaLabel(item) ?? (this.actionRowItemLabel(item) || null);
   }
 
-  protected itemProgressState(item: AppMenuItem<TId, TContext>): ProgressIndicatorState | null {
+  protected itemProgressState(item: AppMenuItem<TId, TContext>): IndicatorState | null {
     const state = this.resolveLiveValue(item.progress?.state) ?? null;
     return state === 'idle' || state === 'inactive' ? null : state;
   }
 
-  protected itemProgressTone(item: AppMenuItem<TId, TContext>): ProgressIndicatorTone {
+  protected itemProgressTone(item: AppMenuItem<TId, TContext>): IndicatorTone {
     return this.resolveLiveValue(item.progress?.tone) ?? 'default';
   }
 
-  protected itemProgressShape(item: AppMenuItem<TId, TContext>): ProgressIndicatorShape {
+  protected itemProgressShape(item: AppMenuItem<TId, TContext>): IndicatorShape {
     return item.progress?.shape ?? (this.isLabeledActionRowItem(item) ? 'button' : 'circle');
   }
 

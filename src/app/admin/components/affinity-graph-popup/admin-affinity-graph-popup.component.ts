@@ -28,7 +28,7 @@ import {
   LazyBgImageDirective
 } from '../../../shared/ui/directives';
 import {
-  ProgressIndicatorComponent
+  IndicatorComponent
 } from '../../../shared/ui/components';
 import { UserProfileStore } from '../../../shared/ui/context/stores/user-profile.store';
 import { AppRuntimeStore } from '../../../shared/ui/context/stores/app-runtime.store';
@@ -36,7 +36,7 @@ import { AppRuntimeStore } from '../../../shared/ui/context/stores/app-runtime.s
 @Component({
   selector: 'app-admin-affinity-graph-popup',
   standalone: true,
-  imports: [CommonModule, MatIconModule, ProgressIndicatorComponent],
+  imports: [CommonModule, MatIconModule, IndicatorComponent],
   templateUrl: './admin-affinity-graph-popup.component.html',
   styleUrl: './admin-affinity-graph-popup.component.scss'
 })

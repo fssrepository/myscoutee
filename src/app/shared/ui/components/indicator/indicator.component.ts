@@ -1,46 +1,46 @@
 import { AfterViewInit, ChangeDetectionStrategy, Component, ElementRef, HostBinding, Input, OnChanges, OnDestroy, SimpleChanges, inject, signal } from '@angular/core';
 
-export type ProgressIndicatorKind = 'bar' | 'pill-bar' | 'load-ring' | 'action-ring' | 'spinner-ring';
-export type ProgressIndicatorPlacement = 'edge' | 'inline';
-export type ProgressIndicatorShape = 'circle' | 'button';
-export type ProgressIndicatorSize = 'sm' | 'md';
-export type ProgressIndicatorState = 'idle' | 'scrolling' | 'loading' | 'loading-overdue' | 'error' | 'success' | 'inactive';
-export type ProgressIndicatorTone = 'default' | 'chat' | 'accent' | 'danger' | 'success';
+export type IndicatorKind = 'bar' | 'pill-bar' | 'load-ring' | 'action-ring' | 'spinner-ring';
+export type IndicatorPlacement = 'edge' | 'inline';
+export type IndicatorShape = 'circle' | 'button';
+export type IndicatorSize = 'sm' | 'md';
+export type IndicatorState = 'idle' | 'scrolling' | 'loading' | 'loading-overdue' | 'error' | 'success' | 'inactive';
+export type IndicatorTone = 'default' | 'chat' | 'accent' | 'danger' | 'success';
 
-export interface ProgressIndicatorBarConfig {
+export interface IndicatorBarConfig {
   position?: number;
-  state?: ProgressIndicatorState;
-  tone?: ProgressIndicatorTone;
-  placement?: ProgressIndicatorPlacement;
+  state?: IndicatorState;
+  tone?: IndicatorTone;
+  placement?: IndicatorPlacement;
 }
 
-let progressIndicatorId = 0;
+let indicatorId = 0;
 
 @Component({
-  selector: 'app-progress-indicator',
+  selector: 'app-indicator',
   standalone: true,
   imports: [],
-  templateUrl: './progress-indicator.component.html',
-  styleUrl: './progress-indicator.component.scss',
+  templateUrl: './indicator.component.html',
+  styleUrl: './indicator.component.scss',
   changeDetection: ChangeDetectionStrategy.OnPush
 })
-export class ProgressIndicatorComponent implements AfterViewInit, OnChanges, OnDestroy {
+export class IndicatorComponent implements AfterViewInit, OnChanges, OnDestroy {
   private readonly host = inject<ElementRef<HTMLElement>>(ElementRef);
 
-  @Input() kind: ProgressIndicatorKind = 'bar';
-  @Input() placement: ProgressIndicatorPlacement = 'edge';
-  @Input() shape: ProgressIndicatorShape = 'circle';
-  @Input() size: ProgressIndicatorSize = 'md';
-  @Input() state: ProgressIndicatorState = 'scrolling';
-  @Input() tone: ProgressIndicatorTone = 'default';
+  @Input() kind: IndicatorKind = 'bar';
+  @Input() placement: IndicatorPlacement = 'edge';
+  @Input() shape: IndicatorShape = 'circle';
+  @Input() size: IndicatorSize = 'md';
+  @Input() state: IndicatorState = 'scrolling';
+  @Input() tone: IndicatorTone = 'default';
   @Input() position = 0;
   @Input() perimeter = 100;
   @Input() durationMs = 3000;
   @Input() autoProgress = true;
 
-  protected readonly actionGradientId = `app-progress-action-gradient-${++progressIndicatorId}`;
-  protected readonly actionErrorGradientId = `app-progress-action-error-gradient-${progressIndicatorId}`;
-  protected readonly actionAccentGradientId = `app-progress-action-accent-gradient-${progressIndicatorId}`;
+  protected readonly actionGradientId = `app-indicator-action-gradient-${++indicatorId}`;
+  protected readonly actionErrorGradientId = `app-indicator-action-error-gradient-${indicatorId}`;
+  protected readonly actionAccentGradientId = `app-indicator-action-accent-gradient-${indicatorId}`;
   private readonly timedLoadPosition = signal(0);
   private readonly actionButtonSize = signal({ width: 104, height: 48 });
   private timedLoadStartedAtMs = 0;
@@ -50,70 +50,70 @@ export class ProgressIndicatorComponent implements AfterViewInit, OnChanges, OnD
   private actionButtonMeasureFrameId: number | null = null;
   private manualPositionInput = false;
 
-  @HostBinding('class.app-progress-indicator-host')
+  @HostBinding('class.app-indicator-host')
   protected readonly hostClass = true;
 
-  @HostBinding('class.app-progress-indicator-host--kind-bar')
+  @HostBinding('class.app-indicator-host--kind-bar')
   protected get hostBarKindClass(): boolean {
     return this.kind === 'bar';
   }
 
-  @HostBinding('class.app-progress-indicator-host--kind-pill-bar')
+  @HostBinding('class.app-indicator-host--kind-pill-bar')
   protected get hostPillBarKindClass(): boolean {
     return this.kind === 'pill-bar';
   }
 
-  @HostBinding('class.app-progress-indicator-host--kind-load-ring')
+  @HostBinding('class.app-indicator-host--kind-load-ring')
   protected get hostLoadRingKindClass(): boolean {
     return this.kind === 'load-ring';
   }
 
-  @HostBinding('class.app-progress-indicator-host--kind-action-ring')
+  @HostBinding('class.app-indicator-host--kind-action-ring')
   protected get hostActionRingKindClass(): boolean {
     return this.kind === 'action-ring';
   }
 
-  @HostBinding('class.app-progress-indicator-host--kind-spinner-ring')
+  @HostBinding('class.app-indicator-host--kind-spinner-ring')
   protected get hostSpinnerRingKindClass(): boolean {
     return this.kind === 'spinner-ring';
   }
 
-  @HostBinding('class.app-progress-indicator-host--placement-edge')
+  @HostBinding('class.app-indicator-host--placement-edge')
   protected get hostEdgePlacementClass(): boolean {
     return this.placement === 'edge';
   }
 
-  @HostBinding('class.app-progress-indicator-host--placement-inline')
+  @HostBinding('class.app-indicator-host--placement-inline')
   protected get hostInlinePlacementClass(): boolean {
     return this.placement === 'inline';
   }
 
-  @HostBinding('class.app-progress-indicator-host--shape-button')
+  @HostBinding('class.app-indicator-host--shape-button')
   protected get hostButtonShapeClass(): boolean {
     return this.shape === 'button';
   }
 
-  @HostBinding('class.app-progress-indicator-host--shape-circle')
+  @HostBinding('class.app-indicator-host--shape-circle')
   protected get hostCircleShapeClass(): boolean {
     return this.shape === 'circle';
   }
 
-  @HostBinding('class.app-progress-indicator-host--size-sm')
+  @HostBinding('class.app-indicator-host--size-sm')
   protected get hostSmallSizeClass(): boolean {
     return this.size === 'sm';
   }
 
-  @HostBinding('class.app-progress-indicator-host--size-md')
+  @HostBinding('class.app-indicator-host--size-md')
   protected get hostMediumSizeClass(): boolean {
     return this.size === 'md';
   }
 
-  @HostBinding('class.app-progress-indicator-host--tone-chat')
+  @HostBinding('class.app-indicator-host--tone-chat')
   protected get hostChatToneClass(): boolean {
     return this.tone === 'chat';
   }
 
-  @HostBinding('style.--app-progress-duration')
+  @HostBinding('style.--app-indicator-duration')
   protected get durationStyle(): string {
     return `${Math.max(0, Math.trunc(Number(this.durationMs) || 0))}ms`;
   }
@@ -186,7 +186,7 @@ export class ProgressIndicatorComponent implements AfterViewInit, OnChanges, OnD
     return this.resolvedState === 'scrolling';
   }
 
-  protected get resolvedState(): ProgressIndicatorState {
+  protected get resolvedState(): IndicatorState {
     return this.state;
   }
 

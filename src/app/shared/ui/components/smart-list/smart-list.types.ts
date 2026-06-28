@@ -1,8 +1,8 @@
 import { Observable } from 'rxjs';
 import type {
-  ProgressIndicatorPlacement,
-  ProgressIndicatorTone
-} from '../progress-indicator';
+  IndicatorPlacement,
+  IndicatorTone
+} from '../indicator';
 import type {
   ListDirection,
   ListQuery,
@@ -266,8 +266,8 @@ export interface SmartListConfig<T, TFilters extends SmartListFilters = SmartLis
   scrollPaddingTop?: SmartListConfigValue<string | null, TFilters>;
   headerProgress?: {
     enabled?: SmartListConfigValue<boolean, TFilters>;
-    tone?: SmartListConfigValue<ProgressIndicatorTone, TFilters>;
-    placement?: SmartListConfigValue<ProgressIndicatorPlacement, TFilters>;
+    tone?: SmartListConfigValue<IndicatorTone, TFilters>;
+    placement?: SmartListConfigValue<IndicatorPlacement, TFilters>;
     state?: SmartListConfigValue<SmartListHeaderProgressState, TFilters>;
   };
   pagination?: {

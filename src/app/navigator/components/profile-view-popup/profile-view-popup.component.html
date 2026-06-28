@@ -128,11 +128,11 @@
             </header>
             @if (loadingExperiences()) {
               <div class="profile-view-inline-loading">
-                <app-progress-indicator
+                <app-indicator
                   kind="load-ring"
                   size="sm"
                   state="loading"
-                ></app-progress-indicator>
+                ></app-indicator>
                 <span>Loading experience</span>
               </div>
             } @else if (isExperienceEmpty()) {
@@ -162,10 +162,10 @@
 
         } @else if (loadingUser()) {
           <div class="profile-view-loading-state">
-            <app-progress-indicator
+            <app-indicator
               kind="load-ring"
               state="loading"
-            ></app-progress-indicator>
+            ></app-indicator>
             <strong>Loading profile</strong>
           </div>
         } @else {
