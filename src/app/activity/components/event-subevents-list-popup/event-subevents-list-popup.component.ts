@@ -10,9 +10,6 @@ import {
   inject
 } from '@angular/core';
 import {
-  MatIconModule
-} from '@angular/material/icon';
-import {
   from,
   of
 } from 'rxjs';
@@ -31,8 +28,8 @@ import {
 } from '../../../shared/core/contracts/activity.interface';
 import type { EventTournamentStageDTO } from '../../../shared/core/contracts/event.interface';
 import {
-  AppMenuComponent,
   InfoCardComponent,
+  PopupComponent,
   SmartListComponent,
   type AppMenuItem,
   type AppMenuItemSelectEvent,
@@ -40,6 +37,9 @@ import {
   type InfoCardData,
   type ListQuery,
   type PageResult,
+  type PopupControl,
+  type PopupMenuSelectEvent,
+  type PopupModel,
   type SmartListConfig,
   type SmartListLoadPage
 } from '../../../shared/ui';
@@ -67,6 +67,10 @@ type EventSubeventsListView = 'day' | 'week' | 'month';
 type EventSubeventsListOrder = 'upcoming' | 'past';
 type EventSubeventsListContextAction = 'edit' | 'view' | 'members';
 type EventSubeventsSlotTone = 'blue' | 'green' | 'cyan' | 'violet' | 'amber' | 'gold';
+type EventSubeventsListPopupMenuContext =
+  | { menu: 'order'; order: EventSubeventsListOrder }
+  | { menu: 'view'; view: EventSubeventsListView }
+  | { menu: 'context'; action: EventSubeventsListContextAction };
 
 interface EventSubeventsListFilters {
   revision: number;
@@ -88,8 +92,7 @@ interface EventSubeventsSlotSection {
   standalone: true,
   imports: [
     CommonModule,
-    MatIconModule,
-    AppMenuComponent,
+    PopupComponent,
     SmartListComponent,
     InfoCardComponent
   ],
@@ -257,6 +260,23 @@ export class EventSubeventsListPopupComponent {
     this.popupStore.closeEventSubeventsListPopup();
   }
 
+  protected popupModel(): PopupModel<EventSubeventsListPopupMenuContext> {
+    return {
+      title: this.popupSubtitle(),
+      subtitle: this.popupHeaderSubtitle(),
+      ariaLabel: this.popupSubtitle(),
+      closeAriaLabel: 'Close',
+      size: 'wide',
+      height: 'full',
+      headerTone: 'accent',
+      bodyLayout: 'fill',
+      headerControls: this.popupHeaderControls(),
+      toolbarControls: this.popupToolbarControls(),
+      onClose: () => this.close(),
+      onMenuSelect: event => this.onPopupMenuSelect(event)
+    };
+  }
+
   protected popupTitle(): string {
     return 'Sub Events';
   }
@@ -266,12 +286,63 @@ export class EventSubeventsListPopupComponent {
     return this.event?.title || requestTitle || 'Event';
   }
 
+  protected popupHeaderSubtitle(): string {
+    return this.eventRangeLabel() || this.popupTitle();
+  }
+
   protected eventRangeLabel(): string {
     const event = this.event;
     if (!event) {
       return '';
     }
     return AppUtils.dateTimeRangeLabel(event.startAtIso, event.endAtIso, event.timeframe || '');
+  }
+
+  private popupHeaderControls(): PopupControl<EventSubeventsListPopupMenuContext>[] {
+    return [
+      {
+        kind: 'menu',
+        id: 'order',
+        trigger: this.orderTrigger(),
+        items: this.orderMenuItems()
+      },
+      {
+        kind: 'menu',
+        id: 'view',
+        trigger: this.viewTrigger(),
+        items: this.viewMenuItems()
+      }
+    ];
+  }
+
+  private popupToolbarControls(): PopupControl<EventSubeventsListPopupMenuContext>[] {
+    return [
+      {
+        kind: 'menu',
+        id: 'context',
+        align: 'end',
+        menuKind: 'inline',
+        items: this.contextMenuItems()
+      }
+    ];
+  }
+
+  private onPopupMenuSelect(event: PopupMenuSelectEvent<EventSubeventsListPopupMenuContext>): void {
+    const context = event.itemSelect.context;
+    if (!context) {
+      return;
+    }
+    switch (context.menu) {
+      case 'order':
+        this.selectOrder(context.order);
+        return;
+      case 'view':
+        this.selectView(context.view);
+        return;
+      case 'context':
+        this.selectContextAction(context.action);
+        return;
+    }
   }
 
   protected orderTrigger(): AppMenuTrigger {
@@ -285,15 +356,29 @@ export class EventSubeventsListPopupComponent {
     };
   }
 
-  protected orderMenuItems(): readonly AppMenuItem<EventSubeventsListOrder>[] {
+  protected orderMenuItems(): readonly AppMenuItem<string, EventSubeventsListPopupMenuContext>[] {
     return [
-      { id: 'upcoming', label: 'Upcoming', icon: 'schedule', palette: 'blue', surface: 'tinted' },
-      { id: 'past', label: 'Past', icon: 'history', palette: 'slate', surface: 'tinted' }
+      {
+        id: 'upcoming',
+        label: 'Upcoming',
+        icon: 'schedule',
+        palette: 'blue',
+        surface: 'tinted',
+        context: { menu: 'order', order: 'upcoming' }
+      },
+      {
+        id: 'past',
+        label: 'Past',
+        icon: 'history',
+        palette: 'slate',
+        surface: 'tinted',
+        context: { menu: 'order', order: 'past' }
+      }
     ];
   }
 
-  protected onOrderSelect(event: AppMenuItemSelectEvent<EventSubeventsListOrder>): void {
-    this.order = event.item.id;
+  private selectOrder(order: EventSubeventsListOrder): void {
+    this.order = order;
     this.bumpQuery();
   }
 
@@ -308,20 +393,41 @@ export class EventSubeventsListPopupComponent {
     };
   }
 
-  protected viewMenuItems(): readonly AppMenuItem<EventSubeventsListView>[] {
+  protected viewMenuItems(): readonly AppMenuItem<string, EventSubeventsListPopupMenuContext>[] {
     return [
-      { id: 'month', label: 'Month', icon: 'calendar_month', palette: 'gold', surface: 'tinted' },
-      { id: 'week', label: 'Week', icon: 'date_range', palette: 'green', surface: 'tinted' },
-      { id: 'day', label: 'Day', icon: 'today', palette: 'blue', surface: 'tinted' }
+      {
+        id: 'month',
+        label: 'Month',
+        icon: 'calendar_month',
+        palette: 'gold',
+        surface: 'tinted',
+        context: { menu: 'view', view: 'month' }
+      },
+      {
+        id: 'week',
+        label: 'Week',
+        icon: 'date_range',
+        palette: 'green',
+        surface: 'tinted',
+        context: { menu: 'view', view: 'week' }
+      },
+      {
+        id: 'day',
+        label: 'Day',
+        icon: 'today',
+        palette: 'blue',
+        surface: 'tinted',
+        context: { menu: 'view', view: 'day' }
+      }
     ];
   }
 
-  protected onViewSelect(event: AppMenuItemSelectEvent<EventSubeventsListView>): void {
-    this.view = event.item.id;
+  private selectView(view: EventSubeventsListView): void {
+    this.view = view;
     this.bumpQuery();
   }
 
-  protected contextMenuItems(): readonly AppMenuItem<EventSubeventsListContextAction>[] {
+  protected contextMenuItems(): readonly AppMenuItem<string, EventSubeventsListPopupMenuContext>[] {
     const canEdit = this.popupStore.eventSubeventsListPopup()?.canEdit === true;
     const memberCount = this.eventMembersCount();
     return [
@@ -331,7 +437,8 @@ export class EventSubeventsListPopupComponent {
         icon: canEdit ? 'edit' : 'visibility',
         palette: canEdit ? 'amber' : 'teal',
         surface: 'tinted',
-        layout: 'action'
+        layout: 'action',
+        context: { menu: 'context', action: canEdit ? 'edit' : 'view' }
       },
       {
         id: 'members',
@@ -341,13 +448,14 @@ export class EventSubeventsListPopupComponent {
         surface: 'tinted',
         layout: 'action',
         disabled: this.membersDisabled(),
-        counter: memberCount > 0 ? memberCount : null
+        counter: memberCount > 0 ? memberCount : null,
+        context: { menu: 'context', action: 'members' }
       }
     ];
   }
 
-  protected onContextMenuSelect(event: AppMenuItemSelectEvent<EventSubeventsListContextAction>): void {
-    if (event.item.id === 'members') {
+  private selectContextAction(action: EventSubeventsListContextAction): void {
+    if (action === 'members') {
       this.openMembers();
       return;
     }

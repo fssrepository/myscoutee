@@ -1,84 +1,33 @@
 @if (isOpen()) {
-<section class="app-popup event-subevents-list-popup-shell">
-  <div class="app-popup-backdrop" (click)="close()"></div>
-  <article class="app-popup-panel popup-panel-event-subevents-list" (click)="$event.stopPropagation()">
-    <header class="popup-header event-subevents-list-header">
-      <div class="popup-title event-subevents-list-title">
-        <h2>{{ popupTitle() }}</h2>
-        <p class="popup-subtitle-activities">{{ popupSubtitle() }}</p>
-        @let rangeLabel = eventRangeLabel();
-        <span
-          class="event-subevents-list-range-badge"
-          [class.event-subevents-list-range-badge--empty]="!rangeLabel"
-          [attr.aria-hidden]="!rangeLabel ? 'true' : null"
-        >
-          <mat-icon>calendar_month</mat-icon>
-          <span>{{ rangeLabel || 'Jul 26, 9:30 PM - Jul 27, 12:30 AM' }}</span>
-        </span>
-      </div>
-      <div class="event-subevents-list-header-actions">
-        <app-menu
-          class="event-subevents-list-order-menu"
-          kind="select"
-          [trigger]="orderTrigger()"
-          [items]="orderMenuItems()"
-          (itemSelect)="onOrderSelect($event)"
-        ></app-menu>
-        <app-menu
-          class="event-subevents-list-view-menu"
-          kind="select"
-          [trigger]="viewTrigger()"
-          [items]="viewMenuItems()"
-          (itemSelect)="onViewSelect($event)"
-        ></app-menu>
-      </div>
-      <button type="button" class="popup-close event-subevents-list-close" (click)="close()" aria-label="Close">
-        <mat-icon>close</mat-icon>
-      </button>
-      <div class="event-subevents-list-context-row">
-        <div class="event-subevents-list-context-actions">
-          <app-menu
-            class="event-subevents-list-context-menu"
-            kind="inline"
-            [items]="contextMenuItems()"
-            (itemSelect)="onContextMenuSelect($event)"
-          ></app-menu>
-        </div>
-      </div>
-    </header>
+  <app-popup [model]="popupModel()" [zIndex]="2400">
+    <app-smart-list
+      class="event-subevents-list-smart-list"
+      [config]="smartListConfig"
+      [loadPage]="loadSubEventsPage"
+      [itemTemplate]="slotSectionTemplate"
+      [query]="query"
+    ></app-smart-list>
 
-    <div class="popup-body event-subevents-list-body">
-      <app-smart-list
-        class="event-subevents-list-smart-list"
-        [config]="smartListConfig"
-        [loadPage]="loadSubEventsPage"
-        [itemTemplate]="slotSectionTemplate"
-        [query]="query"
-      ></app-smart-list>
+    <ng-template #slotSectionTemplate let-section>
+      <section class="event-subevents-slot-section" [ngClass]="slotSectionToneClass(section)">
+        <app-smart-list
+          class="event-subevents-slot-section-list"
+          [config]="slotSectionSmartListConfigFor(section)"
+          [loadPage]="slotSectionLoadPage(section)"
+          [itemTemplate]="subEventTemplate"
+          (menuItemSelect)="onSubEventMenuSelect($event)"
+        ></app-smart-list>
+      </section>
+    </ng-template>
 
-      <ng-template #slotSectionTemplate let-section>
-        <section class="event-subevents-slot-section" [ngClass]="slotSectionToneClass(section)">
-          <app-smart-list
-            class="event-subevents-slot-section-list"
-            [config]="slotSectionSmartListConfigFor(section)"
-            [loadPage]="slotSectionLoadPage(section)"
-            [itemTemplate]="subEventTemplate"
-            (menuItemSelect)="onSubEventMenuSelect($event)"
-          ></app-smart-list>
-        </section>
-      </ng-template>
-
-      <ng-template #subEventTemplate let-item let-groupLabel="groupLabel" let-openMenu="openMenu">
-        <app-info-card
-          [card]="cardFor(item, groupLabel)"
-          [useSharedMenu]="true"
-          [useSharedMenuTrigger]="false"
-          [sharedMenuContext]="subEventMenuContext(item)"
-          (menuRequest)="openMenu($event)"
-        ></app-info-card>
-      </ng-template>
-    </div>
-  </article>
-
-</section>
+    <ng-template #subEventTemplate let-item let-groupLabel="groupLabel" let-openMenu="openMenu">
+      <app-info-card
+        [card]="cardFor(item, groupLabel)"
+        [useSharedMenu]="true"
+        [useSharedMenuTrigger]="false"
+        [sharedMenuContext]="subEventMenuContext(item)"
+        (menuRequest)="openMenu($event)"
+      ></app-info-card>
+    </ng-template>
+  </app-popup>
 }
