@@ -1,4 +1,4 @@
-import { ChangeDetectionStrategy, ChangeDetectorRef, Component, HostListener, OnDestroy, ViewChild, effect } from '@angular/core';
+import { ChangeDetectionStrategy, ChangeDetectorRef, Component, HostListener, OnDestroy, ViewChild, effect, signal } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { MatIconModule } from '@angular/material/icon';
 import { from } from 'rxjs';
@@ -215,7 +215,7 @@ export class HomeComponent implements OnDestroy {
   private activeTouchId: number | null = null;
   private pairModeSplitPointerId: number | null = null;
   private pairModeSplitBounds: { left: number; width: number } | null = null;
-  private awaitingUserBootstrap = false;
+  private readonly awaitingUserBootstrapRef = signal(false);
   private awaitingUserByIdLoadingSeen = false;
   private lastHandledActiveUserId = '';
 
@@ -294,7 +294,7 @@ export class HomeComponent implements OnDestroy {
       this.handleActiveUserChanged(targetUserId);
     });
     effect(() => {
-      if (!this.awaitingUserBootstrap) {
+      if (!this.awaitingUserBootstrapRef()) {
         return;
       }
       const status = userByIdLoadState().status;
@@ -315,7 +315,7 @@ export class HomeComponent implements OnDestroy {
         this.upsertHomeUser(activeProfile);
       }
       const previousReloadKey = this.serviceCardStackReloadKey();
-      this.awaitingUserBootstrap = false;
+      this.awaitingUserBootstrapRef.set(false);
       this.awaitingUserByIdLoadingSeen = false;
       this.applyFilterPreferencesFromAppContext();
       if (this.gameInitialCardsLoadPending) {
@@ -326,6 +326,7 @@ export class HomeComponent implements OnDestroy {
         this.syncHomeSmartListQuery();
         this.homeSmartListQueryReady = true;
       }
+      this.cdr.markForCheck();
     });
   }
 
@@ -1355,7 +1356,7 @@ export class HomeComponent implements OnDestroy {
     this.resetCandidateImageState();
     this.resetGameStackPaginationState(false);
     this.gameInitialCardsLoadPending = true;
-    this.awaitingUserBootstrap = true;
+    this.awaitingUserBootstrapRef.set(true);
     this.awaitingUserByIdLoadingSeen = false;
     this.cdr.markForCheck();
   }
@@ -1568,8 +1569,8 @@ export class HomeComponent implements OnDestroy {
   }
 
   private async waitForInitialHomeGameStack(query: ListQuery<HomeSmartListFilters>): Promise<void> {
-    if (this.awaitingUserBootstrap && query.page === 0) {
-      while (this.awaitingUserBootstrap) {
+    if (this.awaitingUserBootstrapRef() && query.page === 0) {
+      while (this.awaitingUserBootstrapRef()) {
         await this.waitForHomeGameStackTick();
       }
     }
