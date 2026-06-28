@@ -77,4 +77,3 @@ export {
 } from './base/services/session.service';
 export * from './base/builders';
 export type * from './contracts';
-export * from './local/seed';

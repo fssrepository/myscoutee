@@ -1,5 +1,5 @@
 import { NgComponentOutlet } from '@angular/common';
-import { ChangeDetectorRef, Component, HostListener, NgZone, OnDestroy, OnInit, inject } from '@angular/core';
+import { ChangeDetectorRef, Component, HostListener, Injector, NgZone, OnDestroy, OnInit, inject } from '@angular/core';
 import { ActivatedRoute, Router } from '@angular/router';
 import { Subscription } from 'rxjs';
 
@@ -23,7 +23,6 @@ import { PrivacyPolicyService } from '../../../shared/core/base/services/privacy
 import { SessionService, type AppSession } from '../../../shared/core/base/services/session.service';
 import { TermsPolicyService } from '../../../shared/core/base/services/terms-policy.service';
 import { UsersService } from '../../../shared/core/base/services/users.service';
-import { SeedStaticContentService } from '../../../shared/core/local/seed/services/static-content.service';
 import { ConfirmationDialogComponent } from '../../../shared/ui/components/confirmation-dialog/confirmation-dialog.component';
 import { ConfirmationDialogStore } from '../../../shared/ui/context/stores/confirmation-dialog.store';
 import { AppPopupContext } from '../../../shared/ui/context/app-popup.context';
@@ -74,6 +73,7 @@ export class EntryPageComponent implements OnInit, OnDestroy {
 
   private readonly router = inject(Router);
   private readonly route = inject(ActivatedRoute);
+  private readonly injector = inject(Injector);
   private readonly changeDetectorRef = inject(ChangeDetectorRef);
   private readonly ngZone = inject(NgZone);
   private readonly popupCtx = inject(AppPopupContext);
@@ -82,7 +82,6 @@ export class EntryPageComponent implements OnInit, OnDestroy {
   protected readonly sessionService = inject(SessionService);
   private readonly termsPolicy = inject(TermsPolicyService);
   private readonly landingContent = inject(LandingContentService);
-  private readonly staticContentSeed = inject(SeedStaticContentService);
   private readonly confirmationDialogStore = inject(ConfirmationDialogStore);
   private readonly i18n = inject(I18nService);
   private readonly usersService = inject(UsersService);
@@ -1011,7 +1010,7 @@ export class EntryPageComponent implements OnInit, OnDestroy {
     this.entryContentLoadPromise = (async () => {
       try {
         if (this.landingContent.usesLocalContent()) {
-          await this.staticContentSeed.ensureReady();
+          await this.ensureLocalStaticContentReady();
         }
         const displayState = await this.landingContent.loadDisplayState();
         this.ngZone.run(() => {
@@ -1048,6 +1047,13 @@ export class EntryPageComponent implements OnInit, OnDestroy {
       this.entryContentLoadPromise = null;
     });
     return this.entryContentLoadPromise;
+  }
+
+  private async ensureLocalStaticContentReady(): Promise<void> {
+    const { SeedStaticContentService } = await import(
+      '../../../shared/core/local/seed/services/static-content.service'
+    );
+    await this.injector.get(SeedStaticContentService).ensureReady();
   }
 
   private finishEntryPrivacyLoad(requestToken: number): void {

@@ -13,7 +13,7 @@ import {
 import { I18nPipe } from '../../pipes';
 import { UsersService, type BootstrapProcessStage, type UserSelectorListItemDto } from '../../../core';
 import { UserProfileState } from '../../../core/common/user-profile-state';
-import { SeedDemoBootstrapService } from '../../../core/local/seed';
+import { SeedDemoBootstrapService } from '../../../core/local/seed/services/demo-bootstrap.service';
 
 type DemoSelectorHeaderMenuItemId = 'new-profile';
 
