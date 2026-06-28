@@ -1,5 +1,5 @@
 import { HttpInterceptorFn } from '@angular/common/http';
-import { Injector, inject } from '@angular/core';
+import { inject } from '@angular/core';
 import { from, switchMap } from 'rxjs';
 
 import { environment } from '../../../../environments/environment';
@@ -25,13 +25,13 @@ export const firebaseAuthInterceptor: HttpInterceptorFn = (req, next) => {
   }
 
   const sessionService = inject(SessionService);
-  if (sessionService.currentSession()?.kind === 'demo'
+  const session = sessionService.currentSession();
+  if (session?.kind !== 'firebase'
     || req.headers.get(DEMO_SESSION_HEADER)?.toLowerCase() === DEMO_SESSION_VALUE) {
     return next(req);
   }
 
-  const injector = inject(Injector);
-  return from(loadFirebaseIdToken(injector)).pipe(
+  return from(sessionService.getFirebaseIdToken()).pipe(
     switchMap(token => {
       if (!token) {
         return next(req);
@@ -46,8 +46,3 @@ export const firebaseAuthInterceptor: HttpInterceptorFn = (req, next) => {
     })
   );
 };
-
-async function loadFirebaseIdToken(injector: Injector): Promise<string | null> {
-  const { FirebaseAuthService } = await import('../base/services/firebase-auth.service');
-  return injector.get(FirebaseAuthService).getIdToken();
-}

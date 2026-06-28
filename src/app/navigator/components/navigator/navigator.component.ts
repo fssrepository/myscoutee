@@ -40,7 +40,7 @@ import {
 import { USER_LOGOUT_CONTEXT_KEY } from '../../../shared/core/base/services/users.service';
 import { ConfirmationDialogComponent } from '../../../shared/ui/components/confirmation-dialog/confirmation-dialog.component';
 import { NavigatorSettingsPopupsComponent } from '../navigator-settings-popups/navigator-settings-popups.component';
-import { NavigatorStore } from '../../../shared/ui/context/stores/navigator.store';
+import { NavigatorStore, type NavigatorBindings } from '../../../shared/ui/context/stores/navigator.store';
 import { resolveNavigatorPresentation } from './navigator-presenters';
 import type { ChatDTO } from '../../../shared/core/contracts/chat.interface';
 import { ConfirmationDialogStore } from '../../../shared/ui/context/stores/confirmation-dialog.store';
@@ -145,6 +145,7 @@ export class NavigatorComponent implements OnDestroy {
   private readonly routerEventsSubscription: Subscription;
   private readonly hydrationRequestKeyRef = signal('');
   private readonly privacyConsentCheckKeyRef = signal('');
+  private readonly navigatorBindings: NavigatorBindings = {};
   private lastHandledActivitiesRequestMs = 0;
   private lastHandledAssetRequestMs = 0;
   private lastHandledEventFeedbackRequestMs = 0;
@@ -188,7 +189,10 @@ export class NavigatorComponent implements OnDestroy {
     };
   });
   protected readonly menuUiState = this.navigatorStore.menuUiState;
-  protected readonly isCoveredByAssetPopup = this.navigatorStore.navigatorCoveredByAssetPopup;
+  protected readonly isCoveredByAssetPopup = computed(() =>
+    this.assetPopupStore.visible()
+    || this.popupCtx.popupStore.activityInvitePopup() !== null
+  );
   protected readonly avatarVisible = computed(() => {
     const path = this.currentRoutePathRef();
     return path !== '/' && !path.startsWith('/entry');
@@ -743,6 +747,8 @@ export class NavigatorComponent implements OnDestroy {
   });
 
   constructor() {
+    this.navigatorStore.registerBindings(this.navigatorBindings);
+
     this.routerEventsSubscription = this.router.events.subscribe(event => {
       if (event instanceof NavigationEnd) {
         this.currentRoutePathRef.set(AppUtils.normalizeRoutePath(event.urlAfterRedirects));
@@ -1411,6 +1417,7 @@ export class NavigatorComponent implements OnDestroy {
 
   ngOnDestroy(): void {
     this.routerEventsSubscription.unsubscribe();
+    this.navigatorStore.clearBindings(this.navigatorBindings);
     this.stopUserRealtimeLongPoll();
     this.clearUserMenuLoadState();
   }

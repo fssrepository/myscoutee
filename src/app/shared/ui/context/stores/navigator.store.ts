@@ -2,8 +2,6 @@ import { Injectable, Type, computed, inject, signal } from '@angular/core';
 
 import type { ActivityMemberOwnerType } from '../../../core/common/constants';
 import type { UserDto } from '../../../core/contracts/user.interface';
-import { AssetPopupStore } from './asset-popup.store';
-import { PopupStore } from './popup.store';
 
 export interface NavigatorMenuUiState {
   open: boolean;
@@ -47,8 +45,6 @@ export interface NavigatorProfileViewTarget {
   providedIn: 'root'
 })
 export class NavigatorStore {
-  private readonly assetPopupStore = inject(AssetPopupStore);
-  private readonly popupStore = inject(PopupStore);
   private readonly bindingsRef = signal<NavigatorBindings | null>(null);
   private readonly menuOpenRef = signal(false);
   private readonly settingsPopupRef = signal<NavigatorSettingsPopup | null>(null);
@@ -88,11 +84,6 @@ export class NavigatorStore {
   readonly menuUiState = computed<NavigatorMenuUiState>(() => ({
     open: this.menuOpenRef()
   }));
-  readonly navigatorCoveredByAssetPopup = computed(() =>
-    this.assetPopupStore.visible()
-    || this.popupStore.activityInvitePopup() !== null
-  );
-
   registerBindings(bindings: NavigatorBindings): void {
     this.bindingsRef.set(bindings);
   }

@@ -1,10 +1,9 @@
 import { HttpErrorResponse, HttpInterceptorFn } from '@angular/common/http';
-import { inject } from '@angular/core';
+import { Injector, inject } from '@angular/core';
 import { Router } from '@angular/router';
 import { catchError, throwError } from 'rxjs';
 
 import { environment } from '../../../../environments/environment';
-import { AppContext } from '../../ui/context/app.context';
 import { SessionService } from '../base/services/session.service';
 import { APP_STORAGE_KEYS } from '../common/storage-scope';
 
@@ -42,7 +41,7 @@ function isAdminRequest(url: string): boolean {
 
 export const adminAccessInterceptor: HttpInterceptorFn = (req, next) => {
   const router = inject(Router);
-  const appCtx = inject(AppContext);
+  const injector = inject(Injector);
   const sessionService = inject(SessionService);
 
   return next(req).pipe(
@@ -52,11 +51,12 @@ export const adminAccessInterceptor: HttpInterceptorFn = (req, next) => {
         if (typeof localStorage !== 'undefined') {
           localStorage.removeItem(ADMIN_SESSION_STORAGE_KEY);
         }
-        if (session?.kind === 'firebase') {
-          appCtx.userProfileStore.setActiveUserId(session.profile.id.trim());
-        } else {
-          appCtx.userProfileStore.setActiveUserId('');
-        }
+        void import('../../ui/context/app.context')
+          .then(module => {
+            injector.get(module.AppContext).userProfileStore.setActiveUserId(
+              session?.kind === 'firebase' ? session.profile.id.trim() : ''
+            );
+          });
         if (typeof window !== 'undefined') {
           window.dispatchEvent(new CustomEvent('adminAccessDenied'));
         }
