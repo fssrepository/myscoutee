@@ -54,7 +54,7 @@ import {
   type InfiniteStepperSnapshot as StepperSnapshot,
   type InfiniteStepperSurfaceState as StepperSurfaceState
 } from './infinite-stepper';
-import { SmartListPaginationHelper } from './smart-list-pagination.helper';
+import { FiniteStepper } from './finite-stepper';
 import type {
   ListDirection,
   ListQuery,
@@ -267,7 +267,6 @@ export class SmartListComponent<T, TFilters extends SmartListFilters = SmartList
   private hasMore = true;
   private pageIndex = 0;
   private nextPageCursor: string | null = null;
-  private cursorIndex = 0;
   private scrollable = false;
   private progress = 0;
   private loadingProgress = 0;
@@ -302,7 +301,6 @@ export class SmartListComponent<T, TFilters extends SmartListFilters = SmartList
   private forceAnimatedLoadingCompletion = false;
   private hostedFullscreenPendingDelta = 0;
   private hostedFullscreenCompletingTransition = false;
-  private hostedFullscreenEmptyCursor = false;
   private hostedFullscreenTransitionTimer: ReturnType<typeof setTimeout> | null = null;
 
   private suspendSnapReactivation = false;
@@ -382,9 +380,15 @@ export class SmartListComponent<T, TFilters extends SmartListFilters = SmartList
     }
   }
 
-  private readonly paginationHelper = new SmartListPaginationHelper<T>(() => {
-    this.emitState();
-    this.cdr.markForCheck();
+  private readonly finiteStepper = new FiniteStepper<T>({
+    items: () => this.items,
+    total: () => this.total,
+    hasMore: () => this.hasMore,
+    loading: () => this.loading,
+    markDirty: () => {
+      this.emitState();
+      this.cdr.markForCheck();
+    }
   });
   private readonly stepper = new Stepper<
     Date,
@@ -507,7 +511,7 @@ export class SmartListComponent<T, TFilters extends SmartListFilters = SmartList
     this.clearLoadingAnimation();
     this.clearHostedFullscreenTransitionTimer();
     this.clearPaginationAutoplay();
-    this.paginationHelper.destroy();
+    this.finiteStepper.destroy();
   }
 
   public reload(): void {
@@ -532,7 +536,7 @@ export class SmartListComponent<T, TFilters extends SmartListFilters = SmartList
     overrides: Partial<ProgressIndicatorBarConfig> = {},
     mode: 'surface' | 'cursor' = 'surface'
   ): ProgressIndicatorBarConfig {
-    const cursor = this.buildCursorState();
+    const cursor = this.finiteStepper.state();
     const loadingActive = this.isLoadingActive();
     const position = mode === 'cursor'
       ? cursor.progress
@@ -589,20 +593,20 @@ export class SmartListComponent<T, TFilters extends SmartListFilters = SmartList
 
   protected canMovePagination(direction: -1 | 1): boolean {
     const delta = this.paginationCursorDelta(direction);
-    return delta !== 0 && this.canMoveCursor(delta);
+    return delta !== 0 && this.finiteStepper.canMove(delta);
   }
 
   protected shouldRenderHorizontalPaginationDots(): boolean {
-    return this.isHorizontalList() && this.buildCursorState().total > 1;
+    return this.isHorizontalList() && this.finiteStepper.state().total > 1;
   }
 
   protected horizontalPaginationDotIndexes(): number[] {
-    const total = this.buildCursorState().total;
+    const total = this.finiteStepper.state().total;
     return Array.from({ length: Math.max(0, total) }, (_item, index) => index);
   }
 
   protected isHorizontalPaginationDotActive(index: number): boolean {
-    return this.buildCursorState().index === index;
+    return this.finiteStepper.state().index === index;
   }
 
   protected onHorizontalPaginationDotClick(index: number, event: Event): void {
@@ -725,11 +729,11 @@ export class SmartListComponent<T, TFilters extends SmartListFilters = SmartList
   }
 
   public cursorState(): SmartListCursorState<T> {
-    return this.buildCursorState();
+    return this.finiteStepper.state();
   }
 
   public cursorItem(): T | null {
-    return this.buildCursorState().item;
+    return this.finiteStepper.state().item;
   }
 
   public isLoadingActive(): boolean {
@@ -737,7 +741,7 @@ export class SmartListComponent<T, TFilters extends SmartListFilters = SmartList
   }
 
   public isFullscreenPaginationAnimating(): boolean {
-    return this.paginationHelper.animating;
+    return this.finiteStepper.animating;
   }
 
   public beginHostedLoading(): void {
@@ -761,7 +765,7 @@ export class SmartListComponent<T, TFilters extends SmartListFilters = SmartList
     if (this.currentViewMode !== 'list') {
       return;
     }
-    this.hostedFullscreenEmptyCursor = false;
+    this.finiteStepper.setEmptyCursor(false, { notify: false });
     this.clearLoadingAnimation();
     this.loading = false;
     this.initialLoading = false;
@@ -772,29 +776,17 @@ export class SmartListComponent<T, TFilters extends SmartListFilters = SmartList
       : this.items.length;
     this.hasMore = this.items.length < this.total;
     this.syncGroups();
-    this.syncCursorBounds();
+    this.finiteStepper.syncBounds();
     this.emitState();
     this.cdr.markForCheck();
     this.refreshSurfaceSoon();
-  }
-
-  public canMoveCursor(delta: number): boolean {
-    const cursor = this.buildCursorState();
-    if (!Number.isFinite(delta) || delta === 0) {
-      return false;
-    }
-    const targetIndex = cursor.index + Math.trunc(delta);
-    if (targetIndex < 0) {
-      return false;
-    }
-    return targetIndex < cursor.total;
   }
 
   public async moveCursor(delta: number): Promise<boolean> {
     if (!Number.isFinite(delta) || delta === 0) {
       return false;
     }
-    return this.setCursorIndex(this.buildCursorState().index + Math.trunc(delta));
+    return this.setCursorIndex(this.finiteStepper.state().index + Math.trunc(delta));
   }
 
   private resolvedPaginationStep(): SmartListPaginationStep {
@@ -802,19 +794,7 @@ export class SmartListComponent<T, TFilters extends SmartListFilters = SmartList
   }
 
   private paginationCursorDelta(direction: -1 | 1): number {
-    if (this.resolvedPaginationStep() !== 'page') {
-      return direction;
-    }
-    const cursor = this.buildCursorState();
-    if (cursor.total <= 1) {
-      return 0;
-    }
-    const pageSize = this.paginationPageSize();
-    if (direction < 0) {
-      return Math.max(0, cursor.index - pageSize) - cursor.index;
-    }
-    const maxPageStart = Math.max(0, cursor.total - pageSize);
-    return Math.min(cursor.index + pageSize, maxPageStart) - cursor.index;
+    return this.finiteStepper.deltaFor(direction, this.resolvedPaginationStep(), this.paginationPageSize());
   }
 
   private paginationPageSize(): number {
@@ -831,8 +811,7 @@ export class SmartListComponent<T, TFilters extends SmartListFilters = SmartList
 
   public async setCursorIndex(index: number): Promise<boolean> {
     const normalizedIndex = Math.max(0, Math.trunc(index));
-    this.cursorIndex = normalizedIndex;
-    this.syncCursorBounds();
+    this.finiteStepper.setIndex(normalizedIndex, { notify: false });
     this.emitState();
     this.cdr.markForCheck();
 
@@ -847,11 +826,11 @@ export class SmartListComponent<T, TFilters extends SmartListFilters = SmartList
       }
     }
 
-    this.syncCursorBounds();
+    this.finiteStepper.syncBounds();
     this.scrollHorizontalListItemIntoView(normalizedIndex, 'smooth');
     this.emitState();
     this.cdr.markForCheck();
-    return this.buildCursorState().index === normalizedIndex;
+    return this.finiteStepper.state().index === normalizedIndex;
   }
 
   protected isPageMode(): boolean {
@@ -1111,11 +1090,11 @@ export class SmartListComponent<T, TFilters extends SmartListFilters = SmartList
   }
 
   protected hostedFullscreenCurrentItem(): T | null {
-    return this.paginationHelper.leavingItem ?? this.cursorItem();
+    return this.finiteStepper.leavingItem ?? this.cursorItem();
   }
 
   protected hostedFullscreenCurrentRenderState(): SmartListItemRenderState {
-    return this.paginationHelper.animating ? 'leaving' : 'active';
+    return this.finiteStepper.animating ? 'leaving' : 'active';
   }
 
   protected hostedFullscreenStackItem(slotOffset: number): T | null {
@@ -1127,14 +1106,14 @@ export class SmartListComponent<T, TFilters extends SmartListFilters = SmartList
   }
 
   protected hostedFullscreenStackRenderState(slotOffset: number): SmartListItemRenderState {
-    if (slotOffset === 1 && this.paginationHelper.animating && this.hostedFullscreenPendingDelta !== 0) {
+    if (slotOffset === 1 && this.finiteStepper.animating && this.hostedFullscreenPendingDelta !== 0) {
       return 'active';
     }
     return 'default';
   }
 
   protected hostedFullscreenIsCurling(): boolean {
-    return this.paginationHelper.animating && this.hostedFullscreenPendingDelta !== 0;
+    return this.finiteStepper.animating && this.hostedFullscreenPendingDelta !== 0;
   }
 
   protected hostedFullscreenIsCurlingBackwards(): boolean {
@@ -1154,7 +1133,7 @@ export class SmartListComponent<T, TFilters extends SmartListFilters = SmartList
   protected hostedFullscreenItemContext(
     item: T,
     renderState: SmartListItemRenderState,
-    index = this.buildCursorState().index
+    index = this.finiteStepper.state().index
   ): SmartListItemTemplateContext<T, TFilters> {
     return {
       $implicit: item,
@@ -1260,14 +1239,13 @@ export class SmartListComponent<T, TFilters extends SmartListFilters = SmartList
     this.loading = false;
     this.loadSequence += 1;
     this.suppressVisibleLoadingProgress = false;
-    this.hostedFullscreenEmptyCursor = false;
+    this.finiteStepper.reset({ notify: false });
     this.items = [];
     this.groups = [];
     this.pages = [];
     this.total = 0;
     this.pageIndex = 0;
     this.nextPageCursor = null;
-    this.cursorIndex = 0;
     this.hasMore = this.currentViewMode === 'list';
     this.initialLoading = true;
     this.clearAwaitScrollReset();
@@ -1490,7 +1468,7 @@ export class SmartListComponent<T, TFilters extends SmartListFilters = SmartList
       this.hasMore = false;
     }
     this.initialLoading = false;
-    this.syncCursorBounds();
+    this.finiteStepper.syncBounds();
   }
 
   private applyAnchorPageResult(
@@ -1510,7 +1488,7 @@ export class SmartListComponent<T, TFilters extends SmartListFilters = SmartList
     this.pageIndex = 0;
     this.hasMore = false;
     this.groups = [];
-    this.syncCursorBounds();
+    this.finiteStepper.syncBounds();
     this.stepper.applySnapshot();
   }
 
@@ -2261,7 +2239,7 @@ export class SmartListComponent<T, TFilters extends SmartListFilters = SmartList
     this.hasMore = false;
     this.groups = [];
     this.stickyLabel = snapshot.stickyLabel || this.resolveEmptyStickyLabel();
-    this.syncCursorBounds();
+    this.finiteStepper.syncBounds();
   }
 
   private seedPageProgress(): void {
@@ -3103,7 +3081,7 @@ private updateListSnapNearEndSuppression(scrollElement?: HTMLDivElement | null):
     }
     this.ngZone.runOutsideAngular(() => {
       this.autoplayTimer = setInterval(() => {
-        const cursor = this.buildCursorState();
+        const cursor = this.finiteStepper.state();
         if (cursor.total <= 1) {
           this.clearPaginationAutoplay();
           return;
@@ -3136,7 +3114,7 @@ private updateListSnapNearEndSuppression(scrollElement?: HTMLDivElement | null):
 
   private buildStateChange(): SmartListStateChange<T, TFilters> {
     const loadingVisible = this.isVisiblePageLoading();
-    const cursor = this.buildCursorState();
+    const cursor = this.finiteStepper.state();
     return {
       items: this.items,
       groups: this.groups,
@@ -3180,7 +3158,7 @@ private updateListSnapNearEndSuppression(scrollElement?: HTMLDivElement | null):
       return;
     }
     const visibleIndex = this.firstVisibleListItemIndex(scrollElement);
-    if (visibleIndex === null || visibleIndex === this.buildCursorState().index) {
+    if (visibleIndex === null || visibleIndex === this.finiteStepper.state().index) {
       return;
     }
     void this.setCursorIndex(visibleIndex);
@@ -3195,11 +3173,10 @@ private updateListSnapNearEndSuppression(scrollElement?: HTMLDivElement | null):
       return;
     }
     const visibleIndex = this.firstVisibleHorizontalListItemIndex(scrollElement);
-    if (visibleIndex === null || visibleIndex === this.buildCursorState().index) {
+    if (visibleIndex === null || visibleIndex === this.finiteStepper.state().index) {
       return;
     }
-    this.cursorIndex = visibleIndex;
-    this.syncCursorBounds();
+    this.finiteStepper.setIndex(visibleIndex, { notify: false });
     this.cdr.markForCheck();
   }
 
@@ -3258,7 +3235,7 @@ private updateListSnapNearEndSuppression(scrollElement?: HTMLDivElement | null):
     if (!this.shouldUseCompactHorizontal() && !this.shouldUseHorizontalMobileStepper()) {
       return;
     }
-    this.scrollHorizontalListItemIntoView(this.buildCursorState().index, 'auto');
+    this.scrollHorizontalListItemIntoView(this.finiteStepper.state().index, 'auto');
   }
 
   private scheduleHorizontalCursorScrollLockRelease(scrollElement: HTMLDivElement): void {
@@ -3274,11 +3251,10 @@ private updateListSnapNearEndSuppression(scrollElement?: HTMLDivElement | null):
         return;
       }
       const finalIndex = this.firstVisibleHorizontalListItemIndex(currentScrollElement) ?? targetIndex;
-      if (finalIndex === null || finalIndex === this.cursorIndex) {
+      if (finalIndex === null || finalIndex === this.finiteStepper.index) {
         return;
       }
-      this.cursorIndex = finalIndex;
-      this.syncCursorBounds();
+      this.finiteStepper.setIndex(finalIndex, { notify: false });
       this.emitState();
       this.cdr.markForCheck();
     }, 120);
@@ -3316,8 +3292,10 @@ private updateListSnapNearEndSuppression(scrollElement?: HTMLDivElement | null):
     if (!this.shouldUseHostedFullscreenPagination()) {
       return;
     }
-    const canMoveToNextItem = this.canMoveCursor(1);
-    const canMoveToEmptyState = !canMoveToNextItem && this.canMoveHostedFullscreenCursorToEmptyState();
+    const canMoveToNextItem = this.finiteStepper.canMove(1);
+    const canMoveToEmptyState = !canMoveToNextItem
+      && this.shouldUseHostedFullscreenPagination()
+      && this.finiteStepper.canMoveToEmptyCursor();
     if (!canMoveToNextItem && !canMoveToEmptyState) {
       return;
     }
@@ -3327,7 +3305,7 @@ private updateListSnapNearEndSuppression(scrollElement?: HTMLDivElement | null):
     this.ratingAdvanceInFlight = true;
     try {
       await this.wait(120);
-      if (!this.shouldUseHostedFullscreenPagination() || this.paginationHelper.animating) {
+      if (!this.shouldUseHostedFullscreenPagination() || this.finiteStepper.animating) {
         return;
       }
       await this.advanceHostedFullscreenPagination(1, { allowEmptyTarget: canMoveToEmptyState });
@@ -3340,19 +3318,20 @@ private updateListSnapNearEndSuppression(scrollElement?: HTMLDivElement | null):
     delta: number,
     options: { allowEmptyTarget?: boolean } = {}
   ): Promise<boolean> {
-    if (!this.shouldUseHostedFullscreenPagination() || this.paginationHelper.animating) {
+    if (!this.shouldUseHostedFullscreenPagination() || this.finiteStepper.animating) {
       return false;
     }
     const normalizedDelta = Math.trunc(delta);
     const allowEmptyTarget = options.allowEmptyTarget === true
       && normalizedDelta > 0
-      && this.canMoveHostedFullscreenCursorToEmptyState();
-    if (!this.canMoveCursor(normalizedDelta) && !allowEmptyTarget) {
+      && this.shouldUseHostedFullscreenPagination()
+      && this.finiteStepper.canMoveToEmptyCursor();
+    if (!this.finiteStepper.canMove(normalizedDelta) && !allowEmptyTarget) {
       return false;
     }
-    const currentIndex = this.buildCursorState().index;
+    const currentIndex = this.finiteStepper.state().index;
     const targetIndex = currentIndex + normalizedDelta;
-    const targetIsEmptyState = allowEmptyTarget && targetIndex === this.hostedFullscreenCursorTotal();
+    const targetIsEmptyState = allowEmptyTarget && targetIndex === this.finiteStepper.cursorTotal();
     if (!targetIsEmptyState && !await this.ensureHostedFullscreenTargetLoaded(targetIndex)) {
       return false;
     }
@@ -3364,16 +3343,16 @@ private updateListSnapNearEndSuppression(scrollElement?: HTMLDivElement | null):
     if (!currentItem) {
       return this.moveCursor(normalizedDelta);
     }
-    this.cursorIndex = targetIndex;
-    this.hostedFullscreenEmptyCursor = targetIsEmptyState;
-    this.syncCursorBounds();
+    this.finiteStepper.setEmptyCursor(targetIsEmptyState, { notify: false });
+    this.finiteStepper.setIndex(targetIndex, { notify: false });
+    this.finiteStepper.syncBounds();
     this.emitState();
     this.cdr.markForCheck();
     this.hostedFullscreenPendingDelta = normalizedDelta;
     this.hostedFullscreenCompletingTransition = false;
-    this.paginationHelper.beginTransition(currentItem);
+    this.finiteStepper.beginTransition(currentItem);
     if (this.currentViewMode === 'list' && this.resolvedPresentation() === 'fullscreen' && this.hasMore && !this.loading) {
-      const remaining = this.items.length - (this.cursorIndex + 1);
+      const remaining = this.items.length - (this.finiteStepper.index + 1);
       if (remaining <= SmartListComponent.HOSTED_FULLSCREEN_STACK_SIZE - 1) {
         void this.loadNextPage();
       }
@@ -3404,63 +3383,6 @@ private updateListSnapNearEndSuppression(scrollElement?: HTMLDivElement | null):
       }
     }
     return true;
-  }
-
-  private buildCursorState(indexOverride = this.cursorIndex): SmartListCursorState<T> {
-    const total = Math.max(0, Math.max(this.total, this.items.length));
-    if (total === 0) {
-      return {
-        index: 0,
-        total: 0,
-        progress: 0,
-        canPrev: false,
-        canNext: false,
-        item: null
-      };
-    }
-    const lastItemIndex = Math.max(0, total - 1);
-    const maxCursorIndex = this.canUseHostedFullscreenEmptyCursor() ? total : lastItemIndex;
-    const index = Math.max(0, Math.min(indexOverride, maxCursorIndex));
-    return {
-      index,
-      total,
-      progress: index >= total ? 1 : lastItemIndex > 0 ? AppUtils.clampNumber(index / lastItemIndex, 0, 1) : 0,
-      canPrev: index > 0,
-      canNext: index < lastItemIndex,
-      item: index < this.items.length ? (this.items[index] ?? null) : null
-    };
-  }
-
-  private syncCursorBounds(): void {
-    const total = Math.max(0, Math.max(this.total, this.items.length));
-    if (total === 0) {
-      this.cursorIndex = 0;
-      return;
-    }
-    const maxCursorIndex = this.canUseHostedFullscreenEmptyCursor() ? total : total - 1;
-    this.cursorIndex = Math.max(0, Math.min(this.cursorIndex, maxCursorIndex));
-  }
-
-  private hostedFullscreenCursorTotal(): number {
-    return Math.max(0, Math.max(this.total, this.items.length));
-  }
-
-  private canUseHostedFullscreenEmptyCursor(): boolean {
-    return this.hostedFullscreenEmptyCursor
-      && this.cursorIndex >= this.hostedFullscreenCursorTotal()
-      && this.hostedFullscreenCursorTotal() > 0
-      && !this.hasMore
-      && !this.loading;
-  }
-
-  private canMoveHostedFullscreenCursorToEmptyState(): boolean {
-    const cursor = this.buildCursorState();
-    return this.shouldUseHostedFullscreenPagination()
-      && cursor.item !== null
-      && cursor.total > 0
-      && cursor.index === cursor.total - 1
-      && !this.hasMore
-      && !this.loading;
   }
 
   private isVisiblePageLoading(): boolean {
@@ -3630,8 +3552,8 @@ private updateListSnapNearEndSuppression(scrollElement?: HTMLDivElement | null):
   }
 
   protected hostedFullscreenStackItemIndex(slotOffset: number): number {
-    const baseIndex = this.buildCursorState().index;
-    if (!this.paginationHelper.animating || this.hostedFullscreenPendingDelta === 0) {
+    const baseIndex = this.finiteStepper.state().index;
+    if (!this.finiteStepper.animating || this.hostedFullscreenPendingDelta === 0) {
       return baseIndex + slotOffset;
     }
     const direction = this.hostedFullscreenPendingDelta < 0 ? -1 : 1;
@@ -3655,29 +3577,29 @@ private updateListSnapNearEndSuppression(scrollElement?: HTMLDivElement | null):
   }
 
   private interruptHostedFullscreenTransition(): void {
-    if (!this.paginationHelper.animating) {
+    if (!this.finiteStepper.animating) {
       return;
     }
     this.clearHostedFullscreenTransitionTimer();
     this.hostedFullscreenPendingDelta = 0;
     this.hostedFullscreenCompletingTransition = false;
-    this.paginationHelper.finishTransition();
+    this.finiteStepper.finishTransition();
   }
 
   private resetHostedFullscreenTransition(): void {
     this.interruptHostedFullscreenTransition();
-    this.paginationHelper.reset();
+    this.finiteStepper.reset();
   }
 
   private async completeHostedFullscreenPaginationTransition(): Promise<void> {
-    if (!this.paginationHelper.animating || this.hostedFullscreenPendingDelta === 0 || this.hostedFullscreenCompletingTransition) {
+    if (!this.finiteStepper.animating || this.hostedFullscreenPendingDelta === 0 || this.hostedFullscreenCompletingTransition) {
       return;
     }
     this.hostedFullscreenPendingDelta = 0;
     this.hostedFullscreenCompletingTransition = true;
     this.clearHostedFullscreenTransitionTimer();
     this.hostedFullscreenCompletingTransition = false;
-    this.paginationHelper.finishTransition();
+    this.finiteStepper.finishTransition();
   }
 
   private currentPageAnchor(): Date | null {
