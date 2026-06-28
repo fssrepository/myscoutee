@@ -387,6 +387,7 @@ export class EntryPageComponent implements OnInit, OnDestroy {
     this.showEntryConsentPopup = !this.entryPrivacyLoading && this.shouldPromptEntryConsent();
     this.landingArticlesLoading = true;
     this.syncLandingLoginAvailability(null, 'reset');
+    this.resolveBrowserLocationAccessIfNeeded(true);
     this.showFirebaseAuthPopup = false;
     void this.loadEntryContent();
   }
@@ -1301,8 +1302,8 @@ export class EntryPageComponent implements OnInit, OnDestroy {
       || 'Login is currently unavailable from your country or region for security reasons. Please come back later.';
   }
 
-  private resolveBrowserLocationAccessIfNeeded(): void {
-    if (!this.entryAuthLocationRequired || this.grantedLocationEligibilityPromise || this.browserLocationAutoRequestAttempted) {
+  private resolveBrowserLocationAccessIfNeeded(force = false): void {
+    if ((!force && !this.entryAuthLocationRequired) || this.grantedLocationEligibilityPromise || this.browserLocationAutoRequestAttempted) {
       return;
     }
 
@@ -1335,11 +1336,8 @@ export class EntryPageComponent implements OnInit, OnDestroy {
 
   private async resolveBrowserLocationAccess(requestToken: number): Promise<void> {
     try {
-      const permissionState = await this.queryGeolocationPermissionState();
+      await this.queryGeolocationPermissionState();
       if (requestToken !== this.grantedLocationEligibilityRequestToken) {
-        return;
-      }
-      if (permissionState !== 'granted') {
         return;
       }
 
