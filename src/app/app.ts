@@ -1,5 +1,5 @@
 import { NgComponentOutlet } from '@angular/common';
-import { ChangeDetectorRef, Component, HostListener, OnDestroy, Type, inject, signal } from '@angular/core';
+import { ChangeDetectorRef, Component, HostListener, OnDestroy, Type, computed, inject, signal } from '@angular/core';
 import {
   NavigationCancel,
   NavigationEnd,
@@ -9,7 +9,7 @@ import {
   RouterOutlet
 } from '@angular/router';
 import { Subscription } from 'rxjs';
-import { AppInstallPromptComponent } from './shared/ui/components/app-install-prompt/app-install-prompt.component';
+import { PromptComponent, type PromptModel } from './shared/ui/components/core/prompt';
 import { PwaService } from './shared/core/base/services/pwa.service';
 import { I18nService } from './shared/core/base/services/i18n.service';
 import { AppLocationService } from './shared/core/base/services/app-location.service';
@@ -19,7 +19,7 @@ import { AppLocationService } from './shared/core/base/services/app-location.ser
   imports: [
     RouterOutlet,
     NgComponentOutlet,
-    AppInstallPromptComponent
+    PromptComponent
   ],
   templateUrl: './app.html',
   styleUrl: './app.scss'
@@ -59,6 +59,31 @@ export class App implements OnDestroy {
   protected routeWarmupVisible = false;
   protected readonly installPromptVisible = this.pwaService.installPromptVisible;
   protected readonly installPromptBusy = this.pwaService.installBusy;
+  protected readonly installPromptModel = computed<PromptModel>(() => {
+    const visible = this.installPromptVisible();
+    const busy = this.installPromptBusy();
+    this.i18nService.revision();
+    return {
+      visible,
+      busy,
+      tone: 'info',
+      icon: {
+        kind: 'image',
+        src: 'assets/icon/android-chrome-192x192.png',
+        alt: ''
+      },
+      title: this.i18nService.translate('add.myscoutee.to.your.home.screen'),
+      description: this.i18nService.translate('install.prompt.description'),
+      ariaLabel: this.i18nService.translate('add.myscoutee.to.your.home.screen'),
+      closeAriaLabel: this.i18nService.translate('dismiss', 'Dismiss'),
+      action: {
+        icon: 'add_to_home_screen',
+        label: this.i18nService.translate('add.to.home.screen'),
+        busyLabel: this.i18nService.translate('opening'),
+        ariaLabel: this.i18nService.translate('add.to.home.screen')
+      }
+    };
+  });
 
   constructor() {
     const initialRouteUrl = this.resolveInitialRouteUrl();

@@ -3,6 +3,7 @@ export * from './core/indicator';
 export * from './core/accordion';
 export * from './document-viewer';
 export * from './core/popup';
+export * from './core/prompt';
 export * from './core/menu';
 export * from './core/smart-list';
 export * from './event-checkout-popup';

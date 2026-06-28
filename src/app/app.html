@@ -12,12 +12,11 @@
   }
 }
 
-<app-install-prompt
-  [visible]="installPromptVisible()"
-  [busy]="installPromptBusy()"
-  (installRequested)="onInstallRequested()"
-  (dismissRequested)="onInstallDismissed()"
-></app-install-prompt>
+<app-prompt
+  [model]="installPromptModel()"
+  (action)="onInstallRequested()"
+  (dismiss)="onInstallDismissed()"
+></app-prompt>
 
 @if (routeWarmupVisible) {
   <section class="app-route-warmup" role="status" aria-live="polite" aria-label="Loading MyScoutee">
