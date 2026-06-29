@@ -21,20 +21,20 @@ import {
   type AppMenuItemSelectEvent
 } from '../../../shared/ui';
 import {
-  NavigatorStore
-} from '../../../shared/ui/context/stores/navigator.store';
+  ProfileStore
+} from '../../../shared/ui/context/stores/profile.store';
 import { UserProfileStore } from '../../../shared/ui/context/stores/user-profile.store';
 import { AppRuntimeStore } from '../../../shared/ui/context/stores/app-runtime.store';
 
 @Component({
-  selector: 'app-navigator-feedback-popup',
+  selector: 'app-profile-feedback-popup',
   standalone: true,
   imports: [FormsModule, AppMenuComponent],
-  templateUrl: './navigator-feedback-popup.component.html',
-  styleUrl: './navigator-feedback-popup.component.scss'
+  templateUrl: './feedback-popup.component.html',
+  styleUrl: './feedback-popup.component.scss'
 })
-export class NavigatorFeedbackPopupComponent implements OnDestroy {
-  private readonly navigatorStore = inject(NavigatorStore);
+export class ProfileFeedbackPopupComponent implements OnDestroy {
+  private readonly profileStore = inject(ProfileStore);
   private readonly usersService = inject(UsersService);
   private readonly userProfileStore = inject(UserProfileStore);
   private readonly runtimeStore = inject(AppRuntimeStore);
@@ -72,7 +72,7 @@ export class NavigatorFeedbackPopupComponent implements OnDestroy {
 
   protected closePopup(): void {
     this.abortActiveSubmit();
-    this.navigatorStore.closeSettingsPopup();
+    this.profileStore.closeSettingsPopup();
   }
 
   protected get feedbackDetailsLength(): number {

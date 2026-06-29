@@ -6,4 +6,4 @@ import { NgModule } from '@angular/core';
     CommonModule
   ]
 })
-export class NavigatorModule {}
+export class ProfileModule {}

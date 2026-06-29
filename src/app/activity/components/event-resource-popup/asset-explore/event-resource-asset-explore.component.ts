@@ -86,8 +86,8 @@ import {
   SubEventResourcePopupStore
 } from '../../../../shared/ui/context/stores/sub-event-resource-popup.store';
 import {
-  NavigatorStore
-} from '../../../../shared/ui/context/stores/navigator.store';
+  ProfileStore
+} from '../../../../shared/ui/context/stores/profile.store';
 import type * as ActivityContracts from '../../../../shared/core/contracts/activity.interface';
 import type * as AppConstants from '../../../../shared/core/common/constants';
 import type * as AppDTOs from '../../../../shared/core/contracts';
@@ -200,7 +200,7 @@ export class EventResourceAssetExploreComponent implements DoCheck {
   private readonly assetStore = inject(AssetStore);
   private readonly dialogStore = inject(DialogStore);
   private readonly shareTokensService = inject(ShareTokensService);
-  private readonly navigatorStore = inject(NavigatorStore);
+  private readonly profileStore = inject(ProfileStore);
   private readonly appMenuDispatcher = inject(AppMenuDispatcher);
 
   private lastCardsSignature = '';
@@ -2339,7 +2339,7 @@ export class EventResourceAssetExploreComponent implements DoCheck {
     if (!context || !ownerUserId || ownerUserId === activeUserId) {
       return;
     }
-    this.navigatorStore.openReportUserPopup({
+    this.profileStore.openReportUserPopup({
       targetUserId: ownerUserId,
       targetName: card.ownerName?.trim() || this.reportTargetName(ownerUserId, 'Owner'),
       eventId: context.ownerId,

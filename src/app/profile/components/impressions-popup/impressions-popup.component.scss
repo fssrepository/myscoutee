@@ -6,26 +6,26 @@
   display: contents;
 }
 
-.navigator-impressions-popup {
+.profile-impressions-popup {
   z-index: 2640;
   font-family: 'Nunito Sans', 'Segoe UI', sans-serif;
 }
 
-.navigator-impressions-popup .app-popup-panel {
+.profile-impressions-popup .app-popup-panel {
   width: min(960px, calc(100vw - 1.2rem));
 }
 
-.navigator-impressions-popup .popup-title-impressions .popup-chat-title-block h2 {
+.profile-impressions-popup .popup-title-impressions .popup-chat-title-block h2 {
   font-size: 1.02rem;
 }
 
-.navigator-impressions-popup .popup-body.popup-body-impressions {
+.profile-impressions-popup .popup-body.popup-body-impressions {
   display: block;
   padding: 0.75rem;
   text-align: left;
 }
 
-.navigator-impressions-popup .navigator-impressions-empty-state {
+.profile-impressions-popup .profile-impressions-empty-state {
   min-height: 260px;
   display: flex;
   flex-direction: column;
@@ -40,7 +40,7 @@
   text-align: center;
 }
 
-.navigator-impressions-popup .navigator-impressions-empty-state .mat-icon {
+.profile-impressions-popup .profile-impressions-empty-state .mat-icon {
   width: 32px;
   height: 32px;
   font-size: 32px;
@@ -48,12 +48,12 @@
   color: #64809f;
 }
 
-.navigator-impressions-popup .navigator-impressions-empty-state strong {
+.profile-impressions-popup .profile-impressions-empty-state strong {
   font-size: 1rem;
   font-weight: 900;
 }
 
-.navigator-impressions-popup .navigator-impressions-empty-state span {
+.profile-impressions-popup .profile-impressions-empty-state span {
   max-width: 320px;
   color: #62738b;
   font-size: 0.84rem;
@@ -61,7 +61,7 @@
   line-height: 1.35;
 }
 
-.navigator-impressions-popup .social-proof-grid {
+.profile-impressions-popup .social-proof-grid {
   display: grid;
   width: min(980px, 100%);
   margin: 0 auto;
@@ -70,7 +70,7 @@
   justify-items: stretch;
 }
 
-.navigator-impressions-popup .social-proof-card.social-proof-card-modern {
+.profile-impressions-popup .social-proof-card.social-proof-card-modern {
   position: relative;
   max-width: none;
   min-height: auto;
@@ -81,71 +81,71 @@
   box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.78), 0 4px 12px rgba(24, 33, 54, 0.05);
 }
 
-.navigator-impressions-popup .social-proof-card.social-proof-card-modern.impression-shortcut-tone-platinum {
+.profile-impressions-popup .social-proof-card.social-proof-card-modern.impression-shortcut-tone-platinum {
   border-color: rgba(72, 160, 183, 0.22);
   background: linear-gradient(180deg, #f6fdff 0%, #eef8fb 100%);
 }
 
-.navigator-impressions-popup .social-proof-card.social-proof-card-modern.impression-shortcut-tone-gold {
+.profile-impressions-popup .social-proof-card.social-proof-card-modern.impression-shortcut-tone-gold {
   border-color: rgba(189, 141, 51, 0.2);
   background: linear-gradient(180deg, #fffcf5 0%, #fff7ec 100%);
 }
 
-.navigator-impressions-popup .social-proof-card.social-proof-card-modern.impression-shortcut-tone-silver {
+.profile-impressions-popup .social-proof-card.social-proof-card-modern.impression-shortcut-tone-silver {
   border-color: rgba(111, 134, 164, 0.2);
   background: linear-gradient(180deg, #f7faff 0%, #eef3f9 100%);
 }
 
-.navigator-impressions-popup .social-proof-card.social-proof-card-modern.impression-shortcut-tone-bronze {
+.profile-impressions-popup .social-proof-card.social-proof-card-modern.impression-shortcut-tone-bronze {
   border-color: rgba(178, 103, 62, 0.2);
   background: linear-gradient(180deg, #fff8f4 0%, #fef0e6 100%);
 }
 
-.navigator-impressions-popup .social-proof-card.social-proof-card-modern.impression-shortcut-tone-empath {
+.profile-impressions-popup .social-proof-card.social-proof-card-modern.impression-shortcut-tone-empath {
   border-color: rgba(184, 92, 116, 0.22);
   background: linear-gradient(180deg, #fff8fa 0%, #fef0f4 100%);
 }
 
-.navigator-impressions-popup .social-proof-card.social-proof-card-modern.impression-shortcut-tone-creative {
+.profile-impressions-popup .social-proof-card.social-proof-card-modern.impression-shortcut-tone-creative {
   border-color: rgba(122, 76, 196, 0.2);
   background: linear-gradient(180deg, #faf7ff 0%, #f1ebfd 100%);
 }
 
-.navigator-impressions-popup .social-proof-card.social-proof-card-modern.impression-shortcut-tone-reliable {
+.profile-impressions-popup .social-proof-card.social-proof-card-modern.impression-shortcut-tone-reliable {
   border-color: rgba(61, 146, 94, 0.2);
   background: linear-gradient(180deg, #f6fcf7 0%, #edf7ef 100%);
 }
 
-.navigator-impressions-popup .social-proof-card.social-proof-card-modern.impression-shortcut-tone-adventurer {
+.profile-impressions-popup .social-proof-card.social-proof-card-modern.impression-shortcut-tone-adventurer {
   border-color: rgba(47, 139, 174, 0.2);
   background: linear-gradient(180deg, #f5fbff 0%, #ecf6fb 100%);
 }
 
-.navigator-impressions-popup .social-proof-card.social-proof-card-modern.impression-shortcut-tone-thinker {
+.profile-impressions-popup .social-proof-card.social-proof-card-modern.impression-shortcut-tone-thinker {
   border-color: rgba(80, 108, 168, 0.2);
   background: linear-gradient(180deg, #f7f9ff 0%, #edf1fb 100%);
 }
 
-.navigator-impressions-popup .social-proof-card.social-proof-card-modern.impression-shortcut-tone-social {
+.profile-impressions-popup .social-proof-card.social-proof-card-modern.impression-shortcut-tone-social {
   border-color: rgba(45, 138, 139, 0.2);
   background: linear-gradient(180deg, #f5fcfc 0%, #ebf7f7 100%);
 }
 
-.navigator-impressions-popup .social-proof-card.social-proof-card-modern.impression-shortcut-tone-playful {
+.profile-impressions-popup .social-proof-card.social-proof-card-modern.impression-shortcut-tone-playful {
   border-color: rgba(183, 95, 47, 0.2);
   background: linear-gradient(180deg, #fff9f4 0%, #fef1e7 100%);
 }
 
-.navigator-impressions-popup .social-proof-card.social-proof-card-modern.impression-shortcut-tone-ambitious {
+.profile-impressions-popup .social-proof-card.social-proof-card-modern.impression-shortcut-tone-ambitious {
   border-color: rgba(79, 113, 190, 0.2);
   background: linear-gradient(180deg, #f6f9ff 0%, #edf2fb 100%);
 }
 
-.navigator-impressions-popup .social-proof-card.social-proof-card-modern .social-proof-section-block:first-of-type {
+.profile-impressions-popup .social-proof-card.social-proof-card-modern .social-proof-section-block:first-of-type {
   margin-top: 0;
 }
 
-.navigator-impressions-popup .social-proof-identity-pill {
+.profile-impressions-popup .social-proof-identity-pill {
   position: absolute;
   top: 0;
   left: 0;
@@ -169,14 +169,14 @@
   box-shadow: 0 4px 10px rgba(31, 44, 70, 0.16);
 }
 
-.navigator-impressions-popup .social-proof-card.social-proof-card-modern .social-proof-identity-pill .mat-icon {
+.profile-impressions-popup .social-proof-card.social-proof-card-modern .social-proof-identity-pill .mat-icon {
   width: 18px;
   height: 18px;
   font-size: 18px;
   line-height: 18px;
 }
 
-.navigator-impressions-popup .social-proof-identity-label {
+.profile-impressions-popup .social-proof-identity-label {
   display: inline-flex;
   flex-direction: column;
   align-items: center;
@@ -186,14 +186,14 @@
   text-align: center;
 }
 
-.navigator-impressions-popup .social-proof-identity-main {
+.profile-impressions-popup .social-proof-identity-main {
   font-size: 0.94em;
   font-weight: 800;
   line-height: 1.05;
   letter-spacing: 0.01em;
 }
 
-.navigator-impressions-popup .social-proof-identity-sub {
+.profile-impressions-popup .social-proof-identity-sub {
   font-size: 0.72em;
   font-weight: 700;
   line-height: 1.08;
@@ -202,23 +202,23 @@
   text-transform: uppercase;
 }
 
-.navigator-impressions-popup .social-proof-identity-pill-host {
+.profile-impressions-popup .social-proof-identity-pill-host {
   background: linear-gradient(180deg, #e9f9ff 0%, #d9f0fb 100%);
   border-color: rgba(72, 160, 183, 0.44);
   color: #204f67;
 }
 
-.navigator-impressions-popup .social-proof-identity-pill-member {
+.profile-impressions-popup .social-proof-identity-pill-member {
   background: linear-gradient(180deg, #fff0f4 0%, #fde6ee 100%);
   border-color: rgba(184, 92, 116, 0.4);
   color: #7d3550;
 }
 
-.navigator-impressions-popup .social-proof-identity-pill-member .mat-icon {
+.profile-impressions-popup .social-proof-identity-pill-member .mat-icon {
   color: #c05779;
 }
 
-.navigator-impressions-popup .popup-impressions-badge {
+.profile-impressions-popup .popup-impressions-badge {
   position: absolute;
   top: 3.5rem;
   left: 50%;
@@ -233,11 +233,11 @@
   transform: translateX(-50%);
 }
 
-.navigator-impressions-popup .popup-impressions-badge-updated {
-  animation: navigator-popup-impressions-badge-blink 0.44s ease;
+.profile-impressions-popup .popup-impressions-badge-updated {
+  animation: profile-popup-impressions-badge-blink 0.44s ease;
 }
 
-.navigator-impressions-popup .popup-impressions-badge-segment {
+.profile-impressions-popup .popup-impressions-badge-segment {
   display: flex;
   min-height: 40px;
   min-width: 0;
@@ -251,11 +251,11 @@
   text-align: center;
 }
 
-.navigator-impressions-popup .popup-impressions-badge-segment:last-child {
+.profile-impressions-popup .popup-impressions-badge-segment:last-child {
   border-right: 0;
 }
 
-.navigator-impressions-popup .popup-impressions-badge-label {
+.profile-impressions-popup .popup-impressions-badge-label {
   font-family: inherit;
   font-size: 0.7rem;
   font-weight: 700;
@@ -267,7 +267,7 @@
   overflow-wrap: anywhere;
 }
 
-.navigator-impressions-popup .popup-impressions-badge-value {
+.profile-impressions-popup .popup-impressions-badge-value {
   color: #111827;
   font-size: 0.78rem;
   font-weight: 900;
@@ -275,26 +275,26 @@
   white-space: nowrap;
 }
 
-.navigator-impressions-popup .popup-impressions-rate-rate {
+.profile-impressions-popup .popup-impressions-rate-rate {
   border-color: rgba(179, 127, 49, 0.24);
   background: #fff7ec;
 }
 
-.navigator-impressions-popup .popup-impressions-rate-people {
+.profile-impressions-popup .popup-impressions-rate-people {
   border-color: rgba(53, 126, 83, 0.24);
   background: #eff8f3;
 }
 
-.navigator-impressions-popup .popup-impressions-rate-return {
+.profile-impressions-popup .popup-impressions-rate-return {
   border-color: rgba(89, 93, 162, 0.24);
   background: #f3f3ff;
 }
 
-.navigator-impressions-popup .social-proof-section-block {
+.profile-impressions-popup .social-proof-section-block {
   margin-top: 0.52rem;
 }
 
-.navigator-impressions-popup .social-proof-section-head {
+.profile-impressions-popup .social-proof-section-head {
   display: flex;
   align-items: center;
   justify-content: flex-start;
@@ -302,7 +302,7 @@
   margin-bottom: 0.56rem;
 }
 
-.navigator-impressions-popup .section-tag {
+.profile-impressions-popup .section-tag {
   display: inline-flex;
   min-height: 28px;
   align-items: center;
@@ -318,47 +318,47 @@
   white-space: nowrap;
 }
 
-.navigator-impressions-popup .section-line {
+.profile-impressions-popup .section-line {
   height: 1px;
   flex: 1;
   background: rgba(113, 124, 150, 0.32);
 }
 
-.navigator-impressions-popup .social-proof-section-head.section-vibe .section-tag {
+.profile-impressions-popup .social-proof-section-head.section-vibe .section-tag {
   background: linear-gradient(180deg, #eaf2ff 0%, #dfeafa 100%);
   color: #2d5ea8;
 }
 
-.navigator-impressions-popup .social-proof-section-head.section-vibe .section-line {
+.profile-impressions-popup .social-proof-section-head.section-vibe .section-line {
   background: rgba(59, 108, 179, 0.34);
 }
 
-.navigator-impressions-popup .social-proof-section-head.section-category .section-tag {
+.profile-impressions-popup .social-proof-section-head.section-category .section-tag {
   background: linear-gradient(180deg, #e9f7ef 0%, #def1e7 100%);
   color: #2d7d47;
 }
 
-.navigator-impressions-popup .social-proof-section-head.section-category .section-line {
+.profile-impressions-popup .social-proof-section-head.section-category .section-line {
   background: rgba(45, 125, 71, 0.34);
 }
 
-.navigator-impressions-popup .social-proof-section-head.section-personality .section-tag {
+.profile-impressions-popup .social-proof-section-head.section-personality .section-tag {
   background: linear-gradient(180deg, #f0ebfb 0%, #e7def7 100%);
   color: #6a45a3;
 }
 
-.navigator-impressions-popup .social-proof-section-head.section-personality .section-line {
+.profile-impressions-popup .social-proof-section-head.section-personality .section-line {
   background: rgba(106, 69, 163, 0.34);
 }
 
-.navigator-impressions-popup .social-proof-chip-list {
+.profile-impressions-popup .social-proof-chip-list {
   display: flex;
   flex-wrap: wrap;
   justify-content: flex-start;
   gap: 0.28rem;
 }
 
-.navigator-impressions-popup .social-proof-chip {
+.profile-impressions-popup .social-proof-chip {
   display: inline-flex;
   width: fit-content;
   max-width: 100%;
@@ -377,19 +377,19 @@
   white-space: nowrap;
 }
 
-.navigator-impressions-popup .personality-trait-carousel {
+.profile-impressions-popup .personality-trait-carousel {
   display: flex;
   flex-direction: column;
   gap: 0.55rem;
 }
 
-.navigator-impressions-popup .personality-trait-pill-strip {
+.profile-impressions-popup .personality-trait-pill-strip {
   display: grid;
   grid-template-columns: repeat(3, minmax(0, 1fr));
   gap: 0.38rem;
 }
 
-.navigator-impressions-popup .personality-trait-pill {
+.profile-impressions-popup .personality-trait-pill {
   --trait-accent: #6a45a3;
   --trait-accent-soft: rgba(106, 69, 163, 0.18);
   --trait-surface: linear-gradient(180deg, #fbf8ff 0%, #f2ebff 100%);
@@ -407,23 +407,23 @@
   transition: border-color 0.18s ease, box-shadow 0.18s ease, background 0.18s ease;
 }
 
-.navigator-impressions-popup .personality-trait-pill:hover {
+.profile-impressions-popup .personality-trait-pill:hover {
   border-color: rgba(89, 108, 153, 0.34);
   box-shadow: 0 6px 16px rgba(37, 45, 68, 0.08);
 }
 
-.navigator-impressions-popup .personality-trait-pill.is-active {
+.profile-impressions-popup .personality-trait-pill.is-active {
   border-color: rgba(255, 255, 255, 0.96);
   background: var(--trait-surface);
   box-shadow: 0 0 0 1.5px var(--trait-accent-soft), inset 0 0 0 1px rgba(255, 255, 255, 0.92), 0 8px 22px color-mix(in srgb, var(--trait-accent) 14%, transparent);
 }
 
-.navigator-impressions-popup .personality-trait-pill.is-active .personality-trait-pill-rank,
-.navigator-impressions-popup .personality-trait-pill.is-active .personality-trait-pill-percent {
+.profile-impressions-popup .personality-trait-pill.is-active .personality-trait-pill-rank,
+.profile-impressions-popup .personality-trait-pill.is-active .personality-trait-pill-percent {
   color: var(--trait-accent);
 }
 
-.navigator-impressions-popup .personality-trait-pill-rank {
+.profile-impressions-popup .personality-trait-pill-rank {
   color: #7b859e;
   font-size: 0.66rem;
   font-weight: 800;
@@ -431,20 +431,20 @@
   text-transform: uppercase;
 }
 
-.navigator-impressions-popup .personality-trait-pill-label {
+.profile-impressions-popup .personality-trait-pill-label {
   color: #1f2937;
   font-size: 0.82rem;
   font-weight: 900;
   line-height: 1.12;
 }
 
-.navigator-impressions-popup .personality-trait-pill-percent {
+.profile-impressions-popup .personality-trait-pill-percent {
   color: #4d618a;
   font-size: 0.76rem;
   font-weight: 800;
 }
 
-.navigator-impressions-popup .personality-trait-card {
+.profile-impressions-popup .personality-trait-card {
   --trait-accent: #6a45a3;
   --trait-accent-soft: rgba(106, 69, 163, 0.18);
   --trait-surface: linear-gradient(180deg, #fbf8ff 0%, #f2ebff 100%);
@@ -458,20 +458,20 @@
   box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.9), 0 10px 24px rgba(41, 49, 70, 0.08);
 }
 
-.navigator-impressions-popup .personality-trait-card-head {
+.profile-impressions-popup .personality-trait-card-head {
   display: flex;
   align-items: flex-start;
   justify-content: space-between;
   gap: 0.75rem;
 }
 
-.navigator-impressions-popup .personality-trait-card-title {
+.profile-impressions-popup .personality-trait-card-title {
   display: flex;
   align-items: center;
   gap: 0.72rem;
 }
 
-.navigator-impressions-popup .personality-trait-card-title strong {
+.profile-impressions-popup .personality-trait-card-title strong {
   display: block;
   color: #1f2937;
   font-size: 0.98rem;
@@ -479,7 +479,7 @@
   line-height: 1.1;
 }
 
-.navigator-impressions-popup .personality-trait-card-title p {
+.profile-impressions-popup .personality-trait-card-title p {
   margin: 0.18rem 0 0;
   color: #56627f;
   font-size: 0.77rem;
@@ -487,7 +487,7 @@
   line-height: 1.3;
 }
 
-.navigator-impressions-popup .personality-trait-card-icon {
+.profile-impressions-popup .personality-trait-card-icon {
   display: inline-flex;
   width: 2.45rem;
   height: 2.45rem;
@@ -499,14 +499,14 @@
   color: var(--trait-accent);
 }
 
-.navigator-impressions-popup .personality-trait-card-icon .mat-icon {
+.profile-impressions-popup .personality-trait-card-icon .mat-icon {
   width: 1.25rem;
   height: 1.25rem;
   font-size: 1.25rem;
   line-height: 1.25rem;
 }
 
-.navigator-impressions-popup .personality-trait-card-percent {
+.profile-impressions-popup .personality-trait-card-percent {
   display: inline-flex;
   align-items: center;
   justify-content: center;
@@ -521,7 +521,7 @@
   box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.94);
 }
 
-.navigator-impressions-popup .personality-trait-card-bar {
+.profile-impressions-popup .personality-trait-card-bar {
   position: relative;
   height: 0.48rem;
   overflow: hidden;
@@ -529,7 +529,7 @@
   background: rgba(91, 103, 130, 0.12);
 }
 
-.navigator-impressions-popup .personality-trait-card-bar span {
+.profile-impressions-popup .personality-trait-card-bar span {
   display: block;
   height: 100%;
   border-radius: inherit;
@@ -537,7 +537,7 @@
   box-shadow: 0 4px 12px color-mix(in srgb, var(--trait-accent) 30%, transparent);
 }
 
-.navigator-impressions-popup .personality-trait-card-meta {
+.profile-impressions-popup .personality-trait-card-meta {
   display: flex;
   flex-wrap: wrap;
   align-items: center;
@@ -547,89 +547,89 @@
   font-weight: 800;
 }
 
-.navigator-impressions-popup .personality-trait-card-highlights {
+.profile-impressions-popup .personality-trait-card-highlights {
   display: flex;
   flex-wrap: wrap;
   gap: 0.28rem;
 }
 
-.navigator-impressions-popup .personality-trait-card.trait-tone-social,
-.navigator-impressions-popup .personality-trait-pill.trait-tone-social {
+.profile-impressions-popup .personality-trait-card.trait-tone-social,
+.profile-impressions-popup .personality-trait-pill.trait-tone-social {
   --trait-accent: #dd5c82;
   --trait-accent-soft: rgba(221, 92, 130, 0.22);
   --trait-surface: linear-gradient(180deg, #fff7fb 0%, #fdebf3 100%);
 }
 
-.navigator-impressions-popup .personality-trait-card.trait-tone-deep,
-.navigator-impressions-popup .personality-trait-pill.trait-tone-deep {
+.profile-impressions-popup .personality-trait-card.trait-tone-deep,
+.profile-impressions-popup .personality-trait-pill.trait-tone-deep {
   --trait-accent: #5a66b4;
   --trait-accent-soft: rgba(90, 102, 180, 0.2);
   --trait-surface: linear-gradient(180deg, #f7f8ff 0%, #ebedff 100%);
 }
 
-.navigator-impressions-popup .personality-trait-card.trait-tone-adventure,
-.navigator-impressions-popup .personality-trait-pill.trait-tone-adventure {
+.profile-impressions-popup .personality-trait-card.trait-tone-adventure,
+.profile-impressions-popup .personality-trait-pill.trait-tone-adventure {
   --trait-accent: #eb8b2d;
   --trait-accent-soft: rgba(235, 139, 45, 0.22);
   --trait-surface: linear-gradient(180deg, #fff8ef 0%, #ffefd9 100%);
 }
 
-.navigator-impressions-popup .personality-trait-card.trait-tone-reliable,
-.navigator-impressions-popup .personality-trait-pill.trait-tone-reliable {
+.profile-impressions-popup .personality-trait-card.trait-tone-reliable,
+.profile-impressions-popup .personality-trait-pill.trait-tone-reliable {
   --trait-accent: #2f8b7a;
   --trait-accent-soft: rgba(47, 139, 122, 0.22);
   --trait-surface: linear-gradient(180deg, #f3fffb 0%, #e2f7f0 100%);
 }
 
-.navigator-impressions-popup .personality-trait-card.trait-tone-creative,
-.navigator-impressions-popup .personality-trait-pill.trait-tone-creative {
+.profile-impressions-popup .personality-trait-card.trait-tone-creative,
+.profile-impressions-popup .personality-trait-pill.trait-tone-creative {
   --trait-accent: #8b5fd1;
   --trait-accent-soft: rgba(139, 95, 209, 0.22);
   --trait-surface: linear-gradient(180deg, #fbf7ff 0%, #f0e7ff 100%);
 }
 
-.navigator-impressions-popup .personality-trait-card.trait-tone-empath,
-.navigator-impressions-popup .personality-trait-pill.trait-tone-empath {
+.profile-impressions-popup .personality-trait-card.trait-tone-empath,
+.profile-impressions-popup .personality-trait-pill.trait-tone-empath {
   --trait-accent: #d15f77;
   --trait-accent-soft: rgba(209, 95, 119, 0.22);
   --trait-surface: linear-gradient(180deg, #fff8f8 0%, #fdebed 100%);
 }
 
-.navigator-impressions-popup .personality-trait-card.trait-tone-ambitious,
-.navigator-impressions-popup .personality-trait-pill.trait-tone-ambitious {
+.profile-impressions-popup .personality-trait-card.trait-tone-ambitious,
+.profile-impressions-popup .personality-trait-pill.trait-tone-ambitious {
   --trait-accent: #406ecf;
   --trait-accent-soft: rgba(64, 110, 207, 0.22);
   --trait-surface: linear-gradient(180deg, #f7faff 0%, #e9f1ff 100%);
 }
 
-.navigator-impressions-popup .personality-trait-card.trait-tone-playful,
-.navigator-impressions-popup .personality-trait-pill.trait-tone-playful {
+.profile-impressions-popup .personality-trait-card.trait-tone-playful,
+.profile-impressions-popup .personality-trait-pill.trait-tone-playful {
   --trait-accent: #d77b2f;
   --trait-accent-soft: rgba(215, 123, 47, 0.22);
   --trait-surface: linear-gradient(180deg, #fffaf2 0%, #ffeedb 100%);
 }
 
-.navigator-impressions-popup .social-proof-chip.chip-personality {
+.profile-impressions-popup .social-proof-chip.chip-personality {
   color: #4d3e69;
 }
 
-.navigator-impressions-popup .social-proof-chip.chip-category {
+.profile-impressions-popup .social-proof-chip.chip-category {
   color: #2c5e46;
 }
 
-.navigator-impressions-popup .impressions-chip-list-updated .social-proof-chip {
-  animation: navigator-popup-impressions-chip-pulse 0.38s ease;
+.profile-impressions-popup .impressions-chip-list-updated .social-proof-chip {
+  animation: profile-popup-impressions-chip-pulse 0.38s ease;
 }
 
-.navigator-impressions-popup .impressions-chip-list-updated .social-proof-chip:nth-child(2n) {
+.profile-impressions-popup .impressions-chip-list-updated .social-proof-chip:nth-child(2n) {
   animation-delay: 0.04s;
 }
 
-.navigator-impressions-popup .impressions-chip-list-updated .social-proof-chip:nth-child(3n) {
+.profile-impressions-popup .impressions-chip-list-updated .social-proof-chip:nth-child(3n) {
   animation-delay: 0.08s;
 }
 
-@keyframes navigator-popup-impressions-badge-blink {
+@keyframes profile-popup-impressions-badge-blink {
   0% {
     filter: brightness(1) saturate(1);
   }
@@ -641,7 +641,7 @@
   }
 }
 
-@keyframes navigator-popup-impressions-chip-pulse {
+@keyframes profile-popup-impressions-chip-pulse {
   0% {
     transform: translateY(0) scale(1);
     filter: brightness(1);
@@ -658,45 +658,45 @@
 
 
 @media (max-width: 760px) {
-  .navigator-impressions-popup .app-popup-panel {
+  .profile-impressions-popup .app-popup-panel {
     width: 100vw;
   }
 
-  .navigator-impressions-popup .popup-body.popup-body-impressions {
+  .profile-impressions-popup .popup-body.popup-body-impressions {
     padding: 0.45rem;
   }
 
-  .navigator-impressions-popup .social-proof-grid {
+  .profile-impressions-popup .social-proof-grid {
     grid-template-columns: minmax(0, 1fr);
     gap: 1.1rem;
   }
 
-  .navigator-impressions-popup .social-proof-card.social-proof-card-modern {
+  .profile-impressions-popup .social-proof-card.social-proof-card-modern {
     padding-top: 6rem;
   }
 
-  .navigator-impressions-popup .social-proof-identity-pill {
+  .profile-impressions-popup .social-proof-identity-pill {
     min-height: 32px;
     padding: 0.25rem 0.56rem;
     transform: translate(-0.18rem, -0.34rem);
     font-size: 0.8rem;
   }
 
-  .navigator-impressions-popup .popup-impressions-badge {
+  .profile-impressions-popup .popup-impressions-badge {
     top: 3rem;
     display: inline-flex;
     max-width: calc(100% - 2px);
     flex-wrap: nowrap;
   }
 
-  .navigator-impressions-popup .popup-impressions-badge-segment {
+  .profile-impressions-popup .popup-impressions-badge-segment {
     min-height: 34px;
     min-width: 0;
     flex: 1 1 0;
     padding: 0.2rem 0.34rem;
   }
 
-  .navigator-impressions-popup .popup-impressions-badge-label {
+  .profile-impressions-popup .popup-impressions-badge-label {
     display: -webkit-box;
     width: 100%;
     min-width: 0;
@@ -709,40 +709,40 @@
     overflow-wrap: anywhere;
   }
 
-  .navigator-impressions-popup .popup-impressions-badge-value {
+  .profile-impressions-popup .popup-impressions-badge-value {
     font-size: 0.72rem;
     white-space: nowrap;
   }
 
-  .navigator-impressions-popup .personality-trait-pill-strip {
+  .profile-impressions-popup .personality-trait-pill-strip {
     grid-template-columns: repeat(3, minmax(0, 1fr));
     gap: 0.28rem;
   }
 
-  .navigator-impressions-popup .personality-trait-pill {
+  .profile-impressions-popup .personality-trait-pill {
     gap: 0.08rem;
     padding: 0.38rem 0.34rem;
     border-radius: 12px;
   }
 
-  .navigator-impressions-popup .personality-trait-pill-rank {
+  .profile-impressions-popup .personality-trait-pill-rank {
     font-size: 0.56rem;
     letter-spacing: 0.05em;
   }
 
-  .navigator-impressions-popup .personality-trait-pill-label {
+  .profile-impressions-popup .personality-trait-pill-label {
     font-size: 0.72rem;
   }
 
-  .navigator-impressions-popup .personality-trait-pill-percent {
+  .profile-impressions-popup .personality-trait-pill-percent {
     font-size: 0.66rem;
   }
 
-  .navigator-impressions-popup .personality-trait-card-head {
+  .profile-impressions-popup .personality-trait-card-head {
     flex-direction: column;
   }
 
-  .navigator-impressions-popup .personality-trait-card-percent {
+  .profile-impressions-popup .personality-trait-card-percent {
     min-width: 0;
   }
 }

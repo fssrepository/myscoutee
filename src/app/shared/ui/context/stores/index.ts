@@ -46,14 +46,13 @@ export type { EventCheckoutDialogConfig, EventCheckoutDialogState } from './even
 export type { EventCheckoutDraft } from './event-checkout-draft.store';
 export { HelpCenterStore } from './help-center.store';
 export {
-  NavigatorStore,
-  type NavigatorBindings,
-  type NavigatorMenuUiState,
-  type NavigatorProfileViewRequest,
-  type NavigatorProfileViewTarget,
-  type NavigatorReportUserContext,
-  type NavigatorSettingsPopup
-} from './navigator.store';
+  ProfileStore,
+  type ProfileBindings,
+  type ProfileViewRequest,
+  type ProfileViewTarget,
+  type ProfileReportUserContext,
+  type ProfileSettingsPopup
+} from './profile.store';
 export {
   PopupStore,
   type ActivitiesNavigationRequest,

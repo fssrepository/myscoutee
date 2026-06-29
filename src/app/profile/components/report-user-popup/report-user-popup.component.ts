@@ -22,20 +22,20 @@ import {
   type AppMenuItemSelectEvent
 } from '../../../shared/ui';
 import {
-  NavigatorStore
-} from '../../../shared/ui/context/stores/navigator.store';
+  ProfileStore
+} from '../../../shared/ui/context/stores/profile.store';
 import { UserProfileStore } from '../../../shared/ui/context/stores/user-profile.store';
 import { AppRuntimeStore } from '../../../shared/ui/context/stores/app-runtime.store';
 
 @Component({
-  selector: 'app-navigator-report-user-popup',
+  selector: 'app-profile-report-user-popup',
   standalone: true,
   imports: [FormsModule, AppMenuComponent],
-  templateUrl: './navigator-report-user-popup.component.html',
-  styleUrl: './navigator-report-user-popup.component.scss'
+  templateUrl: './report-user-popup.component.html',
+  styleUrl: './report-user-popup.component.scss'
 })
-export class NavigatorReportUserPopupComponent implements OnDestroy {
-  private readonly navigatorStore = inject(NavigatorStore);
+export class ProfileReportUserPopupComponent implements OnDestroy {
+  private readonly profileStore = inject(ProfileStore);
   private readonly usersService = inject(UsersService);
   private readonly userProfileStore = inject(UserProfileStore);
   private readonly runtimeStore = inject(AppRuntimeStore);
@@ -47,7 +47,7 @@ export class NavigatorReportUserPopupComponent implements OnDestroy {
   protected readonly reportUserReasons = APP_STATIC_DATA.reportUserReasons;
   protected readonly reportUserHandleMinLength = 3;
   protected readonly reportUserDetailsMinLength = 12;
-  protected readonly reportUserContext = this.navigatorStore.reportUserContext;
+  protected readonly reportUserContext = this.profileStore.reportUserContext;
   protected readonly isContextualReport = computed(() => {
     const context = this.reportUserContext();
     return !!context?.targetUserId?.trim() && !!context?.eventId?.trim();
@@ -104,7 +104,7 @@ export class NavigatorReportUserPopupComponent implements OnDestroy {
 
   protected closePopup(): void {
     this.abortActiveSubmit();
-    this.navigatorStore.closeSettingsPopup();
+    this.profileStore.closeSettingsPopup();
   }
 
   protected get reportUserHandleLength(): number {

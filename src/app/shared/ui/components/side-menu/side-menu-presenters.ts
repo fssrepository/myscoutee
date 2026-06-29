@@ -2,7 +2,7 @@ import { APP_STATIC_DATA } from '../../../app-static-data';
 import { AppUtils } from '../../../app-utils';
 import type { AppMenuPalette } from '../..';
 
-export interface NavigatorPresentation {
+export interface SideMenuPresentation {
   aliases: readonly string[];
   icon: string;
   colorClass: string;
@@ -11,19 +11,19 @@ export interface NavigatorPresentation {
   memberTitle?: string;
 }
 
-export type NavigatorPresentationKind = 'hostTier' | 'trait';
-type NavigatorPresentationCatalogKind = NavigatorPresentationKind | 'title';
+export type SideMenuPresentationKind = 'hostTier' | 'trait';
+type SideMenuPresentationCatalogKind = SideMenuPresentationKind | 'title';
 
-interface NavigatorPresentationCatalog {
-  entries: readonly NavigatorPresentation[];
-  fallback: NavigatorPresentation;
+interface SideMenuPresentationCatalog {
+  entries: readonly SideMenuPresentation[];
+  fallback: SideMenuPresentation;
 }
 
-export function resolveNavigatorPresentation(
-  kind: NavigatorPresentationKind,
+export function resolveSideMenuPresentation(
+  kind: SideMenuPresentationKind,
   value: string
-): NavigatorPresentation {
-  const catalog = navigatorPresentationCatalog(kind);
+): SideMenuPresentation {
+  const catalog = sideMenuPresentationCatalog(kind);
   const presenter = AppUtils.findByAlias(catalog.entries, value);
   const fallback = catalog.fallback;
   return {
@@ -36,7 +36,7 @@ export function resolveNavigatorPresentation(
   };
 }
 
-function navigatorPresentationCatalog(kind: NavigatorPresentationCatalogKind): NavigatorPresentationCatalog {
+function sideMenuPresentationCatalog(kind: SideMenuPresentationCatalogKind): SideMenuPresentationCatalog {
   if (kind === 'title') {
     return {
       entries: APP_STATIC_DATA.navigatorMemberImpressionTitlePresenters,
@@ -56,7 +56,7 @@ function navigatorPresentationCatalog(kind: NavigatorPresentationCatalogKind): N
 }
 
 function resolveMemberImpressionTitle(traitLabel: string): string {
-  const catalog = navigatorPresentationCatalog('title');
+  const catalog = sideMenuPresentationCatalog('title');
   const presenter = AppUtils.findByAlias(catalog.entries, traitLabel);
   if (presenter?.memberTitle) {
     return presenter.memberTitle;

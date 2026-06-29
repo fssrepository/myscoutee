@@ -48,8 +48,8 @@ import {
   DialogStore
 } from '../../../shared/ui/context/stores/dialog.store';
 import {
-  NavigatorStore
-} from '../../../shared/ui/context/stores/navigator.store';
+  ProfileStore
+} from '../../../shared/ui/context/stores/profile.store';
 import {
   ContactsService as ContactsDataService,
   ExplanationGuideService,
@@ -209,11 +209,11 @@ export class ContactsPopupComponent implements OnDestroy {
   private readonly runtimeStore = inject(AppRuntimeStore);
   private readonly popupStore = inject(PopupStore);
   private readonly dialogStore = inject(DialogStore);
-  private readonly navigatorStore = inject(NavigatorStore);
+  private readonly profileStore = inject(ProfileStore);
   private readonly usersService = inject(UsersService);
   private readonly explanationGuide = inject(ExplanationGuideService);
   private readonly contactsDataService = inject(ContactsDataService);
-  protected readonly contactsPopupOpen = this.navigatorStore.contactsPopupOpen;
+  protected readonly contactsPopupOpen = this.profileStore.contactsPopupOpen;
   protected readonly contactMethodOptions = CONTACT_METHOD_OPTIONS;
   protected readonly searchText = signal('');
   protected readonly editingContact = signal<ContactFormValue | null>(null);
@@ -254,7 +254,7 @@ export class ContactsPopupComponent implements OnDestroy {
     });
 
     effect(() => {
-      this.setContactsExplanationContext(this.navigatorStore.contactsPopupOpen() ? 'contacts' : null);
+      this.setContactsExplanationContext(this.profileStore.contactsPopupOpen() ? 'contacts' : null);
     });
 
     effect(() => {
@@ -388,7 +388,7 @@ export class ContactsPopupComponent implements OnDestroy {
   @HostListener('window:keydown.escape', ['$event'])
   protected onEscape(event: Event): void {
     const keyboardEvent = event as KeyboardEvent;
-    if (!this.navigatorStore.contactsPopupOpen() || keyboardEvent.defaultPrevented) {
+    if (!this.profileStore.contactsPopupOpen() || keyboardEvent.defaultPrevented) {
       return;
     }
     keyboardEvent.preventDefault();
@@ -413,7 +413,7 @@ export class ContactsPopupComponent implements OnDestroy {
     this.searchText.set('');
     this.editingContact.set(null);
     this.formErrorMessage.set('');
-    this.navigatorStore.closeContactsPopup();
+    this.profileStore.closeContactsPopup();
   }
 
   private setContactsExplanationContext(contextKey: string | null): void {
@@ -465,7 +465,7 @@ export class ContactsPopupComponent implements OnDestroy {
     if (!userId) {
       return;
     }
-    this.navigatorStore.openProfileView({
+    this.profileStore.openProfileView({
       userId,
       label: contact.name
     });

@@ -36,39 +36,39 @@ import {
   HelpCenterRevisionDocumentViewerConfigConverter
 } from '../../../shared/ui/converters';
 import {
-  NavigatorStore,
-  type NavigatorSettingsPopup
-} from '../../../shared/ui/context/stores/navigator.store';
+  ProfileStore,
+  type ProfileSettingsPopup
+} from '../../../shared/ui/context/stores/profile.store';
 import {
-  NavigatorFeedbackPopupComponent
-} from '../navigator-feedback-popup/navigator-feedback-popup.component';
+  ProfileFeedbackPopupComponent
+} from '../feedback-popup/feedback-popup.component';
 import {
-  NavigatorReportUserPopupComponent
-} from '../navigator-report-user-popup/navigator-report-user-popup.component';
+  ProfileReportUserPopupComponent
+} from '../report-user-popup/report-user-popup.component';
 import { UserProfileStore } from '../../../shared/ui/context/stores/user-profile.store';
 
 @Component({
-  selector: 'app-navigator-settings-popups',
+  selector: 'app-profile-settings-popups',
   standalone: true,
   imports: [
     CommonModule,
     MatButtonModule,
     MatIconModule,
     DocumentViewerComponent,
-    NavigatorFeedbackPopupComponent,
-    NavigatorReportUserPopupComponent
+    ProfileFeedbackPopupComponent,
+    ProfileReportUserPopupComponent
   ],
-  templateUrl: './navigator-settings-popups.component.html',
-  styleUrl: './navigator-settings-popups.component.scss'
+  templateUrl: './settings-popups.component.html',
+  styleUrl: './settings-popups.component.scss'
 })
-export class NavigatorSettingsPopupsComponent {
-  private readonly navigatorStore = inject(NavigatorStore);
+export class ProfileSettingsPopupsComponent {
+  private readonly profileStore = inject(ProfileStore);
   private readonly helpCenter = inject(HelpCenterService);
   private readonly privacyPolicy = inject(PrivacyPolicyService);
   private readonly userProfileStore = inject(UserProfileStore);
-  protected readonly activePopup = this.navigatorStore.settingsPopup;
+  protected readonly activePopup = this.profileStore.settingsPopup;
   protected readonly activeUserId = this.userProfileStore.activeUserId;
-  protected readonly privacyConsentRequired = this.navigatorStore.privacyConsentRequired;
+  protected readonly privacyConsentRequired = this.profileStore.privacyConsentRequired;
   protected settingsPrivacySaving = false;
   protected settingsPrivacySaveMessage = '';
   protected settingsPrivacySaveError = '';
@@ -96,7 +96,7 @@ export class NavigatorSettingsPopupsComponent {
     this.closePopup();
   }
 
-  protected popupTitle(popup: NavigatorSettingsPopup): string {
+  protected popupTitle(popup: ProfileSettingsPopup): string {
     switch (popup) {
       case 'feedback':
         return 'Send Feedback';
@@ -108,14 +108,14 @@ export class NavigatorSettingsPopupsComponent {
   }
 
   protected closePopup(): void {
-    this.navigatorStore.closeSettingsPopup({
+    this.profileStore.closeSettingsPopup({
       keepPrivacyOpen: this.privacyConsentRequired()
     });
   }
 
   protected completePrivacyPopup(): void {
-    this.navigatorStore.clearPrivacyConsentRequirement();
-    this.navigatorStore.closeSettingsPopup();
+    this.profileStore.clearPrivacyConsentRequirement();
+    this.profileStore.closeSettingsPopup();
   }
 
   protected privacyDocumentConfig(): DocumentViewerConfig {

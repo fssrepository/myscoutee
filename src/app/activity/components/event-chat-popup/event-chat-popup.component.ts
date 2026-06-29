@@ -72,8 +72,8 @@ import {
   DialogStore
 } from '../../../shared/ui/context/stores/dialog.store';
 import {
-  NavigatorStore
-} from '../../../shared/ui/context/stores/navigator.store';
+  ProfileStore
+} from '../../../shared/ui/context/stores/profile.store';
 
 import type * as AppDTOs from '../../../shared/core/contracts';
 import type * as AppConstants from '../../../shared/core/common/constants';
@@ -172,7 +172,7 @@ export class EventChatPopupComponent implements OnDestroy {
   private readonly chatVoiceClipsService = inject(ChatVoiceClipsService);
   private readonly dialogStore = inject(DialogStore);
   private readonly mediaService = inject(MediaService);
-  private readonly navigatorStore = inject(NavigatorStore);
+  private readonly profileStore = inject(ProfileStore);
   private readonly location = inject(Location);
 
   protected readonly session = computed(() => this.activitiesStore.eventChatSession());
@@ -1749,7 +1749,7 @@ export class EventChatPopupComponent implements OnDestroy {
       return;
     }
     const attachment = this.resolveViewableMessageAttachment(message);
-    this.navigatorStore.openReportUserPopup({
+    this.profileStore.openReportUserPopup({
       targetUserId: target.userId,
       targetName: target.name,
       eventId,

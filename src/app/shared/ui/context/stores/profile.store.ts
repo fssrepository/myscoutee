@@ -1,15 +1,11 @@
-import { Injectable, Type, computed, inject, signal } from '@angular/core';
+import { Injectable, Type, computed, signal } from '@angular/core';
 
 import type { ActivityMemberOwnerType } from '../../../core/common/constants';
 import type { UserDto } from '../../../core/contracts/user.interface';
 
-export interface NavigatorMenuUiState {
-  open: boolean;
-}
+export type ProfileSettingsPopup = 'help' | 'feedback' | 'privacy' | 'terms' | 'report-user';
 
-export type NavigatorSettingsPopup = 'help' | 'feedback' | 'privacy' | 'terms' | 'report-user';
-
-export interface NavigatorReportUserContext {
+export interface ProfileReportUserContext {
   targetUserId: string;
   targetName: string;
   memberEntryId?: string | null;
@@ -27,16 +23,16 @@ export interface NavigatorReportUserContext {
   assetType?: string | null;
 }
 
-export interface NavigatorBindings {
+export interface ProfileBindings {
   syncHydratedUser?(user: UserDto): void;
 }
 
-export interface NavigatorProfileViewRequest {
+export interface ProfileViewRequest {
   userId: string;
   label?: string | null;
 }
 
-export interface NavigatorProfileViewTarget {
+export interface ProfileViewTarget {
   userId: string;
   label: string | null;
 }
@@ -44,20 +40,18 @@ export interface NavigatorProfileViewTarget {
 @Injectable({
   providedIn: 'root'
 })
-export class NavigatorStore {
-  private readonly bindingsRef = signal<NavigatorBindings | null>(null);
-  private readonly menuOpenRef = signal(false);
-  private readonly settingsPopupRef = signal<NavigatorSettingsPopup | null>(null);
-  private readonly reportUserContextRef = signal<NavigatorReportUserContext | null>(null);
+export class ProfileStore {
+  private readonly bindingsRef = signal<ProfileBindings | null>(null);
+  private readonly settingsPopupRef = signal<ProfileSettingsPopup | null>(null);
+  private readonly reportUserContextRef = signal<ProfileReportUserContext | null>(null);
   private readonly deletedAccountReactivationPendingRef = signal(false);
   private readonly privacyConsentRequiredKeyRef = signal('');
   private readonly profileEditorOpenRef = signal(false);
-  private readonly profileViewTargetRef = signal<NavigatorProfileViewTarget | null>(null);
+  private readonly profileViewTargetRef = signal<ProfileViewTarget | null>(null);
   private readonly impressionsPopupOpenRef = signal(false);
   private readonly contactsPopupOpenRef = signal(false);
   private readonly impressionsPopupUserIdRef = signal('');
-  private readonly navigatorComponentRef = signal<Type<unknown> | null>(null);
-  private readonly navigatorImpressionsPopupComponentRef = signal<Type<unknown> | null>(null);
+  private readonly impressionsPopupComponentRef = signal<Type<unknown> | null>(null);
   private readonly profileEditorComponentRef = signal<Type<unknown> | null>(null);
   private readonly profileViewPopupComponentRef = signal<Type<unknown> | null>(null);
   private readonly contactsPopupComponentRef = signal<Type<unknown> | null>(null);
@@ -75,42 +69,26 @@ export class NavigatorStore {
   readonly impressionsPopupOpen = this.impressionsPopupOpenRef.asReadonly();
   readonly contactsPopupOpen = this.contactsPopupOpenRef.asReadonly();
   readonly impressionsPopupUserId = this.impressionsPopupUserIdRef.asReadonly();
-  readonly navigatorComponent = this.navigatorComponentRef.asReadonly();
-  readonly navigatorImpressionsPopupComponent = this.navigatorImpressionsPopupComponentRef.asReadonly();
+  readonly impressionsPopupComponent = this.impressionsPopupComponentRef.asReadonly();
   readonly profileEditorComponent = this.profileEditorComponentRef.asReadonly();
   readonly profileViewPopupComponent = this.profileViewPopupComponentRef.asReadonly();
   readonly contactsPopupComponent = this.contactsPopupComponentRef.asReadonly();
   readonly explanationPopupComponent = this.explanationPopupComponentRef.asReadonly();
-  readonly menuUiState = computed<NavigatorMenuUiState>(() => ({
-    open: this.menuOpenRef()
-  }));
-  registerBindings(bindings: NavigatorBindings): void {
+
+  registerBindings(bindings: ProfileBindings): void {
     this.bindingsRef.set(bindings);
   }
 
-  clearBindings(bindings?: NavigatorBindings): void {
+  clearBindings(bindings?: ProfileBindings): void {
     if (bindings && this.bindingsRef() !== bindings) {
       return;
     }
     this.bindingsRef.set(null);
-    this.closeMenu();
     this.closeSettingsPopup({ force: true });
     this.closeImpressionsPopup();
     this.closeContactsPopup();
     this.closeProfileEditor();
     this.closeProfileView();
-  }
-
-  openMenu(): void {
-    this.menuOpenRef.set(true);
-  }
-
-  closeMenu(): void {
-    this.menuOpenRef.set(false);
-  }
-
-  toggleMenu(): void {
-    this.menuOpenRef.update(open => !open);
   }
 
   openProfileEditor(): void {
@@ -121,7 +99,7 @@ export class NavigatorStore {
     this.profileEditorOpenRef.set(false);
   }
 
-  openProfileView(request: NavigatorProfileViewRequest): void {
+  openProfileView(request: ProfileViewRequest): void {
     const userId = `${request?.userId ?? ''}`.trim();
     if (!userId) {
       return;
@@ -141,7 +119,7 @@ export class NavigatorStore {
     this.profileViewTargetRef.set(null);
   }
 
-  openSettingsPopup(popup: NavigatorSettingsPopup): void {
+  openSettingsPopup(popup: ProfileSettingsPopup): void {
     if (popup !== 'report-user') {
       this.reportUserContextRef.set(null);
     }
@@ -170,7 +148,7 @@ export class NavigatorStore {
     this.deletedAccountReactivationPendingRef.set(pending);
   }
 
-  openReportUserPopup(context: NavigatorReportUserContext): void {
+  openReportUserPopup(context: ProfileReportUserContext): void {
     const targetUserId = `${context.targetUserId ?? ''}`.trim();
     const eventId = `${context.eventId ?? ''}`.trim();
     const targetName = `${context.targetName ?? ''}`.trim();
@@ -215,27 +193,19 @@ export class NavigatorStore {
     this.contactsPopupOpenRef.set(false);
   }
 
-  async ensureNavigatorComponentLoaded(): Promise<void> {
-    if (this.navigatorComponentRef()) {
+  async ensureImpressionsPopupLoaded(): Promise<void> {
+    if (this.impressionsPopupComponentRef()) {
       return;
     }
-    const module = await import('../../components/side-menu/side-menu.component');
-    this.navigatorComponentRef.set(module.SideMenuComponent);
-  }
-
-  async ensureNavigatorImpressionsPopupLoaded(): Promise<void> {
-    if (this.navigatorImpressionsPopupComponentRef()) {
-      return;
-    }
-    const module = await import('../../../../navigator/components/navigator-impressions-popup/navigator-impressions-popup.component');
-    this.navigatorImpressionsPopupComponentRef.set(module.NavigatorImpressionsPopupComponent);
+    const module = await import('../../../../profile/components/impressions-popup/impressions-popup.component');
+    this.impressionsPopupComponentRef.set(module.ProfileImpressionsPopupComponent);
   }
 
   async ensureProfileEditorLoaded(): Promise<void> {
     if (this.profileEditorComponentRef()) {
       return;
     }
-    const module = await import('../../../../navigator/components/profile-editor/profile-editor.component');
+    const module = await import('../../../../profile/components/profile-editor/profile-editor.component');
     this.profileEditorComponentRef.set(module.ProfileEditorComponent);
   }
 
@@ -243,7 +213,7 @@ export class NavigatorStore {
     if (this.profileViewPopupComponentRef()) {
       return;
     }
-    const module = await import('../../../../navigator/components/profile-view-popup/profile-view-popup.component');
+    const module = await import('../../../../profile/components/profile-view-popup/profile-view-popup.component');
     this.profileViewPopupComponentRef.set(module.ProfileViewPopupComponent);
   }
 
@@ -251,7 +221,7 @@ export class NavigatorStore {
     if (this.contactsPopupComponentRef()) {
       return;
     }
-    const module = await import('../../../../navigator/components/contacts-popup/contacts-popup.component');
+    const module = await import('../../../../profile/components/contacts-popup/contacts-popup.component');
     this.contactsPopupComponentRef.set(module.ContactsPopupComponent);
   }
 

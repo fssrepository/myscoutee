@@ -104,8 +104,8 @@ import {
   type EventCheckoutDraft
 } from '../../../shared/ui/context/stores/event-checkout-draft.store';
 import {
-  NavigatorStore
-} from '../../../shared/ui/context/stores/navigator.store';
+  ProfileStore
+} from '../../../shared/ui/context/stores/profile.store';
 import {
   ActivitiesChatTemplateComponent,
   ActivitiesChatsController
@@ -261,7 +261,7 @@ export class ActivitiesPopupComponent implements OnDestroy {
   private readonly usersService = inject(UsersService);
   protected readonly dialogStore = inject(DialogStore);
   protected readonly eventCheckoutDialogStore = inject(EventCheckoutDialogStore);
-  protected readonly navigatorStore = inject(NavigatorStore);
+  protected readonly profileStore = inject(ProfileStore);
   private readonly eventCheckoutDraftStore = inject(EventCheckoutDraftStore);
   private readonly i18nService = inject(I18nService);
   private readonly explanationGuide = inject(ExplanationGuideService);
@@ -711,7 +711,7 @@ export class ActivitiesPopupComponent implements OnDestroy {
   }
 
   protected openProfileView(profileView: CardProfileViewData): void {
-    this.navigatorStore.openProfileView(profileView);
+    this.profileStore.openProfileView(profileView);
   }
 
   protected isActivityIdentityTrashed(type: ActivityPopupCard['type'], id: string): boolean {

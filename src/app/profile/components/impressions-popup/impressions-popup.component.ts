@@ -27,27 +27,27 @@ import {
 } from '../../../shared/app-utils';
 import type { UserDto, UserImpressionsDto, UserImpressionsSectionDto } from '../../../shared/core';
 import {
-  resolveNavigatorPresentation,
-  type NavigatorPresentation
+  resolveSideMenuPresentation,
+  type SideMenuPresentation
 } from '../../../shared/ui/components/side-menu/side-menu-presenters';
 import {
-  NavigatorStore
-} from '../../../shared/ui/context/stores/navigator.store';
+  ProfileStore
+} from '../../../shared/ui/context/stores/profile.store';
 import { UserProfileStore } from '../../../shared/ui/context/stores/user-profile.store';
 
-interface NavigatorImpressionsPulseFlags {
+interface ProfileImpressionsPulseFlags {
   hostTop: boolean;
   memberTop: boolean;
   hostChips: boolean;
   memberChips: boolean;
 }
 
-interface NavigatorImpressionsViewModel {
+interface ProfileImpressionsViewModel {
   user: UserDto;
   hasAvailableData: boolean;
-  pulseFlags: NavigatorImpressionsPulseFlags;
-  hostTierPresentation: NavigatorPresentation;
-  traitPresentation: NavigatorPresentation;
+  pulseFlags: ProfileImpressionsPulseFlags;
+  hostTierPresentation: SideMenuPresentation;
+  traitPresentation: SideMenuPresentation;
   memberImpressionTitle: string;
   hostAverageRating: string;
   hostTotalEvents: number;
@@ -55,9 +55,9 @@ interface NavigatorImpressionsViewModel {
   hostRepeatSummary: string;
   hostAttendanceNoShowSummary: string;
   hostVibeBadgeItems: string[];
-  hostTraitCards: NavigatorImpressionsTraitCardViewModel[];
+  hostTraitCards: ProfileImpressionsTraitCardViewModel[];
   hostTraitIndex: number;
-  hostActiveTraitCard: NavigatorImpressionsTraitCardViewModel | null;
+  hostActiveTraitCard: ProfileImpressionsTraitCardViewModel | null;
   hostPersonalityBadgeItems: string[];
   hostCategoryBadgeItems: string[];
   memberTotalEvents: number;
@@ -65,14 +65,14 @@ interface NavigatorImpressionsViewModel {
   memberReturneesSummary: string;
   memberNoShowCount: number;
   memberVibeBadgeItems: string[];
-  memberTraitCards: NavigatorImpressionsTraitCardViewModel[];
+  memberTraitCards: ProfileImpressionsTraitCardViewModel[];
   memberTraitIndex: number;
-  memberActiveTraitCard: NavigatorImpressionsTraitCardViewModel | null;
+  memberActiveTraitCard: ProfileImpressionsTraitCardViewModel | null;
   memberPersonalityBadgeItems: string[];
   memberCategoryBadgeItems: string[];
 }
 
-interface NavigatorImpressionsTraitCardViewModel {
+interface ProfileImpressionsTraitCardViewModel {
   id: string;
   label: string;
   icon: string;
@@ -85,15 +85,15 @@ interface NavigatorImpressionsTraitCardViewModel {
 }
 
 @Component({
-  selector: 'app-navigator-impressions-popup',
+  selector: 'app-profile-impressions-popup',
   standalone: true,
   imports: [CommonModule, MatButtonModule, MatIconModule, MatRippleModule],
-  templateUrl: './navigator-impressions-popup.component.html',
-  styleUrl: './navigator-impressions-popup.component.scss'
+  templateUrl: './impressions-popup.component.html',
+  styleUrl: './impressions-popup.component.scss'
 })
-export class NavigatorImpressionsPopupComponent implements OnDestroy {
+export class ProfileImpressionsPopupComponent implements OnDestroy {
   private static readonly PULSE_DURATION_MS = 460;
-  private static readonly DEFAULT_PULSE_FLAGS: NavigatorImpressionsPulseFlags = {
+  private static readonly DEFAULT_PULSE_FLAGS: ProfileImpressionsPulseFlags = {
     hostTop: false,
     memberTop: false,
     hostChips: false,
@@ -101,10 +101,10 @@ export class NavigatorImpressionsPopupComponent implements OnDestroy {
   };
 
   private readonly userProfileStore = inject(UserProfileStore);
-  private readonly navigatorStore = inject(NavigatorStore);
+  private readonly profileStore = inject(ProfileStore);
   private readonly personalityTraitCatalog = APP_STATIC_DATA.personalityTraitCatalog;
-  private readonly pulseFlagsRef = signal<NavigatorImpressionsPulseFlags>({
-    ...NavigatorImpressionsPopupComponent.DEFAULT_PULSE_FLAGS
+  private readonly pulseFlagsRef = signal<ProfileImpressionsPulseFlags>({
+    ...ProfileImpressionsPopupComponent.DEFAULT_PULSE_FLAGS
   });
   private readonly hostTraitIndexRef = signal(0);
   private readonly memberTraitIndexRef = signal(0);
@@ -112,12 +112,12 @@ export class NavigatorImpressionsPopupComponent implements OnDestroy {
   private lastTrackedUserId = '';
   private lastTrackedImpressions: UserDto['impressions'] | null = null;
   private readonly pulseTimers: Partial<
-    Record<keyof NavigatorImpressionsPulseFlags, ReturnType<typeof setTimeout>>
+    Record<keyof ProfileImpressionsPulseFlags, ReturnType<typeof setTimeout>>
   > = {};
 
-  protected readonly popupOpen = this.navigatorStore.impressionsPopupOpen;
-  protected readonly viewModel = computed<NavigatorImpressionsViewModel | null>(() => {
-    const selectedUserId = this.navigatorStore.impressionsPopupUserId().trim() || this.userProfileStore.activeUserId().trim();
+  protected readonly popupOpen = this.profileStore.impressionsPopupOpen;
+  protected readonly viewModel = computed<ProfileImpressionsViewModel | null>(() => {
+    const selectedUserId = this.profileStore.impressionsPopupUserId().trim() || this.userProfileStore.activeUserId().trim();
     const user = selectedUserId
       ? (this.userProfileStore.getUserProfile(selectedUserId) ?? (selectedUserId === this.userProfileStore.activeUserId().trim() ? this.userProfileStore.activeUserProfile() : null))
       : null;
@@ -129,8 +129,8 @@ export class NavigatorImpressionsPopupComponent implements OnDestroy {
     const memberTraitCards = hasAvailableData ? this.resolveTraitCards(user, 'member') : [];
     const hostTraitIndex = this.normalizeTraitIndex(this.hostTraitIndexRef(), hostTraitCards.length);
     const memberTraitIndex = this.normalizeTraitIndex(this.memberTraitIndexRef(), memberTraitCards.length);
-    const hostTierPresentation = resolveNavigatorPresentation('hostTier', user.hostTier);
-    const traitPresentation = resolveNavigatorPresentation('trait', user.traitLabel ?? '');
+    const hostTierPresentation = resolveSideMenuPresentation('hostTier', user.hostTier);
+    const traitPresentation = resolveSideMenuPresentation('trait', user.traitLabel ?? '');
     return {
       user,
       hasAvailableData,
@@ -165,7 +165,7 @@ export class NavigatorImpressionsPopupComponent implements OnDestroy {
   constructor() {
     effect(() => {
       const isOpen = this.popupOpen();
-      const selectedUserId = this.navigatorStore.impressionsPopupUserId().trim() || this.userProfileStore.activeUserId().trim();
+      const selectedUserId = this.profileStore.impressionsPopupUserId().trim() || this.userProfileStore.activeUserId().trim();
       const user = selectedUserId
         ? (this.userProfileStore.getUserProfile(selectedUserId) ?? (selectedUserId === this.userProfileStore.activeUserId().trim() ? this.userProfileStore.activeUserProfile() : null))
         : null;
@@ -230,9 +230,9 @@ export class NavigatorImpressionsPopupComponent implements OnDestroy {
   }
 
   protected closePopup(): void {
-    const userId = this.navigatorStore.impressionsPopupUserId().trim() || this.userProfileStore.activeUserId().trim();
+    const userId = this.profileStore.impressionsPopupUserId().trim() || this.userProfileStore.activeUserId().trim();
     this.userProfileStore.markUserRealtimeImpressionsClosed(userId);
-    this.navigatorStore.closeImpressionsPopup();
+    this.profileStore.closeImpressionsPopup();
   }
 
   ngOnDestroy(): void {
@@ -325,7 +325,7 @@ export class NavigatorImpressionsPopupComponent implements OnDestroy {
   private resetPulseFlags(): void {
     this.clearPulseTimers();
     this.pulseFlagsRef.set({
-      ...NavigatorImpressionsPopupComponent.DEFAULT_PULSE_FLAGS
+      ...ProfileImpressionsPopupComponent.DEFAULT_PULSE_FLAGS
     });
   }
 
@@ -340,12 +340,12 @@ export class NavigatorImpressionsPopupComponent implements OnDestroy {
         clearTimeout(timer);
       }
     }
-    for (const key of Object.keys(this.pulseTimers) as Array<keyof NavigatorImpressionsPulseFlags>) {
+    for (const key of Object.keys(this.pulseTimers) as Array<keyof ProfileImpressionsPulseFlags>) {
       delete this.pulseTimers[key];
     }
   }
 
-  private triggerPulse(key: keyof NavigatorImpressionsPulseFlags): void {
+  private triggerPulse(key: keyof ProfileImpressionsPulseFlags): void {
     this.pulseFlagsRef.update(state => ({
       ...state,
       [key]: true
@@ -360,7 +360,7 @@ export class NavigatorImpressionsPopupComponent implements OnDestroy {
         [key]: false
       }));
       delete this.pulseTimers[key];
-    }, NavigatorImpressionsPopupComponent.PULSE_DURATION_MS);
+    }, ProfileImpressionsPopupComponent.PULSE_DURATION_MS);
   }
 
   private cloneImpressions(impressions: UserDto['impressions'] | null | undefined): UserDto['impressions'] | null {
@@ -457,15 +457,15 @@ export class NavigatorImpressionsPopupComponent implements OnDestroy {
   private resolveTraitCards(
     user: UserDto,
     kind: 'host' | 'member'
-  ): NavigatorImpressionsTraitCardViewModel[] {
+  ): ProfileImpressionsTraitCardViewModel[] {
     const section = this.activeUserImpressionsSection(user, kind);
-    const cardsById = new Map<string, NavigatorImpressionsTraitCardViewModel>();
+    const cardsById = new Map<string, ProfileImpressionsTraitCardViewModel>();
     for (const trait of section?.personalityTraits ?? []) {
       const card = this.resolveTraitCard(trait.id ?? trait.label ?? '', trait.label ?? '');
       if (!card) {
         continue;
       }
-      const nextCard: NavigatorImpressionsTraitCardViewModel = {
+      const nextCard: ProfileImpressionsTraitCardViewModel = {
         ...card,
         percent: Math.max(0, Math.trunc(Number(trait.percent) || 0)),
         evidenceCount: Math.max(0, Math.trunc(Number(trait.evidenceCount) || 0)),
@@ -484,7 +484,7 @@ export class NavigatorImpressionsPopupComponent implements OnDestroy {
   private resolveTraitCard(
     traitKey: string,
     fallbackLabel: string
-  ): NavigatorImpressionsTraitCardViewModel | null {
+  ): ProfileImpressionsTraitCardViewModel | null {
     const normalizedKey = `${traitKey ?? ''}`.trim().toLowerCase();
     const normalizedLabel = `${fallbackLabel ?? ''}`.trim().toLowerCase();
     const match = this.personalityTraitCatalog.find(trait =>
@@ -712,8 +712,8 @@ export class NavigatorImpressionsPopupComponent implements OnDestroy {
   }
 
   private sortResolvedTraitCards(
-    left: Pick<NavigatorImpressionsTraitCardViewModel, 'label' | 'percent' | 'evidenceCount' | 'lastRatedAtIso'>,
-    right: Pick<NavigatorImpressionsTraitCardViewModel, 'label' | 'percent' | 'evidenceCount' | 'lastRatedAtIso'>
+    left: Pick<ProfileImpressionsTraitCardViewModel, 'label' | 'percent' | 'evidenceCount' | 'lastRatedAtIso'>,
+    right: Pick<ProfileImpressionsTraitCardViewModel, 'label' | 'percent' | 'evidenceCount' | 'lastRatedAtIso'>
   ): number {
     if (left.percent !== right.percent) {
       return right.percent - left.percent;

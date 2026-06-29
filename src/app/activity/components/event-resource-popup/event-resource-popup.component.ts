@@ -65,8 +65,8 @@ import {
   AssetPopupStore
 } from '../../../shared/ui/context/stores/asset-popup.store';
 import {
-  NavigatorStore
-} from '../../../shared/ui/context/stores/navigator.store';
+  ProfileStore
+} from '../../../shared/ui/context/stores/profile.store';
 import {
   DialogStore
 } from '../../../shared/ui/context/stores/dialog.store';
@@ -155,7 +155,7 @@ export class EventResourcePopupComponent {
   private readonly assetsService = inject(SharedAssetsService);
   private readonly eventsService = inject(EventsService);
   private readonly usersService = inject(UsersService);
-  private readonly navigatorStore = inject(NavigatorStore);
+  private readonly profileStore = inject(ProfileStore);
   private readonly dialogStore = inject(DialogStore);
   private readonly shareTokensService = inject(ShareTokensService);
   private readonly activityResourcesService = inject(ActivityResourcesService);
@@ -434,7 +434,7 @@ export class EventResourcePopupComponent {
     if (!context || !target || target.userId === this.activeUser().id.trim()) {
       return;
     }
-    this.navigatorStore.openReportUserPopup({
+    this.profileStore.openReportUserPopup({
       targetUserId: target.userId,
       targetName: target.name,
       eventId: context.ownerId,

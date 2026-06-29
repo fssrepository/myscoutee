@@ -42,8 +42,8 @@ import {
   AdminWorkspaceStore
 } from '../../../shared/ui/context/stores/admin-workspace.store';
 import {
-  NavigatorStore
-} from '../../../shared/ui/context/stores/navigator.store';
+  ProfileStore
+} from '../../../shared/ui/context/stores/profile.store';
 import { PopupStore } from '../../../shared/ui/context/stores/popup.store';
 
 @Component({
@@ -66,7 +66,7 @@ export class AdminPageComponent implements OnInit, OnDestroy {
   private readonly helpCenter = inject(HelpCenterService);
   private readonly document = inject(DOCUMENT);
   private readonly router = inject(Router);
-  private readonly navigatorStore = inject(NavigatorStore);
+  private readonly profileStore = inject(ProfileStore);
   private readonly popupStore = inject(PopupStore);
   private lastHandledAdminRequestMs = 0;
   private readonly reportsPopupComponentRef = signal<Type<unknown> | null>(null);
@@ -146,7 +146,7 @@ export class AdminPageComponent implements OnInit, OnDestroy {
           this.popupStore.openNavigatorActivitiesRequest('chats', undefined, { adminServiceOnly: true });
           break;
         case 'profile':
-          this.navigatorStore.openProfileEditor();
+          this.profileStore.openProfileEditor();
           break;
         case 'help-editor':
           this.adminPopup.openHelpEditor();

@@ -82,8 +82,8 @@ import {
   EventCheckoutDialogStore
 } from '../../../shared/ui/context/stores/event-checkout-dialog.store';
 import {
-  NavigatorStore
-} from '../../../shared/ui/context/stores/navigator.store';
+  ProfileStore
+} from '../../../shared/ui/context/stores/profile.store';
 import type { ActivityEventDTO, ActivityEventRecord } from '../../../shared/core/contracts/activity.interface';
 import type { ChatDTO } from '../../../shared/core/contracts/chat.interface';
 import type { ActivityMemberOwnerRef } from '../../../shared/core/contracts/activity.interface';
@@ -135,7 +135,7 @@ export class EventExplorePopupComponent {
   private readonly gameService = inject(GameService);
   private readonly shareTokensService = inject(ShareTokensService);
   private readonly usersService = inject(UsersService);
-  private readonly navigatorStore = inject(NavigatorStore);
+  private readonly profileStore = inject(ProfileStore);
   private readonly dialogStore = inject(DialogStore);
   private readonly appMenuDispatcher = inject(AppMenuDispatcher);
   private readonly eventCheckoutDraftStore = inject(EventCheckoutDraftStore);
@@ -779,7 +779,7 @@ export class EventExplorePopupComponent {
     this.stopDomEvent(event);
     this.userProfileStore.setUserProfile(this.resolveUser(record.creatorUserId, record));
     void this.usersService.loadUserById(record.creatorUserId);
-    this.navigatorStore.openImpressionsPopup(record.creatorUserId);
+    this.profileStore.openImpressionsPopup(record.creatorUserId);
   }
 
   protected canPreviewEventExploreMembers(record: ActivityEventRecord): boolean {
@@ -1122,7 +1122,7 @@ export class EventExplorePopupComponent {
     if (!targetUserId || targetUserId === this.activeUserId.trim()) {
       return;
     }
-    this.navigatorStore.openReportUserPopup({
+    this.profileStore.openReportUserPopup({
       targetUserId,
       targetName: record.creatorName?.trim() || 'Organizer',
       eventId: record.id,

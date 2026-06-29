@@ -61,8 +61,8 @@ import {
   DialogStore
 } from '../../../shared/ui/context/stores/dialog.store';
 import {
-  NavigatorStore
-} from '../../../shared/ui/context/stores/navigator.store';
+  ProfileStore
+} from '../../../shared/ui/context/stores/profile.store';
 import type * as ProfileContracts from '../../../shared/core/contracts/profile.interface';
 
 import type * as AppConstants from '../../../shared/core/common/constants';
@@ -101,12 +101,12 @@ export class ProfileEditorComponent {
   private readonly userProfileStore = inject(UserProfileStore);
   private readonly runtimeStore = inject(AppRuntimeStore);
   private readonly menuDispatcher = inject(AppMenuDispatcher);
-  private readonly navigatorStore = inject(NavigatorStore);
+  private readonly profileStore = inject(ProfileStore);
   private readonly usersService = inject(UsersService);
   private readonly profileSaveLoadState = this.runtimeStore.selectLoadingState(USER_PROFILE_SAVE_CONTEXT_KEY);
   private lastLoadedUserId = '';
 
-  protected readonly isOpen = this.navigatorStore.profileEditorOpen;
+  protected readonly isOpen = this.profileStore.profileEditorOpen;
   protected readonly activeUserIsAdmin = this.userProfileStore.activeUserIsAdmin;
   protected readonly isProfileSaving = computed(() => this.profileSaveLoadState().status === 'loading');
   protected readonly hasProfileSaveError = computed(() => {
@@ -123,7 +123,7 @@ export class ProfileEditorComponent {
 
   constructor() {
     effect(() => {
-      const isOpen = this.navigatorStore.profileEditorOpen();
+      const isOpen = this.profileStore.profileEditorOpen();
       const activeProfileExt = this.userProfileStore.activeUserProfileExt();
       const activeUser = activeProfileExt?.profile ?? this.userProfileStore.activeUserProfile();
       const activeUserId = activeUser?.id.trim() ?? '';
@@ -209,7 +209,7 @@ export class ProfileEditorComponent {
       this.panel = 'profile';
       return;
     }
-    this.navigatorStore.closeProfileEditor();
+    this.profileStore.closeProfileEditor();
     this.resetTransientUiState();
   }
 
@@ -219,7 +219,7 @@ export class ProfileEditorComponent {
       return;
     }
     await this.commitProfileForm(false);
-    this.navigatorStore.closeProfileEditor();
+    this.profileStore.closeProfileEditor();
     this.resetTransientUiState();
   }
 

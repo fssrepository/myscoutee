@@ -55,8 +55,8 @@ import {
   DialogStore
 } from '../../../shared/ui/context/stores/dialog.store';
 import {
-  NavigatorStore
-} from '../../../shared/ui/context/stores/navigator.store';
+  ProfileStore
+} from '../../../shared/ui/context/stores/profile.store';
 import type { ActivityMemberOwnerType } from '../../../shared/core/common/constants';
 import type { ActivityMemberOwnerRef } from '../../../shared/core/contracts/activity.interface';
 import type * as ActivityContracts from '../../../shared/core/contracts/activity.interface';
@@ -110,7 +110,7 @@ export class EventMembersPopupComponent {
   private readonly activityStore = inject(ActivityStore);
   private readonly popupStore = inject(PopupStore);
   private readonly usersService = inject(UsersService);
-  private readonly navigatorStore = inject(NavigatorStore);
+  private readonly profileStore = inject(ProfileStore);
   private readonly membersCacheByOwnerId = new Map<string, ActivityContracts.ActivityMemberEntry[]>();
   private lastAppliedActivityMembersUpdatedMs = 0;
   private openMembersHydrationTimer: ReturnType<typeof setTimeout> | null = null;
@@ -518,7 +518,7 @@ export class EventMembersPopupComponent {
       return;
     }
     this.membersSmartList?.closeMenu();
-    this.navigatorStore.openReportUserPopup({
+    this.profileStore.openReportUserPopup({
       targetUserId: entry.userId,
       targetName: entry.name,
       memberEntryId: entry.id,
@@ -598,7 +598,7 @@ export class EventMembersPopupComponent {
       return;
     }
     this.membersSmartList?.closeMenu();
-    this.navigatorStore.openProfileView({
+    this.profileStore.openProfileView({
       userId,
       label: entry.name
     });

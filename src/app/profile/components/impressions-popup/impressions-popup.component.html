@@ -1,5 +1,5 @@
 @if (popupOpen() && viewModel(); as vm) {
-  <section class="app-popup app-popup-stacked app-popup-super-stacked navigator-impressions-popup">
+  <section class="app-popup app-popup-stacked app-popup-super-stacked profile-impressions-popup">
     <div class="app-popup-backdrop" (click)="closePopup()"></div>
     <div class="app-popup-panel popup-panel-members" (click)="$event.stopPropagation()">
       <div class="popup-header popup-header-impressions">
@@ -14,7 +14,7 @@
       </div>
       <div class="popup-body popup-body-impressions">
         @if (!vm.hasAvailableData) {
-          <div class="navigator-impressions-empty-state">
+          <div class="profile-impressions-empty-state">
             <mat-icon>insights</mat-icon>
             <strong>No available data yet</strong>
             <span>Impressions appear after real host or attendee activity.</span>

@@ -72,8 +72,8 @@
     </aside>
   }
 }
-<app-navigator-settings-popups></app-navigator-settings-popups>
-@if (navigatorImpressionsPopupComponent(); as impressionsComponent) {
+<app-profile-settings-popups></app-profile-settings-popups>
+@if (impressionsPopupComponent(); as impressionsComponent) {
   <ng-container *ngComponentOutlet="impressionsComponent"></ng-container>
 }
 @if (profileEditorComponent(); as profileComponent) {
