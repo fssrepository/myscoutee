@@ -158,18 +158,7 @@ export class EventResourceListComponent implements DoCheck {
   ngDoCheck(): void {
     const model = this.currentModel();
     const contextKey = model.filter;
-    const signature = `${contextKey}:${model.items.map(item => [
-      item.card.id,
-      item.card.accepted,
-      item.card.pending,
-      item.card.capacityTotal,
-      ...(item.card.routes ?? []),
-      item.infoCard.title,
-      item.infoCard.mediaSubtitle,
-      item.infoCard.description,
-      ...(item.infoCard.detailRows ?? []),
-      ...(item.infoCard.menuActions ?? [])
-    ].join(':')).join('|')}`;
+    const signature = `${contextKey}:${model.items.map(item => this.itemSignature(item)).join('|')}`;
 
     if (contextKey !== this.lastContextKey) {
       this.lastContextKey = contextKey;
@@ -372,9 +361,26 @@ export class EventResourceListComponent implements DoCheck {
       nextVisibleCount = Math.min(items.length, visibleCount + (items.length - previousItemCount));
     }
 
-    this.resourceSmartList.replaceVisibleItems(items.slice(0, nextVisibleCount), {
-      total: items.length
+    this.resourceSmartList.syncVisibleItems(items.slice(0, nextVisibleCount), {
+      total: items.length,
+      trackBy: (_index, item) => item.card.id,
+      equals: (current, next) => this.itemSignature(current) === this.itemSignature(next)
     });
+  }
+
+  private itemSignature(item: EventResourceListItem): string {
+    return [
+      item.card.id,
+      item.card.accepted,
+      item.card.pending,
+      item.card.capacityTotal,
+      ...(item.card.routes ?? []),
+      item.infoCard.title,
+      item.infoCard.mediaSubtitle,
+      item.infoCard.description,
+      ...(item.infoCard.detailRows ?? []),
+      ...(item.infoCard.menuActions ?? [])
+    ].join(':');
   }
 
   private infoCardMenuTitle(card: InfoCardData): string | null {

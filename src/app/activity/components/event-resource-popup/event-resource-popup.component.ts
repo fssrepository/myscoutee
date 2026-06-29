@@ -924,7 +924,9 @@ export class EventResourcePopupComponent {
     if (!context) {
       return '0 members';
     }
-    const metrics = this.subEventAssetCapacityMetrics(context.subEvent, this.resourcePopupStore.resourceFilterRef());
+    const metrics = this.subEventAssetCapacityMetrics(context.subEvent, this.resourcePopupStore.resourceFilterRef(), {
+      normalizeStore: false
+    });
     if (metrics.pending <= 0) {
       return `${metrics.joined} members`;
     }
@@ -1069,8 +1071,12 @@ export class EventResourcePopupComponent {
       return [];
     }
     const type = this.resourcePopupStore.resourceFilterRef();
-    const assignedIds = this.resolveSubEventAssignedAssetIds(context.subEvent.id, type);
-    const settings = this.getSubEventAssignedAssetSettings(context.subEvent.id, type);
+    const assignedIds = this.resolveSubEventAssignedAssetIds(context.subEvent.id, type, {
+      normalizeStore: false
+    });
+    const settings = this.getSubEventAssignedAssetSettings(context.subEvent.id, type, {
+      normalizeStore: false
+    });
     const fallbackCards = context.fallbackCardsByType[type] ?? [];
     const fallbackCardById = new Map(fallbackCards.map(card => [card.id, card] as const));
 
@@ -2103,21 +2109,30 @@ export class EventResourcePopupComponent {
       };
     }
     return {
-      Car: this.subEventAssetCapacityMetrics(context.subEvent, 'Car').pending,
-      Accommodation: this.subEventAssetCapacityMetrics(context.subEvent, 'Accommodation').pending,
-      Supplies: this.subEventAssetCapacityMetrics(context.subEvent, 'Supplies').pending
+      Car: this.subEventAssetCapacityMetrics(context.subEvent, 'Car', { normalizeStore: false }).pending,
+      Accommodation: this.subEventAssetCapacityMetrics(context.subEvent, 'Accommodation', { normalizeStore: false }).pending,
+      Supplies: this.subEventAssetCapacityMetrics(context.subEvent, 'Supplies', { normalizeStore: false }).pending
     };
   }
 
-  private subEventAssignedAssetCards(subEventId: string, type: AppConstants.AssetType): ResourceAssetDTO[] {
-    return this.resolveSubEventAssignedAssetIds(subEventId, type)
+  private subEventAssignedAssetCards(
+    subEventId: string,
+    type: AppConstants.AssetType,
+    options: { normalizeStore?: boolean } = {}
+  ): ResourceAssetDTO[] {
+    return this.resolveSubEventAssignedAssetIds(subEventId, type, options)
       .map(id => this.resolveSubEventAssignedAssetCard(subEventId, type, id))
       .filter((card): card is ResourceAssetDTO => card !== null);
   }
 
-  private getSubEventAssignedAssetSettings(subEventId: string, type: AppConstants.AssetType): Record<string, AppDTOs.SubEventAssignedAssetSettingsDTO> {
+  private getSubEventAssignedAssetSettings(
+    subEventId: string,
+    type: AppConstants.AssetType,
+    options: { normalizeStore?: boolean } = {}
+  ): Record<string, AppDTOs.SubEventAssignedAssetSettingsDTO> {
     const key = ActivityResourceBuilder.subEventAssetAssignmentKey(subEventId, type);
-    const assignedIds = this.resolveSubEventAssignedAssetIds(subEventId, type);
+    const normalizeStore = options.normalizeStore !== false;
+    const assignedIds = this.resolveSubEventAssignedAssetIds(subEventId, type, { normalizeStore });
     const existing = this.resourcePopupStore.assignedAssetSettingsByKey[key] ?? {};
     const next: Record<string, AppDTOs.SubEventAssignedAssetSettingsDTO> = {};
     for (const assetId of assignedIds) {
@@ -2136,12 +2151,19 @@ export class EventResourcePopupComponent {
         routes: ActivityResourceBuilder.normalizeAssetRoutes(type, previous?.routes)
       };
     }
-    this.resourcePopupStore.assignedAssetSettingsByKey[key] = next;
+    if (normalizeStore) {
+      this.resourcePopupStore.assignedAssetSettingsByKey[key] = next;
+    }
     return next;
   }
 
-  private resolveSubEventAssignedAssetIds(subEventId: string, type: AppConstants.AssetType): string[] {
+  private resolveSubEventAssignedAssetIds(
+    subEventId: string,
+    type: AppConstants.AssetType,
+    options: { normalizeStore?: boolean } = {}
+  ): string[] {
     const key = ActivityResourceBuilder.subEventAssetAssignmentKey(subEventId, type);
+    const normalizeStore = options.normalizeStore !== false;
     const eligibleIds = [
       ...this.ownedAssetCards().filter(card => card.type === type).map(card => card.id),
       ...this.subEventFallbackAssetCards(subEventId, type).map(card => card.id)
@@ -2149,11 +2171,13 @@ export class EventResourcePopupComponent {
     const eligible = new Set(eligibleIds);
     const stored = this.resourcePopupStore.assignedAssetIdsByKey[key];
     if (!stored) {
-      this.resourcePopupStore.assignedAssetIdsByKey[key] = [];
+      if (normalizeStore) {
+        this.resourcePopupStore.assignedAssetIdsByKey[key] = [];
+      }
       return [];
     }
     const normalized = stored.filter(id => eligible.has(id));
-    if (normalized.length !== stored.length) {
+    if (normalizeStore && normalized.length !== stored.length) {
       this.resourcePopupStore.assignedAssetIdsByKey[key] = [...normalized];
     }
     return normalized;
@@ -2207,10 +2231,11 @@ export class EventResourcePopupComponent {
 
   private subEventAssetCapacityMetrics(
     subEvent: ContractTypes.SubEventDTO,
-    type: AppConstants.AssetType
+    type: AppConstants.AssetType,
+    options: { normalizeStore?: boolean } = {}
   ): { joined: number; capacityMin: number; capacityMax: number; pending: number } {
-    const cards = this.subEventAssignedAssetCards(subEvent.id, type);
-    const settings = this.getSubEventAssignedAssetSettings(subEvent.id, type);
+    const cards = this.subEventAssignedAssetCards(subEvent.id, type, options);
+    const settings = this.getSubEventAssignedAssetSettings(subEvent.id, type, options);
     const capacityMax = cards.reduce((sum, card) => sum + (settings[card.id]?.capacityMax ?? Math.max(0, card.capacityTotal)), 0);
     const capacityMin = cards.reduce((sum, card) => sum + (settings[card.id]?.capacityMin ?? 0), 0);
     const pending = type === 'Supplies'
@@ -2259,16 +2284,30 @@ export class EventResourcePopupComponent {
     nextSubEvent.suppliesPending = supplies.pending;
     nextSubEvent.suppliesCapacityMin = supplies.capacityMin;
     nextSubEvent.suppliesCapacityMax = supplies.capacityMax;
-    this.resourcePopupStore.popupContextRef.set({
-      ...context,
-      subEvent: nextSubEvent
-    });
-    this.syncSubEventManualAssetRequests(nextSubEvent, persistAssetRequests);
+    const metricsChanged = context.subEvent.carsAccepted !== nextSubEvent.carsAccepted
+      || context.subEvent.carsPending !== nextSubEvent.carsPending
+      || context.subEvent.carsCapacityMin !== nextSubEvent.carsCapacityMin
+      || context.subEvent.carsCapacityMax !== nextSubEvent.carsCapacityMax
+      || context.subEvent.accommodationAccepted !== nextSubEvent.accommodationAccepted
+      || context.subEvent.accommodationPending !== nextSubEvent.accommodationPending
+      || context.subEvent.accommodationCapacityMin !== nextSubEvent.accommodationCapacityMin
+      || context.subEvent.accommodationCapacityMax !== nextSubEvent.accommodationCapacityMax
+      || context.subEvent.suppliesAccepted !== nextSubEvent.suppliesAccepted
+      || context.subEvent.suppliesPending !== nextSubEvent.suppliesPending
+      || context.subEvent.suppliesCapacityMin !== nextSubEvent.suppliesCapacityMin
+      || context.subEvent.suppliesCapacityMax !== nextSubEvent.suppliesCapacityMax;
+    const nextContext = metricsChanged
+      ? {
+          ...context,
+          subEvent: nextSubEvent
+        }
+      : context;
+    if (metricsChanged) {
+      this.resourcePopupStore.popupContextRef.set(nextContext);
+    }
+    this.syncSubEventManualAssetRequests(nextContext.subEvent, persistAssetRequests);
     if (persistResourceState) {
-      this.persistPopupResourceState({
-        ...context,
-        subEvent: nextSubEvent
-      });
+      this.persistPopupResourceState(nextContext);
     }
   }
 
