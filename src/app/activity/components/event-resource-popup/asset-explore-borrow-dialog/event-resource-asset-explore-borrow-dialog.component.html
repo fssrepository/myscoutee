@@ -24,7 +24,7 @@
                     matInput
                     [matDatepicker]="borrowStartPicker"
                     [ngModel]="dialog.startDate"
-                    (ngModelChange)="dateRangeChanged.emit({ start: $event, end: dialog.endDate })"
+                    (ngModelChange)="changeDateRange($event, dialog.endDate)"
                   />
                   <mat-datepicker-toggle matSuffix [for]="borrowStartPicker"></mat-datepicker-toggle>
                   <mat-datepicker #borrowStartPicker></mat-datepicker>
@@ -35,7 +35,7 @@
                     [matTimepicker]="borrowStartTimePicker"
                     [matTimepickerOpenOnClick]="true"
                     [ngModel]="dialog.startTime"
-                    (ngModelChange)="timeChanged.emit({ edge: 'start', value: $event })"
+                    (ngModelChange)="changeTime('start', $event)"
                   />
                   <mat-timepicker-toggle matSuffix [for]="borrowStartTimePicker"></mat-timepicker-toggle>
                   <mat-timepicker #borrowStartTimePicker></mat-timepicker>
@@ -50,7 +50,7 @@
                     matInput
                     [matDatepicker]="borrowEndPicker"
                     [ngModel]="dialog.endDate"
-                    (ngModelChange)="dateRangeChanged.emit({ start: dialog.startDate, end: $event })"
+                    (ngModelChange)="changeDateRange(dialog.startDate, $event)"
                   />
                   <mat-datepicker-toggle matSuffix [for]="borrowEndPicker"></mat-datepicker-toggle>
                   <mat-datepicker #borrowEndPicker></mat-datepicker>
@@ -61,7 +61,7 @@
                     [matTimepicker]="borrowEndTimePicker"
                     [matTimepickerOpenOnClick]="true"
                     [ngModel]="dialog.endTime"
-                    (ngModelChange)="timeChanged.emit({ edge: 'end', value: $event })"
+                    (ngModelChange)="changeTime('end', $event)"
                   />
                   <mat-timepicker-toggle matSuffix [for]="borrowEndTimePicker"></mat-timepicker-toggle>
                   <mat-timepicker #borrowEndTimePicker></mat-timepicker>
@@ -76,8 +76,8 @@
                 step="1"
                 [max]="dialog.availableQuantity"
                 [ngModel]="dialog.quantity"
-                (ngModelChange)="quantityChanged.emit($event)"
-                (blur)="quantityBlurred.emit($any($event.target).value)"
+                (ngModelChange)="changeQuantity($event)"
+                (blur)="blurQuantity($any($event.target).value)"
               />
             </label>
           }
@@ -151,11 +151,11 @@
               <div class="asset-explore-borrow-policy-list">
                 @for (policy of dialog.policies; track policy.id) {
                   <label class="asset-explore-borrow-policy-card" [class.is-required]="policy.required !== false">
-                    <input
-                      type="checkbox"
-                      [checked]="dialog.acceptedPolicyIds.includes(policy.id)"
-                      (change)="policyToggled.emit(policy.id)"
-                    />
+                      <input
+                        type="checkbox"
+                        [checked]="dialog.acceptedPolicyIds.includes(policy.id)"
+                        (change)="togglePolicy(policy.id)"
+                      />
                     <div>
                       <strong>{{ policy.title }}</strong>
                       @if (policy.description) {

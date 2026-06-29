@@ -1,8 +1,9 @@
 import { AppUtils } from '../../app-utils';
-import { AssetCardBuilder, AssetDefaultsBuilder } from '../../core/base/builders';
+import { AssetCardBuilder } from '../../core/base/builders/asset-card.builder';
+import { AssetDefaultsBuilder } from '../../core/base/builders/asset-defaults.builder';
 import type * as AppDTOs from '../../core/contracts';
 import type * as AppConstants from '../../core/common/constants';
-import type { CardMenuActionId, InfoCardData } from '../components/core/smart-list/card';
+import type { CardMenuActionId, InfoCardData } from '../components/core/smart-list/card/card.types';
 import type { UiListConverter } from './converter.types';
 
 export type AssetInfoCardModel = InfoCardData;

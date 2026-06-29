@@ -35,39 +35,29 @@
           ></app-event-resource-list>
         }
 
-        @if (resourceAssetView(); as view) {
-          <app-event-resource-asset-view
-            [view]="view"
-            (closeRequested)="closeResourceAssetView($event)"
-            (membersRequested)="openAssetViewMembers($event.view, $event.sourceEvent)"
-            (routeViewRequested)="openAssetViewRoutePopup($event.view, $event.sourceEvent)"
-            (routeSetupRequested)="openAssetViewRouteSetup($event.view, $event.sourceEvent)"
-          ></app-event-resource-asset-view>
+        @if (resourceAssetView()) {
+          @if (resourcePopupStore.eventResourceAssetViewComponent(); as assetViewComponent) {
+            <ng-container *ngComponentOutlet="assetViewComponent; inputs: resourceAssetViewOutletInputs()"></ng-container>
+          }
         }
 
-
-        @if (resourcePopupStore.capacityEditorRef(); as editor) {
-          <app-event-resource-capacity-editor
-            [editor]="editor"
-            (closeRequested)="closeCapacityEditor($event)"
-            (saveRequested)="saveCapacityEditor($event)"
-          ></app-event-resource-capacity-editor>
+        @if (resourcePopupStore.capacityEditorRef()) {
+          @if (resourcePopupStore.eventResourceCapacityEditorComponent(); as capacityEditorComponent) {
+            <ng-container *ngComponentOutlet="capacityEditorComponent; inputs: capacityEditorOutletInputs()"></ng-container>
+          }
         }
 
-        @if (resourcePopupStore.routeEditorRef(); as editor) {
-          <app-event-resource-route-editor
-            [editor]="editor"
-            (closeRequested)="closeRouteEditor($event)"
-            (saveRequested)="saveRouteEditor($event)"
-          ></app-event-resource-route-editor>
+        @if (resourcePopupStore.routeEditorRef()) {
+          @if (resourcePopupStore.eventResourceRouteEditorComponent(); as routeEditorComponent) {
+            <ng-container *ngComponentOutlet="routeEditorComponent; inputs: routeEditorOutletInputs()"></ng-container>
+          }
         }
 
-        <app-event-resource-assigned-asset-join-dialog
-          [dialog]="assignedAssetJoinDialogViewState()"
-          (closeRequested)="closeAssignedAssetJoinDialog($event)"
-          (policyToggled)="toggleAssignedAssetJoinPolicy($event)"
-          (confirmRequested)="confirmAssignedAssetJoin($event)"
-        ></app-event-resource-assigned-asset-join-dialog>
+        @if (assignedAssetJoinDialogViewState()) {
+          @if (resourcePopupStore.eventResourceAssignedAssetJoinDialogComponent(); as assignedAssetJoinDialogComponent) {
+            <ng-container *ngComponentOutlet="assignedAssetJoinDialogComponent; inputs: assignedAssetJoinDialogOutletInputs()"></ng-container>
+          }
+        }
       </div>
     </div>
   </div>

@@ -1,6 +1,6 @@
 import { DragDropModule, type CdkDragDrop } from '@angular/cdk/drag-drop';
 import { CommonModule } from '@angular/common';
-import { ChangeDetectionStrategy, Component, EventEmitter, Input, Output, ViewEncapsulation, inject } from '@angular/core';
+import { ChangeDetectionStrategy, Component, Input, ViewEncapsulation, inject } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { MatIconModule } from '@angular/material/icon';
 
@@ -22,9 +22,6 @@ type RouteEditorMenuContext = { menu: 'save' };
 })
 export class EventResourceRouteEditorComponent {
   @Input() editor: RouteEditorState | null = null;
-
-  @Output() closeRequested = new EventEmitter<Event | undefined>();
-  @Output() saveRequested = new EventEmitter<Event | undefined>();
 
   private readonly resourcePopupStore = inject(SubEventResourcePopupStore);
   private routeEditorRowIdSequence = 0;
@@ -89,12 +86,12 @@ export class EventResourceRouteEditorComponent {
 
   protected close(event?: Event): void {
     event?.stopPropagation();
-    this.closeRequested.emit(event);
+    this.resourcePopupStore.requestRouteEditorClose(event);
   }
 
   protected save(event?: Event): void {
     event?.stopPropagation();
-    this.saveRequested.emit(event);
+    this.resourcePopupStore.requestRouteEditorSave(event);
   }
 
   protected addStop(): void {

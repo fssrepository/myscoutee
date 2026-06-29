@@ -2,12 +2,11 @@ import { CommonModule } from '@angular/common';
 import {
   ChangeDetectionStrategy,
   Component,
-  EventEmitter,
   Input,
   OnChanges,
-  Output,
   SimpleChanges,
-  ViewEncapsulation
+  ViewEncapsulation,
+  inject
 } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { MatIconModule } from '@angular/material/icon';
@@ -15,27 +14,16 @@ import { MatIconModule } from '@angular/material/icon';
 import { APP_STATIC_DATA } from '../../../../shared/app-static-data';
 import { AssetDefaultsBuilder } from '../../../../shared/core/base/builders/asset-defaults.builder';
 import type * as AppConstants from '../../../../shared/core/common/constants';
-import type * as AppDTOs from '../../../../shared/core/contracts';
 import type * as ContractTypes from '../../../../shared/core/contracts';
 import { CounterBadgePipe } from '../../../../shared/ui/pipes/counter-badge.pipe';
-import type { ResourceAssetDTO } from '../../../../shared/ui/context/stores/sub-event-resource-popup.store';
+import {
+  SubEventResourcePopupStore,
+  type ResourceAssetViewRequest,
+  type ResourceAssetViewState
+} from '../../../../shared/ui/context/stores/sub-event-resource-popup.store';
 
-export interface EventResourceAssetViewModel {
-  card: AppDTOs.SubEventResourceCardDTO;
-  mode: 'view' | 'edit';
-  source: ResourceAssetDTO | null;
-  memberLabel: string;
-  memberCount: number;
-  pendingCount: number;
-  canOpenMembers: boolean;
-  canEditCapacity: boolean;
-  canEditRoute: boolean;
-}
-
-export interface EventResourceAssetViewRequest {
-  view: EventResourceAssetViewModel;
-  sourceEvent: Event;
-}
+export type EventResourceAssetViewModel = ResourceAssetViewState;
+export type EventResourceAssetViewRequest = ResourceAssetViewRequest;
 
 @Component({
   selector: 'app-event-resource-asset-view',
@@ -49,10 +37,7 @@ export interface EventResourceAssetViewRequest {
 export class EventResourceAssetViewComponent implements OnChanges {
   @Input() view: EventResourceAssetViewModel | null = null;
 
-  @Output() closeRequested = new EventEmitter<Event | undefined>();
-  @Output() membersRequested = new EventEmitter<EventResourceAssetViewRequest>();
-  @Output() routeViewRequested = new EventEmitter<EventResourceAssetViewRequest>();
-  @Output() routeSetupRequested = new EventEmitter<EventResourceAssetViewRequest>();
+  private readonly resourcePopupStore = inject(SubEventResourcePopupStore);
 
   protected showPoliciesPopup = false;
 
@@ -64,7 +49,7 @@ export class EventResourceAssetViewComponent implements OnChanges {
 
   protected close(event?: Event): void {
     event?.stopPropagation();
-    this.closeRequested.emit(event);
+    this.resourcePopupStore.requestResourceAssetViewClose(event);
   }
 
   protected requestMembers(view: EventResourceAssetViewModel, event: Event): void {
@@ -72,7 +57,7 @@ export class EventResourceAssetViewComponent implements OnChanges {
     if (!view.canOpenMembers) {
       return;
     }
-    this.membersRequested.emit({ view, sourceEvent: event });
+    this.resourcePopupStore.requestResourceAssetViewMembers(view, event);
   }
 
   protected requestRouteView(view: EventResourceAssetViewModel, event: Event): void {
@@ -80,7 +65,7 @@ export class EventResourceAssetViewComponent implements OnChanges {
     if (!this.hasRoute(view)) {
       return;
     }
-    this.routeViewRequested.emit({ view, sourceEvent: event });
+    this.resourcePopupStore.requestResourceAssetViewRouteView(view, event);
   }
 
   protected requestRouteSetup(view: EventResourceAssetViewModel, event: Event): void {
@@ -88,7 +73,7 @@ export class EventResourceAssetViewComponent implements OnChanges {
     if (view.mode !== 'edit' || !view.canEditRoute) {
       return;
     }
-    this.routeSetupRequested.emit({ view, sourceEvent: event });
+    this.resourcePopupStore.requestResourceAssetViewRouteSetup(view, event);
   }
 
   protected openPoliciesPopup(event: Event): void {
@@ -251,4 +236,5 @@ export class EventResourceAssetViewComponent implements OnChanges {
         return `$${(Number(amount) || 0).toFixed(2)}`;
     }
   }
+
 }

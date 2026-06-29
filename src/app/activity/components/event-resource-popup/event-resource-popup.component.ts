@@ -6,7 +6,8 @@ import {
   HostListener,
   computed,
   effect,
-  inject
+  inject,
+  untracked
 } from '@angular/core';
 import {
   FormsModule
@@ -82,23 +83,15 @@ import {
 import type { EventEditorSubEventResourcePopupRequest } from '../../../shared/ui/context/stores/event-editor-popup.store';
 import type {
   AssignedAssetJoinPricingPreview,
+  EventResourcePopupOutletActionRequest,
   ResourceAssetDTO,
+  ResourceAssetViewState,
   ResourcePopupContext,
   RouteEditorState
 } from '../../../shared/ui/context/stores/sub-event-resource-popup.store';
 import type { ChatDTO } from '../../../shared/core/contracts/chat.interface';
-import {
-  EventResourceAssetViewComponent
-} from './asset-view/event-resource-asset-view.component';
-import {
-  EventResourceCapacityEditorComponent
-} from './capacity-editor/event-resource-capacity-editor.component';
-import {
-  EventResourceRouteEditorComponent
-} from './route-editor/event-resource-route-editor.component';
-import {
-  EventResourceAssignedAssetJoinDialogComponent,
-  type AssignedAssetJoinDialogViewState
+import type {
+  AssignedAssetJoinDialogViewState
 } from './assigned-asset-join-dialog/event-resource-assigned-asset-join-dialog.component';
 import {
   EventResourceListComponent,
@@ -109,17 +102,6 @@ import type * as AppDTOs from '../../../shared/core/contracts';
 import type * as AppConstants from '../../../shared/core/common/constants';
 import { UserProfileStore } from '../../../shared/ui/context/stores/user-profile.store';
 import { PopupStore } from '../../../shared/ui/context/stores/popup.store';
-export interface ResourceAssetViewState {
-  card: AppDTOs.SubEventResourceCardDTO;
-  mode: 'view' | 'edit';
-  source: ResourceAssetDTO | null;
-  memberLabel: string;
-  memberCount: number;
-  pendingCount: number;
-  canOpenMembers: boolean;
-  canEditCapacity: boolean;
-  canEditRoute: boolean;
-}
 
 interface ResourceAssignmentRemovalRequest {
   assetId: string;
@@ -135,10 +117,6 @@ interface ResourceAssignmentRemovalRequest {
     FormsModule,
     MatButtonModule,
     MatIconModule,
-    EventResourceAssetViewComponent,
-    EventResourceCapacityEditorComponent,
-    EventResourceRouteEditorComponent,
-    EventResourceAssignedAssetJoinDialogComponent,
     EventResourceListComponent
   ],
   templateUrl: './event-resource-popup.component.html',
@@ -180,6 +158,20 @@ export class EventResourcePopupComponent {
   private routeEditorRowIdSequence = 0;
   private pendingAssignSaveAbortController: AbortController | null = null;
   private pendingAssignSaveRequestVersion = 0;
+  private lastResourcePopupOutletActionRequestId = 0;
+
+  protected readonly resourceAssetViewOutletInputs = computed(() => ({
+    view: this.resourceAssetView()
+  }));
+  protected readonly capacityEditorOutletInputs = computed(() => ({
+    editor: this.resourcePopupStore.capacityEditorRef()
+  }));
+  protected readonly routeEditorOutletInputs = computed(() => ({
+    editor: this.resourcePopupStore.routeEditorRef()
+  }));
+  protected readonly assignedAssetJoinDialogOutletInputs = computed(() => ({
+    dialog: this.assignedAssetJoinDialogViewState()
+  }));
 
   constructor() {
     effect(() => {
@@ -216,6 +208,77 @@ export class EventResourcePopupComponent {
       this.eventEditorStore.clearSubEventResourcePopupRequest();
       this.openFromEventEditorRequest(request);
     });
+
+    effect(() => {
+      if (this.resourceAssetView()) {
+        void this.resourcePopupStore.ensureEventResourceAssetViewLoaded();
+      }
+    });
+
+    effect(() => {
+      if (this.resourcePopupStore.capacityEditorRef()) {
+        void this.resourcePopupStore.ensureEventResourceCapacityEditorLoaded();
+      }
+    });
+
+    effect(() => {
+      if (this.resourcePopupStore.routeEditorRef()) {
+        void this.resourcePopupStore.ensureEventResourceRouteEditorLoaded();
+      }
+    });
+
+    effect(() => {
+      if (this.assignedAssetJoinDialogViewState()) {
+        void this.resourcePopupStore.ensureEventResourceAssignedAssetJoinDialogLoaded();
+      }
+    });
+
+    effect(() => {
+      const request = this.resourcePopupStore.eventResourcePopupOutletActionRequest();
+      if (!request || request.requestId <= this.lastResourcePopupOutletActionRequestId) {
+        return;
+      }
+      this.lastResourcePopupOutletActionRequestId = request.requestId;
+      untracked(() => this.handleResourcePopupOutletActionRequest(request));
+    });
+  }
+
+  private handleResourcePopupOutletActionRequest(request: EventResourcePopupOutletActionRequest): void {
+    switch (request.kind) {
+      case 'assetViewClose':
+        this.closeResourceAssetView(request.event);
+        return;
+      case 'assetViewMembers':
+        this.openAssetViewMembers(request.view, request.event);
+        return;
+      case 'assetViewRouteView':
+        this.openAssetViewRoutePopup(request.view, request.event);
+        return;
+      case 'assetViewRouteSetup':
+        this.openAssetViewRouteSetup(request.view, request.event);
+        return;
+      case 'capacityEditorClose':
+        this.closeCapacityEditor(request.event);
+        return;
+      case 'capacityEditorSave':
+        this.saveCapacityEditor(request.event);
+        return;
+      case 'routeEditorClose':
+        this.closeRouteEditor(request.event);
+        return;
+      case 'routeEditorSave':
+        this.saveRouteEditor(request.event);
+        return;
+      case 'assignedAssetJoinClose':
+        this.closeAssignedAssetJoinDialog(request.event);
+        return;
+      case 'assignedAssetJoinPolicyToggle':
+        this.toggleAssignedAssetJoinPolicy(request.policyId);
+        return;
+      case 'assignedAssetJoinConfirm':
+        this.confirmAssignedAssetJoin(request.event);
+        return;
+    }
   }
 
   protected resourceTypeClass(type: AppConstants.SubEventResourceFilter): string {

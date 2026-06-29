@@ -1,5 +1,5 @@
 import { CommonModule } from '@angular/common';
-import { ChangeDetectionStrategy, Component, EventEmitter, Input, Output, ViewEncapsulation } from '@angular/core';
+import { ChangeDetectionStrategy, Component, Input, ViewEncapsulation, inject } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { MatNativeDateModule } from '@angular/material/core';
 import { MatDatepickerModule } from '@angular/material/datepicker';
@@ -8,10 +8,11 @@ import { MatIconModule } from '@angular/material/icon';
 import { MatInputModule } from '@angular/material/input';
 import { MatTimepickerModule } from '@angular/material/timepicker';
 
-import { IndicatorComponent } from '../../../../shared/ui';
+import { IndicatorComponent } from '../../../../shared/ui/components/core/indicator/indicator.component';
 import { AppUtils } from '../../../../shared/app-utils';
 import type * as ActivityContracts from '../../../../shared/core/contracts/activity.interface';
 import type * as ContractTypes from '../../../../shared/core/contracts';
+import { SubEventResourcePopupStore } from '../../../../shared/ui/context/stores/sub-event-resource-popup.store';
 
 export interface AssetExploreBorrowDialogViewState {
   title: string;
@@ -71,14 +72,7 @@ export class EventResourceAssetExploreBorrowDialogComponent {
   @Input() dialog: AssetExploreBorrowDialogViewState | null = null;
   @Input() canSubmit = false;
 
-  @Output() closeRequested = new EventEmitter<Event | undefined>();
-  @Output() backRequested = new EventEmitter<Event | undefined>();
-  @Output() dateRangeChanged = new EventEmitter<AssetExploreBorrowDateRangeChange>();
-  @Output() timeChanged = new EventEmitter<AssetExploreBorrowTimeChange>();
-  @Output() quantityChanged = new EventEmitter<number | string>();
-  @Output() quantityBlurred = new EventEmitter<number | string>();
-  @Output() policyToggled = new EventEmitter<string>();
-  @Output() confirmRequested = new EventEmitter<Event | undefined>();
+  private readonly resourcePopupStore = inject(SubEventResourcePopupStore);
 
   protected formatMoney(amount: number, currency = 'USD'): string {
     switch ((currency || '').trim().toUpperCase()) {
@@ -216,16 +210,36 @@ export class EventResourceAssetExploreBorrowDialogComponent {
 
   protected close(event?: Event): void {
     event?.stopPropagation();
-    this.closeRequested.emit(event);
+    this.resourcePopupStore.requestBorrowDialogClose(event);
   }
 
   protected back(event?: Event): void {
     event?.stopPropagation();
-    this.backRequested.emit(event);
+    this.resourcePopupStore.requestBorrowDialogBack(event);
   }
 
   protected confirm(event?: Event): void {
     event?.stopPropagation();
-    this.confirmRequested.emit(event);
+    this.resourcePopupStore.requestBorrowConfirm(event);
+  }
+
+  protected changeDateRange(start: Date | null, end: Date | null): void {
+    this.resourcePopupStore.requestBorrowDateRangeChange(start, end);
+  }
+
+  protected changeTime(edge: 'start' | 'end', value: string): void {
+    this.resourcePopupStore.requestBorrowTimeChange(edge, value);
+  }
+
+  protected changeQuantity(value: number | string): void {
+    this.resourcePopupStore.requestBorrowQuantityChange(value);
+  }
+
+  protected blurQuantity(value: number | string): void {
+    this.resourcePopupStore.requestBorrowQuantityBlur(value);
+  }
+
+  protected togglePolicy(policyId: string): void {
+    this.resourcePopupStore.requestBorrowPolicyToggle(policyId);
   }
 }
