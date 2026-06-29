@@ -5,6 +5,7 @@ import {
   ChangeDetectionStrategy,
   ChangeDetectorRef,
   Component,
+  DestroyRef,
   HostListener,
   QueryList,
   ViewChild,
@@ -12,6 +13,7 @@ import {
   effect,
   inject
 } from '@angular/core';
+import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import {
   from,
   of
@@ -24,7 +26,6 @@ import {
   APP_STATIC_DATA
 } from '../../../shared/app-static-data';
 import {
-  type ActivityEventDTO,
   type ActivityEventStageActionResultDTO,
   type ActivityEventSubEventsQueryDTO,
   type SubEventsSlotDTO
@@ -62,9 +63,11 @@ import {
 } from '../../../shared/ui/context/stores/dialog.store';
 import { UserProfileStore } from '../../../shared/ui/context/stores/user-profile.store';
 import { ActivityStore } from '../../../shared/ui/context/stores/activity.store';
-import { ActivitiesPopupStore } from '../../../shared/ui/context/stores/activities-popup.store';
 import { MemberMenuStore } from '../../../shared/ui/context/stores/member-menu.store';
-import { EventSubeventsPopupStore } from '../../../shared/ui/context/stores/event-subevents-popup.store';
+import {
+  EventSubeventsPopupStore,
+  type EventSubeventsDefinitionUpdate
+} from '../../../shared/ui/context/stores/event-subevents-popup.store';
 import {
   SubEventResourcePopupStore,
   type SubEventResourceMetricsUpdate
@@ -119,11 +122,11 @@ export class EventSubeventsListPopupComponent {
   private readonly dialogStore = inject(DialogStore);
   private readonly userProfileStore = inject(UserProfileStore);
   private readonly activityStore = inject(ActivityStore);
-  private readonly activitiesStore = inject(ActivitiesPopupStore);
   private readonly memberMenuStore = inject(MemberMenuStore);
   protected readonly resourcePopupStore = inject(SubEventResourcePopupStore);
   protected readonly eventSubeventsStore = inject(EventSubeventsPopupStore);
   private readonly cdr = inject(ChangeDetectorRef);
+  private readonly destroyRef = inject(DestroyRef);
 
   protected isLoading = false;
   protected event: EventSubeventsParentContext | null = null;
@@ -147,7 +150,6 @@ export class EventSubeventsListPopupComponent {
   private loadedQueryKey = '';
   private loadingQueryKey = '';
   private loadingPromise: Promise<void> | null = null;
-  private lastAppliedEventSaveSync: ActivityEventDTO | null = null;
 
   @ViewChild('subEventsSmartList')
   private subEventsSmartList?: SmartListComponent<EventSubeventsSlotModel, EventSubeventsListFilters>;
@@ -319,20 +321,9 @@ export class EventSubeventsListPopupComponent {
       this.applySubEventResourceMetricsUpdate(update);
     });
 
-    effect(() => {
-      const sync = this.activitiesStore.activityEventSave();
-      const request = this.eventSubeventsStore.eventSubeventsListPopup();
-      if (!sync || !request || sync === this.lastAppliedEventSaveSync) {
-        return;
-      }
-      const savedEventId = `${sync.id ?? ''}`.trim();
-      const openEventId = `${request.eventId ?? ''}`.trim();
-      if (!savedEventId || savedEventId !== openEventId) {
-        return;
-      }
-      this.lastAppliedEventSaveSync = sync;
-      void this.applyEventDefinitionSave(sync);
-    });
+    this.eventSubeventsStore.eventSubeventsDefinitionUpdate$
+      .pipe(takeUntilDestroyed(this.destroyRef))
+      .subscribe(update => this.applyEventDefinitionUpdate(update));
   }
 
   @HostListener('window:resize')
@@ -1066,23 +1057,15 @@ export class EventSubeventsListPopupComponent {
     return this.loadingPromise;
   }
 
-  private async applyEventDefinitionSave(sync: ActivityEventDTO): Promise<void> {
-    const eventId = `${sync.id ?? ''}`.trim();
+  private applyEventDefinitionUpdate(update: EventSubeventsDefinitionUpdate): void {
+    const eventId = `${update.eventId ?? ''}`.trim();
     const request = this.eventSubeventsStore.eventSubeventsListPopup();
     if (!eventId || !request || `${request.eventId ?? ''}`.trim() !== eventId) {
       return;
     }
-    const userId = this.userProfileStore.activeUserProfile()?.id?.trim() ?? '';
-    if (!userId) {
-      return;
-    }
     const query = this.currentSubEventsListQuery();
-    const result = await this.eventsService.loadSubEventsById(userId, eventId, this.subEventsLoadQuery(eventId, query));
-    if (this.eventSubeventsStore.eventSubeventsListPopup()?.eventId !== eventId) {
-      return;
-    }
-    this.applyLoadedSubEventsSlots(eventId, result?.slots ?? [], query, {
-      contextPatch: this.parentContextFromActivityEventSave(sync),
+    this.applyLoadedSubEventsSlots(eventId, update.slots ?? [], query, {
+      contextPatch: this.parentContextFromDefinitionUpdate(update),
       syncVisibleSmartLists: true
     });
   }
@@ -1127,21 +1110,37 @@ export class EventSubeventsListPopupComponent {
     } as ListQuery<EventSubeventsListFilters>;
   }
 
-  private parentContextFromActivityEventSave(sync: ActivityEventDTO): Partial<EventSubeventsParentContext> {
-    return {
-      title: `${sync.title ?? ''}`.trim() || null,
-      timeframe: `${sync.timeframe ?? ''}`.trim() || null,
-      startAtIso: `${sync.startAtIso ?? ''}`.trim() || null,
-      endAtIso: `${sync.endAtIso ?? ''}`.trim() || null,
-      location: `${sync.location ?? ''}`.trim() || null,
-      acceptedMembers: Math.max(0, Math.trunc(Number(sync.acceptedMembers) || 0)),
-      pendingMembers: Math.max(0, Math.trunc(Number(sync.pendingMembers) || 0)),
-      capacityTotal: Math.max(0, Math.trunc(Number(sync.capacityTotal) || 0)),
-      creatorUserId: `${sync.creatorUserId ?? ''}`.trim() || null,
-      userId: `${sync.userId ?? ''}`.trim() || null,
-      adminIds: (sync.adminIds ?? []).map(id => `${id}`.trim()).filter(Boolean),
-      mode: sync.mode ?? null
+  private parentContextFromDefinitionUpdate(
+    update: EventSubeventsDefinitionUpdate
+  ): Partial<EventSubeventsParentContext> {
+    const event = update.event;
+    if (!event) {
+      return {};
+    }
+    const patch: Partial<EventSubeventsParentContext> = {
+      title: `${event.title ?? ''}`.trim() || null,
+      timeframe: `${event.timeframe ?? ''}`.trim() || null,
+      startAtIso: `${event.startAtIso ?? ''}`.trim() || null,
+      endAtIso: `${event.endAtIso ?? ''}`.trim() || null,
+      location: `${event.location ?? ''}`.trim() || null,
+      creatorUserId: `${event.creatorUserId ?? ''}`.trim() || null,
+      userId: `${event.userId ?? ''}`.trim() || null,
+      adminIds: (event.adminIds ?? []).map(id => `${id}`.trim()).filter(Boolean)
     };
+    if (Number.isFinite(Number(event.acceptedMembers))) {
+      patch.acceptedMembers = Math.max(0, Math.trunc(Number(event.acceptedMembers)));
+    }
+    if (Number.isFinite(Number(event.pendingMembers))) {
+      patch.pendingMembers = Math.max(0, Math.trunc(Number(event.pendingMembers)));
+    }
+    if (Number.isFinite(Number(event.capacityTotal))) {
+      patch.capacityTotal = Math.max(0, Math.trunc(Number(event.capacityTotal)));
+    }
+    const mode = `${event.mode ?? ''}`.trim();
+    if (mode === 'Casual' || mode === 'Tournament') {
+      patch.mode = mode;
+    }
+    return patch;
   }
 
   private replaceVisibleSubEventSections(): void {
@@ -1302,7 +1301,7 @@ export class EventSubeventsListPopupComponent {
   }
 
   private subEventsLoadQueryKey(eventId: string, query: ListQuery<EventSubeventsListFilters>): string {
-    const loadQuery = this.subEventsLoadQuery(eventId, query);
+    const loadQuery = this.buildSubEventsLoadQuery(eventId, query);
     return [
       loadQuery.eventId,
       loadQuery.order ?? '',
@@ -1314,6 +1313,15 @@ export class EventSubeventsListPopupComponent {
   }
 
   private subEventsLoadQuery(
+    eventId: string,
+    query: ListQuery<EventSubeventsListFilters>
+  ): ActivityEventSubEventsQueryDTO {
+    const loadQuery = this.buildSubEventsLoadQuery(eventId, query);
+    this.eventSubeventsStore.setEventSubeventsListQuery(loadQuery);
+    return loadQuery;
+  }
+
+  private buildSubEventsLoadQuery(
     eventId: string,
     query: ListQuery<EventSubeventsListFilters>
   ): ActivityEventSubEventsQueryDTO {
