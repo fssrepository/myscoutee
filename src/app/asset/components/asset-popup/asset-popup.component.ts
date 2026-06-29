@@ -525,10 +525,11 @@ export class AssetPopupComponent {
   }
 
   private currentAssignedAssetIds(subEventId: string, type: AppConstants.AssetType): string[] {
+    const popupContext = this.resourcePopupStore.popupContextRef();
     const eligibleIds = new Set([
       ...this.assetStore.assetCards().filter(card => card.type === type).map(card => card.id),
-      ...(this.resourcePopupStore.popupContextRef()?.subEvent.id === subEventId
-        ? this.resourcePopupStore.popupContextRef()?.fallbackCardsByType[type]?.map(card => card.id) ?? []
+      ...(popupContext?.subEvent.id === subEventId && popupContext.origin !== 'subEventResource'
+        ? popupContext.fallbackCardsByType[type]?.map(card => card.id) ?? []
         : [])
     ]);
     return (this.resourcePopupStore.assignedAssetIdsByKey[this.assetAssignmentKey(subEventId, type)] ?? [])
@@ -1876,11 +1877,13 @@ export class AssetPopupComponent {
           this.resourcePopupStore.supplyContributionEntries(subEventId, assetId).map(entry => ({ ...entry }))
         ])
       ),
-      fallbackAssetCardsByType: {
-        Car: this.persistedAssignedFallbackCards(context, 'Car'),
-        Accommodation: this.persistedAssignedFallbackCards(context, 'Accommodation'),
-        Supplies: this.persistedAssignedFallbackCards(context, 'Supplies')
-      }
+      fallbackAssetCardsByType: context.origin === 'subEventResource'
+        ? {}
+        : {
+            Car: this.persistedAssignedFallbackCards(context, 'Car'),
+            Accommodation: this.persistedAssignedFallbackCards(context, 'Accommodation'),
+            Supplies: this.persistedAssignedFallbackCards(context, 'Supplies')
+          }
     };
   }
 
@@ -1923,11 +1926,13 @@ export class AssetPopupComponent {
     ) {
       this.resourcePopupStore.popupContextRef.set({
         ...activeContext,
-        fallbackCardsByType: this.mergePersistedFallbackCards(
-          activeContext.fallbackCardsByType,
-          normalizedState.fallbackAssetCardsByType,
-          normalizedState.subEventId
-        )
+        fallbackCardsByType: activeContext.origin === 'subEventResource'
+          ? {}
+          : this.mergePersistedFallbackCards(
+              activeContext.fallbackCardsByType,
+              normalizedState.fallbackAssetCardsByType,
+              normalizedState.subEventId
+            )
       });
     }
     for (const type of ['Car', 'Accommodation', 'Supplies'] as const) {
@@ -2210,6 +2215,9 @@ export class AssetPopupComponent {
     if (context?.subEvent.id !== subEventId) {
       return [];
     }
+    if (context.origin === 'subEventResource') {
+      return [];
+    }
     return (context.fallbackCardsByType[type] ?? []).map(card => new AssetDto(card));
   }
 
@@ -2217,6 +2225,9 @@ export class AssetPopupComponent {
     context: NonNullable<ReturnType<SubEventResourcePopupStore['popupContextRef']>>,
     type: AppConstants.AssetType
   ): AppDTOs.AssetDetailDTO[] {
+    if (context.origin === 'subEventResource') {
+      return [];
+    }
     const assignedIds = new Set(this.currentAssignedAssetIds(context.subEvent.id, type));
     const ownedIds = new Set(this.assetStore.assetCards().filter(card => card.type === type).map(card => card.id));
     return (context.fallbackCardsByType[type] ?? [])

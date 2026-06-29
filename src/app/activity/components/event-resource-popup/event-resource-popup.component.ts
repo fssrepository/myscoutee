@@ -57,6 +57,10 @@ import {
 } from '../../../shared/app-static-data';
 import type { CardMenuActionEvent, InfoCardData } from '../../../shared/ui/components/core/smart-list/card/card.types';
 import {
+  ActivitySubEventResourceInfoCardConverter,
+  type ActivitySubEventResourceInfoCardConverterOptions
+} from '../../../shared/ui/converters';
+import {
   type ActivitiesNavigationRequest
 } from '../../../shared/ui/context/stores/member-menu.store';
 import {
@@ -75,19 +79,16 @@ import {
   ActivitiesPopupStore
 } from '../../../shared/ui/context/stores/activities-popup.store';
 import {
-  EventEditorPopupStore
-} from '../../../shared/ui/context/stores/event-editor-popup.store';
-import {
   SubEventResourcePopupStore
 } from '../../../shared/ui/context/stores/sub-event-resource-popup.store';
-import type { EventEditorSubEventResourcePopupRequest } from '../../../shared/ui/context/stores/event-editor-popup.store';
 import type {
   AssignedAssetJoinPricingPreview,
   EventResourcePopupOutletActionRequest,
   ResourceAssetDTO,
   ResourceAssetViewState,
   ResourcePopupContext,
-  RouteEditorState
+  RouteEditorState,
+  SubEventResourcePopupRequest
 } from '../../../shared/ui/context/stores/sub-event-resource-popup.store';
 import type { ChatDTO } from '../../../shared/core/contracts/chat.interface';
 import type {
@@ -137,7 +138,6 @@ export class EventResourcePopupComponent {
   private readonly dialogStore = inject(DialogStore);
   private readonly shareTokensService = inject(ShareTokensService);
   private readonly activityResourcesService = inject(ActivityResourcesService);
-  private readonly eventEditorStore = inject(EventEditorPopupStore);
 
   private get users(): UserDto[] {
     return this.usersService.peekCachedUsers();
@@ -159,6 +159,8 @@ export class EventResourcePopupComponent {
   private pendingAssignSaveAbortController: AbortController | null = null;
   private pendingAssignSaveRequestVersion = 0;
   private lastResourcePopupOutletActionRequestId = 0;
+  private ownedAssetsHydrationLoadedUserId = '';
+  private ownedAssetsHydrationLoadingUserId = '';
 
   protected readonly resourceAssetViewOutletInputs = computed(() => ({
     view: this.resourceAssetView()
@@ -201,12 +203,12 @@ export class EventResourcePopupComponent {
     });
 
     effect(() => {
-      const request = this.eventEditorStore.subEventResourcePopupRequest();
+      const request = this.resourcePopupStore.subEventResourcePopupRequest();
       if (!request) {
         return;
       }
-      this.eventEditorStore.clearSubEventResourcePopupRequest();
-      this.openFromEventEditorRequest(request);
+      this.resourcePopupStore.clearSubEventResourcePopupRequest();
+      this.openFromSubEventResourceRequest(request);
     });
 
     effect(() => {
@@ -287,52 +289,38 @@ export class EventResourcePopupComponent {
 
   protected resourceListModel(): EventResourceListModel {
     const cards = this.resourceCards();
+    const converterOptions = this.resourceInfoCardConverterOptions();
     return {
       filter: this.resourcePopupStore.resourceFilterRef(),
       filterCounts: this.resourceFilterCounts(),
       items: cards.map(card => ({
         card,
-        infoCard: this.resourceInfoCard(card)
+        infoCard: ActivitySubEventResourceInfoCardConverter.convert(
+          card,
+          converterOptions
+        )
       }))
     };
   }
 
-  protected resourceInfoCard(
-    card: AppDTOs.SubEventResourceCardDTO,
-    options: { groupLabel?: string | null } = {}
-  ): InfoCardData {
-    return this.activityResourcesService.subEventResourceInfoCard(card, {
-      groupLabel: options?.groupLabel ?? null,
-      canOpenMap: this.canOpenResourceMap(card),
-      occupancyLabel: this.occupancyLabel(card),
-      canOpenBadgeDetails: this.canOpenResourceBadgeDetails(card),
-      canOpenAssetMembers: this.canOpenAssetMembers(card),
-      canEditRoute: this.canEditRoute(card),
-      canJoin: this.canJoin(card),
-      canLeave: this.canLeave(card),
-      canReportResourceManager: this.canReportResourceManager(card)
-    });
-  }
-
-  protected openResourceCardMap(card: AppDTOs.SubEventResourceCardDTO): void {
-    if (!this.canOpenResourceMap(card)) {
-      return;
-    }
-    this.openResourceMap(card);
-  }
-
-  protected openResourceCardBadgeDetails(card: AppDTOs.SubEventResourceCardDTO): void {
-    if (!this.canOpenResourceBadgeDetails(card)) {
-      return;
-    }
-    this.openResourceBadgeDetails(card);
+  private resourceInfoCardConverterOptions(): ActivitySubEventResourceInfoCardConverterOptions {
+    const context = this.resourcePopupStore.popupContextRef();
+    const activeUserId = this.activeUser().id.trim();
+    const eventRecord = context
+      ? this.eventsService.peekKnownRecordById(activeUserId, context.ownerId)
+      : null;
+    return {
+      context,
+      activeUserId,
+      activeUserAssets: this.ownedAssetCards(),
+      assetSettingsByKey: this.resourcePopupStore.assignedAssetSettingsByKey,
+      users: this.users,
+      eventCreatorUserId: eventRecord?.creatorUserId ?? null
+    };
   }
 
   protected openAssetViewMembers(view: ResourceAssetViewState, event: Event): void {
     event.stopPropagation();
-    if (!view.canOpenMembers) {
-      return;
-    }
     this.openAssetMembersPopup(view.card, event);
   }
 
@@ -346,17 +334,11 @@ export class EventResourcePopupComponent {
 
   protected openAssetViewRoutePopup(view: ResourceAssetViewState, event: Event): void {
     event.stopPropagation();
-    if (!view.card.routes.some(stop => stop.trim().length > 0)) {
-      return;
-    }
     this.openAssetViewRouteEditor(view, event, 'view');
   }
 
   protected openAssetViewRouteSetup(view: ResourceAssetViewState, event: Event): void {
     event.stopPropagation();
-    if (view.mode !== 'edit' || !view.canEditRoute) {
-      return;
-    }
     this.openAssetViewRouteEditor(view, event, 'edit');
   }
 
@@ -483,11 +465,6 @@ export class EventResourcePopupComponent {
       avatarSource: sourceCard?.ownerName || sourceCard?.title || card.title
     });
     this.activitiesStore.openEventChat(chat);
-  }
-
-  private canReportResourceManager(card: AppDTOs.SubEventResourceCardDTO): boolean {
-    const target = this.resolveResourceReportTarget(card);
-    return !!target && target.userId !== this.activeUser().id.trim();
   }
 
   private reportResourceManager(card: AppDTOs.SubEventResourceCardDTO, event: Event): void {
@@ -669,16 +646,17 @@ export class EventResourcePopupComponent {
     this.openInitialExplorePopup();
   }
 
-  private openFromEventEditorRequest(request: EventEditorSubEventResourcePopupRequest): void {
+  private openFromSubEventResourceRequest(request: SubEventResourcePopupRequest): void {
     if (request.type === 'Members') {
       const group = request.group ?? null;
-      const ownerId = group?.id?.trim() || `${request.subEvent.id ?? ''}`.trim();
+      const ownerId = group?.id?.trim() || `${request.subEventId ?? ''}`.trim();
       const groupLabel = group?.groupLabel?.trim() ?? '';
+      const subEventTitle = this.requestSubEventTitle(request);
       this.memberMenuStore.requestActivitiesNavigation({
         type: 'members',
         ownerId,
         ownerType: group?.id ? 'group' : 'subEvent',
-        subtitle: groupLabel || request.subEvent.title?.trim() || request.subEvent.name?.trim() || request.parentTitle?.trim() || 'Event',
+        subtitle: groupLabel || subEventTitle || request.parentTitle?.trim() || 'Event',
         canManage: group?.canManage === true,
         viewOnly: group?.id ? group.canManage !== true : undefined,
         acceptedMembers: Math.max(0, Math.trunc(Number(group?.accepted) || 0)),
@@ -690,24 +668,63 @@ export class EventResourcePopupComponent {
       return;
     }
 
+    const subEvent = this.subEventFromResourceRequest(request);
+    if (!subEvent) {
+      return;
+    }
     const context = this.buildPopupContext(
-      'eventEditor',
-      request.ownerId?.trim() || '',
+      'subEventResource',
+      request.ownerId.trim(),
       request.parentTitle?.trim() || 'Event',
       request.type,
-      request.subEvent,
+      subEvent,
       request.group ?? null
     );
     this.openPopupContext(context, request.type);
   }
 
+  private subEventFromResourceRequest(
+    request: SubEventResourcePopupRequest
+  ): ContractTypes.SubEventDTO | null {
+    const subEventId = `${request.subEventId ?? ''}`.trim();
+    if (!subEventId) {
+      return null;
+    }
+    const header = request.subEventHeader ?? null;
+    const name = this.requestSubEventTitle(request) || 'Sub Event';
+    return {
+      id: subEventId,
+      name,
+      description: `${header?.description ?? ''}`.trim(),
+      location: `${header?.location ?? ''}`.trim(),
+      startAt: `${header?.startAt ?? ''}`.trim(),
+      endAt: `${header?.endAt ?? ''}`.trim(),
+      optional: true,
+      capacityMin: 0,
+      capacityMax: 0,
+      membersAccepted: 0,
+      membersPending: 0,
+      carsPending: 0,
+      accommodationPending: 0,
+      suppliesPending: 0,
+      carsAccepted: 0,
+      accommodationAccepted: 0,
+      suppliesAccepted: 0
+    };
+  }
+
+  private requestSubEventTitle(request: SubEventResourcePopupRequest): string {
+    const header = request.subEventHeader ?? null;
+    return `${header?.title ?? header?.name ?? ''}`.trim();
+  }
+
   private buildPopupContext(
-    origin: 'chat' | 'eventEditor',
+    origin: ResourcePopupContext['origin'],
     ownerId: string,
     parentTitle: string,
     type: AppConstants.AssetType,
     rawSubEvent: ContractTypes.SubEventDTO,
-    group: EventEditorSubEventResourcePopupRequest['group'],
+    group: SubEventResourcePopupRequest['group'],
     fallbackCardsByType?: Partial<Record<AppConstants.AssetType, ResourceAssetDTO[]>>
   ): ResourcePopupContext {
     const subEvent = this.cloneSubEvent(rawSubEvent);
@@ -722,7 +739,9 @@ export class EventResourcePopupComponent {
       subEvent: scopedSubEvent,
       groupId: group?.id?.trim() || undefined,
       groupName: group?.groupLabel?.trim() || undefined,
-      fallbackCardsByType: this.cloneFallbackCards(fallbackCardsByType)
+      fallbackCardsByType: origin === 'subEventResource'
+        ? {}
+        : this.cloneFallbackCards(fallbackCardsByType)
     };
   }
 
@@ -731,6 +750,7 @@ export class EventResourcePopupComponent {
     type: AppConstants.AssetType,
     options: { hydrate?: boolean } = {}
   ): void {
+    this.hydrateOwnedAssetsForResourcePopup();
     this.resourcePopupStore.openResourcePopup(context, type);
     this.closeAssignPopup(false);
     if (options.hydrate !== false) {
@@ -773,12 +793,51 @@ export class EventResourcePopupComponent {
         return;
       }
       this.applyPersistedPopupState(state);
+      this.hydrateOwnedAssetsForResourcePopup();
       this.syncPopupSubEventMetrics();
     };
     applyState(this.activityResourcesService.peekSubEventResourceState(ownerId, subEventId, assetOwnerUserId));
     void this.activityResourcesService
       .querySubEventResourceState(ownerId, subEventId, assetOwnerUserId)
       .then(state => applyState(state));
+  }
+
+  private hydrateOwnedAssetsForResourcePopup(): void {
+    const activeUserId = this.activeUser().id.trim();
+    if (!activeUserId) {
+      return;
+    }
+    const peekedCards = this.assetsService.peekOwnedAssetsByUser(activeUserId);
+    const ownerChanged = this.assetStore.activeOwnerUserIdRef().trim() !== activeUserId;
+    if (ownerChanged) {
+      this.assetStore.setActiveOwnerUserId(activeUserId);
+    }
+    if (ownerChanged || (this.assetStore.assetCards().length === 0 && peekedCards.length > 0)) {
+      this.assetStore.applyAssetCards(peekedCards, { reloadList: false });
+      this.syncPopupSubEventMetrics();
+    }
+    if (
+      this.ownedAssetsHydrationLoadedUserId === activeUserId
+      || this.ownedAssetsHydrationLoadingUserId === activeUserId
+    ) {
+      return;
+    }
+    this.ownedAssetsHydrationLoadingUserId = activeUserId;
+    void this.assetsService.queryOwnedAssetsByUser(activeUserId)
+      .then(cards => {
+        if (this.activeUser().id.trim() !== activeUserId) {
+          return;
+        }
+        this.assetStore.setActiveOwnerUserId(activeUserId);
+        this.assetStore.applyAssetCards(cards, { reloadList: false });
+        this.ownedAssetsHydrationLoadedUserId = activeUserId;
+        this.syncPopupSubEventMetrics();
+      })
+      .finally(() => {
+        if (this.ownedAssetsHydrationLoadingUserId === activeUserId) {
+          this.ownedAssetsHydrationLoadingUserId = '';
+        }
+      });
   }
 
   private closeAssignPopup(apply = false): void {
@@ -808,11 +867,13 @@ export class EventResourcePopupComponent {
     ) {
       this.resourcePopupStore.popupContextRef.set({
         ...activeContext,
-        fallbackCardsByType: this.mergePersistedFallbackCards(
-          activeContext.fallbackCardsByType,
-          normalizedState.fallbackAssetCardsByType,
-          normalizedState.subEventId
-        )
+        fallbackCardsByType: activeContext.origin === 'subEventResource'
+          ? {}
+          : this.mergePersistedFallbackCards(
+              activeContext.fallbackCardsByType,
+              normalizedState.fallbackAssetCardsByType,
+              normalizedState.subEventId
+            )
       });
     }
     for (const type of ['Car', 'Accommodation', 'Supplies'] as const) {
@@ -874,11 +935,13 @@ export class EventResourcePopupComponent {
           this.subEventSupplyContributionEntries(subEventId, assetId).map(entry => ({ ...entry }))
         ])
       ),
-      fallbackAssetCardsByType: {
-        Car: this.persistedAssignedFallbackCards(context, 'Car'),
-        Accommodation: this.persistedAssignedFallbackCards(context, 'Accommodation'),
-        Supplies: this.persistedAssignedFallbackCards(context, 'Supplies')
-      }
+      fallbackAssetCardsByType: context.origin === 'subEventResource'
+        ? {}
+        : {
+            Car: this.persistedAssignedFallbackCards(context, 'Car'),
+            Accommodation: this.persistedAssignedFallbackCards(context, 'Accommodation'),
+            Supplies: this.persistedAssignedFallbackCards(context, 'Supplies')
+          }
     };
   }
 
@@ -933,24 +996,15 @@ export class EventResourcePopupComponent {
     return `${metrics.joined} members · ${metrics.pending} pending`;
   }
 
-  canOpenAssetMembers(card: AppDTOs.SubEventResourceCardDTO): boolean {
-    return !!card.sourceAssetId && (card.type === 'Car' || card.type === 'Accommodation' || card.type === 'Supplies');
-  }
-
-  canOpenResourceBadgeDetails(card: AppDTOs.SubEventResourceCardDTO): boolean {
-    return !!card.sourceAssetId && (card.type === 'Car' || card.type === 'Accommodation' || card.type === 'Supplies');
-  }
-
   openResourceBadgeDetails(card: AppDTOs.SubEventResourceCardDTO, event?: Event): void {
     event?.stopPropagation();
-    if (!this.canOpenResourceBadgeDetails(card)) {
-      return;
-    }
     if (card.type === 'Car' || card.type === 'Accommodation') {
       void this.openAssetMembersPopup(card);
       return;
     }
-    this.openSupplyContributionsPopup(card, event);
+    if (card.type === 'Supplies') {
+      this.openSupplyContributionsPopup(card, event);
+    }
   }
 
   resourceAssetView(): ResourceAssetViewState | null {
@@ -967,13 +1021,7 @@ export class EventResourcePopupComponent {
       return {
         card,
         mode: this.resourcePopupStore.resourceAssetViewModeRef(),
-        source,
-        memberLabel: this.occupancyLabel(card),
-        memberCount: Math.max(0, Math.trunc(Number(card.accepted) || 0)),
-        pendingCount: Math.max(0, Math.trunc(Number(card.pending) || 0)),
-        canOpenMembers: this.canOpenAssetMembers(card),
-        canEditCapacity: this.canEditCapacity(card),
-        canEditRoute: this.canEditRoute(card)
+        source
       };
     }
     return null;
@@ -990,7 +1038,7 @@ export class EventResourcePopupComponent {
       return;
     }
     this.resourcePopupStore.resourceAssetViewIdRef.set(assetId);
-    this.resourcePopupStore.resourceAssetViewModeRef.set(mode === 'edit' && this.canEditRoute(card) ? 'edit' : 'view');
+    this.resourcePopupStore.resourceAssetViewModeRef.set(mode);
     this.resourcePopupStore.resourceAssetViewReturnToChatRef.set(false);
     this.resourcePopupStore.assetExplorePopupRef.set(null);
   }
@@ -1077,7 +1125,9 @@ export class EventResourcePopupComponent {
     const settings = this.getSubEventAssignedAssetSettings(context.subEvent.id, type, {
       normalizeStore: false
     });
-    const fallbackCards = context.fallbackCardsByType[type] ?? [];
+    const fallbackCards = context.origin === 'subEventResource'
+      ? []
+      : context.fallbackCardsByType[type] ?? [];
     const fallbackCardById = new Map(fallbackCards.map(card => [card.id, card] as const));
 
     return assignedIds
@@ -1114,28 +1164,6 @@ export class EventResourcePopupComponent {
       });
   }
 
-  occupancyLabel(card: AppDTOs.SubEventResourceCardDTO): string {
-    const context = this.resourcePopupStore.popupContextRef();
-    if (card.type === 'Supplies' && card.sourceAssetId && context) {
-      return `${this.subEventSupplyProvidedCount(card.sourceAssetId, context.subEvent.id)} / 1 - ${card.capacityTotal}`;
-    }
-    return `${card.accepted} / ${card.capacityTotal}`;
-  }
-
-  private isAssignedAssetOwnedByActiveUser(card: AppDTOs.SubEventResourceCardDTO): boolean {
-    const context = this.resourcePopupStore.popupContextRef();
-    if (!context || !card.sourceAssetId) {
-      return false;
-    }
-    const sourceCard = this.resolveSubEventAssignedAssetCard(context.subEvent.id, card.type as AppConstants.AssetType, card.sourceAssetId);
-    if (!sourceCard) {
-      return false;
-    }
-    const ownerUserId = `${sourceCard.ownerUserId ?? ''}`.trim();
-    const activeUserId = this.activeUser().id.trim();
-    return this.isAssetOwnedByActiveUser(sourceCard, activeUserId, ownerUserId);
-  }
-
   private assignedAssetManagerUserId(
     subEventId: string,
     type: 'Car' | 'Accommodation',
@@ -1144,14 +1172,6 @@ export class EventResourcePopupComponent {
     const settings = this.getSubEventAssignedAssetSettings(subEventId, type);
     const managerUserId = `${settings[assetId]?.addedByUserId ?? ''}`.trim();
     return managerUserId || null;
-  }
-
-  private isAssignedAssetManagedByActiveUser(card: AppDTOs.SubEventResourceCardDTO): boolean {
-    const context = this.resourcePopupStore.popupContextRef();
-    if (!context || !card.sourceAssetId || (card.type !== 'Car' && card.type !== 'Accommodation')) {
-      return false;
-    }
-    return this.assignedAssetManagerUserId(context.subEvent.id, card.type, card.sourceAssetId) === this.activeUser().id;
   }
 
   private isAssetOwnedByActiveUser(
@@ -1313,16 +1333,9 @@ export class EventResourcePopupComponent {
     };
   }
 
-  canOpenResourceMap(card: AppDTOs.SubEventResourceCardDTO): boolean {
-    if (!card.sourceAssetId || (card.type !== 'Car' && card.type !== 'Accommodation')) {
-      return false;
-    }
-    return ActivityResourceBuilder.normalizeAssetRoutes(card.type, card.routes).some(stop => stop.trim().length > 0);
-  }
-
   openResourceMap(card: AppDTOs.SubEventResourceCardDTO, event?: Event): void {
     event?.stopPropagation();
-    if (!this.canOpenResourceMap(card)) {
+    if (card.type !== 'Car' && card.type !== 'Accommodation') {
       return;
     }
     const routes = ActivityResourceBuilder.normalizeAssetRoutes(card.type as AppConstants.AssetType, card.routes);
@@ -1333,25 +1346,13 @@ export class EventResourcePopupComponent {
     this.openGoogleMapsDirections(routes);
   }
 
-  canJoin(card: AppDTOs.SubEventResourceCardDTO): boolean {
-    const context = this.resourcePopupStore.popupContextRef();
-    if (!context || !card.sourceAssetId || (card.type !== 'Car' && card.type !== 'Accommodation')) {
-      return false;
-    }
-    if (this.isAssignedAssetManagedByActiveUser(card)) {
-      return false;
-    }
-    const sourceCard = this.resolveSubEventAssignedAssetCard(context.subEvent.id, card.type, card.sourceAssetId);
-    if (!sourceCard) {
-      return false;
-    }
-    return !this.findAssignedAssetJoinRequest(sourceCard, context.subEvent.id, this.activeUser().id);
-  }
-
   join(card: AppDTOs.SubEventResourceCardDTO, event: Event): void {
     event.stopPropagation();
     const context = this.resourcePopupStore.popupContextRef();
-    if (!context || !this.canJoin(card) || !card.sourceAssetId) {
+    if (
+      !context
+      || !card.sourceAssetId
+    ) {
       return;
     }
     const type = card.type === 'Car' || card.type === 'Accommodation' ? card.type : null;
@@ -1376,28 +1377,14 @@ export class EventResourcePopupComponent {
     });
   }
 
-  canLeave(card: AppDTOs.SubEventResourceCardDTO): boolean {
-    const context = this.resourcePopupStore.popupContextRef();
-    if (!context || !card.sourceAssetId || (card.type !== 'Car' && card.type !== 'Accommodation')) {
-      return false;
-    }
-    if (this.isAssignedAssetManagedByActiveUser(card)) {
-      return false;
-    }
-    const sourceCard = this.resolveSubEventAssignedAssetCard(context.subEvent.id, card.type, card.sourceAssetId);
-    if (!sourceCard) {
-      return false;
-    }
-    return !!this.findAssignedAssetJoinRequest(sourceCard, context.subEvent.id, this.activeUser().id);
-  }
-
   leave(card: AppDTOs.SubEventResourceCardDTO, event: Event): void {
     event.stopPropagation();
     const context = this.resourcePopupStore.popupContextRef();
-    if (!context || !card.sourceAssetId || (card.type !== 'Car' && card.type !== 'Accommodation')) {
-      return;
-    }
-    if (this.isAssignedAssetManagedByActiveUser(card)) {
+    if (
+      !context
+      || !card.sourceAssetId
+      || (card.type !== 'Car' && card.type !== 'Accommodation')
+    ) {
       return;
     }
     const sourceCard = this.resolveSubEventAssignedAssetCard(context.subEvent.id, card.type, card.sourceAssetId);
@@ -1623,18 +1610,13 @@ export class EventResourcePopupComponent {
     this.resourcePopupStore.assignedAssetJoinDialogRef.set(null);
   }
 
-  canEditCapacity(card: AppDTOs.SubEventResourceCardDTO): boolean {
-    return this.isAssignedAssetOwnedByActiveUser(card);
-  }
-
-  canEditRoute(card: AppDTOs.SubEventResourceCardDTO): boolean {
-    return card.type === 'Car' && this.canEditCapacity(card);
-  }
-
   openCapacityEditor(card: AppDTOs.SubEventResourceCardDTO, event: Event): void {
     event.stopPropagation();
     const context = this.resourcePopupStore.popupContextRef();
-    if (!context || !card.sourceAssetId || !this.canEditCapacity(card)) {
+    if (
+      !context
+      || !card.sourceAssetId
+    ) {
       return;
     }
     const type = card.type as AppConstants.AssetType;
@@ -1758,10 +1740,7 @@ export class EventResourcePopupComponent {
     if (!context || card.type !== 'Car' || !card.sourceAssetId) {
       return;
     }
-    const resolvedMode: 'view' | 'edit' = mode === 'edit' && this.canEditRoute(card) ? 'edit' : 'view';
-    if (mode === 'edit' && resolvedMode !== 'edit') {
-      return;
-    }
+    const resolvedMode = mode;
     const settings = this.getSubEventAssignedAssetSettings(context.subEvent.id, 'Car');
     const source = this.ownedAssetCards().find(item => item.id === card.sourceAssetId && item.type === 'Car')
       ?? this.resourcePopupStore.assetExplorePopupRef()?.cards.find(item => item.id === card.sourceAssetId && item.type === 'Car')
@@ -1798,10 +1777,7 @@ export class EventResourcePopupComponent {
     if (!context || card.type !== 'Car' || !assetId) {
       return;
     }
-    const resolvedMode: 'view' | 'edit' = mode === 'edit' && view.canEditRoute ? 'edit' : 'view';
-    if (mode === 'edit' && resolvedMode !== 'edit') {
-      return;
-    }
+    const resolvedMode = mode;
     const settings = this.getSubEventAssignedAssetSettings(context.subEvent.id, 'Car');
     const source = view.source?.type === 'Car'
       ? view.source
@@ -2201,6 +2177,9 @@ export class EventResourcePopupComponent {
     if (context?.subEvent.id !== subEventId) {
       return [];
     }
+    if (context.origin === 'subEventResource') {
+      return [];
+    }
     return context.fallbackCardsByType[type] ?? [];
   }
 
@@ -2269,9 +2248,9 @@ export class EventResourcePopupComponent {
     const persistResourceState = typeof options === 'boolean' ? options : options.persistResourceState === true;
     const persistAssetRequests = typeof options === 'boolean' ? options : options.persistAssetRequests === true;
     const nextSubEvent = this.cloneSubEvent(context.subEvent);
-    const cars = this.subEventAssetCapacityMetrics(nextSubEvent, 'Car');
-    const accommodation = this.subEventAssetCapacityMetrics(nextSubEvent, 'Accommodation');
-    const supplies = this.subEventAssetCapacityMetrics(nextSubEvent, 'Supplies');
+    const cars = this.subEventAssetCapacityMetrics(nextSubEvent, 'Car', { normalizeStore: false });
+    const accommodation = this.subEventAssetCapacityMetrics(nextSubEvent, 'Accommodation', { normalizeStore: false });
+    const supplies = this.subEventAssetCapacityMetrics(nextSubEvent, 'Supplies', { normalizeStore: false });
     nextSubEvent.carsAccepted = cars.joined;
     nextSubEvent.carsPending = cars.pending;
     nextSubEvent.carsCapacityMin = cars.capacityMin;
@@ -2304,6 +2283,7 @@ export class EventResourcePopupComponent {
       : context;
     if (metricsChanged) {
       this.resourcePopupStore.popupContextRef.set(nextContext);
+      this.resourcePopupStore.publishSubEventResourceMetrics(nextContext);
     }
     this.syncSubEventManualAssetRequests(nextContext.subEvent, persistAssetRequests);
     if (persistResourceState) {

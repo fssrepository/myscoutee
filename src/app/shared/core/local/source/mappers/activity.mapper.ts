@@ -296,43 +296,18 @@ export class LocalActivityResourcesMapper {
   }
 
   static toState(
-    record: ActivitySubEventResourceRecord,
-    availableAssets: readonly AppDTOs.AssetDTO[]
+    record: ActivitySubEventResourceRecord
   ): AppDTOs.ActivitySubEventResourceStateDTO | null {
-    const fallbackCardsByType = ActivityResourceBuilder.cloneFallbackAssetCardsByType(record.fallbackAssetCardsByType);
-    const eligibleIdsByType: Partial<Record<AppConstants.AssetType, Set<string>>> = {
-      Car: new Set([
-        ...availableAssets.filter(card => card.type === 'Car').map(card => card.id),
-        ...(fallbackCardsByType.Car ?? []).map(card => card.id)
-      ]),
-      Accommodation: new Set([
-        ...availableAssets.filter(card => card.type === 'Accommodation').map(card => card.id),
-        ...(fallbackCardsByType.Accommodation ?? []).map(card => card.id)
-      ]),
-      Supplies: new Set([
-        ...availableAssets.filter(card => card.type === 'Supplies').map(card => card.id),
-        ...(fallbackCardsByType.Supplies ?? []).map(card => card.id)
-      ])
-    };
     const normalizedState = ActivityResourceBuilder.normalizeState({
       ownerId: record.ownerId,
       subEventId: record.subEventId,
       assetOwnerUserId: record.assetOwnerUserId,
-      assetAssignmentIds: {
-        Car: (record.assetAssignmentIds.Car ?? []).filter(id => eligibleIdsByType.Car?.has(id)),
-        Accommodation: (record.assetAssignmentIds.Accommodation ?? []).filter(id => eligibleIdsByType.Accommodation?.has(id)),
-        Supplies: (record.assetAssignmentIds.Supplies ?? []).filter(id => eligibleIdsByType.Supplies?.has(id))
-      },
-      assetSettingsByType: this.filterSettingsByEligibleIds(record.assetSettingsByType, eligibleIdsByType),
-      supplyContributionEntriesByAssetId: Object.fromEntries(
-        Object.entries(record.supplyContributionEntriesByAssetId ?? {})
-          .filter(([assetId]) => eligibleIdsByType.Supplies?.has(assetId))
+      assetAssignmentIds: ActivityResourceBuilder.cloneAssetAssignmentIds(record.assetAssignmentIds),
+      assetSettingsByType: ActivityResourceBuilder.cloneAssetSettingsByType(record.assetSettingsByType),
+      supplyContributionEntriesByAssetId: ActivityResourceBuilder.cloneSupplyContributionEntriesByAssetId(
+        record.supplyContributionEntriesByAssetId
       ),
-      fallbackAssetCardsByType: {
-        Car: (fallbackCardsByType.Car ?? []).filter(card => eligibleIdsByType.Car?.has(card.id)),
-        Accommodation: (fallbackCardsByType.Accommodation ?? []).filter(card => eligibleIdsByType.Accommodation?.has(card.id)),
-        Supplies: (fallbackCardsByType.Supplies ?? []).filter(card => eligibleIdsByType.Supplies?.has(card.id))
-      }
+      fallbackAssetCardsByType: ActivityResourceBuilder.cloneFallbackAssetCardsByType(record.fallbackAssetCardsByType)
     }, record);
     return normalizedState ? ActivityResourceBuilder.cloneState(normalizedState) : null;
   }
@@ -349,25 +324,4 @@ export class LocalActivityResourcesMapper {
     };
   }
 
-  private static filterSettingsByEligibleIds(
-    source: AppDTOs.ActivitySubEventAssetSettingsByTypeDTO,
-    eligibleIdsByType: Partial<Record<AppConstants.AssetType, Set<string>>>
-  ): AppDTOs.ActivitySubEventAssetSettingsByTypeDTO {
-    const next: AppDTOs.ActivitySubEventAssetSettingsByTypeDTO = {};
-    for (const type of ['Car', 'Accommodation', 'Supplies'] as const) {
-      const settings = source?.[type];
-      const eligible = eligibleIdsByType[type];
-      if (!settings || !eligible) {
-        continue;
-      }
-      const entries = Object.entries(settings).filter(([assetId]) => eligible.has(assetId));
-      if (entries.length > 0) {
-        next[type] = Object.fromEntries(entries.map(([assetId, value]) => [
-          assetId,
-          { ...value, routes: [...(value.routes ?? [])] }
-        ]));
-      }
-    }
-    return next;
-  }
 }

@@ -783,13 +783,7 @@ export class EventResourceAssetExploreComponent implements DoCheck {
     return {
       card: resourceCard,
       mode: 'view',
-      source: this.cloneAsset(card),
-      memberLabel: this.availabilityLabel(card),
-      memberCount: Math.max(0, Math.trunc(Number(resourceCard.accepted) || 0)),
-      pendingCount: this.assetPendingCount(card, context.subEvent.id, managerUserId),
-      canOpenMembers: false,
-      canEditCapacity: false,
-      canEditRoute: false
+      source: this.cloneAsset(card)
     };
   }
 
@@ -1883,15 +1877,14 @@ export class EventResourceAssetExploreComponent implements DoCheck {
     nextSubEvent.suppliesPending = supplies.pending;
     nextSubEvent.suppliesCapacityMin = supplies.capacityMin;
     nextSubEvent.suppliesCapacityMax = supplies.capacityMax;
-    this.resourcePopupStore.popupContextRef.set({
+    const nextContext = {
       ...context,
       subEvent: nextSubEvent
-    });
+    };
+    this.resourcePopupStore.popupContextRef.set(nextContext);
+    this.resourcePopupStore.publishSubEventResourceMetrics(nextContext);
     if (persistResourceState) {
-      this.persistResourceState({
-        ...context,
-        subEvent: nextSubEvent
-      });
+      this.persistResourceState(nextContext);
     }
   }
 

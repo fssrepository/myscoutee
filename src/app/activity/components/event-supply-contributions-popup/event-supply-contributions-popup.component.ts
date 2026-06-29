@@ -620,10 +620,26 @@ export class EventSupplyContributionsPopupComponent implements DoCheck {
     nextSubEvent.suppliesPending = supplies.pending;
     nextSubEvent.suppliesCapacityMin = supplies.capacityMin;
     nextSubEvent.suppliesCapacityMax = supplies.capacityMax;
-    this.resourcePopupStore.popupContextRef.set({
+    const metricsChanged = context.subEvent.carsAccepted !== nextSubEvent.carsAccepted
+      || context.subEvent.carsPending !== nextSubEvent.carsPending
+      || context.subEvent.carsCapacityMin !== nextSubEvent.carsCapacityMin
+      || context.subEvent.carsCapacityMax !== nextSubEvent.carsCapacityMax
+      || context.subEvent.accommodationAccepted !== nextSubEvent.accommodationAccepted
+      || context.subEvent.accommodationPending !== nextSubEvent.accommodationPending
+      || context.subEvent.accommodationCapacityMin !== nextSubEvent.accommodationCapacityMin
+      || context.subEvent.accommodationCapacityMax !== nextSubEvent.accommodationCapacityMax
+      || context.subEvent.suppliesAccepted !== nextSubEvent.suppliesAccepted
+      || context.subEvent.suppliesPending !== nextSubEvent.suppliesPending
+      || context.subEvent.suppliesCapacityMin !== nextSubEvent.suppliesCapacityMin
+      || context.subEvent.suppliesCapacityMax !== nextSubEvent.suppliesCapacityMax;
+    const nextContext = {
       ...context,
       subEvent: nextSubEvent
-    });
+    };
+    this.resourcePopupStore.popupContextRef.set(nextContext);
+    if (metricsChanged) {
+      this.resourcePopupStore.publishSubEventResourceMetrics(nextContext);
+    }
   }
 
   private subEventAssetCapacityMetrics(

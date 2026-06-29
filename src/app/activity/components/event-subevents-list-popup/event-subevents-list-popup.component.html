@@ -14,6 +14,7 @@
           class="event-subevents-slot-section-list"
           [config]="slotSectionSmartListConfigFor(section)"
           [loadPage]="slotSectionLoadPage(section)"
+          [query]="slotSectionQuery"
           [itemTemplate]="subEventTemplate"
           (menuItemSelect)="onSubEventMenuSelect($event)"
         ></app-smart-list>

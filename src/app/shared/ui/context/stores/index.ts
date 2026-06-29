@@ -34,9 +34,7 @@ export {
 } from './app-runtime.store';
 export {
   EventEditorPopupStore,
-  type EventEditorState,
-  type EventEditorSubEventResourcePopupRequest,
-  type EventEditorSubEventResourceType
+  type EventEditorState
 } from './event-editor-popup.store';
 export {
   EventSubeventsPopupStore,
@@ -87,6 +85,9 @@ export {
   type ResourceAssetDTO,
   type ResourcePopupContext,
   type RouteEditorState,
+  type SubEventResourcePopupHeader,
+  type SubEventResourcePopupRequest,
+  type SubEventResourcePopupType,
   type SupplyBringDialogState,
   type SupplyContributionPopupState
 } from './sub-event-resource-popup.store';

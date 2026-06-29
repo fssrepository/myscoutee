@@ -15,6 +15,10 @@ import type * as AppDTOs from '../../../contracts';
 export class LocalActivityResourcesRepository {
   private readonly memoryDb = inject(LocalMemoryDb);
 
+  async flushToIndexedDb(): Promise<void> {
+    await this.memoryDb.flushToIndexedDb();
+  }
+
   peekSubEventResourceRecord(
     ref: AppDTOs.ActivitySubEventResourceStateRefDTO
   ): ActivitySubEventResourceRecord | null {

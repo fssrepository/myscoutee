@@ -55,9 +55,6 @@ import {
   DialogStore
 } from '../../../shared/ui/context/stores/dialog.store';
 import {
-  EventEditorPopupStore
-} from '../../../shared/ui/context/stores/event-editor-popup.store';
-import {
   AssetStore
 } from '../../../shared/ui/context/stores/asset.store';
 import {
@@ -66,6 +63,7 @@ import {
 import { UserProfileStore } from '../../../shared/ui/context/stores/user-profile.store';
 import { ActivityStore } from '../../../shared/ui/context/stores/activity.store';
 import { EventSubeventsPopupStore } from '../../../shared/ui/context/stores/event-subevents-popup.store';
+import { SubEventResourcePopupStore } from '../../../shared/ui/context/stores/sub-event-resource-popup.store';
 
 type TournamentGroupsAction =
   | 'add-entry'
@@ -162,7 +160,7 @@ export class EventTournamentGroupsPopupComponent {
   private readonly eventsService = inject(EventsService);
   private readonly activityResourcesService = inject(ActivityResourcesService);
   private readonly assetStore = inject(AssetStore);
-  private readonly eventEditorStore = inject(EventEditorPopupStore);
+  private readonly resourcePopupStore = inject(SubEventResourcePopupStore);
   private readonly dialogStore = inject(DialogStore);
   private readonly cdr = inject(ChangeDetectorRef);
 
@@ -1486,19 +1484,18 @@ export class EventTournamentGroupsPopupComponent {
   ): void {
     event?.stopPropagation();
     const isMembersPopup = type === 'Members';
-    this.eventEditorStore.requestSubEventResourcePopup({
+    this.resourcePopupStore.requestSubEventResourcePopup({
       type,
       ownerId: this.eventId(),
       parentTitle: this.state?.title ?? '',
-      subEvent: {
-        id: stage.subEventId,
+      subEventId: stage.subEventId,
+      subEventHeader: {
         name: stage.title,
         title: stage.title,
         description: stage.description,
         location: stage.location,
         startAt: stage.startAt,
-        endAt: stage.endAt,
-        groups: this.subEventGroupsForStage(stage)
+        endAt: stage.endAt
       },
       group: {
         id: group.id,

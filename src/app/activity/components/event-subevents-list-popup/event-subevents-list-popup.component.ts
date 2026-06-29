@@ -56,14 +56,14 @@ import type { SubEventResourceFilter } from '../../../shared/core/common/constan
 import {
   DialogStore
 } from '../../../shared/ui/context/stores/dialog.store';
-import {
-  EventEditorPopupStore
-} from '../../../shared/ui/context/stores/event-editor-popup.store';
 import { UserProfileStore } from '../../../shared/ui/context/stores/user-profile.store';
 import { ActivityStore } from '../../../shared/ui/context/stores/activity.store';
 import { MemberMenuStore } from '../../../shared/ui/context/stores/member-menu.store';
 import { EventSubeventsPopupStore } from '../../../shared/ui/context/stores/event-subevents-popup.store';
-import { SubEventResourcePopupStore } from '../../../shared/ui/context/stores/sub-event-resource-popup.store';
+import {
+  SubEventResourcePopupStore,
+  type SubEventResourceMetricsUpdate
+} from '../../../shared/ui/context/stores/sub-event-resource-popup.store';
 
 type EventSubeventsListView = 'day' | 'week' | 'month';
 type EventSubeventsListOrder = 'upcoming' | 'past';
@@ -104,7 +104,6 @@ interface EventSubeventsSlotSection {
 })
 export class EventSubeventsListPopupComponent {
   private readonly eventsService = inject(EventsService);
-  private readonly eventEditorStore = inject(EventEditorPopupStore);
   private readonly dialogStore = inject(DialogStore);
   private readonly userProfileStore = inject(UserProfileStore);
   private readonly activityStore = inject(ActivityStore);
@@ -122,6 +121,9 @@ export class EventSubeventsListPopupComponent {
   protected isMobileView = false;
   protected query: Partial<ListQuery<EventSubeventsListFilters>> = {
     view: 'day',
+    filters: { revision: 0 }
+  };
+  protected slotSectionQuery: Partial<ListQuery<EventSubeventsListFilters>> = {
     filters: { revision: 0 }
   };
 
@@ -259,7 +261,7 @@ export class EventSubeventsListPopupComponent {
     });
 
     effect(() => {
-      const request = this.eventEditorStore.subEventResourcePopupRequest();
+      const request = this.resourcePopupStore.subEventResourcePopupRequest();
       if (!request || !this.isOpen()) {
         return;
       }
@@ -288,6 +290,14 @@ export class EventSubeventsListPopupComponent {
       }
       void this.resourcePopupStore.ensureEventSupplyContributionsPopupLoaded();
     });
+
+    effect(() => {
+      const update = this.resourcePopupStore.subEventResourceMetricsUpdate();
+      if (!update || !this.isOpen()) {
+        return;
+      }
+      this.applySubEventResourceMetricsUpdate(update);
+    });
   }
 
   @HostListener('window:resize')
@@ -301,8 +311,8 @@ export class EventSubeventsListPopupComponent {
 
   protected shouldHostResourcePopup(): boolean {
     return this.isOpen()
-      && (this.eventEditorStore.subEventResourcePopupRequest() !== null
-        || this.resourcePopupStore.popupContextRef()?.origin === 'eventEditor');
+      && (this.resourcePopupStore.subEventResourcePopupRequest() !== null
+        || this.resourcePopupStore.popupContextRef()?.origin === 'subEventResource');
   }
 
   protected shouldHostSupplyContributionsPopup(): boolean {
@@ -722,13 +732,18 @@ export class EventSubeventsListPopupComponent {
     if (!ownerId) {
       return;
     }
-    this.eventEditorStore.requestSubEventResourcePopup({
+    this.resourcePopupStore.requestSubEventResourcePopup({
       type,
       ownerId,
       parentTitle: this.popupSubtitle(),
-      subEvent: {
-        ...item,
-        id: `${item.id ?? ''}`.trim() || item.runtimeId
+      subEventId: `${item.id ?? ''}`.trim() || item.runtimeId,
+      subEventIndex: this.runtimeSourceIndex(item),
+      subEventHeader: {
+        name: item.name,
+        description: item.description,
+        location: item.location,
+        startAt: item.startAt,
+        endAt: item.endAt
       }
     });
   }
@@ -769,6 +784,52 @@ export class EventSubeventsListPopupComponent {
 
   private runtimeActionSourceId(item: ActivityEventSubEventRuntimeDTO): string {
     return `${item.slotSourceId ?? item.parentEventId ?? this.event?.id ?? ''}`.trim();
+  }
+
+  private applySubEventResourceMetricsUpdate(update: SubEventResourceMetricsUpdate): void {
+    const ownerId = `${update.ownerId ?? ''}`.trim();
+    const subEventId = `${update.subEventId ?? ''}`.trim();
+    if (!ownerId || !subEventId) {
+      return;
+    }
+
+    let changed = false;
+    const patchItem = (item: ActivityEventSubEventRuntimeDTO): ActivityEventSubEventRuntimeDTO => {
+      const itemOwnerId = this.runtimeActionSourceId(item);
+      const itemId = `${item.id ?? ''}`.trim();
+      if (itemOwnerId !== ownerId || (itemId !== subEventId && item.runtimeId !== subEventId)) {
+        return item;
+      }
+      changed = true;
+      return {
+        ...item,
+        carsAccepted: update.subEvent.carsAccepted,
+        carsPending: update.subEvent.carsPending,
+        carsCapacityMin: update.subEvent.carsCapacityMin,
+        carsCapacityMax: update.subEvent.carsCapacityMax,
+        accommodationAccepted: update.subEvent.accommodationAccepted,
+        accommodationPending: update.subEvent.accommodationPending,
+        accommodationCapacityMin: update.subEvent.accommodationCapacityMin,
+        accommodationCapacityMax: update.subEvent.accommodationCapacityMax,
+        suppliesAccepted: update.subEvent.suppliesAccepted,
+        suppliesPending: update.subEvent.suppliesPending,
+        suppliesCapacityMin: update.subEvent.suppliesCapacityMin,
+        suppliesCapacityMax: update.subEvent.suppliesCapacityMax
+      };
+    };
+
+    const nextItems = this.items.map(patchItem);
+    const nextSlotSections = this.slotSections.map(section => ({
+      ...section,
+      items: section.items.map(patchItem)
+    }));
+    if (!changed) {
+      return;
+    }
+    this.items = nextItems;
+    this.slotSections = nextSlotSections;
+    this.bumpQuery();
+    this.cdr.markForCheck();
   }
 
   private runtimeSourceIndex(item: ActivityEventSubEventRuntimeDTO): number {
@@ -1248,11 +1309,15 @@ export class EventSubeventsListPopupComponent {
 
   private bumpQuery(): void {
     this.revision += 1;
+    const revisionFilter = { revision: this.revision };
     this.query = {
       ...this.query,
       view: this.view,
       direction: this.order === 'past' ? 'desc' : 'asc',
-      filters: { revision: this.revision }
+      filters: revisionFilter
+    };
+    this.slotSectionQuery = {
+      filters: revisionFilter
     };
   }
 }

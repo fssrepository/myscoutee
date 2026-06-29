@@ -4,11 +4,6 @@ import {
 } from '@angular/core';
 
 import {
-  ActivitySubEventResourceInfoCardConverter,
-  type ActivitySubEventResourceInfoCardConverterOptions,
-  type InfoCardData
-} from '../../../ui';
-import {
   LocalActivityResourcesService
 } from '../../local/source/services/activity-resources.service';
 import {
@@ -109,13 +104,6 @@ export class ActivityResourcesService extends BaseRouteModeService {
       });
     }
     return savedState;
-  }
-
-  subEventResourceInfoCard(
-    card: AppDTOs.SubEventResourceCardDTO,
-    options: ActivitySubEventResourceInfoCardConverterOptions
-  ): InfoCardData {
-    return ActivitySubEventResourceInfoCardConverter.convert(card, options);
   }
 
   private normalizeRef(

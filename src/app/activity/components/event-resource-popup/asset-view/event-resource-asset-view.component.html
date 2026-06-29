@@ -8,22 +8,23 @@
           <p class="subevent-group-stage-subtitle">{{ view.card.title }}</p>
         </div>
         <div class="experience-form-header-controls">
-          <button
-            type="button"
-            class="chat-members-stack chat-members-stack-large chat-header-members event-editor-members-trigger event-editor-members-trigger-members subevent-asset-view-members-btn"
-            [disabled]="!view.canOpenMembers"
-            (click)="requestMembers(view, $event)"
-          >
-            <span class="event-editor-members-invite">
-              <mat-icon>groups</mat-icon>
-              <span>Members</span>
-            </span>
-            @if (view.pendingCount > 0) {
-              <span class="card-badge event-editor-members-pending-badge">
-                {{ view.pendingCount | counterBadge }}
+          @if (canRequestMembers()) {
+            <button
+              type="button"
+              class="chat-members-stack chat-members-stack-large chat-header-members event-editor-members-trigger event-editor-members-trigger-members subevent-asset-view-members-btn"
+              (click)="requestMembers(view, $event)"
+            >
+              <span class="event-editor-members-invite">
+                <mat-icon>groups</mat-icon>
+                <span>Members</span>
               </span>
-            }
-          </button>
+              @if (view.card.pending > 0) {
+                <span class="card-badge event-editor-members-pending-badge">
+                  {{ view.card.pending | counterBadge }}
+                </span>
+              }
+            </button>
+          }
           <button type="button" class="experience-form-close-btn" (click)="close($event)" aria-label="Close asset view">
             <mat-icon>close</mat-icon>
           </button>
@@ -97,7 +98,7 @@
                 </div>
               </div>
               <div class="subevent-asset-view-summary-body">
-                @if (view.mode === 'edit' && view.canEditRoute) {
+                @if (view.mode === 'edit') {
                   <button type="button" class="event-slots-open-btn event-slots-open-btn-inline" (click)="requestRouteSetup(view, $event)">
                     <mat-icon>tune</mat-icon>
                     <span>Open Route Setup</span>

@@ -54,26 +54,21 @@ export class EventResourceAssetViewComponent implements OnChanges {
 
   protected requestMembers(view: EventResourceAssetViewModel, event: Event): void {
     event.stopPropagation();
-    if (!view.canOpenMembers) {
-      return;
-    }
     this.resourcePopupStore.requestResourceAssetViewMembers(view, event);
   }
 
   protected requestRouteView(view: EventResourceAssetViewModel, event: Event): void {
     event.stopPropagation();
-    if (!this.hasRoute(view)) {
-      return;
-    }
     this.resourcePopupStore.requestResourceAssetViewRouteView(view, event);
   }
 
   protected requestRouteSetup(view: EventResourceAssetViewModel, event: Event): void {
     event.stopPropagation();
-    if (view.mode !== 'edit' || !view.canEditRoute) {
-      return;
-    }
     this.resourcePopupStore.requestResourceAssetViewRouteSetup(view, event);
+  }
+
+  protected canRequestMembers(): boolean {
+    return this.resourcePopupStore.assetViewOutletContext() === 'resourcePopup';
   }
 
   protected openPoliciesPopup(event: Event): void {

@@ -1,8 +1,9 @@
-import { Injectable, Type, signal } from '@angular/core';
+import { Injectable, Type, computed, signal } from '@angular/core';
 
 import type * as AppConstants from '../../../core/common/constants';
 import type * as AppDTOs from '../../../core/contracts';
 import type * as ContractTypes from '../../../core/contracts';
+import type { ActivityMemberEntry } from '../../../core/contracts/activity.interface';
 
 export type ResourceAssetDTO = (AppDTOs.AssetDTO | AppDTOs.AssetDetailDTO) & {
   description?: string;
@@ -21,12 +22,6 @@ export interface ResourceAssetViewState {
   card: AppDTOs.SubEventResourceCardDTO;
   mode: 'view' | 'edit';
   source: ResourceAssetDTO | null;
-  memberLabel: string;
-  memberCount: number;
-  pendingCount: number;
-  canOpenMembers: boolean;
-  canEditCapacity: boolean;
-  canEditRoute: boolean;
 }
 
 export interface ResourceAssetViewRequest {
@@ -66,13 +61,52 @@ export type EventResourceAssetExploreOutletActionRequest =
   | (OutletActionRequest & { kind: 'borrowConfirm'; event?: Event });
 
 export interface ResourcePopupContext {
-  origin: 'chat' | 'eventEditor';
+  origin: 'chat' | 'subEventResource';
   ownerId: string;
   parentTitle: string;
   subEvent: ContractTypes.SubEventDTO;
   groupId?: string;
   groupName?: string;
   fallbackCardsByType: Partial<Record<AppConstants.AssetType, ResourceAssetDTO[]>>;
+}
+
+export type SubEventResourcePopupType = AppConstants.SubEventResourceFilter;
+
+export interface SubEventResourcePopupHeader {
+  name?: string | null;
+  title?: string | null;
+  description?: string | null;
+  location?: string | null;
+  startAt?: string | null;
+  endAt?: string | null;
+}
+
+export interface SubEventResourcePopupRequest {
+  type: SubEventResourcePopupType;
+  ownerId: string;
+  subEventId?: string | null;
+  subEventIndex?: number | null;
+  subEventHeader?: SubEventResourcePopupHeader | null;
+  parentTitle?: string;
+  group?: {
+    id?: string | null;
+    groupLabel?: string;
+    source?: string | null;
+    pending?: number;
+    accepted?: number;
+    capacityMin?: number;
+    capacityMax?: number;
+    canManage?: boolean;
+    members?: readonly ActivityMemberEntry[];
+    onMembersChanged?: (members: readonly ActivityMemberEntry[]) => void;
+  } | null;
+}
+
+export interface SubEventResourceMetricsUpdate {
+  revision: number;
+  ownerId: string;
+  subEventId: string;
+  subEvent: ContractTypes.SubEventDTO;
 }
 
 export interface CapacityEditorState {
@@ -211,6 +245,7 @@ export class SubEventResourcePopupStore {
   readonly assetExploreBorrowDraftsRef = signal<Record<string, AssetExploreBorrowDraftState>>({});
   readonly assignContextRef = signal<{ subEventId: string; type: AppConstants.AssetType } | null>(null);
   readonly selectedAssignAssetIdsRef = signal<string[]>([]);
+  private readonly subEventResourcePopupRequestRef = signal<SubEventResourcePopupRequest | null>(null);
   private readonly eventResourcePopupComponentRef = signal<Type<unknown> | null>(null);
   private readonly eventResourceAssetExploreComponentRef = signal<Type<unknown> | null>(null);
   private readonly eventSupplyContributionsPopupComponentRef = signal<Type<unknown> | null>(null);
@@ -221,6 +256,8 @@ export class SubEventResourcePopupStore {
   private readonly eventResourceAssetExploreBorrowDialogComponentRef = signal<Type<unknown> | null>(null);
   private readonly eventResourcePopupOutletActionRequestRef = signal<EventResourcePopupOutletActionRequest | null>(null);
   private readonly eventResourceAssetExploreOutletActionRequestRef = signal<EventResourceAssetExploreOutletActionRequest | null>(null);
+  private readonly resourceMetricsRevisionRef = signal(0);
+  private readonly subEventResourceMetricsUpdateRef = signal<SubEventResourceMetricsUpdate | null>(null);
   private outletActionRequestSequence = 0;
 
   readonly eventResourcePopupComponent = this.eventResourcePopupComponentRef.asReadonly();
@@ -233,6 +270,18 @@ export class SubEventResourcePopupStore {
   readonly eventResourceAssetExploreBorrowDialogComponent = this.eventResourceAssetExploreBorrowDialogComponentRef.asReadonly();
   readonly eventResourcePopupOutletActionRequest = this.eventResourcePopupOutletActionRequestRef.asReadonly();
   readonly eventResourceAssetExploreOutletActionRequest = this.eventResourceAssetExploreOutletActionRequestRef.asReadonly();
+  readonly subEventResourcePopupRequest = this.subEventResourcePopupRequestRef.asReadonly();
+  readonly assetViewOutletContext = computed(() => this.resolveAssetViewOutletContext());
+  readonly resourceMetricsRevision = this.resourceMetricsRevisionRef.asReadonly();
+  readonly subEventResourceMetricsUpdate = this.subEventResourceMetricsUpdateRef.asReadonly();
+
+  requestSubEventResourcePopup(request: SubEventResourcePopupRequest): void {
+    this.subEventResourcePopupRequestRef.set(request);
+  }
+
+  clearSubEventResourcePopupRequest(): void {
+    this.subEventResourcePopupRequestRef.set(null);
+  }
 
   openResourcePopup(context: ResourcePopupContext, type: AppConstants.AssetType): void {
     this.popupContextRef.set(context);
@@ -270,6 +319,20 @@ export class SubEventResourcePopupStore {
 
   supplyContributionEntries(subEventId: string, cardId: string): AppDTOs.SubEventSupplyContributionEntryDTO[] {
     return this.supplyContributionEntriesByAssignmentKey[this.supplyAssignmentKey(subEventId, cardId)] ?? [];
+  }
+
+  publishSubEventResourceMetrics(context: ResourcePopupContext): void {
+    const revision = this.resourceMetricsRevisionRef() + 1;
+    this.resourceMetricsRevisionRef.set(revision);
+    this.subEventResourceMetricsUpdateRef.set({
+      revision,
+      ownerId: context.ownerId,
+      subEventId: context.subEvent.id,
+      subEvent: {
+        ...context.subEvent,
+        groups: context.subEvent.groups?.map(group => ({ ...group })) ?? []
+      }
+    });
   }
 
   requestResourceAssetViewClose(event?: Event): void {
