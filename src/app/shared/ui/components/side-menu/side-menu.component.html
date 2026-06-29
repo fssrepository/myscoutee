@@ -46,7 +46,7 @@
         </div>
       </div>
       <div class="user-menu-content">
-        @if (!isOnline()) {
+        @if (!runtimeStore.isOnline()) {
           <div class="user-menu-offline-note">
             {{ navigatorOfflineNote() }}
           </div>
@@ -73,69 +73,69 @@
   }
 }
 <app-profile-settings-popups></app-profile-settings-popups>
-@if (impressionsPopupComponent(); as impressionsComponent) {
+@if (profileStore.impressionsPopupComponent(); as impressionsComponent) {
   <ng-container *ngComponentOutlet="impressionsComponent"></ng-container>
 }
-@if (profileEditorComponent(); as profileComponent) {
+@if (profileStore.profileEditorComponent(); as profileComponent) {
   <ng-container *ngComponentOutlet="profileComponent"></ng-container>
 }
-@if (profileViewPopupComponent(); as profileViewComponent) {
+@if (profileStore.profileViewPopupComponent(); as profileViewComponent) {
   <ng-container *ngComponentOutlet="profileViewComponent"></ng-container>
 }
 
 <app-dialog></app-dialog>
 
-@if (eventMembersPopupComponent(); as membersComponent) {
+@if (activitiesStore.eventMembersPopupComponent(); as membersComponent) {
   <ng-container *ngComponentOutlet="membersComponent"></ng-container>
 }
 @if (subEventResourceStore.popupContextRef()) {
-  @if (eventResourcePopupComponent(); as resourceComponent) {
+  @if (subEventResourceStore.eventResourcePopupComponent(); as resourceComponent) {
     <ng-container *ngComponentOutlet="resourceComponent"></ng-container>
   }
 }
 @if (subEventResourceStore.assetExplorePopupRef()) {
-  @if (eventResourceAssetExploreComponent(); as assetExploreComponent) {
+  @if (subEventResourceStore.eventResourceAssetExploreComponent(); as assetExploreComponent) {
     <ng-container *ngComponentOutlet="assetExploreComponent"></ng-container>
   }
 }
 @if (subEventResourceStore.popupContextRef() && !subEventResourceStore.assetExploreOnlyRef() && subEventResourceStore.supplyPopupRef()) {
-  @if (eventSupplyContributionsPopupComponent(); as supplyContributionsComponent) {
+  @if (subEventResourceStore.eventSupplyContributionsPopupComponent(); as supplyContributionsComponent) {
     <ng-container *ngComponentOutlet="supplyContributionsComponent"></ng-container>
   }
 }
-@if (assetMemberPickerPopupComponent(); as assetMemberPickerComponent) {
+@if (assetPopupStore.assetMemberPickerPopupComponent(); as assetMemberPickerComponent) {
   <ng-container *ngComponentOutlet="assetMemberPickerComponent"></ng-container>
 }
-@if (contactsPopupComponent(); as contactsComponent) {
+@if (profileStore.contactsPopupComponent(); as contactsComponent) {
   <ng-container *ngComponentOutlet="contactsComponent"></ng-container>
 }
 
-@if (activitiesPopupComponent(); as activitiesComponent) {
+@if (activitiesStore.activitiesPopupComponent(); as activitiesComponent) {
   <ng-container *ngComponentOutlet="activitiesComponent"></ng-container>
 }
-@if (eventChatPopupComponent(); as chatComponent) {
+@if (activitiesStore.eventChatPopupComponent(); as chatComponent) {
   <ng-container *ngComponentOutlet="chatComponent"></ng-container>
 }
-@if (eventExplorePopupComponent(); as exploreComponent) {
+@if (activitiesStore.eventExplorePopupComponent(); as exploreComponent) {
   <ng-container *ngComponentOutlet="exploreComponent"></ng-container>
 }
-@if (eventEditorPopupComponent(); as popupComponent) {
+@if (eventEditorStore.eventEditorPopupComponent(); as popupComponent) {
   <ng-container *ngComponentOutlet="popupComponent"></ng-container>
 }
-@if (eventSubeventsListPopupComponent(); as subeventsPopupComponent) {
+@if (popupStore.eventSubeventsListPopupComponent(); as subeventsPopupComponent) {
   <ng-container *ngComponentOutlet="subeventsPopupComponent"></ng-container>
 }
-@if (eventTournamentGroupsPopupComponent(); as tournamentGroupsPopupComponent) {
+@if (popupStore.eventTournamentGroupsPopupComponent(); as tournamentGroupsPopupComponent) {
   <ng-container *ngComponentOutlet="tournamentGroupsPopupComponent"></ng-container>
 }
-@if (eventFeedbackPopupComponent(); as feedbackComponent) {
+@if (activitiesStore.eventFeedbackPopupComponent(); as feedbackComponent) {
   <ng-container *ngComponentOutlet="feedbackComponent"></ng-container>
 }
 
-@if (assetPopupComponent(); as assetComponent) {
+@if (assetPopupStore.assetPopupComponent(); as assetComponent) {
   <ng-container *ngComponentOutlet="assetComponent"></ng-container>
 }
 
-@if (explanationPopupComponent(); as explanationComponent) {
+@if (profileStore.explanationPopupComponent(); as explanationComponent) {
   <ng-container *ngComponentOutlet="explanationComponent"></ng-container>
 }

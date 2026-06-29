@@ -173,9 +173,9 @@ export class SideMenuComponent implements OnDestroy {
 
   private readonly router = inject(Router);
   private readonly userProfileStore = inject(UserProfileStore);
-  private readonly runtimeStore = inject(AppRuntimeStore);
+  protected readonly runtimeStore = inject(AppRuntimeStore);
   private readonly activityStore = inject(ActivityStore);
-  private readonly popupStore = inject(PopupStore);
+  protected readonly popupStore = inject(PopupStore);
   private readonly explanationGuide = inject(ExplanationGuideService);
   private readonly helpCenterService = inject(HelpCenterService);
   private readonly privacyPolicy = inject(PrivacyPolicyService);
@@ -183,11 +183,11 @@ export class SideMenuComponent implements OnDestroy {
   private readonly usersService = inject(UsersService);
   private readonly sessionService = inject(SessionService);
   private readonly dialogStore = inject(DialogStore);
-  private readonly profileStore = inject(ProfileStore);
-  private readonly activitiesStore = inject(ActivitiesPopupStore);
-  private readonly assetPopupStore = inject(AssetPopupStore);
+  protected readonly profileStore = inject(ProfileStore);
+  protected readonly activitiesStore = inject(ActivitiesPopupStore);
+  protected readonly assetPopupStore = inject(AssetPopupStore);
   private readonly assetStore = inject(AssetStore);
-  private readonly eventEditorStore = inject(EventEditorPopupStore);
+  protected readonly eventEditorStore = inject(EventEditorPopupStore);
   protected readonly subEventResourceStore = inject(SubEventResourcePopupStore);
   private readonly currentRoutePathRef = signal(AppUtils.normalizeRoutePath(this.router.url));
   private readonly menuOpenRef = signal(false);
@@ -208,34 +208,8 @@ export class SideMenuComponent implements OnDestroy {
   private reactivationPromptUserId = '';
   private privacyConsentCheckToken = 0;
   private userMenuLoadOverdueTimer: ReturnType<typeof setTimeout> | null = null;
-  protected readonly impressionsPopupComponent = this.profileStore.impressionsPopupComponent;
-  protected readonly profileEditorComponent = this.profileStore.profileEditorComponent;
-  protected readonly profileViewPopupComponent = this.profileStore.profileViewPopupComponent;
-  protected readonly eventMembersPopupComponent = this.activitiesStore.eventMembersPopupComponent;
-  protected readonly eventResourcePopupComponent = this.subEventResourceStore.eventResourcePopupComponent;
-  protected readonly eventResourceAssetExploreComponent = this.subEventResourceStore.eventResourceAssetExploreComponent;
-  protected readonly eventSupplyContributionsPopupComponent = this.subEventResourceStore.eventSupplyContributionsPopupComponent;
-  protected readonly assetMemberPickerPopupComponent = this.assetPopupStore.assetMemberPickerPopupComponent;
-  protected readonly eventEditorPopupComponent = this.eventEditorStore.eventEditorPopupComponent;
-  protected readonly eventSubeventsListPopupComponent = this.popupStore.eventSubeventsListPopupComponent;
-  protected readonly eventTournamentGroupsPopupComponent = this.popupStore.eventTournamentGroupsPopupComponent;
-  protected readonly eventChatPopupComponent = this.activitiesStore.eventChatPopupComponent;
-  protected readonly eventExplorePopupComponent = this.activitiesStore.eventExplorePopupComponent;
-  protected readonly activitiesPopupComponent = this.activitiesStore.activitiesPopupComponent;
-  protected readonly assetPopupComponent = this.assetPopupStore.assetPopupComponent;
-  protected readonly eventFeedbackPopupComponent = this.activitiesStore.eventFeedbackPopupComponent;
-  protected readonly contactsPopupComponent = this.profileStore.contactsPopupComponent;
-  protected readonly explanationPopupComponent = this.profileStore.explanationPopupComponent;
-  protected readonly bindings = this.profileStore.bindings;
-  protected readonly activeUser = this.userProfileStore.activeUserProfile;
-  protected readonly explanationGuideEnabled = this.explanationGuide.enabled;
-  protected readonly helpVersionLabel = this.helpCenterService.activeVersionLabel;
-  protected readonly hasActiveHelpRevision = this.helpCenterService.hasActiveRevision;
-  protected readonly privacyVersionLabel = this.privacyPolicy.activeVersionLabel;
-  protected readonly termsVersionLabel = this.termsPolicy.activeVersionLabel;
-  protected readonly isOnline = this.runtimeStore.isOnline;
   protected readonly avatarState = computed<NavigatorAvatarState>(() => {
-    const user = this.activeUser();
+    const user = this.userProfileStore.activeUserProfile();
     return {
       badgeCount: user ? this.resolveUserBadgeCount(user) : 0,
       imageUrl: AppUtils.firstImageUrl(user?.images) || null
@@ -253,10 +227,10 @@ export class SideMenuComponent implements OnDestroy {
     const activeUserId = this.userProfileStore.activeUserId().trim();
     return Boolean(activeUserId) && path !== '/' && !path.startsWith('/entry');
   });
-  protected readonly hasBindings = computed(() => this.bindings() !== null);
+  protected readonly hasBindings = computed(() => this.profileStore.bindings() !== null);
   protected readonly isMenuOpen = computed(() => this.menuUiState().open);
   protected readonly hasOfflineProfile = computed(() =>
-    !this.runtimeStore.isOnline() && this.activeUser() !== null
+    !this.runtimeStore.isOnline() && this.userProfileStore.activeUserProfile() !== null
   );
   protected readonly canToggleAvatarMenu = computed(() =>
     this.avatarVisible()
@@ -330,7 +304,7 @@ export class SideMenuComponent implements OnDestroy {
     return 'Loading profile';
   });
   protected readonly avatarMenuItems = computed<readonly AppMenuItem<NavigatorAvatarMenuItemId, NavigatorAvatarMenuContext>[]>(() => {
-    const user = this.activeUser();
+    const user = this.userProfileStore.activeUserProfile();
     const canToggle = this.canToggleAvatarMenu();
     const imageUrl = canToggle ? this.avatarState().imageUrl ?? '' : '';
     const icon = this.avatarLoading() ? 'schedule' : this.avatarLoadError() ? 'person_off' : '';
@@ -419,8 +393,8 @@ export class SideMenuComponent implements OnDestroy {
         id: 'help',
         label: 'Help',
         icon: 'help_outline',
-        counter: this.helpVersionLabel(),
-        disabled: !this.hasActiveHelpRevision(),
+        counter: this.helpCenterService.activeVersionLabel(),
+        disabled: !this.helpCenterService.hasActiveRevision(),
         ariaLabel: 'Open help'
       }
     ];
@@ -446,14 +420,14 @@ export class SideMenuComponent implements OnDestroy {
         id: 'privacy',
         label: 'Privacy',
         icon: 'policy',
-        counter: this.privacyVersionLabel(),
+        counter: this.privacyPolicy.activeVersionLabel(),
         ariaLabel: 'Open privacy'
       },
       {
         id: 'terms',
         label: 'Terms',
         icon: 'rule',
-        counter: this.termsVersionLabel(),
+        counter: this.termsPolicy.activeVersionLabel(),
         ariaLabel: 'Open terms'
       }
     );
@@ -483,8 +457,8 @@ export class SideMenuComponent implements OnDestroy {
           label: 'Explanations',
           icon: 'tips_and_updates',
           kind: 'toggle',
-          checked: this.explanationGuideEnabled(),
-          ariaLabel: this.explanationGuideEnabled() ? 'Turn explanations off' : 'Turn explanations on'
+          checked: this.explanationGuide.enabled(),
+          ariaLabel: this.explanationGuide.enabled() ? 'Turn explanations off' : 'Turn explanations on'
         },
         {
           id: 'share',
@@ -611,7 +585,7 @@ export class SideMenuComponent implements OnDestroy {
               icon: 'chat',
               palette: 'blue',
               ariaLabel: 'Open chat',
-              disabled: !this.isOnline()
+              disabled: !this.runtimeStore.isOnline()
             },
             {
               id: 'invitations',
@@ -691,7 +665,7 @@ export class SideMenuComponent implements OnDestroy {
     };
   });
   protected readonly adminNavigatorMenuModel = computed<AppMenuModel<NavigatorAdminMenuShortcutId>>(() => {
-    const disabled = !this.isOnline();
+    const disabled = !this.runtimeStore.isOnline();
     return {
       nodes: [
         {
@@ -1252,7 +1226,7 @@ export class SideMenuComponent implements OnDestroy {
     return ProfileHeaderCardConverter.convert(user, {
       admin,
       showEdit: true,
-      editDisabled: admin ? !this.isOnline() : !this.isOnline() || this.isBlockedUser(user),
+      editDisabled: admin ? !this.runtimeStore.isOnline() : !this.runtimeStore.isOnline() || this.isBlockedUser(user),
       editAriaLabel: admin ? 'Open admin profile' : 'Open profile editor',
       showRing: !admin && this.showProfileSaveRing(),
       ringState: this.hasProfileSaveError() ? 'error' : 'loading',
@@ -1279,12 +1253,12 @@ export class SideMenuComponent implements OnDestroy {
   }
 
   protected isPrimaryMenuDisabled(user: NavigatorMenuUser): boolean {
-    return !this.isOnline() || this.isBlockedUser(user);
+    return !this.runtimeStore.isOnline() || this.isBlockedUser(user);
   }
 
   protected openProfileEditor(event?: Event): void {
     event?.stopPropagation();
-    if (!this.isOnline() || this.isBlockedUser()) {
+    if (!this.runtimeStore.isOnline() || this.isBlockedUser()) {
       return;
     }
     if (this.isAdminMode()) {
@@ -1300,7 +1274,7 @@ export class SideMenuComponent implements OnDestroy {
 
   protected openImpressions(event?: Event): void {
     event?.stopPropagation();
-    if (!this.isOnline() || this.isBlockedUser()) {
+    if (!this.runtimeStore.isOnline() || this.isBlockedUser()) {
       return;
     }
     this.openImpressionsPopup();
@@ -1337,7 +1311,7 @@ export class SideMenuComponent implements OnDestroy {
 
   protected openAssetCarPopup(event?: Event): void {
     event?.stopPropagation();
-    if (!this.isOnline() || this.isBlockedUser()) {
+    if (!this.runtimeStore.isOnline() || this.isBlockedUser()) {
       return;
     }
     this.popupStore.openNavigatorAssetRequest('Car');
@@ -1345,7 +1319,7 @@ export class SideMenuComponent implements OnDestroy {
 
   protected openAssetAccommodationPopup(event?: Event): void {
     event?.stopPropagation();
-    if (!this.isOnline() || this.isBlockedUser()) {
+    if (!this.runtimeStore.isOnline() || this.isBlockedUser()) {
       return;
     }
     this.popupStore.openNavigatorAssetRequest('Accommodation');
@@ -1353,7 +1327,7 @@ export class SideMenuComponent implements OnDestroy {
 
   protected openAssetSuppliesPopup(event?: Event): void {
     event?.stopPropagation();
-    if (!this.isOnline() || this.isBlockedUser()) {
+    if (!this.runtimeStore.isOnline() || this.isBlockedUser()) {
       return;
     }
     this.popupStore.openNavigatorAssetRequest('Supplies');
@@ -1373,7 +1347,7 @@ export class SideMenuComponent implements OnDestroy {
 
   protected openEventFeedbackPopup(event?: Event): void {
     event?.stopPropagation();
-    if (!this.isOnline() || this.isBlockedUser()) {
+    if (!this.runtimeStore.isOnline() || this.isBlockedUser()) {
       return;
     }
     this.popupStore.openNavigatorEventFeedbackRequest();
@@ -1385,7 +1359,7 @@ export class SideMenuComponent implements OnDestroy {
 
   protected openAdminReportsShortcut(event?: Event): void {
     event?.stopPropagation();
-    if (!this.isOnline()) {
+    if (!this.runtimeStore.isOnline()) {
       return;
     }
     this.popupStore.openAdminNavigatorRequest('reports');
@@ -1393,7 +1367,7 @@ export class SideMenuComponent implements OnDestroy {
 
   protected openAdminFeedbackShortcut(event?: Event): void {
     event?.stopPropagation();
-    if (!this.isOnline()) {
+    if (!this.runtimeStore.isOnline()) {
       return;
     }
     this.popupStore.openAdminNavigatorRequest('feedback');
@@ -1401,7 +1375,7 @@ export class SideMenuComponent implements OnDestroy {
 
   protected openAdminChatShortcut(event?: Event): void {
     event?.stopPropagation();
-    if (!this.isOnline()) {
+    if (!this.runtimeStore.isOnline()) {
       return;
     }
     this.popupStore.openAdminNavigatorRequest('chat');
@@ -1409,7 +1383,7 @@ export class SideMenuComponent implements OnDestroy {
 
   protected openAdminProfileShortcut(event?: Event): void {
     event?.stopPropagation();
-    if (!this.isOnline()) {
+    if (!this.runtimeStore.isOnline()) {
       return;
     }
     this.popupStore.openAdminNavigatorRequest('profile');
@@ -1417,7 +1391,7 @@ export class SideMenuComponent implements OnDestroy {
 
   protected openAdminHelpEditorShortcut(event?: Event): void {
     event?.stopPropagation();
-    if (!this.isOnline()) {
+    if (!this.runtimeStore.isOnline()) {
       return;
     }
     this.popupStore.openAdminNavigatorRequest('help-editor');
@@ -1425,7 +1399,7 @@ export class SideMenuComponent implements OnDestroy {
 
   protected openAdminIdeaEditorShortcut(event?: Event): void {
     event?.stopPropagation();
-    if (!this.isOnline()) {
+    if (!this.runtimeStore.isOnline()) {
       return;
     }
     this.popupStore.openAdminNavigatorRequest('idea-editor');
@@ -1433,7 +1407,7 @@ export class SideMenuComponent implements OnDestroy {
 
   protected openAdminNotificationsShortcut(event?: Event): void {
     event?.stopPropagation();
-    if (!this.isOnline()) {
+    if (!this.runtimeStore.isOnline()) {
       return;
     }
     this.popupStore.openAdminNavigatorRequest('notifications');
@@ -1441,7 +1415,7 @@ export class SideMenuComponent implements OnDestroy {
 
   protected openAdminParamsShortcut(event?: Event): void {
     event?.stopPropagation();
-    if (!this.isOnline()) {
+    if (!this.runtimeStore.isOnline()) {
       return;
     }
     this.popupStore.openAdminNavigatorRequest('params');
@@ -1449,7 +1423,7 @@ export class SideMenuComponent implements OnDestroy {
 
   protected openAdminStatsShortcut(event?: Event): void {
     event?.stopPropagation();
-    if (!this.isOnline()) {
+    if (!this.runtimeStore.isOnline()) {
       return;
     }
     this.popupStore.openAdminNavigatorRequest('stats');
@@ -1457,7 +1431,7 @@ export class SideMenuComponent implements OnDestroy {
 
   protected openAdminAffinityGraphShortcut(event?: Event): void {
     event?.stopPropagation();
-    if (!this.isOnline()) {
+    if (!this.runtimeStore.isOnline()) {
       return;
     }
     this.popupStore.openAdminNavigatorRequest('affinity-graph');
@@ -1465,7 +1439,7 @@ export class SideMenuComponent implements OnDestroy {
 
   protected openAdminMonitoringShortcut(event?: Event): void {
     event?.stopPropagation();
-    if (!this.isOnline()) {
+    if (!this.runtimeStore.isOnline()) {
       return;
     }
     this.popupStore.openAdminNavigatorRequest('monitoring');
@@ -1898,7 +1872,7 @@ export class SideMenuComponent implements OnDestroy {
   }
 
   private openSettingsPopup(popup: NavigatorSettingsMenuItemId): void {
-    if (popup === 'help' && !this.hasActiveHelpRevision()) {
+    if (popup === 'help' && !this.helpCenterService.hasActiveRevision()) {
       return;
     }
     if (popup === 'report-bugs' || popup === 'delete-account' || popup === 'logout') {
@@ -1920,7 +1894,7 @@ export class SideMenuComponent implements OnDestroy {
     primaryFilter: 'rates' | 'chats' | 'events',
     eventScope?: 'all' | 'active-events' | 'pending' | 'invitations' | 'my-events' | 'drafts' | 'trash'
   ): void {
-    if (!this.isOnline() || (primaryFilter !== 'chats' && this.isBlockedUser())) {
+    if (!this.runtimeStore.isOnline() || (primaryFilter !== 'chats' && this.isBlockedUser())) {
       return;
     }
     this.popupStore.openNavigatorActivitiesRequest(primaryFilter, eventScope);
@@ -1928,7 +1902,7 @@ export class SideMenuComponent implements OnDestroy {
 
   private openBlockedUserSupportChat(): void {
     const user = this.menuUser();
-    if (!user || !this.isOnline()) {
+    if (!user || !this.runtimeStore.isOnline()) {
       return;
     }
     const activeUserId = user.id.trim();
