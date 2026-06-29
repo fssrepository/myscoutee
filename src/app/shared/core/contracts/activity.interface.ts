@@ -293,11 +293,29 @@ export interface ActivitySubEventResourceStateRefDTO {
   assetOwnerUserId: string;
 }
 
-export interface ActivitySubEventResourceStateDTO extends ActivitySubEventResourceStateRefDTO {
+export interface ActivitySubEventResourceStateDTO {
+  ownerId: string;
+  subEventId: string;
+  assetOwnerUserId: string;
   assetAssignmentIds: ActivitySubEventAssetAssignmentIdsDTO;
   assetSettingsByType: ActivitySubEventAssetSettingsByTypeDTO;
   supplyContributionEntriesByAssetId: ActivitySubEventSupplyContributionsByAssetIdDTO;
   fallbackAssetCardsByType?: Partial<Record<AppConstants.AssetType, AssetContracts.AssetDetailDTO[]>>;
+}
+
+export interface ActivitySubEventStageRuntimeStateRefDTO {
+  ownerId: string;
+  subEventId: string;
+}
+
+export interface ActivitySubEventStageRuntimeStateDTO {
+  ownerId: string;
+  subEventId: string;
+  stageStatus?: EventContracts.TournamentStageStatus | string | null;
+  stageStatusReason?: string | null;
+  stageStatusUpdatedAt?: string | null;
+  stageFinalizedAt?: string | null;
+  stageFinalizedByUserId?: string | null;
 }
 
 export interface ActivityEventDTO {
@@ -325,6 +343,7 @@ export interface ActivityEventDTO {
   capacityMin?: number | null;
   capacityMax?: number | null;
   eventType?: EventContracts.EventRecordKind;
+  mode?: EventContracts.EventMode;
   acceptedMembers: number;
   pendingMembers: number;
   acceptedMemberUserIds?: string[];
@@ -334,15 +353,6 @@ export interface ActivityEventDTO {
   pendingReason?: AppConstants.ActivityPendingReason;
   boost: number;
   subEventDefinitions?: SubEventDefinitionDTO[];
-}
-
-export interface ActivityEventSubEventRuntimeDTO extends EventContracts.SubEventDTO {
-  runtimeId: string;
-  parentEventId?: string | null;
-  slotSourceId?: string | null;
-  slotTemplateId?: string | null;
-  slotTitle?: string | null;
-  slotTimeframe?: string | null;
 }
 
 export interface ActivityEventSubEventsQueryDTO {
@@ -355,9 +365,20 @@ export interface ActivityEventSubEventsQueryDTO {
   rangeEnd?: string | null;
 }
 
+export interface SubEventsSlotDTO {
+  id: string;
+  parentEventId: string;
+  slotSourceId?: string | null;
+  slotTemplateId?: string | null;
+  title?: string | null;
+  timeframe?: string | null;
+  startAt?: string | null;
+  endAt?: string | null;
+  subEventItems: EventContracts.SubEventDTO[];
+}
+
 export interface ActivityEventSubEventsResultDTO {
-  event: ActivityEventDetailDTO;
-  items: ActivityEventSubEventRuntimeDTO[];
+  slots: SubEventsSlotDTO[];
 }
 
 export type SubEventDefinitionTiming = 'Before' | 'During' | 'After';

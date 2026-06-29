@@ -141,10 +141,7 @@ export class SeedEventsRepository {
     const seededSlotTemplates = seeded.slotTemplates ?? [];
     const existingDefinitions = existing.subEventDefinitions ?? [];
     const seededDefinitions = seeded.subEventDefinitions ?? [];
-    const existingSubEvents = existing.subEvents ?? [];
-    const seededSubEvents = seeded.subEvents ?? [];
     const shouldAdoptSeedDefinitions = existingDefinitions.length === 0 && seededDefinitions.length > 0;
-    const shouldAdoptSeedSubEvents = existingSubEvents.length === 0 && seededSubEvents.length > 0;
     const shouldAdoptSeedSlots = existingSlotTemplates.length === 0 && seededSlotTemplates.length > 0;
 
     return SeedEventsBuilder.cloneRecord({
@@ -161,8 +158,8 @@ export class SeedEventsRepository {
       eventType: existing.eventType ?? seeded.eventType,
       subEventsEnabled: existing.subEventsEnabled ?? seeded.subEventsEnabled,
       subEventDefinitions: shouldAdoptSeedDefinitions ? seededDefinitions : existingDefinitions,
-      subEvents: shouldAdoptSeedSubEvents ? seededSubEvents : existingSubEvents,
-      mode: existing.mode ?? seeded.mode
+      subEvents: [],
+      mode: seeded.mode ?? existing.mode
     });
   }
 

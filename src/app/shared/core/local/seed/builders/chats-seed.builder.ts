@@ -11,6 +11,25 @@ import { SeedUserBuilder } from './user-seed.builder';
 import { SEED_SCHEDULE_REFERENCE_DATE } from '../seed-constants';
 
 type ChatSeedUser = Pick<UserDto, 'id' | 'name' | 'initials' | 'gender' | 'images'>;
+type ChatSeedSubEventGroup = {
+  id: string;
+  name: string;
+  capacityMin?: number | null;
+  capacityMax?: number | null;
+};
+type ChatSeedSubEvent = {
+  id: string;
+  name: string;
+  optional?: boolean;
+  startAt: string;
+  groups?: ChatSeedSubEventGroup[];
+  capacityMax?: number | null;
+  membersAccepted?: number | null;
+  membersPending?: number | null;
+  carsPending?: number | null;
+  accommodationPending?: number | null;
+  suppliesPending?: number | null;
+};
 
 const SEED_CHAT_ITEMS_BY_USER: Record<string, ChatRecord[]> = {
   'admin-demo-ava': [
@@ -227,7 +246,7 @@ export class SeedChatsBuilder {
     for (const record of records) {
       items.push(this.buildServiceContextChat(normalizedOwnerUserId, record));
       items.push(this.buildMainContextChat(normalizedOwnerUserId, record));
-      const subEvents = this.sortSubEventsByStartAsc(record.subEvents ?? []);
+      const subEvents = this.sortSubEventsByStartAsc(this.contextSubEvents(record));
       for (const [index, subEvent] of subEvents.entries()) {
         const stageLabel = `Stage ${index + 1}`;
         if (subEvent.optional) {
@@ -341,7 +360,7 @@ export class SeedChatsBuilder {
   private static buildOptionalContextChat(
     ownerUserId: string,
     record: ActivityEventRecord,
-    subEvent: NonNullable<ActivityEventRecord['subEvents']>[number],
+    subEvent: ChatSeedSubEvent,
     stageLabel: string
   ): ChatRecord | null {
     const acceptedTarget = this.countValue(subEvent.membersAccepted);
@@ -375,7 +394,7 @@ export class SeedChatsBuilder {
   private static buildGroupContextChat(
     ownerUserId: string,
     record: ActivityEventRecord,
-    subEvent: NonNullable<ActivityEventRecord['subEvents']>[number],
+    subEvent: ChatSeedSubEvent,
     stageLabel: string
   ): ChatRecord | null {
     const groups = [...(subEvent.groups ?? [])];
@@ -454,9 +473,9 @@ export class SeedChatsBuilder {
   }
 
   private static estimateGroupAcceptedCount(
-    subEvent: NonNullable<ActivityEventRecord['subEvents']>[number],
-    group: NonNullable<NonNullable<ActivityEventRecord['subEvents']>[number]['groups']>[number],
-    groups: NonNullable<NonNullable<ActivityEventRecord['subEvents']>[number]['groups']>
+    subEvent: ChatSeedSubEvent,
+    group: ChatSeedSubEventGroup,
+    groups: ChatSeedSubEventGroup[]
   ): number {
     const acceptedBase = this.countValue(subEvent.membersAccepted);
     const stageCapacity = Math.max(
@@ -470,9 +489,9 @@ export class SeedChatsBuilder {
   }
 
   private static estimateGroupPendingCount(
-    subEvent: NonNullable<ActivityEventRecord['subEvents']>[number],
-    group: NonNullable<NonNullable<ActivityEventRecord['subEvents']>[number]['groups']>[number],
-    groups: NonNullable<NonNullable<ActivityEventRecord['subEvents']>[number]['groups']>
+    subEvent: ChatSeedSubEvent,
+    group: ChatSeedSubEventGroup,
+    groups: ChatSeedSubEventGroup[]
   ): number {
     const pendingBase = this.countValue(subEvent.membersPending);
     const stageCapacity = Math.max(
@@ -487,7 +506,7 @@ export class SeedChatsBuilder {
   }
 
   private static sumSubEventPending(
-    subEvent: NonNullable<ActivityEventRecord['subEvents']>[number],
+    subEvent: ChatSeedSubEvent,
     includeMembers: boolean
   ): number {
     return (includeMembers ? this.countValue(subEvent.membersPending) : 0)
@@ -512,7 +531,49 @@ export class SeedChatsBuilder {
     return unique;
   }
 
-  private static sortSubEventsByStartAsc(items: readonly NonNullable<ActivityEventRecord['subEvents']>[number][]): NonNullable<ActivityEventRecord['subEvents']>[number][] {
+  private static contextSubEvents(record: ActivityEventRecord): ChatSeedSubEvent[] {
+    const definitions = record.subEventDefinitions ?? [];
+    const slotStartMs = AppUtils.toSortableDate(record.startAtIso);
+    let previousStartOffsetMinutes = 0;
+    let previousEndOffsetMinutes = 0;
+    let hasPrevious = false;
+    return definitions.map((item, index) => {
+      const durationMinutes = Math.max(0, Math.trunc(Number(item.durationMinutes) || 0));
+      const offsetMinutes = Math.max(0, Math.trunc(Number(item.offsetMinutes) || 0));
+      const timing = `${item.timing ?? ''}`.trim().toLowerCase();
+      const startOffsetMinutes = !hasPrevious
+        ? offsetMinutes
+        : timing === 'during'
+          ? previousStartOffsetMinutes + offsetMinutes
+          : previousEndOffsetMinutes + offsetMinutes;
+      previousStartOffsetMinutes = startOffsetMinutes;
+      previousEndOffsetMinutes = startOffsetMinutes + durationMinutes;
+      hasPrevious = true;
+      const startAt = Number.isFinite(slotStartMs) && slotStartMs > 0
+        ? AppUtils.toIsoDateTime(new Date(slotStartMs + (startOffsetMinutes * 60 * 1000)))
+        : record.startAtIso;
+      return {
+        id: `${item.id ?? ''}`.trim() || `subevent-${index + 1}`,
+        name: `${item.name ?? ''}`.trim() || `Sub Event ${index + 1}`,
+        optional: item.optional === true,
+        startAt,
+        groups: (item.groups ?? []).map(group => ({
+          id: `${group.id ?? ''}`.trim(),
+          name: `${group.name ?? ''}`.trim(),
+          capacityMin: group.capacityMin,
+          capacityMax: group.capacityMax
+        })).filter(group => group.id.length > 0),
+        capacityMax: item.capacityMax ?? item.tournamentGroupCapacityMax ?? null,
+        membersAccepted: 0,
+        membersPending: 0,
+        carsPending: 0,
+        accommodationPending: 0,
+        suppliesPending: 0
+      };
+    });
+  }
+
+  private static sortSubEventsByStartAsc(items: readonly ChatSeedSubEvent[]): ChatSeedSubEvent[] {
     return [...items].sort((left, right) => AppUtils.toSortableDate(left.startAt) - AppUtils.toSortableDate(right.startAt));
   }
 

@@ -37,6 +37,26 @@ export class LocalActivityResourcesRepository {
     return this.peekSubEventResourceRecord(ref);
   }
 
+  querySubEventResourceRecordsByRefs(
+    refs: readonly AppDTOs.ActivitySubEventResourceStateRefDTO[]
+  ): ActivitySubEventResourceRecord[] {
+    const normalizedRefs = (refs ?? [])
+      .map(ref => LocalActivityResourcesMapper.normalizeRef(ref))
+      .filter((ref): ref is AppDTOs.ActivitySubEventResourceStateRefDTO => Boolean(ref));
+    if (normalizedRefs.length === 0) {
+      return [];
+    }
+    const table = this.normalizeCollection(this.memoryDb.read()[ACTIVITY_RESOURCES_TABLE_NAME]);
+    const recordIds = new Set(normalizedRefs.map(ref => LocalActivityResourcesMapper.recordId(ref)));
+    const ids = Array.from(new Set(
+      normalizedRefs.flatMap(ref => table.idsByOwnerKey[LocalActivityResourcesMapper.ownerKey(ref)] ?? [])
+    ));
+    return Array.from(new Set(ids))
+      .map(id => table.byId[id])
+      .filter((record): record is ActivitySubEventResourceRecord => Boolean(record) && recordIds.has(record.id))
+      .map(record => LocalActivityResourcesMapper.cloneRecord(record));
+  }
+
   async replaceSubEventResourceRecord(
     record: ActivitySubEventResourceRecord
   ): Promise<ActivitySubEventResourceRecord | null> {

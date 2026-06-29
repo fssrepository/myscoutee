@@ -6,7 +6,6 @@ import type {
   EventRecordKind,
   EventSlotOccurrenceDTO,
   EventSlotTemplateDTO,
-  SubEventDTO,
   EventMode
 } from '../../../contracts/event.interface';
 import type { ActivityPendingReason, EventVisibility } from '../../../common/constants';
@@ -90,7 +89,6 @@ export interface ActivityEventSeedItem {
   topics?: string[];
   subEventsEnabled?: boolean;
   subEventDefinitions?: SubEventDefinitionDTO[];
-  subEvents?: SubEventDTO[];
   mode?: EventMode;
   policies?: EventPolicyDTO[];
   policiesEnabled?: boolean;

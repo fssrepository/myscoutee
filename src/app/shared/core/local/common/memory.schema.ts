@@ -1,6 +1,7 @@
 import type {
   ActivityMembersMemorySchema,
-  ActivityResourcesMemorySchema
+  ActivityResourcesMemorySchema,
+  ActivitySubEventStageRuntimeMemorySchema
 } from '../source/entity/activity.entity';
 import type { AssetsMemorySchema } from '../source/entity/asset.entity';
 import type { ChatsMemorySchema } from '../source/entity/chat.entity';
@@ -16,6 +17,7 @@ export type AppMemorySchema = UsersMemorySchema
   & AssetsMemorySchema
   & ActivityMembersMemorySchema
   & ActivityResourcesMemorySchema
+  & ActivitySubEventStageRuntimeMemorySchema
   & ChatsMemorySchema
   & EventFeedbackMemorySchema
   & HelpCenterMemorySchema

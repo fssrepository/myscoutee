@@ -21,12 +21,10 @@ import {
   APP_STATIC_DATA
 } from '../../../shared/app-static-data';
 import {
-  ActivityEventDetailDTO,
   type ActivityEventStageActionResultDTO,
-  type ActivityEventSubEventsQueryDTO,
-  type ActivityEventSubEventRuntimeDTO
+  type ActivityEventSubEventsQueryDTO
 } from '../../../shared/core/contracts/activity.interface';
-import type { EventTournamentStageDTO } from '../../../shared/core/contracts/event.interface';
+import type { EventMode, EventSlotTemplateDTO, EventTournamentStageDTO, SubEventDTO } from '../../../shared/core/contracts/event.interface';
 import {
   InfoCardComponent,
   PopupComponent,
@@ -46,13 +44,14 @@ import {
 import {
   EventSubeventRuntimeInfoCardConverter,
   EventSubeventRuntimeMenuConverter,
+  EventSubeventsSlotConverter,
+  type EventSubeventsSlotModel,
   type EventSubeventRuntimeMenuContext,
   type EventSubeventRuntimeMenuItemId
 } from '../../../shared/ui/converters';
 import {
   EventsService
 } from '../../../shared/core';
-import type { SubEventResourceFilter } from '../../../shared/core/common/constants';
 import {
   DialogStore
 } from '../../../shared/ui/context/stores/dialog.store';
@@ -68,7 +67,6 @@ import {
 type EventSubeventsListView = 'day' | 'week' | 'month';
 type EventSubeventsListOrder = 'upcoming' | 'past';
 type EventSubeventsListContextAction = 'edit' | 'view' | 'members';
-type EventSubeventsSlotTone = 'blue' | 'green' | 'cyan' | 'violet' | 'amber' | 'gold';
 type EventSubeventsListPopupMenuContext =
   | { menu: 'order'; order: EventSubeventsListOrder }
   | { menu: 'view'; view: EventSubeventsListView }
@@ -78,15 +76,23 @@ interface EventSubeventsListFilters {
   revision: number;
 }
 
-interface EventSubeventsSlotSection {
+interface EventSubeventsParentContext {
   id: string;
-  title: string;
-  subtitle: string;
-  startAt: string | null;
-  endAt: string | null;
-  tone: EventSubeventsSlotTone;
-  isSlot: boolean;
-  items: ActivityEventSubEventRuntimeDTO[];
+  title: string | null;
+  timeframe?: string | null;
+  startAtIso?: string | null;
+  endAtIso?: string | null;
+  location?: string | null;
+  acceptedMembers?: number;
+  pendingMembers?: number;
+  capacityTotal?: number;
+  creatorUserId?: string | null;
+  userId?: string | null;
+  adminIds?: string[];
+  autoInviter?: boolean;
+  frequency?: string | null;
+  mode?: EventMode | null;
+  slotTemplates?: EventSlotTemplateDTO[];
 }
 
 @Component({
@@ -113,9 +119,9 @@ export class EventSubeventsListPopupComponent {
   private readonly cdr = inject(ChangeDetectorRef);
 
   protected isLoading = false;
-  protected event: ActivityEventDetailDTO | null = null;
-  protected items: ActivityEventSubEventRuntimeDTO[] = [];
-  protected slotSections: EventSubeventsSlotSection[] = [];
+  protected event: EventSubeventsParentContext | null = null;
+  protected items: SubEventDTO[] = [];
+  protected slotSections: EventSubeventsSlotModel[] = [];
   protected view: EventSubeventsListView = 'day';
   protected order: EventSubeventsListOrder = 'upcoming';
   protected isMobileView = false;
@@ -135,11 +141,11 @@ export class EventSubeventsListPopupComponent {
   private loadingQueryKey = '';
   private loadingPromise: Promise<void> | null = null;
 
-  private readonly slotSectionLoaders = new Map<string, SmartListLoadPage<ActivityEventSubEventRuntimeDTO, EventSubeventsListFilters>>();
-  private readonly slotSectionConfigs = new Map<string, SmartListConfig<ActivityEventSubEventRuntimeDTO, EventSubeventsListFilters>>();
+  private readonly slotSectionLoaders = new Map<string, SmartListLoadPage<SubEventDTO, EventSubeventsListFilters>>();
+  private readonly slotSectionConfigs = new Map<string, SmartListConfig<SubEventDTO, EventSubeventsListFilters>>();
   private readonly slotSectionHeaderLabels = new Map<string, string>();
 
-  protected readonly smartListConfig: SmartListConfig<EventSubeventsSlotSection, EventSubeventsListFilters> = {
+  protected readonly smartListConfig: SmartListConfig<EventSubeventsSlotModel, EventSubeventsListFilters> = {
     pageSize: 12,
     defaultView: 'day',
     views: [
@@ -170,7 +176,7 @@ export class EventSubeventsListPopupComponent {
     trackBy: (_index, section) => section.id
   };
 
-  private readonly baseSlotSectionSmartListConfig: SmartListConfig<ActivityEventSubEventRuntimeDTO, EventSubeventsListFilters> = {
+  private readonly baseSlotSectionSmartListConfig: SmartListConfig<SubEventDTO, EventSubeventsListFilters> = {
     pageSize: 120,
     defaultView: 'list',
     showStickyHeader: true,
@@ -192,10 +198,10 @@ export class EventSubeventsListPopupComponent {
     menuItems: context => context.item
       ? this.subEventMenuItems(context.item) as readonly AppMenuItem<string, unknown>[]
       : [],
-    trackBy: (_index, item) => item.runtimeId
+    trackBy: (index, item) => this.subEventItemKey(item, index)
   };
 
-  private readonly flatSubEventsSmartListConfig: SmartListConfig<ActivityEventSubEventRuntimeDTO, EventSubeventsListFilters> = {
+  private readonly flatSubEventsSmartListConfig: SmartListConfig<SubEventDTO, EventSubeventsListFilters> = {
     pageSize: 120,
     defaultView: 'list',
     showStickyHeader: false,
@@ -208,10 +214,10 @@ export class EventSubeventsListPopupComponent {
     menuItems: context => context.item
       ? this.subEventMenuItems(context.item) as readonly AppMenuItem<string, unknown>[]
       : [],
-    trackBy: (_index, item) => item.runtimeId
+    trackBy: (index, item) => this.subEventItemKey(item, index)
   };
 
-  protected readonly loadSubEventsPage: SmartListLoadPage<EventSubeventsSlotSection, EventSubeventsListFilters> = query => {
+  protected readonly loadSubEventsPage: SmartListLoadPage<EventSubeventsSlotModel, EventSubeventsListFilters> = query => {
     return from(this.loadSubEventsPageResult(query));
   };
 
@@ -550,11 +556,11 @@ export class EventSubeventsListPopupComponent {
       type: 'members',
       ownerId: event.id,
       ownerType: 'event',
-      subtitle: event.title,
+      subtitle: event.title ?? '',
       canManage: this.eventSubeventsStore.eventSubeventsListPopup()?.canEdit === true,
-      acceptedMembers: event.acceptedMembers,
-      pendingMembers: event.pendingMembers,
-      capacityTotal: event.capacityTotal
+      acceptedMembers: Math.max(0, Math.trunc(Number(event.acceptedMembers) || 0)),
+      pendingMembers: Math.max(0, Math.trunc(Number(event.pendingMembers) || 0)),
+      capacityTotal: Math.max(0, Math.trunc(Number(event.capacityTotal) || 0))
     });
   }
 
@@ -594,17 +600,20 @@ export class EventSubeventsListPopupComponent {
     return accepted + pending;
   }
 
-  protected cardFor(item: ActivityEventSubEventRuntimeDTO, groupLabel: string | null): InfoCardData {
-    const sequence = this.runtimeSequence(item);
+  protected cardFor(item: SubEventDTO, groupLabel: string | null): InfoCardData {
+    const section = this.slotSectionForItem(item);
+    const sequence = this.subEventSequence(item);
     return EventSubeventRuntimeInfoCardConverter.convert(item, {
       event: this.event,
       mode: this.event?.mode,
+      cardId: this.subEventItemKey(item),
+      slotTimeframe: section?.slot.timeframe ?? null,
       groupLabel,
       sequenceNumber: sequence.number,
       sequenceTotal: sequence.total,
-      isStageActive: this.isRuntimeStageActive(item),
-      isStageScheduled: this.isRuntimeStageScheduled(item),
-      isStageBlocked: this.isRuntimeStageBlocked(item),
+      isStageActive: this.isSubEventStageActive(item),
+      isStageScheduled: this.isSubEventStageScheduled(item),
+      isStageBlocked: this.isSubEventStageBlocked(item),
       hasMenuOptions: true,
       menuTitle: item.name,
       menuBadgeCount: EventSubeventRuntimeMenuConverter.pendingBadgeCount(item, {
@@ -614,24 +623,27 @@ export class EventSubeventsListPopupComponent {
     });
   }
 
-  protected subEventMenuContext(item: ActivityEventSubEventRuntimeDTO): { runtimeId: string } {
-    return { runtimeId: item.runtimeId };
+  protected subEventMenuContext(item: SubEventDTO): { itemKey: string } {
+    return { itemKey: this.subEventItemKey(item) };
   }
 
   protected subEventMenuItems(
-    item: ActivityEventSubEventRuntimeDTO
+    item: SubEventDTO
   ): readonly AppMenuItem<EventSubeventRuntimeMenuItemId, EventSubeventRuntimeMenuContext>[] {
-    const sequence = this.runtimeSequence(item);
+    const section = this.slotSectionForItem(item);
+    const sequence = this.subEventSequence(item);
     return EventSubeventRuntimeMenuConverter.convert(item, {
       event: this.event,
       mode: this.event?.mode,
       canManageTournament: this.canManageRuntimeActions(),
-      sourceId: this.runtimeActionSourceId(item),
-      subEventIndex: this.runtimeSourceIndex(item),
+      parentEventId: section?.slot.parentEventId ?? this.event?.id ?? null,
+      slotId: section?.slot.slotSourceId ?? null,
+      sourceId: this.subEventOwnerId(item),
+      subEventIndex: this.subEventIndex(item),
       stageNumber: sequence.number,
-      isStageActive: this.isRuntimeStageActive(item),
-      canStartStage: this.canStartRuntimeStage(item),
-      siblingItems: this.runtimeSiblings(item),
+      isStageActive: this.isSubEventStageActive(item),
+      canStartStage: this.canStartSubEventStage(item),
+      siblingItems: this.subEventSiblings(item),
       nowMs: Date.now()
     });
   }
@@ -648,10 +660,10 @@ export class EventSubeventsListPopupComponent {
         this.requestStageStatusAction(context);
         return;
       case 'stage-dashboard':
-        this.openTournamentGroupsPopup(context.item, menuEvent.sourceEvent);
+        this.openTournamentGroupsPopup(context, menuEvent.sourceEvent);
         return;
       case 'resource':
-        this.openSubEventResourcePopup(context.resourceType, context.item, menuEvent.sourceEvent);
+        this.openSubEventResourcePopup(context, menuEvent.sourceEvent);
         return;
       default:
         return;
@@ -695,16 +707,16 @@ export class EventSubeventsListPopupComponent {
     if (!result) {
       throw new Error('Stage action was not applied.');
     }
-    this.patchRuntimeStageActionResult(context.item, result);
+    this.patchSubEventStageActionResult(context.item, result);
   }
 
-  private patchRuntimeStageActionResult(
-    item: ActivityEventSubEventRuntimeDTO,
+  private patchSubEventStageActionResult(
+    item: SubEventDTO,
     result: ActivityEventStageActionResultDTO
   ): void {
     const resultId = `${result.subEventId ?? ''}`.trim();
     const itemId = `${item.id ?? ''}`.trim();
-    const index = this.runtimeSourceIndex(item);
+    const index = this.subEventIndex(item);
     if (resultId && itemId && resultId !== itemId) {
       return;
     }
@@ -723,21 +735,21 @@ export class EventSubeventsListPopupComponent {
   }
 
   private openSubEventResourcePopup(
-    type: SubEventResourceFilter,
-    item: ActivityEventSubEventRuntimeDTO,
+    context: Extract<EventSubeventRuntimeMenuContext, { scope: 'resource' }>,
     event: Event
   ): void {
     event.stopPropagation();
-    const ownerId = this.runtimeActionSourceId(item);
+    const ownerId = `${context.sourceId ?? ''}`.trim();
+    const item = context.item;
     if (!ownerId) {
       return;
     }
     this.resourcePopupStore.requestSubEventResourcePopup({
-      type,
+      type: context.resourceType,
       ownerId,
       parentTitle: this.popupSubtitle(),
-      subEventId: `${item.id ?? ''}`.trim() || item.runtimeId,
-      subEventIndex: this.runtimeSourceIndex(item),
+      subEventId: `${item.id ?? ''}`.trim(),
+      subEventIndex: context.subEventIndex,
       subEventHeader: {
         name: item.name,
         description: item.description,
@@ -748,24 +760,26 @@ export class EventSubeventsListPopupComponent {
     });
   }
 
-  private openTournamentGroupsPopup(item: ActivityEventSubEventRuntimeDTO, event: Event): void {
+  private openTournamentGroupsPopup(
+    context: Extract<EventSubeventRuntimeMenuContext, { scope: 'stage-dashboard' }>,
+    event: Event
+  ): void {
     event.stopPropagation();
-    const eventId = `${item.parentEventId ?? this.event?.id ?? this.runtimeActionSourceId(item)}`.trim();
-    const slotId = `${item.slotSourceId ?? ''}`.trim() || null;
+    const eventId = `${context.parentEventId ?? this.event?.id ?? ''}`.trim();
     if (!eventId) {
       return;
     }
     this.eventSubeventsStore.openEventTournamentGroupsPopup({
       eventId,
-      slotId,
+      slotId: context.slotId,
       title: this.popupSubtitle(),
       canManage: this.canManageRuntimeActions(),
-      stages: this.runtimeSiblings(item).map((stage, index) => this.runtimeTournamentStage(stage, index)),
-      selectedStageId: `${item.id ?? ''}`.trim() || null
+      stages: this.subEventSiblings(context.item).map((stage, index) => this.subEventTournamentStage(stage, index)),
+      selectedStageId: `${context.item.id ?? ''}`.trim() || null
     });
   }
 
-  private runtimeTournamentStage(item: ActivityEventSubEventRuntimeDTO, index: number): EventTournamentStageDTO {
+  private subEventTournamentStage(item: SubEventDTO, index: number): EventTournamentStageDTO {
     const stageNumber = Math.max(1, index + 1);
     return {
       subEventId: `${item.id ?? `stage-${stageNumber}`}`.trim() || `stage-${stageNumber}`,
@@ -782,8 +796,11 @@ export class EventSubeventsListPopupComponent {
     };
   }
 
-  private runtimeActionSourceId(item: ActivityEventSubEventRuntimeDTO): string {
-    return `${item.slotSourceId ?? item.parentEventId ?? this.event?.id ?? ''}`.trim();
+  private subEventOwnerId(item: SubEventDTO): string {
+    const section = this.slotSectionForItem(item);
+    return section
+      ? EventSubeventsSlotConverter.slotOwnerId(section)
+      : `${this.event?.id ?? ''}`.trim();
   }
 
   private applySubEventResourceMetricsUpdate(update: SubEventResourceMetricsUpdate): void {
@@ -794,10 +811,10 @@ export class EventSubeventsListPopupComponent {
     }
 
     let changed = false;
-    const patchItem = (item: ActivityEventSubEventRuntimeDTO): ActivityEventSubEventRuntimeDTO => {
-      const itemOwnerId = this.runtimeActionSourceId(item);
+    const patchItem = (item: SubEventDTO): SubEventDTO => {
+      const itemOwnerId = this.subEventOwnerId(item);
       const itemId = `${item.id ?? ''}`.trim();
-      if (itemOwnerId !== ownerId || (itemId !== subEventId && item.runtimeId !== subEventId)) {
+      if (itemOwnerId !== ownerId || itemId !== subEventId) {
         return item;
       }
       changed = true;
@@ -818,76 +835,82 @@ export class EventSubeventsListPopupComponent {
       };
     };
 
-    const nextItems = this.items.map(patchItem);
-    const nextSlotSections = this.slotSections.map(section => ({
-      ...section,
-      items: section.items.map(patchItem)
-    }));
+    const nextSlotSections = this.slotSections.map(section => {
+      const nextItems = section.items.map(patchItem);
+      return {
+        ...section,
+        items: nextItems,
+        slot: {
+          ...section.slot,
+          subEventItems: nextItems
+        }
+      };
+    });
     if (!changed) {
       return;
     }
-    this.items = nextItems;
     this.slotSections = nextSlotSections;
+    this.items = nextSlotSections.flatMap(section => section.items);
     this.bumpQuery();
     this.cdr.markForCheck();
   }
 
-  private runtimeSourceIndex(item: ActivityEventSubEventRuntimeDTO): number {
-    const siblings = this.runtimeSiblings(item);
-    const index = siblings.findIndex(candidate => candidate.runtimeId === item.runtimeId);
+  private subEventIndex(item: SubEventDTO): number {
+    const siblings = this.subEventSiblings(item);
+    const index = siblings.findIndex(candidate => candidate === item);
     return index >= 0 ? index : 0;
   }
 
-  private isRuntimeStageActive(item: ActivityEventSubEventRuntimeDTO): boolean {
-    if (this.normalizeRuntimeStageStatus(item.stageStatus) !== 'A') {
+  private isSubEventStageActive(item: SubEventDTO): boolean {
+    if (this.normalizeSubEventStageStatus(item.stageStatus) !== 'A') {
       return false;
     }
-    if (!this.isRuntimeStageAssignmentOpen(item)) {
+    if (!this.isSubEventStageAssignmentOpen(item)) {
       return false;
     }
     const startMs = this.dateMs(item.startAt);
     return !Number.isFinite(startMs) || startMs <= Date.now();
   }
 
-  private isRuntimeStageScheduled(item: ActivityEventSubEventRuntimeDTO): boolean {
-    const status = this.normalizeRuntimeStageStatus(item.stageStatus);
+  private isSubEventStageScheduled(item: SubEventDTO): boolean {
+    const status = this.normalizeSubEventStageStatus(item.stageStatus);
     if (status !== 'A' && status !== 'RS') {
       return false;
     }
-    if (!this.isRuntimeStageAssignmentOpen(item)) {
+    if (!this.isSubEventStageAssignmentOpen(item)) {
       return false;
     }
     const startMs = this.dateMs(item.startAt);
     return Number.isFinite(startMs) && startMs > Date.now();
   }
 
-  private isRuntimeStageBlocked(item: ActivityEventSubEventRuntimeDTO): boolean {
-    if (this.normalizeRuntimeStageStatus(item.stageStatus) !== 'RS') {
+  private isSubEventStageBlocked(item: SubEventDTO): boolean {
+    if (this.normalizeSubEventStageStatus(item.stageStatus) !== 'RS') {
       return false;
     }
-    if (!this.isRuntimeStageAssignmentOpen(item)) {
+    if (!this.isSubEventStageAssignmentOpen(item)) {
       return false;
     }
     const startMs = this.dateMs(item.startAt);
     return Number.isFinite(startMs) && startMs <= Date.now();
   }
 
-  private canStartRuntimeStage(item: ActivityEventSubEventRuntimeDTO): boolean {
-    return this.normalizeRuntimeStageStatus(item.stageStatus) === 'RS'
-      && this.runtimeSourceIndex(item) === 0
-      && this.isRuntimeStageAssignmentOpen(item);
+  private canStartSubEventStage(item: SubEventDTO): boolean {
+    return this.normalizeSubEventStageStatus(item.stageStatus) === 'RS'
+      && this.subEventIndex(item) === 0
+      && this.isSubEventStageAssignmentOpen(item);
   }
 
-  private isRuntimeStageAssignmentOpen(item: ActivityEventSubEventRuntimeDTO): boolean {
-    const siblings = this.runtimeSiblings(item);
-    const index = siblings.findIndex(candidate => candidate.runtimeId === item.runtimeId);
+  private isSubEventStageAssignmentOpen(item: SubEventDTO): boolean {
+    const siblings = this.subEventSiblings(item);
+    const index = siblings.findIndex(candidate => candidate === item);
     if (index <= 0) {
       return true;
     }
-    return this.normalizeRuntimeStageStatus(siblings[index - 1]?.stageStatus) === 'F';
+    return this.normalizeSubEventStageStatus(siblings[index - 1]?.stageStatus) === 'F';
   }
 
-  private normalizeRuntimeStageStatus(status: string | null | undefined): 'A' | 'RS' | 'SR' | 'F' | 'S' {
+  private normalizeSubEventStageStatus(status: string | null | undefined): 'A' | 'RS' | 'SR' | 'F' | 'S' {
     const normalized = `${status ?? ''}`.trim().toUpperCase();
     if (normalized === 'RS' || normalized === 'SR' || normalized === 'F' || normalized === 'S') {
       return normalized;
@@ -895,16 +918,17 @@ export class EventSubeventsListPopupComponent {
     return 'A';
   }
 
-  private runtimeSiblings(item: ActivityEventSubEventRuntimeDTO): readonly ActivityEventSubEventRuntimeDTO[] {
-    const sourceId = this.runtimeActionSourceId(item);
-    const section = this.slotSections.find(candidate =>
-      candidate.items.some(sectionItem => sectionItem.runtimeId === item.runtimeId)
-    );
-    const scoped = section?.items ?? this.items.filter(candidate => this.runtimeActionSourceId(candidate) === sourceId);
+  private subEventSiblings(item: SubEventDTO): readonly SubEventDTO[] {
+    const sourceId = this.subEventOwnerId(item);
+    const section = this.slotSectionForItem(item);
+    const scoped = section?.items ?? this.items.filter(candidate => this.subEventOwnerId(candidate) === sourceId);
     return [...scoped].sort((left, right) => this.dateMs(left.startAt) - this.dateMs(right.startAt));
   }
 
   private canManageRuntimeActions(): boolean {
+    if (this.eventSubeventsStore.eventSubeventsListPopup()?.canEdit === true) {
+      return true;
+    }
     const event = this.event;
     const activeUserId = this.activeUserId();
     if (!event || !activeUserId) {
@@ -930,29 +954,29 @@ export class EventSubeventsListPopupComponent {
     this.cdr.markForCheck();
   }
 
-  protected trackByRuntimeId(_index: number, item: ActivityEventSubEventRuntimeDTO): string {
-    return item.runtimeId;
+  protected trackBySubEventItem(index: number, item: SubEventDTO): string {
+    return this.subEventItemKey(item, index);
   }
 
-  protected slotSectionLoadPage(section: EventSubeventsSlotSection): SmartListLoadPage<ActivityEventSubEventRuntimeDTO, EventSubeventsListFilters> {
+  protected slotSectionLoadPage(section: EventSubeventsSlotModel): SmartListLoadPage<SubEventDTO, EventSubeventsListFilters> {
     const sectionId = section.id;
     const existing = this.slotSectionLoaders.get(sectionId);
     if (existing) {
       return existing;
     }
-    const loader: SmartListLoadPage<ActivityEventSubEventRuntimeDTO, EventSubeventsListFilters> = query =>
+    const loader: SmartListLoadPage<SubEventDTO, EventSubeventsListFilters> = query =>
       of(this.slotSectionPageResult(sectionId, query));
     this.slotSectionLoaders.set(sectionId, loader);
     return loader;
   }
 
-  protected slotSectionSmartListConfigFor(section: EventSubeventsSlotSection): SmartListConfig<ActivityEventSubEventRuntimeDTO, EventSubeventsListFilters> {
+  protected slotSectionSmartListConfigFor(section: EventSubeventsSlotModel): SmartListConfig<SubEventDTO, EventSubeventsListFilters> {
     const sectionId = section.id;
     const existing = this.slotSectionConfigs.get(sectionId);
     if (existing) {
       return existing;
     }
-    const config: SmartListConfig<ActivityEventSubEventRuntimeDTO, EventSubeventsListFilters> = section.isSlot
+    const config: SmartListConfig<SubEventDTO, EventSubeventsListFilters> = section.isSlot
       ? { ...this.baseSlotSectionSmartListConfig }
       : { ...this.flatSubEventsSmartListConfig };
     this.slotSectionConfigs.set(sectionId, config);
@@ -961,14 +985,13 @@ export class EventSubeventsListPopupComponent {
 
   private async loadSubEventsPageResult(
     query: ListQuery<EventSubeventsListFilters>
-  ): Promise<PageResult<EventSubeventsSlotSection>> {
+  ): Promise<PageResult<EventSubeventsSlotModel>> {
     const eventId = this.eventSubeventsStore.eventSubeventsListPopup()?.eventId.trim() ?? '';
     if (!eventId) {
       return { items: [], total: 0, nextCursor: null };
     }
     await this.ensureSubEventsLoaded(eventId, query);
-    const sorted = this.buildSlotSections();
-    this.slotSections = sorted;
+    const sorted = this.slotSections;
     const page = Math.max(0, Math.trunc(Number(query.page) || 0));
     const pageSize = Math.max(1, Math.trunc(Number(query.pageSize) || 12));
     const start = page * pageSize;
@@ -1009,9 +1032,13 @@ export class EventSubeventsListPopupComponent {
       if (this.eventSubeventsStore.eventSubeventsListPopup()?.eventId !== eventId) {
         return;
       }
-      this.event = result?.event ?? null;
-      this.items = [...(result?.items ?? [])];
-      this.slotSections = this.buildSlotSections();
+      this.event = this.parentContextFromRequest(eventId);
+      this.slotSections = EventSubeventsSlotConverter.convertList(result?.slots ?? [], {
+        event: this.event,
+        order: this.order
+      });
+      this.syncSlotSectionHeaderLabels(this.slotSections);
+      this.items = this.slotSections.flatMap(section => section.items);
       this.loadedEventId = eventId;
       this.loadedQueryKey = queryKey;
     })().finally(() => {
@@ -1026,10 +1053,18 @@ export class EventSubeventsListPopupComponent {
     return this.loadingPromise;
   }
 
+  private parentContextFromRequest(eventId: string): EventSubeventsParentContext {
+    const request = this.eventSubeventsStore.eventSubeventsListPopup();
+    return {
+      id: eventId,
+      title: request?.title ?? null
+    };
+  }
+
   private slotSectionPageResult(
     sectionId: string,
     query: ListQuery<EventSubeventsListFilters>
-  ): PageResult<ActivityEventSubEventRuntimeDTO> {
+  ): PageResult<SubEventDTO> {
     const section = this.slotSections.find(candidate => candidate.id === sectionId) ?? null;
     const items = section?.items ?? [];
     const page = Math.max(0, Math.trunc(Number(query.page) || 0));
@@ -1042,111 +1077,53 @@ export class EventSubeventsListPopupComponent {
     };
   }
 
-  private runtimeSequence(item: ActivityEventSubEventRuntimeDTO): { number: number; total: number } {
-    const section = this.slotSections.find(candidate =>
-      candidate.items.some(sectionItem => sectionItem.runtimeId === item.runtimeId)
-    );
+  private subEventSequence(item: SubEventDTO): { number: number; total: number } {
+    const section = this.slotSectionForItem(item);
     const items = section?.items ?? this.items;
-    const index = items.findIndex(candidate => candidate.runtimeId === item.runtimeId);
+    const index = items.findIndex(candidate => candidate === item);
     return {
       number: index >= 0 ? index + 1 : 1,
       total: Math.max(items.length, 1)
     };
   }
 
-  private buildSlotSections(): EventSubeventsSlotSection[] {
-    const sections = new Map<string, EventSubeventsSlotSection>();
-    this.sortedItems().forEach(item => {
-      const key = this.slotSectionKey(item);
-      const existing = sections.get(key);
-      if (existing) {
-        existing.items.push(item);
-        if (!existing.startAt || this.dateMs(item.startAt) < this.dateMs(existing.startAt)) {
-          existing.startAt = item.startAt ?? existing.startAt;
-        }
-        if (!existing.endAt || this.dateMs(item.endAt) > this.dateMs(existing.endAt)) {
-          existing.endAt = item.endAt ?? existing.endAt;
-        }
-        return;
-      }
-      sections.set(key, {
-        id: key,
-        title: this.slotSectionTitle(item, sections.size + 1),
-        subtitle: this.slotSectionSubtitle(item),
-        startAt: item.startAt ?? null,
-        endAt: item.endAt ?? item.startAt ?? null,
-        tone: this.slotSectionTone(item),
-        isSlot: this.runtimeItemHasSlot(item),
-        items: [item]
-      });
-    });
-    const sorted = Array.from(sections.values()).sort((left, right) => {
-      const dateCompare = this.order === 'past'
-        ? this.dateMs(right.startAt) - this.dateMs(left.startAt)
-        : this.dateMs(left.startAt) - this.dateMs(right.startAt);
-      if (dateCompare !== 0) {
-        return dateCompare;
-      }
-      return left.id.localeCompare(right.id);
-    });
-    this.syncSlotSectionHeaderLabels(sorted);
-    return sorted;
+  private slotSectionForItem(item: SubEventDTO): EventSubeventsSlotModel | null {
+    return this.slotSections.find(section => section.items.some(candidate => candidate === item)) ?? null;
   }
 
-  private slotSectionKey(item: ActivityEventSubEventRuntimeDTO): string {
-    return `${item.slotSourceId ?? ''}`.trim()
-      || `${item.parentEventId ?? this.event?.id ?? 'event'}:${item.slotTimeframe ?? 'default'}`;
-  }
-
-  private slotSectionTitle(item: ActivityEventSubEventRuntimeDTO, fallbackIndex: number): string {
-    const templateId = `${item.slotTemplateId ?? ''}`.trim();
-    const templateIndex = templateId
-      ? (this.event?.slotTemplates ?? []).findIndex(template => `${template.id ?? ''}`.trim() === templateId)
-      : -1;
-    return `Slot ${templateIndex >= 0 ? templateIndex + 1 : fallbackIndex}`;
-  }
-
-  private slotSectionSubtitle(item: ActivityEventSubEventRuntimeDTO): string {
-    const templateStart = AppUtils.parseDate(this.slotTemplateForItem(item)?.startAt) ?? AppUtils.parseDate(item.startAt);
-    const frequency = ActivityEventDetailDTO.normalizeFrequency(this.event?.frequency ?? '');
-    if (templateStart && frequency !== 'One-time' && frequency !== 'Custom') {
-      return this.formatRecurringSlotLabel(frequency, templateStart);
+  private subEventItemKey(item: SubEventDTO, fallbackIndex = 0): string {
+    const section = this.slotSectionForItem(item);
+    if (!section) {
+      return `${item.id ?? ''}`.trim() || `subevent-${fallbackIndex + 1}`;
     }
-    return `${item.slotTimeframe ?? ''}`.trim() || AppUtils.dateTimeRangeLabel(item.startAt, item.endAt, '');
+    const itemIndex = section.items.findIndex(candidate => candidate === item);
+    return EventSubeventsSlotConverter.itemKey(section, item, itemIndex >= 0 ? itemIndex : fallbackIndex);
   }
 
-  private slotHeaderLabel(item: ActivityEventSubEventRuntimeDTO): string {
-    const mapped = this.slotSectionHeaderLabels.get(item.runtimeId);
+  private slotHeaderLabel(item: SubEventDTO): string {
+    const mapped = this.slotSectionHeaderLabels.get(this.subEventItemKey(item));
     if (mapped) {
       return mapped;
     }
-    return this.joinSlotHeaderLabel(this.slotSectionTitle(item, 1), this.slotSectionSubtitle(item));
+    const section = this.slotSectionForItem(item);
+    return section ? EventSubeventsSlotConverter.headerLabel(section) : 'Sub events';
   }
 
-  private syncSlotSectionHeaderLabels(sections: readonly EventSubeventsSlotSection[]): void {
+  private syncSlotSectionHeaderLabels(sections: readonly EventSubeventsSlotModel[]): void {
     this.slotSectionHeaderLabels.clear();
-    sections.forEach((section, index) => {
-      const firstItem = section.items[0] ?? null;
-      section.title = firstItem ? this.slotSectionTitle(firstItem, index + 1) : `Slot ${index + 1}`;
-      section.subtitle = firstItem ? this.slotSectionSubtitle(firstItem) : section.subtitle;
-      section.tone = firstItem ? this.slotSectionTone(firstItem) : section.tone;
-      section.isSlot = firstItem ? this.runtimeItemHasSlot(firstItem) : section.isSlot;
-      const label = this.joinSlotHeaderLabel(section.title, section.subtitle);
-      section.items.forEach(item => this.slotSectionHeaderLabels.set(item.runtimeId, label));
+    sections.forEach(section => {
+      const label = EventSubeventsSlotConverter.headerLabel(section);
+      section.items.forEach((item, index) => {
+        this.slotSectionHeaderLabels.set(EventSubeventsSlotConverter.itemKey(section, item, index), label);
+      });
     });
   }
 
-  protected slotSectionToneClass(section: EventSubeventsSlotSection): Record<string, boolean> {
+  protected slotSectionToneClass(section: EventSubeventsSlotModel): Record<string, boolean> {
     return {
       [`event-subevents-slot-section--${section.tone}`]: true,
       'event-subevents-slot-section--flat': !section.isSlot
     };
-  }
-
-  private joinSlotHeaderLabel(title: string, subtitle: string): string {
-    const normalizedTitle = `${title ?? ''}`.trim();
-    const normalizedSubtitle = `${subtitle ?? ''}`.trim();
-    return normalizedSubtitle ? `${normalizedTitle} - ${normalizedSubtitle}` : normalizedTitle;
   }
 
   private syncMobileViewFromViewport(): void {
@@ -1156,85 +1133,6 @@ export class EventSubeventsListPopupComponent {
     }
     this.isMobileView = next;
     this.cdr.markForCheck();
-  }
-
-  private slotTemplateForItem(item: ActivityEventSubEventRuntimeDTO) {
-    const templateId = `${item.slotTemplateId ?? ''}`.trim();
-    if (!templateId) {
-      return null;
-    }
-    return (this.event?.slotTemplates ?? []).find(template => `${template.id ?? ''}`.trim() === templateId) ?? null;
-  }
-
-  private runtimeItemHasSlot(item: ActivityEventSubEventRuntimeDTO): boolean {
-    return Boolean(`${item.slotSourceId ?? ''}`.trim() || `${item.slotTemplateId ?? ''}`.trim());
-  }
-
-  private slotSectionTone(_item: ActivityEventSubEventRuntimeDTO): EventSubeventsSlotTone {
-    switch (ActivityEventDetailDTO.normalizeFrequency(this.event?.frequency ?? '')) {
-      case 'Daily':
-        return 'green';
-      case 'Weekly':
-        return 'cyan';
-      case 'Bi-weekly':
-        return 'violet';
-      case 'Monthly':
-        return 'amber';
-      case 'Yearly':
-        return 'gold';
-      default:
-        return 'blue';
-    }
-  }
-
-  private formatRecurringSlotLabel(frequency: string, start: Date): string {
-    const time = this.formatSlotTimeLabel(start);
-    switch (ActivityEventDetailDTO.normalizeFrequency(frequency)) {
-      case 'Daily':
-        return `Every day at ${time}`;
-      case 'Weekly':
-        return `Every ${this.formatSlotWeekday(start)} at ${time}`;
-      case 'Bi-weekly':
-        return `Every second ${this.formatSlotWeekday(start)} at ${time}`;
-      case 'Monthly':
-        return `Every month on day ${start.getDate()} at ${time}`;
-      case 'Yearly':
-        return `Every year on ${this.formatSlotMonthDay(start)} at ${time}`;
-      default:
-        return AppUtils.dateTimeRangeLabel(start.toISOString(), '', '');
-    }
-  }
-
-  private formatSlotTimeLabel(value: Date): string {
-    return value.toLocaleTimeString('en-US', {
-      hour: 'numeric',
-      minute: '2-digit'
-    });
-  }
-
-  private formatSlotWeekday(value: Date): string {
-    return value.toLocaleDateString('en-US', {
-      weekday: 'long'
-    });
-  }
-
-  private formatSlotMonthDay(value: Date): string {
-    return value.toLocaleDateString('en-US', {
-      month: 'short',
-      day: 'numeric'
-    });
-  }
-
-  private sortedItems(): ActivityEventSubEventRuntimeDTO[] {
-    return [...this.items].sort((left, right) => {
-      const dateCompare = this.order === 'past'
-        ? this.dateMs(right.startAt) - this.dateMs(left.startAt)
-        : this.dateMs(left.startAt) - this.dateMs(right.startAt);
-      if (dateCompare !== 0) {
-        return dateCompare;
-      }
-      return left.runtimeId.localeCompare(right.runtimeId);
-    });
   }
 
   private groupLabel(value: string | null | undefined, view: EventSubeventsListView): string {
@@ -1258,7 +1156,7 @@ export class EventSubeventsListPopupComponent {
     return AppUtils.parseDate(value)?.getTime() ?? Number.POSITIVE_INFINITY;
   }
 
-  private slotSectionCalendarRange(section: EventSubeventsSlotSection) {
+  private slotSectionCalendarRange(section: EventSubeventsSlotModel) {
     const start = AppUtils.parseDate(section.startAt);
     const end = AppUtils.parseDate(section.endAt) ?? start;
     if (!start || !end) {

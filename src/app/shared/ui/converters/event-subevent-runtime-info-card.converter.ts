@@ -1,15 +1,13 @@
 import { AppUtils } from '../../app-utils';
-import type {
-  ActivityEventDetailDTO,
-  ActivityEventSubEventRuntimeDTO
-} from '../../core/contracts/activity.interface';
-import type { EventMode, TournamentStageStatus } from '../../core/contracts/event.interface';
+import type { EventMode, SubEventDTO, TournamentStageStatus } from '../../core/contracts/event.interface';
 import type { InfoCardData, InfoCardOverlayAction, InfoCardOverlayTone } from '../components/core/smart-list/card';
 import type { UiListConverter } from './converter.types';
 
 export interface EventSubeventRuntimeInfoCardConverterOptions {
-  event?: ActivityEventDetailDTO | null;
+  event?: { location?: string | null; mode?: EventMode | null } | null;
   mode?: EventMode | null;
+  cardId?: string | null;
+  slotTimeframe?: string | null;
   groupLabel?: string | null;
   sequenceNumber?: number | null;
   sequenceTotal?: number | null;
@@ -22,18 +20,18 @@ export interface EventSubeventRuntimeInfoCardConverterOptions {
 }
 
 export class EventSubeventRuntimeInfoCardConverter
-  implements UiListConverter<ActivityEventSubEventRuntimeDTO, InfoCardData, EventSubeventRuntimeInfoCardConverterOptions> {
+  implements UiListConverter<SubEventDTO, InfoCardData, EventSubeventRuntimeInfoCardConverterOptions> {
   static convert(
-    item: ActivityEventSubEventRuntimeDTO,
+    item: SubEventDTO,
     options: EventSubeventRuntimeInfoCardConverterOptions = {}
   ): InfoCardData {
     const mode = options.mode ?? options.event?.mode ?? 'Casual';
     const accepted = Math.max(0, Math.trunc(Number(item.membersAccepted) || 0));
     const max = Math.max(accepted, Math.trunc(Number(item.capacityMax) || 0));
     const capacity = max > 0 ? `${accepted} / ${max}` : `${accepted}`;
-    const dateLabel = AppUtils.dateTimeRangeLabel(item.startAt, item.endAt, item.slotTimeframe ?? 'Date unavailable');
+    const slotTimeframe = `${options.slotTimeframe ?? ''}`.trim();
+    const dateLabel = AppUtils.dateTimeRangeLabel(item.startAt, item.endAt, slotTimeframe || 'Date unavailable');
     const location = `${item.location ?? options.event?.location ?? ''}`.trim();
-    const slotLine = `${item.slotTimeframe ?? ''}`.trim();
     const isTournament = mode === 'Tournament';
     const sequenceNumber = Math.max(1, Math.trunc(Number(options.sequenceNumber) || 1));
     const sequenceTotal = Math.max(sequenceNumber, Math.trunc(Number(options.sequenceTotal) || sequenceNumber));
@@ -50,7 +48,7 @@ export class EventSubeventRuntimeInfoCardConverter
     const menuBadgeCount = Math.max(0, Math.trunc(Number(options.menuBadgeCount) || 0));
 
     return {
-      id: item.runtimeId,
+      id: `${options.cardId ?? item.id ?? ''}`.trim(),
       dateIso: item.startAt,
       groupLabel: options.groupLabel ?? null,
       title: item.name,
@@ -62,7 +60,7 @@ export class EventSubeventRuntimeInfoCardConverter
       metaRows: [
         dateLabel,
         ...(location ? [location] : []),
-        ...(slotLine ? [slotLine] : [])
+        ...(slotTimeframe ? [slotTimeframe] : [])
       ],
       descriptionLines: 2,
       description: item.description || 'No description',
@@ -100,27 +98,27 @@ export class EventSubeventRuntimeInfoCardConverter
   }
 
   static convertList(
-    items: readonly ActivityEventSubEventRuntimeDTO[],
+    items: readonly SubEventDTO[],
     options: EventSubeventRuntimeInfoCardConverterOptions = {}
   ): InfoCardData[] {
     return items.map(item => this.convert(item, options));
   }
 
   convert(
-    input: ActivityEventSubEventRuntimeDTO,
+    input: SubEventDTO,
     options?: EventSubeventRuntimeInfoCardConverterOptions
   ): InfoCardData {
     return EventSubeventRuntimeInfoCardConverter.convert(input, options);
   }
 
   convertList(
-    input: readonly ActivityEventSubEventRuntimeDTO[],
+    input: readonly SubEventDTO[],
     options?: EventSubeventRuntimeInfoCardConverterOptions
   ): InfoCardData[] {
     return EventSubeventRuntimeInfoCardConverter.convertList(input, options);
   }
 
-  private static definitionStatus(item: ActivityEventSubEventRuntimeDTO): {
+  private static definitionStatus(item: SubEventDTO): {
     label: string;
     icon: string;
     overlayTone: 'public' | 'blocked';
@@ -146,7 +144,7 @@ export class EventSubeventRuntimeInfoCardConverter
   }
 
   private static stageStatusBadge(
-    item: ActivityEventSubEventRuntimeDTO,
+    item: SubEventDTO,
     options: {
       isStageActive: boolean;
       isStageScheduled: boolean;

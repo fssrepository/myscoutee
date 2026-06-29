@@ -5,12 +5,28 @@ import {
   ActivityEventDetailDTO,
   type ActivityEventDTO,
   type ActivityEventRecord,
-  type ActivityEventPageResultDTO
+  type ActivityEventPageResultDTO,
+  type ActivitySubEventStageRuntimeStateDTO,
+  type ActivitySubEventStageRuntimeStateRefDTO,
+  type ActivitySubEventResourceStateDTO,
+  type SubEventDefinitionDTO,
+  type SubEventsSlotDTO
 } from '../../../contracts/activity.interface';
 import type * as AppConstants from '../../../common/constants';
 import type * as EventContracts from '../../../contracts/event.interface';
 import type * as PricingContracts from '../../../contracts/pricing.interface';
 import type { LocationCoordinates } from '../../../contracts/user.interface';
+
+export interface SubEventResourceLookup {
+  ownerId: string;
+  subEventId: string;
+  assetOwnerUserId: string;
+}
+
+export interface SubEventStateLookups {
+  resourceLookups: SubEventResourceLookup[];
+  stageRuntimeLookups: ActivitySubEventStageRuntimeStateRefDTO[];
+}
 
 export class LocalActivityEventsMapper {
   static toDto(record: ActivityEventRecord): ActivityEventDTO {
@@ -39,6 +55,7 @@ export class LocalActivityEventsMapper {
       capacityMin: record.capacityMin,
       capacityMax: record.capacityMax,
       eventType: record.eventType,
+      mode: ActivityEventDetailDTO.normalizeMode(record.mode),
       acceptedMembers: record.acceptedMembers,
       pendingMembers: record.pendingMembers,
       acceptedMemberUserIds: [...(record.acceptedMemberUserIds ?? [])],
@@ -65,6 +82,322 @@ export class LocalActivityEventsMapper {
       nextCursor: page.nextCursor
     };
   }
+
+  static toSubEventsSlots(
+    parentEventId: string,
+    records: readonly ActivityEventRecord[]
+  ): SubEventsSlotDTO[] {
+    const normalizedParentEventId = `${parentEventId ?? ''}`.trim();
+    return records.map(record => this.toSubEventsSlot(normalizedParentEventId, record));
+  }
+
+  private static toSubEventsSlot(
+    parentEventId: string,
+    record: ActivityEventRecord
+  ): SubEventsSlotDTO {
+    const subEventItems = this.subEventItemsForSlot(record);
+    return {
+      id: this.subEventsSlotId(parentEventId, record),
+      parentEventId,
+      slotSourceId: this.isGeneratedSlotRecord(record) ? `${record.id ?? ''}`.trim() || null : null,
+      slotTemplateId: `${record.slotTemplateId ?? ''}`.trim() || null,
+      title: this.isGeneratedSlotRecord(record) ? `${record.title ?? ''}`.trim() || null : null,
+      timeframe: this.isGeneratedSlotRecord(record) ? `${record.timeframe ?? ''}`.trim() || null : null,
+      startAt: `${record.startAtIso ?? ''}`.trim() || null,
+      endAt: `${record.endAtIso ?? ''}`.trim() || null,
+      subEventItems
+    };
+  }
+
+  static subEventResourceLookups(
+    slots: readonly SubEventsSlotDTO[],
+    assetOwnerUserId: string
+  ): SubEventResourceLookup[] {
+    return this.subEventStateLookups(slots, assetOwnerUserId).resourceLookups;
+  }
+
+  static subEventStateLookups(
+    slots: readonly SubEventsSlotDTO[],
+    assetOwnerUserId: string
+  ): SubEventStateLookups {
+    const normalizedAssetOwnerUserId = `${assetOwnerUserId ?? ''}`.trim();
+    const resourceLookups: SubEventResourceLookup[] = [];
+    const stageRuntimeLookups: ActivitySubEventStageRuntimeStateRefDTO[] = [];
+    for (const slot of slots ?? []) {
+      const ownerId = this.subEventResourceOwnerIdFromSlot(slot);
+      if (!ownerId) {
+        continue;
+      }
+      for (let index = 0; index < (slot.subEventItems ?? []).length; index += 1) {
+        const item = slot.subEventItems[index];
+        const subEventId = `${item.id ?? ''}`.trim() || this.fallbackSubEventId(index);
+        if (!subEventId) {
+          continue;
+        }
+        stageRuntimeLookups.push({ ownerId, subEventId });
+        if (normalizedAssetOwnerUserId) {
+          resourceLookups.push({ ownerId, subEventId, assetOwnerUserId: normalizedAssetOwnerUserId });
+        }
+      }
+    }
+    return {
+      resourceLookups,
+      stageRuntimeLookups
+    };
+  }
+
+  static subEventResourceRecordKey(ref: SubEventResourceLookup): string {
+    const ownerId = `${ref.ownerId ?? ''}`.trim();
+    const subEventId = `${ref.subEventId ?? ''}`.trim();
+    const assetOwnerUserId = `${ref.assetOwnerUserId ?? ''}`.trim();
+    return ownerId && subEventId && assetOwnerUserId
+      ? `${ownerId}:${subEventId}:${assetOwnerUserId}`
+      : '';
+  }
+
+  static withSubEventResourceRecords(
+    slots: readonly SubEventsSlotDTO[],
+    resourcesByKey: ReadonlyMap<string, ActivitySubEventResourceStateDTO>,
+    assetOwnerUserId: string
+  ): SubEventsSlotDTO[] {
+    return this.withSubEventStates(slots, resourcesByKey, new Map(), assetOwnerUserId);
+  }
+
+  static subEventStageRuntimeRecordKey(ref: ActivitySubEventStageRuntimeStateRefDTO): string {
+    const ownerId = `${ref.ownerId ?? ''}`.trim();
+    const subEventId = `${ref.subEventId ?? ''}`.trim();
+    return ownerId && subEventId ? `${ownerId}:${subEventId}` : '';
+  }
+
+  static withSubEventStates(
+    slots: readonly SubEventsSlotDTO[],
+    resourcesByKey: ReadonlyMap<string, ActivitySubEventResourceStateDTO>,
+    stageRuntimeByKey: ReadonlyMap<string, ActivitySubEventStageRuntimeStateDTO>,
+    assetOwnerUserId: string
+  ): SubEventsSlotDTO[] {
+    return slots.map(slot => this.withSubEventStatesForSlot(slot, resourcesByKey, stageRuntimeByKey, assetOwnerUserId));
+  }
+
+  private static withSubEventStatesForSlot(
+    slot: SubEventsSlotDTO,
+    resourcesByKey: ReadonlyMap<string, ActivitySubEventResourceStateDTO>,
+    stageRuntimeByKey: ReadonlyMap<string, ActivitySubEventStageRuntimeStateDTO>,
+    assetOwnerUserId: string
+  ): SubEventsSlotDTO {
+    const ownerId = this.subEventResourceOwnerIdFromSlot(slot);
+    return {
+      ...slot,
+      subEventItems: (slot.subEventItems ?? []).map((item, index) => {
+        const subEventId = `${item.id ?? ''}`.trim() || this.fallbackSubEventId(index);
+        const resource = resourcesByKey.get(this.subEventResourceRecordKey({
+          ownerId,
+          subEventId,
+          assetOwnerUserId
+        })) ?? null;
+        const stageRuntime = stageRuntimeByKey.get(this.subEventStageRuntimeRecordKey({
+          ownerId,
+          subEventId
+        })) ?? null;
+        return this.withSubEventStageRuntime(this.withSubEventResource(item, resource), stageRuntime);
+      })
+    };
+  }
+
+  private static subEventItemsForSlot(record: ActivityEventRecord): EventContracts.SubEventDTO[] {
+    const slotStart = AppUtils.parseDate(`${record.startAtIso ?? ''}`.trim()) ?? new Date();
+    return this.subEventDefinitionTimeline(record.subEventDefinitions ?? [])
+      .map(({ item, startOffsetMinutes, durationMinutes }, index) => {
+        const startAt = new Date(slotStart.getTime() + (startOffsetMinutes * 60 * 1000));
+        const endAt = new Date(startAt.getTime() + (durationMinutes * 60 * 1000));
+        const isTournamentStage = this.isTournamentStageDefinition(item);
+        const stageStatus = isTournamentStage
+          ? (index === 0 ? 'RS' : 'A')
+          : undefined;
+        return {
+          id: `${item.id ?? `subevent-${index + 1}`}`.trim() || `subevent-${index + 1}`,
+          name: `${item.name ?? `Sub Event ${index + 1}`}`.trim(),
+          description: `${item.description ?? ''}`.trim(),
+          startAt: startAt.toISOString(),
+          endAt: endAt.toISOString(),
+          location: `${item.location ?? ''}`.trim(),
+          groups: (item.groups ?? []).map(group => ({ ...group })),
+          tournamentGroupCount: item.tournamentGroupCount,
+          tournamentGroupCapacityMin: item.tournamentGroupCapacityMin,
+          tournamentGroupCapacityMax: item.tournamentGroupCapacityMax,
+          tournamentLeaderboardType: item.tournamentLeaderboardType,
+          tournamentAdvancePerGroup: item.tournamentAdvancePerGroup,
+          optional: item.optional,
+          pricing: item.pricing ? PricingBuilder.clonePricingConfig(item.pricing) : item.pricing,
+          capacityMin: item.capacityMin,
+          capacityMax: item.capacityMax,
+          membersAccepted: 0,
+          membersPending: 0,
+          carsPending: 0,
+          accommodationPending: 0,
+          suppliesPending: 0,
+          slotStartOffsetMinutes: startOffsetMinutes,
+          slotDurationMinutes: durationMinutes,
+          stageStatus,
+          stageStatusReason: stageStatus === 'RS' ? 'awaiting-tournament-start' : undefined
+        };
+      });
+  }
+
+  private static subEventDefinitionTimeline(
+    items: readonly SubEventDefinitionDTO[]
+  ): Array<{ item: SubEventDefinitionDTO; startOffsetMinutes: number; durationMinutes: number }> {
+    let previousStartOffsetMinutes = 0;
+    let previousEndOffsetMinutes = 0;
+    let hasPrevious = false;
+    return ActivityEventDetailDTO.normalizeSubEventDefinitions(items).map(item => {
+      const durationMinutes = Math.max(0, Math.trunc(Number(item.durationMinutes) || 0));
+      const offsetMinutes = Math.max(0, Math.trunc(Number(item.offsetMinutes) || 0));
+      const timing = ActivityEventDetailDTO.normalizeSubEventDefinitionTiming(item.timing);
+      const startOffsetMinutes = !hasPrevious
+        ? offsetMinutes
+        : timing === 'During'
+          ? previousStartOffsetMinutes + offsetMinutes
+          : previousEndOffsetMinutes + offsetMinutes;
+      previousStartOffsetMinutes = startOffsetMinutes;
+      previousEndOffsetMinutes = startOffsetMinutes + durationMinutes;
+      hasPrevious = true;
+      return { item, startOffsetMinutes, durationMinutes };
+    });
+  }
+
+  private static isTournamentStageDefinition(item: SubEventDefinitionDTO): boolean {
+    return item.optional !== true
+      && (
+        (item.groups?.length ?? 0) > 0
+        || (item.tournamentGroupCount ?? 0) > 0
+        || item.tournamentLeaderboardType === 'Score'
+        || item.tournamentLeaderboardType === 'Fifa'
+      );
+  }
+
+  private static withSubEventResource(
+    item: EventContracts.SubEventDTO,
+    resource: ActivitySubEventResourceStateDTO | null
+  ): EventContracts.SubEventDTO {
+    const car = this.resourceMetric(resource, 'Car', {
+      accepted: item.carsAccepted,
+      pending: item.carsPending,
+      capacityMin: item.carsCapacityMin,
+      capacityMax: item.carsCapacityMax
+    });
+    const accommodation = this.resourceMetric(resource, 'Accommodation', {
+      accepted: item.accommodationAccepted,
+      pending: item.accommodationPending,
+      capacityMin: item.accommodationCapacityMin,
+      capacityMax: item.accommodationCapacityMax
+    });
+    const supplies = this.resourceMetric(resource, 'Supplies', {
+      accepted: item.suppliesAccepted,
+      pending: item.suppliesPending,
+      capacityMin: item.suppliesCapacityMin,
+      capacityMax: item.suppliesCapacityMax
+    });
+    return {
+      ...item,
+      carsAccepted: car.accepted,
+      carsPending: car.pending,
+      carsCapacityMin: car.capacityMin,
+      carsCapacityMax: car.capacityMax,
+      accommodationAccepted: accommodation.accepted,
+      accommodationPending: accommodation.pending,
+      accommodationCapacityMin: accommodation.capacityMin,
+      accommodationCapacityMax: accommodation.capacityMax,
+      suppliesAccepted: supplies.accepted,
+      suppliesPending: supplies.pending,
+      suppliesCapacityMin: supplies.capacityMin,
+      suppliesCapacityMax: supplies.capacityMax
+    };
+  }
+
+  private static withSubEventStageRuntime(
+    item: EventContracts.SubEventDTO,
+    stageRuntime: ActivitySubEventStageRuntimeStateDTO | null
+  ): EventContracts.SubEventDTO {
+    if (!stageRuntime) {
+      return item;
+    }
+    return {
+      ...item,
+      stageStatus: `${stageRuntime.stageStatus ?? ''}`.trim() || item.stageStatus,
+      stageStatusReason: `${stageRuntime.stageStatusReason ?? ''}`.trim() || item.stageStatusReason,
+      stageStatusUpdatedAt: `${stageRuntime.stageStatusUpdatedAt ?? ''}`.trim() || item.stageStatusUpdatedAt,
+      stageFinalizedAt: `${stageRuntime.stageFinalizedAt ?? ''}`.trim() || item.stageFinalizedAt,
+      stageFinalizedByUserId: `${stageRuntime.stageFinalizedByUserId ?? ''}`.trim() || item.stageFinalizedByUserId
+    };
+  }
+
+  private static resourceMetric(
+    resource: ActivitySubEventResourceStateDTO | null,
+    type: 'Car' | 'Accommodation' | 'Supplies',
+    fallback: {
+      accepted?: number | null;
+      pending?: number | null;
+      capacityMin?: number | null;
+      capacityMax?: number | null;
+    }
+  ): { accepted: number; pending: number; capacityMin: number; capacityMax: number } {
+    if (!resource) {
+      return {
+        accepted: this.nonNegativeInteger(fallback.accepted),
+        pending: this.nonNegativeInteger(fallback.pending),
+        capacityMin: this.nonNegativeInteger(fallback.capacityMin),
+        capacityMax: this.nonNegativeInteger(fallback.capacityMax)
+      };
+    }
+    const settingsById = resource.assetSettingsByType[type] ?? {};
+    const assignedIds = resource.assetAssignmentIds[type] ?? [];
+    const assetIds = assignedIds.length > 0 ? assignedIds : Object.keys(settingsById);
+    const capacityMin = assetIds.reduce((sum, assetId) => (
+      sum + this.nonNegativeInteger(settingsById[assetId]?.capacityMin)
+    ), 0);
+    const capacityMax = assetIds.reduce((sum, assetId) => (
+      sum + this.nonNegativeInteger(settingsById[assetId]?.capacityMax)
+    ), 0);
+    const accepted = type === 'Supplies'
+      ? assetIds.reduce((sum, assetId) => (
+          sum + (resource.supplyContributionEntriesByAssetId[assetId] ?? [])
+            .reduce((entrySum, entry) => entrySum + this.nonNegativeInteger(entry.quantity), 0)
+        ), 0)
+      : 0;
+    return {
+      accepted,
+      pending: 0,
+      capacityMin,
+      capacityMax
+    };
+  }
+
+  private static subEventResourceOwnerIdFromSlot(slot: SubEventsSlotDTO): string {
+    return `${slot.slotSourceId ?? ''}`.trim() || `${slot.id ?? ''}`.trim();
+  }
+
+  private static subEventsSlotId(parentEventId: string, record: ActivityEventRecord): string {
+    return this.isGeneratedSlotRecord(record)
+      ? `${record.id ?? ''}`.trim()
+      : `${parentEventId ?? ''}`.trim() + ':default';
+  }
+
+  private static fallbackSubEventId(index: number): string {
+    return `subevent-${index + 1}`;
+  }
+
+  private static isGeneratedSlotRecord(record: ActivityEventRecord | null | undefined): boolean {
+    return record?.generated === true || record?.eventType === 'slot' || Boolean(record?.parentEventId);
+  }
+
+  private static nonNegativeInteger(value: unknown): number {
+    const parsed = Number(value);
+    if (!Number.isFinite(parsed)) {
+      return 0;
+    }
+    return Math.max(0, Math.trunc(parsed));
+  }
+
 }
 
 export class LocalActivityEventDetailsMapper {

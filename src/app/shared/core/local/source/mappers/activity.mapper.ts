@@ -9,6 +9,7 @@ import type {
 } from '../../../contracts/activity.interface';
 import type {
   ActivityMemberRecord,
+  ActivitySubEventStageRuntimeRecord,
   ActivitySubEventResourceRecord
 } from '../entity/activity.entity';
 
@@ -324,4 +325,95 @@ export class LocalActivityResourcesMapper {
     };
   }
 
+}
+
+export class LocalActivitySubEventStageRuntimeMapper {
+  static normalizeRef(
+    ref: AppDTOs.ActivitySubEventStageRuntimeStateRefDTO | null | undefined
+  ): AppDTOs.ActivitySubEventStageRuntimeStateRefDTO | null {
+    const ownerId = `${ref?.ownerId ?? ''}`.trim();
+    const subEventId = `${ref?.subEventId ?? ''}`.trim();
+    if (!ownerId || !subEventId) {
+      return null;
+    }
+    return {
+      ownerId,
+      subEventId
+    };
+  }
+
+  static recordId(ref: AppDTOs.ActivitySubEventStageRuntimeStateRefDTO): string {
+    return `${ref.ownerId.trim()}:${ref.subEventId.trim()}`;
+  }
+
+  static ownerKey(ref: AppDTOs.ActivitySubEventStageRuntimeStateRefDTO): string {
+    return ref.ownerId.trim();
+  }
+
+  static normalizeState(
+    state: AppDTOs.ActivitySubEventStageRuntimeStateDTO | null | undefined,
+    fallbackRef?: AppDTOs.ActivitySubEventStageRuntimeStateRefDTO | null
+  ): AppDTOs.ActivitySubEventStageRuntimeStateDTO | null {
+    const ref = this.normalizeRef(state) ?? this.normalizeRef(fallbackRef);
+    if (!ref) {
+      return null;
+    }
+    return {
+      ownerId: ref.ownerId,
+      subEventId: ref.subEventId,
+      stageStatus: `${state?.stageStatus ?? ''}`.trim() || null,
+      stageStatusReason: `${state?.stageStatusReason ?? ''}`.trim() || null,
+      stageStatusUpdatedAt: `${state?.stageStatusUpdatedAt ?? ''}`.trim() || null,
+      stageFinalizedAt: `${state?.stageFinalizedAt ?? ''}`.trim() || null,
+      stageFinalizedByUserId: `${state?.stageFinalizedByUserId ?? ''}`.trim() || null
+    };
+  }
+
+  static toRecord(
+    state: AppDTOs.ActivitySubEventStageRuntimeStateDTO,
+    existing?: ActivitySubEventStageRuntimeRecord | null
+  ): ActivitySubEventStageRuntimeRecord {
+    const normalized = this.normalizeState(state);
+    if (!normalized) {
+      throw new Error('Invalid sub-event stage runtime state.');
+    }
+    const nowMs = Date.now();
+    const nowIso = new Date(nowMs).toISOString();
+    return {
+      id: this.recordId(normalized),
+      ownerKey: this.ownerKey(normalized),
+      ownerId: normalized.ownerId,
+      subEventId: normalized.subEventId,
+      stageStatus: `${normalized.stageStatus ?? ''}`.trim() || null,
+      stageStatusReason: `${normalized.stageStatusReason ?? ''}`.trim() || null,
+      stageStatusUpdatedAt: `${normalized.stageStatusUpdatedAt ?? ''}`.trim() || null,
+      stageFinalizedAt: `${normalized.stageFinalizedAt ?? ''}`.trim() || null,
+      stageFinalizedByUserId: `${normalized.stageFinalizedByUserId ?? ''}`.trim() || null,
+      createdMs: existing?.createdMs ?? nowMs,
+      updatedMs: nowMs,
+      createdAtIso: existing?.createdAtIso ?? nowIso,
+      updatedAtIso: nowIso
+    };
+  }
+
+  static toState(
+    record: ActivitySubEventStageRuntimeRecord
+  ): AppDTOs.ActivitySubEventStageRuntimeStateDTO | null {
+    const normalized = this.normalizeState({
+      ownerId: record.ownerId,
+      subEventId: record.subEventId,
+      stageStatus: record.stageStatus,
+      stageStatusReason: record.stageStatusReason,
+      stageStatusUpdatedAt: record.stageStatusUpdatedAt,
+      stageFinalizedAt: record.stageFinalizedAt,
+      stageFinalizedByUserId: record.stageFinalizedByUserId
+    }, record);
+    return normalized ? { ...normalized } : null;
+  }
+
+  static cloneRecord(record: ActivitySubEventStageRuntimeRecord): ActivitySubEventStageRuntimeRecord {
+    return {
+      ...record
+    };
+  }
 }

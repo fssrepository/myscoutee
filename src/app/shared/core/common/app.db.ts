@@ -14,7 +14,11 @@ import {
 } from '../local/source/entity/rate.entity';
 import { USERS_TABLE_NAME } from '../local/source/entity/user.entity';
 import { ASSETS_TABLE_NAME } from '../local/source/entity/asset.entity';
-import { ACTIVITY_MEMBERS_TABLE_NAME, ACTIVITY_RESOURCES_TABLE_NAME } from '../local/source/entity/activity.entity';
+import {
+  ACTIVITY_MEMBERS_TABLE_NAME,
+  ACTIVITY_RESOURCES_TABLE_NAME,
+  ACTIVITY_SUB_EVENT_STAGE_RUNTIME_TABLE_NAME
+} from '../local/source/entity/activity.entity';
 import type { AppMemorySchema } from '../local/common/memory.schema';
 import { Injectable, signal } from '@angular/core';
 
@@ -49,6 +53,7 @@ export class AppMemoryDb {
     ASSETS_TABLE_NAME,
     ACTIVITY_MEMBERS_TABLE_NAME,
     ACTIVITY_RESOURCES_TABLE_NAME,
+    ACTIVITY_SUB_EVENT_STAGE_RUNTIME_TABLE_NAME,
     USER_RATES_TABLE_NAME,
     USER_RATES_OUTBOX_TABLE_NAME,
     USER_FILTER_PREFERENCES_TABLE_NAME,
@@ -264,6 +269,11 @@ export class AppMemoryDb {
         idsByOwnerKey: {}
       },
       [ACTIVITY_RESOURCES_TABLE_NAME]: {
+        byId: {},
+        ids: [],
+        idsByOwnerKey: {}
+      },
+      [ACTIVITY_SUB_EVENT_STAGE_RUNTIME_TABLE_NAME]: {
         byId: {},
         ids: [],
         idsByOwnerKey: {}
@@ -782,6 +792,7 @@ export class AppMemoryDb {
     const assetsSource = source[ASSETS_TABLE_NAME] as Partial<AppMemorySchema[typeof ASSETS_TABLE_NAME]> | undefined;
     const activityMembersSource = source[ACTIVITY_MEMBERS_TABLE_NAME] as Partial<AppMemorySchema[typeof ACTIVITY_MEMBERS_TABLE_NAME]> | undefined;
     const activityResourcesSource = source[ACTIVITY_RESOURCES_TABLE_NAME] as Partial<AppMemorySchema[typeof ACTIVITY_RESOURCES_TABLE_NAME]> | undefined;
+    const activitySubEventStageRuntimeSource = source[ACTIVITY_SUB_EVENT_STAGE_RUNTIME_TABLE_NAME] as Partial<AppMemorySchema[typeof ACTIVITY_SUB_EVENT_STAGE_RUNTIME_TABLE_NAME]> | undefined;
     const ratesSource = source[USER_RATES_TABLE_NAME] as Partial<AppMemorySchema[typeof USER_RATES_TABLE_NAME]> | undefined;
     const outboxSource = source[USER_RATES_OUTBOX_TABLE_NAME] as Partial<AppMemorySchema[typeof USER_RATES_OUTBOX_TABLE_NAME]> | undefined;
     const filterPreferencesSource = source[USER_FILTER_PREFERENCES_TABLE_NAME] as Partial<AppMemorySchema[typeof USER_FILTER_PREFERENCES_TABLE_NAME]> | undefined;
@@ -816,6 +827,17 @@ export class AppMemoryDb {
         byId: this.normalizeActivityResourcesById(activityResourcesSource?.byId, fallback[ACTIVITY_RESOURCES_TABLE_NAME].byId),
         ids: this.normalizeIdList(activityResourcesSource?.ids, fallback[ACTIVITY_RESOURCES_TABLE_NAME].ids),
         idsByOwnerKey: this.normalizeActivityResourcesIdsByOwnerKey(activityResourcesSource)
+      },
+      [ACTIVITY_SUB_EVENT_STAGE_RUNTIME_TABLE_NAME]: {
+        byId: this.normalizeActivitySubEventStageRuntimeById(
+          activitySubEventStageRuntimeSource?.byId,
+          fallback[ACTIVITY_SUB_EVENT_STAGE_RUNTIME_TABLE_NAME].byId
+        ),
+        ids: this.normalizeIdList(
+          activitySubEventStageRuntimeSource?.ids,
+          fallback[ACTIVITY_SUB_EVENT_STAGE_RUNTIME_TABLE_NAME].ids
+        ),
+        idsByOwnerKey: this.normalizeActivitySubEventStageRuntimeIdsByOwnerKey(activitySubEventStageRuntimeSource)
       },
       [USERS_TABLE_NAME]: {
         byId: usersSource?.byId && typeof usersSource.byId === 'object'
@@ -957,6 +979,15 @@ export class AppMemoryDb {
   ): AppMemorySchema[typeof ACTIVITY_RESOURCES_TABLE_NAME]['byId'] {
     return value && typeof value === 'object'
       ? { ...(value as AppMemorySchema[typeof ACTIVITY_RESOURCES_TABLE_NAME]['byId']) }
+      : { ...fallback };
+  }
+
+  private normalizeActivitySubEventStageRuntimeById(
+    value: unknown,
+    fallback: AppMemorySchema[typeof ACTIVITY_SUB_EVENT_STAGE_RUNTIME_TABLE_NAME]['byId']
+  ): AppMemorySchema[typeof ACTIVITY_SUB_EVENT_STAGE_RUNTIME_TABLE_NAME]['byId'] {
+    return value && typeof value === 'object'
+      ? { ...(value as AppMemorySchema[typeof ACTIVITY_SUB_EVENT_STAGE_RUNTIME_TABLE_NAME]['byId']) }
       : { ...fallback };
   }
 
@@ -1232,6 +1263,41 @@ export class AppMemoryDb {
     source: Partial<AppMemorySchema[typeof ACTIVITY_RESOURCES_TABLE_NAME]> | undefined
   ): Record<string, string[]> {
     const normalizedById = this.normalizeActivityResourcesById(source?.byId, {});
+    const normalizedIds = this.normalizeIdList(source?.ids, []);
+    const next: Record<string, string[]> = {};
+
+    const rawIndex = source?.idsByOwnerKey;
+    if (rawIndex && typeof rawIndex === 'object') {
+      for (const [ownerKey, ids] of Object.entries(rawIndex)) {
+        if (!Array.isArray(ids) || !ownerKey.trim()) {
+          continue;
+        }
+        next[ownerKey] = ids
+          .map(id => String(id))
+          .filter(id => Boolean(normalizedById[id]));
+      }
+    }
+
+    for (const id of normalizedIds) {
+      const record = normalizedById[id];
+      const ownerKey = typeof record?.ownerKey === 'string' ? record.ownerKey.trim() : '';
+      if (!ownerKey) {
+        continue;
+      }
+      const bucket = next[ownerKey] ?? [];
+      if (!bucket.includes(id)) {
+        bucket.push(id);
+      }
+      next[ownerKey] = bucket;
+    }
+
+    return next;
+  }
+
+  private normalizeActivitySubEventStageRuntimeIdsByOwnerKey(
+    source: Partial<AppMemorySchema[typeof ACTIVITY_SUB_EVENT_STAGE_RUNTIME_TABLE_NAME]> | undefined
+  ): Record<string, string[]> {
+    const normalizedById = this.normalizeActivitySubEventStageRuntimeById(source?.byId, {});
     const normalizedIds = this.normalizeIdList(source?.ids, []);
     const next: Record<string, string[]> = {};
 
