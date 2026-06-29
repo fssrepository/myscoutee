@@ -1,6 +1,6 @@
-import { APP_STATIC_DATA } from '../../../shared/app-static-data';
-import { AppUtils } from '../../../shared/app-utils';
-import type { AppMenuPalette } from '../../../shared/ui';
+import { APP_STATIC_DATA } from '../../../app-static-data';
+import { AppUtils } from '../../../app-utils';
+import type { AppMenuPalette } from '../..';
 
 export interface NavigatorPresentation {
   aliases: readonly string[];

@@ -29,28 +29,28 @@ import {
   HeaderCardComponent,
   type HeaderCardModel,
   type UserImpressionChangeFlags
-} from '../../../shared/ui';
+} from '../..';
 import {
   ProfileHeaderCardConverter
-} from '../../../shared/ui/converters';
+} from '../../converters';
 import {
   AppUtils
-} from '../../../shared/app-utils';
+} from '../../../app-utils';
 import {
   AssetPopupStore
-} from '../../../shared/ui/context/stores/asset-popup.store';
+} from '../../context/stores/asset-popup.store';
 import {
   ActivitiesPopupStore
-} from '../../../shared/ui/context/stores/activities-popup.store';
+} from '../../context/stores/activities-popup.store';
 import {
   EventEditorPopupStore
-} from '../../../shared/ui/context/stores/event-editor-popup.store';
+} from '../../context/stores/event-editor-popup.store';
 import {
   AssetStore
-} from '../../../shared/ui/context/stores/asset.store';
+} from '../../context/stores/asset.store';
 import {
   SubEventResourcePopupStore
-} from '../../../shared/ui/context/stores/sub-event-resource-popup.store';
+} from '../../context/stores/sub-event-resource-popup.store';
 import {
   ExplanationGuideService,
   HelpCenterService,
@@ -63,34 +63,34 @@ import {
   type HelpCenterRevisionDto,
   type PrivacyConsentDto,
   type UserDto
-} from '../../../shared/core';
+} from '../../../core';
 import {
   USER_LOGOUT_CONTEXT_KEY
-} from '../../../shared/core/base/services/users.service';
+} from '../../../core/base/services/users.service';
 import {
   DialogComponent
-} from '../../../shared/ui/components/core/dialog/dialog.component';
+} from '../core/dialog/dialog.component';
 import {
   NavigatorSettingsPopupsComponent
-} from '../navigator-settings-popups/navigator-settings-popups.component';
+} from '../../../../navigator/components/navigator-settings-popups/navigator-settings-popups.component';
 import {
   NavigatorStore,
   type NavigatorBindings
-} from '../../../shared/ui/context/stores/navigator.store';
+} from '../../context/stores/navigator.store';
 import {
   resolveNavigatorPresentation
-} from './navigator-presenters';
-import type { ChatDTO } from '../../../shared/core/contracts/chat.interface';
+} from './side-menu-presenters';
+import type { ChatDTO } from '../../../core/contracts/chat.interface';
 import {
   DialogStore
-} from '../../../shared/ui/context/stores/dialog.store';
+} from '../../context/stores/dialog.store';
 import {
   APP_STORAGE_KEYS
-} from '../../../shared/core/common/storage-scope';
-import { UserProfileStore } from '../../../shared/ui/context/stores/user-profile.store';
-import { AppRuntimeStore } from '../../../shared/ui/context/stores/app-runtime.store';
-import { ActivityStore } from '../../../shared/ui/context/stores/activity.store';
-import { PopupStore } from '../../../shared/ui/context/stores/popup.store';
+} from '../../../core/common/storage-scope';
+import { UserProfileStore } from '../../context/stores/user-profile.store';
+import { AppRuntimeStore } from '../../context/stores/app-runtime.store';
+import { ActivityStore } from '../../context/stores/activity.store';
+import { PopupStore } from '../../context/stores/popup.store';
 
 interface NavigatorAvatarState {
   badgeCount: number;
@@ -149,7 +149,7 @@ type NavigatorHeaderActionMenuItemId =
   | NavigatorSettingsMenuItemId;
 
 @Component({
-  selector: 'app-navigator',
+  selector: 'app-side-menu',
   standalone: true,
   imports: [
     CommonModule,
@@ -159,10 +159,10 @@ type NavigatorHeaderActionMenuItemId =
     NavigatorSettingsPopupsComponent,
     DialogComponent
   ],
-  templateUrl: './navigator.component.html',
-  styleUrl: './navigator.component.scss'
+  templateUrl: './side-menu.component.html',
+  styleUrl: './side-menu.component.scss'
 })
-export class NavigatorComponent implements OnDestroy {
+export class SideMenuComponent implements OnDestroy {
   private static readonly ACCOUNT_REACTIVATION_WINDOW_MS = 30 * 24 * 60 * 60 * 1000;
   private static readonly ADMIN_SESSION_STORAGE_KEY = APP_STORAGE_KEYS.adminSession;
   private static readonly USER_MENU_LOAD_DURATION_MS = 3000;
@@ -243,7 +243,8 @@ export class NavigatorComponent implements OnDestroy {
   );
   protected readonly avatarVisible = computed(() => {
     const path = this.currentRoutePathRef();
-    return path !== '/' && !path.startsWith('/entry');
+    const activeUserId = this.userProfileStore.activeUserId().trim();
+    return Boolean(activeUserId) && path !== '/' && !path.startsWith('/entry');
   });
   protected readonly hasBindings = computed(() => this.bindings() !== null);
   protected readonly isMenuOpen = computed(() => this.menuUiState().open);
@@ -343,7 +344,7 @@ export class NavigatorComponent implements OnDestroy {
         ? {
             state: this.avatarLoadError() ? 'error' : 'loading',
             shape: 'circle',
-            durationMs: NavigatorComponent.USER_MENU_LOAD_DURATION_MS
+            durationMs: SideMenuComponent.USER_MENU_LOAD_DURATION_MS
           }
         : null,
       context: { kind: 'toggle-menu' }
@@ -1500,7 +1501,7 @@ export class NavigatorComponent implements OnDestroy {
     if (!Number.isFinite(deletedAtMs)) {
       return true;
     }
-    return Date.now() - deletedAtMs <= NavigatorComponent.ACCOUNT_REACTIVATION_WINDOW_MS;
+    return Date.now() - deletedAtMs <= SideMenuComponent.ACCOUNT_REACTIVATION_WINDOW_MS;
   }
 
   private openDeletedAccountReactivationPrompt(user: UserDto, requestVersion: number): void {
@@ -1673,7 +1674,7 @@ export class NavigatorComponent implements OnDestroy {
         if (AppUtils.normalizeRoutePath(this.router.url).startsWith('/admin')) {
           this.clearHydratedUser();
           if (typeof localStorage !== 'undefined') {
-            localStorage.removeItem(NavigatorComponent.ADMIN_SESSION_STORAGE_KEY);
+            localStorage.removeItem(SideMenuComponent.ADMIN_SESSION_STORAGE_KEY);
           }
           window.dispatchEvent(new CustomEvent('adminLogoutRequested'));
           await this.sessionService.logout().finally(() => this.router.navigate(['/admin']));
@@ -1732,7 +1733,7 @@ export class NavigatorComponent implements OnDestroy {
           }
           this.clearHydratedUser();
           if (typeof localStorage !== 'undefined') {
-            localStorage.removeItem(NavigatorComponent.ADMIN_SESSION_STORAGE_KEY);
+            localStorage.removeItem(SideMenuComponent.ADMIN_SESSION_STORAGE_KEY);
           }
           window.dispatchEvent(new CustomEvent('adminLogoutRequested'));
           await this.sessionService.logout().finally(() => this.router.navigate(['/admin']));
@@ -1830,7 +1831,7 @@ export class NavigatorComponent implements OnDestroy {
     this.userMenuLoadOverdueTimer = setTimeout(() => {
       this.userMenuLoadOverdueTimer = null;
       this.userMenuLoadOverdueRef.set(true);
-    }, NavigatorComponent.USER_MENU_LOAD_DURATION_MS);
+    }, SideMenuComponent.USER_MENU_LOAD_DURATION_MS);
   }
 
   private clearUserMenuLoadState(): void {

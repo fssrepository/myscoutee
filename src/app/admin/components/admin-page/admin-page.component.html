@@ -14,7 +14,6 @@
         <p class="admin-entry-lead">Review reported users, support chats, and application feedback with the same app tools.</p>
       </section>
     </div>
-    <app-navigator></app-navigator>
   </section>
 } @else if (workspace.dashboard(); as dashboard) {
   <section class="admin-workspace">
@@ -33,7 +32,6 @@
       </section>
     </div>
 
-    <app-navigator></app-navigator>
     @if (reportsPopupComponent(); as reportsComponent) {
       <ng-container *ngComponentOutlet="reportsComponent"></ng-container>
     }

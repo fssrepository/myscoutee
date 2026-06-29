@@ -219,8 +219,8 @@ export class NavigatorStore {
     if (this.navigatorComponentRef()) {
       return;
     }
-    const module = await import('../../../../navigator/components/navigator/navigator.component');
-    this.navigatorComponentRef.set(module.NavigatorComponent);
+    const module = await import('../../components/side-menu/side-menu.component');
+    this.navigatorComponentRef.set(module.SideMenuComponent);
   }
 
   async ensureNavigatorImpressionsPopupLoaded(): Promise<void> {

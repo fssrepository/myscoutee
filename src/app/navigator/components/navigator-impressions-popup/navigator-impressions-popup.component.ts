@@ -29,7 +29,7 @@ import type { UserDto, UserImpressionsDto, UserImpressionsSectionDto } from '../
 import {
   resolveNavigatorPresentation,
   type NavigatorPresentation
-} from '../navigator/navigator-presenters';
+} from '../../../shared/ui/components/side-menu/side-menu-presenters';
 import {
   NavigatorStore
 } from '../../../shared/ui/context/stores/navigator.store';

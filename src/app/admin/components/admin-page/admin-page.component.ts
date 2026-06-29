@@ -23,9 +23,6 @@ import {
 } from '@angular/material/core';
 
 import {
-  NavigatorComponent
-} from '../../../navigator/components/navigator/navigator.component';
-import {
   AdminWorkspaceDataService
 } from '../../../shared/core/base/services/admin-workspace-data.service';
 import {
@@ -56,7 +53,6 @@ import { PopupStore } from '../../../shared/ui/context/stores/popup.store';
     CommonModule,
     MatIconModule,
     MatRippleModule,
-    NavigatorComponent,
     DialogComponent
   ],
   templateUrl: './admin-page.component.html',
