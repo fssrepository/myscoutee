@@ -14,12 +14,13 @@ export class SeedEventsRepository {
   private initialized = false;
 
   seedDefaults(): boolean {
-    if (this.initialized) {
-      return false;
-    }
     const state = this.memoryDb.read();
     const seededRecords = this.buildSeededRecords();
     const currentTable = state[EVENTS_TABLE_NAME];
+
+    if (this.initialized && currentTable.ids.length > 0) {
+      return false;
+    }
 
     if (currentTable.ids.length === 0) {
       this.memoryDb.write(currentState => ({
@@ -111,11 +112,9 @@ export class SeedEventsRepository {
       if (!seededRecord || existingIds.has(recordKey)) {
         if (seededRecord) {
           const currentRecord = current.byId[recordKey];
-          const migratedRecord = currentRecord
-            ? this.withSeededStructure(currentRecord, seededRecord)
-            : null;
-          if (migratedRecord && !this.sameRecord(currentRecord, migratedRecord)) {
-            nextById[recordKey] = migratedRecord;
+          const nextRecord = SeedEventsBuilder.cloneRecord(seededRecord);
+          if (!currentRecord || !this.sameRecord(currentRecord, nextRecord)) {
+            nextById[recordKey] = nextRecord;
             changed = true;
           }
         }
@@ -136,77 +135,7 @@ export class SeedEventsRepository {
     };
   }
 
-  private withSeededStructure(existing: ActivityEventRecord, seeded: ActivityEventRecord): ActivityEventRecord {
-    const existingSlotTemplates = existing.slotTemplates ?? [];
-    const seededSlotTemplates = seeded.slotTemplates ?? [];
-    const existingDefinitions = existing.subEventDefinitions ?? [];
-    const seededDefinitions = seeded.subEventDefinitions ?? [];
-    const shouldAdoptSeedDefinitions = existingDefinitions.length === 0 && seededDefinitions.length > 0;
-    const shouldAdoptSeedSlots = existingSlotTemplates.length === 0 && seededSlotTemplates.length > 0;
-
-    return SeedEventsBuilder.cloneRecord({
-      ...existing,
-      pricing: existing.pricing ?? seeded.pricing,
-      policiesEnabled: existing.policiesEnabled ?? seeded.policiesEnabled,
-      policies: (existing.policies?.length ?? 0) > 0 ? existing.policies : seeded.policies,
-      slotsEnabled: existing.slotsEnabled ?? seeded.slotsEnabled,
-      slotTemplates: shouldAdoptSeedSlots
-        ? seededSlotTemplates
-        : this.withSeededSlotTemplateDefinitions(existingSlotTemplates, seededSlotTemplates),
-      parentEventId: existing.parentEventId ?? seeded.parentEventId,
-      slotTemplateId: existing.slotTemplateId ?? seeded.slotTemplateId,
-      eventType: existing.eventType ?? seeded.eventType,
-      subEventsEnabled: existing.subEventsEnabled ?? seeded.subEventsEnabled,
-      subEventDefinitions: shouldAdoptSeedDefinitions ? seededDefinitions : existingDefinitions,
-      subEvents: [],
-      mode: seeded.mode ?? existing.mode
-    });
-  }
-
-  private withSeededSlotTemplateDefinitions(
-    existing: readonly NonNullable<ActivityEventRecord['slotTemplates']>[number][],
-    seeded: readonly NonNullable<ActivityEventRecord['slotTemplates']>[number][]
-  ): ActivityEventRecord['slotTemplates'] {
-    if (existing.length === 0 || seeded.length === 0) {
-      return existing.map(item => ({ ...item }));
-    }
-    const seededById = new Map(seeded.map(item => [item.id, item]));
-    const next = existing.map(item => {
-      const seededItem = seededById.get(item.id);
-      if (!seededItem || (item.subEventDefinitions?.length ?? 0) > 0 || (seededItem.subEventDefinitions?.length ?? 0) === 0) {
-        return { ...item };
-      }
-      return {
-        ...item,
-        subEventDefinitions: seededItem.subEventDefinitions?.map(definition => ({
-          ...definition,
-          groups: (definition.groups ?? []).map(group => ({ ...group }))
-        }))
-      };
-    });
-    const existingIds = new Set(existing.map(item => item.id));
-    for (const seededItem of seeded) {
-      if (!existingIds.has(seededItem.id)) {
-        next.push({
-          ...seededItem,
-          subEventDefinitions: (seededItem.subEventDefinitions ?? []).map(definition => ({
-            ...definition,
-            groups: (definition.groups ?? []).map(group => ({ ...group }))
-          }))
-        });
-      }
-    }
-    return next;
-  }
-
   private sameRecord(left: ActivityEventRecord, right: ActivityEventRecord): boolean {
-    return JSON.stringify(this.seedMigrationComparableRecord(left)) === JSON.stringify(this.seedMigrationComparableRecord(right));
-  }
-
-  private seedMigrationComparableRecord(record: ActivityEventRecord): ActivityEventRecord {
-    const comparable = SeedEventsBuilder.cloneRecord(record);
-    delete comparable.acceptedMemberUserIds;
-    delete comparable.pendingMemberUserIds;
-    return comparable;
+    return JSON.stringify(SeedEventsBuilder.cloneRecord(left)) === JSON.stringify(SeedEventsBuilder.cloneRecord(right));
   }
 }
