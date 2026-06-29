@@ -90,7 +90,10 @@ import {
 import { UserProfileStore } from '../../context/stores/user-profile.store';
 import { AppRuntimeStore } from '../../context/stores/app-runtime.store';
 import { ActivityStore } from '../../context/stores/activity.store';
-import { PopupStore } from '../../context/stores/popup.store';
+import { MemberMenuStore } from '../../context/stores/member-menu.store';
+import { ActivityInvitePopupStore } from '../../context/stores/activity-invite-popup.store';
+import { AdminMenuStore } from '../../context/stores/admin-menu.store';
+import { AdminWorkspaceStore } from '../../context/stores/admin-workspace.store';
 
 interface NavigatorAvatarState {
   badgeCount: number;
@@ -175,7 +178,10 @@ export class SideMenuComponent implements OnDestroy {
   private readonly userProfileStore = inject(UserProfileStore);
   protected readonly runtimeStore = inject(AppRuntimeStore);
   private readonly activityStore = inject(ActivityStore);
-  protected readonly popupStore = inject(PopupStore);
+  protected readonly memberMenuStore = inject(MemberMenuStore);
+  protected readonly activityInviteStore = inject(ActivityInvitePopupStore);
+  private readonly adminMenuStore = inject(AdminMenuStore);
+  private readonly adminWorkspaceStore = inject(AdminWorkspaceStore);
   private readonly explanationGuide = inject(ExplanationGuideService);
   private readonly helpCenterService = inject(HelpCenterService);
   private readonly privacyPolicy = inject(PrivacyPolicyService);
@@ -220,7 +226,7 @@ export class SideMenuComponent implements OnDestroy {
   }));
   protected readonly isCoveredByAssetPopup = computed(() =>
     this.assetPopupStore.visible()
-    || this.popupStore.activityInvitePopup() !== null
+    || this.activityInviteStore.activityInvitePopup() !== null
   );
   protected readonly avatarVisible = computed(() => {
     const path = this.currentRoutePathRef();
@@ -924,21 +930,7 @@ export class SideMenuComponent implements OnDestroy {
     });
 
     effect(() => {
-      const request = this.popupStore.eventSubeventsListPopup();
-      if (request) {
-        void this.popupStore.ensureEventSubeventsListPopupLoaded();
-      }
-    });
-
-    effect(() => {
-      const request = this.popupStore.eventTournamentGroupsPopup();
-      if (request) {
-        void this.popupStore.ensureEventTournamentGroupsPopupLoaded();
-      }
-    });
-
-    effect(() => {
-      const request = this.popupStore.activitiesNavigationRequest();
+      const request = this.memberMenuStore.activitiesNavigationRequest();
       if (!request || (request.type !== 'eventEditorCreate' && request.type !== 'eventEditor')) {
         return;
       }
@@ -946,7 +938,7 @@ export class SideMenuComponent implements OnDestroy {
     });
 
     effect(() => {
-      const request = this.popupStore.activitiesNavigationRequest();
+      const request = this.memberMenuStore.activitiesNavigationRequest();
       if (!request || (request.type !== 'members' && request.type !== 'eventEditorMembers')) {
         return;
       }
@@ -954,7 +946,7 @@ export class SideMenuComponent implements OnDestroy {
     });
 
     effect(() => {
-      const request = this.popupStore.activitiesNavigationRequest();
+      const request = this.memberMenuStore.activitiesNavigationRequest();
       if (!request || (request.type !== 'eventExplore' && request.type !== 'eventCheckoutDraft')) {
         return;
       }
@@ -962,16 +954,8 @@ export class SideMenuComponent implements OnDestroy {
     });
 
     effect(() => {
-      const request = this.popupStore.activitiesNavigationRequest();
+      const request = this.memberMenuStore.activitiesNavigationRequest();
       if (!request || (request.type !== 'chatResource' && request.type !== 'assetExplore')) {
-        return;
-      }
-      void this.subEventResourceStore.ensureEventResourcePopupLoaded();
-    });
-
-    effect(() => {
-      const request = this.eventEditorStore.subEventResourcePopupRequest();
-      if (!request) {
         return;
       }
       void this.subEventResourceStore.ensureEventResourcePopupLoaded();
@@ -1006,21 +990,22 @@ export class SideMenuComponent implements OnDestroy {
     });
 
     effect(() => {
-      const resourcePopupVisible = this.subEventResourceStore.popupContextRef() !== null;
+      const resourcePopupVisible = this.subEventResourceStore.popupContextRef()?.origin === 'chat';
       if (resourcePopupVisible) {
         void this.subEventResourceStore.ensureEventResourcePopupLoaded();
       }
     });
 
     effect(() => {
-      const assetExploreVisible = this.subEventResourceStore.assetExplorePopupRef() !== null;
+      const assetExploreVisible = this.subEventResourceStore.popupContextRef()?.origin === 'chat'
+        && this.subEventResourceStore.assetExplorePopupRef() !== null;
       if (assetExploreVisible) {
         void this.subEventResourceStore.ensureEventResourceAssetExploreLoaded();
       }
     });
 
     effect(() => {
-      const supplyContributionsVisible = this.subEventResourceStore.popupContextRef() !== null
+      const supplyContributionsVisible = this.subEventResourceStore.popupContextRef()?.origin === 'chat'
         && !this.subEventResourceStore.assetExploreOnlyRef()
         && this.subEventResourceStore.supplyPopupRef() !== null;
       if (supplyContributionsVisible) {
@@ -1029,14 +1014,14 @@ export class SideMenuComponent implements OnDestroy {
     });
 
     effect(() => {
-      const activityInvitePopup = this.popupStore.activityInvitePopup();
+      const activityInvitePopup = this.activityInviteStore.activityInvitePopup();
       if (activityInvitePopup?.ownerId?.trim()) {
-        void this.assetPopupStore.ensureAssetMemberPickerPopupLoaded();
+        void this.activityInviteStore.ensureAssetMemberPickerPopupLoaded();
       }
     });
 
     effect(() => {
-      const request = this.popupStore.navigatorActivitiesRequest();
+      const request = this.memberMenuStore.navigatorActivitiesRequest();
       if (!request || request.updatedMs <= this.lastHandledActivitiesRequestMs) {
         return;
       }
@@ -1044,22 +1029,22 @@ export class SideMenuComponent implements OnDestroy {
       this.activitiesStore.openActivities(request.primaryFilter, request.eventScope, undefined, false, {
         adminServiceOnly: request.adminServiceOnly === true
       });
-      this.popupStore.clearNavigatorActivitiesRequest();
+      this.memberMenuStore.clearNavigatorActivitiesRequest();
     });
 
     effect(() => {
-      const request = this.popupStore.navigatorAssetRequest();
+      const request = this.memberMenuStore.navigatorAssetRequest();
       if (!request || request.updatedMs <= this.lastHandledAssetRequestMs) {
         return;
       }
       this.lastHandledAssetRequestMs = request.updatedMs;
       this.assetStore.openAssetPopup(request.assetFilter);
       this.assetPopupStore.primaryVisibleRef.set(true);
-      this.popupStore.clearNavigatorAssetRequest();
+      this.memberMenuStore.clearNavigatorAssetRequest();
     });
 
     effect(() => {
-      const request = this.popupStore.navigatorEventFeedbackRequest();
+      const request = this.memberMenuStore.navigatorEventFeedbackRequest();
       if (!request || request.updatedMs <= this.lastHandledEventFeedbackRequestMs) {
         return;
       }
@@ -1262,7 +1247,7 @@ export class SideMenuComponent implements OnDestroy {
       return;
     }
     if (this.isAdminMode()) {
-      this.popupStore.openAdminNavigatorRequest('profile');
+      this.profileStore.openProfileEditor();
       return;
     }
     this.profileStore.openProfileEditor();
@@ -1314,7 +1299,7 @@ export class SideMenuComponent implements OnDestroy {
     if (!this.runtimeStore.isOnline() || this.isBlockedUser()) {
       return;
     }
-    this.popupStore.openNavigatorAssetRequest('Car');
+    this.memberMenuStore.openNavigatorAssetRequest('Car');
   }
 
   protected openAssetAccommodationPopup(event?: Event): void {
@@ -1322,7 +1307,7 @@ export class SideMenuComponent implements OnDestroy {
     if (!this.runtimeStore.isOnline() || this.isBlockedUser()) {
       return;
     }
-    this.popupStore.openNavigatorAssetRequest('Accommodation');
+    this.memberMenuStore.openNavigatorAssetRequest('Accommodation');
   }
 
   protected openAssetSuppliesPopup(event?: Event): void {
@@ -1330,12 +1315,12 @@ export class SideMenuComponent implements OnDestroy {
     if (!this.runtimeStore.isOnline() || this.isBlockedUser()) {
       return;
     }
-    this.popupStore.openNavigatorAssetRequest('Supplies');
+    this.memberMenuStore.openNavigatorAssetRequest('Supplies');
   }
 
   protected openAssetTicketsPopup(event?: Event): void {
     event?.stopPropagation();
-    this.popupStore.openNavigatorAssetRequest('Ticket');
+    this.memberMenuStore.openNavigatorAssetRequest('Ticket');
   }
 
   protected openContactsPopup(event?: Event): void {
@@ -1350,7 +1335,7 @@ export class SideMenuComponent implements OnDestroy {
     if (!this.runtimeStore.isOnline() || this.isBlockedUser()) {
       return;
     }
-    this.popupStore.openNavigatorEventFeedbackRequest();
+    this.memberMenuStore.openNavigatorEventFeedbackRequest();
   }
 
   protected isAdminMode(): boolean {
@@ -1362,7 +1347,7 @@ export class SideMenuComponent implements OnDestroy {
     if (!this.runtimeStore.isOnline()) {
       return;
     }
-    this.popupStore.openAdminNavigatorRequest('reports');
+    this.adminMenuStore.openReports(this.adminWorkspaceStore.dashboard()?.reportedUsers[0] ?? null);
   }
 
   protected openAdminFeedbackShortcut(event?: Event): void {
@@ -1370,7 +1355,7 @@ export class SideMenuComponent implements OnDestroy {
     if (!this.runtimeStore.isOnline()) {
       return;
     }
-    this.popupStore.openAdminNavigatorRequest('feedback');
+    this.adminMenuStore.openFeedback();
   }
 
   protected openAdminChatShortcut(event?: Event): void {
@@ -1378,7 +1363,7 @@ export class SideMenuComponent implements OnDestroy {
     if (!this.runtimeStore.isOnline()) {
       return;
     }
-    this.popupStore.openAdminNavigatorRequest('chat');
+    this.memberMenuStore.openNavigatorActivitiesRequest('chats', undefined, { adminServiceOnly: true });
   }
 
   protected openAdminProfileShortcut(event?: Event): void {
@@ -1386,7 +1371,7 @@ export class SideMenuComponent implements OnDestroy {
     if (!this.runtimeStore.isOnline()) {
       return;
     }
-    this.popupStore.openAdminNavigatorRequest('profile');
+    this.profileStore.openProfileEditor();
   }
 
   protected openAdminHelpEditorShortcut(event?: Event): void {
@@ -1394,7 +1379,7 @@ export class SideMenuComponent implements OnDestroy {
     if (!this.runtimeStore.isOnline()) {
       return;
     }
-    this.popupStore.openAdminNavigatorRequest('help-editor');
+    this.adminMenuStore.openHelpEditor();
   }
 
   protected openAdminIdeaEditorShortcut(event?: Event): void {
@@ -1402,7 +1387,7 @@ export class SideMenuComponent implements OnDestroy {
     if (!this.runtimeStore.isOnline()) {
       return;
     }
-    this.popupStore.openAdminNavigatorRequest('idea-editor');
+    this.adminMenuStore.openIdeaEditor();
   }
 
   protected openAdminNotificationsShortcut(event?: Event): void {
@@ -1410,7 +1395,7 @@ export class SideMenuComponent implements OnDestroy {
     if (!this.runtimeStore.isOnline()) {
       return;
     }
-    this.popupStore.openAdminNavigatorRequest('notifications');
+    this.adminMenuStore.openNotifications();
   }
 
   protected openAdminParamsShortcut(event?: Event): void {
@@ -1418,7 +1403,7 @@ export class SideMenuComponent implements OnDestroy {
     if (!this.runtimeStore.isOnline()) {
       return;
     }
-    this.popupStore.openAdminNavigatorRequest('params');
+    this.adminMenuStore.openParams();
   }
 
   protected openAdminStatsShortcut(event?: Event): void {
@@ -1426,7 +1411,7 @@ export class SideMenuComponent implements OnDestroy {
     if (!this.runtimeStore.isOnline()) {
       return;
     }
-    this.popupStore.openAdminNavigatorRequest('stats');
+    this.adminMenuStore.openStats();
   }
 
   protected openAdminAffinityGraphShortcut(event?: Event): void {
@@ -1434,7 +1419,7 @@ export class SideMenuComponent implements OnDestroy {
     if (!this.runtimeStore.isOnline()) {
       return;
     }
-    this.popupStore.openAdminNavigatorRequest('affinity-graph');
+    this.adminMenuStore.openAffinityGraph();
   }
 
   protected openAdminMonitoringShortcut(event?: Event): void {
@@ -1442,7 +1427,7 @@ export class SideMenuComponent implements OnDestroy {
     if (!this.runtimeStore.isOnline()) {
       return;
     }
-    this.popupStore.openAdminNavigatorRequest('monitoring');
+    this.adminMenuStore.openMonitoring();
   }
 
   ngOnDestroy(): void {
@@ -1897,7 +1882,7 @@ export class SideMenuComponent implements OnDestroy {
     if (!this.runtimeStore.isOnline() || (primaryFilter !== 'chats' && this.isBlockedUser())) {
       return;
     }
-    this.popupStore.openNavigatorActivitiesRequest(primaryFilter, eventScope);
+    this.memberMenuStore.openNavigatorActivitiesRequest(primaryFilter, eventScope);
   }
 
   private openBlockedUserSupportChat(): void {
@@ -1936,14 +1921,14 @@ export class SideMenuComponent implements OnDestroy {
   protected onGlobalPopupRequest(event: Event): void {
     const popupEvent = event as CustomEvent<{ type?: 'eventEditor' | 'eventExplore' }>;
     if (popupEvent.detail?.type === 'eventExplore') {
-      this.popupStore.requestActivitiesNavigation({ type: 'eventExplore' });
+      this.memberMenuStore.requestActivitiesNavigation({ type: 'eventExplore' });
       void this.activitiesStore.ensureEventExplorePopupLoaded();
       return;
     }
     if (popupEvent.detail?.type !== 'eventEditor') {
       return;
     }
-    this.popupStore.requestActivitiesNavigation({
+    this.memberMenuStore.requestActivitiesNavigation({
       type: 'eventEditorCreate',
       target: 'events'
     });

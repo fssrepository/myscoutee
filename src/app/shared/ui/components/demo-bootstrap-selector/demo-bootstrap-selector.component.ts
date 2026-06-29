@@ -21,7 +21,7 @@ import {
 
 import {
   type DemoBootstrapSelectorState
-} from '../../context/stores/popup.store';
+} from '../../context/stores/demo-bootstrap-selector.store';
 import {
   IndicatorComponent
 } from '../core/indicator';
@@ -44,7 +44,7 @@ import {
 import {
   SeedDemoBootstrapService
 } from '../../../core/local/seed/services/demo-bootstrap.service';
-import { PopupStore } from '../../context/stores/popup.store';
+import { DemoBootstrapSelectorStore } from '../../context/stores/demo-bootstrap-selector.store';
 
 type DemoSelectorHeaderMenuItemId = 'new-profile';
 
@@ -67,7 +67,7 @@ interface DemoSelectorHeaderMenuContext {
   styleUrl: './demo-bootstrap-selector.component.scss'
 })
 export class DemoBootstrapSelectorComponent {
-  private readonly popupStore = inject(PopupStore);
+  private readonly demoBootstrapSelectorStore = inject(DemoBootstrapSelectorStore);
   private readonly usersService = inject(UsersService);
   private readonly seedBootstrap = inject(SeedDemoBootstrapService);
   private readonly changeDetectorRef = inject(ChangeDetectorRef);
@@ -96,7 +96,7 @@ export class DemoBootstrapSelectorComponent {
 
   constructor() {
     effect(() => {
-      const request = this.popupStore.demoBootstrapSelector();
+      const request = this.demoBootstrapSelectorStore.demoBootstrapSelector();
       if (!request) {
         this.resetContextState();
         return;

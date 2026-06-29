@@ -64,7 +64,7 @@ import {
 import { UserProfileStore } from '../../../shared/ui/context/stores/user-profile.store';
 import { AppRuntimeStore } from '../../../shared/ui/context/stores/app-runtime.store';
 import { ActivityStore } from '../../../shared/ui/context/stores/activity.store';
-import { PopupStore } from '../../../shared/ui/context/stores/popup.store';
+import { MemberMenuStore } from '../../../shared/ui/context/stores/member-menu.store';
 
 type EventFeedbackStackedPopupMode = 'eventFeedback' | 'eventFeedbackNote' | 'organizerEventFeedback' | null;
 
@@ -103,7 +103,7 @@ export class EventFeedbackPopupComponent {
   private readonly userProfileStore = inject(UserProfileStore);
   private readonly runtimeStore = inject(AppRuntimeStore);
   private readonly activityStore = inject(ActivityStore);
-  private readonly popupStore = inject(PopupStore);
+  private readonly memberMenuStore = inject(MemberMenuStore);
   private readonly eventsService = inject(EventsService);
   private readonly dialogStore = inject(DialogStore);
   private lastHandledNavigatorEventFeedbackRequestMs = 0;
@@ -327,12 +327,12 @@ export class EventFeedbackPopupComponent {
 
   constructor() {
     effect(() => {
-      const request = this.popupStore.navigatorEventFeedbackRequest();
+      const request = this.memberMenuStore.navigatorEventFeedbackRequest();
       if (!request || request.updatedMs <= this.lastHandledNavigatorEventFeedbackRequestMs) {
         return;
       }
       this.lastHandledNavigatorEventFeedbackRequestMs = request.updatedMs;
-      this.popupStore.clearNavigatorEventFeedbackRequest();
+      this.memberMenuStore.clearNavigatorEventFeedbackRequest();
       this.openPopup();
     });
 

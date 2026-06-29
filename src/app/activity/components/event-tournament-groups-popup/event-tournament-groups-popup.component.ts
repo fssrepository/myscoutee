@@ -44,7 +44,7 @@ import {
   type UiAccordionModel,
   type UiAccordionToggleEvent
 } from '../../../shared/ui';
-import type { EventTournamentGroupsPopupRequest } from '../../../shared/ui/context/stores/popup.store';
+import type { EventTournamentGroupsPopupRequest } from '../../../shared/ui/context/stores/event-subevents-popup.store';
 import {
   EventTournamentGroupsPopupConverter,
   type EventTournamentGroupsAccordionContext,
@@ -65,7 +65,7 @@ import {
 } from '../event-subevent-group-form-popup/event-subevent-group-form-popup.component';
 import { UserProfileStore } from '../../../shared/ui/context/stores/user-profile.store';
 import { ActivityStore } from '../../../shared/ui/context/stores/activity.store';
-import { PopupStore } from '../../../shared/ui/context/stores/popup.store';
+import { EventSubeventsPopupStore } from '../../../shared/ui/context/stores/event-subevents-popup.store';
 
 type TournamentGroupsAction =
   | 'add-entry'
@@ -156,7 +156,7 @@ interface FifaRow {
   changeDetection: ChangeDetectionStrategy.OnPush
 })
 export class EventTournamentGroupsPopupComponent {
-  private readonly popupStore = inject(PopupStore);
+  private readonly eventSubeventsStore = inject(EventSubeventsPopupStore);
   private readonly userProfileStore = inject(UserProfileStore);
   private readonly activityStore = inject(ActivityStore);
   private readonly eventsService = inject(EventsService);
@@ -194,7 +194,7 @@ export class EventTournamentGroupsPopupComponent {
 
   constructor() {
     effect(() => {
-      const request = this.popupStore.eventTournamentGroupsPopup();
+      const request = this.eventSubeventsStore.eventTournamentGroupsPopup();
       if (!request) {
         this.resetState();
         return;
@@ -269,11 +269,11 @@ export class EventTournamentGroupsPopupComponent {
   }
 
   protected isOpen(): boolean {
-    return Boolean(this.popupStore.eventTournamentGroupsPopup());
+    return Boolean(this.eventSubeventsStore.eventTournamentGroupsPopup());
   }
 
   protected close(): void {
-    this.popupStore.closeEventTournamentGroupsPopup();
+    this.eventSubeventsStore.closeEventTournamentGroupsPopup();
   }
 
   protected viewModel(): EventTournamentGroupsPopupModel {
@@ -1050,7 +1050,7 @@ export class EventTournamentGroupsPopupComponent {
   }
 
   private async loadGroupsForStage(stageId: string): Promise<void> {
-    const request = this.popupStore.eventTournamentGroupsPopup();
+    const request = this.eventSubeventsStore.eventTournamentGroupsPopup();
     const eventId = `${request?.eventId ?? ''}`.trim();
     const normalizedStageId = `${stageId ?? ''}`.trim();
     if (!eventId || !normalizedStageId) {
@@ -1291,16 +1291,16 @@ export class EventTournamentGroupsPopupComponent {
   }
 
   private eventId(): string {
-    const request = this.popupStore.eventTournamentGroupsPopup();
+    const request = this.eventSubeventsStore.eventTournamentGroupsPopup();
     return `${request?.slotId ?? request?.eventId ?? ''}`.trim();
   }
 
   private requestEventId(): string {
-    return `${this.popupStore.eventTournamentGroupsPopup()?.eventId ?? ''}`.trim();
+    return `${this.eventSubeventsStore.eventTournamentGroupsPopup()?.eventId ?? ''}`.trim();
   }
 
   private requestSlotId(): string | null {
-    const slotId = `${this.popupStore.eventTournamentGroupsPopup()?.slotId ?? ''}`.trim();
+    const slotId = `${this.eventSubeventsStore.eventTournamentGroupsPopup()?.slotId ?? ''}`.trim();
     return slotId || null;
   }
 

@@ -2,7 +2,7 @@ import { CommonModule } from '@angular/common';
 import { Component, inject } from '@angular/core';
 import { MatIconModule } from '@angular/material/icon';
 
-import { AdminPopupStore } from '../../../shared/ui/context/stores/admin-popup.store';
+import { AdminMenuStore } from '../../../shared/ui/context/stores/admin-menu.store';
 
 @Component({
   selector: 'app-admin-item-preview-popup',
@@ -12,7 +12,7 @@ import { AdminPopupStore } from '../../../shared/ui/context/stores/admin-popup.s
   styleUrl: './admin-item-preview-popup.component.scss'
 })
 export class AdminItemPreviewPopupComponent {
-  protected readonly admin = inject(AdminPopupStore);
+  protected readonly admin = inject(AdminMenuStore);
 
   protected itemIcon(sourceType?: string | null): string {
     switch ((sourceType ?? '').trim()) {

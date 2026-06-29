@@ -88,22 +88,22 @@
 @if (activitiesStore.eventMembersPopupComponent(); as membersComponent) {
   <ng-container *ngComponentOutlet="membersComponent"></ng-container>
 }
-@if (subEventResourceStore.popupContextRef()) {
+@if (subEventResourceStore.popupContextRef()?.origin === 'chat') {
   @if (subEventResourceStore.eventResourcePopupComponent(); as resourceComponent) {
     <ng-container *ngComponentOutlet="resourceComponent"></ng-container>
   }
 }
-@if (subEventResourceStore.assetExplorePopupRef()) {
+@if (subEventResourceStore.popupContextRef()?.origin === 'chat' && subEventResourceStore.assetExplorePopupRef()) {
   @if (subEventResourceStore.eventResourceAssetExploreComponent(); as assetExploreComponent) {
     <ng-container *ngComponentOutlet="assetExploreComponent"></ng-container>
   }
 }
-@if (subEventResourceStore.popupContextRef() && !subEventResourceStore.assetExploreOnlyRef() && subEventResourceStore.supplyPopupRef()) {
+@if (subEventResourceStore.popupContextRef()?.origin === 'chat' && !subEventResourceStore.assetExploreOnlyRef() && subEventResourceStore.supplyPopupRef()) {
   @if (subEventResourceStore.eventSupplyContributionsPopupComponent(); as supplyContributionsComponent) {
     <ng-container *ngComponentOutlet="supplyContributionsComponent"></ng-container>
   }
 }
-@if (assetPopupStore.assetMemberPickerPopupComponent(); as assetMemberPickerComponent) {
+@if (activityInviteStore.assetMemberPickerPopupComponent(); as assetMemberPickerComponent) {
   <ng-container *ngComponentOutlet="assetMemberPickerComponent"></ng-container>
 }
 @if (profileStore.contactsPopupComponent(); as contactsComponent) {
@@ -121,12 +121,6 @@
 }
 @if (eventEditorStore.eventEditorPopupComponent(); as popupComponent) {
   <ng-container *ngComponentOutlet="popupComponent"></ng-container>
-}
-@if (popupStore.eventSubeventsListPopupComponent(); as subeventsPopupComponent) {
-  <ng-container *ngComponentOutlet="subeventsPopupComponent"></ng-container>
-}
-@if (popupStore.eventTournamentGroupsPopupComponent(); as tournamentGroupsPopupComponent) {
-  <ng-container *ngComponentOutlet="tournamentGroupsPopupComponent"></ng-container>
 }
 @if (activitiesStore.eventFeedbackPopupComponent(); as feedbackComponent) {
   <ng-container *ngComponentOutlet="feedbackComponent"></ng-container>

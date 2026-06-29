@@ -67,7 +67,7 @@ import {
 } from '../../../shared/core';
 import { UserProfileStore } from '../../../shared/ui/context/stores/user-profile.store';
 import { AppRuntimeStore } from '../../../shared/ui/context/stores/app-runtime.store';
-import { PopupStore } from '../../../shared/ui/context/stores/popup.store';
+import { ActivityInvitePopupStore } from '../../../shared/ui/context/stores/activity-invite-popup.store';
 
 const CONTACT_METHOD_OPTIONS: readonly ContactMethodOption[] = [
   {
@@ -207,7 +207,7 @@ type ContactsMenuContext =
 export class ContactsPopupComponent implements OnDestroy {
   private readonly userProfileStore = inject(UserProfileStore);
   private readonly runtimeStore = inject(AppRuntimeStore);
-  private readonly popupStore = inject(PopupStore);
+  private readonly activityInviteStore = inject(ActivityInvitePopupStore);
   private readonly dialogStore = inject(DialogStore);
   private readonly profileStore = inject(ProfileStore);
   private readonly usersService = inject(UsersService);
@@ -701,7 +701,7 @@ export class ContactsPopupComponent implements OnDestroy {
       return;
     }
 
-    this.popupStore.openActivityInvitePopup({
+    this.activityInviteStore.openActivityInvitePopup({
       ownerId: activeUserId,
       ownerType: 'asset',
       title: 'Create contact',

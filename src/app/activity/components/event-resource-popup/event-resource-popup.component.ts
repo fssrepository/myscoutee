@@ -58,7 +58,7 @@ import {
 import type { CardMenuActionEvent, InfoCardData } from '../../../shared/ui/components/core/smart-list/card/card.types';
 import {
   type ActivitiesNavigationRequest
-} from '../../../shared/ui/context/stores/popup.store';
+} from '../../../shared/ui/context/stores/member-menu.store';
 import {
   AssetStore
 } from '../../../shared/ui/context/stores/asset.store';
@@ -101,7 +101,7 @@ import {
 import type * as AppDTOs from '../../../shared/core/contracts';
 import type * as AppConstants from '../../../shared/core/common/constants';
 import { UserProfileStore } from '../../../shared/ui/context/stores/user-profile.store';
-import { PopupStore } from '../../../shared/ui/context/stores/popup.store';
+import { MemberMenuStore } from '../../../shared/ui/context/stores/member-menu.store';
 
 interface ResourceAssignmentRemovalRequest {
   assetId: string;
@@ -126,7 +126,7 @@ export class EventResourcePopupComponent {
   protected readonly resourcePopupStore = inject(SubEventResourcePopupStore);
 
   private readonly userProfileStore = inject(UserProfileStore);
-  private readonly popupStore = inject(PopupStore);
+  private readonly memberMenuStore = inject(MemberMenuStore);
   private readonly activitiesStore = inject(ActivitiesPopupStore);
   private readonly assetPopupStore = inject(AssetPopupStore);
   private readonly assetStore = inject(AssetStore);
@@ -188,11 +188,11 @@ export class EventResourcePopupComponent {
     });
 
     effect(() => {
-      const request = this.popupStore.activitiesNavigationRequest();
+      const request = this.memberMenuStore.activitiesNavigationRequest();
       if (!request || (request.type !== 'chatResource' && request.type !== 'assetExplore')) {
         return;
       }
-      this.popupStore.clearActivitiesNavigationRequest();
+      this.memberMenuStore.clearActivitiesNavigationRequest();
       if (request.type === 'assetExplore') {
         this.openStandaloneAssetExploreRequest(request);
         return;
@@ -598,7 +598,7 @@ export class EventResourcePopupComponent {
 
   private openFromChatRequest(request: Extract<ActivitiesNavigationRequest, { type: 'chatResource' }>): void {
     if (request.resourceType === 'Members') {
-      this.popupStore.requestActivitiesNavigation({
+      this.memberMenuStore.requestActivitiesNavigation({
         type: 'members',
         ownerId: request.group?.id?.trim() || request.subEvent.id,
         ownerType: request.group?.id ? 'group' : 'subEvent'
@@ -674,7 +674,7 @@ export class EventResourcePopupComponent {
       const group = request.group ?? null;
       const ownerId = group?.id?.trim() || `${request.subEvent.id ?? ''}`.trim();
       const groupLabel = group?.groupLabel?.trim() ?? '';
-      this.popupStore.requestActivitiesNavigation({
+      this.memberMenuStore.requestActivitiesNavigation({
         type: 'members',
         ownerId,
         ownerType: group?.id ? 'group' : 'subEvent',
@@ -1021,7 +1021,7 @@ export class EventResourcePopupComponent {
     const pendingMembers = fallbackMembers.filter(member => member.status === 'pending').length;
     const capacityTotal = settings[card.sourceAssetId]?.capacityMax ?? Math.max(0, sourceCard.capacityTotal);
     const subtitle = `${sourceCard.title} · ${this.subEventDisplayName(context.subEvent) || 'Sub Event'}`;
-    this.popupStore.requestActivitiesNavigation({
+    this.memberMenuStore.requestActivitiesNavigation({
       type: 'members',
       ownerId: sourceCard.id,
       ownerType: 'asset',

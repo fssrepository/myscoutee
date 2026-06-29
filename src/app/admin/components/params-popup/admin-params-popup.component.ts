@@ -37,8 +37,8 @@ import {
   IndicatorComponent
 } from '../../../shared/ui/components/core/indicator';
 import {
-  AdminPopupStore
-} from '../../../shared/ui/context/stores/admin-popup.store';
+  AdminMenuStore
+} from '../../../shared/ui/context/stores/admin-menu.store';
 import { UserProfileStore } from '../../../shared/ui/context/stores/user-profile.store';
 
 type AdminParamOption = Readonly<AdminParamOptionDto>;
@@ -57,7 +57,7 @@ interface AdminParamSelectMenuContext {
   styleUrl: './admin-params-popup.component.scss'
 })
 export class AdminParamsPopupComponent implements OnDestroy {
-  protected readonly admin = inject(AdminPopupStore);
+  protected readonly admin = inject(AdminMenuStore);
   protected readonly paramsService = inject(AdminParamsService);
   private readonly userProfileStore = inject(UserProfileStore);
   protected readonly loading = signal(false);

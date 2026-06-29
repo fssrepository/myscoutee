@@ -26,7 +26,8 @@ import {
 import type { AssetDTO } from '../../../shared/core/contracts/asset.interface';
 import type { ShareTokenResolvedItem } from '../../../shared/core/contracts/share.interface';
 import type { AssetType } from '../../../shared/core/common/constants';
-import { PopupStore } from '../../../shared/ui/context/stores/popup.store';
+import { DemoBootstrapSelectorStore } from '../../../shared/ui/context/stores/demo-bootstrap-selector.store';
+import { MemberMenuStore } from '../../../shared/ui/context/stores/member-menu.store';
 
 @Component({
   selector: 'app-admin-help-session-page',
@@ -41,10 +42,11 @@ export class AdminHelpSessionPageComponent implements OnInit {
   private readonly sessionService = inject(SessionService);
   private readonly workspaceData = inject(AdminWorkspaceDataService);
   private readonly eventsService = inject(EventsService);
-  private readonly popupStore = inject(PopupStore);
+  private readonly demoBootstrapSelectorStore = inject(DemoBootstrapSelectorStore);
+  private readonly memberMenuStore = inject(MemberMenuStore);
   protected error = '';
-  protected readonly demoBootstrapSelector = this.popupStore.demoBootstrapSelector;
-  protected readonly demoBootstrapSelectorComponent = this.popupStore.demoBootstrapSelectorComponent;
+  protected readonly demoBootstrapSelector = this.demoBootstrapSelectorStore.demoBootstrapSelector;
+  protected readonly demoBootstrapSelectorComponent = this.demoBootstrapSelectorStore.demoBootstrapSelectorComponent;
 
   async ngOnInit(): Promise<void> {
     await this.openSharedUserView();
@@ -97,7 +99,7 @@ export class AdminHelpSessionPageComponent implements OnInit {
   }
 
   private openSharedUserSelector(userId: string, targetUrl: string): void {
-    this.popupStore.openDemoBootstrapSelector({
+    this.demoBootstrapSelectorStore.openDemoBootstrapSelector({
       mode: 'member',
       title: 'Demo felhasználó választása',
       subtitle: 'Bejelentkezés nélküli mód. Válassz demo felhasználót a nézőpont szerinti adatok megnyitásához.',
@@ -129,7 +131,7 @@ export class AdminHelpSessionPageComponent implements OnInit {
   }
 
   private fail(message: string): void {
-    this.popupStore.closeDemoBootstrapSelector();
+    this.demoBootstrapSelectorStore.closeDemoBootstrapSelector();
     this.error = message;
   }
 
@@ -239,11 +241,11 @@ export class AdminHelpSessionPageComponent implements OnInit {
     }
     const supportTarget = `${parsed.searchParams.get('supportTarget') ?? ''}`.trim();
     if (supportTarget === 'service-chat' || supportTarget === 'chats' || supportTarget === 'chat-message') {
-      this.popupStore.openNavigatorActivitiesRequest('chats');
+      this.memberMenuStore.openNavigatorActivitiesRequest('chats');
     } else if (supportTarget === 'member') {
       const ownerId = `${parsed.searchParams.get('ownerId') ?? ''}`.trim();
       if (ownerId) {
-        this.popupStore.requestActivitiesNavigation({
+        this.memberMenuStore.requestActivitiesNavigation({
           type: 'members',
           ownerId,
           ownerType: 'event',
@@ -252,30 +254,30 @@ export class AdminHelpSessionPageComponent implements OnInit {
           subtitle: 'Reported member context'
         });
       } else {
-        this.popupStore.openNavigatorActivitiesRequest('events');
+        this.memberMenuStore.openNavigatorActivitiesRequest('events');
       }
     } else if (supportTarget === 'event') {
       const eventId = `${parsed.searchParams.get('eventId') ?? ''}`.trim();
       const eventRecord = eventId ? await this.eventsService.queryKnownRecordById(userId, eventId) : null;
       if (eventRecord) {
-        this.popupStore.requestActivitiesNavigation({
+        this.memberMenuStore.requestActivitiesNavigation({
           type: 'eventEditor',
           eventId: eventRecord.id,
           target: eventRecord.type === 'hosting' || eventRecord.creatorUserId === userId ? 'hosting' : 'events',
           readOnly: true
         });
       } else {
-        this.popupStore.openNavigatorActivitiesRequest('events');
+        this.memberMenuStore.openNavigatorActivitiesRequest('events');
       }
     } else if (supportTarget === 'events') {
-      this.popupStore.openNavigatorActivitiesRequest('events');
+      this.memberMenuStore.openNavigatorActivitiesRequest('events');
     } else if (supportTarget === 'rates') {
-      this.popupStore.openNavigatorActivitiesRequest('rates');
+      this.memberMenuStore.openNavigatorActivitiesRequest('rates');
     } else if (supportTarget === 'asset') {
       const assetFilter = this.toAssetFilter(parsed.searchParams.get('assetFilter'));
       if (assetFilter) {
         const assetId = `${parsed.searchParams.get('assetId') ?? ''}`.trim();
-        this.popupStore.requestActivitiesNavigation({
+        this.memberMenuStore.requestActivitiesNavigation({
           type: 'assetExplore',
           assetType: assetFilter,
           assetId: assetId || undefined,

@@ -36,15 +36,14 @@ import {
   DialogComponent
 } from '../../../shared/ui/components/core/dialog/dialog.component';
 import {
-  AdminPopupStore
-} from '../../../shared/ui/context/stores/admin-popup.store';
+  AdminMenuStore
+} from '../../../shared/ui/context/stores/admin-menu.store';
 import {
   AdminWorkspaceStore
 } from '../../../shared/ui/context/stores/admin-workspace.store';
 import {
-  ProfileStore
-} from '../../../shared/ui/context/stores/profile.store';
-import { PopupStore } from '../../../shared/ui/context/stores/popup.store';
+  DemoBootstrapSelectorStore
+} from '../../../shared/ui/context/stores/demo-bootstrap-selector.store';
 
 @Component({
   selector: 'app-admin-page',
@@ -60,15 +59,13 @@ import { PopupStore } from '../../../shared/ui/context/stores/popup.store';
 })
 export class AdminPageComponent implements OnInit, OnDestroy {
   protected readonly workspace = inject(AdminWorkspaceStore);
-  protected readonly adminPopup = inject(AdminPopupStore);
+  protected readonly adminMenu = inject(AdminMenuStore);
   protected readonly sessionService = inject(SessionService);
   private readonly workspaceData = inject(AdminWorkspaceDataService);
   private readonly helpCenter = inject(HelpCenterService);
   private readonly document = inject(DOCUMENT);
   private readonly router = inject(Router);
-  private readonly profileStore = inject(ProfileStore);
-  private readonly popupStore = inject(PopupStore);
-  private lastHandledAdminRequestMs = 0;
+  private readonly demoBootstrapSelectorStore = inject(DemoBootstrapSelectorStore);
   private readonly reportsPopupComponentRef = signal<Type<unknown> | null>(null);
   private readonly feedbackPopupComponentRef = signal<Type<unknown> | null>(null);
   private readonly helpEditorPopupComponentRef = signal<Type<unknown> | null>(null);
@@ -89,15 +86,15 @@ export class AdminPageComponent implements OnInit, OnDestroy {
   protected readonly statsPopupComponent = this.statsPopupComponentRef.asReadonly();
   protected readonly affinityGraphPopupComponent = this.affinityGraphPopupComponentRef.asReadonly();
   protected readonly monitoringPopupComponent = this.monitoringPopupComponentRef.asReadonly();
-  protected readonly demoBootstrapSelector = this.popupStore.demoBootstrapSelector;
-  protected readonly demoBootstrapSelectorComponent = this.popupStore.demoBootstrapSelectorComponent;
+  protected readonly demoBootstrapSelector = this.demoBootstrapSelectorStore.demoBootstrapSelector;
+  protected readonly demoBootstrapSelectorComponent = this.demoBootstrapSelectorStore.demoBootstrapSelectorComponent;
 
   constructor() {
     this.document.documentElement.classList.add('admin-document-no-scroll');
     this.document.body.classList.add('admin-document-no-scroll');
 
     effect(() => {
-      switch (this.adminPopup.activePopup()) {
+      switch (this.adminMenu.activePopup()) {
         case 'reports':
           void this.ensureReportsPopupLoaded();
           break;
@@ -124,50 +121,6 @@ export class AdminPageComponent implements OnInit, OnDestroy {
           break;
         case 'monitoring':
           void this.ensureMonitoringPopupLoaded();
-          break;
-      }
-    });
-
-    effect(() => {
-      const request = this.popupStore.adminNavigatorRequest();
-      if (!request || request.updatedMs <= this.lastHandledAdminRequestMs) {
-        return;
-      }
-      this.lastHandledAdminRequestMs = request.updatedMs;
-      this.popupStore.clearAdminNavigatorRequest();
-      switch (request.popup) {
-        case 'reports':
-          this.adminPopup.openReports(this.workspace.dashboard()?.reportedUsers[0] ?? null);
-          break;
-        case 'feedback':
-          this.adminPopup.openFeedback();
-          break;
-        case 'chat':
-          this.popupStore.openNavigatorActivitiesRequest('chats', undefined, { adminServiceOnly: true });
-          break;
-        case 'profile':
-          this.profileStore.openProfileEditor();
-          break;
-        case 'help-editor':
-          this.adminPopup.openHelpEditor();
-          break;
-        case 'idea-editor':
-          this.adminPopup.openIdeaEditor();
-          break;
-        case 'notifications':
-          this.adminPopup.openNotifications();
-          break;
-        case 'params':
-          this.adminPopup.openParams();
-          break;
-        case 'stats':
-          this.adminPopup.openStats();
-          break;
-        case 'affinity-graph':
-          this.adminPopup.openAffinityGraph();
-          break;
-        case 'monitoring':
-          this.adminPopup.openMonitoring();
           break;
       }
     });
@@ -304,7 +257,7 @@ export class AdminPageComponent implements OnInit, OnDestroy {
   }
 
   private openAdminSelector(): void {
-    this.popupStore.openDemoBootstrapSelector({
+    this.demoBootstrapSelectorStore.openDemoBootstrapSelector({
       mode: 'admin',
       title: 'Select admin user',
       subtitle: 'Login disabled mode. Choose an admin user to open moderation data.',

@@ -19,8 +19,8 @@ import {
 } from '@angular/platform-browser';
 
 import {
-  AdminPopupStore
-} from '../../../shared/ui/context/stores/admin-popup.store';
+  AdminMenuStore
+} from '../../../shared/ui/context/stores/admin-menu.store';
 import {
   AdminAffinityGraphService
 } from '../../../shared/core';
@@ -41,7 +41,7 @@ import { AppRuntimeStore } from '../../../shared/ui/context/stores/app-runtime.s
   styleUrl: './admin-affinity-graph-popup.component.scss'
 })
 export class AdminAffinityGraphPopupComponent implements OnDestroy {
-  protected readonly admin = inject(AdminPopupStore);
+  protected readonly admin = inject(AdminMenuStore);
   private readonly userProfileStore = inject(UserProfileStore);
   private readonly runtimeStore = inject(AppRuntimeStore);
   protected readonly graphUrl = signal<SafeResourceUrl | null>(null);

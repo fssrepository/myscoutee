@@ -30,4 +30,23 @@
       ></app-info-card>
     </ng-template>
   </app-popup>
+
+  @if (eventSubeventsStore.eventTournamentGroupsPopupComponent(); as tournamentGroupsPopupComponent) {
+    <ng-container *ngComponentOutlet="tournamentGroupsPopupComponent"></ng-container>
+  }
+  @if (shouldHostResourcePopup()) {
+    @if (resourcePopupStore.eventResourcePopupComponent(); as resourcePopupComponent) {
+      <ng-container *ngComponentOutlet="resourcePopupComponent"></ng-container>
+    }
+  }
+  @if (shouldHostResourcePopup() && resourcePopupStore.assetExplorePopupRef()) {
+    @if (resourcePopupStore.eventResourceAssetExploreComponent(); as assetExplorePopupComponent) {
+      <ng-container *ngComponentOutlet="assetExplorePopupComponent"></ng-container>
+    }
+  }
+  @if (shouldHostSupplyContributionsPopup()) {
+    @if (resourcePopupStore.eventSupplyContributionsPopupComponent(); as supplyContributionsPopupComponent) {
+      <ng-container *ngComponentOutlet="supplyContributionsPopupComponent"></ng-container>
+    }
+  }
 }

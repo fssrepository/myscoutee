@@ -23,7 +23,7 @@ export {
   type AssetVisibleListPatch,
   type AssetVisibleListState
 } from './asset.store';
-export { AdminPopupStore, type AdminPopupKind } from './admin-popup.store';
+export { AdminMenuStore, type AdminMenuKind } from './admin-menu.store';
 export { AdminWorkspaceStore } from './admin-workspace.store';
 export {
   AppRuntimeStore,
@@ -38,12 +38,26 @@ export {
   type EventEditorSubEventResourcePopupRequest,
   type EventEditorSubEventResourceType
 } from './event-editor-popup.store';
+export {
+  EventSubeventsPopupStore,
+  type EventSubeventsListPopupRequest,
+  type EventTournamentGroupsPopupRequest
+} from './event-subevents-popup.store';
 export { DialogStore } from './dialog.store';
 export { EventCheckoutDialogStore } from './event-checkout-dialog.store';
 export { EventCheckoutDraftStore } from './event-checkout-draft.store';
 export type { DialogConfig, DialogState, DialogTone } from './dialog.store';
 export type { EventCheckoutDialogConfig, EventCheckoutDialogState } from './event-checkout-dialog.store';
 export type { EventCheckoutDraft } from './event-checkout-draft.store';
+export {
+  ActivityInvitePopupStore,
+  type ActivityInvitePopupState
+} from './activity-invite-popup.store';
+export {
+  DemoBootstrapSelectorStore,
+  type DemoBootstrapSelectorMode,
+  type DemoBootstrapSelectorState
+} from './demo-bootstrap-selector.store';
 export { HelpCenterStore } from './help-center.store';
 export {
   ProfileStore,
@@ -54,18 +68,12 @@ export {
   type ProfileSettingsPopup
 } from './profile.store';
 export {
-  PopupStore,
+  MemberMenuStore,
   type ActivitiesNavigationRequest,
-  type ActivityInvitePopupState,
-  type AdminNavigatorRequest,
-  type DemoBootstrapSelectorMode,
-  type DemoBootstrapSelectorState,
-  type EventSubeventsListPopupRequest,
-  type EventTournamentGroupsPopupRequest,
   type NavigatorActivitiesRequest,
   type NavigatorAssetRequest,
   type NavigatorEventFeedbackRequest
-} from './popup.store';
+} from './member-menu.store';
 export {
   SubEventResourcePopupStore,
   type AssetExploreBorrowDialogState,

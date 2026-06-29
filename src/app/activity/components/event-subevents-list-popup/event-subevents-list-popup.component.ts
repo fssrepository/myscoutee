@@ -61,7 +61,9 @@ import {
 } from '../../../shared/ui/context/stores/event-editor-popup.store';
 import { UserProfileStore } from '../../../shared/ui/context/stores/user-profile.store';
 import { ActivityStore } from '../../../shared/ui/context/stores/activity.store';
-import { PopupStore } from '../../../shared/ui/context/stores/popup.store';
+import { MemberMenuStore } from '../../../shared/ui/context/stores/member-menu.store';
+import { EventSubeventsPopupStore } from '../../../shared/ui/context/stores/event-subevents-popup.store';
+import { SubEventResourcePopupStore } from '../../../shared/ui/context/stores/sub-event-resource-popup.store';
 
 type EventSubeventsListView = 'day' | 'week' | 'month';
 type EventSubeventsListOrder = 'upcoming' | 'past';
@@ -106,7 +108,9 @@ export class EventSubeventsListPopupComponent {
   private readonly dialogStore = inject(DialogStore);
   private readonly userProfileStore = inject(UserProfileStore);
   private readonly activityStore = inject(ActivityStore);
-  private readonly popupStore = inject(PopupStore);
+  private readonly memberMenuStore = inject(MemberMenuStore);
+  protected readonly resourcePopupStore = inject(SubEventResourcePopupStore);
+  protected readonly eventSubeventsStore = inject(EventSubeventsPopupStore);
   private readonly cdr = inject(ChangeDetectorRef);
 
   protected isLoading = false;
@@ -212,7 +216,7 @@ export class EventSubeventsListPopupComponent {
   constructor() {
     this.syncMobileViewFromViewport();
     effect(() => {
-      const request = this.popupStore.eventSubeventsListPopup();
+      const request = this.eventSubeventsStore.eventSubeventsListPopup();
       if (!request) {
         this.lastLoadedEventId = '';
         this.loadedEventId = '';
@@ -245,6 +249,45 @@ export class EventSubeventsListPopupComponent {
       this.slotSectionHeaderLabels.clear();
       this.bumpQuery();
     });
+
+    effect(() => {
+      const request = this.eventSubeventsStore.eventTournamentGroupsPopup();
+      if (!request || !this.isOpen()) {
+        return;
+      }
+      void this.eventSubeventsStore.ensureEventTournamentGroupsPopupLoaded();
+    });
+
+    effect(() => {
+      const request = this.eventEditorStore.subEventResourcePopupRequest();
+      if (!request || !this.isOpen()) {
+        return;
+      }
+      void this.resourcePopupStore.ensureEventResourcePopupLoaded();
+    });
+
+    effect(() => {
+      if (!this.shouldHostResourcePopup()) {
+        return;
+      }
+      void this.resourcePopupStore.ensureEventResourcePopupLoaded();
+    });
+
+    effect(() => {
+      if (!this.shouldHostResourcePopup() || !this.resourcePopupStore.assetExplorePopupRef()) {
+        return;
+      }
+      void this.resourcePopupStore.ensureEventResourceAssetExploreLoaded();
+    });
+
+    effect(() => {
+      if (!this.shouldHostResourcePopup()
+        || this.resourcePopupStore.assetExploreOnlyRef()
+        || !this.resourcePopupStore.supplyPopupRef()) {
+        return;
+      }
+      void this.resourcePopupStore.ensureEventSupplyContributionsPopupLoaded();
+    });
   }
 
   @HostListener('window:resize')
@@ -253,11 +296,23 @@ export class EventSubeventsListPopupComponent {
   }
 
   protected isOpen(): boolean {
-    return Boolean(this.popupStore.eventSubeventsListPopup());
+    return Boolean(this.eventSubeventsStore.eventSubeventsListPopup());
+  }
+
+  protected shouldHostResourcePopup(): boolean {
+    return this.isOpen()
+      && (this.eventEditorStore.subEventResourcePopupRequest() !== null
+        || this.resourcePopupStore.popupContextRef()?.origin === 'eventEditor');
+  }
+
+  protected shouldHostSupplyContributionsPopup(): boolean {
+    return this.shouldHostResourcePopup()
+      && !this.resourcePopupStore.assetExploreOnlyRef()
+      && this.resourcePopupStore.supplyPopupRef() !== null;
   }
 
   protected close(): void {
-    this.popupStore.closeEventSubeventsListPopup();
+    this.eventSubeventsStore.closeEventSubeventsListPopup();
   }
 
   protected popupModel(): PopupModel<EventSubeventsListPopupMenuContext> {
@@ -282,7 +337,7 @@ export class EventSubeventsListPopupComponent {
   }
 
   protected popupSubtitle(): string {
-    const requestTitle = this.popupStore.eventSubeventsListPopup()?.title ?? '';
+    const requestTitle = this.eventSubeventsStore.eventSubeventsListPopup()?.title ?? '';
     return this.event?.title || requestTitle || 'Event';
   }
 
@@ -428,7 +483,7 @@ export class EventSubeventsListPopupComponent {
   }
 
   protected contextMenuItems(): readonly AppMenuItem<string, EventSubeventsListPopupMenuContext>[] {
-    const canEdit = this.popupStore.eventSubeventsListPopup()?.canEdit === true;
+    const canEdit = this.eventSubeventsStore.eventSubeventsListPopup()?.canEdit === true;
     const memberCount = this.eventMembersCount();
     return [
       {
@@ -463,12 +518,12 @@ export class EventSubeventsListPopupComponent {
   }
 
   protected openEventEditor(): void {
-    const request = this.popupStore.eventSubeventsListPopup();
+    const request = this.eventSubeventsStore.eventSubeventsListPopup();
     if (!request) {
       return;
     }
     const canEdit = request.canEdit === true;
-    this.popupStore.requestActivitiesNavigation({
+    this.memberMenuStore.requestActivitiesNavigation({
       type: 'eventEditor',
       eventId: request.eventId,
       target: request.target ?? 'events',
@@ -481,12 +536,12 @@ export class EventSubeventsListPopupComponent {
     if (!event || this.membersDisabled()) {
       return;
     }
-    this.popupStore.requestActivitiesNavigation({
+    this.memberMenuStore.requestActivitiesNavigation({
       type: 'members',
       ownerId: event.id,
       ownerType: 'event',
       subtitle: event.title,
-      canManage: this.popupStore.eventSubeventsListPopup()?.canEdit === true,
+      canManage: this.eventSubeventsStore.eventSubeventsListPopup()?.canEdit === true,
       acceptedMembers: event.acceptedMembers,
       pendingMembers: event.pendingMembers,
       capacityTotal: event.capacityTotal
@@ -685,7 +740,7 @@ export class EventSubeventsListPopupComponent {
     if (!eventId) {
       return;
     }
-    this.popupStore.openEventTournamentGroupsPopup({
+    this.eventSubeventsStore.openEventTournamentGroupsPopup({
       eventId,
       slotId,
       title: this.popupSubtitle(),
@@ -846,7 +901,7 @@ export class EventSubeventsListPopupComponent {
   private async loadSubEventsPageResult(
     query: ListQuery<EventSubeventsListFilters>
   ): Promise<PageResult<EventSubeventsSlotSection>> {
-    const eventId = this.popupStore.eventSubeventsListPopup()?.eventId.trim() ?? '';
+    const eventId = this.eventSubeventsStore.eventSubeventsListPopup()?.eventId.trim() ?? '';
     if (!eventId) {
       return { items: [], total: 0, nextCursor: null };
     }
@@ -890,7 +945,7 @@ export class EventSubeventsListPopupComponent {
     this.cdr.markForCheck();
     this.loadingPromise = (async () => {
       const result = await this.eventsService.loadSubEventsById(userId, eventId, this.subEventsLoadQuery(eventId, query));
-      if (this.popupStore.eventSubeventsListPopup()?.eventId !== eventId) {
+      if (this.eventSubeventsStore.eventSubeventsListPopup()?.eventId !== eventId) {
         return;
       }
       this.event = result?.event ?? null;

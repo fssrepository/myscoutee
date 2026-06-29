@@ -141,7 +141,8 @@ import type * as AppConstants from '../../../shared/core/common/constants';
 import { UserProfileStore } from '../../../shared/ui/context/stores/user-profile.store';
 import { AppRuntimeStore } from '../../../shared/ui/context/stores/app-runtime.store';
 import { ActivityStore } from '../../../shared/ui/context/stores/activity.store';
-import { PopupStore } from '../../../shared/ui/context/stores/popup.store';
+import { MemberMenuStore } from '../../../shared/ui/context/stores/member-menu.store';
+import { EventSubeventsPopupStore } from '../../../shared/ui/context/stores/event-subevents-popup.store';
 // ---------------------------------------------------------------------------
 
 type ActivitiesSmartListFilters = ActivitiesFeedFilters;
@@ -256,7 +257,8 @@ export class ActivitiesPopupComponent implements OnDestroy {
   private readonly userProfileStore = inject(UserProfileStore);
   private readonly runtimeStore = inject(AppRuntimeStore);
   private readonly activityStore = inject(ActivityStore);
-  private readonly popupStore = inject(PopupStore);
+  protected readonly memberMenuStore = inject(MemberMenuStore);
+  protected readonly eventSubeventsStore = inject(EventSubeventsPopupStore);
   private readonly assetStore = inject(AssetStore);
   private readonly usersService = inject(UsersService);
   protected readonly dialogStore = inject(DialogStore);
@@ -632,7 +634,7 @@ export class ActivitiesPopupComponent implements OnDestroy {
     }
     const owner = this.activityMembersOwnerForRow(membersRow);
     const summary = this.resolveActivityMembersPopupSummary(membersRow);
-    this.popupStore.requestActivitiesNavigation({
+    this.memberMenuStore.requestActivitiesNavigation({
       type: 'members',
       ownerId: owner.ownerId,
       ownerType: owner.ownerType,
@@ -782,6 +784,14 @@ export class ActivitiesPopupComponent implements OnDestroy {
             ? 'events'
             : null;
       this.setActivitiesExplanationContext(contextKey);
+    });
+
+    effect(() => {
+      const request = this.eventSubeventsStore.eventSubeventsListPopup();
+      if (!request || request.host !== 'activities' || !this.activitiesStore.activitiesOpen()) {
+        return;
+      }
+      void this.eventSubeventsStore.ensureEventSubeventsListPopupLoaded();
     });
 
     effect(() => {
@@ -3221,7 +3231,7 @@ export class ActivitiesPopupComponent implements OnDestroy {
       ? (this.activitiesEventScope === 'my-events' || this.activitiesEventScope === 'drafts' ? 'hosting' : 'events')
       : 'events';
     this.showActivitiesQuickActionsMenu = false;
-    this.popupStore.requestActivitiesNavigation({
+    this.memberMenuStore.requestActivitiesNavigation({
       type: 'eventEditorCreate',
       target
     });
@@ -3238,7 +3248,7 @@ export class ActivitiesPopupComponent implements OnDestroy {
 
   requestOpenEventExplore(): void {
     this.showActivitiesQuickActionsMenu = false;
-    this.popupStore.requestActivitiesNavigation({ type: 'eventExplore' });
+    this.memberMenuStore.requestActivitiesNavigation({ type: 'eventExplore' });
   }
 
   // =========================================================================

@@ -7,8 +7,7 @@ import {
   Input,
   OnChanges,
   Output,
-  SimpleChanges,
-  inject
+  SimpleChanges
 } from '@angular/core';
 
 import {
@@ -36,7 +35,8 @@ import {
 } from '../../../../../shared/ui/converters';
 
 import type * as AppConstants from '../../../../../shared/core/common/constants';
-import { PopupStore } from '../../../../../shared/ui/context/stores/popup.store';
+import type { MemberMenuStore } from '../../../../../shared/ui/context/stores/member-menu.store';
+import type { EventSubeventsPopupStore } from '../../../../../shared/ui/context/stores/event-subevents-popup.store';
 
 type ActivityEventCardType = 'events' | 'hosting' | 'invitations';
 type ActivityEventCardData = InfoCardData & {
@@ -72,7 +72,6 @@ type ActivityEventCardData = InfoCardData & {
   changeDetection: ChangeDetectionStrategy.OnPush
 })
 export class ActivitiesEventTemplateComponent implements OnChanges {
-  private readonly popupStore = inject(PopupStore);
   @Input() row: ActivityEventCardData | null = null;
   @Input() groupLabel: string | null = null;
   @Input() cardRevision = 0;
@@ -165,7 +164,8 @@ export class ActivitiesEventsController {
   private get isMobileView() { return this.host.isMobileView as boolean; }
   private get pendingActivityMemberDelete() { return this.host.pendingActivityMemberDelete as ActivityContracts.ActivityMemberEntry | null; }
   private set pendingActivityMemberDelete(value: ActivityContracts.ActivityMemberEntry | null) { this.host.pendingActivityMemberDelete = value; }
-  private get popupStore() { return this.host.popupStore as PopupStore; }
+  private get memberMenuStore() { return this.host.memberMenuStore as MemberMenuStore; }
+  private get eventSubeventsStore() { return this.host.eventSubeventsStore as EventSubeventsPopupStore; }
   private get profileStore() { return this.host.profileStore; }
   private get shareTokensService() { return this.host.shareTokensService; }
   private get activeHostingIds() { return this.host.activeHostingIds as ReadonlySet<string>; }
@@ -322,8 +322,9 @@ export class ActivitiesEventsController {
 
   public runActivityItemViewAction(row: ActivityEventCardData, event?: Event): void {
     event?.stopPropagation();
-    this.popupStore.openEventSubeventsListPopup({
+    this.eventSubeventsStore.openEventSubeventsListPopup({
       eventId: row.id,
+      host: 'activities',
       target: row.isAdmin === true || row.type === 'hosting' ? 'hosting' : 'events',
       title: row.title,
       canEdit: this.canEditActivityEvent(row)
@@ -1274,7 +1275,7 @@ export class ActivitiesEventsController {
 
   public openActivityMembers(row: ActivityEventCardData, event?: Event): void {
     event?.stopPropagation();
-    this.popupStore.requestActivitiesNavigation({
+    this.memberMenuStore.requestActivitiesNavigation({
       type: 'members',
       ownerId: row.id,
       ownerType: 'event',
@@ -1412,7 +1413,7 @@ export class ActivitiesEventsController {
   }
 
   public openActivityRowInEventModule(row: ActivityEventCardData, readOnly: boolean): void {
-    this.popupStore.requestActivitiesNavigation({
+    this.memberMenuStore.requestActivitiesNavigation({
       type: 'eventEditor',
       eventId: row.id,
       target: row.isAdmin === true || row.type === 'hosting' ? 'hosting' : 'events',

@@ -87,7 +87,7 @@ import type * as ActivityContracts from '../../../shared/core/contracts/activity
 import type * as AppConstants from '../../../shared/core/common/constants';
 import { UserProfileStore } from '../../../shared/ui/context/stores/user-profile.store';
 import { ActivityStore } from '../../../shared/ui/context/stores/activity.store';
-import { PopupStore } from '../../../shared/ui/context/stores/popup.store';
+import { MemberMenuStore } from '../../../shared/ui/context/stores/member-menu.store';
 type EventEditorMenuContext =
   | { menu: 'visibility'; visibility: AppConstants.EventVisibility }
   | { menu: 'event-intel'; action: 'toggle-blind-mode' | 'toggle-auto-inviter' | 'toggle-ticketing' }
@@ -135,7 +135,7 @@ export class EventEditorPopupComponent implements OnInit, OnDestroy {
   private readonly eventCheckoutDraftStore = inject(EventCheckoutDraftStore);
   private readonly userProfileStore = inject(UserProfileStore);
   private readonly activityStore = inject(ActivityStore);
-  private readonly popupStore = inject(PopupStore);
+  private readonly memberMenuStore = inject(MemberMenuStore);
   private readonly explanationGuide = inject(ExplanationGuideService);
   private readonly routeDelay = inject(RouteDelayService);
   private readonly routeIntervalScheduler = inject(RouteIntervalSchedulerService);
@@ -165,11 +165,11 @@ export class EventEditorPopupComponent implements OnInit, OnDestroy {
 
   constructor() {
     effect(() => {
-      const request = this.popupStore.activitiesNavigationRequest();
+      const request = this.memberMenuStore.activitiesNavigationRequest();
       if (!request || (request.type !== 'eventEditorCreate' && request.type !== 'eventEditor')) {
         return;
       }
-      this.popupStore.clearActivitiesNavigationRequest();
+      this.memberMenuStore.clearActivitiesNavigationRequest();
       if (request.type === 'eventEditorCreate') {
         this.openCreateRequest(request.target);
         return;
@@ -837,7 +837,7 @@ export class EventEditorPopupComponent implements OnInit, OnDestroy {
     if (!draft || !this.eventEditorCanContinueCheckoutDraft(draft)) {
       return;
     }
-    this.popupStore.requestActivitiesNavigation({
+    this.memberMenuStore.requestActivitiesNavigation({
       type: 'eventCheckoutDraft',
       sourceId: draft.sourceId
     });

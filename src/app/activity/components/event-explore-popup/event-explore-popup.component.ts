@@ -91,7 +91,7 @@ import type * as ActivityContracts from '../../../shared/core/contracts/activity
 import { UserProfileStore } from '../../../shared/ui/context/stores/user-profile.store';
 import { AppRuntimeStore } from '../../../shared/ui/context/stores/app-runtime.store';
 import { ActivityStore } from '../../../shared/ui/context/stores/activity.store';
-import { PopupStore } from '../../../shared/ui/context/stores/popup.store';
+import { MemberMenuStore } from '../../../shared/ui/context/stores/member-menu.store';
 
 type CheckoutDraftEntry = {
   draft: EventCheckoutDraft;
@@ -143,7 +143,7 @@ export class EventExplorePopupComponent {
   private readonly userProfileStore = inject(UserProfileStore);
   private readonly runtimeStore = inject(AppRuntimeStore);
   private readonly activityStore = inject(ActivityStore);
-  private readonly popupStore = inject(PopupStore);
+  private readonly memberMenuStore = inject(MemberMenuStore);
   private readonly activitiesStore = inject(ActivitiesPopupStore);
 
   protected readonly eventExploreOrderOptions = APP_STATIC_DATA.eventExploreOrderOptions;
@@ -235,11 +235,11 @@ export class EventExplorePopupComponent {
     this.refreshUsersDirectory();
 
     effect(() => {
-      const request = this.popupStore.activitiesNavigationRequest();
+      const request = this.memberMenuStore.activitiesNavigationRequest();
       if (!request || (request.type !== 'eventExplore' && request.type !== 'eventCheckoutDraft')) {
         return;
       }
-      this.popupStore.clearActivitiesNavigationRequest();
+      this.memberMenuStore.clearActivitiesNavigationRequest();
       if (request.type === 'eventCheckoutDraft') {
         void this.continueCheckoutDraftBySourceId(request.sourceId);
         return;
@@ -676,7 +676,7 @@ export class EventExplorePopupComponent {
     if (!this.canPreviewEventExploreMembers(record)) {
       return;
     }
-    this.popupStore.requestActivitiesNavigation({
+    this.memberMenuStore.requestActivitiesNavigation({
       type: 'members',
       ownerId: record.id,
       ownerType: 'event',
@@ -724,7 +724,7 @@ export class EventExplorePopupComponent {
     event?: { stopPropagation?: () => void; preventDefault?: () => void }
   ): void {
     this.stopDomEvent(event);
-    this.popupStore.requestActivitiesNavigation({
+    this.memberMenuStore.requestActivitiesNavigation({
       type: 'eventEditor',
       eventId: record.id,
       target: record.type === 'hosting' ? 'hosting' : 'events',

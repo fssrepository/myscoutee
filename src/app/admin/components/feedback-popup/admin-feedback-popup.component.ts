@@ -19,7 +19,7 @@ import {
 } from '../../../shared/ui';
 import type { ChatDTO } from '../../../shared/core/contracts/chat.interface';
 import type { UserDto } from '../../../shared/core/contracts/user.interface';
-import { AdminPopupStore } from '../../../shared/ui/context/stores/admin-popup.store';
+import { AdminMenuStore } from '../../../shared/ui/context/stores/admin-menu.store';
 import { AdminWorkspaceStore } from '../../../shared/ui/context/stores/admin-workspace.store';
 
 interface AdminFeedbackListFilters {
@@ -40,7 +40,7 @@ interface AdminFeedbackListItem {
   styleUrl: './admin-feedback-popup.component.scss'
 })
 export class AdminFeedbackPopupComponent {
-  protected readonly admin = inject(AdminPopupStore);
+  protected readonly admin = inject(AdminMenuStore);
   private readonly workspace = inject(AdminWorkspaceStore);
   private readonly workspaceData = inject(AdminWorkspaceDataService);
   private readonly feedbackCategories = new Set(APP_STATIC_DATA.feedbackCategories);

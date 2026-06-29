@@ -2,7 +2,7 @@ import { Injectable, signal } from '@angular/core';
 
 import { type AdminReportedUserDto, type AdminReportDto } from '../../../core';
 
-export type AdminPopupKind =
+export type AdminMenuKind =
   | 'reports'
   | 'feedback'
   | 'chat-review'
@@ -19,8 +19,8 @@ export type AdminPopupKind =
 @Injectable({
   providedIn: 'root'
 })
-export class AdminPopupStore {
-  private readonly activePopupRef = signal<AdminPopupKind | null>(null);
+export class AdminMenuStore {
+  private readonly activePopupRef = signal<AdminMenuKind | null>(null);
   private readonly selectedReportedUserRef = signal<AdminReportedUserDto | null>(null);
   private readonly selectedReportRef = signal<AdminReportDto | null>(null);
 
