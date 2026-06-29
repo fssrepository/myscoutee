@@ -6,6 +6,7 @@ import {
   type ActivityEventDTO,
   type ActivityEventRecord,
   type ActivityEventPageResultDTO,
+  type ActivityEventSubEventsQueryDTO,
   type ActivitySubEventStageRuntimeStateDTO,
   type ActivitySubEventStageRuntimeStateRefDTO,
   type ActivitySubEventResourceStateDTO,
@@ -26,6 +27,18 @@ export interface SubEventResourceLookup {
 export interface SubEventStateLookups {
   resourceLookups: SubEventResourceLookup[];
   stageRuntimeLookups: ActivitySubEventStageRuntimeStateRefDTO[];
+}
+
+interface SubEventsSlotSource {
+  id: string;
+  parentEventId: string;
+  slotSourceId: string | null;
+  slotTemplateId: string | null;
+  title: string | null;
+  timeframe: string | null;
+  startAt: string | null;
+  endAt: string | null;
+  definitions: SubEventDefinitionDTO[];
 }
 
 export class LocalActivityEventsMapper {
@@ -85,26 +98,31 @@ export class LocalActivityEventsMapper {
 
   static toSubEventsSlots(
     parentEventId: string,
-    records: readonly ActivityEventRecord[]
+    parentRecord: ActivityEventRecord,
+    query?: ActivityEventSubEventsQueryDTO | null
   ): SubEventsSlotDTO[] {
     const normalizedParentEventId = `${parentEventId ?? ''}`.trim();
-    return records.map(record => this.toSubEventsSlot(normalizedParentEventId, record));
+    const direction = `${query?.order ?? ''}`.trim().toLowerCase() === 'past' ? -1 : 1;
+    const nowMs = Date.now();
+    return this.subEventsSlotSources(normalizedParentEventId, parentRecord, query)
+      .filter(source => source.definitions.length > 0)
+      .filter(source => this.slotSourceMatchesOrder(source, query, nowMs))
+      .filter(source => this.slotSourceOverlapsRange(source, query))
+      .sort((left, right) => direction * (this.dateMs(left.startAt) - this.dateMs(right.startAt)))
+      .map(source => this.toSubEventsSlot(source));
   }
 
-  private static toSubEventsSlot(
-    parentEventId: string,
-    record: ActivityEventRecord
-  ): SubEventsSlotDTO {
-    const subEventItems = this.subEventItemsForSlot(record);
+  private static toSubEventsSlot(source: SubEventsSlotSource): SubEventsSlotDTO {
+    const subEventItems = this.subEventItemsForSlot(source.startAt, source.definitions);
     return {
-      id: this.subEventsSlotId(parentEventId, record),
-      parentEventId,
-      slotSourceId: this.isGeneratedSlotRecord(record) ? `${record.id ?? ''}`.trim() || null : null,
-      slotTemplateId: `${record.slotTemplateId ?? ''}`.trim() || null,
-      title: this.isGeneratedSlotRecord(record) ? `${record.title ?? ''}`.trim() || null : null,
-      timeframe: this.isGeneratedSlotRecord(record) ? `${record.timeframe ?? ''}`.trim() || null : null,
-      startAt: `${record.startAtIso ?? ''}`.trim() || null,
-      endAt: `${record.endAtIso ?? ''}`.trim() || null,
+      id: source.id,
+      parentEventId: source.parentEventId,
+      slotSourceId: source.slotSourceId,
+      slotTemplateId: source.slotTemplateId,
+      title: source.title,
+      timeframe: source.timeframe,
+      startAt: source.startAt,
+      endAt: source.endAt,
       subEventItems
     };
   }
@@ -203,9 +221,336 @@ export class LocalActivityEventsMapper {
     };
   }
 
-  private static subEventItemsForSlot(record: ActivityEventRecord): EventContracts.SubEventDTO[] {
-    const slotStart = AppUtils.parseDate(`${record.startAtIso ?? ''}`.trim()) ?? new Date();
-    return this.subEventDefinitionTimeline(record.subEventDefinitions ?? [])
+  private static subEventsSlotSources(
+    parentEventId: string,
+    parentRecord: ActivityEventRecord,
+    query: ActivityEventSubEventsQueryDTO | null | undefined
+  ): SubEventsSlotSource[] {
+    if (!parentRecord || parentRecord.subEventsEnabled === false) {
+      return [];
+    }
+    if (this.isGeneratedSlotRecord(parentRecord)) {
+      return [this.recordSlotSource(parentEventId, parentRecord)];
+    }
+    const templates = parentRecord.slotsEnabled === true ? parentRecord.slotTemplates ?? [] : [];
+    if (templates.length > 0) {
+      return this.templateSlotSources(parentEventId, parentRecord, templates, query);
+    }
+    const definitions = ActivityEventDetailDTO.normalizeSubEventDefinitions(parentRecord.subEventDefinitions ?? []);
+    return definitions.length > 0
+      ? [{
+          id: `${parentEventId}:default`,
+          parentEventId,
+          slotSourceId: null,
+          slotTemplateId: null,
+          title: null,
+          timeframe: null,
+          startAt: `${parentRecord.startAtIso ?? ''}`.trim() || null,
+          endAt: `${parentRecord.endAtIso ?? ''}`.trim() || null,
+          definitions
+        }]
+      : [];
+  }
+
+  private static recordSlotSource(parentEventId: string, record: ActivityEventRecord): SubEventsSlotSource {
+    return {
+      id: `${record.id ?? ''}`.trim() || `${parentEventId}:slot`,
+      parentEventId,
+      slotSourceId: `${record.id ?? ''}`.trim() || null,
+      slotTemplateId: `${record.slotTemplateId ?? ''}`.trim() || null,
+      title: `${record.title ?? ''}`.trim() || null,
+      timeframe: `${record.timeframe ?? ''}`.trim() || null,
+      startAt: `${record.startAtIso ?? ''}`.trim() || null,
+      endAt: `${record.endAtIso ?? ''}`.trim() || null,
+      definitions: ActivityEventDetailDTO.normalizeSubEventDefinitions(record.subEventDefinitions ?? [])
+    };
+  }
+
+  private static templateSlotSources(
+    parentEventId: string,
+    parentRecord: ActivityEventRecord,
+    templates: readonly EventContracts.EventSlotTemplateDTO[],
+    query: ActivityEventSubEventsQueryDTO | null | undefined
+  ): SubEventsSlotSource[] {
+    const parentStart = AppUtils.parseDate(`${parentRecord.startAtIso ?? ''}`.trim());
+    const parentEnd = AppUtils.parseDate(`${parentRecord.endAtIso ?? ''}`.trim());
+    if (!parentStart || !parentEnd || parentEnd.getTime() < parentStart.getTime()) {
+      return [];
+    }
+    const horizon = this.slotGenerationHorizon(parentStart, parentEnd, query);
+    if (!horizon) {
+      return [];
+    }
+    const sources: SubEventsSlotSource[] = [];
+    const overrideDates = new Set(
+      templates
+        .map(template => this.slotOverrideDateKey(template.overrideDate))
+        .filter((value): value is string => Boolean(value))
+    );
+    for (const template of templates) {
+      if (template.closed === true || this.slotOverrideDateKey(template.overrideDate)) {
+        continue;
+      }
+      const templateStart = AppUtils.parseDate(`${template.startAt ?? ''}`.trim());
+      if (!templateStart) {
+        continue;
+      }
+      const definitions = this.slotTemplateSubEventDefinitions(parentRecord, template);
+      const durationMs = this.subEventDefinitionsDurationMinutes(definitions) * 60 * 1000;
+      for (const startAt of this.generateSlotOccurrenceStarts(parentRecord.frequency ?? 'One-time', templateStart, horizon.start, horizon.end)) {
+        const occurrenceDateKey = this.slotOccurrenceAnchorDateKey(startAt, templateStart, parentStart);
+        if (occurrenceDateKey && overrideDates.has(occurrenceDateKey)) {
+          continue;
+        }
+        const endAt = new Date(startAt.getTime() + durationMs);
+        if (startAt.getTime() < parentStart.getTime() || endAt.getTime() > parentEnd.getTime()) {
+          continue;
+        }
+        sources.push(this.templateSlotSource(parentEventId, parentRecord, template, definitions, startAt, endAt));
+      }
+    }
+    for (const template of templates) {
+      if (template.closed === true || !this.slotOverrideDateKey(template.overrideDate)) {
+        continue;
+      }
+      const startAt = AppUtils.parseDate(`${template.startAt ?? ''}`.trim());
+      if (!startAt) {
+        continue;
+      }
+      const definitions = this.slotTemplateSubEventDefinitions(parentRecord, template);
+      const endAt = new Date(startAt.getTime() + (this.subEventDefinitionsDurationMinutes(definitions) * 60 * 1000));
+      if (startAt.getTime() < horizon.start.getTime() || startAt.getTime() > horizon.end.getTime()) {
+        continue;
+      }
+      if (startAt.getTime() < parentStart.getTime() || endAt.getTime() > parentEnd.getTime()) {
+        continue;
+      }
+      sources.push(this.templateSlotSource(parentEventId, parentRecord, template, definitions, startAt, endAt));
+    }
+    return sources;
+  }
+
+  private static templateSlotSource(
+    parentEventId: string,
+    parentRecord: ActivityEventRecord,
+    template: EventContracts.EventSlotTemplateDTO,
+    definitions: readonly SubEventDefinitionDTO[],
+    startAt: Date,
+    endAt: Date
+  ): SubEventsSlotSource {
+    const slotTemplateId = `${template.id ?? ''}`.trim();
+    const sourceId = this.generatedSlotSourceId(parentEventId, slotTemplateId, startAt);
+    return {
+      id: sourceId,
+      parentEventId,
+      slotSourceId: sourceId,
+      slotTemplateId,
+      title: `${parentRecord.title ?? ''}`.trim() || null,
+      timeframe: this.generatedSlotTimeframe(startAt, endAt),
+      startAt: startAt.toISOString(),
+      endAt: endAt.toISOString(),
+      definitions: ActivityEventDetailDTO.normalizeSubEventDefinitions(definitions)
+    };
+  }
+
+  private static slotTemplateSubEventDefinitions(
+    parentRecord: ActivityEventRecord,
+    template: EventContracts.EventSlotTemplateDTO
+  ): SubEventDefinitionDTO[] {
+    const overrideDefinitions = ActivityEventDetailDTO.normalizeSubEventDefinitions(template.subEventDefinitions ?? []);
+    return overrideDefinitions.length > 0
+      ? overrideDefinitions
+      : ActivityEventDetailDTO.normalizeSubEventDefinitions(parentRecord.subEventDefinitions ?? []);
+  }
+
+  private static slotGenerationHorizon(
+    parentStart: Date,
+    parentEnd: Date,
+    query: ActivityEventSubEventsQueryDTO | null | undefined
+  ): { start: Date; end: Date } | null {
+    const rangeStart = this.queryRangeStart(query);
+    const rangeEnd = this.queryRangeEnd(query);
+    const nowMs = Date.now();
+    const dayMs = 24 * 60 * 60 * 1000;
+    const isPast = `${query?.order ?? ''}`.trim().toLowerCase() === 'past';
+    const defaultStart = new Date(nowMs - ((isPast ? 45 : 1) * dayMs));
+    const defaultEnd = new Date(nowMs + ((isPast ? 1 : 45) * dayMs));
+    const start = new Date(Math.max(parentStart.getTime(), (rangeStart ?? defaultStart).getTime()));
+    const end = new Date(Math.min(parentEnd.getTime(), (rangeEnd ?? defaultEnd).getTime()));
+    return end.getTime() < start.getTime() ? null : { start, end };
+  }
+
+  private static slotSourceMatchesOrder(
+    source: SubEventsSlotSource,
+    query: ActivityEventSubEventsQueryDTO | null | undefined,
+    nowMs: number
+  ): boolean {
+    const start = this.dateMs(source.startAt);
+    let end = this.dateMs(source.endAt);
+    if (!Number.isFinite(end) || end <= 0) {
+      end = start;
+    }
+    if (!Number.isFinite(end) || end <= 0) {
+      return false;
+    }
+    const isPast = end < nowMs;
+    return `${query?.order ?? ''}`.trim().toLowerCase() === 'past' ? isPast : !isPast;
+  }
+
+  private static slotSourceOverlapsRange(
+    source: SubEventsSlotSource,
+    query: ActivityEventSubEventsQueryDTO | null | undefined
+  ): boolean {
+    const rangeStart = this.queryRangeStart(query);
+    const rangeEnd = this.queryRangeEnd(query);
+    if (!rangeStart && !rangeEnd) {
+      return true;
+    }
+    const start = this.dateMs(source.startAt);
+    let end = this.dateMs(source.endAt);
+    if (!Number.isFinite(end) || end <= 0) {
+      end = start;
+    }
+    if (rangeStart && end < rangeStart.getTime()) {
+      return false;
+    }
+    if (rangeEnd && start > rangeEnd.getTime()) {
+      return false;
+    }
+    return true;
+  }
+
+  private static subEventDefinitionsDurationMinutes(definitions: readonly SubEventDefinitionDTO[]): number {
+    return this.subEventDefinitionTimeline(definitions)
+      .reduce((maxEnd, entry) => Math.max(maxEnd, entry.startOffsetMinutes + entry.durationMinutes), 0);
+  }
+
+  private static generateSlotOccurrenceStarts(
+    frequency: string,
+    templateStart: Date,
+    horizonStart: Date,
+    horizonEnd: Date
+  ): Date[] {
+    const normalizedFrequency = `${frequency ?? ''}`.trim().toLowerCase();
+    if (!normalizedFrequency || normalizedFrequency === 'one-time' || normalizedFrequency === 'custom') {
+      return templateStart.getTime() >= horizonStart.getTime() && templateStart.getTime() <= horizonEnd.getTime()
+        ? [new Date(templateStart)]
+        : [];
+    }
+    const starts: Date[] = [];
+    const cursor = new Date(horizonStart);
+    cursor.setHours(0, 0, 0, 0);
+    const endDate = new Date(horizonEnd);
+    endDate.setHours(0, 0, 0, 0);
+    while (cursor.getTime() <= endDate.getTime()) {
+      if (this.matchesSlotFrequency(cursor, templateStart, normalizedFrequency)) {
+        const next = new Date(cursor);
+        next.setHours(
+          templateStart.getHours(),
+          templateStart.getMinutes(),
+          templateStart.getSeconds(),
+          templateStart.getMilliseconds()
+        );
+        if (next.getTime() >= horizonStart.getTime() && next.getTime() <= horizonEnd.getTime()) {
+          starts.push(next);
+        }
+      }
+      cursor.setDate(cursor.getDate() + 1);
+    }
+    return starts;
+  }
+
+  private static matchesSlotFrequency(date: Date, templateStart: Date, frequency: string): boolean {
+    if (frequency === 'daily') {
+      return true;
+    }
+    if (frequency === 'weekly') {
+      return date.getDay() === templateStart.getDay();
+    }
+    if (frequency === 'bi-weekly' || frequency === 'biweekly') {
+      if (date.getDay() !== templateStart.getDay()) {
+        return false;
+      }
+      const diffDays = Math.floor((date.getTime() - AppUtils.dateOnly(templateStart).getTime()) / (24 * 60 * 60 * 1000));
+      const diffWeeks = Math.floor(diffDays / 7);
+      return diffWeeks >= 0 && diffWeeks % 2 === 0;
+    }
+    if (frequency === 'monthly') {
+      const lastDayOfMonth = new Date(date.getFullYear(), date.getMonth() + 1, 0).getDate();
+      return date.getDate() === Math.min(templateStart.getDate(), lastDayOfMonth);
+    }
+    if (frequency === 'yearly' || frequency === 'annual' || frequency === 'annually') {
+      if (date.getMonth() !== templateStart.getMonth()) {
+        return false;
+      }
+      const lastDayOfMonth = new Date(date.getFullYear(), date.getMonth() + 1, 0).getDate();
+      return date.getDate() === Math.min(templateStart.getDate(), lastDayOfMonth);
+    }
+    return false;
+  }
+
+  private static generatedSlotSourceId(parentEventId: string, slotTemplateId: string, startAt: Date): string {
+    return `${parentEventId}:slot:${slotTemplateId}:${startAt.toISOString()}`;
+  }
+
+  private static generatedSlotTimeframe(startAt: Date, endAt: Date): string {
+    const dateLabel = startAt.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+    const startLabel = startAt.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' });
+    const endLabel = endAt.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' });
+    return `${dateLabel} · ${startLabel} - ${endLabel}`;
+  }
+
+  private static queryRangeStart(query: ActivityEventSubEventsQueryDTO | null | undefined): Date | null {
+    const value = `${query?.rangeStart ?? ''}`.trim();
+    const parsed = AppUtils.parseDateOnly(value);
+    return parsed ? AppUtils.dateOnly(parsed) : null;
+  }
+
+  private static queryRangeEnd(query: ActivityEventSubEventsQueryDTO | null | undefined): Date | null {
+    const value = `${query?.rangeEnd ?? ''}`.trim();
+    const parsed = AppUtils.parseDateOnly(value);
+    if (!parsed) {
+      return null;
+    }
+    const end = AppUtils.dateOnly(parsed);
+    end.setHours(23, 59, 59, 999);
+    return end;
+  }
+
+  private static slotOverrideDateKey(value: string | null | undefined): string | null {
+    const raw = `${value ?? ''}`.trim();
+    if (!raw) {
+      return null;
+    }
+    const parsed = AppUtils.parseDate(raw.includes('T') ? raw : `${raw}T00:00`);
+    if (!parsed) {
+      return null;
+    }
+    const year = parsed.getFullYear();
+    const month = `${parsed.getMonth() + 1}`.padStart(2, '0');
+    const day = `${parsed.getDate()}`.padStart(2, '0');
+    return `${year}-${month}-${day}`;
+  }
+
+  private static slotOccurrenceAnchorDateKey(
+    occurrenceStart: Date,
+    templateStart: Date,
+    parentStart: Date
+  ): string | null {
+    const templateOffsetMs = templateStart.getTime() - parentStart.getTime();
+    return this.slotOverrideDateKey(new Date(occurrenceStart.getTime() - templateOffsetMs).toISOString());
+  }
+
+  private static dateMs(value: string | null | undefined): number {
+    return AppUtils.parseDate(value)?.getTime() ?? Number.POSITIVE_INFINITY;
+  }
+
+  private static subEventItemsForSlot(
+    slotStartIso: string | null | undefined,
+    definitions: readonly SubEventDefinitionDTO[]
+  ): EventContracts.SubEventDTO[] {
+    const slotStart = AppUtils.parseDate(`${slotStartIso ?? ''}`.trim()) ?? new Date();
+    return this.subEventDefinitionTimeline(definitions)
       .map(({ item, startOffsetMinutes, durationMinutes }, index) => {
         const startAt = new Date(slotStart.getTime() + (startOffsetMinutes * 60 * 1000));
         const endAt = new Date(startAt.getTime() + (durationMinutes * 60 * 1000));
@@ -373,13 +718,9 @@ export class LocalActivityEventsMapper {
   }
 
   private static subEventResourceOwnerIdFromSlot(slot: SubEventsSlotDTO): string {
-    return `${slot.slotSourceId ?? ''}`.trim() || `${slot.id ?? ''}`.trim();
-  }
-
-  private static subEventsSlotId(parentEventId: string, record: ActivityEventRecord): string {
-    return this.isGeneratedSlotRecord(record)
-      ? `${record.id ?? ''}`.trim()
-      : `${parentEventId ?? ''}`.trim() + ':default';
+    return `${slot.slotSourceId ?? ''}`.trim()
+      || `${slot.parentEventId ?? ''}`.trim()
+      || `${slot.id ?? ''}`.trim();
   }
 
   private static fallbackSubEventId(index: number): string {

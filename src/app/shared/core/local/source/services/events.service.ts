@@ -136,7 +136,7 @@ export class LocalEventsService extends LocalRouteDelayService implements IEvent
     if (!result) {
       return null;
     }
-    const baseSlots = LocalActivityEventsMapper.toSubEventsSlots(result.parentEventId, result.records);
+    const baseSlots = LocalActivityEventsMapper.toSubEventsSlots(result.parentEventId, result.parentRecord, query);
     const { resourceLookups, stageRuntimeLookups } = LocalActivityEventsMapper.subEventStateLookups(baseSlots, normalizedUserId);
     const resourceStates = this.activityResourcesRepository.querySubEventResourceRecordsByRefs(resourceLookups)
       .map(record => LocalActivityResourcesMapper.toState(record))

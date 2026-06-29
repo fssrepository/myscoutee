@@ -25,7 +25,7 @@ export class EventSubeventRuntimeInfoCardConverter
     item: SubEventDTO,
     options: EventSubeventRuntimeInfoCardConverterOptions = {}
   ): InfoCardData {
-    const mode = options.mode ?? options.event?.mode ?? 'Casual';
+    const mode = this.resolveMode(item, options);
     const accepted = Math.max(0, Math.trunc(Number(item.membersAccepted) || 0));
     const max = Math.max(accepted, Math.trunc(Number(item.capacityMax) || 0));
     const capacity = max > 0 ? `${accepted} / ${max}` : `${accepted}`;
@@ -141,6 +141,33 @@ export class EventSubeventRuntimeInfoCardConverter
       leadingTone: 'invitation',
       accessoryTone: 'negative'
     };
+  }
+
+  private static resolveMode(
+    item: SubEventDTO,
+    options: EventSubeventRuntimeInfoCardConverterOptions
+  ): EventMode {
+    const requestedMode = options.mode ?? options.event?.mode ?? null;
+    return requestedMode === 'Tournament' || this.isTournamentStage(item)
+      ? 'Tournament'
+      : 'Casual';
+  }
+
+  private static isTournamentStage(item: SubEventDTO): boolean {
+    return (item.groups?.length ?? 0) > 0
+      || (Number(item.tournamentGroupCount) || 0) > 0
+      || item.tournamentLeaderboardType === 'Score'
+      || item.tournamentLeaderboardType === 'Fifa'
+      || this.hasStageStatus(item.stageStatus);
+  }
+
+  private static hasStageStatus(status: string | null | undefined): boolean {
+    const normalized = `${status ?? ''}`.trim().toUpperCase();
+    return normalized === 'A'
+      || normalized === 'RS'
+      || normalized === 'SR'
+      || normalized === 'F'
+      || normalized === 'S';
   }
 
   private static stageStatusBadge(

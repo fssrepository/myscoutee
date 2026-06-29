@@ -45,7 +45,7 @@ interface ActivityEventActivitiesPageOptions {
 
 interface ActivityEventSubEventsRecordResult {
   parentEventId: string;
-  records: ActivityEventRecord[];
+  parentRecord: ActivityEventRecord;
 }
 
 type ActivityEventExploreSortTuple = readonly [number, number, number, number];
@@ -483,98 +483,69 @@ export class LocalEventsRepository {
   querySubEventsByEventId(
     userId: string,
     eventId: string,
-    query?: ActivityEventSubEventsQueryDTO
+    _query?: ActivityEventSubEventsQueryDTO
   ): ActivityEventSubEventsRecordResult | null {
     const normalizedEventId = eventId.trim();
     if (!normalizedEventId) {
       return null;
     }
     const table = this.memoryDb.read()[EVENTS_TABLE_NAME];
-    const preferredRecords = this.computePreferredEventRecords(table);
-    const selectedRecord = preferredRecords.find(item => item.id === normalizedEventId) ?? null;
+    const records = table.ids
+      .map(id => this.normalizePersistedEventRecord(table.byId[id]))
+      .filter((record): record is ActivityEventRecord => Boolean(record));
+    const selectedRecord = this.preferredSubEventsDefinitionRecord(
+      records.filter(item => item.id === normalizedEventId),
+      userId
+    );
     if (!selectedRecord) {
       return null;
     }
     const parentEventId = this.isGeneratedSlotRecord(selectedRecord)
       ? `${selectedRecord.parentEventId ?? ''}`.trim() || selectedRecord.id
       : selectedRecord.id;
-    const parentRecord = preferredRecords.find(item => item.id === parentEventId && !this.isGeneratedSlotRecord(item))
-      ?? selectedRecord;
-    const allGeneratedSlots = preferredRecords
-      .filter(record => this.isGeneratedSlotRecord(record) && record.parentEventId === parentEventId)
-      .filter(record => !this.isTrashStatus(record))
-      .filter(record => this.generatedSlotFitsParentRange(record, parentRecord))
-      .sort((left, right) => this.toDateMs(left.startAtIso) - this.toDateMs(right.startAtIso));
-    const nowMs = Date.now();
-    const generatedSlots = allGeneratedSlots
-      .filter(record => this.recordMatchesSubEventsOrder(record, query, nowMs))
-      .filter(record => this.recordOverlapsSubEventsQueryRange(record, query));
-    const direction = query?.order === 'past' ? -1 : 1;
+    const parentRecord = this.preferredSubEventsDefinitionRecord(
+      records.filter(item => item.id === parentEventId && !this.isGeneratedSlotRecord(item)),
+      userId
+    ) ?? selectedRecord;
     return {
       parentEventId,
-      records: generatedSlots
-        .sort((left, right) => direction * (this.toDateMs(left.startAtIso) - this.toDateMs(right.startAtIso)))
+      parentRecord
     };
   }
 
-  private recordMatchesSubEventsOrder(
-    record: ActivityEventRecord,
-    query: ActivityEventSubEventsQueryDTO | null | undefined,
-    nowMs: number
-  ): boolean {
-    const recordEnd = this.subEventsRecordEndMs(record);
-    if (!Number.isFinite(recordEnd) || recordEnd <= 0) {
-      return false;
+  private preferredSubEventsDefinitionRecord(
+    records: readonly ActivityEventRecord[],
+    userId: string
+  ): ActivityEventRecord | null {
+    const normalizedUserId = userId.trim();
+    let best: ActivityEventRecord | null = null;
+    let bestScore = Number.NEGATIVE_INFINITY;
+    for (const record of records) {
+      const score = this.subEventsDefinitionRecordScore(record, normalizedUserId);
+      if (!best || score > bestScore) {
+        best = record;
+        bestScore = score;
+      }
     }
-    const isPast = recordEnd < nowMs;
-    return query?.order === 'past' ? isPast : !isPast;
+    return best;
   }
 
-  private recordOverlapsSubEventsQueryRange(
-    record: ActivityEventRecord,
-    query: ActivityEventSubEventsQueryDTO | null | undefined
-  ): boolean {
-    const rangeStart = this.subEventsQueryRangeStartMs(query);
-    const rangeEnd = this.subEventsQueryRangeEndMs(query);
-    if (rangeStart === null && rangeEnd === null) {
-      return true;
-    }
-    const recordStart = this.subEventsRecordStartMs(record);
-    const recordEnd = this.subEventsRecordEndMs(record);
-    if (rangeStart !== null && recordEnd < rangeStart) {
-      return false;
-    }
-    if (rangeEnd !== null && recordStart > rangeEnd) {
-      return false;
-    }
-    return true;
-  }
-
-  private subEventsRecordStartMs(record: ActivityEventRecord): number {
-    return this.toDateMs(record.startAtIso);
-  }
-
-  private subEventsRecordEndMs(record: ActivityEventRecord): number {
-    const start = this.subEventsRecordStartMs(record);
-    const end = this.toDateMs(record.endAtIso);
-    return Number.isFinite(end) && end > 0 ? end : start;
-  }
-
-  private subEventsQueryRangeStartMs(query: ActivityEventSubEventsQueryDTO | null | undefined): number | null {
-    const value = `${query?.rangeStart ?? ''}`.trim();
-    const parsed = AppUtils.parseDateOnly(value);
-    return parsed ? AppUtils.dateOnly(parsed).getTime() : null;
-  }
-
-  private subEventsQueryRangeEndMs(query: ActivityEventSubEventsQueryDTO | null | undefined): number | null {
-    const value = `${query?.rangeEnd ?? ''}`.trim();
-    const parsed = AppUtils.parseDateOnly(value);
-    if (!parsed) {
-      return null;
-    }
-    const end = AppUtils.dateOnly(parsed);
-    end.setHours(23, 59, 59, 999);
-    return end.getTime();
+  private subEventsDefinitionRecordScore(record: ActivityEventRecord, userId: string): number {
+    const slotTemplateCount = record.slotTemplates?.length ?? 0;
+    const definitionCount = record.subEventDefinitions?.length ?? 0;
+    const runtimeItemCount = record.subEvents?.length ?? 0;
+    return (
+      (this.isGeneratedSlotRecord(record) ? -10_000 : 0)
+      + (record.userId === userId && record.type === 'hosting' ? 2_000 : 0)
+      + (record.creatorUserId === userId ? 1_000 : 0)
+      + (record.type === 'hosting' ? 400 : 0)
+      + (record.subEventsEnabled === false ? -500 : 100)
+      + (record.slotsEnabled === true ? 500 : 0)
+      + (slotTemplateCount * 100)
+      + (definitionCount * 40)
+      + (runtimeItemCount * 10)
+      + (this.normalizeEventStatus(record.status) === 'A' ? 5 : 0)
+    );
   }
 
   peekKnownItemById(userId: string, itemId: string): ActivityEventRecord | null {

@@ -74,7 +74,7 @@ export class EventSubeventRuntimeMenuConverter {
     item: SubEventDTO,
     options: EventSubeventRuntimeMenuConverterOptions = {}
   ): readonly AppMenuItem<EventSubeventRuntimeMenuItemId, EventSubeventRuntimeMenuContext>[] {
-    const mode = options.mode ?? options.event?.mode ?? 'Casual';
+    const mode = this.resolveMode(item, options);
     return mode === 'Tournament'
       ? this.tournamentItems(item, options)
       : this.casualItems(item, options);
@@ -84,7 +84,7 @@ export class EventSubeventRuntimeMenuConverter {
     item: SubEventDTO,
     options: EventSubeventRuntimeMenuConverterOptions = {}
   ): number {
-    const mode = options.mode ?? options.event?.mode ?? 'Casual';
+    const mode = this.resolveMode(item, options);
     if (mode === 'Tournament') {
       return Math.max(0, this.toInteger(item.membersPending));
     }
@@ -270,6 +270,33 @@ export class EventSubeventRuntimeMenuConverter {
       }));
     }
     return actions;
+  }
+
+  private static resolveMode(
+    item: SubEventDTO,
+    options: EventSubeventRuntimeMenuConverterOptions
+  ): EventMode {
+    const requestedMode = options.mode ?? options.event?.mode ?? null;
+    return requestedMode === 'Tournament' || this.isTournamentStage(item)
+      ? 'Tournament'
+      : 'Casual';
+  }
+
+  private static isTournamentStage(item: SubEventDTO): boolean {
+    return (item.groups?.length ?? 0) > 0
+      || (Number(item.tournamentGroupCount) || 0) > 0
+      || item.tournamentLeaderboardType === 'Score'
+      || item.tournamentLeaderboardType === 'Fifa'
+      || this.hasStageStatus(item.stageStatus);
+  }
+
+  private static hasStageStatus(status: string | null | undefined): boolean {
+    const normalized = `${status ?? ''}`.trim().toUpperCase();
+    return normalized === 'A'
+      || normalized === 'RS'
+      || normalized === 'SR'
+      || normalized === 'F'
+      || normalized === 'S';
   }
 
   private static casualItems(
