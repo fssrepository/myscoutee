@@ -961,7 +961,7 @@ export class LocalEventsRepository {
     const table = this.memoryDb.read()[EVENTS_TABLE_NAME];
     const record = this.computePreferredEventRecords(table)
       .find(item => item.id === normalizedEventId);
-    const subEvents = this.cloneSubEvents(record?.subEvents) ?? [];
+    const subEvents = this.runtimeSubEvents(record);
     const stage = subEvents.find(item => `${item.id ?? ''}`.trim() === normalizedSubEventId) ?? null;
     if (!record || !stage) {
       return null;
@@ -1026,12 +1026,12 @@ export class LocalEventsRepository {
       ?? (normalizedSlotId
         ? records.find(item => item.id === normalizedEventId || `${(item as { sourceId?: string }).sourceId ?? ''}`.trim() === normalizedEventId) ?? null
         : null);
-    const stage = (this.cloneSubEvents(record?.subEvents) ?? [])
+    const stage = this.runtimeSubEvents(record)
       .find(item => `${item.id ?? ''}`.trim() === normalizedStageId) ?? null;
     if (!stage) {
       return [];
     }
-    const stages = this.cloneSubEvents(record?.subEvents) ?? [];
+    const stages = this.runtimeSubEvents(record);
     return this.stageGroupsForDisplay(ownerSourceId, stage, stages, record)
       .map((group, groupIndex) => this.tournamentGroupDto(stage, group, groupIndex));
   }
@@ -1062,7 +1062,7 @@ export class LocalEventsRepository {
     const groupId = `${request.groupId ?? ''}`.trim();
     const capacityMin = Math.max(0, Math.trunc(Number(request.capacityMin) || 0));
     const capacityMax = Math.max(capacityMin, Math.trunc(Number(request.capacityMax) || capacityMin));
-    const stages = this.cloneSubEvents(definitionRecord.subEvents) ?? [];
+    const stages = this.runtimeSubEvents(definitionRecord);
     const stage = stages
       .find(item => `${item.id ?? ''}`.trim() === subEventId) ?? null;
     this.memoryDb.write(state => {
@@ -1127,7 +1127,7 @@ export class LocalEventsRepository {
       return this.buildTournamentGroupsState(actorUserId, ownerSourceId, definitionRecord);
     }
 
-    const stages = this.cloneSubEvents(definitionRecord.subEvents) ?? [];
+    const stages = this.runtimeSubEvents(definitionRecord);
     const stage = stages
       .find(item => `${item.id ?? ''}`.trim() === subEventId) ?? null;
     this.memoryDb.write(state => {
@@ -2315,6 +2315,54 @@ export class LocalEventsRepository {
     return ActivityEventDetailDTO.normalizeSubEvents(items);
   }
 
+  private runtimeSubEvents(record: ActivityEventRecord | null | undefined): ContractTypes.SubEventDTO[] {
+    const persisted = this.cloneSubEvents(record?.subEvents) ?? [];
+    if (persisted.length > 0 || !record) {
+      return persisted;
+    }
+    const definitions = ActivityEventDetailDTO.normalizeSubEventDefinitions(record.subEventDefinitions ?? []);
+    if (definitions.length === 0) {
+      return [];
+    }
+    const slotStart = AppUtils.parseDate(`${record.startAtIso ?? ''}`.trim()) ?? new Date();
+    const items = this.subEventDefinitionTimeline(definitions)
+      .map(({ item, startOffsetMinutes, durationMinutes }, index): ContractTypes.SubEventDTO => {
+        const stageId = `${item.id ?? `subevent-${index + 1}`}`.trim() || `subevent-${index + 1}`;
+        const startAt = new Date(slotStart.getTime() + (startOffsetMinutes * 60 * 1000));
+        const endAt = new Date(startAt.getTime() + (durationMinutes * 60 * 1000));
+        const isTournamentStage = this.isGeneratedTournamentStageDefinition(item);
+        return {
+          id: stageId,
+          name: `${item.name ?? `Sub Event ${index + 1}`}`.trim(),
+          description: `${item.description ?? ''}`.trim(),
+          startAt: startAt.toISOString(),
+          endAt: endAt.toISOString(),
+          location: `${item.location ?? ''}`.trim(),
+          tournamentGroupCapacityMin: item.tournamentGroupCapacityMin,
+          tournamentGroupCapacityMax: item.tournamentGroupCapacityMax,
+          tournamentLeaderboardType: item.tournamentLeaderboardType,
+          tournamentAdvancePerGroup: item.tournamentAdvancePerGroup,
+          optional: item.optional,
+          pricing: item.pricing,
+          capacityMin: item.capacityMin,
+          capacityMax: item.capacityMax,
+          membersAccepted: 0,
+          membersPending: 0,
+          carsPending: 0,
+          accommodationPending: 0,
+          suppliesPending: 0,
+          slotStartOffsetMinutes: startOffsetMinutes,
+          slotDurationMinutes: durationMinutes,
+          stageStatus: isTournamentStage ? 'RS' : undefined,
+          stageStatusReason: isTournamentStage ? 'awaiting-tournament-start' : undefined
+        };
+      });
+    return items.map(item => ({
+      ...item,
+      groupsCount: this.autoTournamentGroupCount(item, items, record)
+    }));
+  }
+
   private buildTournamentGroupsState(
     userId: string,
     eventId: string,
@@ -2324,7 +2372,7 @@ export class LocalEventsRepository {
     if (!normalizedEventId || !record) {
       return null;
     }
-    const subEvents = this.cloneSubEvents(record.subEvents) ?? [];
+    const subEvents = this.runtimeSubEvents(record);
     const stages = subEvents
       .map((stage, index) => ({ stage, index }))
       .filter(entry => this.isGeneratedTournamentStage(entry.stage))
@@ -2634,7 +2682,7 @@ export class LocalEventsRepository {
         const autoCountKey = `${eventRecord?.id ?? normalizedParentId}:${record.subEventId}`;
         let autoCount = autoCountByStageKey.get(autoCountKey);
         if (autoCount === undefined) {
-          const stages = this.cloneSubEvents(eventRecord?.subEvents) ?? [];
+          const stages = this.runtimeSubEvents(eventRecord);
           const stage = stages
             .find(item => `${item.id ?? ''}`.trim() === record.subEventId) ?? null;
           if (!stage) {
@@ -2931,6 +2979,16 @@ export class LocalEventsRepository {
 
   private isGeneratedTournamentStage(item: ContractTypes.SubEventDTO): boolean {
     return !item.optional
+      && (
+        (item.tournamentGroupCapacityMin ?? 0) > 0
+        || (item.tournamentGroupCapacityMax ?? 0) > 0
+        || item.tournamentLeaderboardType === 'Score'
+        || item.tournamentLeaderboardType === 'Fifa'
+      );
+  }
+
+  private isGeneratedTournamentStageDefinition(item: ActivityContracts.SubEventDefinitionDTO): boolean {
+    return item.optional !== true
       && (
         (item.tournamentGroupCapacityMin ?? 0) > 0
         || (item.tournamentGroupCapacityMax ?? 0) > 0
