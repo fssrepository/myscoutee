@@ -69,6 +69,13 @@ export interface EventSubeventRuntimeMenuConverterOptions {
   nowMs?: number;
 }
 
+type StageRuntimeBadge = 'scheduled' | 'started' | 'blocked' | 'error' | 'closed' | 'finalized' | 'suspended';
+
+interface StageRuntimeState {
+  badge: StageRuntimeBadge;
+  repairAction: 'start' | 'close' | null;
+}
+
 export class EventSubeventRuntimeMenuConverter {
   static convert(
     item: SubEventDTO,
@@ -176,7 +183,7 @@ export class EventSubeventRuntimeMenuConverter {
       subEventIndex: options.subEventIndex
     };
 
-    if (state.repairAction === 'start') {
+    if (state.repairAction === 'start' && this.isStageStartAllowed(options.siblings, options.subEventIndex)) {
       actions.push(this.stageActionItem({
         ...base,
         action: 'start-tournament',
@@ -299,7 +306,8 @@ export class EventSubeventRuntimeMenuConverter {
       || normalized === 'RS'
       || normalized === 'SR'
       || normalized === 'F'
-      || normalized === 'S';
+      || normalized === 'S'
+      || normalized === 'E';
   }
 
   private static casualItems(
@@ -432,7 +440,7 @@ export class EventSubeventRuntimeMenuConverter {
   }
 
   private static stageStatus(item: SubEventDTO): TournamentStageStatus {
-    const raw = `${item.stageStatus ?? ''}`.trim();
+    const raw = `${item.stageStatus ?? ''}`.trim().toUpperCase();
     if (raw === 'A' || raw === 'RS' || raw === 'SR' || raw === 'F' || raw === 'S' || raw === 'E') {
       return raw;
     }
@@ -446,25 +454,18 @@ export class EventSubeventRuntimeMenuConverter {
       siblings: readonly SubEventDTO[];
       nowMs: number;
     }
-  ): {
-    badge: 'scheduled' | 'started' | 'blocked' | 'closed' | 'finalized' | 'suspended';
-    repairAction: 'start' | 'close' | null;
-  } {
+  ): StageRuntimeState {
     const now = Number.isFinite(Number(options.nowMs)) ? Number(options.nowMs) : Date.now();
     const ownState = this.stageRuntimeStateForItem(item, now);
-    if (this.hasBlockingPreviousStage(item, options.siblings, options.subEventIndex, now)) {
-      return { ...ownState, badge: 'blocked' };
-    }
-    return ownState;
+    return this.shouldCascadeBlockedState(item, options.siblings, options.subEventIndex, now, ownState)
+      ? { ...ownState, badge: 'blocked', repairAction: null }
+      : ownState;
   }
 
   private static stageRuntimeStateForItem(
     item: SubEventDTO,
     now: number
-  ): {
-    badge: 'scheduled' | 'started' | 'blocked' | 'closed' | 'finalized' | 'suspended';
-    repairAction: 'start' | 'close' | null;
-  } {
+  ): StageRuntimeState {
     const status = this.stageStatus(item);
     const startMs = Date.parse(`${item.startAt ?? ''}`);
     const endMs = Date.parse(`${item.endAt ?? ''}`);
@@ -481,13 +482,10 @@ export class EventSubeventRuntimeMenuConverter {
       return { badge: 'closed', repairAction: null };
     }
     if (status === 'E') {
-      return {
-        badge: 'blocked',
-        repairAction: Number.isFinite(endMs) && endMs <= now ? 'close' : 'start'
-      };
+      return { badge: 'error', repairAction: null };
     }
     if (status === 'RS') {
-      return Number.isFinite(startMs) && startMs <= now
+      return this.hasStageStartedOrEnded(startMs, endMs, now)
         ? { badge: 'blocked', repairAction: 'start' }
         : { badge: 'scheduled', repairAction: null };
     }
@@ -501,6 +499,23 @@ export class EventSubeventRuntimeMenuConverter {
       return { badge: 'blocked', repairAction: 'close' };
     }
     return { badge: 'started', repairAction: null };
+  }
+
+  private static shouldCascadeBlockedState(
+    item: SubEventDTO,
+    siblings: readonly SubEventDTO[],
+    subEventIndex: number,
+    now: number,
+    ownState: StageRuntimeState
+  ): boolean {
+    if (ownState.badge === 'scheduled'
+      || ownState.badge === 'error'
+      || ownState.badge === 'closed'
+      || ownState.badge === 'finalized'
+      || ownState.badge === 'suspended') {
+      return false;
+    }
+    return this.hasBlockingPreviousStage(item, siblings, subEventIndex, now);
   }
 
   private static hasBlockingPreviousStage(
@@ -527,11 +542,33 @@ export class EventSubeventRuntimeMenuConverter {
     }
     for (let previousIndex = 0; previousIndex < index; previousIndex += 1) {
       const previous = this.stageRuntimeStateForItem(siblings[previousIndex], now);
-      if (previous.badge === 'blocked') {
+      if (previous.badge === 'scheduled') {
+        return false;
+      }
+      if (previous.badge === 'blocked' || previous.badge === 'error') {
         return true;
       }
     }
     return false;
+  }
+
+  private static hasStageStartedOrEnded(startMs: number, endMs: number, now: number): boolean {
+    return (Number.isFinite(startMs) && startMs <= now)
+      || (Number.isFinite(endMs) && endMs <= now);
+  }
+
+  private static isStageStartAllowed(siblings: readonly SubEventDTO[], subEventIndex: number): boolean {
+    if (subEventIndex < 0) {
+      return false;
+    }
+    if (subEventIndex === 0) {
+      return true;
+    }
+    if (siblings.length === 0 || subEventIndex >= siblings.length) {
+      return false;
+    }
+    const previous = siblings[subEventIndex - 1];
+    return previous ? this.stageStatus(previous) === 'F' : false;
   }
 
   private static groupCount(item: SubEventDTO): number {

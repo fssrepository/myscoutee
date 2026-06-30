@@ -104,7 +104,7 @@ export class LocalActivityEventsMapper {
     const normalizedParentEventId = `${parentEventId ?? ''}`.trim();
     const direction = `${query?.order ?? ''}`.trim().toLowerCase() === 'past' ? -1 : 1;
     const nowMs = Date.now();
-    return this.subEventsSlotSources(normalizedParentEventId, parentRecord, query)
+    return this.subEventsSlotSources(normalizedParentEventId, parentRecord, query, nowMs)
       .filter(source => source.definitions.length > 0)
       .filter(source => this.slotSourceMatchesOrder(source, query, nowMs))
       .filter(source => this.slotSourceOverlapsRange(source, query))
@@ -224,7 +224,8 @@ export class LocalActivityEventsMapper {
   private static subEventsSlotSources(
     parentEventId: string,
     parentRecord: ActivityEventRecord,
-    query: ActivityEventSubEventsQueryDTO | null | undefined
+    query: ActivityEventSubEventsQueryDTO | null | undefined,
+    nowMs: number
   ): SubEventsSlotSource[] {
     if (!parentRecord) {
       return [];
@@ -237,7 +238,7 @@ export class LocalActivityEventsMapper {
     }
     const templates = parentRecord.slotsEnabled === true ? parentRecord.slotTemplates ?? [] : [];
     if (templates.length > 0) {
-      return this.templateSlotSources(parentEventId, parentRecord, templates, query);
+      return this.templateSlotSources(parentEventId, parentRecord, templates, query, nowMs);
     }
     const definitions = ActivityEventDetailDTO.normalizeSubEventDefinitions(parentRecord.subEventDefinitions ?? []);
     return definitions.length > 0
@@ -273,14 +274,15 @@ export class LocalActivityEventsMapper {
     parentEventId: string,
     parentRecord: ActivityEventRecord,
     templates: readonly EventContracts.EventSlotTemplateDTO[],
-    query: ActivityEventSubEventsQueryDTO | null | undefined
+    query: ActivityEventSubEventsQueryDTO | null | undefined,
+    nowMs: number
   ): SubEventsSlotSource[] {
     const parentStart = AppUtils.parseDate(`${parentRecord.startAtIso ?? ''}`.trim());
     const parentEnd = AppUtils.parseDate(`${parentRecord.endAtIso ?? ''}`.trim());
     if (!parentStart || !parentEnd || parentEnd.getTime() < parentStart.getTime()) {
       return [];
     }
-    const horizon = this.slotGenerationHorizon(parentStart, parentEnd, query);
+    const horizon = this.slotGenerationHorizon(parentStart, parentEnd, query, nowMs);
     if (!horizon) {
       return [];
     }
@@ -300,13 +302,20 @@ export class LocalActivityEventsMapper {
       }
       const definitions = this.slotTemplateSubEventDefinitions(parentRecord, template);
       const durationMs = this.subEventDefinitionsDurationMinutes(definitions) * 60 * 1000;
-      for (const startAt of this.generateSlotOccurrenceStarts(parentRecord.frequency ?? 'One-time', templateStart, horizon.start, horizon.end)) {
+      const templateHorizon = this.slotGenerationHorizonForTemplate(horizon, durationMs, query, nowMs);
+      if (!templateHorizon) {
+        continue;
+      }
+      for (const startAt of this.generateSlotOccurrenceStarts(parentRecord.frequency ?? 'One-time', templateStart, templateHorizon.start, templateHorizon.end)) {
         const occurrenceDateKey = this.slotOccurrenceAnchorDateKey(startAt, templateStart, parentStart);
         if (occurrenceDateKey && overrideDates.has(occurrenceDateKey)) {
           continue;
         }
         const endAt = new Date(startAt.getTime() + durationMs);
         if (startAt.getTime() < parentStart.getTime() || endAt.getTime() > parentEnd.getTime()) {
+          continue;
+        }
+        if (!this.slotOccurrenceMatchesOrder(endAt, query, nowMs)) {
           continue;
         }
         sources.push(this.templateSlotSource(parentEventId, parentRecord, template, definitions, startAt, endAt));
@@ -322,10 +331,21 @@ export class LocalActivityEventsMapper {
       }
       const definitions = this.slotTemplateSubEventDefinitions(parentRecord, template);
       const endAt = new Date(startAt.getTime() + (this.subEventDefinitionsDurationMinutes(definitions) * 60 * 1000));
-      if (startAt.getTime() < horizon.start.getTime() || startAt.getTime() > horizon.end.getTime()) {
+      const templateHorizon = this.slotGenerationHorizonForTemplate(
+        horizon,
+        this.subEventDefinitionsDurationMinutes(definitions) * 60 * 1000,
+        query,
+        nowMs
+      );
+      if (!templateHorizon
+        || startAt.getTime() < templateHorizon.start.getTime()
+        || startAt.getTime() > templateHorizon.end.getTime()) {
         continue;
       }
       if (startAt.getTime() < parentStart.getTime() || endAt.getTime() > parentEnd.getTime()) {
+        continue;
+      }
+      if (!this.slotOccurrenceMatchesOrder(endAt, query, nowMs)) {
         continue;
       }
       sources.push(this.templateSlotSource(parentEventId, parentRecord, template, definitions, startAt, endAt));
@@ -369,18 +389,44 @@ export class LocalActivityEventsMapper {
   private static slotGenerationHorizon(
     parentStart: Date,
     parentEnd: Date,
-    query: ActivityEventSubEventsQueryDTO | null | undefined
+    query: ActivityEventSubEventsQueryDTO | null | undefined,
+    nowMs: number
   ): { start: Date; end: Date } | null {
     const rangeStart = this.queryRangeStart(query);
     const rangeEnd = this.queryRangeEnd(query);
-    const nowMs = Date.now();
     const dayMs = 24 * 60 * 60 * 1000;
     const isPast = `${query?.order ?? ''}`.trim().toLowerCase() === 'past';
-    const defaultStart = new Date(nowMs - ((isPast ? 45 : 1) * dayMs));
-    const defaultEnd = new Date(nowMs + ((isPast ? 1 : 45) * dayMs));
+    const defaultStart = new Date(isPast ? nowMs - (45 * dayMs) : nowMs);
+    const defaultEnd = new Date(isPast ? nowMs : nowMs + (45 * dayMs));
     const start = new Date(Math.max(parentStart.getTime(), (rangeStart ?? defaultStart).getTime()));
     const end = new Date(Math.min(parentEnd.getTime(), (rangeEnd ?? defaultEnd).getTime()));
     return end.getTime() < start.getTime() ? null : { start, end };
+  }
+
+  private static slotGenerationHorizonForTemplate(
+    horizon: { start: Date; end: Date },
+    durationMs: number,
+    query: ActivityEventSubEventsQueryDTO | null | undefined,
+    nowMs: number
+  ): { start: Date; end: Date } | null {
+    const safeDurationMs = Math.max(0, Math.trunc(Number(durationMs) || 0));
+    const isPast = `${query?.order ?? ''}`.trim().toLowerCase() === 'past';
+    const startMs = isPast
+      ? horizon.start.getTime() - safeDurationMs
+      : Math.max(horizon.start.getTime() - safeDurationMs, nowMs - safeDurationMs);
+    const endMs = isPast
+      ? Math.min(horizon.end.getTime(), nowMs)
+      : horizon.end.getTime();
+    return endMs < startMs ? null : { start: new Date(startMs), end: new Date(endMs) };
+  }
+
+  private static slotOccurrenceMatchesOrder(
+    occurrenceEnd: Date,
+    query: ActivityEventSubEventsQueryDTO | null | undefined,
+    nowMs: number
+  ): boolean {
+    const isPast = occurrenceEnd.getTime() <= nowMs;
+    return `${query?.order ?? ''}`.trim().toLowerCase() === 'past' ? isPast : !isPast;
   }
 
   private static slotSourceMatchesOrder(
@@ -396,7 +442,7 @@ export class LocalActivityEventsMapper {
     if (!Number.isFinite(end) || end <= 0) {
       return false;
     }
-    const isPast = end < nowMs;
+    const isPast = end <= nowMs;
     return `${query?.order ?? ''}`.trim().toLowerCase() === 'past' ? isPast : !isPast;
   }
 
