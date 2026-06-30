@@ -708,7 +708,9 @@ export class EventSubeventsListPopupComponent {
 
   private async applyStageStatusAction(context: Extract<EventSubeventRuntimeMenuContext, { scope: 'stage-status' }>): Promise<void> {
     const userId = this.activeUserId();
-    const sourceId = `${context.sourceId ?? ''}`.trim();
+    const section = this.slotSectionForItem(context.item);
+    const sourceId = `${section?.slot.parentEventId ?? this.event?.id ?? context.sourceId ?? ''}`.trim();
+    const slotSourceId = `${section?.slot.slotSourceId ?? ''}`.trim() || null;
     const action = `${context.action ?? ''}`.trim();
     if (!userId || !sourceId || !action) {
       throw new Error('Missing stage action target.');
@@ -716,6 +718,7 @@ export class EventSubeventsListPopupComponent {
     const result = await this.eventsService.applyStageAction({
       userId,
       sourceId,
+      slotSourceId,
       subEventId: context.subEventId,
       subEventIndex: context.subEventIndex,
       action,
@@ -913,9 +916,8 @@ export class EventSubeventsListPopupComponent {
   }
 
   private canStartSubEventStage(item: SubEventDTO): boolean {
-    return this.normalizeSubEventStageStatus(item.stageStatus) === 'RS'
-      && this.subEventIndex(item) === 0
-      && this.isSubEventStageAssignmentOpen(item);
+    return this.isSubEventStageBlocked(item)
+      && this.subEventIndex(item) === 0;
   }
 
   private isSubEventStageAssignmentOpen(item: SubEventDTO): boolean {
@@ -1074,7 +1076,10 @@ export class EventSubeventsListPopupComponent {
     const request = this.eventSubeventsStore.eventSubeventsListPopup();
     return {
       id: eventId,
-      title: request?.title ?? null
+      title: request?.title ?? null,
+      timeframe: request?.timeframe ?? null,
+      startAtIso: request?.startAtIso ?? null,
+      endAtIso: request?.endAtIso ?? null
     };
   }
 

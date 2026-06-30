@@ -8,6 +8,9 @@ export interface EventSubeventsListPopupRequest {
   eventId: string;
   target: EventEditorTarget;
   title: string | null;
+  timeframe: string | null;
+  startAtIso: string | null;
+  endAtIso: string | null;
   canEdit: boolean;
 }
 
@@ -41,6 +44,9 @@ export class EventSubeventsPopupStore {
     host?: 'activities' | 'chat';
     target?: EventEditorTarget;
     title?: string | null;
+    timeframe?: string | null;
+    startAtIso?: string | null;
+    endAtIso?: string | null;
     canEdit?: boolean;
   }): void {
     const eventId = `${payload.eventId ?? ''}`.trim();
@@ -53,6 +59,9 @@ export class EventSubeventsPopupStore {
       eventId,
       target: payload.target ?? 'events',
       title: `${payload.title ?? ''}`.trim() || null,
+      timeframe: `${payload.timeframe ?? ''}`.trim() || null,
+      startAtIso: `${payload.startAtIso ?? ''}`.trim() || null,
+      endAtIso: `${payload.endAtIso ?? ''}`.trim() || null,
       canEdit: payload.canEdit === true
     });
   }

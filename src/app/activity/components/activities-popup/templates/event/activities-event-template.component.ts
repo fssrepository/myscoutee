@@ -327,6 +327,9 @@ export class ActivitiesEventsController {
       host: 'activities',
       target: row.isAdmin === true || row.type === 'hosting' ? 'hosting' : 'events',
       title: row.title,
+      timeframe: row.detail ?? null,
+      startAtIso: row.startAt ?? row.dateIso ?? null,
+      endAtIso: row.endAt ?? null,
       canEdit: this.canEditActivityEvent(row)
     });
   }

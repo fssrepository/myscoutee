@@ -199,6 +199,7 @@ export interface ActivityEventRecord {
 export interface ActivityEventStageActionRequestDTO {
   userId: string;
   sourceId: string;
+  slotSourceId?: string | null;
   subEventId?: string | null;
   subEventIndex?: number | null;
   action: string;

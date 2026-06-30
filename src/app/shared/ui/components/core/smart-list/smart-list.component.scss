@@ -535,19 +535,24 @@
 
 .smart-list--list.smart-list--horizontal {
   --smart-list-horizontal-gap: 0.78rem;
+  --smart-list-horizontal-end-inset: 0.58rem;
   display: flex;
   flex-direction: row;
   align-items: stretch;
   gap: var(--smart-list-horizontal-gap);
   overflow-x: auto;
   overflow-y: visible;
-  padding-bottom: 0.52rem;
+  padding: 0;
+  padding-block-end: 0.52rem;
+  padding-inline-end: var(--smart-list-horizontal-end-inset);
   scroll-padding-left: 0;
+  scroll-padding-right: var(--smart-list-horizontal-end-inset);
   scrollbar-width: thin;
   scrollbar-color: rgba(83, 111, 154, 0.38) rgba(222, 230, 242, 0.72);
   -webkit-overflow-scrolling: touch;
   overscroll-behavior-x: contain;
   touch-action: pan-x pan-y;
+  box-sizing: border-box;
 }
 
 .smart-list--list.smart-list--horizontal.smart-list--desktop-columns-1 {
@@ -594,8 +599,10 @@
 
 .smart-list--list.smart-list--horizontal.smart-list--compact-horizontal {
   --smart-list-horizontal-item-basis: 100%;
+  --smart-list-horizontal-end-inset: 0;
   height: 100%;
   min-height: 0;
+  padding-inline-end: 0;
   scrollbar-width: none;
   -ms-overflow-style: none;
 }

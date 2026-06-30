@@ -6,6 +6,7 @@ import { environment } from '../../../../../../environments/environment';
 
 import { AppUtils } from '../../../../app-utils';
 import { LocalMemoryDb } from '../../../common/app.db';
+import { LocalActivityEventsMapper } from '../mappers/event.mapper';
 
 import { UserProfileState } from '../../../common/user-profile-state';
 import {
@@ -687,6 +688,7 @@ export class LocalEventsRepository {
   applyStageAction(request: {
     userId: string;
     sourceId: string;
+    slotSourceId?: string | null;
     subEventId?: string | null;
     subEventIndex?: number | null;
     action: string;
@@ -694,6 +696,8 @@ export class LocalEventsRepository {
   }): ActivityContracts.ActivityEventStageActionResultDTO | null {
     const normalizedUserId = request.userId.trim();
     const normalizedSourceId = request.sourceId.trim();
+    const normalizedSlotSourceId = `${request.slotSourceId ?? ''}`.trim();
+    const runtimeOwnerId = normalizedSlotSourceId || normalizedSourceId;
     const actionTarget = this.resolveStageActionTarget(request.action, request.reason);
     if (!normalizedUserId || !normalizedSourceId || !actionTarget) {
       return null;
@@ -706,12 +710,14 @@ export class LocalEventsRepository {
       if (!preferred || !this.isEventAdminRecord(preferred, normalizedUserId)) {
         return state;
       }
-      const preferredSubEvents = this.cloneSubEvents(preferred?.subEvents) ?? [];
+      const preferredSubEvents = normalizedSlotSourceId
+        ? this.generatedSlotSubEvents(table, normalizedSourceId, normalizedSlotSourceId)
+        : (this.cloneSubEvents(preferred?.subEvents) ?? []);
       const preferredIndex = this.resolveStageIndex(preferredSubEvents, request.subEventId, request.subEventIndex);
       if (preferredIndex < 0 || !this.canApplyStageAction(actionTarget.action, preferredSubEvents, preferredIndex)) {
         if (preferredIndex >= 0) {
           result = this.toStageActionResult(
-            normalizedSourceId,
+            runtimeOwnerId,
             preferredSubEvents[preferredIndex],
             preferredIndex,
             actionTarget.action,
@@ -723,11 +729,53 @@ export class LocalEventsRepository {
 
       const nowIso = new Date().toISOString();
       const targetStageId = `${preferredSubEvents[preferredIndex]?.id ?? ''}`.trim();
+      if (normalizedSlotSourceId) {
+        const updatedStage = {
+          ...preferredSubEvents[preferredIndex],
+          stageStatus: actionTarget.nextStatus,
+          stageStatusReason: actionTarget.reason,
+          stageStatusUpdatedAt: nowIso,
+          stageFinalizedAt: actionTarget.nextStatus === 'F' ? nowIso : null,
+          stageFinalizedByUserId: actionTarget.nextStatus === 'F' ? normalizedUserId : null
+        };
+        result = this.toStageActionResult(
+          runtimeOwnerId,
+          updatedStage,
+          preferredIndex,
+          actionTarget.action,
+          actionTarget.action === 'start-tournament' ? false : preferred.autoInviter
+        );
+        if (actionTarget.action !== 'start-tournament') {
+          return state;
+        }
+        const nextById = { ...table.byId };
+        let changed = false;
+        for (const id of table.ids) {
+          const current = table.byId[id];
+          if (!current || current.id !== normalizedSourceId) {
+            continue;
+          }
+          nextById[id] = {
+            ...current,
+            autoInviter: false
+          };
+          changed = true;
+        }
+        return changed
+          ? {
+              ...state,
+              [EVENTS_TABLE_NAME]: {
+                ...table,
+                byId: nextById
+              }
+            }
+          : state;
+      }
       const nextById = { ...table.byId };
       let changed = false;
       for (const id of table.ids) {
         const current = table.byId[id];
-        if (!current || current.id !== normalizedSourceId) {
+        if (!current || current.id !== runtimeOwnerId) {
           continue;
         }
         const subEvents = this.cloneSubEvents(current.subEvents) ?? [];
@@ -746,7 +794,7 @@ export class LocalEventsRepository {
         subEvents[stageIndex] = updatedStage;
         if (!result) {
           result = this.toStageActionResult(
-            normalizedSourceId,
+            runtimeOwnerId,
             updatedStage,
             stageIndex,
             actionTarget.action,
@@ -771,6 +819,56 @@ export class LocalEventsRepository {
         : state;
     });
     return result;
+  }
+
+  private generatedSlotSubEvents(
+    table: ActivityEventRecordCollection,
+    parentEventId: string,
+    slotSourceId: string
+  ): ContractTypes.SubEventDTO[] {
+    const slotRecord = table.ids
+      .map(id => table.byId[id])
+      .find(record => record?.id === slotSourceId && record.parentEventId === parentEventId);
+    if (slotRecord) {
+      return this.cloneSubEvents(slotRecord.subEvents) ?? [];
+    }
+    const parentRecord = this.computePreferredEventRecords(table)
+      .find(record => record.id === parentEventId) ?? null;
+    if (!parentRecord) {
+      return [];
+    }
+    const slotDate = this.generatedSlotDateFromSourceId(parentEventId, slotSourceId);
+    const queries: ActivityEventSubEventsQueryDTO[] = slotDate
+      ? [
+          { userId: '', eventId: parentEventId, order: 'upcoming', view: 'day', anchorDate: slotDate, rangeStart: slotDate, rangeEnd: slotDate },
+          { userId: '', eventId: parentEventId, order: 'past', view: 'day', anchorDate: slotDate, rangeStart: slotDate, rangeEnd: slotDate }
+        ]
+      : [
+          { userId: '', eventId: parentEventId, order: 'upcoming', view: 'day', anchorDate: null, rangeStart: null, rangeEnd: null },
+          { userId: '', eventId: parentEventId, order: 'past', view: 'day', anchorDate: null, rangeStart: null, rangeEnd: null }
+        ];
+    for (const query of queries) {
+      const slot = LocalActivityEventsMapper.toSubEventsSlots(parentEventId, parentRecord, query)
+        .find(candidate => candidate.slotSourceId === slotSourceId || candidate.id === slotSourceId) ?? null;
+      if (slot) {
+        return this.cloneSubEvents(slot.subEventItems) ?? [];
+      }
+    }
+    return [];
+  }
+
+  private generatedSlotDateFromSourceId(parentEventId: string, slotSourceId: string): string | null {
+    const prefix = `${parentEventId}:slot:`;
+    if (!slotSourceId.startsWith(prefix)) {
+      return null;
+    }
+    const sourceTail = slotSourceId.slice(prefix.length);
+    const dateStart = sourceTail.indexOf(':');
+    if (dateStart < 0) {
+      return null;
+    }
+    const date = AppUtils.parseDate(sourceTail.slice(dateStart + 1));
+    return date ? date.toISOString().slice(0, 10) : null;
   }
 
   querySubEventLeaderboard(eventId: string, subEventId: string): ContractTypes.SubEventLeaderboardState | null {

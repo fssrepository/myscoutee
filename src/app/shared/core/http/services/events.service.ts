@@ -410,6 +410,7 @@ export class HttpEventsService implements IEventsService {
       .post<ActivityEventStageActionResultDTO | null>(`${this.apiBaseUrl}/activities/events/stage-action`, {
         userId: request.userId.trim(),
         sourceId: request.sourceId.trim(),
+        slotSourceId: request.slotSourceId?.trim() || null,
         subEventId: request.subEventId?.trim() || null,
         subEventIndex: Number.isFinite(rawSubEventIndex)
           ? Math.max(0, Math.trunc(rawSubEventIndex))
