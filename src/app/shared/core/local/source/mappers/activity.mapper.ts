@@ -9,6 +9,7 @@ import type {
 } from '../../../contracts/activity.interface';
 import type {
   ActivityMemberRecord,
+  ActivitySubEventStageRuntimeRecord,
   ActivitySubEventResourceRecord
 } from '../entity/activity.entity';
 
@@ -239,6 +240,9 @@ export class LocalActivityMembersBuilder {
 }
 
 export class LocalActivityResourcesMapper {
+  private static readonly STATUS_ACTIVE = 'A';
+  private static readonly STATUS_DELETED = 'D';
+
   static normalizeRef(
     ref: AppDTOs.ActivitySubEventResourceStateRefDTO | null | undefined
   ): AppDTOs.ActivitySubEventResourceStateRefDTO | null {
@@ -278,6 +282,7 @@ export class LocalActivityResourcesMapper {
     const nowIso = new Date(nowMs).toISOString();
     return {
       id: this.recordId(state),
+      status: this.STATUS_ACTIVE,
       ownerKey: this.ownerKey(state),
       ownerId: state.ownerId,
       subEventId: state.subEventId,
@@ -296,43 +301,21 @@ export class LocalActivityResourcesMapper {
   }
 
   static toState(
-    record: ActivitySubEventResourceRecord,
-    availableAssets: readonly AppDTOs.AssetDTO[]
+    record: ActivitySubEventResourceRecord
   ): AppDTOs.ActivitySubEventResourceStateDTO | null {
-    const fallbackCardsByType = ActivityResourceBuilder.cloneFallbackAssetCardsByType(record.fallbackAssetCardsByType);
-    const eligibleIdsByType: Partial<Record<AppConstants.AssetType, Set<string>>> = {
-      Car: new Set([
-        ...availableAssets.filter(card => card.type === 'Car').map(card => card.id),
-        ...(fallbackCardsByType.Car ?? []).map(card => card.id)
-      ]),
-      Accommodation: new Set([
-        ...availableAssets.filter(card => card.type === 'Accommodation').map(card => card.id),
-        ...(fallbackCardsByType.Accommodation ?? []).map(card => card.id)
-      ]),
-      Supplies: new Set([
-        ...availableAssets.filter(card => card.type === 'Supplies').map(card => card.id),
-        ...(fallbackCardsByType.Supplies ?? []).map(card => card.id)
-      ])
-    };
+    if (this.isDeleted(record)) {
+      return null;
+    }
     const normalizedState = ActivityResourceBuilder.normalizeState({
       ownerId: record.ownerId,
       subEventId: record.subEventId,
       assetOwnerUserId: record.assetOwnerUserId,
-      assetAssignmentIds: {
-        Car: (record.assetAssignmentIds.Car ?? []).filter(id => eligibleIdsByType.Car?.has(id)),
-        Accommodation: (record.assetAssignmentIds.Accommodation ?? []).filter(id => eligibleIdsByType.Accommodation?.has(id)),
-        Supplies: (record.assetAssignmentIds.Supplies ?? []).filter(id => eligibleIdsByType.Supplies?.has(id))
-      },
-      assetSettingsByType: this.filterSettingsByEligibleIds(record.assetSettingsByType, eligibleIdsByType),
-      supplyContributionEntriesByAssetId: Object.fromEntries(
-        Object.entries(record.supplyContributionEntriesByAssetId ?? {})
-          .filter(([assetId]) => eligibleIdsByType.Supplies?.has(assetId))
+      assetAssignmentIds: ActivityResourceBuilder.cloneAssetAssignmentIds(record.assetAssignmentIds),
+      assetSettingsByType: ActivityResourceBuilder.cloneAssetSettingsByType(record.assetSettingsByType),
+      supplyContributionEntriesByAssetId: ActivityResourceBuilder.cloneSupplyContributionEntriesByAssetId(
+        record.supplyContributionEntriesByAssetId
       ),
-      fallbackAssetCardsByType: {
-        Car: (fallbackCardsByType.Car ?? []).filter(card => eligibleIdsByType.Car?.has(card.id)),
-        Accommodation: (fallbackCardsByType.Accommodation ?? []).filter(card => eligibleIdsByType.Accommodation?.has(card.id)),
-        Supplies: (fallbackCardsByType.Supplies ?? []).filter(card => eligibleIdsByType.Supplies?.has(card.id))
-      }
+      fallbackAssetCardsByType: ActivityResourceBuilder.cloneFallbackAssetCardsByType(record.fallbackAssetCardsByType)
     }, record);
     return normalizedState ? ActivityResourceBuilder.cloneState(normalizedState) : null;
   }
@@ -349,25 +332,120 @@ export class LocalActivityResourcesMapper {
     };
   }
 
-  private static filterSettingsByEligibleIds(
-    source: AppDTOs.ActivitySubEventAssetSettingsByTypeDTO,
-    eligibleIdsByType: Partial<Record<AppConstants.AssetType, Set<string>>>
-  ): AppDTOs.ActivitySubEventAssetSettingsByTypeDTO {
-    const next: AppDTOs.ActivitySubEventAssetSettingsByTypeDTO = {};
-    for (const type of ['Car', 'Accommodation', 'Supplies'] as const) {
-      const settings = source?.[type];
-      const eligible = eligibleIdsByType[type];
-      if (!settings || !eligible) {
-        continue;
-      }
-      const entries = Object.entries(settings).filter(([assetId]) => eligible.has(assetId));
-      if (entries.length > 0) {
-        next[type] = Object.fromEntries(entries.map(([assetId, value]) => [
-          assetId,
-          { ...value, routes: [...(value.routes ?? [])] }
-        ]));
-      }
+  static isDeleted(record: ActivitySubEventResourceRecord | null | undefined): boolean {
+    return `${record?.status ?? ''}`.trim() === this.STATUS_DELETED;
+  }
+
+}
+
+export class LocalActivitySubEventStageRuntimeMapper {
+  private static readonly STATUS_ACTIVE = 'A';
+  private static readonly STATUS_DELETED = 'D';
+
+  static normalizeRef(
+    ref: AppDTOs.ActivitySubEventStageRuntimeStateRefDTO | null | undefined
+  ): AppDTOs.ActivitySubEventStageRuntimeStateRefDTO | null {
+    const ownerId = `${ref?.ownerId ?? ''}`.trim();
+    const subEventId = `${ref?.subEventId ?? ''}`.trim();
+    if (!ownerId || !subEventId) {
+      return null;
     }
-    return next;
+    return {
+      ownerId,
+      subEventId
+    };
+  }
+
+  static recordId(ref: AppDTOs.ActivitySubEventStageRuntimeStateRefDTO): string {
+    return `${ref.ownerId.trim()}:${ref.subEventId.trim()}`;
+  }
+
+  static ownerKey(ref: AppDTOs.ActivitySubEventStageRuntimeStateRefDTO): string {
+    return ref.ownerId.trim();
+  }
+
+  static normalizeState(
+    state: AppDTOs.ActivitySubEventStageRuntimeStateDTO | null | undefined,
+    fallbackRef?: AppDTOs.ActivitySubEventStageRuntimeStateRefDTO | null
+  ): AppDTOs.ActivitySubEventStageRuntimeStateDTO | null {
+    const ref = this.normalizeRef(state) ?? this.normalizeRef(fallbackRef);
+    if (!ref) {
+      return null;
+    }
+    return {
+      ownerId: ref.ownerId,
+      subEventId: ref.subEventId,
+      stageStatus: `${state?.stageStatus ?? ''}`.trim() || null,
+      stageStatusReason: `${state?.stageStatusReason ?? ''}`.trim() || null,
+      stageStatusUpdatedAt: `${state?.stageStatusUpdatedAt ?? ''}`.trim() || null,
+      stageFinalizedAt: `${state?.stageFinalizedAt ?? ''}`.trim() || null,
+      stageFinalizedByUserId: `${state?.stageFinalizedByUserId ?? ''}`.trim() || null,
+      groupsCount: this.normalizeCount(state?.groupsCount)
+    };
+  }
+
+  static toRecord(
+    state: AppDTOs.ActivitySubEventStageRuntimeStateDTO,
+    existing?: ActivitySubEventStageRuntimeRecord | null
+  ): ActivitySubEventStageRuntimeRecord {
+    const normalized = this.normalizeState(state);
+    if (!normalized) {
+      throw new Error('Invalid sub-event stage runtime state.');
+    }
+    const nowMs = Date.now();
+    const nowIso = new Date(nowMs).toISOString();
+    return {
+      id: this.recordId(normalized),
+      status: this.STATUS_ACTIVE,
+      ownerKey: this.ownerKey(normalized),
+      ownerId: normalized.ownerId,
+      subEventId: normalized.subEventId,
+      stageStatus: `${normalized.stageStatus ?? ''}`.trim() || null,
+      stageStatusReason: `${normalized.stageStatusReason ?? ''}`.trim() || null,
+      stageStatusUpdatedAt: `${normalized.stageStatusUpdatedAt ?? ''}`.trim() || null,
+      stageFinalizedAt: `${normalized.stageFinalizedAt ?? ''}`.trim() || null,
+      stageFinalizedByUserId: `${normalized.stageFinalizedByUserId ?? ''}`.trim() || null,
+      groupsCount: normalized.groupsCount ?? existing?.groupsCount ?? null,
+      createdMs: existing?.createdMs ?? nowMs,
+      updatedMs: nowMs,
+      createdAtIso: existing?.createdAtIso ?? nowIso,
+      updatedAtIso: nowIso
+    };
+  }
+
+  static toState(
+    record: ActivitySubEventStageRuntimeRecord
+  ): AppDTOs.ActivitySubEventStageRuntimeStateDTO | null {
+    if (this.isDeleted(record)) {
+      return null;
+    }
+    const normalized = this.normalizeState({
+      ownerId: record.ownerId,
+      subEventId: record.subEventId,
+      stageStatus: record.stageStatus,
+      stageStatusReason: record.stageStatusReason,
+      stageStatusUpdatedAt: record.stageStatusUpdatedAt,
+      stageFinalizedAt: record.stageFinalizedAt,
+      stageFinalizedByUserId: record.stageFinalizedByUserId,
+      groupsCount: record.groupsCount
+    }, record);
+    return normalized ? { ...normalized } : null;
+  }
+
+  static cloneRecord(record: ActivitySubEventStageRuntimeRecord): ActivitySubEventStageRuntimeRecord {
+    return {
+      ...record
+    };
+  }
+
+  static isDeleted(record: ActivitySubEventStageRuntimeRecord | null | undefined): boolean {
+    return `${record?.status ?? ''}`.trim() === this.STATUS_DELETED;
+  }
+
+  private static normalizeCount(value: unknown): number | null {
+    if (!Number.isFinite(Number(value))) {
+      return null;
+    }
+    return Math.max(0, Math.trunc(Number(value)));
   }
 }

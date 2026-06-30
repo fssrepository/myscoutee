@@ -1,10 +1,11 @@
 import { CommonModule } from '@angular/common';
-import { ChangeDetectionStrategy, Component, EventEmitter, Input, Output, ViewEncapsulation } from '@angular/core';
+import { ChangeDetectionStrategy, Component, Input, ViewEncapsulation, inject } from '@angular/core';
 import { MatIconModule } from '@angular/material/icon';
 
 import type * as ActivityContracts from '../../../../shared/core/contracts/activity.interface';
 import type * as ContractTypes from '../../../../shared/core/contracts';
 import { IndicatorComponent } from '../../../../shared/ui/components/core/indicator/indicator.component';
+import { SubEventResourcePopupStore } from '../../../../shared/ui/context/stores/sub-event-resource-popup.store';
 
 export interface AssignedAssetJoinDialogViewState {
   title: string;
@@ -39,9 +40,7 @@ export interface AssignedAssetJoinDialogViewState {
 export class EventResourceAssignedAssetJoinDialogComponent {
   @Input() dialog: AssignedAssetJoinDialogViewState | null = null;
 
-  @Output() closeRequested = new EventEmitter<Event | undefined>();
-  @Output() policyToggled = new EventEmitter<string>();
-  @Output() confirmRequested = new EventEmitter<Event | undefined>();
+  private readonly resourcePopupStore = inject(SubEventResourcePopupStore);
 
   protected formatMoney(amount: number, currency = 'USD'): string {
     switch ((currency || '').trim().toUpperCase()) {
@@ -64,11 +63,15 @@ export class EventResourceAssignedAssetJoinDialogComponent {
 
   protected close(event?: Event): void {
     event?.stopPropagation();
-    this.closeRequested.emit(event);
+    this.resourcePopupStore.requestAssignedAssetJoinClose(event);
   }
 
   protected confirm(event?: Event): void {
     event?.stopPropagation();
-    this.confirmRequested.emit(event);
+    this.resourcePopupStore.requestAssignedAssetJoinConfirm(event);
+  }
+
+  protected togglePolicy(policyId: string): void {
+    this.resourcePopupStore.requestAssignedAssetJoinPolicyToggle(policyId);
   }
 }

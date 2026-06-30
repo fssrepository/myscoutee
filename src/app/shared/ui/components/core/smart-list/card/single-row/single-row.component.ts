@@ -76,7 +76,7 @@ export class SingleRowComponent {
     if (!this.hasLeadingVisual()) {
       classes.push('ui-single-row--no-leading');
     }
-    if (this.topRightBadges().length > 0) {
+    if (this.hasTopRightContent()) {
       classes.push('ui-single-row--with-top-right');
     }
     return classes;
@@ -125,6 +125,22 @@ export class SingleRowComponent {
     ];
   }
 
+  protected rowCounterValue(): number {
+    return this.nonNegativeInteger(this.row?.unread);
+  }
+
+  protected hasTopRightContent(): boolean {
+    return this.topRightBadges().length > 0 || this.rowCounterValue() > 0;
+  }
+
+  protected menuBadgeValue(): number {
+    return this.rowCounterValue() > 0 ? 0 : this.nonNegativeInteger(this.row?.badgeCount);
+  }
+
+  protected hasSideContent(): boolean {
+    return this.sideBadges().length > 0 || this.hasMenuActions();
+  }
+
   protected hasMenuActions(): boolean {
     return (this.row?.menuActions?.length ?? 0) > 0;
   }
@@ -147,7 +163,7 @@ export class SingleRowComponent {
   }
 
   protected rowMenuTrigger(): AppMenuTrigger {
-    const menuBadgeCount = Math.max(0, Math.trunc(Number(this.row?.badgeCount ?? 0) || 0));
+    const menuBadgeCount = this.menuBadgeValue();
     return {
       icon: 'more_vert',
       closeIcon: 'close',
@@ -269,6 +285,10 @@ export class SingleRowComponent {
 
   private badgesFor(position: SingleRowBadgePosition): readonly SingleRowBadge[] {
     return (this.row?.badges ?? []).filter(badge => (badge.position ?? 'side') === position);
+  }
+
+  private nonNegativeInteger(value: number | null | undefined): number {
+    return Math.max(0, Math.trunc(Number(value ?? 0) || 0));
   }
 
   private resolveMenuTriggerRect(trigger: HTMLElement | null): CardMenuTriggerRect | null {

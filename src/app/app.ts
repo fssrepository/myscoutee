@@ -48,14 +48,14 @@ export class App implements OnDestroy {
   private readonly i18nService = inject(I18nService);
   private readonly appLocationService = inject(AppLocationService);
   private readonly routerEventsSubscription: Subscription;
-  private readonly navigatorComponentRef = signal<Type<unknown> | null>(null);
-  private navigatorComponentLoadPromise: Promise<void> | null = null;
+  private readonly sideMenuComponentRef = signal<Type<unknown> | null>(null);
+  private sideMenuComponentLoadPromise: Promise<void> | null = null;
   private routeWarmupHideTimer: ReturnType<typeof setTimeout> | null = null;
   private routeWarmupWatchdogTimer: ReturnType<typeof setTimeout> | null = null;
   private mobileResumeRecoveryTimer: ReturnType<typeof setTimeout> | null = null;
   private initialLandingWarmupPending = false;
-  protected showNavigator = false;
-  protected readonly navigatorComponent = this.navigatorComponentRef.asReadonly();
+  protected showSideMenu = false;
+  protected readonly sideMenuComponent = this.sideMenuComponentRef.asReadonly();
   protected routeWarmupVisible = false;
   protected readonly installPromptVisible = this.pwaService.installPromptVisible;
   protected readonly installPromptBusy = this.pwaService.installBusy;
@@ -90,7 +90,7 @@ export class App implements OnDestroy {
     this.i18nService.initialize();
     this.appLocationService.initialize();
     void this.pwaService.initialize();
-    this.syncNavigatorVisibility(initialRouteUrl);
+    this.syncSideMenuVisibility(initialRouteUrl);
     this.initialLandingWarmupPending = this.shouldShowLandingWarmup(initialRouteUrl);
     this.routeWarmupVisible = this.initialLandingWarmupPending;
     if (this.routeWarmupVisible) {
@@ -98,7 +98,7 @@ export class App implements OnDestroy {
     }
     this.routerEventsSubscription = this.router.events.subscribe(event => {
       if (event instanceof NavigationStart) {
-        this.syncNavigatorVisibility(event.url);
+        this.syncSideMenuVisibility(event.url);
         if (this.initialLandingWarmupPending && this.shouldShowLandingWarmup(event.url)) {
           this.showRouteWarmup();
         } else {
@@ -108,7 +108,7 @@ export class App implements OnDestroy {
       }
 
       if (event instanceof NavigationEnd) {
-        this.syncNavigatorVisibility(event.urlAfterRedirects);
+        this.syncSideMenuVisibility(event.urlAfterRedirects);
         this.completeInitialLandingWarmup();
         return;
       }
@@ -146,28 +146,28 @@ export class App implements OnDestroy {
     this.showCloseActionRipple(event);
   }
 
-  private syncNavigatorVisibility(url: string): void {
-    this.showNavigator = this.shouldShowNavigator(url);
-    if (this.showNavigator) {
-      void this.ensureNavigatorComponentLoaded();
+  private syncSideMenuVisibility(url: string): void {
+    this.showSideMenu = this.shouldShowSideMenu(url);
+    if (this.showSideMenu) {
+      void this.ensureSideMenuComponentLoaded();
     }
   }
 
-  private async ensureNavigatorComponentLoaded(): Promise<void> {
-    if (this.navigatorComponentRef()) {
+  private async ensureSideMenuComponentLoaded(): Promise<void> {
+    if (this.sideMenuComponentRef()) {
       return;
     }
-    if (this.navigatorComponentLoadPromise) {
-      return this.navigatorComponentLoadPromise;
+    if (this.sideMenuComponentLoadPromise) {
+      return this.sideMenuComponentLoadPromise;
     }
-    this.navigatorComponentLoadPromise = import('./navigator/components/navigator/navigator.component')
+    this.sideMenuComponentLoadPromise = import('./shared/ui/components/side-menu/side-menu.component')
       .then(module => {
-        this.navigatorComponentRef.set(module.NavigatorComponent);
+        this.sideMenuComponentRef.set(module.SideMenuComponent);
       })
       .finally(() => {
-        this.navigatorComponentLoadPromise = null;
+        this.sideMenuComponentLoadPromise = null;
       });
-    return this.navigatorComponentLoadPromise;
+    return this.sideMenuComponentLoadPromise;
   }
 
   private showCloseActionRipple(event: PointerEvent): void {
@@ -194,9 +194,12 @@ export class App implements OnDestroy {
     setTimeout(() => ripple.remove(), App.CLOSE_RIPPLE_DURATION_MS);
   }
 
-  private shouldShowNavigator(url: string): boolean {
+  private shouldShowSideMenu(url: string): boolean {
     const normalizedPath = (url || '/').split('?')[0].trim() || '/';
-    return normalizedPath !== '/' && !normalizedPath.startsWith('/entry') && !normalizedPath.startsWith('/admin');
+    return normalizedPath !== '/'
+      && !normalizedPath.startsWith('/entry')
+      && normalizedPath !== '/admin'
+      && normalizedPath !== '/admin/';
   }
 
   protected onRouteActivated(): void {
@@ -276,7 +279,7 @@ export class App implements OnDestroy {
     if (typeof document !== 'undefined' && document.visibilityState === 'hidden') {
       return;
     }
-    this.syncNavigatorVisibility(this.resolveInitialRouteUrl());
+    this.syncSideMenuVisibility(this.resolveInitialRouteUrl());
     if (this.routeWarmupVisible) {
       this.completeInitialLandingWarmup(0);
     }

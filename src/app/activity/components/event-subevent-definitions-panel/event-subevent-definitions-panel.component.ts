@@ -40,7 +40,6 @@ interface SubEventDefinitionFormState {
   index: number | null;
   id: string;
   icon: string | null;
-  groups: EventContracts.SubEventGroupDTO[];
   model: EventSubeventStageFormModel;
   insertPlacement: EventSubeventStageInsertPlacement;
   insertTargetId: string | null;
@@ -246,13 +245,13 @@ export class EventSubeventDefinitionsPanelComponent implements ControlValueAcces
   }
 
   protected definitionCard(item: SubEventDefinitionDTO, index: number): InfoCardData {
-    const capacityLabel = `${item.capacityMin} - ${item.capacityMax}`;
     const isTournament = this.mode === 'Tournament';
     const stageNumber = index + 1;
     const totalStages = Math.max(this.definitions.length, 1);
     const accentHue = isTournament ? this.stageAccentHue(stageNumber, totalStages) : null;
     const sequenceLabel = isTournament ? `Stage ${stageNumber}` : `Sub Event ${stageNumber}`;
     const status = this.definitionStatus(item);
+    const capacityMetaRow = this.definitionCapacityMetaRow(item, isTournament);
     return {
       id: item.id,
       title: item.name,
@@ -265,7 +264,7 @@ export class EventSubeventDefinitionsPanelComponent implements ControlValueAcces
         index > 0
           ? this.definitionTimingLabel(item, index)
           : `Duration ${this.durationLabel(item.durationMinutes)}`,
-        `Capacity ${capacityLabel}`
+        ...(capacityMetaRow ? [capacityMetaRow] : [])
       ],
       description: item.description || 'No description',
       descriptionLines: 2,
@@ -295,6 +294,20 @@ export class EventSubeventDefinitionsPanelComponent implements ControlValueAcces
       },
       menuActions: this.canConfigureDefinitions() ? ['edit', 'delete'] : []
     };
+  }
+
+  private definitionCapacityMetaRow(item: SubEventDefinitionDTO, isTournament: boolean): string | null {
+    if (isTournament) {
+      const min = this.toNonNegativeInteger(item.tournamentGroupCapacityMin ?? 0);
+      const max = Math.max(min, this.toNonNegativeInteger(item.tournamentGroupCapacityMax ?? min));
+      return min > 0 || max > 0 ? `Group capacity ${min} - ${max}` : null;
+    }
+    if (!item.optional) {
+      return null;
+    }
+    const min = this.toNonNegativeInteger(item.capacityMin);
+    const max = Math.max(min, this.toNonNegativeInteger(item.capacityMax));
+    return min > 0 || max > 0 ? `Capacity ${min} - ${max}` : null;
   }
 
   private definitionStatus(item: SubEventDefinitionDTO): {
@@ -367,7 +380,6 @@ export class EventSubeventDefinitionsPanelComponent implements ControlValueAcces
       index: null,
       id: `subevent-definition-${Date.now()}`,
       icon: null,
-      groups: [],
       model,
       insertPlacement: 'after',
       insertTargetId: this.definitions[this.definitions.length - 1]?.id ?? null
@@ -527,7 +539,6 @@ export class EventSubeventDefinitionsPanelComponent implements ControlValueAcces
       index,
       id: item.id,
       icon: item.icon ?? null,
-      groups: (item.groups ?? []).map(group => ({ ...group })),
       model: this.createDefinitionFormModel(item, index + 1),
       insertPlacement: this.insertPlacementFromDefinitionTiming(item.timing),
       insertTargetId: item.id
@@ -594,8 +605,6 @@ export class EventSubeventDefinitionsPanelComponent implements ControlValueAcces
       offsetMinutes: this.toNonNegativeInteger(model.offsetMinutes ?? 0),
       durationMinutes: this.toPositiveInteger(model.durationMinutes),
       location: `${model.location ?? ''}`.trim(),
-      groups: state.groups.map(group => ({ ...group })),
-      tournamentGroupCount: this.optionalNonNegativeInteger(model.tournamentGroupCount),
       tournamentGroupCapacityMin: groupCapacityMin,
       tournamentGroupCapacityMax: Math.max(groupCapacityMin ?? 0, groupCapacityMax ?? groupCapacityMin ?? 0),
       tournamentLeaderboardType: this.normalizedTournamentLeaderboardType(model.tournamentLeaderboardType),

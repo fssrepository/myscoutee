@@ -87,7 +87,7 @@ import {
 import {
   ProfileOnboardingPopupComponent
 } from '../profile-onboarding-popup/profile-onboarding-popup.component';
-import { PopupStore } from '../../../shared/ui/context/stores/popup.store';
+import { DemoBootstrapSelectorStore } from '../../../shared/ui/context/stores/demo-bootstrap-selector.store';
 
 interface EntryDemoUserSelectionEvent {
   userId: string;
@@ -126,7 +126,7 @@ export class EntryPageComponent implements OnInit, OnDestroy {
   private readonly injector = inject(Injector);
   private readonly changeDetectorRef = inject(ChangeDetectorRef);
   private readonly ngZone = inject(NgZone);
-  private readonly popupStore = inject(PopupStore);
+  private readonly demoBootstrapSelectorStore = inject(DemoBootstrapSelectorStore);
   private readonly helpCenter = inject(HelpCenterService);
   private readonly privacyPolicy = inject(PrivacyPolicyService);
   protected readonly sessionService = inject(SessionService);
@@ -154,8 +154,8 @@ export class EntryPageComponent implements OnInit, OnDestroy {
   protected entryNetworkUnavailable = false;
   protected entryNetworkUnavailableLabel = 'No network';
   protected showFirebaseAuthPopup = false;
-  protected readonly demoBootstrapSelector = this.popupStore.demoBootstrapSelector;
-  protected readonly demoBootstrapSelectorComponent = this.popupStore.demoBootstrapSelectorComponent;
+  protected readonly demoBootstrapSelector = this.demoBootstrapSelectorStore.demoBootstrapSelector;
+  protected readonly demoBootstrapSelectorComponent = this.demoBootstrapSelectorStore.demoBootstrapSelectorComponent;
   protected isMobileView = typeof window !== 'undefined' ? window.innerWidth <= 760 : false;
   protected onboardingOpen = false;
   protected onboardingUser: UserDto | null = null;
@@ -496,7 +496,7 @@ export class EntryPageComponent implements OnInit, OnDestroy {
   }
 
   private openDemoUserSelectorPopup(): void {
-    this.popupStore.openDemoBootstrapSelector({
+    this.demoBootstrapSelectorStore.openDemoBootstrapSelector({
       mode: 'member',
       onSelect: userId => new Promise<boolean>(resolve => {
         this.ngZone.run(() => {

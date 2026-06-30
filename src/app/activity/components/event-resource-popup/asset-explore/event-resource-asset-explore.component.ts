@@ -8,7 +8,9 @@ import {
   ViewChild,
   ViewEncapsulation,
   computed,
-  inject
+  effect,
+  inject,
+  untracked
 } from '@angular/core';
 import {
   FormsModule
@@ -33,46 +35,76 @@ import {
 } from 'rxjs';
 
 import {
-  AppMenuComponent,
-  AppMenuDispatcher,
-  AppMenuOutletComponent,
-  CARD_MENU_ACTIONS,
-  InfoCardComponent,
-  SmartListComponent,
   type AppMenuItem,
   type AppMenuItemSelectEvent,
   type AppMenuPalette,
-  type AppMenuTrigger,
+  type AppMenuTrigger
+} from '../../../../shared/ui/components/core/menu/menu.types';
+import {
+  AppMenuComponent
+} from '../../../../shared/ui/components/core/menu/menu.component';
+import {
+  AppMenuDispatcher
+} from '../../../../shared/ui/components/core/menu/menu-dispatcher.service';
+import {
+  AppMenuOutletComponent
+} from '../../../../shared/ui/components/core/menu/outlet/menu-outlet.component';
+import {
+  CARD_MENU_ACTIONS,
   type CardMenuAction,
   type CardMenuActionEvent,
   type CardMenuRequestEvent,
-  type InfoCardData,
-  type ListQuery,
-  type PageResult,
-  type SmartListConfig,
-  type SmartListLoadPage,
-  type SmartListStateChange
-} from '../../../../shared/ui';
+  type InfoCardData
+} from '../../../../shared/ui/components/core/smart-list/card/card.types';
+import {
+  InfoCardComponent
+} from '../../../../shared/ui/components/core/smart-list/card/info-card/info-card.component';
+import {
+  SmartListComponent
+} from '../../../../shared/ui/components/core/smart-list/smart-list.component';
+import type {
+  ListQuery,
+  PageResult,
+  SmartListConfig,
+  SmartListLoadPage,
+  SmartListStateChange
+} from '../../../../shared/ui/components/core/smart-list/smart-list.types';
 import {
   AssetInfoCardConverter
-} from '../../../../shared/ui';
+} from '../../../../shared/ui/converters/asset-info-card.converter';
 import {
   AppUtils
 } from '../../../../shared/app-utils';
 import {
-  AssetCardBuilder,
-  AssetDefaultsBuilder,
-  PricingBuilder
-} from '../../../../shared/core/base/builders';
+  AssetCardBuilder
+} from '../../../../shared/core/base/builders/asset-card.builder';
 import {
-  ActivityResourceBuilder,
-  ActivityResourcesService,
-  AssetsService as SharedAssetsService,
-  EventsService,
-  ShareTokensService,
-  UsersService,
-  type UserDto
-} from '../../../../shared/core';
+  AssetDefaultsBuilder
+} from '../../../../shared/core/base/builders/asset-defaults.builder';
+import {
+  PricingBuilder
+} from '../../../../shared/core/base/builders/pricing.builder';
+import {
+  ActivityResourceBuilder
+} from '../../../../shared/core/base/builders/activity-resource.builder';
+import {
+  ActivityResourcesService
+} from '../../../../shared/core/base/services/activity-resources.service';
+import {
+  AssetsService as SharedAssetsService
+} from '../../../../shared/core/base/services/assets.service';
+import {
+  EventsService
+} from '../../../../shared/core/base/services/events.service';
+import {
+  ShareTokensService
+} from '../../../../shared/core/base/services/share-tokens.service';
+import {
+  UsersService
+} from '../../../../shared/core/base/services/users.service';
+import type {
+  UserDto
+} from '../../../../shared/core/contracts/user.interface';
 import {
   ActivitiesPopupStore
 } from '../../../../shared/ui/context/stores/activities-popup.store';
@@ -86,8 +118,8 @@ import {
   SubEventResourcePopupStore
 } from '../../../../shared/ui/context/stores/sub-event-resource-popup.store';
 import {
-  NavigatorStore
-} from '../../../../shared/ui/context/stores/navigator.store';
+  ProfileStore
+} from '../../../../shared/ui/context/stores/profile.store';
 import type * as ActivityContracts from '../../../../shared/core/contracts/activity.interface';
 import type * as AppConstants from '../../../../shared/core/common/constants';
 import type * as AppDTOs from '../../../../shared/core/contracts';
@@ -97,19 +129,16 @@ import type {
   AssetExploreBorrowDialogState,
   AssetExploreBorrowDraftState,
   AssetExploreBorrowPricingPreview,
+  EventResourceAssetExploreOutletActionRequest,
   AssetExplorePopupState,
   ResourceAssetDTO,
+  ResourceAssetViewRequest,
+  ResourceAssetViewState,
   ResourcePopupContext
 } from '../../../../shared/ui/context/stores/sub-event-resource-popup.store';
-import {
-  EventResourceAssetExploreBorrowDialogComponent,
-  type AssetExploreBorrowDialogViewState
+import type {
+  AssetExploreBorrowDialogViewState
 } from '../asset-explore-borrow-dialog/event-resource-asset-explore-borrow-dialog.component';
-import {
-  EventResourceAssetViewComponent,
-  type EventResourceAssetViewModel,
-  type EventResourceAssetViewRequest
-} from '../asset-view/event-resource-asset-view.component';
 import { UserProfileStore } from '../../../../shared/ui/context/stores/user-profile.store';
 
 interface AssetExploreSmartListFilters {
@@ -180,9 +209,7 @@ interface AssetExploreBorrowDraftViewState {
     AppMenuComponent,
     AppMenuOutletComponent,
     InfoCardComponent,
-    SmartListComponent,
-    EventResourceAssetExploreBorrowDialogComponent,
-    EventResourceAssetViewComponent
+    SmartListComponent
   ],
   templateUrl: './event-resource-asset-explore.component.html',
   styleUrl: './event-resource-asset-explore.component.scss',
@@ -190,7 +217,7 @@ interface AssetExploreBorrowDraftViewState {
   providers: [AppMenuDispatcher]
 })
 export class EventResourceAssetExploreComponent implements DoCheck {
-  private readonly resourcePopupStore = inject(SubEventResourcePopupStore);
+  protected readonly resourcePopupStore = inject(SubEventResourcePopupStore);
   private readonly userProfileStore = inject(UserProfileStore);
   private readonly activitiesStore = inject(ActivitiesPopupStore);
   private readonly activityResourcesService = inject(ActivityResourcesService);
@@ -200,7 +227,7 @@ export class EventResourceAssetExploreComponent implements DoCheck {
   private readonly assetStore = inject(AssetStore);
   private readonly dialogStore = inject(DialogStore);
   private readonly shareTokensService = inject(ShareTokensService);
-  private readonly navigatorStore = inject(NavigatorStore);
+  private readonly profileStore = inject(ProfileStore);
   private readonly appMenuDispatcher = inject(AppMenuDispatcher);
 
   private lastCardsSignature = '';
@@ -211,6 +238,7 @@ export class EventResourceAssetExploreComponent implements DoCheck {
   private pendingRequestVersion = 0;
   private pendingBorrowRequestVersion = 0;
   private loadScheduled = false;
+  private lastAssetExploreOutletActionRequestId = 0;
   private readonly warmCacheByKey = new Map<string, ResourceAssetDTO[]>();
   private readonly pendingWarmupKeys = new Set<string>();
   private readonly localReservationsByKey = new Map<string, {
@@ -220,9 +248,15 @@ export class EventResourceAssetExploreComponent implements DoCheck {
   }>();
 
   protected showBorrowBasket = false;
-  protected assetViewId: string | null = null;
   protected order: AssetExploreOrder = 'availability';
   protected readonly orderOptions = ASSET_EXPLORE_ORDER_OPTIONS;
+  protected readonly assetViewOutletInputs = computed(() => ({
+    view: this.assetView()
+  }));
+  protected readonly borrowDialogOutletInputs = computed(() => ({
+    dialog: this.borrowDialogViewState(),
+    canSubmit: this.canSubmitBorrow()
+  }));
   protected smartListQuery: Partial<ListQuery<AssetExploreSmartListFilters>> = {
     filters: {
       revision: 0,
@@ -367,6 +401,64 @@ export class EventResourceAssetExploreComponent implements DoCheck {
       .sort((left, right) => left.title.localeCompare(right.title) || left.cardId.localeCompare(right.cardId));
   });
 
+  constructor() {
+    effect(() => {
+      if (this.assetView()) {
+        void this.resourcePopupStore.ensureEventResourceAssetViewLoaded();
+      }
+    });
+
+    effect(() => {
+      if (this.borrowDialogViewState()) {
+        void this.resourcePopupStore.ensureEventResourceAssetExploreBorrowDialogLoaded();
+      }
+    });
+
+    effect(() => {
+      const request = this.resourcePopupStore.eventResourceAssetExploreOutletActionRequest();
+      if (!request || request.requestId <= this.lastAssetExploreOutletActionRequestId) {
+        return;
+      }
+      this.lastAssetExploreOutletActionRequestId = request.requestId;
+      untracked(() => this.handleAssetExploreOutletActionRequest(request));
+    });
+  }
+
+  private handleAssetExploreOutletActionRequest(request: EventResourceAssetExploreOutletActionRequest): void {
+    switch (request.kind) {
+      case 'assetViewClose':
+        this.closeAssetView(request.event);
+        return;
+      case 'assetViewRouteView':
+        this.openAssetViewRoutePopup(request.request);
+        return;
+      case 'borrowDialogClose':
+        this.closeBorrowDialog(request.event);
+        return;
+      case 'borrowDialogBack':
+        this.backToBorrowDetails(request.event);
+        return;
+      case 'borrowDateRangeChange':
+        this.setBorrowDateRange(request.start, request.end);
+        return;
+      case 'borrowTimeChange':
+        this.setBorrowTime(request.edge, request.value);
+        return;
+      case 'borrowQuantityChange':
+        this.onBorrowQuantityChange(request.value);
+        return;
+      case 'borrowQuantityBlur':
+        this.normalizeBorrowQuantityOnBlur(request.value);
+        return;
+      case 'borrowPolicyToggle':
+        this.toggleBorrowPolicy(request.policyId);
+        return;
+      case 'borrowConfirm':
+        this.confirmBorrow(request.event);
+        return;
+    }
+  }
+
   ngDoCheck(): void {
     const pending = this.resourcePopupStore.assetExplorePopupRef();
     if (pending?.loading === true && !this.loadScheduled) {
@@ -376,7 +468,7 @@ export class EventResourceAssetExploreComponent implements DoCheck {
     const explore = this.popupViewState();
     if (!explore) {
       this.showBorrowBasket = false;
-      this.assetViewId = null;
+      this.resourcePopupStore.assetExploreAssetViewIdRef.set(null);
     }
     const cards = explore?.cards ?? [];
     const contextKey = explore
@@ -676,8 +768,8 @@ export class EventResourceAssetExploreComponent implements DoCheck {
     this.resumeBorrowDraft(cardId, event);
   }
 
-  protected assetView(): EventResourceAssetViewModel | null {
-    const viewId = `${this.assetViewId ?? ''}`.trim();
+  protected assetView(): ResourceAssetViewState | null {
+    const viewId = `${this.resourcePopupStore.assetExploreAssetViewIdRef() ?? ''}`.trim();
     const context = this.resourcePopupStore.popupContextRef();
     if (!viewId || !context) {
       return null;
@@ -691,35 +783,29 @@ export class EventResourceAssetExploreComponent implements DoCheck {
     return {
       card: resourceCard,
       mode: 'view',
-      source: this.cloneAsset(card),
-      memberLabel: this.availabilityLabel(card),
-      memberCount: Math.max(0, Math.trunc(Number(resourceCard.accepted) || 0)),
-      pendingCount: this.assetPendingCount(card, context.subEvent.id, managerUserId),
-      canOpenMembers: false,
-      canEditCapacity: false,
-      canEditRoute: false
+      source: this.cloneAsset(card)
     };
   }
 
   protected openAssetView(card: ResourceAssetDTO, event?: Event): void {
     event?.stopPropagation();
-    this.assetViewId = card.id;
+    this.resourcePopupStore.assetExploreAssetViewIdRef.set(card.id);
     this.resourcePopupStore.assetExploreBorrowDialogRef.set(null);
   }
 
   protected closeAssetView(event?: Event): void {
     event?.stopPropagation();
-    this.assetViewId = null;
+    this.resourcePopupStore.assetExploreAssetViewIdRef.set(null);
   }
 
-  protected openAssetViewRoutePopup(request: EventResourceAssetViewRequest): void {
+  protected openAssetViewRoutePopup(request: ResourceAssetViewRequest): void {
     request.sourceEvent.stopPropagation();
     this.openGoogleMapsDirections(request.view.card.routes);
   }
 
   protected closeExplorePopup(event?: Event): void {
     event?.stopPropagation();
-    this.assetViewId = null;
+    this.resourcePopupStore.assetExploreAssetViewIdRef.set(null);
     this.showBorrowBasket = false;
     if (this.resourcePopupStore.assetExploreOnlyRef()) {
       this.resourcePopupStore.closeResourcePopup();
@@ -1791,15 +1877,14 @@ export class EventResourceAssetExploreComponent implements DoCheck {
     nextSubEvent.suppliesPending = supplies.pending;
     nextSubEvent.suppliesCapacityMin = supplies.capacityMin;
     nextSubEvent.suppliesCapacityMax = supplies.capacityMax;
-    this.resourcePopupStore.popupContextRef.set({
+    const nextContext = {
       ...context,
       subEvent: nextSubEvent
-    });
+    };
+    this.resourcePopupStore.popupContextRef.set(nextContext);
+    this.resourcePopupStore.publishSubEventResourceMetrics(nextContext);
     if (persistResourceState) {
-      this.persistResourceState({
-        ...context,
-        subEvent: nextSubEvent
-      });
+      this.persistResourceState(nextContext);
     }
   }
 
@@ -2214,10 +2299,7 @@ export class EventResourceAssetExploreComponent implements DoCheck {
   private cloneSubEvent(subEvent: ContractTypes.SubEventDTO): ContractTypes.SubEventDTO {
     return {
       ...subEvent,
-      pricing: subEvent.pricing ? PricingBuilder.clonePricingConfig(subEvent.pricing) : undefined,
-      groups: Array.isArray(subEvent.groups)
-        ? subEvent.groups.map(group => ({ ...group }))
-        : []
+      pricing: subEvent.pricing ? PricingBuilder.clonePricingConfig(subEvent.pricing) : undefined
     };
   }
 
@@ -2339,7 +2421,7 @@ export class EventResourceAssetExploreComponent implements DoCheck {
     if (!context || !ownerUserId || ownerUserId === activeUserId) {
       return;
     }
-    this.navigatorStore.openReportUserPopup({
+    this.profileStore.openReportUserPopup({
       targetUserId: ownerUserId,
       targetName: card.ownerName?.trim() || this.reportTargetName(ownerUserId, 'Owner'),
       eventId: context.ownerId,

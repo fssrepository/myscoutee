@@ -88,6 +88,14 @@ export {
   type EventSubeventRuntimeInfoCardConverterOptions
 } from './event-subevent-runtime-info-card.converter';
 export {
+  EventSubeventsSlotConverter,
+  eventSubeventsSlotConverter,
+  type EventSubeventsSlotConverterEvent,
+  type EventSubeventsSlotConverterOptions,
+  type EventSubeventsSlotModel,
+  type EventSubeventsSlotTone
+} from './event-subevents-slot.converter';
+export {
   EventSubeventRuntimeMenuConverter,
   eventSubeventRuntimeMenuConverter,
   type EventSubeventRuntimeMenuContext,

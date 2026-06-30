@@ -44,7 +44,7 @@ import {
   type UiAccordionModel,
   type UiAccordionToggleEvent
 } from '../../../shared/ui';
-import type { EventTournamentGroupsPopupRequest } from '../../../shared/ui/context/stores/popup.store';
+import type { EventTournamentGroupsPopupRequest } from '../../../shared/ui/context/stores/event-subevents-popup.store';
 import {
   EventTournamentGroupsPopupConverter,
   type EventTournamentGroupsAccordionContext,
@@ -55,9 +55,6 @@ import {
   DialogStore
 } from '../../../shared/ui/context/stores/dialog.store';
 import {
-  EventEditorPopupStore
-} from '../../../shared/ui/context/stores/event-editor-popup.store';
-import {
   AssetStore
 } from '../../../shared/ui/context/stores/asset.store';
 import {
@@ -65,7 +62,8 @@ import {
 } from '../event-subevent-group-form-popup/event-subevent-group-form-popup.component';
 import { UserProfileStore } from '../../../shared/ui/context/stores/user-profile.store';
 import { ActivityStore } from '../../../shared/ui/context/stores/activity.store';
-import { PopupStore } from '../../../shared/ui/context/stores/popup.store';
+import { EventSubeventsPopupStore } from '../../../shared/ui/context/stores/event-subevents-popup.store';
+import { SubEventResourcePopupStore } from '../../../shared/ui/context/stores/sub-event-resource-popup.store';
 
 type TournamentGroupsAction =
   | 'add-entry'
@@ -156,13 +154,13 @@ interface FifaRow {
   changeDetection: ChangeDetectionStrategy.OnPush
 })
 export class EventTournamentGroupsPopupComponent {
-  private readonly popupStore = inject(PopupStore);
+  private readonly eventSubeventsStore = inject(EventSubeventsPopupStore);
   private readonly userProfileStore = inject(UserProfileStore);
   private readonly activityStore = inject(ActivityStore);
   private readonly eventsService = inject(EventsService);
   private readonly activityResourcesService = inject(ActivityResourcesService);
   private readonly assetStore = inject(AssetStore);
-  private readonly eventEditorStore = inject(EventEditorPopupStore);
+  private readonly resourcePopupStore = inject(SubEventResourcePopupStore);
   private readonly dialogStore = inject(DialogStore);
   private readonly cdr = inject(ChangeDetectorRef);
 
@@ -194,7 +192,7 @@ export class EventTournamentGroupsPopupComponent {
 
   constructor() {
     effect(() => {
-      const request = this.popupStore.eventTournamentGroupsPopup();
+      const request = this.eventSubeventsStore.eventTournamentGroupsPopup();
       if (!request) {
         this.resetState();
         return;
@@ -269,11 +267,11 @@ export class EventTournamentGroupsPopupComponent {
   }
 
   protected isOpen(): boolean {
-    return Boolean(this.popupStore.eventTournamentGroupsPopup());
+    return Boolean(this.eventSubeventsStore.eventTournamentGroupsPopup());
   }
 
   protected close(): void {
-    this.popupStore.closeEventTournamentGroupsPopup();
+    this.eventSubeventsStore.closeEventTournamentGroupsPopup();
   }
 
   protected viewModel(): EventTournamentGroupsPopupModel {
@@ -390,14 +388,16 @@ export class EventTournamentGroupsPopupComponent {
     const contextBase = { stageId: stage.subEventId, groupId: group.id };
     const actionItems: AppMenuItem<string, TournamentGroupsActionContext>[] = [];
     if (this.canManageGroups()) {
-      actionItems.push(
-        {
+      if (this.canAddScoreToStage(stage)) {
+        actionItems.push({
           id: 'add-entry',
           label: this.entryActionLabel(stage),
           icon: this.entryActionIcon(stage),
           palette: 'blue',
           context: { ...contextBase, action: 'add-entry' }
-        },
+        });
+      }
+      actionItems.push(
         {
           id: 'edit-group',
           label: 'Szerkesztés',
@@ -907,6 +907,9 @@ export class EventTournamentGroupsPopupComponent {
     if (!this.canManageGroups() || this.isMutating) {
       return false;
     }
+    if (!this.canAddScoreToStage(this.viewModel().selectedStage)) {
+      return false;
+    }
     const members = this.entryMembers();
     if (this.selectedStageMode() === 'Fifa') {
       return members.some(member => member.id === this.entryForm.homeMemberId)
@@ -1050,7 +1053,7 @@ export class EventTournamentGroupsPopupComponent {
   }
 
   private async loadGroupsForStage(stageId: string): Promise<void> {
-    const request = this.popupStore.eventTournamentGroupsPopup();
+    const request = this.eventSubeventsStore.eventTournamentGroupsPopup();
     const eventId = `${request?.eventId ?? ''}`.trim();
     const normalizedStageId = `${stageId ?? ''}`.trim();
     if (!eventId || !normalizedStageId) {
@@ -1211,7 +1214,6 @@ export class EventTournamentGroupsPopupComponent {
       location: stage.location,
       startAt: stage.startAt,
       endAt: stage.endAt,
-      groups: this.subEventGroupsForStage(stage),
       optional: false,
       capacityMin,
       capacityMax,
@@ -1229,7 +1231,6 @@ export class EventTournamentGroupsPopupComponent {
       accommodationCapacityMax: 0,
       suppliesCapacityMin: 0,
       suppliesCapacityMax: 0,
-      tournamentGroupCount: stage.groups.length,
       tournamentGroupCapacityMin: capacityMin,
       tournamentGroupCapacityMax: capacityMax,
       tournamentLeaderboardType: stage.leaderboardType === 'Fifa' ? 'Fifa' : 'Score',
@@ -1260,16 +1261,6 @@ export class EventTournamentGroupsPopupComponent {
     };
   }
 
-  private subEventGroupsForStage(stage: ContractTypes.EventTournamentStageDTO): ContractTypes.SubEventGroupDTO[] {
-    return stage.groups.map(group => ({
-      id: group.id,
-      name: group.name,
-      capacityMin: group.capacityMin,
-      capacityMax: group.capacityMax,
-      source: group.source === 'manual' || group.source === 'generated' ? group.source : undefined
-    }));
-  }
-
   private resourceMetricLabel(stageId: string, type: AssetType): string {
     const metrics = this.resourceMetricsByStageId[stageId]?.[type] ?? null;
     if (!metrics) {
@@ -1286,21 +1277,25 @@ export class EventTournamentGroupsPopupComponent {
     return this.canManageGroups() && `${group.source ?? ''}`.toLowerCase() === 'manual';
   }
 
+  private canAddScoreToStage(stage: ContractTypes.EventTournamentStageDTO | null | undefined): boolean {
+    return `${stage?.stageStatus ?? ''}`.trim().toUpperCase() === 'SR';
+  }
+
   private activeUserId(): string {
     return this.userProfileStore.activeUserProfile()?.id?.trim() || this.userProfileStore.activeUserId().trim() || this.userProfileStore.getActiveUserId().trim();
   }
 
   private eventId(): string {
-    const request = this.popupStore.eventTournamentGroupsPopup();
+    const request = this.eventSubeventsStore.eventTournamentGroupsPopup();
     return `${request?.slotId ?? request?.eventId ?? ''}`.trim();
   }
 
   private requestEventId(): string {
-    return `${this.popupStore.eventTournamentGroupsPopup()?.eventId ?? ''}`.trim();
+    return `${this.eventSubeventsStore.eventTournamentGroupsPopup()?.eventId ?? ''}`.trim();
   }
 
   private requestSlotId(): string | null {
-    const slotId = `${this.popupStore.eventTournamentGroupsPopup()?.slotId ?? ''}`.trim();
+    const slotId = `${this.eventSubeventsStore.eventTournamentGroupsPopup()?.slotId ?? ''}`.trim();
     return slotId || null;
   }
 
@@ -1486,19 +1481,18 @@ export class EventTournamentGroupsPopupComponent {
   ): void {
     event?.stopPropagation();
     const isMembersPopup = type === 'Members';
-    this.eventEditorStore.requestSubEventResourcePopup({
+    this.resourcePopupStore.requestSubEventResourcePopup({
       type,
       ownerId: this.eventId(),
       parentTitle: this.state?.title ?? '',
-      subEvent: {
-        id: stage.subEventId,
+      subEventId: stage.subEventId,
+      subEventHeader: {
         name: stage.title,
         title: stage.title,
         description: stage.description,
         location: stage.location,
         startAt: stage.startAt,
-        endAt: stage.endAt,
-        groups: this.subEventGroupsForStage(stage)
+        endAt: stage.endAt
       },
       group: {
         id: group.id,
@@ -1696,7 +1690,7 @@ export class EventTournamentGroupsPopupComponent {
     event?: Event
   ): void {
     event?.stopPropagation();
-    if (!this.canManageGroups()) {
+    if (!this.canManageGroups() || !this.canAddScoreToStage(stage)) {
       return;
     }
     const members = this.membersForGroup(group);

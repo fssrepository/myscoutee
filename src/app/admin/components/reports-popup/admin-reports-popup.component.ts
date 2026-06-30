@@ -58,8 +58,8 @@ import {
   DialogStore
 } from '../../../shared/ui/context/stores/dialog.store';
 import {
-  AdminPopupStore
-} from '../../../shared/ui/context/stores/admin-popup.store';
+  AdminMenuStore
+} from '../../../shared/ui/context/stores/admin-menu.store';
 import {
   AdminWorkspaceStore
 } from '../../../shared/ui/context/stores/admin-workspace.store';
@@ -123,7 +123,7 @@ interface AdminReportActionsMenuContext {
   providers: [AppMenuDispatcher]
 })
 export class AdminReportsPopupComponent {
-  protected readonly admin = inject(AdminPopupStore);
+  protected readonly admin = inject(AdminMenuStore);
   private readonly userProfileStore = inject(UserProfileStore);
   private readonly runtimeStore = inject(AppRuntimeStore);
   private readonly workspace = inject(AdminWorkspaceStore);

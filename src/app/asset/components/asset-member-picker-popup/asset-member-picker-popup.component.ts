@@ -45,8 +45,8 @@ import {
   ActivityMembersService
 } from '../../../shared/core';
 import {
-  NavigatorStore
-} from '../../../shared/ui/context/stores/navigator.store';
+  ProfileStore
+} from '../../../shared/ui/context/stores/profile.store';
 import {
   AssetPopupStore
 } from '../../../shared/ui/context/stores/asset-popup.store';
@@ -57,7 +57,7 @@ import {
 import type * as AppConstants from '../../../shared/core/common/constants';
 import { UserProfileStore } from '../../../shared/ui/context/stores/user-profile.store';
 import { AppRuntimeStore } from '../../../shared/ui/context/stores/app-runtime.store';
-import { PopupStore } from '../../../shared/ui/context/stores/popup.store';
+import { ActivityInvitePopupStore } from '../../../shared/ui/context/stores/activity-invite-popup.store';
 interface ActivityInviteFilters {
   ownerId?: string;
   sort?: AppConstants.ActivityInviteSort;
@@ -87,12 +87,12 @@ export class AssetMemberPickerPopupComponent {
   private readonly cdr = inject(ChangeDetectorRef);
   private readonly userProfileStore = inject(UserProfileStore);
   private readonly runtimeStore = inject(AppRuntimeStore);
-  private readonly popupStore = inject(PopupStore);
+  private readonly activityInviteStore = inject(ActivityInvitePopupStore);
   private readonly activityInviteCandidatesService = inject(ActivityInviteCandidatesService);
   private readonly activityMembersService = inject(ActivityMembersService);
   private readonly assetPopupStore = inject(AssetPopupStore);
   private readonly assetStore = inject(AssetStore);
-  private readonly navigatorStore = inject(NavigatorStore);
+  private readonly profileStore = inject(ProfileStore);
 
   protected isOpen = false;
   protected title = 'Invite members';
@@ -150,7 +150,7 @@ export class AssetMemberPickerPopupComponent {
 
   constructor() {
     effect(() => {
-      const context = this.popupStore.activityInvitePopup();
+      const context = this.activityInviteStore.activityInvitePopup();
       if (!context?.ownerId?.trim()) {
         this.resetState();
         return;
@@ -205,7 +205,7 @@ export class AssetMemberPickerPopupComponent {
       return;
     }
     const shouldCloseOwnerPopup = this.closeOwnerPopupOnClose;
-    this.popupStore.closeActivityInvitePopup();
+    this.activityInviteStore.closeActivityInvitePopup();
     this.resetState();
     if (shouldCloseOwnerPopup) {
       this.assetStore.closeAssetPopup();
@@ -465,7 +465,7 @@ export class AssetMemberPickerPopupComponent {
     if (!userId) {
       return;
     }
-    this.navigatorStore.openProfileView({
+    this.profileStore.openProfileView({
       userId,
       label: candidate.name
     });

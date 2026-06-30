@@ -199,6 +199,7 @@ export interface ActivityEventRecord {
 export interface ActivityEventStageActionRequestDTO {
   userId: string;
   sourceId: string;
+  slotSourceId?: string | null;
   subEventId?: string | null;
   subEventIndex?: number | null;
   action: string;
@@ -293,11 +294,30 @@ export interface ActivitySubEventResourceStateRefDTO {
   assetOwnerUserId: string;
 }
 
-export interface ActivitySubEventResourceStateDTO extends ActivitySubEventResourceStateRefDTO {
+export interface ActivitySubEventResourceStateDTO {
+  ownerId: string;
+  subEventId: string;
+  assetOwnerUserId: string;
   assetAssignmentIds: ActivitySubEventAssetAssignmentIdsDTO;
   assetSettingsByType: ActivitySubEventAssetSettingsByTypeDTO;
   supplyContributionEntriesByAssetId: ActivitySubEventSupplyContributionsByAssetIdDTO;
   fallbackAssetCardsByType?: Partial<Record<AppConstants.AssetType, AssetContracts.AssetDetailDTO[]>>;
+}
+
+export interface ActivitySubEventStageRuntimeStateRefDTO {
+  ownerId: string;
+  subEventId: string;
+}
+
+export interface ActivitySubEventStageRuntimeStateDTO {
+  ownerId: string;
+  subEventId: string;
+  stageStatus?: EventContracts.TournamentStageStatus | string | null;
+  stageStatusReason?: string | null;
+  stageStatusUpdatedAt?: string | null;
+  stageFinalizedAt?: string | null;
+  stageFinalizedByUserId?: string | null;
+  groupsCount?: number | null;
 }
 
 export interface ActivityEventDTO {
@@ -325,6 +345,7 @@ export interface ActivityEventDTO {
   capacityMin?: number | null;
   capacityMax?: number | null;
   eventType?: EventContracts.EventRecordKind;
+  mode?: EventContracts.EventMode;
   acceptedMembers: number;
   pendingMembers: number;
   acceptedMemberUserIds?: string[];
@@ -334,15 +355,6 @@ export interface ActivityEventDTO {
   pendingReason?: AppConstants.ActivityPendingReason;
   boost: number;
   subEventDefinitions?: SubEventDefinitionDTO[];
-}
-
-export interface ActivityEventSubEventRuntimeDTO extends EventContracts.SubEventDTO {
-  runtimeId: string;
-  parentEventId?: string | null;
-  slotSourceId?: string | null;
-  slotTemplateId?: string | null;
-  slotTitle?: string | null;
-  slotTimeframe?: string | null;
 }
 
 export interface ActivityEventSubEventsQueryDTO {
@@ -355,9 +367,20 @@ export interface ActivityEventSubEventsQueryDTO {
   rangeEnd?: string | null;
 }
 
+export interface SubEventsSlotDTO {
+  id: string;
+  parentEventId: string;
+  slotSourceId?: string | null;
+  slotTemplateId?: string | null;
+  title?: string | null;
+  timeframe?: string | null;
+  startAt?: string | null;
+  endAt?: string | null;
+  subEventItems: EventContracts.SubEventDTO[];
+}
+
 export interface ActivityEventSubEventsResultDTO {
-  event: ActivityEventDetailDTO;
-  items: ActivityEventSubEventRuntimeDTO[];
+  slots: SubEventsSlotDTO[];
 }
 
 export type SubEventDefinitionTiming = 'Before' | 'During' | 'After';
@@ -370,8 +393,6 @@ export interface SubEventDefinitionDTO {
   offsetMinutes: number;
   durationMinutes: number;
   location?: string;
-  groups?: EventContracts.SubEventGroupDTO[];
-  tournamentGroupCount?: number;
   tournamentGroupCapacityMin?: number;
   tournamentGroupCapacityMax?: number;
   tournamentLeaderboardType?: EventContracts.TournamentLeaderboardType;
@@ -566,8 +587,8 @@ export class ActivityEventDetailDTO {
     }
     const normalizedLocation = ActivityEventDetailDTO.normalizeLocation(location);
     this.subEvents = this.subEvents.map(item => item.id === first.id
-      ? { ...item, location: normalizedLocation, groups: ActivityEventDetailDTO.cloneSubEventGroups(item.groups) }
-      : { ...item, groups: ActivityEventDetailDTO.cloneSubEventGroups(item.groups) });
+      ? { ...item, location: normalizedLocation }
+      : { ...item });
     return this;
   }
 
@@ -618,8 +639,6 @@ export class ActivityEventDetailDTO {
         offsetMinutes,
         durationMinutes,
         location: ActivityEventDetailDTO.normalizeLocation(item.location),
-        groups: ActivityEventDetailDTO.cloneSubEventGroups(item.groups, index),
-        tournamentGroupCount: ActivityEventDetailDTO.optionalNonNegativeInteger(item.tournamentGroupCount),
         tournamentGroupCapacityMin: ActivityEventDetailDTO.optionalNonNegativeInteger(item.tournamentGroupCapacityMin),
         tournamentGroupCapacityMax: ActivityEventDetailDTO.optionalNonNegativeInteger(item.tournamentGroupCapacityMax),
         tournamentLeaderboardType: item.tournamentLeaderboardType === 'Fifa' ? 'Fifa' : 'Score',
@@ -668,12 +687,11 @@ export class ActivityEventDetailDTO {
         pricing: ActivityEventDetailDTO.clonePricingConfig(item.pricing),
         capacityMin,
         capacityMax,
-        groups: ActivityEventDetailDTO.cloneSubEventGroups(item.groups, index),
-        tournamentGroupCount: ActivityEventDetailDTO.optionalNonNegativeInteger(item.tournamentGroupCount),
         tournamentGroupCapacityMin: ActivityEventDetailDTO.optionalNonNegativeInteger(item.tournamentGroupCapacityMin),
         tournamentGroupCapacityMax: ActivityEventDetailDTO.optionalNonNegativeInteger(item.tournamentGroupCapacityMax),
         tournamentLeaderboardType: item.tournamentLeaderboardType === 'Fifa' ? 'Fifa' : 'Score',
         tournamentAdvancePerGroup: ActivityEventDetailDTO.optionalNonNegativeInteger(item.tournamentAdvancePerGroup),
+        groupsCount: ActivityEventDetailDTO.optionalNonNegativeInteger(item.groupsCount),
         membersAccepted: ActivityEventDetailDTO.nonNegativeInteger(item.membersAccepted),
         membersPending: ActivityEventDetailDTO.nonNegativeInteger(item.membersPending),
         carsPending: ActivityEventDetailDTO.nonNegativeInteger(item.carsPending),
@@ -794,19 +812,6 @@ export class ActivityEventDetailDTO {
     }
 
     return `${normalizedFrequency} · ${dateLabel} · ${startTime} - ${endTime}`;
-  }
-
-  private static cloneSubEventGroups(
-    groups: readonly EventContracts.SubEventGroupDTO[] | undefined,
-    subEventIndex = 0
-  ): EventContracts.SubEventGroupDTO[] {
-    return (groups ?? []).map((group, groupIndex) => ({
-      id: `${group.id ?? `group-${subEventIndex + 1}-${groupIndex + 1}`}`.trim() || `group-${subEventIndex + 1}-${groupIndex + 1}`,
-      name: `${group.name ?? `Group ${String.fromCharCode(65 + (groupIndex % 26))}`}`.trim(),
-      source: group.source === 'manual' ? 'manual' : 'generated',
-      capacityMin: ActivityEventDetailDTO.optionalNonNegativeInteger(group.capacityMin),
-      capacityMax: ActivityEventDetailDTO.optionalNonNegativeInteger(group.capacityMax)
-    }));
   }
 
   private static clonePricingConfig(value: PricingContracts.PricingConfig | null | undefined): PricingContracts.PricingConfig | null {

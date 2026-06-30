@@ -75,7 +75,7 @@
                       <input
                         type="checkbox"
                         [checked]="dialog.acceptedPolicyIds.includes(policy.id)"
-                        (change)="policyToggled.emit(policy.id)"
+                        (change)="togglePolicy(policy.id)"
                       />
                       <div>
                         <strong>{{ policy.title }}</strong>

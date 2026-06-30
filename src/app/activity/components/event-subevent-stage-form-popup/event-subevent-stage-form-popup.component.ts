@@ -72,7 +72,6 @@ export interface EventSubeventStageFormModel {
   pricing?: ContractTypes.PricingConfig | null;
   capacityMin: number;
   capacityMax: number;
-  tournamentGroupCount?: number;
   tournamentGroupCapacityMin?: number;
   tournamentGroupCapacityMax?: number;
   tournamentLeaderboardType?: EventSubeventTournamentLeaderboardType;

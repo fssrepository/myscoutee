@@ -2,6 +2,7 @@ export {
   LocalActivityInviteCandidatesMapper,
   LocalActivityMembersBuilder,
   LocalActivityResourcesMapper,
+  LocalActivitySubEventStageRuntimeMapper,
   type ActivityMemberProfileFallback,
   type ActivityMemberProfileResolver,
   type LocalActivityInviteCandidateRecord,

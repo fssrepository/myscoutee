@@ -45,12 +45,11 @@ export interface SubEventDTO {
   endAt: string;
   location?: string;
   createdByUserId?: string;
-  groups?: SubEventGroupDTO[];
-  tournamentGroupCount?: number;
   tournamentGroupCapacityMin?: number;
   tournamentGroupCapacityMax?: number;
   tournamentLeaderboardType?: TournamentLeaderboardType;
   tournamentAdvancePerGroup?: number;
+  groupsCount?: number;
   optional: boolean;
   capacityMin: number;
   capacityMax: number;

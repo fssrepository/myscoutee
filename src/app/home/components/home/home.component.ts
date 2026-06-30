@@ -22,8 +22,8 @@ import {
   ActivitiesPopupStore
 } from '../../../shared/ui/context/stores/activities-popup.store';
 import {
-  NavigatorStore
-} from '../../../shared/ui/context/stores/navigator.store';
+  ProfileStore
+} from '../../../shared/ui/context/stores/profile.store';
 import {
   AppMenuComponent,
   type AppMenuItem,
@@ -304,7 +304,7 @@ export class HomeComponent implements OnDestroy {
   constructor(
     private readonly cdr: ChangeDetectorRef,
     private readonly activitiesStore: ActivitiesPopupStore,
-    private readonly navigatorStore: NavigatorStore,
+    private readonly profileStore: ProfileStore,
     private readonly explanationGuide: ExplanationGuideService,
     private readonly gameService: GameService,
     private readonly usersService: UsersService
@@ -406,7 +406,7 @@ export class HomeComponent implements OnDestroy {
   }
 
   protected get isAccountReactivationPending(): boolean {
-    return this.navigatorStore.deletedAccountReactivationPending();
+    return this.profileStore.deletedAccountReactivationPending();
   }
 
   protected get homeHeaderControlsReady(): boolean {
@@ -818,7 +818,7 @@ export class HomeComponent implements OnDestroy {
   }
 
   protected openProfileView(profileView: CardProfileViewData): void {
-    this.navigatorStore.openProfileView(profileView);
+    this.profileStore.openProfileView(profileView);
   }
 
   protected setRating(value: number): void {

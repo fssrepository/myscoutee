@@ -28,6 +28,7 @@
   --ui-info-card-accent-hue: 210;
   position: relative;
   display: grid;
+  grid-auto-rows: max-content;
   flex: 1 1 auto;
   gap: 0.32rem;
   width: 100%;
@@ -438,6 +439,7 @@ button.asset-occupancy-badge:active::after,
   line-height: 1.4;
   color: rgba(20, 37, 61, 0.84);
   display: -webkit-box;
+  min-height: calc(var(--ui-info-card-description-lines, 3) * 1.4em);
   max-height: var(--ui-info-card-description-max-height, 4.2em);
   overflow: hidden;
   -webkit-line-clamp: var(--ui-info-card-description-lines, 3);

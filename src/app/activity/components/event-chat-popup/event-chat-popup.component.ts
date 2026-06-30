@@ -72,14 +72,15 @@ import {
   DialogStore
 } from '../../../shared/ui/context/stores/dialog.store';
 import {
-  NavigatorStore
-} from '../../../shared/ui/context/stores/navigator.store';
+  ProfileStore
+} from '../../../shared/ui/context/stores/profile.store';
 
 import type * as AppDTOs from '../../../shared/core/contracts';
 import type * as AppConstants from '../../../shared/core/common/constants';
 import { UserProfileStore } from '../../../shared/ui/context/stores/user-profile.store';
 import { AppRuntimeStore } from '../../../shared/ui/context/stores/app-runtime.store';
-import { PopupStore } from '../../../shared/ui/context/stores/popup.store';
+import { MemberMenuStore } from '../../../shared/ui/context/stores/member-menu.store';
+import { EventSubeventsPopupStore } from '../../../shared/ui/context/stores/event-subevents-popup.store';
 interface ChatThreadFilters {
   revision?: number;
   sessionKey?: string;
@@ -164,7 +165,8 @@ export class EventChatPopupComponent implements OnDestroy {
   protected readonly activitiesStore = inject(ActivitiesPopupStore);
   private readonly userProfileStore = inject(UserProfileStore);
   private readonly runtimeStore = inject(AppRuntimeStore);
-  private readonly popupStore = inject(PopupStore);
+  protected readonly memberMenuStore = inject(MemberMenuStore);
+  protected readonly eventSubeventsStore = inject(EventSubeventsPopupStore);
   private readonly chatsService = inject(ChatsService);
   private readonly activityResourcesService = inject(ActivityResourcesService);
   private readonly eventsService = inject(EventsService);
@@ -172,7 +174,7 @@ export class EventChatPopupComponent implements OnDestroy {
   private readonly chatVoiceClipsService = inject(ChatVoiceClipsService);
   private readonly dialogStore = inject(DialogStore);
   private readonly mediaService = inject(MediaService);
-  private readonly navigatorStore = inject(NavigatorStore);
+  private readonly profileStore = inject(ProfileStore);
   private readonly location = inject(Location);
 
   protected readonly session = computed(() => this.activitiesStore.eventChatSession());
@@ -335,6 +337,14 @@ export class EventChatPopupComponent implements OnDestroy {
 
   constructor() {
     effect(() => {
+      const request = this.eventSubeventsStore.eventSubeventsListPopup();
+      if (!request || request.host !== 'chat' || !this.session()) {
+        return;
+      }
+      void this.eventSubeventsStore.ensureEventSubeventsListPopupLoaded();
+    });
+
+    effect(() => {
       const session = this.session();
       const sessionKey = session ? `${session.item.id}:${session.openedAtIso}` : null;
       if (session && this.loadedSessionKey === sessionKey) {
@@ -452,7 +462,7 @@ export class EventChatPopupComponent implements OnDestroy {
     if (!ownerId) {
       return;
     }
-    this.popupStore.requestActivitiesNavigation({
+    this.memberMenuStore.requestActivitiesNavigation({
       type: 'members',
       ownerId,
       subtitle: this.chatHeaderContext?.title ?? this.session()?.item.title ?? 'Chat',
@@ -693,7 +703,7 @@ export class EventChatPopupComponent implements OnDestroy {
     if (!eventId) {
       return;
     }
-    this.popupStore.requestActivitiesNavigation({
+    this.memberMenuStore.requestActivitiesNavigation({
       type: 'eventEditor',
       eventId,
       target: this.selectedChatNavigationState?.eventTarget ?? 'events',
@@ -726,8 +736,9 @@ export class EventChatPopupComponent implements OnDestroy {
     if (!eventId) {
       return;
     }
-    this.popupStore.openEventSubeventsListPopup({
+    this.eventSubeventsStore.openEventSubeventsListPopup({
       eventId,
+      host: 'chat',
       target: state?.eventTarget ?? 'events',
       title: state?.eventTitle ?? this.session()?.item.title ?? null,
       canEdit: false
@@ -752,7 +763,7 @@ export class EventChatPopupComponent implements OnDestroy {
       return;
     }
     this.chatThreadSmartList?.closeMenu();
-    this.popupStore.requestActivitiesNavigation({
+    this.memberMenuStore.requestActivitiesNavigation({
       type: 'chatResource',
       ownerId: state.eventId ?? session.item.eventId,
       item: session.item,
@@ -1239,13 +1250,13 @@ export class EventChatPopupComponent implements OnDestroy {
 
   protected shareCurrentEvent(event?: Event): void {
     event?.stopPropagation();
-    this.popupStore.requestActivitiesNavigation({ type: 'eventExplore', stacked: true });
+    this.memberMenuStore.requestActivitiesNavigation({ type: 'eventExplore', stacked: true });
   }
 
   protected shareFirstAvailableAsset(event?: Event): void {
     event?.stopPropagation();
     const resourceType = this.firstAvailableAssetType();
-    this.popupStore.requestActivitiesNavigation({
+    this.memberMenuStore.requestActivitiesNavigation({
       type: 'assetExplore',
       assetType: resourceType ?? 'Car'
     });
@@ -1749,7 +1760,7 @@ export class EventChatPopupComponent implements OnDestroy {
       return;
     }
     const attachment = this.resolveViewableMessageAttachment(message);
-    this.navigatorStore.openReportUserPopup({
+    this.profileStore.openReportUserPopup({
       targetUserId: target.userId,
       targetName: target.name,
       eventId,
@@ -2126,7 +2137,7 @@ export class EventChatPopupComponent implements OnDestroy {
       );
       return;
     }
-    this.popupStore.requestActivitiesNavigation({
+    this.memberMenuStore.requestActivitiesNavigation({
       type: 'assetExplore',
       assetType: this.normalizeAttachmentAssetType(attachment.assetType) ?? 'Car',
       assetId: `${attachment.entityId ?? ''}`.trim() || undefined,
@@ -2230,7 +2241,7 @@ export class EventChatPopupComponent implements OnDestroy {
       });
       return;
     }
-    this.popupStore.requestActivitiesNavigation({
+    this.memberMenuStore.requestActivitiesNavigation({
       type: 'eventEditor',
       eventId: eventRecord.id,
       target: this.eventEditorTargetForRecord(eventRecord),
@@ -3918,16 +3929,13 @@ export class EventChatPopupComponent implements OnDestroy {
     subEvent: ContractTypes.SubEventDTO | null
   ): SelectedChatGroupState | null {
     const groupId = `${chat.groupId ?? ''}`.trim();
-    if (!groupId || !subEvent?.groups?.length) {
+    if (!groupId || !subEvent) {
       return null;
     }
-    const group = subEvent.groups.find(item => item.id === groupId);
-    return group
-      ? {
-          id: group.id,
-          label: group.name
-        }
-      : null;
+    return {
+      id: groupId,
+      label: groupId
+    };
   }
 
   private resolveSelectedChatResourceState(
@@ -3974,8 +3982,7 @@ export class EventChatPopupComponent implements OnDestroy {
 
   private cloneSubEvent(subEvent: ContractTypes.SubEventDTO): ContractTypes.SubEventDTO {
     return {
-      ...subEvent,
-      groups: subEvent.groups?.map(group => ({ ...group })) ?? []
+      ...subEvent
     };
   }
 

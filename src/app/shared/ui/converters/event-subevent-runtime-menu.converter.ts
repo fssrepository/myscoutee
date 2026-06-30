@@ -1,6 +1,5 @@
 import type { SubEventResourceFilter } from '../../core/common/constants';
-import type { ActivityEventDetailDTO, ActivityEventSubEventRuntimeDTO } from '../../core/contracts/activity.interface';
-import type { EventMode, TournamentStageStatus } from '../../core/contracts/event.interface';
+import type { EventMode, SubEventDTO, TournamentStageStatus } from '../../core/contracts/event.interface';
 import type { AppMenuItem, AppMenuPalette } from '../components/core/menu';
 
 export type EventSubeventRuntimeStageAction =
@@ -25,7 +24,9 @@ export type EventSubeventRuntimeMenuContext =
   | {
       scope: 'stage-status';
       action: EventSubeventRuntimeStageAction;
-      item: ActivityEventSubEventRuntimeDTO;
+      item: SubEventDTO;
+      parentEventId: string;
+      slotId: string | null;
       sourceId: string;
       subEventId: string | null;
       subEventIndex: number;
@@ -41,43 +42,49 @@ export type EventSubeventRuntimeMenuContext =
   | {
       scope: 'stage-dashboard';
       action: 'groups';
-      item: ActivityEventSubEventRuntimeDTO;
+      item: SubEventDTO;
+      parentEventId: string;
+      slotId: string | null;
+      sourceId: string;
+      subEventIndex: number;
     }
   | {
       scope: 'resource';
       resourceType: SubEventResourceFilter;
-      item: ActivityEventSubEventRuntimeDTO;
+      item: SubEventDTO;
+      sourceId: string;
+      subEventIndex: number;
     };
 
 export interface EventSubeventRuntimeMenuConverterOptions {
-  event?: ActivityEventDetailDTO | null;
+  event?: { id?: string | null; mode?: EventMode | null } | null;
   mode?: EventMode | null;
   canManageTournament?: boolean;
+  parentEventId?: string | null;
+  slotId?: string | null;
   sourceId?: string | null;
   subEventIndex?: number | null;
   stageNumber?: number | null;
-  isStageActive?: boolean | null;
-  canStartStage?: boolean | null;
-  siblingItems?: readonly ActivityEventSubEventRuntimeDTO[];
+  siblingItems?: readonly SubEventDTO[];
   nowMs?: number;
 }
 
 export class EventSubeventRuntimeMenuConverter {
   static convert(
-    item: ActivityEventSubEventRuntimeDTO,
+    item: SubEventDTO,
     options: EventSubeventRuntimeMenuConverterOptions = {}
   ): readonly AppMenuItem<EventSubeventRuntimeMenuItemId, EventSubeventRuntimeMenuContext>[] {
-    const mode = options.mode ?? options.event?.mode ?? 'Casual';
+    const mode = this.resolveMode(item, options);
     return mode === 'Tournament'
       ? this.tournamentItems(item, options)
-      : this.casualItems(item);
+      : this.casualItems(item, options);
   }
 
   static pendingBadgeCount(
-    item: ActivityEventSubEventRuntimeDTO,
+    item: SubEventDTO,
     options: EventSubeventRuntimeMenuConverterOptions = {}
   ): number {
-    const mode = options.mode ?? options.event?.mode ?? 'Casual';
+    const mode = this.resolveMode(item, options);
     if (mode === 'Tournament') {
       return Math.max(0, this.toInteger(item.membersPending));
     }
@@ -90,23 +97,25 @@ export class EventSubeventRuntimeMenuConverter {
   }
 
   private static tournamentItems(
-    item: ActivityEventSubEventRuntimeDTO,
+    item: SubEventDTO,
     options: EventSubeventRuntimeMenuConverterOptions
   ): readonly AppMenuItem<EventSubeventRuntimeMenuItemId, EventSubeventRuntimeMenuContext>[] {
     const items: AppMenuItem<EventSubeventRuntimeMenuItemId, EventSubeventRuntimeMenuContext>[] = [];
-    const sourceId = `${options.sourceId ?? item.slotSourceId ?? item.parentEventId ?? options.event?.id ?? ''}`.trim();
+    const sourceId = `${options.sourceId ?? options.event?.id ?? ''}`.trim();
+    const parentEventId = `${options.parentEventId ?? options.event?.id ?? sourceId}`.trim();
+    const slotId = `${options.slotId ?? ''}`.trim() || null;
     const subEventId = `${item.id ?? ''}`.trim() || null;
     const subEventIndex = Math.max(0, this.toInteger(options.subEventIndex));
     const stageNumber = Math.max(1, this.toInteger(options.stageNumber) || subEventIndex + 1);
 
     if (options.canManageTournament && sourceId) {
       items.push(...this.stageStatusItems(item, {
+        parentEventId,
+        slotId,
         sourceId,
         subEventId,
         subEventIndex,
         stageNumber,
-        isStageActive: options.isStageActive === true,
-        canStartStage: options.canStartStage === true,
         siblings: options.siblingItems ?? [],
         nowMs: Number.isFinite(Number(options.nowMs)) ? Number(options.nowMs) : Date.now()
       }));
@@ -128,51 +137,65 @@ export class EventSubeventRuntimeMenuConverter {
       surface: 'tinted',
       layout: 'pill',
       counter: this.groupCount(item) > 0 ? { value: this.groupCount(item), max: 99 } : null,
-      context: { scope: 'stage-dashboard', action: 'groups', item }
+      context: {
+        scope: 'stage-dashboard',
+        action: 'groups',
+        item,
+        parentEventId,
+        slotId,
+        sourceId,
+        subEventIndex
+      }
     });
     return items;
   }
 
   private static stageStatusItems(
-    item: ActivityEventSubEventRuntimeDTO,
+    item: SubEventDTO,
     options: {
+      parentEventId: string;
+      slotId: string | null;
       sourceId: string;
       subEventId: string | null;
       subEventIndex: number;
       stageNumber: number;
-      isStageActive: boolean;
-      canStartStage: boolean;
-      siblings: readonly ActivityEventSubEventRuntimeDTO[];
+      siblings: readonly SubEventDTO[];
       nowMs: number;
     }
   ): AppMenuItem<EventSubeventRuntimeMenuItemId, EventSubeventRuntimeMenuContext>[] {
     const status = this.stageStatus(item);
+    const isErrorStatus = this.rawStageStatus(item.stageStatus) === 'E';
+    const isStageStartPassed = this.hasDatePassed(item.startAt, options.nowMs);
+    const isStageEnded = this.hasDatePassed(item.endAt, options.nowMs);
+    const isStageWindowOpen = this.isStageInScheduleWindow(item, options.nowMs);
     const actions: AppMenuItem<EventSubeventRuntimeMenuItemId, EventSubeventRuntimeMenuContext>[] = [];
     const stageLabel = `${item.name ?? `Stage ${options.stageNumber}`}`.trim() || `Stage ${options.stageNumber}`;
     const base = {
       item,
+      parentEventId: options.parentEventId,
+      slotId: options.slotId,
       sourceId: options.sourceId,
       subEventId: options.subEventId,
       subEventIndex: options.subEventIndex
     };
 
-    if (options.canStartStage) {
+    if (status === 'RS' && !isErrorStatus && isStageStartPassed) {
       actions.push(this.stageActionItem({
         ...base,
         action: 'start-tournament',
-        label: 'Start Tournament',
+        label: 'Start Stage',
         icon: 'play_circle',
         palette: 'success',
         nextStatus: 'A',
         reason: 'tournament-started',
-        title: 'Start Tournament',
+        title: 'Start Stage',
         description: `Start ${stageLabel}? This locks admission and assigns first-stage rooms.`,
         confirmLabel: 'Start',
         busyLabel: 'Starting...',
         destructive: false
       }));
     }
-    if (status === 'A' && options.isStageActive) {
+    if (((status === 'RS' && !isErrorStatus) || status === 'A') && isStageEnded) {
       actions.push(this.stageActionItem({
         ...base,
         action: 'close-stage',
@@ -204,7 +227,7 @@ export class EventSubeventRuntimeMenuConverter {
         destructive: false
       }));
     }
-    if (this.canReopenScores(item, options.siblings, options.nowMs)) {
+    if (this.canReopenScores(item)) {
       actions.push(this.stageActionItem({
         ...base,
         action: 'reopen-scores',
@@ -220,33 +243,36 @@ export class EventSubeventRuntimeMenuConverter {
         destructive: false
       }));
     }
-    if (status !== 'RS' && status !== 'S' && status !== 'F' && options.isStageActive) {
+    if (status === 'A' && isStageWindowOpen) {
       actions.push(this.stageActionItem({
         ...base,
         action: 'suspend-tournament',
-        label: 'Suspend Tournament',
+        label: 'Suspend Stage',
         icon: 'pause_circle',
         palette: 'warning',
         nextStatus: 'S',
         reason: 'manual-suspension',
-        title: 'Suspend Tournament',
-        description: `Suspend the tournament at ${stageLabel}?`,
+        title: 'Suspend Stage',
+        description: `Suspend ${stageLabel}?`,
         confirmLabel: 'Suspend',
         busyLabel: 'Suspending...',
         destructive: true
       }));
     }
     if (status === 'S') {
+      const resumeNextStatus: TournamentStageStatus = this.hasDatePassed(item.endAt, options.nowMs)
+        ? 'SR'
+        : 'A';
       actions.push(this.stageActionItem({
         ...base,
         action: 'resume-tournament',
-        label: 'Resume Tournament',
+        label: 'Resume Stage',
         icon: 'play_circle',
         palette: 'blue',
-        nextStatus: 'A',
+        nextStatus: resumeNextStatus,
         reason: 'manual-resume',
-        title: 'Resume Tournament',
-        description: `Resume ${stageLabel} and set it back to active?`,
+        title: 'Resume Stage',
+        description: `Resume ${stageLabel}?`,
         confirmLabel: 'Resume',
         busyLabel: 'Resuming...',
         destructive: false
@@ -255,12 +281,42 @@ export class EventSubeventRuntimeMenuConverter {
     return actions;
   }
 
+  private static resolveMode(
+    item: SubEventDTO,
+    options: EventSubeventRuntimeMenuConverterOptions
+  ): EventMode {
+    const requestedMode = options.mode ?? options.event?.mode ?? null;
+    return requestedMode === 'Tournament' || this.isTournamentStage(item)
+      ? 'Tournament'
+      : 'Casual';
+  }
+
+  private static isTournamentStage(item: SubEventDTO): boolean {
+    return item.tournamentLeaderboardType === 'Score'
+      || item.tournamentLeaderboardType === 'Fifa'
+      || Math.max(0, this.toInteger(item.tournamentGroupCapacityMin)) > 0
+      || Math.max(0, this.toInteger(item.tournamentGroupCapacityMax)) > 0
+      || this.hasStageStatus(item.stageStatus);
+  }
+
+  private static hasStageStatus(status: string | null | undefined): boolean {
+    const normalized = `${status ?? ''}`.trim().toUpperCase();
+    return normalized === 'A'
+      || normalized === 'RS'
+      || normalized === 'SR'
+      || normalized === 'F'
+      || normalized === 'S';
+  }
+
   private static casualItems(
-    item: ActivityEventSubEventRuntimeDTO
+    item: SubEventDTO,
+    options: EventSubeventRuntimeMenuConverterOptions
   ): readonly AppMenuItem<EventSubeventRuntimeMenuItemId, EventSubeventRuntimeMenuContext>[] {
     const items: AppMenuItem<EventSubeventRuntimeMenuItemId, EventSubeventRuntimeMenuContext>[] = [];
+    const sourceId = `${options.sourceId ?? options.event?.id ?? ''}`.trim();
+    const subEventIndex = Math.max(0, this.toInteger(options.subEventIndex));
     if (item.optional) {
-      items.push(this.resourceItem('members', 'Members', 'Members', item, this.membersLabel(item), item.membersPending));
+      items.push(this.resourceItem('members', 'Members', 'Members', item, this.membersLabel(item), item.membersPending, sourceId, subEventIndex));
     }
     if (items.length > 0) {
       items.push({
@@ -276,15 +332,17 @@ export class EventSubeventRuntimeMenuConverter {
         label: 'Tools',
         disabled: true
       },
-      this.resourceItem('car', 'Car', 'Car', item, this.assetLabel(item, 'Car'), item.carsPending),
-      this.resourceItem('accommodation', 'Accommodation', 'Accommodation', item, this.assetLabel(item, 'Accommodation'), item.accommodationPending),
-      this.resourceItem('supplies', 'Supplies', 'Supplies', item, this.assetLabel(item, 'Supplies'), item.suppliesPending)
+      this.resourceItem('car', 'Car', 'Car', item, this.assetLabel(item, 'Car'), item.carsPending, sourceId, subEventIndex),
+      this.resourceItem('accommodation', 'Accommodation', 'Accommodation', item, this.assetLabel(item, 'Accommodation'), item.accommodationPending, sourceId, subEventIndex),
+      this.resourceItem('supplies', 'Supplies', 'Supplies', item, this.assetLabel(item, 'Supplies'), item.suppliesPending, sourceId, subEventIndex)
     );
     return items;
   }
 
   private static stageActionItem(options: {
-    item: ActivityEventSubEventRuntimeDTO;
+    item: SubEventDTO;
+    parentEventId: string;
+    slotId: string | null;
     sourceId: string;
     subEventId: string | null;
     subEventIndex: number;
@@ -311,6 +369,8 @@ export class EventSubeventRuntimeMenuConverter {
         scope: 'stage-status',
         action: options.action,
         item: options.item,
+        parentEventId: options.parentEventId,
+        slotId: options.slotId,
         sourceId: options.sourceId,
         subEventId: options.subEventId,
         subEventIndex: options.subEventIndex,
@@ -330,9 +390,11 @@ export class EventSubeventRuntimeMenuConverter {
     id: 'members' | 'car' | 'accommodation' | 'supplies',
     label: string,
     resourceType: SubEventResourceFilter,
-    item: ActivityEventSubEventRuntimeDTO,
+    item: SubEventDTO,
     description: string,
-    pendingRaw: unknown
+    pendingRaw: unknown,
+    sourceId: string,
+    subEventIndex: number
   ): AppMenuItem<EventSubeventRuntimeMenuItemId, EventSubeventRuntimeMenuContext> {
     const pending = Math.max(0, this.toInteger(pendingRaw));
     return {
@@ -347,29 +409,36 @@ export class EventSubeventRuntimeMenuConverter {
       context: {
         scope: 'resource',
         resourceType,
-        item
+        item,
+        sourceId,
+        subEventIndex
       }
     };
   }
 
-  private static canReopenScores(
-    item: ActivityEventSubEventRuntimeDTO,
-    siblings: readonly ActivityEventSubEventRuntimeDTO[],
-    nowMs: number
-  ): boolean {
-    if (this.stageStatus(item) !== 'F') {
-      return false;
-    }
-    const currentIndex = siblings.findIndex(candidate => candidate.runtimeId === item.runtimeId);
-    const nextStage = currentIndex >= 0 ? siblings[currentIndex + 1] ?? null : null;
-    if (!nextStage) {
-      return true;
-    }
-    const nextStartMs = Date.parse(`${nextStage.startAt ?? ''}`);
-    return this.stageStatus(nextStage) === 'A' && (!Number.isFinite(nextStartMs) || nextStartMs > nowMs);
+  private static canReopenScores(item: SubEventDTO): boolean {
+    return this.stageStatus(item) === 'F';
   }
 
-  private static stageStatus(item: ActivityEventSubEventRuntimeDTO): TournamentStageStatus {
+  private static isStageInScheduleWindow(item: SubEventDTO, nowMs: number): boolean {
+    const startMs = Date.parse(`${item.startAt ?? ''}`);
+    const endMs = Date.parse(`${item.endAt ?? ''}`);
+    return Number.isFinite(startMs)
+      && Number.isFinite(endMs)
+      && startMs <= nowMs
+      && nowMs <= endMs;
+  }
+
+  private static hasDatePassed(value: string | null | undefined, nowMs: number): boolean {
+    const parsed = Date.parse(`${value ?? ''}`);
+    return Number.isFinite(parsed) && parsed <= nowMs;
+  }
+
+  private static rawStageStatus(status: string | null | undefined): string {
+    return `${status ?? ''}`.trim().toUpperCase();
+  }
+
+  private static stageStatus(item: SubEventDTO): TournamentStageStatus {
     const raw = `${item.stageStatus ?? ''}`.trim();
     if (raw === 'A' || raw === 'RS' || raw === 'SR' || raw === 'F' || raw === 'S') {
       return raw;
@@ -377,18 +446,17 @@ export class EventSubeventRuntimeMenuConverter {
     return 'RS';
   }
 
-  private static groupCount(item: ActivityEventSubEventRuntimeDTO): number {
-    const groups = Array.isArray(item.groups) ? item.groups.length : 0;
-    return groups > 0 ? groups : Math.max(0, this.toInteger(item.tournamentGroupCount));
+  private static groupCount(item: SubEventDTO): number {
+    return Math.max(0, this.toInteger(item.groupsCount));
   }
 
-  private static membersLabel(item: ActivityEventSubEventRuntimeDTO): string {
+  private static membersLabel(item: SubEventDTO): string {
     const accepted = Math.max(0, this.toInteger(item.membersAccepted));
     return this.rangeLabel(accepted, item.capacityMin, item.capacityMax);
   }
 
   private static assetLabel(
-    item: ActivityEventSubEventRuntimeDTO,
+    item: SubEventDTO,
     type: Exclude<SubEventResourceFilter, 'Members'>
   ): string {
     if (type === 'Car') {

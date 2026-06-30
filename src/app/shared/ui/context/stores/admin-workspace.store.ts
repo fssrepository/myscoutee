@@ -20,8 +20,8 @@ import {
   APP_STORAGE_KEYS
 } from '../../../core/common/storage-scope';
 import {
-  AdminPopupStore
-} from './admin-popup.store';
+  AdminMenuStore
+} from './admin-menu.store';
 import { UserProfileStore } from './user-profile.store';
 import { AppRuntimeStore } from './app-runtime.store';
 import { ActivityStore } from './activity.store';
@@ -35,7 +35,7 @@ export class AdminWorkspaceStore {
   private readonly userProfileStore = inject(UserProfileStore);
   private readonly runtimeStore = inject(AppRuntimeStore);
   private readonly activityStore = inject(ActivityStore);
-  private readonly adminPopupStore = inject(AdminPopupStore);
+  private readonly adminMenuStore = inject(AdminMenuStore);
   private readonly dashboardRef = signal<AdminDashboardDto | null>(null);
   private readonly busyRef = signal(false);
   private readonly errorRef = signal('');
@@ -163,7 +163,7 @@ export class AdminWorkspaceStore {
 
   clearAdminSessionState(): void {
     this.dashboardRef.set(null);
-    this.adminPopupStore.clear();
+    this.adminMenuStore.clear();
     this.accessDeniedRef.set(false);
     this.userProfileStore.setActiveUserId('');
     this.clearStoredAdminSession();
@@ -171,7 +171,7 @@ export class AdminWorkspaceStore {
 
   handleAdminAccessDeniedState(sessionUserId = ''): void {
     this.dashboardRef.set(null);
-    this.adminPopupStore.clear();
+    this.adminMenuStore.clear();
     this.accessDeniedRef.set(true);
     this.errorRef.set('This account does not have admin access.');
     this.clearStoredAdminSession();
