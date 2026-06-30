@@ -11,27 +11,12 @@ export interface EventSubeventRuntimeInfoCardConverterOptions {
   groupLabel?: string | null;
   sequenceNumber?: number | null;
   sequenceTotal?: number | null;
-  subEventIndex?: number | null;
-  siblingItems?: readonly SubEventDTO[];
-  nowMs?: number | null;
+  isStageActive?: boolean | null;
+  isStageScheduled?: boolean | null;
+  isStageBlocked?: boolean | null;
   hasMenuOptions?: boolean;
   menuBadgeCount?: number | null;
   menuTitle?: string | null;
-}
-
-type StageRuntimeBadge =
-  | 'scheduled'
-  | 'started'
-  | 'blocked'
-  | 'error'
-  | 'review-to-start'
-  | 'closed'
-  | 'finalized'
-  | 'suspended';
-
-interface StageRuntimeState {
-  status: TournamentStageStatus;
-  badge: StageRuntimeBadge;
 }
 
 export class EventSubeventRuntimeInfoCardConverter
@@ -53,7 +38,11 @@ export class EventSubeventRuntimeInfoCardConverter
     const sequenceLabel = isTournament ? `Stage ${sequenceNumber}` : `Sub Event ${sequenceNumber}`;
     const status = this.definitionStatus(item);
     const stageStatus = isTournament
-      ? this.stageStatusBadge(this.stageRuntimeState(item, options))
+      ? this.stageStatusBadge(item, {
+          isStageActive: options.isStageActive === true,
+          isStageScheduled: options.isStageScheduled === true,
+          isStageBlocked: options.isStageBlocked === true
+        })
       : null;
     const runtimeIcon = isTournament ? 'emoji_events' : 'inventory_2';
     const menuBadgeCount = Math.max(0, Math.trunc(Number(options.menuBadgeCount) || 0));
@@ -177,131 +166,19 @@ export class EventSubeventRuntimeInfoCardConverter
       || normalized === 'RS'
       || normalized === 'SR'
       || normalized === 'F'
-      || normalized === 'S'
-      || normalized === 'E';
-  }
-
-  private static stageRuntimeState(
-    item: SubEventDTO,
-    options: EventSubeventRuntimeInfoCardConverterOptions
-  ): StageRuntimeState {
-    const now = Number.isFinite(Number(options.nowMs)) ? Number(options.nowMs) : Date.now();
-    const ownState = this.stageRuntimeStateForItem(item, now);
-    return this.shouldCascadeBlockedState(item, options, now, ownState)
-      ? { ...ownState, badge: 'blocked' }
-      : ownState;
-  }
-
-  private static stageRuntimeStateForItem(
-    item: SubEventDTO,
-    now: number
-  ): StageRuntimeState {
-    const status = this.resolveStageStatus(item.stageStatus);
-    const startMs = Date.parse(`${item.startAt ?? ''}`);
-    const endMs = Date.parse(`${item.endAt ?? ''}`);
-    const runtimeTouched = `${item.stageStatusUpdatedAt ?? ''}`.trim() !== ''
-      || `${item.stageFinalizedAt ?? ''}`.trim() !== '';
-
-    if (status === 'F') {
-      return { status, badge: 'finalized' };
-    }
-    if (status === 'S') {
-      return { status, badge: 'suspended' };
-    }
-    if (status === 'SR') {
-      return { status, badge: 'closed' };
-    }
-    if (status === 'RS') {
-      return this.hasStageStartedOrEnded(startMs, endMs, now)
-        ? { status, badge: 'blocked' }
-        : { status, badge: 'scheduled' };
-    }
-    if (status === 'E') {
-      return { status, badge: 'error' };
-    }
-    if (Number.isFinite(startMs) && startMs > now) {
-      return { status, badge: 'scheduled' };
-    }
-    if (Number.isFinite(endMs) && endMs <= now) {
-      return { status, badge: 'blocked' };
-    }
-    if (!runtimeTouched) {
-      return { status, badge: 'blocked' };
-    }
-    return { status, badge: 'started' };
-  }
-
-  private static shouldCascadeBlockedState(
-    item: SubEventDTO,
-    options: EventSubeventRuntimeInfoCardConverterOptions,
-    now: number,
-    ownState: StageRuntimeState
-  ): boolean {
-    if (ownState.badge === 'scheduled'
-      || ownState.badge === 'error'
-      || ownState.badge === 'closed'
-      || ownState.badge === 'finalized'
-      || ownState.badge === 'suspended') {
-      return false;
-    }
-    return this.hasBlockingPreviousStage(item, options, now);
-  }
-
-  private static hasBlockingPreviousStage(
-    item: SubEventDTO,
-    options: EventSubeventRuntimeInfoCardConverterOptions,
-    now: number
-  ): boolean {
-    const siblings = options.siblingItems ?? [];
-    if (siblings.length <= 1) {
-      return false;
-    }
-    const requestedIndex = Math.trunc(Number(options.subEventIndex));
-    const matchedIndex = siblings.findIndex(candidate => candidate === item);
-    const itemId = `${item.id ?? ''}`.trim();
-    const idIndex = itemId
-      ? siblings.findIndex(candidate => `${candidate.id ?? ''}`.trim() === itemId)
-      : -1;
-    const index = matchedIndex >= 0
-      ? matchedIndex
-      : idIndex >= 0
-        ? idIndex
-        : Number.isFinite(requestedIndex)
-          ? requestedIndex
-          : -1;
-    if (index <= 0) {
-      return false;
-    }
-    for (let previousIndex = 0; previousIndex < index; previousIndex += 1) {
-      const previousState = this.stageRuntimeStateForItem(siblings[previousIndex], now);
-      if (previousState.badge === 'scheduled') {
-        return false;
-      }
-      if (previousState.badge === 'blocked' || previousState.badge === 'error') {
-        return true;
-      }
-    }
-    return false;
-  }
-
-  private static hasStageStartedOrEnded(startMs: number, endMs: number, now: number): boolean {
-    return (Number.isFinite(startMs) && startMs <= now)
-      || (Number.isFinite(endMs) && endMs <= now);
+      || normalized === 'S';
   }
 
   private static stageStatusBadge(
-    state: StageRuntimeState
-  ): InfoCardOverlayAction | null {
-    if (state.badge === 'error') {
-      return {
-        variant: 'badge',
-        tone: 'stage-error',
-        label: 'stage.status.error',
-        icon: 'error',
-        interactive: false
-      };
+    item: SubEventDTO,
+    options: {
+      isStageActive: boolean;
+      isStageScheduled: boolean;
+      isStageBlocked: boolean;
     }
-    if (state.badge === 'blocked') {
+  ): InfoCardOverlayAction | null {
+    const status = this.resolveStageStatus(item.stageStatus);
+    if (options.isStageBlocked) {
       return {
         variant: 'badge',
         tone: 'stage-blocked',
@@ -310,7 +187,7 @@ export class EventSubeventRuntimeInfoCardConverter
         interactive: false
       };
     }
-    if (state.badge === 'scheduled') {
+    if (options.isStageScheduled) {
       return {
         variant: 'badge',
         tone: 'stage-scheduled',
@@ -319,10 +196,13 @@ export class EventSubeventRuntimeInfoCardConverter
         interactive: false
       };
     }
+    if (status === 'A' && !options.isStageActive) {
+      return null;
+    }
     const map: Record<TournamentStageStatus, {
       label: string;
       icon: string;
-      tone: Extract<InfoCardOverlayTone, 'stage-active' | 'stage-start' | 'stage-review' | 'stage-finalized' | 'stage-suspended' | 'stage-error'>;
+      tone: Extract<InfoCardOverlayTone, 'stage-active' | 'stage-start' | 'stage-review' | 'stage-finalized' | 'stage-suspended'>;
     }> = {
       A: {
         label: 'stage.status.started',
@@ -348,14 +228,9 @@ export class EventSubeventRuntimeInfoCardConverter
         label: 'stage.status.suspended',
         icon: 'pause_circle',
         tone: 'stage-suspended'
-      },
-      E: {
-        label: 'stage.status.error',
-        icon: 'error',
-        tone: 'stage-error'
       }
     };
-    const config = map[state.status];
+    const config = map[status];
     return {
       variant: 'badge',
       tone: config.tone,
@@ -367,7 +242,7 @@ export class EventSubeventRuntimeInfoCardConverter
 
   private static resolveStageStatus(status: string | null | undefined): TournamentStageStatus {
     const normalized = `${status ?? ''}`.trim().toUpperCase();
-    if (normalized === 'RS' || normalized === 'SR' || normalized === 'F' || normalized === 'S' || normalized === 'E') {
+    if (normalized === 'RS' || normalized === 'SR' || normalized === 'F' || normalized === 'S') {
       return normalized;
     }
     return 'A';

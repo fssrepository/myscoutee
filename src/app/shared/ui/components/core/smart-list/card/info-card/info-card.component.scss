@@ -841,7 +841,6 @@ button.ui-info-card__overlay-action {
 .ui-info-card__overlay-action--tone-stage-active.ui-info-card__overlay-action--badge,
 .ui-info-card__overlay-action--tone-stage-scheduled.ui-info-card__overlay-action--badge,
 .ui-info-card__overlay-action--tone-stage-blocked.ui-info-card__overlay-action--badge,
-.ui-info-card__overlay-action--tone-stage-error.ui-info-card__overlay-action--badge,
 .ui-info-card__overlay-action--tone-stage-start.ui-info-card__overlay-action--badge,
 .ui-info-card__overlay-action--tone-stage-review.ui-info-card__overlay-action--badge,
 .ui-info-card__overlay-action--tone-stage-finalized.ui-info-card__overlay-action--badge,
@@ -869,12 +868,6 @@ button.ui-info-card__overlay-action {
   border-color: rgba(191, 57, 67, 0.38);
   background: linear-gradient(180deg, #fff0f1 0%, #ffdfe3 100%);
   color: #9d303b;
-}
-
-.ui-info-card__overlay-action--tone-stage-error.ui-info-card__overlay-action--badge {
-  border-color: rgba(190, 18, 60, 0.64);
-  background: linear-gradient(180deg, #ffe4e6 0%, #fb7185 100%);
-  color: #7f1026;
 }
 
 .ui-info-card__overlay-action--tone-stage-start.ui-info-card__overlay-action--badge {
