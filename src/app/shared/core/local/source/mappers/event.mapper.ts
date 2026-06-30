@@ -104,16 +104,23 @@ export class LocalActivityEventsMapper {
     const normalizedParentEventId = `${parentEventId ?? ''}`.trim();
     const direction = `${query?.order ?? ''}`.trim().toLowerCase() === 'past' ? -1 : 1;
     const nowMs = Date.now();
-    return this.subEventsSlotSources(normalizedParentEventId, parentRecord, query)
+    const sources = this.subEventsSlotSources(normalizedParentEventId, parentRecord, query)
       .filter(source => source.definitions.length > 0)
       .filter(source => this.slotSourceMatchesOrder(source, query, nowMs))
       .filter(source => this.slotSourceOverlapsRange(source, query))
-      .sort((left, right) => direction * (this.dateMs(left.startAt) - this.dateMs(right.startAt)))
-      .map(source => this.toSubEventsSlot(source));
+      .sort((left, right) => direction * (this.dateMs(left.startAt) - this.dateMs(right.startAt)));
+    const groupCountsBySource = this.stageGroupCountsBySource(sources, parentRecord.capacityMax);
+    return sources.map(source => this.toSubEventsSlot(
+      source,
+      groupCountsBySource.get(source) ?? new Map<string, number>()
+    ));
   }
 
-  private static toSubEventsSlot(source: SubEventsSlotSource): SubEventsSlotDTO {
-    const subEventItems = this.subEventItemsForSlot(source.startAt, source.definitions);
+  private static toSubEventsSlot(
+    source: SubEventsSlotSource,
+    groupCountsByStageId: ReadonlyMap<string, number>
+  ): SubEventsSlotDTO {
+    const subEventItems = this.subEventItemsForSlot(source.startAt, source.definitions, groupCountsByStageId);
     return {
       id: source.id,
       parentEventId: source.parentEventId,
@@ -550,7 +557,8 @@ export class LocalActivityEventsMapper {
 
   private static subEventItemsForSlot(
     slotStartIso: string | null | undefined,
-    definitions: readonly SubEventDefinitionDTO[]
+    definitions: readonly SubEventDefinitionDTO[],
+    groupCountsByStageId: ReadonlyMap<string, number>
   ): EventContracts.SubEventDTO[] {
     const slotStart = AppUtils.parseDate(`${slotStartIso ?? ''}`.trim()) ?? new Date();
     return this.subEventDefinitionTimeline(definitions)
@@ -559,8 +567,9 @@ export class LocalActivityEventsMapper {
         const endAt = new Date(startAt.getTime() + (durationMinutes * 60 * 1000));
         const isTournamentStage = this.isTournamentStageDefinition(item);
         const stageStatus = isTournamentStage ? 'RS' : undefined;
+        const stageId = `${item.id ?? this.fallbackSubEventId(index)}`.trim() || this.fallbackSubEventId(index);
         return {
-          id: `${item.id ?? `subevent-${index + 1}`}`.trim() || `subevent-${index + 1}`,
+          id: stageId,
           name: `${item.name ?? `Sub Event ${index + 1}`}`.trim(),
           description: `${item.description ?? ''}`.trim(),
           startAt: startAt.toISOString(),
@@ -576,6 +585,7 @@ export class LocalActivityEventsMapper {
           capacityMax: item.capacityMax,
           membersAccepted: 0,
           membersPending: 0,
+          groupsCount: groupCountsByStageId.get(stageId),
           carsPending: 0,
           accommodationPending: 0,
           suppliesPending: 0,
@@ -617,6 +627,74 @@ export class LocalActivityEventsMapper {
         || item.tournamentLeaderboardType === 'Score'
         || item.tournamentLeaderboardType === 'Fifa'
       );
+  }
+
+  private static stageGroupCountsByStageId(
+    definitions: readonly SubEventDefinitionDTO[],
+    eventCapacityMax: number | null | undefined
+  ): Map<string, number> {
+    const countsByStageId = new Map<string, number>();
+    let incomingCapacityMax = this.nonNegativeInteger(eventCapacityMax);
+    this.subEventDefinitionTimeline(definitions).forEach(({ item }, index) => {
+      const stageId = `${item.id ?? this.fallbackSubEventId(index)}`.trim() || this.fallbackSubEventId(index);
+      const groupCount = this.autoTournamentGroupCountForIncoming(item, incomingCapacityMax);
+      countsByStageId.set(stageId, groupCount);
+      if (!this.isTournamentStageDefinition(item)) {
+        return;
+      }
+      const advancePerGroup = this.nonNegativeInteger(item.tournamentAdvancePerGroup);
+      incomingCapacityMax = groupCount > 0 && advancePerGroup > 0 ? groupCount * advancePerGroup : 0;
+    });
+    return countsByStageId;
+  }
+
+  private static stageGroupCountsBySource(
+    sources: readonly SubEventsSlotSource[],
+    eventCapacityMax: number | null | undefined
+  ): Map<SubEventsSlotSource, Map<string, number>> {
+    const countsBySource = new Map<SubEventsSlotSource, Map<string, number>>();
+    const countsByDefinitionsKey = new Map<string, Map<string, number>>();
+    for (const source of sources) {
+      const key = this.stageGroupCalculationKey(source.definitions, eventCapacityMax);
+      let countsByStageId = countsByDefinitionsKey.get(key);
+      if (!countsByStageId) {
+        countsByStageId = this.stageGroupCountsByStageId(source.definitions, eventCapacityMax);
+        countsByDefinitionsKey.set(key, countsByStageId);
+      }
+      countsBySource.set(source, countsByStageId);
+    }
+    return countsBySource;
+  }
+
+  private static stageGroupCalculationKey(
+    definitions: readonly SubEventDefinitionDTO[],
+    eventCapacityMax: number | null | undefined
+  ): string {
+    return [
+      this.nonNegativeInteger(eventCapacityMax),
+      ...ActivityEventDetailDTO.normalizeSubEventDefinitions(definitions).map((item, index) => [
+        `${item.id ?? this.fallbackSubEventId(index)}`.trim() || this.fallbackSubEventId(index),
+        item.optional === true ? '1' : '0',
+        this.nonNegativeInteger(item.tournamentGroupCapacityMin),
+        this.nonNegativeInteger(item.tournamentGroupCapacityMax),
+        `${item.tournamentLeaderboardType ?? ''}`.trim(),
+        this.nonNegativeInteger(item.tournamentAdvancePerGroup)
+      ].join(':'))
+    ].join('|');
+  }
+
+  private static autoTournamentGroupCountForIncoming(
+    item: SubEventDefinitionDTO,
+    incomingCapacityMax: number
+  ): number {
+    if (!this.isTournamentStageDefinition(item)) {
+      return 0;
+    }
+    const groupCapacityMax = this.nonNegativeInteger(item.tournamentGroupCapacityMax);
+    if (groupCapacityMax <= 0) {
+      return 0;
+    }
+    return Math.ceil(this.nonNegativeInteger(incomingCapacityMax) / groupCapacityMax);
   }
 
   private static withSubEventResource(
