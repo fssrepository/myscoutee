@@ -165,9 +165,9 @@
   height: 24px;
   padding: 0 0.46rem;
   border-radius: 999px;
-  border: 1px solid rgba(255, 255, 255, 0.84);
-  background: rgba(26, 45, 71, 0.86);
-  color: #fff;
+  border: 1px solid rgba(255, 221, 170, 0.92);
+  background: linear-gradient(180deg, #f2a33a 0%, #cc7a19 100%);
+  color: #fff7e8;
   display: inline-flex;
   align-items: center;
   justify-content: center;
@@ -175,7 +175,7 @@
   font-weight: 850;
   line-height: 1;
   white-space: nowrap;
-  box-shadow: 0 5px 12px rgba(30, 52, 84, 0.12);
+  box-shadow: 0 5px 12px rgba(173, 101, 21, 0.22);
 }
 
 .ui-single-row__subtitle {
