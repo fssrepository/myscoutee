@@ -249,11 +249,13 @@ export class LocalEventsRepository {
     const status = this.normalizeStageStatus(stage?.stageStatus);
     switch (action) {
       case 'start-tournament':
-        return status === 'RS' && this.isStageStartAllowed(stages, stageIndex);
+        return status === 'RS'
+          && this.isStageStartAllowed(stages, stageIndex)
+          && !this.isStageRepairFinalizeAllowed(stage, status);
       case 'close-stage':
         return status === 'A';
       case 'finalize-stage':
-        return status === 'SR';
+        return status === 'SR' || this.isStageRepairFinalizeAllowed(stage, status);
       case 'reopen-scores':
         return status === 'F' && this.canReopenScores(stages, stageIndex);
       case 'suspend-tournament':
@@ -276,15 +278,26 @@ export class LocalEventsRepository {
   }
 
   private canReopenScores(stages: readonly ContractTypes.SubEventDTO[], stageIndex: number): boolean {
-    const nextStage = stages[stageIndex + 1];
-    if (!nextStage) {
-      return true;
-    }
-    if (this.normalizeStageStatus(nextStage.stageStatus) !== 'A') {
+    return stageIndex >= 0 && stageIndex < stages.length;
+  }
+
+  private isStageRepairFinalizeAllowed(
+    stage: ContractTypes.SubEventDTO | null | undefined,
+    status: ContractTypes.TournamentStageStatus
+  ): boolean {
+    if (!stage || `${stage.stageStatus ?? ''}`.trim().toUpperCase() === 'E') {
       return false;
     }
-    const nextStartMs = Date.parse(`${nextStage.startAt ?? ''}`);
-    return !Number.isFinite(nextStartMs) || nextStartMs > Date.now();
+    const nowMs = Date.now();
+    if (status === 'RS') {
+      return this.hasStageDatePassed(stage.startAt, nowMs) || this.hasStageDatePassed(stage.endAt, nowMs);
+    }
+    return status === 'A' && this.hasStageDatePassed(stage.endAt, nowMs);
+  }
+
+  private hasStageDatePassed(value: string | null | undefined, nowMs: number): boolean {
+    const parsed = Date.parse(`${value ?? ''}`);
+    return Number.isFinite(parsed) && parsed <= nowMs;
   }
 
   private toStageActionResult(

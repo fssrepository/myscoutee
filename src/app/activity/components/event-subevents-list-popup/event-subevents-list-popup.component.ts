@@ -659,6 +659,7 @@ export class EventSubeventsListPopupComponent {
       subEventIndex: this.subEventIndex(item),
       stageNumber: sequence.number,
       isStageActive: this.isSubEventStageActive(item),
+      isStageBlocked: this.isSubEventStageBlocked(item),
       canStartStage: this.canStartSubEventStage(item),
       siblingItems: this.subEventSiblings(item),
       nowMs: Date.now()
