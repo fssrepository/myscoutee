@@ -9,7 +9,7 @@
   (click)="onRowClick($event)"
   (keydown)="onRowKeydown($event)"
   >
-  @if (topRightBadges().length > 0) {
+  @if (hasTopRightContent()) {
     <span class="ui-single-row__top-right">
       @for (badge of topRightBadges(); track trackByBadge($index, badge)) {
         <span
@@ -22,6 +22,9 @@
           }
           <span>{{ badge.label }}</span>
         </span>
+      }
+      @if (rowCounterValue() > 0) {
+        <span class="card-badge ui-single-row__corner-counter">{{ rowCounterValue() | counterBadge }}</span>
       }
     </span>
   }
@@ -73,60 +76,52 @@
     }
   </span>
 
-  <span class="ui-single-row__side">
-    @if (sideBadges().length > 0) {
-      <span class="ui-single-row__side-badges">
-        @for (badge of sideBadges(); track trackByBadge($index, badge)) {
-          <span
-            [ngClass]="badgeClassList(badge)"
-            [attr.aria-label]="badge.ariaLabel"
-            [attr.title]="badge.title || badge.ariaLabel || null"
-            >
-            @if (badge.icon) {
-              <mat-icon>{{ badge.icon }}</mat-icon>
-            }
-            <span>{{ badge.label }}</span>
-          </span>
-        }
-      </span>
-    }
-    @if ((row?.memberCount ?? 0) > 0 || (row?.unread ?? 0) > 0) {
-      <span class="ui-single-row__metric">
-        @if ((row?.memberCount ?? 0) > 0) {
-          <span>{{ row?.memberCount }}</span>
-        }
-        @if ((row?.unread ?? 0) > 0) {
-          <span class="card-badge ui-single-row__badge">{{ row?.unread | counterBadge }}</span>
-        }
-      </span>
-    }
-    @if (hasMenuActions()) {
-      @if (useSharedMenu) {
-        <button
-          type="button"
-          class="ui-single-row__menu-trigger"
-          [class.is-open]="menuOpen"
-          [attr.aria-label]="menuOpen ? 'Close menu' : 'Open menu'"
-          (pointerdown)="onSharedMenuTriggerPointerDown($event)"
-          (click)="onSharedMenuTriggerClick($event)"
-          >
-          <mat-icon>{{ menuOpen ? 'close' : 'more_vert' }}</mat-icon>
-          @if ((row?.badgeCount ?? 0) > 0) {
-            <span class="card-badge ui-single-row__menu-badge">{{ row?.badgeCount | counterBadge }}</span>
+  @if (hasSideContent()) {
+    <span class="ui-single-row__side">
+      @if (sideBadges().length > 0) {
+        <span class="ui-single-row__side-badges">
+          @for (badge of sideBadges(); track trackByBadge($index, badge)) {
+            <span
+              [ngClass]="badgeClassList(badge)"
+              [attr.aria-label]="badge.ariaLabel"
+              [attr.title]="badge.title || badge.ariaLabel || null"
+              >
+              @if (badge.icon) {
+                <mat-icon>{{ badge.icon }}</mat-icon>
+              }
+              <span>{{ badge.label }}</span>
+            </span>
           }
-        </button>
-      } @else {
-        <app-menu
-          class="ui-single-row__menu"
-          kind="select"
-          [title]="rowMenuTitle()"
-          [trigger]="rowMenuTrigger()"
-          [items]="rowMenuItems()"
-          [panelAlign]="'auto'"
-          [mobileBreakpointPx]="900"
-          (itemSelect)="onMenuActionSelected($event)"
-        ></app-menu>
+        </span>
       }
-    }
-  </span>
+      @if (hasMenuActions()) {
+        @if (useSharedMenu) {
+          <button
+            type="button"
+            class="ui-single-row__menu-trigger"
+            [class.is-open]="menuOpen"
+            [attr.aria-label]="menuOpen ? 'Close menu' : 'Open menu'"
+            (pointerdown)="onSharedMenuTriggerPointerDown($event)"
+            (click)="onSharedMenuTriggerClick($event)"
+            >
+            <mat-icon>{{ menuOpen ? 'close' : 'more_vert' }}</mat-icon>
+            @if (menuBadgeValue() > 0) {
+              <span class="card-badge ui-single-row__menu-badge">{{ menuBadgeValue() | counterBadge }}</span>
+            }
+          </button>
+        } @else {
+          <app-menu
+            class="ui-single-row__menu"
+            kind="select"
+            [title]="rowMenuTitle()"
+            [trigger]="rowMenuTrigger()"
+            [items]="rowMenuItems()"
+            [panelAlign]="'auto'"
+            [mobileBreakpointPx]="900"
+            (itemSelect)="onMenuActionSelected($event)"
+          ></app-menu>
+        }
+      }
+    </span>
+  }
 </article>
