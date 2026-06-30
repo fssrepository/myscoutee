@@ -1,11 +1,6 @@
 import { Injectable, Type, signal } from '@angular/core';
-import { Subject } from 'rxjs';
 
 import type { EventEditorTarget, EventTournamentStageDTO } from '../../../core/contracts/event.interface';
-import type {
-  ActivityEventSubEventsQueryDTO,
-  SubEventsSlotDTO
-} from '../../../core/contracts/activity.interface';
 
 export interface EventSubeventsListPopupRequest {
   updatedMs: number;
@@ -27,45 +22,19 @@ export interface EventTournamentGroupsPopupRequest {
   selectedGroupId?: string | null;
 }
 
-export interface EventSubeventsDefinitionUpdateContext {
-  title?: string | null;
-  timeframe?: string | null;
-  startAtIso?: string | null;
-  endAtIso?: string | null;
-  location?: string | null;
-  acceptedMembers?: number | null;
-  pendingMembers?: number | null;
-  capacityTotal?: number | null;
-  creatorUserId?: string | null;
-  userId?: string | null;
-  adminIds?: readonly string[];
-  mode?: string | null;
-}
-
-export interface EventSubeventsDefinitionUpdate {
-  updatedMs: number;
-  eventId: string;
-  event?: EventSubeventsDefinitionUpdateContext | null;
-  slots: readonly SubEventsSlotDTO[];
-}
-
 @Injectable({
   providedIn: 'root'
 })
 export class EventSubeventsPopupStore {
   private readonly eventSubeventsListPopupRef = signal<EventSubeventsListPopupRequest | null>(null);
   private readonly eventTournamentGroupsPopupRef = signal<EventTournamentGroupsPopupRequest | null>(null);
-  private readonly eventSubeventsListQueryRef = signal<ActivityEventSubEventsQueryDTO | null>(null);
   private readonly eventSubeventsListPopupComponentRef = signal<Type<unknown> | null>(null);
   private readonly eventTournamentGroupsPopupComponentRef = signal<Type<unknown> | null>(null);
-  private readonly eventSubeventsDefinitionUpdateSubject = new Subject<EventSubeventsDefinitionUpdate>();
 
   readonly eventSubeventsListPopup = this.eventSubeventsListPopupRef.asReadonly();
   readonly eventTournamentGroupsPopup = this.eventTournamentGroupsPopupRef.asReadonly();
-  readonly eventSubeventsListQuery = this.eventSubeventsListQueryRef.asReadonly();
   readonly eventSubeventsListPopupComponent = this.eventSubeventsListPopupComponentRef.asReadonly();
   readonly eventTournamentGroupsPopupComponent = this.eventTournamentGroupsPopupComponentRef.asReadonly();
-  readonly eventSubeventsDefinitionUpdate$ = this.eventSubeventsDefinitionUpdateSubject.asObservable();
 
   openEventSubeventsListPopup(payload: {
     eventId: string;
@@ -90,44 +59,6 @@ export class EventSubeventsPopupStore {
 
   closeEventSubeventsListPopup(): void {
     this.eventSubeventsListPopupRef.set(null);
-    this.eventSubeventsListQueryRef.set(null);
-  }
-
-  setEventSubeventsListQuery(query: ActivityEventSubEventsQueryDTO | null): void {
-    if (!query) {
-      this.eventSubeventsListQueryRef.set(null);
-      return;
-    }
-    this.eventSubeventsListQueryRef.set({
-      ...query,
-      userId: `${query.userId ?? ''}`.trim(),
-      eventId: `${query.eventId ?? ''}`.trim(),
-      order: query.order,
-      view: query.view,
-      anchorDate: `${query.anchorDate ?? ''}`.trim() || null,
-      rangeStart: `${query.rangeStart ?? ''}`.trim() || null,
-      rangeEnd: `${query.rangeEnd ?? ''}`.trim() || null
-    });
-  }
-
-  emitEventSubeventsDefinitionUpdate(payload: {
-    eventId: string;
-    event?: EventSubeventsDefinitionUpdateContext | null;
-    slots?: readonly SubEventsSlotDTO[] | null;
-  }): void {
-    const eventId = `${payload.eventId ?? ''}`.trim();
-    if (!eventId) {
-      return;
-    }
-    this.eventSubeventsDefinitionUpdateSubject.next({
-      updatedMs: Date.now(),
-      eventId,
-      event: payload.event ?? null,
-      slots: (payload.slots ?? []).map(slot => ({
-        ...slot,
-        subEventItems: (slot.subEventItems ?? []).map(item => ({ ...item }))
-      }))
-    });
   }
 
   openEventTournamentGroupsPopup(payload: {

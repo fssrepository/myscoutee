@@ -88,7 +88,6 @@ import type * as AppConstants from '../../../shared/core/common/constants';
 import { UserProfileStore } from '../../../shared/ui/context/stores/user-profile.store';
 import { ActivityStore } from '../../../shared/ui/context/stores/activity.store';
 import { MemberMenuStore } from '../../../shared/ui/context/stores/member-menu.store';
-import { EventSubeventsPopupStore } from '../../../shared/ui/context/stores/event-subevents-popup.store';
 type EventEditorMenuContext =
   | { menu: 'visibility'; visibility: AppConstants.EventVisibility }
   | { menu: 'event-intel'; action: 'toggle-blind-mode' | 'toggle-auto-inviter' | 'toggle-ticketing' }
@@ -137,7 +136,6 @@ export class EventEditorPopupComponent implements OnInit, OnDestroy {
   private readonly userProfileStore = inject(UserProfileStore);
   private readonly activityStore = inject(ActivityStore);
   private readonly memberMenuStore = inject(MemberMenuStore);
-  private readonly eventSubeventsStore = inject(EventSubeventsPopupStore);
   private readonly explanationGuide = inject(ExplanationGuideService);
   private readonly routeDelay = inject(RouteDelayService);
   private readonly routeIntervalScheduler = inject(RouteIntervalSchedulerService);
@@ -1453,10 +1451,7 @@ export class EventEditorPopupComponent implements OnInit, OnDestroy {
     this.eventEditorStore.openEdit(eventDetailDTO);
   }
 
-  private async persistEventDetailDTO(options: {
-    allowIncomplete?: boolean;
-    syncSubeventsPopup?: boolean;
-  } = {}): Promise<boolean> {
+  private async persistEventDetailDTO(options: { allowIncomplete?: boolean } = {}): Promise<boolean> {
     if (this.eventEditorStore.readOnly()) {
       return false;
     }
@@ -1489,47 +1484,8 @@ export class EventEditorPopupComponent implements OnInit, OnDestroy {
     if (!displaySync) {
       throw new Error('Event sync did not return an event DTO.');
     }
-    if (options.syncSubeventsPopup === true) {
-      await this.syncOpenSubeventsPopupBeforeClose(displaySync);
-    }
     this.activitiesStore.emitActivityEventSaveResult(displaySync);
     return true;
-  }
-
-  private async syncOpenSubeventsPopupBeforeClose(displaySync: ActivityContracts.ActivityEventDTO): Promise<void> {
-    const eventId = `${displaySync.id ?? this.eventDetailDTO.id ?? ''}`.trim();
-    const request = this.eventSubeventsStore.eventSubeventsListPopup();
-    if (!eventId || !request || `${request.eventId ?? ''}`.trim() !== eventId) {
-      return;
-    }
-    const activeUserId = this.activeUserId();
-    if (!activeUserId) {
-      return;
-    }
-    const querySnapshot = this.eventSubeventsStore.eventSubeventsListQuery();
-    const result = await this.eventsService.loadSubEventsById(activeUserId, eventId, {
-      ...(querySnapshot ?? {}),
-      userId: activeUserId,
-      eventId
-    });
-    this.eventSubeventsStore.emitEventSubeventsDefinitionUpdate({
-      eventId,
-      event: {
-        title: displaySync.title,
-        timeframe: displaySync.timeframe,
-        startAtIso: displaySync.startAtIso,
-        endAtIso: displaySync.endAtIso,
-        location: displaySync.location,
-        acceptedMembers: displaySync.acceptedMembers,
-        pendingMembers: displaySync.pendingMembers,
-        capacityTotal: displaySync.capacityTotal,
-        creatorUserId: displaySync.creatorUserId,
-        userId: displaySync.userId,
-        adminIds: displaySync.adminIds,
-        mode: displaySync.mode ?? null
-      },
-      slots: result?.slots ?? []
-    });
   }
 
   private buildCreatedEventEditorId(target: ContractTypes.EventEditorTarget, timestampMs = Date.now()): string {
@@ -1539,7 +1495,7 @@ export class EventEditorPopupComponent implements OnInit, OnDestroy {
   private async runImmediateSave(): Promise<void> {
     this.isSavePending = true;
     try {
-      const saved = await this.persistEventDetailDTO({ syncSubeventsPopup: true });
+      const saved = await this.persistEventDetailDTO();
       if (!saved) {
         this.isSavePending = false;
         return;

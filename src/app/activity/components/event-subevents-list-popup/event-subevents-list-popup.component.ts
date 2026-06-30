@@ -5,15 +5,10 @@ import {
   ChangeDetectionStrategy,
   ChangeDetectorRef,
   Component,
-  DestroyRef,
   HostListener,
-  QueryList,
-  ViewChild,
-  ViewChildren,
   effect,
   inject
 } from '@angular/core';
-import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import {
   from,
   of
@@ -63,11 +58,9 @@ import {
 } from '../../../shared/ui/context/stores/dialog.store';
 import { UserProfileStore } from '../../../shared/ui/context/stores/user-profile.store';
 import { ActivityStore } from '../../../shared/ui/context/stores/activity.store';
+import { ActivitiesPopupStore } from '../../../shared/ui/context/stores/activities-popup.store';
 import { MemberMenuStore } from '../../../shared/ui/context/stores/member-menu.store';
-import {
-  EventSubeventsPopupStore,
-  type EventSubeventsDefinitionUpdate
-} from '../../../shared/ui/context/stores/event-subevents-popup.store';
+import { EventSubeventsPopupStore } from '../../../shared/ui/context/stores/event-subevents-popup.store';
 import {
   SubEventResourcePopupStore,
   type SubEventResourceMetricsUpdate
@@ -122,11 +115,11 @@ export class EventSubeventsListPopupComponent {
   private readonly dialogStore = inject(DialogStore);
   private readonly userProfileStore = inject(UserProfileStore);
   private readonly activityStore = inject(ActivityStore);
+  private readonly activitiesStore = inject(ActivitiesPopupStore);
   private readonly memberMenuStore = inject(MemberMenuStore);
   protected readonly resourcePopupStore = inject(SubEventResourcePopupStore);
   protected readonly eventSubeventsStore = inject(EventSubeventsPopupStore);
   private readonly cdr = inject(ChangeDetectorRef);
-  private readonly destroyRef = inject(DestroyRef);
 
   protected isLoading = false;
   protected event: EventSubeventsParentContext | null = null;
@@ -150,12 +143,6 @@ export class EventSubeventsListPopupComponent {
   private loadedQueryKey = '';
   private loadingQueryKey = '';
   private loadingPromise: Promise<void> | null = null;
-
-  @ViewChild('subEventsSmartList')
-  private subEventsSmartList?: SmartListComponent<EventSubeventsSlotModel, EventSubeventsListFilters>;
-
-  @ViewChildren('slotSectionSmartList')
-  private slotSectionSmartLists?: QueryList<SmartListComponent<SubEventDTO, EventSubeventsListFilters>>;
 
   private readonly slotSectionLoaders = new Map<string, SmartListLoadPage<SubEventDTO, EventSubeventsListFilters>>();
   private readonly slotSectionConfigs = new Map<string, SmartListConfig<SubEventDTO, EventSubeventsListFilters>>();
@@ -321,9 +308,19 @@ export class EventSubeventsListPopupComponent {
       this.applySubEventResourceMetricsUpdate(update);
     });
 
-    this.eventSubeventsStore.eventSubeventsDefinitionUpdate$
-      .pipe(takeUntilDestroyed(this.destroyRef))
-      .subscribe(update => this.applyEventDefinitionUpdate(update));
+    effect(() => {
+      const sync = this.activitiesStore.activityEventSave();
+      const request = this.eventSubeventsStore.eventSubeventsListPopup();
+      if (!sync || !request || !this.isOpen()) {
+        return;
+      }
+      const savedEventId = `${sync.id ?? ''}`.trim();
+      const openEventId = `${request.eventId ?? ''}`.trim();
+      if (!savedEventId || savedEventId !== openEventId) {
+        return;
+      }
+      this.invalidateLoadedRuntime();
+    });
   }
 
   @HostListener('window:resize')
@@ -1042,9 +1039,7 @@ export class EventSubeventsListPopupComponent {
       if (this.eventSubeventsStore.eventSubeventsListPopup()?.eventId !== eventId) {
         return;
       }
-      this.applyLoadedSubEventsSlots(eventId, result?.slots ?? [], query, {
-        syncVisibleSmartLists: false
-      });
+      this.applyLoadedSubEventsSlots(eventId, result?.slots ?? [], query);
     })().finally(() => {
       if (this.loadingEventId === eventId && this.loadingQueryKey === queryKey) {
         this.loadingEventId = '';
@@ -1057,33 +1052,12 @@ export class EventSubeventsListPopupComponent {
     return this.loadingPromise;
   }
 
-  private applyEventDefinitionUpdate(update: EventSubeventsDefinitionUpdate): void {
-    const eventId = `${update.eventId ?? ''}`.trim();
-    const request = this.eventSubeventsStore.eventSubeventsListPopup();
-    if (!eventId || !request || `${request.eventId ?? ''}`.trim() !== eventId) {
-      return;
-    }
-    const query = this.currentSubEventsListQuery();
-    this.applyLoadedSubEventsSlots(eventId, update.slots ?? [], query, {
-      contextPatch: this.parentContextFromDefinitionUpdate(update),
-      syncVisibleSmartLists: true
-    });
-  }
-
   private applyLoadedSubEventsSlots(
     eventId: string,
     slots: readonly SubEventsSlotDTO[],
-    query: ListQuery<EventSubeventsListFilters>,
-    options: {
-      contextPatch?: Partial<EventSubeventsParentContext>;
-      syncVisibleSmartLists?: boolean;
-    } = {}
+    query: ListQuery<EventSubeventsListFilters>
   ): void {
-    const event = {
-      ...this.parentContextFromRequest(eventId),
-      ...(options.contextPatch ?? {}),
-      id: eventId
-    };
+    const event = this.parentContextFromRequest(eventId);
     this.event = event;
     this.slotSections = EventSubeventsSlotConverter.convertList(slots, {
       event,
@@ -1093,86 +1067,7 @@ export class EventSubeventsListPopupComponent {
     this.items = this.slotSections.flatMap(section => section.items);
     this.loadedEventId = eventId;
     this.loadedQueryKey = this.subEventsLoadQueryKey(eventId, query);
-    if (options.syncVisibleSmartLists === true) {
-      this.replaceVisibleSubEventSections();
-    }
     this.cdr.markForCheck();
-  }
-
-  private currentSubEventsListQuery(): ListQuery<EventSubeventsListFilters> {
-    return {
-      page: 0,
-      pageSize: this.smartListConfig.pageSize ?? 12,
-      direction: this.order === 'past' ? 'desc' : 'asc',
-      view: this.view,
-      filters: { revision: this.revision },
-      ...(this.query as Partial<ListQuery<EventSubeventsListFilters>>)
-    } as ListQuery<EventSubeventsListFilters>;
-  }
-
-  private parentContextFromDefinitionUpdate(
-    update: EventSubeventsDefinitionUpdate
-  ): Partial<EventSubeventsParentContext> {
-    const event = update.event;
-    if (!event) {
-      return {};
-    }
-    const patch: Partial<EventSubeventsParentContext> = {
-      title: `${event.title ?? ''}`.trim() || null,
-      timeframe: `${event.timeframe ?? ''}`.trim() || null,
-      startAtIso: `${event.startAtIso ?? ''}`.trim() || null,
-      endAtIso: `${event.endAtIso ?? ''}`.trim() || null,
-      location: `${event.location ?? ''}`.trim() || null,
-      creatorUserId: `${event.creatorUserId ?? ''}`.trim() || null,
-      userId: `${event.userId ?? ''}`.trim() || null,
-      adminIds: (event.adminIds ?? []).map(id => `${id}`.trim()).filter(Boolean)
-    };
-    if (Number.isFinite(Number(event.acceptedMembers))) {
-      patch.acceptedMembers = Math.max(0, Math.trunc(Number(event.acceptedMembers)));
-    }
-    if (Number.isFinite(Number(event.pendingMembers))) {
-      patch.pendingMembers = Math.max(0, Math.trunc(Number(event.pendingMembers)));
-    }
-    if (Number.isFinite(Number(event.capacityTotal))) {
-      patch.capacityTotal = Math.max(0, Math.trunc(Number(event.capacityTotal)));
-    }
-    const mode = `${event.mode ?? ''}`.trim();
-    if (mode === 'Casual' || mode === 'Tournament') {
-      patch.mode = mode;
-    }
-    return patch;
-  }
-
-  private replaceVisibleSubEventSections(): void {
-    const list = this.subEventsSmartList;
-    if (!list) {
-      return;
-    }
-    const currentVisibleCount = list.itemsSnapshot().length;
-    const pageSize = Math.max(1, Math.trunc(Number(this.smartListConfig.pageSize) || 12));
-    const nextVisibleCount = Math.min(
-      this.slotSections.length,
-      Math.max(currentVisibleCount, Math.min(this.slotSections.length, pageSize))
-    );
-    list.replaceVisibleItems(this.slotSections.slice(0, nextVisibleCount), {
-      total: this.slotSections.length
-    });
-    this.replaceVisibleSlotSectionItems();
-    queueMicrotask(() => this.replaceVisibleSlotSectionItems());
-  }
-
-  private replaceVisibleSlotSectionItems(): void {
-    const visibleSections = this.subEventsSmartList?.itemsSnapshot() ?? this.slotSections;
-    const lists = this.slotSectionSmartLists?.toArray() ?? [];
-    lists.forEach((list, index) => {
-      const section = visibleSections[index] ?? null;
-      if (!section) {
-        return;
-      }
-      list.replaceVisibleItems(section.items, {
-        total: section.items.length
-      });
-    });
   }
 
   private parentContextFromRequest(eventId: string): EventSubeventsParentContext {
@@ -1301,7 +1196,7 @@ export class EventSubeventsListPopupComponent {
   }
 
   private subEventsLoadQueryKey(eventId: string, query: ListQuery<EventSubeventsListFilters>): string {
-    const loadQuery = this.buildSubEventsLoadQuery(eventId, query);
+    const loadQuery = this.subEventsLoadQuery(eventId, query);
     return [
       loadQuery.eventId,
       loadQuery.order ?? '',
@@ -1316,15 +1211,6 @@ export class EventSubeventsListPopupComponent {
     eventId: string,
     query: ListQuery<EventSubeventsListFilters>
   ): ActivityEventSubEventsQueryDTO {
-    const loadQuery = this.buildSubEventsLoadQuery(eventId, query);
-    this.eventSubeventsStore.setEventSubeventsListQuery(loadQuery);
-    return loadQuery;
-  }
-
-  private buildSubEventsLoadQuery(
-    eventId: string,
-    query: ListQuery<EventSubeventsListFilters>
-  ): ActivityEventSubEventsQueryDTO {
     return {
       userId: this.userProfileStore.activeUserProfile()?.id?.trim() ?? '',
       eventId,
@@ -1334,6 +1220,16 @@ export class EventSubeventsListPopupComponent {
       rangeStart: query.rangeStart ?? null,
       rangeEnd: query.rangeEnd ?? null
     };
+  }
+
+  private invalidateLoadedRuntime(): void {
+    this.loadedEventId = '';
+    this.loadedQueryKey = '';
+    this.loadingEventId = '';
+    this.loadingQueryKey = '';
+    this.loadingPromise = null;
+    this.bumpQuery();
+    this.cdr.markForCheck();
   }
 
   private bumpQuery(): void {

@@ -1,7 +1,6 @@
 @if (isOpen()) {
   <app-popup [model]="popupModel()" [zIndex]="2400">
     <app-smart-list
-      #subEventsSmartList
       class="event-subevents-list-smart-list"
       [config]="smartListConfig"
       [loadPage]="loadSubEventsPage"
@@ -12,7 +11,6 @@
     <ng-template #slotSectionTemplate let-section>
       <section class="event-subevents-slot-section" [ngClass]="slotSectionToneClass(section)">
         <app-smart-list
-          #slotSectionSmartList
           class="event-subevents-slot-section-list"
           [config]="slotSectionSmartListConfigFor(section)"
           [loadPage]="slotSectionLoadPage(section)"
