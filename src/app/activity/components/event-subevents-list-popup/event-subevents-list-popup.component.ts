@@ -628,9 +628,9 @@ export class EventSubeventsListPopupComponent {
       groupLabel,
       sequenceNumber: sequence.number,
       sequenceTotal: sequence.total,
-      isStageActive: this.isSubEventStageActive(item),
-      isStageScheduled: this.isSubEventStageScheduled(item),
-      isStageBlocked: this.isSubEventStageBlocked(item),
+      subEventIndex: this.subEventIndex(item),
+      siblingItems: this.subEventSiblings(item),
+      nowMs: Date.now(),
       hasMenuOptions: true,
       menuTitle: item.name,
       menuBadgeCount: EventSubeventRuntimeMenuConverter.pendingBadgeCount(item, {
@@ -658,8 +658,6 @@ export class EventSubeventsListPopupComponent {
       sourceId: this.subEventOwnerId(item),
       subEventIndex: this.subEventIndex(item),
       stageNumber: sequence.number,
-      isStageActive: this.isSubEventStageActive(item),
-      canStartStage: this.canStartSubEventStage(item),
       siblingItems: this.subEventSiblings(item),
       nowMs: Date.now()
     });
@@ -879,66 +877,6 @@ export class EventSubeventsListPopupComponent {
     const siblings = this.subEventSiblings(item);
     const index = siblings.findIndex(candidate => candidate === item);
     return index >= 0 ? index : 0;
-  }
-
-  private isSubEventStageActive(item: SubEventDTO): boolean {
-    if (this.normalizeSubEventStageStatus(item.stageStatus) !== 'A') {
-      return false;
-    }
-    if (!this.isSubEventStageAssignmentOpen(item)) {
-      return false;
-    }
-    const startMs = this.dateMs(item.startAt);
-    return !Number.isFinite(startMs) || startMs <= Date.now();
-  }
-
-  private isSubEventStageScheduled(item: SubEventDTO): boolean {
-    const status = this.normalizeSubEventStageStatus(item.stageStatus);
-    if (status !== 'A') {
-      return false;
-    }
-    if (!this.isSubEventStageAssignmentOpen(item)) {
-      return false;
-    }
-    const startMs = this.dateMs(item.startAt);
-    return Number.isFinite(startMs) && startMs > Date.now();
-  }
-
-  private isSubEventStageBlocked(item: SubEventDTO): boolean {
-    if (!this.isSubEventStageAssignmentOpen(item)) {
-      return false;
-    }
-    const status = this.normalizeSubEventStageStatus(item.stageStatus);
-    if (status === 'RS') {
-      return true;
-    }
-    if (status !== 'A') {
-      return false;
-    }
-    const endMs = this.dateMs(item.endAt);
-    return Number.isFinite(endMs) && endMs <= Date.now();
-  }
-
-  private canStartSubEventStage(item: SubEventDTO): boolean {
-    return this.normalizeSubEventStageStatus(item.stageStatus) === 'RS'
-      && this.isSubEventStageAssignmentOpen(item);
-  }
-
-  private isSubEventStageAssignmentOpen(item: SubEventDTO): boolean {
-    const siblings = this.subEventSiblings(item);
-    const index = siblings.findIndex(candidate => candidate === item);
-    if (index <= 0) {
-      return true;
-    }
-    return this.normalizeSubEventStageStatus(siblings[index - 1]?.stageStatus) === 'F';
-  }
-
-  private normalizeSubEventStageStatus(status: string | null | undefined): 'A' | 'RS' | 'SR' | 'F' | 'S' {
-    const normalized = `${status ?? ''}`.trim().toUpperCase();
-    if (normalized === 'RS' || normalized === 'SR' || normalized === 'F' || normalized === 'S') {
-      return normalized;
-    }
-    return 'A';
   }
 
   private subEventSiblings(item: SubEventDTO): readonly SubEventDTO[] {

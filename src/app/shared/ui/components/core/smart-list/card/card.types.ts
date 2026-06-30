@@ -26,6 +26,7 @@ export type InfoCardOverlayTone =
   | 'stage-active'
   | 'stage-scheduled'
   | 'stage-blocked'
+  | 'stage-error'
   | 'stage-start'
   | 'stage-review'
   | 'stage-finalized'

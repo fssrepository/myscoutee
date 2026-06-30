@@ -249,15 +249,15 @@ export class LocalEventsRepository {
     const status = this.normalizeStageStatus(stage?.stageStatus);
     switch (action) {
       case 'start-tournament':
-        return status === 'RS' && this.isStageStartAllowed(stages, stageIndex);
+        return (status === 'RS' || status === 'E') && this.isStageStartAllowed(stages, stageIndex);
       case 'close-stage':
-        return status === 'A';
+        return status === 'A' || status === 'E';
       case 'finalize-stage':
         return status === 'SR';
       case 'reopen-scores':
         return status === 'F' && this.canReopenScores(stages, stageIndex);
       case 'suspend-tournament':
-        return status !== 'RS' && status !== 'S' && status !== 'F';
+        return status === 'A' || status === 'SR';
       case 'resume-tournament':
         return status === 'S';
       default:
@@ -329,7 +329,7 @@ export class LocalEventsRepository {
 
   private normalizeStageStatus(status: string | null | undefined): ContractTypes.TournamentStageStatus {
     const normalized = `${status ?? ''}`.trim().toUpperCase();
-    if (normalized === 'A' || normalized === 'RS' || normalized === 'SR' || normalized === 'F' || normalized === 'S') {
+    if (normalized === 'A' || normalized === 'RS' || normalized === 'SR' || normalized === 'F' || normalized === 'S' || normalized === 'E') {
       return normalized;
     }
     return 'RS';

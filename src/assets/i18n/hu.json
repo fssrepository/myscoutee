@@ -1434,6 +1434,7 @@
     "stage.status.started": "Elindítva",
     "stage.status.closed": "Befejezve",
     "stage.status.blocked": "Blokkolva",
+    "stage.status.error": "Hiba",
     "stage.status.review.to.start": "Indítás felülvizsgálat alatt",
     "stage.status.scheduled": "Ütemezve",
     "stage.status.suspended": "Felfüggesztve",

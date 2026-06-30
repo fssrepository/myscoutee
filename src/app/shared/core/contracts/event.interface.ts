@@ -10,7 +10,7 @@ export interface EventPolicyDTO {
 
 export type EventMode = 'Casual' | 'Tournament';
 export type TournamentLeaderboardType = 'Score' | 'Fifa';
-export type TournamentStageStatus = 'A' | 'RS' | 'SR' | 'F' | 'S';
+export type TournamentStageStatus = 'A' | 'RS' | 'SR' | 'F' | 'S' | 'E';
 export type EventEditorMode = 'edit' | 'create';
 export type EventEditorTarget = 'events' | 'hosting';
 export type EventBlindMode = 'Open Event' | 'Blind Event';
