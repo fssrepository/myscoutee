@@ -249,17 +249,16 @@ export class LocalEventsRepository {
     const status = this.normalizeStageStatus(stage?.stageStatus);
     switch (action) {
       case 'start-tournament':
-        return status === 'RS'
-          && this.isStageStartAllowed(stages, stageIndex)
-          && !this.isStageRepairFinalizeAllowed(stage, status);
+        return status === 'RS' && !this.hasStageDatePassed(stage?.startAt);
       case 'close-stage':
-        return status === 'A';
+        return status === 'A' || (status === 'RS' && this.hasStageDatePassed(stage?.endAt));
       case 'finalize-stage':
-        return status === 'SR' || this.isStageRepairFinalizeAllowed(stage, status);
+        return status === 'SR';
       case 'reopen-scores':
         return status === 'F' && this.canReopenScores(stages, stageIndex);
       case 'suspend-tournament':
-        return status !== 'RS' && status !== 'S' && status !== 'F';
+        return status === 'SR'
+          || ((status === 'A' || status === 'RS') && this.isStageInScheduleWindow(stage));
       case 'resume-tournament':
         return status === 'S';
       default:
@@ -281,23 +280,19 @@ export class LocalEventsRepository {
     return stageIndex >= 0 && stageIndex < stages.length;
   }
 
-  private isStageRepairFinalizeAllowed(
-    stage: ContractTypes.SubEventDTO | null | undefined,
-    status: ContractTypes.TournamentStageStatus
-  ): boolean {
-    if (!stage || `${stage.stageStatus ?? ''}`.trim().toUpperCase() === 'E') {
-      return false;
-    }
+  private isStageInScheduleWindow(stage: ContractTypes.SubEventDTO | null | undefined): boolean {
+    const startMs = Date.parse(`${stage?.startAt ?? ''}`);
+    const endMs = Date.parse(`${stage?.endAt ?? ''}`);
     const nowMs = Date.now();
-    if (status === 'RS') {
-      return this.hasStageDatePassed(stage.startAt, nowMs) || this.hasStageDatePassed(stage.endAt, nowMs);
-    }
-    return status === 'A' && this.hasStageDatePassed(stage.endAt, nowMs);
+    return Number.isFinite(startMs)
+      && Number.isFinite(endMs)
+      && startMs <= nowMs
+      && nowMs <= endMs;
   }
 
-  private hasStageDatePassed(value: string | null | undefined, nowMs: number): boolean {
+  private hasStageDatePassed(value: string | null | undefined): boolean {
     const parsed = Date.parse(`${value ?? ''}`);
-    return Number.isFinite(parsed) && parsed <= nowMs;
+    return Number.isFinite(parsed) && parsed <= Date.now();
   }
 
   private toStageActionResult(

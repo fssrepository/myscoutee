@@ -65,9 +65,6 @@ export interface EventSubeventRuntimeMenuConverterOptions {
   sourceId?: string | null;
   subEventIndex?: number | null;
   stageNumber?: number | null;
-  isStageActive?: boolean | null;
-  isStageBlocked?: boolean | null;
-  canStartStage?: boolean | null;
   siblingItems?: readonly SubEventDTO[];
   nowMs?: number;
 }
@@ -119,9 +116,6 @@ export class EventSubeventRuntimeMenuConverter {
         subEventId,
         subEventIndex,
         stageNumber,
-        isStageActive: options.isStageActive === true,
-        isStageBlocked: options.isStageBlocked === true,
-        canStartStage: options.canStartStage === true,
         siblings: options.siblingItems ?? [],
         nowMs: Number.isFinite(Number(options.nowMs)) ? Number(options.nowMs) : Date.now()
       }));
@@ -165,17 +159,15 @@ export class EventSubeventRuntimeMenuConverter {
       subEventId: string | null;
       subEventIndex: number;
       stageNumber: number;
-      isStageActive: boolean;
-      isStageBlocked: boolean;
-      canStartStage: boolean;
       siblings: readonly SubEventDTO[];
       nowMs: number;
     }
   ): AppMenuItem<EventSubeventRuntimeMenuItemId, EventSubeventRuntimeMenuContext>[] {
     const status = this.stageStatus(item);
     const isErrorStatus = this.rawStageStatus(item.stageStatus) === 'E';
-    const isRepairBlocked = !isErrorStatus
-      && (options.isStageBlocked || this.isStageBlockedBySchedule(item, status, options.nowMs));
+    const isStageActive = this.isStageActiveBySchedule(item, status, options.nowMs);
+    const isStageWindowOpen = this.isStageInScheduleWindow(item, options.nowMs);
+    const isStageEnded = this.hasDatePassed(item.endAt, options.nowMs);
     const actions: AppMenuItem<EventSubeventRuntimeMenuItemId, EventSubeventRuntimeMenuContext>[] = [];
     const stageLabel = `${item.name ?? `Stage ${options.stageNumber}`}`.trim() || `Stage ${options.stageNumber}`;
     const base = {
@@ -187,7 +179,7 @@ export class EventSubeventRuntimeMenuConverter {
       subEventIndex: options.subEventIndex
     };
 
-    if (options.canStartStage && !isRepairBlocked && !isErrorStatus) {
+    if (status === 'RS' && !isErrorStatus && !this.hasDatePassed(item.startAt, options.nowMs)) {
       actions.push(this.stageActionItem({
         ...base,
         action: 'start-tournament',
@@ -203,7 +195,7 @@ export class EventSubeventRuntimeMenuConverter {
         destructive: false
       }));
     }
-    if (status === 'A' && options.isStageActive && !isRepairBlocked) {
+    if ((status === 'A' && isStageActive) || (status === 'RS' && !isErrorStatus && isStageEnded)) {
       actions.push(this.stageActionItem({
         ...base,
         action: 'close-stage',
@@ -219,7 +211,7 @@ export class EventSubeventRuntimeMenuConverter {
         destructive: false
       }));
     }
-    if (status === 'SR' || isRepairBlocked) {
+    if (status === 'SR') {
       actions.push(this.stageActionItem({
         ...base,
         action: 'finalize-stage',
@@ -251,17 +243,17 @@ export class EventSubeventRuntimeMenuConverter {
         destructive: false
       }));
     }
-    if ((status === 'A' && options.isStageActive && !isRepairBlocked) || status === 'SR') {
+    if ((status === 'A' && isStageWindowOpen) || status === 'SR' || (status === 'RS' && !isErrorStatus && isStageWindowOpen)) {
       actions.push(this.stageActionItem({
         ...base,
         action: 'suspend-tournament',
-        label: 'Suspend Tournament',
+        label: 'Suspend Stage',
         icon: 'pause_circle',
         palette: 'warning',
         nextStatus: 'S',
         reason: 'manual-suspension',
-        title: 'Suspend Tournament',
-        description: `Suspend the tournament at ${stageLabel}?`,
+        title: 'Suspend Stage',
+        description: `Suspend ${stageLabel}?`,
         confirmLabel: 'Suspend',
         busyLabel: 'Suspending...',
         destructive: true
@@ -425,17 +417,25 @@ export class EventSubeventRuntimeMenuConverter {
     return this.stageStatus(item) === 'F';
   }
 
-  private static isStageBlockedBySchedule(
+  private static isStageActiveBySchedule(
     item: SubEventDTO,
     status: TournamentStageStatus,
     nowMs: number
   ): boolean {
-    const startPassed = this.hasDatePassed(item.startAt, nowMs);
-    const endPassed = this.hasDatePassed(item.endAt, nowMs);
-    if (status === 'RS') {
-      return startPassed || endPassed;
+    if (status !== 'A') {
+      return false;
     }
-    return status === 'A' && endPassed;
+    const startMs = Date.parse(`${item.startAt ?? ''}`);
+    return !Number.isFinite(startMs) || startMs <= nowMs;
+  }
+
+  private static isStageInScheduleWindow(item: SubEventDTO, nowMs: number): boolean {
+    const startMs = Date.parse(`${item.startAt ?? ''}`);
+    const endMs = Date.parse(`${item.endAt ?? ''}`);
+    return Number.isFinite(startMs)
+      && Number.isFinite(endMs)
+      && startMs <= nowMs
+      && nowMs <= endMs;
   }
 
   private static hasDatePassed(value: string | null | undefined, nowMs: number): boolean {

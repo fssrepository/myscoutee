@@ -11,9 +11,7 @@ export interface EventSubeventRuntimeInfoCardConverterOptions {
   groupLabel?: string | null;
   sequenceNumber?: number | null;
   sequenceTotal?: number | null;
-  isStageActive?: boolean | null;
-  isStageScheduled?: boolean | null;
-  isStageBlocked?: boolean | null;
+  nowMs?: number;
   hasMenuOptions?: boolean;
   menuBadgeCount?: number | null;
   menuTitle?: string | null;
@@ -37,12 +35,9 @@ export class EventSubeventRuntimeInfoCardConverter
     const sequenceTotal = Math.max(sequenceNumber, Math.trunc(Number(options.sequenceTotal) || sequenceNumber));
     const sequenceLabel = isTournament ? `Stage ${sequenceNumber}` : `Sub Event ${sequenceNumber}`;
     const status = this.definitionStatus(item);
+    const nowMs = Number.isFinite(Number(options.nowMs)) ? Number(options.nowMs) : Date.now();
     const stageStatus = isTournament
-      ? this.stageStatusBadge(item, {
-          isStageActive: options.isStageActive === true,
-          isStageScheduled: options.isStageScheduled === true,
-          isStageBlocked: options.isStageBlocked === true
-        })
+      ? this.stageStatusBadge(item, nowMs)
       : null;
     const runtimeIcon = isTournament ? 'emoji_events' : 'inventory_2';
     const menuBadgeCount = Math.max(0, Math.trunc(Number(options.menuBadgeCount) || 0));
@@ -171,14 +166,11 @@ export class EventSubeventRuntimeInfoCardConverter
 
   private static stageStatusBadge(
     item: SubEventDTO,
-    options: {
-      isStageActive: boolean;
-      isStageScheduled: boolean;
-      isStageBlocked: boolean;
-    }
+    nowMs: number
   ): InfoCardOverlayAction | null {
+    const rawStatus = this.rawStageStatus(item.stageStatus);
     const status = this.resolveStageStatus(item.stageStatus);
-    if (options.isStageBlocked) {
+    if (this.isStageBlockedBySchedule(item, rawStatus, nowMs)) {
       return {
         variant: 'badge',
         tone: 'stage-blocked',
@@ -187,7 +179,7 @@ export class EventSubeventRuntimeInfoCardConverter
         interactive: false
       };
     }
-    if (options.isStageScheduled) {
+    if (this.isStageScheduledBySchedule(item, rawStatus, nowMs)) {
       return {
         variant: 'badge',
         tone: 'stage-scheduled',
@@ -196,7 +188,7 @@ export class EventSubeventRuntimeInfoCardConverter
         interactive: false
       };
     }
-    if (status === 'A' && !options.isStageActive) {
+    if (status === 'A' && !this.isStageActiveBySchedule(item, rawStatus, nowMs)) {
       return null;
     }
     const map: Record<TournamentStageStatus, {
@@ -238,6 +230,42 @@ export class EventSubeventRuntimeInfoCardConverter
       icon: config.icon,
       interactive: false
     };
+  }
+
+  private static isStageActiveBySchedule(item: SubEventDTO, rawStatus: string, nowMs: number): boolean {
+    if (rawStatus !== 'A') {
+      return false;
+    }
+    const startMs = this.dateMs(item.startAt);
+    return !Number.isFinite(startMs) || startMs <= nowMs;
+  }
+
+  private static isStageScheduledBySchedule(item: SubEventDTO, rawStatus: string, nowMs: number): boolean {
+    if (rawStatus !== 'A') {
+      return false;
+    }
+    const startMs = this.dateMs(item.startAt);
+    return Number.isFinite(startMs) && startMs > nowMs;
+  }
+
+  private static isStageBlockedBySchedule(item: SubEventDTO, rawStatus: string, nowMs: number): boolean {
+    if (rawStatus === 'RS') {
+      return this.hasDatePassed(item.startAt, nowMs) || this.hasDatePassed(item.endAt, nowMs);
+    }
+    return rawStatus === 'A' && this.hasDatePassed(item.endAt, nowMs);
+  }
+
+  private static hasDatePassed(value: string | null | undefined, nowMs: number): boolean {
+    const parsed = this.dateMs(value);
+    return Number.isFinite(parsed) && parsed <= nowMs;
+  }
+
+  private static dateMs(value: string | null | undefined): number {
+    return Date.parse(`${value ?? ''}`);
+  }
+
+  private static rawStageStatus(status: string | null | undefined): string {
+    return `${status ?? ''}`.trim().toUpperCase();
   }
 
   private static resolveStageStatus(status: string | null | undefined): TournamentStageStatus {

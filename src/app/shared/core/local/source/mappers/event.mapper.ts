@@ -558,9 +558,7 @@ export class LocalActivityEventsMapper {
         const startAt = new Date(slotStart.getTime() + (startOffsetMinutes * 60 * 1000));
         const endAt = new Date(startAt.getTime() + (durationMinutes * 60 * 1000));
         const isTournamentStage = this.isTournamentStageDefinition(item);
-        const stageStatus = isTournamentStage
-          ? (index === 0 ? 'RS' : 'A')
-          : undefined;
+        const stageStatus = isTournamentStage ? 'RS' : undefined;
         return {
           id: `${item.id ?? `subevent-${index + 1}`}`.trim() || `subevent-${index + 1}`,
           name: `${item.name ?? `Sub Event ${index + 1}`}`.trim(),
