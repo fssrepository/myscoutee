@@ -1,0 +1,1 @@
+import{mb as i}from"./chunk-AYREMVY4.js";var m=class t{transform(e,r=9){let n=Math.max(1,Math.trunc(Number(r)||9)),a=Math.max(0,Math.trunc(Number(e)||0));return a>n?`${n}+`:`${a}`}static \u0275fac=function(r){return new(r||t)};static \u0275pipe=i({name:"counterBadge",type:t,pure:!0})};export{m as a};
