@@ -134,7 +134,8 @@
                 <app-date-input
                   class="event-date-input"
                   [model]="eventDateInputModel"
-                  [(ngModel)]="eventDetailDTO.dateRange"
+                  [ngModel]="eventDetailDTO.dateRange"
+                  (ngModelChange)="onEventDateRangeChange($event)"
                 ></app-date-input>
               </section>
               <app-event-slots-input [(ngModel)]="eventDetailDTO.slotTemplates"

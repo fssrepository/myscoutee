@@ -289,7 +289,8 @@ export class EventEditorPopupComponent implements OnInit, OnDestroy {
       precision: 'minute',
       range: {
         start: { label: 'Start' },
-        end: { label: 'End' }
+        end: { label: 'End' },
+        allowEndBeforeStart: true
       },
       readOnly: this.eventEditorStore.readOnly()
     };
@@ -1780,7 +1781,7 @@ export class EventEditorPopupComponent implements OnInit, OnDestroy {
   ): { startAt: string; endAt: string; precision: 'minute' } {
     let start = AppUtils.isoLocalDateTimeToDate(range.startAt) ?? new Date();
     let end = AppUtils.isoLocalDateTimeToDate(range.endAt) ?? new Date(start.getTime() + (60 * 60 * 1000));
-    const minimumDurationMs = Math.max(60 * 60 * 1000, this.subEventDefinitionsMinimumDurationMs());
+    const minimumDurationMs = this.subEventDefinitionsMinimumDurationMs();
     if (end.getTime() - start.getTime() < minimumDurationMs) {
       if (anchor === 'end') {
         start = new Date(end.getTime() - minimumDurationMs);

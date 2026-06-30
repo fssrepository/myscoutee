@@ -60,6 +60,7 @@ export interface DateInputRangeModel {
   start?: DateInputFieldModel;
   end?: DateInputFieldModel;
   bounds?: DateInputRangeBoundsModel | null;
+  allowEndBeforeStart?: boolean;
 }
 
 export interface DateInputMetaModel {
@@ -255,6 +256,10 @@ export class DateInputComponent implements ControlValueAccessor {
     return this.range.bounds;
   }
 
+  private get allowEndBeforeStart(): boolean {
+    return this.range.allowEndBeforeStart === true;
+  }
+
   private get meta(): DateInputMetaModel | null | undefined {
     return this.model?.meta;
   }
@@ -276,7 +281,9 @@ export class DateInputComponent implements ControlValueAccessor {
   }
 
   protected resolvedEndMin(): Date | null {
-    return this.toDatePickerBoundary(this.startDateValue ?? this.bounds?.start ?? this.endField.min);
+    return this.toDatePickerBoundary(this.allowEndBeforeStart
+      ? this.bounds?.start ?? this.endField.min
+      : this.startDateValue ?? this.bounds?.start ?? this.endField.min);
   }
 
   protected resolvedEndMax(): Date | null {
@@ -536,13 +543,13 @@ export class DateInputComponent implements ControlValueAccessor {
     }
 
     const minDurationMs = 60 * 60 * 1000;
-    if (!end || end.getTime() <= safeStart.getTime()) {
+    if (!end || (!this.allowEndBeforeStart && end.getTime() <= safeStart.getTime())) {
       end = new Date(safeStart.getTime() + minDurationMs);
     }
     if (max && end.getTime() > max.getTime()) {
       end = new Date(max);
     }
-    if (end.getTime() <= safeStart.getTime()) {
+    if (!this.allowEndBeforeStart && end.getTime() <= safeStart.getTime()) {
       safeStart = min && max && max.getTime() > min.getTime()
         ? new Date(Math.max(min.getTime(), max.getTime() - minDurationMs))
         : safeStart;
