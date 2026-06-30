@@ -59,8 +59,7 @@ export class EventSubeventRuntimeInfoCardConverter
       mediaSubtitle: mode,
       metaRows: [
         dateLabel,
-        ...(location ? [location] : []),
-        ...(slotTimeframe ? [slotTimeframe] : [])
+        ...(location ? [location] : [])
       ],
       descriptionLines: 2,
       description: item.description || 'No description',

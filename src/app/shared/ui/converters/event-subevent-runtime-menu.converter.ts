@@ -25,6 +25,8 @@ export type EventSubeventRuntimeMenuContext =
       scope: 'stage-status';
       action: EventSubeventRuntimeStageAction;
       item: SubEventDTO;
+      parentEventId: string;
+      slotId: string | null;
       sourceId: string;
       subEventId: string | null;
       subEventIndex: number;
@@ -110,6 +112,8 @@ export class EventSubeventRuntimeMenuConverter {
 
     if (options.canManageTournament && sourceId) {
       items.push(...this.stageStatusItems(item, {
+        parentEventId,
+        slotId,
         sourceId,
         subEventId,
         subEventIndex,
@@ -153,6 +157,8 @@ export class EventSubeventRuntimeMenuConverter {
   private static stageStatusItems(
     item: SubEventDTO,
     options: {
+      parentEventId: string;
+      slotId: string | null;
       sourceId: string;
       subEventId: string | null;
       subEventIndex: number;
@@ -168,6 +174,8 @@ export class EventSubeventRuntimeMenuConverter {
     const stageLabel = `${item.name ?? `Stage ${options.stageNumber}`}`.trim() || `Stage ${options.stageNumber}`;
     const base = {
       item,
+      parentEventId: options.parentEventId,
+      slotId: options.slotId,
       sourceId: options.sourceId,
       subEventId: options.subEventId,
       subEventIndex: options.subEventIndex
@@ -332,6 +340,8 @@ export class EventSubeventRuntimeMenuConverter {
 
   private static stageActionItem(options: {
     item: SubEventDTO;
+    parentEventId: string;
+    slotId: string | null;
     sourceId: string;
     subEventId: string | null;
     subEventIndex: number;
@@ -358,6 +368,8 @@ export class EventSubeventRuntimeMenuConverter {
         scope: 'stage-status',
         action: options.action,
         item: options.item,
+        parentEventId: options.parentEventId,
+        slotId: options.slotId,
         sourceId: options.sourceId,
         subEventId: options.subEventId,
         subEventIndex: options.subEventIndex,

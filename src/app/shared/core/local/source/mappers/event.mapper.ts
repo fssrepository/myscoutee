@@ -226,11 +226,14 @@ export class LocalActivityEventsMapper {
     parentRecord: ActivityEventRecord,
     query: ActivityEventSubEventsQueryDTO | null | undefined
   ): SubEventsSlotSource[] {
-    if (!parentRecord || parentRecord.subEventsEnabled === false) {
+    if (!parentRecord) {
       return [];
     }
     if (this.isGeneratedSlotRecord(parentRecord)) {
       return [this.recordSlotSource(parentEventId, parentRecord)];
+    }
+    if (parentRecord.subEventsEnabled === false) {
+      return [];
     }
     const templates = parentRecord.slotsEnabled === true ? parentRecord.slotTemplates ?? [] : [];
     if (templates.length > 0) {

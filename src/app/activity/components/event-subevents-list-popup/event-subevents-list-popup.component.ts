@@ -709,8 +709,8 @@ export class EventSubeventsListPopupComponent {
   private async applyStageStatusAction(context: Extract<EventSubeventRuntimeMenuContext, { scope: 'stage-status' }>): Promise<void> {
     const userId = this.activeUserId();
     const section = this.slotSectionForItem(context.item);
-    const sourceId = `${section?.slot.parentEventId ?? this.event?.id ?? context.sourceId ?? ''}`.trim();
-    const slotSourceId = `${section?.slot.slotSourceId ?? ''}`.trim() || null;
+    const sourceId = `${context.parentEventId ?? section?.slot.parentEventId ?? this.event?.id ?? context.sourceId ?? ''}`.trim();
+    const slotSourceId = `${context.slotId ?? section?.slot.slotSourceId ?? ''}`.trim() || null;
     const action = `${context.action ?? ''}`.trim();
     if (!userId || !sourceId || !action) {
       throw new Error('Missing stage action target.');
@@ -894,7 +894,7 @@ export class EventSubeventsListPopupComponent {
 
   private isSubEventStageScheduled(item: SubEventDTO): boolean {
     const status = this.normalizeSubEventStageStatus(item.stageStatus);
-    if (status !== 'A' && status !== 'RS') {
+    if (status !== 'A') {
       return false;
     }
     if (!this.isSubEventStageAssignmentOpen(item)) {
@@ -911,8 +911,7 @@ export class EventSubeventsListPopupComponent {
     if (!this.isSubEventStageAssignmentOpen(item)) {
       return false;
     }
-    const startMs = this.dateMs(item.startAt);
-    return Number.isFinite(startMs) && startMs <= Date.now();
+    return true;
   }
 
   private canStartSubEventStage(item: SubEventDTO): boolean {

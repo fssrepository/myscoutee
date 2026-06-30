@@ -830,7 +830,14 @@ export class LocalEventsRepository {
       .map(id => table.byId[id])
       .find(record => record?.id === slotSourceId && record.parentEventId === parentEventId);
     if (slotRecord) {
-      return this.cloneSubEvents(slotRecord.subEvents) ?? [];
+      const persisted = this.cloneSubEvents(slotRecord.subEvents) ?? [];
+      if (persisted.length > 0) {
+        return persisted;
+      }
+      const generated = LocalActivityEventsMapper.toSubEventsSlots(parentEventId, slotRecord, null)[0] ?? null;
+      if (generated) {
+        return this.cloneSubEvents(generated.subEventItems) ?? [];
+      }
     }
     const parentRecord = this.computePreferredEventRecords(table)
       .find(record => record.id === parentEventId) ?? null;

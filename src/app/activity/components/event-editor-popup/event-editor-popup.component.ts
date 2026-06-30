@@ -431,6 +431,34 @@ export class EventEditorPopupComponent implements OnInit, OnDestroy {
     return AppUtils.parseDate(value);
   }
 
+  protected onEventDateRangeChange(value: {
+    startAt?: string | null;
+    endAt?: string | null;
+    precision?: 'date' | 'minute' | null;
+  } | null | undefined): void {
+    if (this.eventEditorStore.readOnly()) {
+      return;
+    }
+    const previous = this.eventDetailDTO.dateRange;
+    const normalized = ActivityEventDetailDTO.normalizeDateRange({
+      startAt: `${value?.startAt ?? previous.startAt ?? ''}`.trim(),
+      endAt: `${value?.endAt ?? previous.endAt ?? ''}`.trim(),
+      precision: value?.precision ?? previous.precision ?? 'minute'
+    });
+    const anchor = normalized.endAt !== previous.endAt && normalized.startAt === previous.startAt
+      ? 'end'
+      : 'start';
+    this.applyEventDateRange(this.eventDateRangeWithMinimum(normalized, anchor));
+  }
+
+  protected onSubEventDefinitionsChange(value: readonly ActivityContracts.SubEventDefinitionDTO[] | null | undefined): void {
+    if (this.eventStructureReadOnly()) {
+      return;
+    }
+    this.eventDetailDTO.subEventDefinitions = ActivityEventDetailDTO.normalizeSubEventDefinitions(value ?? []);
+    this.normalizeEventDateRange('start');
+  }
+
   private parseEventEditorOverrideDate(value: unknown): Date | null {
     return AppUtils.parseDateOnly(value);
   }
@@ -1456,7 +1484,7 @@ export class EventEditorPopupComponent implements OnInit, OnDestroy {
       return false;
     }
 
-    this.normalizeEventDateRange();
+    this.normalizeEventDateRange('start');
     this.normalizeEventSlotTemplates();
     this.syncFirstSubEventLocationFromMainEvent();
     const normalizedCapacity = this.eventDetailDTO.normalizeCapacityRange();
@@ -1682,7 +1710,7 @@ export class EventEditorPopupComponent implements OnInit, OnDestroy {
     this.publishedCapacityMaxFloor = Math.max(0, Number(dto.capacityMax ?? 0) || 0);
     this.eventDetailDTO = dto;
     this.eventDetailDTO.mode = dto.mode ?? 'Casual';
-    this.normalizeEventDateRange();
+    this.normalizeEventDateRange('start');
     this.eventVisibilityReady.set(true);
     this.seedDraftAutosaveSignature();
   }
@@ -1724,7 +1752,7 @@ export class EventEditorPopupComponent implements OnInit, OnDestroy {
     this.seedDraftAutosaveSignature();
   }
 
-  private normalizeEventDateRange(): void {
+  private normalizeEventDateRange(anchor: 'start' | 'end' = 'start'): void {
     const start = AppUtils.isoLocalDateTimeToDate(this.eventDetailDTO.dateRange.startAt);
     let end = AppUtils.isoLocalDateTimeToDate(this.eventDetailDTO.dateRange.endAt);
     if (!start || !end) {
@@ -1738,18 +1766,65 @@ export class EventEditorPopupComponent implements OnInit, OnDestroy {
       this.eventDetailDTO.frequency = this.slotFrequencyOptions[0] ?? 'Custom';
     }
 
-    if (end.getTime() <= start.getTime()) {
-      end = new Date(start.getTime() + (60 * 60 * 1000));
-    }
+    this.applyEventDateRange(this.eventDateRangeWithMinimum({
+      startAt: AppUtils.toIsoDateTimeLocal(start),
+      endAt: AppUtils.toIsoDateTimeLocal(end),
+      precision: 'minute'
+    }, anchor));
+    this.normalizeEventSlotTemplates();
+  }
 
-    this.eventDetailDTO.dateRange = {
+  private eventDateRangeWithMinimum(
+    range: { startAt: string; endAt: string; precision?: 'date' | 'minute' },
+    anchor: 'start' | 'end'
+  ): { startAt: string; endAt: string; precision: 'minute' } {
+    let start = AppUtils.isoLocalDateTimeToDate(range.startAt) ?? new Date();
+    let end = AppUtils.isoLocalDateTimeToDate(range.endAt) ?? new Date(start.getTime() + (60 * 60 * 1000));
+    const minimumDurationMs = Math.max(60 * 60 * 1000, this.subEventDefinitionsMinimumDurationMs());
+    if (end.getTime() - start.getTime() < minimumDurationMs) {
+      if (anchor === 'end') {
+        start = new Date(end.getTime() - minimumDurationMs);
+      } else {
+        end = new Date(start.getTime() + minimumDurationMs);
+      }
+    }
+    return {
       startAt: AppUtils.toIsoDateTimeLocal(start),
       endAt: AppUtils.toIsoDateTimeLocal(end),
       precision: 'minute'
     };
+  }
+
+  private applyEventDateRange(range: { startAt: string; endAt: string; precision?: 'date' | 'minute' }): void {
+    this.eventDetailDTO.dateRange = {
+      startAt: range.startAt,
+      endAt: range.endAt,
+      precision: 'minute'
+    };
     this.eventDetailDTO.startAtIso = this.eventDetailDTO.dateRange.startAt;
     this.eventDetailDTO.endAtIso = this.eventDetailDTO.dateRange.endAt;
-    this.normalizeEventSlotTemplates();
+  }
+
+  private subEventDefinitionsMinimumDurationMs(): number {
+    let previousStartOffsetMinutes = 0;
+    let previousEndOffsetMinutes = 0;
+    let hasPrevious = false;
+    let maxEndOffsetMinutes = 0;
+    for (const item of ActivityEventDetailDTO.normalizeSubEventDefinitions(this.eventDetailDTO.subEventDefinitions)) {
+      const durationMinutes = Math.max(0, Math.trunc(Number(item.durationMinutes) || 0));
+      const offsetMinutes = Math.max(0, Math.trunc(Number(item.offsetMinutes) || 0));
+      const timing = ActivityEventDetailDTO.normalizeSubEventDefinitionTiming(item.timing);
+      const startOffsetMinutes = !hasPrevious
+        ? offsetMinutes
+        : timing === 'During'
+          ? previousStartOffsetMinutes + offsetMinutes
+          : previousEndOffsetMinutes + offsetMinutes;
+      previousStartOffsetMinutes = startOffsetMinutes;
+      previousEndOffsetMinutes = startOffsetMinutes + durationMinutes;
+      maxEndOffsetMinutes = Math.max(maxEndOffsetMinutes, previousEndOffsetMinutes);
+      hasPrevious = true;
+    }
+    return maxEndOffsetMinutes * 60 * 1000;
   }
 
   private normalizeEventSlotTemplates(): void {
