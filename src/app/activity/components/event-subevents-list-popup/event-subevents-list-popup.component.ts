@@ -905,18 +905,23 @@ export class EventSubeventsListPopupComponent {
   }
 
   private isSubEventStageBlocked(item: SubEventDTO): boolean {
-    if (this.normalizeSubEventStageStatus(item.stageStatus) !== 'RS') {
-      return false;
-    }
     if (!this.isSubEventStageAssignmentOpen(item)) {
       return false;
     }
-    return true;
+    const status = this.normalizeSubEventStageStatus(item.stageStatus);
+    if (status === 'RS') {
+      return true;
+    }
+    if (status !== 'A') {
+      return false;
+    }
+    const endMs = this.dateMs(item.endAt);
+    return Number.isFinite(endMs) && endMs <= Date.now();
   }
 
   private canStartSubEventStage(item: SubEventDTO): boolean {
-    return this.isSubEventStageBlocked(item)
-      && this.subEventIndex(item) === 0;
+    return this.normalizeSubEventStageStatus(item.stageStatus) === 'RS'
+      && this.isSubEventStageAssignmentOpen(item);
   }
 
   private isSubEventStageAssignmentOpen(item: SubEventDTO): boolean {

@@ -1442,6 +1442,8 @@
     "spiritual.but.not.religious": "Spiritual but not religious",
     "sports": "Sports",
     "stage.status.finalized": "Finalized",
+    "stage.status.started": "Started",
+    "stage.status.closed": "Closed",
     "stage.status.blocked": "Blocked",
     "stage.status.review.to.start": "Review to start",
     "stage.status.scheduled": "Scheduled",

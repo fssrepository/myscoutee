@@ -205,7 +205,7 @@ export class EventSubeventRuntimeInfoCardConverter
       tone: Extract<InfoCardOverlayTone, 'stage-active' | 'stage-start' | 'stage-review' | 'stage-finalized' | 'stage-suspended'>;
     }> = {
       A: {
-        label: 'active',
+        label: 'stage.status.started',
         icon: 'play_circle',
         tone: 'stage-active'
       },
@@ -215,7 +215,7 @@ export class EventSubeventRuntimeInfoCardConverter
         tone: 'stage-start'
       },
       SR: {
-        label: 'under.review',
+        label: 'stage.status.closed',
         icon: 'rate_review',
         tone: 'stage-review'
       },

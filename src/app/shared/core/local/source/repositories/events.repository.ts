@@ -238,7 +238,7 @@ export class LocalEventsRepository {
       case 'suspend-tournament':
         return { action: normalizedAction, nextStatus: 'S', reason: normalizedReason || 'manual-suspension' };
       case 'resume-tournament':
-        return { action: normalizedAction, nextStatus: 'A', reason: normalizedReason || 'manual-resume' };
+        return { action: normalizedAction, nextStatus: 'SR', reason: normalizedReason || 'manual-resume' };
       default:
         return null;
     }
@@ -249,7 +249,7 @@ export class LocalEventsRepository {
     const status = this.normalizeStageStatus(stage?.stageStatus);
     switch (action) {
       case 'start-tournament':
-        return stageIndex === 0 && status === 'RS';
+        return status === 'RS' && this.isStageStartAllowed(stages, stageIndex);
       case 'close-stage':
         return status === 'A';
       case 'finalize-stage':
@@ -263,6 +263,16 @@ export class LocalEventsRepository {
       default:
         return false;
     }
+  }
+
+  private isStageStartAllowed(stages: readonly ContractTypes.SubEventDTO[], stageIndex: number): boolean {
+    if (stageIndex < 0 || stageIndex >= stages.length) {
+      return false;
+    }
+    if (stageIndex === 0) {
+      return true;
+    }
+    return this.normalizeStageStatus(stages[stageIndex - 1]?.stageStatus) === 'F';
   }
 
   private canReopenScores(stages: readonly ContractTypes.SubEventDTO[], stageIndex: number): boolean {

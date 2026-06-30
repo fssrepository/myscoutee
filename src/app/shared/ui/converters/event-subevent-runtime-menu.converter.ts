@@ -185,12 +185,12 @@ export class EventSubeventRuntimeMenuConverter {
       actions.push(this.stageActionItem({
         ...base,
         action: 'start-tournament',
-        label: 'Start Tournament',
+        label: 'Start Stage',
         icon: 'play_circle',
         palette: 'success',
         nextStatus: 'A',
         reason: 'tournament-started',
-        title: 'Start Tournament',
+        title: 'Start Stage',
         description: `Start ${stageLabel}? This locks admission and assigns first-stage rooms.`,
         confirmLabel: 'Start',
         busyLabel: 'Starting...',
@@ -245,7 +245,7 @@ export class EventSubeventRuntimeMenuConverter {
         destructive: false
       }));
     }
-    if (status !== 'RS' && status !== 'S' && status !== 'F' && options.isStageActive) {
+    if ((status === 'A' && options.isStageActive) || status === 'SR') {
       actions.push(this.stageActionItem({
         ...base,
         action: 'suspend-tournament',
@@ -268,10 +268,10 @@ export class EventSubeventRuntimeMenuConverter {
         label: 'Resume Tournament',
         icon: 'play_circle',
         palette: 'blue',
-        nextStatus: 'A',
+        nextStatus: 'SR',
         reason: 'manual-resume',
         title: 'Resume Tournament',
-        description: `Resume ${stageLabel} and set it back to active?`,
+        description: `Resume review for ${stageLabel}?`,
         confirmLabel: 'Resume',
         busyLabel: 'Resuming...',
         destructive: false

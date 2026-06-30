@@ -291,7 +291,7 @@ export class EventEditorPopupComponent implements OnInit, OnDestroy {
         start: { label: 'Start' },
         end: { label: 'End' }
       },
-      readOnly: this.eventStructureReadOnly()
+      readOnly: this.eventEditorStore.readOnly()
     };
   }
 

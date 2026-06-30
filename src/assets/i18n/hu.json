@@ -1431,6 +1431,8 @@
     "spiritual.but.not.religious": "Spirituális, de nem vallásos",
     "sports": "Sport",
     "stage.status.finalized": "Lezárva",
+    "stage.status.started": "Elindítva",
+    "stage.status.closed": "Befejezve",
     "stage.status.blocked": "Blokkolva",
     "stage.status.review.to.start": "Indítás felülvizsgálat alatt",
     "stage.status.scheduled": "Ütemezve",
