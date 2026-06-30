@@ -925,7 +925,8 @@ export class LocalEventsRepository {
       }
       const record = byId[`${normalizedOwnerId}:${subEventId}`];
       const state = record ? LocalActivitySubEventStageRuntimeMapper.toState(record) : null;
-      const fallbackGroupsCount = this.autoTournamentGroupCount(item, items, eventRecord);
+      const groupsCount = this.autoTournamentGroupCount(item, items, eventRecord)
+        + this.manualGroupRecords(normalizedOwnerId, subEventId).length;
       return {
         ...item,
         stageStatus: `${state?.stageStatus ?? ''}`.trim() || item.stageStatus,
@@ -933,7 +934,7 @@ export class LocalEventsRepository {
         stageStatusUpdatedAt: `${state?.stageStatusUpdatedAt ?? ''}`.trim() || item.stageStatusUpdatedAt,
         stageFinalizedAt: `${state?.stageFinalizedAt ?? ''}`.trim() || item.stageFinalizedAt,
         stageFinalizedByUserId: `${state?.stageFinalizedByUserId ?? ''}`.trim() || item.stageFinalizedByUserId,
-        groupsCount: state ? state.groupsCount ?? item.groupsCount : fallbackGroupsCount
+        groupsCount
       };
     });
   }
