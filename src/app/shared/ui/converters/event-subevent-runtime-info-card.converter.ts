@@ -52,13 +52,12 @@ export class EventSubeventRuntimeInfoCardConverter
       mediaSubtitle: mode,
       metaRows: [
         dateLabel,
-        ...(location ? [location] : [])
+        ...(location ? [location] : []),
+        ...(capacityDetailRow ? [capacityDetailRow] : [])
       ],
       descriptionLines: 2,
       description: item.description || 'No description',
-      detailRows: [
-        ...(capacityDetailRow ? [capacityDetailRow] : [])
-      ].filter(Boolean),
+      detailRows: [],
       surfaceTone: isTournament ? 'stage-runtime' : 'draft',
       accentHue: isTournament ? this.stageAccentHue(sequenceNumber, sequenceTotal) : null,
       leadingIcon: {

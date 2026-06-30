@@ -43,12 +43,6 @@
             <mat-icon>close</mat-icon>
           </button>
         </div>
-        @if (view.timingSummaryMeta || view.timingSummaryTitle) {
-          <div class="subevent-timing-summary" [class.subevent-timing-summary-slot]="view.slotBoundTiming">
-            <mat-icon>{{ view.slotBoundTiming ? 'schedule' : 'event' }}</mat-icon>
-            <span>{{ view.timingSummaryMeta || view.timingSummaryTitle }}</span>
-          </div>
-        }
       </div>
       <section class="experience-form-panel subevent-form-panel" [ngClass]="view.modeClass">
         <div class="experience-form-grid subevent-form-grid" [class.subevent-form-grid-with-insert]="view.showInsertControls">

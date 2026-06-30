@@ -30,7 +30,7 @@
   display: flex;
   width: 100%;
   min-width: 0;
-  min-height: 25rem;
+  min-height: 0;
   padding: 0.52rem;
   border: 1px solid var(--event-subevents-slot-section-border);
   border-radius: 14px;
@@ -122,20 +122,19 @@
 
 @media (min-width: 761px) {
   :host ::ng-deep .event-subevents-slot-section-list .smart-list__stage,
-  :host ::ng-deep .event-subevents-slot-section-list .smart-list__list,
-  :host ::ng-deep .event-subevents-slot-section-list .smart-list__item-shell,
-  :host ::ng-deep .event-subevents-slot-section-list app-info-card {
+  :host ::ng-deep .event-subevents-slot-section-list .smart-list__list {
     align-self: stretch;
   }
 
   :host ::ng-deep .event-subevents-slot-section-list .smart-list__item-shell,
   :host ::ng-deep .event-subevents-slot-section-list app-info-card {
     display: flex;
-    min-height: 100%;
+    align-self: flex-start;
+    min-height: 0;
   }
 
   :host ::ng-deep .event-subevents-slot-section-list .ui-info-card {
-    height: 100%;
+    height: auto;
     min-height: 15.35rem;
   }
 }
