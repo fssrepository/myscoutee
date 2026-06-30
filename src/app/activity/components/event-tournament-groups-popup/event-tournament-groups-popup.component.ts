@@ -388,14 +388,16 @@ export class EventTournamentGroupsPopupComponent {
     const contextBase = { stageId: stage.subEventId, groupId: group.id };
     const actionItems: AppMenuItem<string, TournamentGroupsActionContext>[] = [];
     if (this.canManageGroups()) {
-      actionItems.push(
-        {
+      if (this.canAddScoreToStage(stage)) {
+        actionItems.push({
           id: 'add-entry',
           label: this.entryActionLabel(stage),
           icon: this.entryActionIcon(stage),
           palette: 'blue',
           context: { ...contextBase, action: 'add-entry' }
-        },
+        });
+      }
+      actionItems.push(
         {
           id: 'edit-group',
           label: 'Szerkesztés',
@@ -905,6 +907,9 @@ export class EventTournamentGroupsPopupComponent {
     if (!this.canManageGroups() || this.isMutating) {
       return false;
     }
+    if (!this.canAddScoreToStage(this.viewModel().selectedStage)) {
+      return false;
+    }
     const members = this.entryMembers();
     if (this.selectedStageMode() === 'Fifa') {
       return members.some(member => member.id === this.entryForm.homeMemberId)
@@ -1270,6 +1275,10 @@ export class EventTournamentGroupsPopupComponent {
 
   private canInviteGroupMembers(group: ContractTypes.EventTournamentGroupDTO): boolean {
     return this.canManageGroups() && `${group.source ?? ''}`.toLowerCase() === 'manual';
+  }
+
+  private canAddScoreToStage(stage: ContractTypes.EventTournamentStageDTO | null | undefined): boolean {
+    return `${stage?.stageStatus ?? ''}`.trim().toUpperCase() === 'SR';
   }
 
   private activeUserId(): string {
@@ -1681,7 +1690,7 @@ export class EventTournamentGroupsPopupComponent {
     event?: Event
   ): void {
     event?.stopPropagation();
-    if (!this.canManageGroups()) {
+    if (!this.canManageGroups() || !this.canAddScoreToStage(stage)) {
       return;
     }
     const members = this.membersForGroup(group);
