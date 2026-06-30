@@ -722,6 +722,9 @@ export class EventSubeventsListPopupComponent {
     if (!result) {
       throw new Error('Stage action was not applied.');
     }
+    if (`${result.stageStatus ?? ''}`.trim() !== context.nextStatus) {
+      throw new Error('Stage action was not applied.');
+    }
     this.patchSubEventStageActionResult(context.item, result);
   }
 

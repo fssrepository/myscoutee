@@ -6,6 +6,7 @@ import { environment } from '../../../../../../environments/environment';
 
 import { AppUtils } from '../../../../app-utils';
 import { LocalMemoryDb } from '../../../common/app.db';
+import { LocalActivitySubEventStageRuntimeMapper } from '../mappers/activity.mapper';
 import { LocalActivityEventsMapper } from '../mappers/event.mapper';
 
 import { UserProfileState } from '../../../common/user-profile-state';
@@ -18,7 +19,13 @@ import {
   type ActivityEventScopeFilter,
   type ActivityEventRepositoryItemType
 } from '../../../contracts/activity.interface';
-import { ACTIVITY_MEMBERS_TABLE_NAME, type ActivityMemberRecord, type ActivityMembersRecordCollection } from '../entity/activity.entity';
+import {
+  ACTIVITY_MEMBERS_TABLE_NAME,
+  ACTIVITY_SUB_EVENT_STAGE_RUNTIME_TABLE_NAME,
+  type ActivityMemberRecord,
+  type ActivityMembersRecordCollection,
+  type ActivitySubEventStageRuntimeRecordCollection
+} from '../entity/activity.entity';
 import type * as ContractTypes from '../../../contracts';
 
 import type { LocationCoordinates } from '../../../contracts/user.interface';
@@ -249,16 +256,15 @@ export class LocalEventsRepository {
     const status = this.normalizeStageStatus(stage?.stageStatus);
     switch (action) {
       case 'start-tournament':
-        return status === 'RS' && !this.hasStageDatePassed(stage?.startAt);
+        return status === 'RS' && this.hasStageDatePassed(stage?.startAt);
       case 'close-stage':
-        return status === 'A' || (status === 'RS' && this.hasStageDatePassed(stage?.endAt));
+        return (status === 'A' || status === 'RS') && this.hasStageDatePassed(stage?.endAt);
       case 'finalize-stage':
         return status === 'SR';
       case 'reopen-scores':
         return status === 'F' && this.canReopenScores(stages, stageIndex);
       case 'suspend-tournament':
-        return status === 'SR'
-          || ((status === 'A' || status === 'RS') && this.isStageInScheduleWindow(stage));
+        return status === 'A' && this.isStageInScheduleWindow(stage);
       case 'resume-tournament':
         return status === 'S';
       default:
@@ -850,11 +856,11 @@ export class LocalEventsRepository {
     if (slotRecord) {
       const persisted = this.cloneSubEvents(slotRecord.subEvents) ?? [];
       if (persisted.length > 0) {
-        return persisted;
+        return this.withStageRuntimeStates(persisted, slotSourceId);
       }
       const generated = LocalActivityEventsMapper.toSubEventsSlots(parentEventId, slotRecord, null)[0] ?? null;
       if (generated) {
-        return this.cloneSubEvents(generated.subEventItems) ?? [];
+        return this.withStageRuntimeStates(this.cloneSubEvents(generated.subEventItems) ?? [], slotSourceId);
       }
     }
     const parentRecord = this.computePreferredEventRecords(table)
@@ -876,10 +882,41 @@ export class LocalEventsRepository {
       const slot = LocalActivityEventsMapper.toSubEventsSlots(parentEventId, parentRecord, query)
         .find(candidate => candidate.slotSourceId === slotSourceId || candidate.id === slotSourceId) ?? null;
       if (slot) {
-        return this.cloneSubEvents(slot.subEventItems) ?? [];
+        return this.withStageRuntimeStates(this.cloneSubEvents(slot.subEventItems) ?? [], slotSourceId);
       }
     }
     return [];
+  }
+
+  private withStageRuntimeStates(
+    items: ContractTypes.SubEventDTO[],
+    ownerId: string
+  ): ContractTypes.SubEventDTO[] {
+    const normalizedOwnerId = `${ownerId ?? ''}`.trim();
+    if (!normalizedOwnerId || items.length === 0) {
+      return items;
+    }
+    const table = this.memoryDb.read()[ACTIVITY_SUB_EVENT_STAGE_RUNTIME_TABLE_NAME] as Partial<ActivitySubEventStageRuntimeRecordCollection> | undefined;
+    const byId = table?.byId ?? {};
+    return items.map(item => {
+      const subEventId = `${item.id ?? ''}`.trim();
+      if (!subEventId) {
+        return item;
+      }
+      const record = byId[`${normalizedOwnerId}:${subEventId}`];
+      const state = record ? LocalActivitySubEventStageRuntimeMapper.toState(record) : null;
+      if (!state) {
+        return item;
+      }
+      return {
+        ...item,
+        stageStatus: `${state.stageStatus ?? ''}`.trim() || item.stageStatus,
+        stageStatusReason: `${state.stageStatusReason ?? ''}`.trim() || item.stageStatusReason,
+        stageStatusUpdatedAt: `${state.stageStatusUpdatedAt ?? ''}`.trim() || item.stageStatusUpdatedAt,
+        stageFinalizedAt: `${state.stageFinalizedAt ?? ''}`.trim() || item.stageFinalizedAt,
+        stageFinalizedByUserId: `${state.stageFinalizedByUserId ?? ''}`.trim() || item.stageFinalizedByUserId
+      };
+    });
   }
 
   private generatedSlotDateFromSourceId(parentEventId: string, slotSourceId: string): string | null {

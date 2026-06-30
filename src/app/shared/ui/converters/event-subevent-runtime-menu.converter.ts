@@ -165,9 +165,9 @@ export class EventSubeventRuntimeMenuConverter {
   ): AppMenuItem<EventSubeventRuntimeMenuItemId, EventSubeventRuntimeMenuContext>[] {
     const status = this.stageStatus(item);
     const isErrorStatus = this.rawStageStatus(item.stageStatus) === 'E';
-    const isStageActive = this.isStageActiveBySchedule(item, status, options.nowMs);
-    const isStageWindowOpen = this.isStageInScheduleWindow(item, options.nowMs);
+    const isStageStartPassed = this.hasDatePassed(item.startAt, options.nowMs);
     const isStageEnded = this.hasDatePassed(item.endAt, options.nowMs);
+    const isStageWindowOpen = this.isStageInScheduleWindow(item, options.nowMs);
     const actions: AppMenuItem<EventSubeventRuntimeMenuItemId, EventSubeventRuntimeMenuContext>[] = [];
     const stageLabel = `${item.name ?? `Stage ${options.stageNumber}`}`.trim() || `Stage ${options.stageNumber}`;
     const base = {
@@ -179,7 +179,7 @@ export class EventSubeventRuntimeMenuConverter {
       subEventIndex: options.subEventIndex
     };
 
-    if (status === 'RS' && !isErrorStatus && !this.hasDatePassed(item.startAt, options.nowMs)) {
+    if (status === 'RS' && !isErrorStatus && isStageStartPassed) {
       actions.push(this.stageActionItem({
         ...base,
         action: 'start-tournament',
@@ -195,7 +195,7 @@ export class EventSubeventRuntimeMenuConverter {
         destructive: false
       }));
     }
-    if ((status === 'A' && isStageActive) || (status === 'RS' && !isErrorStatus && isStageEnded)) {
+    if (((status === 'RS' && !isErrorStatus) || status === 'A') && isStageEnded) {
       actions.push(this.stageActionItem({
         ...base,
         action: 'close-stage',
@@ -243,7 +243,7 @@ export class EventSubeventRuntimeMenuConverter {
         destructive: false
       }));
     }
-    if ((status === 'A' && isStageWindowOpen) || status === 'SR' || (status === 'RS' && !isErrorStatus && isStageWindowOpen)) {
+    if (status === 'A' && isStageWindowOpen) {
       actions.push(this.stageActionItem({
         ...base,
         action: 'suspend-tournament',
@@ -415,18 +415,6 @@ export class EventSubeventRuntimeMenuConverter {
 
   private static canReopenScores(item: SubEventDTO): boolean {
     return this.stageStatus(item) === 'F';
-  }
-
-  private static isStageActiveBySchedule(
-    item: SubEventDTO,
-    status: TournamentStageStatus,
-    nowMs: number
-  ): boolean {
-    if (status !== 'A') {
-      return false;
-    }
-    const startMs = Date.parse(`${item.startAt ?? ''}`);
-    return !Number.isFinite(startMs) || startMs <= nowMs;
   }
 
   private static isStageInScheduleWindow(item: SubEventDTO, nowMs: number): boolean {

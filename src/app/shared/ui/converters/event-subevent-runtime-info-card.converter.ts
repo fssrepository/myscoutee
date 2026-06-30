@@ -191,10 +191,11 @@ export class EventSubeventRuntimeInfoCardConverter
     if (status === 'A' && !this.isStageActiveBySchedule(item, rawStatus, nowMs)) {
       return null;
     }
+    const scoreReviewStatus = this.scoreReviewStatusBadge(item);
     const map: Record<TournamentStageStatus, {
       label: string;
       icon: string;
-      tone: Extract<InfoCardOverlayTone, 'stage-active' | 'stage-start' | 'stage-review' | 'stage-finalized' | 'stage-suspended'>;
+      tone: Extract<InfoCardOverlayTone, 'stage-active' | 'stage-scheduled' | 'stage-start' | 'stage-review' | 'stage-finalized' | 'stage-suspended'>;
     }> = {
       A: {
         label: 'stage.status.started',
@@ -202,14 +203,14 @@ export class EventSubeventRuntimeInfoCardConverter
         tone: 'stage-active'
       },
       RS: {
-        label: 'stage.status.review.to.start',
-        icon: 'pending_actions',
-        tone: 'stage-start'
+        label: 'stage.status.scheduled',
+        icon: 'schedule',
+        tone: 'stage-scheduled'
       },
       SR: {
-        label: 'stage.status.closed',
-        icon: 'rate_review',
-        tone: 'stage-review'
+        label: scoreReviewStatus.label,
+        icon: scoreReviewStatus.icon,
+        tone: scoreReviewStatus.tone
       },
       F: {
         label: 'stage.status.finalized',
@@ -232,6 +233,26 @@ export class EventSubeventRuntimeInfoCardConverter
     };
   }
 
+  private static scoreReviewStatusBadge(item: SubEventDTO): {
+    label: string;
+    icon: string;
+    tone: Extract<InfoCardOverlayTone, 'stage-start' | 'stage-review'>;
+  } {
+    const reason = `${item.stageStatusReason ?? ''}`.trim();
+    if (reason === 'scores-reopened') {
+      return {
+        label: 'stage.status.scores.review',
+        icon: 'edit_note',
+        tone: 'stage-start'
+      };
+    }
+    return {
+      label: 'stage.status.closed',
+      icon: 'rate_review',
+      tone: 'stage-review'
+    };
+  }
+
   private static isStageActiveBySchedule(item: SubEventDTO, rawStatus: string, nowMs: number): boolean {
     if (rawStatus !== 'A') {
       return false;
@@ -241,7 +262,7 @@ export class EventSubeventRuntimeInfoCardConverter
   }
 
   private static isStageScheduledBySchedule(item: SubEventDTO, rawStatus: string, nowMs: number): boolean {
-    if (rawStatus !== 'A') {
+    if (rawStatus !== 'A' && rawStatus !== 'RS') {
       return false;
     }
     const startMs = this.dateMs(item.startAt);
