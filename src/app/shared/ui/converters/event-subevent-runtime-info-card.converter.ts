@@ -24,9 +24,6 @@ export class EventSubeventRuntimeInfoCardConverter
     options: EventSubeventRuntimeInfoCardConverterOptions = {}
   ): InfoCardData {
     const mode = this.resolveMode(item, options);
-    const accepted = Math.max(0, Math.trunc(Number(item.membersAccepted) || 0));
-    const max = Math.max(accepted, Math.trunc(Number(item.capacityMax) || 0));
-    const capacity = max > 0 ? `${accepted} / ${max}` : `${accepted}`;
     const slotTimeframe = `${options.slotTimeframe ?? ''}`.trim();
     const dateLabel = AppUtils.dateTimeRangeLabel(item.startAt, item.endAt, slotTimeframe || 'Date unavailable');
     const location = `${item.location ?? options.event?.location ?? ''}`.trim();
@@ -41,6 +38,7 @@ export class EventSubeventRuntimeInfoCardConverter
       : null;
     const runtimeIcon = isTournament ? 'emoji_events' : 'inventory_2';
     const menuBadgeCount = Math.max(0, Math.trunc(Number(options.menuBadgeCount) || 0));
+    const capacityDetailRow = this.capacityDetailRow(item, mode);
 
     return {
       id: `${options.cardId ?? item.id ?? ''}`.trim(),
@@ -59,7 +57,7 @@ export class EventSubeventRuntimeInfoCardConverter
       descriptionLines: 2,
       description: item.description || 'No description',
       detailRows: [
-        `Capacity ${capacity}`
+        ...(capacityDetailRow ? [capacityDetailRow] : [])
       ].filter(Boolean),
       surfaceTone: isTournament ? 'stage-runtime' : 'draft',
       accentHue: isTournament ? this.stageAccentHue(sequenceNumber, sequenceTotal) : null,
@@ -162,6 +160,44 @@ export class EventSubeventRuntimeInfoCardConverter
       || normalized === 'SR'
       || normalized === 'F'
       || normalized === 'S';
+  }
+
+  private static capacityDetailRow(item: SubEventDTO, mode: EventMode): string | null {
+    if (mode === 'Tournament') {
+      const groupCapacity = this.tournamentGroupCapacityLabel(item);
+      return groupCapacity ? `Group capacity ${groupCapacity}` : null;
+    }
+    if (!item.optional) {
+      return null;
+    }
+    const accepted = Math.max(0, this.nonNegativeInteger(item.membersAccepted));
+    const max = Math.max(accepted, this.nonNegativeInteger(item.capacityMax));
+    return max > 0 || accepted > 0 ? `Capacity ${max > 0 ? `${accepted} / ${max}` : `${accepted}`}` : null;
+  }
+
+  private static tournamentGroupCapacityLabel(item: SubEventDTO): string | null {
+    const configuredMin = this.nonNegativeInteger(item.tournamentGroupCapacityMin);
+    const configuredMax = Math.max(configuredMin, this.nonNegativeInteger(item.tournamentGroupCapacityMax));
+    if (configuredMin > 0 || configuredMax > 0) {
+      return `${configuredMin} - ${configuredMax}`;
+    }
+    const groups = item.groups ?? [];
+    if (groups.length === 0) {
+      return null;
+    }
+    const min = groups.reduce((lowest, group) => {
+      const value = this.nonNegativeInteger(group.capacityMin);
+      return lowest === null ? value : Math.min(lowest, value);
+    }, null as number | null);
+    const max = groups.reduce((highest, group) => Math.max(highest, this.nonNegativeInteger(group.capacityMax)), 0);
+    const resolvedMin = Math.max(0, min ?? 0);
+    const resolvedMax = Math.max(resolvedMin, max);
+    return resolvedMin > 0 || resolvedMax > 0 ? `${resolvedMin} - ${resolvedMax}` : null;
+  }
+
+  private static nonNegativeInteger(value: unknown): number {
+    const parsed = Math.trunc(Number(value));
+    return Number.isFinite(parsed) ? Math.max(0, parsed) : 0;
   }
 
   private static stageStatusBadge(

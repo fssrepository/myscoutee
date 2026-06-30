@@ -246,13 +246,13 @@ export class EventSubeventDefinitionsPanelComponent implements ControlValueAcces
   }
 
   protected definitionCard(item: SubEventDefinitionDTO, index: number): InfoCardData {
-    const capacityLabel = `${item.capacityMin} - ${item.capacityMax}`;
     const isTournament = this.mode === 'Tournament';
     const stageNumber = index + 1;
     const totalStages = Math.max(this.definitions.length, 1);
     const accentHue = isTournament ? this.stageAccentHue(stageNumber, totalStages) : null;
     const sequenceLabel = isTournament ? `Stage ${stageNumber}` : `Sub Event ${stageNumber}`;
     const status = this.definitionStatus(item);
+    const capacityMetaRow = this.definitionCapacityMetaRow(item, isTournament);
     return {
       id: item.id,
       title: item.name,
@@ -265,7 +265,7 @@ export class EventSubeventDefinitionsPanelComponent implements ControlValueAcces
         index > 0
           ? this.definitionTimingLabel(item, index)
           : `Duration ${this.durationLabel(item.durationMinutes)}`,
-        `Capacity ${capacityLabel}`
+        ...(capacityMetaRow ? [capacityMetaRow] : [])
       ],
       description: item.description || 'No description',
       descriptionLines: 2,
@@ -295,6 +295,20 @@ export class EventSubeventDefinitionsPanelComponent implements ControlValueAcces
       },
       menuActions: this.canConfigureDefinitions() ? ['edit', 'delete'] : []
     };
+  }
+
+  private definitionCapacityMetaRow(item: SubEventDefinitionDTO, isTournament: boolean): string | null {
+    if (isTournament) {
+      const min = this.toNonNegativeInteger(item.tournamentGroupCapacityMin ?? 0);
+      const max = Math.max(min, this.toNonNegativeInteger(item.tournamentGroupCapacityMax ?? min));
+      return min > 0 || max > 0 ? `Group capacity ${min} - ${max}` : null;
+    }
+    if (!item.optional) {
+      return null;
+    }
+    const min = this.toNonNegativeInteger(item.capacityMin);
+    const max = Math.max(min, this.toNonNegativeInteger(item.capacityMax));
+    return min > 0 || max > 0 ? `Capacity ${min} - ${max}` : null;
   }
 
   private definitionStatus(item: SubEventDefinitionDTO): {
