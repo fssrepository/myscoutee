@@ -3929,16 +3929,13 @@ export class EventChatPopupComponent implements OnDestroy {
     subEvent: ContractTypes.SubEventDTO | null
   ): SelectedChatGroupState | null {
     const groupId = `${chat.groupId ?? ''}`.trim();
-    if (!groupId || !subEvent?.groups?.length) {
+    if (!groupId || !subEvent) {
       return null;
     }
-    const group = subEvent.groups.find(item => item.id === groupId);
-    return group
-      ? {
-          id: group.id,
-          label: group.name
-        }
-      : null;
+    return {
+      id: groupId,
+      label: groupId
+    };
   }
 
   private resolveSelectedChatResourceState(
@@ -3985,8 +3982,7 @@ export class EventChatPopupComponent implements OnDestroy {
 
   private cloneSubEvent(subEvent: ContractTypes.SubEventDTO): ContractTypes.SubEventDTO {
     return {
-      ...subEvent,
-      groups: subEvent.groups?.map(group => ({ ...group })) ?? []
+      ...subEvent
     };
   }
 

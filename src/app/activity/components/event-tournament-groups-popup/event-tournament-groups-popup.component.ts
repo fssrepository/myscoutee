@@ -1209,7 +1209,6 @@ export class EventTournamentGroupsPopupComponent {
       location: stage.location,
       startAt: stage.startAt,
       endAt: stage.endAt,
-      groups: this.subEventGroupsForStage(stage),
       optional: false,
       capacityMin,
       capacityMax,
@@ -1227,7 +1226,6 @@ export class EventTournamentGroupsPopupComponent {
       accommodationCapacityMax: 0,
       suppliesCapacityMin: 0,
       suppliesCapacityMax: 0,
-      tournamentGroupCount: stage.groups.length,
       tournamentGroupCapacityMin: capacityMin,
       tournamentGroupCapacityMax: capacityMax,
       tournamentLeaderboardType: stage.leaderboardType === 'Fifa' ? 'Fifa' : 'Score',
@@ -1256,16 +1254,6 @@ export class EventTournamentGroupsPopupComponent {
       ), 0),
       capacityMax: bounds.capacityMax
     };
-  }
-
-  private subEventGroupsForStage(stage: ContractTypes.EventTournamentStageDTO): ContractTypes.SubEventGroupDTO[] {
-    return stage.groups.map(group => ({
-      id: group.id,
-      name: group.name,
-      capacityMin: group.capacityMin,
-      capacityMax: group.capacityMax,
-      source: group.source === 'manual' || group.source === 'generated' ? group.source : undefined
-    }));
   }
 
   private resourceMetricLabel(stageId: string, type: AssetType): string {

@@ -11,18 +11,11 @@ import { SeedUserBuilder } from './user-seed.builder';
 import { SEED_SCHEDULE_REFERENCE_DATE } from '../seed-constants';
 
 type ChatSeedUser = Pick<UserDto, 'id' | 'name' | 'initials' | 'gender' | 'images'>;
-type ChatSeedSubEventGroup = {
-  id: string;
-  name: string;
-  capacityMin?: number | null;
-  capacityMax?: number | null;
-};
 type ChatSeedSubEvent = {
   id: string;
   name: string;
   optional?: boolean;
   startAt: string;
-  groups?: ChatSeedSubEventGroup[];
   capacityMax?: number | null;
   membersAccepted?: number | null;
   membersPending?: number | null;
@@ -254,11 +247,6 @@ export class SeedChatsBuilder {
           if (optionalChat) {
             items.push(optionalChat);
           }
-          continue;
-        }
-        const groupChat = this.buildGroupContextChat(normalizedOwnerUserId, record, subEvent, stageLabel);
-        if (groupChat) {
-          items.push(groupChat);
         }
       }
     }
@@ -391,40 +379,6 @@ export class SeedChatsBuilder {
     }, ownerUserId);
   }
 
-  private static buildGroupContextChat(
-    ownerUserId: string,
-    record: ActivityEventRecord,
-    subEvent: ChatSeedSubEvent,
-    stageLabel: string
-  ): ChatRecord | null {
-    const groups = [...(subEvent.groups ?? [])];
-    if (groups.length === 0) {
-      return null;
-    }
-    const groupId = SeedEventBuilder.seededTournamentGroupIdForUser(record.id, subEvent.id, groups, ownerUserId);
-    const group = groups.find(entry => entry.id === groupId) ?? groups[0] ?? null;
-    if (!group) {
-      return null;
-    }
-    const targetAccepted = this.estimateGroupAcceptedCount(subEvent, group, groups);
-    const seededMembers = this.seedEventMemberIds(ownerUserId, record, Math.max(this.countValue(record.acceptedMembers), groups.length * 2))
-      .filter(userId => SeedEventBuilder.seededTournamentGroupIdForUser(record.id, subEvent.id, groups, userId) === group.id);
-    const memberIds = this.uniqueUserIds([ownerUserId, ...seededMembers]).slice(0, Math.max(1, targetAccepted));
-    const eventTitle = record.title.trim() || 'Event';
-    return this.createContextChatItem({
-      id: `c-context-group-${record.id}-${subEvent.id}-${group.id}`,
-      title: `${group.name} · Group Channel`,
-      lastMessage: `${stageLabel} group channel in ${eventTitle}.`,
-      eventId: record.id,
-      subEventId: subEvent.id,
-      groupId: group.id,
-      channelType: 'groupSubEvent',
-      memberIds,
-      dateIso: subEvent.startAt || record.startAtIso,
-      unread: this.estimateGroupPendingCount(subEvent, group, groups)
-    }, ownerUserId);
-  }
-
   private static createContextChatItem(input: {
     id: string;
     title: string;
@@ -470,39 +424,6 @@ export class SeedChatsBuilder {
         ownerUserId
       )
     ]);
-  }
-
-  private static estimateGroupAcceptedCount(
-    subEvent: ChatSeedSubEvent,
-    group: ChatSeedSubEventGroup,
-    groups: ChatSeedSubEventGroup[]
-  ): number {
-    const acceptedBase = this.countValue(subEvent.membersAccepted);
-    const stageCapacity = Math.max(
-      1,
-      this.countValue(subEvent.capacityMax),
-      groups.reduce((sum, item) => sum + this.countValue(item.capacityMax), 0),
-      acceptedBase
-    );
-    const groupCapacity = Math.max(1, this.countValue(group.capacityMax));
-    return Math.max(1, Math.min(groupCapacity, Math.round(acceptedBase * (groupCapacity / stageCapacity))));
-  }
-
-  private static estimateGroupPendingCount(
-    subEvent: ChatSeedSubEvent,
-    group: ChatSeedSubEventGroup,
-    groups: ChatSeedSubEventGroup[]
-  ): number {
-    const pendingBase = this.countValue(subEvent.membersPending);
-    const stageCapacity = Math.max(
-      1,
-      this.countValue(subEvent.capacityMax),
-      groups.reduce((sum, item) => sum + this.countValue(item.capacityMax), 0),
-      pendingBase
-    );
-    const groupCapacity = Math.max(1, this.countValue(group.capacityMax));
-    const sharedPending = Math.round(pendingBase * (groupCapacity / stageCapacity));
-    return Math.max(0, sharedPending);
   }
 
   private static sumSubEventPending(
@@ -557,12 +478,6 @@ export class SeedChatsBuilder {
         name: `${item.name ?? ''}`.trim() || `Sub Event ${index + 1}`,
         optional: item.optional === true,
         startAt,
-        groups: (item.groups ?? []).map(group => ({
-          id: `${group.id ?? ''}`.trim(),
-          name: `${group.name ?? ''}`.trim(),
-          capacityMin: group.capacityMin,
-          capacityMax: group.capacityMax
-        })).filter(group => group.id.length > 0),
         capacityMax: item.capacityMax ?? item.tournamentGroupCapacityMax ?? null,
         membersAccepted: 0,
         membersPending: 0,

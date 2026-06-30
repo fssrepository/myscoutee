@@ -566,8 +566,6 @@ export class LocalActivityEventsMapper {
           startAt: startAt.toISOString(),
           endAt: endAt.toISOString(),
           location: `${item.location ?? ''}`.trim(),
-          groups: (item.groups ?? []).map(group => ({ ...group })),
-          tournamentGroupCount: item.tournamentGroupCount,
           tournamentGroupCapacityMin: item.tournamentGroupCapacityMin,
           tournamentGroupCapacityMax: item.tournamentGroupCapacityMax,
           tournamentLeaderboardType: item.tournamentLeaderboardType,
@@ -614,9 +612,7 @@ export class LocalActivityEventsMapper {
   private static isTournamentStageDefinition(item: SubEventDefinitionDTO): boolean {
     return item.optional !== true
       && (
-        (item.groups?.length ?? 0) > 0
-        || (item.tournamentGroupCount ?? 0) > 0
-        || (item.tournamentGroupCapacityMin ?? 0) > 0
+        (item.tournamentGroupCapacityMin ?? 0) > 0
         || (item.tournamentGroupCapacityMax ?? 0) > 0
         || item.tournamentLeaderboardType === 'Score'
         || item.tournamentLeaderboardType === 'Fifa'
@@ -930,8 +926,20 @@ export class LocalActivityEventDetailsMapper {
     });
   }
 
-  private static inferredEventMode(items: readonly { optional?: boolean; groups?: readonly unknown[] }[]): EventContracts.EventMode {
-    if (items.some(item => !item.optional && (item.groups?.length ?? 0) > 0)) {
+  private static inferredEventMode(
+    items: readonly {
+      optional?: boolean;
+      tournamentGroupCapacityMin?: number | null;
+      tournamentGroupCapacityMax?: number | null;
+      tournamentLeaderboardType?: string | null;
+    }[]
+  ): EventContracts.EventMode {
+    if (items.some(item => !item.optional && (
+      (item.tournamentGroupCapacityMin ?? 0) > 0
+      || (item.tournamentGroupCapacityMax ?? 0) > 0
+      || item.tournamentLeaderboardType === 'Score'
+      || item.tournamentLeaderboardType === 'Fifa'
+    ))) {
       return 'Tournament';
     }
     return 'Casual';
@@ -1125,8 +1133,6 @@ export class LocalActivityEventDetailsMapper {
         pricing: this.clonePricingConfig(item.pricing),
         capacityMin,
         capacityMax,
-        groups: this.cloneSubEventGroups(item.groups, index),
-        tournamentGroupCount: this.optionalNonNegativeInteger(item.tournamentGroupCount),
         tournamentGroupCapacityMin: this.optionalNonNegativeInteger(item.tournamentGroupCapacityMin),
         tournamentGroupCapacityMax: this.optionalNonNegativeInteger(item.tournamentGroupCapacityMax),
         tournamentLeaderboardType: item.tournamentLeaderboardType === 'Fifa' ? 'Fifa' : 'Score',
@@ -1155,19 +1161,6 @@ export class LocalActivityEventDetailsMapper {
         stageFinalizedByUserId: `${item.stageFinalizedByUserId ?? ''}`.trim() || undefined
       };
     });
-  }
-
-  private static cloneSubEventGroups(
-    groups: readonly EventContracts.SubEventGroupDTO[] | undefined,
-    subEventIndex = 0
-  ): EventContracts.SubEventGroupDTO[] {
-    return (groups ?? []).map((group, groupIndex) => ({
-      id: `${group.id ?? `group-${subEventIndex + 1}-${groupIndex + 1}`}`.trim() || `group-${subEventIndex + 1}-${groupIndex + 1}`,
-      name: `${group.name ?? `Group ${String.fromCharCode(65 + (groupIndex % 26))}`}`.trim(),
-      source: group.source === 'manual' ? 'manual' : 'generated',
-      capacityMin: this.optionalNonNegativeInteger(group.capacityMin),
-      capacityMax: this.optionalNonNegativeInteger(group.capacityMax)
-    }));
   }
 
   private static clonePricingConfig(value: PricingContracts.PricingConfig | null | undefined): PricingContracts.PricingConfig | null {

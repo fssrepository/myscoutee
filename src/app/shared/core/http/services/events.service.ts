@@ -996,7 +996,6 @@ export class HttpEventsService implements IEventsService {
         topics: [...(record.topics ?? [])],
         subEvents: (record.subEvents ?? []).map(item => ({
           ...item,
-          groups: Array.isArray(item.groups) ? item.groups.map(group => ({ ...group })) : [],
           pricing: item.pricing ? PricingBuilder.clonePricingConfig(item.pricing) : undefined
         })),
         mode: ActivityEventDetailDTO.normalizeMode(record.mode),

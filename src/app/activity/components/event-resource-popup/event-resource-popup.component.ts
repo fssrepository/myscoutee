@@ -2690,10 +2690,7 @@ export class EventResourcePopupComponent {
   private cloneSubEvent(subEvent: ContractTypes.SubEventDTO): ContractTypes.SubEventDTO {
     return {
       ...subEvent,
-      pricing: subEvent.pricing ? PricingBuilder.clonePricingConfig(subEvent.pricing) : undefined,
-      groups: Array.isArray(subEvent.groups)
-        ? subEvent.groups.map(group => ({ ...group }))
-        : []
+      pricing: subEvent.pricing ? PricingBuilder.clonePricingConfig(subEvent.pricing) : undefined
     };
   }
 

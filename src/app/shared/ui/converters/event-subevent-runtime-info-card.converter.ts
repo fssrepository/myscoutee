@@ -145,10 +145,10 @@ export class EventSubeventRuntimeInfoCardConverter
   }
 
   private static isTournamentStage(item: SubEventDTO): boolean {
-    return (item.groups?.length ?? 0) > 0
-      || (Number(item.tournamentGroupCount) || 0) > 0
-      || item.tournamentLeaderboardType === 'Score'
+    return item.tournamentLeaderboardType === 'Score'
       || item.tournamentLeaderboardType === 'Fifa'
+      || this.nonNegativeInteger(item.tournamentGroupCapacityMin) > 0
+      || this.nonNegativeInteger(item.tournamentGroupCapacityMax) > 0
       || this.hasStageStatus(item.stageStatus);
   }
 
@@ -180,18 +180,7 @@ export class EventSubeventRuntimeInfoCardConverter
     if (configuredMin > 0 || configuredMax > 0) {
       return `${configuredMin} - ${configuredMax}`;
     }
-    const groups = item.groups ?? [];
-    if (groups.length === 0) {
-      return null;
-    }
-    const min = groups.reduce((lowest, group) => {
-      const value = this.nonNegativeInteger(group.capacityMin);
-      return lowest === null ? value : Math.min(lowest, value);
-    }, null as number | null);
-    const max = groups.reduce((highest, group) => Math.max(highest, this.nonNegativeInteger(group.capacityMax)), 0);
-    const resolvedMin = Math.max(0, min ?? 0);
-    const resolvedMax = Math.max(resolvedMin, max);
-    return resolvedMin > 0 || resolvedMax > 0 ? `${resolvedMin} - ${resolvedMax}` : null;
+    return null;
   }
 
   private static nonNegativeInteger(value: unknown): number {

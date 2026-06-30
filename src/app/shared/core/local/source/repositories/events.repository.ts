@@ -925,8 +925,7 @@ export class LocalEventsRepository {
       }
       const record = byId[`${normalizedOwnerId}:${subEventId}`];
       const state = record ? LocalActivitySubEventStageRuntimeMapper.toState(record) : null;
-      const displayGroupsCount = this.autoTournamentGroupCount(item, items, eventRecord)
-        + this.manualGroupRecords(normalizedOwnerId, subEventId).length;
+      const fallbackGroupsCount = this.autoTournamentGroupCount(item, items, eventRecord);
       return {
         ...item,
         stageStatus: `${state?.stageStatus ?? ''}`.trim() || item.stageStatus,
@@ -934,7 +933,7 @@ export class LocalEventsRepository {
         stageStatusUpdatedAt: `${state?.stageStatusUpdatedAt ?? ''}`.trim() || item.stageStatusUpdatedAt,
         stageFinalizedAt: `${state?.stageFinalizedAt ?? ''}`.trim() || item.stageFinalizedAt,
         stageFinalizedByUserId: `${state?.stageFinalizedByUserId ?? ''}`.trim() || item.stageFinalizedByUserId,
-        groupsCount: displayGroupsCount
+        groupsCount: state ? state.groupsCount ?? item.groupsCount : fallbackGroupsCount
       };
     });
   }
@@ -2387,7 +2386,10 @@ export class LocalEventsRepository {
     stages?: readonly ContractTypes.SubEventDTO[] | null,
     eventRecord?: ActivityEventRecord | null
   ): ContractTypes.SubEventGroupDTO[] {
-    const groups = stage.groups?.length ? stage.groups : this.localGeneratedGroups(stage, stages, eventRecord);
+    const generatedGroups = this.hasTournamentGroupCapacityRule(stage)
+      ? this.localGeneratedGroups(stage, stages, eventRecord)
+      : [];
+    const groups = generatedGroups;
     return groups
       .map((group, index): ContractTypes.SubEventGroupDTO => {
         const capacityMin = Math.max(0, Math.trunc(Number(group.capacityMin ?? stage.tournamentGroupCapacityMin ?? 0) || 0));
@@ -2424,36 +2426,6 @@ export class LocalEventsRepository {
       .map(record => this.manualGroupToDto(record))
       .filter((group): group is ContractTypes.SubEventGroupDTO => Boolean(group));
     return [...generated, ...manual];
-  }
-
-  private stageWithTournamentGroups(
-    stage: ContractTypes.SubEventDTO,
-    groups: readonly ContractTypes.SubEventGroupDTO[]
-  ): ContractTypes.SubEventDTO {
-    const normalizedGroups = groups.map(group => ({ ...group }));
-    const totals = this.tournamentGroupCapacityTotals(normalizedGroups);
-    return {
-      ...stage,
-      groups: normalizedGroups,
-      tournamentGroupCount: normalizedGroups.length > 0 ? normalizedGroups.length : undefined,
-      capacityMin: normalizedGroups.length > 0 ? totals.min : stage.capacityMin,
-      capacityMax: normalizedGroups.length > 0 ? totals.max : stage.capacityMax,
-      membersPending: Math.max(0, (normalizedGroups.length > 0 ? totals.max : Math.max(0, Number(stage.capacityMax) || 0)) - Math.max(0, Number(stage.membersAccepted) || 0))
-    };
-  }
-
-  private tournamentGroupCapacityTotals(groups: readonly ContractTypes.SubEventGroupDTO[]): { min: number; max: number } {
-    return groups.reduce(
-      (total, group) => {
-        const min = Math.max(0, Math.trunc(Number(group.capacityMin) || 0));
-        const max = Math.max(min, Math.trunc(Number(group.capacityMax) || min));
-        return {
-          min: total.min + min,
-          max: total.max + max
-        };
-      },
-      { min: 0, max: 0 }
-    );
   }
 
   private nextTournamentGroupId(
@@ -2649,21 +2621,29 @@ export class LocalEventsRepository {
           eventsBySourceId.set(sourceId, eventRecord);
         }
       }
+      const parentEventRecord = eventsBySourceId.get(normalizedParentId) ?? null;
+      const autoCountByStageKey = new Map<string, number>();
       const nowMs = Date.now();
       const nowIso = new Date(nowMs).toISOString();
       let changed = false;
       let nextTable = runtimeTable;
       for (const record of records) {
-        const eventRecord = eventsBySourceId.get(record.ownerId)
-          ?? eventsBySourceId.get(normalizedParentId)
-          ?? null;
-        const stages = this.cloneSubEvents(eventRecord?.subEvents) ?? [];
-        const stage = stages
-          .find(item => `${item.id ?? ''}`.trim() === record.subEventId) ?? null;
-        if (!stage) {
-          continue;
+        const eventRecord = record.ownerId === normalizedParentId
+          ? parentEventRecord
+          : parentEventRecord ?? eventsBySourceId.get(record.ownerId) ?? null;
+        const autoCountKey = `${eventRecord?.id ?? normalizedParentId}:${record.subEventId}`;
+        let autoCount = autoCountByStageKey.get(autoCountKey);
+        if (autoCount === undefined) {
+          const stages = this.cloneSubEvents(eventRecord?.subEvents) ?? [];
+          const stage = stages
+            .find(item => `${item.id ?? ''}`.trim() === record.subEventId) ?? null;
+          if (!stage) {
+            continue;
+          }
+          autoCount = this.autoTournamentGroupCount(stage, stages, eventRecord);
+          autoCountByStageKey.set(autoCountKey, autoCount);
         }
-        const groupsCount = this.autoTournamentGroupCount(stage, stages, eventRecord)
+        const groupsCount = autoCount
           + this.manualGroupRecords(record.ownerId, record.subEventId, groupsTable).length;
         if (record.groupsCount === groupsCount) {
           continue;
@@ -2870,23 +2850,21 @@ export class LocalEventsRepository {
     if (!stage) {
       return 0;
     }
-    if (stage.groups?.length) {
-      return stage.groups.length;
-    }
-    const explicitCount = Math.max(0, Math.trunc(Number(stage.tournamentGroupCount) || 0));
-    if (explicitCount > 0) {
-      return explicitCount;
-    }
     const groupMin = Math.max(0, Math.trunc(Number(stage.tournamentGroupCapacityMin) || 0));
     const groupMax = Math.max(groupMin, Math.trunc(Number(stage.tournamentGroupCapacityMax) || groupMin));
-    if (groupMin <= 0 && groupMax <= 0) {
-      return 0;
+    if (groupMin > 0 || groupMax > 0) {
+      const divisor = Math.max(1, groupMax > 0 ? groupMax : groupMin);
+      const stageMax = incomingCapacityMax > 0
+        ? incomingCapacityMax
+        : Math.max(0, Math.trunc(Number(stage.capacityMax) || 0));
+      return stageMax > 0 ? Math.max(1, Math.ceil(stageMax / divisor)) : 0;
     }
-    const divisor = Math.max(1, groupMax > 0 ? groupMax : groupMin);
-    const stageMax = incomingCapacityMax > 0
-      ? incomingCapacityMax
-      : Math.max(0, Math.trunc(Number(stage.capacityMax) || 0));
-    return stageMax > 0 ? Math.max(1, Math.ceil(stageMax / divisor)) : 0;
+    return 0;
+  }
+
+  private hasTournamentGroupCapacityRule(stage: ContractTypes.SubEventDTO | null | undefined): boolean {
+    return this.toNonNegativeInteger(stage?.tournamentGroupCapacityMin) > 0
+      || this.toNonNegativeInteger(stage?.tournamentGroupCapacityMax) > 0;
   }
 
   private sameStage(left: ContractTypes.SubEventDTO | null | undefined, right: ContractTypes.SubEventDTO | null | undefined): boolean {
@@ -2899,9 +2877,7 @@ export class LocalEventsRepository {
     return Boolean(stage)
       && stage?.optional !== true
       && (
-        (stage?.groups?.length ?? 0) > 0
-        || this.toNonNegativeInteger(stage?.tournamentGroupCount) > 0
-        || this.toNonNegativeInteger(stage?.tournamentGroupCapacityMin) > 0
+        this.toNonNegativeInteger(stage?.tournamentGroupCapacityMin) > 0
         || this.toNonNegativeInteger(stage?.tournamentGroupCapacityMax) > 0
         || stage?.tournamentLeaderboardType === 'Score'
         || stage?.tournamentLeaderboardType === 'Fifa'
@@ -2956,9 +2932,7 @@ export class LocalEventsRepository {
   private isGeneratedTournamentStage(item: ContractTypes.SubEventDTO): boolean {
     return !item.optional
       && (
-        (item.groups?.length ?? 0) > 0
-        || (item.tournamentGroupCount ?? 0) > 0
-        || (item.tournamentGroupCapacityMin ?? 0) > 0
+        (item.tournamentGroupCapacityMin ?? 0) > 0
         || (item.tournamentGroupCapacityMax ?? 0) > 0
         || item.tournamentLeaderboardType === 'Score'
         || item.tournamentLeaderboardType === 'Fifa'

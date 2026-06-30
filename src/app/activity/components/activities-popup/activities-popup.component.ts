@@ -3818,10 +3818,7 @@ export class ActivitiesPopupComponent implements OnDestroy {
 
   protected cloneSyncedSubEventForms(items: readonly ContractTypes.SubEventDTO[]): ContractTypes.SubEventDTO[] {
     return items.map(item => ({
-      ...item,
-      groups: Array.isArray(item.groups)
-        ? item.groups.map(group => ({ ...group }))
-        : []
+      ...item
     }));
   }
 

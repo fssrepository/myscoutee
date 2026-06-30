@@ -393,8 +393,6 @@ export interface SubEventDefinitionDTO {
   offsetMinutes: number;
   durationMinutes: number;
   location?: string;
-  groups?: EventContracts.SubEventGroupDTO[];
-  tournamentGroupCount?: number;
   tournamentGroupCapacityMin?: number;
   tournamentGroupCapacityMax?: number;
   tournamentLeaderboardType?: EventContracts.TournamentLeaderboardType;
@@ -589,8 +587,8 @@ export class ActivityEventDetailDTO {
     }
     const normalizedLocation = ActivityEventDetailDTO.normalizeLocation(location);
     this.subEvents = this.subEvents.map(item => item.id === first.id
-      ? { ...item, location: normalizedLocation, groups: ActivityEventDetailDTO.cloneSubEventGroups(item.groups) }
-      : { ...item, groups: ActivityEventDetailDTO.cloneSubEventGroups(item.groups) });
+      ? { ...item, location: normalizedLocation }
+      : { ...item });
     return this;
   }
 
@@ -641,8 +639,6 @@ export class ActivityEventDetailDTO {
         offsetMinutes,
         durationMinutes,
         location: ActivityEventDetailDTO.normalizeLocation(item.location),
-        groups: ActivityEventDetailDTO.cloneSubEventGroups(item.groups, index),
-        tournamentGroupCount: ActivityEventDetailDTO.optionalNonNegativeInteger(item.tournamentGroupCount),
         tournamentGroupCapacityMin: ActivityEventDetailDTO.optionalNonNegativeInteger(item.tournamentGroupCapacityMin),
         tournamentGroupCapacityMax: ActivityEventDetailDTO.optionalNonNegativeInteger(item.tournamentGroupCapacityMax),
         tournamentLeaderboardType: item.tournamentLeaderboardType === 'Fifa' ? 'Fifa' : 'Score',
@@ -691,8 +687,6 @@ export class ActivityEventDetailDTO {
         pricing: ActivityEventDetailDTO.clonePricingConfig(item.pricing),
         capacityMin,
         capacityMax,
-        groups: ActivityEventDetailDTO.cloneSubEventGroups(item.groups, index),
-        tournamentGroupCount: ActivityEventDetailDTO.optionalNonNegativeInteger(item.tournamentGroupCount),
         tournamentGroupCapacityMin: ActivityEventDetailDTO.optionalNonNegativeInteger(item.tournamentGroupCapacityMin),
         tournamentGroupCapacityMax: ActivityEventDetailDTO.optionalNonNegativeInteger(item.tournamentGroupCapacityMax),
         tournamentLeaderboardType: item.tournamentLeaderboardType === 'Fifa' ? 'Fifa' : 'Score',
@@ -818,19 +812,6 @@ export class ActivityEventDetailDTO {
     }
 
     return `${normalizedFrequency} · ${dateLabel} · ${startTime} - ${endTime}`;
-  }
-
-  private static cloneSubEventGroups(
-    groups: readonly EventContracts.SubEventGroupDTO[] | undefined,
-    subEventIndex = 0
-  ): EventContracts.SubEventGroupDTO[] {
-    return (groups ?? []).map((group, groupIndex) => ({
-      id: `${group.id ?? `group-${subEventIndex + 1}-${groupIndex + 1}`}`.trim() || `group-${subEventIndex + 1}-${groupIndex + 1}`,
-      name: `${group.name ?? `Group ${String.fromCharCode(65 + (groupIndex % 26))}`}`.trim(),
-      source: group.source === 'manual' ? 'manual' : 'generated',
-      capacityMin: ActivityEventDetailDTO.optionalNonNegativeInteger(group.capacityMin),
-      capacityMax: ActivityEventDetailDTO.optionalNonNegativeInteger(group.capacityMax)
-    }));
   }
 
   private static clonePricingConfig(value: PricingContracts.PricingConfig | null | undefined): PricingContracts.PricingConfig | null {

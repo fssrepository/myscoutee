@@ -135,20 +135,6 @@ function buildCheckoutDemoSubEventDefinitions(options: {
   ];
 }
 
-function buildTournamentDemoGroups(
-  sourceId: string,
-  stageIndex: number,
-  groups: readonly { name: string; min: number; max: number }[]
-): ContractTypes.SubEventGroupDTO[] {
-  return groups.map((group, groupIndex) => ({
-    id: `${sourceId}-stage-${stageIndex + 1}-group-${groupIndex + 1}`,
-    name: group.name,
-    capacityMin: group.min,
-    capacityMax: group.max,
-    source: 'manual'
-  }));
-}
-
 function buildTournamentDemoStageDefinition(options: {
   sourceId: string;
   index: number;
@@ -161,9 +147,10 @@ function buildTournamentDemoStageDefinition(options: {
   leaderboardType: ContractTypes.TournamentLeaderboardType;
   advancePerGroup: number;
 }): ContractTypes.SubEventDefinitionDTO {
-  const groups = buildTournamentDemoGroups(options.sourceId, options.index, options.groups);
-  const capacityMin = groups.reduce((total, group) => total + Math.max(0, Number(group.capacityMin) || 0), 0);
-  const capacityMax = groups.reduce((total, group) => total + Math.max(0, Number(group.capacityMax) || 0), 0);
+  const capacityMin = options.groups.reduce((total, group) => total + Math.max(0, Number(group.min) || 0), 0);
+  const capacityMax = options.groups.reduce((total, group) => total + Math.max(0, Number(group.max) || 0), 0);
+  const groupCapacityMin = Math.max(0, ...options.groups.map(group => Number(group.min) || 0));
+  const groupCapacityMax = Math.max(groupCapacityMin, ...options.groups.map(group => Number(group.max) || 0));
   return {
     id: `${options.sourceId}-stage-${options.index + 1}`,
     name: options.name,
@@ -172,10 +159,8 @@ function buildTournamentDemoStageDefinition(options: {
     offsetMinutes: options.offsetMinutes,
     durationMinutes: options.durationMinutes,
     location: 'Seattle · Demo Court',
-    groups,
-    tournamentGroupCount: groups.length,
-    tournamentGroupCapacityMin: Math.max(0, ...groups.map(group => Number(group.capacityMin) || 0)),
-    tournamentGroupCapacityMax: Math.max(0, ...groups.map(group => Number(group.capacityMax) || 0)),
+    tournamentGroupCapacityMin: groupCapacityMin,
+    tournamentGroupCapacityMax: groupCapacityMax,
     tournamentLeaderboardType: options.leaderboardType,
     tournamentAdvancePerGroup: options.advancePerGroup,
     optional: false,
@@ -1501,7 +1486,6 @@ export class SeedEventsBuilder {
       subEventsEnabled: record.subEventsEnabled !== false,
       subEventDefinitions: (record.subEventDefinitions ?? []).map(item => ({
         ...item,
-        groups: (item.groups ?? []).map(group => ({ ...group })),
         pricing: item.pricing ? PricingBuilder.clonePricingConfig(item.pricing) : item.pricing
       })),
       subEvents: []
@@ -2268,10 +2252,7 @@ export class SeedEventsBuilder {
     }
     return items.map(item => ({
       ...item,
-      pricing: item.pricing ? PricingBuilder.clonePricingConfig(item.pricing) : item.pricing,
-      groups: Array.isArray(item.groups)
-        ? item.groups.map((group: ContractTypes.SubEventGroupDTO) => ({ ...group }))
-        : []
+      pricing: item.pricing ? PricingBuilder.clonePricingConfig(item.pricing) : item.pricing
     }));
   }
 

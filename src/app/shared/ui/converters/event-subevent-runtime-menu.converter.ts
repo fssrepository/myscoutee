@@ -292,10 +292,10 @@ export class EventSubeventRuntimeMenuConverter {
   }
 
   private static isTournamentStage(item: SubEventDTO): boolean {
-    return (item.groups?.length ?? 0) > 0
-      || (Number(item.tournamentGroupCount) || 0) > 0
-      || item.tournamentLeaderboardType === 'Score'
+    return item.tournamentLeaderboardType === 'Score'
       || item.tournamentLeaderboardType === 'Fifa'
+      || Math.max(0, this.toInteger(item.tournamentGroupCapacityMin)) > 0
+      || Math.max(0, this.toInteger(item.tournamentGroupCapacityMax)) > 0
       || this.hasStageStatus(item.stageStatus);
   }
 

@@ -1959,12 +1959,7 @@ export class AssetPopupComponent {
     if (!context) {
       return;
     }
-    const nextSubEvent = {
-      ...context.subEvent,
-      groups: Array.isArray(context.subEvent.groups)
-        ? context.subEvent.groups.map(group => ({ ...group }))
-        : []
-    };
+    const nextSubEvent = { ...context.subEvent };
     const cars = this.subEventAssetCapacityMetrics(nextSubEvent, 'Car');
     const accommodation = this.subEventAssetCapacityMetrics(nextSubEvent, 'Accommodation');
     const supplies = this.subEventAssetCapacityMetrics(nextSubEvent, 'Supplies');

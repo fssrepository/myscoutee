@@ -328,10 +328,7 @@ export class SubEventResourcePopupStore {
       revision,
       ownerId: context.ownerId,
       subEventId: context.subEvent.id,
-      subEvent: {
-        ...context.subEvent,
-        groups: context.subEvent.groups?.map(group => ({ ...group })) ?? []
-      }
+      subEvent: { ...context.subEvent }
     });
   }
 

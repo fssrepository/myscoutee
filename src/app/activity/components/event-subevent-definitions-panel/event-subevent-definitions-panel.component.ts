@@ -40,7 +40,6 @@ interface SubEventDefinitionFormState {
   index: number | null;
   id: string;
   icon: string | null;
-  groups: EventContracts.SubEventGroupDTO[];
   model: EventSubeventStageFormModel;
   insertPlacement: EventSubeventStageInsertPlacement;
   insertTargetId: string | null;
@@ -381,7 +380,6 @@ export class EventSubeventDefinitionsPanelComponent implements ControlValueAcces
       index: null,
       id: `subevent-definition-${Date.now()}`,
       icon: null,
-      groups: [],
       model,
       insertPlacement: 'after',
       insertTargetId: this.definitions[this.definitions.length - 1]?.id ?? null
@@ -541,7 +539,6 @@ export class EventSubeventDefinitionsPanelComponent implements ControlValueAcces
       index,
       id: item.id,
       icon: item.icon ?? null,
-      groups: (item.groups ?? []).map(group => ({ ...group })),
       model: this.createDefinitionFormModel(item, index + 1),
       insertPlacement: this.insertPlacementFromDefinitionTiming(item.timing),
       insertTargetId: item.id
@@ -608,8 +605,6 @@ export class EventSubeventDefinitionsPanelComponent implements ControlValueAcces
       offsetMinutes: this.toNonNegativeInteger(model.offsetMinutes ?? 0),
       durationMinutes: this.toPositiveInteger(model.durationMinutes),
       location: `${model.location ?? ''}`.trim(),
-      groups: state.groups.map(group => ({ ...group })),
-      tournamentGroupCount: this.optionalNonNegativeInteger(model.tournamentGroupCount),
       tournamentGroupCapacityMin: groupCapacityMin,
       tournamentGroupCapacityMax: Math.max(groupCapacityMin ?? 0, groupCapacityMax ?? groupCapacityMin ?? 0),
       tournamentLeaderboardType: this.normalizedTournamentLeaderboardType(model.tournamentLeaderboardType),

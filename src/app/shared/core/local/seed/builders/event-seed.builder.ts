@@ -105,7 +105,12 @@ export class SeedEventBuilder {
   }
 
   static inferredEventModeFromDefinitions(items: readonly ContractTypes.SubEventDefinitionDTO[]): ContractTypes.EventMode {
-    if (items.some(item => !item.optional && ((item.groups?.length ?? 0) > 0 || (item.tournamentGroupCount ?? 0) > 0))) {
+    if (items.some(item => !item.optional && (
+      (item.tournamentGroupCapacityMin ?? 0) > 0
+      || (item.tournamentGroupCapacityMax ?? 0) > 0
+      || item.tournamentLeaderboardType === 'Score'
+      || item.tournamentLeaderboardType === 'Fifa'
+    ))) {
       return 'Tournament';
     }
     return 'Casual';
@@ -138,7 +143,6 @@ export class SeedEventBuilder {
         timing: index === 0 ? 'During' : 'After',
         offsetMinutes: 0,
         durationMinutes,
-        groups: [],
         optional,
         capacityMin,
         capacityMax,
@@ -164,19 +168,10 @@ export class SeedEventBuilder {
     for (let index = 0; index < stageCount; index += 1) {
       const groupCount = Math.max(1, 4 >> index);
       const basePerGroupMax = Math.max(2, Math.ceil(Math.max(2, eventMax) / Math.max(1, groupCount * (index + 1))));
-      const groups: ContractTypes.SubEventGroupDTO[] = [];
-      for (let groupIndex = 0; groupIndex < groupCount; groupIndex += 1) {
-        const groupMax = Math.max(2, basePerGroupMax - (groupIndex % 2));
-        const groupMin = Math.max(0, Math.floor(groupMax * 0.6));
-        groups.push({
-          id: `seed-${source.id}-s${index + 1}-g${groupIndex + 1}`,
-          name: `Group ${String.fromCharCode(65 + groupIndex)}`,
-          capacityMin: groupMin,
-          capacityMax: groupMax,
-          source: 'generated'
-        });
-      }
-      const totals = this.groupCapacityTotals(groups);
+      const groupCapacityMax = basePerGroupMax;
+      const groupCapacityMin = Math.max(0, Math.floor(groupCapacityMax * 0.6));
+      const capacityMin = groupCount * groupCapacityMin;
+      const capacityMax = groupCount * groupCapacityMax;
       const stageStartMs = startMs + (index * slotMs);
       const stageEndMs = index === stageCount - 1 ? endMs : Math.min(endMs, stageStartMs + slotMs);
       const durationMinutes = Math.max(45, Math.round((Math.max(stageStartMs + (45 * 60 * 1000), stageEndMs) - stageStartMs) / 60000));
@@ -187,15 +182,13 @@ export class SeedEventBuilder {
         timing: index === 0 ? 'During' : 'After',
         offsetMinutes: 0,
         durationMinutes,
-        groups,
-        tournamentGroupCount: groups.length,
-        tournamentGroupCapacityMin: Math.max(0, ...groups.map(group => Number(group.capacityMin) || 0)),
-        tournamentGroupCapacityMax: Math.max(0, ...groups.map(group => Number(group.capacityMax) || 0)),
+        tournamentGroupCapacityMin: groupCapacityMin,
+        tournamentGroupCapacityMax: groupCapacityMax,
         tournamentLeaderboardType: (seed + index) % 2 === 0 ? 'Score' : 'Fifa',
         tournamentAdvancePerGroup: index === stageCount - 1 ? 0 : Math.max(1, 2 - index),
         optional: false,
-        capacityMin: totals.min,
-        capacityMax: totals.max,
+        capacityMin,
+        capacityMax,
         icon: 'emoji_events'
       });
     }
@@ -213,17 +206,4 @@ export class SeedEventBuilder {
     return Math.max(0, Math.trunc(parsed));
   }
 
-  private static groupCapacityTotals(groups: readonly ContractTypes.SubEventGroupDTO[]): { min: number; max: number } {
-    let min = 0;
-    let max = 0;
-    for (const group of groups) {
-      const groupMin = Number(group.capacityMin);
-      const groupMax = Number(group.capacityMax);
-      const normalizedMin = Number.isFinite(groupMin) ? Math.max(0, Math.trunc(groupMin)) : 0;
-      const normalizedMax = Number.isFinite(groupMax) ? Math.max(normalizedMin, Math.trunc(groupMax)) : normalizedMin;
-      min += normalizedMin;
-      max += normalizedMax;
-    }
-    return { min, max };
-  }
 }

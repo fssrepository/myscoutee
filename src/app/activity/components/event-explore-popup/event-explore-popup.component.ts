@@ -2000,12 +2000,7 @@ export class EventExplorePopupComponent {
       sourceLink: record.sourceLink,
       topics: [...record.topics],
       subEvents: Array.isArray(record.subEvents)
-        ? record.subEvents.map(item => ({
-            ...item,
-            groups: Array.isArray(item.groups)
-              ? item.groups.map(group => ({ ...group }))
-              : []
-          }))
+        ? record.subEvents.map(item => ({ ...item }))
         : undefined,
       mode: record.mode,
       paymentSessionId
