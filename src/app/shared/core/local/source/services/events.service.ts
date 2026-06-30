@@ -51,7 +51,8 @@ import type {
   ActivityEventSubEventsQueryDTO,
   ActivityEventSubEventsResultDTO,
   ActivitySubEventStageRuntimeStateDTO,
-  ActivitySubEventResourceStateDTO
+  ActivitySubEventResourceStateDTO,
+  SubEventDefinitionDTO
 } from '../../../contracts/activity.interface';
 import type { IEventsService } from '../../../contracts/activity.interface';
 
@@ -287,17 +288,84 @@ export class LocalEventsService extends LocalRouteDelayService implements IEvent
   async syncEventSnapshot(payload: ActivityEventDetailDTO): Promise<ActivityEventRecord | null> {
     await this.waitForRouteDelay(LocalEventsService.EVENTS_ROUTE);
     const record = LocalActivityEventDetailsMapper.toRecord(payload);
+    const existingRecord = this.eventsRepository.queryEventRecordById(record.userId, record.id);
     const savedRecord = this.eventsRepository.saveEventSnapshot(record);
+    const runtimeChanged = this.markDeletedRuntimeStateForRemovedDefinitions(existingRecord, savedRecord ?? record);
     await this.eventsRepository.flushToIndexedDb();
+    if (runtimeChanged) {
+      await this.activityResourcesRepository.flushToIndexedDb();
+      await this.activitySubEventStageRuntimeRepository.flushToIndexedDb();
+    }
     return savedRecord;
   }
 
   async saveActivityEvent(payload: ActivityEventDetailDTO): Promise<ActivityEventDTO | null> {
     await this.waitForRouteDelay(LocalEventsService.EVENTS_ROUTE);
     const record = LocalActivityEventDetailsMapper.toRecord(payload);
+    const existingRecord = this.eventsRepository.queryEventRecordById(record.userId, record.id);
     const savedRecord = this.eventsRepository.saveEventSnapshot(record);
+    const runtimeChanged = this.markDeletedRuntimeStateForRemovedDefinitions(existingRecord, savedRecord ?? record);
     await this.eventsRepository.flushToIndexedDb();
+    if (runtimeChanged) {
+      await this.activityResourcesRepository.flushToIndexedDb();
+      await this.activitySubEventStageRuntimeRepository.flushToIndexedDb();
+    }
     return savedRecord ? LocalActivityEventsMapper.toDto(savedRecord) : null;
+  }
+
+  private markDeletedRuntimeStateForRemovedDefinitions(
+    previous: ActivityEventRecord | null,
+    next: ActivityEventRecord | null
+  ): boolean {
+    if (!previous || !next) {
+      return false;
+    }
+    const removedSubEventIds = this.removedSubEventDefinitionIds(previous, next);
+    if (removedSubEventIds.length === 0) {
+      return false;
+    }
+    const parentEventId = `${next.id ?? previous.id ?? ''}`.trim();
+    if (!parentEventId) {
+      return false;
+    }
+    const resourceChanges = this.activityResourcesRepository.markRecordsDeletedByParentSubEventIds(
+      parentEventId,
+      removedSubEventIds
+    );
+    const stageRuntimeChanges = this.activitySubEventStageRuntimeRepository.markRecordsDeletedByParentSubEventIds(
+      parentEventId,
+      removedSubEventIds
+    );
+    return resourceChanges > 0 || stageRuntimeChanges > 0;
+  }
+
+  private removedSubEventDefinitionIds(
+    previous: ActivityEventRecord,
+    next: ActivityEventRecord
+  ): string[] {
+    const nextIds = new Set(this.subEventDefinitionIds(next));
+    return this.subEventDefinitionIds(previous).filter(id => !nextIds.has(id));
+  }
+
+  private subEventDefinitionIds(record: ActivityEventRecord): string[] {
+    const ids: string[] = [];
+    const seen = new Set<string>();
+    const addIds = (definitions: readonly SubEventDefinitionDTO[] | null | undefined): void => {
+      (definitions ?? []).forEach((definition, index) => {
+        const id = `${definition?.id ?? ''}`.trim() || this.fallbackSubEventId(index);
+        if (id && !seen.has(id)) {
+          seen.add(id);
+          ids.push(id);
+        }
+      });
+    };
+    addIds(record.subEventDefinitions);
+    (record.slotTemplates ?? []).forEach(template => addIds(template.subEventDefinitions));
+    return ids;
+  }
+
+  private fallbackSubEventId(index: number): string {
+    return `subevent-${Math.max(1, index + 1)}`;
   }
 
   async trashItem(userId: string, sourceId: string): Promise<void> {

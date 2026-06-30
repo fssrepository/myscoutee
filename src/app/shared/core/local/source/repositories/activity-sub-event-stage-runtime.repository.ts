@@ -14,6 +14,7 @@ import type * as AppDTOs from '../../../contracts';
   providedIn: 'root'
 })
 export class LocalActivitySubEventStageRuntimeRepository {
+  private static readonly STATUS_DELETED = 'D';
   private readonly memoryDb = inject(LocalMemoryDb);
 
   async flushToIndexedDb(): Promise<void> {
@@ -36,7 +37,8 @@ export class LocalActivitySubEventStageRuntimeRepository {
     ));
     return ids
       .map(id => table.byId[id])
-      .filter((record): record is ActivitySubEventStageRuntimeRecord => Boolean(record) && recordIds.has(record.id))
+      .filter((record): record is ActivitySubEventStageRuntimeRecord =>
+        Boolean(record) && recordIds.has(record.id) && !LocalActivitySubEventStageRuntimeMapper.isDeleted(record))
       .map(record => LocalActivitySubEventStageRuntimeMapper.cloneRecord(record));
   }
 
@@ -49,7 +51,9 @@ export class LocalActivitySubEventStageRuntimeRepository {
     }
     const table = this.normalizeCollection(this.memoryDb.read()[ACTIVITY_SUB_EVENT_STAGE_RUNTIME_TABLE_NAME]);
     const record = table.byId[LocalActivitySubEventStageRuntimeMapper.recordId(normalizedRef)];
-    return record ? LocalActivitySubEventStageRuntimeMapper.cloneRecord(record) : null;
+    return record && !LocalActivitySubEventStageRuntimeMapper.isDeleted(record)
+      ? LocalActivitySubEventStageRuntimeMapper.cloneRecord(record)
+      : null;
   }
 
   replaceRecord(
@@ -68,6 +72,47 @@ export class LocalActivitySubEventStageRuntimeRepository {
       };
     });
     return this.peekRecord(normalizedRef);
+  }
+
+  markRecordsDeletedByParentSubEventIds(parentEventId: string, subEventIds: readonly string[]): number {
+    const normalizedParentEventId = `${parentEventId ?? ''}`.trim();
+    const normalizedSubEventIds = new Set(
+      (subEventIds ?? []).map(id => `${id ?? ''}`.trim()).filter(Boolean)
+    );
+    if (!normalizedParentEventId || normalizedSubEventIds.size === 0) {
+      return 0;
+    }
+    const nowMs = Date.now();
+    const nowIso = new Date(nowMs).toISOString();
+    let changedCount = 0;
+    this.memoryDb.write(currentState => {
+      const table = this.normalizeCollection(currentState[ACTIVITY_SUB_EVENT_STAGE_RUNTIME_TABLE_NAME]);
+      const byId = { ...table.byId };
+      for (const id of table.ids) {
+        const record = byId[id];
+        if (!record
+          || LocalActivitySubEventStageRuntimeMapper.isDeleted(record)
+          || !this.isRuntimeOwnerRecord(record.ownerId, normalizedParentEventId)
+          || !normalizedSubEventIds.has(`${record.subEventId ?? ''}`.trim())) {
+          continue;
+        }
+        byId[id] = {
+          ...record,
+          status: LocalActivitySubEventStageRuntimeRepository.STATUS_DELETED,
+          updatedMs: nowMs,
+          updatedAtIso: nowIso
+        };
+        changedCount += 1;
+      }
+      return {
+        ...currentState,
+        [ACTIVITY_SUB_EVENT_STAGE_RUNTIME_TABLE_NAME]: {
+          ...table,
+          byId
+        }
+      };
+    });
+    return changedCount;
   }
 
   private normalizeCollection(value: unknown): ActivitySubEventStageRuntimeRecordCollection {
@@ -130,5 +175,10 @@ export class LocalActivitySubEventStageRuntimeRepository {
       ids,
       idsByOwnerKey
     };
+  }
+
+  private isRuntimeOwnerRecord(ownerId: string | null | undefined, parentEventId: string): boolean {
+    const normalizedOwnerId = `${ownerId ?? ''}`.trim();
+    return normalizedOwnerId === parentEventId || normalizedOwnerId.startsWith(`${parentEventId}:`);
   }
 }

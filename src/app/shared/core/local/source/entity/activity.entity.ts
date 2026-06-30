@@ -73,6 +73,7 @@ export type ActivitySubEventSupplyContributionsByAssetIdRecord = Record<string, 
 
 export interface ActivitySubEventResourceRecord {
   id: string;
+  status?: string | null;
   ownerId: string;
   subEventId: string;
   assetOwnerUserId: string;
@@ -97,6 +98,7 @@ export type ActivityResourcesMemorySchema = Record<typeof ACTIVITY_RESOURCES_TAB
 
 export interface ActivitySubEventStageRuntimeRecord {
   id: string;
+  status?: string | null;
   ownerId: string;
   subEventId: string;
   stageStatus: string | null;

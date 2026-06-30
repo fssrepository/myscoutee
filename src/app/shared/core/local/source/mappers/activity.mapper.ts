@@ -240,6 +240,9 @@ export class LocalActivityMembersBuilder {
 }
 
 export class LocalActivityResourcesMapper {
+  private static readonly STATUS_ACTIVE = 'A';
+  private static readonly STATUS_DELETED = 'D';
+
   static normalizeRef(
     ref: AppDTOs.ActivitySubEventResourceStateRefDTO | null | undefined
   ): AppDTOs.ActivitySubEventResourceStateRefDTO | null {
@@ -279,6 +282,7 @@ export class LocalActivityResourcesMapper {
     const nowIso = new Date(nowMs).toISOString();
     return {
       id: this.recordId(state),
+      status: this.STATUS_ACTIVE,
       ownerKey: this.ownerKey(state),
       ownerId: state.ownerId,
       subEventId: state.subEventId,
@@ -299,6 +303,9 @@ export class LocalActivityResourcesMapper {
   static toState(
     record: ActivitySubEventResourceRecord
   ): AppDTOs.ActivitySubEventResourceStateDTO | null {
+    if (this.isDeleted(record)) {
+      return null;
+    }
     const normalizedState = ActivityResourceBuilder.normalizeState({
       ownerId: record.ownerId,
       subEventId: record.subEventId,
@@ -325,9 +332,16 @@ export class LocalActivityResourcesMapper {
     };
   }
 
+  static isDeleted(record: ActivitySubEventResourceRecord | null | undefined): boolean {
+    return `${record?.status ?? ''}`.trim() === this.STATUS_DELETED;
+  }
+
 }
 
 export class LocalActivitySubEventStageRuntimeMapper {
+  private static readonly STATUS_ACTIVE = 'A';
+  private static readonly STATUS_DELETED = 'D';
+
   static normalizeRef(
     ref: AppDTOs.ActivitySubEventStageRuntimeStateRefDTO | null | undefined
   ): AppDTOs.ActivitySubEventStageRuntimeStateRefDTO | null {
@@ -381,6 +395,7 @@ export class LocalActivitySubEventStageRuntimeMapper {
     const nowIso = new Date(nowMs).toISOString();
     return {
       id: this.recordId(normalized),
+      status: this.STATUS_ACTIVE,
       ownerKey: this.ownerKey(normalized),
       ownerId: normalized.ownerId,
       subEventId: normalized.subEventId,
@@ -399,6 +414,9 @@ export class LocalActivitySubEventStageRuntimeMapper {
   static toState(
     record: ActivitySubEventStageRuntimeRecord
   ): AppDTOs.ActivitySubEventStageRuntimeStateDTO | null {
+    if (this.isDeleted(record)) {
+      return null;
+    }
     const normalized = this.normalizeState({
       ownerId: record.ownerId,
       subEventId: record.subEventId,
@@ -415,5 +433,9 @@ export class LocalActivitySubEventStageRuntimeMapper {
     return {
       ...record
     };
+  }
+
+  static isDeleted(record: ActivitySubEventStageRuntimeRecord | null | undefined): boolean {
+    return `${record?.status ?? ''}`.trim() === this.STATUS_DELETED;
   }
 }
