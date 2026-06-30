@@ -42,7 +42,7 @@ import type {
   ActivityEventExploreQueryResult,
   ActivityEventRecord,
   ActivityEventSubEventsQueryDTO,
-  ActivityEventSubEventRuntimeDTO,
+  SubEventsSlotDTO,
   ActivityEventSubEventsResultDTO,
   ActivityEventScopeFilter
 } from '../../contracts/activity.interface';
@@ -234,7 +234,7 @@ export class HttpEventsService implements IEventsService {
     }
     try {
       const response = await this.http
-        .post<{ event?: Partial<ActivityEventDetailDTO> | null; items?: ActivityEventSubEventRuntimeDTO[] } | null>(
+        .post<{ slots?: SubEventsSlotDTO[] | null } | null>(
           `${this.apiBaseUrl}/activities/events/sub-events`,
           {
             ...(query ?? {}),
@@ -243,12 +243,8 @@ export class HttpEventsService implements IEventsService {
           }
         )
         .toPromise();
-      if (!response?.event) {
-        return null;
-      }
       return {
-        event: new ActivityEventDetailDTO().apply(response.event),
-        items: [...(response.items ?? [])].sort((left, right) => this.toDateMs(left.startAt) - this.toDateMs(right.startAt))
+        slots: response?.slots ?? []
       };
     } catch {
       return null;
@@ -414,6 +410,7 @@ export class HttpEventsService implements IEventsService {
       .post<ActivityEventStageActionResultDTO | null>(`${this.apiBaseUrl}/activities/events/stage-action`, {
         userId: request.userId.trim(),
         sourceId: request.sourceId.trim(),
+        slotSourceId: request.slotSourceId?.trim() || null,
         subEventId: request.subEventId?.trim() || null,
         subEventIndex: Number.isFinite(rawSubEventIndex)
           ? Math.max(0, Math.trunc(rawSubEventIndex))
@@ -999,7 +996,6 @@ export class HttpEventsService implements IEventsService {
         topics: [...(record.topics ?? [])],
         subEvents: (record.subEvents ?? []).map(item => ({
           ...item,
-          groups: Array.isArray(item.groups) ? item.groups.map(group => ({ ...group })) : [],
           pricing: item.pricing ? PricingBuilder.clonePricingConfig(item.pricing) : undefined
         })),
         mode: ActivityEventDetailDTO.normalizeMode(record.mode),

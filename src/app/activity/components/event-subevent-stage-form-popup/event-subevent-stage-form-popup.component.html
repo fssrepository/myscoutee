@@ -43,12 +43,6 @@
             <mat-icon>close</mat-icon>
           </button>
         </div>
-        @if (view.timingSummaryMeta || view.timingSummaryTitle) {
-          <div class="subevent-timing-summary" [class.subevent-timing-summary-slot]="view.slotBoundTiming">
-            <mat-icon>{{ view.slotBoundTiming ? 'schedule' : 'event' }}</mat-icon>
-            <span>{{ view.timingSummaryMeta || view.timingSummaryTitle }}</span>
-          </div>
-        }
       </div>
       <section class="experience-form-panel subevent-form-panel" [ngClass]="view.modeClass">
         <div class="experience-form-grid subevent-form-grid" [class.subevent-form-grid-with-insert]="view.showInsertControls">
@@ -188,7 +182,7 @@
             <fieldset class="subevent-tournament-fieldset">
               <legend>Stage Rule</legend>
               <p class="subevent-tournament-hint subevent-tournament-hint-warning">
-                Manual groups reduce capacity for auto groups.<br />Customization only!
+                Manual groups add extra capacity on top of auto groups.<br />Customization only!
               </p>
               <div class="subevent-tournament-grid">
                 <div class="subevent-tournament-range-row">

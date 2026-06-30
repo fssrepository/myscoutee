@@ -23,6 +23,8 @@ export const APP_INDEXED_DB_KEYS = {
   adminStats: 'adminStats',
   activityMembers: 'activityMembers',
   activityResources: 'activityResources',
+  activitySubEventGroups: 'activitySubEventGroups',
+  activitySubEventStageRuntime: 'activitySubEventStageRuntime',
   assets: 'assets',
   chats: 'chats',
   events: 'events',

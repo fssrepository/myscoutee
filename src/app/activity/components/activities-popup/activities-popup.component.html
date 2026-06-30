@@ -64,6 +64,12 @@
       </ng-template>
     </div>
   </app-popup>
+
+  @if (eventSubeventsStore.eventSubeventsListPopup()?.host === 'activities') {
+    @if (eventSubeventsStore.eventSubeventsListPopupComponent(); as subeventsPopupComponent) {
+      <ng-container *ngComponentOutlet="subeventsPopupComponent"></ng-container>
+    }
+  }
 }
 
   <app-event-checkout-popup></app-event-checkout-popup>

@@ -159,24 +159,17 @@
             </div>
           }
 
-          <app-event-resource-asset-view
-            [view]="assetView()"
-            (closeRequested)="closeAssetView($event)"
-            (routeViewRequested)="openAssetViewRoutePopup($event)"
-          ></app-event-resource-asset-view>
+          @if (assetView()) {
+            @if (resourcePopupStore.eventResourceAssetViewComponent(); as assetViewComponent) {
+              <ng-container *ngComponentOutlet="assetViewComponent; inputs: assetViewOutletInputs()"></ng-container>
+            }
+          }
 
-          <app-event-resource-asset-explore-borrow-dialog
-            [dialog]="borrowDialogViewState()"
-            [canSubmit]="canSubmitBorrow()"
-            (closeRequested)="closeBorrowDialog($event)"
-            (backRequested)="backToBorrowDetails($event)"
-            (dateRangeChanged)="setBorrowDateRange($event.start, $event.end)"
-            (timeChanged)="setBorrowTime($event.edge, $event.value)"
-            (quantityChanged)="onBorrowQuantityChange($event)"
-            (quantityBlurred)="normalizeBorrowQuantityOnBlur($event)"
-            (policyToggled)="toggleBorrowPolicy($event)"
-            (confirmRequested)="confirmBorrow($event)"
-          ></app-event-resource-asset-explore-borrow-dialog>
+          @if (borrowDialogViewState()) {
+            @if (resourcePopupStore.eventResourceAssetExploreBorrowDialogComponent(); as borrowDialogComponent) {
+              <ng-container *ngComponentOutlet="borrowDialogComponent; inputs: borrowDialogOutletInputs()"></ng-container>
+            }
+          }
         </div>
       </div>
     </div>

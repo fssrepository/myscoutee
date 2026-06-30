@@ -1,0 +1,464 @@
+import { CommonModule } from '@angular/common';
+import { ChangeDetectionStrategy, Component, HostListener, computed, inject, resource, signal } from '@angular/core';
+import { MatIconModule } from '@angular/material/icon';
+
+import { AppUtils } from '../../../shared/app-utils';
+import { APP_STATIC_DATA } from '../../../shared/app-static-data';
+import { I18nPipe, IndicatorComponent } from '../../../shared/ui';
+import {
+  ContactsService, type ExperienceEntry, type ProfileViewData, type ProfileDetailFormGroup, type ProfileDetailFormRow, type UserDto } from '../../../shared/core';
+import { ProfileStore } from '../../../shared/ui/context/stores/profile.store';
+
+interface ProfileViewRow {
+  label: string;
+  value: string;
+  icon?: string;
+}
+
+@Component({
+  selector: 'app-profile-view-popup',
+  standalone: true,
+  imports: [
+    CommonModule,
+    MatIconModule,
+    I18nPipe,
+    IndicatorComponent
+  ],
+  templateUrl: './profile-view-popup.component.html',
+  styleUrl: './profile-view-popup.component.scss',
+  changeDetection: ChangeDetectionStrategy.OnPush
+})
+export class ProfileViewPopupComponent {
+  private readonly profileStore = inject(ProfileStore);
+  private readonly contactsService = inject(ContactsService);
+
+  protected readonly target = this.profileStore.profileViewTarget;
+  private readonly targetUserId = computed(() => this.target()?.userId?.trim() || undefined);
+  private readonly profileResource = resource<ProfileViewData, string | undefined>({
+    params: () => this.targetUserId(),
+    defaultValue: {
+      user: null,
+      experiences: []
+    },
+    loader: async ({ params }) => {
+      const userId = `${params ?? ''}`.trim();
+      if (!userId) {
+        return {
+          user: null,
+          experiences: []
+        };
+      }
+      try {
+        return await this.contactsService.loadContactProfile(userId);
+      } catch {
+        return {
+          user: null,
+          experiences: []
+        };
+      }
+    }
+  });
+  protected readonly user = computed(() => {
+    const user = this.profileResource.value().user;
+    const targetUserId = this.targetUserId();
+    return targetUserId && user?.id?.trim() === targetUserId ? user : null;
+  });
+  protected readonly loadingUser = computed(() => Boolean(this.targetUserId()) && this.profileResource.isLoading());
+  protected readonly experiences = computed(() => this.user() ? this.profileResource.value().experiences : []);
+  protected readonly loadingExperiences = computed(() => this.loadingUser() && Boolean(this.user()));
+  protected readonly activePhotoIndex = signal(0);
+  protected readonly photos = computed(() => this.profilePhotos(this.user()));
+  protected readonly activePhoto = computed(() => {
+    const photos = this.photos();
+    if (photos.length === 0) {
+      return '';
+    }
+    const index = Math.max(0, Math.min(this.activePhotoIndex(), photos.length - 1));
+    return photos[index] ?? photos[0] ?? '';
+  });
+  protected readonly basicsRows = computed(() => this.buildBasicsRows(this.user()));
+  protected readonly aboutRows = computed(() => this.buildAboutRows(this.user()));
+  protected readonly detailGroups = computed(() => this.buildDetailGroups(this.user()));
+
+  @HostListener('window:keydown.escape', ['$event'])
+  protected onEscape(event: Event): void {
+    if (!this.target()) {
+      return;
+    }
+    event.preventDefault();
+    event.stopPropagation();
+    this.closePopup();
+  }
+
+  protected closePopup(event?: Event): void {
+    event?.stopPropagation();
+    this.profileStore.closeProfileView();
+  }
+
+  protected displayTitle(user: UserDto): string {
+    const name = `${user.name ?? ''}`.trim() || this.target()?.label || 'Profile';
+    return user.age > 0 ? `${name}, ${user.age}` : name;
+  }
+
+  protected headerTitle(user: UserDto | null): string {
+    if (!user) {
+      return 'Profile';
+    }
+    return this.displayTitle(user);
+  }
+
+  protected headerSubtitle(user: UserDto | null): string {
+    if (!user) {
+      return 'Loading profile';
+    }
+    return `${user.city ?? ''}`.trim() || 'City not set yet';
+  }
+
+  protected initials(user: UserDto | null): string {
+    const source = `${user?.initials ?? ''}`.trim() || `${user?.name ?? this.target()?.label ?? 'Profile'}`.trim();
+    return AppUtils.initialsFromText(source || 'Profile');
+  }
+
+  protected avatarClass(user: UserDto | null): string[] {
+    return [`user-color-${user?.gender === 'woman' ? 'woman' : 'man'}`];
+  }
+
+  protected selectPhoto(index: number, event: Event): void {
+    event.stopPropagation();
+    const photos = this.photos();
+    if (photos.length <= 1) {
+      return;
+    }
+    this.activePhotoIndex.set(Math.max(0, Math.min(index, photos.length - 1)));
+  }
+
+  protected trackPhoto(index: number, photo: string): string {
+    return `${index}:${photo}`;
+  }
+
+  protected trackRow(_index: number, row: ProfileViewRow | ProfileDetailFormRow): string {
+    return `${'labelKey' in row ? row.labelKey : row.label}:${'value' in row ? row.value : ''}`;
+  }
+
+  protected trackGroup(_index: number, group: ProfileDetailFormGroup): string {
+    return group.title;
+  }
+
+  protected trackExperience(_index: number, item: ExperienceEntry): string {
+    return item.id;
+  }
+
+  protected detailValueParts(row: ProfileDetailFormRow): string[] {
+    return this.badgeParts(row.labelKey, row.value);
+  }
+
+  protected badgeParts(labelKey: string, value: string): string[] {
+    if (!this.isBadgeListKey(labelKey)) {
+      return [];
+    }
+    return this.splitListValue(value);
+  }
+
+  protected displayDetailValue(row: ProfileDetailFormRow): string {
+    const value = `${row.value ?? ''}`.trim();
+    return value || 'Not set';
+  }
+
+  protected detailGroupClass(title: string): string {
+    const normalized = AppUtils.normalizeText(title).replace(/\s+/g, '-');
+    return normalized ? `profile-view-section-${normalized}` : 'profile-view-section-default';
+  }
+
+  protected formattedExperienceDates(item: ExperienceEntry): string {
+    const from = `${item.dateFrom ?? ''}`.trim();
+    const to = `${item.dateTo ?? ''}`.trim();
+    if (from && to) {
+      return `${from} - ${to}`;
+    }
+    return from || to || 'Dates not set';
+  }
+
+  protected experienceTypeIcon(type: ExperienceEntry['type']): string {
+    switch (type) {
+      case 'Workspace':
+        return 'apartment';
+      case 'School':
+        return 'school';
+      case 'Online Session':
+        return 'videocam';
+      default:
+        return 'rocket_launch';
+    }
+  }
+
+  protected experienceTypeClass(type: ExperienceEntry['type']): string {
+    switch (type) {
+      case 'Workspace':
+        return 'profile-view-experience-workspace';
+      case 'School':
+        return 'profile-view-experience-school';
+      case 'Online Session':
+        return 'profile-view-experience-online';
+      default:
+        return 'profile-view-experience-project';
+    }
+  }
+
+  protected isExperienceEmpty(): boolean {
+    return !this.loadingExperiences() && this.experiences().length === 0;
+  }
+
+  private profilePhotos(user: UserDto | null): string[] {
+    return [...new Set(
+      (Array.isArray(user?.images) ? user.images : [])
+        .map(image => `${image ?? ''}`.trim())
+        .filter(Boolean)
+    )];
+  }
+
+  private buildBasicsRows(user: UserDto | null): ProfileViewRow[] {
+    if (!user) {
+      return [];
+    }
+    return [
+      { label: 'Name', value: this.valueOrNotSet(user.name), icon: 'badge' },
+      { label: 'Birthday', value: this.formatDate(user.birthday), icon: 'cake' },
+      { label: 'City', value: this.valueOrNotSet(user.city), icon: 'location_on' },
+      { label: 'Height', value: this.heightLabel(user.height), icon: 'height' },
+      { label: 'Physique', value: this.valueOrNotSet(user.physique), icon: 'accessibility_new' },
+      { label: 'Languages', value: this.listLabel(user.languages), icon: 'translate' },
+      { label: 'Horoscope', value: this.valueOrNotSet(user.horoscope), icon: 'auto_awesome' }
+    ];
+  }
+
+  private buildAboutRows(user: UserDto | null): ProfileViewRow[] {
+    if (!user) {
+      return [];
+    }
+    return [
+      { label: 'Headline', value: this.valueOrNotSet(user.headline), icon: 'short_text' },
+      { label: 'About', value: this.valueOrNotSet(user.about), icon: 'notes' },
+      { label: 'Status', value: this.valueOrNotSet(user.statusText), icon: 'campaign' }
+    ];
+  }
+
+  private buildDetailGroups(user: UserDto | null): ProfileDetailFormGroup[] {
+    if (!user) {
+      return [];
+    }
+    const groups = this.profileDetailGroupsForUser(user);
+    const duplicatedBasics = new Set([
+      'profile.name',
+      'profile.city',
+      'profile.birthday',
+      'profile.height',
+      'profile.physique',
+      'profile.languages',
+      'profile.horoscope'
+    ]);
+    return groups
+      .map(group => ({
+        ...group,
+        rows: (group.rows ?? [])
+          .filter(row => !duplicatedBasics.has(AppUtils.normalizeText(row.labelKey)))
+          .filter(row => `${row.value ?? ''}`.trim().length > 0)
+      }))
+      .filter(group => group.rows.length > 0);
+  }
+
+  private profileDetailGroupsForUser(user: UserDto): ProfileDetailFormGroup[] {
+    const persisted = this.hydratePersistedProfileDetails(user);
+    if (persisted.length > 0) {
+      return persisted;
+    }
+    if (!this.hasProfileSeedBase(user)) {
+      return [];
+    }
+    return APP_STATIC_DATA.profileDetailGroupTemplates.map(group => ({
+      title: group.title,
+      rows: group.rows.map(row => ({
+        labelKey: row.labelKey,
+        value: this.profileDetailSeedValue(user, row.labelKey, ''),
+        privacy: row.privacy,
+        options: this.profileDetailOptionsForKey(row.labelKey)
+      }))
+    }));
+  }
+
+  private hydratePersistedProfileDetails(user: UserDto): ProfileDetailFormGroup[] {
+    if (!Array.isArray(user.profileDetails) || user.profileDetails.length === 0) {
+      return [];
+    }
+    const rowByKey = new Map<string, ProfileDetailFormRow>();
+    for (const group of user.profileDetails) {
+      for (const row of group.rows ?? []) {
+        const normalizedKey = AppUtils.normalizeText(`${row.labelKey ?? ''}`.trim());
+        if (!normalizedKey) {
+          continue;
+        }
+        rowByKey.set(normalizedKey, {
+          labelKey: row.labelKey,
+          value: row.value,
+          privacy: row.privacy,
+          options: [...(row.options ?? [])]
+        });
+      }
+    }
+    return APP_STATIC_DATA.profileDetailGroupTemplates.map(group => ({
+      title: group.title,
+      rows: group.rows.map(row => {
+        const persisted = rowByKey.get(AppUtils.normalizeText(row.labelKey));
+        return {
+          labelKey: row.labelKey,
+          value: persisted?.value ?? this.profileDetailSeedValue(user, row.labelKey, ''),
+          privacy: persisted?.privacy ?? row.privacy,
+          options: this.profileDetailOptionsForKey(row.labelKey, persisted?.options ?? [])
+        };
+      })
+    }));
+  }
+
+  private profileDetailOptionsForKey(labelKey: string, persistedOptions: readonly string[] = []): string[] {
+    const defaults = labelKey === 'profile.details.values'
+      ? this.beliefsValuesAllOptions()
+      : labelKey === 'profile.details.interest'
+        ? this.interestAllOptions()
+        : APP_STATIC_DATA.profileDetailValueOptions[labelKey] ?? [];
+    const merged = [...defaults];
+    for (const option of persistedOptions) {
+      const normalized = `${option ?? ''}`.trim();
+      if (normalized && !merged.includes(normalized)) {
+        merged.push(normalized);
+      }
+    }
+    return merged;
+  }
+
+  private profileDetailSeedValue(user: UserDto, labelKey: string, fallback: string): string {
+    switch (labelKey) {
+      case 'profile.name':
+        return user.name;
+      case 'profile.city':
+        return user.city;
+      case 'profile.birthday':
+        return this.formatDate(user.birthday) === 'Not set' ? fallback : this.formatDate(user.birthday);
+      case 'profile.height':
+        return user.height;
+      case 'profile.physique':
+        return user.physique;
+      case 'profile.languages':
+        return user.languages.join(', ');
+      case 'profile.horoscope':
+        return user.horoscope;
+      case 'profile.gender':
+        return user.gender === 'woman' ? 'Woman' : 'Man';
+      case 'profile.details.interest':
+        return this.seededOptionsForUser(user, this.interestAllOptions(), 3, labelKey).join(', ');
+      case 'profile.details.values':
+        return this.seededOptionsForUser(user, this.beliefsValuesAllOptions(), 3, labelKey).join(', ');
+      default: {
+        const options = APP_STATIC_DATA.profileDetailValueOptions[labelKey] ?? [];
+        if (options.length === 0) {
+          return fallback;
+        }
+        return this.seededOptionForUser(user, options, labelKey);
+      }
+    }
+  }
+
+  private seededOptionForUser(user: UserDto, options: string[], context: string): string {
+    if (options.length === 0) {
+      return '';
+    }
+    const seed = AppUtils.hashText(`profile-detail:${user.id}:${context}`);
+    return options[seed % options.length] ?? options[0];
+  }
+
+  private seededOptionsForUser(user: UserDto, options: string[], count: number, context: string): string[] {
+    if (options.length === 0 || count <= 0) {
+      return [];
+    }
+    const start = AppUtils.hashText(`profile-detail-list:${user.id}:${context}`) % options.length;
+    const selected: string[] = [];
+    let index = start;
+    while (selected.length < Math.min(count, options.length)) {
+      const option = options[index % options.length];
+      if (!selected.includes(option)) {
+        selected.push(option);
+      }
+      index += 3;
+    }
+    return selected;
+  }
+
+  private beliefsValuesAllOptions(): string[] {
+    return APP_STATIC_DATA.beliefsValuesOptionGroups.flatMap(group => group.options);
+  }
+
+  private interestAllOptions(): string[] {
+    return APP_STATIC_DATA.interestOptionGroups.flatMap(group => group.options);
+  }
+
+  private hasProfileSeedBase(user: UserDto): boolean {
+    return [
+      user.name,
+      user.birthday,
+      user.city,
+      user.height,
+      user.physique,
+      user.horoscope,
+      user.headline,
+      user.about,
+      ...(user.languages ?? []),
+      ...(user.images ?? [])
+    ].some(value => `${value ?? ''}`.trim().length > 0);
+  }
+
+  private isBadgeListKey(labelKey: string): boolean {
+    const normalized = AppUtils.normalizeText(labelKey);
+    return labelKey === 'profile.languages'
+      || labelKey === 'profile.details.interest'
+      || labelKey === 'profile.details.values'
+      || normalized === 'languages'
+      || normalized === 'interest'
+      || normalized === 'values';
+  }
+
+  private splitListValue(value: string): string[] {
+    return `${value ?? ''}`
+      .split(',')
+      .map(item => item.trim())
+      .filter(Boolean);
+  }
+
+  private listLabel(values: readonly string[] | null | undefined): string {
+    const normalizedValues = (Array.isArray(values) ? values : []).map(value => `${value ?? ''}`.trim()).filter(Boolean);
+    return normalizedValues.length > 0 ? normalizedValues.join(', ') : 'Not set';
+  }
+
+  private heightLabel(value: string): string {
+    const normalized = `${value ?? ''}`.trim();
+    if (!normalized) {
+      return 'Not set';
+    }
+    return /\bcm\b/i.test(normalized) ? normalized : `${normalized} cm`;
+  }
+
+  private valueOrNotSet(value: string | null | undefined): string {
+    const normalized = `${value ?? ''}`.trim();
+    return normalized || 'Not set';
+  }
+
+  private formatDate(value: string | null | undefined): string {
+    const normalized = `${value ?? ''}`.trim();
+    if (!normalized) {
+      return 'Not set';
+    }
+    const parsed = new Date(normalized);
+    if (Number.isNaN(parsed.getTime())) {
+      return normalized;
+    }
+    return parsed.toLocaleDateString('en-US', { year: 'numeric', month: 'short', day: 'numeric' });
+  }
+
+}

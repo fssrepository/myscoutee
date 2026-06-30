@@ -40,8 +40,8 @@ import {
   IndicatorComponent
 } from '../../../shared/ui/components/core/indicator';
 import {
-  AdminPopupStore
-} from '../../../shared/ui/context/stores/admin-popup.store';
+  AdminMenuStore
+} from '../../../shared/ui/context/stores/admin-menu.store';
 import { UserProfileStore } from '../../../shared/ui/context/stores/user-profile.store';
 
 const PROCESS_LIST_FILTER = {
@@ -334,7 +334,7 @@ const STATUS_CLASS_PREFIX = 'is-';
   styleUrl: './admin-notifications-popup.component.scss'
 })
 export class AdminNotificationsPopupComponent implements OnDestroy {
-  protected readonly admin = inject(AdminPopupStore);
+  protected readonly admin = inject(AdminMenuStore);
   protected readonly notificationsService = inject(AdminNotificationsService);
   private readonly userProfileStore = inject(UserProfileStore);
   protected readonly popupKey = ADMIN_POPUP_KEY;

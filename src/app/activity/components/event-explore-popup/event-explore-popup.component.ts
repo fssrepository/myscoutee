@@ -82,8 +82,8 @@ import {
   EventCheckoutDialogStore
 } from '../../../shared/ui/context/stores/event-checkout-dialog.store';
 import {
-  NavigatorStore
-} from '../../../shared/ui/context/stores/navigator.store';
+  ProfileStore
+} from '../../../shared/ui/context/stores/profile.store';
 import type { ActivityEventDTO, ActivityEventRecord } from '../../../shared/core/contracts/activity.interface';
 import type { ChatDTO } from '../../../shared/core/contracts/chat.interface';
 import type { ActivityMemberOwnerRef } from '../../../shared/core/contracts/activity.interface';
@@ -91,7 +91,7 @@ import type * as ActivityContracts from '../../../shared/core/contracts/activity
 import { UserProfileStore } from '../../../shared/ui/context/stores/user-profile.store';
 import { AppRuntimeStore } from '../../../shared/ui/context/stores/app-runtime.store';
 import { ActivityStore } from '../../../shared/ui/context/stores/activity.store';
-import { PopupStore } from '../../../shared/ui/context/stores/popup.store';
+import { MemberMenuStore } from '../../../shared/ui/context/stores/member-menu.store';
 
 type CheckoutDraftEntry = {
   draft: EventCheckoutDraft;
@@ -135,7 +135,7 @@ export class EventExplorePopupComponent {
   private readonly gameService = inject(GameService);
   private readonly shareTokensService = inject(ShareTokensService);
   private readonly usersService = inject(UsersService);
-  private readonly navigatorStore = inject(NavigatorStore);
+  private readonly profileStore = inject(ProfileStore);
   private readonly dialogStore = inject(DialogStore);
   private readonly appMenuDispatcher = inject(AppMenuDispatcher);
   private readonly eventCheckoutDraftStore = inject(EventCheckoutDraftStore);
@@ -143,7 +143,7 @@ export class EventExplorePopupComponent {
   private readonly userProfileStore = inject(UserProfileStore);
   private readonly runtimeStore = inject(AppRuntimeStore);
   private readonly activityStore = inject(ActivityStore);
-  private readonly popupStore = inject(PopupStore);
+  private readonly memberMenuStore = inject(MemberMenuStore);
   private readonly activitiesStore = inject(ActivitiesPopupStore);
 
   protected readonly eventExploreOrderOptions = APP_STATIC_DATA.eventExploreOrderOptions;
@@ -235,11 +235,11 @@ export class EventExplorePopupComponent {
     this.refreshUsersDirectory();
 
     effect(() => {
-      const request = this.popupStore.activitiesNavigationRequest();
+      const request = this.memberMenuStore.activitiesNavigationRequest();
       if (!request || (request.type !== 'eventExplore' && request.type !== 'eventCheckoutDraft')) {
         return;
       }
-      this.popupStore.clearActivitiesNavigationRequest();
+      this.memberMenuStore.clearActivitiesNavigationRequest();
       if (request.type === 'eventCheckoutDraft') {
         void this.continueCheckoutDraftBySourceId(request.sourceId);
         return;
@@ -676,7 +676,7 @@ export class EventExplorePopupComponent {
     if (!this.canPreviewEventExploreMembers(record)) {
       return;
     }
-    this.popupStore.requestActivitiesNavigation({
+    this.memberMenuStore.requestActivitiesNavigation({
       type: 'members',
       ownerId: record.id,
       ownerType: 'event',
@@ -724,7 +724,7 @@ export class EventExplorePopupComponent {
     event?: { stopPropagation?: () => void; preventDefault?: () => void }
   ): void {
     this.stopDomEvent(event);
-    this.popupStore.requestActivitiesNavigation({
+    this.memberMenuStore.requestActivitiesNavigation({
       type: 'eventEditor',
       eventId: record.id,
       target: record.type === 'hosting' ? 'hosting' : 'events',
@@ -779,7 +779,7 @@ export class EventExplorePopupComponent {
     this.stopDomEvent(event);
     this.userProfileStore.setUserProfile(this.resolveUser(record.creatorUserId, record));
     void this.usersService.loadUserById(record.creatorUserId);
-    this.navigatorStore.openImpressionsPopup(record.creatorUserId);
+    this.profileStore.openImpressionsPopup(record.creatorUserId);
   }
 
   protected canPreviewEventExploreMembers(record: ActivityEventRecord): boolean {
@@ -1122,7 +1122,7 @@ export class EventExplorePopupComponent {
     if (!targetUserId || targetUserId === this.activeUserId.trim()) {
       return;
     }
-    this.navigatorStore.openReportUserPopup({
+    this.profileStore.openReportUserPopup({
       targetUserId,
       targetName: record.creatorName?.trim() || 'Organizer',
       eventId: record.id,
@@ -2000,12 +2000,7 @@ export class EventExplorePopupComponent {
       sourceLink: record.sourceLink,
       topics: [...record.topics],
       subEvents: Array.isArray(record.subEvents)
-        ? record.subEvents.map(item => ({
-            ...item,
-            groups: Array.isArray(item.groups)
-              ? item.groups.map(group => ({ ...group }))
-              : []
-          }))
+        ? record.subEvents.map(item => ({ ...item }))
         : undefined,
       mode: record.mode,
       paymentSessionId

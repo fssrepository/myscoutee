@@ -27,9 +27,13 @@ import { EventFeedbackDetailDto, EventFeedbackPageResultDto } from '../../../con
 import { LocalRouteDelayService } from './route-delay.service';
 import { LocalEventFeedbackRepository } from '../repositories/event-feedback.repository';
 import { LocalEventsRepository } from '../repositories/events.repository';
+import { LocalActivityResourcesRepository } from '../repositories/activity-resources.repository';
+import { LocalActivitySubEventStageRuntimeRepository } from '../repositories/activity-sub-event-stage-runtime.repository';
 import { LocalUsersRepository } from '../repositories/users.repository';
 import {
   LocalActivityEventDetailsMapper,
+  LocalActivitySubEventStageRuntimeMapper,
+  LocalActivityResourcesMapper,
   LocalActivityEventsMapper,
   LocalEventFeedbackMapper,
   LocalEventParticipationActionMapper,
@@ -45,7 +49,10 @@ import type {
   ActivityEventExploreQueryResult,
   ActivityEventRecord,
   ActivityEventSubEventsQueryDTO,
-  ActivityEventSubEventsResultDTO
+  ActivityEventSubEventsResultDTO,
+  ActivitySubEventStageRuntimeStateDTO,
+  ActivitySubEventResourceStateDTO,
+  SubEventDefinitionDTO
 } from '../../../contracts/activity.interface';
 import type { IEventsService } from '../../../contracts/activity.interface';
 
@@ -57,6 +64,8 @@ export class LocalEventsService extends LocalRouteDelayService implements IEvent
   private static readonly EVENTS_EXPLORE_ROUTE = '/activities/events/explore';
   private static readonly EVENTS_CHECKOUT_ROUTE = '/activities/events/checkout';
   private readonly eventsRepository = inject(LocalEventsRepository);
+  private readonly activityResourcesRepository = inject(LocalActivityResourcesRepository);
+  private readonly activitySubEventStageRuntimeRepository = inject(LocalActivitySubEventStageRuntimeRepository);
   private readonly eventFeedbackRepository = inject(LocalEventFeedbackRepository);
   private readonly usersRepository = inject(LocalUsersRepository);
 
@@ -125,12 +134,32 @@ export class LocalEventsService extends LocalRouteDelayService implements IEvent
     }
     await this.waitForRouteDelay(LocalEventsService.EVENTS_ROUTE);
     const result = this.eventsRepository.querySubEventsByEventId(normalizedUserId, normalizedEventId, query);
-    return result
-      ? {
-        event: LocalActivityEventDetailsMapper.toDto(result.event),
-        items: result.items
-      }
-      : null;
+    if (!result) {
+      return null;
+    }
+    const baseSlots = LocalActivityEventsMapper.toSubEventsSlots(result.parentEventId, result.parentRecord, query);
+    const { resourceLookups, stageRuntimeLookups } = LocalActivityEventsMapper.subEventStateLookups(baseSlots, normalizedUserId);
+    const resourceStates = this.activityResourcesRepository.querySubEventResourceRecordsByRefs(resourceLookups)
+      .map(record => LocalActivityResourcesMapper.toState(record))
+      .filter((state): state is ActivitySubEventResourceStateDTO => Boolean(state));
+    const resourceStatesByKey = new Map(
+      resourceStates.map(state => [
+        LocalActivityEventsMapper.subEventResourceRecordKey(state),
+        state
+      ])
+    );
+    const stageRuntimeStates = this.activitySubEventStageRuntimeRepository.queryRecordsByRefs(stageRuntimeLookups)
+      .map(record => LocalActivitySubEventStageRuntimeMapper.toState(record))
+      .filter((state): state is ActivitySubEventStageRuntimeStateDTO => Boolean(state));
+    const stageRuntimeByKey = new Map(
+      stageRuntimeStates.map(state => [
+        LocalActivityEventsMapper.subEventStageRuntimeRecordKey(state),
+        state
+      ])
+    );
+    return {
+      slots: LocalActivityEventsMapper.withSubEventStates(baseSlots, resourceStatesByKey, stageRuntimeByKey, normalizedUserId)
+    };
   }
 
   async queryExploreItems(userId: string): Promise<ActivityEventRecord[]> {
@@ -259,17 +288,88 @@ export class LocalEventsService extends LocalRouteDelayService implements IEvent
   async syncEventSnapshot(payload: ActivityEventDetailDTO): Promise<ActivityEventRecord | null> {
     await this.waitForRouteDelay(LocalEventsService.EVENTS_ROUTE);
     const record = LocalActivityEventDetailsMapper.toRecord(payload);
+    const existingRecord = this.eventsRepository.queryEventRecordById(record.userId, record.id);
     const savedRecord = this.eventsRepository.saveEventSnapshot(record);
+    const runtimeChanged = this.markDeletedRuntimeStateForRemovedDefinitions(existingRecord, savedRecord ?? record);
     await this.eventsRepository.flushToIndexedDb();
+    if (runtimeChanged) {
+      await this.activityResourcesRepository.flushToIndexedDb();
+      await this.activitySubEventStageRuntimeRepository.flushToIndexedDb();
+    }
     return savedRecord;
   }
 
   async saveActivityEvent(payload: ActivityEventDetailDTO): Promise<ActivityEventDTO | null> {
     await this.waitForRouteDelay(LocalEventsService.EVENTS_ROUTE);
     const record = LocalActivityEventDetailsMapper.toRecord(payload);
+    const existingRecord = this.eventsRepository.queryEventRecordById(record.userId, record.id);
     const savedRecord = this.eventsRepository.saveEventSnapshot(record);
+    const runtimeChanged = this.markDeletedRuntimeStateForRemovedDefinitions(existingRecord, savedRecord ?? record);
     await this.eventsRepository.flushToIndexedDb();
+    if (runtimeChanged) {
+      await this.activityResourcesRepository.flushToIndexedDb();
+      await this.activitySubEventStageRuntimeRepository.flushToIndexedDb();
+    }
     return savedRecord ? LocalActivityEventsMapper.toDto(savedRecord) : null;
+  }
+
+  private markDeletedRuntimeStateForRemovedDefinitions(
+    previous: ActivityEventRecord | null,
+    next: ActivityEventRecord | null
+  ): boolean {
+    if (!previous || !next) {
+      return false;
+    }
+    const removedSubEventIds = this.removedSubEventDefinitionIds(previous, next);
+    if (removedSubEventIds.length === 0) {
+      return false;
+    }
+    const parentEventId = `${next.id ?? previous.id ?? ''}`.trim();
+    if (!parentEventId) {
+      return false;
+    }
+    const resourceChanges = this.activityResourcesRepository.markRecordsDeletedByParentSubEventIds(
+      parentEventId,
+      removedSubEventIds
+    );
+    const stageRuntimeChanges = this.activitySubEventStageRuntimeRepository.markRecordsDeletedByParentSubEventIds(
+      parentEventId,
+      removedSubEventIds
+    );
+    const groupChanges = this.eventsRepository.markTournamentGroupsDeletedByParentSubEventIds(
+      parentEventId,
+      removedSubEventIds
+    );
+    return resourceChanges > 0 || stageRuntimeChanges > 0 || groupChanges > 0;
+  }
+
+  private removedSubEventDefinitionIds(
+    previous: ActivityEventRecord,
+    next: ActivityEventRecord
+  ): string[] {
+    const nextIds = new Set(this.subEventDefinitionIds(next));
+    return this.subEventDefinitionIds(previous).filter(id => !nextIds.has(id));
+  }
+
+  private subEventDefinitionIds(record: ActivityEventRecord): string[] {
+    const ids: string[] = [];
+    const seen = new Set<string>();
+    const addIds = (definitions: readonly SubEventDefinitionDTO[] | null | undefined): void => {
+      (definitions ?? []).forEach((definition, index) => {
+        const id = `${definition?.id ?? ''}`.trim() || this.fallbackSubEventId(index);
+        if (id && !seen.has(id)) {
+          seen.add(id);
+          ids.push(id);
+        }
+      });
+    };
+    addIds(record.subEventDefinitions);
+    (record.slotTemplates ?? []).forEach(template => addIds(template.subEventDefinitions));
+    return ids;
+  }
+
+  private fallbackSubEventId(index: number): string {
+    return `subevent-${Math.max(1, index + 1)}`;
   }
 
   async trashItem(userId: string, sourceId: string): Promise<void> {
@@ -304,7 +404,23 @@ export class LocalEventsService extends LocalRouteDelayService implements IEvent
   async applyStageAction(request: ActivityEventStageActionRequestDTO): Promise<ActivityEventStageActionResultDTO | null> {
     await this.waitForEventMutationDelay();
     const result = this.eventsRepository.applyStageAction(request);
+    if (result?.subEventId) {
+      const existing = this.activitySubEventStageRuntimeRepository.peekRecord({
+        ownerId: result.sourceId,
+        subEventId: result.subEventId
+      });
+      this.activitySubEventStageRuntimeRepository.replaceRecord(LocalActivitySubEventStageRuntimeMapper.toRecord({
+        ownerId: result.sourceId,
+        subEventId: result.subEventId,
+        stageStatus: result.stageStatus,
+        stageStatusReason: result.stageStatusReason ?? null,
+        stageStatusUpdatedAt: result.stageStatusUpdatedAt ?? null,
+        stageFinalizedAt: result.stageFinalizedAt ?? null,
+        stageFinalizedByUserId: result.stageFinalizedByUserId ?? null
+      }, existing));
+    }
     await this.eventsRepository.flushToIndexedDb();
+    await this.activitySubEventStageRuntimeRepository.flushToIndexedDb();
     return result;
   }
 

@@ -1,0 +1,748 @@
+@use '../../../shared/ui/styles' as ui;
+
+@include ui.popup-shell();
+
+:host {
+  display: contents;
+}
+
+.profile-impressions-popup {
+  z-index: 2640;
+  font-family: 'Nunito Sans', 'Segoe UI', sans-serif;
+}
+
+.profile-impressions-popup .app-popup-panel {
+  width: min(960px, calc(100vw - 1.2rem));
+}
+
+.profile-impressions-popup .popup-title-impressions .popup-chat-title-block h2 {
+  font-size: 1.02rem;
+}
+
+.profile-impressions-popup .popup-body.popup-body-impressions {
+  display: block;
+  padding: 0.75rem;
+  text-align: left;
+}
+
+.profile-impressions-popup .profile-impressions-empty-state {
+  min-height: 260px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+  padding: 2rem;
+  border: 1px dashed rgba(48, 78, 116, 0.28);
+  border-radius: 14px;
+  background: linear-gradient(180deg, #f8fbff 0%, #f2f7fb 100%);
+  color: #30435f;
+  text-align: center;
+}
+
+.profile-impressions-popup .profile-impressions-empty-state .mat-icon {
+  width: 32px;
+  height: 32px;
+  font-size: 32px;
+  line-height: 32px;
+  color: #64809f;
+}
+
+.profile-impressions-popup .profile-impressions-empty-state strong {
+  font-size: 1rem;
+  font-weight: 900;
+}
+
+.profile-impressions-popup .profile-impressions-empty-state span {
+  max-width: 320px;
+  color: #62738b;
+  font-size: 0.84rem;
+  font-weight: 700;
+  line-height: 1.35;
+}
+
+.profile-impressions-popup .social-proof-grid {
+  display: grid;
+  width: min(980px, 100%);
+  margin: 0 auto;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 0.9rem;
+  justify-items: stretch;
+}
+
+.profile-impressions-popup .social-proof-card.social-proof-card-modern {
+  position: relative;
+  max-width: none;
+  min-height: auto;
+  padding: 7rem 1rem 1.05rem;
+  border-radius: 14px;
+  border: 1px solid rgba(29, 42, 68, 0.14);
+  background: linear-gradient(180deg, #f8f7fc 0%, #f2f2f8 100%);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.78), 0 4px 12px rgba(24, 33, 54, 0.05);
+}
+
+.profile-impressions-popup .social-proof-card.social-proof-card-modern.impression-shortcut-tone-platinum {
+  border-color: rgba(72, 160, 183, 0.22);
+  background: linear-gradient(180deg, #f6fdff 0%, #eef8fb 100%);
+}
+
+.profile-impressions-popup .social-proof-card.social-proof-card-modern.impression-shortcut-tone-gold {
+  border-color: rgba(189, 141, 51, 0.2);
+  background: linear-gradient(180deg, #fffcf5 0%, #fff7ec 100%);
+}
+
+.profile-impressions-popup .social-proof-card.social-proof-card-modern.impression-shortcut-tone-silver {
+  border-color: rgba(111, 134, 164, 0.2);
+  background: linear-gradient(180deg, #f7faff 0%, #eef3f9 100%);
+}
+
+.profile-impressions-popup .social-proof-card.social-proof-card-modern.impression-shortcut-tone-bronze {
+  border-color: rgba(178, 103, 62, 0.2);
+  background: linear-gradient(180deg, #fff8f4 0%, #fef0e6 100%);
+}
+
+.profile-impressions-popup .social-proof-card.social-proof-card-modern.impression-shortcut-tone-empath {
+  border-color: rgba(184, 92, 116, 0.22);
+  background: linear-gradient(180deg, #fff8fa 0%, #fef0f4 100%);
+}
+
+.profile-impressions-popup .social-proof-card.social-proof-card-modern.impression-shortcut-tone-creative {
+  border-color: rgba(122, 76, 196, 0.2);
+  background: linear-gradient(180deg, #faf7ff 0%, #f1ebfd 100%);
+}
+
+.profile-impressions-popup .social-proof-card.social-proof-card-modern.impression-shortcut-tone-reliable {
+  border-color: rgba(61, 146, 94, 0.2);
+  background: linear-gradient(180deg, #f6fcf7 0%, #edf7ef 100%);
+}
+
+.profile-impressions-popup .social-proof-card.social-proof-card-modern.impression-shortcut-tone-adventurer {
+  border-color: rgba(47, 139, 174, 0.2);
+  background: linear-gradient(180deg, #f5fbff 0%, #ecf6fb 100%);
+}
+
+.profile-impressions-popup .social-proof-card.social-proof-card-modern.impression-shortcut-tone-thinker {
+  border-color: rgba(80, 108, 168, 0.2);
+  background: linear-gradient(180deg, #f7f9ff 0%, #edf1fb 100%);
+}
+
+.profile-impressions-popup .social-proof-card.social-proof-card-modern.impression-shortcut-tone-social {
+  border-color: rgba(45, 138, 139, 0.2);
+  background: linear-gradient(180deg, #f5fcfc 0%, #ebf7f7 100%);
+}
+
+.profile-impressions-popup .social-proof-card.social-proof-card-modern.impression-shortcut-tone-playful {
+  border-color: rgba(183, 95, 47, 0.2);
+  background: linear-gradient(180deg, #fff9f4 0%, #fef1e7 100%);
+}
+
+.profile-impressions-popup .social-proof-card.social-proof-card-modern.impression-shortcut-tone-ambitious {
+  border-color: rgba(79, 113, 190, 0.2);
+  background: linear-gradient(180deg, #f6f9ff 0%, #edf2fb 100%);
+}
+
+.profile-impressions-popup .social-proof-card.social-proof-card-modern .social-proof-section-block:first-of-type {
+  margin-top: 0;
+}
+
+.profile-impressions-popup .social-proof-identity-pill {
+  position: absolute;
+  top: 0;
+  left: 0;
+  transform: translate(-0.36rem, -0.42rem);
+  display: inline-flex;
+  width: fit-content;
+  max-width: 100%;
+  min-height: 36px;
+  margin: 0;
+  padding: 0.34rem 0.72rem;
+  align-items: center;
+  gap: 0.45rem;
+  border-radius: 14px;
+  border: 1px solid rgba(140, 118, 206, 0.4);
+  background: linear-gradient(180deg, #efeaff 0%, #e5ddfb 100%);
+  color: #2e3153;
+  font-size: clamp(0.84rem, 1.05vw, 1.02rem);
+  font-weight: 800;
+  line-height: 1;
+  z-index: 3;
+  box-shadow: 0 4px 10px rgba(31, 44, 70, 0.16);
+}
+
+.profile-impressions-popup .social-proof-card.social-proof-card-modern .social-proof-identity-pill .mat-icon {
+  width: 18px;
+  height: 18px;
+  font-size: 18px;
+  line-height: 18px;
+}
+
+.profile-impressions-popup .social-proof-identity-label {
+  display: inline-flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 0.1rem;
+  line-height: 1;
+  text-align: center;
+}
+
+.profile-impressions-popup .social-proof-identity-main {
+  font-size: 0.94em;
+  font-weight: 800;
+  line-height: 1.05;
+  letter-spacing: 0.01em;
+}
+
+.profile-impressions-popup .social-proof-identity-sub {
+  font-size: 0.72em;
+  font-weight: 700;
+  line-height: 1.08;
+  letter-spacing: 0.07em;
+  opacity: 0.86;
+  text-transform: uppercase;
+}
+
+.profile-impressions-popup .social-proof-identity-pill-host {
+  background: linear-gradient(180deg, #e9f9ff 0%, #d9f0fb 100%);
+  border-color: rgba(72, 160, 183, 0.44);
+  color: #204f67;
+}
+
+.profile-impressions-popup .social-proof-identity-pill-member {
+  background: linear-gradient(180deg, #fff0f4 0%, #fde6ee 100%);
+  border-color: rgba(184, 92, 116, 0.4);
+  color: #7d3550;
+}
+
+.profile-impressions-popup .social-proof-identity-pill-member .mat-icon {
+  color: #c05779;
+}
+
+.profile-impressions-popup .popup-impressions-badge {
+  position: absolute;
+  top: 3.5rem;
+  left: 50%;
+  z-index: 1;
+  display: inline-flex;
+  width: min(21rem, calc(100% - 1rem));
+  max-width: none;
+  align-items: stretch;
+  overflow: hidden;
+  border: 1px solid rgba(106, 118, 142, 0.24);
+  border-radius: 14px;
+  transform: translateX(-50%);
+}
+
+.profile-impressions-popup .popup-impressions-badge-updated {
+  animation: profile-popup-impressions-badge-blink 0.44s ease;
+}
+
+.profile-impressions-popup .popup-impressions-badge-segment {
+  display: flex;
+  min-height: 40px;
+  min-width: 0;
+  flex: 1 1 0;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 0.08rem;
+  padding: 0.34rem 0.58rem;
+  border-right: 1px solid rgba(106, 118, 142, 0.22);
+  text-align: center;
+}
+
+.profile-impressions-popup .popup-impressions-badge-segment:last-child {
+  border-right: 0;
+}
+
+.profile-impressions-popup .popup-impressions-badge-label {
+  font-family: inherit;
+  font-size: 0.7rem;
+  font-weight: 700;
+  line-height: 1.08;
+  letter-spacing: 0.03em;
+  text-transform: uppercase;
+  text-align: center;
+  white-space: normal;
+  overflow-wrap: anywhere;
+}
+
+.profile-impressions-popup .popup-impressions-badge-value {
+  color: #111827;
+  font-size: 0.78rem;
+  font-weight: 900;
+  line-height: 1.05;
+  white-space: nowrap;
+}
+
+.profile-impressions-popup .popup-impressions-rate-rate {
+  border-color: rgba(179, 127, 49, 0.24);
+  background: #fff7ec;
+}
+
+.profile-impressions-popup .popup-impressions-rate-people {
+  border-color: rgba(53, 126, 83, 0.24);
+  background: #eff8f3;
+}
+
+.profile-impressions-popup .popup-impressions-rate-return {
+  border-color: rgba(89, 93, 162, 0.24);
+  background: #f3f3ff;
+}
+
+.profile-impressions-popup .social-proof-section-block {
+  margin-top: 0.52rem;
+}
+
+.profile-impressions-popup .social-proof-section-head {
+  display: flex;
+  align-items: center;
+  justify-content: flex-start;
+  gap: 0.52rem;
+  margin-bottom: 0.56rem;
+}
+
+.profile-impressions-popup .section-tag {
+  display: inline-flex;
+  min-height: 28px;
+  align-items: center;
+  justify-content: center;
+  padding: 0.16rem 0.78rem;
+  border-radius: 999px;
+  background: linear-gradient(180deg, #ece9f8 0%, #e4e0f3 100%);
+  color: #59577b;
+  font-size: 0.68rem;
+  font-weight: 800;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  white-space: nowrap;
+}
+
+.profile-impressions-popup .section-line {
+  height: 1px;
+  flex: 1;
+  background: rgba(113, 124, 150, 0.32);
+}
+
+.profile-impressions-popup .social-proof-section-head.section-vibe .section-tag {
+  background: linear-gradient(180deg, #eaf2ff 0%, #dfeafa 100%);
+  color: #2d5ea8;
+}
+
+.profile-impressions-popup .social-proof-section-head.section-vibe .section-line {
+  background: rgba(59, 108, 179, 0.34);
+}
+
+.profile-impressions-popup .social-proof-section-head.section-category .section-tag {
+  background: linear-gradient(180deg, #e9f7ef 0%, #def1e7 100%);
+  color: #2d7d47;
+}
+
+.profile-impressions-popup .social-proof-section-head.section-category .section-line {
+  background: rgba(45, 125, 71, 0.34);
+}
+
+.profile-impressions-popup .social-proof-section-head.section-personality .section-tag {
+  background: linear-gradient(180deg, #f0ebfb 0%, #e7def7 100%);
+  color: #6a45a3;
+}
+
+.profile-impressions-popup .social-proof-section-head.section-personality .section-line {
+  background: rgba(106, 69, 163, 0.34);
+}
+
+.profile-impressions-popup .social-proof-chip-list {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: flex-start;
+  gap: 0.28rem;
+}
+
+.profile-impressions-popup .social-proof-chip {
+  display: inline-flex;
+  width: fit-content;
+  max-width: 100%;
+  min-height: 24px;
+  align-items: center;
+  justify-content: center;
+  padding: 0.16rem 0.52rem;
+  border: 1px solid rgba(107, 119, 146, 0.33);
+  border-radius: 999px;
+  background: linear-gradient(180deg, #f4f5fb 0%, #eceef8 100%);
+  color: #243a67;
+  font-size: clamp(0.66rem, 0.9vw, 0.8rem);
+  font-weight: 800;
+  line-height: 1.15;
+  text-align: center;
+  white-space: nowrap;
+}
+
+.profile-impressions-popup .personality-trait-carousel {
+  display: flex;
+  flex-direction: column;
+  gap: 0.55rem;
+}
+
+.profile-impressions-popup .personality-trait-pill-strip {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 0.38rem;
+}
+
+.profile-impressions-popup .personality-trait-pill {
+  --trait-accent: #6a45a3;
+  --trait-accent-soft: rgba(106, 69, 163, 0.18);
+  --trait-surface: linear-gradient(180deg, #fbf8ff 0%, #f2ebff 100%);
+  position: relative;
+  overflow: hidden;
+  display: grid;
+  gap: 0.12rem;
+  padding: 0.52rem 0.6rem;
+  border: 1px solid rgba(116, 127, 156, 0.22);
+  border-radius: 14px;
+  background: linear-gradient(180deg, rgba(255, 255, 255, 0.94) 0%, rgba(243, 245, 250, 0.98) 100%);
+  color: #3b4560;
+  text-align: left;
+  cursor: pointer;
+  transition: border-color 0.18s ease, box-shadow 0.18s ease, background 0.18s ease;
+}
+
+.profile-impressions-popup .personality-trait-pill:hover {
+  border-color: rgba(89, 108, 153, 0.34);
+  box-shadow: 0 6px 16px rgba(37, 45, 68, 0.08);
+}
+
+.profile-impressions-popup .personality-trait-pill.is-active {
+  border-color: rgba(255, 255, 255, 0.96);
+  background: var(--trait-surface);
+  box-shadow: 0 0 0 1.5px var(--trait-accent-soft), inset 0 0 0 1px rgba(255, 255, 255, 0.92), 0 8px 22px color-mix(in srgb, var(--trait-accent) 14%, transparent);
+}
+
+.profile-impressions-popup .personality-trait-pill.is-active .personality-trait-pill-rank,
+.profile-impressions-popup .personality-trait-pill.is-active .personality-trait-pill-percent {
+  color: var(--trait-accent);
+}
+
+.profile-impressions-popup .personality-trait-pill-rank {
+  color: #7b859e;
+  font-size: 0.66rem;
+  font-weight: 800;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.profile-impressions-popup .personality-trait-pill-label {
+  color: #1f2937;
+  font-size: 0.82rem;
+  font-weight: 900;
+  line-height: 1.12;
+}
+
+.profile-impressions-popup .personality-trait-pill-percent {
+  color: #4d618a;
+  font-size: 0.76rem;
+  font-weight: 800;
+}
+
+.profile-impressions-popup .personality-trait-card {
+  --trait-accent: #6a45a3;
+  --trait-accent-soft: rgba(106, 69, 163, 0.18);
+  --trait-surface: linear-gradient(180deg, #fbf8ff 0%, #f2ebff 100%);
+  display: flex;
+  flex-direction: column;
+  gap: 0.55rem;
+  padding: 0.82rem 0.84rem 0.88rem;
+  border: 1px solid var(--trait-accent-soft);
+  border-radius: 18px;
+  background: var(--trait-surface);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.9), 0 10px 24px rgba(41, 49, 70, 0.08);
+}
+
+.profile-impressions-popup .personality-trait-card-head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 0.75rem;
+}
+
+.profile-impressions-popup .personality-trait-card-title {
+  display: flex;
+  align-items: center;
+  gap: 0.72rem;
+}
+
+.profile-impressions-popup .personality-trait-card-title strong {
+  display: block;
+  color: #1f2937;
+  font-size: 0.98rem;
+  font-weight: 900;
+  line-height: 1.1;
+}
+
+.profile-impressions-popup .personality-trait-card-title p {
+  margin: 0.18rem 0 0;
+  color: #56627f;
+  font-size: 0.77rem;
+  font-weight: 700;
+  line-height: 1.3;
+}
+
+.profile-impressions-popup .personality-trait-card-icon {
+  display: inline-flex;
+  width: 2.45rem;
+  height: 2.45rem;
+  align-items: center;
+  justify-content: center;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.75);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.94);
+  color: var(--trait-accent);
+}
+
+.profile-impressions-popup .personality-trait-card-icon .mat-icon {
+  width: 1.25rem;
+  height: 1.25rem;
+  font-size: 1.25rem;
+  line-height: 1.25rem;
+}
+
+.profile-impressions-popup .personality-trait-card-percent {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 3rem;
+  min-height: 2.1rem;
+  padding: 0.2rem 0.55rem;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.82);
+  color: var(--trait-accent);
+  font-size: 0.94rem;
+  font-weight: 900;
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.94);
+}
+
+.profile-impressions-popup .personality-trait-card-bar {
+  position: relative;
+  height: 0.48rem;
+  overflow: hidden;
+  border-radius: 999px;
+  background: rgba(91, 103, 130, 0.12);
+}
+
+.profile-impressions-popup .personality-trait-card-bar span {
+  display: block;
+  height: 100%;
+  border-radius: inherit;
+  background: linear-gradient(90deg, var(--trait-accent) 0%, color-mix(in srgb, var(--trait-accent) 68%, white) 100%);
+  box-shadow: 0 4px 12px color-mix(in srgb, var(--trait-accent) 30%, transparent);
+}
+
+.profile-impressions-popup .personality-trait-card-meta {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.4rem 0.7rem;
+  color: #5d6783;
+  font-size: 0.72rem;
+  font-weight: 800;
+}
+
+.profile-impressions-popup .personality-trait-card-highlights {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.28rem;
+}
+
+.profile-impressions-popup .personality-trait-card.trait-tone-social,
+.profile-impressions-popup .personality-trait-pill.trait-tone-social {
+  --trait-accent: #dd5c82;
+  --trait-accent-soft: rgba(221, 92, 130, 0.22);
+  --trait-surface: linear-gradient(180deg, #fff7fb 0%, #fdebf3 100%);
+}
+
+.profile-impressions-popup .personality-trait-card.trait-tone-deep,
+.profile-impressions-popup .personality-trait-pill.trait-tone-deep {
+  --trait-accent: #5a66b4;
+  --trait-accent-soft: rgba(90, 102, 180, 0.2);
+  --trait-surface: linear-gradient(180deg, #f7f8ff 0%, #ebedff 100%);
+}
+
+.profile-impressions-popup .personality-trait-card.trait-tone-adventure,
+.profile-impressions-popup .personality-trait-pill.trait-tone-adventure {
+  --trait-accent: #eb8b2d;
+  --trait-accent-soft: rgba(235, 139, 45, 0.22);
+  --trait-surface: linear-gradient(180deg, #fff8ef 0%, #ffefd9 100%);
+}
+
+.profile-impressions-popup .personality-trait-card.trait-tone-reliable,
+.profile-impressions-popup .personality-trait-pill.trait-tone-reliable {
+  --trait-accent: #2f8b7a;
+  --trait-accent-soft: rgba(47, 139, 122, 0.22);
+  --trait-surface: linear-gradient(180deg, #f3fffb 0%, #e2f7f0 100%);
+}
+
+.profile-impressions-popup .personality-trait-card.trait-tone-creative,
+.profile-impressions-popup .personality-trait-pill.trait-tone-creative {
+  --trait-accent: #8b5fd1;
+  --trait-accent-soft: rgba(139, 95, 209, 0.22);
+  --trait-surface: linear-gradient(180deg, #fbf7ff 0%, #f0e7ff 100%);
+}
+
+.profile-impressions-popup .personality-trait-card.trait-tone-empath,
+.profile-impressions-popup .personality-trait-pill.trait-tone-empath {
+  --trait-accent: #d15f77;
+  --trait-accent-soft: rgba(209, 95, 119, 0.22);
+  --trait-surface: linear-gradient(180deg, #fff8f8 0%, #fdebed 100%);
+}
+
+.profile-impressions-popup .personality-trait-card.trait-tone-ambitious,
+.profile-impressions-popup .personality-trait-pill.trait-tone-ambitious {
+  --trait-accent: #406ecf;
+  --trait-accent-soft: rgba(64, 110, 207, 0.22);
+  --trait-surface: linear-gradient(180deg, #f7faff 0%, #e9f1ff 100%);
+}
+
+.profile-impressions-popup .personality-trait-card.trait-tone-playful,
+.profile-impressions-popup .personality-trait-pill.trait-tone-playful {
+  --trait-accent: #d77b2f;
+  --trait-accent-soft: rgba(215, 123, 47, 0.22);
+  --trait-surface: linear-gradient(180deg, #fffaf2 0%, #ffeedb 100%);
+}
+
+.profile-impressions-popup .social-proof-chip.chip-personality {
+  color: #4d3e69;
+}
+
+.profile-impressions-popup .social-proof-chip.chip-category {
+  color: #2c5e46;
+}
+
+.profile-impressions-popup .impressions-chip-list-updated .social-proof-chip {
+  animation: profile-popup-impressions-chip-pulse 0.38s ease;
+}
+
+.profile-impressions-popup .impressions-chip-list-updated .social-proof-chip:nth-child(2n) {
+  animation-delay: 0.04s;
+}
+
+.profile-impressions-popup .impressions-chip-list-updated .social-proof-chip:nth-child(3n) {
+  animation-delay: 0.08s;
+}
+
+@keyframes profile-popup-impressions-badge-blink {
+  0% {
+    filter: brightness(1) saturate(1);
+  }
+  45% {
+    filter: brightness(1.08) saturate(1.06);
+  }
+  100% {
+    filter: brightness(1) saturate(1);
+  }
+}
+
+@keyframes profile-popup-impressions-chip-pulse {
+  0% {
+    transform: translateY(0) scale(1);
+    filter: brightness(1);
+  }
+  45% {
+    transform: translateY(-1px) scale(1.02);
+    filter: brightness(1.08);
+  }
+  100% {
+    transform: translateY(0) scale(1);
+    filter: brightness(1);
+  }
+}
+
+
+@media (max-width: 760px) {
+  .profile-impressions-popup .app-popup-panel {
+    width: 100vw;
+  }
+
+  .profile-impressions-popup .popup-body.popup-body-impressions {
+    padding: 0.45rem;
+  }
+
+  .profile-impressions-popup .social-proof-grid {
+    grid-template-columns: minmax(0, 1fr);
+    gap: 1.1rem;
+  }
+
+  .profile-impressions-popup .social-proof-card.social-proof-card-modern {
+    padding-top: 6rem;
+  }
+
+  .profile-impressions-popup .social-proof-identity-pill {
+    min-height: 32px;
+    padding: 0.25rem 0.56rem;
+    transform: translate(-0.18rem, -0.34rem);
+    font-size: 0.8rem;
+  }
+
+  .profile-impressions-popup .popup-impressions-badge {
+    top: 3rem;
+    display: inline-flex;
+    max-width: calc(100% - 2px);
+    flex-wrap: nowrap;
+  }
+
+  .profile-impressions-popup .popup-impressions-badge-segment {
+    min-height: 34px;
+    min-width: 0;
+    flex: 1 1 0;
+    padding: 0.2rem 0.34rem;
+  }
+
+  .profile-impressions-popup .popup-impressions-badge-label {
+    display: -webkit-box;
+    width: 100%;
+    min-width: 0;
+    font-size: 0.7rem;
+    overflow: hidden;
+    -webkit-box-orient: vertical;
+    -webkit-line-clamp: 2;
+    text-align: center;
+    white-space: normal;
+    overflow-wrap: anywhere;
+  }
+
+  .profile-impressions-popup .popup-impressions-badge-value {
+    font-size: 0.72rem;
+    white-space: nowrap;
+  }
+
+  .profile-impressions-popup .personality-trait-pill-strip {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 0.28rem;
+  }
+
+  .profile-impressions-popup .personality-trait-pill {
+    gap: 0.08rem;
+    padding: 0.38rem 0.34rem;
+    border-radius: 12px;
+  }
+
+  .profile-impressions-popup .personality-trait-pill-rank {
+    font-size: 0.56rem;
+    letter-spacing: 0.05em;
+  }
+
+  .profile-impressions-popup .personality-trait-pill-label {
+    font-size: 0.72rem;
+  }
+
+  .profile-impressions-popup .personality-trait-pill-percent {
+    font-size: 0.66rem;
+  }
+
+  .profile-impressions-popup .personality-trait-card-head {
+    flex-direction: column;
+  }
+
+  .profile-impressions-popup .personality-trait-card-percent {
+    min-width: 0;
+  }
+}

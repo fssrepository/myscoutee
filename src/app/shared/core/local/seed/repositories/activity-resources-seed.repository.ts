@@ -47,7 +47,11 @@ export class SeedActivityResourcesRepository {
     }
 
     const ownedAssetsByUserId = assetsByUserId ?? this.readOwnedAssetsByUsers(normalizedUserIds);
-    const sourceRecords = sourceRecordsByUserId ?? this.collectSourceRecordsByUserId(normalizedUserIds);
+    const sourceRecords = this.mergeSourceRecordsByUserId(
+      normalizedUserIds,
+      sourceRecordsByUserId,
+      this.collectSourceRecordsByUserId(normalizedUserIds)
+    );
     const contributorUserIdsByEventId = new Map<string, string[]>();
     const desiredRecords = normalizedUserIds.flatMap(userId =>
       this.buildSeededRecordsForUser(
@@ -132,10 +136,14 @@ export class SeedActivityResourcesRepository {
       if (!this.shouldSeedResourcesForParticipant(record, normalizedUserId, contributorUserIdsByEventId)) {
         continue;
       }
-      for (const subEvent of record.subEvents ?? []) {
+      const subEventIds = this.resourceSeedSubEventIds(record);
+      if (!this.isGeneratedSlotRecord(record) || subEventIds.length === 0) {
+        continue;
+      }
+      for (const subEventId of subEventIds) {
         const normalizedRef = this.normalizeRef({
           ownerId: record.id,
-          subEventId: subEvent.id,
+          subEventId,
           assetOwnerUserId: normalizedUserId
         });
         if (!normalizedRef) {
@@ -248,7 +256,8 @@ export class SeedActivityResourcesRepository {
         if (
           !record
           || !record.id
-          || (record.subEvents?.length ?? 0) === 0
+          || !this.isGeneratedSlotRecord(record)
+          || this.resourceSeedSubEventIds(record).length === 0
           || record.status === 'T'
           || !this.isEventAdminRecord(record, userId)
         ) {
@@ -262,6 +271,37 @@ export class SeedActivityResourcesRepository {
       recordsByUserId.set(userId, [...sourceRecordsByEventId.values()]);
     }
     return recordsByUserId;
+  }
+
+  private mergeSourceRecordsByUserId(
+    userIds: readonly string[],
+    sourceRecordsByUserId: ReadonlyMap<string, readonly ActivityEventRecord[]> | undefined,
+    generatedSlotRecordsByUserId: ReadonlyMap<string, readonly ActivityEventRecord[]>
+  ): Map<string, ActivityEventRecord[]> {
+    const result = new Map<string, ActivityEventRecord[]>();
+    for (const userId of userIds) {
+      const byId = new Map<string, ActivityEventRecord>();
+      for (const record of sourceRecordsByUserId?.get(userId) ?? []) {
+        if (this.isGeneratedSlotRecord(record) && this.resourceSeedSubEventIds(record).length > 0) {
+          byId.set(record.id, record);
+        }
+      }
+      for (const record of generatedSlotRecordsByUserId.get(userId) ?? []) {
+        byId.set(record.id, record);
+      }
+      result.set(userId, [...byId.values()]);
+    }
+    return result;
+  }
+
+  private resourceSeedSubEventIds(record: ActivityEventRecord | null | undefined): string[] {
+    return (record?.subEventDefinitions ?? [])
+      .map((item, index) => `${item?.id ?? ''}`.trim() || `subevent-${index + 1}`)
+      .filter((item, index, items) => item.length > 0 && items.indexOf(item) === index);
+  }
+
+  private isGeneratedSlotRecord(record: ActivityEventRecord | null | undefined): boolean {
+    return Boolean(record?.generated) || record?.eventType === 'slot' || Boolean(record?.parentEventId);
   }
 
   private shouldPreferParticipantSourceRecord(next: ActivityEventRecord, current: ActivityEventRecord): boolean {
@@ -374,8 +414,8 @@ export class SeedActivityResourcesRepository {
     let changed = false;
     for (const record of resourceRecords) {
       const event = eventsById.get(record.ownerId);
-      const subEvent = event?.subEvents?.find(item => item.id === record.subEventId);
-      if (!event || !subEvent) {
+      const subEventId = this.resourceSeedSubEventIds(event).find(item => item === record.subEventId) ?? '';
+      if (!event || !subEventId) {
         continue;
       }
       for (const type of ['Car', 'Accommodation', 'Supplies'] as const) {
@@ -386,7 +426,7 @@ export class SeedActivityResourcesRepository {
             continue;
           }
           const existingRequestIndex = card.requests.findIndex(request =>
-            ActivityResourceBuilder.isSubEventManualAssignmentRequest(request, subEvent.id)
+            ActivityResourceBuilder.isSubEventManualAssignmentRequest(request, subEventId)
           );
           const existingRequest = existingRequestIndex >= 0 ? card.requests[existingRequestIndex] : null;
           const quantity = type === 'Supplies'
@@ -408,7 +448,7 @@ export class SeedActivityResourcesRepository {
             continue;
           }
           const desiredRequest: AppDTOs.AssetMemberRequestDTO = {
-            id: existingRequest?.id ?? `manual:${subEvent.id}:${card.id}`,
+            id: existingRequest?.id ?? `manual:${subEventId}:${card.id}`,
             userId: record.assetOwnerUserId,
             name: 'Demo User',
             initials: 'DU',
@@ -419,9 +459,9 @@ export class SeedActivityResourcesRepository {
             requestedAtIso: existingRequest?.requestedAtIso ?? record.createdAtIso,
             booking: {
               eventId: event.id,
-              subEventId: subEvent.id,
-              startAtIso: subEvent.startAt,
-              endAtIso: subEvent.endAt,
+              subEventId,
+              startAtIso: event.startAtIso,
+              endAtIso: event.endAtIso,
               quantity: type === 'Supplies' ? quantity : 1,
               totalAmount: 0,
               currency: 'USD',

@@ -55,15 +55,16 @@ import {
   DialogStore
 } from '../../../shared/ui/context/stores/dialog.store';
 import {
-  NavigatorStore
-} from '../../../shared/ui/context/stores/navigator.store';
+  ProfileStore
+} from '../../../shared/ui/context/stores/profile.store';
 import type { ActivityMemberOwnerType } from '../../../shared/core/common/constants';
 import type { ActivityMemberOwnerRef } from '../../../shared/core/contracts/activity.interface';
 import type * as ActivityContracts from '../../../shared/core/contracts/activity.interface';
 import { UserProfileStore } from '../../../shared/ui/context/stores/user-profile.store';
 import { AppRuntimeStore } from '../../../shared/ui/context/stores/app-runtime.store';
 import { ActivityStore } from '../../../shared/ui/context/stores/activity.store';
-import { PopupStore } from '../../../shared/ui/context/stores/popup.store';
+import { MemberMenuStore } from '../../../shared/ui/context/stores/member-menu.store';
+import { ActivityInvitePopupStore } from '../../../shared/ui/context/stores/activity-invite-popup.store';
 
 interface MembersSmartListFilters {
   ownerId?: string;
@@ -108,9 +109,10 @@ export class EventMembersPopupComponent {
   private readonly userProfileStore = inject(UserProfileStore);
   private readonly runtimeStore = inject(AppRuntimeStore);
   private readonly activityStore = inject(ActivityStore);
-  private readonly popupStore = inject(PopupStore);
+  private readonly memberMenuStore = inject(MemberMenuStore);
+  private readonly activityInviteStore = inject(ActivityInvitePopupStore);
   private readonly usersService = inject(UsersService);
-  private readonly navigatorStore = inject(NavigatorStore);
+  private readonly profileStore = inject(ProfileStore);
   private readonly membersCacheByOwnerId = new Map<string, ActivityContracts.ActivityMemberEntry[]>();
   private lastAppliedActivityMembersUpdatedMs = 0;
   private openMembersHydrationTimer: ReturnType<typeof setTimeout> | null = null;
@@ -190,11 +192,11 @@ export class EventMembersPopupComponent {
     this.syncMobileViewFromViewport();
 
     effect(() => {
-      const request = this.popupStore.activitiesNavigationRequest();
+      const request = this.memberMenuStore.activitiesNavigationRequest();
       if (!request || (request.type !== 'members' && request.type !== 'eventEditorMembers')) {
         return;
       }
-      this.popupStore.clearActivitiesNavigationRequest();
+      this.memberMenuStore.clearActivitiesNavigationRequest();
       if (request.type === 'members') {
         this.openMembersPopup(request.ownerId, {
           ownerType: request.ownerType ?? 'event',
@@ -308,7 +310,7 @@ export class EventMembersPopupComponent {
     if (!this.canShowInviteButton || !this.ownerId) {
       return;
     }
-    this.popupStore.openActivityInvitePopup({
+    this.activityInviteStore.openActivityInvitePopup({
       ownerId: this.ownerId,
       ownerType: this.ownerRef?.ownerType ?? 'event',
       title: this.subtitle,
@@ -318,7 +320,7 @@ export class EventMembersPopupComponent {
   }
 
   protected isSuspendedForAssetInvite(): boolean {
-    const invitePopup = this.popupStore.activityInvitePopup();
+    const invitePopup = this.activityInviteStore.activityInvitePopup();
     return !!invitePopup && invitePopup.ownerId === this.ownerId;
   }
 
@@ -518,7 +520,7 @@ export class EventMembersPopupComponent {
       return;
     }
     this.membersSmartList?.closeMenu();
-    this.navigatorStore.openReportUserPopup({
+    this.profileStore.openReportUserPopup({
       targetUserId: entry.userId,
       targetName: entry.name,
       memberEntryId: entry.id,
@@ -598,7 +600,7 @@ export class EventMembersPopupComponent {
       return;
     }
     this.membersSmartList?.closeMenu();
-    this.navigatorStore.openProfileView({
+    this.profileStore.openProfileView({
       userId,
       label: entry.name
     });

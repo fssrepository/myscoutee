@@ -54,8 +54,8 @@ import {
   DialogStore
 } from '../../../shared/ui/context/stores/dialog.store';
 import {
-  AdminPopupStore
-} from '../../../shared/ui/context/stores/admin-popup.store';
+  AdminMenuStore
+} from '../../../shared/ui/context/stores/admin-menu.store';
 import { UserProfileStore } from '../../../shared/ui/context/stores/user-profile.store';
 
 type EditorTab = 'html' | 'preview';
@@ -167,7 +167,7 @@ export class AdminHelpEditorPopupComponent {
     'track',
     'wbr'
   ]);
-  protected readonly admin = inject(AdminPopupStore);
+  protected readonly admin = inject(AdminMenuStore);
   private readonly userProfileStore = inject(UserProfileStore);
   private readonly helpCenter = inject(HelpCenterService);
   private readonly dialogStore = inject(DialogStore);

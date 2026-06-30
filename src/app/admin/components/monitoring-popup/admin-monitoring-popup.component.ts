@@ -32,8 +32,8 @@ import {
   IndicatorComponent
 } from '../../../shared/ui/components/core/indicator';
 import {
-  AdminPopupStore
-} from '../../../shared/ui/context/stores/admin-popup.store';
+  AdminMenuStore
+} from '../../../shared/ui/context/stores/admin-menu.store';
 import { UserProfileStore } from '../../../shared/ui/context/stores/user-profile.store';
 
 const MONITORING_POPUP_KEY = 'monitoring';
@@ -76,7 +76,7 @@ const MONITORING_FILTER_CATEGORIES: Record<MonitoringFilter, ReadonlySet<string>
   styleUrl: './admin-monitoring-popup.component.scss'
 })
 export class AdminMonitoringPopupComponent implements OnInit {
-  protected readonly admin = inject(AdminPopupStore);
+  protected readonly admin = inject(AdminMenuStore);
   protected readonly monitoringService = inject(AdminMonitoringService);
   private readonly userProfileStore = inject(UserProfileStore);
   protected readonly popupKey = MONITORING_POPUP_KEY;

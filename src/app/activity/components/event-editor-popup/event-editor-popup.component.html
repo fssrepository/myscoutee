@@ -115,7 +115,8 @@
             </label>
             <app-event-subevent-definitions-panel
               class="experience-description-field"
-              [(ngModel)]="eventDetailDTO.subEventDefinitions"
+              [ngModel]="eventDetailDTO.subEventDefinitions"
+              (ngModelChange)="onSubEventDefinitionsChange($event)"
               [(mode)]="eventDetailDTO.mode"
               [enabled]="eventDetailDTO.subEventsEnabled"
               (enabledChange)="onSubEventsEnabledChange($event)"
@@ -133,7 +134,8 @@
                 <app-date-input
                   class="event-date-input"
                   [model]="eventDateInputModel"
-                  [(ngModel)]="eventDetailDTO.dateRange"
+                  [ngModel]="eventDetailDTO.dateRange"
+                  (ngModelChange)="onEventDateRangeChange($event)"
                 ></app-date-input>
               </section>
               <app-event-slots-input [(ngModel)]="eventDetailDTO.slotTemplates"
