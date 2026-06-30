@@ -260,16 +260,19 @@ export class EventSubeventRuntimeMenuConverter {
       }));
     }
     if (status === 'S') {
+      const resumeNextStatus: TournamentStageStatus = this.hasDatePassed(item.endAt, options.nowMs)
+        ? 'SR'
+        : 'A';
       actions.push(this.stageActionItem({
         ...base,
         action: 'resume-tournament',
-        label: 'Resume Tournament',
+        label: 'Resume Stage',
         icon: 'play_circle',
         palette: 'blue',
-        nextStatus: 'SR',
+        nextStatus: resumeNextStatus,
         reason: 'manual-resume',
-        title: 'Resume Tournament',
-        description: `Resume review for ${stageLabel}?`,
+        title: 'Resume Stage',
+        description: `Resume ${stageLabel}?`,
         confirmLabel: 'Resume',
         busyLabel: 'Resuming...',
         destructive: false

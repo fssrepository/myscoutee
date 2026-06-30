@@ -272,6 +272,18 @@ export class LocalEventsRepository {
     }
   }
 
+  private stageActionNextStatus(
+    actionTarget: {
+      action: string;
+      nextStatus: ContractTypes.TournamentStageStatus;
+    },
+    stage: ContractTypes.SubEventDTO | null | undefined
+  ): ContractTypes.TournamentStageStatus {
+    return actionTarget.action === 'resume-tournament' && !this.hasStageDatePassed(stage?.endAt)
+      ? 'A'
+      : actionTarget.nextStatus;
+  }
+
   private isStageStartAllowed(stages: readonly ContractTypes.SubEventDTO[], stageIndex: number): boolean {
     if (stageIndex < 0 || stageIndex >= stages.length) {
       return false;
@@ -754,13 +766,14 @@ export class LocalEventsRepository {
       const nowIso = new Date().toISOString();
       const targetStageId = `${preferredSubEvents[preferredIndex]?.id ?? ''}`.trim();
       if (normalizedSlotSourceId) {
+        const nextStatus = this.stageActionNextStatus(actionTarget, preferredSubEvents[preferredIndex]);
         const updatedStage = {
           ...preferredSubEvents[preferredIndex],
-          stageStatus: actionTarget.nextStatus,
+          stageStatus: nextStatus,
           stageStatusReason: actionTarget.reason,
           stageStatusUpdatedAt: nowIso,
-          stageFinalizedAt: actionTarget.nextStatus === 'F' ? nowIso : null,
-          stageFinalizedByUserId: actionTarget.nextStatus === 'F' ? normalizedUserId : null
+          stageFinalizedAt: nextStatus === 'F' ? nowIso : null,
+          stageFinalizedByUserId: nextStatus === 'F' ? normalizedUserId : null
         };
         result = this.toStageActionResult(
           runtimeOwnerId,
@@ -807,13 +820,14 @@ export class LocalEventsRepository {
         if (stageIndex < 0 || !subEvents[stageIndex]) {
           continue;
         }
+        const nextStatus = this.stageActionNextStatus(actionTarget, subEvents[stageIndex]);
         const updatedStage = {
           ...subEvents[stageIndex],
-          stageStatus: actionTarget.nextStatus,
+          stageStatus: nextStatus,
           stageStatusReason: actionTarget.reason,
           stageStatusUpdatedAt: nowIso,
-          stageFinalizedAt: actionTarget.nextStatus === 'F' ? nowIso : null,
-          stageFinalizedByUserId: actionTarget.nextStatus === 'F' ? normalizedUserId : null
+          stageFinalizedAt: nextStatus === 'F' ? nowIso : null,
+          stageFinalizedByUserId: nextStatus === 'F' ? normalizedUserId : null
         };
         subEvents[stageIndex] = updatedStage;
         if (!result) {
