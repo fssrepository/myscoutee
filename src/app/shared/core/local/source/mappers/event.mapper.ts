@@ -616,6 +616,8 @@ export class LocalActivityEventsMapper {
       && (
         (item.groups?.length ?? 0) > 0
         || (item.tournamentGroupCount ?? 0) > 0
+        || (item.tournamentGroupCapacityMin ?? 0) > 0
+        || (item.tournamentGroupCapacityMax ?? 0) > 0
         || item.tournamentLeaderboardType === 'Score'
         || item.tournamentLeaderboardType === 'Fifa'
       );
@@ -673,7 +675,8 @@ export class LocalActivityEventsMapper {
       stageStatusReason: `${stageRuntime.stageStatusReason ?? ''}`.trim() || item.stageStatusReason,
       stageStatusUpdatedAt: `${stageRuntime.stageStatusUpdatedAt ?? ''}`.trim() || item.stageStatusUpdatedAt,
       stageFinalizedAt: `${stageRuntime.stageFinalizedAt ?? ''}`.trim() || item.stageFinalizedAt,
-      stageFinalizedByUserId: `${stageRuntime.stageFinalizedByUserId ?? ''}`.trim() || item.stageFinalizedByUserId
+      stageFinalizedByUserId: `${stageRuntime.stageFinalizedByUserId ?? ''}`.trim() || item.stageFinalizedByUserId,
+      groupsCount: stageRuntime.groupsCount ?? item.groupsCount
     };
   }
 
@@ -1128,6 +1131,7 @@ export class LocalActivityEventDetailsMapper {
         tournamentGroupCapacityMax: this.optionalNonNegativeInteger(item.tournamentGroupCapacityMax),
         tournamentLeaderboardType: item.tournamentLeaderboardType === 'Fifa' ? 'Fifa' : 'Score',
         tournamentAdvancePerGroup: this.optionalNonNegativeInteger(item.tournamentAdvancePerGroup),
+        groupsCount: this.optionalNonNegativeInteger(item.groupsCount),
         membersAccepted: this.nonNegativeInteger(item.membersAccepted),
         membersPending: this.nonNegativeInteger(item.membersPending),
         carsPending: this.nonNegativeInteger(item.carsPending),

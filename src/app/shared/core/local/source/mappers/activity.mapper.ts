@@ -379,7 +379,8 @@ export class LocalActivitySubEventStageRuntimeMapper {
       stageStatusReason: `${state?.stageStatusReason ?? ''}`.trim() || null,
       stageStatusUpdatedAt: `${state?.stageStatusUpdatedAt ?? ''}`.trim() || null,
       stageFinalizedAt: `${state?.stageFinalizedAt ?? ''}`.trim() || null,
-      stageFinalizedByUserId: `${state?.stageFinalizedByUserId ?? ''}`.trim() || null
+      stageFinalizedByUserId: `${state?.stageFinalizedByUserId ?? ''}`.trim() || null,
+      groupsCount: this.normalizeCount(state?.groupsCount)
     };
   }
 
@@ -404,6 +405,7 @@ export class LocalActivitySubEventStageRuntimeMapper {
       stageStatusUpdatedAt: `${normalized.stageStatusUpdatedAt ?? ''}`.trim() || null,
       stageFinalizedAt: `${normalized.stageFinalizedAt ?? ''}`.trim() || null,
       stageFinalizedByUserId: `${normalized.stageFinalizedByUserId ?? ''}`.trim() || null,
+      groupsCount: normalized.groupsCount ?? existing?.groupsCount ?? null,
       createdMs: existing?.createdMs ?? nowMs,
       updatedMs: nowMs,
       createdAtIso: existing?.createdAtIso ?? nowIso,
@@ -424,7 +426,8 @@ export class LocalActivitySubEventStageRuntimeMapper {
       stageStatusReason: record.stageStatusReason,
       stageStatusUpdatedAt: record.stageStatusUpdatedAt,
       stageFinalizedAt: record.stageFinalizedAt,
-      stageFinalizedByUserId: record.stageFinalizedByUserId
+      stageFinalizedByUserId: record.stageFinalizedByUserId,
+      groupsCount: record.groupsCount
     }, record);
     return normalized ? { ...normalized } : null;
   }
@@ -437,5 +440,12 @@ export class LocalActivitySubEventStageRuntimeMapper {
 
   static isDeleted(record: ActivitySubEventStageRuntimeRecord | null | undefined): boolean {
     return `${record?.status ?? ''}`.trim() === this.STATUS_DELETED;
+  }
+
+  private static normalizeCount(value: unknown): number | null {
+    if (!Number.isFinite(Number(value))) {
+      return null;
+    }
+    return Math.max(0, Math.trunc(Number(value)));
   }
 }

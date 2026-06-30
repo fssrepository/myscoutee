@@ -317,6 +317,7 @@ export interface ActivitySubEventStageRuntimeStateDTO {
   stageStatusUpdatedAt?: string | null;
   stageFinalizedAt?: string | null;
   stageFinalizedByUserId?: string | null;
+  groupsCount?: number | null;
 }
 
 export interface ActivityEventDTO {
@@ -696,6 +697,7 @@ export class ActivityEventDetailDTO {
         tournamentGroupCapacityMax: ActivityEventDetailDTO.optionalNonNegativeInteger(item.tournamentGroupCapacityMax),
         tournamentLeaderboardType: item.tournamentLeaderboardType === 'Fifa' ? 'Fifa' : 'Score',
         tournamentAdvancePerGroup: ActivityEventDetailDTO.optionalNonNegativeInteger(item.tournamentAdvancePerGroup),
+        groupsCount: ActivityEventDetailDTO.optionalNonNegativeInteger(item.groupsCount),
         membersAccepted: ActivityEventDetailDTO.nonNegativeInteger(item.membersAccepted),
         membersPending: ActivityEventDetailDTO.nonNegativeInteger(item.membersPending),
         carsPending: ActivityEventDetailDTO.nonNegativeInteger(item.carsPending),

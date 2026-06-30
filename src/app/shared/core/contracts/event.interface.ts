@@ -51,6 +51,7 @@ export interface SubEventDTO {
   tournamentGroupCapacityMax?: number;
   tournamentLeaderboardType?: TournamentLeaderboardType;
   tournamentAdvancePerGroup?: number;
+  groupsCount?: number;
   optional: boolean;
   capacityMin: number;
   capacityMax: number;

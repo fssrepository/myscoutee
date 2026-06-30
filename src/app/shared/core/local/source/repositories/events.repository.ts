@@ -21,9 +21,13 @@ import {
 } from '../../../contracts/activity.interface';
 import {
   ACTIVITY_MEMBERS_TABLE_NAME,
+  ACTIVITY_SUB_EVENT_GROUPS_TABLE_NAME,
   ACTIVITY_SUB_EVENT_STAGE_RUNTIME_TABLE_NAME,
   type ActivityMemberRecord,
   type ActivityMembersRecordCollection,
+  type ActivitySubEventGroupRecord,
+  type ActivitySubEventGroupsRecordCollection,
+  type ActivitySubEventStageRuntimeRecord,
   type ActivitySubEventStageRuntimeRecordCollection
 } from '../entity/activity.entity';
 import type * as ContractTypes from '../../../contracts';
@@ -656,6 +660,7 @@ export class LocalEventsRepository {
       };
     });
     this.materializeSlotRecords();
+    this.syncStageRuntimeGroupCountsForDefinitions(record.id);
     return this.peekKnownItemById(record.creatorUserId, record.id);
   }
 
@@ -864,21 +869,21 @@ export class LocalEventsRepository {
     parentEventId: string,
     slotSourceId: string
   ): ContractTypes.SubEventDTO[] {
+    const parentRecord = this.computePreferredEventRecords(table)
+      .find(record => record.id === parentEventId) ?? null;
     const slotRecord = table.ids
       .map(id => table.byId[id])
       .find(record => record?.id === slotSourceId && record.parentEventId === parentEventId);
     if (slotRecord) {
       const persisted = this.cloneSubEvents(slotRecord.subEvents) ?? [];
       if (persisted.length > 0) {
-        return this.withStageRuntimeStates(persisted, slotSourceId);
+        return this.withStageRuntimeStates(persisted, slotSourceId, parentRecord ?? slotRecord);
       }
       const generated = LocalActivityEventsMapper.toSubEventsSlots(parentEventId, slotRecord, null)[0] ?? null;
       if (generated) {
-        return this.withStageRuntimeStates(this.cloneSubEvents(generated.subEventItems) ?? [], slotSourceId);
+        return this.withStageRuntimeStates(this.cloneSubEvents(generated.subEventItems) ?? [], slotSourceId, parentRecord ?? slotRecord);
       }
     }
-    const parentRecord = this.computePreferredEventRecords(table)
-      .find(record => record.id === parentEventId) ?? null;
     if (!parentRecord) {
       return [];
     }
@@ -896,7 +901,7 @@ export class LocalEventsRepository {
       const slot = LocalActivityEventsMapper.toSubEventsSlots(parentEventId, parentRecord, query)
         .find(candidate => candidate.slotSourceId === slotSourceId || candidate.id === slotSourceId) ?? null;
       if (slot) {
-        return this.withStageRuntimeStates(this.cloneSubEvents(slot.subEventItems) ?? [], slotSourceId);
+        return this.withStageRuntimeStates(this.cloneSubEvents(slot.subEventItems) ?? [], slotSourceId, parentRecord);
       }
     }
     return [];
@@ -904,7 +909,8 @@ export class LocalEventsRepository {
 
   private withStageRuntimeStates(
     items: ContractTypes.SubEventDTO[],
-    ownerId: string
+    ownerId: string,
+    eventRecord: ActivityEventRecord | null = null
   ): ContractTypes.SubEventDTO[] {
     const normalizedOwnerId = `${ownerId ?? ''}`.trim();
     if (!normalizedOwnerId || items.length === 0) {
@@ -919,16 +925,16 @@ export class LocalEventsRepository {
       }
       const record = byId[`${normalizedOwnerId}:${subEventId}`];
       const state = record ? LocalActivitySubEventStageRuntimeMapper.toState(record) : null;
-      if (!state) {
-        return item;
-      }
+      const displayGroupsCount = this.autoTournamentGroupCount(item, items, eventRecord)
+        + this.manualGroupRecords(normalizedOwnerId, subEventId).length;
       return {
         ...item,
-        stageStatus: `${state.stageStatus ?? ''}`.trim() || item.stageStatus,
-        stageStatusReason: `${state.stageStatusReason ?? ''}`.trim() || item.stageStatusReason,
-        stageStatusUpdatedAt: `${state.stageStatusUpdatedAt ?? ''}`.trim() || item.stageStatusUpdatedAt,
-        stageFinalizedAt: `${state.stageFinalizedAt ?? ''}`.trim() || item.stageFinalizedAt,
-        stageFinalizedByUserId: `${state.stageFinalizedByUserId ?? ''}`.trim() || item.stageFinalizedByUserId
+        stageStatus: `${state?.stageStatus ?? ''}`.trim() || item.stageStatus,
+        stageStatusReason: `${state?.stageStatusReason ?? ''}`.trim() || item.stageStatusReason,
+        stageStatusUpdatedAt: `${state?.stageStatusUpdatedAt ?? ''}`.trim() || item.stageStatusUpdatedAt,
+        stageFinalizedAt: `${state?.stageFinalizedAt ?? ''}`.trim() || item.stageFinalizedAt,
+        stageFinalizedByUserId: `${state?.stageFinalizedByUserId ?? ''}`.trim() || item.stageFinalizedByUserId,
+        groupsCount: displayGroupsCount
       };
     });
   }
@@ -962,7 +968,7 @@ export class LocalEventsRepository {
       return null;
     }
     const leaderboardType = stage.tournamentLeaderboardType === 'Fifa' ? 'Fifa' : 'Score';
-    const groups = (stage.groups?.length ? stage.groups : this.localGeneratedGroups(stage)).map((group, groupIndex) => {
+    const groups = this.stageGroupsForDisplay(normalizedEventId, stage, subEvents, record).map((group, groupIndex) => {
       const groupId = `${group.id ?? `${normalizedSubEventId}-group-${groupIndex + 1}`}`.trim();
       const memberCount = Math.max(2, Math.trunc(Number(group.capacityMax ?? stage.tournamentGroupCapacityMax ?? stage.capacityMax) || 4));
       const advancePerGroup = Math.max(1, Math.trunc(Number(stage.tournamentAdvancePerGroup) || 1));
@@ -1026,7 +1032,8 @@ export class LocalEventsRepository {
     if (!stage) {
       return [];
     }
-    return this.stageGroupsForMutation(stage)
+    const stages = this.cloneSubEvents(record?.subEvents) ?? [];
+    return this.stageGroupsForDisplay(ownerSourceId, stage, stages, record)
       .map((group, groupIndex) => this.tournamentGroupDto(stage, group, groupIndex));
   }
 
@@ -1042,67 +1049,64 @@ export class LocalEventsRepository {
     }
 
     const preferredRecords = this.computePreferredEventRecords(this.memoryDb.read()[EVENTS_TABLE_NAME]);
-    const preferred = preferredRecords
+    const ownerRecord = preferredRecords
       .find(item => item.id === ownerSourceId || `${(item as { sourceId?: string }).sourceId ?? ''}`.trim() === ownerSourceId) ?? null;
-    const permissionRecord = preferredRecords
-      .find(item => item.id === eventId || `${(item as { sourceId?: string }).sourceId ?? ''}`.trim() === eventId) ?? preferred;
-    if (!preferred || !permissionRecord || !this.isEventAdminRecord(permissionRecord, actorUserId)) {
-      return this.buildTournamentGroupsState(actorUserId, ownerSourceId, preferred);
+    const parentRecord = eventId
+      ? preferredRecords.find(item => item.id === eventId || `${(item as { sourceId?: string }).sourceId ?? ''}`.trim() === eventId) ?? null
+      : null;
+    const definitionRecord = ownerRecord ?? (slotId ? parentRecord : null);
+    const permissionRecord = parentRecord ?? ownerRecord;
+    if (!definitionRecord || !permissionRecord || !this.isEventAdminRecord(permissionRecord, actorUserId)) {
+      return this.buildTournamentGroupsState(actorUserId, ownerSourceId, definitionRecord);
     }
 
     const groupId = `${request.groupId ?? ''}`.trim();
     const capacityMin = Math.max(0, Math.trunc(Number(request.capacityMin) || 0));
     const capacityMax = Math.max(capacityMin, Math.trunc(Number(request.capacityMax) || capacityMin));
+    const stages = this.cloneSubEvents(definitionRecord.subEvents) ?? [];
+    const stage = stages
+      .find(item => `${item.id ?? ''}`.trim() === subEventId) ?? null;
     this.memoryDb.write(state => {
-      const table = state[EVENTS_TABLE_NAME];
-      const nextById = { ...table.byId };
-      let changed = false;
-      for (const recordKey of table.ids) {
-        const current = table.byId[recordKey];
-        if (!current || (current.id !== ownerSourceId && `${(current as { sourceId?: string }).sourceId ?? ''}`.trim() !== ownerSourceId)) {
-          continue;
-        }
-        const subEvents = this.cloneSubEvents(current.subEvents) ?? [];
-        const subEventIndex = subEvents.findIndex(item => `${item.id ?? ''}`.trim() === subEventId);
-        if (subEventIndex < 0 || !subEvents[subEventIndex]) {
-          continue;
-        }
-        const stage = subEvents[subEventIndex];
-        const groups = this.stageGroupsForMutation(stage);
-        const targetIndex = groupId
-          ? groups.findIndex(group => `${group.id ?? ''}`.trim() === groupId)
-          : -1;
-        const nextGroup: ContractTypes.SubEventGroupDTO = {
-          id: groupId || this.nextTournamentGroupId(subEventId),
-          name,
-          source: 'manual',
-          capacityMin,
-          capacityMax
-        };
-        const nextGroups = targetIndex >= 0
-          ? groups.map((group, index) => index === targetIndex ? { ...group, ...nextGroup } : group)
-          : [...groups, nextGroup];
-        subEvents[subEventIndex] = this.stageWithTournamentGroups(stage, nextGroups);
-        nextById[recordKey] = {
-          ...current,
-          subEvents
-        };
-        changed = true;
-      }
-      return changed
-        ? {
-            ...state,
-            [EVENTS_TABLE_NAME]: {
-              ...table,
-              byId: nextById
-            }
-          }
-        : state;
+      const groupsTable = this.normalizeSubEventGroupsCollection(state[ACTIVITY_SUB_EVENT_GROUPS_TABLE_NAME]);
+      const nextGroupId = groupId || this.nextTournamentGroupId(ownerSourceId, subEventId, groupsTable);
+      const nowMs = Date.now();
+      const nowIso = new Date(nowMs).toISOString();
+      const groupOwnerId = this.manualGroupOwnerId(ownerSourceId, subEventId);
+      const recordId = this.manualGroupRecordId(ownerSourceId, subEventId, nextGroupId);
+      const existing = groupsTable.byId[recordId] ?? null;
+      const record: ActivitySubEventGroupRecord = {
+        id: recordId,
+        status: 'A',
+        ownerId: groupOwnerId,
+        groupId: nextGroupId,
+        name,
+        capacityMin,
+        capacityMax,
+        ownerKey: groupOwnerId,
+        createdMs: existing?.createdMs ?? nowMs,
+        updatedMs: nowMs,
+        createdAtIso: existing?.createdAtIso ?? nowIso,
+        updatedAtIso: nowIso
+      };
+      const nextGroupsTable = this.upsertSubEventGroupRecordCollection(groupsTable, record);
+      const nextStageRuntimeTable = this.upsertStageRuntimeGroupsCountCollection(
+        state[ACTIVITY_SUB_EVENT_STAGE_RUNTIME_TABLE_NAME],
+        nextGroupsTable,
+        ownerSourceId,
+        subEventId,
+        stage,
+        stages,
+        definitionRecord,
+        nowMs,
+        nowIso
+      );
+      return {
+        ...state,
+        [ACTIVITY_SUB_EVENT_GROUPS_TABLE_NAME]: nextGroupsTable,
+        [ACTIVITY_SUB_EVENT_STAGE_RUNTIME_TABLE_NAME]: nextStageRuntimeTable
+      };
     });
-    const refreshed = this.computePreferredEventRecords(this.memoryDb.read()[EVENTS_TABLE_NAME])
-      .find(item => item.id === ownerSourceId || `${(item as { sourceId?: string }).sourceId ?? ''}`.trim() === ownerSourceId) ?? preferred;
-    this.materializeSlotRecords();
-    return this.buildTournamentGroupsState(actorUserId, ownerSourceId, refreshed);
+    return this.buildTournamentGroupsState(actorUserId, ownerSourceId, definitionRecord);
   }
 
   deleteTournamentGroup(request: ContractTypes.EventTournamentGroupDeleteRequestDTO): ContractTypes.EventTournamentGroupsStateDTO | null {
@@ -1113,53 +1117,108 @@ export class LocalEventsRepository {
     const subEventId = `${request.subEventId ?? ''}`.trim();
     const groupId = `${request.groupId ?? ''}`.trim();
     const preferredRecords = this.computePreferredEventRecords(this.memoryDb.read()[EVENTS_TABLE_NAME]);
-    const preferred = preferredRecords
+    const ownerRecord = preferredRecords
       .find(item => item.id === ownerSourceId || `${(item as { sourceId?: string }).sourceId ?? ''}`.trim() === ownerSourceId) ?? null;
-    const permissionRecord = preferredRecords
-      .find(item => item.id === eventId || `${(item as { sourceId?: string }).sourceId ?? ''}`.trim() === eventId) ?? preferred;
-    if (!actorUserId || !ownerSourceId || !subEventId || !groupId || !preferred || !permissionRecord || !this.isEventAdminRecord(permissionRecord, actorUserId)) {
-      return this.buildTournamentGroupsState(actorUserId, ownerSourceId, preferred);
+    const parentRecord = eventId
+      ? preferredRecords.find(item => item.id === eventId || `${(item as { sourceId?: string }).sourceId ?? ''}`.trim() === eventId) ?? null
+      : null;
+    const definitionRecord = ownerRecord ?? (slotId ? parentRecord : null);
+    const permissionRecord = parentRecord ?? ownerRecord;
+    if (!actorUserId || !ownerSourceId || !subEventId || !groupId || !definitionRecord || !permissionRecord || !this.isEventAdminRecord(permissionRecord, actorUserId)) {
+      return this.buildTournamentGroupsState(actorUserId, ownerSourceId, definitionRecord);
     }
 
+    const stages = this.cloneSubEvents(definitionRecord.subEvents) ?? [];
+    const stage = stages
+      .find(item => `${item.id ?? ''}`.trim() === subEventId) ?? null;
     this.memoryDb.write(state => {
-      const table = state[EVENTS_TABLE_NAME];
-      const nextById = { ...table.byId };
-      let changed = false;
-      for (const recordKey of table.ids) {
-        const current = table.byId[recordKey];
-        if (!current || (current.id !== ownerSourceId && `${(current as { sourceId?: string }).sourceId ?? ''}`.trim() !== ownerSourceId)) {
-          continue;
-        }
-        const subEvents = this.cloneSubEvents(current.subEvents) ?? [];
-        const subEventIndex = subEvents.findIndex(item => `${item.id ?? ''}`.trim() === subEventId);
-        if (subEventIndex < 0 || !subEvents[subEventIndex]) {
-          continue;
-        }
-        const stage = subEvents[subEventIndex];
-        const groups = this.stageGroupsForMutation(stage).filter(group => `${group.id ?? ''}`.trim() !== groupId);
-        subEvents[subEventIndex] = this.stageWithTournamentGroups(stage, groups);
-        nextById[recordKey] = {
-          ...current,
-          subEvents
-        };
-        changed = true;
+      const groupsTable = this.normalizeSubEventGroupsCollection(state[ACTIVITY_SUB_EVENT_GROUPS_TABLE_NAME]);
+      const recordId = this.manualGroupRecordId(ownerSourceId, subEventId, groupId);
+      const existing = groupsTable.byId[recordId] ?? null;
+      if (!existing) {
+        return state;
       }
-      return changed
-        ? {
-            ...state,
-            [EVENTS_TABLE_NAME]: {
-              ...table,
-              byId: nextById
-            }
-          }
-        : state;
+      const nowMs = Date.now();
+      const nowIso = new Date(nowMs).toISOString();
+      const nextGroupsTable = this.upsertSubEventGroupRecordCollection(groupsTable, {
+        ...existing,
+        status: 'D',
+        updatedMs: nowMs,
+        updatedAtIso: nowIso
+      });
+      const nextStageRuntimeTable = this.upsertStageRuntimeGroupsCountCollection(
+        state[ACTIVITY_SUB_EVENT_STAGE_RUNTIME_TABLE_NAME],
+        nextGroupsTable,
+        ownerSourceId,
+        subEventId,
+        stage,
+        stages,
+        definitionRecord,
+        nowMs,
+        nowIso
+      );
+      return {
+        ...state,
+        [ACTIVITY_SUB_EVENT_GROUPS_TABLE_NAME]: nextGroupsTable,
+        [ACTIVITY_SUB_EVENT_STAGE_RUNTIME_TABLE_NAME]: nextStageRuntimeTable
+      };
     });
     this.localScoreEntriesByGroupKey.delete(this.leaderboardGroupKey(ownerSourceId, subEventId, groupId));
     this.localFifaMatchesByGroupKey.delete(this.leaderboardGroupKey(ownerSourceId, subEventId, groupId));
-    const refreshed = this.computePreferredEventRecords(this.memoryDb.read()[EVENTS_TABLE_NAME])
-      .find(item => item.id === ownerSourceId || `${(item as { sourceId?: string }).sourceId ?? ''}`.trim() === ownerSourceId) ?? preferred;
-    this.materializeSlotRecords();
-    return this.buildTournamentGroupsState(actorUserId, ownerSourceId, refreshed);
+    return this.buildTournamentGroupsState(actorUserId, ownerSourceId, definitionRecord);
+  }
+
+  markTournamentGroupsDeletedByParentSubEventIds(parentEventId: string, subEventIds: readonly string[]): number {
+    const normalizedParentId = `${parentEventId ?? ''}`.trim();
+    const removed = new Set((subEventIds ?? []).map(id => `${id ?? ''}`.trim()).filter(Boolean));
+    if (!normalizedParentId || removed.size === 0) {
+      return 0;
+    }
+    let changedCount = 0;
+    this.memoryDb.write(state => {
+      const table = this.normalizeSubEventGroupsCollection(state[ACTIVITY_SUB_EVENT_GROUPS_TABLE_NAME]);
+      const runtimeTable = this.normalizeStageRuntimeCollection(state[ACTIVITY_SUB_EVENT_STAGE_RUNTIME_TABLE_NAME]);
+      const runtimeGroupOwnerIds = new Set(runtimeTable.ids
+        .map(id => runtimeTable.byId[id])
+        .filter((record): record is ActivitySubEventStageRuntimeRecord => Boolean(record))
+        .filter(record => `${record.status ?? 'A'}`.trim() !== 'D')
+        .filter(record => this.isRuntimeOwnerRecord(record.ownerId, normalizedParentId))
+        .filter(record => removed.has(`${record.subEventId ?? ''}`.trim()))
+        .map(record => record.id));
+      let nextTable = table;
+      const nowMs = Date.now();
+      const nowIso = new Date(nowMs).toISOString();
+      for (const id of table.ids) {
+        const record = table.byId[id];
+        if (!record || `${record.status ?? 'A'}`.trim() === 'D') {
+          continue;
+        }
+        if (!runtimeGroupOwnerIds.has(record.ownerId)) {
+          continue;
+        }
+        nextTable = this.upsertSubEventGroupRecordCollection(nextTable, {
+          ...record,
+          status: 'D',
+          updatedMs: nowMs,
+          updatedAtIso: nowIso
+        });
+        changedCount += 1;
+      }
+      return changedCount > 0
+        ? {
+            ...state,
+            [ACTIVITY_SUB_EVENT_GROUPS_TABLE_NAME]: nextTable
+          }
+        : state;
+    });
+    return changedCount;
+  }
+
+  private isRuntimeOwnerRecord(ownerId: string, parentEventId: string): boolean {
+    const normalizedOwnerId = `${ownerId ?? ''}`.trim();
+    const normalizedParentId = `${parentEventId ?? ''}`.trim();
+    return Boolean(normalizedOwnerId && normalizedParentId)
+      && (normalizedOwnerId === normalizedParentId || normalizedOwnerId.startsWith(`${normalizedParentId}:`));
   }
 
   upsertSubEventLeaderboardEntry(request: ContractTypes.SubEventLeaderboardEntryUpsertRequestDTO): ContractTypes.SubEventLeaderboardState | null {
@@ -2270,7 +2329,7 @@ export class LocalEventsRepository {
     const stages = subEvents
       .map((stage, index) => ({ stage, index }))
       .filter(entry => this.isGeneratedTournamentStage(entry.stage))
-      .map(({ stage, index }) => this.tournamentStageDto(stage, index));
+      .map(({ stage, index }) => this.tournamentStageDto(normalizedEventId, stage, index, subEvents, record));
     return {
       eventId: normalizedEventId,
       title: `${record.title ?? ''}`.trim(),
@@ -2280,7 +2339,13 @@ export class LocalEventsRepository {
     };
   }
 
-  private tournamentStageDto(stage: ContractTypes.SubEventDTO, index: number): ContractTypes.EventTournamentStageDTO {
+  private tournamentStageDto(
+    ownerSourceId: string,
+    stage: ContractTypes.SubEventDTO,
+    index: number,
+    stages: readonly ContractTypes.SubEventDTO[],
+    eventRecord: ActivityEventRecord | null
+  ): ContractTypes.EventTournamentStageDTO {
     const subEventId = `${stage.id ?? `subevent-${index + 1}`}`.trim() || `subevent-${index + 1}`;
     return {
       subEventId,
@@ -2293,7 +2358,8 @@ export class LocalEventsRepository {
       stageStatus: `${stage.stageStatus ?? ''}`.trim(),
       leaderboardType: stage.tournamentLeaderboardType === 'Fifa' ? 'Fifa' : 'Score',
       advancePerGroup: Math.max(0, Math.trunc(Number(stage.tournamentAdvancePerGroup) || 0)),
-      groups: this.stageGroupsForMutation(stage).map((group, groupIndex) => this.tournamentGroupDto(stage, group, groupIndex))
+      groups: this.stageGroupsForDisplay(ownerSourceId, stage, stages, eventRecord)
+        .map((group, groupIndex) => this.tournamentGroupDto(stage, group, groupIndex))
     };
   }
 
@@ -2316,8 +2382,12 @@ export class LocalEventsRepository {
     };
   }
 
-  private stageGroupsForMutation(stage: ContractTypes.SubEventDTO): ContractTypes.SubEventGroupDTO[] {
-    const groups = stage.groups?.length ? stage.groups : this.localGeneratedGroups(stage);
+  private stageGroupsForMutation(
+    stage: ContractTypes.SubEventDTO,
+    stages?: readonly ContractTypes.SubEventDTO[] | null,
+    eventRecord?: ActivityEventRecord | null
+  ): ContractTypes.SubEventGroupDTO[] {
+    const groups = stage.groups?.length ? stage.groups : this.localGeneratedGroups(stage, stages, eventRecord);
     return groups
       .map((group, index): ContractTypes.SubEventGroupDTO => {
         const capacityMin = Math.max(0, Math.trunc(Number(group.capacityMin ?? stage.tournamentGroupCapacityMin ?? 0) || 0));
@@ -2334,6 +2404,26 @@ export class LocalEventsRepository {
         };
       })
       .filter(group => group.id && group.name);
+  }
+
+  private stageGroupsForDisplay(
+    ownerSourceId: string,
+    stage: ContractTypes.SubEventDTO,
+    stages?: readonly ContractTypes.SubEventDTO[] | null,
+    eventRecord?: ActivityEventRecord | null
+  ): ContractTypes.SubEventGroupDTO[] {
+    const generated: ContractTypes.SubEventGroupDTO[] = this.stageGroupsForMutation(stage, stages, eventRecord).map(group => ({
+      ...group,
+      source: group.source === 'manual' ? 'manual' as const : 'generated' as const
+    }));
+    const stageId = `${stage.id ?? ''}`.trim();
+    if (!ownerSourceId.trim() || !stageId) {
+      return generated;
+    }
+    const manual = this.manualGroupRecords(ownerSourceId, stageId)
+      .map(record => this.manualGroupToDto(record))
+      .filter((group): group is ContractTypes.SubEventGroupDTO => Boolean(group));
+    return [...generated, ...manual];
   }
 
   private stageWithTournamentGroups(
@@ -2366,8 +2456,254 @@ export class LocalEventsRepository {
     );
   }
 
-  private nextTournamentGroupId(subEventId: string): string {
-    return `${subEventId || 'stage'}-group-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`;
+  private nextTournamentGroupId(
+    ownerSourceId: string,
+    subEventId: string,
+    table: ActivitySubEventGroupsRecordCollection
+  ): string {
+    const prefix = `${this.manualGroupOwnerId(ownerSourceId, subEventId) || 'stage'}:manual-group:`;
+    let index = Math.max(1, this.manualGroupRecords(ownerSourceId, subEventId, table).length + 1);
+    while (this.manualGroupRecords(ownerSourceId, subEventId, table).some(group => group.groupId === `${prefix}${index}`)) {
+      index += 1;
+    }
+    return `${prefix}${index}`;
+  }
+
+  private manualGroupRecordId(ownerSourceId: string, subEventId: string, groupId: string): string {
+    return `${this.manualGroupOwnerId(ownerSourceId, subEventId)}:${groupId.trim()}`;
+  }
+
+  private manualGroupOwnerId(ownerSourceId: string, subEventId: string): string {
+    return `${ownerSourceId ?? ''}`.trim() && `${subEventId ?? ''}`.trim()
+      ? `${ownerSourceId.trim()}:${subEventId.trim()}`
+      : '';
+  }
+
+  private manualGroupRecords(
+    _ownerSourceId: string,
+    subEventId: string,
+    sourceTable?: ActivitySubEventGroupsRecordCollection
+  ): ActivitySubEventGroupRecord[] {
+    const table = sourceTable ?? this.normalizeSubEventGroupsCollection(this.memoryDb.read()[ACTIVITY_SUB_EVENT_GROUPS_TABLE_NAME]);
+    const ownerKey = this.manualGroupOwnerId(_ownerSourceId, subEventId);
+    if (!ownerKey) {
+      return [];
+    }
+    return (table.idsByOwnerKey[ownerKey] ?? [])
+      .map(id => table.byId[id])
+      .filter((record): record is ActivitySubEventGroupRecord => Boolean(record))
+      .filter(record => `${record.status ?? 'A'}`.trim() !== 'D')
+      .filter(record => record.ownerId === ownerKey)
+      .sort((left, right) => left.createdMs - right.createdMs || left.groupId.localeCompare(right.groupId))
+      .map(record => ({ ...record }));
+  }
+
+  private manualGroupToDto(record: ActivitySubEventGroupRecord | null | undefined): ContractTypes.SubEventGroupDTO | null {
+    if (!record || `${record.status ?? 'A'}`.trim() === 'D' || !record.groupId.trim()) {
+      return null;
+    }
+    const capacityMin = Math.max(0, Math.trunc(Number(record.capacityMin) || 0));
+    return {
+      id: record.groupId.trim(),
+      name: record.name.trim() || 'Group',
+      source: 'manual',
+      capacityMin,
+      capacityMax: Math.max(capacityMin, Math.trunc(Number(record.capacityMax) || capacityMin))
+    };
+  }
+
+  private normalizeSubEventGroupsCollection(value: unknown): ActivitySubEventGroupsRecordCollection {
+    const source = value as Partial<ActivitySubEventGroupsRecordCollection> | null | undefined;
+    const byId = source?.byId && typeof source.byId === 'object'
+      ? { ...(source.byId as Record<string, ActivitySubEventGroupRecord>) }
+      : {};
+    const ids = Array.isArray(source?.ids)
+      ? source.ids.map(id => `${id ?? ''}`.trim()).filter(id => Boolean(byId[id]))
+      : Object.keys(byId);
+    const idsByOwnerKey: Record<string, string[]> = {};
+    for (const id of ids) {
+      const ownerKey = `${byId[id]?.ownerKey ?? byId[id]?.ownerId ?? ''}`.trim();
+      if (!ownerKey) {
+        continue;
+      }
+      const bucket = idsByOwnerKey[ownerKey] ?? [];
+      if (!bucket.includes(id)) {
+        bucket.push(id);
+      }
+      idsByOwnerKey[ownerKey] = bucket;
+    }
+    return { byId, ids, idsByOwnerKey };
+  }
+
+  private upsertSubEventGroupRecordCollection(
+    table: ActivitySubEventGroupsRecordCollection,
+    record: ActivitySubEventGroupRecord
+  ): ActivitySubEventGroupsRecordCollection {
+    const byId = {
+      ...table.byId,
+      [record.id]: { ...record }
+    };
+    const ids = table.ids.includes(record.id) ? [...table.ids] : [...table.ids, record.id];
+    const idsByOwnerKey = { ...table.idsByOwnerKey };
+    const ownerKey = record.ownerKey.trim();
+    if (ownerKey) {
+      const bucket = idsByOwnerKey[ownerKey] ? [...idsByOwnerKey[ownerKey]] : [];
+      if (!bucket.includes(record.id)) {
+        bucket.push(record.id);
+      }
+      idsByOwnerKey[ownerKey] = bucket;
+    }
+    return { byId, ids, idsByOwnerKey };
+  }
+
+  private normalizeStageRuntimeCollection(value: unknown): ActivitySubEventStageRuntimeRecordCollection {
+    const source = value as Partial<ActivitySubEventStageRuntimeRecordCollection> | null | undefined;
+    const byId = source?.byId && typeof source.byId === 'object'
+      ? { ...(source.byId as Record<string, ActivitySubEventStageRuntimeRecord>) }
+      : {};
+    const ids = Array.isArray(source?.ids)
+      ? source.ids.map(id => `${id ?? ''}`.trim()).filter(id => Boolean(byId[id]))
+      : Object.keys(byId);
+    const idsByOwnerKey: Record<string, string[]> = {};
+    for (const id of ids) {
+      const ownerKey = `${byId[id]?.ownerKey ?? byId[id]?.ownerId ?? ''}`.trim();
+      if (!ownerKey) {
+        continue;
+      }
+      const bucket = idsByOwnerKey[ownerKey] ?? [];
+      if (!bucket.includes(id)) {
+        bucket.push(id);
+      }
+      idsByOwnerKey[ownerKey] = bucket;
+    }
+    return { byId, ids, idsByOwnerKey };
+  }
+
+  private upsertStageRuntimeGroupsCountCollection(
+    value: unknown,
+    groupsTable: ActivitySubEventGroupsRecordCollection,
+    ownerSourceId: string,
+    subEventId: string,
+    stage: ContractTypes.SubEventDTO | null,
+    stages: readonly ContractTypes.SubEventDTO[] | null | undefined,
+    eventRecord: ActivityEventRecord | null | undefined,
+    nowMs: number,
+    nowIso: string
+  ): ActivitySubEventStageRuntimeRecordCollection {
+    const table = this.normalizeStageRuntimeCollection(value);
+    const id = `${ownerSourceId.trim()}:${subEventId.trim()}`;
+    const existing = table.byId[id] ?? null;
+    const groupsCount = this.autoTournamentGroupCount(stage, stages, eventRecord)
+      + this.manualGroupRecords(ownerSourceId, subEventId, groupsTable).length;
+    const record: ActivitySubEventStageRuntimeRecord = {
+      id,
+      status: 'A',
+      ownerId: ownerSourceId.trim(),
+      subEventId: subEventId.trim(),
+      stageStatus: existing?.stageStatus ?? null,
+      stageStatusReason: existing?.stageStatusReason ?? null,
+      stageStatusUpdatedAt: existing?.stageStatusUpdatedAt ?? null,
+      stageFinalizedAt: existing?.stageFinalizedAt ?? null,
+      stageFinalizedByUserId: existing?.stageFinalizedByUserId ?? null,
+      groupsCount: Math.max(0, groupsCount),
+      ownerKey: ownerSourceId.trim(),
+      createdMs: existing?.createdMs ?? nowMs,
+      updatedMs: nowMs,
+      createdAtIso: existing?.createdAtIso ?? nowIso,
+      updatedAtIso: nowIso
+    };
+    const byId = {
+      ...table.byId,
+      [id]: record
+    };
+    const ids = table.ids.includes(id) ? [...table.ids] : [...table.ids, id];
+    const idsByOwnerKey = { ...table.idsByOwnerKey };
+    const bucket = idsByOwnerKey[record.ownerKey] ? [...idsByOwnerKey[record.ownerKey]] : [];
+    if (!bucket.includes(id)) {
+      bucket.push(id);
+    }
+    idsByOwnerKey[record.ownerKey] = bucket;
+    return { byId, ids, idsByOwnerKey };
+  }
+
+  private syncStageRuntimeGroupCountsForDefinitions(parentEventId: string): void {
+    const normalizedParentId = parentEventId.trim();
+    if (!normalizedParentId) {
+      return;
+    }
+    this.memoryDb.write(state => {
+      const runtimeTable = this.normalizeStageRuntimeCollection(state[ACTIVITY_SUB_EVENT_STAGE_RUNTIME_TABLE_NAME]);
+      const groupsTable = this.normalizeSubEventGroupsCollection(state[ACTIVITY_SUB_EVENT_GROUPS_TABLE_NAME]);
+      const records = runtimeTable.ids
+        .map(id => runtimeTable.byId[id])
+        .filter((record): record is ActivitySubEventStageRuntimeRecord => Boolean(record))
+        .filter(record => `${record.status ?? 'A'}`.trim() !== 'D')
+        .filter(record => record.ownerId === normalizedParentId || record.ownerId.startsWith(`${normalizedParentId}:`));
+      if (records.length === 0) {
+        return state;
+      }
+      const eventsBySourceId = new Map<string, ActivityEventRecord>();
+      for (const eventRecord of this.computePreferredEventRecords(state[EVENTS_TABLE_NAME])) {
+        const sourceId = `${eventRecord.id ?? ''}`.trim();
+        if (sourceId) {
+          eventsBySourceId.set(sourceId, eventRecord);
+        }
+      }
+      const nowMs = Date.now();
+      const nowIso = new Date(nowMs).toISOString();
+      let changed = false;
+      let nextTable = runtimeTable;
+      for (const record of records) {
+        const eventRecord = eventsBySourceId.get(record.ownerId)
+          ?? eventsBySourceId.get(normalizedParentId)
+          ?? null;
+        const stages = this.cloneSubEvents(eventRecord?.subEvents) ?? [];
+        const stage = stages
+          .find(item => `${item.id ?? ''}`.trim() === record.subEventId) ?? null;
+        if (!stage) {
+          continue;
+        }
+        const groupsCount = this.autoTournamentGroupCount(stage, stages, eventRecord)
+          + this.manualGroupRecords(record.ownerId, record.subEventId, groupsTable).length;
+        if (record.groupsCount === groupsCount) {
+          continue;
+        }
+        nextTable = this.upsertStageRuntimeRecordCollection(nextTable, {
+          ...record,
+          groupsCount,
+          updatedMs: nowMs,
+          updatedAtIso: nowIso
+        });
+        changed = true;
+      }
+      return changed
+        ? {
+            ...state,
+            [ACTIVITY_SUB_EVENT_STAGE_RUNTIME_TABLE_NAME]: nextTable
+          }
+        : state;
+    });
+  }
+
+  private upsertStageRuntimeRecordCollection(
+    table: ActivitySubEventStageRuntimeRecordCollection,
+    record: ActivitySubEventStageRuntimeRecord
+  ): ActivitySubEventStageRuntimeRecordCollection {
+    const byId = {
+      ...table.byId,
+      [record.id]: { ...record }
+    };
+    const ids = table.ids.includes(record.id) ? [...table.ids] : [...table.ids, record.id];
+    const idsByOwnerKey = { ...table.idsByOwnerKey };
+    const ownerKey = record.ownerKey.trim();
+    if (ownerKey) {
+      const bucket = idsByOwnerKey[ownerKey] ? [...idsByOwnerKey[ownerKey]] : [];
+      if (!bucket.includes(record.id)) {
+        bucket.push(record.id);
+      }
+      idsByOwnerKey[ownerKey] = bucket;
+    }
+    return { byId, ids, idsByOwnerKey };
   }
 
   private leaderboardGroupKey(eventId: string, subEventId: string, groupId: string): string {
@@ -2478,8 +2814,15 @@ export class LocalEventsRepository {
     return rows.map(row => row.memberId).filter(Boolean);
   }
 
-  private localGeneratedGroups(stage: ContractTypes.SubEventDTO): ContractTypes.SubEventGroupDTO[] {
-    const groupCount = Math.max(1, Math.trunc(Number(stage.tournamentGroupCount) || 1));
+  private localGeneratedGroups(
+    stage: ContractTypes.SubEventDTO,
+    stages?: readonly ContractTypes.SubEventDTO[] | null,
+    eventRecord?: ActivityEventRecord | null
+  ): ContractTypes.SubEventGroupDTO[] {
+    const groupCount = this.autoTournamentGroupCount(stage, stages, eventRecord);
+    if (groupCount <= 0) {
+      return [];
+    }
     const min = Math.max(1, Math.trunc(Number(stage.tournamentGroupCapacityMin ?? stage.capacityMin) || 2));
     const max = Math.max(min, Math.trunc(Number(stage.tournamentGroupCapacityMax ?? stage.capacityMax) || min));
     return Array.from({ length: groupCount }, (_, index) => {
@@ -2492,6 +2835,81 @@ export class LocalEventsRepository {
         source: 'generated'
       };
     });
+  }
+
+  private autoTournamentGroupCount(
+    stage: ContractTypes.SubEventDTO | null | undefined,
+    stages?: readonly ContractTypes.SubEventDTO[] | null,
+    eventRecord?: ActivityEventRecord | null
+  ): number {
+    if (!stage) {
+      return 0;
+    }
+    const sequence = stages?.length ? stages : [stage];
+    let incomingCapacityMax = Math.max(
+      this.toNonNegativeInteger((eventRecord as { capacityMax?: number | null } | null | undefined)?.capacityMax),
+      this.toNonNegativeInteger(stage.capacityMax)
+    );
+    for (const candidate of sequence) {
+      const groupCount = this.autoTournamentGroupCountForIncoming(candidate, incomingCapacityMax);
+      if (this.sameStage(candidate, stage)) {
+        return groupCount;
+      }
+      if (this.hasTournamentStageConfig(candidate) && groupCount > 0) {
+        const advancePerGroup = this.toNonNegativeInteger(candidate.tournamentAdvancePerGroup);
+        incomingCapacityMax = advancePerGroup > 0 ? groupCount * advancePerGroup : 0;
+      }
+    }
+    return this.autoTournamentGroupCountForIncoming(stage, incomingCapacityMax);
+  }
+
+  private autoTournamentGroupCountForIncoming(
+    stage: ContractTypes.SubEventDTO | null | undefined,
+    incomingCapacityMax: number
+  ): number {
+    if (!stage) {
+      return 0;
+    }
+    if (stage.groups?.length) {
+      return stage.groups.length;
+    }
+    const explicitCount = Math.max(0, Math.trunc(Number(stage.tournamentGroupCount) || 0));
+    if (explicitCount > 0) {
+      return explicitCount;
+    }
+    const groupMin = Math.max(0, Math.trunc(Number(stage.tournamentGroupCapacityMin) || 0));
+    const groupMax = Math.max(groupMin, Math.trunc(Number(stage.tournamentGroupCapacityMax) || groupMin));
+    if (groupMin <= 0 && groupMax <= 0) {
+      return 0;
+    }
+    const divisor = Math.max(1, groupMax > 0 ? groupMax : groupMin);
+    const stageMax = incomingCapacityMax > 0
+      ? incomingCapacityMax
+      : Math.max(0, Math.trunc(Number(stage.capacityMax) || 0));
+    return stageMax > 0 ? Math.max(1, Math.ceil(stageMax / divisor)) : 0;
+  }
+
+  private sameStage(left: ContractTypes.SubEventDTO | null | undefined, right: ContractTypes.SubEventDTO | null | undefined): boolean {
+    const leftId = `${left?.id ?? ''}`.trim();
+    const rightId = `${right?.id ?? ''}`.trim();
+    return Boolean(leftId && leftId === rightId);
+  }
+
+  private hasTournamentStageConfig(stage: ContractTypes.SubEventDTO | null | undefined): boolean {
+    return Boolean(stage)
+      && stage?.optional !== true
+      && (
+        (stage?.groups?.length ?? 0) > 0
+        || this.toNonNegativeInteger(stage?.tournamentGroupCount) > 0
+        || this.toNonNegativeInteger(stage?.tournamentGroupCapacityMin) > 0
+        || this.toNonNegativeInteger(stage?.tournamentGroupCapacityMax) > 0
+        || stage?.tournamentLeaderboardType === 'Score'
+        || stage?.tournamentLeaderboardType === 'Fifa'
+      );
+  }
+
+  private toNonNegativeInteger(value: unknown): number {
+    return Math.max(0, Math.trunc(Number(value) || 0));
   }
 
   private subEventDefinitionTimeline(
@@ -2540,6 +2958,8 @@ export class LocalEventsRepository {
       && (
         (item.groups?.length ?? 0) > 0
         || (item.tournamentGroupCount ?? 0) > 0
+        || (item.tournamentGroupCapacityMin ?? 0) > 0
+        || (item.tournamentGroupCapacityMax ?? 0) > 0
         || item.tournamentLeaderboardType === 'Score'
         || item.tournamentLeaderboardType === 'Fifa'
       );

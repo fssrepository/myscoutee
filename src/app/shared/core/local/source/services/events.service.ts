@@ -336,7 +336,11 @@ export class LocalEventsService extends LocalRouteDelayService implements IEvent
       parentEventId,
       removedSubEventIds
     );
-    return resourceChanges > 0 || stageRuntimeChanges > 0;
+    const groupChanges = this.eventsRepository.markTournamentGroupsDeletedByParentSubEventIds(
+      parentEventId,
+      removedSubEventIds
+    );
+    return resourceChanges > 0 || stageRuntimeChanges > 0 || groupChanges > 0;
   }
 
   private removedSubEventDefinitionIds(

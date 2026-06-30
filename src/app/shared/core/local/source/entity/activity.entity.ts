@@ -13,6 +13,7 @@ import type { UserRecord } from './user.entity';
 
 export const ACTIVITY_MEMBERS_TABLE_NAME = APP_INDEXED_DB_KEYS.activityMembers;
 export const ACTIVITY_RESOURCES_TABLE_NAME = APP_INDEXED_DB_KEYS.activityResources;
+export const ACTIVITY_SUB_EVENT_GROUPS_TABLE_NAME = APP_INDEXED_DB_KEYS.activitySubEventGroups;
 export const ACTIVITY_SUB_EVENT_STAGE_RUNTIME_TABLE_NAME = APP_INDEXED_DB_KEYS.activitySubEventStageRuntime;
 
 export interface ActivityMemberRecord {
@@ -96,6 +97,32 @@ export interface ActivityResourcesRecordCollection {
 
 export type ActivityResourcesMemorySchema = Record<typeof ACTIVITY_RESOURCES_TABLE_NAME, ActivityResourcesRecordCollection>;
 
+export interface ActivitySubEventGroupRecord {
+  id: string;
+  status?: string | null;
+  ownerId: string;
+  groupId: string;
+  name: string;
+  capacityMin: number;
+  capacityMax: number;
+  ownerKey: string;
+  createdMs: number;
+  updatedMs: number;
+  createdAtIso: string;
+  updatedAtIso: string;
+}
+
+export interface ActivitySubEventGroupsRecordCollection {
+  byId: Record<string, ActivitySubEventGroupRecord>;
+  ids: string[];
+  idsByOwnerKey: Record<string, string[]>;
+}
+
+export type ActivitySubEventGroupsMemorySchema = Record<
+  typeof ACTIVITY_SUB_EVENT_GROUPS_TABLE_NAME,
+  ActivitySubEventGroupsRecordCollection
+>;
+
 export interface ActivitySubEventStageRuntimeRecord {
   id: string;
   status?: string | null;
@@ -106,6 +133,7 @@ export interface ActivitySubEventStageRuntimeRecord {
   stageStatusUpdatedAt: string | null;
   stageFinalizedAt: string | null;
   stageFinalizedByUserId: string | null;
+  groupsCount: number | null;
   ownerKey: string;
   createdMs: number;
   updatedMs: number;

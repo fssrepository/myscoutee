@@ -447,8 +447,7 @@ export class EventSubeventRuntimeMenuConverter {
   }
 
   private static groupCount(item: SubEventDTO): number {
-    const groups = Array.isArray(item.groups) ? item.groups.length : 0;
-    return groups > 0 ? groups : Math.max(0, this.toInteger(item.tournamentGroupCount));
+    return Math.max(0, this.toInteger(item.groupsCount));
   }
 
   private static membersLabel(item: SubEventDTO): string {
