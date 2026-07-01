@@ -111,7 +111,7 @@ type ActivitiesEventsHost = any;
 type ActivityEventRecordLike = any;
 type InvitationApprovalSaveResult = {
   eventDetailDTO: ActivityEventDetailDTO;
-  nextMembers: ActivityContracts.ActivityMemberEntry[] | null;
+  nextMembers: ActivityContracts.ActivityMemberDTO[] | null;
   capacityTotal: number;
 };
 
@@ -124,7 +124,7 @@ export class ActivitiesEventsController {
   private set activitiesEventScope(value: ContractTypes.ActivitiesEventScope) { this.host.activitiesEventScope = value; }
   private get activitiesRates() { return this.host.activitiesRates; }
   private get activitiesSmartList() { return this.host.activitiesSmartList; }
-  private get activityMembersByRowId() { return this.host.activityMembersByRowId as Record<string, ActivityContracts.ActivityMemberEntry[]>; }
+  private get activityMembersByRowId() { return this.host.activityMembersByRowId as Record<string, ActivityContracts.ActivityMemberDTO[]>; }
   private get activityMembersService() { return this.host.activityMembersService; }
   private get chatsService() { return this.host.chatsService; }
   private get cdr() { return this.host.cdr; }
@@ -134,16 +134,16 @@ export class ActivitiesEventsController {
   private get eventsService() { return this.host.eventsService; }
   private get hostingPublicationFilter() { return this.host.hostingPublicationFilter as ContractTypes.HostingPublicationFilter; }
   private get isMobileView() { return this.host.isMobileView as boolean; }
-  private get pendingActivityMemberDelete() { return this.host.pendingActivityMemberDelete as ActivityContracts.ActivityMemberEntry | null; }
-  private set pendingActivityMemberDelete(value: ActivityContracts.ActivityMemberEntry | null) { this.host.pendingActivityMemberDelete = value; }
+  private get pendingActivityMemberDelete() { return this.host.pendingActivityMemberDelete as ActivityContracts.ActivityMemberDTO | null; }
+  private set pendingActivityMemberDelete(value: ActivityContracts.ActivityMemberDTO | null) { this.host.pendingActivityMemberDelete = value; }
   private get memberMenuStore() { return this.host.memberMenuStore as MemberMenuStore; }
   private get eventSubeventsStore() { return this.host.eventSubeventsStore as EventSubeventsPopupStore; }
   private get profileStore() { return this.host.profileStore; }
   private get shareTokensService() { return this.host.shareTokensService; }
   private get activeHostingIds() { return this.host.activeHostingIds as ReadonlySet<string>; }
   private set activeHostingIds(value: ReadonlySet<string>) { this.host.activeHostingIds = value; }
-  private get selectedActivityMembers() { return this.host.selectedActivityMembers as ActivityContracts.ActivityMemberEntry[]; }
-  private set selectedActivityMembers(value: ActivityContracts.ActivityMemberEntry[]) { this.host.selectedActivityMembers = value; }
+  private get selectedActivityMembers() { return this.host.selectedActivityMembers as ActivityContracts.ActivityMemberDTO[]; }
+  private set selectedActivityMembers(value: ActivityContracts.ActivityMemberDTO[]) { this.host.selectedActivityMembers = value; }
   private get selectedActivityMembersRow() { return this.host.selectedActivityMembersRow as InfoCardData | null; }
   private get selectedActivityMembersRowId() { return this.host.selectedActivityMembersRowId as string | null; }
   private get trashedActivityRowsByKey() { return this.host.trashedActivityRowsByKey as Record<string, InfoCardData>; }
@@ -168,9 +168,19 @@ export class ActivitiesEventsController {
   private openActivityChat(chat: ChatDTO): void { this.host.openActivityChat(chat); }
   private persistSelectedActivityMembers(): void { this.host.persistSelectedActivityMembers(); }
   private refreshSectionBadges(): void { this.host.refreshSectionBadges(); }
-  private uniqueUserIds(userIds: readonly string[]): string[] { return this.host.uniqueUserIds(userIds); }
+  private uniqueUserIds(userIds: readonly string[]): string[] {
+    const unique: string[] = [];
+    for (const userId of userIds) {
+      const normalizedUserId = `${userId ?? ''}`.trim();
+      if (!normalizedUserId || unique.includes(normalizedUserId)) {
+        continue;
+      }
+      unique.push(normalizedUserId);
+    }
+    return unique;
+  }
   private activityMemberUserIdsByStatus(
-    members: readonly ActivityContracts.ActivityMemberEntry[],
+    members: readonly ActivityContracts.ActivityMemberDTO[],
     status: AppConstants.ActivityMemberStatus
   ): string[] {
     return this.uniqueUserIds(
@@ -869,7 +879,7 @@ export class ActivitiesEventsController {
 
     this.eventCheckoutDraftStore.clear(activeUserId, row.id);
     const currentMembers = await this.activityMembersService.queryMembersByOwnerId(row.id);
-    const nextMembers = currentMembers.filter((member: ActivityContracts.ActivityMemberEntry) => member.userId !== activeUserId);
+    const nextMembers = currentMembers.filter((member: ActivityContracts.ActivityMemberDTO) => member.userId !== activeUserId);
     const capacityTotal = Math.max(
       Math.max(0, Math.trunc(Number(eventDetailDTO.acceptedMembers) || 0)),
       Math.max(0, Math.trunc(Number(eventDetailDTO.capacityTotal) || 0))
@@ -942,7 +952,7 @@ export class ActivitiesEventsController {
     const relatedSource = this.activityDisplaySourceForRow(row);
     const record = await this.eventsService.queryKnownRecordById(activeUserId, row.id);
     const currentMembers = await this.activityMembersService.queryMembersByOwnerId(row.id);
-    const activeInviteEntry = currentMembers.find((member: ActivityContracts.ActivityMemberEntry) =>
+    const activeInviteEntry = currentMembers.find((member: ActivityContracts.ActivityMemberDTO) =>
       member.userId === activeUserId
       && member.status === 'pending'
       && member.requestKind === 'invite'
@@ -1073,7 +1083,7 @@ export class ActivitiesEventsController {
       return false;
     }
     const currentMembers = await this.activityMembersService.queryMembersByOwnerId(ownerId);
-    const activeInviteEntry = currentMembers.find((member: ActivityContracts.ActivityMemberEntry) =>
+    const activeInviteEntry = currentMembers.find((member: ActivityContracts.ActivityMemberDTO) =>
       member.userId === activeUserId
       && member.status === 'pending'
       && member.requestKind === 'invite'
@@ -1082,8 +1092,8 @@ export class ActivitiesEventsController {
   }
 
   private invitationRequiresAdminApproval(
-    activeInviteEntry: ActivityContracts.ActivityMemberEntry | null,
-    currentMembers: readonly ActivityContracts.ActivityMemberEntry[],
+    activeInviteEntry: ActivityContracts.ActivityMemberDTO | null,
+    currentMembers: readonly ActivityContracts.ActivityMemberDTO[],
     creatorUserId?: string | null
   ): boolean {
     const inviterUserId = `${activeInviteEntry?.invitedByUserId ?? ''}`.trim();
@@ -1101,10 +1111,10 @@ export class ActivitiesEventsController {
   }
 
   private buildAcceptedInvitationMembers(
-    members: readonly ActivityContracts.ActivityMemberEntry[],
+    members: readonly ActivityContracts.ActivityMemberDTO[],
     activeUserId: string,
     requiresAdminApproval: boolean
-  ): ActivityContracts.ActivityMemberEntry[] | null {
+  ): ActivityContracts.ActivityMemberDTO[] | null {
     const nowIso = AppUtils.toIsoDateTime(new Date());
     let didUpdate = false;
     const nextMembers = members.map(member => {
@@ -1329,14 +1339,14 @@ export class ActivitiesEventsController {
     });
   }
 
-  public canApproveActivityMember(entry: ActivityContracts.ActivityMemberEntry): boolean {
+  public canApproveActivityMember(entry: ActivityContracts.ActivityMemberDTO): boolean {
     if (!this.selectedActivityMembersRow || !this.isActivityRowAdmin(this.selectedActivityMembersRow)) {
       return false;
     }
     return entry.status === 'pending' && this.isActivityJoinRequest(entry);
   }
 
-  public canDeleteActivityMember(entry: ActivityContracts.ActivityMemberEntry): boolean {
+  public canDeleteActivityMember(entry: ActivityContracts.ActivityMemberDTO): boolean {
     if (this.isActivityWaitlistMember(entry)) {
       return false;
     }
@@ -1348,7 +1358,7 @@ export class ActivitiesEventsController {
       && entry.invitedByActiveUser === true;
   }
 
-  public activityMemberMenuDeleteLabel(entry: ActivityContracts.ActivityMemberEntry): string {
+  public activityMemberMenuDeleteLabel(entry: ActivityContracts.ActivityMemberDTO): string {
     if (entry.status === 'accepted') {
       return 'Remove member';
     }
@@ -1358,77 +1368,16 @@ export class ActivitiesEventsController {
     return 'Delete invitation';
   }
 
-  public activityMemberAge(entry: ActivityContracts.ActivityMemberEntry): number {
-    return entry.profile?.age ?? 0;
-  }
-
-  public activityMemberRoleLabel(entry: ActivityContracts.ActivityMemberEntry): string {
-    return entry.role === 'Admin' ? 'Admin' : 'Member';
-  }
-
-  public activityMemberStatusLabel(entry: ActivityContracts.ActivityMemberEntry): string {
-    if (entry.status === 'accepted') {
-      return 'Approved';
-    }
-    if (this.isActivityWaitlistMember(entry)) {
-      return 'Waiting list';
-    }
-    if (this.isActivityJoinRequest(entry)) {
-      return 'Waiting For Join Approval';
-    }
-    if (entry.pendingSource === 'admin') {
-      return 'Invitation Pending';
-    }
-    return 'Waiting For Admin Approval';
-  }
-
-  public memberCardStatusIcon(entry: ActivityContracts.ActivityMemberEntry): string {
-    if (entry.status === 'accepted') {
-      return entry.role === 'Admin' ? 'admin_panel_settings' : 'person';
-    }
-    if (this.isActivityJoinRequest(entry)) {
-      return 'pending_actions';
-    }
-    return 'outgoing_mail';
-  }
-
-  public memberCardStatusClass(entry: ActivityContracts.ActivityMemberEntry): string {
-    if (entry.status === 'accepted') {
-      return entry.role === 'Admin' ? 'member-status-admin' : 'member-status-member';
-    }
-    if (this.isActivityJoinRequest(entry)) {
-      return 'member-status-awaiting-approval';
-    }
-    return 'member-status-invite-pending';
-  }
-
-  public memberCardToneClass(entry: ActivityContracts.ActivityMemberEntry): string {
-    if (entry.status === 'accepted') {
-      return entry.role === 'Admin' ? 'member-card-tone-admin' : 'member-card-tone-accepted';
-    }
-    if (this.isActivityJoinRequest(entry)) {
-      return 'member-card-tone-awaiting-approval';
-    }
-    return 'member-card-tone-invite-pending';
-  }
-
-  public memberCardStatusLabel(entry: ActivityContracts.ActivityMemberEntry): string {
-    if (entry.status === 'accepted') {
-      return entry.role === 'Admin' ? 'Admin' : 'Member';
-    }
-    return this.activityMemberStatusLabel(entry);
-  }
-
-  private isActivityJoinRequest(entry: ActivityContracts.ActivityMemberEntry): boolean {
+  private isActivityJoinRequest(entry: ActivityContracts.ActivityMemberDTO): boolean {
     return entry.requestKind === 'join'
       || (entry.requestKind == null && entry.pendingSource === 'member');
   }
 
-  private isActivityWaitlistMember(entry: ActivityContracts.ActivityMemberEntry): boolean {
+  private isActivityWaitlistMember(entry: ActivityContracts.ActivityMemberDTO): boolean {
     return entry.requestKind === 'waitlist' || entry.requestKind === 'waitlist-invite';
   }
 
-  public approveActivityMember(entry: ActivityContracts.ActivityMemberEntry, event?: Event): void {
+  public approveActivityMember(entry: ActivityContracts.ActivityMemberDTO, event?: Event): void {
     event?.stopPropagation();
     if (!this.selectedActivityMembersRowId || !this.canApproveActivityMember(entry)) {
       return;
@@ -1449,7 +1398,7 @@ export class ActivitiesEventsController {
     this.persistSelectedActivityMembers();
   }
 
-  public removeActivityMember(entry: ActivityContracts.ActivityMemberEntry, event?: Event): void {
+  public removeActivityMember(entry: ActivityContracts.ActivityMemberDTO, event?: Event): void {
     event?.stopPropagation();
     if (!this.selectedActivityMembersRowId || !this.canDeleteActivityMember(entry)) {
       return;

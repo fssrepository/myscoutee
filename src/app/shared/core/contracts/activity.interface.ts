@@ -912,7 +912,7 @@ export interface ActivityEventExploreQueryResult {
   nextCursor: string | null;
 }
 
-export interface ActivityMemberEntry {
+export interface ActivityMemberDTO {
   id: string;
   userId: string;
   name: string;
@@ -968,7 +968,7 @@ export interface ActivityInviteCandidatesQuery {
 }
 
 export interface IActivityInviteCandidatesService {
-  queryCandidates(query: ActivityInviteCandidatesQuery): Promise<ActivityMemberEntry[]>;
+  queryCandidates(query: ActivityInviteCandidatesQuery): Promise<ActivityMemberDTO[]>;
 }
 
 export interface UserGameCardsStackSnapshot {

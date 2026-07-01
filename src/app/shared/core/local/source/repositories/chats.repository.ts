@@ -65,7 +65,7 @@ export class LocalChatsRepository {
     };
   }
 
-  queryChatMembers(chatId: string): ActivityContracts.ActivityMemberEntry[] {
+  queryChatMembers(chatId: string): ActivityContracts.ActivityMemberDTO[] {
     const normalizedChatId = `${chatId ?? ''}`.trim();
     if (!normalizedChatId) {
       return [];
@@ -516,7 +516,7 @@ export class LocalChatsRepository {
     return user ? UserProfileState.isEmptyOnboardingProfile(user) : false;
   }
 
-  private toChatMemberEntry(chatId: string, userId: string, index: number): ActivityContracts.ActivityMemberEntry {
+  private toChatMemberEntry(chatId: string, userId: string, index: number): ActivityContracts.ActivityMemberDTO {
     const user = this.memoryDb.read()[USERS_TABLE_NAME].byId[userId] ?? null;
     const label = user?.name?.trim() || userId;
     const when = AppUtils.addDays(new Date(), -Math.max(0, index));

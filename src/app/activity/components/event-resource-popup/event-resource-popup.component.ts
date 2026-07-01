@@ -2294,7 +2294,7 @@ export class EventResourcePopupComponent {
   private syncAssetRequestsFromMembers(
     assetId: string,
     assetType: AppConstants.AssetType,
-    members: readonly ActivityContracts.ActivityMemberEntry[]
+    members: readonly ActivityContracts.ActivityMemberDTO[]
   ): void {
     const context = this.resourcePopupStore.popupContextRef();
     const asset = this.ownedAssetCards().find(card => card.id === assetId && card.type === assetType)
@@ -2569,7 +2569,7 @@ export class EventResourcePopupComponent {
     card: ResourceAssetDTO,
     ownerUserId: string | null,
     subEventId?: string
-  ): ActivityContracts.ActivityMemberEntry[] {
+  ): ActivityContracts.ActivityMemberDTO[] {
     const seedBaseDate = new Date('2026-02-24T12:00:00');
     const requests = subEventId
       ? this.assetRequestsForView(card, subEventId, ownerUserId)

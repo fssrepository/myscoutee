@@ -23,9 +23,15 @@ export {
   type ActivityChatSingleRowConverterOptions
 } from './activity-chat-single-row.converter';
 export {
+  ActivityMemberImageCardConverter,
+  activityMemberImageCardConverter,
+  type ActivityMemberImageCardConverterOptions
+} from './activity-member-image-card.converter';
+export {
   ActivityEventInfoCardConverter,
   activityEventInfoCardConverter,
-  type ActivityEventInfoCardConverterOptions
+  type ActivityEventInfoCardConverterOptions,
+  type ActivityEventInfoCardSummaryOptions
 } from './activity-event-info-card.converter';
 export {
   EventExploreInfoCardConverter,

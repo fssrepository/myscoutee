@@ -3,7 +3,7 @@ import { Injectable, inject } from '@angular/core';
 
 import { environment } from '../../../../../environments/environment';
 import type { ActivityInviteCandidatesQuery, IActivityInviteCandidatesService } from '../../contracts/activity.interface';
-import type { ActivityMemberEntry } from '../../contracts/activity.interface';
+import type { ActivityMemberDTO } from '../../contracts/activity.interface';
 
 @Injectable({
   providedIn: 'root'
@@ -12,10 +12,10 @@ export class HttpActivityInviteCandidatesService implements IActivityInviteCandi
   private readonly http = inject(HttpClient);
   private readonly apiBaseUrl = environment.apiBaseUrl ?? '/api';
 
-  async queryCandidates(query: ActivityInviteCandidatesQuery): Promise<ActivityMemberEntry[]> {
+  async queryCandidates(query: ActivityInviteCandidatesQuery): Promise<ActivityMemberDTO[]> {
     try {
       const response = await this.http
-        .post<ActivityMemberEntry[] | null>(
+        .post<ActivityMemberDTO[] | null>(
           `${this.apiBaseUrl}/activities/events/invite-candidates`,
           {
             activeUserId: query.activeUserId,

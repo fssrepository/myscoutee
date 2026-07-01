@@ -51,7 +51,7 @@ export class ActivityInviteCandidatesService extends BaseRouteModeService implem
 
   async queryCandidates(
     query: ActivityContracts.ActivityInviteCandidatesQuery
-  ): Promise<ActivityContracts.ActivityMemberEntry[]> {
+  ): Promise<ActivityContracts.ActivityMemberDTO[]> {
     return this.inviteCandidatesService.queryCandidates(query);
   }
 
@@ -61,7 +61,7 @@ export class ActivityInviteCandidatesService extends BaseRouteModeService implem
     fallbackTitle = 'Event',
     ownerType: AppConstants.ActivityMemberOwnerType = 'event',
     existingMemberUserIds: readonly string[] = []
-  ): Promise<ActivityContracts.ActivityMemberEntry[]> {
+  ): Promise<ActivityContracts.ActivityMemberDTO[]> {
     const activeUserId = this.activeUserId();
     const normalizedOwnerId = ownerId.trim();
     if (!activeUserId || !normalizedOwnerId) {
@@ -85,7 +85,7 @@ export class ActivityInviteCandidatesService extends BaseRouteModeService implem
 
   async applyInvites(
     ownerId: string,
-    selectedCandidates: readonly ActivityContracts.ActivityMemberEntry[],
+    selectedCandidates: readonly ActivityContracts.ActivityMemberDTO[],
     ownerType: AppConstants.ActivityMemberOwnerType = 'event'
   ): Promise<void> {
     const normalizedOwnerId = ownerId.trim();

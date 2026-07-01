@@ -5,16 +5,16 @@ import {
 } from '@angular/core';
 
 import type { ActivityMemberOwnerType } from '../../../core/common/constants';
-import type { ActivityMemberEntry } from '../../../core/contracts/activity.interface';
+import type { ActivityMemberDTO } from '../../../core/contracts/activity.interface';
 
 export interface ActivityInvitePopupState {
   updatedMs: number;
   ownerId: string;
   ownerType?: ActivityMemberOwnerType;
   title?: string;
-  initialCandidates?: readonly ActivityMemberEntry[];
-  initialSelection?: readonly ActivityMemberEntry[];
-  onApply?: (selectedCandidates: readonly ActivityMemberEntry[]) => void | Promise<void>;
+  initialCandidates?: readonly ActivityMemberDTO[];
+  initialSelection?: readonly ActivityMemberDTO[];
+  onApply?: (selectedCandidates: readonly ActivityMemberDTO[]) => void | Promise<void>;
   closeOwnerPopupOnClose?: boolean;
 }
 
@@ -32,9 +32,9 @@ export class ActivityInvitePopupStore {
     ownerId: string;
     ownerType?: ActivityMemberOwnerType;
     title?: string;
-    initialCandidates?: readonly ActivityMemberEntry[];
-    initialSelection?: readonly ActivityMemberEntry[];
-    onApply?: (selectedCandidates: readonly ActivityMemberEntry[]) => void | Promise<void>;
+    initialCandidates?: readonly ActivityMemberDTO[];
+    initialSelection?: readonly ActivityMemberDTO[];
+    onApply?: (selectedCandidates: readonly ActivityMemberDTO[]) => void | Promise<void>;
     closeOwnerPopupOnClose?: boolean;
   }): void {
     const normalizedOwnerId = payload.ownerId.trim();

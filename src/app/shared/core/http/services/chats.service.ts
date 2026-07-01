@@ -174,7 +174,7 @@ interface HttpChatMemberDto {
   metAtIso?: string | null;
   actionAtIso?: string | null;
   metWhere?: string | null;
-  profile?: ActivityContracts.ActivityMemberEntry['profile'];
+  profile?: ActivityContracts.ActivityMemberDTO['profile'];
 }
 
 interface HttpChatSocketEventDto {
@@ -349,7 +349,7 @@ export class HttpChatsService implements IChatsService {
     }
   }
 
-  async queryChatMembers(chatId: string): Promise<ActivityContracts.ActivityMemberEntry[]> {
+  async queryChatMembers(chatId: string): Promise<ActivityContracts.ActivityMemberDTO[]> {
     const normalizedChatId = `${chatId ?? ''}`.trim();
     if (!normalizedChatId) {
       return [];
@@ -970,7 +970,7 @@ export class HttpChatsService implements IChatsService {
     member: HttpChatMemberDto,
     chatId: string,
     index: number
-  ): ActivityContracts.ActivityMemberEntry {
+  ): ActivityContracts.ActivityMemberDTO {
     const userId = this.normalizeHttpText(member.userId) || this.normalizeHttpText(member.id) || `chat-member-${index + 1}`;
     const name = this.normalizeHttpText(member.name) || userId;
     const initials = this.normalizeHttpText(member.initials) || AppUtils.initialsFromText(name);

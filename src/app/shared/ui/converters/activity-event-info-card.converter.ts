@@ -1,6 +1,8 @@
 import { AppUtils } from '../../app-utils';
 import type {
-  ActivityEventDTO
+  ActivityEventDTO,
+  ActivityMemberOwnerRef,
+  ActivityMembersSummaryDto
 } from '../../core/contracts/activity.interface';
 import type {
   EventVisibility
@@ -14,6 +16,12 @@ export interface ActivityEventInfoCardConverterOptions {
   activeUserId?: string | null;
   groupLabel?: string | null;
   state?: InfoCardData['state'];
+}
+
+export interface ActivityEventInfoCardSummaryOptions {
+  capacityByRowId?: Readonly<Record<string, string | null | undefined>>;
+  pendingMembersByRowId?: Readonly<Record<string, number | null | undefined>>;
+  capacityTotal?: number | null;
 }
 
 export class ActivityEventInfoCardConverter {
@@ -74,6 +82,39 @@ export class ActivityEventInfoCardConverter {
     options: ActivityEventInfoCardConverterOptions = {}
   ): InfoCardData[] {
     return dtos.map(dto => this.convert(dto, options));
+  }
+
+  static toActivityMembersOwner(card: Pick<InfoCardData, 'id'>): ActivityMemberOwnerRef {
+    return {
+      ownerType: 'event',
+      ownerId: card.id
+    };
+  }
+
+  static toActivityMembersSummary(
+    card: InfoCardData,
+    options: ActivityEventInfoCardSummaryOptions = {}
+  ): ActivityMembersSummaryDto | null {
+    const capacity = this.parseCapacityLabel(
+      options.capacityByRowId?.[card.id] ?? card.mediaEnd?.label
+    );
+    const acceptedMembers = capacity?.acceptedMembers ?? 0;
+    const pendingMembers = this.summaryPendingMembers(card, options);
+    const capacityTotal = Math.max(
+      acceptedMembers,
+      capacity?.capacityTotal ?? this.normalizeCount(options.capacityTotal) ?? acceptedMembers
+    );
+    if (acceptedMembers <= 0 && pendingMembers <= 0 && capacityTotal <= 0) {
+      return null;
+    }
+    return {
+      ...this.toActivityMembersOwner(card),
+      acceptedMembers,
+      pendingMembers,
+      capacityTotal,
+      acceptedMemberUserIds: [],
+      pendingMemberUserIds: []
+    };
   }
 
   private static locationMetaRows(dto: ActivityEventDTO): string[] {
@@ -154,6 +195,40 @@ export class ActivityEventInfoCardConverter {
 
   private static pendingMemberCount(dto: ActivityEventDTO): number {
     return Math.max(0, Math.trunc(Number(dto.pendingMembers) || 0));
+  }
+
+  private static summaryPendingMembers(
+    card: InfoCardData,
+    options: ActivityEventInfoCardSummaryOptions
+  ): number {
+    return this.normalizeCount(options.pendingMembersByRowId?.[card.id])
+      ?? this.normalizeCount(card.mediaEnd?.pendingCount)
+      ?? 0;
+  }
+
+  private static parseCapacityLabel(
+    label: string | number | null | undefined
+  ): { acceptedMembers: number; capacityTotal: number } | null {
+    const normalizedLabel = `${label ?? ''}`.trim();
+    if (!normalizedLabel.includes('/')) {
+      return null;
+    }
+    const parts = normalizedLabel.split('/').map(part => Number.parseInt(part.trim(), 10));
+    if (parts.length < 2 || !Number.isFinite(parts[0]) || !Number.isFinite(parts[1])) {
+      return null;
+    }
+    const acceptedMembers = Math.max(0, Math.trunc(parts[0]));
+    return {
+      acceptedMembers,
+      capacityTotal: Math.max(acceptedMembers, Math.trunc(parts[1]))
+    };
+  }
+
+  private static normalizeCount(value: unknown): number | null {
+    const count = Number(value);
+    return Number.isFinite(count)
+      ? Math.max(0, Math.trunc(count))
+      : null;
   }
 
   private static surfaceTone(

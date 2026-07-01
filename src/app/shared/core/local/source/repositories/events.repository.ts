@@ -2179,7 +2179,7 @@ export class LocalEventsRepository {
       actionAtIso: nowIso,
       metWhere: existing?.metWhere?.trim() || event.title,
       avatarUrl: profile?.images ? AppUtils.firstImageUrl(profile.images) : '',
-      profile: profile ? { ...profile, id: normalizedUserId } as ActivityContracts.ActivityMemberEntry['profile'] : null,
+      profile: profile ? { ...profile, id: normalizedUserId } as ActivityContracts.ActivityMemberDTO['profile'] : null,
       ownerType: 'event',
       ownerId: normalizedEventId,
       ownerKey,

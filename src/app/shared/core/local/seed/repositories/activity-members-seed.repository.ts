@@ -364,13 +364,13 @@ export class SeedActivityMembersRepository {
       pendingSource?: AppConstants.ActivityPendingSource;
       requestKind?: AppConstants.ActivityMemberRequestKind;
     } = {}
-  ): ActivityContracts.ActivityMemberEntry {
+  ): ActivityContracts.ActivityMemberDTO {
     void owner;
     const user = this.resolveDemoUser(userId, users, usersById);
     const isAdmin = this.normalizeMemberUserIds(options.adminIds).includes(user.id);
     const pendingSource = status === 'accepted' ? null : options.pendingSource ?? 'admin';
     const requestKind = status === 'accepted' ? null : options.requestKind ?? 'invite';
-    const base = ActivityMembersBuilder.toActivityMemberEntry(
+    const base = ActivityMembersBuilder.toActivityMemberDTO(
       user,
       row,
       rowKey,
@@ -456,14 +456,14 @@ export class SeedActivityMembersRepository {
     asset: AppDTOs.AssetDTO,
     users: readonly UserDto[],
     usersById: ReadonlyMap<string, UserDto>
-  ): ActivityContracts.ActivityMemberEntry[] {
+  ): ActivityContracts.ActivityMemberDTO[] {
     const seedBaseDate = AppUtils.shiftDate(
       new Date('2026-02-24T12:00:00.000Z'),
       SEED_SCHEDULE_REFERENCE_DATE,
       environment.bootstrapOffsetInDays
     );
     const owner = this.resolveDemoUser(ownerUserId, users, usersById, asset.ownerName?.trim() || 'Asset owner', '', asset.city);
-    const ownerEntry: ActivityContracts.ActivityMemberEntry = {
+    const ownerEntry: ActivityContracts.ActivityMemberDTO = {
       id: `${asset.id}:owner`,
       userId: owner.id,
       name: owner.name,
@@ -489,7 +489,7 @@ export class SeedActivityMembersRepository {
     const userList = [...users];
     const requestEntries = requests
       .slice(0, SeedActivityMembersRepository.MAX_SEEDED_ASSET_REQUESTS_PER_OWNER)
-      .map((request, index): ActivityContracts.ActivityMemberEntry => {
+      .map((request, index): ActivityContracts.ActivityMemberDTO => {
         const requestUserId = AppUtils.resolveAssetRequestUserId(request, userList);
         const matchedUser = usersById.get(requestUserId)
           ?? AppUtils.findUserByName(userList, request.name)
@@ -779,7 +779,7 @@ export class SeedActivityMembersRepository {
     return next;
   }
 
-  private toRecord(owner: ActivityMemberOwnerRef, member: ActivityContracts.ActivityMemberEntry): ActivityMemberRecord {
+  private toRecord(owner: ActivityMemberOwnerRef, member: ActivityContracts.ActivityMemberDTO): ActivityMemberRecord {
     const ownerKey = this.ownerKey(owner);
     const createdMs = AppUtils.toSortableDate(member.actionAtIso) || Date.now();
     const createdAtIso = member.actionAtIso || new Date(createdMs).toISOString();

@@ -54,7 +54,7 @@ export class LocalChatsService extends LocalRouteDelayService implements IChatsS
     return this.chatsRepository.queryChatMessages(chat);
   }
 
-  async queryChatMembers(chatId: string): Promise<ActivityContracts.ActivityMemberEntry[]> {
+  async queryChatMembers(chatId: string): Promise<ActivityContracts.ActivityMemberDTO[]> {
     await this.waitForRouteDelay(LocalChatsService.CHAT_ROUTE);
     return this.chatsRepository.queryChatMembers(chatId);
   }
