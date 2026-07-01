@@ -2879,10 +2879,6 @@ export class ActivitiesPopupComponent implements OnDestroy {
     return row;
   }
 
-  protected refreshActivityEventInfoCard(row: ActivityListItem): void {
-    Object.assign(row, this.withActivityEventInfoCard(row));
-  }
-
   private activityEventListTypeForRow(row: ActivityEventListItem): ActivityEventListType {
     const rowType = this.activityEventListTypeFromSmartListKey(row.smartListKey);
     if (rowType) {

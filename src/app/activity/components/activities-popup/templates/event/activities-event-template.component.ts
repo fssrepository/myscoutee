@@ -190,9 +190,6 @@ export class ActivitiesEventsController {
   private withActivityEventInfoCard(row: InfoCardData): InfoCardData {
     return this.host.withActivityEventInfoCard(row);
   }
-  private refreshActivityEventInfoCard(row: InfoCardData): void {
-    this.host.refreshActivityEventInfoCard(row);
-  }
 
   private activeUserId(): string {
     return `${this.activeUser?.id ?? ''}`.trim();
@@ -726,11 +723,7 @@ export class ActivitiesEventsController {
     } else {
       this.activitiesSmartList?.patchVisibleItem(
         (item: InfoCardData) => item.id === row.id,
-        (item: InfoCardData) => {
-          const updatedRow = { ...item, status: nextStatus };
-          this.refreshActivityEventInfoCard(updatedRow);
-          return updatedRow;
-        }
+        { status: nextStatus }
       );
     }
     this.refreshSectionBadges();
@@ -762,9 +755,10 @@ export class ActivitiesEventsController {
     if (this.shouldRemovePublishedRowFromCurrentScope()) {
       this.activitiesSmartList?.removeVisibleItemByIdentity(this.activityRowIdentity(row));
     } else {
-      this.patchVisibleActivityEventRow(row, {
-        status: 'A'
-      });
+      this.activitiesSmartList?.patchVisibleItem(
+        (item: InfoCardData) => this.activityRowIdentity(item) === this.activityRowIdentity(row),
+        { status: 'A' }
+      );
     }
 
     this.refreshSectionBadges();
@@ -776,9 +770,10 @@ export class ActivitiesEventsController {
     const nextActiveIds = new Set(this.activeHostingIds);
     nextActiveIds.delete(row.id);
     this.activeHostingIds = nextActiveIds;
-    this.patchVisibleActivityEventRow(row, {
-      status: 'DR'
-    });
+    this.activitiesSmartList?.patchVisibleItem(
+      (item: InfoCardData) => this.activityRowIdentity(item) === this.activityRowIdentity(row),
+      { status: 'DR' }
+    );
     this.refreshSectionBadges();
     this.cdr.markForCheck();
   }
@@ -786,28 +781,6 @@ export class ActivitiesEventsController {
   private shouldRemovePublishedRowFromCurrentScope(): boolean {
     return this.activitiesEventScope === 'drafts'
       || (this.activitiesEventScope === 'my-events' && this.hostingPublicationFilter === 'drafts');
-  }
-
-  private patchVisibleActivityEventRow(
-    row: InfoCardData,
-    patch: Partial<InfoCardData>
-  ): void {
-    const smartList = this.activitiesSmartList;
-    if (!smartList) {
-      return;
-    }
-    const rowKey = this.activityRowIdentity(row);
-    smartList.patchVisibleItem(
-      (item: InfoCardData) => this.activityRowIdentity(item) === rowKey,
-      (item: InfoCardData) => {
-        const updatedRow = {
-          ...item,
-          ...patch
-        };
-        this.refreshActivityEventInfoCard(updatedRow);
-        return updatedRow;
-      }
-    );
   }
 
   private activitySecondaryConfirmTitle(row: InfoCardData): string {

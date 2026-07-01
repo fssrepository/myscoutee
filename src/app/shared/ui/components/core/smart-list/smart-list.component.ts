@@ -3944,7 +3944,7 @@ private updateListSnapNearEndSuppression(scrollElement?: HTMLDivElement | null):
 
   public patchVisibleItem(
     predicate: (item: T, index: number) => boolean,
-    patcher: (item: T, index: number) => T
+    patch: Partial<T> | ((item: T, index: number) => T)
   ): boolean {
     if (this.currentViewMode !== 'list') {
       return false;
@@ -3957,7 +3957,12 @@ private updateListSnapNearEndSuppression(scrollElement?: HTMLDivElement | null):
     if (currentItem === undefined) {
       return false;
     }
-    const nextItem = patcher(currentItem, index);
+    const nextItem = typeof patch === 'function'
+      ? patch(currentItem, index)
+      : {
+        ...(currentItem as object),
+        ...(patch as object)
+      } as T;
     if (nextItem === currentItem) {
       return false;
     }
