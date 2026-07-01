@@ -373,26 +373,46 @@ export class LocalEventsService extends LocalRouteDelayService implements IEvent
     return `subevent-${Math.max(1, index + 1)}`;
   }
 
-  async trashItem(userId: string, sourceId: string): Promise<void> {
+  async trashItem(
+    userId: string,
+    sourceId: string,
+    options: { counterPatch?: UserMenuCountersDto | null } = {}
+  ): Promise<void> {
     this.eventsRepository.trashItem(userId, sourceId);
+    this.patchLocalUserActivityCounters(userId, options.counterPatch ?? null);
     await this.eventsRepository.flushToIndexedDb();
     await this.waitForRouteDelay(LocalEventsService.EVENTS_ROUTE);
   }
 
-  async publishItem(userId: string, sourceId: string): Promise<void> {
+  async publishItem(
+    userId: string,
+    sourceId: string,
+    options: { counterPatch?: UserMenuCountersDto | null } = {}
+  ): Promise<void> {
     this.eventsRepository.publishItem(userId, sourceId);
+    this.patchLocalUserActivityCounters(userId, options.counterPatch ?? null);
     await this.eventsRepository.flushToIndexedDb();
     await this.waitForRouteDelay(LocalEventsService.EVENTS_ROUTE);
   }
 
-  async unpublishItem(userId: string, sourceId: string): Promise<void> {
+  async unpublishItem(
+    userId: string,
+    sourceId: string,
+    options: { counterPatch?: UserMenuCountersDto | null } = {}
+  ): Promise<void> {
     this.eventsRepository.unpublishItem(userId, sourceId);
+    this.patchLocalUserActivityCounters(userId, options.counterPatch ?? null);
     await this.eventsRepository.flushToIndexedDb();
     await this.waitForRouteDelay(LocalEventsService.EVENTS_ROUTE);
   }
 
-  async restoreItem(userId: string, sourceId: string): Promise<void> {
+  async restoreItem(
+    userId: string,
+    sourceId: string,
+    options: { counterPatch?: UserMenuCountersDto | null } = {}
+  ): Promise<void> {
     this.eventsRepository.restoreItem(userId, sourceId);
+    this.patchLocalUserActivityCounters(userId, options.counterPatch ?? null);
     await this.eventsRepository.flushToIndexedDb();
     await this.waitForRouteDelay(LocalEventsService.EVENTS_ROUTE);
   }

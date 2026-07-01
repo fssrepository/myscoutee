@@ -223,20 +223,36 @@ export class EventsService extends BaseRouteModeService implements IEventsServic
     return this.eventsService.loadSubEventsById(normalizedUserId, normalizedEventId, query);
   }
 
-  trashItem(userId: string, sourceId: string): Promise<void> {
-    return this.eventsService.trashItem(userId, sourceId);
+  trashItem(
+    userId: string,
+    sourceId: string,
+    options: { counterPatch?: UserMenuCountersDto | null } = {}
+  ): Promise<void> {
+    return this.eventsService.trashItem(userId, sourceId, options);
   }
 
-  publishItem(userId: string, sourceId: string): Promise<void> {
-    return this.eventsService.publishItem(userId, sourceId);
+  publishItem(
+    userId: string,
+    sourceId: string,
+    options: { counterPatch?: UserMenuCountersDto | null } = {}
+  ): Promise<void> {
+    return this.eventsService.publishItem(userId, sourceId, options);
   }
 
-  unpublishItem(userId: string, sourceId: string): Promise<void> {
-    return this.eventsService.unpublishItem(userId, sourceId);
+  unpublishItem(
+    userId: string,
+    sourceId: string,
+    options: { counterPatch?: UserMenuCountersDto | null } = {}
+  ): Promise<void> {
+    return this.eventsService.unpublishItem(userId, sourceId, options);
   }
 
-  restoreItem(userId: string, sourceId: string): Promise<void> {
-    return this.eventsService.restoreItem(userId, sourceId);
+  restoreItem(
+    userId: string,
+    sourceId: string,
+    options: { counterPatch?: UserMenuCountersDto | null } = {}
+  ): Promise<void> {
+    return this.eventsService.restoreItem(userId, sourceId, options);
   }
 
   takeOverItem(userId: string, sourceId: string): Promise<void> {

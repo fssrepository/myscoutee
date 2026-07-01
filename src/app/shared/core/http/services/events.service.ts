@@ -383,19 +383,35 @@ export class HttpEventsService implements IEventsService {
     };
   }
 
-  async trashItem(userId: string, sourceId: string): Promise<void> {
+  async trashItem(
+    userId: string,
+    sourceId: string,
+    _options: { counterPatch?: UserMenuCountersDto | null } = {}
+  ): Promise<void> {
     await this.postVoid('/activities/events/trash', { userId: userId.trim(), sourceId: sourceId.trim() });
   }
 
-  async publishItem(userId: string, sourceId: string): Promise<void> {
+  async publishItem(
+    userId: string,
+    sourceId: string,
+    _options: { counterPatch?: UserMenuCountersDto | null } = {}
+  ): Promise<void> {
     await this.postVoid('/activities/events/publish', { userId: userId.trim(), sourceId: sourceId.trim() });
   }
 
-  async unpublishItem(userId: string, sourceId: string): Promise<void> {
+  async unpublishItem(
+    userId: string,
+    sourceId: string,
+    _options: { counterPatch?: UserMenuCountersDto | null } = {}
+  ): Promise<void> {
     await this.postVoid('/activities/events/unpublish', { userId: userId.trim(), sourceId: sourceId.trim() });
   }
 
-  async restoreItem(userId: string, sourceId: string): Promise<void> {
+  async restoreItem(
+    userId: string,
+    sourceId: string,
+    _options: { counterPatch?: UserMenuCountersDto | null } = {}
+  ): Promise<void> {
     await this.postVoid('/activities/events/restore', { userId: userId.trim(), sourceId: sourceId.trim() });
   }
 

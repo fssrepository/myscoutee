@@ -981,8 +981,9 @@ export class ActivitiesEventsController {
   private async confirmActivityPublish(row: InfoCardData): Promise<void> {
     const activeUserId = this.activeUserId();
     const patch = this.publishedEventCounterPatch(row);
-    const persistence = this.eventsService.publishItem(this.activeUser.id, row.id);
-    await this.persistLocalActivityCounterPatch(activeUserId, patch);
+    const persistence = this.eventsService.publishItem(this.activeUser.id, row.id, {
+      counterPatch: patch as UserMenuCountersDto | null
+    });
     await persistence;
     this.activeHostingIds = new Set([...this.activeHostingIds, row.id]);
 
@@ -1003,8 +1004,9 @@ export class ActivitiesEventsController {
   private async confirmActivityUnpublish(row: InfoCardData): Promise<void> {
     const activeUserId = this.activeUserId();
     const patch = this.unpublishedEventCounterPatch(row);
-    const persistence = this.eventsService.unpublishItem(this.activeUser.id, row.id);
-    await this.persistLocalActivityCounterPatch(activeUserId, patch);
+    const persistence = this.eventsService.unpublishItem(this.activeUser.id, row.id, {
+      counterPatch: patch as UserMenuCountersDto | null
+    });
     await persistence;
     const nextActiveIds = new Set(this.activeHostingIds);
     nextActiveIds.delete(row.id);
@@ -1230,8 +1232,7 @@ export class ActivitiesEventsController {
     }
     const activeUserId = this.activeUserId();
     const patch = this.trashedEventCounterPatch(row, isRejectInvitation ? 'invitations' : null);
-    const persistence = this.persistActivityRowTrash(row);
-    await this.persistLocalActivityCounterPatch(activeUserId, patch);
+    const persistence = this.persistActivityRowTrash(row, patch);
     await persistence;
     this.activitiesSmartList?.removeVisibleItemByIdentity(this.activityRowIdentity(row));
     this.signalActivityCounterPatch(activeUserId, patch);
@@ -1744,15 +1745,18 @@ export class ActivitiesEventsController {
     this.refreshSectionBadges();
   }
 
-  private async persistActivityRowTrash(row: InfoCardData): Promise<void> {
-    await this.eventsService.trashItem(this.activeUser.id, row.id);
+  private async persistActivityRowTrash(row: InfoCardData, patch: Partial<ActivityCounters> | null): Promise<void> {
+    await this.eventsService.trashItem(this.activeUser.id, row.id, {
+      counterPatch: patch as UserMenuCountersDto | null
+    });
   }
 
   private async restoreActivityRow(row: InfoCardData): Promise<void> {
     const activeUserId = this.activeUserId();
     const patch = this.restoredEventCounterPatch(row);
-    const persistence = this.eventsService.restoreItem(this.activeUser.id, row.id);
-    await this.persistLocalActivityCounterPatch(activeUserId, patch);
+    const persistence = this.eventsService.restoreItem(this.activeUser.id, row.id, {
+      counterPatch: patch as UserMenuCountersDto | null
+    });
     await persistence;
     this.unmarkActivityRowTrashed(row);
     this.activitiesSmartList?.removeVisibleItemByIdentity(this.activityRowIdentity(row));
