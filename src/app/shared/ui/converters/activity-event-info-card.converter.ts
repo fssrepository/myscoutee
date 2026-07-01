@@ -38,7 +38,7 @@ export class ActivityEventInfoCardConverter {
 
     return {
       id: dto.id,
-      smartListKey: `${this.rowType(dto, activeUserId)}:${dto.id}`,
+      smartListKey: `${this.rowType(dto)}:${dto.id}`,
       dateIso: dto.startAtIso,
       distanceMetersExact: Math.max(0, Math.round((Number(dto.distanceKm) || 0) * 1000)),
       status,
@@ -155,15 +155,10 @@ export class ActivityEventInfoCardConverter {
     };
   }
 
-  private static rowType(dto: ActivityEventDTO, activeUserId: string): 'events' | 'hosting' | 'invitations' {
-    const userId = activeUserId.trim();
-    if (userId && this.includesUserId(dto.invitedMemberUserIds, userId)) {
-      return 'invitations';
-    }
-    if (userId && this.includesUserId(dto.adminIds, userId)) {
-      return 'hosting';
-    }
-    return 'events';
+  private static rowType(dto: ActivityEventDTO): 'events' | 'hosting' | 'invitations' {
+    return dto.type === 'events' || dto.type === 'hosting' || dto.type === 'invitations'
+      ? dto.type
+      : 'events';
   }
 
   private static isPending(dto: ActivityEventDTO, activeUserId: string): boolean {

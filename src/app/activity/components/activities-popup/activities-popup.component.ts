@@ -70,7 +70,6 @@ import {
   type PopupModel,
   SmartListComponent,
   type CardMenuActionEvent,
-  compareSmartListLocalSortKeys,
   type ListQuery,
   type PageResult,
   type SingleRowData,
@@ -2005,14 +2004,9 @@ export class ActivitiesPopupComponent implements OnDestroy {
   }
 
   private resolveActivityEventCardTypeFromDTO(dto: ActivityEventDTO): ActivityEventListType {
-    const activeUserId = this.activeUser?.id?.trim() ?? '';
-    if (activeUserId && (dto.invitedMemberUserIds ?? []).includes(activeUserId)) {
-      return 'invitations';
-    }
-    if (activeUserId && (dto.adminIds ?? []).includes(activeUserId)) {
-      return 'hosting';
-    }
-    return 'events';
+    return dto.type === 'events' || dto.type === 'hosting' || dto.type === 'invitations'
+      ? dto.type
+      : 'events';
   }
 
   private convertActivitySmartListItem(
@@ -2262,90 +2256,15 @@ export class ActivitiesPopupComponent implements OnDestroy {
     if (!smartList) {
       return;
     }
-    const currentItems = [...smartList.itemsSnapshot()];
-    const currentIndex = currentItems.findIndex(row => row.id === sync.id);
-    const existingRow = currentIndex >= 0 ? currentItems[currentIndex] ?? null : null;
-    const nextRow = this.buildVisibleEventRowFromSave(sync, existingRow);
-    if (!nextRow && currentIndex < 0) {
-      return;
-    }
-    if (nextRow && existingRow && this.canPatchVisibleEventRowInPlace(currentItems, currentIndex, nextRow)) {
-      smartList.patchVisibleItem(
-        (_row, index) => index === currentIndex,
-        () => nextRow
-      );
-      return;
-    }
-    const nextItems = currentItems.filter(row => row.id !== sync.id);
-    if (nextRow) {
-      nextItems.push(nextRow);
-    }
-    const totalDelta = (nextRow ? 1 : 0) - (currentIndex >= 0 ? 1 : 0);
-    smartList.replaceVisibleItems(nextItems, {
-      total: Math.max(nextItems.length, smartList.cursorState().total + totalDelta)
-    });
-  }
-
-  private canPatchVisibleEventRowInPlace(
-    currentItems: readonly ActivityListItem[],
-    currentIndex: number,
-    nextRow: ActivityListItem
-  ): boolean {
-    if (currentIndex < 0) {
-      return false;
-    }
-    const patchedItems = [...currentItems];
-    patchedItems[currentIndex] = nextRow;
-    const sortedItems = [...patchedItems].sort((left, right) =>
-      compareSmartListLocalSortKeys(
-        this.activityRowLocalSortKey(left),
-        this.activityRowLocalSortKey(right)
-      )
+    smartList.patchVisibleItem(
+      row => row.id === sync.id,
+      row => ({
+        ...ActivityEventInfoCardConverter.convert(sync, {
+          activeUserId: this.activeUser.id
+        }),
+        smartListKey: row.smartListKey
+      })
     );
-    return sortedItems.length === currentItems.length
-      && sortedItems.every((row, index) => this.activityRowIdentity(row) === this.activityRowIdentity(currentItems[index]));
-  }
-
-  private buildVisibleEventRowFromSave(
-    sync: ActivityEventDTO,
-    existingRow: ActivityListItem | null = null
-  ): ActivityListItem | null {
-    void existingRow;
-    const rowType = this.resolveVisibleEventRowTypeFromSave(sync);
-    if (rowType === 'events' || rowType === 'hosting') {
-      return ActivityEventInfoCardConverter.convert(sync, {
-        activeUserId: this.activeUser.id
-      });
-    }
-    return null;
-  }
-
-  private resolveVisibleEventRowTypeFromSave(sync: ActivityEventDTO): ActivityEventListType | null {
-    const saveStatus = this.activityEventSaveStatusCode(sync);
-    const isPublished = saveStatus === 'A';
-    const isPending = this.isPendingEventSave(sync);
-    const isAccepted = this.isAcceptedEventSave(sync);
-    const isOwned = this.isOwnedEventSave(sync);
-
-    if (this.activitiesEventScope === 'active-events') {
-      return !isOwned && isPublished && isAccepted ? 'events' : null;
-    }
-    if (this.activitiesEventScope === 'pending') {
-      return !isOwned && isPublished && isPending ? 'events' : null;
-    }
-    if (this.activitiesEventScope === 'my-events') {
-      if (this.hostingPublicationFilter === 'drafts' && isPublished) {
-        return null;
-      }
-      return isOwned ? 'hosting' : null;
-    }
-    if (this.activitiesEventScope === 'drafts') {
-      return isOwned && !isPublished ? 'hosting' : null;
-    }
-    if (this.activitiesEventScope === 'all') {
-      return isOwned ? 'hosting' : (isAccepted || isPending ? 'events' : null);
-    }
-    return null;
   }
 
   private activityRowLocalSortKey(row: ActivityListItem): SmartListLocalSortKey {
@@ -2463,7 +2382,11 @@ export class ActivitiesPopupComponent implements OnDestroy {
 
   private activityEventDTOIsAdmin(item: ActivityEventDTO | null | undefined): boolean {
     const activeUserId = this.activeUser?.id?.trim() ?? '';
-    return !!activeUserId && (item?.adminIds ?? []).includes(activeUserId);
+    return !!activeUserId
+      && (
+        `${item?.creatorUserId ?? ''}`.trim() === activeUserId
+        || (item?.adminIds ?? []).includes(activeUserId)
+      );
   }
 
   private isOwnedEventSave(sync: ActivityEventDTO): boolean {
@@ -2471,39 +2394,8 @@ export class ActivitiesPopupComponent implements OnDestroy {
     if (!activeUserId) {
       return false;
     }
-    return (sync.adminIds ?? []).includes(activeUserId);
-  }
-
-  private isPendingEventSave(sync: ActivityEventDTO): boolean {
-    const activeUserId = this.activeUser?.id?.trim() ?? '';
-    if (!activeUserId || this.isOwnedEventSave(sync)) {
-      return false;
-    }
-    const dto = sync;
-    if ((dto.pendingRequestMemberUserIds ?? []).includes(activeUserId)) {
-      return true;
-    }
-    if ((dto.pendingMemberUserIds ?? []).includes(activeUserId) && !(dto.invitedMemberUserIds ?? []).includes(activeUserId)) {
-      return true;
-    }
-    if (this.pendingCheckoutDraftSourceIds().has(sync.id)) {
-      return true;
-    }
-    return false;
-  }
-
-  private isAcceptedEventSave(sync: ActivityEventDTO): boolean {
-    const activeUserId = this.activeUser?.id?.trim() ?? '';
-    if (!activeUserId || this.isOwnedEventSave(sync)) {
-      return false;
-    }
-    if ((sync.acceptedMemberUserIds ?? []).includes(activeUserId)) {
-      return true;
-    }
-    if (this.pendingCheckoutDraftSourceIds().has(sync.id)) {
-      return false;
-    }
-    return false;
+    return `${sync.creatorUserId ?? ''}`.trim() === activeUserId
+      || (sync.adminIds ?? []).includes(activeUserId);
   }
 
   private syncMobileViewFromViewport(): void {

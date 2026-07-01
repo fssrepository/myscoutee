@@ -823,6 +823,10 @@ export class LocalActivityEventDetailsMapper {
   static toRecord(payload: ActivityEventDetailDTO): ActivityEventRecord {
     const id = payload.id.trim();
     const creatorUserId = payload.creatorUserId.trim() || payload.userId.trim();
+    const adminIds = this.uniqueUserIds([
+      ...(payload.adminIds ?? []),
+      creatorUserId
+    ]);
     const creatorName = payload.creatorName.trim() || 'Unknown Host';
     const creatorInitials = payload.creatorInitials.trim() || AppUtils.initialsFromText(creatorName);
     const startAtIso = payload.startAtIso.trim() || new Date().toISOString();
@@ -878,6 +882,7 @@ export class LocalActivityEventDetailsMapper {
       userId: payload.userId.trim() || creatorUserId,
       type,
       status: this.normalizeEventStatus(payload.status),
+      adminIds,
       avatar: payload.avatar.trim() || creatorInitials,
       title,
       subtitle,
@@ -1279,6 +1284,18 @@ export class LocalActivityEventDetailsMapper {
 
   private static nonNegativeInteger(value: unknown): number {
     return this.normalizeCount(value) ?? 0;
+  }
+
+  private static uniqueUserIds(userIds: readonly string[]): string[] {
+    const unique: string[] = [];
+    for (const userId of userIds) {
+      const normalizedUserId = `${userId ?? ''}`.trim();
+      if (!normalizedUserId || unique.includes(normalizedUserId)) {
+        continue;
+      }
+      unique.push(normalizedUserId);
+    }
+    return unique;
   }
 
   private static optionalNonNegativeInteger(value: unknown): number | undefined {
