@@ -1307,7 +1307,6 @@ export class ActivitiesEventsController {
       throw new Error('Unable to accept invitation.');
     }
     const resolvedPatch = this.acceptedInvitationCounterPatchFromResult(joinResult) ?? patch;
-    await this.persistLocalActivityCounterPatch(activeUserId, resolvedPatch);
     this.removeInvitationItem(eventDetailDTO.id);
     this.activitiesSmartList?.removeVisibleItemByIdentity(this.activityRowIdentity(row));
     this.signalActivityCounterPatch(activeUserId, resolvedPatch);
