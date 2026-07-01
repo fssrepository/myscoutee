@@ -304,13 +304,19 @@ export class ActivitiesEventsController {
   }
 
   private activityEventListTypeForRow(row: InfoCardData): ActivityContracts.ActivityEventRepositoryItemType {
+    if (this.activitiesEventScope === 'drafts') {
+      return 'hosting';
+    }
     const fromHost = typeof this.host.activityEventListTypeForRow === 'function'
       ? this.host.activityEventListTypeForRow(row)
       : null;
+    const dto = this.activityEventDTOForRow(row);
+    if (dto && this.resolveActivityEventListTypeFromDTO(dto) === 'hosting') {
+      return 'hosting';
+    }
     if (this.isActivityEventListType(fromHost)) {
       return fromHost;
     }
-    const dto = this.activityEventDTOForRow(row);
     return dto ? this.resolveActivityEventListTypeFromDTO(dto) : 'events';
   }
 
@@ -321,16 +327,25 @@ export class ActivitiesEventsController {
     if (activeUserId && (dto.invitedMemberUserIds ?? []).includes(activeUserId)) {
       return 'invitations';
     }
-    if (activeUserId && (dto.adminIds ?? []).includes(activeUserId)) {
+    if (activeUserId && (`${dto.creatorUserId ?? ''}`.trim() === activeUserId || (dto.adminIds ?? []).includes(activeUserId))) {
       return 'hosting';
     }
     return 'events';
   }
 
   private isActivityRowAdmin(row: InfoCardData): boolean {
+    if (this.activitiesEventScope === 'drafts') {
+      return true;
+    }
     const dto = this.activityEventDTOForRow(row);
     const activeUserId = this.activeUserId();
-    return !!activeUserId && (dto?.adminIds ?? []).includes(activeUserId);
+    return !!activeUserId
+      && (
+        `${dto?.creatorUserId ?? ''}`.trim() === activeUserId
+        || (dto?.adminIds ?? []).includes(activeUserId)
+        || `${row.ownerUserId ?? row.ownerId ?? ''}`.trim() === activeUserId
+        || this.activityEventListTypeForRow(row) === 'hosting'
+      );
   }
 
   private activityRowTimeframe(row: InfoCardData): string | null {
@@ -371,7 +386,12 @@ export class ActivitiesEventsController {
   }
 
   private activityStatusCode(row: InfoCardData): string {
-    return this.normalizeActivityStatusCode(row.status);
+    const dto = this.activityEventDTOForRow(row);
+    return this.normalizeActivityStatusCode(dto?.status ?? row.status);
+  }
+
+  private isActivityDraftRow(row: InfoCardData): boolean {
+    return this.activityStatusCode(row) === 'DR' || this.activitiesEventScope === 'drafts';
   }
 
   private normalizeActivityStatusCode(statusValue: string | null | undefined): string {
@@ -960,7 +980,7 @@ export class ActivitiesEventsController {
     } else if (type === 'hosting') {
       primaryDelta['hosting'] = -1;
       eventDelta['hosting'] = -1;
-      if (this.activityStatusCode(row) === 'DR') {
+      if (this.isActivityDraftRow(row)) {
         eventDelta['drafts'] = -1;
       }
     } else if (this.isActivityPendingParticipationRow(row)) {
@@ -995,7 +1015,7 @@ export class ActivitiesEventsController {
     } else if (type === 'hosting') {
       primaryDelta['hosting'] = 1;
       eventDelta['hosting'] = 1;
-      if (this.activityRestoredStatusCode(row) === 'DR') {
+      if (this.activityRestoredStatusCode(row) === 'DR' || this.activitiesEventScope === 'drafts') {
         eventDelta['drafts'] = 1;
       }
     } else if (this.isActivityPendingParticipationRow(row)) {
@@ -1013,7 +1033,7 @@ export class ActivitiesEventsController {
   }
 
   private publishedEventCounterPatch(row: InfoCardData): Partial<ActivityCounters> | null {
-    if (this.activityStatusCode(row) !== 'DR') {
+    if (!this.isActivityDraftRow(row)) {
       return null;
     }
     return this.activityCounterPatchFromDeltas(

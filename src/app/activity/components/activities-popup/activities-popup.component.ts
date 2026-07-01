@@ -2005,9 +2005,13 @@ export class ActivitiesPopupComponent implements OnDestroy {
   }
 
   private resolveActivityEventCardTypeFromDTO(dto: ActivityEventDTO): ActivityEventListType {
-    return dto.type === 'events' || dto.type === 'hosting' || dto.type === 'invitations'
-      ? dto.type
-      : 'events';
+    if (dto.type === 'invitations') {
+      return 'invitations';
+    }
+    if (this.activityEventDTOIsAdmin(dto)) {
+      return 'hosting';
+    }
+    return dto.type === 'hosting' ? 'hosting' : 'events';
   }
 
   private convertActivitySmartListItem(
