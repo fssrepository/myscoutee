@@ -173,6 +173,21 @@ button.asset-occupancy-badge:active::after,
   box-shadow: 0 8px 18px rgba(60, 70, 88, 0.1);
 }
 
+.ui-info-card--tone-deleted,
+.ui-info-card--tone-inactive,
+.ui-info-card--tone-review,
+.ui-info-card--tone-blocked {
+  gap: 0.24rem;
+  padding: 0.48rem 0.54rem;
+}
+
+.ui-info-card--tone-deleted .ui-info-card__media,
+.ui-info-card--tone-inactive .ui-info-card__media,
+.ui-info-card--tone-review .ui-info-card__media,
+.ui-info-card--tone-blocked .ui-info-card__media {
+  height: 112px;
+}
+
 .ui-info-card--state-leaving {
   opacity: 0;
   transform: translateY(10px) scale(0.97);

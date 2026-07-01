@@ -58,7 +58,8 @@ export class ActivityEventInfoCardConverter {
         : dto.eventType === 'slot'
           ? `Slot occurrence${dto.subtitle ? ' · ' + dto.subtitle : ''}`
           : dto.subtitle,
-      footerChips: this.footerChips(statusBadgeLabelKey, pending),
+      footerChips: this.footerChips(pending),
+      descriptionLines: 2,
       leadingIcon: {
         icon: this.leadingIcon(dto, status, pending, activeUserId)
       },
@@ -134,13 +135,7 @@ export class ActivityEventInfoCardConverter {
     return `${distanceKm} km`;
   }
 
-  private static footerChips(
-    statusBadgeLabelKey: string,
-    pending: boolean
-  ): NonNullable<InfoCardData['footerChips']> {
-    if (statusBadgeLabelKey) {
-      return [{ label: statusBadgeLabelKey }];
-    }
+  private static footerChips(pending: boolean): NonNullable<InfoCardData['footerChips']> {
     if (!pending) {
       return [];
     }
