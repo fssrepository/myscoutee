@@ -116,7 +116,7 @@ export class EventsService extends BaseRouteModeService implements IEventsServic
       query,
       options.signal
     );
-    if (this.isCalendarActivitiesView(query.view)) {
+    if (this.isCalendarActivitiesView(query.view) && query.filters?.eventScopeFilter !== 'trash') {
       const items = AppUtils.filterItemsByDateOnlyRange(
         page.items,
         query.rangeStart,

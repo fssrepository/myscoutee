@@ -2172,22 +2172,6 @@ export class ActivitiesPopupComponent implements OnDestroy {
     return leftMemberIds.every((memberId, index) => memberId === rightMemberIds[index]);
   }
 
-  private syncActivityEventItems(items: readonly ActivityEventDTO[]): void {
-    const normalizedItems = Array.isArray(items)
-      ? items.map(item => this.cloneActivityEventDTO(item))
-      : [];
-    this.activeHostingIds = new Set(
-      normalizedItems
-        .filter(item => this.activityEventDTOIsAdmin(item) && this.activityEventSaveStatusCode(item) === 'A')
-        .map(item => item.id)
-    );
-    for (const item of normalizedItems) {
-      this.syncActivityEventMetadata(item);
-    }
-    this.syncEventOwnerMemberCountsFromEventRows(normalizedItems);
-    this.bumpActivitiesEventCardRevision();
-  }
-
   private syncActivityEventMetadata(item: ActivityEventDTO): void {
     if (item.startAtIso) {
       this.activityDateTimeRangeById[item.id] = {
@@ -3097,40 +3081,6 @@ export class ActivitiesPopupComponent implements OnDestroy {
     void this.activityMembersService.replaceMembersByOwner(owner, this.selectedActivityMembers, summary.capacityTotal);
   }
 
-  private syncEventOwnerMemberCountsFromEventRows(items: readonly ActivityEventDTO[]): void {
-    const eventRecords = items
-      .map(item => ({
-        id: item.id,
-        row: ActivityEventInfoCardConverter.convert(item, {
-          activeUserId: this.activeUser.id
-        }),
-        acceptedMembers: item.acceptedMembers ?? 0,
-        capacityTotal: item.capacityTotal ?? 0,
-        pendingMembers: item.pendingMembers ?? 0
-      }));
-    for (const record of eventRecords) {
-      const owner = ActivityEventInfoCardConverter.toActivityMembersOwner(record.row);
-      const summary = this.activityMembersService.peekSummaryByOwner(owner);
-      const acceptedMembers = summary?.acceptedMembers ?? record.acceptedMembers;
-      const pendingMembers = summary?.pendingMembers ?? record.pendingMembers;
-      const capacityTotal = summary?.capacityTotal ?? Math.max(acceptedMembers, record.capacityTotal);
-      this.activityCapacityById[record.id] = `${acceptedMembers} / ${capacityTotal}`;
-      this.activityPendingMembersById[record.id] = pendingMembers;
-
-      const rowKey = this.activityRowIdentity(record.row);
-      if (summary) {
-        const members = this.activityMembersService.peekMembersByOwner(owner);
-        if (members.length > 0) {
-          this.activityMembersByRowId[rowKey] = ActivityMembersBuilder.sortActivityMembersByActionTimeDesc(members);
-          this.bumpActivitiesEventCardRevision(rowKey);
-          continue;
-        }
-      }
-      delete this.activityMembersByRowId[rowKey];
-      this.bumpActivitiesEventCardRevision(rowKey);
-    }
-  }
-
   private maybeDismissActivityRateEditor(target: Element): void {
     if (!this.activitiesRates.isEditorOpen()) {
       return;
@@ -3468,7 +3418,6 @@ export class ActivitiesPopupComponent implements OnDestroy {
       const page = await this.eventsService.loadActivityEvents(query, {
         signal: context?.signal
       });
-      this.syncActivityEventItems(page.items);
       return {
         items: this.activitiesSmartList?.convertItems(page.items) ?? [],
         total: page.total,

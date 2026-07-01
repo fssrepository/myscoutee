@@ -189,10 +189,8 @@ export class ActivitiesEventsController {
     if (!patch) {
       return;
     }
-    this.activityStore.patchUserCounterOverrides(activeUserId, patch);
-    if (patch && typeof this.usersService?.patchLocalUserActivityCounters === 'function') {
-      this.usersService.patchLocalUserActivityCounters(activeUserId, patch);
-    }
+    this.signalActivityCounterPatch(activeUserId, patch);
+    this.persistLocalActivityCounterPatch(activeUserId, patch);
   }
 
   private activityCounterPatchFromDeltas(
@@ -224,6 +222,20 @@ export class ActivitiesEventsController {
     }
 
     return Object.keys(patch).length > 0 ? patch : null;
+  }
+
+  private signalActivityCounterPatch(activeUserId: string, patch: Partial<ActivityCounters> | null): void {
+    if (!patch) {
+      return;
+    }
+    this.activityStore.patchUserCounterOverrides(activeUserId, patch);
+  }
+
+  private persistLocalActivityCounterPatch(activeUserId: string, patch: Partial<ActivityCounters> | null): void {
+    if (!patch || typeof this.usersService?.patchLocalUserActivityCounters !== 'function') {
+      return;
+    }
+    this.usersService.patchLocalUserActivityCounters(activeUserId, patch);
   }
 
   private activityEventCountersWithOverrides(
@@ -736,16 +748,17 @@ export class ActivitiesEventsController {
 
   public runActivityItemSecondaryAction(row: InfoCardData, event?: Event, action?: CardMenuAction | null): void {
     event?.stopPropagation();
+    const isRejectInvitation = action?.id === 'rejectInvitation' || this.isActivityInvitationRow(row);
     this.dialogStore.open({
-      title: this.activitySecondaryConfirmTitle(row),
+      title: this.activitySecondaryConfirmTitle(row, isRejectInvitation),
       message: row.title,
       cancelLabel: 'Cancel',
-      confirmLabel: this.activitySecondaryConfirmActionLabel(row),
-      busyConfirmLabel: this.activitySecondaryConfirmBusyLabel(row),
+      confirmLabel: this.activitySecondaryConfirmActionLabel(row, isRejectInvitation),
+      busyConfirmLabel: this.activitySecondaryConfirmBusyLabel(row, isRejectInvitation),
       confirmTone: 'danger',
       confirmPalette: this.confirmationPaletteForCardAction(action),
-      failureMessage: this.activitySecondaryConfirmFailureMessage(row),
-      onConfirm: () => this.confirmActivitySecondaryAction(row)
+      failureMessage: this.activitySecondaryConfirmFailureMessage(row, isRejectInvitation),
+      onConfirm: () => this.confirmActivitySecondaryAction(row, isRejectInvitation)
     });
   }
 
@@ -865,8 +878,8 @@ export class ActivitiesEventsController {
       || (this.activitiesEventScope === 'my-events' && this.hostingPublicationFilter === 'drafts');
   }
 
-  private activitySecondaryConfirmTitle(row: InfoCardData): string {
-    if (this.isActivityInvitationRow(row)) {
+  private activitySecondaryConfirmTitle(row: InfoCardData, isRejectInvitation = false): string {
+    if (isRejectInvitation) {
       return 'Reject invitation?';
     }
     if (!this.isActivityRowAdmin(row)) {
@@ -875,9 +888,9 @@ export class ActivitiesEventsController {
     return 'Delete event?';
   }
 
-  private activitySecondaryConfirmActionLabel(row: InfoCardData): string {
-    if (this.isActivityInvitationRow(row)) {
-      return 'Reject';
+  private activitySecondaryConfirmActionLabel(row: InfoCardData, isRejectInvitation = false): string {
+    if (isRejectInvitation) {
+      return 'Reject Invitation';
     }
     if (!this.isActivityRowAdmin(row)) {
       return 'Leave';
@@ -885,8 +898,8 @@ export class ActivitiesEventsController {
     return 'Delete';
   }
 
-  private activitySecondaryConfirmBusyLabel(row: InfoCardData): string {
-    if (this.isActivityInvitationRow(row)) {
+  private activitySecondaryConfirmBusyLabel(row: InfoCardData, isRejectInvitation = false): string {
+    if (isRejectInvitation) {
       return 'Rejecting...';
     }
     if (!this.isActivityRowAdmin(row)) {
@@ -895,8 +908,8 @@ export class ActivitiesEventsController {
     return 'Deleting...';
   }
 
-  private activitySecondaryConfirmFailureMessage(row: InfoCardData): string {
-    if (this.isActivityInvitationRow(row)) {
+  private activitySecondaryConfirmFailureMessage(row: InfoCardData, isRejectInvitation = false): string {
+    if (isRejectInvitation) {
       return 'Unable to reject invitation.';
     }
     if (!this.isActivityRowAdmin(row)) {
@@ -926,10 +939,13 @@ export class ActivitiesEventsController {
     );
   }
 
-  private adjustTrashedEventCounters(row: InfoCardData): void {
+  private trashedEventCounterPatch(
+    row: InfoCardData,
+    forcedType: ActivityContracts.ActivityEventRepositoryItemType | null = null
+  ): Partial<ActivityCounters> | null {
     const primaryDelta: Record<string, number> = {};
     const eventDelta: Record<string, number> = { all: -1, trash: 1 };
-    const type = this.activityEventListTypeForRow(row);
+    const type = forcedType ?? this.activityEventListTypeForRow(row);
     if (type === 'invitations') {
       primaryDelta['invitations'] = -1;
       eventDelta['invitations'] = -1;
@@ -945,7 +961,12 @@ export class ActivitiesEventsController {
       primaryDelta['events'] = -1;
       eventDelta['active'] = -1;
     }
-    this.applyActivityEventCounterDeltas(primaryDelta, eventDelta);
+    return this.activityCounterPatchFromDeltas(
+      this.activeUserId(),
+      primaryDelta,
+      eventDelta,
+      this.activeUser?.activities ?? null
+    );
   }
 
   private adjustLeftEventCounters(row: InfoCardData): void {
@@ -956,7 +977,7 @@ export class ActivitiesEventsController {
     this.applyActivityEventCounterDeltas({ events: -1 }, { active: -1, all: -1 });
   }
 
-  private adjustRestoredEventCounters(row: InfoCardData): void {
+  private restoredEventCounterPatch(row: InfoCardData): Partial<ActivityCounters> | null {
     const primaryDelta: Record<string, number> = {};
     const eventDelta: Record<string, number> = { all: 1, trash: -1 };
     const type = this.activityEventListTypeForRow(row);
@@ -975,7 +996,12 @@ export class ActivitiesEventsController {
       primaryDelta['events'] = 1;
       eventDelta['active'] = 1;
     }
-    this.applyActivityEventCounterDeltas(primaryDelta, eventDelta);
+    return this.activityCounterPatchFromDeltas(
+      this.activeUserId(),
+      primaryDelta,
+      eventDelta,
+      this.activeUser?.activities ?? null
+    );
   }
 
   private adjustPublishedEventCounters(row: InfoCardData): void {
@@ -1013,15 +1039,17 @@ export class ActivitiesEventsController {
     return ['UR', 'B', 'D', 'I', 'T'].includes(previous) ? 'A' : previous;
   }
 
-  private async confirmActivitySecondaryAction(row: InfoCardData): Promise<void> {
-    if (!this.isActivityRowAdmin(row) && !this.isActivityInvitationRow(row)) {
+  private async confirmActivitySecondaryAction(row: InfoCardData, isRejectInvitation = false): Promise<void> {
+    if (!isRejectInvitation && !this.isActivityRowAdmin(row) && !this.isActivityInvitationRow(row)) {
       await this.confirmActivityLeave(row);
       return;
     }
+    const activeUserId = this.activeUserId();
+    const patch = this.trashedEventCounterPatch(row, isRejectInvitation ? 'invitations' : null);
+    this.persistLocalActivityCounterPatch(activeUserId, patch);
     await this.persistActivityRowTrash(row);
-    this.markActivityRowTrashed(row);
     this.activitiesSmartList?.removeVisibleItemByIdentity(this.activityRowIdentity(row));
-    this.adjustTrashedEventCounters(row);
+    this.signalActivityCounterPatch(activeUserId, patch);
     this.cdr.markForCheck();
   }
 
@@ -1519,10 +1547,13 @@ export class ActivitiesEventsController {
   }
 
   private async restoreActivityRow(row: InfoCardData): Promise<void> {
+    const activeUserId = this.activeUserId();
+    const patch = this.restoredEventCounterPatch(row);
+    this.persistLocalActivityCounterPatch(activeUserId, patch);
     await this.eventsService.restoreItem(this.activeUser.id, row.id);
     this.unmarkActivityRowTrashed(row);
     this.activitiesSmartList?.removeVisibleItemByIdentity(this.activityRowIdentity(row));
-    this.adjustRestoredEventCounters(row);
+    this.signalActivityCounterPatch(activeUserId, patch);
     this.cdr.markForCheck();
   }
 

@@ -86,7 +86,9 @@ export class LocalEventsRepository {
   }
 
   queryInvitationItemsByUser(userId: string): ActivityEventRecord[] {
-    return this.queryUserRecords(userId).filter(record => this.isInvitationRecordForUser(record, userId));
+    return this.queryUserRecords(userId)
+      .filter(record => !this.isTrashStatus(record))
+      .filter(record => this.isInvitationRecordForUser(record, userId));
   }
 
   queryEventItemsByUser(userId: string): ActivityEventRecord[] {
@@ -393,15 +395,16 @@ export class LocalEventsRepository {
       view,
       sort: this.activitiesSort(query, view, secondaryFilter)
     };
+    const scopeFilter = this.activitiesEventScopeFilter(query);
     const filteredRecords = this.queryEventRecordsByFilter(
       normalizedUserId,
-      this.activitiesEventScopeFilter(query),
+      scopeFilter,
       this.activitiesHostingPublicationFilter(query)
     );
     const viewerCoordinates = this.queryUserLocationCoordinates(normalizedUserId);
     const normalizedRecords = filteredRecords
       .map(record => this.withResolvedDistance(record, viewerCoordinates))
-      .filter(record => this.matchesActivitiesSecondaryFilter(record, secondaryFilter))
+      .filter(record => scopeFilter === 'trash' || this.matchesActivitiesSecondaryFilter(record, secondaryFilter))
       .sort((left, right) => this.compareActivitiesRecords(left, right, pageOptions));
     const total = normalizedRecords.length;
 
@@ -666,15 +669,69 @@ export class LocalEventsRepository {
   }
 
   trashItem(userId: string, sourceId: string): void {
+    const normalizedUserId = userId.trim();
+    const normalizedSourceId = sourceId.trim();
+    if (!normalizedUserId || !normalizedSourceId) {
+      return;
+    }
     const trashedAtIso = new Date().toISOString();
-    this.updateItemStateFromCurrent(userId, sourceId, current => {
-      const currentStatus = this.normalizeEventStatus(current.status) as ActivityEventRecord['status'];
+    this.memoryDb.write(state => {
+      const table = state[EVENTS_TABLE_NAME];
+      const nextById = { ...table.byId };
+      const nextIds = [...table.ids];
+      const recordKeys = this.resolveStateRecordKeysFromTable(table, normalizedUserId, normalizedSourceId);
+      let changed = false;
+
+      for (const recordKey of recordKeys) {
+        const current = table.byId[recordKey];
+        if (!current) {
+          continue;
+        }
+        const currentStatus = this.normalizeEventStatus(current.status) as ActivityEventRecord['status'];
+        nextById[recordKey] = {
+          ...current,
+          status: 'T',
+          statusBeforeSuppression: currentStatus === 'T'
+            ? current.statusBeforeSuppression ?? null
+            : currentStatus,
+          trashedAtIso
+        };
+        changed = true;
+      }
+
+      if (!changed) {
+        const source = table.ids
+          .map(recordKey => table.byId[recordKey])
+          .find(record => !!record
+            && record.id === normalizedSourceId
+            && this.hasTrackedUserParticipation(record, normalizedUserId));
+        if (source) {
+          const sourceStatus = this.normalizeEventStatus(source.status) as ActivityEventRecord['status'];
+          const directRecord: ActivityEventRecord = {
+            ...source,
+            userId: normalizedUserId,
+            type: this.isInvitationRecordForUser(source, normalizedUserId) ? 'invitations' : 'events',
+            status: 'T',
+            statusBeforeSuppression: sourceStatus === 'T'
+              ? source.statusBeforeSuppression ?? null
+              : sourceStatus,
+            trashedAtIso
+          };
+          this.upsertRecord(nextById, nextIds, directRecord);
+          changed = true;
+        }
+      }
+
+      if (!changed) {
+        return state;
+      }
+
       return {
-        status: 'T',
-        statusBeforeSuppression: currentStatus === 'T'
-          ? current.statusBeforeSuppression ?? null
-          : currentStatus,
-        trashedAtIso
+        ...state,
+        [EVENTS_TABLE_NAME]: {
+          byId: nextById,
+          ids: nextIds
+        }
       };
     });
   }
@@ -1640,6 +1697,9 @@ export class LocalEventsRepository {
     userId: string,
     preferredRecord: ActivityEventRecord | undefined
   ): boolean {
+    if (this.isTrashStatus(record)) {
+      return true;
+    }
     if (this.isInvitationRecordForUser(record, userId)) {
       return true;
     }

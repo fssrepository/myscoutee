@@ -373,8 +373,9 @@ export class LocalEventsService extends LocalRouteDelayService implements IEvent
   }
 
   async trashItem(userId: string, sourceId: string): Promise<void> {
-    await this.waitForRouteDelay(LocalEventsService.EVENTS_ROUTE);
     this.eventsRepository.trashItem(userId, sourceId);
+    await this.eventsRepository.flushToIndexedDb();
+    await this.waitForRouteDelay(LocalEventsService.EVENTS_ROUTE);
   }
 
   async publishItem(userId: string, sourceId: string): Promise<void> {
@@ -388,8 +389,9 @@ export class LocalEventsService extends LocalRouteDelayService implements IEvent
   }
 
   async restoreItem(userId: string, sourceId: string): Promise<void> {
-    await this.waitForRouteDelay(LocalEventsService.EVENTS_ROUTE);
     this.eventsRepository.restoreItem(userId, sourceId);
+    await this.eventsRepository.flushToIndexedDb();
+    await this.waitForRouteDelay(LocalEventsService.EVENTS_ROUTE);
   }
 
   async takeOverItem(userId: string, sourceId: string): Promise<void> {
