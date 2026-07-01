@@ -38,30 +38,6 @@ import type * as AppConstants from '../../../../../shared/core/common/constants'
 import type { MemberMenuStore } from '../../../../../shared/ui/context/stores/member-menu.store';
 import type { EventSubeventsPopupStore } from '../../../../../shared/ui/context/stores/event-subevents-popup.store';
 
-type ActivityEventCardType = 'events' | 'hosting' | 'invitations';
-type ActivityEventCardData = InfoCardData & {
-  type: ActivityEventCardType;
-  subtitle?: string | null;
-  detail?: string | null;
-  unread?: number | null;
-  isAdmin?: boolean;
-  avatarInitials?: string | null;
-  creatorInitials?: string | null;
-  startAt?: string | null;
-  endAt?: string | null;
-  visibility?: AppConstants.EventVisibility | null;
-  acceptedMembers?: number | null;
-  pendingMembers?: number | null;
-  capacityTotal?: number | null;
-  capacityMin?: number | null;
-  capacityMax?: number | null;
-  isTrashed?: boolean;
-  adminIds?: readonly string[];
-  acceptedMemberUserIds?: readonly string[];
-  pendingMemberUserIds?: readonly string[];
-  invitedMemberUserIds?: readonly string[];
-  pendingRequestMemberUserIds?: readonly string[];
-};
 
 @Component({
   selector: 'app-activities-event-template',
@@ -72,7 +48,7 @@ type ActivityEventCardData = InfoCardData & {
   changeDetection: ChangeDetectionStrategy.OnPush
 })
 export class ActivitiesEventTemplateComponent implements OnChanges {
-  @Input() row: ActivityEventCardData | null = null;
+  @Input() row: InfoCardData | null = null;
   @Input() groupLabel: string | null = null;
   @Input() cardRevision = 0;
 
@@ -90,17 +66,13 @@ export class ActivitiesEventTemplateComponent implements OnChanges {
 
   private buildCard(): InfoCardData | null {
     const row = this.row;
-    if (!row || !this.isInfoCardRow(row)) {
+    if (!row) {
       return null;
     }
     return {
       ...row,
       groupLabel: this.groupLabel
     };
-  }
-
-  private isInfoCardRow(row: ActivityEventCardData): row is ActivityEventCardData {
-    return row.type === 'events' || row.type === 'hosting' || row.type === 'invitations';
   }
 
   protected onMediaEndClick(): void {
@@ -172,12 +144,12 @@ export class ActivitiesEventsController {
   private set activeHostingIds(value: ReadonlySet<string>) { this.host.activeHostingIds = value; }
   private get selectedActivityMembers() { return this.host.selectedActivityMembers as ActivityContracts.ActivityMemberEntry[]; }
   private set selectedActivityMembers(value: ActivityContracts.ActivityMemberEntry[]) { this.host.selectedActivityMembers = value; }
-  private get selectedActivityMembersRow() { return this.host.selectedActivityMembersRow as ActivityEventCardData | null; }
+  private get selectedActivityMembersRow() { return this.host.selectedActivityMembersRow as InfoCardData | null; }
   private get selectedActivityMembersRowId() { return this.host.selectedActivityMembersRowId as string | null; }
-  private get trashedActivityRowsByKey() { return this.host.trashedActivityRowsByKey as Record<string, ActivityEventCardData>; }
+  private get trashedActivityRowsByKey() { return this.host.trashedActivityRowsByKey as Record<string, InfoCardData>; }
   private get users() { return this.host.users as any[]; }
 
-  private activityRowIdentity(row: ActivityEventCardData): string { return this.host.activityRowIdentity(row); }
+  private activityRowIdentity(row: InfoCardData): string { return this.host.activityRowIdentity(row); }
   private applyActivityEventSave(sync: ActivityContracts.ActivityEventDTO): void {
     this.host.applyActivityEventSave(sync);
   }
@@ -197,8 +169,8 @@ export class ActivitiesEventsController {
   private openActivityChat(chat: ChatDTO): void { this.host.openActivityChat(chat); }
   private persistSelectedActivityMembers(): void { this.host.persistSelectedActivityMembers(); }
   private refreshSectionBadges(): void { this.host.refreshSectionBadges(); }
-  private removeVisibleActivityRow(row: ActivityEventCardData): void { this.host.removeVisibleActivityRow(row); }
-  private replaceVisibleActivityItems(items: readonly ActivityEventCardData[], totalDelta = 0): void {
+  private removeVisibleActivityRow(row: InfoCardData): void { this.host.removeVisibleActivityRow(row); }
+  private replaceVisibleActivityItems(items: readonly InfoCardData[], totalDelta = 0): void {
     this.host.replaceVisibleActivityItems(items, totalDelta);
   }
   private uniqueUserIds(userIds: readonly string[]): string[] { return this.host.uniqueUserIds(userIds); }
@@ -212,14 +184,102 @@ export class ActivitiesEventsController {
         .map(member => member.userId)
     );
   }
-  private withActivityEventInfoCard(row: ActivityEventCardData): ActivityEventCardData {
+  private withActivityEventInfoCard(row: InfoCardData): InfoCardData {
     return this.host.withActivityEventInfoCard(row);
   }
-  private refreshActivityEventInfoCard(row: ActivityEventCardData): void {
+  private refreshActivityEventInfoCard(row: InfoCardData): void {
     this.host.refreshActivityEventInfoCard(row);
   }
 
-  private activityStatusCode(row: ActivityEventCardData): string {
+  private activeUserId(): string {
+    return `${this.activeUser?.id ?? ''}`.trim();
+  }
+
+  private activityEventDTOForRow(row: InfoCardData): ActivityContracts.ActivityEventDTO | null {
+    const fromHost = typeof this.host.activityEventDTOForRow === 'function'
+      ? this.host.activityEventDTOForRow(row)
+      : null;
+    if (fromHost) {
+      return fromHost as ActivityContracts.ActivityEventDTO;
+    }
+    const activeUserId = this.activeUserId();
+    return activeUserId
+      ? this.eventsService.peekKnownItemById(activeUserId, row.id) ?? null
+      : null;
+  }
+
+  private isActivityEventListType(value: unknown): value is ActivityContracts.ActivityEventRepositoryItemType {
+    return value === 'events' || value === 'hosting' || value === 'invitations';
+  }
+
+  private activityEventListTypeForRow(row: InfoCardData): ActivityContracts.ActivityEventRepositoryItemType {
+    const fromHost = typeof this.host.activityEventListTypeForRow === 'function'
+      ? this.host.activityEventListTypeForRow(row)
+      : null;
+    if (this.isActivityEventListType(fromHost)) {
+      return fromHost;
+    }
+    const dto = this.activityEventDTOForRow(row);
+    return dto ? this.resolveActivityEventListTypeFromDTO(dto) : 'events';
+  }
+
+  private resolveActivityEventListTypeFromDTO(
+    dto: ActivityContracts.ActivityEventDTO
+  ): ActivityContracts.ActivityEventRepositoryItemType {
+    const activeUserId = this.activeUserId();
+    if (activeUserId && (dto.invitedMemberUserIds ?? []).includes(activeUserId)) {
+      return 'invitations';
+    }
+    if (activeUserId && (dto.adminIds ?? []).includes(activeUserId)) {
+      return 'hosting';
+    }
+    return 'events';
+  }
+
+  private isActivityRowAdmin(row: InfoCardData): boolean {
+    const dto = this.activityEventDTOForRow(row);
+    const activeUserId = this.activeUserId();
+    return !!activeUserId && (dto?.adminIds ?? []).includes(activeUserId);
+  }
+
+  private activityRowTimeframe(row: InfoCardData): string | null {
+    const dto = this.activityEventDTOForRow(row);
+    return dto?.timeframe?.trim()
+      || row.metaRows?.[0]?.trim()
+      || row.description?.trim()
+      || null;
+  }
+
+  private activityRowStartAt(row: InfoCardData): string | null {
+    return this.activityEventDTOForRow(row)?.startAtIso ?? row.dateIso ?? null;
+  }
+
+  private activityRowEndAt(row: InfoCardData): string | null {
+    return this.activityEventDTOForRow(row)?.endAtIso ?? this.activityRowStartAt(row);
+  }
+
+  private activityRowSubtitle(row: InfoCardData): string {
+    const dto = this.activityEventDTOForRow(row);
+    return dto?.subtitle?.trim() || row.description?.trim() || '';
+  }
+
+  private activityRowActivityCount(row: InfoCardData): number {
+    const dto = this.activityEventDTOForRow(row);
+    return this.chatCountValue(dto?.activity ?? row.badgeCount);
+  }
+
+  private activityRowCreatorInitials(row: InfoCardData): string {
+    const dto = this.activityEventDTOForRow(row);
+    return dto?.creatorInitials?.trim()
+      || row.mediaStart?.label?.trim()
+      || AppUtils.initialsFromText(dto?.creatorName ?? row.title);
+  }
+
+  private activityRowVisibility(row: InfoCardData): AppConstants.EventVisibility {
+    return this.activityEventDTOForRow(row)?.visibility ?? 'Public';
+  }
+
+  private activityStatusCode(row: InfoCardData): string {
     return this.normalizeActivityStatusCode(row.status);
   }
 
@@ -245,12 +305,12 @@ export class ActivitiesEventsController {
     }
   }
 
-  public isExitActivityRow(row: ActivityEventCardData): boolean {
-    return row.isAdmin !== true && !this.isActivityInvitationRow(row);
+  public isExitActivityRow(row: InfoCardData): boolean {
+    return !this.isActivityRowAdmin(row) && !this.isActivityInvitationRow(row);
   }
 
-  public activityServiceChatActionLabel(row: ActivityEventCardData): string {
-    if (row.isAdmin === true) {
+  public activityServiceChatActionLabel(row: InfoCardData): string {
+    if (this.isActivityRowAdmin(row)) {
       return 'Notify Participants';
     }
     if (this.isActivityInvitationRow(row)) {
@@ -259,19 +319,11 @@ export class ActivitiesEventsController {
     return 'Contact Organizer';
   }
 
-  private isActivityInvitationRow(row: ActivityEventCardData): boolean {
-    const activeUserId = this.activeUser.id.trim();
-    const inviteProjection = row as ActivityEventCardData & {
-      isInvitation?: boolean;
-      invitedMemberUserIds?: readonly string[];
-    };
-    if (inviteProjection.isInvitation === true) {
-      return true;
-    }
-    return !!activeUserId && (inviteProjection.invitedMemberUserIds ?? []).includes(activeUserId);
+  private isActivityInvitationRow(row: InfoCardData): boolean {
+    return this.activityEventListTypeForRow(row) === 'invitations';
   }
 
-  public onActivityEventCardMenuAction(row: ActivityEventCardData, action: CardMenuActionEvent<InfoCardData>): void {
+  public onActivityEventCardMenuAction(row: InfoCardData, action: CardMenuActionEvent<InfoCardData>): void {
     switch (action.actionId as ActivityInfoCardActionId) {
       case 'publish':
         this.runActivityItemPublishAction(row, undefined, action.action);
@@ -315,47 +367,48 @@ export class ActivitiesEventsController {
     }
   }
 
-  public runActivityItemPrimaryAction(row: ActivityEventCardData, event?: Event): void {
+  public runActivityItemPrimaryAction(row: InfoCardData, event?: Event): void {
     event?.stopPropagation();
     this.openActivityRowInEventModule(row, false);
   }
 
-  public runActivityItemViewAction(row: ActivityEventCardData, event?: Event): void {
+  public runActivityItemViewAction(row: InfoCardData, event?: Event): void {
     event?.stopPropagation();
     this.eventSubeventsStore.openEventSubeventsListPopup({
       eventId: row.id,
       host: 'activities',
-      target: row.isAdmin === true || row.type === 'hosting' ? 'hosting' : 'events',
+      target: this.isActivityRowAdmin(row) || this.activityEventListTypeForRow(row) === 'hosting' ? 'hosting' : 'events',
       title: row.title,
-      timeframe: row.detail ?? null,
-      startAtIso: row.startAt ?? row.dateIso ?? null,
-      endAtIso: row.endAt ?? null,
+      timeframe: this.activityRowTimeframe(row),
+      startAtIso: this.activityRowStartAt(row),
+      endAtIso: this.activityRowEndAt(row),
       canEdit: this.canEditActivityEvent(row)
     });
   }
 
-  private canEditActivityEvent(row: ActivityEventCardData): boolean {
+  private canEditActivityEvent(row: InfoCardData): boolean {
     return ActivityEventInfoCardMenuConverter.canEditEvent(this.activityEventMenuSubjectFromRow(row), {
       activeUserId: this.activeUser.id
     });
   }
 
-  private activityEventMenuSubjectFromRow(row: ActivityEventCardData): ActivityEventInfoCardMenuSubject {
+  private activityEventMenuSubjectFromRow(row: InfoCardData): ActivityEventInfoCardMenuSubject {
+    const dto = this.activityEventDTOForRow(row);
     return {
       menu: 'activity-event-card',
       id: row.id,
-      status: row.status ?? null,
-      ownerUserId: row.ownerUserId ?? row.ownerId ?? null,
-      adminIds: [...(row.adminIds ?? [])],
-      acceptedMemberUserIds: [...(row.acceptedMemberUserIds ?? [])],
-      pendingMemberUserIds: [...(row.pendingMemberUserIds ?? [])],
-      invitedMemberUserIds: [...(row.invitedMemberUserIds ?? [])],
-      pendingRequestMemberUserIds: [...(row.pendingRequestMemberUserIds ?? [])]
+      status: dto?.status ?? row.status ?? null,
+      ownerUserId: dto?.creatorUserId ?? row.ownerUserId ?? row.ownerId ?? null,
+      adminIds: [...(dto?.adminIds ?? [])],
+      acceptedMemberUserIds: [...(dto?.acceptedMemberUserIds ?? [])],
+      pendingMemberUserIds: [...(dto?.pendingMemberUserIds ?? [])],
+      invitedMemberUserIds: [...(dto?.invitedMemberUserIds ?? [])],
+      pendingRequestMemberUserIds: [...(dto?.pendingRequestMemberUserIds ?? [])]
     };
   }
 
   public runActivityItemServiceChatAction(
-    row: ActivityEventCardData,
+    row: InfoCardData,
     card: InfoCardData | null = null,
     event?: Event
   ): void {
@@ -368,7 +421,7 @@ export class ActivitiesEventsController {
   }
 
   public runActivityItemShareAction(
-    row: ActivityEventCardData,
+    row: InfoCardData,
     card: InfoCardData | null = null,
     event?: Event
   ): void {
@@ -398,12 +451,12 @@ export class ActivitiesEventsController {
     });
   }
 
-  private resolveActivityShareEntityId(row: ActivityEventCardData, card: InfoCardData | null = null): string {
+  private resolveActivityShareEntityId(row: InfoCardData, card: InfoCardData | null = null): string {
     return `${this.activityInfoCardEntityId(card ?? this.activityInfoCardForRow(row)) || row.id || ''}`.trim();
   }
 
   public runActivityItemReportAction(
-    row: ActivityEventCardData,
+    row: InfoCardData,
     card: InfoCardData | null = null,
     event?: Event
   ): void {
@@ -425,7 +478,7 @@ export class ActivitiesEventsController {
     this.cdr.markForCheck();
   }
 
-  private resolveActivityReportTarget(row: ActivityEventCardData, card: InfoCardData | null = null): {
+  private resolveActivityReportTarget(row: InfoCardData, card: InfoCardData | null = null): {
     userId: string;
     name: string;
     startAtIso?: string | null;
@@ -450,11 +503,11 @@ export class ActivitiesEventsController {
       userId: ownerId,
       name: ownerName,
       startAtIso: source?.startAt ?? row.dateIso ?? null,
-      timeframe: source?.timeframe ?? source?.when ?? row.detail ?? null
+      timeframe: source?.timeframe ?? source?.when ?? this.activityRowTimeframe(row)
     };
   }
 
-  private resolveActivityServiceChat(row: ActivityEventCardData, card: InfoCardData | null = null): ChatDTO | null {
+  private resolveActivityServiceChat(row: InfoCardData, card: InfoCardData | null = null): ChatDTO | null {
     const activeUserId = this.activeUser.id.trim();
     if (!activeUserId) {
       return null;
@@ -477,8 +530,8 @@ export class ActivitiesEventsController {
       title,
       actionLabel: this.activityServiceChatActionLabel(row),
       creatorName: source?.creatorName ?? null,
-      hosting: row.isAdmin === true,
-      notification: row.isAdmin === true
+      hosting: this.isActivityRowAdmin(row),
+      notification: this.isActivityRowAdmin(row)
     });
   }
 
@@ -490,47 +543,61 @@ export class ActivitiesEventsController {
     return `${card?.ownerId ?? ''}`.trim();
   }
 
-  private activityInfoCardForRow(row: ActivityEventCardData): InfoCardData | null {
-    return row.type === 'events' || row.type === 'hosting' || row.type === 'invitations'
-      ? row
-      : null;
+  private activityInfoCardForRow(row: InfoCardData): InfoCardData | null {
+    return row;
   }
 
-  private activityRowDistanceKm(row: ActivityEventCardData): number {
+  private activityRowDistanceKm(row: InfoCardData): number {
     const meters = Number.isFinite(row.distanceMetersExact)
       ? Math.max(0, Math.trunc(Number(row.distanceMetersExact)))
       : 0;
     return Math.round((meters / 1000) * 10) / 10;
   }
 
-  private activityDisplaySourceForRow(row: ActivityEventCardData): ActivityEventRecordLike {
+  private activityDisplaySourceForRow(row: InfoCardData): ActivityEventRecordLike {
+    const dto = this.activityEventDTOForRow(row);
+    if (dto) {
+      return {
+        ...dto,
+        avatar: dto.creatorInitials ?? '',
+        description: dto.title,
+        shortDescription: dto.subtitle,
+        when: dto.timeframe,
+        unread: dto.activity,
+        isAdmin: this.isActivityRowAdmin(row),
+        startAt: dto.startAtIso,
+        endAt: dto.endAtIso,
+        capacityMax: dto.capacityMax ?? dto.capacityTotal,
+        capacityMin: dto.capacityMin ?? null
+      };
+    }
     return {
       id: row.id,
-      avatar: row.avatarInitials ?? row.creatorInitials ?? '',
+      avatar: this.activityRowCreatorInitials(row),
       title: row.title,
       description: row.title,
-      shortDescription: row.subtitle,
-      timeframe: row.detail,
-      when: row.detail,
-      activity: row.unread,
-      unread: row.unread,
-      isAdmin: row.isAdmin === true,
+      shortDescription: this.activityRowSubtitle(row),
+      timeframe: this.activityRowTimeframe(row),
+      when: this.activityRowTimeframe(row),
+      activity: this.activityRowActivityCount(row),
+      unread: this.activityRowActivityCount(row),
+      isAdmin: this.isActivityRowAdmin(row),
       creatorUserId: row.ownerId ?? row.ownerUserId ?? '',
-      creatorName: row.subtitle || row.title,
-      startAt: row.startAt ?? row.dateIso,
-      endAt: row.endAt ?? row.dateIso,
+      creatorName: row.description || row.title,
+      startAt: this.activityRowStartAt(row),
+      endAt: this.activityRowEndAt(row),
       distanceKm: this.activityRowDistanceKm(row),
-      acceptedMembers: row.acceptedMembers ?? 0,
-      pendingMembers: row.pendingMembers ?? 0,
-      capacityTotal: row.capacityTotal ?? row.capacityMax ?? row.acceptedMembers ?? 0,
-      capacityMin: row.capacityMin ?? null,
-      capacityMax: row.capacityMax ?? row.capacityTotal ?? null,
+      acceptedMembers: 0,
+      pendingMembers: 0,
+      capacityTotal: 0,
+      capacityMin: null,
+      capacityMax: null,
       imageUrl: row.imageUrl ?? '',
-      visibility: row.visibility ?? 'Public'
+      visibility: this.activityRowVisibility(row)
     };
   }
 
-  public runActivityItemApproveAction(row: ActivityEventCardData, event?: Event): void {
+  public runActivityItemApproveAction(row: InfoCardData, event?: Event): void {
     event?.stopPropagation();
     if (!this.isActivityInvitationRow(row)) {
       this.openActivityRowInEventModule(row, true);
@@ -539,7 +606,7 @@ export class ActivitiesEventsController {
     void this.openInvitationApprovalFlow(row);
   }
 
-  private async openInvitationApprovalFlow(row: ActivityEventCardData): Promise<void> {
+  private async openInvitationApprovalFlow(row: InfoCardData): Promise<void> {
     const activeUserId = this.activeUser.id.trim();
     const record = activeUserId ? await this.eventsService.queryKnownRecordById(activeUserId, row.id) : null;
     const relatedSource = this.activityDisplaySourceForRow(row);
@@ -574,7 +641,7 @@ export class ActivitiesEventsController {
     });
   }
 
-  public runActivityItemRestoreAction(row: ActivityEventCardData, event?: Event, action?: CardMenuAction | null): void {
+  public runActivityItemRestoreAction(row: InfoCardData, event?: Event, action?: CardMenuAction | null): void {
     event?.stopPropagation();
     this.dialogStore.open({
       title: 'Restore event?',
@@ -589,7 +656,7 @@ export class ActivitiesEventsController {
     });
   }
 
-  public runActivityItemSecondaryAction(row: ActivityEventCardData, event?: Event, action?: CardMenuAction | null): void {
+  public runActivityItemSecondaryAction(row: InfoCardData, event?: Event, action?: CardMenuAction | null): void {
     event?.stopPropagation();
     this.dialogStore.open({
       title: this.activitySecondaryConfirmTitle(row),
@@ -604,7 +671,7 @@ export class ActivitiesEventsController {
     });
   }
 
-  public runActivityItemPublishAction(row: ActivityEventCardData, event?: Event, action?: CardMenuAction | null): void {
+  public runActivityItemPublishAction(row: InfoCardData, event?: Event, action?: CardMenuAction | null): void {
     event?.stopPropagation();
     this.dialogStore.open({
       title: 'Publish event?',
@@ -619,7 +686,7 @@ export class ActivitiesEventsController {
     });
   }
 
-  public runActivityItemUnpublishAction(row: ActivityEventCardData, event?: Event, action?: CardMenuAction | null): void {
+  public runActivityItemUnpublishAction(row: InfoCardData, event?: Event, action?: CardMenuAction | null): void {
     event?.stopPropagation();
     this.dialogStore.open({
       title: 'Unpublish event?',
@@ -634,7 +701,7 @@ export class ActivitiesEventsController {
     });
   }
 
-  public runActivityItemTakeOverAction(row: ActivityEventCardData, event?: Event, action?: CardMenuAction | null): void {
+  public runActivityItemTakeOverAction(row: InfoCardData, event?: Event, action?: CardMenuAction | null): void {
     event?.stopPropagation();
     this.dialogStore.open({
       title: 'Take over event?',
@@ -649,7 +716,7 @@ export class ActivitiesEventsController {
     });
   }
 
-  private async confirmActivityTakeOver(row: ActivityEventCardData): Promise<void> {
+  private async confirmActivityTakeOver(row: InfoCardData): Promise<void> {
     await this.eventsService.takeOverItem(this.activeUser.id, row.id);
     const nextStatus = this.restoredActivityStatus(row);
     if (this.activitiesEventScope === 'pending') {
@@ -658,7 +725,7 @@ export class ActivitiesEventsController {
       const smartList = this.activitiesSmartList;
       if (smartList) {
         const currentItems = [...smartList.itemsSnapshot()];
-        const rowIndex = currentItems.findIndex(item => item.id === row.id && item.type === row.type);
+        const rowIndex = currentItems.findIndex(item => item.id === row.id);
         if (rowIndex >= 0) {
           const updatedRow = { ...currentItems[rowIndex], status: nextStatus };
           this.refreshActivityEventInfoCard(updatedRow);
@@ -672,7 +739,7 @@ export class ActivitiesEventsController {
     this.cdr.markForCheck();
   }
 
-  private restoredActivityStatus(row: ActivityEventCardData): string {
+  private restoredActivityStatus(row: InfoCardData): string {
     return 'A';
   }
 
@@ -690,7 +757,7 @@ export class ActivitiesEventsController {
     }
   }
 
-  private async confirmActivityPublish(row: ActivityEventCardData): Promise<void> {
+  private async confirmActivityPublish(row: InfoCardData): Promise<void> {
     await this.eventsService.publishItem(this.activeUser.id, row.id);
     this.activeHostingIds = new Set([...this.activeHostingIds, row.id]);
 
@@ -706,7 +773,7 @@ export class ActivitiesEventsController {
     this.cdr.markForCheck();
   }
 
-  private async confirmActivityUnpublish(row: ActivityEventCardData): Promise<void> {
+  private async confirmActivityUnpublish(row: InfoCardData): Promise<void> {
     await this.eventsService.unpublishItem(this.activeUser.id, row.id);
     const nextActiveIds = new Set(this.activeHostingIds);
     nextActiveIds.delete(row.id);
@@ -724,8 +791,8 @@ export class ActivitiesEventsController {
   }
 
   private patchVisibleActivityEventRow(
-    row: ActivityEventCardData,
-    patch: Partial<ActivityEventCardData>
+    row: InfoCardData,
+    patch: Partial<InfoCardData>
   ): void {
     const smartList = this.activitiesSmartList;
     if (!smartList) {
@@ -747,48 +814,48 @@ export class ActivitiesEventsController {
     this.replaceVisibleActivityItems(nextItems, 0);
   }
 
-  private activitySecondaryConfirmTitle(row: ActivityEventCardData): string {
+  private activitySecondaryConfirmTitle(row: InfoCardData): string {
     if (this.isActivityInvitationRow(row)) {
       return 'Reject invitation?';
     }
-    if (row.isAdmin !== true) {
+    if (!this.isActivityRowAdmin(row)) {
       return 'Leave event?';
     }
     return 'Delete event?';
   }
 
-  private activitySecondaryConfirmActionLabel(row: ActivityEventCardData): string {
+  private activitySecondaryConfirmActionLabel(row: InfoCardData): string {
     if (this.isActivityInvitationRow(row)) {
       return 'Reject';
     }
-    if (row.isAdmin !== true) {
+    if (!this.isActivityRowAdmin(row)) {
       return 'Leave';
     }
     return 'Delete';
   }
 
-  private activitySecondaryConfirmBusyLabel(row: ActivityEventCardData): string {
+  private activitySecondaryConfirmBusyLabel(row: InfoCardData): string {
     if (this.isActivityInvitationRow(row)) {
       return 'Rejecting...';
     }
-    if (row.isAdmin !== true) {
+    if (!this.isActivityRowAdmin(row)) {
       return 'Leaving...';
     }
     return 'Deleting...';
   }
 
-  private activitySecondaryConfirmFailureMessage(row: ActivityEventCardData): string {
+  private activitySecondaryConfirmFailureMessage(row: InfoCardData): string {
     if (this.isActivityInvitationRow(row)) {
       return 'Unable to reject invitation.';
     }
-    if (row.isAdmin !== true) {
+    if (!this.isActivityRowAdmin(row)) {
       return 'Unable to leave event.';
     }
     return 'Unable to delete event.';
   }
 
-  private async confirmActivitySecondaryAction(row: ActivityEventCardData): Promise<void> {
-    if (row.isAdmin !== true && !this.isActivityInvitationRow(row)) {
+  private async confirmActivitySecondaryAction(row: InfoCardData): Promise<void> {
+    if (!this.isActivityRowAdmin(row) && !this.isActivityInvitationRow(row)) {
       await this.confirmActivityLeave(row);
       return;
     }
@@ -798,7 +865,7 @@ export class ActivitiesEventsController {
     this.cdr.markForCheck();
   }
 
-  private async confirmActivityLeave(row: ActivityEventCardData): Promise<void> {
+  private async confirmActivityLeave(row: InfoCardData): Promise<void> {
     const activeUserId = this.activeUser.id.trim();
     if (!activeUserId) {
       return;
@@ -857,7 +924,7 @@ export class ActivitiesEventsController {
   }
 
   private async confirmActivityInvitationApproval(
-    row: ActivityEventCardData,
+    row: InfoCardData,
     selection?: ActivityContracts.EventCheckoutSelection | null
   ): Promise<void> {
     const { eventDetailDTO, nextMembers, capacityTotal } = await this.buildAcceptedInvitationSaveResult(row, selection);
@@ -876,7 +943,7 @@ export class ActivitiesEventsController {
   }
 
   private async buildAcceptedInvitationSaveResult(
-    row: ActivityEventCardData,
+    row: InfoCardData,
     selection?: ActivityContracts.EventCheckoutSelection | null
   ): Promise<InvitationApprovalSaveResult> {
     const activeUserId = this.activeUser.id.trim();
@@ -933,11 +1000,11 @@ export class ActivitiesEventsController {
     const title = record?.title ?? relatedSource.title ?? relatedSource.description ?? row.title;
     const shortDescription = record?.subtitle
       ?? relatedSource.shortDescription
-      ?? row.subtitle
+      ?? this.activityRowSubtitle(row)
       ?? `Invited by ${relatedSource.inviter ?? relatedSource.creatorName ?? row.title}`;
-    const timeframe = record?.timeframe ?? relatedSource.timeframe ?? relatedSource.when ?? row.detail;
-    const startAt = record?.startAtIso ?? relatedSource.startAt ?? row.startAt ?? row.dateIso;
-    const endAt = record?.endAtIso ?? relatedSource.endAt ?? row.endAt ?? startAt;
+    const timeframe = record?.timeframe ?? relatedSource.timeframe ?? relatedSource.when ?? this.activityRowTimeframe(row);
+    const startAt = record?.startAtIso ?? relatedSource.startAt ?? this.activityRowStartAt(row);
+    const endAt = record?.endAtIso ?? relatedSource.endAt ?? this.activityRowEndAt(row) ?? startAt;
     const distanceKmRaw = record?.distanceKm ?? relatedSource.distanceKm ?? this.activityRowDistanceKm(row);
     const distanceKm = Number.isFinite(Number(distanceKmRaw)) ? Math.max(0, Number(distanceKmRaw)) : 0;
     const creatorName = record?.creatorName?.trim() || `${relatedSource.inviter ?? relatedSource.creatorName ?? ''}`.trim() || title;
@@ -957,7 +1024,7 @@ export class ActivitiesEventsController {
         title,
         subtitle: shortDescription,
         timeframe,
-        activity: this.chatCountValue(record?.activity ?? relatedSource.activity ?? relatedSource.unread ?? row.unread),
+        activity: this.chatCountValue(record?.activity ?? relatedSource.activity ?? relatedSource.unread ?? this.activityRowActivityCount(row)),
         startAtIso: startAt,
         endAtIso: endAt,
         distanceKm,
@@ -1090,7 +1157,7 @@ export class ActivitiesEventsController {
   }
 
   private async buildLeftActivityEventDetailDTO(
-    row: ActivityEventCardData
+    row: InfoCardData
   ): Promise<ActivityEventDetailDTO | null> {
     const activeUserId = this.activeUser.id.trim();
     if (!activeUserId) {
@@ -1118,12 +1185,10 @@ export class ActivitiesEventsController {
     const acceptedMembersBase = this.chatCountValue(
       record?.acceptedMembers
       ?? source.acceptedMembers
-      ?? row.acceptedMembers
     );
     const pendingMembersBase = this.chatCountValue(
       record?.pendingMembers
       ?? source.pendingMembers
-      ?? row.pendingMembers
     );
     const nextAcceptedMembers = Math.max(
       nextAcceptedMemberUserIds.length,
@@ -1137,18 +1202,17 @@ export class ActivitiesEventsController {
     const title = record?.title ?? source.title ?? row.title;
     const shortDescription = record?.subtitle
       ?? source.shortDescription
-      ?? row.subtitle
+      ?? this.activityRowSubtitle(row)
       ?? '';
-    const timeframe = record?.timeframe ?? source.timeframe ?? row.detail;
-    const startAt = record?.startAtIso ?? source.startAt ?? row.startAt ?? row.dateIso;
-    const endAt = record?.endAtIso ?? source.endAt ?? row.endAt ?? startAt;
+    const timeframe = record?.timeframe ?? source.timeframe ?? this.activityRowTimeframe(row);
+    const startAt = record?.startAtIso ?? source.startAt ?? this.activityRowStartAt(row);
+    const endAt = record?.endAtIso ?? source.endAt ?? this.activityRowEndAt(row) ?? startAt;
     const distanceKmRaw = record?.distanceKm ?? source.distanceKm ?? this.activityRowDistanceKm(row);
     const distanceKm = Number.isFinite(Number(distanceKmRaw)) ? Math.max(0, Number(distanceKmRaw)) : 0;
     const creatorName = record?.creatorName?.trim() || title;
     const creatorInitials = record?.creatorInitials?.trim()
       || source.avatar?.trim()
-      || row.avatarInitials?.trim()
-      || row.creatorInitials?.trim()
+      || this.activityRowCreatorInitials(row)
       || AppUtils.initialsFromText(creatorName);
     const capacityTotal = Math.max(
       nextAcceptedMembers,
@@ -1156,8 +1220,6 @@ export class ActivitiesEventsController {
         record?.capacityTotal
         ?? source.capacityTotal
         ?? source.capacityMax
-        ?? row.capacityTotal
-        ?? row.capacityMax
       )
     );
 
@@ -1167,7 +1229,7 @@ export class ActivitiesEventsController {
       title,
       subtitle: shortDescription,
       timeframe,
-      activity: this.chatCountValue(record?.activity ?? source.activity ?? row.unread),
+      activity: this.chatCountValue(record?.activity ?? source.activity ?? this.activityRowActivityCount(row)),
       startAtIso: startAt,
       endAtIso: endAt,
       distanceKm,
@@ -1175,8 +1237,8 @@ export class ActivitiesEventsController {
       acceptedMembers: nextAcceptedMembers,
       pendingMembers: nextPendingMembers,
       capacityTotal,
-      capacityMin: record?.capacityMin ?? source.capacityMin ?? row.capacityMin ?? null,
-      capacityMax: record?.capacityMax ?? source.capacityMax ?? row.capacityMax ?? capacityTotal,
+      capacityMin: record?.capacityMin ?? source.capacityMin ?? null,
+      capacityMax: record?.capacityMax ?? source.capacityMax ?? capacityTotal,
       autoInviter: record?.autoInviter ?? source.autoInviter,
       frequency: record?.frequency ?? source.frequency,
       ticketing: record?.ticketing ?? source.ticketing,
@@ -1199,7 +1261,7 @@ export class ActivitiesEventsController {
       upcomingSlots: Array.isArray(record?.upcomingSlots)
         ? record.upcomingSlots.map((item: ContractTypes.EventSlotOccurrenceDTO) => ({ ...item }))
         : (Array.isArray(source.upcomingSlots) ? source.upcomingSlots.map((item: ContractTypes.EventSlotOccurrenceDTO) => ({ ...item })) : undefined),
-      visibility: record?.visibility ?? source.visibility ?? row.visibility,
+      visibility: record?.visibility ?? source.visibility ?? this.activityRowVisibility(row),
       blindMode: record?.blindMode ?? source.blindMode,
       status: record?.status ?? source.status ?? 'A',
       creatorUserId,
@@ -1219,22 +1281,19 @@ export class ActivitiesEventsController {
     });
   }
 
-  public isActivityIdentityTrashed(type: ActivityEventCardData['type'], id: string): boolean {
+  public isActivityIdentityTrashed(type: ActivityContracts.ActivityEventRepositoryItemType, id: string): boolean {
     return Boolean(this.trashedActivityRowsByKey[`${type}:${id}`]);
   }
 
-  public isActivityRowTrashed(row: ActivityEventCardData): boolean {
-    if (row.isTrashed === true) {
-      return true;
-    }
+  public isActivityRowTrashed(row: InfoCardData): boolean {
     const status = this.activityStatusCode(row);
     if (status === 'T' || status === 'D' || status === 'I') {
       return true;
     }
-    return this.isActivityIdentityTrashed(row.type, row.id);
+    return this.isActivityIdentityTrashed(this.activityEventListTypeForRow(row), row.id);
   }
 
-  private trashedActivityRows(): ActivityEventCardData[] {
+  private trashedActivityRows(): InfoCardData[] {
     return Object.values(this.trashedActivityRowsByKey);
   }
 
@@ -1242,53 +1301,48 @@ export class ActivitiesEventsController {
     return Object.keys(this.trashedActivityRowsByKey).length;
   }
 
-  private markActivityRowTrashed(row: ActivityEventCardData): void {
+  private markActivityRowTrashed(row: InfoCardData): void {
     this.trashedActivityRowsByKey[this.activityRowIdentity(row)] = this.withActivityEventInfoCard({
       ...row,
-      status: 'T',
-      isTrashed: true
+      status: 'T'
     });
     this.refreshSectionBadges();
   }
 
-  private unmarkActivityRowTrashed(row: ActivityEventCardData): void {
+  private unmarkActivityRowTrashed(row: InfoCardData): void {
     delete this.trashedActivityRowsByKey[this.activityRowIdentity(row)];
     this.refreshSectionBadges();
   }
 
-  private async persistActivityRowTrash(row: ActivityEventCardData): Promise<void> {
-    if (row.type === 'events' || row.type === 'hosting' || row.type === 'invitations') {
-      await this.eventsService.trashItem(this.activeUser.id, row.id);
-    }
+  private async persistActivityRowTrash(row: InfoCardData): Promise<void> {
+    await this.eventsService.trashItem(this.activeUser.id, row.id);
   }
 
-  private async restoreActivityRow(row: ActivityEventCardData): Promise<void> {
-    if (row.type === 'events' || row.type === 'hosting' || row.type === 'invitations') {
-      await this.eventsService.restoreItem(this.activeUser.id, row.id);
-    }
+  private async restoreActivityRow(row: InfoCardData): Promise<void> {
+    await this.eventsService.restoreItem(this.activeUser.id, row.id);
     this.unmarkActivityRowTrashed(row);
     this.removeVisibleActivityRow(row);
     this.cdr.markForCheck();
   }
 
-  public onActivityRowClick(row: ActivityEventCardData, event?: Event): void {
+  public onActivityRowClick(row: InfoCardData, event?: Event): void {
     event?.stopPropagation();
     this.openActivityRowInEventModule(row, true);
   }
 
-  public openActivityMembers(row: ActivityEventCardData, event?: Event): void {
+  public openActivityMembers(row: InfoCardData, event?: Event): void {
     event?.stopPropagation();
     this.memberMenuStore.requestActivitiesNavigation({
       type: 'members',
       ownerId: row.id,
       ownerType: 'event',
       subtitle: row.title,
-      canManage: row.isAdmin === true
+      canManage: this.isActivityRowAdmin(row)
     });
   }
 
   public canApproveActivityMember(entry: ActivityContracts.ActivityMemberEntry): boolean {
-    if (this.selectedActivityMembersRow?.isAdmin !== true) {
+    if (!this.selectedActivityMembersRow || !this.isActivityRowAdmin(this.selectedActivityMembersRow)) {
       return false;
     }
     return entry.status === 'pending' && this.isActivityJoinRequest(entry);
@@ -1298,7 +1352,7 @@ export class ActivitiesEventsController {
     if (this.isActivityWaitlistMember(entry)) {
       return false;
     }
-    if (this.selectedActivityMembersRow?.isAdmin === true) {
+    if (this.selectedActivityMembersRow && this.isActivityRowAdmin(this.selectedActivityMembersRow)) {
       return true;
     }
     return entry.status === 'pending'
@@ -1415,11 +1469,11 @@ export class ActivitiesEventsController {
     this.pendingActivityMemberDelete = entry;
   }
 
-  public openActivityRowInEventModule(row: ActivityEventCardData, readOnly: boolean): void {
+  public openActivityRowInEventModule(row: InfoCardData, readOnly: boolean): void {
     this.memberMenuStore.requestActivitiesNavigation({
       type: 'eventEditor',
       eventId: row.id,
-      target: row.isAdmin === true || row.type === 'hosting' ? 'hosting' : 'events',
+      target: this.isActivityRowAdmin(row) || this.activityEventListTypeForRow(row) === 'hosting' ? 'hosting' : 'events',
       readOnly: this.isActivityInvitationRow(row) ? true : readOnly
     });
   }

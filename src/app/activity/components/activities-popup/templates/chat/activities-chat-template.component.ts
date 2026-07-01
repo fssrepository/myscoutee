@@ -11,16 +11,8 @@ import {
   type SingleRowData
 } from '../../../../../shared/ui';
 import {
-  buildActivitiesChatTemplateData,
-  type ActivitiesChatTemplateData
+  buildActivitiesChatSingleRowData
 } from './activities-chat-template.builder';
-
-type SupportCaseMenuActionId =
-  | 'supportPick'
-  | 'supportUnpick'
-  | 'supportSolve'
-  | 'supportBlock'
-  | 'supportReopen';
 
 @Component({
   selector: 'app-activities-chat-template',
@@ -41,59 +33,25 @@ export class ActivitiesChatTemplateComponent implements OnChanges {
   @Output() readonly rowClick = new EventEmitter<Event>();
   @Output() readonly supportCaseAction = new EventEmitter<ContractTypes.SupportCaseAction>();
 
-  protected data: ActivitiesChatTemplateData | null = null;
   protected singleRow: SingleRowData | null = null;
 
   ngOnChanges(changes: SimpleChanges): void {
     if (changes['row'] || changes['groupLabel'] || changes['activeUserInitials'] || changes['adminServiceMode']) {
-      this.data = this.buildTemplateData();
-      this.singleRow = this.buildSingleRowData(this.data);
+      this.singleRow = this.buildSingleRowData();
     }
   }
 
-  private buildTemplateData(): ActivitiesChatTemplateData | null {
+  private buildSingleRowData(): SingleRowData | null {
     const row = this.row;
     if (!row) {
       return null;
     }
-    return buildActivitiesChatTemplateData(row, {
+    return buildActivitiesChatSingleRowData(row, {
       groupLabel: this.groupLabel,
       activeUserInitials: this.activeUserInitials,
-      adminServiceMode: this.adminServiceMode
+      adminServiceMode: this.adminServiceMode,
+      translate: key => this.i18n.translate(key)
     });
-  }
-
-  private buildSingleRowData(data: ActivitiesChatTemplateData | null): SingleRowData | null {
-    if (!data) {
-      return null;
-    }
-    return {
-      id: data.id,
-      groupLabel: data.groupLabel,
-      title: data.title,
-      subtitle: data.subtitle,
-      detail: data.detail,
-      unread: data.showSupportControls ? 0 : data.unread,
-      badgeCount: data.showSupportControls ? 0 : data.unread,
-      memberCount: data.showSupportControls ? 0 : data.memberCount,
-      avatarInitials: data.avatarInitials,
-      avatarToneClass: data.avatarClass,
-      surfaceTone: data.showSupportControls
-        ? this.supportCaseSurfaceTone(data.supportCaseStatus)
-        : this.chatSurfaceTone(data.toneClass),
-      badges: data.showSupportControls
-        ? [{
-          label: this.supportCaseBadgeLabel(data),
-          title: this.supportCaseBadgeLabel(data),
-          tone: this.supportCaseBadgeTone(data.supportCaseStatus),
-          position: 'top-right'
-        }]
-        : [],
-      menuActions: data.showSupportControls
-        ? this.supportCaseMenuActionIds(data.supportCaseStatus)
-        : [],
-      clickable: true
-    };
   }
 
   protected onRowClick(event: Event): void {
@@ -106,16 +64,6 @@ export class ActivitiesChatTemplateComponent implements OnChanges {
       return;
     }
     this.supportCaseAction.emit(action);
-  }
-
-  private supportCaseMenuActionIds(status: ContractTypes.SupportCaseStatus | null): readonly SupportCaseMenuActionId[] {
-    if (status === 'solved' || status === 'blocked') {
-      return ['supportReopen'];
-    }
-    if (status === 'picked') {
-      return ['supportUnpick', 'supportSolve', 'supportBlock'];
-    }
-    return ['supportPick', 'supportSolve', 'supportBlock'];
   }
 
   private supportCaseActionForMenuAction(actionId: string): ContractTypes.SupportCaseAction | null {
@@ -133,53 +81,6 @@ export class ActivitiesChatTemplateComponent implements OnChanges {
       default:
         return null;
     }
-  }
-
-  private supportCaseBadgeLabel(data: ActivitiesChatTemplateData): string {
-    const assigneeName = data.supportCaseAssigneeName.trim();
-    if (assigneeName) {
-      return `${this.i18n.translate('activities.support.case.assignee.by')} ${assigneeName}`.trim();
-    }
-    return this.i18n.translate(data.supportCaseLabelKey);
-  }
-
-  private supportCaseBadgeTone(status: ContractTypes.SupportCaseStatus | null): NonNullable<SingleRowData['surfaceTone']> {
-    switch (status) {
-      case 'picked':
-        return 'info';
-      case 'solved':
-        return 'success';
-      case 'blocked':
-        return 'danger';
-      default:
-        return 'warning';
-    }
-  }
-
-  private supportCaseSurfaceTone(status: ContractTypes.SupportCaseStatus | null): SingleRowData['surfaceTone'] {
-    return this.supportCaseBadgeTone(status);
-  }
-
-  private chatSurfaceTone(toneClass: string): SingleRowData['surfaceTone'] {
-    if (toneClass.includes('activities-card-chat-group-sub-event')) {
-      return 'success';
-    }
-    if (toneClass.includes('activities-card-chat-optional-sub-event')) {
-      return 'warning';
-    }
-    if (toneClass.includes('activities-card-chat-service-notification')) {
-      return 'danger';
-    }
-    if (
-      toneClass.includes('activities-card-chat-service-event')
-      || toneClass.includes('activities-card-chat-service-asset')
-    ) {
-      return 'neutral';
-    }
-    if (toneClass.includes('activities-card-chat-main-event')) {
-      return 'info';
-    }
-    return 'default';
   }
 }
 
