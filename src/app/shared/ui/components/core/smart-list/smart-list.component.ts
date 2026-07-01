@@ -171,6 +171,7 @@ export class SmartListComponent<T, TFilters extends SmartListFilters = SmartList
   private listItemIndexByObject = new WeakMap<object, number>();
   private resolvedListTrackKeyByObject = new WeakMap<object, string | number>();
   private fallbackTrackKeySequence = 0;
+  private converterContext: unknown = null;
 
   totalItemCount(): number {
     return this.total;
@@ -851,13 +852,14 @@ export class SmartListComponent<T, TFilters extends SmartListFilters = SmartList
     return true;
   }
 
-  public convertItems<TSource>(sources: readonly TSource[]): T[] {
+  public convertItems<TSource>(sources: readonly TSource[], context?: unknown): T[] {
     const query = this.currentQuery();
+    this.converterContext = context ?? null;
     const converter = this.resolvedConverter<TSource>(query);
     if (!converter) {
       return [];
     }
-    return converter.convertList(sources, query);
+    return converter.convertList(sources, this.converterOptions(query));
   }
 
   public async moveCursor(delta: number): Promise<boolean> {
@@ -2233,6 +2235,15 @@ export class SmartListComponent<T, TFilters extends SmartListFilters = SmartList
     }
     const resolved = typeof converter === 'function' ? converter(query) : converter;
     return resolved as SmartListConverter<TSource, T, TFilters> | null;
+  }
+
+  private converterOptions(query: ListQuery<TFilters>): ListQuery<TFilters> {
+    return this.converterContext === null || this.converterContext === undefined
+      ? query
+      : {
+        ...query,
+        context: this.converterContext
+      } as ListQuery<TFilters>;
   }
 
   private cacheTrackKey(
@@ -3987,7 +3998,7 @@ private updateListSnapNearEndSuppression(scrollElement?: HTMLDivElement | null):
     if (!converter) {
       return false;
     }
-    const nextItem = converter.convert(source, query);
+    const nextItem = converter.convert(source, this.converterOptions(query));
     const normalizedIdentity = `${smartListItemKeyFromItem(nextItem) ?? ''}`.trim();
     const predicate = options.predicate
       ?? (normalizedIdentity
@@ -4011,7 +4022,7 @@ private updateListSnapNearEndSuppression(scrollElement?: HTMLDivElement | null):
     if (!converter) {
       return false;
     }
-    const nextItem = converter.convert(source, query);
+    const nextItem = converter.convert(source, this.converterOptions(query));
     const normalizedIdentity = `${smartListItemKeyFromItem(nextItem) ?? ''}`.trim();
     const predicate = options.predicate
       ?? (normalizedIdentity

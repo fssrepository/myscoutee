@@ -279,7 +279,6 @@ export class ActivitiesRateTemplateComponent implements OnChanges {
 }
 
 interface ActivitiesRatesControllerDeps {
-  resolveRateUserById: (userId: string) => UserDto | null;
   getActiveUserGender: () => 'woman' | 'man';
   getActivitiesPrimaryFilter: () => ContractTypes.ActivitiesPrimaryFilter;
   getActivitiesRateFilter: () => ContractTypes.RateFilterKey;
@@ -977,26 +976,29 @@ export class ActivitiesRatesController {
 
   private rateCardUsers(): readonly RateCardPerson[] {
     const usersById = new Map<string, RateCardPerson>();
-    const addUser = (userId: string | null | undefined): void => {
-      const user = this.rateCardUserById(`${userId ?? ''}`);
-      if (user) {
-        usersById.set(user.id, user);
+    const addUser = (user: ImageCardPerson | RateCardPerson | UserDto | null | undefined): void => {
+      const person = toActivitiesRateCardPerson(user);
+      if (person) {
+        usersById.set(person.id, person);
       }
     };
 
-    for (const item of this.deps.getRateItems()) {
-      addUser(item.userId);
-      addUser(item.secondaryUserId);
-      addUser(item.bridgeUserId);
-    }
-    for (const row of this.deps.getFilteredActivityRows()) {
-      addUser(row.userId);
-      addUser(row.secondaryUserId);
-      addUser(row.bridgeUserId);
-      addUser(row.primaryUser?.id);
-      for (const user of row.pairUsers ?? []) {
-        addUser(user.id);
+    const addRowUsers = (row: ImageCardData | null | undefined): void => {
+      if (!row) {
+        return;
       }
+      addUser(row.primaryUser);
+      for (const user of row.pairUsers ?? []) {
+        addUser(user);
+      }
+      for (const user of row.availableUsers ?? []) {
+        addUser(user);
+      }
+    };
+
+    addRowUsers(this.deps.getSmartListCursorItem());
+    for (const row of this.deps.getFilteredActivityRows()) {
+      addRowUsers(row);
     }
 
     return [...usersById.values()];
@@ -1007,12 +1009,12 @@ export class ActivitiesRatesController {
     if (!normalizedUserId) {
       return null;
     }
-    return toActivitiesRateCardPerson(this.deps.resolveRateUserById(normalizedUserId));
+    return this.rateCardUsers().find(user => user.id === normalizedUserId) ?? null;
   }
 }
 
 function toActivitiesRateCardPerson(
-  user: ImageCardPerson | UserDto | null | undefined
+  user: ImageCardPerson | RateCardPerson | UserDto | null | undefined
 ): RateCardPerson | null {
   if (!user) {
     return null;
@@ -1024,6 +1026,6 @@ function toActivitiesRateCardPerson(
     age: user.age,
     city: user.city,
     gender: user.gender,
-    profile: 'images' in user || 'profileDetails' in user ? user : null
+    profile: 'profile' in user ? user.profile : ('images' in user || 'profileDetails' in user ? user : null)
   };
 }

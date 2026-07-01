@@ -149,6 +149,11 @@ type ActivityEventListItem = InfoCardData;
 type ActivityRateListItem = ImageCardData;
 type ActivityChatListItem = SingleRowData;
 type ActivityListItem = ActivityEventListItem | ActivityRateListItem | ActivityChatListItem;
+type ActivitiesSmartListConverterQuery = ListQuery<ActivitiesSmartListFilters> & {
+  context?: {
+    rateUsers?: readonly UserDto[];
+  };
+};
 
 interface ActivityDateTimeRange {
   startIso: string;
@@ -210,7 +215,6 @@ export class ActivitiesPopupComponent implements OnDestroy {
   private readonly i18nService = inject(I18nService);
   private readonly explanationGuide = inject(ExplanationGuideService);
   readonly activitiesRates = new ActivitiesRatesController({
-    resolveRateUserById: userId => this.resolveActivityRateUserById(userId),
     getActiveUserGender: () => this.activeUser.gender,
     getActivitiesPrimaryFilter: () => this.activitiesPrimaryFilter,
     getActivitiesRateFilter: () => this.activitiesRateFilter,
@@ -291,8 +295,6 @@ export class ActivitiesPopupComponent implements OnDestroy {
   protected readonly activityPendingMembersById: Record<string, number> = {};
   protected readonly eventVisibilityById: Record<string, AppConstants.EventVisibility> = {};
   private readonly eventCapacityById: Record<string, ContractTypes.EventCapacityRange> = {};
-  private readonly activityRateUsersById = new Map<string, UserDto>();
-  protected readonly eventSubEventsById: Record<string, ContractTypes.SubEventDTO[]> = {};
   private lastPendingCheckoutDraftSourceIds = new Set<string>();
   protected readonly activityMembersByRowId: Record<string, ActivityContracts.ActivityMemberDTO[]> = {};
   private readonly activitiesEventCardRevisionByRowId: Record<string, number> = {};
@@ -2012,7 +2014,7 @@ export class ActivitiesPopupComponent implements OnDestroy {
     const primaryFilter = query.filters?.primaryFilter ?? this.activitiesPrimaryFilter;
     if (primaryFilter === 'rates') {
       return ActivityRateImageCardConverter.convert(source as ActivityRateDTO, {
-        resolveRatedUserById: userId => this.resolveActivityRateUserById(userId)
+        ratedUsers: (query as ActivitiesSmartListConverterQuery).context?.rateUsers ?? []
       });
     }
     if (primaryFilter === 'events' || primaryFilter === 'hosting' || primaryFilter === 'invitations') {
@@ -2032,7 +2034,7 @@ export class ActivitiesPopupComponent implements OnDestroy {
     const primaryFilter = query.filters?.primaryFilter ?? this.activitiesPrimaryFilter;
     if (primaryFilter === 'rates') {
       return ActivityRateImageCardConverter.convertList(sources as readonly ActivityRateDTO[], {
-        resolveRatedUserById: userId => this.resolveActivityRateUserById(userId)
+        ratedUsers: (query as ActivitiesSmartListConverterQuery).context?.rateUsers ?? []
       });
     }
     if (primaryFilter === 'events' || primaryFilter === 'hosting' || primaryFilter === 'invitations') {
@@ -3324,35 +3326,6 @@ export class ActivitiesPopupComponent implements OnDestroy {
     delete this.activityMembersByRowId[`invitations:${sync.id}`];
   }
 
-  // ── User lookup ────────────────────────────────────────────────────────────
-
-  private resolveActivityRateUserById(userId: string): UserDto | null {
-    const normalizedUserId = userId.trim();
-    if (!normalizedUserId) {
-      return null;
-    }
-    return this.activityRateUsersById.get(normalizedUserId) ?? null;
-  }
-
-  private syncActivityRateUsers(users: readonly UserDto[], replace: boolean): void {
-    if (replace) {
-      this.activityRateUsersById.clear();
-    }
-    for (const user of users) {
-      const normalizedUserId = user.id.trim();
-      if (!normalizedUserId) {
-        continue;
-      }
-      this.activityRateUsersById.set(normalizedUserId, {
-        ...user,
-        id: normalizedUserId,
-        images: [...(user.images ?? [])],
-        languages: [...(user.languages ?? [])],
-        profileDetails: [...(user.profileDetails ?? [])]
-      });
-    }
-  }
-
   private syncActivitiesSmartListQuery(): void {
     const nextFilters: Record<string, unknown> = {
       primaryFilter: this.activitiesPrimaryFilter,
@@ -3437,15 +3410,15 @@ export class ActivitiesPopupComponent implements OnDestroy {
       const page = await this.activitiesService.loadActivityRates(query, {
         signal: context?.signal
       });
-      this.syncActivityRateUsers(page.context?.users ?? [], !query.cursor && Math.max(0, Math.trunc(Number(query.page) || 0)) === 0);
       return {
-        items: this.activitiesSmartList?.convertItems(page.items) ?? [],
+        items: this.activitiesSmartList?.convertItems(page.items, {
+          rateUsers: page.context?.users ?? []
+        }) ?? [],
         total: page.total,
         nextCursor: page.nextCursor ?? null
       };
     }
     if (requestedPrimaryFilter === 'events' || requestedPrimaryFilter === 'hosting' || requestedPrimaryFilter === 'invitations') {
-      this.activityRateUsersById.clear();
       const page = await this.eventsService.loadActivityEvents(query, {
         signal: context?.signal
       });
@@ -3456,7 +3429,6 @@ export class ActivitiesPopupComponent implements OnDestroy {
         nextCursor: page.nextCursor ?? null
       };
     }
-    this.activityRateUsersById.clear();
     const page = await this.activitiesService.loadActivityChats(query, {
       chatItems: this.chatsService.peekChatItemsByUser(this.activeUser.id),
       signal: context?.signal

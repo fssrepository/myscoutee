@@ -5,7 +5,7 @@ import type { ImageCardData, ImageCardPerson, PairCardSlot } from '../components
 import type { UiListConverter } from './converter.types';
 
 export interface ActivityRateImageCardConverterOptions {
-  resolveRatedUserById: (userId: string) => UserDto | null;
+  ratedUsers?: readonly UserDto[];
 }
 
 export class ActivityRateImageCardConverter {
@@ -36,6 +36,7 @@ export class ActivityRateImageCardConverter {
       happenedOnLabel: this.formatMonthDayLabel(dto.happenedAt),
       primaryUser: primaryUser ? this.toImageCardPerson(primaryUser) : null,
       pairUsers: this.buildPairUsers(dto, options),
+      availableUsers: this.buildAvailableUsers(options),
       singleImageUrls: this.buildSingleImageUrls(dto, primaryUser),
       pairSlots: this.buildPairSlots(dto, options),
       stackClasses: [
@@ -74,7 +75,22 @@ export class ActivityRateImageCardConverter {
     if (!normalizedUserId) {
       return null;
     }
-    return options.resolveRatedUserById(normalizedUserId);
+    return (options.ratedUsers ?? [])
+      .find(user => user.id.trim() === normalizedUserId) ?? null;
+  }
+
+  private static buildAvailableUsers(
+    options: ActivityRateImageCardConverterOptions
+  ): ImageCardPerson[] {
+    const usersById = new Map<string, UserDto>();
+    for (const user of options.ratedUsers ?? []) {
+      const normalizedUserId = user.id.trim();
+      if (!normalizedUserId || usersById.has(normalizedUserId)) {
+        continue;
+      }
+      usersById.set(normalizedUserId, user);
+    }
+    return [...usersById.values()].map(user => this.toImageCardPerson(user));
   }
 
   private static toImageCardPerson(user: UserDto): ImageCardPerson {
