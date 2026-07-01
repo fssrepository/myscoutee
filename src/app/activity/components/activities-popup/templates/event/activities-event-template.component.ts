@@ -203,9 +203,10 @@ export class ActivitiesEventsController {
     activeUserId: string,
     primaryDelta: Record<string, number>,
     eventDelta: Record<string, number>,
-    baseActivities: Partial<ActivityCounters> | null
+    baseActivities: Partial<ActivityCounters> | null,
+    counterOverrides: Partial<ActivityCounters> | null = null
   ): Partial<ActivityCounters> | null {
-    const overrides = this.activityStore.getUserCounterOverrides(activeUserId) as Partial<ActivityCounters>;
+    const overrides = counterOverrides ?? (this.activityStore.getUserCounterOverrides(activeUserId) as Partial<ActivityCounters>);
     const patch: Partial<ActivityCounters> = {};
     for (const [key, delta] of Object.entries(primaryDelta) as Array<[ActivityCounterKey, number | undefined]>) {
       if (!Number.isFinite(delta)) {
@@ -1067,23 +1068,31 @@ export class ActivitiesEventsController {
 
   private acceptedInvitationCounterPatch(
     row: InfoCardData,
-    detail: Pick<ActivityEventDetailDTO, 'pendingRequestMemberUserIds' | 'acceptedMemberUserIds'>
+    detail: Pick<ActivityEventDetailDTO, 'pendingRequestMemberUserIds' | 'acceptedMemberUserIds'>,
+    baseActivities: Partial<ActivityCounters> | null = this.activeUser?.activities ?? null,
+    counterOverrides: Partial<ActivityCounters> | null = null
   ): Partial<ActivityCounters> | null {
     const activeUserId = this.activeUserId();
     const movedToPending = activeUserId.length > 0
       && (detail.pendingRequestMemberUserIds ?? []).includes(activeUserId)
       && !(detail.acceptedMemberUserIds ?? []).includes(activeUserId);
-    return this.acceptedInvitationCounterPatchForMembership(movedToPending);
+    return this.acceptedInvitationCounterPatchForMembership(movedToPending, baseActivities, counterOverrides);
   }
 
   private acceptedInvitationCounterPatchFromResult(
-    result: ActivityContracts.EventParticipationActionResultDTO
+    result: ActivityContracts.EventParticipationActionResultDTO,
+    baseActivities: Partial<ActivityCounters> | null = this.activeUser?.activities ?? null,
+    counterOverrides: Partial<ActivityCounters> | null = null
   ): Partial<ActivityCounters> | null {
     const membershipStatus = `${result.membershipStatus ?? ''}`.trim();
-    return this.acceptedInvitationCounterPatchForMembership(membershipStatus !== 'accepted');
+    return this.acceptedInvitationCounterPatchForMembership(membershipStatus !== 'accepted', baseActivities, counterOverrides);
   }
 
-  private acceptedInvitationCounterPatchForMembership(movedToPending: boolean): Partial<ActivityCounters> | null {
+  private acceptedInvitationCounterPatchForMembership(
+    movedToPending: boolean,
+    baseActivities: Partial<ActivityCounters> | null = this.activeUser?.activities ?? null,
+    counterOverrides: Partial<ActivityCounters> | null = null
+  ): Partial<ActivityCounters> | null {
     return this.activityCounterPatchFromDeltas(
       this.activeUserId(),
       movedToPending
@@ -1092,7 +1101,8 @@ export class ActivitiesEventsController {
       movedToPending
         ? { invitations: -1, pending: 1 }
         : { invitations: -1, active: 1 },
-      this.activeUser?.activities ?? null
+      baseActivities,
+      counterOverrides
     );
   }
 
@@ -1291,7 +1301,9 @@ export class ActivitiesEventsController {
   ): Promise<void> {
     const activeUserId = this.activeUserId();
     const { eventDetailDTO } = await this.buildAcceptedInvitationSaveResult(row, selection, context);
-    const patch = this.acceptedInvitationCounterPatch(row, eventDetailDTO);
+    const counterBase = this.activeUser?.activities ?? null;
+    const counterOverrides = this.activityStore.getUserCounterOverrides(activeUserId) as Partial<ActivityCounters>;
+    const patch = this.acceptedInvitationCounterPatch(row, eventDetailDTO, counterBase, counterOverrides);
     const pendingReason = this.acceptedInvitationPendingReason(activeUserId, eventDetailDTO, selection);
     const joinResult = await this.eventsService.requestJoin(activeUserId, eventDetailDTO.id, {
       slotSourceId: selection?.slotSourceId ?? null,
@@ -1307,7 +1319,7 @@ export class ActivitiesEventsController {
     if (!joinResult || joinResult.membershipStatus === 'unchanged') {
       throw new Error('Unable to accept invitation.');
     }
-    const resolvedPatch = this.acceptedInvitationCounterPatchFromResult(joinResult) ?? patch;
+    const resolvedPatch = this.acceptedInvitationCounterPatchFromResult(joinResult, counterBase, counterOverrides) ?? patch;
     this.removeInvitationItem(eventDetailDTO.id);
     this.activitiesSmartList?.removeVisibleItemByIdentity(this.activityRowIdentity(row));
     this.signalActivityCounterPatch(activeUserId, resolvedPatch);
