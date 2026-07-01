@@ -190,7 +190,7 @@ export class ActivitiesEventsController {
       return;
     }
     this.signalActivityCounterPatch(activeUserId, patch);
-    this.persistLocalActivityCounterPatch(activeUserId, patch);
+    void this.persistLocalActivityCounterPatch(activeUserId, patch);
   }
 
   private activityCounterPatchFromDeltas(
@@ -231,11 +231,11 @@ export class ActivitiesEventsController {
     this.activityStore.patchUserCounterOverrides(activeUserId, patch);
   }
 
-  private persistLocalActivityCounterPatch(activeUserId: string, patch: Partial<ActivityCounters> | null): void {
+  private async persistLocalActivityCounterPatch(activeUserId: string, patch: Partial<ActivityCounters> | null): Promise<void> {
     if (!patch || typeof this.usersService?.patchLocalUserActivityCounters !== 'function') {
       return;
     }
-    this.usersService.patchLocalUserActivityCounters(activeUserId, patch);
+    await this.usersService.patchLocalUserActivityCounters(activeUserId, patch);
   }
 
   private activityEventCountersWithOverrides(
@@ -842,9 +842,12 @@ export class ActivitiesEventsController {
   }
 
   private async confirmActivityPublish(row: InfoCardData): Promise<void> {
-    await this.eventsService.publishItem(this.activeUser.id, row.id);
+    const activeUserId = this.activeUserId();
+    const patch = this.publishedEventCounterPatch(row);
+    const persistence = this.eventsService.publishItem(this.activeUser.id, row.id);
+    await this.persistLocalActivityCounterPatch(activeUserId, patch);
+    await persistence;
     this.activeHostingIds = new Set([...this.activeHostingIds, row.id]);
-    this.adjustPublishedEventCounters(row);
 
     if (this.shouldRemovePublishedRowFromCurrentScope()) {
       this.activitiesSmartList?.removeVisibleItemByIdentity(this.activityRowIdentity(row));
@@ -855,20 +858,25 @@ export class ActivitiesEventsController {
       );
     }
 
+    this.signalActivityCounterPatch(activeUserId, patch);
     this.refreshSectionBadges();
     this.cdr.markForCheck();
   }
 
   private async confirmActivityUnpublish(row: InfoCardData): Promise<void> {
-    await this.eventsService.unpublishItem(this.activeUser.id, row.id);
+    const activeUserId = this.activeUserId();
+    const patch = this.unpublishedEventCounterPatch(row);
+    const persistence = this.eventsService.unpublishItem(this.activeUser.id, row.id);
+    await this.persistLocalActivityCounterPatch(activeUserId, patch);
+    await persistence;
     const nextActiveIds = new Set(this.activeHostingIds);
     nextActiveIds.delete(row.id);
     this.activeHostingIds = nextActiveIds;
-    this.adjustUnpublishedEventCounters(row);
     this.activitiesSmartList?.patchVisibleItem(
       (item: InfoCardData) => this.activityRowIdentity(item) === this.activityRowIdentity(row),
       { status: 'DR' }
     );
+    this.signalActivityCounterPatch(activeUserId, patch);
     this.refreshSectionBadges();
     this.cdr.markForCheck();
   }
@@ -1004,16 +1012,28 @@ export class ActivitiesEventsController {
     );
   }
 
-  private adjustPublishedEventCounters(row: InfoCardData): void {
-    if (this.activityStatusCode(row) === 'DR') {
-      this.applyActivityEventCounterDeltas({}, { drafts: -1 });
+  private publishedEventCounterPatch(row: InfoCardData): Partial<ActivityCounters> | null {
+    if (this.activityStatusCode(row) !== 'DR') {
+      return null;
     }
+    return this.activityCounterPatchFromDeltas(
+      this.activeUserId(),
+      {},
+      { drafts: -1 },
+      this.activeUser?.activities ?? null
+    );
   }
 
-  private adjustUnpublishedEventCounters(row: InfoCardData): void {
-    if (this.activityStatusCode(row) !== 'DR') {
-      this.applyActivityEventCounterDeltas({}, { drafts: 1 });
+  private unpublishedEventCounterPatch(row: InfoCardData): Partial<ActivityCounters> | null {
+    if (this.activityStatusCode(row) === 'DR') {
+      return null;
     }
+    return this.activityCounterPatchFromDeltas(
+      this.activeUserId(),
+      {},
+      { drafts: 1 },
+      this.activeUser?.activities ?? null
+    );
   }
 
   private isActivityPendingParticipationRow(row: InfoCardData): boolean {
@@ -1046,8 +1066,9 @@ export class ActivitiesEventsController {
     }
     const activeUserId = this.activeUserId();
     const patch = this.trashedEventCounterPatch(row, isRejectInvitation ? 'invitations' : null);
-    this.persistLocalActivityCounterPatch(activeUserId, patch);
-    await this.persistActivityRowTrash(row);
+    const persistence = this.persistActivityRowTrash(row);
+    await this.persistLocalActivityCounterPatch(activeUserId, patch);
+    await persistence;
     this.activitiesSmartList?.removeVisibleItemByIdentity(this.activityRowIdentity(row));
     this.signalActivityCounterPatch(activeUserId, patch);
     this.cdr.markForCheck();
@@ -1549,8 +1570,9 @@ export class ActivitiesEventsController {
   private async restoreActivityRow(row: InfoCardData): Promise<void> {
     const activeUserId = this.activeUserId();
     const patch = this.restoredEventCounterPatch(row);
-    this.persistLocalActivityCounterPatch(activeUserId, patch);
-    await this.eventsService.restoreItem(this.activeUser.id, row.id);
+    const persistence = this.eventsService.restoreItem(this.activeUser.id, row.id);
+    await this.persistLocalActivityCounterPatch(activeUserId, patch);
+    await persistence;
     this.unmarkActivityRowTrashed(row);
     this.activitiesSmartList?.removeVisibleItemByIdentity(this.activityRowIdentity(row));
     this.signalActivityCounterPatch(activeUserId, patch);

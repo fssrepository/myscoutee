@@ -379,13 +379,15 @@ export class LocalEventsService extends LocalRouteDelayService implements IEvent
   }
 
   async publishItem(userId: string, sourceId: string): Promise<void> {
-    await this.waitForRouteDelay(LocalEventsService.EVENTS_ROUTE);
     this.eventsRepository.publishItem(userId, sourceId);
+    await this.eventsRepository.flushToIndexedDb();
+    await this.waitForRouteDelay(LocalEventsService.EVENTS_ROUTE);
   }
 
   async unpublishItem(userId: string, sourceId: string): Promise<void> {
-    await this.waitForRouteDelay(LocalEventsService.EVENTS_ROUTE);
     this.eventsRepository.unpublishItem(userId, sourceId);
+    await this.eventsRepository.flushToIndexedDb();
+    await this.waitForRouteDelay(LocalEventsService.EVENTS_ROUTE);
   }
 
   async restoreItem(userId: string, sourceId: string): Promise<void> {

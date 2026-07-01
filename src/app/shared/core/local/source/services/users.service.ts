@@ -356,6 +356,7 @@ export class LocalUsersService extends LocalRouteDelayService implements UserSer
       ...currentUser,
       activities: this.applyUserActivityCounterPatch(currentUser.activities, patch)
     });
+    this.primeLocalRealtimeState(savedUser);
     await this.usersRepository.flushToIndexedDb();
     return savedUser;
   }

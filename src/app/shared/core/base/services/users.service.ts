@@ -293,13 +293,13 @@ export class UsersService extends BaseRouteModeService {
     }
   }
 
-  patchLocalUserActivityCounters(userId: string, patch: Partial<ActivityCounters>): void {
+  async patchLocalUserActivityCounters(userId: string, patch: Partial<ActivityCounters>): Promise<void> {
     const normalizedUserId = userId.trim();
     if (!normalizedUserId || !this.localModeEnabled) {
       return;
     }
     this.userProfileStore.patchUserActivityCounters(normalizedUserId, patch);
-    void this.localUsersService.patchUserActivityCounters(
+    await this.localUsersService.patchUserActivityCounters(
       normalizedUserId,
       patch as UserMenuCountersDto
     ).catch(() => {
