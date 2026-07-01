@@ -1051,7 +1051,14 @@ button.ui-info-card__overlay-action {
   position: relative;
   z-index: 31;
   width: 28px;
+  min-width: 28px;
+  max-width: 28px;
   height: 28px;
+  min-height: 28px;
+  max-height: 28px;
+  box-sizing: border-box;
+  flex: 0 0 28px;
+  padding: 0;
   border: 1px solid rgba(42, 67, 101, 0.26);
   border-radius: 50%;
   background: rgba(255, 255, 255, 0.88);
@@ -1060,6 +1067,7 @@ button.ui-info-card__overlay-action {
   align-items: center;
   justify-content: center;
   cursor: pointer;
+  overflow: hidden;
   transition:
     transform 0.16s ease,
     background-color 0.16s ease,
