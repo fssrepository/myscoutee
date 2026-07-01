@@ -4,13 +4,12 @@ import type { SingleRowData } from '../components/core/smart-list/card';
 import type { UiListConverter } from './converter.types';
 
 export interface ActivityChatSingleRowConverterOptions {
-  users: readonly UserDto[];
-  activeUserId: string;
+  activeUser: UserDto;
+  resolveUserById?: (userId: string) => UserDto | null;
 }
 
 interface ResolvedActivityChatSingleRowConverterOptions extends ActivityChatSingleRowConverterOptions {
-  userById: ReadonlyMap<string, UserDto>;
-  fallbackUser: UserDto | null;
+  fallbackUser: UserDto;
 }
 
 export class ActivityChatSingleRowConverter {
@@ -107,7 +106,7 @@ export class ActivityChatSingleRowConverter {
     dto: ChatDTO,
     options: ResolvedActivityChatSingleRowConverterOptions
   ): UserDto | null {
-    const lastSender = options.userById.get(dto.lastSenderId) ?? null;
+    const lastSender = this.resolveUserById(dto.lastSenderId, options);
     if (lastSender) {
       return lastSender;
     }
@@ -135,26 +134,35 @@ export class ActivityChatSingleRowConverter {
     options: ResolvedActivityChatSingleRowConverterOptions
   ): UserDto[] {
     const members = (dto.memberIds ?? [])
-      .map(memberId => options.userById.get(memberId) ?? null)
+      .map(memberId => this.resolveUserById(memberId, options))
       .filter((user): user is UserDto => Boolean(user));
     if (members.length > 0) {
       return this.uniqueUsersById(members);
     }
-    return options.fallbackUser ? [options.fallbackUser] : [];
+    return [options.fallbackUser];
   }
 
   private static resolveOptions(
     options: ActivityChatSingleRowConverterOptions
   ): ResolvedActivityChatSingleRowConverterOptions {
-    const userById = new Map<string, UserDto>();
-    for (const user of options.users) {
-      userById.set(user.id, user);
-    }
     return {
       ...options,
-      userById,
-      fallbackUser: userById.get(options.activeUserId) ?? options.users[0] ?? null
+      fallbackUser: options.activeUser
     };
+  }
+
+  private static resolveUserById(
+    userId: string | undefined,
+    options: ActivityChatSingleRowConverterOptions
+  ): UserDto | null {
+    const normalizedUserId = `${userId ?? ''}`.trim();
+    if (!normalizedUserId) {
+      return null;
+    }
+    if (normalizedUserId === options.activeUser.id) {
+      return options.activeUser;
+    }
+    return options.resolveUserById?.(normalizedUserId) ?? null;
   }
 
   private static uniqueUsersById(users: readonly UserDto[]): UserDto[] {

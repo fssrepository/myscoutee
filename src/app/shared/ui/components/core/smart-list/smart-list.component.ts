@@ -63,7 +63,7 @@ import type {
   ListQuery,
   PageResult,
   SmartListCacheableConfig,
-  SmartListConverterConfig,
+  SmartListConverter,
   SmartListCursorState,
   SmartListFilters,
   SmartListClassValue,
@@ -853,24 +853,11 @@ export class SmartListComponent<T, TFilters extends SmartListFilters = SmartList
 
   public convertItems<TSource>(sources: readonly TSource[]): T[] {
     const query = this.currentQuery();
-    const converterConfig = this.resolvedConverterConfig<TSource>(query);
-    if (!converterConfig) {
+    const converter = this.resolvedConverter<TSource>(query);
+    if (!converter) {
       return [];
     }
-    const converter = converterConfig.converter as {
-      convert: (source: TSource, options?: unknown) => T;
-      convertList?: (sources: readonly TSource[], options?: unknown) => T[];
-    };
-    const options = this.converterOptions(converterConfig, query);
-    if (converter.convertList) {
-      return options === undefined
-        ? converter.convertList(sources)
-        : converter.convertList(sources, options);
-    }
-    return sources.map(source => options === undefined
-      ? converter.convert(source)
-      : converter.convert(source, options)
-    );
+    return converter.convertList(sources, query);
   }
 
   public async moveCursor(delta: number): Promise<boolean> {
@@ -2237,25 +2224,15 @@ export class SmartListComponent<T, TFilters extends SmartListFilters = SmartList
     return sortable && typeof sortable === 'object' ? sortable : null;
   }
 
-  private resolvedConverterConfig<TSource>(
+  private resolvedConverter<TSource>(
     query: ListQuery<TFilters>
-  ): SmartListConverterConfig<TSource, T, TFilters, unknown> | null {
+  ): SmartListConverter<TSource, T, TFilters> | null {
     const converter = this.config.converter;
     if (!converter) {
       return null;
     }
     const resolved = typeof converter === 'function' ? converter(query) : converter;
-    return resolved as SmartListConverterConfig<TSource, T, TFilters, unknown> | null;
-  }
-
-  private converterOptions<TSource>(
-    converter: SmartListConverterConfig<TSource, T, TFilters, unknown>,
-    query: ListQuery<TFilters>
-  ): unknown {
-    if (typeof converter.options === 'function') {
-      return converter.options(query);
-    }
-    return converter.options;
+    return resolved as SmartListConverter<TSource, T, TFilters> | null;
   }
 
   private cacheTrackKey(
@@ -4001,15 +3978,11 @@ private updateListSnapNearEndSuppression(scrollElement?: HTMLDivElement | null):
     } = {}
   ): boolean {
     const query = this.currentQuery();
-    const converterConfig = this.resolvedConverterConfig<TSource>(query);
-    if (!converterConfig) {
+    const converter = this.resolvedConverter<TSource>(query);
+    if (!converter) {
       return false;
     }
-    const converter = converterConfig.converter as { convert: (source: TSource, options?: unknown) => T };
-    const converterOptions = this.converterOptions(converterConfig, query);
-    const nextItem = converterOptions === undefined
-      ? converter.convert(source)
-      : converter.convert(source, converterOptions);
+    const nextItem = converter.convert(source, query);
     const normalizedIdentity = `${smartListItemKeyFromItem(nextItem) ?? ''}`.trim();
     const predicate = options.predicate
       ?? (normalizedIdentity
@@ -4028,16 +4001,12 @@ private updateListSnapNearEndSuppression(scrollElement?: HTMLDivElement | null):
       totalDelta?: number;
     } = {}
   ): boolean {
-    const converterConfig = this.resolvedConverterConfig<TSource>(this.currentQuery());
-    if (!converterConfig) {
+    const query = this.currentQuery();
+    const converter = this.resolvedConverter<TSource>(query);
+    if (!converter) {
       return false;
     }
-    const query = this.currentQuery();
-    const converter = converterConfig.converter as { convert: (source: TSource, options?: unknown) => T };
-    const converterOptions = this.converterOptions(converterConfig, query);
-    const nextItem = converterOptions === undefined
-      ? converter.convert(source)
-      : converter.convert(source, converterOptions);
+    const nextItem = converter.convert(source, query);
     const normalizedIdentity = `${smartListItemKeyFromItem(nextItem) ?? ''}`.trim();
     const predicate = options.predicate
       ?? (normalizedIdentity

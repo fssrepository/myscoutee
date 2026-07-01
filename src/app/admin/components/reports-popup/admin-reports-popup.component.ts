@@ -880,9 +880,14 @@ export class AdminReportsPopupComponent {
       channelType: 'serviceEvent',
       serviceContext: 'notification'
     };
+    const activeUser = this.chatUser('admin', 'Admin', 'AD', 'woman');
+    const usersById = new Map([
+      [activeUser.id, activeUser],
+      [user.userId, this.chatUser(user.userId, user.name, user.initials, user.gender)]
+    ]);
     return ActivityChatSingleRowConverter.convert(source, {
-      activeUserId: 'admin',
-      users: [this.chatUser(user.userId, user.name, user.initials, user.gender)]
+      activeUser,
+      resolveUserById: userId => usersById.get(userId) ?? null
     });
   }
 
@@ -908,12 +913,15 @@ export class AdminReportsPopupComponent {
       channelType: 'serviceEvent',
       serviceContext: 'notification'
     };
+    const activeUser = this.chatUser('admin', 'Admin', 'AD', 'woman');
+    const usersById = new Map([
+      [activeUser.id, activeUser],
+      [report.reporterUserId, this.chatUser(report.reporterUserId, report.reporterName, this.reporterInitial(report), 'woman')],
+      [user.userId, this.chatUser(user.userId, user.name, user.initials, user.gender)]
+    ]);
     return ActivityChatSingleRowConverter.convert(source, {
-      activeUserId: 'admin',
-      users: [
-        this.chatUser(report.reporterUserId, report.reporterName, this.reporterInitial(report), 'woman'),
-        this.chatUser(user.userId, user.name, user.initials, user.gender)
-      ]
+      activeUser,
+      resolveUserById: userId => usersById.get(userId) ?? null
     });
   }
 

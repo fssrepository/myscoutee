@@ -77,14 +77,14 @@ import {
   type PageResult,
   type SingleRowData,
   type SmartListConfig,
-  type SmartListConverterConfig,
   type SmartListLocalSortKey,
   type SmartListLoadContext,
   type SmartListLoadPage,
   type SmartListMenuItemsContext,
   type SmartListItemSelectEvent,
   type SmartListPresentation,
-  type SmartListStateChange
+  type SmartListStateChange,
+  type UiListConverter
 } from '../../../shared/ui';
 import {
   ActivityChatSingleRowConverter,
@@ -131,8 +131,7 @@ import {
   EventsService,
   ExplanationGuideService,
   RatesService,
-  ShareTokensService,
-  UsersService
+  ShareTokensService
 } from '../../../shared/core';
 import {
   I18nService
@@ -149,7 +148,6 @@ import { EventSubeventsPopupStore } from '../../../shared/ui/context/stores/even
 // ---------------------------------------------------------------------------
 
 type ActivitiesSmartListFilters = ActivitiesFeedFilters;
-type ActivityEventSaveMessage = ActivityEventDTO;
 type ActivityEventCounterKey = keyof NonNullable<ActivityCounters['event']>;
 type ActivityEventListType = ActivityContracts.ActivityEventRepositoryItemType;
 type ActivityEventListItem = InfoCardData;
@@ -215,7 +213,6 @@ export class ActivitiesPopupComponent implements OnDestroy {
   protected readonly memberMenuStore = inject(MemberMenuStore);
   protected readonly eventSubeventsStore = inject(EventSubeventsPopupStore);
   private readonly assetStore = inject(AssetStore);
-  private readonly usersService = inject(UsersService);
   protected readonly dialogStore = inject(DialogStore);
   protected readonly eventCheckoutDialogStore = inject(EventCheckoutDialogStore);
   protected readonly profileStore = inject(ProfileStore);
@@ -223,7 +220,7 @@ export class ActivitiesPopupComponent implements OnDestroy {
   private readonly i18nService = inject(I18nService);
   private readonly explanationGuide = inject(ExplanationGuideService);
   readonly activitiesRates = new ActivitiesRatesController({
-    getUsers: () => this.users,
+    resolveRateUserById: userId => this.resolveActivityRateUserById(userId),
     getActiveUserGender: () => this.activeUser.gender,
     getActivitiesPrimaryFilter: () => this.activitiesPrimaryFilter,
     getActivitiesRateFilter: () => this.activitiesRateFilter,
@@ -275,12 +272,10 @@ export class ActivitiesPopupComponent implements OnDestroy {
   protected readonly activitiesRateTemplateContext: ActivitiesRateTemplateContext = this.activitiesRates.templateContext;
   // ── Self-contained data state (no host inputs) ───────────────────────────
   protected isMobileView = false;
-  protected get users(): UserDto[] {
-    return this.usersService.peekCachedUsers() as UserDto[];
+  protected get activeUser(): UserDto {
+    return this.userProfileStore.activeUserProfile() as UserDto | null
+      ?? this.createFallbackActiveUser();
   }
-  protected activeUser: UserDto = (this.userProfileStore.activeUserProfile() as UserDto | null)
-    ?? this.users[0]
-    ?? this.createFallbackActiveUser();
 
   protected get chatBadge(): number { return this.activityCounterValue('chat'); }
   protected get eventsBadge(): number { return this.activityCounterValue('events'); }
@@ -306,6 +301,7 @@ export class ActivitiesPopupComponent implements OnDestroy {
   protected readonly activityPendingMembersById: Record<string, number> = {};
   protected readonly eventVisibilityById: Record<string, AppConstants.EventVisibility> = {};
   private readonly eventCapacityById: Record<string, ContractTypes.EventCapacityRange> = {};
+  private readonly activityRateUsersById = new Map<string, UserDto>();
   protected readonly eventSubEventsById: Record<string, ContractTypes.SubEventDTO[]> = {};
   private lastPendingCheckoutDraftSourceIds = new Set<string>();
   protected readonly activityMembersByRowId: Record<string, ActivityContracts.ActivityMemberEntry[]> = {};
@@ -386,6 +382,14 @@ export class ActivitiesPopupComponent implements OnDestroy {
   protected showActivitiesRatePicker      = false;
   protected showActivitiesQuickActionsMenu = false;
   protected activitiesSmartListQuery: Partial<ListQuery<ActivitiesSmartListFilters>> = {};
+  private readonly activitySmartListItemConverter: UiListConverter<
+    unknown,
+    ActivityListItem,
+    ListQuery<ActivitiesSmartListFilters>
+  > = {
+    convert: (source, query) => this.convertActivitySmartListItem(source, query),
+    convertList: (sources, query) => this.convertActivitySmartListItems(sources, query)
+  };
   protected readonly activitiesSmartListConfig: SmartListConfig<ActivityListItem, ActivitiesSmartListFilters> = {
     pageSize: 10,
     initialPageSize: 20,
@@ -433,7 +437,7 @@ export class ActivitiesPopupComponent implements OnDestroy {
     sortable: {
       sortKey: row => this.activityRowLocalSortKey(row)
     },
-    converter: query => this.activitySmartListConverter(query),
+    converter: this.activitySmartListItemConverter,
     groupBy: row => AppUtils.activityGroupLabel(
       row,
       this.activitiesView,
@@ -708,12 +712,7 @@ export class ActivitiesPopupComponent implements OnDestroy {
     });
 
     effect(() => {
-      const activeUserId = this.userProfileStore.activeUserId().trim();
-      const nextActiveUser = (this.userProfileStore.activeUserProfile() as UserDto | null)
-        ?? this.users.find(user => user.id === activeUserId)
-        ?? this.users[0]
-        ?? this.createFallbackActiveUser();
-      this.activeUser = nextActiveUser;
+      this.userProfileStore.activeUserProfile();
       this.bumpActivitiesEventCardRevision();
       this.refreshSectionBadges();
       this.cdr.markForCheck();
@@ -915,11 +914,6 @@ export class ActivitiesPopupComponent implements OnDestroy {
   }
 
   private hydrateStandaloneFallbackState(): void {
-    if (!this.activeUser) {
-      this.activeUser = (this.userProfileStore.activeUserProfile() as UserDto | null)
-        ?? this.users[0]
-        ?? this.createFallbackActiveUser();
-    }
     this.refreshSectionBadges();
   }
 
@@ -2029,49 +2023,44 @@ export class ActivitiesPopupComponent implements OnDestroy {
     return 'events';
   }
 
-  private activitySmartListConverter(
+  private convertActivitySmartListItem(
+    source: unknown,
     query: ListQuery<ActivitiesSmartListFilters>
-  ): SmartListConverterConfig<unknown, ActivityListItem, ActivitiesSmartListFilters, unknown> | null {
+  ): ActivityListItem {
     const primaryFilter = query.filters?.primaryFilter ?? this.activitiesPrimaryFilter;
     if (primaryFilter === 'rates') {
-      return {
-        converter: ActivityRateImageCardConverter as unknown as SmartListConverterConfig<
-          unknown,
-          ActivityListItem,
-          ActivitiesSmartListFilters,
-          unknown
-        >['converter'],
-        options: {
-          activeUserId: this.activeUser.id,
-          users: this.users
-        }
-      };
+      return ActivityRateImageCardConverter.convert(source as ActivityRateDTO, {
+        resolveRatedUserById: userId => this.resolveActivityRateUserById(userId)
+      });
     }
     if (primaryFilter === 'events' || primaryFilter === 'hosting' || primaryFilter === 'invitations') {
-      return {
-        converter: ActivityEventInfoCardConverter as unknown as SmartListConverterConfig<
-          unknown,
-          ActivityListItem,
-          ActivitiesSmartListFilters,
-          unknown
-        >['converter'],
-        options: {
-          activeUserId: this.activeUser.id
-        }
-      };
-    }
-    return {
-      converter: ActivityChatSingleRowConverter as unknown as SmartListConverterConfig<
-        unknown,
-        ActivityListItem,
-        ActivitiesSmartListFilters,
-        unknown
-      >['converter'],
-      options: {
-        users: this.users,
+      return ActivityEventInfoCardConverter.convert(source as ActivityEventDTO, {
         activeUserId: this.activeUser.id
-      }
-    };
+      });
+    }
+    return ActivityChatSingleRowConverter.convert(source as ChatDTO, {
+      activeUser: this.activeUser
+    });
+  }
+
+  private convertActivitySmartListItems(
+    sources: readonly unknown[],
+    query: ListQuery<ActivitiesSmartListFilters>
+  ): ActivityListItem[] {
+    const primaryFilter = query.filters?.primaryFilter ?? this.activitiesPrimaryFilter;
+    if (primaryFilter === 'rates') {
+      return ActivityRateImageCardConverter.convertList(sources as readonly ActivityRateDTO[], {
+        resolveRatedUserById: userId => this.resolveActivityRateUserById(userId)
+      });
+    }
+    if (primaryFilter === 'events' || primaryFilter === 'hosting' || primaryFilter === 'invitations') {
+      return ActivityEventInfoCardConverter.convertList(sources as readonly ActivityEventDTO[], {
+        activeUserId: this.activeUser.id
+      });
+    }
+    return ActivityChatSingleRowConverter.convertList(sources as readonly ChatDTO[], {
+      activeUser: this.activeUser
+    });
   }
 
   private chatRowMetricScore(row: ActivityListItem): number {
@@ -2273,7 +2262,7 @@ export class ActivitiesPopupComponent implements OnDestroy {
     });
   }
 
-  private upsertVisibleEventRowFromSave(sync: ActivityEventSaveMessage): void {
+  private upsertVisibleEventRowFromSave(sync: ActivityEventDTO): void {
     if (!this.isEventActivitiesPrimaryFilter() || this.activitiesView === 'week' || this.activitiesView === 'month') {
       return;
     }
@@ -2326,7 +2315,7 @@ export class ActivitiesPopupComponent implements OnDestroy {
   }
 
   private buildVisibleEventRowFromSave(
-    sync: ActivityEventSaveMessage,
+    sync: ActivityEventDTO,
     existingRow: ActivityListItem | null = null
   ): ActivityListItem | null {
     void existingRow;
@@ -2339,7 +2328,7 @@ export class ActivitiesPopupComponent implements OnDestroy {
     return null;
   }
 
-  private resolveVisibleEventRowTypeFromSave(sync: ActivityEventSaveMessage): ActivityEventListType | null {
+  private resolveVisibleEventRowTypeFromSave(sync: ActivityEventDTO): ActivityEventListType | null {
     const saveStatus = this.activityEventSaveStatusCode(sync);
     const isPublished = saveStatus === 'A';
     const isPending = this.isPendingEventSave(sync);
@@ -2485,7 +2474,7 @@ export class ActivitiesPopupComponent implements OnDestroy {
     return !!activeUserId && (item?.adminIds ?? []).includes(activeUserId);
   }
 
-  private isOwnedEventSave(sync: ActivityEventSaveMessage): boolean {
+  private isOwnedEventSave(sync: ActivityEventDTO): boolean {
     const activeUserId = this.activeUser?.id?.trim() ?? '';
     if (!activeUserId) {
       return false;
@@ -2493,7 +2482,7 @@ export class ActivitiesPopupComponent implements OnDestroy {
     return (sync.adminIds ?? []).includes(activeUserId);
   }
 
-  private isPendingEventSave(sync: ActivityEventSaveMessage): boolean {
+  private isPendingEventSave(sync: ActivityEventDTO): boolean {
     const activeUserId = this.activeUser?.id?.trim() ?? '';
     if (!activeUserId || this.isOwnedEventSave(sync)) {
       return false;
@@ -2511,7 +2500,7 @@ export class ActivitiesPopupComponent implements OnDestroy {
     return false;
   }
 
-  private isAcceptedEventSave(sync: ActivityEventSaveMessage): boolean {
+  private isAcceptedEventSave(sync: ActivityEventDTO): boolean {
     const activeUserId = this.activeUser?.id?.trim() ?? '';
     if (!activeUserId || this.isOwnedEventSave(sync)) {
       return false;
@@ -3248,7 +3237,16 @@ export class ActivitiesPopupComponent implements OnDestroy {
     if (normalizedUserId === this.activeUser.id) {
       return this.activeUser;
     }
-    return this.userById(normalizedUserId) ?? this.activeUser;
+    return this.createActivityMemberFallbackUser(normalizedUserId);
+  }
+
+  private createActivityMemberFallbackUser(userId: string): UserDto {
+    return {
+      ...this.createFallbackActiveUser(),
+      id: userId,
+      name: userId || 'Member',
+      initials: AppUtils.initialsFromText(userId || 'Member')
+    };
   }
 
   private applyActivityMembersSummary(row: ActivityEventListItem, summary: ActivityMembersSummaryDto): void {
@@ -3469,7 +3467,7 @@ export class ActivitiesPopupComponent implements OnDestroy {
     return Math.max(0, Math.trunc(Number(value) || 0));
   }
 
-  protected applyActivityEventSave(sync: ActivityEventSaveMessage): void {
+  protected applyActivityEventSave(sync: ActivityEventDTO): void {
     const dto = this.applyActivityEventDTO(sync);
     const saveStatus = this.activityEventSaveStatusCode(dto);
     const isOwned = this.isOwnedEventSave(sync);
@@ -3551,7 +3549,7 @@ export class ActivitiesPopupComponent implements OnDestroy {
     smartList.removeVisibleItemByIdentity(`rates:${item.id}`);
   }
 
-  private clearInvitationMemberCacheFromEventSave(sync: ActivityEventSaveMessage): void {
+  private clearInvitationMemberCacheFromEventSave(sync: ActivityEventDTO): void {
     const activeUserId = this.activeUser.id.trim();
     if (!activeUserId) {
       return;
@@ -3574,7 +3572,7 @@ export class ActivitiesPopupComponent implements OnDestroy {
     return items.map(item => ({ ...item }));
   }
 
-  private applyActivitiesEventMemberSnapshot(sync: ActivityEventSaveMessage): void {
+  private applyActivitiesEventMemberSnapshot(sync: ActivityEventDTO): void {
     const dto = sync;
     const acceptedRaw = Number(dto.acceptedMembers);
     const pendingRaw = Number(dto.pendingMembers);
@@ -3632,8 +3630,31 @@ export class ActivitiesPopupComponent implements OnDestroy {
 
   // ── User lookup ────────────────────────────────────────────────────────────
 
-  private userById(userId: string): UserDto | undefined {
-    return this.users.find(u => u.id === userId);
+  private resolveActivityRateUserById(userId: string): UserDto | null {
+    const normalizedUserId = userId.trim();
+    if (!normalizedUserId) {
+      return null;
+    }
+    return this.activityRateUsersById.get(normalizedUserId) ?? null;
+  }
+
+  private syncActivityRateUsers(users: readonly UserDto[], replace: boolean): void {
+    if (replace) {
+      this.activityRateUsersById.clear();
+    }
+    for (const user of users) {
+      const normalizedUserId = user.id.trim();
+      if (!normalizedUserId) {
+        continue;
+      }
+      this.activityRateUsersById.set(normalizedUserId, {
+        ...user,
+        id: normalizedUserId,
+        images: [...(user.images ?? [])],
+        languages: [...(user.languages ?? [])],
+        profileDetails: [...(user.profileDetails ?? [])]
+      });
+    }
   }
 
   private syncActivitiesSmartListQuery(): void {
@@ -3728,6 +3749,7 @@ export class ActivitiesPopupComponent implements OnDestroy {
       const page = await this.activitiesService.loadActivityRates(query, {
         signal: context?.signal
       });
+      this.syncActivityRateUsers(page.context?.users ?? [], !query.cursor && Math.max(0, Math.trunc(Number(query.page) || 0)) === 0);
       return {
         items: this.activitiesSmartList?.convertItems(page.items) ?? [],
         total: page.total,
@@ -3735,6 +3757,7 @@ export class ActivitiesPopupComponent implements OnDestroy {
       };
     }
     if (requestedPrimaryFilter === 'events' || requestedPrimaryFilter === 'hosting' || requestedPrimaryFilter === 'invitations') {
+      this.activityRateUsersById.clear();
       const page = await this.eventsService.loadActivityEvents(query, {
         signal: context?.signal
       });
@@ -3745,6 +3768,7 @@ export class ActivitiesPopupComponent implements OnDestroy {
         nextCursor: page.nextCursor ?? null
       };
     }
+    this.activityRateUsersById.clear();
     const page = await this.activitiesService.loadActivityChats(query, {
       chatItems: this.chatsService.peekChatItemsByUser(this.activeUser.id),
       signal: context?.signal

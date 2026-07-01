@@ -230,14 +230,12 @@ export interface SmartListSortableConfig<T, TFilters extends SmartListFilters = 
   sortKey?: (item: T, index: number, query: ListQuery<TFilters>) => SmartListLocalSortKey | null | undefined;
 }
 
-export interface SmartListConverterConfig<TSource, T, TFilters extends SmartListFilters = SmartListFilters, TOptions = unknown> {
-  converter: UiListConverter<TSource, T, TOptions>;
-  options?: SmartListConfigValue<TOptions | undefined, TFilters>;
-}
+export type SmartListConverter<TSource, T, TFilters extends SmartListFilters = SmartListFilters> =
+  UiListConverter<TSource, T, ListQuery<TFilters>>;
 
 export type SmartListConverterResolver<T, TFilters extends SmartListFilters = SmartListFilters>
-  = SmartListConverterConfig<unknown, T, TFilters, unknown>
-  | ((query: ListQuery<TFilters>) => SmartListConverterConfig<unknown, T, TFilters, unknown> | null);
+  = SmartListConverter<unknown, T, TFilters>
+  | ((query: ListQuery<TFilters>) => SmartListConverter<unknown, T, TFilters> | null);
 
 export interface SmartListConfig<T, TFilters extends SmartListFilters = SmartListFilters> {
   pageSize?: number;

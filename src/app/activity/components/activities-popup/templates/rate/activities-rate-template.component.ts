@@ -60,7 +60,6 @@ import {
 } from './activities-rate-template.builder';
 
 export interface ActivitiesRateTemplateContext {
-  getUsers: () => readonly UserDto[];
   getRateCardUsers: () => readonly RateCardPerson[];
   getRateCardUserById: (userId: string) => RateCardPerson | null;
   getActiveUserGender: () => 'woman' | 'man';
@@ -280,7 +279,7 @@ export class ActivitiesRateTemplateComponent implements OnChanges {
 }
 
 interface ActivitiesRatesControllerDeps {
-  getUsers: () => readonly UserDto[];
+  resolveRateUserById: (userId: string) => UserDto | null;
   getActiveUserGender: () => 'woman' | 'man';
   getActivitiesPrimaryFilter: () => ContractTypes.ActivitiesPrimaryFilter;
   getActivitiesRateFilter: () => ContractTypes.RateFilterKey;
@@ -331,12 +330,8 @@ export class ActivitiesRatesController {
   private static readonly EDITOR_DOCK_VISIBILITY_HOLD_MS = 120;
   private ratingBarBlinkTimeout: ReturnType<typeof setTimeout> | null = null;
   private isRatingBarBlinking = false;
-  private cachedRateCardUsersSource: readonly UserDto[] | null = null;
-  private cachedRateCardUsers: readonly RateCardPerson[] = [];
-  private cachedRateCardUsersById = new Map<string, RateCardPerson>();
 
   readonly templateContext: ActivitiesRateTemplateContext = {
-    getUsers: () => this.deps.getUsers(),
     getRateCardUsers: () => this.rateCardUsers(),
     getRateCardUserById: userId => this.rateCardUserById(userId),
     getActiveUserGender: () => this.deps.getActiveUserGender(),
@@ -981,8 +976,30 @@ export class ActivitiesRatesController {
   }
 
   private rateCardUsers(): readonly RateCardPerson[] {
-    this.ensureRateCardUsersCache();
-    return this.cachedRateCardUsers;
+    const usersById = new Map<string, RateCardPerson>();
+    const addUser = (userId: string | null | undefined): void => {
+      const user = this.rateCardUserById(`${userId ?? ''}`);
+      if (user) {
+        usersById.set(user.id, user);
+      }
+    };
+
+    for (const item of this.deps.getRateItems()) {
+      addUser(item.userId);
+      addUser(item.secondaryUserId);
+      addUser(item.bridgeUserId);
+    }
+    for (const row of this.deps.getFilteredActivityRows()) {
+      addUser(row.userId);
+      addUser(row.secondaryUserId);
+      addUser(row.bridgeUserId);
+      addUser(row.primaryUser?.id);
+      for (const user of row.pairUsers ?? []) {
+        addUser(user.id);
+      }
+    }
+
+    return [...usersById.values()];
   }
 
   private rateCardUserById(userId: string): RateCardPerson | null {
@@ -990,28 +1007,7 @@ export class ActivitiesRatesController {
     if (!normalizedUserId) {
       return null;
     }
-    this.ensureRateCardUsersCache();
-    return this.cachedRateCardUsersById.get(normalizedUserId) ?? null;
-  }
-
-  private ensureRateCardUsersCache(): void {
-    const users = this.deps.getUsers();
-    if (this.cachedRateCardUsersSource === users) {
-      return;
-    }
-    const nextUsers: RateCardPerson[] = [];
-    const nextUsersById = new Map<string, RateCardPerson>();
-    for (const user of users) {
-      const rateCardUser = toActivitiesRateCardPerson(user);
-      if (!rateCardUser) {
-        continue;
-      }
-      nextUsers.push(rateCardUser);
-      nextUsersById.set(rateCardUser.id, rateCardUser);
-    }
-    this.cachedRateCardUsersSource = users;
-    this.cachedRateCardUsers = nextUsers;
-    this.cachedRateCardUsersById = nextUsersById;
+    return toActivitiesRateCardPerson(this.deps.resolveRateUserById(normalizedUserId));
   }
 }
 

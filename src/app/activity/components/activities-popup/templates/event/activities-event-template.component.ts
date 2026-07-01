@@ -147,7 +147,6 @@ export class ActivitiesEventsController {
   private get selectedActivityMembersRow() { return this.host.selectedActivityMembersRow as InfoCardData | null; }
   private get selectedActivityMembersRowId() { return this.host.selectedActivityMembersRowId as string | null; }
   private get trashedActivityRowsByKey() { return this.host.trashedActivityRowsByKey as Record<string, InfoCardData>; }
-  private get users() { return this.host.users as any[]; }
 
   private activityRowIdentity(row: InfoCardData): string { return this.host.activityRowIdentity(row); }
   private applyActivityEventSave(sync: ActivityContracts.ActivityEventDTO): void {
@@ -492,7 +491,6 @@ export class ActivitiesEventsController {
       return null;
     }
     const ownerName = `${source?.creatorName ?? ''}`.trim()
-      || this.users.find(user => user.id === ownerId)?.name?.trim()
       || (this.isActivityInvitationRow(row) ? `${source?.inviter ?? ''}`.trim() : '')
       || 'Organizer';
     return {
@@ -1361,7 +1359,7 @@ export class ActivitiesEventsController {
   }
 
   public activityMemberAge(entry: ActivityContracts.ActivityMemberEntry): number {
-    return this.users.find(user => user.id === entry.userId)?.age ?? 0;
+    return entry.profile?.age ?? 0;
   }
 
   public activityMemberRoleLabel(entry: ActivityContracts.ActivityMemberEntry): string {
