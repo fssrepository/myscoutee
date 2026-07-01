@@ -330,6 +330,8 @@ export interface ActivityEventDTO {
   userId: string;
   type: ActivityEventRepositoryItemType;
   status?: ActivityEventStatus;
+  statusBeforeSuppression?: ActivityEventStatus | null;
+  trashedAtIso?: string | null;
   adminIds: string[];
   title: string;
   subtitle: string;

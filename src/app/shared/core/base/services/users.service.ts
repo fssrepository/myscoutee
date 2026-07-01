@@ -293,6 +293,20 @@ export class UsersService extends BaseRouteModeService {
     }
   }
 
+  patchLocalUserActivityCounters(userId: string, patch: Partial<ActivityCounters>): void {
+    const normalizedUserId = userId.trim();
+    if (!normalizedUserId || !this.localModeEnabled) {
+      return;
+    }
+    this.userProfileStore.patchUserActivityCounters(normalizedUserId, patch);
+    void this.localUsersService.patchUserActivityCounters(
+      normalizedUserId,
+      patch as UserMenuCountersDto
+    ).catch(() => {
+      // The visible counter signal has already moved; local persistence is best-effort.
+    });
+  }
+
   async saveUserProfileExt(request: ProfileExtDto): Promise<UserDto | null> {
     const profile = request?.profile;
     if (!profile?.id?.trim()) {

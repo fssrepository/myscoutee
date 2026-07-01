@@ -31,7 +31,7 @@ export class ActivityEventInfoCardConverter {
   ): InfoCardData {
     const activeUserId = options.activeUserId ?? '';
     const status = this.statusCode(dto.status);
-    const statusBadgeLabelKey = this.statusBadgeLabelKey(status);
+    const statusBadgeLabelKey = this.statusBadgeLabelKey(status, dto, activeUserId);
     const pending = this.isPending(dto, activeUserId);
     const invited = this.isInvited(dto, activeUserId);
     const title = dto.title;
@@ -336,14 +336,18 @@ export class ActivityEventInfoCardConverter {
     return !!userId && (userIds ?? []).some(candidate => `${candidate ?? ''}`.trim() === userId);
   }
 
-  private static statusBadgeLabelKey(status: string): string {
+  private static statusBadgeLabelKey(
+    status: string,
+    dto: ActivityEventDTO,
+    activeUserId: string
+  ): string {
     switch (status) {
       case 'UR':
         return 'under.review';
       case 'B':
         return 'blocked.user';
       case 'T':
-        return 'deleted';
+        return this.trashedBadgeLabelKey(dto, activeUserId);
       case 'D':
         return 'deleted.user';
       case 'I':
@@ -351,6 +355,24 @@ export class ActivityEventInfoCardConverter {
       default:
         return '';
     }
+  }
+
+  private static trashedBadgeLabelKey(dto: ActivityEventDTO, activeUserId: string): string {
+    if (dto.type === 'invitations') {
+      return 'trash.invitation';
+    }
+    if (dto.type === 'hosting') {
+      return this.statusCode(dto.statusBeforeSuppression) === 'DR'
+        ? 'trash.draft'
+        : 'trash.own.event';
+    }
+    if (this.isPending(dto, activeUserId)) {
+      return 'trash.pending.event';
+    }
+    if (this.includesUserId(dto.acceptedMemberUserIds, activeUserId)) {
+      return 'trash.joined.event';
+    }
+    return 'trash.event';
   }
 
   private static statusCode(statusValue: string | null | undefined): string {

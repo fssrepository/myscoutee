@@ -651,6 +651,7 @@ export class LocalEventsRepository {
       const nextById = { ...table.byId };
       const nextIds = [...table.ids];
       this.upsertRecord(nextById, nextIds, record);
+      this.removeResolvedInvitationRecords(nextById, nextIds, record);
       return {
         ...state,
         [EVENTS_TABLE_NAME]: {
@@ -665,9 +666,16 @@ export class LocalEventsRepository {
   }
 
   trashItem(userId: string, sourceId: string): void {
-    this.updateItemState(userId, sourceId, {
-      status: 'T',
-      trashedAtIso: new Date().toISOString()
+    const trashedAtIso = new Date().toISOString();
+    this.updateItemStateFromCurrent(userId, sourceId, current => {
+      const currentStatus = this.normalizeEventStatus(current.status) as ActivityEventRecord['status'];
+      return {
+        status: 'T',
+        statusBeforeSuppression: currentStatus === 'T'
+          ? current.statusBeforeSuppression ?? null
+          : currentStatus,
+        trashedAtIso
+      };
     });
   }
 
@@ -684,10 +692,56 @@ export class LocalEventsRepository {
   }
 
   restoreItem(userId: string, sourceId: string): void {
-    this.updateItemState(userId, sourceId, {
-      status: 'A',
+    this.updateItemStateFromCurrent(userId, sourceId, current => ({
+      status: this.restoredStatusForRecord(current),
       statusBeforeSuppression: null,
       trashedAtIso: null
+    }));
+  }
+
+  private updateItemState(
+    userId: string,
+    sourceId: string,
+    updates: Partial<ActivityEventRecord>
+  ): void {
+    this.updateItemStateFromCurrent(userId, sourceId, () => updates);
+  }
+
+  private updateItemStateFromCurrent(
+    userId: string,
+    sourceId: string,
+    resolveUpdates: (record: ActivityEventRecord) => Partial<ActivityEventRecord>
+  ): void {
+    this.memoryDb.write(state => {
+      const table = state[EVENTS_TABLE_NAME];
+      const nextById = { ...table.byId };
+      const nextIds = [...table.ids];
+      const recordKeys = this.resolveStateRecordKeysFromTable(table, userId, sourceId);
+      let changed = false;
+
+      for (const recordKey of recordKeys) {
+        const current = table.byId[recordKey];
+        if (!current) {
+          continue;
+        }
+        nextById[recordKey] = {
+          ...current,
+          ...resolveUpdates(current)
+        };
+        changed = true;
+      }
+
+      if (!changed) {
+        return state;
+      }
+
+      return {
+        ...state,
+        [EVENTS_TABLE_NAME]: {
+          byId: nextById,
+          ids: nextIds
+        }
+      };
     });
   }
 
@@ -709,20 +763,20 @@ export class LocalEventsRepository {
         nextById[id] = {
           ...current,
           status: restoredStatus,
-          statusBeforeSuppression: null,
-          trashedAtIso: null
+          statusBeforeSuppression: null
         };
         changed = true;
       }
-      return changed
-        ? {
-            ...state,
-            [EVENTS_TABLE_NAME]: {
-              ...table,
-              byId: nextById
-            }
-          }
-        : state;
+      if (!changed) {
+        return state;
+      }
+      return {
+        ...state,
+        [EVENTS_TABLE_NAME]: {
+          byId: nextById,
+          ids: [...table.ids]
+        }
+      };
     });
   }
 
@@ -1429,44 +1483,6 @@ export class LocalEventsRepository {
     }).length;
   }
 
-  private updateItemState(
-    userId: string,
-    sourceId: string,
-    updates: Partial<ActivityEventRecord>
-  ): void {
-    this.memoryDb.write(state => {
-      const table = state[EVENTS_TABLE_NAME];
-      const nextById = { ...table.byId };
-      const nextIds = [...table.ids];
-      const recordKeys = this.resolveStateRecordKeysFromTable(table, userId, sourceId);
-      let changed = false;
-
-      for (const recordKey of recordKeys) {
-        const current = table.byId[recordKey];
-        if (!current) {
-          continue;
-        }
-        nextById[recordKey] = {
-          ...current,
-          ...updates
-        };
-        changed = true;
-      }
-
-      if (!changed) {
-        return state;
-      }
-
-      return {
-        ...state,
-        [EVENTS_TABLE_NAME]: {
-          byId: nextById,
-          ids: nextIds
-        }
-      };
-    });
-  }
-
   private resolveStateRecordKeys(
     userId: string,
     sourceId: string
@@ -2074,6 +2090,39 @@ export class LocalEventsRepository {
     byId[recordKey] = record;
     if (!ids.includes(recordKey)) {
       ids.push(recordKey);
+    }
+  }
+
+  private removeResolvedInvitationRecords(
+    byId: Record<string, ActivityEventRecord>,
+    ids: string[],
+    record: ActivityEventRecord
+  ): void {
+    if (record.type === 'invitations') {
+      return;
+    }
+    const invitedUserIds = new Set(this.eventInvitedMemberUserIds(record));
+    const resolvedUserIds = new Set([
+      ...this.eventAcceptedMemberUserIds(record),
+      ...this.eventPendingRequestMemberUserIds(record)
+    ].filter(userId => !invitedUserIds.has(userId)));
+    if (resolvedUserIds.size === 0) {
+      return;
+    }
+    const staleRecordKeys = ids.filter(recordKey => {
+      const current = byId[recordKey];
+      return !!current
+        && current.id === record.id
+        && current.type === 'invitations'
+        && !this.isTrashStatus(current)
+        && resolvedUserIds.has(current.userId);
+    });
+    for (const recordKey of staleRecordKeys) {
+      delete byId[recordKey];
+      const index = ids.indexOf(recordKey);
+      if (index >= 0) {
+        ids.splice(index, 1);
+      }
     }
   }
 

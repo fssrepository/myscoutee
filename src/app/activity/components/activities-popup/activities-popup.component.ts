@@ -126,7 +126,8 @@ import {
   EventsService,
   ExplanationGuideService,
   RatesService,
-  ShareTokensService
+  ShareTokensService,
+  UsersService
 } from '../../../shared/core';
 import {
   I18nService
@@ -201,6 +202,7 @@ export class ActivitiesPopupComponent implements OnDestroy {
   protected readonly activityResourcesService = inject(ActivityResourcesService);
   private readonly chatsService = inject(ChatsService);
   protected readonly eventsService = inject(EventsService);
+  protected readonly usersService = inject(UsersService);
   protected readonly shareTokensService = inject(ShareTokensService);
   private readonly userProfileStore = inject(UserProfileStore);
   private readonly runtimeStore = inject(AppRuntimeStore);
@@ -339,6 +341,7 @@ export class ActivitiesPopupComponent implements OnDestroy {
     }
     return Math.max(0, Math.trunc(numericValue));
   }
+
   // ── ViewChild refs ────────────────────────────────────────────────────────
   @ViewChild('activitiesSmartList')
   protected activitiesSmartList?: SmartListComponent<ActivityListItem, ActivitiesSmartListFilters>;
@@ -2201,6 +2204,10 @@ export class ActivitiesPopupComponent implements OnDestroy {
         activeUserId: this.activeUser.id
       });
       this.trashedActivityRowsByKey[this.activityRowIdentity(row)] = row;
+    } else {
+      delete this.trashedActivityRowsByKey[`events:${item.id}`];
+      delete this.trashedActivityRowsByKey[`hosting:${item.id}`];
+      delete this.trashedActivityRowsByKey[`invitations:${item.id}`];
     }
     if (item.imageUrl?.trim()) {
       this.activityImageById[item.id] = item.imageUrl;
@@ -2258,15 +2265,50 @@ export class ActivitiesPopupComponent implements OnDestroy {
     if (!smartList) {
       return;
     }
-    smartList.patchVisibleItem(
-      row => row.id === sync.id,
-      row => ({
-        ...ActivityEventInfoCardConverter.convert(sync, {
-          activeUserId: this.activeUser.id
-        }),
-        smartListKey: row.smartListKey
-      })
+    const shouldShow = this.savedEventMatchesCurrentScope(sync);
+    const removedExisting = smartList.removeVisibleItems(
+      row => row.id === sync.id && this.isEventStyleActivity(row),
+      { totalDelta: shouldShow ? 0 : -1 }
     );
+    if (!shouldShow) {
+      return;
+    }
+    smartList.upsertConvertedVisibleItem(sync, {
+      totalDelta: removedExisting ? 0 : 1
+    });
+  }
+
+  private savedEventMatchesCurrentScope(sync: ActivityEventDTO): boolean {
+    const status = this.activityEventSaveStatusCode(sync);
+    const activeUserId = this.activeUser.id.trim();
+    const isTrashed = status === 'T';
+    const isAdmin = this.activityEventDTOIsAdmin(sync);
+    const isInvited = activeUserId.length > 0 && (sync.invitedMemberUserIds ?? []).includes(activeUserId);
+    const isAccepted = activeUserId.length > 0 && (sync.acceptedMemberUserIds ?? []).includes(activeUserId);
+    const isPending = activeUserId.length > 0 && (sync.pendingRequestMemberUserIds ?? []).includes(activeUserId);
+    const isPendingReview = status === 'UR' || status === 'B';
+
+    if (this.activitiesEventScope === 'trash') {
+      return isTrashed;
+    }
+    if (isTrashed) {
+      return false;
+    }
+    switch (this.activitiesEventScope) {
+      case 'all':
+        return isAdmin || isInvited || isAccepted || isPending;
+      case 'pending':
+        return (isAdmin && isPendingReview) || (!isAdmin && isPending);
+      case 'invitations':
+        return isInvited;
+      case 'my-events':
+        return isAdmin;
+      case 'drafts':
+        return isAdmin && status === 'DR';
+      case 'active-events':
+      default:
+        return !isAdmin && !isInvited && isAccepted && !isPendingReview;
+    }
   }
 
   private activityRowLocalSortKey(row: ActivityListItem): SmartListLocalSortKey {

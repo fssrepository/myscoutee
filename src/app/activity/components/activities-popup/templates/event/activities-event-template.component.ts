@@ -22,6 +22,8 @@ import {
   ActivityMembersBuilder
 } from '../../../../../shared/core';
 import {
+  type ActivityCounterKey,
+  type ActivityCounters,
   InfoCardComponent,
   type InfoCardData,
   type AppMenuPalette,
@@ -109,6 +111,7 @@ type ActivityInfoCardActionId =
   | 'viewInvitation';
 type ActivitiesEventsHost = any;
 type ActivityEventRecordLike = any;
+type ActivityEventCounterKey = keyof NonNullable<ActivityCounters['event']>;
 type InvitationApprovalSaveResult = {
   eventDetailDTO: ActivityEventDetailDTO;
   nextMembers: ActivityContracts.ActivityMemberDTO[] | null;
@@ -125,12 +128,14 @@ export class ActivitiesEventsController {
   private get activitiesSmartList() { return this.host.activitiesSmartList; }
   private get activityMembersByRowId() { return this.host.activityMembersByRowId as Record<string, ActivityContracts.ActivityMemberDTO[]>; }
   private get activityMembersService() { return this.host.activityMembersService; }
+  private get activityStore() { return this.host.activityStore; }
   private get chatsService() { return this.host.chatsService; }
   private get cdr() { return this.host.cdr; }
   private get dialogStore() { return this.host.dialogStore; }
   private get eventCheckoutDraftStore() { return this.host.eventCheckoutDraftStore; }
   private get eventCheckoutDialogStore() { return this.host.eventCheckoutDialogStore; }
   private get eventsService() { return this.host.eventsService; }
+  private get usersService() { return this.host.usersService; }
   private get hostingPublicationFilter() { return this.host.hostingPublicationFilter as ContractTypes.HostingPublicationFilter; }
   private get pendingActivityMemberDelete() { return this.host.pendingActivityMemberDelete as ActivityContracts.ActivityMemberDTO | null; }
   private set pendingActivityMemberDelete(value: ActivityContracts.ActivityMemberDTO | null) { this.host.pendingActivityMemberDelete = value; }
@@ -166,6 +171,80 @@ export class ActivitiesEventsController {
   private openActivityChat(chat: ChatDTO): void { this.host.openActivityChat(chat); }
   private persistSelectedActivityMembers(): void { this.host.persistSelectedActivityMembers(); }
   private refreshSectionBadges(): void { this.host.refreshSectionBadges(); }
+  private applyActivityEventCounterDeltas(
+    primaryDelta: Record<string, number> = {},
+    eventDelta: Record<string, number> = {}
+  ): void {
+    const activeUser = this.activeUser;
+    const activeUserId = `${activeUser?.id ?? ''}`.trim();
+    if (!activeUserId) {
+      return;
+    }
+    const patch = this.activityCounterPatchFromDeltas(
+      activeUserId,
+      primaryDelta,
+      eventDelta,
+      activeUser?.activities ?? null
+    );
+    if (!patch) {
+      return;
+    }
+    this.activityStore.patchUserCounterOverrides(activeUserId, patch);
+    if (patch && typeof this.usersService?.patchLocalUserActivityCounters === 'function') {
+      this.usersService.patchLocalUserActivityCounters(activeUserId, patch);
+    }
+  }
+
+  private activityCounterPatchFromDeltas(
+    activeUserId: string,
+    primaryDelta: Record<string, number>,
+    eventDelta: Record<string, number>,
+    baseActivities: Partial<ActivityCounters> | null
+  ): Partial<ActivityCounters> | null {
+    const overrides = this.activityStore.getUserCounterOverrides(activeUserId) as Partial<ActivityCounters>;
+    const patch: Partial<ActivityCounters> = {};
+    for (const [key, delta] of Object.entries(primaryDelta) as Array<[ActivityCounterKey, number | undefined]>) {
+      if (!Number.isFinite(delta)) {
+        continue;
+      }
+      patch[key] = this.normalizeCounterValue(
+        this.normalizeCounterValue(overrides[key] ?? baseActivities?.[key]) + Number(delta)
+      );
+    }
+
+    if (Object.keys(eventDelta).length > 0) {
+      const eventCounters = this.activityEventCountersWithOverrides(baseActivities?.event, overrides.event);
+      for (const [key, delta] of Object.entries(eventDelta) as Array<[ActivityEventCounterKey, number | undefined]>) {
+        if (!Number.isFinite(delta)) {
+          continue;
+        }
+        eventCounters[key] = this.normalizeCounterValue(eventCounters[key] + Number(delta));
+      }
+      patch.event = eventCounters;
+    }
+
+    return Object.keys(patch).length > 0 ? patch : null;
+  }
+
+  private activityEventCountersWithOverrides(
+    baseCounters: Partial<NonNullable<ActivityCounters['event']>> | null | undefined,
+    overrideCounters: Partial<NonNullable<ActivityCounters['event']>> | null | undefined
+  ): NonNullable<ActivityCounters['event']> {
+    return {
+      all: this.normalizeCounterValue(overrideCounters?.all ?? baseCounters?.all),
+      active: this.normalizeCounterValue(overrideCounters?.active ?? baseCounters?.active),
+      pending: this.normalizeCounterValue(overrideCounters?.pending ?? baseCounters?.pending),
+      invitations: this.normalizeCounterValue(overrideCounters?.invitations ?? baseCounters?.invitations),
+      hosting: this.normalizeCounterValue(overrideCounters?.hosting ?? baseCounters?.hosting),
+      drafts: this.normalizeCounterValue(overrideCounters?.drafts ?? baseCounters?.drafts),
+      trash: this.normalizeCounterValue(overrideCounters?.trash ?? baseCounters?.trash)
+    };
+  }
+
+  private normalizeCounterValue(value: unknown): number {
+    const count = Number(value);
+    return Number.isFinite(count) ? Math.max(0, Math.trunc(count)) : 0;
+  }
   private uniqueUserIds(userIds: readonly string[]): string[] {
     const unique: string[] = [];
     for (const userId of userIds) {
@@ -718,6 +797,7 @@ export class ActivitiesEventsController {
   private async confirmActivityTakeOver(row: InfoCardData): Promise<void> {
     await this.eventsService.takeOverItem(this.activeUser.id, row.id);
     const nextStatus = this.restoredActivityStatus();
+    this.applyActivityEventCounterDeltas({}, { pending: -1 });
     if (this.activitiesEventScope === 'pending') {
       this.activitiesSmartList?.removeVisibleItemByIdentity(this.activityRowIdentity(row));
     } else {
@@ -751,6 +831,7 @@ export class ActivitiesEventsController {
   private async confirmActivityPublish(row: InfoCardData): Promise<void> {
     await this.eventsService.publishItem(this.activeUser.id, row.id);
     this.activeHostingIds = new Set([...this.activeHostingIds, row.id]);
+    this.adjustPublishedEventCounters(row);
 
     if (this.shouldRemovePublishedRowFromCurrentScope()) {
       this.activitiesSmartList?.removeVisibleItemByIdentity(this.activityRowIdentity(row));
@@ -770,6 +851,7 @@ export class ActivitiesEventsController {
     const nextActiveIds = new Set(this.activeHostingIds);
     nextActiveIds.delete(row.id);
     this.activeHostingIds = nextActiveIds;
+    this.adjustUnpublishedEventCounters(row);
     this.activitiesSmartList?.patchVisibleItem(
       (item: InfoCardData) => this.activityRowIdentity(item) === this.activityRowIdentity(row),
       { status: 'DR' }
@@ -823,6 +905,114 @@ export class ActivitiesEventsController {
     return 'Unable to delete event.';
   }
 
+  private adjustAcceptedInvitationCounters(
+    row: InfoCardData,
+    sync: ActivityContracts.ActivityEventDTO
+  ): void {
+    if (!this.isActivityInvitationRow(row)) {
+      return;
+    }
+    const activeUserId = this.activeUserId();
+    const movedToPending = activeUserId.length > 0
+      && (sync.pendingRequestMemberUserIds ?? []).includes(activeUserId)
+      && !(sync.acceptedMemberUserIds ?? []).includes(activeUserId);
+    this.applyActivityEventCounterDeltas(
+      movedToPending
+        ? { invitations: -1 }
+        : { invitations: -1, events: 1 },
+      movedToPending
+        ? { invitations: -1, pending: 1 }
+        : { invitations: -1, active: 1 }
+    );
+  }
+
+  private adjustTrashedEventCounters(row: InfoCardData): void {
+    const primaryDelta: Record<string, number> = {};
+    const eventDelta: Record<string, number> = { all: -1, trash: 1 };
+    const type = this.activityEventListTypeForRow(row);
+    if (type === 'invitations') {
+      primaryDelta['invitations'] = -1;
+      eventDelta['invitations'] = -1;
+    } else if (type === 'hosting') {
+      primaryDelta['hosting'] = -1;
+      eventDelta['hosting'] = -1;
+      if (this.activityStatusCode(row) === 'DR') {
+        eventDelta['drafts'] = -1;
+      }
+    } else if (this.isActivityPendingParticipationRow(row)) {
+      eventDelta['pending'] = -1;
+    } else {
+      primaryDelta['events'] = -1;
+      eventDelta['active'] = -1;
+    }
+    this.applyActivityEventCounterDeltas(primaryDelta, eventDelta);
+  }
+
+  private adjustLeftEventCounters(row: InfoCardData): void {
+    if (this.isActivityPendingParticipationRow(row)) {
+      this.applyActivityEventCounterDeltas({}, { all: -1, pending: -1 });
+      return;
+    }
+    this.applyActivityEventCounterDeltas({ events: -1 }, { active: -1, all: -1 });
+  }
+
+  private adjustRestoredEventCounters(row: InfoCardData): void {
+    const primaryDelta: Record<string, number> = {};
+    const eventDelta: Record<string, number> = { all: 1, trash: -1 };
+    const type = this.activityEventListTypeForRow(row);
+    if (type === 'invitations') {
+      primaryDelta['invitations'] = 1;
+      eventDelta['invitations'] = 1;
+    } else if (type === 'hosting') {
+      primaryDelta['hosting'] = 1;
+      eventDelta['hosting'] = 1;
+      if (this.activityRestoredStatusCode(row) === 'DR') {
+        eventDelta['drafts'] = 1;
+      }
+    } else if (this.isActivityPendingParticipationRow(row)) {
+      eventDelta['pending'] = 1;
+    } else {
+      primaryDelta['events'] = 1;
+      eventDelta['active'] = 1;
+    }
+    this.applyActivityEventCounterDeltas(primaryDelta, eventDelta);
+  }
+
+  private adjustPublishedEventCounters(row: InfoCardData): void {
+    if (this.activityStatusCode(row) === 'DR') {
+      this.applyActivityEventCounterDeltas({}, { drafts: -1 });
+    }
+  }
+
+  private adjustUnpublishedEventCounters(row: InfoCardData): void {
+    if (this.activityStatusCode(row) !== 'DR') {
+      this.applyActivityEventCounterDeltas({}, { drafts: 1 });
+    }
+  }
+
+  private isActivityPendingParticipationRow(row: InfoCardData): boolean {
+    const activeUserId = this.activeUserId();
+    const dto = this.activityEventDTOForRow(row);
+    if (!activeUserId || !dto) {
+      return false;
+    }
+    if ((dto.acceptedMemberUserIds ?? []).includes(activeUserId)) {
+      return false;
+    }
+    return (dto.pendingRequestMemberUserIds ?? []).includes(activeUserId)
+      || (dto.pendingMemberUserIds ?? []).includes(activeUserId);
+  }
+
+  private activityRestoredStatusCode(row: InfoCardData): string {
+    const dto = this.activityEventDTOForRow(row);
+    const status = this.normalizeActivityStatusCode(dto?.status ?? row.status);
+    if (status !== 'T') {
+      return status;
+    }
+    const previous = this.normalizeActivityStatusCode(dto?.statusBeforeSuppression);
+    return ['UR', 'B', 'D', 'I', 'T'].includes(previous) ? 'A' : previous;
+  }
+
   private async confirmActivitySecondaryAction(row: InfoCardData): Promise<void> {
     if (!this.isActivityRowAdmin(row) && !this.isActivityInvitationRow(row)) {
       await this.confirmActivityLeave(row);
@@ -831,6 +1021,7 @@ export class ActivitiesEventsController {
     await this.persistActivityRowTrash(row);
     this.markActivityRowTrashed(row);
     this.activitiesSmartList?.removeVisibleItemByIdentity(this.activityRowIdentity(row));
+    this.adjustTrashedEventCounters(row);
     this.cdr.markForCheck();
   }
 
@@ -843,6 +1034,7 @@ export class ActivitiesEventsController {
     if (!eventDetailDTO) {
       this.eventCheckoutDraftStore.clear(activeUserId, row.id);
       this.activitiesSmartList?.removeVisibleItemByIdentity(this.activityRowIdentity(row));
+      this.adjustLeftEventCounters(row);
       this.refreshSectionBadges();
       this.cdr.markForCheck();
       return;
@@ -871,6 +1063,10 @@ export class ActivitiesEventsController {
 
     this.cdr.markForCheck();
     await persistence;
+    this.activitiesSmartList?.removeVisibleItemByIdentity(this.activityRowIdentity(row));
+    this.adjustLeftEventCounters(row);
+    this.refreshSectionBadges();
+    this.cdr.markForCheck();
   }
 
   private shouldUseCheckoutFlow(record: {
@@ -908,6 +1104,7 @@ export class ActivitiesEventsController {
     }
     this.removeInvitationItem(eventDetailDTO.id);
     this.applyActivityEventSave(displaySync);
+    this.adjustAcceptedInvitationCounters(row, displaySync);
     this.cdr.markForCheck();
   }
 
@@ -947,6 +1144,23 @@ export class ActivitiesEventsController {
     const nextPendingMemberUserIds = requiresAdminApproval
       ? this.uniqueUserIds([...existingPendingMemberUserIds, activeUserId])
       : existingPendingMemberUserIds.filter(userId => userId !== activeUserId);
+    const existingInvitedMemberUserIds = this.uniqueUserIds([
+      ...(record?.invitedMemberUserIds ?? []),
+      ...(relatedSource.invitedMemberUserIds ?? [])
+    ]);
+    const existingPendingRequestMemberUserIds = this.uniqueUserIds([
+      ...(record?.pendingRequestMemberUserIds ?? []),
+      ...(relatedSource.pendingRequestMemberUserIds ?? []),
+      ...existingPendingMemberUserIds
+    ]);
+    const nextInvitedMemberUserIds = existingInvitedMemberUserIds
+      .filter(userId => userId !== activeUserId);
+    const nextPendingRequestMemberUserIds = requiresAdminApproval
+      ? this.uniqueUserIds([
+          ...existingPendingRequestMemberUserIds.filter(userId => userId !== activeUserId),
+          activeUserId
+        ])
+      : existingPendingRequestMemberUserIds.filter(userId => userId !== activeUserId);
 
     const acceptedMembersBase = Math.max(
       this.chatCountValue(record?.acceptedMembers ?? relatedSource.acceptedMembers),
@@ -1027,7 +1241,9 @@ export class ActivitiesEventsController {
           : (Array.isArray(relatedSource.upcomingSlots) ? relatedSource.upcomingSlots.map((item: ContractTypes.EventSlotOccurrenceDTO) => ({ ...item })) : undefined),
         visibility: record?.visibility ?? relatedSource.visibility,
         blindMode: record?.blindMode ?? relatedSource.blindMode,
-        status: record?.status ?? relatedSource.status ?? 'A',
+        status: 'A',
+        statusBeforeSuppression: null,
+        trashedAtIso: null,
         creatorUserId: record?.creatorUserId ?? relatedSource.creatorUserId,
         creatorName,
         creatorInitials,
@@ -1037,6 +1253,11 @@ export class ActivitiesEventsController {
         locationCoordinates: record?.locationCoordinates ?? relatedSource.locationCoordinates,
         sourceLink: record?.sourceLink ?? relatedSource.sourceLink,
         topics: [...(record?.topics ?? relatedSource.topics ?? [])],
+        acceptedMemberUserIds: nextAcceptedMemberUserIds,
+        pendingMemberUserIds: nextPendingMemberUserIds,
+        invitedMemberUserIds: nextInvitedMemberUserIds,
+        pendingRequestMemberUserIds: nextPendingRequestMemberUserIds,
+        pendingReason: requiresAdminApproval ? 'approval' : undefined,
         subEvents: Array.isArray(record?.subEvents)
           ? this.cloneSyncedSubEventForms(record.subEvents)
           : (Array.isArray(relatedSource.subEvents) ? this.cloneSyncedSubEventForms(relatedSource.subEvents) : undefined),
@@ -1150,6 +1371,15 @@ export class ActivitiesEventsController {
     const nextAcceptedMemberUserIds = existingAcceptedMemberUserIds.filter(userId => userId !== activeUserId);
     const nextPendingMemberUserIds = existingPendingMemberUserIds
       .filter(userId => userId !== activeUserId && !nextAcceptedMemberUserIds.includes(userId));
+    const nextInvitedMemberUserIds = this.uniqueUserIds([
+      ...(record?.invitedMemberUserIds ?? []),
+      ...(source.invitedMemberUserIds ?? [])
+    ]).filter(userId => userId !== activeUserId);
+    const nextPendingRequestMemberUserIds = this.uniqueUserIds([
+      ...(record?.pendingRequestMemberUserIds ?? []),
+      ...(source.pendingRequestMemberUserIds ?? []),
+      ...existingPendingMemberUserIds
+    ]).filter(userId => userId !== activeUserId);
 
     const acceptedMembersBase = this.chatCountValue(
       record?.acceptedMembers
@@ -1242,6 +1472,11 @@ export class ActivitiesEventsController {
       locationCoordinates: record?.locationCoordinates ?? source.locationCoordinates,
       sourceLink: record?.sourceLink ?? source.sourceLink,
       topics: [...(record?.topics ?? source.topics ?? [])],
+      acceptedMemberUserIds: nextAcceptedMemberUserIds,
+      pendingMemberUserIds: nextPendingMemberUserIds,
+      invitedMemberUserIds: nextInvitedMemberUserIds,
+      pendingRequestMemberUserIds: nextPendingRequestMemberUserIds,
+      pendingReason: undefined,
       subEvents: Array.isArray(record?.subEvents)
         ? this.cloneSyncedSubEventForms(record.subEvents)
         : (Array.isArray(source.subEvents) ? this.cloneSyncedSubEventForms(source.subEvents) : undefined),
@@ -1287,6 +1522,7 @@ export class ActivitiesEventsController {
     await this.eventsService.restoreItem(this.activeUser.id, row.id);
     this.unmarkActivityRowTrashed(row);
     this.activitiesSmartList?.removeVisibleItemByIdentity(this.activityRowIdentity(row));
+    this.adjustRestoredEventCounters(row);
     this.cdr.markForCheck();
   }
 
