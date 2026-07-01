@@ -22,7 +22,7 @@ interface SeededActivityCountSources {
   chatItems?: ReadonlyArray<{ unread: number }>;
   invitationItems?: ReadonlyArray<{ unread: number }>;
   eventsCount?: number;
-  hostingItems?: ReadonlyArray<{ activity: number }>;
+  hostingItems?: ReadonlyArray<{ activity: number; status: ActivityEventRecord['status'] }>;
   rateItems?: readonly unknown[];
   carsCount?: number;
   accommodationCount?: number;
@@ -369,13 +369,15 @@ export class SeedUsersRepository {
       || Number.isFinite(sources.eventsCount)
       || Boolean(sources.hostingItems);
     const eventPending = normalizeCounter(event?.pending);
-    const eventDrafts = normalizeCounter(event?.drafts);
+    const eventDrafts = sources.hostingItems
+      ? sources.hostingItems.filter(item => this.isDraftEventStatus(item.status)).length
+      : normalizeCounter(event?.drafts);
     const eventTrash = normalizeCounter(event?.trash);
     const eventActive = hasEventSources ? events : normalizeCounter(event?.active ?? events);
     const eventInvitations = hasEventSources ? invitations : normalizeCounter(event?.invitations ?? invitations);
     const eventHosting = hasEventSources ? hosting : normalizeCounter(event?.hosting ?? hosting);
     const eventAll = hasEventSources
-      ? eventActive + eventPending + eventInvitations + eventHosting + eventDrafts
+      ? eventActive + eventPending + eventInvitations + eventHosting
       : normalizeCounter(event?.all ?? events + invitations + hosting);
     const assetCars = Number.isFinite(sources.carsCount) ? cars : normalizeCounter(asset?.cars ?? cars);
     const assetAccommodation = Number.isFinite(sources.accommodationCount)
@@ -450,11 +452,14 @@ export class SeedUsersRepository {
       .map(record => ({ unread: Math.max(0, Math.trunc(Number(record.unread) || 0)) }));
   }
 
-  private queryHostingItemsByUser(userId: string): ReadonlyArray<{ activity: number }> {
+  private queryHostingItemsByUser(userId: string): ReadonlyArray<{ activity: number; status: ActivityEventRecord['status'] }> {
     return this.queryUserEventRecords(userId)
       .filter(record => this.isEventAdminRecord(record, userId))
       .filter(record => record.status !== 'T')
-      .map(record => ({ activity: Math.max(0, Math.trunc(Number(record.activity) || 0)) }));
+      .map(record => ({
+        activity: Math.max(0, Math.trunc(Number(record.activity) || 0)),
+        status: record.status
+      }));
   }
 
   private countUpcomingActiveEventItemsByUser(userId: string): number {
@@ -468,6 +473,10 @@ export class SeedUsersRepository {
 
   private isPublishedEventStatus(status: ActivityEventRecord['status'] | null | undefined): boolean {
     return `${status ?? 'A'}`.trim() === 'A';
+  }
+
+  private isDraftEventStatus(status: ActivityEventRecord['status'] | null | undefined): boolean {
+    return `${status ?? ''}`.trim() === 'DR';
   }
 
   private countTicketItemsByUser(userId: string): number {
