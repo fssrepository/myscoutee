@@ -1,4 +1,6 @@
 import type { AppMenuPalette } from '../../menu/menu.types';
+import type { SmartListItemKey } from '../smart-list-item-key';
+import type { SmartListLocalSortKey } from '../smart-list-local-sort';
 
 export type CardPresentation = 'list' | 'fullscreen';
 export type CardRenderState = 'default' | 'active' | 'leaving';
@@ -256,11 +258,13 @@ export interface InfoCardFooterChip {
 
 export interface DisplayData<TEagerDetail = unknown> {
   id: string;
+  smartListKey?: SmartListItemKey | null;
   status?: string | null;
   dateIso?: string | null;
   distanceMetersExact?: number | null;
   badgeCount?: number | null;
   sortScore?: number | null;
+  localSortKey?: SmartListLocalSortKey | null;
   menuActions?: readonly CardMenuActionId[];
   ownerId?: string | null;
   ownerUserId?: string | null;

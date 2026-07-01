@@ -7,7 +7,6 @@ import type { UiListConverter } from './converter.types';
 export interface ActivityRateImageCardConverterOptions {
   activeUserId: string;
   users: readonly UserDto[];
-  directionOverrides?: Partial<Record<string, ActivityRateDTO['direction']>>;
 }
 
 export class ActivityRateImageCardConverter {
@@ -15,7 +14,7 @@ export class ActivityRateImageCardConverter {
     dto: ActivityRateDTO,
     options: ActivityRateImageCardConverterOptions
   ): ImageCardData {
-    const direction = this.displayedDirection(dto, options.directionOverrides);
+    const direction = dto.direction;
     const primaryUser = this.resolvePrimaryUser(dto, options.users, options.activeUserId);
     const ownScore = this.rateOwnScore(dto);
     const distanceMetersExact = this.exactDistanceMeters(dto);
@@ -23,6 +22,7 @@ export class ActivityRateImageCardConverter {
 
     return {
       id: dto.id,
+      smartListKey: `rates:${dto.id}`,
       status: direction,
       dateIso: dto.happenedAt ?? '',
       distanceMetersExact,
@@ -58,13 +58,6 @@ export class ActivityRateImageCardConverter {
     options: ActivityRateImageCardConverterOptions
   ): ImageCardData[] {
     return dtos.map(dto => this.convert(dto, options));
-  }
-
-  private static displayedDirection(
-    dto: ActivityRateDTO,
-    directionOverrides?: Partial<Record<string, ActivityRateDTO['direction']>>
-  ): ActivityRateDTO['direction'] {
-    return directionOverrides?.[dto.id] ?? dto.direction;
   }
 
   private static resolvePrimaryUser(

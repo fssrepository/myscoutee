@@ -169,10 +169,6 @@ export class ActivitiesEventsController {
   private openActivityChat(chat: ChatDTO): void { this.host.openActivityChat(chat); }
   private persistSelectedActivityMembers(): void { this.host.persistSelectedActivityMembers(); }
   private refreshSectionBadges(): void { this.host.refreshSectionBadges(); }
-  private removeVisibleActivityRow(row: InfoCardData): void { this.host.removeVisibleActivityRow(row); }
-  private replaceVisibleActivityItems(items: readonly InfoCardData[], totalDelta = 0): void {
-    this.host.replaceVisibleActivityItems(items, totalDelta);
-  }
   private uniqueUserIds(userIds: readonly string[]): string[] { return this.host.uniqueUserIds(userIds); }
   private activityMemberUserIdsByStatus(
     members: readonly ActivityContracts.ActivityMemberEntry[],
@@ -720,20 +716,16 @@ export class ActivitiesEventsController {
     await this.eventsService.takeOverItem(this.activeUser.id, row.id);
     const nextStatus = this.restoredActivityStatus(row);
     if (this.activitiesEventScope === 'pending') {
-      this.removeVisibleActivityRow(row);
+      this.activitiesSmartList?.removeVisibleItemByIdentity(this.activityRowIdentity(row));
     } else {
-      const smartList = this.activitiesSmartList;
-      if (smartList) {
-        const currentItems = [...smartList.itemsSnapshot()];
-        const rowIndex = currentItems.findIndex(item => item.id === row.id);
-        if (rowIndex >= 0) {
-          const updatedRow = { ...currentItems[rowIndex], status: nextStatus };
+      this.activitiesSmartList?.patchVisibleItem(
+        (item: InfoCardData) => item.id === row.id,
+        (item: InfoCardData) => {
+          const updatedRow = { ...item, status: nextStatus };
           this.refreshActivityEventInfoCard(updatedRow);
-          const nextItems = [...currentItems];
-          nextItems[rowIndex] = updatedRow;
-          this.replaceVisibleActivityItems(nextItems, 0);
+          return updatedRow;
         }
-      }
+      );
     }
     this.refreshSectionBadges();
     this.cdr.markForCheck();
@@ -762,7 +754,7 @@ export class ActivitiesEventsController {
     this.activeHostingIds = new Set([...this.activeHostingIds, row.id]);
 
     if (this.shouldRemovePublishedRowFromCurrentScope()) {
-      this.removeVisibleActivityRow(row);
+      this.activitiesSmartList?.removeVisibleItemByIdentity(this.activityRowIdentity(row));
     } else {
       this.patchVisibleActivityEventRow(row, {
         status: 'A'
@@ -799,19 +791,17 @@ export class ActivitiesEventsController {
       return;
     }
     const rowKey = this.activityRowIdentity(row);
-    const currentItems = [...smartList.itemsSnapshot()];
-    const rowIndex = currentItems.findIndex(item => this.activityRowIdentity(item) === rowKey);
-    if (rowIndex < 0) {
-      return;
-    }
-    const updatedRow = {
-      ...currentItems[rowIndex],
-      ...patch
-    };
-    this.refreshActivityEventInfoCard(updatedRow);
-    const nextItems = [...currentItems];
-    nextItems[rowIndex] = updatedRow;
-    this.replaceVisibleActivityItems(nextItems, 0);
+    smartList.patchVisibleItem(
+      (item: InfoCardData) => this.activityRowIdentity(item) === rowKey,
+      (item: InfoCardData) => {
+        const updatedRow = {
+          ...item,
+          ...patch
+        };
+        this.refreshActivityEventInfoCard(updatedRow);
+        return updatedRow;
+      }
+    );
   }
 
   private activitySecondaryConfirmTitle(row: InfoCardData): string {
@@ -861,7 +851,7 @@ export class ActivitiesEventsController {
     }
     await this.persistActivityRowTrash(row);
     this.markActivityRowTrashed(row);
-    this.removeVisibleActivityRow(row);
+    this.activitiesSmartList?.removeVisibleItemByIdentity(this.activityRowIdentity(row));
     this.cdr.markForCheck();
   }
 
@@ -873,7 +863,7 @@ export class ActivitiesEventsController {
     const eventDetailDTO = await this.buildLeftActivityEventDetailDTO(row);
     if (!eventDetailDTO) {
       this.eventCheckoutDraftStore.clear(activeUserId, row.id);
-      this.removeVisibleActivityRow(row);
+      this.activitiesSmartList?.removeVisibleItemByIdentity(this.activityRowIdentity(row));
       this.refreshSectionBadges();
       this.cdr.markForCheck();
       return;
@@ -1321,7 +1311,7 @@ export class ActivitiesEventsController {
   private async restoreActivityRow(row: InfoCardData): Promise<void> {
     await this.eventsService.restoreItem(this.activeUser.id, row.id);
     this.unmarkActivityRowTrashed(row);
-    this.removeVisibleActivityRow(row);
+    this.activitiesSmartList?.removeVisibleItemByIdentity(this.activityRowIdentity(row));
     this.cdr.markForCheck();
   }
 

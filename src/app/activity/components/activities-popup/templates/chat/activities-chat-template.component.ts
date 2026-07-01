@@ -100,7 +100,12 @@ export class ActivitiesChatsController {
 
   private get activeUser() { return this.host.activeUser as UserDto; }
   private get activitiesStore() { return this.host.activitiesStore; }
-  private get chatItems() { return this.host.chatItems as ChatDTO[]; }
+  private get chatItems() {
+    const activeUserId = `${this.activeUser?.id ?? ''}`.trim();
+    return activeUserId
+      ? this.host.chatsService.peekChatItemsByUser(activeUserId) as ChatDTO[]
+      : [];
+  }
   private get users() { return this.host.users as UserDto[]; }
 
   public chatChannelType(item: ChatDTO): ContractTypes.ChatChannelType {

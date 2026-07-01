@@ -30,6 +30,7 @@ export class ActivityEventInfoCardConverter {
 
     return {
       id: dto.id,
+      smartListKey: `${this.rowType(dto, activeUserId)}:${dto.id}`,
       dateIso: dto.startAtIso,
       distanceMetersExact: Math.max(0, Math.round((Number(dto.distanceKm) || 0) * 1000)),
       status,
@@ -111,6 +112,17 @@ export class ActivityEventInfoCardConverter {
       label: AppUtils.initialsFromText(dto.creatorInitials ?? dto.creatorName ?? dto.inviter ?? dto.title),
       interactive: false
     };
+  }
+
+  private static rowType(dto: ActivityEventDTO, activeUserId: string): 'events' | 'hosting' | 'invitations' {
+    const userId = activeUserId.trim();
+    if (userId && this.includesUserId(dto.invitedMemberUserIds, userId)) {
+      return 'invitations';
+    }
+    if (userId && this.includesUserId(dto.adminIds, userId)) {
+      return 'hosting';
+    }
+    return 'events';
   }
 
   private static isDraft(dto: ActivityEventDTO): boolean {

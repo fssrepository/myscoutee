@@ -42,6 +42,7 @@ export class ActivityChatSingleRowConverter {
 
     return {
       id: dto.id,
+      smartListKey: `chats:${dto.id}`,
       status: dto.supportCaseStatus ?? this.normalizeChannelType(dto),
       dateIso: dto.dateIso ?? '2026-02-21T09:00:00',
       distanceMetersExact,

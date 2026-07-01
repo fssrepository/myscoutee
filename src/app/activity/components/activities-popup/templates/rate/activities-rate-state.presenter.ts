@@ -5,11 +5,10 @@ import type { ImageCardData } from '../../../../../shared/ui';
 export function matchesActivitiesRateFilter(
   item: ActivityRateDTO,
   filter: ContractTypes.RateFilterKey,
-  socialBadgeEnabled: boolean,
-  displayedDirection: (candidate: ActivityRateDTO) => ActivityRateDTO['direction']
+  socialBadgeEnabled: boolean
 ): boolean {
   const [modeKey, directionKey] = filter.split('-') as ['individual' | 'pair', 'given' | 'received' | 'mutual' | 'met'];
-  if (item.mode !== modeKey || displayedDirection(item) !== directionKey) {
+  if (item.mode !== modeKey || item.direction !== directionKey) {
     return false;
   }
   if (modeKey === 'individual') {
@@ -22,18 +21,10 @@ export function matchesActivitiesRateFilter(
     : item.socialContext !== 'separated-friends';
 }
 
-export function displayedActivitiesRateDirection(
-  item: ActivityRateDTO,
-  overrides: Partial<Record<string, ActivityRateDTO['direction']>>
-): ActivityRateDTO['direction'] {
-  return overrides[item.id] ?? item.direction;
-}
-
 export function pendingActivitiesRateDirectionAfterRating(
-  item: ActivityRateDTO,
-  displayedDirection: (candidate: ActivityRateDTO) => ActivityRateDTO['direction']
+  item: ActivityRateDTO
 ): ActivityRateDTO['direction'] | null {
-  const direction = displayedDirection(item);
+  const direction = item.direction;
   if (item.mode === 'individual') {
     if (direction === 'given') {
       return 'given';
@@ -47,38 +38,6 @@ export function pendingActivitiesRateDirectionAfterRating(
     return 'given';
   }
   return null;
-}
-
-export function parseActivitiesRateFilterKey(
-  filter: ContractTypes.RateFilterKey
-): { mode: 'individual' | 'pair'; direction: ActivityRateDTO['direction'] } {
-  const [mode, direction] = filter.split('-') as ['individual' | 'pair', ActivityRateDTO['direction']];
-  return { mode, direction };
-}
-
-export function collectPendingActivitiesRateDirectionOverrides(
-  targetFilter: ContractTypes.RateFilterKey | undefined,
-  pendingOverrides: Partial<Record<string, ActivityRateDTO['direction']>>,
-  rateItems: readonly ActivityRateDTO[]
-): Array<[string, ActivityRateDTO['direction']]> {
-  const target = targetFilter ? parseActivitiesRateFilterKey(targetFilter) : null;
-  const nextEntries: Array<[string, ActivityRateDTO['direction']]> = [];
-  for (const [itemId, pendingDirection] of Object.entries(pendingOverrides)) {
-    if (!pendingDirection) {
-      continue;
-    }
-    if (target) {
-      const item = rateItems.find(candidate => candidate.id === itemId);
-      if (!item) {
-        continue;
-      }
-      if (item.mode !== target.mode || pendingDirection !== target.direction) {
-        continue;
-      }
-    }
-    nextEntries.push([itemId, pendingDirection]);
-  }
-  return nextEntries;
 }
 
 export function selectedActivitiesRateRow(
@@ -103,14 +62,9 @@ export function activitiesRateOwnScore(item: ActivityRateDTO): number {
 }
 
 export function activitiesRateHasOwnRating(
-  item: ActivityRateDTO,
-  draftedValue: number | undefined,
-  displayedDirection: (candidate: ActivityRateDTO) => ActivityRateDTO['direction']
+  item: ActivityRateDTO
 ): boolean {
-  if (Number.isFinite(draftedValue) && (draftedValue as number) > 0) {
-    return true;
-  }
-  if (displayedDirection(item) === 'received') {
+  if (item.direction === 'received') {
     return false;
   }
   return Number.isFinite(item.scoreGiven) && item.scoreGiven > 0;
@@ -118,13 +72,12 @@ export function activitiesRateHasOwnRating(
 
 export function activitiesPairReceivedAverageScore(
   item: ActivityRateDTO,
-  rateItems: readonly ActivityRateDTO[],
-  displayedDirection: (candidate: ActivityRateDTO) => ActivityRateDTO['direction']
+  rateItems: readonly ActivityRateDTO[]
 ): number {
   const matching = rateItems.filter(candidate =>
     candidate.mode === 'pair'
     && sameActivitiesRatePairUsers(candidate, item)
-    && displayedDirection(candidate) === 'received'
+    && candidate.direction === 'received'
     && Number.isFinite(candidate.scoreReceived)
     && candidate.scoreReceived > 0
   );
@@ -136,28 +89,21 @@ export function activitiesPairReceivedAverageScore(
 }
 
 export function isActivitiesPairReceivedRateItem(
-  item: ActivityRateDTO,
-  displayedDirection: (candidate: ActivityRateDTO) => ActivityRateDTO['direction']
+  item: ActivityRateDTO
 ): boolean {
-  return item.mode === 'pair' && displayedDirection(item) === 'received';
+  return item.mode === 'pair' && item.direction === 'received';
 }
 
 export function activitiesRateOwnRatingValue(
   item: ActivityRateDTO | null,
-  draftedValuesById: Record<string, number>,
-  displayedDirection: (candidate: ActivityRateDTO) => ActivityRateDTO['direction'],
   rateItems: readonly ActivityRateDTO[]
 ): number {
   if (!item) {
     return 0;
   }
-  const drafted = draftedValuesById[item.id];
-  if (Number.isFinite(drafted)) {
-    return normalizeActivitiesRateScore(Number(drafted));
-  }
-  if (!activitiesRateHasOwnRating(item, drafted, displayedDirection)) {
-    if (displayedDirection(item) === 'received' && item.mode === 'pair') {
-      return activitiesPairReceivedAverageScore(item, rateItems, displayedDirection);
+  if (!activitiesRateHasOwnRating(item)) {
+    if (item.direction === 'received' && item.mode === 'pair') {
+      return activitiesPairReceivedAverageScore(item, rateItems);
     }
     return 0;
   }
