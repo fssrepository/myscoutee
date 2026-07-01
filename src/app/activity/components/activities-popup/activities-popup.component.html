@@ -26,7 +26,7 @@
         [presentation]="activitiesSmartListPresentation()"
         [view]="activitiesView"
         [query]="activitiesSmartListQuery"
-        (itemSelect)="onActivitiesSmartListItemSelect($event)"
+        (itemSelect)="onActivityRowClick($event.item, $event.sourceEvent)"
         (menuItemSelect)="onActivityEventSharedMenuSelect($event)"
         (stateChange)="onActivitiesSmartListStateChange($event)"
         (wheel)="activitiesRates.closeEditorFromUserScroll($event)"

@@ -166,10 +166,6 @@ export class ActivityEventInfoCardConverter {
     return 'events';
   }
 
-  private static isDraft(dto: ActivityEventDTO): boolean {
-    return this.statusCode(dto.status) === 'DR';
-  }
-
   private static isPending(dto: ActivityEventDTO, activeUserId: string): boolean {
     if (this.isPendingReview(dto)) {
       return true;

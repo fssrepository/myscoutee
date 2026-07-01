@@ -6,7 +6,6 @@ import {
   ElementRef,
   HostListener,
   inject,
-  NgZone,
   OnDestroy,
   ViewChild
 } from '@angular/core';
@@ -80,7 +79,6 @@ import {
   type SmartListLoadContext,
   type SmartListLoadPage,
   type SmartListMenuItemsContext,
-  type SmartListItemSelectEvent,
   type SmartListPresentation,
   type SmartListStateChange,
   type UiListConverter
@@ -190,13 +188,8 @@ type ActivitiesPopupMenuContext =
   changeDetection: ChangeDetectionStrategy.OnPush
 })
 export class ActivitiesPopupComponent implements OnDestroy {
-  private static readonly ACTIVITIES_RATES_PAIR_SPLIT_DEFAULT_PERCENT = 50;
-  private static readonly ACTIVITIES_RATES_PAIR_SPLIT_MIN_PERCENT = 0;
-  private static readonly ACTIVITIES_RATES_PAIR_SPLIT_MAX_PERCENT = 100;
-
   // ── injected ──────────────────────────────────────────────────────────────
   protected readonly cdr = inject(ChangeDetectorRef);
-  private readonly ngZone = inject(NgZone);
   protected readonly activitiesStore = inject(ActivitiesPopupStore);
   private readonly activitiesService = inject(ActivitiesService);
   protected readonly eventEditorStore = inject(EventEditorPopupStore);
@@ -583,14 +576,14 @@ export class ActivitiesPopupComponent implements OnDestroy {
       this.activitiesEvents.openActivityMembers(membersRow, event);
       return;
     }
-    const owner = this.activityMembersOwnerForRow(membersRow);
+    const owner = ActivityEventInfoCardConverter.toActivityMembersOwner(membersRow);
     const summary = this.resolveActivityMembersPopupSummary(membersRow);
     this.memberMenuStore.requestActivitiesNavigation({
       type: 'members',
       ownerId: owner.ownerId,
       ownerType: owner.ownerType,
       subtitle: membersRow.title,
-      canManage: this.activityEventDTOIsAdmin(this.activityEventDTOForRow(membersRow)),
+      canManage: this.activityEventDTOIsAdmin(this.eventsService.peekKnownItemById(this.activeUser.id, membersRow.id)),
       acceptedMembers: summary?.acceptedMembers,
       pendingMembers: summary?.pendingMembers,
       capacityTotal: summary?.capacityTotal
@@ -642,7 +635,7 @@ export class ActivitiesPopupComponent implements OnDestroy {
     if (!row || !this.isEventStyleActivity(row)) {
       return null;
     }
-    const dto = this.activityEventDTOForRow(row);
+    const dto = this.eventsService.peekKnownItemById(this.activeUser.id, row.id);
     return {
       menu: 'activity-event-card',
       id: row.id,
@@ -2426,7 +2419,7 @@ export class ActivitiesPopupComponent implements OnDestroy {
 
   private activityRowBoostOrderValue(row: ActivityListItem): number {
     const sourceBoost = Number(this.isEventStyleActivity(row)
-      ? this.activityEventDTOForRow(row)?.boost
+      ? this.eventsService.peekKnownItemById(this.activeUser.id, row.id)?.boost
       : row.sortScore);
     if (Number.isFinite(sourceBoost)) {
       return Math.max(0, sourceBoost);
@@ -2436,7 +2429,7 @@ export class ActivitiesPopupComponent implements OnDestroy {
 
   private activityRowTimestampOrderValue(row: ActivityListItem): number {
     const startAtIso = this.isEventStyleActivity(row)
-      ? this.activityEventDTOForRow(row)?.startAtIso
+      ? this.eventsService.peekKnownItemById(this.activeUser.id, row.id)?.startAtIso
       : null;
     return AppUtils.toSortableDate(startAtIso ?? row.dateIso ?? '');
   }
@@ -2964,7 +2957,8 @@ export class ActivitiesPopupComponent implements OnDestroy {
   }
 
   protected isEventStyleActivity(row: ActivityListItem): row is ActivityEventListItem {
-    return this.isEventActivitiesPrimaryFilter() || !!this.activityEventDTOForRow(row as ActivityEventListItem);
+    return this.isEventActivitiesPrimaryFilter()
+      || !!this.eventsService.peekKnownItemById(this.activeUser.id, (row as ActivityEventListItem).id);
   }
 
   protected isActivityChatRow(row: ActivityListItem): boolean {
@@ -2984,7 +2978,7 @@ export class ActivitiesPopupComponent implements OnDestroy {
     if (!this.isEventStyleActivity(row)) {
       return row;
     }
-    const dto = this.activityEventDTOForRow(row);
+    const dto = this.eventsService.peekKnownItemById(this.activeUser.id, row.id);
     if (dto) {
       return ActivityEventInfoCardConverter.convert(dto, {
         activeUserId: this.activeUser.id
@@ -2997,16 +2991,12 @@ export class ActivitiesPopupComponent implements OnDestroy {
     Object.assign(row, this.withActivityEventInfoCard(row));
   }
 
-  private activityEventDTOForRow(row: ActivityEventListItem): ActivityEventDTO | null {
-    return this.eventsService.peekKnownItemById(this.activeUser.id, row.id);
-  }
-
   private activityEventListTypeForRow(row: ActivityEventListItem): ActivityEventListType {
     const rowType = this.activityEventListTypeFromSmartListKey(row.smartListKey);
     if (rowType) {
       return rowType;
     }
-    const dto = this.activityEventDTOForRow(row);
+    const dto = this.eventsService.peekKnownItemById(this.activeUser.id, row.id);
     if (dto) {
       return this.resolveActivityEventCardTypeFromDTO(dto);
     }
@@ -3028,12 +3018,10 @@ export class ActivitiesPopupComponent implements OnDestroy {
       : null;
   }
 
-  private activityMembersOwnerForRow(row: ActivityEventListItem) {
-    return ActivityEventInfoCardConverter.toActivityMembersOwner(row);
-  }
-
   private resolveActivityMembersPopupSummary(row: ActivityEventListItem): ActivityMembersSummaryDto | null {
-    const persistedSummary = this.activityMembersService.peekSummaryByOwner(this.activityMembersOwnerForRow(row));
+    const persistedSummary = this.activityMembersService.peekSummaryByOwner(
+      ActivityEventInfoCardConverter.toActivityMembersOwner(row)
+    );
     if (persistedSummary) {
       return {
         ...persistedSummary,
@@ -3049,7 +3037,7 @@ export class ActivitiesPopupComponent implements OnDestroy {
   }
 
   private activityCapacityTotal(row: ActivityEventListItem, fallbackBase = 0): number {
-    const dto = this.activityEventDTOForRow(row);
+    const dto = this.eventsService.peekKnownItemById(this.activeUser.id, row.id);
     const dtoCapacityMax = Number(dto?.capacityMax);
     if (Number.isFinite(dtoCapacityMax) && dtoCapacityMax >= 0) {
       return Math.max(fallbackBase, Math.trunc(dtoCapacityMax));
@@ -3095,7 +3083,7 @@ export class ActivitiesPopupComponent implements OnDestroy {
     if (this.activityEventListTypeForRow(row) !== 'invitations') {
       return row;
     }
-    const matchingDTO = this.activityEventDTOForRow(row);
+    const matchingDTO = this.eventsService.peekKnownItemById(this.activeUser.id, row.id);
     if (matchingDTO) {
       return ActivityEventInfoCardConverter.convert(matchingDTO, {
         activeUserId: this.activeUser.id
@@ -3124,7 +3112,7 @@ export class ActivitiesPopupComponent implements OnDestroy {
       if (row.id !== sync.id || !this.isEventStyleActivity(row)) {
         return row;
       }
-      const dto = this.activityEventDTOForRow(row);
+      const dto = this.eventsService.peekKnownItemById(this.activeUser.id, row.id);
       if (!dto) {
         return row;
       }
@@ -3146,7 +3134,7 @@ export class ActivitiesPopupComponent implements OnDestroy {
   }
 
   private applyActivityMembersSummaryToRow(row: ActivityEventListItem, summary: ActivityMembersSummaryDto): void {
-    const dto = this.activityEventDTOForRow(row);
+    const dto = this.eventsService.peekKnownItemById(this.activeUser.id, row.id);
     if (!dto) {
       return;
     }
@@ -3163,7 +3151,7 @@ export class ActivitiesPopupComponent implements OnDestroy {
     if (!this.selectedActivityMembersRow || !this.selectedActivityMembersRowId) {
       return;
     }
-    const owner = this.activityMembersOwnerForRow(this.selectedActivityMembersRow);
+    const owner = ActivityEventInfoCardConverter.toActivityMembersOwner(this.selectedActivityMembersRow);
     if (!owner) {
       return;
     }
@@ -3189,7 +3177,7 @@ export class ActivitiesPopupComponent implements OnDestroy {
         pendingMembers: item.pendingMembers ?? 0
       }));
     for (const record of eventRecords) {
-      const owner = this.activityMembersOwnerForRow(record.row);
+      const owner = ActivityEventInfoCardConverter.toActivityMembersOwner(record.row);
       const summary = this.activityMembersService.peekSummaryByOwner(owner);
       const acceptedMembers = summary?.acceptedMembers ?? record.acceptedMembers;
       const pendingMembers = summary?.pendingMembers ?? record.pendingMembers;
@@ -3510,10 +3498,6 @@ export class ActivitiesPopupComponent implements OnDestroy {
     this.activitiesSmartListQuery = {
       filters: nextFilters as ActivitiesSmartListFilters
     };
-  }
-
-  protected onActivitiesSmartListItemSelect(event: SmartListItemSelectEvent<ActivityListItem, ActivitiesSmartListFilters>): void {
-    this.onActivityRowClick(event.item);
   }
 
   protected onActivitiesSmartListStateChange(change: SmartListStateChange<ActivityListItem, ActivitiesSmartListFilters>): void {

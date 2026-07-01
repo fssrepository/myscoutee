@@ -122,7 +122,6 @@ export class ActivitiesEventsController {
   private get activitiesStore() { return this.host.activitiesStore; }
   private get activitiesEventScope() { return this.host.activitiesEventScope as ContractTypes.ActivitiesEventScope; }
   private set activitiesEventScope(value: ContractTypes.ActivitiesEventScope) { this.host.activitiesEventScope = value; }
-  private get activitiesRates() { return this.host.activitiesRates; }
   private get activitiesSmartList() { return this.host.activitiesSmartList; }
   private get activityMembersByRowId() { return this.host.activityMembersByRowId as Record<string, ActivityContracts.ActivityMemberDTO[]>; }
   private get activityMembersService() { return this.host.activityMembersService; }
@@ -133,7 +132,6 @@ export class ActivitiesEventsController {
   private get eventCheckoutDialogStore() { return this.host.eventCheckoutDialogStore; }
   private get eventsService() { return this.host.eventsService; }
   private get hostingPublicationFilter() { return this.host.hostingPublicationFilter as ContractTypes.HostingPublicationFilter; }
-  private get isMobileView() { return this.host.isMobileView as boolean; }
   private get pendingActivityMemberDelete() { return this.host.pendingActivityMemberDelete as ActivityContracts.ActivityMemberDTO | null; }
   private set pendingActivityMemberDelete(value: ActivityContracts.ActivityMemberDTO | null) { this.host.pendingActivityMemberDelete = value; }
   private get memberMenuStore() { return this.host.memberMenuStore as MemberMenuStore; }
@@ -722,7 +720,7 @@ export class ActivitiesEventsController {
 
   private async confirmActivityTakeOver(row: InfoCardData): Promise<void> {
     await this.eventsService.takeOverItem(this.activeUser.id, row.id);
-    const nextStatus = this.restoredActivityStatus(row);
+    const nextStatus = this.restoredActivityStatus();
     if (this.activitiesEventScope === 'pending') {
       this.activitiesSmartList?.removeVisibleItemByIdentity(this.activityRowIdentity(row));
     } else {
@@ -739,7 +737,7 @@ export class ActivitiesEventsController {
     this.cdr.markForCheck();
   }
 
-  private restoredActivityStatus(row: InfoCardData): string {
+  private restoredActivityStatus(): string {
     return 'A';
   }
 
@@ -1289,10 +1287,6 @@ export class ActivitiesEventsController {
       return true;
     }
     return this.isActivityIdentityTrashed(this.activityEventListTypeForRow(row), row.id);
-  }
-
-  private trashedActivityRows(): InfoCardData[] {
-    return Object.values(this.trashedActivityRowsByKey);
   }
 
   public trashedActivityCount(): number {
