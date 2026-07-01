@@ -144,6 +144,8 @@ export class UsersService extends BaseRouteModeService {
 
   async loadUserById(userId?: string, requestTimeoutMs?: number): Promise<UserDto | null> {
     const normalizedUserId = typeof userId === 'string' ? userId.trim() : '';
+    const counterOverrideUserId = normalizedUserId || this.userProfileStore.getActiveUserId().trim();
+    const counterOverrideSignature = this.counterOverrideSignature(counterOverrideUserId);
 
     if (this.isLocalRouteEnabled('/auth/me') && !normalizedUserId) {
       this.setLoadStatus(USER_BY_ID_LOAD_CONTEXT_KEY, 'error', 'Missing user id.');
@@ -171,12 +173,14 @@ export class UsersService extends BaseRouteModeService {
         this.userProfileStore.setActiveUserId(resolvedUserId);
       }
       if (resolvedUserId) {
-        this.activityStore.clearUserCounterOverrides(resolvedUserId);
-        if (response.counterOverrides) {
-          this.activityStore.patchUserCounterOverrides(
-            resolvedUserId,
-            this.normalizeCounterOverrides(response.counterOverrides, response.user.activities)
-          );
+        if (!this.counterOverridesChangedSince(counterOverrideUserId, resolvedUserId, counterOverrideSignature)) {
+          this.activityStore.clearUserCounterOverrides(resolvedUserId);
+          if (response.counterOverrides) {
+            this.activityStore.patchUserCounterOverrides(
+              resolvedUserId,
+              this.normalizeCounterOverrides(response.counterOverrides, response.user.activities)
+            );
+          }
         }
         if (response.filterPreferences) {
           this.userProfileStore.setUserFilterPreferences(resolvedUserId, response.filterPreferences);
@@ -200,6 +204,8 @@ export class UsersService extends BaseRouteModeService {
 
   async loadProfileExtById(userId?: string, requestTimeoutMs?: number): Promise<ProfileExtDto | null> {
     const normalizedUserId = typeof userId === 'string' ? userId.trim() : '';
+    const counterOverrideUserId = normalizedUserId || this.userProfileStore.getActiveUserId().trim();
+    const counterOverrideSignature = this.counterOverrideSignature(counterOverrideUserId);
 
     if (this.isLocalRouteEnabled('/auth/me/profile-ext') && !normalizedUserId) {
       this.setLoadStatus(USER_BY_ID_LOAD_CONTEXT_KEY, 'error', 'Missing user id.');
@@ -230,12 +236,14 @@ export class UsersService extends BaseRouteModeService {
         this.userProfileStore.setActiveUserId(resolvedUserId);
       }
       if (resolvedUserId) {
-        this.activityStore.clearUserCounterOverrides(resolvedUserId);
-        if (response.counterOverrides) {
-          this.activityStore.patchUserCounterOverrides(
-            resolvedUserId,
-            this.normalizeCounterOverrides(response.counterOverrides, user.activities)
-          );
+        if (!this.counterOverridesChangedSince(counterOverrideUserId, resolvedUserId, counterOverrideSignature)) {
+          this.activityStore.clearUserCounterOverrides(resolvedUserId);
+          if (response.counterOverrides) {
+            this.activityStore.patchUserCounterOverrides(
+              resolvedUserId,
+              this.normalizeCounterOverrides(response.counterOverrides, user.activities)
+            );
+          }
         }
         if (response.filterPreferences) {
           this.userProfileStore.setUserFilterPreferences(resolvedUserId, response.filterPreferences);
@@ -510,6 +518,26 @@ export class UsersService extends BaseRouteModeService {
     const onAbort = () => abortController.abort();
     signal.addEventListener('abort', onAbort, { once: true });
     return () => signal.removeEventListener('abort', onAbort);
+  }
+
+  private counterOverridesChangedSince(
+    requestedUserId: string,
+    resolvedUserId: string,
+    previousSignature: string
+  ): boolean {
+    const normalizedRequestedUserId = requestedUserId.trim();
+    const normalizedResolvedUserId = resolvedUserId.trim();
+    return normalizedRequestedUserId.length > 0
+      && normalizedRequestedUserId === normalizedResolvedUserId
+      && this.counterOverrideSignature(normalizedResolvedUserId) !== previousSignature;
+  }
+
+  private counterOverrideSignature(userId: string): string {
+    const normalizedUserId = userId.trim();
+    if (!normalizedUserId) {
+      return '';
+    }
+    return JSON.stringify(this.activityStore.getUserCounterOverrides(normalizedUserId));
   }
 
   private normalizeCounterOverrides(

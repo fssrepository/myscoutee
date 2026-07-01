@@ -31,6 +31,7 @@ import { LocalEventsRepository } from '../repositories/events.repository';
 import { LocalActivityResourcesRepository } from '../repositories/activity-resources.repository';
 import { LocalActivitySubEventStageRuntimeRepository } from '../repositories/activity-sub-event-stage-runtime.repository';
 import { LocalUsersRepository } from '../repositories/users.repository';
+import { LocalUsersService } from './users.service';
 import {
   LocalActivityEventDetailsMapper,
   LocalActivitySubEventStageRuntimeMapper,
@@ -69,6 +70,7 @@ export class LocalEventsService extends LocalRouteDelayService implements IEvent
   private readonly activitySubEventStageRuntimeRepository = inject(LocalActivitySubEventStageRuntimeRepository);
   private readonly eventFeedbackRepository = inject(LocalEventFeedbackRepository);
   private readonly usersRepository = inject(LocalUsersRepository);
+  private readonly usersService = inject(LocalUsersService);
 
   async queryItemsByUser(userId: string): Promise<ActivityEventRecord[]> {
     await this.waitForRouteDelay(LocalEventsService.EVENTS_ROUTE);
@@ -379,7 +381,7 @@ export class LocalEventsService extends LocalRouteDelayService implements IEvent
     options: { counterPatch?: UserMenuCountersDto | null } = {}
   ): Promise<void> {
     this.eventsRepository.trashItem(userId, sourceId);
-    this.patchLocalUserActivityCounters(userId, options.counterPatch ?? null);
+    await this.patchLocalUserActivityCounters(userId, options.counterPatch ?? null);
     await this.eventsRepository.flushToIndexedDb();
     await this.waitForRouteDelay(LocalEventsService.EVENTS_ROUTE);
   }
@@ -390,7 +392,7 @@ export class LocalEventsService extends LocalRouteDelayService implements IEvent
     options: { counterPatch?: UserMenuCountersDto | null } = {}
   ): Promise<void> {
     this.eventsRepository.publishItem(userId, sourceId);
-    this.patchLocalUserActivityCounters(userId, options.counterPatch ?? null);
+    await this.patchLocalUserActivityCounters(userId, options.counterPatch ?? null);
     await this.eventsRepository.flushToIndexedDb();
     await this.waitForRouteDelay(LocalEventsService.EVENTS_ROUTE);
   }
@@ -401,7 +403,7 @@ export class LocalEventsService extends LocalRouteDelayService implements IEvent
     options: { counterPatch?: UserMenuCountersDto | null } = {}
   ): Promise<void> {
     this.eventsRepository.unpublishItem(userId, sourceId);
-    this.patchLocalUserActivityCounters(userId, options.counterPatch ?? null);
+    await this.patchLocalUserActivityCounters(userId, options.counterPatch ?? null);
     await this.eventsRepository.flushToIndexedDb();
     await this.waitForRouteDelay(LocalEventsService.EVENTS_ROUTE);
   }
@@ -412,7 +414,7 @@ export class LocalEventsService extends LocalRouteDelayService implements IEvent
     options: { counterPatch?: UserMenuCountersDto | null } = {}
   ): Promise<void> {
     this.eventsRepository.restoreItem(userId, sourceId);
-    this.patchLocalUserActivityCounters(userId, options.counterPatch ?? null);
+    await this.patchLocalUserActivityCounters(userId, options.counterPatch ?? null);
     await this.eventsRepository.flushToIndexedDb();
     await this.waitForRouteDelay(LocalEventsService.EVENTS_ROUTE);
   }
@@ -505,7 +507,7 @@ export class LocalEventsService extends LocalRouteDelayService implements IEvent
       options.bookingConfirmed === true && options.pendingReason !== 'approval' && options.pendingReason !== 'waitlist',
       options.pendingReason === 'waitlist'
     );
-    this.patchLocalUserActivityCounters(userId, options.counterPatch ?? null);
+    await this.patchLocalUserActivityCounters(userId, options.counterPatch ?? null);
     await this.eventsRepository.flushToIndexedDb();
     if (options.skipLocalRouteDelay !== true) {
       await this.waitForRouteDelay(LocalEventsService.EVENTS_ROUTE);
@@ -523,7 +525,7 @@ export class LocalEventsService extends LocalRouteDelayService implements IEvent
     } = {}
   ): Promise<EventParticipationActionResultDTO | null> {
     const record = this.eventsRepository.leaveEvent(userId, sourceId);
-    this.patchLocalUserActivityCounters(userId, options.counterPatch ?? null);
+    await this.patchLocalUserActivityCounters(userId, options.counterPatch ?? null);
     await this.eventsRepository.flushToIndexedDb();
     await this.waitForRouteDelay(LocalEventsService.EVENTS_ROUTE);
     return record ? this.leftEventResult(record) : null;
@@ -547,72 +549,12 @@ export class LocalEventsService extends LocalRouteDelayService implements IEvent
     };
   }
 
-  private patchLocalUserActivityCounters(userId: string, patch: UserMenuCountersDto | null): void {
+  private async patchLocalUserActivityCounters(userId: string, patch: UserMenuCountersDto | null): Promise<void> {
     const normalizedUserId = userId.trim();
     if (!normalizedUserId || !patch) {
       return;
     }
-    const current = this.usersRepository.queryUserById(normalizedUserId);
-    if (!current) {
-      return;
-    }
-    this.usersRepository.upsertUser({
-      ...current,
-      activities: this.applyUserActivityCounterPatch(current.activities, patch)
-    });
-  }
-
-  private applyUserActivityCounterPatch(
-    current: NonNullable<ReturnType<LocalUsersRepository['queryUserById']>>['activities'],
-    patch: UserMenuCountersDto
-  ): NonNullable<ReturnType<LocalUsersRepository['queryUserById']>>['activities'] {
-    const next = { ...current };
-    const scalarKeys = [
-      'game',
-      'chat',
-      'invitations',
-      'events',
-      'hosting',
-      'cars',
-      'accommodation',
-      'supplies',
-      'tickets',
-      'contacts',
-      'feedback',
-      'adminJobs',
-      'adminMetrics'
-    ] as const;
-    for (const key of scalarKeys) {
-      const value = patch[key];
-      if (Number.isFinite(value)) {
-        next[key] = this.normalizeUserCounter(value);
-      }
-    }
-    if (patch.event) {
-      next.event = this.applyUserEventCounterPatch(current.event, patch.event);
-    }
-    return next;
-  }
-
-  private applyUserEventCounterPatch(
-    current: NonNullable<ReturnType<LocalUsersRepository['queryUserById']>>['activities']['event'],
-    patch: NonNullable<UserMenuCountersDto['event']>
-  ): NonNullable<ReturnType<LocalUsersRepository['queryUserById']>>['activities']['event'] {
-    const next = { ...(current ?? {}) };
-    const nextRecord = next as Record<string, number | undefined>;
-    const patchRecord = patch as Record<string, number | undefined>;
-    const keys = ['all', 'active', 'pending', 'invitations', 'hosting', 'drafts', 'trash'];
-    for (const key of keys) {
-      const value = patchRecord[key];
-      if (Number.isFinite(value)) {
-        nextRecord[key] = this.normalizeUserCounter(value);
-      }
-    }
-    return next;
-  }
-
-  private normalizeUserCounter(value: unknown): number {
-    return Math.max(0, Math.trunc(Number(value) || 0));
+    await this.usersService.patchUserActivityCounters(normalizedUserId, patch);
   }
 
   async createCheckoutSession(request: EventCheckoutRequest): Promise<EventCheckoutSession | null> {
