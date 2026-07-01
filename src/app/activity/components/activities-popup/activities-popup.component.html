@@ -46,8 +46,6 @@
         <app-activities-chat-template
           [row]="row"
           [groupLabel]="groupLabel"
-          [activeUserInitials]="activeUser.initials"
-          [adminServiceMode]="isAdminServiceChatMode()"
           (rowClick)="onActivityRowClick(row, $event)"
           (supportCaseAction)="onSupportCaseAction(row, $event)"
         ></app-activities-chat-template>

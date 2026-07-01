@@ -1,6 +1,4 @@
-import { ChangeDetectionStrategy, Component, EventEmitter, Input, OnChanges, Output, SimpleChanges, inject } from '@angular/core';
-
-import { I18nService } from '../../../../../shared/core';
+import { ChangeDetectionStrategy, Component, EventEmitter, Input, OnChanges, Output } from '@angular/core';
 import type { ChatDTO } from '../../../../../shared/core/contracts/chat.interface';
 import type { UserDto } from '../../../../../shared/core/contracts/user.interface';
 import type * as ContractTypes from '../../../../../shared/core/contracts';
@@ -9,9 +7,6 @@ import {
   SingleRowComponent,
   type SingleRowData
 } from '../../../../../shared/ui';
-import {
-  buildActivitiesChatSingleRowData
-} from './activities-chat-template.builder';
 
 @Component({
   selector: 'app-activities-chat-template',
@@ -22,35 +17,24 @@ import {
   changeDetection: ChangeDetectionStrategy.OnPush
 })
 export class ActivitiesChatTemplateComponent implements OnChanges {
-  private readonly i18n = inject(I18nService);
-
   @Input() row: SingleRowData | null = null;
   @Input() groupLabel: string | null = null;
-  @Input() activeUserInitials = '';
-  @Input() adminServiceMode = false;
 
   @Output() readonly rowClick = new EventEmitter<Event>();
   @Output() readonly supportCaseAction = new EventEmitter<ContractTypes.SupportCaseAction>();
 
   protected singleRow: SingleRowData | null = null;
 
-  ngOnChanges(changes: SimpleChanges): void {
-    if (changes['row'] || changes['groupLabel'] || changes['activeUserInitials'] || changes['adminServiceMode']) {
-      this.singleRow = this.buildSingleRowData();
-    }
-  }
-
-  private buildSingleRowData(): SingleRowData | null {
+  ngOnChanges(): void {
     const row = this.row;
     if (!row) {
-      return null;
+      this.singleRow = null;
+      return;
     }
-    return buildActivitiesChatSingleRowData(row, {
-      groupLabel: this.groupLabel,
-      activeUserInitials: this.activeUserInitials,
-      adminServiceMode: this.adminServiceMode,
-      translate: key => this.i18n.translate(key)
-    });
+    this.singleRow = {
+      ...row,
+      groupLabel: this.groupLabel
+    };
   }
 
   protected onRowClick(event: Event): void {

@@ -11,7 +11,6 @@ import {
 } from '@angular/core';
 
 import type { ActivityRateDTO } from '../../../../../shared/core/contracts/activity.interface';
-import type { UserDto } from '../../../../../shared/core/contracts/user.interface';
 import type * as ContractTypes from '../../../../../shared/core/contracts';
 import {
   type AppMenuItemSelectEvent,
@@ -19,19 +18,20 @@ import {
   type CardMenuRequestEvent,
   PairCardComponent,
   type CardProfileViewData,
-  type RateCardPerson,
   type AppMenuRateConfig,
   SingleCardComponent,
   type CardBadgeConfig,
   type ImageCardData,
-  type ImageCardPerson,
   type PairCardData,
   type SmartListItemMenuRequest,
   type SingleCardData
 } from '../../../../../shared/ui';
 import {
+  ActivityRatePairCardConverter,
+  ActivityRateSingleCardConverter,
   ActivityRateMenuConverter,
-  ActivityRateMenuSelectionConverter
+  ActivityRateMenuSelectionConverter,
+  isActivityRatePairCardRow
 } from '../../../../../shared/ui/converters';
 import { ActivitiesRateEditorPresenter } from './activities-rate-editor.presenter';
 import {
@@ -53,15 +53,7 @@ import {
   pendingActivitiesRateDirectionAfterRating,
   selectedActivitiesRateRow
 } from './activities-rate-state.presenter';
-import {
-  buildActivitiesPairRateCard,
-  buildActivitiesSingleRateCard,
-  isActivitiesPairRateRow
-} from './activities-rate-template.builder';
-
 export interface ActivitiesRateTemplateContext {
-  getRateCardUsers: () => readonly RateCardPerson[];
-  getRateCardUserById: (userId: string) => RateCardPerson | null;
   getActiveUserGender: () => 'woman' | 'man';
   getRateItemById: (itemId: string) => ActivityRateDTO | null;
   getDisplayedDirection: (item: ActivityRateDTO) => ActivityRateDTO['direction'];
@@ -151,14 +143,12 @@ export class ActivitiesRateTemplateComponent implements OnChanges {
       presentation: this.presentation,
       state: this.state,
       displayedDirection: this.displayedDirectionForRow(row, context),
-      availableUsers: context.getRateCardUsers(),
-      resolveUserById: (userId: string) => context.getRateCardUserById(userId),
       activeUserGender: context.getActiveUserGender(),
       fullscreenSplitEnabled: !context.isFullscreenPaginationAnimating()
     } as const;
 
-    if (isActivitiesPairRateRow(row)) {
-      this.pairCard = buildActivitiesPairRateCard(row, {
+    if (isActivityRatePairCardRow(row)) {
+      this.pairCard = ActivityRatePairCardConverter.convert(row, {
         ...sharedOptions,
         badge: this.activityRateBadgeConfig(row, context, {
           layout: this.presentation === 'fullscreen' ? 'pair-overlap' : 'between',
@@ -170,7 +160,7 @@ export class ActivitiesRateTemplateComponent implements OnChanges {
       return;
     }
 
-    this.singleCard = buildActivitiesSingleRateCard(row, {
+    this.singleCard = ActivityRateSingleCardConverter.convert(row, {
       ...sharedOptions,
       badge: this.activityRateBadgeConfig(row, context, {
         layout: 'floating',
@@ -331,8 +321,6 @@ export class ActivitiesRatesController {
   private isRatingBarBlinking = false;
 
   readonly templateContext: ActivitiesRateTemplateContext = {
-    getRateCardUsers: () => this.rateCardUsers(),
-    getRateCardUserById: userId => this.rateCardUserById(userId),
     getActiveUserGender: () => this.deps.getActiveUserGender(),
     getRateItemById: itemId => this.rateItemById(itemId),
     getDisplayedDirection: item => this.displayedDirection(item),
@@ -974,58 +962,4 @@ export class ActivitiesRatesController {
     setTimeout(() => startBlink(), 0);
   }
 
-  private rateCardUsers(): readonly RateCardPerson[] {
-    const usersById = new Map<string, RateCardPerson>();
-    const addUser = (user: ImageCardPerson | RateCardPerson | UserDto | null | undefined): void => {
-      const person = toActivitiesRateCardPerson(user);
-      if (person) {
-        usersById.set(person.id, person);
-      }
-    };
-
-    const addRowUsers = (row: ImageCardData | null | undefined): void => {
-      if (!row) {
-        return;
-      }
-      addUser(row.primaryUser);
-      for (const user of row.pairUsers ?? []) {
-        addUser(user);
-      }
-      for (const user of row.availableUsers ?? []) {
-        addUser(user);
-      }
-    };
-
-    addRowUsers(this.deps.getSmartListCursorItem());
-    for (const row of this.deps.getFilteredActivityRows()) {
-      addRowUsers(row);
-    }
-
-    return [...usersById.values()];
-  }
-
-  private rateCardUserById(userId: string): RateCardPerson | null {
-    const normalizedUserId = userId.trim();
-    if (!normalizedUserId) {
-      return null;
-    }
-    return this.rateCardUsers().find(user => user.id === normalizedUserId) ?? null;
-  }
-}
-
-function toActivitiesRateCardPerson(
-  user: ImageCardPerson | RateCardPerson | UserDto | null | undefined
-): RateCardPerson | null {
-  if (!user) {
-    return null;
-  }
-
-  return {
-    id: user.id,
-    name: user.name,
-    age: user.age,
-    city: user.city,
-    gender: user.gender,
-    profile: 'profile' in user ? user.profile : ('images' in user || 'profileDetails' in user ? user : null)
-  };
 }

@@ -1,7 +1,12 @@
 import { AppUtils } from '../../app-utils';
 import type { ActivityRateDTO } from '../../core/contracts/activity.interface';
 import type { UserDto } from '../../core/contracts/user.interface';
-import type { ImageCardData, ImageCardPerson, PairCardSlot } from '../components/core/smart-list/card';
+import type {
+  CardContextBadgeConfig,
+  ImageCardData,
+  ImageCardPerson,
+  PairCardSlot
+} from '../components/core/smart-list/card';
 import type { UiListConverter } from './converter.types';
 
 export interface ActivityRateImageCardConverterOptions {
@@ -39,6 +44,7 @@ export class ActivityRateImageCardConverter {
       availableUsers: this.buildAvailableUsers(options),
       singleImageUrls: this.buildSingleImageUrls(dto, primaryUser),
       pairSlots: this.buildPairSlots(dto, options),
+      contextBadge: this.buildContextBadge(dto, options),
       stackClasses: [
         dto.mode === 'pair' ? 'activities-rate-profile-stack-pair' : 'activities-rate-profile-stack-single',
         `activities-rate-profile-stack-${direction}`
@@ -144,9 +150,53 @@ export class ActivityRateImageCardConverter {
               primaryLine: `${label} - waiting`,
               secondaryLine: 'No pair card yet',
               placeholderLabel: ''
-            }]
+            }],
+        profileView: user
+          ? {
+            userId: user.id,
+            label: user.name
+          }
+          : null
       };
     });
+  }
+
+  private static buildContextBadge(
+    dto: ActivityRateDTO,
+    options: ActivityRateImageCardConverterOptions
+  ): CardContextBadgeConfig | null {
+    if (dto.mode !== 'individual' || dto.socialContext !== 'friends-in-common') {
+      return null;
+    }
+    const bridgeUser = this.resolveRatedUserById(dto.bridgeUserId, options);
+    if (!bridgeUser) {
+      return null;
+    }
+    const bridgeCount = Math.max(0, Math.trunc(Number(dto.bridgeCount) || 0));
+    return {
+      label: AppUtils.initialsFromText(bridgeUser.name),
+      imageUrl: this.firstProfileImageUrl(bridgeUser),
+      counterLabel: bridgeCount > 1 ? `+${bridgeCount - 1}` : null,
+      title: this.contextBadgeTitle(bridgeUser.name, bridgeCount),
+      ariaLabel: `View ${bridgeUser.name} profile`,
+      profileView: {
+        userId: bridgeUser.id,
+        label: bridgeUser.name
+      }
+    };
+  }
+
+  private static contextBadgeTitle(bridgeName: string, bridgeCount: number): string {
+    const extraCount = Math.max(0, Math.trunc(Number(bridgeCount) || 0) - 1);
+    return extraCount > 0
+      ? `Shown via ${bridgeName} and ${extraCount} more`
+      : `Shown via ${bridgeName}`;
+  }
+
+  private static firstProfileImageUrl(user: UserDto): string | null {
+    return user.images
+      ?.map(image => `${image ?? ''}`.trim())
+      .find(image => image.length > 0) ?? null;
   }
 
   private static buildPairSlotSlides(

@@ -57,6 +57,12 @@ export {
   type ActivityRateImageCardConverterOptions
 } from './activity-rate-image-card.converter';
 export {
+  ActivityRatePairCardConverter,
+  ActivityRateSingleCardConverter,
+  isActivityRatePairCardRow,
+  type ActivityRateCardConverterOptions
+} from './activity-rate-card.converter';
+export {
   ActivityRateMenuConverter,
   ActivityRateMenuSelectionConverter,
   activityRateMenuConverter,
