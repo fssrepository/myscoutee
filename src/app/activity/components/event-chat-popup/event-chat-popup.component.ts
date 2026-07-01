@@ -179,7 +179,7 @@ export class EventChatPopupComponent implements OnDestroy {
 
   protected readonly session = computed(() => this.activitiesStore.eventChatSession());
   protected chatInitialLoadPending = false;
-  protected allMessages: ContractTypes.ChatPopupMessage[] = [];
+  protected messages: ContractTypes.ChatPopupMessage[] = [];
   protected draftMessage = '';
   protected chatComposeDetachedSpace = 108;
   protected chatHeaderContext: AppUiTypes.PopupHeaderContext | null = null;
@@ -307,6 +307,7 @@ export class EventChatPopupComponent implements OnDestroy {
   private typingIdleTimer: ReturnType<typeof setTimeout> | null = null;
   private localTypingActive = false;
   private visibleChatThreadTotal = 0;
+  private chatThreadKnownTotal = 0;
   private readonly latestVisibleReadMessageIdByReaderId: Record<string, string> = {};
   protected readonly visibleReadReceiptsByMessageId: Record<string, ContractTypes.ChatReadAvatar[]> = {};
   private readonly freshMessageIds = new Set<string>();
@@ -361,7 +362,7 @@ export class EventChatPopupComponent implements OnDestroy {
       this.replyTarget = null;
       this.editingMessageId = '';
       this.chatThreadSmartList?.closeMenu();
-      this.allMessages = [];
+      this.messages = [];
       this.typingIndicators = [];
       this.localTypingActive = false;
       this.clearTypingIdleTimer();
@@ -371,6 +372,7 @@ export class EventChatPopupComponent implements OnDestroy {
       this.resetVisibleReadReceipts();
       this.chatThreadRevision = 0;
       this.visibleChatThreadTotal = 0;
+      this.chatThreadKnownTotal = 0;
       this.syncChatThreadQuery();
       if (!session) {
         this.loadedSessionKey = null;
@@ -395,6 +397,7 @@ export class EventChatPopupComponent implements OnDestroy {
     this.teardownLiveChatUpdates();
     this.clearPendingMessageTimers();
     this.visibleChatThreadTotal = 0;
+    this.chatThreadKnownTotal = 0;
   }
 
   protected close(): void {
@@ -404,6 +407,7 @@ export class EventChatPopupComponent implements OnDestroy {
     this.teardownLiveChatUpdates();
     this.clearPendingMessageTimers();
     this.visibleChatThreadTotal = 0;
+    this.chatThreadKnownTotal = 0;
     this.loadedSessionKey = null;
     this.chatThreadQuery = {};
     this.chatHeaderControlsHydrated = false;
@@ -1124,7 +1128,7 @@ export class EventChatPopupComponent implements OnDestroy {
     attachment: ContractTypes.ChatMessageAttachment;
     poll: ChatPollState;
   } | null {
-    const message = this.allMessages.find(item => item.id === this.pollVoteMessageId) ?? null;
+    const message = this.messages.find(item => item.id === this.pollVoteMessageId) ?? null;
     const attachment = message?.attachments?.find(item => item.id === this.pollVoteAttachmentId && item.type === 'poll') ?? null;
     return message && attachment
       ? {
@@ -1179,7 +1183,7 @@ export class EventChatPopupComponent implements OnDestroy {
     }
     const activeUserId = this.activeUserId() || 'self';
     const presentation = this.resolveOptimisticSenderPresentation(activeUserId);
-    const currentMessage = this.allMessages.find(item => item.id === messageId) ?? { ...message, id: messageId };
+    const currentMessage = this.messages.find(item => item.id === messageId) ?? { ...message, id: messageId };
     const poll = this.parsePollState(attachment);
     const nextPoll: ChatPollState = {
       ...poll,
@@ -1449,7 +1453,7 @@ export class EventChatPopupComponent implements OnDestroy {
     }
     const activeUserId = this.activeUserId() || 'self';
     const presentation = this.resolveOptimisticSenderPresentation(activeUserId);
-    const currentMessage = this.allMessages.find(item => item.id === messageId) ?? { ...message, id: messageId };
+    const currentMessage = this.messages.find(item => item.id === messageId) ?? { ...message, id: messageId };
     const withoutMine = (currentMessage.reactions ?? []).filter(reaction => !this.isOwnReaction(reaction, activeUserId, presentation));
     const sameReaction = (currentMessage.reactions ?? []).some(reaction =>
       this.isOwnReaction(reaction, activeUserId, presentation) && reaction.emoji === emoji
@@ -1549,7 +1553,7 @@ export class EventChatPopupComponent implements OnDestroy {
     if (!messageId) {
       return null;
     }
-    const message = this.allMessages.find(item => item.id === messageId) ?? null;
+    const message = this.messages.find(item => item.id === messageId) ?? null;
     return message && (message.reactions?.length ?? 0) > 0 ? message : null;
   }
 
@@ -1558,7 +1562,7 @@ export class EventChatPopupComponent implements OnDestroy {
     if (!messageId) {
       return null;
     }
-    return this.allMessages.find(message => message.id === messageId && !message.deletedAtIso) ?? null;
+    return this.messages.find(message => message.id === messageId && !message.deletedAtIso) ?? null;
   }
 
   protected reactionDetailsRows(message: ContractTypes.ChatPopupMessage): ContractTypes.ChatMessageReaction[] {
@@ -1587,7 +1591,7 @@ export class EventChatPopupComponent implements OnDestroy {
   }
 
   protected replyPreviewParts(replyTo: ContractTypes.ChatPopupMessage['replyTo']): { title: string; meta: string } {
-    const sourceMessage = this.allMessages.find(message => message.id === `${replyTo?.id ?? ''}`.trim());
+    const sourceMessage = this.messages.find(message => message.id === `${replyTo?.id ?? ''}`.trim());
     const sourceAttachment = sourceMessage?.attachments?.[0];
     if (sourceAttachment?.type === 'event') {
       return this.attachmentReferenceParts(sourceAttachment, 'Event');
@@ -1719,7 +1723,7 @@ export class EventChatPopupComponent implements OnDestroy {
   }
 
   protected pinnedMessages(): ContractTypes.ChatPopupMessage[] {
-    return this.allMessages
+    return this.messages
       .filter(message => !!message.pinnedAtIso)
       .sort((first, second) => AppUtils.toSortableDate(second.pinnedAtIso ?? '') - AppUtils.toSortableDate(first.pinnedAtIso ?? ''));
   }
@@ -2415,7 +2419,7 @@ export class EventChatPopupComponent implements OnDestroy {
       return;
     }
     const session = this.session();
-    this.allMessages = this.allMessages.map(message => message.id === editingMessageId
+    this.messages = this.messages.map(message => message.id === editingMessageId
       ? {
           ...message,
           text: convertedText,
@@ -2514,7 +2518,7 @@ export class EventChatPopupComponent implements OnDestroy {
       this.chatHeaderControlsHydrated = true;
       this.syncSelectedChatHeader(session.item, { hydrateControls: true });
       void this.refreshSelectedChatHeader(session.item, sessionKey);
-      this.allMessages = [];
+      this.messages = [];
       this.rebuildVisibleReadReceipts();
       this.initialChatLoadedSessionKey = sessionKey;
       await this.startLiveChatUpdates(session.item, sessionKey);
@@ -2555,15 +2559,20 @@ export class EventChatPopupComponent implements OnDestroy {
       .sort((first, second) =>
         AppUtils.toSortableDate(second.sentAtIso) - AppUtils.toSortableDate(first.sentAtIso)
       );
-    this.allMessages = this.deduplicateChatMessages(options.replace === true
+    this.messages = this.deduplicateChatMessages(options.replace === true
       ? items
-      : [...this.allMessages, ...items]
+      : [...this.messages, ...items]
     ).sort((first, second) =>
       AppUtils.toSortableDate(second.sentAtIso) - AppUtils.toSortableDate(first.sentAtIso)
     );
+    this.visibleChatThreadTotal = this.messages.length;
+    const pageTotal = Math.trunc(Number(page.total) || 0);
+    this.chatThreadKnownTotal = options.replace === true
+      ? Math.max(this.messages.length, pageTotal)
+      : Math.max(this.chatThreadKnownTotal, this.messages.length, pageTotal);
     return {
       items,
-      total: page.total,
+      total: this.chatThreadKnownTotal,
       nextCursor: page.nextCursor ?? null,
       context: page.context ?? this.chatHeaderContext ?? undefined
     };
@@ -2572,10 +2581,14 @@ export class EventChatPopupComponent implements OnDestroy {
   private emptyChatThreadPage(): PageResult<ContractTypes.ChatPopupMessage> {
     return {
       items: [],
-      total: this.allMessages.length,
+      total: this.chatThreadVisibleTotal(),
       nextCursor: null,
       context: this.chatHeaderContext ?? undefined
     };
+  }
+
+  private chatThreadVisibleTotal(): number {
+    return Math.max(this.chatThreadKnownTotal, this.messages.length);
   }
 
   private syncChatThreadQuery(): void {
@@ -2659,12 +2672,12 @@ export class EventChatPopupComponent implements OnDestroy {
       this.replacePendingMessage(matchedPendingId, normalizedMessage, shouldStickToEnd);
       return;
     }
-    if (this.allMessages.some(existingMessage => this.isSameChatMessage(existingMessage, normalizedMessage))) {
+    if (this.messages.some(existingMessage => this.isSameChatMessage(existingMessage, normalizedMessage))) {
       this.replaceExistingChatMessage(normalizedMessage);
       return;
     }
     this.flagFreshMessage(normalizedMessage.id);
-    this.allMessages = this.deduplicateChatMessages([...this.allMessages, normalizedMessage])
+    this.messages = this.deduplicateChatMessages([...this.messages, normalizedMessage])
       .sort((first, second) => AppUtils.toSortableDate(second.sentAtIso) - AppUtils.toSortableDate(first.sentAtIso));
     this.rebuildVisibleReadReceipts();
     this.syncEventChatSummaryFromMessage(normalizedMessage);
@@ -2677,7 +2690,7 @@ export class EventChatPopupComponent implements OnDestroy {
   private replaceExistingChatMessage(message: ContractTypes.ChatPopupMessage): void {
     const normalizedMessage = this.normalizeChatMessage(message);
     let changed = false;
-    this.allMessages = this.allMessages.map(existingMessage => {
+    this.messages = this.messages.map(existingMessage => {
       if (!this.isSameChatMessage(existingMessage, normalizedMessage)) {
         return existingMessage;
       }
@@ -2691,7 +2704,7 @@ export class EventChatPopupComponent implements OnDestroy {
     if (!changed) {
       return;
     }
-    this.allMessages = this.deduplicateChatMessages(this.allMessages)
+    this.messages = this.deduplicateChatMessages(this.messages)
       .sort((first, second) => AppUtils.toSortableDate(second.sentAtIso) - AppUtils.toSortableDate(first.sentAtIso));
     this.rebuildVisibleReadReceipts();
     this.syncEventChatSummaryFromMessage(normalizedMessage);
@@ -2704,7 +2717,7 @@ export class EventChatPopupComponent implements OnDestroy {
     if (!messageId) {
       return false;
     }
-    const existing = this.allMessages.find(item => item.id === messageId);
+    const existing = this.messages.find(item => item.id === messageId);
     if (!existing || existing.deliveryState !== 'pending') {
       return false;
     }
@@ -2849,14 +2862,14 @@ export class EventChatPopupComponent implements OnDestroy {
     if (!read.userId || read.userId === this.activeUserId()) {
       return;
     }
-    const loadedMessageIds = new Set(this.allMessages.map(message => message.id));
+    const loadedMessageIds = new Set(this.messages.map(message => message.id));
     const matchedMessageIds = new Set((read.messageIds ?? []).filter(messageId => loadedMessageIds.has(messageId)));
     if (matchedMessageIds.size === 0) {
       return;
     }
 
     let changed = false;
-    this.allMessages = this.allMessages.map(message => {
+    this.messages = this.messages.map(message => {
       if (!message.mine || !matchedMessageIds.has(message.id)) {
         return message;
       }
@@ -2896,8 +2909,8 @@ export class EventChatPopupComponent implements OnDestroy {
     for (const key of Object.keys(this.visibleReadReceiptsByMessageId)) {
       delete this.visibleReadReceiptsByMessageId[key];
     }
-    for (let index = this.allMessages.length - 1; index >= 0; index -= 1) {
-      const message = this.allMessages[index];
+    for (let index = this.messages.length - 1; index >= 0; index -= 1) {
+      const message = this.messages[index];
       if (!message.mine) {
         continue;
       }
@@ -2908,7 +2921,7 @@ export class EventChatPopupComponent implements OnDestroy {
         this.latestVisibleReadMessageIdByReaderId[reader.id] = message.id;
       }
     }
-    for (const message of this.allMessages) {
+    for (const message of this.messages) {
       if (!message.mine || (message.readBy?.length ?? 0) === 0) {
         continue;
       }
@@ -2934,7 +2947,7 @@ export class EventChatPopupComponent implements OnDestroy {
     }
     const normalizedClientId = `${message.clientId ?? ''}`.trim();
     if (normalizedClientId) {
-      const exactPendingMatch = this.allMessages.find(pendingMessage =>
+      const exactPendingMatch = this.messages.find(pendingMessage =>
         pendingMessage.mine
         && (pendingMessage.deliveryState === 'pending' || pendingMessage.deliveryState === 'timed-out')
         && `${pendingMessage.clientId ?? ''}`.trim() === normalizedClientId
@@ -2947,7 +2960,7 @@ export class EventChatPopupComponent implements OnDestroy {
     let matchedDiff = Number.POSITIVE_INFINITY;
     const messageSentAtMs = AppUtils.toSortableDate(message.sentAtIso);
 
-    for (const pendingMessage of this.allMessages) {
+    for (const pendingMessage of this.messages) {
       if (
         !pendingMessage.mine
         || (pendingMessage.deliveryState !== 'pending' && pendingMessage.deliveryState !== 'timed-out')
@@ -2971,13 +2984,13 @@ export class EventChatPopupComponent implements OnDestroy {
     message: ContractTypes.ChatPopupMessage,
     stickToEnd: boolean
   ): boolean {
-    const pendingIndex = this.allMessages.findIndex(existingMessage => existingMessage.id === pendingMessageId);
+    const pendingIndex = this.messages.findIndex(existingMessage => existingMessage.id === pendingMessageId);
     if (pendingIndex < 0) {
       return false;
     }
 
     this.clearPendingMessageTimeout(pendingMessageId);
-    const pendingMessage = this.allMessages[pendingIndex];
+    const pendingMessage = this.messages[pendingIndex];
     const pendingClientId = pendingMessage?.clientId;
     const hasQueuedReaction = this.queuedReactionByPendingMessageId.has(pendingMessageId);
     const queuedReactionEmoji = hasQueuedReaction
@@ -2998,7 +3011,7 @@ export class EventChatPopupComponent implements OnDestroy {
       reactions: hasQueuedReaction ? (pendingMessage?.reactions ?? []) : normalizedMessage.reactions,
       deliveryState: hasQueuedReaction ? 'pending' : normalizedMessage.deliveryState
     };
-    let nextMessages = [...this.allMessages];
+    let nextMessages = [...this.messages];
     const duplicateIndex = nextMessages.findIndex((existingMessage, index) => index !== pendingIndex && existingMessage.id === nextMessage.id);
     if (duplicateIndex >= 0) {
       nextMessages[duplicateIndex] = nextMessage;
@@ -3007,7 +3020,7 @@ export class EventChatPopupComponent implements OnDestroy {
       nextMessages[pendingIndex] = nextMessage;
     }
 
-    this.allMessages = this.deduplicateChatMessages(nextMessages)
+    this.messages = this.deduplicateChatMessages(nextMessages)
       .sort((first, second) => AppUtils.toSortableDate(second.sentAtIso) - AppUtils.toSortableDate(first.sentAtIso));
     this.rebuildVisibleReadReceipts();
     this.syncEventChatSummaryFromMessage(nextMessage);
@@ -3074,7 +3087,7 @@ export class EventChatPopupComponent implements OnDestroy {
       // This preserves the "history" the user has already loaded in the UI
       const mergedMessages = this.mergeServerSnapshotWithPendingMessages(snapshot);
     
-      this.allMessages = mergedMessages
+      this.messages = mergedMessages
         .sort((first, second) => AppUtils.toSortableDate(second.sentAtIso) - AppUtils.toSortableDate(first.sentAtIso));
 
       this.rebuildVisibleReadReceipts();
@@ -3102,13 +3115,13 @@ export class EventChatPopupComponent implements OnDestroy {
       }
       matchedPendingIds.add(pendingId);
       this.clearPendingMessageTimeout(pendingId);
-      const pendingMessage = this.allMessages.find(existingMessage => existingMessage.id === pendingId);
+      const pendingMessage = this.messages.find(existingMessage => existingMessage.id === pendingId);
       return this.normalizeChatMessage({
         ...message,
         clientId: pendingMessage?.clientId
       });
     });
-    const unresolvedPendingMessages = this.allMessages.filter(message =>
+    const unresolvedPendingMessages = this.messages.filter(message =>
       (message.deliveryState === 'pending' || message.deliveryState === 'timed-out')
       && !matchedPendingIds.has(message.id)
     );
@@ -3141,16 +3154,16 @@ export class EventChatPopupComponent implements OnDestroy {
   }
 
   private markPendingMessageTimedOut(messageId: string): void {
-    const pendingIndex = this.allMessages.findIndex(message => message.id === messageId && message.deliveryState === 'pending');
+    const pendingIndex = this.messages.findIndex(message => message.id === messageId && message.deliveryState === 'pending');
     if (pendingIndex < 0) {
       return;
     }
-    const nextMessages = [...this.allMessages];
+    const nextMessages = [...this.messages];
     nextMessages[pendingIndex] = {
       ...nextMessages[pendingIndex],
       deliveryState: 'timed-out'
     };
-    this.allMessages = nextMessages;
+    this.messages = nextMessages;
     
     this.refreshVisibleChatThreadSurface();
 
@@ -3163,7 +3176,7 @@ export class EventChatPopupComponent implements OnDestroy {
       return;
     }
     let changed = false;
-    this.allMessages = this.allMessages.map(message => {
+    this.messages = this.messages.map(message => {
       if (message.id !== normalizedMessageId || message.deliveryState !== 'pending') {
         return message;
       }
@@ -3182,8 +3195,12 @@ export class EventChatPopupComponent implements OnDestroy {
 
   private refreshVisibleChatThreadSurface(): void {
     const previousTotal = this.visibleChatThreadTotal;
-    const nextTotal = this.allMessages.length;
+    const nextTotal = this.messages.length;
     this.visibleChatThreadTotal = nextTotal;
+    if (this.chatThreadKnownTotal > previousTotal && nextTotal > previousTotal) {
+      this.chatThreadKnownTotal += nextTotal - previousTotal;
+    }
+    const visibleTotal = this.chatThreadVisibleTotal();
     const smartList = this.chatThreadSmartList;
     if (!smartList) {
       this.chatThreadRevision++;
@@ -3191,7 +3208,7 @@ export class EventChatPopupComponent implements OnDestroy {
       return;
     }
 
-    const latestMessageById = new Map(this.allMessages.map(message => [message.id, message] as const));
+    const latestMessageById = new Map(this.messages.map(message => [message.id, message] as const));
     const currentVisibleItems = smartList.itemsSnapshot()
       .map(message => latestMessageById.get(message.id) ?? message)
       .filter(message => latestMessageById.has(message.id));
@@ -3202,8 +3219,8 @@ export class EventChatPopupComponent implements OnDestroy {
         return;
       }
       smartList.replaceVisibleItems(
-        this.allMessages.slice(0, nextVisibleCount),
-        { total: nextTotal }
+        this.messages.slice(0, nextVisibleCount),
+        { total: visibleTotal }
       );
       return;
     }
@@ -3211,7 +3228,7 @@ export class EventChatPopupComponent implements OnDestroy {
     const addedCount = Math.max(0, nextTotal - previousTotal);
     const visibleMessageIds = new Set(currentVisibleItems.map(message => message.id));
     const addedBottomItems = addedCount > 0
-      ? this.allMessages.filter(message => !visibleMessageIds.has(message.id)).slice(0, addedCount)
+      ? this.messages.filter(message => !visibleMessageIds.has(message.id)).slice(0, addedCount)
       : [];
     const nextVisibleItems = addedBottomItems.length > 0
       ? [...addedBottomItems, ...currentVisibleItems]
@@ -3222,7 +3239,7 @@ export class EventChatPopupComponent implements OnDestroy {
     }
     smartList.replaceVisibleItems(
       nextVisibleItems,
-      { total: nextTotal }
+      { total: visibleTotal }
     );
   }
 
@@ -3235,7 +3252,7 @@ export class EventChatPopupComponent implements OnDestroy {
       return;
     }
 
-    const latestMessageById = new Map(this.allMessages.map(message => [message.id, message] as const));
+    const latestMessageById = new Map(this.messages.map(message => [message.id, message] as const));
     const currentVisibleItems = smartList.itemsSnapshot()
       .map(message => latestMessageById.get(message.id) ?? message)
       .filter(message => latestMessageById.has(message.id));
@@ -3245,9 +3262,9 @@ export class EventChatPopupComponent implements OnDestroy {
       : currentVisibleItems;
 
     smartList.replaceVisibleItems(nextVisibleItems, {
-      total: this.allMessages.length
+      total: this.chatThreadVisibleTotal()
     });
-    this.visibleChatThreadTotal = this.allMessages.length;
+    this.visibleChatThreadTotal = this.messages.length;
 
     if (stickToEnd) {
       this.scheduleChatThreadScrollToEnd();
@@ -3314,7 +3331,7 @@ export class EventChatPopupComponent implements OnDestroy {
   }
 
   private syncEventChatSummaryFromLatestMessage(): void {
-    const latestMessage = this.allMessages[0];
+    const latestMessage = this.messages[0];
     if (!latestMessage) {
       return;
     }
@@ -4291,7 +4308,7 @@ export class EventChatPopupComponent implements OnDestroy {
     if (!normalizedMessageId) {
       return false;
     }
-    const targetIndex = this.allMessages.findIndex(message => `${message.id ?? ''}`.trim() === normalizedMessageId);
+    const targetIndex = this.messages.findIndex(message => `${message.id ?? ''}`.trim() === normalizedMessageId);
     if (targetIndex < 0) {
       return false;
     }
@@ -4301,8 +4318,8 @@ export class EventChatPopupComponent implements OnDestroy {
       return true;
     }
     smartList.replaceVisibleItems(
-      this.allMessages.slice(0, targetIndex + 1),
-      { total: this.allMessages.length }
+      this.messages.slice(0, targetIndex + 1),
+      { total: this.chatThreadVisibleTotal() }
     );
     return true;
   }
