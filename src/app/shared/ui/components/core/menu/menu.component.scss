@@ -844,12 +844,12 @@
 
 .app-menu__button-row-item--action.app-menu__button-row-item--labelled {
   flex: 0 0 auto;
-  min-width: auto;
-  height: 36px;
-  min-height: 36px;
+  min-width: var(--app-menu-action-min-width, auto);
+  height: var(--app-menu-action-height, 36px);
+  min-height: var(--app-menu-action-height, 36px);
   border-color: var(--app-menu-action-border, transparent);
   border-radius: 999px;
-  padding: 0 0.76rem;
+  padding: var(--app-menu-action-padding, 0 0.76rem);
   background: var(--app-menu-action-bg, var(--app-menu-bg-strong));
   color: var(--app-menu-action-fg, #fff);
   font-size: 0.78rem;

@@ -23,6 +23,8 @@ import {
   type AppMenuItem,
   type AppMenuItemSelectEvent
 } from '../core/menu';
+import { PopupComponent, type PopupModel } from '../core/popup';
+import { IndicatorComponent } from '../core/indicator';
 
 import type * as AppConstants from '../../../core/common/constants';
 type PricingSnapshot = {
@@ -48,7 +50,9 @@ type CancellationPreview = {
     MatIconModule,
     MatInputModule,
     MatNativeDateModule,
-    AppMenuComponent
+    AppMenuComponent,
+    PopupComponent,
+    IndicatorComponent
   ],
   templateUrl: './event-checkout-popup.component.html',
   styleUrl: './event-checkout-popup.component.scss'
@@ -110,15 +114,6 @@ export class EventCheckoutPopupComponent {
     return this.dialogStore.dialog();
   }
 
-  protected closeFromBackdrop(event: Event): void {
-    event.stopPropagation();
-    const dialog = this.dialog();
-    if (!dialog || this.busy || !dialog.allowBackdropClose) {
-      return;
-    }
-    this.close();
-  }
-
   protected close(event?: Event): void {
     event?.stopPropagation();
     if (this.busy) {
@@ -144,12 +139,22 @@ export class EventCheckoutPopupComponent {
     return this.totalAmount() > 0 ? 'Review Booking & Pay' : 'Join Event';
   }
 
-  protected sectionSubtitle(): string {
-    const dialog = this.dialog();
-    if (!dialog) {
-      return '';
-    }
-    return dialog.record.timeframe || dialog.subtitle;
+  protected checkoutPopupModel(state: EventCheckoutDialogState): PopupModel {
+    const title = this.sectionTitle();
+    return {
+      title,
+      subtitle: state.record.title,
+      ariaLabel: title,
+      closeAriaLabel: 'Close checkout',
+      closeOnBackdrop: state.allowBackdropClose && !this.busy,
+      showClose: true,
+      size: 'wide',
+      height: 'full',
+      headerTone: 'accent',
+      bodyLayout: 'fill',
+      backdropTone: 'dim',
+      onClose: event => this.close(event)
+    };
   }
 
   protected availableSlots(): readonly ContractTypes.EventSlotOccurrenceDTO[] {
@@ -520,29 +525,47 @@ export class EventCheckoutPopupComponent {
     return dialog.busyConfirmLabel;
   }
 
-  protected checkoutActionMenuItems(): readonly AppMenuItem<string>[] {
+  protected checkoutFooterMenuItems(): readonly AppMenuItem<string>[] {
     const hasError = !this.busy && !!this.errorMessage;
-    return [{
-      id: 'checkout-confirm',
-      label: this.busy ? this.busyLabel() : this.continueLabel(),
-      layout: 'action',
-      palette: hasError ? 'danger' : 'blue',
-      disabled: !this.canContinue() || this.busy,
-      ariaLabel: this.busy ? this.busyLabel() : this.continueLabel(),
-      progress: this.busy || hasError
-        ? {
-            state: this.busy ? 'loading' : 'error',
-            shape: 'button'
-          }
-        : null
-    }];
+    const continueLabel = this.busy ? this.busyLabel() : this.continueLabel();
+    return [
+      {
+        id: this.paymentStep ? 'checkout-back' : 'checkout-cancel',
+        label: this.paymentStep ? 'Back' : 'Cancel',
+        layout: 'action',
+        palette: 'neutral',
+        disabled: this.busy,
+        ariaLabel: this.paymentStep ? 'Back' : 'Cancel'
+      },
+      {
+        id: 'checkout-confirm',
+        label: continueLabel,
+        layout: 'action',
+        palette: hasError ? 'danger' : 'blue',
+        disabled: !this.canContinue() || this.busy,
+        ariaLabel: continueLabel,
+        progress: this.busy || hasError
+          ? {
+              state: this.busy ? 'loading' : 'error',
+              shape: 'button'
+            }
+          : null
+      }
+    ];
   }
 
   protected onCheckoutActionMenuSelect(event: AppMenuItemSelectEvent<string>): void {
-    if (event.id !== 'checkout-confirm') {
+    if (event.id === 'checkout-back') {
+      this.backToDetails(event.sourceEvent);
       return;
     }
-    void this.submit(event.sourceEvent);
+    if (event.id === 'checkout-cancel') {
+      this.close(event.sourceEvent);
+      return;
+    }
+    if (event.id === 'checkout-confirm') {
+      void this.submit(event.sourceEvent);
+    }
   }
 
   protected paymentDisabled(): boolean {
@@ -550,7 +573,7 @@ export class EventCheckoutPopupComponent {
   }
 
   protected canContinue(): boolean {
-    if (this.busy) {
+    if (this.busy || this.dialog()?.loading) {
       return false;
     }
     if (this.requiresSlotSelection() && !this.selectedSlot()) {

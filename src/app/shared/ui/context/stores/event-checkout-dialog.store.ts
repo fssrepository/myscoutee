@@ -8,6 +8,7 @@ export interface EventCheckoutDialogConfig {
   mode: 'join' | 'invitation';
   userId: string;
   record: ActivityEventRecord;
+  loading?: boolean;
   requiresApprovalBeforePayment?: boolean;
   approvalGranted?: boolean;
   pendingReason?: ActivityPendingReason;
@@ -26,6 +27,7 @@ export interface EventCheckoutDialogState {
   mode: 'join' | 'invitation';
   userId: string;
   record: ActivityEventRecord;
+  loading: boolean;
   requiresApprovalBeforePayment: boolean;
   approvalGranted: boolean;
   pendingReason: ActivityPendingReason;
@@ -48,17 +50,18 @@ export class EventCheckoutDialogStore {
 
   readonly dialog = this.stateRef.asReadonly();
 
-  open(config: EventCheckoutDialogConfig): void {
+  open(config: EventCheckoutDialogConfig): EventCheckoutDialogState | null {
     const trimmedUserId = config.userId.trim();
     if (!trimmedUserId) {
-      return;
+      return null;
     }
 
-    this.stateRef.set({
+    const state: EventCheckoutDialogState = {
       id: ++this.nextId,
       mode: config.mode,
       userId: trimmedUserId,
       record: config.record,
+      loading: config.loading === true,
       requiresApprovalBeforePayment: config.requiresApprovalBeforePayment === true,
       approvalGranted: config.approvalGranted === true,
       pendingReason: config.pendingReason === 'waitlist'
@@ -74,7 +77,13 @@ export class EventCheckoutDialogStore {
       allowEscapeClose: config.allowEscapeClose !== false,
       failureMessage: config.failureMessage?.trim() || 'Unable to complete checkout.',
       onSubmit: config.onSubmit
-    });
+    };
+    this.stateRef.set(state);
+    return state;
+  }
+
+  isCurrent(id: number | null | undefined): boolean {
+    return id != null && this.stateRef()?.id === id;
   }
 
   close(): void {

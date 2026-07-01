@@ -1,26 +1,14 @@
 @if (dialog(); as state) {
-  <section class="event-checkout-dialog">
-    <div class="event-checkout-dialog__backdrop" (click)="closeFromBackdrop($event)"></div>
-    <div class="event-checkout-dialog__panel" (click)="$event.stopPropagation()">
-      <div class="event-checkout-dialog__header">
-        <div class="event-checkout-dialog__title-block">
-          <h2>{{ sectionTitle() }}</h2>
-          <p class="event-checkout-dialog__subtitle">{{ state.record.title }}</p>
-          @if (sectionSubtitle()) {
-            <p class="event-checkout-dialog__subtitle event-checkout-dialog__subtitle--secondary">{{ sectionSubtitle() }}</p>
-          }
-        </div>
-        <button
-          type="button"
-          class="event-checkout-dialog__close"
-          [disabled]="busy"
-          (click)="close($event)"
-          aria-label="Close checkout"
-        >
-          <mat-icon>close</mat-icon>
-        </button>
+  <app-popup [model]="checkoutPopupModel(state)" [zIndex]="4700">
+    @if (state.loading) {
+      <div class="event-checkout-dialog__loading" aria-busy="true">
+        <app-indicator
+          kind="load-ring"
+          state="loading"
+        ></app-indicator>
       </div>
-
+    } @else {
+      <div class="event-checkout-dialog__content">
       <div class="event-checkout-dialog__body">
         <section class="event-checkout-summary-card">
           <div class="event-checkout-summary-card__head">
@@ -271,22 +259,15 @@
       </div>
 
       <div class="event-checkout-dialog__footer">
-        @if (paymentStep) {
-          <button type="button" class="event-checkout-btn event-checkout-btn--secondary" [disabled]="busy" (click)="backToDetails($event)">
-            Back
-          </button>
-        } @else {
-          <button type="button" class="event-checkout-btn event-checkout-btn--secondary" [disabled]="busy" (click)="close($event)">
-            Cancel
-          </button>
-        }
         <app-menu
-          class="event-checkout-confirm-menu"
+          class="event-checkout-action-menu"
           kind="inline"
-          [items]="checkoutActionMenuItems()"
+          layout="row"
+          [items]="checkoutFooterMenuItems()"
           (itemSelect)="onCheckoutActionMenuSelect($event)"
         ></app-menu>
       </div>
-    </div>
-  </section>
+      </div>
+    }
+  </app-popup>
 }

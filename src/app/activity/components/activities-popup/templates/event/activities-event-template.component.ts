@@ -714,12 +714,30 @@ export class ActivitiesEventsController {
 
   private async openInvitationApprovalFlow(row: InfoCardData): Promise<void> {
     const activeUserId = this.activeUser.id.trim();
-    const record = activeUserId ? await this.eventsService.queryKnownRecordById(activeUserId, row.id) : null;
+    if (!activeUserId) {
+      return;
+    }
     const relatedSource = this.activityDisplaySourceForRow(row);
+    const loadingDialog = this.eventCheckoutDialogStore.open({
+      mode: 'invitation',
+      userId: activeUserId,
+      record: this.buildInvitationCheckoutLoadingRecord(row, activeUserId, relatedSource),
+      loading: true,
+      title: 'Accept invitation?',
+      confirmLabel: 'Accept',
+      busyConfirmLabel: 'Accepting...',
+      failureMessage: 'Unable to accept invitation.',
+      onSubmit: (selection: ActivityContracts.EventCheckoutSelection) => this.confirmActivityInvitationApproval(row, selection)
+    });
+    const loadingDialogId = loadingDialog?.id ?? null;
+    const record = await this.eventsService.queryKnownRecordById(activeUserId, row.id);
     const requiresAdminApproval = await this.resolveInvitationRequiresAdminApproval(
       row.id,
       record?.creatorUserId ?? relatedSource.creatorUserId
     );
+    if (!this.eventCheckoutDialogStore.isCurrent(loadingDialogId)) {
+      return;
+    }
     if (record && this.shouldUseCheckoutFlow(record)) {
       this.eventCheckoutDialogStore.open({
         mode: 'invitation',
@@ -735,6 +753,7 @@ export class ActivitiesEventsController {
       });
       return;
     }
+    this.eventCheckoutDialogStore.close();
     this.dialogStore.open({
       title: 'Accept invitation?',
       message: row.title,
@@ -745,6 +764,93 @@ export class ActivitiesEventsController {
       failureMessage: 'Unable to accept invitation.',
       onConfirm: () => this.confirmActivityInvitationApproval(row)
     });
+  }
+
+  private buildInvitationCheckoutLoadingRecord(
+    row: InfoCardData,
+    activeUserId: string,
+    source: ActivityEventRecordLike
+  ): ActivityContracts.ActivityEventRecord {
+    const title = `${source?.title ?? row.title ?? ''}`.trim() || 'Event';
+    const timeframe = `${source?.timeframe ?? source?.when ?? this.activityRowTimeframe(row) ?? ''}`.trim();
+    const startAtIso = `${source?.startAtIso ?? source?.startAt ?? this.activityRowStartAt(row) ?? ''}`.trim();
+    const endAtIso = `${source?.endAtIso ?? source?.endAt ?? this.activityRowEndAt(row) ?? startAtIso}`.trim();
+    const creatorName = `${source?.creatorName ?? row.description ?? title}`.trim() || title;
+    const creatorInitials = `${source?.creatorInitials ?? source?.avatar ?? this.activityRowCreatorInitials(row)}`.trim()
+      || AppUtils.initialsFromText(creatorName);
+    const capacityTotal = this.chatCountValue(source?.capacityTotal ?? source?.capacityMax);
+    const detail = new ActivityEventDetailDTO().apply({
+      id: row.id,
+      userId: activeUserId,
+      type: 'invitations',
+      status: this.activityStatusCode(row) as ActivityContracts.ActivityEventStatus,
+      title,
+      subtitle: `${source?.shortDescription ?? source?.subtitle ?? this.activityRowSubtitle(row)}`.trim(),
+      timeframe,
+      activity: this.chatCountValue(source?.activity ?? source?.unread ?? row.badgeCount),
+      startAtIso,
+      endAtIso,
+      distanceKm: Number.isFinite(Number(source?.distanceKm))
+        ? Math.max(0, Number(source.distanceKm))
+        : this.activityRowDistanceKm(row),
+      imageUrl: `${source?.imageUrl ?? row.imageUrl ?? ''}`.trim(),
+      creatorUserId: `${source?.creatorUserId ?? row.ownerId ?? row.ownerUserId ?? ''}`.trim(),
+      creatorName,
+      creatorInitials,
+      creatorGender: source?.creatorGender === 'woman' ? 'woman' : 'man',
+      creatorCity: `${source?.creatorCity ?? ''}`.trim(),
+      visibility: source?.visibility ?? this.activityRowVisibility(row),
+      blindMode: source?.blindMode ?? 'Open Event',
+      sourceLink: `${source?.sourceLink ?? ''}`.trim(),
+      location: `${source?.location ?? ''}`.trim(),
+      locationCoordinates: source?.locationCoordinates ?? null,
+      capacityMin: source?.capacityMin ?? null,
+      capacityMax: source?.capacityMax ?? capacityTotal,
+      capacityTotal,
+      autoInviter: source?.autoInviter === true,
+      frequency: source?.frequency ?? 'One-time',
+      ticketing: source?.ticketing === true,
+      pricing: source?.pricing ?? null,
+      policiesEnabled: source?.policiesEnabled === true,
+      policies: Array.isArray(source?.policies) ? source.policies.map((item: ContractTypes.EventPolicyDTO) => ({ ...item })) : [],
+      slotsEnabled: source?.slotsEnabled === true,
+      slotTemplates: Array.isArray(source?.slotTemplates) ? source.slotTemplates.map((item: ContractTypes.EventSlotTemplateDTO) => ({ ...item })) : [],
+      parentEventId: source?.parentEventId ?? null,
+      slotTemplateId: source?.slotTemplateId ?? null,
+      generated: source?.generated === true,
+      eventType: source?.eventType ?? 'main',
+      nextSlot: source?.nextSlot ? { ...source.nextSlot } : null,
+      upcomingSlots: Array.isArray(source?.upcomingSlots) ? source.upcomingSlots.map((item: ContractTypes.EventSlotOccurrenceDTO) => ({ ...item })) : [],
+      acceptedMembers: this.chatCountValue(source?.acceptedMembers),
+      pendingMembers: this.chatCountValue(source?.pendingMembers),
+      acceptedMemberUserIds: [...(source?.acceptedMemberUserIds ?? [])],
+      pendingMemberUserIds: [...(source?.pendingMemberUserIds ?? [])],
+      invitedMemberUserIds: [...(source?.invitedMemberUserIds ?? [])],
+      pendingRequestMemberUserIds: [...(source?.pendingRequestMemberUserIds ?? [])],
+      pendingReason: source?.pendingReason,
+      topics: [...(source?.topics ?? [])],
+      subEventsEnabled: source?.subEventsEnabled ?? true,
+      subEventDefinitions: [...(source?.subEventDefinitions ?? [])],
+      subEvents: Array.isArray(source?.subEvents)
+        ? this.cloneSyncedSubEventForms(source.subEvents)
+        : [],
+      mode: source?.mode ?? 'Casual',
+      rating: this.chatCountValue(source?.rating),
+      boost: this.chatCountValue(source?.boost),
+      affinity: this.chatCountValue(source?.affinity)
+    });
+
+    return {
+      ...detail,
+      userId: activeUserId,
+      type: 'invitations',
+      avatar: `${source?.avatar ?? creatorInitials}`.trim(),
+      inviter: source?.inviter ?? null,
+      unread: this.chatCountValue(source?.unread ?? source?.activity ?? row.badgeCount),
+      trashedAtIso: null,
+      creatorGender: source?.creatorGender === 'woman' ? 'woman' : 'man',
+      adminIds: [...(source?.adminIds ?? [])]
+    } as ActivityContracts.ActivityEventRecord;
   }
 
   public runActivityItemRestoreAction(row: InfoCardData, event?: Event, action?: CardMenuAction | null): void {
