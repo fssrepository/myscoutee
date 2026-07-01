@@ -709,10 +709,6 @@ export class ActivitiesEventsController {
 
   public runActivityItemApproveAction(row: InfoCardData, event?: Event): void {
     event?.stopPropagation();
-    if (!this.isActivityInvitationRow(row)) {
-      this.openActivityRowInEventModule(row, true);
-      return;
-    }
     void this.openInvitationApprovalFlow(row);
   }
 
