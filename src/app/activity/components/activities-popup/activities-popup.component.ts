@@ -3,7 +3,6 @@ import {
   ChangeDetectorRef,
   Component,
   effect,
-  ElementRef,
   HostListener,
   inject,
   OnDestroy,
@@ -222,7 +221,7 @@ export class ActivitiesPopupComponent implements OnDestroy {
     getFilteredActivityRows: () => this.filteredActivityRows,
     getRateItems: () => this.ratesService.peekRateItemsByUser(this.activeUser.id),
     getSmartListCursorItem: () => this.activitiesSmartList?.cursorItem() ?? null,
-    getActivitiesListScrollElement: () => this.activitiesListScrollElement(),
+    getActivitiesListScrollElement: () => this.activitiesSmartList?.scrollElement() ?? null,
     getPaginationMenuHeight: () => this.activitiesSmartList?.paginationMenuHeightPx() ?? 0,
     isPaginationMenuTarget: target => this.activitiesSmartList?.isPaginationMenuTarget(target) ?? false,
     isMobileView: () => this.isMobileView,
@@ -339,9 +338,6 @@ export class ActivitiesPopupComponent implements OnDestroy {
     return Math.max(0, Math.trunc(numericValue));
   }
   // ── ViewChild refs ────────────────────────────────────────────────────────
-  @ViewChild('activitiesScroll')
-  private activitiesScrollRef?: ElementRef<HTMLDivElement>;
-
   @ViewChild('activitiesSmartList')
   protected activitiesSmartList?: SmartListComponent<ActivityListItem, ActivitiesSmartListFilters>;
   // ── Static data ───────────────────────────────────────────────────────────
@@ -3430,10 +3426,6 @@ export class ActivitiesPopupComponent implements OnDestroy {
       return `${this.activityEventListTypeForRow(row as ActivityEventListItem)}:${row.id}`;
     }
     return row.id;
-  }
-
-  protected activitiesListScrollElement(): HTMLDivElement | null {
-    return this.activitiesSmartList?.scrollElement() ?? this.activitiesScrollRef?.nativeElement ?? null;
   }
 
   private async loadActivitiesSmartListPage(
