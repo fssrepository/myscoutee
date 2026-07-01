@@ -46,6 +46,7 @@ export interface EventPoliciesInputConfig {
 })
 export class EventPoliciesInputComponent implements ControlValueAccessor {
   @Input() readOnly = false;
+  @Input() disabled = false;
   @Input() config: EventPoliciesInputConfig = {};
   @Input() enabled = false;
   @Output() readonly enabledChange = new EventEmitter<boolean>();
@@ -99,7 +100,11 @@ export class EventPoliciesInputComponent implements ControlValueAccessor {
   }
 
   protected shouldShowPanel(): boolean {
-    return !this.readOnly || this.effectivePanelEnabled();
+    return !this.locked() || this.effectivePanelEnabled();
+  }
+
+  protected locked(): boolean {
+    return this.readOnly || this.disabled;
   }
 
   protected panelTitle(): string {
@@ -120,12 +125,12 @@ export class EventPoliciesInputComponent implements ControlValueAccessor {
     if (!this.policiesToggleable()) {
       return true;
     }
-    return this.readOnly ? this.enabled && this.policies.length > 0 : this.enabled;
+    return this.locked() ? this.enabled && this.policies.length > 0 : this.enabled;
   }
 
   protected togglePoliciesEnabled(event?: Event): void {
     event?.preventDefault();
-    if (this.readOnly || !this.policiesToggleable()) {
+    if (this.locked() || !this.policiesToggleable()) {
       return;
     }
     const nextEnabled = !this.enabled;
@@ -190,7 +195,7 @@ export class EventPoliciesInputComponent implements ControlValueAccessor {
   protected removePolicyDraft(index: number, event?: Event): void {
     event?.preventDefault();
     event?.stopPropagation();
-    if (this.readOnly || index < 0 || index >= this.workingPolicies.length) {
+    if (this.locked() || index < 0 || index >= this.workingPolicies.length) {
       return;
     }
     this.workingPolicies = this.workingPolicies.filter((_, itemIndex) => itemIndex !== index);
@@ -202,7 +207,7 @@ export class EventPoliciesInputComponent implements ControlValueAccessor {
   }
 
   protected savePolicyDraft(): void {
-    if (this.readOnly || !this.canSavePolicyDraft()) {
+    if (this.locked() || !this.canSavePolicyDraft()) {
       return;
     }
     const nextItem = this.normalizedWorkingPolicyDraft();
@@ -242,13 +247,13 @@ export class EventPoliciesInputComponent implements ControlValueAccessor {
   }
 
   protected openPoliciesLabel(): string {
-    return this.readOnly
+    return this.locked()
       ? this.resolveConfigValue(this.config.viewLabel, 'View Policies')
       : this.resolveConfigValue(this.config.openLabel, 'Open Policy Setup');
   }
 
   protected emptyPoliciesLabel(): string {
-    return this.readOnly
+    return this.locked()
       ? this.resolveConfigValue(this.config.readOnlyEmptyLabel, 'No policies are configured for this event.')
       : this.resolveConfigValue(
           this.config.emptyLabel,

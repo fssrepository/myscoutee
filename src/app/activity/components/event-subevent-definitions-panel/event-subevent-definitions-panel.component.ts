@@ -91,7 +91,7 @@ export class EventSubeventDefinitionsPanelComponent implements ControlValueAcces
   }
 
   protected definitions: SubEventDefinitionDTO[] = [];
-  protected disabled = false;
+  @Input() disabled = false;
   protected definitionForm: SubEventDefinitionFormState | null = null;
   protected definitionFormModelValue: EventSubeventStageFormModel = this.createDefinitionFormModel(null, 1);
   protected definitionFormView: EventSubeventStageFormPopupView = this.createDefinitionFormPopupView(null, this.definitionFormModelValue);
