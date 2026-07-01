@@ -336,9 +336,9 @@ export class ActivitiesEventsController {
         break;
       case 'editEvent':
       case 'manageEvent':
-      case 'viewInvitation':
         this.runActivityItemPrimaryAction(row);
         break;
+      case 'viewInvitation':
       case 'view':
         this.runActivityItemViewAction(row);
         break;
@@ -382,7 +382,7 @@ export class ActivitiesEventsController {
       timeframe: this.activityRowTimeframe(row),
       startAtIso: this.activityRowStartAt(row),
       endAtIso: this.activityRowEndAt(row),
-      canEdit: this.canEditActivityEvent(row)
+      canEdit: this.isActivityInvitationRow(row) ? false : this.canEditActivityEvent(row)
     });
   }
 
