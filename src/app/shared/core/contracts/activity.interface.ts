@@ -80,6 +80,28 @@ export interface IEventsService {
   saveTournamentGroup(request: EventContracts.EventTournamentGroupUpsertRequestDTO): Promise<EventContracts.EventTournamentGroupsStateDTO | null>;
   deleteTournamentGroup(request: EventContracts.EventTournamentGroupDeleteRequestDTO): Promise<EventContracts.EventTournamentGroupsStateDTO | null>;
   upsertSubEventLeaderboardEntry(request: EventContracts.SubEventLeaderboardEntryUpsertRequestDTO): Promise<EventContracts.SubEventLeaderboardState | null>;
+  requestJoin(
+    userId: string,
+    sourceId: string,
+    options?: {
+      slotSourceId?: string | null;
+      optionalSubEventIds?: string[];
+      assetSelections?: EventCheckoutAssetSelection[];
+      acceptedPolicyIds?: string[];
+      paymentSessionId?: string | null;
+      bookingConfirmed?: boolean;
+      pendingReason?: AppConstants.ActivityPendingReason;
+      skipLocalRouteDelay?: boolean;
+      counterPatch?: UserContracts.UserMenuCountersDto | null;
+    }
+  ): Promise<EventParticipationActionResultDTO | null>;
+  leaveEvent(
+    userId: string,
+    sourceId: string,
+    options?: {
+      counterPatch?: UserContracts.UserMenuCountersDto | null;
+    }
+  ): Promise<EventParticipationActionResultDTO | null>;
 }
 
 export interface IChatsService {

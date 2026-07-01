@@ -293,6 +293,16 @@ export class EventsService extends BaseRouteModeService implements IEventsServic
     return this.eventsService.requestJoin(userId, sourceId, options);
   }
 
+  leaveEvent(
+    userId: string,
+    sourceId: string,
+    options: {
+      counterPatch?: UserMenuCountersDto | null;
+    } = {}
+  ): Promise<EventParticipationActionResultDTO | null> {
+    return this.eventsService.leaveEvent(userId, sourceId, options);
+  }
+
   createCheckoutSession(request: EventCheckoutRequest): Promise<EventCheckoutSession | null> {
     return this.eventsService.createCheckoutSession(request);
   }

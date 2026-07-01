@@ -478,9 +478,6 @@ export class LocalEventsService extends LocalRouteDelayService implements IEvent
       counterPatch?: UserMenuCountersDto | null;
     } = {}
   ): Promise<EventParticipationActionResultDTO | null> {
-    if (options.skipLocalRouteDelay !== true) {
-      await this.waitForRouteDelay(LocalEventsService.EVENTS_ROUTE);
-    }
     const record = this.eventsRepository.requestJoin(
       userId,
       sourceId,
@@ -490,9 +487,44 @@ export class LocalEventsService extends LocalRouteDelayService implements IEvent
     );
     this.patchLocalUserActivityCounters(userId, options.counterPatch ?? null);
     await this.eventsRepository.flushToIndexedDb();
+    if (options.skipLocalRouteDelay !== true) {
+      await this.waitForRouteDelay(LocalEventsService.EVENTS_ROUTE);
+    }
     return record
       ? LocalEventParticipationActionMapper.toResult(record, this.resolveDemoActivityUserId(userId), options)
       : null;
+  }
+
+  async leaveEvent(
+    userId: string,
+    sourceId: string,
+    options: {
+      counterPatch?: UserMenuCountersDto | null;
+    } = {}
+  ): Promise<EventParticipationActionResultDTO | null> {
+    const record = this.eventsRepository.leaveEvent(userId, sourceId);
+    this.patchLocalUserActivityCounters(userId, options.counterPatch ?? null);
+    await this.eventsRepository.flushToIndexedDb();
+    await this.waitForRouteDelay(LocalEventsService.EVENTS_ROUTE);
+    return record ? this.leftEventResult(record) : null;
+  }
+
+  private leftEventResult(record: ActivityEventRecord): EventParticipationActionResultDTO {
+    const acceptedMembers = Math.max(0, Math.trunc(Number(record.acceptedMembers) || 0));
+    const pendingMembers = Math.max(0, Math.trunc(Number(record.pendingMembers) || 0));
+    const capacityTotal = Math.max(acceptedMembers, Math.trunc(Number(record.capacityTotal) || 0));
+    return {
+      sourceId: record.id,
+      slotSourceId: null,
+      action: 'leave',
+      membershipStatus: 'trashed',
+      pendingReason: null,
+      acceptedMembers,
+      pendingMembers,
+      capacityTotal,
+      full: capacityTotal > 0 && acceptedMembers >= capacityTotal,
+      paymentSessionId: null
+    };
   }
 
   private patchLocalUserActivityCounters(userId: string, patch: UserMenuCountersDto | null): void {

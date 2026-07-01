@@ -1490,6 +1490,17 @@ export class LocalEventsRepository {
     return this.buildMembershipProjectionRecord(normalizedUserId, refreshed);
   }
 
+  leaveEvent(userId: string, sourceId: string): ActivityEventRecord | null {
+    const normalizedUserId = userId.trim();
+    const normalizedSourceId = sourceId.trim();
+    if (!normalizedUserId || !normalizedSourceId) {
+      return null;
+    }
+
+    this.trashItem(normalizedUserId, normalizedSourceId);
+    return this.findItem(normalizedUserId, normalizedSourceId);
+  }
+
   isItemTrashed(userId: string, sourceId: string): boolean {
     const record = this.findItem(userId, sourceId);
     return !!record && this.isTrashStatus(record);

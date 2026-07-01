@@ -577,6 +577,37 @@ export class HttpEventsService implements IEventsService {
     return this.normalizeParticipationActionResult(response);
   }
 
+  async leaveEvent(
+    userId: string,
+    sourceId: string,
+    _options: {
+      counterPatch?: UserMenuCountersDto | null;
+    } = {}
+  ): Promise<EventParticipationActionResultDTO | null> {
+    const normalizedUserId = userId.trim();
+    const normalizedSourceId = sourceId.trim();
+    if (!normalizedUserId || !normalizedSourceId) {
+      return null;
+    }
+    await this.postVoid('/activities/events/trash', {
+      userId: normalizedUserId,
+      type: 'events',
+      sourceId: normalizedSourceId
+    });
+    return {
+      sourceId: normalizedSourceId,
+      slotSourceId: null,
+      action: 'leave',
+      membershipStatus: 'trashed',
+      pendingReason: null,
+      acceptedMembers: 0,
+      pendingMembers: 0,
+      capacityTotal: 0,
+      full: false,
+      paymentSessionId: null
+    };
+  }
+
   async createCheckoutSession(request: EventCheckoutRequest): Promise<EventCheckoutSession | null> {
     return await this.http
       .post<EventCheckoutSession | null>(

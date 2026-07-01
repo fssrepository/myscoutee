@@ -1067,15 +1067,23 @@ export class ActivitiesEventsController {
     row: InfoCardData,
     detail: Pick<ActivityEventDetailDTO, 'pendingRequestMemberUserIds' | 'acceptedMemberUserIds'>
   ): Partial<ActivityCounters> | null {
-    if (!this.isActivityInvitationRow(row)) {
-      return null;
-    }
     const activeUserId = this.activeUserId();
     const movedToPending = activeUserId.length > 0
       && (detail.pendingRequestMemberUserIds ?? []).includes(activeUserId)
       && !(detail.acceptedMemberUserIds ?? []).includes(activeUserId);
+    return this.acceptedInvitationCounterPatchForMembership(movedToPending);
+  }
+
+  private acceptedInvitationCounterPatchFromResult(
+    result: ActivityContracts.EventParticipationActionResultDTO
+  ): Partial<ActivityCounters> | null {
+    const membershipStatus = `${result.membershipStatus ?? ''}`.trim();
+    return this.acceptedInvitationCounterPatchForMembership(membershipStatus !== 'accepted');
+  }
+
+  private acceptedInvitationCounterPatchForMembership(movedToPending: boolean): Partial<ActivityCounters> | null {
     return this.activityCounterPatchFromDeltas(
-      activeUserId,
+      this.activeUserId(),
       movedToPending
         ? { invitations: -1 }
         : { invitations: -1, events: 1 },
@@ -1118,10 +1126,27 @@ export class ActivitiesEventsController {
 
   private adjustLeftEventCounters(row: InfoCardData): void {
     if (this.isActivityPendingParticipationRow(row)) {
-      this.applyActivityEventCounterDeltas({}, { all: -1, pending: -1 });
+      this.applyActivityEventCounterDeltas({}, { all: -1, pending: -1, trash: 1 });
       return;
     }
-    this.applyActivityEventCounterDeltas({ events: -1 }, { active: -1, all: -1 });
+    this.applyActivityEventCounterDeltas({ events: -1 }, { active: -1, all: -1, trash: 1 });
+  }
+
+  private leftEventCounterPatch(row: InfoCardData): Partial<ActivityCounters> | null {
+    if (this.isActivityPendingParticipationRow(row)) {
+      return this.activityCounterPatchFromDeltas(
+        this.activeUserId(),
+        {},
+        { all: -1, pending: -1, trash: 1 },
+        this.activeUser?.activities ?? null
+      );
+    }
+    return this.activityCounterPatchFromDeltas(
+      this.activeUserId(),
+      { events: -1 },
+      { active: -1, all: -1, trash: 1 },
+      this.activeUser?.activities ?? null
+    );
   }
 
   private restoredEventCounterPatch(row: InfoCardData): Partial<ActivityCounters> | null {
@@ -1218,29 +1243,14 @@ export class ActivitiesEventsController {
     if (!activeUserId) {
       return;
     }
-    const eventDetailDTO = await this.buildLeftActivityEventDetailDTO(row);
-    if (!eventDetailDTO) {
-      this.eventCheckoutDraftStore.clear(activeUserId, row.id);
-      this.activitiesSmartList?.removeVisibleItemByIdentity(this.activityRowIdentity(row));
-      this.adjustLeftEventCounters(row);
-      this.refreshSectionBadges();
-      this.cdr.markForCheck();
-      return;
-    }
-
     this.eventCheckoutDraftStore.clear(activeUserId, row.id);
-    const currentMembers = await this.activityMembersService.queryMembersByOwnerId(row.id);
-    const nextMembers = currentMembers.filter((member: ActivityContracts.ActivityMemberDTO) => member.userId !== activeUserId);
-    const capacityTotal = Math.max(
-      Math.max(0, Math.trunc(Number(eventDetailDTO.acceptedMembers) || 0)),
-      Math.max(0, Math.trunc(Number(eventDetailDTO.capacityTotal) || 0))
-    );
-    const persistence = Promise.all([
-      this.emitActivityEventSave(eventDetailDTO),
-      currentMembers.length > nextMembers.length
-        ? this.activityMembersService.replaceMembersByOwnerId(row.id, nextMembers, capacityTotal)
-        : Promise.resolve()
-    ]);
+    const patch = this.leftEventCounterPatch(row);
+    const leaveResult = await this.eventsService.leaveEvent(activeUserId, row.id, {
+      counterPatch: patch as UserMenuCountersDto | null
+    });
+    if (!leaveResult || leaveResult.membershipStatus === 'unchanged') {
+      throw new Error('Unable to leave event.');
+    }
 
     if (this.selectedActivityMembersRowId === this.activityRowIdentity(row)) {
       this.selectedActivityMembers = ActivityMembersBuilder.sortActivityMembersByActionTimeAsc(
@@ -1249,11 +1259,8 @@ export class ActivitiesEventsController {
       this.activityMembersByRowId[this.selectedActivityMembersRowId] = [...this.selectedActivityMembers];
     }
 
-    this.cdr.markForCheck();
-    await persistence;
     this.activitiesSmartList?.removeVisibleItemByIdentity(this.activityRowIdentity(row));
-    this.adjustLeftEventCounters(row);
-    this.refreshSectionBadges();
+    this.signalActivityCounterPatch(activeUserId, patch);
     this.cdr.markForCheck();
   }
 
@@ -1299,9 +1306,11 @@ export class ActivitiesEventsController {
     if (!joinResult || joinResult.membershipStatus === 'unchanged') {
       throw new Error('Unable to accept invitation.');
     }
+    const resolvedPatch = this.acceptedInvitationCounterPatchFromResult(joinResult) ?? patch;
+    await this.persistLocalActivityCounterPatch(activeUserId, resolvedPatch);
     this.removeInvitationItem(eventDetailDTO.id);
     this.activitiesSmartList?.removeVisibleItemByIdentity(this.activityRowIdentity(row));
-    this.signalActivityCounterPatch(activeUserId, patch);
+    this.signalActivityCounterPatch(activeUserId, resolvedPatch);
     this.cdr.markForCheck();
   }
 
