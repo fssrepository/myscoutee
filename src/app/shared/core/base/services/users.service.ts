@@ -22,6 +22,7 @@ import type {
   UserFeedbackSubmitRequestDto,
   UserLocationEligibilityResponseDto,
   UserDto,
+  UserMenuCounterDeltasDto,
   UserMenuCountersDto,
   UserLogoutRequestDto,
   UserReportUserSubmitRequestDto,
@@ -313,6 +314,23 @@ export class UsersService extends BaseRouteModeService {
     ).catch(() => {
       // The visible counter signal has already moved; local persistence is best-effort.
     });
+  }
+
+  async patchLocalUserActivityCounterDeltas(
+    userId: string,
+    delta: UserMenuCounterDeltasDto | null | undefined
+  ): Promise<void> {
+    const normalizedUserId = userId.trim();
+    if (!normalizedUserId || !delta || !this.localModeEnabled) {
+      return;
+    }
+    const savedUser = await this.localUsersService.patchUserActivityCounterDeltas(
+      normalizedUserId,
+      delta
+    ).catch(() => null);
+    if (savedUser) {
+      this.userProfileStore.setUserProfile(savedUser);
+    }
   }
 
   async saveUserProfileExt(request: ProfileExtDto): Promise<UserDto | null> {

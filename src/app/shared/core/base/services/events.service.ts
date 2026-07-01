@@ -18,7 +18,7 @@ import type {
 } from '../../contracts/event.interface';
 import type { ActivityPendingReason } from '../../common/constants';
 import type { ActivitiesFeedFilters, ListQuery, PageResult } from '../../contracts';
-import type { UserMenuCountersDto } from '../../contracts/user.interface';
+import type { UserMenuCounterDeltasDto } from '../../contracts/user.interface';
 import type {
   EventCheckoutAssetSelection,
   EventCheckoutRequest,
@@ -226,7 +226,7 @@ export class EventsService extends BaseRouteModeService implements IEventsServic
   trashItem(
     userId: string,
     sourceId: string,
-    options: { counterPatch?: UserMenuCountersDto | null } = {}
+    options: { counterDelta?: UserMenuCounterDeltasDto | null } = {}
   ): Promise<void> {
     return this.eventsService.trashItem(userId, sourceId, options);
   }
@@ -234,7 +234,7 @@ export class EventsService extends BaseRouteModeService implements IEventsServic
   publishItem(
     userId: string,
     sourceId: string,
-    options: { counterPatch?: UserMenuCountersDto | null } = {}
+    options: { counterDelta?: UserMenuCounterDeltasDto | null } = {}
   ): Promise<void> {
     return this.eventsService.publishItem(userId, sourceId, options);
   }
@@ -242,7 +242,7 @@ export class EventsService extends BaseRouteModeService implements IEventsServic
   unpublishItem(
     userId: string,
     sourceId: string,
-    options: { counterPatch?: UserMenuCountersDto | null } = {}
+    options: { counterDelta?: UserMenuCounterDeltasDto | null } = {}
   ): Promise<void> {
     return this.eventsService.unpublishItem(userId, sourceId, options);
   }
@@ -250,7 +250,7 @@ export class EventsService extends BaseRouteModeService implements IEventsServic
   restoreItem(
     userId: string,
     sourceId: string,
-    options: { counterPatch?: UserMenuCountersDto | null } = {}
+    options: { counterDelta?: UserMenuCounterDeltasDto | null } = {}
   ): Promise<void> {
     return this.eventsService.restoreItem(userId, sourceId, options);
   }
@@ -303,7 +303,7 @@ export class EventsService extends BaseRouteModeService implements IEventsServic
       bookingConfirmed?: boolean;
       pendingReason?: ActivityPendingReason;
       skipLocalRouteDelay?: boolean;
-      counterPatch?: UserMenuCountersDto | null;
+      counterDelta?: UserMenuCounterDeltasDto | null;
     } = {}
   ): Promise<EventParticipationActionResultDTO | null> {
     return this.eventsService.requestJoin(userId, sourceId, options);
@@ -313,7 +313,7 @@ export class EventsService extends BaseRouteModeService implements IEventsServic
     userId: string,
     sourceId: string,
     options: {
-      counterPatch?: UserMenuCountersDto | null;
+      counterDelta?: UserMenuCounterDeltasDto | null;
     } = {}
   ): Promise<EventParticipationActionResultDTO | null> {
     return this.eventsService.leaveEvent(userId, sourceId, options);

@@ -23,7 +23,7 @@ import type {
   EventFeedbackStateDto
 } from '../../../contracts/activity.interface';
 import type { ActivitiesFeedFilters, ListQuery } from '../../../contracts';
-import type { UserMenuCountersDto } from '../../../contracts/user.interface';
+import type { UserMenuCounterDeltasDto } from '../../../contracts/user.interface';
 import { EventFeedbackDetailDto, EventFeedbackPageResultDto } from '../../../contracts/activity.interface';
 import { LocalRouteDelayService } from './route-delay.service';
 import { LocalEventFeedbackRepository } from '../repositories/event-feedback.repository';
@@ -378,10 +378,10 @@ export class LocalEventsService extends LocalRouteDelayService implements IEvent
   async trashItem(
     userId: string,
     sourceId: string,
-    options: { counterPatch?: UserMenuCountersDto | null } = {}
+    options: { counterDelta?: UserMenuCounterDeltasDto | null } = {}
   ): Promise<void> {
     this.eventsRepository.trashItem(userId, sourceId);
-    await this.patchLocalUserActivityCounters(userId, options.counterPatch ?? null);
+    await this.patchLocalUserActivityCounterDeltas(userId, options.counterDelta ?? null);
     await this.eventsRepository.flushToIndexedDb();
     await this.waitForRouteDelay(LocalEventsService.EVENTS_ROUTE);
   }
@@ -389,10 +389,10 @@ export class LocalEventsService extends LocalRouteDelayService implements IEvent
   async publishItem(
     userId: string,
     sourceId: string,
-    options: { counterPatch?: UserMenuCountersDto | null } = {}
+    options: { counterDelta?: UserMenuCounterDeltasDto | null } = {}
   ): Promise<void> {
     this.eventsRepository.publishItem(userId, sourceId);
-    await this.patchLocalUserActivityCounters(userId, options.counterPatch ?? null);
+    await this.patchLocalUserActivityCounterDeltas(userId, options.counterDelta ?? null);
     await this.eventsRepository.flushToIndexedDb();
     await this.waitForRouteDelay(LocalEventsService.EVENTS_ROUTE);
   }
@@ -400,10 +400,10 @@ export class LocalEventsService extends LocalRouteDelayService implements IEvent
   async unpublishItem(
     userId: string,
     sourceId: string,
-    options: { counterPatch?: UserMenuCountersDto | null } = {}
+    options: { counterDelta?: UserMenuCounterDeltasDto | null } = {}
   ): Promise<void> {
     this.eventsRepository.unpublishItem(userId, sourceId);
-    await this.patchLocalUserActivityCounters(userId, options.counterPatch ?? null);
+    await this.patchLocalUserActivityCounterDeltas(userId, options.counterDelta ?? null);
     await this.eventsRepository.flushToIndexedDb();
     await this.waitForRouteDelay(LocalEventsService.EVENTS_ROUTE);
   }
@@ -411,10 +411,10 @@ export class LocalEventsService extends LocalRouteDelayService implements IEvent
   async restoreItem(
     userId: string,
     sourceId: string,
-    options: { counterPatch?: UserMenuCountersDto | null } = {}
+    options: { counterDelta?: UserMenuCounterDeltasDto | null } = {}
   ): Promise<void> {
     this.eventsRepository.restoreItem(userId, sourceId);
-    await this.patchLocalUserActivityCounters(userId, options.counterPatch ?? null);
+    await this.patchLocalUserActivityCounterDeltas(userId, options.counterDelta ?? null);
     await this.eventsRepository.flushToIndexedDb();
     await this.waitForRouteDelay(LocalEventsService.EVENTS_ROUTE);
   }
@@ -497,7 +497,7 @@ export class LocalEventsService extends LocalRouteDelayService implements IEvent
       bookingConfirmed?: boolean;
       pendingReason?: ActivityPendingReason;
       skipLocalRouteDelay?: boolean;
-      counterPatch?: UserMenuCountersDto | null;
+      counterDelta?: UserMenuCounterDeltasDto | null;
     } = {}
   ): Promise<EventParticipationActionResultDTO | null> {
     const record = this.eventsRepository.requestJoin(
@@ -507,7 +507,7 @@ export class LocalEventsService extends LocalRouteDelayService implements IEvent
       options.bookingConfirmed === true && options.pendingReason !== 'approval' && options.pendingReason !== 'waitlist',
       options.pendingReason === 'waitlist'
     );
-    await this.patchLocalUserActivityCounters(userId, options.counterPatch ?? null);
+    await this.patchLocalUserActivityCounterDeltas(userId, options.counterDelta ?? null);
     await this.eventsRepository.flushToIndexedDb();
     if (options.skipLocalRouteDelay !== true) {
       await this.waitForRouteDelay(LocalEventsService.EVENTS_ROUTE);
@@ -521,11 +521,11 @@ export class LocalEventsService extends LocalRouteDelayService implements IEvent
     userId: string,
     sourceId: string,
     options: {
-      counterPatch?: UserMenuCountersDto | null;
+      counterDelta?: UserMenuCounterDeltasDto | null;
     } = {}
   ): Promise<EventParticipationActionResultDTO | null> {
     const record = this.eventsRepository.leaveEvent(userId, sourceId);
-    await this.patchLocalUserActivityCounters(userId, options.counterPatch ?? null);
+    await this.patchLocalUserActivityCounterDeltas(userId, options.counterDelta ?? null);
     await this.eventsRepository.flushToIndexedDb();
     await this.waitForRouteDelay(LocalEventsService.EVENTS_ROUTE);
     return record ? this.leftEventResult(record) : null;
@@ -549,12 +549,15 @@ export class LocalEventsService extends LocalRouteDelayService implements IEvent
     };
   }
 
-  private async patchLocalUserActivityCounters(userId: string, patch: UserMenuCountersDto | null): Promise<void> {
+  private async patchLocalUserActivityCounterDeltas(
+    userId: string,
+    delta: UserMenuCounterDeltasDto | null
+  ): Promise<void> {
     const normalizedUserId = userId.trim();
-    if (!normalizedUserId || !patch) {
+    if (!normalizedUserId || !delta) {
       return;
     }
-    await this.usersService.patchUserActivityCounters(normalizedUserId, patch);
+    await this.usersService.patchUserActivityCounterDeltas(normalizedUserId, delta);
   }
 
   async createCheckoutSession(request: EventCheckoutRequest): Promise<EventCheckoutSession | null> {

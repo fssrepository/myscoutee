@@ -18,7 +18,7 @@ import {
   ActivityEventDetailDTO
 } from '../../../../../shared/core/contracts/activity.interface';
 import type * as ContractTypes from '../../../../../shared/core/contracts';
-import type { UserMenuCountersDto } from '../../../../../shared/core/contracts/user.interface';
+import type { UserMenuCounterDeltasDto } from '../../../../../shared/core/contracts/user.interface';
 import {
   ActivityMembersBuilder
 } from '../../../../../shared/core';
@@ -186,84 +186,57 @@ export class ActivitiesEventsController {
     if (!activeUserId) {
       return;
     }
-    const patch = this.activityCounterPatchFromDeltas(
-      activeUserId,
-      primaryDelta,
-      eventDelta,
-      activeUser?.activities ?? null
-    );
-    if (!patch) {
+    const delta = this.activityCounterDeltaFromDeltas(primaryDelta, eventDelta);
+    if (!delta) {
       return;
     }
-    this.signalActivityCounterPatch(activeUserId, patch);
-    void this.persistLocalActivityCounterPatch(activeUserId, patch);
+    this.signalActivityCounterDelta(activeUserId, delta);
+    void this.persistLocalActivityCounterDelta(activeUserId, delta);
   }
 
-  private activityCounterPatchFromDeltas(
-    activeUserId: string,
+  private activityCounterDeltaFromDeltas(
     primaryDelta: Record<string, number>,
-    eventDelta: Record<string, number>,
-    baseActivities: Partial<ActivityCounters> | null,
-    counterOverrides: Partial<ActivityCounters> | null = null
-  ): Partial<ActivityCounters> | null {
-    const overrides = counterOverrides ?? (this.activityStore.getUserCounterOverrides(activeUserId) as Partial<ActivityCounters>);
-    const patch: Partial<ActivityCounters> = {};
-    for (const [key, delta] of Object.entries(primaryDelta) as Array<[ActivityCounterKey, number | undefined]>) {
-      if (!Number.isFinite(delta)) {
+    eventDelta: Record<string, number>
+  ): UserMenuCounterDeltasDto | null {
+    const delta: UserMenuCounterDeltasDto = {};
+    for (const [key, value] of Object.entries(primaryDelta) as Array<[ActivityCounterKey, number | undefined]>) {
+      if (!Number.isFinite(value) || Number(value) === 0) {
         continue;
       }
-      patch[key] = this.normalizeCounterValue(
-        this.normalizeCounterValue(overrides[key] ?? baseActivities?.[key]) + Number(delta)
-      );
+      (delta as Record<string, number>)[key] = Number(value);
     }
-
     if (Object.keys(eventDelta).length > 0) {
-      const eventCounters = this.activityEventCountersWithOverrides(baseActivities?.event, overrides.event);
-      for (const [key, delta] of Object.entries(eventDelta) as Array<[ActivityEventCounterKey, number | undefined]>) {
-        if (!Number.isFinite(delta)) {
+      const eventCounters: Record<string, number> = {};
+      for (const [key, value] of Object.entries(eventDelta) as Array<[ActivityEventCounterKey, number | undefined]>) {
+        if (!Number.isFinite(value) || Number(value) === 0) {
           continue;
         }
-        eventCounters[key] = this.normalizeCounterValue(eventCounters[key] + Number(delta));
+        eventCounters[key] = Number(value);
       }
-      patch.event = eventCounters;
+      if (Object.keys(eventCounters).length > 0) {
+        delta.event = eventCounters;
+      }
     }
-
-    return Object.keys(patch).length > 0 ? patch : null;
+    return Object.keys(delta).length > 0 ? delta : null;
   }
 
-  private signalActivityCounterPatch(activeUserId: string, patch: Partial<ActivityCounters> | null): void {
-    if (!patch) {
+  private signalActivityCounterDelta(activeUserId: string, delta: UserMenuCounterDeltasDto | null): void {
+    if (!delta) {
       return;
     }
-    this.activityStore.patchUserCounterOverrides(activeUserId, patch);
+    this.activityStore.patchUserCounterDeltas(activeUserId, delta, this.activeUser?.activities ?? null);
   }
 
-  private async persistLocalActivityCounterPatch(activeUserId: string, patch: Partial<ActivityCounters> | null): Promise<void> {
-    if (!patch || typeof this.usersService?.patchLocalUserActivityCounters !== 'function') {
+  private async persistLocalActivityCounterDelta(
+    activeUserId: string,
+    delta: UserMenuCounterDeltasDto | null
+  ): Promise<void> {
+    if (!delta || typeof this.usersService?.patchLocalUserActivityCounterDeltas !== 'function') {
       return;
     }
-    await this.usersService.patchLocalUserActivityCounters(activeUserId, patch);
+    await this.usersService.patchLocalUserActivityCounterDeltas(activeUserId, delta);
   }
 
-  private activityEventCountersWithOverrides(
-    baseCounters: Partial<NonNullable<ActivityCounters['event']>> | null | undefined,
-    overrideCounters: Partial<NonNullable<ActivityCounters['event']>> | null | undefined
-  ): NonNullable<ActivityCounters['event']> {
-    return {
-      all: this.normalizeCounterValue(overrideCounters?.all ?? baseCounters?.all),
-      active: this.normalizeCounterValue(overrideCounters?.active ?? baseCounters?.active),
-      pending: this.normalizeCounterValue(overrideCounters?.pending ?? baseCounters?.pending),
-      invitations: this.normalizeCounterValue(overrideCounters?.invitations ?? baseCounters?.invitations),
-      hosting: this.normalizeCounterValue(overrideCounters?.hosting ?? baseCounters?.hosting),
-      drafts: this.normalizeCounterValue(overrideCounters?.drafts ?? baseCounters?.drafts),
-      trash: this.normalizeCounterValue(overrideCounters?.trash ?? baseCounters?.trash)
-    };
-  }
-
-  private normalizeCounterValue(value: unknown): number {
-    const count = Number(value);
-    return Number.isFinite(count) ? Math.max(0, Math.trunc(count)) : 0;
-  }
   private uniqueUserIds(userIds: readonly string[]): string[] {
     const unique: string[] = [];
     for (const userId of userIds) {
@@ -981,9 +954,9 @@ export class ActivitiesEventsController {
 
   private async confirmActivityPublish(row: InfoCardData): Promise<void> {
     const activeUserId = this.activeUserId();
-    const patch = this.publishedEventCounterPatch(row);
+    const counterDelta = this.publishedEventCounterDelta(row);
     const persistence = this.eventsService.publishItem(this.activeUser.id, row.id, {
-      counterPatch: patch as UserMenuCountersDto | null
+      counterDelta
     });
     await persistence;
     this.activeHostingIds = new Set([...this.activeHostingIds, row.id]);
@@ -997,16 +970,16 @@ export class ActivitiesEventsController {
       );
     }
 
-    this.signalActivityCounterPatch(activeUserId, patch);
+    this.signalActivityCounterDelta(activeUserId, counterDelta);
     this.refreshSectionBadges();
     this.cdr.markForCheck();
   }
 
   private async confirmActivityUnpublish(row: InfoCardData): Promise<void> {
     const activeUserId = this.activeUserId();
-    const patch = this.unpublishedEventCounterPatch(row);
+    const counterDelta = this.unpublishedEventCounterDelta(row);
     const persistence = this.eventsService.unpublishItem(this.activeUser.id, row.id, {
-      counterPatch: patch as UserMenuCountersDto | null
+      counterDelta
     });
     await persistence;
     const nextActiveIds = new Set(this.activeHostingIds);
@@ -1016,7 +989,7 @@ export class ActivitiesEventsController {
       (item: InfoCardData) => this.activityRowIdentity(item) === this.activityRowIdentity(row),
       { status: 'DR' }
     );
-    this.signalActivityCounterPatch(activeUserId, patch);
+    this.signalActivityCounterDelta(activeUserId, counterDelta);
     this.refreshSectionBadges();
     this.cdr.markForCheck();
   }
@@ -1066,50 +1039,41 @@ export class ActivitiesEventsController {
     return 'Unable to delete event.';
   }
 
-  private acceptedInvitationCounterPatch(
+  private acceptedInvitationCounterDelta(
     row: InfoCardData,
-    detail: Pick<ActivityEventDetailDTO, 'pendingRequestMemberUserIds' | 'acceptedMemberUserIds'>,
-    baseActivities: Partial<ActivityCounters> | null = this.activeUser?.activities ?? null,
-    counterOverrides: Partial<ActivityCounters> | null = null
-  ): Partial<ActivityCounters> | null {
+    detail: Pick<ActivityEventDetailDTO, 'pendingRequestMemberUserIds' | 'acceptedMemberUserIds'>
+  ): UserMenuCounterDeltasDto | null {
     const activeUserId = this.activeUserId();
     const movedToPending = activeUserId.length > 0
       && (detail.pendingRequestMemberUserIds ?? []).includes(activeUserId)
       && !(detail.acceptedMemberUserIds ?? []).includes(activeUserId);
-    return this.acceptedInvitationCounterPatchForMembership(movedToPending, baseActivities, counterOverrides);
+    return this.acceptedInvitationCounterDeltaForMembership(movedToPending);
   }
 
-  private acceptedInvitationCounterPatchFromResult(
-    result: ActivityContracts.EventParticipationActionResultDTO,
-    baseActivities: Partial<ActivityCounters> | null = this.activeUser?.activities ?? null,
-    counterOverrides: Partial<ActivityCounters> | null = null
-  ): Partial<ActivityCounters> | null {
+  private acceptedInvitationCounterDeltaFromResult(
+    result: ActivityContracts.EventParticipationActionResultDTO
+  ): UserMenuCounterDeltasDto | null {
     const membershipStatus = `${result.membershipStatus ?? ''}`.trim();
-    return this.acceptedInvitationCounterPatchForMembership(membershipStatus !== 'accepted', baseActivities, counterOverrides);
+    return this.acceptedInvitationCounterDeltaForMembership(membershipStatus !== 'accepted');
   }
 
-  private acceptedInvitationCounterPatchForMembership(
-    movedToPending: boolean,
-    baseActivities: Partial<ActivityCounters> | null = this.activeUser?.activities ?? null,
-    counterOverrides: Partial<ActivityCounters> | null = null
-  ): Partial<ActivityCounters> | null {
-    return this.activityCounterPatchFromDeltas(
-      this.activeUserId(),
+  private acceptedInvitationCounterDeltaForMembership(
+    movedToPending: boolean
+  ): UserMenuCounterDeltasDto | null {
+    return this.activityCounterDeltaFromDeltas(
       movedToPending
         ? { invitations: -1 }
         : { invitations: -1, events: 1 },
       movedToPending
         ? { invitations: -1, pending: 1 }
-        : { invitations: -1, active: 1 },
-      baseActivities,
-      counterOverrides
+        : { invitations: -1, active: 1 }
     );
   }
 
-  private trashedEventCounterPatch(
+  private trashedEventCounterDelta(
     row: InfoCardData,
     forcedType: ActivityContracts.ActivityEventRepositoryItemType | null = null
-  ): Partial<ActivityCounters> | null {
+  ): UserMenuCounterDeltasDto | null {
     const primaryDelta: Record<string, number> = {};
     const eventDelta: Record<string, number> = { all: -1, trash: 1 };
     const type = forcedType ?? this.activityEventListTypeForRow(row);
@@ -1128,12 +1092,7 @@ export class ActivitiesEventsController {
       primaryDelta['events'] = -1;
       eventDelta['active'] = -1;
     }
-    return this.activityCounterPatchFromDeltas(
-      this.activeUserId(),
-      primaryDelta,
-      eventDelta,
-      this.activeUser?.activities ?? null
-    );
+    return this.activityCounterDeltaFromDeltas(primaryDelta, eventDelta);
   }
 
   private adjustLeftEventCounters(row: InfoCardData): void {
@@ -1144,24 +1103,20 @@ export class ActivitiesEventsController {
     this.applyActivityEventCounterDeltas({ events: -1 }, { active: -1, all: -1, trash: 1 });
   }
 
-  private leftEventCounterPatch(row: InfoCardData): Partial<ActivityCounters> | null {
+  private leftEventCounterDelta(row: InfoCardData): UserMenuCounterDeltasDto | null {
     if (this.isActivityPendingParticipationRow(row)) {
-      return this.activityCounterPatchFromDeltas(
-        this.activeUserId(),
+      return this.activityCounterDeltaFromDeltas(
         {},
-        { all: -1, pending: -1, trash: 1 },
-        this.activeUser?.activities ?? null
+        { all: -1, pending: -1, trash: 1 }
       );
     }
-    return this.activityCounterPatchFromDeltas(
-      this.activeUserId(),
+    return this.activityCounterDeltaFromDeltas(
       { events: -1 },
-      { active: -1, all: -1, trash: 1 },
-      this.activeUser?.activities ?? null
+      { active: -1, all: -1, trash: 1 }
     );
   }
 
-  private restoredEventCounterPatch(row: InfoCardData): Partial<ActivityCounters> | null {
+  private restoredEventCounterDelta(row: InfoCardData): UserMenuCounterDeltasDto | null {
     const primaryDelta: Record<string, number> = {};
     const eventDelta: Record<string, number> = { all: 1, trash: -1 };
     const type = this.activityEventListTypeForRow(row);
@@ -1180,35 +1135,26 @@ export class ActivitiesEventsController {
       primaryDelta['events'] = 1;
       eventDelta['active'] = 1;
     }
-    return this.activityCounterPatchFromDeltas(
-      this.activeUserId(),
-      primaryDelta,
-      eventDelta,
-      this.activeUser?.activities ?? null
-    );
+    return this.activityCounterDeltaFromDeltas(primaryDelta, eventDelta);
   }
 
-  private publishedEventCounterPatch(row: InfoCardData): Partial<ActivityCounters> | null {
+  private publishedEventCounterDelta(row: InfoCardData): UserMenuCounterDeltasDto | null {
     if (!this.isActivityDraftRow(row)) {
       return null;
     }
-    return this.activityCounterPatchFromDeltas(
-      this.activeUserId(),
+    return this.activityCounterDeltaFromDeltas(
       {},
-      { drafts: -1 },
-      this.activeUser?.activities ?? null
+      { drafts: -1 }
     );
   }
 
-  private unpublishedEventCounterPatch(row: InfoCardData): Partial<ActivityCounters> | null {
+  private unpublishedEventCounterDelta(row: InfoCardData): UserMenuCounterDeltasDto | null {
     if (this.activityStatusCode(row) === 'DR') {
       return null;
     }
-    return this.activityCounterPatchFromDeltas(
-      this.activeUserId(),
+    return this.activityCounterDeltaFromDeltas(
       {},
-      { drafts: 1 },
-      this.activeUser?.activities ?? null
+      { drafts: 1 }
     );
   }
 
@@ -1241,11 +1187,11 @@ export class ActivitiesEventsController {
       return;
     }
     const activeUserId = this.activeUserId();
-    const patch = this.trashedEventCounterPatch(row, isRejectInvitation ? 'invitations' : null);
-    const persistence = this.persistActivityRowTrash(row, patch);
+    const counterDelta = this.trashedEventCounterDelta(row, isRejectInvitation ? 'invitations' : null);
+    const persistence = this.persistActivityRowTrash(row, counterDelta);
     await persistence;
     this.activitiesSmartList?.removeVisibleItemByIdentity(this.activityRowIdentity(row));
-    this.signalActivityCounterPatch(activeUserId, patch);
+    this.signalActivityCounterDelta(activeUserId, counterDelta);
     this.cdr.markForCheck();
   }
 
@@ -1255,9 +1201,9 @@ export class ActivitiesEventsController {
       return;
     }
     this.eventCheckoutDraftStore.clear(activeUserId, row.id);
-    const patch = this.leftEventCounterPatch(row);
+    const counterDelta = this.leftEventCounterDelta(row);
     const leaveResult = await this.eventsService.leaveEvent(activeUserId, row.id, {
-      counterPatch: patch as UserMenuCountersDto | null
+      counterDelta
     });
     if (!leaveResult || leaveResult.membershipStatus === 'unchanged') {
       throw new Error('Unable to leave event.');
@@ -1271,7 +1217,7 @@ export class ActivitiesEventsController {
     }
 
     this.activitiesSmartList?.removeVisibleItemByIdentity(this.activityRowIdentity(row));
-    this.signalActivityCounterPatch(activeUserId, patch);
+    this.signalActivityCounterDelta(activeUserId, counterDelta);
     this.cdr.markForCheck();
   }
 
@@ -1301,10 +1247,9 @@ export class ActivitiesEventsController {
   ): Promise<void> {
     const activeUserId = this.activeUserId();
     const { eventDetailDTO } = await this.buildAcceptedInvitationSaveResult(row, selection, context);
-    const counterBase = this.activeUser?.activities ?? null;
-    const counterOverrides = this.activityStore.getUserCounterOverrides(activeUserId) as Partial<ActivityCounters>;
-    const patch = this.acceptedInvitationCounterPatch(row, eventDetailDTO, counterBase, counterOverrides);
     const pendingReason = this.acceptedInvitationPendingReason(activeUserId, eventDetailDTO, selection);
+    const counterDelta = this.acceptedInvitationCounterDeltaForMembership(pendingReason !== null)
+      ?? this.acceptedInvitationCounterDelta(row, eventDetailDTO);
     const joinResult = await this.eventsService.requestJoin(activeUserId, eventDetailDTO.id, {
       slotSourceId: selection?.slotSourceId ?? null,
       optionalSubEventIds: selection?.optionalSubEventIds ?? [],
@@ -1314,15 +1259,15 @@ export class ActivitiesEventsController {
       bookingConfirmed: pendingReason == null && selection?.bookingConfirmed !== false,
       pendingReason,
       skipLocalRouteDelay: Boolean(selection?.paymentSessionId),
-      counterPatch: patch as UserMenuCountersDto | null
+      counterDelta
     });
     if (!joinResult || joinResult.membershipStatus === 'unchanged') {
       throw new Error('Unable to accept invitation.');
     }
-    const resolvedPatch = this.acceptedInvitationCounterPatchFromResult(joinResult, counterBase, counterOverrides) ?? patch;
+    const resolvedDelta = this.acceptedInvitationCounterDeltaFromResult(joinResult) ?? counterDelta;
     this.removeInvitationItem(eventDetailDTO.id);
     this.activitiesSmartList?.removeVisibleItemByIdentity(this.activityRowIdentity(row));
-    this.signalActivityCounterPatch(activeUserId, resolvedPatch);
+    this.signalActivityCounterDelta(activeUserId, resolvedDelta);
     this.cdr.markForCheck();
   }
 
@@ -1757,22 +1702,22 @@ export class ActivitiesEventsController {
     this.refreshSectionBadges();
   }
 
-  private async persistActivityRowTrash(row: InfoCardData, patch: Partial<ActivityCounters> | null): Promise<void> {
+  private async persistActivityRowTrash(row: InfoCardData, counterDelta: UserMenuCounterDeltasDto | null): Promise<void> {
     await this.eventsService.trashItem(this.activeUser.id, row.id, {
-      counterPatch: patch as UserMenuCountersDto | null
+      counterDelta
     });
   }
 
   private async restoreActivityRow(row: InfoCardData): Promise<void> {
     const activeUserId = this.activeUserId();
-    const patch = this.restoredEventCounterPatch(row);
+    const counterDelta = this.restoredEventCounterDelta(row);
     const persistence = this.eventsService.restoreItem(this.activeUser.id, row.id, {
-      counterPatch: patch as UserMenuCountersDto | null
+      counterDelta
     });
     await persistence;
     this.unmarkActivityRowTrashed(row);
     this.activitiesSmartList?.removeVisibleItemByIdentity(this.activityRowIdentity(row));
-    this.signalActivityCounterPatch(activeUserId, patch);
+    this.signalActivityCounterDelta(activeUserId, counterDelta);
     this.cdr.markForCheck();
   }
 

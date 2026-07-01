@@ -92,14 +92,14 @@ export interface IEventsService {
       bookingConfirmed?: boolean;
       pendingReason?: AppConstants.ActivityPendingReason;
       skipLocalRouteDelay?: boolean;
-      counterPatch?: UserContracts.UserMenuCountersDto | null;
+      counterDelta?: UserContracts.UserMenuCounterDeltasDto | null;
     }
   ): Promise<EventParticipationActionResultDTO | null>;
   leaveEvent(
     userId: string,
     sourceId: string,
     options?: {
-      counterPatch?: UserContracts.UserMenuCountersDto | null;
+      counterDelta?: UserContracts.UserMenuCounterDeltasDto | null;
     }
   ): Promise<EventParticipationActionResultDTO | null>;
 }

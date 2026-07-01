@@ -35,7 +35,7 @@ import type {
   EventFeedbackStateDto
 } from '../../contracts/activity.interface';
 import type {
-  UserMenuCountersDto
+  UserMenuCounterDeltasDto
 } from '../../contracts/user.interface';
 import type {
   ActivityEventStageActionRequestDTO,
@@ -386,7 +386,7 @@ export class HttpEventsService implements IEventsService {
   async trashItem(
     userId: string,
     sourceId: string,
-    _options: { counterPatch?: UserMenuCountersDto | null } = {}
+    _options: { counterDelta?: UserMenuCounterDeltasDto | null } = {}
   ): Promise<void> {
     await this.postVoid('/activities/events/trash', { userId: userId.trim(), sourceId: sourceId.trim() });
   }
@@ -394,7 +394,7 @@ export class HttpEventsService implements IEventsService {
   async publishItem(
     userId: string,
     sourceId: string,
-    _options: { counterPatch?: UserMenuCountersDto | null } = {}
+    _options: { counterDelta?: UserMenuCounterDeltasDto | null } = {}
   ): Promise<void> {
     await this.postVoid('/activities/events/publish', { userId: userId.trim(), sourceId: sourceId.trim() });
   }
@@ -402,7 +402,7 @@ export class HttpEventsService implements IEventsService {
   async unpublishItem(
     userId: string,
     sourceId: string,
-    _options: { counterPatch?: UserMenuCountersDto | null } = {}
+    _options: { counterDelta?: UserMenuCounterDeltasDto | null } = {}
   ): Promise<void> {
     await this.postVoid('/activities/events/unpublish', { userId: userId.trim(), sourceId: sourceId.trim() });
   }
@@ -410,7 +410,7 @@ export class HttpEventsService implements IEventsService {
   async restoreItem(
     userId: string,
     sourceId: string,
-    _options: { counterPatch?: UserMenuCountersDto | null } = {}
+    _options: { counterDelta?: UserMenuCounterDeltasDto | null } = {}
   ): Promise<void> {
     await this.postVoid('/activities/events/restore', { userId: userId.trim(), sourceId: sourceId.trim() });
   }
@@ -566,7 +566,7 @@ export class HttpEventsService implements IEventsService {
       bookingConfirmed?: boolean;
       pendingReason?: ActivityPendingReason;
       skipLocalRouteDelay?: boolean;
-      counterPatch?: UserMenuCountersDto | null;
+      counterDelta?: UserMenuCounterDeltasDto | null;
     } = {}
   ): Promise<EventParticipationActionResultDTO | null> {
     const normalizedUserId = userId.trim();
@@ -597,7 +597,7 @@ export class HttpEventsService implements IEventsService {
     userId: string,
     sourceId: string,
     _options: {
-      counterPatch?: UserMenuCountersDto | null;
+      counterDelta?: UserMenuCounterDeltasDto | null;
     } = {}
   ): Promise<EventParticipationActionResultDTO | null> {
     const normalizedUserId = userId.trim();
