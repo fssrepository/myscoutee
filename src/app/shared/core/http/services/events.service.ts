@@ -35,6 +35,9 @@ import type {
   EventFeedbackStateDto
 } from '../../contracts/activity.interface';
 import type {
+  UserMenuCountersDto
+} from '../../contracts/user.interface';
+import type {
   ActivityEventStageActionRequestDTO,
   ActivityEventStageActionResultDTO,
   ActivityEventPageResultDTO,
@@ -546,6 +549,8 @@ export class HttpEventsService implements IEventsService {
       paymentSessionId?: string | null;
       bookingConfirmed?: boolean;
       pendingReason?: ActivityPendingReason;
+      skipLocalRouteDelay?: boolean;
+      counterPatch?: UserMenuCountersDto | null;
     } = {}
   ): Promise<EventParticipationActionResultDTO | null> {
     const normalizedUserId = userId.trim();

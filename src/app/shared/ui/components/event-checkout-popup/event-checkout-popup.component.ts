@@ -498,13 +498,13 @@ export class EventCheckoutPopupComponent {
       return 'Continue';
     }
     if (this.paymentStep) {
-      return this.paymentDisabled() ? dialog.confirmLabel : 'Buy';
+      return 'Checkout';
     }
     if (this.shouldAwaitApprovalBeforePayment() || this.isWaitingListSelection()) {
       return dialog.confirmLabel;
     }
     if (this.totalAmount() > 0) {
-      return 'Checkout';
+      return dialog.confirmLabel;
     }
     return dialog.confirmLabel;
   }

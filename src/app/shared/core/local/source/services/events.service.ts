@@ -23,6 +23,7 @@ import type {
   EventFeedbackStateDto
 } from '../../../contracts/activity.interface';
 import type { ActivitiesFeedFilters, ListQuery } from '../../../contracts';
+import type { UserMenuCountersDto } from '../../../contracts/user.interface';
 import { EventFeedbackDetailDto, EventFeedbackPageResultDto } from '../../../contracts/activity.interface';
 import { LocalRouteDelayService } from './route-delay.service';
 import { LocalEventFeedbackRepository } from '../repositories/event-feedback.repository';
@@ -473,9 +474,13 @@ export class LocalEventsService extends LocalRouteDelayService implements IEvent
       paymentSessionId?: string | null;
       bookingConfirmed?: boolean;
       pendingReason?: ActivityPendingReason;
+      skipLocalRouteDelay?: boolean;
+      counterPatch?: UserMenuCountersDto | null;
     } = {}
   ): Promise<EventParticipationActionResultDTO | null> {
-    await this.waitForRouteDelay(LocalEventsService.EVENTS_ROUTE);
+    if (options.skipLocalRouteDelay !== true) {
+      await this.waitForRouteDelay(LocalEventsService.EVENTS_ROUTE);
+    }
     const record = this.eventsRepository.requestJoin(
       userId,
       sourceId,
@@ -483,10 +488,79 @@ export class LocalEventsService extends LocalRouteDelayService implements IEvent
       options.bookingConfirmed === true && options.pendingReason !== 'approval' && options.pendingReason !== 'waitlist',
       options.pendingReason === 'waitlist'
     );
+    this.patchLocalUserActivityCounters(userId, options.counterPatch ?? null);
     await this.eventsRepository.flushToIndexedDb();
     return record
       ? LocalEventParticipationActionMapper.toResult(record, this.resolveDemoActivityUserId(userId), options)
       : null;
+  }
+
+  private patchLocalUserActivityCounters(userId: string, patch: UserMenuCountersDto | null): void {
+    const normalizedUserId = userId.trim();
+    if (!normalizedUserId || !patch) {
+      return;
+    }
+    const current = this.usersRepository.queryUserById(normalizedUserId);
+    if (!current) {
+      return;
+    }
+    this.usersRepository.upsertUser({
+      ...current,
+      activities: this.applyUserActivityCounterPatch(current.activities, patch)
+    });
+  }
+
+  private applyUserActivityCounterPatch(
+    current: NonNullable<ReturnType<LocalUsersRepository['queryUserById']>>['activities'],
+    patch: UserMenuCountersDto
+  ): NonNullable<ReturnType<LocalUsersRepository['queryUserById']>>['activities'] {
+    const next = { ...current };
+    const scalarKeys = [
+      'game',
+      'chat',
+      'invitations',
+      'events',
+      'hosting',
+      'cars',
+      'accommodation',
+      'supplies',
+      'tickets',
+      'contacts',
+      'feedback',
+      'adminJobs',
+      'adminMetrics'
+    ] as const;
+    for (const key of scalarKeys) {
+      const value = patch[key];
+      if (Number.isFinite(value)) {
+        next[key] = this.normalizeUserCounter(value);
+      }
+    }
+    if (patch.event) {
+      next.event = this.applyUserEventCounterPatch(current.event, patch.event);
+    }
+    return next;
+  }
+
+  private applyUserEventCounterPatch(
+    current: NonNullable<ReturnType<LocalUsersRepository['queryUserById']>>['activities']['event'],
+    patch: NonNullable<UserMenuCountersDto['event']>
+  ): NonNullable<ReturnType<LocalUsersRepository['queryUserById']>>['activities']['event'] {
+    const next = { ...(current ?? {}) };
+    const nextRecord = next as Record<string, number | undefined>;
+    const patchRecord = patch as Record<string, number | undefined>;
+    const keys = ['all', 'active', 'pending', 'invitations', 'hosting', 'drafts', 'trash'];
+    for (const key of keys) {
+      const value = patchRecord[key];
+      if (Number.isFinite(value)) {
+        nextRecord[key] = this.normalizeUserCounter(value);
+      }
+    }
+    return next;
+  }
+
+  private normalizeUserCounter(value: unknown): number {
+    return Math.max(0, Math.trunc(Number(value) || 0));
   }
 
   async createCheckoutSession(request: EventCheckoutRequest): Promise<EventCheckoutSession | null> {

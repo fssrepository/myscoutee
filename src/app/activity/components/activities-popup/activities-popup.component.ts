@@ -645,7 +645,8 @@ export class ActivitiesPopupComponent implements OnDestroy {
       acceptedMemberUserIds: [...(dto?.acceptedMemberUserIds ?? [])],
       pendingMemberUserIds: [...(dto?.pendingMemberUserIds ?? [])],
       invitedMemberUserIds: [...(dto?.invitedMemberUserIds ?? [])],
-      pendingRequestMemberUserIds: [...(dto?.pendingRequestMemberUserIds ?? [])]
+      pendingRequestMemberUserIds: [...(dto?.pendingRequestMemberUserIds ?? [])],
+      eventScope: this.activitiesEventScope
     };
   }
 
@@ -786,7 +787,8 @@ export class ActivitiesPopupComponent implements OnDestroy {
       const shouldReloadEventList = this.activitiesStore.activitiesOpen()
         && (hadPendingDraftRemoval || hasNewPendingDraft)
         && this.activitiesPrimaryFilter === 'events'
-        && this.activitiesEventScope !== 'pending';
+        && this.activitiesEventScope !== 'pending'
+        && this.activitiesEventScope !== 'invitations';
       if (shouldReloadEventList) {
         this.activitiesSmartList?.reload();
       }

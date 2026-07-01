@@ -18,6 +18,7 @@ import type {
 } from '../../contracts/event.interface';
 import type { ActivityPendingReason } from '../../common/constants';
 import type { ActivitiesFeedFilters, ListQuery, PageResult } from '../../contracts';
+import type { UserMenuCountersDto } from '../../contracts/user.interface';
 import type {
   EventCheckoutAssetSelection,
   EventCheckoutRequest,
@@ -285,6 +286,8 @@ export class EventsService extends BaseRouteModeService implements IEventsServic
       paymentSessionId?: string | null;
       bookingConfirmed?: boolean;
       pendingReason?: ActivityPendingReason;
+      skipLocalRouteDelay?: boolean;
+      counterPatch?: UserMenuCountersDto | null;
     } = {}
   ): Promise<EventParticipationActionResultDTO | null> {
     return this.eventsService.requestJoin(userId, sourceId, options);

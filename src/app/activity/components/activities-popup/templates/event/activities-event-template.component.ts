@@ -18,6 +18,7 @@ import {
   ActivityEventDetailDTO
 } from '../../../../../shared/core/contracts/activity.interface';
 import type * as ContractTypes from '../../../../../shared/core/contracts';
+import type { UserMenuCountersDto } from '../../../../../shared/core/contracts/user.interface';
 import {
   ActivityMembersBuilder
 } from '../../../../../shared/core';
@@ -116,6 +117,11 @@ type InvitationApprovalSaveResult = {
   eventDetailDTO: ActivityEventDetailDTO;
   nextMembers: ActivityContracts.ActivityMemberDTO[] | null;
   capacityTotal: number;
+};
+type InvitationApprovalContext = {
+  record: ActivityContracts.ActivityEventRecord | null;
+  currentMembers: ActivityContracts.ActivityMemberDTO[];
+  requiresAdminApproval: boolean;
 };
 
 export class ActivitiesEventsController {
@@ -514,7 +520,8 @@ export class ActivitiesEventsController {
       acceptedMemberUserIds: [...(dto?.acceptedMemberUserIds ?? [])],
       pendingMemberUserIds: [...(dto?.pendingMemberUserIds ?? [])],
       invitedMemberUserIds: [...(dto?.invitedMemberUserIds ?? [])],
-      pendingRequestMemberUserIds: [...(dto?.pendingRequestMemberUserIds ?? [])]
+      pendingRequestMemberUserIds: [...(dto?.pendingRequestMemberUserIds ?? [])],
+      eventScope: this.activitiesEventScope
     };
   }
 
@@ -730,14 +737,22 @@ export class ActivitiesEventsController {
       onSubmit: (selection: ActivityContracts.EventCheckoutSelection) => this.confirmActivityInvitationApproval(row, selection)
     });
     const loadingDialogId = loadingDialog?.id ?? null;
-    const record = await this.eventsService.queryKnownRecordById(activeUserId, row.id);
-    const requiresAdminApproval = await this.resolveInvitationRequiresAdminApproval(
-      row.id,
+    const [record, currentMembers] = await Promise.all([
+      this.eventsService.queryKnownRecordById(activeUserId, row.id),
+      this.activityMembersService.queryMembersByOwnerId(row.id)
+    ]);
+    const requiresAdminApproval = this.resolveInvitationRequiresAdminApprovalFromMembers(
+      currentMembers,
       record?.creatorUserId ?? relatedSource.creatorUserId
     );
     if (!this.eventCheckoutDialogStore.isCurrent(loadingDialogId)) {
       return;
     }
+    const approvalContext: InvitationApprovalContext = {
+      record,
+      currentMembers,
+      requiresAdminApproval
+    };
     if (record && this.shouldUseCheckoutFlow(record)) {
       this.eventCheckoutDialogStore.open({
         mode: 'invitation',
@@ -749,7 +764,7 @@ export class ActivitiesEventsController {
         confirmLabel: 'Accept',
         busyConfirmLabel: 'Accepting...',
         failureMessage: 'Unable to accept invitation.',
-        onSubmit: (selection: ActivityContracts.EventCheckoutSelection) => this.confirmActivityInvitationApproval(row, selection)
+        onSubmit: (selection: ActivityContracts.EventCheckoutSelection) => this.confirmActivityInvitationApproval(row, selection, approvalContext)
       });
       return;
     }
@@ -762,7 +777,7 @@ export class ActivitiesEventsController {
       busyConfirmLabel: 'Accepting...',
       confirmTone: 'accent',
       failureMessage: 'Unable to accept invitation.',
-      onConfirm: () => this.confirmActivityInvitationApproval(row)
+      onConfirm: () => this.confirmActivityInvitationApproval(row, null, approvalContext)
     });
   }
 
@@ -1048,24 +1063,26 @@ export class ActivitiesEventsController {
     return 'Unable to delete event.';
   }
 
-  private adjustAcceptedInvitationCounters(
+  private acceptedInvitationCounterPatch(
     row: InfoCardData,
-    sync: ActivityContracts.ActivityEventDTO
-  ): void {
+    detail: Pick<ActivityEventDetailDTO, 'pendingRequestMemberUserIds' | 'acceptedMemberUserIds'>
+  ): Partial<ActivityCounters> | null {
     if (!this.isActivityInvitationRow(row)) {
-      return;
+      return null;
     }
     const activeUserId = this.activeUserId();
     const movedToPending = activeUserId.length > 0
-      && (sync.pendingRequestMemberUserIds ?? []).includes(activeUserId)
-      && !(sync.acceptedMemberUserIds ?? []).includes(activeUserId);
-    this.applyActivityEventCounterDeltas(
+      && (detail.pendingRequestMemberUserIds ?? []).includes(activeUserId)
+      && !(detail.acceptedMemberUserIds ?? []).includes(activeUserId);
+    return this.activityCounterPatchFromDeltas(
+      activeUserId,
       movedToPending
         ? { invitations: -1 }
         : { invitations: -1, events: 1 },
       movedToPending
         ? { invitations: -1, pending: 1 }
-        : { invitations: -1, active: 1 }
+        : { invitations: -1, active: 1 },
+      this.activeUser?.activities ?? null
     );
   }
 
@@ -1261,27 +1278,54 @@ export class ActivitiesEventsController {
 
   private async confirmActivityInvitationApproval(
     row: InfoCardData,
-    selection?: ActivityContracts.EventCheckoutSelection | null
+    selection?: ActivityContracts.EventCheckoutSelection | null,
+    context?: InvitationApprovalContext | null
   ): Promise<void> {
-    const { eventDetailDTO, nextMembers, capacityTotal } = await this.buildAcceptedInvitationSaveResult(row, selection);
-    const [displaySync] = await Promise.all([
-      this.eventsService.saveActivityEvent(eventDetailDTO),
-      nextMembers
-        ? this.activityMembersService.replaceMembersByOwnerId(eventDetailDTO.id, nextMembers, capacityTotal)
-        : Promise.resolve()
-    ]);
-    if (!displaySync) {
-      return;
+    const activeUserId = this.activeUserId();
+    const { eventDetailDTO } = await this.buildAcceptedInvitationSaveResult(row, selection, context);
+    const patch = this.acceptedInvitationCounterPatch(row, eventDetailDTO);
+    const pendingReason = this.acceptedInvitationPendingReason(activeUserId, eventDetailDTO, selection);
+    const joinResult = await this.eventsService.requestJoin(activeUserId, eventDetailDTO.id, {
+      slotSourceId: selection?.slotSourceId ?? null,
+      optionalSubEventIds: selection?.optionalSubEventIds ?? [],
+      assetSelections: selection?.assetSelections ?? [],
+      acceptedPolicyIds: selection?.acceptedPolicyIds ?? [],
+      paymentSessionId: selection?.paymentSessionId ?? null,
+      bookingConfirmed: pendingReason == null && selection?.bookingConfirmed !== false,
+      pendingReason,
+      skipLocalRouteDelay: Boolean(selection?.paymentSessionId),
+      counterPatch: patch as UserMenuCountersDto | null
+    });
+    if (!joinResult || joinResult.membershipStatus === 'unchanged') {
+      throw new Error('Unable to accept invitation.');
     }
     this.removeInvitationItem(eventDetailDTO.id);
-    this.applyActivityEventSave(displaySync);
-    this.adjustAcceptedInvitationCounters(row, displaySync);
+    this.activitiesSmartList?.removeVisibleItemByIdentity(this.activityRowIdentity(row));
+    this.signalActivityCounterPatch(activeUserId, patch);
     this.cdr.markForCheck();
+  }
+
+  private acceptedInvitationPendingReason(
+    activeUserId: string,
+    detail: Pick<ActivityEventDetailDTO, 'pendingRequestMemberUserIds' | 'acceptedMemberUserIds'>,
+    selection?: ActivityContracts.EventCheckoutSelection | null
+  ): AppConstants.ActivityPendingReason {
+    if (selection?.pendingReason === 'waitlist') {
+      return 'waitlist';
+    }
+    if (selection?.pendingReason === 'approval') {
+      return 'approval';
+    }
+    const movedToPending = activeUserId.length > 0
+      && (detail.pendingRequestMemberUserIds ?? []).includes(activeUserId)
+      && !(detail.acceptedMemberUserIds ?? []).includes(activeUserId);
+    return movedToPending ? 'approval' : null;
   }
 
   private async buildAcceptedInvitationSaveResult(
     row: InfoCardData,
-    selection?: ActivityContracts.EventCheckoutSelection | null
+    selection?: ActivityContracts.EventCheckoutSelection | null,
+    context?: InvitationApprovalContext | null
   ): Promise<InvitationApprovalSaveResult> {
     const activeUserId = this.activeUser.id.trim();
     if (!activeUserId) {
@@ -1289,18 +1333,23 @@ export class ActivitiesEventsController {
     }
 
     const relatedSource = this.activityDisplaySourceForRow(row);
-    const record = await this.eventsService.queryKnownRecordById(activeUserId, row.id);
-    const currentMembers = await this.activityMembersService.queryMembersByOwnerId(row.id);
+    const [record, currentMembers] = context
+      ? [context.record, context.currentMembers]
+      : await Promise.all([
+          this.eventsService.queryKnownRecordById(activeUserId, row.id),
+          this.activityMembersService.queryMembersByOwnerId(row.id)
+        ]);
     const activeInviteEntry = currentMembers.find((member: ActivityContracts.ActivityMemberDTO) =>
       member.userId === activeUserId
       && member.status === 'pending'
       && member.requestKind === 'invite'
     ) ?? null;
-    const requiresAdminApproval = this.invitationRequiresAdminApproval(
-      activeInviteEntry,
-      currentMembers,
-      record?.creatorUserId ?? relatedSource.creatorUserId
-    );
+    const requiresAdminApproval = context?.requiresAdminApproval
+      ?? this.invitationRequiresAdminApproval(
+        activeInviteEntry,
+        currentMembers,
+        record?.creatorUserId ?? relatedSource.creatorUserId
+      );
 
     const existingAcceptedMemberUserIds = this.activityMemberUserIdsByStatus(currentMembers, 'accepted');
     const existingPendingMemberUserIds = this.activityMemberUserIdsByStatus(currentMembers, 'pending')
@@ -1440,12 +1489,14 @@ export class ActivitiesEventsController {
     };
   }
 
-  private async resolveInvitationRequiresAdminApproval(ownerId: string, creatorUserId?: string | null): Promise<boolean> {
+  private resolveInvitationRequiresAdminApprovalFromMembers(
+    currentMembers: readonly ActivityContracts.ActivityMemberDTO[],
+    creatorUserId?: string | null
+  ): boolean {
     const activeUserId = this.activeUser.id.trim();
     if (!activeUserId) {
       return false;
     }
-    const currentMembers = await this.activityMembersService.queryMembersByOwnerId(ownerId);
     const activeInviteEntry = currentMembers.find((member: ActivityContracts.ActivityMemberDTO) =>
       member.userId === activeUserId
       && member.status === 'pending'
