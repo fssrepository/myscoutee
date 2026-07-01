@@ -17,7 +17,8 @@ import {
 } from '../../../app-utils';
 import type {
   ActivitiesChatPageResultDTO,
-  ChatDTO
+  ChatDTO,
+  ChatMessagesPageResultDTO
 } from '../../contracts/chat.interface';
 import type { IChatsService } from '../../contracts/activity.interface';
 import type { ActivitiesFeedFilters, ListQuery } from '../../contracts';
@@ -349,6 +350,53 @@ export class HttpChatsService implements IChatsService {
     }
   }
 
+  async queryChatMessagesPage(
+    chat: ChatDTO,
+    query: ListQuery
+  ): Promise<ChatMessagesPageResultDTO> {
+    const pageSize = Math.max(1, Math.trunc(Number(query.pageSize) || 10));
+    let params = this.activeUserParams()
+      .set('limit', String(pageSize));
+    if (query.cursor) {
+      params = params.set('cursor', query.cursor);
+    }
+
+    try {
+      const response = await this.http
+        .get<{
+          items?: HttpChatMessageDto[] | null;
+          total?: number | null;
+          nextCursor?: string | null;
+        } | HttpChatMessageDto[] | null>(
+          `${this.apiBaseUrl}/activities/chats/${encodeURIComponent(chat.id)}/messages`,
+          { params }
+        )
+        .toPromise();
+
+      if (Array.isArray(response)) {
+        return this.buildChatMessagesPage(
+          response.map((message, index) => this.mapChatMessage(message, chat.id, index)),
+          query
+        );
+      }
+
+      const messages = Array.isArray(response?.items)
+        ? response.items.map((message, index) => this.mapChatMessage(message, chat.id, index))
+        : [];
+      return {
+        items: this.sortChatMessagesForThread(messages),
+        total: Number.isFinite(response?.total)
+          ? Math.max(0, Math.trunc(Number(response?.total)))
+          : messages.length,
+        nextCursor: typeof response?.nextCursor === 'string' && response.nextCursor.trim().length > 0
+          ? response.nextCursor.trim()
+          : null
+      };
+    } catch {
+      return this.buildChatMessagesPage(this.resolveCachedChatMessages(chat), query);
+    }
+  }
+
   async queryChatMembers(chatId: string): Promise<ActivityContracts.ActivityMemberDTO[]> {
     const normalizedChatId = `${chatId ?? ''}`.trim();
     if (!normalizedChatId) {
@@ -615,6 +663,38 @@ export class HttpChatsService implements IChatsService {
       }
     }
     return [...uniqueById.values()];
+  }
+
+  private buildChatMessagesPage(
+    messages: readonly ContractTypes.ChatPopupMessage[],
+    query: ListQuery
+  ): ChatMessagesPageResultDTO {
+    const sorted = this.sortChatMessagesForThread(messages);
+    const pageSize = Math.max(1, Math.trunc(Number(query.pageSize) || 10));
+    const startIndex = this.resolveChatMessagesPageStartIndex(query, pageSize);
+    const endIndex = Math.min(sorted.length, startIndex + pageSize);
+    return {
+      items: sorted.slice(startIndex, endIndex),
+      total: sorted.length,
+      nextCursor: endIndex < sorted.length ? String(endIndex) : null
+    };
+  }
+
+  private resolveChatMessagesPageStartIndex(query: ListQuery, pageSize: number): number {
+    const cursorIndex = Number(query.cursor);
+    if (Number.isFinite(cursorIndex)) {
+      return Math.max(0, Math.trunc(cursorIndex));
+    }
+    return Math.max(0, Math.trunc(Number(query.page) || 0)) * pageSize;
+  }
+
+  private sortChatMessagesForThread(
+    messages: readonly ContractTypes.ChatPopupMessage[]
+  ): ContractTypes.ChatPopupMessage[] {
+    return [...messages].sort((left, right) =>
+      AppUtils.toSortableDate(right.sentAtIso) - AppUtils.toSortableDate(left.sentAtIso)
+      || `${right.id ?? ''}`.localeCompare(`${left.id ?? ''}`)
+    );
   }
 
   private shouldUseCachedActivitiesChatPage(

@@ -139,6 +139,12 @@ export interface ActivitiesChatPageResultDTO {
   nextCursor?: string | null;
 }
 
+export interface ChatMessagesPageResultDTO {
+  items: ChatPopupMessage[];
+  total: number;
+  nextCursor?: string | null;
+}
+
 export interface ChatVoiceClip {
   dataUrl: string;
   mimeType: string;

@@ -278,10 +278,10 @@ export class EventChatPopupComponent implements OnDestroy {
     query: ListQuery<ChatThreadFilters>
   ) => {
     const sessionKey = `${query.filters?.sessionKey ?? ''}`.trim();
-    if (query.page === 0 && sessionKey && this.initialChatLoadedSessionKey !== sessionKey) {
-      return from(this.loadInitialChatThreadPage(query, sessionKey));
+    if (!sessionKey) {
+      return of(this.emptyChatThreadPage());
     }
-    return of(this.chatThreadPageResult(query));
+    return from(this.loadChatThreadPage(query, sessionKey));
   };
 
   @ViewChild('chatThreadSmartList')
@@ -2443,13 +2443,39 @@ export class EventChatPopupComponent implements OnDestroy {
     }
   }
 
+  private async loadChatThreadPage(
+    query: ListQuery<ChatThreadFilters>,
+    sessionKey: string
+  ): Promise<PageResult<ContractTypes.ChatPopupMessage>> {
+    if (query.page === 0 && this.initialChatLoadedSessionKey !== sessionKey) {
+      return this.loadInitialChatThreadPage(query, sessionKey);
+    }
+    const session = this.session();
+    if (!session || this.loadedSessionKey !== sessionKey) {
+      return this.emptyChatThreadPage();
+    }
+
+    try {
+      const messagesPage = await this.chatsService.loadChatMessagesResult(session.item, query);
+      if (this.loadedSessionKey !== sessionKey) {
+        return this.emptyChatThreadPage();
+      }
+      const result = this.applyChatThreadMessagesPage(messagesPage);
+      this.rebuildVisibleReadReceipts();
+      this.markLoadedChatThreadAsRead(session.item, result.items);
+      return result;
+    } catch {
+      return this.emptyChatThreadPage();
+    }
+  }
+
   private async loadInitialChatThreadPage(
     query: ListQuery<ChatThreadFilters>,
     sessionKey: string
   ): Promise<PageResult<ContractTypes.ChatPopupMessage>> {
     const session = this.session();
     if (!session || this.loadedSessionKey !== sessionKey) {
-      return this.chatThreadPageResult(query);
+      return this.emptyChatThreadPage();
     }
     this.chatInitialLoadPending = true;
     this.clearOpenChatUnreadState();
@@ -2459,14 +2485,14 @@ export class EventChatPopupComponent implements OnDestroy {
       const resolvedChatPromise = this.chatsService
         .resolveRepositoryEventServiceChat(initialChat)
         .catch(() => null);
-      const messagesPromise = this.chatsService.loadChatMessagesResult(initialChat);
+      const messagesPromise = this.chatsService.loadChatMessagesResult(initialChat, query);
       const [resolvedChat, messagesPage] = await Promise.all([resolvedChatPromise, messagesPromise]);
       if (this.loadedSessionKey !== sessionKey) {
-        return this.chatThreadPageResult(query);
+        return this.emptyChatThreadPage();
       }
       const chat = this.applyResolvedInitialChatItem(initialChat, resolvedChat, sessionKey);
       if (this.loadedSessionKey !== sessionKey) {
-        return this.chatThreadPageResult(query);
+        return this.emptyChatThreadPage();
       }
       this.chatHeaderControlsHydrated = true;
       this.syncSelectedChatHeader(chat, {
@@ -2474,17 +2500,16 @@ export class EventChatPopupComponent implements OnDestroy {
         baseContext: messagesPage.context ?? null
       });
       void this.refreshSelectedChatHeader(chat, sessionKey);
-      this.allMessages = this.normalizeChatMessages(messagesPage.items)
-        .sort((first, second) => AppUtils.toSortableDate(second.sentAtIso) - AppUtils.toSortableDate(first.sentAtIso));
+      const result = this.applyChatThreadMessagesPage(messagesPage, { replace: true });
       this.rebuildVisibleReadReceipts();
       this.syncEventChatSummaryFromLatestMessage();
       this.initialChatLoadedSessionKey = sessionKey;
-      this.markLoadedChatThreadAsRead(chat, this.allMessages);
+      this.markLoadedChatThreadAsRead(chat, result.items);
       await this.startLiveChatUpdates(chat, sessionKey);
-      return this.chatThreadPageResult(query);
+      return result;
     } catch {
       if (this.loadedSessionKey !== sessionKey) {
-        return this.chatThreadPageResult(query);
+        return this.emptyChatThreadPage();
       }
       this.chatHeaderControlsHydrated = true;
       this.syncSelectedChatHeader(session.item, { hydrateControls: true });
@@ -2493,7 +2518,7 @@ export class EventChatPopupComponent implements OnDestroy {
       this.rebuildVisibleReadReceipts();
       this.initialChatLoadedSessionKey = sessionKey;
       await this.startLiveChatUpdates(session.item, sessionKey);
-      return this.chatThreadPageResult(query);
+      return this.emptyChatThreadPage();
     } finally {
       if (this.loadedSessionKey === sessionKey) {
         this.chatInitialLoadPending = false;
@@ -2522,24 +2547,33 @@ export class EventChatPopupComponent implements OnDestroy {
     return resolvedChat;
   }
 
-  private chatThreadPageResult(query: ListQuery<ChatThreadFilters>): PageResult<ContractTypes.ChatPopupMessage> {
-    const total = this.allMessages.length;
-    const pageSize = Math.max(1, Math.trunc(Number(query.pageSize) || this.chatHistoryPageSize));
-    const page = Math.max(0, Math.trunc(Number(query.page) || 0));
-    let start = 0;
-    let end = 0;
-
-    if (page === 0) {
-      end = Math.min(total, pageSize);
-    } else {
-      const initialBlockSize = Math.max(this.chatHistoryPageSize, this.chatInitialLoadMessageCount);
-      start = Math.min(total, initialBlockSize + ((page - 1) * this.chatHistoryPageSize));
-      end = Math.min(total, start + this.chatHistoryPageSize);
-    }
-
+  private applyChatThreadMessagesPage(
+    page: PageResult<ContractTypes.ChatPopupMessage, AppUiTypes.PopupHeaderContext>,
+    options: { replace?: boolean } = {}
+  ): PageResult<ContractTypes.ChatPopupMessage> {
+    const items = this.normalizeChatMessages(page.items)
+      .sort((first, second) =>
+        AppUtils.toSortableDate(second.sentAtIso) - AppUtils.toSortableDate(first.sentAtIso)
+      );
+    this.allMessages = this.deduplicateChatMessages(options.replace === true
+      ? items
+      : [...this.allMessages, ...items]
+    ).sort((first, second) =>
+      AppUtils.toSortableDate(second.sentAtIso) - AppUtils.toSortableDate(first.sentAtIso)
+    );
     return {
-      items: this.allMessages.slice(start, end),
-      total,
+      items,
+      total: page.total,
+      nextCursor: page.nextCursor ?? null,
+      context: page.context ?? this.chatHeaderContext ?? undefined
+    };
+  }
+
+  private emptyChatThreadPage(): PageResult<ContractTypes.ChatPopupMessage> {
+    return {
+      items: [],
+      total: this.allMessages.length,
+      nextCursor: null,
       context: this.chatHeaderContext ?? undefined
     };
   }

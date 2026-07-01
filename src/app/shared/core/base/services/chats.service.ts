@@ -57,13 +57,27 @@ export class ChatsService extends BaseRouteModeService implements IChatsService 
   }
 
   async loadChatMessagesResult(
-    chat: ChatDTO
+    chat: ChatDTO,
+    query: ListQuery = { page: 0, pageSize: Number.MAX_SAFE_INTEGER }
   ): Promise<PageResult<ContractTypes.ChatPopupMessage, AppUiTypes.PopupHeaderContext>> {
-    const items = await this.loadChatMessages(chat);
+    const page = await this.queryChatMessagesPage(chat, query);
     return {
-      items,
-      total: items.length,
+      items: page.items,
+      total: page.total,
+      nextCursor: page.nextCursor ?? null,
       context: this.buildChatPopupHeaderContext(chat, { includeThumbs: true })
+    };
+  }
+
+  async queryChatMessagesPage(
+    chat: ChatDTO,
+    query: ListQuery
+  ): Promise<PageResult<ContractTypes.ChatPopupMessage>> {
+    const page = await this.chatsService.queryChatMessagesPage(chat, query);
+    return {
+      items: page.items,
+      total: page.total,
+      nextCursor: page.nextCursor ?? null
     };
   }
 

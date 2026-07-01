@@ -3,7 +3,11 @@ import { Injectable, inject } from '@angular/core';
 import type * as ContractTypes from '../../../contracts';
 import { AppUtils } from '../../../../app-utils';
 import type { ActivitiesFeedFilters, ListQuery } from '../../../contracts';
-import type { ActivitiesChatPageResultDTO, ChatDTO } from '../../../contracts/chat.interface';
+import type {
+  ActivitiesChatPageResultDTO,
+  ChatDTO,
+  ChatMessagesPageResultDTO
+} from '../../../contracts/chat.interface';
 import type { IChatsService } from '../../../contracts/activity.interface';
 import { LocalRouteDelayService } from './route-delay.service';
 import { LocalChatsRepository } from '../repositories/chats.repository';
@@ -52,6 +56,14 @@ export class LocalChatsService extends LocalRouteDelayService implements IChatsS
   async loadChatMessages(chat: ChatDTO): Promise<ContractTypes.ChatPopupMessage[]> {
     await this.waitForRouteDelay(LocalChatsService.CHAT_ROUTE);
     return this.chatsRepository.queryChatMessages(chat);
+  }
+
+  async queryChatMessagesPage(
+    chat: ChatDTO,
+    query: ListQuery
+  ): Promise<ChatMessagesPageResultDTO> {
+    await this.waitForRouteDelay(LocalChatsService.CHAT_ROUTE);
+    return this.chatsRepository.queryChatMessagesPage(chat, query);
   }
 
   async queryChatMembers(chatId: string): Promise<ActivityContracts.ActivityMemberDTO[]> {

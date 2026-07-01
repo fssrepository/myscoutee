@@ -88,6 +88,11 @@ export interface IChatsService {
     query: ListQuery<ActivitiesFeedFilters>,
     options?: { chatItems?: readonly ChatContracts.ChatDTO[] }
   ): Promise<ChatContracts.ActivitiesChatPageResultDTO>;
+  loadChatMessages(chat: ChatContracts.ChatDTO): Promise<ChatContracts.ChatPopupMessage[]>;
+  queryChatMessagesPage(
+    chat: ChatContracts.ChatDTO,
+    query: ListQuery
+  ): Promise<ChatContracts.ChatMessagesPageResultDTO>;
 }
 
 export interface IRatesService {

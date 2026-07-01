@@ -130,6 +130,21 @@ export class LocalChatsRepository {
     })) : [];
   }
 
+  queryChatMessagesPage(
+    chat: ChatRecord,
+    query: ListQuery
+  ): { items: ContractTypes.ChatPopupMessage[]; total: number; nextCursor: string | null } {
+    const messages = this.sortChatMessagesForThread(this.queryChatMessages(chat));
+    const pageSize = Math.max(1, Math.trunc(Number(query.pageSize) || 10));
+    const startIndex = this.resolveMessagePageStartIndex(query, pageSize);
+    const endIndex = Math.min(messages.length, startIndex + pageSize);
+    return {
+      items: messages.slice(startIndex, endIndex),
+      total: messages.length,
+      nextCursor: endIndex < messages.length ? String(endIndex) : null
+    };
+  }
+
   appendChatMessage(chat: ChatRecord, message: ContractTypes.ChatPopupMessage): ContractTypes.ChatPopupMessage | null {
     const record = this.resolveChatRecord(chat);
     if (!record) {
@@ -430,6 +445,23 @@ export class LocalChatsRepository {
       return Math.max(0, Math.trunc(cursorIndex));
     }
     return Math.max(0, Math.trunc(Number(query.page) || 0)) * pageSize;
+  }
+
+  private resolveMessagePageStartIndex(query: ListQuery, pageSize: number): number {
+    const cursorIndex = Number(query.cursor);
+    if (Number.isFinite(cursorIndex)) {
+      return Math.max(0, Math.trunc(cursorIndex));
+    }
+    return Math.max(0, Math.trunc(Number(query.page) || 0)) * pageSize;
+  }
+
+  private sortChatMessagesForThread(
+    messages: readonly ContractTypes.ChatPopupMessage[]
+  ): ContractTypes.ChatPopupMessage[] {
+    return [...messages].sort((left, right) =>
+      AppUtils.toSortableDate(right.sentAtIso) - AppUtils.toSortableDate(left.sentAtIso)
+      || `${right.id ?? ''}`.localeCompare(`${left.id ?? ''}`)
+    );
   }
 
   private matchesDateRange(record: ChatRecord, rangeStartMs: number, rangeEndMs: number): boolean {
