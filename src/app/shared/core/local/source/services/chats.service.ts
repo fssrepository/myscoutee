@@ -20,6 +20,7 @@ import { LocalActivityMembersRepository } from '../repositories/activity-members
 import { LocalActivityResourcesRepository } from '../repositories/activity-resources.repository';
 import { LocalActivitySubEventStageRuntimeRepository } from '../repositories/activity-sub-event-stage-runtime.repository';
 import { LocalChatThreadMapper } from '../mappers';
+import { UserProfileStore } from '../../../../ui/context/stores/user-profile.store';
 import type { ChatThreadRecord } from '../entity/chat.entity';
 import type {
   ActivityMemberRecord,
@@ -36,6 +37,7 @@ export class LocalChatsService extends LocalRouteDelayService implements IChatsS
 
   private readonly chatsRepository = inject(LocalChatsRepository);
   private readonly usersRepository = inject(LocalUsersRepository);
+  private readonly userProfileStore = inject(UserProfileStore);
   private readonly activityMembersRepository = inject(LocalActivityMembersRepository);
   private readonly activityResourcesRepository = inject(LocalActivityResourcesRepository);
   private readonly activitySubEventStageRuntimeRepository = inject(LocalActivitySubEventStageRuntimeRepository);
@@ -162,9 +164,11 @@ export class LocalChatsService extends LocalRouteDelayService implements IChatsS
 
   async markChatRead(chat: ChatDTO, messageIds: readonly string[]): Promise<ContractTypes.ChatReadReceipt | null> {
     await this.waitForRouteDelay(LocalChatsService.CHAT_ROUTE);
-    const ownerUserId = `${chat.ownerUserId ?? ''}`.trim();
+    const ownerUserId = `${chat.ownerUserId ?? ''}`.trim()
+      || this.resolveDemoActivityUserId(this.userProfileStore.activeUserId().trim());
     const chatId = `${chat.id ?? ''}`.trim();
-    if (!ownerUserId || !chatId) {
+    const ownerId = `${chat.ownerId ?? ''}`.trim();
+    if (!ownerUserId || (!chatId && !ownerId)) {
       return null;
     }
     const update = this.chatsRepository.markChatRead(chat, ownerUserId, messageIds);

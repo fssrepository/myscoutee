@@ -1040,11 +1040,16 @@ export class ActivitiesPopupComponent implements OnDestroy {
   private applyEventChatRowPatch(patch: EventChatRowPatch): void {
     const smartList = this.activitiesSmartList;
     const chatId = `${patch.chatId ?? ''}`.trim();
-    if (!smartList || !chatId || this.activitiesPrimaryFilter !== 'chats' || this.isCalendarLayoutView()) {
+    const ownerId = `${patch.ownerId ?? ''}`.trim();
+    const channelType = `${patch.channelType ?? ''}`.trim();
+    if (!smartList || (!chatId && !ownerId) || this.activitiesPrimaryFilter !== 'chats' || this.isCalendarLayoutView()) {
       return;
     }
     smartList.patchVisibleItem(
-      row => `${row.id ?? ''}`.trim() === chatId,
+      row => ownerId
+        ? `${row.ownerId ?? ''}`.trim() === ownerId
+          && (!channelType || `${(row as { status?: unknown }).status ?? ''}`.trim() === channelType)
+        : `${row.id ?? ''}`.trim() === chatId,
       row => this.patchActivityChatRow(row as ActivityChatListItem, patch) as ActivityListItem
     );
   }
@@ -2177,7 +2182,7 @@ export class ActivitiesPopupComponent implements OnDestroy {
       dateIso: chatRow.dateIso ?? undefined,
       distanceMetersExact: chatRow.distanceMetersExact ?? undefined,
       channelType,
-      ownerId: supportStatus ? chatRow.id : undefined,
+      ownerId: `${chatRow.ownerId ?? ''}`.trim() || (supportStatus ? chatRow.id : undefined),
       supportCase: supportStatus
         ? {
           status: supportStatus,

@@ -11,6 +11,8 @@ export interface EventChatSession {
 
 export interface EventChatRowPatch {
   chatId: string;
+  ownerId?: string | null;
+  channelType?: ContractTypes.ChatChannelType | null;
   unread?: number | null;
   lastMessage?: string | null;
   lastSenderId?: string | null;
@@ -344,12 +346,16 @@ export class ActivitiesPopupStore {
 
   emitEventChatRowPatch(patch: Omit<EventChatRowPatch, 'revision'>): void {
     const chatId = `${patch.chatId ?? ''}`.trim();
-    if (!chatId) {
+    const ownerId = `${patch.ownerId ?? ''}`.trim();
+    const channelType = patch.channelType ?? null;
+    if (!chatId && !ownerId) {
       return;
     }
     this._eventChatRowPatch.set({
       ...patch,
       chatId,
+      ownerId: ownerId || null,
+      channelType,
       revision: ++this.eventChatRowPatchRevision
     });
   }

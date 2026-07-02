@@ -3505,6 +3505,8 @@ export class EventChatPopupComponent implements OnDestroy {
     }
     this.activitiesStore.emitEventChatRowPatch({
       chatId: session.item.id,
+      ownerId: session.item.ownerId ?? null,
+      channelType: session.item.channelType ?? null,
       lastMessage: nextLastMessage || undefined,
       lastSenderId: nextLastSenderId || undefined,
       dateIso: nextDateIso || undefined
@@ -3523,6 +3525,8 @@ export class EventChatPopupComponent implements OnDestroy {
     }
     this.activitiesStore.emitEventChatRowPatch({
       chatId: chat.id,
+      ownerId: chat.ownerId ?? null,
+      channelType: chat.channelType ?? null,
       unread: read.unread
     });
   }

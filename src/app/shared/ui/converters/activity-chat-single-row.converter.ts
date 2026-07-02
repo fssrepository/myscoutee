@@ -47,6 +47,7 @@ export class ActivityChatSingleRowConverter {
 
     return {
       id: dto.id,
+      ownerId: `${dto.ownerId ?? ''}`.trim() || null,
       smartListKey: `chats:${dto.id}`,
       status: supportStatus ?? this.normalizeChannelType(dto),
       dateIso: dto.dateIso ?? '2026-02-21T09:00:00',

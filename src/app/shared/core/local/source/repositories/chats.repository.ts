@@ -287,11 +287,17 @@ export class LocalChatsRepository {
         .filter(Boolean)
     )];
     const sourceId = `${chat.id ?? ''}`.trim();
-    if (!normalizedOwnerUserId || !sourceId || targetIds.length === 0) {
+    const channelOwnerId = `${chat.ownerId ?? ''}`.trim();
+    const channelType = `${chat.channelType ?? ''}`.trim();
+    if (!normalizedOwnerUserId || (!sourceId && !channelOwnerId) || targetIds.length === 0) {
       return null;
     }
-    const recordKey = LocalChatThreadMapper.buildRecordKey(normalizedOwnerUserId, sourceId);
-    const record = this.memoryDb.read()[CHATS_TABLE_NAME].byId[recordKey] ?? null;
+    const recordsTable = this.memoryDb.read()[CHATS_TABLE_NAME];
+    const recordKey = this.findChatRecordKey(recordsTable, normalizedOwnerUserId, sourceId, channelOwnerId, channelType);
+    if (!recordKey) {
+      return null;
+    }
+    const record = recordsTable.byId[recordKey] ?? null;
     if (!record) {
       return null;
     }
@@ -551,6 +557,34 @@ export class LocalChatsRepository {
 
   private chatMessageSummary(message: ContractTypes.ChatMessageDto): string {
     return message.text || this.chatAttachmentSummary(message) || this.deletedMessageSummary(message);
+  }
+
+  private findChatRecordKey(
+    table: AppMemorySchema[typeof CHATS_TABLE_NAME],
+    ownerUserId: string,
+    chatId: string,
+    ownerId: string,
+    channelType: string
+  ): string | null {
+    const normalizedOwnerUserId = `${ownerUserId ?? ''}`.trim();
+    const normalizedChatId = `${chatId ?? ''}`.trim();
+    const normalizedOwnerId = `${ownerId ?? ''}`.trim();
+    const normalizedChannelType = `${channelType ?? ''}`.trim();
+    if (normalizedOwnerUserId && normalizedChatId) {
+      const key = LocalChatThreadMapper.buildRecordKey(normalizedOwnerUserId, normalizedChatId);
+      if (table.byId[key]) {
+        return key;
+      }
+    }
+    if (!normalizedOwnerUserId || !normalizedOwnerId) {
+      return null;
+    }
+    return table.ids.find(id => {
+      const record = table.byId[id];
+      return record?.ownerUserId === normalizedOwnerUserId
+        && `${record.ownerId ?? ''}`.trim() === normalizedOwnerId
+        && (!normalizedChannelType || `${record.channelType ?? ''}`.trim() === normalizedChannelType);
+    }) ?? null;
   }
 
   private readAvatarForUser(userId: string): ContractTypes.ChatReadAvatar {
