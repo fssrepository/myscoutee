@@ -6,7 +6,7 @@ import { AppUtils } from '../../../../app-utils';
 import type { AppMemorySchema } from '../../common/memory.schema';
 import { LocalChatMessageMapper, LocalChatThreadMapper } from '../../source/mappers';
 import { LocalMemoryDb } from '../../../common/app.db';
-import type { ChatMessageDto } from '../../../contracts/chat.interface';
+import type { ChatMessageDto, ChatReadAvatar } from '../../../contracts/chat.interface';
 
 import type { ActivityEventRecord } from '../../../contracts/activity.interface';
 
@@ -60,8 +60,10 @@ export class SeedChatsRepository {
     if (!ownerUserId || !chatId || messages.length === 0) {
       return;
     }
-    const messageRecords = messages.map(message => LocalChatMessageMapper.toRecord(ownerUserId, chatId, message));
-    const latest = [...messages].sort((left, right) =>
+    const normalizedMessages = this.applySeedUnreadState(chat, ownerUserId, messages);
+    const unread = this.countUnreadMessages(normalizedMessages, ownerUserId);
+    const messageRecords = normalizedMessages.map(message => LocalChatMessageMapper.toRecord(ownerUserId, chatId, message));
+    const latest = [...normalizedMessages].sort((left, right) =>
       AppUtils.toSortableDate(right.sentAtIso) - AppUtils.toSortableDate(left.sentAtIso)
       || `${right.id ?? ''}`.localeCompare(`${left.id ?? ''}`)
     )[0] ?? null;
@@ -70,6 +72,7 @@ export class SeedChatsRepository {
       ...chat,
       id: chatId,
       memberIds: [...(chat.memberIds ?? [])],
+      unread,
       lastMessage: latest ? (latest.text || this.chatAttachmentSummary(latest) || chat.lastMessage) : chat.lastMessage,
       lastSenderId: latest?.senderAvatar.id ?? chat.lastSenderId,
       dateIso: latest?.sentAtIso ?? chat.dateIso,
@@ -96,6 +99,76 @@ export class SeedChatsRepository {
       [CHATS_TABLE_NAME]: this.mergeChatTable(currentState[CHATS_TABLE_NAME], records.chats),
       [CHAT_MESSAGES_TABLE_NAME]: this.mergeChatMessagesTable(currentState[CHAT_MESSAGES_TABLE_NAME], records.chatMessages)
     }));
+  }
+
+  private applySeedUnreadState(
+    chat: ChatRecord,
+    ownerUserId: string,
+    messages: readonly ChatMessageDto[]
+  ): ChatMessageDto[] {
+    const unreadTarget = Math.max(0, Math.trunc(Number(chat.unread) || 0));
+    const incomingIndexes = messages
+      .map((message, index) => ({ message, index }))
+      .filter(entry => !entry.message.mine && `${entry.message.senderAvatar?.id ?? ''}`.trim() !== ownerUserId)
+      .sort((left, right) =>
+        AppUtils.toSortableDate(right.message.sentAtIso) - AppUtils.toSortableDate(left.message.sentAtIso)
+        || `${right.message.id ?? ''}`.localeCompare(`${left.message.id ?? ''}`)
+      )
+      .map(entry => entry.index);
+    const unreadIndexes = new Set(incomingIndexes.slice(0, unreadTarget));
+    const reader = this.seedReader(ownerUserId, messages);
+    return messages.map((message, index) => {
+      if (message.mine || `${message.senderAvatar?.id ?? ''}`.trim() === ownerUserId) {
+        return message;
+      }
+      return unreadIndexes.has(index)
+        ? this.withoutMessageReader(message, ownerUserId)
+        : this.withMessageReader(message, reader);
+    });
+  }
+
+  private seedReader(ownerUserId: string, messages: readonly ChatMessageDto[]): ChatReadAvatar {
+    const avatar = messages
+      .map(message => message.senderAvatar)
+      .find(candidate => `${candidate?.id ?? ''}`.trim() === ownerUserId)
+      ?? messages
+        .flatMap(message => message.readBy ?? [])
+        .find(candidate => `${candidate?.id ?? ''}`.trim() === ownerUserId)
+      ?? null;
+    return {
+      id: ownerUserId,
+      initials: `${avatar?.initials ?? ''}`.trim() || AppUtils.initialsFromText(ownerUserId),
+      gender: avatar?.gender ?? 'man',
+      imageUrl: avatar?.imageUrl ?? null
+    };
+  }
+
+  private withoutMessageReader(message: ChatMessageDto, ownerUserId: string): ChatMessageDto {
+    const readBy = (message.readBy ?? []).filter(reader => `${reader.id ?? ''}`.trim() !== ownerUserId);
+    return readBy.length === (message.readBy ?? []).length
+      ? message
+      : {
+          ...message,
+          readBy
+        };
+  }
+
+  private withMessageReader(message: ChatMessageDto, reader: ChatReadAvatar): ChatMessageDto {
+    if ((message.readBy ?? []).some(entry => `${entry.id ?? ''}`.trim() === reader.id)) {
+      return message;
+    }
+    return {
+      ...message,
+      readBy: [...(message.readBy ?? []), reader]
+    };
+  }
+
+  private countUnreadMessages(messages: readonly ChatMessageDto[], ownerUserId: string): number {
+    return messages.filter(message =>
+      !message.mine
+      && `${message.senderAvatar?.id ?? ''}`.trim() !== ownerUserId
+      && !(message.readBy ?? []).some(reader => `${reader.id ?? ''}`.trim() === ownerUserId)
+    ).length;
   }
 
   queryChatItemsByUser(userId: string): ChatThreadRecord[] {

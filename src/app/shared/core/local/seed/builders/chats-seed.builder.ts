@@ -308,16 +308,18 @@ export class SeedChatsBuilder {
       for (const item of items) {
         const recordKey = this.buildRecordKey(ownerUserId, item.id);
         const dateIso = this.buildDateIso(ownerUserId, item);
+        const messageRecords = this.buildMessageRecords(ownerUserId, item, dateIso);
         byId[recordKey] = {
           ...item,
           supportCase: this.rebaseSupportCase(item.supportCase),
           memberIds: [...item.memberIds],
+          unread: this.countUnreadMessageRecords(messageRecords, ownerUserId),
           ownerUserId,
           dateIso
         };
         ids.push(recordKey);
         const chatKey = this.buildChatMessageChatKey(ownerUserId, item.id);
-        for (const message of this.buildMessageRecords(ownerUserId, item, dateIso)) {
+        for (const message of messageRecords) {
           messageById[message.recordId] = message;
           messageIds.push(message.recordId);
           messageIdsByChatKey[chatKey] = [...(messageIdsByChatKey[chatKey] ?? []), message.recordId];
@@ -646,7 +648,11 @@ export class SeedChatsBuilder {
     const lastLine = item.lastMessage.trim() || `Update shared in ${chatTopic}.`;
 
     if (this.isSupportCaseChat(item)) {
-      return this.buildSupportCaseMessages(item, me, members, sender, anchor, mk);
+      return this.applySeedUnreadState(
+        item,
+        me,
+        this.buildSupportCaseMessages(item, me, members, sender, anchor, mk)
+      );
     }
 
     const seed = AppUtils.hashText(`${ownerUserId}:${item.id}:${chatTopic}`);
@@ -681,8 +687,70 @@ export class SeedChatsBuilder {
       mk(`${item.id}-5`, me, 'Perfect, locking this in.', at(12), [memberA, memberB])
     ];
 
-    return [...olderMessages, ...recentMessages]
-      .sort((first, second) => AppUtils.toSortableDate(first.sentAtIso) - AppUtils.toSortableDate(second.sentAtIso));
+    return this.applySeedUnreadState(
+      item,
+      me,
+      [...olderMessages, ...recentMessages]
+        .sort((first, second) => AppUtils.toSortableDate(first.sentAtIso) - AppUtils.toSortableDate(second.sentAtIso))
+    );
+  }
+
+  private static applySeedUnreadState(
+    item: ChatRecord,
+    owner: ChatSeedUser,
+    messages: readonly ChatMessageRecord[]
+  ): ChatMessageRecord[] {
+    const unreadTarget = this.countValue(item.unread);
+    const incomingIndexes = messages
+      .map((message, index) => ({ message, index }))
+      .filter(entry => !entry.message.mine && entry.message.senderAvatar.userId !== owner.id)
+      .sort((left, right) => AppUtils.toSortableDate(right.message.sentAtIso) - AppUtils.toSortableDate(left.message.sentAtIso))
+      .map(entry => entry.index);
+    const unreadIndexes = new Set(incomingIndexes.slice(0, unreadTarget));
+    return messages.map((message, index) => {
+      if (message.mine || message.senderAvatar.userId === owner.id) {
+        return message;
+      }
+      return unreadIndexes.has(index)
+        ? this.withoutMessageReader(message, owner.id)
+        : this.withMessageReader(message, owner);
+    });
+  }
+
+  private static withoutMessageReader(message: ChatMessageRecord, userId: string): ChatMessageRecord {
+    const nextReadBy = (message.readBy ?? []).filter(reader => reader.userId !== userId);
+    return nextReadBy.length === message.readBy.length
+      ? message
+      : {
+          ...message,
+          readBy: nextReadBy
+        };
+  }
+
+  private static withMessageReader(message: ChatMessageRecord, user: ChatSeedUser): ChatMessageRecord {
+    if ((message.readBy ?? []).some(reader => reader.userId === user.id)) {
+      return message;
+    }
+    return {
+      ...message,
+      readBy: [
+        ...(message.readBy ?? []),
+        {
+          userId: user.id,
+          initials: user.initials,
+          gender: user.gender,
+          imageUrl: this.seedAvatarImageUrl(user)
+        }
+      ]
+    };
+  }
+
+  private static countUnreadMessageRecords(messages: readonly ChatMessageRecord[], ownerUserId: string): number {
+    return messages.filter(message =>
+      !message.mine
+      && message.senderAvatar.userId !== ownerUserId
+      && !(message.readBy ?? []).some(reader => reader.userId === ownerUserId)
+    ).length;
   }
 
   private static rebaseOptionalDateIso(value: string | null | undefined): string | undefined {
