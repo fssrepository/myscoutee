@@ -468,7 +468,10 @@ export class LocalChatsRepository {
   private activityChatContextFilterKey(
     record: Pick<ChatRecord, 'channelType' | 'serviceContext'>
   ): ContractTypes.ActivitiesChatContextFilter {
-    if (record.channelType === 'serviceEvent' || record.channelType === 'supportCase' || record.serviceContext) {
+    if (record.channelType === 'appSupport' || record.channelType === 'supportCase') {
+      return 'appSupport';
+    }
+    if (record.channelType === 'serviceEvent' || record.serviceContext) {
       return 'service';
     }
     if (record.channelType === 'groupSubEvent') {
@@ -490,7 +493,9 @@ export class LocalChatsRepository {
 
   private activitiesChatContextFilter(query: ListQuery<ActivitiesFeedFilters>): ContractTypes.ActivitiesChatContextFilter {
     const value = query.filters?.chatContextFilter;
-    return value === 'event' || value === 'subEvent' || value === 'group' || value === 'service' ? value : 'all';
+    return value === 'event' || value === 'subEvent' || value === 'group' || value === 'service' || value === 'appSupport'
+      ? value
+      : 'all';
   }
 
   private activitiesSupportCaseFilter(query: ListQuery<ActivitiesFeedFilters>): ContractTypes.SupportCaseFilter {

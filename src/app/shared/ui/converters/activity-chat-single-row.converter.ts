@@ -173,6 +173,7 @@ export class ActivityChatSingleRowConverter {
       || dto.channelType === 'optionalSubEvent'
       || dto.channelType === 'groupSubEvent'
       || dto.channelType === 'serviceEvent'
+      || dto.channelType === 'appSupport'
     ) {
       return dto.channelType;
     }
@@ -192,6 +193,9 @@ export class ActivityChatSingleRowConverter {
     }
     if (channelType === 'serviceEvent') {
       return this.serviceChatToneClass(dto);
+    }
+    if (channelType === 'appSupport') {
+      return 'activities-card-chat-service-notification';
     }
     return '';
   }

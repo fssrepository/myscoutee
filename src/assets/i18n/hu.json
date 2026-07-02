@@ -1,6 +1,6 @@
 {
   "lang": "hu",
-  "version": "2026.06.22.hu.1",
+  "version": "2026.07.02.hu.1",
   "messages": {
     "about": "Rólam",
     "accommodation": "Szállás",
@@ -76,6 +76,7 @@
     "ambition": "Ambíció",
     "any": "Bármelyik",
     "application.feedback": "Alkalmazás-visszajelzés",
+    "app.support": "App support",
     "apply.filters": "Szűrők alkalmazása",
     "approval.required": "Jóváhagyás szükséges",
     "ask.organizer": "Kérdés a szervezőnek",

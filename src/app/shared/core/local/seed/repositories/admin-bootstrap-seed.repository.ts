@@ -146,8 +146,7 @@ export class SeedAdminBootstrapRepository {
       memberIds: [admin.id, helpUser.id],
       unread: 1,
       dateIso: now.toISOString(),
-      channelType: 'serviceEvent',
-      serviceContext: 'notification',
+      channelType: 'appSupport',
       ownerUserId: admin.id
     };
     const messages: ChatMessageDto[] = [];

@@ -168,13 +168,9 @@ const SEED_CHAT_ITEMS_BY_USER: Record<string, ChatRecord[]> = {
       lastSenderId: 'u1',
       memberIds: ['u1', 'admin-demo-ava', 'admin-demo-noel'],
       unread: 0,
-      channelType: 'supportCase',
+      channelType: 'appSupport',
       ownerId: 'c-support-admin-u1',
-      supportCase: {
-        status: 'pending',
-        assignee: null,
-        updatedAtIso: '2026-05-13T01:18:00.000Z'
-      }
+      serviceContext: 'notification'
     },
     {
       id: 'c1',
@@ -216,6 +212,18 @@ const SEED_CHAT_ITEMS_BY_USER: Record<string, ChatRecord[]> = {
     }
   ],
   u3: [
+    {
+      id: 'c-app-support-u3',
+      avatar: 'MS',
+      title: 'MyScoutee Support',
+      lastMessage: 'Share your workspace here when something looks wrong.',
+      lastSenderId: 'admin-demo-ava',
+      memberIds: ['u3', 'admin-demo-ava', 'admin-demo-noel'],
+      unread: 1,
+      channelType: 'appSupport',
+      ownerId: 'c-app-support-u3',
+      serviceContext: 'notification'
+    },
     {
       id: 'c5',
       avatar: 'LP',

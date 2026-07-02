@@ -1833,6 +1833,8 @@ export class ActivitiesPopupComponent implements OnDestroy {
         return 'green';
       case 'service':
         return 'slate';
+      case 'appSupport':
+        return 'blue';
       case 'all':
       default:
         return 'blue';
@@ -1937,7 +1939,8 @@ export class ActivitiesPopupComponent implements OnDestroy {
       event: this.activitiesChatContextFilterCount('event'),
       subEvent: this.activitiesChatContextFilterCount('subEvent'),
       group: this.activitiesChatContextFilterCount('group'),
-      service: this.activitiesChatContextFilterCount('service')
+      service: this.activitiesChatContextFilterCount('service'),
+      appSupport: this.activitiesChatContextFilterCount('appSupport')
     };
   }
 
@@ -2220,6 +2223,7 @@ export class ActivitiesPopupComponent implements OnDestroy {
       || status === 'optionalSubEvent'
       || status === 'groupSubEvent'
       || status === 'serviceEvent'
+      || status === 'appSupport'
       || status === 'supportCase'
       ? status
       : undefined;

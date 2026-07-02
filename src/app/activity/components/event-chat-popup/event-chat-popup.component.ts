@@ -542,6 +542,10 @@ export class EventChatPopupComponent implements OnDestroy {
       || Boolean(chat?.supportCase);
   }
 
+  protected isAppSupportChat(): boolean {
+    return this.session()?.item.channelType === 'appSupport';
+  }
+
   protected shouldHostChatResourcePopup(): boolean {
     const request = this.memberMenuStore.activitiesNavigationRequest();
     return Boolean(this.session())
@@ -951,6 +955,10 @@ export class EventChatPopupComponent implements OnDestroy {
 
   protected openSelectedChatMenuControl(control: AppUiTypes.PopupHeaderControl, event?: Event): void {
     event?.stopPropagation();
+    if (control.id === 'app-support-share-workspace') {
+      void this.shareCurrentWorkspaceWithSupport();
+      return;
+    }
     const resourceType = this.popupControlResourceType(control);
     if (resourceType) {
       this.openSelectedChatSubEventResource(resourceType, event);
@@ -1415,6 +1423,37 @@ export class EventChatPopupComponent implements OnDestroy {
       type: 'assetExplore',
       assetType: resourceType ?? 'Car'
     });
+  }
+
+  private async shareCurrentWorkspaceWithSupport(): Promise<void> {
+    const session = this.session();
+    const activeUserId = this.activeUserId();
+    if (!session || session.item.channelType !== 'appSupport' || !activeUserId) {
+      return;
+    }
+    const targetUrl = this.location.path(true) || '/';
+    const token = await this.shareTokensService.createToken({
+      kind: 'adminHelp',
+      entityId: targetUrl,
+      ownerUserId: activeUserId
+    });
+    if (!token) {
+      this.dialogStore.openInfo('The workspace share token could not be created.', {
+        title: 'App support'
+      });
+      return;
+    }
+    this.sendLocalAttachmentMessage({
+      id: `adminHelp:${activeUserId}:${Date.now()}`,
+      type: 'link',
+      entityId: token,
+      ownerUserId: activeUserId,
+      title: 'Shared workspace',
+      subtitle: 'MyScoutee support session',
+      description: 'MyScoutee admin can open the current app view from this token.',
+      url: this.location.prepareExternalUrl(`/admin/help/${encodeURIComponent(token)}`),
+      previewUrl: null
+    }, 'Shared my current workspace with MyScoutee support.');
   }
 
   protected chatAttachmentIcon(attachment: ContractTypes.ChatMessageAttachment): string {
@@ -3978,7 +4017,9 @@ export class EventChatPopupComponent implements OnDestroy {
       ? this.clonePopupHeaderContext(loadedContext)
       : this.chatsService.buildChatPopupHeaderContext(chat, { includeThumbs: true });
     const controls = [...(baseContext.controls ?? []).map(control => ({ ...control }))];
-    if (!this.isServiceChat() && !this.isBlockedSupportChat()) {
+    if (chat.channelType === 'appSupport') {
+      controls.push(this.buildAppSupportChatContextControl());
+    } else if (!this.isServiceChat() && !this.isBlockedSupportChat()) {
       controls.push(this.buildSelectedChatContextControl(chat, state));
     }
     return {
@@ -4030,6 +4071,31 @@ export class EventChatPopupComponent implements OnDestroy {
       ...primaryControl,
       id: 'chat-context',
       menu
+    };
+  }
+
+  private buildAppSupportChatContextControl(): AppUiTypes.PopupHeaderControl {
+    return {
+      id: 'chat-context',
+      label: 'App support',
+      summary: 'Share workspace',
+      visual: { kind: 'icon', icon: 'admin_panel_settings' },
+      menu: {
+        title: 'App support',
+        groups: [{
+          id: 'support',
+          controls: [{
+            id: 'app-support-share-workspace',
+            label: 'Share workspace',
+            summary: 'Send a token so MyScoutee admin can open this view',
+            visual: { kind: 'icon', icon: 'vpn_key' },
+            lookup: {
+              type: 'adminHelp',
+              id: 'current'
+            }
+          }]
+        }]
+      }
     };
   }
 
@@ -4258,6 +4324,7 @@ export class EventChatPopupComponent implements OnDestroy {
       || channelType === 'optionalSubEvent'
       || channelType === 'groupSubEvent'
       || channelType === 'serviceEvent'
+      || channelType === 'appSupport'
       || channelType === 'supportCase'
     ) {
       return channelType;

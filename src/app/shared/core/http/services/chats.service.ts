@@ -850,7 +850,7 @@ export class HttpChatsService implements IChatsService {
     item: ChatThreadRecord,
     filter: ContractTypes.ActivitiesChatContextFilter
   ): boolean {
-    const normalizedFilter = filter === 'event' || filter === 'subEvent' || filter === 'group' || filter === 'service'
+    const normalizedFilter = filter === 'event' || filter === 'subEvent' || filter === 'group' || filter === 'service' || filter === 'appSupport'
       ? filter
       : 'all';
     return normalizedFilter === 'all' || this.activityChatContextFilterKey(item) === normalizedFilter;
@@ -859,7 +859,10 @@ export class HttpChatsService implements IChatsService {
   private activityChatContextFilterKey(
     item: Pick<ContractTypes.ChatDTO, 'channelType' | 'serviceContext'>
   ): ContractTypes.ActivitiesChatContextFilter {
-    if (item.channelType === 'serviceEvent' || item.channelType === 'supportCase' || item.serviceContext) {
+    if (item.channelType === 'appSupport' || item.channelType === 'supportCase') {
+      return 'appSupport';
+    }
+    if (item.channelType === 'serviceEvent' || item.serviceContext) {
       return 'service';
     }
     if (item.channelType === 'groupSubEvent') {
@@ -881,7 +884,9 @@ export class HttpChatsService implements IChatsService {
 
   private activitiesChatContextFilter(query: ListQuery<ActivitiesFeedFilters>): ContractTypes.ActivitiesChatContextFilter {
     const value = query.filters?.chatContextFilter;
-    return value === 'event' || value === 'subEvent' || value === 'group' || value === 'service' ? value : 'all';
+    return value === 'event' || value === 'subEvent' || value === 'group' || value === 'service' || value === 'appSupport'
+      ? value
+      : 'all';
   }
 
   private activitiesSupportCaseFilter(query: ListQuery<ActivitiesFeedFilters>): ContractTypes.SupportCaseFilter {

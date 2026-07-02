@@ -811,8 +811,7 @@ export class AdminReportsPopupComponent {
       memberIds: [user.userId, admin.id],
       unread: this.supportChatUnread(user),
       dateIso: user.lastReportedAtIso || new Date().toISOString(),
-      channelType: 'serviceEvent',
-      serviceContext: 'notification',
+      channelType: 'appSupport',
       ownerUserId: admin.id
     };
   }

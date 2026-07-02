@@ -104,8 +104,8 @@ export type ChatLiveEvent =
   | { type: 'error'; chatId: string; messageId?: string; clientId?: string; error?: string }
   | { type: 'reconnected'; chatId: string };
 
-export type ChatChannelType = 'general' | 'mainEvent' | 'optionalSubEvent' | 'groupSubEvent' | 'serviceEvent' | 'supportCase';
-export type ActivitiesChatContextFilter = 'all' | 'event' | 'subEvent' | 'group' | 'service';
+export type ChatChannelType = 'general' | 'mainEvent' | 'optionalSubEvent' | 'groupSubEvent' | 'serviceEvent' | 'appSupport' | 'supportCase';
+export type ActivitiesChatContextFilter = 'all' | 'event' | 'subEvent' | 'group' | 'service' | 'appSupport';
 export type SupportCaseStatus = 'pending' | 'picked' | 'solved' | 'blocked';
 export type SupportCaseFilter = 'all' | SupportCaseStatus;
 export type SupportCaseAction = 'pick' | 'unpick' | 'solve' | 'block' | 'reopen';

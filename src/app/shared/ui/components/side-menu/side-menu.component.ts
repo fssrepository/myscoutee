@@ -1904,8 +1904,7 @@ export class SideMenuComponent implements OnDestroy {
       memberIds: [activeUserId, adminUserId],
       unread: 1,
       dateIso: new Date().toISOString(),
-      channelType: 'serviceEvent',
-      serviceContext: 'notification',
+      channelType: 'appSupport',
       ownerUserId: activeUserId
     };
     this.activitiesStore.openActivities('chats');

@@ -127,8 +127,7 @@ export class LocalAdminModerationService extends LocalRouteDelayService {
       memberIds: [userId, admin.id],
       unread: 1,
       dateIso: nowIso,
-      channelType: 'serviceEvent',
-      serviceContext: 'notification',
+      channelType: 'appSupport',
       ownerUserId: userId
     };
     const userMessage: ChatMessageDto = {
@@ -150,8 +149,7 @@ export class LocalAdminModerationService extends LocalRouteDelayService {
       memberIds: [userId, admin.id],
       unread: 0,
       dateIso: nowIso,
-      channelType: 'serviceEvent',
-      serviceContext: 'notification',
+      channelType: 'appSupport',
       ownerUserId: admin.id
     };
     const adminMessage: ChatMessageDto = {

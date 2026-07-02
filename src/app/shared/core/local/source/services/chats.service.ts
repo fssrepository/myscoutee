@@ -369,6 +369,7 @@ export class LocalChatsService extends LocalRouteDelayService implements IChatsS
       || record.channelType === 'optionalSubEvent'
       || record.channelType === 'groupSubEvent'
       || record.channelType === 'serviceEvent'
+      || record.channelType === 'appSupport'
       || record.channelType === 'supportCase'
     ) {
       return record.channelType;
