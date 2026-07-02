@@ -640,7 +640,7 @@ export class ActivitiesRatesController {
     }
     this.resetEditorStateForFullscreenEntry();
     this.setFullscreenMode(true);
-    this.deps.runAfterRender(() => {
+    this.deps.runAfterNextPaint(() => {
       this.syncFullscreenSelection();
       this.deps.markForCheck();
     });
@@ -661,7 +661,7 @@ export class ActivitiesRatesController {
     if (!selectedRateId) {
       return;
     }
-    this.deps.runAfterRender(() => {
+    this.deps.runAfterNextPaint(() => {
       this.syncListPositionToRow(selectedRateId);
       this.smoothRevealSelectedRateRowWhenNeeded(selectedRateId);
     });
