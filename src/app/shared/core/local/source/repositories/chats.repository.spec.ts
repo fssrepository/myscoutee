@@ -63,11 +63,21 @@ describe('LocalChatsRepository chat pages', () => {
 
   it('filters admin support cases from IndexedDB without exposing them to normal users', () => {
     seedChats([
-      chat('support-pending', 'reporter-1', 'serviceEvent', '2026-05-01T10:00:00Z', {
-        supportCaseStatus: 'pending'
+      chat('support-pending', 'reporter-1', 'supportCase', '2026-05-01T10:00:00Z', {
+        ownerId: 'support-pending',
+        supportCase: {
+          status: 'pending',
+          assignee: null,
+          updatedAtIso: '2026-05-01T10:00:00Z'
+        }
       }),
-      chat('support-picked', 'reporter-2', 'serviceEvent', '2026-05-02T10:00:00Z', {
-        supportCaseStatus: 'picked'
+      chat('support-picked', 'reporter-2', 'supportCase', '2026-05-02T10:00:00Z', {
+        ownerId: 'support-picked',
+        supportCase: {
+          status: 'picked',
+          assignee: null,
+          updatedAtIso: '2026-05-02T10:00:00Z'
+        }
       }),
       chat('normal-service', 'user-1', 'serviceEvent', '2026-05-03T10:00:00Z')
     ]);

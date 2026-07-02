@@ -2379,8 +2379,7 @@ export class EventResourceAssetExploreComponent implements DoCheck {
       dateIso: new Date().toISOString(),
       channelType: 'serviceEvent',
       serviceContext: input.title.startsWith('Asset Service') ? 'asset' : 'event',
-      eventId: input.eventId,
-      subEventId: input.subEventId,
+      ownerId: input.eventId,
       ownerUserId: activeUserId
     };
   }

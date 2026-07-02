@@ -235,7 +235,7 @@ export class ChatsService extends BaseRouteModeService implements IChatsService 
       ?? chats.find(chat =>
         chat.channelType === 'serviceEvent'
         && chat.serviceContext === expectedServiceContext
-        && chat.eventId === input.eventId
+        && chat.ownerId === input.eventId
       );
     return match
       ? {
@@ -287,7 +287,7 @@ export class ChatsService extends BaseRouteModeService implements IChatsService 
       dateIso: new Date().toISOString(),
       channelType: 'serviceEvent',
       serviceContext: input.notification ? 'notification' : 'event',
-      eventId: input.eventId,
+      ownerId: input.eventId,
       ownerUserId: input.activeUserId
     };
   }
@@ -296,7 +296,7 @@ export class ChatsService extends BaseRouteModeService implements IChatsService 
     if (chat.channelType !== 'serviceEvent') {
       return null;
     }
-    const eventId = `${chat.eventId ?? ''}`.trim();
+    const eventId = `${chat.ownerId ?? ''}`.trim();
     const activeUserId = this.resolveChatOwnerUserId(chat, eventId);
     if (!eventId || !activeUserId) {
       return null;

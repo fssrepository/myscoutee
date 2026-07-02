@@ -22,14 +22,8 @@ export class LocalChatThreadMapper {
       distanceMetersExact: record.distanceMetersExact,
       channelType: record.channelType,
       serviceContext: record.serviceContext,
-      eventId: record.eventId,
-      subEventId: record.subEventId,
-      groupId: record.groupId,
-      supportCaseStatus: record.supportCaseStatus ?? null,
-      supportCaseAssigneeUserId: record.supportCaseAssigneeUserId ?? null,
-      supportCaseAssigneeName: record.supportCaseAssigneeName ?? null,
-      supportCaseAssigneeInitials: record.supportCaseAssigneeInitials ?? null,
-      supportCaseUpdatedAtIso: record.supportCaseUpdatedAtIso ?? null,
+      ownerId: record.ownerId,
+      supportCase: this.cloneSupportCase(record.supportCase),
       ownerUserId: record.ownerUserId
     };
   }
@@ -54,6 +48,7 @@ export class LocalChatThreadMapper {
     return {
       ...record,
       memberIds: [...record.memberIds],
+      supportCase: this.cloneSupportCase(record.supportCase),
       messages: options.includeMessages === false
         ? undefined
         : this.cloneMessages(record.messages ?? [])
@@ -73,6 +68,15 @@ export class LocalChatThreadMapper {
 
   static buildRecordKey(ownerUserId: string, sourceId: string): string {
     return `${ownerUserId}:${sourceId}`;
+  }
+
+  private static cloneSupportCase<T extends ChatDTO['supportCase']>(supportCase: T): T {
+    return supportCase
+      ? {
+          ...supportCase,
+          assignee: supportCase.assignee ? { ...supportCase.assignee } : supportCase.assignee
+        } as T
+      : supportCase;
   }
 }
 

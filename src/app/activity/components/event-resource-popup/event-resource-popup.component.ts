@@ -559,8 +559,7 @@ export class EventResourcePopupComponent {
       dateIso: new Date().toISOString(),
       channelType: 'serviceEvent',
       serviceContext: input.title.startsWith('Asset Service') ? 'asset' : 'event',
-      eventId: input.eventId,
-      subEventId: input.subEventId,
+      ownerId: input.eventId,
       ownerUserId: activeUserId
     };
   }
@@ -585,7 +584,7 @@ export class EventResourcePopupComponent {
 
     const context = this.buildPopupContext(
       'chat',
-      request.ownerId?.trim() || request.item.eventId?.trim() || '',
+      request.ownerId?.trim() || request.item.ownerId?.trim() || '',
       request.item.title,
       request.resourceType,
       request.subEvent,

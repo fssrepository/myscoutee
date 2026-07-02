@@ -201,7 +201,9 @@ export class SeedChatsRepository {
   }
 
   private isSupportCaseRecord(record: ChatRecord): boolean {
-    return `${record.id ?? ''}`.trim().startsWith('c-support-admin-') || Boolean(record.supportCaseStatus);
+    return record.channelType === 'supportCase'
+      || `${record.id ?? ''}`.trim().startsWith('c-support-admin-')
+      || Boolean(record.supportCase);
   }
 
   private resolveChatRecord(

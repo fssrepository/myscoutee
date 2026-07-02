@@ -1,7 +1,7 @@
 import type { ChatThreadRecord, ChatThreadRecordCollection } from '../../source/entity/chat.entity';
 import { environment } from '../../../../../../environments/environment';
 import { AppUtils } from '../../../../app-utils';
-import type { ChatPopupMessage } from '../../../contracts/chat.interface';
+import type { ChatPopupMessage, ChatSupportCase } from '../../../contracts/chat.interface';
 import type { ChatRecord } from '../../source/entity/chat.entity';
 import type { UserDto } from '../../../contracts/user.interface';
 
@@ -43,12 +43,13 @@ const SEED_CHAT_ITEMS_BY_USER: Record<string, ChatRecord[]> = {
       lastSenderId: 'u1',
       memberIds: ['u1', 'admin-demo-ava', 'admin-demo-noel'],
       unread: 1,
-      channelType: 'serviceEvent',
-      supportCaseStatus: 'pending',
-      supportCaseAssigneeUserId: null,
-      supportCaseAssigneeName: null,
-      supportCaseAssigneeInitials: null,
-      supportCaseUpdatedAtIso: '2026-05-13T01:18:00.000Z'
+      channelType: 'supportCase',
+      ownerId: 'c-support-admin-u1',
+      supportCase: {
+        status: 'pending',
+        assignee: null,
+        updatedAtIso: '2026-05-13T01:18:00.000Z'
+      }
     },
     {
       id: 'c-support-admin-u2',
@@ -58,12 +59,17 @@ const SEED_CHAT_ITEMS_BY_USER: Record<string, ChatRecord[]> = {
       lastSenderId: 'admin-demo-noel',
       memberIds: ['u2', 'admin-demo-ava', 'admin-demo-noel'],
       unread: 0,
-      channelType: 'serviceEvent',
-      supportCaseStatus: 'picked',
-      supportCaseAssigneeUserId: 'admin-demo-noel',
-      supportCaseAssigneeName: 'Noel',
-      supportCaseAssigneeInitials: 'NO',
-      supportCaseUpdatedAtIso: '2026-05-13T01:32:00.000Z'
+      channelType: 'supportCase',
+      ownerId: 'c-support-admin-u2',
+      supportCase: {
+        status: 'picked',
+        assignee: {
+          userId: 'admin-demo-noel',
+          name: 'Noel',
+          initials: 'NO'
+        },
+        updatedAtIso: '2026-05-13T01:32:00.000Z'
+      }
     },
     {
       id: 'c-support-admin-u3',
@@ -73,12 +79,17 @@ const SEED_CHAT_ITEMS_BY_USER: Record<string, ChatRecord[]> = {
       lastSenderId: 'admin-demo-ava',
       memberIds: ['u3', 'admin-demo-ava', 'admin-demo-noel'],
       unread: 0,
-      channelType: 'serviceEvent',
-      supportCaseStatus: 'solved',
-      supportCaseAssigneeUserId: 'admin-demo-ava',
-      supportCaseAssigneeName: 'Ava',
-      supportCaseAssigneeInitials: 'AV',
-      supportCaseUpdatedAtIso: '2026-05-13T01:40:00.000Z'
+      channelType: 'supportCase',
+      ownerId: 'c-support-admin-u3',
+      supportCase: {
+        status: 'solved',
+        assignee: {
+          userId: 'admin-demo-ava',
+          name: 'Ava',
+          initials: 'AV'
+        },
+        updatedAtIso: '2026-05-13T01:40:00.000Z'
+      }
     }
   ],
   'admin-demo-noel': [
@@ -90,12 +101,13 @@ const SEED_CHAT_ITEMS_BY_USER: Record<string, ChatRecord[]> = {
       lastSenderId: 'u1',
       memberIds: ['u1', 'admin-demo-ava', 'admin-demo-noel'],
       unread: 1,
-      channelType: 'serviceEvent',
-      supportCaseStatus: 'pending',
-      supportCaseAssigneeUserId: null,
-      supportCaseAssigneeName: null,
-      supportCaseAssigneeInitials: null,
-      supportCaseUpdatedAtIso: '2026-05-13T01:18:00.000Z'
+      channelType: 'supportCase',
+      ownerId: 'c-support-admin-u1',
+      supportCase: {
+        status: 'pending',
+        assignee: null,
+        updatedAtIso: '2026-05-13T01:18:00.000Z'
+      }
     },
     {
       id: 'c-support-admin-u2',
@@ -105,12 +117,17 @@ const SEED_CHAT_ITEMS_BY_USER: Record<string, ChatRecord[]> = {
       lastSenderId: 'admin-demo-noel',
       memberIds: ['u2', 'admin-demo-ava', 'admin-demo-noel'],
       unread: 0,
-      channelType: 'serviceEvent',
-      supportCaseStatus: 'picked',
-      supportCaseAssigneeUserId: 'admin-demo-noel',
-      supportCaseAssigneeName: 'Noel',
-      supportCaseAssigneeInitials: 'NO',
-      supportCaseUpdatedAtIso: '2026-05-13T01:32:00.000Z'
+      channelType: 'supportCase',
+      ownerId: 'c-support-admin-u2',
+      supportCase: {
+        status: 'picked',
+        assignee: {
+          userId: 'admin-demo-noel',
+          name: 'Noel',
+          initials: 'NO'
+        },
+        updatedAtIso: '2026-05-13T01:32:00.000Z'
+      }
     },
     {
       id: 'c-support-admin-u3',
@@ -120,12 +137,17 @@ const SEED_CHAT_ITEMS_BY_USER: Record<string, ChatRecord[]> = {
       lastSenderId: 'admin-demo-ava',
       memberIds: ['u3', 'admin-demo-ava', 'admin-demo-noel'],
       unread: 0,
-      channelType: 'serviceEvent',
-      supportCaseStatus: 'solved',
-      supportCaseAssigneeUserId: 'admin-demo-ava',
-      supportCaseAssigneeName: 'Ava',
-      supportCaseAssigneeInitials: 'AV',
-      supportCaseUpdatedAtIso: '2026-05-13T01:40:00.000Z'
+      channelType: 'supportCase',
+      ownerId: 'c-support-admin-u3',
+      supportCase: {
+        status: 'solved',
+        assignee: {
+          userId: 'admin-demo-ava',
+          name: 'Ava',
+          initials: 'AV'
+        },
+        updatedAtIso: '2026-05-13T01:40:00.000Z'
+      }
     }
   ],
   u1: [
@@ -137,12 +159,13 @@ const SEED_CHAT_ITEMS_BY_USER: Record<string, ChatRecord[]> = {
       lastSenderId: 'u1',
       memberIds: ['u1', 'admin-demo-ava', 'admin-demo-noel'],
       unread: 0,
-      channelType: 'serviceEvent',
-      supportCaseStatus: 'pending',
-      supportCaseAssigneeUserId: null,
-      supportCaseAssigneeName: null,
-      supportCaseAssigneeInitials: null,
-      supportCaseUpdatedAtIso: '2026-05-13T01:18:00.000Z'
+      channelType: 'supportCase',
+      ownerId: 'c-support-admin-u1',
+      supportCase: {
+        status: 'pending',
+        assignee: null,
+        updatedAtIso: '2026-05-13T01:18:00.000Z'
+      }
     },
     {
       id: 'c1',
@@ -275,7 +298,7 @@ export class SeedChatsBuilder {
         const dateIso = this.buildDateIso(ownerUserId, item);
         byId[recordKey] = {
           ...item,
-          supportCaseUpdatedAtIso: this.rebaseOptionalDateIso(item.supportCaseUpdatedAtIso),
+          supportCase: this.rebaseSupportCase(item.supportCase),
           memberIds: [...item.memberIds],
           ownerUserId,
           dateIso,
@@ -291,6 +314,7 @@ export class SeedChatsBuilder {
     return {
       ...record,
       memberIds: [...record.memberIds],
+      supportCase: this.cloneSupportCase(record.supportCase),
       messages: options.includeMessages === false
         ? undefined
         : this.cloneMessages(record.messages ?? [])
@@ -319,9 +343,7 @@ export class SeedChatsBuilder {
       id: `c-context-main-${record.id}`,
       title: `${eventTitle} · Main Event`,
       lastMessage: `Main event channel for ${eventTitle}.`,
-      eventId: record.id,
-      subEventId: '',
-      groupId: '',
+      ownerId: record.id,
       channelType: 'mainEvent',
       memberIds,
       dateIso: record.startAtIso,
@@ -346,9 +368,7 @@ export class SeedChatsBuilder {
         lastMessage: record.type === 'hosting'
           ? 'Notification channel for cancellations, postponements, and urgent event updates.'
           : `Service chat with the organizer for ${eventTitle}.`,
-        eventId: record.id,
-        subEventId: '',
-        groupId: '',
+        ownerId: record.id,
         channelType: 'serviceEvent',
         memberIds: memberIds.length > 0 ? memberIds : [ownerUserId],
         dateIso: record.startAtIso,
@@ -382,9 +402,7 @@ export class SeedChatsBuilder {
       id: `c-context-optional-${record.id}-${subEvent.id}`,
       title: `${subEvent.name || 'Optional Sub Event'} · Optional`,
       lastMessage: `${stageLabel} optional channel in ${eventTitle}.`,
-      eventId: record.id,
-      subEventId: subEvent.id,
-      groupId: '',
+      ownerId: this.subEventOwnerId(record.id, subEvent.id),
       channelType: 'optionalSubEvent',
       memberIds,
       dateIso: subEvent.startAt || record.startAtIso,
@@ -422,9 +440,7 @@ export class SeedChatsBuilder {
       id: `c-context-group-${record.id}-${subEvent.id}-${groupId}`,
       title: `Group A · ${subEvent.name || stageLabel}`,
       lastMessage: `${stageLabel} group channel in ${eventTitle}.`,
-      eventId: record.id,
-      subEventId: subEvent.id,
-      groupId,
+      ownerId: this.groupOwnerId(record.id, subEvent.id, groupId),
       channelType: 'groupSubEvent',
       memberIds,
       dateIso: subEvent.startAt || record.startAtIso,
@@ -436,9 +452,7 @@ export class SeedChatsBuilder {
     id: string;
     title: string;
     lastMessage: string;
-    eventId: string;
-    subEventId: string;
-    groupId: string;
+    ownerId: string;
     channelType: 'mainEvent' | 'optionalSubEvent' | 'groupSubEvent' | 'serviceEvent';
     memberIds: string[];
     dateIso: string;
@@ -457,9 +471,7 @@ export class SeedChatsBuilder {
       unread: Math.max(0, Math.trunc(Number(input.unread) || 0)),
       dateIso: input.dateIso,
       channelType: input.channelType,
-      eventId: input.eventId,
-      subEventId: input.subEventId || undefined,
-      groupId: input.groupId || undefined
+      ownerId: input.ownerId
     };
   }
 
@@ -662,6 +674,35 @@ export class SeedChatsBuilder {
     return AppUtils.rebaseDateTime(value, SEED_SCHEDULE_REFERENCE_DATE, environment.bootstrapOffsetInDays) ?? value;
   }
 
+  private static rebaseSupportCase(supportCase: ChatSupportCase | null | undefined): ChatSupportCase | null | undefined {
+    if (!supportCase) {
+      return supportCase;
+    }
+    return {
+      ...supportCase,
+      assignee: supportCase.assignee ? { ...supportCase.assignee } : supportCase.assignee,
+      updatedAtIso: this.rebaseOptionalDateIso(supportCase.updatedAtIso)
+    };
+  }
+
+  private static cloneSupportCase(supportCase: ChatSupportCase | null | undefined): ChatSupportCase | null | undefined {
+    if (!supportCase) {
+      return supportCase;
+    }
+    return {
+      ...supportCase,
+      assignee: supportCase.assignee ? { ...supportCase.assignee } : supportCase.assignee
+    };
+  }
+
+  private static subEventOwnerId(eventId: string, subEventId: string): string {
+    return `${eventId}:${subEventId}`;
+  }
+
+  private static groupOwnerId(eventId: string, subEventId: string, groupId: string): string {
+    return `${eventId}:${subEventId}:${groupId}`;
+  }
+
   private static buildSupportCaseMessages(
     item: ChatRecord,
     me: ChatSeedUser,
@@ -678,7 +719,7 @@ export class SeedChatsBuilder {
   ): ChatPopupMessage[] {
     const at = (minutesBefore: number): Date => new Date(anchor.getTime() - (minutesBefore * 60 * 1000));
     const requester = members.find(user => !this.isAdminSeedUser(user.id)) ?? sender;
-    const assignedAdmin = this.resolveUser(item.supportCaseAssigneeUserId ?? '')
+    const assignedAdmin = this.resolveUser(item.supportCase?.assignee?.userId ?? '')
       ?? members.find(user => this.isAdminSeedUser(user.id) && user.id !== requester.id)
       ?? me;
     const reviewer = members.find(user => this.isAdminSeedUser(user.id) && user.id !== assignedAdmin.id)
@@ -704,7 +745,7 @@ export class SeedChatsBuilder {
       )
     ];
 
-    if (item.supportCaseStatus === 'picked') {
+    if (item.supportCase?.status === 'picked') {
       messages.push(
         mk(
           `${item.id}-support-3`,
@@ -715,7 +756,7 @@ export class SeedChatsBuilder {
         ),
         mk(`${item.id}-support-4`, assignedAdmin, lastLine, at(42), readByRequesterAndReviewer)
       );
-    } else if (item.supportCaseStatus === 'solved') {
+    } else if (item.supportCase?.status === 'solved') {
       messages.push(
         mk(
           `${item.id}-support-3`,
@@ -726,7 +767,7 @@ export class SeedChatsBuilder {
         ),
         mk(`${item.id}-support-4`, assignedAdmin, lastLine, at(34), readByRequesterAndReviewer)
       );
-    } else if (item.supportCaseStatus === 'blocked') {
+    } else if (item.supportCase?.status === 'blocked') {
       messages.push(
         mk(
           `${item.id}-support-3`,
@@ -759,7 +800,9 @@ export class SeedChatsBuilder {
   }
 
   private static isSupportCaseChat(item: ChatRecord): boolean {
-    return `${item.id ?? ''}`.trim().startsWith('c-support-admin-') || Boolean(item.supportCaseStatus);
+    return item.channelType === 'supportCase'
+      || `${item.id ?? ''}`.trim().startsWith('c-support-admin-')
+      || Boolean(item.supportCase);
   }
 
   private static uniqueSeedUsers(users: readonly ChatSeedUser[]): ChatSeedUser[] {

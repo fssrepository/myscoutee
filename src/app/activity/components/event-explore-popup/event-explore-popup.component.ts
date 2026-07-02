@@ -1160,7 +1160,7 @@ export class EventExplorePopupComponent {
       dateIso: new Date().toISOString(),
       channelType: 'serviceEvent',
       serviceContext: 'event',
-      eventId: record.id,
+      ownerId: record.id,
       ownerUserId: activeUserId
     };
   }

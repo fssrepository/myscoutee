@@ -40,14 +40,15 @@ export class ActivityChatSingleRowConverter {
     const distanceMetersExact = Number.isFinite(Number(dto.distanceMetersExact))
       ? Math.max(0, Math.trunc(Number(dto.distanceMetersExact)))
       : undefined;
-    const supportStatus = this.supportCaseStatus(dto.supportCaseStatus);
+    const supportStatus = this.supportStatus(dto.supportCase?.status);
+    const supportAssigneeName = dto.supportCase?.assignee?.name ?? null;
     const showSupportControls = options.adminServiceMode === true && Boolean(supportStatus);
     const avatar = `${dto.avatar ?? ''}`.trim();
 
     return {
       id: dto.id,
       smartListKey: `chats:${dto.id}`,
-      status: dto.supportCaseStatus ?? this.normalizeChannelType(dto),
+      status: supportStatus ?? this.normalizeChannelType(dto),
       dateIso: dto.dateIso ?? '2026-02-21T09:00:00',
       distanceMetersExact,
       badgeCount: showSupportControls ? 0 : unread,
@@ -66,8 +67,8 @@ export class ActivityChatSingleRowConverter {
       sideLabel: null,
       badges: showSupportControls
         ? [{
-          label: this.supportCaseBadgeLabel(supportStatus, dto.supportCaseAssigneeName, options.translate),
-          title: this.supportCaseBadgeLabel(supportStatus, dto.supportCaseAssigneeName, options.translate),
+          label: this.supportCaseBadgeLabel(supportStatus, supportAssigneeName, options.translate),
+          title: this.supportCaseBadgeLabel(supportStatus, supportAssigneeName, options.translate),
           tone: this.supportCaseBadgeTone(supportStatus),
           position: 'top-right'
         }]
@@ -79,7 +80,7 @@ export class ActivityChatSingleRowConverter {
     };
   }
 
-  private static supportCaseStatus(status: string | null | undefined): SupportCaseStatus | null {
+  private static supportStatus(status: string | null | undefined): SupportCaseStatus | null {
     if (status === 'pending' || status === 'picked' || status === 'solved' || status === 'blocked') {
       return status;
     }

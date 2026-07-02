@@ -103,11 +103,21 @@ export type ChatLiveEvent =
   | { type: 'error'; chatId: string; messageId?: string; clientId?: string; error?: string }
   | { type: 'reconnected'; chatId: string };
 
-export type ChatChannelType = 'general' | 'mainEvent' | 'optionalSubEvent' | 'groupSubEvent' | 'serviceEvent';
+export type ChatChannelType = 'general' | 'mainEvent' | 'optionalSubEvent' | 'groupSubEvent' | 'serviceEvent' | 'supportCase';
 export type ActivitiesChatContextFilter = 'all' | 'event' | 'subEvent' | 'group' | 'service';
 export type SupportCaseStatus = 'pending' | 'picked' | 'solved' | 'blocked';
 export type SupportCaseFilter = 'all' | SupportCaseStatus;
 export type SupportCaseAction = 'pick' | 'unpick' | 'solve' | 'block' | 'reopen';
+
+export interface ChatSupportCase {
+  status: SupportCaseStatus;
+  assignee?: {
+    userId: string;
+    name: string;
+    initials: string;
+  } | null;
+  updatedAtIso?: string | null;
+}
 
 export interface ChatDTO {
   id: string;
@@ -122,14 +132,8 @@ export interface ChatDTO {
   distanceMetersExact?: number;
   channelType?: ChatChannelType;
   serviceContext?: 'event' | 'asset' | 'notification';
-  eventId?: string;
-  subEventId?: string;
-  groupId?: string;
-  supportCaseStatus?: SupportCaseStatus | null;
-  supportCaseAssigneeUserId?: string | null;
-  supportCaseAssigneeName?: string | null;
-  supportCaseAssigneeInitials?: string | null;
-  supportCaseUpdatedAtIso?: string | null;
+  ownerId?: string;
+  supportCase?: ChatSupportCase | null;
   ownerUserId?: string | null;
 }
 

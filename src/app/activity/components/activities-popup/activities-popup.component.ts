@@ -1872,11 +1872,11 @@ export class ActivitiesPopupComponent implements OnDestroy {
 
   private supportCaseFilterCount(filter: ContractTypes.SupportCaseFilter): number {
     const normalized = this.normalizeSupportCaseFilter(filter);
-    const supportCases = this.chatsService.peekChatItemsByUser(this.activeUser.id).filter(chat => Boolean(chat.supportCaseStatus));
+    const supportCases = this.chatsService.peekChatItemsByUser(this.activeUser.id).filter(chat => Boolean(chat.supportCase));
     if (normalized === 'all') {
       return supportCases.length;
     }
-    return supportCases.filter(chat => this.normalizeSupportCaseFilter(chat.supportCaseStatus ?? null) === normalized).length;
+    return supportCases.filter(chat => this.normalizeSupportCaseFilter(chat.supportCase?.status ?? null) === normalized).length;
   }
 
   protected selectActivitiesSupportCaseFilter(filter: ContractTypes.SupportCaseFilter): void {
@@ -1904,7 +1904,7 @@ export class ActivitiesPopupComponent implements OnDestroy {
       return true;
     }
     const normalized = this.normalizeSupportCaseFilter(this.activitiesSupportCaseFilter);
-    return normalized === 'all' || this.normalizeSupportCaseFilter(chat.supportCaseStatus ?? null) === normalized;
+    return normalized === 'all' || this.normalizeSupportCaseFilter(chat.supportCase?.status ?? null) === normalized;
   }
 
   protected onSupportCaseAction(row: ActivityListItem, action: ContractTypes.SupportCaseAction): void {
@@ -1912,7 +1912,7 @@ export class ActivitiesPopupComponent implements OnDestroy {
       return;
     }
     const chat = this.chatRecordForRow(row);
-    if (!chat?.supportCaseStatus) {
+    if (!chat?.supportCase) {
       return;
     }
     const config = this.supportCaseActionDialogConfig(action);
@@ -2071,7 +2071,8 @@ export class ActivitiesPopupComponent implements OnDestroy {
   private cloneChatRecord<T extends ChatDTO>(chat: T): T {
     return {
       ...chat,
-      memberIds: [...(chat.memberIds ?? [])]
+      memberIds: [...(chat.memberIds ?? [])],
+      supportCase: this.cloneChatSupportCase(chat.supportCase)
     } as T;
   }
 
@@ -2086,8 +2087,8 @@ export class ActivitiesPopupComponent implements OnDestroy {
     }
     const chatRow = row as ActivityChatListItem;
     const status = `${(chatRow as { status?: unknown }).status ?? ''}`.trim();
-    const channelType = this.chatChannelTypeFromRowStatus(status);
-    const supportCaseStatus = this.supportCaseStatusFromRowStatus(status);
+    const supportStatus = this.supportStatusFromRowStatus(status);
+    const channelType = supportStatus ? 'supportCase' : this.chatChannelTypeFromRowStatus(status);
     const activeUserId = `${this.activeUser?.id ?? ''}`.trim();
     const title = `${chatRow.subtitle ?? chatRow.title ?? ''}`.trim() || 'Chat';
     return {
@@ -2101,8 +2102,14 @@ export class ActivitiesPopupComponent implements OnDestroy {
       dateIso: chatRow.dateIso ?? undefined,
       distanceMetersExact: chatRow.distanceMetersExact ?? undefined,
       channelType,
-      supportCaseStatus,
-      supportCaseAssigneeName: chatRow.sideLabel ?? null
+      ownerId: supportStatus ? chatRow.id : undefined,
+      supportCase: supportStatus
+        ? {
+          status: supportStatus,
+          assignee: null,
+          updatedAtIso: null
+        }
+        : null
     };
   }
 
@@ -2112,11 +2119,12 @@ export class ActivitiesPopupComponent implements OnDestroy {
       || status === 'optionalSubEvent'
       || status === 'groupSubEvent'
       || status === 'serviceEvent'
+      || status === 'supportCase'
       ? status
       : undefined;
   }
 
-  private supportCaseStatusFromRowStatus(status: string): ContractTypes.SupportCaseStatus | null {
+  private supportStatusFromRowStatus(status: string): ContractTypes.SupportCaseStatus | null {
     return status === 'pending'
       || status === 'picked'
       || status === 'solved'
@@ -2163,19 +2171,39 @@ export class ActivitiesPopupComponent implements OnDestroy {
       || left.distanceKm !== right.distanceKm
       || left.distanceMetersExact !== right.distanceMetersExact
       || left.channelType !== right.channelType
-      || left.eventId !== right.eventId
-      || left.subEventId !== right.subEventId
-      || left.groupId !== right.groupId
-      || left.supportCaseStatus !== right.supportCaseStatus
-      || left.supportCaseAssigneeUserId !== right.supportCaseAssigneeUserId
-      || left.supportCaseAssigneeName !== right.supportCaseAssigneeName
-      || left.supportCaseAssigneeInitials !== right.supportCaseAssigneeInitials
-      || left.supportCaseUpdatedAtIso !== right.supportCaseUpdatedAtIso
+      || left.ownerId !== right.ownerId
+      || !this.areChatSupportCasesEqual(left.supportCase, right.supportCase)
       || leftMemberIds.length !== rightMemberIds.length
     ) {
       return false;
     }
     return leftMemberIds.every((memberId, index) => memberId === rightMemberIds[index]);
+  }
+
+  private cloneChatSupportCase(
+    supportCase: ContractTypes.ChatSupportCase | null | undefined
+  ): ContractTypes.ChatSupportCase | null | undefined {
+    if (!supportCase) {
+      return supportCase;
+    }
+    return {
+      ...supportCase,
+      assignee: supportCase.assignee ? { ...supportCase.assignee } : supportCase.assignee
+    };
+  }
+
+  private areChatSupportCasesEqual(
+    left: ContractTypes.ChatSupportCase | null | undefined,
+    right: ContractTypes.ChatSupportCase | null | undefined
+  ): boolean {
+    if (!left || !right) {
+      return left === right;
+    }
+    return left.status === right.status
+      && left.updatedAtIso === right.updatedAtIso
+      && (left.assignee?.userId ?? null) === (right.assignee?.userId ?? null)
+      && (left.assignee?.name ?? null) === (right.assignee?.name ?? null)
+      && (left.assignee?.initials ?? null) === (right.assignee?.initials ?? null);
   }
 
   private syncActivityEventMetadata(item: ActivityEventDTO): void {

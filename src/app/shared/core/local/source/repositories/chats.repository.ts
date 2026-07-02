@@ -115,9 +115,10 @@ export class LocalChatsRepository {
       }
     }
     return [...byChatId.values()]
-      .filter(record => normalizedFilter === 'all' || record.supportCaseStatus === normalizedFilter)
+      .filter(record => normalizedFilter === 'all' || record.supportCase?.status === normalizedFilter)
       .map(record => ({
         ...record,
+        supportCase: this.cloneSupportCase(record.supportCase),
         ownerUserId: normalizedUserId
       }));
   }
@@ -315,11 +316,19 @@ export class LocalChatsRepository {
         }
         const nextRecord: ChatThreadRecord = {
           ...record,
-          supportCaseStatus: state.status,
-          supportCaseAssigneeUserId: state.assigneeUserId,
-          supportCaseAssigneeName: state.assigneeName,
-          supportCaseAssigneeInitials: state.assigneeInitials,
-          supportCaseUpdatedAtIso: state.updatedAtIso
+          channelType: 'supportCase',
+          ownerId: `${record.ownerId ?? record.id ?? ''}`.trim(),
+          supportCase: {
+            status: state.status,
+            assignee: state.assigneeUserId
+              ? {
+                  userId: state.assigneeUserId,
+                  name: state.assigneeName ?? '',
+                  initials: state.assigneeInitials ?? ''
+                }
+              : null,
+            updatedAtIso: state.updatedAtIso
+          }
         };
         nextById[id] = nextRecord;
         updated = record.ownerUserId === actor.id ? nextRecord : (updated ?? nextRecord);
@@ -375,7 +384,7 @@ export class LocalChatsRepository {
   private activityChatContextFilterKey(
     record: Pick<ChatRecord, 'channelType' | 'serviceContext'>
   ): ContractTypes.ActivitiesChatContextFilter {
-    if (record.channelType === 'serviceEvent' || record.serviceContext) {
+    if (record.channelType === 'serviceEvent' || record.channelType === 'supportCase' || record.serviceContext) {
       return 'service';
     }
     if (record.channelType === 'groupSubEvent') {
@@ -407,7 +416,7 @@ export class LocalChatsRepository {
 
   private matchesSupportCaseFilter(record: ChatRecord, filter: ContractTypes.SupportCaseFilter | undefined): boolean {
     const normalizedFilter = this.normalizeSupportCaseFilter(filter ?? 'all');
-    return normalizedFilter === 'all' || record.supportCaseStatus === normalizedFilter;
+    return normalizedFilter === 'all' || record.supportCase?.status === normalizedFilter;
   }
 
   private sortChatPageRecords(
@@ -483,7 +492,18 @@ export class LocalChatsRepository {
   }
 
   private isSupportCaseRecord(record: ChatRecord): boolean {
-    return `${record.id ?? ''}`.trim().startsWith('c-support-admin-') || Boolean(record.supportCaseStatus);
+    return record.channelType === 'supportCase'
+      || `${record.id ?? ''}`.trim().startsWith('c-support-admin-')
+      || Boolean(record.supportCase);
+  }
+
+  private cloneSupportCase<T extends ContractTypes.ChatSupportCase | null | undefined>(supportCase: T): T {
+    return supportCase
+      ? {
+          ...supportCase,
+          assignee: supportCase.assignee ? { ...supportCase.assignee } : supportCase.assignee
+        } as T
+      : supportCase;
   }
 
   private normalizeSupportCaseFilter(filter: ContractTypes.SupportCaseFilter): ContractTypes.SupportCaseFilter {

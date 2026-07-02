@@ -157,6 +157,13 @@ interface SelectedChatNavigationState {
   assetCardsByType: SubEventAssetCardsByType;
 }
 
+interface ChatOwnerParts {
+  ownerId: string;
+  eventId: string;
+  subEventId: string;
+  groupId: string;
+}
+
 @Component({
   selector: 'app-event-chat-popup',
   standalone: true,
@@ -523,11 +530,16 @@ export class EventChatPopupComponent implements OnDestroy {
   }
 
   protected isBlockedSupportChat(): boolean {
-    return this.session()?.item.id.startsWith('c-support-blocked-') === true;
+    const chat = this.session()?.item;
+    return chat?.id.startsWith('c-support-blocked-') === true
+      || chat?.supportCase?.status === 'blocked';
   }
 
   protected isServiceChat(): boolean {
-    return this.session()?.item.channelType === 'serviceEvent';
+    const chat = this.session()?.item;
+    return chat?.channelType === 'serviceEvent'
+      || chat?.channelType === 'supportCase'
+      || Boolean(chat?.supportCase);
   }
 
   protected shouldHostChatResourcePopup(): boolean {
@@ -565,8 +577,9 @@ export class EventChatPopupComponent implements OnDestroy {
   private isSelectedChatResourceTarget(ownerId: string | null | undefined, subEventId: string | null | undefined): boolean {
     const session = this.session();
     const state = this.selectedChatNavigationState;
-    const selectedOwnerId = `${state?.eventId ?? session?.item.eventId ?? ''}`.trim();
-    const selectedSubEventId = `${state?.subEvent?.id ?? session?.item.subEventId ?? ''}`.trim();
+    const ownerParts = this.chatOwnerParts(session?.item ?? null);
+    const selectedOwnerId = `${state?.eventId ?? ownerParts.eventId}`.trim();
+    const selectedSubEventId = `${state?.subEvent?.id ?? ownerParts.subEventId}`.trim();
     return !!selectedOwnerId
       && !!selectedSubEventId
       && `${ownerId ?? ''}`.trim() === selectedOwnerId
@@ -825,7 +838,7 @@ export class EventChatPopupComponent implements OnDestroy {
     this.chatThreadSmartList?.closeMenu();
     const session = this.session();
     const state = this.selectedChatNavigationState;
-    const eventId = `${state?.eventId ?? session?.item.eventId ?? ''}`.trim();
+    const eventId = `${state?.eventId ?? this.chatOwnerParts(session?.item ?? null).eventId}`.trim();
     if (!eventId) {
       return;
     }
@@ -856,7 +869,7 @@ export class EventChatPopupComponent implements OnDestroy {
     }
     this.chatThreadSmartList?.closeMenu();
     if (!openExplore && !assetViewId) {
-      const ownerId = `${state.eventId ?? session.item.eventId ?? ''}`.trim();
+      const ownerId = `${state.eventId ?? this.chatOwnerParts(session.item).eventId}`.trim();
       const subEventId = `${state.subEvent.id ?? ''}`.trim();
       if (!ownerId || !subEventId) {
         return;
@@ -880,7 +893,7 @@ export class EventChatPopupComponent implements OnDestroy {
     }
     this.memberMenuStore.requestActivitiesNavigation({
       type: 'chatResource',
-      ownerId: state.eventId ?? session.item.eventId,
+      ownerId: state.eventId ?? this.chatOwnerParts(session.item).eventId,
       item: session.item,
       resourceType: type,
       subEvent: state.subEvent,
@@ -1466,7 +1479,7 @@ export class EventChatPopupComponent implements OnDestroy {
     }
     if (attachment.type === 'event') {
       const attachmentEventId = `${attachment.entityId ?? ''}`.trim();
-      const contextEventId = `${this.selectedChatNavigationState?.eventId ?? this.session()?.item.eventId ?? ''}`.trim();
+      const contextEventId = `${this.selectedChatNavigationState?.eventId ?? this.selectedChatOwnerParts().eventId}`.trim();
       if (!attachmentEventId || attachmentEventId === contextEventId) {
         this.openSelectedChatEvent();
         return;
@@ -1896,7 +1909,7 @@ export class EventChatPopupComponent implements OnDestroy {
     }
     const session = this.session();
     const target = this.resolveChatReportTarget(message);
-    const eventId = `${session?.item.eventId ?? session?.item.id ?? ''}`.trim();
+    const eventId = `${this.chatOwnerParts(session?.item ?? null).eventId}`.trim();
     if (!target || !eventId) {
       return;
     }
@@ -2164,7 +2177,7 @@ export class EventChatPopupComponent implements OnDestroy {
 
   private buildCurrentEventAttachment(): ContractTypes.ChatMessageAttachment | null {
     const session = this.session();
-    const eventId = `${this.selectedChatNavigationState?.eventId ?? session?.item.eventId ?? ''}`.trim();
+    const eventId = `${this.selectedChatNavigationState?.eventId ?? this.chatOwnerParts(session?.item ?? null).eventId}`.trim();
     const title = `${this.selectedChatNavigationState?.eventTitle ?? session?.item.title ?? ''}`.trim();
     if (!eventId || !title) {
       return null;
@@ -3865,7 +3878,8 @@ export class EventChatPopupComponent implements OnDestroy {
     if (!sessionKey || this.loadedSessionKey !== sessionKey) {
       return;
     }
-    const eventId = `${chat.eventId ?? ''}`.trim();
+    const ownerParts = this.chatOwnerParts(chat);
+    const eventId = ownerParts.eventId;
     if (eventId && this.resolvedChatEventRecordKey !== eventId) {
       const record = await this.eventsService.queryKnownRecordById(this.activeUserId(), eventId).catch(() => null);
       if (this.loadedSessionKey !== sessionKey) {
@@ -3878,8 +3892,8 @@ export class EventChatPopupComponent implements OnDestroy {
     }
 
     const state = this.selectedChatNavigationState;
-    const ownerId = `${state?.eventId ?? chat.eventId ?? ''}`.trim();
-    const subEventId = `${state?.subEvent?.id ?? ''}`.trim();
+    const ownerId = `${state?.eventId ?? ownerParts.eventId}`.trim();
+    const subEventId = `${state?.subEvent?.id ?? ownerParts.subEventId}`.trim();
     const resourceKey = ownerId && subEventId ? `${ownerId}:${subEventId}` : '';
     if (resourceKey && this.resolvedChatResourceStateKey !== resourceKey) {
       const resourceState = await this.activityResourcesService
@@ -3902,9 +3916,10 @@ export class EventChatPopupComponent implements OnDestroy {
       return;
     }
     const state = this.selectedChatNavigationState;
-    const ownerId = `${state?.eventId ?? chat.eventId ?? ''}`.trim();
-    const subEventId = `${state?.subEvent?.id ?? chat.subEventId ?? ''}`.trim();
-    const groupId = `${state?.group?.id ?? chat.groupId ?? ''}`.trim();
+    const ownerParts = this.chatOwnerParts(chat);
+    const ownerId = `${state?.eventId ?? ownerParts.eventId}`.trim();
+    const subEventId = `${state?.subEvent?.id ?? ownerParts.subEventId}`.trim();
+    const groupId = `${state?.group?.id ?? ownerParts.groupId}`.trim();
     const groupKey = this.selectedChatGroupSnapshotKey(ownerId, subEventId, groupId);
     if (!groupKey) {
       this.resolvedChatGroupSnapshot = null;
@@ -3939,7 +3954,7 @@ export class EventChatPopupComponent implements OnDestroy {
       ? this.clonePopupHeaderContext(loadedContext)
       : this.chatsService.buildChatPopupHeaderContext(chat, { includeThumbs: true });
     const controls = [...(baseContext.controls ?? []).map(control => ({ ...control }))];
-    if (!this.isBlockedSupportChat() && chat.channelType !== 'serviceEvent') {
+    if (!this.isServiceChat() && !this.isBlockedSupportChat()) {
       controls.push(this.buildSelectedChatContextControl(chat, state));
     }
     return {
@@ -4017,7 +4032,7 @@ export class EventChatPopupComponent implements OnDestroy {
       badge: badgeValue > 0 ? { value: badgeValue, tone: 'danger' } : null,
       lookup: {
         type: 'chatPrimary',
-        id: `${state?.eventId ?? chat.eventId ?? chat.id}`.trim()
+        id: `${state?.eventId ?? this.chatOwnerParts(chat).eventId ?? chat.id}`.trim()
       }
     };
   }
@@ -4071,7 +4086,8 @@ export class EventChatPopupComponent implements OnDestroy {
   }
 
   private buildSelectedChatNavigationState(chat: ChatDTO): SelectedChatNavigationState | null {
-    const eventId = `${chat.eventId ?? ''}`.trim();
+    const ownerParts = this.chatOwnerParts(chat);
+    const eventId = ownerParts.eventId;
     const eventRecord = this.resolveSelectedChatEventRecord(chat);
     const rawSubEvent = this.resolveSelectedChatSubEvent(chat, eventRecord);
     const resourceState = rawSubEvent && eventId
@@ -4131,7 +4147,7 @@ export class EventChatPopupComponent implements OnDestroy {
     record: ActivityEventRecord | null,
     state: SelectedChatNavigationState | null
   ): ActivityEventInfoCardMenuSubject | null {
-    const eventId = `${record?.id ?? state?.eventId ?? this.session()?.item.eventId ?? ''}`.trim();
+    const eventId = `${record?.id ?? state?.eventId ?? this.selectedChatOwnerParts().eventId}`.trim();
     if (!eventId) {
       return null;
     }
@@ -4169,23 +4185,65 @@ export class EventChatPopupComponent implements OnDestroy {
       || channelType === 'optionalSubEvent'
       || channelType === 'groupSubEvent'
       || channelType === 'serviceEvent'
+      || channelType === 'supportCase'
     ) {
       return channelType;
     }
     if (chat.serviceContext === 'event' || chat.serviceContext === 'asset' || chat.serviceContext === 'notification') {
       return 'serviceEvent';
     }
-    if (`${chat.groupId ?? ''}`.trim()) {
+    const ownerParts = this.splitChatOwnerId(chat.ownerId);
+    if (ownerParts.length >= 3) {
       return 'groupSubEvent';
     }
-    if (`${chat.subEventId ?? ''}`.trim()) {
+    if (ownerParts.length === 2) {
       return 'optionalSubEvent';
     }
-    return `${chat.eventId ?? ''}`.trim() ? 'mainEvent' : 'general';
+    return ownerParts.length === 1 ? 'mainEvent' : 'general';
+  }
+
+  private chatOwnerParts(chat: ChatDTO | null | undefined): ChatOwnerParts {
+    const ownerId = `${chat?.ownerId ?? ''}`.trim();
+    if (!chat || !ownerId) {
+      return { ownerId, eventId: '', subEventId: '', groupId: '' };
+    }
+    const channelType = this.chatChannelType(chat);
+    const parts = this.splitChatOwnerId(ownerId);
+    if (channelType === 'groupSubEvent') {
+      return {
+        ownerId,
+        eventId: parts[0] ?? '',
+        subEventId: parts[1] ?? '',
+        groupId: parts.slice(2).join(':')
+      };
+    }
+    if (channelType === 'optionalSubEvent') {
+      return {
+        ownerId,
+        eventId: parts[0] ?? '',
+        subEventId: parts.slice(1).join(':'),
+        groupId: ''
+      };
+    }
+    if (channelType === 'mainEvent' || channelType === 'serviceEvent') {
+      return { ownerId, eventId: ownerId, subEventId: '', groupId: '' };
+    }
+    return { ownerId, eventId: '', subEventId: '', groupId: '' };
+  }
+
+  private selectedChatOwnerParts(chat: ChatDTO | null | undefined = this.session()?.item ?? null): ChatOwnerParts {
+    return this.chatOwnerParts(chat);
+  }
+
+  private splitChatOwnerId(ownerId: string | null | undefined): string[] {
+    return `${ownerId ?? ''}`
+      .split(':')
+      .map(part => part.trim())
+      .filter(Boolean);
   }
 
   private resolveSelectedChatEventRecord(chat: ChatDTO): ActivityEventRecord | null {
-    const eventId = `${chat.eventId ?? ''}`.trim();
+    const eventId = this.chatOwnerParts(chat).eventId;
     if (!eventId) {
       return null;
     }
@@ -4199,7 +4257,7 @@ export class EventChatPopupComponent implements OnDestroy {
     chat: ChatDTO,
     eventRecord: ActivityEventRecord | null
   ): ContractTypes.SubEventDTO | null {
-    const subEventId = `${chat.subEventId ?? ''}`.trim();
+    const subEventId = this.chatOwnerParts(chat).subEventId;
     if (!subEventId) {
       return null;
     }
@@ -4211,7 +4269,7 @@ export class EventChatPopupComponent implements OnDestroy {
     subEvent: ContractTypes.SubEventDTO | null,
     eventId: string | null
   ): SelectedChatGroupState | null {
-    const groupId = `${chat.groupId ?? ''}`.trim();
+    const groupId = this.chatOwnerParts(chat).groupId;
     if (!groupId || !subEvent) {
       return null;
     }
@@ -4288,7 +4346,7 @@ export class EventChatPopupComponent implements OnDestroy {
   private applySelectedChatResourceMetricsUpdate(update: SubEventResourceMetricsUpdate): void {
     const session = this.session();
     const state = this.selectedChatNavigationState;
-    const ownerId = `${state?.eventId ?? session?.item.eventId ?? ''}`.trim();
+    const ownerId = `${state?.eventId ?? this.chatOwnerParts(session?.item ?? null).eventId}`.trim();
     const subEventId = `${state?.subEvent?.id ?? ''}`.trim();
     if (
       !session

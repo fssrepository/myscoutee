@@ -93,6 +93,7 @@ export class ActivitiesChatsController {
       || item.channelType === 'optionalSubEvent'
       || item.channelType === 'groupSubEvent'
       || item.channelType === 'serviceEvent'
+      || item.channelType === 'supportCase'
     ) {
       return item.channelType;
     }
@@ -225,7 +226,7 @@ export class ActivitiesChatsController {
     if (channelType === 'groupSubEvent') {
       return 'group';
     }
-    if (channelType === 'serviceEvent') {
+    if (channelType === 'serviceEvent' || channelType === 'supportCase') {
       return 'service';
     }
     return null;

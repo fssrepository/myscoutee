@@ -32,7 +32,7 @@ import type * as AppDTOs from '../../contracts';
 import type * as AppConstants from '../../common/constants';
 import { UserProfileStore } from '../../../ui/context/stores/user-profile.store';
 
-interface HttpChatSummaryDto {
+interface HttpChatDto {
   id: string;
   avatar: string;
   title: string;
@@ -41,18 +41,20 @@ interface HttpChatSummaryDto {
   memberIds: string[];
   unread: number;
   dateIso?: string;
-  channelType?: 'general' | 'mainEvent' | 'optionalSubEvent' | 'groupSubEvent' | 'serviceEvent';
+  channelType?: ContractTypes.ChatChannelType;
   serviceContext?: 'event' | 'asset' | 'notification';
-  eventId?: string;
-  subEventId?: string;
-  groupId?: string;
+  ownerId?: string;
   distanceKm?: number;
   distanceMetersExact?: number;
-  supportCaseStatus?: ContractTypes.SupportCaseStatus | string | null;
-  supportCaseAssigneeUserId?: string | null;
-  supportCaseAssigneeName?: string | null;
-  supportCaseAssigneeInitials?: string | null;
-  supportCaseUpdatedAtIso?: string | null;
+  supportCase?: {
+    status?: ContractTypes.SupportCaseStatus | string | null;
+    assignee?: {
+      userId?: string | null;
+      name?: string | null;
+      initials?: string | null;
+    } | null;
+    updatedAtIso?: string | null;
+  } | null;
 }
 
 interface HttpChatSenderAvatarDto {
@@ -235,7 +237,7 @@ export class HttpChatsService implements IChatsService {
     }
     try {
       const response = await this.http
-        .get<HttpChatSummaryDto[] | null>(`${this.apiBaseUrl}/activities/chats`, {
+        .get<HttpChatDto[] | null>(`${this.apiBaseUrl}/activities/chats`, {
           params: this.withUserId(new HttpParams(), normalizedUserId)
         })
         .toPromise();
@@ -299,7 +301,7 @@ export class HttpChatsService implements IChatsService {
 
     try {
       const response = await this.http.get<{
-        items?: HttpChatSummaryDto[] | null;
+        items?: HttpChatDto[] | null;
         total?: number | null;
         nextCursor?: string | null;
       } | null>(`${this.apiBaseUrl}/activities/chats/page`, { params }).toPromise();
@@ -504,7 +506,7 @@ export class HttpChatsService implements IChatsService {
     }
     try {
       const response = await this.http
-        .post<HttpChatSummaryDto | null>(
+        .post<HttpChatDto | null>(
           `${this.apiBaseUrl}/activities/chats/${encodeURIComponent(normalizedChatId)}/support-case`,
           { userId, action },
           { params: this.withUserId(new HttpParams(), userId) }
@@ -603,7 +605,7 @@ export class HttpChatsService implements IChatsService {
     });
   }
 
-  private mapChatRecord(item: HttpChatSummaryDto, ownerUserId: string): ChatThreadRecord {
+  private mapChatRecord(item: HttpChatDto, ownerUserId: string): ChatThreadRecord {
     const distanceKm = Number.isFinite(Number(item.distanceKm))
       ? Math.max(0, Number(item.distanceKm))
       : undefined;
@@ -623,16 +625,10 @@ export class HttpChatsService implements IChatsService {
       dateIso: item.dateIso,
       channelType: item.channelType,
       serviceContext: item.serviceContext,
-      eventId: item.eventId,
-      subEventId: item.subEventId,
-      groupId: item.groupId,
+      ownerId: this.normalizeHttpText(item.ownerId) || undefined,
       distanceKm,
       distanceMetersExact,
-      supportCaseStatus: this.normalizeSupportCaseStatus(item.supportCaseStatus),
-      supportCaseAssigneeUserId: this.normalizeHttpText(item.supportCaseAssigneeUserId) || null,
-      supportCaseAssigneeName: this.normalizeHttpText(item.supportCaseAssigneeName) || null,
-      supportCaseAssigneeInitials: this.normalizeHttpText(item.supportCaseAssigneeInitials) || null,
-      supportCaseUpdatedAtIso: this.normalizeHttpText(item.supportCaseUpdatedAtIso) || null,
+      supportCase: this.mapSupportCase(item.supportCase),
       ownerUserId
     } satisfies ChatThreadRecord;
   }
@@ -641,6 +637,7 @@ export class HttpChatsService implements IChatsService {
     return {
       ...record,
       memberIds: [...(record.memberIds ?? [])],
+      supportCase: this.cloneSupportCase(record.supportCase),
       messages: record.messages?.map(message => ({
         ...message,
         readBy: [...(message.readBy ?? [])],
@@ -649,6 +646,34 @@ export class HttpChatsService implements IChatsService {
         attachments: message.attachments?.map(attachment => ({ ...attachment }))
       }))
     };
+  }
+
+  private mapSupportCase(supportCase: HttpChatDto['supportCase']): ContractTypes.ChatSupportCase | null {
+    const status = this.normalizeSupportCaseStatus(supportCase?.status);
+    if (!status) {
+      return null;
+    }
+    const assigneeUserId = this.normalizeHttpText(supportCase?.assignee?.userId);
+    return {
+      status,
+      assignee: assigneeUserId
+        ? {
+            userId: assigneeUserId,
+            name: this.normalizeHttpText(supportCase?.assignee?.name),
+            initials: this.normalizeHttpText(supportCase?.assignee?.initials)
+          }
+        : null,
+      updatedAtIso: this.normalizeHttpText(supportCase?.updatedAtIso) || null
+    };
+  }
+
+  private cloneSupportCase<T extends ContractTypes.ChatSupportCase | null | undefined>(supportCase: T): T {
+    return supportCase
+      ? {
+          ...supportCase,
+          assignee: supportCase.assignee ? { ...supportCase.assignee } : supportCase.assignee
+        } as T
+      : supportCase;
   }
 
   private deduplicateChatRecords(records: readonly ChatThreadRecord[]): ChatThreadRecord[] {
@@ -751,14 +776,8 @@ export class HttpChatsService implements IChatsService {
       distanceMetersExact: item.distanceMetersExact,
       channelType: item.channelType,
       serviceContext: item.serviceContext,
-      eventId: item.eventId,
-      subEventId: item.subEventId,
-      groupId: item.groupId,
-      supportCaseStatus: item.supportCaseStatus ?? null,
-      supportCaseAssigneeUserId: item.supportCaseAssigneeUserId ?? null,
-      supportCaseAssigneeName: item.supportCaseAssigneeName ?? null,
-      supportCaseAssigneeInitials: item.supportCaseAssigneeInitials ?? null,
-      supportCaseUpdatedAtIso: item.supportCaseUpdatedAtIso ?? null,
+      ownerId: item.ownerId,
+      supportCase: this.cloneSupportCase(item.supportCase),
       ownerUserId
     };
   }
@@ -789,14 +808,8 @@ export class HttpChatsService implements IChatsService {
       distanceMetersExact: item.distanceMetersExact,
       channelType: item.channelType,
       serviceContext: item.serviceContext,
-      eventId: item.eventId,
-      subEventId: item.subEventId,
-      groupId: item.groupId,
-      supportCaseStatus: item.supportCaseStatus ?? null,
-      supportCaseAssigneeUserId: item.supportCaseAssigneeUserId ?? null,
-      supportCaseAssigneeName: item.supportCaseAssigneeName ?? null,
-      supportCaseAssigneeInitials: item.supportCaseAssigneeInitials ?? null,
-      supportCaseUpdatedAtIso: item.supportCaseUpdatedAtIso ?? null,
+      ownerId: item.ownerId,
+      supportCase: this.cloneSupportCase(item.supportCase),
       ownerUserId: item.ownerUserId
     };
   }
@@ -814,7 +827,7 @@ export class HttpChatsService implements IChatsService {
   private activityChatContextFilterKey(
     item: Pick<ContractTypes.ChatDTO, 'channelType' | 'serviceContext'>
   ): ContractTypes.ActivitiesChatContextFilter {
-    if (item.channelType === 'serviceEvent' || item.serviceContext) {
+    if (item.channelType === 'serviceEvent' || item.channelType === 'supportCase' || item.serviceContext) {
       return 'service';
     }
     if (item.channelType === 'groupSubEvent') {
@@ -845,13 +858,13 @@ export class HttpChatsService implements IChatsService {
   }
 
   private matchesSupportCaseFilter(
-    item: Pick<ChatThreadRecord, 'supportCaseStatus'>,
+    item: Pick<ChatThreadRecord, 'supportCase'>,
     filter?: ContractTypes.SupportCaseFilter
   ): boolean {
     const normalizedFilter = filter === 'pending' || filter === 'picked' || filter === 'solved' || filter === 'blocked'
       ? filter
       : 'all';
-    return normalizedFilter === 'all' || item.supportCaseStatus === normalizedFilter;
+    return normalizedFilter === 'all' || item.supportCase?.status === normalizedFilter;
   }
 
   private sortActivitiesChatPageRecords(
@@ -1185,9 +1198,8 @@ export class HttpChatsService implements IChatsService {
       unread: message.mine ? 0 : Math.max(0, Math.trunc(Number(existingRecord?.unread) || 0)),
       dateIso: `${message.sentAtIso ?? existingRecord?.dateIso ?? ''}`.trim() || undefined,
       channelType: chat.channelType ?? existingRecord?.channelType,
-      eventId: chat.eventId ?? existingRecord?.eventId,
-      subEventId: chat.subEventId ?? existingRecord?.subEventId,
-      groupId: chat.groupId ?? existingRecord?.groupId,
+      ownerId: chat.ownerId ?? existingRecord?.ownerId,
+      supportCase: this.cloneSupportCase(chat.supportCase ?? existingRecord?.supportCase),
       distanceKm: sanitizedDistanceKm,
       distanceMetersExact: sanitizedDistanceMetersExact,
       ownerUserId,

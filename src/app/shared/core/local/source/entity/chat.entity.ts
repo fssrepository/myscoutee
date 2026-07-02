@@ -1,7 +1,7 @@
 import type {
   ChatChannelType,
+  ChatSupportCase,
   ChatPopupMessage,
-  SupportCaseStatus
 } from '../../../contracts/chat.interface';
 import { APP_INDEXED_DB_KEYS } from '../../../common/storage-scope';
 
@@ -20,14 +20,8 @@ export interface ChatRecord {
   distanceMetersExact?: number;
   channelType?: ChatChannelType;
   serviceContext?: 'event' | 'asset' | 'notification';
-  eventId?: string;
-  subEventId?: string;
-  groupId?: string;
-  supportCaseStatus?: SupportCaseStatus | null;
-  supportCaseAssigneeUserId?: string | null;
-  supportCaseAssigneeName?: string | null;
-  supportCaseAssigneeInitials?: string | null;
-  supportCaseUpdatedAtIso?: string | null;
+  ownerId?: string;
+  supportCase?: ChatSupportCase | null;
 }
 
 export interface ChatThreadRecord extends ChatRecord {
