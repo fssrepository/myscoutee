@@ -966,10 +966,7 @@ export class ActivitiesEventsController {
     if (this.shouldRemovePublishedRowFromCurrentScope()) {
       this.activitiesSmartList?.removeVisibleItemByIdentity(this.activityRowIdentity(row));
     } else {
-      this.activitiesSmartList?.patchVisibleItem(
-        (item: InfoCardData) => this.activityRowIdentity(item) === this.activityRowIdentity(row),
-        { status: 'A' }
-      );
+      this.patchVisiblePublicationState(row, 'A');
     }
 
     this.signalActivityCounterDelta(activeUserId, counterDelta);
@@ -987,13 +984,28 @@ export class ActivitiesEventsController {
     const nextActiveIds = new Set(this.activeHostingIds);
     nextActiveIds.delete(row.id);
     this.activeHostingIds = nextActiveIds;
-    this.activitiesSmartList?.patchVisibleItem(
-      (item: InfoCardData) => this.activityRowIdentity(item) === this.activityRowIdentity(row),
-      { status: 'DR' }
-    );
+    this.patchVisiblePublicationState(row, 'DR');
     this.signalActivityCounterDelta(activeUserId, counterDelta);
     this.refreshSectionBadges();
     this.cdr.markForCheck();
+  }
+
+  private patchVisiblePublicationState(row: InfoCardData, status: ActivityContracts.ActivityEventStatus): void {
+    const identity = this.activityRowIdentity(row);
+    this.activitiesSmartList?.patchVisibleItem(
+      (item: InfoCardData) => this.activityRowIdentity(item) === identity,
+      (item: InfoCardData) => ({
+        ...item,
+        status,
+        surfaceTone: status === 'DR' ? 'draft' : 'published',
+        mediaEnd: item.mediaEnd
+          ? {
+            ...item.mediaEnd,
+            tone: status === 'DR' ? 'inactive' : item.mediaEnd.tone
+          }
+          : item.mediaEnd
+      })
+    );
   }
 
   private shouldRemovePublishedRowFromCurrentScope(): boolean {
