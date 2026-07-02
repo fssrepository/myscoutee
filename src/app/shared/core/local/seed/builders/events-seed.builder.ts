@@ -1283,6 +1283,73 @@ export class SeedEventsBuilder {
       .reduce((total, entry) => Math.max(total, entry.startOffsetMinutes + entry.durationMinutes), 0);
   }
 
+  private static buildSeededSubEventsFromDefinitions(
+    definitions: readonly ContractTypes.SubEventDefinitionDTO[],
+    record: Pick<ActivityEventRecord, 'id' | 'startAtIso' | 'endAtIso' | 'acceptedMembers' | 'pendingMembers' | 'capacityMax' | 'creatorUserId'>
+  ): ContractTypes.SubEventDTO[] {
+    if (definitions.length === 0) {
+      return [];
+    }
+    const slotStartMs = AppUtils.toSortableDate(record.startAtIso);
+    const items = this.seedSubEventDefinitionTimeline(definitions)
+      .map(({ item, startOffsetMinutes, durationMinutes }, index): ContractTypes.SubEventDTO => {
+        const subEventId = `${item.id ?? ''}`.trim() || `${record.id}-subevent-${index + 1}`;
+        const startAt = Number.isFinite(slotStartMs) && slotStartMs > 0
+          ? AppUtils.toIsoDateTime(new Date(slotStartMs + (startOffsetMinutes * 60 * 1000)))
+          : record.startAtIso;
+        const endAt = Number.isFinite(slotStartMs) && slotStartMs > 0
+          ? AppUtils.toIsoDateTime(new Date(slotStartMs + ((startOffsetMinutes + durationMinutes) * 60 * 1000)))
+          : record.endAtIso;
+        const capacityMin = this.normalizeCount(item.capacityMin) ?? 0;
+        const capacityMax = Math.max(
+          capacityMin,
+          this.normalizeCount(item.capacityMax)
+            ?? this.normalizeCount(item.tournamentGroupCapacityMax)
+            ?? capacityMin
+        );
+        const tournamentGroupCapacityMax = this.normalizeCount(item.tournamentGroupCapacityMax);
+        const hasTournamentGroups = (this.normalizeCount(item.tournamentGroupCapacityMin) ?? 0) > 0
+          || (tournamentGroupCapacityMax ?? 0) > 0;
+        const acceptedSeed = item.optional
+          ? Math.min(Math.max(1, capacityMax || 1), Math.max(1, record.acceptedMembers))
+          : Math.min(Math.max(0, capacityMax), Math.max(0, record.acceptedMembers));
+        const pendingSeed = Math.max(
+          1,
+          Math.min(Math.max(capacityMax, 4), Math.max(1, record.pendingMembers))
+        );
+        return {
+          id: subEventId,
+          name: `${item.name ?? ''}`.trim() || `Sub Event ${index + 1}`,
+          description: `${item.description ?? ''}`.trim(),
+          startAt,
+          endAt,
+          location: `${item.location ?? ''}`.trim(),
+          createdByUserId: `${record.creatorUserId ?? ''}`.trim() || undefined,
+          tournamentGroupCapacityMin: item.tournamentGroupCapacityMin,
+          tournamentGroupCapacityMax: item.tournamentGroupCapacityMax,
+          tournamentLeaderboardType: item.tournamentLeaderboardType,
+          tournamentAdvancePerGroup: item.tournamentAdvancePerGroup,
+          groupsCount: hasTournamentGroups && tournamentGroupCapacityMax
+            ? Math.max(1, Math.ceil(Math.max(1, record.capacityMax ?? capacityMax) / tournamentGroupCapacityMax))
+            : undefined,
+          optional: item.optional === true,
+          pricing: item.pricing ? PricingBuilder.clonePricingConfig(item.pricing) : item.pricing,
+          capacityMin,
+          capacityMax,
+          membersAccepted: acceptedSeed,
+          membersPending: pendingSeed,
+          carsPending: index % 2 === 0 ? 1 : 0,
+          accommodationPending: item.optional ? 1 : 0,
+          suppliesPending: item.optional ? 1 : 2,
+          slotStartOffsetMinutes: startOffsetMinutes,
+          slotDurationMinutes: durationMinutes,
+          stageStatus: hasTournamentGroups ? 'RS' : undefined,
+          stageStatusReason: hasTournamentGroups ? 'awaiting-tournament-start' : undefined
+        };
+      });
+    return ActivityEventDetailDTO.normalizeSubEvents(items);
+  }
+
   private static seedSlotTemplateSubEventDefinitions(
     parent: ActivityEventRecord,
     template: ContractTypes.EventSlotTemplateDTO
@@ -1488,7 +1555,7 @@ export class SeedEventsBuilder {
         ...item,
         pricing: item.pricing ? PricingBuilder.clonePricingConfig(item.pricing) : item.pricing
       })),
-      subEvents: []
+      subEvents: ActivityEventDetailDTO.normalizeSubEvents(record.subEvents ?? [])
     };
   }
 
@@ -1689,6 +1756,17 @@ export class SeedEventsBuilder {
       ? explicitSubEventDefinitions
       : this.buildSeededSubEventDefinitions(record, startAtIso, endAtIso, capacityRange);
     const subEventsEnabled = record.seed?.subEventsEnabled ?? subEventDefinitions.length > 0;
+    const subEvents = subEventsEnabled
+      ? this.buildSeededSubEventsFromDefinitions(subEventDefinitions, {
+          id: record.id,
+          startAtIso,
+          endAtIso,
+          acceptedMembers,
+          pendingMembers,
+          capacityMax,
+          creatorUserId: creator.id
+        })
+      : [];
     const rating = Number.isFinite(record.seed?.rating)
       ? Number(record.seed?.rating)
       : this.buildSeededRating(record.id, record.title, record.type);
@@ -1738,7 +1816,7 @@ export class SeedEventsBuilder {
       topics,
       subEventsEnabled,
       subEventDefinitions,
-      subEvents: [],
+      subEvents,
       mode: record.seed?.mode ?? SeedEventBuilder.inferredEventModeFromDefinitions(subEventDefinitions),
       rating,
       boost: Number.isFinite(record.seed?.boost)

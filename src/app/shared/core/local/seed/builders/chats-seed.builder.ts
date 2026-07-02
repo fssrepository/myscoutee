@@ -14,9 +14,18 @@ type ChatSeedUser = Pick<UserDto, 'id' | 'name' | 'initials' | 'gender' | 'image
 type ChatSeedSubEvent = {
   id: string;
   name: string;
+  description?: string;
   optional?: boolean;
   startAt: string;
+  endAt?: string;
+  location?: string;
+  capacityMin?: number | null;
   capacityMax?: number | null;
+  groupsCount?: number | null;
+  tournamentGroupCapacityMin?: number | null;
+  tournamentGroupCapacityMax?: number | null;
+  tournamentLeaderboardType?: string | null;
+  tournamentAdvancePerGroup?: number | null;
   membersAccepted?: number | null;
   membersPending?: number | null;
   carsPending?: number | null;
@@ -248,6 +257,10 @@ export class SeedChatsBuilder {
             items.push(optionalChat);
           }
         }
+        const groupChat = this.buildGroupContextChat(normalizedOwnerUserId, record, subEvent, stageLabel);
+        if (groupChat) {
+          items.push(groupChat);
+        }
       }
     }
     return items;
@@ -351,7 +364,7 @@ export class SeedChatsBuilder {
     subEvent: ChatSeedSubEvent,
     stageLabel: string
   ): ChatRecord | null {
-    const acceptedTarget = this.countValue(subEvent.membersAccepted);
+    const acceptedTarget = this.contextChatMemberTarget(record, subEvent);
     if (acceptedTarget <= 0) {
       return null;
     }
@@ -373,6 +386,46 @@ export class SeedChatsBuilder {
       subEventId: subEvent.id,
       groupId: '',
       channelType: 'optionalSubEvent',
+      memberIds,
+      dateIso: subEvent.startAt || record.startAtIso,
+      unread: this.sumSubEventPending(subEvent, true)
+    }, ownerUserId);
+  }
+
+  private static buildGroupContextChat(
+    ownerUserId: string,
+    record: ActivityEventRecord,
+    subEvent: ChatSeedSubEvent,
+    stageLabel: string
+  ): ChatRecord | null {
+    if (!this.hasTournamentGroupContext(subEvent)) {
+      return null;
+    }
+    const eventTitle = record.title.trim() || 'Event';
+    const groupId = `${subEvent.id}-group-1`;
+    const groupCapacity = Math.max(
+      this.countValue(subEvent.tournamentGroupCapacityMax),
+      this.countValue(subEvent.tournamentGroupCapacityMin),
+      4
+    );
+    const acceptedTarget = Math.max(1, Math.min(this.contextChatMemberTarget(record, subEvent), groupCapacity));
+    const memberIds = this.uniqueUserIds([
+      ownerUserId,
+      ...SeedEventBuilder.seededEventMemberIds(
+        `chat-group:${record.id}:${subEvent.id}:${groupId}`,
+        Math.max(acceptedTarget, 4),
+        [...this.USERS_BY_ID.values()],
+        ownerUserId
+      )
+    ]).slice(0, Math.max(1, acceptedTarget));
+    return this.createContextChatItem({
+      id: `c-context-group-${record.id}-${subEvent.id}-${groupId}`,
+      title: `Group A · ${subEvent.name || stageLabel}`,
+      lastMessage: `${stageLabel} group channel in ${eventTitle}.`,
+      eventId: record.id,
+      subEventId: subEvent.id,
+      groupId,
+      channelType: 'groupSubEvent',
       memberIds,
       dateIso: subEvent.startAt || record.startAtIso,
       unread: this.sumSubEventPending(subEvent, true)
@@ -436,6 +489,29 @@ export class SeedChatsBuilder {
       + this.countValue(subEvent.suppliesPending);
   }
 
+  private static contextChatMemberTarget(
+    record: ActivityEventRecord,
+    subEvent: ChatSeedSubEvent
+  ): number {
+    return Math.max(
+      1,
+      this.countValue(subEvent.membersAccepted),
+      Math.min(
+        Math.max(1, this.countValue(subEvent.capacityMax)),
+        Math.max(1, this.countValue(record.acceptedMembers))
+      )
+    );
+  }
+
+  private static hasTournamentGroupContext(subEvent: ChatSeedSubEvent): boolean {
+    return subEvent.optional !== true
+      && (
+        this.countValue(subEvent.tournamentGroupCapacityMin) > 0
+        || this.countValue(subEvent.tournamentGroupCapacityMax) > 0
+        || this.countValue(subEvent.groupsCount) > 0
+      );
+  }
+
   private static countValue(value: unknown): number {
     return Math.max(0, Math.trunc(Number(value) || 0));
   }
@@ -453,39 +529,27 @@ export class SeedChatsBuilder {
   }
 
   private static contextSubEvents(record: ActivityEventRecord): ChatSeedSubEvent[] {
-    const definitions = record.subEventDefinitions ?? [];
-    const slotStartMs = AppUtils.toSortableDate(record.startAtIso);
-    let previousStartOffsetMinutes = 0;
-    let previousEndOffsetMinutes = 0;
-    let hasPrevious = false;
-    return definitions.map((item, index) => {
-      const durationMinutes = Math.max(0, Math.trunc(Number(item.durationMinutes) || 0));
-      const offsetMinutes = Math.max(0, Math.trunc(Number(item.offsetMinutes) || 0));
-      const timing = `${item.timing ?? ''}`.trim().toLowerCase();
-      const startOffsetMinutes = !hasPrevious
-        ? offsetMinutes
-        : timing === 'during'
-          ? previousStartOffsetMinutes + offsetMinutes
-          : previousEndOffsetMinutes + offsetMinutes;
-      previousStartOffsetMinutes = startOffsetMinutes;
-      previousEndOffsetMinutes = startOffsetMinutes + durationMinutes;
-      hasPrevious = true;
-      const startAt = Number.isFinite(slotStartMs) && slotStartMs > 0
-        ? AppUtils.toIsoDateTime(new Date(slotStartMs + (startOffsetMinutes * 60 * 1000)))
-        : record.startAtIso;
-      return {
-        id: `${item.id ?? ''}`.trim() || `subevent-${index + 1}`,
-        name: `${item.name ?? ''}`.trim() || `Sub Event ${index + 1}`,
-        optional: item.optional === true,
-        startAt,
-        capacityMax: item.capacityMax ?? item.tournamentGroupCapacityMax ?? null,
-        membersAccepted: 0,
-        membersPending: 0,
-        carsPending: 0,
-        accommodationPending: 0,
-        suppliesPending: 0
-      };
-    });
+    return (record.subEvents ?? []).map((item, index) => ({
+      id: `${item.id ?? ''}`.trim() || `subevent-${index + 1}`,
+      name: `${item.name ?? ''}`.trim() || `Sub Event ${index + 1}`,
+      description: `${item.description ?? ''}`.trim(),
+      optional: item.optional === true,
+      startAt: `${item.startAt ?? ''}`.trim() || record.startAtIso,
+      endAt: `${item.endAt ?? ''}`.trim() || record.endAtIso,
+      location: `${item.location ?? ''}`.trim(),
+      capacityMin: item.capacityMin ?? null,
+      capacityMax: item.capacityMax ?? item.tournamentGroupCapacityMax ?? null,
+      groupsCount: item.groupsCount ?? null,
+      tournamentGroupCapacityMin: item.tournamentGroupCapacityMin ?? null,
+      tournamentGroupCapacityMax: item.tournamentGroupCapacityMax ?? null,
+      tournamentLeaderboardType: item.tournamentLeaderboardType ?? null,
+      tournamentAdvancePerGroup: item.tournamentAdvancePerGroup ?? null,
+      membersAccepted: item.membersAccepted ?? 0,
+      membersPending: item.membersPending ?? 0,
+      carsPending: item.carsPending ?? 0,
+      accommodationPending: item.accommodationPending ?? 0,
+      suppliesPending: item.suppliesPending ?? 0
+    }));
   }
 
   private static sortSubEventsByStartAsc(items: readonly ChatSeedSubEvent[]): ChatSeedSubEvent[] {
