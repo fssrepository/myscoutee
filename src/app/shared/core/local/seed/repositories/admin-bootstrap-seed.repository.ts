@@ -4,7 +4,7 @@ import { Location } from '@angular/common';
 import { Injectable, inject } from '@angular/core';
 
 import type { AdminChatMessageDto, AdminHelpTarget, AdminMonitoringStateDto, AdminModerationStore, AdminNotificationCenterState, AdminUserDto } from '../../../contracts/admin.interface';
-import type { ChatPopupMessage } from '../../../contracts/chat.interface';
+import type { ChatMessageDto } from '../../../contracts/chat.interface';
 
 import { AdminHelpSeedBuilder, AdminModerationSeedBuilder, AdminMonitoringSeedBuilder, AdminNotificationsSeedBuilder, AdminParamsSeedBuilder, AdminProfileSeedBuilder, AdminStatsSeedBuilder } from '../builders/admin';
 import { SeedChatsRepository } from './chats-seed.repository';
@@ -150,11 +150,7 @@ export class SeedAdminBootstrapRepository {
       serviceContext: 'notification',
       ownerUserId: admin.id
     };
-    const existingChat = this.findChatsByUser(admin.id)
-      .find(item => item.id === chat.id);
-    const existingMessageIds = new Set(
-      existingChat ? this.readChatMessages(existingChat).map(message => message.id) : []
-    );
+    const messages: ChatMessageDto[] = [];
     for (let index = 0; index < this.demoAdminHelpTargets().length; index += 1) {
       const target = this.demoAdminHelpTargets()[index];
       if (!target) {
@@ -169,7 +165,7 @@ export class SeedAdminBootstrapRepository {
       const helpUrl = this.location.prepareExternalUrl(`/admin/help/${encodeURIComponent(token)}`);
       const sentAt = new Date(now.getTime() + index * 1000);
       const sentAtIso = sentAt.toISOString();
-      const message: ChatPopupMessage = {
+      const message: ChatMessageDto = {
         id: target.messageId,
         sender: helpUser.name,
         senderAvatar: {
@@ -195,14 +191,9 @@ export class SeedAdminBootstrapRepository {
           previewUrl: target.previewUrl ?? null
         }]
       };
-      if (existingMessageIds.has(target.messageId) && existingChat) {
-        await this.updateChatMessage(existingChat, target.messageId, {
-          attachments: message.attachments ?? []
-        });
-        continue;
-      }
-      await this.appendChatMessage(chat, message);
+      messages.push(message);
     }
+    this.seedChatMessages(chat, messages);
   }
 
   async buildAndWriteAffinityGraphSnapshot(): Promise<void> {
@@ -258,20 +249,12 @@ export class SeedAdminBootstrapRepository {
     return this.chatsSeed.queryChatItemsByUser(userId);
   }
 
-  private readChatMessages(chat: ChatRecord): ChatPopupMessage[] {
+  private readChatMessages(chat: ChatRecord): ChatMessageDto[] {
     return this.chatsSeed.queryChatMessages(chat);
   }
 
-  private async appendChatMessage(chat: ChatRecord, message: ChatPopupMessage): Promise<ChatPopupMessage | null> {
-    return this.chatsSeed.appendChatMessage(chat, message);
-  }
-
-  private async updateChatMessage(
-    chat: ChatRecord,
-    messageId: string,
-    mutation: { attachments: ChatPopupMessage['attachments'] }
-  ): Promise<ChatPopupMessage | null> {
-    return this.chatsSeed.updateChatMessage(chat, messageId, mutation);
+  private seedChatMessages(chat: ChatRecord & { ownerUserId?: string }, messages: readonly ChatMessageDto[]): void {
+    this.chatsSeed.seedChatMessages(chat, messages);
   }
 
   private ensureAdminHelpToken(request: {

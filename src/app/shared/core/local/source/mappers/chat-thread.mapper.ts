@@ -1,7 +1,6 @@
 import type {
   ActivitiesChatPageResultDTO,
-  ChatDTO,
-  ChatPopupMessage
+  ChatDTO
 } from '../../../contracts/chat.interface';
 import type { RecordToDtoListMapper } from './mapper.types';
 import type { ChatThreadRecord } from '../entity/chat.entity';
@@ -44,26 +43,12 @@ export class LocalChatThreadMapper {
     };
   }
 
-  static cloneRecord(record: ChatThreadRecord, options: { includeMessages?: boolean } = {}): ChatThreadRecord {
+  static cloneRecord(record: ChatThreadRecord): ChatThreadRecord {
     return {
       ...record,
       memberIds: [...record.memberIds],
-      supportCase: this.cloneSupportCase(record.supportCase),
-      messages: options.includeMessages === false
-        ? undefined
-        : this.cloneMessages(record.messages ?? [])
+      supportCase: this.cloneSupportCase(record.supportCase)
     };
-  }
-
-  static cloneMessages(messages: readonly ChatPopupMessage[]): ChatPopupMessage[] {
-    return messages.map(message => ({
-      ...message,
-      senderAvatar: { ...message.senderAvatar },
-      readBy: message.readBy.map(reader => ({ ...reader })),
-      attachments: message.attachments?.map(attachment => ({ ...attachment })),
-      replyTo: message.replyTo ? { ...message.replyTo } : message.replyTo,
-      reactions: message.reactions?.map(reaction => ({ ...reaction }))
-    }));
   }
 
   static buildRecordKey(ownerUserId: string, sourceId: string): string {

@@ -1,7 +1,12 @@
-import type { ChatThreadRecord, ChatThreadRecordCollection } from '../../source/entity/chat.entity';
+import type {
+  ChatMessageRecord,
+  ChatMessageRecordCollection,
+  ChatThreadRecord,
+  ChatThreadRecordCollection
+} from '../../source/entity/chat.entity';
 import { environment } from '../../../../../../environments/environment';
 import { AppUtils } from '../../../../app-utils';
-import type { ChatPopupMessage, ChatSupportCase } from '../../../contracts/chat.interface';
+import type { ChatSupportCase } from '../../../contracts/chat.interface';
 import type { ChatRecord } from '../../source/entity/chat.entity';
 import type { UserDto } from '../../../contracts/user.interface';
 
@@ -11,6 +16,10 @@ import { SeedUserBuilder } from './user-seed.builder';
 import { SEED_SCHEDULE_REFERENCE_DATE } from '../seed-constants';
 
 type ChatSeedUser = Pick<UserDto, 'id' | 'name' | 'initials' | 'gender' | 'images'>;
+export interface SeedChatRecordCollection {
+  chats: ChatThreadRecordCollection;
+  chatMessages: ChatMessageRecordCollection;
+}
 type ChatSeedSubEvent = {
   id: string;
   name: string;
@@ -231,7 +240,7 @@ export class SeedChatsBuilder {
     ['admin-demo-noel', { id: 'admin-demo-noel', name: 'Noel', initials: 'NO', gender: 'man', images: ['https://randomuser.me/api/portraits/men/32.jpg'] }]
   ]);
 
-  static buildSeedRecordCollection(): ChatThreadRecordCollection {
+  static buildSeedRecordCollection(): SeedChatRecordCollection {
     return this.buildRecordCollection(
       Object.fromEntries(
         Object.entries(SEED_CHAT_ITEMS_BY_USER).map(([ownerUserId, items]) => [
@@ -248,7 +257,7 @@ export class SeedChatsBuilder {
   static buildContextualRecordCollectionForUser(
     ownerUserId: string,
     eventRecords: readonly ActivityEventRecord[]
-  ): ChatThreadRecordCollection {
+  ): SeedChatRecordCollection {
     return this.buildRecordCollection({
       [ownerUserId]: this.buildContextualChatItemsForUser(ownerUserId, eventRecords)
     });
@@ -289,9 +298,12 @@ export class SeedChatsBuilder {
     return items;
   }
 
-  static buildRecordCollection(itemsByUser: Record<string, readonly ChatRecord[]>): ChatThreadRecordCollection {
+  static buildRecordCollection(itemsByUser: Record<string, readonly ChatRecord[]>): SeedChatRecordCollection {
     const byId: Record<string, ChatThreadRecord> = {};
     const ids: string[] = [];
+    const messageById: Record<string, ChatMessageRecord> = {};
+    const messageIds: string[] = [];
+    const messageIdsByChatKey: Record<string, string[]> = {};
     for (const [ownerUserId, items] of Object.entries(itemsByUser)) {
       for (const item of items) {
         const recordKey = this.buildRecordKey(ownerUserId, item.id);
@@ -301,39 +313,45 @@ export class SeedChatsBuilder {
           supportCase: this.rebaseSupportCase(item.supportCase),
           memberIds: [...item.memberIds],
           ownerUserId,
-          dateIso,
-          messages: this.buildMessages(ownerUserId, item, dateIso)
+          dateIso
         };
         ids.push(recordKey);
+        const chatKey = this.buildChatMessageChatKey(ownerUserId, item.id);
+        for (const message of this.buildMessageRecords(ownerUserId, item, dateIso)) {
+          messageById[message.recordId] = message;
+          messageIds.push(message.recordId);
+          messageIdsByChatKey[chatKey] = [...(messageIdsByChatKey[chatKey] ?? []), message.recordId];
+        }
       }
     }
-    return { byId, ids };
-  }
-
-  static cloneRecord(record: ChatThreadRecord, options: { includeMessages?: boolean } = {}): ChatThreadRecord {
     return {
-      ...record,
-      memberIds: [...record.memberIds],
-      supportCase: this.cloneSupportCase(record.supportCase),
-      messages: options.includeMessages === false
-        ? undefined
-        : this.cloneMessages(record.messages ?? [])
+      chats: { byId, ids },
+      chatMessages: {
+        byId: messageById,
+        ids: messageIds,
+        idsByChatKey: messageIdsByChatKey
+      }
     };
   }
 
-  static cloneMessages(messages: readonly ChatPopupMessage[]): ChatPopupMessage[] {
-    return messages.map(message => ({
-      ...message,
-      senderAvatar: { ...message.senderAvatar },
-      readBy: message.readBy.map(reader => ({ ...reader })),
-      attachments: message.attachments?.map(attachment => ({ ...attachment })),
-      replyTo: message.replyTo ? { ...message.replyTo } : message.replyTo,
-      reactions: message.reactions?.map(reaction => ({ ...reaction }))
-    }));
+  static cloneRecord(record: ChatThreadRecord): ChatThreadRecord {
+    return {
+      ...record,
+      memberIds: [...record.memberIds],
+      supportCase: this.cloneSupportCase(record.supportCase)
+    };
   }
 
   static buildRecordKey(ownerUserId: string, sourceId: string): string {
     return `${ownerUserId}:${sourceId}`;
+  }
+
+  static buildChatMessageChatKey(ownerUserId: string, chatId: string): string {
+    return `${ownerUserId.trim()}:${chatId.trim()}`;
+  }
+
+  static buildChatMessageRecordKey(ownerUserId: string, chatId: string, messageId: string): string {
+    return `${ownerUserId.trim()}:${chatId.trim()}:${messageId.trim()}`;
   }
 
   private static buildMainContextChat(ownerUserId: string, record: ActivityEventRecord): ChatRecord {
@@ -580,7 +598,7 @@ export class SeedChatsBuilder {
     return AppUtils.toIsoDateTime(value);
   }
 
-  private static buildMessages(ownerUserId: string, item: ChatRecord, anchorIso: string): ChatPopupMessage[] {
+  private static buildMessageRecords(ownerUserId: string, item: ChatRecord, anchorIso: string): ChatMessageRecord[] {
     const me = this.resolveUser(ownerUserId);
     if (!me) {
       return [];
@@ -595,25 +613,30 @@ export class SeedChatsBuilder {
       text: string,
       sentAt: Date,
       readBy: readonly ChatSeedUser[]
-    ): ChatPopupMessage => ({
-      id,
-      sender: author.name,
+    ): ChatMessageRecord => ({
+      recordId: this.buildChatMessageRecordKey(ownerUserId, item.id, id),
+      ownerUserId,
+      chatId: item.id,
+      messageId: id,
+      senderName: author.name,
       senderAvatar: {
-        id: author.id,
+        userId: author.id,
         initials: author.initials,
         gender: author.gender,
         imageUrl: this.seedAvatarImageUrl(author)
       },
-      text,
-      time: sentAt.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' }),
+      bodyText: text,
+      timeLabel: sentAt.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' }),
       sentAtIso: AppUtils.toIsoDateTime(sentAt),
       mine: author.id === me.id,
       readBy: readBy.map(user => ({
-        id: user.id,
+        userId: user.id,
         initials: user.initials,
         gender: user.gender,
         imageUrl: this.seedAvatarImageUrl(user)
-      }))
+      })),
+      reactions: [],
+      attachments: []
     });
 
     const memberA = members[0] ?? me;
@@ -637,7 +660,7 @@ export class SeedChatsBuilder {
       'Synced on arrival windows.',
       'Collected final confirmations.'
     ];
-    const olderMessages: ChatPopupMessage[] = [];
+    const olderMessages: ChatMessageRecord[] = [];
     const olderCount = 36;
     const olderBaseStart = new Date(anchor.getTime() - ((olderCount + 12) * 40 * 60 * 1000));
     for (let index = olderCount - 1; index >= 0; index -= 1) {
@@ -650,7 +673,7 @@ export class SeedChatsBuilder {
       olderMessages.push(mk(`${item.id}-older-${index}`, author, baseText, sentAt, readers));
     }
 
-    const recentMessages: ChatPopupMessage[] = [
+    const recentMessages: ChatMessageRecord[] = [
       mk(`${item.id}-1`, memberA, `Let us align the plan for ${chatTopic}.`, at(180), [memberB, memberC]),
       mk(`${item.id}-2`, memberB, 'I can bring two more people.', at(140), [memberA, memberC]),
       mk(`${item.id}-3`, memberC, 'Route and timing look good on my side.', at(95), [memberA, memberB]),
@@ -715,8 +738,8 @@ export class SeedChatsBuilder {
       text: string,
       sentAt: Date,
       readBy: readonly ChatSeedUser[]
-    ) => ChatPopupMessage
-  ): ChatPopupMessage[] {
+    ) => ChatMessageRecord
+  ): ChatMessageRecord[] {
     const at = (minutesBefore: number): Date => new Date(anchor.getTime() - (minutesBefore * 60 * 1000));
     const requester = members.find(user => !this.isAdminSeedUser(user.id)) ?? sender;
     const assignedAdmin = this.resolveUser(item.supportCase?.assignee?.userId ?? '')
@@ -728,7 +751,7 @@ export class SeedChatsBuilder {
     const readByRequesterAndReviewer = this.uniqueSeedUsers([requester, reviewer]);
     const lastLine = item.lastMessage.trim() || 'Please check this support case.';
 
-    const messages: ChatPopupMessage[] = [
+    const messages: ChatMessageRecord[] = [
       mk(
         `${item.id}-support-1`,
         requester,

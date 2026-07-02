@@ -2,7 +2,7 @@ import type { ChatRecord, ChatThreadRecord } from '../entity/chat.entity';
 import { Injectable, inject } from '@angular/core';
 
 import type { UserDto } from '../../../contracts/user.interface';
-import type { ChatMessageMutation, ChatPopupMessage } from '../../../contracts/chat.interface';
+import type { ChatMessageMutation, ChatMessageDto } from '../../../contracts/chat.interface';
 
 import { LocalChatsRepository } from '../repositories/chats.repository';
 import { LocalShareTokensRepository } from '../repositories/share-tokens.repository';
@@ -34,11 +34,11 @@ export class LocalAdminSupportSessionService {
     return this.chatsRepository.queryChatItemsByUser(userId);
   }
 
-  readChatMessages(chat: ChatRecord): ChatPopupMessage[] {
+  readChatMessages(chat: ChatRecord): ChatMessageDto[] {
     return this.chatsRepository.queryChatMessages(chat);
   }
 
-  async appendChatMessage(chat: ChatRecord, message: ChatPopupMessage): Promise<ChatPopupMessage | null> {
+  async appendChatMessage(chat: ChatRecord, message: ChatMessageDto): Promise<ChatMessageDto | null> {
     const saved = this.chatsRepository.appendChatMessage(chat, message);
     await this.chatsRepository.flushToIndexedDb();
     return saved;
@@ -48,7 +48,7 @@ export class LocalAdminSupportSessionService {
     chat: ChatRecord,
     messageId: string,
     mutation: ChatMessageMutation
-  ): Promise<ChatPopupMessage | null> {
+  ): Promise<ChatMessageDto | null> {
     const saved = this.chatsRepository.updateChatMessage(chat, messageId, mutation);
     await this.chatsRepository.flushToIndexedDb();
     return saved;
@@ -56,7 +56,7 @@ export class LocalAdminSupportSessionService {
 
   async upsertSupportChatMessage(
     chat: ChatThreadRecord,
-    message: ChatPopupMessage,
+    message: ChatMessageDto,
     unreadForOwner: boolean
   ): Promise<void> {
     this.chatsRepository.upsertSupportChatMessage(chat, message, unreadForOwner);

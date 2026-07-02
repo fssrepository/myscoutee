@@ -3,7 +3,7 @@ import { Injectable, inject } from '@angular/core';
 
 import type { AdminUserDto } from '../../../contracts/admin.interface';
 import type { AdminModerationActionResult, AdminModerationUserPatch } from '../../../base/services/admin-moderation.service';
-import type { ChatPopupMessage } from '../../../contracts/chat.interface';
+import type { ChatMessageDto } from '../../../contracts/chat.interface';
 
 import { LocalAdminSupportSessionService } from './admin-support-session.service';
 import { LocalRouteDelayService } from './route-delay.service';
@@ -129,10 +129,9 @@ export class LocalAdminModerationService extends LocalRouteDelayService {
       dateIso: nowIso,
       channelType: 'serviceEvent',
       serviceContext: 'notification',
-      ownerUserId: userId,
-      messages: []
+      ownerUserId: userId
     };
-    const userMessage: ChatPopupMessage = {
+    const userMessage: ChatMessageDto = {
       id: messageId,
       sender: admin.name,
       senderAvatar: adminAvatar,
@@ -153,10 +152,9 @@ export class LocalAdminModerationService extends LocalRouteDelayService {
       dateIso: nowIso,
       channelType: 'serviceEvent',
       serviceContext: 'notification',
-      ownerUserId: admin.id,
-      messages: []
+      ownerUserId: admin.id
     };
-    const adminMessage: ChatPopupMessage = {
+    const adminMessage: ChatMessageDto = {
       ...userMessage,
       mine: true,
       readBy: []

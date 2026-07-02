@@ -4,7 +4,6 @@ import { TestBed } from '@angular/core/testing';
 
 import type * as ContractTypes from '../../../contracts';
 import { LocalMemoryDb } from '../../../common/app.db';
-import type { ChatPopupMessage } from '../../../contracts/chat.interface';
 
 import { LocalChatsRepository } from './chats.repository';
 
@@ -169,25 +168,7 @@ function chat(
     unread: 0,
     dateIso,
     channelType,
-    messages: [message(id, dateIso)],
     ...overrides
-  };
-}
-
-function message(chatId: string, sentAtIso: string): ChatPopupMessage {
-  return {
-    id: `${chatId}:message`,
-    sender: 'System',
-    senderAvatar: {
-      id: 'deleted',
-      initials: 'SY',
-      gender: 'deleted'
-    },
-    text: 'Seed message',
-    time: '10:00',
-    sentAtIso,
-    mine: false,
-    readBy: []
   };
 }
 

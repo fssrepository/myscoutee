@@ -1,17 +1,17 @@
-import { CHATS_TABLE_NAME } from '../../source/entity/chat.entity';
-import type { ChatRecord, ChatThreadRecord } from '../../source/entity/chat.entity';
-import { USERS_TABLE_NAME } from '../../source/entity/user.entity';
+import { CHAT_MESSAGES_TABLE_NAME, CHATS_TABLE_NAME } from '../../source/entity/chat.entity';
+import type { ChatMessageRecord, ChatRecord, ChatThreadRecord } from '../../source/entity/chat.entity';
 import { Injectable, inject } from '@angular/core';
 
 import { AppUtils } from '../../../../app-utils';
-import { UserProfileState } from '../../../common/user-profile-state';
-import { LocalChatThreadMapper } from '../../source/mappers';
+import type { AppMemorySchema } from '../../common/memory.schema';
+import { LocalChatMessageMapper, LocalChatThreadMapper } from '../../source/mappers';
 import { LocalMemoryDb } from '../../../common/app.db';
-import type { ChatPopupMessage } from '../../../contracts/chat.interface';
+import type { ChatMessageDto } from '../../../contracts/chat.interface';
 
 import type { ActivityEventRecord } from '../../../contracts/activity.interface';
 
 import { SeedChatsBuilder } from '../builders';
+import type { SeedChatRecordCollection } from '../builders/chats-seed.builder';
 
 @Injectable({
   providedIn: 'root'
@@ -19,30 +19,18 @@ import { SeedChatsBuilder } from '../builders';
 export class SeedChatsRepository {
   private readonly memoryDb = inject(LocalMemoryDb);
   private initialized = false;
+  private seedRecords: SeedChatRecordCollection | null = null;
 
   seedDefaults(): void {
     if (this.initialized) {
       return;
     }
-    const state = this.memoryDb.read();
-    if (state[CHATS_TABLE_NAME].ids.length > 0) {
-      const needsMigration = state[CHATS_TABLE_NAME].ids.some(id => {
-        const record = state[CHATS_TABLE_NAME].byId[id];
-        return !record
-          || !AppUtils.hasText(record.dateIso ?? '')
-          || !Array.isArray(record.messages)
-          || (this.isSupportCaseRecord(record) && record.messages.length === 0)
-          || this.supportCaseRecordNeedsAvatarRefresh(record);
-      });
-      if (!needsMigration) {
-        this.initialized = true;
-        return;
-      }
-    }
     const records = SeedChatsBuilder.buildSeedRecordCollection();
+    this.seedRecords = this.cloneSeedRecords(records);
     this.memoryDb.write(currentState => ({
       ...currentState,
-      [CHATS_TABLE_NAME]: records
+      [CHATS_TABLE_NAME]: records.chats,
+      [CHAT_MESSAGES_TABLE_NAME]: records.chatMessages
     }));
     this.initialized = true;
   }
@@ -50,43 +38,64 @@ export class SeedChatsRepository {
   seedContextualRecordsForUser(userId: string, eventRecords: readonly ActivityEventRecord[]): boolean {
     this.seedDefaults();
     const normalizedUserId = userId.trim();
-    if (!normalizedUserId || this.isSetupRequiredDemoProfile(normalizedUserId)) {
+    if (!normalizedUserId) {
       return false;
     }
     const seeded = SeedChatsBuilder.buildContextualRecordCollectionForUser(normalizedUserId, eventRecords);
-    if (seeded.ids.length === 0) {
+    if (seeded.chats.ids.length === 0) {
       return false;
     }
-    const currentTable = this.memoryDb.read()[CHATS_TABLE_NAME];
-    const nextById = { ...currentTable.byId };
-    const nextIds = [...currentTable.ids];
-    let changed = false;
-    for (const id of seeded.ids) {
-      const seededRecord = seeded.byId[id];
-      if (!seededRecord) {
-        continue;
-      }
-      const existing = currentTable.byId[id];
-      if (existing && Array.isArray(existing.messages) && existing.messages.length > 0) {
-        continue;
-      }
-      nextById[id] = LocalChatThreadMapper.cloneRecord(seededRecord);
-      if (!existing) {
-        nextIds.push(id);
-      }
-      changed = true;
-    }
-    if (!changed) {
-      return false;
-    }
+    this.mergeSeedRecords(seeded);
     this.memoryDb.write(currentState => ({
       ...currentState,
-      [CHATS_TABLE_NAME]: {
-        byId: nextById,
-        ids: nextIds
-      }
+      [CHATS_TABLE_NAME]: this.mergeChatTable(currentState[CHATS_TABLE_NAME], seeded.chats),
+      [CHAT_MESSAGES_TABLE_NAME]: this.mergeChatMessagesTable(currentState[CHAT_MESSAGES_TABLE_NAME], seeded.chatMessages)
     }));
     return true;
+  }
+
+  seedChatMessages(chat: ChatRecord & { ownerUserId?: string }, messages: readonly ChatMessageDto[]): void {
+    const ownerUserId = `${chat.ownerUserId ?? ''}`.trim();
+    const chatId = `${chat.id ?? ''}`.trim();
+    if (!ownerUserId || !chatId || messages.length === 0) {
+      return;
+    }
+    const messageRecords = messages.map(message => LocalChatMessageMapper.toRecord(ownerUserId, chatId, message));
+    const latest = [...messages].sort((left, right) =>
+      AppUtils.toSortableDate(right.sentAtIso) - AppUtils.toSortableDate(left.sentAtIso)
+      || `${right.id ?? ''}`.localeCompare(`${left.id ?? ''}`)
+    )[0] ?? null;
+    const recordKey = LocalChatThreadMapper.buildRecordKey(ownerUserId, chatId);
+    const chatRecord: ChatThreadRecord = {
+      ...chat,
+      id: chatId,
+      memberIds: [...(chat.memberIds ?? [])],
+      lastMessage: latest ? (latest.text || this.chatAttachmentSummary(latest) || chat.lastMessage) : chat.lastMessage,
+      lastSenderId: latest?.senderAvatar.id ?? chat.lastSenderId,
+      dateIso: latest?.sentAtIso ?? chat.dateIso,
+      ownerUserId
+    };
+    const records: SeedChatRecordCollection = {
+      chats: {
+        byId: {
+          [recordKey]: chatRecord
+        },
+        ids: [recordKey]
+      },
+      chatMessages: {
+        byId: Object.fromEntries(messageRecords.map(message => [message.recordId, message])),
+        ids: messageRecords.map(message => message.recordId),
+        idsByChatKey: {
+          [LocalChatMessageMapper.chatKey(ownerUserId, chatId)]: messageRecords.map(message => message.recordId)
+        }
+      }
+    };
+    this.mergeSeedRecords(records);
+    this.memoryDb.write(currentState => ({
+      ...currentState,
+      [CHATS_TABLE_NAME]: this.mergeChatTable(currentState[CHATS_TABLE_NAME], records.chats),
+      [CHAT_MESSAGES_TABLE_NAME]: this.mergeChatMessagesTable(currentState[CHAT_MESSAGES_TABLE_NAME], records.chatMessages)
+    }));
   }
 
   queryChatItemsByUser(userId: string): ChatThreadRecord[] {
@@ -94,188 +103,82 @@ export class SeedChatsRepository {
     if (!normalizedUserId) {
       return [];
     }
-    const table = this.memoryDb.read()[CHATS_TABLE_NAME];
+    const table = this.seedRecords?.chats;
+    if (!table) {
+      return [];
+    }
     return table.ids
       .map(id => table.byId[id])
       .filter((record): record is ChatThreadRecord => Boolean(record))
       .filter(record => record.ownerUserId === normalizedUserId)
-      .map(record => LocalChatThreadMapper.cloneRecord(record, { includeMessages: false }));
+      .map(record => LocalChatThreadMapper.cloneRecord(record));
   }
 
-  queryChatMessages(chat: ChatRecord): ChatPopupMessage[] {
-    const record = this.resolveChatRecord(chat, { createServiceChat: false });
-    return record ? LocalChatThreadMapper.cloneMessages(record.messages ?? []) : [];
-  }
-
-  appendChatMessage(chat: ChatRecord, message: ChatPopupMessage): ChatPopupMessage | null {
-    const record = this.resolveChatRecord(chat);
-    if (!record) {
-      return null;
-    }
-    const messageClone = LocalChatThreadMapper.cloneMessages([message])[0] ?? null;
-    if (!messageClone) {
-      return null;
-    }
-    const recordKey = LocalChatThreadMapper.buildRecordKey(record.ownerUserId, record.id);
-    this.memoryDb.write(currentState => {
-      const currentTable = currentState[CHATS_TABLE_NAME];
-      const existingRecord = currentTable.byId[recordKey];
-      if (!existingRecord) {
-        return currentState;
-      }
-      return {
-        ...currentState,
-        [CHATS_TABLE_NAME]: {
-          ...currentTable,
-          byId: {
-            ...currentTable.byId,
-            [recordKey]: {
-              ...existingRecord,
-              lastMessage: messageClone.text || this.chatAttachmentSummary(messageClone),
-              lastSenderId: messageClone.senderAvatar.id,
-              dateIso: messageClone.sentAtIso,
-              messages: [
-                ...LocalChatThreadMapper.cloneMessages(existingRecord.messages ?? []),
-                messageClone
-              ]
-            }
-          }
-        }
-      };
-    });
-    return messageClone;
-  }
-
-  updateChatMessage(
-    chat: ChatRecord,
-    messageId: string,
-    mutation: { attachments: ChatPopupMessage['attachments'] }
-  ): ChatPopupMessage | null {
-    const record = this.resolveChatRecord(chat, { createServiceChat: false });
-    const normalizedMessageId = `${messageId ?? ''}`.trim();
-    if (!record || !normalizedMessageId) {
-      return null;
-    }
-    const recordKey = LocalChatThreadMapper.buildRecordKey(record.ownerUserId, record.id);
-    let updatedMessage: ChatPopupMessage | null = null;
-    this.memoryDb.write(currentState => {
-      const currentTable = currentState[CHATS_TABLE_NAME];
-      const existingRecord = currentTable.byId[recordKey];
-      if (!existingRecord) {
-        return currentState;
-      }
-      const nextMessages = LocalChatThreadMapper.cloneMessages(existingRecord.messages ?? []).map(message => {
-        if (message.id !== normalizedMessageId) {
-          return message;
-        }
-        updatedMessage = {
-          ...message,
-          attachments: mutation.attachments?.map(attachment => ({ ...attachment })) ?? []
-        };
-        return updatedMessage;
-      });
-      if (!updatedMessage) {
-        return currentState;
-      }
-      const latest = nextMessages[nextMessages.length - 1] ?? null;
-      return {
-        ...currentState,
-        [CHATS_TABLE_NAME]: {
-          ...currentTable,
-          byId: {
-            ...currentTable.byId,
-            [recordKey]: {
-              ...existingRecord,
-              lastMessage: latest
-                ? (latest.text || this.chatAttachmentSummary(latest))
-                : existingRecord.lastMessage,
-              lastSenderId: latest?.senderAvatar.id ?? existingRecord.lastSenderId,
-              dateIso: latest?.sentAtIso ?? existingRecord.dateIso,
-              messages: nextMessages
-            }
-          }
-        }
-      };
-    });
-    return updatedMessage ? LocalChatThreadMapper.cloneMessages([updatedMessage])[0] ?? null : null;
-  }
-
-  private isSupportCaseRecord(record: ChatRecord): boolean {
-    return record.channelType === 'supportCase'
-      || `${record.id ?? ''}`.trim().startsWith('c-support-admin-')
-      || Boolean(record.supportCase);
-  }
-
-  private resolveChatRecord(
-    chat: ChatRecord,
-    options: { createServiceChat?: boolean } = {}
-  ): ChatThreadRecord | null {
-    const sourceId = `${chat.id ?? ''}`.trim();
-    if (!sourceId) {
-      return null;
-    }
-    const table = this.memoryDb.read()[CHATS_TABLE_NAME];
+  queryChatMessages(chat: ChatRecord): ChatMessageDto[] {
     const ownerUserId = typeof (chat as { ownerUserId?: unknown }).ownerUserId === 'string'
       ? `${(chat as { ownerUserId?: string }).ownerUserId ?? ''}`.trim()
       : '';
-    if (ownerUserId) {
-      const record = table.byId[LocalChatThreadMapper.buildRecordKey(ownerUserId, sourceId)];
-      if (record) {
-        return record;
-      }
-      if (options.createServiceChat !== false && chat.channelType === 'serviceEvent') {
-        return this.createServiceChatRecord(ownerUserId, chat);
-      }
-    }
-    const matchId = table.ids.find(id => table.byId[id]?.id === sourceId);
-    if (matchId) {
-      return table.byId[matchId] ?? null;
-    }
-    if (options.createServiceChat !== false && chat.channelType === 'serviceEvent') {
-      const fallbackOwnerUserId = (chat.memberIds ?? [])[0]?.trim() ?? '';
-      return fallbackOwnerUserId ? this.createServiceChatRecord(fallbackOwnerUserId, chat) : null;
-    }
-    return null;
-  }
-
-  private createServiceChatRecord(ownerUserId: string, chat: ChatRecord): ChatThreadRecord | null {
-    const normalizedOwnerUserId = `${ownerUserId ?? ''}`.trim();
     const sourceId = `${chat.id ?? ''}`.trim();
-    if (!normalizedOwnerUserId || !sourceId) {
-      return null;
+    if (!ownerUserId || !sourceId || !this.seedRecords) {
+      return [];
     }
-    const recordKey = LocalChatThreadMapper.buildRecordKey(normalizedOwnerUserId, sourceId);
-    const existing = this.memoryDb.read()[CHATS_TABLE_NAME].byId[recordKey];
-    if (existing) {
-      return existing;
-    }
-    const record: ChatThreadRecord = {
-      ...chat,
-      memberIds: [...(chat.memberIds ?? [])],
-      ownerUserId: normalizedOwnerUserId,
-      dateIso: chat.dateIso ?? new Date().toISOString(),
-      messages: []
-    };
-    this.memoryDb.write(currentState => {
-      const currentTable = currentState[CHATS_TABLE_NAME];
-      if (currentTable.byId[recordKey]) {
-        return currentState;
-      }
-      return {
-        ...currentState,
-        [CHATS_TABLE_NAME]: {
-          byId: {
-            ...currentTable.byId,
-            [recordKey]: record
-          },
-          ids: [...currentTable.ids, recordKey]
-        }
-      };
-    });
-    return record;
+    const record = this.seedRecords.chats.byId[LocalChatThreadMapper.buildRecordKey(ownerUserId, sourceId)];
+    return record ? LocalChatMessageMapper.toDtoList(this.selectChatMessageRecordsFromSnapshot(this.seedRecords.chatMessages, record)) : [];
   }
 
-  private chatAttachmentSummary(message: ChatPopupMessage): string {
+  private selectChatMessageRecordsFromSnapshot(
+    snapshot: AppMemorySchema[typeof CHAT_MESSAGES_TABLE_NAME],
+    chat: ChatThreadRecord
+  ): ChatMessageRecord[] {
+    const chatKey = LocalChatMessageMapper.chatKey(chat.ownerUserId, chat.id);
+    const ids = snapshot.idsByChatKey[chatKey] ?? snapshot.ids.filter(id => {
+      const record = snapshot.byId[id];
+      return record?.ownerUserId === chat.ownerUserId && record?.chatId === chat.id;
+    });
+    return ids
+      .map(id => snapshot.byId[id])
+      .filter((record): record is ChatMessageRecord => Boolean(record))
+      .sort((left, right) => AppUtils.toSortableDate(left.sentAtIso) - AppUtils.toSortableDate(right.sentAtIso)
+        || `${left.messageId ?? ''}`.localeCompare(`${right.messageId ?? ''}`));
+  }
+
+  private upsertMessageRecord(
+    table: AppMemorySchema[typeof CHAT_MESSAGES_TABLE_NAME],
+    message: ChatMessageRecord
+  ): AppMemorySchema[typeof CHAT_MESSAGES_TABLE_NAME] {
+    if (!message.recordId) {
+      return table;
+    }
+    const chatKey = LocalChatMessageMapper.chatKey(message.ownerUserId, message.chatId);
+    const nextById = {
+      ...table.byId,
+      [message.recordId]: message
+    };
+    const nextIds = table.ids.includes(message.recordId)
+      ? [...table.ids]
+      : [...table.ids, message.recordId];
+    const nextChatIds = table.idsByChatKey[chatKey]?.includes(message.recordId)
+      ? [...table.idsByChatKey[chatKey]]
+      : [...(table.idsByChatKey[chatKey] ?? []), message.recordId];
+    nextChatIds.sort((leftId, rightId) => {
+      const left = nextById[leftId];
+      const right = nextById[rightId];
+      return left && right
+        ? AppUtils.toSortableDate(left.sentAtIso) - AppUtils.toSortableDate(right.sentAtIso)
+          || `${left.messageId ?? ''}`.localeCompare(`${right.messageId ?? ''}`)
+        : left ? -1 : right ? 1 : 0;
+    });
+    return {
+      byId: nextById,
+      ids: nextIds,
+      idsByChatKey: {
+        ...table.idsByChatKey,
+        [chatKey]: nextChatIds
+      }
+    };
+  }
+
+  private chatAttachmentSummary(message: ChatMessageDto): string {
     const firstAttachment = message.attachments?.[0];
     if (!firstAttachment) {
       return '';
@@ -292,23 +195,54 @@ export class SeedChatsRepository {
     return firstAttachment.title || 'Shared an attachment';
   }
 
-  private supportCaseRecordNeedsAvatarRefresh(record: ChatThreadRecord): boolean {
-    if (!this.isSupportCaseRecord(record) || !Array.isArray(record.messages) || record.messages.length === 0) {
-      return false;
-    }
-    return record.messages.some(message => {
-      const senderId = `${message.senderAvatar?.id ?? ''}`.trim();
-      const imageUrl = `${message.senderAvatar?.imageUrl ?? ''}`.trim();
-      return senderId.length > 0 && senderId !== 'deleted' && imageUrl.length === 0;
-    });
+  private mergeSeedRecords(records: SeedChatRecordCollection): void {
+    const current = this.seedRecords ?? {
+      chats: { byId: {}, ids: [] },
+      chatMessages: { byId: {}, ids: [], idsByChatKey: {} }
+    };
+    this.seedRecords = {
+      chats: this.mergeChatTable(current.chats, records.chats),
+      chatMessages: this.mergeChatMessagesTable(current.chatMessages, records.chatMessages)
+    };
   }
 
-  private isSetupRequiredDemoProfile(userId: string): boolean {
-    const normalizedUserId = userId.trim();
-    if (!normalizedUserId) {
-      return false;
+  private mergeChatTable(
+    current: AppMemorySchema[typeof CHATS_TABLE_NAME],
+    incoming: AppMemorySchema[typeof CHATS_TABLE_NAME]
+  ): AppMemorySchema[typeof CHATS_TABLE_NAME] {
+    const byId = { ...current.byId };
+    const ids = [...current.ids];
+    for (const id of incoming.ids) {
+      const record = incoming.byId[id];
+      if (!record) {
+        continue;
+      }
+      byId[id] = LocalChatThreadMapper.cloneRecord(record);
+      if (!ids.includes(id)) {
+        ids.push(id);
+      }
     }
-    const user = this.memoryDb.read()[USERS_TABLE_NAME].byId[normalizedUserId] ?? null;
-    return user ? UserProfileState.isEmptyOnboardingProfile(user) : false;
+    return { byId, ids };
+  }
+
+  private mergeChatMessagesTable(
+    current: AppMemorySchema[typeof CHAT_MESSAGES_TABLE_NAME],
+    incoming: AppMemorySchema[typeof CHAT_MESSAGES_TABLE_NAME]
+  ): AppMemorySchema[typeof CHAT_MESSAGES_TABLE_NAME] {
+    let next = current;
+    for (const id of incoming.ids) {
+      const record = incoming.byId[id];
+      if (record) {
+        next = this.upsertMessageRecord(next, record);
+      }
+    }
+    return next;
+  }
+
+  private cloneSeedRecords(records: SeedChatRecordCollection): SeedChatRecordCollection {
+    return {
+      chats: this.mergeChatTable({ byId: {}, ids: [] }, records.chats),
+      chatMessages: this.mergeChatMessagesTable({ byId: {}, ids: [], idsByChatKey: {} }, records.chatMessages)
+    };
   }
 }

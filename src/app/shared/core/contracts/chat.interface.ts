@@ -11,7 +11,7 @@ export interface ChatReadAvatar {
 
 export type ChatMessageDeliveryState = 'pending' | 'timed-out';
 
-export interface ChatPopupMessage {
+export interface ChatMessageDto {
   id: string;
   sender: string;
   senderAvatar: ChatReadAvatar;
@@ -96,8 +96,8 @@ export interface ChatReadReceipt {
 }
 
 export type ChatLiveEvent =
-  | { type: 'message'; chatId: string; message: ChatPopupMessage }
-  | { type: 'ack'; chatId: string; message?: ChatPopupMessage; messageId?: string; clientId?: string }
+  | { type: 'message'; chatId: string; message: ChatMessageDto }
+  | { type: 'ack'; chatId: string; message?: ChatMessageDto; messageId?: string; clientId?: string }
   | { type: 'typing'; chatId: string; typing: ChatTypingIndicator }
   | { type: 'read'; chatId: string; read: ChatReadReceipt }
   | { type: 'error'; chatId: string; messageId?: string; clientId?: string; error?: string }
@@ -144,7 +144,7 @@ export interface ActivitiesChatPageResultDTO {
 }
 
 export interface ChatMessagesPageResultDTO {
-  items: ChatPopupMessage[];
+  items: ChatMessageDto[];
   total: number;
   nextCursor?: string | null;
 }

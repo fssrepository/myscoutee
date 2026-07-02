@@ -1,13 +1,15 @@
-import { CHATS_TABLE_NAME } from '../entity/chat.entity';
+import { CHAT_MESSAGES_TABLE_NAME, CHATS_TABLE_NAME } from '../entity/chat.entity';
+import type { ChatMessageRecord } from '../entity/chat.entity';
 import type { ChatRecord, ChatThreadRecord } from '../entity/chat.entity';
 import { USERS_TABLE_NAME } from '../entity/user.entity';
 import { Injectable, inject } from '@angular/core';
 
 import type * as ContractTypes from '../../../contracts';
 import { AppUtils } from '../../../../app-utils';
+import type { AppMemorySchema } from '../../common/memory.schema';
 import { LocalMemoryDb } from '../../../common/app.db';
 import { UserProfileState } from '../../../common/user-profile-state';
-import { LocalChatThreadMapper } from '../mappers';
+import { LocalChatMessageMapper, LocalChatThreadMapper } from '../mappers';
 import type * as ActivityContracts from '../../../contracts/activity.interface';
 import type { ActivitiesFeedFilters, ListQuery } from '../../../contracts';
 
@@ -59,7 +61,7 @@ export class LocalChatsRepository {
     return {
       items: sorted
         .slice(startIndex, endIndex)
-        .map(record => LocalChatThreadMapper.cloneRecord(record, { includeMessages: false })),
+        .map(record => LocalChatThreadMapper.cloneRecord(record)),
       total: sorted.length,
       nextCursor: endIndex < sorted.length ? String(endIndex) : null
     };
@@ -87,7 +89,7 @@ export class LocalChatsRepository {
   querySupportCaseItemsForAdmin(userId: string, filter: ContractTypes.SupportCaseFilter = 'all'): ChatThreadRecord[] {
     const normalizedUserId = userId.trim();
     return this.querySupportCaseRecordsForAdmin(normalizedUserId, filter)
-      .map(record => LocalChatThreadMapper.cloneRecord(record, { includeMessages: false }));
+      .map(record => LocalChatThreadMapper.cloneRecord(record));
   }
 
   private querySupportCaseRecordsForAdmin(
@@ -123,9 +125,9 @@ export class LocalChatsRepository {
       }));
   }
 
-  queryChatMessages(chat: ChatRecord): ContractTypes.ChatPopupMessage[] {
+  queryChatMessages(chat: ChatRecord): ContractTypes.ChatMessageDto[] {
     const record = this.resolveChatRecord(chat, { createServiceChat: false });
-    return record ? LocalChatThreadMapper.cloneMessages(record.messages ?? []).map(message => ({
+    return record ? LocalChatMessageMapper.toDtoList(this.queryChatMessageRecords(record)).map(message => ({
       ...message,
       readBy: message.readBy.filter(reader => `${reader.id ?? ''}`.trim() !== `${message.senderAvatar.id ?? ''}`.trim())
     })) : [];
@@ -134,7 +136,7 @@ export class LocalChatsRepository {
   queryChatMessagesPage(
     chat: ChatRecord,
     query: ListQuery
-  ): { items: ContractTypes.ChatPopupMessage[]; total: number; nextCursor: string | null } {
+  ): { items: ContractTypes.ChatMessageDto[]; total: number; nextCursor: string | null } {
     const messages = this.sortChatMessagesForThread(this.queryChatMessages(chat));
     const pageSize = Math.max(1, Math.trunc(Number(query.pageSize) || 10));
     const startIndex = this.resolveMessagePageStartIndex(query, pageSize);
@@ -146,22 +148,21 @@ export class LocalChatsRepository {
     };
   }
 
-  appendChatMessage(chat: ChatRecord, message: ContractTypes.ChatPopupMessage): ContractTypes.ChatPopupMessage | null {
+  appendChatMessage(chat: ChatRecord, message: ContractTypes.ChatMessageDto): ContractTypes.ChatMessageDto | null {
     const record = this.resolveChatRecord(chat);
     if (!record) {
       return null;
     }
-    const messageClone = LocalChatThreadMapper.cloneMessages([message])[0] ?? null;
-    if (!messageClone) {
-      return null;
-    }
+    const messageRecord = LocalChatMessageMapper.toRecord(record.ownerUserId, record.id, message);
     const recordKey = LocalChatThreadMapper.buildRecordKey(record.ownerUserId, record.id);
     this.memoryDb.write(currentState => {
       const currentTable = currentState[CHATS_TABLE_NAME];
+      const currentMessagesTable = currentState[CHAT_MESSAGES_TABLE_NAME];
       const existingRecord = currentTable.byId[recordKey];
       if (!existingRecord) {
         return currentState;
       }
+      const nextMessagesTable = this.upsertMessageRecord(currentMessagesTable, messageRecord);
       return {
         ...currentState,
         [CHATS_TABLE_NAME]: {
@@ -170,49 +171,34 @@ export class LocalChatsRepository {
             ...currentTable.byId,
             [recordKey]: {
               ...existingRecord,
-              lastMessage: messageClone.text || this.chatAttachmentSummary(messageClone),
-              lastSenderId: messageClone.senderAvatar.id,
-              dateIso: messageClone.sentAtIso,
-              messages: [
-                ...LocalChatThreadMapper.cloneMessages(existingRecord.messages ?? []),
-                messageClone
-              ]
+              lastMessage: message.text || this.chatAttachmentSummary(message),
+              lastSenderId: message.senderAvatar.id,
+              dateIso: message.sentAtIso
             }
           }
-        }
+        },
+        [CHAT_MESSAGES_TABLE_NAME]: nextMessagesTable
       };
     });
-    return messageClone;
+    return LocalChatMessageMapper.toDto(messageRecord);
   }
 
-  upsertSupportChatMessage(chat: ChatThreadRecord, message: ContractTypes.ChatPopupMessage, unreadForOwner: boolean): void {
+  upsertSupportChatMessage(chat: ChatThreadRecord, message: ContractTypes.ChatMessageDto, unreadForOwner: boolean): void {
     const sourceId = `${chat.id ?? ''}`.trim();
     const ownerUserId = `${chat.ownerUserId ?? ''}`.trim();
     if (!sourceId || !ownerUserId) {
       return;
     }
     const recordKey = LocalChatThreadMapper.buildRecordKey(ownerUserId, sourceId);
-    const messageClone = LocalChatThreadMapper.cloneMessages([message])[0] ?? null;
-    if (!messageClone) {
-      return;
-    }
+    const messageRecord = LocalChatMessageMapper.toRecord(ownerUserId, sourceId, message);
     this.memoryDb.write(currentState => {
       const currentTable = currentState[CHATS_TABLE_NAME];
+      const currentMessagesTable = currentState[CHAT_MESSAGES_TABLE_NAME];
       const existing = currentTable.byId[recordKey];
-      const existingMessages = existing?.messages ?? [];
       const nextRecord: ChatThreadRecord = {
         ...(existing ?? chat),
         ...chat,
-        unread: unreadForOwner ? Math.max(1, (existing?.unread ?? 0) + 1) : 0,
-        messages: [
-          ...LocalChatThreadMapper.cloneMessages(existingMessages).map(item => ({
-            ...item,
-            readBy: item.readBy
-              .filter(reader => `${reader.id ?? ''}`.trim() !== `${item.senderAvatar.id ?? ''}`.trim())
-              .map(reader => ({ ...reader }))
-          })),
-          messageClone
-        ]
+        unread: unreadForOwner ? Math.max(1, (existing?.unread ?? 0) + 1) : 0
       };
       return {
         ...currentState,
@@ -224,7 +210,8 @@ export class LocalChatsRepository {
           ids: currentTable.ids.includes(recordKey)
             ? [...currentTable.ids]
             : [...currentTable.ids, recordKey]
-        }
+        },
+        [CHAT_MESSAGES_TABLE_NAME]: this.upsertMessageRecord(currentMessagesTable, messageRecord)
       };
     });
   }
@@ -233,7 +220,7 @@ export class LocalChatsRepository {
     chat: ChatRecord,
     messageId: string,
     mutation: ContractTypes.ChatMessageMutation
-  ): ContractTypes.ChatPopupMessage | null {
+  ): ContractTypes.ChatMessageDto | null {
     const record = this.resolveChatRecord(chat, { createServiceChat: false });
     const normalizedMessageId = `${messageId ?? ''}`.trim();
     if (!record || !normalizedMessageId) {
@@ -244,32 +231,30 @@ export class LocalChatsRepository {
     const actorInitials = 'ME';
     const actorGender: 'woman' | 'man' = 'man';
     const nowIso = new Date().toISOString();
-    let updatedMessage: ContractTypes.ChatPopupMessage | null = null;
+    let updatedMessage: ContractTypes.ChatMessageDto | null = null;
     const recordKey = LocalChatThreadMapper.buildRecordKey(record.ownerUserId, record.id);
     this.memoryDb.write(currentState => {
       const currentTable = currentState[CHATS_TABLE_NAME];
+      const currentMessagesTable = currentState[CHAT_MESSAGES_TABLE_NAME];
       const existingRecord = currentTable.byId[recordKey];
       if (!existingRecord) {
         return currentState;
       }
-      const nextMessages = LocalChatThreadMapper.cloneMessages(existingRecord.messages ?? []).map(message => {
-        if (message.id !== normalizedMessageId) {
-          return message;
-        }
-        const nextMessage = this.applyMessageMutation(message, mutation, {
-          actorId,
-          actorName,
-          actorInitials,
-          actorGender,
-          nowIso
-        });
-        updatedMessage = nextMessage;
-        return nextMessage;
-      });
-      if (!updatedMessage) {
+      const existingMessageRecord = this.findMessageRecord(currentMessagesTable, existingRecord, normalizedMessageId);
+      if (!existingMessageRecord) {
         return currentState;
       }
-      const latest = this.latestMessage(nextMessages);
+      const nextMessage = this.applyMessageMutation(LocalChatMessageMapper.toDto(existingMessageRecord), mutation, {
+        actorId,
+        actorName,
+        actorInitials,
+        actorGender,
+        nowIso
+      });
+      updatedMessage = nextMessage;
+      const nextMessageRecord = LocalChatMessageMapper.toRecord(existingRecord.ownerUserId, existingRecord.id, nextMessage);
+      const nextMessagesTable = this.upsertMessageRecord(currentMessagesTable, nextMessageRecord);
+      const latest = this.latestMessage(LocalChatMessageMapper.toDtoList(this.selectChatMessageRecordsFromSnapshot(nextMessagesTable, existingRecord)));
       return {
         ...currentState,
         [CHATS_TABLE_NAME]: {
@@ -280,14 +265,14 @@ export class LocalChatsRepository {
               ...existingRecord,
               lastMessage: latest ? (latest.text || this.chatAttachmentSummary(latest) || this.deletedMessageSummary(latest)) : existingRecord.lastMessage,
               lastSenderId: latest?.senderAvatar.id ?? existingRecord.lastSenderId,
-              dateIso: latest?.sentAtIso ?? existingRecord.dateIso,
-              messages: nextMessages
+              dateIso: latest?.sentAtIso ?? existingRecord.dateIso
             }
           }
-        }
+        },
+        [CHAT_MESSAGES_TABLE_NAME]: nextMessagesTable
       };
     });
-    return updatedMessage ? LocalChatThreadMapper.cloneMessages([updatedMessage])[0] ?? null : null;
+    return updatedMessage;
   }
 
   updateSupportCase(chat: ChatRecord, action: ContractTypes.SupportCaseAction): ChatThreadRecord | null {
@@ -345,7 +330,7 @@ export class LocalChatsRepository {
         }
       };
     });
-    return updated ? LocalChatThreadMapper.cloneRecord(updated, { includeMessages: false }) : null;
+    return updated ? LocalChatThreadMapper.cloneRecord(updated) : null;
   }
 
   private queryUserRecords(userId: string): ChatThreadRecord[] {
@@ -358,7 +343,7 @@ export class LocalChatsRepository {
       .map(id => table.byId[id])
       .filter((record): record is ChatThreadRecord => Boolean(record))
       .filter(record => record.ownerUserId === normalizedUserId)
-      .map(record => LocalChatThreadMapper.cloneRecord(record, { includeMessages: false }));
+      .map(record => LocalChatThreadMapper.cloneRecord(record));
   }
 
   private queryUserRecordsForPage(
@@ -464,9 +449,76 @@ export class LocalChatsRepository {
     return Math.max(0, Math.trunc(Number(query.page) || 0)) * pageSize;
   }
 
+  private queryChatMessageRecords(chat: ChatThreadRecord): ChatMessageRecord[] {
+    return this.selectChatMessageRecordsFromSnapshot(this.memoryDb.read()[CHAT_MESSAGES_TABLE_NAME], chat);
+  }
+
+  private selectChatMessageRecordsFromSnapshot(
+    snapshot: AppMemorySchema[typeof CHAT_MESSAGES_TABLE_NAME],
+    chat: ChatThreadRecord
+  ): ChatMessageRecord[] {
+    const chatKey = LocalChatMessageMapper.chatKey(chat.ownerUserId, chat.id);
+    const ids = snapshot.idsByChatKey[chatKey] ?? snapshot.ids.filter(id => {
+      const record = snapshot.byId[id];
+      return record?.ownerUserId === chat.ownerUserId && record?.chatId === chat.id;
+    });
+    return ids
+      .map(id => snapshot.byId[id])
+      .filter((record): record is ChatMessageRecord => Boolean(record))
+      .sort((left, right) => this.compareMessageRecordsAsc(left, right));
+  }
+
+  private findMessageRecord(
+    table: AppMemorySchema[typeof CHAT_MESSAGES_TABLE_NAME],
+    chat: ChatThreadRecord,
+    messageId: string
+  ): ChatMessageRecord | null {
+    const recordId = LocalChatMessageMapper.recordKey(chat.ownerUserId, chat.id, messageId);
+    return table.byId[recordId] ?? this.selectChatMessageRecordsFromSnapshot(table, chat)
+      .find(record => record.messageId === messageId) ?? null;
+  }
+
+  private upsertMessageRecord(
+    table: AppMemorySchema[typeof CHAT_MESSAGES_TABLE_NAME],
+    message: ChatMessageRecord
+  ): AppMemorySchema[typeof CHAT_MESSAGES_TABLE_NAME] {
+    if (!message.recordId) {
+      return table;
+    }
+    const chatKey = LocalChatMessageMapper.chatKey(message.ownerUserId, message.chatId);
+    const nextById = {
+      ...table.byId,
+      [message.recordId]: message
+    };
+    const nextIds = table.ids.includes(message.recordId)
+      ? [...table.ids]
+      : [...table.ids, message.recordId];
+    const nextChatIds = table.idsByChatKey[chatKey]?.includes(message.recordId)
+      ? [...table.idsByChatKey[chatKey]]
+      : [...(table.idsByChatKey[chatKey] ?? []), message.recordId];
+    nextChatIds.sort((leftId, rightId) => {
+      const left = nextById[leftId];
+      const right = nextById[rightId];
+      return left && right ? this.compareMessageRecordsAsc(left, right) : left ? -1 : right ? 1 : 0;
+    });
+    return {
+      byId: nextById,
+      ids: nextIds,
+      idsByChatKey: {
+        ...table.idsByChatKey,
+        [chatKey]: nextChatIds
+      }
+    };
+  }
+
+  private compareMessageRecordsAsc(left: ChatMessageRecord, right: ChatMessageRecord): number {
+    return AppUtils.toSortableDate(left.sentAtIso) - AppUtils.toSortableDate(right.sentAtIso)
+      || `${left.messageId ?? ''}`.localeCompare(`${right.messageId ?? ''}`);
+  }
+
   private sortChatMessagesForThread(
-    messages: readonly ContractTypes.ChatPopupMessage[]
-  ): ContractTypes.ChatPopupMessage[] {
+    messages: readonly ContractTypes.ChatMessageDto[]
+  ): ContractTypes.ChatMessageDto[] {
     return [...messages].sort((left, right) =>
       AppUtils.toSortableDate(right.sentAtIso) - AppUtils.toSortableDate(left.sentAtIso)
       || `${right.id ?? ''}`.localeCompare(`${left.id ?? ''}`)
@@ -641,14 +693,19 @@ export class LocalChatsRepository {
       ...chat,
       memberIds: [...(chat.memberIds ?? [])],
       ownerUserId: normalizedOwnerUserId,
-      dateIso: chat.dateIso ?? new Date().toISOString(),
-      messages: this.buildInitialServiceMessages(chat)
+      dateIso: chat.dateIso ?? new Date().toISOString()
     };
+    const initialMessageRecords = this.buildInitialServiceMessages(chat)
+      .map(message => LocalChatMessageMapper.toRecord(normalizedOwnerUserId, sourceId, message));
     this.memoryDb.write(currentState => {
       const currentTable = currentState[CHATS_TABLE_NAME];
       if (currentTable.byId[recordKey]) {
         return currentState;
       }
+      const nextMessagesTable = initialMessageRecords.reduce(
+        (table, messageRecord) => this.upsertMessageRecord(table, messageRecord),
+        currentState[CHAT_MESSAGES_TABLE_NAME]
+      );
       return {
         ...currentState,
         [CHATS_TABLE_NAME]: {
@@ -657,13 +714,14 @@ export class LocalChatsRepository {
             [recordKey]: record
           },
           ids: [...currentTable.ids, recordKey]
-        }
+        },
+        [CHAT_MESSAGES_TABLE_NAME]: nextMessagesTable
       };
     });
     return record;
   }
 
-  private buildInitialServiceMessages(chat: ChatRecord): ContractTypes.ChatPopupMessage[] {
+  private buildInitialServiceMessages(chat: ChatRecord): ContractTypes.ChatMessageDto[] {
     const sourceId = `${chat.id ?? ''}`.trim();
     if (!sourceId.startsWith('c-support-blocked-')) {
       return [];
@@ -685,7 +743,7 @@ export class LocalChatsRepository {
     }];
   }
 
-  private chatAttachmentSummary(message: ContractTypes.ChatPopupMessage): string {
+  private chatAttachmentSummary(message: ContractTypes.ChatMessageDto): string {
     const firstAttachment = message.attachments?.[0];
     if (!firstAttachment) {
       return '';
@@ -703,7 +761,7 @@ export class LocalChatsRepository {
   }
 
   private applyMessageMutation(
-    message: ContractTypes.ChatPopupMessage,
+    message: ContractTypes.ChatMessageDto,
     mutation: ContractTypes.ChatMessageMutation,
     actor: {
       actorId: string;
@@ -712,7 +770,7 @@ export class LocalChatsRepository {
       actorGender: 'woman' | 'man';
       nowIso: string;
     }
-  ): ContractTypes.ChatPopupMessage {
+  ): ContractTypes.ChatMessageDto {
     if (mutation.deleted === true) {
       return {
         ...message,
@@ -770,11 +828,11 @@ export class LocalChatsRepository {
     return message;
   }
 
-  private latestMessage(messages: readonly ContractTypes.ChatPopupMessage[]): ContractTypes.ChatPopupMessage | null {
+  private latestMessage(messages: readonly ContractTypes.ChatMessageDto[]): ContractTypes.ChatMessageDto | null {
     return [...messages].sort((first, second) => AppUtils.toSortableDate(second.sentAtIso) - AppUtils.toSortableDate(first.sentAtIso))[0] ?? null;
   }
 
-  private deletedMessageSummary(message: ContractTypes.ChatPopupMessage): string {
+  private deletedMessageSummary(message: ContractTypes.ChatMessageDto): string {
     return message.deletedAtIso ? `${message.deletedByName || message.sender} deleted a message` : '';
   }
 }

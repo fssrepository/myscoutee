@@ -53,7 +53,7 @@ export class LocalChatsService extends LocalRouteDelayService implements IChatsS
     return LocalChatThreadMapper.toDtoList(this.chatsRepository.queryChatItemsByUser(userId));
   }
 
-  async loadChatMessages(chat: ChatDTO): Promise<ContractTypes.ChatPopupMessage[]> {
+  async loadChatMessages(chat: ChatDTO): Promise<ContractTypes.ChatMessageDto[]> {
     await this.waitForRouteDelay(LocalChatsService.CHAT_ROUTE);
     return this.chatsRepository.queryChatMessages(chat);
   }
@@ -71,7 +71,7 @@ export class LocalChatsService extends LocalRouteDelayService implements IChatsS
     return this.chatsRepository.queryChatMembers(chatId);
   }
 
-  async sendChatMessage(chat: ChatDTO, text: string, clientId?: string): Promise<ContractTypes.ChatPopupMessage | null> {
+  async sendChatMessage(chat: ChatDTO, text: string, clientId?: string): Promise<ContractTypes.ChatMessageDto | null> {
     return this.sendChatMessageWithAttachments(chat, text, [], clientId);
   }
 
@@ -80,8 +80,8 @@ export class LocalChatsService extends LocalRouteDelayService implements IChatsS
     text: string,
     attachments: readonly ContractTypes.ChatMessageAttachment[] = [],
     clientId?: string,
-    replyTo?: ContractTypes.ChatPopupMessage['replyTo']
-  ): Promise<ContractTypes.ChatPopupMessage | null> {
+    replyTo?: ContractTypes.ChatMessageDto['replyTo']
+  ): Promise<ContractTypes.ChatMessageDto | null> {
     await this.waitForRouteDelay(LocalChatsService.CHAT_ROUTE);
     const trimmedText = AppUtils.convertAsciiEmojis(text.trim());
     if (!trimmedText && attachments.length === 0) {
@@ -111,7 +111,7 @@ export class LocalChatsService extends LocalRouteDelayService implements IChatsS
     chat: ChatDTO,
     messageId: string,
     mutation: ContractTypes.ChatMessageMutation
-  ): Promise<ContractTypes.ChatPopupMessage | null> {
+  ): Promise<ContractTypes.ChatMessageDto | null> {
     await this.waitForRouteDelay(LocalChatsService.CHAT_ROUTE);
     const normalizedMutation = typeof mutation.text === 'string'
       ? {
@@ -124,7 +124,7 @@ export class LocalChatsService extends LocalRouteDelayService implements IChatsS
 
   async watchChatMessages(
     _chat: ChatDTO,
-    _onMessage: (message: ContractTypes.ChatPopupMessage) => void
+    _onMessage: (message: ContractTypes.ChatMessageDto) => void
   ): Promise<() => void> {
     return () => {};
   }

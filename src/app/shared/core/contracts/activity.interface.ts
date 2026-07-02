@@ -110,7 +110,7 @@ export interface IChatsService {
     query: ListQuery<ActivitiesFeedFilters>,
     options?: { chatItems?: readonly ChatContracts.ChatDTO[] }
   ): Promise<ChatContracts.ActivitiesChatPageResultDTO>;
-  loadChatMessages(chat: ChatContracts.ChatDTO): Promise<ChatContracts.ChatPopupMessage[]>;
+  loadChatMessages(chat: ChatContracts.ChatDTO): Promise<ChatContracts.ChatMessageDto[]>;
   queryChatMessagesPage(
     chat: ChatContracts.ChatDTO,
     query: ListQuery

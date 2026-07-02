@@ -52,14 +52,14 @@ export class ChatsService extends BaseRouteModeService implements IChatsService 
     return this.chatsService.peekChatItemsByUser(userId);
   }
 
-  async loadChatMessages(chat: ChatDTO): Promise<ContractTypes.ChatPopupMessage[]> {
+  async loadChatMessages(chat: ChatDTO): Promise<ContractTypes.ChatMessageDto[]> {
     return this.chatsService.loadChatMessages(chat);
   }
 
   async loadChatMessagesResult(
     chat: ChatDTO,
     query: ListQuery = { page: 0, pageSize: Number.MAX_SAFE_INTEGER }
-  ): Promise<PageResult<ContractTypes.ChatPopupMessage, AppUiTypes.PopupHeaderContext>> {
+  ): Promise<PageResult<ContractTypes.ChatMessageDto, AppUiTypes.PopupHeaderContext>> {
     const page = await this.queryChatMessagesPage(chat, query);
     return {
       items: page.items,
@@ -72,7 +72,7 @@ export class ChatsService extends BaseRouteModeService implements IChatsService 
   async queryChatMessagesPage(
     chat: ChatDTO,
     query: ListQuery
-  ): Promise<PageResult<ContractTypes.ChatPopupMessage>> {
+  ): Promise<PageResult<ContractTypes.ChatMessageDto>> {
     const page = await this.chatsService.queryChatMessagesPage(chat, query);
     return {
       items: page.items,
@@ -124,7 +124,7 @@ export class ChatsService extends BaseRouteModeService implements IChatsService 
     return this.chatsService.queryChatMembers(normalizedChatId);
   }
 
-  async sendChatMessage(chat: ChatDTO, text: string, clientId?: string): Promise<ContractTypes.ChatPopupMessage | null> {
+  async sendChatMessage(chat: ChatDTO, text: string, clientId?: string): Promise<ContractTypes.ChatMessageDto | null> {
     return this.chatsService.sendChatMessage(chat, text, clientId);
   }
 
@@ -133,8 +133,8 @@ export class ChatsService extends BaseRouteModeService implements IChatsService 
     text: string,
     attachments: readonly ContractTypes.ChatMessageAttachment[],
     clientId?: string,
-    replyTo?: ContractTypes.ChatPopupMessage['replyTo']
-  ): Promise<ContractTypes.ChatPopupMessage | null> {
+    replyTo?: ContractTypes.ChatMessageDto['replyTo']
+  ): Promise<ContractTypes.ChatMessageDto | null> {
     return this.chatsService.sendChatMessageWithAttachments(chat, text, attachments, clientId, replyTo);
   }
 
@@ -142,13 +142,13 @@ export class ChatsService extends BaseRouteModeService implements IChatsService 
     chat: ChatDTO,
     messageId: string,
     mutation: ContractTypes.ChatMessageMutation
-  ): Promise<ContractTypes.ChatPopupMessage | null> {
+  ): Promise<ContractTypes.ChatMessageDto | null> {
     return this.chatsService.updateChatMessage(chat, messageId, mutation);
   }
 
   async watchChatMessages(
     chat: ChatDTO,
-    onMessage: (message: ContractTypes.ChatPopupMessage) => void
+    onMessage: (message: ContractTypes.ChatMessageDto) => void
   ): Promise<() => void> {
     return this.chatsService.watchChatMessages(chat, onMessage);
   }
