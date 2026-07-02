@@ -44,6 +44,7 @@ export class PairCardComponent implements AfterViewInit, OnChanges, OnDestroy {
   private static readonly FULLSCREEN_ASPECT_RATIO = 4 / 3;
   private static readonly FULLSCREEN_PAGINATION_ARROW_SIZE_REM = 2.2;
   private static readonly FULLSCREEN_PAGINATION_ARROW_INLINE_OFFSET_REM = 0.16;
+  private static readonly FULLSCREEN_PAIR_ARROW_EDGE_NUDGE_PX = 3;
   private static readonly SPLIT_DEFAULT_PERCENT = 50;
   private static readonly SPLIT_MIN_PERCENT = 0;
   private static readonly SPLIT_MAX_PERCENT = 100;
@@ -636,7 +637,9 @@ export class PairCardComponent implements AfterViewInit, OnChanges, OnDestroy {
     const rootFontSizePx = this.rootFontSizePx();
     const arrowHalfWidthPx = PairCardComponent.FULLSCREEN_PAGINATION_ARROW_SIZE_REM * rootFontSizePx / 2;
     const arrowRightOffsetPx = PairCardComponent.FULLSCREEN_PAGINATION_ARROW_INLINE_OFFSET_REM * rootFontSizePx;
-    return arrowHalfWidthPx + arrowRightOffsetPx;
+    return arrowHalfWidthPx
+      + arrowRightOffsetPx
+      - PairCardComponent.FULLSCREEN_PAIR_ARROW_EDGE_NUDGE_PX;
   }
 
   private rootFontSizePx(): number {
