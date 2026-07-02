@@ -81,7 +81,11 @@ import { UserProfileStore } from '../../../shared/ui/context/stores/user-profile
 import { AppRuntimeStore } from '../../../shared/ui/context/stores/app-runtime.store';
 import { MemberMenuStore } from '../../../shared/ui/context/stores/member-menu.store';
 import { EventSubeventsPopupStore } from '../../../shared/ui/context/stores/event-subevents-popup.store';
-import { SubEventResourcePopupStore } from '../../../shared/ui/context/stores/sub-event-resource-popup.store';
+import {
+  SubEventResourcePopupStore,
+  type SubEventResourceMetricsUpdate,
+  type SubEventResourcePopupRequest
+} from '../../../shared/ui/context/stores/sub-event-resource-popup.store';
 import {
   ActivityEventInfoCardMenuConverter,
   type ActivityEventInfoCardMenuSubject
@@ -134,6 +138,11 @@ type ChatMenuContext =
 interface SelectedChatGroupState {
   id: string;
   label: string;
+  source?: string | null;
+  accepted?: number;
+  pending?: number;
+  capacityMin?: number;
+  capacityMax?: number;
 }
 
 interface SelectedChatNavigationState {
@@ -195,6 +204,8 @@ export class EventChatPopupComponent implements OnDestroy {
   private resolvedChatEventRecordKey = '';
   private resolvedChatResourceState: AppDTOs.ActivitySubEventResourceStateDTO | null = null;
   private resolvedChatResourceStateKey = '';
+  private resolvedChatGroupSnapshot: ContractTypes.EventTournamentGroupDTO | null = null;
+  private resolvedChatGroupSnapshotKey = '';
   protected typingIndicators: ContractTypes.ChatTypingIndicator[] = [];
   protected voiceComposerOpen = false;
   protected voiceRecordingState: 'idle' | 'recording' | 'recorded' | 'saving' = 'idle';
@@ -365,6 +376,14 @@ export class EventChatPopupComponent implements OnDestroy {
     });
 
     effect(() => {
+      const update = this.resourcePopupStore.subEventResourceMetricsUpdate();
+      if (!update) {
+        return;
+      }
+      this.applySelectedChatResourceMetricsUpdate(update);
+    });
+
+    effect(() => {
       const request = this.eventSubeventsStore.eventSubeventsListPopup();
       if (!request || request.host !== 'chat' || !this.session()) {
         return;
@@ -516,13 +535,42 @@ export class EventChatPopupComponent implements OnDestroy {
     return Boolean(this.session())
       && (request?.type === 'chatResource'
         || request?.type === 'assetExplore'
-        || this.resourcePopupStore.popupContextRef()?.origin === 'chat');
+        || this.resourcePopupStore.popupContextRef()?.origin === 'chat'
+        || this.shouldHostChatSubEventResourcePopup());
   }
 
   protected shouldHostChatSupplyContributionsPopup(): boolean {
     return this.shouldHostChatResourcePopup()
       && !this.resourcePopupStore.assetExploreOnlyRef()
       && this.resourcePopupStore.supplyPopupRef() !== null;
+  }
+
+  private shouldHostChatSubEventResourcePopup(): boolean {
+    if (this.eventSubeventsStore.eventSubeventsListPopup()?.host === 'chat') {
+      return false;
+    }
+    const request = this.resourcePopupStore.subEventResourcePopupRequest();
+    if (request && this.isSelectedChatSubEventResourceRequest(request)) {
+      return true;
+    }
+    const context = this.resourcePopupStore.popupContextRef();
+    return context?.origin === 'subEventResource'
+      && this.isSelectedChatResourceTarget(context.ownerId, context.subEvent.id);
+  }
+
+  private isSelectedChatSubEventResourceRequest(request: SubEventResourcePopupRequest): boolean {
+    return this.isSelectedChatResourceTarget(request.ownerId, `${request.subEventId ?? ''}`);
+  }
+
+  private isSelectedChatResourceTarget(ownerId: string | null | undefined, subEventId: string | null | undefined): boolean {
+    const session = this.session();
+    const state = this.selectedChatNavigationState;
+    const selectedOwnerId = `${state?.eventId ?? session?.item.eventId ?? ''}`.trim();
+    const selectedSubEventId = `${state?.subEvent?.id ?? session?.item.subEventId ?? ''}`.trim();
+    return !!selectedOwnerId
+      && !!selectedSubEventId
+      && `${ownerId ?? ''}`.trim() === selectedOwnerId
+      && `${subEventId ?? ''}`.trim() === selectedSubEventId;
   }
 
   protected selectedChatHasSubEventMenu(): boolean {
@@ -807,6 +855,29 @@ export class EventChatPopupComponent implements OnDestroy {
       return;
     }
     this.chatThreadSmartList?.closeMenu();
+    if (!openExplore && !assetViewId) {
+      const ownerId = `${state.eventId ?? session.item.eventId ?? ''}`.trim();
+      const subEventId = `${state.subEvent.id ?? ''}`.trim();
+      if (!ownerId || !subEventId) {
+        return;
+      }
+      this.resourcePopupStore.requestSubEventResourcePopup({
+        type,
+        ownerId,
+        parentTitle: `${state.eventTitle ?? session.item.title ?? ''}`.trim() || session.item.title,
+        subEventId,
+        subEventHeader: {
+          name: state.subEvent.name,
+          title: state.subEvent.name,
+          description: state.subEvent.description,
+          location: state.subEvent.location,
+          startAt: state.subEvent.startAt,
+          endAt: state.subEvent.endAt
+        },
+        group: this.selectedChatResourceRequestGroup(type)
+      });
+      return;
+    }
     this.memberMenuStore.requestActivitiesNavigation({
       type: 'chatResource',
       ownerId: state.eventId ?? session.item.eventId,
@@ -824,6 +895,27 @@ export class EventChatPopupComponent implements OnDestroy {
           }
         : null
       });
+  }
+
+  private selectedChatResourceRequestGroup(type: SubEventResourceFilter): SubEventResourcePopupRequest['group'] {
+    const state = this.selectedChatNavigationState;
+    const group = state?.group;
+    if (!state || !group) {
+      return null;
+    }
+    const isMembersPopup = type === 'Members';
+    return {
+      id: group.id,
+      groupLabel: group.label,
+      source: group.source ?? null,
+      accepted: isMembersPopup ? undefined : group.accepted,
+      pending: isMembersPopup ? undefined : group.pending,
+      capacityMin: group.capacityMin,
+      capacityMax: group.capacityMax,
+      canManage: isMembersPopup
+        ? this.canEditSelectedChatEvent(this.selectedChatEventRecord(`${state.eventId ?? ''}`), state)
+        : undefined
+    };
   }
 
   protected selectedChatContextMenuGroups(): AppUiTypes.PopupHeaderControlGroup[] {
@@ -3737,6 +3829,8 @@ export class EventChatPopupComponent implements OnDestroy {
       this.resolvedChatEventRecordKey = '';
       this.resolvedChatResourceState = null;
       this.resolvedChatResourceStateKey = '';
+      this.resolvedChatGroupSnapshot = null;
+      this.resolvedChatGroupSnapshotKey = '';
       return;
     }
     if (options.hydrateControls === false) {
@@ -3745,6 +3839,8 @@ export class EventChatPopupComponent implements OnDestroy {
       this.resolvedChatEventRecordKey = '';
       this.resolvedChatResourceState = null;
       this.resolvedChatResourceStateKey = '';
+      this.resolvedChatGroupSnapshot = null;
+      this.resolvedChatGroupSnapshotKey = '';
       this.chatHeaderContext = this.buildTitleOnlyChatHeaderContext(chat);
       return;
     }
@@ -3785,17 +3881,51 @@ export class EventChatPopupComponent implements OnDestroy {
     const ownerId = `${state?.eventId ?? chat.eventId ?? ''}`.trim();
     const subEventId = `${state?.subEvent?.id ?? ''}`.trim();
     const resourceKey = ownerId && subEventId ? `${ownerId}:${subEventId}` : '';
-    if (!resourceKey || this.resolvedChatResourceStateKey === resourceKey) {
+    if (resourceKey && this.resolvedChatResourceStateKey !== resourceKey) {
+      const resourceState = await this.activityResourcesService
+        .querySubEventResourceState(ownerId, subEventId)
+        .catch(() => null);
+      if (this.loadedSessionKey !== sessionKey) {
+        return;
+      }
+      this.resolvedChatResourceState = ActivityResourceBuilder.cloneState(resourceState);
+      this.resolvedChatResourceStateKey = resourceKey;
+      this.syncSelectedChatHeader(chat);
+      this.cdr.markForCheck();
+    }
+
+    await this.refreshSelectedChatGroupSnapshot(chat, sessionKey);
+  }
+
+  private async refreshSelectedChatGroupSnapshot(chat: ChatDTO, sessionKey: string | null): Promise<void> {
+    if (!sessionKey || this.loadedSessionKey !== sessionKey) {
       return;
     }
-    const resourceState = await this.activityResourcesService
-      .querySubEventResourceState(ownerId, subEventId)
-      .catch(() => null);
+    const state = this.selectedChatNavigationState;
+    const ownerId = `${state?.eventId ?? chat.eventId ?? ''}`.trim();
+    const subEventId = `${state?.subEvent?.id ?? chat.subEventId ?? ''}`.trim();
+    const groupId = `${state?.group?.id ?? chat.groupId ?? ''}`.trim();
+    const groupKey = this.selectedChatGroupSnapshotKey(ownerId, subEventId, groupId);
+    if (!groupKey) {
+      this.resolvedChatGroupSnapshot = null;
+      this.resolvedChatGroupSnapshotKey = '';
+      return;
+    }
+    if (this.resolvedChatGroupSnapshotKey === groupKey) {
+      return;
+    }
+    const groups = await this.eventsService
+      .queryTournamentStageGroups({
+        eventId: ownerId,
+        slotId: null,
+        stageId: subEventId
+      })
+      .catch(() => []);
     if (this.loadedSessionKey !== sessionKey) {
       return;
     }
-    this.resolvedChatResourceState = ActivityResourceBuilder.cloneState(resourceState);
-    this.resolvedChatResourceStateKey = resourceKey;
+    this.resolvedChatGroupSnapshot = groups.find(group => `${group.id ?? ''}`.trim() === groupId) ?? null;
+    this.resolvedChatGroupSnapshotKey = groupKey;
     this.syncSelectedChatHeader(chat);
     this.cdr.markForCheck();
   }
@@ -3961,7 +4091,7 @@ export class EventChatPopupComponent implements OnDestroy {
       eventTitle: eventRecord?.title ?? chat.title ?? null,
       eventPendingMembers: Math.max(0, Math.trunc(Number(eventRecord?.pendingMembers) || 0)),
       subEvent,
-      group: this.resolveSelectedChatGroup(chat, subEvent),
+      group: this.resolveSelectedChatGroup(chat, subEvent, (eventRecord?.id ?? eventId) || null),
       assetAssignmentIds: ActivityResourceBuilder.cloneAssetAssignmentIds(resourceState?.assetAssignmentIds),
       assetCardsByType
     };
@@ -4078,16 +4208,39 @@ export class EventChatPopupComponent implements OnDestroy {
 
   private resolveSelectedChatGroup(
     chat: ChatDTO,
-    subEvent: ContractTypes.SubEventDTO | null
+    subEvent: ContractTypes.SubEventDTO | null,
+    eventId: string | null
   ): SelectedChatGroupState | null {
     const groupId = `${chat.groupId ?? ''}`.trim();
     if (!groupId || !subEvent) {
       return null;
     }
+    const groupKey = this.selectedChatGroupSnapshotKey(eventId, subEvent.id, groupId);
+    const snapshot = groupKey && this.resolvedChatGroupSnapshotKey === groupKey
+      ? this.resolvedChatGroupSnapshot
+      : null;
     return {
       id: groupId,
-      label: groupId
+      label: `${snapshot?.name ?? groupId}`.trim() || groupId,
+      source: snapshot?.source ?? null,
+      accepted: snapshot ? this.chatCountValue(snapshot.membersAccepted) : undefined,
+      pending: snapshot ? this.chatCountValue(snapshot.membersPending) : undefined,
+      capacityMin: snapshot ? this.chatCountValue(snapshot.capacityMin) : undefined,
+      capacityMax: snapshot ? this.chatCountValue(snapshot.capacityMax) : undefined
     };
+  }
+
+  private selectedChatGroupSnapshotKey(
+    eventId: string | null | undefined,
+    subEventId: string | null | undefined,
+    groupId: string | null | undefined
+  ): string {
+    const normalizedEventId = `${eventId ?? ''}`.trim();
+    const normalizedSubEventId = `${subEventId ?? ''}`.trim();
+    const normalizedGroupId = `${groupId ?? ''}`.trim();
+    return normalizedEventId && normalizedSubEventId && normalizedGroupId
+      ? `${normalizedEventId}:${normalizedSubEventId}:${normalizedGroupId}`
+      : '';
   }
 
   private resolveSelectedChatResourceState(
@@ -4130,6 +4283,46 @@ export class EventChatPopupComponent implements OnDestroy {
       }
     }
     return subEvent;
+  }
+
+  private applySelectedChatResourceMetricsUpdate(update: SubEventResourceMetricsUpdate): void {
+    const session = this.session();
+    const state = this.selectedChatNavigationState;
+    const ownerId = `${state?.eventId ?? session?.item.eventId ?? ''}`.trim();
+    const subEventId = `${state?.subEvent?.id ?? ''}`.trim();
+    if (
+      !session
+      || !state?.subEvent
+      || !ownerId
+      || !subEventId
+      || `${update.ownerId ?? ''}`.trim() !== ownerId
+      || `${update.subEventId ?? ''}`.trim() !== subEventId
+    ) {
+      return;
+    }
+    const nextSubEvent: ContractTypes.SubEventDTO = {
+      ...state.subEvent,
+      carsAccepted: update.subEvent.carsAccepted,
+      carsPending: update.subEvent.carsPending,
+      carsCapacityMin: update.subEvent.carsCapacityMin,
+      carsCapacityMax: update.subEvent.carsCapacityMax,
+      accommodationAccepted: update.subEvent.accommodationAccepted,
+      accommodationPending: update.subEvent.accommodationPending,
+      accommodationCapacityMin: update.subEvent.accommodationCapacityMin,
+      accommodationCapacityMax: update.subEvent.accommodationCapacityMax,
+      suppliesAccepted: update.subEvent.suppliesAccepted,
+      suppliesPending: update.subEvent.suppliesPending,
+      suppliesCapacityMin: update.subEvent.suppliesCapacityMin,
+      suppliesCapacityMax: update.subEvent.suppliesCapacityMax
+    };
+    this.resolvedChatResourceState = null;
+    this.resolvedChatResourceStateKey = `${ownerId}:${subEventId}`;
+    this.selectedChatNavigationState = {
+      ...state,
+      subEvent: nextSubEvent
+    };
+    this.chatHeaderContext = this.buildSelectedChatHeaderContext(session.item, this.selectedChatNavigationState);
+    this.cdr.markForCheck();
   }
 
   private cloneSubEvent(subEvent: ContractTypes.SubEventDTO): ContractTypes.SubEventDTO {
