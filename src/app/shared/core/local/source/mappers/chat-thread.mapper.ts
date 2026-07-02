@@ -34,10 +34,14 @@ export class LocalChatThreadMapper {
   }
 
   static toMap(records: readonly ChatThreadRecord[]): Map<string, ChatDTO> {
-    return new Map(
-      (records ?? [])
-        .map(record => [record.id, this.toDto(record)] as const)
-    );
+    const result = new Map<string, ChatDTO>();
+    for (const record of records ?? []) {
+      const ownerId = `${record.ownerId ?? ''}`.trim();
+      if (ownerId) {
+        result.set(ownerId, this.toDto(record));
+      }
+    }
+    return result;
   }
 
   static toDtoPage(page: {

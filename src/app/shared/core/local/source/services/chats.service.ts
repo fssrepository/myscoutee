@@ -171,16 +171,18 @@ export class LocalChatsService extends LocalRouteDelayService implements IChatsS
   }
 
   private chatDtosWithMetrics(records: readonly ChatThreadRecord[]): ChatDTO[] {
-    const dtoByChatId = LocalChatThreadMapper.toMap(records);
-    this.patchChatDtosWithMetrics(records, dtoByChatId);
-    return records.flatMap(record => {
-      const dto = dtoByChatId.get(record.id);
-      return dto ? [dto] : [];
+    const metricRecords = records.filter(record => this.metricChatRecord(record));
+    const dtoByOwnerId = LocalChatThreadMapper.toMap(metricRecords);
+    this.patchChatDtosWithMetrics(metricRecords, dtoByOwnerId);
+    return LocalChatThreadMapper.toDtoList(records).map(dto => {
+      const ownerId = `${dto.ownerId ?? ''}`.trim();
+      return ownerId && this.supportsChatMetrics(this.chatChannelType(dto))
+        ? dtoByOwnerId.get(ownerId) ?? dto
+        : dto;
     });
   }
 
-  private patchChatDtosWithMetrics(records: readonly ChatThreadRecord[], dtoByChatId: Map<string, ChatDTO>): void {
-    const chatIdByOwnerId = new Map<string, string>();
+  private patchChatDtosWithMetrics(records: readonly ChatThreadRecord[], dtoByOwnerId: Map<string, ChatDTO>): void {
     const lookupByOwnerId = new Map<string, {
       channelType: ContractTypes.ChatChannelType;
       ownerId: string;
@@ -192,11 +194,10 @@ export class LocalChatsService extends LocalRouteDelayService implements IChatsS
     for (const record of records) {
       const channelType = this.chatChannelType(record);
       const ownerId = `${record.ownerId ?? ''}`.trim();
-      if (!ownerId || !this.supportsChatMetrics(channelType)) {
+      if (!ownerId || !dtoByOwnerId.has(ownerId) || !this.supportsChatMetrics(channelType)) {
         continue;
       }
       const parts = this.chatOwnerParts(record);
-      chatIdByOwnerId.set(ownerId, record.id);
       lookupByOwnerId.set(ownerId, { channelType, ownerId, parts });
       const memberOwnerType = this.memberOwnerType(channelType);
       if (memberOwnerType) {
@@ -245,14 +246,16 @@ export class LocalChatsService extends LocalRouteDelayService implements IChatsS
           + this.countValue(metrics.accommodation?.pending)
           + this.countValue(metrics.supplies?.pending);
       }
-      const chatId = chatIdByOwnerId.get(ownerIdKey);
-      if (chatId) {
-        const dto = dtoByChatId.get(chatId);
-        if (dto) {
-          dtoByChatId.set(chatId, LocalChatThreadMapper.withMetrics(dto, metrics));
-        }
+      const dto = dtoByOwnerId.get(ownerIdKey);
+      if (dto) {
+        dtoByOwnerId.set(ownerIdKey, LocalChatThreadMapper.withMetrics(dto, metrics));
       }
     }
+  }
+
+  private metricChatRecord(record: Pick<ChatThreadRecord, 'channelType' | 'ownerId'>): boolean {
+    const ownerId = `${record.ownerId ?? ''}`.trim();
+    return !!ownerId && this.supportsChatMetrics(this.chatChannelType(record));
   }
 
   private resourceRecordsByMetricKey(records: readonly ActivitySubEventResourceRecord[]): Map<string, ActivitySubEventResourceRecord[]> {
