@@ -4101,16 +4101,65 @@ export class EventChatPopupComponent implements OnDestroy {
     const subEvent = rawSubEvent
       ? this.syncSubEventResourceCounts(this.cloneSubEvent(rawSubEvent), resourceState, assetCards)
       : null;
+    const metricsSubEvent = subEvent ? this.applyChatMetricsToSubEvent(subEvent, chat.metrics) : null;
     return {
       channelType: this.chatChannelType(chat),
       eventId: (eventRecord?.id ?? eventId) || null,
       eventTarget: eventRecord ? this.eventEditorTargetForRecord(eventRecord) : 'events',
       eventTitle: eventRecord?.title ?? chat.title ?? null,
-      eventPendingMembers: Math.max(0, Math.trunc(Number(eventRecord?.pendingMembers) || 0)),
-      subEvent,
-      group: this.resolveSelectedChatGroup(chat, subEvent, (eventRecord?.id ?? eventId) || null),
+      eventPendingMembers: this.chatMetricCount(chat.metrics?.members?.pending ?? eventRecord?.pendingMembers),
+      subEvent: metricsSubEvent,
+      group: this.applyChatMetricsToGroup(
+        this.resolveSelectedChatGroup(chat, metricsSubEvent, (eventRecord?.id ?? eventId) || null),
+        chat.metrics
+      ),
       assetAssignmentIds: ActivityResourceBuilder.cloneAssetAssignmentIds(resourceState?.assetAssignmentIds),
       assetCardsByType
+    };
+  }
+
+  private applyChatMetricsToSubEvent(
+    subEvent: ContractTypes.SubEventDTO,
+    metrics: ContractTypes.ChatMetricsDTO | null | undefined
+  ): ContractTypes.SubEventDTO {
+    if (!metrics) {
+      return subEvent;
+    }
+    return {
+      ...subEvent,
+      membersAccepted: metrics.members?.accepted ?? subEvent.membersAccepted,
+      membersPending: metrics.members?.pending ?? subEvent.membersPending,
+      capacityMin: metrics.members?.capacityMin ?? subEvent.capacityMin,
+      capacityMax: metrics.members?.capacityMax ?? subEvent.capacityMax,
+      carsAccepted: metrics.car?.accepted ?? subEvent.carsAccepted,
+      carsPending: metrics.car?.pending ?? subEvent.carsPending,
+      carsCapacityMin: metrics.car?.capacityMin ?? subEvent.carsCapacityMin,
+      carsCapacityMax: metrics.car?.capacityMax ?? subEvent.carsCapacityMax,
+      accommodationAccepted: metrics.accommodation?.accepted ?? subEvent.accommodationAccepted,
+      accommodationPending: metrics.accommodation?.pending ?? subEvent.accommodationPending,
+      accommodationCapacityMin: metrics.accommodation?.capacityMin ?? subEvent.accommodationCapacityMin,
+      accommodationCapacityMax: metrics.accommodation?.capacityMax ?? subEvent.accommodationCapacityMax,
+      suppliesAccepted: metrics.supplies?.accepted ?? subEvent.suppliesAccepted,
+      suppliesPending: metrics.supplies?.pending ?? subEvent.suppliesPending,
+      suppliesCapacityMin: metrics.supplies?.capacityMin ?? subEvent.suppliesCapacityMin,
+      suppliesCapacityMax: metrics.supplies?.capacityMax ?? subEvent.suppliesCapacityMax,
+      groupsCount: metrics.groupsCount ?? subEvent.groupsCount
+    };
+  }
+
+  private applyChatMetricsToGroup(
+    group: SelectedChatGroupState | null,
+    metrics: ContractTypes.ChatMetricsDTO | null | undefined
+  ): SelectedChatGroupState | null {
+    if (!group || !metrics?.members) {
+      return group;
+    }
+    return {
+      ...group,
+      accepted: metrics.members.accepted,
+      pending: metrics.members.pending,
+      capacityMin: metrics.members.capacityMin,
+      capacityMax: metrics.members.capacityMax
     };
   }
 
@@ -4441,6 +4490,9 @@ export class EventChatPopupComponent implements OnDestroy {
     if (state?.subEvent && (state.channelType === 'optionalSubEvent' || state.channelType === 'groupSubEvent')) {
       return this.subEventPendingTotal(state.subEvent);
     }
+    if (chat.metrics) {
+      return this.chatMetricCount(chat.metrics.pendingTotal);
+    }
     const eventPending = Math.max(0, Math.trunc(Number(state?.eventPendingMembers) || 0));
     const eventRecord = this.resolveSelectedChatEventRecord(chat);
     const subEventPending = eventRecord?.subEvents?.reduce((sum, subEvent) => {
@@ -4462,6 +4514,10 @@ export class EventChatPopupComponent implements OnDestroy {
   }
 
   private chatCountValue(value: unknown): number {
+    return Math.max(0, Math.trunc(Number(value) || 0));
+  }
+
+  private chatMetricCount(value: unknown): number {
     return Math.max(0, Math.trunc(Number(value) || 0));
   }
 

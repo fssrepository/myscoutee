@@ -2,17 +2,29 @@ import { Injectable, inject } from '@angular/core';
 
 import type * as ContractTypes from '../../../contracts';
 import { AppUtils } from '../../../../app-utils';
+import type { AssetType } from '../../../common/constants';
 import type { ActivitiesFeedFilters, ListQuery } from '../../../contracts';
 import type {
   ActivitiesChatPageResultDTO,
   ChatDTO,
+  ChatMetricBucketDTO,
+  ChatMetricsDTO,
   ChatMessagesPageResultDTO
 } from '../../../contracts/chat.interface';
 import type { IChatsService } from '../../../contracts/activity.interface';
+import { ActivityResourceBuilder } from '../../../base/builders';
 import { LocalRouteDelayService } from './route-delay.service';
 import { LocalChatsRepository } from '../repositories/chats.repository';
 import { LocalUsersRepository } from '../repositories/users.repository';
+import { LocalActivityMembersRepository } from '../repositories/activity-members.repository';
+import { LocalActivityResourcesRepository } from '../repositories/activity-resources.repository';
+import { LocalActivitySubEventStageRuntimeRepository } from '../repositories/activity-sub-event-stage-runtime.repository';
 import { LocalChatThreadMapper } from '../mappers';
+import type { ChatThreadRecord } from '../entity/chat.entity';
+import type {
+  ActivityMemberRecord,
+  ActivitySubEventResourceRecord
+} from '../entity/activity.entity';
 
 import type * as ActivityContracts from '../../../contracts/activity.interface';
 
@@ -24,10 +36,14 @@ export class LocalChatsService extends LocalRouteDelayService implements IChatsS
 
   private readonly chatsRepository = inject(LocalChatsRepository);
   private readonly usersRepository = inject(LocalUsersRepository);
+  private readonly activityMembersRepository = inject(LocalActivityMembersRepository);
+  private readonly activityResourcesRepository = inject(LocalActivityResourcesRepository);
+  private readonly activitySubEventStageRuntimeRepository = inject(LocalActivitySubEventStageRuntimeRepository);
 
   async queryChatItemsByUser(userId: string): Promise<ChatDTO[]> {
     await this.waitForRouteDelay(LocalChatsService.CHAT_ROUTE);
-    return LocalChatThreadMapper.toDtoList(this.chatsRepository.queryChatItemsByUser(userId));
+    const records = this.chatsRepository.queryChatItemsByUser(userId);
+    return this.chatDtosWithMetrics(records);
   }
 
   async querySupportCaseItemsForAdmin(
@@ -35,7 +51,8 @@ export class LocalChatsService extends LocalRouteDelayService implements IChatsS
     filter: ContractTypes.SupportCaseFilter = 'all'
   ): Promise<ChatDTO[]> {
     await this.waitForRouteDelay(LocalChatsService.CHAT_ROUTE);
-    return LocalChatThreadMapper.toDtoList(this.chatsRepository.querySupportCaseItemsForAdmin(userId, filter));
+    const records = this.chatsRepository.querySupportCaseItemsForAdmin(userId, filter);
+    return this.chatDtosWithMetrics(records);
   }
 
   async queryActivitiesChatPage(
@@ -44,13 +61,16 @@ export class LocalChatsService extends LocalRouteDelayService implements IChatsS
     _options: { chatItems?: readonly ChatDTO[] } = {}
   ): Promise<ActivitiesChatPageResultDTO> {
     await this.waitForRouteDelay(LocalChatsService.CHAT_ROUTE);
-    return LocalChatThreadMapper.toDtoPage(
-      this.chatsRepository.queryActivitiesChatPage(this.resolveDemoActivityUserId(userId), query)
-    );
+    const page = this.chatsRepository.queryActivitiesChatPage(this.resolveDemoActivityUserId(userId), query);
+    return {
+      ...LocalChatThreadMapper.toDtoPage(page),
+      items: this.chatDtosWithMetrics(page.items)
+    };
   }
 
   peekChatItemsByUser(userId: string): ChatDTO[] {
-    return LocalChatThreadMapper.toDtoList(this.chatsRepository.queryChatItemsByUser(userId));
+    const records = this.chatsRepository.queryChatItemsByUser(userId);
+    return this.chatDtosWithMetrics(records);
   }
 
   async loadChatMessages(chat: ChatDTO): Promise<ContractTypes.ChatMessageDto[]> {
@@ -147,7 +167,219 @@ export class LocalChatsService extends LocalRouteDelayService implements IChatsS
   async updateSupportCase(chat: ChatDTO, action: ContractTypes.SupportCaseAction): Promise<ChatDTO | null> {
     await this.waitForRouteDelay(LocalChatsService.CHAT_ROUTE);
     const record = this.chatsRepository.updateSupportCase(chat, action);
-    return record ? LocalChatThreadMapper.toDto(record) : null;
+    return record ? (this.chatDtosWithMetrics([record])[0] ?? LocalChatThreadMapper.toDto(record)) : null;
+  }
+
+  private chatDtosWithMetrics(records: readonly ChatThreadRecord[]): ChatDTO[] {
+    const dtoByChatId = LocalChatThreadMapper.toMap(records);
+    this.patchChatDtosWithMetrics(records, dtoByChatId);
+    return records.flatMap(record => {
+      const dto = dtoByChatId.get(record.id);
+      return dto ? [dto] : [];
+    });
+  }
+
+  private patchChatDtosWithMetrics(records: readonly ChatThreadRecord[], dtoByChatId: Map<string, ChatDTO>): void {
+    const chatIdByOwnerId = new Map<string, string>();
+    const lookupByOwnerId = new Map<string, {
+      channelType: ContractTypes.ChatChannelType;
+      ownerId: string;
+      parts: { eventId: string; subEventId: string; groupId: string };
+    }>();
+    const memberOwnersByKey = new Map<string, ActivityContracts.ActivityMemberOwnerRef>();
+    const resourceOwnerIds = new Set<string>();
+    const stageRuntimeOwnerIds = new Set<string>();
+    for (const record of records) {
+      const channelType = this.chatChannelType(record);
+      const ownerId = `${record.ownerId ?? ''}`.trim();
+      if (!ownerId || !this.supportsChatMetrics(channelType)) {
+        continue;
+      }
+      const parts = this.chatOwnerParts(record);
+      chatIdByOwnerId.set(ownerId, record.id);
+      lookupByOwnerId.set(ownerId, { channelType, ownerId, parts });
+      const memberOwnerType = this.memberOwnerType(channelType);
+      if (memberOwnerType) {
+        memberOwnersByKey.set(`${memberOwnerType}:${ownerId}`, { ownerType: memberOwnerType, ownerId });
+      }
+      if ((channelType === 'optionalSubEvent' || channelType === 'groupSubEvent') && parts.subEventId) {
+        if (parts.eventId) {
+          resourceOwnerIds.add(parts.eventId);
+          stageRuntimeOwnerIds.add(parts.eventId);
+        }
+        resourceOwnerIds.add(ownerId);
+        stageRuntimeOwnerIds.add(ownerId);
+      }
+    }
+
+    const membersByOwnerKey = this.activityMembersRepository.queryRecordsByOwners([...memberOwnersByKey.values()]);
+    const resourcesByMetricKey = this.resourceRecordsByMetricKey(
+      this.activityResourcesRepository.queryRecordsByOwnerIds([...resourceOwnerIds])
+    );
+    const stageRuntimeByMetricKey = new Map(
+      this.activitySubEventStageRuntimeRepository.queryRecordsByOwnerIds([...stageRuntimeOwnerIds])
+        .map(record => [`${record.ownerId}:${record.subEventId}`, record] as const)
+    );
+
+    for (const [ownerIdKey, lookup] of lookupByOwnerId.entries()) {
+      const { channelType, ownerId, parts } = lookup;
+      const memberOwnerType = this.memberOwnerType(channelType);
+      const members = memberOwnerType
+        ? this.memberBucket(membersByOwnerKey.get(`${memberOwnerType}:${ownerId}`) ?? [])
+        : null;
+      const metrics: ChatMetricsDTO = {
+        members,
+        pendingTotal: members?.pending ?? 0
+      };
+      if ((channelType === 'optionalSubEvent' || channelType === 'groupSubEvent') && parts.subEventId) {
+        const resourceRecords = this.metricResourceRecords(resourcesByMetricKey, parts.eventId, ownerId, parts.subEventId);
+        metrics.car = this.assetBucket(resourceRecords, 'Car');
+        metrics.accommodation = this.assetBucket(resourceRecords, 'Accommodation');
+        metrics.supplies = this.assetBucket(resourceRecords, 'Supplies');
+        metrics.groupsCount = this.countValue(
+          stageRuntimeByMetricKey.get(`${parts.eventId}:${parts.subEventId}`)?.groupsCount
+            ?? stageRuntimeByMetricKey.get(`${ownerId}:${parts.subEventId}`)?.groupsCount
+        );
+        metrics.pendingTotal = this.countValue(metrics.members?.pending)
+          + this.countValue(metrics.car?.pending)
+          + this.countValue(metrics.accommodation?.pending)
+          + this.countValue(metrics.supplies?.pending);
+      }
+      const chatId = chatIdByOwnerId.get(ownerIdKey);
+      if (chatId) {
+        const dto = dtoByChatId.get(chatId);
+        if (dto) {
+          dtoByChatId.set(chatId, LocalChatThreadMapper.withMetrics(dto, metrics));
+        }
+      }
+    }
+  }
+
+  private resourceRecordsByMetricKey(records: readonly ActivitySubEventResourceRecord[]): Map<string, ActivitySubEventResourceRecord[]> {
+    const result = new Map<string, ActivitySubEventResourceRecord[]>();
+    for (const record of records) {
+      const key = `${record.ownerId}:${record.subEventId}`;
+      const bucket = result.get(key) ?? [];
+      bucket.push(record);
+      result.set(key, bucket);
+    }
+    return result;
+  }
+
+  private metricResourceRecords(
+    recordsByKey: ReadonlyMap<string, ActivitySubEventResourceRecord[]>,
+    eventId: string,
+    ownerId: string,
+    subEventId: string
+  ): ActivitySubEventResourceRecord[] {
+    const byId = new Map<string, ActivitySubEventResourceRecord>();
+    const keys = [
+      eventId ? `${eventId}:${subEventId}` : '',
+      ownerId ? `${ownerId}:${subEventId}` : ''
+    ].filter(Boolean);
+    for (const key of keys) {
+      for (const record of recordsByKey.get(key) ?? []) {
+        byId.set(record.id, record);
+      }
+    }
+    return [...byId.values()];
+  }
+
+  private memberBucket(records: readonly ActivityMemberRecord[]): ChatMetricBucketDTO {
+    const accepted = records.filter(record => record.status === 'accepted').length;
+    const pending = records.filter(record => record.status === 'pending').length;
+    return {
+      accepted,
+      pending,
+      capacityMin: 0,
+      capacityMax: Math.max(accepted, accepted + pending)
+    };
+  }
+
+  private assetBucket(records: readonly ActivitySubEventResourceRecord[], type: AssetType): ChatMetricBucketDTO {
+    let accepted = 0;
+    let capacityMin = 0;
+    let capacityMax = 0;
+    for (const record of records) {
+      const settings = ActivityResourceBuilder.cloneAssetSettingsByType(record.assetSettingsByType)[type] ?? {};
+      for (const item of Object.values(settings)) {
+        capacityMin += this.countValue(item.capacityMin);
+        capacityMax += this.countValue(item.capacityMax);
+      }
+      if (type === 'Supplies') {
+        for (const entries of Object.values(record.supplyContributionEntriesByAssetId ?? {})) {
+          accepted += (entries ?? []).reduce((sum, entry) => sum + this.countValue(entry.quantity), 0);
+        }
+      }
+    }
+    return {
+      accepted,
+      pending: 0,
+      capacityMin,
+      capacityMax: Math.max(capacityMin, capacityMax, accepted)
+    };
+  }
+
+  private memberOwnerType(channelType: ContractTypes.ChatChannelType): ActivityContracts.ActivityMemberOwnerRef['ownerType'] | null {
+    if (channelType === 'mainEvent') {
+      return 'event';
+    }
+    if (channelType === 'optionalSubEvent') {
+      return 'subEvent';
+    }
+    if (channelType === 'groupSubEvent') {
+      return 'group';
+    }
+    return null;
+  }
+
+  private supportsChatMetrics(channelType: ContractTypes.ChatChannelType): boolean {
+    return channelType === 'mainEvent'
+      || channelType === 'optionalSubEvent'
+      || channelType === 'groupSubEvent';
+  }
+
+  private chatChannelType(record: Pick<ChatThreadRecord, 'channelType' | 'ownerId'>): ContractTypes.ChatChannelType {
+    if (
+      record.channelType === 'mainEvent'
+      || record.channelType === 'optionalSubEvent'
+      || record.channelType === 'groupSubEvent'
+      || record.channelType === 'serviceEvent'
+      || record.channelType === 'supportCase'
+    ) {
+      return record.channelType;
+    }
+    const parts = this.splitOwnerId(record.ownerId);
+    if (parts.length >= 3) {
+      return 'groupSubEvent';
+    }
+    if (parts.length === 2) {
+      return 'optionalSubEvent';
+    }
+    return parts.length === 1 ? 'mainEvent' : 'general';
+  }
+
+  private chatOwnerParts(record: Pick<ChatThreadRecord, 'channelType' | 'ownerId'>): { eventId: string; subEventId: string; groupId: string } {
+    const channelType = this.chatChannelType(record);
+    const parts = this.splitOwnerId(record.ownerId);
+    if (channelType === 'groupSubEvent') {
+      return { eventId: parts[0] ?? '', subEventId: parts[1] ?? '', groupId: parts.slice(2).join(':') };
+    }
+    if (channelType === 'optionalSubEvent') {
+      return { eventId: parts[0] ?? '', subEventId: parts.slice(1).join(':'), groupId: '' };
+    }
+    if (channelType === 'mainEvent') {
+      return { eventId: `${record.ownerId ?? ''}`.trim(), subEventId: '', groupId: '' };
+    }
+    return { eventId: '', subEventId: '', groupId: '' };
+  }
+
+  private splitOwnerId(ownerId: string | null | undefined): string[] {
+    return `${ownerId ?? ''}`.split(':').map(part => part.trim()).filter(Boolean);
+  }
+
+  private countValue(value: unknown): number {
+    return Math.max(0, Math.trunc(Number(value) || 0));
   }
 
   private resolveDemoActivityUserId(userId: string): string {

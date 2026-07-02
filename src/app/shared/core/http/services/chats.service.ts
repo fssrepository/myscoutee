@@ -18,6 +18,7 @@ import {
 import type {
   ActivitiesChatPageResultDTO,
   ChatDTO,
+  ChatMetricsDTO,
   ChatMessagesPageResultDTO
 } from '../../contracts/chat.interface';
 import type { IChatsService } from '../../contracts/activity.interface';
@@ -46,6 +47,7 @@ interface HttpChatDto {
   ownerId?: string;
   distanceKm?: number;
   distanceMetersExact?: number;
+  metrics?: ChatMetricsDTO | null;
   supportCase?: {
     status?: ContractTypes.SupportCaseStatus | string | null;
     assignee?: {
@@ -55,6 +57,10 @@ interface HttpChatDto {
     } | null;
     updatedAtIso?: string | null;
   } | null;
+}
+
+interface HttpMappedChatRecord extends ChatThreadRecord {
+  metrics?: ChatMetricsDTO | null;
 }
 
 interface HttpChatSenderAvatarDto {
@@ -611,7 +617,7 @@ export class HttpChatsService implements IChatsService {
     });
   }
 
-  private mapChatRecord(item: HttpChatDto, ownerUserId: string): ChatThreadRecord {
+  private mapChatRecord(item: HttpChatDto, ownerUserId: string): HttpMappedChatRecord {
     const distanceKm = Number.isFinite(Number(item.distanceKm))
       ? Math.max(0, Number(item.distanceKm))
       : undefined;
@@ -635,8 +641,9 @@ export class HttpChatsService implements IChatsService {
       distanceKm,
       distanceMetersExact,
       supportCase: this.mapSupportCase(item.supportCase),
-      ownerUserId
-    } satisfies ChatThreadRecord;
+      ownerUserId,
+      metrics: this.cloneMetrics(item.metrics)
+    };
   }
 
   private cloneChatRecord(record: ChatThreadRecord): ChatThreadRecord {
@@ -782,7 +789,7 @@ export class HttpChatsService implements IChatsService {
   }
 
   private toActivitiesChatPageDTO(page: {
-    items: readonly ChatThreadRecord[];
+    items: readonly HttpMappedChatRecord[];
     total: number;
     nextCursor?: string | null;
   }): ActivitiesChatPageResultDTO {
@@ -793,7 +800,7 @@ export class HttpChatsService implements IChatsService {
     };
   }
 
-  private toChatDTO(item: ChatThreadRecord): ChatDTO {
+  private toChatDTO(item: HttpMappedChatRecord): ChatDTO {
     return {
       id: item.id,
       avatar: item.avatar,
@@ -809,8 +816,22 @@ export class HttpChatsService implements IChatsService {
       serviceContext: item.serviceContext,
       ownerId: item.ownerId,
       supportCase: this.cloneSupportCase(item.supportCase),
-      ownerUserId: item.ownerUserId
+      ownerUserId: item.ownerUserId,
+      metrics: this.cloneMetrics(item.metrics)
     };
+  }
+
+  private cloneMetrics(metrics: ChatMetricsDTO | null | undefined): ChatMetricsDTO | null {
+    return metrics
+      ? {
+          members: metrics.members ? { ...metrics.members } : null,
+          car: metrics.car ? { ...metrics.car } : null,
+          accommodation: metrics.accommodation ? { ...metrics.accommodation } : null,
+          supplies: metrics.supplies ? { ...metrics.supplies } : null,
+          groupsCount: metrics.groupsCount ?? null,
+          pendingTotal: Math.max(0, Math.trunc(Number(metrics.pendingTotal) || 0))
+        }
+      : null;
   }
 
   private matchesActivitiesChatContextFilter(

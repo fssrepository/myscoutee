@@ -42,6 +42,23 @@ export class LocalActivityMembersRepository {
     return this.readRecordsByOwner(owner);
   }
 
+  queryRecordsByOwners(owners: readonly ActivityMemberOwnerRef[]): Map<string, ActivityMemberRecord[]> {
+    const normalizedOwners = this.normalizeOwners(owners);
+    const ownerKeys = new Set(normalizedOwners.map(owner => this.ownerKey(owner)));
+    const result = new Map<string, ActivityMemberRecord[]>();
+    if (ownerKeys.size === 0) {
+      return result;
+    }
+    const table = this.normalizeCollection(this.memoryDb.read()[ACTIVITY_MEMBERS_TABLE_NAME]);
+    for (const ownerKey of ownerKeys) {
+      result.set(ownerKey, (table.idsByOwnerKey[ownerKey] ?? [])
+        .map(id => table.byId[id])
+        .filter((record): record is ActivityMemberRecord => Boolean(record))
+        .map(record => ({ ...record, profile: record.profile ? { ...record.profile } : record.profile })));
+    }
+    return result;
+  }
+
   queryAcceptedEventMemberGroups(): DemoAcceptedEventMemberGroup[] {
     const table = this.normalizeCollection(this.memoryDb.read()[ACTIVITY_MEMBERS_TABLE_NAME]);
     return this.acceptedEventMemberGroupsFromTable(table);

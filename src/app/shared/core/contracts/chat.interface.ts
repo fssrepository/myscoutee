@@ -119,6 +119,22 @@ export interface ChatSupportCase {
   updatedAtIso?: string | null;
 }
 
+export interface ChatMetricBucketDTO {
+  accepted: number;
+  pending: number;
+  capacityMin: number;
+  capacityMax: number;
+}
+
+export interface ChatMetricsDTO {
+  members?: ChatMetricBucketDTO | null;
+  car?: ChatMetricBucketDTO | null;
+  accommodation?: ChatMetricBucketDTO | null;
+  supplies?: ChatMetricBucketDTO | null;
+  groupsCount?: number | null;
+  pendingTotal: number;
+}
+
 export interface ChatDTO {
   id: string;
   avatar: string;
@@ -135,6 +151,7 @@ export interface ChatDTO {
   ownerId?: string;
   supportCase?: ChatSupportCase | null;
   ownerUserId?: string | null;
+  metrics?: ChatMetricsDTO | null;
 }
 
 export interface ActivitiesChatPageResultDTO {

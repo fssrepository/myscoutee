@@ -2072,7 +2072,8 @@ export class ActivitiesPopupComponent implements OnDestroy {
     return {
       ...chat,
       memberIds: [...(chat.memberIds ?? [])],
-      supportCase: this.cloneChatSupportCase(chat.supportCase)
+      supportCase: this.cloneChatSupportCase(chat.supportCase),
+      metrics: this.cloneChatMetrics(chat.metrics)
     } as T;
   }
 
@@ -2172,6 +2173,7 @@ export class ActivitiesPopupComponent implements OnDestroy {
       || left.distanceMetersExact !== right.distanceMetersExact
       || left.channelType !== right.channelType
       || left.ownerId !== right.ownerId
+      || !this.areChatMetricsEqual(left.metrics, right.metrics)
       || !this.areChatSupportCasesEqual(left.supportCase, right.supportCase)
       || leftMemberIds.length !== rightMemberIds.length
     ) {
@@ -2190,6 +2192,49 @@ export class ActivitiesPopupComponent implements OnDestroy {
       ...supportCase,
       assignee: supportCase.assignee ? { ...supportCase.assignee } : supportCase.assignee
     };
+  }
+
+  private cloneChatMetrics(
+    metrics: ContractTypes.ChatMetricsDTO | null | undefined
+  ): ContractTypes.ChatMetricsDTO | null | undefined {
+    return metrics
+      ? {
+        members: metrics.members ? { ...metrics.members } : null,
+        car: metrics.car ? { ...metrics.car } : null,
+        accommodation: metrics.accommodation ? { ...metrics.accommodation } : null,
+        supplies: metrics.supplies ? { ...metrics.supplies } : null,
+        groupsCount: metrics.groupsCount ?? null,
+        pendingTotal: Math.max(0, Math.trunc(Number(metrics.pendingTotal) || 0))
+      }
+      : metrics;
+  }
+
+  private areChatMetricsEqual(
+    left: ContractTypes.ChatMetricsDTO | null | undefined,
+    right: ContractTypes.ChatMetricsDTO | null | undefined
+  ): boolean {
+    if (!left || !right) {
+      return left === right;
+    }
+    return this.areChatMetricBucketsEqual(left.members, right.members)
+      && this.areChatMetricBucketsEqual(left.car, right.car)
+      && this.areChatMetricBucketsEqual(left.accommodation, right.accommodation)
+      && this.areChatMetricBucketsEqual(left.supplies, right.supplies)
+      && (left.groupsCount ?? null) === (right.groupsCount ?? null)
+      && left.pendingTotal === right.pendingTotal;
+  }
+
+  private areChatMetricBucketsEqual(
+    left: ContractTypes.ChatMetricBucketDTO | null | undefined,
+    right: ContractTypes.ChatMetricBucketDTO | null | undefined
+  ): boolean {
+    if (!left || !right) {
+      return left === right;
+    }
+    return left.accepted === right.accepted
+      && left.pending === right.pending
+      && left.capacityMin === right.capacityMin
+      && left.capacityMax === right.capacityMax;
   }
 
   private areChatSupportCasesEqual(
