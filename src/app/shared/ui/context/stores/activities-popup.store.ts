@@ -9,6 +9,15 @@ export interface EventChatSession {
   openedAtIso: string;
 }
 
+export interface EventChatRowPatch {
+  chatId: string;
+  unread?: number | null;
+  lastMessage?: string | null;
+  lastSenderId?: string | null;
+  dateIso?: string | null;
+  revision: number;
+}
+
 export interface ActivitiesUiState {
   open: boolean;
   openRevision: number;
@@ -60,6 +69,7 @@ export class ActivitiesPopupStore {
   private readonly _uiState = signal<ActivitiesUiState>(DEFAULT_ACTIVITIES_UI_STATE);
   private readonly _activityEventSave = signal<ActivityEventDTO | null>(null);
   private readonly _eventChatSession = signal<EventChatSession | null>(null);
+  private readonly _eventChatRowPatch = signal<EventChatRowPatch | null>(null);
   private readonly activitiesPopupComponentRef = signal<Type<unknown> | null>(null);
   private readonly eventChatPopupComponentRef = signal<Type<unknown> | null>(null);
   private readonly eventExplorePopupComponentRef = signal<Type<unknown> | null>(null);
@@ -88,6 +98,7 @@ export class ActivitiesPopupStore {
   readonly activitiesAdminServiceOnly = computed(() => this._uiState().adminServiceOnly);
   readonly activityEventSave = this._activityEventSave.asReadonly();
   readonly eventChatSession = this._eventChatSession.asReadonly();
+  readonly eventChatRowPatch = this._eventChatRowPatch.asReadonly();
   readonly activitiesPopupComponent = this.activitiesPopupComponentRef.asReadonly();
   readonly eventChatPopupComponent = this.eventChatPopupComponentRef.asReadonly();
   readonly eventExplorePopupComponent = this.eventExplorePopupComponentRef.asReadonly();
@@ -96,6 +107,7 @@ export class ActivitiesPopupStore {
 
   readonly activitiesOpenBoolean = computed(() => this._uiState().open);
   readonly eventChatOpen = computed(() => this._eventChatSession() !== null);
+  private eventChatRowPatchRevision = 0;
 
   openActivities(
     primaryFilter: ContractTypes.ActivitiesPrimaryFilter = 'chats',
@@ -327,6 +339,18 @@ export class ActivitiesPopupStore {
     this._eventChatSession.set({
       ...session,
       item: this.cloneChatRecord(itemUpdater(this.cloneChatRecord(session.item)))
+    });
+  }
+
+  emitEventChatRowPatch(patch: Omit<EventChatRowPatch, 'revision'>): void {
+    const chatId = `${patch.chatId ?? ''}`.trim();
+    if (!chatId) {
+      return;
+    }
+    this._eventChatRowPatch.set({
+      ...patch,
+      chatId,
+      revision: ++this.eventChatRowPatchRevision
     });
   }
 

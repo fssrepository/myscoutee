@@ -164,7 +164,7 @@ export class ChatsService extends BaseRouteModeService implements IChatsService 
     return this.chatsService.sendChatTyping(chat, typing);
   }
 
-  async markChatRead(chat: ChatDTO, messageIds: readonly string[]): Promise<void> {
+  async markChatRead(chat: ChatDTO, messageIds: readonly string[]): Promise<ContractTypes.ChatReadReceipt | null> {
     return this.chatsService.markChatRead(chat, messageIds);
   }
 

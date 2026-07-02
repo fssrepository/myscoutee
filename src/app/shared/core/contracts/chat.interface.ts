@@ -93,6 +93,7 @@ export interface ChatReadReceipt {
   userGender: ChatUserGender;
   messageIds: string[];
   readAtIso: string;
+  unread?: number | null;
 }
 
 export type ChatLiveEvent =

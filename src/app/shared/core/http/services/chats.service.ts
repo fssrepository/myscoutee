@@ -162,6 +162,7 @@ interface HttpChatReadReceiptDto {
   userGender: ContractTypes.ChatUserGender;
   messageIds: string[];
   readAtIso: string;
+  unread?: number | null;
 }
 
 interface HttpChatMemberDto {
@@ -229,6 +230,15 @@ export class HttpChatsService implements IChatsService {
     string,
     {
       resolve: (message: ContractTypes.ChatMessageDto | null) => void;
+      timer: ReturnType<typeof setTimeout>;
+    }
+  >();
+  private readonly pendingSocketReadResolvers = new Map<
+    string,
+    {
+      chatId: string;
+      messageIds: ReadonlySet<string>;
+      resolve: (read: ContractTypes.ChatReadReceipt | null) => void;
       timer: ReturnType<typeof setTimeout>;
     }
   >();
@@ -492,22 +502,24 @@ export class HttpChatsService implements IChatsService {
     socket.send(JSON.stringify(payload));
   }
 
-  async markChatRead(chat: ChatDTO, messageIds: readonly string[]): Promise<void> {
+  async markChatRead(chat: ChatDTO, messageIds: readonly string[]): Promise<ContractTypes.ChatReadReceipt | null> {
     const normalizedIds = messageIds
       .map(messageId => `${messageId ?? ''}`.trim())
       .filter(messageId => messageId.length > 0);
     if (normalizedIds.length === 0) {
-      return;
+      return null;
     }
     const socket = await this.ensureSocket(chat);
     if (!socket || socket.readyState !== WebSocket.OPEN) {
-      return;
+      return null;
     }
     const payload: HttpChatSocketRequestDto = {
       type: 'read',
       messageIds: normalizedIds
     };
+    const pendingRead = this.waitForSocketRead(chat.id, normalizedIds);
     socket.send(JSON.stringify(payload));
+    return pendingRead;
   }
 
   async updateSupportCase(chat: ChatDTO, action: ContractTypes.SupportCaseAction): Promise<ChatDTO | null> {
@@ -1384,7 +1396,10 @@ export class HttpChatsService implements IChatsService {
           userInitials: `${payload.read.userInitials ?? ''}`.trim(),
           userGender: this.normalizeHttpGender(payload.read.userGender),
           messageIds: (payload.read.messageIds ?? []).map((messageId: unknown) => `${messageId ?? ''}`.trim()).filter(Boolean),
-          readAtIso: `${payload.read.readAtIso ?? ''}`.trim()
+          readAtIso: `${payload.read.readAtIso ?? ''}`.trim(),
+          unread: payload.read.unread === null || payload.read.unread === undefined
+            ? null
+            : Math.max(0, Math.trunc(Number(payload.read.unread) || 0))
         }
       };
     }
@@ -1584,6 +1599,10 @@ export class HttpChatsService implements IChatsService {
         this.updateCachedChatSummaryFromSocketEvent(event.chatId, event.message);
       }
     }
+    if (event.type === 'read') {
+      this.updateCachedChatUnreadFromSocketEvent(event.chatId, event.read);
+      this.resolvePendingSocketReads(event.chatId, event.read);
+    }
     if (event.type === 'error') {
       const normalizedClientId = `${event.clientId ?? ''}`.trim();
       const normalizedMessageId = `${event.messageId ?? ''}`.trim();
@@ -1611,6 +1630,33 @@ export class HttpChatsService implements IChatsService {
       return;
     }
     this.updateCachedChatSummaryAfterMessage(existingRecord, message);
+  }
+
+  private updateCachedChatUnreadFromSocketEvent(
+    chatId: string,
+    read: ContractTypes.ChatReadReceipt
+  ): void {
+    const ownerUserId = this.activeUserId();
+    const normalizedChatId = `${chatId ?? ''}`.trim();
+    if (!ownerUserId || !normalizedChatId || read.userId !== ownerUserId || read.unread === undefined || read.unread === null) {
+      return;
+    }
+    const unread = Math.max(0, Math.trunc(Number(read.unread) || 0));
+    const currentRecords = this.chatItemsByUserId.get(ownerUserId) ?? [];
+    let changed = false;
+    const nextRecords = currentRecords.map(record => {
+      if (`${record.id ?? ''}`.trim() !== normalizedChatId || Math.max(0, Math.trunc(Number(record.unread) || 0)) === unread) {
+        return record;
+      }
+      changed = true;
+      return {
+        ...record,
+        unread
+      };
+    });
+    if (changed) {
+      this.chatItemsByUserId.set(ownerUserId, nextRecords);
+    }
   }
 
   private handleUnexpectedSocketDisconnect(chatId: string): void {
@@ -1668,7 +1714,12 @@ export class HttpChatsService implements IChatsService {
   }
 
   private closeSocketIfIdle(): void {
-    if (this.socketListeners.size > 0 || this.pendingSocketMessageIds.size > 0 || this.pendingSocketUpdateResolvers.size > 0) {
+    if (
+      this.socketListeners.size > 0
+      || this.pendingSocketMessageIds.size > 0
+      || this.pendingSocketUpdateResolvers.size > 0
+      || this.pendingSocketReadResolvers.size > 0
+    ) {
       return;
     }
     this.closeSocket();
@@ -1721,6 +1772,11 @@ export class HttpChatsService implements IChatsService {
       clearTimeout(pending.timer);
       pending.resolve(null);
       this.pendingSocketUpdateResolvers.delete(messageId);
+    }
+    for (const [key, pending] of this.pendingSocketReadResolvers.entries()) {
+      clearTimeout(pending.timer);
+      pending.resolve(null);
+      this.pendingSocketReadResolvers.delete(key);
     }
   }
 
@@ -1799,6 +1855,69 @@ export class HttpChatsService implements IChatsService {
     clearTimeout(pending.timer);
     this.pendingSocketUpdateResolvers.delete(normalizedMessageId);
     pending.resolve(message);
+  }
+
+  private waitForSocketRead(
+    chatId: string,
+    messageIds: readonly string[]
+  ): Promise<ContractTypes.ChatReadReceipt | null> {
+    const normalizedChatId = `${chatId ?? ''}`.trim();
+    const normalizedMessageIds = new Set(
+      (messageIds ?? [])
+        .map(messageId => `${messageId ?? ''}`.trim())
+        .filter(Boolean)
+    );
+    if (!normalizedChatId || normalizedMessageIds.size === 0) {
+      return Promise.resolve(null);
+    }
+    const key = `read:${normalizedChatId}:${Date.now()}:${++this.socketMessageSequence}`;
+    return new Promise<ContractTypes.ChatReadReceipt | null>(resolve => {
+      const timer = setTimeout(() => {
+        this.pendingSocketReadResolvers.delete(key);
+        resolve(null);
+        this.closeSocketIfIdle();
+      }, HttpChatsService.SOCKET_MESSAGE_ACK_TIMEOUT_MS);
+      this.pendingSocketReadResolvers.set(key, {
+        chatId: normalizedChatId,
+        messageIds: normalizedMessageIds,
+        resolve,
+        timer
+      });
+    });
+  }
+
+  private resolvePendingSocketReads(
+    chatId: string,
+    read: ContractTypes.ChatReadReceipt
+  ): void {
+    const normalizedChatId = `${chatId ?? ''}`.trim();
+    if (!normalizedChatId || read.userId !== this.activeUserId()) {
+      return;
+    }
+    const readMessageIds = new Set((read.messageIds ?? []).map(messageId => `${messageId ?? ''}`.trim()).filter(Boolean));
+    for (const [key, pending] of this.pendingSocketReadResolvers.entries()) {
+      if (pending.chatId !== normalizedChatId || !this.pendingSocketReadMatches(pending.messageIds, readMessageIds)) {
+        continue;
+      }
+      clearTimeout(pending.timer);
+      this.pendingSocketReadResolvers.delete(key);
+      pending.resolve(read);
+    }
+  }
+
+  private pendingSocketReadMatches(
+    pendingMessageIds: ReadonlySet<string>,
+    readMessageIds: ReadonlySet<string>
+  ): boolean {
+    if (pendingMessageIds.size === 0 || readMessageIds.size === 0) {
+      return false;
+    }
+    for (const messageId of pendingMessageIds) {
+      if (readMessageIds.has(messageId)) {
+        return true;
+      }
+    }
+    return false;
   }
 
 }

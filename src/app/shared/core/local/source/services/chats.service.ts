@@ -160,8 +160,25 @@ export class LocalChatsService extends LocalRouteDelayService implements IChatsS
     return;
   }
 
-  async markChatRead(_chat: ChatDTO, _messageIds: readonly string[]): Promise<void> {
-    return;
+  async markChatRead(chat: ChatDTO, messageIds: readonly string[]): Promise<ContractTypes.ChatReadReceipt | null> {
+    await this.waitForRouteDelay(LocalChatsService.CHAT_ROUTE);
+    const ownerUserId = `${chat.ownerUserId ?? ''}`.trim();
+    const chatId = `${chat.id ?? ''}`.trim();
+    if (!ownerUserId || !chatId) {
+      return null;
+    }
+    const update = this.chatsRepository.markChatRead(chat, ownerUserId, messageIds);
+    if (!update || update.messageIds.length === 0) {
+      return null;
+    }
+    return {
+      userId: update.reader.id,
+      userInitials: update.reader.initials,
+      userGender: update.reader.gender,
+      messageIds: update.messageIds,
+      readAtIso: update.readAtIso,
+      unread: update.unread
+    };
   }
 
   async updateSupportCase(chat: ChatDTO, action: ContractTypes.SupportCaseAction): Promise<ChatDTO | null> {

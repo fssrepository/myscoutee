@@ -24,7 +24,7 @@ export class LocalChatsRepository {
   }
 
   queryChatItemsByUser(userId: string): ChatThreadRecord[] {
-    return this.queryUserRecords(userId);
+    return this.withLatestMessageSummaries(this.queryUserRecords(userId));
   }
 
   queryActivitiesChatPage(
@@ -50,7 +50,7 @@ export class LocalChatsRepository {
       };
     }
 
-    const source = (query.filters?.adminServiceOnly === true && this.activitiesChatContextFilter(query) === 'service'
+    const source = this.withLatestMessageSummaries(query.filters?.adminServiceOnly === true && this.activitiesChatContextFilter(query) === 'service'
       ? this.querySupportCaseRecordsForAdmin(normalizedUserId, this.activitiesSupportCaseFilter(query))
       : this.queryUserRecordsForPage(normalizedUserId, query))
       .filter(record => this.matchesDateRange(record, rangeStartMs, rangeEndMs));
@@ -88,7 +88,7 @@ export class LocalChatsRepository {
 
   querySupportCaseItemsForAdmin(userId: string, filter: ContractTypes.SupportCaseFilter = 'all'): ChatThreadRecord[] {
     const normalizedUserId = userId.trim();
-    return this.querySupportCaseRecordsForAdmin(normalizedUserId, filter)
+    return this.withLatestMessageSummaries(this.querySupportCaseRecordsForAdmin(normalizedUserId, filter))
       .map(record => LocalChatThreadMapper.cloneRecord(record));
   }
 
@@ -275,6 +275,96 @@ export class LocalChatsRepository {
     return updatedMessage;
   }
 
+  markChatRead(
+    chat: ChatRecord,
+    ownerUserId: string,
+    messageIds: readonly string[]
+  ): { messageIds: string[]; unread: number; reader: ContractTypes.ChatReadAvatar; readAtIso: string } | null {
+    const normalizedOwnerUserId = `${ownerUserId ?? ''}`.trim();
+    const targetIds = [...new Set(
+      (messageIds ?? [])
+        .map(messageId => `${messageId ?? ''}`.trim())
+        .filter(Boolean)
+    )];
+    const sourceId = `${chat.id ?? ''}`.trim();
+    if (!normalizedOwnerUserId || !sourceId || targetIds.length === 0) {
+      return null;
+    }
+    const recordKey = LocalChatThreadMapper.buildRecordKey(normalizedOwnerUserId, sourceId);
+    const record = this.memoryDb.read()[CHATS_TABLE_NAME].byId[recordKey] ?? null;
+    if (!record) {
+      return null;
+    }
+
+    const reader = this.readAvatarForUser(normalizedOwnerUserId);
+    const readAtIso = new Date().toISOString();
+    const changedIds: string[] = [];
+    let unread = Math.max(0, Math.trunc(Number(record.unread) || 0));
+    this.memoryDb.write(currentState => {
+      const currentTable = currentState[CHATS_TABLE_NAME];
+      const currentMessagesTable = currentState[CHAT_MESSAGES_TABLE_NAME];
+      const existingRecord = currentTable.byId[recordKey];
+      if (!existingRecord) {
+        return currentState;
+      }
+      let nextMessagesTable = currentMessagesTable;
+      const targetIdSet = new Set(targetIds);
+      const messageRecords = this.selectChatMessageRecordsFromSnapshot(currentMessagesTable, existingRecord);
+      for (const messageRecord of messageRecords) {
+        if (
+          !targetIdSet.has(messageRecord.messageId)
+          || messageRecord.mine
+          || (messageRecord.readBy ?? []).some(existingReader => existingReader.userId === normalizedOwnerUserId)
+        ) {
+          continue;
+        }
+        const nextMessageRecord: ChatMessageRecord = {
+          ...messageRecord,
+          readBy: [
+            ...(messageRecord.readBy ?? []),
+            {
+              userId: reader.id,
+              initials: reader.initials,
+              gender: reader.gender,
+              imageUrl: reader.imageUrl ?? null
+            }
+          ]
+        };
+        changedIds.push(messageRecord.messageId);
+        nextMessagesTable = this.upsertMessageRecord(nextMessagesTable, nextMessageRecord);
+      }
+      if (changedIds.length === 0) {
+        return currentState;
+      }
+      unread = this.countUnreadMessages(
+        this.selectChatMessageRecordsFromSnapshot(nextMessagesTable, existingRecord),
+        normalizedOwnerUserId
+      );
+      return {
+        ...currentState,
+        [CHATS_TABLE_NAME]: {
+          ...currentTable,
+          byId: {
+            ...currentTable.byId,
+            [recordKey]: {
+              ...existingRecord,
+              unread
+            }
+          }
+        },
+        [CHAT_MESSAGES_TABLE_NAME]: nextMessagesTable
+      };
+    });
+    return changedIds.length > 0
+      ? {
+          messageIds: changedIds,
+          unread,
+          reader,
+          readAtIso
+        }
+      : null;
+  }
+
   updateSupportCase(chat: ChatRecord, action: ContractTypes.SupportCaseAction): ChatThreadRecord | null {
     const sourceId = `${chat.id ?? ''}`.trim();
     if (!sourceId) {
@@ -431,6 +521,62 @@ export class LocalChatsRepository {
         .filter(Boolean)
     ).size;
     return unread * 10 + memberCount;
+  }
+
+  private withLatestMessageSummaries(records: readonly ChatThreadRecord[]): ChatThreadRecord[] {
+    if (records.length === 0) {
+      return [];
+    }
+    const messagesSnapshot = this.memoryDb.read()[CHAT_MESSAGES_TABLE_NAME];
+    return records.map(record => this.withLatestMessageSummary(record, messagesSnapshot));
+  }
+
+  private withLatestMessageSummary(
+    record: ChatThreadRecord,
+    messagesSnapshot: AppMemorySchema[typeof CHAT_MESSAGES_TABLE_NAME]
+  ): ChatThreadRecord {
+    const latest = this.latestMessage(
+      LocalChatMessageMapper.toDtoList(this.selectChatMessageRecordsFromSnapshot(messagesSnapshot, record))
+    );
+    if (!latest) {
+      return LocalChatThreadMapper.cloneRecord(record);
+    }
+    return {
+      ...LocalChatThreadMapper.cloneRecord(record),
+      lastMessage: this.chatMessageSummary(latest) || record.lastMessage,
+      lastSenderId: `${latest.senderAvatar?.id ?? ''}`.trim() || record.lastSenderId,
+      dateIso: `${latest.sentAtIso ?? ''}`.trim() || record.dateIso
+    };
+  }
+
+  private chatMessageSummary(message: ContractTypes.ChatMessageDto): string {
+    return message.text || this.chatAttachmentSummary(message) || this.deletedMessageSummary(message);
+  }
+
+  private readAvatarForUser(userId: string): ContractTypes.ChatReadAvatar {
+    const normalizedUserId = `${userId ?? ''}`.trim();
+    const user = normalizedUserId ? this.memoryDb.read()[USERS_TABLE_NAME].byId[normalizedUserId] ?? null : null;
+    const label = user?.name?.trim() || normalizedUserId || 'You';
+    return {
+      id: normalizedUserId,
+      initials: user?.initials?.trim() || AppUtils.initialsFromText(label),
+      gender: user?.gender ?? 'man',
+      imageUrl: AppUtils.firstImageUrl(user?.images)
+    };
+  }
+
+  private countUnreadMessages(
+    messages: readonly ChatMessageRecord[],
+    ownerUserId: string
+  ): number {
+    const normalizedOwnerUserId = `${ownerUserId ?? ''}`.trim();
+    if (!normalizedOwnerUserId) {
+      return 0;
+    }
+    return messages.filter(message =>
+      !message.mine
+      && !(message.readBy ?? []).some(reader => `${reader.userId ?? ''}`.trim() === normalizedOwnerUserId)
+    ).length;
   }
 
   private resolvePageStartIndex(query: ListQuery<ActivitiesFeedFilters>, pageSize: number): number {

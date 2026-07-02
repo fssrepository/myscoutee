@@ -40,7 +40,8 @@ import {
   type ActivityMembersSyncState
 } from '../../../shared/ui';
 import {
-  ActivitiesPopupStore
+  ActivitiesPopupStore,
+  type EventChatRowPatch
 } from '../../../shared/ui/context/stores/activities-popup.store';
 import {
   EventEditorPopupStore
@@ -741,6 +742,16 @@ export class ActivitiesPopupComponent implements OnDestroy {
     });
 
     effect(() => {
+      const patch = this.activitiesStore.eventChatRowPatch();
+      if (!patch) {
+        return;
+      }
+      this.applyEventChatRowPatch(patch);
+      this.refreshSectionBadges();
+      this.cdr.markForCheck();
+    });
+
+    effect(() => {
       this.configureAdminSupportBoardPolling(
         this.activitiesStore.activitiesOpen() && this.activitiesStore.activitiesAdminServiceOnly()
       );
@@ -1024,6 +1035,69 @@ export class ActivitiesPopupComponent implements OnDestroy {
       return;
     }
     smartList.upsertConvertedVisibleItem(chat);
+  }
+
+  private applyEventChatRowPatch(patch: EventChatRowPatch): void {
+    const smartList = this.activitiesSmartList;
+    const chatId = `${patch.chatId ?? ''}`.trim();
+    if (!smartList || !chatId || this.activitiesPrimaryFilter !== 'chats' || this.isCalendarLayoutView()) {
+      return;
+    }
+    smartList.patchVisibleItem(
+      row => `${row.id ?? ''}`.trim() === chatId,
+      row => this.patchActivityChatRow(row as ActivityChatListItem, patch) as ActivityListItem
+    );
+  }
+
+  private patchActivityChatRow(row: ActivityChatListItem, patch: EventChatRowPatch): ActivityChatListItem {
+    let next: ActivityChatListItem = row;
+    const cloneNext = (): ActivityChatListItem => next === row ? { ...row } : next;
+
+    if (patch.unread !== undefined) {
+      const unread = this.normalizeBadgeCounter(patch.unread);
+      if ((next.unread ?? 0) !== unread || ((next as { badgeCount?: number | null }).badgeCount ?? 0) !== unread) {
+        next = cloneNext();
+        next.unread = unread;
+        (next as { badgeCount?: number | null }).badgeCount = unread;
+      }
+    }
+
+    if (patch.lastMessage !== undefined) {
+      const detail = `${patch.lastMessage ?? ''}`.trim();
+      if ((next.detail ?? '') !== detail) {
+        next = cloneNext();
+        next.detail = detail;
+      }
+    }
+
+    if (patch.dateIso !== undefined) {
+      const dateIso = `${patch.dateIso ?? ''}`.trim() || undefined;
+      if ((next.dateIso ?? undefined) !== dateIso) {
+        next = cloneNext();
+        next.dateIso = dateIso;
+      }
+    }
+
+    if (patch.lastSenderId !== undefined) {
+      const senderName = this.resolveActivityChatRowSenderName(patch.lastSenderId);
+      if (senderName && next.title !== senderName) {
+        next = cloneNext();
+        next.title = senderName;
+      }
+    }
+
+    return next;
+  }
+
+  private resolveActivityChatRowSenderName(senderId: string | null | undefined): string | null {
+    const normalizedSenderId = `${senderId ?? ''}`.trim();
+    if (!normalizedSenderId) {
+      return null;
+    }
+    if (normalizedSenderId === this.activeUser.id) {
+      return this.activeUser.name;
+    }
+    return this.usersService.peekCachedUserById(normalizedSenderId)?.name ?? null;
   }
 
   private doesChatMatchActiveContextFilter(chat: ChatDTO): boolean {

@@ -2633,7 +2633,6 @@ export class EventChatPopupComponent implements OnDestroy {
       return this.emptyChatThreadPage();
     }
     this.chatInitialLoadPending = true;
-    this.clearOpenChatUnreadState();
     this.cdr.markForCheck();
     try {
       const initialChat = session.item;
@@ -2973,6 +2972,7 @@ export class EventChatPopupComponent implements OnDestroy {
     }
     if (event.type === 'read') {
       this.applyReadReceipt(event.read);
+      this.applyOwnReadReceiptToActivityRow(chat, event.read);
       return;
     }
     if (event.type === 'error') {
@@ -2988,8 +2988,7 @@ export class EventChatPopupComponent implements OnDestroy {
 
     this.mergeIncomingChatMessage(event.message);
     if (!event.message.mine) {
-      this.clearOpenChatUnreadState();
-      void this.chatsService.markChatRead(chat, [event.message.id]);
+      this.markChatMessagesAsRead(chat, [event.message.id]);
     }
   }
 
@@ -3451,17 +3450,6 @@ export class EventChatPopupComponent implements OnDestroy {
     return this.userProfileStore.activeUserId().trim();
   }
 
-  private clearOpenChatUnreadState(): void {
-    const session = this.session();
-    if (!session || Math.max(0, Math.trunc(Number(session.item.unread) || 0)) === 0) {
-      return;
-    }
-    this.activitiesStore.patchEventChatSessionItem(item => ({
-      ...item,
-      unread: 0
-    }));
-  }
-
   private markLoadedChatThreadAsRead(
     chat: ChatDTO,
     messages: readonly ContractTypes.ChatMessageDto[]
@@ -3478,7 +3466,19 @@ export class EventChatPopupComponent implements OnDestroy {
     if (unreadMessageIds.length === 0) {
       return;
     }
-    void this.chatsService.markChatRead(chat, unreadMessageIds);
+    this.markChatMessagesAsRead(chat, unreadMessageIds);
+  }
+
+  private markChatMessagesAsRead(chat: ChatDTO, messageIds: readonly string[]): void {
+    void this.chatsService.markChatRead(chat, messageIds)
+      .then(read => {
+        if (read) {
+          this.applyOwnReadReceiptToActivityRow(chat, read);
+        }
+      })
+      .catch(() => {
+        return;
+      });
   }
 
   private syncEventChatSummaryFromLatestMessage(): void {
@@ -3494,18 +3494,37 @@ export class EventChatPopupComponent implements OnDestroy {
     if (!session) {
       return;
     }
+    if (message.deliveryState === 'pending' || message.deliveryState === 'timed-out') {
+      return;
+    }
     const nextLastMessage = `${message.text ?? ''}`.trim() || this.chatAttachmentSummary(message);
     const nextDateIso = `${message.sentAtIso ?? ''}`.trim();
     const nextLastSenderId = this.resolveChatMessageSenderId(message, session.item.lastSenderId);
     if (!nextLastMessage && !nextDateIso && !nextLastSenderId) {
       return;
     }
-    this.activitiesStore.patchEventChatSessionItem(item => ({
-      ...item,
-      lastMessage: nextLastMessage || item.lastMessage,
-      lastSenderId: nextLastSenderId || item.lastSenderId,
-      dateIso: nextDateIso || item.dateIso
-    }));
+    this.activitiesStore.emitEventChatRowPatch({
+      chatId: session.item.id,
+      lastMessage: nextLastMessage || undefined,
+      lastSenderId: nextLastSenderId || undefined,
+      dateIso: nextDateIso || undefined
+    });
+  }
+
+  private applyOwnReadReceiptToActivityRow(
+    chat: ChatDTO,
+    read: ContractTypes.ChatReadReceipt
+  ): void {
+    if (!read.userId || read.userId !== this.activeUserId()) {
+      return;
+    }
+    if (read.unread === undefined || read.unread === null) {
+      return;
+    }
+    this.activitiesStore.emitEventChatRowPatch({
+      chatId: chat.id,
+      unread: read.unread
+    });
   }
 
   private resolveChatMessageSenderId(
