@@ -894,6 +894,10 @@
     margin-inline: var(--smart-list-fullscreen-mobile-surface-margin, 0.72rem);
   }
 
+  .smart-list__surface--fullscreen:has(app-single-card[data-card-presentation='fullscreen']) {
+    margin-inline: 0;
+  }
+
   .smart-list--list.smart-list--horizontal.smart-list--desktop-columns-1,
   .smart-list--list.smart-list--horizontal.smart-list--desktop-columns-2,
   .smart-list--list.smart-list--horizontal.smart-list--desktop-columns-3,

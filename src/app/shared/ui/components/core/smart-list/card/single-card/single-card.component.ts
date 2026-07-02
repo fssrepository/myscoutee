@@ -40,7 +40,9 @@ import type {
 export class SingleCardComponent implements AfterViewInit, OnChanges, OnDestroy {
   private static readonly IMAGE_PULSE_DURATION_MS = 500;
   private static readonly BADGE_BLINK_DURATION_MS = 420;
-  private static readonly FULLSCREEN_ASPECT_RATIO = 3 / 4;
+  private static readonly MOBILE_VIEWPORT_MAX_WIDTH_PX = 760;
+  private static readonly MOBILE_FULLSCREEN_ASPECT_RATIO = 9 / 16;
+  private static readonly DESKTOP_FULLSCREEN_ASPECT_RATIO = 3 / 4;
   private static readonly activeIndexByRowId: Record<string, number> = {};
 
   private readonly cdr = inject(ChangeDetectorRef);
@@ -421,9 +423,23 @@ export class SingleCardComponent implements AfterViewInit, OnChanges, OnDestroy 
     if (availableWidth <= 0 || availableHeight <= 0) {
       return;
     }
-    const nextWidth = Math.min(availableWidth, availableHeight * SingleCardComponent.FULLSCREEN_ASPECT_RATIO);
-    const nextHeight = nextWidth / SingleCardComponent.FULLSCREEN_ASPECT_RATIO;
+    if (this.isCompactViewport()) {
+      const nextWidth = availableWidth;
+      const nextHeight = nextWidth / SingleCardComponent.MOBILE_FULLSCREEN_ASPECT_RATIO;
+      this.setFullscreenCardSize(`${nextWidth}px`, `${nextHeight}px`);
+      return;
+    }
+    const nextWidth = Math.min(
+      availableWidth,
+      availableHeight * SingleCardComponent.DESKTOP_FULLSCREEN_ASPECT_RATIO
+    );
+    const nextHeight = nextWidth / SingleCardComponent.DESKTOP_FULLSCREEN_ASPECT_RATIO;
     this.setFullscreenCardSize(`${nextWidth}px`, `${nextHeight}px`);
+  }
+
+  private isCompactViewport(): boolean {
+    return typeof globalThis.innerWidth === 'number'
+      && globalThis.innerWidth <= SingleCardComponent.MOBILE_VIEWPORT_MAX_WIDTH_PX;
   }
 
   private setFullscreenCardSize(width: string | null, height: string | null): void {
