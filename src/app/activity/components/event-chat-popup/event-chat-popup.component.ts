@@ -3025,7 +3025,6 @@ export class EventChatPopupComponent implements OnDestroy {
     }
     if (event.type === 'read') {
       this.applyReadReceipt(event.read);
-      this.applyOwnReadReceiptToActivityRow(chat, event.read);
       return;
     }
     if (event.type === 'error') {
