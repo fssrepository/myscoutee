@@ -60,6 +60,7 @@ import {
   type AppMenuTrigger,
   CARD_MENU_ACTIONS,
   InfoCardComponent,
+  PopupComponent,
   type PageResult,
   SmartListComponent,
   type InfoCardData,
@@ -67,6 +68,7 @@ import {
   type CardMenuRequestEvent,
   type CardMenuAction,
   type ListQuery,
+  type PopupModel,
   type SmartListConfig,
   type SmartListItemTemplateContext,
   type SmartListStateChange
@@ -120,6 +122,7 @@ type EventExploreMenuContext =
     AppMenuComponent,
     AppMenuOutletComponent,
     InfoCardComponent,
+    PopupComponent,
     SmartListComponent
   ],
   templateUrl: './event-explore-popup.component.html',
@@ -323,6 +326,44 @@ export class EventExplorePopupComponent {
     this.eventExploreHeaderLoadingOverdue = state.loadingOverdue;
     this.eventExploreStickyLabel = state.stickyLabel || 'No items';
     this.cdr.markForCheck();
+  }
+
+  protected eventExplorePopupModel(): PopupModel<EventExploreMenuContext> {
+    return {
+      title: this.eventExploreHeaderTitle(),
+      ariaLabel: this.eventExploreHeaderTitle(),
+      closeAriaLabel: 'Close event explore',
+      size: 'wide',
+      height: 'full',
+      headerTone: 'accent',
+      bodyLayout: 'fill',
+      headerControls: [
+        {
+          kind: 'menu',
+          id: 'event-explore-order',
+          menuKind: 'select',
+          trigger: this.eventExploreOrderMenuTrigger(),
+          items: this.eventExploreOrderMenuItems()
+        },
+        {
+          kind: 'menu',
+          id: 'event-explore-view',
+          menuKind: 'select',
+          trigger: this.eventExploreViewMenuTrigger(),
+          items: this.eventExploreViewMenuItems()
+        }
+      ],
+      toolbarControls: [
+        {
+          kind: 'menu',
+          id: 'event-explore-filters',
+          menuKind: 'inline',
+          items: this.eventExploreFilterMenuItems()
+        }
+      ],
+      onClose: () => this.closeEventExplore(),
+      onMenuSelect: event => this.onEventExploreMenuSelect(event.itemSelect)
+    };
   }
 
   protected closeEventExplore(): void {

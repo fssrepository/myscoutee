@@ -1,6 +1,5 @@
 @use '../../../shared/ui/styles' as ui;
 
-@include ui.popup-shell();
 @include ui.interactive-motion();
 @include ui.form-controls();
 
@@ -9,29 +8,12 @@
   display: contents;
 }
 
-.app-popup.event-explore-popup-shell {
-  z-index: var(--event-explore-shell-z-index);
-}
-
-.event-explore-popup-shell .app-popup-backdrop {
-  background: rgba(10, 18, 30, 0.26);
-}
-
-.event-explore-popup-shell .popup-body.popup-body-event-explore {
-  overflow: visible;
-}
-
-.event-explore-popup-shell .popup-header.popup-header-with-progress {
-  z-index: 50;
-}
-
 .event-explore-popup {
   position: relative;
   height: 100%;
   min-height: 0;
-  display: grid;
-  grid-template-rows: auto minmax(0, 1fr);
-  gap: 0.46rem;
+  display: flex;
+  flex-direction: column;
 }
 
 .event-explore-basket-menu {
@@ -41,33 +23,6 @@
   z-index: 18;
   display: inline-flex;
   --app-menu-panel-gap: 0.6rem;
-}
-
-.event-explore-header-controls {
-  display: flex;
-  align-items: center;
-  gap: 0.4rem;
-  margin-left: auto;
-}
-
-.event-explore-order-picker,
-.event-explore-view-picker {
-  position: relative;
-  z-index: 20;
-  min-width: 0;
-}
-
-.event-explore-filter-bar {
-  height: 2.2rem;
-  display: flex;
-  align-items: center;
-  gap: 0.28rem;
-  flex-wrap: nowrap;
-  overflow: visible;
-}
-
-.event-explore-filter-menu {
-  flex: 0 0 auto;
 }
 
 .event-explore-slot-picker-backdrop {
@@ -152,55 +107,6 @@
 
 
 @media (max-width: 760px) {
-  .event-explore-popup-shell .popup-header.popup-header-with-progress {
-    display: grid;
-    grid-template-columns: minmax(0, 1fr) auto;
-    grid-template-areas:
-      'title close'
-      'controls controls';
-    align-items: center;
-    gap: 0.34rem 0.4rem;
-    padding-block: 0.5rem 0.46rem;
-  }
-
-  .event-explore-popup-shell .popup-header.popup-header-with-progress > .popup-title {
-    grid-area: title;
-    min-width: 0;
-  }
-
-  .event-explore-popup-shell .popup-header.popup-header-with-progress > .popup-close {
-    grid-area: close;
-    justify-self: end;
-  }
-
-  .event-explore-header-controls {
-    grid-area: controls;
-    justify-content: flex-end;
-    flex-wrap: wrap;
-    gap: 0.3rem;
-    min-width: 0;
-    width: 100%;
-    margin-left: 0;
-  }
-
-  .event-explore-order-picker,
-  .event-explore-view-picker {
-    flex: 0 0 auto;
-    max-width: calc(50vw - 0.75rem);
-  }
-
-  .event-explore-filter-bar {
-    height: auto;
-    min-height: 2.2rem;
-    flex-wrap: wrap;
-    align-content: flex-start;
-    row-gap: 0.3rem;
-  }
-
-  .event-explore-popup-shell .popup-panel-event-explore {
-    width: min(100vw, calc(100vw - 0.6rem));
-  }
-
   .event-explore-basket-menu {
     right: 0.55rem;
     bottom: 0.7rem;
