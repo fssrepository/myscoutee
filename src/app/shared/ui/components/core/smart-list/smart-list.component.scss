@@ -880,6 +880,7 @@
 
   .smart-list--list.smart-list--horizontal {
     --smart-list-horizontal-item-basis: 100%;
+    --smart-list-horizontal-end-inset: 0;
     flex-direction: row;
     gap: 0.72rem;
     padding-bottom: 2rem;
