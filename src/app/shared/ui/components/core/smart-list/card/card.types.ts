@@ -133,7 +133,6 @@ export interface SingleCardData {
 }
 
 export interface PairCardSplitConfig {
-  enabled?: boolean;
   initialPercent?: number;
 }
 
@@ -386,7 +385,6 @@ export interface ImageCardData<TEagerDetail = unknown> extends DisplayData<TEage
   contextBadge?: CardContextBadgeConfig | null;
   presentation?: CardPresentation;
   state?: CardRenderState;
-  fullscreenSplitEnabled?: boolean;
   userId?: string | null;
   secondaryUserId?: string | null;
   socialContext?: ImageCardSocialContext | null;

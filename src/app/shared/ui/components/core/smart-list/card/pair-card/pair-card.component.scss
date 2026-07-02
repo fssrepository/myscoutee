@@ -1,1 +1,154 @@
 @use '../rate-card.shared';
+
+.activities-rates-fullscreen .activities-rate-profile-stack.activities-rate-profile-stack-pair-fullscreen {
+  width: 100%;
+  margin-inline: 0;
+}
+
+.activities-rates-fullscreen .activities-rate-profile-stack.activities-rate-profile-stack-pair-fullscreen.activities-rate-profile-stack-pair {
+  border-radius: 14px;
+  border: 1px solid rgba(34, 54, 84, 0.24);
+  background: linear-gradient(180deg, #1b2c45 0%, #132238 100%);
+  overflow: hidden;
+}
+
+.activities-rates-fullscreen .activities-rate-pair-fullscreen-grid {
+  --activities-pair-gap: clamp(0.28rem, 0.8vw, 0.52rem);
+  --activities-pair-pad: 0.42rem;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  grid-template-rows: minmax(0, 1fr);
+  gap: var(--activities-pair-gap);
+  padding: var(--activities-pair-pad);
+  box-sizing: border-box;
+}
+
+.activities-rates-fullscreen .activities-rate-pair-fullscreen-grid .activities-rate-pair-inline-card {
+  min-height: 0;
+  box-sizing: border-box;
+}
+
+.activities-rates-fullscreen .activities-rate-pair-fullscreen-grid .activities-rate-pair-inline-card.is-collapsed {
+  border-color: transparent;
+  box-shadow: none;
+}
+
+.activities-rates-fullscreen .activities-rate-pair-fullscreen-grid .activities-rate-pair-inline-card.is-collapsed > * {
+  opacity: 0;
+  pointer-events: none;
+}
+
+.activities-rates-fullscreen .activities-rate-pair-fullscreen-grid .activities-rate-pair-inline-indicators {
+  top: 0.28rem;
+  left: 0.38rem;
+  right: 0.38rem;
+}
+
+.activities-rates-fullscreen .activities-rate-pair-fullscreen-grid .activities-rate-pair-inline-overlay {
+  padding: 0.74rem 0.8rem 0.72rem;
+}
+
+.activities-rates-pair-fullscreen-resize-handle {
+  display: none;
+}
+
+.activities-rates-pair-fullscreen-resize-handle-grip {
+  display: block;
+  pointer-events: none;
+}
+
+@media (max-width: 760px) {
+  .activities-rates-fullscreen .activities-rate-pair-fullscreen-grid {
+    --activities-pair-gap: 0 !important;
+    --activities-pair-pad: 0.3rem !important;
+    display: flex;
+    gap: 0 !important;
+    padding: var(--activities-pair-pad) !important;
+    overflow: hidden;
+  }
+
+  .activities-rates-fullscreen .activities-rate-pair-fullscreen-grid::after {
+    content: '';
+    position: absolute;
+    top: var(--activities-pair-pad);
+    bottom: var(--activities-pair-pad);
+    left: var(--activities-pair-split);
+    width: 1px;
+    transform: translateX(-0.5px);
+    background: rgba(34, 54, 84, 0.58);
+    pointer-events: none;
+    z-index: 22;
+  }
+
+  .activities-rates-fullscreen .activities-rate-pair-fullscreen-grid .activities-rate-pair-inline-card {
+    min-width: 0;
+    max-width: 100%;
+  }
+
+  .activities-rates-fullscreen .activities-rate-pair-fullscreen-grid .activities-rate-pair-inline-card-start {
+    flex: 0 0 var(--activities-pair-split);
+    width: auto;
+    border-top-right-radius: 0;
+    border-bottom-right-radius: 0;
+    border-right-width: 0;
+  }
+
+  .activities-rates-fullscreen .activities-rate-pair-fullscreen-grid .activities-rate-pair-inline-card-end {
+    flex: 0 0 calc(100% - var(--activities-pair-split));
+    width: auto;
+    border-top-left-radius: 0;
+    border-bottom-left-radius: 0;
+    border-left-width: 0;
+  }
+
+  .activities-rates-fullscreen .activities-rate-score-badge-floating.activities-rate-score-badge-floating-pair-overlap {
+    left: 50%;
+    bottom: 4rem;
+    z-index: 28;
+    pointer-events: none;
+  }
+
+  .activities-rates-pair-fullscreen-resize-handle {
+    position: absolute;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    pointer-events: auto;
+    left: var(--activities-pair-split);
+    top: var(--activities-pair-pad);
+    bottom: var(--activities-pair-pad);
+    width: 36px;
+    transform: translateX(-50%);
+    border: 0;
+    padding: 0;
+    margin: 0;
+    background: transparent;
+    z-index: 40;
+    touch-action: none;
+    cursor: ew-resize;
+    -webkit-tap-highlight-color: transparent;
+  }
+
+  .activities-rates-pair-fullscreen-resize-handle::before {
+    content: '';
+    position: absolute;
+    inset: -12px -8px;
+  }
+
+  .activities-rates-pair-fullscreen-resize-handle-grip {
+    width: 4px;
+    height: 36%;
+    min-height: 52px;
+    border-radius: 999px;
+    border: 1px solid rgba(166, 196, 232, 0.74);
+    background: linear-gradient(180deg, rgba(241, 247, 255, 0.94) 0%, rgba(218, 232, 249, 0.9) 100%);
+    box-shadow:
+      0 0 0 1px rgba(9, 22, 40, 0.14),
+      0 8px 14px rgba(6, 18, 36, 0.34);
+    pointer-events: none;
+  }
+
+  .activities-rate-profile-stack.activities-rate-profile-stack-pair-fullscreen.is-resizing .activities-rates-pair-fullscreen-resize-handle-grip {
+    background: linear-gradient(180deg, rgba(255, 247, 227, 0.96) 0%, rgba(255, 229, 165, 0.9) 100%);
+    border-color: rgba(218, 168, 51, 0.86);
+  }
+}

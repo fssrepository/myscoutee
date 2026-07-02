@@ -129,6 +129,10 @@ export class ActivitiesRateTemplateComponent implements OnChanges {
     this.detailClick.emit(event);
   }
 
+  protected showSplitHandle(): boolean {
+    return !this.context?.isFullscreenPaginationAnimating();
+  }
+
   private rebuildCards(): void {
     const row = this.row;
     const context = this.context;
@@ -143,8 +147,7 @@ export class ActivitiesRateTemplateComponent implements OnChanges {
       presentation: this.presentation,
       state: this.state,
       displayedDirection: this.displayedDirectionForRow(row, context),
-      activeUserGender: context.getActiveUserGender(),
-      fullscreenSplitEnabled: !context.isFullscreenPaginationAnimating()
+      activeUserGender: context.getActiveUserGender()
     } as const;
 
     if (isActivityRatePairCardRow(row)) {

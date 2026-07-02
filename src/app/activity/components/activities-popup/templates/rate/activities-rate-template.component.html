@@ -1,6 +1,7 @@
 @if (pairCard) {
   <app-pair-card
     [card]="pairCard"
+    [showSplitHandle]="showSplitHandle()"
     (menuRequest)="onMenuRequest($event)"
     (detailClick)="onDetailClick($event)"
   ></app-pair-card>

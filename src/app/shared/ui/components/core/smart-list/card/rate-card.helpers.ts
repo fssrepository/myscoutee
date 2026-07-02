@@ -42,7 +42,6 @@ export interface RateCardDataInput {
   contextBadge?: CardContextBadgeConfig | null;
   presentation?: CardPresentation;
   state?: CardRenderState;
-  fullscreenSplitEnabled?: boolean;
 }
 
 export function buildSingleRateCardData(input: RateCardDataInput): SingleCardData {
@@ -68,10 +67,7 @@ export function buildPairRateCardData(input: RateCardDataInput): PairCardData {
     stackClasses: input.stackClasses ?? [],
     badge: input.badge ?? null,
     presentation,
-    state: input.state ?? 'default',
-    split: presentation === 'fullscreen'
-      ? { enabled: input.fullscreenSplitEnabled !== false }
-      : null
+    state: input.state ?? 'default'
   };
 }
 

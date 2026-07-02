@@ -108,6 +108,7 @@ export class PairCardComponent implements AfterViewInit, OnChanges, OnDestroy {
   };
 
   @Input() card: PairCardData | null = null;
+  @Input() showSplitHandle = true;
 
   @Output() readonly badgeClick = new EventEmitter<string>();
   @Output() readonly menuRequest = new EventEmitter<CardMenuRequestEvent<PairCardData>>();
@@ -145,6 +146,10 @@ export class PairCardComponent implements AfterViewInit, OnChanges, OnDestroy {
   }
 
   ngOnChanges(changes: SimpleChanges): void {
+    if (changes['showSplitHandle'] && !this.showSplitHandle) {
+      this.stopSplitDrag();
+    }
+
     if (!changes['card']) {
       return;
     }
@@ -261,18 +266,21 @@ export class PairCardComponent implements AfterViewInit, OnChanges, OnDestroy {
   protected isSplitEnabled(): boolean {
     return this.resolvedPresentation() === 'fullscreen'
       && this.resolvedState() === 'active'
-      && this.isCompactViewport()
-      && (this.card?.split?.enabled ?? true);
+      && this.isCompactViewport();
   }
 
-  protected isSlotCollapsed(slot: PairCardSlot): boolean {
+  protected isSplitHandleVisible(): boolean {
+    return this.isSplitEnabled() && this.showSplitHandle;
+  }
+
+  protected isSlotCollapsed(slot: PairCardSlot, slotIndex: number): boolean {
     if (!this.isSplitEnabled()) {
       return false;
     }
-    if (slot.key === 'woman') {
+    if (slotIndex === 0) {
       return this.splitPercent <= 0.1;
     }
-    if (slot.key === 'man') {
+    if (slotIndex === 1) {
       return this.splitPercent >= 99.9;
     }
     return !!slot.collapsed;

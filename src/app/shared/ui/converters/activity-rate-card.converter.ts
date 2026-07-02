@@ -18,7 +18,6 @@ export interface ActivityRateCardConverterOptions {
   badge: CardBadgeConfig;
   displayedDirection: ActivityRateDTO['direction'];
   activeUserGender: 'woman' | 'man';
-  fullscreenSplitEnabled: boolean;
 }
 
 export function isActivityRatePairCardRow(row: ImageCardData): boolean {
@@ -71,8 +70,7 @@ function activityRateCardInput(
       ? [...row.stackClasses]
       : activityRateCardStackClasses(mode, direction),
     presentation,
-    state: options.state ?? 'default',
-    fullscreenSplitEnabled: presentation === 'fullscreen' ? options.fullscreenSplitEnabled : false
+    state: options.state ?? 'default'
   };
 }
 
