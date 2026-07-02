@@ -77,7 +77,6 @@ import {
 
 import type * as AppDTOs from '../../../shared/core/contracts';
 import type * as AppConstants from '../../../shared/core/common/constants';
-import { ActivityStore } from '../../../shared/ui/context/stores/activity.store';
 import { UserProfileStore } from '../../../shared/ui/context/stores/user-profile.store';
 import { AppRuntimeStore } from '../../../shared/ui/context/stores/app-runtime.store';
 import { MemberMenuStore } from '../../../shared/ui/context/stores/member-menu.store';
@@ -185,7 +184,6 @@ interface ChatOwnerParts {
 export class EventChatPopupComponent implements OnDestroy {
   private readonly cdr = inject(ChangeDetectorRef);
   protected readonly activitiesStore = inject(ActivitiesPopupStore);
-  private readonly activityStore = inject(ActivityStore);
   private readonly userProfileStore = inject(UserProfileStore);
   private readonly runtimeStore = inject(AppRuntimeStore);
   protected readonly memberMenuStore = inject(MemberMenuStore);
@@ -3580,7 +3578,6 @@ export class EventChatPopupComponent implements OnDestroy {
         ? { ...item, unread: nextUnread }
         : item
     );
-    this.patchActiveChatCounterDelta(activeUserId, unreadDelta);
   }
 
   private currentChatUnread(chat: ChatDTO): number {
@@ -3590,19 +3587,6 @@ export class EventChatPopupComponent implements OnDestroy {
       return this.normalizeUnreadCounter(sessionItem?.unread);
     }
     return this.normalizeUnreadCounter(chat.unread);
-  }
-
-  private patchActiveChatCounterDelta(activeUserId: string, unreadDelta: number): void {
-    if (unreadDelta === 0) {
-      return;
-    }
-    const activeUser = this.userProfileStore.activeUserProfile()
-      ?? this.userProfileStore.getUserProfile(activeUserId);
-    const overrides = this.activityStore.getUserCounterOverrides(activeUserId);
-    const currentChatCounter = this.normalizeUnreadCounter(overrides.chat ?? activeUser?.activities?.chat);
-    const nextChatCounter = this.normalizeUnreadCounter(currentChatCounter + unreadDelta);
-    this.activityStore.patchUserCounterOverrides(activeUserId, { chat: nextChatCounter });
-    this.userProfileStore.patchUserActivityCounters(activeUserId, { chat: nextChatCounter });
   }
 
   private normalizeUnreadCounter(value: unknown): number {
