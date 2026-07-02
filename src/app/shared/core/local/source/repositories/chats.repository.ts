@@ -153,8 +153,8 @@ export class LocalChatsRepository {
     if (!record) {
       return null;
     }
-    const messageRecord = LocalChatMessageMapper.toRecord(record.ownerUserId, record.id, message);
     const recordKey = LocalChatThreadMapper.buildRecordKey(record.ownerUserId, record.id);
+    let savedMessageRecord: ChatMessageRecord | null = null;
     this.memoryDb.write(currentState => {
       const currentTable = currentState[CHATS_TABLE_NAME];
       const currentMessagesTable = currentState[CHAT_MESSAGES_TABLE_NAME];
@@ -162,6 +162,9 @@ export class LocalChatsRepository {
       if (!existingRecord) {
         return currentState;
       }
+      const storedMessage = this.withAppendTimeline(message, existingRecord, currentMessagesTable);
+      const messageRecord = LocalChatMessageMapper.toRecord(record.ownerUserId, record.id, storedMessage);
+      savedMessageRecord = messageRecord;
       const nextMessagesTable = this.upsertMessageRecord(currentMessagesTable, messageRecord);
       return {
         ...currentState,
@@ -171,16 +174,16 @@ export class LocalChatsRepository {
             ...currentTable.byId,
             [recordKey]: {
               ...existingRecord,
-              lastMessage: message.text || this.chatAttachmentSummary(message),
-              lastSenderId: message.senderAvatar.id,
-              dateIso: message.sentAtIso
+              lastMessage: storedMessage.text || this.chatAttachmentSummary(storedMessage),
+              lastSenderId: storedMessage.senderAvatar.id,
+              dateIso: storedMessage.sentAtIso
             }
           }
         },
         [CHAT_MESSAGES_TABLE_NAME]: nextMessagesTable
       };
     });
-    return LocalChatMessageMapper.toDto(messageRecord);
+    return savedMessageRecord ? LocalChatMessageMapper.toDto(savedMessageRecord) : null;
   }
 
   upsertSupportChatMessage(chat: ChatThreadRecord, message: ContractTypes.ChatMessageDto, unreadForOwner: boolean): void {
@@ -557,6 +560,27 @@ export class LocalChatsRepository {
 
   private chatMessageSummary(message: ContractTypes.ChatMessageDto): string {
     return message.text || this.chatAttachmentSummary(message) || this.deletedMessageSummary(message);
+  }
+
+  private withAppendTimeline(
+    message: ContractTypes.ChatMessageDto,
+    chat: ChatThreadRecord,
+    messagesTable: AppMemorySchema[typeof CHAT_MESSAGES_TABLE_NAME]
+  ): ContractTypes.ChatMessageDto {
+    const records = this.selectChatMessageRecordsFromSnapshot(messagesTable, chat);
+    const latestRecord = records[records.length - 1] ?? null;
+    const latestMs = latestRecord ? AppUtils.toSortableDate(latestRecord.sentAtIso) : Number.NaN;
+    const messageMs = AppUtils.toSortableDate(message.sentAtIso ?? '');
+    if (!Number.isFinite(latestMs) || (Number.isFinite(messageMs) && messageMs > latestMs)) {
+      return message;
+    }
+
+    const sentAt = new Date(latestMs + 60 * 1000);
+    return {
+      ...message,
+      sentAtIso: AppUtils.toIsoDateTime(sentAt),
+      time: sentAt.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' })
+    };
   }
 
   private findChatRecordKey(
