@@ -1,4 +1,4 @@
-import { CHATS_TABLE_NAME } from '../local/source/entity/chat.entity';
+import { CHAT_MESSAGES_TABLE_NAME, CHATS_TABLE_NAME } from '../local/source/entity/chat.entity';
 import { EVENT_FEEDBACK_TABLE_NAME, EVENTS_TABLE_NAME } from '../local/source/entity/event.entity';
 import { HELP_CENTER_TABLE_NAME, IDEA_POSTS_TABLE_NAME } from '../local/source/entity/content.entity';
 import { CONTACTS_TABLE_NAME, PROFILE_EXPERIENCES_TABLE_NAME } from '../local/source/entity/profile.entity';
@@ -60,6 +60,7 @@ export class AppMemoryDb {
     USER_RATES_OUTBOX_TABLE_NAME,
     USER_FILTER_PREFERENCES_TABLE_NAME,
     CHATS_TABLE_NAME,
+    CHAT_MESSAGES_TABLE_NAME,
     EVENT_FEEDBACK_TABLE_NAME,
     HELP_CENTER_TABLE_NAME,
     IDEA_POSTS_TABLE_NAME,
@@ -305,6 +306,11 @@ export class AppMemoryDb {
       [CHATS_TABLE_NAME]: {
         byId: {},
         ids: []
+      },
+      [CHAT_MESSAGES_TABLE_NAME]: {
+        byId: {},
+        ids: [],
+        idsByChatKey: {}
       },
       [EVENT_FEEDBACK_TABLE_NAME]: {
         byId: {},
@@ -805,6 +811,7 @@ export class AppMemoryDb {
     const outboxSource = source[USER_RATES_OUTBOX_TABLE_NAME] as Partial<AppMemorySchema[typeof USER_RATES_OUTBOX_TABLE_NAME]> | undefined;
     const filterPreferencesSource = source[USER_FILTER_PREFERENCES_TABLE_NAME] as Partial<AppMemorySchema[typeof USER_FILTER_PREFERENCES_TABLE_NAME]> | undefined;
     const chatsSource = source[CHATS_TABLE_NAME] as Partial<AppMemorySchema[typeof CHATS_TABLE_NAME]> | undefined;
+    const chatMessagesSource = source[CHAT_MESSAGES_TABLE_NAME] as Partial<AppMemorySchema[typeof CHAT_MESSAGES_TABLE_NAME]> | undefined;
     const eventFeedbackSource = source[EVENT_FEEDBACK_TABLE_NAME] as Partial<AppMemorySchema[typeof EVENT_FEEDBACK_TABLE_NAME]> | undefined;
     const helpCenterSource = source[HELP_CENTER_TABLE_NAME] as Partial<AppMemorySchema[typeof HELP_CENTER_TABLE_NAME]> | undefined;
     const ideaPostsSource = source[IDEA_POSTS_TABLE_NAME] as Partial<AppMemorySchema[typeof IDEA_POSTS_TABLE_NAME]> | undefined;
@@ -820,6 +827,22 @@ export class AppMemoryDb {
       contactsSource?.byOwnerUserId,
       fallback[CONTACTS_TABLE_NAME].byOwnerUserId
     );
+    const chatsById = chatsSource?.byId && typeof chatsSource.byId === 'object'
+      ? { ...chatsSource.byId }
+      : { ...fallback[CHATS_TABLE_NAME].byId };
+    const chatMessagesById = chatMessagesSource?.byId && typeof chatMessagesSource.byId === 'object'
+      ? { ...chatMessagesSource.byId }
+      : { ...fallback[CHAT_MESSAGES_TABLE_NAME].byId };
+    const chatMessageIds = Array.isArray(chatMessagesSource?.ids)
+      ? chatMessagesSource.ids.map(id => String(id))
+      : [...fallback[CHAT_MESSAGES_TABLE_NAME].ids];
+    const chatMessageIdsByChatKey = chatMessagesSource?.idsByChatKey && typeof chatMessagesSource.idsByChatKey === 'object'
+      ? Object.fromEntries(
+          Object.entries(chatMessagesSource.idsByChatKey)
+            .filter((entry): entry is [string, string[]] => Array.isArray(entry[1]))
+            .map(([chatKey, ids]) => [chatKey, ids.map(id => String(id))])
+        )
+      : { ...fallback[CHAT_MESSAGES_TABLE_NAME].idsByChatKey };
     return {
       [ASSETS_TABLE_NAME]: {
         byId: this.normalizeAssetsById(assetsSource?.byId, fallback[ASSETS_TABLE_NAME].byId),
@@ -888,12 +911,15 @@ export class AppMemoryDb {
           : [...fallback[USER_FILTER_PREFERENCES_TABLE_NAME].ids]
       },
       [CHATS_TABLE_NAME]: {
-        byId: chatsSource?.byId && typeof chatsSource.byId === 'object'
-          ? { ...chatsSource.byId }
-          : { ...fallback[CHATS_TABLE_NAME].byId },
+        byId: chatsById,
         ids: Array.isArray(chatsSource?.ids)
           ? chatsSource.ids.map(id => String(id))
           : [...fallback[CHATS_TABLE_NAME].ids]
+      },
+      [CHAT_MESSAGES_TABLE_NAME]: {
+        byId: chatMessagesById,
+        ids: chatMessageIds,
+        idsByChatKey: chatMessageIdsByChatKey
       },
       [EVENT_FEEDBACK_TABLE_NAME]: {
         byId: eventFeedbackSource?.byId && typeof eventFeedbackSource.byId === 'object'

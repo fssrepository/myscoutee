@@ -18,6 +18,7 @@ export type ActivityEventInfoCardMenuSubject = Record<string, unknown> & {
   pendingMemberUserIds?: readonly string[];
   invitedMemberUserIds?: readonly string[];
   pendingRequestMemberUserIds?: readonly string[];
+  eventScope?: string | null;
 };
 
 export interface ActivityEventInfoCardMenuContext {
@@ -157,7 +158,7 @@ export class ActivityEventInfoCardMenuConverter {
         return this.isInvited(subject, activeUserId);
       case 'leaveEvent':
         return !this.isAdmin(subject, activeUserId)
-          && this.isAcceptedMember(subject, activeUserId)
+          && this.isAcceptedOrActiveEventMember(subject, activeUserId)
           && !this.isInvited(subject, activeUserId);
       case 'deleteEvent':
         return this.isAdmin(subject, activeUserId)
@@ -216,6 +217,14 @@ export class ActivityEventInfoCardMenuConverter {
 
   private static isAcceptedMember(subject: ActivityEventInfoCardMenuSubject, activeUserId: string): boolean {
     return this.includesUserId(subject.acceptedMemberUserIds, activeUserId);
+  }
+
+  private static isAcceptedOrActiveEventMember(subject: ActivityEventInfoCardMenuSubject, activeUserId: string): boolean {
+    if (this.isAcceptedMember(subject, activeUserId)) {
+      return true;
+    }
+    return subject.eventScope === 'active-events'
+      && !this.isPendingRequest(subject, activeUserId);
   }
 
   private static includesUserId(userIds: readonly string[] | null | undefined, activeUserId: string): boolean {

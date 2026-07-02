@@ -11,10 +11,10 @@ import type * as ActivityContracts from '../../contracts/activity.interface';
 export class HttpActivityMembersService {
   private readonly http = inject(HttpClient);
   private readonly apiBaseUrl = environment.apiBaseUrl ?? '/api';
-  private readonly cachedMembersByOwnerKey: Record<string, ActivityContracts.ActivityMemberEntry[]> = {};
+  private readonly cachedMembersByOwnerKey: Record<string, ActivityContracts.ActivityMemberDTO[]> = {};
   private readonly cachedSummariesByOwnerKey: Record<string, ActivityMembersSummaryDto> = {};
 
-  peekMembersByOwner(owner: ActivityMemberOwnerRef): ActivityContracts.ActivityMemberEntry[] {
+  peekMembersByOwner(owner: ActivityMemberOwnerRef): ActivityContracts.ActivityMemberDTO[] {
     const normalizedOwner = this.normalizeOwnerRef(owner);
     if (!normalizedOwner) {
       return [];
@@ -22,14 +22,14 @@ export class HttpActivityMembersService {
     return this.cloneEntries(this.cachedMembersByOwnerKey[this.ownerKey(normalizedOwner)] ?? []);
   }
 
-  async queryMembersByOwner(owner: ActivityMemberOwnerRef): Promise<ActivityContracts.ActivityMemberEntry[]> {
+  async queryMembersByOwner(owner: ActivityMemberOwnerRef): Promise<ActivityContracts.ActivityMemberDTO[]> {
     const normalizedOwner = this.normalizeOwnerRef(owner);
     if (!normalizedOwner) {
       return [];
     }
     try {
       const response = await this.http
-        .get<ActivityContracts.ActivityMemberEntry[] | null>(`${this.apiBaseUrl}/activities/events/members`, {
+        .get<ActivityContracts.ActivityMemberDTO[] | null>(`${this.apiBaseUrl}/activities/events/members`, {
           params: new HttpParams()
             .set('ownerType', normalizedOwner.ownerType)
             .set('ownerId', normalizedOwner.ownerId)
@@ -77,7 +77,7 @@ export class HttpActivityMembersService {
 
   async replaceMembersByOwner(
     owner: ActivityMemberOwnerRef,
-    members: readonly ActivityContracts.ActivityMemberEntry[],
+    members: readonly ActivityContracts.ActivityMemberDTO[],
     capacityTotal?: number | null,
     actorUserId = ''
   ): Promise<void> {
@@ -100,7 +100,7 @@ export class HttpActivityMembersService {
     targetUserId: string,
     action: 'disqualify' | 'reinstate',
     reason?: string | null
-  ): Promise<ActivityContracts.ActivityMemberEntry[]> {
+  ): Promise<ActivityContracts.ActivityMemberDTO[]> {
     const normalizedOwner = this.normalizeOwnerRef(owner);
     const normalizedTargetUserId = targetUserId.trim();
     if (!normalizedOwner || !normalizedTargetUserId) {
@@ -108,7 +108,7 @@ export class HttpActivityMembersService {
     }
     try {
       const response = await this.http
-        .post<ActivityContracts.ActivityMemberEntry[] | null>(`${this.apiBaseUrl}/activities/events/members/action`, {
+        .post<ActivityContracts.ActivityMemberDTO[] | null>(`${this.apiBaseUrl}/activities/events/members/action`, {
           owner: normalizedOwner,
           actorUserId: actorUserId.trim(),
           targetUserId: normalizedTargetUserId,
@@ -160,7 +160,7 @@ export class HttpActivityMembersService {
 
   private cacheMembers(
     owner: ActivityMemberOwnerRef,
-    members: readonly ActivityContracts.ActivityMemberEntry[],
+    members: readonly ActivityContracts.ActivityMemberDTO[],
     capacityTotal?: number | null
   ): void {
     const normalizedOwner = this.normalizeOwnerRef(owner);
@@ -189,7 +189,7 @@ export class HttpActivityMembersService {
 
   private buildSummary(
     owner: ActivityMemberOwnerRef,
-    members: readonly ActivityContracts.ActivityMemberEntry[],
+    members: readonly ActivityContracts.ActivityMemberDTO[],
     capacityTotal?: number | null
   ): ActivityMembersSummaryDto {
     const acceptedMemberUserIds = members
@@ -215,7 +215,7 @@ export class HttpActivityMembersService {
     };
   }
 
-  private cloneEntries(entries: readonly ActivityContracts.ActivityMemberEntry[]): ActivityContracts.ActivityMemberEntry[] {
+  private cloneEntries(entries: readonly ActivityContracts.ActivityMemberDTO[]): ActivityContracts.ActivityMemberDTO[] {
     return entries.map(entry => ({ ...entry }));
   }
 

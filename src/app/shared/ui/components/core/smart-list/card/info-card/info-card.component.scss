@@ -173,6 +173,21 @@ button.asset-occupancy-badge:active::after,
   box-shadow: 0 8px 18px rgba(60, 70, 88, 0.1);
 }
 
+.ui-info-card--tone-deleted,
+.ui-info-card--tone-inactive,
+.ui-info-card--tone-review,
+.ui-info-card--tone-blocked {
+  gap: 0.24rem;
+  padding: 0.48rem 0.54rem;
+}
+
+.ui-info-card--tone-deleted .ui-info-card__media,
+.ui-info-card--tone-inactive .ui-info-card__media,
+.ui-info-card--tone-review .ui-info-card__media,
+.ui-info-card--tone-blocked .ui-info-card__media {
+  height: 112px;
+}
+
 .ui-info-card--state-leaving {
   opacity: 0;
   transform: translateY(10px) scale(0.97);
@@ -1036,7 +1051,14 @@ button.ui-info-card__overlay-action {
   position: relative;
   z-index: 31;
   width: 28px;
+  min-width: 28px;
+  max-width: 28px;
   height: 28px;
+  min-height: 28px;
+  max-height: 28px;
+  box-sizing: border-box;
+  flex: 0 0 28px;
+  padding: 0;
   border: 1px solid rgba(42, 67, 101, 0.26);
   border-radius: 50%;
   background: rgba(255, 255, 255, 0.88);
@@ -1045,6 +1067,7 @@ button.ui-info-card__overlay-action {
   align-items: center;
   justify-content: center;
   cursor: pointer;
+  overflow: hidden;
   transition:
     transform 0.16s ease,
     background-color 0.16s ease,

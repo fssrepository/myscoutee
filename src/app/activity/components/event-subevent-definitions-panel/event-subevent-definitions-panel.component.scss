@@ -114,7 +114,10 @@
 
 .subevent-definition-panel__toggle:disabled {
   cursor: default;
-  opacity: 0.72;
+  opacity: 0.58;
+  pointer-events: none;
+  filter: grayscale(0.35);
+  box-shadow: none;
 }
 
 .subevent-definition-panel__toggle mat-icon {

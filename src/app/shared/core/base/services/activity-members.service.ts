@@ -31,11 +31,11 @@ export class ActivityMembersService extends BaseRouteModeService {
     return this.resolveRouteService('/activities/events/members', this.localActivityMembersService, this.httpActivityMembersService);
   }
 
-  peekMembersByOwner(owner: ActivityMemberOwnerRef): ActivityContracts.ActivityMemberEntry[] {
+  peekMembersByOwner(owner: ActivityMemberOwnerRef): ActivityContracts.ActivityMemberDTO[] {
     return this.presentMembers(this.activityMembersService.peekMembersByOwner(owner));
   }
 
-  peekMembersByOwnerId(ownerId: string): ActivityContracts.ActivityMemberEntry[] {
+  peekMembersByOwnerId(ownerId: string): ActivityContracts.ActivityMemberDTO[] {
     const owner = this.peekOwnerRefById(ownerId);
     if (!owner) {
       return [];
@@ -43,11 +43,11 @@ export class ActivityMembersService extends BaseRouteModeService {
     return this.peekMembersByOwner(owner);
   }
 
-  async queryMembersByOwner(owner: ActivityMemberOwnerRef): Promise<ActivityContracts.ActivityMemberEntry[]> {
+  async queryMembersByOwner(owner: ActivityMemberOwnerRef): Promise<ActivityContracts.ActivityMemberDTO[]> {
     return this.presentMembers(await this.activityMembersService.queryMembersByOwner(owner));
   }
 
-  async queryMembersByOwnerId(ownerId: string): Promise<ActivityContracts.ActivityMemberEntry[]> {
+  async queryMembersByOwnerId(ownerId: string): Promise<ActivityContracts.ActivityMemberDTO[]> {
     const normalizedOwnerId = ownerId.trim();
     if (!normalizedOwnerId) {
       return [];
@@ -88,7 +88,7 @@ export class ActivityMembersService extends BaseRouteModeService {
 
   async replaceMembersByOwner(
     owner: ActivityMemberOwnerRef,
-    members: readonly ActivityContracts.ActivityMemberEntry[],
+    members: readonly ActivityContracts.ActivityMemberDTO[],
     capacityTotal?: number | null
   ): Promise<void> {
     const actorUserId = this.userProfileStore.activeUserId().trim() || this.userProfileStore.getActiveUserId().trim();
@@ -103,7 +103,7 @@ export class ActivityMembersService extends BaseRouteModeService {
 
   async replaceMembersByOwnerId(
     ownerId: string,
-    members: readonly ActivityContracts.ActivityMemberEntry[],
+    members: readonly ActivityContracts.ActivityMemberDTO[],
     capacityTotal?: number | null
   ): Promise<void> {
     const normalizedOwnerId = ownerId.trim();
@@ -119,7 +119,7 @@ export class ActivityMembersService extends BaseRouteModeService {
     targetUserId: string,
     action: 'disqualify' | 'reinstate',
     reason?: string | null
-  ): Promise<ActivityContracts.ActivityMemberEntry[]> {
+  ): Promise<ActivityContracts.ActivityMemberDTO[]> {
     const normalizedOwner = this.ownerRef(owner.ownerType, owner.ownerId.trim());
     if (!normalizedOwner.ownerId.trim()) {
       return [];
@@ -178,7 +178,7 @@ export class ActivityMembersService extends BaseRouteModeService {
     };
   }
 
-  private presentMembers(entries: readonly ActivityContracts.ActivityMemberEntry[]): ActivityContracts.ActivityMemberEntry[] {
+  private presentMembers(entries: readonly ActivityContracts.ActivityMemberDTO[]): ActivityContracts.ActivityMemberDTO[] {
     const activeUserId = this.userProfileStore.activeUserId().trim();
     return entries.map(entry => {
       const invitedByUserId = `${entry.invitedByUserId ?? ''}`.trim() || null;
@@ -191,8 +191,8 @@ export class ActivityMembersService extends BaseRouteModeService {
   }
 
   private prepareMembersForPersistence(
-    entries: readonly ActivityContracts.ActivityMemberEntry[]
-  ): ActivityContracts.ActivityMemberEntry[] {
+    entries: readonly ActivityContracts.ActivityMemberDTO[]
+  ): ActivityContracts.ActivityMemberDTO[] {
     const activeUserId = this.userProfileStore.activeUserId().trim();
     return entries.map(entry => {
       const isPendingInvite = entry.status === 'pending'
@@ -209,7 +209,7 @@ export class ActivityMembersService extends BaseRouteModeService {
   }
 
   private isInviteOwnedByActiveUser(
-    entry: ActivityContracts.ActivityMemberEntry,
+    entry: ActivityContracts.ActivityMemberDTO,
     activeUserId: string,
     invitedByUserId: string | null
   ): boolean {

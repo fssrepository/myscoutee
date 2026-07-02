@@ -139,9 +139,10 @@ export class EventSubeventRuntimeInfoCardConverter
     options: EventSubeventRuntimeInfoCardConverterOptions
   ): EventMode {
     const requestedMode = options.mode ?? options.event?.mode ?? null;
-    return requestedMode === 'Tournament' || this.isTournamentStage(item)
-      ? 'Tournament'
-      : 'Casual';
+    if (requestedMode === 'Casual' || requestedMode === 'Tournament') {
+      return requestedMode;
+    }
+    return this.isTournamentStage(item) ? 'Tournament' : 'Casual';
   }
 
   private static isTournamentStage(item: SubEventDTO): boolean {

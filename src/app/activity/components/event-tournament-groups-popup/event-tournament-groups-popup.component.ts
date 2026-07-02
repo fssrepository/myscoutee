@@ -1513,7 +1513,7 @@ export class EventTournamentGroupsPopupComponent {
   private syncGroupMembersFromPopup(
     stageId: string,
     groupId: string,
-    members: readonly ContractTypes.ActivityMemberEntry[]
+    members: readonly ContractTypes.ActivityMemberDTO[]
   ): void {
     const acceptedMembers = members.filter(member => member.status === 'accepted');
     const pendingMembers = members.filter(member => member.status === 'pending');
@@ -1570,7 +1570,7 @@ export class EventTournamentGroupsPopupComponent {
 
   private syncLeaderboardMembers(
     groupId: string,
-    acceptedMembers: readonly ContractTypes.ActivityMemberEntry[]
+    acceptedMembers: readonly ContractTypes.ActivityMemberDTO[]
   ): void {
     if (!this.leaderboardState) {
       return;

@@ -13,7 +13,11 @@ export {
 export {
   ActivitiesPopupStore,
   DEFAULT_ACTIVITIES_UI_STATE,
+  eventChatHeaderStateFromChat,
+  eventChatPopupRequestFromChat,
   type ActivitiesUiState,
+  type EventChatHeaderState,
+  type EventChatPopupRequest,
   type EventChatSession
 } from './activities-popup.store';
 export {

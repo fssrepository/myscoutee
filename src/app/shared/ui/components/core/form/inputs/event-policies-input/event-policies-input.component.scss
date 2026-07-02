@@ -113,6 +113,14 @@
   line-height: 18px;
 }
 
+.event-policies-toggle:disabled {
+  cursor: default;
+  opacity: 0.58;
+  pointer-events: none;
+  filter: grayscale(0.35);
+  box-shadow: none;
+}
+
 .event-policies-panel-body {
   gap: 0.62rem;
 }

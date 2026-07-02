@@ -299,6 +299,28 @@
 .pricing-editor__open-btn:disabled {
   cursor: default;
   opacity: 0.58;
+  pointer-events: none;
+  filter: grayscale(0.35);
+  box-shadow: none;
+}
+
+.pricing-editor--readonly .pricing-editor__summary-actions {
+  display: none;
+}
+
+:host-context(.popup-panel-event-editor-readonly) .pricing-editor__summary-actions {
+  display: none;
+}
+
+:host-context(.popup-panel-event-editor-readonly) .pricing-editor__toggle,
+:host-context(.popup-panel-event-editor-readonly) .pricing-editor__add-btn,
+:host-context(.popup-panel-event-editor-readonly) .pricing-editor__rule-remove,
+:host-context(.popup-panel-event-editor-readonly) .pricing-editor__open-btn {
+  cursor: default;
+  opacity: 0.58;
+  pointer-events: none;
+  filter: grayscale(0.35);
+  box-shadow: none;
 }
 
 .pricing-editor__grid,

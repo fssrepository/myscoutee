@@ -19,7 +19,9 @@ import {
 } from 'rxjs';
 
 import {
-  ActivitiesPopupStore
+  ActivitiesPopupStore,
+  eventChatHeaderStateFromChat,
+  eventChatPopupRequestFromChat
 } from '../../../shared/ui/context/stores/activities-popup.store';
 import {
   APP_STATIC_DATA
@@ -792,7 +794,10 @@ export class AdminReportsPopupComponent {
       return;
     }
     this.admin.closePopup();
-    this.activitiesStore.openEventChat(chat);
+    this.activitiesStore.openEventChat(
+      eventChatPopupRequestFromChat(chat),
+      eventChatHeaderStateFromChat(chat)
+    );
   }
 
   private buildAdminSupportChat(user: AdminReportedUserDto): (ChatDTO & { ownerUserId?: string }) | null {
@@ -811,8 +816,7 @@ export class AdminReportsPopupComponent {
       memberIds: [user.userId, admin.id],
       unread: this.supportChatUnread(user),
       dateIso: user.lastReportedAtIso || new Date().toISOString(),
-      channelType: 'serviceEvent',
-      serviceContext: 'notification',
+      channelType: 'appSupport',
       ownerUserId: admin.id
     };
   }
@@ -880,9 +884,14 @@ export class AdminReportsPopupComponent {
       channelType: 'serviceEvent',
       serviceContext: 'notification'
     };
+    const activeUser = this.chatUser('admin', 'Admin', 'AD', 'woman');
+    const usersById = new Map([
+      [activeUser.id, activeUser],
+      [user.userId, this.chatUser(user.userId, user.name, user.initials, user.gender)]
+    ]);
     return ActivityChatSingleRowConverter.convert(source, {
-      activeUserId: 'admin',
-      users: [this.chatUser(user.userId, user.name, user.initials, user.gender)]
+      activeUser,
+      resolveUserById: userId => usersById.get(userId) ?? null
     });
   }
 
@@ -908,12 +917,15 @@ export class AdminReportsPopupComponent {
       channelType: 'serviceEvent',
       serviceContext: 'notification'
     };
+    const activeUser = this.chatUser('admin', 'Admin', 'AD', 'woman');
+    const usersById = new Map([
+      [activeUser.id, activeUser],
+      [report.reporterUserId, this.chatUser(report.reporterUserId, report.reporterName, this.reporterInitial(report), 'woman')],
+      [user.userId, this.chatUser(user.userId, user.name, user.initials, user.gender)]
+    ]);
     return ActivityChatSingleRowConverter.convert(source, {
-      activeUserId: 'admin',
-      users: [
-        this.chatUser(report.reporterUserId, report.reporterName, this.reporterInitial(report), 'woman'),
-        this.chatUser(user.userId, user.name, user.initials, user.gender)
-      ]
+      activeUser,
+      resolveUserById: userId => usersById.get(userId) ?? null
     });
   }
 

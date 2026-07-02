@@ -61,6 +61,23 @@ export class LocalActivityResourcesRepository {
       .map(record => LocalActivityResourcesMapper.cloneRecord(record));
   }
 
+  queryRecordsByOwnerIds(ownerIds: readonly string[]): ActivitySubEventResourceRecord[] {
+    const normalizedOwnerIds = new Set(
+      (ownerIds ?? []).map(ownerId => `${ownerId ?? ''}`.trim()).filter(Boolean)
+    );
+    if (normalizedOwnerIds.size === 0) {
+      return [];
+    }
+    const table = this.normalizeCollection(this.memoryDb.read()[ACTIVITY_RESOURCES_TABLE_NAME]);
+    return table.ids
+      .map(id => table.byId[id])
+      .filter((record): record is ActivitySubEventResourceRecord =>
+        Boolean(record)
+        && normalizedOwnerIds.has(`${record.ownerId ?? ''}`.trim())
+        && !LocalActivityResourcesMapper.isDeleted(record))
+      .map(record => LocalActivityResourcesMapper.cloneRecord(record));
+  }
+
   async replaceSubEventResourceRecord(
     record: ActivitySubEventResourceRecord
   ): Promise<ActivitySubEventResourceRecord | null> {

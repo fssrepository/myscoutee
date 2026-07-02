@@ -2,7 +2,7 @@ import { AppUtils } from '../../../../app-utils';
 import { ActivityResourceBuilder } from '../../../base/builders';
 import type { UserDto } from '../../../contracts/user.interface';
 import type {
-  ActivityMemberEntry,
+  ActivityMemberDTO,
   ActivityMemberOwnerRef,
   ActivityMembersSummaryDto,
   ActivityInviteCandidatesQuery
@@ -26,7 +26,7 @@ export class LocalActivityInviteCandidatesMapper {
   static toEntry(
     query: ActivityInviteCandidatesQuery,
     candidate: LocalActivityInviteCandidateRecord
-  ): ActivityMemberEntry {
+  ): ActivityMemberDTO {
     const user = candidate.user;
     const rowKey = `${query.owner.sourceType}:${query.owner.ownerId}`;
     return {
@@ -53,7 +53,7 @@ export class LocalActivityInviteCandidatesMapper {
   static toEntries(
     query: ActivityInviteCandidatesQuery,
     candidates: readonly LocalActivityInviteCandidateRecord[]
-  ): ActivityMemberEntry[] {
+  ): ActivityMemberDTO[] {
     return candidates.map(candidate => this.toEntry(query, candidate));
   }
 }
@@ -86,7 +86,7 @@ export class LocalActivityMembersBuilder {
   static toEntry(
     record: ActivityMemberRecord,
     resolveProfile: ActivityMemberProfileResolver
-  ): ActivityMemberEntry {
+  ): ActivityMemberDTO {
     return {
       id: record.id,
       userId: record.userId,
@@ -116,7 +116,7 @@ export class LocalActivityMembersBuilder {
 
   static toRecord(
     owner: ActivityMemberOwnerRef,
-    member: ActivityMemberEntry,
+    member: ActivityMemberDTO,
     existingRecord?: ActivityMemberRecord | null
   ): ActivityMemberRecord {
     const normalizedOwner = this.normalizeOwner(owner);
@@ -194,7 +194,7 @@ export class LocalActivityMembersBuilder {
     return records.map(record => this.cloneRecord(record));
   }
 
-  static sortEntriesByActionTime(entries: readonly ActivityMemberEntry[]): ActivityMemberEntry[] {
+  static sortEntriesByActionTime(entries: readonly ActivityMemberDTO[]): ActivityMemberDTO[] {
     return [...entries]
       .sort((left, right) => AppUtils.toSortableDate(left.actionAtIso) - AppUtils.toSortableDate(right.actionAtIso));
   }

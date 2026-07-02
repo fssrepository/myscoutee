@@ -3,7 +3,7 @@ import { Injectable, Type, computed, signal } from '@angular/core';
 import type * as AppConstants from '../../../core/common/constants';
 import type * as AppDTOs from '../../../core/contracts';
 import type * as ContractTypes from '../../../core/contracts';
-import type { ActivityMemberEntry } from '../../../core/contracts/activity.interface';
+import type { ActivityMemberDTO } from '../../../core/contracts/activity.interface';
 
 export type ResourceAssetDTO = (AppDTOs.AssetDTO | AppDTOs.AssetDetailDTO) & {
   description?: string;
@@ -97,8 +97,8 @@ export interface SubEventResourcePopupRequest {
     capacityMin?: number;
     capacityMax?: number;
     canManage?: boolean;
-    members?: readonly ActivityMemberEntry[];
-    onMembersChanged?: (members: readonly ActivityMemberEntry[]) => void;
+    members?: readonly ActivityMemberDTO[];
+    onMembersChanged?: (members: readonly ActivityMemberDTO[]) => void;
   } | null;
 }
 

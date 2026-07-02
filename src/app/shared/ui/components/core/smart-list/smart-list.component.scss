@@ -7,6 +7,8 @@
 }
 
 .smart-list__surface {
+  --smart-list-pagination-arrow-size: 2.2rem;
+  --smart-list-pagination-arrow-inline-offset: 0.6rem;
   --smart-list-fullscreen-top-offset: 0px;
   --smart-list-fullscreen-bottom-offset: 0px;
   position: relative;
@@ -22,6 +24,12 @@
 
 .smart-list__surface--fullscreen-with-rating-bar {
   --smart-list-fullscreen-bottom-offset: calc(5.25rem + env(safe-area-inset-bottom));
+}
+
+@media (min-width: 761px) {
+  .smart-list__surface--fullscreen:has(app-pair-card[data-card-presentation='fullscreen']) {
+    --smart-list-pagination-arrow-inline-offset: 0.16rem;
+  }
 }
 
 .smart-list__surface--compact-horizontal {
@@ -310,12 +318,12 @@
   pointer-events: none;
 }
 
-.smart-list__surface--horizontal .smart-list__pagination-arrows {
-  display: none;
+.smart-list__surface--horizontal {
+  --smart-list-pagination-arrow-inline-offset: -1.1rem;
 }
 
-.smart-list__surface--compact-horizontal .smart-list__pagination-arrows {
-  display: block;
+.smart-list__surface--horizontal .smart-list__pagination-arrows {
+  display: none;
 }
 
 @keyframes smart-list-pagination-arrow-touch-feedback {
@@ -354,8 +362,8 @@
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  width: 2.2rem;
-  height: 2.2rem;
+  width: var(--smart-list-pagination-arrow-size);
+  height: var(--smart-list-pagination-arrow-size);
   border: 1px solid rgba(43, 73, 116, 0.16);
   border-radius: 999px;
   background: rgba(255, 255, 255, 0.96);
@@ -417,19 +425,15 @@
 }
 
 .smart-list__pagination-arrow--prev {
-  left: 0.6rem;
+  left: var(--smart-list-pagination-arrow-inline-offset);
 }
 
 .smart-list__pagination-arrow--next {
-  right: 0.6rem;
+  right: var(--smart-list-pagination-arrow-inline-offset);
 }
 
-.smart-list__surface--horizontal .smart-list__pagination-arrow--prev {
-  left: -1.1rem;
-}
-
-.smart-list__surface--horizontal .smart-list__pagination-arrow--next {
-  right: -1.1rem;
+.smart-list__surface--compact-horizontal .smart-list__pagination-arrows {
+  display: block;
 }
 
 .smart-list__horizontal-dots {
@@ -880,6 +884,7 @@
 
   .smart-list--list.smart-list--horizontal {
     --smart-list-horizontal-item-basis: 100%;
+    --smart-list-horizontal-end-inset: 0;
     flex-direction: row;
     gap: 0.72rem;
     padding-bottom: 2rem;
@@ -889,6 +894,15 @@
 
   .smart-list__surface--horizontal {
     margin-inline: var(--smart-list-horizontal-mobile-surface-margin, 0.72rem);
+  }
+
+  .smart-list__surface--fullscreen {
+    --smart-list-pagination-arrow-inline-offset: -1.1rem;
+    margin-inline: var(--smart-list-fullscreen-mobile-surface-margin, 0.72rem);
+  }
+
+  .smart-list__surface--fullscreen:has(app-single-card[data-card-presentation='fullscreen']) {
+    margin-inline: 0;
   }
 
   .smart-list--list.smart-list--horizontal.smart-list--desktop-columns-1,

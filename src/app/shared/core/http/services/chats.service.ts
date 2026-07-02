@@ -17,7 +17,10 @@ import {
 } from '../../../app-utils';
 import type {
   ActivitiesChatPageResultDTO,
-  ChatDTO
+  ChatDTO,
+  ChatMemberSummaryDto,
+  ChatMetricsDTO,
+  ChatMessagesPageResultDTO
 } from '../../contracts/chat.interface';
 import type { IChatsService } from '../../contracts/activity.interface';
 import type { ActivitiesFeedFilters, ListQuery } from '../../contracts';
@@ -31,27 +34,35 @@ import type * as AppDTOs from '../../contracts';
 import type * as AppConstants from '../../common/constants';
 import { UserProfileStore } from '../../../ui/context/stores/user-profile.store';
 
-interface HttpChatSummaryDto {
+interface HttpChatDto {
   id: string;
   avatar: string;
   title: string;
   lastMessage: string;
   lastSenderId: string;
   memberIds: string[];
+  members?: ChatMemberSummaryDto[] | null;
   unread: number;
   dateIso?: string;
-  channelType?: 'general' | 'mainEvent' | 'optionalSubEvent' | 'groupSubEvent' | 'serviceEvent';
+  channelType?: ContractTypes.ChatChannelType;
   serviceContext?: 'event' | 'asset' | 'notification';
-  eventId?: string;
-  subEventId?: string;
-  groupId?: string;
+  ownerId?: string;
   distanceKm?: number;
   distanceMetersExact?: number;
-  supportCaseStatus?: ContractTypes.SupportCaseStatus | string | null;
-  supportCaseAssigneeUserId?: string | null;
-  supportCaseAssigneeName?: string | null;
-  supportCaseAssigneeInitials?: string | null;
-  supportCaseUpdatedAtIso?: string | null;
+  metrics?: ChatMetricsDTO | null;
+  supportCase?: {
+    status?: ContractTypes.SupportCaseStatus | string | null;
+    assignee?: {
+      userId?: string | null;
+      name?: string | null;
+      initials?: string | null;
+    } | null;
+    updatedAtIso?: string | null;
+  } | null;
+}
+
+interface HttpMappedChatRecord extends ChatThreadRecord {
+  metrics?: ChatMetricsDTO | null;
 }
 
 interface HttpChatSenderAvatarDto {
@@ -153,6 +164,14 @@ interface HttpChatReadReceiptDto {
   userGender: ContractTypes.ChatUserGender;
   messageIds: string[];
   readAtIso: string;
+  unread?: number | null;
+}
+
+interface HttpChatMessagesPageResponseDto {
+  items?: HttpChatMessageDto[] | null;
+  total?: number | null;
+  nextCursor?: string | null;
+  read?: HttpChatReadReceiptDto | null;
 }
 
 interface HttpChatMemberDto {
@@ -174,7 +193,7 @@ interface HttpChatMemberDto {
   metAtIso?: string | null;
   actionAtIso?: string | null;
   metWhere?: string | null;
-  profile?: ActivityContracts.ActivityMemberEntry['profile'];
+  profile?: ActivityContracts.ActivityMemberDTO['profile'];
 }
 
 interface HttpChatSocketEventDto {
@@ -201,6 +220,7 @@ export class HttpChatsService implements IChatsService {
   private readonly sessionService = inject(SessionService);
   private readonly apiBaseUrl = environment.apiBaseUrl ?? '/api';
   private readonly chatItemsByUserId = new Map<string, ChatThreadRecord[]>();
+  private readonly chatMessagesByOwnerChatKey = new Map<string, ContractTypes.ChatMessageDto[]>();
   private socket: WebSocket | null = null;
   private socketChatId: string | null = null;
   private socketPromise: Promise<WebSocket | null> | null = null;
@@ -211,14 +231,23 @@ export class HttpChatsService implements IChatsService {
   private readonly pendingSocketAckResolvers = new Map<
     string,
     {
-      resolve: (message: ContractTypes.ChatPopupMessage | null) => void;
+      resolve: (message: ContractTypes.ChatMessageDto | null) => void;
       timer: ReturnType<typeof setTimeout>;
     }
   >();
   private readonly pendingSocketUpdateResolvers = new Map<
     string,
     {
-      resolve: (message: ContractTypes.ChatPopupMessage | null) => void;
+      resolve: (message: ContractTypes.ChatMessageDto | null) => void;
+      timer: ReturnType<typeof setTimeout>;
+    }
+  >();
+  private readonly pendingSocketReadResolvers = new Map<
+    string,
+    {
+      chatId: string;
+      messageIds: ReadonlySet<string>;
+      resolve: (read: ContractTypes.ChatReadReceipt | null) => void;
       timer: ReturnType<typeof setTimeout>;
     }
   >();
@@ -234,7 +263,7 @@ export class HttpChatsService implements IChatsService {
     }
     try {
       const response = await this.http
-        .get<HttpChatSummaryDto[] | null>(`${this.apiBaseUrl}/activities/chats`, {
+        .get<HttpChatDto[] | null>(`${this.apiBaseUrl}/activities/chats`, {
           params: this.withUserId(new HttpParams(), normalizedUserId)
         })
         .toPromise();
@@ -298,7 +327,7 @@ export class HttpChatsService implements IChatsService {
 
     try {
       const response = await this.http.get<{
-        items?: HttpChatSummaryDto[] | null;
+        items?: HttpChatDto[] | null;
         total?: number | null;
         nextCursor?: string | null;
       } | null>(`${this.apiBaseUrl}/activities/chats/page`, { params }).toPromise();
@@ -331,25 +360,100 @@ export class HttpChatsService implements IChatsService {
     return records.map(record => this.toChatDTO(record));
   }
 
-  async loadChatMessages(chat: ChatDTO): Promise<ContractTypes.ChatPopupMessage[]> {
+  async loadChatMessages(chat: ChatDTO): Promise<ContractTypes.ChatMessageDto[]> {
     try {
-      const response = await this.http
-        .get<HttpChatMessageDto[]>(`${this.apiBaseUrl}/activities/chats/${encodeURIComponent(chat.id)}/messages`, {
-          params: this.activeUserParams()
-        })
-        .toPromise();
+      const messages: ContractTypes.ChatMessageDto[] = [];
+      let cursor: string | null = null;
+      let pageIndex = 0;
+      do {
+        let params = this.activeUserParams().set('limit', '100');
+        if (cursor) {
+          params = params.set('cursor', cursor);
+        }
+        const response = await this.http
+          .get<HttpChatMessagesPageResponseDto | HttpChatMessageDto[] | null>(
+            `${this.apiBaseUrl}/activities/chats/${encodeURIComponent(chat.id)}/messages`,
+            { params }
+          )
+          .toPromise();
+        if (Array.isArray(response)) {
+          messages.push(...response.map((message, index) => this.mapChatMessage(message, chat.id, messages.length + index)));
+          cursor = null;
+        } else {
+          const pageMessages = Array.isArray(response?.items)
+            ? response.items.map((message, index) => this.mapChatMessage(message, chat.id, messages.length + index))
+            : [];
+          messages.push(...pageMessages);
+          cursor = typeof response?.nextCursor === 'string' && response.nextCursor.trim().length > 0
+            ? response.nextCursor.trim()
+            : null;
+        }
+        pageIndex += 1;
+      } while (cursor && pageIndex < 100);
 
-      const messages = (response ?? []).map((message, index) => this.mapChatMessage(message, chat.id, index));
       const cachedMessages = this.resolveCachedChatMessages(chat);
-
-      return this.mergeCachedChatMessages(messages, cachedMessages)
+      const mergedMessages = this.mergeCachedChatMessages(messages, cachedMessages)
         .sort((first, second) => AppUtils.toSortableDate(first.sentAtIso) - AppUtils.toSortableDate(second.sentAtIso));
+      this.cacheChatMessages(chat, mergedMessages);
+
+      return mergedMessages;
     } catch {
       return this.resolveCachedChatMessages(chat);
     }
   }
 
-  async queryChatMembers(chatId: string): Promise<ActivityContracts.ActivityMemberEntry[]> {
+  async queryChatMessagesPage(
+    chat: ChatDTO,
+    query: ListQuery
+  ): Promise<ChatMessagesPageResultDTO> {
+    const pageSize = Math.max(1, Math.trunc(Number(query.pageSize) || 10));
+    let params = this.activeUserParams()
+      .set('limit', String(pageSize));
+    if (query.cursor) {
+      params = params.set('cursor', query.cursor);
+    }
+
+    try {
+      const response = await this.http
+        .get<HttpChatMessagesPageResponseDto | HttpChatMessageDto[] | null>(
+          `${this.apiBaseUrl}/activities/chats/${encodeURIComponent(chat.id)}/messages`,
+          { params }
+        )
+        .toPromise();
+
+      if (Array.isArray(response)) {
+        const messages = response.map((message, index) => this.mapChatMessage(message, chat.id, index));
+        this.cacheChatMessages(chat, messages);
+        return this.buildChatMessagesPage(
+          messages,
+          query
+        );
+      }
+
+      const messages = Array.isArray(response?.items)
+        ? response.items.map((message, index) => this.mapChatMessage(message, chat.id, index))
+        : [];
+      const readReceipt = this.mapChatReadReceipt(response?.read ?? null);
+      if (readReceipt) {
+        this.updateCachedChatUnread(chat.id, readReceipt);
+      }
+      this.cacheChatMessages(chat, messages);
+      return {
+        items: this.sortChatMessagesForThread(messages),
+        total: Number.isFinite(response?.total)
+          ? Math.max(0, Math.trunc(Number(response?.total)))
+          : messages.length,
+        nextCursor: typeof response?.nextCursor === 'string' && response.nextCursor.trim().length > 0
+          ? response.nextCursor.trim()
+          : null,
+        readReceipt
+      };
+    } catch {
+      return this.buildChatMessagesPage(this.resolveCachedChatMessages(chat), query);
+    }
+  }
+
+  async queryChatMembers(chatId: string): Promise<ActivityContracts.ActivityMemberDTO[]> {
     const normalizedChatId = `${chatId ?? ''}`.trim();
     if (!normalizedChatId) {
       return [];
@@ -369,7 +473,7 @@ export class HttpChatsService implements IChatsService {
     }
   }
 
-  async sendChatMessage(chat: ChatDTO, text: string, clientId?: string): Promise<ContractTypes.ChatPopupMessage | null> {
+  async sendChatMessage(chat: ChatDTO, text: string, clientId?: string): Promise<ContractTypes.ChatMessageDto | null> {
     return this.sendChatMessageWithAttachments(chat, text, [], clientId);
   }
 
@@ -378,8 +482,8 @@ export class HttpChatsService implements IChatsService {
     text: string,
     attachments: readonly ContractTypes.ChatMessageAttachment[] = [],
     clientId?: string,
-    replyTo?: ContractTypes.ChatPopupMessage['replyTo']
-  ): Promise<ContractTypes.ChatPopupMessage | null> {
+    replyTo?: ContractTypes.ChatMessageDto['replyTo']
+  ): Promise<ContractTypes.ChatMessageDto | null> {
     const trimmedText = AppUtils.convertAsciiEmojis(text.trim());
     if (!trimmedText && attachments.length === 0) {
       return null;
@@ -430,22 +534,24 @@ export class HttpChatsService implements IChatsService {
     socket.send(JSON.stringify(payload));
   }
 
-  async markChatRead(chat: ChatDTO, messageIds: readonly string[]): Promise<void> {
+  async markChatRead(chat: ChatDTO, messageIds: readonly string[]): Promise<ContractTypes.ChatReadReceipt | null> {
     const normalizedIds = messageIds
       .map(messageId => `${messageId ?? ''}`.trim())
       .filter(messageId => messageId.length > 0);
     if (normalizedIds.length === 0) {
-      return;
+      return null;
     }
     const socket = await this.ensureSocket(chat);
     if (!socket || socket.readyState !== WebSocket.OPEN) {
-      return;
+      return null;
     }
     const payload: HttpChatSocketRequestDto = {
       type: 'read',
       messageIds: normalizedIds
     };
+    const pendingRead = this.waitForSocketRead(chat.id, normalizedIds);
     socket.send(JSON.stringify(payload));
+    return pendingRead;
   }
 
   async updateSupportCase(chat: ChatDTO, action: ContractTypes.SupportCaseAction): Promise<ChatDTO | null> {
@@ -456,7 +562,7 @@ export class HttpChatsService implements IChatsService {
     }
     try {
       const response = await this.http
-        .post<HttpChatSummaryDto | null>(
+        .post<HttpChatDto | null>(
           `${this.apiBaseUrl}/activities/chats/${encodeURIComponent(normalizedChatId)}/support-case`,
           { userId, action },
           { params: this.withUserId(new HttpParams(), userId) }
@@ -472,7 +578,7 @@ export class HttpChatsService implements IChatsService {
     chat: ChatDTO,
     messageId: string,
     mutation: ContractTypes.ChatMessageMutation
-  ): Promise<ContractTypes.ChatPopupMessage | null> {
+  ): Promise<ContractTypes.ChatMessageDto | null> {
     const normalizedChatId = `${chat.id ?? ''}`.trim();
     const normalizedMessageId = `${messageId ?? ''}`.trim();
     if (!normalizedChatId || !normalizedMessageId) {
@@ -546,7 +652,7 @@ export class HttpChatsService implements IChatsService {
 
   async watchChatMessages(
     chat: ChatDTO,
-    onMessage: (message: ContractTypes.ChatPopupMessage) => void
+    onMessage: (message: ContractTypes.ChatMessageDto) => void
   ): Promise<() => void> {
     return this.watchChatEvents(chat, event => {
       if (event.type === 'message') {
@@ -555,7 +661,7 @@ export class HttpChatsService implements IChatsService {
     });
   }
 
-  private mapChatRecord(item: HttpChatSummaryDto, ownerUserId: string): ChatThreadRecord {
+  private mapChatRecord(item: HttpChatDto, ownerUserId: string): HttpMappedChatRecord {
     const distanceKm = Number.isFinite(Number(item.distanceKm))
       ? Math.max(0, Number(item.distanceKm))
       : undefined;
@@ -571,36 +677,55 @@ export class HttpChatsService implements IChatsService {
       lastMessage: `${item.lastMessage ?? ''}`.trim(),
       lastSenderId: `${item.lastSenderId ?? ''}`.trim(),
       memberIds: [...(item.memberIds ?? [])],
+      members: this.resolveChatMembers(item.members, item.memberIds),
       unread: Math.max(0, Math.trunc(Number(item.unread) || 0)),
       dateIso: item.dateIso,
       channelType: item.channelType,
       serviceContext: item.serviceContext,
-      eventId: item.eventId,
-      subEventId: item.subEventId,
-      groupId: item.groupId,
+      ownerId: this.normalizeHttpText(item.ownerId) || undefined,
       distanceKm,
       distanceMetersExact,
-      supportCaseStatus: this.normalizeSupportCaseStatus(item.supportCaseStatus),
-      supportCaseAssigneeUserId: this.normalizeHttpText(item.supportCaseAssigneeUserId) || null,
-      supportCaseAssigneeName: this.normalizeHttpText(item.supportCaseAssigneeName) || null,
-      supportCaseAssigneeInitials: this.normalizeHttpText(item.supportCaseAssigneeInitials) || null,
-      supportCaseUpdatedAtIso: this.normalizeHttpText(item.supportCaseUpdatedAtIso) || null,
-      ownerUserId
-    } satisfies ChatThreadRecord;
+      supportCase: this.mapSupportCase(item.supportCase),
+      ownerUserId,
+      metrics: this.cloneMetrics(item.metrics)
+    };
   }
 
   private cloneChatRecord(record: ChatThreadRecord): ChatThreadRecord {
     return {
       ...record,
       memberIds: [...(record.memberIds ?? [])],
-      messages: record.messages?.map(message => ({
-        ...message,
-        readBy: [...(message.readBy ?? [])],
-        replyTo: message.replyTo ? { ...message.replyTo } : message.replyTo,
-        reactions: message.reactions?.map(reaction => ({ ...reaction })),
-        attachments: message.attachments?.map(attachment => ({ ...attachment }))
-      }))
+      members: this.cloneChatMembers(record.members),
+      supportCase: this.cloneSupportCase(record.supportCase)
     };
+  }
+
+  private mapSupportCase(supportCase: HttpChatDto['supportCase']): ContractTypes.ChatSupportCase | null {
+    const status = this.normalizeSupportCaseStatus(supportCase?.status);
+    if (!status) {
+      return null;
+    }
+    const assigneeUserId = this.normalizeHttpText(supportCase?.assignee?.userId);
+    return {
+      status,
+      assignee: assigneeUserId
+        ? {
+            userId: assigneeUserId,
+            name: this.normalizeHttpText(supportCase?.assignee?.name),
+            initials: this.normalizeHttpText(supportCase?.assignee?.initials)
+          }
+        : null,
+      updatedAtIso: this.normalizeHttpText(supportCase?.updatedAtIso) || null
+    };
+  }
+
+  private cloneSupportCase<T extends ContractTypes.ChatSupportCase | null | undefined>(supportCase: T): T {
+    return supportCase
+      ? {
+          ...supportCase,
+          assignee: supportCase.assignee ? { ...supportCase.assignee } : supportCase.assignee
+        } as T
+      : supportCase;
   }
 
   private deduplicateChatRecords(records: readonly ChatThreadRecord[]): ChatThreadRecord[] {
@@ -615,6 +740,38 @@ export class HttpChatsService implements IChatsService {
       }
     }
     return [...uniqueById.values()];
+  }
+
+  private buildChatMessagesPage(
+    messages: readonly ContractTypes.ChatMessageDto[],
+    query: ListQuery
+  ): ChatMessagesPageResultDTO {
+    const sorted = this.sortChatMessagesForThread(messages);
+    const pageSize = Math.max(1, Math.trunc(Number(query.pageSize) || 10));
+    const startIndex = this.resolveChatMessagesPageStartIndex(query, pageSize);
+    const endIndex = Math.min(sorted.length, startIndex + pageSize);
+    return {
+      items: sorted.slice(startIndex, endIndex),
+      total: sorted.length,
+      nextCursor: endIndex < sorted.length ? String(endIndex) : null
+    };
+  }
+
+  private resolveChatMessagesPageStartIndex(query: ListQuery, pageSize: number): number {
+    const cursorIndex = Number(query.cursor);
+    if (Number.isFinite(cursorIndex)) {
+      return Math.max(0, Math.trunc(cursorIndex));
+    }
+    return Math.max(0, Math.trunc(Number(query.page) || 0)) * pageSize;
+  }
+
+  private sortChatMessagesForThread(
+    messages: readonly ContractTypes.ChatMessageDto[]
+  ): ContractTypes.ChatMessageDto[] {
+    return [...messages].sort((left, right) =>
+      AppUtils.toSortableDate(right.sentAtIso) - AppUtils.toSortableDate(left.sentAtIso)
+      || `${right.id ?? ''}`.localeCompare(`${left.id ?? ''}`)
+    );
   }
 
   private shouldUseCachedActivitiesChatPage(
@@ -671,20 +828,14 @@ export class HttpChatsService implements IChatsService {
       distanceMetersExact: item.distanceMetersExact,
       channelType: item.channelType,
       serviceContext: item.serviceContext,
-      eventId: item.eventId,
-      subEventId: item.subEventId,
-      groupId: item.groupId,
-      supportCaseStatus: item.supportCaseStatus ?? null,
-      supportCaseAssigneeUserId: item.supportCaseAssigneeUserId ?? null,
-      supportCaseAssigneeName: item.supportCaseAssigneeName ?? null,
-      supportCaseAssigneeInitials: item.supportCaseAssigneeInitials ?? null,
-      supportCaseUpdatedAtIso: item.supportCaseUpdatedAtIso ?? null,
+      ownerId: item.ownerId,
+      supportCase: this.cloneSupportCase(item.supportCase),
       ownerUserId
     };
   }
 
   private toActivitiesChatPageDTO(page: {
-    items: readonly ChatThreadRecord[];
+    items: readonly HttpMappedChatRecord[];
     total: number;
     nextCursor?: string | null;
   }): ActivitiesChatPageResultDTO {
@@ -695,7 +846,7 @@ export class HttpChatsService implements IChatsService {
     };
   }
 
-  private toChatDTO(item: ChatThreadRecord): ChatDTO {
+  private toChatDTO(item: HttpMappedChatRecord): ChatDTO {
     return {
       id: item.id,
       avatar: item.avatar,
@@ -703,29 +854,73 @@ export class HttpChatsService implements IChatsService {
       lastMessage: item.lastMessage,
       lastSenderId: item.lastSenderId,
       memberIds: [...(item.memberIds ?? [])],
+      members: this.cloneChatMembers(item.members),
       unread: Math.max(0, Math.trunc(Number(item.unread) || 0)),
       dateIso: item.dateIso,
       distanceKm: item.distanceKm,
       distanceMetersExact: item.distanceMetersExact,
       channelType: item.channelType,
       serviceContext: item.serviceContext,
-      eventId: item.eventId,
-      subEventId: item.subEventId,
-      groupId: item.groupId,
-      supportCaseStatus: item.supportCaseStatus ?? null,
-      supportCaseAssigneeUserId: item.supportCaseAssigneeUserId ?? null,
-      supportCaseAssigneeName: item.supportCaseAssigneeName ?? null,
-      supportCaseAssigneeInitials: item.supportCaseAssigneeInitials ?? null,
-      supportCaseUpdatedAtIso: item.supportCaseUpdatedAtIso ?? null,
-      ownerUserId: item.ownerUserId
+      ownerId: item.ownerId,
+      supportCase: this.cloneSupportCase(item.supportCase),
+      ownerUserId: item.ownerUserId,
+      metrics: this.cloneMetrics(item.metrics)
     };
+  }
+
+  private cloneMetrics(metrics: ChatMetricsDTO | null | undefined): ChatMetricsDTO | null {
+    return metrics
+      ? {
+          members: metrics.members ? { ...metrics.members } : null,
+          car: metrics.car ? { ...metrics.car } : null,
+          accommodation: metrics.accommodation ? { ...metrics.accommodation } : null,
+          supplies: metrics.supplies ? { ...metrics.supplies } : null,
+          groupsCount: metrics.groupsCount ?? null,
+          pendingTotal: Math.max(0, Math.trunc(Number(metrics.pendingTotal) || 0))
+        }
+      : null;
+  }
+
+  private resolveChatMembers(
+    members: readonly ChatMemberSummaryDto[] | null | undefined,
+    memberIds: readonly string[] | null | undefined
+  ): ChatMemberSummaryDto[] {
+    const explicitMembers = this.cloneChatMembers(members);
+    if (explicitMembers.length > 0) {
+      return explicitMembers;
+    }
+    return (memberIds ?? [])
+      .map(memberId => `${memberId ?? ''}`.trim())
+      .filter((memberId, index, source) => memberId.length > 0 && source.indexOf(memberId) === index)
+      .flatMap(memberId => {
+        const user = this.userProfileStore.getUserProfile(memberId);
+        if (!user || user.id !== memberId) {
+          return [];
+        }
+        const label = `${user.name ?? ''}`.trim() || memberId;
+        return [{
+          id: memberId,
+          name: label,
+          initials: `${user.initials ?? ''}`.trim() || AppUtils.initialsFromText(label),
+          gender: this.normalizeHttpGender(user.gender),
+          imageUrl: AppUtils.firstImageUrl(user.images)
+        }];
+      });
+  }
+
+  private cloneChatMembers(members: readonly ChatMemberSummaryDto[] | null | undefined): ChatMemberSummaryDto[] {
+    return (members ?? []).map(member => ({
+      ...member,
+      name: `${member.name ?? ''}`.trim() || null,
+      imageUrl: `${member.imageUrl ?? ''}`.trim() || null
+    }));
   }
 
   private matchesActivitiesChatContextFilter(
     item: ChatThreadRecord,
     filter: ContractTypes.ActivitiesChatContextFilter
   ): boolean {
-    const normalizedFilter = filter === 'event' || filter === 'subEvent' || filter === 'group' || filter === 'service'
+    const normalizedFilter = filter === 'event' || filter === 'subEvent' || filter === 'group' || filter === 'service' || filter === 'appSupport'
       ? filter
       : 'all';
     return normalizedFilter === 'all' || this.activityChatContextFilterKey(item) === normalizedFilter;
@@ -734,6 +929,9 @@ export class HttpChatsService implements IChatsService {
   private activityChatContextFilterKey(
     item: Pick<ContractTypes.ChatDTO, 'channelType' | 'serviceContext'>
   ): ContractTypes.ActivitiesChatContextFilter {
+    if (item.channelType === 'appSupport' || item.channelType === 'supportCase') {
+      return 'appSupport';
+    }
     if (item.channelType === 'serviceEvent' || item.serviceContext) {
       return 'service';
     }
@@ -756,7 +954,9 @@ export class HttpChatsService implements IChatsService {
 
   private activitiesChatContextFilter(query: ListQuery<ActivitiesFeedFilters>): ContractTypes.ActivitiesChatContextFilter {
     const value = query.filters?.chatContextFilter;
-    return value === 'event' || value === 'subEvent' || value === 'group' || value === 'service' ? value : 'all';
+    return value === 'event' || value === 'subEvent' || value === 'group' || value === 'service' || value === 'appSupport'
+      ? value
+      : 'all';
   }
 
   private activitiesSupportCaseFilter(query: ListQuery<ActivitiesFeedFilters>): ContractTypes.SupportCaseFilter {
@@ -765,13 +965,13 @@ export class HttpChatsService implements IChatsService {
   }
 
   private matchesSupportCaseFilter(
-    item: Pick<ChatThreadRecord, 'supportCaseStatus'>,
+    item: Pick<ChatThreadRecord, 'supportCase'>,
     filter?: ContractTypes.SupportCaseFilter
   ): boolean {
     const normalizedFilter = filter === 'pending' || filter === 'picked' || filter === 'solved' || filter === 'blocked'
       ? filter
       : 'all';
-    return normalizedFilter === 'all' || item.supportCaseStatus === normalizedFilter;
+    return normalizedFilter === 'all' || item.supportCase?.status === normalizedFilter;
   }
 
   private sortActivitiesChatPageRecords(
@@ -806,7 +1006,7 @@ export class HttpChatsService implements IChatsService {
     message: HttpChatMessageDto,
     chatId = '',
     fallbackIndex: number | null = null
-  ): ContractTypes.ChatPopupMessage {
+  ): ContractTypes.ChatMessageDto {
     const senderAvatar = message.senderAvatar ?? null;
     const senderId = this.normalizeHttpText(message.senderId) || this.normalizeHttpText(senderAvatar?.id);
     const senderName = this.normalizeHttpText(message.senderName) || this.normalizeHttpText(message.sender) || senderId || 'User';
@@ -864,7 +1064,7 @@ export class HttpChatsService implements IChatsService {
         userGender: this.normalizeHttpGender(reaction.userGender)
       })),
       attachments: deleted ? [] : (message.attachments ?? []).map(attachment => this.mapChatAttachment(attachment))
-    } satisfies ContractTypes.ChatPopupMessage;
+    } satisfies ContractTypes.ChatMessageDto;
   }
 
   private resolveHttpChatMessageId(
@@ -951,7 +1151,7 @@ export class HttpChatsService implements IChatsService {
     return variant ? AppUtils.mediaImageVariantUrl(resolvedUrl, variant) : resolvedUrl;
   }
 
-  private toHttpChatReply(replyTo: ContractTypes.ChatPopupMessage['replyTo']): HttpChatMessageReplyDto | null {
+  private toHttpChatReply(replyTo: ContractTypes.ChatMessageDto['replyTo']): HttpChatMessageReplyDto | null {
     if (!replyTo) {
       return null;
     }
@@ -970,7 +1170,7 @@ export class HttpChatsService implements IChatsService {
     member: HttpChatMemberDto,
     chatId: string,
     index: number
-  ): ActivityContracts.ActivityMemberEntry {
+  ): ActivityContracts.ActivityMemberDTO {
     const userId = this.normalizeHttpText(member.userId) || this.normalizeHttpText(member.id) || `chat-member-${index + 1}`;
     const name = this.normalizeHttpText(member.name) || userId;
     const initials = this.normalizeHttpText(member.initials) || AppUtils.initialsFromText(name);
@@ -1028,6 +1228,25 @@ export class HttpChatsService implements IChatsService {
     };
   }
 
+  private mapChatReadReceipt(read: HttpChatReadReceiptDto | null | undefined): ContractTypes.ChatReadReceipt | null {
+    const userId = this.normalizeHttpText(read?.userId);
+    if (!userId) {
+      return null;
+    }
+    return {
+      userId,
+      userInitials: this.normalizeHttpText(read?.userInitials),
+      userGender: this.normalizeHttpGender(read?.userGender),
+      messageIds: (read?.messageIds ?? [])
+        .map(messageId => this.normalizeHttpText(messageId))
+        .filter(Boolean),
+      readAtIso: this.normalizeHttpText(read?.readAtIso) || AppUtils.toIsoDateTime(new Date()),
+      unread: read?.unread === undefined || read.unread === null
+        ? null
+        : Math.max(0, Math.trunc(Number(read.unread) || 0))
+    };
+  }
+
   private toHttpChatAttachment(attachment: ContractTypes.ChatMessageAttachment): HttpChatMessageAttachmentDto {
     return {
       id: `${attachment.id ?? ''}`.trim(),
@@ -1061,7 +1280,7 @@ export class HttpChatsService implements IChatsService {
 
   private updateCachedChatSummaryAfterMessage(
     chat: ChatDTO,
-    message: ContractTypes.ChatPopupMessage
+    message: ContractTypes.ChatMessageDto
   ): void {
     const ownerUserId = this.activeUserId();
     if (!ownerUserId) {
@@ -1071,6 +1290,7 @@ export class HttpChatsService implements IChatsService {
     if (!normalizedChatId) {
       return;
     }
+    this.cacheChatMessagesFor(ownerUserId, normalizedChatId, [message]);
     const currentRecords = (this.chatItemsByUserId.get(ownerUserId) ?? []).map(record => this.cloneChatRecord(record));
     const existingIndex = currentRecords.findIndex(record => record.id === normalizedChatId);
     const existingRecord = existingIndex >= 0 ? currentRecords[existingIndex] : null;
@@ -1086,7 +1306,7 @@ export class HttpChatsService implements IChatsService {
   private buildCachedChatRecordFromMessage(
     chat: ChatDTO,
     ownerUserId: string,
-    message: ContractTypes.ChatPopupMessage,
+    message: ContractTypes.ChatMessageDto,
     existingRecord: ChatThreadRecord | null
   ): ChatThreadRecord {
     const sanitizedDistanceKm = Number.isFinite(Number(chat.distanceKm))
@@ -1105,38 +1325,66 @@ export class HttpChatsService implements IChatsService {
       unread: message.mine ? 0 : Math.max(0, Math.trunc(Number(existingRecord?.unread) || 0)),
       dateIso: `${message.sentAtIso ?? existingRecord?.dateIso ?? ''}`.trim() || undefined,
       channelType: chat.channelType ?? existingRecord?.channelType,
-      eventId: chat.eventId ?? existingRecord?.eventId,
-      subEventId: chat.subEventId ?? existingRecord?.subEventId,
-      groupId: chat.groupId ?? existingRecord?.groupId,
+      ownerId: chat.ownerId ?? existingRecord?.ownerId,
+      supportCase: this.cloneSupportCase(chat.supportCase ?? existingRecord?.supportCase),
       distanceKm: sanitizedDistanceKm,
       distanceMetersExact: sanitizedDistanceMetersExact,
-      ownerUserId,
-      messages: this.mergeCachedChatMessages(existingRecord?.messages ?? [], [message])
+      ownerUserId
     } satisfies ChatThreadRecord;
   }
 
-  private resolveCachedChatMessages(chat: ChatDTO): ContractTypes.ChatPopupMessage[] {
+  private resolveCachedChatMessages(chat: ChatDTO): ContractTypes.ChatMessageDto[] {
     const ownerUserId = this.activeUserId();
     const normalizedChatId = `${chat.id ?? ''}`.trim();
     if (!ownerUserId || !normalizedChatId) {
       return [];
     }
-    const records = this.chatItemsByUserId.get(ownerUserId) ?? [];
-    const existingRecord = records.find(record => record.id === normalizedChatId) ?? null;
-    return existingRecord?.messages?.map(message => ({
+    const key = this.chatMessageCacheKey(ownerUserId, normalizedChatId);
+    return (this.chatMessagesByOwnerChatKey.get(key) ?? []).map(message => ({
       ...message,
       readBy: [...(message.readBy ?? [])],
       replyTo: message.replyTo ? { ...message.replyTo } : message.replyTo,
       reactions: message.reactions?.map(reaction => ({ ...reaction })),
       attachments: message.attachments?.map(attachment => ({ ...attachment }))
-    })) ?? [];
+    }));
+  }
+
+  private cacheChatMessages(chat: ChatDTO, messages: readonly ContractTypes.ChatMessageDto[]): void {
+    const ownerUserId = this.activeUserId();
+    const normalizedChatId = `${chat.id ?? ''}`.trim();
+    if (!ownerUserId || !normalizedChatId || messages.length === 0) {
+      return;
+    }
+    this.cacheChatMessagesFor(ownerUserId, normalizedChatId, messages);
+  }
+
+  private cacheChatMessagesFor(
+    ownerUserId: string,
+    chatId: string,
+    messages: readonly ContractTypes.ChatMessageDto[]
+  ): void {
+    const key = this.chatMessageCacheKey(ownerUserId, chatId);
+    if (!key || messages.length === 0) {
+      return;
+    }
+    const existingMessages = this.chatMessagesByOwnerChatKey.get(key) ?? [];
+    this.chatMessagesByOwnerChatKey.set(
+      key,
+      this.mergeCachedChatMessages(existingMessages, messages)
+    );
+  }
+
+  private chatMessageCacheKey(ownerUserId: string, chatId: string): string {
+    const normalizedOwnerUserId = `${ownerUserId ?? ''}`.trim();
+    const normalizedChatId = `${chatId ?? ''}`.trim();
+    return normalizedOwnerUserId && normalizedChatId ? `${normalizedOwnerUserId}:${normalizedChatId}` : '';
   }
 
   private mergeCachedChatMessages(
-    baseMessages: readonly ContractTypes.ChatPopupMessage[],
-    extraMessages: readonly ContractTypes.ChatPopupMessage[]
-  ): ContractTypes.ChatPopupMessage[] {
-    const mergedById = new Map<string, ContractTypes.ChatPopupMessage>();
+    baseMessages: readonly ContractTypes.ChatMessageDto[],
+    extraMessages: readonly ContractTypes.ChatMessageDto[]
+  ): ContractTypes.ChatMessageDto[] {
+    const mergedById = new Map<string, ContractTypes.ChatMessageDto>();
     for (const message of [...baseMessages, ...extraMessages]) {
       const identity = this.chatMessageIdentity(message);
       if (!identity) {
@@ -1153,7 +1401,7 @@ export class HttpChatsService implements IChatsService {
     return [...mergedById.values()];
   }
 
-  private chatMessageIdentity(message: ContractTypes.ChatPopupMessage | null | undefined): string {
+  private chatMessageIdentity(message: ContractTypes.ChatMessageDto | null | undefined): string {
     const normalizedId = `${message?.id ?? ''}`.trim();
     if (normalizedId) {
       return normalizedId;
@@ -1171,7 +1419,7 @@ export class HttpChatsService implements IChatsService {
     return `fallback:${senderId}:${sentAtIso}:${text}`;
   }
 
-  private chatAttachmentSummary(message: ContractTypes.ChatPopupMessage): string {
+  private chatAttachmentSummary(message: ContractTypes.ChatMessageDto): string {
     const firstAttachment = message.attachments?.[0];
     if (!firstAttachment) {
       return '';
@@ -1242,7 +1490,10 @@ export class HttpChatsService implements IChatsService {
           userInitials: `${payload.read.userInitials ?? ''}`.trim(),
           userGender: this.normalizeHttpGender(payload.read.userGender),
           messageIds: (payload.read.messageIds ?? []).map((messageId: unknown) => `${messageId ?? ''}`.trim()).filter(Boolean),
-          readAtIso: `${payload.read.readAtIso ?? ''}`.trim()
+          readAtIso: `${payload.read.readAtIso ?? ''}`.trim(),
+          unread: payload.read.unread === null || payload.read.unread === undefined
+            ? null
+            : Math.max(0, Math.trunc(Number(payload.read.unread) || 0))
         }
       };
     }
@@ -1442,6 +1693,10 @@ export class HttpChatsService implements IChatsService {
         this.updateCachedChatSummaryFromSocketEvent(event.chatId, event.message);
       }
     }
+    if (event.type === 'read') {
+      this.updateCachedChatUnread(event.chatId, event.read);
+      this.resolvePendingSocketReads(event.chatId, event.read);
+    }
     if (event.type === 'error') {
       const normalizedClientId = `${event.clientId ?? ''}`.trim();
       const normalizedMessageId = `${event.messageId ?? ''}`.trim();
@@ -1457,7 +1712,7 @@ export class HttpChatsService implements IChatsService {
 
   private updateCachedChatSummaryFromSocketEvent(
     chatId: string,
-    message: ContractTypes.ChatPopupMessage
+    message: ContractTypes.ChatMessageDto
   ): void {
     const ownerUserId = this.activeUserId();
     if (!ownerUserId) {
@@ -1469,6 +1724,33 @@ export class HttpChatsService implements IChatsService {
       return;
     }
     this.updateCachedChatSummaryAfterMessage(existingRecord, message);
+  }
+
+  private updateCachedChatUnread(
+    chatId: string,
+    read: ContractTypes.ChatReadReceipt
+  ): void {
+    const ownerUserId = this.activeUserId();
+    const normalizedChatId = `${chatId ?? ''}`.trim();
+    if (!ownerUserId || !normalizedChatId || read.userId !== ownerUserId || read.unread === undefined || read.unread === null) {
+      return;
+    }
+    const unread = Math.max(0, Math.trunc(Number(read.unread) || 0));
+    const currentRecords = this.chatItemsByUserId.get(ownerUserId) ?? [];
+    let changed = false;
+    const nextRecords = currentRecords.map(record => {
+      if (`${record.id ?? ''}`.trim() !== normalizedChatId || Math.max(0, Math.trunc(Number(record.unread) || 0)) === unread) {
+        return record;
+      }
+      changed = true;
+      return {
+        ...record,
+        unread
+      };
+    });
+    if (changed) {
+      this.chatItemsByUserId.set(ownerUserId, nextRecords);
+    }
   }
 
   private handleUnexpectedSocketDisconnect(chatId: string): void {
@@ -1526,7 +1808,12 @@ export class HttpChatsService implements IChatsService {
   }
 
   private closeSocketIfIdle(): void {
-    if (this.socketListeners.size > 0 || this.pendingSocketMessageIds.size > 0 || this.pendingSocketUpdateResolvers.size > 0) {
+    if (
+      this.socketListeners.size > 0
+      || this.pendingSocketMessageIds.size > 0
+      || this.pendingSocketUpdateResolvers.size > 0
+      || this.pendingSocketReadResolvers.size > 0
+    ) {
       return;
     }
     this.closeSocket();
@@ -1580,9 +1867,14 @@ export class HttpChatsService implements IChatsService {
       pending.resolve(null);
       this.pendingSocketUpdateResolvers.delete(messageId);
     }
+    for (const [key, pending] of this.pendingSocketReadResolvers.entries()) {
+      clearTimeout(pending.timer);
+      pending.resolve(null);
+      this.pendingSocketReadResolvers.delete(key);
+    }
   }
 
-  private waitForSocketMessageAck(clientId: string): Promise<ContractTypes.ChatPopupMessage | null> {
+  private waitForSocketMessageAck(clientId: string): Promise<ContractTypes.ChatMessageDto | null> {
     const normalizedClientId = `${clientId ?? ''}`.trim();
     if (!normalizedClientId) {
       return Promise.resolve(null);
@@ -1593,7 +1885,7 @@ export class HttpChatsService implements IChatsService {
       this.pendingSocketAckResolvers.delete(normalizedClientId);
       existingPending.resolve(null);
     }
-    return new Promise<ContractTypes.ChatPopupMessage | null>(resolve => {
+    return new Promise<ContractTypes.ChatMessageDto | null>(resolve => {
       const timer = setTimeout(() => {
         this.pendingSocketAckResolvers.delete(normalizedClientId);
         this.clearPendingSocketMessage(normalizedClientId);
@@ -1606,7 +1898,7 @@ export class HttpChatsService implements IChatsService {
 
   private resolvePendingSocketAck(
     clientId: string,
-    message: ContractTypes.ChatPopupMessage | null
+    message: ContractTypes.ChatMessageDto | null
   ): void {
     const normalizedClientId = `${clientId ?? ''}`.trim();
     if (!normalizedClientId) {
@@ -1621,7 +1913,7 @@ export class HttpChatsService implements IChatsService {
     pending.resolve(message);
   }
 
-  private waitForSocketMessageUpdate(messageId: string): Promise<ContractTypes.ChatPopupMessage | null> {
+  private waitForSocketMessageUpdate(messageId: string): Promise<ContractTypes.ChatMessageDto | null> {
     const normalizedMessageId = `${messageId ?? ''}`.trim();
     if (!normalizedMessageId) {
       return Promise.resolve(null);
@@ -1632,7 +1924,7 @@ export class HttpChatsService implements IChatsService {
       this.pendingSocketUpdateResolvers.delete(normalizedMessageId);
       existingPending.resolve(null);
     }
-    return new Promise<ContractTypes.ChatPopupMessage | null>(resolve => {
+    return new Promise<ContractTypes.ChatMessageDto | null>(resolve => {
       const timer = setTimeout(() => {
         this.pendingSocketUpdateResolvers.delete(normalizedMessageId);
         resolve(null);
@@ -1644,7 +1936,7 @@ export class HttpChatsService implements IChatsService {
 
   private resolvePendingSocketUpdate(
     messageId: string,
-    message: ContractTypes.ChatPopupMessage | null
+    message: ContractTypes.ChatMessageDto | null
   ): void {
     const normalizedMessageId = `${messageId ?? ''}`.trim();
     if (!normalizedMessageId) {
@@ -1657,6 +1949,69 @@ export class HttpChatsService implements IChatsService {
     clearTimeout(pending.timer);
     this.pendingSocketUpdateResolvers.delete(normalizedMessageId);
     pending.resolve(message);
+  }
+
+  private waitForSocketRead(
+    chatId: string,
+    messageIds: readonly string[]
+  ): Promise<ContractTypes.ChatReadReceipt | null> {
+    const normalizedChatId = `${chatId ?? ''}`.trim();
+    const normalizedMessageIds = new Set(
+      (messageIds ?? [])
+        .map(messageId => `${messageId ?? ''}`.trim())
+        .filter(Boolean)
+    );
+    if (!normalizedChatId || normalizedMessageIds.size === 0) {
+      return Promise.resolve(null);
+    }
+    const key = `read:${normalizedChatId}:${Date.now()}:${++this.socketMessageSequence}`;
+    return new Promise<ContractTypes.ChatReadReceipt | null>(resolve => {
+      const timer = setTimeout(() => {
+        this.pendingSocketReadResolvers.delete(key);
+        resolve(null);
+        this.closeSocketIfIdle();
+      }, HttpChatsService.SOCKET_MESSAGE_ACK_TIMEOUT_MS);
+      this.pendingSocketReadResolvers.set(key, {
+        chatId: normalizedChatId,
+        messageIds: normalizedMessageIds,
+        resolve,
+        timer
+      });
+    });
+  }
+
+  private resolvePendingSocketReads(
+    chatId: string,
+    read: ContractTypes.ChatReadReceipt
+  ): void {
+    const normalizedChatId = `${chatId ?? ''}`.trim();
+    if (!normalizedChatId || read.userId !== this.activeUserId()) {
+      return;
+    }
+    const readMessageIds = new Set((read.messageIds ?? []).map(messageId => `${messageId ?? ''}`.trim()).filter(Boolean));
+    for (const [key, pending] of this.pendingSocketReadResolvers.entries()) {
+      if (pending.chatId !== normalizedChatId || !this.pendingSocketReadMatches(pending.messageIds, readMessageIds)) {
+        continue;
+      }
+      clearTimeout(pending.timer);
+      this.pendingSocketReadResolvers.delete(key);
+      pending.resolve(read);
+    }
+  }
+
+  private pendingSocketReadMatches(
+    pendingMessageIds: ReadonlySet<string>,
+    readMessageIds: ReadonlySet<string>
+  ): boolean {
+    if (pendingMessageIds.size === 0 || readMessageIds.size === 0) {
+      return false;
+    }
+    for (const messageId of pendingMessageIds) {
+      if (readMessageIds.has(messageId)) {
+        return true;
+      }
+    }
+    return false;
   }
 
 }

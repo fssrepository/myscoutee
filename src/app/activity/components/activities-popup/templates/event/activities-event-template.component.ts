@@ -18,10 +18,13 @@ import {
   ActivityEventDetailDTO
 } from '../../../../../shared/core/contracts/activity.interface';
 import type * as ContractTypes from '../../../../../shared/core/contracts';
+import type { UserMenuCounterDeltasDto } from '../../../../../shared/core/contracts/user.interface';
 import {
   ActivityMembersBuilder
 } from '../../../../../shared/core';
 import {
+  type ActivityCounterKey,
+  type ActivityCounters,
   InfoCardComponent,
   type InfoCardData,
   type AppMenuPalette,
@@ -38,30 +41,6 @@ import type * as AppConstants from '../../../../../shared/core/common/constants'
 import type { MemberMenuStore } from '../../../../../shared/ui/context/stores/member-menu.store';
 import type { EventSubeventsPopupStore } from '../../../../../shared/ui/context/stores/event-subevents-popup.store';
 
-type ActivityEventCardType = 'events' | 'hosting' | 'invitations';
-type ActivityEventCardData = InfoCardData & {
-  type: ActivityEventCardType;
-  subtitle?: string | null;
-  detail?: string | null;
-  unread?: number | null;
-  isAdmin?: boolean;
-  avatarInitials?: string | null;
-  creatorInitials?: string | null;
-  startAt?: string | null;
-  endAt?: string | null;
-  visibility?: AppConstants.EventVisibility | null;
-  acceptedMembers?: number | null;
-  pendingMembers?: number | null;
-  capacityTotal?: number | null;
-  capacityMin?: number | null;
-  capacityMax?: number | null;
-  isTrashed?: boolean;
-  adminIds?: readonly string[];
-  acceptedMemberUserIds?: readonly string[];
-  pendingMemberUserIds?: readonly string[];
-  invitedMemberUserIds?: readonly string[];
-  pendingRequestMemberUserIds?: readonly string[];
-};
 
 @Component({
   selector: 'app-activities-event-template',
@@ -72,7 +51,7 @@ type ActivityEventCardData = InfoCardData & {
   changeDetection: ChangeDetectionStrategy.OnPush
 })
 export class ActivitiesEventTemplateComponent implements OnChanges {
-  @Input() row: ActivityEventCardData | null = null;
+  @Input() row: InfoCardData | null = null;
   @Input() groupLabel: string | null = null;
   @Input() cardRevision = 0;
 
@@ -90,17 +69,13 @@ export class ActivitiesEventTemplateComponent implements OnChanges {
 
   private buildCard(): InfoCardData | null {
     const row = this.row;
-    if (!row || !this.isInfoCardRow(row)) {
+    if (!row) {
       return null;
     }
     return {
       ...row,
       groupLabel: this.groupLabel
     };
-  }
-
-  private isInfoCardRow(row: ActivityEventCardData): row is ActivityEventCardData {
-    return row.type === 'events' || row.type === 'hosting' || row.type === 'invitations';
   }
 
   protected onMediaEndClick(): void {
@@ -137,10 +112,16 @@ type ActivityInfoCardActionId =
   | 'viewInvitation';
 type ActivitiesEventsHost = any;
 type ActivityEventRecordLike = any;
+type ActivityEventCounterKey = keyof NonNullable<ActivityCounters['event']>;
 type InvitationApprovalSaveResult = {
   eventDetailDTO: ActivityEventDetailDTO;
-  nextMembers: ActivityContracts.ActivityMemberEntry[] | null;
+  nextMembers: ActivityContracts.ActivityMemberDTO[] | null;
   capacityTotal: number;
+};
+type InvitationApprovalContext = {
+  record: ActivityContracts.ActivityEventRecord | null;
+  currentMembers: ActivityContracts.ActivityMemberDTO[];
+  requiresAdminApproval: boolean;
 };
 
 export class ActivitiesEventsController {
@@ -150,34 +131,33 @@ export class ActivitiesEventsController {
   private get activitiesStore() { return this.host.activitiesStore; }
   private get activitiesEventScope() { return this.host.activitiesEventScope as ContractTypes.ActivitiesEventScope; }
   private set activitiesEventScope(value: ContractTypes.ActivitiesEventScope) { this.host.activitiesEventScope = value; }
-  private get activitiesRates() { return this.host.activitiesRates; }
   private get activitiesSmartList() { return this.host.activitiesSmartList; }
-  private get activityMembersByRowId() { return this.host.activityMembersByRowId as Record<string, ActivityContracts.ActivityMemberEntry[]>; }
+  private get activityMembersByRowId() { return this.host.activityMembersByRowId as Record<string, ActivityContracts.ActivityMemberDTO[]>; }
   private get activityMembersService() { return this.host.activityMembersService; }
+  private get activityStore() { return this.host.activityStore; }
   private get chatsService() { return this.host.chatsService; }
   private get cdr() { return this.host.cdr; }
   private get dialogStore() { return this.host.dialogStore; }
   private get eventCheckoutDraftStore() { return this.host.eventCheckoutDraftStore; }
   private get eventCheckoutDialogStore() { return this.host.eventCheckoutDialogStore; }
   private get eventsService() { return this.host.eventsService; }
+  private get usersService() { return this.host.usersService; }
   private get hostingPublicationFilter() { return this.host.hostingPublicationFilter as ContractTypes.HostingPublicationFilter; }
-  private get isMobileView() { return this.host.isMobileView as boolean; }
-  private get pendingActivityMemberDelete() { return this.host.pendingActivityMemberDelete as ActivityContracts.ActivityMemberEntry | null; }
-  private set pendingActivityMemberDelete(value: ActivityContracts.ActivityMemberEntry | null) { this.host.pendingActivityMemberDelete = value; }
+  private get pendingActivityMemberDelete() { return this.host.pendingActivityMemberDelete as ActivityContracts.ActivityMemberDTO | null; }
+  private set pendingActivityMemberDelete(value: ActivityContracts.ActivityMemberDTO | null) { this.host.pendingActivityMemberDelete = value; }
   private get memberMenuStore() { return this.host.memberMenuStore as MemberMenuStore; }
   private get eventSubeventsStore() { return this.host.eventSubeventsStore as EventSubeventsPopupStore; }
   private get profileStore() { return this.host.profileStore; }
   private get shareTokensService() { return this.host.shareTokensService; }
   private get activeHostingIds() { return this.host.activeHostingIds as ReadonlySet<string>; }
   private set activeHostingIds(value: ReadonlySet<string>) { this.host.activeHostingIds = value; }
-  private get selectedActivityMembers() { return this.host.selectedActivityMembers as ActivityContracts.ActivityMemberEntry[]; }
-  private set selectedActivityMembers(value: ActivityContracts.ActivityMemberEntry[]) { this.host.selectedActivityMembers = value; }
-  private get selectedActivityMembersRow() { return this.host.selectedActivityMembersRow as ActivityEventCardData | null; }
+  private get selectedActivityMembers() { return this.host.selectedActivityMembers as ActivityContracts.ActivityMemberDTO[]; }
+  private set selectedActivityMembers(value: ActivityContracts.ActivityMemberDTO[]) { this.host.selectedActivityMembers = value; }
+  private get selectedActivityMembersRow() { return this.host.selectedActivityMembersRow as InfoCardData | null; }
   private get selectedActivityMembersRowId() { return this.host.selectedActivityMembersRowId as string | null; }
-  private get trashedActivityRowsByKey() { return this.host.trashedActivityRowsByKey as Record<string, ActivityEventCardData>; }
-  private get users() { return this.host.users as any[]; }
+  private get trashedActivityRowsByKey() { return this.host.trashedActivityRowsByKey as Record<string, InfoCardData>; }
 
-  private activityRowIdentity(row: ActivityEventCardData): string { return this.host.activityRowIdentity(row); }
+  private activityRowIdentity(row: InfoCardData): string { return this.host.activityRowIdentity(row); }
   private applyActivityEventSave(sync: ActivityContracts.ActivityEventDTO): void {
     this.host.applyActivityEventSave(sync);
   }
@@ -197,13 +177,79 @@ export class ActivitiesEventsController {
   private openActivityChat(chat: ChatDTO): void { this.host.openActivityChat(chat); }
   private persistSelectedActivityMembers(): void { this.host.persistSelectedActivityMembers(); }
   private refreshSectionBadges(): void { this.host.refreshSectionBadges(); }
-  private removeVisibleActivityRow(row: ActivityEventCardData): void { this.host.removeVisibleActivityRow(row); }
-  private replaceVisibleActivityItems(items: readonly ActivityEventCardData[], totalDelta = 0): void {
-    this.host.replaceVisibleActivityItems(items, totalDelta);
+  private applyActivityEventCounterDeltas(
+    primaryDelta: Record<string, number> = {},
+    eventDelta: Record<string, number> = {}
+  ): void {
+    const activeUser = this.activeUser;
+    const activeUserId = `${activeUser?.id ?? ''}`.trim();
+    if (!activeUserId) {
+      return;
+    }
+    const delta = this.activityCounterDeltaFromDeltas(primaryDelta, eventDelta);
+    if (!delta) {
+      return;
+    }
+    this.signalActivityCounterDelta(activeUserId, delta);
+    void this.persistLocalActivityCounterDelta(activeUserId, delta);
   }
-  private uniqueUserIds(userIds: readonly string[]): string[] { return this.host.uniqueUserIds(userIds); }
+
+  private activityCounterDeltaFromDeltas(
+    primaryDelta: Record<string, number>,
+    eventDelta: Record<string, number>
+  ): UserMenuCounterDeltasDto | null {
+    const delta: UserMenuCounterDeltasDto = {};
+    for (const [key, value] of Object.entries(primaryDelta) as Array<[ActivityCounterKey, number | undefined]>) {
+      if (!Number.isFinite(value) || Number(value) === 0) {
+        continue;
+      }
+      (delta as Record<string, number>)[key] = Number(value);
+    }
+    if (Object.keys(eventDelta).length > 0) {
+      const eventCounters: Record<string, number> = {};
+      for (const [key, value] of Object.entries(eventDelta) as Array<[ActivityEventCounterKey, number | undefined]>) {
+        if (!Number.isFinite(value) || Number(value) === 0) {
+          continue;
+        }
+        eventCounters[key] = Number(value);
+      }
+      if (Object.keys(eventCounters).length > 0) {
+        delta.event = eventCounters;
+      }
+    }
+    return Object.keys(delta).length > 0 ? delta : null;
+  }
+
+  private signalActivityCounterDelta(activeUserId: string, delta: UserMenuCounterDeltasDto | null): void {
+    if (!delta) {
+      return;
+    }
+    this.activityStore.patchUserCounterDeltas(activeUserId, delta, this.activeUser?.activities ?? null);
+  }
+
+  private async persistLocalActivityCounterDelta(
+    activeUserId: string,
+    delta: UserMenuCounterDeltasDto | null
+  ): Promise<void> {
+    if (!delta || typeof this.usersService?.patchLocalUserActivityCounterDeltas !== 'function') {
+      return;
+    }
+    await this.usersService.patchLocalUserActivityCounterDeltas(activeUserId, delta);
+  }
+
+  private uniqueUserIds(userIds: readonly string[]): string[] {
+    const unique: string[] = [];
+    for (const userId of userIds) {
+      const normalizedUserId = `${userId ?? ''}`.trim();
+      if (!normalizedUserId || unique.includes(normalizedUserId)) {
+        continue;
+      }
+      unique.push(normalizedUserId);
+    }
+    return unique;
+  }
   private activityMemberUserIdsByStatus(
-    members: readonly ActivityContracts.ActivityMemberEntry[],
+    members: readonly ActivityContracts.ActivityMemberDTO[],
     status: AppConstants.ActivityMemberStatus
   ): string[] {
     return this.uniqueUserIds(
@@ -212,15 +258,120 @@ export class ActivitiesEventsController {
         .map(member => member.userId)
     );
   }
-  private withActivityEventInfoCard(row: ActivityEventCardData): ActivityEventCardData {
+  private withActivityEventInfoCard(row: InfoCardData): InfoCardData {
     return this.host.withActivityEventInfoCard(row);
   }
-  private refreshActivityEventInfoCard(row: ActivityEventCardData): void {
-    this.host.refreshActivityEventInfoCard(row);
+
+  private activeUserId(): string {
+    return `${this.activeUser?.id ?? ''}`.trim();
   }
 
-  private activityStatusCode(row: ActivityEventCardData): string {
-    return this.normalizeActivityStatusCode(row.status);
+  private activityEventDTOForRow(row: InfoCardData): ActivityContracts.ActivityEventDTO | null {
+    const fromHost = typeof this.host.activityEventDTOForRow === 'function'
+      ? this.host.activityEventDTOForRow(row)
+      : null;
+    if (fromHost) {
+      return fromHost as ActivityContracts.ActivityEventDTO;
+    }
+    const activeUserId = this.activeUserId();
+    return activeUserId
+      ? this.eventsService.peekKnownItemById(activeUserId, row.id) ?? null
+      : null;
+  }
+
+  private isActivityEventListType(value: unknown): value is ActivityContracts.ActivityEventRepositoryItemType {
+    return value === 'events' || value === 'hosting' || value === 'invitations';
+  }
+
+  private activityEventListTypeForRow(row: InfoCardData): ActivityContracts.ActivityEventRepositoryItemType {
+    if (this.activitiesEventScope === 'drafts') {
+      return 'hosting';
+    }
+    const fromHost = typeof this.host.activityEventListTypeForRow === 'function'
+      ? this.host.activityEventListTypeForRow(row)
+      : null;
+    const dto = this.activityEventDTOForRow(row);
+    if (dto && this.resolveActivityEventListTypeFromDTO(dto) === 'hosting') {
+      return 'hosting';
+    }
+    if (this.isActivityEventListType(fromHost)) {
+      return fromHost;
+    }
+    return dto ? this.resolveActivityEventListTypeFromDTO(dto) : 'events';
+  }
+
+  private resolveActivityEventListTypeFromDTO(
+    dto: ActivityContracts.ActivityEventDTO
+  ): ActivityContracts.ActivityEventRepositoryItemType {
+    const activeUserId = this.activeUserId();
+    if (activeUserId && (dto.invitedMemberUserIds ?? []).includes(activeUserId)) {
+      return 'invitations';
+    }
+    if (activeUserId && (`${dto.creatorUserId ?? ''}`.trim() === activeUserId || (dto.adminIds ?? []).includes(activeUserId))) {
+      return 'hosting';
+    }
+    return 'events';
+  }
+
+  private isActivityRowAdmin(row: InfoCardData): boolean {
+    if (this.activitiesEventScope === 'drafts') {
+      return true;
+    }
+    const dto = this.activityEventDTOForRow(row);
+    const activeUserId = this.activeUserId();
+    return !!activeUserId
+      && (
+        `${dto?.creatorUserId ?? ''}`.trim() === activeUserId
+        || (dto?.adminIds ?? []).includes(activeUserId)
+        || `${row.ownerUserId ?? row.ownerId ?? ''}`.trim() === activeUserId
+        || this.activityEventListTypeForRow(row) === 'hosting'
+      );
+  }
+
+  private activityRowTimeframe(row: InfoCardData): string | null {
+    const dto = this.activityEventDTOForRow(row);
+    return dto?.timeframe?.trim()
+      || row.metaRows?.[0]?.trim()
+      || row.description?.trim()
+      || null;
+  }
+
+  private activityRowStartAt(row: InfoCardData): string | null {
+    return this.activityEventDTOForRow(row)?.startAtIso ?? row.dateIso ?? null;
+  }
+
+  private activityRowEndAt(row: InfoCardData): string | null {
+    return this.activityEventDTOForRow(row)?.endAtIso ?? this.activityRowStartAt(row);
+  }
+
+  private activityRowSubtitle(row: InfoCardData): string {
+    const dto = this.activityEventDTOForRow(row);
+    return dto?.subtitle?.trim() || row.description?.trim() || '';
+  }
+
+  private activityRowActivityCount(row: InfoCardData): number {
+    const dto = this.activityEventDTOForRow(row);
+    return this.chatCountValue(dto?.activity ?? row.badgeCount);
+  }
+
+  private activityRowCreatorInitials(row: InfoCardData): string {
+    const dto = this.activityEventDTOForRow(row);
+    return dto?.creatorInitials?.trim()
+      || row.mediaStart?.label?.trim()
+      || AppUtils.initialsFromText(dto?.creatorName ?? row.title);
+  }
+
+  private activityRowVisibility(row: InfoCardData): AppConstants.EventVisibility {
+    return this.activityEventDTOForRow(row)?.visibility ?? 'Public';
+  }
+
+  private activityStatusCode(row: InfoCardData): string {
+    const dto = this.activityEventDTOForRow(row);
+    return this.normalizeActivityStatusCode(dto?.status ?? row.status);
+  }
+
+  private isActivityDraftRow(row: InfoCardData): boolean {
+    return this.activityStatusCode(row) === 'DR' || this.activitiesEventScope === 'drafts';
   }
 
   private normalizeActivityStatusCode(statusValue: string | null | undefined): string {
@@ -245,12 +396,12 @@ export class ActivitiesEventsController {
     }
   }
 
-  public isExitActivityRow(row: ActivityEventCardData): boolean {
-    return row.isAdmin !== true && !this.isActivityInvitationRow(row);
+  public isExitActivityRow(row: InfoCardData): boolean {
+    return !this.isActivityRowAdmin(row) && !this.isActivityInvitationRow(row);
   }
 
-  public activityServiceChatActionLabel(row: ActivityEventCardData): string {
-    if (row.isAdmin === true) {
+  public activityServiceChatActionLabel(row: InfoCardData): string {
+    if (this.isActivityRowAdmin(row)) {
       return 'Notify Participants';
     }
     if (this.isActivityInvitationRow(row)) {
@@ -259,19 +410,11 @@ export class ActivitiesEventsController {
     return 'Contact Organizer';
   }
 
-  private isActivityInvitationRow(row: ActivityEventCardData): boolean {
-    const activeUserId = this.activeUser.id.trim();
-    const inviteProjection = row as ActivityEventCardData & {
-      isInvitation?: boolean;
-      invitedMemberUserIds?: readonly string[];
-    };
-    if (inviteProjection.isInvitation === true) {
-      return true;
-    }
-    return !!activeUserId && (inviteProjection.invitedMemberUserIds ?? []).includes(activeUserId);
+  private isActivityInvitationRow(row: InfoCardData): boolean {
+    return this.activityEventListTypeForRow(row) === 'invitations';
   }
 
-  public onActivityEventCardMenuAction(row: ActivityEventCardData, action: CardMenuActionEvent<InfoCardData>): void {
+  public onActivityEventCardMenuAction(row: InfoCardData, action: CardMenuActionEvent<InfoCardData>): void {
     switch (action.actionId as ActivityInfoCardActionId) {
       case 'publish':
         this.runActivityItemPublishAction(row, undefined, action.action);
@@ -284,9 +427,9 @@ export class ActivitiesEventsController {
         break;
       case 'editEvent':
       case 'manageEvent':
-      case 'viewInvitation':
         this.runActivityItemPrimaryAction(row);
         break;
+      case 'viewInvitation':
       case 'view':
         this.runActivityItemViewAction(row);
         break;
@@ -315,47 +458,51 @@ export class ActivitiesEventsController {
     }
   }
 
-  public runActivityItemPrimaryAction(row: ActivityEventCardData, event?: Event): void {
+  public runActivityItemPrimaryAction(row: InfoCardData, event?: Event): void {
     event?.stopPropagation();
     this.openActivityRowInEventModule(row, false);
   }
 
-  public runActivityItemViewAction(row: ActivityEventCardData, event?: Event): void {
+  public runActivityItemViewAction(row: InfoCardData, event?: Event): void {
     event?.stopPropagation();
+    const dto = this.activityEventDTOForRow(row);
     this.eventSubeventsStore.openEventSubeventsListPopup({
       eventId: row.id,
       host: 'activities',
-      target: row.isAdmin === true || row.type === 'hosting' ? 'hosting' : 'events',
+      target: this.isActivityRowAdmin(row) || this.activityEventListTypeForRow(row) === 'hosting' ? 'hosting' : 'events',
       title: row.title,
-      timeframe: row.detail ?? null,
-      startAtIso: row.startAt ?? row.dateIso ?? null,
-      endAtIso: row.endAt ?? null,
-      canEdit: this.canEditActivityEvent(row)
+      timeframe: this.activityRowTimeframe(row),
+      startAtIso: this.activityRowStartAt(row),
+      endAtIso: this.activityRowEndAt(row),
+      mode: dto?.mode ?? null,
+      canEdit: this.isActivityInvitationRow(row) ? false : this.canEditActivityEvent(row)
     });
   }
 
-  private canEditActivityEvent(row: ActivityEventCardData): boolean {
+  private canEditActivityEvent(row: InfoCardData): boolean {
     return ActivityEventInfoCardMenuConverter.canEditEvent(this.activityEventMenuSubjectFromRow(row), {
       activeUserId: this.activeUser.id
     });
   }
 
-  private activityEventMenuSubjectFromRow(row: ActivityEventCardData): ActivityEventInfoCardMenuSubject {
+  private activityEventMenuSubjectFromRow(row: InfoCardData): ActivityEventInfoCardMenuSubject {
+    const dto = this.activityEventDTOForRow(row);
     return {
       menu: 'activity-event-card',
       id: row.id,
-      status: row.status ?? null,
-      ownerUserId: row.ownerUserId ?? row.ownerId ?? null,
-      adminIds: [...(row.adminIds ?? [])],
-      acceptedMemberUserIds: [...(row.acceptedMemberUserIds ?? [])],
-      pendingMemberUserIds: [...(row.pendingMemberUserIds ?? [])],
-      invitedMemberUserIds: [...(row.invitedMemberUserIds ?? [])],
-      pendingRequestMemberUserIds: [...(row.pendingRequestMemberUserIds ?? [])]
+      status: dto?.status ?? row.status ?? null,
+      ownerUserId: dto?.creatorUserId ?? row.ownerUserId ?? row.ownerId ?? null,
+      adminIds: [...(dto?.adminIds ?? [])],
+      acceptedMemberUserIds: [...(dto?.acceptedMemberUserIds ?? [])],
+      pendingMemberUserIds: [...(dto?.pendingMemberUserIds ?? [])],
+      invitedMemberUserIds: [...(dto?.invitedMemberUserIds ?? [])],
+      pendingRequestMemberUserIds: [...(dto?.pendingRequestMemberUserIds ?? [])],
+      eventScope: this.activitiesEventScope
     };
   }
 
   public runActivityItemServiceChatAction(
-    row: ActivityEventCardData,
+    row: InfoCardData,
     card: InfoCardData | null = null,
     event?: Event
   ): void {
@@ -368,7 +515,7 @@ export class ActivitiesEventsController {
   }
 
   public runActivityItemShareAction(
-    row: ActivityEventCardData,
+    row: InfoCardData,
     card: InfoCardData | null = null,
     event?: Event
   ): void {
@@ -398,12 +545,12 @@ export class ActivitiesEventsController {
     });
   }
 
-  private resolveActivityShareEntityId(row: ActivityEventCardData, card: InfoCardData | null = null): string {
+  private resolveActivityShareEntityId(row: InfoCardData, card: InfoCardData | null = null): string {
     return `${this.activityInfoCardEntityId(card ?? this.activityInfoCardForRow(row)) || row.id || ''}`.trim();
   }
 
   public runActivityItemReportAction(
-    row: ActivityEventCardData,
+    row: InfoCardData,
     card: InfoCardData | null = null,
     event?: Event
   ): void {
@@ -425,7 +572,7 @@ export class ActivitiesEventsController {
     this.cdr.markForCheck();
   }
 
-  private resolveActivityReportTarget(row: ActivityEventCardData, card: InfoCardData | null = null): {
+  private resolveActivityReportTarget(row: InfoCardData, card: InfoCardData | null = null): {
     userId: string;
     name: string;
     startAtIso?: string | null;
@@ -443,18 +590,17 @@ export class ActivitiesEventsController {
       return null;
     }
     const ownerName = `${source?.creatorName ?? ''}`.trim()
-      || this.users.find(user => user.id === ownerId)?.name?.trim()
       || (this.isActivityInvitationRow(row) ? `${source?.inviter ?? ''}`.trim() : '')
       || 'Organizer';
     return {
       userId: ownerId,
       name: ownerName,
       startAtIso: source?.startAt ?? row.dateIso ?? null,
-      timeframe: source?.timeframe ?? source?.when ?? row.detail ?? null
+      timeframe: source?.timeframe ?? source?.when ?? this.activityRowTimeframe(row)
     };
   }
 
-  private resolveActivityServiceChat(row: ActivityEventCardData, card: InfoCardData | null = null): ChatDTO | null {
+  private resolveActivityServiceChat(row: InfoCardData, card: InfoCardData | null = null): ChatDTO | null {
     const activeUserId = this.activeUser.id.trim();
     if (!activeUserId) {
       return null;
@@ -477,8 +623,8 @@ export class ActivitiesEventsController {
       title,
       actionLabel: this.activityServiceChatActionLabel(row),
       creatorName: source?.creatorName ?? null,
-      hosting: row.isAdmin === true,
-      notification: row.isAdmin === true
+      hosting: this.isActivityRowAdmin(row),
+      notification: this.isActivityRowAdmin(row)
     });
   }
 
@@ -490,63 +636,99 @@ export class ActivitiesEventsController {
     return `${card?.ownerId ?? ''}`.trim();
   }
 
-  private activityInfoCardForRow(row: ActivityEventCardData): InfoCardData | null {
-    return row.type === 'events' || row.type === 'hosting' || row.type === 'invitations'
-      ? row
-      : null;
+  private activityInfoCardForRow(row: InfoCardData): InfoCardData | null {
+    return row;
   }
 
-  private activityRowDistanceKm(row: ActivityEventCardData): number {
+  private activityRowDistanceKm(row: InfoCardData): number {
     const meters = Number.isFinite(row.distanceMetersExact)
       ? Math.max(0, Math.trunc(Number(row.distanceMetersExact)))
       : 0;
     return Math.round((meters / 1000) * 10) / 10;
   }
 
-  private activityDisplaySourceForRow(row: ActivityEventCardData): ActivityEventRecordLike {
+  private activityDisplaySourceForRow(row: InfoCardData): ActivityEventRecordLike {
+    const dto = this.activityEventDTOForRow(row);
+    if (dto) {
+      return {
+        ...dto,
+        avatar: dto.creatorInitials ?? '',
+        description: dto.title,
+        shortDescription: dto.subtitle,
+        when: dto.timeframe,
+        unread: dto.activity,
+        isAdmin: this.isActivityRowAdmin(row),
+        startAt: dto.startAtIso,
+        endAt: dto.endAtIso,
+        capacityMax: dto.capacityMax ?? dto.capacityTotal,
+        capacityMin: dto.capacityMin ?? null
+      };
+    }
     return {
       id: row.id,
-      avatar: row.avatarInitials ?? row.creatorInitials ?? '',
+      avatar: this.activityRowCreatorInitials(row),
       title: row.title,
       description: row.title,
-      shortDescription: row.subtitle,
-      timeframe: row.detail,
-      when: row.detail,
-      activity: row.unread,
-      unread: row.unread,
-      isAdmin: row.isAdmin === true,
+      shortDescription: this.activityRowSubtitle(row),
+      timeframe: this.activityRowTimeframe(row),
+      when: this.activityRowTimeframe(row),
+      activity: this.activityRowActivityCount(row),
+      unread: this.activityRowActivityCount(row),
+      isAdmin: this.isActivityRowAdmin(row),
       creatorUserId: row.ownerId ?? row.ownerUserId ?? '',
-      creatorName: row.subtitle || row.title,
-      startAt: row.startAt ?? row.dateIso,
-      endAt: row.endAt ?? row.dateIso,
+      creatorName: row.description || row.title,
+      startAt: this.activityRowStartAt(row),
+      endAt: this.activityRowEndAt(row),
       distanceKm: this.activityRowDistanceKm(row),
-      acceptedMembers: row.acceptedMembers ?? 0,
-      pendingMembers: row.pendingMembers ?? 0,
-      capacityTotal: row.capacityTotal ?? row.capacityMax ?? row.acceptedMembers ?? 0,
-      capacityMin: row.capacityMin ?? null,
-      capacityMax: row.capacityMax ?? row.capacityTotal ?? null,
+      acceptedMembers: 0,
+      pendingMembers: 0,
+      capacityTotal: 0,
+      capacityMin: null,
+      capacityMax: null,
       imageUrl: row.imageUrl ?? '',
-      visibility: row.visibility ?? 'Public'
+      visibility: this.activityRowVisibility(row)
     };
   }
 
-  public runActivityItemApproveAction(row: ActivityEventCardData, event?: Event): void {
+  public runActivityItemApproveAction(row: InfoCardData, event?: Event): void {
     event?.stopPropagation();
-    if (!this.isActivityInvitationRow(row)) {
-      this.openActivityRowInEventModule(row, true);
-      return;
-    }
     void this.openInvitationApprovalFlow(row);
   }
 
-  private async openInvitationApprovalFlow(row: ActivityEventCardData): Promise<void> {
+  private async openInvitationApprovalFlow(row: InfoCardData): Promise<void> {
     const activeUserId = this.activeUser.id.trim();
-    const record = activeUserId ? await this.eventsService.queryKnownRecordById(activeUserId, row.id) : null;
+    if (!activeUserId) {
+      return;
+    }
     const relatedSource = this.activityDisplaySourceForRow(row);
-    const requiresAdminApproval = await this.resolveInvitationRequiresAdminApproval(
-      row.id,
+    const loadingDialog = this.eventCheckoutDialogStore.open({
+      mode: 'invitation',
+      userId: activeUserId,
+      record: this.buildInvitationCheckoutLoadingRecord(row, activeUserId, relatedSource),
+      loading: true,
+      title: 'Accept invitation?',
+      confirmLabel: 'Accept',
+      busyConfirmLabel: 'Accepting...',
+      failureMessage: 'Unable to accept invitation.',
+      onSubmit: (selection: ActivityContracts.EventCheckoutSelection) => this.confirmActivityInvitationApproval(row, selection)
+    });
+    const loadingDialogId = loadingDialog?.id ?? null;
+    const [record, currentMembers] = await Promise.all([
+      this.eventsService.queryKnownRecordById(activeUserId, row.id),
+      this.activityMembersService.queryMembersByOwnerId(row.id)
+    ]);
+    const requiresAdminApproval = this.resolveInvitationRequiresAdminApprovalFromMembers(
+      currentMembers,
       record?.creatorUserId ?? relatedSource.creatorUserId
     );
+    if (!this.eventCheckoutDialogStore.isCurrent(loadingDialogId)) {
+      return;
+    }
+    const approvalContext: InvitationApprovalContext = {
+      record,
+      currentMembers,
+      requiresAdminApproval
+    };
     if (record && this.shouldUseCheckoutFlow(record)) {
       this.eventCheckoutDialogStore.open({
         mode: 'invitation',
@@ -558,10 +740,11 @@ export class ActivitiesEventsController {
         confirmLabel: 'Accept',
         busyConfirmLabel: 'Accepting...',
         failureMessage: 'Unable to accept invitation.',
-        onSubmit: (selection: ActivityContracts.EventCheckoutSelection) => this.confirmActivityInvitationApproval(row, selection)
+        onSubmit: (selection: ActivityContracts.EventCheckoutSelection) => this.confirmActivityInvitationApproval(row, selection, approvalContext)
       });
       return;
     }
+    this.eventCheckoutDialogStore.close();
     this.dialogStore.open({
       title: 'Accept invitation?',
       message: row.title,
@@ -570,11 +753,98 @@ export class ActivitiesEventsController {
       busyConfirmLabel: 'Accepting...',
       confirmTone: 'accent',
       failureMessage: 'Unable to accept invitation.',
-      onConfirm: () => this.confirmActivityInvitationApproval(row)
+      onConfirm: () => this.confirmActivityInvitationApproval(row, null, approvalContext)
     });
   }
 
-  public runActivityItemRestoreAction(row: ActivityEventCardData, event?: Event, action?: CardMenuAction | null): void {
+  private buildInvitationCheckoutLoadingRecord(
+    row: InfoCardData,
+    activeUserId: string,
+    source: ActivityEventRecordLike
+  ): ActivityContracts.ActivityEventRecord {
+    const title = `${source?.title ?? row.title ?? ''}`.trim() || 'Event';
+    const timeframe = `${source?.timeframe ?? source?.when ?? this.activityRowTimeframe(row) ?? ''}`.trim();
+    const startAtIso = `${source?.startAtIso ?? source?.startAt ?? this.activityRowStartAt(row) ?? ''}`.trim();
+    const endAtIso = `${source?.endAtIso ?? source?.endAt ?? this.activityRowEndAt(row) ?? startAtIso}`.trim();
+    const creatorName = `${source?.creatorName ?? row.description ?? title}`.trim() || title;
+    const creatorInitials = `${source?.creatorInitials ?? source?.avatar ?? this.activityRowCreatorInitials(row)}`.trim()
+      || AppUtils.initialsFromText(creatorName);
+    const capacityTotal = this.chatCountValue(source?.capacityTotal ?? source?.capacityMax);
+    const detail = new ActivityEventDetailDTO().apply({
+      id: row.id,
+      userId: activeUserId,
+      type: 'invitations',
+      status: this.activityStatusCode(row) as ActivityContracts.ActivityEventStatus,
+      title,
+      subtitle: `${source?.shortDescription ?? source?.subtitle ?? this.activityRowSubtitle(row)}`.trim(),
+      timeframe,
+      activity: this.chatCountValue(source?.activity ?? source?.unread ?? row.badgeCount),
+      startAtIso,
+      endAtIso,
+      distanceKm: Number.isFinite(Number(source?.distanceKm))
+        ? Math.max(0, Number(source.distanceKm))
+        : this.activityRowDistanceKm(row),
+      imageUrl: `${source?.imageUrl ?? row.imageUrl ?? ''}`.trim(),
+      creatorUserId: `${source?.creatorUserId ?? row.ownerId ?? row.ownerUserId ?? ''}`.trim(),
+      creatorName,
+      creatorInitials,
+      creatorGender: source?.creatorGender === 'woman' ? 'woman' : 'man',
+      creatorCity: `${source?.creatorCity ?? ''}`.trim(),
+      visibility: source?.visibility ?? this.activityRowVisibility(row),
+      blindMode: source?.blindMode ?? 'Open Event',
+      sourceLink: `${source?.sourceLink ?? ''}`.trim(),
+      location: `${source?.location ?? ''}`.trim(),
+      locationCoordinates: source?.locationCoordinates ?? null,
+      capacityMin: source?.capacityMin ?? null,
+      capacityMax: source?.capacityMax ?? capacityTotal,
+      capacityTotal,
+      autoInviter: source?.autoInviter === true,
+      frequency: source?.frequency ?? 'One-time',
+      ticketing: source?.ticketing === true,
+      pricing: source?.pricing ?? null,
+      policiesEnabled: source?.policiesEnabled === true,
+      policies: Array.isArray(source?.policies) ? source.policies.map((item: ContractTypes.EventPolicyDTO) => ({ ...item })) : [],
+      slotsEnabled: source?.slotsEnabled === true,
+      slotTemplates: Array.isArray(source?.slotTemplates) ? source.slotTemplates.map((item: ContractTypes.EventSlotTemplateDTO) => ({ ...item })) : [],
+      parentEventId: source?.parentEventId ?? null,
+      slotTemplateId: source?.slotTemplateId ?? null,
+      generated: source?.generated === true,
+      eventType: source?.eventType ?? 'main',
+      nextSlot: source?.nextSlot ? { ...source.nextSlot } : null,
+      upcomingSlots: Array.isArray(source?.upcomingSlots) ? source.upcomingSlots.map((item: ContractTypes.EventSlotOccurrenceDTO) => ({ ...item })) : [],
+      acceptedMembers: this.chatCountValue(source?.acceptedMembers),
+      pendingMembers: this.chatCountValue(source?.pendingMembers),
+      acceptedMemberUserIds: [...(source?.acceptedMemberUserIds ?? [])],
+      pendingMemberUserIds: [...(source?.pendingMemberUserIds ?? [])],
+      invitedMemberUserIds: [...(source?.invitedMemberUserIds ?? [])],
+      pendingRequestMemberUserIds: [...(source?.pendingRequestMemberUserIds ?? [])],
+      pendingReason: source?.pendingReason,
+      topics: [...(source?.topics ?? [])],
+      subEventsEnabled: source?.subEventsEnabled ?? true,
+      subEventDefinitions: [...(source?.subEventDefinitions ?? [])],
+      subEvents: Array.isArray(source?.subEvents)
+        ? this.cloneSyncedSubEventForms(source.subEvents)
+        : [],
+      mode: source?.mode ?? 'Casual',
+      rating: this.chatCountValue(source?.rating),
+      boost: this.chatCountValue(source?.boost),
+      affinity: this.chatCountValue(source?.affinity)
+    });
+
+    return {
+      ...detail,
+      userId: activeUserId,
+      type: 'invitations',
+      avatar: `${source?.avatar ?? creatorInitials}`.trim(),
+      inviter: source?.inviter ?? null,
+      unread: this.chatCountValue(source?.unread ?? source?.activity ?? row.badgeCount),
+      trashedAtIso: null,
+      creatorGender: source?.creatorGender === 'woman' ? 'woman' : 'man',
+      adminIds: [...(source?.adminIds ?? [])]
+    } as ActivityContracts.ActivityEventRecord;
+  }
+
+  public runActivityItemRestoreAction(row: InfoCardData, event?: Event, action?: CardMenuAction | null): void {
     event?.stopPropagation();
     this.dialogStore.open({
       title: 'Restore event?',
@@ -589,22 +859,23 @@ export class ActivitiesEventsController {
     });
   }
 
-  public runActivityItemSecondaryAction(row: ActivityEventCardData, event?: Event, action?: CardMenuAction | null): void {
+  public runActivityItemSecondaryAction(row: InfoCardData, event?: Event, action?: CardMenuAction | null): void {
     event?.stopPropagation();
+    const isRejectInvitation = action?.id === 'rejectInvitation' || this.isActivityInvitationRow(row);
     this.dialogStore.open({
-      title: this.activitySecondaryConfirmTitle(row),
+      title: this.activitySecondaryConfirmTitle(row, isRejectInvitation),
       message: row.title,
       cancelLabel: 'Cancel',
-      confirmLabel: this.activitySecondaryConfirmActionLabel(row),
-      busyConfirmLabel: this.activitySecondaryConfirmBusyLabel(row),
+      confirmLabel: this.activitySecondaryConfirmActionLabel(row, isRejectInvitation),
+      busyConfirmLabel: this.activitySecondaryConfirmBusyLabel(row, isRejectInvitation),
       confirmTone: 'danger',
       confirmPalette: this.confirmationPaletteForCardAction(action),
-      failureMessage: this.activitySecondaryConfirmFailureMessage(row),
-      onConfirm: () => this.confirmActivitySecondaryAction(row)
+      failureMessage: this.activitySecondaryConfirmFailureMessage(row, isRejectInvitation),
+      onConfirm: () => this.confirmActivitySecondaryAction(row, isRejectInvitation)
     });
   }
 
-  public runActivityItemPublishAction(row: ActivityEventCardData, event?: Event, action?: CardMenuAction | null): void {
+  public runActivityItemPublishAction(row: InfoCardData, event?: Event, action?: CardMenuAction | null): void {
     event?.stopPropagation();
     this.dialogStore.open({
       title: 'Publish event?',
@@ -619,7 +890,7 @@ export class ActivitiesEventsController {
     });
   }
 
-  public runActivityItemUnpublishAction(row: ActivityEventCardData, event?: Event, action?: CardMenuAction | null): void {
+  public runActivityItemUnpublishAction(row: InfoCardData, event?: Event, action?: CardMenuAction | null): void {
     event?.stopPropagation();
     this.dialogStore.open({
       title: 'Unpublish event?',
@@ -634,7 +905,7 @@ export class ActivitiesEventsController {
     });
   }
 
-  public runActivityItemTakeOverAction(row: ActivityEventCardData, event?: Event, action?: CardMenuAction | null): void {
+  public runActivityItemTakeOverAction(row: InfoCardData, event?: Event, action?: CardMenuAction | null): void {
     event?.stopPropagation();
     this.dialogStore.open({
       title: 'Take over event?',
@@ -649,30 +920,23 @@ export class ActivitiesEventsController {
     });
   }
 
-  private async confirmActivityTakeOver(row: ActivityEventCardData): Promise<void> {
+  private async confirmActivityTakeOver(row: InfoCardData): Promise<void> {
     await this.eventsService.takeOverItem(this.activeUser.id, row.id);
-    const nextStatus = this.restoredActivityStatus(row);
+    const nextStatus = this.restoredActivityStatus();
+    this.applyActivityEventCounterDeltas({}, { pending: -1 });
     if (this.activitiesEventScope === 'pending') {
-      this.removeVisibleActivityRow(row);
+      this.activitiesSmartList?.removeVisibleItemByIdentity(this.activityRowIdentity(row));
     } else {
-      const smartList = this.activitiesSmartList;
-      if (smartList) {
-        const currentItems = [...smartList.itemsSnapshot()];
-        const rowIndex = currentItems.findIndex(item => item.id === row.id && item.type === row.type);
-        if (rowIndex >= 0) {
-          const updatedRow = { ...currentItems[rowIndex], status: nextStatus };
-          this.refreshActivityEventInfoCard(updatedRow);
-          const nextItems = [...currentItems];
-          nextItems[rowIndex] = updatedRow;
-          this.replaceVisibleActivityItems(nextItems, 0);
-        }
-      }
+      this.activitiesSmartList?.patchVisibleItem(
+        (item: InfoCardData) => item.id === row.id,
+        { status: nextStatus }
+      );
     }
     this.refreshSectionBadges();
     this.cdr.markForCheck();
   }
 
-  private restoredActivityStatus(row: ActivityEventCardData): string {
+  private restoredActivityStatus(): string {
     return 'A';
   }
 
@@ -690,32 +954,58 @@ export class ActivitiesEventsController {
     }
   }
 
-  private async confirmActivityPublish(row: ActivityEventCardData): Promise<void> {
-    await this.eventsService.publishItem(this.activeUser.id, row.id);
+  private async confirmActivityPublish(row: InfoCardData): Promise<void> {
+    const activeUserId = this.activeUserId();
+    const counterDelta = this.publishedEventCounterDelta(row);
+    const persistence = this.eventsService.publishItem(this.activeUser.id, row.id, {
+      counterDelta
+    });
+    await persistence;
     this.activeHostingIds = new Set([...this.activeHostingIds, row.id]);
 
     if (this.shouldRemovePublishedRowFromCurrentScope()) {
-      this.removeVisibleActivityRow(row);
+      this.activitiesSmartList?.removeVisibleItemByIdentity(this.activityRowIdentity(row));
     } else {
-      this.patchVisibleActivityEventRow(row, {
-        status: 'A'
-      });
+      this.patchVisiblePublicationState(row, 'A');
     }
 
+    this.signalActivityCounterDelta(activeUserId, counterDelta);
     this.refreshSectionBadges();
     this.cdr.markForCheck();
   }
 
-  private async confirmActivityUnpublish(row: ActivityEventCardData): Promise<void> {
-    await this.eventsService.unpublishItem(this.activeUser.id, row.id);
+  private async confirmActivityUnpublish(row: InfoCardData): Promise<void> {
+    const activeUserId = this.activeUserId();
+    const counterDelta = this.unpublishedEventCounterDelta(row);
+    const persistence = this.eventsService.unpublishItem(this.activeUser.id, row.id, {
+      counterDelta
+    });
+    await persistence;
     const nextActiveIds = new Set(this.activeHostingIds);
     nextActiveIds.delete(row.id);
     this.activeHostingIds = nextActiveIds;
-    this.patchVisibleActivityEventRow(row, {
-      status: 'DR'
-    });
+    this.patchVisiblePublicationState(row, 'DR');
+    this.signalActivityCounterDelta(activeUserId, counterDelta);
     this.refreshSectionBadges();
     this.cdr.markForCheck();
+  }
+
+  private patchVisiblePublicationState(row: InfoCardData, status: ActivityContracts.ActivityEventStatus): void {
+    const identity = this.activityRowIdentity(row);
+    this.activitiesSmartList?.patchVisibleItem(
+      (item: InfoCardData) => this.activityRowIdentity(item) === identity,
+      (item: InfoCardData) => ({
+        ...item,
+        status,
+        surfaceTone: status === 'DR' ? 'draft' : 'published',
+        mediaEnd: item.mediaEnd
+          ? {
+            ...item.mediaEnd,
+            tone: status === 'DR' ? 'inactive' : item.mediaEnd.tone
+          }
+          : item.mediaEnd
+      })
+    );
   }
 
   private shouldRemovePublishedRowFromCurrentScope(): boolean {
@@ -723,108 +1013,215 @@ export class ActivitiesEventsController {
       || (this.activitiesEventScope === 'my-events' && this.hostingPublicationFilter === 'drafts');
   }
 
-  private patchVisibleActivityEventRow(
-    row: ActivityEventCardData,
-    patch: Partial<ActivityEventCardData>
-  ): void {
-    const smartList = this.activitiesSmartList;
-    if (!smartList) {
-      return;
-    }
-    const rowKey = this.activityRowIdentity(row);
-    const currentItems = [...smartList.itemsSnapshot()];
-    const rowIndex = currentItems.findIndex(item => this.activityRowIdentity(item) === rowKey);
-    if (rowIndex < 0) {
-      return;
-    }
-    const updatedRow = {
-      ...currentItems[rowIndex],
-      ...patch
-    };
-    this.refreshActivityEventInfoCard(updatedRow);
-    const nextItems = [...currentItems];
-    nextItems[rowIndex] = updatedRow;
-    this.replaceVisibleActivityItems(nextItems, 0);
-  }
-
-  private activitySecondaryConfirmTitle(row: ActivityEventCardData): string {
-    if (this.isActivityInvitationRow(row)) {
+  private activitySecondaryConfirmTitle(row: InfoCardData, isRejectInvitation = false): string {
+    if (isRejectInvitation) {
       return 'Reject invitation?';
     }
-    if (row.isAdmin !== true) {
+    if (!this.isActivityRowAdmin(row)) {
       return 'Leave event?';
     }
     return 'Delete event?';
   }
 
-  private activitySecondaryConfirmActionLabel(row: ActivityEventCardData): string {
-    if (this.isActivityInvitationRow(row)) {
-      return 'Reject';
+  private activitySecondaryConfirmActionLabel(row: InfoCardData, isRejectInvitation = false): string {
+    if (isRejectInvitation) {
+      return 'Reject Invitation';
     }
-    if (row.isAdmin !== true) {
+    if (!this.isActivityRowAdmin(row)) {
       return 'Leave';
     }
     return 'Delete';
   }
 
-  private activitySecondaryConfirmBusyLabel(row: ActivityEventCardData): string {
-    if (this.isActivityInvitationRow(row)) {
+  private activitySecondaryConfirmBusyLabel(row: InfoCardData, isRejectInvitation = false): string {
+    if (isRejectInvitation) {
       return 'Rejecting...';
     }
-    if (row.isAdmin !== true) {
+    if (!this.isActivityRowAdmin(row)) {
       return 'Leaving...';
     }
     return 'Deleting...';
   }
 
-  private activitySecondaryConfirmFailureMessage(row: ActivityEventCardData): string {
-    if (this.isActivityInvitationRow(row)) {
+  private activitySecondaryConfirmFailureMessage(row: InfoCardData, isRejectInvitation = false): string {
+    if (isRejectInvitation) {
       return 'Unable to reject invitation.';
     }
-    if (row.isAdmin !== true) {
+    if (!this.isActivityRowAdmin(row)) {
       return 'Unable to leave event.';
     }
     return 'Unable to delete event.';
   }
 
-  private async confirmActivitySecondaryAction(row: ActivityEventCardData): Promise<void> {
-    if (row.isAdmin !== true && !this.isActivityInvitationRow(row)) {
+  private acceptedInvitationCounterDelta(
+    row: InfoCardData,
+    detail: Pick<ActivityEventDetailDTO, 'pendingRequestMemberUserIds' | 'acceptedMemberUserIds'>
+  ): UserMenuCounterDeltasDto | null {
+    const activeUserId = this.activeUserId();
+    const movedToPending = activeUserId.length > 0
+      && (detail.pendingRequestMemberUserIds ?? []).includes(activeUserId)
+      && !(detail.acceptedMemberUserIds ?? []).includes(activeUserId);
+    return this.acceptedInvitationCounterDeltaForMembership(movedToPending);
+  }
+
+  private acceptedInvitationCounterDeltaFromResult(
+    result: ActivityContracts.EventParticipationActionResultDTO
+  ): UserMenuCounterDeltasDto | null {
+    const membershipStatus = `${result.membershipStatus ?? ''}`.trim();
+    return this.acceptedInvitationCounterDeltaForMembership(membershipStatus !== 'accepted');
+  }
+
+  private acceptedInvitationCounterDeltaForMembership(
+    movedToPending: boolean
+  ): UserMenuCounterDeltasDto | null {
+    return this.activityCounterDeltaFromDeltas(
+      movedToPending
+        ? { invitations: -1 }
+        : { invitations: -1, events: 1 },
+      movedToPending
+        ? { invitations: -1, pending: 1 }
+        : { invitations: -1, active: 1 }
+    );
+  }
+
+  private trashedEventCounterDelta(
+    row: InfoCardData,
+    forcedType: ActivityContracts.ActivityEventRepositoryItemType | null = null
+  ): UserMenuCounterDeltasDto | null {
+    const primaryDelta: Record<string, number> = {};
+    const eventDelta: Record<string, number> = { all: -1, trash: 1 };
+    const type = forcedType ?? this.activityEventListTypeForRow(row);
+    if (type === 'invitations') {
+      primaryDelta['invitations'] = -1;
+      eventDelta['invitations'] = -1;
+    } else if (type === 'hosting') {
+      primaryDelta['hosting'] = -1;
+      eventDelta['hosting'] = -1;
+      if (this.isActivityDraftRow(row)) {
+        eventDelta['drafts'] = -1;
+      }
+    } else if (this.isActivityPendingParticipationRow(row)) {
+      eventDelta['pending'] = -1;
+    } else {
+      primaryDelta['events'] = -1;
+      eventDelta['active'] = -1;
+    }
+    return this.activityCounterDeltaFromDeltas(primaryDelta, eventDelta);
+  }
+
+  private adjustLeftEventCounters(row: InfoCardData): void {
+    if (this.isActivityPendingParticipationRow(row)) {
+      this.applyActivityEventCounterDeltas({}, { all: -1, pending: -1, trash: 1 });
+      return;
+    }
+    this.applyActivityEventCounterDeltas({ events: -1 }, { active: -1, all: -1, trash: 1 });
+  }
+
+  private leftEventCounterDelta(row: InfoCardData): UserMenuCounterDeltasDto | null {
+    if (this.isActivityPendingParticipationRow(row)) {
+      return this.activityCounterDeltaFromDeltas(
+        {},
+        { all: -1, pending: -1, trash: 1 }
+      );
+    }
+    return this.activityCounterDeltaFromDeltas(
+      { events: -1 },
+      { active: -1, all: -1, trash: 1 }
+    );
+  }
+
+  private restoredEventCounterDelta(row: InfoCardData): UserMenuCounterDeltasDto | null {
+    const primaryDelta: Record<string, number> = {};
+    const eventDelta: Record<string, number> = { all: 1, trash: -1 };
+    const type = this.activityEventListTypeForRow(row);
+    if (type === 'invitations') {
+      primaryDelta['invitations'] = 1;
+      eventDelta['invitations'] = 1;
+    } else if (type === 'hosting') {
+      primaryDelta['hosting'] = 1;
+      eventDelta['hosting'] = 1;
+      if (this.activityRestoredStatusCode(row) === 'DR' || this.activitiesEventScope === 'drafts') {
+        eventDelta['drafts'] = 1;
+      }
+    } else if (this.isActivityPendingParticipationRow(row)) {
+      eventDelta['pending'] = 1;
+    } else {
+      primaryDelta['events'] = 1;
+      eventDelta['active'] = 1;
+    }
+    return this.activityCounterDeltaFromDeltas(primaryDelta, eventDelta);
+  }
+
+  private publishedEventCounterDelta(row: InfoCardData): UserMenuCounterDeltasDto | null {
+    if (!this.isActivityDraftRow(row)) {
+      return null;
+    }
+    return this.activityCounterDeltaFromDeltas(
+      {},
+      { drafts: -1 }
+    );
+  }
+
+  private unpublishedEventCounterDelta(row: InfoCardData): UserMenuCounterDeltasDto | null {
+    if (this.activityStatusCode(row) === 'DR') {
+      return null;
+    }
+    return this.activityCounterDeltaFromDeltas(
+      {},
+      { drafts: 1 }
+    );
+  }
+
+  private isActivityPendingParticipationRow(row: InfoCardData): boolean {
+    const activeUserId = this.activeUserId();
+    const dto = this.activityEventDTOForRow(row);
+    if (!activeUserId || !dto) {
+      return false;
+    }
+    if ((dto.acceptedMemberUserIds ?? []).includes(activeUserId)) {
+      return false;
+    }
+    return (dto.pendingRequestMemberUserIds ?? []).includes(activeUserId)
+      || (dto.pendingMemberUserIds ?? []).includes(activeUserId);
+  }
+
+  private activityRestoredStatusCode(row: InfoCardData): string {
+    const dto = this.activityEventDTOForRow(row);
+    const status = this.normalizeActivityStatusCode(dto?.status ?? row.status);
+    if (status !== 'T') {
+      return status;
+    }
+    const previous = this.normalizeActivityStatusCode(dto?.statusBeforeSuppression);
+    return ['UR', 'B', 'D', 'I', 'T'].includes(previous) ? 'A' : previous;
+  }
+
+  private async confirmActivitySecondaryAction(row: InfoCardData, isRejectInvitation = false): Promise<void> {
+    if (!isRejectInvitation && !this.isActivityRowAdmin(row) && !this.isActivityInvitationRow(row)) {
       await this.confirmActivityLeave(row);
       return;
     }
-    await this.persistActivityRowTrash(row);
-    this.markActivityRowTrashed(row);
-    this.removeVisibleActivityRow(row);
+    const activeUserId = this.activeUserId();
+    const counterDelta = this.trashedEventCounterDelta(row, isRejectInvitation ? 'invitations' : null);
+    const persistence = this.persistActivityRowTrash(row, counterDelta);
+    await persistence;
+    this.activitiesSmartList?.removeVisibleItemByIdentity(this.activityRowIdentity(row));
+    this.signalActivityCounterDelta(activeUserId, counterDelta);
     this.cdr.markForCheck();
   }
 
-  private async confirmActivityLeave(row: ActivityEventCardData): Promise<void> {
+  private async confirmActivityLeave(row: InfoCardData): Promise<void> {
     const activeUserId = this.activeUser.id.trim();
     if (!activeUserId) {
       return;
     }
-    const eventDetailDTO = await this.buildLeftActivityEventDetailDTO(row);
-    if (!eventDetailDTO) {
-      this.eventCheckoutDraftStore.clear(activeUserId, row.id);
-      this.removeVisibleActivityRow(row);
-      this.refreshSectionBadges();
-      this.cdr.markForCheck();
-      return;
-    }
-
     this.eventCheckoutDraftStore.clear(activeUserId, row.id);
-    const currentMembers = await this.activityMembersService.queryMembersByOwnerId(row.id);
-    const nextMembers = currentMembers.filter((member: ActivityContracts.ActivityMemberEntry) => member.userId !== activeUserId);
-    const capacityTotal = Math.max(
-      Math.max(0, Math.trunc(Number(eventDetailDTO.acceptedMembers) || 0)),
-      Math.max(0, Math.trunc(Number(eventDetailDTO.capacityTotal) || 0))
-    );
-    const persistence = Promise.all([
-      this.emitActivityEventSave(eventDetailDTO),
-      currentMembers.length > nextMembers.length
-        ? this.activityMembersService.replaceMembersByOwnerId(row.id, nextMembers, capacityTotal)
-        : Promise.resolve()
-    ]);
+    const counterDelta = this.leftEventCounterDelta(row);
+    const leaveResult = await this.eventsService.leaveEvent(activeUserId, row.id, {
+      counterDelta
+    });
+    if (!leaveResult || leaveResult.membershipStatus === 'unchanged') {
+      throw new Error('Unable to leave event.');
+    }
 
     if (this.selectedActivityMembersRowId === this.activityRowIdentity(row)) {
       this.selectedActivityMembers = ActivityMembersBuilder.sortActivityMembersByActionTimeAsc(
@@ -833,8 +1230,9 @@ export class ActivitiesEventsController {
       this.activityMembersByRowId[this.selectedActivityMembersRowId] = [...this.selectedActivityMembers];
     }
 
+    this.activitiesSmartList?.removeVisibleItemByIdentity(this.activityRowIdentity(row));
+    this.signalActivityCounterDelta(activeUserId, counterDelta);
     this.cdr.markForCheck();
-    await persistence;
   }
 
   private shouldUseCheckoutFlow(record: {
@@ -857,27 +1255,57 @@ export class ActivitiesEventsController {
   }
 
   private async confirmActivityInvitationApproval(
-    row: ActivityEventCardData,
-    selection?: ActivityContracts.EventCheckoutSelection | null
+    row: InfoCardData,
+    selection?: ActivityContracts.EventCheckoutSelection | null,
+    context?: InvitationApprovalContext | null
   ): Promise<void> {
-    const { eventDetailDTO, nextMembers, capacityTotal } = await this.buildAcceptedInvitationSaveResult(row, selection);
-    const [displaySync] = await Promise.all([
-      this.eventsService.saveActivityEvent(eventDetailDTO),
-      nextMembers
-        ? this.activityMembersService.replaceMembersByOwnerId(eventDetailDTO.id, nextMembers, capacityTotal)
-        : Promise.resolve()
-    ]);
-    if (!displaySync) {
-      return;
+    const activeUserId = this.activeUserId();
+    const { eventDetailDTO } = await this.buildAcceptedInvitationSaveResult(row, selection, context);
+    const pendingReason = this.acceptedInvitationPendingReason(activeUserId, eventDetailDTO, selection);
+    const counterDelta = this.acceptedInvitationCounterDeltaForMembership(pendingReason !== null)
+      ?? this.acceptedInvitationCounterDelta(row, eventDetailDTO);
+    const joinResult = await this.eventsService.requestJoin(activeUserId, eventDetailDTO.id, {
+      slotSourceId: selection?.slotSourceId ?? null,
+      optionalSubEventIds: selection?.optionalSubEventIds ?? [],
+      assetSelections: selection?.assetSelections ?? [],
+      acceptedPolicyIds: selection?.acceptedPolicyIds ?? [],
+      paymentSessionId: selection?.paymentSessionId ?? null,
+      bookingConfirmed: pendingReason == null && selection?.bookingConfirmed !== false,
+      pendingReason,
+      skipLocalRouteDelay: Boolean(selection?.paymentSessionId),
+      counterDelta
+    });
+    if (!joinResult || joinResult.membershipStatus === 'unchanged') {
+      throw new Error('Unable to accept invitation.');
     }
+    const resolvedDelta = this.acceptedInvitationCounterDeltaFromResult(joinResult) ?? counterDelta;
     this.removeInvitationItem(eventDetailDTO.id);
-    this.applyActivityEventSave(displaySync);
+    this.activitiesSmartList?.removeVisibleItemByIdentity(this.activityRowIdentity(row));
+    this.signalActivityCounterDelta(activeUserId, resolvedDelta);
     this.cdr.markForCheck();
   }
 
-  private async buildAcceptedInvitationSaveResult(
-    row: ActivityEventCardData,
+  private acceptedInvitationPendingReason(
+    activeUserId: string,
+    detail: Pick<ActivityEventDetailDTO, 'pendingRequestMemberUserIds' | 'acceptedMemberUserIds'>,
     selection?: ActivityContracts.EventCheckoutSelection | null
+  ): AppConstants.ActivityPendingReason {
+    if (selection?.pendingReason === 'waitlist') {
+      return 'waitlist';
+    }
+    if (selection?.pendingReason === 'approval') {
+      return 'approval';
+    }
+    const movedToPending = activeUserId.length > 0
+      && (detail.pendingRequestMemberUserIds ?? []).includes(activeUserId)
+      && !(detail.acceptedMemberUserIds ?? []).includes(activeUserId);
+    return movedToPending ? 'approval' : null;
+  }
+
+  private async buildAcceptedInvitationSaveResult(
+    row: InfoCardData,
+    selection?: ActivityContracts.EventCheckoutSelection | null,
+    context?: InvitationApprovalContext | null
   ): Promise<InvitationApprovalSaveResult> {
     const activeUserId = this.activeUser.id.trim();
     if (!activeUserId) {
@@ -885,18 +1313,23 @@ export class ActivitiesEventsController {
     }
 
     const relatedSource = this.activityDisplaySourceForRow(row);
-    const record = await this.eventsService.queryKnownRecordById(activeUserId, row.id);
-    const currentMembers = await this.activityMembersService.queryMembersByOwnerId(row.id);
-    const activeInviteEntry = currentMembers.find((member: ActivityContracts.ActivityMemberEntry) =>
+    const [record, currentMembers] = context
+      ? [context.record, context.currentMembers]
+      : await Promise.all([
+          this.eventsService.queryKnownRecordById(activeUserId, row.id),
+          this.activityMembersService.queryMembersByOwnerId(row.id)
+        ]);
+    const activeInviteEntry = currentMembers.find((member: ActivityContracts.ActivityMemberDTO) =>
       member.userId === activeUserId
       && member.status === 'pending'
       && member.requestKind === 'invite'
     ) ?? null;
-    const requiresAdminApproval = this.invitationRequiresAdminApproval(
-      activeInviteEntry,
-      currentMembers,
-      record?.creatorUserId ?? relatedSource.creatorUserId
-    );
+    const requiresAdminApproval = context?.requiresAdminApproval
+      ?? this.invitationRequiresAdminApproval(
+        activeInviteEntry,
+        currentMembers,
+        record?.creatorUserId ?? relatedSource.creatorUserId
+      );
 
     const existingAcceptedMemberUserIds = this.activityMemberUserIdsByStatus(currentMembers, 'accepted');
     const existingPendingMemberUserIds = this.activityMemberUserIdsByStatus(currentMembers, 'pending')
@@ -911,6 +1344,23 @@ export class ActivitiesEventsController {
     const nextPendingMemberUserIds = requiresAdminApproval
       ? this.uniqueUserIds([...existingPendingMemberUserIds, activeUserId])
       : existingPendingMemberUserIds.filter(userId => userId !== activeUserId);
+    const existingInvitedMemberUserIds = this.uniqueUserIds([
+      ...(record?.invitedMemberUserIds ?? []),
+      ...(relatedSource.invitedMemberUserIds ?? [])
+    ]);
+    const existingPendingRequestMemberUserIds = this.uniqueUserIds([
+      ...(record?.pendingRequestMemberUserIds ?? []),
+      ...(relatedSource.pendingRequestMemberUserIds ?? []),
+      ...existingPendingMemberUserIds
+    ]);
+    const nextInvitedMemberUserIds = existingInvitedMemberUserIds
+      .filter(userId => userId !== activeUserId);
+    const nextPendingRequestMemberUserIds = requiresAdminApproval
+      ? this.uniqueUserIds([
+          ...existingPendingRequestMemberUserIds.filter(userId => userId !== activeUserId),
+          activeUserId
+        ])
+      : existingPendingRequestMemberUserIds.filter(userId => userId !== activeUserId);
 
     const acceptedMembersBase = Math.max(
       this.chatCountValue(record?.acceptedMembers ?? relatedSource.acceptedMembers),
@@ -933,11 +1383,11 @@ export class ActivitiesEventsController {
     const title = record?.title ?? relatedSource.title ?? relatedSource.description ?? row.title;
     const shortDescription = record?.subtitle
       ?? relatedSource.shortDescription
-      ?? row.subtitle
+      ?? this.activityRowSubtitle(row)
       ?? `Invited by ${relatedSource.inviter ?? relatedSource.creatorName ?? row.title}`;
-    const timeframe = record?.timeframe ?? relatedSource.timeframe ?? relatedSource.when ?? row.detail;
-    const startAt = record?.startAtIso ?? relatedSource.startAt ?? row.startAt ?? row.dateIso;
-    const endAt = record?.endAtIso ?? relatedSource.endAt ?? row.endAt ?? startAt;
+    const timeframe = record?.timeframe ?? relatedSource.timeframe ?? relatedSource.when ?? this.activityRowTimeframe(row);
+    const startAt = record?.startAtIso ?? relatedSource.startAt ?? this.activityRowStartAt(row);
+    const endAt = record?.endAtIso ?? relatedSource.endAt ?? this.activityRowEndAt(row) ?? startAt;
     const distanceKmRaw = record?.distanceKm ?? relatedSource.distanceKm ?? this.activityRowDistanceKm(row);
     const distanceKm = Number.isFinite(Number(distanceKmRaw)) ? Math.max(0, Number(distanceKmRaw)) : 0;
     const creatorName = record?.creatorName?.trim() || `${relatedSource.inviter ?? relatedSource.creatorName ?? ''}`.trim() || title;
@@ -957,7 +1407,7 @@ export class ActivitiesEventsController {
         title,
         subtitle: shortDescription,
         timeframe,
-        activity: this.chatCountValue(record?.activity ?? relatedSource.activity ?? relatedSource.unread ?? row.unread),
+        activity: this.chatCountValue(record?.activity ?? relatedSource.activity ?? relatedSource.unread ?? this.activityRowActivityCount(row)),
         startAtIso: startAt,
         endAtIso: endAt,
         distanceKm,
@@ -991,7 +1441,9 @@ export class ActivitiesEventsController {
           : (Array.isArray(relatedSource.upcomingSlots) ? relatedSource.upcomingSlots.map((item: ContractTypes.EventSlotOccurrenceDTO) => ({ ...item })) : undefined),
         visibility: record?.visibility ?? relatedSource.visibility,
         blindMode: record?.blindMode ?? relatedSource.blindMode,
-        status: record?.status ?? relatedSource.status ?? 'A',
+        status: 'A',
+        statusBeforeSuppression: null,
+        trashedAtIso: null,
         creatorUserId: record?.creatorUserId ?? relatedSource.creatorUserId,
         creatorName,
         creatorInitials,
@@ -1001,6 +1453,11 @@ export class ActivitiesEventsController {
         locationCoordinates: record?.locationCoordinates ?? relatedSource.locationCoordinates,
         sourceLink: record?.sourceLink ?? relatedSource.sourceLink,
         topics: [...(record?.topics ?? relatedSource.topics ?? [])],
+        acceptedMemberUserIds: nextAcceptedMemberUserIds,
+        pendingMemberUserIds: nextPendingMemberUserIds,
+        invitedMemberUserIds: nextInvitedMemberUserIds,
+        pendingRequestMemberUserIds: nextPendingRequestMemberUserIds,
+        pendingReason: requiresAdminApproval ? 'approval' : undefined,
         subEvents: Array.isArray(record?.subEvents)
           ? this.cloneSyncedSubEventForms(record.subEvents)
           : (Array.isArray(relatedSource.subEvents) ? this.cloneSyncedSubEventForms(relatedSource.subEvents) : undefined),
@@ -1012,13 +1469,15 @@ export class ActivitiesEventsController {
     };
   }
 
-  private async resolveInvitationRequiresAdminApproval(ownerId: string, creatorUserId?: string | null): Promise<boolean> {
+  private resolveInvitationRequiresAdminApprovalFromMembers(
+    currentMembers: readonly ActivityContracts.ActivityMemberDTO[],
+    creatorUserId?: string | null
+  ): boolean {
     const activeUserId = this.activeUser.id.trim();
     if (!activeUserId) {
       return false;
     }
-    const currentMembers = await this.activityMembersService.queryMembersByOwnerId(ownerId);
-    const activeInviteEntry = currentMembers.find((member: ActivityContracts.ActivityMemberEntry) =>
+    const activeInviteEntry = currentMembers.find((member: ActivityContracts.ActivityMemberDTO) =>
       member.userId === activeUserId
       && member.status === 'pending'
       && member.requestKind === 'invite'
@@ -1027,8 +1486,8 @@ export class ActivitiesEventsController {
   }
 
   private invitationRequiresAdminApproval(
-    activeInviteEntry: ActivityContracts.ActivityMemberEntry | null,
-    currentMembers: readonly ActivityContracts.ActivityMemberEntry[],
+    activeInviteEntry: ActivityContracts.ActivityMemberDTO | null,
+    currentMembers: readonly ActivityContracts.ActivityMemberDTO[],
     creatorUserId?: string | null
   ): boolean {
     const inviterUserId = `${activeInviteEntry?.invitedByUserId ?? ''}`.trim();
@@ -1046,10 +1505,10 @@ export class ActivitiesEventsController {
   }
 
   private buildAcceptedInvitationMembers(
-    members: readonly ActivityContracts.ActivityMemberEntry[],
+    members: readonly ActivityContracts.ActivityMemberDTO[],
     activeUserId: string,
     requiresAdminApproval: boolean
-  ): ActivityContracts.ActivityMemberEntry[] | null {
+  ): ActivityContracts.ActivityMemberDTO[] | null {
     const nowIso = AppUtils.toIsoDateTime(new Date());
     let didUpdate = false;
     const nextMembers = members.map(member => {
@@ -1090,7 +1549,7 @@ export class ActivitiesEventsController {
   }
 
   private async buildLeftActivityEventDetailDTO(
-    row: ActivityEventCardData
+    row: InfoCardData
   ): Promise<ActivityEventDetailDTO | null> {
     const activeUserId = this.activeUser.id.trim();
     if (!activeUserId) {
@@ -1114,16 +1573,23 @@ export class ActivitiesEventsController {
     const nextAcceptedMemberUserIds = existingAcceptedMemberUserIds.filter(userId => userId !== activeUserId);
     const nextPendingMemberUserIds = existingPendingMemberUserIds
       .filter(userId => userId !== activeUserId && !nextAcceptedMemberUserIds.includes(userId));
+    const nextInvitedMemberUserIds = this.uniqueUserIds([
+      ...(record?.invitedMemberUserIds ?? []),
+      ...(source.invitedMemberUserIds ?? [])
+    ]).filter(userId => userId !== activeUserId);
+    const nextPendingRequestMemberUserIds = this.uniqueUserIds([
+      ...(record?.pendingRequestMemberUserIds ?? []),
+      ...(source.pendingRequestMemberUserIds ?? []),
+      ...existingPendingMemberUserIds
+    ]).filter(userId => userId !== activeUserId);
 
     const acceptedMembersBase = this.chatCountValue(
       record?.acceptedMembers
       ?? source.acceptedMembers
-      ?? row.acceptedMembers
     );
     const pendingMembersBase = this.chatCountValue(
       record?.pendingMembers
       ?? source.pendingMembers
-      ?? row.pendingMembers
     );
     const nextAcceptedMembers = Math.max(
       nextAcceptedMemberUserIds.length,
@@ -1137,18 +1603,17 @@ export class ActivitiesEventsController {
     const title = record?.title ?? source.title ?? row.title;
     const shortDescription = record?.subtitle
       ?? source.shortDescription
-      ?? row.subtitle
+      ?? this.activityRowSubtitle(row)
       ?? '';
-    const timeframe = record?.timeframe ?? source.timeframe ?? row.detail;
-    const startAt = record?.startAtIso ?? source.startAt ?? row.startAt ?? row.dateIso;
-    const endAt = record?.endAtIso ?? source.endAt ?? row.endAt ?? startAt;
+    const timeframe = record?.timeframe ?? source.timeframe ?? this.activityRowTimeframe(row);
+    const startAt = record?.startAtIso ?? source.startAt ?? this.activityRowStartAt(row);
+    const endAt = record?.endAtIso ?? source.endAt ?? this.activityRowEndAt(row) ?? startAt;
     const distanceKmRaw = record?.distanceKm ?? source.distanceKm ?? this.activityRowDistanceKm(row);
     const distanceKm = Number.isFinite(Number(distanceKmRaw)) ? Math.max(0, Number(distanceKmRaw)) : 0;
     const creatorName = record?.creatorName?.trim() || title;
     const creatorInitials = record?.creatorInitials?.trim()
       || source.avatar?.trim()
-      || row.avatarInitials?.trim()
-      || row.creatorInitials?.trim()
+      || this.activityRowCreatorInitials(row)
       || AppUtils.initialsFromText(creatorName);
     const capacityTotal = Math.max(
       nextAcceptedMembers,
@@ -1156,8 +1621,6 @@ export class ActivitiesEventsController {
         record?.capacityTotal
         ?? source.capacityTotal
         ?? source.capacityMax
-        ?? row.capacityTotal
-        ?? row.capacityMax
       )
     );
 
@@ -1167,7 +1630,7 @@ export class ActivitiesEventsController {
       title,
       subtitle: shortDescription,
       timeframe,
-      activity: this.chatCountValue(record?.activity ?? source.activity ?? row.unread),
+      activity: this.chatCountValue(record?.activity ?? source.activity ?? this.activityRowActivityCount(row)),
       startAtIso: startAt,
       endAtIso: endAt,
       distanceKm,
@@ -1175,8 +1638,8 @@ export class ActivitiesEventsController {
       acceptedMembers: nextAcceptedMembers,
       pendingMembers: nextPendingMembers,
       capacityTotal,
-      capacityMin: record?.capacityMin ?? source.capacityMin ?? row.capacityMin ?? null,
-      capacityMax: record?.capacityMax ?? source.capacityMax ?? row.capacityMax ?? capacityTotal,
+      capacityMin: record?.capacityMin ?? source.capacityMin ?? null,
+      capacityMax: record?.capacityMax ?? source.capacityMax ?? capacityTotal,
       autoInviter: record?.autoInviter ?? source.autoInviter,
       frequency: record?.frequency ?? source.frequency,
       ticketing: record?.ticketing ?? source.ticketing,
@@ -1199,7 +1662,7 @@ export class ActivitiesEventsController {
       upcomingSlots: Array.isArray(record?.upcomingSlots)
         ? record.upcomingSlots.map((item: ContractTypes.EventSlotOccurrenceDTO) => ({ ...item }))
         : (Array.isArray(source.upcomingSlots) ? source.upcomingSlots.map((item: ContractTypes.EventSlotOccurrenceDTO) => ({ ...item })) : undefined),
-      visibility: record?.visibility ?? source.visibility ?? row.visibility,
+      visibility: record?.visibility ?? source.visibility ?? this.activityRowVisibility(row),
       blindMode: record?.blindMode ?? source.blindMode,
       status: record?.status ?? source.status ?? 'A',
       creatorUserId,
@@ -1211,6 +1674,11 @@ export class ActivitiesEventsController {
       locationCoordinates: record?.locationCoordinates ?? source.locationCoordinates,
       sourceLink: record?.sourceLink ?? source.sourceLink,
       topics: [...(record?.topics ?? source.topics ?? [])],
+      acceptedMemberUserIds: nextAcceptedMemberUserIds,
+      pendingMemberUserIds: nextPendingMemberUserIds,
+      invitedMemberUserIds: nextInvitedMemberUserIds,
+      pendingRequestMemberUserIds: nextPendingRequestMemberUserIds,
+      pendingReason: undefined,
       subEvents: Array.isArray(record?.subEvents)
         ? this.cloneSyncedSubEventForms(record.subEvents)
         : (Array.isArray(source.subEvents) ? this.cloneSyncedSubEventForms(source.subEvents) : undefined),
@@ -1219,86 +1687,82 @@ export class ActivitiesEventsController {
     });
   }
 
-  public isActivityIdentityTrashed(type: ActivityEventCardData['type'], id: string): boolean {
+  public isActivityIdentityTrashed(type: ActivityContracts.ActivityEventRepositoryItemType, id: string): boolean {
     return Boolean(this.trashedActivityRowsByKey[`${type}:${id}`]);
   }
 
-  public isActivityRowTrashed(row: ActivityEventCardData): boolean {
-    if (row.isTrashed === true) {
-      return true;
-    }
+  public isActivityRowTrashed(row: InfoCardData): boolean {
     const status = this.activityStatusCode(row);
     if (status === 'T' || status === 'D' || status === 'I') {
       return true;
     }
-    return this.isActivityIdentityTrashed(row.type, row.id);
-  }
-
-  private trashedActivityRows(): ActivityEventCardData[] {
-    return Object.values(this.trashedActivityRowsByKey);
+    return this.isActivityIdentityTrashed(this.activityEventListTypeForRow(row), row.id);
   }
 
   public trashedActivityCount(): number {
     return Object.keys(this.trashedActivityRowsByKey).length;
   }
 
-  private markActivityRowTrashed(row: ActivityEventCardData): void {
+  private markActivityRowTrashed(row: InfoCardData): void {
     this.trashedActivityRowsByKey[this.activityRowIdentity(row)] = this.withActivityEventInfoCard({
       ...row,
-      status: 'T',
-      isTrashed: true
+      status: 'T'
     });
     this.refreshSectionBadges();
   }
 
-  private unmarkActivityRowTrashed(row: ActivityEventCardData): void {
+  private unmarkActivityRowTrashed(row: InfoCardData): void {
     delete this.trashedActivityRowsByKey[this.activityRowIdentity(row)];
     this.refreshSectionBadges();
   }
 
-  private async persistActivityRowTrash(row: ActivityEventCardData): Promise<void> {
-    if (row.type === 'events' || row.type === 'hosting' || row.type === 'invitations') {
-      await this.eventsService.trashItem(this.activeUser.id, row.id);
-    }
+  private async persistActivityRowTrash(row: InfoCardData, counterDelta: UserMenuCounterDeltasDto | null): Promise<void> {
+    await this.eventsService.trashItem(this.activeUser.id, row.id, {
+      counterDelta
+    });
   }
 
-  private async restoreActivityRow(row: ActivityEventCardData): Promise<void> {
-    if (row.type === 'events' || row.type === 'hosting' || row.type === 'invitations') {
-      await this.eventsService.restoreItem(this.activeUser.id, row.id);
-    }
+  private async restoreActivityRow(row: InfoCardData): Promise<void> {
+    const activeUserId = this.activeUserId();
+    const counterDelta = this.restoredEventCounterDelta(row);
+    const persistence = this.eventsService.restoreItem(this.activeUser.id, row.id, {
+      counterDelta
+    });
+    await persistence;
     this.unmarkActivityRowTrashed(row);
-    this.removeVisibleActivityRow(row);
+    this.activitiesSmartList?.removeVisibleItemByIdentity(this.activityRowIdentity(row));
+    this.signalActivityCounterDelta(activeUserId, counterDelta);
     this.cdr.markForCheck();
   }
 
-  public onActivityRowClick(row: ActivityEventCardData, event?: Event): void {
+  public onActivityRowClick(row: InfoCardData, event?: Event): void {
     event?.stopPropagation();
     this.openActivityRowInEventModule(row, true);
   }
 
-  public openActivityMembers(row: ActivityEventCardData, event?: Event): void {
+  public openActivityMembers(row: InfoCardData, event?: Event): void {
     event?.stopPropagation();
     this.memberMenuStore.requestActivitiesNavigation({
       type: 'members',
       ownerId: row.id,
       ownerType: 'event',
       subtitle: row.title,
-      canManage: row.isAdmin === true
+      canManage: this.isActivityRowAdmin(row)
     });
   }
 
-  public canApproveActivityMember(entry: ActivityContracts.ActivityMemberEntry): boolean {
-    if (this.selectedActivityMembersRow?.isAdmin !== true) {
+  public canApproveActivityMember(entry: ActivityContracts.ActivityMemberDTO): boolean {
+    if (!this.selectedActivityMembersRow || !this.isActivityRowAdmin(this.selectedActivityMembersRow)) {
       return false;
     }
     return entry.status === 'pending' && this.isActivityJoinRequest(entry);
   }
 
-  public canDeleteActivityMember(entry: ActivityContracts.ActivityMemberEntry): boolean {
+  public canDeleteActivityMember(entry: ActivityContracts.ActivityMemberDTO): boolean {
     if (this.isActivityWaitlistMember(entry)) {
       return false;
     }
-    if (this.selectedActivityMembersRow?.isAdmin === true) {
+    if (this.selectedActivityMembersRow && this.isActivityRowAdmin(this.selectedActivityMembersRow)) {
       return true;
     }
     return entry.status === 'pending'
@@ -1306,7 +1770,7 @@ export class ActivitiesEventsController {
       && entry.invitedByActiveUser === true;
   }
 
-  public activityMemberMenuDeleteLabel(entry: ActivityContracts.ActivityMemberEntry): string {
+  public activityMemberMenuDeleteLabel(entry: ActivityContracts.ActivityMemberDTO): string {
     if (entry.status === 'accepted') {
       return 'Remove member';
     }
@@ -1316,77 +1780,16 @@ export class ActivitiesEventsController {
     return 'Delete invitation';
   }
 
-  public activityMemberAge(entry: ActivityContracts.ActivityMemberEntry): number {
-    return this.users.find(user => user.id === entry.userId)?.age ?? 0;
-  }
-
-  public activityMemberRoleLabel(entry: ActivityContracts.ActivityMemberEntry): string {
-    return entry.role === 'Admin' ? 'Admin' : 'Member';
-  }
-
-  public activityMemberStatusLabel(entry: ActivityContracts.ActivityMemberEntry): string {
-    if (entry.status === 'accepted') {
-      return 'Approved';
-    }
-    if (this.isActivityWaitlistMember(entry)) {
-      return 'Waiting list';
-    }
-    if (this.isActivityJoinRequest(entry)) {
-      return 'Waiting For Join Approval';
-    }
-    if (entry.pendingSource === 'admin') {
-      return 'Invitation Pending';
-    }
-    return 'Waiting For Admin Approval';
-  }
-
-  public memberCardStatusIcon(entry: ActivityContracts.ActivityMemberEntry): string {
-    if (entry.status === 'accepted') {
-      return entry.role === 'Admin' ? 'admin_panel_settings' : 'person';
-    }
-    if (this.isActivityJoinRequest(entry)) {
-      return 'pending_actions';
-    }
-    return 'outgoing_mail';
-  }
-
-  public memberCardStatusClass(entry: ActivityContracts.ActivityMemberEntry): string {
-    if (entry.status === 'accepted') {
-      return entry.role === 'Admin' ? 'member-status-admin' : 'member-status-member';
-    }
-    if (this.isActivityJoinRequest(entry)) {
-      return 'member-status-awaiting-approval';
-    }
-    return 'member-status-invite-pending';
-  }
-
-  public memberCardToneClass(entry: ActivityContracts.ActivityMemberEntry): string {
-    if (entry.status === 'accepted') {
-      return entry.role === 'Admin' ? 'member-card-tone-admin' : 'member-card-tone-accepted';
-    }
-    if (this.isActivityJoinRequest(entry)) {
-      return 'member-card-tone-awaiting-approval';
-    }
-    return 'member-card-tone-invite-pending';
-  }
-
-  public memberCardStatusLabel(entry: ActivityContracts.ActivityMemberEntry): string {
-    if (entry.status === 'accepted') {
-      return entry.role === 'Admin' ? 'Admin' : 'Member';
-    }
-    return this.activityMemberStatusLabel(entry);
-  }
-
-  private isActivityJoinRequest(entry: ActivityContracts.ActivityMemberEntry): boolean {
+  private isActivityJoinRequest(entry: ActivityContracts.ActivityMemberDTO): boolean {
     return entry.requestKind === 'join'
       || (entry.requestKind == null && entry.pendingSource === 'member');
   }
 
-  private isActivityWaitlistMember(entry: ActivityContracts.ActivityMemberEntry): boolean {
+  private isActivityWaitlistMember(entry: ActivityContracts.ActivityMemberDTO): boolean {
     return entry.requestKind === 'waitlist' || entry.requestKind === 'waitlist-invite';
   }
 
-  public approveActivityMember(entry: ActivityContracts.ActivityMemberEntry, event?: Event): void {
+  public approveActivityMember(entry: ActivityContracts.ActivityMemberDTO, event?: Event): void {
     event?.stopPropagation();
     if (!this.selectedActivityMembersRowId || !this.canApproveActivityMember(entry)) {
       return;
@@ -1407,7 +1810,7 @@ export class ActivitiesEventsController {
     this.persistSelectedActivityMembers();
   }
 
-  public removeActivityMember(entry: ActivityContracts.ActivityMemberEntry, event?: Event): void {
+  public removeActivityMember(entry: ActivityContracts.ActivityMemberDTO, event?: Event): void {
     event?.stopPropagation();
     if (!this.selectedActivityMembersRowId || !this.canDeleteActivityMember(entry)) {
       return;
@@ -1415,11 +1818,11 @@ export class ActivitiesEventsController {
     this.pendingActivityMemberDelete = entry;
   }
 
-  public openActivityRowInEventModule(row: ActivityEventCardData, readOnly: boolean): void {
+  public openActivityRowInEventModule(row: InfoCardData, readOnly: boolean): void {
     this.memberMenuStore.requestActivitiesNavigation({
       type: 'eventEditor',
       eventId: row.id,
-      target: row.isAdmin === true || row.type === 'hosting' ? 'hosting' : 'events',
+      target: this.isActivityRowAdmin(row) || this.activityEventListTypeForRow(row) === 'hosting' ? 'hosting' : 'events',
       readOnly: this.isActivityInvitationRow(row) ? true : readOnly
     });
   }

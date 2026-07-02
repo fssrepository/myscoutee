@@ -1,6 +1,6 @@
 {
   "lang": "en",
-  "version": "2026.06.22.en.1",
+  "version": "2026.07.02.en.1",
   "messages": {
     "about": "About",
     "accommodation": "Accommodation",
@@ -76,6 +76,7 @@
     "ambition": "Ambition",
     "any": "Any",
     "application.feedback": "Application feedback",
+    "app.support": "App support",
     "apply.filters": "Apply filters",
     "approval.required": "Approval Required",
     "ask.organizer": "Ask Organizer",
@@ -1468,6 +1469,12 @@
     "trying.to.quit": "Trying to quit",
     "undecided": "undecided",
     "under.review": "Under Review",
+    "trash.draft": "Draft",
+    "trash.event": "Event",
+    "trash.invitation": "Invitation",
+    "trash.joined.event": "Joined Event",
+    "trash.own.event": "Own Event",
+    "trash.pending.event": "Pending Event",
     "ux.improvement": "UX improvement",
     "use.create.contact.to.add.members.into.your.personal.quick.reach.list": "Use Create contact to add members into your personal quick-reach list.",
     "vibe": "VIBE",

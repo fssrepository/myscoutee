@@ -76,7 +76,9 @@ import {
   DialogStore
 } from '../../../shared/ui/context/stores/dialog.store';
 import {
-  ActivitiesPopupStore
+  ActivitiesPopupStore,
+  eventChatHeaderStateFromChat,
+  eventChatPopupRequestFromChat
 } from '../../../shared/ui/context/stores/activities-popup.store';
 import {
   SubEventResourcePopupStore
@@ -464,7 +466,10 @@ export class EventResourcePopupComponent {
       lastSenderId: managerUserId || activeUserId,
       avatarSource: sourceCard?.ownerName || sourceCard?.title || card.title
     });
-    this.activitiesStore.openEventChat(chat);
+    this.activitiesStore.openEventChat(
+      eventChatPopupRequestFromChat(chat),
+      eventChatHeaderStateFromChat(chat)
+    );
   }
 
   private reportResourceManager(card: AppDTOs.SubEventResourceCardDTO, event: Event): void {
@@ -559,8 +564,7 @@ export class EventResourcePopupComponent {
       dateIso: new Date().toISOString(),
       channelType: 'serviceEvent',
       serviceContext: input.title.startsWith('Asset Service') ? 'asset' : 'event',
-      eventId: input.eventId,
-      subEventId: input.subEventId,
+      ownerId: input.eventId,
       ownerUserId: activeUserId
     };
   }
@@ -585,7 +589,7 @@ export class EventResourcePopupComponent {
 
     const context = this.buildPopupContext(
       'chat',
-      request.ownerId?.trim() || request.item.eventId?.trim() || '',
+      request.ownerId?.trim() || request.item.ownerId?.trim() || '',
       request.item.title,
       request.resourceType,
       request.subEvent,
@@ -2294,7 +2298,7 @@ export class EventResourcePopupComponent {
   private syncAssetRequestsFromMembers(
     assetId: string,
     assetType: AppConstants.AssetType,
-    members: readonly ActivityContracts.ActivityMemberEntry[]
+    members: readonly ActivityContracts.ActivityMemberDTO[]
   ): void {
     const context = this.resourcePopupStore.popupContextRef();
     const asset = this.ownedAssetCards().find(card => card.id === assetId && card.type === assetType)
@@ -2569,7 +2573,7 @@ export class EventResourcePopupComponent {
     card: ResourceAssetDTO,
     ownerUserId: string | null,
     subEventId?: string
-  ): ActivityContracts.ActivityMemberEntry[] {
+  ): ActivityContracts.ActivityMemberDTO[] {
     const seedBaseDate = new Date('2026-02-24T12:00:00');
     const requests = subEventId
       ? this.assetRequestsForView(card, subEventId, ownerUserId)

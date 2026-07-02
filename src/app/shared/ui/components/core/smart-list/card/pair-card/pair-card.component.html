@@ -36,13 +36,15 @@
       class="activities-rate-pair-inline-grid"
       [class.activities-rate-pair-fullscreen-grid]="resolvedPresentation() === 'fullscreen'"
       >
-      @for (slot of resolvedSlots(); track trackBySlot($index, slot)) {
+      @for (slot of resolvedSlots(); track trackBySlot($index, slot); let slotIndex = $index) {
         <div
           class="activities-rate-pair-inline-card"
+          [class.activities-rate-pair-inline-card-start]="slotIndex === 0"
+          [class.activities-rate-pair-inline-card-end]="slotIndex === 1"
           [class.activities-rate-pair-inline-card-woman]="slot.tone === 'woman'"
           [class.activities-rate-pair-inline-card-man]="slot.tone === 'man'"
           [class.is-pane-loading]="isLoading(slot)"
-          [class.is-collapsed]="isSlotCollapsed(slot)"
+          [class.is-collapsed]="isSlotCollapsed(slot, slotIndex)"
           >
           @if (slot.slides.length > 1) {
             <div class="image-stack-indicators activities-rate-profile-indicators activities-rate-pair-inline-indicators">
@@ -112,7 +114,7 @@
         </div>
       }
 
-      @if (isSplitEnabled()) {
+      @if (isSplitHandleVisible()) {
         <button
           type="button"
           class="activities-rates-pair-fullscreen-resize-handle"

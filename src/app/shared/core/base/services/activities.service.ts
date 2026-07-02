@@ -21,9 +21,6 @@ import {
   RatesService
 } from './rates.service';
 import {
-  UsersService
-} from './users.service';
-import {
   BaseRouteModeService
 } from './base-route-mode.service';
 import type {
@@ -40,7 +37,6 @@ export class ActivitiesService extends BaseRouteModeService {
   private readonly chatsService = inject(ChatsService);
   private readonly ratesService = inject(RatesService);
   private readonly userProfileStore = inject(UserProfileStore);
-  private readonly usersService = inject(UsersService);
 
   async loadExplore(query: ListQuery<EventExploreFeedFilters>): Promise<PageResult<ActivityEventRecord>> {
     const filters = this.resolveExploreFilters(query.filters);
@@ -75,13 +71,13 @@ export class ActivitiesService extends BaseRouteModeService {
   ): Promise<PageResult<ActivityRateDTO, { users: UserDto[] }>> {
     const activeUserId = this.resolveActiveUserId();
     const page = await this.ratesService.queryActivitiesRatePage(activeUserId, query, options.signal);
-    const users = this.resolveActivityUsers(page.users);
-    this.cacheActivityUsers(users);
     return {
       items: page.items.map(item => ({ ...item })),
       total: page.total,
       nextCursor: page.nextCursor ?? null,
-      context: { users }
+      context: {
+        users: (page.users ?? []).map(user => ({ ...user, images: [...(user.images ?? [])] }))
+      }
     };
   }
 
@@ -101,7 +97,7 @@ export class ActivitiesService extends BaseRouteModeService {
     if (session?.kind === 'firebase' && session.profile.id.trim().length > 0) {
       return session.profile.id.trim();
     }
-    return this.usersService.peekCachedUsers()[0]?.id ?? '';
+    return '';
   }
 
   private resolveExploreFilters(
@@ -156,22 +152,6 @@ export class ActivitiesService extends BaseRouteModeService {
       ...record,
       topics: [...record.topics]
     };
-  }
-
-  private cacheActivityUsers(users: readonly UserDto[] | null | undefined): void {
-    for (const user of users ?? []) {
-      if (!user?.id?.trim()) {
-        continue;
-      }
-      this.userProfileStore.setUserProfile(user);
-    }
-  }
-
-  private resolveActivityUsers(preferredUsers?: readonly UserDto[] | null): UserDto[] {
-    if (preferredUsers && preferredUsers.length > 0) {
-      return preferredUsers.map(user => ({ ...user, images: [...(user.images ?? [])] }));
-    }
-    return this.usersService.peekCachedUsers();
   }
 
 }

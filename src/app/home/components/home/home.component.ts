@@ -797,10 +797,7 @@ export class HomeComponent implements OnDestroy {
         )
       ],
       presentation,
-      state: options?.state ?? 'default',
-      split: presentation === 'fullscreen'
-        ? { enabled: true }
-        : null
+      state: options?.state ?? 'default'
     };
   }
 

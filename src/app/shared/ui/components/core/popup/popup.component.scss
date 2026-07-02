@@ -231,6 +231,14 @@ app-popup {
   box-shadow: 0 5px 13px rgba(180, 127, 23, 0.2);
 }
 
+.ui-popup__action--gold:hover,
+.ui-popup__action--amber:hover {
+  border-color: rgba(188, 138, 24, 0.62);
+  background: linear-gradient(180deg, #fff2c9 0%, #ffe3a3 100%);
+  color: #7d4f0a;
+  box-shadow: 0 4px 10px rgba(180, 127, 23, 0.22);
+}
+
 .ui-popup__action--blue,
 .ui-popup__action--sky {
   border-color: rgba(48, 85, 138, 0.34);

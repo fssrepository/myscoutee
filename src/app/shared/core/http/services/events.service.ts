@@ -35,6 +35,9 @@ import type {
   EventFeedbackStateDto
 } from '../../contracts/activity.interface';
 import type {
+  UserMenuCounterDeltasDto
+} from '../../contracts/user.interface';
+import type {
   ActivityEventStageActionRequestDTO,
   ActivityEventStageActionResultDTO,
   ActivityEventPageResultDTO,
@@ -234,7 +237,7 @@ export class HttpEventsService implements IEventsService {
     }
     try {
       const response = await this.http
-        .post<{ slots?: SubEventsSlotDTO[] | null } | null>(
+        .post<{ mode?: string | null; slots?: SubEventsSlotDTO[] | null } | null>(
           `${this.apiBaseUrl}/activities/events/sub-events`,
           {
             ...(query ?? {}),
@@ -243,7 +246,12 @@ export class HttpEventsService implements IEventsService {
           }
         )
         .toPromise();
+      const mode = response?.mode;
+      if (mode !== 'Casual' && mode !== 'Tournament') {
+        return null;
+      }
       return {
+        mode,
         slots: response?.slots ?? []
       };
     } catch {
@@ -380,19 +388,35 @@ export class HttpEventsService implements IEventsService {
     };
   }
 
-  async trashItem(userId: string, sourceId: string): Promise<void> {
+  async trashItem(
+    userId: string,
+    sourceId: string,
+    _options: { counterDelta?: UserMenuCounterDeltasDto | null } = {}
+  ): Promise<void> {
     await this.postVoid('/activities/events/trash', { userId: userId.trim(), sourceId: sourceId.trim() });
   }
 
-  async publishItem(userId: string, sourceId: string): Promise<void> {
+  async publishItem(
+    userId: string,
+    sourceId: string,
+    _options: { counterDelta?: UserMenuCounterDeltasDto | null } = {}
+  ): Promise<void> {
     await this.postVoid('/activities/events/publish', { userId: userId.trim(), sourceId: sourceId.trim() });
   }
 
-  async unpublishItem(userId: string, sourceId: string): Promise<void> {
+  async unpublishItem(
+    userId: string,
+    sourceId: string,
+    _options: { counterDelta?: UserMenuCounterDeltasDto | null } = {}
+  ): Promise<void> {
     await this.postVoid('/activities/events/unpublish', { userId: userId.trim(), sourceId: sourceId.trim() });
   }
 
-  async restoreItem(userId: string, sourceId: string): Promise<void> {
+  async restoreItem(
+    userId: string,
+    sourceId: string,
+    _options: { counterDelta?: UserMenuCounterDeltasDto | null } = {}
+  ): Promise<void> {
     await this.postVoid('/activities/events/restore', { userId: userId.trim(), sourceId: sourceId.trim() });
   }
 
@@ -546,6 +570,8 @@ export class HttpEventsService implements IEventsService {
       paymentSessionId?: string | null;
       bookingConfirmed?: boolean;
       pendingReason?: ActivityPendingReason;
+      skipLocalRouteDelay?: boolean;
+      counterDelta?: UserMenuCounterDeltasDto | null;
     } = {}
   ): Promise<EventParticipationActionResultDTO | null> {
     const normalizedUserId = userId.trim();
@@ -570,6 +596,37 @@ export class HttpEventsService implements IEventsService {
       })
       .toPromise();
     return this.normalizeParticipationActionResult(response);
+  }
+
+  async leaveEvent(
+    userId: string,
+    sourceId: string,
+    _options: {
+      counterDelta?: UserMenuCounterDeltasDto | null;
+    } = {}
+  ): Promise<EventParticipationActionResultDTO | null> {
+    const normalizedUserId = userId.trim();
+    const normalizedSourceId = sourceId.trim();
+    if (!normalizedUserId || !normalizedSourceId) {
+      return null;
+    }
+    await this.postVoid('/activities/events/trash', {
+      userId: normalizedUserId,
+      type: 'events',
+      sourceId: normalizedSourceId
+    });
+    return {
+      sourceId: normalizedSourceId,
+      slotSourceId: null,
+      action: 'leave',
+      membershipStatus: 'trashed',
+      pendingReason: null,
+      acceptedMembers: 0,
+      pendingMembers: 0,
+      capacityTotal: 0,
+      full: false,
+      paymentSessionId: null
+    };
   }
 
   async createCheckoutSession(request: EventCheckoutRequest): Promise<EventCheckoutSession | null> {

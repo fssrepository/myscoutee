@@ -2,7 +2,7 @@
 <div class="app-popup event-editor-popup-shell">
   <div class="app-popup-backdrop" (click)="close()"></div>
   <div class="app-popup-panel popup-panel-event-editor"
-    [class.popup-panel-event-editor-readonly]="eventEditorStore.readOnly()">
+    [class.popup-panel-event-editor-readonly]="eventStructureReadOnly()">
     <div class="popup-header" (click)="$event.stopPropagation()">
       <div class="popup-title">
         <h2>{{ getPopupTitle() }}</h2>
@@ -28,7 +28,7 @@
         </div>
       </div>
       <div class="popup-header-mobile-actions-row">
-        @if (!eventEditorStore.readOnly()) {
+        @if (showEventEditorSaveAction()) {
         <app-menu
           class="event-editor-save-menu"
           kind="inline"
@@ -68,7 +68,7 @@
                 [compact]="true"
                 [autoSize]="true"
                 ariaLabel="Event image"
-                [disabled]="eventEditorStore.readOnly()"
+                [disabled]="eventStructureReadOnly()"
                 [uploadOwnerId]="eventImageUploadOwnerId()"
                 [uploadEntityId]="eventImageUploadEntityId()"
                 [ngModel]="eventImageUrls()"
@@ -77,7 +77,7 @@
             </div>
             <label class="experience-title-field">
               <span>Name <span class="required-star">*</span></span>
-              <input type="text" [(ngModel)]="eventDetailDTO.title" [readonly]="eventEditorStore.readOnly()"
+              <input type="text" [(ngModel)]="eventDetailDTO.title" [readonly]="eventStructureReadOnly()"
                 [class.field-required-invalid]="eventEditorFieldInvalid('title')" />
             </label>
             <label class="event-capacity-range-field">
@@ -89,7 +89,7 @@
                 <span class="subevent-capacity-separator">-</span>
                 <input type="number" [min]="eventCapacityMaxMinimum()" step="1" required [ngModel]="eventDetailDTO.capacityMax"
                   (ngModelChange)="onEventCapacityMaxChange($event)" (blur)="onEventCapacityMaxBlur()"
-                  [disabled]="eventEditorStore.readOnly()"
+                  [disabled]="eventCapacityMaxReadOnly()"
                   [class.field-required-invalid]="eventEditorFieldInvalid('capacityMax')" placeholder="Max" />
               </div>
             </label>
@@ -98,7 +98,7 @@
               [ngModel]="eventDetailDTO.location"
               (ngModelChange)="onEventLocationChange($event)"
               [config]="eventLocationInputConfig"
-              [readOnly]="eventEditorStore.readOnly()"
+              [readOnly]="eventStructureReadOnly()"
             ></app-location-input>
             <div class="event-intel-row">
               <app-menu
@@ -110,7 +110,7 @@
             </div>
             <label class="experience-description-field">
               <span>Description <span class="required-star">*</span></span>
-              <textarea rows="4" [(ngModel)]="eventDetailDTO.subtitle" [readonly]="eventEditorStore.readOnly()"
+              <textarea rows="4" [(ngModel)]="eventDetailDTO.subtitle" [readonly]="eventStructureReadOnly()"
                 [class.field-required-invalid]="eventEditorFieldInvalid('subtitle')"></textarea>
             </label>
             <app-event-subevent-definitions-panel
@@ -122,6 +122,7 @@
               (enabledChange)="onSubEventsEnabledChange($event)"
               [bounds]="eventDetailDTO.dateRange"
               [readOnly]="eventStructureReadOnly()"
+              [disabled]="eventStructureReadOnly()"
             ></app-event-subevent-definitions-panel>
             <section class="event-scheduling-stack">
               <section class="event-schedule-panel">
@@ -138,16 +139,18 @@
                   (ngModelChange)="onEventDateRangeChange($event)"
                 ></app-date-input>
               </section>
-              <app-event-slots-input [(ngModel)]="eventDetailDTO.slotTemplates"
+            <app-event-slots-input [(ngModel)]="eventDetailDTO.slotTemplates"
                 [config]="eventSlotsInputConfig"
                 [readOnly]="eventStructureReadOnly()"
+                [disabled]="eventStructureReadOnly()"
                 (overrideSelect)="openSlotOverrideEditor($event)"></app-event-slots-input>
             </section>
             <app-pricing-editor-input class="experience-description-field event-pricing-field" [(ngModel)]="eventDetailDTO.pricing"
-              [config]="eventPricingEditorConfig" [readOnly]="eventStructureReadOnly()"></app-pricing-editor-input>
+              [config]="eventPricingEditorConfig" [readOnly]="eventStructureReadOnly()" [disabled]="eventStructureReadOnly()"></app-pricing-editor-input>
             <app-event-policies-input [(ngModel)]="eventDetailDTO.policies"
               [(enabled)]="eventDetailDTO.policiesEnabled"
-              [readOnly]="eventPoliciesReadOnly()"></app-event-policies-input>
+              [readOnly]="eventPoliciesReadOnly()"
+              [disabled]="eventPoliciesReadOnly()"></app-event-policies-input>
           </div>
         </div>
       </section>
@@ -209,6 +212,7 @@
           [enabled]="true"
           [bounds]="eventDetailDTO.dateRange"
           [readOnly]="eventStructureReadOnly()"
+          [disabled]="eventStructureReadOnly()"
         ></app-event-subevent-definitions-panel>
       </div>
     </section>

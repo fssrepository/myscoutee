@@ -22,6 +22,7 @@ import type {
   UserFeedbackSubmitRequestDto,
   UserLocationEligibilityResponseDto,
   UserDto,
+  UserMenuCounterDeltasDto,
   UserMenuCountersDto,
   UserLogoutRequestDto,
   UserReportUserSubmitRequestDto,
@@ -144,6 +145,8 @@ export class UsersService extends BaseRouteModeService {
 
   async loadUserById(userId?: string, requestTimeoutMs?: number): Promise<UserDto | null> {
     const normalizedUserId = typeof userId === 'string' ? userId.trim() : '';
+    const counterOverrideUserId = normalizedUserId || this.userProfileStore.getActiveUserId().trim();
+    const counterOverrideSignature = this.counterOverrideSignature(counterOverrideUserId);
 
     if (this.isLocalRouteEnabled('/auth/me') && !normalizedUserId) {
       this.setLoadStatus(USER_BY_ID_LOAD_CONTEXT_KEY, 'error', 'Missing user id.');
@@ -171,12 +174,14 @@ export class UsersService extends BaseRouteModeService {
         this.userProfileStore.setActiveUserId(resolvedUserId);
       }
       if (resolvedUserId) {
-        this.activityStore.clearUserCounterOverrides(resolvedUserId);
-        if (response.counterOverrides) {
-          this.activityStore.patchUserCounterOverrides(
-            resolvedUserId,
-            this.normalizeCounterOverrides(response.counterOverrides, response.user.activities)
-          );
+        if (!this.counterOverridesChangedSince(counterOverrideUserId, resolvedUserId, counterOverrideSignature)) {
+          this.activityStore.clearUserCounterOverrides(resolvedUserId);
+          if (response.counterOverrides) {
+            this.activityStore.patchUserCounterOverrides(
+              resolvedUserId,
+              this.normalizeCounterOverrides(response.counterOverrides, response.user.activities)
+            );
+          }
         }
         if (response.filterPreferences) {
           this.userProfileStore.setUserFilterPreferences(resolvedUserId, response.filterPreferences);
@@ -200,6 +205,8 @@ export class UsersService extends BaseRouteModeService {
 
   async loadProfileExtById(userId?: string, requestTimeoutMs?: number): Promise<ProfileExtDto | null> {
     const normalizedUserId = typeof userId === 'string' ? userId.trim() : '';
+    const counterOverrideUserId = normalizedUserId || this.userProfileStore.getActiveUserId().trim();
+    const counterOverrideSignature = this.counterOverrideSignature(counterOverrideUserId);
 
     if (this.isLocalRouteEnabled('/auth/me/profile-ext') && !normalizedUserId) {
       this.setLoadStatus(USER_BY_ID_LOAD_CONTEXT_KEY, 'error', 'Missing user id.');
@@ -230,12 +237,14 @@ export class UsersService extends BaseRouteModeService {
         this.userProfileStore.setActiveUserId(resolvedUserId);
       }
       if (resolvedUserId) {
-        this.activityStore.clearUserCounterOverrides(resolvedUserId);
-        if (response.counterOverrides) {
-          this.activityStore.patchUserCounterOverrides(
-            resolvedUserId,
-            this.normalizeCounterOverrides(response.counterOverrides, user.activities)
-          );
+        if (!this.counterOverridesChangedSince(counterOverrideUserId, resolvedUserId, counterOverrideSignature)) {
+          this.activityStore.clearUserCounterOverrides(resolvedUserId);
+          if (response.counterOverrides) {
+            this.activityStore.patchUserCounterOverrides(
+              resolvedUserId,
+              this.normalizeCounterOverrides(response.counterOverrides, user.activities)
+            );
+          }
         }
         if (response.filterPreferences) {
           this.userProfileStore.setUserFilterPreferences(resolvedUserId, response.filterPreferences);
@@ -290,6 +299,37 @@ export class UsersService extends BaseRouteModeService {
 
       this.setLoadStatus(USER_PROFILE_SAVE_CONTEXT_KEY, 'error', 'Unable to save profile.');
       return null;
+    }
+  }
+
+  async patchLocalUserActivityCounters(userId: string, patch: Partial<ActivityCounters>): Promise<void> {
+    const normalizedUserId = userId.trim();
+    if (!normalizedUserId || !this.localModeEnabled) {
+      return;
+    }
+    this.userProfileStore.patchUserActivityCounters(normalizedUserId, patch);
+    await this.localUsersService.patchUserActivityCounters(
+      normalizedUserId,
+      patch as UserMenuCountersDto
+    ).catch(() => {
+      // The visible counter signal has already moved; local persistence is best-effort.
+    });
+  }
+
+  async patchLocalUserActivityCounterDeltas(
+    userId: string,
+    delta: UserMenuCounterDeltasDto | null | undefined
+  ): Promise<void> {
+    const normalizedUserId = userId.trim();
+    if (!normalizedUserId || !delta || !this.localModeEnabled) {
+      return;
+    }
+    const savedUser = await this.localUsersService.patchUserActivityCounterDeltas(
+      normalizedUserId,
+      delta
+    ).catch(() => null);
+    if (savedUser) {
+      this.userProfileStore.setUserProfile(savedUser);
     }
   }
 
@@ -496,6 +536,26 @@ export class UsersService extends BaseRouteModeService {
     const onAbort = () => abortController.abort();
     signal.addEventListener('abort', onAbort, { once: true });
     return () => signal.removeEventListener('abort', onAbort);
+  }
+
+  private counterOverridesChangedSince(
+    requestedUserId: string,
+    resolvedUserId: string,
+    previousSignature: string
+  ): boolean {
+    const normalizedRequestedUserId = requestedUserId.trim();
+    const normalizedResolvedUserId = resolvedUserId.trim();
+    return normalizedRequestedUserId.length > 0
+      && normalizedRequestedUserId === normalizedResolvedUserId
+      && this.counterOverrideSignature(normalizedResolvedUserId) !== previousSignature;
+  }
+
+  private counterOverrideSignature(userId: string): string {
+    const normalizedUserId = userId.trim();
+    if (!normalizedUserId) {
+      return '';
+    }
+    return JSON.stringify(this.activityStore.getUserCounterOverrides(normalizedUserId));
   }
 
   private normalizeCounterOverrides(

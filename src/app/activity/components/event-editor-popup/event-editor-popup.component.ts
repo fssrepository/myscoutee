@@ -292,7 +292,7 @@ export class EventEditorPopupComponent implements OnInit, OnDestroy {
         end: { label: 'End' },
         allowEndBeforeStart: true
       },
-      readOnly: this.eventEditorStore.readOnly()
+      readOnly: this.eventStructureReadOnly()
     };
   }
 
@@ -345,6 +345,14 @@ export class EventEditorPopupComponent implements OnInit, OnDestroy {
 
   protected eventCapacityMinReadOnly(): boolean {
     return this.eventEditorStore.readOnly() || this.isPublishedManageMode();
+  }
+
+  protected eventCapacityMaxReadOnly(): boolean {
+    return this.eventStructureReadOnly();
+  }
+
+  protected showEventEditorSaveAction(): boolean {
+    return !this.isLoadingEventData() && !this.eventStructureReadOnly();
   }
 
   protected eventCapacityMaxMinimum(): number {
@@ -437,7 +445,7 @@ export class EventEditorPopupComponent implements OnInit, OnDestroy {
     endAt?: string | null;
     precision?: 'date' | 'minute' | null;
   } | null | undefined): void {
-    if (this.eventEditorStore.readOnly()) {
+    if (this.eventStructureReadOnly()) {
       return;
     }
     const previous = this.eventDetailDTO.dateRange;
@@ -483,7 +491,7 @@ export class EventEditorPopupComponent implements OnInit, OnDestroy {
   }
 
   canSaveEventDetailDTO(): boolean {
-    if (this.eventEditorStore.readOnly()) {
+    if (this.eventStructureReadOnly()) {
       return false;
     }
     return Boolean(
@@ -588,7 +596,7 @@ export class EventEditorPopupComponent implements OnInit, OnDestroy {
         active: this.eventDetailDTO.topics.length > 0,
         checked: this.eventDetailDTO.topics.length > 0,
         palette: 'violet',
-        disabled: this.eventEditorStore.readOnly(),
+        disabled: this.eventStructureReadOnly(),
         closeOnSelect: false,
         filterable: true,
         ariaLabel: 'Open topics',
@@ -604,7 +612,7 @@ export class EventEditorPopupComponent implements OnInit, OnDestroy {
         active: this.eventDetailDTO.autoInviter,
         checked: this.eventDetailDTO.autoInviter,
         palette: this.eventDetailDTO.autoInviter ? 'cyan' : 'slate',
-        disabled: this.eventEditorStore.readOnly(),
+        disabled: this.eventStructureReadOnly(),
         closeOnSelect: false,
         context: { menu: 'event-intel', action: 'toggle-auto-inviter' }
       },
@@ -779,7 +787,7 @@ export class EventEditorPopupComponent implements OnInit, OnDestroy {
   }
 
   private toggleEventTopic(topic: string, action: AppMenuItemSelectEvent<string, EventEditorMenuContext>['action']): void {
-    if (this.eventEditorStore.readOnly()) {
+    if (this.eventStructureReadOnly()) {
       return;
     }
     const normalizedTopics = ActivityEventDetailDTO.normalizeTopics(this.eventDetailDTO.topics);
@@ -1321,6 +1329,9 @@ export class EventEditorPopupComponent implements OnInit, OnDestroy {
   }
 
   protected onEventImageUrlsChange(imageUrls: readonly string[] | null | undefined): void {
+    if (this.eventStructureReadOnly()) {
+      return;
+    }
     const imageUrl = `${imageUrls?.[0] ?? ''}`.trim();
     this.eventDetailDTO.imageUrl = imageUrl;
     this.eventImageUrlsCacheKey = imageUrl;
@@ -1354,11 +1365,17 @@ export class EventEditorPopupComponent implements OnInit, OnDestroy {
   }
 
   onEventCapacityMaxChange(value: number | string): void {
+    if (this.eventCapacityMaxReadOnly()) {
+      return;
+    }
     const parsed = this.toNonNegativeIntegerOrNull(value);
     this.eventDetailDTO.capacityMax = parsed === null ? null : Math.max(parsed, this.eventCapacityMaxMinimum());
   }
 
   onEventCapacityMaxBlur(): void {
+    if (this.eventCapacityMaxReadOnly()) {
+      return;
+    }
     if (this.eventDetailDTO.capacityMax !== null) {
       this.eventDetailDTO.capacityMax = Math.max(this.eventDetailDTO.capacityMax, this.eventCapacityMaxMinimum());
     }
@@ -1381,7 +1398,7 @@ export class EventEditorPopupComponent implements OnInit, OnDestroy {
 
   toggleEventAutoInviter(event: Event): void {
     event.preventDefault();
-    if (this.eventEditorStore.readOnly()) {
+    if (this.eventStructureReadOnly()) {
       return;
     }
     this.eventDetailDTO.autoInviter = !this.eventDetailDTO.autoInviter;
@@ -1396,6 +1413,9 @@ export class EventEditorPopupComponent implements OnInit, OnDestroy {
   }
 
   onEventLocationChange(value: string): void {
+    if (this.eventStructureReadOnly()) {
+      return;
+    }
     this.eventDetailDTO.location = ActivityEventDetailDTO.normalizeLocation(value);
     this.syncFirstSubEventLocationFromMainEvent();
   }

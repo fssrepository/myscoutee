@@ -40,7 +40,9 @@ import {
   AssetPopupStore
 } from '../../context/stores/asset-popup.store';
 import {
-  ActivitiesPopupStore
+  ActivitiesPopupStore,
+  eventChatHeaderStateFromChat,
+  eventChatPopupRequestFromChat
 } from '../../context/stores/activities-popup.store';
 import {
   EventEditorPopupStore
@@ -955,7 +957,7 @@ export class SideMenuComponent implements OnDestroy {
 
     effect(() => {
       const request = this.memberMenuStore.activitiesNavigationRequest();
-      if (!request || (request.type !== 'chatResource' && request.type !== 'assetExplore')) {
+      if (!request || request.type !== 'assetExplore' || this.activitiesStore.eventChatSession()) {
         return;
       }
       void this.subEventResourceStore.ensureEventResourcePopupLoaded();
@@ -990,14 +992,16 @@ export class SideMenuComponent implements OnDestroy {
     });
 
     effect(() => {
-      const resourcePopupVisible = this.subEventResourceStore.popupContextRef()?.origin === 'chat';
+      const resourcePopupVisible = !this.activitiesStore.eventChatSession()
+        && this.subEventResourceStore.popupContextRef()?.origin === 'chat';
       if (resourcePopupVisible) {
         void this.subEventResourceStore.ensureEventResourcePopupLoaded();
       }
     });
 
     effect(() => {
-      const assetExploreVisible = this.subEventResourceStore.popupContextRef()?.origin === 'chat'
+      const assetExploreVisible = !this.activitiesStore.eventChatSession()
+        && this.subEventResourceStore.popupContextRef()?.origin === 'chat'
         && this.subEventResourceStore.assetExplorePopupRef() !== null;
       if (assetExploreVisible) {
         void this.subEventResourceStore.ensureEventResourceAssetExploreLoaded();
@@ -1005,7 +1009,8 @@ export class SideMenuComponent implements OnDestroy {
     });
 
     effect(() => {
-      const supplyContributionsVisible = this.subEventResourceStore.popupContextRef()?.origin === 'chat'
+      const supplyContributionsVisible = !this.activitiesStore.eventChatSession()
+        && this.subEventResourceStore.popupContextRef()?.origin === 'chat'
         && !this.subEventResourceStore.assetExploreOnlyRef()
         && this.subEventResourceStore.supplyPopupRef() !== null;
       if (supplyContributionsVisible) {
@@ -1901,12 +1906,14 @@ export class SideMenuComponent implements OnDestroy {
       memberIds: [activeUserId, adminUserId],
       unread: 1,
       dateIso: new Date().toISOString(),
-      channelType: 'serviceEvent',
-      serviceContext: 'notification',
+      channelType: 'appSupport',
       ownerUserId: activeUserId
     };
     this.activitiesStore.openActivities('chats');
-    this.activitiesStore.openEventChat(chat);
+    this.activitiesStore.openEventChat(
+      eventChatPopupRequestFromChat(chat),
+      eventChatHeaderStateFromChat(chat)
+    );
   }
 
   private resolveCompletionPercent(user: UserDto | null): number {

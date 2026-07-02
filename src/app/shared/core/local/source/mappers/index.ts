@@ -15,6 +15,7 @@ export { LocalEventParticipationActionMapper } from './event-participation-actio
 export { LocalHelpCenterMapper } from './help-center.mapper';
 export { LocalProfileExperiencesMapper } from './profile-experiences.mapper';
 export { LocalAssetsMapper, LocalAssetTicketsMapper } from './asset.mapper';
+export { LocalChatMessageMapper } from './chat-message.mapper';
 export { LocalChatThreadMapper } from './chat-thread.mapper';
 export { LocalUserFilterPreferencesMapper, LocalUserRatesMapper } from './rate.mapper';
 export { LocalUsersMapper } from './user.mapper';
