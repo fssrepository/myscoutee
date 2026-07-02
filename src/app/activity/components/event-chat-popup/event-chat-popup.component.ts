@@ -81,6 +81,11 @@ import { UserProfileStore } from '../../../shared/ui/context/stores/user-profile
 import { AppRuntimeStore } from '../../../shared/ui/context/stores/app-runtime.store';
 import { MemberMenuStore } from '../../../shared/ui/context/stores/member-menu.store';
 import { EventSubeventsPopupStore } from '../../../shared/ui/context/stores/event-subevents-popup.store';
+import { SubEventResourcePopupStore } from '../../../shared/ui/context/stores/sub-event-resource-popup.store';
+import {
+  ActivityEventInfoCardMenuConverter,
+  type ActivityEventInfoCardMenuSubject
+} from '../../../shared/ui/converters';
 interface ChatThreadFilters {
   revision?: number;
   sessionKey?: string;
@@ -167,6 +172,7 @@ export class EventChatPopupComponent implements OnDestroy {
   private readonly runtimeStore = inject(AppRuntimeStore);
   protected readonly memberMenuStore = inject(MemberMenuStore);
   protected readonly eventSubeventsStore = inject(EventSubeventsPopupStore);
+  protected readonly resourcePopupStore = inject(SubEventResourcePopupStore);
   private readonly chatsService = inject(ChatsService);
   private readonly activityResourcesService = inject(ActivityResourcesService);
   private readonly eventsService = inject(EventsService);
@@ -338,6 +344,27 @@ export class EventChatPopupComponent implements OnDestroy {
 
   constructor() {
     effect(() => {
+      if (!this.shouldHostChatResourcePopup()) {
+        return;
+      }
+      void this.resourcePopupStore.ensureEventResourcePopupLoaded();
+    });
+
+    effect(() => {
+      if (!this.shouldHostChatResourcePopup() || !this.resourcePopupStore.assetExplorePopupRef()) {
+        return;
+      }
+      void this.resourcePopupStore.ensureEventResourceAssetExploreLoaded();
+    });
+
+    effect(() => {
+      if (!this.shouldHostChatSupplyContributionsPopup()) {
+        return;
+      }
+      void this.resourcePopupStore.ensureEventSupplyContributionsPopupLoaded();
+    });
+
+    effect(() => {
       const request = this.eventSubeventsStore.eventSubeventsListPopup();
       if (!request || request.host !== 'chat' || !this.session()) {
         return;
@@ -402,6 +429,7 @@ export class EventChatPopupComponent implements OnDestroy {
 
   protected close(): void {
     this.chatThreadSmartList?.closeMenu();
+    this.resourcePopupStore.closeResourcePopup();
     this.stopLocalTyping();
     this.resetVoiceRecorder();
     this.teardownLiveChatUpdates();
@@ -481,6 +509,20 @@ export class EventChatPopupComponent implements OnDestroy {
 
   protected isServiceChat(): boolean {
     return this.session()?.item.channelType === 'serviceEvent';
+  }
+
+  protected shouldHostChatResourcePopup(): boolean {
+    const request = this.memberMenuStore.activitiesNavigationRequest();
+    return Boolean(this.session())
+      && (request?.type === 'chatResource'
+        || request?.type === 'assetExplore'
+        || this.resourcePopupStore.popupContextRef()?.origin === 'chat');
+  }
+
+  protected shouldHostChatSupplyContributionsPopup(): boolean {
+    return this.shouldHostChatResourcePopup()
+      && !this.resourcePopupStore.assetExploreOnlyRef()
+      && this.resourcePopupStore.supplyPopupRef() !== null;
   }
 
   protected selectedChatHasSubEventMenu(): boolean {
@@ -701,18 +743,7 @@ export class EventChatPopupComponent implements OnDestroy {
   }
 
   protected openSelectedChatEvent(event?: Event): void {
-    event?.stopPropagation();
-    this.chatThreadSmartList?.closeMenu();
-    const eventId = `${this.selectedChatNavigationState?.eventId ?? this.session()?.item.eventId ?? ''}`.trim();
-    if (!eventId) {
-      return;
-    }
-    this.memberMenuStore.requestActivitiesNavigation({
-      type: 'eventEditor',
-      eventId,
-      target: this.selectedChatNavigationState?.eventTarget ?? 'events',
-      readOnly: true
-    });
+    this.openSelectedChatSubeventsPopup(event);
   }
 
   protected openSelectedChatPrimaryContext(event?: Event): void {
@@ -733,25 +764,34 @@ export class EventChatPopupComponent implements OnDestroy {
   }
 
   protected openSelectedChatSubEvent(event?: Event): void {
-    event?.stopPropagation();
-    this.chatThreadSmartList?.closeMenu();
-    const state = this.selectedChatNavigationState;
-    const eventId = `${state?.eventId ?? this.session()?.item.eventId ?? ''}`.trim();
-    if (!eventId) {
-      return;
-    }
-    this.eventSubeventsStore.openEventSubeventsListPopup({
-      eventId,
-      host: 'chat',
-      target: state?.eventTarget ?? 'events',
-      title: state?.eventTitle ?? this.session()?.item.title ?? null,
-      canEdit: false
-    });
+    this.openSelectedChatSubeventsPopup(event);
   }
 
   protected openSelectedChatGroup(event?: Event): void {
     event?.stopPropagation();
     this.openSelectedChatSubEvent();
+  }
+
+  private openSelectedChatSubeventsPopup(event?: Event): void {
+    event?.stopPropagation();
+    this.chatThreadSmartList?.closeMenu();
+    const session = this.session();
+    const state = this.selectedChatNavigationState;
+    const eventId = `${state?.eventId ?? session?.item.eventId ?? ''}`.trim();
+    if (!eventId) {
+      return;
+    }
+    const record = this.selectedChatEventRecord(eventId);
+    this.eventSubeventsStore.openEventSubeventsListPopup({
+      eventId,
+      host: 'chat',
+      target: this.selectedChatEventEditorTarget(record, state),
+      title: record?.title ?? state?.eventTitle ?? session?.item.title ?? null,
+      timeframe: record?.timeframe ?? null,
+      startAtIso: record?.startAtIso ?? null,
+      endAtIso: record?.endAtIso ?? null,
+      canEdit: this.canEditSelectedChatEvent(record, state)
+    });
   }
 
   protected openSelectedChatSubEventResource(
@@ -1259,7 +1299,12 @@ export class EventChatPopupComponent implements OnDestroy {
 
   protected shareFirstAvailableAsset(event?: Event): void {
     event?.stopPropagation();
+    const state = this.selectedChatNavigationState;
     const resourceType = this.firstAvailableAssetType();
+    if (state?.subEvent) {
+      this.openSelectedChatSubEventResource(resourceType ?? 'Car', event, true);
+      return;
+    }
     this.memberMenuStore.requestActivitiesNavigation({
       type: 'assetExplore',
       assetType: resourceType ?? 'Car'
@@ -3922,9 +3967,65 @@ export class EventChatPopupComponent implements OnDestroy {
     };
   }
 
-  private eventEditorTargetForRecord(record: Pick<ActivityEventRecord, 'type' | 'creatorUserId'>): ContractTypes.EventEditorTarget {
+  private selectedChatEventRecord(eventId: string): ActivityEventRecord | null {
+    const normalizedEventId = `${eventId ?? ''}`.trim();
+    if (!normalizedEventId) {
+      return null;
+    }
+    if (this.resolvedChatEventRecordKey === normalizedEventId) {
+      return this.resolvedChatEventRecord;
+    }
+    return this.eventsService.peekKnownRecordById(this.activeUserId(), normalizedEventId);
+  }
+
+  private selectedChatEventEditorTarget(
+    record: ActivityEventRecord | null,
+    state: SelectedChatNavigationState | null
+  ): ContractTypes.EventEditorTarget {
+    return record
+      ? this.eventEditorTargetForRecord(record)
+      : state?.eventTarget ?? 'events';
+  }
+
+  private canEditSelectedChatEvent(
+    record: ActivityEventRecord | null,
+    state: SelectedChatNavigationState | null
+  ): boolean {
+    const subject = this.selectedChatEventMenuSubject(record, state);
+    return ActivityEventInfoCardMenuConverter.canEditEvent(subject, {
+      activeUserId: this.activeUserId()
+    });
+  }
+
+  private selectedChatEventMenuSubject(
+    record: ActivityEventRecord | null,
+    state: SelectedChatNavigationState | null
+  ): ActivityEventInfoCardMenuSubject | null {
+    const eventId = `${record?.id ?? state?.eventId ?? this.session()?.item.eventId ?? ''}`.trim();
+    if (!eventId) {
+      return null;
+    }
+    return {
+      menu: 'activity-event-card',
+      id: eventId,
+      status: record?.status ?? null,
+      ownerUserId: record?.creatorUserId ?? null,
+      adminIds: [...(record?.adminIds ?? [])],
+      acceptedMemberUserIds: [...(record?.acceptedMemberUserIds ?? [])],
+      pendingMemberUserIds: [...(record?.pendingMemberUserIds ?? [])],
+      invitedMemberUserIds: [...(record?.invitedMemberUserIds ?? [])],
+      pendingRequestMemberUserIds: [...(record?.pendingRequestMemberUserIds ?? [])],
+      eventScope: record?.type ?? null
+    };
+  }
+
+  private eventEditorTargetForRecord(record: Pick<ActivityEventRecord, 'type' | 'creatorUserId' | 'adminIds'>): ContractTypes.EventEditorTarget {
     const activeUserId = this.activeUserId().trim();
-    if (record.type === 'hosting' || (!!activeUserId && record.creatorUserId === activeUserId)) {
+    if (
+      record.type === 'hosting'
+      || (!!activeUserId && record.creatorUserId === activeUserId)
+      || (record.adminIds ?? []).includes(activeUserId)
+    ) {
       return 'hosting';
     }
     return 'events';

@@ -703,3 +703,19 @@
     <ng-container *ngComponentOutlet="subeventsPopupComponent"></ng-container>
   }
 }
+
+@if (shouldHostChatResourcePopup()) {
+  @if (resourcePopupStore.eventResourcePopupComponent(); as resourcePopupComponent) {
+    <ng-container *ngComponentOutlet="resourcePopupComponent"></ng-container>
+  }
+}
+@if (shouldHostChatResourcePopup() && resourcePopupStore.assetExplorePopupRef()) {
+  @if (resourcePopupStore.eventResourceAssetExploreComponent(); as assetExplorePopupComponent) {
+    <ng-container *ngComponentOutlet="assetExplorePopupComponent"></ng-container>
+  }
+}
+@if (shouldHostChatSupplyContributionsPopup()) {
+  @if (resourcePopupStore.eventSupplyContributionsPopupComponent(); as supplyContributionsComponent) {
+    <ng-container *ngComponentOutlet="supplyContributionsComponent"></ng-container>
+  }
+}
