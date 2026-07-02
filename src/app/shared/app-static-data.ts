@@ -674,7 +674,8 @@ const ACTIVITIES_CHAT_CONTEXT_FILTERS: Array<{ key: ActivitiesChatContextFilter;
   { key: 'event', label: 'event', icon: 'event' },
   { key: 'subEvent', label: 'sub.event', icon: 'event_available' },
   { key: 'group', label: 'group', icon: 'groups' },
-  { key: 'service', label: 'service', icon: 'support_agent' }
+  { key: 'service', label: 'service', icon: 'support_agent' },
+  { key: 'appSupport', label: 'app.support', icon: 'admin_panel_settings' }
 ];
 const RATE_FILTERS: Array<{ key: RateFilterKey; label: string }> = [
   { key: 'individual-given', label: 'Given' },

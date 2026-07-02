@@ -80,6 +80,28 @@ export interface IEventsService {
   saveTournamentGroup(request: EventContracts.EventTournamentGroupUpsertRequestDTO): Promise<EventContracts.EventTournamentGroupsStateDTO | null>;
   deleteTournamentGroup(request: EventContracts.EventTournamentGroupDeleteRequestDTO): Promise<EventContracts.EventTournamentGroupsStateDTO | null>;
   upsertSubEventLeaderboardEntry(request: EventContracts.SubEventLeaderboardEntryUpsertRequestDTO): Promise<EventContracts.SubEventLeaderboardState | null>;
+  requestJoin(
+    userId: string,
+    sourceId: string,
+    options?: {
+      slotSourceId?: string | null;
+      optionalSubEventIds?: string[];
+      assetSelections?: EventCheckoutAssetSelection[];
+      acceptedPolicyIds?: string[];
+      paymentSessionId?: string | null;
+      bookingConfirmed?: boolean;
+      pendingReason?: AppConstants.ActivityPendingReason;
+      skipLocalRouteDelay?: boolean;
+      counterDelta?: UserContracts.UserMenuCounterDeltasDto | null;
+    }
+  ): Promise<EventParticipationActionResultDTO | null>;
+  leaveEvent(
+    userId: string,
+    sourceId: string,
+    options?: {
+      counterDelta?: UserContracts.UserMenuCounterDeltasDto | null;
+    }
+  ): Promise<EventParticipationActionResultDTO | null>;
 }
 
 export interface IChatsService {
@@ -88,6 +110,11 @@ export interface IChatsService {
     query: ListQuery<ActivitiesFeedFilters>,
     options?: { chatItems?: readonly ChatContracts.ChatDTO[] }
   ): Promise<ChatContracts.ActivitiesChatPageResultDTO>;
+  loadChatMessages(chat: ChatContracts.ChatDTO): Promise<ChatContracts.ChatMessageDto[]>;
+  queryChatMessagesPage(
+    chat: ChatContracts.ChatDTO,
+    query: ListQuery
+  ): Promise<ChatContracts.ChatMessagesPageResultDTO>;
 }
 
 export interface IRatesService {
@@ -325,6 +352,8 @@ export interface ActivityEventDTO {
   userId: string;
   type: ActivityEventRepositoryItemType;
   status?: ActivityEventStatus;
+  statusBeforeSuppression?: ActivityEventStatus | null;
+  trashedAtIso?: string | null;
   adminIds: string[];
   title: string;
   subtitle: string;
@@ -380,6 +409,7 @@ export interface SubEventsSlotDTO {
 }
 
 export interface ActivityEventSubEventsResultDTO {
+  mode: EventContracts.EventMode;
   slots: SubEventsSlotDTO[];
 }
 
@@ -912,7 +942,7 @@ export interface ActivityEventExploreQueryResult {
   nextCursor: string | null;
 }
 
-export interface ActivityMemberEntry {
+export interface ActivityMemberDTO {
   id: string;
   userId: string;
   name: string;
@@ -968,7 +998,7 @@ export interface ActivityInviteCandidatesQuery {
 }
 
 export interface IActivityInviteCandidatesService {
-  queryCandidates(query: ActivityInviteCandidatesQuery): Promise<ActivityMemberEntry[]>;
+  queryCandidates(query: ActivityInviteCandidatesQuery): Promise<ActivityMemberDTO[]>;
 }
 
 export interface UserGameCardsStackSnapshot {

@@ -2,7 +2,7 @@ import { APP_STATIC_DATA } from '../../../app-static-data';
 import { AppUtils } from '../../../app-utils';
 import type { UserDto } from '../../contracts/user.interface';
 import type {
-  ActivityMemberEntry,
+  ActivityMemberDTO,
   ActivityMemberOwnerRef,
   ActivityMembersSummaryDto,
 } from '../../contracts/activity.interface';
@@ -94,7 +94,7 @@ export class ActivityMembersBuilder {
 
   static buildActivityMembersSummary(
     owner: ActivityMemberOwnerRef,
-    members: readonly ActivityMemberEntry[],
+    members: readonly ActivityMemberDTO[],
     capacityTotal: number
   ): ActivityMembersSummaryDto {
     const acceptedMemberUserIds = members
@@ -114,14 +114,14 @@ export class ActivityMembersBuilder {
     };
   }
 
-  static toActivityMemberEntry(
+  static toActivityMemberDTO(
     user: UserDto,
     row: ActivityMemberSourceModel,
     rowKey: string,
     activeUserId: string,
     defaults: { status: ActivityMemberStatus; pendingSource: ActivityPendingSource; invitedByActiveUser: boolean },
     metPlaces: string[] = APP_STATIC_DATA.activityMemberMetPlaces
-  ): ActivityMemberEntry {
+  ): ActivityMemberDTO {
     const seed = AppUtils.hashText(`${rowKey}:${user.id}`);
     const metAt = AppUtils.addDays(new Date('2026-02-24T12:00:00'), -((seed % 220) + 1));
     const place = metPlaces.length > 0 ? metPlaces[seed % metPlaces.length] : APP_STATIC_DATA.activityMemberDefaults.forcedMetWhere;
@@ -146,11 +146,11 @@ export class ActivityMembersBuilder {
     };
   }
 
-  static sortActivityMembersByActionTimeDesc(entries: readonly ActivityMemberEntry[]): ActivityMemberEntry[] {
+  static sortActivityMembersByActionTimeDesc(entries: readonly ActivityMemberDTO[]): ActivityMemberDTO[] {
     return [...entries].sort((a, b) => AppUtils.toSortableDate(b.actionAtIso) - AppUtils.toSortableDate(a.actionAtIso));
   }
 
-  static sortActivityMembersByActionTimeAsc(entries: readonly ActivityMemberEntry[]): ActivityMemberEntry[] {
+  static sortActivityMembersByActionTimeAsc(entries: readonly ActivityMemberDTO[]): ActivityMemberDTO[] {
     return [...entries].sort((a, b) => AppUtils.toSortableDate(a.actionAtIso) - AppUtils.toSortableDate(b.actionAtIso));
   }
 }

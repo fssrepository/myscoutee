@@ -88,17 +88,17 @@
 @if (activitiesStore.eventMembersPopupComponent(); as membersComponent) {
   <ng-container *ngComponentOutlet="membersComponent"></ng-container>
 }
-@if (subEventResourceStore.popupContextRef()?.origin === 'chat') {
+@if (!activitiesStore.eventChatSession() && subEventResourceStore.popupContextRef()?.origin === 'chat') {
   @if (subEventResourceStore.eventResourcePopupComponent(); as resourceComponent) {
     <ng-container *ngComponentOutlet="resourceComponent"></ng-container>
   }
 }
-@if (subEventResourceStore.popupContextRef()?.origin === 'chat' && subEventResourceStore.assetExplorePopupRef()) {
+@if (!activitiesStore.eventChatSession() && subEventResourceStore.popupContextRef()?.origin === 'chat' && subEventResourceStore.assetExplorePopupRef()) {
   @if (subEventResourceStore.eventResourceAssetExploreComponent(); as assetExploreComponent) {
     <ng-container *ngComponentOutlet="assetExploreComponent"></ng-container>
   }
 }
-@if (subEventResourceStore.popupContextRef()?.origin === 'chat' && !subEventResourceStore.assetExploreOnlyRef() && subEventResourceStore.supplyPopupRef()) {
+@if (!activitiesStore.eventChatSession() && subEventResourceStore.popupContextRef()?.origin === 'chat' && !subEventResourceStore.assetExploreOnlyRef() && subEventResourceStore.supplyPopupRef()) {
   @if (subEventResourceStore.eventSupplyContributionsPopupComponent(); as supplyContributionsComponent) {
     <ng-container *ngComponentOutlet="supplyContributionsComponent"></ng-container>
   }

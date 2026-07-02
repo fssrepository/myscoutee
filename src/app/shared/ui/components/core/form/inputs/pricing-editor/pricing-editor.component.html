@@ -1,6 +1,6 @@
 <section
   class="pricing-editor"
-  [class.pricing-editor--readonly]="readOnly"
+  [class.pricing-editor--readonly]="editorLocked()"
   [class.pricing-editor--summary-popup]="usesSummaryPopup()"
   [class.pricing-editor--wizard-open]="wizardOpen"
   [class.pricing-editor--enabled]="isPricingEnabled()"
@@ -38,25 +38,23 @@
         }
       </span>
     </div>
-    @if (!(usesSummaryPopup() && readOnly)) {
-      <div class="pricing-editor__head-actions">
-        <button
-          type="button"
-          class="pricing-editor__toggle pricing-editor__toggle--header"
-          [class.is-on]="isPricingEnabled()"
-          [disabled]="readOnly"
-          [attr.aria-pressed]="isPricingEnabled()"
-          (click)="togglePricingEnabled()"
-          >
-          <mat-icon>{{ isPricingEnabled() ? 'toggle_on' : 'toggle_off' }}</mat-icon>
-          <span>{{ isPricingEnabled() ? 'On' : 'Off' }}</span>
-        </button>
-      </div>
-    }
+    <div class="pricing-editor__head-actions">
+      <button
+        type="button"
+        class="pricing-editor__toggle pricing-editor__toggle--header"
+        [class.is-on]="isPricingEnabled()"
+        [disabled]="editorLocked()"
+        [attr.aria-pressed]="isPricingEnabled()"
+        (click)="togglePricingEnabled()"
+        >
+        <mat-icon>{{ isPricingEnabled() ? 'toggle_on' : 'toggle_off' }}</mat-icon>
+        <span>{{ isPricingEnabled() ? 'On' : 'Off' }}</span>
+      </button>
+    </div>
   </header>
 
   @if (usesSummaryPopup() && isPricingEnabled()) {
-    @if (!readOnly) {
+    @if (!editorLocked()) {
       <div class="pricing-editor__summary-actions">
         <button type="button" class="pricing-editor__open-btn pricing-editor__open-btn--summary" (click)="openWizard()">
           <mat-icon>tune</mat-icon>

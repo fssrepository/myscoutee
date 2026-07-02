@@ -9,7 +9,7 @@ import type {
   AssetType,
   SubEventResourceFilter
 } from '../../../core/common/constants';
-import type { ActivityMemberEntry } from '../../../core/contracts/activity.interface';
+import type { ActivityMemberDTO } from '../../../core/contracts/activity.interface';
 import type { ChatDTO } from '../../../core/contracts/chat.interface';
 import type { AssetDTO } from '../../../core/contracts';
 import type { EventEditorTarget, SubEventDTO } from '../../../core/contracts/event.interface';
@@ -58,9 +58,9 @@ export type ActivitiesNavigationRequest =
       acceptedMembers?: number;
       pendingMembers?: number;
       capacityTotal?: number;
-      members?: readonly ActivityMemberEntry[];
+      members?: readonly ActivityMemberDTO[];
       lookup?: PopupHeaderLookup;
-      onMembersChanged?: (members: readonly ActivityMemberEntry[]) => void;
+      onMembersChanged?: (members: readonly ActivityMemberDTO[]) => void;
     }
   | { type: 'eventEditorMembers'; ownerId: string; title?: string; canManage?: boolean }
   | { type: 'eventEditorCreate'; target: EventEditorTarget }

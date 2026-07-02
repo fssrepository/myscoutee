@@ -62,6 +62,7 @@ export type AppMenuItemSelectAction = 'select' | 'remove';
 export type AppMenuItemSurface = 'plain' | 'tinted';
 export type AppMenuLayout = 'row' | 'grid' | 'list' | 'tabs';
 export type AppMenuItemLayout = 'default' | 'pill' | 'action' | 'big' | 'image';
+export type AppMenuDensity = 'default' | 'compact';
 export type AppMenuPanelAlign = 'auto' | 'start' | 'end';
 export type AppMenuPanelMode = 'auto' | 'anchored' | 'sheet' | 'dock' | 'fixed';
 export type AppMenuSummaryCounter = 'overflow' | 'count' | 'none';
@@ -191,6 +192,7 @@ export interface AppMenuSummary {
 
 export interface AppMenuModel<TId extends string = string, TContext = unknown> {
   layout?: AppMenuLayout;
+  density?: AppMenuDensity;
   summary?: AppMenuSummary | null;
   valueKey?: AppMenuValueKey | null;
   maxSelected?: number | null;

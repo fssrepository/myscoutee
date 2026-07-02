@@ -86,6 +86,7 @@ export class PricingEditorInputComponent implements OnChanges, DoCheck, ControlV
 
   @Input() config: PricingEditorConfig = {};
   @Input() readOnly = false;
+  @Input() disabled = false;
 
   protected workingPricing: ContractTypes.PricingConfig = PricingBuilder.createDefaultPricingConfig('event');
 
@@ -250,8 +251,12 @@ export class PricingEditorInputComponent implements OnChanges, DoCheck, ControlV
     return this.resolvedConfig.presentation === 'popup-summary';
   }
 
+  protected editorLocked(): boolean {
+    return this.readOnly || this.disabled;
+  }
+
   protected subtitleKey(): PricingEditorSubtitleKey {
-    if (this.readOnly) {
+    if (this.editorLocked()) {
       return 'none';
     }
     switch (this.resolvedConfig.context) {
@@ -265,7 +270,7 @@ export class PricingEditorInputComponent implements OnChanges, DoCheck, ControlV
   }
 
   protected openWizard(): void {
-    if (this.readOnly || !this.usesSummaryPopup()) {
+    if (this.editorLocked() || !this.usesSummaryPopup()) {
       return;
     }
     this.wizardOpen = true;
@@ -279,7 +284,7 @@ export class PricingEditorInputComponent implements OnChanges, DoCheck, ControlV
   }
 
   protected togglePricingEnabled(): void {
-    if (this.readOnly) {
+    if (this.editorLocked()) {
       return;
     }
     this.workingPricing.enabled = !this.workingPricing.enabled;

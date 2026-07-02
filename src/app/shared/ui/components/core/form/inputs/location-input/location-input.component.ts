@@ -72,10 +72,17 @@ export class LocationInputComponent implements ControlValueAccessor {
   }
 
   protected inputDisabled(): boolean {
+    return this.readOnly || this.disabled || this.controlDisabled;
+  }
+
+  protected actionDisabled(): boolean {
     return this.disabled || this.controlDisabled;
   }
 
   protected updateValue(value: unknown): void {
+    if (this.inputDisabled()) {
+      return;
+    }
     const nextValue = this.toText(value);
     this.value = nextValue;
     this.onValueChange(nextValue);
@@ -96,7 +103,7 @@ export class LocationInputComponent implements ControlValueAccessor {
       href: href || undefined,
       target: '_blank',
       rel: 'noopener,noreferrer',
-      disabled: this.inputDisabled() || !href
+      disabled: this.actionDisabled() || !href
     }];
   }
 

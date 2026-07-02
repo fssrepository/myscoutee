@@ -21,9 +21,9 @@ import {
   APP_STATIC_DATA
 } from '../../../shared/app-static-data';
 import {
+  type ActivityEventSubEventsResultDTO,
   type ActivityEventStageActionResultDTO,
-  type ActivityEventSubEventsQueryDTO,
-  type SubEventsSlotDTO
+  type ActivityEventSubEventsQueryDTO
 } from '../../../shared/core/contracts/activity.interface';
 import type { EventMode, EventSlotTemplateDTO, EventTournamentStageDTO, SubEventDTO } from '../../../shared/core/contracts/event.interface';
 import {
@@ -983,7 +983,7 @@ export class EventSubeventsListPopupComponent {
       if (this.eventSubeventsStore.eventSubeventsListPopup()?.eventId !== eventId) {
         return;
       }
-      this.applyLoadedSubEventsSlots(eventId, result?.slots ?? [], query);
+      this.applyLoadedSubEventsSlots(eventId, result, query);
     })().finally(() => {
       if (this.loadingEventId === eventId && this.loadingQueryKey === queryKey) {
         this.loadingEventId = '';
@@ -998,10 +998,15 @@ export class EventSubeventsListPopupComponent {
 
   private applyLoadedSubEventsSlots(
     eventId: string,
-    slots: readonly SubEventsSlotDTO[],
+    result: ActivityEventSubEventsResultDTO | null,
     query: ListQuery<EventSubeventsListFilters>
   ): void {
-    const event = this.parentContextFromRequest(eventId);
+    const requestEvent = this.parentContextFromRequest(eventId);
+    const event = {
+      ...requestEvent,
+      mode: result?.mode ?? null
+    };
+    const slots = result?.slots ?? [];
     this.event = event;
     this.slotSections = EventSubeventsSlotConverter.convertList(slots, {
       event,
@@ -1021,7 +1026,8 @@ export class EventSubeventsListPopupComponent {
       title: request?.title ?? null,
       timeframe: request?.timeframe ?? null,
       startAtIso: request?.startAtIso ?? null,
-      endAtIso: request?.endAtIso ?? null
+      endAtIso: request?.endAtIso ?? null,
+      mode: request?.mode ?? null
     };
   }
 

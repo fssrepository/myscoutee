@@ -13,7 +13,14 @@ import type {
   UserFeedbackSubmitRequestDto,
   UserLocationEligibilityResponseDto,
   UserLogoutRequestDto,
+  UserAssetCountersDto,
+  UserAssetCounterDeltasDto,
+  UserEventCountersDto,
+  UserEventCounterDeltasDto,
+  UserEventFeedbackCountersDto,
+  UserEventFeedbackCounterDeltasDto,
   UserReportUserSubmitRequestDto,
+  UserMenuCounterDeltasDto,
   UserMenuCountersDto,
   UserRealtimeLongPollResponseDto,
   UserRealtimeLongPollStop,
@@ -338,6 +345,46 @@ export class LocalUsersService extends LocalRouteDelayService implements UserSer
     return savedUser;
   }
 
+  async patchUserActivityCounters(userId: string, patch: UserMenuCountersDto): Promise<UserDto | null> {
+    const normalizedUserId = userId.trim();
+    if (!normalizedUserId) {
+      return null;
+    }
+    await this.usersRepository.whenReady();
+    const currentRecord = this.usersRepository.queryUserById(normalizedUserId);
+    if (!currentRecord) {
+      return null;
+    }
+    const currentUser = LocalUsersMapper.toDto(currentRecord);
+    const savedUser = this.upsertUser({
+      ...currentUser,
+      activities: this.applyUserActivityCounterPatch(currentUser.activities, patch)
+    });
+    this.primeLocalRealtimeState(savedUser);
+    await this.usersRepository.flushToIndexedDb();
+    return savedUser;
+  }
+
+  async patchUserActivityCounterDeltas(userId: string, deltas: UserMenuCounterDeltasDto): Promise<UserDto | null> {
+    const normalizedUserId = userId.trim();
+    if (!normalizedUserId) {
+      return null;
+    }
+    await this.usersRepository.whenReady();
+    const currentRecord = this.usersRepository.queryUserById(normalizedUserId);
+    if (!currentRecord) {
+      return null;
+    }
+    const currentUser = LocalUsersMapper.toDto(currentRecord);
+    const savedUser = this.upsertUser({
+      ...currentUser,
+      activities: this.applyUserActivityCounterDeltas(currentUser.activities, deltas)
+    });
+    this.primeLocalRealtimeState(savedUser);
+    await this.usersRepository.flushToIndexedDb();
+    return savedUser;
+  }
+
   async saveUserProfileExt(request: ProfileExtDto, _requestTimeoutMs?: number): Promise<UserDto | null> {
     const profile = request?.profile;
     if (!profile?.id?.trim()) {
@@ -452,6 +499,188 @@ export class LocalUsersService extends LocalRouteDelayService implements UserSer
     const normalizedUser = LocalUsersMapper.toRecord(user);
     const savedUser = this.usersRepository.upsertUser(normalizedUser);
     return LocalUsersMapper.toDto(savedUser);
+  }
+
+  private applyUserActivityCounterPatch(
+    current: UserDto['activities'],
+    patch: UserMenuCountersDto
+  ): UserDto['activities'] {
+    const next = { ...current } as UserDto['activities'] & Record<string, unknown>;
+    const scalarKeys = [
+      'game',
+      'chat',
+      'invitations',
+      'events',
+      'hosting',
+      'cars',
+      'accommodation',
+      'supplies',
+      'tickets',
+      'contacts',
+      'feedback',
+      'adminJobs',
+      'adminMetrics'
+    ];
+    const scalarPatch = patch as Record<string, unknown>;
+    for (const key of scalarKeys) {
+      if (!Object.prototype.hasOwnProperty.call(scalarPatch, key) || !Number.isFinite(scalarPatch[key])) {
+        continue;
+      }
+      next[key] = this.normalizeUserCounter(scalarPatch[key]);
+    }
+    if (patch.event) {
+      next.event = this.applyUserEventCounterPatch(current.event, patch.event);
+    }
+    if (patch.asset) {
+      next.asset = this.applyUserAssetCounterPatch(current.asset, patch.asset);
+    }
+    if (patch.eventFeedback) {
+      next.eventFeedback = this.applyUserEventFeedbackCounterPatch(current.eventFeedback, patch.eventFeedback);
+    }
+    return next;
+  }
+
+  private applyUserActivityCounterDeltas(
+    current: UserDto['activities'],
+    deltas: UserMenuCounterDeltasDto
+  ): UserDto['activities'] {
+    const next = { ...current } as UserDto['activities'] & Record<string, unknown>;
+    const scalarKeys = [
+      'game',
+      'chat',
+      'invitations',
+      'events',
+      'hosting',
+      'cars',
+      'accommodation',
+      'supplies',
+      'tickets',
+      'contacts',
+      'feedback',
+      'adminJobs',
+      'adminMetrics'
+    ];
+    const deltaRecord = deltas as Record<string, unknown>;
+    for (const key of scalarKeys) {
+      if (!Object.prototype.hasOwnProperty.call(deltaRecord, key) || !Number.isFinite(deltaRecord[key])) {
+        continue;
+      }
+      next[key] = this.normalizeUserCounter(this.normalizeUserCounter(next[key]) + Number(deltaRecord[key]));
+    }
+    if (deltas.event) {
+      next.event = this.applyUserEventCounterDeltas(current.event, deltas.event);
+    }
+    if (deltas.asset) {
+      next.asset = this.applyUserAssetCounterDeltas(current.asset, deltas.asset);
+    }
+    if (deltas.eventFeedback) {
+      next.eventFeedback = this.applyUserEventFeedbackCounterDeltas(current.eventFeedback, deltas.eventFeedback);
+    }
+    return next;
+  }
+
+  private applyUserEventCounterPatch(
+    current: UserDto['activities']['event'],
+    patch: UserEventCountersDto
+  ): UserEventCountersDto {
+    return this.applyNestedCounterPatch(
+      current,
+      patch,
+      ['all', 'active', 'pending', 'invitations', 'hosting', 'drafts', 'trash']
+    );
+  }
+
+  private applyUserEventCounterDeltas(
+    current: UserDto['activities']['event'],
+    deltas: UserEventCounterDeltasDto
+  ): UserEventCountersDto {
+    return this.applyNestedCounterDeltas(
+      current,
+      deltas,
+      ['all', 'active', 'pending', 'invitations', 'hosting', 'drafts', 'trash']
+    );
+  }
+
+  private applyUserAssetCounterPatch(
+    current: UserDto['activities']['asset'],
+    patch: UserAssetCountersDto
+  ): UserAssetCountersDto {
+    return this.applyNestedCounterPatch(
+      current,
+      patch,
+      ['cars', 'accommodation', 'supplies', 'tickets']
+    );
+  }
+
+  private applyUserAssetCounterDeltas(
+    current: UserDto['activities']['asset'],
+    deltas: UserAssetCounterDeltasDto
+  ): UserAssetCountersDto {
+    return this.applyNestedCounterDeltas(
+      current,
+      deltas,
+      ['cars', 'accommodation', 'supplies', 'tickets']
+    );
+  }
+
+  private applyUserEventFeedbackCounterPatch(
+    current: UserDto['activities']['eventFeedback'],
+    patch: UserEventFeedbackCountersDto
+  ): UserEventFeedbackCountersDto {
+    return this.applyNestedCounterPatch(
+      current,
+      patch,
+      ['ownEvents', 'pending', 'feedbacked', 'removed']
+    );
+  }
+
+  private applyUserEventFeedbackCounterDeltas(
+    current: UserDto['activities']['eventFeedback'],
+    deltas: UserEventFeedbackCounterDeltasDto
+  ): UserEventFeedbackCountersDto {
+    return this.applyNestedCounterDeltas(
+      current,
+      deltas,
+      ['ownEvents', 'pending', 'feedbacked', 'removed']
+    );
+  }
+
+  private applyNestedCounterPatch<T extends object>(
+    current: T | undefined,
+    patch: T,
+    keys: string[]
+  ): T {
+    const next = { ...(current ?? {}) } as Record<string, number>;
+    const patchRecord = patch as Record<string, unknown>;
+    const currentRecord = (current ?? {}) as Record<string, unknown>;
+    for (const key of keys) {
+      next[key] = Object.prototype.hasOwnProperty.call(patchRecord, key) && Number.isFinite(patchRecord[key])
+        ? this.normalizeUserCounter(patchRecord[key])
+        : this.normalizeUserCounter(currentRecord[key]);
+    }
+    return next as T;
+  }
+
+  private applyNestedCounterDeltas<T extends object>(
+    current: T | undefined,
+    deltas: Partial<Record<keyof T, number>>,
+    keys: string[]
+  ): T {
+    const next = { ...(current ?? {}) } as Record<string, number>;
+    const deltaRecord = deltas as Record<string, unknown>;
+    for (const key of keys) {
+      if (!Object.prototype.hasOwnProperty.call(deltaRecord, key) || !Number.isFinite(deltaRecord[key])) {
+        next[key] = this.normalizeUserCounter(next[key]);
+        continue;
+      }
+      next[key] = this.normalizeUserCounter(this.normalizeUserCounter(next[key]) + Number(deltaRecord[key]));
+    }
+    return next as T;
+  }
+
+  private normalizeUserCounter(value: unknown): number {
+    const count = Number(value);
+    return Number.isFinite(count) ? Math.max(0, Math.trunc(count)) : 0;
   }
 
   private buildInitialMenuCounterOverrides(user: UserDto): UserMenuCountersDto {

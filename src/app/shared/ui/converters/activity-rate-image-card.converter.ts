@@ -1,13 +1,16 @@
 import { AppUtils } from '../../app-utils';
 import type { ActivityRateDTO } from '../../core/contracts/activity.interface';
 import type { UserDto } from '../../core/contracts/user.interface';
-import type { ImageCardData, ImageCardPerson, PairCardSlot } from '../components/core/smart-list/card';
+import type {
+  CardContextBadgeConfig,
+  ImageCardData,
+  ImageCardPerson,
+  PairCardSlot
+} from '../components/core/smart-list/card';
 import type { UiListConverter } from './converter.types';
 
 export interface ActivityRateImageCardConverterOptions {
-  activeUserId: string;
-  users: readonly UserDto[];
-  directionOverrides?: Partial<Record<string, ActivityRateDTO['direction']>>;
+  ratedUsers?: readonly UserDto[];
 }
 
 export class ActivityRateImageCardConverter {
@@ -15,14 +18,15 @@ export class ActivityRateImageCardConverter {
     dto: ActivityRateDTO,
     options: ActivityRateImageCardConverterOptions
   ): ImageCardData {
-    const direction = this.displayedDirection(dto, options.directionOverrides);
-    const primaryUser = this.resolvePrimaryUser(dto, options.users, options.activeUserId);
+    const direction = dto.direction;
+    const primaryUser = this.resolvePrimaryUser(dto, options);
     const ownScore = this.rateOwnScore(dto);
     const distanceMetersExact = this.exactDistanceMeters(dto);
     const sortScore = direction === 'mutual' ? ownScore + Math.max(dto.scoreReceived, 0) : ownScore;
 
     return {
       id: dto.id,
+      smartListKey: `rates:${dto.id}`,
       status: direction,
       dateIso: dto.happenedAt ?? '',
       distanceMetersExact,
@@ -36,9 +40,11 @@ export class ActivityRateImageCardConverter {
       eventName: dto.eventName,
       happenedOnLabel: this.formatMonthDayLabel(dto.happenedAt),
       primaryUser: primaryUser ? this.toImageCardPerson(primaryUser) : null,
-      pairUsers: this.buildPairUsers(dto, options.users),
-      singleImageUrls: this.buildSingleImageUrls(dto, primaryUser, options.activeUserId),
-      pairSlots: this.buildPairSlots(dto, options.users),
+      pairUsers: this.buildPairUsers(dto, options),
+      availableUsers: this.buildAvailableUsers(options),
+      singleImageUrls: this.buildSingleImageUrls(dto, primaryUser),
+      pairSlots: this.buildPairSlots(dto, options),
+      contextBadge: this.buildContextBadge(dto, options),
       stackClasses: [
         dto.mode === 'pair' ? 'activities-rate-profile-stack-pair' : 'activities-rate-profile-stack-single',
         `activities-rate-profile-stack-${direction}`
@@ -60,32 +66,37 @@ export class ActivityRateImageCardConverter {
     return dtos.map(dto => this.convert(dto, options));
   }
 
-  private static displayedDirection(
-    dto: ActivityRateDTO,
-    directionOverrides?: Partial<Record<string, ActivityRateDTO['direction']>>
-  ): ActivityRateDTO['direction'] {
-    return directionOverrides?.[dto.id] ?? dto.direction;
-  }
-
   private static resolvePrimaryUser(
     dto: ActivityRateDTO,
-    users: readonly UserDto[],
-    activeUserId: string
+    options: ActivityRateImageCardConverterOptions
   ): UserDto | null {
-    return users.find(user => user.id === dto.userId)
-      ?? users.find(user => user.id === activeUserId)
-      ?? null;
+    return this.resolveRatedUserById(dto.userId, options);
   }
 
-  private static resolveUserById(
+  private static resolveRatedUserById(
     userId: string | undefined,
-    users: readonly UserDto[]
+    options: ActivityRateImageCardConverterOptions
   ): UserDto | null {
     const normalizedUserId = `${userId ?? ''}`.trim();
     if (!normalizedUserId) {
       return null;
     }
-    return users.find(user => user.id === normalizedUserId) ?? null;
+    return (options.ratedUsers ?? [])
+      .find(user => user.id.trim() === normalizedUserId) ?? null;
+  }
+
+  private static buildAvailableUsers(
+    options: ActivityRateImageCardConverterOptions
+  ): ImageCardPerson[] {
+    const usersById = new Map<string, UserDto>();
+    for (const user of options.ratedUsers ?? []) {
+      const normalizedUserId = user.id.trim();
+      if (!normalizedUserId || usersById.has(normalizedUserId)) {
+        continue;
+      }
+      usersById.set(normalizedUserId, user);
+    }
+    return [...usersById.values()].map(user => this.toImageCardPerson(user));
   }
 
   private static toImageCardPerson(user: UserDto): ImageCardPerson {
@@ -101,21 +112,20 @@ export class ActivityRateImageCardConverter {
 
   private static buildPairUsers(
     dto: ActivityRateDTO,
-    users: readonly UserDto[]
+    options: ActivityRateImageCardConverterOptions
   ): ImageCardPerson[] {
     return [dto.userId, dto.secondaryUserId]
       .filter((userId): userId is string => typeof userId === 'string' && userId.trim().length > 0)
-      .map(userId => this.resolveUserById(userId, users))
+      .map(userId => this.resolveRatedUserById(userId, options))
       .filter((user): user is UserDto => Boolean(user))
       .map(user => this.toImageCardPerson(user));
   }
 
   private static buildSingleImageUrls(
     dto: ActivityRateDTO,
-    user: UserDto | null,
-    activeUserId: string
+    user: UserDto | null
   ): string[] {
-    const seedUserId = user?.id ?? activeUserId;
+    const seedUserId = user?.id ?? dto.userId ?? dto.id;
     const seededCount = 1 + (AppUtils.hashText(`rate-photo-count:${seedUserId || dto.id}`) % 4);
     const desiredCount = dto.direction === 'met' ? Math.min(2, seededCount) : seededCount;
     return this.buildDisplayImageUrls(user?.images, Math.max(1, Math.min(4, desiredCount)));
@@ -123,12 +133,12 @@ export class ActivityRateImageCardConverter {
 
   private static buildPairSlots(
     dto: ActivityRateDTO,
-    users: readonly UserDto[]
+    options: ActivityRateImageCardConverterOptions
   ): PairCardSlot[] {
     return ([0, 1] as const).map(index => {
       const slot = index === 0 ? 'woman' : 'man';
       const label = this.resolvePairSlotLabel(dto, index);
-      const user = this.resolveUserById(index === 0 ? dto.userId : dto.secondaryUserId, users);
+      const user = this.resolveRatedUserById(index === 0 ? dto.userId : dto.secondaryUserId, options);
       return {
         key: slot,
         label,
@@ -140,9 +150,53 @@ export class ActivityRateImageCardConverter {
               primaryLine: `${label} - waiting`,
               secondaryLine: 'No pair card yet',
               placeholderLabel: ''
-            }]
+            }],
+        profileView: user
+          ? {
+            userId: user.id,
+            label: user.name
+          }
+          : null
       };
     });
+  }
+
+  private static buildContextBadge(
+    dto: ActivityRateDTO,
+    options: ActivityRateImageCardConverterOptions
+  ): CardContextBadgeConfig | null {
+    if (dto.mode !== 'individual' || dto.socialContext !== 'friends-in-common') {
+      return null;
+    }
+    const bridgeUser = this.resolveRatedUserById(dto.bridgeUserId, options);
+    if (!bridgeUser) {
+      return null;
+    }
+    const bridgeCount = Math.max(0, Math.trunc(Number(dto.bridgeCount) || 0));
+    return {
+      label: AppUtils.initialsFromText(bridgeUser.name),
+      imageUrl: this.firstProfileImageUrl(bridgeUser),
+      counterLabel: bridgeCount > 1 ? `+${bridgeCount - 1}` : null,
+      title: this.contextBadgeTitle(bridgeUser.name, bridgeCount),
+      ariaLabel: `View ${bridgeUser.name} profile`,
+      profileView: {
+        userId: bridgeUser.id,
+        label: bridgeUser.name
+      }
+    };
+  }
+
+  private static contextBadgeTitle(bridgeName: string, bridgeCount: number): string {
+    const extraCount = Math.max(0, Math.trunc(Number(bridgeCount) || 0) - 1);
+    return extraCount > 0
+      ? `Shown via ${bridgeName} and ${extraCount} more`
+      : `Shown via ${bridgeName}`;
+  }
+
+  private static firstProfileImageUrl(user: UserDto): string | null {
+    return user.images
+      ?.map(image => `${image ?? ''}`.trim())
+      .find(image => image.length > 0) ?? null;
   }
 
   private static buildPairSlotSlides(

@@ -1,6 +1,6 @@
 import { USER_FILTER_PREFERENCES_TABLE_NAME, type UserFilterPreferencesRecord } from '../entity/rate.entity';
 import { USERS_TABLE_NAME, type UserRecord } from '../entity/user.entity';
-import { CHATS_TABLE_NAME } from '../entity/chat.entity';
+import { CHAT_MESSAGES_TABLE_NAME, CHATS_TABLE_NAME } from '../entity/chat.entity';
 import type { AppMemorySchema } from '../../common/memory.schema';
 import { computed, Injectable, inject } from '@angular/core';
 
@@ -104,22 +104,24 @@ export class LocalUsersRepository {
         }
         return [id, {
           ...record,
-          memberIds: (record.memberIds ?? []).filter(memberId => memberId !== normalizedUserId),
-          messages: (record.messages ?? []).map(message => {
-            if (message.senderAvatar?.id !== normalizedUserId) {
-              return message;
-            }
-            return {
-              ...message,
-              sender: 'Deleted user',
-              senderAvatar: {
-                ...message.senderAvatar,
-                initials: this.deletedUserInitials(normalizedUserId)
-              }
-            };
-          })
+          memberIds: (record.memberIds ?? []).filter(memberId => memberId !== normalizedUserId)
         }];
       })) as AppMemorySchema[typeof CHATS_TABLE_NAME]['byId'];
+      const messagesTable = state[CHAT_MESSAGES_TABLE_NAME];
+      const nextMessagesById = Object.fromEntries(messagesTable.ids.map(id => {
+        const message = messagesTable.byId[id];
+        if (!message || message.senderAvatar?.userId !== normalizedUserId) {
+          return [id, message];
+        }
+        return [id, {
+          ...message,
+          senderName: 'Deleted user',
+          senderAvatar: {
+            ...message.senderAvatar,
+            initials: this.deletedUserInitials(normalizedUserId)
+          }
+        }];
+      })) as AppMemorySchema[typeof CHAT_MESSAGES_TABLE_NAME]['byId'];
       return {
         ...state,
         [USERS_TABLE_NAME]: {
@@ -129,6 +131,10 @@ export class LocalUsersRepository {
         [CHATS_TABLE_NAME]: {
           ...chatsTable,
           byId: nextChatsById
+        },
+        [CHAT_MESSAGES_TABLE_NAME]: {
+          ...messagesTable,
+          byId: nextMessagesById
         }
       };
     });

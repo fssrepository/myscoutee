@@ -1,6 +1,8 @@
 import { AppUtils } from '../../app-utils';
 import type {
-  ActivityEventDTO
+  ActivityEventDTO,
+  ActivityMemberOwnerRef,
+  ActivityMembersSummaryDto
 } from '../../core/contracts/activity.interface';
 import type {
   EventVisibility
@@ -16,6 +18,12 @@ export interface ActivityEventInfoCardConverterOptions {
   state?: InfoCardData['state'];
 }
 
+export interface ActivityEventInfoCardSummaryOptions {
+  capacityByRowId?: Readonly<Record<string, string | null | undefined>>;
+  pendingMembersByRowId?: Readonly<Record<string, number | null | undefined>>;
+  capacityTotal?: number | null;
+}
+
 export class ActivityEventInfoCardConverter {
   static convert(
     dto: ActivityEventDTO,
@@ -23,13 +31,14 @@ export class ActivityEventInfoCardConverter {
   ): InfoCardData {
     const activeUserId = options.activeUserId ?? '';
     const status = this.statusCode(dto.status);
-    const statusBadgeLabelKey = this.statusBadgeLabelKey(status);
+    const statusBadgeLabelKey = this.statusBadgeLabelKey(status, dto, activeUserId);
     const pending = this.isPending(dto, activeUserId);
     const invited = this.isInvited(dto, activeUserId);
     const title = dto.title;
 
     return {
       id: dto.id,
+      smartListKey: `${this.rowType(dto)}:${dto.id}`,
       dateIso: dto.startAtIso,
       distanceMetersExact: Math.max(0, Math.round((Number(dto.distanceKm) || 0) * 1000)),
       status,
@@ -49,7 +58,8 @@ export class ActivityEventInfoCardConverter {
         : dto.eventType === 'slot'
           ? `Slot occurrence${dto.subtitle ? ' · ' + dto.subtitle : ''}`
           : dto.subtitle,
-      footerChips: this.footerChips(statusBadgeLabelKey, pending),
+      footerChips: this.footerChips(pending),
+      descriptionLines: 2,
       leadingIcon: {
         icon: this.leadingIcon(dto, status, pending, activeUserId)
       },
@@ -75,6 +85,39 @@ export class ActivityEventInfoCardConverter {
     return dtos.map(dto => this.convert(dto, options));
   }
 
+  static toActivityMembersOwner(card: Pick<InfoCardData, 'id'>): ActivityMemberOwnerRef {
+    return {
+      ownerType: 'event',
+      ownerId: card.id
+    };
+  }
+
+  static toActivityMembersSummary(
+    card: InfoCardData,
+    options: ActivityEventInfoCardSummaryOptions = {}
+  ): ActivityMembersSummaryDto | null {
+    const capacity = this.parseCapacityLabel(
+      options.capacityByRowId?.[card.id] ?? card.mediaEnd?.label
+    );
+    const acceptedMembers = capacity?.acceptedMembers ?? 0;
+    const pendingMembers = this.summaryPendingMembers(card, options);
+    const capacityTotal = Math.max(
+      acceptedMembers,
+      capacity?.capacityTotal ?? this.normalizeCount(options.capacityTotal) ?? acceptedMembers
+    );
+    if (acceptedMembers <= 0 && pendingMembers <= 0 && capacityTotal <= 0) {
+      return null;
+    }
+    return {
+      ...this.toActivityMembersOwner(card),
+      acceptedMembers,
+      pendingMembers,
+      capacityTotal,
+      acceptedMemberUserIds: [],
+      pendingMemberUserIds: []
+    };
+  }
+
   private static locationMetaRows(dto: ActivityEventDTO): string[] {
     const location = `${dto.location ?? dto.creatorCity ?? ''}`.trim();
     const distanceLabel = this.distanceLabel(dto);
@@ -92,13 +135,7 @@ export class ActivityEventInfoCardConverter {
     return `${distanceKm} km`;
   }
 
-  private static footerChips(
-    statusBadgeLabelKey: string,
-    pending: boolean
-  ): NonNullable<InfoCardData['footerChips']> {
-    if (statusBadgeLabelKey) {
-      return [{ label: statusBadgeLabelKey }];
-    }
+  private static footerChips(pending: boolean): NonNullable<InfoCardData['footerChips']> {
     if (!pending) {
       return [];
     }
@@ -113,8 +150,10 @@ export class ActivityEventInfoCardConverter {
     };
   }
 
-  private static isDraft(dto: ActivityEventDTO): boolean {
-    return this.statusCode(dto.status) === 'DR';
+  private static rowType(dto: ActivityEventDTO): 'events' | 'hosting' | 'invitations' {
+    return dto.type === 'events' || dto.type === 'hosting' || dto.type === 'invitations'
+      ? dto.type
+      : 'events';
   }
 
   private static isPending(dto: ActivityEventDTO, activeUserId: string): boolean {
@@ -142,6 +181,40 @@ export class ActivityEventInfoCardConverter {
 
   private static pendingMemberCount(dto: ActivityEventDTO): number {
     return Math.max(0, Math.trunc(Number(dto.pendingMembers) || 0));
+  }
+
+  private static summaryPendingMembers(
+    card: InfoCardData,
+    options: ActivityEventInfoCardSummaryOptions
+  ): number {
+    return this.normalizeCount(options.pendingMembersByRowId?.[card.id])
+      ?? this.normalizeCount(card.mediaEnd?.pendingCount)
+      ?? 0;
+  }
+
+  private static parseCapacityLabel(
+    label: string | number | null | undefined
+  ): { acceptedMembers: number; capacityTotal: number } | null {
+    const normalizedLabel = `${label ?? ''}`.trim();
+    if (!normalizedLabel.includes('/')) {
+      return null;
+    }
+    const parts = normalizedLabel.split('/').map(part => Number.parseInt(part.trim(), 10));
+    if (parts.length < 2 || !Number.isFinite(parts[0]) || !Number.isFinite(parts[1])) {
+      return null;
+    }
+    const acceptedMembers = Math.max(0, Math.trunc(parts[0]));
+    return {
+      acceptedMembers,
+      capacityTotal: Math.max(acceptedMembers, Math.trunc(parts[1]))
+    };
+  }
+
+  private static normalizeCount(value: unknown): number | null {
+    const count = Number(value);
+    return Number.isFinite(count)
+      ? Math.max(0, Math.trunc(count))
+      : null;
   }
 
   private static surfaceTone(
@@ -263,14 +336,18 @@ export class ActivityEventInfoCardConverter {
     return !!userId && (userIds ?? []).some(candidate => `${candidate ?? ''}`.trim() === userId);
   }
 
-  private static statusBadgeLabelKey(status: string): string {
+  private static statusBadgeLabelKey(
+    status: string,
+    dto: ActivityEventDTO,
+    activeUserId: string
+  ): string {
     switch (status) {
       case 'UR':
         return 'under.review';
       case 'B':
         return 'blocked.user';
       case 'T':
-        return 'deleted';
+        return this.trashedBadgeLabelKey(dto, activeUserId);
       case 'D':
         return 'deleted.user';
       case 'I':
@@ -278,6 +355,24 @@ export class ActivityEventInfoCardConverter {
       default:
         return '';
     }
+  }
+
+  private static trashedBadgeLabelKey(dto: ActivityEventDTO, activeUserId: string): string {
+    if (dto.type === 'invitations') {
+      return 'trash.invitation';
+    }
+    if (dto.type === 'hosting') {
+      return this.statusCode(dto.statusBeforeSuppression) === 'DR'
+        ? 'trash.draft'
+        : 'trash.own.event';
+    }
+    if (this.isPending(dto, activeUserId)) {
+      return 'trash.pending.event';
+    }
+    if (this.includesUserId(dto.acceptedMemberUserIds, activeUserId)) {
+      return 'trash.joined.event';
+    }
+    return 'trash.event';
   }
 
   private static statusCode(statusValue: string | null | undefined): string {

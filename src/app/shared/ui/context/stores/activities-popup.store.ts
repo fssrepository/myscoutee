@@ -1,12 +1,85 @@
-import { Injectable, Type, computed, signal } from '@angular/core';
+import { Injectable, Type, computed, inject, signal } from '@angular/core';
 
 import type * as ContractTypes from '../../../core/contracts';
 import type { ActivityEventDTO } from '../../../core/contracts/activity.interface';
 import type { ChatDTO } from '../../../core/contracts/chat.interface';
+import { ActivityStore } from './activity.store';
+import { UserProfileStore } from './user-profile.store';
+
+export interface EventChatPopupRequest {
+  chatId: string;
+  ownerId?: string | null;
+  channelType?: ContractTypes.ChatChannelType | null;
+}
+
+export interface EventChatHeaderState extends EventChatPopupRequest {
+  avatar?: string | null;
+  title?: string | null;
+  memberIds?: string[];
+  members?: ContractTypes.ChatMemberSummaryDto[];
+  unread?: number | null;
+  dateIso?: string | null;
+  lastMessage?: string | null;
+  lastSenderId?: string | null;
+  ownerUserId?: string | null;
+  supportCase?: ContractTypes.ChatSupportCase | null;
+  metrics?: ContractTypes.ChatMetricsDTO | null;
+}
 
 export interface EventChatSession {
-  item: ChatDTO;
+  request: EventChatPopupRequest;
   openedAtIso: string;
+}
+
+export function eventChatPopupRequestFromChat(chat: Pick<ChatDTO, 'id' | 'ownerId' | 'channelType'>): EventChatPopupRequest {
+  return {
+    chatId: chat.id,
+    ownerId: chat.ownerId ?? null,
+    channelType: chat.channelType ?? null
+  };
+}
+
+export function eventChatHeaderStateFromChat(chat: ChatDTO): EventChatHeaderState {
+  return {
+    ...eventChatPopupRequestFromChat(chat),
+    avatar: chat.avatar,
+    title: chat.title,
+    memberIds: [...(chat.memberIds ?? [])],
+    members: (chat.members ?? []).map(member => ({ ...member })),
+    unread: chat.unread,
+    dateIso: chat.dateIso ?? null,
+    lastMessage: chat.lastMessage,
+    lastSenderId: chat.lastSenderId,
+    ownerUserId: chat.ownerUserId ?? null,
+    supportCase: chat.supportCase
+      ? {
+          ...chat.supportCase,
+          assignee: chat.supportCase.assignee ? { ...chat.supportCase.assignee } : chat.supportCase.assignee
+        }
+      : chat.supportCase,
+    metrics: chat.metrics
+      ? {
+          members: chat.metrics.members ? { ...chat.metrics.members } : null,
+          car: chat.metrics.car ? { ...chat.metrics.car } : null,
+          accommodation: chat.metrics.accommodation ? { ...chat.metrics.accommodation } : null,
+          supplies: chat.metrics.supplies ? { ...chat.metrics.supplies } : null,
+          groupsCount: chat.metrics.groupsCount ?? null,
+          pendingTotal: Math.max(0, Math.trunc(Number(chat.metrics.pendingTotal) || 0))
+        }
+      : chat.metrics
+  };
+}
+
+export interface EventChatRowPatch {
+  chatId: string;
+  ownerId?: string | null;
+  channelType?: ContractTypes.ChatChannelType | null;
+  unread?: number | null;
+  unreadDelta?: number | null;
+  lastMessage?: string | null;
+  lastSenderId?: string | null;
+  dateIso?: string | null;
+  revision: number;
 }
 
 export interface ActivitiesUiState {
@@ -57,9 +130,13 @@ export const DEFAULT_ACTIVITIES_UI_STATE: ActivitiesUiState = {
   providedIn: 'root'
 })
 export class ActivitiesPopupStore {
+  private readonly activityStore = inject(ActivityStore);
+  private readonly userProfileStore = inject(UserProfileStore);
   private readonly _uiState = signal<ActivitiesUiState>(DEFAULT_ACTIVITIES_UI_STATE);
   private readonly _activityEventSave = signal<ActivityEventDTO | null>(null);
   private readonly _eventChatSession = signal<EventChatSession | null>(null);
+  private readonly _eventChatHeader = signal<EventChatHeaderState | null>(null);
+  private readonly _eventChatRowPatch = signal<EventChatRowPatch | null>(null);
   private readonly activitiesPopupComponentRef = signal<Type<unknown> | null>(null);
   private readonly eventChatPopupComponentRef = signal<Type<unknown> | null>(null);
   private readonly eventExplorePopupComponentRef = signal<Type<unknown> | null>(null);
@@ -88,6 +165,8 @@ export class ActivitiesPopupStore {
   readonly activitiesAdminServiceOnly = computed(() => this._uiState().adminServiceOnly);
   readonly activityEventSave = this._activityEventSave.asReadonly();
   readonly eventChatSession = this._eventChatSession.asReadonly();
+  readonly eventChatHeader = this._eventChatHeader.asReadonly();
+  readonly eventChatRowPatch = this._eventChatRowPatch.asReadonly();
   readonly activitiesPopupComponent = this.activitiesPopupComponentRef.asReadonly();
   readonly eventChatPopupComponent = this.eventChatPopupComponentRef.asReadonly();
   readonly eventExplorePopupComponent = this.eventExplorePopupComponentRef.asReadonly();
@@ -96,6 +175,7 @@ export class ActivitiesPopupStore {
 
   readonly activitiesOpenBoolean = computed(() => this._uiState().open);
   readonly eventChatOpen = computed(() => this._eventChatSession() !== null);
+  private eventChatRowPatchRevision = 0;
 
   openActivities(
     primaryFilter: ContractTypes.ActivitiesPrimaryFilter = 'chats',
@@ -149,6 +229,7 @@ export class ActivitiesPopupStore {
   closeActivities(): void {
     this.patchUiState({ open: false, adminServiceOnly: false, supportCaseFilter: 'all' });
     this._eventChatSession.set(null);
+    this._eventChatHeader.set(null);
   }
 
   get isActivitiesOpen(): boolean {
@@ -307,27 +388,74 @@ export class ActivitiesPopupStore {
     this._activityEventSave.set(null);
   }
 
-  openEventChat(item: ChatDTO): void {
-    const chatItem = this.cloneChatRecord(item);
+  openEventChat(request: EventChatPopupRequest, header: EventChatHeaderState): void {
+    const normalizedRequest = this.normalizeEventChatRequest(request);
+    if (!normalizedRequest) {
+      return;
+    }
     this._eventChatSession.set({
-      item: chatItem,
+      request: normalizedRequest,
       openedAtIso: new Date().toISOString()
     });
+    this._eventChatHeader.set(this.cloneEventChatHeader({
+      ...header,
+      ...normalizedRequest
+    }));
   }
 
   closeEventChat(): void {
     this._eventChatSession.set(null);
+    this._eventChatHeader.set(null);
   }
 
-  patchEventChatSessionItem(itemUpdater: (item: ChatDTO) => ChatDTO): void {
-    const session = this._eventChatSession();
-    if (!session) {
+  patchEventChatHeader(headerUpdater: (header: EventChatHeaderState) => EventChatHeaderState): void {
+    const header = this._eventChatHeader();
+    if (!header) {
       return;
     }
-    this._eventChatSession.set({
-      ...session,
-      item: this.cloneChatRecord(itemUpdater(this.cloneChatRecord(session.item)))
+    this._eventChatHeader.set(this.cloneEventChatHeader(headerUpdater(this.cloneEventChatHeader(header))));
+  }
+
+  emitEventChatRowPatch(patch: Omit<EventChatRowPatch, 'revision'>): void {
+    const chatId = `${patch.chatId ?? ''}`.trim();
+    const ownerId = `${patch.ownerId ?? ''}`.trim();
+    const channelType = patch.channelType ?? null;
+    if (!chatId && !ownerId) {
+      return;
+    }
+    this.patchActiveChatCounterFromRowPatch(patch);
+    this._eventChatRowPatch.set({
+      ...patch,
+      chatId,
+      ownerId: ownerId || null,
+      channelType,
+      revision: ++this.eventChatRowPatchRevision
     });
+  }
+
+  private patchActiveChatCounterFromRowPatch(patch: Omit<EventChatRowPatch, 'revision'>): void {
+    if (patch.unreadDelta === undefined || patch.unreadDelta === null) {
+      return;
+    }
+    const unreadDelta = Number(patch.unreadDelta);
+    if (!Number.isFinite(unreadDelta) || unreadDelta === 0) {
+      return;
+    }
+    const activeUser = this.userProfileStore.activeUserProfile();
+    const activeUserId = `${activeUser?.id ?? ''}`.trim();
+    if (!activeUserId) {
+      return;
+    }
+    const overrides = this.activityStore.getUserCounterOverrides(activeUserId);
+    const currentChatCounter = this.normalizeEventChatCounter(overrides.chat ?? activeUser?.activities?.chat);
+    const nextChatCounter = this.normalizeEventChatCounter(currentChatCounter + unreadDelta);
+    this.activityStore.patchUserCounterOverrides(activeUserId, { chat: nextChatCounter });
+    this.userProfileStore.patchUserActivityCounters(activeUserId, { chat: nextChatCounter });
+  }
+
+  private normalizeEventChatCounter(value: unknown): number {
+    const count = Number(value);
+    return Number.isFinite(count) ? Math.max(0, Math.trunc(count)) : 0;
   }
 
   async ensureActivitiesPopupLoaded(): Promise<void> {
@@ -408,10 +536,43 @@ export class ActivitiesPopupStore {
     return 'active-events';
   }
 
-  private cloneChatRecord(item: ChatDTO): ChatDTO {
+  private normalizeEventChatRequest(request: EventChatPopupRequest): EventChatPopupRequest | null {
+    const chatId = `${request.chatId ?? ''}`.trim();
+    const ownerId = `${request.ownerId ?? ''}`.trim();
+    const channelType = request.channelType ?? null;
+    if (!chatId && !ownerId) {
+      return null;
+    }
     return {
-      ...item,
-      memberIds: [...(item.memberIds ?? [])]
+      chatId,
+      ownerId: ownerId || null,
+      channelType
+    };
+  }
+
+  private cloneEventChatHeader(header: EventChatHeaderState): EventChatHeaderState {
+    return {
+      ...header,
+      chatId: `${header.chatId ?? ''}`.trim(),
+      ownerId: `${header.ownerId ?? ''}`.trim() || null,
+      memberIds: [...(header.memberIds ?? [])],
+      members: (header.members ?? []).map(member => ({ ...member })),
+      supportCase: header.supportCase
+        ? {
+            ...header.supportCase,
+            assignee: header.supportCase.assignee ? { ...header.supportCase.assignee } : header.supportCase.assignee
+          }
+        : header.supportCase,
+      metrics: header.metrics
+        ? {
+            members: header.metrics.members ? { ...header.metrics.members } : null,
+            car: header.metrics.car ? { ...header.metrics.car } : null,
+            accommodation: header.metrics.accommodation ? { ...header.metrics.accommodation } : null,
+            supplies: header.metrics.supplies ? { ...header.metrics.supplies } : null,
+            groupsCount: header.metrics.groupsCount ?? null,
+            pendingTotal: Math.max(0, Math.trunc(Number(header.metrics.pendingTotal) || 0))
+          }
+        : header.metrics
     };
   }
 }

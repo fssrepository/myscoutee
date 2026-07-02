@@ -177,6 +177,7 @@
   cursor: default;
   opacity: 0.58;
   transform: none;
+  pointer-events: none;
 }
 
 .date-input__toggle .mat-icon {
@@ -388,13 +389,16 @@
 }
 
 :host ::ng-deep .date-input__material.mat-mdc-form-field-disabled .mat-mdc-text-field-wrapper {
-  background: rgba(238, 244, 251, 0.72);
-  border-color: rgba(148, 167, 192, 0.45);
+  background: linear-gradient(180deg, #f3f6fa 0%, #e8edf5 100%) !important;
+  border-color: rgba(122, 140, 168, 0.42);
+  box-shadow: none;
+  cursor: not-allowed;
 }
 
 :host ::ng-deep .date-input__material.mat-mdc-form-field-disabled .mat-mdc-input-element,
 :host ::ng-deep .date-input__material.mat-mdc-form-field-disabled .mat-icon {
-  color: rgba(38, 59, 83, 0.54);
+  color: rgba(58, 76, 103, 0.7) !important;
+  -webkit-text-fill-color: rgba(58, 76, 103, 0.7);
 }
 
 @media (max-width: 760px) {

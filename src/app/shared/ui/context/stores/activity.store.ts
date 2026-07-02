@@ -1,6 +1,7 @@
 import { Injectable, signal } from '@angular/core';
 
 import { EventFeedbackDetailDto } from '../../../core/contracts/activity.interface';
+import type { UserMenuCounterDeltasDto } from '../../../core/contracts/user.interface';
 import {
   cloneAssetCounters,
   cloneEventCounters,
@@ -190,6 +191,106 @@ export class ActivityStore {
         ...normalizedPatch
       }
     }));
+  }
+
+  patchUserCounterDeltas(
+    userId: string,
+    delta: UserMenuCounterDeltasDto | null | undefined,
+    baseCounters: Partial<ActivityCounters> | null | undefined = null
+  ): void {
+    const normalizedUserId = userId.trim();
+    if (!normalizedUserId || !delta) {
+      return;
+    }
+    const currentOverrides = this._counterOverridesByUserId()[normalizedUserId] ?? {};
+    const normalizedPatch: Partial<ActivityCounters> = {};
+    const normalizedPatchRecord = normalizedPatch as Record<string, number>;
+    const overrideRecord = currentOverrides as Record<string, unknown>;
+    const baseRecord = (baseCounters ?? {}) as Record<string, unknown>;
+    const deltaRecord = delta as Record<string, unknown>;
+    for (const key of ACTIVITY_COUNTER_KEYS) {
+      const value = deltaRecord[key];
+      if (!Number.isFinite(value)) {
+        continue;
+      }
+      const baseValue = Number.isFinite(overrideRecord[key])
+        ? overrideRecord[key]
+        : baseRecord[key];
+      normalizedPatchRecord[key] = normalizeCounterValue(
+        normalizeCounterValue(baseValue) + Number(value)
+      );
+    }
+
+    const event = this.applyNestedCounterDeltas<ActivityEventCounters>(
+      delta.event,
+      currentOverrides.event,
+      baseCounters?.event,
+      ['all', 'active', 'pending', 'invitations', 'hosting', 'drafts', 'trash']
+    );
+    if (event) {
+      normalizedPatch.event = event;
+    }
+
+    const asset = this.applyNestedCounterDeltas<ActivityAssetCounters>(
+      delta.asset,
+      currentOverrides.asset,
+      baseCounters?.asset,
+      ['cars', 'accommodation', 'supplies', 'tickets']
+    );
+    if (asset) {
+      normalizedPatch.asset = asset;
+    }
+
+    const eventFeedback = this.applyNestedCounterDeltas<ActivityEventFeedbackCounters>(
+      delta.eventFeedback,
+      currentOverrides.eventFeedback,
+      baseCounters?.eventFeedback,
+      ['ownEvents', 'pending', 'feedbacked', 'removed']
+    );
+    if (eventFeedback) {
+      normalizedPatch.eventFeedback = eventFeedback;
+    }
+
+    if (Object.keys(normalizedPatch).length === 0) {
+      return;
+    }
+    this._counterOverridesByUserId.update(state => ({
+      ...state,
+      [normalizedUserId]: {
+        ...(state[normalizedUserId] ?? {}),
+        ...normalizedPatch
+      }
+    }));
+  }
+
+  private applyNestedCounterDeltas<T extends object>(
+    delta: Partial<Record<keyof T, number>> | null | undefined,
+    current: Partial<T> | null | undefined,
+    base: Partial<T> | null | undefined,
+    keys: Array<keyof T>
+  ): T | null {
+    if (!delta) {
+      return null;
+    }
+    const deltaRecord = delta as Record<string, unknown>;
+    const currentRecord = (current ?? {}) as Record<string, unknown>;
+    const baseRecord = (base ?? {}) as Record<string, unknown>;
+    const next: Record<string, number> = {};
+    let changed = false;
+    for (const key of keys) {
+      const keyName = String(key);
+      const baseValue = Number.isFinite(currentRecord[keyName])
+        ? currentRecord[keyName]
+        : baseRecord[keyName];
+      next[keyName] = normalizeCounterValue(baseValue);
+      const value = deltaRecord[keyName];
+      if (!Object.prototype.hasOwnProperty.call(deltaRecord, keyName) || !Number.isFinite(value)) {
+        continue;
+      }
+      next[keyName] = normalizeCounterValue(next[keyName] + Number(value));
+      changed = true;
+    }
+    return changed ? (next as T) : null;
   }
 
   clearUserCounterOverrides(userId: string, keys?: ActivityCounterKey[]): void {

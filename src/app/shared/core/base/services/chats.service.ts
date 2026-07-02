@@ -11,13 +11,16 @@ import { LocalChatsService } from '../../local';
 import { HttpChatsService } from '../../http';
 import { BaseRouteModeService } from './base-route-mode.service';
 import { ActivityMembersService } from './activity-members.service';
-import { UsersService } from './users.service';
 import {
   RouteIntervalSchedulerService,
   type RouteIntervalStop,
   type RouteIntervalTask
 } from './route-interval-scheduler.service';
 import type * as ActivityContracts from '../../contracts/activity.interface';
+
+type ChatMessagesLoadContext = {
+  readReceipt?: ContractTypes.ChatReadReceipt | null;
+};
 
 @Injectable({
   providedIn: 'root'
@@ -29,7 +32,6 @@ export class ChatsService extends BaseRouteModeService implements IChatsService 
   private readonly localChatsService = inject(LocalChatsService);
   private readonly httpChatsService = inject(HttpChatsService);
   private readonly activityMembersService = inject(ActivityMembersService);
-  private readonly usersService = inject(UsersService);
   private readonly routeIntervalScheduler = inject(RouteIntervalSchedulerService);
 
   private get chatsService(): LocalChatsService | HttpChatsService {
@@ -52,18 +54,33 @@ export class ChatsService extends BaseRouteModeService implements IChatsService 
     return this.chatsService.peekChatItemsByUser(userId);
   }
 
-  async loadChatMessages(chat: ChatDTO): Promise<ContractTypes.ChatPopupMessage[]> {
+  async loadChatMessages(chat: ChatDTO): Promise<ContractTypes.ChatMessageDto[]> {
     return this.chatsService.loadChatMessages(chat);
   }
 
   async loadChatMessagesResult(
-    chat: ChatDTO
-  ): Promise<PageResult<ContractTypes.ChatPopupMessage, AppUiTypes.PopupHeaderContext>> {
-    const items = await this.loadChatMessages(chat);
+    chat: ChatDTO,
+    query: ListQuery = { page: 0, pageSize: Number.MAX_SAFE_INTEGER }
+  ): Promise<PageResult<ContractTypes.ChatMessageDto, ChatMessagesLoadContext>> {
+    const page = await this.queryChatMessagesPage(chat, query);
     return {
-      items,
-      total: items.length,
-      context: this.buildChatPopupHeaderContext(chat, { includeThumbs: true })
+      items: page.items,
+      total: page.total,
+      nextCursor: page.nextCursor ?? null,
+      context: page.readReceipt ? { readReceipt: page.readReceipt } : undefined
+    };
+  }
+
+  async queryChatMessagesPage(
+    chat: ChatDTO,
+    query: ListQuery
+  ): Promise<ContractTypes.ChatMessagesPageResultDTO> {
+    const page = await this.chatsService.queryChatMessagesPage(chat, query);
+    return {
+      items: page.items,
+      total: page.total,
+      nextCursor: page.nextCursor ?? null,
+      readReceipt: page.readReceipt ?? null
     };
   }
 
@@ -73,12 +90,16 @@ export class ChatsService extends BaseRouteModeService implements IChatsService 
   ): AppUiTypes.PopupHeaderContext {
     const chatId = `${chat.id ?? ''}`.trim();
     const title = `${chat.title ?? ''}`.trim() || 'Chat';
-    const memberIds = this.resolveChatMemberIds(chat);
+    const members = this.resolveChatMembers(chat);
+    const memberIds = this.uniqueUserIds([
+      ...(chat.memberIds ?? []),
+      ...members.map(member => member.id)
+    ]);
     const controls: AppUiTypes.PopupHeaderControl[] = [];
     if (chatId && memberIds.length > 0) {
       const maxVisibleThumbs = 4;
       const thumbs = options.includeThumbs === true
-        ? this.buildChatHeaderThumbs(memberIds, maxVisibleThumbs)
+        ? this.buildChatHeaderThumbs(members, maxVisibleThumbs)
         : [];
       const hiddenThumbCount = thumbs.length > 0 ? Math.max(0, memberIds.length - thumbs.length) : 0;
       controls.push({
@@ -102,7 +123,7 @@ export class ChatsService extends BaseRouteModeService implements IChatsService 
     };
   }
 
-  async queryChatMemberEntries(chatId: string): Promise<ActivityContracts.ActivityMemberEntry[]> {
+  async queryChatMemberEntries(chatId: string): Promise<ActivityContracts.ActivityMemberDTO[]> {
     const normalizedChatId = `${chatId ?? ''}`.trim();
     if (!normalizedChatId) {
       return [];
@@ -110,7 +131,7 @@ export class ChatsService extends BaseRouteModeService implements IChatsService 
     return this.chatsService.queryChatMembers(normalizedChatId);
   }
 
-  async sendChatMessage(chat: ChatDTO, text: string, clientId?: string): Promise<ContractTypes.ChatPopupMessage | null> {
+  async sendChatMessage(chat: ChatDTO, text: string, clientId?: string): Promise<ContractTypes.ChatMessageDto | null> {
     return this.chatsService.sendChatMessage(chat, text, clientId);
   }
 
@@ -119,8 +140,8 @@ export class ChatsService extends BaseRouteModeService implements IChatsService 
     text: string,
     attachments: readonly ContractTypes.ChatMessageAttachment[],
     clientId?: string,
-    replyTo?: ContractTypes.ChatPopupMessage['replyTo']
-  ): Promise<ContractTypes.ChatPopupMessage | null> {
+    replyTo?: ContractTypes.ChatMessageDto['replyTo']
+  ): Promise<ContractTypes.ChatMessageDto | null> {
     return this.chatsService.sendChatMessageWithAttachments(chat, text, attachments, clientId, replyTo);
   }
 
@@ -128,13 +149,13 @@ export class ChatsService extends BaseRouteModeService implements IChatsService 
     chat: ChatDTO,
     messageId: string,
     mutation: ContractTypes.ChatMessageMutation
-  ): Promise<ContractTypes.ChatPopupMessage | null> {
+  ): Promise<ContractTypes.ChatMessageDto | null> {
     return this.chatsService.updateChatMessage(chat, messageId, mutation);
   }
 
   async watchChatMessages(
     chat: ChatDTO,
-    onMessage: (message: ContractTypes.ChatPopupMessage) => void
+    onMessage: (message: ContractTypes.ChatMessageDto) => void
   ): Promise<() => void> {
     return this.chatsService.watchChatMessages(chat, onMessage);
   }
@@ -150,7 +171,7 @@ export class ChatsService extends BaseRouteModeService implements IChatsService 
     return this.chatsService.sendChatTyping(chat, typing);
   }
 
-  async markChatRead(chat: ChatDTO, messageIds: readonly string[]): Promise<void> {
+  async markChatRead(chat: ChatDTO, messageIds: readonly string[]): Promise<ContractTypes.ChatReadReceipt | null> {
     return this.chatsService.markChatRead(chat, messageIds);
   }
 
@@ -221,12 +242,13 @@ export class ChatsService extends BaseRouteModeService implements IChatsService 
       ?? chats.find(chat =>
         chat.channelType === 'serviceEvent'
         && chat.serviceContext === expectedServiceContext
-        && chat.eventId === input.eventId
+        && chat.ownerId === input.eventId
       );
     return match
       ? {
           ...match,
-          memberIds: [...(match.memberIds ?? [])]
+          memberIds: [...(match.memberIds ?? [])],
+          members: (match.members ?? []).map(member => ({ ...member }))
         }
       : null;
   }
@@ -273,28 +295,9 @@ export class ChatsService extends BaseRouteModeService implements IChatsService 
       dateIso: new Date().toISOString(),
       channelType: 'serviceEvent',
       serviceContext: input.notification ? 'notification' : 'event',
-      eventId: input.eventId,
+      ownerId: input.eventId,
       ownerUserId: input.activeUserId
     };
-  }
-
-  async resolveRepositoryEventServiceChat(chat: ChatDTO): Promise<ChatDTO | null> {
-    if (chat.channelType !== 'serviceEvent') {
-      return null;
-    }
-    const eventId = `${chat.eventId ?? ''}`.trim();
-    const activeUserId = this.resolveChatOwnerUserId(chat, eventId);
-    if (!eventId || !activeUserId) {
-      return null;
-    }
-    return this.resolveExistingEventServiceChat(
-      await this.queryChatItemsByUser(activeUserId),
-      {
-        activeUserId,
-        eventId,
-        notification: chat.serviceContext === 'notification'
-      }
-    );
   }
 
   async queryActivitiesChatPage(
@@ -316,24 +319,28 @@ export class ChatsService extends BaseRouteModeService implements IChatsService 
     return [...new Set(userIds.map(userId => userId.trim()).filter(Boolean))];
   }
 
-  private resolveChatMemberIds(chat: Pick<ChatDTO, 'memberIds'>): string[] {
-    return this.uniqueUserIds(chat.memberIds ?? []);
+  private resolveChatMembers(chat: Pick<ChatDTO, 'memberIds' | 'members'>): ContractTypes.ChatMemberSummaryDto[] {
+    return (chat.members ?? [])
+      .map(member => ({
+        ...member,
+        id: `${member.id ?? ''}`.trim(),
+        name: `${member.name ?? ''}`.trim() || null,
+        initials: `${member.initials ?? ''}`.trim(),
+        imageUrl: `${member.imageUrl ?? ''}`.trim() || null
+      }))
+      .filter(member => member.id.length > 0);
   }
 
-  private buildChatHeaderThumbs(memberIds: readonly string[], maxVisible: number): AppUiTypes.PopupHeaderThumb[] {
-    return memberIds.slice(0, Math.max(0, Math.trunc(maxVisible))).flatMap(memberId => {
-      const user = this.usersService.peekCachedUserById(memberId);
-      if (!user) {
-        return [];
-      }
-      const label = user.name.trim() || memberId;
+  private buildChatHeaderThumbs(members: readonly ContractTypes.ChatMemberSummaryDto[], maxVisible: number): AppUiTypes.PopupHeaderThumb[] {
+    return members.slice(0, Math.max(0, Math.trunc(maxVisible))).map(member => {
+      const label = `${member.name ?? ''}`.trim() || member.id;
       return [{
-        id: memberId,
+        id: member.id,
         label,
-        initials: user.initials.trim() || AppUtils.initialsFromText(label),
-        imageUrl: AppUtils.firstImageUrl(user.images)
+        initials: `${member.initials ?? ''}`.trim() || AppUtils.initialsFromText(label),
+        imageUrl: `${member.imageUrl ?? ''}`.trim() || null
       }];
-    });
+    }).flat();
   }
 
   private memberCountLabel(count: number): string {
@@ -342,16 +349,6 @@ export class ChatsService extends BaseRouteModeService implements IChatsService 
 
   private chatHeaderRevision(chatId: string, title: string, memberIds: readonly string[]): string {
     return ['chat-header', chatId, title, ...memberIds].join(':');
-  }
-
-  private resolveChatOwnerUserId(chat: ChatDTO, eventId: string): string {
-    const ownerUserId = `${(chat as { ownerUserId?: string | null }).ownerUserId ?? ''}`.trim();
-    if (ownerUserId) {
-      return ownerUserId;
-    }
-    const chatId = `${chat.id ?? ''}`.trim();
-    const prefix = `c-service-event-${eventId}-`;
-    return chatId.startsWith(prefix) ? chatId.slice(prefix.length).trim() : '';
   }
 
 }

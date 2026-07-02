@@ -76,6 +76,7 @@ interface EventSlotScheduleFormValue {
 export class EventSlotsInputComponent implements OnChanges, DoCheck, ControlValueAccessor {
   @Input() config: EventSlotsInputConfig = {};
   @Input() readOnly = false;
+  @Input() disabled = false;
   @Output() readonly overrideSelect = new EventEmitter<EventSlotOverrideRequest>();
 
   protected slotTemplates: ContractTypes.EventSlotTemplateDTO[] = [];
@@ -135,7 +136,7 @@ export class EventSlotsInputComponent implements OnChanges, DoCheck, ControlValu
   }
 
   protected canUpdateSlotsConfig(): boolean {
-    return !this.readOnly && !this.resolvedConfig.generated;
+    return !this.readOnly && !this.disabled && !this.resolvedConfig.generated;
   }
 
   protected canConfigureSlotsSeries(): boolean {

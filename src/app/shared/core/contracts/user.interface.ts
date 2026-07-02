@@ -84,7 +84,36 @@ export interface UserMenuCountersDto {
   adminMetrics?: number;
 }
 
+export interface UserMenuCounterDeltasDto {
+  game?: number;
+  chat?: number;
+  invitations?: number;
+  events?: number;
+  hosting?: number;
+  cars?: number;
+  accommodation?: number;
+  supplies?: number;
+  tickets?: number;
+  contacts?: number;
+  feedback?: number;
+  event?: UserEventCounterDeltasDto;
+  asset?: UserAssetCounterDeltasDto;
+  eventFeedback?: UserEventFeedbackCounterDeltasDto;
+  adminJobs?: number;
+  adminMetrics?: number;
+}
+
 export interface UserEventCountersDto {
+  all?: number;
+  active?: number;
+  pending?: number;
+  invitations?: number;
+  hosting?: number;
+  drafts?: number;
+  trash?: number;
+}
+
+export interface UserEventCounterDeltasDto {
   all?: number;
   active?: number;
   pending?: number;
@@ -101,7 +130,21 @@ export interface UserAssetCountersDto {
   tickets?: number;
 }
 
+export interface UserAssetCounterDeltasDto {
+  cars?: number;
+  accommodation?: number;
+  supplies?: number;
+  tickets?: number;
+}
+
 export interface UserEventFeedbackCountersDto {
+  ownEvents?: number;
+  pending?: number;
+  feedbacked?: number;
+  removed?: number;
+}
+
+export interface UserEventFeedbackCounterDeltasDto {
   ownEvents?: number;
   pending?: number;
   feedbacked?: number;

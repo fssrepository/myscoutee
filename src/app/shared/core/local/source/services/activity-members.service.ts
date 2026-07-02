@@ -7,7 +7,7 @@ import { LocalRouteDelayService } from './route-delay.service';
 import { LocalActivityMembersRepository } from '../repositories/activity-members.repository';
 import { LocalUsersRepository } from '../repositories/users.repository';
 import { LocalActivityMembersBuilder, type ActivityMemberProfileFallback, type LocalActivityMembersOwnerSnapshot } from '../mappers';
-import type { ActivityMemberEntry, ActivityMemberOwnerRef, ActivityMembersSummaryDto } from '../../../contracts/activity.interface';
+import type { ActivityMemberDTO, ActivityMemberOwnerRef, ActivityMembersSummaryDto } from '../../../contracts/activity.interface';
 
 @Injectable({
   providedIn: 'root'
@@ -17,11 +17,11 @@ export class LocalActivityMembersService extends LocalRouteDelayService {
   private readonly activityMembersRepository = inject(LocalActivityMembersRepository);
   private readonly localUsersRepository = inject(LocalUsersRepository);
 
-  peekMembersByOwner(owner: ActivityMemberOwnerRef): ActivityMemberEntry[] {
+  peekMembersByOwner(owner: ActivityMemberOwnerRef): ActivityMemberDTO[] {
     return this.entriesFromRecords(this.activityMembersRepository.peekRecordsByOwner(owner));
   }
 
-  async queryMembersByOwner(owner: ActivityMemberOwnerRef): Promise<ActivityMemberEntry[]> {
+  async queryMembersByOwner(owner: ActivityMemberOwnerRef): Promise<ActivityMemberDTO[]> {
     await this.waitForRouteDelay(LocalActivityMembersService.MEMBERS_ROUTE);
     return this.entriesFromRecords(await this.activityMembersRepository.queryRecordsByOwner(owner));
   }
@@ -39,7 +39,7 @@ export class LocalActivityMembersService extends LocalRouteDelayService {
 
   async replaceMembersByOwner(
     owner: ActivityMemberOwnerRef,
-    members: readonly ActivityMemberEntry[],
+    members: readonly ActivityMemberDTO[],
     capacityTotal?: number | null,
     actorUserId = ''
   ): Promise<void> {
@@ -69,7 +69,7 @@ export class LocalActivityMembersService extends LocalRouteDelayService {
     targetUserId: string,
     action: 'disqualify' | 'reinstate',
     reason?: string | null
-  ): Promise<ActivityMemberEntry[]> {
+  ): Promise<ActivityMemberDTO[]> {
     await this.waitForRouteDelay(LocalActivityMembersService.MEMBERS_ROUTE);
     void actorUserId;
     void reason;
@@ -130,7 +130,7 @@ export class LocalActivityMembersService extends LocalRouteDelayService {
     return this.entriesFromRecords(nextRecords);
   }
 
-  private entriesFromRecords(records: readonly ActivityMemberRecord[]): ActivityMemberEntry[] {
+  private entriesFromRecords(records: readonly ActivityMemberRecord[]): ActivityMemberDTO[] {
     return LocalActivityMembersBuilder.sortEntriesByActionTime(
       records.map(record => LocalActivityMembersBuilder.toEntry(
         record,

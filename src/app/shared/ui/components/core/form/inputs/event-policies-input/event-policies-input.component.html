@@ -6,15 +6,16 @@
         <mat-icon>policy</mat-icon>
         <span>{{ panelTitle() }}</span>
       </span>
-      @if (!readOnly) {
+      @if (!locked()) {
       <p class="event-policies-panel-subtitle">{{ panelSubtitle() }}</p>
       }
     </div>
-    @if (!readOnly && policiesToggleable()) {
+    @if (policiesToggleable()) {
     <button
       type="button"
       class="event-policies-toggle"
       [class.is-on]="effectivePanelEnabled()"
+      [disabled]="locked()"
       [attr.aria-pressed]="effectivePanelEnabled()"
       (click)="togglePoliciesEnabled($event)"
     >
@@ -62,7 +63,7 @@
       <span class="event-slots-popup-subtitle">{{ popupSubtitle() }}</span>
     </div>
     <div class="event-policies-popup-head-controls">
-      @if (!readOnly) {
+      @if (!locked()) {
       <button type="button" class="popup-header-add-btn event-slots-add-btn" (click)="openPolicyEditor(undefined, $event)" aria-label="Add policy">
         <mat-icon>add</mat-icon>
       </button>
@@ -76,13 +77,13 @@
   <div class="event-slots-popup-body event-policies-popup-body">
     <div class="event-policies-list event-policies-list-compact">
       @for (policy of workingPolicies; track policy.id; let i = $index) {
-      <article class="event-policy-list-card" [class.is-readonly]="readOnly" (click)="openPolicyEditor(i, $event)">
+      <article class="event-policy-list-card" [class.is-readonly]="locked()" (click)="openPolicyEditor(i, $event)">
         <div class="event-policy-list-card-head">
           <div class="event-policy-list-card-copy">
             <strong>{{ policy.title || ('Policy ' + (i + 1)) }}</strong>
             <span>{{ policyCardMetaLabel(policy) }}</span>
           </div>
-          @if (!readOnly) {
+          @if (!locked()) {
           <button type="button" class="event-slot-remove-btn" (click)="removePolicyDraft(i, $event)" aria-label="Remove policy">
             <mat-icon>delete</mat-icon>
           </button>
@@ -109,7 +110,7 @@
       <span class="event-slots-popup-subtitle">{{ editorSubtitle() }}</span>
     </div>
     <div class="event-policies-popup-head-controls">
-      @if (!readOnly) {
+      @if (!locked()) {
       <button type="button" class="popup-header-add-btn subevent-leaderboard-save-btn event-policy-header-save-btn"
         [class.form-save-invalid]="!canSavePolicyDraft()" [disabled]="!canSavePolicyDraft()" (click)="savePolicyDraft()" aria-label="Save policy">
         <mat-icon>done</mat-icon>
@@ -125,14 +126,14 @@
     <article class="event-policy-card">
       <label class="event-policy-field">
         <span>Title</span>
-        <input type="text" [(ngModel)]="workingPolicyDraft.title" [readonly]="readOnly" placeholder="Policy title" />
+        <input type="text" [(ngModel)]="workingPolicyDraft.title" [readonly]="locked()" placeholder="Policy title" />
       </label>
       <label class="event-policy-field">
         <span>Description</span>
-        <textarea rows="6" [(ngModel)]="workingPolicyDraft.description" [readonly]="readOnly" placeholder="Explain the policy clearly."></textarea>
+        <textarea rows="6" [(ngModel)]="workingPolicyDraft.description" [readonly]="locked()" placeholder="Explain the policy clearly."></textarea>
       </label>
       <label class="event-policy-check">
-        <input type="checkbox" [(ngModel)]="workingPolicyDraft.required" [disabled]="readOnly" />
+        <input type="checkbox" [(ngModel)]="workingPolicyDraft.required" [disabled]="locked()" />
         <span>{{ requiredCheckboxLabel() }}</span>
       </label>
     </article>

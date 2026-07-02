@@ -1,13 +1,15 @@
-import { CHATS_TABLE_NAME } from '../entity/chat.entity';
+import { CHAT_MESSAGES_TABLE_NAME, CHATS_TABLE_NAME } from '../entity/chat.entity';
+import type { ChatMessageRecord } from '../entity/chat.entity';
 import type { ChatRecord, ChatThreadRecord } from '../entity/chat.entity';
 import { USERS_TABLE_NAME } from '../entity/user.entity';
 import { Injectable, inject } from '@angular/core';
 
 import type * as ContractTypes from '../../../contracts';
 import { AppUtils } from '../../../../app-utils';
+import type { AppMemorySchema } from '../../common/memory.schema';
 import { LocalMemoryDb } from '../../../common/app.db';
 import { UserProfileState } from '../../../common/user-profile-state';
-import { LocalChatThreadMapper } from '../mappers';
+import { LocalChatMessageMapper, LocalChatThreadMapper } from '../mappers';
 import type * as ActivityContracts from '../../../contracts/activity.interface';
 import type { ActivitiesFeedFilters, ListQuery } from '../../../contracts';
 
@@ -22,7 +24,7 @@ export class LocalChatsRepository {
   }
 
   queryChatItemsByUser(userId: string): ChatThreadRecord[] {
-    return this.queryUserRecords(userId);
+    return this.withLatestMessageSummaries(this.queryUserRecords(userId));
   }
 
   queryActivitiesChatPage(
@@ -48,7 +50,7 @@ export class LocalChatsRepository {
       };
     }
 
-    const source = (query.filters?.adminServiceOnly === true && this.activitiesChatContextFilter(query) === 'service'
+    const source = this.withLatestMessageSummaries(query.filters?.adminServiceOnly === true && this.activitiesChatContextFilter(query) === 'service'
       ? this.querySupportCaseRecordsForAdmin(normalizedUserId, this.activitiesSupportCaseFilter(query))
       : this.queryUserRecordsForPage(normalizedUserId, query))
       .filter(record => this.matchesDateRange(record, rangeStartMs, rangeEndMs));
@@ -59,13 +61,13 @@ export class LocalChatsRepository {
     return {
       items: sorted
         .slice(startIndex, endIndex)
-        .map(record => LocalChatThreadMapper.cloneRecord(record, { includeMessages: false })),
+        .map(record => LocalChatThreadMapper.cloneRecord(record)),
       total: sorted.length,
       nextCursor: endIndex < sorted.length ? String(endIndex) : null
     };
   }
 
-  queryChatMembers(chatId: string): ActivityContracts.ActivityMemberEntry[] {
+  queryChatMembers(chatId: string): ActivityContracts.ActivityMemberDTO[] {
     const normalizedChatId = `${chatId ?? ''}`.trim();
     if (!normalizedChatId) {
       return [];
@@ -86,8 +88,8 @@ export class LocalChatsRepository {
 
   querySupportCaseItemsForAdmin(userId: string, filter: ContractTypes.SupportCaseFilter = 'all'): ChatThreadRecord[] {
     const normalizedUserId = userId.trim();
-    return this.querySupportCaseRecordsForAdmin(normalizedUserId, filter)
-      .map(record => LocalChatThreadMapper.cloneRecord(record, { includeMessages: false }));
+    return this.withLatestMessageSummaries(this.querySupportCaseRecordsForAdmin(normalizedUserId, filter))
+      .map(record => LocalChatThreadMapper.cloneRecord(record));
   }
 
   private querySupportCaseRecordsForAdmin(
@@ -115,37 +117,55 @@ export class LocalChatsRepository {
       }
     }
     return [...byChatId.values()]
-      .filter(record => normalizedFilter === 'all' || record.supportCaseStatus === normalizedFilter)
+      .filter(record => normalizedFilter === 'all' || record.supportCase?.status === normalizedFilter)
       .map(record => ({
         ...record,
+        supportCase: this.cloneSupportCase(record.supportCase),
         ownerUserId: normalizedUserId
       }));
   }
 
-  queryChatMessages(chat: ChatRecord): ContractTypes.ChatPopupMessage[] {
+  queryChatMessages(chat: ChatRecord): ContractTypes.ChatMessageDto[] {
     const record = this.resolveChatRecord(chat, { createServiceChat: false });
-    return record ? LocalChatThreadMapper.cloneMessages(record.messages ?? []).map(message => ({
+    return record ? LocalChatMessageMapper.toDtoList(this.queryChatMessageRecords(record)).map(message => ({
       ...message,
       readBy: message.readBy.filter(reader => `${reader.id ?? ''}`.trim() !== `${message.senderAvatar.id ?? ''}`.trim())
     })) : [];
   }
 
-  appendChatMessage(chat: ChatRecord, message: ContractTypes.ChatPopupMessage): ContractTypes.ChatPopupMessage | null {
+  queryChatMessagesPage(
+    chat: ChatRecord,
+    query: ListQuery
+  ): { items: ContractTypes.ChatMessageDto[]; total: number; nextCursor: string | null } {
+    const messages = this.sortChatMessagesForThread(this.queryChatMessages(chat));
+    const pageSize = Math.max(1, Math.trunc(Number(query.pageSize) || 10));
+    const startIndex = this.resolveMessagePageStartIndex(query, pageSize);
+    const endIndex = Math.min(messages.length, startIndex + pageSize);
+    return {
+      items: messages.slice(startIndex, endIndex),
+      total: messages.length,
+      nextCursor: endIndex < messages.length ? String(endIndex) : null
+    };
+  }
+
+  appendChatMessage(chat: ChatRecord, message: ContractTypes.ChatMessageDto): ContractTypes.ChatMessageDto | null {
     const record = this.resolveChatRecord(chat);
     if (!record) {
       return null;
     }
-    const messageClone = LocalChatThreadMapper.cloneMessages([message])[0] ?? null;
-    if (!messageClone) {
-      return null;
-    }
     const recordKey = LocalChatThreadMapper.buildRecordKey(record.ownerUserId, record.id);
+    let savedMessageRecord: ChatMessageRecord | null = null;
     this.memoryDb.write(currentState => {
       const currentTable = currentState[CHATS_TABLE_NAME];
+      const currentMessagesTable = currentState[CHAT_MESSAGES_TABLE_NAME];
       const existingRecord = currentTable.byId[recordKey];
       if (!existingRecord) {
         return currentState;
       }
+      const storedMessage = this.withAppendTimeline(message, existingRecord, currentMessagesTable);
+      const messageRecord = LocalChatMessageMapper.toRecord(record.ownerUserId, record.id, storedMessage);
+      savedMessageRecord = messageRecord;
+      const nextMessagesTable = this.upsertMessageRecord(currentMessagesTable, messageRecord);
       return {
         ...currentState,
         [CHATS_TABLE_NAME]: {
@@ -154,49 +174,34 @@ export class LocalChatsRepository {
             ...currentTable.byId,
             [recordKey]: {
               ...existingRecord,
-              lastMessage: messageClone.text || this.chatAttachmentSummary(messageClone),
-              lastSenderId: messageClone.senderAvatar.id,
-              dateIso: messageClone.sentAtIso,
-              messages: [
-                ...LocalChatThreadMapper.cloneMessages(existingRecord.messages ?? []),
-                messageClone
-              ]
+              lastMessage: storedMessage.text || this.chatAttachmentSummary(storedMessage),
+              lastSenderId: storedMessage.senderAvatar.id,
+              dateIso: storedMessage.sentAtIso
             }
           }
-        }
+        },
+        [CHAT_MESSAGES_TABLE_NAME]: nextMessagesTable
       };
     });
-    return messageClone;
+    return savedMessageRecord ? LocalChatMessageMapper.toDto(savedMessageRecord) : null;
   }
 
-  upsertSupportChatMessage(chat: ChatThreadRecord, message: ContractTypes.ChatPopupMessage, unreadForOwner: boolean): void {
+  upsertSupportChatMessage(chat: ChatThreadRecord, message: ContractTypes.ChatMessageDto, unreadForOwner: boolean): void {
     const sourceId = `${chat.id ?? ''}`.trim();
     const ownerUserId = `${chat.ownerUserId ?? ''}`.trim();
     if (!sourceId || !ownerUserId) {
       return;
     }
     const recordKey = LocalChatThreadMapper.buildRecordKey(ownerUserId, sourceId);
-    const messageClone = LocalChatThreadMapper.cloneMessages([message])[0] ?? null;
-    if (!messageClone) {
-      return;
-    }
+    const messageRecord = LocalChatMessageMapper.toRecord(ownerUserId, sourceId, message);
     this.memoryDb.write(currentState => {
       const currentTable = currentState[CHATS_TABLE_NAME];
+      const currentMessagesTable = currentState[CHAT_MESSAGES_TABLE_NAME];
       const existing = currentTable.byId[recordKey];
-      const existingMessages = existing?.messages ?? [];
       const nextRecord: ChatThreadRecord = {
         ...(existing ?? chat),
         ...chat,
-        unread: unreadForOwner ? Math.max(1, (existing?.unread ?? 0) + 1) : 0,
-        messages: [
-          ...LocalChatThreadMapper.cloneMessages(existingMessages).map(item => ({
-            ...item,
-            readBy: item.readBy
-              .filter(reader => `${reader.id ?? ''}`.trim() !== `${item.senderAvatar.id ?? ''}`.trim())
-              .map(reader => ({ ...reader }))
-          })),
-          messageClone
-        ]
+        unread: unreadForOwner ? Math.max(1, (existing?.unread ?? 0) + 1) : 0
       };
       return {
         ...currentState,
@@ -208,7 +213,8 @@ export class LocalChatsRepository {
           ids: currentTable.ids.includes(recordKey)
             ? [...currentTable.ids]
             : [...currentTable.ids, recordKey]
-        }
+        },
+        [CHAT_MESSAGES_TABLE_NAME]: this.upsertMessageRecord(currentMessagesTable, messageRecord)
       };
     });
   }
@@ -217,7 +223,7 @@ export class LocalChatsRepository {
     chat: ChatRecord,
     messageId: string,
     mutation: ContractTypes.ChatMessageMutation
-  ): ContractTypes.ChatPopupMessage | null {
+  ): ContractTypes.ChatMessageDto | null {
     const record = this.resolveChatRecord(chat, { createServiceChat: false });
     const normalizedMessageId = `${messageId ?? ''}`.trim();
     if (!record || !normalizedMessageId) {
@@ -228,32 +234,30 @@ export class LocalChatsRepository {
     const actorInitials = 'ME';
     const actorGender: 'woman' | 'man' = 'man';
     const nowIso = new Date().toISOString();
-    let updatedMessage: ContractTypes.ChatPopupMessage | null = null;
+    let updatedMessage: ContractTypes.ChatMessageDto | null = null;
     const recordKey = LocalChatThreadMapper.buildRecordKey(record.ownerUserId, record.id);
     this.memoryDb.write(currentState => {
       const currentTable = currentState[CHATS_TABLE_NAME];
+      const currentMessagesTable = currentState[CHAT_MESSAGES_TABLE_NAME];
       const existingRecord = currentTable.byId[recordKey];
       if (!existingRecord) {
         return currentState;
       }
-      const nextMessages = LocalChatThreadMapper.cloneMessages(existingRecord.messages ?? []).map(message => {
-        if (message.id !== normalizedMessageId) {
-          return message;
-        }
-        const nextMessage = this.applyMessageMutation(message, mutation, {
-          actorId,
-          actorName,
-          actorInitials,
-          actorGender,
-          nowIso
-        });
-        updatedMessage = nextMessage;
-        return nextMessage;
-      });
-      if (!updatedMessage) {
+      const existingMessageRecord = this.findMessageRecord(currentMessagesTable, existingRecord, normalizedMessageId);
+      if (!existingMessageRecord) {
         return currentState;
       }
-      const latest = this.latestMessage(nextMessages);
+      const nextMessage = this.applyMessageMutation(LocalChatMessageMapper.toDto(existingMessageRecord), mutation, {
+        actorId,
+        actorName,
+        actorInitials,
+        actorGender,
+        nowIso
+      });
+      updatedMessage = nextMessage;
+      const nextMessageRecord = LocalChatMessageMapper.toRecord(existingRecord.ownerUserId, existingRecord.id, nextMessage);
+      const nextMessagesTable = this.upsertMessageRecord(currentMessagesTable, nextMessageRecord);
+      const latest = this.latestMessage(LocalChatMessageMapper.toDtoList(this.selectChatMessageRecordsFromSnapshot(nextMessagesTable, existingRecord)));
       return {
         ...currentState,
         [CHATS_TABLE_NAME]: {
@@ -264,14 +268,127 @@ export class LocalChatsRepository {
               ...existingRecord,
               lastMessage: latest ? (latest.text || this.chatAttachmentSummary(latest) || this.deletedMessageSummary(latest)) : existingRecord.lastMessage,
               lastSenderId: latest?.senderAvatar.id ?? existingRecord.lastSenderId,
-              dateIso: latest?.sentAtIso ?? existingRecord.dateIso,
-              messages: nextMessages
+              dateIso: latest?.sentAtIso ?? existingRecord.dateIso
             }
           }
-        }
+        },
+        [CHAT_MESSAGES_TABLE_NAME]: nextMessagesTable
       };
     });
-    return updatedMessage ? LocalChatThreadMapper.cloneMessages([updatedMessage])[0] ?? null : null;
+    return updatedMessage;
+  }
+
+  markChatRead(
+    chat: ChatRecord,
+    ownerUserId: string,
+    messageIds: readonly string[]
+  ): { messageIds: string[]; unread: number; reader: ContractTypes.ChatReadAvatar; readAtIso: string } | null {
+    const normalizedOwnerUserId = `${ownerUserId ?? ''}`.trim();
+    const targetIds = [...new Set(
+      (messageIds ?? [])
+        .map(messageId => `${messageId ?? ''}`.trim())
+        .filter(Boolean)
+    )];
+    const sourceId = `${chat.id ?? ''}`.trim();
+    const channelOwnerId = `${chat.ownerId ?? ''}`.trim();
+    const channelType = `${chat.channelType ?? ''}`.trim();
+    if (!normalizedOwnerUserId || (!sourceId && !channelOwnerId) || targetIds.length === 0) {
+      return null;
+    }
+    const recordsTable = this.memoryDb.read()[CHATS_TABLE_NAME];
+    const recordKey = this.findChatRecordKey(recordsTable, normalizedOwnerUserId, sourceId, channelOwnerId, channelType);
+    if (!recordKey) {
+      return null;
+    }
+    const record = recordsTable.byId[recordKey] ?? null;
+    if (!record) {
+      return null;
+    }
+
+    const reader = this.readAvatarForUser(normalizedOwnerUserId);
+    const readAtIso = new Date().toISOString();
+    const changedIds: string[] = [];
+    const previousUnread = Math.max(0, Math.trunc(Number(record.unread) || 0));
+    let unread = previousUnread;
+    this.memoryDb.write(currentState => {
+      const currentTable = currentState[CHATS_TABLE_NAME];
+      const currentMessagesTable = currentState[CHAT_MESSAGES_TABLE_NAME];
+      const existingRecord = currentTable.byId[recordKey];
+      if (!existingRecord) {
+        return currentState;
+      }
+      let nextMessagesTable = currentMessagesTable;
+      const targetIdSet = new Set(targetIds);
+      const messageRecords = this.selectChatMessageRecordsFromSnapshot(currentMessagesTable, existingRecord);
+      for (const messageRecord of messageRecords) {
+        if (
+          !targetIdSet.has(messageRecord.messageId)
+          || messageRecord.mine
+          || (messageRecord.readBy ?? []).some(existingReader => existingReader.userId === normalizedOwnerUserId)
+        ) {
+          continue;
+        }
+        const nextMessageRecord: ChatMessageRecord = {
+          ...messageRecord,
+          readBy: [
+            ...(messageRecord.readBy ?? []),
+            {
+              userId: reader.id,
+              initials: reader.initials,
+              gender: reader.gender,
+              imageUrl: reader.imageUrl ?? null
+            }
+          ]
+        };
+        changedIds.push(messageRecord.messageId);
+        nextMessagesTable = this.upsertMessageRecord(nextMessagesTable, nextMessageRecord);
+      }
+      if (changedIds.length === 0) {
+        return currentState;
+      }
+      unread = this.normalizeCounter(previousUnread - changedIds.length);
+      const unreadDelta = unread - previousUnread;
+      const currentUsersTable = currentState[USERS_TABLE_NAME];
+      const currentUser = currentUsersTable.byId[normalizedOwnerUserId] ?? null;
+      const nextUsersTable = currentUser && unreadDelta !== 0
+        ? {
+            ...currentUsersTable,
+            byId: {
+              ...currentUsersTable.byId,
+              [normalizedOwnerUserId]: {
+                ...currentUser,
+                activities: {
+                  ...currentUser.activities,
+                  chat: this.normalizeCounter((currentUser.activities?.chat ?? 0) + unreadDelta)
+                }
+              }
+            }
+          }
+        : currentUsersTable;
+      return {
+        ...currentState,
+        [CHATS_TABLE_NAME]: {
+          ...currentTable,
+          byId: {
+            ...currentTable.byId,
+            [recordKey]: {
+              ...existingRecord,
+              unread
+            }
+          }
+        },
+        [CHAT_MESSAGES_TABLE_NAME]: nextMessagesTable,
+        [USERS_TABLE_NAME]: nextUsersTable
+      };
+    });
+    return changedIds.length > 0
+      ? {
+          messageIds: changedIds,
+          unread,
+          reader,
+          readAtIso
+        }
+      : null;
   }
 
   updateSupportCase(chat: ChatRecord, action: ContractTypes.SupportCaseAction): ChatThreadRecord | null {
@@ -300,11 +417,19 @@ export class LocalChatsRepository {
         }
         const nextRecord: ChatThreadRecord = {
           ...record,
-          supportCaseStatus: state.status,
-          supportCaseAssigneeUserId: state.assigneeUserId,
-          supportCaseAssigneeName: state.assigneeName,
-          supportCaseAssigneeInitials: state.assigneeInitials,
-          supportCaseUpdatedAtIso: state.updatedAtIso
+          channelType: 'supportCase',
+          ownerId: `${record.ownerId ?? record.id ?? ''}`.trim(),
+          supportCase: {
+            status: state.status,
+            assignee: state.assigneeUserId
+              ? {
+                  userId: state.assigneeUserId,
+                  name: state.assigneeName ?? '',
+                  initials: state.assigneeInitials ?? ''
+                }
+              : null,
+            updatedAtIso: state.updatedAtIso
+          }
         };
         nextById[id] = nextRecord;
         updated = record.ownerUserId === actor.id ? nextRecord : (updated ?? nextRecord);
@@ -321,7 +446,7 @@ export class LocalChatsRepository {
         }
       };
     });
-    return updated ? LocalChatThreadMapper.cloneRecord(updated, { includeMessages: false }) : null;
+    return updated ? LocalChatThreadMapper.cloneRecord(updated) : null;
   }
 
   private queryUserRecords(userId: string): ChatThreadRecord[] {
@@ -334,7 +459,7 @@ export class LocalChatsRepository {
       .map(id => table.byId[id])
       .filter((record): record is ChatThreadRecord => Boolean(record))
       .filter(record => record.ownerUserId === normalizedUserId)
-      .map(record => LocalChatThreadMapper.cloneRecord(record, { includeMessages: false }));
+      .map(record => LocalChatThreadMapper.cloneRecord(record));
   }
 
   private queryUserRecordsForPage(
@@ -360,6 +485,9 @@ export class LocalChatsRepository {
   private activityChatContextFilterKey(
     record: Pick<ChatRecord, 'channelType' | 'serviceContext'>
   ): ContractTypes.ActivitiesChatContextFilter {
+    if (record.channelType === 'appSupport' || record.channelType === 'supportCase') {
+      return 'appSupport';
+    }
     if (record.channelType === 'serviceEvent' || record.serviceContext) {
       return 'service';
     }
@@ -382,7 +510,9 @@ export class LocalChatsRepository {
 
   private activitiesChatContextFilter(query: ListQuery<ActivitiesFeedFilters>): ContractTypes.ActivitiesChatContextFilter {
     const value = query.filters?.chatContextFilter;
-    return value === 'event' || value === 'subEvent' || value === 'group' || value === 'service' ? value : 'all';
+    return value === 'event' || value === 'subEvent' || value === 'group' || value === 'service' || value === 'appSupport'
+      ? value
+      : 'all';
   }
 
   private activitiesSupportCaseFilter(query: ListQuery<ActivitiesFeedFilters>): ContractTypes.SupportCaseFilter {
@@ -392,7 +522,7 @@ export class LocalChatsRepository {
 
   private matchesSupportCaseFilter(record: ChatRecord, filter: ContractTypes.SupportCaseFilter | undefined): boolean {
     const normalizedFilter = this.normalizeSupportCaseFilter(filter ?? 'all');
-    return normalizedFilter === 'all' || record.supportCaseStatus === normalizedFilter;
+    return normalizedFilter === 'all' || record.supportCase?.status === normalizedFilter;
   }
 
   private sortChatPageRecords(
@@ -424,12 +554,209 @@ export class LocalChatsRepository {
     return unread * 10 + memberCount;
   }
 
+  private normalizeCounter(value: unknown): number {
+    const count = Number(value);
+    return Number.isFinite(count) ? Math.max(0, Math.trunc(count)) : 0;
+  }
+
+  private withLatestMessageSummaries(records: readonly ChatThreadRecord[]): ChatThreadRecord[] {
+    if (records.length === 0) {
+      return [];
+    }
+    const messagesSnapshot = this.memoryDb.read()[CHAT_MESSAGES_TABLE_NAME];
+    return records.map(record => this.withLatestMessageSummary(record, messagesSnapshot));
+  }
+
+  private withLatestMessageSummary(
+    record: ChatThreadRecord,
+    messagesSnapshot: AppMemorySchema[typeof CHAT_MESSAGES_TABLE_NAME]
+  ): ChatThreadRecord {
+    const latest = this.latestMessage(
+      LocalChatMessageMapper.toDtoList(this.selectChatMessageRecordsFromSnapshot(messagesSnapshot, record))
+    );
+    if (!latest) {
+      return LocalChatThreadMapper.cloneRecord(record);
+    }
+    return {
+      ...LocalChatThreadMapper.cloneRecord(record),
+      lastMessage: this.chatMessageSummary(latest) || record.lastMessage,
+      lastSenderId: `${latest.senderAvatar?.id ?? ''}`.trim() || record.lastSenderId,
+      dateIso: `${latest.sentAtIso ?? ''}`.trim() || record.dateIso
+    };
+  }
+
+  private chatMessageSummary(message: ContractTypes.ChatMessageDto): string {
+    return message.text || this.chatAttachmentSummary(message) || this.deletedMessageSummary(message);
+  }
+
+  private withAppendTimeline(
+    message: ContractTypes.ChatMessageDto,
+    chat: ChatThreadRecord,
+    messagesTable: AppMemorySchema[typeof CHAT_MESSAGES_TABLE_NAME]
+  ): ContractTypes.ChatMessageDto {
+    const records = this.selectChatMessageRecordsFromSnapshot(messagesTable, chat);
+    const latestRecord = records[records.length - 1] ?? null;
+    const latestMs = latestRecord ? AppUtils.toSortableDate(latestRecord.sentAtIso) : Number.NaN;
+    const messageMs = AppUtils.toSortableDate(message.sentAtIso ?? '');
+    if (!Number.isFinite(latestMs) || (Number.isFinite(messageMs) && messageMs > latestMs)) {
+      return message;
+    }
+
+    const sentAt = new Date(latestMs + 60 * 1000);
+    return {
+      ...message,
+      sentAtIso: AppUtils.toIsoDateTime(sentAt),
+      time: sentAt.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' })
+    };
+  }
+
+  private findChatRecordKey(
+    table: AppMemorySchema[typeof CHATS_TABLE_NAME],
+    ownerUserId: string,
+    chatId: string,
+    ownerId: string,
+    channelType: string
+  ): string | null {
+    const normalizedOwnerUserId = `${ownerUserId ?? ''}`.trim();
+    const normalizedChatId = `${chatId ?? ''}`.trim();
+    const normalizedOwnerId = `${ownerId ?? ''}`.trim();
+    const normalizedChannelType = `${channelType ?? ''}`.trim();
+    if (normalizedOwnerUserId && normalizedOwnerId) {
+      const ownerMatch = table.ids.find(id => {
+        const record = table.byId[id];
+        return record?.ownerUserId === normalizedOwnerUserId
+          && `${record.ownerId ?? ''}`.trim() === normalizedOwnerId
+          && (!normalizedChannelType || `${record.channelType ?? ''}`.trim() === normalizedChannelType);
+      });
+      if (ownerMatch) {
+        return ownerMatch;
+      }
+    }
+    if (normalizedOwnerUserId && normalizedChatId) {
+      const key = LocalChatThreadMapper.buildRecordKey(normalizedOwnerUserId, normalizedChatId);
+      if (table.byId[key]) {
+        return key;
+      }
+    }
+    return null;
+  }
+
+  private readAvatarForUser(userId: string): ContractTypes.ChatReadAvatar {
+    const normalizedUserId = `${userId ?? ''}`.trim();
+    const user = normalizedUserId ? this.memoryDb.read()[USERS_TABLE_NAME].byId[normalizedUserId] ?? null : null;
+    const label = user?.name?.trim() || normalizedUserId || 'You';
+    return {
+      id: normalizedUserId,
+      initials: user?.initials?.trim() || AppUtils.initialsFromText(label),
+      gender: user?.gender ?? 'man',
+      imageUrl: AppUtils.firstImageUrl(user?.images)
+    };
+  }
+
+  private countUnreadMessages(
+    messages: readonly ChatMessageRecord[],
+    ownerUserId: string
+  ): number {
+    const normalizedOwnerUserId = `${ownerUserId ?? ''}`.trim();
+    if (!normalizedOwnerUserId) {
+      return 0;
+    }
+    return messages.filter(message =>
+      !message.mine
+      && !(message.readBy ?? []).some(reader => `${reader.userId ?? ''}`.trim() === normalizedOwnerUserId)
+    ).length;
+  }
+
   private resolvePageStartIndex(query: ListQuery<ActivitiesFeedFilters>, pageSize: number): number {
     const cursorIndex = Number(query.cursor);
     if (Number.isFinite(cursorIndex)) {
       return Math.max(0, Math.trunc(cursorIndex));
     }
     return Math.max(0, Math.trunc(Number(query.page) || 0)) * pageSize;
+  }
+
+  private resolveMessagePageStartIndex(query: ListQuery, pageSize: number): number {
+    const cursorIndex = Number(query.cursor);
+    if (Number.isFinite(cursorIndex)) {
+      return Math.max(0, Math.trunc(cursorIndex));
+    }
+    return Math.max(0, Math.trunc(Number(query.page) || 0)) * pageSize;
+  }
+
+  private queryChatMessageRecords(chat: ChatThreadRecord): ChatMessageRecord[] {
+    return this.selectChatMessageRecordsFromSnapshot(this.memoryDb.read()[CHAT_MESSAGES_TABLE_NAME], chat);
+  }
+
+  private selectChatMessageRecordsFromSnapshot(
+    snapshot: AppMemorySchema[typeof CHAT_MESSAGES_TABLE_NAME],
+    chat: ChatThreadRecord
+  ): ChatMessageRecord[] {
+    const chatKey = LocalChatMessageMapper.chatKey(chat.ownerUserId, chat.id);
+    const ids = snapshot.idsByChatKey[chatKey] ?? snapshot.ids.filter(id => {
+      const record = snapshot.byId[id];
+      return record?.ownerUserId === chat.ownerUserId && record?.chatId === chat.id;
+    });
+    return ids
+      .map(id => snapshot.byId[id])
+      .filter((record): record is ChatMessageRecord => Boolean(record))
+      .sort((left, right) => this.compareMessageRecordsAsc(left, right));
+  }
+
+  private findMessageRecord(
+    table: AppMemorySchema[typeof CHAT_MESSAGES_TABLE_NAME],
+    chat: ChatThreadRecord,
+    messageId: string
+  ): ChatMessageRecord | null {
+    const recordId = LocalChatMessageMapper.recordKey(chat.ownerUserId, chat.id, messageId);
+    return table.byId[recordId] ?? this.selectChatMessageRecordsFromSnapshot(table, chat)
+      .find(record => record.messageId === messageId) ?? null;
+  }
+
+  private upsertMessageRecord(
+    table: AppMemorySchema[typeof CHAT_MESSAGES_TABLE_NAME],
+    message: ChatMessageRecord
+  ): AppMemorySchema[typeof CHAT_MESSAGES_TABLE_NAME] {
+    if (!message.recordId) {
+      return table;
+    }
+    const chatKey = LocalChatMessageMapper.chatKey(message.ownerUserId, message.chatId);
+    const nextById = {
+      ...table.byId,
+      [message.recordId]: message
+    };
+    const nextIds = table.ids.includes(message.recordId)
+      ? [...table.ids]
+      : [...table.ids, message.recordId];
+    const nextChatIds = table.idsByChatKey[chatKey]?.includes(message.recordId)
+      ? [...table.idsByChatKey[chatKey]]
+      : [...(table.idsByChatKey[chatKey] ?? []), message.recordId];
+    nextChatIds.sort((leftId, rightId) => {
+      const left = nextById[leftId];
+      const right = nextById[rightId];
+      return left && right ? this.compareMessageRecordsAsc(left, right) : left ? -1 : right ? 1 : 0;
+    });
+    return {
+      byId: nextById,
+      ids: nextIds,
+      idsByChatKey: {
+        ...table.idsByChatKey,
+        [chatKey]: nextChatIds
+      }
+    };
+  }
+
+  private compareMessageRecordsAsc(left: ChatMessageRecord, right: ChatMessageRecord): number {
+    return AppUtils.toSortableDate(left.sentAtIso) - AppUtils.toSortableDate(right.sentAtIso)
+      || `${left.messageId ?? ''}`.localeCompare(`${right.messageId ?? ''}`);
+  }
+
+  private sortChatMessagesForThread(
+    messages: readonly ContractTypes.ChatMessageDto[]
+  ): ContractTypes.ChatMessageDto[] {
+    return [...messages].sort((left, right) =>
+      AppUtils.toSortableDate(right.sentAtIso) - AppUtils.toSortableDate(left.sentAtIso)
+      || `${right.id ?? ''}`.localeCompare(`${left.id ?? ''}`)
+    );
   }
 
   private matchesDateRange(record: ChatRecord, rangeStartMs: number, rangeEndMs: number): boolean {
@@ -451,7 +778,18 @@ export class LocalChatsRepository {
   }
 
   private isSupportCaseRecord(record: ChatRecord): boolean {
-    return `${record.id ?? ''}`.trim().startsWith('c-support-admin-') || Boolean(record.supportCaseStatus);
+    return record.channelType === 'supportCase'
+      || `${record.id ?? ''}`.trim().startsWith('c-support-admin-')
+      || Boolean(record.supportCase);
+  }
+
+  private cloneSupportCase<T extends ContractTypes.ChatSupportCase | null | undefined>(supportCase: T): T {
+    return supportCase
+      ? {
+          ...supportCase,
+          assignee: supportCase.assignee ? { ...supportCase.assignee } : supportCase.assignee
+        } as T
+      : supportCase;
   }
 
   private normalizeSupportCaseFilter(filter: ContractTypes.SupportCaseFilter): ContractTypes.SupportCaseFilter {
@@ -516,7 +854,7 @@ export class LocalChatsRepository {
     return user ? UserProfileState.isEmptyOnboardingProfile(user) : false;
   }
 
-  private toChatMemberEntry(chatId: string, userId: string, index: number): ActivityContracts.ActivityMemberEntry {
+  private toChatMemberEntry(chatId: string, userId: string, index: number): ActivityContracts.ActivityMemberDTO {
     const user = this.memoryDb.read()[USERS_TABLE_NAME].byId[userId] ?? null;
     const label = user?.name?.trim() || userId;
     const when = AppUtils.addDays(new Date(), -Math.max(0, index));
@@ -589,14 +927,19 @@ export class LocalChatsRepository {
       ...chat,
       memberIds: [...(chat.memberIds ?? [])],
       ownerUserId: normalizedOwnerUserId,
-      dateIso: chat.dateIso ?? new Date().toISOString(),
-      messages: this.buildInitialServiceMessages(chat)
+      dateIso: chat.dateIso ?? new Date().toISOString()
     };
+    const initialMessageRecords = this.buildInitialServiceMessages(chat)
+      .map(message => LocalChatMessageMapper.toRecord(normalizedOwnerUserId, sourceId, message));
     this.memoryDb.write(currentState => {
       const currentTable = currentState[CHATS_TABLE_NAME];
       if (currentTable.byId[recordKey]) {
         return currentState;
       }
+      const nextMessagesTable = initialMessageRecords.reduce(
+        (table, messageRecord) => this.upsertMessageRecord(table, messageRecord),
+        currentState[CHAT_MESSAGES_TABLE_NAME]
+      );
       return {
         ...currentState,
         [CHATS_TABLE_NAME]: {
@@ -605,13 +948,14 @@ export class LocalChatsRepository {
             [recordKey]: record
           },
           ids: [...currentTable.ids, recordKey]
-        }
+        },
+        [CHAT_MESSAGES_TABLE_NAME]: nextMessagesTable
       };
     });
     return record;
   }
 
-  private buildInitialServiceMessages(chat: ChatRecord): ContractTypes.ChatPopupMessage[] {
+  private buildInitialServiceMessages(chat: ChatRecord): ContractTypes.ChatMessageDto[] {
     const sourceId = `${chat.id ?? ''}`.trim();
     if (!sourceId.startsWith('c-support-blocked-')) {
       return [];
@@ -633,7 +977,7 @@ export class LocalChatsRepository {
     }];
   }
 
-  private chatAttachmentSummary(message: ContractTypes.ChatPopupMessage): string {
+  private chatAttachmentSummary(message: ContractTypes.ChatMessageDto): string {
     const firstAttachment = message.attachments?.[0];
     if (!firstAttachment) {
       return '';
@@ -651,7 +995,7 @@ export class LocalChatsRepository {
   }
 
   private applyMessageMutation(
-    message: ContractTypes.ChatPopupMessage,
+    message: ContractTypes.ChatMessageDto,
     mutation: ContractTypes.ChatMessageMutation,
     actor: {
       actorId: string;
@@ -660,7 +1004,7 @@ export class LocalChatsRepository {
       actorGender: 'woman' | 'man';
       nowIso: string;
     }
-  ): ContractTypes.ChatPopupMessage {
+  ): ContractTypes.ChatMessageDto {
     if (mutation.deleted === true) {
       return {
         ...message,
@@ -718,11 +1062,11 @@ export class LocalChatsRepository {
     return message;
   }
 
-  private latestMessage(messages: readonly ContractTypes.ChatPopupMessage[]): ContractTypes.ChatPopupMessage | null {
+  private latestMessage(messages: readonly ContractTypes.ChatMessageDto[]): ContractTypes.ChatMessageDto | null {
     return [...messages].sort((first, second) => AppUtils.toSortableDate(second.sentAtIso) - AppUtils.toSortableDate(first.sentAtIso))[0] ?? null;
   }
 
-  private deletedMessageSummary(message: ContractTypes.ChatPopupMessage): string {
+  private deletedMessageSummary(message: ContractTypes.ChatMessageDto): string {
     return message.deletedAtIso ? `${message.deletedByName || message.sender} deleted a message` : '';
   }
 }

@@ -1101,7 +1101,6 @@
     height: 328px;
     padding: 0 0 1.95rem;
     --smart-list-horizontal-dots-bottom: -1.38rem;
-    --smart-list-horizontal-mobile-surface-margin: 0.24rem;
   }
 
   .entry-shell {
@@ -1151,7 +1150,11 @@
 
   .entry-hero {
     overflow: visible;
-    padding: 0.94rem;
+    padding: 0.94rem 0.2rem;
+  }
+
+  .entry-hero-content {
+    padding-inline: 0.74rem;
   }
 
   .entry-hero h1 {

@@ -1,16 +1,17 @@
-import type { ChatChannelType, ChatDTO } from '../../core/contracts/chat.interface';
+import type { ChatChannelType, ChatDTO, SupportCaseStatus } from '../../core/contracts/chat.interface';
 import type { UserDto } from '../../core/contracts/user.interface';
 import type { SingleRowData } from '../components/core/smart-list/card';
 import type { UiListConverter } from './converter.types';
 
 export interface ActivityChatSingleRowConverterOptions {
-  users: readonly UserDto[];
-  activeUserId: string;
+  activeUser: UserDto;
+  resolveUserById?: (userId: string) => UserDto | null;
+  adminServiceMode?: boolean;
+  translate?: (key: string) => string;
 }
 
 interface ResolvedActivityChatSingleRowConverterOptions extends ActivityChatSingleRowConverterOptions {
-  userById: ReadonlyMap<string, UserDto>;
-  fallbackUser: UserDto | null;
+  fallbackUser: UserDto;
 }
 
 export class ActivityChatSingleRowConverter {
@@ -39,24 +40,131 @@ export class ActivityChatSingleRowConverter {
     const distanceMetersExact = Number.isFinite(Number(dto.distanceMetersExact))
       ? Math.max(0, Math.trunc(Number(dto.distanceMetersExact)))
       : undefined;
+    const supportStatus = this.supportStatus(dto.supportCase?.status);
+    const supportAssigneeName = dto.supportCase?.assignee?.name ?? null;
+    const showSupportControls = options.adminServiceMode === true && Boolean(supportStatus);
+    const avatar = `${dto.avatar ?? ''}`.trim();
+    const channelType = supportStatus ? 'supportCase' : this.normalizeChannelType(dto);
+    const ownerId = `${dto.ownerId ?? ''}`.trim();
+    const rowIdentity = ownerId ? `${channelType}:${ownerId}` : `${dto.id ?? ''}`.trim();
 
     return {
       id: dto.id,
-      status: dto.supportCaseStatus ?? this.normalizeChannelType(dto),
+      ownerId: ownerId || null,
+      smartListKey: `chats:${rowIdentity || dto.id}`,
+      status: supportStatus ?? channelType,
       dateIso: dto.dateIso ?? '2026-02-21T09:00:00',
       distanceMetersExact,
-      badgeCount: unread,
+      badgeCount: showSupportControls ? 0 : unread,
       sortScore: unread * 10 + memberCount,
       title: lastSender?.name ?? dto.title,
       subtitle: dto.title,
       detail: dto.lastMessage?.trim() || '',
-      unread,
-      avatarInitials: dto.avatar,
+      unread: showSupportControls ? 0 : unread,
+      avatarInitials: avatar ? avatar.slice(0, 2).toUpperCase() : options.activeUser.initials,
       avatarToneClass: lastSender ? `user-color-${lastSender.gender}` : null,
-      memberCount,
+      memberCount: showSupportControls ? 0 : memberCount,
       toneClass: this.toneClass(dto),
-      sideLabel: dto.supportCaseAssigneeName ?? null
+      surfaceTone: showSupportControls
+        ? this.supportCaseSurfaceTone(supportStatus)
+        : this.chatSurfaceTone(dto),
+      sideLabel: null,
+      badges: showSupportControls
+        ? [{
+          label: this.supportCaseBadgeLabel(supportStatus, supportAssigneeName, options.translate),
+          title: this.supportCaseBadgeLabel(supportStatus, supportAssigneeName, options.translate),
+          tone: this.supportCaseBadgeTone(supportStatus),
+          position: 'top-right'
+        }]
+        : [],
+      menuActions: showSupportControls
+        ? this.supportCaseMenuActionIds(supportStatus)
+        : [],
+      clickable: true
     };
+  }
+
+  private static supportStatus(status: string | null | undefined): SupportCaseStatus | null {
+    if (status === 'pending' || status === 'picked' || status === 'solved' || status === 'blocked') {
+      return status;
+    }
+    return null;
+  }
+
+  private static supportCaseLabelKey(status: string | null | undefined): string {
+    if (status === 'picked') {
+      return 'activities.support.case.status.picked';
+    }
+    if (status === 'solved') {
+      return 'activities.support.case.status.solved';
+    }
+    if (status === 'blocked') {
+      return 'activities.support.case.status.blocked';
+    }
+    return 'activities.support.case.status.pending';
+  }
+
+  private static supportCaseBadgeLabel(
+    status: SupportCaseStatus | null,
+    assigneeName: string | null | undefined,
+    translate: ((key: string) => string) | undefined
+  ): string {
+    const resolvedAssigneeName = `${assigneeName ?? ''}`.trim();
+    const t = translate ?? ((key: string) => key);
+    if (resolvedAssigneeName) {
+      return `${t('activities.support.case.assignee.by')} ${resolvedAssigneeName}`.trim();
+    }
+    return t(this.supportCaseLabelKey(status));
+  }
+
+  private static supportCaseBadgeTone(status: SupportCaseStatus | null): NonNullable<SingleRowData['surfaceTone']> {
+    switch (status) {
+      case 'picked':
+        return 'info';
+      case 'solved':
+        return 'success';
+      case 'blocked':
+        return 'danger';
+      default:
+        return 'warning';
+    }
+  }
+
+  private static supportCaseSurfaceTone(status: SupportCaseStatus | null): SingleRowData['surfaceTone'] {
+    return this.supportCaseBadgeTone(status);
+  }
+
+  private static supportCaseMenuActionIds(status: SupportCaseStatus | null): readonly string[] {
+    if (status === 'solved' || status === 'blocked') {
+      return ['supportReopen'];
+    }
+    if (status === 'picked') {
+      return ['supportUnpick', 'supportSolve', 'supportBlock'];
+    }
+    return ['supportPick', 'supportSolve', 'supportBlock'];
+  }
+
+  private static chatSurfaceTone(dto: ChatDTO): SingleRowData['surfaceTone'] {
+    const toneClass = this.toneClass(dto);
+    if (toneClass.includes('activities-card-chat-group-sub-event')) {
+      return 'success';
+    }
+    if (toneClass.includes('activities-card-chat-optional-sub-event')) {
+      return 'warning';
+    }
+    if (toneClass.includes('activities-card-chat-service-notification')) {
+      return 'danger';
+    }
+    if (
+      toneClass.includes('activities-card-chat-service-event')
+      || toneClass.includes('activities-card-chat-service-asset')
+    ) {
+      return 'neutral';
+    }
+    if (toneClass.includes('activities-card-chat-main-event')) {
+      return 'info';
+    }
+    return 'default';
   }
 
   private static normalizeChannelType(dto: Pick<ChatDTO, 'channelType'>): ChatChannelType {
@@ -65,6 +173,7 @@ export class ActivityChatSingleRowConverter {
       || dto.channelType === 'optionalSubEvent'
       || dto.channelType === 'groupSubEvent'
       || dto.channelType === 'serviceEvent'
+      || dto.channelType === 'appSupport'
     ) {
       return dto.channelType;
     }
@@ -84,6 +193,9 @@ export class ActivityChatSingleRowConverter {
     }
     if (channelType === 'serviceEvent') {
       return this.serviceChatToneClass(dto);
+    }
+    if (channelType === 'appSupport') {
+      return 'activities-card-chat-service-notification';
     }
     return '';
   }
@@ -106,7 +218,7 @@ export class ActivityChatSingleRowConverter {
     dto: ChatDTO,
     options: ResolvedActivityChatSingleRowConverterOptions
   ): UserDto | null {
-    const lastSender = options.userById.get(dto.lastSenderId) ?? null;
+    const lastSender = this.resolveUserById(dto.lastSenderId, options);
     if (lastSender) {
       return lastSender;
     }
@@ -134,26 +246,35 @@ export class ActivityChatSingleRowConverter {
     options: ResolvedActivityChatSingleRowConverterOptions
   ): UserDto[] {
     const members = (dto.memberIds ?? [])
-      .map(memberId => options.userById.get(memberId) ?? null)
+      .map(memberId => this.resolveUserById(memberId, options))
       .filter((user): user is UserDto => Boolean(user));
     if (members.length > 0) {
       return this.uniqueUsersById(members);
     }
-    return options.fallbackUser ? [options.fallbackUser] : [];
+    return [options.fallbackUser];
   }
 
   private static resolveOptions(
     options: ActivityChatSingleRowConverterOptions
   ): ResolvedActivityChatSingleRowConverterOptions {
-    const userById = new Map<string, UserDto>();
-    for (const user of options.users) {
-      userById.set(user.id, user);
-    }
     return {
       ...options,
-      userById,
-      fallbackUser: userById.get(options.activeUserId) ?? options.users[0] ?? null
+      fallbackUser: options.activeUser
     };
+  }
+
+  private static resolveUserById(
+    userId: string | undefined,
+    options: ActivityChatSingleRowConverterOptions
+  ): UserDto | null {
+    const normalizedUserId = `${userId ?? ''}`.trim();
+    if (!normalizedUserId) {
+      return null;
+    }
+    if (normalizedUserId === options.activeUser.id) {
+      return options.activeUser;
+    }
+    return options.resolveUserById?.(normalizedUserId) ?? null;
   }
 
   private static uniqueUsersById(users: readonly UserDto[]): UserDto[] {

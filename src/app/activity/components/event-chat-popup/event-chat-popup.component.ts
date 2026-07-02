@@ -33,7 +33,10 @@ import {
   AppUtils,
   type AsciiEmojiConversion
 } from '../../../shared/app-utils';
-import type { EventChatSession } from '../../../shared/ui/context/stores/activities-popup.store';
+import type {
+  EventChatHeaderState,
+  EventChatSession
+} from '../../../shared/ui/context/stores/activities-popup.store';
 import {
   ActivitiesPopupStore
 } from '../../../shared/ui/context/stores/activities-popup.store';
@@ -57,6 +60,7 @@ import {
   AppMenuComponent,
   AppMenuTriggerComponent,
   CounterBadgePipe,
+  I18nPipe,
   SmartListComponent,
   type AppMenuGroup,
   type AppMenuItem,
@@ -81,6 +85,15 @@ import { UserProfileStore } from '../../../shared/ui/context/stores/user-profile
 import { AppRuntimeStore } from '../../../shared/ui/context/stores/app-runtime.store';
 import { MemberMenuStore } from '../../../shared/ui/context/stores/member-menu.store';
 import { EventSubeventsPopupStore } from '../../../shared/ui/context/stores/event-subevents-popup.store';
+import {
+  SubEventResourcePopupStore,
+  type SubEventResourceMetricsUpdate,
+  type SubEventResourcePopupRequest
+} from '../../../shared/ui/context/stores/sub-event-resource-popup.store';
+import {
+  ActivityEventInfoCardMenuConverter,
+  type ActivityEventInfoCardMenuSubject
+} from '../../../shared/ui/converters';
 interface ChatThreadFilters {
   revision?: number;
   sessionKey?: string;
@@ -124,11 +137,16 @@ type SubEventAssetCardsByType = Partial<Record<AssetType, SubEventAssetCard[]>>;
 type ChatMenuContext =
   | { menu: 'chat-context'; control: AppUiTypes.PopupHeaderControl }
   | { menu: 'composer'; action: 'image' | 'voice' | 'poll' | 'event' | 'asset' }
-  | { menu: 'message-action'; message: ContractTypes.ChatPopupMessage; action: 'view' | 'reply' | 'edit' | 'unsend' | 'pin' | 'report' };
+  | { menu: 'message-action'; message: ContractTypes.ChatMessageDto; action: 'view' | 'reply' | 'edit' | 'unsend' | 'pin' | 'report' };
 
 interface SelectedChatGroupState {
   id: string;
   label: string;
+  source?: string | null;
+  accepted?: number;
+  pending?: number;
+  capacityMin?: number;
+  capacityMax?: number;
 }
 
 interface SelectedChatNavigationState {
@@ -143,6 +161,21 @@ interface SelectedChatNavigationState {
   assetCardsByType: SubEventAssetCardsByType;
 }
 
+interface ChatOwnerParts {
+  ownerId: string;
+  eventId: string;
+  subEventId: string;
+  groupId: string;
+}
+
+type ChatThreadPageContext = {
+  readReceipt?: ContractTypes.ChatReadReceipt | null;
+};
+
+type EventChatViewSession = EventChatSession & {
+  item: ChatDTO;
+};
+
 @Component({
   selector: 'app-event-chat-popup',
   standalone: true,
@@ -154,7 +187,8 @@ interface SelectedChatNavigationState {
     AppMenuComponent,
     AppMenuTriggerComponent,
     SmartListComponent,
-    CounterBadgePipe
+    CounterBadgePipe,
+    I18nPipe
   ],
   templateUrl: './event-chat-popup.component.html',
   styleUrl: './event-chat-popup.component.scss',
@@ -167,6 +201,7 @@ export class EventChatPopupComponent implements OnDestroy {
   private readonly runtimeStore = inject(AppRuntimeStore);
   protected readonly memberMenuStore = inject(MemberMenuStore);
   protected readonly eventSubeventsStore = inject(EventSubeventsPopupStore);
+  protected readonly resourcePopupStore = inject(SubEventResourcePopupStore);
   private readonly chatsService = inject(ChatsService);
   private readonly activityResourcesService = inject(ActivityResourcesService);
   private readonly eventsService = inject(EventsService);
@@ -177,18 +212,29 @@ export class EventChatPopupComponent implements OnDestroy {
   private readonly profileStore = inject(ProfileStore);
   private readonly location = inject(Location);
 
-  protected readonly session = computed(() => this.activitiesStore.eventChatSession());
+  protected readonly session = computed<EventChatViewSession | null>(() => {
+    const session = this.activitiesStore.eventChatSession();
+    const header = this.activitiesStore.eventChatHeader();
+    if (!session || !header || `${session.request.chatId ?? ''}`.trim() !== `${header.chatId ?? ''}`.trim()) {
+      return null;
+    }
+    return {
+      ...session,
+      item: this.chatFromHeader(header)
+    };
+  });
   protected chatInitialLoadPending = false;
-  protected allMessages: ContractTypes.ChatPopupMessage[] = [];
+  protected messages: ContractTypes.ChatMessageDto[] = [];
   protected draftMessage = '';
   protected chatComposeDetachedSpace = 108;
   protected chatHeaderContext: AppUiTypes.PopupHeaderContext | null = null;
-  protected chatHeaderControlsHydrated = false;
   private selectedChatNavigationState: SelectedChatNavigationState | null = null;
   private resolvedChatEventRecord: ActivityEventRecord | null = null;
   private resolvedChatEventRecordKey = '';
   private resolvedChatResourceState: AppDTOs.ActivitySubEventResourceStateDTO | null = null;
   private resolvedChatResourceStateKey = '';
+  private resolvedChatGroupSnapshot: ContractTypes.EventTournamentGroupDTO | null = null;
+  private resolvedChatGroupSnapshotKey = '';
   protected typingIndicators: ContractTypes.ChatTypingIndicator[] = [];
   protected voiceComposerOpen = false;
   protected voiceRecordingState: 'idle' | 'recording' | 'recorded' | 'saving' = 'idle';
@@ -214,7 +260,7 @@ export class EventChatPopupComponent implements OnDestroy {
   protected reactionDetailsMessageId = '';
   protected reactionDetailsFilter = 'all';
   protected pinnedDialogOpen = false;
-  protected replyTarget: ContractTypes.ChatPopupMessage['replyTo'] = null;
+  protected replyTarget: ContractTypes.ChatMessageDto['replyTo'] = null;
   protected editingMessageId = '';
   protected highlightedMessageId = '';
   protected readonly quickReactionEmojis = ['❤️', '😆', '😮', '😢', '😡', '👍'];
@@ -248,7 +294,7 @@ export class EventChatPopupComponent implements OnDestroy {
   private readonly pendingMessageMatchWindowMs = 45000;
   private chatThreadRevision = 0;
   protected chatThreadQuery: Partial<ListQuery<ChatThreadFilters>> = {};
-  protected readonly chatThreadSmartListConfig: SmartListConfig<ContractTypes.ChatPopupMessage, ChatThreadFilters> = {
+  protected readonly chatThreadSmartListConfig: SmartListConfig<ContractTypes.ChatMessageDto, ChatThreadFilters> = {
     pageSize: this.chatHistoryPageSize,
     mobilePageSizeCap: null,
     initialPageCount: 1,
@@ -274,18 +320,18 @@ export class EventChatPopupComponent implements OnDestroy {
     trackBy: (_index, message) => message.id,
     groupBy: message => this.chatDayLabel(new Date(message.sentAtIso))
   };
-  protected readonly chatThreadLoadPage: SmartListLoadPage<ContractTypes.ChatPopupMessage, ChatThreadFilters> = (
+  protected readonly chatThreadLoadPage: SmartListLoadPage<ContractTypes.ChatMessageDto, ChatThreadFilters> = (
     query: ListQuery<ChatThreadFilters>
   ) => {
     const sessionKey = `${query.filters?.sessionKey ?? ''}`.trim();
-    if (query.page === 0 && sessionKey && this.initialChatLoadedSessionKey !== sessionKey) {
-      return from(this.loadInitialChatThreadPage(query, sessionKey));
+    if (!sessionKey) {
+      return of(this.emptyChatThreadPage());
     }
-    return of(this.chatThreadPageResult(query));
+    return from(this.loadChatThreadPage(query, sessionKey));
   };
 
   @ViewChild('chatThreadSmartList')
-  private chatThreadSmartList?: SmartListComponent<ContractTypes.ChatPopupMessage, ChatThreadFilters>;
+  private chatThreadSmartList?: SmartListComponent<ContractTypes.ChatMessageDto, ChatThreadFilters>;
 
   @ViewChild('messageTextarea')
   private messageTextarea?: ElementRef<HTMLTextAreaElement>;
@@ -307,6 +353,7 @@ export class EventChatPopupComponent implements OnDestroy {
   private typingIdleTimer: ReturnType<typeof setTimeout> | null = null;
   private localTypingActive = false;
   private visibleChatThreadTotal = 0;
+  private chatThreadKnownTotal = 0;
   private readonly latestVisibleReadMessageIdByReaderId: Record<string, string> = {};
   protected readonly visibleReadReceiptsByMessageId: Record<string, ContractTypes.ChatReadAvatar[]> = {};
   private readonly freshMessageIds = new Set<string>();
@@ -337,6 +384,35 @@ export class EventChatPopupComponent implements OnDestroy {
 
   constructor() {
     effect(() => {
+      if (!this.shouldHostChatResourcePopup()) {
+        return;
+      }
+      void this.resourcePopupStore.ensureEventResourcePopupLoaded();
+    });
+
+    effect(() => {
+      if (!this.shouldHostChatResourcePopup() || !this.resourcePopupStore.assetExplorePopupRef()) {
+        return;
+      }
+      void this.resourcePopupStore.ensureEventResourceAssetExploreLoaded();
+    });
+
+    effect(() => {
+      if (!this.shouldHostChatSupplyContributionsPopup()) {
+        return;
+      }
+      void this.resourcePopupStore.ensureEventSupplyContributionsPopupLoaded();
+    });
+
+    effect(() => {
+      const update = this.resourcePopupStore.subEventResourceMetricsUpdate();
+      if (!update) {
+        return;
+      }
+      this.applySelectedChatResourceMetricsUpdate(update);
+    });
+
+    effect(() => {
       const request = this.eventSubeventsStore.eventSubeventsListPopup();
       if (!request || request.host !== 'chat' || !this.session()) {
         return;
@@ -348,20 +424,19 @@ export class EventChatPopupComponent implements OnDestroy {
       const session = this.session();
       const sessionKey = session ? `${session.item.id}:${session.openedAtIso}` : null;
       if (session && this.loadedSessionKey === sessionKey) {
-        this.syncSelectedChatHeader(session.item, { hydrateControls: this.chatHeaderControlsHydrated });
+        this.syncSelectedChatHeader(session.item);
         this.cdr.markForCheck();
         return;
       }
       this.teardownLiveChatUpdates();
       this.loadedSessionKey = sessionKey;
       this.initialChatLoadedSessionKey = null;
-      this.chatHeaderControlsHydrated = false;
       this.draftMessage = '';
       this.closeTransientMessageUi();
       this.replyTarget = null;
       this.editingMessageId = '';
       this.chatThreadSmartList?.closeMenu();
-      this.allMessages = [];
+      this.messages = [];
       this.typingIndicators = [];
       this.localTypingActive = false;
       this.clearTypingIdleTimer();
@@ -371,6 +446,7 @@ export class EventChatPopupComponent implements OnDestroy {
       this.resetVisibleReadReceipts();
       this.chatThreadRevision = 0;
       this.visibleChatThreadTotal = 0;
+      this.chatThreadKnownTotal = 0;
       this.syncChatThreadQuery();
       if (!session) {
         this.loadedSessionKey = null;
@@ -380,7 +456,7 @@ export class EventChatPopupComponent implements OnDestroy {
         this.cdr.markForCheck();
         return;
       }
-      this.syncSelectedChatHeader(session.item, { hydrateControls: false });
+      this.syncSelectedChatHeader(session.item);
       this.chatInitialLoadPending = true;
       this.cdr.markForCheck();
     });
@@ -395,18 +471,20 @@ export class EventChatPopupComponent implements OnDestroy {
     this.teardownLiveChatUpdates();
     this.clearPendingMessageTimers();
     this.visibleChatThreadTotal = 0;
+    this.chatThreadKnownTotal = 0;
   }
 
   protected close(): void {
     this.chatThreadSmartList?.closeMenu();
+    this.resourcePopupStore.closeResourcePopup();
     this.stopLocalTyping();
     this.resetVoiceRecorder();
     this.teardownLiveChatUpdates();
     this.clearPendingMessageTimers();
     this.visibleChatThreadTotal = 0;
+    this.chatThreadKnownTotal = 0;
     this.loadedSessionKey = null;
     this.chatThreadQuery = {};
-    this.chatHeaderControlsHydrated = false;
     this.closeTransientMessageUi();
     if (this.isBlockedSupportChat()) {
       this.activitiesStore.closeActivities();
@@ -415,7 +493,38 @@ export class EventChatPopupComponent implements OnDestroy {
     this.activitiesStore.closeEventChat();
   }
 
-  protected chatHeaderTitle(chatSession: EventChatSession): string {
+  private chatFromHeader(header: EventChatHeaderState): ChatDTO {
+    const chatId = `${header.chatId ?? ''}`.trim();
+    const ownerId = `${header.ownerId ?? ''}`.trim();
+    const title = `${header.title ?? ''}`.trim() || 'Chat';
+    return {
+      id: chatId || ownerId,
+      avatar: `${header.avatar ?? ''}`.trim() || AppUtils.initialsFromText(title),
+      title,
+      lastMessage: `${header.lastMessage ?? ''}`.trim(),
+      lastSenderId: `${header.lastSenderId ?? ''}`.trim(),
+      memberIds: [...(header.memberIds ?? [])],
+      members: (header.members ?? []).map(member => ({ ...member })),
+      unread: Math.max(0, Math.trunc(Number(header.unread) || 0)),
+      dateIso: header.dateIso ?? undefined,
+      channelType: header.channelType ?? undefined,
+      ownerId: ownerId || undefined,
+      supportCase: header.supportCase ? { ...header.supportCase } : header.supportCase,
+      ownerUserId: header.ownerUserId ?? null,
+      metrics: header.metrics
+        ? {
+            members: header.metrics.members ? { ...header.metrics.members } : null,
+            car: header.metrics.car ? { ...header.metrics.car } : null,
+            accommodation: header.metrics.accommodation ? { ...header.metrics.accommodation } : null,
+            supplies: header.metrics.supplies ? { ...header.metrics.supplies } : null,
+            groupsCount: header.metrics.groupsCount ?? null,
+            pendingTotal: Math.max(0, Math.trunc(Number(header.metrics.pendingTotal) || 0))
+          }
+        : header.metrics
+    };
+  }
+
+  protected chatHeaderTitle(chatSession: EventChatViewSession): string {
     return `${this.chatHeaderContext?.title ?? chatSession.item.title ?? ''}`.trim() || 'Chat';
   }
 
@@ -472,11 +581,64 @@ export class EventChatPopupComponent implements OnDestroy {
   }
 
   protected isBlockedSupportChat(): boolean {
-    return this.session()?.item.id.startsWith('c-support-blocked-') === true;
+    const chat = this.session()?.item;
+    return chat?.id.startsWith('c-support-blocked-') === true
+      || chat?.supportCase?.status === 'blocked';
   }
 
   protected isServiceChat(): boolean {
-    return this.session()?.item.channelType === 'serviceEvent';
+    const chat = this.session()?.item;
+    return chat?.channelType === 'serviceEvent'
+      || chat?.channelType === 'supportCase'
+      || Boolean(chat?.supportCase);
+  }
+
+  protected isAppSupportChat(): boolean {
+    return this.session()?.item.channelType === 'appSupport';
+  }
+
+  protected shouldHostChatResourcePopup(): boolean {
+    const request = this.memberMenuStore.activitiesNavigationRequest();
+    return Boolean(this.session())
+      && (request?.type === 'chatResource'
+        || request?.type === 'assetExplore'
+        || this.resourcePopupStore.popupContextRef()?.origin === 'chat'
+        || this.shouldHostChatSubEventResourcePopup());
+  }
+
+  protected shouldHostChatSupplyContributionsPopup(): boolean {
+    return this.shouldHostChatResourcePopup()
+      && !this.resourcePopupStore.assetExploreOnlyRef()
+      && this.resourcePopupStore.supplyPopupRef() !== null;
+  }
+
+  private shouldHostChatSubEventResourcePopup(): boolean {
+    if (this.eventSubeventsStore.eventSubeventsListPopup()?.host === 'chat') {
+      return false;
+    }
+    const request = this.resourcePopupStore.subEventResourcePopupRequest();
+    if (request && this.isSelectedChatSubEventResourceRequest(request)) {
+      return true;
+    }
+    const context = this.resourcePopupStore.popupContextRef();
+    return context?.origin === 'subEventResource'
+      && this.isSelectedChatResourceTarget(context.ownerId, context.subEvent.id);
+  }
+
+  private isSelectedChatSubEventResourceRequest(request: SubEventResourcePopupRequest): boolean {
+    return this.isSelectedChatResourceTarget(request.ownerId, `${request.subEventId ?? ''}`);
+  }
+
+  private isSelectedChatResourceTarget(ownerId: string | null | undefined, subEventId: string | null | undefined): boolean {
+    const session = this.session();
+    const state = this.selectedChatNavigationState;
+    const ownerParts = this.chatOwnerParts(session?.item ?? null);
+    const selectedOwnerId = `${state?.eventId ?? ownerParts.eventId}`.trim();
+    const selectedSubEventId = `${state?.subEvent?.id ?? ownerParts.subEventId}`.trim();
+    return !!selectedOwnerId
+      && !!selectedSubEventId
+      && `${ownerId ?? ''}`.trim() === selectedOwnerId
+      && `${subEventId ?? ''}`.trim() === selectedSubEventId;
   }
 
   protected selectedChatHasSubEventMenu(): boolean {
@@ -592,11 +754,11 @@ export class EventChatPopupComponent implements OnDestroy {
     }
   }
 
-  protected messageActionMenuIdFor(message: ContractTypes.ChatPopupMessage): string {
+  protected messageActionMenuIdFor(message: ContractTypes.ChatMessageDto): string {
     return `chat-message-action:${message.id}`;
   }
 
-  protected messageActionMenuTrigger(message: ContractTypes.ChatPopupMessage): AppMenuTrigger {
+  protected messageActionMenuTrigger(message: ContractTypes.ChatMessageDto): AppMenuTrigger {
     return {
       icon: 'more_vert',
       closeIcon: 'close',
@@ -607,7 +769,7 @@ export class EventChatPopupComponent implements OnDestroy {
     };
   }
 
-  protected messageActionMenuItems(message: ContractTypes.ChatPopupMessage): readonly AppMenuItem<string, ChatMenuContext>[] {
+  protected messageActionMenuItems(message: ContractTypes.ChatMessageDto): readonly AppMenuItem<string, ChatMenuContext>[] {
     const items: AppMenuItem<string, ChatMenuContext>[] = [];
     if (this.messageHasViewableAttachment(message)) {
       items.push({
@@ -697,18 +859,7 @@ export class EventChatPopupComponent implements OnDestroy {
   }
 
   protected openSelectedChatEvent(event?: Event): void {
-    event?.stopPropagation();
-    this.chatThreadSmartList?.closeMenu();
-    const eventId = `${this.selectedChatNavigationState?.eventId ?? this.session()?.item.eventId ?? ''}`.trim();
-    if (!eventId) {
-      return;
-    }
-    this.memberMenuStore.requestActivitiesNavigation({
-      type: 'eventEditor',
-      eventId,
-      target: this.selectedChatNavigationState?.eventTarget ?? 'events',
-      readOnly: true
-    });
+    this.openSelectedChatSubeventsPopup(event);
   }
 
   protected openSelectedChatPrimaryContext(event?: Event): void {
@@ -729,25 +880,35 @@ export class EventChatPopupComponent implements OnDestroy {
   }
 
   protected openSelectedChatSubEvent(event?: Event): void {
-    event?.stopPropagation();
-    this.chatThreadSmartList?.closeMenu();
-    const state = this.selectedChatNavigationState;
-    const eventId = `${state?.eventId ?? this.session()?.item.eventId ?? ''}`.trim();
-    if (!eventId) {
-      return;
-    }
-    this.eventSubeventsStore.openEventSubeventsListPopup({
-      eventId,
-      host: 'chat',
-      target: state?.eventTarget ?? 'events',
-      title: state?.eventTitle ?? this.session()?.item.title ?? null,
-      canEdit: false
-    });
+    this.openSelectedChatSubeventsPopup(event);
   }
 
   protected openSelectedChatGroup(event?: Event): void {
     event?.stopPropagation();
     this.openSelectedChatSubEvent();
+  }
+
+  private openSelectedChatSubeventsPopup(event?: Event): void {
+    event?.stopPropagation();
+    this.chatThreadSmartList?.closeMenu();
+    const session = this.session();
+    const state = this.selectedChatNavigationState;
+    const eventId = `${state?.eventId ?? this.chatOwnerParts(session?.item ?? null).eventId}`.trim();
+    if (!eventId) {
+      return;
+    }
+    const record = this.selectedChatEventRecord(eventId);
+    this.eventSubeventsStore.openEventSubeventsListPopup({
+      eventId,
+      host: 'chat',
+      target: this.selectedChatEventEditorTarget(record, state),
+      title: record?.title ?? state?.eventTitle ?? session?.item.title ?? null,
+      timeframe: record?.timeframe ?? null,
+      startAtIso: record?.startAtIso ?? null,
+      endAtIso: record?.endAtIso ?? null,
+      mode: record?.mode ?? null,
+      canEdit: this.canEditSelectedChatEvent(record, state)
+    });
   }
 
   protected openSelectedChatSubEventResource(
@@ -763,9 +924,32 @@ export class EventChatPopupComponent implements OnDestroy {
       return;
     }
     this.chatThreadSmartList?.closeMenu();
+    if (!openExplore && !assetViewId) {
+      const ownerId = `${state.eventId ?? this.chatOwnerParts(session.item).eventId}`.trim();
+      const subEventId = `${state.subEvent.id ?? ''}`.trim();
+      if (!ownerId || !subEventId) {
+        return;
+      }
+      this.resourcePopupStore.requestSubEventResourcePopup({
+        type,
+        ownerId,
+        parentTitle: `${state.eventTitle ?? session.item.title ?? ''}`.trim() || session.item.title,
+        subEventId,
+        subEventHeader: {
+          name: state.subEvent.name,
+          title: state.subEvent.name,
+          description: state.subEvent.description,
+          location: state.subEvent.location,
+          startAt: state.subEvent.startAt,
+          endAt: state.subEvent.endAt
+        },
+        group: this.selectedChatResourceRequestGroup(type)
+      });
+      return;
+    }
     this.memberMenuStore.requestActivitiesNavigation({
       type: 'chatResource',
-      ownerId: state.eventId ?? session.item.eventId,
+      ownerId: state.eventId ?? this.chatOwnerParts(session.item).eventId,
       item: session.item,
       resourceType: type,
       subEvent: state.subEvent,
@@ -780,6 +964,27 @@ export class EventChatPopupComponent implements OnDestroy {
           }
         : null
       });
+  }
+
+  private selectedChatResourceRequestGroup(type: SubEventResourceFilter): SubEventResourcePopupRequest['group'] {
+    const state = this.selectedChatNavigationState;
+    const group = state?.group;
+    if (!state || !group) {
+      return null;
+    }
+    const isMembersPopup = type === 'Members';
+    return {
+      id: group.id,
+      groupLabel: group.label,
+      source: group.source ?? null,
+      accepted: isMembersPopup ? undefined : group.accepted,
+      pending: isMembersPopup ? undefined : group.pending,
+      capacityMin: group.capacityMin,
+      capacityMax: group.capacityMax,
+      canManage: isMembersPopup
+        ? this.canEditSelectedChatEvent(this.selectedChatEventRecord(`${state.eventId ?? ''}`), state)
+        : undefined
+    };
   }
 
   protected selectedChatContextMenuGroups(): AppUiTypes.PopupHeaderControlGroup[] {
@@ -801,6 +1006,10 @@ export class EventChatPopupComponent implements OnDestroy {
 
   protected openSelectedChatMenuControl(control: AppUiTypes.PopupHeaderControl, event?: Event): void {
     event?.stopPropagation();
+    if (control.id === 'app-support-share-workspace') {
+      void this.shareCurrentWorkspaceWithSupport();
+      return;
+    }
     const resourceType = this.popupControlResourceType(control);
     if (resourceType) {
       this.openSelectedChatSubEventResource(resourceType, event);
@@ -1094,12 +1303,12 @@ export class EventChatPopupComponent implements OnDestroy {
     return total > 0 ? Math.round((option.votes.length / total) * 100) : 0;
   }
 
-  protected selectedPollOptionId(message: ContractTypes.ChatPopupMessage, attachment: ContractTypes.ChatMessageAttachment): string {
+  protected selectedPollOptionId(message: ContractTypes.ChatMessageDto, attachment: ContractTypes.ChatMessageAttachment): string {
     const messageId = `${message.id ?? ''}`.trim();
     return messageId ? this.selectedPollOptionByMessageId[messageId] || this.pollOwnVoteOptionId(attachment) : '';
   }
 
-  protected openPollVoteDialog(message: ContractTypes.ChatPopupMessage, attachment: ContractTypes.ChatMessageAttachment, event?: Event): void {
+  protected openPollVoteDialog(message: ContractTypes.ChatMessageDto, attachment: ContractTypes.ChatMessageAttachment, event?: Event): void {
     event?.stopPropagation();
     const messageId = `${message.id ?? ''}`.trim();
     const attachmentId = `${attachment.id ?? ''}`.trim();
@@ -1120,11 +1329,11 @@ export class EventChatPopupComponent implements OnDestroy {
   }
 
   protected pollVoteDialogContext(): {
-    message: ContractTypes.ChatPopupMessage;
+    message: ContractTypes.ChatMessageDto;
     attachment: ContractTypes.ChatMessageAttachment;
     poll: ChatPollState;
   } | null {
-    const message = this.allMessages.find(item => item.id === this.pollVoteMessageId) ?? null;
+    const message = this.messages.find(item => item.id === this.pollVoteMessageId) ?? null;
     const attachment = message?.attachments?.find(item => item.id === this.pollVoteAttachmentId && item.type === 'poll') ?? null;
     return message && attachment
       ? {
@@ -1136,7 +1345,7 @@ export class EventChatPopupComponent implements OnDestroy {
   }
 
   protected selectPollOption(
-    message: ContractTypes.ChatPopupMessage,
+    message: ContractTypes.ChatMessageDto,
     attachment: ContractTypes.ChatMessageAttachment,
     option: ChatPollOptionState,
     event?: Event
@@ -1153,7 +1362,7 @@ export class EventChatPopupComponent implements OnDestroy {
     };
   }
 
-  protected canSubmitPollVote(message: ContractTypes.ChatPopupMessage, attachment: ContractTypes.ChatMessageAttachment): boolean {
+  protected canSubmitPollVote(message: ContractTypes.ChatMessageDto, attachment: ContractTypes.ChatMessageAttachment): boolean {
     const messageId = `${message.id ?? ''}`.trim();
     if (!messageId) {
       return false;
@@ -1163,7 +1372,7 @@ export class EventChatPopupComponent implements OnDestroy {
   }
 
   protected submitPollVote(
-    message: ContractTypes.ChatPopupMessage,
+    message: ContractTypes.ChatMessageDto,
     attachment: ContractTypes.ChatMessageAttachment,
     event?: Event
   ): void {
@@ -1179,7 +1388,7 @@ export class EventChatPopupComponent implements OnDestroy {
     }
     const activeUserId = this.activeUserId() || 'self';
     const presentation = this.resolveOptimisticSenderPresentation(activeUserId);
-    const currentMessage = this.allMessages.find(item => item.id === messageId) ?? { ...message, id: messageId };
+    const currentMessage = this.messages.find(item => item.id === messageId) ?? { ...message, id: messageId };
     const poll = this.parsePollState(attachment);
     const nextPoll: ChatPollState = {
       ...poll,
@@ -1203,7 +1412,7 @@ export class EventChatPopupComponent implements OnDestroy {
       description: this.serializePollState(nextPoll)
     };
     const nextAttachments = (currentMessage.attachments ?? []).map(item => item.id === attachment.id ? nextAttachment : { ...item });
-    const optimisticMessage: ContractTypes.ChatPopupMessage = {
+    const optimisticMessage: ContractTypes.ChatMessageDto = {
       ...currentMessage,
       attachments: nextAttachments,
       deliveryState: 'pending'
@@ -1255,11 +1464,47 @@ export class EventChatPopupComponent implements OnDestroy {
 
   protected shareFirstAvailableAsset(event?: Event): void {
     event?.stopPropagation();
+    const state = this.selectedChatNavigationState;
     const resourceType = this.firstAvailableAssetType();
+    if (state?.subEvent) {
+      this.openSelectedChatSubEventResource(resourceType ?? 'Car', event, true);
+      return;
+    }
     this.memberMenuStore.requestActivitiesNavigation({
       type: 'assetExplore',
       assetType: resourceType ?? 'Car'
     });
+  }
+
+  private async shareCurrentWorkspaceWithSupport(): Promise<void> {
+    const session = this.session();
+    const activeUserId = this.activeUserId();
+    if (!session || session.item.channelType !== 'appSupport' || !activeUserId) {
+      return;
+    }
+    const targetUrl = this.location.path(true) || '/';
+    const token = await this.shareTokensService.createToken({
+      kind: 'adminHelp',
+      entityId: targetUrl,
+      ownerUserId: activeUserId
+    });
+    if (!token) {
+      this.dialogStore.openInfo('The workspace share token could not be created.', {
+        title: 'App support'
+      });
+      return;
+    }
+    this.sendLocalAttachmentMessage({
+      id: `adminHelp:${activeUserId}:${Date.now()}`,
+      type: 'link',
+      entityId: token,
+      ownerUserId: activeUserId,
+      title: 'Shared workspace',
+      subtitle: 'MyScoutee support session',
+      description: 'MyScoutee admin can open the current app view from this token.',
+      url: this.location.prepareExternalUrl(`/admin/help/${encodeURIComponent(token)}`),
+      previewUrl: null
+    }, 'Shared my current workspace with MyScoutee support.');
   }
 
   protected chatAttachmentIcon(attachment: ContractTypes.ChatMessageAttachment): string {
@@ -1325,7 +1570,7 @@ export class EventChatPopupComponent implements OnDestroy {
     }
     if (attachment.type === 'event') {
       const attachmentEventId = `${attachment.entityId ?? ''}`.trim();
-      const contextEventId = `${this.selectedChatNavigationState?.eventId ?? this.session()?.item.eventId ?? ''}`.trim();
+      const contextEventId = `${this.selectedChatNavigationState?.eventId ?? this.selectedChatOwnerParts().eventId}`.trim();
       if (!attachmentEventId || attachmentEventId === contextEventId) {
         this.openSelectedChatEvent();
         return;
@@ -1340,7 +1585,7 @@ export class EventChatPopupComponent implements OnDestroy {
     this.openExternalAttachmentUrl(attachment);
   }
 
-  protected selectMessage(message: ContractTypes.ChatPopupMessage, event?: Event): void {
+  protected selectMessage(message: ContractTypes.ChatMessageDto, event?: Event): void {
     event?.stopPropagation();
     const messageId = `${message.id ?? ''}`.trim();
     if (!messageId) {
@@ -1360,7 +1605,7 @@ export class EventChatPopupComponent implements OnDestroy {
     this.emojiPickerMessageId = '';
   }
 
-  protected startMessageLongPress(message: ContractTypes.ChatPopupMessage): void {
+  protected startMessageLongPress(message: ContractTypes.ChatMessageDto): void {
     const messageId = `${message.id ?? ''}`.trim();
     if (!messageId || message.deletedAtIso) {
       return;
@@ -1386,7 +1631,7 @@ export class EventChatPopupComponent implements OnDestroy {
     this.messageLongPressTimer = null;
   }
 
-  protected toggleQuickReactions(message: ContractTypes.ChatPopupMessage, event?: Event): void {
+  protected toggleQuickReactions(message: ContractTypes.ChatMessageDto, event?: Event): void {
     event?.stopPropagation();
     const messageId = `${message.id ?? ''}`.trim();
     if (!messageId) {
@@ -1405,7 +1650,7 @@ export class EventChatPopupComponent implements OnDestroy {
     }
   }
 
-  protected openEmojiPicker(message: ContractTypes.ChatPopupMessage, event?: Event): void {
+  protected openEmojiPicker(message: ContractTypes.ChatMessageDto, event?: Event): void {
     event?.stopPropagation();
     const messageId = `${message.id ?? ''}`.trim();
     if (!messageId) {
@@ -1440,7 +1685,7 @@ export class EventChatPopupComponent implements OnDestroy {
     return this.emojiPickerCategories.find(category => category.key === this.emojiPickerCategory)?.label ?? 'Smileys & people';
   }
 
-  protected toggleReaction(message: ContractTypes.ChatPopupMessage, emoji: string, event?: Event): void {
+  protected toggleReaction(message: ContractTypes.ChatMessageDto, emoji: string, event?: Event): void {
     event?.stopPropagation();
     const messageId = `${message.id ?? ''}`.trim();
     if (!messageId) {
@@ -1449,13 +1694,13 @@ export class EventChatPopupComponent implements OnDestroy {
     }
     const activeUserId = this.activeUserId() || 'self';
     const presentation = this.resolveOptimisticSenderPresentation(activeUserId);
-    const currentMessage = this.allMessages.find(item => item.id === messageId) ?? { ...message, id: messageId };
+    const currentMessage = this.messages.find(item => item.id === messageId) ?? { ...message, id: messageId };
     const withoutMine = (currentMessage.reactions ?? []).filter(reaction => !this.isOwnReaction(reaction, activeUserId, presentation));
     const sameReaction = (currentMessage.reactions ?? []).some(reaction =>
       this.isOwnReaction(reaction, activeUserId, presentation) && reaction.emoji === emoji
     );
     const reactionEmoji = sameReaction ? null : emoji;
-    const optimisticMessage: ContractTypes.ChatPopupMessage = {
+    const optimisticMessage: ContractTypes.ChatMessageDto = {
       ...currentMessage,
       deliveryState: 'pending',
       reactions: reactionEmoji ? [
@@ -1502,7 +1747,7 @@ export class EventChatPopupComponent implements OnDestroy {
     }
   }
 
-  protected reactionSummary(message: ContractTypes.ChatPopupMessage): Array<{ emoji: string; count: number }> {
+  protected reactionSummary(message: ContractTypes.ChatMessageDto): Array<{ emoji: string; count: number }> {
     const counts = new Map<string, number>();
     for (const reaction of message.reactions ?? []) {
       counts.set(reaction.emoji, (counts.get(reaction.emoji) ?? 0) + 1);
@@ -1513,7 +1758,7 @@ export class EventChatPopupComponent implements OnDestroy {
   private isOwnReaction(
     reaction: ContractTypes.ChatMessageReaction,
     activeUserId: string,
-    presentation: Pick<ContractTypes.ChatPopupMessage, 'sender' | 'senderAvatar'>
+    presentation: Pick<ContractTypes.ChatMessageDto, 'sender' | 'senderAvatar'>
   ): boolean {
     const reactionUserId = `${reaction.userId ?? ''}`.trim();
     const knownOwnIds = new Set([
@@ -1530,7 +1775,7 @@ export class EventChatPopupComponent implements OnDestroy {
     return reactionName === 'you';
   }
 
-  protected openReactionDetails(message: ContractTypes.ChatPopupMessage, event?: Event): void {
+  protected openReactionDetails(message: ContractTypes.ChatMessageDto, event?: Event): void {
     event?.stopPropagation();
     if ((message.reactions?.length ?? 0) === 0) {
       this.reactionDetailsMessageId = '';
@@ -1544,30 +1789,30 @@ export class EventChatPopupComponent implements OnDestroy {
     this.reactionDetailsMessageId = '';
   }
 
-  protected reactionDetailsMessage(): ContractTypes.ChatPopupMessage | null {
+  protected reactionDetailsMessage(): ContractTypes.ChatMessageDto | null {
     const messageId = `${this.reactionDetailsMessageId ?? ''}`.trim();
     if (!messageId) {
       return null;
     }
-    const message = this.allMessages.find(item => item.id === messageId) ?? null;
+    const message = this.messages.find(item => item.id === messageId) ?? null;
     return message && (message.reactions?.length ?? 0) > 0 ? message : null;
   }
 
-  protected emojiPickerMessage(): ContractTypes.ChatPopupMessage | null {
+  protected emojiPickerMessage(): ContractTypes.ChatMessageDto | null {
     const messageId = `${this.emojiPickerMessageId ?? ''}`.trim();
     if (!messageId) {
       return null;
     }
-    return this.allMessages.find(message => message.id === messageId && !message.deletedAtIso) ?? null;
+    return this.messages.find(message => message.id === messageId && !message.deletedAtIso) ?? null;
   }
 
-  protected reactionDetailsRows(message: ContractTypes.ChatPopupMessage): ContractTypes.ChatMessageReaction[] {
+  protected reactionDetailsRows(message: ContractTypes.ChatMessageDto): ContractTypes.ChatMessageReaction[] {
     return this.reactionDetailsFilter === 'all'
       ? (message.reactions ?? [])
       : (message.reactions ?? []).filter(reaction => reaction.emoji === this.reactionDetailsFilter);
   }
 
-  protected setReplyTarget(message: ContractTypes.ChatPopupMessage, event?: Event): void {
+  protected setReplyTarget(message: ContractTypes.ChatMessageDto, event?: Event): void {
     event?.stopPropagation();
     if (message.deletedAtIso) {
       return;
@@ -1581,13 +1826,13 @@ export class EventChatPopupComponent implements OnDestroy {
     this.focusComposerSoon();
   }
 
-  protected replyPreviewText(replyTo: ContractTypes.ChatPopupMessage['replyTo']): string {
+  protected replyPreviewText(replyTo: ContractTypes.ChatMessageDto['replyTo']): string {
     const preview = this.replyPreviewParts(replyTo);
     return preview.meta ? `${preview.title} · ${preview.meta}` : preview.title;
   }
 
-  protected replyPreviewParts(replyTo: ContractTypes.ChatPopupMessage['replyTo']): { title: string; meta: string } {
-    const sourceMessage = this.allMessages.find(message => message.id === `${replyTo?.id ?? ''}`.trim());
+  protected replyPreviewParts(replyTo: ContractTypes.ChatMessageDto['replyTo']): { title: string; meta: string } {
+    const sourceMessage = this.messages.find(message => message.id === `${replyTo?.id ?? ''}`.trim());
     const sourceAttachment = sourceMessage?.attachments?.[0];
     if (sourceAttachment?.type === 'event') {
       return this.attachmentReferenceParts(sourceAttachment, 'Event');
@@ -1602,7 +1847,7 @@ export class EventChatPopupComponent implements OnDestroy {
     return { title: text === 'Sent an image' ? 'Image' : text || 'Message', meta: '' };
   }
 
-  protected jumpToReplySource(message: ContractTypes.ChatPopupMessage, event?: Event): void {
+  protected jumpToReplySource(message: ContractTypes.ChatMessageDto, event?: Event): void {
     event?.stopPropagation();
     const targetId = `${message.replyTo?.id ?? ''}`.trim();
     if (!targetId) {
@@ -1630,7 +1875,7 @@ export class EventChatPopupComponent implements OnDestroy {
     this.replyTarget = null;
   }
 
-  protected beginEditMessage(message: ContractTypes.ChatPopupMessage, event?: Event): void {
+  protected beginEditMessage(message: ContractTypes.ChatMessageDto, event?: Event): void {
     event?.stopPropagation();
     if (!message.mine || message.deletedAtIso) {
       return;
@@ -1648,7 +1893,7 @@ export class EventChatPopupComponent implements OnDestroy {
     this.resizeComposerTextareaSoon();
   }
 
-  protected unsendMessage(message: ContractTypes.ChatPopupMessage, event?: Event): void {
+  protected unsendMessage(message: ContractTypes.ChatMessageDto, event?: Event): void {
     event?.stopPropagation();
     if (!message.mine) {
       return;
@@ -1681,7 +1926,7 @@ export class EventChatPopupComponent implements OnDestroy {
     }
   }
 
-  protected deletedMessageLabel(message: ContractTypes.ChatPopupMessage): string {
+  protected deletedMessageLabel(message: ContractTypes.ChatMessageDto): string {
     if (message.deliveryState === 'pending') {
       return 'Deleting message';
     }
@@ -1690,7 +1935,7 @@ export class EventChatPopupComponent implements OnDestroy {
       : `${message.deletedByName || message.sender} deleted this message`;
   }
 
-  protected togglePinMessage(message: ContractTypes.ChatPopupMessage, event?: Event): void {
+  protected togglePinMessage(message: ContractTypes.ChatMessageDto, event?: Event): void {
     event?.stopPropagation();
     const activeUserId = this.activeUserId() || 'self';
     const pinned = !message.pinnedAtIso;
@@ -1718,8 +1963,8 @@ export class EventChatPopupComponent implements OnDestroy {
     }
   }
 
-  protected pinnedMessages(): ContractTypes.ChatPopupMessage[] {
-    return this.allMessages
+  protected pinnedMessages(): ContractTypes.ChatMessageDto[] {
+    return this.messages
       .filter(message => !!message.pinnedAtIso)
       .sort((first, second) => AppUtils.toSortableDate(second.pinnedAtIso ?? '') - AppUtils.toSortableDate(first.pinnedAtIso ?? ''));
   }
@@ -1733,7 +1978,7 @@ export class EventChatPopupComponent implements OnDestroy {
     this.pinnedDialogOpen = false;
   }
 
-  protected selectPinnedMessage(message: ContractTypes.ChatPopupMessage): void {
+  protected selectPinnedMessage(message: ContractTypes.ChatMessageDto): void {
     this.selectedMessageId = message.id;
     this.selectedMessageToolsDown = false;
     this.highlightedMessageId = message.id;
@@ -1747,7 +1992,7 @@ export class EventChatPopupComponent implements OnDestroy {
     }, 1200);
   }
 
-  protected reportMessage(message: ContractTypes.ChatPopupMessage, event?: Event): void {
+  protected reportMessage(message: ContractTypes.ChatMessageDto, event?: Event): void {
     event?.stopPropagation();
     this.chatThreadSmartList?.closeMenu();
     if (!this.canReportMessage(message)) {
@@ -1755,7 +2000,7 @@ export class EventChatPopupComponent implements OnDestroy {
     }
     const session = this.session();
     const target = this.resolveChatReportTarget(message);
-    const eventId = `${session?.item.eventId ?? session?.item.id ?? ''}`.trim();
+    const eventId = `${this.chatOwnerParts(session?.item ?? null).eventId}`.trim();
     if (!target || !eventId) {
       return;
     }
@@ -1777,7 +2022,7 @@ export class EventChatPopupComponent implements OnDestroy {
     });
   }
 
-  protected canReportMessage(message: ContractTypes.ChatPopupMessage): boolean {
+  protected canReportMessage(message: ContractTypes.ChatMessageDto): boolean {
     if (this.isAdminRoleActive() || message.mine) {
       return false;
     }
@@ -1793,7 +2038,7 @@ export class EventChatPopupComponent implements OnDestroy {
     return activeUserId === 'admin' || activeUserId.startsWith('admin-');
   }
 
-  private resolveChatReportTarget(message: ContractTypes.ChatPopupMessage): { userId: string; name: string } | null {
+  private resolveChatReportTarget(message: ContractTypes.ChatMessageDto): { userId: string; name: string } | null {
     if (message.mine) {
       return null;
     }
@@ -1808,11 +2053,11 @@ export class EventChatPopupComponent implements OnDestroy {
     return null;
   }
 
-  protected messageHasViewableAttachment(message: ContractTypes.ChatPopupMessage): boolean {
+  protected messageHasViewableAttachment(message: ContractTypes.ChatMessageDto): boolean {
     return this.resolveViewableMessageAttachment(message) !== null;
   }
 
-  protected viewSharedMessage(message: ContractTypes.ChatPopupMessage, event?: Event): void {
+  protected viewSharedMessage(message: ContractTypes.ChatMessageDto, event?: Event): void {
     event?.stopPropagation();
     const attachment = this.resolveViewableMessageAttachment(message);
     if (!attachment) {
@@ -1929,7 +2174,7 @@ export class EventChatPopupComponent implements OnDestroy {
       mimeType: file.type || null,
       sizeBytes: file.size
     };
-    const imageMessage: ContractTypes.ChatPopupMessage = {
+    const imageMessage: ContractTypes.ChatMessageDto = {
       id: clientId,
       clientId,
       sender: senderPresentation.sender,
@@ -1987,7 +2232,7 @@ export class EventChatPopupComponent implements OnDestroy {
     const optimisticMessage = {
       ...this.buildOptimisticChatMessage(caption),
       attachments: [{ ...attachment }]
-    } satisfies ContractTypes.ChatPopupMessage;
+    } satisfies ContractTypes.ChatMessageDto;
     const sessionKey = `${session.item.id}:${session.openedAtIso}`;
     this.draftMessage = '';
     this.replyTarget = null;
@@ -2023,7 +2268,7 @@ export class EventChatPopupComponent implements OnDestroy {
 
   private buildCurrentEventAttachment(): ContractTypes.ChatMessageAttachment | null {
     const session = this.session();
-    const eventId = `${this.selectedChatNavigationState?.eventId ?? session?.item.eventId ?? ''}`.trim();
+    const eventId = `${this.selectedChatNavigationState?.eventId ?? this.chatOwnerParts(session?.item ?? null).eventId}`.trim();
     const title = `${this.selectedChatNavigationState?.eventTitle ?? session?.item.title ?? ''}`.trim();
     if (!eventId || !title) {
       return null;
@@ -2249,7 +2494,7 @@ export class EventChatPopupComponent implements OnDestroy {
     });
   }
 
-  private resolveViewableMessageAttachment(message: ContractTypes.ChatPopupMessage): ContractTypes.ChatMessageAttachment | null {
+  private resolveViewableMessageAttachment(message: ContractTypes.ChatMessageDto): ContractTypes.ChatMessageAttachment | null {
     if (message.deletedAtIso) {
       return null;
     }
@@ -2415,7 +2660,7 @@ export class EventChatPopupComponent implements OnDestroy {
       return;
     }
     const session = this.session();
-    this.allMessages = this.allMessages.map(message => message.id === editingMessageId
+    this.messages = this.messages.map(message => message.id === editingMessageId
       ? {
           ...message,
           text: convertedText,
@@ -2443,57 +2688,64 @@ export class EventChatPopupComponent implements OnDestroy {
     }
   }
 
+  private async loadChatThreadPage(
+    query: ListQuery<ChatThreadFilters>,
+    sessionKey: string
+  ): Promise<PageResult<ContractTypes.ChatMessageDto>> {
+    if (query.page === 0 && this.initialChatLoadedSessionKey !== sessionKey) {
+      return this.loadInitialChatThreadPage(query, sessionKey);
+    }
+    const session = this.session();
+    if (!session || this.loadedSessionKey !== sessionKey) {
+      return this.emptyChatThreadPage();
+    }
+
+    try {
+      const messagesPage = await this.chatsService.loadChatMessagesResult(session.item, query);
+      if (this.loadedSessionKey !== sessionKey) {
+        return this.emptyChatThreadPage();
+      }
+      const result = this.applyChatThreadMessagesPage(messagesPage);
+      this.rebuildVisibleReadReceipts();
+      this.applyLoadedChatReadReceipt(session.item, messagesPage);
+      return result;
+    } catch {
+      return this.emptyChatThreadPage();
+    }
+  }
+
   private async loadInitialChatThreadPage(
     query: ListQuery<ChatThreadFilters>,
     sessionKey: string
-  ): Promise<PageResult<ContractTypes.ChatPopupMessage>> {
+  ): Promise<PageResult<ContractTypes.ChatMessageDto>> {
     const session = this.session();
     if (!session || this.loadedSessionKey !== sessionKey) {
-      return this.chatThreadPageResult(query);
+      return this.emptyChatThreadPage();
     }
     this.chatInitialLoadPending = true;
-    this.clearOpenChatUnreadState();
     this.cdr.markForCheck();
     try {
-      const initialChat = session.item;
-      const resolvedChatPromise = this.chatsService
-        .resolveRepositoryEventServiceChat(initialChat)
-        .catch(() => null);
-      const messagesPromise = this.chatsService.loadChatMessagesResult(initialChat);
-      const [resolvedChat, messagesPage] = await Promise.all([resolvedChatPromise, messagesPromise]);
+      const chat = session.item;
+      const messagesPage = await this.chatsService.loadChatMessagesResult(chat, query);
       if (this.loadedSessionKey !== sessionKey) {
-        return this.chatThreadPageResult(query);
+        return this.emptyChatThreadPage();
       }
-      const chat = this.applyResolvedInitialChatItem(initialChat, resolvedChat, sessionKey);
-      if (this.loadedSessionKey !== sessionKey) {
-        return this.chatThreadPageResult(query);
-      }
-      this.chatHeaderControlsHydrated = true;
-      this.syncSelectedChatHeader(chat, {
-        hydrateControls: true,
-        baseContext: messagesPage.context ?? null
-      });
-      void this.refreshSelectedChatHeader(chat, sessionKey);
-      this.allMessages = this.normalizeChatMessages(messagesPage.items)
-        .sort((first, second) => AppUtils.toSortableDate(second.sentAtIso) - AppUtils.toSortableDate(first.sentAtIso));
+      const result = this.applyChatThreadMessagesPage(messagesPage, { replace: true });
       this.rebuildVisibleReadReceipts();
       this.syncEventChatSummaryFromLatestMessage();
       this.initialChatLoadedSessionKey = sessionKey;
-      this.markLoadedChatThreadAsRead(chat, this.allMessages);
+      this.applyLoadedChatReadReceipt(chat, messagesPage);
       await this.startLiveChatUpdates(chat, sessionKey);
-      return this.chatThreadPageResult(query);
+      return result;
     } catch {
       if (this.loadedSessionKey !== sessionKey) {
-        return this.chatThreadPageResult(query);
+        return this.emptyChatThreadPage();
       }
-      this.chatHeaderControlsHydrated = true;
-      this.syncSelectedChatHeader(session.item, { hydrateControls: true });
-      void this.refreshSelectedChatHeader(session.item, sessionKey);
-      this.allMessages = [];
+      this.messages = [];
       this.rebuildVisibleReadReceipts();
       this.initialChatLoadedSessionKey = sessionKey;
       await this.startLiveChatUpdates(session.item, sessionKey);
-      return this.chatThreadPageResult(query);
+      return this.emptyChatThreadPage();
     } finally {
       if (this.loadedSessionKey === sessionKey) {
         this.chatInitialLoadPending = false;
@@ -2502,46 +2754,44 @@ export class EventChatPopupComponent implements OnDestroy {
     }
   }
 
-  private applyResolvedInitialChatItem(
-    chat: ChatDTO,
-    resolvedChat: ChatDTO | null,
-    sessionKey: string
-  ): ChatDTO {
-    if (!resolvedChat || this.loadedSessionKey !== sessionKey || resolvedChat.id !== chat.id) {
-      return chat;
-    }
-    this.activitiesStore.patchEventChatSessionItem(current =>
-      current.id === chat.id
-        ? resolvedChat
-        : current
+  private applyChatThreadMessagesPage(
+    page: PageResult<ContractTypes.ChatMessageDto, ChatThreadPageContext>,
+    options: { replace?: boolean } = {}
+  ): PageResult<ContractTypes.ChatMessageDto> {
+    const items = this.normalizeChatMessages(page.items)
+      .sort((first, second) =>
+        AppUtils.toSortableDate(second.sentAtIso) - AppUtils.toSortableDate(first.sentAtIso)
+      );
+    this.messages = this.deduplicateChatMessages(options.replace === true
+      ? items
+      : [...this.messages, ...items]
+    ).sort((first, second) =>
+      AppUtils.toSortableDate(second.sentAtIso) - AppUtils.toSortableDate(first.sentAtIso)
     );
-    if (this.chatHeaderControlsHydrated) {
-      this.syncSelectedChatHeader(resolvedChat, { hydrateControls: true });
-      void this.refreshSelectedChatHeader(resolvedChat, sessionKey);
-    }
-    return resolvedChat;
-  }
-
-  private chatThreadPageResult(query: ListQuery<ChatThreadFilters>): PageResult<ContractTypes.ChatPopupMessage> {
-    const total = this.allMessages.length;
-    const pageSize = Math.max(1, Math.trunc(Number(query.pageSize) || this.chatHistoryPageSize));
-    const page = Math.max(0, Math.trunc(Number(query.page) || 0));
-    let start = 0;
-    let end = 0;
-
-    if (page === 0) {
-      end = Math.min(total, pageSize);
-    } else {
-      const initialBlockSize = Math.max(this.chatHistoryPageSize, this.chatInitialLoadMessageCount);
-      start = Math.min(total, initialBlockSize + ((page - 1) * this.chatHistoryPageSize));
-      end = Math.min(total, start + this.chatHistoryPageSize);
-    }
-
+    this.visibleChatThreadTotal = this.messages.length;
+    const pageTotal = Math.trunc(Number(page.total) || 0);
+    this.chatThreadKnownTotal = options.replace === true
+      ? Math.max(this.messages.length, pageTotal)
+      : Math.max(this.chatThreadKnownTotal, this.messages.length, pageTotal);
     return {
-      items: this.allMessages.slice(start, end),
-      total,
+      items,
+      total: this.chatThreadKnownTotal,
+      nextCursor: page.nextCursor ?? null,
       context: this.chatHeaderContext ?? undefined
     };
+  }
+
+  private emptyChatThreadPage(): PageResult<ContractTypes.ChatMessageDto> {
+    return {
+      items: [],
+      total: this.chatThreadVisibleTotal(),
+      nextCursor: null,
+      context: this.chatHeaderContext ?? undefined
+    };
+  }
+
+  private chatThreadVisibleTotal(): number {
+    return Math.max(this.chatThreadKnownTotal, this.messages.length);
   }
 
   private syncChatThreadQuery(): void {
@@ -2575,7 +2825,7 @@ export class EventChatPopupComponent implements OnDestroy {
     this.clearRemoteTypingIndicators();
   }
 
-  private buildOptimisticChatMessage(text: string): ContractTypes.ChatPopupMessage {
+  private buildOptimisticChatMessage(text: string): ContractTypes.ChatMessageDto {
     const sentAt = new Date();
     const activeUserId = this.activeUserId();
     const senderPresentation = this.resolveOptimisticSenderPresentation(activeUserId);
@@ -2595,10 +2845,10 @@ export class EventChatPopupComponent implements OnDestroy {
       replyTo: this.replyTarget
         ? { ...this.replyTarget }
         : null
-    } satisfies ContractTypes.ChatPopupMessage;
+    } satisfies ContractTypes.ChatMessageDto;
   }
 
-  private isPendingOutgoingChatMessage(message: ContractTypes.ChatPopupMessage): boolean {
+  private isPendingOutgoingChatMessage(message: ContractTypes.ChatMessageDto): boolean {
     const messageId = `${message.id ?? ''}`.trim();
     const clientId = `${message.clientId ?? ''}`.trim();
     return message.deliveryState === 'pending'
@@ -2607,14 +2857,14 @@ export class EventChatPopupComponent implements OnDestroy {
       && messageId.startsWith('pending:');
   }
 
-  private confirmPendingChatMessage(pendingMessageId: string, message: ContractTypes.ChatPopupMessage): void {
+  private confirmPendingChatMessage(pendingMessageId: string, message: ContractTypes.ChatMessageDto): void {
     if (this.replacePendingMessage(pendingMessageId, message, true)) {
       return;
     }
     this.mergeIncomingChatMessage(message);
   }
 
-  private mergeIncomingChatMessage(message: ContractTypes.ChatPopupMessage): void {
+  private mergeIncomingChatMessage(message: ContractTypes.ChatMessageDto): void {
     const normalizedMessage = this.normalizeChatMessage(message);
     const shouldStickToEnd = normalizedMessage.mine || this.isChatThreadNearEnd();
     if (this.confirmPendingStoredMessageEcho(normalizedMessage)) {
@@ -2625,12 +2875,12 @@ export class EventChatPopupComponent implements OnDestroy {
       this.replacePendingMessage(matchedPendingId, normalizedMessage, shouldStickToEnd);
       return;
     }
-    if (this.allMessages.some(existingMessage => this.isSameChatMessage(existingMessage, normalizedMessage))) {
+    if (this.messages.some(existingMessage => this.isSameChatMessage(existingMessage, normalizedMessage))) {
       this.replaceExistingChatMessage(normalizedMessage);
       return;
     }
     this.flagFreshMessage(normalizedMessage.id);
-    this.allMessages = this.deduplicateChatMessages([...this.allMessages, normalizedMessage])
+    this.messages = this.deduplicateChatMessages([...this.messages, normalizedMessage])
       .sort((first, second) => AppUtils.toSortableDate(second.sentAtIso) - AppUtils.toSortableDate(first.sentAtIso));
     this.rebuildVisibleReadReceipts();
     this.syncEventChatSummaryFromMessage(normalizedMessage);
@@ -2640,10 +2890,10 @@ export class EventChatPopupComponent implements OnDestroy {
     this.cdr.markForCheck();
   }
 
-  private replaceExistingChatMessage(message: ContractTypes.ChatPopupMessage): void {
+  private replaceExistingChatMessage(message: ContractTypes.ChatMessageDto): void {
     const normalizedMessage = this.normalizeChatMessage(message);
     let changed = false;
-    this.allMessages = this.allMessages.map(existingMessage => {
+    this.messages = this.messages.map(existingMessage => {
       if (!this.isSameChatMessage(existingMessage, normalizedMessage)) {
         return existingMessage;
       }
@@ -2657,7 +2907,7 @@ export class EventChatPopupComponent implements OnDestroy {
     if (!changed) {
       return;
     }
-    this.allMessages = this.deduplicateChatMessages(this.allMessages)
+    this.messages = this.deduplicateChatMessages(this.messages)
       .sort((first, second) => AppUtils.toSortableDate(second.sentAtIso) - AppUtils.toSortableDate(first.sentAtIso));
     this.rebuildVisibleReadReceipts();
     this.syncEventChatSummaryFromMessage(normalizedMessage);
@@ -2665,12 +2915,12 @@ export class EventChatPopupComponent implements OnDestroy {
     this.cdr.markForCheck();
   }
 
-  private confirmPendingStoredMessageEcho(message: ContractTypes.ChatPopupMessage): boolean {
+  private confirmPendingStoredMessageEcho(message: ContractTypes.ChatMessageDto): boolean {
     const messageId = `${message.id ?? ''}`.trim();
     if (!messageId) {
       return false;
     }
-    const existing = this.allMessages.find(item => item.id === messageId);
+    const existing = this.messages.find(item => item.id === messageId);
     if (!existing || existing.deliveryState !== 'pending') {
       return false;
     }
@@ -2681,8 +2931,8 @@ export class EventChatPopupComponent implements OnDestroy {
   }
 
   private isSameChatMessage(
-    first: ContractTypes.ChatPopupMessage,
-    second: ContractTypes.ChatPopupMessage
+    first: ContractTypes.ChatMessageDto,
+    second: ContractTypes.ChatMessageDto
   ): boolean {
     const firstId = `${first.id ?? ''}`.trim();
     const secondId = `${second.id ?? ''}`.trim();
@@ -2707,8 +2957,8 @@ export class EventChatPopupComponent implements OnDestroy {
       && this.chatMessageAttachmentIdentity(first) === this.chatMessageAttachmentIdentity(second);
   }
 
-  private deduplicateChatMessages(messages: readonly ContractTypes.ChatPopupMessage[]): ContractTypes.ChatPopupMessage[] {
-    const deduped: ContractTypes.ChatPopupMessage[] = [];
+  private deduplicateChatMessages(messages: readonly ContractTypes.ChatMessageDto[]): ContractTypes.ChatMessageDto[] {
+    const deduped: ContractTypes.ChatMessageDto[] = [];
     const indexByKey = new Map<string, number>();
     for (const message of messages) {
       const keys = this.chatMessageIdentityKeys(message);
@@ -2727,7 +2977,7 @@ export class EventChatPopupComponent implements OnDestroy {
     return deduped;
   }
 
-  private chatMessageIdentityKeys(message: ContractTypes.ChatPopupMessage): string[] {
+  private chatMessageIdentityKeys(message: ContractTypes.ChatMessageDto): string[] {
     const id = `${message.id ?? ''}`.trim();
     const clientId = `${message.clientId ?? ''}`.trim();
     return [
@@ -2737,9 +2987,9 @@ export class EventChatPopupComponent implements OnDestroy {
   }
 
   private mergeDuplicateChatMessages(
-    existing: ContractTypes.ChatPopupMessage,
-    candidate: ContractTypes.ChatPopupMessage
-  ): ContractTypes.ChatPopupMessage {
+    existing: ContractTypes.ChatMessageDto,
+    candidate: ContractTypes.ChatMessageDto
+  ): ContractTypes.ChatMessageDto {
     const existingPending = existing.deliveryState === 'pending' || existing.deliveryState === 'timed-out';
     const candidatePending = candidate.deliveryState === 'pending' || candidate.deliveryState === 'timed-out';
     const preferred = candidatePending && !existingPending ? existing : candidate;
@@ -2753,7 +3003,7 @@ export class EventChatPopupComponent implements OnDestroy {
     };
   }
 
-  private chatMessageAttachmentIdentity(message: ContractTypes.ChatPopupMessage): string {
+  private chatMessageAttachmentIdentity(message: ContractTypes.ChatMessageDto): string {
     return (message.attachments ?? [])
       .map(attachment => [
         `${attachment.id ?? ''}`.trim(),
@@ -2790,8 +3040,7 @@ export class EventChatPopupComponent implements OnDestroy {
 
     this.mergeIncomingChatMessage(event.message);
     if (!event.message.mine) {
-      this.clearOpenChatUnreadState();
-      void this.chatsService.markChatRead(chat, [event.message.id]);
+      void this.markChatMessagesAsRead(chat, [event.message.id]);
     }
   }
 
@@ -2815,14 +3064,14 @@ export class EventChatPopupComponent implements OnDestroy {
     if (!read.userId || read.userId === this.activeUserId()) {
       return;
     }
-    const loadedMessageIds = new Set(this.allMessages.map(message => message.id));
+    const loadedMessageIds = new Set(this.messages.map(message => message.id));
     const matchedMessageIds = new Set((read.messageIds ?? []).filter(messageId => loadedMessageIds.has(messageId)));
     if (matchedMessageIds.size === 0) {
       return;
     }
 
     let changed = false;
-    this.allMessages = this.allMessages.map(message => {
+    this.messages = this.messages.map(message => {
       if (!message.mine || !matchedMessageIds.has(message.id)) {
         return message;
       }
@@ -2862,8 +3111,8 @@ export class EventChatPopupComponent implements OnDestroy {
     for (const key of Object.keys(this.visibleReadReceiptsByMessageId)) {
       delete this.visibleReadReceiptsByMessageId[key];
     }
-    for (let index = this.allMessages.length - 1; index >= 0; index -= 1) {
-      const message = this.allMessages[index];
+    for (let index = this.messages.length - 1; index >= 0; index -= 1) {
+      const message = this.messages[index];
       if (!message.mine) {
         continue;
       }
@@ -2874,7 +3123,7 @@ export class EventChatPopupComponent implements OnDestroy {
         this.latestVisibleReadMessageIdByReaderId[reader.id] = message.id;
       }
     }
-    for (const message of this.allMessages) {
+    for (const message of this.messages) {
       if (!message.mine || (message.readBy?.length ?? 0) === 0) {
         continue;
       }
@@ -2894,13 +3143,13 @@ export class EventChatPopupComponent implements OnDestroy {
     }
   }
 
-  private matchPendingMessageId(message: ContractTypes.ChatPopupMessage): string | null {
+  private matchPendingMessageId(message: ContractTypes.ChatMessageDto): string | null {
     if (!message.mine) {
       return null;
     }
     const normalizedClientId = `${message.clientId ?? ''}`.trim();
     if (normalizedClientId) {
-      const exactPendingMatch = this.allMessages.find(pendingMessage =>
+      const exactPendingMatch = this.messages.find(pendingMessage =>
         pendingMessage.mine
         && (pendingMessage.deliveryState === 'pending' || pendingMessage.deliveryState === 'timed-out')
         && `${pendingMessage.clientId ?? ''}`.trim() === normalizedClientId
@@ -2913,7 +3162,7 @@ export class EventChatPopupComponent implements OnDestroy {
     let matchedDiff = Number.POSITIVE_INFINITY;
     const messageSentAtMs = AppUtils.toSortableDate(message.sentAtIso);
 
-    for (const pendingMessage of this.allMessages) {
+    for (const pendingMessage of this.messages) {
       if (
         !pendingMessage.mine
         || (pendingMessage.deliveryState !== 'pending' && pendingMessage.deliveryState !== 'timed-out')
@@ -2934,16 +3183,16 @@ export class EventChatPopupComponent implements OnDestroy {
 
   private replacePendingMessage(
     pendingMessageId: string,
-    message: ContractTypes.ChatPopupMessage,
+    message: ContractTypes.ChatMessageDto,
     stickToEnd: boolean
   ): boolean {
-    const pendingIndex = this.allMessages.findIndex(existingMessage => existingMessage.id === pendingMessageId);
+    const pendingIndex = this.messages.findIndex(existingMessage => existingMessage.id === pendingMessageId);
     if (pendingIndex < 0) {
       return false;
     }
 
     this.clearPendingMessageTimeout(pendingMessageId);
-    const pendingMessage = this.allMessages[pendingIndex];
+    const pendingMessage = this.messages[pendingIndex];
     const pendingClientId = pendingMessage?.clientId;
     const hasQueuedReaction = this.queuedReactionByPendingMessageId.has(pendingMessageId);
     const queuedReactionEmoji = hasQueuedReaction
@@ -2957,14 +3206,14 @@ export class EventChatPopupComponent implements OnDestroy {
           senderAvatar: pendingMessage?.senderAvatar ?? resolvedMessage.senderAvatar
         }
       : resolvedMessage;
-    const nextMessage: ContractTypes.ChatPopupMessage = {
+    const nextMessage: ContractTypes.ChatMessageDto = {
       ...normalizedMessage,
       id: `${normalizedMessage.id ?? ''}`.trim() || pendingMessageId,
       clientId: pendingClientId || normalizedMessage.clientId,
       reactions: hasQueuedReaction ? (pendingMessage?.reactions ?? []) : normalizedMessage.reactions,
       deliveryState: hasQueuedReaction ? 'pending' : normalizedMessage.deliveryState
     };
-    let nextMessages = [...this.allMessages];
+    let nextMessages = [...this.messages];
     const duplicateIndex = nextMessages.findIndex((existingMessage, index) => index !== pendingIndex && existingMessage.id === nextMessage.id);
     if (duplicateIndex >= 0) {
       nextMessages[duplicateIndex] = nextMessage;
@@ -2973,7 +3222,7 @@ export class EventChatPopupComponent implements OnDestroy {
       nextMessages[pendingIndex] = nextMessage;
     }
 
-    this.allMessages = this.deduplicateChatMessages(nextMessages)
+    this.messages = this.deduplicateChatMessages(nextMessages)
       .sort((first, second) => AppUtils.toSortableDate(second.sentAtIso) - AppUtils.toSortableDate(first.sentAtIso));
     this.rebuildVisibleReadReceipts();
     this.syncEventChatSummaryFromMessage(nextMessage);
@@ -3040,7 +3289,7 @@ export class EventChatPopupComponent implements OnDestroy {
       // This preserves the "history" the user has already loaded in the UI
       const mergedMessages = this.mergeServerSnapshotWithPendingMessages(snapshot);
     
-      this.allMessages = mergedMessages
+      this.messages = mergedMessages
         .sort((first, second) => AppUtils.toSortableDate(second.sentAtIso) - AppUtils.toSortableDate(first.sentAtIso));
 
       this.rebuildVisibleReadReceipts();
@@ -3058,8 +3307,8 @@ export class EventChatPopupComponent implements OnDestroy {
   }
 
   private mergeServerSnapshotWithPendingMessages(
-    snapshot: readonly ContractTypes.ChatPopupMessage[]
-  ): ContractTypes.ChatPopupMessage[] {
+    snapshot: readonly ContractTypes.ChatMessageDto[]
+  ): ContractTypes.ChatMessageDto[] {
     const matchedPendingIds = new Set<string>();
     const snapshotMessages = snapshot.map(message => {
       const pendingId = this.matchPendingMessageId(message);
@@ -3068,13 +3317,13 @@ export class EventChatPopupComponent implements OnDestroy {
       }
       matchedPendingIds.add(pendingId);
       this.clearPendingMessageTimeout(pendingId);
-      const pendingMessage = this.allMessages.find(existingMessage => existingMessage.id === pendingId);
+      const pendingMessage = this.messages.find(existingMessage => existingMessage.id === pendingId);
       return this.normalizeChatMessage({
         ...message,
         clientId: pendingMessage?.clientId
       });
     });
-    const unresolvedPendingMessages = this.allMessages.filter(message =>
+    const unresolvedPendingMessages = this.messages.filter(message =>
       (message.deliveryState === 'pending' || message.deliveryState === 'timed-out')
       && !matchedPendingIds.has(message.id)
     );
@@ -3107,16 +3356,16 @@ export class EventChatPopupComponent implements OnDestroy {
   }
 
   private markPendingMessageTimedOut(messageId: string): void {
-    const pendingIndex = this.allMessages.findIndex(message => message.id === messageId && message.deliveryState === 'pending');
+    const pendingIndex = this.messages.findIndex(message => message.id === messageId && message.deliveryState === 'pending');
     if (pendingIndex < 0) {
       return;
     }
-    const nextMessages = [...this.allMessages];
+    const nextMessages = [...this.messages];
     nextMessages[pendingIndex] = {
       ...nextMessages[pendingIndex],
       deliveryState: 'timed-out'
     };
-    this.allMessages = nextMessages;
+    this.messages = nextMessages;
     
     this.refreshVisibleChatThreadSurface();
 
@@ -3129,7 +3378,7 @@ export class EventChatPopupComponent implements OnDestroy {
       return;
     }
     let changed = false;
-    this.allMessages = this.allMessages.map(message => {
+    this.messages = this.messages.map(message => {
       if (message.id !== normalizedMessageId || message.deliveryState !== 'pending') {
         return message;
       }
@@ -3148,8 +3397,12 @@ export class EventChatPopupComponent implements OnDestroy {
 
   private refreshVisibleChatThreadSurface(): void {
     const previousTotal = this.visibleChatThreadTotal;
-    const nextTotal = this.allMessages.length;
+    const nextTotal = this.messages.length;
     this.visibleChatThreadTotal = nextTotal;
+    if (this.chatThreadKnownTotal > previousTotal && nextTotal > previousTotal) {
+      this.chatThreadKnownTotal += nextTotal - previousTotal;
+    }
+    const visibleTotal = this.chatThreadVisibleTotal();
     const smartList = this.chatThreadSmartList;
     if (!smartList) {
       this.chatThreadRevision++;
@@ -3157,7 +3410,7 @@ export class EventChatPopupComponent implements OnDestroy {
       return;
     }
 
-    const latestMessageById = new Map(this.allMessages.map(message => [message.id, message] as const));
+    const latestMessageById = new Map(this.messages.map(message => [message.id, message] as const));
     const currentVisibleItems = smartList.itemsSnapshot()
       .map(message => latestMessageById.get(message.id) ?? message)
       .filter(message => latestMessageById.has(message.id));
@@ -3168,8 +3421,8 @@ export class EventChatPopupComponent implements OnDestroy {
         return;
       }
       smartList.replaceVisibleItems(
-        this.allMessages.slice(0, nextVisibleCount),
-        { total: nextTotal }
+        this.messages.slice(0, nextVisibleCount),
+        { total: visibleTotal }
       );
       return;
     }
@@ -3177,7 +3430,7 @@ export class EventChatPopupComponent implements OnDestroy {
     const addedCount = Math.max(0, nextTotal - previousTotal);
     const visibleMessageIds = new Set(currentVisibleItems.map(message => message.id));
     const addedBottomItems = addedCount > 0
-      ? this.allMessages.filter(message => !visibleMessageIds.has(message.id)).slice(0, addedCount)
+      ? this.messages.filter(message => !visibleMessageIds.has(message.id)).slice(0, addedCount)
       : [];
     const nextVisibleItems = addedBottomItems.length > 0
       ? [...addedBottomItems, ...currentVisibleItems]
@@ -3188,7 +3441,7 @@ export class EventChatPopupComponent implements OnDestroy {
     }
     smartList.replaceVisibleItems(
       nextVisibleItems,
-      { total: nextTotal }
+      { total: visibleTotal }
     );
   }
 
@@ -3201,7 +3454,7 @@ export class EventChatPopupComponent implements OnDestroy {
       return;
     }
 
-    const latestMessageById = new Map(this.allMessages.map(message => [message.id, message] as const));
+    const latestMessageById = new Map(this.messages.map(message => [message.id, message] as const));
     const currentVisibleItems = smartList.itemsSnapshot()
       .map(message => latestMessageById.get(message.id) ?? message)
       .filter(message => latestMessageById.has(message.id));
@@ -3211,9 +3464,9 @@ export class EventChatPopupComponent implements OnDestroy {
       : currentVisibleItems;
 
     smartList.replaceVisibleItems(nextVisibleItems, {
-      total: this.allMessages.length
+      total: this.chatThreadVisibleTotal()
     });
-    this.visibleChatThreadTotal = this.allMessages.length;
+    this.visibleChatThreadTotal = this.messages.length;
 
     if (stickToEnd) {
       this.scheduleChatThreadScrollToEnd();
@@ -3249,47 +3502,37 @@ export class EventChatPopupComponent implements OnDestroy {
     return this.userProfileStore.activeUserId().trim();
   }
 
-  private clearOpenChatUnreadState(): void {
-    const session = this.session();
-    if (!session || Math.max(0, Math.trunc(Number(session.item.unread) || 0)) === 0) {
-      return;
+  private applyLoadedChatReadReceipt(
+    chat: ChatDTO,
+    page: PageResult<ContractTypes.ChatMessageDto, ChatThreadPageContext>
+  ): void {
+    const read = page.context?.readReceipt ?? null;
+    if (read) {
+      this.applyOwnReadReceiptToActivityRow(chat, read);
     }
-    this.activitiesStore.patchEventChatSessionItem(item => ({
-      ...item,
-      unread: 0
-    }));
   }
 
-  private markLoadedChatThreadAsRead(
-    chat: ChatDTO,
-    messages: readonly ContractTypes.ChatPopupMessage[]
-  ): void {
-    const activeUserId = this.activeUserId();
-    const unreadMessageIds = messages
-      .filter(message =>
-        !message.mine
-        && `${message.id ?? ''}`.trim().length > 0
-        && !(message.readBy ?? []).some(reader => `${reader.id ?? ''}`.trim() === activeUserId)
-      )
-      .map(message => `${message.id ?? ''}`.trim());
-
-    if (unreadMessageIds.length === 0) {
-      return;
+  private async markChatMessagesAsRead(chat: ChatDTO, messageIds: readonly string[]): Promise<void> {
+    const read = await this.chatsService.markChatRead(chat, messageIds).catch(() => null);
+    if (read) {
+      this.applyOwnReadReceiptToActivityRow(chat, read);
     }
-    void this.chatsService.markChatRead(chat, unreadMessageIds);
   }
 
   private syncEventChatSummaryFromLatestMessage(): void {
-    const latestMessage = this.allMessages[0];
+    const latestMessage = this.messages[0];
     if (!latestMessage) {
       return;
     }
     this.syncEventChatSummaryFromMessage(latestMessage);
   }
 
-  private syncEventChatSummaryFromMessage(message: ContractTypes.ChatPopupMessage): void {
+  private syncEventChatSummaryFromMessage(message: ContractTypes.ChatMessageDto): void {
     const session = this.session();
     if (!session) {
+      return;
+    }
+    if (message.deliveryState === 'pending' || message.deliveryState === 'timed-out') {
       return;
     }
     const nextLastMessage = `${message.text ?? ''}`.trim() || this.chatAttachmentSummary(message);
@@ -3298,16 +3541,60 @@ export class EventChatPopupComponent implements OnDestroy {
     if (!nextLastMessage && !nextDateIso && !nextLastSenderId) {
       return;
     }
-    this.activitiesStore.patchEventChatSessionItem(item => ({
-      ...item,
-      lastMessage: nextLastMessage || item.lastMessage,
-      lastSenderId: nextLastSenderId || item.lastSenderId,
-      dateIso: nextDateIso || item.dateIso
-    }));
+    this.activitiesStore.emitEventChatRowPatch({
+      chatId: session.item.id,
+      ownerId: session.item.ownerId ?? null,
+      channelType: session.item.channelType ?? null,
+      lastMessage: nextLastMessage || undefined,
+      lastSenderId: nextLastSenderId || undefined,
+      dateIso: nextDateIso || undefined
+    });
+  }
+
+  private applyOwnReadReceiptToActivityRow(
+    chat: ChatDTO,
+    read: ContractTypes.ChatReadReceipt
+  ): void {
+    const activeUserId = this.activeUserId();
+    if (!read.userId || read.userId !== activeUserId) {
+      return;
+    }
+    if (read.unread === undefined || read.unread === null) {
+      return;
+    }
+    const previousUnread = this.currentChatUnread(chat);
+    const nextUnread = this.normalizeUnreadCounter(read.unread);
+    const unreadDelta = nextUnread - previousUnread;
+    this.activitiesStore.emitEventChatRowPatch({
+      chatId: chat.id,
+      ownerId: chat.ownerId ?? null,
+      channelType: chat.channelType ?? null,
+      unread: nextUnread,
+      unreadDelta
+    });
+    this.activitiesStore.patchEventChatHeader(header =>
+      `${header.chatId ?? ''}`.trim() === `${chat.id ?? ''}`.trim()
+        ? { ...header, unread: nextUnread }
+        : header
+    );
+  }
+
+  private currentChatUnread(chat: ChatDTO): number {
+    const normalizedChatId = `${chat.id ?? ''}`.trim();
+    const sessionItem = this.session()?.item ?? null;
+    if (normalizedChatId && `${sessionItem?.id ?? ''}`.trim() === normalizedChatId) {
+      return this.normalizeUnreadCounter(sessionItem?.unread);
+    }
+    return this.normalizeUnreadCounter(chat.unread);
+  }
+
+  private normalizeUnreadCounter(value: unknown): number {
+    const count = Number(value);
+    return Number.isFinite(count) ? Math.max(0, Math.trunc(count)) : 0;
   }
 
   private resolveChatMessageSenderId(
-    message: ContractTypes.ChatPopupMessage,
+    message: ContractTypes.ChatMessageDto,
     fallbackSenderId: string
   ): string {
     if (message.mine) {
@@ -3318,15 +3605,15 @@ export class EventChatPopupComponent implements OnDestroy {
   }
 
   private normalizeChatMessages(
-    messages: readonly ContractTypes.ChatPopupMessage[]
-  ): ContractTypes.ChatPopupMessage[] {
+    messages: readonly ContractTypes.ChatMessageDto[]
+  ): ContractTypes.ChatMessageDto[] {
     return messages.map((message, index) => this.normalizeChatMessage(message, index));
   }
 
   private normalizeChatMessage(
-    message: ContractTypes.ChatPopupMessage,
+    message: ContractTypes.ChatMessageDto,
     fallbackIndex: number | null = null
-  ): ContractTypes.ChatPopupMessage {
+  ): ContractTypes.ChatMessageDto {
     const normalizedMessage = this.withResolvedChatMessageId(message, fallbackIndex);
     if (normalizedMessage.deletedAtIso) {
       return {
@@ -3359,9 +3646,9 @@ export class EventChatPopupComponent implements OnDestroy {
   }
 
   private withResolvedChatMessageId(
-    message: ContractTypes.ChatPopupMessage,
+    message: ContractTypes.ChatMessageDto,
     fallbackIndex: number | null
-  ): ContractTypes.ChatPopupMessage {
+  ): ContractTypes.ChatMessageDto {
     const messageId = `${message.id ?? ''}`.trim();
     if (messageId) {
       return messageId === message.id ? message : { ...message, id: messageId };
@@ -3386,7 +3673,7 @@ export class EventChatPopupComponent implements OnDestroy {
     };
   }
 
-  protected chatAttachmentSummary(message: ContractTypes.ChatPopupMessage): string {
+  protected chatAttachmentSummary(message: ContractTypes.ChatMessageDto): string {
     const firstAttachment = message.attachments?.[0];
     if (!firstAttachment) {
       return '';
@@ -3409,7 +3696,7 @@ export class EventChatPopupComponent implements OnDestroy {
 
   private resolveOptimisticSenderPresentation(
     activeUserId: string
-  ): Pick<ContractTypes.ChatPopupMessage, 'sender' | 'senderAvatar'> {
+  ): Pick<ContractTypes.ChatMessageDto, 'sender' | 'senderAvatar'> {
     const activeUser = this.userProfileStore.activeUserProfile() ?? (activeUserId ? this.userProfileStore.getUserProfile(activeUserId) : null);
     const initials = activeUser?.initials?.trim()
       || AppUtils.initialsFromText(activeUser?.name ?? 'Me');
@@ -3627,13 +3914,7 @@ export class EventChatPopupComponent implements OnDestroy {
     return day.toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric', year: 'numeric' });
   }
 
-  private syncSelectedChatHeader(
-    chat: ChatDTO | null,
-    options: {
-      hydrateControls?: boolean;
-      baseContext?: AppUiTypes.PopupHeaderContext | null;
-    } = {}
-  ): void {
+  private syncSelectedChatHeader(chat: ChatDTO | null): void {
     if (!chat) {
       this.chatHeaderContext = null;
       this.selectedChatNavigationState = null;
@@ -3641,67 +3922,15 @@ export class EventChatPopupComponent implements OnDestroy {
       this.resolvedChatEventRecordKey = '';
       this.resolvedChatResourceState = null;
       this.resolvedChatResourceStateKey = '';
-      return;
-    }
-    if (options.hydrateControls === false) {
-      this.selectedChatNavigationState = null;
-      this.resolvedChatEventRecord = null;
-      this.resolvedChatEventRecordKey = '';
-      this.resolvedChatResourceState = null;
-      this.resolvedChatResourceStateKey = '';
-      this.chatHeaderContext = this.buildTitleOnlyChatHeaderContext(chat);
+      this.resolvedChatGroupSnapshot = null;
+      this.resolvedChatGroupSnapshotKey = '';
       return;
     }
     this.selectedChatNavigationState = this.buildSelectedChatNavigationState(chat);
     this.chatHeaderContext = this.buildSelectedChatHeaderContext(
       chat,
-      this.selectedChatNavigationState,
-      options.baseContext ?? null
+      this.selectedChatNavigationState
     );
-  }
-
-  private buildTitleOnlyChatHeaderContext(chat: ChatDTO): AppUiTypes.PopupHeaderContext {
-    const title = `${chat.title ?? ''}`.trim() || 'Chat';
-    return {
-      revision: `title:${chat.id}:${title}`,
-      title,
-      controls: []
-    };
-  }
-
-  private async refreshSelectedChatHeader(chat: ChatDTO, sessionKey: string | null): Promise<void> {
-    if (!sessionKey || this.loadedSessionKey !== sessionKey) {
-      return;
-    }
-    const eventId = `${chat.eventId ?? ''}`.trim();
-    if (eventId && this.resolvedChatEventRecordKey !== eventId) {
-      const record = await this.eventsService.queryKnownRecordById(this.activeUserId(), eventId).catch(() => null);
-      if (this.loadedSessionKey !== sessionKey) {
-        return;
-      }
-      this.resolvedChatEventRecord = record;
-      this.resolvedChatEventRecordKey = eventId;
-      this.syncSelectedChatHeader(chat);
-      this.cdr.markForCheck();
-    }
-
-    const state = this.selectedChatNavigationState;
-    const ownerId = `${state?.eventId ?? chat.eventId ?? ''}`.trim();
-    const subEventId = `${state?.subEvent?.id ?? ''}`.trim();
-    const resourceKey = ownerId && subEventId ? `${ownerId}:${subEventId}` : '';
-    if (!resourceKey || this.resolvedChatResourceStateKey === resourceKey) {
-      return;
-    }
-    const resourceState = await this.activityResourcesService
-      .querySubEventResourceState(ownerId, subEventId)
-      .catch(() => null);
-    if (this.loadedSessionKey !== sessionKey) {
-      return;
-    }
-    this.resolvedChatResourceState = ActivityResourceBuilder.cloneState(resourceState);
-    this.resolvedChatResourceStateKey = resourceKey;
-    this.syncSelectedChatHeader(chat);
-    this.cdr.markForCheck();
   }
 
   private buildSelectedChatHeaderContext(
@@ -3713,7 +3942,9 @@ export class EventChatPopupComponent implements OnDestroy {
       ? this.clonePopupHeaderContext(loadedContext)
       : this.chatsService.buildChatPopupHeaderContext(chat, { includeThumbs: true });
     const controls = [...(baseContext.controls ?? []).map(control => ({ ...control }))];
-    if (!this.isBlockedSupportChat() && chat.channelType !== 'serviceEvent') {
+    if (chat.channelType === 'appSupport') {
+      controls.push(this.buildAppSupportChatContextControl());
+    } else if (!this.isServiceChat() && !this.isBlockedSupportChat()) {
       controls.push(this.buildSelectedChatContextControl(chat, state));
     }
     return {
@@ -3768,13 +3999,38 @@ export class EventChatPopupComponent implements OnDestroy {
     };
   }
 
+  private buildAppSupportChatContextControl(): AppUiTypes.PopupHeaderControl {
+    return {
+      id: 'chat-context',
+      label: 'App support',
+      summary: 'Share workspace',
+      visual: { kind: 'icon', icon: 'admin_panel_settings' },
+      menu: {
+        title: 'App support',
+        groups: [{
+          id: 'support',
+          controls: [{
+            id: 'app-support-share-workspace',
+            label: 'Share workspace',
+            summary: 'Send a token so MyScoutee admin can open this view',
+            visual: { kind: 'icon', icon: 'vpn_key' },
+            lookup: {
+              type: 'adminHelp',
+              id: 'current'
+            }
+          }]
+        }]
+      }
+    };
+  }
+
   private buildSelectedChatPrimaryControl(
     chat: ChatDTO,
     state: SelectedChatNavigationState | null
   ): AppUiTypes.PopupHeaderControl {
     const channelType = state?.channelType ?? this.chatChannelType(chat);
     const label = channelType === 'groupSubEvent'
-      ? (state?.group?.label ?? state?.subEvent?.name ?? 'Group')
+      ? this.selectedChatGroupDisplayLabel(chat, state)
       : channelType === 'optionalSubEvent'
         ? (state?.subEvent?.name ?? 'Sub-event')
         : 'View Event';
@@ -3791,7 +4047,7 @@ export class EventChatPopupComponent implements OnDestroy {
       badge: badgeValue > 0 ? { value: badgeValue, tone: 'danger' } : null,
       lookup: {
         type: 'chatPrimary',
-        id: `${state?.eventId ?? chat.eventId ?? chat.id}`.trim()
+        id: `${state?.eventId ?? this.chatOwnerParts(chat).eventId ?? chat.id}`.trim()
       }
     };
   }
@@ -3806,7 +4062,7 @@ export class EventChatPopupComponent implements OnDestroy {
     const assetControls = (['Car', 'Accommodation', 'Supplies'] as const)
       .map(type => this.buildResourceControl(state.subEvent as ContractTypes.SubEventDTO, state, type));
     return {
-      title: state.group?.label ?? state.subEvent.name,
+      title: primaryControl.label || state.subEvent.name,
       groups: [
         {
           id: 'primary',
@@ -3845,7 +4101,8 @@ export class EventChatPopupComponent implements OnDestroy {
   }
 
   private buildSelectedChatNavigationState(chat: ChatDTO): SelectedChatNavigationState | null {
-    const eventId = `${chat.eventId ?? ''}`.trim();
+    const ownerParts = this.chatOwnerParts(chat);
+    const eventId = ownerParts.eventId;
     const eventRecord = this.resolveSelectedChatEventRecord(chat);
     const rawSubEvent = this.resolveSelectedChatSubEvent(chat, eventRecord);
     const resourceState = rawSubEvent && eventId
@@ -3858,22 +4115,127 @@ export class EventChatPopupComponent implements OnDestroy {
     const subEvent = rawSubEvent
       ? this.syncSubEventResourceCounts(this.cloneSubEvent(rawSubEvent), resourceState, assetCards)
       : null;
+    const metricsSubEvent = subEvent ? this.applyChatMetricsToSubEvent(subEvent, chat.metrics) : null;
     return {
       channelType: this.chatChannelType(chat),
       eventId: (eventRecord?.id ?? eventId) || null,
       eventTarget: eventRecord ? this.eventEditorTargetForRecord(eventRecord) : 'events',
       eventTitle: eventRecord?.title ?? chat.title ?? null,
-      eventPendingMembers: Math.max(0, Math.trunc(Number(eventRecord?.pendingMembers) || 0)),
-      subEvent,
-      group: this.resolveSelectedChatGroup(chat, subEvent),
+      eventPendingMembers: this.chatMetricCount(chat.metrics?.members?.pending ?? eventRecord?.pendingMembers),
+      subEvent: metricsSubEvent,
+      group: this.applyChatMetricsToGroup(
+        this.resolveSelectedChatGroup(chat, metricsSubEvent, (eventRecord?.id ?? eventId) || null),
+        chat.metrics
+      ),
       assetAssignmentIds: ActivityResourceBuilder.cloneAssetAssignmentIds(resourceState?.assetAssignmentIds),
       assetCardsByType
     };
   }
 
-  private eventEditorTargetForRecord(record: Pick<ActivityEventRecord, 'type' | 'creatorUserId'>): ContractTypes.EventEditorTarget {
+  private applyChatMetricsToSubEvent(
+    subEvent: ContractTypes.SubEventDTO,
+    metrics: ContractTypes.ChatMetricsDTO | null | undefined
+  ): ContractTypes.SubEventDTO {
+    if (!metrics) {
+      return subEvent;
+    }
+    return {
+      ...subEvent,
+      membersAccepted: metrics.members?.accepted ?? subEvent.membersAccepted,
+      membersPending: metrics.members?.pending ?? subEvent.membersPending,
+      capacityMin: metrics.members?.capacityMin ?? subEvent.capacityMin,
+      capacityMax: metrics.members?.capacityMax ?? subEvent.capacityMax,
+      carsAccepted: metrics.car?.accepted ?? subEvent.carsAccepted,
+      carsPending: metrics.car?.pending ?? subEvent.carsPending,
+      carsCapacityMin: metrics.car?.capacityMin ?? subEvent.carsCapacityMin,
+      carsCapacityMax: metrics.car?.capacityMax ?? subEvent.carsCapacityMax,
+      accommodationAccepted: metrics.accommodation?.accepted ?? subEvent.accommodationAccepted,
+      accommodationPending: metrics.accommodation?.pending ?? subEvent.accommodationPending,
+      accommodationCapacityMin: metrics.accommodation?.capacityMin ?? subEvent.accommodationCapacityMin,
+      accommodationCapacityMax: metrics.accommodation?.capacityMax ?? subEvent.accommodationCapacityMax,
+      suppliesAccepted: metrics.supplies?.accepted ?? subEvent.suppliesAccepted,
+      suppliesPending: metrics.supplies?.pending ?? subEvent.suppliesPending,
+      suppliesCapacityMin: metrics.supplies?.capacityMin ?? subEvent.suppliesCapacityMin,
+      suppliesCapacityMax: metrics.supplies?.capacityMax ?? subEvent.suppliesCapacityMax,
+      groupsCount: metrics.groupsCount ?? subEvent.groupsCount
+    };
+  }
+
+  private applyChatMetricsToGroup(
+    group: SelectedChatGroupState | null,
+    metrics: ContractTypes.ChatMetricsDTO | null | undefined
+  ): SelectedChatGroupState | null {
+    if (!group || !metrics?.members) {
+      return group;
+    }
+    return {
+      ...group,
+      accepted: metrics.members.accepted,
+      pending: metrics.members.pending,
+      capacityMin: metrics.members.capacityMin,
+      capacityMax: metrics.members.capacityMax
+    };
+  }
+
+  private selectedChatEventRecord(eventId: string): ActivityEventRecord | null {
+    const normalizedEventId = `${eventId ?? ''}`.trim();
+    if (!normalizedEventId) {
+      return null;
+    }
+    if (this.resolvedChatEventRecordKey === normalizedEventId) {
+      return this.resolvedChatEventRecord;
+    }
+    return this.eventsService.peekKnownRecordById(this.activeUserId(), normalizedEventId);
+  }
+
+  private selectedChatEventEditorTarget(
+    record: ActivityEventRecord | null,
+    state: SelectedChatNavigationState | null
+  ): ContractTypes.EventEditorTarget {
+    return record
+      ? this.eventEditorTargetForRecord(record)
+      : state?.eventTarget ?? 'events';
+  }
+
+  private canEditSelectedChatEvent(
+    record: ActivityEventRecord | null,
+    state: SelectedChatNavigationState | null
+  ): boolean {
+    const subject = this.selectedChatEventMenuSubject(record, state);
+    return ActivityEventInfoCardMenuConverter.canEditEvent(subject, {
+      activeUserId: this.activeUserId()
+    });
+  }
+
+  private selectedChatEventMenuSubject(
+    record: ActivityEventRecord | null,
+    state: SelectedChatNavigationState | null
+  ): ActivityEventInfoCardMenuSubject | null {
+    const eventId = `${record?.id ?? state?.eventId ?? this.selectedChatOwnerParts().eventId}`.trim();
+    if (!eventId) {
+      return null;
+    }
+    return {
+      menu: 'activity-event-card',
+      id: eventId,
+      status: record?.status ?? null,
+      ownerUserId: record?.creatorUserId ?? null,
+      adminIds: [...(record?.adminIds ?? [])],
+      acceptedMemberUserIds: [...(record?.acceptedMemberUserIds ?? [])],
+      pendingMemberUserIds: [...(record?.pendingMemberUserIds ?? [])],
+      invitedMemberUserIds: [...(record?.invitedMemberUserIds ?? [])],
+      pendingRequestMemberUserIds: [...(record?.pendingRequestMemberUserIds ?? [])],
+      eventScope: record?.type ?? null
+    };
+  }
+
+  private eventEditorTargetForRecord(record: Pick<ActivityEventRecord, 'type' | 'creatorUserId' | 'adminIds'>): ContractTypes.EventEditorTarget {
     const activeUserId = this.activeUserId().trim();
-    if (record.type === 'hosting' || (!!activeUserId && record.creatorUserId === activeUserId)) {
+    if (
+      record.type === 'hosting'
+      || (!!activeUserId && record.creatorUserId === activeUserId)
+      || (record.adminIds ?? []).includes(activeUserId)
+    ) {
       return 'hosting';
     }
     return 'events';
@@ -3887,23 +4249,66 @@ export class EventChatPopupComponent implements OnDestroy {
       || channelType === 'optionalSubEvent'
       || channelType === 'groupSubEvent'
       || channelType === 'serviceEvent'
+      || channelType === 'appSupport'
+      || channelType === 'supportCase'
     ) {
       return channelType;
     }
     if (chat.serviceContext === 'event' || chat.serviceContext === 'asset' || chat.serviceContext === 'notification') {
       return 'serviceEvent';
     }
-    if (`${chat.groupId ?? ''}`.trim()) {
+    const ownerParts = this.splitChatOwnerId(chat.ownerId);
+    if (ownerParts.length >= 3) {
       return 'groupSubEvent';
     }
-    if (`${chat.subEventId ?? ''}`.trim()) {
+    if (ownerParts.length === 2) {
       return 'optionalSubEvent';
     }
-    return `${chat.eventId ?? ''}`.trim() ? 'mainEvent' : 'general';
+    return ownerParts.length === 1 ? 'mainEvent' : 'general';
+  }
+
+  private chatOwnerParts(chat: ChatDTO | null | undefined): ChatOwnerParts {
+    const ownerId = `${chat?.ownerId ?? ''}`.trim();
+    if (!chat || !ownerId) {
+      return { ownerId, eventId: '', subEventId: '', groupId: '' };
+    }
+    const channelType = this.chatChannelType(chat);
+    const parts = this.splitChatOwnerId(ownerId);
+    if (channelType === 'groupSubEvent') {
+      return {
+        ownerId,
+        eventId: parts[0] ?? '',
+        subEventId: parts[1] ?? '',
+        groupId: parts.slice(2).join(':')
+      };
+    }
+    if (channelType === 'optionalSubEvent') {
+      return {
+        ownerId,
+        eventId: parts[0] ?? '',
+        subEventId: parts.slice(1).join(':'),
+        groupId: ''
+      };
+    }
+    if (channelType === 'mainEvent' || channelType === 'serviceEvent') {
+      return { ownerId, eventId: ownerId, subEventId: '', groupId: '' };
+    }
+    return { ownerId, eventId: '', subEventId: '', groupId: '' };
+  }
+
+  private selectedChatOwnerParts(chat: ChatDTO | null | undefined = this.session()?.item ?? null): ChatOwnerParts {
+    return this.chatOwnerParts(chat);
+  }
+
+  private splitChatOwnerId(ownerId: string | null | undefined): string[] {
+    return `${ownerId ?? ''}`
+      .split(':')
+      .map(part => part.trim())
+      .filter(Boolean);
   }
 
   private resolveSelectedChatEventRecord(chat: ChatDTO): ActivityEventRecord | null {
-    const eventId = `${chat.eventId ?? ''}`.trim();
+    const eventId = this.chatOwnerParts(chat).eventId;
     if (!eventId) {
       return null;
     }
@@ -3917,7 +4322,7 @@ export class EventChatPopupComponent implements OnDestroy {
     chat: ChatDTO,
     eventRecord: ActivityEventRecord | null
   ): ContractTypes.SubEventDTO | null {
-    const subEventId = `${chat.subEventId ?? ''}`.trim();
+    const subEventId = this.chatOwnerParts(chat).subEventId;
     if (!subEventId) {
       return null;
     }
@@ -3926,16 +4331,109 @@ export class EventChatPopupComponent implements OnDestroy {
 
   private resolveSelectedChatGroup(
     chat: ChatDTO,
-    subEvent: ContractTypes.SubEventDTO | null
+    subEvent: ContractTypes.SubEventDTO | null,
+    eventId: string | null
   ): SelectedChatGroupState | null {
-    const groupId = `${chat.groupId ?? ''}`.trim();
+    const groupId = this.chatOwnerParts(chat).groupId;
     if (!groupId || !subEvent) {
       return null;
     }
+    const groupKey = this.selectedChatGroupSnapshotKey(eventId, subEvent.id, groupId);
+    const snapshot = groupKey && this.resolvedChatGroupSnapshotKey === groupKey
+      ? this.resolvedChatGroupSnapshot
+      : null;
     return {
       id: groupId,
-      label: groupId
+      label: `${snapshot?.name ?? groupId}`.trim() || groupId,
+      source: snapshot?.source ?? null,
+      accepted: snapshot ? this.chatCountValue(snapshot.membersAccepted) : undefined,
+      pending: snapshot ? this.chatCountValue(snapshot.membersPending) : undefined,
+      capacityMin: snapshot ? this.chatCountValue(snapshot.capacityMin) : undefined,
+      capacityMax: snapshot ? this.chatCountValue(snapshot.capacityMax) : undefined
     };
+  }
+
+  private selectedChatGroupDisplayLabel(
+    chat: ChatDTO,
+    state: SelectedChatNavigationState | null
+  ): string {
+    const groupId = `${state?.group?.id ?? this.chatOwnerParts(chat).groupId}`.trim();
+    const configured = `${state?.group?.label ?? ''}`.trim();
+    if (configured && !this.isOwnerIdLikeGroupLabel(configured, groupId)) {
+      return configured;
+    }
+    const titleLabel = this.groupLabelFromChatTitle(chat.title, state?.subEvent?.name);
+    if (titleLabel) {
+      return titleLabel;
+    }
+    return this.generatedGroupLabelFromId(groupId) || configured || 'Group';
+  }
+
+  private groupLabelFromChatTitle(
+    title: string | null | undefined,
+    subEventName: string | null | undefined
+  ): string {
+    const normalizedTitle = `${title ?? ''}`.trim();
+    if (!normalizedTitle) {
+      return '';
+    }
+    const normalizedSubEventName = `${subEventName ?? ''}`.trim().toLocaleLowerCase('en-US');
+    const parts = normalizedTitle
+      .split(/\s+[·-]\s+/)
+      .map(part => part.trim())
+      .filter(Boolean);
+    if (parts.length > 1) {
+      return parts.find(part => part.toLocaleLowerCase('en-US') !== normalizedSubEventName) ?? parts[0] ?? '';
+    }
+    return normalizedSubEventName && normalizedTitle.toLocaleLowerCase('en-US') === normalizedSubEventName
+      ? ''
+      : normalizedTitle;
+  }
+
+  private isOwnerIdLikeGroupLabel(label: string, groupId: string): boolean {
+    const normalizedLabel = label.trim();
+    const normalizedGroupId = groupId.trim();
+    return Boolean(
+      normalizedLabel
+      && (
+        normalizedLabel === normalizedGroupId
+        || normalizedLabel.includes(':')
+        || /^[a-z0-9]+(?:[-_][a-z0-9]+){2,}$/i.test(normalizedLabel)
+      )
+    );
+  }
+
+  private generatedGroupLabelFromId(groupId: string): string {
+    const match = groupId.trim().match(/(?:^|[-_:])group[-_:]?(\d+)$/i);
+    const index = match ? Math.max(1, Math.trunc(Number(match[1]) || 0)) : 0;
+    if (!index) {
+      return '';
+    }
+    return `Group ${this.groupIndexLetters(index)}`;
+  }
+
+  private groupIndexLetters(index: number): string {
+    let value = Math.max(1, Math.trunc(index));
+    let label = '';
+    while (value > 0) {
+      value -= 1;
+      label = String.fromCharCode(65 + (value % 26)) + label;
+      value = Math.floor(value / 26);
+    }
+    return label;
+  }
+
+  private selectedChatGroupSnapshotKey(
+    eventId: string | null | undefined,
+    subEventId: string | null | undefined,
+    groupId: string | null | undefined
+  ): string {
+    const normalizedEventId = `${eventId ?? ''}`.trim();
+    const normalizedSubEventId = `${subEventId ?? ''}`.trim();
+    const normalizedGroupId = `${groupId ?? ''}`.trim();
+    return normalizedEventId && normalizedSubEventId && normalizedGroupId
+      ? `${normalizedEventId}:${normalizedSubEventId}:${normalizedGroupId}`
+      : '';
   }
 
   private resolveSelectedChatResourceState(
@@ -3978,6 +4476,46 @@ export class EventChatPopupComponent implements OnDestroy {
       }
     }
     return subEvent;
+  }
+
+  private applySelectedChatResourceMetricsUpdate(update: SubEventResourceMetricsUpdate): void {
+    const session = this.session();
+    const state = this.selectedChatNavigationState;
+    const ownerId = `${state?.eventId ?? this.chatOwnerParts(session?.item ?? null).eventId}`.trim();
+    const subEventId = `${state?.subEvent?.id ?? ''}`.trim();
+    if (
+      !session
+      || !state?.subEvent
+      || !ownerId
+      || !subEventId
+      || `${update.ownerId ?? ''}`.trim() !== ownerId
+      || `${update.subEventId ?? ''}`.trim() !== subEventId
+    ) {
+      return;
+    }
+    const nextSubEvent: ContractTypes.SubEventDTO = {
+      ...state.subEvent,
+      carsAccepted: update.subEvent.carsAccepted,
+      carsPending: update.subEvent.carsPending,
+      carsCapacityMin: update.subEvent.carsCapacityMin,
+      carsCapacityMax: update.subEvent.carsCapacityMax,
+      accommodationAccepted: update.subEvent.accommodationAccepted,
+      accommodationPending: update.subEvent.accommodationPending,
+      accommodationCapacityMin: update.subEvent.accommodationCapacityMin,
+      accommodationCapacityMax: update.subEvent.accommodationCapacityMax,
+      suppliesAccepted: update.subEvent.suppliesAccepted,
+      suppliesPending: update.subEvent.suppliesPending,
+      suppliesCapacityMin: update.subEvent.suppliesCapacityMin,
+      suppliesCapacityMax: update.subEvent.suppliesCapacityMax
+    };
+    this.resolvedChatResourceState = null;
+    this.resolvedChatResourceStateKey = `${ownerId}:${subEventId}`;
+    this.selectedChatNavigationState = {
+      ...state,
+      subEvent: nextSubEvent
+    };
+    this.chatHeaderContext = this.buildSelectedChatHeaderContext(session.item, this.selectedChatNavigationState);
+    this.cdr.markForCheck();
   }
 
   private cloneSubEvent(subEvent: ContractTypes.SubEventDTO): ContractTypes.SubEventDTO {
@@ -4037,6 +4575,9 @@ export class EventChatPopupComponent implements OnDestroy {
     if (state?.subEvent && (state.channelType === 'optionalSubEvent' || state.channelType === 'groupSubEvent')) {
       return this.subEventPendingTotal(state.subEvent);
     }
+    if (chat.metrics) {
+      return this.chatMetricCount(chat.metrics.pendingTotal);
+    }
     const eventPending = Math.max(0, Math.trunc(Number(state?.eventPendingMembers) || 0));
     const eventRecord = this.resolveSelectedChatEventRecord(chat);
     const subEventPending = eventRecord?.subEvents?.reduce((sum, subEvent) => {
@@ -4058,6 +4599,10 @@ export class EventChatPopupComponent implements OnDestroy {
   }
 
   private chatCountValue(value: unknown): number {
+    return Math.max(0, Math.trunc(Number(value) || 0));
+  }
+
+  private chatMetricCount(value: unknown): number {
     return Math.max(0, Math.trunc(Number(value) || 0));
   }
 
@@ -4257,7 +4802,7 @@ export class EventChatPopupComponent implements OnDestroy {
     if (!normalizedMessageId) {
       return false;
     }
-    const targetIndex = this.allMessages.findIndex(message => `${message.id ?? ''}`.trim() === normalizedMessageId);
+    const targetIndex = this.messages.findIndex(message => `${message.id ?? ''}`.trim() === normalizedMessageId);
     if (targetIndex < 0) {
       return false;
     }
@@ -4267,13 +4812,13 @@ export class EventChatPopupComponent implements OnDestroy {
       return true;
     }
     smartList.replaceVisibleItems(
-      this.allMessages.slice(0, targetIndex + 1),
-      { total: this.allMessages.length }
+      this.messages.slice(0, targetIndex + 1),
+      { total: this.chatThreadVisibleTotal() }
     );
     return true;
   }
 
-  private replyReferenceText(message: ContractTypes.ChatPopupMessage): string {
+  private replyReferenceText(message: ContractTypes.ChatMessageDto): string {
     if (message.text?.trim()) {
       return message.text.trim();
     }

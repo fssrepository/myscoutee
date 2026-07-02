@@ -1,4 +1,6 @@
 import type { AppMenuPalette } from '../../menu/menu.types';
+import type { SmartListItemKey } from '../smart-list-item-key';
+import type { SmartListLocalSortKey } from '../smart-list-local-sort';
 
 export type CardPresentation = 'list' | 'fullscreen';
 export type CardRenderState = 'default' | 'active' | 'leaving';
@@ -131,7 +133,6 @@ export interface SingleCardData {
 }
 
 export interface PairCardSplitConfig {
-  enabled?: boolean;
   initialPercent?: number;
 }
 
@@ -256,11 +257,13 @@ export interface InfoCardFooterChip {
 
 export interface DisplayData<TEagerDetail = unknown> {
   id: string;
+  smartListKey?: SmartListItemKey | null;
   status?: string | null;
   dateIso?: string | null;
   distanceMetersExact?: number | null;
   badgeCount?: number | null;
   sortScore?: number | null;
+  localSortKey?: SmartListLocalSortKey | null;
   menuActions?: readonly CardMenuActionId[];
   ownerId?: string | null;
   ownerUserId?: string | null;
@@ -382,7 +385,6 @@ export interface ImageCardData<TEagerDetail = unknown> extends DisplayData<TEage
   contextBadge?: CardContextBadgeConfig | null;
   presentation?: CardPresentation;
   state?: CardRenderState;
-  fullscreenSplitEnabled?: boolean;
   userId?: string | null;
   secondaryUserId?: string | null;
   socialContext?: ImageCardSocialContext | null;

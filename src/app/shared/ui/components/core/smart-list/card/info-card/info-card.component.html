@@ -277,7 +277,9 @@
             type="button"
             class="ui-info-card__menu-trigger experience-action-btn experience-action-menu-trigger"
             [class.is-open]="menuTriggerOpen"
-            [attr.aria-label]="(menuTriggerOpen ? 'close.card.actions' : 'open.card.actions') | i18n"
+            [attr.aria-label]="'open.card.actions' | i18n"
+            [attr.aria-expanded]="menuTriggerOpen"
+            aria-haspopup="menu"
             (pointerdown)="onMenuTriggerPointerDown($event)"
             (click)="toggleMenu($event)"
             >

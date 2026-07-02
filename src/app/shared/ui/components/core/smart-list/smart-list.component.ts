@@ -47,6 +47,11 @@ import {
 } from './smart-list-page.adapter';
 import { SmartListCalendarAdapter } from './smart-list-calendar.adapter';
 import {
+  compareSmartListLocalSortKeys,
+  smartListLocalSortKeyFromItem
+} from './smart-list-local-sort';
+import { smartListItemKeyFromItem } from './smart-list-item-key';
+import {
   InfiniteStepper as Stepper,
   type InfiniteStepperLoadOptions as StepperLoadOptions,
   type InfiniteStepperSnapshot as StepperSnapshot,
@@ -57,6 +62,8 @@ import type {
   ListDirection,
   ListQuery,
   PageResult,
+  SmartListCacheableConfig,
+  SmartListConverter,
   SmartListCursorState,
   SmartListFilters,
   SmartListClassValue,
@@ -78,6 +85,7 @@ import type {
   SmartListPaginationStep,
   SmartListPresentation,
   SmartListPrependRestoreMode,
+  SmartListSortableConfig,
   SmartListStateChange,
   SmartListViewConfig,
   SmartListViewMode
@@ -163,6 +171,7 @@ export class SmartListComponent<T, TFilters extends SmartListFilters = SmartList
   private listItemIndexByObject = new WeakMap<object, number>();
   private resolvedListTrackKeyByObject = new WeakMap<object, string | number>();
   private fallbackTrackKeySequence = 0;
+  private converterContext: unknown = null;
 
   totalItemCount(): number {
     return this.total;
@@ -719,6 +728,14 @@ export class SmartListComponent<T, TFilters extends SmartListFilters = SmartList
     return this.items;
   }
 
+  public visibleItemCount(): number {
+    return this.items.length;
+  }
+
+  public findVisibleItem(predicate: (item: T, index: number) => boolean): T | null {
+    return this.items.find(predicate) ?? null;
+  }
+
   public paginationMenuHeightPx(): number {
     return this.shouldRenderPaginationRatingBar()
       ? this.paginationMenuOutlet?.heightPx() ?? 0
@@ -772,7 +789,7 @@ export class SmartListComponent<T, TFilters extends SmartListFilters = SmartList
     this.loading = false;
     this.initialLoading = false;
     this.clearAwaitScrollReset();
-    this.items = [...items];
+    this.items = this.orderSortableItems(items);
     this.total = Number.isFinite(options.total)
       ? Math.max(this.items.length, Math.trunc(Number(options.total)))
       : this.items.length;
@@ -795,15 +812,15 @@ export class SmartListComponent<T, TFilters extends SmartListFilters = SmartList
     if (this.currentViewMode !== 'list') {
       return false;
     }
-    const nextItems = [...items];
+    const nextItems = this.orderSortableItems(items);
     const nextTotal = Number.isFinite(options.total)
       ? Math.max(nextItems.length, Math.trunc(Number(options.total)))
       : nextItems.length;
     const sameShape = this.total === nextTotal
       && this.items.length === nextItems.length
       && this.items.every((item, index) =>
-        this.visibleSyncTrackKey(item, index, options.trackBy)
-          === this.visibleSyncTrackKey(nextItems[index], index, options.trackBy)
+        this.cacheTrackKey(item, index, options.trackBy)
+          === this.cacheTrackKey(nextItems[index], index, options.trackBy)
       );
 
     if (!sameShape) {
@@ -811,7 +828,10 @@ export class SmartListComponent<T, TFilters extends SmartListFilters = SmartList
       return true;
     }
 
-    const equals = options.equals ?? ((current: T, next: T) => current === next);
+    const query = this.currentQuery();
+    const adapterEquals = this.cacheableConfig()?.equals;
+    const equals = options.equals ?? ((current: T, next: T, index: number) =>
+      adapterEquals ? adapterEquals(current, next, index, query) : current === next);
     let changed = false;
     const patchedItems = this.items.map((item, index) => {
       const nextItem = nextItems[index];
@@ -830,6 +850,16 @@ export class SmartListComponent<T, TFilters extends SmartListFilters = SmartList
     this.emitState();
     this.cdr.markForCheck();
     return true;
+  }
+
+  public convertItems<TSource>(sources: readonly TSource[], context?: unknown): T[] {
+    const query = this.currentQuery();
+    this.converterContext = context ?? null;
+    const converter = this.resolvedConverter<TSource>(query);
+    if (!converter) {
+      return [];
+    }
+    return converter.convertList(sources, this.converterOptions(query));
   }
 
   public async moveCursor(delta: number): Promise<boolean> {
@@ -1515,11 +1545,11 @@ export class SmartListComponent<T, TFilters extends SmartListFilters = SmartList
     const nextItems = Array.isArray(result?.items) ? result.items : [];
     const hasExplicitNextCursor = Boolean(result && Object.prototype.hasOwnProperty.call(result, 'nextCursor'));
     if (isInitial) {
-      this.items = [...nextItems];
+      this.items = this.orderSortableItems(nextItems);
     } else if (this.listMergeStrategy() === 'prepend') {
-      this.items = [...nextItems, ...this.items];
+      this.items = this.orderSortableItems([...nextItems, ...this.items]);
     } else {
-      this.items = [...this.items, ...nextItems];
+      this.items = this.orderSortableItems([...this.items, ...nextItems]);
     }
     const total = Number.isFinite(result?.total) ? Math.max(0, Math.trunc(Number(result?.total))) : this.items.length;
     this.total = Math.max(this.items.length, total);
@@ -1550,7 +1580,7 @@ export class SmartListComponent<T, TFilters extends SmartListFilters = SmartList
     if (options.deferRender === true) {
       return;
     }
-    this.items = [...nextItems];
+    this.items = this.orderSortableItems(nextItems);
     this.total = Math.max(nextItems.length, total);
     this.pageIndex = 0;
     this.hasMore = false;
@@ -2156,6 +2186,90 @@ export class SmartListComponent<T, TFilters extends SmartListFilters = SmartList
     return normalized.length > 0 ? normalized : null;
   }
 
+  private orderSortableItems(items: readonly T[]): T[] {
+    const sortable = this.sortableConfig();
+    if (!sortable) {
+      return [...items];
+    }
+    const query = this.currentQuery();
+    return items
+      .map((item, index) => ({
+        item,
+        index,
+        sortKey: this.localSortKeyForItem(item, query, index)
+      }))
+      .sort((left, right) =>
+        compareSmartListLocalSortKeys(left.sortKey, right.sortKey)
+        || left.index - right.index
+      )
+      .map(entry => entry.item);
+  }
+
+  private localSortKeyForItem(item: T, query: ListQuery<TFilters>, index: number): ReturnType<typeof smartListLocalSortKeyFromItem> {
+    return this.sortableConfig()?.sortKey?.(item, index, query)
+      ?? smartListLocalSortKeyFromItem(item);
+  }
+
+  private cacheableConfig(): SmartListCacheableConfig<T, TFilters> | null {
+    const cacheable = this.config.cacheable;
+    if (cacheable === true) {
+      return {};
+    }
+    return cacheable && typeof cacheable === 'object' ? cacheable : null;
+  }
+
+  private sortableConfig(): SmartListSortableConfig<T, TFilters> | null {
+    const sortable = this.config.sortable;
+    if (sortable === true) {
+      return {};
+    }
+    return sortable && typeof sortable === 'object' ? sortable : null;
+  }
+
+  private resolvedConverter<TSource>(
+    query: ListQuery<TFilters>
+  ): SmartListConverter<TSource, T, TFilters> | null {
+    const converter = this.config.converter;
+    if (!converter) {
+      return null;
+    }
+    const resolved = typeof converter === 'function' ? converter(query) : converter;
+    return resolved as SmartListConverter<TSource, T, TFilters> | null;
+  }
+
+  private converterOptions(query: ListQuery<TFilters>): ListQuery<TFilters> {
+    return this.converterContext === null || this.converterContext === undefined
+      ? query
+      : {
+        ...query,
+        context: this.converterContext
+      } as ListQuery<TFilters>;
+  }
+
+  private cacheTrackKey(
+    item: T | undefined,
+    index: number,
+    trackBy?: (index: number, item: T) => unknown
+  ): string | number {
+    if (item === undefined || trackBy) {
+      return this.visibleSyncTrackKey(item, index, trackBy);
+    }
+    const identity = this.cacheableConfig()?.identity;
+    if (!identity) {
+      return this.visibleSyncTrackKey(item, index);
+    }
+    const key = identity(item, index, this.currentQuery());
+    if (key === null || key === undefined) {
+      return this.visibleSyncTrackKey(item, index);
+    }
+    const normalized = `${key}`.trim();
+    if (normalized.length > 0) {
+      return normalized;
+    }
+    const itemKey = smartListItemKeyFromItem(item);
+    return itemKey ?? this.visibleSyncTrackKey(item, index);
+  }
+
   private visibleSyncTrackKey(
     item: T | undefined,
     index: number,
@@ -2166,10 +2280,10 @@ export class SmartListComponent<T, TFilters extends SmartListFilters = SmartList
     }
     const key = trackBy?.(index, item) ?? this.config.trackBy?.(index, item);
     if (key === null || key === undefined) {
-      return index;
+      return smartListItemKeyFromItem(item) ?? index;
     }
     const normalized = String(key).trim();
-    return normalized.length > 0 ? normalized : index;
+    return normalized.length > 0 ? normalized : smartListItemKeyFromItem(item) ?? index;
   }
 
   private fallbackResolvedTrackKey(index: number, item: T): string {
@@ -2177,7 +2291,10 @@ export class SmartListComponent<T, TFilters extends SmartListFilters = SmartList
   }
 
   private pageTrackKey(index: number, item: T): string {
-    return this.normalizedConfiguredTrackKey(index, item) ?? this.fallbackResolvedTrackKey(index, item);
+    const itemKey = smartListItemKeyFromItem(item);
+    return this.normalizedConfiguredTrackKey(index, item)
+      ?? (itemKey === null ? null : `${itemKey}`)
+      ?? this.fallbackResolvedTrackKey(index, item);
   }
 
   private trackItemInstanceToken(item: T, index: number): string {
@@ -3838,7 +3955,7 @@ private updateListSnapNearEndSuppression(scrollElement?: HTMLDivElement | null):
 
   public patchVisibleItem(
     predicate: (item: T, index: number) => boolean,
-    patcher: (item: T, index: number) => T
+    patch: Partial<T> | ((item: T, index: number) => T)
   ): boolean {
     if (this.currentViewMode !== 'list') {
       return false;
@@ -3851,16 +3968,111 @@ private updateListSnapNearEndSuppression(scrollElement?: HTMLDivElement | null):
     if (currentItem === undefined) {
       return false;
     }
-    const nextItem = patcher(currentItem, index);
+    const nextItem = typeof patch === 'function'
+      ? patch(currentItem, index)
+      : {
+        ...(currentItem as object),
+        ...(patch as object)
+      } as T;
     if (nextItem === currentItem) {
       return false;
     }
     const nextItems = [...this.items];
     nextItems[index] = nextItem;
-    this.items = nextItems;
+    this.items = this.orderSortableItems(nextItems);
     this.syncGroups();
+    this.finiteStepper.syncBounds();
     this.emitState();
     this.cdr.markForCheck();
+    return true;
+  }
+
+  public patchConvertedVisibleItem<TSource>(
+    source: TSource,
+    options: {
+      predicate?: (item: T, index: number) => boolean;
+    } = {}
+  ): boolean {
+    const query = this.currentQuery();
+    const converter = this.resolvedConverter<TSource>(query);
+    if (!converter) {
+      return false;
+    }
+    const nextItem = converter.convert(source, this.converterOptions(query));
+    const normalizedIdentity = `${smartListItemKeyFromItem(nextItem) ?? ''}`.trim();
+    const predicate = options.predicate
+      ?? (normalizedIdentity
+        ? (item: T, index: number) => `${this.cacheTrackKey(item, index)}`.trim() === normalizedIdentity
+        : null);
+    if (!predicate) {
+      return false;
+    }
+    return this.patchVisibleItem(predicate, () => nextItem);
+  }
+
+  public upsertConvertedVisibleItem<TSource>(
+    source: TSource,
+    options: {
+      predicate?: (item: T, index: number) => boolean;
+      totalDelta?: number;
+    } = {}
+  ): boolean {
+    const query = this.currentQuery();
+    const converter = this.resolvedConverter<TSource>(query);
+    if (!converter) {
+      return false;
+    }
+    const nextItem = converter.convert(source, this.converterOptions(query));
+    const normalizedIdentity = `${smartListItemKeyFromItem(nextItem) ?? ''}`.trim();
+    const predicate = options.predicate
+      ?? (normalizedIdentity
+        ? (item: T, index: number) => `${this.cacheTrackKey(item, index)}`.trim() === normalizedIdentity
+        : null);
+    if (predicate && this.patchVisibleItem(predicate, () => nextItem)) {
+      return true;
+    }
+    return this.reinsertVisibleItem(nextItem, { totalDelta: options.totalDelta });
+  }
+
+  public removeVisibleItems(
+    predicate: (item: T, index: number) => boolean,
+    options: { totalDelta?: number } = {}
+  ): boolean {
+    if (this.currentViewMode !== 'list') {
+      return false;
+    }
+    const nextItems = this.items.filter((item, index) => !predicate(item, index));
+    if (nextItems.length === this.items.length) {
+      return false;
+    }
+    this.replaceVisibleItems(nextItems, {
+      total: Math.max(nextItems.length, this.total + (options.totalDelta ?? -1))
+    });
+    return true;
+  }
+
+  public removeVisibleItemByIdentity(
+    identity: string | number,
+    options: { totalDelta?: number } = {}
+  ): boolean {
+    const normalizedIdentity = `${identity}`.trim();
+    return this.removeVisibleItems(
+      (item, index) => `${this.cacheTrackKey(item, index)}`.trim() === normalizedIdentity,
+      options
+    );
+  }
+
+  public reinsertVisibleItem(item: T, options: { totalDelta?: number } = {}): boolean {
+    if (this.currentViewMode !== 'list') {
+      return false;
+    }
+    const identity = `${this.cacheTrackKey(item, this.items.length)}`.trim();
+    if (this.items.some((currentItem, index) => `${this.cacheTrackKey(currentItem, index)}`.trim() === identity)) {
+      return false;
+    }
+    this.replaceVisibleItems([...this.items, item], {
+      total: Math.max(this.items.length + 1, this.total + (options.totalDelta ?? 1))
+    });
     return true;
   }
 

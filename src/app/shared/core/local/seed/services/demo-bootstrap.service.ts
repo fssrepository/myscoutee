@@ -1,4 +1,4 @@
-import { CHATS_TABLE_NAME } from '../../source/entity/chat.entity';
+import { CHAT_MESSAGES_TABLE_NAME, CHATS_TABLE_NAME } from '../../source/entity/chat.entity';
 import { CONTACTS_TABLE_NAME, PROFILE_EXPERIENCES_TABLE_NAME } from '../../source/entity/profile.entity';
 import { EVENT_FEEDBACK_TABLE_NAME, EVENTS_TABLE_NAME } from '../../source/entity/event.entity';
 import { HELP_CENTER_TABLE_NAME, IDEA_POSTS_TABLE_NAME } from '../../source/entity/content.entity';
@@ -263,7 +263,7 @@ export class SeedDemoBootstrapService {
 
       await this.runBootstrapStep('chats', async () => {
         this.chatsSeed.seedDefaults();
-        await this.flushBootstrapTables([CHATS_TABLE_NAME]);
+        await this.flushBootstrapTables([CHATS_TABLE_NAME, CHAT_MESSAGES_TABLE_NAME]);
       });
       await this.runBootstrapStep('events', async () => {
         const eventsChanged = this.eventsSeed.seedDefaults();
@@ -324,7 +324,7 @@ export class SeedDemoBootstrapService {
     await this.runBootstrapStep('adminHelpLinks', async () => {
       await this.adminSeed.seedDemoAdminSupport('admin-demo-ava');
       await this.adminSeed.seedDemoAdminSupport('admin-demo-noel');
-      await this.flushBootstrapTables([CHATS_TABLE_NAME, SHARE_TOKENS_TABLE_NAME]);
+      await this.flushBootstrapTables([CHATS_TABLE_NAME, CHAT_MESSAGES_TABLE_NAME, SHARE_TOKENS_TABLE_NAME]);
     });
   }
 
@@ -392,6 +392,7 @@ export class SeedDemoBootstrapService {
     }
     if (options.contextualChatsChanged) {
       tableNames.push(CHATS_TABLE_NAME);
+      tableNames.push(CHAT_MESSAGES_TABLE_NAME);
     }
     if (options.eventFeedbackChanged) {
       tableNames.push(EVENT_FEEDBACK_TABLE_NAME);

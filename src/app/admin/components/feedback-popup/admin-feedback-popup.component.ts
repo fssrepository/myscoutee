@@ -239,11 +239,14 @@ export class AdminFeedbackPopupComponent {
       channelType: 'serviceEvent',
       serviceContext: 'notification'
     };
+    const activeUser = this.chatUser('admin', 'Admin', 'AD', 'woman');
+    const usersById = new Map([
+      [activeUser.id, activeUser],
+      [feedback.userId, this.chatUser(feedback.userId, feedback.userName, this.feedbackInitial(feedback), 'woman')]
+    ]);
     return ActivityChatSingleRowConverter.convert(source, {
-      activeUserId: 'admin',
-      users: [
-        this.chatUser(feedback.userId, feedback.userName, this.feedbackInitial(feedback), 'woman')
-      ]
+      activeUser,
+      resolveUserById: userId => usersById.get(userId) ?? null
     });
   }
 

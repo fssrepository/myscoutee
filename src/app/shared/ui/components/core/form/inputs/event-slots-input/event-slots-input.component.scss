@@ -110,7 +110,10 @@
 
 .event-slots-enable-btn:disabled {
   cursor: default;
-  opacity: 0.72;
+  opacity: 0.58;
+  pointer-events: none;
+  filter: grayscale(0.35);
+  box-shadow: none;
 }
 
 .event-slots-enable-btn .mat-icon {

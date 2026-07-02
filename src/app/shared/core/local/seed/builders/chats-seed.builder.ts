@@ -1,7 +1,12 @@
-import type { ChatThreadRecord, ChatThreadRecordCollection } from '../../source/entity/chat.entity';
+import type {
+  ChatMessageRecord,
+  ChatMessageRecordCollection,
+  ChatThreadRecord,
+  ChatThreadRecordCollection
+} from '../../source/entity/chat.entity';
 import { environment } from '../../../../../../environments/environment';
 import { AppUtils } from '../../../../app-utils';
-import type { ChatPopupMessage } from '../../../contracts/chat.interface';
+import type { ChatSupportCase } from '../../../contracts/chat.interface';
 import type { ChatRecord } from '../../source/entity/chat.entity';
 import type { UserDto } from '../../../contracts/user.interface';
 
@@ -11,12 +16,25 @@ import { SeedUserBuilder } from './user-seed.builder';
 import { SEED_SCHEDULE_REFERENCE_DATE } from '../seed-constants';
 
 type ChatSeedUser = Pick<UserDto, 'id' | 'name' | 'initials' | 'gender' | 'images'>;
+export interface SeedChatRecordCollection {
+  chats: ChatThreadRecordCollection;
+  chatMessages: ChatMessageRecordCollection;
+}
 type ChatSeedSubEvent = {
   id: string;
   name: string;
+  description?: string;
   optional?: boolean;
   startAt: string;
+  endAt?: string;
+  location?: string;
+  capacityMin?: number | null;
   capacityMax?: number | null;
+  groupsCount?: number | null;
+  tournamentGroupCapacityMin?: number | null;
+  tournamentGroupCapacityMax?: number | null;
+  tournamentLeaderboardType?: string | null;
+  tournamentAdvancePerGroup?: number | null;
   membersAccepted?: number | null;
   membersPending?: number | null;
   carsPending?: number | null;
@@ -34,12 +52,13 @@ const SEED_CHAT_ITEMS_BY_USER: Record<string, ChatRecord[]> = {
       lastSenderId: 'u1',
       memberIds: ['u1', 'admin-demo-ava', 'admin-demo-noel'],
       unread: 1,
-      channelType: 'serviceEvent',
-      supportCaseStatus: 'pending',
-      supportCaseAssigneeUserId: null,
-      supportCaseAssigneeName: null,
-      supportCaseAssigneeInitials: null,
-      supportCaseUpdatedAtIso: '2026-05-13T01:18:00.000Z'
+      channelType: 'supportCase',
+      ownerId: 'c-support-admin-u1',
+      supportCase: {
+        status: 'pending',
+        assignee: null,
+        updatedAtIso: '2026-05-13T01:18:00.000Z'
+      }
     },
     {
       id: 'c-support-admin-u2',
@@ -49,12 +68,17 @@ const SEED_CHAT_ITEMS_BY_USER: Record<string, ChatRecord[]> = {
       lastSenderId: 'admin-demo-noel',
       memberIds: ['u2', 'admin-demo-ava', 'admin-demo-noel'],
       unread: 0,
-      channelType: 'serviceEvent',
-      supportCaseStatus: 'picked',
-      supportCaseAssigneeUserId: 'admin-demo-noel',
-      supportCaseAssigneeName: 'Noel',
-      supportCaseAssigneeInitials: 'NO',
-      supportCaseUpdatedAtIso: '2026-05-13T01:32:00.000Z'
+      channelType: 'supportCase',
+      ownerId: 'c-support-admin-u2',
+      supportCase: {
+        status: 'picked',
+        assignee: {
+          userId: 'admin-demo-noel',
+          name: 'Noel',
+          initials: 'NO'
+        },
+        updatedAtIso: '2026-05-13T01:32:00.000Z'
+      }
     },
     {
       id: 'c-support-admin-u3',
@@ -64,12 +88,17 @@ const SEED_CHAT_ITEMS_BY_USER: Record<string, ChatRecord[]> = {
       lastSenderId: 'admin-demo-ava',
       memberIds: ['u3', 'admin-demo-ava', 'admin-demo-noel'],
       unread: 0,
-      channelType: 'serviceEvent',
-      supportCaseStatus: 'solved',
-      supportCaseAssigneeUserId: 'admin-demo-ava',
-      supportCaseAssigneeName: 'Ava',
-      supportCaseAssigneeInitials: 'AV',
-      supportCaseUpdatedAtIso: '2026-05-13T01:40:00.000Z'
+      channelType: 'supportCase',
+      ownerId: 'c-support-admin-u3',
+      supportCase: {
+        status: 'solved',
+        assignee: {
+          userId: 'admin-demo-ava',
+          name: 'Ava',
+          initials: 'AV'
+        },
+        updatedAtIso: '2026-05-13T01:40:00.000Z'
+      }
     }
   ],
   'admin-demo-noel': [
@@ -81,12 +110,13 @@ const SEED_CHAT_ITEMS_BY_USER: Record<string, ChatRecord[]> = {
       lastSenderId: 'u1',
       memberIds: ['u1', 'admin-demo-ava', 'admin-demo-noel'],
       unread: 1,
-      channelType: 'serviceEvent',
-      supportCaseStatus: 'pending',
-      supportCaseAssigneeUserId: null,
-      supportCaseAssigneeName: null,
-      supportCaseAssigneeInitials: null,
-      supportCaseUpdatedAtIso: '2026-05-13T01:18:00.000Z'
+      channelType: 'supportCase',
+      ownerId: 'c-support-admin-u1',
+      supportCase: {
+        status: 'pending',
+        assignee: null,
+        updatedAtIso: '2026-05-13T01:18:00.000Z'
+      }
     },
     {
       id: 'c-support-admin-u2',
@@ -96,12 +126,17 @@ const SEED_CHAT_ITEMS_BY_USER: Record<string, ChatRecord[]> = {
       lastSenderId: 'admin-demo-noel',
       memberIds: ['u2', 'admin-demo-ava', 'admin-demo-noel'],
       unread: 0,
-      channelType: 'serviceEvent',
-      supportCaseStatus: 'picked',
-      supportCaseAssigneeUserId: 'admin-demo-noel',
-      supportCaseAssigneeName: 'Noel',
-      supportCaseAssigneeInitials: 'NO',
-      supportCaseUpdatedAtIso: '2026-05-13T01:32:00.000Z'
+      channelType: 'supportCase',
+      ownerId: 'c-support-admin-u2',
+      supportCase: {
+        status: 'picked',
+        assignee: {
+          userId: 'admin-demo-noel',
+          name: 'Noel',
+          initials: 'NO'
+        },
+        updatedAtIso: '2026-05-13T01:32:00.000Z'
+      }
     },
     {
       id: 'c-support-admin-u3',
@@ -111,12 +146,17 @@ const SEED_CHAT_ITEMS_BY_USER: Record<string, ChatRecord[]> = {
       lastSenderId: 'admin-demo-ava',
       memberIds: ['u3', 'admin-demo-ava', 'admin-demo-noel'],
       unread: 0,
-      channelType: 'serviceEvent',
-      supportCaseStatus: 'solved',
-      supportCaseAssigneeUserId: 'admin-demo-ava',
-      supportCaseAssigneeName: 'Ava',
-      supportCaseAssigneeInitials: 'AV',
-      supportCaseUpdatedAtIso: '2026-05-13T01:40:00.000Z'
+      channelType: 'supportCase',
+      ownerId: 'c-support-admin-u3',
+      supportCase: {
+        status: 'solved',
+        assignee: {
+          userId: 'admin-demo-ava',
+          name: 'Ava',
+          initials: 'AV'
+        },
+        updatedAtIso: '2026-05-13T01:40:00.000Z'
+      }
     }
   ],
   u1: [
@@ -128,12 +168,9 @@ const SEED_CHAT_ITEMS_BY_USER: Record<string, ChatRecord[]> = {
       lastSenderId: 'u1',
       memberIds: ['u1', 'admin-demo-ava', 'admin-demo-noel'],
       unread: 0,
-      channelType: 'serviceEvent',
-      supportCaseStatus: 'pending',
-      supportCaseAssigneeUserId: null,
-      supportCaseAssigneeName: null,
-      supportCaseAssigneeInitials: null,
-      supportCaseUpdatedAtIso: '2026-05-13T01:18:00.000Z'
+      channelType: 'appSupport',
+      ownerId: 'c-support-admin-u1',
+      serviceContext: 'notification'
     },
     {
       id: 'c1',
@@ -176,6 +213,18 @@ const SEED_CHAT_ITEMS_BY_USER: Record<string, ChatRecord[]> = {
   ],
   u3: [
     {
+      id: 'c-app-support-u3',
+      avatar: 'MS',
+      title: 'MyScoutee Support',
+      lastMessage: 'Share your workspace here when something looks wrong.',
+      lastSenderId: 'admin-demo-ava',
+      memberIds: ['u3', 'admin-demo-ava', 'admin-demo-noel'],
+      unread: 1,
+      channelType: 'appSupport',
+      ownerId: 'c-app-support-u3',
+      serviceContext: 'notification'
+    },
+    {
       id: 'c5',
       avatar: 'LP',
       title: 'Trail Group - Transport',
@@ -199,7 +248,7 @@ export class SeedChatsBuilder {
     ['admin-demo-noel', { id: 'admin-demo-noel', name: 'Noel', initials: 'NO', gender: 'man', images: ['https://randomuser.me/api/portraits/men/32.jpg'] }]
   ]);
 
-  static buildSeedRecordCollection(): ChatThreadRecordCollection {
+  static buildSeedRecordCollection(): SeedChatRecordCollection {
     return this.buildRecordCollection(
       Object.fromEntries(
         Object.entries(SEED_CHAT_ITEMS_BY_USER).map(([ownerUserId, items]) => [
@@ -216,7 +265,7 @@ export class SeedChatsBuilder {
   static buildContextualRecordCollectionForUser(
     ownerUserId: string,
     eventRecords: readonly ActivityEventRecord[]
-  ): ChatThreadRecordCollection {
+  ): SeedChatRecordCollection {
     return this.buildRecordCollection({
       [ownerUserId]: this.buildContextualChatItemsForUser(ownerUserId, eventRecords)
     });
@@ -248,55 +297,71 @@ export class SeedChatsBuilder {
             items.push(optionalChat);
           }
         }
+        const groupChat = this.buildGroupContextChat(normalizedOwnerUserId, record, subEvent, stageLabel);
+        if (groupChat) {
+          items.push(groupChat);
+        }
       }
     }
     return items;
   }
 
-  static buildRecordCollection(itemsByUser: Record<string, readonly ChatRecord[]>): ChatThreadRecordCollection {
+  static buildRecordCollection(itemsByUser: Record<string, readonly ChatRecord[]>): SeedChatRecordCollection {
     const byId: Record<string, ChatThreadRecord> = {};
     const ids: string[] = [];
+    const messageById: Record<string, ChatMessageRecord> = {};
+    const messageIds: string[] = [];
+    const messageIdsByChatKey: Record<string, string[]> = {};
     for (const [ownerUserId, items] of Object.entries(itemsByUser)) {
       for (const item of items) {
         const recordKey = this.buildRecordKey(ownerUserId, item.id);
         const dateIso = this.buildDateIso(ownerUserId, item);
+        const messageRecords = this.buildMessageRecords(ownerUserId, item, dateIso);
         byId[recordKey] = {
           ...item,
-          supportCaseUpdatedAtIso: this.rebaseOptionalDateIso(item.supportCaseUpdatedAtIso),
+          supportCase: this.rebaseSupportCase(item.supportCase),
           memberIds: [...item.memberIds],
+          unread: this.countUnreadMessageRecords(messageRecords, ownerUserId),
           ownerUserId,
-          dateIso,
-          messages: this.buildMessages(ownerUserId, item, dateIso)
+          dateIso
         };
         ids.push(recordKey);
+        const chatKey = this.buildChatMessageChatKey(ownerUserId, item.id);
+        for (const message of messageRecords) {
+          messageById[message.recordId] = message;
+          messageIds.push(message.recordId);
+          messageIdsByChatKey[chatKey] = [...(messageIdsByChatKey[chatKey] ?? []), message.recordId];
+        }
       }
     }
-    return { byId, ids };
-  }
-
-  static cloneRecord(record: ChatThreadRecord, options: { includeMessages?: boolean } = {}): ChatThreadRecord {
     return {
-      ...record,
-      memberIds: [...record.memberIds],
-      messages: options.includeMessages === false
-        ? undefined
-        : this.cloneMessages(record.messages ?? [])
+      chats: { byId, ids },
+      chatMessages: {
+        byId: messageById,
+        ids: messageIds,
+        idsByChatKey: messageIdsByChatKey
+      }
     };
   }
 
-  static cloneMessages(messages: readonly ChatPopupMessage[]): ChatPopupMessage[] {
-    return messages.map(message => ({
-      ...message,
-      senderAvatar: { ...message.senderAvatar },
-      readBy: message.readBy.map(reader => ({ ...reader })),
-      attachments: message.attachments?.map(attachment => ({ ...attachment })),
-      replyTo: message.replyTo ? { ...message.replyTo } : message.replyTo,
-      reactions: message.reactions?.map(reaction => ({ ...reaction }))
-    }));
+  static cloneRecord(record: ChatThreadRecord): ChatThreadRecord {
+    return {
+      ...record,
+      memberIds: [...record.memberIds],
+      supportCase: this.cloneSupportCase(record.supportCase)
+    };
   }
 
   static buildRecordKey(ownerUserId: string, sourceId: string): string {
     return `${ownerUserId}:${sourceId}`;
+  }
+
+  static buildChatMessageChatKey(ownerUserId: string, chatId: string): string {
+    return `${ownerUserId.trim()}:${chatId.trim()}`;
+  }
+
+  static buildChatMessageRecordKey(ownerUserId: string, chatId: string, messageId: string): string {
+    return `${ownerUserId.trim()}:${chatId.trim()}:${messageId.trim()}`;
   }
 
   private static buildMainContextChat(ownerUserId: string, record: ActivityEventRecord): ChatRecord {
@@ -306,9 +371,7 @@ export class SeedChatsBuilder {
       id: `c-context-main-${record.id}`,
       title: `${eventTitle} · Main Event`,
       lastMessage: `Main event channel for ${eventTitle}.`,
-      eventId: record.id,
-      subEventId: '',
-      groupId: '',
+      ownerId: record.id,
       channelType: 'mainEvent',
       memberIds,
       dateIso: record.startAtIso,
@@ -333,9 +396,7 @@ export class SeedChatsBuilder {
         lastMessage: record.type === 'hosting'
           ? 'Notification channel for cancellations, postponements, and urgent event updates.'
           : `Service chat with the organizer for ${eventTitle}.`,
-        eventId: record.id,
-        subEventId: '',
-        groupId: '',
+        ownerId: record.id,
         channelType: 'serviceEvent',
         memberIds: memberIds.length > 0 ? memberIds : [ownerUserId],
         dateIso: record.startAtIso,
@@ -351,7 +412,7 @@ export class SeedChatsBuilder {
     subEvent: ChatSeedSubEvent,
     stageLabel: string
   ): ChatRecord | null {
-    const acceptedTarget = this.countValue(subEvent.membersAccepted);
+    const acceptedTarget = this.contextChatMemberTarget(record, subEvent);
     if (acceptedTarget <= 0) {
       return null;
     }
@@ -369,10 +430,46 @@ export class SeedChatsBuilder {
       id: `c-context-optional-${record.id}-${subEvent.id}`,
       title: `${subEvent.name || 'Optional Sub Event'} · Optional`,
       lastMessage: `${stageLabel} optional channel in ${eventTitle}.`,
-      eventId: record.id,
-      subEventId: subEvent.id,
-      groupId: '',
+      ownerId: this.subEventOwnerId(record.id, subEvent.id),
       channelType: 'optionalSubEvent',
+      memberIds,
+      dateIso: subEvent.startAt || record.startAtIso,
+      unread: this.sumSubEventPending(subEvent, true)
+    }, ownerUserId);
+  }
+
+  private static buildGroupContextChat(
+    ownerUserId: string,
+    record: ActivityEventRecord,
+    subEvent: ChatSeedSubEvent,
+    stageLabel: string
+  ): ChatRecord | null {
+    if (!this.hasTournamentGroupContext(subEvent)) {
+      return null;
+    }
+    const eventTitle = record.title.trim() || 'Event';
+    const groupId = `${subEvent.id}-group-1`;
+    const groupCapacity = Math.max(
+      this.countValue(subEvent.tournamentGroupCapacityMax),
+      this.countValue(subEvent.tournamentGroupCapacityMin),
+      4
+    );
+    const acceptedTarget = Math.max(1, Math.min(this.contextChatMemberTarget(record, subEvent), groupCapacity));
+    const memberIds = this.uniqueUserIds([
+      ownerUserId,
+      ...SeedEventBuilder.seededEventMemberIds(
+        `chat-group:${record.id}:${subEvent.id}:${groupId}`,
+        Math.max(acceptedTarget, 4),
+        [...this.USERS_BY_ID.values()],
+        ownerUserId
+      )
+    ]).slice(0, Math.max(1, acceptedTarget));
+    return this.createContextChatItem({
+      id: `c-context-group-${record.id}-${subEvent.id}-${groupId}`,
+      title: `Group A · ${subEvent.name || stageLabel}`,
+      lastMessage: `${stageLabel} group channel in ${eventTitle}.`,
+      ownerId: this.groupOwnerId(record.id, subEvent.id, groupId),
+      channelType: 'groupSubEvent',
       memberIds,
       dateIso: subEvent.startAt || record.startAtIso,
       unread: this.sumSubEventPending(subEvent, true)
@@ -383,9 +480,7 @@ export class SeedChatsBuilder {
     id: string;
     title: string;
     lastMessage: string;
-    eventId: string;
-    subEventId: string;
-    groupId: string;
+    ownerId: string;
     channelType: 'mainEvent' | 'optionalSubEvent' | 'groupSubEvent' | 'serviceEvent';
     memberIds: string[];
     dateIso: string;
@@ -404,9 +499,7 @@ export class SeedChatsBuilder {
       unread: Math.max(0, Math.trunc(Number(input.unread) || 0)),
       dateIso: input.dateIso,
       channelType: input.channelType,
-      eventId: input.eventId,
-      subEventId: input.subEventId || undefined,
-      groupId: input.groupId || undefined
+      ownerId: input.ownerId
     };
   }
 
@@ -436,6 +529,29 @@ export class SeedChatsBuilder {
       + this.countValue(subEvent.suppliesPending);
   }
 
+  private static contextChatMemberTarget(
+    record: ActivityEventRecord,
+    subEvent: ChatSeedSubEvent
+  ): number {
+    return Math.max(
+      1,
+      this.countValue(subEvent.membersAccepted),
+      Math.min(
+        Math.max(1, this.countValue(subEvent.capacityMax)),
+        Math.max(1, this.countValue(record.acceptedMembers))
+      )
+    );
+  }
+
+  private static hasTournamentGroupContext(subEvent: ChatSeedSubEvent): boolean {
+    return subEvent.optional !== true
+      && (
+        this.countValue(subEvent.tournamentGroupCapacityMin) > 0
+        || this.countValue(subEvent.tournamentGroupCapacityMax) > 0
+        || this.countValue(subEvent.groupsCount) > 0
+      );
+  }
+
   private static countValue(value: unknown): number {
     return Math.max(0, Math.trunc(Number(value) || 0));
   }
@@ -453,39 +569,27 @@ export class SeedChatsBuilder {
   }
 
   private static contextSubEvents(record: ActivityEventRecord): ChatSeedSubEvent[] {
-    const definitions = record.subEventDefinitions ?? [];
-    const slotStartMs = AppUtils.toSortableDate(record.startAtIso);
-    let previousStartOffsetMinutes = 0;
-    let previousEndOffsetMinutes = 0;
-    let hasPrevious = false;
-    return definitions.map((item, index) => {
-      const durationMinutes = Math.max(0, Math.trunc(Number(item.durationMinutes) || 0));
-      const offsetMinutes = Math.max(0, Math.trunc(Number(item.offsetMinutes) || 0));
-      const timing = `${item.timing ?? ''}`.trim().toLowerCase();
-      const startOffsetMinutes = !hasPrevious
-        ? offsetMinutes
-        : timing === 'during'
-          ? previousStartOffsetMinutes + offsetMinutes
-          : previousEndOffsetMinutes + offsetMinutes;
-      previousStartOffsetMinutes = startOffsetMinutes;
-      previousEndOffsetMinutes = startOffsetMinutes + durationMinutes;
-      hasPrevious = true;
-      const startAt = Number.isFinite(slotStartMs) && slotStartMs > 0
-        ? AppUtils.toIsoDateTime(new Date(slotStartMs + (startOffsetMinutes * 60 * 1000)))
-        : record.startAtIso;
-      return {
-        id: `${item.id ?? ''}`.trim() || `subevent-${index + 1}`,
-        name: `${item.name ?? ''}`.trim() || `Sub Event ${index + 1}`,
-        optional: item.optional === true,
-        startAt,
-        capacityMax: item.capacityMax ?? item.tournamentGroupCapacityMax ?? null,
-        membersAccepted: 0,
-        membersPending: 0,
-        carsPending: 0,
-        accommodationPending: 0,
-        suppliesPending: 0
-      };
-    });
+    return (record.subEvents ?? []).map((item, index) => ({
+      id: `${item.id ?? ''}`.trim() || `subevent-${index + 1}`,
+      name: `${item.name ?? ''}`.trim() || `Sub Event ${index + 1}`,
+      description: `${item.description ?? ''}`.trim(),
+      optional: item.optional === true,
+      startAt: `${item.startAt ?? ''}`.trim() || record.startAtIso,
+      endAt: `${item.endAt ?? ''}`.trim() || record.endAtIso,
+      location: `${item.location ?? ''}`.trim(),
+      capacityMin: item.capacityMin ?? null,
+      capacityMax: item.capacityMax ?? item.tournamentGroupCapacityMax ?? null,
+      groupsCount: item.groupsCount ?? null,
+      tournamentGroupCapacityMin: item.tournamentGroupCapacityMin ?? null,
+      tournamentGroupCapacityMax: item.tournamentGroupCapacityMax ?? null,
+      tournamentLeaderboardType: item.tournamentLeaderboardType ?? null,
+      tournamentAdvancePerGroup: item.tournamentAdvancePerGroup ?? null,
+      membersAccepted: item.membersAccepted ?? 0,
+      membersPending: item.membersPending ?? 0,
+      carsPending: item.carsPending ?? 0,
+      accommodationPending: item.accommodationPending ?? 0,
+      suppliesPending: item.suppliesPending ?? 0
+    }));
   }
 
   private static sortSubEventsByStartAsc(items: readonly ChatSeedSubEvent[]): ChatSeedSubEvent[] {
@@ -504,7 +608,7 @@ export class SeedChatsBuilder {
     return AppUtils.toIsoDateTime(value);
   }
 
-  private static buildMessages(ownerUserId: string, item: ChatRecord, anchorIso: string): ChatPopupMessage[] {
+  private static buildMessageRecords(ownerUserId: string, item: ChatRecord, anchorIso: string): ChatMessageRecord[] {
     const me = this.resolveUser(ownerUserId);
     if (!me) {
       return [];
@@ -519,25 +623,30 @@ export class SeedChatsBuilder {
       text: string,
       sentAt: Date,
       readBy: readonly ChatSeedUser[]
-    ): ChatPopupMessage => ({
-      id,
-      sender: author.name,
+    ): ChatMessageRecord => ({
+      recordId: this.buildChatMessageRecordKey(ownerUserId, item.id, id),
+      ownerUserId,
+      chatId: item.id,
+      messageId: id,
+      senderName: author.name,
       senderAvatar: {
-        id: author.id,
+        userId: author.id,
         initials: author.initials,
         gender: author.gender,
         imageUrl: this.seedAvatarImageUrl(author)
       },
-      text,
-      time: sentAt.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' }),
+      bodyText: text,
+      timeLabel: sentAt.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' }),
       sentAtIso: AppUtils.toIsoDateTime(sentAt),
       mine: author.id === me.id,
       readBy: readBy.map(user => ({
-        id: user.id,
+        userId: user.id,
         initials: user.initials,
         gender: user.gender,
         imageUrl: this.seedAvatarImageUrl(user)
-      }))
+      })),
+      reactions: [],
+      attachments: []
     });
 
     const memberA = members[0] ?? me;
@@ -547,7 +656,11 @@ export class SeedChatsBuilder {
     const lastLine = item.lastMessage.trim() || `Update shared in ${chatTopic}.`;
 
     if (this.isSupportCaseChat(item)) {
-      return this.buildSupportCaseMessages(item, me, members, sender, anchor, mk);
+      return this.applySeedUnreadState(
+        item,
+        me,
+        this.buildSupportCaseMessages(item, me, members, sender, anchor, mk)
+      );
     }
 
     const seed = AppUtils.hashText(`${ownerUserId}:${item.id}:${chatTopic}`);
@@ -561,7 +674,7 @@ export class SeedChatsBuilder {
       'Synced on arrival windows.',
       'Collected final confirmations.'
     ];
-    const olderMessages: ChatPopupMessage[] = [];
+    const olderMessages: ChatMessageRecord[] = [];
     const olderCount = 36;
     const olderBaseStart = new Date(anchor.getTime() - ((olderCount + 12) * 40 * 60 * 1000));
     for (let index = olderCount - 1; index >= 0; index -= 1) {
@@ -574,7 +687,7 @@ export class SeedChatsBuilder {
       olderMessages.push(mk(`${item.id}-older-${index}`, author, baseText, sentAt, readers));
     }
 
-    const recentMessages: ChatPopupMessage[] = [
+    const recentMessages: ChatMessageRecord[] = [
       mk(`${item.id}-1`, memberA, `Let us align the plan for ${chatTopic}.`, at(180), [memberB, memberC]),
       mk(`${item.id}-2`, memberB, 'I can bring two more people.', at(140), [memberA, memberC]),
       mk(`${item.id}-3`, memberC, 'Route and timing look good on my side.', at(95), [memberA, memberB]),
@@ -582,8 +695,70 @@ export class SeedChatsBuilder {
       mk(`${item.id}-5`, me, 'Perfect, locking this in.', at(12), [memberA, memberB])
     ];
 
-    return [...olderMessages, ...recentMessages]
-      .sort((first, second) => AppUtils.toSortableDate(first.sentAtIso) - AppUtils.toSortableDate(second.sentAtIso));
+    return this.applySeedUnreadState(
+      item,
+      me,
+      [...olderMessages, ...recentMessages]
+        .sort((first, second) => AppUtils.toSortableDate(first.sentAtIso) - AppUtils.toSortableDate(second.sentAtIso))
+    );
+  }
+
+  private static applySeedUnreadState(
+    item: ChatRecord,
+    owner: ChatSeedUser,
+    messages: readonly ChatMessageRecord[]
+  ): ChatMessageRecord[] {
+    const unreadTarget = this.countValue(item.unread);
+    const incomingIndexes = messages
+      .map((message, index) => ({ message, index }))
+      .filter(entry => !entry.message.mine && entry.message.senderAvatar.userId !== owner.id)
+      .sort((left, right) => AppUtils.toSortableDate(right.message.sentAtIso) - AppUtils.toSortableDate(left.message.sentAtIso))
+      .map(entry => entry.index);
+    const unreadIndexes = new Set(incomingIndexes.slice(0, unreadTarget));
+    return messages.map((message, index) => {
+      if (message.mine || message.senderAvatar.userId === owner.id) {
+        return message;
+      }
+      return unreadIndexes.has(index)
+        ? this.withoutMessageReader(message, owner.id)
+        : this.withMessageReader(message, owner);
+    });
+  }
+
+  private static withoutMessageReader(message: ChatMessageRecord, userId: string): ChatMessageRecord {
+    const nextReadBy = (message.readBy ?? []).filter(reader => reader.userId !== userId);
+    return nextReadBy.length === message.readBy.length
+      ? message
+      : {
+          ...message,
+          readBy: nextReadBy
+        };
+  }
+
+  private static withMessageReader(message: ChatMessageRecord, user: ChatSeedUser): ChatMessageRecord {
+    if ((message.readBy ?? []).some(reader => reader.userId === user.id)) {
+      return message;
+    }
+    return {
+      ...message,
+      readBy: [
+        ...(message.readBy ?? []),
+        {
+          userId: user.id,
+          initials: user.initials,
+          gender: user.gender,
+          imageUrl: this.seedAvatarImageUrl(user)
+        }
+      ]
+    };
+  }
+
+  private static countUnreadMessageRecords(messages: readonly ChatMessageRecord[], ownerUserId: string): number {
+    return messages.filter(message =>
+      !message.mine
+      && message.senderAvatar.userId !== ownerUserId
+      && !(message.readBy ?? []).some(reader => reader.userId === ownerUserId)
+    ).length;
   }
 
   private static rebaseOptionalDateIso(value: string | null | undefined): string | undefined {
@@ -598,6 +773,35 @@ export class SeedChatsBuilder {
     return AppUtils.rebaseDateTime(value, SEED_SCHEDULE_REFERENCE_DATE, environment.bootstrapOffsetInDays) ?? value;
   }
 
+  private static rebaseSupportCase(supportCase: ChatSupportCase | null | undefined): ChatSupportCase | null | undefined {
+    if (!supportCase) {
+      return supportCase;
+    }
+    return {
+      ...supportCase,
+      assignee: supportCase.assignee ? { ...supportCase.assignee } : supportCase.assignee,
+      updatedAtIso: this.rebaseOptionalDateIso(supportCase.updatedAtIso)
+    };
+  }
+
+  private static cloneSupportCase(supportCase: ChatSupportCase | null | undefined): ChatSupportCase | null | undefined {
+    if (!supportCase) {
+      return supportCase;
+    }
+    return {
+      ...supportCase,
+      assignee: supportCase.assignee ? { ...supportCase.assignee } : supportCase.assignee
+    };
+  }
+
+  private static subEventOwnerId(eventId: string, subEventId: string): string {
+    return `${eventId}:${subEventId}`;
+  }
+
+  private static groupOwnerId(eventId: string, subEventId: string, groupId: string): string {
+    return `${eventId}:${subEventId}:${groupId}`;
+  }
+
   private static buildSupportCaseMessages(
     item: ChatRecord,
     me: ChatSeedUser,
@@ -610,11 +814,11 @@ export class SeedChatsBuilder {
       text: string,
       sentAt: Date,
       readBy: readonly ChatSeedUser[]
-    ) => ChatPopupMessage
-  ): ChatPopupMessage[] {
+    ) => ChatMessageRecord
+  ): ChatMessageRecord[] {
     const at = (minutesBefore: number): Date => new Date(anchor.getTime() - (minutesBefore * 60 * 1000));
     const requester = members.find(user => !this.isAdminSeedUser(user.id)) ?? sender;
-    const assignedAdmin = this.resolveUser(item.supportCaseAssigneeUserId ?? '')
+    const assignedAdmin = this.resolveUser(item.supportCase?.assignee?.userId ?? '')
       ?? members.find(user => this.isAdminSeedUser(user.id) && user.id !== requester.id)
       ?? me;
     const reviewer = members.find(user => this.isAdminSeedUser(user.id) && user.id !== assignedAdmin.id)
@@ -623,7 +827,7 @@ export class SeedChatsBuilder {
     const readByRequesterAndReviewer = this.uniqueSeedUsers([requester, reviewer]);
     const lastLine = item.lastMessage.trim() || 'Please check this support case.';
 
-    const messages: ChatPopupMessage[] = [
+    const messages: ChatMessageRecord[] = [
       mk(
         `${item.id}-support-1`,
         requester,
@@ -640,7 +844,7 @@ export class SeedChatsBuilder {
       )
     ];
 
-    if (item.supportCaseStatus === 'picked') {
+    if (item.supportCase?.status === 'picked') {
       messages.push(
         mk(
           `${item.id}-support-3`,
@@ -651,7 +855,7 @@ export class SeedChatsBuilder {
         ),
         mk(`${item.id}-support-4`, assignedAdmin, lastLine, at(42), readByRequesterAndReviewer)
       );
-    } else if (item.supportCaseStatus === 'solved') {
+    } else if (item.supportCase?.status === 'solved') {
       messages.push(
         mk(
           `${item.id}-support-3`,
@@ -662,7 +866,7 @@ export class SeedChatsBuilder {
         ),
         mk(`${item.id}-support-4`, assignedAdmin, lastLine, at(34), readByRequesterAndReviewer)
       );
-    } else if (item.supportCaseStatus === 'blocked') {
+    } else if (item.supportCase?.status === 'blocked') {
       messages.push(
         mk(
           `${item.id}-support-3`,
@@ -695,7 +899,9 @@ export class SeedChatsBuilder {
   }
 
   private static isSupportCaseChat(item: ChatRecord): boolean {
-    return `${item.id ?? ''}`.trim().startsWith('c-support-admin-') || Boolean(item.supportCaseStatus);
+    return item.channelType === 'supportCase'
+      || `${item.id ?? ''}`.trim().startsWith('c-support-admin-')
+      || Boolean(item.supportCase);
   }
 
   private static uniqueSeedUsers(users: readonly ChatSeedUser[]): ChatSeedUser[] {

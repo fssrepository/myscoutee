@@ -54,7 +54,7 @@ import {
   ContactsService as ContactsDataService,
   ExplanationGuideService,
   UsersService,
-  type ActivityMemberEntry,
+  type ActivityMemberDTO,
   type ContactFormValue,
   type ContactListFilters,
   type ContactListItem,
@@ -840,7 +840,7 @@ export class ContactsPopupComponent implements OnDestroy {
     }
   }
 
-  private async addContacts(selectedCandidates: readonly ActivityMemberEntry[]): Promise<void> {
+  private async addContacts(selectedCandidates: readonly ActivityMemberDTO[]): Promise<void> {
     const activeUserId = this.activeUserId();
     if (!activeUserId || selectedCandidates.length === 0) {
       return;

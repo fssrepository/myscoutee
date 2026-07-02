@@ -9,9 +9,13 @@ export interface ChatReadAvatar {
   imageUrl?: string | null;
 }
 
+export interface ChatMemberSummaryDto extends ChatReadAvatar {
+  name?: string | null;
+}
+
 export type ChatMessageDeliveryState = 'pending' | 'timed-out';
 
-export interface ChatPopupMessage {
+export interface ChatMessageDto {
   id: string;
   sender: string;
   senderAvatar: ChatReadAvatar;
@@ -93,21 +97,48 @@ export interface ChatReadReceipt {
   userGender: ChatUserGender;
   messageIds: string[];
   readAtIso: string;
+  unread?: number | null;
 }
 
 export type ChatLiveEvent =
-  | { type: 'message'; chatId: string; message: ChatPopupMessage }
-  | { type: 'ack'; chatId: string; message?: ChatPopupMessage; messageId?: string; clientId?: string }
+  | { type: 'message'; chatId: string; message: ChatMessageDto }
+  | { type: 'ack'; chatId: string; message?: ChatMessageDto; messageId?: string; clientId?: string }
   | { type: 'typing'; chatId: string; typing: ChatTypingIndicator }
   | { type: 'read'; chatId: string; read: ChatReadReceipt }
   | { type: 'error'; chatId: string; messageId?: string; clientId?: string; error?: string }
   | { type: 'reconnected'; chatId: string };
 
-export type ChatChannelType = 'general' | 'mainEvent' | 'optionalSubEvent' | 'groupSubEvent' | 'serviceEvent';
-export type ActivitiesChatContextFilter = 'all' | 'event' | 'subEvent' | 'group' | 'service';
+export type ChatChannelType = 'general' | 'mainEvent' | 'optionalSubEvent' | 'groupSubEvent' | 'serviceEvent' | 'appSupport' | 'supportCase';
+export type ActivitiesChatContextFilter = 'all' | 'event' | 'subEvent' | 'group' | 'service' | 'appSupport';
 export type SupportCaseStatus = 'pending' | 'picked' | 'solved' | 'blocked';
 export type SupportCaseFilter = 'all' | SupportCaseStatus;
 export type SupportCaseAction = 'pick' | 'unpick' | 'solve' | 'block' | 'reopen';
+
+export interface ChatSupportCase {
+  status: SupportCaseStatus;
+  assignee?: {
+    userId: string;
+    name: string;
+    initials: string;
+  } | null;
+  updatedAtIso?: string | null;
+}
+
+export interface ChatMetricBucketDTO {
+  accepted: number;
+  pending: number;
+  capacityMin: number;
+  capacityMax: number;
+}
+
+export interface ChatMetricsDTO {
+  members?: ChatMetricBucketDTO | null;
+  car?: ChatMetricBucketDTO | null;
+  accommodation?: ChatMetricBucketDTO | null;
+  supplies?: ChatMetricBucketDTO | null;
+  groupsCount?: number | null;
+  pendingTotal: number;
+}
 
 export interface ChatDTO {
   id: string;
@@ -116,27 +147,30 @@ export interface ChatDTO {
   lastMessage: string;
   lastSenderId: string;
   memberIds: string[];
+  members?: ChatMemberSummaryDto[];
   unread: number;
   dateIso?: string;
   distanceKm?: number;
   distanceMetersExact?: number;
   channelType?: ChatChannelType;
   serviceContext?: 'event' | 'asset' | 'notification';
-  eventId?: string;
-  subEventId?: string;
-  groupId?: string;
-  supportCaseStatus?: SupportCaseStatus | null;
-  supportCaseAssigneeUserId?: string | null;
-  supportCaseAssigneeName?: string | null;
-  supportCaseAssigneeInitials?: string | null;
-  supportCaseUpdatedAtIso?: string | null;
+  ownerId?: string;
+  supportCase?: ChatSupportCase | null;
   ownerUserId?: string | null;
+  metrics?: ChatMetricsDTO | null;
 }
 
 export interface ActivitiesChatPageResultDTO {
   items: ChatDTO[];
   total: number;
   nextCursor?: string | null;
+}
+
+export interface ChatMessagesPageResultDTO {
+  items: ChatMessageDto[];
+  total: number;
+  nextCursor?: string | null;
+  readReceipt?: ChatReadReceipt | null;
 }
 
 export interface ChatVoiceClip {

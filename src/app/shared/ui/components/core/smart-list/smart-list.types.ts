@@ -17,6 +17,8 @@ import type {
   AppMenuPanelMode,
   AppMenuRateConfig
 } from '../menu';
+import type { SmartListLocalSortKey } from './smart-list-local-sort';
+import type { UiListConverter } from '../../../converters/converter.types';
 
 export type SmartListViewMode = 'list' | 'month' | 'week';
 export type SmartListPresentation = 'list' | 'fullscreen';
@@ -219,6 +221,22 @@ export interface SmartListMenuItemsContext<T, TFilters extends SmartListFilters 
 export type SmartListMenuItemsResolver<T, TFilters extends SmartListFilters = SmartListFilters> =
   (context: SmartListMenuItemsContext<T, TFilters>) => readonly AppMenuItem<string, unknown>[];
 
+export interface SmartListCacheableConfig<T, TFilters extends SmartListFilters = SmartListFilters> {
+  identity?: (item: T, index: number, query: ListQuery<TFilters>) => string | number;
+  equals?: (current: T, next: T, index: number, query: ListQuery<TFilters>) => boolean;
+}
+
+export interface SmartListSortableConfig<T, TFilters extends SmartListFilters = SmartListFilters> {
+  sortKey?: (item: T, index: number, query: ListQuery<TFilters>) => SmartListLocalSortKey | null | undefined;
+}
+
+export type SmartListConverter<TSource, T, TFilters extends SmartListFilters = SmartListFilters> =
+  UiListConverter<TSource, T, ListQuery<TFilters>>;
+
+export type SmartListConverterResolver<T, TFilters extends SmartListFilters = SmartListFilters>
+  = SmartListConverter<unknown, T, TFilters>
+  | ((query: ListQuery<TFilters>) => SmartListConverter<unknown, T, TFilters> | null);
+
 export interface SmartListConfig<T, TFilters extends SmartListFilters = SmartListFilters> {
   pageSize?: number;
   mobilePageSizeCap?: number | null;
@@ -236,6 +254,9 @@ export interface SmartListConfig<T, TFilters extends SmartListFilters = SmartLis
   defaultFilters?: TFilters;
   defaultGroupBy?: string;
   trackBy?: (index: number, item: T) => unknown;
+  cacheable?: boolean | SmartListCacheableConfig<T, TFilters>;
+  sortable?: boolean | SmartListSortableConfig<T, TFilters>;
+  converter?: SmartListConverterResolver<T, TFilters>;
   groupBy?: ((item: T, query: ListQuery<TFilters>) => string) | null;
   emptyLabel?: string | ((query: ListQuery<TFilters>) => string);
   emptyDescription?: string | ((query: ListQuery<TFilters>) => string);

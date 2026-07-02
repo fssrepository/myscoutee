@@ -42,6 +42,23 @@ export class LocalActivitySubEventStageRuntimeRepository {
       .map(record => LocalActivitySubEventStageRuntimeMapper.cloneRecord(record));
   }
 
+  queryRecordsByOwnerIds(ownerIds: readonly string[]): ActivitySubEventStageRuntimeRecord[] {
+    const normalizedOwnerIds = new Set(
+      (ownerIds ?? []).map(ownerId => `${ownerId ?? ''}`.trim()).filter(Boolean)
+    );
+    if (normalizedOwnerIds.size === 0) {
+      return [];
+    }
+    const table = this.normalizeCollection(this.memoryDb.read()[ACTIVITY_SUB_EVENT_STAGE_RUNTIME_TABLE_NAME]);
+    return table.ids
+      .map(id => table.byId[id])
+      .filter((record): record is ActivitySubEventStageRuntimeRecord =>
+        Boolean(record)
+        && normalizedOwnerIds.has(`${record.ownerId ?? ''}`.trim())
+        && !LocalActivitySubEventStageRuntimeMapper.isDeleted(record))
+      .map(record => LocalActivitySubEventStageRuntimeMapper.cloneRecord(record));
+  }
+
   peekRecord(
     ref: AppDTOs.ActivitySubEventStageRuntimeStateRefDTO
   ): ActivitySubEventStageRuntimeRecord | null {
