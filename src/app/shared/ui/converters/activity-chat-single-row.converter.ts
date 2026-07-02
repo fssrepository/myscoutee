@@ -44,12 +44,15 @@ export class ActivityChatSingleRowConverter {
     const supportAssigneeName = dto.supportCase?.assignee?.name ?? null;
     const showSupportControls = options.adminServiceMode === true && Boolean(supportStatus);
     const avatar = `${dto.avatar ?? ''}`.trim();
+    const channelType = supportStatus ? 'supportCase' : this.normalizeChannelType(dto);
+    const ownerId = `${dto.ownerId ?? ''}`.trim();
+    const rowIdentity = ownerId ? `${channelType}:${ownerId}` : `${dto.id ?? ''}`.trim();
 
     return {
       id: dto.id,
-      ownerId: `${dto.ownerId ?? ''}`.trim() || null,
-      smartListKey: `chats:${dto.id}`,
-      status: supportStatus ?? this.normalizeChannelType(dto),
+      ownerId: ownerId || null,
+      smartListKey: `chats:${rowIdentity || dto.id}`,
+      status: supportStatus ?? channelType,
       dateIso: dto.dateIso ?? '2026-02-21T09:00:00',
       distanceMetersExact,
       badgeCount: showSupportControls ? 0 : unread,

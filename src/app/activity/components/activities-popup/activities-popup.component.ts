@@ -1046,12 +1046,33 @@ export class ActivitiesPopupComponent implements OnDestroy {
       return;
     }
     smartList.patchVisibleItem(
-      row => ownerId
-        ? `${row.ownerId ?? ''}`.trim() === ownerId
-          && (!channelType || `${(row as { status?: unknown }).status ?? ''}`.trim() === channelType)
-        : `${row.id ?? ''}`.trim() === chatId,
+      row => this.matchesEventChatRowPatch(row as ActivityChatListItem, chatId, ownerId, channelType),
       row => this.patchActivityChatRow(row as ActivityChatListItem, patch) as ActivityListItem
     );
+  }
+
+  private matchesEventChatRowPatch(
+    row: ActivityChatListItem,
+    chatId: string,
+    ownerId: string,
+    channelType: string
+  ): boolean {
+    if (ownerId) {
+      return `${row.ownerId ?? ''}`.trim() === ownerId
+        && this.matchesEventChatRowChannelType(row, channelType);
+    }
+    return `${row.id ?? ''}`.trim() === chatId;
+  }
+
+  private matchesEventChatRowChannelType(row: ActivityChatListItem, channelType: string): boolean {
+    if (!channelType) {
+      return true;
+    }
+    const rowStatus = `${(row as { status?: unknown }).status ?? ''}`.trim();
+    if (rowStatus === channelType) {
+      return true;
+    }
+    return channelType === 'supportCase' && this.supportStatusFromRowStatus(rowStatus) !== null;
   }
 
   private patchActivityChatRow(row: ActivityChatListItem, patch: EventChatRowPatch): ActivityChatListItem {

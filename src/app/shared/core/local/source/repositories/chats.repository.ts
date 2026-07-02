@@ -570,21 +570,24 @@ export class LocalChatsRepository {
     const normalizedChatId = `${chatId ?? ''}`.trim();
     const normalizedOwnerId = `${ownerId ?? ''}`.trim();
     const normalizedChannelType = `${channelType ?? ''}`.trim();
+    if (normalizedOwnerUserId && normalizedOwnerId) {
+      const ownerMatch = table.ids.find(id => {
+        const record = table.byId[id];
+        return record?.ownerUserId === normalizedOwnerUserId
+          && `${record.ownerId ?? ''}`.trim() === normalizedOwnerId
+          && (!normalizedChannelType || `${record.channelType ?? ''}`.trim() === normalizedChannelType);
+      });
+      if (ownerMatch) {
+        return ownerMatch;
+      }
+    }
     if (normalizedOwnerUserId && normalizedChatId) {
       const key = LocalChatThreadMapper.buildRecordKey(normalizedOwnerUserId, normalizedChatId);
       if (table.byId[key]) {
         return key;
       }
     }
-    if (!normalizedOwnerUserId || !normalizedOwnerId) {
-      return null;
-    }
-    return table.ids.find(id => {
-      const record = table.byId[id];
-      return record?.ownerUserId === normalizedOwnerUserId
-        && `${record.ownerId ?? ''}`.trim() === normalizedOwnerId
-        && (!normalizedChannelType || `${record.channelType ?? ''}`.trim() === normalizedChannelType);
-    }) ?? null;
+    return null;
   }
 
   private readAvatarForUser(userId: string): ContractTypes.ChatReadAvatar {
