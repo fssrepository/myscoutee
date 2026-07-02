@@ -243,6 +243,11 @@ export class AppMenuComponent<TId extends string = string, TContext = unknown>
     return this.panelVisible;
   }
 
+  @HostBinding('class.app-menu-host--compact')
+  protected get hostCompactClass(): boolean {
+    return this.hasCompactDensity(this.model) || this.hasCompactDensity(this.currentMenuModel());
+  }
+
   @HostBinding('class.app-menu-host--inline-panel')
   protected get hostInlinePanelClass(): boolean {
     return this.usesInlinePanel;
@@ -1813,6 +1818,10 @@ export class AppMenuComponent<TId extends string = string, TContext = unknown>
       return this.activeBranch.model ?? null;
     }
     return this.model;
+  }
+
+  private hasCompactDensity(model: AppMenuModel<TId, TContext> | null | undefined): boolean {
+    return model?.density === 'compact';
   }
 
   private currentSelectedMultiSelectCount(): number {

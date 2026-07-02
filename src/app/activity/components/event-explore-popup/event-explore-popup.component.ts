@@ -204,6 +204,10 @@ export class EventExplorePopupComponent {
   protected readonly eventExploreLoadPage = (query: ListQuery<EventExploreFeedFilters>) =>
     from(this.loadEventExplorePage(query));
 
+  private readonly eventExploreCompactMenuModel: AppMenuModel<string, EventExploreMenuContext> = {
+    density: 'compact'
+  };
+
   protected readonly eventExploreSmartListConfig: SmartListConfig<ActivityEventRecord, EventExploreFeedFilters> = {
     pageSize: 10,
     initialPageSize: 20,
@@ -342,6 +346,7 @@ export class EventExplorePopupComponent {
           kind: 'menu',
           id: 'event-explore-order',
           menuKind: 'select',
+          model: this.eventExploreCompactMenuModel,
           trigger: this.eventExploreOrderMenuTrigger(),
           items: this.eventExploreOrderMenuItems()
         },
@@ -349,6 +354,7 @@ export class EventExplorePopupComponent {
           kind: 'menu',
           id: 'event-explore-view',
           menuKind: 'select',
+          model: this.eventExploreCompactMenuModel,
           trigger: this.eventExploreViewMenuTrigger(),
           items: this.eventExploreViewMenuItems()
         }
@@ -358,6 +364,7 @@ export class EventExplorePopupComponent {
           kind: 'menu',
           id: 'event-explore-filters',
           menuKind: 'inline',
+          model: this.eventExploreCompactMenuModel,
           items: this.eventExploreFilterMenuItems()
         }
       ],
