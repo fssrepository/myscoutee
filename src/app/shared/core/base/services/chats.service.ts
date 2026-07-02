@@ -17,6 +17,11 @@ import {
   type RouteIntervalTask
 } from './route-interval-scheduler.service';
 import type * as ActivityContracts from '../../contracts/activity.interface';
+import { UserProfileStore } from '../../../ui/context/stores/user-profile.store';
+
+type ChatMessagesLoadContext = {
+  readReceipt?: ContractTypes.ChatReadReceipt | null;
+};
 
 @Injectable({
   providedIn: 'root'
@@ -29,6 +34,7 @@ export class ChatsService extends BaseRouteModeService implements IChatsService 
   private readonly httpChatsService = inject(HttpChatsService);
   private readonly activityMembersService = inject(ActivityMembersService);
   private readonly routeIntervalScheduler = inject(RouteIntervalSchedulerService);
+  private readonly userProfileStore = inject(UserProfileStore);
 
   private get chatsService(): LocalChatsService | HttpChatsService {
     return this.resolveRouteService(ChatsService.CHAT_ROUTE, this.localChatsService, this.httpChatsService);
@@ -57,25 +63,27 @@ export class ChatsService extends BaseRouteModeService implements IChatsService 
   async loadChatMessagesResult(
     chat: ChatDTO,
     query: ListQuery = { page: 0, pageSize: Number.MAX_SAFE_INTEGER }
-  ): Promise<PageResult<ContractTypes.ChatMessageDto, AppUiTypes.PopupHeaderContext>> {
+  ): Promise<PageResult<ContractTypes.ChatMessageDto, ChatMessagesLoadContext>> {
     const page = await this.queryChatMessagesPage(chat, query);
+    const readReceipt = page.readReceipt ?? await this.markLoadedChatMessagesRead(chat, page.items);
     return {
       items: page.items,
       total: page.total,
       nextCursor: page.nextCursor ?? null,
-      context: this.buildChatPopupHeaderContext(chat, { includeThumbs: true })
+      context: readReceipt ? { readReceipt } : undefined
     };
   }
 
   async queryChatMessagesPage(
     chat: ChatDTO,
     query: ListQuery
-  ): Promise<PageResult<ContractTypes.ChatMessageDto>> {
+  ): Promise<ContractTypes.ChatMessagesPageResultDTO> {
     const page = await this.chatsService.queryChatMessagesPage(chat, query);
     return {
       items: page.items,
       total: page.total,
-      nextCursor: page.nextCursor ?? null
+      nextCursor: page.nextCursor ?? null,
+      readReceipt: page.readReceipt ?? null
     };
   }
 
@@ -168,6 +176,24 @@ export class ChatsService extends BaseRouteModeService implements IChatsService 
 
   async markChatRead(chat: ChatDTO, messageIds: readonly string[]): Promise<ContractTypes.ChatReadReceipt | null> {
     return this.chatsService.markChatRead(chat, messageIds);
+  }
+
+  private async markLoadedChatMessagesRead(
+    chat: ChatDTO,
+    messages: readonly ContractTypes.ChatMessageDto[]
+  ): Promise<ContractTypes.ChatReadReceipt | null> {
+    const activeUserId = this.userProfileStore.activeUserId().trim();
+    const messageIds = messages
+      .filter(message =>
+        !message.mine
+        && `${message.id ?? ''}`.trim().length > 0
+        && !(message.readBy ?? []).some(reader => `${reader.id ?? ''}`.trim() === activeUserId)
+      )
+      .map(message => `${message.id ?? ''}`.trim());
+    if (messageIds.length === 0) {
+      return null;
+    }
+    return this.chatsService.markChatRead(chat, messageIds).catch(() => null);
   }
 
   async updateSupportCase(chat: ChatDTO, action: ContractTypes.SupportCaseAction): Promise<ChatDTO | null> {

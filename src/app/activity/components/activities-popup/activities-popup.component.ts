@@ -725,7 +725,6 @@ export class ActivitiesPopupComponent implements OnDestroy {
       }
       untracked(() => {
         this.applyEventChatRowPatch(patch);
-        this.patchActiveChatCounterFromRowPatch(patch);
         this.patchChatContextUnreadCountsFromRowPatch(patch);
         this.refreshSectionBadges();
         this.cdr.markForCheck();
@@ -1958,26 +1957,6 @@ export class ActivitiesPopupComponent implements OnDestroy {
       next[context] = this.normalizeBadgeCounter((next[context] ?? 0) + unreadDelta);
     }
     this.chatContextUnreadCounts = next;
-  }
-
-  private patchActiveChatCounterFromRowPatch(patch: EventChatRowPatch): void {
-    if (patch.unreadDelta === undefined || patch.unreadDelta === null) {
-      return;
-    }
-    const unreadDelta = Number(patch.unreadDelta);
-    if (!Number.isFinite(unreadDelta) || unreadDelta === 0) {
-      return;
-    }
-    const activeUser = this.userProfileStore.activeUserProfile();
-    const activeUserId = `${activeUser?.id ?? ''}`.trim();
-    if (!activeUserId) {
-      return;
-    }
-    const overrides = this.activityStore.getUserCounterOverrides(activeUserId);
-    const currentChatCounter = this.normalizeBadgeCounter(overrides.chat ?? activeUser?.activities?.chat);
-    const nextChatCounter = this.normalizeBadgeCounter(currentChatCounter + unreadDelta);
-    this.activityStore.patchUserCounterOverrides(activeUserId, { chat: nextChatCounter });
-    this.userProfileStore.patchUserActivityCounters(activeUserId, { chat: nextChatCounter });
   }
 
   private invalidateChatContextUnreadCounts(): void {

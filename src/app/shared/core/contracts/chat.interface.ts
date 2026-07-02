@@ -170,6 +170,7 @@ export interface ChatMessagesPageResultDTO {
   items: ChatMessageDto[];
   total: number;
   nextCursor?: string | null;
+  readReceipt?: ChatReadReceipt | null;
 }
 
 export interface ChatVoiceClip {

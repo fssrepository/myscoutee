@@ -47,8 +47,7 @@ import {
   ChatVoiceClipsService,
   EventsService,
   MediaService,
-  ShareTokensService,
-  UsersService
+  ShareTokensService
 } from '../../../shared/core';
 import type { ChatDTO } from '../../../shared/core/contracts/chat.interface';
 import type { ActivityEventRecord } from '../../../shared/core/contracts/activity.interface';
@@ -61,6 +60,7 @@ import {
   AppMenuComponent,
   AppMenuTriggerComponent,
   CounterBadgePipe,
+  I18nPipe,
   SmartListComponent,
   type AppMenuGroup,
   type AppMenuItem,
@@ -83,7 +83,6 @@ import type * as AppDTOs from '../../../shared/core/contracts';
 import type * as AppConstants from '../../../shared/core/common/constants';
 import { UserProfileStore } from '../../../shared/ui/context/stores/user-profile.store';
 import { AppRuntimeStore } from '../../../shared/ui/context/stores/app-runtime.store';
-import { ActivityStore } from '../../../shared/ui/context/stores/activity.store';
 import { MemberMenuStore } from '../../../shared/ui/context/stores/member-menu.store';
 import { EventSubeventsPopupStore } from '../../../shared/ui/context/stores/event-subevents-popup.store';
 import {
@@ -169,6 +168,10 @@ interface ChatOwnerParts {
   groupId: string;
 }
 
+type ChatThreadPageContext = {
+  readReceipt?: ContractTypes.ChatReadReceipt | null;
+};
+
 type EventChatViewSession = EventChatSession & {
   item: ChatDTO;
 };
@@ -184,7 +187,8 @@ type EventChatViewSession = EventChatSession & {
     AppMenuComponent,
     AppMenuTriggerComponent,
     SmartListComponent,
-    CounterBadgePipe
+    CounterBadgePipe,
+    I18nPipe
   ],
   templateUrl: './event-chat-popup.component.html',
   styleUrl: './event-chat-popup.component.scss',
@@ -195,7 +199,6 @@ export class EventChatPopupComponent implements OnDestroy {
   protected readonly activitiesStore = inject(ActivitiesPopupStore);
   private readonly userProfileStore = inject(UserProfileStore);
   private readonly runtimeStore = inject(AppRuntimeStore);
-  private readonly activityStore = inject(ActivityStore);
   protected readonly memberMenuStore = inject(MemberMenuStore);
   protected readonly eventSubeventsStore = inject(EventSubeventsPopupStore);
   protected readonly resourcePopupStore = inject(SubEventResourcePopupStore);
@@ -203,7 +206,6 @@ export class EventChatPopupComponent implements OnDestroy {
   private readonly activityResourcesService = inject(ActivityResourcesService);
   private readonly eventsService = inject(EventsService);
   private readonly shareTokensService = inject(ShareTokensService);
-  private readonly usersService = inject(UsersService);
   private readonly chatVoiceClipsService = inject(ChatVoiceClipsService);
   private readonly dialogStore = inject(DialogStore);
   private readonly mediaService = inject(MediaService);
@@ -2705,7 +2707,7 @@ export class EventChatPopupComponent implements OnDestroy {
       }
       const result = this.applyChatThreadMessagesPage(messagesPage);
       this.rebuildVisibleReadReceipts();
-      this.markLoadedChatThreadAsRead(session.item, result.items);
+      this.applyLoadedChatReadReceipt(session.item, messagesPage);
       return result;
     } catch {
       return this.emptyChatThreadPage();
@@ -2732,7 +2734,7 @@ export class EventChatPopupComponent implements OnDestroy {
       this.rebuildVisibleReadReceipts();
       this.syncEventChatSummaryFromLatestMessage();
       this.initialChatLoadedSessionKey = sessionKey;
-      this.markLoadedChatThreadAsRead(chat, result.items);
+      this.applyLoadedChatReadReceipt(chat, messagesPage);
       await this.startLiveChatUpdates(chat, sessionKey);
       return result;
     } catch {
@@ -2753,7 +2755,7 @@ export class EventChatPopupComponent implements OnDestroy {
   }
 
   private applyChatThreadMessagesPage(
-    page: PageResult<ContractTypes.ChatMessageDto, AppUiTypes.PopupHeaderContext>,
+    page: PageResult<ContractTypes.ChatMessageDto, ChatThreadPageContext>,
     options: { replace?: boolean } = {}
   ): PageResult<ContractTypes.ChatMessageDto> {
     const items = this.normalizeChatMessages(page.items)
@@ -2775,7 +2777,7 @@ export class EventChatPopupComponent implements OnDestroy {
       items,
       total: this.chatThreadKnownTotal,
       nextCursor: page.nextCursor ?? null,
-      context: page.context ?? this.chatHeaderContext ?? undefined
+      context: this.chatHeaderContext ?? undefined
     };
   }
 
@@ -3039,7 +3041,7 @@ export class EventChatPopupComponent implements OnDestroy {
 
     this.mergeIncomingChatMessage(event.message);
     if (!event.message.mine) {
-      this.markChatMessagesAsRead(chat, [event.message.id]);
+      void this.markChatMessagesAsRead(chat, [event.message.id]);
     }
   }
 
@@ -3501,35 +3503,21 @@ export class EventChatPopupComponent implements OnDestroy {
     return this.userProfileStore.activeUserId().trim();
   }
 
-  private markLoadedChatThreadAsRead(
+  private applyLoadedChatReadReceipt(
     chat: ChatDTO,
-    messages: readonly ContractTypes.ChatMessageDto[]
+    page: PageResult<ContractTypes.ChatMessageDto, ChatThreadPageContext>
   ): void {
-    const activeUserId = this.activeUserId();
-    const unreadMessageIds = messages
-      .filter(message =>
-        !message.mine
-        && `${message.id ?? ''}`.trim().length > 0
-        && !(message.readBy ?? []).some(reader => `${reader.id ?? ''}`.trim() === activeUserId)
-      )
-      .map(message => `${message.id ?? ''}`.trim());
-
-    if (unreadMessageIds.length === 0) {
-      return;
+    const read = page.context?.readReceipt ?? null;
+    if (read) {
+      this.applyOwnReadReceiptToActivityRow(chat, read);
     }
-    this.markChatMessagesAsRead(chat, unreadMessageIds);
   }
 
-  private markChatMessagesAsRead(chat: ChatDTO, messageIds: readonly string[]): void {
-    void this.chatsService.markChatRead(chat, messageIds)
-      .then(read => {
-        if (read) {
-          this.applyOwnReadReceiptToActivityRow(chat, read);
-        }
-      })
-      .catch(() => {
-        return;
-      });
+  private async markChatMessagesAsRead(chat: ChatDTO, messageIds: readonly string[]): Promise<void> {
+    const read = await this.chatsService.markChatRead(chat, messageIds).catch(() => null);
+    if (read) {
+      this.applyOwnReadReceiptToActivityRow(chat, read);
+    }
   }
 
   private syncEventChatSummaryFromLatestMessage(): void {
@@ -3578,9 +3566,6 @@ export class EventChatPopupComponent implements OnDestroy {
     const previousUnread = this.currentChatUnread(chat);
     const nextUnread = this.normalizeUnreadCounter(read.unread);
     const unreadDelta = nextUnread - previousUnread;
-    const nextChatCounter = unreadDelta === 0
-      ? null
-      : this.nextActiveChatCounterFromDelta(activeUserId, unreadDelta);
     this.activitiesStore.emitEventChatRowPatch({
       chatId: chat.id,
       ownerId: chat.ownerId ?? null,
@@ -3593,25 +3578,6 @@ export class EventChatPopupComponent implements OnDestroy {
         ? { ...header, unread: nextUnread }
         : header
     );
-    if (nextChatCounter !== null) {
-      void this.persistActiveChatCounter(activeUserId, nextChatCounter);
-    }
-  }
-
-  private nextActiveChatCounterFromDelta(activeUserId: string, unreadDelta: number): number | null {
-    const activeUser = this.userProfileStore.activeUserProfile()
-      ?? this.userProfileStore.getUserProfile(activeUserId);
-    if (!activeUser) {
-      return null;
-    }
-    const overrides = this.activityStore.getUserCounterOverrides(activeUserId);
-    return this.normalizeUnreadCounter(
-      this.normalizeUnreadCounter(overrides.chat ?? activeUser.activities?.chat) + unreadDelta
-    );
-  }
-
-  private async persistActiveChatCounter(activeUserId: string, nextChatCounter: number): Promise<void> {
-    await this.usersService.patchLocalUserActivityCounters(activeUserId, { chat: nextChatCounter });
   }
 
   private currentChatUnread(chat: ChatDTO): number {
@@ -4065,7 +4031,7 @@ export class EventChatPopupComponent implements OnDestroy {
   ): AppUiTypes.PopupHeaderControl {
     const channelType = state?.channelType ?? this.chatChannelType(chat);
     const label = channelType === 'groupSubEvent'
-      ? (state?.group?.label ?? state?.subEvent?.name ?? 'Group')
+      ? this.selectedChatGroupDisplayLabel(chat, state)
       : channelType === 'optionalSubEvent'
         ? (state?.subEvent?.name ?? 'Sub-event')
         : 'View Event';
@@ -4097,7 +4063,7 @@ export class EventChatPopupComponent implements OnDestroy {
     const assetControls = (['Car', 'Accommodation', 'Supplies'] as const)
       .map(type => this.buildResourceControl(state.subEvent as ContractTypes.SubEventDTO, state, type));
     return {
-      title: state.group?.label ?? state.subEvent.name,
+      title: primaryControl.label || state.subEvent.name,
       groups: [
         {
           id: 'primary',
@@ -4386,6 +4352,76 @@ export class EventChatPopupComponent implements OnDestroy {
       capacityMin: snapshot ? this.chatCountValue(snapshot.capacityMin) : undefined,
       capacityMax: snapshot ? this.chatCountValue(snapshot.capacityMax) : undefined
     };
+  }
+
+  private selectedChatGroupDisplayLabel(
+    chat: ChatDTO,
+    state: SelectedChatNavigationState | null
+  ): string {
+    const groupId = `${state?.group?.id ?? this.chatOwnerParts(chat).groupId}`.trim();
+    const configured = `${state?.group?.label ?? ''}`.trim();
+    if (configured && !this.isOwnerIdLikeGroupLabel(configured, groupId)) {
+      return configured;
+    }
+    const titleLabel = this.groupLabelFromChatTitle(chat.title, state?.subEvent?.name);
+    if (titleLabel) {
+      return titleLabel;
+    }
+    return this.generatedGroupLabelFromId(groupId) || configured || 'Group';
+  }
+
+  private groupLabelFromChatTitle(
+    title: string | null | undefined,
+    subEventName: string | null | undefined
+  ): string {
+    const normalizedTitle = `${title ?? ''}`.trim();
+    if (!normalizedTitle) {
+      return '';
+    }
+    const normalizedSubEventName = `${subEventName ?? ''}`.trim().toLocaleLowerCase('en-US');
+    const parts = normalizedTitle
+      .split(/\s+[·-]\s+/)
+      .map(part => part.trim())
+      .filter(Boolean);
+    if (parts.length > 1) {
+      return parts.find(part => part.toLocaleLowerCase('en-US') !== normalizedSubEventName) ?? parts[0] ?? '';
+    }
+    return normalizedSubEventName && normalizedTitle.toLocaleLowerCase('en-US') === normalizedSubEventName
+      ? ''
+      : normalizedTitle;
+  }
+
+  private isOwnerIdLikeGroupLabel(label: string, groupId: string): boolean {
+    const normalizedLabel = label.trim();
+    const normalizedGroupId = groupId.trim();
+    return Boolean(
+      normalizedLabel
+      && (
+        normalizedLabel === normalizedGroupId
+        || normalizedLabel.includes(':')
+        || /^[a-z0-9]+(?:[-_][a-z0-9]+){2,}$/i.test(normalizedLabel)
+      )
+    );
+  }
+
+  private generatedGroupLabelFromId(groupId: string): string {
+    const match = groupId.trim().match(/(?:^|[-_:])group[-_:]?(\d+)$/i);
+    const index = match ? Math.max(1, Math.trunc(Number(match[1]) || 0)) : 0;
+    if (!index) {
+      return '';
+    }
+    return `Group ${this.groupIndexLetters(index)}`;
+  }
+
+  private groupIndexLetters(index: number): string {
+    let value = Math.max(1, Math.trunc(index));
+    let label = '';
+    while (value > 0) {
+      value -= 1;
+      label = String.fromCharCode(65 + (value % 26)) + label;
+      value = Math.floor(value / 26);
+    }
+    return label;
   }
 
   private selectedChatGroupSnapshotKey(

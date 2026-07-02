@@ -308,7 +308,8 @@ export class LocalChatsRepository {
     const reader = this.readAvatarForUser(normalizedOwnerUserId);
     const readAtIso = new Date().toISOString();
     const changedIds: string[] = [];
-    let unread = Math.max(0, Math.trunc(Number(record.unread) || 0));
+    const previousUnread = Math.max(0, Math.trunc(Number(record.unread) || 0));
+    let unread = previousUnread;
     this.memoryDb.write(currentState => {
       const currentTable = currentState[CHATS_TABLE_NAME];
       const currentMessagesTable = currentState[CHAT_MESSAGES_TABLE_NAME];
@@ -349,6 +350,24 @@ export class LocalChatsRepository {
         this.selectChatMessageRecordsFromSnapshot(nextMessagesTable, existingRecord),
         normalizedOwnerUserId
       );
+      const unreadDelta = unread - previousUnread;
+      const currentUsersTable = currentState[USERS_TABLE_NAME];
+      const currentUser = currentUsersTable.byId[normalizedOwnerUserId] ?? null;
+      const nextUsersTable = currentUser && unreadDelta !== 0
+        ? {
+            ...currentUsersTable,
+            byId: {
+              ...currentUsersTable.byId,
+              [normalizedOwnerUserId]: {
+                ...currentUser,
+                activities: {
+                  ...currentUser.activities,
+                  chat: this.normalizeCounter((currentUser.activities?.chat ?? 0) + unreadDelta)
+                }
+              }
+            }
+          }
+        : currentUsersTable;
       return {
         ...currentState,
         [CHATS_TABLE_NAME]: {
@@ -361,7 +380,8 @@ export class LocalChatsRepository {
             }
           }
         },
-        [CHAT_MESSAGES_TABLE_NAME]: nextMessagesTable
+        [CHAT_MESSAGES_TABLE_NAME]: nextMessagesTable,
+        [USERS_TABLE_NAME]: nextUsersTable
       };
     });
     return changedIds.length > 0
@@ -535,6 +555,11 @@ export class LocalChatsRepository {
         .filter(Boolean)
     ).size;
     return unread * 10 + memberCount;
+  }
+
+  private normalizeCounter(value: unknown): number {
+    const count = Number(value);
+    return Number.isFinite(count) ? Math.max(0, Math.trunc(count)) : 0;
   }
 
   private withLatestMessageSummaries(records: readonly ChatThreadRecord[]): ChatThreadRecord[] {

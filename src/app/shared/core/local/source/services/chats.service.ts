@@ -87,7 +87,12 @@ export class LocalChatsService extends LocalRouteDelayService implements IChatsS
     query: ListQuery
   ): Promise<ChatMessagesPageResultDTO> {
     await this.waitForRouteDelay(LocalChatsService.CHAT_ROUTE);
-    return this.chatsRepository.queryChatMessagesPage(chat, query);
+    const page = this.chatsRepository.queryChatMessagesPage(chat, query);
+    const readReceipt = await this.markLoadedChatMessagesRead(chat, page.items);
+    return {
+      ...page,
+      readReceipt
+    };
   }
 
   async queryChatMembers(chatId: string): Promise<ActivityContracts.ActivityMemberDTO[]> {
@@ -166,6 +171,28 @@ export class LocalChatsService extends LocalRouteDelayService implements IChatsS
 
   async markChatRead(chat: ChatDTO, messageIds: readonly string[]): Promise<ContractTypes.ChatReadReceipt | null> {
     await this.waitForRouteDelay(LocalChatsService.CHAT_ROUTE);
+    return this.markChatReadInRepository(chat, messageIds);
+  }
+
+  private async markLoadedChatMessagesRead(
+    chat: ChatDTO,
+    messages: readonly ContractTypes.ChatMessageDto[]
+  ): Promise<ContractTypes.ChatReadReceipt | null> {
+    const activeUserId = this.resolveDemoActivityUserId(this.userProfileStore.activeUserId().trim());
+    const messageIds = messages
+      .filter(message =>
+        !message.mine
+        && `${message.id ?? ''}`.trim().length > 0
+        && !(message.readBy ?? []).some(reader => `${reader.id ?? ''}`.trim() === activeUserId)
+      )
+      .map(message => `${message.id ?? ''}`.trim());
+    return this.markChatReadInRepository(chat, messageIds);
+  }
+
+  private async markChatReadInRepository(
+    chat: ChatDTO,
+    messageIds: readonly string[]
+  ): Promise<ContractTypes.ChatReadReceipt | null> {
     const ownerUserId = `${chat.ownerUserId ?? ''}`.trim()
       || this.resolveDemoActivityUserId(this.userProfileStore.activeUserId().trim());
     const chatId = `${chat.id ?? ''}`.trim();
@@ -177,6 +204,7 @@ export class LocalChatsService extends LocalRouteDelayService implements IChatsS
     if (!update || update.messageIds.length === 0) {
       return null;
     }
+    await this.chatsRepository.flushToIndexedDb();
     return {
       userId: update.reader.id,
       userInitials: update.reader.initials,

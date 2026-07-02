@@ -1,8 +1,10 @@
-import { Injectable, Type, computed, signal } from '@angular/core';
+import { Injectable, Type, computed, inject, signal } from '@angular/core';
 
 import type * as ContractTypes from '../../../core/contracts';
 import type { ActivityEventDTO } from '../../../core/contracts/activity.interface';
 import type { ChatDTO } from '../../../core/contracts/chat.interface';
+import { ActivityStore } from './activity.store';
+import { UserProfileStore } from './user-profile.store';
 
 export interface EventChatPopupRequest {
   chatId: string;
@@ -128,6 +130,8 @@ export const DEFAULT_ACTIVITIES_UI_STATE: ActivitiesUiState = {
   providedIn: 'root'
 })
 export class ActivitiesPopupStore {
+  private readonly activityStore = inject(ActivityStore);
+  private readonly userProfileStore = inject(UserProfileStore);
   private readonly _uiState = signal<ActivitiesUiState>(DEFAULT_ACTIVITIES_UI_STATE);
   private readonly _activityEventSave = signal<ActivityEventDTO | null>(null);
   private readonly _eventChatSession = signal<EventChatSession | null>(null);
@@ -419,6 +423,7 @@ export class ActivitiesPopupStore {
     if (!chatId && !ownerId) {
       return;
     }
+    this.patchActiveChatCounterFromRowPatch(patch);
     this._eventChatRowPatch.set({
       ...patch,
       chatId,
@@ -426,6 +431,31 @@ export class ActivitiesPopupStore {
       channelType,
       revision: ++this.eventChatRowPatchRevision
     });
+  }
+
+  private patchActiveChatCounterFromRowPatch(patch: Omit<EventChatRowPatch, 'revision'>): void {
+    if (patch.unreadDelta === undefined || patch.unreadDelta === null) {
+      return;
+    }
+    const unreadDelta = Number(patch.unreadDelta);
+    if (!Number.isFinite(unreadDelta) || unreadDelta === 0) {
+      return;
+    }
+    const activeUser = this.userProfileStore.activeUserProfile();
+    const activeUserId = `${activeUser?.id ?? ''}`.trim();
+    if (!activeUserId) {
+      return;
+    }
+    const overrides = this.activityStore.getUserCounterOverrides(activeUserId);
+    const currentChatCounter = this.normalizeEventChatCounter(overrides.chat ?? activeUser?.activities?.chat);
+    const nextChatCounter = this.normalizeEventChatCounter(currentChatCounter + unreadDelta);
+    this.activityStore.patchUserCounterOverrides(activeUserId, { chat: nextChatCounter });
+    this.userProfileStore.patchUserActivityCounters(activeUserId, { chat: nextChatCounter });
+  }
+
+  private normalizeEventChatCounter(value: unknown): number {
+    const count = Number(value);
+    return Number.isFinite(count) ? Math.max(0, Math.trunc(count)) : 0;
   }
 
   async ensureActivitiesPopupLoaded(): Promise<void> {
