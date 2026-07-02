@@ -1,6 +1,6 @@
 import { Injectable, Type, signal } from '@angular/core';
 
-import type { EventEditorTarget, EventTournamentStageDTO } from '../../../core/contracts/event.interface';
+import type { EventEditorTarget, EventMode, EventTournamentStageDTO } from '../../../core/contracts/event.interface';
 
 export interface EventSubeventsListPopupRequest {
   updatedMs: number;
@@ -11,6 +11,7 @@ export interface EventSubeventsListPopupRequest {
   timeframe: string | null;
   startAtIso: string | null;
   endAtIso: string | null;
+  mode: EventMode | null;
   canEdit: boolean;
 }
 
@@ -47,6 +48,7 @@ export class EventSubeventsPopupStore {
     timeframe?: string | null;
     startAtIso?: string | null;
     endAtIso?: string | null;
+    mode?: EventMode | null;
     canEdit?: boolean;
   }): void {
     const eventId = `${payload.eventId ?? ''}`.trim();
@@ -62,6 +64,11 @@ export class EventSubeventsPopupStore {
       timeframe: `${payload.timeframe ?? ''}`.trim() || null,
       startAtIso: `${payload.startAtIso ?? ''}`.trim() || null,
       endAtIso: `${payload.endAtIso ?? ''}`.trim() || null,
+      mode: payload.mode === 'Tournament'
+        ? 'Tournament'
+        : payload.mode === 'Casual'
+          ? 'Casual'
+          : null,
       canEdit: payload.canEdit === true
     });
   }

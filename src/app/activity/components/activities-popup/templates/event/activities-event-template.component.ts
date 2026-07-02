@@ -465,6 +465,7 @@ export class ActivitiesEventsController {
 
   public runActivityItemViewAction(row: InfoCardData, event?: Event): void {
     event?.stopPropagation();
+    const dto = this.activityEventDTOForRow(row);
     this.eventSubeventsStore.openEventSubeventsListPopup({
       eventId: row.id,
       host: 'activities',
@@ -473,6 +474,7 @@ export class ActivitiesEventsController {
       timeframe: this.activityRowTimeframe(row),
       startAtIso: this.activityRowStartAt(row),
       endAtIso: this.activityRowEndAt(row),
+      mode: dto?.mode ?? null,
       canEdit: this.isActivityInvitationRow(row) ? false : this.canEditActivityEvent(row)
     });
   }

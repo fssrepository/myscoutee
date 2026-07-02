@@ -409,6 +409,7 @@ export interface SubEventsSlotDTO {
 }
 
 export interface ActivityEventSubEventsResultDTO {
+  mode: EventContracts.EventMode;
   slots: SubEventsSlotDTO[];
 }
 

@@ -851,6 +851,7 @@ export class EventChatPopupComponent implements OnDestroy {
       timeframe: record?.timeframe ?? null,
       startAtIso: record?.startAtIso ?? null,
       endAtIso: record?.endAtIso ?? null,
+      mode: record?.mode ?? null,
       canEdit: this.canEditSelectedChatEvent(record, state)
     });
   }

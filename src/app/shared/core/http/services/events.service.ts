@@ -237,7 +237,7 @@ export class HttpEventsService implements IEventsService {
     }
     try {
       const response = await this.http
-        .post<{ slots?: SubEventsSlotDTO[] | null } | null>(
+        .post<{ mode?: string | null; slots?: SubEventsSlotDTO[] | null } | null>(
           `${this.apiBaseUrl}/activities/events/sub-events`,
           {
             ...(query ?? {}),
@@ -246,7 +246,12 @@ export class HttpEventsService implements IEventsService {
           }
         )
         .toPromise();
+      const mode = response?.mode;
+      if (mode !== 'Casual' && mode !== 'Tournament') {
+        return null;
+      }
       return {
+        mode,
         slots: response?.slots ?? []
       };
     } catch {
