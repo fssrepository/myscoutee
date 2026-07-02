@@ -146,6 +146,7 @@ import { EventSubeventsPopupStore } from '../../../shared/ui/context/stores/even
 
 type ActivitiesSmartListFilters = ActivitiesFeedFilters;
 type ActivityEventCounterKey = keyof NonNullable<ActivityCounters['event']>;
+type ActivitiesChatContextUnreadCounts = Partial<Record<ContractTypes.ActivitiesChatContextFilter, number>>;
 type ActivityEventListType = ActivityContracts.ActivityEventRepositoryItemType;
 type ActivityEventListItem = InfoCardData;
 type ActivityRateListItem = ImageCardData;
@@ -310,6 +311,9 @@ export class ActivitiesPopupComponent implements OnDestroy {
   private adminSupportBoardPollInFlight = false;
   private unregisterActivitiesExplanationContext: (() => void) | null = null;
   private activitiesExplanationContextKey: string | null = null;
+  private chatContextUnreadCountsUserId = '';
+  private chatContextUnreadCounts: ActivitiesChatContextUnreadCounts | null = null;
+  private activitiesChatListStateKey = '';
 
   protected get assetCards(): AppDTOs.AssetDTO[] {
     return this.assetStore.assetCards();
@@ -747,6 +751,7 @@ export class ActivitiesPopupComponent implements OnDestroy {
         return;
       }
       this.applyEventChatRowPatch(patch);
+      this.patchChatContextUnreadCountsFromRowPatch(patch);
       this.refreshSectionBadges();
       this.cdr.markForCheck();
     });
@@ -853,6 +858,7 @@ export class ActivitiesPopupComponent implements OnDestroy {
   /** Called once each time the service opens the popup. */
   private onActivitiesOpened(): void {
     this.resetActivitiesStateForOpen();
+    this.invalidateChatContextUnreadCounts();
     this.activitiesRates.clearEditorState();
     this.resetActivitiesScroll();
   }
@@ -1012,6 +1018,7 @@ export class ActivitiesPopupComponent implements OnDestroy {
     const currentChat = this.chatsService.peekChatItemsByUser(this.activeUser.id).find(item => item.id === chat.id) ?? null;
     if (!currentChat) {
       const nextChat = this.cloneChatRecord(chat);
+      this.invalidateChatContextUnreadCounts();
       this.refreshSectionBadges();
       this.syncVisibleChatRow(nextChat);
       this.cdr.markForCheck();
@@ -1021,6 +1028,7 @@ export class ActivitiesPopupComponent implements OnDestroy {
     if (this.areChatRecordsEqual(currentChat, nextChat)) {
       return;
     }
+    this.invalidateChatContextUnreadCounts();
     this.refreshSectionBadges();
     this.syncVisibleChatRow(nextChat);
     this.cdr.markForCheck();
@@ -1934,14 +1942,7 @@ export class ActivitiesPopupComponent implements OnDestroy {
   }
 
   protected activitiesToolbarChatContextCounts(): Partial<Record<ContractTypes.ActivitiesChatContextFilter, number>> {
-    return {
-      all: this.activitiesChatContextFilterCount('all'),
-      event: this.activitiesChatContextFilterCount('event'),
-      subEvent: this.activitiesChatContextFilterCount('subEvent'),
-      group: this.activitiesChatContextFilterCount('group'),
-      service: this.activitiesChatContextFilterCount('service'),
-      appSupport: this.activitiesChatContextFilterCount('appSupport')
-    };
+    return this.chatContextUnreadCountsForActiveUser();
   }
 
   protected activitiesToolbarSupportCaseCounts(): Partial<Record<ContractTypes.SupportCaseFilter, number>> {
@@ -1965,12 +1966,68 @@ export class ActivitiesPopupComponent implements OnDestroy {
     if (this.activitiesPrimaryFilter !== 'chats') {
       return 0;
     }
-    return this.chatItemsForActivities().filter(item => {
-      if (filter === 'all') {
-        return true;
+    return this.normalizeBadgeCounter(this.chatContextUnreadCountsForActiveUser()[filter]);
+  }
+
+  private chatContextUnreadCountsForActiveUser(): ActivitiesChatContextUnreadCounts {
+    if (this.activitiesPrimaryFilter !== 'chats') {
+      return this.emptyChatContextUnreadCounts();
+    }
+    const activeUserId = `${this.activeUser.id ?? ''}`.trim();
+    if (this.chatContextUnreadCounts && this.chatContextUnreadCountsUserId === activeUserId) {
+      return this.chatContextUnreadCounts;
+    }
+    const counts = this.emptyChatContextUnreadCounts();
+    for (const item of this.chatItemsForActivities()) {
+      const unread = this.normalizeBadgeCounter(item.unread);
+      if (unread <= 0) {
+        continue;
       }
-      return this.activityChatContextFilterKey(item) === filter;
-    }).length;
+      counts.all = this.normalizeBadgeCounter((counts.all ?? 0) + unread);
+      const context = this.activityChatContextFilterKey(item);
+      if (context && context !== 'all') {
+        counts[context] = this.normalizeBadgeCounter((counts[context] ?? 0) + unread);
+      }
+    }
+    this.chatContextUnreadCountsUserId = activeUserId;
+    this.chatContextUnreadCounts = counts;
+    return counts;
+  }
+
+  private patchChatContextUnreadCountsFromRowPatch(patch: EventChatRowPatch): void {
+    if (patch.unreadDelta === undefined || patch.unreadDelta === null || !this.chatContextUnreadCounts) {
+      return;
+    }
+    if (this.chatContextUnreadCountsUserId !== `${this.activeUser.id ?? ''}`.trim()) {
+      this.invalidateChatContextUnreadCounts();
+      return;
+    }
+    const unreadDelta = Number(patch.unreadDelta);
+    if (!Number.isFinite(unreadDelta) || unreadDelta === 0) {
+      return;
+    }
+    const next = { ...this.chatContextUnreadCounts };
+    next.all = this.normalizeBadgeCounter((next.all ?? 0) + unreadDelta);
+    const context = this.activitiesChats.activityChatContextFilterKeyFromChannelType(patch.channelType);
+    if (context && context !== 'all') {
+      next[context] = this.normalizeBadgeCounter((next[context] ?? 0) + unreadDelta);
+    }
+    this.chatContextUnreadCounts = next;
+  }
+
+  private invalidateChatContextUnreadCounts(): void {
+    this.chatContextUnreadCounts = null;
+  }
+
+  private emptyChatContextUnreadCounts(): ActivitiesChatContextUnreadCounts {
+    return {
+      all: 0,
+      event: 0,
+      subEvent: 0,
+      group: 0,
+      service: 0,
+      appSupport: 0
+    };
   }
 
   private supportCaseFilterCount(filter: ContractTypes.SupportCaseFilter): number {
@@ -3538,6 +3595,7 @@ export class ActivitiesPopupComponent implements OnDestroy {
 
   protected onActivitiesSmartListStateChange(change: SmartListStateChange<ActivityListItem, ActivitiesSmartListFilters>): void {
     let shouldMarkForCheck = false;
+    this.syncChatContextUnreadCountsWithListState(change);
 
     if (this.activitiesInitialLoadPending !== change.initialLoading) {
       this.activitiesInitialLoadPending = change.initialLoading;
@@ -3561,6 +3619,30 @@ export class ActivitiesPopupComponent implements OnDestroy {
     if (shouldMarkForCheck) {
       this.cdr.markForCheck();
     }
+  }
+
+  private syncChatContextUnreadCountsWithListState(
+    change: SmartListStateChange<ActivityListItem, ActivitiesSmartListFilters>
+  ): void {
+    if (this.activitiesPrimaryFilter !== 'chats') {
+      this.activitiesChatListStateKey = '';
+      return;
+    }
+    const nextKey = [
+      change.total,
+      change.items.length,
+      ...change.items.map(item => [
+        item.smartListKey ?? item.id ?? '',
+        (item as ActivityChatListItem).ownerId ?? '',
+        (item as { status?: unknown }).status ?? '',
+        (item as ActivityChatListItem).unread ?? 0
+      ].join(':'))
+    ].join('|');
+    if (nextKey === this.activitiesChatListStateKey) {
+      return;
+    }
+    this.activitiesChatListStateKey = nextKey;
+    this.invalidateChatContextUnreadCounts();
   }
 
   protected activityRowIdentity(row: ActivityListItem): string {

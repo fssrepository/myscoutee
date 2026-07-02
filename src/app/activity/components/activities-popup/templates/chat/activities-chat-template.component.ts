@@ -217,7 +217,12 @@ export class ActivitiesChatsController {
   }
 
   public activityChatContextFilterKey(item: ChatDTO): ContractTypes.ActivitiesChatContextFilter | null {
-    const channelType = this.chatChannelType(item);
+    return this.activityChatContextFilterKeyFromChannelType(this.chatChannelType(item));
+  }
+
+  public activityChatContextFilterKeyFromChannelType(
+    channelType: ContractTypes.ChatChannelType | null | undefined
+  ): ContractTypes.ActivitiesChatContextFilter | null {
     if (channelType === 'mainEvent') {
       return 'event';
     }

@@ -348,7 +348,7 @@ export class SeedUsersRepository {
 
     const activities = user.activities;
     const chat = sources.chatItems
-      ? this.resolveSectionBadge(sources.chatItems.map(item => item.unread), sources.chatItems.length)
+      ? this.sumUnreadItems(sources.chatItems)
       : activities.chat;
     const invitations = sources.invitationItems ? sources.invitationItems.length : activities.invitations;
     const events = Number.isFinite(sources.eventsCount)
@@ -435,6 +435,10 @@ export class SeedUsersRepository {
       return positiveTotal;
     }
     return itemCount;
+  }
+
+  private sumUnreadItems(items: ReadonlyArray<{ unread: number }>): number {
+    return items.reduce((sum, item) => sum + Math.max(0, Math.trunc(Number(item.unread) || 0)), 0);
   }
 
   private queryChatItemsByUser(userId: string): ReadonlyArray<{ unread: number }> {

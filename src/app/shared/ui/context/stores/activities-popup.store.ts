@@ -14,6 +14,7 @@ export interface EventChatRowPatch {
   ownerId?: string | null;
   channelType?: ContractTypes.ChatChannelType | null;
   unread?: number | null;
+  unreadDelta?: number | null;
   lastMessage?: string | null;
   lastSenderId?: string | null;
   dateIso?: string | null;
