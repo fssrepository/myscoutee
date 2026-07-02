@@ -12,6 +12,12 @@
   overflow: hidden;
 }
 
+@media (min-width: 761px) {
+  .activities-rates-fullscreen-card {
+    width: calc(100% - var(--smart-list-pagination-arrow-size, 2.2rem)) !important;
+  }
+}
+
 .activities-rates-fullscreen .activities-rate-pair-fullscreen-grid {
   --activities-pair-gap: clamp(0.28rem, 0.8vw, 0.52rem);
   --activities-pair-pad: 0.42rem;
