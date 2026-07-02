@@ -167,6 +167,13 @@ interface HttpChatReadReceiptDto {
   unread?: number | null;
 }
 
+interface HttpChatMessagesPageResponseDto {
+  items?: HttpChatMessageDto[] | null;
+  total?: number | null;
+  nextCursor?: string | null;
+  read?: HttpChatReadReceiptDto | null;
+}
+
 interface HttpChatMemberDto {
   userId?: string | null;
   id?: string | null;
@@ -355,13 +362,35 @@ export class HttpChatsService implements IChatsService {
 
   async loadChatMessages(chat: ChatDTO): Promise<ContractTypes.ChatMessageDto[]> {
     try {
-      const response = await this.http
-        .get<HttpChatMessageDto[]>(`${this.apiBaseUrl}/activities/chats/${encodeURIComponent(chat.id)}/messages`, {
-          params: this.activeUserParams()
-        })
-        .toPromise();
+      const messages: ContractTypes.ChatMessageDto[] = [];
+      let cursor: string | null = null;
+      let pageIndex = 0;
+      do {
+        let params = this.activeUserParams().set('limit', '100');
+        if (cursor) {
+          params = params.set('cursor', cursor);
+        }
+        const response = await this.http
+          .get<HttpChatMessagesPageResponseDto | HttpChatMessageDto[] | null>(
+            `${this.apiBaseUrl}/activities/chats/${encodeURIComponent(chat.id)}/messages`,
+            { params }
+          )
+          .toPromise();
+        if (Array.isArray(response)) {
+          messages.push(...response.map((message, index) => this.mapChatMessage(message, chat.id, messages.length + index)));
+          cursor = null;
+        } else {
+          const pageMessages = Array.isArray(response?.items)
+            ? response.items.map((message, index) => this.mapChatMessage(message, chat.id, messages.length + index))
+            : [];
+          messages.push(...pageMessages);
+          cursor = typeof response?.nextCursor === 'string' && response.nextCursor.trim().length > 0
+            ? response.nextCursor.trim()
+            : null;
+        }
+        pageIndex += 1;
+      } while (cursor && pageIndex < 100);
 
-      const messages = (response ?? []).map((message, index) => this.mapChatMessage(message, chat.id, index));
       const cachedMessages = this.resolveCachedChatMessages(chat);
       const mergedMessages = this.mergeCachedChatMessages(messages, cachedMessages)
         .sort((first, second) => AppUtils.toSortableDate(first.sentAtIso) - AppUtils.toSortableDate(second.sentAtIso));
@@ -386,11 +415,7 @@ export class HttpChatsService implements IChatsService {
 
     try {
       const response = await this.http
-        .get<{
-          items?: HttpChatMessageDto[] | null;
-          total?: number | null;
-          nextCursor?: string | null;
-        } | HttpChatMessageDto[] | null>(
+        .get<HttpChatMessagesPageResponseDto | HttpChatMessageDto[] | null>(
           `${this.apiBaseUrl}/activities/chats/${encodeURIComponent(chat.id)}/messages`,
           { params }
         )
@@ -408,6 +433,10 @@ export class HttpChatsService implements IChatsService {
       const messages = Array.isArray(response?.items)
         ? response.items.map((message, index) => this.mapChatMessage(message, chat.id, index))
         : [];
+      const readReceipt = this.mapChatReadReceipt(response?.read ?? null);
+      if (readReceipt) {
+        this.updateCachedChatUnread(chat.id, readReceipt);
+      }
       this.cacheChatMessages(chat, messages);
       return {
         items: this.sortChatMessagesForThread(messages),
@@ -416,7 +445,8 @@ export class HttpChatsService implements IChatsService {
           : messages.length,
         nextCursor: typeof response?.nextCursor === 'string' && response.nextCursor.trim().length > 0
           ? response.nextCursor.trim()
-          : null
+          : null,
+        readReceipt
       };
     } catch {
       return this.buildChatMessagesPage(this.resolveCachedChatMessages(chat), query);
@@ -1198,6 +1228,25 @@ export class HttpChatsService implements IChatsService {
     };
   }
 
+  private mapChatReadReceipt(read: HttpChatReadReceiptDto | null | undefined): ContractTypes.ChatReadReceipt | null {
+    const userId = this.normalizeHttpText(read?.userId);
+    if (!userId) {
+      return null;
+    }
+    return {
+      userId,
+      userInitials: this.normalizeHttpText(read?.userInitials),
+      userGender: this.normalizeHttpGender(read?.userGender),
+      messageIds: (read?.messageIds ?? [])
+        .map(messageId => this.normalizeHttpText(messageId))
+        .filter(Boolean),
+      readAtIso: this.normalizeHttpText(read?.readAtIso) || AppUtils.toIsoDateTime(new Date()),
+      unread: read?.unread === undefined || read.unread === null
+        ? null
+        : Math.max(0, Math.trunc(Number(read.unread) || 0))
+    };
+  }
+
   private toHttpChatAttachment(attachment: ContractTypes.ChatMessageAttachment): HttpChatMessageAttachmentDto {
     return {
       id: `${attachment.id ?? ''}`.trim(),
@@ -1645,7 +1694,7 @@ export class HttpChatsService implements IChatsService {
       }
     }
     if (event.type === 'read') {
-      this.updateCachedChatUnreadFromSocketEvent(event.chatId, event.read);
+      this.updateCachedChatUnread(event.chatId, event.read);
       this.resolvePendingSocketReads(event.chatId, event.read);
     }
     if (event.type === 'error') {
@@ -1677,7 +1726,7 @@ export class HttpChatsService implements IChatsService {
     this.updateCachedChatSummaryAfterMessage(existingRecord, message);
   }
 
-  private updateCachedChatUnreadFromSocketEvent(
+  private updateCachedChatUnread(
     chatId: string,
     read: ContractTypes.ChatReadReceipt
   ): void {

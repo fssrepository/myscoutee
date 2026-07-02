@@ -346,10 +346,7 @@ export class LocalChatsRepository {
       if (changedIds.length === 0) {
         return currentState;
       }
-      unread = this.countUnreadMessages(
-        this.selectChatMessageRecordsFromSnapshot(nextMessagesTable, existingRecord),
-        normalizedOwnerUserId
-      );
+      unread = this.normalizeCounter(previousUnread - changedIds.length);
       const unreadDelta = unread - previousUnread;
       const currentUsersTable = currentState[USERS_TABLE_NAME];
       const currentUser = currentUsersTable.byId[normalizedOwnerUserId] ?? null;
