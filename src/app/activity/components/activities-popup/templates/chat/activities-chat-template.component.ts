@@ -3,6 +3,10 @@ import type { ChatDTO } from '../../../../../shared/core/contracts/chat.interfac
 import type { UserDto } from '../../../../../shared/core/contracts/user.interface';
 import type * as ContractTypes from '../../../../../shared/core/contracts';
 import {
+  eventChatHeaderStateFromChat,
+  eventChatPopupRequestFromChat
+} from '../../../../../shared/ui/context/stores/activities-popup.store';
+import {
   type CardMenuActionEvent,
   SingleRowComponent,
   type SingleRowData
@@ -213,7 +217,10 @@ export class ActivitiesChatsController {
   }
 
   public openActivityChat(chat: ChatDTO): void {
-    this.activitiesStore.openEventChat(chat);
+    this.activitiesStore.openEventChat(
+      eventChatPopupRequestFromChat(chat),
+      eventChatHeaderStateFromChat(chat)
+    );
   }
 
   public activityChatContextFilterKey(item: ChatDTO): ContractTypes.ActivitiesChatContextFilter | null {

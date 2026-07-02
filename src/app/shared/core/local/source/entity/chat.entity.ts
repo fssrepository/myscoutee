@@ -4,6 +4,7 @@ import type {
   ChatMessageDeliveryState,
   ChatSupportCase,
   ChatUserGender,
+  ChatMemberSummaryDto,
 } from '../../../contracts/chat.interface';
 import type * as AppConstants from '../../../common/constants';
 import { APP_INDEXED_DB_KEYS } from '../../../common/storage-scope';
@@ -18,6 +19,7 @@ export interface ChatRecord {
   lastMessage: string;
   lastSenderId: string;
   memberIds: string[];
+  members?: ChatMemberSummaryDto[];
   unread: number;
   dateIso?: string;
   distanceKm?: number;

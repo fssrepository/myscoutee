@@ -533,27 +533,7 @@ export class ActivitiesPopupComponent implements OnDestroy {
     const chat = this.chatRecordForRow(row);
     if (chat) {
       this.openActivityChat(chat);
-      return;
     }
-    const provisionalChat = this.chatRecordPreviewForRow(row);
-    if (!provisionalChat) {
-      return;
-    }
-    this.openActivityChat(provisionalChat);
-    void this.resolveChatRecordForRow(row, { skipCache: true }).then(resolvedChat => {
-      if (!resolvedChat) {
-        return;
-      }
-      const activeSession = this.activitiesStore.eventChatSession();
-      if (activeSession?.item.id !== resolvedChat.id) {
-        return;
-      }
-      this.activitiesStore.patchEventChatSessionItem(current =>
-        current.id === resolvedChat.id
-          ? resolvedChat
-          : current
-      );
-    });
   }
 
   protected onActivityRowClick(row: ActivityListItem, event?: Event): void {
@@ -736,14 +716,6 @@ export class ActivitiesPopupComponent implements OnDestroy {
         return;
       }
       void this.eventSubeventsStore.ensureEventSubeventsListPopupLoaded();
-    });
-
-    effect(() => {
-      const session = this.activitiesStore.eventChatSession();
-      if (!session) {
-        return;
-      }
-      this.syncChatItemFromOpenSession(session.item);
     });
 
     effect(() => {
@@ -1016,37 +988,6 @@ export class ActivitiesPopupComponent implements OnDestroy {
     } finally {
       this.adminSupportBoardPollInFlight = false;
     }
-  }
-
-  private syncChatItemFromOpenSession(chat: ChatDTO): void {
-    const currentChat = this.chatsService.peekChatItemsByUser(this.activeUser.id).find(item => item.id === chat.id) ?? null;
-    if (!currentChat) {
-      const nextChat = this.cloneChatRecord(chat);
-      this.invalidateChatContextUnreadCounts();
-      this.refreshSectionBadges();
-      this.syncVisibleChatRow(nextChat);
-      this.cdr.markForCheck();
-      return;
-    }
-    const nextChat = this.cloneChatRecord(chat);
-    if (this.areChatRecordsEqual(currentChat, nextChat)) {
-      return;
-    }
-    this.invalidateChatContextUnreadCounts();
-    this.refreshSectionBadges();
-    this.syncVisibleChatRow(nextChat);
-    this.cdr.markForCheck();
-  }
-
-  private syncVisibleChatRow(chat: ChatDTO): void {
-    const smartList = this.activitiesSmartList;
-    if (!smartList || this.activitiesPrimaryFilter !== 'chats' || this.isCalendarLayoutView()) {
-      return;
-    }
-    if (!this.doesChatMatchActiveContextFilter(chat)) {
-      return;
-    }
-    smartList.upsertConvertedVisibleItem(chat);
   }
 
   private applyEventChatRowPatch(patch: EventChatRowPatch): void {
@@ -2256,6 +2197,7 @@ export class ActivitiesPopupComponent implements OnDestroy {
     return {
       ...chat,
       memberIds: [...(chat.memberIds ?? [])],
+      members: (chat.members ?? []).map(member => ({ ...member })),
       supportCase: this.cloneChatSupportCase(chat.supportCase),
       metrics: this.cloneChatMetrics(chat.metrics)
     } as T;

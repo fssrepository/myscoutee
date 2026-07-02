@@ -18,6 +18,7 @@ import {
 import type {
   ActivitiesChatPageResultDTO,
   ChatDTO,
+  ChatMemberSummaryDto,
   ChatMetricsDTO,
   ChatMessagesPageResultDTO
 } from '../../contracts/chat.interface';
@@ -40,6 +41,7 @@ interface HttpChatDto {
   lastMessage: string;
   lastSenderId: string;
   memberIds: string[];
+  members?: ChatMemberSummaryDto[] | null;
   unread: number;
   dateIso?: string;
   channelType?: ContractTypes.ChatChannelType;
@@ -645,6 +647,7 @@ export class HttpChatsService implements IChatsService {
       lastMessage: `${item.lastMessage ?? ''}`.trim(),
       lastSenderId: `${item.lastSenderId ?? ''}`.trim(),
       memberIds: [...(item.memberIds ?? [])],
+      members: this.resolveChatMembers(item.members, item.memberIds),
       unread: Math.max(0, Math.trunc(Number(item.unread) || 0)),
       dateIso: item.dateIso,
       channelType: item.channelType,
@@ -662,6 +665,7 @@ export class HttpChatsService implements IChatsService {
     return {
       ...record,
       memberIds: [...(record.memberIds ?? [])],
+      members: this.cloneChatMembers(record.members),
       supportCase: this.cloneSupportCase(record.supportCase)
     };
   }
@@ -820,6 +824,7 @@ export class HttpChatsService implements IChatsService {
       lastMessage: item.lastMessage,
       lastSenderId: item.lastSenderId,
       memberIds: [...(item.memberIds ?? [])],
+      members: this.cloneChatMembers(item.members),
       unread: Math.max(0, Math.trunc(Number(item.unread) || 0)),
       dateIso: item.dateIso,
       distanceKm: item.distanceKm,
@@ -844,6 +849,41 @@ export class HttpChatsService implements IChatsService {
           pendingTotal: Math.max(0, Math.trunc(Number(metrics.pendingTotal) || 0))
         }
       : null;
+  }
+
+  private resolveChatMembers(
+    members: readonly ChatMemberSummaryDto[] | null | undefined,
+    memberIds: readonly string[] | null | undefined
+  ): ChatMemberSummaryDto[] {
+    const explicitMembers = this.cloneChatMembers(members);
+    if (explicitMembers.length > 0) {
+      return explicitMembers;
+    }
+    return (memberIds ?? [])
+      .map(memberId => `${memberId ?? ''}`.trim())
+      .filter((memberId, index, source) => memberId.length > 0 && source.indexOf(memberId) === index)
+      .flatMap(memberId => {
+        const user = this.userProfileStore.getUserProfile(memberId);
+        if (!user || user.id !== memberId) {
+          return [];
+        }
+        const label = `${user.name ?? ''}`.trim() || memberId;
+        return [{
+          id: memberId,
+          name: label,
+          initials: `${user.initials ?? ''}`.trim() || AppUtils.initialsFromText(label),
+          gender: this.normalizeHttpGender(user.gender),
+          imageUrl: AppUtils.firstImageUrl(user.images)
+        }];
+      });
+  }
+
+  private cloneChatMembers(members: readonly ChatMemberSummaryDto[] | null | undefined): ChatMemberSummaryDto[] {
+    return (members ?? []).map(member => ({
+      ...member,
+      name: `${member.name ?? ''}`.trim() || null,
+      imageUrl: `${member.imageUrl ?? ''}`.trim() || null
+    }));
   }
 
   private matchesActivitiesChatContextFilter(

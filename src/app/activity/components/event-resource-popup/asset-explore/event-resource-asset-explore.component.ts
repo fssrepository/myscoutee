@@ -106,7 +106,9 @@ import type {
   UserDto
 } from '../../../../shared/core/contracts/user.interface';
 import {
-  ActivitiesPopupStore
+  ActivitiesPopupStore,
+  eventChatHeaderStateFromChat,
+  eventChatPopupRequestFromChat
 } from '../../../../shared/ui/context/stores/activities-popup.store';
 import {
   DialogStore
@@ -1579,7 +1581,10 @@ export class EventResourceAssetExploreComponent implements DoCheck {
       lastSenderId: ownerUserId || activeUserId,
       avatarSource: card.ownerName || card.title
     });
-    this.activitiesStore.openEventChat(chat);
+    this.activitiesStore.openEventChat(
+      eventChatPopupRequestFromChat(chat),
+      eventChatHeaderStateFromChat(chat)
+    );
   }
 
   private openBorrowDialog(card: ResourceAssetDTO, event?: Event): void {

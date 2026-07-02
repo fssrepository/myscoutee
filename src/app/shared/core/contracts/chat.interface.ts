@@ -9,6 +9,10 @@ export interface ChatReadAvatar {
   imageUrl?: string | null;
 }
 
+export interface ChatMemberSummaryDto extends ChatReadAvatar {
+  name?: string | null;
+}
+
 export type ChatMessageDeliveryState = 'pending' | 'timed-out';
 
 export interface ChatMessageDto {
@@ -143,6 +147,7 @@ export interface ChatDTO {
   lastMessage: string;
   lastSenderId: string;
   memberIds: string[];
+  members?: ChatMemberSummaryDto[];
   unread: number;
   dateIso?: string;
   distanceKm?: number;

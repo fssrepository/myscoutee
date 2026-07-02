@@ -44,7 +44,9 @@ import {
   type UserDto
 } from '../../../shared/core';
 import {
-  ActivitiesPopupStore
+  ActivitiesPopupStore,
+  eventChatHeaderStateFromChat,
+  eventChatPopupRequestFromChat
 } from '../../../shared/ui/context/stores/activities-popup.store';
 import {
   AppMenuDispatcher,
@@ -1139,7 +1141,10 @@ export class EventExplorePopupComponent {
     if (!chat) {
       return;
     }
-    this.activitiesStore.openEventChat(chat);
+    this.activitiesStore.openEventChat(
+      eventChatPopupRequestFromChat(chat),
+      eventChatHeaderStateFromChat(chat)
+    );
   }
 
   private buildEventExploreServiceChat(record: ActivityEventRecord): (ChatDTO & { ownerUserId?: string }) | null {

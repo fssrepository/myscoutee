@@ -76,7 +76,9 @@ import {
   DialogStore
 } from '../../../shared/ui/context/stores/dialog.store';
 import {
-  ActivitiesPopupStore
+  ActivitiesPopupStore,
+  eventChatHeaderStateFromChat,
+  eventChatPopupRequestFromChat
 } from '../../../shared/ui/context/stores/activities-popup.store';
 import {
   SubEventResourcePopupStore
@@ -464,7 +466,10 @@ export class EventResourcePopupComponent {
       lastSenderId: managerUserId || activeUserId,
       avatarSource: sourceCard?.ownerName || sourceCard?.title || card.title
     });
-    this.activitiesStore.openEventChat(chat);
+    this.activitiesStore.openEventChat(
+      eventChatPopupRequestFromChat(chat),
+      eventChatHeaderStateFromChat(chat)
+    );
   }
 
   private reportResourceManager(card: AppDTOs.SubEventResourceCardDTO, event: Event): void {

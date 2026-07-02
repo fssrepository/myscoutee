@@ -16,6 +16,7 @@ export class LocalChatThreadMapper {
       lastMessage: record.lastMessage,
       lastSenderId: record.lastSenderId,
       memberIds: [...(record.memberIds ?? [])],
+      members: this.cloneMembers(record.members),
       unread: Math.max(0, Math.trunc(Number(record.unread) || 0)),
       dateIso: record.dateIso,
       distanceKm: record.distanceKm,
@@ -60,6 +61,7 @@ export class LocalChatThreadMapper {
     return {
       ...dto,
       memberIds: [...(dto.memberIds ?? [])],
+      members: this.cloneMembers(dto.members),
       supportCase: this.cloneSupportCase(dto.supportCase),
       metrics: this.cloneMetrics(metrics)
     };
@@ -69,6 +71,7 @@ export class LocalChatThreadMapper {
     return {
       ...record,
       memberIds: [...record.memberIds],
+      members: this.cloneMembers(record.members),
       supportCase: this.cloneSupportCase(record.supportCase)
     };
   }
@@ -97,6 +100,12 @@ export class LocalChatThreadMapper {
           pendingTotal: Math.max(0, Math.trunc(Number(metrics.pendingTotal) || 0))
         }
       : null;
+  }
+
+  private static cloneMembers<T extends ChatDTO['members']>(members: T): T {
+    return members
+      ? members.map(member => ({ ...member })) as T
+      : members;
   }
 }
 

@@ -7,6 +7,7 @@ import type { ActivitiesFeedFilters, ListQuery } from '../../../contracts';
 import type {
   ActivitiesChatPageResultDTO,
   ChatDTO,
+  ChatMemberSummaryDto,
   ChatMetricBucketDTO,
   ChatMetricsDTO,
   ChatMessagesPageResultDTO
@@ -28,6 +29,7 @@ import type {
 } from '../entity/activity.entity';
 
 import type * as ActivityContracts from '../../../contracts/activity.interface';
+import type { UserDto } from '../../../contracts/user.interface';
 
 @Injectable({
   providedIn: 'root'
@@ -195,12 +197,44 @@ export class LocalChatsService extends LocalRouteDelayService implements IChatsS
     const metricRecords = records.filter(record => this.metricChatRecord(record));
     const dtoByOwnerId = LocalChatThreadMapper.toMap(metricRecords);
     this.patchChatDtosWithMetrics(metricRecords, dtoByOwnerId);
+    const usersById = new Map(this.usersRepository.queryAllUsers().map(user => [user.id, user]));
     return LocalChatThreadMapper.toDtoList(records).map(dto => {
       const ownerId = `${dto.ownerId ?? ''}`.trim();
-      return ownerId && this.supportsChatMetrics(this.chatChannelType(dto))
+      const metricsDto = ownerId && this.supportsChatMetrics(this.chatChannelType(dto))
         ? dtoByOwnerId.get(ownerId) ?? dto
         : dto;
+      return {
+        ...metricsDto,
+        memberIds: [...(metricsDto.memberIds ?? [])],
+        members: this.chatMemberSummaries(metricsDto.memberIds, usersById)
+      };
     });
+  }
+
+  private chatMemberSummaries(
+    memberIds: readonly string[],
+    usersById: ReadonlyMap<string, UserDto>
+  ): ChatMemberSummaryDto[] {
+    return [...new Set((memberIds ?? []).map(memberId => `${memberId ?? ''}`.trim()).filter(Boolean))]
+      .flatMap(memberId => {
+        const user = usersById.get(memberId);
+        if (!user) {
+          return [];
+        }
+        const label = `${user.name ?? ''}`.trim() || memberId;
+        return [{
+          id: memberId,
+          name: label,
+          initials: `${user.initials ?? ''}`.trim() || AppUtils.initialsFromText(label),
+          gender: this.normalizeChatUserGender(user.gender),
+          imageUrl: AppUtils.firstImageUrl(user.images)
+        }];
+      });
+  }
+
+  private normalizeChatUserGender(value: unknown): ContractTypes.ChatUserGender {
+    const normalized = `${value ?? ''}`.trim().toLowerCase();
+    return normalized === 'woman' ? 'woman' : 'man';
   }
 
   private patchChatDtosWithMetrics(records: readonly ChatThreadRecord[], dtoByOwnerId: Map<string, ChatDTO>): void {

@@ -40,7 +40,9 @@ import {
   AssetPopupStore
 } from '../../context/stores/asset-popup.store';
 import {
-  ActivitiesPopupStore
+  ActivitiesPopupStore,
+  eventChatHeaderStateFromChat,
+  eventChatPopupRequestFromChat
 } from '../../context/stores/activities-popup.store';
 import {
   EventEditorPopupStore
@@ -1908,7 +1910,10 @@ export class SideMenuComponent implements OnDestroy {
       ownerUserId: activeUserId
     };
     this.activitiesStore.openActivities('chats');
-    this.activitiesStore.openEventChat(chat);
+    this.activitiesStore.openEventChat(
+      eventChatPopupRequestFromChat(chat),
+      eventChatHeaderStateFromChat(chat)
+    );
   }
 
   private resolveCompletionPercent(user: UserDto | null): number {

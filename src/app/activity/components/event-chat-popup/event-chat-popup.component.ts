@@ -33,7 +33,10 @@ import {
   AppUtils,
   type AsciiEmojiConversion
 } from '../../../shared/app-utils';
-import type { EventChatSession } from '../../../shared/ui/context/stores/activities-popup.store';
+import type {
+  EventChatHeaderState,
+  EventChatSession
+} from '../../../shared/ui/context/stores/activities-popup.store';
 import {
   ActivitiesPopupStore
 } from '../../../shared/ui/context/stores/activities-popup.store';
@@ -44,7 +47,8 @@ import {
   ChatVoiceClipsService,
   EventsService,
   MediaService,
-  ShareTokensService
+  ShareTokensService,
+  UsersService
 } from '../../../shared/core';
 import type { ChatDTO } from '../../../shared/core/contracts/chat.interface';
 import type { ActivityEventRecord } from '../../../shared/core/contracts/activity.interface';
@@ -79,6 +83,7 @@ import type * as AppDTOs from '../../../shared/core/contracts';
 import type * as AppConstants from '../../../shared/core/common/constants';
 import { UserProfileStore } from '../../../shared/ui/context/stores/user-profile.store';
 import { AppRuntimeStore } from '../../../shared/ui/context/stores/app-runtime.store';
+import { ActivityStore } from '../../../shared/ui/context/stores/activity.store';
 import { MemberMenuStore } from '../../../shared/ui/context/stores/member-menu.store';
 import { EventSubeventsPopupStore } from '../../../shared/ui/context/stores/event-subevents-popup.store';
 import {
@@ -164,6 +169,10 @@ interface ChatOwnerParts {
   groupId: string;
 }
 
+type EventChatViewSession = EventChatSession & {
+  item: ChatDTO;
+};
+
 @Component({
   selector: 'app-event-chat-popup',
   standalone: true,
@@ -186,6 +195,7 @@ export class EventChatPopupComponent implements OnDestroy {
   protected readonly activitiesStore = inject(ActivitiesPopupStore);
   private readonly userProfileStore = inject(UserProfileStore);
   private readonly runtimeStore = inject(AppRuntimeStore);
+  private readonly activityStore = inject(ActivityStore);
   protected readonly memberMenuStore = inject(MemberMenuStore);
   protected readonly eventSubeventsStore = inject(EventSubeventsPopupStore);
   protected readonly resourcePopupStore = inject(SubEventResourcePopupStore);
@@ -193,19 +203,29 @@ export class EventChatPopupComponent implements OnDestroy {
   private readonly activityResourcesService = inject(ActivityResourcesService);
   private readonly eventsService = inject(EventsService);
   private readonly shareTokensService = inject(ShareTokensService);
+  private readonly usersService = inject(UsersService);
   private readonly chatVoiceClipsService = inject(ChatVoiceClipsService);
   private readonly dialogStore = inject(DialogStore);
   private readonly mediaService = inject(MediaService);
   private readonly profileStore = inject(ProfileStore);
   private readonly location = inject(Location);
 
-  protected readonly session = computed(() => this.activitiesStore.eventChatSession());
+  protected readonly session = computed<EventChatViewSession | null>(() => {
+    const session = this.activitiesStore.eventChatSession();
+    const header = this.activitiesStore.eventChatHeader();
+    if (!session || !header || `${session.request.chatId ?? ''}`.trim() !== `${header.chatId ?? ''}`.trim()) {
+      return null;
+    }
+    return {
+      ...session,
+      item: this.chatFromHeader(header)
+    };
+  });
   protected chatInitialLoadPending = false;
   protected messages: ContractTypes.ChatMessageDto[] = [];
   protected draftMessage = '';
   protected chatComposeDetachedSpace = 108;
   protected chatHeaderContext: AppUiTypes.PopupHeaderContext | null = null;
-  protected chatHeaderControlsHydrated = false;
   private selectedChatNavigationState: SelectedChatNavigationState | null = null;
   private resolvedChatEventRecord: ActivityEventRecord | null = null;
   private resolvedChatEventRecordKey = '';
@@ -402,14 +422,13 @@ export class EventChatPopupComponent implements OnDestroy {
       const session = this.session();
       const sessionKey = session ? `${session.item.id}:${session.openedAtIso}` : null;
       if (session && this.loadedSessionKey === sessionKey) {
-        this.syncSelectedChatHeader(session.item, { hydrateControls: this.chatHeaderControlsHydrated });
+        this.syncSelectedChatHeader(session.item);
         this.cdr.markForCheck();
         return;
       }
       this.teardownLiveChatUpdates();
       this.loadedSessionKey = sessionKey;
       this.initialChatLoadedSessionKey = null;
-      this.chatHeaderControlsHydrated = false;
       this.draftMessage = '';
       this.closeTransientMessageUi();
       this.replyTarget = null;
@@ -435,7 +454,7 @@ export class EventChatPopupComponent implements OnDestroy {
         this.cdr.markForCheck();
         return;
       }
-      this.syncSelectedChatHeader(session.item, { hydrateControls: false });
+      this.syncSelectedChatHeader(session.item);
       this.chatInitialLoadPending = true;
       this.cdr.markForCheck();
     });
@@ -464,7 +483,6 @@ export class EventChatPopupComponent implements OnDestroy {
     this.chatThreadKnownTotal = 0;
     this.loadedSessionKey = null;
     this.chatThreadQuery = {};
-    this.chatHeaderControlsHydrated = false;
     this.closeTransientMessageUi();
     if (this.isBlockedSupportChat()) {
       this.activitiesStore.closeActivities();
@@ -473,7 +491,38 @@ export class EventChatPopupComponent implements OnDestroy {
     this.activitiesStore.closeEventChat();
   }
 
-  protected chatHeaderTitle(chatSession: EventChatSession): string {
+  private chatFromHeader(header: EventChatHeaderState): ChatDTO {
+    const chatId = `${header.chatId ?? ''}`.trim();
+    const ownerId = `${header.ownerId ?? ''}`.trim();
+    const title = `${header.title ?? ''}`.trim() || 'Chat';
+    return {
+      id: chatId || ownerId,
+      avatar: `${header.avatar ?? ''}`.trim() || AppUtils.initialsFromText(title),
+      title,
+      lastMessage: `${header.lastMessage ?? ''}`.trim(),
+      lastSenderId: `${header.lastSenderId ?? ''}`.trim(),
+      memberIds: [...(header.memberIds ?? [])],
+      members: (header.members ?? []).map(member => ({ ...member })),
+      unread: Math.max(0, Math.trunc(Number(header.unread) || 0)),
+      dateIso: header.dateIso ?? undefined,
+      channelType: header.channelType ?? undefined,
+      ownerId: ownerId || undefined,
+      supportCase: header.supportCase ? { ...header.supportCase } : header.supportCase,
+      ownerUserId: header.ownerUserId ?? null,
+      metrics: header.metrics
+        ? {
+            members: header.metrics.members ? { ...header.metrics.members } : null,
+            car: header.metrics.car ? { ...header.metrics.car } : null,
+            accommodation: header.metrics.accommodation ? { ...header.metrics.accommodation } : null,
+            supplies: header.metrics.supplies ? { ...header.metrics.supplies } : null,
+            groupsCount: header.metrics.groupsCount ?? null,
+            pendingTotal: Math.max(0, Math.trunc(Number(header.metrics.pendingTotal) || 0))
+          }
+        : header.metrics
+    };
+  }
+
+  protected chatHeaderTitle(chatSession: EventChatViewSession): string {
     return `${this.chatHeaderContext?.title ?? chatSession.item.title ?? ''}`.trim() || 'Chat';
   }
 
@@ -2674,25 +2723,11 @@ export class EventChatPopupComponent implements OnDestroy {
     this.chatInitialLoadPending = true;
     this.cdr.markForCheck();
     try {
-      const initialChat = session.item;
-      const resolvedChatPromise = this.chatsService
-        .resolveRepositoryEventServiceChat(initialChat)
-        .catch(() => null);
-      const messagesPromise = this.chatsService.loadChatMessagesResult(initialChat, query);
-      const [resolvedChat, messagesPage] = await Promise.all([resolvedChatPromise, messagesPromise]);
+      const chat = session.item;
+      const messagesPage = await this.chatsService.loadChatMessagesResult(chat, query);
       if (this.loadedSessionKey !== sessionKey) {
         return this.emptyChatThreadPage();
       }
-      const chat = this.applyResolvedInitialChatItem(initialChat, resolvedChat, sessionKey);
-      if (this.loadedSessionKey !== sessionKey) {
-        return this.emptyChatThreadPage();
-      }
-      this.chatHeaderControlsHydrated = true;
-      this.syncSelectedChatHeader(chat, {
-        hydrateControls: true,
-        baseContext: messagesPage.context ?? null
-      });
-      void this.refreshSelectedChatHeader(chat, sessionKey);
       const result = this.applyChatThreadMessagesPage(messagesPage, { replace: true });
       this.rebuildVisibleReadReceipts();
       this.syncEventChatSummaryFromLatestMessage();
@@ -2704,9 +2739,6 @@ export class EventChatPopupComponent implements OnDestroy {
       if (this.loadedSessionKey !== sessionKey) {
         return this.emptyChatThreadPage();
       }
-      this.chatHeaderControlsHydrated = true;
-      this.syncSelectedChatHeader(session.item, { hydrateControls: true });
-      void this.refreshSelectedChatHeader(session.item, sessionKey);
       this.messages = [];
       this.rebuildVisibleReadReceipts();
       this.initialChatLoadedSessionKey = sessionKey;
@@ -2718,26 +2750,6 @@ export class EventChatPopupComponent implements OnDestroy {
         this.cdr.markForCheck();
       }
     }
-  }
-
-  private applyResolvedInitialChatItem(
-    chat: ChatDTO,
-    resolvedChat: ChatDTO | null,
-    sessionKey: string
-  ): ChatDTO {
-    if (!resolvedChat || this.loadedSessionKey !== sessionKey || resolvedChat.id !== chat.id) {
-      return chat;
-    }
-    this.activitiesStore.patchEventChatSessionItem(current =>
-      current.id === chat.id
-        ? resolvedChat
-        : current
-    );
-    if (this.chatHeaderControlsHydrated) {
-      this.syncSelectedChatHeader(resolvedChat, { hydrateControls: true });
-      void this.refreshSelectedChatHeader(resolvedChat, sessionKey);
-    }
-    return resolvedChat;
   }
 
   private applyChatThreadMessagesPage(
@@ -3566,6 +3578,9 @@ export class EventChatPopupComponent implements OnDestroy {
     const previousUnread = this.currentChatUnread(chat);
     const nextUnread = this.normalizeUnreadCounter(read.unread);
     const unreadDelta = nextUnread - previousUnread;
+    const nextChatCounter = unreadDelta === 0
+      ? null
+      : this.nextActiveChatCounterFromDelta(activeUserId, unreadDelta);
     this.activitiesStore.emitEventChatRowPatch({
       chatId: chat.id,
       ownerId: chat.ownerId ?? null,
@@ -3573,11 +3588,30 @@ export class EventChatPopupComponent implements OnDestroy {
       unread: nextUnread,
       unreadDelta
     });
-    this.activitiesStore.patchEventChatSessionItem(item =>
-      `${item.id ?? ''}`.trim() === `${chat.id ?? ''}`.trim()
-        ? { ...item, unread: nextUnread }
-        : item
+    this.activitiesStore.patchEventChatHeader(header =>
+      `${header.chatId ?? ''}`.trim() === `${chat.id ?? ''}`.trim()
+        ? { ...header, unread: nextUnread }
+        : header
     );
+    if (nextChatCounter !== null) {
+      void this.persistActiveChatCounter(activeUserId, nextChatCounter);
+    }
+  }
+
+  private nextActiveChatCounterFromDelta(activeUserId: string, unreadDelta: number): number | null {
+    const activeUser = this.userProfileStore.activeUserProfile()
+      ?? this.userProfileStore.getUserProfile(activeUserId);
+    if (!activeUser) {
+      return null;
+    }
+    const overrides = this.activityStore.getUserCounterOverrides(activeUserId);
+    return this.normalizeUnreadCounter(
+      this.normalizeUnreadCounter(overrides.chat ?? activeUser.activities?.chat) + unreadDelta
+    );
+  }
+
+  private async persistActiveChatCounter(activeUserId: string, nextChatCounter: number): Promise<void> {
+    await this.usersService.patchLocalUserActivityCounters(activeUserId, { chat: nextChatCounter });
   }
 
   private currentChatUnread(chat: ChatDTO): number {
@@ -3915,13 +3949,7 @@ export class EventChatPopupComponent implements OnDestroy {
     return day.toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric', year: 'numeric' });
   }
 
-  private syncSelectedChatHeader(
-    chat: ChatDTO | null,
-    options: {
-      hydrateControls?: boolean;
-      baseContext?: AppUiTypes.PopupHeaderContext | null;
-    } = {}
-  ): void {
+  private syncSelectedChatHeader(chat: ChatDTO | null): void {
     if (!chat) {
       this.chatHeaderContext = null;
       this.selectedChatNavigationState = null;
@@ -3933,103 +3961,11 @@ export class EventChatPopupComponent implements OnDestroy {
       this.resolvedChatGroupSnapshotKey = '';
       return;
     }
-    if (options.hydrateControls === false) {
-      this.selectedChatNavigationState = null;
-      this.resolvedChatEventRecord = null;
-      this.resolvedChatEventRecordKey = '';
-      this.resolvedChatResourceState = null;
-      this.resolvedChatResourceStateKey = '';
-      this.resolvedChatGroupSnapshot = null;
-      this.resolvedChatGroupSnapshotKey = '';
-      this.chatHeaderContext = this.buildTitleOnlyChatHeaderContext(chat);
-      return;
-    }
     this.selectedChatNavigationState = this.buildSelectedChatNavigationState(chat);
     this.chatHeaderContext = this.buildSelectedChatHeaderContext(
       chat,
-      this.selectedChatNavigationState,
-      options.baseContext ?? null
+      this.selectedChatNavigationState
     );
-  }
-
-  private buildTitleOnlyChatHeaderContext(chat: ChatDTO): AppUiTypes.PopupHeaderContext {
-    const title = `${chat.title ?? ''}`.trim() || 'Chat';
-    return {
-      revision: `title:${chat.id}:${title}`,
-      title,
-      controls: []
-    };
-  }
-
-  private async refreshSelectedChatHeader(chat: ChatDTO, sessionKey: string | null): Promise<void> {
-    if (!sessionKey || this.loadedSessionKey !== sessionKey) {
-      return;
-    }
-    const ownerParts = this.chatOwnerParts(chat);
-    const eventId = ownerParts.eventId;
-    if (eventId && this.resolvedChatEventRecordKey !== eventId) {
-      const record = await this.eventsService.queryKnownRecordById(this.activeUserId(), eventId).catch(() => null);
-      if (this.loadedSessionKey !== sessionKey) {
-        return;
-      }
-      this.resolvedChatEventRecord = record;
-      this.resolvedChatEventRecordKey = eventId;
-      this.syncSelectedChatHeader(chat);
-      this.cdr.markForCheck();
-    }
-
-    const state = this.selectedChatNavigationState;
-    const ownerId = `${state?.eventId ?? ownerParts.eventId}`.trim();
-    const subEventId = `${state?.subEvent?.id ?? ownerParts.subEventId}`.trim();
-    const resourceKey = ownerId && subEventId ? `${ownerId}:${subEventId}` : '';
-    if (resourceKey && this.resolvedChatResourceStateKey !== resourceKey) {
-      const resourceState = await this.activityResourcesService
-        .querySubEventResourceState(ownerId, subEventId)
-        .catch(() => null);
-      if (this.loadedSessionKey !== sessionKey) {
-        return;
-      }
-      this.resolvedChatResourceState = ActivityResourceBuilder.cloneState(resourceState);
-      this.resolvedChatResourceStateKey = resourceKey;
-      this.syncSelectedChatHeader(chat);
-      this.cdr.markForCheck();
-    }
-
-    await this.refreshSelectedChatGroupSnapshot(chat, sessionKey);
-  }
-
-  private async refreshSelectedChatGroupSnapshot(chat: ChatDTO, sessionKey: string | null): Promise<void> {
-    if (!sessionKey || this.loadedSessionKey !== sessionKey) {
-      return;
-    }
-    const state = this.selectedChatNavigationState;
-    const ownerParts = this.chatOwnerParts(chat);
-    const ownerId = `${state?.eventId ?? ownerParts.eventId}`.trim();
-    const subEventId = `${state?.subEvent?.id ?? ownerParts.subEventId}`.trim();
-    const groupId = `${state?.group?.id ?? ownerParts.groupId}`.trim();
-    const groupKey = this.selectedChatGroupSnapshotKey(ownerId, subEventId, groupId);
-    if (!groupKey) {
-      this.resolvedChatGroupSnapshot = null;
-      this.resolvedChatGroupSnapshotKey = '';
-      return;
-    }
-    if (this.resolvedChatGroupSnapshotKey === groupKey) {
-      return;
-    }
-    const groups = await this.eventsService
-      .queryTournamentStageGroups({
-        eventId: ownerId,
-        slotId: null,
-        stageId: subEventId
-      })
-      .catch(() => []);
-    if (this.loadedSessionKey !== sessionKey) {
-      return;
-    }
-    this.resolvedChatGroupSnapshot = groups.find(group => `${group.id ?? ''}`.trim() === groupId) ?? null;
-    this.resolvedChatGroupSnapshotKey = groupKey;
-    this.syncSelectedChatHeader(chat);
-    this.cdr.markForCheck();
   }
 
   private buildSelectedChatHeaderContext(

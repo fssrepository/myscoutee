@@ -19,7 +19,9 @@ import {
 } from 'rxjs';
 
 import {
-  ActivitiesPopupStore
+  ActivitiesPopupStore,
+  eventChatHeaderStateFromChat,
+  eventChatPopupRequestFromChat
 } from '../../../shared/ui/context/stores/activities-popup.store';
 import {
   APP_STATIC_DATA
@@ -792,7 +794,10 @@ export class AdminReportsPopupComponent {
       return;
     }
     this.admin.closePopup();
-    this.activitiesStore.openEventChat(chat);
+    this.activitiesStore.openEventChat(
+      eventChatPopupRequestFromChat(chat),
+      eventChatHeaderStateFromChat(chat)
+    );
   }
 
   private buildAdminSupportChat(user: AdminReportedUserDto): (ChatDTO & { ownerUserId?: string }) | null {

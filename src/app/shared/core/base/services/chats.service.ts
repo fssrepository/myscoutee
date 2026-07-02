@@ -11,7 +11,6 @@ import { LocalChatsService } from '../../local';
 import { HttpChatsService } from '../../http';
 import { BaseRouteModeService } from './base-route-mode.service';
 import { ActivityMembersService } from './activity-members.service';
-import { UsersService } from './users.service';
 import {
   RouteIntervalSchedulerService,
   type RouteIntervalStop,
@@ -29,7 +28,6 @@ export class ChatsService extends BaseRouteModeService implements IChatsService 
   private readonly localChatsService = inject(LocalChatsService);
   private readonly httpChatsService = inject(HttpChatsService);
   private readonly activityMembersService = inject(ActivityMembersService);
-  private readonly usersService = inject(UsersService);
   private readonly routeIntervalScheduler = inject(RouteIntervalSchedulerService);
 
   private get chatsService(): LocalChatsService | HttpChatsService {
@@ -87,12 +85,16 @@ export class ChatsService extends BaseRouteModeService implements IChatsService 
   ): AppUiTypes.PopupHeaderContext {
     const chatId = `${chat.id ?? ''}`.trim();
     const title = `${chat.title ?? ''}`.trim() || 'Chat';
-    const memberIds = this.resolveChatMemberIds(chat);
+    const members = this.resolveChatMembers(chat);
+    const memberIds = this.uniqueUserIds([
+      ...(chat.memberIds ?? []),
+      ...members.map(member => member.id)
+    ]);
     const controls: AppUiTypes.PopupHeaderControl[] = [];
     if (chatId && memberIds.length > 0) {
       const maxVisibleThumbs = 4;
       const thumbs = options.includeThumbs === true
-        ? this.buildChatHeaderThumbs(memberIds, maxVisibleThumbs)
+        ? this.buildChatHeaderThumbs(members, maxVisibleThumbs)
         : [];
       const hiddenThumbCount = thumbs.length > 0 ? Math.max(0, memberIds.length - thumbs.length) : 0;
       controls.push({
@@ -240,7 +242,8 @@ export class ChatsService extends BaseRouteModeService implements IChatsService 
     return match
       ? {
           ...match,
-          memberIds: [...(match.memberIds ?? [])]
+          memberIds: [...(match.memberIds ?? [])],
+          members: (match.members ?? []).map(member => ({ ...member }))
         }
       : null;
   }
@@ -292,25 +295,6 @@ export class ChatsService extends BaseRouteModeService implements IChatsService 
     };
   }
 
-  async resolveRepositoryEventServiceChat(chat: ChatDTO): Promise<ChatDTO | null> {
-    if (chat.channelType !== 'serviceEvent') {
-      return null;
-    }
-    const eventId = `${chat.ownerId ?? ''}`.trim();
-    const activeUserId = this.resolveChatOwnerUserId(chat, eventId);
-    if (!eventId || !activeUserId) {
-      return null;
-    }
-    return this.resolveExistingEventServiceChat(
-      await this.queryChatItemsByUser(activeUserId),
-      {
-        activeUserId,
-        eventId,
-        notification: chat.serviceContext === 'notification'
-      }
-    );
-  }
-
   async queryActivitiesChatPage(
     userId: string,
     query: ListQuery<ActivitiesFeedFilters>,
@@ -330,24 +314,28 @@ export class ChatsService extends BaseRouteModeService implements IChatsService 
     return [...new Set(userIds.map(userId => userId.trim()).filter(Boolean))];
   }
 
-  private resolveChatMemberIds(chat: Pick<ChatDTO, 'memberIds'>): string[] {
-    return this.uniqueUserIds(chat.memberIds ?? []);
+  private resolveChatMembers(chat: Pick<ChatDTO, 'memberIds' | 'members'>): ContractTypes.ChatMemberSummaryDto[] {
+    return (chat.members ?? [])
+      .map(member => ({
+        ...member,
+        id: `${member.id ?? ''}`.trim(),
+        name: `${member.name ?? ''}`.trim() || null,
+        initials: `${member.initials ?? ''}`.trim(),
+        imageUrl: `${member.imageUrl ?? ''}`.trim() || null
+      }))
+      .filter(member => member.id.length > 0);
   }
 
-  private buildChatHeaderThumbs(memberIds: readonly string[], maxVisible: number): AppUiTypes.PopupHeaderThumb[] {
-    return memberIds.slice(0, Math.max(0, Math.trunc(maxVisible))).flatMap(memberId => {
-      const user = this.usersService.peekCachedUserById(memberId);
-      if (!user) {
-        return [];
-      }
-      const label = user.name.trim() || memberId;
+  private buildChatHeaderThumbs(members: readonly ContractTypes.ChatMemberSummaryDto[], maxVisible: number): AppUiTypes.PopupHeaderThumb[] {
+    return members.slice(0, Math.max(0, Math.trunc(maxVisible))).map(member => {
+      const label = `${member.name ?? ''}`.trim() || member.id;
       return [{
-        id: memberId,
+        id: member.id,
         label,
-        initials: user.initials.trim() || AppUtils.initialsFromText(label),
-        imageUrl: AppUtils.firstImageUrl(user.images)
+        initials: `${member.initials ?? ''}`.trim() || AppUtils.initialsFromText(label),
+        imageUrl: `${member.imageUrl ?? ''}`.trim() || null
       }];
-    });
+    }).flat();
   }
 
   private memberCountLabel(count: number): string {
@@ -356,16 +344,6 @@ export class ChatsService extends BaseRouteModeService implements IChatsService 
 
   private chatHeaderRevision(chatId: string, title: string, memberIds: readonly string[]): string {
     return ['chat-header', chatId, title, ...memberIds].join(':');
-  }
-
-  private resolveChatOwnerUserId(chat: ChatDTO, eventId: string): string {
-    const ownerUserId = `${(chat as { ownerUserId?: string | null }).ownerUserId ?? ''}`.trim();
-    if (ownerUserId) {
-      return ownerUserId;
-    }
-    const chatId = `${chat.id ?? ''}`.trim();
-    const prefix = `c-service-event-${eventId}-`;
-    return chatId.startsWith(prefix) ? chatId.slice(prefix.length).trim() : '';
   }
 
 }
