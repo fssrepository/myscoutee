@@ -26,7 +26,7 @@
         [presentation]="activitiesSmartListPresentation()"
         [view]="activitiesView"
         [query]="activitiesSmartListQuery"
-        (itemSelect)="onActivityRowClick($event.item, $event.sourceEvent, $event.sourceItem)"
+        (itemSelect)="onActivityRowClick($event)"
         (menuItemSelect)="onActivityEventSharedMenuSelect($event)"
         (stateChange)="onActivitiesSmartListStateChange($event)"
         (wheel)="activitiesRates.closeEditorFromUserScroll($event)"
@@ -42,12 +42,18 @@
           (menuRequest)="openMenu($event)"
         ></app-activities-event-template>
       </ng-template>
-      <ng-template #activitiesChatSmartListItemTemplate let-row let-groupLabel="groupLabel">
+      <ng-template
+        #activitiesChatSmartListItemTemplate
+        let-row
+        let-groupLabel="groupLabel"
+        let-selectItem="selectItem"
+        let-sourceItem="sourceItem"
+      >
         <app-activities-chat-template
           [row]="row"
           [groupLabel]="groupLabel"
-          (rowClick)="onActivityRowClick(row, $event)"
-          (supportCaseAction)="onSupportCaseAction(row, $event)"
+          (rowClick)="selectItem($event)"
+          (supportCaseAction)="onSupportCaseAction(sourceItem, $event)"
         ></app-activities-chat-template>
       </ng-template>
       <ng-template #activitiesRateSmartListItemTemplate let-row let-groupLabel="groupLabel" let-openMenu="openMenu">

@@ -93,6 +93,7 @@ export interface SmartListCursorState<T> {
 export interface SmartListItemTemplateContext<T, TFilters extends SmartListFilters = SmartListFilters> {
   $implicit: T;
   index: number;
+  sourceItem?: unknown;
   groupLabel: string;
   query: ListQuery<TFilters>;
   selectMode: boolean;

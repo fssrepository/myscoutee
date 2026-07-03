@@ -75,6 +75,7 @@ import {
   type PageResult,
   type SingleRowData,
   type SmartListConfig,
+  type SmartListItemSelectEvent,
   type SmartListLocalSortKey,
   type SmartListLoadContext,
   type SmartListLoadPage,
@@ -529,23 +530,24 @@ export class ActivitiesPopupComponent implements OnDestroy {
     this.activitiesChats.openActivityChat(chat);
   }
 
-  protected openActivityChatForRow(row: ActivityListItem, sourceItem?: unknown): void {
-    const chat = this.chatRecordForRow(row, sourceItem);
+  protected openActivityChatForRow(sourceItem?: unknown): void {
+    const chat = this.chatRecordForSourceItem(sourceItem);
     if (chat) {
       this.openActivityChat(chat);
     }
   }
 
-  protected onActivityRowClick(row: ActivityListItem, event?: Event, sourceItem?: unknown): void {
+  protected onActivityRowClick(event: SmartListItemSelectEvent<ActivityListItem, ActivitiesSmartListFilters>): void {
+    const row = event.item;
     if (this.activitiesPrimaryFilter === 'chats') {
-      this.openActivityChatForRow(row, sourceItem);
+      this.openActivityChatForRow(event.sourceItem);
       return;
     }
     if (this.activitiesPrimaryFilter === 'rates') {
-      this.activitiesRates.openEditor(row, event as Event);
+      this.activitiesRates.openEditor(row, event.sourceEvent);
       return;
     }
-    this.activitiesEvents.onActivityRowClick(row as ActivityEventListItem, event);
+    this.activitiesEvents.onActivityRowClick(row as ActivityEventListItem, event.sourceEvent);
   }
 
   protected openActivityMembers(row: ActivityListItem, event?: Event): void {
@@ -2011,11 +2013,11 @@ export class ActivitiesPopupComponent implements OnDestroy {
     return normalized === 'all' || this.normalizeSupportCaseFilter(chat.supportCase?.status ?? null) === normalized;
   }
 
-  protected onSupportCaseAction(row: ActivityListItem, action: ContractTypes.SupportCaseAction): void {
+  protected onSupportCaseAction(sourceItem: unknown, action: ContractTypes.SupportCaseAction): void {
     if (!this.isAdminServiceChatMode()) {
       return;
     }
-    const chat = this.chatRecordForRow(row);
+    const chat = this.chatRecordForSourceItem(sourceItem);
     if (!chat?.supportCase) {
       return;
     }
@@ -2182,7 +2184,7 @@ export class ActivitiesPopupComponent implements OnDestroy {
     } as T;
   }
 
-  protected chatRecordForRow(row: ActivityListItem, sourceItem?: unknown): ChatDTO | null {
+  protected chatRecordForSourceItem(sourceItem?: unknown): ChatDTO | null {
     const sourceChat = this.chatRecordFromSourceItem(sourceItem);
     return sourceChat ? this.cloneChatRecord(sourceChat) : null;
   }
@@ -2254,17 +2256,10 @@ export class ActivitiesPopupComponent implements OnDestroy {
   }
 
   private async resolveChatRecordForRow(
-    row: ActivityListItem,
-    options: { skipCache?: boolean } = {}
+    row: ActivityListItem
   ): Promise<ChatDTO | null> {
     if (this.activitiesPrimaryFilter !== 'chats') {
       return null;
-    }
-    if (options.skipCache !== true) {
-      const cached = this.chatRecordForRow(row);
-      if (cached) {
-        return cached;
-      }
     }
     const userId = this.activeUser?.id?.trim();
     if (!userId) {

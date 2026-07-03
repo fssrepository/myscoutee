@@ -1154,6 +1154,7 @@ export class SmartListComponent<T, TFilters extends SmartListFilters = SmartList
     return {
       $implicit: item,
       index,
+      sourceItem: this.sourceItemForItem(item, index),
       groupLabel,
       query: this.currentQuery(),
       selectMode: this.resolvedSelectMode(),
@@ -1225,6 +1226,7 @@ export class SmartListComponent<T, TFilters extends SmartListFilters = SmartList
     return {
       $implicit: item,
       index,
+      sourceItem: this.sourceItemForItem(item, index),
       groupLabel: '',
       query: this.currentQuery(),
       selectMode: this.resolvedSelectMode(),
