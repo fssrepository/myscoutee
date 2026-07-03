@@ -151,7 +151,7 @@ type ActivitiesChatContextUnreadCounts = Partial<Record<ContractTypes.Activities
 type ActivityEventListType = ActivityContracts.ActivityEventRepositoryItemType;
 type ActivityEventListItem = InfoCardData;
 type ActivityRateListItem = ImageCardData;
-type ActivityChatListItem = SingleRowData;
+type ActivityChatListItem = SingleRowData<ChatDTO>;
 type ActivityListItem = ActivityEventListItem | ActivityRateListItem | ActivityChatListItem;
 type ActivitiesSmartListConverterQuery = ListQuery<ActivitiesSmartListFilters> & {
   context?: {
@@ -2183,8 +2183,25 @@ export class ActivitiesPopupComponent implements OnDestroy {
   }
 
   protected chatRecordForRow(row: ActivityListItem): ChatDTO | null {
+    const rowChat = this.chatRecordFromRow(row);
+    if (rowChat) {
+      return this.cloneChatRecord(rowChat);
+    }
     const existing = this.chatsService.peekChatItemsByUser(this.activeUser.id).find(item => item.id === row.id) ?? null;
     return existing ? this.cloneChatRecord(existing) : null;
+  }
+
+  private chatRecordFromRow(row: ActivityListItem): ChatDTO | null {
+    const candidate = (row as ActivityChatListItem).eagerDetail;
+    if (!candidate || typeof candidate !== 'object') {
+      return null;
+    }
+    const chat = candidate as Partial<ChatDTO>;
+    return typeof chat.id === 'string'
+      && Array.isArray(chat.memberIds)
+      && typeof chat.lastMessage === 'string'
+      ? chat as ChatDTO
+      : null;
   }
 
   private chatRecordPreviewForRow(row: ActivityListItem): ChatDTO | null {

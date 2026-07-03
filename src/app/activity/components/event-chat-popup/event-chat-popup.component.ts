@@ -159,6 +159,7 @@ interface SelectedChatNavigationState {
   group: SelectedChatGroupState | null;
   assetAssignmentIds: SubEventAssetAssignmentIds;
   assetCardsByType: SubEventAssetCardsByType;
+  metrics: ContractTypes.ChatMetricsDTO | null;
 }
 
 interface ChatOwnerParts {
@@ -4086,11 +4087,16 @@ export class EventChatPopupComponent implements OnDestroy {
     state: SelectedChatNavigationState,
     type: SelectedChatResourceType
   ): AppUiTypes.PopupHeaderControl {
-    const pending = this.resourcePendingCount(subEvent, state, type);
+    const metricsBucket = this.chatMetricsBucket(state.metrics, type);
+    const pending = metricsBucket
+      ? this.chatCountValue(metricsBucket.pending)
+      : this.resourcePendingCount(subEvent, state, type);
     return {
       id: `chat-resource-${type.toLowerCase()}`,
       label: this.resourceTypeLabel(type),
-      summary: this.resourceSummary(subEvent, state, type),
+      summary: metricsBucket
+        ? this.chatMetricsBucketSummary(metricsBucket)
+        : this.resourceSummary(subEvent, state, type),
       visual: { kind: 'icon', icon: this.resourceTypeIcon(type) },
       badge: pending > 0 ? { value: pending, tone: 'danger' } : null,
       lookup: {
@@ -4128,7 +4134,8 @@ export class EventChatPopupComponent implements OnDestroy {
         chat.metrics
       ),
       assetAssignmentIds: ActivityResourceBuilder.cloneAssetAssignmentIds(resourceState?.assetAssignmentIds),
-      assetCardsByType
+      assetCardsByType,
+      metrics: chat.metrics ?? null
     };
   }
 
@@ -4604,6 +4611,33 @@ export class EventChatPopupComponent implements OnDestroy {
 
   private chatMetricCount(value: unknown): number {
     return Math.max(0, Math.trunc(Number(value) || 0));
+  }
+
+  private chatMetricsBucket(
+    metrics: ContractTypes.ChatMetricsDTO | null | undefined,
+    type: SelectedChatResourceType
+  ): ContractTypes.ChatMetricBucketDTO | null {
+    if (!metrics) {
+      return null;
+    }
+    if (type === 'Members') {
+      return metrics.members ?? null;
+    }
+    if (type === 'Car') {
+      return metrics.car ?? null;
+    }
+    if (type === 'Accommodation') {
+      return metrics.accommodation ?? null;
+    }
+    return metrics.supplies ?? null;
+  }
+
+  private chatMetricsBucketSummary(bucket: ContractTypes.ChatMetricBucketDTO): string {
+    const accepted = this.chatCountValue(bucket.accepted);
+    const pending = this.chatCountValue(bucket.pending);
+    const min = this.chatCountValue(bucket.capacityMin);
+    const max = Math.max(min, this.chatCountValue(bucket.capacityMax), accepted + pending);
+    return `${accepted} / ${min} - ${max}`;
   }
 
   private resourceSummary(

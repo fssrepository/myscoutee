@@ -17,6 +17,7 @@ import { ActivityResourceBuilder } from '../../../base/builders';
 import { LocalRouteDelayService } from './route-delay.service';
 import { LocalChatsRepository } from '../repositories/chats.repository';
 import { LocalUsersRepository } from '../repositories/users.repository';
+import { LocalAssetsRepository } from '../repositories/assets.repository';
 import { LocalActivityMembersRepository } from '../repositories/activity-members.repository';
 import { LocalActivityResourcesRepository } from '../repositories/activity-resources.repository';
 import { LocalActivitySubEventStageRuntimeRepository } from '../repositories/activity-sub-event-stage-runtime.repository';
@@ -39,6 +40,7 @@ export class LocalChatsService extends LocalRouteDelayService implements IChatsS
 
   private readonly chatsRepository = inject(LocalChatsRepository);
   private readonly usersRepository = inject(LocalUsersRepository);
+  private readonly assetsRepository = inject(LocalAssetsRepository);
   private readonly userProfileStore = inject(UserProfileStore);
   private readonly activityMembersRepository = inject(LocalActivityMembersRepository);
   private readonly activityResourcesRepository = inject(LocalActivityResourcesRepository);
@@ -384,26 +386,89 @@ export class LocalChatsService extends LocalRouteDelayService implements IChatsS
 
   private assetBucket(records: readonly ActivitySubEventResourceRecord[], type: AssetType): ChatMetricBucketDTO {
     let accepted = 0;
+    let pending = 0;
     let capacityMin = 0;
     let capacityMax = 0;
+    const users = this.usersRepository.queryAllUsers();
     for (const record of records) {
+      const assignedIds = ActivityResourceBuilder.cloneAssetAssignmentIds(record.assetAssignmentIds)[type] ?? [];
       const settings = ActivityResourceBuilder.cloneAssetSettingsByType(record.assetSettingsByType)[type] ?? {};
-      for (const item of Object.values(settings)) {
-        capacityMin += this.countValue(item.capacityMin);
-        capacityMax += this.countValue(item.capacityMax);
-      }
       if (type === 'Supplies') {
         for (const entries of Object.values(record.supplyContributionEntriesByAssetId ?? {})) {
           accepted += (entries ?? []).reduce((sum, entry) => sum + this.countValue(entry.quantity), 0);
         }
+        for (const item of Object.values(settings)) {
+          capacityMin += this.countValue(item.capacityMin);
+          capacityMax += this.countValue(item.capacityMax);
+        }
+        continue;
+      }
+      for (const assetId of assignedIds) {
+        const setting = settings[assetId];
+        const asset = this.assetsRepository.peekOwnedAssetById(record.assetOwnerUserId, assetId);
+        capacityMin += this.countValue(setting?.capacityMin);
+        capacityMax += this.countValue(setting?.capacityMax ?? asset?.capacityTotal);
+        const counts = asset
+          ? this.assetRequestCountsForMetric(asset, record.subEventId, setting?.addedByUserId, users)
+          : { accepted: 0, pending: 0 };
+        accepted += counts.accepted;
+        pending += counts.pending;
       }
     }
     return {
       accepted,
-      pending: 0,
+      pending,
       capacityMin,
-      capacityMax: Math.max(capacityMin, capacityMax, accepted)
+      capacityMax: Math.max(capacityMin, capacityMax, accepted + pending)
     };
+  }
+
+  private assetRequestCountsForMetric(
+    asset: ContractTypes.AssetDTO,
+    subEventId: string,
+    managerUserId: string | null | undefined,
+    users: readonly UserDto[]
+  ): { accepted: number; pending: number } {
+    const normalizedSubEventId = `${subEventId ?? ''}`.trim();
+    const normalizedManagerUserId = `${managerUserId ?? ''}`.trim();
+    const scopedRequests = (asset.requests ?? [])
+      .filter(request => ActivityResourceBuilder.isSubEventScopedAssetRequest(request, normalizedSubEventId));
+    const visibleRequests = this.assetMetricVisibleRequests(asset, scopedRequests, normalizedManagerUserId, users);
+    const hasManagerRequest = normalizedManagerUserId.length > 0
+      && visibleRequests.some(request => this.assetRequestUserId(request, users) === normalizedManagerUserId);
+    const managerOwnsAsset = normalizedManagerUserId.length > 0
+      && `${asset.ownerUserId ?? ''}`.trim() === normalizedManagerUserId;
+    return {
+      accepted: visibleRequests.filter(request => request.status === 'accepted').length
+        + (!hasManagerRequest && managerOwnsAsset ? 1 : 0),
+      pending: visibleRequests.filter(request => request.status === 'pending').length
+        + (!hasManagerRequest && normalizedManagerUserId && !managerOwnsAsset ? 1 : 0)
+    };
+  }
+
+  private assetMetricVisibleRequests(
+    asset: ContractTypes.AssetDTO,
+    requests: readonly ContractTypes.AssetMemberRequestDTO[],
+    managerUserId: string,
+    users: readonly UserDto[]
+  ): ContractTypes.AssetMemberRequestDTO[] {
+    if (!managerUserId || `${asset.ownerUserId ?? ''}`.trim() !== managerUserId) {
+      return [...requests];
+    }
+    return requests.filter(request => {
+      const requestUserId = this.assetRequestUserId(request, users);
+      if (requestUserId !== managerUserId) {
+        return true;
+      }
+      return request.status === 'accepted' || request.requestKind === 'manual';
+    });
+  }
+
+  private assetRequestUserId(
+    request: ContractTypes.AssetMemberRequestDTO,
+    users: readonly UserDto[]
+  ): string {
+    return AppUtils.resolveAssetRequestUserId(request, [...users]);
   }
 
   private memberOwnerType(channelType: ContractTypes.ChatChannelType): ActivityContracts.ActivityMemberOwnerRef['ownerType'] | null {
