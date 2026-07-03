@@ -1,4 +1,3 @@
-import type { ChatThreadRecord } from '../../local/source/entity/chat.entity';
 import {
   HttpClient,
   HttpParams
@@ -58,10 +57,6 @@ interface HttpChatDto {
     } | null;
     updatedAtIso?: string | null;
   } | null;
-}
-
-interface HttpMappedChatRecord extends ChatThreadRecord {
-  metrics?: ChatMetricsDTO | null;
 }
 
 interface HttpChatSenderAvatarDto {
@@ -218,7 +213,7 @@ export class HttpChatsService implements IChatsService {
   private readonly userProfileStore = inject(UserProfileStore);
   private readonly sessionService = inject(SessionService);
   private readonly apiBaseUrl = environment.apiBaseUrl ?? '/api';
-  private readonly chatItemsByUserId = new Map<string, ChatThreadRecord[]>();
+  private readonly chatItemsByUserId = new Map<string, ChatDTO[]>();
   private readonly chatMessagesByOwnerChatKey = new Map<string, ContractTypes.ChatMessageDto[]>();
   private socket: WebSocket | null = null;
   private socketChatId: string | null = null;
@@ -266,13 +261,13 @@ export class HttpChatsService implements IChatsService {
           params: this.withUserId(new HttpParams(), normalizedUserId)
         })
         .toPromise();
-      const records = this.deduplicateChatRecords(
+      const items = this.deduplicateChatDTOs(
         Array.isArray(response)
-          ? response.map(item => this.mapChatRecord(item, normalizedUserId))
+          ? response.map(item => this.mapChatDTO(item, normalizedUserId))
           : []
       );
-      this.chatItemsByUserId.set(normalizedUserId, records.map(record => this.cloneChatRecord(record)));
-      return records.map(record => this.toChatDTO(record));
+      this.chatItemsByUserId.set(normalizedUserId, items.map(item => this.cloneChatDTO(item)));
+      return items.map(item => this.cloneChatDTO(item));
     } catch {
       return this.peekChatItemsByUser(normalizedUserId);
     }
@@ -332,9 +327,9 @@ export class HttpChatsService implements IChatsService {
       } | null>(`${this.apiBaseUrl}/activities/chats/page`, { params }).toPromise();
 
       const page = {
-        items: this.deduplicateChatRecords(
+        items: this.deduplicateChatDTOs(
           Array.isArray(response?.items)
-            ? response.items.map(item => this.mapChatRecord(item, normalizedUserId))
+            ? response.items.map(item => this.mapChatDTO(item, normalizedUserId))
             : []
         ),
         total: Number.isFinite(response?.total) ? Math.max(0, Math.trunc(Number(response?.total))) : 0,
@@ -355,8 +350,8 @@ export class HttpChatsService implements IChatsService {
 
   peekChatItemsByUser(userId: string): ChatDTO[] {
     const normalizedUserId = userId.trim();
-    const records = this.chatItemsByUserId.get(normalizedUserId) ?? [];
-    return records.map(record => this.toChatDTO(record));
+    const items = this.chatItemsByUserId.get(normalizedUserId) ?? [];
+    return items.map(item => this.cloneChatDTO(item));
   }
 
   async loadChatMessages(chat: ChatDTO): Promise<ContractTypes.ChatMessageDto[]> {
@@ -567,7 +562,7 @@ export class HttpChatsService implements IChatsService {
           { params: this.withUserId(new HttpParams(), userId) }
         )
         .toPromise();
-      return response ? this.toChatDTO(this.mapChatRecord(response, userId)) : null;
+      return response ? this.cloneChatDTO(this.mapChatDTO(response, userId)) : null;
     } catch {
       return null;
     }
@@ -660,7 +655,7 @@ export class HttpChatsService implements IChatsService {
     });
   }
 
-  private mapChatRecord(item: HttpChatDto, ownerUserId: string): HttpMappedChatRecord {
+  private mapChatDTO(item: HttpChatDto, ownerUserId: string): ChatDTO {
     const distanceKm = Number.isFinite(Number(item.distanceKm))
       ? Math.max(0, Number(item.distanceKm))
       : undefined;
@@ -690,12 +685,13 @@ export class HttpChatsService implements IChatsService {
     };
   }
 
-  private cloneChatRecord(record: ChatThreadRecord): ChatThreadRecord {
+  private cloneChatDTO(item: ChatDTO): ChatDTO {
     return {
-      ...record,
-      memberIds: [...(record.memberIds ?? [])],
-      members: this.cloneChatMembers(record.members),
-      supportCase: this.cloneSupportCase(record.supportCase)
+      ...item,
+      memberIds: [...(item.memberIds ?? [])],
+      members: this.cloneChatMembers(item.members),
+      supportCase: this.cloneSupportCase(item.supportCase),
+      metrics: this.cloneMetrics(item.metrics)
     };
   }
 
@@ -727,15 +723,15 @@ export class HttpChatsService implements IChatsService {
       : supportCase;
   }
 
-  private deduplicateChatRecords(records: readonly ChatThreadRecord[]): ChatThreadRecord[] {
-    const uniqueById = new Map<string, ChatThreadRecord>();
-    for (const record of records) {
-      const chatId = `${record?.id ?? ''}`.trim();
+  private deduplicateChatDTOs(items: readonly ChatDTO[]): ChatDTO[] {
+    const uniqueById = new Map<string, ChatDTO>();
+    for (const item of items) {
+      const chatId = `${item?.id ?? ''}`.trim();
       if (!chatId) {
         continue;
       }
       if (!uniqueById.has(chatId)) {
-        uniqueById.set(chatId, record);
+        uniqueById.set(chatId, item);
       }
     }
     return [...uniqueById.values()];
@@ -774,7 +770,7 @@ export class HttpChatsService implements IChatsService {
   }
 
   private shouldUseCachedActivitiesChatPage(
-    page: { items: readonly ChatThreadRecord[]; total: number; nextCursor?: string | null },
+    page: { items: readonly ChatDTO[]; total: number; nextCursor?: string | null },
     userId: string,
     cachedChatItems: readonly ChatDTO[]
   ): boolean {
@@ -787,17 +783,17 @@ export class HttpChatsService implements IChatsService {
     userId: string,
     query: ListQuery<ActivitiesFeedFilters>,
     cachedChatItems: readonly ChatDTO[]
-  ): { items: ChatThreadRecord[]; total: number; nextCursor: null } {
+  ): { items: ChatDTO[]; total: number; nextCursor: null } {
     const pageSize = Math.max(1, Math.trunc(Number(query.pageSize) || 10));
     const pageIndex = Math.max(0, Math.trunc(Number(query.page) || 0));
     const filtered = this.resolveCachedActivitiesChatItems(userId, cachedChatItems).filter(item =>
       this.matchesActivitiesChatContextFilter(item, this.activitiesChatContextFilter(query))
       && this.matchesSupportCaseFilter(item, this.activitiesSupportCaseFilter(query))
     );
-    const sorted = this.sortActivitiesChatPageRecords(filtered, query);
+    const sorted = this.sortActivitiesChatPageDTOs(filtered, query);
     const startIndex = pageIndex * pageSize;
     return {
-      items: sorted.slice(startIndex, startIndex + pageSize).map(item => this.cloneChatRecord(item)),
+      items: sorted.slice(startIndex, startIndex + pageSize).map(item => this.cloneChatDTO(item)),
       total: sorted.length,
       nextCursor: null
     };
@@ -806,52 +802,20 @@ export class HttpChatsService implements IChatsService {
   private resolveCachedActivitiesChatItems(
     userId: string,
     cachedChatItems: readonly ChatDTO[]
-  ): ChatThreadRecord[] {
+  ): ChatDTO[] {
     const source = cachedChatItems.length > 0
       ? cachedChatItems
       : this.peekChatItemsByUser(userId);
-    return this.deduplicateChatRecords(source.map(item => this.toCachedDemoChatRecord(item, userId)));
+    return this.deduplicateChatDTOs(source.map(item => this.toCachedDemoChatDTO(item, userId)));
   }
 
-  private toCachedDemoChatRecord(item: ChatDTO, ownerUserId: string): ChatThreadRecord {
+  private toCachedDemoChatDTO(item: ChatDTO, ownerUserId: string): ChatDTO {
     return {
       id: `${item.id ?? ''}`.trim(),
       avatar: `${item.avatar ?? ''}`.trim(),
       title: `${item.title ?? ''}`.trim(),
       lastMessage: `${item.lastMessage ?? ''}`.trim(),
       lastSenderId: `${item.lastSenderId ?? ''}`.trim(),
-      memberIds: [...(item.memberIds ?? [])],
-      unread: Math.max(0, Math.trunc(Number(item.unread) || 0)),
-      dateIso: item.dateIso,
-      distanceKm: item.distanceKm,
-      distanceMetersExact: item.distanceMetersExact,
-      channelType: item.channelType,
-      serviceContext: item.serviceContext,
-      ownerId: item.ownerId,
-      supportCase: this.cloneSupportCase(item.supportCase),
-      ownerUserId
-    };
-  }
-
-  private toActivitiesChatPageDTO(page: {
-    items: readonly HttpMappedChatRecord[];
-    total: number;
-    nextCursor?: string | null;
-  }): ActivitiesChatPageResultDTO {
-    return {
-      items: page.items.map(item => this.toChatDTO(item)),
-      total: Math.max(0, Math.trunc(Number(page.total) || 0)),
-      nextCursor: page.nextCursor ?? null
-    };
-  }
-
-  private toChatDTO(item: HttpMappedChatRecord): ChatDTO {
-    return {
-      id: item.id,
-      avatar: item.avatar,
-      title: item.title,
-      lastMessage: item.lastMessage,
-      lastSenderId: item.lastSenderId,
       memberIds: [...(item.memberIds ?? [])],
       members: this.cloneChatMembers(item.members),
       unread: Math.max(0, Math.trunc(Number(item.unread) || 0)),
@@ -862,8 +826,20 @@ export class HttpChatsService implements IChatsService {
       serviceContext: item.serviceContext,
       ownerId: item.ownerId,
       supportCase: this.cloneSupportCase(item.supportCase),
-      ownerUserId: item.ownerUserId,
+      ownerUserId,
       metrics: this.cloneMetrics(item.metrics)
+    };
+  }
+
+  private toActivitiesChatPageDTO(page: {
+    items: readonly ChatDTO[];
+    total: number;
+    nextCursor?: string | null;
+  }): ActivitiesChatPageResultDTO {
+    return {
+      items: page.items.map(item => this.cloneChatDTO(item)),
+      total: Math.max(0, Math.trunc(Number(page.total) || 0)),
+      nextCursor: page.nextCursor ?? null
     };
   }
 
@@ -916,7 +892,7 @@ export class HttpChatsService implements IChatsService {
   }
 
   private matchesActivitiesChatContextFilter(
-    item: ChatThreadRecord,
+    item: ChatDTO,
     filter: ContractTypes.ActivitiesChatContextFilter
   ): boolean {
     const normalizedFilter = filter === 'event' || filter === 'subEvent' || filter === 'group' || filter === 'service' || filter === 'appSupport'
@@ -964,7 +940,7 @@ export class HttpChatsService implements IChatsService {
   }
 
   private matchesSupportCaseFilter(
-    item: Pick<ChatThreadRecord, 'supportCase'>,
+    item: Pick<ChatDTO, 'supportCase'>,
     filter?: ContractTypes.SupportCaseFilter
   ): boolean {
     const normalizedFilter = filter === 'pending' || filter === 'picked' || filter === 'solved' || filter === 'blocked'
@@ -973,11 +949,11 @@ export class HttpChatsService implements IChatsService {
     return normalizedFilter === 'all' || item.supportCase?.status === normalizedFilter;
   }
 
-  private sortActivitiesChatPageRecords(
-    records: readonly ChatThreadRecord[],
+  private sortActivitiesChatPageDTOs(
+    items: readonly ChatDTO[],
     query: ListQuery<ActivitiesFeedFilters>
-  ): ChatThreadRecord[] {
-    const sorted = records.map(record => this.cloneChatRecord(record));
+  ): ChatDTO[] {
+    const sorted = items.map(item => this.cloneChatDTO(item));
     if (this.activitiesSecondaryFilter(query) === 'relevant') {
       return sorted.sort((left, right) =>
         this.chatMetricScore(right) - this.chatMetricScore(left)
@@ -991,7 +967,7 @@ export class HttpChatsService implements IChatsService {
     );
   }
 
-  private chatMetricScore(item: Pick<ChatThreadRecord, 'unread' | 'memberIds'>): number {
+  private chatMetricScore(item: Pick<ChatDTO, 'unread' | 'memberIds'>): number {
     const unread = Math.max(0, Math.trunc(Number(item.unread) || 0));
     const memberCount = new Set(
       (item.memberIds ?? [])
@@ -1290,46 +1266,49 @@ export class HttpChatsService implements IChatsService {
       return;
     }
     this.cacheChatMessagesFor(ownerUserId, normalizedChatId, [message]);
-    const currentRecords = (this.chatItemsByUserId.get(ownerUserId) ?? []).map(record => this.cloneChatRecord(record));
-    const existingIndex = currentRecords.findIndex(record => record.id === normalizedChatId);
-    const existingRecord = existingIndex >= 0 ? currentRecords[existingIndex] : null;
-    const nextRecord = this.buildCachedChatRecordFromMessage(chat, ownerUserId, message, existingRecord);
+    const currentItems = (this.chatItemsByUserId.get(ownerUserId) ?? []).map(item => this.cloneChatDTO(item));
+    const existingIndex = currentItems.findIndex(item => item.id === normalizedChatId);
+    const existingItem = existingIndex >= 0 ? currentItems[existingIndex] : null;
+    const nextItem = this.buildCachedChatDTOFromMessage(chat, ownerUserId, message, existingItem);
     if (existingIndex >= 0) {
-      currentRecords[existingIndex] = nextRecord;
+      currentItems[existingIndex] = nextItem;
     } else {
-      currentRecords.push(nextRecord);
+      currentItems.push(nextItem);
     }
-    this.chatItemsByUserId.set(ownerUserId, this.sortCachedChatRecords(currentRecords));
+    this.chatItemsByUserId.set(ownerUserId, this.sortCachedChatDTOs(currentItems));
   }
 
-  private buildCachedChatRecordFromMessage(
+  private buildCachedChatDTOFromMessage(
     chat: ChatDTO,
     ownerUserId: string,
     message: ContractTypes.ChatMessageDto,
-    existingRecord: ChatThreadRecord | null
-  ): ChatThreadRecord {
+    existingItem: ChatDTO | null
+  ): ChatDTO {
     const sanitizedDistanceKm = Number.isFinite(Number(chat.distanceKm))
       ? Math.max(0, Number(chat.distanceKm))
-      : existingRecord?.distanceKm;
+      : existingItem?.distanceKm;
     const sanitizedDistanceMetersExact = Number.isFinite(Number(chat.distanceMetersExact))
       ? Math.max(0, Math.trunc(Number(chat.distanceMetersExact)))
-      : existingRecord?.distanceMetersExact;
+      : existingItem?.distanceMetersExact;
     return {
-      id: `${chat.id ?? existingRecord?.id ?? ''}`.trim(),
-      avatar: `${chat.avatar ?? existingRecord?.avatar ?? ''}`.trim(),
-      title: `${chat.title ?? existingRecord?.title ?? ''}`.trim(),
-      lastMessage: `${message.text ?? ''}`.trim() || this.chatAttachmentSummary(message) || `${existingRecord?.lastMessage ?? ''}`.trim(),
-      lastSenderId: `${message.senderAvatar?.id ?? existingRecord?.lastSenderId ?? ''}`.trim(),
-      memberIds: [...((chat.memberIds?.length ? chat.memberIds : existingRecord?.memberIds) ?? [])],
-      unread: message.mine ? 0 : Math.max(0, Math.trunc(Number(existingRecord?.unread) || 0)),
-      dateIso: `${message.sentAtIso ?? existingRecord?.dateIso ?? ''}`.trim() || undefined,
-      channelType: chat.channelType ?? existingRecord?.channelType,
-      ownerId: chat.ownerId ?? existingRecord?.ownerId,
-      supportCase: this.cloneSupportCase(chat.supportCase ?? existingRecord?.supportCase),
+      id: `${chat.id ?? existingItem?.id ?? ''}`.trim(),
+      avatar: `${chat.avatar ?? existingItem?.avatar ?? ''}`.trim(),
+      title: `${chat.title ?? existingItem?.title ?? ''}`.trim(),
+      lastMessage: `${message.text ?? ''}`.trim() || this.chatAttachmentSummary(message) || `${existingItem?.lastMessage ?? ''}`.trim(),
+      lastSenderId: `${message.senderAvatar?.id ?? existingItem?.lastSenderId ?? ''}`.trim(),
+      memberIds: [...((chat.memberIds?.length ? chat.memberIds : existingItem?.memberIds) ?? [])],
+      members: this.cloneChatMembers(chat.members?.length ? chat.members : existingItem?.members),
+      unread: message.mine ? 0 : Math.max(0, Math.trunc(Number(existingItem?.unread) || 0)),
+      dateIso: `${message.sentAtIso ?? existingItem?.dateIso ?? ''}`.trim() || undefined,
+      channelType: chat.channelType ?? existingItem?.channelType,
+      serviceContext: chat.serviceContext ?? existingItem?.serviceContext,
+      ownerId: chat.ownerId ?? existingItem?.ownerId,
+      supportCase: this.cloneSupportCase(chat.supportCase ?? existingItem?.supportCase),
       distanceKm: sanitizedDistanceKm,
       distanceMetersExact: sanitizedDistanceMetersExact,
-      ownerUserId
-    } satisfies ChatThreadRecord;
+      ownerUserId,
+      metrics: this.cloneMetrics(chat.metrics ?? existingItem?.metrics)
+    } satisfies ChatDTO;
   }
 
   private resolveCachedChatMessages(chat: ChatDTO): ContractTypes.ChatMessageDto[] {
@@ -1435,9 +1414,9 @@ export class HttpChatsService implements IChatsService {
     return firstAttachment.title || 'Shared an attachment';
   }
 
-  private sortCachedChatRecords(records: readonly ChatThreadRecord[]): ChatThreadRecord[] {
-    return this.deduplicateChatRecords(records)
-      .map(record => this.cloneChatRecord(record))
+  private sortCachedChatDTOs(items: readonly ChatDTO[]): ChatDTO[] {
+    return this.deduplicateChatDTOs(items)
+      .map(item => this.cloneChatDTO(item))
       .sort((left, right) =>
         AppUtils.toSortableDate(right.dateIso ?? '') - AppUtils.toSortableDate(left.dateIso ?? '')
         || left.id.localeCompare(right.id)
@@ -1717,12 +1696,12 @@ export class HttpChatsService implements IChatsService {
     if (!ownerUserId) {
       return;
     }
-    const currentRecords = this.chatItemsByUserId.get(ownerUserId) ?? [];
-    const existingRecord = currentRecords.find(record => record.id === chatId) ?? null;
-    if (!existingRecord) {
+    const currentItems = this.chatItemsByUserId.get(ownerUserId) ?? [];
+    const existingItem = currentItems.find(item => item.id === chatId) ?? null;
+    if (!existingItem) {
       return;
     }
-    this.updateCachedChatSummaryAfterMessage(existingRecord, message);
+    this.updateCachedChatSummaryAfterMessage(existingItem, message);
   }
 
   private updateCachedChatUnread(
@@ -1735,20 +1714,20 @@ export class HttpChatsService implements IChatsService {
       return;
     }
     const unread = Math.max(0, Math.trunc(Number(read.unread) || 0));
-    const currentRecords = this.chatItemsByUserId.get(ownerUserId) ?? [];
+    const currentItems = this.chatItemsByUserId.get(ownerUserId) ?? [];
     let changed = false;
-    const nextRecords = currentRecords.map(record => {
-      if (`${record.id ?? ''}`.trim() !== normalizedChatId || Math.max(0, Math.trunc(Number(record.unread) || 0)) === unread) {
-        return record;
+    const nextItems = currentItems.map(item => {
+      if (`${item.id ?? ''}`.trim() !== normalizedChatId || Math.max(0, Math.trunc(Number(item.unread) || 0)) === unread) {
+        return item;
       }
       changed = true;
       return {
-        ...record,
+        ...item,
         unread
       };
     });
     if (changed) {
-      this.chatItemsByUserId.set(ownerUserId, nextRecords);
+      this.chatItemsByUserId.set(ownerUserId, nextItems);
     }
   }
 
