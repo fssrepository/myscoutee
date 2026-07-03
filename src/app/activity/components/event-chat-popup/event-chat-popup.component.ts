@@ -17,9 +17,6 @@ import {
   FormsModule
 } from '@angular/forms';
 import {
-  MatButtonModule
-} from '@angular/material/button';
-import {
   MatIconModule
 } from '@angular/material/icon';
 import {
@@ -60,8 +57,7 @@ import {
 import {
   AppMenuComponent,
   AppMenuTriggerComponent,
-  CounterBadgePipe,
-  I18nPipe,
+  PopupComponent,
   SmartListComponent,
   type AppMenuGroup,
   type AppMenuImageStackItem,
@@ -71,6 +67,8 @@ import {
   type AppMenuTrigger,
   type ListQuery,
   type PageResult,
+  type PopupControl,
+  type PopupModel,
   type SmartListConfig,
   type SmartListLoadPage
 } from '../../../shared/ui';
@@ -128,9 +126,9 @@ interface ChatTextSegment {
 }
 
 type SelectedChatActionTone =
-  | 'popup-chat-context-btn-tone-main-event'
-  | 'popup-chat-context-btn-tone-optional'
-  | 'popup-chat-context-btn-tone-group';
+  | 'main-event'
+  | 'optional'
+  | 'group';
 
 type SelectedChatResourceType = 'Members' | AppConstants.AssetType;
 type SubEventAssetAssignmentIds = Partial<Record<AssetType, string[]>>;
@@ -191,13 +189,11 @@ type EventChatViewSession = EventChatSession & {
   imports: [
     CommonModule,
     FormsModule,
-    MatButtonModule,
     MatIconModule,
+    PopupComponent,
     AppMenuComponent,
     AppMenuTriggerComponent,
-    SmartListComponent,
-    CounterBadgePipe,
-    I18nPipe
+    SmartListComponent
   ],
   templateUrl: './event-chat-popup.component.html',
   styleUrl: './event-chat-popup.component.scss',
@@ -505,6 +501,80 @@ export class EventChatPopupComponent implements OnDestroy {
     this.activitiesStore.closeEventChat();
   }
 
+  protected chatPopupModel(chatSession: EventChatViewSession): PopupModel<ChatMenuContext> {
+    const title = this.chatHeaderTitle(chatSession);
+    return {
+      title,
+      ariaLabel: title,
+      closeAriaLabel: 'Close chat popup',
+      size: 'wide',
+      height: 'full',
+      headerTone: 'accent',
+      bodyLayout: 'fill',
+      backdropTone: 'dim',
+      headerControls: this.chatPopupHeaderControls(),
+      toolbarControls: this.chatPopupToolbarControls(),
+      onClose: () => this.close(),
+      onMenuSelect: event => this.onInlineChatMenuSelect(event.itemSelect)
+    };
+  }
+
+  private chatPopupHeaderControls(): readonly PopupControl<ChatMenuContext>[] {
+    if (this.isServiceChat() || this.isBlockedSupportChat()) {
+      return [];
+    }
+    if (this.selectedChatHasSubEventMenu()) {
+      return [{
+        kind: 'menu',
+        id: 'chat-context-menu',
+        menuKind: 'select',
+        title: this.selectedChatContextMenuTitle(),
+        trigger: this.selectedChatContextMenuTrigger(),
+        groups: this.selectedChatContextMenuGroupsModel(),
+        panelAlign: 'end'
+      }];
+    }
+    return [{
+      kind: 'menu',
+      id: 'chat-context-primary',
+      menuKind: 'inline',
+      items: [this.selectedChatPrimaryMenuItem()]
+    }];
+  }
+
+  private chatPopupToolbarControls(): readonly PopupControl<ChatMenuContext>[] {
+    return [{
+      kind: 'menu',
+      id: 'chat-header-actions',
+      align: 'end',
+      menuKind: 'inline',
+      items: this.chatHeaderActionMenuItems(this.chatHeaderMembersControl())
+    }];
+  }
+
+  private selectedChatPrimaryControl(): AppUiTypes.PopupHeaderControl {
+    return this.selectedChatContextControl() ?? {
+      id: 'fallback-event',
+      label: 'View Event',
+      visual: { kind: 'icon', icon: 'event' }
+    };
+  }
+
+  private selectedChatPrimaryMenuItem(): AppMenuItem<string, ChatMenuContext> {
+    const control = this.selectedChatPrimaryControl();
+    const counter = this.chatHeaderControlBadgeValue(control);
+    return {
+      id: `chat-context-primary-${control.id}`,
+      label: control.label,
+      icon: this.chatHeaderControlIcon(control),
+      kind: 'action',
+      layout: 'pill',
+      palette: this.selectedChatHeaderActionPalette(),
+      counter: counter > 0 ? counter : null,
+      context: { menu: 'chat-context', control }
+    };
+  }
+
   private chatFromHeader(header: EventChatHeaderState): ChatDTO {
     const chatId = `${header.chatId ?? ''}`.trim();
     const ownerId = `${header.ownerId ?? ''}`.trim();
@@ -733,13 +803,6 @@ export class EventChatPopupComponent implements OnDestroy {
       return 'Service';
     }
     return this.selectedChatContextControl()?.label ?? 'View Event';
-  }
-
-  protected selectedChatHeaderActionToneClass(): string {
-    if (this.isServiceChat()) {
-      return 'popup-chat-context-btn-tone-service';
-    }
-    return this.selectedChatActionToneClass();
   }
 
   protected selectedChatHeaderActionBadgeCount(): number {
@@ -4733,20 +4796,20 @@ export class EventChatPopupComponent implements OnDestroy {
   private selectedChatActionToneClass(): SelectedChatActionTone {
     const channelType = this.selectedChatNavigationState?.channelType;
     if (channelType === 'groupSubEvent') {
-      return 'popup-chat-context-btn-tone-group';
+      return 'group';
     }
     if (channelType === 'optionalSubEvent') {
-      return 'popup-chat-context-btn-tone-optional';
+      return 'optional';
     }
-    return 'popup-chat-context-btn-tone-main-event';
+    return 'main-event';
   }
 
   private selectedChatHeaderActionPalette(): AppMenuPalette {
     const tone = this.selectedChatActionToneClass();
-    if (tone === 'popup-chat-context-btn-tone-group') {
+    if (tone === 'group') {
       return 'green';
     }
-    if (tone === 'popup-chat-context-btn-tone-optional') {
+    if (tone === 'optional') {
       return 'violet';
     }
     return 'blue';

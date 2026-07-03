@@ -1,125 +1,72 @@
 @if (session(); as chatSession) {
-  <div
-    class="app-popup app-popup-stacked app-popup-stacked-over-activities event-chat-popup-shell"
+  <app-popup
+    class="event-chat-popup-shell"
     [style.--chat-compose-detached-space.px]="chatComposeDetachedSpace"
-    >
-    <div class="app-popup-backdrop" (click)="close()"></div>
-    <div
-      class="app-popup-panel popup-panel-event-chat"
-      [attr.data-chat-id]="chatSession.item.id"
-      (click)="$event.stopPropagation()"
-    >
-      <div class="popup-header popup-header-chat popup-header-with-chat-progress">
-        <div class="popup-title popup-title-chat">
-          <div class="popup-chat-title-block">
-            <h2>{{ chatHeaderTitle(chatSession) }}</h2>
-          </div>
-        </div>
-        <app-menu
-          class="popup-chat-header-actions-menu"
-          kind="inline"
-          [items]="chatHeaderActionMenuItems(chatHeaderMembersControl())"
-          (itemSelect)="onInlineChatMenuSelect($event)"
-        ></app-menu>
-        @if (!isServiceChat() && !isBlockedSupportChat() && !selectedChatHasSubEventMenu()) {
-          <button
-            type="button"
-            class="chat-members-stack chat-members-stack-large chat-header-members event-editor-members-trigger event-editor-members-trigger-members popup-chat-context-btn"
-            [ngClass]="selectedChatHeaderActionToneClass()"
-            (click)="openSelectedChatPrimaryContext($event)"
-            >
-            <span class="event-editor-members-invite">
-              <mat-icon>{{ selectedChatHeaderActionIcon() }}</mat-icon>
-              <span>{{ selectedChatHeaderActionLabel() | i18n }}</span>
+    [model]="chatPopupModel(chatSession)"
+    [zIndex]="2360"
+    [attr.data-chat-id]="chatSession.item.id"
+  >
+    <div class="chat-popup-wrap">
+      <div class="chat-popup-box">
+        <app-smart-list
+          #chatThreadSmartList
+          [config]="chatThreadSmartListConfig"
+          [loadPage]="chatThreadLoadPage"
+          [itemTemplate]="chatThreadMessageTemplate"
+          [query]="chatThreadQuery"
+          (menuItemSelect)="onDispatchedChatMenuSelect($event)"
+        ></app-smart-list>
+        @if (typingIndicators.length > 0) {
+          <div class="chat-typing-indicator">
+            <span class="chat-typing-indicator-users">{{ typingIndicatorLabel() }}</span>
+            <span class="chat-typing-indicator-dots" aria-hidden="true">
+              <span></span>
+              <span></span>
+              <span></span>
             </span>
-            @if (selectedChatHeaderActionBadgeCount() > 0) {
-              <span
-                class="card-badge event-editor-members-pending-badge popup-chat-context-total-badge"
-                >
-                {{ selectedChatHeaderActionBadgeCount() | counterBadge }}
-              </span>
-            }
-          </button>
+          </div>
         }
-        @if (!isServiceChat() && !isBlockedSupportChat() && selectedChatHasSubEventMenu()) {
-          <div class="popup-chat-context-menu-wrap">
+        <div class="chat-compose-box" #chatComposeBox>
+          @if (replyTarget) {
+            <div class="chat-reply-draft">
+              <span class="chat-reply-draft-copy">
+                <strong>Replying to {{ replyTarget.sender }}</strong>
+                <small>{{ replyTarget.text }}</small>
+              </span>
+              <button type="button" (click)="clearReplyTarget()" aria-label="Cancel reply">
+                <mat-icon>close</mat-icon>
+              </button>
+            </div>
+          }
+          @if (editingMessageId) {
+            <div class="chat-reply-draft chat-edit-draft">
+              <span>
+                <mat-icon>edit</mat-icon>
+                Editing message
+              </span>
+              <button type="button" (click)="cancelEditing()" aria-label="Cancel edit">
+                <mat-icon>close</mat-icon>
+              </button>
+            </div>
+          }
+          <span class="chat-compose-plus-wrap">
             <app-menu
-              class="popup-chat-context-app-menu"
+              class="chat-composer-app-menu"
               kind="select"
-              [title]="selectedChatContextMenuTitle()"
-              [trigger]="selectedChatContextMenuTrigger()"
-              [groups]="selectedChatContextMenuGroupsModel()"
-              panelAlign="end"
+              [trigger]="composerMenuTrigger()"
+              [items]="composerMenuItems()"
+              panelAlign="start"
+              [openUp]="true"
               (itemSelect)="onInlineChatMenuSelect($event)"
             ></app-menu>
-          </div>
-        }
-        <button mat-icon-button type="button" class="popup-close" (click)="close()" aria-label="Close chat popup">
-          <mat-icon>close</mat-icon>
-        </button>
-      </div>
-      <div class="popup-body popup-body-chat">
-        <div class="chat-popup-wrap">
-          <div class="chat-popup-box">
-            <app-smart-list
-              #chatThreadSmartList
-              [config]="chatThreadSmartListConfig"
-              [loadPage]="chatThreadLoadPage"
-              [itemTemplate]="chatThreadMessageTemplate"
-              [query]="chatThreadQuery"
-              (menuItemSelect)="onDispatchedChatMenuSelect($event)"
-            ></app-smart-list>
-            @if (typingIndicators.length > 0) {
-              <div class="chat-typing-indicator">
-                <span class="chat-typing-indicator-users">{{ typingIndicatorLabel() }}</span>
-                <span class="chat-typing-indicator-dots" aria-hidden="true">
-                  <span></span>
-                  <span></span>
-                  <span></span>
-                </span>
-              </div>
-            }
-            <div class="chat-compose-box" #chatComposeBox>
-              @if (replyTarget) {
-                <div class="chat-reply-draft">
-                  <span class="chat-reply-draft-copy">
-                    <strong>Replying to {{ replyTarget.sender }}</strong>
-                    <small>{{ replyTarget.text }}</small>
-                  </span>
-                  <button type="button" (click)="clearReplyTarget()" aria-label="Cancel reply">
-                    <mat-icon>close</mat-icon>
-                  </button>
-                </div>
-              }
-              @if (editingMessageId) {
-                <div class="chat-reply-draft chat-edit-draft">
-                  <span>
-                    <mat-icon>edit</mat-icon>
-                    Editing message
-                  </span>
-                  <button type="button" (click)="cancelEditing()" aria-label="Cancel edit">
-                    <mat-icon>close</mat-icon>
-                  </button>
-                </div>
-              }
-              <span class="chat-compose-plus-wrap">
-                <app-menu
-                  class="chat-composer-app-menu"
-                  kind="select"
-                  [trigger]="composerMenuTrigger()"
-                  [items]="composerMenuItems()"
-                  panelAlign="start"
-                  [openUp]="true"
-                  (itemSelect)="onInlineChatMenuSelect($event)"
-                ></app-menu>
-              </span>
-              <input
-                #imageAttachmentInput
-                class="chat-attachment-input"
-                type="file"
-                accept="image/*"
-                (change)="onImageAttachmentSelected($event)"
-              />
+          </span>
+          <input
+            #imageAttachmentInput
+            class="chat-attachment-input"
+            type="file"
+            accept="image/*"
+            (change)="onImageAttachmentSelected($event)"
+          />
               @if (voiceComposerOpen) {
                 <div class="chat-voice-composer" (click)="$event.stopPropagation()">
                   <button
@@ -236,12 +183,10 @@
                   <mat-icon>send</mat-icon>
                 </button>
               }
-            </div>
-          </div>
         </div>
       </div>
     </div>
-  </div>
+  </app-popup>
 }
 
 <ng-template #chatThreadMessageTemplate let-message let-groupLabel="groupLabel">

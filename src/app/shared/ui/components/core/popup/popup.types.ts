@@ -1,6 +1,7 @@
 import type {
   AppMenuItem,
   AppMenuItemSelectEvent,
+  AppMenuGroup,
   AppMenuKind,
   AppMenuModel,
   AppMenuPanelAlign,
@@ -34,8 +35,10 @@ export interface PopupAction extends PopupControlBase {
 export interface PopupMenuControl<TContext = unknown> extends PopupControlBase {
   kind: 'menu';
   menuKind?: AppMenuKind;
+  title?: string | null;
   trigger?: AppMenuTrigger | null;
   items?: readonly AppMenuItem<string, TContext>[];
+  groups?: readonly AppMenuGroup<string, TContext>[];
   model?: AppMenuModel<string, TContext> | null;
   panelAlign?: AppMenuPanelAlign;
   panelMode?: AppMenuPanelMode;
