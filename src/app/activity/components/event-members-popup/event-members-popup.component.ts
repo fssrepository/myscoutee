@@ -35,6 +35,7 @@ import {
 import type { ActivityEventRecord } from '../../../shared/core/contracts/activity.interface';
 import {
   CounterBadgePipe,
+  I18nPipe,
   ImageCardComponent,
   SmartListComponent,
   type AppMenuItem,
@@ -97,7 +98,8 @@ type MembersSummaryState = {
     MatIconModule,
     SmartListComponent,
     ImageCardComponent,
-    CounterBadgePipe
+    CounterBadgePipe,
+    I18nPipe
   ],
   templateUrl: './event-members-popup.component.html',
   styleUrls: ['./event-members-popup.component.scss'],
@@ -211,6 +213,7 @@ export class EventMembersPopupComponent {
           acceptedMembers: request.acceptedMembers,
           pendingMembers: request.pendingMembers,
           capacityTotal: request.capacityTotal,
+          metricIdentity: request.metricIdentity,
           initialMembers: request.members,
           lookup: request.lookup,
           onMembersChanged: request.onMembersChanged
@@ -892,7 +895,6 @@ export class EventMembersPopupComponent {
       this.membersCacheByOwnerId.set(ownerId, members);
       if (this.isOpen && this.ownerId === ownerId) {
         this.syncCanManageMembers(members);
-        this.applySummaryFromMembers(members);
       }
     }
 

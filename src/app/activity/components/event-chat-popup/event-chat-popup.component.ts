@@ -53,6 +53,7 @@ import type { ChatDTO } from '../../../shared/core/contracts/chat.interface';
 import type { ActivityEventRecord } from '../../../shared/core/contracts/activity.interface';
 import {
   ASSET_TYPES,
+  type ActivityMemberOwnerType,
   type AssetType,
   type SubEventResourceFilter
 } from '../../../shared/core/common/constants';
@@ -579,11 +580,16 @@ export class EventChatPopupComponent implements OnDestroy {
     if (!ownerId) {
       return;
     }
+    const session = this.session();
+    const memberCount = Math.max(0, session?.item.memberIds?.length ?? session?.item.members?.length ?? 0);
     this.memberMenuStore.requestActivitiesNavigation({
       type: 'members',
       ownerId,
       subtitle: this.chatHeaderContext?.title ?? this.session()?.item.title ?? 'Chat',
       viewOnly: true,
+      acceptedMembers: memberCount,
+      pendingMembers: 0,
+      capacityTotal: memberCount,
       lookup: lookup ? { ...lookup } : undefined
     });
   }
@@ -932,6 +938,10 @@ export class EventChatPopupComponent implements OnDestroy {
       return;
     }
     this.chatThreadSmartList?.closeMenu();
+    if (type === 'Members' && !openExplore && !assetViewId) {
+      this.openSelectedChatMembers(session, state);
+      return;
+    }
     if (!openExplore && !assetViewId) {
       const ownerId = `${state.eventId ?? this.chatOwnerParts(session.item).eventId}`.trim();
       const subEventId = `${state.subEvent.id ?? ''}`.trim();
@@ -974,22 +984,98 @@ export class EventChatPopupComponent implements OnDestroy {
       });
   }
 
+  private openSelectedChatMembers(
+    session: EventChatViewSession,
+    state: SelectedChatNavigationState
+  ): void {
+    const ownerId = `${session.item.ownerId ?? ''}`.trim();
+    if (!ownerId) {
+      return;
+    }
+    const canManage = this.canEditSelectedChatEvent(
+      this.selectedChatEventRecord(`${state.eventId ?? ''}`),
+      state
+    );
+    const summary = this.selectedChatMembersSummary(state);
+    this.memberMenuStore.requestActivitiesNavigation({
+      type: 'members',
+      ownerId,
+      ownerType: this.selectedChatMembersOwnerType(state),
+      subtitle: this.selectedChatMembersSubtitle(session, state),
+      canManage,
+      viewOnly: state.channelType === 'groupSubEvent' ? !canManage : undefined,
+      acceptedMembers: summary.acceptedMembers,
+      pendingMembers: summary.pendingMembers,
+      capacityTotal: summary.capacityTotal,
+      metricIdentity: this.chatMetricIdentity(session.item)
+    });
+  }
+
+  private selectedChatMembersOwnerType(state: SelectedChatNavigationState): ActivityMemberOwnerType {
+    if (state.channelType === 'groupSubEvent') {
+      return 'group';
+    }
+    if (state.channelType === 'optionalSubEvent') {
+      return 'subEvent';
+    }
+    return 'event';
+  }
+
+  private selectedChatMembersSubtitle(
+    session: EventChatViewSession,
+    state: SelectedChatNavigationState
+  ): string {
+    if (state.channelType === 'groupSubEvent') {
+      const groupLabel = this.selectedChatGroupDisplayLabel(session.item, state);
+      const subEventName = `${state.subEvent?.name ?? ''}`.trim();
+      return [groupLabel, subEventName]
+        .filter((part, index, parts) => part && parts.indexOf(part) === index)
+        .join(' · ')
+        || 'Members';
+    }
+    return `${state.subEvent?.name ?? state.eventTitle ?? session.item.title ?? ''}`.trim() || 'Members';
+  }
+
+  private selectedChatMembersSummary(state: SelectedChatNavigationState): {
+    acceptedMembers: number;
+    pendingMembers: number;
+    capacityTotal: number;
+  } {
+    const bucket = state.metrics?.members ?? null;
+    const acceptedMembers = this.chatCountValue(
+      bucket?.accepted ?? state.group?.accepted ?? state.subEvent?.membersAccepted
+    );
+    const pendingMembers = this.chatCountValue(
+      bucket?.pending ?? state.group?.pending ?? state.subEvent?.membersPending
+    );
+    const capacityTotal = Math.max(
+      acceptedMembers,
+      this.chatCountValue(
+        bucket?.capacityMax ?? state.group?.capacityMax ?? state.subEvent?.capacityMax
+      )
+    );
+    return {
+      acceptedMembers,
+      pendingMembers,
+      capacityTotal
+    };
+  }
+
   private selectedChatResourceRequestGroup(type: SubEventResourceFilter): SubEventResourcePopupRequest['group'] {
     const state = this.selectedChatNavigationState;
     const group = state?.group;
     if (!state || !group) {
       return null;
     }
-    const isMembersPopup = type === 'Members';
     return {
       id: group.id,
       groupLabel: group.label,
       source: group.source ?? null,
-      accepted: isMembersPopup ? undefined : group.accepted,
-      pending: isMembersPopup ? undefined : group.pending,
+      accepted: group.accepted,
+      pending: group.pending,
       capacityMin: group.capacityMin,
       capacityMax: group.capacityMax,
-      canManage: isMembersPopup
+      canManage: type === 'Members'
         ? this.canEditSelectedChatEvent(this.selectedChatEventRecord(`${state.eventId ?? ''}`), state)
         : undefined
     };

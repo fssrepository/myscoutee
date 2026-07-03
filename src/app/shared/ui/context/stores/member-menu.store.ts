@@ -42,7 +42,14 @@ export type ActivitiesNavigationRequest =
       item: ChatDTO;
       resourceType: SubEventResourceFilter;
       subEvent: SubEventDTO;
-      group?: { id: string; groupLabel: string } | null;
+      group?: {
+        id: string;
+        groupLabel: string;
+        accepted?: number;
+        pending?: number;
+        capacityMax?: number;
+        canManage?: boolean;
+      } | null;
       assetAssignmentIds?: Partial<Record<AssetType, string[]>>;
       assetCardsByType?: Partial<Record<AssetType, ResourceAssetDTO[]>>;
       openExplore?: boolean;

@@ -5,7 +5,7 @@
       <div class="popup-header" (click)="$event.stopPropagation()">
         <div class="popup-title popup-title-members">
           <div class="popup-chat-title-block">
-            <h2>{{ title }}</h2>
+            <h2>{{ title | i18n }}</h2>
             <p>{{ subtitle }}</p>
           </div>
         </div>
@@ -15,11 +15,11 @@
               type="button"
               class="chat-members-stack chat-members-stack-large chat-header-members event-editor-members-trigger activity-members-header-invite-trigger"
               (click)="handleInvite($event)"
-              aria-label="Invite friends"
+              [attr.aria-label]="'Invite friends' | i18n"
               >
               <span class="event-editor-members-invite">
                 <mat-icon>person_add</mat-icon>
-                <span>Invite</span>
+                <span>{{ 'Invite' | i18n }}</span>
               </span>
             </button>
           }
@@ -28,11 +28,11 @@
             class="profile-status-select-wrap selector-like experience-filter-select activities-compact-select subevent-members-pending-toggle activity-members-header-pending-toggle"
             [class.is-active]="pendingOnly"
             (click)="togglePendingOnly($event)"
-            [attr.aria-label]="pendingOnly ? 'Show all members' : 'Show pending members only'"
+            [attr.aria-label]="(pendingOnly ? 'Show all members' : 'Show pending members only') | i18n"
             >
             <span class="status-option-content activities-hosting-draft-content">
               <mat-icon class="activities-toggle-icon">pending_actions</mat-icon>
-              <span class="activities-hosting-draft-label">Pending only</span>
+              <span class="activities-hosting-draft-label">{{ 'Pending only' | i18n }}</span>
             </span>
             @if (pendingCount > 0) {
               <span class="rate-filter-count-badge rate-filter-trigger-badge activity-members-header-pending-badge">
@@ -45,7 +45,7 @@
           @if (isSummaryVisible) {
             <span class="header-members-count members-header-summary-badge">{{ summaryLabel }}</span>
           }
-          <button type="button" class="popup-close" (click)="closeMembersPopup($event)" aria-label="Close">
+          <button type="button" class="popup-close" (click)="closeMembersPopup($event)" [attr.aria-label]="'Close' | i18n">
             <mat-icon>close</mat-icon>
           </button>
         </div>

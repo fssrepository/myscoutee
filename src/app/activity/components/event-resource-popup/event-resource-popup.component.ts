@@ -323,6 +323,23 @@ export class EventResourcePopupComponent {
     return ActivityChatSingleRowConverter.smartListKeyForIdentity(channelType, chatOwnerId, chatOwnerId);
   }
 
+  private memberOwnerIdFromParts(
+    ownerIdValue: string | null | undefined,
+    subEventIdValue: string | null | undefined,
+    groupIdValue?: string | null
+  ): string {
+    const ownerId = `${ownerIdValue ?? ''}`.trim();
+    const subEventId = `${subEventIdValue ?? ''}`.trim();
+    const groupId = `${groupIdValue ?? ''}`.trim();
+    if (ownerId && subEventId && groupId) {
+      return `${ownerId}:${subEventId}:${groupId}`;
+    }
+    if (ownerId && subEventId) {
+      return `${ownerId}:${subEventId}`;
+    }
+    return groupId || subEventId || ownerId;
+  }
+
   private resourceInfoCardConverterOptions(): ActivitySubEventResourceInfoCardConverterOptions {
     const context = this.resourcePopupStore.popupContextRef();
     const activeUserId = this.activeUser().id.trim();
@@ -597,13 +614,25 @@ export class EventResourcePopupComponent {
 
   private openFromChatRequest(request: Extract<ActivitiesNavigationRequest, { type: 'chatResource' }>): void {
     if (request.resourceType === 'Members') {
+      const ownerId = `${request.item.ownerId ?? ''}`.trim()
+        || this.memberOwnerIdFromParts(request.ownerId, request.subEvent.id, request.group?.id);
+      const bucket = request.item.metrics?.members ?? null;
       this.memberMenuStore.requestActivitiesNavigation({
         type: 'members',
-        ownerId: request.group?.id?.trim() || request.subEvent.id,
-        ownerType: request.group?.id ? 'group' : 'subEvent',
+        ownerId,
+        ownerType: request.item.channelType === 'groupSubEvent' ? 'group' : 'subEvent',
+        subtitle: `${request.group?.groupLabel ?? request.subEvent.name ?? request.item.title ?? ''}`.trim() || 'Members',
+        canManage: request.group?.canManage === true,
+        viewOnly: request.group?.id ? request.group.canManage !== true : undefined,
+        acceptedMembers: Math.max(0, Math.trunc(Number(bucket?.accepted ?? request.group?.accepted ?? request.subEvent.membersAccepted) || 0)),
+        pendingMembers: Math.max(0, Math.trunc(Number(bucket?.pending ?? request.group?.pending ?? request.subEvent.membersPending) || 0)),
+        capacityTotal: Math.max(
+          0,
+          Math.trunc(Number(bucket?.capacityMax ?? request.group?.capacityMax ?? request.subEvent.capacityMax) || 0)
+        ),
         metricIdentity: ActivityChatSingleRowConverter.smartListKeyForIdentity(
           request.item.channelType ?? null,
-          request.item.ownerId,
+          ownerId,
           request.item.id
         )
       });
@@ -676,7 +705,7 @@ export class EventResourcePopupComponent {
   private openFromSubEventResourceRequest(request: SubEventResourcePopupRequest): void {
     if (request.type === 'Members') {
       const group = request.group ?? null;
-      const ownerId = group?.id?.trim() || `${request.subEventId ?? ''}`.trim();
+      const ownerId = this.memberOwnerIdFromParts(request.ownerId, request.subEventId, group?.id);
       const groupLabel = group?.groupLabel?.trim() ?? '';
       const subEventTitle = this.requestSubEventTitle(request);
       this.memberMenuStore.requestActivitiesNavigation({
@@ -689,7 +718,6 @@ export class EventResourcePopupComponent {
         acceptedMembers: Math.max(0, Math.trunc(Number(group?.accepted) || 0)),
         pendingMembers: Math.max(0, Math.trunc(Number(group?.pending) || 0)),
         capacityTotal: Math.max(0, Math.trunc(Number(group?.capacityMax) || 0)),
-        members: group?.members,
         metricIdentity: this.chatMetricIdentityFromParts(request.ownerId, request.subEventId, group?.id),
         onMembersChanged: group?.onMembersChanged
       });
