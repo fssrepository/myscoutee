@@ -202,6 +202,7 @@ export interface SmartListGroupMarkerContext<T, TFilters extends SmartListFilter
 
 export interface SmartListItemSelectEvent<T, TFilters extends SmartListFilters = SmartListFilters> {
   item: T;
+  sourceItem?: unknown;
   query: ListQuery<TFilters>;
   currentView: string | null;
   currentViewMode: SmartListViewMode;

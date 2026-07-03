@@ -151,7 +151,7 @@ type ActivitiesChatContextUnreadCounts = Partial<Record<ContractTypes.Activities
 type ActivityEventListType = ActivityContracts.ActivityEventRepositoryItemType;
 type ActivityEventListItem = InfoCardData;
 type ActivityRateListItem = ImageCardData;
-type ActivityChatListItem = SingleRowData<ChatDTO>;
+type ActivityChatListItem = SingleRowData;
 type ActivityListItem = ActivityEventListItem | ActivityRateListItem | ActivityChatListItem;
 type ActivitiesSmartListConverterQuery = ListQuery<ActivitiesSmartListFilters> & {
   context?: {
@@ -529,16 +529,16 @@ export class ActivitiesPopupComponent implements OnDestroy {
     this.activitiesChats.openActivityChat(chat);
   }
 
-  protected openActivityChatForRow(row: ActivityListItem): void {
-    const chat = this.chatRecordForRow(row);
+  protected openActivityChatForRow(row: ActivityListItem, sourceItem?: unknown): void {
+    const chat = this.chatRecordForRow(row, sourceItem);
     if (chat) {
       this.openActivityChat(chat);
     }
   }
 
-  protected onActivityRowClick(row: ActivityListItem, event?: Event): void {
+  protected onActivityRowClick(row: ActivityListItem, event?: Event, sourceItem?: unknown): void {
     if (this.activitiesPrimaryFilter === 'chats') {
-      this.openActivityChatForRow(row);
+      this.openActivityChatForRow(row, sourceItem);
       return;
     }
     if (this.activitiesPrimaryFilter === 'rates') {
@@ -2182,17 +2182,13 @@ export class ActivitiesPopupComponent implements OnDestroy {
     } as T;
   }
 
-  protected chatRecordForRow(row: ActivityListItem): ChatDTO | null {
-    const rowChat = this.chatRecordFromRow(row);
-    if (rowChat) {
-      return this.cloneChatRecord(rowChat);
-    }
-    const existing = this.chatsService.peekChatItemsByUser(this.activeUser.id).find(item => item.id === row.id) ?? null;
-    return existing ? this.cloneChatRecord(existing) : null;
+  protected chatRecordForRow(row: ActivityListItem, sourceItem?: unknown): ChatDTO | null {
+    const sourceChat = this.chatRecordFromSourceItem(sourceItem);
+    return sourceChat ? this.cloneChatRecord(sourceChat) : null;
   }
 
-  private chatRecordFromRow(row: ActivityListItem): ChatDTO | null {
-    const candidate = (row as ActivityChatListItem).eagerDetail;
+  private chatRecordFromSourceItem(sourceItem: unknown): ChatDTO | null {
+    const candidate = sourceItem;
     if (!candidate || typeof candidate !== 'object') {
       return null;
     }

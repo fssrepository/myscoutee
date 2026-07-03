@@ -51,7 +51,6 @@ export class ActivityChatSingleRowConverter {
     return {
       id: dto.id,
       ownerId: ownerId || null,
-      eagerDetail: this.cloneChatDto(dto),
       smartListKey: `chats:${rowIdentity || dto.id}`,
       status: supportStatus ?? channelType,
       dateIso: dto.dateIso ?? '2026-02-21T09:00:00',
@@ -82,30 +81,6 @@ export class ActivityChatSingleRowConverter {
         ? this.supportCaseMenuActionIds(supportStatus)
         : [],
       clickable: true
-    };
-  }
-
-  private static cloneChatDto(dto: ChatDTO): ChatDTO {
-    return {
-      ...dto,
-      memberIds: [...(dto.memberIds ?? [])],
-      members: (dto.members ?? []).map(member => ({ ...member })),
-      supportCase: dto.supportCase
-        ? {
-            ...dto.supportCase,
-            assignee: dto.supportCase.assignee ? { ...dto.supportCase.assignee } : dto.supportCase.assignee
-          }
-        : dto.supportCase,
-      metrics: dto.metrics
-        ? {
-            members: dto.metrics.members ? { ...dto.metrics.members } : null,
-            car: dto.metrics.car ? { ...dto.metrics.car } : null,
-            accommodation: dto.metrics.accommodation ? { ...dto.metrics.accommodation } : null,
-            supplies: dto.metrics.supplies ? { ...dto.metrics.supplies } : null,
-            groupsCount: dto.metrics.groupsCount ?? null,
-            pendingTotal: Math.max(0, Math.trunc(Number(dto.metrics.pendingTotal) || 0))
-          }
-        : dto.metrics
     };
   }
 

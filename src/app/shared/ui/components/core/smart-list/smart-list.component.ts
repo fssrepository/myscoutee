@@ -168,6 +168,7 @@ export class SmartListComponent<T, TFilters extends SmartListFilters = SmartList
   private total = 0;
   private resolvedListTrackKeys: Array<string | number> = [];
   private fallbackTrackKeyByObject = new WeakMap<object, string>();
+  private sourceItemByIdentity = new Map<string, unknown>();
   private listItemIndexByObject = new WeakMap<object, number>();
   private resolvedListTrackKeyByObject = new WeakMap<object, string | number>();
   private fallbackTrackKeySequence = 0;
@@ -859,7 +860,9 @@ export class SmartListComponent<T, TFilters extends SmartListFilters = SmartList
     if (!converter) {
       return [];
     }
-    return converter.convertList(sources, this.converterOptions(query));
+    const items = converter.convertList(sources, this.converterOptions(query));
+    this.cacheSourceItems(items, sources);
+    return items;
   }
 
   public async moveCursor(delta: number): Promise<boolean> {
@@ -1247,14 +1250,31 @@ export class SmartListComponent<T, TFilters extends SmartListFilters = SmartList
 
   private selectSmartListItem(item: T, event?: Event): void {
     event?.stopPropagation();
+    const itemIndex = this.items.indexOf(item);
     this.itemSelect.emit({
       item,
+      sourceItem: this.sourceItemForItem(item, itemIndex),
       query: this.currentQuery(),
       currentView: this.currentViewKey,
       currentViewMode: this.currentViewMode,
       selectMode: this.resolvedSelectMode(),
       sourceEvent: event
     });
+  }
+
+  private cacheSourceItems<TSource>(items: readonly T[], sources: readonly TSource[]): void {
+    for (const [index, item] of items.entries()) {
+      const identity = `${this.cacheTrackKey(item, index)}`.trim();
+      if (!identity) {
+        continue;
+      }
+      this.sourceItemByIdentity.set(identity, sources[index]);
+    }
+  }
+
+  private sourceItemForItem(item: T, index: number): unknown {
+    const identity = `${this.cacheTrackKey(item, Math.max(0, index))}`.trim();
+    return identity ? this.sourceItemByIdentity.get(identity) : undefined;
   }
 
   protected hostedFullscreenEmptyLabel(): string {
