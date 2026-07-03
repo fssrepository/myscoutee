@@ -95,6 +95,7 @@ import {
 } from '../../../shared/ui/context/stores/sub-event-resource-popup.store';
 import {
   ActivityChatSingleRowConverter,
+  ChatPopupHeaderContextConverter,
   ActivityEventInfoCardMenuConverter,
   type ActivityEventInfoCardMenuSubject
 } from '../../../shared/ui/converters';
@@ -4162,7 +4163,7 @@ export class EventChatPopupComponent implements OnDestroy {
   ): AppUiTypes.PopupHeaderContext {
     const baseContext = loadedContext
       ? this.clonePopupHeaderContext(loadedContext)
-      : this.chatsService.buildChatPopupHeaderContext(chat, { includeThumbs: true });
+      : ChatPopupHeaderContextConverter.convert(chat, { includeThumbs: true });
     const controls = [...(baseContext.controls ?? []).map(control => ({ ...control }))];
     if (chat.channelType === 'appSupport') {
       controls.push(this.buildAppSupportChatContextControl());

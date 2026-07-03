@@ -1,6 +1,5 @@
 import { Injectable, inject } from '@angular/core';
 
-import type * as AppUiTypes from '../../../ui/models';
 import type * as ContractTypes from '../../contracts';
 import { AppUtils } from '../../../app-utils';
 import type { ActivitiesFeedFilters, ListQuery, PageResult } from '../../contracts';
@@ -66,45 +65,6 @@ export class ChatsService extends BaseRouteModeService implements IChatsService 
       total: page.total,
       nextCursor: page.nextCursor ?? null,
       readReceipt: page.readReceipt ?? null
-    };
-  }
-
-  buildChatPopupHeaderContext(
-    chat: ChatDTO,
-    options: { includeThumbs?: boolean } = {}
-  ): AppUiTypes.PopupHeaderContext {
-    const chatId = `${chat.id ?? ''}`.trim();
-    const title = `${chat.title ?? ''}`.trim() || 'Chat';
-    const members = this.resolveChatMembers(chat);
-    const memberIds = this.uniqueUserIds([
-      ...(chat.memberIds ?? []),
-      ...members.map(member => member.id)
-    ]);
-    const controls: AppUiTypes.PopupHeaderControl[] = [];
-    if (chatId && memberIds.length > 0) {
-      const maxVisibleThumbs = 4;
-      const thumbs = options.includeThumbs === true
-        ? this.buildChatHeaderThumbs(members, maxVisibleThumbs)
-        : [];
-      const hiddenThumbCount = thumbs.length > 0 ? Math.max(0, memberIds.length - thumbs.length) : 0;
-      controls.push({
-        id: 'members',
-        label: 'Members',
-        summary: this.memberCountLabel(memberIds.length),
-        visual: thumbs.length > 0
-          ? { kind: 'thumbStack', thumbs, maxVisible: maxVisibleThumbs }
-          : { kind: 'icon', icon: 'groups' },
-        badge: hiddenThumbCount > 0 ? { value: hiddenThumbCount, tone: 'danger' } : null,
-        lookup: {
-          type: 'chat',
-          id: chatId
-        }
-      });
-    }
-    return {
-      revision: this.chatHeaderRevision(chatId, title, memberIds),
-      title,
-      controls
     };
   }
 
@@ -302,38 +262,6 @@ export class ChatsService extends BaseRouteModeService implements IChatsService 
 
   private uniqueUserIds(userIds: readonly string[]): string[] {
     return [...new Set(userIds.map(userId => userId.trim()).filter(Boolean))];
-  }
-
-  private resolveChatMembers(chat: Pick<ChatDTO, 'memberIds' | 'members'>): ContractTypes.ChatMemberSummaryDto[] {
-    return (chat.members ?? [])
-      .map(member => ({
-        ...member,
-        id: `${member.id ?? ''}`.trim(),
-        name: `${member.name ?? ''}`.trim() || null,
-        initials: `${member.initials ?? ''}`.trim(),
-        imageUrl: `${member.imageUrl ?? ''}`.trim() || null
-      }))
-      .filter(member => member.id.length > 0);
-  }
-
-  private buildChatHeaderThumbs(members: readonly ContractTypes.ChatMemberSummaryDto[], maxVisible: number): AppUiTypes.PopupHeaderThumb[] {
-    return members.slice(0, Math.max(0, Math.trunc(maxVisible))).map(member => {
-      const label = `${member.name ?? ''}`.trim() || member.id;
-      return [{
-        id: member.id,
-        label,
-        initials: `${member.initials ?? ''}`.trim() || AppUtils.initialsFromText(label),
-        imageUrl: `${member.imageUrl ?? ''}`.trim() || null
-      }];
-    }).flat();
-  }
-
-  private memberCountLabel(count: number): string {
-    return count === 1 ? '1 member' : `${count} members`;
-  }
-
-  private chatHeaderRevision(chatId: string, title: string, memberIds: readonly string[]): string {
-    return ['chat-header', chatId, title, ...memberIds].join(':');
   }
 
 }
