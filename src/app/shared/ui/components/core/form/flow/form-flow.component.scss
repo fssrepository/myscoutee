@@ -565,6 +565,32 @@
   grid-column: 1 / -1;
 }
 
+.form-flow--grouped .form-flow__slide--media .form-flow__controls {
+  grid-template-columns: minmax(280px, 0.36fr) repeat(2, minmax(0, 1fr));
+}
+
+.form-flow--grouped .form-flow__slide--media .form-flow__control--image {
+  display: flex;
+  grid-column: 1;
+  grid-row: 1 / span var(--form-flow-control-row-span, 3);
+  align-self: stretch;
+  min-height: 0;
+}
+
+.form-flow--grouped .form-flow__slide--media .form-flow__control--image.form-flow__control--wide {
+  grid-column: 1;
+}
+
+.form-flow--grouped .form-flow__slide--media .form-flow__control--image app-image-carousel {
+  flex: 1 1 auto;
+  height: 100%;
+  min-height: 0;
+}
+
+.form-flow--grouped .form-flow__slide--media .form-flow__control--image ~ .form-flow__control:not(.form-flow__control--half) {
+  grid-column: 2 / -1;
+}
+
 .form-flow--grouped .form-flow__control:not(.form-flow__control--half):not(.form-flow__control--wide):last-child:nth-child(odd) {
   grid-column: auto;
 }
@@ -1158,6 +1184,17 @@
 
   .form-flow--grouped .form-flow__track {
     padding: 0;
+  }
+
+  .form-flow--grouped .form-flow__slide--media .form-flow__controls {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .form-flow--grouped .form-flow__slide--media .form-flow__control--image,
+  .form-flow--grouped .form-flow__slide--media .form-flow__control--image.form-flow__control--wide,
+  .form-flow--grouped .form-flow__slide--media .form-flow__control--image ~ .form-flow__control:not(.form-flow__control--half) {
+    grid-column: 1;
+    grid-row: auto;
   }
 
   .form-flow--grouped .form-flow__slide {

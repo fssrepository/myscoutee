@@ -332,6 +332,7 @@ export class HttpAssetsService {
       imageUrl: card?.imageUrl?.trim() ?? '',
       locationLabel: this.assetLocationLabel(card as AppDTOs.AssetDTO | AppDTOs.AssetDetailDTO, type),
       priceLabel: this.assetPriceLabel(card as AppDTOs.AssetDTO | AppDTOs.AssetDetailDTO),
+      policiesEnabled: AssetCardBuilder.assetPoliciesEnabled(card),
       policyCount: this.assetPolicyCount(card as AppDTOs.AssetDTO | AppDTOs.AssetDetailDTO),
       visibility: card?.visibility === 'Friends only'
         ? 'Friends only'
@@ -421,6 +422,7 @@ export class HttpAssetsService {
       topics: Array.isArray(card?.topics)
         ? card.topics.map(topic => `${topic ?? ''}`.trim()).filter(topic => topic.length > 0)
         : [],
+      policiesEnabled: AssetCardBuilder.assetPoliciesEnabled(card),
       policies: Array.isArray(card?.policies)
         ? card.policies
           .map(item => ({
@@ -536,6 +538,9 @@ export class HttpAssetsService {
   }
 
   private assetPolicyCount(card: AppDTOs.AssetDTO | AppDTOs.AssetDetailDTO): number {
+    if (!AssetCardBuilder.assetPoliciesEnabled(card)) {
+      return 0;
+    }
     if ('policyCount' in card && Number.isFinite(Number(card.policyCount))) {
       return Math.max(0, Math.trunc(Number(card.policyCount)));
     }

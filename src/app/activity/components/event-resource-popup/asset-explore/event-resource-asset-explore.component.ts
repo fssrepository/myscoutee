@@ -371,7 +371,7 @@ export class EventResourceAssetExploreComponent implements DoCheck {
       currency: pricing.currency,
       bookingStartAtIso: dialog.startAtIso,
       cancellationPolicy,
-      policies: (card.policies ?? []).map(item => ({ ...item })),
+      policies: (AssetCardBuilder.assetPoliciesEnabled(card) ? card.policies ?? [] : []).map(item => ({ ...item })),
       acceptedPolicyIds: [...dialog.acceptedPolicyIds],
       payable: pricing.amount > 0,
       paymentStep: dialog.paymentStep,
@@ -964,7 +964,7 @@ export class EventResourceAssetExploreComponent implements DoCheck {
       return false;
     }
     const acceptedPolicyIds = new Set(dialog.acceptedPolicyIds);
-    const missingRequiredPolicy = (card.policies ?? [])
+    const missingRequiredPolicy = (AssetCardBuilder.assetPoliciesEnabled(card) ? card.policies ?? [] : [])
       .some(policy => policy.required !== false && !acceptedPolicyIds.has(policy.id));
     return !missingRequiredPolicy && this.isValidWindow(dialog.startAtIso, dialog.endAtIso);
   }
@@ -1272,7 +1272,7 @@ export class EventResourceAssetExploreComponent implements DoCheck {
     const availability = (card: ResourceAssetDTO) => this.availableQuantity(card);
     const cards = [...source].filter(card => availability(card) > 0);
     const price = (card: ResourceAssetDTO) => this.priceAmount(card);
-    const policyCount = (card: ResourceAssetDTO) => (card.policies ?? []).length;
+    const policyCount = (card: ResourceAssetDTO) => AssetCardBuilder.assetPoliciesEnabled(card) ? (card.policies ?? []).length : 0;
     cards.sort((left, right) => {
       if (this.order === 'lowest-price') {
         const priceDelta = price(left) - price(right);
@@ -1324,7 +1324,7 @@ export class EventResourceAssetExploreComponent implements DoCheck {
       return '$40 and up';
     }
     if (this.order === 'fewest-policies') {
-      const count = (card.policies ?? []).length;
+      const count = AssetCardBuilder.assetPoliciesEnabled(card) ? (card.policies ?? []).length : 0;
       if (count <= 0) {
         return 'No policies';
       }
@@ -1605,7 +1605,8 @@ export class EventResourceAssetExploreComponent implements DoCheck {
     const endAtIso = `${draft?.endAtIso ?? existingRequest?.booking?.endAtIso ?? popup.endAtIso}`.trim() || popup.endAtIso;
     const availableQuantity = this.availableQuantityForWindow(card, startAtIso, endAtIso);
     const requestedQuantity = Math.max(1, Math.trunc(Number(draft?.quantity ?? existingRequest?.booking?.quantity) || 1));
-    const validPolicyIds = new Set((card.policies ?? []).map(policy => policy.id));
+    const activePolicies = AssetCardBuilder.assetPoliciesEnabled(card) ? card.policies ?? [] : [];
+    const validPolicyIds = new Set(activePolicies.map(policy => policy.id));
     if (popup.error) {
       this.resourcePopupStore.assetExplorePopupRef.set({
         ...popup,
@@ -2232,7 +2233,8 @@ export class EventResourceAssetExploreComponent implements DoCheck {
       imageUrl: card.imageUrl,
       locationLabel: card.locationLabel ?? (card.type === 'Accommodation' ? this.normalizeRoutes(card.type, card.routes).find(Boolean) : card.city),
       priceLabel: card.priceLabel ?? this.priceLabel(card),
-      policyCount: card.policyCount ?? (card.policies ?? []).length,
+      policiesEnabled: AssetCardBuilder.assetPoliciesEnabled(card),
+      policyCount: AssetCardBuilder.assetPoliciesEnabled(card) ? card.policyCount ?? (card.policies ?? []).length : 0,
       visibility: card.visibility,
       status: card.status,
       ownerUserId: card.ownerUserId,
@@ -2265,6 +2267,7 @@ export class EventResourceAssetExploreComponent implements DoCheck {
       sourceLink: this.assetSourceLink(card),
       routes: this.normalizeRoutes(card.type, card.routes),
       topics: [...(card.topics ?? [])],
+      policiesEnabled: AssetCardBuilder.assetPoliciesEnabled(card),
       policies: (card.policies ?? []).map(policy => ({ ...policy })),
       pricing: card.pricing ? PricingBuilder.clonePricingConfig(card.pricing) : card.pricing,
       visibility: card.visibility,

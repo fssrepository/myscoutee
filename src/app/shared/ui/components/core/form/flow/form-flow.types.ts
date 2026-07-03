@@ -62,6 +62,7 @@ export interface FormFlowMenuControlConfig {
 export interface FormFlowImageCarouselControlConfig {
   slotCount?: number;
   compact?: boolean;
+  autoSize?: boolean;
   previewMode?: boolean;
   ariaLabel?: string;
   uploadOwnerId?: string;
@@ -84,8 +85,6 @@ export interface FormFlowPricingControlConfig {
 }
 
 export interface FormFlowPoliciesControlConfig {
-  enabled?: boolean;
-  readOnly?: boolean;
   model?: EventPoliciesInputConfig | null;
 }
 
@@ -118,6 +117,7 @@ export interface FormFlowControlModel {
   bind?: string | readonly (string | number)[];
   kind: FormFlowControlKind;
   layout?: 'default' | 'half' | 'wide';
+  rowSpan?: number;
   label?: string;
   description?: string;
   placeholder?: string;
@@ -129,6 +129,7 @@ export interface FormFlowControlModel {
   rows?: number;
   maxLength?: number;
   valueFormat?: 'csv';
+  enabledBind?: string | readonly (string | number)[];
   config?:
     | FormFlowMenuControlConfig
     | FormFlowImageCarouselControlConfig
@@ -147,6 +148,7 @@ export interface FormFlowStepModel {
   subtitle?: string;
   icon?: string;
   chrome?: 'default' | 'none';
+  presentation?: 'default' | 'media';
   palette?: string;
   header?: FormFlowHeaderModel | null;
   controls: readonly FormFlowControlModel[];

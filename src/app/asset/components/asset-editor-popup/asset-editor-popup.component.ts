@@ -104,7 +104,7 @@ export class AssetEditorPopupComponent {
   protected readonly assetPoliciesInputConfig: EventPoliciesInputConfig = {
     title: 'Lending Policies',
     subtitle: 'Add the rules borrowers need to read and approve before borrowing this asset.',
-    toggleable: false,
+    toggleable: true,
     openLabel: 'Open Policy Setup',
     viewLabel: 'View Policies',
     emptyLabel: 'No lending policies yet. Add policies if borrowers must review terms before sending the request.',
@@ -136,7 +136,6 @@ export class AssetEditorPopupComponent {
       height: 'full',
       headerTone: 'accent',
       bodyLayout: 'fill',
-      showClose: !this.isSavePending,
       headerControls: this.assetEditorPopupHeaderControls(),
       onClose: () => this.requestClose(),
       onMenuSelect: event => this.onAssetEditorMenuSelect(event.itemSelect)
@@ -167,17 +166,19 @@ export class AssetEditorPopupComponent {
         title: 'Basics',
         icon: this.assetCategoryIcon(this.assetForm.category),
         palette: this.assetCategoryPalette(this.assetForm.category),
+        presentation: 'media',
         controls: [
           {
             id: 'imageUrls',
             bind: 'imageUrls',
             kind: 'image-carousel',
-            label: 'Asset image',
             layout: 'wide',
+            rowSpan: 3,
             disabled,
             config: {
               slotCount: 1,
               compact: true,
+              autoSize: true,
               ariaLabel: 'Asset image',
               uploadOwnerId: this.assetImageUploadOwnerId,
               uploadEntityId: this.assetImageUploadEntity()
@@ -304,9 +305,9 @@ export class AssetEditorPopupComponent {
             bind: 'policies',
             kind: 'policies',
             layout: 'wide',
+            enabledBind: 'policiesEnabled',
             disabled,
             config: {
-              enabled: true,
               model: this.assetPoliciesInputConfig
             }
           }
@@ -540,9 +541,14 @@ export class AssetEditorPopupComponent {
       type,
       (source.category ?? current.category) as AppConstants.AssetCategory | undefined
     );
-    const imageUrls = Array.isArray(source.imageUrls)
-      ? source.imageUrls.map(item => `${item ?? ''}`.trim()).filter(Boolean)
+    const sourceImageUrls = source.imageUrls;
+    const hasImageUrlsInput = Array.isArray(sourceImageUrls);
+    const imageUrls = hasImageUrlsInput
+      ? sourceImageUrls.map(item => `${item ?? ''}`.trim()).filter(Boolean)
       : this.assetImageUrls();
+    const imageUrl = hasImageUrlsInput
+      ? imageUrls[0] ?? ''
+      : `${source.imageUrl ?? current.imageUrl ?? ''}`.trim();
     const routeLocation = `${source.routeLocation ?? this.assetFormRouteStops()[0] ?? ''}`.trim();
     const routes = type === 'Accommodation'
       ? AssetCardBuilder.normalizeAssetRoutes(type, [routeLocation])
@@ -556,10 +562,11 @@ export class AssetEditorPopupComponent {
       capacityTotal: Math.max(0, Math.trunc(Number(source.capacityTotal ?? current.capacityTotal) || 0)),
       quantity: Math.max(0, Math.trunc(Number(source.quantity ?? current.quantity) || 0)),
       details: `${source.details ?? current.details ?? ''}`,
-      imageUrl: imageUrls[0] ?? `${source.imageUrl ?? current.imageUrl ?? ''}`.trim(),
+      imageUrl,
       sourceLink: `${source.sourceLink ?? current.sourceLink ?? ''}`,
       routes,
       topics: this.cloneStringList(source.topics ?? current.topics),
+      policiesEnabled: source.policiesEnabled === true,
       policies: this.cloneAssetPolicies(source.policies ?? current.policies),
       pricing: PricingBuilder.clonePricingConfig(
         source.pricing ?? current.pricing ?? PricingBuilder.createDefaultPricingConfig('asset')
@@ -572,6 +579,7 @@ export class AssetEditorPopupComponent {
       ...form,
       routes: [...(form.routes ?? [])],
       topics: this.cloneStringList(form.topics),
+      policiesEnabled: form.policiesEnabled === true,
       policies: this.cloneAssetPolicies(form.policies),
       pricing: PricingBuilder.clonePricingConfig(form.pricing ?? null)
     };

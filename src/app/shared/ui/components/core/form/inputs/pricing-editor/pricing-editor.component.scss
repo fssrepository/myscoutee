@@ -235,7 +235,12 @@
 }
 
 .pricing-editor__open-btn--summary {
-  min-width: 214px;
+  min-width: 138px;
+  min-height: 38px;
+  padding: 0.42rem 0.82rem;
+  border-radius: 999px;
+  font-size: 0.8rem;
+  box-shadow: 0 2px 7px rgba(29, 53, 86, 0.08);
 }
 
 .pricing-editor__layout {

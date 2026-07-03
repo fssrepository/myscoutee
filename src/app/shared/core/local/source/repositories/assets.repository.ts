@@ -617,6 +617,9 @@ export class LocalAssetsRepository {
       policies: preserveDetail
         ? (existing?.policies ?? incoming.policies ?? []).map(item => ({ ...item }))
         : (incoming.policies ?? []).map(item => ({ ...item })),
+      policiesEnabled: preserveDetail
+        ? (existing?.policiesEnabled ?? incoming.policiesEnabled ?? false)
+        : incoming.policiesEnabled === true,
       pricing: preserveDetail
         ? (existing?.pricing ? PricingBuilder.clonePricingConfig(existing.pricing) : incoming.pricing)
         : (incoming.pricing ? PricingBuilder.clonePricingConfig(incoming.pricing) : incoming.pricing),
@@ -646,6 +649,7 @@ export class LocalAssetsRepository {
       boost: this.resolveAssetBoost(record),
       routes: cloneNested ? [...(record.routes ?? [])] : (record.routes ?? []),
       topics: cloneNested ? [...(record.topics ?? [])] : (record.topics ?? []),
+      policiesEnabled: record.policiesEnabled === true,
       policies: cloneNested ? (record.policies ?? []).map(item => ({ ...item })) : (record.policies ?? []),
       pricing: cloneNested && record.pricing ? PricingBuilder.clonePricingConfig(record.pricing) : record.pricing,
       requests: cloneNested ? record.requests.map(request => LocalAssetsMapper.cloneRequest(request)) : record.requests,
@@ -782,6 +786,7 @@ export class LocalAssetsRepository {
       ...record,
       routes: [...(record.routes ?? [])],
       topics: [...(record.topics ?? [])],
+      policiesEnabled: record.policiesEnabled === true,
       policies: (record.policies ?? []).map(item => ({ ...item })),
       pricing: record.pricing ? PricingBuilder.clonePricingConfig(record.pricing) : undefined,
       requests: record.requests.map(request => LocalAssetsMapper.cloneRequest(request)),

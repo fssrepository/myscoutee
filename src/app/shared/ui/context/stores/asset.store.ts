@@ -55,7 +55,8 @@ export class AssetStore {
     quantity: 1,
     details: '',
     imageUrl: '',
-    sourceLink: ''
+    sourceLink: '',
+    policiesEnabled: false
   });
   readonly assetFormVisibilityRef = signal<AppConstants.EventVisibility>('Public');
   readonly assetFormDraftIdRef = signal('');

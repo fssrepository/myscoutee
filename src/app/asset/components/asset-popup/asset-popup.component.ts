@@ -2266,6 +2266,7 @@ export class AssetPopupComponent {
       sourceLink: 'sourceLink' in card ? card.sourceLink : '',
       routes: this.assetRoutes(card),
       topics: 'topics' in card ? [...(card.topics ?? [])] : [],
+      policiesEnabled: AssetCardBuilder.assetPoliciesEnabled(card),
       policies: 'policies' in card ? (card.policies ?? []).map(policy => ({ ...policy })) : [],
       pricing: 'pricing' in card ? card.pricing ?? null : null,
       visibility: card.visibility,

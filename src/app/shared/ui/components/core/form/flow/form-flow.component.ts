@@ -562,6 +562,27 @@ export class FormFlowComponent implements ControlValueAccessor, OnChanges, OnDes
     return this.policiesConfig(control).model ?? {};
   }
 
+  protected policiesEnabled(control: FormFlowControlModel): boolean {
+    return control.enabledBind
+      ? this.readPath(this.formValue, control.enabledBind) === true
+      : true;
+  }
+
+  protected updatePoliciesEnabled(control: FormFlowControlModel, enabled: boolean): void {
+    if (this.isControlDisabled(control)) {
+      return;
+    }
+    const enabledBind = control.enabledBind;
+    if (!enabledBind) {
+      return;
+    }
+    this.formValue = this.writePath(this.formValue, enabledBind, enabled === true);
+    this.onControlChange(this.formValue);
+    this.onControlTouched();
+    this.queuePercentEmit();
+    this.cdr.markForCheck();
+  }
+
   protected summaryTitle(): string {
     return this.model?.summary?.title?.trim() || 'Overview';
   }

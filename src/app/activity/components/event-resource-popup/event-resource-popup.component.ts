@@ -1419,7 +1419,8 @@ export class EventResourcePopupComponent {
       return;
     }
     const existingRequest = this.findAssignedAssetJoinRequest(sourceCard, context.subEvent.id, this.activeUser().id);
-    const validPolicyIds = new Set((sourceCard.policies ?? []).map(policy => policy.id));
+    const activePolicies = AssetCardBuilder.assetPoliciesEnabled(sourceCard) ? sourceCard.policies ?? [] : [];
+    const validPolicyIds = new Set(activePolicies.map(policy => policy.id));
     this.resourcePopupStore.assignedAssetJoinDialogRef.set({
       cardId: card.id,
       type,
@@ -1543,7 +1544,7 @@ export class EventResourcePopupComponent {
       return false;
     }
     const acceptedPolicyIds = new Set(dialog.acceptedPolicyIds.map(item => item.trim()).filter(Boolean));
-    return !(sourceCard.policies ?? [])
+    return !(AssetCardBuilder.assetPoliciesEnabled(sourceCard) ? sourceCard.policies ?? [] : [])
       .some(policy => policy.required !== false && !acceptedPolicyIds.has(policy.id));
   }
 
@@ -1568,7 +1569,8 @@ export class EventResourcePopupComponent {
     }
     const activeUser = this.activeUser();
     const pricing = this.resolveAssignedAssetJoinPricing(sourceCard, context.subEvent, activeUser.id);
-    const validPolicyIds = new Set((sourceCard.policies ?? []).map(policy => policy.id));
+    const activePolicies = AssetCardBuilder.assetPoliciesEnabled(sourceCard) ? sourceCard.policies ?? [] : [];
+    const validPolicyIds = new Set(activePolicies.map(policy => policy.id));
     const acceptedPolicyIds = [...new Set(dialog.acceptedPolicyIds.map(item => item.trim()).filter(Boolean))]
       .filter(item => validPolicyIds.has(item));
     const existingRequest = this.findAssignedAssetJoinRequest(sourceCard, context.subEvent.id, activeUser.id);
@@ -2121,7 +2123,7 @@ export class EventResourcePopupComponent {
       currency: pricing.currency,
       shareLabel,
       shareHint,
-      policies: (sourceCard.policies ?? []).map(item => ({ ...item })),
+      policies: (AssetCardBuilder.assetPoliciesEnabled(sourceCard) ? sourceCard.policies ?? [] : []).map(item => ({ ...item })),
       acceptedPolicyIds: [...dialog.acceptedPolicyIds],
       submitLabel: 'Send join request',
       busyLabel: 'Sending request...',
@@ -2783,6 +2785,7 @@ export class EventResourcePopupComponent {
       sourceLink: ActivityResourceBuilder.assetSourceLink(card),
       routes: ActivityResourceBuilder.normalizeAssetRoutes(card.type, card.routes),
       topics: [...(card.topics ?? [])],
+      policiesEnabled: AssetCardBuilder.assetPoliciesEnabled(card),
       policies: (card.policies ?? []).map(policy => ({ ...policy })),
       pricing: card.pricing ? PricingBuilder.clonePricingConfig(card.pricing) : card.pricing,
       visibility: card.visibility,

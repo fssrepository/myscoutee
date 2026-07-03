@@ -122,6 +122,7 @@
               [class.is-active]="isPageActive(stepIndex)"
               [class.is-missing]="isStepMissingRequired(step)"
               [class.form-flow__slide--plain]="step.chrome === 'none'"
+              [class.form-flow__slide--media]="step.presentation === 'media'"
               [attr.data-step-id]="step.id"
               [attr.aria-hidden]="isPageActive(stepIndex) ? null : 'true'"
               [attr.inert]="isPageActive(stepIndex) ? null : ''"
@@ -183,7 +184,9 @@
                     [class.form-flow__control--wide]="control.layout === 'wide' || (control.layout !== 'half' && (control.kind === 'textarea' || control.kind === 'image-carousel' || control.kind === 'review' || control.kind === 'section'))"
                     [class.form-flow__control--half]="control.layout === 'half'"
                     [class.form-flow__control--with-accessory]="accessoryMenuConfig(control)"
+                    [class.form-flow__control--image]="control.kind === 'image-carousel'"
                     [class.is-required-missing]="isRequiredControlMissing(control)"
+                    [style.--form-flow-control-row-span]="control.rowSpan ?? null"
                   >
                     @if (control.kind === 'section') {
                       <div class="form-flow__section-title">
@@ -223,6 +226,7 @@
                       <app-image-carousel
                         [slotCount]="image.slotCount ?? 8"
                         [compact]="image.compact === true"
+                        [autoSize]="image.autoSize === true"
                         [previewMode]="image.previewMode === true && !isMobileViewport"
                         [ariaLabel]="image.ariaLabel || control.label || 'Images'"
                         [uploadOwnerId]="image.uploadOwnerId || ''"
@@ -279,8 +283,9 @@
                       <app-event-policies-input
                         class="form-flow__policies-input"
                         [config]="policiesInputConfig(control)"
-                        [enabled]="policiesConfig(control).enabled !== false"
-                        [readOnly]="isControlDisabled(control) || policiesConfig(control).readOnly === true"
+                        [enabled]="policiesEnabled(control)"
+                        (enabledChange)="updatePoliciesEnabled(control, $event)"
+                        [readOnly]="isControlDisabled(control)"
                         [ngModel]="controlValue(control)"
                         (ngModelChange)="updateControlValue(control, $event)"
                       ></app-event-policies-input>
