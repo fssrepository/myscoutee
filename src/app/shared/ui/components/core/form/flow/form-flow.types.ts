@@ -8,6 +8,7 @@ import type {
   AppMenuTrigger
 } from '../../menu';
 import type { DateInputMetaModel, DateInputModel } from '../inputs/date-input';
+import type { EventPoliciesInputConfig } from '../inputs/event-policies-input';
 import type { LocationInputConfig } from '../inputs/location-input';
 import type { PricingEditorConfig } from '../inputs/pricing-editor';
 import type { ImageCardData, InfoCardData } from '../../smart-list/card';
@@ -28,6 +29,7 @@ export type FormFlowControlKind =
   | 'location'
   | 'menu'
   | 'number'
+  | 'policies'
   | 'pricing'
   | 'review'
   | 'section'
@@ -81,6 +83,12 @@ export interface FormFlowPricingControlConfig {
   model?: PricingEditorConfig | null;
 }
 
+export interface FormFlowPoliciesControlConfig {
+  enabled?: boolean;
+  readOnly?: boolean;
+  model?: EventPoliciesInputConfig | null;
+}
+
 export interface FormFlowControlSummaryConfig {
   hidden?: boolean;
   label?: string;
@@ -89,6 +97,7 @@ export interface FormFlowControlSummaryConfig {
 }
 
 export type FormFlowCompletionMetric = 'filled' | 'count' | 'length' | 'positiveNumber' | 'isoDate';
+export type FormFlowTone = 'default' | 'blue' | 'green' | 'orange';
 
 export interface FormFlowCompletionItemConfig {
   id?: string;
@@ -125,6 +134,7 @@ export interface FormFlowControlModel {
     | FormFlowImageCarouselControlConfig
     | FormFlowDateControlConfig
     | FormFlowLocationControlConfig
+    | FormFlowPoliciesControlConfig
     | FormFlowPricingControlConfig
     | null;
   accessory?: { menu?: FormFlowMenuControlConfig | null } | null;
@@ -168,6 +178,7 @@ export interface FormFlowModel {
   title: string;
   subtitle?: string;
   layout?: 'default' | 'carousel' | 'grouped';
+  tone?: FormFlowTone;
   header?: boolean;
   steps: readonly FormFlowStepModel[];
   summary?: FormFlowSummaryModel | null;

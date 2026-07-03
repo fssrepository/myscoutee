@@ -10,6 +10,7 @@ import { MatSelectModule } from '@angular/material/select';
 
 import { PricingBuilder } from '../../../../../../core/base/builders';
 import type * as ContractTypes from '../../../../../../core/contracts';
+import { PopupComponent, type PopupModel } from '../../../popup';
 import { PricingSlotPanelComponent } from '../../popups/pricing-slot-panel';
 
 import type * as AppConstants from '../../../../../../core/common/constants';
@@ -68,6 +69,7 @@ interface ResolvedPricingEditorConfig {
     MatInputModule,
     MatNativeDateModule,
     MatSelectModule,
+    PopupComponent,
     PricingSlotPanelComponent
   ],
   templateUrl: './pricing-editor.component.html',
@@ -281,6 +283,36 @@ export class PricingEditorInputComponent implements OnChanges, DoCheck, ControlV
     this.wizardOpen = false;
     this.closeRuleScopePicker();
     this.cdr.markForCheck();
+  }
+
+  protected pricingWizardPopupModel(): PopupModel {
+    return {
+      title: this.pricingWizardTitle(),
+      subtitle: 'Adjust the full pricing configuration here while the summary stays compact on the form.',
+      ariaLabel: 'Pricing setup wizard',
+      closeAriaLabel: 'Close pricing setup',
+      size: 'wide',
+      height: 'full',
+      headerTone: 'accent',
+      bodyLayout: 'fill',
+      backdropTone: 'dim',
+      onClose: () => this.closeWizard()
+    };
+  }
+
+  protected pricingWizardPopupZIndex(): number {
+    return 4600;
+  }
+
+  private pricingWizardTitle(): string {
+    switch (this.resolvedConfig.context) {
+      case 'asset':
+        return 'Asset Pricing Setup';
+      case 'subevent':
+        return 'Optional Pricing Setup';
+      default:
+        return 'Pricing Setup';
+    }
   }
 
   protected togglePricingEnabled(): void {

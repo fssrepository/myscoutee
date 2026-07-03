@@ -34,6 +34,7 @@ import { IndicatorComponent } from '../../indicator';
 import { ImageCardComponent, InfoCardComponent } from '../../smart-list/card';
 import { UiTaskScheduler } from '../../../../scheduler';
 import { DateInputComponent, type DateInputModel, type DateInputValue } from '../inputs/date-input';
+import { EventPoliciesInputComponent, type EventPoliciesInputConfig } from '../inputs/event-policies-input';
 import { LocationInputComponent, type LocationInputConfig } from '../inputs/location-input';
 import { PricingEditorInputComponent, type PricingEditorConfig } from '../inputs/pricing-editor';
 import type {
@@ -44,10 +45,12 @@ import type {
   FormFlowLocationControlConfig,
   FormFlowMenuControlConfig,
   FormFlowModel,
+  FormFlowPoliciesControlConfig,
   FormFlowPricingControlConfig,
   FormFlowPushEvent,
   FormFlowSaveEvent,
-  FormFlowStepModel
+  FormFlowStepModel,
+  FormFlowTone
 } from './form-flow.types';
 import {
   formFlowCompletionPercent,
@@ -70,6 +73,7 @@ interface FormFlowSelectedMenuItem {
     AppMenuComponent,
     DateInputComponent,
     LocationInputComponent,
+    EventPoliciesInputComponent,
     PricingEditorInputComponent,
     ImageCarouselComponent,
     IndicatorComponent,
@@ -199,6 +203,14 @@ export class FormFlowComponent implements ControlValueAccessor, OnChanges, OnDes
 
   protected isGroupedLayout(): boolean {
     return this.model?.layout === 'grouped';
+  }
+
+  protected toneClass(): string {
+    return `form-flow--tone-${this.modelTone()}`;
+  }
+
+  private modelTone(): FormFlowTone {
+    return this.model?.tone ?? 'default';
   }
 
   protected totalPageCount(): number {
@@ -540,6 +552,14 @@ export class FormFlowComponent implements ControlValueAccessor, OnChanges, OnDes
 
   protected pricingConfig(control: FormFlowControlModel): PricingEditorConfig {
     return this.isPricingControlConfig(control.config) ? control.config.model ?? {} : {};
+  }
+
+  protected policiesConfig(control: FormFlowControlModel): FormFlowPoliciesControlConfig {
+    return this.isPoliciesControlConfig(control.config) ? control.config : {};
+  }
+
+  protected policiesInputConfig(control: FormFlowControlModel): EventPoliciesInputConfig {
+    return this.policiesConfig(control).model ?? {};
   }
 
   protected summaryTitle(): string {
@@ -1059,6 +1079,14 @@ export class FormFlowComponent implements ControlValueAccessor, OnChanges, OnDes
 
   private isPricingControlConfig(config: FormFlowControlModel['config']): config is FormFlowPricingControlConfig {
     return this.isRecord(config) && this.isRecord(config['model']);
+  }
+
+  private isPoliciesControlConfig(config: FormFlowControlModel['config']): config is FormFlowPoliciesControlConfig {
+    return this.isRecord(config) && (
+      'enabled' in config
+      || 'readOnly' in config
+      || this.isRecord(config['model'])
+    );
   }
 
   private isDateRangeValue(value: unknown): value is Exclude<DateInputValue, string | null> {

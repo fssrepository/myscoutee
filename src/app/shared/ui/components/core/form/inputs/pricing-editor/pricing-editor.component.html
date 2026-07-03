@@ -82,28 +82,7 @@
   }
 
   @if (usesSummaryPopup() && wizardOpen && isPricingEnabled()) {
-    <div class="pricing-editor__wizard-backdrop" (click)="closeWizard()"></div>
-    <section class="pricing-editor__wizard" role="dialog" aria-modal="true" aria-label="Pricing setup wizard">
-      <header class="pricing-editor__wizard-head">
-        <div class="pricing-editor__wizard-copy">
-          @switch (resolvedConfig.context) {
-            @case ('asset') {
-              <span class="pricing-editor__wizard-title">Asset Pricing Setup</span>
-            }
-            @case ('subevent') {
-              <span class="pricing-editor__wizard-title">Optional Pricing Setup</span>
-            }
-            @default {
-              <span class="pricing-editor__wizard-title">Pricing Setup</span>
-            }
-          }
-          <span class="pricing-editor__wizard-subtitle">Adjust the full pricing configuration here while the summary stays compact on the form.</span>
-        </div>
-        <button type="button" class="pricing-editor__wizard-close" (click)="closeWizard()" aria-label="Close pricing setup">
-          <mat-icon>close</mat-icon>
-        </button>
-      </header>
-
+    <app-popup [model]="pricingWizardPopupModel()" [zIndex]="pricingWizardPopupZIndex()">
       <div class="pricing-editor__wizard-body">
         @if (resolvedConfig.showPreview) {
           <aside class="pricing-editor__preview pricing-editor__preview--wizard-sticky">
@@ -114,7 +93,7 @@
           <ng-container [ngTemplateOutlet]="pricingEditorSurfaces"></ng-container>
         </div>
       </div>
-    </section>
+    </app-popup>
   }
 </section>
 

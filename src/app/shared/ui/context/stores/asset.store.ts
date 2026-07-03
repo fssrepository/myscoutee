@@ -1,6 +1,7 @@
 import { Injectable, computed, signal } from '@angular/core';
 
 import { AssetDto } from '../../../core/contracts';
+import { PricingBuilder } from '../../../core/base/builders';
 import type * as AppConstants from '../../../core/common/constants';
 import type * as AppDTOs from '../../../core/contracts';
 
@@ -321,6 +322,14 @@ export class AssetStore {
     this.touchUiState();
   }
 
+  setAssetEditorForm(form: AssetFormState): void {
+    if (this.assetFormLoadingRef() || this.assetFormSavePendingRef()) {
+      return;
+    }
+    this.assetFormRef.set(this.cloneAssetForm(form));
+    this.touchUiState();
+  }
+
   setAssetEditorImageUrl(imageUrl: string): void {
     this.assetFormRef().imageUrl = imageUrl.trim();
     this.touchUiState();
@@ -403,6 +412,16 @@ export class AssetStore {
     const nextGeneration = this.assetFormLoadGenerationRef() + 1;
     this.assetFormLoadGenerationRef.set(nextGeneration);
     return nextGeneration;
+  }
+
+  private cloneAssetForm(form: AssetFormState): AssetFormState {
+    return {
+      ...form,
+      routes: [...(form.routes ?? [])],
+      topics: [...(form.topics ?? [])],
+      policies: (form.policies ?? []).map(policy => ({ ...policy })),
+      pricing: PricingBuilder.clonePricingConfig(form.pricing ?? null)
+    };
   }
 
   cardsByType(type: AppConstants.AssetType): AppDTOs.AssetDTO[] {

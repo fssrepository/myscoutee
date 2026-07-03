@@ -3,6 +3,7 @@
   [class.is-loading]="loading"
   [class.form-flow--carousel]="isCarouselLayout()"
   [class.form-flow--grouped]="isGroupedLayout()"
+  [ngClass]="toneClass()"
   [attr.aria-busy]="loading"
 >
   <ng-template #progressControls>
@@ -273,6 +274,15 @@
                         [ngModel]="controlValue(control)"
                         (ngModelChange)="updateControlValue(control, $event)"
                       ></app-pricing-editor-input>
+                    } @else if (control.kind === 'policies') {
+                      <app-event-policies-input
+                        class="form-flow__policies-input"
+                        [config]="policiesInputConfig(control)"
+                        [enabled]="policiesConfig(control).enabled !== false"
+                        [readOnly]="isControlDisabled(control) || policiesConfig(control).readOnly === true"
+                        [ngModel]="controlValue(control)"
+                        (ngModelChange)="updateControlValue(control, $event)"
+                      ></app-event-policies-input>
                     } @else {
                       <label class="form-flow__label">
                         <span>{{ control.label }}@if (control.required) { <strong>*</strong> }</span>
