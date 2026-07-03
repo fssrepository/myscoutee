@@ -305,16 +305,12 @@ export interface UserSubmitActionResponseDto {
   message?: string | null;
 }
 
-export type UserRealtimeLongPollTask = () => void | Promise<void>;
-export type UserRealtimeLongPollStop = () => void;
-
 export interface UserService {
   queryAvailableDemoUsers(selectorRole?: UserSelectorRole): Promise<UserSelectorListItemDto[]>;
   checkLocationEligibility(coordinates?: LocationCoordinates | null): Promise<UserLocationEligibilityResponseDto>;
   queryUserById(userId?: string, requestTimeoutMs?: number): Promise<UserByIdQueryResponse>;
   loadProfileExtById(userId?: string, requestTimeoutMs?: number): Promise<ProfileExtByIdQueryResponse>;
   queryUserRealtimeLongPoll(userId: string, cursor?: string | null, requestTimeoutMs?: number): Promise<UserRealtimeLongPollResponseDto | null>;
-  startUserRealtimeLongPoll(task: UserRealtimeLongPollTask): UserRealtimeLongPollStop;
   saveUserFilterPreferences(userId: string, preferences: ActivityContracts.UserGameFilterPreferencesDto): Promise<void>;
   saveUserProfile(user: UserDto, requestTimeoutMs?: number): Promise<UserDto | null>;
   saveUserProfileExt(request: ProfileExtDto, requestTimeoutMs?: number): Promise<UserDto | null>;

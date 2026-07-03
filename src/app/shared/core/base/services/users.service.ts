@@ -27,8 +27,6 @@ import type {
   UserLogoutRequestDto,
   UserReportUserSubmitRequestDto,
   UserRealtimeLongPollResponseDto,
-  UserRealtimeLongPollStop,
-  UserRealtimeLongPollTask,
   UserSubmitActionResponseDto,
   UserService
 } from '../../contracts/user.interface';
@@ -444,10 +442,6 @@ export class UsersService extends BaseRouteModeService {
     } catch {
       return null;
     }
-  }
-
-  startUserRealtimeLongPoll(task: UserRealtimeLongPollTask): UserRealtimeLongPollStop {
-    return this.userService.startUserRealtimeLongPoll(task);
   }
 
   private setLoadStatus(contextKey: string, status: LoadStatus, message?: string): void {

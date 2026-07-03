@@ -28,6 +28,7 @@ import {
   type AppMenuValueMap,
   HeaderCardComponent,
   type HeaderCardModel,
+  UiPoller,
   type UserImpressionChangeFlags
 } from '../..';
 import {
@@ -172,6 +173,8 @@ type NavigatorHeaderActionMenuItemId =
   styleUrl: './side-menu.component.scss'
 })
 export class SideMenuComponent implements OnDestroy {
+  private static readonly USER_REALTIME_POLL_INTERVAL_MS = 30000;
+
   private static readonly ACCOUNT_REACTIVATION_WINDOW_MS = 30 * 24 * 60 * 60 * 1000;
   private static readonly ADMIN_SESSION_STORAGE_KEY = APP_STORAGE_KEYS.adminSession;
   private static readonly USER_MENU_LOAD_DURATION_MS = 3000;
@@ -211,8 +214,11 @@ export class SideMenuComponent implements OnDestroy {
   private lastHandledAssetRequestMs = 0;
   private lastHandledEventFeedbackRequestMs = 0;
   private hydrationRequestVersion = 0;
-  private stopUserRealtimeLongPollInterval: (() => void) | null = null;
-  private userRealtimeLongPollInFlight = false;
+  private readonly userRealtimePoller = new UiPoller<string>({
+    intervalMs: () => this.userRealtimePollIntervalMs(),
+    query: () => this.userProfileStore.activeUserId().trim(),
+    task: ({ query }) => this.runUserRealtimeLongPollTick(query)
+  });
   private reactivationPromptUserId = '';
   private privacyConsentCheckToken = 0;
   private userMenuLoadOverdueTimer: ReturnType<typeof setTimeout> | null = null;
@@ -1438,7 +1444,8 @@ export class SideMenuComponent implements OnDestroy {
   ngOnDestroy(): void {
     this.routerEventsSubscription.unsubscribe();
     this.profileStore.clearBindings(this.profileBindings);
-    this.stopUserRealtimeLongPoll();
+    this.userRealtimePoller.destroy();
+    this.userProfileStore.setUserRealtimePollInFlight(false);
     this.clearUserMenuLoadState();
   }
 
@@ -1745,21 +1752,18 @@ export class SideMenuComponent implements OnDestroy {
     if (!normalizedUserId || this.userProfileStore.activeUserId().trim() !== normalizedUserId) {
       return;
     }
-    this.startUserRealtimeLongPoll();
-  }
-
-  private startUserRealtimeLongPoll(): void {
-    if (this.stopUserRealtimeLongPollInterval) {
-      return;
-    }
-    this.stopUserRealtimeLongPollInterval = this.usersService.startUserRealtimeLongPoll(() => this.runUserRealtimeLongPollTick());
+    this.userRealtimePoller.refresh();
   }
 
   private stopUserRealtimeLongPoll(): void {
-    this.stopUserRealtimeLongPollInterval?.();
-    this.stopUserRealtimeLongPollInterval = null;
-    this.userRealtimeLongPollInFlight = false;
+    this.userRealtimePoller.stop({ abort: true });
     this.userProfileStore.setUserRealtimePollInFlight(false);
+  }
+
+  private userRealtimePollIntervalMs(): number {
+    return this.sessionService.session() && this.userProfileStore.activeUserId().trim()
+      ? SideMenuComponent.USER_REALTIME_POLL_INTERVAL_MS
+      : 0;
   }
 
   private isAdminWorkspaceRoute(routeUrl = this.currentRoutePathRef()): boolean {
@@ -1775,15 +1779,10 @@ export class SideMenuComponent implements OnDestroy {
     return path !== '/' && !path.startsWith('/entry') && !path.startsWith('/admin');
   }
 
-  private async runUserRealtimeLongPollTick(): Promise<void> {
-    if (this.userRealtimeLongPollInFlight) {
-      return;
-    }
-    const userId = this.userProfileStore.activeUserId().trim();
+  private async runUserRealtimeLongPollTick(userId: string): Promise<void> {
     if (!userId) {
       return;
     }
-    this.userRealtimeLongPollInFlight = true;
     this.userProfileStore.setUserRealtimePollInFlight(true);
     try {
       const cursor = this.userProfileStore.getUserRealtimeCursor(userId);
@@ -1793,7 +1792,6 @@ export class SideMenuComponent implements OnDestroy {
       }
       this.userProfileStore.applyUserRealtimeSnapshot(userId, snapshot);
     } finally {
-      this.userRealtimeLongPollInFlight = false;
       this.userProfileStore.setUserRealtimePollInFlight(false);
     }
   }

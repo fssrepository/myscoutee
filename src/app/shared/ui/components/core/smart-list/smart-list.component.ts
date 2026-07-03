@@ -58,6 +58,7 @@ import {
   type InfiniteStepperSurfaceState as StepperSurfaceState
 } from './infinite-stepper';
 import { FiniteStepper } from './finite-stepper';
+import { UiPoller } from '../../../poller';
 import type {
   ListDirection,
   ListQuery,
@@ -313,6 +314,11 @@ export class SmartListComponent<T, TFilters extends SmartListFilters = SmartList
   private hostedFullscreenPendingDelta = 0;
   private hostedFullscreenCompletingTransition = false;
   private hostedFullscreenTransitionTimer: ReturnType<typeof setTimeout> | null = null;
+  private readonly poller = new UiPoller<ListQuery<TFilters>>({
+    intervalMs: () => this.resolvedPollIntervalMs(),
+    query: () => this.visiblePollQuery(),
+    task: ({ query, signal }) => this.pollVisibleItems(query, signal)
+  });
 
   private suspendSnapReactivation = false;
   private deferSnapReactivationUntilScroll = false;
@@ -516,6 +522,7 @@ export class SmartListComponent<T, TFilters extends SmartListFilters = SmartList
 
   ngOnDestroy(): void {
     this.loadSequence += 1;
+    this.poller.destroy();
     this.stepper.reset();
     this.clearListSnapSettleTimers();
     this.clearHorizontalCursorScrollLock();
@@ -1372,6 +1379,7 @@ export class SmartListComponent<T, TFilters extends SmartListFilters = SmartList
     this.progress = 0;
     this.scrollable = false;
     this.weekRateViewportPageKey = null;
+    this.poller.refresh();
 
     if (this.currentViewMode === 'list') {
       this.stepper.clearWindow();
@@ -1386,6 +1394,41 @@ export class SmartListComponent<T, TFilters extends SmartListFilters = SmartList
     this.emitState();
     this.resetScrollSoon();
     void this.loadPageWindow();
+  }
+
+  private visiblePollQuery(): ListQuery<TFilters> {
+    const pageSize = Math.max(1, this.items.length || this.resolveEffectivePageSize());
+    return {
+      ...this.currentQuery(0),
+      page: 0,
+      pageSize,
+      cursor: undefined
+    };
+  }
+
+  private async pollVisibleItems(query: ListQuery<TFilters>, signal?: AbortSignal): Promise<void> {
+    const loader = this.resolveLoadPage();
+    if (
+      signal?.aborted
+      || !loader
+      || this.currentViewMode !== 'list'
+      || this.initialLoading
+      || this.loading
+    ) {
+      return;
+    }
+
+    const sequence = this.loadSequence;
+    const result = await firstValueFrom(loader(query, { signal }));
+    if (signal?.aborted || sequence !== this.loadSequence || this.currentViewMode !== 'list') {
+      return;
+    }
+
+    const items = Array.isArray(result?.items) ? result.items : [];
+    const total = Number.isFinite(result?.total)
+      ? Math.max(0, Math.trunc(Number(result?.total)))
+      : undefined;
+    this.syncVisibleItems(items, { total });
   }
 
   private async loadInitialListPages(): Promise<void> {
@@ -3725,6 +3768,10 @@ private updateListSnapNearEndSuppression(scrollElement?: HTMLDivElement | null):
       return value;
     }
     return fallback;
+  }
+
+  private resolvedPollIntervalMs(): number {
+    return Math.max(0, Math.trunc(Number(this.resolveConfigValue(this.config.pollIntervalMs, null)) || 0));
   }
 
   private resolveConfigValue<TValue>(value: TValue | ((query: ListQuery<TFilters>) => TValue) | undefined, fallback: TValue): TValue {

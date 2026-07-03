@@ -248,6 +248,7 @@ export interface SmartListConfig<T, TFilters extends SmartListFilters = SmartLis
   initialPageSize?: number;
   preloadOffsetPx?: number;
   showBackgroundLoadingProgress?: SmartListConfigValue<boolean, TFilters>;
+  pollIntervalMs?: SmartListConfigValue<number | null, TFilters>;
   loadingDelayMs?: number;
   loadingWindowMs?: number;
   defaultView?: string;

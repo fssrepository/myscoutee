@@ -11,11 +11,6 @@ import { LocalChatsService } from '../../local';
 import { HttpChatsService } from '../../http';
 import { BaseRouteModeService } from './base-route-mode.service';
 import { ActivityMembersService } from './activity-members.service';
-import {
-  RouteIntervalSchedulerService,
-  type RouteIntervalStop,
-  type RouteIntervalTask
-} from './route-interval-scheduler.service';
 import type * as ActivityContracts from '../../contracts/activity.interface';
 
 type ChatMessagesLoadContext = {
@@ -27,12 +22,10 @@ type ChatMessagesLoadContext = {
 })
 export class ChatsService extends BaseRouteModeService implements IChatsService {
   private static readonly CHAT_ROUTE = '/activities/chats';
-  private static readonly CHAT_POLL_INTERVAL_MS = 30000;
 
   private readonly localChatsService = inject(LocalChatsService);
   private readonly httpChatsService = inject(HttpChatsService);
   private readonly activityMembersService = inject(ActivityMembersService);
-  private readonly routeIntervalScheduler = inject(RouteIntervalSchedulerService);
 
   private get chatsService(): LocalChatsService | HttpChatsService {
     return this.resolveRouteService(ChatsService.CHAT_ROUTE, this.localChatsService, this.httpChatsService);
@@ -40,14 +33,6 @@ export class ChatsService extends BaseRouteModeService implements IChatsService 
 
   async queryChatItemsByUser(userId: string): Promise<ChatDTO[]> {
     return this.chatsService.queryChatItemsByUser(userId);
-  }
-
-  startActivityChatsPoll(task: RouteIntervalTask): RouteIntervalStop {
-    return this.routeIntervalScheduler.startInterval(
-      ChatsService.CHAT_ROUTE,
-      task,
-      { fallbackIntervalMs: ChatsService.CHAT_POLL_INTERVAL_MS }
-    );
   }
 
   peekChatItemsByUser(userId: string): ChatDTO[] {

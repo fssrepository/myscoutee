@@ -196,6 +196,8 @@ type ActivitiesPopupMenuContext =
   changeDetection: ChangeDetectionStrategy.OnPush
 })
 export class ActivitiesPopupComponent implements OnDestroy {
+  private static readonly ADMIN_SUPPORT_BOARD_POLL_INTERVAL_MS = 30000;
+
   // ── injected ──────────────────────────────────────────────────────────────
   protected readonly cdr = inject(ChangeDetectorRef);
   protected readonly activitiesStore = inject(ActivitiesPopupStore);
@@ -309,8 +311,6 @@ export class ActivitiesPopupComponent implements OnDestroy {
   protected readonly leavingActivityRowIds = new Set<string>();
   protected readonly activityRowExitAnimationMs = 180;
   private lastAppliedActivityMembersUpdatedMs = 0;
-  private stopAdminSupportBoardPoll: (() => void) | null = null;
-  private adminSupportBoardPollInFlight = false;
   private unregisterActivitiesExplanationContext: (() => void) | null = null;
   private activitiesExplanationContextKey: string | null = null;
   private chatContextUnreadCountsUserId = '';
@@ -407,6 +407,7 @@ export class ActivitiesPopupComponent implements OnDestroy {
     },
     scrollPaddingTop: '2.6rem',
     footerSpacerHeight: null,
+    pollIntervalMs: () => this.activitiesSmartListPollIntervalMs(),
     headerProgress: {
       enabled: true,
       state: () => this.runtimeStore.isOnline() ? 'active' : 'inactive'
@@ -734,12 +735,6 @@ export class ActivitiesPopupComponent implements OnDestroy {
     });
 
     effect(() => {
-      this.configureAdminSupportBoardPolling(
-        this.activitiesStore.activitiesOpen() && this.activitiesStore.activitiesAdminServiceOnly()
-      );
-    });
-
-    effect(() => {
       if (this.isEventActivitiesPrimaryFilter() && this.activitiesSecondaryFilter === 'relevant') {
         this.activitiesStore.setActivitiesSecondaryFilter('recent');
       }
@@ -854,7 +849,6 @@ export class ActivitiesPopupComponent implements OnDestroy {
   ngOnDestroy(): void {
     this.activitiesRates.clearEditorState();
     this.activitiesSmartList?.clearHostedLoading();
-    this.configureAdminSupportBoardPolling(false);
     this.clearActivitiesExplanationContext();
   }
 
@@ -905,90 +899,15 @@ export class ActivitiesPopupComponent implements OnDestroy {
     this.refreshSectionBadges();
   }
 
-  private configureAdminSupportBoardPolling(enabled: boolean): void {
-    if (!enabled) {
-      this.stopAdminSupportBoardPoll?.();
-      this.stopAdminSupportBoardPoll = null;
-      this.adminSupportBoardPollInFlight = false;
-      return;
-    }
-    if (this.stopAdminSupportBoardPoll) {
-      return;
-    }
-    this.stopAdminSupportBoardPoll = this.activitiesService.startActivityChatsPoll(() => {
-      void this.refreshAdminSupportBoardFromPoll();
-    });
-  }
-
-  private async refreshAdminSupportBoardFromPoll(): Promise<void> {
-    const canPoll = () =>
-      this.activitiesStore.activitiesOpen()
+  private activitiesSmartListPollIntervalMs(): number {
+    return this.activitiesStore.activitiesOpen()
       && this.isAdminServiceChatMode()
       && this.activitiesPrimaryFilter === 'chats'
       && !this.isCalendarLayoutView()
       && !this.dialogStore.dialog()
-      && !this.activitiesStore.eventChatSession();
-    const pollSignature = () => [
-      this.activeUser?.id ?? '',
-      this.activitiesView,
-      this.activitiesSecondaryFilter,
-      this.activitiesChatContextFilter,
-      this.activitiesSupportCaseFilter
-    ].join('|');
-
-    if (this.adminSupportBoardPollInFlight || !canPoll()) {
-      return;
-    }
-    const querySignature = pollSignature();
-    const visibleLimit = Math.max(
-      1,
-      this.activitiesSmartList?.visibleItemCount() ?? 0,
-      this.activitiesPageSize * 2
-    );
-    const currentFilters = this.activitiesSmartListQuery.filters ?? {};
-    this.adminSupportBoardPollInFlight = true;
-    try {
-      const page = await this.activitiesService.loadActivityChats(
-        {
-          ...this.activitiesSmartListQuery,
-          page: 0,
-          pageSize: visibleLimit,
-          cursor: undefined,
-          view: this.activitiesView,
-          filters: {
-            ...currentFilters,
-            primaryFilter: 'chats',
-            secondaryFilter: this.activitiesSecondaryFilter,
-            chatContextFilter: 'service',
-            supportCaseFilter: this.activitiesSupportCaseFilter,
-            adminServiceOnly: true
-          }
-        },
-        { chatItems: this.chatsService.peekChatItemsByUser(this.activeUser.id) }
-      );
-      if (!canPoll() || querySignature !== pollSignature()) {
-        return;
-      }
-      const items = Array.isArray(page.items)
-        ? page.items.map(item => this.cloneChatRecord(item))
-        : [];
-      const total = Number.isFinite(page.total)
-        ? Math.max(0, Math.trunc(Number(page.total)))
-        : items.length;
-      const smartList = this.activitiesSmartList;
-      if (smartList?.syncVisibleItems(
-        smartList.convertItems(items.slice(0, visibleLimit)),
-        { total }
-      )) {
-        this.cdr.markForCheck();
-      }
-      this.refreshSectionBadges();
-      this.cdr.markForCheck();
-    } catch {
-      // Keep the current board snapshot if the background poll is unavailable.
-    } finally {
-      this.adminSupportBoardPollInFlight = false;
-    }
+      && !this.activitiesStore.eventChatSession()
+      ? ActivitiesPopupComponent.ADMIN_SUPPORT_BOARD_POLL_INTERVAL_MS
+      : 0;
   }
 
   private applyEventChatRowPatch(patch: EventChatRowPatch): void {

@@ -3,4 +3,5 @@ export * from './converters';
 export * from './context';
 export * from './directives';
 export * from './models';
+export * from './poller';
 export * from './pipes';
