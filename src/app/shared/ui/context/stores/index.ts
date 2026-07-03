@@ -7,6 +7,8 @@ export {
   type ActivityEventCounters,
   type ActivityEventFeedbackCounters,
   type ActivityEventFeedbackSubmitSyncState,
+  type ActivityChatMetricBucketPatch,
+  type ActivityChatMetricBucketType,
   type ActivityMembersSyncState,
   type ActivityResourceSyncState
 } from './activity.store';

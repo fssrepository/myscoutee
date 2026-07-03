@@ -211,6 +211,14 @@ export interface SmartListItemSelectEvent<T, TFilters extends SmartListFilters =
   sourceEvent?: Event;
 }
 
+export interface SmartListRefreshEvent<T, TFilters extends SmartListFilters = SmartListFilters> {
+  items: ReadonlyArray<T>;
+  sourceItems: ReadonlyArray<unknown>;
+  query: ListQuery<TFilters>;
+  currentView: string | null;
+  currentViewMode: SmartListViewMode;
+}
+
 export interface SmartListMenuItemsContext<T, TFilters extends SmartListFilters = SmartListFilters> {
   menu: AppMenuDispatchState<string, unknown>;
   query: ListQuery<TFilters>;

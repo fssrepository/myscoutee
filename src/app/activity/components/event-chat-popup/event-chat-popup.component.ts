@@ -83,14 +83,18 @@ import type * as AppDTOs from '../../../shared/core/contracts';
 import type * as AppConstants from '../../../shared/core/common/constants';
 import { UserProfileStore } from '../../../shared/ui/context/stores/user-profile.store';
 import { AppRuntimeStore } from '../../../shared/ui/context/stores/app-runtime.store';
+import {
+  ActivityStore,
+  type ActivityChatMetricBucketPatch
+} from '../../../shared/ui/context/stores/activity.store';
 import { MemberMenuStore } from '../../../shared/ui/context/stores/member-menu.store';
 import { EventSubeventsPopupStore } from '../../../shared/ui/context/stores/event-subevents-popup.store';
 import {
   SubEventResourcePopupStore,
-  type SubEventResourceMetricsUpdate,
   type SubEventResourcePopupRequest
 } from '../../../shared/ui/context/stores/sub-event-resource-popup.store';
 import {
+  ActivityChatSingleRowConverter,
   ActivityEventInfoCardMenuConverter,
   type ActivityEventInfoCardMenuSubject
 } from '../../../shared/ui/converters';
@@ -200,6 +204,7 @@ export class EventChatPopupComponent implements OnDestroy {
   protected readonly activitiesStore = inject(ActivitiesPopupStore);
   private readonly userProfileStore = inject(UserProfileStore);
   private readonly runtimeStore = inject(AppRuntimeStore);
+  private readonly activityStore = inject(ActivityStore);
   protected readonly memberMenuStore = inject(MemberMenuStore);
   protected readonly eventSubeventsStore = inject(EventSubeventsPopupStore);
   protected readonly resourcePopupStore = inject(SubEventResourcePopupStore);
@@ -236,6 +241,7 @@ export class EventChatPopupComponent implements OnDestroy {
   private resolvedChatResourceStateKey = '';
   private resolvedChatGroupSnapshot: ContractTypes.EventTournamentGroupDTO | null = null;
   private resolvedChatGroupSnapshotKey = '';
+  private lastAppliedActivityChatMetricBucketPatchUpdatedMs = 0;
   protected typingIndicators: ContractTypes.ChatTypingIndicator[] = [];
   protected voiceComposerOpen = false;
   protected voiceRecordingState: 'idle' | 'recording' | 'recorded' | 'saving' = 'idle';
@@ -406,11 +412,12 @@ export class EventChatPopupComponent implements OnDestroy {
     });
 
     effect(() => {
-      const update = this.resourcePopupStore.subEventResourceMetricsUpdate();
-      if (!update) {
+      const patch = this.activityStore.activityChatMetricBucketPatch();
+      if (!patch || patch.updatedMs <= this.lastAppliedActivityChatMetricBucketPatchUpdatedMs) {
         return;
       }
-      this.applySelectedChatResourceMetricsUpdate(update);
+      this.lastAppliedActivityChatMetricBucketPatchUpdatedMs = patch.updatedMs;
+      this.applySelectedChatMetricBucketPatch(patch);
     });
 
     effect(() => {
@@ -4485,44 +4492,80 @@ export class EventChatPopupComponent implements OnDestroy {
     return subEvent;
   }
 
-  private applySelectedChatResourceMetricsUpdate(update: SubEventResourceMetricsUpdate): void {
+  private applySelectedChatMetricBucketPatch(patch: ActivityChatMetricBucketPatch): void {
     const session = this.session();
     const state = this.selectedChatNavigationState;
-    const ownerId = `${state?.eventId ?? this.chatOwnerParts(session?.item ?? null).eventId}`.trim();
-    const subEventId = `${state?.subEvent?.id ?? ''}`.trim();
-    if (
-      !session
-      || !state?.subEvent
-      || !ownerId
-      || !subEventId
-      || `${update.ownerId ?? ''}`.trim() !== ownerId
-      || `${update.subEventId ?? ''}`.trim() !== subEventId
-    ) {
+    if (!session || !state || this.chatMetricIdentity(session.item) !== patch.identity) {
       return;
     }
-    const nextSubEvent: ContractTypes.SubEventDTO = {
-      ...state.subEvent,
-      carsAccepted: update.subEvent.carsAccepted,
-      carsPending: update.subEvent.carsPending,
-      carsCapacityMin: update.subEvent.carsCapacityMin,
-      carsCapacityMax: update.subEvent.carsCapacityMax,
-      accommodationAccepted: update.subEvent.accommodationAccepted,
-      accommodationPending: update.subEvent.accommodationPending,
-      accommodationCapacityMin: update.subEvent.accommodationCapacityMin,
-      accommodationCapacityMax: update.subEvent.accommodationCapacityMax,
-      suppliesAccepted: update.subEvent.suppliesAccepted,
-      suppliesPending: update.subEvent.suppliesPending,
-      suppliesCapacityMin: update.subEvent.suppliesCapacityMin,
-      suppliesCapacityMax: update.subEvent.suppliesCapacityMax
-    };
+    const nextMetrics = this.chatMetricsWithBucket(state.metrics, patch);
     this.resolvedChatResourceState = null;
-    this.resolvedChatResourceStateKey = `${ownerId}:${subEventId}`;
+    this.activitiesStore.patchEventChatHeader(header => {
+      const headerChat = this.chatFromHeader(header);
+      if (this.chatMetricIdentity(headerChat) !== patch.identity) {
+        return header;
+      }
+      return {
+        ...header,
+        metrics: nextMetrics
+      };
+    });
     this.selectedChatNavigationState = {
       ...state,
-      subEvent: nextSubEvent
+      metrics: nextMetrics,
+      subEvent: state.subEvent ? this.applyChatMetricsToSubEvent(state.subEvent, nextMetrics) : state.subEvent,
+      group: this.applyChatMetricsToGroup(state.group, nextMetrics)
     };
     this.chatHeaderContext = this.buildSelectedChatHeaderContext(session.item, this.selectedChatNavigationState);
     this.cdr.markForCheck();
+  }
+
+  private chatMetricIdentity(chat: ChatDTO): string {
+    return ActivityChatSingleRowConverter.smartListKeyForIdentity(
+      this.chatChannelType(chat),
+      chat.ownerId,
+      chat.id
+    );
+  }
+
+  private chatMetricsWithBucket(
+    metrics: ContractTypes.ChatMetricsDTO | null | undefined,
+    patch: ActivityChatMetricBucketPatch
+  ): ContractTypes.ChatMetricsDTO {
+    const next: ContractTypes.ChatMetricsDTO = this.cloneChatMetrics(metrics) ?? {
+      members: null,
+      car: null,
+      accommodation: null,
+      supplies: null,
+      groupsCount: null,
+      pendingTotal: 0
+    };
+    next[patch.bucketType] = { ...patch.bucket };
+    next.pendingTotal = this.chatMetricPendingTotal(next);
+    return next;
+  }
+
+  private cloneChatMetrics(
+    metrics: ContractTypes.ChatMetricsDTO | null | undefined
+  ): ContractTypes.ChatMetricsDTO | null | undefined {
+    if (!metrics) {
+      return metrics;
+    }
+    return {
+      members: metrics.members ? { ...metrics.members } : null,
+      car: metrics.car ? { ...metrics.car } : null,
+      accommodation: metrics.accommodation ? { ...metrics.accommodation } : null,
+      supplies: metrics.supplies ? { ...metrics.supplies } : null,
+      groupsCount: metrics.groupsCount ?? null,
+      pendingTotal: this.chatMetricCount(metrics.pendingTotal)
+    };
+  }
+
+  private chatMetricPendingTotal(metrics: ContractTypes.ChatMetricsDTO): number {
+    return this.chatMetricCount(metrics.members?.pending)
+      + this.chatMetricCount(metrics.car?.pending)
+      + this.chatMetricCount(metrics.accommodation?.pending)
+      + this.chatMetricCount(metrics.supplies?.pending);
   }
 
   private cloneSubEvent(subEvent: ContractTypes.SubEventDTO): ContractTypes.SubEventDTO {

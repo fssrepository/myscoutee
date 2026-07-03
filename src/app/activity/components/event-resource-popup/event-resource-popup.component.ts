@@ -57,6 +57,7 @@ import {
 } from '../../../shared/app-static-data';
 import type { CardMenuActionEvent, InfoCardData } from '../../../shared/ui/components/core/smart-list/card/card.types';
 import {
+  ActivityChatSingleRowConverter,
   ActivitySubEventResourceInfoCardConverter,
   type ActivitySubEventResourceInfoCardConverterOptions
 } from '../../../shared/ui/converters';
@@ -287,8 +288,10 @@ export class EventResourcePopupComponent {
   protected resourceListModel(): EventResourceListModel {
     const cards = this.resourceCards();
     const converterOptions = this.resourceInfoCardConverterOptions();
+    const context = this.resourcePopupStore.popupContextRef();
     return {
       filter: this.resourcePopupStore.resourceFilterRef(),
+      metricIdentity: context ? this.chatMetricIdentity(context) : '',
       filterCounts: this.resourceFilterCounts(),
       items: cards.map(card => ({
         card,
@@ -298,6 +301,18 @@ export class EventResourcePopupComponent {
         )
       }))
     };
+  }
+
+  private chatMetricIdentity(context: ResourcePopupContext): string {
+    const ownerId = `${context.ownerId ?? ''}`.trim();
+    const subEventId = `${context.subEvent.id ?? ''}`.trim();
+    if (!ownerId || !subEventId) {
+      return '';
+    }
+    const groupId = `${context.groupId ?? ''}`.trim();
+    const channelType: ContractTypes.ChatChannelType = groupId ? 'groupSubEvent' : 'optionalSubEvent';
+    const chatOwnerId = groupId ? `${ownerId}:${subEventId}:${groupId}` : `${ownerId}:${subEventId}`;
+    return ActivityChatSingleRowConverter.smartListKeyForIdentity(channelType, chatOwnerId, chatOwnerId);
   }
 
   private resourceInfoCardConverterOptions(): ActivitySubEventResourceInfoCardConverterOptions {

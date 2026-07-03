@@ -46,12 +46,11 @@ export class ActivityChatSingleRowConverter {
     const avatar = `${dto.avatar ?? ''}`.trim();
     const channelType = supportStatus ? 'supportCase' : this.normalizeChannelType(dto);
     const ownerId = `${dto.ownerId ?? ''}`.trim();
-    const rowIdentity = ownerId ? `${channelType}:${ownerId}` : `${dto.id ?? ''}`.trim();
 
     return {
       id: dto.id,
       ownerId: ownerId || null,
-      smartListKey: `chats:${rowIdentity || dto.id}`,
+      smartListKey: this.smartListKeyForIdentity(channelType, ownerId, dto.id),
       status: supportStatus ?? channelType,
       dateIso: dto.dateIso ?? '2026-02-21T09:00:00',
       distanceMetersExact,
@@ -82,6 +81,20 @@ export class ActivityChatSingleRowConverter {
         : [],
       clickable: true
     };
+  }
+
+  static smartListKeyForIdentity(
+    channelType: ChatChannelType | null | undefined,
+    ownerId: string | null | undefined,
+    fallbackId: string | null | undefined
+  ): string {
+    const normalizedOwnerId = `${ownerId ?? ''}`.trim();
+    const normalizedFallbackId = `${fallbackId ?? ''}`.trim();
+    const normalizedChannelType = this.normalizeSmartListChannelType(channelType);
+    const rowIdentity = normalizedOwnerId
+      ? `${normalizedChannelType}:${normalizedOwnerId}`
+      : normalizedFallbackId;
+    return `chats:${rowIdentity || normalizedFallbackId}`;
   }
 
   private static supportStatus(status: string | null | undefined): SupportCaseStatus | null {
@@ -176,6 +189,21 @@ export class ActivityChatSingleRowConverter {
       || dto.channelType === 'appSupport'
     ) {
       return dto.channelType;
+    }
+    return 'general';
+  }
+
+  private static normalizeSmartListChannelType(channelType: ChatChannelType | null | undefined): ChatChannelType {
+    if (
+      channelType === 'mainEvent'
+      || channelType === 'optionalSubEvent'
+      || channelType === 'groupSubEvent'
+      || channelType === 'serviceEvent'
+      || channelType === 'appSupport'
+      || channelType === 'supportCase'
+      || channelType === 'general'
+    ) {
+      return channelType;
     }
     return 'general';
   }

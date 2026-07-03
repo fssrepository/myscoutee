@@ -141,7 +141,10 @@ import type * as AppDTOs from '../../../shared/core/contracts';
 import type * as AppConstants from '../../../shared/core/common/constants';
 import { UserProfileStore } from '../../../shared/ui/context/stores/user-profile.store';
 import { AppRuntimeStore } from '../../../shared/ui/context/stores/app-runtime.store';
-import { ActivityStore } from '../../../shared/ui/context/stores/activity.store';
+import {
+  ActivityStore,
+  type ActivityChatMetricBucketPatch
+} from '../../../shared/ui/context/stores/activity.store';
 import { MemberMenuStore } from '../../../shared/ui/context/stores/member-menu.store';
 import { EventSubeventsPopupStore } from '../../../shared/ui/context/stores/event-subevents-popup.store';
 // ---------------------------------------------------------------------------
@@ -311,6 +314,7 @@ export class ActivitiesPopupComponent implements OnDestroy {
   protected readonly leavingActivityRowIds = new Set<string>();
   protected readonly activityRowExitAnimationMs = 180;
   private lastAppliedActivityMembersUpdatedMs = 0;
+  private lastAppliedActivityChatMetricBucketPatchUpdatedMs = 0;
   private unregisterActivitiesExplanationContext: (() => void) | null = null;
   private activitiesExplanationContextKey: string | null = null;
   private chatContextUnreadCountsUserId = '';
@@ -793,6 +797,16 @@ export class ActivitiesPopupComponent implements OnDestroy {
         return;
       }
       this.applyActivityMembersSyncState(sync);
+      this.cdr.markForCheck();
+    });
+
+    effect(() => {
+      const patch = this.activityStore.activityChatMetricBucketPatch();
+      if (!patch || patch.updatedMs <= this.lastAppliedActivityChatMetricBucketPatchUpdatedMs) {
+        return;
+      }
+      this.lastAppliedActivityChatMetricBucketPatchUpdatedMs = patch.updatedMs;
+      this.applyActivityChatMetricBucketPatch(patch);
       this.cdr.markForCheck();
     });
 
@@ -2031,6 +2045,25 @@ export class ActivitiesPopupComponent implements OnDestroy {
     this.cdr.markForCheck();
   }
 
+  private applyActivityChatMetricBucketPatch(patch: ActivityChatMetricBucketPatch): void {
+    const smartList = this.activitiesSmartList;
+    if (!smartList || this.activitiesPrimaryFilter !== 'chats' || this.isCalendarLayoutView()) {
+      return;
+    }
+    const sourceChat = this.chatRecordFromSourceItem(smartList.sourceItemSnapshot(patch.identity));
+    if (!sourceChat) {
+      return;
+    }
+    const nextChat = this.cloneChatRecord(sourceChat);
+    nextChat.metrics = this.chatMetricsWithBucket(nextChat.metrics, patch);
+    if (this.doesChatMatchActiveContextFilter(nextChat)) {
+      smartList.patchConvertedVisibleItem(nextChat);
+    } else {
+      smartList.removeVisibleItemByIdentity(patch.identity);
+    }
+    this.refreshSectionBadges();
+  }
+
   private resolveActivityEventCardTypeFromDTO(dto: ActivityEventDTO): ActivityEventListType {
     if (dto.type === 'invitations') {
       return 'invitations';
@@ -2240,6 +2273,28 @@ export class ActivitiesPopupComponent implements OnDestroy {
         pendingTotal: Math.max(0, Math.trunc(Number(metrics.pendingTotal) || 0))
       }
       : metrics;
+  }
+
+  private chatMetricsWithBucket(
+    metrics: ContractTypes.ChatMetricsDTO | null | undefined,
+    patch: ActivityChatMetricBucketPatch
+  ): ContractTypes.ChatMetricsDTO {
+    const next: ContractTypes.ChatMetricsDTO = this.cloneChatMetrics(metrics) ?? {
+      members: null,
+      car: null,
+      accommodation: null,
+      supplies: null,
+      groupsCount: null,
+      pendingTotal: 0
+    };
+    next[patch.bucketType] = { ...patch.bucket };
+    next.pendingTotal = this.chatMetricPendingTotal(next);
+    return next;
+  }
+
+  private chatMetricPendingTotal(metrics: ContractTypes.ChatMetricsDTO): number {
+    return (['members', 'car', 'accommodation', 'supplies'] as const)
+      .reduce((sum, key) => sum + Math.max(0, Math.trunc(Number(metrics[key]?.pending) || 0)), 0);
   }
 
   private areChatMetricsEqual(

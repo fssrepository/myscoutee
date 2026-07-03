@@ -86,6 +86,7 @@ import type {
   SmartListPaginationStep,
   SmartListPresentation,
   SmartListPrependRestoreMode,
+  SmartListRefreshEvent,
   SmartListSortableConfig,
   SmartListStateChange,
   SmartListViewConfig,
@@ -151,6 +152,7 @@ export class SmartListComponent<T, TFilters extends SmartListFilters = SmartList
   @Output() readonly viewChange = new EventEmitter<string>();
   @Output() readonly itemSelect = new EventEmitter<SmartListItemSelectEvent<T, TFilters>>();
   @Output() readonly menuItemSelect = new EventEmitter<AppMenuItemSelectEvent<string, unknown>>();
+  @Output() readonly refresh = new EventEmitter<SmartListRefreshEvent<T, TFilters>>();
 
   protected items: T[] = [];
   protected groups: SmartListGroup<T>[] = [];
@@ -833,6 +835,7 @@ export class SmartListComponent<T, TFilters extends SmartListFilters = SmartList
 
     if (!sameShape) {
       this.replaceVisibleItems(nextItems, { total: nextTotal });
+      this.emitRefresh();
       return true;
     }
 
@@ -856,6 +859,7 @@ export class SmartListComponent<T, TFilters extends SmartListFilters = SmartList
     this.syncGroups();
     this.finiteStepper.syncBounds();
     this.emitState();
+    this.emitRefresh();
     this.cdr.markForCheck();
     return true;
   }
@@ -1284,6 +1288,44 @@ export class SmartListComponent<T, TFilters extends SmartListFilters = SmartList
   private sourceItemForItem(item: T, index: number): unknown {
     const identity = `${this.cacheTrackKey(item, Math.max(0, index))}`.trim();
     return identity ? this.sourceItemByIdentity.get(identity) : undefined;
+  }
+
+  public sourceItemSnapshot(identity: string): unknown | undefined {
+    const normalizedIdentity = identity.trim();
+    return normalizedIdentity ? this.sourceItemByIdentity.get(normalizedIdentity) : undefined;
+  }
+
+  public sourceItemsSnapshot(): unknown[] {
+    return this.items.map((item, index) => this.sourceItemForItem(item, index) ?? item);
+  }
+
+  private cacheVisibleSourceItem(source: unknown, item: T): void {
+    const itemKey = `${smartListItemKeyFromItem(item) ?? ''}`.trim();
+    const index = this.items.findIndex((candidate, candidateIndex) => {
+      if (candidate === item) {
+        return true;
+      }
+      const candidateKey = `${smartListItemKeyFromItem(candidate) ?? ''}`.trim();
+      return (!!itemKey && candidateKey === itemKey)
+        || (!!itemKey && `${this.cacheTrackKey(candidate, candidateIndex)}`.trim() === itemKey);
+    });
+    if (index < 0) {
+      return;
+    }
+    const identity = `${this.cacheTrackKey(this.items[index] as T, index)}`.trim();
+    if (identity) {
+      this.sourceItemByIdentity.set(identity, source);
+    }
+  }
+
+  private emitRefresh(): void {
+    this.refresh.emit({
+      items: [...this.items],
+      sourceItems: this.sourceItemsSnapshot(),
+      query: this.currentQuery(),
+      currentView: this.currentViewKey,
+      currentViewMode: this.currentViewMode
+    });
   }
 
   protected hostedFullscreenEmptyLabel(): string {
@@ -4076,7 +4118,12 @@ private updateListSnapNearEndSuppression(scrollElement?: HTMLDivElement | null):
     if (!predicate) {
       return false;
     }
-    return this.patchVisibleItem(predicate, () => nextItem);
+    if (!this.patchVisibleItem(predicate, () => nextItem)) {
+      return false;
+    }
+    this.cacheVisibleSourceItem(source, nextItem);
+    this.emitRefresh();
+    return true;
   }
 
   public upsertConvertedVisibleItem<TSource>(
@@ -4098,9 +4145,16 @@ private updateListSnapNearEndSuppression(scrollElement?: HTMLDivElement | null):
         ? (item: T, index: number) => `${this.cacheTrackKey(item, index)}`.trim() === normalizedIdentity
         : null);
     if (predicate && this.patchVisibleItem(predicate, () => nextItem)) {
+      this.cacheVisibleSourceItem(source, nextItem);
+      this.emitRefresh();
       return true;
     }
-    return this.reinsertVisibleItem(nextItem, { totalDelta: options.totalDelta });
+    if (!this.reinsertVisibleItem(nextItem, { totalDelta: options.totalDelta })) {
+      return false;
+    }
+    this.cacheVisibleSourceItem(source, nextItem);
+    this.emitRefresh();
+    return true;
   }
 
   public removeVisibleItems(
@@ -4117,6 +4171,7 @@ private updateListSnapNearEndSuppression(scrollElement?: HTMLDivElement | null):
     this.replaceVisibleItems(nextItems, {
       total: Math.max(nextItems.length, this.total + (options.totalDelta ?? -1))
     });
+    this.emitRefresh();
     return true;
   }
 
