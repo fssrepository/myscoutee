@@ -574,6 +574,7 @@
 }
 
 .form-flow--grouped .form-flow__slide--media .form-flow__controls {
+  --form-flow-media-image-height: 186px;
   grid-template-columns: minmax(320px, 400px) repeat(2, minmax(0, 1fr));
 }
 
@@ -581,7 +582,7 @@
   display: flex;
   grid-column: 1;
   grid-row: 1 / span var(--form-flow-control-row-span, 3);
-  align-self: stretch;
+  align-self: start;
   min-height: 0;
 }
 
@@ -590,9 +591,11 @@
 }
 
 .form-flow--grouped .form-flow__slide--media .form-flow__control--image app-image-carousel {
-  flex: 1 1 auto;
-  height: 100%;
+  --image-single-slot-height: var(--form-flow-media-image-height);
+  flex: 0 0 auto;
+  height: var(--form-flow-media-image-height);
   min-height: 0;
+  max-width: 100%;
 }
 
 .form-flow--grouped .form-flow__slide--media .form-flow__control--image ~ .form-flow__control:not(.form-flow__control--half) {
@@ -646,16 +649,17 @@
   }
 }
 
-.form-flow__control.is-required-missing {
-  .form-flow__label {
-    color: #a73434;
-  }
-
+.form-flow__control.is-required {
   input,
-  textarea,
-  .form-flow__date-input,
-  .form-flow__location-input,
-  .form-flow__link-input {
+  textarea {
+    border-color: #ef9a9a;
+    background: #fff1f1;
+  }
+}
+
+.form-flow__control.is-required-missing {
+  input,
+  textarea {
     border-color: #ef9a9a;
     background: #fff1f1;
   }

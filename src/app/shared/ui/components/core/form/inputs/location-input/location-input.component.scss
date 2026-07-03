@@ -51,6 +51,7 @@
   box-shadow: 0 0 0 3px rgba(55, 116, 212, 0.14);
 }
 
+:host-context(.form-flow__control.is-required) .location-input input,
 :host-context(.form-flow__control.is-required-missing) .location-input input {
   border-color: #ef9a9a;
   background: #fff1f1;
@@ -70,6 +71,8 @@
   box-shadow: none;
 }
 
+:host-context(.form-flow__control.is-required) .location-input input:read-only,
+:host-context(.form-flow__control.is-required) .location-input input:disabled,
 :host-context(.form-flow__control.is-required-missing) .location-input input:read-only,
 :host-context(.form-flow__control.is-required-missing) .location-input input:disabled {
   border-color: #ef9a9a;
