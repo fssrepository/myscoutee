@@ -293,7 +293,7 @@ export class ActivityResourceBuilder {
 
   static buildSeededState(
     ref: AppDTOs.ActivitySubEventResourceStateRefDTO,
-    assets: readonly ActivityResourceAssetDTO[]
+    _assets: readonly ActivityResourceAssetDTO[]
   ): AppDTOs.ActivitySubEventResourceStateDTO {
     return this.createEmptyState(ref);
   }

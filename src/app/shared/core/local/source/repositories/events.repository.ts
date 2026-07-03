@@ -16,8 +16,7 @@ import {
   type ActivityEventExploreQueryResult,
   type ActivityEventRecord,
   type ActivityEventSubEventsQueryDTO,
-  type ActivityEventScopeFilter,
-  type ActivityEventRepositoryItemType
+  type ActivityEventScopeFilter
 } from '../../../contracts/activity.interface';
 import {
   ACTIVITY_MEMBERS_TABLE_NAME,
@@ -288,16 +287,6 @@ export class LocalEventsRepository {
     return actionTarget.action === 'resume-tournament' && !this.hasStageDatePassed(stage?.endAt)
       ? 'A'
       : actionTarget.nextStatus;
-  }
-
-  private isStageStartAllowed(stages: readonly ContractTypes.SubEventDTO[], stageIndex: number): boolean {
-    if (stageIndex < 0 || stageIndex >= stages.length) {
-      return false;
-    }
-    if (stageIndex === 0) {
-      return true;
-    }
-    return this.normalizeStageStatus(stages[stageIndex - 1]?.stageStatus) === 'F';
   }
 
   private canReopenScores(stages: readonly ContractTypes.SubEventDTO[], stageIndex: number): boolean {
@@ -802,7 +791,7 @@ export class LocalEventsRepository {
     });
   }
 
-  takeOverItem(userId: string, sourceId: string): void {
+  takeOverItem(_userId: string, sourceId: string): void {
     const normalizedSourceId = sourceId.trim();
     if (!normalizedSourceId) {
       return;
@@ -1549,13 +1538,6 @@ export class LocalEventsRepository {
       }
       return !(feedbackRecord.submittedAtIso?.trim());
     }).length;
-  }
-
-  private resolveStateRecordKeys(
-    userId: string,
-    sourceId: string
-  ): string[] {
-    return this.resolveStateRecordKeysFromTable(this.memoryDb.read()[EVENTS_TABLE_NAME], userId, sourceId);
   }
 
   private resolveStateRecordKeysFromTable(
@@ -3514,10 +3496,6 @@ export class LocalEventsRepository {
     }
     const parsed = new Date(value);
     return Number.isNaN(parsed.getTime()) ? null : parsed;
-  }
-
-  private toDateMs(value: string | null | undefined): number {
-    return this.parseEventDate(value)?.getTime() ?? Number.POSITIVE_INFINITY;
   }
 
   private slotOverrideDateKey(value: string | null | undefined): string | null {

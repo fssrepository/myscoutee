@@ -778,7 +778,6 @@ export class HomeComponent implements OnDestroy {
   ): PairCardData {
     const round = row?.mode === 'pair' ? row.round : null;
     const presentation = options?.presentation ?? 'fullscreen';
-    const isSocialPair = !!round?.socialCard;
     return {
       rowId: row?.id ?? 'home-pair-empty',
       stackClasses: ['activities-rate-profile-stack-pair'],

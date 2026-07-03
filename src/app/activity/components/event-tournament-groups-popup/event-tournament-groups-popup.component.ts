@@ -17,9 +17,6 @@ import {
 } from '@angular/material/icon';
 
 import {
-  AppUtils
-} from '../../../shared/app-utils';
-import {
   ActivityResourceBuilder,
   ActivityResourcesService,
   EventsService

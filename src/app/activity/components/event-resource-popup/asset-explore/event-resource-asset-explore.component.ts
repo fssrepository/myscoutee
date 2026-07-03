@@ -242,7 +242,6 @@ export class EventResourceAssetExploreComponent implements DoCheck {
   private loadScheduled = false;
   private lastAssetExploreOutletActionRequestId = 0;
   private readonly warmCacheByKey = new Map<string, ResourceAssetDTO[]>();
-  private readonly pendingWarmupKeys = new Set<string>();
   private readonly localReservationsByKey = new Map<string, {
     startAtIso: string;
     endAtIso: string;
@@ -781,7 +780,6 @@ export class EventResourceAssetExploreComponent implements DoCheck {
       return null;
     }
     const resourceCard = this.assetCardToResourceCard(card, context.subEvent.id);
-    const managerUserId = `${card.ownerUserId ?? ''}`.trim() || null;
     return {
       card: resourceCard,
       mode: 'view',
@@ -1427,22 +1425,6 @@ export class EventResourceAssetExploreComponent implements DoCheck {
       }
       void this.loadCards();
     });
-  }
-
-  private async prewarmQuery(query: AppDTOs.AssetExploreQueryDTO): Promise<void> {
-    const key = this.queryKey(query);
-    if (this.warmCacheByKey.has(key) || this.pendingWarmupKeys.has(key)) {
-      return;
-    }
-    this.pendingWarmupKeys.add(key);
-    try {
-      const cards = await this.assetsService.queryVisibleAssets(query);
-      this.storeWarmCache(key, this.sortCards(cards, query.startAtIso ?? '', query.endAtIso ?? ''));
-    } catch {
-      // Warm-up is best-effort.
-    } finally {
-      this.pendingWarmupKeys.delete(key);
-    }
   }
 
   private queryFromPopup(

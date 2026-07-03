@@ -11,7 +11,7 @@ import type { UiConverter } from './converter.types';
 
 export interface CalendarCardConverterInput<T, TFilters extends SmartListFilters = SmartListFilters> {
   viewMode: SmartListViewMode;
-  pages: readonly SmartListPage<T>[];
+  pages: readonly SmartListPage[];
   calendar: SmartListCalendarConfig<T, TFilters> | null;
   query: ListQuery<TFilters>;
   variant: SmartListCalendarVariant;

@@ -12,7 +12,7 @@ import type {
 export type SmartListPageMode = Exclude<SmartListViewMode, 'list'>;
 export type SmartListPageVariant = string;
 
-export interface SmartListPage<T> {
+export interface SmartListPage {
   key: string;
   label: string;
   anchor: Date;
@@ -20,7 +20,7 @@ export interface SmartListPage<T> {
 
 export interface SmartListPageCardModel<T, TFilters extends SmartListFilters = SmartListFilters> {
   mode: SmartListPageMode;
-  pages: readonly SmartListPage<T>[];
+  pages: readonly SmartListPage[];
   config: unknown | null;
   query: ListQuery<TFilters>;
   variant: SmartListPageVariant;
@@ -39,7 +39,7 @@ export interface SmartListPageAdapter<
   T,
   TFilters extends SmartListFilters = SmartListFilters,
   TConfig = unknown,
-  TPage extends SmartListPage<T> = SmartListPage<T>
+  TPage extends SmartListPage = SmartListPage
 > extends InfiniteStepperPageAdapter<Date, TPage, T, ListQuery<TFilters>, TConfig> {
   mode: SmartListPageMode;
   config: (config: SmartListConfig<T, TFilters>) => TConfig | null;

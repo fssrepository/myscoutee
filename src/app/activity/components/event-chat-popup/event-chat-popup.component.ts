@@ -348,7 +348,7 @@ export class EventChatPopupComponent implements OnDestroy {
   private imageAttachmentInput?: ElementRef<HTMLInputElement>;
 
   @ViewChild('chatComposeBox')
-  private set chatComposeBox(value: ElementRef<HTMLDivElement> | undefined) {
+  protected set chatComposeBoxElement(value: ElementRef<HTMLDivElement> | undefined) {
     this.chatComposeBoxRef = value;
     this.observeChatComposeBox();
   }
@@ -377,7 +377,6 @@ export class EventChatPopupComponent implements OnDestroy {
   private voiceRecorderChunks: BlobPart[] = [];
   private voiceRecorderTimer: ReturnType<typeof setInterval> | null = null;
   private chatThreadScrollDismissElement: HTMLElement | null = null;
-  private suppressTouchContextMenuUntilMs = 0;
   private readonly dismissMessageUiOnChatScroll = () => {
     if (!this.selectedMessageId && !this.quickReactionMessageId && !this.emojiPickerMessageId && !(this.chatThreadSmartList?.menuOpen() ?? false)) {
       return;
@@ -1569,7 +1568,7 @@ export class EventChatPopupComponent implements OnDestroy {
 
   protected selectPollOption(
     message: ContractTypes.ChatMessageDto,
-    attachment: ContractTypes.ChatMessageAttachment,
+    _attachment: ContractTypes.ChatMessageAttachment,
     option: ChatPollOptionState,
     event?: Event
   ): void {
@@ -1833,7 +1832,6 @@ export class EventChatPopupComponent implements OnDestroy {
     if (!messageId || message.deletedAtIso) {
       return;
     }
-    this.suppressTouchContextMenuUntilMs = Date.now() + 1100;
     this.clearMessageLongPress();
     this.messageLongPressTimer = setTimeout(() => {
       this.selectedMessageId = messageId;
@@ -2489,25 +2487,6 @@ export class EventChatPopupComponent implements OnDestroy {
       });
   }
 
-  private buildCurrentEventAttachment(): ContractTypes.ChatMessageAttachment | null {
-    const session = this.session();
-    const eventId = `${this.selectedChatNavigationState?.eventId ?? this.chatOwnerParts(session?.item ?? null).eventId}`.trim();
-    const title = `${this.selectedChatNavigationState?.eventTitle ?? session?.item.title ?? ''}`.trim();
-    if (!eventId || !title) {
-      return null;
-    }
-    return {
-      id: `event:${eventId}:${Date.now()}`,
-      type: 'event',
-      entityId: eventId,
-      title,
-      subtitle: `${session?.item.lastMessage ?? ''}`.trim() || null,
-      description: null,
-      url: null,
-      previewUrl: null
-    };
-  }
-
   private async resolveShareAttachmentFromText(text: string): Promise<ContractTypes.ChatMessageAttachment | null> {
     const token = this.parseShareToken(text);
     if (!token) {
@@ -2550,32 +2529,6 @@ export class EventChatPopupComponent implements OnDestroy {
   private parseShareToken(text: string): string | null {
     const normalized = `${text ?? ''}`.trim();
     return normalized.match(/^myscoutee:token:[A-Za-z0-9-]+$/) ? normalized : null;
-  }
-
-  private buildFirstAssetAttachment(): ContractTypes.ChatMessageAttachment | null {
-    const state = this.selectedChatNavigationState;
-    if (!state) {
-      return null;
-    }
-    for (const type of ASSET_TYPES) {
-      const card = state.assetCardsByType[type]?.[0];
-      if (!card) {
-        continue;
-      }
-      return {
-        id: `asset:${card.id}:${Date.now()}`,
-        type: 'asset',
-        entityId: card.id,
-        assetType: type,
-        ownerUserId: card.ownerUserId ?? null,
-        title: card.title,
-        subtitle: [type, card.city].filter(Boolean).join(' - ') || null,
-        description: `${card.description ?? card.details ?? card.subtitle ?? ''}`.trim() || null,
-        url: null,
-        previewUrl: `${card.imageUrl ?? ''}`.trim() || null
-      };
-    }
-    return null;
   }
 
   private findSharedAssetResourceType(
@@ -3870,7 +3823,7 @@ export class EventChatPopupComponent implements OnDestroy {
 
   private withResolvedChatMessageId(
     message: ContractTypes.ChatMessageDto,
-    fallbackIndex: number | null
+    _fallbackIndex: number | null
   ): ContractTypes.ChatMessageDto {
     const messageId = `${message.id ?? ''}`.trim();
     if (messageId) {

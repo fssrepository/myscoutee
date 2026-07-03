@@ -162,7 +162,7 @@ export class EventMembersPopupComponent {
   protected membersItemTemplateRef?: TemplateRef<SmartListItemTemplateContext<ActivityContracts.ActivityMemberDTO, MembersSmartListFilters>>;
 
   @ViewChild('memberItemTemplate', { read: TemplateRef })
-  private set membersItemTemplate(
+  protected set membersItemTemplate(
     value: TemplateRef<SmartListItemTemplateContext<ActivityContracts.ActivityMemberDTO, MembersSmartListFilters>> | undefined
   ) {
     this.membersItemTemplateRef = value;

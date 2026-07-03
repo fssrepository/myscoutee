@@ -1007,107 +1007,6 @@ export class ExperienceDocumentImportService {
     return 'Workspace';
   }
 
-  private parseExperienceBlock(
-    lines: readonly string[],
-    type: ExperienceEntry['type']
-  ): { entry: ParsedExperienceImportEntry; usedFallbackDate: boolean } | null {
-    const dateRange = this.extractDateRange(lines.join(' '));
-    const title = this.resolveTitle(lines);
-    if (!title) {
-      return null;
-    }
-
-    const metaLine = this.resolveMetaLine(lines, title, dateRange?.matchedText ?? '');
-    const parsedMeta = this.parseMetaLine(metaLine, type);
-    const fallbackDate = this.currentYearMonth();
-    const dateFrom = dateRange?.dateFrom ?? fallbackDate;
-    const dateTo = dateRange?.dateTo ?? 'Present';
-    const description = this.resolveDescription(lines, title, metaLine, dateRange?.matchedText ?? '');
-
-    return {
-      entry: {
-        type,
-        title,
-        org: parsedMeta.org,
-        city: parsedMeta.city,
-        dateFrom,
-        dateTo,
-        description
-      },
-      usedFallbackDate: !dateRange
-    };
-  }
-
-  private resolveTitle(lines: readonly string[]): string {
-    return lines.find(line => line.length > 2 && !this.looksLikeContactLine(line)) ?? '';
-  }
-
-  private resolveMetaLine(lines: readonly string[], title: string, matchedDateText: string): string {
-    for (const line of lines) {
-      if (line === title) {
-        continue;
-      }
-      const cleaned = matchedDateText ? line.replace(matchedDateText, ' ') : line;
-      if (cleaned.trim().length > 0) {
-        return cleaned.trim();
-      }
-    }
-    return '';
-  }
-
-  private parseMetaLine(line: string, type: ExperienceEntry['type']): { org: string; city: string } {
-    const fallbackOrg = type === 'School'
-      ? 'Academic Program'
-      : type === 'Online Session'
-        ? 'Online Program'
-        : type === 'Additional Project'
-          ? 'Independent Project'
-          : 'Professional Experience';
-    if (!line) {
-      return {
-        org: fallbackOrg,
-        city: ''
-      };
-    }
-
-    const compact = line
-      .replace(/\s+[–-]\s+/g, ' · ')
-      .replace(/\s+\|\s+/g, ' · ');
-    const segments = compact
-      .split(/·|,/)
-      .map(item => item.trim())
-      .filter(item => item.length > 0);
-    if (segments.length === 0) {
-      return {
-        org: fallbackOrg,
-        city: ''
-      };
-    }
-    if (segments.length === 1) {
-      return {
-        org: segments[0],
-        city: ''
-      };
-    }
-    return {
-      org: segments[0] || fallbackOrg,
-      city: segments[segments.length - 1] || ''
-    };
-  }
-
-  private resolveDescription(
-    lines: readonly string[],
-    title: string,
-    metaLine: string,
-    matchedDateText: string
-  ): string {
-    const ignored = new Set([title, metaLine, matchedDateText].filter(item => item.length > 0));
-    const descriptionLines = lines
-      .map(line => matchedDateText ? line.replace(matchedDateText, ' ').trim() : line.trim())
-      .filter(line => line.length > 0 && !ignored.has(line));
-    return descriptionLines.join(' ').slice(0, 280);
-  }
-
   private extractTimelineFallbackEntries(
     normalizedText: string,
     seenSignatures: Set<string>
@@ -1508,8 +1407,4 @@ export class ExperienceDocumentImportService {
     ].join('|');
   }
 
-  private looksLikeContactLine(line: string): boolean {
-    const normalized = line.toLowerCase();
-    return normalized.includes('@') || normalized.includes('linkedin') || normalized.includes('github');
-  }
 }

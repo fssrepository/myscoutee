@@ -90,7 +90,6 @@ import type {
   ResourceAssetDTO,
   ResourceAssetViewState,
   ResourcePopupContext,
-  RouteEditorState,
   SubEventResourcePopupRequest
 } from '../../../shared/ui/context/stores/sub-event-resource-popup.store';
 import type { ChatDTO } from '../../../shared/core/contracts/chat.interface';

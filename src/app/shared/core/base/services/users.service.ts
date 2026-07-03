@@ -27,8 +27,7 @@ import type {
   UserLogoutRequestDto,
   UserReportUserSubmitRequestDto,
   UserRealtimeLongPollResponseDto,
-  UserSubmitActionResponseDto,
-  UserService
+  UserSubmitActionResponseDto
 } from '../../contracts/user.interface';
 import type { UserGameFilterPreferencesDto } from '../../contracts/activity.interface';
 import type { LocationCoordinates } from '../../contracts/user.interface';

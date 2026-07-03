@@ -2,7 +2,7 @@ import type * as EventContracts from '../../core/contracts/event.interface';
 import type {
   SingleRowData
 } from '../components/core/smart-list/card';
-import type { UiConverter, UiListConverter } from './converter.types';
+import type { UiListConverter } from './converter.types';
 
 export interface EventPolicySingleRowConverterOptions {
   index?: number;

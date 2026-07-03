@@ -170,7 +170,6 @@ export class SeedUserRatesBuilder {
       scoreGiven = 4 + (seed % 7);
       scoreReceived = 0;
     }
-    const variantSuffix = variantIndex > 0 ? `-v${variantIndex}` : '';
     const distanceMetersExact = ((2 + ((seed + laneIndex + userIndex) % 33)) * 1000)
       + Math.abs(seed % 1000);
     const socialContext: ActivityRateDTO['socialContext'] | undefined =

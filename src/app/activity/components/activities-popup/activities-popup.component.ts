@@ -2154,50 +2154,6 @@ export class ActivitiesPopupComponent implements OnDestroy {
       : null;
   }
 
-  private chatRecordPreviewForRow(row: ActivityListItem): ChatDTO | null {
-    if (this.activitiesPrimaryFilter !== 'chats') {
-      return null;
-    }
-    const chatRow = row as ActivityChatListItem;
-    const status = `${(chatRow as { status?: unknown }).status ?? ''}`.trim();
-    const supportStatus = this.supportStatusFromRowStatus(status);
-    const channelType = supportStatus ? 'supportCase' : this.chatChannelTypeFromRowStatus(status);
-    const activeUserId = `${this.activeUser?.id ?? ''}`.trim();
-    const title = `${chatRow.subtitle ?? chatRow.title ?? ''}`.trim() || 'Chat';
-    return {
-      id: chatRow.id,
-      avatar: `${chatRow.avatarInitials ?? ''}`.trim() || AppUtils.initialsFromText(title),
-      title,
-      lastMessage: `${chatRow.detail ?? ''}`.trim(),
-      lastSenderId: activeUserId,
-      memberIds: activeUserId ? [activeUserId] : [],
-      unread: Math.max(0, Math.trunc(Number(chatRow.unread) || 0)),
-      dateIso: chatRow.dateIso ?? undefined,
-      distanceMetersExact: chatRow.distanceMetersExact ?? undefined,
-      channelType,
-      ownerId: `${chatRow.ownerId ?? ''}`.trim() || (supportStatus ? chatRow.id : undefined),
-      supportCase: supportStatus
-        ? {
-          status: supportStatus,
-          assignee: null,
-          updatedAtIso: null
-        }
-        : null
-    };
-  }
-
-  private chatChannelTypeFromRowStatus(status: string): ContractTypes.ChatChannelType | undefined {
-    return status === 'general'
-      || status === 'mainEvent'
-      || status === 'optionalSubEvent'
-      || status === 'groupSubEvent'
-      || status === 'serviceEvent'
-      || status === 'appSupport'
-      || status === 'supportCase'
-      ? status
-      : undefined;
-  }
-
   private supportStatusFromRowStatus(status: string): ContractTypes.SupportCaseStatus | null {
     return status === 'pending'
       || status === 'picked'
@@ -2205,47 +2161,6 @@ export class ActivitiesPopupComponent implements OnDestroy {
       || status === 'blocked'
       ? status
       : null;
-  }
-
-  private async resolveChatRecordForRow(
-    row: ActivityListItem
-  ): Promise<ChatDTO | null> {
-    if (this.activitiesPrimaryFilter !== 'chats') {
-      return null;
-    }
-    const userId = this.activeUser?.id?.trim();
-    if (!userId) {
-      return null;
-    }
-    const items = await this.chatsService.queryChatItemsByUser(userId);
-    this.refreshSectionBadges();
-    this.cdr.markForCheck();
-    const resolved = items.find(item => item.id === row.id) ?? null;
-    return resolved ? this.cloneChatRecord(resolved) : null;
-  }
-
-  private areChatRecordsEqual(left: ChatDTO, right: ChatDTO): boolean {
-    const leftMemberIds = left.memberIds ?? [];
-    const rightMemberIds = right.memberIds ?? [];
-    if (
-      left.id !== right.id
-      || left.avatar !== right.avatar
-      || left.title !== right.title
-      || left.lastMessage !== right.lastMessage
-      || left.lastSenderId !== right.lastSenderId
-      || left.unread !== right.unread
-      || left.dateIso !== right.dateIso
-      || left.distanceKm !== right.distanceKm
-      || left.distanceMetersExact !== right.distanceMetersExact
-      || left.channelType !== right.channelType
-      || left.ownerId !== right.ownerId
-      || !this.areChatMetricsEqual(left.metrics, right.metrics)
-      || !this.areChatSupportCasesEqual(left.supportCase, right.supportCase)
-      || leftMemberIds.length !== rightMemberIds.length
-    ) {
-      return false;
-    }
-    return leftMemberIds.every((memberId, index) => memberId === rightMemberIds[index]);
   }
 
   private cloneChatSupportCase(
@@ -2295,48 +2210,6 @@ export class ActivitiesPopupComponent implements OnDestroy {
   private chatMetricPendingTotal(metrics: ContractTypes.ChatMetricsDTO): number {
     return (['members', 'car', 'accommodation', 'supplies'] as const)
       .reduce((sum, key) => sum + Math.max(0, Math.trunc(Number(metrics[key]?.pending) || 0)), 0);
-  }
-
-  private areChatMetricsEqual(
-    left: ContractTypes.ChatMetricsDTO | null | undefined,
-    right: ContractTypes.ChatMetricsDTO | null | undefined
-  ): boolean {
-    if (!left || !right) {
-      return left === right;
-    }
-    return this.areChatMetricBucketsEqual(left.members, right.members)
-      && this.areChatMetricBucketsEqual(left.car, right.car)
-      && this.areChatMetricBucketsEqual(left.accommodation, right.accommodation)
-      && this.areChatMetricBucketsEqual(left.supplies, right.supplies)
-      && (left.groupsCount ?? null) === (right.groupsCount ?? null)
-      && left.pendingTotal === right.pendingTotal;
-  }
-
-  private areChatMetricBucketsEqual(
-    left: ContractTypes.ChatMetricBucketDTO | null | undefined,
-    right: ContractTypes.ChatMetricBucketDTO | null | undefined
-  ): boolean {
-    if (!left || !right) {
-      return left === right;
-    }
-    return left.accepted === right.accepted
-      && left.pending === right.pending
-      && left.capacityMin === right.capacityMin
-      && left.capacityMax === right.capacityMax;
-  }
-
-  private areChatSupportCasesEqual(
-    left: ContractTypes.ChatSupportCase | null | undefined,
-    right: ContractTypes.ChatSupportCase | null | undefined
-  ): boolean {
-    if (!left || !right) {
-      return left === right;
-    }
-    return left.status === right.status
-      && left.updatedAtIso === right.updatedAtIso
-      && (left.assignee?.userId ?? null) === (right.assignee?.userId ?? null)
-      && (left.assignee?.name ?? null) === (right.assignee?.name ?? null)
-      && (left.assignee?.initials ?? null) === (right.assignee?.initials ?? null);
   }
 
   private syncActivityEventMetadata(item: ActivityEventDTO): void {

@@ -290,13 +290,6 @@ export class LocalAssetsRepository {
       .filter((record): record is ActivityMemberRecord => Boolean(record));
   }
 
-  private activityMemberRecords(): ActivityMemberRecord[] {
-    const table = this.activityMembersCollection();
-    return table.ids
-      .map(id => table.byId[id])
-      .filter((record): record is ActivityMemberRecord => Boolean(record));
-  }
-
   private activityMembersCollection(): ActivityMembersRecordCollection {
     return this.normalizeActivityMembersCollection(this.memoryDb.read()[ACTIVITY_MEMBERS_TABLE_NAME]);
   }
@@ -725,17 +718,6 @@ export class LocalAssetsRepository {
       ids,
       idsByOwnerUserId
     };
-  }
-
-  private cloneOwnerUserIdIndex(index: Record<string, readonly string[] | string[] | undefined>): Record<string, string[]> {
-    const next: Record<string, string[]> = {};
-    for (const [ownerUserId, ids] of Object.entries(index)) {
-      if (!ownerUserId.trim() || !Array.isArray(ids)) {
-        continue;
-      }
-      next[ownerUserId] = ids.map(id => String(id)).filter(id => id.length > 0);
-    }
-    return next;
   }
 
   private queryVisibleExploreOwners(activeUserId: string): UserDto[] {

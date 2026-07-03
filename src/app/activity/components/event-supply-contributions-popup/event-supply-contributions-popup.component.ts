@@ -138,7 +138,7 @@ export class EventSupplyContributionsPopupComponent implements DoCheck {
   >;
 
   @ViewChild('supplyContributionItemTemplate', { read: TemplateRef })
-  private set supplyContributionItemTemplate(
+  protected set supplyContributionItemTemplate(
     value: TemplateRef<SmartListItemTemplateContext<AppDTOs.SubEventSupplyContributionRowDTO, SupplyContributionListFilters>> | undefined
   ) {
     this.supplyContributionItemTemplateRef = value;

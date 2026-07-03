@@ -512,7 +512,4 @@ export class HttpAssetsService {
     return AssetCardBuilder.normalizeAssetStatus(status);
   }
 
-  private cloneRequest(request: AppDTOs.AssetMemberRequestDTO): AppDTOs.AssetMemberRequestDTO {
-    return AssetCardBuilder.cloneRequest(request);
-  }
 }

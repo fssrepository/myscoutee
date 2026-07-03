@@ -185,7 +185,7 @@ export class EventFeedbackPopupComponent {
   >;
 
   @ViewChild('eventFeedbackItemTemplate', { read: TemplateRef })
-  private set eventFeedbackItemTemplate(
+  protected set eventFeedbackItemTemplate(
     value: TemplateRef<SmartListItemTemplateContext<InfoCardData, EventFeedbackListFilters>> | undefined
   ) {
     this.eventFeedbackItemTemplateRef = value;

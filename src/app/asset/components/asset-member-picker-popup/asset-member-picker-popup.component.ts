@@ -120,7 +120,7 @@ export class AssetMemberPickerPopupComponent {
   protected inviteItemTemplateRef?: TemplateRef<SmartListItemTemplateContext<ActivityContracts.ActivityMemberDTO, ActivityInviteFilters>>;
 
   @ViewChild('inviteItemTemplate', { read: TemplateRef })
-  private set inviteItemTemplate(
+  protected set inviteItemTemplate(
     value: TemplateRef<SmartListItemTemplateContext<ActivityContracts.ActivityMemberDTO, ActivityInviteFilters>> | undefined
   ) {
     this.inviteItemTemplateRef = value;

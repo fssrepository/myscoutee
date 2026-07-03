@@ -30,7 +30,6 @@ import {
 
 import type * as ActivityContracts from '../../contracts/activity.interface';
 
-import type * as AppDTOs from '../../contracts';
 import type * as AppConstants from '../../common/constants';
 import { UserProfileStore } from '../../../ui/context/stores/user-profile.store';
 
@@ -1005,7 +1004,7 @@ export class HttpChatsService implements IChatsService {
   private mapChatMessage(
     message: HttpChatMessageDto,
     chatId = '',
-    fallbackIndex: number | null = null
+    _fallbackIndex: number | null = null
   ): ContractTypes.ChatMessageDto {
     const senderAvatar = message.senderAvatar ?? null;
     const senderId = this.normalizeHttpText(message.senderId) || this.normalizeHttpText(senderAvatar?.id);

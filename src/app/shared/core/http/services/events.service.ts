@@ -1164,14 +1164,6 @@ export class HttpEventsService implements IEventsService {
     return next;
   }
 
-  private toDateMs(value: string | null | undefined): number {
-    if (!value?.trim()) {
-      return Number.POSITIVE_INFINITY;
-    }
-    const parsed = new Date(value);
-    return Number.isNaN(parsed.getTime()) ? Number.POSITIVE_INFINITY : parsed.getTime();
-  }
-
   private normalizeSourceIds(sourceIds: readonly string[] | null | undefined): string[] {
     if (!Array.isArray(sourceIds)) {
       return [];

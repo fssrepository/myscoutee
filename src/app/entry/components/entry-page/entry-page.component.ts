@@ -966,31 +966,6 @@ export class EntryPageComponent implements OnInit, OnDestroy {
     return this.i18n.translate(value);
   }
 
-  private waitForPopupPaint(): Promise<void> {
-    return new Promise(resolve => {
-      if (typeof window !== 'undefined' && typeof window.requestAnimationFrame === 'function') {
-        window.requestAnimationFrame(() => {
-          window.requestAnimationFrame(() => {
-            setTimeout(resolve, 80);
-          });
-        });
-        return;
-      }
-      setTimeout(resolve, 80);
-    });
-  }
-
-  private waitForLoaderCompletionBeat(): Promise<void> {
-    return new Promise(resolve => setTimeout(resolve, 240));
-  }
-
-  private commitDemoSelectorState(update: () => void): void {
-    this.ngZone.run(() => {
-      update();
-      this.changeDetectorRef.markForCheck();
-    });
-  }
-
   private loadEntryConsentState(): EntryConsentStateDto | null {
     const expectedVersion = this.entryConsentVersion();
     if (!expectedVersion) {

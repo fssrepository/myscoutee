@@ -12,7 +12,6 @@ import type {
   SmartListCalendarMonthSpan,
   SmartListCalendarMonthWeek,
   SmartListCalendarTimedBadge,
-  SmartListCalendarVariant,
   SmartListCalendarWeekPage,
   SmartListClassValue,
   SmartListFilters

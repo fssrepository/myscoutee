@@ -14,7 +14,6 @@ import type {
 } from '../entity/activity.entity';
 
 import type * as AppDTOs from '../../../contracts';
-import type * as AppConstants from '../../../common/constants';
 export interface LocalActivityInviteCandidateRecord {
   user: UserDto;
   metAtIso: string;

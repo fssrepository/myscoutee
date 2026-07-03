@@ -532,10 +532,6 @@ export class EventEditorPopupComponent implements OnInit, OnDestroy {
     this.normalizeEventDateRange('start');
   }
 
-  private parseEventEditorOverrideDate(value: unknown): Date | null {
-    return AppUtils.parseDateOnly(value);
-  }
-
   private toNonNegativeIntegerOrNull(value: unknown): number | null {
     if (value === null || value === undefined || value === '') {
       return null;
@@ -1577,7 +1573,6 @@ export class EventEditorPopupComponent implements OnInit, OnDestroy {
       return false;
     }
 
-    const activeUserId = this.activeUserId();
     const eventId = this.eventDetailDTO.id.trim()
       || this.editingEventId
       || this.draftEventId
@@ -1927,68 +1922,6 @@ export class EventEditorPopupComponent implements OnInit, OnDestroy {
     }
     this.eventDetailDTO.slotsEnabled = true;
     this.eventDetailDTO.slotTemplates = ActivityEventDetailDTO.normalizeSlotTemplates(this.eventDetailDTO.slotTemplates);
-  }
-
-  private syncMainEventBoundsFromSubEvents(): void {
-    if (this.eventDetailDTO.subEvents.length === 0) {
-      return;
-    }
-
-    const tournamentMode = this.eventDetailDTO.mode === 'Tournament';
-    let minStartMs: number | null = null;
-    let maxEndMs: number | null = null;
-    let minCapacity: number | null = null;
-    let maxCapacity: number | null = null;
-
-    for (const item of this.eventDetailDTO.subEvents) {
-      let startMs = this.parseEventEditorDateValue(item.startAt)?.getTime() ?? Number.NaN;
-      let endMs = this.parseEventEditorDateValue(item.endAt)?.getTime() ?? Number.NaN;
-      if (!Number.isNaN(startMs) && !Number.isNaN(endMs)) {
-        if (endMs <= startMs) {
-          endMs = startMs + (60 * 60 * 1000);
-        }
-        minStartMs = minStartMs === null ? startMs : Math.min(minStartMs, startMs);
-        maxEndMs = maxEndMs === null ? endMs : Math.max(maxEndMs, endMs);
-      }
-
-      const normalizedRange = new ActivityEventDetailDTO().apply({
-        capacityMin: item.capacityMin,
-        capacityMax: item.capacityMax
-      }).normalizeCapacityRange();
-      const normalizedMin = normalizedRange.min;
-      const normalizedMax = normalizedRange.max;
-      if (normalizedMin !== null) {
-        minCapacity = minCapacity === null
-          ? normalizedMin
-          : (tournamentMode ? (minCapacity + normalizedMin) : Math.min(minCapacity, normalizedMin));
-      }
-      if (normalizedMax !== null) {
-        maxCapacity = maxCapacity === null
-          ? normalizedMax
-          : (tournamentMode ? (maxCapacity + normalizedMax) : Math.max(maxCapacity, normalizedMax));
-      }
-    }
-
-    if (minStartMs !== null && maxEndMs !== null) {
-      this.eventDetailDTO.dateRange = {
-        startAt: AppUtils.toIsoDateTimeLocal(new Date(minStartMs)),
-        endAt: AppUtils.toIsoDateTimeLocal(new Date(maxEndMs)),
-        precision: 'minute'
-      };
-      this.eventDetailDTO.startAtIso = this.eventDetailDTO.dateRange.startAt;
-      this.eventDetailDTO.endAtIso = this.eventDetailDTO.dateRange.endAt;
-    }
-    if (minCapacity !== null) {
-      this.eventDetailDTO.capacityMin = minCapacity;
-    }
-    if (maxCapacity !== null) {
-      this.eventDetailDTO.capacityMax = Math.max(maxCapacity, this.eventDetailDTO.capacityMin ?? maxCapacity);
-    }
-
-    const first = ActivityEventDetailDTO.firstSubEventByOrder(this.eventDetailDTO.subEvents);
-    if (first) {
-      this.eventDetailDTO.location = ActivityEventDetailDTO.normalizeLocation(first.location);
-    }
   }
 
   private syncFirstSubEventLocationFromMainEvent(): void {

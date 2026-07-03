@@ -123,7 +123,6 @@ export class SmartListComponent<T, TFilters extends SmartListFilters = SmartList
   private static readonly LIST_CARD_SNAP_TARGET_SELECTOR =
     '.activities-row-item, .asset-item-card, .activities-card, .event-explore-card, .experience-item-card';
   private readonly cdr = inject(ChangeDetectorRef);
-  private readonly hostRef = inject(ElementRef<HTMLElement>);
   protected readonly itemTemplateInjector = inject(Injector);
   private readonly itemMenuDispatcher = inject(AppMenuDispatcher);
   private restoreAnchorSequence = 0;
@@ -159,7 +158,7 @@ export class SmartListComponent<T, TFilters extends SmartListFilters = SmartList
   protected prependRestoreSpacerAnchorKey: string | null = null;
   protected prependRestoreSpacerId: string | null = null;
   protected prependRestoreSpacerHeight = 0;
-  protected pages: SmartListPage<T>[] = [];
+  protected pages: SmartListPage[] = [];
   protected stickyLabel = '';
   protected stickyHeaderHeightPx = 0;
   protected autoFooterSpacerHeightPx = 0;
@@ -312,7 +311,6 @@ export class SmartListComponent<T, TFilters extends SmartListFilters = SmartList
   private stepperPreloadAbortController: AbortController | null = null;
   private activePageAdapter: AnySmartListPageAdapter<T, TFilters> | null = null;
   private weekRateViewportPageKey: string | null = null;
-  private forceAnimatedLoadingCompletion = false;
   private hostedFullscreenPendingDelta = 0;
   private hostedFullscreenCompletingTransition = false;
   private hostedFullscreenTransitionTimer: ReturnType<typeof setTimeout> | null = null;
@@ -411,7 +409,7 @@ export class SmartListComponent<T, TFilters extends SmartListFilters = SmartList
   });
   private readonly stepper = new Stepper<
     Date,
-    SmartListPage<T>,
+    SmartListPage,
     T,
     ListQuery<TFilters>,
     any
@@ -2530,7 +2528,7 @@ export class SmartListComponent<T, TFilters extends SmartListFilters = SmartList
     }
   }
 
-  private applyPageSnapshot(snapshot: StepperSnapshot<Date, SmartListPage<T>, T>): void {
+  private applyPageSnapshot(snapshot: StepperSnapshot<Date, SmartListPage, T>): void {
     if (!this.isPageMode()) {
       this.pages = [];
       this.items = [];
