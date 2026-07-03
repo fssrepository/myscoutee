@@ -64,6 +64,9 @@ export interface IEventsService {
   loadEventFeedbackPage(
     query: EventFeedbackPageQueryDto
   ): Promise<EventFeedbackPageResultDto>;
+  loadEventFeedbackStatById(
+    query: EventFeedbackStatQueryDto
+  ): Promise<EventFeedbackStatDto>;
   loadEventFeedback(
     query: EventFeedbackQueryDto
   ): Promise<EventFeedbackDetailDto>;
@@ -1176,6 +1179,30 @@ export interface EventFeedbackPageQueryDto {
 export interface EventFeedbackQueryDto {
   userId: string;
   eventId: string;
+}
+
+export type EventFeedbackStatSectionKey = 'overall' | 'improve' | 'traits';
+
+export interface EventFeedbackStatQueryDto {
+  userId: string;
+  eventId: string;
+}
+
+export interface EventFeedbackStatOptionDto {
+  key: string;
+  count: number;
+}
+
+export interface EventFeedbackStatSectionDto {
+  key: EventFeedbackStatSectionKey;
+  responseCount: number;
+  options: EventFeedbackStatOptionDto[];
+}
+
+export interface EventFeedbackStatDto {
+  eventId: string;
+  totalResponses: number;
+  sections: EventFeedbackStatSectionDto[];
 }
 
 export interface EventFeedbackPageCountsDto {

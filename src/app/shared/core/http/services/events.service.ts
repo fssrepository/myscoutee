@@ -32,6 +32,8 @@ import type {
   EventFeedbackReceivedEventDto,
   EventFeedbackNoteRequestDto,
   EventFeedbackPageQueryDto,
+  EventFeedbackStatDto,
+  EventFeedbackStatQueryDto,
   EventFeedbackStateDto
 } from '../../contracts/activity.interface';
 import type {
@@ -740,6 +742,25 @@ export class HttpEventsService implements IEventsService {
     }
   }
 
+  async loadEventFeedbackStatById(query: EventFeedbackStatQueryDto): Promise<EventFeedbackStatDto> {
+    const normalizedUserId = query.userId.trim();
+    const normalizedEventId = query.eventId.trim();
+    if (!normalizedUserId || !normalizedEventId) {
+      return this.emptyEventFeedbackStat(normalizedEventId);
+    }
+    try {
+      const response = await this.http
+        .post<Partial<EventFeedbackStatDto> | null>(`${this.apiBaseUrl}/activities/events/feedback/stat`, {
+          userId: normalizedUserId,
+          eventId: normalizedEventId
+        })
+        .toPromise();
+      return this.normalizeEventFeedbackStat(response, normalizedEventId);
+    } catch {
+      return this.emptyEventFeedbackStat(normalizedEventId);
+    }
+  }
+
   async loadEventFeedback(query: EventFeedbackQueryDto): Promise<EventFeedbackDetailDto> {
     const normalizedUserId = query.userId.trim();
     const normalizedEventId = query.eventId.trim();
@@ -776,6 +797,45 @@ export class HttpEventsService implements IEventsService {
 
   async restoreEventFeedbackEvent(userId: string, eventId: string): Promise<void> {
     await this.postVoid('/activities/events/feedback/restore', { userId: userId.trim(), eventId: eventId.trim() });
+  }
+
+  private normalizeEventFeedbackStat(
+    response: Partial<EventFeedbackStatDto> | null | undefined,
+    fallbackEventId: string
+  ): EventFeedbackStatDto {
+    const eventId = response?.eventId?.trim() || fallbackEventId;
+    const sections = (response?.sections ?? [])
+      .map(section => {
+        const key = section?.key;
+        if (key !== 'overall' && key !== 'improve' && key !== 'traits') {
+          return null;
+        }
+        return {
+          key,
+          responseCount: Math.max(0, Math.trunc(Number(section.responseCount) || 0)),
+          options: (section.options ?? [])
+            .map(option => ({
+              key: option.key?.trim() ?? '',
+              count: Math.max(0, Math.trunc(Number(option.count) || 0))
+            }))
+            .filter(option => option.key.length > 0 && option.count > 0)
+        };
+      })
+      .filter((section): section is EventFeedbackStatDto['sections'][number] => Boolean(section));
+    const maxSectionResponses = sections.reduce((max, section) => Math.max(max, section.responseCount), 0);
+    return {
+      eventId,
+      totalResponses: Math.max(0, Math.trunc(Number(response?.totalResponses) || maxSectionResponses)),
+      sections
+    };
+  }
+
+  private emptyEventFeedbackStat(eventId: string): EventFeedbackStatDto {
+    return {
+      eventId: eventId.trim(),
+      totalResponses: 0,
+      sections: []
+    };
   }
 
   async syncEventSnapshot(payload: ActivityEventDetailDTO): Promise<ActivityEventRecord | null> {

@@ -115,6 +115,8 @@ export class EventFeedbackPopupComponent {
   protected readonly eventFeedbackListSubmitMessage = signal('');
   protected readonly selectedEventFeedbackEventId = signal<string | null>(null);
   protected readonly selectedOrganizerEventFeedbackEventId = signal<string | null>(null);
+  protected readonly organizerEventFeedbackStatDto = signal<ActivityContracts.EventFeedbackStatDto | null>(null);
+  protected readonly organizerEventFeedbackStatLoading = signal(false);
   protected readonly eventFeedbackNoteForm = signal({ eventId: '', text: '' });
   protected readonly eventFeedbackNoteSubmitted = signal(false);
   protected readonly eventFeedbackNoteSubmitMessage = signal('');
@@ -129,6 +131,7 @@ export class EventFeedbackPopupComponent {
   protected readonly eventFeedbackSubmitted = signal(false);
   protected readonly hasEventFeedbackCards = computed(() => (this.eventFeedbackDetailDto()?.cards.length ?? 0) > 0);
   private readonly eventFeedbackFilterCountDelta = signal<Partial<Record<EventFeedbackListFilter, number>>>({});
+  private organizerEventFeedbackStatRequestKey = '';
 
   protected readonly eventFeedbackFilterMenu = computed(() => EventFeedbackFilterMenuConverter.convert({
     result: this.eventFeedbackPageResult(),
@@ -159,8 +162,7 @@ export class EventFeedbackPopupComponent {
   protected readonly organizerEventFeedbackCarouselIndex = signal(0);
   protected readonly organizerEventFeedbackCarouselSections = computed<EventFeedbackOrganizerCarouselSectionData[]>(() =>
     EventFeedbackOrganizerCarouselSectionConverter.convert({
-      result: this.eventFeedbackPageResult(),
-      eventId: this.selectedOrganizerEventFeedbackEventId() ?? ''
+      stat: this.organizerEventFeedbackStatDto()
     })
   );
   protected readonly organizerEventFeedbackActiveCarouselSection = computed<EventFeedbackOrganizerCarouselSectionData | null>(() => {
@@ -390,6 +392,7 @@ export class EventFeedbackPopupComponent {
     this.eventFeedbackListSubmitMessage.set('');
     this.selectedEventFeedbackEventId.set(null);
     this.selectedOrganizerEventFeedbackEventId.set(null);
+    this.clearOrganizerEventFeedbackStat();
     this.eventFeedbackPageResult.set(null);
     this.eventFeedbackFilterCountDelta.set({});
     this.isPopupOpen.set(true);
@@ -405,12 +408,14 @@ export class EventFeedbackPopupComponent {
     this.isStackedPopupOpen.set(false);
     this.stackedPopupMode.set(null);
     this.selectedOrganizerEventFeedbackEventId.set(null);
+    this.clearOrganizerEventFeedbackStat();
   }
 
   private selectEventFeedbackListFilter(filter: EventFeedbackListFilter, event?: Event): void {
     event?.stopPropagation();
     this.eventFeedbackListFilter.set(filter);
     this.selectedOrganizerEventFeedbackEventId.set(null);
+    this.clearOrganizerEventFeedbackStat();
   }
 
   protected eventFeedbackCurrentEventTitle(): string {
@@ -786,8 +791,48 @@ export class EventFeedbackPopupComponent {
     }
     this.eventFeedbackListFilter.set('own-events');
     this.selectedOrganizerEventFeedbackEventId.set(normalizedEventId);
+    this.clearOrganizerEventFeedbackStat();
     this.stackedPopupMode.set('organizerEventFeedback');
     this.isStackedPopupOpen.set(true);
+    void this.loadOrganizerEventFeedbackStat(normalizedEventId);
+  }
+
+  private async loadOrganizerEventFeedbackStat(eventId: string): Promise<void> {
+    const normalizedEventId = eventId.trim();
+    const userId = this.activeUserId();
+    const requestKey = `${userId}::${normalizedEventId}`;
+    this.organizerEventFeedbackStatRequestKey = requestKey;
+    this.organizerEventFeedbackStatDto.set(null);
+    if (!userId || !normalizedEventId) {
+      this.organizerEventFeedbackStatLoading.set(false);
+      return;
+    }
+    this.organizerEventFeedbackStatLoading.set(true);
+    try {
+      const stat = await this.eventsService.loadEventFeedbackStatById({
+        userId,
+        eventId: normalizedEventId
+      });
+      if (this.isOrganizerEventFeedbackStatLoadCurrent(requestKey, normalizedEventId)) {
+        this.organizerEventFeedbackStatDto.set(stat);
+      }
+    } finally {
+      if (this.isOrganizerEventFeedbackStatLoadCurrent(requestKey, normalizedEventId)) {
+        this.organizerEventFeedbackStatLoading.set(false);
+      }
+    }
+  }
+
+  private isOrganizerEventFeedbackStatLoadCurrent(requestKey: string, eventId: string): boolean {
+    return this.organizerEventFeedbackStatRequestKey === requestKey
+      && this.selectedOrganizerEventFeedbackEventId() === eventId.trim()
+      && this.stackedPopupMode() === 'organizerEventFeedback';
+  }
+
+  private clearOrganizerEventFeedbackStat(): void {
+    this.organizerEventFeedbackStatRequestKey = '';
+    this.organizerEventFeedbackStatDto.set(null);
+    this.organizerEventFeedbackStatLoading.set(false);
   }
 
   protected selectOrganizerEventFeedbackCarousel(index: number): void {
