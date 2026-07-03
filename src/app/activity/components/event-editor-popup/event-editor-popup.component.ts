@@ -77,7 +77,10 @@ import {
   type LocationInputConfig,
   PricingEditorInputComponent,
   type PricingEditorConfig,
-  IndicatorComponent
+  IndicatorComponent,
+  PopupComponent,
+  type PopupControl,
+  type PopupModel
 } from '../../../shared/ui';
 import {
   EventSubeventDefinitionsPanelComponent
@@ -121,7 +124,8 @@ interface SlotOverrideEditorState {
     LocationInputComponent,
     EventSubeventDefinitionsPanelComponent,
     PricingEditorInputComponent,
-    IndicatorComponent
+    IndicatorComponent,
+    PopupComponent
   ],
   templateUrl: './event-editor-popup.component.html',
   styleUrls: ['./event-editor-popup.component.scss']
@@ -327,6 +331,66 @@ export class EventEditorPopupComponent implements OnInit, OnDestroy {
       return 'Manage Event';
     }
     return 'Edit Event';
+  }
+
+  protected eventEditorPopupModel(): PopupModel<EventEditorMenuContext> {
+    const title = this.getPopupTitle();
+    return {
+      title,
+      subtitle: this.eventEditorPopupSubtitle(),
+      ariaLabel: title,
+      closeAriaLabel: 'Close',
+      size: 'wide',
+      height: 'full',
+      headerTone: 'accent',
+      bodyLayout: 'fill',
+      headerControls: this.eventEditorPopupHeaderControls(),
+      onClose: () => this.close(),
+      onMenuSelect: event => this.onEventEditorMenuSelect(event.itemSelect)
+    };
+  }
+
+  protected eventEditorPopupZIndex(): number {
+    return 2500;
+  }
+
+  private eventEditorPopupSubtitle(): string | null {
+    return this.eventEditorStore.readOnly() && this.eventDetailDTO.title
+      ? this.eventDetailDTO.title
+      : null;
+  }
+
+  private eventEditorPopupHeaderControls(): readonly PopupControl<EventEditorMenuContext>[] {
+    const controls: PopupControl<EventEditorMenuContext>[] = [];
+    if (this.eventVisibilityReady()) {
+      controls.push({
+        kind: 'menu',
+        id: 'event-editor-visibility',
+        menuKind: 'select',
+        trigger: this.eventVisibilityMenuTrigger(),
+        items: this.eventVisibilityMenuItems(),
+        mobileBreakpointPx: 900
+      });
+    }
+    if (this.showEventEditorSaveAction()) {
+      controls.push({
+        kind: 'menu',
+        id: 'event-editor-save',
+        menuKind: 'inline',
+        items: this.eventEditorSaveMenuItems(),
+        closeOnSelect: false
+      });
+    }
+    const checkoutDraft = this.eventEditorCheckoutDraft();
+    if (checkoutDraft) {
+      controls.push({
+        kind: 'menu',
+        id: 'event-editor-checkout-status',
+        menuKind: 'inline',
+        items: this.eventEditorCheckoutStatusMenuItems(checkoutDraft)
+      });
+    }
+    return controls;
   }
 
   protected isPublishedManageMode(): boolean {

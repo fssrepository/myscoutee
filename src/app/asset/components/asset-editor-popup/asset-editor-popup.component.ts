@@ -46,7 +46,10 @@ import {
   type AppMenuItemSelectEvent,
   type AppMenuPalette,
   type AppMenuTrigger,
-  type PricingEditorConfig
+  type PricingEditorConfig,
+  PopupComponent,
+  type PopupControl,
+  type PopupModel
 } from '../../../shared/ui';
 
 import type * as AppConstants from '../../../shared/core/common/constants';
@@ -69,7 +72,8 @@ type AssetEditorMenuContext =
     EventPoliciesInputComponent,
     LocationInputComponent,
     PricingEditorInputComponent,
-    IndicatorComponent
+    IndicatorComponent,
+    PopupComponent
   ],
   templateUrl: './asset-editor-popup.component.html',
   styleUrl: './asset-editor-popup.component.scss'
@@ -120,6 +124,46 @@ export class AssetEditorPopupComponent {
   protected get title(): string {
     const mode = this.assetStore.editingAssetId() ? 'Edit' : 'Add';
     return `${mode} ${AssetDefaultsBuilder.assetTypeLabel(this.assetForm.type)}`;
+  }
+
+  protected assetEditorPopupModel(): PopupModel<AssetEditorMenuContext> {
+    return {
+      title: this.title,
+      ariaLabel: this.title,
+      closeAriaLabel: 'Close asset editor',
+      size: 'wide',
+      height: 'full',
+      headerTone: 'accent',
+      bodyLayout: 'fill',
+      showClose: !this.isSavePending,
+      headerControls: this.assetEditorPopupHeaderControls(),
+      onClose: () => this.requestClose(),
+      onMenuSelect: event => this.onAssetEditorMenuSelect(event.itemSelect)
+    };
+  }
+
+  protected assetEditorPopupZIndex(): number {
+    return 4200;
+  }
+
+  private assetEditorPopupHeaderControls(): readonly PopupControl<AssetEditorMenuContext>[] {
+    return [
+      {
+        kind: 'menu',
+        id: 'asset-editor-visibility',
+        menuKind: 'select',
+        trigger: this.visibilityMenuTrigger(),
+        items: this.visibilityMenuItems(),
+        mobileBreakpointPx: 900
+      },
+      {
+        kind: 'menu',
+        id: 'asset-editor-save',
+        menuKind: 'inline',
+        items: this.assetEditorSaveMenuItems(),
+        closeOnSelect: false
+      }
+    ];
   }
 
   protected get isLoading(): boolean {

@@ -1,136 +1,111 @@
 @if (assetStore.showAssetForm()) {
-  <section class="experience-form-overlay asset-editor-overlay">
-    <div class="experience-form-overlay-backdrop" (click)="requestClose()"></div>
-    <div class="experience-form-popup asset-editor-popup" (click)="$event.stopPropagation()">
-      <div class="experience-form-header">
-        <h3>{{ title }}</h3>
-        <div class="experience-form-header-controls">
-          <app-menu
-            class="asset-editor-visibility-picker"
-            kind="select"
-            [trigger]="visibilityMenuTrigger()"
-            [items]="visibilityMenuItems()"
-            [mobileBreakpointPx]="900"
-            (itemSelect)="onAssetEditorMenuSelect($event)"
-          ></app-menu>
-          <app-menu
-            class="asset-editor-save-menu"
-            kind="inline"
-            [items]="assetEditorSaveMenuItems()"
-            (itemSelect)="onAssetEditorMenuSelect($event)"
-          ></app-menu>
-          <button type="button" class="popup-close asset-editor-close-btn" [disabled]="isSavePending" (click)="requestClose()" aria-label="Close asset editor">
-            <mat-icon>close</mat-icon>
-          </button>
-        </div>
+  <app-popup [model]="assetEditorPopupModel()" [zIndex]="assetEditorPopupZIndex()">
+    @if (isLoading) {
+      <div class="popup-loading-overlay" aria-busy="true">
+        <app-indicator
+          kind="load-ring"
+          state="loading"
+        ></app-indicator>
       </div>
-      @if (isLoading) {
-        <div class="popup-loading-overlay" aria-busy="true">
-          <app-indicator
-            kind="load-ring"
-            state="loading"
-          ></app-indicator>
-        </div>
-      } @else {
-        <section class="experience-form-panel asset-editor-panel" [ngClass]="eventVisibilityClass(assetFormVisibility)" [class.is-saving]="isSavePending">
-          <div class="asset-editor-layout">
-            <div class="experience-form-grid asset-editor-fields">
-              <div class="experience-description-field asset-image-field">
-                <app-image-carousel
-                  class="asset-image-carousel"
-                  [slotCount]="1"
-                  [compact]="true"
-                  [autoSize]="true"
-                  ariaLabel="Asset image"
-                  [disabled]="assetEditorReadOnly()"
-                  [uploadOwnerId]="assetImageUploadOwnerId"
-                  [uploadEntityId]="assetImageUploadEntity()"
-                  [ngModel]="assetImageUrls()"
-                  (ngModelChange)="onAssetImageUrlsChange($event)"
-                ></app-image-carousel>
-              </div>
-
-              <label class="asset-title-field">
-                <span>Title<span class="asset-editor-required-marker">*</span></span>
-                <input type="text" [(ngModel)]="assetForm.title" [disabled]="assetEditorReadOnly()" />
-              </label>
-              <label class="asset-subtitle-field">
-                <span>Subtitle</span>
-                <input type="text" [(ngModel)]="assetForm.subtitle" [disabled]="assetEditorReadOnly()" />
-              </label>
-              <label class="asset-capacity-field">
-                <span>Total capacity<span class="asset-editor-required-marker">*</span></span>
-                <input type="number" min="1" step="1" [(ngModel)]="assetForm.capacityTotal" [disabled]="assetEditorReadOnly()" />
-              </label>
-              <label class="asset-quantity-field">
-                <span>Quantity<span class="asset-editor-required-marker">*</span></span>
-                <input type="number" min="1" step="1" [(ngModel)]="assetForm.quantity" [disabled]="assetEditorReadOnly()" />
-              </label>
+    } @else {
+      <section class="experience-form-panel asset-editor-panel" [ngClass]="eventVisibilityClass(assetFormVisibility)" [class.is-saving]="isSavePending">
+        <div class="asset-editor-layout">
+          <div class="experience-form-grid asset-editor-fields">
+            <div class="experience-description-field asset-image-field">
+              <app-image-carousel
+                class="asset-image-carousel"
+                [slotCount]="1"
+                [compact]="true"
+                [autoSize]="true"
+                ariaLabel="Asset image"
+                [disabled]="assetEditorReadOnly()"
+                [uploadOwnerId]="assetImageUploadOwnerId"
+                [uploadEntityId]="assetImageUploadEntity()"
+                [ngModel]="assetImageUrls()"
+                (ngModelChange)="onAssetImageUrlsChange($event)"
+              ></app-image-carousel>
             </div>
 
-            <div class="asset-editor-wide">
-              <div class="experience-form-grid asset-editor-wide-fields">
-                <div class="asset-meta-row">
-                  <label class="asset-source-field">
-                    <span>Source link</span>
-                    <div class="asset-source-row">
-                      <input type="text" [(ngModel)]="assetForm.sourceLink" [disabled]="assetEditorReadOnly()" placeholder="https://..." />
-                      @if (sourceRefreshEnabled) {
-                        <button
-                          type="button"
-                          class="asset-source-refresh-btn"
-                          [disabled]="assetEditorReadOnly()"
-                          (click)="refreshAssetFromSourceLink()"
-                          aria-label="Refresh from source"
-                        >
-                          <mat-icon>refresh</mat-icon>
-                        </button>
-                      }
-                    </div>
-                  </label>
-                  <label class="asset-category-field">
-                    <span>Category</span>
-                    <app-menu
-                      class="asset-editor-category-menu"
-                      kind="select"
-                      [trigger]="assetCategoryMenuTrigger()"
-                      [items]="assetCategoryMenuItems()"
-                      [mobileBreakpointPx]="900"
-                      (itemSelect)="onAssetEditorMenuSelect($event)"
-                    ></app-menu>
-                  </label>
-                </div>
-                <label class="experience-description-field">
-                  <span>Details</span>
-                  <textarea rows="4" [(ngModel)]="assetForm.details" [disabled]="assetEditorReadOnly()"></textarea>
+            <label class="asset-title-field">
+              <span>Title<span class="asset-editor-required-marker">*</span></span>
+              <input type="text" [(ngModel)]="assetForm.title" [disabled]="assetEditorReadOnly()" />
+            </label>
+            <label class="asset-subtitle-field">
+              <span>Subtitle</span>
+              <input type="text" [(ngModel)]="assetForm.subtitle" [disabled]="assetEditorReadOnly()" />
+            </label>
+            <label class="asset-capacity-field">
+              <span>Total capacity<span class="asset-editor-required-marker">*</span></span>
+              <input type="number" min="1" step="1" [(ngModel)]="assetForm.capacityTotal" [disabled]="assetEditorReadOnly()" />
+            </label>
+            <label class="asset-quantity-field">
+              <span>Quantity<span class="asset-editor-required-marker">*</span></span>
+              <input type="number" min="1" step="1" [(ngModel)]="assetForm.quantity" [disabled]="assetEditorReadOnly()" />
+            </label>
+          </div>
+
+          <div class="asset-editor-wide">
+            <div class="experience-form-grid asset-editor-wide-fields">
+              <div class="asset-meta-row">
+                <label class="asset-source-field">
+                  <span>Source link</span>
+                  <div class="asset-source-row">
+                    <input type="text" [(ngModel)]="assetForm.sourceLink" [disabled]="assetEditorReadOnly()" placeholder="https://..." />
+                    @if (sourceRefreshEnabled) {
+                      <button
+                        type="button"
+                        class="asset-source-refresh-btn"
+                        [disabled]="assetEditorReadOnly()"
+                        (click)="refreshAssetFromSourceLink()"
+                        aria-label="Refresh from source"
+                      >
+                        <mat-icon>refresh</mat-icon>
+                      </button>
+                    }
+                  </div>
                 </label>
-                @if (isPropertyAssetForm()) {
-                  <app-location-input
-                    class="experience-description-field"
-                    [ngModel]="assetFormRouteStops()[0]"
-                    (ngModelChange)="setAssetEditorRouteStop(0, $event)"
-                    [config]="assetLocationInputConfig"
-                    [disabled]="assetEditorReadOnly()"
-                  ></app-location-input>
-                }
-                <app-pricing-editor-input
-                  class="experience-description-field asset-pricing-field"
-                  [(ngModel)]="assetForm.pricing"
-                  [config]="assetPricingEditorConfig"
-                  [readOnly]="assetEditorReadOnly()"
-                ></app-pricing-editor-input>
-                <app-event-policies-input
-                  class="experience-description-field asset-policies-input"
-                  [(ngModel)]="assetForm.policies"
-                  [enabled]="true"
-                  [readOnly]="assetEditorReadOnly()"
-                  [config]="assetPoliciesInputConfig"
-                ></app-event-policies-input>
+                <label class="asset-category-field">
+                  <span>Category</span>
+                  <app-menu
+                    class="asset-editor-category-menu"
+                    kind="select"
+                    [trigger]="assetCategoryMenuTrigger()"
+                    [items]="assetCategoryMenuItems()"
+                    [mobileBreakpointPx]="900"
+                    (itemSelect)="onAssetEditorMenuSelect($event)"
+                  ></app-menu>
+                </label>
               </div>
+              <label class="experience-description-field">
+                <span>Details</span>
+                <textarea rows="4" [(ngModel)]="assetForm.details" [disabled]="assetEditorReadOnly()"></textarea>
+              </label>
+              @if (isPropertyAssetForm()) {
+                <app-location-input
+                  class="experience-description-field"
+                  [ngModel]="assetFormRouteStops()[0]"
+                  (ngModelChange)="setAssetEditorRouteStop(0, $event)"
+                  [config]="assetLocationInputConfig"
+                  [disabled]="assetEditorReadOnly()"
+                ></app-location-input>
+                }
+              <app-pricing-editor-input
+                class="experience-description-field asset-pricing-field"
+                [(ngModel)]="assetForm.pricing"
+                [config]="assetPricingEditorConfig"
+                [readOnly]="assetEditorReadOnly()"
+              ></app-pricing-editor-input>
+              <app-event-policies-input
+                class="experience-description-field asset-policies-input"
+                [(ngModel)]="assetForm.policies"
+                [enabled]="true"
+                [readOnly]="assetEditorReadOnly()"
+                [config]="assetPoliciesInputConfig"
+              ></app-event-policies-input>
             </div>
           </div>
-        </section>
-      }
-    </div>
-  </section>
+        </div>
+      </section>
+    }
+  </app-popup>
 }
