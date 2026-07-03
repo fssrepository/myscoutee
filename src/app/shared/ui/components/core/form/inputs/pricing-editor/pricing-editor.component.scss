@@ -1,5 +1,6 @@
 :host {
   display: block;
+  width: 100%;
   // 1. Move the container-type to the stable host element
   container-type: inline-size; 
   // 2. Prevent horizontal flex/grid blowout from the parent

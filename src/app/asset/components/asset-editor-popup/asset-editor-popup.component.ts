@@ -135,7 +135,7 @@ export class AssetEditorPopupComponent {
       size: 'wide',
       height: 'full',
       headerTone: 'accent',
-      bodyLayout: 'flush',
+      bodyLayout: 'fill',
       showClose: !this.isSavePending,
       headerControls: this.assetEditorPopupHeaderControls(),
       onClose: () => this.requestClose(),
@@ -279,8 +279,8 @@ export class AssetEditorPopupComponent {
       },
       {
         id: 'pricing',
-        title: 'Pricing and policies',
-        icon: 'payments',
+        title: '',
+        chrome: 'none',
         controls: [
           {
             id: 'pricing',
@@ -291,7 +291,14 @@ export class AssetEditorPopupComponent {
             config: {
               model: this.assetPricingEditorConfig
             }
-          },
+          }
+        ]
+      },
+      {
+        id: 'policies',
+        title: '',
+        chrome: 'none',
+        controls: [
           {
             id: 'policies',
             bind: 'policies',

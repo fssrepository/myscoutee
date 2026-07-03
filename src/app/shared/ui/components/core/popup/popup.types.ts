@@ -13,7 +13,7 @@ import type {
 export type PopupSize = 'default' | 'wide';
 export type PopupHeight = 'auto' | 'full';
 export type PopupHeaderTone = 'default' | 'accent';
-export type PopupBodyLayout = 'default' | 'fill' | 'flush';
+export type PopupBodyLayout = 'default' | 'fill';
 export type PopupControlAlign = 'start' | 'end';
 export type PopupBackdropTone = 'default' | 'dim';
 

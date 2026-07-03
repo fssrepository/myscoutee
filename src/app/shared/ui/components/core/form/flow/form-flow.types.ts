@@ -146,6 +146,7 @@ export interface FormFlowStepModel {
   title: string;
   subtitle?: string;
   icon?: string;
+  chrome?: 'default' | 'none';
   palette?: string;
   header?: FormFlowHeaderModel | null;
   controls: readonly FormFlowControlModel[];
