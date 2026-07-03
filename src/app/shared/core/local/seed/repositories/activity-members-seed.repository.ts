@@ -242,11 +242,7 @@ export class SeedActivityMembersRepository {
     const row: ActivityMemberSourceModel = {
       id: record.id,
       type: 'events',
-      isAdmin: true,
-      acceptedMembers: record.acceptedMembers,
-      pendingMembers: record.pendingMembers,
-      capacityTotal: record.capacityTotal,
-      capacityMax: record.capacityMax
+      isAdmin: true
     };
     const rowKey = `${row.type}:${row.id}`;
     const explicit = explicitUserIdsByEventId.get(record.id) ?? null;

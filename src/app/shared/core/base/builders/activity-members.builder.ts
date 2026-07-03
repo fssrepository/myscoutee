@@ -17,81 +17,9 @@ export interface ActivityMemberSourceModel {
   id: string;
   type: ActivityMemberSourceType;
   isAdmin?: boolean;
-  acceptedMembers?: number | null;
-  pendingMembers?: number | null;
-  capacityTotal?: number | null;
-  capacityMax?: number | null;
 }
 
 export class ActivityMembersBuilder {
-  static activityMembersOwnerForRow(row: ActivityMemberSourceModel): ActivityMemberOwnerRef | null {
-    return {
-      ownerType: 'event',
-      ownerId: row.id
-    };
-  }
-
-  static activityMembersSummaryForRow(
-    row: ActivityMemberSourceModel,
-    options: {
-      capacityByRowId: Record<string, string>;
-      pendingMembersByRowId: Record<string, number>;
-    }
-  ): ActivityMembersSummaryDto | null {
-    const source = options.capacityByRowId[row.id];
-    const pendingMembers = Math.max(0, Math.trunc(Number(options.pendingMembersByRowId[row.id]) || 0));
-    const acceptedFromSource = Number(row.acceptedMembers);
-    const pendingFromSource = Number(row.pendingMembers);
-    const capacityFromSource = Number(row.capacityTotal);
-    const capacityMaxFromSource = Number(row.capacityMax);
-    if (source) {
-      const parts = source.split('/').map(part => Number.parseInt(part.trim(), 10));
-      const acceptedMembers = parts.length >= 1 && Number.isFinite(parts[0]) ? Math.max(0, parts[0]) : null;
-      const capacityTotal = parts.length >= 2 && Number.isFinite(parts[1]) ? Math.max(0, parts[1]) : null;
-      if (acceptedMembers !== null && capacityTotal !== null) {
-        return {
-          ownerType: 'event',
-          ownerId: row.id,
-          acceptedMembers,
-          pendingMembers: Number.isFinite(pendingFromSource) ? Math.max(0, Math.trunc(pendingFromSource)) : pendingMembers,
-          capacityTotal,
-          acceptedMemberUserIds: [],
-          pendingMemberUserIds: []
-        };
-      }
-    }
-    if (
-      Number.isFinite(acceptedFromSource)
-      || Number.isFinite(pendingFromSource)
-      || Number.isFinite(capacityFromSource)
-      || Number.isFinite(capacityMaxFromSource)
-    ) {
-      const acceptedMembers = Number.isFinite(acceptedFromSource)
-        ? Math.max(0, Math.trunc(acceptedFromSource))
-        : 0;
-      const resolvedPendingMembers = Number.isFinite(pendingFromSource)
-        ? Math.max(0, Math.trunc(pendingFromSource))
-        : pendingMembers;
-      return {
-        ownerType: 'event',
-        ownerId: row.id,
-        acceptedMembers,
-        pendingMembers: resolvedPendingMembers,
-        capacityTotal: Math.max(
-          acceptedMembers,
-          Number.isFinite(capacityFromSource)
-            ? Math.max(0, Math.trunc(capacityFromSource))
-            : Number.isFinite(capacityMaxFromSource)
-              ? Math.max(0, Math.trunc(capacityMaxFromSource))
-              : acceptedMembers
-        ),
-        acceptedMemberUserIds: [],
-        pendingMemberUserIds: []
-      };
-    }
-    return null;
-  }
-
   static buildActivityMembersSummary(
     owner: ActivityMemberOwnerRef,
     members: readonly ActivityMemberDTO[],

@@ -1389,11 +1389,7 @@ export class EventExplorePopupComponent {
     return {
       id: record.id,
       type: record.type,
-      isAdmin: true,
-      acceptedMembers: record.acceptedMembers,
-      pendingMembers: record.pendingMembers,
-      capacityTotal: record.capacityTotal,
-      capacityMax: record.capacityMax
+      isAdmin: true
     };
   }
 
