@@ -148,34 +148,4 @@ export class AssetDefaultsBuilder {
     }
     return this.defaultCategory(type);
   }
-
-  static defaultAssetImage(type: AppConstants.AssetType, seed = type.toLowerCase()): string {
-    const flavor = type === 'Car'
-      ? 'road'
-      : type === 'Accommodation'
-        ? 'stay'
-        : 'gear';
-    const normalizedSeed = encodeURIComponent(`${type.toLowerCase()}-${flavor}-${seed || type.toLowerCase()}`);
-    return `https://picsum.photos/seed/${normalizedSeed}/1200/700`;
-  }
-
-  static ownedAssetEmptyLabel(type: AppConstants.AssetType): string {
-    if (type === 'Accommodation') {
-      return 'No properties yet';
-    }
-    if (type === 'Supplies') {
-      return 'No supplies yet';
-    }
-    return 'No cars yet';
-  }
-
-  static ownedAssetEmptyDescription(type: AppConstants.AssetType): string {
-    if (type === 'Accommodation') {
-      return 'Add a property, stay, room, or place so it can show up here.';
-    }
-    if (type === 'Supplies') {
-      return 'Add supplies or shared gear so the list can populate.';
-    }
-    return 'Add a car or ride so it can show up here.';
-  }
 }

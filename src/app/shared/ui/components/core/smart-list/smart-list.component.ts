@@ -59,6 +59,7 @@ import {
 } from './infinite-stepper';
 import { FiniteStepper } from './finite-stepper';
 import { UiTaskScheduler } from '../../../scheduler';
+import { I18nPipe } from '../../../pipes';
 import type {
   ListDirection,
   ListQuery,
@@ -101,7 +102,8 @@ import type {
     MatIconModule,
     IndicatorComponent,
     AppMenuOutletComponent,
-    SmartListPageCardComponent
+    SmartListPageCardComponent,
+    I18nPipe
   ],
   providers: [AppMenuDispatcher],
   templateUrl: './smart-list.component.html',

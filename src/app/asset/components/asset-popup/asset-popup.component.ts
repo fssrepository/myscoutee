@@ -203,8 +203,8 @@ export class AssetPopupComponent {
   protected readonly assetSmartListConfig: SmartListConfig<AppDTOs.AssetDTO, OwnedAssetListFilters> = {
     pageSize: 18,
     defaultView: 'list',
-    emptyLabel: query => AssetDefaultsBuilder.ownedAssetEmptyLabel(query.filters?.type ?? 'Car'),
-    emptyDescription: query => AssetDefaultsBuilder.ownedAssetEmptyDescription(query.filters?.type ?? 'Car'),
+    emptyLabel: query => this.ownedAssetEmptyLabelKey(query.filters?.type ?? 'Car'),
+    emptyDescription: query => this.ownedAssetEmptyDescriptionKey(query.filters?.type ?? 'Car'),
     headerProgress: {
       enabled: true,
       state: () => this.runtimeStore.isOnline() ? 'active' : 'inactive'
@@ -1120,6 +1120,26 @@ export class AssetPopupComponent {
       return;
     }
     this.toggleAssetAssignBasketCard(event.item.id, event.sourceEvent);
+  }
+
+  private ownedAssetEmptyLabelKey(type: AppConstants.AssetType): string {
+    if (type === 'Accommodation') {
+      return 'asset.owned.empty.accommodation.label';
+    }
+    if (type === 'Supplies') {
+      return 'asset.owned.empty.supplies.label';
+    }
+    return 'asset.owned.empty.car.label';
+  }
+
+  private ownedAssetEmptyDescriptionKey(type: AppConstants.AssetType): string {
+    if (type === 'Accommodation') {
+      return 'asset.owned.empty.accommodation.description';
+    }
+    if (type === 'Supplies') {
+      return 'asset.owned.empty.supplies.description';
+    }
+    return 'asset.owned.empty.car.description';
   }
 
   private async runSupplyRequestRowAction(
