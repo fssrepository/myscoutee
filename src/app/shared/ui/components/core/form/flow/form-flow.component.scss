@@ -574,7 +574,7 @@
 }
 
 .form-flow--grouped .form-flow__slide--media .form-flow__controls {
-  --form-flow-media-image-height: 186px;
+  --form-flow-media-image-height: var(--form-flow-grouped-media-image-height, 186px);
   grid-template-columns: minmax(320px, 400px) repeat(2, minmax(0, 1fr));
 }
 
