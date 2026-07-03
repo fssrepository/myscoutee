@@ -1597,6 +1597,13 @@ export class EventEditorPopupComponent implements OnInit, OnDestroy {
     if (!displaySync) {
       throw new Error('Event sync did not return an event DTO.');
     }
+    const syncedEventId = `${displaySync.id ?? ''}`.trim();
+    if (syncedEventId) {
+      this.eventDetailDTO.id = syncedEventId;
+      if (this.draftEventId === eventId) {
+        this.draftEventId = syncedEventId;
+      }
+    }
     this.activitiesStore.emitActivityEventSaveResult(displaySync);
     return true;
   }

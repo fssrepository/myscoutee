@@ -230,7 +230,7 @@ export const ROUTE_CONFIG: RouteConfig = {
     },
     {
       routePrefix: '/activities/events/draft-autosave',
-      intervalMs: 5000
+      intervalMs: 15000
     },
     {
       routePrefix: '/activities/events/explore',

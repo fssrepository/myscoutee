@@ -2418,15 +2418,32 @@ export class ActivitiesPopupComponent implements OnDestroy {
     }
     const shouldShow = this.savedEventMatchesCurrentScope(sync);
     const removedExisting = smartList.removeVisibleItems(
-      row => row.id === sync.id && this.isEventStyleActivity(row),
+      row => this.savedEventMatchesVisibleRow(row, sync),
       { totalDelta: shouldShow ? 0 : -1 }
     );
     if (!shouldShow) {
       return;
     }
     smartList.upsertConvertedVisibleItem(sync, {
+      predicate: row => this.savedEventMatchesVisibleRow(row, sync),
       totalDelta: removedExisting ? 0 : 1
     });
+  }
+
+  private savedEventMatchesVisibleRow(row: ActivityListItem, sync: ActivityEventDTO): boolean {
+    if (!this.isEventStyleActivity(row)) {
+      return false;
+    }
+    const eventId = `${sync.id ?? ''}`.trim();
+    if (!eventId) {
+      return false;
+    }
+    const rowIdentity = this.activityRowIdentity(row);
+    return row.id === eventId
+      || rowIdentity === eventId
+      || rowIdentity === `events:${eventId}`
+      || rowIdentity === `hosting:${eventId}`
+      || rowIdentity === `invitations:${eventId}`;
   }
 
   private savedEventMatchesCurrentScope(sync: ActivityEventDTO): boolean {
