@@ -61,8 +61,18 @@
 }
 
 .popup-header-chat {
-  justify-content: flex-start;
-  min-height: 42px;
+  flex: 0 0 auto;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, auto) 34px;
+  grid-template-rows: 36px 36px;
+  grid-template-areas:
+    "title context close"
+    "title actions actions";
+  align-items: center;
+  justify-content: stretch;
+  gap: 0.38rem 0.42rem;
+  box-sizing: border-box;
+  min-height: 5.4rem;
 }
 
 .popup-header-with-chat-progress {
@@ -75,6 +85,7 @@
 }
 
 .popup-title-chat {
+  grid-area: title;
   display: flex;
   align-items: center;
   gap: 0.56rem;
@@ -193,6 +204,8 @@
 }
 
 .popup-chat-context-menu-wrap {
+  grid-area: context;
+  justify-self: end;
   position: relative;
   margin-left: auto;
   margin-right: 0.16rem;
@@ -200,8 +213,18 @@
   z-index: 65;
 }
 
+.popup-chat-header-actions-menu {
+  grid-area: actions;
+  justify-self: end;
+}
+
 .popup-chat-context-app-menu {
   display: block;
+}
+
+.popup-chat-header-actions-menu {
+  display: block;
+  flex: 0 0 auto;
 }
 
 :host ::ng-deep .popup-chat-context-app-menu .app-menu__trigger {
@@ -219,55 +242,13 @@
   padding-right: 12px;
 }
 
+.popup-header-chat > .popup-chat-context-btn {
+  grid-area: context;
+  justify-self: end;
+}
+
 .popup-chat-context-btn .event-editor-members-invite {
   gap: 0.26rem;
-}
-
-.popup-chat-header-members-btn {
-  margin-left: 0.2rem;
-  padding-right: 8px;
-}
-
-.popup-chat-header-members-content {
-  gap: 0;
-}
-
-.popup-chat-header-thumb-stack {
-  display: inline-flex;
-  align-items: center;
-  padding-left: 2px;
-}
-
-.popup-chat-header-thumb {
-  width: 22px;
-  height: 22px;
-  border-radius: 999px;
-  border: 2px solid #fff;
-  background: #2e689f;
-  color: #fff;
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  overflow: hidden;
-  font-size: 0.58rem;
-  font-weight: 800;
-  box-shadow: 0 1px 4px rgba(24, 53, 82, 0.18);
-}
-
-.popup-chat-header-thumb + .popup-chat-header-thumb {
-  margin-left: -7px;
-}
-
-.popup-chat-header-thumb img {
-  width: 100%;
-  height: 100%;
-  object-fit: cover;
-  display: block;
-}
-
-.popup-chat-header-members-btn .popup-chat-context-total-badge {
-  top: -8px;
-  right: -8px;
 }
 
 .popup-chat-context-btn.popup-chat-context-btn-tone-main-event {
@@ -325,6 +306,8 @@
 @include ui.popup-close-button();
 
 .popup-header-chat .popup-close {
+  grid-area: close;
+  justify-self: end;
   margin-left: 0;
 }
 
@@ -2474,13 +2457,12 @@
   }
 
   .popup-header-chat {
-    flex: 0 0 auto;
     display: grid;
-    grid-template-columns: minmax(0, 1fr) minmax(0, auto) 36px 34px;
+    grid-template-columns: minmax(0, 1fr) minmax(0, auto) 34px;
     grid-template-rows: 36px 36px;
     grid-template-areas:
-      "title title pin close"
-      "members context context context";
+      "title context close"
+      "title actions actions";
     align-items: center;
     gap: 0.38rem 0.42rem;
     box-sizing: border-box;
@@ -2493,19 +2475,14 @@
     width: auto;
   }
 
-  .popup-chat-pin-btn {
-    grid-area: pin;
-    justify-self: end;
-  }
-
   .popup-header-chat .popup-close {
     grid-area: close;
     justify-self: end;
   }
 
-  .popup-chat-header-members-btn {
-    grid-area: members;
-    justify-self: start;
+  .popup-chat-header-actions-menu {
+    grid-area: actions;
+    justify-self: end;
     margin-left: 0;
     margin-right: 0;
   }
@@ -2517,7 +2494,7 @@
     margin-right: 0;
   }
 
-  .popup-header-chat > .popup-chat-context-btn:not(.popup-chat-header-members-btn) {
+  .popup-header-chat > .popup-chat-context-btn {
     grid-area: context;
     justify-self: end;
     margin-right: 0;

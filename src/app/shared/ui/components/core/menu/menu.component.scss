@@ -857,6 +857,22 @@
   overflow: visible;
 }
 
+.app-menu__button-row-item--image-stack {
+  flex: 0 0 auto;
+  width: auto;
+  min-width: var(--app-menu-image-stack-min-width, 0);
+  height: var(--app-menu-image-stack-height, 34px);
+  min-height: var(--app-menu-image-stack-height, 34px);
+  max-height: var(--app-menu-image-stack-height, 34px);
+  border-radius: 999px;
+  padding: var(--app-menu-image-stack-padding, 1px);
+  background: var(--app-menu-image-stack-bg, linear-gradient(180deg, #f7fbff 0%, #edf4ff 100%));
+  border-color: var(--app-menu-image-stack-border, rgba(48, 85, 138, 0.34));
+  color: var(--app-menu-image-stack-fg, #2c5f9b);
+  box-shadow: var(--app-menu-image-stack-shadow, 0 2px 8px rgba(31, 79, 132, 0.18));
+  overflow: visible;
+}
+
 .app-menu__button-row-item--image .app-menu__button-row-ring {
   inset: var(--app-menu-image-ring-inset, -4px);
 }
@@ -895,8 +911,56 @@
   object-fit: cover;
 }
 
+.app-menu__button-row-image-stack {
+  position: relative;
+  z-index: 3;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex: 0 0 auto;
+  min-width: 0;
+  padding-left: 0;
+}
+
+.app-menu__button-row-stack-image {
+  flex: 0 0 var(--app-menu-image-stack-avatar-size, 30px);
+  width: var(--app-menu-image-stack-avatar-size, 30px);
+  height: var(--app-menu-image-stack-avatar-size, 30px);
+  min-width: var(--app-menu-image-stack-avatar-size, 30px);
+  min-height: var(--app-menu-image-stack-avatar-size, 30px);
+  border-radius: 50%;
+  border: 2px solid #fff;
+  background: var(--app-menu-bg-strong);
+  color: #fff;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  overflow: hidden;
+  font-size: 0.62rem;
+  font-weight: 900;
+  line-height: 1;
+  text-transform: uppercase;
+  box-shadow: 0 2px 5px rgba(22, 42, 70, 0.18);
+}
+
+.app-menu__button-row-stack-image + .app-menu__button-row-stack-image {
+  margin-left: var(--app-menu-image-stack-overlap, -0.58rem);
+}
+
+.app-menu__button-row-stack-image img {
+  display: block;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
 .app-menu__button-row-item--image:not(:disabled):hover {
   background: transparent;
+}
+
+.app-menu__button-row-item--image-stack:not(:disabled):hover {
+  background: var(--app-menu-image-stack-hover-bg, linear-gradient(180deg, #edf7ff 0%, #dcecff 100%));
+  border-color: var(--app-menu-image-stack-hover-border, rgba(48, 85, 138, 0.48));
 }
 
 .app-menu__button-row-item--action.app-menu__button-row-item--labelled {

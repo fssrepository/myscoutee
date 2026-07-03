@@ -64,6 +64,7 @@ import {
   I18nPipe,
   SmartListComponent,
   type AppMenuGroup,
+  type AppMenuImageStackItem,
   type AppMenuItem,
   type AppMenuItemSelectEvent,
   type AppMenuPalette,
@@ -140,6 +141,8 @@ type SubEventAssetCard = (AppDTOs.AssetDTO | AppDTOs.AssetDetailDTO) & {
 type SubEventAssetCardsByType = Partial<Record<AssetType, SubEventAssetCard[]>>;
 
 type ChatMenuContext =
+  | { menu: 'chat-header'; action: 'members'; control: AppUiTypes.PopupHeaderControl }
+  | { menu: 'chat-header'; action: 'pins' }
   | { menu: 'chat-context'; control: AppUiTypes.PopupHeaderControl }
   | { menu: 'composer'; action: 'image' | 'voice' | 'poll' | 'event' | 'asset' }
   | { menu: 'message-action'; message: ContractTypes.ChatMessageDto; action: 'view' | 'reply' | 'edit' | 'unsend' | 'pin' | 'report' };
@@ -570,6 +573,60 @@ export class EventChatPopupComponent implements OnDestroy {
     return Math.max(0, Math.trunc(Number(control.badge?.value) || 0));
   }
 
+  protected chatHeaderActionMenuItems(control: AppUiTypes.PopupHeaderControl | null): readonly AppMenuItem<string, ChatMenuContext>[] {
+    return [
+      ...(control ? [this.chatHeaderMembersMenuItem(control)] : []),
+      this.chatHeaderPinMenuItem()
+    ];
+  }
+
+  private chatHeaderMembersMenuItem(control: AppUiTypes.PopupHeaderControl): AppMenuItem<string, ChatMenuContext> {
+    const badgeValue = this.chatHeaderControlBadgeValue(control);
+    const thumbStack = control.visual?.kind === 'thumbStack'
+      ? this.chatHeaderThumbs(control).map(thumb => this.chatHeaderThumbStackItem(thumb))
+      : [];
+    return {
+      id: `chat-header-${control.id}`,
+      label: control.visual?.kind === 'thumbStack' ? null : this.chatHeaderControlLabel(control),
+      icon: control.visual?.kind === 'thumbStack' ? null : this.chatHeaderControlIcon(control),
+      layout: control.visual?.kind === 'thumbStack' ? 'image-stack' : 'action',
+      palette: 'blue',
+      imageStack: thumbStack,
+      imageStackMaxVisible: control.visual?.kind === 'thumbStack' ? control.visual.maxVisible : null,
+      counter: badgeValue > 0 ? this.chatHeaderControlCounterLabel(badgeValue) : null,
+      ariaLabel: this.chatHeaderControlLabel(control),
+      context: { menu: 'chat-header', action: 'members', control }
+    };
+  }
+
+  private chatHeaderPinMenuItem(): AppMenuItem<string, ChatMenuContext> {
+    return {
+      id: 'chat-header-pins',
+      icon: 'push_pin',
+      palette: this.pinnedMessages().length > 0 ? 'blue' : 'default',
+      active: this.pinnedMessages().length > 0,
+      ariaLabel: 'Open pinned messages',
+      context: { menu: 'chat-header', action: 'pins' }
+    };
+  }
+
+  private chatHeaderThumbStackItem(thumb: AppUiTypes.PopupHeaderThumb): AppMenuImageStackItem {
+    return {
+      id: thumb.id,
+      imageUrl: thumb.imageUrl,
+      imageAlt: thumb.label || thumb.initials,
+      imageFallback: thumb.initials
+    };
+  }
+
+  private chatHeaderControlCounterLabel(value: number): string {
+    const count = Math.max(0, Math.trunc(Number(value) || 0));
+    if (count <= 0) {
+      return '';
+    }
+    return count > 99 ? '+99+' : `+${count}`;
+  }
+
   protected openChatHeaderControl(control: AppUiTypes.PopupHeaderControl, event?: Event): void {
     event?.stopPropagation();
     if (control.id !== 'members') {
@@ -741,6 +798,14 @@ export class EventChatPopupComponent implements OnDestroy {
   protected onInlineChatMenuSelect(event: AppMenuItemSelectEvent<string, ChatMenuContext>): void {
     const context = event.context;
     if (!context) {
+      return;
+    }
+    if (context.menu === 'chat-header') {
+      if (context.action === 'members') {
+        this.openChatHeaderControl(context.control, event.sourceEvent);
+        return;
+      }
+      this.openPinnedMessagesDialog(event.sourceEvent);
       return;
     }
     if (context.menu === 'chat-context') {

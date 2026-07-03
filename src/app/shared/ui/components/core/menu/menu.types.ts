@@ -61,7 +61,7 @@ export type AppMenuTriggerAction = 'menu' | 'custom';
 export type AppMenuItemSelectAction = 'select' | 'remove';
 export type AppMenuItemSurface = 'plain' | 'tinted';
 export type AppMenuLayout = 'row' | 'grid' | 'list' | 'tabs';
-export type AppMenuItemLayout = 'default' | 'pill' | 'action' | 'big' | 'image';
+export type AppMenuItemLayout = 'default' | 'pill' | 'action' | 'big' | 'image' | 'image-stack';
 export type AppMenuDensity = 'default' | 'compact';
 export type AppMenuPanelAlign = 'auto' | 'start' | 'end';
 export type AppMenuPanelMode = 'auto' | 'anchored' | 'sheet' | 'dock' | 'fixed';
@@ -134,6 +134,13 @@ export interface AppMenuSegment {
   palette?: AppMenuPalette;
 }
 
+export interface AppMenuImageStackItem {
+  id: string;
+  imageUrl?: AppMenuLiveValue<string | null | undefined>;
+  imageAlt?: AppMenuLiveValue<string | null | undefined>;
+  imageFallback?: AppMenuLiveValue<string | null | undefined>;
+}
+
 export interface AppMenuItem<TId extends string = string, TContext = unknown> {
   id: TId;
   label?: AppMenuLiveValue<string | null | undefined>;
@@ -143,6 +150,8 @@ export interface AppMenuItem<TId extends string = string, TContext = unknown> {
   imageUrl?: AppMenuLiveValue<string | null | undefined>;
   imageAlt?: AppMenuLiveValue<string | null | undefined>;
   imageFallback?: AppMenuLiveValue<string | null | undefined>;
+  imageStack?: AppMenuLiveValue<readonly AppMenuImageStackItem[] | null | undefined>;
+  imageStackMaxVisible?: AppMenuLiveValue<number | null | undefined>;
   openIcon?: AppMenuLiveValue<string | null | undefined>;
   closeIcon?: AppMenuLiveValue<string | null | undefined>;
   kind?: AppMenuItemKind;

@@ -15,41 +15,12 @@
             <h2>{{ chatHeaderTitle(chatSession) }}</h2>
           </div>
         </div>
-        @if (chatHeaderMembersControl(); as membersControl) {
-          <button
-            type="button"
-            class="chat-members-stack chat-members-stack-large chat-header-members event-editor-members-trigger event-editor-members-trigger-members popup-chat-context-btn popup-chat-header-members-btn"
-            (click)="openChatHeaderControl(membersControl, $event)"
-            [attr.aria-label]="chatHeaderControlLabel(membersControl)"
-            >
-            <span class="event-editor-members-invite popup-chat-header-members-content">
-              @if (membersControl.visual?.kind === 'thumbStack') {
-                <span class="popup-chat-header-thumb-stack" aria-hidden="true">
-                  @for (thumb of chatHeaderThumbs(membersControl); track thumb.id) {
-                    <span class="popup-chat-header-thumb">
-                      @if (thumb.imageUrl) {
-                        <img [src]="thumb.imageUrl" [alt]="thumb.label || thumb.initials" loading="lazy" decoding="async" />
-                      } @else {
-                        <span>{{ thumb.initials }}</span>
-                      }
-                    </span>
-                  }
-                </span>
-              } @else {
-                <mat-icon>{{ chatHeaderControlIcon(membersControl) }}</mat-icon>
-                <span class="popup-chat-header-members-label">{{ chatHeaderControlLabel(membersControl) }}</span>
-              }
-            </span>
-            @if (chatHeaderControlBadgeValue(membersControl) > 0) {
-              <span class="card-badge event-editor-members-pending-badge popup-chat-context-total-badge">
-                +{{ chatHeaderControlBadgeValue(membersControl) | counterBadge:99 }}
-              </span>
-            }
-          </button>
-        }
-        <button type="button" class="popup-chat-pin-btn" [class.has-pins]="pinnedMessages().length > 0" (click)="openPinnedMessagesDialog($event)" aria-label="Open pinned messages">
-          <mat-icon>push_pin</mat-icon>
-        </button>
+        <app-menu
+          class="popup-chat-header-actions-menu"
+          kind="inline"
+          [items]="chatHeaderActionMenuItems(chatHeaderMembersControl())"
+          (itemSelect)="onInlineChatMenuSelect($event)"
+        ></app-menu>
         @if (!isServiceChat() && !isBlockedSupportChat() && !selectedChatHasSubEventMenu()) {
           <button
             type="button"
