@@ -55,26 +55,8 @@
 }
 
 @if (showPoliciesPopup) {
-<div class="event-slots-popup-backdrop" (click)="closePoliciesPopup()"></div>
-<section class="event-slots-popup event-policies-popup" role="dialog" aria-modal="true" aria-label="Policy setup">
-  <header class="event-slots-popup-head">
-    <div class="event-slots-popup-copy">
-      <span class="event-slots-popup-title">Policy Setup</span>
-      <span class="event-slots-popup-subtitle">{{ popupSubtitle() }}</span>
-    </div>
-    <div class="event-policies-popup-head-controls">
-      @if (!locked()) {
-      <button type="button" class="popup-header-add-btn event-slots-add-btn" (click)="openPolicyEditor(undefined, $event)" aria-label="Add policy">
-        <mat-icon>add</mat-icon>
-      </button>
-      }
-      <button type="button" class="event-slots-popup-close" (click)="closePoliciesPopup()" aria-label="Close policy setup">
-        <mat-icon>close</mat-icon>
-      </button>
-    </div>
-  </header>
-
-  <div class="event-slots-popup-body event-policies-popup-body">
+<app-popup [model]="policySetupPopupModel()" [zIndex]="policySetupPopupZIndex()">
+  <div class="event-policies-popup-body">
     <div class="event-policies-list event-policies-list-compact">
       @for (policy of workingPolicies; track policy.id; let i = $index) {
       <single-row
@@ -90,30 +72,11 @@
       }
     </div>
   </div>
-</section>
+</app-popup>
 
 @if (showPolicyEditorPopup) {
-<div class="event-policy-editor-backdrop" (click)="closePolicyEditor()"></div>
-<section class="event-slots-popup event-policy-editor-popup" role="dialog" aria-modal="true" aria-label="Edit policy">
-  <header class="event-slots-popup-head">
-    <div class="event-slots-popup-copy">
-      <span class="event-slots-popup-title">{{ policyPopupTitle() }}</span>
-      <span class="event-slots-popup-subtitle">{{ editorSubtitle() }}</span>
-    </div>
-    <div class="event-policies-popup-head-controls">
-      @if (!locked()) {
-      <button type="button" class="popup-header-add-btn subevent-leaderboard-save-btn event-policy-header-save-btn"
-        [class.form-save-invalid]="!canSavePolicyDraft()" [disabled]="!canSavePolicyDraft()" (click)="savePolicyDraft()" aria-label="Save policy">
-        <mat-icon>done</mat-icon>
-      </button>
-      }
-      <button type="button" class="event-slots-popup-close" (click)="closePolicyEditor()" aria-label="Close policy form">
-        <mat-icon>close</mat-icon>
-      </button>
-    </div>
-  </header>
-
-  <div class="event-slots-popup-body event-policy-editor-body">
+<app-popup [model]="policyEditorPopupModel()" [zIndex]="policyEditorPopupZIndex()">
+  <div class="event-policy-editor-body">
     <article class="event-policy-card">
       <label class="event-policy-field">
         <span>Title</span>
@@ -129,6 +92,6 @@
       </label>
     </article>
   </div>
-</section>
+</app-popup>
 }
 }
