@@ -52,7 +52,6 @@
   box-shadow: 0 0 0 3px rgba(55, 116, 212, 0.14);
 }
 
-:host-context(.form-flow__control.is-required) .link-input input,
 :host-context(.form-flow__control.is-required-missing) .link-input input {
   border-color: #ef9a9a;
   background: #fff1f1;

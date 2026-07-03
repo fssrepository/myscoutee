@@ -147,7 +147,12 @@ function formFlowHasRequiredValue(value: unknown, control?: FormFlowControlModel
     return value.trim().length > 0;
   }
   if (typeof value === 'number') {
-    return Number.isFinite(value);
+    if (!Number.isFinite(value)) {
+      return false;
+    }
+    const min = typeof control?.min === 'number' ? control.min : null;
+    const max = typeof control?.max === 'number' ? control.max : null;
+    return (min === null || value >= min) && (max === null || value <= max);
   }
   if (typeof value === 'boolean') {
     return true;
