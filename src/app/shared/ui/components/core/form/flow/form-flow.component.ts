@@ -32,6 +32,7 @@ import type {
 import { ImageCarouselComponent } from '../../image-carousel';
 import { IndicatorComponent } from '../../indicator';
 import { ImageCardComponent, InfoCardComponent } from '../../smart-list/card';
+import { UiTaskScheduler } from '../../../../scheduler';
 import { DateInputComponent, type DateInputModel, type DateInputValue } from '../inputs/date-input';
 import { LocationInputComponent, type LocationInputConfig } from '../inputs/location-input';
 import { PricingEditorInputComponent, type PricingEditorConfig } from '../inputs/pricing-editor';
@@ -44,6 +45,7 @@ import type {
   FormFlowMenuControlConfig,
   FormFlowModel,
   FormFlowPricingControlConfig,
+  FormFlowPushEvent,
   FormFlowSaveEvent,
   FormFlowStepModel
 } from './form-flow.types';
@@ -118,6 +120,11 @@ export class FormFlowComponent implements ControlValueAccessor, OnChanges, OnDes
   private lastEmittedPercent: number | null = null;
   private pendingPercent: number | null = null;
   private percentEmitQueued = false;
+  private readonly pushScheduler = new UiTaskScheduler<Omit<FormFlowPushEvent, 'signal'>>({
+    intervalMs: () => this.resolvedPushIntervalMs(),
+    state: () => this.currentPushState(),
+    task: ({ state, signal }) => this.runPushTask(state, signal)
+  });
 
   ngOnChanges(changes: SimpleChanges): void {
     if (changes['model']) {
@@ -125,10 +132,12 @@ export class FormFlowComponent implements ControlValueAccessor, OnChanges, OnDes
       this.pendingPageIndex = null;
       this.queueViewportSync('auto');
       this.queuePercentEmit();
+      this.pushScheduler.restart();
     }
   }
 
   ngOnDestroy(): void {
+    this.pushScheduler.destroy();
     this.clearViewportScrollLock();
   }
 
@@ -702,6 +711,29 @@ export class FormFlowComponent implements ControlValueAccessor, OnChanges, OnDes
 
   private isControlMissingRequired(control: FormFlowControlModel): boolean {
     return formFlowIsControlMissingRequired(control, this.formValue);
+  }
+
+  private currentPushState(): Omit<FormFlowPushEvent, 'signal'> {
+    return {
+      value: this.formValue,
+      stepId: this.activeStep()?.id ?? 'summary',
+      stepIndex: this.visiblePageIndex()
+    };
+  }
+
+  private async runPushTask(
+    state: Omit<FormFlowPushEvent, 'signal'>,
+    signal?: AbortSignal
+  ): Promise<void> {
+    const push = this.model?.onPush;
+    if (!push || this.resolvedPushIntervalMs() <= 0 || this.loading || this.saving || signal?.aborted) {
+      return;
+    }
+    await push({ ...state, signal });
+  }
+
+  private resolvedPushIntervalMs(): number {
+    return Math.max(0, Math.trunc(Number(this.model?.pushIntervalMs) || 0));
   }
 
   private readPath(source: unknown, path: FormFlowControlModel['bind']): unknown {

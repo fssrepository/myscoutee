@@ -1,24 +1,24 @@
-export interface UiPollTaskContext<TQuery> {
-  query: TQuery;
+export interface UiScheduledTaskContext<TState> {
+  state: TState;
   signal?: AbortSignal;
 }
 
-export interface UiPollerConfig<TQuery> {
+export interface UiTaskSchedulerConfig<TState> {
   intervalMs: () => number;
-  query: () => TQuery;
-  task: (context: UiPollTaskContext<TQuery>) => void | Promise<void>;
+  state: () => TState;
+  task: (context: UiScheduledTaskContext<TState>) => void | Promise<void>;
 }
 
-export class UiPoller<TQuery> {
+export class UiTaskScheduler<TState> {
   private timer: ReturnType<typeof setTimeout> | null = null;
   private abortController: AbortController | null = null;
   private inFlight = false;
   private destroyed = false;
   private lastPositiveIntervalMs = 0;
 
-  constructor(private readonly config: UiPollerConfig<TQuery>) {}
+  constructor(private readonly config: UiTaskSchedulerConfig<TState>) {}
 
-  refresh(): void {
+  restart(): void {
     if (this.destroyed) {
       return;
     }
@@ -54,11 +54,11 @@ export class UiPoller<TQuery> {
       this.inFlight = true;
       try {
         await this.config.task({
-          query: this.config.query(),
+          state: this.config.state(),
           signal: abortController?.signal
         });
       } catch {
-        // Keep the current UI snapshot if a background poll is unavailable.
+        // Scheduled work is background-only; keep the current UI state on failure.
       } finally {
         if (this.abortController === abortController) {
           this.abortController = null;

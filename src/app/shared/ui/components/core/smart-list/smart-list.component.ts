@@ -58,7 +58,7 @@ import {
   type InfiniteStepperSurfaceState as StepperSurfaceState
 } from './infinite-stepper';
 import { FiniteStepper } from './finite-stepper';
-import { UiPoller } from '../../../poller';
+import { UiTaskScheduler } from '../../../scheduler';
 import type {
   ListDirection,
   ListQuery,
@@ -314,10 +314,10 @@ export class SmartListComponent<T, TFilters extends SmartListFilters = SmartList
   private hostedFullscreenPendingDelta = 0;
   private hostedFullscreenCompletingTransition = false;
   private hostedFullscreenTransitionTimer: ReturnType<typeof setTimeout> | null = null;
-  private readonly poller = new UiPoller<ListQuery<TFilters>>({
+  private readonly pollScheduler = new UiTaskScheduler<ListQuery<TFilters>>({
     intervalMs: () => this.resolvedPollIntervalMs(),
-    query: () => this.visiblePollQuery(),
-    task: ({ query, signal }) => this.pollVisibleItems(query, signal)
+    state: () => this.visiblePollQuery(),
+    task: ({ state, signal }) => this.pollVisibleItems(state, signal)
   });
 
   private suspendSnapReactivation = false;
@@ -522,7 +522,7 @@ export class SmartListComponent<T, TFilters extends SmartListFilters = SmartList
 
   ngOnDestroy(): void {
     this.loadSequence += 1;
-    this.poller.destroy();
+    this.pollScheduler.destroy();
     this.stepper.reset();
     this.clearListSnapSettleTimers();
     this.clearHorizontalCursorScrollLock();
@@ -1379,7 +1379,7 @@ export class SmartListComponent<T, TFilters extends SmartListFilters = SmartList
     this.progress = 0;
     this.scrollable = false;
     this.weekRateViewportPageKey = null;
-    this.poller.refresh();
+    this.pollScheduler.restart();
 
     if (this.currentViewMode === 'list') {
       this.stepper.clearWindow();

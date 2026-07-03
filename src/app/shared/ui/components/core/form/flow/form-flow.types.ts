@@ -157,6 +157,13 @@ export interface FormFlowSaveModel {
   disabled?: boolean;
 }
 
+export interface FormFlowPushEvent {
+  value: unknown;
+  stepId: string;
+  stepIndex: number;
+  signal?: AbortSignal;
+}
+
 export interface FormFlowModel {
   title: string;
   subtitle?: string;
@@ -166,6 +173,8 @@ export interface FormFlowModel {
   summary?: FormFlowSummaryModel | null;
   save?: FormFlowSaveModel | null;
   completion?: FormFlowCompletionModel | null;
+  pushIntervalMs?: number | null;
+  onPush?: (event: FormFlowPushEvent) => void | Promise<void>;
   loadingLabel?: string;
 }
 

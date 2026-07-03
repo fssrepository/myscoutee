@@ -28,7 +28,7 @@ import {
   type AppMenuValueMap,
   HeaderCardComponent,
   type HeaderCardModel,
-  UiPoller,
+  UiTaskScheduler,
   type UserImpressionChangeFlags
 } from '../..';
 import {
@@ -214,10 +214,10 @@ export class SideMenuComponent implements OnDestroy {
   private lastHandledAssetRequestMs = 0;
   private lastHandledEventFeedbackRequestMs = 0;
   private hydrationRequestVersion = 0;
-  private readonly userRealtimePoller = new UiPoller<string>({
+  private readonly userRealtimeScheduler = new UiTaskScheduler<string>({
     intervalMs: () => this.userRealtimePollIntervalMs(),
-    query: () => this.userProfileStore.activeUserId().trim(),
-    task: ({ query }) => this.runUserRealtimeLongPollTick(query)
+    state: () => this.userProfileStore.activeUserId().trim(),
+    task: ({ state }) => this.runUserRealtimeLongPollTick(state)
   });
   private reactivationPromptUserId = '';
   private privacyConsentCheckToken = 0;
@@ -1444,7 +1444,7 @@ export class SideMenuComponent implements OnDestroy {
   ngOnDestroy(): void {
     this.routerEventsSubscription.unsubscribe();
     this.profileStore.clearBindings(this.profileBindings);
-    this.userRealtimePoller.destroy();
+    this.userRealtimeScheduler.destroy();
     this.userProfileStore.setUserRealtimePollInFlight(false);
     this.clearUserMenuLoadState();
   }
@@ -1752,11 +1752,11 @@ export class SideMenuComponent implements OnDestroy {
     if (!normalizedUserId || this.userProfileStore.activeUserId().trim() !== normalizedUserId) {
       return;
     }
-    this.userRealtimePoller.refresh();
+    this.userRealtimeScheduler.restart();
   }
 
   private stopUserRealtimeLongPoll(): void {
-    this.userRealtimePoller.stop({ abort: true });
+    this.userRealtimeScheduler.stop({ abort: true });
     this.userProfileStore.setUserRealtimePollInFlight(false);
   }
 
