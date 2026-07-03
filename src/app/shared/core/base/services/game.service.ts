@@ -132,7 +132,8 @@ export class GameService extends BaseRouteModeService {
     bridgeUserId?: string,
     bridgeCount?: number
   ): void {
-    this.rateOutboxService.enqueueGameCardRatingOutbox(
+    this.rateOutboxService.enqueueGameCardRatingOutbox({
+      kind: 'game-card',
       raterUserId,
       ratedUserId,
       rating,
@@ -140,7 +141,7 @@ export class GameService extends BaseRouteModeService {
       socialContext,
       bridgeUserId,
       bridgeCount
-    );
+    });
     this.decrementUserGameCardsStackFilterCount(raterUserId);
     this.scheduleUserRatesOutboxFlushFromNow();
   }
@@ -157,13 +158,14 @@ export class GameService extends BaseRouteModeService {
     if (!normalizedFirstId || !normalizedSecondId) {
       return;
     }
-    this.rateOutboxService.enqueueGameCardPairRatingOutbox(
+    this.rateOutboxService.enqueueGameCardPairRatingOutbox({
+      kind: 'game-card-pair',
       raterUserId,
-      normalizedFirstId,
-      normalizedSecondId,
+      firstRatedUserId: normalizedFirstId,
+      secondRatedUserId: normalizedSecondId,
       rating,
       socialContext
-    );
+    });
     this.decrementUserGameCardsStackFilterCount(raterUserId);
     this.scheduleUserRatesOutboxFlushFromNow();
   }

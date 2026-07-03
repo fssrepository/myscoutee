@@ -49,6 +49,36 @@ export interface ActivityRatePageResultDTO {
   users?: UserContracts.UserDto[];
 }
 
+export interface UserRateSyncPayloadDTO {
+  id: string;
+  fromUserId: string;
+  toUserId: string;
+  rate: number;
+  mode: 'single' | 'pair';
+  createdAtIso: string;
+  updatedAtIso: string;
+  ownerUserId?: string;
+  displayId?: string;
+  displayDirection?: ActivityRateDTODirection;
+  socialContext?: ActivityRateDTOSocialContext;
+  bridgeUserId?: string;
+  bridgeCount?: number;
+  scoreGiven?: number;
+  scoreReceived?: number;
+  eventName?: string;
+  happenedAtIso?: string;
+  distanceMetersExact?: number;
+}
+
+export interface UserRatesSyncRequestDTO {
+  rates: UserRateSyncPayloadDTO[];
+}
+
+export interface UserRatesSyncResponseDTO {
+  syncedRateIds?: string[] | null;
+  failedRateIds?: string[] | null;
+}
+
 export interface IEventsService {
   queryActivitiesEventDTOPage(
     userId: string,
