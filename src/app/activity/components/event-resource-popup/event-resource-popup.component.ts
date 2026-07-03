@@ -304,12 +304,20 @@ export class EventResourcePopupComponent {
   }
 
   private chatMetricIdentity(context: ResourcePopupContext): string {
-    const ownerId = `${context.ownerId ?? ''}`.trim();
-    const subEventId = `${context.subEvent.id ?? ''}`.trim();
+    return this.chatMetricIdentityFromParts(context.ownerId, context.subEvent.id, context.groupId);
+  }
+
+  private chatMetricIdentityFromParts(
+    ownerIdValue: string | null | undefined,
+    subEventIdValue: string | null | undefined,
+    groupIdValue?: string | null
+  ): string {
+    const ownerId = `${ownerIdValue ?? ''}`.trim();
+    const subEventId = `${subEventIdValue ?? ''}`.trim();
     if (!ownerId || !subEventId) {
       return '';
     }
-    const groupId = `${context.groupId ?? ''}`.trim();
+    const groupId = `${groupIdValue ?? ''}`.trim();
     const channelType: ContractTypes.ChatChannelType = groupId ? 'groupSubEvent' : 'optionalSubEvent';
     const chatOwnerId = groupId ? `${ownerId}:${subEventId}:${groupId}` : `${ownerId}:${subEventId}`;
     return ActivityChatSingleRowConverter.smartListKeyForIdentity(channelType, chatOwnerId, chatOwnerId);
@@ -592,7 +600,12 @@ export class EventResourcePopupComponent {
       this.memberMenuStore.requestActivitiesNavigation({
         type: 'members',
         ownerId: request.group?.id?.trim() || request.subEvent.id,
-        ownerType: request.group?.id ? 'group' : 'subEvent'
+        ownerType: request.group?.id ? 'group' : 'subEvent',
+        metricIdentity: ActivityChatSingleRowConverter.smartListKeyForIdentity(
+          request.item.channelType ?? null,
+          request.item.ownerId,
+          request.item.id
+        )
       });
       return;
     }
@@ -677,6 +690,7 @@ export class EventResourcePopupComponent {
         pendingMembers: Math.max(0, Math.trunc(Number(group?.pending) || 0)),
         capacityTotal: Math.max(0, Math.trunc(Number(group?.capacityMax) || 0)),
         members: group?.members,
+        metricIdentity: this.chatMetricIdentityFromParts(request.ownerId, request.subEventId, group?.id),
         onMembersChanged: group?.onMembersChanged
       });
       return;

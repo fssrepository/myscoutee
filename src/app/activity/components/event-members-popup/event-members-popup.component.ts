@@ -149,6 +149,8 @@ export class EventMembersPopupComponent {
   private suppressedOwnerSyncId: string | null = null;
   private requestedCanManageMembers = false;
   private viewOnlyMode = false;
+  private memberMetricIdentity = '';
+  private lastEmittedMemberMetricBucketSignature = '';
 
   protected membersSmartListQuery: Partial<ListQuery<MembersSmartListFilters>> = {};
 
@@ -736,6 +738,7 @@ export class EventMembersPopupComponent {
       acceptedMembers?: number;
       pendingMembers?: number;
       capacityTotal?: number;
+      metricIdentity?: string;
       initialMembers?: readonly ActivityContracts.ActivityMemberDTO[];
       onMembersChanged?: (members: readonly ActivityContracts.ActivityMemberDTO[]) => void;
     }
@@ -751,6 +754,8 @@ export class EventMembersPopupComponent {
       : null;
     this.isOpen = true;
     this.ownerId = normalizedOwnerId;
+    this.memberMetricIdentity = `${options?.metricIdentity ?? ''}`.trim();
+    this.lastEmittedMemberMetricBucketSignature = '';
     this.lookupRef = lookup ? { ...lookup } : null;
     this.ownerRef = lookup?.type === 'chat'
       ? null
@@ -1223,6 +1228,7 @@ export class EventMembersPopupComponent {
       pendingCount: 0,
       capacityTotal: 0
     };
+    this.lastEmittedMemberMetricBucketSignature = '';
   }
 
   private flushPendingSummary(): void {
@@ -1236,6 +1242,29 @@ export class EventMembersPopupComponent {
       ? `${this.acceptedCount} members · ${this.pendingCount} pending`
       : `${this.acceptedCount} members`;
     this.isSummaryVisible = true;
+    this.emitMemberMetricBucketPatch();
+  }
+
+  private emitMemberMetricBucketPatch(): void {
+    const identity = this.memberMetricIdentity.trim();
+    if (!identity) {
+      return;
+    }
+    const signature = `${identity}:${this.acceptedCount}:${this.pendingCount}:${this.capacityTotal}`;
+    if (signature === this.lastEmittedMemberMetricBucketSignature) {
+      return;
+    }
+    this.lastEmittedMemberMetricBucketSignature = signature;
+    this.activityStore.emitActivityChatMetricBucketPatch({
+      identity,
+      bucketType: 'members',
+      bucket: {
+        accepted: this.acceptedCount,
+        pending: this.pendingCount,
+        capacityMin: 0,
+        capacityMax: this.capacityTotal
+      }
+    });
   }
 
   private ownerScopeLabel(): string {
