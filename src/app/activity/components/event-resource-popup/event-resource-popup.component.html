@@ -14,7 +14,9 @@
             <p>{{ popupSubtitle() }}</p>
           </div>
         </div>
-        <span class="header-members-count members-header-summary-badge" [ngClass]="resourceTypeClass(resourcePopupStore.resourceFilterRef())">{{ popupSummary() }}</span>
+        @if (popupSummary(); as summary) {
+          <span class="header-members-count members-header-summary-badge" [ngClass]="resourceTypeClass(resourcePopupStore.resourceFilterRef())">{{ summary }}</span>
+        }
         <button mat-icon-button class="popup-close" (click)="closeResourcePopup()" aria-label="Close">
           <mat-icon>close</mat-icon>
         </button>

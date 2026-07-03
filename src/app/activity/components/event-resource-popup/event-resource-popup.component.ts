@@ -179,11 +179,6 @@ export class EventResourcePopupComponent {
 
   constructor() {
     effect(() => {
-      this.assetStore.assetListRevision();
-      this.handleOwnedAssetsChanged();
-    });
-
-    effect(() => {
       const deletedAssetEvent = this.assetStore.deletedAssetEvent();
       if (!deletedAssetEvent) {
         return;
@@ -760,7 +755,6 @@ export class EventResourcePopupComponent {
     if (options.hydrate !== false) {
       this.hydratePopupResourceState(context);
     }
-    this.syncPopupSubEventMetrics();
   }
 
   private openInitialExplorePopup(): void {
@@ -798,7 +792,6 @@ export class EventResourcePopupComponent {
       }
       this.applyPersistedPopupState(state);
       this.hydrateOwnedAssetsForResourcePopup();
-      this.syncPopupSubEventMetrics();
     };
     applyState(this.activityResourcesService.peekSubEventResourceState(ownerId, subEventId, assetOwnerUserId));
     void this.activityResourcesService
@@ -818,7 +811,6 @@ export class EventResourcePopupComponent {
     }
     if (ownerChanged || (this.assetStore.assetCards().length === 0 && peekedCards.length > 0)) {
       this.assetStore.applyAssetCards(peekedCards, { reloadList: false });
-      this.syncPopupSubEventMetrics();
     }
     if (
       this.ownedAssetsHydrationLoadedUserId === activeUserId
@@ -835,7 +827,6 @@ export class EventResourcePopupComponent {
         this.assetStore.setActiveOwnerUserId(activeUserId);
         this.assetStore.applyAssetCards(cards, { reloadList: false });
         this.ownedAssetsHydrationLoadedUserId = activeUserId;
-        this.syncPopupSubEventMetrics();
       })
       .finally(() => {
         if (this.ownedAssetsHydrationLoadingUserId === activeUserId) {
@@ -986,14 +977,17 @@ export class EventResourcePopupComponent {
     return context.parentTitle || subEventName || 'Event';
   }
 
-  popupSummary(): string {
+  popupSummary(): string | null {
     const context = this.resourcePopupStore.popupContextRef();
     if (!context) {
-      return '0 members';
+      return null;
     }
     const metrics = this.subEventAssetCapacityMetrics(context.subEvent, this.resourcePopupStore.resourceFilterRef(), {
       normalizeStore: false
     });
+    if (metrics.joined <= 0 && metrics.pending <= 0) {
+      return null;
+    }
     if (metrics.pending <= 0) {
       return `${metrics.joined} members`;
     }
@@ -2684,10 +2678,6 @@ export class EventResourcePopupComponent {
       this.resourcePopupStore.supplyPopupRef.set(null);
       this.resourcePopupStore.bringDialogRef.set(null);
     }
-    this.syncPopupSubEventMetrics();
-  }
-
-  private handleOwnedAssetsChanged(): void {
     this.syncPopupSubEventMetrics();
   }
 
