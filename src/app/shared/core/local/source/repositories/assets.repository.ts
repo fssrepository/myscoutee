@@ -290,13 +290,6 @@ export class LocalAssetsRepository {
       .filter((record): record is ActivityMemberRecord => Boolean(record));
   }
 
-  private activityMemberRecords(): ActivityMemberRecord[] {
-    const table = this.activityMembersCollection();
-    return table.ids
-      .map(id => table.byId[id])
-      .filter((record): record is ActivityMemberRecord => Boolean(record));
-  }
-
   private activityMembersCollection(): ActivityMembersRecordCollection {
     return this.normalizeActivityMembersCollection(this.memoryDb.read()[ACTIVITY_MEMBERS_TABLE_NAME]);
   }
@@ -617,6 +610,9 @@ export class LocalAssetsRepository {
       policies: preserveDetail
         ? (existing?.policies ?? incoming.policies ?? []).map(item => ({ ...item }))
         : (incoming.policies ?? []).map(item => ({ ...item })),
+      policiesEnabled: preserveDetail
+        ? (existing?.policiesEnabled ?? incoming.policiesEnabled ?? false)
+        : incoming.policiesEnabled === true,
       pricing: preserveDetail
         ? (existing?.pricing ? PricingBuilder.clonePricingConfig(existing.pricing) : incoming.pricing)
         : (incoming.pricing ? PricingBuilder.clonePricingConfig(incoming.pricing) : incoming.pricing),
@@ -646,6 +642,7 @@ export class LocalAssetsRepository {
       boost: this.resolveAssetBoost(record),
       routes: cloneNested ? [...(record.routes ?? [])] : (record.routes ?? []),
       topics: cloneNested ? [...(record.topics ?? [])] : (record.topics ?? []),
+      policiesEnabled: record.policiesEnabled === true,
       policies: cloneNested ? (record.policies ?? []).map(item => ({ ...item })) : (record.policies ?? []),
       pricing: cloneNested && record.pricing ? PricingBuilder.clonePricingConfig(record.pricing) : record.pricing,
       requests: cloneNested ? record.requests.map(request => LocalAssetsMapper.cloneRequest(request)) : record.requests,
@@ -723,17 +720,6 @@ export class LocalAssetsRepository {
     };
   }
 
-  private cloneOwnerUserIdIndex(index: Record<string, readonly string[] | string[] | undefined>): Record<string, string[]> {
-    const next: Record<string, string[]> = {};
-    for (const [ownerUserId, ids] of Object.entries(index)) {
-      if (!ownerUserId.trim() || !Array.isArray(ids)) {
-        continue;
-      }
-      next[ownerUserId] = ids.map(id => String(id)).filter(id => id.length > 0);
-    }
-    return next;
-  }
-
   private queryVisibleExploreOwners(activeUserId: string): UserDto[] {
     const allUsers = this.queryUsers();
     const prioritizedFriends = UserProfileState.friendUsersForActiveUser(
@@ -782,6 +768,7 @@ export class LocalAssetsRepository {
       ...record,
       routes: [...(record.routes ?? [])],
       topics: [...(record.topics ?? [])],
+      policiesEnabled: record.policiesEnabled === true,
       policies: (record.policies ?? []).map(item => ({ ...item })),
       pricing: record.pricing ? PricingBuilder.clonePricingConfig(record.pricing) : undefined,
       requests: record.requests.map(request => LocalAssetsMapper.cloneRequest(request)),

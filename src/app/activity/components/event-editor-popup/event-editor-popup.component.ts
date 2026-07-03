@@ -77,7 +77,10 @@ import {
   type LocationInputConfig,
   PricingEditorInputComponent,
   type PricingEditorConfig,
-  IndicatorComponent
+  IndicatorComponent,
+  PopupComponent,
+  type PopupControl,
+  type PopupModel
 } from '../../../shared/ui';
 import {
   EventSubeventDefinitionsPanelComponent
@@ -121,7 +124,8 @@ interface SlotOverrideEditorState {
     LocationInputComponent,
     EventSubeventDefinitionsPanelComponent,
     PricingEditorInputComponent,
-    IndicatorComponent
+    IndicatorComponent,
+    PopupComponent
   ],
   templateUrl: './event-editor-popup.component.html',
   styleUrls: ['./event-editor-popup.component.scss']
@@ -329,6 +333,66 @@ export class EventEditorPopupComponent implements OnInit, OnDestroy {
     return 'Edit Event';
   }
 
+  protected eventEditorPopupModel(): PopupModel<EventEditorMenuContext> {
+    const title = this.getPopupTitle();
+    return {
+      title,
+      subtitle: this.eventEditorPopupSubtitle(),
+      ariaLabel: title,
+      closeAriaLabel: 'Close',
+      size: 'wide',
+      height: 'full',
+      headerTone: 'accent',
+      bodyLayout: 'fill',
+      headerControls: this.eventEditorPopupHeaderControls(),
+      onClose: () => this.close(),
+      onMenuSelect: event => this.onEventEditorMenuSelect(event.itemSelect)
+    };
+  }
+
+  protected eventEditorPopupZIndex(): number {
+    return 2500;
+  }
+
+  private eventEditorPopupSubtitle(): string | null {
+    return this.eventEditorStore.readOnly() && this.eventDetailDTO.title
+      ? this.eventDetailDTO.title
+      : null;
+  }
+
+  private eventEditorPopupHeaderControls(): readonly PopupControl<EventEditorMenuContext>[] {
+    const controls: PopupControl<EventEditorMenuContext>[] = [];
+    if (this.eventVisibilityReady()) {
+      controls.push({
+        kind: 'menu',
+        id: 'event-editor-visibility',
+        menuKind: 'select',
+        trigger: this.eventVisibilityMenuTrigger(),
+        items: this.eventVisibilityMenuItems(),
+        mobileBreakpointPx: 900
+      });
+    }
+    if (this.showEventEditorSaveAction()) {
+      controls.push({
+        kind: 'menu',
+        id: 'event-editor-save',
+        menuKind: 'inline',
+        items: this.eventEditorSaveMenuItems(),
+        closeOnSelect: false
+      });
+    }
+    const checkoutDraft = this.eventEditorCheckoutDraft();
+    if (checkoutDraft) {
+      controls.push({
+        kind: 'menu',
+        id: 'event-editor-checkout-status',
+        menuKind: 'inline',
+        items: this.eventEditorCheckoutStatusMenuItems(checkoutDraft)
+      });
+    }
+    return controls;
+  }
+
   protected isPublishedManageMode(): boolean {
     return this.eventEditorStore.mode() === 'edit'
       && !this.eventEditorStore.readOnly()
@@ -466,10 +530,6 @@ export class EventEditorPopupComponent implements OnInit, OnDestroy {
     }
     this.eventDetailDTO.subEventDefinitions = ActivityEventDetailDTO.normalizeSubEventDefinitions(value ?? []);
     this.normalizeEventDateRange('start');
-  }
-
-  private parseEventEditorOverrideDate(value: unknown): Date | null {
-    return AppUtils.parseDateOnly(value);
   }
 
   private toNonNegativeIntegerOrNull(value: unknown): number | null {
@@ -1513,7 +1573,6 @@ export class EventEditorPopupComponent implements OnInit, OnDestroy {
       return false;
     }
 
-    const activeUserId = this.activeUserId();
     const eventId = this.eventDetailDTO.id.trim()
       || this.editingEventId
       || this.draftEventId
@@ -1532,6 +1591,13 @@ export class EventEditorPopupComponent implements OnInit, OnDestroy {
     const displaySync = await this.eventsService.saveActivityEvent(this.eventDetailDTO);
     if (!displaySync) {
       throw new Error('Event sync did not return an event DTO.');
+    }
+    const syncedEventId = `${displaySync.id ?? ''}`.trim();
+    if (syncedEventId) {
+      this.eventDetailDTO.id = syncedEventId;
+      if (this.draftEventId === eventId) {
+        this.draftEventId = syncedEventId;
+      }
     }
     this.activitiesStore.emitActivityEventSaveResult(displaySync);
     return true;
@@ -1856,68 +1922,6 @@ export class EventEditorPopupComponent implements OnInit, OnDestroy {
     }
     this.eventDetailDTO.slotsEnabled = true;
     this.eventDetailDTO.slotTemplates = ActivityEventDetailDTO.normalizeSlotTemplates(this.eventDetailDTO.slotTemplates);
-  }
-
-  private syncMainEventBoundsFromSubEvents(): void {
-    if (this.eventDetailDTO.subEvents.length === 0) {
-      return;
-    }
-
-    const tournamentMode = this.eventDetailDTO.mode === 'Tournament';
-    let minStartMs: number | null = null;
-    let maxEndMs: number | null = null;
-    let minCapacity: number | null = null;
-    let maxCapacity: number | null = null;
-
-    for (const item of this.eventDetailDTO.subEvents) {
-      let startMs = this.parseEventEditorDateValue(item.startAt)?.getTime() ?? Number.NaN;
-      let endMs = this.parseEventEditorDateValue(item.endAt)?.getTime() ?? Number.NaN;
-      if (!Number.isNaN(startMs) && !Number.isNaN(endMs)) {
-        if (endMs <= startMs) {
-          endMs = startMs + (60 * 60 * 1000);
-        }
-        minStartMs = minStartMs === null ? startMs : Math.min(minStartMs, startMs);
-        maxEndMs = maxEndMs === null ? endMs : Math.max(maxEndMs, endMs);
-      }
-
-      const normalizedRange = new ActivityEventDetailDTO().apply({
-        capacityMin: item.capacityMin,
-        capacityMax: item.capacityMax
-      }).normalizeCapacityRange();
-      const normalizedMin = normalizedRange.min;
-      const normalizedMax = normalizedRange.max;
-      if (normalizedMin !== null) {
-        minCapacity = minCapacity === null
-          ? normalizedMin
-          : (tournamentMode ? (minCapacity + normalizedMin) : Math.min(minCapacity, normalizedMin));
-      }
-      if (normalizedMax !== null) {
-        maxCapacity = maxCapacity === null
-          ? normalizedMax
-          : (tournamentMode ? (maxCapacity + normalizedMax) : Math.max(maxCapacity, normalizedMax));
-      }
-    }
-
-    if (minStartMs !== null && maxEndMs !== null) {
-      this.eventDetailDTO.dateRange = {
-        startAt: AppUtils.toIsoDateTimeLocal(new Date(minStartMs)),
-        endAt: AppUtils.toIsoDateTimeLocal(new Date(maxEndMs)),
-        precision: 'minute'
-      };
-      this.eventDetailDTO.startAtIso = this.eventDetailDTO.dateRange.startAt;
-      this.eventDetailDTO.endAtIso = this.eventDetailDTO.dateRange.endAt;
-    }
-    if (minCapacity !== null) {
-      this.eventDetailDTO.capacityMin = minCapacity;
-    }
-    if (maxCapacity !== null) {
-      this.eventDetailDTO.capacityMax = Math.max(maxCapacity, this.eventDetailDTO.capacityMin ?? maxCapacity);
-    }
-
-    const first = ActivityEventDetailDTO.firstSubEventByOrder(this.eventDetailDTO.subEvents);
-    if (first) {
-      this.eventDetailDTO.location = ActivityEventDetailDTO.normalizeLocation(first.location);
-    }
   }
 
   private syncFirstSubEventLocationFromMainEvent(): void {

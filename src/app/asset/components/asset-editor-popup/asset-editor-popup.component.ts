@@ -8,45 +8,37 @@ import {
 import {
   FormsModule
 } from '@angular/forms';
-import {
-  MatIconModule
-} from '@angular/material/icon';
 
-import {
-  environment
-} from '../../../../environments/environment';
 import {
   APP_STATIC_DATA
 } from '../../../shared/app-static-data';
 import {
-  AppUtils
-} from '../../../shared/app-utils';
-import {
   AssetCardBuilder,
-  AssetDefaultsBuilder
+  AssetDefaultsBuilder,
+  PricingBuilder
 } from '../../../shared/core/base/builders';
 import {
-  AssetsService,
-  MediaService
+  AssetsService
 } from '../../../shared/core';
 import {
   AssetStore,
   type AssetFormState
 } from '../../../shared/ui/context/stores/asset.store';
 import {
-  AppMenuComponent,
-  ImageCarouselComponent,
-  EventPoliciesInputComponent,
-  LocationInputComponent,
   type EventPoliciesInputConfig,
   type LocationInputConfig,
-  PricingEditorInputComponent,
   IndicatorComponent,
   type AppMenuItem,
   type AppMenuItemSelectEvent,
   type AppMenuPalette,
   type AppMenuTrigger,
-  type PricingEditorConfig
+  FormFlowComponent,
+  type FormFlowModel,
+  type FormFlowTone,
+  type PricingEditorConfig,
+  PopupComponent,
+  type PopupControl,
+  type PopupModel
 } from '../../../shared/ui';
 
 import type * as AppConstants from '../../../shared/core/common/constants';
@@ -56,6 +48,10 @@ type AssetEditorMenuContext =
   | { menu: 'visibility'; visibility: AppConstants.EventVisibility }
   | { menu: 'category'; category: AppConstants.AssetCategory }
   | { menu: 'save' };
+type AssetEditorFlowValue = AssetFormState & {
+  imageUrls: string[];
+  routeLocation: string;
+};
 
 @Component({
   selector: 'app-asset-editor-popup',
@@ -63,13 +59,9 @@ type AssetEditorMenuContext =
   imports: [
     CommonModule,
     FormsModule,
-    MatIconModule,
-    AppMenuComponent,
-    ImageCarouselComponent,
-    EventPoliciesInputComponent,
-    LocationInputComponent,
-    PricingEditorInputComponent,
-    IndicatorComponent
+    IndicatorComponent,
+    FormFlowComponent,
+    PopupComponent
   ],
   templateUrl: './asset-editor-popup.component.html',
   styleUrl: './asset-editor-popup.component.scss'
@@ -77,11 +69,14 @@ type AssetEditorMenuContext =
 export class AssetEditorPopupComponent {
   private readonly userProfileStore = inject(UserProfileStore);
   private readonly assetsService = inject(AssetsService);
-  private readonly mediaService = inject(MediaService);
   protected readonly assetStore = inject(AssetStore);
   protected readonly assetVisibilityOptions = APP_STATIC_DATA.eventVisibilityOptions;
   private assetImageUrlsCacheKey = '';
   private assetImageUrlsCache: string[] = [];
+  private assetEditorFlowValueCacheKey = '';
+  private assetEditorFlowValueCache: AssetEditorFlowValue | null = null;
+  private assetEditorFlowModelCacheKey = '';
+  private assetEditorFlowModelCache: FormFlowModel | null = null;
   protected readonly assetPricingEditorConfig: PricingEditorConfig = {
     context: 'asset',
     presentation: 'popup-summary',
@@ -99,7 +94,7 @@ export class AssetEditorPopupComponent {
   protected readonly assetPoliciesInputConfig: EventPoliciesInputConfig = {
     title: 'Lending Policies',
     subtitle: 'Add the rules borrowers need to read and approve before borrowing this asset.',
-    toggleable: false,
+    toggleable: true,
     openLabel: 'Open Policy Setup',
     viewLabel: 'View Policies',
     emptyLabel: 'No lending policies yet. Add policies if borrowers must review terms before sending the request.',
@@ -122,6 +117,263 @@ export class AssetEditorPopupComponent {
     return `${mode} ${AssetDefaultsBuilder.assetTypeLabel(this.assetForm.type)}`;
   }
 
+  protected assetEditorPopupModel(): PopupModel<AssetEditorMenuContext> {
+    return {
+      title: this.title,
+      ariaLabel: this.title,
+      closeAriaLabel: 'Close asset editor',
+      size: 'wide',
+      height: 'full',
+      headerTone: 'accent',
+      bodyLayout: 'fill',
+      headerControls: this.assetEditorPopupHeaderControls(),
+      onClose: () => this.requestClose(),
+      onMenuSelect: event => this.onAssetEditorMenuSelect(event.itemSelect)
+    };
+  }
+
+  protected assetEditorPopupZIndex(): number {
+    return 4200;
+  }
+
+  protected assetEditorFlowModel(): FormFlowModel {
+    const disabled = this.assetEditorReadOnly() || this.isLoading;
+    const cacheKey = [
+      this.title,
+      this.assetForm.type,
+      this.assetForm.category ?? '',
+      this.assetFormVisibility,
+      this.assetImageUploadOwnerId,
+      this.assetImageUploadEntity(),
+      disabled ? 'disabled' : 'enabled'
+    ].join('|');
+    if (this.assetEditorFlowModelCacheKey === cacheKey && this.assetEditorFlowModelCache) {
+      return this.assetEditorFlowModelCache;
+    }
+    const steps: FormFlowModel['steps'] = [
+      {
+        id: 'basics',
+        title: 'Basics',
+        icon: this.assetCategoryIcon(this.assetForm.category),
+        palette: this.assetCategoryPalette(this.assetForm.category),
+        presentation: 'media',
+        controls: [
+          {
+            id: 'imageUrls',
+            bind: 'imageUrls',
+            kind: 'image-carousel',
+            layout: 'wide',
+            rowSpan: 3,
+            disabled,
+            config: {
+              slotCount: 1,
+              compact: true,
+              autoSize: true,
+              ariaLabel: 'Asset image',
+              uploadOwnerId: this.assetImageUploadOwnerId,
+              uploadEntityId: this.assetImageUploadEntity()
+            },
+            summary: {
+              hidden: true
+            }
+          },
+          {
+            id: 'title',
+            bind: 'title',
+            kind: 'text',
+            label: 'Title',
+            required: true,
+            disabled
+          },
+          {
+            id: 'subtitle',
+            bind: 'subtitle',
+            kind: 'text',
+            label: 'Subtitle',
+            disabled
+          },
+          {
+            id: 'capacityTotal',
+            bind: 'capacityTotal',
+            kind: 'number',
+            label: 'Total capacity',
+            required: true,
+            min: 1,
+            step: 1,
+            layout: 'half',
+            disabled
+          },
+          {
+            id: 'quantity',
+            bind: 'quantity',
+            kind: 'number',
+            label: 'Quantity',
+            required: true,
+            min: 1,
+            step: 1,
+            layout: 'half',
+            disabled
+          }
+        ]
+      },
+      {
+        id: 'details',
+        title: 'Details',
+        icon: 'notes',
+        controls: [
+          {
+            id: 'sourceLink',
+            bind: 'sourceLink',
+            kind: 'link',
+            label: 'Source link',
+            placeholder: 'https://...',
+            disabled
+          },
+          {
+            id: 'category',
+            bind: 'category',
+            kind: 'menu',
+            label: 'Category',
+            disabled,
+            config: {
+              kind: 'select',
+              trigger: this.assetCategoryMenuTrigger(),
+              items: this.assetCategoryMenuItems(),
+              closeOnSelect: true
+            }
+          },
+          {
+            id: 'details',
+            bind: 'details',
+            kind: 'textarea',
+            label: 'Details',
+            rows: 4,
+            layout: 'wide',
+            disabled
+          },
+          ...this.assetLocationFlowControls(disabled)
+        ]
+      },
+      {
+        id: 'pricing',
+        title: '',
+        chrome: 'none',
+        controls: [
+          {
+            id: 'pricing',
+            bind: 'pricing',
+            kind: 'pricing',
+            layout: 'wide',
+            disabled,
+            config: {
+              model: this.assetPricingEditorConfig
+            }
+          }
+        ]
+      },
+      {
+        id: 'policies',
+        title: '',
+        chrome: 'none',
+        controls: [
+          {
+            id: 'policies',
+            bind: 'policies',
+            kind: 'policies',
+            layout: 'wide',
+            enabledBind: 'policiesEnabled',
+            disabled,
+            config: {
+              model: this.assetPoliciesInputConfig
+            }
+          }
+        ]
+      }
+    ];
+    const model: FormFlowModel = {
+      title: this.title,
+      layout: 'grouped',
+      tone: this.assetEditorFlowTone(),
+      header: false,
+      completion: {
+        controls: 'required'
+      },
+      steps
+    };
+    this.assetEditorFlowModelCacheKey = cacheKey;
+    this.assetEditorFlowModelCache = model;
+    return model;
+  }
+
+  private assetLocationFlowControls(disabled: boolean): FormFlowModel['steps'][number]['controls'] {
+    if (!this.isPropertyAssetForm()) {
+      return [];
+    }
+    return [{
+      id: 'routeLocation',
+      bind: 'routeLocation',
+      kind: 'location',
+      label: 'Location',
+      required: true,
+      layout: 'wide',
+      disabled,
+      config: {
+        model: this.assetLocationInputConfig
+      }
+    }];
+  }
+
+  protected assetEditorFlowValue(): AssetEditorFlowValue {
+    const cacheKey = `${this.assetStore.uiRevision()}:${this.assetStore.assetFormLoadGeneration()}`;
+    if (this.assetEditorFlowValueCacheKey === cacheKey && this.assetEditorFlowValueCache) {
+      return this.assetEditorFlowValueCache;
+    }
+    const value: AssetEditorFlowValue = {
+      ...this.cloneAssetFormForFlow(this.assetForm),
+      imageUrls: this.assetImageUrls(),
+      routeLocation: this.assetFormRouteStops()[0] ?? ''
+    };
+    this.assetEditorFlowValueCacheKey = cacheKey;
+    this.assetEditorFlowValueCache = value;
+    return value;
+  }
+
+  protected onAssetEditorFlowValueChange(value: unknown): void {
+    if (this.isLoading || this.assetEditorReadOnly()) {
+      return;
+    }
+    this.assetStore.setAssetEditorForm(this.assetFormFromFlowValue(value));
+    this.assetEditorFlowValueCacheKey = '';
+  }
+
+  protected get assetEditorFlowBinding(): AssetEditorFlowValue {
+    return this.assetEditorFlowValue();
+  }
+
+  protected set assetEditorFlowBinding(value: unknown) {
+    this.onAssetEditorFlowValueChange(value);
+  }
+
+  private assetEditorPopupHeaderControls(): readonly PopupControl<AssetEditorMenuContext>[] {
+    return [
+      {
+        kind: 'menu',
+        id: 'asset-editor-visibility',
+        menuKind: 'select',
+        trigger: this.visibilityMenuTrigger(),
+        items: this.visibilityMenuItems(),
+        mobileBreakpointPx: 900
+      },
+      {
+        kind: 'menu',
+        id: 'asset-editor-save',
+        menuKind: 'inline',
+        items: this.assetEditorSaveMenuItems(),
+        closeOnSelect: false
+      }
+    ];
+  }
+
   protected get isLoading(): boolean {
     return this.assetStore.assetFormLoading();
   }
@@ -132,12 +384,6 @@ export class AssetEditorPopupComponent {
 
   protected get assetFormVisibility(): AppConstants.EventVisibility {
     return this.assetStore.assetFormVisibility();
-  }
-
-  protected get sourceRefreshEnabled(): boolean {
-    return environment.activitiesDataSource === 'http'
-      && !this.assetStore.assetFormLoading()
-      && Boolean(AppUtils.normalizeHttpUrl(this.assetForm.sourceLink));
   }
 
   protected get assetImageUploadOwnerId(): string {
@@ -215,7 +461,7 @@ export class AssetEditorPopupComponent {
 
   protected assetCategoryMenuItems(): readonly AppMenuItem<string, AssetEditorMenuContext>[] {
     return this.assetCategoryOptions().map(option => ({
-      id: `asset-category-${option}`,
+      id: option,
       label: this.assetCategoryLabel(option),
       icon: this.assetCategoryIcon(option),
       kind: 'radio',
@@ -250,40 +496,68 @@ export class AssetEditorPopupComponent {
     return AssetCardBuilder.normalizeAssetRoutes(this.assetForm.type, this.assetForm.routes);
   }
 
-  protected setAssetEditorRouteStop(index: number, value: string): void {
-    const assetForm = this.assetStore.assetFormRef();
-    const routes = [...AssetCardBuilder.normalizeAssetRoutes(assetForm.type, assetForm.routes)];
-    if (index < 0 || index >= routes.length) {
-      return;
-    }
-    routes[index] = value;
-    assetForm.routes = AssetCardBuilder.normalizeAssetRoutes(assetForm.type, routes);
-    this.assetStore.touchUiState();
+  private assetFormFromFlowValue(value: unknown): AssetFormState {
+    const current = this.assetForm;
+    const source = this.isRecord(value) ? value as Partial<AssetEditorFlowValue> : {};
+    const type = current.type;
+    const category = AssetDefaultsBuilder.normalizeCategory(
+      type,
+      (source.category ?? current.category) as AppConstants.AssetCategory | undefined
+    );
+    const sourceImageUrls = source.imageUrls;
+    const hasImageUrlsInput = Array.isArray(sourceImageUrls);
+    const imageUrls = hasImageUrlsInput
+      ? sourceImageUrls.map(item => `${item ?? ''}`.trim()).filter(Boolean)
+      : this.assetImageUrls();
+    const imageUrl = hasImageUrlsInput
+      ? imageUrls[0] ?? ''
+      : `${source.imageUrl ?? current.imageUrl ?? ''}`.trim();
+    const routeLocation = `${source.routeLocation ?? this.assetFormRouteStops()[0] ?? ''}`.trim();
+    const routes = type === 'Accommodation'
+      ? AssetCardBuilder.normalizeAssetRoutes(type, [routeLocation])
+      : AssetCardBuilder.normalizeAssetRoutes(type, source.routes ?? current.routes);
+    return {
+      type,
+      title: `${source.title ?? current.title ?? ''}`,
+      subtitle: `${source.subtitle ?? current.subtitle ?? ''}`,
+      category,
+      city: `${source.city ?? current.city ?? ''}`,
+      capacityTotal: Math.max(0, Math.trunc(Number(source.capacityTotal ?? current.capacityTotal) || 0)),
+      quantity: Math.max(0, Math.trunc(Number(source.quantity ?? current.quantity) || 0)),
+      details: `${source.details ?? current.details ?? ''}`,
+      imageUrl,
+      sourceLink: `${source.sourceLink ?? current.sourceLink ?? ''}`,
+      routes,
+      topics: this.cloneStringList(source.topics ?? current.topics),
+      policiesEnabled: source.policiesEnabled === true,
+      policies: this.cloneAssetPolicies(source.policies ?? current.policies),
+      pricing: PricingBuilder.clonePricingConfig(
+        source.pricing ?? current.pricing ?? PricingBuilder.createDefaultPricingConfig('asset')
+      )
+    };
   }
 
-  protected refreshAssetFromSourceLink(): void {
-    void this.refreshAssetFromSourceLinkAction();
+  private cloneAssetFormForFlow(form: AssetFormState): AssetFormState {
+    return {
+      ...form,
+      routes: [...(form.routes ?? [])],
+      topics: this.cloneStringList(form.topics),
+      policiesEnabled: form.policiesEnabled === true,
+      policies: this.cloneAssetPolicies(form.policies),
+      pricing: PricingBuilder.clonePricingConfig(form.pricing ?? null)
+    };
   }
 
-  private async refreshAssetFromSourceLinkAction(): Promise<void> {
-    if (this.assetStore.assetFormLoadingRef()) {
-      return;
-    }
-    const sourceUrl = this.normalizedAssetSourcePreviewUrl(true);
-    if (!sourceUrl) {
-      return;
-    }
-    const ownerUserId = this.assetStore.activeOwnerUserIdRef().trim()
-      || this.userProfileStore.getActiveUserId().trim();
-    const assetForm = this.assetStore.assetFormRef();
-    const preview = await this.assetsService.refreshAssetSourcePreview(ownerUserId, assetForm.type, sourceUrl);
-    if (!preview || preview.enabled === false) {
-      return;
-    }
-    const replacedImageUrl = this.assetStore.applyAssetSourcePreview(preview, sourceUrl);
-    if (environment.activitiesDataSource === 'http') {
-      AppUtils.revokeObjectUrl(replacedImageUrl);
-    }
+  private cloneStringList(items: readonly string[] | null | undefined): string[] {
+    return (items ?? []).map(item => `${item ?? ''}`);
+  }
+
+  private cloneAssetPolicies(items: readonly AppDTOs.EventPolicyItemDTO[] | null | undefined): AppDTOs.EventPolicyItemDTO[] {
+    return (items ?? []).map(item => ({ ...item }));
+  }
+
+  private isRecord(value: unknown): value is Record<string, unknown> {
+    return typeof value === 'object' && value !== null && !Array.isArray(value);
   }
 
   private async saveAssetCard(): Promise<void> {
@@ -297,11 +571,7 @@ export class AssetEditorPopupComponent {
       const ownerName = this.userProfileStore.activeUserProfile()?.name?.trim() || undefined;
       const editingAssetId = this.assetStore.editingAssetIdRef();
       const assetId = editingAssetId || this.assetStore.assetFormDraftIdRef() || `asset-${Date.now()}`;
-      const resolvedImageUrl = await this.resolvePersistedAssetImageUrl(ownerUserId, assetId);
-      if (environment.activitiesDataSource === 'http' && this.hasPendingAssetSourceImage() && !resolvedImageUrl) {
-        throw new Error('Unable to upload asset image.');
-      }
-      const payload = AssetCardBuilder.buildAssetSavePayload(assetForm, resolvedImageUrl || assetForm.imageUrl);
+      const payload = AssetCardBuilder.buildAssetSavePayload(assetForm, assetForm.imageUrl);
       const resolvedVisibility: AppConstants.EventVisibility = this.assetStore.assetFormVisibilityRef();
 
       if (editingAssetId) {
@@ -355,42 +625,6 @@ export class AssetEditorPopupComponent {
     } catch {
       this.assetStore.failAssetEditorSave();
     }
-  }
-
-  private async resolvePersistedAssetImageUrl(ownerUserId: string, assetId: string): Promise<string | null> {
-    const assetForm = this.assetStore.assetFormRef();
-    const pendingSourceImageUrl = this.assetStore.pendingAssetSourceImageUrlRef().trim();
-    if (pendingSourceImageUrl && pendingSourceImageUrl === assetForm.imageUrl.trim()) {
-      const importResult = await this.mediaService.importImage(ownerUserId, assetId, pendingSourceImageUrl);
-      if (importResult.uploaded && importResult.imageUrl) {
-        this.assetStore.applyPersistedAssetImage(importResult.imageUrl);
-        return importResult.imageUrl;
-      }
-      return null;
-    }
-    return assetForm.imageUrl.trim() || null;
-  }
-
-  private hasPendingAssetSourceImage(): boolean {
-    const assetForm = this.assetStore.assetFormRef();
-    const pendingSourceImageUrl = this.assetStore.pendingAssetSourceImageUrlRef().trim();
-    return Boolean(pendingSourceImageUrl && pendingSourceImageUrl === assetForm.imageUrl.trim());
-  }
-
-  private normalizedAssetSourcePreviewUrl(updateForm: boolean): string {
-    if (environment.activitiesDataSource !== 'http') {
-      return '';
-    }
-    const assetForm = this.assetStore.assetFormRef();
-    const raw = assetForm.sourceLink.trim();
-    const normalizedUrl = AppUtils.normalizeHttpUrl(raw);
-    if (!normalizedUrl) {
-      return '';
-    }
-    if (updateForm && normalizedUrl !== raw) {
-      this.assetStore.setAssetEditorSourceLink(normalizedUrl);
-    }
-    return normalizedUrl;
   }
 
   private setAssetEditorCategory(category: AppConstants.AssetCategory): void {
@@ -477,6 +711,16 @@ export class AssetEditorPopupComponent {
       return 'green';
     }
     if (option === 'Friends only') {
+      return 'blue';
+    }
+    return 'orange';
+  }
+
+  private assetEditorFlowTone(): FormFlowTone {
+    if (this.assetFormVisibility === 'Public') {
+      return 'green';
+    }
+    if (this.assetFormVisibility === 'Friends only') {
       return 'blue';
     }
     return 'orange';

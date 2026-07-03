@@ -1,6 +1,7 @@
 import { Injectable, signal } from '@angular/core';
 
 import { EventFeedbackDetailDto } from '../../../core/contracts/activity.interface';
+import type { ChatMetricBucketDTO } from '../../../core/contracts/chat.interface';
 import type { UserMenuCounterDeltasDto } from '../../../core/contracts/user.interface';
 import {
   cloneAssetCounters,
@@ -82,6 +83,15 @@ export interface ActivityResourceSyncState {
   assetOwnerUserId: string;
 }
 
+export type ActivityChatMetricBucketType = 'members' | 'car' | 'accommodation' | 'supplies';
+
+export interface ActivityChatMetricBucketPatch {
+  updatedMs: number;
+  identity: string;
+  bucketType: ActivityChatMetricBucketType;
+  bucket: ChatMetricBucketDTO;
+}
+
 export interface ActivityEventFeedbackSubmitSyncState {
   updatedMs: number;
   dto: EventFeedbackDetailDto;
@@ -110,11 +120,13 @@ export class ActivityStore {
   private readonly _counterOverridesByUserId = signal<Record<string, Partial<ActivityCounters>>>({});
   private readonly _activityMembersSync = signal<ActivityMembersSyncState | null>(null);
   private readonly _activityResourceSync = signal<ActivityResourceSyncState | null>(null);
+  private readonly _activityChatMetricBucketPatch = signal<ActivityChatMetricBucketPatch | null>(null);
   private readonly _activityEventFeedbackSubmitSync = signal<ActivityEventFeedbackSubmitSyncState | null>(null);
 
   readonly counterOverridesByUserId = this._counterOverridesByUserId.asReadonly();
   readonly activityMembersSync = this._activityMembersSync.asReadonly();
   readonly activityResourceSync = this._activityResourceSync.asReadonly();
+  readonly activityChatMetricBucketPatch = this._activityChatMetricBucketPatch.asReadonly();
   readonly activityEventFeedbackSubmitSync = this._activityEventFeedbackSubmitSync.asReadonly();
 
   getUserCounterOverride(userId: string, key: ActivityCounterKey): number | null {
@@ -359,6 +371,27 @@ export class ActivityStore {
       ownerId,
       subEventId,
       assetOwnerUserId
+    });
+  }
+
+  emitActivityChatMetricBucketPatch(payload: Omit<ActivityChatMetricBucketPatch, 'updatedMs'>): void {
+    const identity = payload.identity.trim();
+    if (!identity) {
+      return;
+    }
+    this._activityChatMetricBucketPatch.set({
+      updatedMs: Date.now(),
+      identity,
+      bucketType: payload.bucketType,
+      bucket: {
+        accepted: normalizeCounterValue(payload.bucket.accepted),
+        pending: normalizeCounterValue(payload.bucket.pending),
+        capacityMin: normalizeCounterValue(payload.bucket.capacityMin),
+        capacityMax: Math.max(
+          normalizeCounterValue(payload.bucket.capacityMin),
+          normalizeCounterValue(payload.bucket.capacityMax)
+        )
+      }
     });
   }
 

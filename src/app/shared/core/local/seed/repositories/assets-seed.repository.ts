@@ -107,7 +107,7 @@ export class SeedAssetsRepository {
           category: AssetDefaultsBuilder.normalizeCategory(card.type, card.category),
           city: owner.city || card.city,
           imageUrl,
-          sourceLink: imageUrl,
+          sourceLink: '',
           ownerUserId,
           ownerName: owner.name,
           visibility: index % 3 === 0 ? 'Friends only' : 'Public',

@@ -8,6 +8,8 @@ import type {
   AppMenuTrigger
 } from '../../menu';
 import type { DateInputMetaModel, DateInputModel } from '../inputs/date-input';
+import type { EventPoliciesInputConfig } from '../inputs/event-policies-input';
+import type { LinkInputConfig } from '../inputs/link-input';
 import type { LocationInputConfig } from '../inputs/location-input';
 import type { PricingEditorConfig } from '../inputs/pricing-editor';
 import type { ImageCardData, InfoCardData } from '../../smart-list/card';
@@ -25,9 +27,11 @@ export interface FormFlowDraft<TData> {
 export type FormFlowControlKind =
   | 'date'
   | 'image-carousel'
+  | 'link'
   | 'location'
   | 'menu'
   | 'number'
+  | 'policies'
   | 'pricing'
   | 'review'
   | 'section'
@@ -60,6 +64,7 @@ export interface FormFlowMenuControlConfig {
 export interface FormFlowImageCarouselControlConfig {
   slotCount?: number;
   compact?: boolean;
+  autoSize?: boolean;
   previewMode?: boolean;
   ariaLabel?: string;
   uploadOwnerId?: string;
@@ -77,8 +82,16 @@ export interface FormFlowLocationControlConfig {
   model?: LocationInputConfig | null;
 }
 
+export interface FormFlowLinkControlConfig {
+  model?: LinkInputConfig | null;
+}
+
 export interface FormFlowPricingControlConfig {
   model?: PricingEditorConfig | null;
+}
+
+export interface FormFlowPoliciesControlConfig {
+  model?: EventPoliciesInputConfig | null;
 }
 
 export interface FormFlowControlSummaryConfig {
@@ -89,6 +102,7 @@ export interface FormFlowControlSummaryConfig {
 }
 
 export type FormFlowCompletionMetric = 'filled' | 'count' | 'length' | 'positiveNumber' | 'isoDate';
+export type FormFlowTone = 'default' | 'blue' | 'green' | 'orange';
 
 export interface FormFlowCompletionItemConfig {
   id?: string;
@@ -109,6 +123,7 @@ export interface FormFlowControlModel {
   bind?: string | readonly (string | number)[];
   kind: FormFlowControlKind;
   layout?: 'default' | 'half' | 'wide';
+  rowSpan?: number;
   label?: string;
   description?: string;
   placeholder?: string;
@@ -120,11 +135,14 @@ export interface FormFlowControlModel {
   rows?: number;
   maxLength?: number;
   valueFormat?: 'csv';
+  enabledBind?: string | readonly (string | number)[];
   config?:
     | FormFlowMenuControlConfig
     | FormFlowImageCarouselControlConfig
     | FormFlowDateControlConfig
+    | FormFlowLinkControlConfig
     | FormFlowLocationControlConfig
+    | FormFlowPoliciesControlConfig
     | FormFlowPricingControlConfig
     | null;
   accessory?: { menu?: FormFlowMenuControlConfig | null } | null;
@@ -136,6 +154,8 @@ export interface FormFlowStepModel {
   title: string;
   subtitle?: string;
   icon?: string;
+  chrome?: 'default' | 'none';
+  presentation?: 'default' | 'media';
   palette?: string;
   header?: FormFlowHeaderModel | null;
   controls: readonly FormFlowControlModel[];
@@ -157,15 +177,25 @@ export interface FormFlowSaveModel {
   disabled?: boolean;
 }
 
+export interface FormFlowPushEvent {
+  value: unknown;
+  stepId: string;
+  stepIndex: number;
+  signal?: AbortSignal;
+}
+
 export interface FormFlowModel {
   title: string;
   subtitle?: string;
   layout?: 'default' | 'carousel' | 'grouped';
+  tone?: FormFlowTone;
   header?: boolean;
   steps: readonly FormFlowStepModel[];
   summary?: FormFlowSummaryModel | null;
   save?: FormFlowSaveModel | null;
   completion?: FormFlowCompletionModel | null;
+  pushIntervalMs?: number | null;
+  onPush?: (event: FormFlowPushEvent) => void | Promise<void>;
   loadingLabel?: string;
 }
 

@@ -51,7 +51,7 @@ export class AdminFeedbackPopupComponent {
   >;
 
   @ViewChild('feedbackItemTemplate', { read: TemplateRef })
-  private set feedbackItemTemplate(
+  protected set feedbackItemTemplate(
     value: TemplateRef<SmartListItemTemplateContext<AdminFeedbackListItem, AdminFeedbackListFilters>> | undefined
   ) {
     this.feedbackItemTemplateRef = value;

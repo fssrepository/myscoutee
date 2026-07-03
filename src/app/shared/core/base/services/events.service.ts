@@ -30,6 +30,8 @@ import type {
   EventFeedbackNoteRequestDto,
   EventFeedbackPageQueryDto,
   EventFeedbackPageResultDto,
+  EventFeedbackStatDto,
+  EventFeedbackStatQueryDto,
   EventFeedbackStateDto
 } from '../../contracts/activity.interface';
 import {
@@ -337,6 +339,10 @@ export class EventsService extends BaseRouteModeService implements IEventsServic
 
   loadEventFeedbackPage(query: EventFeedbackPageQueryDto): Promise<EventFeedbackPageResultDto> {
     return this.eventsService.loadEventFeedbackPage(query);
+  }
+
+  loadEventFeedbackStatById(query: EventFeedbackStatQueryDto): Promise<EventFeedbackStatDto> {
+    return this.eventsService.loadEventFeedbackStatById(query);
   }
 
   loadEventFeedback(query: EventFeedbackQueryDto): Promise<EventFeedbackDetailDto> {

@@ -12,6 +12,7 @@ import { FormsModule } from '@angular/forms';
 import { MatIconModule } from '@angular/material/icon';
 
 import { APP_STATIC_DATA } from '../../../../shared/app-static-data';
+import { AssetCardBuilder } from '../../../../shared/core/base/builders';
 import { AssetDefaultsBuilder } from '../../../../shared/core/base/builders/asset-defaults.builder';
 import type * as AppConstants from '../../../../shared/core/common/constants';
 import type * as ContractTypes from '../../../../shared/core/contracts';
@@ -126,7 +127,7 @@ export class EventResourceAssetViewComponent implements OnChanges {
   }
 
   protected policies(view: EventResourceAssetViewModel): readonly ContractTypes.EventPolicyDTO[] {
-    return view.source?.policies ?? [];
+    return AssetCardBuilder.assetPoliciesEnabled(view.source) ? view.source?.policies ?? [] : [];
   }
 
   protected requiredPoliciesCount(view: EventResourceAssetViewModel): number {

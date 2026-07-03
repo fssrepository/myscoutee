@@ -651,10 +651,6 @@ export class ProfileFormFlowConverter {
     return ['profile', 'profileDetails', 0, 'rows', 0, 'value'];
   }
 
-  private static profileDetailValue(profile: UserDto | null | undefined, labelKey: string): string {
-    return ProfileFormFlowDataConverter.profileDetailValue(profile, labelKey);
-  }
-
   private static privacyAccessory(
     key: string,
     privacy?: ProfileFormFlowPrivacyOptions | null
@@ -1019,13 +1015,6 @@ export class ProfileFormFlowConverter {
 
   private static detailOptions(key: string): readonly string[] {
     return APP_STATIC_DATA.profileDetailValueOptions[key] ?? [];
-  }
-
-  private static normalizeProfileStatus(value: unknown): ProfileStatus {
-    if (value === 'friends only' || value === 'host only' || value === 'inactive' || value === 'blocked' || value === 'deleted') {
-      return value;
-    }
-    return 'public';
   }
 
   private static physiqueIcon(value: string): string {

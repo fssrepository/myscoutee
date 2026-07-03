@@ -4,8 +4,28 @@ import { ControlValueAccessor, FormsModule, NG_VALUE_ACCESSOR } from '@angular/f
 import { MatIconModule } from '@angular/material/icon';
 
 import type * as EventContracts from '../../../../../../core/contracts/event.interface';
+import {
+  EventPolicySingleRowConverter
+} from '../../../../../converters';
+import {
+  SingleRowComponent,
+  type CardMenuActionEvent,
+  type SingleRowData
+} from '../../../smart-list/card';
+import {
+  PopupComponent,
+  type PopupAction,
+  type PopupActionEvent,
+  type PopupControl,
+  type PopupMenuSelectEvent,
+  type PopupModel
+} from '../../../popup';
 
 type EventPolicyInputModel = EventContracts.EventPolicyDTO;
+type EventPolicyPopupMenuContext = {
+  menu: 'policy-setup';
+  action: 'add';
+};
 export type EventPoliciesInputConfigValue<TValue> = TValue | (() => TValue);
 
 export interface EventPoliciesInputConfig {
@@ -31,7 +51,9 @@ export interface EventPoliciesInputConfig {
   imports: [
     CommonModule,
     FormsModule,
-    MatIconModule
+    MatIconModule,
+    PopupComponent,
+    SingleRowComponent
   ],
   templateUrl: './event-policies-input.component.html',
   styleUrl: './event-policies-input.component.scss',
@@ -226,20 +248,116 @@ export class EventPoliciesInputComponent implements ControlValueAccessor {
     return this.editingPolicyDraftIndex === null ? 'Create Policy' : 'Edit Policy';
   }
 
-  protected policyCardMetaLabel(policy: EventPolicyInputModel): string {
-    return policy.required !== false
-      ? this.resolveConfigValue(this.config.requiredApprovalLabel, 'Required approval')
-      : this.resolveConfigValue(this.config.optionalPolicyLabel, 'Optional policy');
+  protected policySetupPopupModel(): PopupModel<EventPolicyPopupMenuContext> {
+    return {
+      title: 'Policy Setup',
+      subtitle: this.popupSubtitle(),
+      ariaLabel: 'Policy setup',
+      closeAriaLabel: 'Close policy setup',
+      size: 'wide',
+      height: 'full',
+      headerTone: 'accent',
+      bodyLayout: 'fill',
+      backdropTone: 'dim',
+      headerControls: this.policySetupHeaderControls(),
+      onClose: () => this.closePoliciesPopup(),
+      onMenuSelect: event => this.onPolicyPopupMenuSelect(event)
+    };
   }
 
-  protected policyCardPreview(policy: EventPolicyInputModel): string {
-    const description = `${policy.description ?? ''}`.trim();
-    if (description.length > 0) {
-      return description;
+  protected policySetupPopupZIndex(): number {
+    return 12600;
+  }
+
+  protected policyEditorPopupModel(): PopupModel<EventPolicyPopupMenuContext> {
+    return {
+      title: this.policyPopupTitle(),
+      subtitle: this.editorSubtitle(),
+      ariaLabel: this.policyPopupTitle(),
+      closeAriaLabel: 'Close policy form',
+      size: 'default',
+      height: 'auto',
+      headerTone: 'accent',
+      backdropTone: 'dim',
+      headerActions: this.policyEditorHeaderActions(),
+      onClose: () => this.closePolicyEditor(),
+      onAction: event => this.onPolicyPopupAction(event)
+    };
+  }
+
+  protected policyEditorPopupZIndex(): number {
+    return 12700;
+  }
+
+  protected policySingleRow(policy: EventPolicyInputModel, index: number): SingleRowData<EventPolicyInputModel> {
+    return EventPolicySingleRowConverter.convert(policy, {
+      index,
+      locked: this.locked(),
+      requiredApprovalLabel: this.resolveConfigValue(this.config.requiredApprovalLabel, 'Required approval'),
+      optionalPolicyLabel: this.resolveConfigValue(this.config.optionalPolicyLabel, 'Optional policy'),
+      requiredPreview: this.resolveConfigValue(this.config.requiredPreview, 'Attendees must approve this policy before joining.'),
+      optionalPreview: this.resolveConfigValue(this.config.optionalPreview, 'Optional policy shown during join or checkout.')
+    });
+  }
+
+  private policySetupHeaderControls(): readonly PopupControl<EventPolicyPopupMenuContext>[] {
+    if (this.locked()) {
+      return [];
     }
-    return policy.required !== false
-      ? this.resolveConfigValue(this.config.requiredPreview, 'Attendees must approve this policy before joining.')
-      : this.resolveConfigValue(this.config.optionalPreview, 'Optional policy shown during join or checkout.');
+    return [{
+      kind: 'menu',
+      id: 'policy-setup-actions',
+      menuKind: 'inline',
+      items: [{
+        id: 'policy-add',
+        icon: 'add',
+        palette: 'green',
+        layout: 'action',
+        ariaLabel: 'Add policy',
+        context: {
+          menu: 'policy-setup',
+          action: 'add'
+        }
+      }],
+      panelAlign: 'end',
+      mobileBreakpointPx: 900
+    }];
+  }
+
+  private policyEditorHeaderActions(): readonly PopupAction[] {
+    if (this.locked()) {
+      return [];
+    }
+    return [{
+      id: 'policy-save',
+      icon: 'done',
+      ariaLabel: 'Save policy',
+      palette: 'success',
+      disabled: !this.canSavePolicyDraft()
+    }];
+  }
+
+  private onPolicyPopupMenuSelect(event: PopupMenuSelectEvent<EventPolicyPopupMenuContext>): void {
+    const context = event.itemSelect.context;
+    if (context?.menu !== 'policy-setup' || context.action !== 'add') {
+      return;
+    }
+    this.openPolicyEditor(undefined, event.itemSelect.sourceEvent);
+  }
+
+  private onPolicyPopupAction(event: PopupActionEvent): void {
+    if (event.action.id !== 'policy-save') {
+      return;
+    }
+    event.sourceEvent.preventDefault();
+    this.savePolicyDraft();
+  }
+
+  protected onPolicyRowMenuAction(index: number, event: CardMenuActionEvent<SingleRowData>): void {
+    if (event.actionId !== 'delete') {
+      return;
+    }
+    this.removePolicyDraft(index);
   }
 
   protected policiesToggleable(): boolean {

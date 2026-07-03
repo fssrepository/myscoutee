@@ -80,7 +80,7 @@ export class LocalMediaService extends LocalRouteDelayService {
   }
 
   async uploadAudio(
-    ownerId: string,
+    _ownerId: string,
     entityId: string,
     file: File,
     options: LocalMediaAudioUploadOptions = {}

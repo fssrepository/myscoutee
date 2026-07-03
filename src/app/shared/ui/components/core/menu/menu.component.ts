@@ -33,6 +33,7 @@ import type {
   AppMenuCounter,
   AppMenuCounterValue,
   AppMenuGroup,
+  AppMenuImageStackItem,
   AppMenuLayout,
   AppMenuItemLayout,
   AppMenuItemSurface,
@@ -918,6 +919,10 @@ export class AppMenuComponent<TId extends string = string, TContext = unknown>
     return this.itemVisualLayout(item) === 'image';
   }
 
+  protected isImageStackLayoutItem(item: AppMenuItem<TId, TContext>): boolean {
+    return this.itemVisualLayout(item) === 'image-stack';
+  }
+
   protected actionRowItemIcon(item: AppMenuItem<TId, TContext>): string {
     if (this.isActionRowItemOpen(item)) {
       const openIcon = `${this.resolveLiveValue(item.closeIcon ?? item.openIcon) ?? ''}`.trim();
@@ -941,6 +946,25 @@ export class AppMenuComponent<TId extends string = string, TContext = unknown>
 
   protected actionRowItemImageFallback(item: AppMenuItem<TId, TContext>): string {
     return `${this.resolveLiveValue(item.imageFallback) ?? ''}`.trim();
+  }
+
+  protected actionRowItemImageStack(item: AppMenuItem<TId, TContext>): readonly AppMenuImageStackItem[] {
+    const resolvedStack = this.resolveLiveValue(item.imageStack) ?? [];
+    const stack = Array.isArray(resolvedStack) ? resolvedStack : [];
+    const maxVisible = Math.max(1, Math.trunc(Number(this.resolveLiveValue(item.imageStackMaxVisible)) || stack.length || 1));
+    return stack.slice(0, maxVisible);
+  }
+
+  protected actionRowStackImageUrl(image: AppMenuImageStackItem): string {
+    return `${this.resolveLiveValue(image.imageUrl) ?? ''}`.trim();
+  }
+
+  protected actionRowStackImageAlt(image: AppMenuImageStackItem): string {
+    return `${this.resolveLiveValue(image.imageAlt) ?? ''}`.trim();
+  }
+
+  protected actionRowStackImageFallback(image: AppMenuImageStackItem): string {
+    return `${this.resolveLiveValue(image.imageFallback) ?? ''}`.trim();
   }
 
   protected actionRowItemLabel(item: AppMenuItem<TId, TContext>): string {

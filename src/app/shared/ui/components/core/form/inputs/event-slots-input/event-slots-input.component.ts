@@ -181,7 +181,7 @@ export class EventSlotsInputComponent implements OnChanges, DoCheck, ControlValu
     return `${this.formatRecurringSlotLabel(start)}${overrideSuffix}`;
   }
 
-  protected slotSummaryCardTone(slot: ContractTypes.EventSlotTemplateDTO): TextCardTone {
+  protected slotSummaryCardTone(_slot: ContractTypes.EventSlotTemplateDTO): TextCardTone {
     const frequency = ActivityEventDetailDTO.normalizeFrequency(this.resolvedConfig.frequency);
     if (frequency === 'Daily') {
       return 'green';
@@ -198,7 +198,7 @@ export class EventSlotsInputComponent implements OnChanges, DoCheck, ControlValu
     return 'blue';
   }
 
-  protected slotSummaryMenuPalette(slot: ContractTypes.EventSlotTemplateDTO): AppMenuPalette {
+  protected slotSummaryMenuPalette(_slot: ContractTypes.EventSlotTemplateDTO): AppMenuPalette {
     const frequency = ActivityEventDetailDTO.normalizeFrequency(this.resolvedConfig.frequency);
     return this.scheduleFrequencyPalette(frequency);
   }

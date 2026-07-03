@@ -1,0 +1,66 @@
+:host {
+  display: block;
+  min-width: 0;
+}
+
+.link-input {
+  display: grid;
+  gap: 0.38rem;
+  min-width: 0;
+}
+
+.link-input__label {
+  display: inline-flex;
+  align-items: baseline;
+  gap: 0.18rem;
+  color: #223550;
+  font-size: 0.86rem;
+  font-weight: 800;
+}
+
+.link-input__required {
+  color: #b93243;
+}
+
+.link-input__row {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 0.62rem;
+  min-width: 0;
+}
+
+.link-input input {
+  box-sizing: border-box;
+  width: 100%;
+  min-width: 0;
+  min-height: 34px;
+  height: 34px;
+  border: 1px solid rgba(136, 156, 186, 0.5);
+  border-radius: 8px;
+  background: linear-gradient(180deg, #f7f9fc 0%, #edf2f7 100%);
+  color: rgba(58, 76, 103, 0.9);
+  -webkit-text-fill-color: rgba(58, 76, 103, 0.9);
+  padding: 0 0.72rem;
+  font-size: 0.88rem;
+  line-height: 1.2;
+}
+
+.link-input input:focus {
+  outline: 0;
+  border-color: rgba(52, 103, 182, 0.72);
+  box-shadow: 0 0 0 3px rgba(55, 116, 212, 0.14);
+}
+
+:host-context(.form-flow__control.is-required-missing) .link-input input {
+  border-color: #ef9a9a;
+  background: #fff1f1;
+}
+
+.link-input__actions {
+  min-width: 108px;
+}
+
+.link-input--disabled {
+  opacity: 0.72;
+}

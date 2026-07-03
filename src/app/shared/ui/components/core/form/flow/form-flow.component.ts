@@ -32,7 +32,10 @@ import type {
 import { ImageCarouselComponent } from '../../image-carousel';
 import { IndicatorComponent } from '../../indicator';
 import { ImageCardComponent, InfoCardComponent } from '../../smart-list/card';
+import { UiTaskScheduler } from '../../../../scheduler';
 import { DateInputComponent, type DateInputModel, type DateInputValue } from '../inputs/date-input';
+import { EventPoliciesInputComponent, type EventPoliciesInputConfig } from '../inputs/event-policies-input';
+import { LinkInputComponent, type LinkInputConfig } from '../inputs/link-input';
 import { LocationInputComponent, type LocationInputConfig } from '../inputs/location-input';
 import { PricingEditorInputComponent, type PricingEditorConfig } from '../inputs/pricing-editor';
 import type {
@@ -40,12 +43,16 @@ import type {
   FormFlowControlModel,
   FormFlowDateControlConfig,
   FormFlowImageCarouselControlConfig,
+  FormFlowLinkControlConfig,
   FormFlowLocationControlConfig,
   FormFlowMenuControlConfig,
   FormFlowModel,
+  FormFlowPoliciesControlConfig,
   FormFlowPricingControlConfig,
+  FormFlowPushEvent,
   FormFlowSaveEvent,
-  FormFlowStepModel
+  FormFlowStepModel,
+  FormFlowTone
 } from './form-flow.types';
 import {
   formFlowCompletionPercent,
@@ -67,7 +74,9 @@ interface FormFlowSelectedMenuItem {
     MatIconModule,
     AppMenuComponent,
     DateInputComponent,
+    LinkInputComponent,
     LocationInputComponent,
+    EventPoliciesInputComponent,
     PricingEditorInputComponent,
     ImageCarouselComponent,
     IndicatorComponent,
@@ -118,6 +127,11 @@ export class FormFlowComponent implements ControlValueAccessor, OnChanges, OnDes
   private lastEmittedPercent: number | null = null;
   private pendingPercent: number | null = null;
   private percentEmitQueued = false;
+  private readonly pushScheduler = new UiTaskScheduler<Omit<FormFlowPushEvent, 'signal'>>({
+    intervalMs: () => this.resolvedPushIntervalMs(),
+    state: () => this.currentPushState(),
+    task: ({ state, signal }) => this.runPushTask(state, signal)
+  });
 
   ngOnChanges(changes: SimpleChanges): void {
     if (changes['model']) {
@@ -125,10 +139,12 @@ export class FormFlowComponent implements ControlValueAccessor, OnChanges, OnDes
       this.pendingPageIndex = null;
       this.queueViewportSync('auto');
       this.queuePercentEmit();
+      this.pushScheduler.restart();
     }
   }
 
   ngOnDestroy(): void {
+    this.pushScheduler.destroy();
     this.clearViewportScrollLock();
   }
 
@@ -190,6 +206,14 @@ export class FormFlowComponent implements ControlValueAccessor, OnChanges, OnDes
 
   protected isGroupedLayout(): boolean {
     return this.model?.layout === 'grouped';
+  }
+
+  protected toneClass(): string {
+    return `form-flow--tone-${this.modelTone()}`;
+  }
+
+  private modelTone(): FormFlowTone {
+    return this.model?.tone ?? 'default';
   }
 
   protected totalPageCount(): number {
@@ -529,8 +553,47 @@ export class FormFlowComponent implements ControlValueAccessor, OnChanges, OnDes
     return this.isLocationControlConfig(control.config) ? control.config.model ?? {} : {};
   }
 
+  protected linkConfig(control: FormFlowControlModel): LinkInputConfig {
+    const model = this.isLinkControlConfig(control.config) ? control.config.model ?? {} : {};
+    return {
+      ...model,
+      label: model.label ?? control.label ?? null,
+      placeholder: model.placeholder ?? control.placeholder ?? null,
+      required: model.required ?? control.required === true
+    };
+  }
+
   protected pricingConfig(control: FormFlowControlModel): PricingEditorConfig {
     return this.isPricingControlConfig(control.config) ? control.config.model ?? {} : {};
+  }
+
+  protected policiesConfig(control: FormFlowControlModel): FormFlowPoliciesControlConfig {
+    return this.isPoliciesControlConfig(control.config) ? control.config : {};
+  }
+
+  protected policiesInputConfig(control: FormFlowControlModel): EventPoliciesInputConfig {
+    return this.policiesConfig(control).model ?? {};
+  }
+
+  protected policiesEnabled(control: FormFlowControlModel): boolean {
+    return control.enabledBind
+      ? this.readPath(this.formValue, control.enabledBind) === true
+      : true;
+  }
+
+  protected updatePoliciesEnabled(control: FormFlowControlModel, enabled: boolean): void {
+    if (this.isControlDisabled(control)) {
+      return;
+    }
+    const enabledBind = control.enabledBind;
+    if (!enabledBind) {
+      return;
+    }
+    this.formValue = this.writePath(this.formValue, enabledBind, enabled === true);
+    this.onControlChange(this.formValue);
+    this.onControlTouched();
+    this.queuePercentEmit();
+    this.cdr.markForCheck();
   }
 
   protected summaryTitle(): string {
@@ -702,6 +765,29 @@ export class FormFlowComponent implements ControlValueAccessor, OnChanges, OnDes
 
   private isControlMissingRequired(control: FormFlowControlModel): boolean {
     return formFlowIsControlMissingRequired(control, this.formValue);
+  }
+
+  private currentPushState(): Omit<FormFlowPushEvent, 'signal'> {
+    return {
+      value: this.formValue,
+      stepId: this.activeStep()?.id ?? 'summary',
+      stepIndex: this.visiblePageIndex()
+    };
+  }
+
+  private async runPushTask(
+    state: Omit<FormFlowPushEvent, 'signal'>,
+    signal?: AbortSignal
+  ): Promise<void> {
+    const push = this.model?.onPush;
+    if (!push || this.resolvedPushIntervalMs() <= 0 || this.loading || this.saving || signal?.aborted) {
+      return;
+    }
+    await push({ ...state, signal });
+  }
+
+  private resolvedPushIntervalMs(): number {
+    return Math.max(0, Math.trunc(Number(this.model?.pushIntervalMs) || 0));
   }
 
   private readPath(source: unknown, path: FormFlowControlModel['bind']): unknown {
@@ -1025,7 +1111,15 @@ export class FormFlowComponent implements ControlValueAccessor, OnChanges, OnDes
     return this.isRecord(config) && this.isRecord(config['model']);
   }
 
+  private isLinkControlConfig(config: FormFlowControlModel['config']): config is FormFlowLinkControlConfig {
+    return this.isRecord(config) && this.isRecord(config['model']);
+  }
+
   private isPricingControlConfig(config: FormFlowControlModel['config']): config is FormFlowPricingControlConfig {
+    return this.isRecord(config) && this.isRecord(config['model']);
+  }
+
+  private isPoliciesControlConfig(config: FormFlowControlModel['config']): config is FormFlowPoliciesControlConfig {
     return this.isRecord(config) && this.isRecord(config['model']);
   }
 

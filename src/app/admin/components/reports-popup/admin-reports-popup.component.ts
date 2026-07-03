@@ -146,14 +146,14 @@ export class AdminReportsPopupComponent {
   >;
 
   @ViewChild('reportItemTemplate', { read: TemplateRef })
-  private set reportItemTemplate(
+  protected set reportItemTemplate(
     value: TemplateRef<SmartListItemTemplateContext<AdminReportListItem, AdminReportListFilters>> | undefined
   ) {
     this.reportItemTemplateRef = value;
   }
 
   @ViewChild('blockedUserItemTemplate', { read: TemplateRef })
-  private set blockedUserItemTemplate(
+  protected set blockedUserItemTemplate(
     value: TemplateRef<SmartListItemTemplateContext<AdminBlockedUserListItem, AdminBlockedUserListFilters>> | undefined
   ) {
     this.blockedUserItemTemplateRef = value;
@@ -843,10 +843,6 @@ export class AdminReportsPopupComponent {
       total: rows.length,
       nextCursor: start + pageSize < rows.length ? String(page + 1) : null
     };
-  }
-
-  private blockedUserRows(): AdminBlockedUserListItem[] {
-    return this.blockedUserRowsForUsers(this.blockedUsers());
   }
 
   private async loadReportedUsers(): Promise<AdminReportedUserDto[]> {

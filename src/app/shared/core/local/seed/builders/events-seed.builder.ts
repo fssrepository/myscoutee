@@ -805,8 +805,6 @@ const SEED_EXPLORE_REBALANCE_BY_OWNER_USER: Record<string, readonly string[]> = 
   u1: ['e2', 'e3', 'e6', 'e8']
 };
 
-const MAX_VISIBLE_ACTIVE_EVENTS_PER_USER = 28;
-
 interface ActivityEventSeedOverrides {
   startAt?: string;
   endAt?: string;
@@ -1042,13 +1040,13 @@ export class SeedEventsBuilder {
       }
     }
 
-    this.applyLifecycleDemoStatuses(byId, ids);
+    this.applyLifecycleDemoStatuses(byId);
     return this.materializeSeedSlotRecords(
       this.rebalanceVisibleActiveEventParticipation({ byId, ids })
     );
   }
 
-  private static applyLifecycleDemoStatuses(byId: Record<string, ActivityEventRecord>, ids: readonly string[]): void {
+  private static applyLifecycleDemoStatuses(byId: Record<string, ActivityEventRecord>): void {
     const lifecycleSeeds: readonly {
       sourceId: string;
       status: ActivityEventRecord['status'];
@@ -2508,10 +2506,6 @@ export class SeedEventsBuilder {
     const occurrence = Math.floor((value.getDate() - 1) / 7);
     const labels = ['First', 'Second', 'Third', 'Fourth', 'Fifth'] as const;
     return `${labels[occurrence] ?? 'Last'} ${weekday}`;
-  }
-
-  private static resolveLocationCoordinatesFromCreator(creator: UserDto): LocationCoordinates {
-    return SeedUserBuilder.resolveDemoLocationCoordinates(creator.city, creator.id);
   }
 
   private static cloneLocationCoordinates(

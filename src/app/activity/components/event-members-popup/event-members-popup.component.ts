@@ -35,6 +35,7 @@ import {
 import type { ActivityEventRecord } from '../../../shared/core/contracts/activity.interface';
 import {
   CounterBadgePipe,
+  I18nPipe,
   ImageCardComponent,
   SmartListComponent,
   type AppMenuItem,
@@ -97,7 +98,8 @@ type MembersSummaryState = {
     MatIconModule,
     SmartListComponent,
     ImageCardComponent,
-    CounterBadgePipe
+    CounterBadgePipe,
+    I18nPipe
   ],
   templateUrl: './event-members-popup.component.html',
   styleUrls: ['./event-members-popup.component.scss'],
@@ -149,6 +151,8 @@ export class EventMembersPopupComponent {
   private suppressedOwnerSyncId: string | null = null;
   private requestedCanManageMembers = false;
   private viewOnlyMode = false;
+  private memberMetricIdentity = '';
+  private lastEmittedMemberMetricBucketSignature = '';
 
   protected membersSmartListQuery: Partial<ListQuery<MembersSmartListFilters>> = {};
 
@@ -158,7 +162,7 @@ export class EventMembersPopupComponent {
   protected membersItemTemplateRef?: TemplateRef<SmartListItemTemplateContext<ActivityContracts.ActivityMemberDTO, MembersSmartListFilters>>;
 
   @ViewChild('memberItemTemplate', { read: TemplateRef })
-  private set membersItemTemplate(
+  protected set membersItemTemplate(
     value: TemplateRef<SmartListItemTemplateContext<ActivityContracts.ActivityMemberDTO, MembersSmartListFilters>> | undefined
   ) {
     this.membersItemTemplateRef = value;
@@ -209,6 +213,7 @@ export class EventMembersPopupComponent {
           acceptedMembers: request.acceptedMembers,
           pendingMembers: request.pendingMembers,
           capacityTotal: request.capacityTotal,
+          metricIdentity: request.metricIdentity,
           initialMembers: request.members,
           lookup: request.lookup,
           onMembersChanged: request.onMembersChanged
@@ -736,6 +741,7 @@ export class EventMembersPopupComponent {
       acceptedMembers?: number;
       pendingMembers?: number;
       capacityTotal?: number;
+      metricIdentity?: string;
       initialMembers?: readonly ActivityContracts.ActivityMemberDTO[];
       onMembersChanged?: (members: readonly ActivityContracts.ActivityMemberDTO[]) => void;
     }
@@ -751,6 +757,8 @@ export class EventMembersPopupComponent {
       : null;
     this.isOpen = true;
     this.ownerId = normalizedOwnerId;
+    this.memberMetricIdentity = `${options?.metricIdentity ?? ''}`.trim();
+    this.lastEmittedMemberMetricBucketSignature = '';
     this.lookupRef = lookup ? { ...lookup } : null;
     this.ownerRef = lookup?.type === 'chat'
       ? null
@@ -887,7 +895,6 @@ export class EventMembersPopupComponent {
       this.membersCacheByOwnerId.set(ownerId, members);
       if (this.isOpen && this.ownerId === ownerId) {
         this.syncCanManageMembers(members);
-        this.applySummaryFromMembers(members);
       }
     }
 
@@ -1223,6 +1230,7 @@ export class EventMembersPopupComponent {
       pendingCount: 0,
       capacityTotal: 0
     };
+    this.lastEmittedMemberMetricBucketSignature = '';
   }
 
   private flushPendingSummary(): void {
@@ -1236,6 +1244,29 @@ export class EventMembersPopupComponent {
       ? `${this.acceptedCount} members · ${this.pendingCount} pending`
       : `${this.acceptedCount} members`;
     this.isSummaryVisible = true;
+    this.emitMemberMetricBucketPatch();
+  }
+
+  private emitMemberMetricBucketPatch(): void {
+    const identity = this.memberMetricIdentity.trim();
+    if (!identity) {
+      return;
+    }
+    const signature = `${identity}:${this.acceptedCount}:${this.pendingCount}:${this.capacityTotal}`;
+    if (signature === this.lastEmittedMemberMetricBucketSignature) {
+      return;
+    }
+    this.lastEmittedMemberMetricBucketSignature = signature;
+    this.activityStore.emitActivityChatMetricBucketPatch({
+      identity,
+      bucketType: 'members',
+      bucket: {
+        accepted: this.acceptedCount,
+        pending: this.pendingCount,
+        capacityMin: 0,
+        capacityMax: this.capacityTotal
+      }
+    });
   }
 
   private ownerScopeLabel(): string {

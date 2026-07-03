@@ -22,6 +22,7 @@ export class AssetCardBuilder {
       sourceLink: '',
       routes: this.normalizeAssetRoutes(type, []),
       topics: [],
+      policiesEnabled: false,
       policies: [],
       pricing: PricingBuilder.createDefaultPricingConfig('asset')
     };
@@ -30,7 +31,7 @@ export class AssetCardBuilder {
   static buildAssetFormFromCard(card: AppDTOs.AssetDTO | AppDTOs.AssetDetailDTO): AssetCardFormValue {
     const detailCard = this.asDetail(card);
     const imageUrl = this.normalizeAssetLink(card.imageUrl);
-    const sourceLink = this.normalizeAssetLink(detailCard?.sourceLink, imageUrl);
+    const sourceLink = this.normalizeAssetLink(card.sourceLink ?? detailCard?.sourceLink);
     return {
       type: card.type,
       title: card.title,
@@ -44,6 +45,7 @@ export class AssetCardBuilder {
       sourceLink,
       routes: this.normalizeAssetRoutes(card.type, detailCard?.routes),
       topics: [...(detailCard?.topics ?? [])],
+      policiesEnabled: this.assetPoliciesEnabled(card),
       policies: (detailCard?.policies ?? []).map(item => ({ ...item })),
       pricing: PricingBuilder.clonePricingConfig(detailCard?.pricing ?? PricingBuilder.createDefaultPricingConfig('asset'))
     };
@@ -58,7 +60,7 @@ export class AssetCardBuilder {
     const routes = this.normalizeAssetRoutes(assetForm.type, assetForm.routes);
     const accommodationLocation = routes.find(stop => stop.trim().length > 0)?.trim() || '';
     const imageUrl = this.normalizeAssetLink(resolvedImageUrl || assetForm.imageUrl);
-    const sourceLink = this.normalizeAssetLink(assetForm.sourceLink, imageUrl);
+    const sourceLink = this.normalizeAssetLink(assetForm.sourceLink);
     return {
       type: assetForm.type,
       title,
@@ -72,6 +74,7 @@ export class AssetCardBuilder {
       sourceLink,
       routes,
       topics: [...(assetForm.topics ?? [])],
+      policiesEnabled: assetForm.policiesEnabled === true,
       policies: this.normalizePolicies(assetForm.policies),
       pricing: PricingBuilder.compactPricingConfig(
         assetForm.pricing ?? PricingBuilder.createDefaultPricingConfig('asset'),
@@ -242,6 +245,19 @@ export class AssetCardBuilder {
 
   static canOpenMap(card: AppDTOs.AssetDTO): boolean {
     return card.type === 'Accommodation' && this.primaryLocation(card).length > 0;
+  }
+
+  static assetPoliciesEnabled(card: AppDTOs.AssetDTO | AppDTOs.AssetDetailDTO | null | undefined): boolean {
+    if (!card) {
+      return false;
+    }
+    if ('policiesEnabled' in card && card.policiesEnabled !== undefined) {
+      return card.policiesEnabled === true;
+    }
+    if ('policyCount' in card && Number.isFinite(Number(card.policyCount)) && Number(card.policyCount) > 0) {
+      return true;
+    }
+    return 'policies' in card && (card.policies ?? []).length > 0;
   }
 
   private static normalizePolicies(

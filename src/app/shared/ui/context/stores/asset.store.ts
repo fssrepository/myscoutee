@@ -1,6 +1,7 @@
 import { Injectable, computed, signal } from '@angular/core';
 
 import { AssetDto } from '../../../core/contracts';
+import { PricingBuilder } from '../../../core/base/builders';
 import type * as AppConstants from '../../../core/common/constants';
 import type * as AppDTOs from '../../../core/contracts';
 
@@ -54,12 +55,12 @@ export class AssetStore {
     quantity: 1,
     details: '',
     imageUrl: '',
-    sourceLink: ''
+    sourceLink: '',
+    policiesEnabled: false
   });
   readonly assetFormVisibilityRef = signal<AppConstants.EventVisibility>('Public');
   readonly assetFormDraftIdRef = signal('');
   readonly assetFormLoadGenerationRef = signal(0);
-  readonly pendingAssetSourceImageUrlRef = signal('');
   readonly assetListRevisionRef = signal(0);
   readonly assetListReloadRevisionRef = signal(0);
   readonly assetListLoadingRef = signal(false);
@@ -83,7 +84,6 @@ export class AssetStore {
   readonly assetFormVisibility = this.assetFormVisibilityRef.asReadonly();
   readonly assetFormDraftId = this.assetFormDraftIdRef.asReadonly();
   readonly assetFormLoadGeneration = this.assetFormLoadGenerationRef.asReadonly();
-  readonly pendingAssetSourceImageUrl = this.pendingAssetSourceImageUrlRef.asReadonly();
   readonly assetListRevision = this.assetListRevisionRef.asReadonly();
   readonly assetListReloadRevision = this.assetListReloadRevisionRef.asReadonly();
   readonly assetListLoading = this.assetListLoadingRef.asReadonly();
@@ -256,7 +256,6 @@ export class AssetStore {
     this.showAssetFormRef.set(true);
     this.assetFormLoadingRef.set(false);
     this.assetFormSavePendingRef.set(false);
-    this.pendingAssetSourceImageUrlRef.set('');
     this.editingAssetIdRef.set(null);
     this.assetFormDraftIdRef.set(draftId.trim() || `asset-${Date.now()}`);
     this.assetFormVisibilityRef.set('Public');
@@ -275,7 +274,6 @@ export class AssetStore {
     this.showAssetFormRef.set(true);
     this.assetFormLoadingRef.set(options.loading);
     this.assetFormSavePendingRef.set(false);
-    this.pendingAssetSourceImageUrlRef.set('');
     this.assetFormDraftIdRef.set('');
     this.editingAssetIdRef.set(options.cardId);
     this.assetFormVisibilityRef.set(options.visibility);
@@ -301,7 +299,6 @@ export class AssetStore {
     this.editingAssetIdRef.set(null);
     this.assetFormLoadingRef.set(false);
     this.assetFormSavePendingRef.set(false);
-    this.pendingAssetSourceImageUrlRef.set('');
     this.assetFormDraftIdRef.set('');
     this.touchUiState();
     return generation;
@@ -321,58 +318,17 @@ export class AssetStore {
     this.touchUiState();
   }
 
+  setAssetEditorForm(form: AssetFormState): void {
+    if (this.assetFormLoadingRef() || this.assetFormSavePendingRef()) {
+      return;
+    }
+    this.assetFormRef.set(this.cloneAssetForm(form));
+    this.touchUiState();
+  }
+
   setAssetEditorImageUrl(imageUrl: string): void {
     this.assetFormRef().imageUrl = imageUrl.trim();
     this.touchUiState();
-  }
-
-  setAssetEditorSourceLink(sourceLink: string): void {
-    this.assetFormRef().sourceLink = sourceLink.trim();
-    this.touchUiState();
-  }
-
-  clearPendingAssetSourceImage(): void {
-    this.pendingAssetSourceImageUrlRef.set('');
-    this.touchUiState();
-  }
-
-  setPendingAssetSourceImage(imageUrl: string): void {
-    this.pendingAssetSourceImageUrlRef.set(imageUrl.trim());
-    this.touchUiState();
-  }
-
-  applyPersistedAssetImage(imageUrl: string): void {
-    const normalizedImageUrl = imageUrl.trim();
-    if (!normalizedImageUrl) {
-      return;
-    }
-    this.pendingAssetSourceImageUrlRef.set('');
-    this.assetFormRef().imageUrl = normalizedImageUrl;
-    this.touchUiState();
-  }
-
-  applyAssetSourcePreview(preview: AppDTOs.AssetSourcePreviewDTO, fallbackSourceUrl: string): string | null {
-    const assetForm = this.assetFormRef();
-    const previousImageUrl = assetForm.imageUrl;
-    assetForm.sourceLink = preview.normalizedUrl.trim() || fallbackSourceUrl.trim();
-    this.pendingAssetSourceImageUrlRef.set('');
-
-    const previewImageUrl = preview.imageUrl.trim();
-    if (previewImageUrl) {
-      assetForm.imageUrl = previewImageUrl;
-      this.pendingAssetSourceImageUrlRef.set(previewImageUrl);
-    }
-    if (preview.title.trim()) {
-      assetForm.title = preview.title.trim();
-    }
-    if (preview.subtitle.trim()) {
-      assetForm.subtitle = preview.subtitle.trim();
-    }
-    if (preview.details.trim()) {
-      assetForm.details = preview.details.trim();
-    }
-    this.touchUiState();
-    return previousImageUrl !== assetForm.imageUrl ? previousImageUrl : null;
   }
 
   setAssetEditorLoading(loading: boolean): void {
@@ -403,6 +359,16 @@ export class AssetStore {
     const nextGeneration = this.assetFormLoadGenerationRef() + 1;
     this.assetFormLoadGenerationRef.set(nextGeneration);
     return nextGeneration;
+  }
+
+  private cloneAssetForm(form: AssetFormState): AssetFormState {
+    return {
+      ...form,
+      routes: [...(form.routes ?? [])],
+      topics: [...(form.topics ?? [])],
+      policies: (form.policies ?? []).map(policy => ({ ...policy })),
+      pricing: PricingBuilder.clonePricingConfig(form.pricing ?? null)
+    };
   }
 
   cardsByType(type: AppConstants.AssetType): AppDTOs.AssetDTO[] {

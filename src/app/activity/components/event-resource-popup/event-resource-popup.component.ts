@@ -57,6 +57,7 @@ import {
 } from '../../../shared/app-static-data';
 import type { CardMenuActionEvent, InfoCardData } from '../../../shared/ui/components/core/smart-list/card/card.types';
 import {
+  ActivityChatSingleRowConverter,
   ActivitySubEventResourceInfoCardConverter,
   type ActivitySubEventResourceInfoCardConverterOptions
 } from '../../../shared/ui/converters';
@@ -89,7 +90,6 @@ import type {
   ResourceAssetDTO,
   ResourceAssetViewState,
   ResourcePopupContext,
-  RouteEditorState,
   SubEventResourcePopupRequest
 } from '../../../shared/ui/context/stores/sub-event-resource-popup.store';
 import type { ChatDTO } from '../../../shared/core/contracts/chat.interface';
@@ -178,11 +178,6 @@ export class EventResourcePopupComponent {
   }));
 
   constructor() {
-    effect(() => {
-      this.assetStore.assetListRevision();
-      this.handleOwnedAssetsChanged();
-    });
-
     effect(() => {
       const deletedAssetEvent = this.assetStore.deletedAssetEvent();
       if (!deletedAssetEvent) {
@@ -292,8 +287,10 @@ export class EventResourcePopupComponent {
   protected resourceListModel(): EventResourceListModel {
     const cards = this.resourceCards();
     const converterOptions = this.resourceInfoCardConverterOptions();
+    const context = this.resourcePopupStore.popupContextRef();
     return {
       filter: this.resourcePopupStore.resourceFilterRef(),
+      metricIdentity: context ? this.chatMetricIdentity(context) : '',
       filterCounts: this.resourceFilterCounts(),
       items: cards.map(card => ({
         card,
@@ -303,6 +300,43 @@ export class EventResourcePopupComponent {
         )
       }))
     };
+  }
+
+  private chatMetricIdentity(context: ResourcePopupContext): string {
+    return this.chatMetricIdentityFromParts(context.ownerId, context.subEvent.id, context.groupId);
+  }
+
+  private chatMetricIdentityFromParts(
+    ownerIdValue: string | null | undefined,
+    subEventIdValue: string | null | undefined,
+    groupIdValue?: string | null
+  ): string {
+    const ownerId = `${ownerIdValue ?? ''}`.trim();
+    const subEventId = `${subEventIdValue ?? ''}`.trim();
+    if (!ownerId || !subEventId) {
+      return '';
+    }
+    const groupId = `${groupIdValue ?? ''}`.trim();
+    const channelType: ContractTypes.ChatChannelType = groupId ? 'groupSubEvent' : 'optionalSubEvent';
+    const chatOwnerId = groupId ? `${ownerId}:${subEventId}:${groupId}` : `${ownerId}:${subEventId}`;
+    return ActivityChatSingleRowConverter.smartListKeyForIdentity(channelType, chatOwnerId, chatOwnerId);
+  }
+
+  private memberOwnerIdFromParts(
+    ownerIdValue: string | null | undefined,
+    subEventIdValue: string | null | undefined,
+    groupIdValue?: string | null
+  ): string {
+    const ownerId = `${ownerIdValue ?? ''}`.trim();
+    const subEventId = `${subEventIdValue ?? ''}`.trim();
+    const groupId = `${groupIdValue ?? ''}`.trim();
+    if (ownerId && subEventId && groupId) {
+      return `${ownerId}:${subEventId}:${groupId}`;
+    }
+    if (ownerId && subEventId) {
+      return `${ownerId}:${subEventId}`;
+    }
+    return groupId || subEventId || ownerId;
   }
 
   private resourceInfoCardConverterOptions(): ActivitySubEventResourceInfoCardConverterOptions {
@@ -579,10 +613,27 @@ export class EventResourcePopupComponent {
 
   private openFromChatRequest(request: Extract<ActivitiesNavigationRequest, { type: 'chatResource' }>): void {
     if (request.resourceType === 'Members') {
+      const ownerId = `${request.item.ownerId ?? ''}`.trim()
+        || this.memberOwnerIdFromParts(request.ownerId, request.subEvent.id, request.group?.id);
+      const bucket = request.item.metrics?.members ?? null;
       this.memberMenuStore.requestActivitiesNavigation({
         type: 'members',
-        ownerId: request.group?.id?.trim() || request.subEvent.id,
-        ownerType: request.group?.id ? 'group' : 'subEvent'
+        ownerId,
+        ownerType: request.item.channelType === 'groupSubEvent' ? 'group' : 'subEvent',
+        subtitle: `${request.group?.groupLabel ?? request.subEvent.name ?? request.item.title ?? ''}`.trim() || 'Members',
+        canManage: request.group?.canManage === true,
+        viewOnly: request.group?.id ? request.group.canManage !== true : undefined,
+        acceptedMembers: Math.max(0, Math.trunc(Number(bucket?.accepted ?? request.group?.accepted ?? request.subEvent.membersAccepted) || 0)),
+        pendingMembers: Math.max(0, Math.trunc(Number(bucket?.pending ?? request.group?.pending ?? request.subEvent.membersPending) || 0)),
+        capacityTotal: Math.max(
+          0,
+          Math.trunc(Number(bucket?.capacityMax ?? request.group?.capacityMax ?? request.subEvent.capacityMax) || 0)
+        ),
+        metricIdentity: ActivityChatSingleRowConverter.smartListKeyForIdentity(
+          request.item.channelType ?? null,
+          ownerId,
+          request.item.id
+        )
       });
       return;
     }
@@ -653,7 +704,7 @@ export class EventResourcePopupComponent {
   private openFromSubEventResourceRequest(request: SubEventResourcePopupRequest): void {
     if (request.type === 'Members') {
       const group = request.group ?? null;
-      const ownerId = group?.id?.trim() || `${request.subEventId ?? ''}`.trim();
+      const ownerId = this.memberOwnerIdFromParts(request.ownerId, request.subEventId, group?.id);
       const groupLabel = group?.groupLabel?.trim() ?? '';
       const subEventTitle = this.requestSubEventTitle(request);
       this.memberMenuStore.requestActivitiesNavigation({
@@ -666,7 +717,7 @@ export class EventResourcePopupComponent {
         acceptedMembers: Math.max(0, Math.trunc(Number(group?.accepted) || 0)),
         pendingMembers: Math.max(0, Math.trunc(Number(group?.pending) || 0)),
         capacityTotal: Math.max(0, Math.trunc(Number(group?.capacityMax) || 0)),
-        members: group?.members,
+        metricIdentity: this.chatMetricIdentityFromParts(request.ownerId, request.subEventId, group?.id),
         onMembersChanged: group?.onMembersChanged
       });
       return;
@@ -760,7 +811,6 @@ export class EventResourcePopupComponent {
     if (options.hydrate !== false) {
       this.hydratePopupResourceState(context);
     }
-    this.syncPopupSubEventMetrics();
   }
 
   private openInitialExplorePopup(): void {
@@ -798,7 +848,6 @@ export class EventResourcePopupComponent {
       }
       this.applyPersistedPopupState(state);
       this.hydrateOwnedAssetsForResourcePopup();
-      this.syncPopupSubEventMetrics();
     };
     applyState(this.activityResourcesService.peekSubEventResourceState(ownerId, subEventId, assetOwnerUserId));
     void this.activityResourcesService
@@ -818,7 +867,6 @@ export class EventResourcePopupComponent {
     }
     if (ownerChanged || (this.assetStore.assetCards().length === 0 && peekedCards.length > 0)) {
       this.assetStore.applyAssetCards(peekedCards, { reloadList: false });
-      this.syncPopupSubEventMetrics();
     }
     if (
       this.ownedAssetsHydrationLoadedUserId === activeUserId
@@ -835,7 +883,6 @@ export class EventResourcePopupComponent {
         this.assetStore.setActiveOwnerUserId(activeUserId);
         this.assetStore.applyAssetCards(cards, { reloadList: false });
         this.ownedAssetsHydrationLoadedUserId = activeUserId;
-        this.syncPopupSubEventMetrics();
       })
       .finally(() => {
         if (this.ownedAssetsHydrationLoadingUserId === activeUserId) {
@@ -986,14 +1033,17 @@ export class EventResourcePopupComponent {
     return context.parentTitle || subEventName || 'Event';
   }
 
-  popupSummary(): string {
+  popupSummary(): string | null {
     const context = this.resourcePopupStore.popupContextRef();
     if (!context) {
-      return '0 members';
+      return null;
     }
     const metrics = this.subEventAssetCapacityMetrics(context.subEvent, this.resourcePopupStore.resourceFilterRef(), {
       normalizeStore: false
     });
+    if (metrics.joined <= 0 && metrics.pending <= 0) {
+      return null;
+    }
     if (metrics.pending <= 0) {
       return `${metrics.joined} members`;
     }
@@ -1368,7 +1418,8 @@ export class EventResourcePopupComponent {
       return;
     }
     const existingRequest = this.findAssignedAssetJoinRequest(sourceCard, context.subEvent.id, this.activeUser().id);
-    const validPolicyIds = new Set((sourceCard.policies ?? []).map(policy => policy.id));
+    const activePolicies = AssetCardBuilder.assetPoliciesEnabled(sourceCard) ? sourceCard.policies ?? [] : [];
+    const validPolicyIds = new Set(activePolicies.map(policy => policy.id));
     this.resourcePopupStore.assignedAssetJoinDialogRef.set({
       cardId: card.id,
       type,
@@ -1492,7 +1543,7 @@ export class EventResourcePopupComponent {
       return false;
     }
     const acceptedPolicyIds = new Set(dialog.acceptedPolicyIds.map(item => item.trim()).filter(Boolean));
-    return !(sourceCard.policies ?? [])
+    return !(AssetCardBuilder.assetPoliciesEnabled(sourceCard) ? sourceCard.policies ?? [] : [])
       .some(policy => policy.required !== false && !acceptedPolicyIds.has(policy.id));
   }
 
@@ -1517,7 +1568,8 @@ export class EventResourcePopupComponent {
     }
     const activeUser = this.activeUser();
     const pricing = this.resolveAssignedAssetJoinPricing(sourceCard, context.subEvent, activeUser.id);
-    const validPolicyIds = new Set((sourceCard.policies ?? []).map(policy => policy.id));
+    const activePolicies = AssetCardBuilder.assetPoliciesEnabled(sourceCard) ? sourceCard.policies ?? [] : [];
+    const validPolicyIds = new Set(activePolicies.map(policy => policy.id));
     const acceptedPolicyIds = [...new Set(dialog.acceptedPolicyIds.map(item => item.trim()).filter(Boolean))]
       .filter(item => validPolicyIds.has(item));
     const existingRequest = this.findAssignedAssetJoinRequest(sourceCard, context.subEvent.id, activeUser.id);
@@ -2070,7 +2122,7 @@ export class EventResourcePopupComponent {
       currency: pricing.currency,
       shareLabel,
       shareHint,
-      policies: (sourceCard.policies ?? []).map(item => ({ ...item })),
+      policies: (AssetCardBuilder.assetPoliciesEnabled(sourceCard) ? sourceCard.policies ?? [] : []).map(item => ({ ...item })),
       acceptedPolicyIds: [...dialog.acceptedPolicyIds],
       submitLabel: 'Send join request',
       busyLabel: 'Sending request...',
@@ -2687,10 +2739,6 @@ export class EventResourcePopupComponent {
     this.syncPopupSubEventMetrics();
   }
 
-  private handleOwnedAssetsChanged(): void {
-    this.syncPopupSubEventMetrics();
-  }
-
   private cloneSubEvent(subEvent: ContractTypes.SubEventDTO): ContractTypes.SubEventDTO {
     return {
       ...subEvent,
@@ -2736,6 +2784,7 @@ export class EventResourcePopupComponent {
       sourceLink: ActivityResourceBuilder.assetSourceLink(card),
       routes: ActivityResourceBuilder.normalizeAssetRoutes(card.type, card.routes),
       topics: [...(card.topics ?? [])],
+      policiesEnabled: AssetCardBuilder.assetPoliciesEnabled(card),
       policies: (card.policies ?? []).map(policy => ({ ...policy })),
       pricing: card.pricing ? PricingBuilder.clonePricingConfig(card.pricing) : card.pricing,
       visibility: card.visibility,

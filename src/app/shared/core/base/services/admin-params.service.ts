@@ -4,7 +4,6 @@ import type {
   AdminParamFieldDto,
   AdminParamOptionDto,
   AdminParamValueType,
-  AdminParamsDemoStore,
   AdminParamsHistoryDto,
   AdminParamsHistoryItemDto,
   AdminParamsSectionDto,
@@ -80,31 +79,6 @@ export class AdminParamsService extends BaseRouteModeService {
     return {
       sections: (state.sections ?? []).map(section => this.normalizeParamsSection(section)),
       updatedDate: `${state.updatedDate ?? ''}`.trim() || new Date().toISOString()
-    };
-  }
-
-  private normalizeParamsStore(store: AdminParamsDemoStore): AdminParamsDemoStore {
-    const state = this.normalizeParamsState(store);
-    const historyBySection: Record<string, AdminParamsHistoryItemDto[]> = {};
-    for (const section of state.sections) {
-      historyBySection[section.key] = (store.historyBySection?.[section.key] ?? [])
-        .map(item => this.normalizeParamsHistoryItem(item))
-        .sort((left, right) => right.version - left.version);
-      if (!historyBySection[section.key].length) {
-        historyBySection[section.key] = [{
-          configId: `demo-params-${section.key}-v${section.version}`,
-          version: section.version,
-          changedDate: section.changedDate,
-          changedBy: section.changedBy,
-          summary: section.summary,
-          active: true,
-          fields: section.fields.map(field => ({ ...field }))
-        }];
-      }
-    }
-    return {
-      ...state,
-      historyBySection
     };
   }
 

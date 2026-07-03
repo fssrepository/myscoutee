@@ -40,7 +40,6 @@ import type {
 export class PairCardComponent implements AfterViewInit, OnChanges, OnDestroy {
   private static readonly IMAGE_PULSE_DURATION_MS = 500;
   private static readonly BADGE_BLINK_DURATION_MS = 420;
-  private static readonly MOBILE_FULLSCREEN_ASPECT_RATIO = 3 / 4;
   private static readonly FULLSCREEN_ASPECT_RATIO = 4 / 3;
   private static readonly SPLIT_DEFAULT_PERCENT = 50;
   private static readonly SPLIT_MIN_PERCENT = 0;

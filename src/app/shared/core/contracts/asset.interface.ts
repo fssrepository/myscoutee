@@ -51,8 +51,10 @@ export interface AssetDTO {
   quantity: number;
   description: string;
   imageUrl: string;
+  sourceLink?: string;
   locationLabel?: string;
   priceLabel?: string;
+  policiesEnabled?: boolean;
   policyCount?: number;
   visibility?: AppConstants.EventVisibility;
   status?: AppConstants.AssetLifecycleStatus | string;
@@ -76,6 +78,7 @@ export interface AssetDetailDTO {
   sourceLink: string;
   routes?: string[];
   topics?: string[];
+  policiesEnabled?: boolean;
   policies?: EventPolicyItemDTO[];
   pricing?: PricingConfig | null;
   visibility?: AppConstants.EventVisibility;
@@ -97,8 +100,10 @@ export class AssetDto implements AssetDTO {
   quantity = 0;
   description = '';
   imageUrl = '';
+  sourceLink = '';
   locationLabel?: string;
   priceLabel?: string;
+  policiesEnabled?: boolean;
   policyCount?: number;
   visibility?: AppConstants.EventVisibility;
   status?: AppConstants.AssetLifecycleStatus | string;
@@ -112,6 +117,7 @@ export class AssetDto implements AssetDTO {
       return;
     }
     const detailCard = 'details' in card ? card : null;
+    const policiesEnabled = AssetDto.assetPoliciesEnabled(card);
     Object.assign(this, {
       id: card.id,
       type: card.type,
@@ -123,9 +129,13 @@ export class AssetDto implements AssetDTO {
       quantity: card.quantity,
       description: 'description' in card ? card.description : card.details,
       imageUrl: card.imageUrl,
+      sourceLink: ('sourceLink' in card ? card.sourceLink : detailCard?.sourceLink)?.trim() ?? '',
       locationLabel: 'locationLabel' in card ? card.locationLabel : detailCard ? AssetDto.locationLabelFromDetail(detailCard) : card.city,
       priceLabel: 'priceLabel' in card ? card.priceLabel : undefined,
-      policyCount: 'policyCount' in card ? card.policyCount : (detailCard?.policies ?? []).length,
+      policiesEnabled,
+      policyCount: policiesEnabled
+        ? ('policyCount' in card ? card.policyCount : (detailCard?.policies ?? []).length)
+        : 0,
       visibility: card.visibility,
       status: card.status,
       ownerUserId: card.ownerUserId,
@@ -157,8 +167,10 @@ export class AssetDto implements AssetDTO {
       && this.quantity === other.quantity
       && this.description === other.description
       && this.imageUrl === other.imageUrl
+      && this.sourceLink === (other.sourceLink ?? '')
       && (this.locationLabel ?? '') === (other.locationLabel ?? '')
       && (this.priceLabel ?? '') === (other.priceLabel ?? '')
+      && (this.policiesEnabled ?? false) === (other.policiesEnabled ?? false)
       && (this.policyCount ?? 0) === (other.policyCount ?? 0)
       && (this.visibility ?? '') === (other.visibility ?? '')
       && (this.status ?? '') === (other.status ?? '')
@@ -198,6 +210,16 @@ export class AssetDto implements AssetDTO {
       .map(route => route.trim())
       .find(route => route.length > 0)
       ?? card.city;
+  }
+
+  private static assetPoliciesEnabled(card: AssetDTO | AssetDetailDTO): boolean {
+    if ('policiesEnabled' in card && card.policiesEnabled !== undefined) {
+      return card.policiesEnabled === true;
+    }
+    if ('policyCount' in card && Number.isFinite(Number(card.policyCount)) && Number(card.policyCount) > 0) {
+      return true;
+    }
+    return 'policies' in card && (card.policies ?? []).length > 0;
   }
 
   private static sameStringList(left: readonly string[] | null | undefined, right: readonly string[] | null | undefined): boolean {
@@ -253,6 +275,7 @@ export class AssetDetailDto implements AssetDetailDTO {
   sourceLink = '';
   routes?: string[];
   topics?: string[];
+  policiesEnabled?: boolean;
   policies?: EventPolicyItemDTO[];
   pricing?: PricingConfig | null;
   visibility?: AppConstants.EventVisibility;
@@ -296,16 +319,6 @@ export interface AssetExploreQueryDTO {
   category?: AppConstants.AssetCategory;
   startAtIso?: string;
   endAtIso?: string;
-}
-
-export interface AssetSourcePreviewDTO {
-  enabled: boolean;
-  supported: boolean;
-  normalizedUrl: string;
-  title: string;
-  subtitle: string;
-  details: string;
-  imageUrl: string;
 }
 
 export interface AssetTicketPageQueryDTO {

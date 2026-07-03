@@ -128,7 +128,6 @@ export class ActivitiesEventsController {
   constructor(private readonly host: ActivitiesEventsHost) {}
 
   private get activeUser() { return this.host.activeUser as any; }
-  private get activitiesStore() { return this.host.activitiesStore; }
   private get activitiesEventScope() { return this.host.activitiesEventScope as ContractTypes.ActivitiesEventScope; }
   private set activitiesEventScope(value: ContractTypes.ActivitiesEventScope) { this.host.activitiesEventScope = value; }
   private get activitiesSmartList() { return this.host.activitiesSmartList; }
@@ -158,20 +157,6 @@ export class ActivitiesEventsController {
   private get trashedActivityRowsByKey() { return this.host.trashedActivityRowsByKey as Record<string, InfoCardData>; }
 
   private activityRowIdentity(row: InfoCardData): string { return this.host.activityRowIdentity(row); }
-  private applyActivityEventSave(sync: ActivityContracts.ActivityEventDTO): void {
-    this.host.applyActivityEventSave(sync);
-  }
-  private emitActivityEventSave(payload: ActivityEventDetailDTO): Promise<void> {
-    return this.eventsService.saveActivityEvent(payload)
-      .then((displaySync: ActivityContracts.ActivityEventDTO | null) => {
-        if (displaySync) {
-          this.activitiesStore.emitActivityEventSaveResult(displaySync);
-        }
-      })
-      .catch(() => {
-        // Demo persistence is best-effort; UI state stays optimistic.
-      });
-  }
   private chatCountValue(value: unknown): number { return this.host.chatCountValue(value); }
   private cloneSyncedSubEventForms(items: ContractTypes.SubEventDTO[]): ContractTypes.SubEventDTO[] { return this.host.cloneSyncedSubEventForms(items); }
   private openActivityChat(chat: ChatDTO): void { this.host.openActivityChat(chat); }
@@ -258,10 +243,6 @@ export class ActivitiesEventsController {
         .map(member => member.userId)
     );
   }
-  private withActivityEventInfoCard(row: InfoCardData): InfoCardData {
-    return this.host.withActivityEventInfoCard(row);
-  }
-
   private activeUserId(): string {
     return `${this.activeUser?.id ?? ''}`.trim();
   }
@@ -1054,7 +1035,7 @@ export class ActivitiesEventsController {
   }
 
   private acceptedInvitationCounterDelta(
-    row: InfoCardData,
+    _row: InfoCardData,
     detail: Pick<ActivityEventDetailDTO, 'pendingRequestMemberUserIds' | 'acceptedMemberUserIds'>
   ): UserMenuCounterDeltasDto | null {
     const activeUserId = this.activeUserId();
@@ -1107,14 +1088,6 @@ export class ActivitiesEventsController {
       eventDelta['active'] = -1;
     }
     return this.activityCounterDeltaFromDeltas(primaryDelta, eventDelta);
-  }
-
-  private adjustLeftEventCounters(row: InfoCardData): void {
-    if (this.isActivityPendingParticipationRow(row)) {
-      this.applyActivityEventCounterDeltas({}, { all: -1, pending: -1, trash: 1 });
-      return;
-    }
-    this.applyActivityEventCounterDeltas({ events: -1 }, { active: -1, all: -1, trash: 1 });
   }
 
   private leftEventCounterDelta(row: InfoCardData): UserMenuCounterDeltasDto | null {
@@ -1548,145 +1521,6 @@ export class ActivitiesEventsController {
     delete this.activityMembersByRowId[`invitations:${sourceId}`];
   }
 
-  private async buildLeftActivityEventDetailDTO(
-    row: InfoCardData
-  ): Promise<ActivityEventDetailDTO | null> {
-    const activeUserId = this.activeUser.id.trim();
-    if (!activeUserId) {
-      return null;
-    }
-
-    const relatedSource = this.activityDisplaySourceForRow(row);
-    const record = await this.eventsService.queryKnownRecordById(activeUserId, row.id);
-    const source = relatedSource;
-    const creatorUserId = record?.creatorUserId ?? source.creatorUserId ?? row.ownerId ?? row.ownerUserId ?? '';
-    if (!creatorUserId.trim()) {
-      return null;
-    }
-
-    const currentMembers = await this.activityMembersService.queryMembersByOwnerId(row.id);
-    const existingAcceptedMemberUserIds = this.activityMemberUserIdsByStatus(currentMembers, 'accepted');
-    const existingPendingMemberUserIds = this.activityMemberUserIdsByStatus(currentMembers, 'pending')
-      .filter(userId => !existingAcceptedMemberUserIds.includes(userId));
-    const activeUserWasAccepted = existingAcceptedMemberUserIds.includes(activeUserId);
-    const activeUserWasPending = existingPendingMemberUserIds.includes(activeUserId);
-    const nextAcceptedMemberUserIds = existingAcceptedMemberUserIds.filter(userId => userId !== activeUserId);
-    const nextPendingMemberUserIds = existingPendingMemberUserIds
-      .filter(userId => userId !== activeUserId && !nextAcceptedMemberUserIds.includes(userId));
-    const nextInvitedMemberUserIds = this.uniqueUserIds([
-      ...(record?.invitedMemberUserIds ?? []),
-      ...(source.invitedMemberUserIds ?? [])
-    ]).filter(userId => userId !== activeUserId);
-    const nextPendingRequestMemberUserIds = this.uniqueUserIds([
-      ...(record?.pendingRequestMemberUserIds ?? []),
-      ...(source.pendingRequestMemberUserIds ?? []),
-      ...existingPendingMemberUserIds
-    ]).filter(userId => userId !== activeUserId);
-
-    const acceptedMembersBase = this.chatCountValue(
-      record?.acceptedMembers
-      ?? source.acceptedMembers
-    );
-    const pendingMembersBase = this.chatCountValue(
-      record?.pendingMembers
-      ?? source.pendingMembers
-    );
-    const nextAcceptedMembers = Math.max(
-      nextAcceptedMemberUserIds.length,
-      Math.max(0, acceptedMembersBase - (activeUserWasAccepted ? 1 : 0))
-    );
-    const nextPendingMembers = Math.max(
-      nextPendingMemberUserIds.length,
-      Math.max(0, pendingMembersBase - (activeUserWasPending ? 1 : 0))
-    );
-
-    const title = record?.title ?? source.title ?? row.title;
-    const shortDescription = record?.subtitle
-      ?? source.shortDescription
-      ?? this.activityRowSubtitle(row)
-      ?? '';
-    const timeframe = record?.timeframe ?? source.timeframe ?? this.activityRowTimeframe(row);
-    const startAt = record?.startAtIso ?? source.startAt ?? this.activityRowStartAt(row);
-    const endAt = record?.endAtIso ?? source.endAt ?? this.activityRowEndAt(row) ?? startAt;
-    const distanceKmRaw = record?.distanceKm ?? source.distanceKm ?? this.activityRowDistanceKm(row);
-    const distanceKm = Number.isFinite(Number(distanceKmRaw)) ? Math.max(0, Number(distanceKmRaw)) : 0;
-    const creatorName = record?.creatorName?.trim() || title;
-    const creatorInitials = record?.creatorInitials?.trim()
-      || source.avatar?.trim()
-      || this.activityRowCreatorInitials(row)
-      || AppUtils.initialsFromText(creatorName);
-    const capacityTotal = Math.max(
-      nextAcceptedMembers,
-      this.chatCountValue(
-        record?.capacityTotal
-        ?? source.capacityTotal
-        ?? source.capacityMax
-      )
-    );
-
-    return new ActivityEventDetailDTO().apply({
-      id: row.id,
-      type: 'events',
-      title,
-      subtitle: shortDescription,
-      timeframe,
-      activity: this.chatCountValue(record?.activity ?? source.activity ?? this.activityRowActivityCount(row)),
-      startAtIso: startAt,
-      endAtIso: endAt,
-      distanceKm,
-      imageUrl: record?.imageUrl ?? source.imageUrl ?? row.imageUrl ?? '',
-      acceptedMembers: nextAcceptedMembers,
-      pendingMembers: nextPendingMembers,
-      capacityTotal,
-      capacityMin: record?.capacityMin ?? source.capacityMin ?? null,
-      capacityMax: record?.capacityMax ?? source.capacityMax ?? capacityTotal,
-      autoInviter: record?.autoInviter ?? source.autoInviter,
-      frequency: record?.frequency ?? source.frequency,
-      ticketing: record?.ticketing ?? source.ticketing,
-      pricing: record?.pricing ?? source.pricing,
-      policiesEnabled: record?.policiesEnabled ?? source.policiesEnabled ?? false,
-      policies: Array.isArray(record?.policies)
-        ? record.policies.map((item: ContractTypes.EventPolicyDTO) => ({ ...item }))
-        : (Array.isArray(source.policies) ? source.policies.map((item: ContractTypes.EventPolicyDTO) => ({ ...item })) : undefined),
-      slotsEnabled: record?.slotsEnabled ?? source.slotsEnabled,
-      slotTemplates: Array.isArray(record?.slotTemplates)
-        ? record.slotTemplates.map((item: ContractTypes.EventSlotTemplateDTO) => ({ ...item }))
-        : (Array.isArray(source.slotTemplates) ? source.slotTemplates.map((item: ContractTypes.EventSlotTemplateDTO) => ({ ...item })) : undefined),
-      parentEventId: record?.parentEventId ?? source.parentEventId,
-      slotTemplateId: record?.slotTemplateId ?? source.slotTemplateId,
-      generated: record?.generated ?? source.generated,
-      eventType: record?.eventType ?? source.eventType,
-      nextSlot: record?.nextSlot
-        ? { ...record.nextSlot }
-        : (source.nextSlot ? { ...source.nextSlot } : undefined),
-      upcomingSlots: Array.isArray(record?.upcomingSlots)
-        ? record.upcomingSlots.map((item: ContractTypes.EventSlotOccurrenceDTO) => ({ ...item }))
-        : (Array.isArray(source.upcomingSlots) ? source.upcomingSlots.map((item: ContractTypes.EventSlotOccurrenceDTO) => ({ ...item })) : undefined),
-      visibility: record?.visibility ?? source.visibility ?? this.activityRowVisibility(row),
-      blindMode: record?.blindMode ?? source.blindMode,
-      status: record?.status ?? source.status ?? 'A',
-      creatorUserId,
-      creatorName,
-      creatorInitials,
-      creatorGender: record?.creatorGender,
-      creatorCity: record?.creatorCity,
-      location: record?.location ?? source.location,
-      locationCoordinates: record?.locationCoordinates ?? source.locationCoordinates,
-      sourceLink: record?.sourceLink ?? source.sourceLink,
-      topics: [...(record?.topics ?? source.topics ?? [])],
-      acceptedMemberUserIds: nextAcceptedMemberUserIds,
-      pendingMemberUserIds: nextPendingMemberUserIds,
-      invitedMemberUserIds: nextInvitedMemberUserIds,
-      pendingRequestMemberUserIds: nextPendingRequestMemberUserIds,
-      pendingReason: undefined,
-      subEvents: Array.isArray(record?.subEvents)
-        ? this.cloneSyncedSubEventForms(record.subEvents)
-        : (Array.isArray(source.subEvents) ? this.cloneSyncedSubEventForms(source.subEvents) : undefined),
-      mode: record?.mode ?? source.mode,
-      paymentSessionId: null
-    });
-  }
-
   public isActivityIdentityTrashed(type: ActivityContracts.ActivityEventRepositoryItemType, id: string): boolean {
     return Boolean(this.trashedActivityRowsByKey[`${type}:${id}`]);
   }
@@ -1701,14 +1535,6 @@ export class ActivitiesEventsController {
 
   public trashedActivityCount(): number {
     return Object.keys(this.trashedActivityRowsByKey).length;
-  }
-
-  private markActivityRowTrashed(row: InfoCardData): void {
-    this.trashedActivityRowsByKey[this.activityRowIdentity(row)] = this.withActivityEventInfoCard({
-      ...row,
-      status: 'T'
-    });
-    this.refreshSectionBadges();
   }
 
   private unmarkActivityRowTrashed(row: InfoCardData): void {

@@ -1,6 +1,6 @@
 {
   "lang": "en",
-  "version": "2026.06.22.en.1",
+  "version": "2026.07.02.en.1",
   "messages": {
     "about": "About",
     "accommodation": "Accommodation",
@@ -76,6 +76,7 @@
     "ambition": "Ambition",
     "any": "Any",
     "application.feedback": "Application feedback",
+    "app.support": "App support",
     "apply.filters": "Apply filters",
     "approval.required": "Approval Required",
     "ask.organizer": "Ask Organizer",

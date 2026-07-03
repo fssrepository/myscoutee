@@ -5,11 +5,17 @@ import { Observable } from 'rxjs';
 import { environment } from '../../../../../environments/environment';
 import { AppUtils } from '../../../app-utils';
 import type { ActivitiesFeedFilters, ListQuery } from '../../contracts';
-import type { ActivityRateDTO, ActivityRatePageResultDTO } from '../../contracts/activity.interface';
+import type {
+  ActivityRateDTO,
+  ActivityRatePageResultDTO,
+  UserRateSyncPayloadDTO,
+  UserRatesSyncRequestDTO,
+  UserRatesSyncResponseDTO
+} from '../../contracts/activity.interface';
 import type { UserRatesSyncResult } from '../../contracts/activity.interface';
 import type { IRatesService } from '../../contracts/activity.interface';
-import type { UserRateRecord } from '../../local/source/entity/rate.entity';
 import type { UserDto } from '../../contracts/user.interface';
+import { BaseUserRatesMapper } from '../../base/mappers';
 import { RateOutboxRepository } from '../../base/repositories/rate-outbox.repository';
 
 @Injectable({
@@ -31,7 +37,7 @@ export class HttpRatesService implements IRatesService {
       return [];
     }
     return this.cloneRateItems(
-      this.rateOutboxRepository.mergePendingOutboxRateItems(
+      this.mergePendingOutboxRateItems(
         normalizedUserId,
         this.cachedRatesByUserId[normalizedUserId] ?? []
       )
@@ -49,7 +55,7 @@ export class HttpRatesService implements IRatesService {
           params: new HttpParams().set('userId', normalizedUserId)
         })
         .toPromise();
-      const items = this.rateOutboxRepository.mergePendingOutboxRateItems(
+      const items = this.mergePendingOutboxRateItems(
         normalizedUserId,
         Array.isArray(response) ? response : []
       );
@@ -65,7 +71,23 @@ export class HttpRatesService implements IRatesService {
     if (batch.length === 0) {
       return;
     }
-    const syncResult = await this.syncUserRatesBatch(batch.map(item => ({ ...item.payload })));
+    const payloadRates: UserRateSyncPayloadDTO[] = [];
+    const invalidRateIds: string[] = [];
+    const sourceRateIds: string[] = [];
+    for (const item of batch) {
+      const rate = item.payload;
+      const rateId = `${rate?.id ?? item.rateId ?? ''}`.trim();
+      if (rateId) {
+        sourceRateIds.push(rateId);
+      }
+      const payload = BaseUserRatesMapper.toSyncPayload(rate);
+      if (payload) {
+        payloadRates.push(payload);
+      } else if (rateId) {
+        invalidRateIds.push(rateId);
+      }
+    }
+    const syncResult = await this.syncUserRatesBatch(payloadRates, invalidRateIds, sourceRateIds);
     this.rateOutboxRepository.applyUserRatesSyncResult(batch, syncResult);
   }
 
@@ -194,6 +216,33 @@ export class HttpRatesService implements IRatesService {
     return page.items.length === 0
       && page.total === 0
       && this.peekRateItemsByUser(userId).length > 0;
+  }
+
+  private mergePendingOutboxRateItems(userId: string, items: readonly ActivityRateDTO[]): ActivityRateDTO[] {
+    const normalizedUserId = userId.trim();
+    if (!normalizedUserId) {
+      return [];
+    }
+    const itemsById = new Map<string, ActivityRateDTO>();
+    for (const item of items) {
+      const normalizedId = item.id.trim();
+      if (!normalizedId) {
+        continue;
+      }
+      itemsById.set(normalizedId, { ...item });
+    }
+    for (const record of this.rateOutboxRepository.queryPendingUserRateRecords()) {
+      if (record.ownerUserId?.trim() !== normalizedUserId) {
+        continue;
+      }
+      const item = BaseUserRatesMapper.toDto(record);
+      if (!item?.id?.trim()) {
+        continue;
+      }
+      itemsById.set(item.id.trim(), { ...item });
+    }
+    return [...itemsById.values()]
+      .sort((left, right) => right.happenedAt.localeCompare(left.happenedAt) || left.id.localeCompare(right.id));
   }
 
   private activitiesRateFilter(query: ListQuery<ActivitiesFeedFilters>): NonNullable<ActivitiesFeedFilters['rateFilter']> {
@@ -361,42 +410,29 @@ export class HttpRatesService implements IRatesService {
     };
   }
 
-  private async syncUserRatesBatch(rates: UserRateRecord[]): Promise<UserRatesSyncResult> {
+  private async syncUserRatesBatch(
+    rates: readonly UserRateSyncPayloadDTO[],
+    invalidRateIds: readonly string[],
+    sourceRateIds: readonly string[]
+  ): Promise<UserRatesSyncResult> {
     if (rates.length === 0) {
       return {
         syncedRateIds: [],
-        failedRateIds: [],
-        error: null
-      };
-    }
-    const payloadRates: UserRateRecord[] = [];
-    const invalidRateIds: string[] = [];
-    for (const rate of rates) {
-      const payload = this.rateOutboxRepository.toUserRateSyncPayload(rate);
-      if (payload) {
-        payloadRates.push(payload);
-      } else if (rate.id?.trim()) {
-        invalidRateIds.push(rate.id.trim());
-      }
-    }
-    if (payloadRates.length === 0) {
-      return {
-        syncedRateIds: [],
-        failedRateIds: this.dedupeIds([...invalidRateIds, ...rates.map(rate => rate.id)]),
+        failedRateIds: this.dedupeIds([...invalidRateIds, ...sourceRateIds]),
         error: 'No valid user rates to sync'
       };
     }
     try {
       const response = await this.http
-        .post<{ syncedRateIds?: string[]; failedRateIds?: string[] } | null>(
+        .post<UserRatesSyncResponseDTO | null>(
           `${this.apiBaseUrl}${HttpRatesService.USER_RATES_SYNC_ROUTE}`,
-          { rates: payloadRates }
+          { rates: rates.map(rate => ({ ...rate })) } satisfies UserRatesSyncRequestDTO
         )
         .toPromise();
       if (!response) {
         return {
           syncedRateIds: [],
-          failedRateIds: this.dedupeIds([...payloadRates.map(rate => rate.id), ...invalidRateIds]),
+          failedRateIds: this.dedupeIds([...rates.map(rate => rate.id), ...invalidRateIds]),
           error: 'Empty sync response'
         };
       }
@@ -418,7 +454,7 @@ export class HttpRatesService implements IRatesService {
     } catch {
       return {
         syncedRateIds: [],
-        failedRateIds: this.dedupeIds([...payloadRates.map(rate => rate.id), ...invalidRateIds]),
+        failedRateIds: this.dedupeIds([...rates.map(rate => rate.id), ...invalidRateIds]),
         error: 'User rates sync request failed'
       };
     }

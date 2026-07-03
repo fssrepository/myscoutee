@@ -4,3 +4,4 @@ export * from './context';
 export * from './directives';
 export * from './models';
 export * from './pipes';
+export * from './scheduler';

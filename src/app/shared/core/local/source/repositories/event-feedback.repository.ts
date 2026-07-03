@@ -1,4 +1,4 @@
-import type { EventFeedbackPersistedState } from '../entity/event.entity';
+import type { EventFeedbackPersistedState, EventFeedbackStatRecord } from '../entity/event.entity';
 import { EVENT_FEEDBACK_TABLE_NAME } from '../entity/event.entity';
 import { Injectable, inject } from '@angular/core';
 
@@ -47,21 +47,7 @@ export class LocalEventFeedbackRepository {
     if (!normalizedUserId) {
       return [];
     }
-    const ownedEventIds = ownedEventIdsInput
-      ? new Set([...ownedEventIdsInput].map(eventId => eventId.trim()).filter(Boolean))
-      : new Set(
-          this.eventsRepository.queryItemsByUser(normalizedUserId)
-            .filter(record =>
-              record.type !== 'invitations'
-              && record.status !== 'T'
-              && (
-                record.creatorUserId === normalizedUserId
-                || (record.adminIds ?? []).includes(normalizedUserId)
-              )
-            )
-            .map(record => record.id.trim())
-            .filter(Boolean)
-        );
+    const ownedEventIds = this.ownedEventIds(normalizedUserId, ownedEventIdsInput);
     if (ownedEventIds.size === 0) {
       return [];
     }
@@ -104,6 +90,48 @@ export class LocalEventFeedbackRepository {
         )
       }))
       .sort((left, right) => right.eventId.localeCompare(left.eventId));
+  }
+
+  queryReceivedEventFeedbackStatRecords(userId: string, eventId: string): EventFeedbackStatRecord[] {
+    const normalizedUserId = userId.trim();
+    const normalizedEventId = eventId.trim();
+    if (!normalizedUserId || !normalizedEventId) {
+      return [];
+    }
+    const ownedEventIds = this.ownedEventIds(normalizedUserId);
+    if (!ownedEventIds.has(normalizedEventId)) {
+      return [];
+    }
+
+    const table = this.memoryDb.read()[EVENT_FEEDBACK_TABLE_NAME];
+    const records: EventFeedbackStatRecord[] = [];
+    for (const id of table.ids) {
+      const record = table.byId[id];
+      if (!record || record.userId === normalizedUserId || record.eventId !== normalizedEventId) {
+        continue;
+      }
+      const answers = Object.values(this.cloneEventFeedbackAnswersByCardId(record.answersByCardId));
+      const organizerNote = record.organizerNote.trim();
+      if (!organizerNote && answers.length === 0) {
+        continue;
+      }
+      const eventAnswer = answers.find(answer => answer.kind === 'event') ?? null;
+      records.push({
+        eventId: normalizedEventId,
+        viewerUserId: record.userId,
+        submittedAtIso: record.submittedAtIso ?? eventAnswer?.submittedAtIso ?? '',
+        updatedAtIso: record.submittedAtIso ?? eventAnswer?.submittedAtIso ?? '',
+        overallValue: eventAnswer?.primaryValue?.trim() ?? '',
+        improveValue: eventAnswer?.secondaryValue?.trim() ?? '',
+        personalityTraitIds: (eventAnswer?.personalityTraitIds ?? [])
+          .map(traitId => traitId.trim())
+          .filter(Boolean)
+      });
+    }
+
+    return records.sort((left, right) =>
+      (right.updatedAtIso || right.submittedAtIso).localeCompare(left.updatedAtIso || left.submittedAtIso)
+    );
   }
 
   submitEventFeedback(userId: string, request: EventFeedbackDetailDto): void {
@@ -196,6 +224,29 @@ export class LocalEventFeedbackRepository {
         ...record,
         answersByCardId: this.cloneEventFeedbackAnswersByCardId(record.answersByCardId)
       }));
+  }
+
+  private ownedEventIds(userId: string, ownedEventIdsInput?: Iterable<string>): Set<string> {
+    const normalizedUserId = userId.trim();
+    if (!normalizedUserId) {
+      return new Set<string>();
+    }
+    if (ownedEventIdsInput) {
+      return new Set([...ownedEventIdsInput].map(eventId => eventId.trim()).filter(Boolean));
+    }
+    return new Set(
+      this.eventsRepository.queryItemsByUser(normalizedUserId)
+        .filter(record =>
+          record.type !== 'invitations'
+          && record.status !== 'T'
+          && (
+            record.creatorUserId === normalizedUserId
+            || (record.adminIds ?? []).includes(normalizedUserId)
+          )
+        )
+        .map(record => record.id.trim())
+        .filter(Boolean)
+    );
   }
 
   private updateEventFeedbackState(

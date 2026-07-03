@@ -93,6 +93,7 @@ export interface SmartListCursorState<T> {
 export interface SmartListItemTemplateContext<T, TFilters extends SmartListFilters = SmartListFilters> {
   $implicit: T;
   index: number;
+  sourceItem?: unknown;
   groupLabel: string;
   query: ListQuery<TFilters>;
   selectMode: boolean;
@@ -202,11 +203,20 @@ export interface SmartListGroupMarkerContext<T, TFilters extends SmartListFilter
 
 export interface SmartListItemSelectEvent<T, TFilters extends SmartListFilters = SmartListFilters> {
   item: T;
+  sourceItem?: unknown;
   query: ListQuery<TFilters>;
   currentView: string | null;
   currentViewMode: SmartListViewMode;
   selectMode: boolean;
   sourceEvent?: Event;
+}
+
+export interface SmartListRefreshEvent<T, TFilters extends SmartListFilters = SmartListFilters> {
+  items: ReadonlyArray<T>;
+  sourceItems: ReadonlyArray<unknown>;
+  query: ListQuery<TFilters>;
+  currentView: string | null;
+  currentViewMode: SmartListViewMode;
 }
 
 export interface SmartListMenuItemsContext<T, TFilters extends SmartListFilters = SmartListFilters> {
@@ -246,6 +256,7 @@ export interface SmartListConfig<T, TFilters extends SmartListFilters = SmartLis
   initialPageSize?: number;
   preloadOffsetPx?: number;
   showBackgroundLoadingProgress?: SmartListConfigValue<boolean, TFilters>;
+  pollIntervalMs?: SmartListConfigValue<number | null, TFilters>;
   loadingDelayMs?: number;
   loadingWindowMs?: number;
   defaultView?: string;

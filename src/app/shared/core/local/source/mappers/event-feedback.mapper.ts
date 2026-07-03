@@ -11,10 +11,16 @@ import type {
   EventFeedbackQueryDto,
   EventFeedbackReceivedEntryDto,
   EventFeedbackReceivedEventDto,
+  EventFeedbackStatDto,
+  EventFeedbackStatOptionDto,
+  EventFeedbackStatQueryDto,
+  EventFeedbackStatSectionDto,
+  EventFeedbackStatSectionKey,
   EventFeedbackStateDto,
   SubmittedEventFeedbackAnswer
 } from '../../../contracts/activity.interface';
 import type { UserDto } from '../../../contracts/user.interface';
+import type { EventFeedbackStatRecord } from '../entity/event.entity';
 
 export class LocalEventFeedbackMapper {
   private static readonly DEFAULT_UNLOCK_DELAY_MS = 2 * 60 * 60 * 1000;
@@ -101,6 +107,49 @@ export class LocalEventFeedbackMapper {
       title: event.title,
       cards
     });
+  }
+
+  static toStat(options: {
+    query: EventFeedbackStatQueryDto;
+    records: readonly EventFeedbackStatRecord[];
+  }): EventFeedbackStatDto {
+    const eventId = options.query.eventId.trim();
+    const records = options.records
+      .filter(record => record.eventId === eventId)
+      .map(record => ({
+        eventId,
+        viewerUserId: record.viewerUserId.trim(),
+        submittedAtIso: record.submittedAtIso.trim(),
+        updatedAtIso: record.updatedAtIso.trim(),
+        overallValue: record.overallValue.trim(),
+        improveValue: record.improveValue.trim(),
+        personalityTraitIds: (record.personalityTraitIds ?? [])
+          .map(traitId => traitId.trim())
+          .filter(Boolean)
+      }))
+      .filter(record => record.viewerUserId.length > 0);
+    const totalResponses = records.length;
+    return {
+      eventId,
+      totalResponses,
+      sections: [
+        this.toStatSection(
+          'overall',
+          totalResponses,
+          records.map(record => record.overallValue)
+        ),
+        this.toStatSection(
+          'improve',
+          totalResponses,
+          records.map(record => record.improveValue)
+        ),
+        this.toStatSection(
+          'traits',
+          totalResponses,
+          records.flatMap(record => record.personalityTraitIds)
+        )
+      ]
+    };
   }
 
   private static toFeedbackCards(options: {
@@ -291,6 +340,32 @@ export class LocalEventFeedbackMapper {
       feedbacked: allItems.filter(item => item.isFeedbacked).length,
       removed: allItems.filter(item => item.isRemoved).length
     };
+  }
+
+  private static toStatSection(
+    key: EventFeedbackStatSectionKey,
+    responseCount: number,
+    values: readonly string[]
+  ): EventFeedbackStatSectionDto {
+    return {
+      key,
+      responseCount,
+      options: this.countStatOptions(values)
+    };
+  }
+
+  private static countStatOptions(values: readonly string[]): EventFeedbackStatOptionDto[] {
+    const countByKey = new Map<string, number>();
+    for (const value of values) {
+      const normalizedValue = value.trim();
+      if (!normalizedValue) {
+        continue;
+      }
+      countByKey.set(normalizedValue, (countByKey.get(normalizedValue) ?? 0) + 1);
+    }
+    return [...countByKey.entries()]
+      .map(([key, count]) => ({ key, count }))
+      .sort((left, right) => right.count - left.count || left.key.localeCompare(right.key));
   }
 
   private static stateSnapshotFromDtos(states: readonly EventFeedbackStateDto[]): EventFeedbackPageStateSnapshotDto {

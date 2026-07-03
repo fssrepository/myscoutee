@@ -128,6 +128,7 @@ export class LocalAssetsMapper {
       }),
       description: this.assetDescription(card),
       imageUrl: `${card.imageUrl ?? ''}`.trim(),
+      sourceLink: `${card.sourceLink ?? ''}`.trim(),
       visibility: card.visibility,
       status: this.normalizeAssetStatus(card.status),
       ownerUserId: `${card.ownerUserId ?? ''}`.trim() || undefined,
@@ -168,6 +169,7 @@ export class LocalAssetsMapper {
       topics: Array.isArray(card?.topics)
         ? card.topics.map(topic => `${topic ?? ''}`.trim()).filter(topic => topic.length > 0)
         : [],
+      policiesEnabled: AssetCardBuilder.assetPoliciesEnabled(card),
       policies: Array.isArray(card?.policies)
         ? card.policies
           .map(item => ({
@@ -223,11 +225,13 @@ export class LocalAssetsMapper {
       }),
       description: record.details,
       imageUrl: record.imageUrl,
+      sourceLink: record.sourceLink,
       locationLabel: record.type === 'Accommodation'
         ? ((record.routes ?? []).map(route => route.trim()).find(Boolean) ?? record.city)
         : record.city,
       priceLabel: this.assetPriceLabelFromRecord(record),
-      policyCount: (record.policies ?? []).length,
+      policiesEnabled: record.policiesEnabled === true,
+      policyCount: record.policiesEnabled === true ? (record.policies ?? []).length : 0,
       visibility: record.visibility,
       status: this.normalizeAssetStatus(record.status),
       ownerUserId: record.ownerUserId,
@@ -263,6 +267,7 @@ export class LocalAssetsMapper {
       sourceLink: record.sourceLink,
       routes: [...(record.routes ?? [])],
       topics: [...(record.topics ?? [])],
+      policiesEnabled: record.policiesEnabled === true,
       policies: (record.policies ?? []).map(item => ({ ...item })),
       pricing: record.pricing ? PricingBuilder.clonePricingConfig(record.pricing) : undefined,
       visibility: record.visibility,
@@ -304,9 +309,10 @@ export class LocalAssetsMapper {
       quantity: summary.quantity,
       details: detail?.details ?? summary.description,
       imageUrl: summary.imageUrl,
-      sourceLink: detail?.sourceLink ?? '',
+      sourceLink: detail?.sourceLink ?? summary.sourceLink ?? '',
       routes: detail?.routes ? [...detail.routes] : [],
       topics: detail?.topics ? [...detail.topics] : [],
+      policiesEnabled: detail?.policiesEnabled === true,
       policies: detail?.policies ? detail.policies.map(item => ({ ...item })) : [],
       pricing: detail?.pricing ? PricingBuilder.clonePricingConfig(detail.pricing) : detail?.pricing,
       visibility: summary.visibility ?? 'Public',
@@ -392,6 +398,9 @@ export class LocalAssetsMapper {
   }
 
   private static assetPolicyCount(card: AppDTOs.AssetDTO | AppDTOs.AssetDetailDTO): number {
+    if (!AssetCardBuilder.assetPoliciesEnabled(card)) {
+      return 0;
+    }
     if ('policyCount' in card && Number.isFinite(Number(card.policyCount))) {
       return Math.max(0, Math.trunc(Number(card.policyCount)));
     }
@@ -423,6 +432,7 @@ export class LocalAssetsMapper {
       ...record,
       routes: [...(record.routes ?? [])],
       topics: [...(record.topics ?? [])],
+      policiesEnabled: record.policiesEnabled === true,
       policies: (record.policies ?? []).map(item => ({ ...item })),
       pricing: record.pricing ? PricingBuilder.clonePricingConfig(record.pricing) : undefined,
       requests: record.requests.map(request => this.cloneRequest(request)),

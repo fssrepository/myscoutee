@@ -49,6 +49,36 @@ export interface ActivityRatePageResultDTO {
   users?: UserContracts.UserDto[];
 }
 
+export interface UserRateSyncPayloadDTO {
+  id: string;
+  fromUserId: string;
+  toUserId: string;
+  rate: number;
+  mode: 'single' | 'pair';
+  createdAtIso: string;
+  updatedAtIso: string;
+  ownerUserId?: string;
+  displayId?: string;
+  displayDirection?: ActivityRateDTODirection;
+  socialContext?: ActivityRateDTOSocialContext;
+  bridgeUserId?: string;
+  bridgeCount?: number;
+  scoreGiven?: number;
+  scoreReceived?: number;
+  eventName?: string;
+  happenedAtIso?: string;
+  distanceMetersExact?: number;
+}
+
+export interface UserRatesSyncRequestDTO {
+  rates: UserRateSyncPayloadDTO[];
+}
+
+export interface UserRatesSyncResponseDTO {
+  syncedRateIds?: string[] | null;
+  failedRateIds?: string[] | null;
+}
+
 export interface IEventsService {
   queryActivitiesEventDTOPage(
     userId: string,
@@ -64,6 +94,9 @@ export interface IEventsService {
   loadEventFeedbackPage(
     query: EventFeedbackPageQueryDto
   ): Promise<EventFeedbackPageResultDto>;
+  loadEventFeedbackStatById(
+    query: EventFeedbackStatQueryDto
+  ): Promise<EventFeedbackStatDto>;
   loadEventFeedback(
     query: EventFeedbackQueryDto
   ): Promise<EventFeedbackDetailDto>;
@@ -1176,6 +1209,30 @@ export interface EventFeedbackPageQueryDto {
 export interface EventFeedbackQueryDto {
   userId: string;
   eventId: string;
+}
+
+export type EventFeedbackStatSectionKey = 'overall' | 'improve' | 'traits';
+
+export interface EventFeedbackStatQueryDto {
+  userId: string;
+  eventId: string;
+}
+
+export interface EventFeedbackStatOptionDto {
+  key: string;
+  count: number;
+}
+
+export interface EventFeedbackStatSectionDto {
+  key: EventFeedbackStatSectionKey;
+  responseCount: number;
+  options: EventFeedbackStatOptionDto[];
+}
+
+export interface EventFeedbackStatDto {
+  eventId: string;
+  totalResponses: number;
+  sections: EventFeedbackStatSectionDto[];
 }
 
 export interface EventFeedbackPageCountsDto {

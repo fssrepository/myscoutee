@@ -3,6 +3,7 @@
   [class.is-loading]="loading"
   [class.form-flow--carousel]="isCarouselLayout()"
   [class.form-flow--grouped]="isGroupedLayout()"
+  [ngClass]="toneClass()"
   [attr.aria-busy]="loading"
 >
   <ng-template #progressControls>
@@ -120,13 +121,15 @@
               class="form-flow__slide"
               [class.is-active]="isPageActive(stepIndex)"
               [class.is-missing]="isStepMissingRequired(step)"
+              [class.form-flow__slide--plain]="step.chrome === 'none'"
+              [class.form-flow__slide--media]="step.presentation === 'media'"
               [attr.data-step-id]="step.id"
               [attr.aria-hidden]="isPageActive(stepIndex) ? null : 'true'"
               [attr.inert]="isPageActive(stepIndex) ? null : ''"
               [attr.aria-labelledby]="(step.title || step.header) ? 'form-flow-step-' + step.id : null"
             >
               <div class="form-flow__slide-inner">
-              @if (isGroupedLayout() && (step.title || step.icon)) {
+              @if (isGroupedLayout() && step.chrome !== 'none' && (step.title || step.icon)) {
                 <div class="form-flow__group-header">
                   @if (step.icon) {
                     <mat-icon>{{ step.icon }}</mat-icon>
@@ -181,7 +184,9 @@
                     [class.form-flow__control--wide]="control.layout === 'wide' || (control.layout !== 'half' && (control.kind === 'textarea' || control.kind === 'image-carousel' || control.kind === 'review' || control.kind === 'section'))"
                     [class.form-flow__control--half]="control.layout === 'half'"
                     [class.form-flow__control--with-accessory]="accessoryMenuConfig(control)"
+                    [class.form-flow__control--image]="control.kind === 'image-carousel'"
                     [class.is-required-missing]="isRequiredControlMissing(control)"
+                    [style.--form-flow-control-row-span]="control.rowSpan ?? null"
                   >
                     @if (control.kind === 'section') {
                       <div class="form-flow__section-title">
@@ -221,6 +226,7 @@
                       <app-image-carousel
                         [slotCount]="image.slotCount ?? 8"
                         [compact]="image.compact === true"
+                        [autoSize]="image.autoSize === true"
                         [previewMode]="image.previewMode === true && !isMobileViewport"
                         [ariaLabel]="image.ariaLabel || control.label || 'Images'"
                         [uploadOwnerId]="image.uploadOwnerId || ''"
@@ -265,6 +271,14 @@
                         [ngModel]="controlTextValue(control)"
                         (ngModelChange)="updateControlValue(control, $event)"
                       ></app-location-input>
+                    } @else if (control.kind === 'link') {
+                      <app-link-input
+                        class="form-flow__link-input"
+                        [config]="linkConfig(control)"
+                        [readOnly]="isControlDisabled(control)"
+                        [ngModel]="controlTextValue(control)"
+                        (ngModelChange)="updateControlValue(control, $event)"
+                      ></app-link-input>
                     } @else if (control.kind === 'pricing') {
                       <app-pricing-editor-input
                         class="form-flow__pricing-input"
@@ -273,6 +287,16 @@
                         [ngModel]="controlValue(control)"
                         (ngModelChange)="updateControlValue(control, $event)"
                       ></app-pricing-editor-input>
+                    } @else if (control.kind === 'policies') {
+                      <app-event-policies-input
+                        class="form-flow__policies-input"
+                        [config]="policiesInputConfig(control)"
+                        [enabled]="policiesEnabled(control)"
+                        (enabledChange)="updatePoliciesEnabled(control, $event)"
+                        [readOnly]="isControlDisabled(control)"
+                        [ngModel]="controlValue(control)"
+                        (ngModelChange)="updateControlValue(control, $event)"
+                      ></app-event-policies-input>
                     } @else {
                       <label class="form-flow__label">
                         <span>{{ control.label }}@if (control.required) { <strong>*</strong> }</span>

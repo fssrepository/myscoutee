@@ -17,9 +17,6 @@ import {
 } from '@angular/material/icon';
 
 import {
-  AppUtils
-} from '../../../shared/app-utils';
-import {
   ActivityResourceBuilder,
   ActivityResourcesService,
   EventsService
@@ -1498,8 +1495,8 @@ export class EventTournamentGroupsPopupComponent {
         id: group.id,
         groupLabel: group.name,
         source: group.source,
-        accepted: isMembersPopup ? undefined : group.membersAccepted,
-        pending: isMembersPopup ? undefined : group.membersPending,
+        accepted: group.membersAccepted,
+        pending: group.membersPending,
         capacityMin: group.capacityMin,
         capacityMax: group.capacityMax,
         canManage: isMembersPopup && this.canInviteGroupMembers(group),

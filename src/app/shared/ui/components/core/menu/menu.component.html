@@ -55,6 +55,7 @@
             [class.app-menu__button-row-item--labelled]="isLabeledActionRowItem(item)"
             [class.app-menu__button-row-item--action]="isActionLayoutItem(item)"
             [class.app-menu__button-row-item--image]="isImageLayoutItem(item)"
+            [class.app-menu__button-row-item--image-stack]="isImageStackLayoutItem(item)"
             [class.app-menu__button-row-item--selected-value]="isSelectTriggerItem(item) && isItemActive(item)"
             [class.app-menu__button-row-item--progress]="itemProgressState(item) !== null"
             [class.app-menu__button-row-item--progress-loading]="itemProgressState(item) === 'loading'"
@@ -80,7 +81,19 @@
                 ></app-indicator>
               </span>
             }
-            @if (isImageLayoutItem(item)) {
+            @if (isImageStackLayoutItem(item)) {
+              <span class="app-menu__button-row-image-stack" aria-hidden="true">
+                @for (image of actionRowItemImageStack(item); track image.id) {
+                  <span class="app-menu__button-row-stack-image">
+                    @if (actionRowStackImageUrl(image); as imageUrl) {
+                      <img [src]="imageUrl" [alt]="actionRowStackImageAlt(image)" />
+                    } @else if (actionRowStackImageFallback(image)) {
+                      <span>{{ actionRowStackImageFallback(image) }}</span>
+                    }
+                  </span>
+                }
+              </span>
+            } @else if (isImageLayoutItem(item)) {
               <span class="app-menu__button-row-image">
                 @if (actionRowItemImageUrl(item); as imageUrl) {
                   <img [src]="imageUrl" [alt]="actionRowItemImageAlt(item)" />

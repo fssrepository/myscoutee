@@ -227,50 +227,6 @@ export class HttpAssetsService {
     }
   }
 
-  async refreshAssetSourcePreview(
-    userId: string,
-    type: AppConstants.AssetType,
-    sourceLink: string
-  ): Promise<AppDTOs.AssetSourcePreviewDTO | null> {
-    const normalizedUserId = userId.trim();
-    const normalizedSourceLink = sourceLink.trim();
-    if (!normalizedSourceLink) {
-      return null;
-    }
-    try {
-      type HttpAssetSourceRefreshResponse = {
-        enabled?: boolean | null;
-        supported?: boolean | null;
-        normalizedUrl?: string | null;
-        title?: string | null;
-        subtitle?: string | null;
-        details?: string | null;
-        imageUrl?: string | null;
-      };
-      const response = await this.http
-        .post<HttpAssetSourceRefreshResponse | null>(`${this.apiBaseUrl}/assets/refresh-from-source`, {
-          userId: normalizedUserId,
-          type,
-          sourceLink: normalizedSourceLink
-        })
-        .toPromise();
-      if (!response) {
-        return null;
-      }
-      return {
-        enabled: response.enabled !== false,
-        supported: response.supported === true,
-        normalizedUrl: typeof response.normalizedUrl === 'string' ? response.normalizedUrl.trim() : '',
-        title: typeof response.title === 'string' ? response.title.trim() : '',
-        subtitle: typeof response.subtitle === 'string' ? response.subtitle.trim() : '',
-        details: typeof response.details === 'string' ? response.details.trim() : '',
-        imageUrl: typeof response.imageUrl === 'string' ? response.imageUrl.trim() : ''
-      };
-    } catch {
-      return null;
-    }
-  }
-
   private async fetchOwnedAssetsByUser(userId: string): Promise<AppDTOs.AssetDTO[]> {
     const response = await this.http
       .get<AppDTOs.AssetDTO[] | null>(`${this.apiBaseUrl}/assets`)
@@ -330,8 +286,10 @@ export class HttpAssetsService {
       }),
       description: this.assetDescription(card as AppDTOs.AssetDTO | AppDTOs.AssetDetailDTO),
       imageUrl: card?.imageUrl?.trim() ?? '',
+      sourceLink: card?.sourceLink?.trim() ?? '',
       locationLabel: this.assetLocationLabel(card as AppDTOs.AssetDTO | AppDTOs.AssetDetailDTO, type),
       priceLabel: this.assetPriceLabel(card as AppDTOs.AssetDTO | AppDTOs.AssetDetailDTO),
+      policiesEnabled: AssetCardBuilder.assetPoliciesEnabled(card),
       policyCount: this.assetPolicyCount(card as AppDTOs.AssetDTO | AppDTOs.AssetDetailDTO),
       visibility: card?.visibility === 'Friends only'
         ? 'Friends only'
@@ -421,6 +379,7 @@ export class HttpAssetsService {
       topics: Array.isArray(card?.topics)
         ? card.topics.map(topic => `${topic ?? ''}`.trim()).filter(topic => topic.length > 0)
         : [],
+      policiesEnabled: AssetCardBuilder.assetPoliciesEnabled(card),
       policies: Array.isArray(card?.policies)
         ? card.policies
           .map(item => ({
@@ -536,6 +495,9 @@ export class HttpAssetsService {
   }
 
   private assetPolicyCount(card: AppDTOs.AssetDTO | AppDTOs.AssetDetailDTO): number {
+    if (!AssetCardBuilder.assetPoliciesEnabled(card)) {
+      return 0;
+    }
     if ('policyCount' in card && Number.isFinite(Number(card.policyCount))) {
       return Math.max(0, Math.trunc(Number(card.policyCount)));
     }
@@ -550,7 +512,4 @@ export class HttpAssetsService {
     return AssetCardBuilder.normalizeAssetStatus(status);
   }
 
-  private cloneRequest(request: AppDTOs.AssetMemberRequestDTO): AppDTOs.AssetMemberRequestDTO {
-    return AssetCardBuilder.cloneRequest(request);
-  }
 }

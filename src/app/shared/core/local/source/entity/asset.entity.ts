@@ -157,6 +157,7 @@ export interface AssetSnapshotRecord {
   sourceLink: string;
   routes?: string[];
   topics?: string[];
+  policiesEnabled?: boolean;
   policies?: AssetPolicyRecord[];
   pricing?: AssetPricingConfigRecord | null;
   visibility?: EventVisibility;
@@ -181,6 +182,7 @@ export interface AssetRecord {
   sourceLink: string;
   routes?: string[];
   topics?: string[];
+  policiesEnabled?: boolean;
   policies?: AssetPolicyRecord[];
   pricing?: AssetPricingConfigRecord | null;
   ownerUserId: string;

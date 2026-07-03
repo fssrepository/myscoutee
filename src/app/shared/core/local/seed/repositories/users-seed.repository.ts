@@ -429,14 +429,6 @@ export class SeedUsersRepository {
     };
   }
 
-  private resolveSectionBadge(values: number[], itemCount: number): number {
-    const positiveTotal = values.reduce((sum, value) => sum + (value > 0 ? value : 0), 0);
-    if (positiveTotal > 0) {
-      return positiveTotal;
-    }
-    return itemCount;
-  }
-
   private sumUnreadItems(items: ReadonlyArray<{ unread: number }>): number {
     return items.reduce((sum, item) => sum + Math.max(0, Math.trunc(Number(item.unread) || 0)), 0);
   }

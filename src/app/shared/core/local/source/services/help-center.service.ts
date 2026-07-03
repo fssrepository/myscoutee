@@ -68,7 +68,7 @@ export class LocalHelpCenterService {
   async loadPrivacyConsent(
     userId: string,
     revisionId: string,
-    revisionVersion?: number
+    _revisionVersion?: number
   ): Promise<PrivacyConsentDto | null> {
     await this.helpCenterRepository.whenReady();
     const normalizedUserId = this.nonEmptyText(userId, '');
@@ -345,18 +345,6 @@ export class LocalHelpCenterService {
       return;
     }
     throw new Error(`Demo ${this.documentLabel(kind).toLowerCase()} content is not bootstrapped.`);
-  }
-
-  private latestRevision(revisions: readonly HelpCenterRevisionDto[]): HelpCenterRevisionDto | null {
-    return [...revisions].sort((left, right) => {
-      const versionOrder = (right.version ?? 0) - (left.version ?? 0);
-      if (versionOrder !== 0) {
-        return versionOrder;
-      }
-      const rightUpdated = right.updatedAtIso ?? right.createdAtIso ?? '';
-      const leftUpdated = left.updatedAtIso ?? left.createdAtIso ?? '';
-      return rightUpdated.localeCompare(leftUpdated);
-    })[0] ?? null;
   }
 
   private table(): HelpCenterTable {
@@ -673,16 +661,8 @@ export class LocalHelpCenterService {
     };
   }
 
-  private defaultRevision(kind: HelpCenterDocumentKind, lang = 'en', contextKey?: string | null): HelpCenterRevisionDto {
-    return this.cloneRevision(HelpCenterContentBuilder.defaultRevision(kind, lang, contextKey), kind);
-  }
-
   private defaultTitle(kind: HelpCenterDocumentKind, version: number, lang = 'en'): string {
     return HelpCenterContentBuilder.defaultTitle(kind, version, lang);
-  }
-
-  private defaultSummary(kind: HelpCenterDocumentKind, lang = 'en'): string {
-    return HelpCenterContentBuilder.defaultSummary(kind, lang);
   }
 
   private defaultDescription(kind: HelpCenterDocumentKind, lang = 'en'): string {

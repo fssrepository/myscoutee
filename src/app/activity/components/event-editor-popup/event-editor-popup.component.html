@@ -1,55 +1,6 @@
 @if (eventEditorStore.isOpenBoolean()) {
-<div class="app-popup event-editor-popup-shell">
-  <div class="app-popup-backdrop" (click)="close()"></div>
-  <div class="app-popup-panel popup-panel-event-editor"
-    [class.popup-panel-event-editor-readonly]="eventStructureReadOnly()">
-    <div class="popup-header" (click)="$event.stopPropagation()">
-      <div class="popup-title">
-        <h2>{{ getPopupTitle() }}</h2>
-        @if (eventEditorStore.readOnly() && eventDetailDTO.title) {
-        <p class="popup-subtitle-activities">
-          {{ eventDetailDTO.title }}
-        </p>
-        }
-      </div>
-      <div class="popup-header-mobile-status-row">
-        <div class="event-visibility-slot">
-          @if (eventVisibilityReady()) {
-          <app-menu
-            class="event-visibility-picker"
-            kind="select"
-            [trigger]="eventVisibilityMenuTrigger()"
-            [items]="eventVisibilityMenuItems()"
-            (itemSelect)="onEventEditorMenuSelect($event)"
-          ></app-menu>
-          } @else {
-          <span class="event-visibility-placeholder" aria-hidden="true"></span>
-          }
-        </div>
-      </div>
-      <div class="popup-header-mobile-actions-row">
-        @if (showEventEditorSaveAction()) {
-        <app-menu
-          class="event-editor-save-menu"
-          kind="inline"
-          [items]="eventEditorSaveMenuItems()"
-          (itemSelect)="onEventEditorMenuSelect($event)"
-        ></app-menu>
-        }
-        @if (eventEditorCheckoutDraft(); as checkoutDraft) {
-        <app-menu
-          class="event-editor-checkout-status-menu"
-          kind="inline"
-          [items]="eventEditorCheckoutStatusMenuItems(checkoutDraft)"
-          (itemSelect)="onEventEditorMenuSelect($event)"
-        ></app-menu>
-        }
-        <button type="button" class="popup-close" (click)="close()" aria-label="Close">
-          <mat-icon>close</mat-icon>
-        </button>
-      </div>
-    </div>
-    <div class="popup-body">
+<app-popup [model]="eventEditorPopupModel()" [zIndex]="eventEditorPopupZIndex()">
+    <div class="popup-body" [class.popup-panel-event-editor-readonly]="eventStructureReadOnly()">
       @if (isLoadingEventData()) {
       <div class="popup-loading-overlay" aria-busy="true">
         <app-indicator
@@ -217,6 +168,5 @@
       </div>
     </section>
     }
-  </div>
-</div>
+</app-popup>
 }

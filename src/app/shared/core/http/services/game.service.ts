@@ -11,7 +11,7 @@ import type {
 } from '../../contracts/activity.interface';
 import type { UserDto } from '../../contracts/user.interface';
 import { RouteDelayService } from '../../base/services/route-delay.service';
-import { RateOutboxRepository } from '../../base/repositories/rate-outbox.repository';
+import { RateOutboxService } from '../../base/services/rate-outbox.service';
 
 @Injectable({
   providedIn: 'root'
@@ -20,7 +20,7 @@ export class HttpGameService implements UserGameDataService {
   private static readonly USER_GAME_CARDS_QUERY_ROUTE = '/game-cards/query';
   private readonly http = inject(HttpClient);
   private readonly routeDelay = inject(RouteDelayService);
-  private readonly rateOutboxRepository = inject(RateOutboxRepository);
+  private readonly rateOutboxService = inject(RateOutboxService);
   private readonly apiBaseUrl = environment.apiBaseUrl ?? '/api';
   private readonly gameCardsUsersSnapshot: UserDto[] = [];
 
@@ -108,10 +108,10 @@ export class HttpGameService implements UserGameDataService {
     const mode = request.mode ?? 'single';
     const pendingRatedUserIds = new Set(
       mode === 'single' || mode === 'friends-in-common'
-        ? this.rateOutboxRepository.queryPendingRatedGameCardUserIds(userId, 'single')
+        ? this.rateOutboxService.queryPendingRatedGameCardUserIds(userId, 'single')
         : []
     );
-    const pendingRatedPairKeys = new Set(this.rateOutboxRepository.queryPendingRatedGameCardPairKeys(userId));
+    const pendingRatedPairKeys = new Set(this.rateOutboxService.queryPendingRatedGameCardPairKeys(userId));
     if (pendingRatedUserIds.size === 0 && pendingRatedPairKeys.size === 0) {
       return cards;
     }

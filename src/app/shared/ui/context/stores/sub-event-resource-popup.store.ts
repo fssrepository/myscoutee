@@ -11,6 +11,7 @@ export type ResourceAssetDTO = (AppDTOs.AssetDTO | AppDTOs.AssetDetailDTO) & {
   sourceLink?: string;
   routes?: string[];
   topics?: string[];
+  policiesEnabled?: boolean;
   policies?: AppDTOs.EventPolicyItemDTO[];
   pricing?: AppDTOs.PricingConfig | null;
   locationLabel?: string;
