@@ -38,7 +38,6 @@
 .event-slots-summary-list,
 .event-slots-summary-item,
 .event-policies-list,
-.event-policy-list-card-copy,
 .event-policy-card,
 .event-policy-field {
   display: grid;
@@ -257,8 +256,7 @@
 }
 
 .event-slots-popup-close,
-.popup-header-add-btn,
-.event-slot-remove-btn {
+.popup-header-add-btn {
   border: 0;
   border-radius: 50%;
   display: inline-flex;
@@ -329,65 +327,6 @@
 
 .event-policies-list-compact {
   align-content: start;
-}
-
-.event-policy-list-card {
-  border: 1px solid rgba(124, 117, 158, 0.2);
-  border-radius: 16px;
-  background: rgba(255, 255, 255, 0.88);
-  padding: 0.86rem 0.9rem;
-  display: grid;
-  gap: 0.42rem;
-  cursor: pointer;
-}
-
-.event-policy-list-card.is-readonly {
-  cursor: default;
-}
-
-.event-policy-list-card-head {
-  display: flex;
-  align-items: start;
-  justify-content: space-between;
-  gap: 0.75rem;
-}
-
-.event-policy-list-card-copy {
-  min-width: 0;
-  gap: 0.18rem;
-}
-
-.event-policy-list-card-copy strong {
-  color: #4f4479;
-  font-size: 0.94rem;
-}
-
-.event-policy-list-card-copy span {
-  color: rgba(84, 74, 126, 0.72);
-  font-size: 0.76rem;
-  font-weight: 700;
-}
-
-.event-policy-list-card p {
-  margin: 0;
-  color: rgba(39, 53, 76, 0.8);
-  font-size: 0.84rem;
-  line-height: 1.5;
-  white-space: pre-line;
-}
-
-.event-slot-remove-btn {
-  width: 32px;
-  height: 32px;
-  background: rgba(210, 93, 93, 0.1);
-  color: #ae4f4f;
-}
-
-.event-slot-remove-btn .mat-icon {
-  width: 18px;
-  height: 18px;
-  font-size: 18px;
-  line-height: 18px;
 }
 
 .event-slot-empty-state {

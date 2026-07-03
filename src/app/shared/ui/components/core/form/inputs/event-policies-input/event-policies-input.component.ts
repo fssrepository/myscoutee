@@ -4,6 +4,14 @@ import { ControlValueAccessor, FormsModule, NG_VALUE_ACCESSOR } from '@angular/f
 import { MatIconModule } from '@angular/material/icon';
 
 import type * as EventContracts from '../../../../../../core/contracts/event.interface';
+import {
+  EventPolicySingleRowConverter
+} from '../../../../../converters';
+import {
+  SingleRowComponent,
+  type CardMenuActionEvent,
+  type SingleRowData
+} from '../../../smart-list/card';
 
 type EventPolicyInputModel = EventContracts.EventPolicyDTO;
 export type EventPoliciesInputConfigValue<TValue> = TValue | (() => TValue);
@@ -31,7 +39,8 @@ export interface EventPoliciesInputConfig {
   imports: [
     CommonModule,
     FormsModule,
-    MatIconModule
+    MatIconModule,
+    SingleRowComponent
   ],
   templateUrl: './event-policies-input.component.html',
   styleUrl: './event-policies-input.component.scss',
@@ -226,20 +235,22 @@ export class EventPoliciesInputComponent implements ControlValueAccessor {
     return this.editingPolicyDraftIndex === null ? 'Create Policy' : 'Edit Policy';
   }
 
-  protected policyCardMetaLabel(policy: EventPolicyInputModel): string {
-    return policy.required !== false
-      ? this.resolveConfigValue(this.config.requiredApprovalLabel, 'Required approval')
-      : this.resolveConfigValue(this.config.optionalPolicyLabel, 'Optional policy');
+  protected policySingleRow(policy: EventPolicyInputModel, index: number): SingleRowData<EventPolicyInputModel> {
+    return EventPolicySingleRowConverter.convert(policy, {
+      index,
+      locked: this.locked(),
+      requiredApprovalLabel: this.resolveConfigValue(this.config.requiredApprovalLabel, 'Required approval'),
+      optionalPolicyLabel: this.resolveConfigValue(this.config.optionalPolicyLabel, 'Optional policy'),
+      requiredPreview: this.resolveConfigValue(this.config.requiredPreview, 'Attendees must approve this policy before joining.'),
+      optionalPreview: this.resolveConfigValue(this.config.optionalPreview, 'Optional policy shown during join or checkout.')
+    });
   }
 
-  protected policyCardPreview(policy: EventPolicyInputModel): string {
-    const description = `${policy.description ?? ''}`.trim();
-    if (description.length > 0) {
-      return description;
+  protected onPolicyRowMenuAction(index: number, event: CardMenuActionEvent<SingleRowData>): void {
+    if (event.actionId !== 'delete') {
+      return;
     }
-    return policy.required !== false
-      ? this.resolveConfigValue(this.config.requiredPreview, 'Attendees must approve this policy before joining.')
-      : this.resolveConfigValue(this.config.optionalPreview, 'Optional policy shown during join or checkout.');
+    this.removePolicyDraft(index);
   }
 
   protected policiesToggleable(): boolean {

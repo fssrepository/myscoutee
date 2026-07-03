@@ -77,20 +77,11 @@
   <div class="event-slots-popup-body event-policies-popup-body">
     <div class="event-policies-list event-policies-list-compact">
       @for (policy of workingPolicies; track policy.id; let i = $index) {
-      <article class="event-policy-list-card" [class.is-readonly]="locked()" (click)="openPolicyEditor(i, $event)">
-        <div class="event-policy-list-card-head">
-          <div class="event-policy-list-card-copy">
-            <strong>{{ policy.title || ('Policy ' + (i + 1)) }}</strong>
-            <span>{{ policyCardMetaLabel(policy) }}</span>
-          </div>
-          @if (!locked()) {
-          <button type="button" class="event-slot-remove-btn" (click)="removePolicyDraft(i, $event)" aria-label="Remove policy">
-            <mat-icon>delete</mat-icon>
-          </button>
-          }
-        </div>
-        <p>{{ policyCardPreview(policy) }}</p>
-      </article>
+      <single-row
+        [row]="policySingleRow(policy, i)"
+        (rowClick)="openPolicyEditor(i, $event)"
+        (menuAction)="onPolicyRowMenuAction(i, $event)"
+      ></single-row>
       }
       @if (workingPolicies.length === 0) {
       <div class="event-slot-empty-state event-policy-empty-state">
