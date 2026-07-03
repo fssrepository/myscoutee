@@ -31,7 +31,7 @@ export class AssetCardBuilder {
   static buildAssetFormFromCard(card: AppDTOs.AssetDTO | AppDTOs.AssetDetailDTO): AssetCardFormValue {
     const detailCard = this.asDetail(card);
     const imageUrl = this.normalizeAssetLink(card.imageUrl);
-    const sourceLink = this.normalizeAssetLink(detailCard?.sourceLink, imageUrl);
+    const sourceLink = this.normalizeAssetLink(card.sourceLink ?? detailCard?.sourceLink);
     return {
       type: card.type,
       title: card.title,
@@ -60,7 +60,7 @@ export class AssetCardBuilder {
     const routes = this.normalizeAssetRoutes(assetForm.type, assetForm.routes);
     const accommodationLocation = routes.find(stop => stop.trim().length > 0)?.trim() || '';
     const imageUrl = this.normalizeAssetLink(resolvedImageUrl || assetForm.imageUrl);
-    const sourceLink = this.normalizeAssetLink(assetForm.sourceLink, imageUrl);
+    const sourceLink = this.normalizeAssetLink(assetForm.sourceLink);
     return {
       type: assetForm.type,
       title,

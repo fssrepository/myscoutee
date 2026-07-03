@@ -603,7 +603,8 @@
   grid-column: 1 / -1;
 }
 
-.form-flow__date-input {
+.form-flow__date-input,
+.form-flow__link-input {
   width: 100%;
   min-width: 0;
 }
@@ -644,7 +645,8 @@
 
   input,
   textarea,
-  .form-flow__date-input {
+  .form-flow__date-input,
+  .form-flow__link-input {
     border-color: #ef9a9a;
     background: #fffafa;
   }

@@ -51,6 +51,7 @@ export interface AssetDTO {
   quantity: number;
   description: string;
   imageUrl: string;
+  sourceLink?: string;
   locationLabel?: string;
   priceLabel?: string;
   policiesEnabled?: boolean;
@@ -99,6 +100,7 @@ export class AssetDto implements AssetDTO {
   quantity = 0;
   description = '';
   imageUrl = '';
+  sourceLink = '';
   locationLabel?: string;
   priceLabel?: string;
   policiesEnabled?: boolean;
@@ -127,6 +129,7 @@ export class AssetDto implements AssetDTO {
       quantity: card.quantity,
       description: 'description' in card ? card.description : card.details,
       imageUrl: card.imageUrl,
+      sourceLink: ('sourceLink' in card ? card.sourceLink : detailCard?.sourceLink)?.trim() ?? '',
       locationLabel: 'locationLabel' in card ? card.locationLabel : detailCard ? AssetDto.locationLabelFromDetail(detailCard) : card.city,
       priceLabel: 'priceLabel' in card ? card.priceLabel : undefined,
       policiesEnabled,
@@ -164,6 +167,7 @@ export class AssetDto implements AssetDTO {
       && this.quantity === other.quantity
       && this.description === other.description
       && this.imageUrl === other.imageUrl
+      && this.sourceLink === (other.sourceLink ?? '')
       && (this.locationLabel ?? '') === (other.locationLabel ?? '')
       && (this.priceLabel ?? '') === (other.priceLabel ?? '')
       && (this.policiesEnabled ?? false) === (other.policiesEnabled ?? false)
@@ -315,16 +319,6 @@ export interface AssetExploreQueryDTO {
   category?: AppConstants.AssetCategory;
   startAtIso?: string;
   endAtIso?: string;
-}
-
-export interface AssetSourcePreviewDTO {
-  enabled: boolean;
-  supported: boolean;
-  normalizedUrl: string;
-  title: string;
-  subtitle: string;
-  details: string;
-  imageUrl: string;
 }
 
 export interface AssetTicketPageQueryDTO {

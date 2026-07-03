@@ -211,6 +211,7 @@ export const CARD_MENU_ACTIONS: Readonly<Record<CardMenuActionId, CardMenuAction
   editAsset: { label: 'edit.asset', icon: 'edit' },
   editEvent: { label: 'edit.event', icon: 'edit' },
   editOrganizerNote: { label: 'edit.organizer.note', icon: 'edit_note' },
+  externalInfo: { label: 'External Info', icon: 'open_in_new', tone: 'accent' },
   feature: { label: 'feature', icon: 'star', tone: 'accent' },
   joinResource: { label: 'join.resource', icon: 'login', tone: 'accent' },
   joinWaitlist: { label: 'join.waiting.list', icon: 'hourglass_empty', tone: 'accent' },

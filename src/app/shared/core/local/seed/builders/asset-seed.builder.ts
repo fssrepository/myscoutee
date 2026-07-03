@@ -272,7 +272,7 @@ export class SeedAssetBuilder {
         quantity: spec.quantity,
         details: spec.details,
         imageUrl,
-        sourceLink: imageUrl,
+        sourceLink: '',
         routes: [...spec.routes],
         pricing: PricingBuilder.createSamplePricingConfig(spec.pricingMode),
         requests: []

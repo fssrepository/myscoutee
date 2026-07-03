@@ -242,10 +242,15 @@ export class AssetInfoCardConverter {
     const configuredActions = (card.menuActions ?? [])
       .map(action => `${action ?? ''}`.trim())
       .filter(action => action.length > 0);
-    if (configuredActions.length > 0) {
-      return configuredActions;
+    const actions = configuredActions.length > 0
+      ? [...configuredActions]
+      : ['shareAsset', 'editAsset', 'delete'];
+    const sourceLink = AppUtils.normalizeHttpUrl(card.sourceLink ?? '');
+    if (sourceLink && !actions.includes('externalInfo')) {
+      const shareIndex = actions.findIndex(action => action === 'shareAsset' || action === 'share');
+      actions.splice(shareIndex >= 0 ? shareIndex + 1 : 0, 0, 'externalInfo');
     }
-    return ['shareAsset', 'editAsset', 'delete'];
+    return actions;
   }
 
   private static ownedAssetMediaEnd(card: AppDTOs.AssetDTO): NonNullable<InfoCardData['mediaEnd']> | null {

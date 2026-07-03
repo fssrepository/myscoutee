@@ -271,6 +271,14 @@
                         [ngModel]="controlTextValue(control)"
                         (ngModelChange)="updateControlValue(control, $event)"
                       ></app-location-input>
+                    } @else if (control.kind === 'link') {
+                      <app-link-input
+                        class="form-flow__link-input"
+                        [config]="linkConfig(control)"
+                        [readOnly]="isControlDisabled(control)"
+                        [ngModel]="controlTextValue(control)"
+                        (ngModelChange)="updateControlValue(control, $event)"
+                      ></app-link-input>
                     } @else if (control.kind === 'pricing') {
                       <app-pricing-editor-input
                         class="form-flow__pricing-input"

@@ -1,12 +1,9 @@
 import { Injectable, inject } from '@angular/core';
 
-import { AppUtils } from '../../../../app-utils';
 import { LocalRouteDelayService } from './route-delay.service';
 import { LocalAssetsRepository } from '../repositories/assets.repository';
-import { AssetDefaultsBuilder } from '../../../base/builders';
 
 import type * as AppDTOs from '../../../contracts';
-import type * as AppConstants from '../../../common/constants';
 @Injectable({
   providedIn: 'root'
 })
@@ -62,31 +59,4 @@ export class LocalAssetsService extends LocalRouteDelayService {
     return this.assetsRepository.makeAssetManager(userId, assetId, targetUserId);
   }
 
-  async refreshAssetSourcePreview(
-    _userId: string,
-    type: AppConstants.AssetType,
-    sourceLink: string
-  ): Promise<AppDTOs.AssetSourcePreviewDTO | null> {
-    await this.waitForRouteDelay(LocalAssetsService.ASSETS_ROUTE);
-    const normalizedUrl = AppUtils.normalizeHttpUrl(sourceLink);
-    if (!normalizedUrl) {
-      return null;
-    }
-    let parsed: URL;
-    try {
-      parsed = new URL(normalizedUrl);
-    } catch {
-      return null;
-    }
-    const seed = `${type.toLowerCase()}-${parsed.hostname.replace(/\./g, '-')}${parsed.pathname.replace(/[^\w-]/g, '-')}`;
-    return {
-      enabled: true,
-      supported: true,
-      normalizedUrl,
-      title: `${type} · ${parsed.hostname.replace(/^www\./, '')}`,
-      subtitle: parsed.pathname && parsed.pathname !== '/' ? parsed.pathname.slice(1).replace(/[-_/]+/g, ' ') : 'Imported preview',
-      details: `Preview imported from ${parsed.hostname}. You can adjust the details before saving.`,
-      imageUrl: AssetDefaultsBuilder.defaultAssetImage(type, seed)
-    };
-  }
 }

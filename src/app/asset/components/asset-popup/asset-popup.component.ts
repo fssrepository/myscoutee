@@ -610,6 +610,10 @@ export class AssetPopupComponent {
       this.openOwnedAssetShareDialog(card);
       return;
     }
+    if (event.actionId === 'externalInfo') {
+      AppUtils.openExternalUrl(AppUtils.normalizeHttpUrl(card.sourceLink ?? ''));
+      return;
+    }
     if (event.actionId === 'delete') {
       this.assetStore.requestAssetDelete(card);
       return;
@@ -2263,7 +2267,7 @@ export class AssetPopupComponent {
       quantity: card.quantity,
       details: 'details' in card ? card.details : card.description,
       imageUrl: card.imageUrl,
-      sourceLink: 'sourceLink' in card ? card.sourceLink : '',
+      sourceLink: ('sourceLink' in card ? card.sourceLink : '') ?? '',
       routes: this.assetRoutes(card),
       topics: 'topics' in card ? [...(card.topics ?? [])] : [],
       policiesEnabled: AssetCardBuilder.assetPoliciesEnabled(card),

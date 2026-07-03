@@ -128,6 +128,7 @@ export class LocalAssetsMapper {
       }),
       description: this.assetDescription(card),
       imageUrl: `${card.imageUrl ?? ''}`.trim(),
+      sourceLink: `${card.sourceLink ?? ''}`.trim(),
       visibility: card.visibility,
       status: this.normalizeAssetStatus(card.status),
       ownerUserId: `${card.ownerUserId ?? ''}`.trim() || undefined,
@@ -224,6 +225,7 @@ export class LocalAssetsMapper {
       }),
       description: record.details,
       imageUrl: record.imageUrl,
+      sourceLink: record.sourceLink,
       locationLabel: record.type === 'Accommodation'
         ? ((record.routes ?? []).map(route => route.trim()).find(Boolean) ?? record.city)
         : record.city,
@@ -307,7 +309,7 @@ export class LocalAssetsMapper {
       quantity: summary.quantity,
       details: detail?.details ?? summary.description,
       imageUrl: summary.imageUrl,
-      sourceLink: detail?.sourceLink ?? '',
+      sourceLink: detail?.sourceLink ?? summary.sourceLink ?? '',
       routes: detail?.routes ? [...detail.routes] : [],
       topics: detail?.topics ? [...detail.topics] : [],
       policiesEnabled: detail?.policiesEnabled === true,

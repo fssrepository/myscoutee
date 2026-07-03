@@ -5,7 +5,6 @@ import { HttpAssetsService } from '../../http/services/assets.service';
 import { BaseRouteModeService } from './base-route-mode.service';
 
 import type * as AppDTOs from '../../contracts';
-import type * as AppConstants from '../../common/constants';
 @Injectable({
   providedIn: 'root'
 })
@@ -74,11 +73,4 @@ export class AssetsService extends BaseRouteModeService {
     return this.assetsService.makeAssetManager(userId, assetId, targetUserId);
   }
 
-  async refreshAssetSourcePreview(
-    userId: string,
-    type: AppConstants.AssetType,
-    sourceLink: string
-  ): Promise<AppDTOs.AssetSourcePreviewDTO | null> {
-    return this.assetsService.refreshAssetSourcePreview(userId, type, sourceLink);
-  }
 }

@@ -9,6 +9,7 @@ import type {
 } from '../../menu';
 import type { DateInputMetaModel, DateInputModel } from '../inputs/date-input';
 import type { EventPoliciesInputConfig } from '../inputs/event-policies-input';
+import type { LinkInputConfig } from '../inputs/link-input';
 import type { LocationInputConfig } from '../inputs/location-input';
 import type { PricingEditorConfig } from '../inputs/pricing-editor';
 import type { ImageCardData, InfoCardData } from '../../smart-list/card';
@@ -26,6 +27,7 @@ export interface FormFlowDraft<TData> {
 export type FormFlowControlKind =
   | 'date'
   | 'image-carousel'
+  | 'link'
   | 'location'
   | 'menu'
   | 'number'
@@ -78,6 +80,10 @@ export interface FormFlowDateControlConfig {
 
 export interface FormFlowLocationControlConfig {
   model?: LocationInputConfig | null;
+}
+
+export interface FormFlowLinkControlConfig {
+  model?: LinkInputConfig | null;
 }
 
 export interface FormFlowPricingControlConfig {
@@ -134,6 +140,7 @@ export interface FormFlowControlModel {
     | FormFlowMenuControlConfig
     | FormFlowImageCarouselControlConfig
     | FormFlowDateControlConfig
+    | FormFlowLinkControlConfig
     | FormFlowLocationControlConfig
     | FormFlowPoliciesControlConfig
     | FormFlowPricingControlConfig

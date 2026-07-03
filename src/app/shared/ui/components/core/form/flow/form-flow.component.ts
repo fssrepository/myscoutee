@@ -35,6 +35,7 @@ import { ImageCardComponent, InfoCardComponent } from '../../smart-list/card';
 import { UiTaskScheduler } from '../../../../scheduler';
 import { DateInputComponent, type DateInputModel, type DateInputValue } from '../inputs/date-input';
 import { EventPoliciesInputComponent, type EventPoliciesInputConfig } from '../inputs/event-policies-input';
+import { LinkInputComponent, type LinkInputConfig } from '../inputs/link-input';
 import { LocationInputComponent, type LocationInputConfig } from '../inputs/location-input';
 import { PricingEditorInputComponent, type PricingEditorConfig } from '../inputs/pricing-editor';
 import type {
@@ -42,6 +43,7 @@ import type {
   FormFlowControlModel,
   FormFlowDateControlConfig,
   FormFlowImageCarouselControlConfig,
+  FormFlowLinkControlConfig,
   FormFlowLocationControlConfig,
   FormFlowMenuControlConfig,
   FormFlowModel,
@@ -72,6 +74,7 @@ interface FormFlowSelectedMenuItem {
     MatIconModule,
     AppMenuComponent,
     DateInputComponent,
+    LinkInputComponent,
     LocationInputComponent,
     EventPoliciesInputComponent,
     PricingEditorInputComponent,
@@ -548,6 +551,16 @@ export class FormFlowComponent implements ControlValueAccessor, OnChanges, OnDes
 
   protected locationConfig(control: FormFlowControlModel): LocationInputConfig {
     return this.isLocationControlConfig(control.config) ? control.config.model ?? {} : {};
+  }
+
+  protected linkConfig(control: FormFlowControlModel): LinkInputConfig {
+    const model = this.isLinkControlConfig(control.config) ? control.config.model ?? {} : {};
+    return {
+      ...model,
+      label: model.label ?? control.label ?? null,
+      placeholder: model.placeholder ?? control.placeholder ?? null,
+      required: model.required ?? control.required === true
+    };
   }
 
   protected pricingConfig(control: FormFlowControlModel): PricingEditorConfig {
@@ -1098,16 +1111,16 @@ export class FormFlowComponent implements ControlValueAccessor, OnChanges, OnDes
     return this.isRecord(config) && this.isRecord(config['model']);
   }
 
+  private isLinkControlConfig(config: FormFlowControlModel['config']): config is FormFlowLinkControlConfig {
+    return this.isRecord(config) && this.isRecord(config['model']);
+  }
+
   private isPricingControlConfig(config: FormFlowControlModel['config']): config is FormFlowPricingControlConfig {
     return this.isRecord(config) && this.isRecord(config['model']);
   }
 
   private isPoliciesControlConfig(config: FormFlowControlModel['config']): config is FormFlowPoliciesControlConfig {
-    return this.isRecord(config) && (
-      'enabled' in config
-      || 'readOnly' in config
-      || this.isRecord(config['model'])
-    );
+    return this.isRecord(config) && this.isRecord(config['model']);
   }
 
   private isDateRangeValue(value: unknown): value is Exclude<DateInputValue, string | null> {
