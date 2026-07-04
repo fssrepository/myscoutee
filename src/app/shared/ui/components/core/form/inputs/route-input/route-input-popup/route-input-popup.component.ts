@@ -122,8 +122,7 @@ export class RouteInputPopupComponent implements OnChanges {
     this.replaceDraft(
       editor,
       [...this.routes, ''],
-      [...this.routeRowIds, this.nextRouteRowId()],
-      event
+      [...this.routeRowIds, this.nextRouteRowId()]
     );
   }
 
@@ -136,8 +135,7 @@ export class RouteInputPopupComponent implements OnChanges {
     this.replaceDraft(
       editor,
       this.routes.filter((_stop, stopIndex) => stopIndex !== index),
-      this.routeRowIds.filter((_rowId, stopIndex) => stopIndex !== index),
-      event
+      this.routeRowIds.filter((_rowId, stopIndex) => stopIndex !== index)
     );
   }
 
@@ -160,15 +158,13 @@ export class RouteInputPopupComponent implements OnChanges {
   }
 
   private replaceDraft(
-    editor: FormFlowRouteInputEditorState,
+    _editor: FormFlowRouteInputEditorState,
     routes: readonly string[],
     routeRowIds: readonly string[],
-    event?: Event
   ): void {
     this.routes = routes.length > 0 ? [...routes] : [''];
     this.routeRowIds = this.routes.map((_route, index) => routeRowIds[index] ?? this.nextRouteRowId());
     this.locallyDirty = true;
-    this.popupStore.requestRouteInputEditorDraft(editor.ownerId, this.routes, this.routeRowIds, event);
   }
 
   private close(editor: FormFlowRouteInputEditorState, event?: Event): void {
@@ -181,7 +177,7 @@ export class RouteInputPopupComponent implements OnChanges {
     if (event.action.id !== 'route-save') {
       return;
     }
-    this.popupStore.requestRouteInputEditorSave(editor.ownerId, event.sourceEvent);
+    this.popupStore.requestRouteInputEditorSave(editor.ownerId, this.routes, this.routeRowIds, event.sourceEvent);
   }
 
   private routePopupHeaderActions(editor: FormFlowRouteInputEditorState): readonly PopupAction[] {

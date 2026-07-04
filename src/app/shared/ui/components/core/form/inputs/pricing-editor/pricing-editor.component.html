@@ -4,7 +4,9 @@
   [class.pricing-editor--summary-popup]="usesSummaryPopup()"
   [class.pricing-editor--wizard-open]="wizardOpen"
   [class.pricing-editor--enabled]="isPricingEnabled()"
+  [class.pricing-editor--embedded]="resolvedConfig.embedded"
   >
+  @if (!resolvedConfig.embedded) {
   <header class="pricing-editor__head">
     <div class="pricing-editor__title">
       <span class="pricing-editor__title-copy">
@@ -52,6 +54,7 @@
       </button>
     </div>
   </header>
+  }
 
   @if (usesSummaryPopup() && isPricingEnabled()) {
     @if (!editorLocked()) {
@@ -81,21 +84,11 @@
     </div>
   }
 
-  @if (usesSummaryPopup() && wizardOpen && isPricingEnabled()) {
-    <app-popup [model]="pricingWizardPopupModel()" [zIndex]="pricingWizardPopupZIndex()">
-      <div class="pricing-editor__wizard-body">
-        @if (resolvedConfig.showPreview) {
-          <aside class="pricing-editor__preview pricing-editor__preview--wizard-sticky">
-            <ng-container [ngTemplateOutlet]="pricingWizardPreviewCard"></ng-container>
-          </aside>
-        }
-        <div class="pricing-editor__main">
-          <ng-container [ngTemplateOutlet]="pricingEditorSurfaces"></ng-container>
-        </div>
-      </div>
-    </app-popup>
-  }
 </section>
+
+@if (pricingEditorPopupComponent(); as popupComponent) {
+  <ng-container *ngComponentOutlet="popupComponent; inputs: pricingEditorPopupOutletInputs()"></ng-container>
+}
 
 @if (showMobileRuleScopeSheet()) {
   <div class="pricing-editor__scope-sheet-backdrop" (click)="closeRuleScopePicker($event)"></div>
@@ -848,39 +841,6 @@
       }
     </section>
   }
-</ng-template>
-
-<ng-template #pricingWizardPreviewCard>
-  <div class="pricing-editor__preview-card">
-    <div class="pricing-editor__preview-head">
-      <span>Current Price Review</span>
-      <mat-icon>query_stats</mat-icon>
-    </div>
-    <div class="pricing-editor__preview-line">
-      <span>Base</span>
-      <strong>{{ currencySymbol(workingPricing.currency) }}{{ currentPreview.basePrice | number:'1.0-2' }}</strong>
-    </div>
-    @if (currentPreview.demandDelta !== 0) {
-      <div class="pricing-editor__preview-line">
-        <span>Demand adjustment</span>
-        <strong [class.positive]="currentPreview.demandDelta > 0" [class.negative]="currentPreview.demandDelta < 0">
-          {{ currentPreview.demandDelta > 0 ? '+' : '' }}{{ currencySymbol(workingPricing.currency) }}{{ currentPreview.demandDelta | number:'1.0-2' }}
-        </strong>
-      </div>
-    }
-    @if (currentPreview.timeDelta !== 0) {
-      <div class="pricing-editor__preview-line">
-        <span>Time adjustment</span>
-        <strong [class.positive]="currentPreview.timeDelta > 0" [class.negative]="currentPreview.timeDelta < 0">
-          {{ currentPreview.timeDelta > 0 ? '+' : '' }}{{ currencySymbol(workingPricing.currency) }}{{ currentPreview.timeDelta | number:'1.0-2' }}
-        </strong>
-      </div>
-    }
-    <div class="pricing-editor__preview-total">
-      <span>Final price</span>
-      <strong>{{ currencySymbol(workingPricing.currency) }}{{ currentPreview.finalPrice | number:'1.0-2' }}</strong>
-    </div>
-  </div>
 </ng-template>
 
 <ng-template #pricingPreviewCards>

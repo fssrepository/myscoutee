@@ -1,5 +1,21 @@
 import { CommonModule } from '@angular/common';
-import { Component, DoCheck, forwardRef, HostListener, Input, OnChanges, SimpleChanges, ChangeDetectionStrategy, ChangeDetectorRef } from '@angular/core';
+import {
+  ChangeDetectionStrategy,
+  ChangeDetectorRef,
+  Component,
+  DoCheck,
+  HostListener,
+  Input,
+  OnChanges,
+  OnDestroy,
+  SimpleChanges,
+  Type,
+  computed,
+  effect,
+  forwardRef,
+  inject,
+  untracked
+} from '@angular/core';
 import { ControlValueAccessor, FormsModule, NG_VALUE_ACCESSOR } from '@angular/forms';
 import { MatNativeDateModule } from '@angular/material/core';
 import { MatDatepickerModule } from '@angular/material/datepicker';
@@ -10,8 +26,12 @@ import { MatSelectModule } from '@angular/material/select';
 
 import { PricingBuilder } from '../../../../../../core/base/builders';
 import type * as ContractTypes from '../../../../../../core/contracts';
-import { PopupComponent, type PopupModel } from '../../../popup';
 import { PricingSlotPanelComponent } from '../../popups/pricing-slot-panel';
+import {
+  FormFlowPopupStore,
+  type FormFlowPricingEditorPopupActionRequest,
+  type FormFlowPricingEditorPopupState
+} from '../../flow/form-flow-popup.store';
 
 import type * as AppConstants from '../../../../../../core/common/constants';
 interface PricingPreviewState {
@@ -45,6 +65,7 @@ export interface PricingEditorConfig {
   showAudienceSection?: PricingEditorConfigValue<boolean | null>;
   showPreview?: PricingEditorConfigValue<boolean | null>;
   allowSlotFeatures?: PricingEditorConfigValue<boolean | null>;
+  embedded?: PricingEditorConfigValue<boolean | null>;
 }
 
 interface ResolvedPricingEditorConfig {
@@ -54,6 +75,7 @@ interface ResolvedPricingEditorConfig {
   showAudienceSection: boolean;
   showPreview: boolean;
   allowSlotFeatures: boolean;
+  embedded: boolean;
   chargeTypeOptions: readonly AppConstants.PricingChargeType[];
 }
 
@@ -69,7 +91,6 @@ interface ResolvedPricingEditorConfig {
     MatInputModule,
     MatNativeDateModule,
     MatSelectModule,
-    PopupComponent,
     PricingSlotPanelComponent
   ],
   templateUrl: './pricing-editor.component.html',
@@ -83,8 +104,9 @@ interface ResolvedPricingEditorConfig {
     }
   ]
 })
-export class PricingEditorInputComponent implements OnChanges, DoCheck, ControlValueAccessor {
+export class PricingEditorInputComponent implements OnChanges, DoCheck, OnDestroy, ControlValueAccessor {
   private static readonly MOBILE_SCOPE_SHEET_BREAKPOINT_PX = 760;
+  private static ownerSequence = 0;
 
   @Input() config: PricingEditorConfig = {};
   @Input() readOnly = false;
@@ -104,18 +126,45 @@ export class PricingEditorInputComponent implements OnChanges, DoCheck, ControlV
   protected readonly soldOutLabelOptions = ['Show "Sold Out"', 'Hide from list', 'Show "Waitlist"'];
   protected resolvedConfig: ResolvedPricingEditorConfig = this.resolveConfig();
   protected wizardOpen = false;
+  private readonly formFlowPopupStore = inject(FormFlowPopupStore);
+  private readonly ownerId = this.nextOwnerId();
+  protected readonly pricingEditorPopupOutletInputs = computed(() => {
+    const popup = this.formFlowPopupStore.pricingEditorPopupRef();
+    return {
+      popup: popup?.ownerId === this.ownerId ? popup : null
+    };
+  });
 
   private resolvedConfigSignature = this.buildResolvedConfigSignature(this.resolvedConfig);
   private idSequence = 0;
   private ruleScopePickerState: RuleScopePickerState | null = null;
   private mobileScopeSheetViewport = this.resolveMobileScopeSheetViewport();
   private pricingValue: ContractTypes.PricingConfig | null | undefined = null;
+  private pricingPopupDraft: ContractTypes.PricingConfig | null = null;
   private onModelChange: (value: ContractTypes.PricingConfig) => void = () => {};
   private onModelTouched: () => void = () => {};
+  private lastPricingEditorPopupActionRequestId = 0;
+  private readonly destroyEffects: Array<{ destroy: () => void }> = [];
 
   protected currentPreview!: PricingPreviewState;
   
-  constructor(private readonly cdr: ChangeDetectorRef) {}
+  constructor(private readonly cdr: ChangeDetectorRef) {
+    this.destroyEffects.push(
+      effect(() => {
+        if (this.pricingEditorPopupIsOpen()) {
+          void this.formFlowPopupStore.ensurePricingEditorPopupLoaded();
+        }
+      }),
+      effect(() => {
+        const request = this.formFlowPopupStore.pricingEditorPopupActionRequest();
+        if (!request || request.requestId <= this.lastPricingEditorPopupActionRequestId) {
+          return;
+        }
+        this.lastPricingEditorPopupActionRequestId = request.requestId;
+        untracked(() => this.handlePricingEditorPopupActionRequest(request));
+      })
+    );
+  }
 
   protected currentExplanationLines: string[] = [];
   protected currentFallbackLines: string[] = [];
@@ -129,6 +178,13 @@ export class PricingEditorInputComponent implements OnChanges, DoCheck, ControlV
 
   ngDoCheck(): void {
     this.syncResolvedConfig();
+  }
+
+  ngOnDestroy(): void {
+    this.destroyEffects.forEach(item => item.destroy());
+    if (this.pricingEditorPopupIsOpen()) {
+      this.formFlowPopupStore.closePricingEditorPopup(this.ownerId);
+    }
   }
 
   writeValue(value: ContractTypes.PricingConfig | null | undefined): void {
@@ -275,32 +331,23 @@ export class PricingEditorInputComponent implements OnChanges, DoCheck, ControlV
     if (this.editorLocked() || !this.usesSummaryPopup()) {
       return;
     }
+    this.pricingPopupDraft = PricingBuilder.clonePricingConfig(this.workingPricing);
     this.wizardOpen = true;
+    this.formFlowPopupStore.openPricingEditorPopup(this.buildPricingEditorPopupState());
     this.cdr.markForCheck();
   }
 
-  protected closeWizard(): void {
+  protected closeWizard(event?: Event): void {
+    event?.preventDefault();
+    event?.stopPropagation();
     this.wizardOpen = false;
+    this.pricingPopupDraft = null;
+    this.formFlowPopupStore.closePricingEditorPopup(this.ownerId);
     this.closeRuleScopePicker();
     this.cdr.markForCheck();
   }
 
-  protected pricingWizardPopupModel(): PopupModel {
-    return {
-      title: this.pricingWizardTitle(),
-      subtitle: 'Adjust the full pricing configuration here while the summary stays compact on the form.',
-      ariaLabel: 'Pricing setup wizard',
-      closeAriaLabel: 'Close pricing setup',
-      size: 'wide',
-      height: 'full',
-      headerTone: 'accent',
-      bodyLayout: 'fill',
-      backdropTone: 'dim',
-      onClose: () => this.closeWizard()
-    };
-  }
-
-  protected pricingWizardPopupZIndex(): number {
+  private pricingWizardPopupZIndex(): number {
     return 4600;
   }
 
@@ -312,6 +359,83 @@ export class PricingEditorInputComponent implements OnChanges, DoCheck, ControlV
         return 'Optional Pricing Setup';
       default:
         return 'Pricing Setup';
+    }
+  }
+
+  private pricingWizardSubtitle(): string {
+    return 'Adjust the full pricing configuration here while the summary stays compact on the form.';
+  }
+
+  private buildPricingEditorPopupState(): FormFlowPricingEditorPopupState {
+    return {
+      ownerId: this.ownerId,
+      title: this.pricingWizardTitle(),
+      subtitle: this.pricingWizardSubtitle(),
+      zIndex: this.pricingWizardPopupZIndex(),
+      value: PricingBuilder.clonePricingConfig(this.pricingPopupDraft ?? this.workingPricing),
+      config: this.pricingPopupEditorConfig(),
+      readOnly: this.editorLocked(),
+      canSave: this.canSavePricingPopupDraft()
+    };
+  }
+
+  private pricingPopupEditorConfig(): PricingEditorConfig {
+    return {
+      ...this.config,
+      presentation: 'inline',
+      embedded: true
+    };
+  }
+
+  private updatePricingEditorPopupState(): void {
+    if (!this.pricingEditorPopupIsOpen()) {
+      return;
+    }
+    this.formFlowPopupStore.updatePricingEditorPopup(this.buildPricingEditorPopupState());
+  }
+
+  protected pricingEditorPopupComponent(): Type<unknown> | null {
+    return this.pricingEditorPopupIsOpen()
+      ? this.formFlowPopupStore.pricingEditorPopupComponent()
+      : null;
+  }
+
+  private pricingEditorPopupIsOpen(): boolean {
+    return this.formFlowPopupStore.pricingEditorPopupRef()?.ownerId === this.ownerId;
+  }
+
+  private commitPricingPopupDraft(value: unknown, event?: Event): void {
+    event?.preventDefault();
+    event?.stopPropagation();
+    this.pricingPopupDraft = this.normalizePricingWithCapabilities(value as ContractTypes.PricingConfig);
+    if (!this.canSavePricingPopupDraft()) {
+      return;
+    }
+    this.workingPricing = this.normalizePricingWithCapabilities(this.pricingPopupDraft ?? this.workingPricing);
+    this.emitPricing();
+    this.closeWizard();
+  }
+
+  private canSavePricingPopupDraft(): boolean {
+    if (this.editorLocked()) {
+      return false;
+    }
+    const draft = this.normalizePricingWithCapabilities(this.pricingPopupDraft ?? this.workingPricing);
+    const current = this.normalizePricingWithCapabilities(this.pricingValue ?? this.workingPricing);
+    return JSON.stringify(draft) !== JSON.stringify(current);
+  }
+
+  private handlePricingEditorPopupActionRequest(request: FormFlowPricingEditorPopupActionRequest): void {
+    if (request.ownerId !== this.ownerId) {
+      return;
+    }
+    switch (request.kind) {
+      case 'close':
+        this.closeWizard(request.event);
+        return;
+      case 'save':
+        this.commitPricingPopupDraft(request.value, request.event);
+        return;
     }
   }
 
@@ -938,8 +1062,11 @@ export class PricingEditorInputComponent implements OnChanges, DoCheck, ControlV
     this.pricingValue = nextPricing;
     this.onModelChange(nextPricing);
     this.onModelTouched();
+    this.afterPricingChange(nextPricing);
     this.cdr.markForCheck();
   }
+
+  protected afterPricingChange(_nextPricing: ContractTypes.PricingConfig): void {}
 
   private syncMode(): void {
     const hasDemand = this.workingPricing.demandRulesEnabled;
@@ -979,6 +1106,7 @@ export class PricingEditorInputComponent implements OnChanges, DoCheck, ControlV
       showAudienceSection: this.resolveConfigValue(this.config.showAudienceSection, context === 'event') ?? context === 'event',
       showPreview: this.resolveConfigValue(this.config.showPreview, true) ?? true,
       allowSlotFeatures,
+      embedded: this.resolveConfigValue(this.config.embedded, false) === true,
       chargeTypeOptions: this.resolveChargeTypeOptions(context, allowSlotFeatures)
     };
   }
@@ -1000,6 +1128,7 @@ export class PricingEditorInputComponent implements OnChanges, DoCheck, ControlV
       showAudienceSection: config.showAudienceSection,
       showPreview: config.showPreview,
       allowSlotFeatures: config.allowSlotFeatures,
+      embedded: config.embedded,
       chargeTypeOptions: config.chargeTypeOptions,
       slotCatalog: config.slotCatalog.map(slot => ({
         id: slot.id,
@@ -1094,6 +1223,11 @@ export class PricingEditorInputComponent implements OnChanges, DoCheck, ControlV
   private nextId(prefix: string): string {
     this.idSequence += 1;
     return `${prefix}-${Date.now()}-${this.idSequence}`;
+  }
+
+  private nextOwnerId(): string {
+    PricingEditorInputComponent.ownerSequence += 1;
+    return `pricing-editor-${Date.now()}-${PricingEditorInputComponent.ownerSequence}`;
   }
 
   protected closeRuleScopePicker(event?: Event): void {

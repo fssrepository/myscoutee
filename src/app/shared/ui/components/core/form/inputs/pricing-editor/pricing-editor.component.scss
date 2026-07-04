@@ -49,6 +49,17 @@
     radial-gradient(circle at top right, rgba(146, 165, 194, 0.1), transparent 36%);
 }
 
+.pricing-editor--embedded {
+  height: 100%;
+  min-height: 0;
+  padding: 0;
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+  box-shadow: none;
+  overflow: hidden;
+}
+
 .pricing-editor--summary-popup.pricing-editor--enabled .pricing-editor__title-text,
 .pricing-editor--summary-popup.pricing-editor--enabled .pricing-editor__title-text mat-icon {
   color: #235d53;
@@ -248,6 +259,17 @@
   grid-template-columns: minmax(0, 1fr) minmax(240px, 300px);
   gap: 1rem;
   align-items: start;
+}
+
+.pricing-editor--embedded .pricing-editor__layout {
+  height: 100%;
+  min-height: 0;
+  overflow-y: auto;
+  overflow-x: hidden;
+  padding: 0.12rem 0 0.8rem;
+  box-sizing: border-box;
+  scrollbar-width: thin;
+  scrollbar-color: #8aa0b8 #eaf1fa;
 }
 
 .pricing-editor__main {
@@ -1035,53 +1057,6 @@
   padding: 0 0.14rem;
 }
 
-.pricing-editor__wizard-body,
-.pricing-editor__wizard-body .pricing-editor__main,
-.pricing-editor__wizard-body .pricing-editor__preview {
-  min-width: 0;
-  will-change: transform, scroll-position;
-  transform: translateZ(0);
-  -webkit-transform: translate3d(0, 0, 0);
-  backface-visibility: hidden;
-}
-
-.pricing-editor__wizard-body {
-  box-sizing: border-box;
-  width: 100%;
-  max-width: 100%;
-  height: 100%;
-  min-height: 0;
-  display: grid;
-  align-content: start;
-  gap: 0.92rem;
-  overflow-x: hidden;
-  overflow-y: auto;
-  padding: 0.12rem 0 0.8rem;
-  scrollbar-width: thin;
-  scrollbar-color: #8aa0b8 #eaf1fa;
-  scrollbar-gutter: stable;
-  transform: translateZ(0);
-  backface-visibility: hidden;
-}
-
-.pricing-editor__wizard-body .pricing-editor__main {
-  width: 100%;
-}
-
-.pricing-editor__preview--wizard-sticky {
-  position: sticky;
-  top: -0.12rem;
-  z-index: 2;
-  align-self: start;
-  margin-top: -0.12rem;
-  padding-top: 0.12rem;
-  padding-bottom: 0.18rem;
-  will-change: transform;
-  transform: translateZ(0);
-  backface-visibility: hidden;
-  background: linear-gradient(180deg, rgba(249, 252, 255, 0.98) 0%, rgba(249, 252, 255, 0.88) 100%);
-}
-
 @container (max-width: 760px) {
   .pricing-editor__layout {
     grid-template-columns: 1fr;
@@ -1153,13 +1128,4 @@
     grid-template-columns: 1fr;
   }
 
-  .pricing-editor__wizard-body {
-    padding: 0.08rem 0.2rem 0.72rem 0.08rem;
-  }
-
-  .pricing-editor__preview--wizard-sticky {
-    top: -0.08rem;
-    margin-top: -0.08rem;
-    padding-top: 0.08rem;
-  }
 }

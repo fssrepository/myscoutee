@@ -233,9 +233,10 @@ export class RouteInputComponent implements ControlValueAccessor, OnDestroy {
     return !this.routesEqual(this.normalizeRoutes(this.workingRoutes), this.routes);
   }
 
-  private saveRoute(event?: Event): void {
+  private saveRoute(routes: readonly string[], routeRowIds: readonly string[], event?: Event): void {
     event?.preventDefault();
     event?.stopPropagation();
+    this.replaceRouteDraft(routes, routeRowIds);
     if (!this.canSaveRoute()) {
       return;
     }
@@ -339,10 +340,7 @@ export class RouteInputComponent implements ControlValueAccessor, OnDestroy {
         this.closeRoutePopup(request.event);
         return;
       case 'save':
-        this.saveRoute(request.event);
-        return;
-      case 'draft':
-        this.replaceRouteDraft(request.routes, request.routeRowIds, request.event);
+        this.saveRoute(request.routes, request.routeRowIds, request.event);
         return;
     }
   }
