@@ -776,7 +776,7 @@ export class LocalActivityEventsMapper {
     }
     const settingsById = resource.assetSettingsByType[type] ?? {};
     const assignedIds = resource.assetAssignmentIds[type] ?? [];
-    const assetIds = assignedIds.length > 0 ? assignedIds : Object.keys(settingsById);
+    const assetIds = this.normalizedAssetIds(assignedIds.length > 0 ? assignedIds : Object.keys(settingsById));
     const capacityMin = assetIds.reduce((sum, assetId) => (
       sum + this.nonNegativeInteger(settingsById[assetId]?.capacityMin)
     ), 0);
@@ -788,13 +788,24 @@ export class LocalActivityEventsMapper {
           sum + (resource.supplyContributionEntriesByAssetId[assetId] ?? [])
             .reduce((entrySum, entry) => entrySum + this.nonNegativeInteger(entry.quantity), 0)
         ), 0)
-      : 0;
+      : assetIds.length;
     return {
       accepted,
       pending: 0,
       capacityMin,
       capacityMax
     };
+  }
+
+  private static normalizedAssetIds(source: readonly string[]): string[] {
+    const ids = new Set<string>();
+    source.forEach(item => {
+      const assetId = `${item ?? ''}`.trim();
+      if (assetId) {
+        ids.add(assetId);
+      }
+    });
+    return [...ids];
   }
 
   private static subEventResourceOwnerIdFromSlot(slot: SubEventsSlotDTO): string {
