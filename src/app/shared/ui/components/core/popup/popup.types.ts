@@ -64,6 +64,7 @@ export interface PopupModel<TContext = unknown> {
   headerTone?: PopupHeaderTone;
   bodyLayout?: PopupBodyLayout;
   backdropTone?: PopupBackdropTone;
+  showToolbar?: boolean;
   headerControls?: readonly PopupControl<TContext>[];
   toolbarControls?: readonly PopupControl<TContext>[];
   headerActions?: readonly PopupAction[];

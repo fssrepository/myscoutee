@@ -42,6 +42,10 @@ import {
   AppMenuTriggerComponent
 } from '../../../../shared/ui/components/core/menu/trigger/menu-trigger.component';
 import {
+  PopupComponent,
+  type PopupModel
+} from '../../../../shared/ui/components/core/popup';
+import {
   CARD_MENU_ACTIONS,
   type CardMenuAction,
   type CardMenuActionEvent,
@@ -208,6 +212,7 @@ interface AssetExploreBorrowDraftViewState {
     AppMenuComponent,
     AppMenuOutletComponent,
     AppMenuTriggerComponent,
+    PopupComponent,
     DateInputComponent,
     InfoCardComponent,
     SmartListComponent
@@ -434,6 +439,34 @@ export class EventResourceAssetExploreComponent implements DoCheck {
 
   protected assetExplorePopupZIndex(): number {
     return this.parentZIndex + 100;
+  }
+
+  protected assetExplorePopupModel(explore: AssetExplorePopupViewState): PopupModel<AssetExploreMenuContext> {
+    return {
+      title: explore.title,
+      subtitle: explore.subtitle,
+      ariaLabel: explore.title,
+      closeAriaLabel: 'Close asset explore',
+      closeOnBackdrop: true,
+      size: 'wide',
+      height: 'full',
+      headerTone: 'accent',
+      bodyLayout: 'fill',
+      backdropTone: 'dim',
+      headerControls: [
+        {
+          kind: 'menu',
+          id: 'asset-explore-order',
+          menuKind: 'select',
+          trigger: this.orderMenuTrigger(),
+          items: this.orderMenuItems(),
+          panelAlign: 'end',
+          mobileBreakpointPx: 900
+        }
+      ],
+      onClose: event => this.closeExplorePopup(event),
+      onMenuSelect: event => this.onMenuSelect(event.itemSelect)
+    };
   }
 
   private handleAssetExploreOutletActionRequest(request: EventResourceAssetExploreOutletActionRequest): void {

@@ -9,111 +9,85 @@
 </ng-template>
 
 @if (popupViewState(); as explore) {
-  <section
-    class="app-popup app-popup-stacked app-popup-stacked-over-subevents event-resource-popup-shell asset-explore-shell"
-    [style.--asset-explore-shell-z-index]="assetExplorePopupZIndex()"
-  >
-    <div class="app-popup-backdrop" (click)="closeExplorePopup($event)"></div>
-    <div class="app-popup-panel popup-panel-asset-members asset-explore-shell-panel" (click)="$event.stopPropagation()">
-      <div class="popup-header popup-header-with-progress asset-explore-shell-header">
-        <div class="popup-title">
-          <h2>{{ explore.title }}</h2>
-          <p class="popup-subtitle">{{ explore.subtitle }}</p>
-        </div>
-        <div class="event-explore-header-controls asset-explore-header-controls">
-          <app-menu
-            class="event-explore-order-picker asset-explore-order-picker"
-            kind="select"
-            [trigger]="orderMenuTrigger()"
-            [items]="orderMenuItems()"
-            (itemSelect)="onMenuSelect($event)"
-          ></app-menu>
-        </div>
-        <button type="button" class="popup-close" (click)="closeExplorePopup($event)" aria-label="Close asset explore">
-          <mat-icon>close</mat-icon>
-        </button>
+  <app-popup [model]="assetExplorePopupModel(explore)" [zIndex]="assetExplorePopupZIndex()">
+    <div class="asset-explore-popup-screen">
+      <div class="asset-explore-filter-bar">
+        <app-menu-trigger
+          class="asset-explore-category-menu"
+          menuId="asset-explore-category"
+          kind="select"
+          [trigger]="categoryMenuTrigger(explore)"
+          [items]="categoryMenuItems(explore)"
+          [panelAlign]="'start'"
+          [mobileBreakpointPx]="900"
+        ></app-menu-trigger>
+
+        <app-date-input
+          class="asset-explore-date-range-control"
+          [model]="explore.dateRangeModel"
+          [ngModel]="explore.dateRange"
+          (ngModelChange)="onDateInputRangeChange($event)"
+        ></app-date-input>
       </div>
 
-      <div class="popup-body popup-body-members asset-explore-shell-body">
-        <div class="asset-explore-popup-screen">
-          <div class="asset-explore-filter-bar popup-filter-bar">
-            <app-menu-trigger
-              class="asset-explore-category-menu"
-              menuId="asset-explore-category"
-              kind="select"
-              [trigger]="categoryMenuTrigger(explore)"
-              [items]="categoryMenuItems(explore)"
-              [panelAlign]="'start'"
-              [mobileBreakpointPx]="900"
-            ></app-menu-trigger>
-
-            <app-date-input
-              [model]="explore.dateRangeModel"
-              [ngModel]="explore.dateRange"
-              (ngModelChange)="onDateInputRangeChange($event)"
-            ></app-date-input>
-          </div>
-
-          <section class="asset-explore-panel">
-            <div class="asset-explore-grid">
-              @if (explore.error && explore.cards.length > 0) {
-                <section class="asset-explore-empty-state asset-explore-empty-state-error">
-                  <mat-icon>error</mat-icon>
-                  <span>{{ explore.error }}</span>
-                </section>
-              }
-              @if (explore.error && explore.cards.length === 0) {
-                <section class="asset-explore-empty-state asset-explore-empty-state-error">
-                  <mat-icon>error</mat-icon>
-                  <span>{{ explore.error }}</span>
-                </section>
-              } @else if (explore.cards.length === 0 && !explore.loading) {
-                <section class="asset-explore-empty-state">
-                  <mat-icon>travel_explore</mat-icon>
-                  <span>No visible assets match this date range and category yet.</span>
-                </section>
-              } @else {
-                <app-smart-list
-                  #assetExploreSmartList
-                  class="asset-explore-smart-list"
-                  [config]="smartListConfig"
-                  [loadPage]="smartListLoadPage"
-                  [itemTemplate]="assetExploreItemTemplate"
-                  [query]="smartListQuery"
-                  (stateChange)="onSmartListStateChange($event)"
-                ></app-smart-list>
-              }
-            </div>
-          </section>
-
-          @if (borrowDraftCount() > 0) {
-            <app-menu
-              class="asset-explore-basket-menu"
-              kind="fab"
-              title="Borrow Basket"
-              [trigger]="borrowDraftMenuTrigger()"
-              [items]="borrowDraftMenuItems()"
-              [panelAlign]="'end'"
-              [mobileBreakpointPx]="900"
-              (itemSelect)="onMenuSelect($event)"
-            ></app-menu>
+      <section class="asset-explore-panel">
+        <div class="asset-explore-grid">
+          @if (explore.error && explore.cards.length > 0) {
+            <section class="asset-explore-empty-state asset-explore-empty-state-error">
+              <mat-icon>error</mat-icon>
+              <span>{{ explore.error }}</span>
+            </section>
           }
-
-          @if (assetView()) {
-            @if (resourcePopupStore.eventResourceAssetViewComponent(); as assetViewComponent) {
-              <ng-container *ngComponentOutlet="assetViewComponent; inputs: assetViewOutletInputs()"></ng-container>
-            }
-          }
-
-          @if (borrowDialogViewState()) {
-            @if (resourcePopupStore.eventResourceAssetExploreBorrowDialogComponent(); as borrowDialogComponent) {
-              <ng-container *ngComponentOutlet="borrowDialogComponent; inputs: borrowDialogOutletInputs()"></ng-container>
-            }
+          @if (explore.error && explore.cards.length === 0) {
+            <section class="asset-explore-empty-state asset-explore-empty-state-error">
+              <mat-icon>error</mat-icon>
+              <span>{{ explore.error }}</span>
+            </section>
+          } @else if (explore.cards.length === 0 && !explore.loading) {
+            <section class="asset-explore-empty-state">
+              <mat-icon>travel_explore</mat-icon>
+              <span>No visible assets match this date range and category yet.</span>
+            </section>
+          } @else {
+            <app-smart-list
+              #assetExploreSmartList
+              class="asset-explore-smart-list"
+              [config]="smartListConfig"
+              [loadPage]="smartListLoadPage"
+              [itemTemplate]="assetExploreItemTemplate"
+              [query]="smartListQuery"
+              (stateChange)="onSmartListStateChange($event)"
+            ></app-smart-list>
           }
         </div>
-      </div>
+      </section>
+
+      @if (borrowDraftCount() > 0) {
+        <app-menu
+          class="asset-explore-basket-menu"
+          kind="fab"
+          title="Borrow Basket"
+          [trigger]="borrowDraftMenuTrigger()"
+          [items]="borrowDraftMenuItems()"
+          [panelAlign]="'end'"
+          [mobileBreakpointPx]="900"
+          (itemSelect)="onMenuSelect($event)"
+        ></app-menu>
+      }
+
+      @if (assetView()) {
+        @if (resourcePopupStore.eventResourceAssetViewComponent(); as assetViewComponent) {
+          <ng-container *ngComponentOutlet="assetViewComponent; inputs: assetViewOutletInputs()"></ng-container>
+        }
+      }
+
+      @if (borrowDialogViewState()) {
+        @if (resourcePopupStore.eventResourceAssetExploreBorrowDialogComponent(); as borrowDialogComponent) {
+          <ng-container *ngComponentOutlet="borrowDialogComponent; inputs: borrowDialogOutletInputs()"></ng-container>
+        }
+      }
     </div>
-  </section>
-}
 
-<app-menu-outlet (itemSelect)="onMenuSelect($event)"></app-menu-outlet>
+    <app-menu-outlet (itemSelect)="onMenuSelect($event)"></app-menu-outlet>
+  </app-popup>
+}
