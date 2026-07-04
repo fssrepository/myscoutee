@@ -511,7 +511,6 @@ export class EventChatPopupComponent implements OnDestroy {
 
   protected close(): void {
     this.chatThreadSmartList?.closeMenu();
-    this.resourcePopupStore.closeResourcePopup();
     this.stopLocalTyping();
     this.resetVoiceRecorder();
     this.teardownLiveChatUpdates();
@@ -525,6 +524,7 @@ export class EventChatPopupComponent implements OnDestroy {
       this.closeHostedChatHandler?.();
       return;
     }
+    this.resourcePopupStore.closeResourcePopup();
     if (this.isBlockedSupportChat()) {
       this.activitiesStore.closeActivities();
       return;
@@ -820,6 +820,9 @@ export class EventChatPopupComponent implements OnDestroy {
   }
 
   protected shouldHostChatResourcePopup(): boolean {
+    if (this.hostedSessionRef()) {
+      return false;
+    }
     const request = this.memberMenuStore.activitiesNavigationRequest();
     return Boolean(this.session())
       && (request?.type === 'chatResource'
