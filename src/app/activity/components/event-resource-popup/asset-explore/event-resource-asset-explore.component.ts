@@ -654,17 +654,44 @@ export class EventResourceAssetExploreComponent implements DoCheck {
   }
 
   protected categoryMenuItems(explore: AssetExplorePopupViewState): readonly AppMenuItem<string, AssetExploreMenuContext>[] {
-    return explore.categoryOptions.map(option => ({
+    const directOptions = explore.categoryOptions
+      .filter(option => AssetDefaultsBuilder.assetCategoryType(option) !== 'Supplies');
+    const suppliesOptions = explore.categoryOptions
+      .filter(option => AssetDefaultsBuilder.assetCategoryType(option) === 'Supplies');
+    const items: AppMenuItem<string, AssetExploreMenuContext>[] = directOptions.map(option =>
+      this.categoryMenuItem(option, explore.category)
+    );
+    if (suppliesOptions.length > 0) {
+      const suppliesActive = AssetDefaultsBuilder.assetCategoryType(explore.category) === 'Supplies';
+      items.push({
+        id: 'asset-explore-category-supplies',
+        label: 'Kellékek',
+        icon: AssetDefaultsBuilder.assetTypeIcon('Supplies'),
+        kind: 'branch',
+        active: suppliesActive,
+        palette: this.resourceTypePalette('Supplies'),
+        surface: 'tinted',
+        items: suppliesOptions.map(option => this.categoryMenuItem(option, explore.category))
+      });
+    }
+    return items;
+  }
+
+  private categoryMenuItem(
+    option: AppConstants.AssetCategory,
+    activeCategory: AppConstants.AssetCategory
+  ): AppMenuItem<string, AssetExploreMenuContext> {
+    return {
       id: `asset-explore-category-${option}`,
       label: AssetDefaultsBuilder.assetCategoryLabel(option),
       icon: AssetDefaultsBuilder.assetCategoryIcon(option),
       kind: 'radio',
-      active: option === explore.category,
-      checked: option === explore.category,
+      active: option === activeCategory,
+      checked: option === activeCategory,
       palette: this.assetCategoryPalette(option),
       surface: 'tinted',
       context: { menu: 'asset-explore-category', category: option }
-    }));
+    };
   }
 
   protected selectOrder(order: AssetExploreOrder, event: Event): void {
