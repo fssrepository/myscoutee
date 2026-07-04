@@ -373,6 +373,7 @@ export class AssetEditorPopupComponent {
       enabled: () => this.assetStore.assetFormRuntimeRoute()?.routeEnabled === true,
       editable: () => runtimeRoute?.editable === true,
       parentZIndex: () => this.assetEditorPopupZIndex(),
+      onEnabledChange: enabled => this.assetStore.setAssetEditorRuntimeRouteState({ routeEnabled: enabled }),
       onSave: state => this.saveAssetRuntimeRoute(state)
     };
   }

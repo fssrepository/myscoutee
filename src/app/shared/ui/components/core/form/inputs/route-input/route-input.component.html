@@ -25,7 +25,7 @@
   </header>
 
   <div class="route-input__body">
-    @if (!locked() && routeEnabled()) {
+    @if (!locked()) {
       <div class="route-input__summary-actions">
         <button type="button" class="route-input__open-btn" (click)="openRoutePopup($event)">
           <mat-icon>tune</mat-icon>

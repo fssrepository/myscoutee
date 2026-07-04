@@ -36,6 +36,7 @@ export interface RouteInputConfig {
   enabled?: RouteInputConfigValue<boolean | null>;
   editable?: RouteInputConfigValue<boolean | null>;
   parentZIndex?: RouteInputConfigValue<number | null>;
+  onEnabledChange?: (enabled: boolean) => void;
   onSave?: (value: RouteInputSaveValue) => void | RouteInputSaveValue | Promise<void | RouteInputSaveValue>;
 }
 
@@ -143,21 +144,19 @@ export class RouteInputComponent implements ControlValueAccessor {
   }
 
   protected routeEnabled(): boolean {
-    return this.resolveConfigValue(this.config.enabled, this.hasRoute()) === true || this.showRoutePopup;
+    return this.resolveConfigValue(this.config.enabled, this.hasRoute()) === true;
   }
 
-  protected async toggleRouteEnabled(event?: Event): Promise<void> {
+  protected toggleRouteEnabled(event?: Event): void {
     event?.preventDefault();
     event?.stopPropagation();
     if (this.locked() || this.saving) {
       return;
     }
-    if (!this.routeEnabled()) {
-      this.openRoutePopup(event);
-      return;
-    }
-    this.showRoutePopup = false;
-    await this.saveRouteValue(false, this.routes);
+    const nextEnabled = !this.routeEnabled();
+    this.config.onEnabledChange?.(nextEnabled);
+    this.onModelTouched();
+    this.cdr.markForCheck();
   }
 
   protected openRoutePopup(event?: Event): void {
@@ -256,7 +255,7 @@ export class RouteInputComponent implements ControlValueAccessor {
       return;
     }
     const normalized = this.normalizeRoutes(this.workingRoutes);
-    await this.saveRouteValue(true, normalized);
+    await this.saveRouteValue(this.routeEnabled(), normalized);
   }
 
   private async saveRouteValue(routeEnabled: boolean, normalized: string[]): Promise<void> {
