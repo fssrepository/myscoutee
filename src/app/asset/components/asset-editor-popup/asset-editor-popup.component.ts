@@ -39,8 +39,7 @@ import {
   PopupComponent,
   type PopupControl,
   type PopupModel,
-  type RouteInputConfig,
-  type RouteInputSaveValue
+  type RouteInputConfig
 } from '../../../shared/ui';
 
 import type * as AppConstants from '../../../shared/core/common/constants';
@@ -373,8 +372,7 @@ export class AssetEditorPopupComponent {
       enabled: () => this.assetStore.assetFormRuntimeRoute()?.routeEnabled === true,
       editable: () => runtimeRoute?.editable === true,
       parentZIndex: () => this.assetEditorPopupZIndex(),
-      onEnabledChange: enabled => this.assetStore.setAssetEditorRuntimeRouteState({ routeEnabled: enabled }),
-      onSave: state => this.saveAssetRuntimeRoute(state)
+      onEnabledChange: enabled => this.assetStore.setAssetEditorRuntimeRouteState({ routeEnabled: enabled })
     };
   }
 
@@ -778,29 +776,6 @@ export class AssetEditorPopupComponent {
     this.assetStore.setAssetEditorRuntimeRouteState({ routes: nextRoutes });
     this.assetEditorFlowValueCacheKey = '';
     this.assetEditorFlowModelCacheKey = '';
-  }
-
-  private async saveAssetRuntimeRoute(state: RouteInputSaveValue): Promise<RouteInputSaveValue> {
-    const runtimeRoute = this.assetStore.assetFormRuntimeRoute();
-    if (!runtimeRoute?.onSave) {
-      this.assetStore.setAssetEditorRuntimeRouteState({
-        routeEnabled: state.routeEnabled,
-        routes: state.routes
-      });
-      return state;
-    }
-    const result = await runtimeRoute.onSave(state);
-    const nextState = result ?? state;
-    this.assetStore.setAssetEditorRuntimeRouteState({
-      routeEnabled: nextState.routeEnabled,
-      routes: nextState.routes
-    });
-    this.assetEditorFlowValueCacheKey = '';
-    this.assetEditorFlowModelCacheKey = '';
-    return {
-      routeEnabled: nextState.routeEnabled,
-      routes: [...nextState.routes]
-    };
   }
 
   private stringListsEqual(left: readonly string[], right: readonly string[] | null | undefined): boolean {

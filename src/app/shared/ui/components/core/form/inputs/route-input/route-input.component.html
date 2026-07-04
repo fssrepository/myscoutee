@@ -36,7 +36,15 @@
 
     <div class="route-input__summary">
       <section class="route-input__summary-block">
-        <span class="route-input__summary-label">Summary</span>
+        <div class="route-input__summary-head">
+          <span class="route-input__summary-label">Summary</span>
+          @if (routeEnabled() && hasRoute()) {
+            <button type="button" class="route-input__map-btn" (click)="openRouteMap($event)" aria-label="Open route on map">
+              <mat-icon>map</mat-icon>
+              <span>Map</span>
+            </button>
+          }
+        </div>
         @if (routeEnabled() && hasRoute()) {
           <div class="route-input__route-strip" [attr.aria-label]="routeCountLabel()">
             @for (stop of visibleRoutes(); track $index; let last = $last) {
@@ -46,10 +54,6 @@
               }
             }
           </div>
-          <button type="button" class="route-input__map-btn" (click)="openRouteMap($event)">
-            <mat-icon>map</mat-icon>
-            <span>Open map</span>
-          </button>
         } @else {
           <p class="route-input__summary-note">{{ emptyRouteLabel() }}</p>
         }
@@ -58,65 +62,6 @@
   </div>
 </section>
 
-@if (showRoutePopup) {
-  <app-popup [model]="routePopupModel()" [zIndex]="routePopupZIndex()">
-    <div class="route-input__popup-body">
-      <div
-        class="route-input__editor-list"
-        cdkDropList
-        [cdkDropListData]="workingVisibleRoutes()"
-        [cdkDropListDisabled]="saving"
-        (cdkDropListDropped)="dropStop($event)"
-      >
-        @for (stop of workingVisibleRoutes(); track routeRowTrack(stop, $index); let i = $index) {
-          <div class="route-input__editor-row" cdkDrag [cdkDragDisabled]="saving">
-            <button
-              type="button"
-              class="route-input__icon-btn route-input__drag-btn"
-              cdkDragHandle
-              [disabled]="saving"
-              aria-label="Drag route stop"
-            >
-              <mat-icon>drag_indicator</mat-icon>
-            </button>
-            <label>
-              <span>Stop {{ i + 1 }}</span>
-              <input
-                type="text"
-                [ngModel]="stop"
-                (ngModelChange)="updateStop(i, $event)"
-                [disabled]="saving"
-                [placeholder]="'Route stop ' + (i + 1)"
-              />
-            </label>
-            <button
-              type="button"
-              class="route-input__icon-btn route-input__map-row-btn"
-              [disabled]="saving || !stop.trim()"
-              (click)="openStopMap(stop, $event)"
-              aria-label="Open stop on map"
-            >
-              <mat-icon>location_on</mat-icon>
-            </button>
-            <button
-              type="button"
-              class="route-input__icon-btn route-input__delete-btn"
-              [disabled]="saving"
-              (click)="removeStop(i, $event)"
-              aria-label="Delete route stop"
-            >
-              <mat-icon>delete</mat-icon>
-            </button>
-          </div>
-        }
-      </div>
-      <button type="button" class="route-input__add-btn" [disabled]="saving" (click)="addStop($event)">
-        <mat-icon>add</mat-icon>
-        <span>Add Stop</span>
-      </button>
-      @if (error) {
-        <p class="route-input__error">{{ error }}</p>
-      }
-    </div>
-  </app-popup>
+@if (routeEditorComponent(); as editorComponent) {
+  <ng-container *ngComponentOutlet="editorComponent; inputs: routeEditorOutletInputs()"></ng-container>
 }
