@@ -1,7 +1,6 @@
 import { CommonModule } from '@angular/common';
 import { ChangeDetectionStrategy, Component, Input, ViewEncapsulation, inject } from '@angular/core';
 import { FormsModule } from '@angular/forms';
-import { MatIconModule } from '@angular/material/icon';
 
 import {
   DateInputComponent,
@@ -9,7 +8,6 @@ import {
   type DateInputRangeValue,
   type DateInputValue
 } from '../../../../shared/ui/components/core/form/inputs/date-input/date-input.component';
-import { IndicatorComponent } from '../../../../shared/ui/components/core/indicator/indicator.component';
 import { AppUtils } from '../../../../shared/app-utils';
 import type * as ActivityContracts from '../../../../shared/core/contracts/activity.interface';
 import type * as ContractTypes from '../../../../shared/core/contracts';
@@ -18,6 +16,13 @@ import {
   PopupComponent,
   type PopupModel
 } from '../../../../shared/ui/components/core/popup';
+import {
+  AppMenuComponent,
+  type AppMenuItem,
+  type AppMenuItemSelectEvent
+} from '../../../../shared/ui/components/core/menu';
+
+type BorrowDialogActionId = 'borrow-back' | 'borrow-cancel' | 'borrow-confirm';
 
 export interface AssetExploreBorrowDialogViewState {
   title: string;
@@ -48,9 +53,8 @@ export interface AssetExploreBorrowDialogViewState {
     CommonModule,
     FormsModule,
     DateInputComponent,
-    MatIconModule,
-    IndicatorComponent,
-    PopupComponent
+    PopupComponent,
+    AppMenuComponent
   ],
   templateUrl: './event-resource-asset-explore-borrow-dialog.component.html',
   styleUrl: './event-resource-asset-explore-borrow-dialog.component.scss',
@@ -91,6 +95,49 @@ export class EventResourceAssetExploreBorrowDialogComponent {
 
   protected borrowPopupZIndex(): number {
     return this.parentZIndex + 100;
+  }
+
+  protected borrowFooterMenuItems(
+    dialog: AssetExploreBorrowDialogViewState
+  ): readonly AppMenuItem<BorrowDialogActionId>[] {
+    const hasError = !dialog.busy && !!dialog.error;
+    const submitLabel = dialog.busy ? dialog.busyLabel : dialog.submitLabel;
+    return [
+      {
+        id: dialog.paymentStep ? 'borrow-back' : 'borrow-cancel',
+        label: dialog.paymentStep ? 'Back' : 'Cancel',
+        layout: 'action',
+        palette: 'neutral',
+        disabled: dialog.busy,
+        ariaLabel: dialog.paymentStep ? 'Back' : 'Cancel'
+      },
+      {
+        id: 'borrow-confirm',
+        label: submitLabel,
+        layout: 'action',
+        palette: hasError ? 'danger' : 'blue',
+        disabled: !this.canSubmit || dialog.busy,
+        ariaLabel: submitLabel,
+        progress: dialog.busy || hasError
+          ? {
+              state: dialog.busy ? 'loading' : 'error',
+              shape: 'button'
+            }
+          : null
+      }
+    ];
+  }
+
+  protected onBorrowActionMenuSelect(event: AppMenuItemSelectEvent<BorrowDialogActionId>): void {
+    if (event.id === 'borrow-back') {
+      this.back(event.sourceEvent);
+      return;
+    }
+    if (event.id === 'borrow-cancel') {
+      this.close(event.sourceEvent);
+      return;
+    }
+    this.confirm(event.sourceEvent);
   }
 
   protected formatMoney(amount: number, currency = 'USD'): string {

@@ -186,48 +186,13 @@
           }
 
           <div class="asset-explore-borrow-actions">
-            @if (dialog.paymentStep) {
-              <button
-                type="button"
-                class="asset-explore-borrow-actions__btn asset-explore-borrow-actions__btn--secondary"
-                [disabled]="dialog.busy"
-                (click)="back($event)"
-              >
-                Back
-              </button>
-            } @else {
-              <button
-                type="button"
-                class="asset-explore-borrow-actions__btn asset-explore-borrow-actions__btn--secondary"
-                [disabled]="dialog.busy"
-                (click)="close($event)"
-              >
-                Cancel
-              </button>
-            }
-            <span
-              class="asset-explore-borrow-confirm-shell"
-              [class.is-loading]="dialog.busy"
-              [class.is-error]="!dialog.busy && !!dialog.error"
-            >
-              @if (dialog.busy || dialog.error) {
-                <span class="asset-explore-borrow-confirm-ring" aria-hidden="true">
-                  <app-indicator
-                    kind="action-ring"
-                    shape="button"
-                    [state]="dialog.busy ? 'loading' : 'error'"
-                  ></app-indicator>
-                </span>
-              }
-              <button
-                type="button"
-                class="asset-explore-borrow-actions__btn asset-explore-borrow-actions__btn--primary asset-explore-borrow-actions__btn--confirm"
-                [disabled]="!canSubmit || dialog.busy"
-                (click)="confirm($event)"
-              >
-                {{ dialog.busy ? dialog.busyLabel : dialog.submitLabel }}
-              </button>
-            </span>
+            <app-menu
+              class="asset-explore-borrow-action-menu"
+              kind="inline"
+              layout="row"
+              [items]="borrowFooterMenuItems(dialog)"
+              (itemSelect)="onBorrowActionMenuSelect($event)"
+            ></app-menu>
           </div>
         </div>
       </section>

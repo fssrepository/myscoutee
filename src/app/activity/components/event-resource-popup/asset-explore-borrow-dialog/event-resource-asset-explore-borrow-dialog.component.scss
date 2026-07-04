@@ -243,90 +243,11 @@
   padding-top: 0.1rem;
 }
 
-.asset-explore-borrow-content .asset-explore-borrow-confirm-shell {
-  position: relative;
+.asset-explore-borrow-content .asset-explore-borrow-action-menu {
   display: inline-flex;
-  align-items: stretch;
-  justify-content: center;
-  min-width: 176px;
-  height: 50px;
-  border-radius: 999px;
-  padding: 2px;
-  box-sizing: border-box;
-  overflow: hidden;
-}
-
-.asset-explore-borrow-content .asset-explore-borrow-confirm-ring {
-  position: absolute;
-  inset: 0;
-  pointer-events: none;
-}
-
-.asset-explore-borrow-content .asset-explore-borrow-actions__btn {
-  min-height: 42px;
-  padding: 0 1rem;
-  border-radius: 999px;
-  border: 1px solid rgba(182, 202, 226, 0.88);
-  font: inherit;
-  font-size: 0.84rem;
-  font-weight: 800;
-  cursor: pointer;
-  transition: transform 120ms ease, box-shadow 120ms ease, background 120ms ease;
-}
-
-.asset-explore-borrow-content .asset-explore-borrow-actions__btn:disabled {
-  cursor: not-allowed;
-  opacity: 0.55;
-  transform: none;
-}
-
-.asset-explore-borrow-content .asset-explore-borrow-actions__btn--secondary {
-  background: rgba(255, 255, 255, 0.96);
-  color: #496789;
-}
-
-.asset-explore-borrow-content .asset-explore-borrow-actions__btn--primary {
-  min-width: 164px;
-  background: linear-gradient(180deg, rgba(138, 181, 236, 0.96) 0%, rgba(102, 151, 217, 0.96) 100%);
-  border-color: rgba(93, 138, 202, 0.92);
-  color: #fff;
-  box-shadow: 0 10px 24px rgba(52, 103, 182, 0.22);
-}
-
-.asset-explore-borrow-content .asset-explore-borrow-actions__btn--confirm {
-  position: relative;
-  z-index: 1;
-  width: 100%;
-  min-width: 176px;
-  height: 100%;
-  min-height: 46px;
-  border-color: transparent;
-}
-
-.asset-explore-borrow-content .asset-explore-borrow-confirm-shell.is-loading .asset-explore-borrow-actions__btn--confirm,
-.asset-explore-borrow-content .asset-explore-borrow-confirm-shell.is-loading .asset-explore-borrow-actions__btn--confirm:hover,
-.asset-explore-borrow-content .asset-explore-borrow-confirm-shell.is-loading .asset-explore-borrow-actions__btn--confirm:disabled {
-  border-color: rgba(181, 117, 23, 0.76);
-  background: linear-gradient(180deg, #ffe7bf 0%, #ffd085 100%);
-  color: #8e4f0d;
-  opacity: 1;
-  cursor: wait;
-  box-shadow: none;
-  transform: none;
-}
-
-.asset-explore-borrow-content .asset-explore-borrow-confirm-shell.is-error .asset-explore-borrow-actions__btn--confirm,
-.asset-explore-borrow-content .asset-explore-borrow-confirm-shell.is-error .asset-explore-borrow-actions__btn--confirm:hover {
-  border-color: rgba(176, 31, 46, 0.82);
-  background: linear-gradient(180deg, #f36a79 0%, #d4374a 100%);
-  color: #fff;
-  opacity: 1;
-  box-shadow: none;
-  transform: none;
-}
-
-.asset-explore-borrow-content .asset-explore-borrow-actions__btn:not(:disabled):hover {
-  transform: translateY(-1px);
+  --app-menu-action-min-width: 138px;
+  --app-menu-action-height: 46px;
+  --app-menu-action-padding: 0 1rem;
 }
 
 @media (max-width: 640px) {
@@ -340,8 +261,7 @@
     grid-template-columns: minmax(0, 1fr);
   }
 
-  .asset-explore-borrow-content .asset-explore-borrow-confirm-shell,
-  .asset-explore-borrow-content .asset-explore-borrow-actions__btn--primary {
-    min-width: 0;
+  .asset-explore-borrow-content .asset-explore-borrow-action-menu {
+    width: 100%;
   }
 }
