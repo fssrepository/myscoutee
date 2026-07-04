@@ -105,15 +105,6 @@ app-event-resource-asset-explore .asset-explore-basket-menu {
 }
 
 @media (max-width: 760px) {
-  app-event-resource-asset-explore .asset-explore-filter-bar {
-    grid-template-columns: minmax(0, 1fr);
-    align-items: start;
-  }
-
-  app-event-resource-asset-explore .asset-explore-date-range-control {
-    justify-self: start;
-  }
-
   app-event-resource-asset-explore .asset-explore-smart-list,
   app-event-resource-asset-explore .asset-explore-card-list {
     min-height: 0;
