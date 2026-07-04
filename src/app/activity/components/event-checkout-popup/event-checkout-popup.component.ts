@@ -9,24 +9,24 @@ import { MatIconModule } from '@angular/material/icon';
 import { MatInputModule } from '@angular/material/input';
 import { MatNativeDateModule } from '@angular/material/core';
 
-import { environment } from '../../../../../environments/environment';
-import { AppUtils } from '../../../../shared/app-utils';
-import { PricingBuilder } from '../../../../shared/core/base/builders';
-import type * as ContractTypes from '../../../../shared/core/contracts';
-import type * as ActivityContracts from '../../../../shared/core/contracts/activity.interface';
-import { EventsService } from '../../../../shared/core/base/services/events.service';
-import type { ActivityEventRecord } from '../../../../shared/core/contracts/activity.interface';
-import { EventCheckoutDraftStore } from '../../../../shared/ui/context/stores/event-checkout-draft.store';
-import { EventCheckoutDialogStore, type EventCheckoutDialogState } from '../../../../shared/ui/context/stores/event-checkout-dialog.store';
+import { environment } from '../../../../environments/environment';
+import { AppUtils } from '../../../shared/app-utils';
+import { PricingBuilder } from '../../../shared/core/base/builders';
+import type * as ContractTypes from '../../../shared/core/contracts';
+import type * as ActivityContracts from '../../../shared/core/contracts/activity.interface';
+import { EventsService } from '../../../shared/core/base/services/events.service';
+import type { ActivityEventRecord } from '../../../shared/core/contracts/activity.interface';
+import { EventCheckoutDraftStore } from '../../../shared/ui/context/stores/event-checkout-draft.store';
+import { EventCheckoutDialogStore, type EventCheckoutDialogState } from '../../../shared/ui/context/stores/event-checkout-dialog.store';
 import {
   AppMenuComponent,
   type AppMenuItem,
   type AppMenuItemSelectEvent
-} from '../../../../shared/ui/components/core/menu';
-import { PopupComponent, type PopupModel } from '../../../../shared/ui/components/core/popup';
-import { IndicatorComponent } from '../../../../shared/ui/components/core/indicator';
+} from '../../../shared/ui/components/core/menu';
+import { PopupComponent, type PopupModel } from '../../../shared/ui/components/core/popup';
+import { IndicatorComponent } from '../../../shared/ui/components/core/indicator';
 
-import type * as AppConstants from '../../../../shared/core/common/constants';
+import type * as AppConstants from '../../../shared/core/common/constants';
 type PricingSnapshot = {
   amount: number;
   currency: string;

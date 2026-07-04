@@ -958,6 +958,7 @@ export class SideMenuComponent implements OnDestroy {
       if (!request || (request.type !== 'eventExplore' && request.type !== 'eventCheckoutDraft')) {
         return;
       }
+      void this.activitiesStore.ensureActivitiesPopupLoaded();
       void this.activitiesStore.ensureEventExplorePopupLoaded();
     });
 

@@ -96,7 +96,6 @@ import { UserProfileStore } from '../../../shared/ui/context/stores/user-profile
 import { AppRuntimeStore } from '../../../shared/ui/context/stores/app-runtime.store';
 import { ActivityStore } from '../../../shared/ui/context/stores/activity.store';
 import { MemberMenuStore } from '../../../shared/ui/context/stores/member-menu.store';
-import { EventCheckoutPopupComponent } from './event-checkout-popup';
 
 type CheckoutDraftEntry = {
   draft: EventCheckoutDraft;
@@ -124,7 +123,6 @@ type EventExploreMenuContext =
     MatIconModule,
     AppMenuComponent,
     AppMenuOutletComponent,
-    EventCheckoutPopupComponent,
     InfoCardComponent,
     PopupComponent,
     SmartListComponent

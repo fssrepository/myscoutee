@@ -101,8 +101,14 @@ import {
   type EventCheckoutDraft
 } from '../../../shared/ui/context/stores/event-checkout-draft.store';
 import {
+  EventCheckoutDialogStore
+} from '../../../shared/ui/context/stores/event-checkout-dialog.store';
+import {
   ProfileStore
 } from '../../../shared/ui/context/stores/profile.store';
+import {
+  EventCheckoutPopupComponent
+} from '../event-checkout-popup';
 import {
   ActivitiesChatTemplateComponent,
   ActivitiesChatsController
@@ -186,6 +192,7 @@ type ActivitiesPopupMenuContext =
     ActivitiesEventTemplateComponent,
     ActivitiesChatTemplateComponent,
     ActivitiesRateTemplateComponent,
+    EventCheckoutPopupComponent,
     PopupComponent,
   ],
   templateUrl: './activities-popup.component.html',
@@ -217,6 +224,7 @@ export class ActivitiesPopupComponent implements OnDestroy {
   protected readonly dialogStore = inject(DialogStore);
   protected readonly profileStore = inject(ProfileStore);
   private readonly eventCheckoutDraftStore = inject(EventCheckoutDraftStore);
+  private readonly eventCheckoutDialogStore = inject(EventCheckoutDialogStore);
   private readonly i18nService = inject(I18nService);
   private readonly explanationGuide = inject(ExplanationGuideService);
   readonly activitiesRates = new ActivitiesRatesController({
