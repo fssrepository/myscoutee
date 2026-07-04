@@ -389,7 +389,6 @@ export class LocalChatsService extends LocalRouteDelayService implements IChatsS
     let pending = 0;
     let capacityMin = 0;
     let capacityMax = 0;
-    const users = this.usersRepository.queryAllUsers();
     for (const record of records) {
       const assignedIds = ActivityResourceBuilder.cloneAssetAssignmentIds(record.assetAssignmentIds)[type] ?? [];
       const settings = ActivityResourceBuilder.cloneAssetSettingsByType(record.assetSettingsByType)[type] ?? {};
@@ -409,7 +408,7 @@ export class LocalChatsService extends LocalRouteDelayService implements IChatsS
         capacityMin += this.countValue(setting?.capacityMin);
         capacityMax += this.countValue(setting?.capacityMax ?? asset?.capacityTotal);
         const counts = asset
-          ? this.assetRequestCountsForMetric(asset, record.subEventId, setting?.addedByUserId, users)
+          ? this.assetRequestCountsForMetric(asset, record.subEventId)
           : { accepted: 0, pending: 0 };
         accepted += counts.accepted;
         pending += counts.pending;
@@ -425,50 +424,15 @@ export class LocalChatsService extends LocalRouteDelayService implements IChatsS
 
   private assetRequestCountsForMetric(
     asset: ContractTypes.AssetDTO,
-    subEventId: string,
-    managerUserId: string | null | undefined,
-    users: readonly UserDto[]
+    subEventId: string
   ): { accepted: number; pending: number } {
     const normalizedSubEventId = `${subEventId ?? ''}`.trim();
-    const normalizedManagerUserId = `${managerUserId ?? ''}`.trim();
     const scopedRequests = (asset.requests ?? [])
       .filter(request => ActivityResourceBuilder.isSubEventScopedAssetRequest(request, normalizedSubEventId));
-    const visibleRequests = this.assetMetricVisibleRequests(asset, scopedRequests, normalizedManagerUserId, users);
-    const hasManagerRequest = normalizedManagerUserId.length > 0
-      && visibleRequests.some(request => this.assetRequestUserId(request, users) === normalizedManagerUserId);
-    const managerOwnsAsset = normalizedManagerUserId.length > 0
-      && `${asset.ownerUserId ?? ''}`.trim() === normalizedManagerUserId;
     return {
-      accepted: visibleRequests.filter(request => request.status === 'accepted').length
-        + (!hasManagerRequest && managerOwnsAsset ? 1 : 0),
-      pending: visibleRequests.filter(request => request.status === 'pending').length
-        + (!hasManagerRequest && normalizedManagerUserId && !managerOwnsAsset ? 1 : 0)
+      accepted: scopedRequests.filter(request => request.status === 'accepted').length,
+      pending: scopedRequests.filter(request => request.status === 'pending').length
     };
-  }
-
-  private assetMetricVisibleRequests(
-    asset: ContractTypes.AssetDTO,
-    requests: readonly ContractTypes.AssetMemberRequestDTO[],
-    managerUserId: string,
-    users: readonly UserDto[]
-  ): ContractTypes.AssetMemberRequestDTO[] {
-    if (!managerUserId || `${asset.ownerUserId ?? ''}`.trim() !== managerUserId) {
-      return [...requests];
-    }
-    return requests.filter(request => {
-      const requestUserId = this.assetRequestUserId(request, users);
-      if (requestUserId !== managerUserId) {
-        return true;
-      }
-      return request.status === 'accepted' || request.requestKind === 'manual';
-    });
-  }
-
-  private assetRequestUserId(
-    request: ContractTypes.AssetMemberRequestDTO,
-    users: readonly UserDto[]
-  ): string {
-    return AppUtils.resolveAssetRequestUserId(request, [...users]);
   }
 
   private memberOwnerType(channelType: ContractTypes.ChatChannelType): ActivityContracts.ActivityMemberOwnerRef['ownerType'] | null {

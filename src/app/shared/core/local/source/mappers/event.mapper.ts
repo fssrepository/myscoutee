@@ -814,11 +814,12 @@ export class LocalActivityEventsMapper {
           sum + (resource.supplyContributionEntriesByAssetId[assetId] ?? [])
             .reduce((entrySum, entry) => entrySum + this.nonNegativeInteger(entry.quantity), 0)
         ), 0)
-      : 0;
+      : assetIds.length;
+    const pending = 0;
     const metric = resourceMetricsByKey.get(this.subEventResourceMetricKey(resource.ownerId, resource.subEventId, type));
     return {
-      accepted: metric ? this.nonNegativeInteger(metric.accepted) : type === 'Supplies' ? accepted : 0,
-      pending: metric ? this.nonNegativeInteger(metric.pending) : 0,
+      accepted: metric ? this.nonNegativeInteger(metric.accepted) : accepted,
+      pending: metric ? this.nonNegativeInteger(metric.pending) : pending,
       capacityMin,
       capacityMax
     };

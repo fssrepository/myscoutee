@@ -32,7 +32,6 @@ import { LocalEventFeedbackRepository } from '../repositories/event-feedback.rep
 import { LocalEventsRepository } from '../repositories/events.repository';
 import { LocalActivityResourcesRepository } from '../repositories/activity-resources.repository';
 import { LocalActivitySubEventStageRuntimeRepository } from '../repositories/activity-sub-event-stage-runtime.repository';
-import { LocalAssetsRepository } from '../repositories/assets.repository';
 import { LocalUsersRepository } from '../repositories/users.repository';
 import { LocalUsersService } from './users.service';
 import {
@@ -59,7 +58,6 @@ import type {
   ActivitySubEventResourceStateDTO,
   SubEventDefinitionDTO
 } from '../../../contracts/activity.interface';
-import type { SubEventResourceMetric } from '../mappers/event.mapper';
 import type { IEventsService } from '../../../contracts/activity.interface';
 
 @Injectable({
@@ -72,7 +70,6 @@ export class LocalEventsService extends LocalRouteDelayService implements IEvent
   private readonly eventsRepository = inject(LocalEventsRepository);
   private readonly activityResourcesRepository = inject(LocalActivityResourcesRepository);
   private readonly activitySubEventStageRuntimeRepository = inject(LocalActivitySubEventStageRuntimeRepository);
-  private readonly assetsRepository = inject(LocalAssetsRepository);
   private readonly eventFeedbackRepository = inject(LocalEventFeedbackRepository);
   private readonly usersRepository = inject(LocalUsersRepository);
   private readonly usersService = inject(LocalUsersService);
@@ -169,113 +166,15 @@ export class LocalEventsService extends LocalRouteDelayService implements IEvent
         state
       ])
     );
-    const resourceMetricsByKey = this.subEventResourceMetricsByKey(resourceStates, normalizedUserId);
     return {
       mode,
       slots: LocalActivityEventsMapper.withSubEventStates(
         baseSlots,
         resourceStatesByKey,
         stageRuntimeByKey,
-        normalizedUserId,
-        resourceMetricsByKey
+        normalizedUserId
       )
     };
-  }
-
-  private subEventResourceMetricsByKey(
-    resourceStates: readonly ActivitySubEventResourceStateDTO[],
-    viewerUserId: string
-  ): ReadonlyMap<string, SubEventResourceMetric> {
-    const resourceTypes = ['Car', 'Accommodation'] as const;
-    const assetIds = new Set<string>();
-    resourceStates.forEach(state => {
-      resourceTypes.forEach(type => {
-        this.assignedResourceAssetIds(state, type).forEach(assetId => assetIds.add(assetId));
-      });
-    });
-    if (assetIds.size === 0) {
-      return new Map();
-    }
-    const assetsById = new Map(
-      this.assetsRepository.peekAssetsByIds([...assetIds], viewerUserId).map(asset => [asset.id, asset] as const)
-    );
-    const metricsByKey = new Map<string, SubEventResourceMetric>();
-    resourceStates.forEach(state => {
-      resourceTypes.forEach(type => {
-        const assignedIds = this.assignedResourceAssetIds(state, type);
-        if (assignedIds.length === 0) {
-          return;
-        }
-        const metric = assignedIds.reduce((next, assetId) => {
-          const asset = assetsById.get(assetId);
-          if (!asset) {
-            return next;
-          }
-          const assetMetric = this.assetSubEventRequestMetric(
-            asset,
-            state.subEventId,
-            state.assetSettingsByType[type]?.[assetId]?.addedByUserId
-          );
-          return {
-            accepted: next.accepted + assetMetric.accepted,
-            pending: next.pending + assetMetric.pending
-          };
-        }, { accepted: 0, pending: 0 });
-        const key = LocalActivityEventsMapper.subEventResourceMetricKey(state.ownerId, state.subEventId, type);
-        if (key) {
-          metricsByKey.set(key, metric);
-        }
-      });
-    });
-    return metricsByKey;
-  }
-
-  private assignedResourceAssetIds(
-    state: ActivitySubEventResourceStateDTO,
-    type: 'Car' | 'Accommodation'
-  ): string[] {
-    const settingsById = state.assetSettingsByType[type] ?? {};
-    const assignedIds = state.assetAssignmentIds[type] ?? [];
-    const sourceIds = assignedIds.length > 0 ? assignedIds : Object.keys(settingsById);
-    return [...new Set(sourceIds.map(assetId => `${assetId ?? ''}`.trim()).filter(Boolean))];
-  }
-
-  private assetSubEventRequestMetric(
-    asset: { ownerUserId?: string | null; requests: readonly { userId?: string | null; status: string; requestKind?: string | null; id: string; booking?: { subEventId?: string | null } | null }[] },
-    subEventIdValue: string,
-    managerUserIdValue: string | null | undefined
-  ): SubEventResourceMetric {
-    const subEventId = `${subEventIdValue ?? ''}`.trim();
-    const managerUserId = `${managerUserIdValue ?? ''}`.trim();
-    if (!subEventId) {
-      return { accepted: 0, pending: 0 };
-    }
-    let accepted = 0;
-    let pending = 0;
-    let hasManagerRequest = false;
-    asset.requests.forEach(request => {
-      const manualAssignment = request.requestKind === 'manual' && request.id.startsWith(`manual:${subEventId}:`);
-      if (!manualAssignment && `${request.booking?.subEventId ?? ''}`.trim() !== subEventId) {
-        return;
-      }
-      const requestUserId = `${request.userId ?? ''}`.trim();
-      if (managerUserId && requestUserId === managerUserId) {
-        hasManagerRequest = true;
-      }
-      if (request.status === 'accepted') {
-        accepted += 1;
-      } else if (request.status === 'pending') {
-        pending += 1;
-      }
-    });
-    if (managerUserId && !hasManagerRequest) {
-      if (`${asset.ownerUserId ?? ''}`.trim() === managerUserId) {
-        accepted += 1;
-      } else {
-        pending += 1;
-      }
-    }
-    return { accepted, pending };
   }
 
   async queryExploreItems(userId: string): Promise<ActivityEventRecord[]> {

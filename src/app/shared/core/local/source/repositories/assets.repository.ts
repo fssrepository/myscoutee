@@ -163,19 +163,6 @@ export class LocalAssetsRepository {
       .find(card => card.type === type && card.id === normalizedAssetId) ?? null;
   }
 
-  peekAssetsByIds(assetIds: readonly string[], viewerUserId = ''): AppDTOs.AssetDTO[] {
-    const normalizedIds = [...new Set(assetIds.map(assetId => `${assetId ?? ''}`.trim()).filter(Boolean))];
-    if (normalizedIds.length === 0) {
-      return [];
-    }
-    const table = this.normalizeCollection(this.memoryDb.read()[ASSETS_TABLE_NAME]);
-    return normalizedIds
-      .map(assetId => table.byId[assetId])
-      .filter((record): record is AssetRecord => Boolean(record))
-      .filter(record => !this.isSuppressedAssetStatus(record.status))
-      .map(record => this.toAssetDto(record, viewerUserId));
-  }
-
   async saveOwnedAsset(userId: string, asset: AppDTOs.AssetDetailDTO): Promise<AppDTOs.AssetDTO> {
     const normalizedUserId = userId.trim();
     const normalizedDetail = LocalAssetsMapper.normalizeDetail(asset);
