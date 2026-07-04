@@ -675,7 +675,7 @@ export class SeedChatsBuilder {
       'Collected final confirmations.'
     ];
     const olderMessages: ChatMessageRecord[] = [];
-    const olderCount = 36;
+    const olderCount = 9;
     const olderBaseStart = new Date(anchor.getTime() - ((olderCount + 12) * 40 * 60 * 1000));
     for (let index = olderCount - 1; index >= 0; index -= 1) {
       const senderCycle = index % 3;
