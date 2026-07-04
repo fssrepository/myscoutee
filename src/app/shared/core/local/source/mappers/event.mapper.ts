@@ -29,6 +29,11 @@ export interface SubEventStateLookups {
   stageRuntimeLookups: ActivitySubEventStageRuntimeStateRefDTO[];
 }
 
+export interface SubEventResourceMetric {
+  accepted: number;
+  pending: number;
+}
+
 interface SubEventsSlotSource {
   id: string;
   parentEventId: string;
@@ -196,20 +201,39 @@ export class LocalActivityEventsMapper {
     return ownerId && subEventId ? `${ownerId}:${subEventId}` : '';
   }
 
+  static subEventResourceMetricKey(
+    ownerIdValue: string | null | undefined,
+    subEventIdValue: string | null | undefined,
+    typeValue: string | null | undefined
+  ): string {
+    const ownerId = `${ownerIdValue ?? ''}`.trim();
+    const subEventId = `${subEventIdValue ?? ''}`.trim();
+    const type = `${typeValue ?? ''}`.trim();
+    return ownerId && subEventId && type ? `${ownerId}:${subEventId}:${type}` : '';
+  }
+
   static withSubEventStates(
     slots: readonly SubEventsSlotDTO[],
     resourcesByKey: ReadonlyMap<string, ActivitySubEventResourceStateDTO>,
     stageRuntimeByKey: ReadonlyMap<string, ActivitySubEventStageRuntimeStateDTO>,
-    assetOwnerUserId: string
+    assetOwnerUserId: string,
+    resourceMetricsByKey: ReadonlyMap<string, SubEventResourceMetric> = new Map()
   ): SubEventsSlotDTO[] {
-    return slots.map(slot => this.withSubEventStatesForSlot(slot, resourcesByKey, stageRuntimeByKey, assetOwnerUserId));
+    return slots.map(slot => this.withSubEventStatesForSlot(
+      slot,
+      resourcesByKey,
+      stageRuntimeByKey,
+      assetOwnerUserId,
+      resourceMetricsByKey
+    ));
   }
 
   private static withSubEventStatesForSlot(
     slot: SubEventsSlotDTO,
     resourcesByKey: ReadonlyMap<string, ActivitySubEventResourceStateDTO>,
     stageRuntimeByKey: ReadonlyMap<string, ActivitySubEventStageRuntimeStateDTO>,
-    assetOwnerUserId: string
+    assetOwnerUserId: string,
+    resourceMetricsByKey: ReadonlyMap<string, SubEventResourceMetric>
   ): SubEventsSlotDTO {
     const ownerId = this.subEventResourceOwnerIdFromSlot(slot);
     return {
@@ -225,7 +249,7 @@ export class LocalActivityEventsMapper {
           ownerId,
           subEventId
         })) ?? null;
-        return this.withSubEventStageRuntime(this.withSubEventResource(item, resource), stageRuntime);
+        return this.withSubEventStageRuntime(this.withSubEventResource(item, resource, resourceMetricsByKey), stageRuntime);
       })
     };
   }
@@ -701,26 +725,27 @@ export class LocalActivityEventsMapper {
 
   private static withSubEventResource(
     item: EventContracts.SubEventDTO,
-    resource: ActivitySubEventResourceStateDTO | null
+    resource: ActivitySubEventResourceStateDTO | null,
+    resourceMetricsByKey: ReadonlyMap<string, SubEventResourceMetric>
   ): EventContracts.SubEventDTO {
     const car = this.resourceMetric(resource, 'Car', {
       accepted: item.carsAccepted,
       pending: item.carsPending,
       capacityMin: item.carsCapacityMin,
       capacityMax: item.carsCapacityMax
-    });
+    }, resourceMetricsByKey);
     const accommodation = this.resourceMetric(resource, 'Accommodation', {
       accepted: item.accommodationAccepted,
       pending: item.accommodationPending,
       capacityMin: item.accommodationCapacityMin,
       capacityMax: item.accommodationCapacityMax
-    });
+    }, resourceMetricsByKey);
     const supplies = this.resourceMetric(resource, 'Supplies', {
       accepted: item.suppliesAccepted,
       pending: item.suppliesPending,
       capacityMin: item.suppliesCapacityMin,
       capacityMax: item.suppliesCapacityMax
-    });
+    }, resourceMetricsByKey);
     return {
       ...item,
       carsAccepted: car.accepted,
@@ -764,7 +789,8 @@ export class LocalActivityEventsMapper {
       pending?: number | null;
       capacityMin?: number | null;
       capacityMax?: number | null;
-    }
+    },
+    resourceMetricsByKey: ReadonlyMap<string, SubEventResourceMetric>
   ): { accepted: number; pending: number; capacityMin: number; capacityMax: number } {
     if (!resource) {
       return {
@@ -788,10 +814,11 @@ export class LocalActivityEventsMapper {
           sum + (resource.supplyContributionEntriesByAssetId[assetId] ?? [])
             .reduce((entrySum, entry) => entrySum + this.nonNegativeInteger(entry.quantity), 0)
         ), 0)
-      : assetIds.length;
+      : 0;
+    const metric = resourceMetricsByKey.get(this.subEventResourceMetricKey(resource.ownerId, resource.subEventId, type));
     return {
-      accepted,
-      pending: 0,
+      accepted: metric ? this.nonNegativeInteger(metric.accepted) : type === 'Supplies' ? accepted : 0,
+      pending: metric ? this.nonNegativeInteger(metric.pending) : 0,
       capacityMin,
       capacityMax
     };
