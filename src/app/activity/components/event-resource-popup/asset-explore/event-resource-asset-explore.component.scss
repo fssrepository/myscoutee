@@ -85,138 +85,18 @@ app-event-resource-asset-explore {
   display: none;
 }
 
+.asset-explore-shell .asset-explore-category-menu {
+  flex: 1 1 0;
+  min-width: 0;
+}
+
 .asset-explore-shell .asset-explore-date-range-field {
-  width: 232px;
-  min-width: 232px;
+  width: 248px;
+  min-width: 248px;
+  max-width: 248px;
   margin-left: auto;
-  flex: 0 0 auto;
+  flex: 0 0 248px;
   overflow: visible;
-}
-
-.asset-explore-shell .asset-explore-date-range-pill {
-  max-width: none;
-  overflow: visible;
-  --mat-form-field-state-layer-color: transparent;
-  --mat-form-field-hover-state-layer-opacity: 0;
-  --mat-form-field-focus-state-layer-opacity: 0;
-}
-
-.asset-explore-shell .asset-explore-date-range-pill .mat-mdc-text-field-wrapper {
-  min-height: 34px;
-  height: 34px;
-  border-radius: 999px;
-  background: #f7fbff;
-  border-color: rgba(42, 83, 141, 0.26);
-  overflow: visible;
-  padding: 0 !important;
-}
-
-.asset-explore-shell .asset-explore-date-range-pill .mat-date-range-input-container {
-  grid-template-columns: minmax(68px, 1fr) auto minmax(68px, 1fr);
-  column-gap: 0.08rem;
-  min-height: 34px;
-  height: 34px;
-  align-items: center;
-  overflow: visible;
-}
-
-.asset-explore-shell .asset-explore-date-range-pill .mat-date-range-input-separator {
-  margin: 0;
-  color: #5f7899;
-  min-height: 34px;
-  height: 34px;
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  line-height: 34px;
-}
-
-.asset-explore-shell .asset-explore-date-range-pill .mat-date-range-input-inner,
-.asset-explore-shell .asset-explore-date-range-pill input {
-  font-size: 0.78rem;
-  font-weight: 700;
-  color: #2c4c74;
-  height: 34px;
-  line-height: 34px;
-  text-align: center;
-  align-self: center;
-}
-
-.asset-explore-shell .asset-explore-date-range-pill .mat-mdc-form-field-subscript-wrapper,
-.asset-explore-shell .asset-explore-date-range-pill .mdc-line-ripple,
-.asset-explore-shell .asset-explore-date-range-pill .mat-mdc-form-field-line-ripple,
-.asset-explore-shell .asset-explore-date-range-pill .mat-mdc-form-field-bottom-align {
-  display: none !important;
-}
-
-.asset-explore-shell .asset-explore-date-range-pill .mat-mdc-form-field-flex,
-.asset-explore-shell .asset-explore-date-range-pill .mat-mdc-form-field-infix,
-.asset-explore-shell .asset-explore-date-range-pill .mat-date-range-input-wrapper,
-.asset-explore-shell .asset-explore-date-range-pill .mat-date-range-input-end-wrapper {
-  min-width: 0;
-  min-height: 34px;
-  height: 34px;
-  overflow: visible;
-  border-bottom: 0 !important;
-  box-shadow: none !important;
-}
-
-.asset-explore-shell .asset-explore-date-range-pill .mat-mdc-form-field-flex,
-.asset-explore-shell .asset-explore-date-range-pill .mat-date-range-input-wrapper,
-.asset-explore-shell .asset-explore-date-range-pill .mat-date-range-input-end-wrapper,
-.asset-explore-shell .asset-explore-date-range-pill .mat-date-range-input-mirror {
-  display: flex;
-  align-items: center;
-}
-
-.asset-explore-shell .asset-explore-date-range-pill .mat-mdc-form-field-infix {
-  padding-top: 0 !important;
-  padding-bottom: 0 !important;
-  width: auto !important;
-  flex: 1 1 auto;
-}
-
-.asset-explore-shell .asset-explore-date-range-pill .mat-mdc-form-field-focus-overlay {
-  background: transparent !important;
-  opacity: 0 !important;
-}
-
-.asset-explore-shell .asset-explore-date-range-pill .mat-mdc-form-field-icon-suffix {
-  align-self: center;
-  flex: 0 0 auto;
-  min-width: 0;
-  display: inline-flex;
-  align-items: center;
-  padding-right: 0.14rem;
-}
-
-.asset-explore-shell .asset-explore-date-range-pill .mat-datepicker-toggle {
-  margin: 0 !important;
-  align-self: center !important;
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-}
-
-.asset-explore-shell .asset-explore-date-range-pill .mat-datepicker-toggle .mat-mdc-icon-button {
-  width: 28px;
-  height: 28px;
-  min-width: 28px;
-  min-height: 28px;
-  padding: 0;
-  border-radius: 999px;
-  --mdc-icon-button-state-layer-size: 28px;
-  color: #365677;
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  overflow: hidden;
-  transition: background-color 0.16s ease, color 0.16s ease, box-shadow 0.16s ease;
-}
-
-.asset-explore-shell .asset-explore-date-range-pill .mat-datepicker-toggle .mat-mdc-icon-button:hover {
-  background: rgba(61, 104, 167, 0.1);
-  color: #24486e;
 }
 
 .asset-explore-shell .asset-explore-panel {
@@ -441,39 +321,17 @@ app-event-resource-asset-explore {
 }
 
 @media (max-width: 760px) {
-  .asset-explore-shell .asset-explore-category-field {
-    width: fit-content !important;
-    min-width: 0 !important;
-    max-width: 154px;
+  .asset-explore-shell .asset-explore-category-menu {
+    flex: 1 1 0;
+    min-width: 0;
   }
 
   .asset-explore-shell .asset-explore-date-range-field,
   .asset-explore-shell .assets-badge-form-field {
     width: min(286px, calc(100vw - 8rem));
     min-width: min(286px, calc(100vw - 8rem));
+    flex-basis: min(286px, calc(100vw - 8rem));
     max-width: none;
-  }
-
-  .asset-explore-shell .asset-explore-date-range-pill .mat-date-range-input-container {
-    grid-template-columns: minmax(72px, 1fr) auto minmax(72px, 1fr);
-    column-gap: 0.08rem;
-  }
-
-  .asset-explore-shell .asset-explore-date-range-pill .mat-date-range-input-inner,
-  .asset-explore-shell .asset-explore-date-range-pill input {
-    font-size: 0.74rem;
-  }
-
-  .asset-explore-shell .asset-explore-date-range-pill .mat-mdc-form-field-icon-suffix {
-    padding-right: 0.06rem;
-  }
-
-  .asset-explore-shell .asset-explore-date-range-pill .mat-datepicker-toggle .mat-mdc-icon-button {
-    width: 26px;
-    height: 26px;
-    min-width: 26px;
-    min-height: 26px;
-    --mdc-icon-button-state-layer-size: 26px;
   }
 
   .asset-explore-shell .asset-explore-smart-list,

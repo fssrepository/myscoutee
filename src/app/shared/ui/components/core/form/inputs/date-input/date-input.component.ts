@@ -2,7 +2,7 @@ import { CommonModule } from '@angular/common';
 import { ChangeDetectionStrategy, ChangeDetectorRef, Component, forwardRef, Input } from '@angular/core';
 import { ControlValueAccessor, FormsModule, NG_VALUE_ACCESSOR } from '@angular/forms';
 import { MatNativeDateModule } from '@angular/material/core';
-import { MatDatepicker, MatDatepickerModule } from '@angular/material/datepicker';
+import { MatDatepicker, MatDatepickerModule, MatDateRangePicker } from '@angular/material/datepicker';
 import { MatFormFieldModule } from '@angular/material/form-field';
 import { MatIconModule } from '@angular/material/icon';
 import { MatInputModule } from '@angular/material/input';
@@ -13,6 +13,7 @@ import type { DateRangeDto } from '../../../../../../core/contracts/date.interfa
 
 export type DateInputMode = 'single' | 'range' | 'time';
 export type DateInputPrecision = 'date' | 'minute';
+export type DateInputRangeLayout = 'split' | 'compact';
 export type DateInputValueFormat = 'iso-date' | 'iso-date-time';
 export type DateInputRangeValue = DateRangeDto;
 export type DateInputMetaKind = 'horoscope';
@@ -38,7 +39,15 @@ export type DateInputMetaPalette =
   | 'teal'
   | 'violet'
   | 'virgo';
-type DateInputPickerKey = 'single-date' | 'single-time' | 'start-date' | 'start-time' | 'end-date' | 'end-time' | 'time';
+type DateInputPickerKey =
+  | 'single-date'
+  | 'single-time'
+  | 'start-date'
+  | 'start-time'
+  | 'end-date'
+  | 'end-time'
+  | 'range-date'
+  | 'time';
 
 export type DateInputValue = string | DateInputRangeValue | null;
 export type DateInputBoundary = string | Date | null | undefined;
@@ -57,6 +66,7 @@ export interface DateInputRangeBoundsModel {
 }
 
 export interface DateInputRangeModel {
+  layout?: DateInputRangeLayout;
   start?: DateInputFieldModel;
   end?: DateInputFieldModel;
   bounds?: DateInputRangeBoundsModel | null;
@@ -168,6 +178,10 @@ export class DateInputComponent implements ControlValueAccessor {
     return this.mode === 'range';
   }
 
+  protected isCompactRange(): boolean {
+    return this.isRange() && this.rangeLayout === 'compact' && !this.hasTime();
+  }
+
   protected isTimeOnly(): boolean {
     return this.mode === 'time';
   }
@@ -242,6 +256,10 @@ export class DateInputComponent implements ControlValueAccessor {
 
   private get range(): DateInputRangeModel {
     return this.model?.range ?? {};
+  }
+
+  private get rangeLayout(): DateInputRangeLayout {
+    return this.range.layout ?? 'split';
   }
 
   private get startField(): DateInputFieldModel {
@@ -371,6 +389,19 @@ export class DateInputComponent implements ControlValueAccessor {
   }
 
   protected toggleDatePicker(picker: MatDatepicker<Date>, key: DateInputPickerKey, event: Event): void {
+    event.preventDefault();
+    event.stopPropagation();
+    if (this.inputDisabled()) {
+      return;
+    }
+    if (picker.opened || this.isPickerOpen(key)) {
+      picker.close();
+      return;
+    }
+    picker.open();
+  }
+
+  protected toggleDateRangePicker(picker: MatDateRangePicker<Date>, key: DateInputPickerKey, event: Event): void {
     event.preventDefault();
     event.stopPropagation();
     if (this.inputDisabled()) {

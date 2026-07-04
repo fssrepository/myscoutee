@@ -17,6 +17,16 @@
   gap: 0.72rem;
 }
 
+.date-input--range-compact {
+  grid-template-columns: minmax(0, 1fr);
+  gap: 0;
+}
+
+.date-input--range-compact .date-input__field,
+.date-input--range-compact .date-input__row {
+  gap: 0;
+}
+
 .date-input--single.date-input--with-meta {
   grid-template-columns: minmax(0, 1fr) minmax(120px, 1fr);
   align-items: end;
@@ -132,6 +142,140 @@
   padding: 0;
 }
 
+:host ::ng-deep .date-input__material--range .mat-date-range-input-container {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr);
+  min-height: 36px;
+  height: 36px;
+  align-items: center;
+  color: #183358;
+}
+
+:host ::ng-deep .date-input__material--range .mat-date-range-input-wrapper,
+:host ::ng-deep .date-input__material--range .mat-date-range-input-start-wrapper,
+:host ::ng-deep .date-input__material--range .mat-date-range-input-end-wrapper {
+  display: flex;
+  align-items: center;
+  min-width: 0;
+  min-height: 36px;
+  height: 36px;
+  overflow: hidden;
+}
+
+:host ::ng-deep .date-input__material--range .mat-date-range-input-inner {
+  color: #183358;
+  font-size: 0.92rem;
+  box-sizing: border-box;
+  width: 100%;
+  height: 100%;
+  margin: 0;
+  padding: 0;
+  line-height: normal;
+  min-width: 0;
+}
+
+:host ::ng-deep .date-input__material--range .mat-date-range-input-inner::placeholder {
+  color: rgba(45, 68, 97, 0.52);
+}
+
+:host ::ng-deep .date-input__material--range .mat-date-range-input-separator {
+  margin: 0 0.22rem;
+  color: rgba(45, 68, 97, 0.62);
+}
+
+:host ::ng-deep .date-input--range-compact .date-input__material .mat-mdc-text-field-wrapper {
+  min-height: 34px;
+  height: 34px;
+  padding: 0 0.18rem 0 0.58rem;
+  border-color: rgba(42, 83, 141, 0.26);
+  border-radius: 999px;
+  background: #f7fbff !important;
+  overflow: visible;
+}
+
+:host ::ng-deep .date-input--range-compact .date-input__material.mat-focused .mat-mdc-text-field-wrapper {
+  border-color: rgba(56, 114, 190, 0.74);
+  box-shadow: 0 0 0 3px rgba(56, 114, 190, 0.1);
+}
+
+:host ::ng-deep .date-input--range-compact .date-input__material .mat-mdc-form-field-flex,
+:host ::ng-deep .date-input--range-compact .date-input__material .mat-mdc-form-field-infix,
+:host ::ng-deep .date-input--range-compact .date-input__material .mat-date-range-input-wrapper,
+:host ::ng-deep .date-input--range-compact .date-input__material .mat-date-range-input-start-wrapper,
+:host ::ng-deep .date-input--range-compact .date-input__material .mat-date-range-input-end-wrapper {
+  min-width: 0;
+  min-height: 34px;
+  height: 34px;
+  overflow: hidden;
+  border-bottom: 0 !important;
+  box-shadow: none !important;
+}
+
+:host ::ng-deep .date-input--range-compact .date-input__material .mat-mdc-form-field-flex,
+:host ::ng-deep .date-input--range-compact .date-input__material .mat-date-range-input-wrapper,
+:host ::ng-deep .date-input--range-compact .date-input__material .mat-date-range-input-start-wrapper,
+:host ::ng-deep .date-input--range-compact .date-input__material .mat-date-range-input-end-wrapper,
+:host ::ng-deep .date-input--range-compact .date-input__material .mat-date-range-input-mirror {
+  display: flex;
+  align-items: center;
+}
+
+:host ::ng-deep .date-input--range-compact .date-input__material .mat-mdc-form-field-infix {
+  width: auto !important;
+  flex: 1 1 auto;
+  padding-top: 0 !important;
+  padding-bottom: 0 !important;
+}
+
+:host ::ng-deep .date-input--range-compact .date-input__material .mat-mdc-form-field-focus-overlay {
+  background: transparent !important;
+  opacity: 0 !important;
+}
+
+:host ::ng-deep .date-input--range-compact .date-input__material .mat-mdc-form-field-icon-suffix {
+  align-self: stretch;
+  flex: 0 0 auto;
+  min-width: 0;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding-right: 0.14rem;
+}
+
+:host ::ng-deep .date-input--range-compact .date-input__material--range .mat-date-range-input-container {
+  grid-template-columns: minmax(76px, 1fr) 14px minmax(76px, 1fr);
+  column-gap: 0.12rem;
+  width: 100%;
+  min-height: 34px;
+  height: 34px;
+  overflow: hidden;
+}
+
+:host ::ng-deep .date-input--range-compact .date-input__material--range .mat-date-range-input-separator {
+  min-height: 34px;
+  height: 34px;
+  margin: 0;
+  color: #5f7899;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  line-height: 34px;
+}
+
+:host ::ng-deep .date-input--range-compact .date-input__material--range .mat-date-range-input-inner,
+:host ::ng-deep .date-input--range-compact .date-input__material--range input {
+  min-height: 34px;
+  font-size: 0.78rem;
+  font-weight: 700;
+  color: #2c4c74;
+  text-align: center;
+  align-self: center;
+}
+
+:host ::ng-deep .date-input--range-compact .date-input__material--range .mat-date-range-input-inner::placeholder {
+  color: rgba(44, 76, 116, 0.48);
+}
+
 .date-input__toggle {
   display: inline-flex;
   align-items: center;
@@ -171,6 +315,16 @@
 
 .date-input__toggle--open:hover {
   background: rgba(49, 90, 134, 0.18);
+}
+
+.date-input--range-compact .date-input__toggle {
+  color: #365677;
+  align-self: center;
+}
+
+.date-input--range-compact .date-input__toggle:hover {
+  background: rgba(61, 104, 167, 0.1);
+  color: #24486e;
 }
 
 .date-input__toggle:disabled {
@@ -412,6 +566,20 @@
 
   .date-input--with-time .date-input__row {
     grid-template-columns: minmax(0, 1fr) minmax(108px, 122px);
+  }
+
+  :host ::ng-deep .date-input--range-compact .date-input__material--range .mat-date-range-input-container {
+    grid-template-columns: minmax(72px, 1fr) 14px minmax(72px, 1fr);
+    column-gap: 0.08rem;
+  }
+
+  :host ::ng-deep .date-input--range-compact .date-input__material--range .mat-date-range-input-inner,
+  :host ::ng-deep .date-input--range-compact .date-input__material--range input {
+    font-size: 0.74rem;
+  }
+
+  :host ::ng-deep .date-input--range-compact .date-input__material .mat-mdc-form-field-icon-suffix {
+    padding-right: 0.06rem;
   }
 }
 

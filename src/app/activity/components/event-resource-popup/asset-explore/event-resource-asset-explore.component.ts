@@ -16,20 +16,8 @@ import {
   FormsModule
 } from '@angular/forms';
 import {
-  MatNativeDateModule
-} from '@angular/material/core';
-import {
-  MatDatepickerModule
-} from '@angular/material/datepicker';
-import {
-  MatFormFieldModule
-} from '@angular/material/form-field';
-import {
   MatIconModule
 } from '@angular/material/icon';
-import {
-  MatInputModule
-} from '@angular/material/input';
 import {
   from
 } from 'rxjs';
@@ -62,6 +50,12 @@ import {
 import {
   SmartListComponent
 } from '../../../../shared/ui/components/core/smart-list/smart-list.component';
+import {
+  DateInputComponent,
+  type DateInputModel,
+  type DateInputRangeValue,
+  type DateInputValue
+} from '../../../../shared/ui/components/core/form/inputs/date-input/date-input.component';
 import type {
   ListQuery,
   PageResult,
@@ -178,10 +172,10 @@ export interface AssetExplorePopupViewState {
   type: AppConstants.AssetType;
   category: AppConstants.AssetCategory;
   categoryOptions: readonly AppConstants.AssetCategory[];
+  dateRange: DateInputRangeValue;
+  dateRangeModel: DateInputModel;
   startDate: Date | null;
   endDate: Date | null;
-  windowStartDate: Date | null;
-  windowEndDate: Date | null;
   startTime: string;
   endTime: string;
   loading: boolean;
@@ -203,13 +197,10 @@ interface AssetExploreBorrowDraftViewState {
   imports: [
     CommonModule,
     FormsModule,
-    MatDatepickerModule,
-    MatFormFieldModule,
     MatIconModule,
-    MatInputModule,
-    MatNativeDateModule,
     AppMenuComponent,
     AppMenuOutletComponent,
+    DateInputComponent,
     InfoCardComponent,
     SmartListComponent
   ],
@@ -306,6 +297,7 @@ export class EventResourceAssetExploreComponent implements DoCheck {
     }
     const stageLabel = this.subEventStageLabel(context.subEvent);
     const windowRange = this.defaultRange(context.subEvent);
+    const dateRangeModel = this.assetExploreDateRangeModel(windowRange);
     return {
       title: stageLabel ? `Explore - ${stageLabel}` : 'Explore',
       subtitle: this.popupSubtitle(),
@@ -316,10 +308,14 @@ export class EventResourceAssetExploreComponent implements DoCheck {
         ...AssetDefaultsBuilder.assetCategoryOptions('Accommodation'),
         ...AssetDefaultsBuilder.assetCategoryOptions('Supplies')
       ],
+      dateRange: {
+        startAt: popup.startAtIso,
+        endAt: popup.endAtIso,
+        precision: 'date'
+      },
+      dateRangeModel,
       startDate: AppUtils.isoLocalDateTimeToDate(popup.startAtIso),
       endDate: AppUtils.isoLocalDateTimeToDate(popup.endAtIso),
-      windowStartDate: AppUtils.isoLocalDateTimeToDate(windowRange.startAtIso),
-      windowEndDate: AppUtils.isoLocalDateTimeToDate(windowRange.endAtIso),
       startTime: AppUtils.isoLocalTimePart(popup.startAtIso),
       endTime: AppUtils.isoLocalTimePart(popup.endAtIso),
       loading: popup.loading,
@@ -564,25 +560,6 @@ export class EventResourceAssetExploreComponent implements DoCheck {
     }
   }
 
-  protected readonly dateFilter = (date: Date | null): boolean => {
-    const explore = this.popupViewState();
-    if (!date || !explore?.windowStartDate || !explore.windowEndDate) {
-      return false;
-    }
-    const candidate = new Date(date.getFullYear(), date.getMonth(), date.getDate()).getTime();
-    const min = new Date(
-      explore.windowStartDate.getFullYear(),
-      explore.windowStartDate.getMonth(),
-      explore.windowStartDate.getDate()
-    ).getTime();
-    const max = new Date(
-      explore.windowEndDate.getFullYear(),
-      explore.windowEndDate.getMonth(),
-      explore.windowEndDate.getDate()
-    ).getTime();
-    return candidate >= min && candidate <= max;
-  };
-
   protected onSmartListStateChange(
     change: SmartListStateChange<ResourceAssetDTO, AssetExploreSmartListFilters>
   ): void {
@@ -711,8 +688,14 @@ export class EventResourceAssetExploreComponent implements DoCheck {
     return this.orderOptions.find(option => option.key === order)?.icon ?? 'inventory_2';
   }
 
-  protected onDateRangeChange(start: Date | null, end: Date | null): void {
-    this.setDateRange(start, end);
+  protected onDateInputRangeChange(value: DateInputValue): void {
+    if (!this.isDateInputRangeValue(value)) {
+      return;
+    }
+    this.setDateRange(
+      AppUtils.isoLocalDateTimeToDate(value.startAt),
+      AppUtils.isoLocalDateTimeToDate(value.endAt)
+    );
   }
 
   protected openBorrowFromBadge(card: ResourceAssetDTO): void {
@@ -826,6 +809,38 @@ export class EventResourceAssetExploreComponent implements DoCheck {
       endAtIso: AppUtils.applyDatePartToIsoLocal(popup.endAtIso, end)
     }));
     this.scheduleCardsLoad();
+  }
+
+  private assetExploreDateRangeModel(bounds: { startAtIso: string; endAtIso: string }): DateInputModel {
+    return {
+      mode: 'range',
+      precision: 'date',
+      valueFormat: 'iso-date-time',
+      range: {
+        layout: 'compact',
+        bounds: {
+          start: bounds.startAtIso,
+          end: bounds.endAtIso
+        },
+        start: {
+          placeholder: 'Start date',
+          min: bounds.startAtIso,
+          max: bounds.endAtIso
+        },
+        end: {
+          placeholder: 'End date',
+          min: bounds.startAtIso,
+          max: bounds.endAtIso
+        }
+      }
+    };
+  }
+
+  private isDateInputRangeValue(value: DateInputValue): value is DateInputRangeValue {
+    return !!value
+      && typeof value === 'object'
+      && 'startAt' in value
+      && 'endAt' in value;
   }
 
   protected setBorrowDateRange(start: Date | null, end: Date | null): void {

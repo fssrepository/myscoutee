@@ -42,33 +42,12 @@
               (itemSelect)="onMenuSelect($event)"
             ></app-menu>
 
-            <mat-form-field appearance="fill" class="asset-explore-date-range-field experience-date-range-field asset-explore-date-range-pill" subscriptSizing="dynamic">
-              <mat-date-range-input
-                [rangePicker]="assetExploreRangePicker"
-                [comparisonStart]="explore.windowStartDate"
-                [comparisonEnd]="explore.windowEndDate"
-                [dateFilter]="dateFilter"
-              >
-                <input
-                  matStartDate
-                  [min]="explore.windowStartDate"
-                  [max]="explore.windowEndDate"
-                  [ngModel]="explore.startDate"
-                  (ngModelChange)="onDateRangeChange($event, explore.endDate)"
-                  placeholder="Start date"
-                />
-                <input
-                  matEndDate
-                  [min]="explore.windowStartDate"
-                  [max]="explore.windowEndDate"
-                  [ngModel]="explore.endDate"
-                  (ngModelChange)="onDateRangeChange(explore.startDate, $event)"
-                  placeholder="End date"
-                />
-              </mat-date-range-input>
-              <mat-datepicker-toggle matIconSuffix [for]="assetExploreRangePicker"></mat-datepicker-toggle>
-              <mat-date-range-picker #assetExploreRangePicker></mat-date-range-picker>
-            </mat-form-field>
+            <app-date-input
+              class="asset-explore-date-range-field"
+              [model]="explore.dateRangeModel"
+              [ngModel]="explore.dateRange"
+              (ngModelChange)="onDateInputRangeChange($event)"
+            ></app-date-input>
           </div>
 
           <section class="asset-explore-panel">
