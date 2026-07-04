@@ -16,58 +16,12 @@
       <section class="experience-form-panel subevent-form-panel subevent-group-form-panel asset-explore-borrow-panel">
         <div class="asset-explore-borrow-form">
           @if (!dialog.paymentStep) {
-            <label class="event-slot-field asset-explore-borrow-slot">
-              <span class="asset-explore-borrow-slot__label">Start</span>
-              <div class="event-datetime-row event-slot-datetime-row asset-explore-borrow-slot__row">
-                <mat-form-field appearance="outline" class="event-date-field event-date-field-start event-slot-date-field" subscriptSizing="dynamic">
-                  <input
-                    matInput
-                    [matDatepicker]="borrowStartPicker"
-                    [ngModel]="dialog.startDate"
-                    (ngModelChange)="changeDateRange($event, dialog.endDate)"
-                  />
-                  <mat-datepicker-toggle matSuffix [for]="borrowStartPicker"></mat-datepicker-toggle>
-                  <mat-datepicker #borrowStartPicker></mat-datepicker>
-                </mat-form-field>
-                <mat-form-field appearance="outline" class="event-time-field event-time-field-start event-slot-time-field" subscriptSizing="dynamic">
-                  <input
-                    matInput
-                    [matTimepicker]="borrowStartTimePicker"
-                    [matTimepickerOpenOnClick]="true"
-                    [ngModel]="dialog.startTime"
-                    (ngModelChange)="changeTime('start', $event)"
-                  />
-                  <mat-timepicker-toggle matSuffix [for]="borrowStartTimePicker"></mat-timepicker-toggle>
-                  <mat-timepicker #borrowStartTimePicker></mat-timepicker>
-                </mat-form-field>
-              </div>
-            </label>
-            <label class="event-slot-field asset-explore-borrow-slot">
-              <span class="asset-explore-borrow-slot__label">End</span>
-              <div class="event-datetime-row event-slot-datetime-row asset-explore-borrow-slot__row">
-                <mat-form-field appearance="outline" class="event-date-field event-date-field-end event-slot-date-field" subscriptSizing="dynamic">
-                  <input
-                    matInput
-                    [matDatepicker]="borrowEndPicker"
-                    [ngModel]="dialog.endDate"
-                    (ngModelChange)="changeDateRange(dialog.startDate, $event)"
-                  />
-                  <mat-datepicker-toggle matSuffix [for]="borrowEndPicker"></mat-datepicker-toggle>
-                  <mat-datepicker #borrowEndPicker></mat-datepicker>
-                </mat-form-field>
-                <mat-form-field appearance="outline" class="event-time-field event-time-field-end event-slot-time-field" subscriptSizing="dynamic">
-                  <input
-                    matInput
-                    [matTimepicker]="borrowEndTimePicker"
-                    [matTimepickerOpenOnClick]="true"
-                    [ngModel]="dialog.endTime"
-                    (ngModelChange)="changeTime('end', $event)"
-                  />
-                  <mat-timepicker-toggle matSuffix [for]="borrowEndTimePicker"></mat-timepicker-toggle>
-                  <mat-timepicker #borrowEndTimePicker></mat-timepicker>
-                </mat-form-field>
-              </div>
-            </label>
+            <app-date-input
+              class="asset-explore-borrow-date-range-input"
+              [model]="borrowDateRangeInputModel"
+              [ngModel]="dialog.dateRange"
+              (ngModelChange)="changeDateInputRange($event)"
+            ></app-date-input>
             <label class="asset-explore-borrow-quantity-field">
               <span>Quantity</span>
               <input

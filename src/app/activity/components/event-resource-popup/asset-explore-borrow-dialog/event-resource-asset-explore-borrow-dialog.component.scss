@@ -17,24 +17,20 @@
   gap: 0.95rem;
 }
 
-.event-resource-popup-shell .asset-explore-borrow-slot,
 .event-resource-popup-shell .asset-explore-borrow-quantity-field {
   display: grid;
   gap: 0.38rem;
 }
 
-.event-resource-popup-shell .asset-explore-borrow-slot__label,
+.event-resource-popup-shell .asset-explore-borrow-date-range-input {
+  display: block;
+  min-width: 0;
+}
+
 .event-resource-popup-shell .asset-explore-borrow-quantity-field > span {
   font-size: 0.8rem;
   font-weight: 800;
   color: rgba(29, 48, 75, 0.78);
-}
-
-.event-resource-popup-shell .asset-explore-borrow-slot__row {
-  display: grid;
-  grid-template-columns: minmax(0, 1fr) minmax(148px, 176px);
-  gap: 0.72rem;
-  align-items: center;
 }
 
 .event-resource-popup-shell .asset-explore-borrow-quantity-field input {

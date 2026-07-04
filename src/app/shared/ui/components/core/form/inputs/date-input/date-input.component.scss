@@ -136,6 +136,12 @@
   min-width: 0;
 }
 
+:host ::ng-deep .date-input__material .mat-mdc-input-element:focus,
+:host ::ng-deep .date-input__material .mat-mdc-input-element:focus-visible {
+  outline: none;
+  box-shadow: none;
+}
+
 :host ::ng-deep .date-input__material .mat-mdc-input-element::placeholder {
   color: rgba(45, 68, 97, 0.52);
 }

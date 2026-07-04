@@ -1,13 +1,14 @@
 import { CommonModule } from '@angular/common';
 import { ChangeDetectionStrategy, Component, Input, ViewEncapsulation, inject } from '@angular/core';
 import { FormsModule } from '@angular/forms';
-import { MatNativeDateModule } from '@angular/material/core';
-import { MatDatepickerModule } from '@angular/material/datepicker';
-import { MatFormFieldModule } from '@angular/material/form-field';
 import { MatIconModule } from '@angular/material/icon';
-import { MatInputModule } from '@angular/material/input';
-import { MatTimepickerModule } from '@angular/material/timepicker';
 
+import {
+  DateInputComponent,
+  type DateInputModel,
+  type DateInputRangeValue,
+  type DateInputValue
+} from '../../../../shared/ui/components/core/form/inputs/date-input/date-input.component';
 import { IndicatorComponent } from '../../../../shared/ui/components/core/indicator/indicator.component';
 import { AppUtils } from '../../../../shared/app-utils';
 import type * as ActivityContracts from '../../../../shared/core/contracts/activity.interface';
@@ -20,10 +21,7 @@ export interface AssetExploreBorrowDialogViewState {
   timeframe: string;
   quantity: number;
   availableQuantity: number;
-  startDate: Date | null;
-  endDate: Date | null;
-  startTime: string;
-  endTime: string;
+  dateRange: DateInputRangeValue;
   lineItems: ActivityContracts.EventCheckoutLineItem[];
   totalAmount: number;
   currency: string;
@@ -39,28 +37,14 @@ export interface AssetExploreBorrowDialogViewState {
   error: string | null;
 }
 
-export interface AssetExploreBorrowDateRangeChange {
-  start: Date | null;
-  end: Date | null;
-}
-
-export interface AssetExploreBorrowTimeChange {
-  edge: 'start' | 'end';
-  value: string;
-}
-
 @Component({
   selector: 'app-event-resource-asset-explore-borrow-dialog',
   standalone: true,
   imports: [
     CommonModule,
     FormsModule,
-    MatDatepickerModule,
-    MatFormFieldModule,
+    DateInputComponent,
     MatIconModule,
-    MatInputModule,
-    MatNativeDateModule,
-    MatTimepickerModule,
     IndicatorComponent
   ],
   templateUrl: './event-resource-asset-explore-borrow-dialog.component.html',
@@ -73,6 +57,15 @@ export class EventResourceAssetExploreBorrowDialogComponent {
   @Input() canSubmit = false;
 
   private readonly resourcePopupStore = inject(SubEventResourcePopupStore);
+
+  protected readonly borrowDateRangeInputModel: DateInputModel = {
+    mode: 'range',
+    precision: 'minute',
+    range: {
+      start: { label: 'Start' },
+      end: { label: 'End' }
+    }
+  };
 
   protected formatMoney(amount: number, currency = 'USD'): string {
     switch ((currency || '').trim().toUpperCase()) {
@@ -223,12 +216,18 @@ export class EventResourceAssetExploreBorrowDialogComponent {
     this.resourcePopupStore.requestBorrowConfirm(event);
   }
 
-  protected changeDateRange(start: Date | null, end: Date | null): void {
-    this.resourcePopupStore.requestBorrowDateRangeChange(start, end);
+  protected changeDateInputRange(value: DateInputValue): void {
+    if (!this.isDateInputRangeValue(value)) {
+      return;
+    }
+    this.changeDateRange(
+      AppUtils.isoLocalDateTimeToDate(value.startAt),
+      AppUtils.isoLocalDateTimeToDate(value.endAt)
+    );
   }
 
-  protected changeTime(edge: 'start' | 'end', value: string): void {
-    this.resourcePopupStore.requestBorrowTimeChange(edge, value);
+  protected changeDateRange(start: Date | null, end: Date | null): void {
+    this.resourcePopupStore.requestBorrowDateRangeChange(start, end);
   }
 
   protected changeQuantity(value: number | string): void {
@@ -237,6 +236,13 @@ export class EventResourceAssetExploreBorrowDialogComponent {
 
   protected blurQuantity(value: number | string): void {
     this.resourcePopupStore.requestBorrowQuantityBlur(value);
+  }
+
+  private isDateInputRangeValue(value: DateInputValue): value is DateInputRangeValue {
+    return !!value
+      && typeof value === 'object'
+      && 'startAt' in value
+      && 'endAt' in value;
   }
 
   protected togglePolicy(policyId: string): void {

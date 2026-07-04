@@ -350,10 +350,11 @@ export class EventResourceAssetExploreComponent implements DoCheck {
       timeframe,
       quantity: dialog.quantity,
       availableQuantity: dialog.availableQuantity,
-      startDate: AppUtils.isoLocalDateTimeToDate(dialog.startAtIso),
-      endDate: AppUtils.isoLocalDateTimeToDate(dialog.endAtIso),
-      startTime: AppUtils.isoLocalTimePart(dialog.startAtIso),
-      endTime: AppUtils.isoLocalTimePart(dialog.endAtIso),
+      dateRange: {
+        startAt: dialog.startAtIso,
+        endAt: dialog.endAtIso,
+        precision: 'minute'
+      },
       lineItems: [
         {
           id: `resource:${card.id}`,
@@ -872,8 +873,8 @@ export class EventResourceAssetExploreComponent implements DoCheck {
     if (!card) {
       return;
     }
-    const startAtIso = AppUtils.applyDatePartToIsoLocal(dialog.startAtIso, start);
-    const endAtIso = AppUtils.applyDatePartToIsoLocal(dialog.endAtIso, end);
+    const startAtIso = start ? AppUtils.toIsoDateTimeLocal(start) : dialog.startAtIso;
+    const endAtIso = end ? AppUtils.toIsoDateTimeLocal(end) : dialog.endAtIso;
     const availableQuantity = this.availableQuantityForWindow(card, startAtIso, endAtIso);
     const invalidated = this.invalidateBorrowCheckout(dialog);
     this.resourcePopupStore.assetExploreBorrowDialogRef.set({
