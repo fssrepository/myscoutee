@@ -4,3 +4,4 @@ export * from './event-slots-input';
 export * from './link-input';
 export * from './location-input';
 export * from './pricing-editor';
+export * from './route-input';

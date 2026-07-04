@@ -18,7 +18,6 @@ import type * as AppConstants from '../../../../shared/core/common/constants';
 import type * as ContractTypes from '../../../../shared/core/contracts';
 import {
   SubEventResourcePopupStore,
-  type ResourceAssetViewRequest,
   type ResourceAssetViewState
 } from '../../../../shared/ui/context/stores/sub-event-resource-popup.store';
 import {
@@ -29,7 +28,6 @@ import {
 } from '../../../../shared/ui/components/core/popup';
 
 export type EventResourceAssetViewModel = ResourceAssetViewState;
-export type EventResourceAssetViewRequest = ResourceAssetViewRequest;
 
 @Component({
   selector: 'app-event-resource-asset-view',
@@ -62,16 +60,6 @@ export class EventResourceAssetViewComponent implements OnChanges {
   protected requestMembers(view: EventResourceAssetViewModel, event: Event): void {
     event.stopPropagation();
     this.resourcePopupStore.requestResourceAssetViewMembers(view, event);
-  }
-
-  protected requestRouteView(view: EventResourceAssetViewModel, event: Event): void {
-    event.stopPropagation();
-    this.resourcePopupStore.requestResourceAssetViewRouteView(view, event);
-  }
-
-  protected requestRouteSetup(view: EventResourceAssetViewModel, event: Event): void {
-    event.stopPropagation();
-    this.resourcePopupStore.requestResourceAssetViewRouteSetup(view, event);
   }
 
   protected canRequestMembers(): boolean {

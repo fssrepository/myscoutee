@@ -90,7 +90,6 @@ export {
   type PendingAssignSaveState,
   type ResourceAssetDTO,
   type ResourcePopupContext,
-  type RouteEditorState,
   type SubEventResourcePopupHeader,
   type SubEventResourcePopupRequest,
   type SubEventResourcePopupType,

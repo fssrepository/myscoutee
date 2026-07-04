@@ -38,7 +38,9 @@ import {
   type PricingEditorConfig,
   PopupComponent,
   type PopupControl,
-  type PopupModel
+  type PopupModel,
+  type RouteInputConfig,
+  type RouteInputSaveValue
 } from '../../../shared/ui';
 
 import type * as AppConstants from '../../../shared/core/common/constants';
@@ -51,6 +53,7 @@ type AssetEditorMenuContext =
 type AssetEditorFlowValue = AssetFormState & {
   imageUrls: string[];
   routeLocation: string;
+  runtimeRoutes: string[];
 };
 
 @Component({
@@ -143,6 +146,8 @@ export class AssetEditorPopupComponent {
 
   protected assetEditorFlowModel(): FormFlowModel {
     const disabled = this.assetEditorReadOnly() || this.isLoading;
+    const runtimeRoute = this.assetStore.assetFormRuntimeRoute();
+    const assetDefinitionDisabled = disabled || runtimeRoute !== null;
     const cacheKey = [
       this.title,
       this.assetForm.type,
@@ -150,6 +155,8 @@ export class AssetEditorPopupComponent {
       this.assetFormVisibility,
       this.assetImageUploadOwnerId,
       this.assetImageUploadEntity(),
+      runtimeRoute ? `${runtimeRoute.editable}:${runtimeRoute.routeEnabled}:${runtimeRoute.routes.join('>')}` : 'no-runtime-route',
+      assetDefinitionDisabled ? 'definition-disabled' : 'definition-enabled',
       disabled ? 'disabled' : 'enabled'
     ].join('|');
     if (this.assetEditorFlowModelCacheKey === cacheKey && this.assetEditorFlowModelCache) {
@@ -259,6 +266,7 @@ export class AssetEditorPopupComponent {
           ...this.assetLocationFlowControls(disabled)
         ]
       },
+      ...this.assetRuntimeRouteFlowSteps(),
       {
         id: 'pricing',
         title: '',
@@ -269,7 +277,7 @@ export class AssetEditorPopupComponent {
             bind: 'pricing',
             kind: 'pricing',
             layout: 'wide',
-            disabled,
+            disabled: assetDefinitionDisabled,
             config: {
               model: this.assetPricingEditorConfig
             }
@@ -287,7 +295,7 @@ export class AssetEditorPopupComponent {
             kind: 'policies',
             layout: 'wide',
             enabledBind: 'policiesEnabled',
-            disabled,
+            disabled: assetDefinitionDisabled,
             config: {
               model: this.assetPoliciesInputConfig
             }
@@ -328,6 +336,52 @@ export class AssetEditorPopupComponent {
     }];
   }
 
+  private assetRuntimeRouteFlowSteps(): FormFlowModel['steps'] {
+    const runtimeRoute = this.assetStore.assetFormRuntimeRoute();
+    if (!runtimeRoute || this.assetForm.type !== 'Car') {
+      return [];
+    }
+    return [{
+      id: 'runtime-route',
+      title: '',
+      chrome: 'none',
+      controls: [
+        {
+          id: 'runtimeRoutes',
+          bind: 'runtimeRoutes',
+          kind: 'route',
+          layout: 'wide',
+          disabled: this.assetRuntimeRouteControlDisabled(),
+          config: {
+            model: this.assetRuntimeRouteInputConfig()
+          }
+        }
+      ]
+    }];
+  }
+
+  private assetRuntimeRouteInputConfig(): RouteInputConfig {
+    const runtimeRoute = this.assetStore.assetFormRuntimeRoute();
+    return {
+      title: runtimeRoute?.title ?? 'Route',
+      subtitle: runtimeRoute?.subtitle ?? 'Runtime route for this event asset.',
+      openLabel: runtimeRoute?.openLabel ?? 'Open Route Setup',
+      emptyLabel: runtimeRoute?.emptyLabel ?? 'No route is set for this event asset.',
+      readOnlyEmptyLabel: runtimeRoute?.readOnlyEmptyLabel ?? 'No route is set for this event asset.',
+      popupTitle: runtimeRoute?.popupTitle ?? 'Route Setup',
+      popupSubtitle: runtimeRoute?.popupSubtitle ?? 'Set the runtime route for this event asset.',
+      enabled: () => this.assetStore.assetFormRuntimeRoute()?.routeEnabled === true,
+      editable: () => runtimeRoute?.editable === true,
+      parentZIndex: () => this.assetEditorPopupZIndex(),
+      onSave: state => this.saveAssetRuntimeRoute(state)
+    };
+  }
+
+  private assetRuntimeRouteControlDisabled(): boolean {
+    const runtimeRoute = this.assetStore.assetFormRuntimeRoute();
+    return this.isLoading || this.isSavePending || runtimeRoute?.editable !== true;
+  }
+
   protected assetEditorFlowValue(): AssetEditorFlowValue {
     const cacheKey = `${this.assetStore.uiRevision()}:${this.assetStore.assetFormLoadGeneration()}`;
     if (this.assetEditorFlowValueCacheKey === cacheKey && this.assetEditorFlowValueCache) {
@@ -336,7 +390,8 @@ export class AssetEditorPopupComponent {
     const value: AssetEditorFlowValue = {
       ...this.cloneAssetFormForFlow(this.assetForm),
       imageUrls: this.assetImageUrls(),
-      routeLocation: this.assetFormRouteStops()[0] ?? ''
+      routeLocation: this.assetFormRouteStops()[0] ?? '',
+      runtimeRoutes: [...(this.assetStore.assetFormRuntimeRoute()?.routes ?? [])]
     };
     this.assetEditorFlowValueCacheKey = cacheKey;
     this.assetEditorFlowValueCache = value;
@@ -344,7 +399,11 @@ export class AssetEditorPopupComponent {
   }
 
   protected onAssetEditorFlowValueChange(value: unknown): void {
-    if (this.isLoading || this.assetEditorReadOnly()) {
+    if (this.isLoading) {
+      return;
+    }
+    this.applyRuntimeRouteValueFromFlow(value);
+    if (this.assetEditorReadOnly()) {
       return;
     }
     this.assetStore.setAssetEditorForm(this.assetFormFromFlowValue(value));
@@ -700,6 +759,52 @@ export class AssetEditorPopupComponent {
 
   protected assetEditorReadOnly(): boolean {
     return this.assetStore.assetFormReadOnly() || this.isSavePending;
+  }
+
+  private applyRuntimeRouteValueFromFlow(value: unknown): void {
+    const runtimeRoute = this.assetStore.assetFormRuntimeRoute();
+    if (!runtimeRoute || !this.isRecord(value)) {
+      return;
+    }
+    const sourceRoutes = (value as Partial<AssetEditorFlowValue>).runtimeRoutes;
+    if (!Array.isArray(sourceRoutes)) {
+      return;
+    }
+    const nextRoutes = sourceRoutes.map(route => `${route ?? ''}`.trim()).filter(Boolean);
+    if (this.stringListsEqual(nextRoutes, runtimeRoute.routes)) {
+      return;
+    }
+    this.assetStore.setAssetEditorRuntimeRouteState({ routes: nextRoutes });
+    this.assetEditorFlowValueCacheKey = '';
+    this.assetEditorFlowModelCacheKey = '';
+  }
+
+  private async saveAssetRuntimeRoute(state: RouteInputSaveValue): Promise<RouteInputSaveValue> {
+    const runtimeRoute = this.assetStore.assetFormRuntimeRoute();
+    if (!runtimeRoute?.onSave) {
+      this.assetStore.setAssetEditorRuntimeRouteState({
+        routeEnabled: state.routeEnabled,
+        routes: state.routes
+      });
+      return state;
+    }
+    const result = await runtimeRoute.onSave(state);
+    const nextState = result ?? state;
+    this.assetStore.setAssetEditorRuntimeRouteState({
+      routeEnabled: nextState.routeEnabled,
+      routes: nextState.routes
+    });
+    this.assetEditorFlowValueCacheKey = '';
+    this.assetEditorFlowModelCacheKey = '';
+    return {
+      routeEnabled: nextState.routeEnabled,
+      routes: [...nextState.routes]
+    };
+  }
+
+  private stringListsEqual(left: readonly string[], right: readonly string[] | null | undefined): boolean {
+    const normalizedRight = (right ?? []).map(item => `${item ?? ''}`.trim()).filter(Boolean);
+    return left.length === normalizedRight.length && left.every((item, index) => item === normalizedRight[index]);
   }
 
   protected isPropertyAssetForm(): boolean {

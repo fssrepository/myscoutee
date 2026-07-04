@@ -69,22 +69,6 @@
                 </div>
               </div>
               <div class="subevent-asset-view-summary-body">
-                @if (view.mode === 'edit') {
-                  <button type="button" class="event-slots-open-btn event-slots-open-btn-inline" (click)="requestRouteSetup(view, $event)">
-                    <mat-icon>tune</mat-icon>
-                    <span>Open Route Setup</span>
-                  </button>
-                } @else {
-                  <button
-                    type="button"
-                    class="event-slots-open-btn event-slots-open-btn-inline"
-                    [disabled]="!hasRoute(view)"
-                    (click)="requestRouteView(view, $event)"
-                  >
-                    <mat-icon>route</mat-icon>
-                    <span>View Route</span>
-                  </button>
-                }
                 <div class="event-slots-summary">
                   <section class="event-slots-summary-block">
                     <span class="event-slots-summary-label">Summary</span>

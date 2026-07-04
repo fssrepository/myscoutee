@@ -688,6 +688,7 @@ export class EventSupplyContributionsPopupComponent implements DoCheck {
         capacityMin: Math.max(0, Math.trunc(Number(previous?.capacityMin) || 0)),
         capacityMax: Math.max(0, Math.trunc(Number(previous?.capacityMax ?? source?.capacityTotal) || 0)),
         addedByUserId: `${previous?.addedByUserId ?? ''}`.trim() || this.activeUser().id,
+        routeEnabled: previous?.routeEnabled ?? false,
         routes: Array.isArray(previous?.routes) ? [...previous.routes] : []
       };
     }

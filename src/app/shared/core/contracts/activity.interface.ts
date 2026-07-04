@@ -313,6 +313,7 @@ export interface SubEventAssignedAssetSettingsDTO {
   capacityMin: number;
   capacityMax: number;
   addedByUserId: string;
+  routeEnabled: boolean;
   routes: string[];
 }
 

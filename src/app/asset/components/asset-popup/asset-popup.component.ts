@@ -1931,6 +1931,7 @@ export class AssetPopupComponent {
         capacityMin,
         capacityMax,
         addedByUserId: previous?.addedByUserId ?? this.userProfileStore.activeUserId().trim(),
+        routeEnabled: previous?.routeEnabled ?? this.normalizeAssetRoutes(context.type, this.assetRoutes(source, previous?.routes)).length > 0,
         routes: this.normalizeAssetRoutes(context.type, this.assetRoutes(source, previous?.routes))
       };
     }
@@ -2206,6 +2207,7 @@ export class AssetPopupComponent {
         capacityMin,
         capacityMax,
         addedByUserId: previous?.addedByUserId ?? this.userProfileStore.activeUserId().trim(),
+        routeEnabled: previous?.routeEnabled ?? this.normalizeAssetRoutes(type, this.assetRoutes(source, previous?.routes)).length > 0,
         routes: this.normalizeAssetRoutes(type, this.assetRoutes(source, previous?.routes))
       };
     }

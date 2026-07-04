@@ -56,6 +56,7 @@ export interface ActivitySubEventAssignedAssetSettingsRecord {
   capacityMin: number;
   capacityMax: number;
   addedByUserId: string;
+  routeEnabled: boolean;
   routes: string[];
 }
 

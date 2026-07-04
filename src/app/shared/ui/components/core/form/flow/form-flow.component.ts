@@ -38,6 +38,7 @@ import { EventPoliciesInputComponent, type EventPoliciesInputConfig } from '../i
 import { LinkInputComponent, type LinkInputConfig } from '../inputs/link-input';
 import { LocationInputComponent, type LocationInputConfig } from '../inputs/location-input';
 import { PricingEditorInputComponent, type PricingEditorConfig } from '../inputs/pricing-editor';
+import { RouteInputComponent, type RouteInputConfig } from '../inputs/route-input';
 import type {
   FormFlowActionEvent,
   FormFlowControlModel,
@@ -50,6 +51,7 @@ import type {
   FormFlowPoliciesControlConfig,
   FormFlowPricingControlConfig,
   FormFlowPushEvent,
+  FormFlowRouteControlConfig,
   FormFlowSaveEvent,
   FormFlowStepModel,
   FormFlowTone
@@ -59,6 +61,7 @@ import {
   formFlowIsControlMissingRequired,
   formFlowMissingRequiredControls
 } from './form-flow.utils';
+import { FormFlowPopupStore } from './form-flow-popup.store';
 
 interface FormFlowSelectedMenuItem {
   item: AppMenuItem<string, unknown>;
@@ -78,6 +81,7 @@ interface FormFlowSelectedMenuItem {
     LocationInputComponent,
     EventPoliciesInputComponent,
     PricingEditorInputComponent,
+    RouteInputComponent,
     ImageCarouselComponent,
     IndicatorComponent,
     ImageCardComponent,
@@ -86,6 +90,7 @@ interface FormFlowSelectedMenuItem {
   templateUrl: './form-flow.component.html',
   styleUrl: './form-flow.component.scss',
   providers: [
+    FormFlowPopupStore,
     {
       provide: NG_VALUE_ACCESSOR,
       useExisting: forwardRef(() => FormFlowComponent),
@@ -565,6 +570,10 @@ export class FormFlowComponent implements ControlValueAccessor, OnChanges, OnDes
 
   protected pricingConfig(control: FormFlowControlModel): PricingEditorConfig {
     return this.isPricingControlConfig(control.config) ? control.config.model ?? {} : {};
+  }
+
+  protected routeConfig(control: FormFlowControlModel): RouteInputConfig {
+    return this.isRouteControlConfig(control.config) ? control.config.model ?? {} : {};
   }
 
   protected policiesConfig(control: FormFlowControlModel): FormFlowPoliciesControlConfig {
@@ -1116,6 +1125,10 @@ export class FormFlowComponent implements ControlValueAccessor, OnChanges, OnDes
   }
 
   private isPricingControlConfig(config: FormFlowControlModel['config']): config is FormFlowPricingControlConfig {
+    return this.isRecord(config) && this.isRecord(config['model']);
+  }
+
+  private isRouteControlConfig(config: FormFlowControlModel['config']): config is FormFlowRouteControlConfig {
     return this.isRecord(config) && this.isRecord(config['model']);
   }
 

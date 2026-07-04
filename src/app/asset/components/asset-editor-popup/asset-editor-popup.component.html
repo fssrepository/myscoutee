@@ -13,7 +13,7 @@
         [class.is-saving]="isSavePending"
         [model]="assetEditorFlowModel()"
         [(ngModel)]="assetEditorFlowBinding"
-        [disabled]="assetEditorReadOnly()"
+        [disabled]="isLoading || isSavePending"
         [saving]="isSavePending"
       ></app-form-flow>
     }

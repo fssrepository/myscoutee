@@ -287,6 +287,14 @@
                         [ngModel]="controlValue(control)"
                         (ngModelChange)="updateControlValue(control, $event)"
                       ></app-pricing-editor-input>
+                    } @else if (control.kind === 'route') {
+                      <app-route-input
+                        class="form-flow__route-input"
+                        [config]="routeConfig(control)"
+                        [readOnly]="isControlDisabled(control)"
+                        [ngModel]="controlStringArrayValue(control)"
+                        (ngModelChange)="updateControlValue(control, $event)"
+                      ></app-route-input>
                     } @else if (control.kind === 'policies') {
                       <app-event-policies-input
                         class="form-flow__policies-input"

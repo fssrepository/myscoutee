@@ -50,12 +50,6 @@
           }
         }
 
-        @if (resourcePopupStore.routeEditorRef()) {
-          @if (resourcePopupStore.eventResourceRouteEditorComponent(); as routeEditorComponent) {
-            <ng-container *ngComponentOutlet="routeEditorComponent; inputs: routeEditorOutletInputs()"></ng-container>
-          }
-        }
-
         @if (assignedAssetJoinDialogViewState()) {
           @if (resourcePopupStore.eventResourceAssignedAssetJoinDialogComponent(); as assignedAssetJoinDialogComponent) {
             <ng-container *ngComponentOutlet="assignedAssetJoinDialogComponent; inputs: assignedAssetJoinDialogOutletInputs()"></ng-container>

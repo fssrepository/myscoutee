@@ -135,7 +135,6 @@ import type {
   EventResourceAssetExploreOutletActionRequest,
   AssetExplorePopupState,
   ResourceAssetDTO,
-  ResourceAssetViewRequest,
   ResourceAssetViewState,
   ResourcePopupContext
 } from '../../../../shared/ui/context/stores/sub-event-resource-popup.store';
@@ -441,9 +440,6 @@ export class EventResourceAssetExploreComponent implements DoCheck {
     switch (request.kind) {
       case 'assetViewClose':
         this.closeAssetView(request.event);
-        return;
-      case 'assetViewRouteView':
-        this.openAssetViewRoutePopup(request.request);
         return;
       case 'borrowDialogClose':
         this.closeBorrowDialog(request.event);
@@ -875,11 +871,6 @@ export class EventResourceAssetExploreComponent implements DoCheck {
   protected closeAssetView(event?: Event): void {
     event?.stopPropagation();
     this.resourcePopupStore.assetExploreAssetViewIdRef.set(null);
-  }
-
-  protected openAssetViewRoutePopup(request: ResourceAssetViewRequest): void {
-    request.sourceEvent.stopPropagation();
-    this.openGoogleMapsDirections(request.view.card.routes);
   }
 
   protected closeExplorePopup(event?: Event): void {
@@ -1902,6 +1893,7 @@ export class EventResourceAssetExploreComponent implements DoCheck {
         capacityMin: 0,
         capacityMax: capacityLimit,
         addedByUserId: this.activeUser().id,
+        routeEnabled: card.type === 'Car' && this.normalizeRoutes(card.type, card.routes).length > 0,
         routes: this.normalizeRoutes(card.type, card.routes)
       };
       this.resourcePopupStore.assignedAssetSettingsByKey[key] = currentSettings;
@@ -2073,6 +2065,7 @@ export class EventResourceAssetExploreComponent implements DoCheck {
         capacityMin,
         capacityMax,
         addedByUserId: previous?.addedByUserId ?? this.activeUser().id,
+        routeEnabled: previous?.routeEnabled ?? this.normalizeRoutes(type, previous?.routes).length > 0,
         routes: this.normalizeRoutes(type, previous?.routes)
       };
     }

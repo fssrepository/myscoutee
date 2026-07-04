@@ -23,6 +23,24 @@ export interface AssetDeletedEvent {
 
 export type AssetFormState = Omit<AppDTOs.AssetDetailDTO, 'id' | 'requests'>;
 
+export interface AssetEditorRuntimeRouteState {
+  routeEnabled: boolean;
+  routes: string[];
+  editable: boolean;
+  title?: string;
+  subtitle?: string;
+  openLabel?: string;
+  emptyLabel?: string;
+  readOnlyEmptyLabel?: string;
+  popupTitle?: string;
+  popupSubtitle?: string;
+  parentZIndex?: number | null;
+  onSave?: (state: { routeEnabled: boolean; routes: readonly string[] }) =>
+    void
+    | { routeEnabled: boolean; routes: readonly string[] }
+    | Promise<void | { routeEnabled: boolean; routes: readonly string[] }>;
+}
+
 @Injectable({
   providedIn: 'root'
 })
@@ -42,6 +60,7 @@ export class AssetStore {
   readonly editingAssetIdRef = signal<string | null>(null);
   readonly assetFormReadOnlyRef = signal(false);
   readonly assetFormParentZIndexRef = signal<number | null>(null);
+  readonly assetFormRuntimeRouteRef = signal<AssetEditorRuntimeRouteState | null>(null);
   readonly assetFormLoadingRef = signal(false);
   readonly assetFormSavePendingRef = signal(false);
   readonly pendingAssetDeleteCardIdRef = signal<string | null>(null);
@@ -78,6 +97,7 @@ export class AssetStore {
   readonly editingAssetId = this.editingAssetIdRef.asReadonly();
   readonly assetFormReadOnly = this.assetFormReadOnlyRef.asReadonly();
   readonly assetFormParentZIndex = this.assetFormParentZIndexRef.asReadonly();
+  readonly assetFormRuntimeRoute = this.assetFormRuntimeRouteRef.asReadonly();
   readonly assetFormLoading = this.assetFormLoadingRef.asReadonly();
   readonly assetFormSavePending = this.assetFormSavePendingRef.asReadonly();
   readonly pendingAssetDeleteCardId = this.pendingAssetDeleteCardIdRef.asReadonly();
@@ -262,6 +282,7 @@ export class AssetStore {
     this.assetFormSavePendingRef.set(false);
     this.assetFormReadOnlyRef.set(false);
     this.assetFormParentZIndexRef.set(null);
+    this.assetFormRuntimeRouteRef.set(null);
     this.editingAssetIdRef.set(null);
     this.assetFormDraftIdRef.set(draftId.trim() || `asset-${Date.now()}`);
     this.assetFormVisibilityRef.set('Public');
@@ -277,6 +298,7 @@ export class AssetStore {
     loading: boolean;
     readOnly?: boolean;
     parentZIndex?: number | null;
+    runtimeRoute?: AssetEditorRuntimeRouteState | null;
   }): number {
     const generation = this.bumpAssetEditorGeneration();
     this.showAssetFormRef.set(true);
@@ -284,6 +306,7 @@ export class AssetStore {
     this.assetFormSavePendingRef.set(false);
     this.assetFormReadOnlyRef.set(options.readOnly === true);
     this.assetFormParentZIndexRef.set(this.normalizeParentZIndex(options.parentZIndex));
+    this.assetFormRuntimeRouteRef.set(this.cloneRuntimeRoute(options.runtimeRoute));
     this.assetFormDraftIdRef.set('');
     this.editingAssetIdRef.set(options.cardId);
     this.assetFormVisibilityRef.set(options.visibility);
@@ -309,6 +332,7 @@ export class AssetStore {
     this.editingAssetIdRef.set(null);
     this.assetFormReadOnlyRef.set(false);
     this.assetFormParentZIndexRef.set(null);
+    this.assetFormRuntimeRouteRef.set(null);
     this.assetFormLoadingRef.set(false);
     this.assetFormSavePendingRef.set(false);
     this.assetFormDraftIdRef.set('');
@@ -335,6 +359,22 @@ export class AssetStore {
       return;
     }
     this.assetFormRef.set(this.cloneAssetForm(form));
+    this.touchUiState();
+  }
+
+  setAssetEditorRuntimeRouteState(state: {
+    routeEnabled?: boolean | null;
+    routes?: readonly string[] | null;
+  }): void {
+    const current = this.assetFormRuntimeRouteRef();
+    if (!current) {
+      return;
+    }
+    this.assetFormRuntimeRouteRef.set({
+      ...current,
+      routeEnabled: typeof state.routeEnabled === 'boolean' ? state.routeEnabled : current.routeEnabled,
+      routes: state.routes === undefined ? current.routes : this.cloneStringList(state.routes)
+    });
     this.touchUiState();
   }
 
@@ -381,6 +421,21 @@ export class AssetStore {
     return Number.isFinite(parsed) && parsed > 0 ? Math.trunc(parsed) : null;
   }
 
+  private cloneRuntimeRoute(
+    state: AssetEditorRuntimeRouteState | null | undefined
+  ): AssetEditorRuntimeRouteState | null {
+    if (!state) {
+      return null;
+    }
+    return {
+      ...state,
+      routeEnabled: state.routeEnabled === true,
+      routes: this.cloneStringList(state.routes),
+      editable: state.editable === true,
+      parentZIndex: this.normalizeParentZIndex(state.parentZIndex)
+    };
+  }
+
   private cloneAssetForm(form: AssetFormState): AssetFormState {
     return {
       ...form,
@@ -389,6 +444,10 @@ export class AssetStore {
       policies: (form.policies ?? []).map(policy => ({ ...policy })),
       pricing: PricingBuilder.clonePricingConfig(form.pricing ?? null)
     };
+  }
+
+  private cloneStringList(items: readonly string[] | null | undefined): string[] {
+    return (items ?? []).map(item => `${item ?? ''}`.trim()).filter(item => item.length > 0);
   }
 
   cardsByType(type: AppConstants.AssetType): AppDTOs.AssetDTO[] {

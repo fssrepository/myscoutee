@@ -107,11 +107,13 @@ export class ActivityResourceBuilder {
         if (!normalizedAssetId || !settings) {
           continue;
         }
+        const routes = this.normalizeRoutes(settings.routes);
         normalizedMap[normalizedAssetId] = {
           capacityMin: Math.max(0, Math.trunc(Number(settings.capacityMin) || 0)),
           capacityMax: Math.max(0, Math.trunc(Number(settings.capacityMax) || 0)),
           addedByUserId: `${settings.addedByUserId ?? ''}`.trim(),
-          routes: this.normalizeRoutes(settings.routes)
+          routeEnabled: this.normalizeRouteEnabled(settings, routes),
+          routes
         };
       }
       if (Object.keys(normalizedMap).length > 0) {
@@ -473,5 +475,14 @@ export class ActivityResourceBuilder {
     return routes
       .map(route => `${route ?? ''}`.trim())
       .filter(route => route.length > 0);
+  }
+
+  private static normalizeRouteEnabled(
+    settings: Partial<AppDTOs.SubEventAssignedAssetSettingsDTO>,
+    routes: readonly string[]
+  ): boolean {
+    return typeof settings.routeEnabled === 'boolean'
+      ? settings.routeEnabled
+      : routes.length > 0;
   }
 }

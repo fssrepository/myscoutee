@@ -1,0 +1,122 @@
+<section class="route-input" [class.route-input--readonly]="locked()" [class.route-input--has-route]="hasRoute()">
+  <header class="route-input__head">
+    <div class="route-input__title">
+      <span class="route-input__title-text">
+        <mat-icon>route</mat-icon>
+        <span>{{ panelTitle() }}</span>
+      </span>
+      @if (!locked()) {
+        <span class="route-input__subtitle">{{ panelSubtitle() }}</span>
+      }
+    </div>
+    @if (!locked()) {
+      <button
+        type="button"
+        class="route-input__toggle"
+        [class.is-on]="routeEnabled()"
+        [disabled]="saving"
+        [attr.aria-pressed]="routeEnabled()"
+        (click)="toggleRouteEnabled($event)"
+      >
+        <mat-icon>{{ routeEnabled() ? 'toggle_on' : 'toggle_off' }}</mat-icon>
+        <span>{{ routeEnabled() ? 'On' : 'Off' }}</span>
+      </button>
+    }
+  </header>
+
+  <div class="route-input__body">
+    @if (!locked() && routeEnabled()) {
+      <div class="route-input__summary-actions">
+        <button type="button" class="route-input__open-btn" (click)="openRoutePopup($event)">
+          <mat-icon>tune</mat-icon>
+          <span>{{ openRouteLabel() }}</span>
+        </button>
+      </div>
+    }
+
+    <div class="route-input__summary">
+      <section class="route-input__summary-block">
+        <span class="route-input__summary-label">Summary</span>
+        @if (routeEnabled() && hasRoute()) {
+          <div class="route-input__route-strip" [attr.aria-label]="routeCountLabel()">
+            @for (stop of visibleRoutes(); track $index; let last = $last) {
+              <span class="route-input__route-stop">{{ stop }}</span>
+              @if (!last) {
+                <mat-icon class="route-input__route-arrow">arrow_forward</mat-icon>
+              }
+            }
+          </div>
+          <button type="button" class="route-input__map-btn" (click)="openRouteMap($event)">
+            <mat-icon>map</mat-icon>
+            <span>Open map</span>
+          </button>
+        } @else {
+          <p class="route-input__summary-note">{{ emptyRouteLabel() }}</p>
+        }
+      </section>
+    </div>
+  </div>
+</section>
+
+@if (showRoutePopup) {
+  <app-popup [model]="routePopupModel()" [zIndex]="routePopupZIndex()">
+    <div class="route-input__popup-body">
+      <div
+        class="route-input__editor-list"
+        cdkDropList
+        [cdkDropListData]="workingVisibleRoutes()"
+        [cdkDropListDisabled]="saving"
+        (cdkDropListDropped)="dropStop($event)"
+      >
+        @for (stop of workingVisibleRoutes(); track routeRowTrack(stop, $index); let i = $index) {
+          <div class="route-input__editor-row" cdkDrag [cdkDragDisabled]="saving">
+            <button
+              type="button"
+              class="route-input__icon-btn route-input__drag-btn"
+              cdkDragHandle
+              [disabled]="saving"
+              aria-label="Drag route stop"
+            >
+              <mat-icon>drag_indicator</mat-icon>
+            </button>
+            <label>
+              <span>Stop {{ i + 1 }}</span>
+              <input
+                type="text"
+                [ngModel]="stop"
+                (ngModelChange)="updateStop(i, $event)"
+                [disabled]="saving"
+                [placeholder]="'Route stop ' + (i + 1)"
+              />
+            </label>
+            <button
+              type="button"
+              class="route-input__icon-btn route-input__map-row-btn"
+              [disabled]="saving || !stop.trim()"
+              (click)="openStopMap(stop, $event)"
+              aria-label="Open stop on map"
+            >
+              <mat-icon>location_on</mat-icon>
+            </button>
+            <button
+              type="button"
+              class="route-input__icon-btn route-input__delete-btn"
+              [disabled]="saving"
+              (click)="removeStop(i, $event)"
+              aria-label="Delete route stop"
+            >
+              <mat-icon>delete</mat-icon>
+            </button>
+          </div>
+        }
+      </div>
+      <button type="button" class="route-input__add-btn" [disabled]="saving" (click)="addStop($event)">
+        <mat-icon>add</mat-icon>
+        <span>Add Stop</span>
+      </button>
+      @if (error) {
+        <p class="route-input__error">{{ error }}</p>
+      }
+    </div>
+  </app-popup>
+}

@@ -66,7 +66,8 @@ import {
   type ActivitiesNavigationRequest
 } from '../../../shared/ui/context/stores/member-menu.store';
 import {
-  AssetStore
+  AssetStore,
+  type AssetEditorRuntimeRouteState
 } from '../../../shared/ui/context/stores/asset.store';
 import {
   AssetPopupStore
@@ -158,9 +159,6 @@ export class EventResourcePopupComponent {
 
   private pendingCapacitySaveAbortController: AbortController | null = null;
   private pendingCapacitySaveRequestVersion = 0;
-  private pendingRouteSaveAbortController: AbortController | null = null;
-  private pendingRouteSaveRequestVersion = 0;
-  private routeEditorRowIdSequence = 0;
   private pendingAssignSaveAbortController: AbortController | null = null;
   private pendingAssignSaveRequestVersion = 0;
   private lastResourcePopupOutletActionRequestId = 0;
@@ -173,9 +171,6 @@ export class EventResourcePopupComponent {
   }));
   protected readonly capacityEditorOutletInputs = computed(() => ({
     editor: this.resourcePopupStore.capacityEditorRef()
-  }));
-  protected readonly routeEditorOutletInputs = computed(() => ({
-    editor: this.resourcePopupStore.routeEditorRef()
   }));
   protected readonly assignedAssetJoinDialogOutletInputs = computed(() => ({
     dialog: this.assignedAssetJoinDialogViewState()
@@ -229,12 +224,6 @@ export class EventResourcePopupComponent {
     });
 
     effect(() => {
-      if (this.resourcePopupStore.routeEditorRef()) {
-        void this.resourcePopupStore.ensureEventResourceRouteEditorLoaded();
-      }
-    });
-
-    effect(() => {
       if (this.assignedAssetJoinDialogViewState()) {
         void this.resourcePopupStore.ensureEventResourceAssignedAssetJoinDialogLoaded();
       }
@@ -258,23 +247,11 @@ export class EventResourcePopupComponent {
       case 'assetViewMembers':
         this.openAssetViewMembers(request.view, request.event);
         return;
-      case 'assetViewRouteView':
-        this.openAssetViewRoutePopup(request.view, request.event);
-        return;
-      case 'assetViewRouteSetup':
-        this.openAssetViewRouteSetup(request.view, request.event);
-        return;
       case 'capacityEditorClose':
         this.closeCapacityEditor(request.event);
         return;
       case 'capacityEditorSave':
         this.saveCapacityEditor(request.event);
-        return;
-      case 'routeEditorClose':
-        this.closeRouteEditor(request.event);
-        return;
-      case 'routeEditorSave':
-        this.saveRouteEditor(request.event);
         return;
       case 'assignedAssetJoinClose':
         this.closeAssignedAssetJoinDialog(request.event);
@@ -376,16 +353,6 @@ export class EventResourcePopupComponent {
     this.closeResourcePopup();
   }
 
-  protected openAssetViewRoutePopup(view: ResourceAssetViewState, event: Event): void {
-    event.stopPropagation();
-    this.openAssetViewRouteEditor(view, event, 'view');
-  }
-
-  protected openAssetViewRouteSetup(view: ResourceAssetViewState, event: Event): void {
-    event.stopPropagation();
-    this.openAssetViewRouteEditor(view, event, 'edit');
-  }
-
   protected onResourceCardMenuAction(card: AppDTOs.SubEventResourceCardDTO, event: CardMenuActionEvent<InfoCardData>): void {
     if (event.actionId === 'viewAsset') {
       this.openResourceAssetView(card, 'view', new Event('click'));
@@ -408,7 +375,7 @@ export class EventResourcePopupComponent {
       return;
     }
     if (event.actionId === 'route') {
-      this.openRouteEditor(card, new Event('click'));
+      this.openResourceAssetView(card, 'edit', new Event('click'));
       return;
     }
     if (event.actionId === 'contactOrganizer') {
@@ -1014,7 +981,6 @@ export class EventResourcePopupComponent {
 
   closeResourcePopup(): void {
     this.abortPendingCapacitySaveRequest();
-    this.abortPendingRouteSaveRequest();
     this.resourcePopupStore.closeResourcePopup();
     this.abortPendingAssignSaveRequest();
     this.resourcePopupStore.pendingAssignSaveRef.set(null);
@@ -1099,22 +1065,11 @@ export class EventResourcePopupComponent {
 
   openResourceAssetView(
     card: AppDTOs.SubEventResourceCardDTO,
-    mode: 'view' | 'edit',
+    _mode: 'view' | 'edit',
     event?: Event
   ): void {
     event?.stopPropagation();
-    if (mode === 'view') {
-      void this.openReadonlyResourceAssetEditor(card);
-      return;
-    }
-    const assetId = `${card.sourceAssetId ?? ''}`.trim();
-    if (!assetId) {
-      return;
-    }
-    this.resourcePopupStore.resourceAssetViewIdRef.set(assetId);
-    this.resourcePopupStore.resourceAssetViewModeRef.set(mode);
-    this.resourcePopupStore.resourceAssetViewReturnToChatRef.set(false);
-    this.resourcePopupStore.assetExplorePopupRef.set(null);
+    void this.openReadonlyResourceAssetEditor(card);
   }
 
   private async openReadonlyResourceAssetEditor(card: AppDTOs.SubEventResourceCardDTO): Promise<void> {
@@ -1137,7 +1092,8 @@ export class EventResourcePopupComponent {
       visibility: AssetCardBuilder.visibilityFromCard(sourceCard),
       loading: Boolean(ownerUserId),
       readOnly: true,
-      parentZIndex: this.resourcePopupZIndex()
+      parentZIndex: this.resourcePopupZIndex(),
+      runtimeRoute: this.assignedAssetRuntimeRouteState(context.subEvent.id, card, sourceCard)
     });
     void this.assetPopupStore.ensureAssetPopupLoaded();
     if (!ownerUserId) {
@@ -1162,6 +1118,58 @@ export class EventResourcePopupComponent {
         this.assetStore.setAssetEditorLoading(false);
       }
     }
+  }
+
+  private assignedAssetRuntimeRouteState(
+    subEventId: string,
+    card: AppDTOs.SubEventResourceCardDTO,
+    sourceCard: ResourceAssetDTO
+  ): AssetEditorRuntimeRouteState | null {
+    const assetId = `${card.sourceAssetId ?? sourceCard.id ?? ''}`.trim();
+    if (card.type !== 'Car' || sourceCard.type !== 'Car' || !assetId) {
+      return null;
+    }
+    const settings = this.getSubEventAssignedAssetSettings(subEventId, 'Car');
+    const routeSettings = settings[assetId] ?? null;
+    const routes = this.resolveViewableCarRoutes(
+      routeSettings?.routes,
+      card.routes,
+      this.assetRouteValues(sourceCard)
+    ).map(stop => stop.trim()).filter(Boolean);
+    return {
+      routeEnabled: routeSettings?.routeEnabled ?? routes.length > 0,
+      routes,
+      editable: this.canEditAssignedAssetRuntimeRoute(subEventId, sourceCard, assetId),
+      title: 'Route',
+      subtitle: 'Runtime route for this event asset.',
+      openLabel: 'Open Route Setup',
+      emptyLabel: 'No route is set for this event asset.',
+      readOnlyEmptyLabel: 'No route is set for this event asset.',
+      popupTitle: `Route Setup - ${card.title}`,
+      popupSubtitle: 'Set the route used by this car for the selected event assignment.',
+      parentZIndex: this.resourcePopupZIndex(),
+      onSave: state => this.saveAssignedAssetRuntimeRoutes(subEventId, 'Car', assetId, state)
+    };
+  }
+
+  private canEditAssignedAssetRuntimeRoute(
+    subEventId: string,
+    sourceCard: ResourceAssetDTO,
+    assetId: string
+  ): boolean {
+    const activeUserId = this.activeUser().id.trim();
+    if (!activeUserId) {
+      return false;
+    }
+    if (this.isAssetOwnedByActiveUser(sourceCard, activeUserId)) {
+      return true;
+    }
+    const managerUserId = this.assignedAssetManagerUserId(subEventId, 'Car', assetId);
+    if (managerUserId === activeUserId) {
+      return true;
+    }
+    const request = this.findAssignedAssetJoinRequest(sourceCard, subEventId, activeUserId);
+    return request !== null;
   }
 
   closeResourceAssetView(event?: Event): void {
@@ -1228,7 +1236,6 @@ export class EventResourcePopupComponent {
     this.resourcePopupStore.resourceAssetViewIdRef.set(null);
     this.resourcePopupStore.resourceAssetViewModeRef.set('view');
     this.resourcePopupStore.capacityEditorRef.set(null);
-    this.resourcePopupStore.routeEditorRef.set(null);
     this.resourcePopupStore.assignedAssetJoinDialogRef.set(null);
     this.resourcePopupStore.assetExploreBorrowDialogRef.set(null);
     this.resourcePopupStore.assetExplorePopupRef.set(null);
@@ -1272,9 +1279,7 @@ export class EventResourcePopupComponent {
       details: ActivityResourceBuilder.assetDetailText(card),
       imageUrl: card.imageUrl,
       sourceLink: ActivityResourceBuilder.assetSourceLink(card),
-      routes: card.type === 'Accommodation'
-        ? ActivityResourceBuilder.normalizeAssetRoutes(card.type, card.routes)
-        : ActivityResourceBuilder.normalizeAssetRoutes(card.type, settings[card.id]?.routes ?? card.routes),
+      routes: this.assignedResourceCardRoutes(card, settings[card.id]),
       capacityTotal: settings[card.id]?.capacityMax ?? Math.max(0, card.capacityTotal),
       accepted: card.type === 'Supplies'
         ? this.subEventSupplyProvidedCount(card.id, context.subEvent.id)
@@ -1283,6 +1288,21 @@ export class EventResourcePopupComponent {
       isMembers: false
       });
       });
+  }
+
+  private assignedResourceCardRoutes(
+    card: ResourceAssetDTO,
+    settings: AppDTOs.SubEventAssignedAssetSettingsDTO | undefined
+  ): string[] {
+    if (card.type === 'Accommodation') {
+      return ActivityResourceBuilder.normalizeAssetRoutes(card.type, card.routes);
+    }
+    if (card.type !== 'Car') {
+      return ActivityResourceBuilder.normalizeAssetRoutes(card.type, settings?.routes ?? card.routes);
+    }
+    const routes = ActivityResourceBuilder.normalizeAssetRoutes(card.type, settings?.routes ?? card.routes);
+    const routeEnabled = settings?.routeEnabled ?? routes.length > 0;
+    return routeEnabled ? routes : [];
   }
 
   private assignedAssetManagerUserId(
@@ -1764,8 +1784,6 @@ export class EventResourcePopupComponent {
       busy: false,
       error: null
     });
-    this.abortPendingRouteSaveRequest();
-    this.resourcePopupStore.routeEditorRef.set(null);
   }
 
   closeCapacityEditor(event?: Event): void {
@@ -1797,6 +1815,7 @@ export class EventResourcePopupComponent {
       capacityMin: 0,
       capacityMax: editor.capacityLimit,
       addedByUserId: this.activeUser().id,
+      routeEnabled: false,
       routes: []
     };
     nextSettings[editor.assetId] = {
@@ -1857,76 +1876,6 @@ export class EventResourcePopupComponent {
     controller?.abort();
   }
 
-  openRouteEditor(card: AppDTOs.SubEventResourceCardDTO, event: Event, mode: 'view' | 'edit' = 'edit'): void {
-    event.stopPropagation();
-    const context = this.resourcePopupStore.popupContextRef();
-    if (!context || card.type !== 'Car' || !card.sourceAssetId) {
-      return;
-    }
-    const resolvedMode = mode;
-    const settings = this.getSubEventAssignedAssetSettings(context.subEvent.id, 'Car');
-    const source = this.ownedAssetCards().find(item => item.id === card.sourceAssetId && item.type === 'Car')
-      ?? this.resourcePopupStore.assetExplorePopupRef()?.cards.find(item => item.id === card.sourceAssetId && item.type === 'Car')
-      ?? null;
-    const routes = this.resolveViewableCarRoutes(settings[card.sourceAssetId]?.routes, card.routes, this.assetRouteValues(source));
-    if (resolvedMode === 'view' && routes.every(stop => stop.trim().length === 0)) {
-      return;
-    }
-    this.abortPendingRouteSaveRequest();
-    this.resourcePopupStore.routeEditorRef.set({
-      subEventId: context.subEvent.id,
-      type: 'Car',
-      assetId: card.sourceAssetId,
-      title: card.title,
-      mode: resolvedMode,
-      routes,
-      routeRowIds: this.buildRouteEditorRowIds(routes),
-      busy: false,
-      error: null
-    });
-    this.abortPendingCapacitySaveRequest();
-    this.resourcePopupStore.capacityEditorRef.set(null);
-  }
-
-  openAssetViewRouteEditor(
-    view: ResourceAssetViewState,
-    event: Event,
-    mode: 'view' | 'edit' = 'view'
-  ): void {
-    event.stopPropagation();
-    const context = this.resourcePopupStore.popupContextRef();
-    const card = view.card;
-    const assetId = `${card.sourceAssetId ?? ''}`.trim();
-    if (!context || card.type !== 'Car' || !assetId) {
-      return;
-    }
-    const resolvedMode = mode;
-    const settings = this.getSubEventAssignedAssetSettings(context.subEvent.id, 'Car');
-    const source = view.source?.type === 'Car'
-      ? view.source
-      : this.ownedAssetCards().find(item => item.id === assetId && item.type === 'Car')
-        ?? this.resourcePopupStore.assetExplorePopupRef()?.cards.find(item => item.id === assetId && item.type === 'Car')
-        ?? null;
-    const routes = this.resolveViewableCarRoutes(settings[assetId]?.routes, card.routes, this.assetRouteValues(source));
-    if (resolvedMode === 'view' && routes.every(stop => stop.trim().length === 0)) {
-      return;
-    }
-    this.abortPendingRouteSaveRequest();
-    this.resourcePopupStore.routeEditorRef.set({
-      subEventId: context.subEvent.id,
-      type: 'Car',
-      assetId,
-      title: card.title,
-      mode: resolvedMode,
-      routes,
-      routeRowIds: this.buildRouteEditorRowIds(routes),
-      busy: false,
-      error: null
-    });
-    this.abortPendingCapacitySaveRequest();
-    this.resourcePopupStore.capacityEditorRef.set(null);
-  }
-
   private resolveViewableCarRoutes(
     settingsRoutes: string[] | undefined,
     cardRoutes: string[] | undefined,
@@ -1937,92 +1886,56 @@ export class EventResourcePopupComponent {
     return candidates.find(routes => routes.length > 0) ?? [''];
   }
 
-  closeRouteEditor(event?: Event): void {
-    event?.stopPropagation();
-    this.abortPendingRouteSaveRequest();
-    this.resourcePopupStore.routeEditorRef.set(null);
-  }
-
-  saveRouteEditor(event?: Event): void {
-    event?.stopPropagation();
-    const editor = this.resourcePopupStore.routeEditorRef();
-    if (
-      !editor
-      || editor.busy
-      || editor.mode === 'view'
-      || !editor.routes.some(stop => stop.trim().length > 0)
-    ) {
-      return;
+  private async saveAssignedAssetRuntimeRoutes(
+    subEventId: string,
+    type: 'Car',
+    assetId: string,
+    state: { routeEnabled: boolean; routes: readonly string[] },
+    signal?: AbortSignal
+  ): Promise<{ routeEnabled: boolean; routes: string[] }> {
+    const context = this.resourcePopupStore.popupContextRef();
+    const normalizedSubEventId = subEventId.trim();
+    const normalizedAssetId = assetId.trim();
+    if (!context || context.subEvent.id !== normalizedSubEventId || !normalizedAssetId) {
+      throw new Error('Unable to save route changes.');
     }
-    const nextState = this.buildPopupResourceState();
+    const nextState = this.buildPopupResourceState(context);
     if (!nextState) {
-      return;
+      throw new Error('Unable to save route changes.');
     }
+    const normalizedRoutes = ActivityResourceBuilder.normalizeAssetRoutes(type, state.routes);
     const nextSettings = {
-      ...(nextState.assetSettingsByType[editor.type] ?? {})
+      ...(nextState.assetSettingsByType[type] ?? {})
     };
-    const source = this.ownedAssetCards().find(item => item.id === editor.assetId && item.type === editor.type);
-    const current = nextSettings[editor.assetId] ?? {
+    const source = this.resolveSubEventAssignedAssetCard(normalizedSubEventId, type, normalizedAssetId)
+      ?? this.ownedAssetCards().find(item => item.id === normalizedAssetId && item.type === type)
+      ?? null;
+    const current = nextSettings[normalizedAssetId] ?? {
       capacityMin: 0,
       capacityMax: Math.max(0, source?.capacityTotal ?? 0),
       addedByUserId: this.activeUser().id,
+      routeEnabled: false,
       routes: []
     };
-    nextSettings[editor.assetId] = {
+    nextSettings[normalizedAssetId] = {
       ...current,
-      routes: ActivityResourceBuilder.normalizeAssetRoutes(editor.type, editor.routes)
+      routeEnabled: state.routeEnabled === true,
+      routes: normalizedRoutes
     };
     nextState.assetSettingsByType = {
       ...nextState.assetSettingsByType,
-      [editor.type]: nextSettings
+      [type]: nextSettings
     };
 
-    const requestVersion = ++this.pendingRouteSaveRequestVersion;
-    const abortController = new AbortController();
-    this.pendingRouteSaveAbortController = abortController;
-    this.resourcePopupStore.routeEditorRef.set({
-      ...editor,
-      busy: true,
-      error: null
-    });
-
-    void this.activityResourcesService.replaceSubEventResourceState(nextState, abortController.signal)
-      .then(savedState => {
-        if (this.pendingRouteSaveAbortController === abortController) {
-          this.pendingRouteSaveAbortController = null;
-        }
-        if (abortController.signal.aborted || requestVersion !== this.pendingRouteSaveRequestVersion) {
-          return;
-        }
-        const resolvedState = ActivityResourceBuilder.normalizeState(savedState, nextState) ?? nextState;
-        this.applyPersistedPopupState(resolvedState);
-        this.resourcePopupStore.routeEditorRef.set(null);
-        this.syncPopupSubEventMetrics(false);
-      })
-      .catch(error => {
-        if (this.pendingRouteSaveAbortController === abortController) {
-          this.pendingRouteSaveAbortController = null;
-        }
-        if (abortController.signal.aborted || this.isAbortError(error) || requestVersion !== this.pendingRouteSaveRequestVersion) {
-          return;
-        }
-        const currentEditor = this.resourcePopupStore.routeEditorRef();
-        if (!currentEditor || currentEditor.assetId !== editor.assetId || currentEditor.type !== editor.type) {
-          return;
-        }
-        this.resourcePopupStore.routeEditorRef.set({
-          ...currentEditor,
-          busy: false,
-          error: 'Unable to save route changes.'
-        });
-      });
-  }
-
-  private abortPendingRouteSaveRequest(): void {
-    this.pendingRouteSaveRequestVersion += 1;
-    const controller = this.pendingRouteSaveAbortController;
-    this.pendingRouteSaveAbortController = null;
-    controller?.abort();
+    const savedState = await this.activityResourcesService.replaceSubEventResourceState(nextState, signal);
+    const resolvedState = ActivityResourceBuilder.normalizeState(savedState, nextState) ?? nextState;
+    this.applyPersistedPopupState(resolvedState);
+    this.syncPopupSubEventMetrics(false);
+    const savedSettings = resolvedState.assetSettingsByType[type]?.[normalizedAssetId] ?? null;
+    return {
+      routeEnabled: savedSettings?.routeEnabled ?? state.routeEnabled === true,
+      routes: ActivityResourceBuilder.normalizeAssetRoutes(type, savedSettings?.routes ?? normalizedRoutes)
+    };
   }
 
   private abortPendingAssignSaveRequest(): void {
@@ -2247,6 +2160,7 @@ export class EventResourcePopupComponent {
         capacityMin,
         capacityMax,
         addedByUserId: previous?.addedByUserId ?? this.activeUser().id,
+        routeEnabled: previous?.routeEnabled ?? ActivityResourceBuilder.normalizeAssetRoutes(type, previous?.routes).length > 0,
         routes: ActivityResourceBuilder.normalizeAssetRoutes(type, previous?.routes)
       };
     }
@@ -2964,15 +2878,6 @@ export class EventResourcePopupComponent {
       suppliesCapacityMin: scopedMin ?? subEvent.suppliesCapacityMin,
       suppliesCapacityMax: scopedMax ?? subEvent.suppliesCapacityMax
     };
-  }
-
-  private buildRouteEditorRowIds(routes: string[]): string[] {
-    return routes.map(() => this.nextRouteEditorRowId());
-  }
-
-  private nextRouteEditorRowId(): string {
-    this.routeEditorRowIdSequence += 1;
-    return `route-stop-${this.routeEditorRowIdSequence}`;
   }
 
   private assetPendingCount(
