@@ -296,7 +296,7 @@
                         (ngModelChange)="updateControlValue(control, $event)"
                       ></app-route-input>
                     } @else if (control.kind === 'policies') {
-                      <app-event-policies-input
+                      <app-policies-input
                         class="form-flow__policies-input"
                         [config]="policiesInputConfig(control)"
                         [enabled]="policiesEnabled(control)"
@@ -304,7 +304,7 @@
                         [readOnly]="isControlDisabled(control)"
                         [ngModel]="controlValue(control)"
                         (ngModelChange)="updateControlValue(control, $event)"
-                      ></app-event-policies-input>
+                      ></app-policies-input>
                     } @else {
                       <label class="form-flow__label">
                         <span>{{ control.label }}@if (control.required) { <strong>*</strong> }</span>

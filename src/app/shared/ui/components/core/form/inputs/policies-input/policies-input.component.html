@@ -26,21 +26,26 @@
   </div>
   @if (effectivePanelEnabled()) {
   <div class="event-policies-panel-body">
+    @if (!locked()) {
     <button type="button" class="event-slots-open-btn event-slots-open-btn-inline" (click)="openPoliciesPopup($event)">
       <mat-icon>gavel</mat-icon>
       <span>{{ openPoliciesLabel() }}</span>
     </button>
+    }
     <div class="event-slots-summary">
       <section class="event-slots-summary-block">
         <span class="event-slots-summary-label">Summary</span>
         @if (policies.length > 0) {
         <div class="event-slots-summary-list">
-          <article class="event-slots-summary-item">
-            <span class="event-slots-summary-title">{{ policiesCountLabel() }}</span>
-            <span class="event-slots-summary-meta">
-              {{ requiredPoliciesCount() }} required · {{ policies.length - requiredPoliciesCount() }} optional
-            </span>
-          </article>
+          @for (policy of policies; track trackPolicy($index, policy)) {
+            <article class="event-policy-summary-card">
+              <div class="event-policy-summary-card-head">
+                <span class="event-slots-summary-title">{{ policy.title }}</span>
+                <span class="event-policy-summary-badge">{{ policyRequirementLabel(policy) }}</span>
+              </div>
+              <p class="event-slots-summary-note">{{ policySummaryDescription(policy) }}</p>
+            </article>
+          }
         </div>
         } @else {
         <p class="event-slots-summary-note">

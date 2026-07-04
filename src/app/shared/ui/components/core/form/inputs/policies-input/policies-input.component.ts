@@ -21,32 +21,32 @@ import {
   type PopupModel
 } from '../../../popup';
 
-type EventPolicyInputModel = EventContracts.EventPolicyDTO;
-type EventPolicyPopupMenuContext = {
+type PolicyInputModel = EventContracts.EventPolicyDTO;
+type PolicyPopupMenuContext = {
   menu: 'policy-setup';
   action: 'add';
 };
-export type EventPoliciesInputConfigValue<TValue> = TValue | (() => TValue);
+export type PoliciesInputConfigValue<TValue> = TValue | (() => TValue);
 
-export interface EventPoliciesInputConfig {
-  title?: EventPoliciesInputConfigValue<string>;
-  subtitle?: EventPoliciesInputConfigValue<string>;
-  toggleable?: EventPoliciesInputConfigValue<boolean>;
-  openLabel?: EventPoliciesInputConfigValue<string>;
-  viewLabel?: EventPoliciesInputConfigValue<string>;
-  emptyLabel?: EventPoliciesInputConfigValue<string>;
-  readOnlyEmptyLabel?: EventPoliciesInputConfigValue<string>;
-  popupSubtitle?: EventPoliciesInputConfigValue<string>;
-  editorSubtitle?: EventPoliciesInputConfigValue<string>;
-  requiredApprovalLabel?: EventPoliciesInputConfigValue<string>;
-  optionalPolicyLabel?: EventPoliciesInputConfigValue<string>;
-  requiredPreview?: EventPoliciesInputConfigValue<string>;
-  optionalPreview?: EventPoliciesInputConfigValue<string>;
-  requiredCheckboxLabel?: EventPoliciesInputConfigValue<string>;
+export interface PoliciesInputConfig {
+  title?: PoliciesInputConfigValue<string>;
+  subtitle?: PoliciesInputConfigValue<string>;
+  toggleable?: PoliciesInputConfigValue<boolean>;
+  openLabel?: PoliciesInputConfigValue<string>;
+  viewLabel?: PoliciesInputConfigValue<string>;
+  emptyLabel?: PoliciesInputConfigValue<string>;
+  readOnlyEmptyLabel?: PoliciesInputConfigValue<string>;
+  popupSubtitle?: PoliciesInputConfigValue<string>;
+  editorSubtitle?: PoliciesInputConfigValue<string>;
+  requiredApprovalLabel?: PoliciesInputConfigValue<string>;
+  optionalPolicyLabel?: PoliciesInputConfigValue<string>;
+  requiredPreview?: PoliciesInputConfigValue<string>;
+  optionalPreview?: PoliciesInputConfigValue<string>;
+  requiredCheckboxLabel?: PoliciesInputConfigValue<string>;
 }
 
 @Component({
-  selector: 'app-event-policies-input',
+  selector: 'app-policies-input',
   standalone: true,
   imports: [
     CommonModule,
@@ -55,38 +55,38 @@ export interface EventPoliciesInputConfig {
     PopupComponent,
     SingleRowComponent
   ],
-  templateUrl: './event-policies-input.component.html',
-  styleUrl: './event-policies-input.component.scss',
+  templateUrl: './policies-input.component.html',
+  styleUrl: './policies-input.component.scss',
   changeDetection: ChangeDetectionStrategy.OnPush,
   providers: [
     {
       provide: NG_VALUE_ACCESSOR,
-      useExisting: forwardRef(() => EventPoliciesInputComponent),
+      useExisting: forwardRef(() => PoliciesInputComponent),
       multi: true
     }
   ]
 })
-export class EventPoliciesInputComponent implements ControlValueAccessor {
+export class PoliciesInputComponent implements ControlValueAccessor {
   @Input() readOnly = false;
   @Input() disabled = false;
-  @Input() config: EventPoliciesInputConfig = {};
+  @Input() config: PoliciesInputConfig = {};
   @Input() enabled = false;
   @Output() readonly enabledChange = new EventEmitter<boolean>();
 
-  protected policies: EventPolicyInputModel[] = [];
-  protected workingPolicies: EventPolicyInputModel[] = [];
-  protected workingPolicyDraft: EventPolicyInputModel = this.createEmptyPolicyDraft();
+  protected policies: PolicyInputModel[] = [];
+  protected workingPolicies: PolicyInputModel[] = [];
+  protected workingPolicyDraft: PolicyInputModel = this.createEmptyPolicyDraft();
   protected editingPolicyDraftIndex: number | null = null;
   protected showPoliciesPopup = false;
   protected showPolicyEditorPopup = false;
 
   private idSequence = 0;
-  private onModelChange: (value: EventPolicyInputModel[]) => void = () => {};
+  private onModelChange: (value: PolicyInputModel[]) => void = () => {};
   private onModelTouched: () => void = () => {};
 
   constructor(private readonly cdr: ChangeDetectorRef) {}
 
-  writeValue(value: readonly EventPolicyInputModel[] | null | undefined): void {
+  writeValue(value: readonly PolicyInputModel[] | null | undefined): void {
     this.policies = this.normalizePolicies(value ?? []);
     if (this.showPoliciesPopup) {
       this.workingPolicies = this.clonePolicies(this.policies);
@@ -94,7 +94,7 @@ export class EventPoliciesInputComponent implements ControlValueAccessor {
     this.cdr.markForCheck();
   }
 
-  registerOnChange(fn: (value: EventPolicyInputModel[]) => void): void {
+  registerOnChange(fn: (value: PolicyInputModel[]) => void): void {
     this.onModelChange = fn;
   }
 
@@ -248,7 +248,7 @@ export class EventPoliciesInputComponent implements ControlValueAccessor {
     return this.editingPolicyDraftIndex === null ? 'Create Policy' : 'Edit Policy';
   }
 
-  protected policySetupPopupModel(): PopupModel<EventPolicyPopupMenuContext> {
+  protected policySetupPopupModel(): PopupModel<PolicyPopupMenuContext> {
     return {
       title: 'Policy Setup',
       subtitle: this.popupSubtitle(),
@@ -269,7 +269,7 @@ export class EventPoliciesInputComponent implements ControlValueAccessor {
     return 12600;
   }
 
-  protected policyEditorPopupModel(): PopupModel<EventPolicyPopupMenuContext> {
+  protected policyEditorPopupModel(): PopupModel<PolicyPopupMenuContext> {
     return {
       title: this.policyPopupTitle(),
       subtitle: this.editorSubtitle(),
@@ -289,7 +289,7 @@ export class EventPoliciesInputComponent implements ControlValueAccessor {
     return 12700;
   }
 
-  protected policySingleRow(policy: EventPolicyInputModel, index: number): SingleRowData<EventPolicyInputModel> {
+  protected policySingleRow(policy: PolicyInputModel, index: number): SingleRowData<PolicyInputModel> {
     return EventPolicySingleRowConverter.convert(policy, {
       index,
       locked: this.locked(),
@@ -300,7 +300,7 @@ export class EventPoliciesInputComponent implements ControlValueAccessor {
     });
   }
 
-  private policySetupHeaderControls(): readonly PopupControl<EventPolicyPopupMenuContext>[] {
+  private policySetupHeaderControls(): readonly PopupControl<PolicyPopupMenuContext>[] {
     if (this.locked()) {
       return [];
     }
@@ -337,7 +337,7 @@ export class EventPoliciesInputComponent implements ControlValueAccessor {
     }];
   }
 
-  private onPolicyPopupMenuSelect(event: PopupMenuSelectEvent<EventPolicyPopupMenuContext>): void {
+  private onPolicyPopupMenuSelect(event: PopupMenuSelectEvent<PolicyPopupMenuContext>): void {
     const context = event.itemSelect.context;
     if (context?.menu !== 'policy-setup' || context.action !== 'add') {
       return;
@@ -411,6 +411,26 @@ export class EventPoliciesInputComponent implements ControlValueAccessor {
     return this.policies.filter(item => item.required !== false).length;
   }
 
+  protected trackPolicy(index: number, policy: PolicyInputModel): string {
+    return `${policy.id ?? ''}`.trim() || `policy-${index}`;
+  }
+
+  protected policyRequirementLabel(policy: PolicyInputModel): string {
+    return policy.required !== false
+      ? this.resolveConfigValue(this.config.requiredApprovalLabel, 'Required approval')
+      : this.resolveConfigValue(this.config.optionalPolicyLabel, 'Optional policy');
+  }
+
+  protected policySummaryDescription(policy: PolicyInputModel): string {
+    const description = `${policy.description ?? ''}`.trim();
+    if (description) {
+      return description;
+    }
+    return policy.required !== false
+      ? this.resolveConfigValue(this.config.requiredPreview, 'Attendees must approve this policy before joining.')
+      : this.resolveConfigValue(this.config.optionalPreview, 'Optional policy shown during join or checkout.');
+  }
+
   private syncPoliciesFromWorkingPolicies(): void {
     this.policies = this.normalizePolicies(this.workingPolicies);
     this.emitPolicies();
@@ -423,7 +443,7 @@ export class EventPoliciesInputComponent implements ControlValueAccessor {
     this.cdr.markForCheck();
   }
 
-  private normalizedWorkingPolicyDraft(): EventPolicyInputModel {
+  private normalizedWorkingPolicyDraft(): PolicyInputModel {
     return {
       id: `${this.workingPolicyDraft.id ?? ''}`.trim() || this.createPolicyId(),
       title: `${this.workingPolicyDraft.title ?? ''}`.trim(),
@@ -432,7 +452,7 @@ export class EventPoliciesInputComponent implements ControlValueAccessor {
     };
   }
 
-  private normalizePolicies(items: readonly EventPolicyInputModel[]): EventPolicyInputModel[] {
+  private normalizePolicies(items: readonly PolicyInputModel[]): PolicyInputModel[] {
     return items
       .map((item, index) => ({
         id: `${item.id ?? `policy-${index + 1}`}`.trim() || `policy-${index + 1}`,
@@ -443,11 +463,11 @@ export class EventPoliciesInputComponent implements ControlValueAccessor {
       .filter(item => item.id || item.title || item.description);
   }
 
-  private clonePolicies(items: readonly EventPolicyInputModel[]): EventPolicyInputModel[] {
+  private clonePolicies(items: readonly PolicyInputModel[]): PolicyInputModel[] {
     return items.map(item => ({ ...item }));
   }
 
-  private createEmptyPolicyDraft(): EventPolicyInputModel {
+  private createEmptyPolicyDraft(): PolicyInputModel {
     return {
       id: this.createPolicyId(),
       title: '',
@@ -462,7 +482,7 @@ export class EventPoliciesInputComponent implements ControlValueAccessor {
   }
 
   private resolveConfigValue<TValue>(
-    value: EventPoliciesInputConfigValue<TValue> | null | undefined,
+    value: PoliciesInputConfigValue<TValue> | null | undefined,
     fallback: TValue
   ): TValue {
     if (typeof value === 'function') {

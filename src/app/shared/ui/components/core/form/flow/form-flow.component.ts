@@ -34,9 +34,9 @@ import { IndicatorComponent } from '../../indicator';
 import { ImageCardComponent, InfoCardComponent } from '../../smart-list/card';
 import { UiTaskScheduler } from '../../../../scheduler';
 import { DateInputComponent, type DateInputModel, type DateInputValue } from '../inputs/date-input';
-import { EventPoliciesInputComponent, type EventPoliciesInputConfig } from '../inputs/event-policies-input';
 import { LinkInputComponent, type LinkInputConfig } from '../inputs/link-input';
 import { LocationInputComponent, type LocationInputConfig } from '../inputs/location-input';
+import { PoliciesInputComponent, type PoliciesInputConfig } from '../inputs/policies-input';
 import { PricingEditorInputComponent, type PricingEditorConfig } from '../inputs/pricing-editor';
 import { RouteInputComponent, type RouteInputConfig } from '../inputs/route-input';
 import type {
@@ -79,7 +79,7 @@ interface FormFlowSelectedMenuItem {
     DateInputComponent,
     LinkInputComponent,
     LocationInputComponent,
-    EventPoliciesInputComponent,
+    PoliciesInputComponent,
     PricingEditorInputComponent,
     RouteInputComponent,
     ImageCarouselComponent,
@@ -580,7 +580,7 @@ export class FormFlowComponent implements ControlValueAccessor, OnChanges, OnDes
     return this.isPoliciesControlConfig(control.config) ? control.config : {};
   }
 
-  protected policiesInputConfig(control: FormFlowControlModel): EventPoliciesInputConfig {
+  protected policiesInputConfig(control: FormFlowControlModel): PoliciesInputConfig {
     return this.policiesConfig(control).model ?? {};
   }
 

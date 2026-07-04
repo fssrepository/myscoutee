@@ -1,93 +1,15 @@
 @if (popup; as popup) {
   <app-popup [model]="pricingPopupModel(popup)" [zIndex]="popup.zIndex">
-    <section
-      class="pricing-editor"
-      [class.pricing-editor--readonly]="editorLocked()"
-      [class.pricing-editor--summary-popup]="usesSummaryPopup()"
-      [class.pricing-editor--wizard-open]="wizardOpen"
-      [class.pricing-editor--enabled]="isPricingEnabled()"
-      [class.pricing-editor--embedded]="resolvedConfig.embedded"
-      >
-      @if (!resolvedConfig.embedded) {
-      <header class="pricing-editor__head">
-        <div class="pricing-editor__title">
-          <span class="pricing-editor__title-copy">
-            <span class="pricing-editor__title-text">
-              <mat-icon>paid</mat-icon>
-              @switch (resolvedConfig.context) {
-                @case ('asset') {
-                  <span>Asset Pricing</span>
-                }
-                @case ('subevent') {
-                  <span>Optional Pricing</span>
-                }
-                @default {
-                  <span>Pricing</span>
-                }
-              }
-            </span>
-            @switch (subtitleKey()) {
-              @case ('event-enabled') {
-                <span class="pricing-editor__subtitle">Configure paid entry for the main event and optional slot overrides.</span>
-              }
-              @case ('event-disabled') {
-                <span class="pricing-editor__subtitle">Keep it free for now or prepare ticketing rules in advance.</span>
-              }
-              @case ('asset') {
-                <span class="pricing-editor__subtitle">Set the default charge for using this asset without event slot-specific pricing controls.</span>
-              }
-              @case ('subevent') {
-                <span class="pricing-editor__subtitle">Optional sub events can add a separate charge beyond the main event price without slot-specific rules.</span>
-              }
-            }
-          </span>
-        </div>
-        <div class="pricing-editor__head-actions">
-          <button
-            type="button"
-            class="pricing-editor__toggle pricing-editor__toggle--header"
-            [class.is-on]="isPricingEnabled()"
-            [disabled]="editorLocked()"
-            [attr.aria-pressed]="isPricingEnabled()"
-            (click)="togglePricingEnabled()"
-            >
-            <mat-icon>{{ isPricingEnabled() ? 'toggle_on' : 'toggle_off' }}</mat-icon>
-            <span>{{ isPricingEnabled() ? 'On' : 'Off' }}</span>
-          </button>
-        </div>
-      </header>
+    <div class="pricing-editor__wizard-body">
+      @if (resolvedConfig.showPreview) {
+        <aside class="pricing-editor__preview pricing-editor__preview--wizard-sticky">
+          <ng-container [ngTemplateOutlet]="pricingWizardPreviewCard"></ng-container>
+        </aside>
       }
-    
-      @if (usesSummaryPopup() && isPricingEnabled()) {
-        @if (!editorLocked()) {
-          <div class="pricing-editor__summary-actions">
-            <button type="button" class="pricing-editor__open-btn pricing-editor__open-btn--summary" (click)="openWizard()">
-              <mat-icon>tune</mat-icon>
-              <span>Open Pricing Setup</span>
-            </button>
-          </div>
-        }
-        @if (resolvedConfig.showPreview) {
-          <div class="pricing-editor__preview pricing-editor__preview--summary">
-            <ng-container [ngTemplateOutlet]="pricingPreviewCards"></ng-container>
-          </div>
-        }
-      } @else if (isPricingEnabled()) {
-        <div class="pricing-editor__layout">
-          <div class="pricing-editor__main">
-            <ng-container [ngTemplateOutlet]="pricingEditorSurfaces"></ng-container>
-          </div>
-    
-          @if (resolvedConfig.showPreview) {
-            <aside class="pricing-editor__preview">
-              <ng-container [ngTemplateOutlet]="pricingPreviewCards"></ng-container>
-            </aside>
-          }
-        </div>
-      }
-    
-    </section>
-    
+      <div class="pricing-editor__main">
+        <ng-container [ngTemplateOutlet]="pricingEditorSurfaces"></ng-container>
+      </div>
+    </div>
     
     @if (showMobileRuleScopeSheet()) {
       <div class="pricing-editor__scope-sheet-backdrop" (click)="closeRuleScopePicker($event)"></div>
@@ -840,6 +762,39 @@
           }
         </section>
       }
+    </ng-template>
+
+    <ng-template #pricingWizardPreviewCard>
+      <div class="pricing-editor__preview-card">
+        <div class="pricing-editor__preview-head">
+          <span>Current Price Review</span>
+          <mat-icon>query_stats</mat-icon>
+        </div>
+        <div class="pricing-editor__preview-line">
+          <span>Base</span>
+          <strong>{{ currencySymbol(workingPricing.currency) }}{{ currentPreview.basePrice | number:'1.0-2' }}</strong>
+        </div>
+        @if (currentPreview.demandDelta !== 0) {
+          <div class="pricing-editor__preview-line">
+            <span>Demand adjustment</span>
+            <strong [class.positive]="currentPreview.demandDelta > 0" [class.negative]="currentPreview.demandDelta < 0">
+              {{ currentPreview.demandDelta > 0 ? '+' : '' }}{{ currencySymbol(workingPricing.currency) }}{{ currentPreview.demandDelta | number:'1.0-2' }}
+            </strong>
+          </div>
+        }
+        @if (currentPreview.timeDelta !== 0) {
+          <div class="pricing-editor__preview-line">
+            <span>Time adjustment</span>
+            <strong [class.positive]="currentPreview.timeDelta > 0" [class.negative]="currentPreview.timeDelta < 0">
+              {{ currentPreview.timeDelta > 0 ? '+' : '' }}{{ currencySymbol(workingPricing.currency) }}{{ currentPreview.timeDelta | number:'1.0-2' }}
+            </strong>
+          </div>
+        }
+        <div class="pricing-editor__preview-total">
+          <span>Final price</span>
+          <strong>{{ currencySymbol(workingPricing.currency) }}{{ currentPreview.finalPrice | number:'1.0-2' }}</strong>
+        </div>
+      </div>
     </ng-template>
     
     <ng-template #pricingPreviewCards>

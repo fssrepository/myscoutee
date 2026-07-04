@@ -25,7 +25,6 @@ import {
   type AssetFormState
 } from '../../../shared/ui/context/stores/asset.store';
 import {
-  type EventPoliciesInputConfig,
   type LocationInputConfig,
   IndicatorComponent,
   type AppMenuItem,
@@ -35,6 +34,7 @@ import {
   FormFlowComponent,
   type FormFlowModel,
   type FormFlowTone,
+  type PoliciesInputConfig,
   type PricingEditorConfig,
   PopupComponent,
   type PopupControl,
@@ -93,7 +93,7 @@ export class AssetEditorPopupComponent {
     mapMode: 'search',
     mapAriaLabel: 'Open location on map'
   };
-  protected readonly assetPoliciesInputConfig: EventPoliciesInputConfig = {
+  protected readonly assetPoliciesInputConfig: PoliciesInputConfig = {
     title: 'Lending Policies',
     subtitle: 'Add the rules borrowers need to read and approve before borrowing this asset.',
     toggleable: true,
