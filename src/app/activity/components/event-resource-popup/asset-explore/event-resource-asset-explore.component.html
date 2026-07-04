@@ -34,13 +34,15 @@
       <div class="popup-body popup-body-members asset-explore-shell-body">
         <div class="asset-explore-popup-screen">
           <div class="asset-explore-filter-bar popup-filter-bar">
-            <app-menu
+            <app-menu-trigger
               class="asset-explore-category-menu"
+              menuId="asset-explore-category"
               kind="select"
               [trigger]="categoryMenuTrigger(explore)"
               [items]="categoryMenuItems(explore)"
-              (itemSelect)="onMenuSelect($event)"
-            ></app-menu>
+              [panelAlign]="'start'"
+              [mobileBreakpointPx]="900"
+            ></app-menu-trigger>
 
             <app-date-input
               [model]="explore.dateRangeModel"

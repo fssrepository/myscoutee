@@ -85,11 +85,6 @@ app-event-resource-asset-explore {
   display: none;
 }
 
-.asset-explore-shell .asset-explore-category-menu {
-  flex: 1 1 0;
-  min-width: 0;
-}
-
 .asset-explore-shell .asset-explore-panel {
   position: relative;
   z-index: 0;
@@ -312,11 +307,6 @@ app-event-resource-asset-explore {
 }
 
 @media (max-width: 760px) {
-  .asset-explore-shell .asset-explore-category-menu {
-    flex: 1 1 0;
-    min-width: 0;
-  }
-
   .asset-explore-shell .assets-badge-form-field {
     width: min(286px, calc(100vw - 8rem));
     min-width: min(286px, calc(100vw - 8rem));

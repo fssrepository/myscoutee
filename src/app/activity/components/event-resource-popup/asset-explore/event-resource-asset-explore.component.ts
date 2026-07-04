@@ -38,6 +38,9 @@ import {
   AppMenuOutletComponent
 } from '../../../../shared/ui/components/core/menu/outlet/menu-outlet.component';
 import {
+  AppMenuTriggerComponent
+} from '../../../../shared/ui/components/core/menu/trigger/menu-trigger.component';
+import {
   CARD_MENU_ACTIONS,
   type CardMenuAction,
   type CardMenuActionEvent,
@@ -200,6 +203,7 @@ interface AssetExploreBorrowDraftViewState {
     MatIconModule,
     AppMenuComponent,
     AppMenuOutletComponent,
+    AppMenuTriggerComponent,
     DateInputComponent,
     InfoCardComponent,
     SmartListComponent
@@ -655,7 +659,7 @@ export class EventResourceAssetExploreComponent implements DoCheck {
       icon: AssetDefaultsBuilder.assetCategoryIcon(explore.category),
       ariaLabel: 'Open asset explore category',
       palette: this.assetCategoryPalette(explore.category),
-      layout: 'field'
+      layout: 'pill'
     };
   }
 
