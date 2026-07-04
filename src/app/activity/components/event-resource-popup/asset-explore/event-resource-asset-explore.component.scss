@@ -5,39 +5,10 @@ app-event-resource-asset-explore {
 app-event-resource-asset-explore .asset-explore-popup-screen {
   position: relative;
   display: grid;
-  grid-template-rows: auto minmax(0, 1fr);
+  grid-template-rows: minmax(0, 1fr);
   height: 100%;
   min-height: 0;
-  gap: 0.46rem;
   overflow: hidden;
-}
-
-app-event-resource-asset-explore .asset-explore-filter-bar {
-  min-height: 2.35rem;
-  display: grid;
-  grid-template-columns: minmax(0, 1fr) auto;
-  align-items: center;
-  gap: 0.5rem;
-  overflow-x: auto;
-  overflow-y: visible;
-  padding: 0.08rem 0.08rem 0.48rem;
-  border-bottom: 1px solid rgba(46, 114, 184, 0.16);
-  scrollbar-width: none;
-  -ms-overflow-style: none;
-}
-
-app-event-resource-asset-explore .asset-explore-filter-bar::-webkit-scrollbar {
-  display: none;
-}
-
-app-event-resource-asset-explore .asset-explore-category-menu {
-  justify-self: start;
-  min-width: 0;
-}
-
-app-event-resource-asset-explore .asset-explore-date-range-control {
-  justify-self: end;
-  min-width: 0;
 }
 
 app-event-resource-asset-explore .asset-explore-panel {

@@ -1,12 +1,16 @@
 import { CommonModule } from '@angular/common';
 import { ChangeDetectionStrategy, Component, EventEmitter, Input, Output, ViewEncapsulation } from '@angular/core';
+import { FormsModule } from '@angular/forms';
 import { MatIconModule } from '@angular/material/icon';
 import { I18nPipe } from '../../../pipes';
+import { DateInputComponent, type DateInputValue } from '../form/inputs/date-input/date-input.component';
 import { AppMenuComponent, type AppMenuItemSelectEvent } from '../menu';
 import type {
   PopupAction,
   PopupActionEvent,
   PopupControl,
+  PopupDateInputChangeEvent,
+  PopupDateInputControl,
   PopupMenuControl,
   PopupMenuSelectEvent,
   PopupModel
@@ -15,7 +19,7 @@ import type {
 @Component({
   selector: 'app-popup',
   standalone: true,
-  imports: [CommonModule, MatIconModule, AppMenuComponent, I18nPipe],
+  imports: [CommonModule, FormsModule, MatIconModule, AppMenuComponent, DateInputComponent, I18nPipe],
   templateUrl: './popup.component.html',
   styleUrl: './popup.component.scss',
   encapsulation: ViewEncapsulation.None,
@@ -28,6 +32,7 @@ export class PopupComponent<TContext = unknown> {
   @Output() readonly close = new EventEmitter<Event>();
   @Output() readonly menuSelect = new EventEmitter<PopupMenuSelectEvent<TContext>>();
   @Output() readonly action = new EventEmitter<PopupActionEvent>();
+  @Output() readonly dateInputChange = new EventEmitter<PopupDateInputChangeEvent<TContext>>();
 
   protected get popupModel(): PopupModel<TContext> {
     return this.model ?? {};
@@ -122,6 +127,10 @@ export class PopupComponent<TContext = unknown> {
     return 'kind' in control && control.kind === 'menu';
   }
 
+  protected isDateInputControl(control: PopupControl<TContext>): control is PopupDateInputControl<TContext> {
+    return 'kind' in control && control.kind === 'date-input';
+  }
+
   protected actionPaletteClass(action: PopupAction): string {
     return `ui-popup__action--${action.palette ?? 'default'}`;
   }
@@ -158,6 +167,12 @@ export class PopupComponent<TContext = unknown> {
     const event = { control, itemSelect };
     this.popupModel.onMenuSelect?.(event);
     this.menuSelect.emit(event);
+  }
+
+  protected changeDateInput(control: PopupDateInputControl<TContext>, value: DateInputValue): void {
+    const event = { control, value };
+    this.popupModel.onDateInputChange?.(event);
+    this.dateInputChange.emit(event);
   }
 
   protected selectAction(action: PopupAction, sourceEvent: Event): void {

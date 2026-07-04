@@ -11,25 +11,6 @@
 @if (popupViewState(); as explore) {
   <app-popup [model]="assetExplorePopupModel(explore)" [zIndex]="assetExplorePopupZIndex()">
     <div class="asset-explore-popup-screen">
-      <div class="asset-explore-filter-bar">
-        <app-menu-trigger
-          class="asset-explore-category-menu"
-          menuId="asset-explore-category"
-          kind="select"
-          [trigger]="categoryMenuTrigger(explore)"
-          [items]="categoryMenuItems(explore)"
-          [panelAlign]="'start'"
-          [mobileBreakpointPx]="900"
-        ></app-menu-trigger>
-
-        <app-date-input
-          class="asset-explore-date-range-control"
-          [model]="explore.dateRangeModel"
-          [ngModel]="explore.dateRange"
-          (ngModelChange)="onDateInputRangeChange($event)"
-        ></app-date-input>
-      </div>
-
       <section class="asset-explore-panel">
         <div class="asset-explore-grid">
           @if (explore.error && explore.cards.length > 0) {

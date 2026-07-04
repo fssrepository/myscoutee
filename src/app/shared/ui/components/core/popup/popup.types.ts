@@ -9,6 +9,10 @@ import type {
   AppMenuPalette,
   AppMenuTrigger
 } from '../menu';
+import type {
+  DateInputModel,
+  DateInputValue
+} from '../form/inputs/date-input/date-input.component';
 
 export type PopupSize = 'default' | 'wide';
 export type PopupHeight = 'auto' | 'full';
@@ -46,9 +50,17 @@ export interface PopupMenuControl<TContext = unknown> extends PopupControlBase {
   closeOnSelect?: boolean;
 }
 
+export interface PopupDateInputControl<TContext = unknown> extends PopupControlBase {
+  kind: 'date-input';
+  model: DateInputModel;
+  value: DateInputValue;
+  context?: TContext;
+}
+
 export type PopupControl<TContext = unknown> =
   | PopupAction
-  | PopupMenuControl<TContext>;
+  | PopupMenuControl<TContext>
+  | PopupDateInputControl<TContext>;
 
 export interface PopupModel<TContext = unknown> {
   title?: string | null;
@@ -71,6 +83,7 @@ export interface PopupModel<TContext = unknown> {
   onClose?: ((event: Event) => void) | null;
   onAction?: ((event: PopupActionEvent) => void) | null;
   onMenuSelect?: ((event: PopupMenuSelectEvent<TContext>) => void) | null;
+  onDateInputChange?: ((event: PopupDateInputChangeEvent<TContext>) => void) | null;
 }
 
 export interface PopupMenuSelectEvent<TContext = unknown> {
@@ -81,4 +94,9 @@ export interface PopupMenuSelectEvent<TContext = unknown> {
 export interface PopupActionEvent {
   action: PopupAction;
   sourceEvent: Event;
+}
+
+export interface PopupDateInputChangeEvent<TContext = unknown> {
+  control: PopupDateInputControl<TContext>;
+  value: DateInputValue;
 }

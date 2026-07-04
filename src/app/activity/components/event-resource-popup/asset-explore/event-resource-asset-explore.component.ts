@@ -39,9 +39,6 @@ import {
   AppMenuOutletComponent
 } from '../../../../shared/ui/components/core/menu/outlet/menu-outlet.component';
 import {
-  AppMenuTriggerComponent
-} from '../../../../shared/ui/components/core/menu/trigger/menu-trigger.component';
-import {
   PopupComponent,
   type PopupModel
 } from '../../../../shared/ui/components/core/popup';
@@ -59,7 +56,6 @@ import {
   SmartListComponent
 } from '../../../../shared/ui/components/core/smart-list/smart-list.component';
 import {
-  DateInputComponent,
   type DateInputModel,
   type DateInputRangeValue,
   type DateInputValue
@@ -211,9 +207,7 @@ interface AssetExploreBorrowDraftViewState {
     MatIconModule,
     AppMenuComponent,
     AppMenuOutletComponent,
-    AppMenuTriggerComponent,
     PopupComponent,
-    DateInputComponent,
     InfoCardComponent,
     SmartListComponent
   ],
@@ -464,8 +458,27 @@ export class EventResourceAssetExploreComponent implements DoCheck {
           mobileBreakpointPx: 900
         }
       ],
+      toolbarControls: [
+        {
+          kind: 'menu',
+          id: 'asset-explore-category',
+          menuKind: 'select',
+          trigger: this.categoryMenuTrigger(explore),
+          items: this.categoryMenuItems(explore),
+          panelAlign: 'start',
+          mobileBreakpointPx: 900
+        },
+        {
+          kind: 'date-input',
+          id: 'asset-explore-date-range',
+          align: 'end',
+          model: explore.dateRangeModel,
+          value: explore.dateRange
+        }
+      ],
       onClose: event => this.closeExplorePopup(event),
-      onMenuSelect: event => this.onMenuSelect(event.itemSelect)
+      onMenuSelect: event => this.onMenuSelect(event.itemSelect),
+      onDateInputChange: event => this.onDateInputRangeChange(event.value)
     };
   }
 
