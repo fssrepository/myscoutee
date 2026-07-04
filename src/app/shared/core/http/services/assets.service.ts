@@ -99,6 +99,59 @@ export class HttpAssetsService {
     }
   }
 
+  async queryVisibleAssetsPage(query: AppDTOs.AssetExplorePageQueryDTO): Promise<AppDTOs.AssetExplorePageResultDTO> {
+    const normalizedUserId = query.userId.trim();
+    if (!normalizedUserId) {
+      return {
+        items: [],
+        total: 0,
+        nextCursor: null
+      };
+    }
+    const page = Math.max(0, Math.trunc(Number(query.page) || 0));
+    const pageSize = Math.max(1, Math.trunc(Number(query.pageSize) || 1));
+    try {
+      const response = await this.http
+        .get<AppDTOs.AssetDTO[] | AppDTOs.AssetExplorePageResultDTO | null>(`${this.apiBaseUrl}/assets/explore`, {
+          params: new HttpParams()
+            .set('userId', normalizedUserId)
+            .set('type', query.type)
+            .set('category', `${query.category ?? ''}`.trim())
+            .set('startAtIso', `${query.startAtIso ?? ''}`.trim())
+            .set('endAtIso', `${query.endAtIso ?? ''}`.trim())
+            .set('page', `${page}`)
+            .set('pageSize', `${pageSize}`)
+            .set('order', `${query.order ?? 'availability'}`.trim())
+            .set('cursor', `${query.cursor ?? ''}`.trim())
+        })
+        .toPromise();
+      if (Array.isArray(response)) {
+        const items = this.normalizeCards(response);
+        return {
+          items,
+          total: items.length,
+          nextCursor: null
+        };
+      }
+      const items = this.normalizeCards(response?.items ?? []);
+      return {
+        items,
+        total: Number.isFinite(response?.total)
+          ? Math.max(0, Math.trunc(Number(response?.total)))
+          : items.length,
+        nextCursor: typeof response?.nextCursor === 'string' && response.nextCursor.trim().length > 0
+          ? response.nextCursor
+          : null
+      };
+    } catch {
+      return {
+        items: [],
+        total: 0,
+        nextCursor: null
+      };
+    }
+  }
+
   async saveOwnedAsset(userId: string, asset: AppDTOs.AssetDetailDTO): Promise<AppDTOs.AssetDTO> {
     const normalizedUserId = userId.trim();
     const normalizedDetail = this.normalizeDetail(asset);

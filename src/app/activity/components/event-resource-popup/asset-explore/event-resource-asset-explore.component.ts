@@ -232,11 +232,9 @@ export class EventResourceAssetExploreComponent implements DoCheck {
   private lastCardCount = 0;
   private listReady = false;
   private listVisibleCount = 0;
-  private pendingRequestVersion = 0;
+  private listTotal = 0;
   private pendingBorrowRequestVersion = 0;
-  private loadScheduled = false;
   private lastAssetExploreOutletActionRequestId = 0;
-  private readonly warmCacheByKey = new Map<string, ResourceAssetDTO[]>();
   private readonly localReservationsByKey = new Map<string, {
     startAtIso: string;
     endAtIso: string;
@@ -461,11 +459,6 @@ export class EventResourceAssetExploreComponent implements DoCheck {
   }
 
   ngDoCheck(): void {
-    const pending = this.resourcePopupStore.assetExplorePopupRef();
-    if (pending?.loading === true && !this.loadScheduled) {
-      this.scheduleCardsLoad();
-    }
-
     const explore = this.popupViewState();
     if (!explore) {
       this.showBorrowBasket = false;
@@ -499,6 +492,7 @@ export class EventResourceAssetExploreComponent implements DoCheck {
       this.lastCardCount = cards.length;
       this.listReady = false;
       this.listVisibleCount = 0;
+      this.listTotal = 0;
       this.smartListQuery = {
         filters: {
           revision: Date.now(),
@@ -515,7 +509,9 @@ export class EventResourceAssetExploreComponent implements DoCheck {
     const previousCardCount = this.lastCardCount;
     this.lastCardsSignature = signature;
     this.lastCardCount = cards.length;
-    this.syncVisibleCards(cards, previousCardCount);
+    if (cards.length <= previousCardCount) {
+      this.syncVisibleCards(cards, previousCardCount);
+    }
   }
 
   @HostListener('window:keydown.escape', ['$event'])
@@ -568,14 +564,8 @@ export class EventResourceAssetExploreComponent implements DoCheck {
     change: SmartListStateChange<ResourceAssetDTO, AssetExploreSmartListFilters>
   ): void {
     this.listVisibleCount = change.items.length;
+    this.listTotal = change.total;
     this.listReady = !change.initialLoading;
-    if (!this.listReady) {
-      return;
-    }
-    const cards = this.cardsForView();
-    if (change.total !== cards.length) {
-      this.syncVisibleCards(cards, change.total);
-    }
   }
 
   protected itemInfoCard(card: ResourceAssetDTO, options: { groupLabel?: string | null } = {}): InfoCardData {
@@ -812,7 +802,6 @@ export class EventResourceAssetExploreComponent implements DoCheck {
       startAtIso: AppUtils.applyDatePartToIsoLocal(popup.startAtIso, start),
       endAtIso: AppUtils.applyDatePartToIsoLocal(popup.endAtIso, end)
     }));
-    this.scheduleCardsLoad();
   }
 
   private assetExploreDateRangeModel(bounds: { startAtIso: string; endAtIso: string }): DateInputModel {
@@ -1196,7 +1185,6 @@ export class EventResourceAssetExploreComponent implements DoCheck {
           ...currentPopup,
           cards: nextCards
         });
-        this.storeWarmCache(this.queryKey(this.queryFromPopup(currentPopup)), nextCards);
         this.closeBorrowDialog();
       })
       .catch(error => {
@@ -1255,18 +1243,59 @@ export class EventResourceAssetExploreComponent implements DoCheck {
   private async loadSmartListPage(
     query: ListQuery<AssetExploreSmartListFilters>
   ): Promise<PageResult<ResourceAssetDTO>> {
-    await this.activityResourcesService.waitForResourceRouteDelay();
-    const cards = this.cardsForView();
+    const popup = this.resourcePopupStore.assetExplorePopupRef();
+    if (!popup) {
+      return {
+        items: [],
+        total: 0,
+        nextCursor: null
+      };
+    }
     const page = Math.max(0, Math.trunc(Number(query.page) || 0));
     const pageSize = Math.max(1, Math.trunc(Number(query.pageSize) || 1));
     const basePageSize = Math.max(1, Math.trunc(Number(query.pageSize) || Number(this.smartListConfig.pageSize) || 1));
     const initialPageSize = this.initialPageSize(basePageSize);
-    const start = page === 0 ? 0 : initialPageSize + ((page - 1) * basePageSize);
     const size = page === 0 ? Math.max(pageSize, initialPageSize) : pageSize;
-    return {
-      items: cards.slice(start, start + size),
-      total: cards.length
+    const pageQuery: AppDTOs.AssetExplorePageQueryDTO = {
+      ...this.queryFromPopup(popup),
+      page,
+      pageSize: size,
+      cursor: query.cursor ?? null,
+      order: this.order
     };
+    const requestKey = this.queryKey(pageQuery, pageQuery.order);
+    try {
+      const result = await this.assetsService.queryVisibleAssetsPage(pageQuery);
+      const current = this.resourcePopupStore.assetExplorePopupRef();
+      if (!current || this.queryKey(this.queryFromPopup(current), pageQuery.order) !== requestKey) {
+        return {
+          items: [],
+          total: 0,
+          nextCursor: null
+        };
+      }
+      const items = result.items.map(card => this.cloneAsset(card));
+      this.mergeLoadedPage(current, items, pageQuery);
+      return {
+        items,
+        total: result.total,
+        nextCursor: result.nextCursor ?? null
+      };
+    } catch {
+      const current = this.resourcePopupStore.assetExplorePopupRef();
+      if (current && this.queryKey(this.queryFromPopup(current), pageQuery.order) === requestKey) {
+        this.resourcePopupStore.assetExplorePopupRef.set({
+          ...current,
+          loading: false,
+          error: current.cards.length > 0 ? null : 'Unable to load visible assets right now.'
+        });
+      }
+      return {
+        items: [],
+        total: 0,
+        nextCursor: null
+      };
+    }
   }
 
   private syncVisibleCards(cards: ResourceAssetDTO[], previousCardCount: number): void {
@@ -1281,7 +1310,29 @@ export class EventResourceAssetExploreComponent implements DoCheck {
     }
     const orderedCards = this.cardsForView(cards);
     this.smartList.replaceVisibleItems(orderedCards.slice(0, nextVisibleCount), {
-      total: orderedCards.length
+      total: Math.max(orderedCards.length, this.listTotal)
+    });
+  }
+
+  private mergeLoadedPage(
+    popup: AssetExplorePopupState,
+    items: readonly ResourceAssetDTO[],
+    query: AppDTOs.AssetExplorePageQueryDTO
+  ): void {
+    const replace = Math.max(0, Math.trunc(Number(query.page) || 0)) === 0 && !`${query.cursor ?? ''}`.trim();
+    const nextById = new Map<string, ResourceAssetDTO>();
+    const source = replace ? [] : popup.cards;
+    for (const card of source) {
+      nextById.set(card.id, this.cloneAsset(card));
+    }
+    for (const card of items) {
+      nextById.set(card.id, this.cloneAsset(card));
+    }
+    this.resourcePopupStore.assetExplorePopupRef.set({
+      ...popup,
+      loading: false,
+      error: null,
+      cards: [...nextById.values()]
     });
   }
 
@@ -1375,75 +1426,22 @@ export class EventResourceAssetExploreComponent implements DoCheck {
     if (nextType === popup.type && nextCategory === popup.category) {
       return;
     }
-    this.resourcePopupStore.assetExplorePopupRef.set({
+    this.resourcePopupStore.assetExplorePopupRef.set(this.resolvePopupState({
       ...popup,
       type: nextType,
-      category: nextCategory,
-      loading: true,
-      error: null
-    });
-    this.scheduleCardsLoad();
-  }
-
-  private async loadCards(): Promise<void> {
-    const popup = this.resourcePopupStore.assetExplorePopupRef();
-    if (!popup) {
-      return;
-    }
-    const query = this.queryFromPopup(popup);
-    const key = this.queryKey(query);
-    const requestVersion = ++this.pendingRequestVersion;
-    try {
-      const cards = await this.assetsService.queryVisibleAssets(query);
-      const sortedCards = this.sortCards(cards, query.startAtIso ?? '', query.endAtIso ?? '');
-      this.storeWarmCache(key, sortedCards);
-      const current = this.resourcePopupStore.assetExplorePopupRef();
-      if (!current || requestVersion !== this.pendingRequestVersion || this.queryKey(this.queryFromPopup(current)) !== key) {
-        return;
-      }
-      this.resourcePopupStore.assetExplorePopupRef.set({
-        ...current,
-        loading: false,
-        error: null,
-        cards: sortedCards.map(card => this.cloneAsset(card))
-      });
-    } catch {
-      const current = this.resourcePopupStore.assetExplorePopupRef();
-      if (!current || requestVersion !== this.pendingRequestVersion) {
-        return;
-      }
-      this.resourcePopupStore.assetExplorePopupRef.set({
-        ...current,
-        loading: false,
-        error: current.cards.length > 0 ? null : 'Unable to load visible assets right now.'
-      });
-    }
+      category: nextCategory
+    }));
   }
 
   private resolvePopupState(
     popup: Pick<AssetExplorePopupState, 'subEventId' | 'type' | 'category' | 'startAtIso' | 'endAtIso'>
   ): AssetExplorePopupState {
-    const cachedCards = this.peekWarmCache(this.queryFromPopup(popup));
     return {
       ...popup,
-      loading: cachedCards === null,
+      loading: true,
       error: null,
-      cards: cachedCards ?? []
+      cards: []
     };
-  }
-
-  private scheduleCardsLoad(): void {
-    if (this.loadScheduled) {
-      return;
-    }
-    this.loadScheduled = true;
-    this.runAfterNextPaint(() => {
-      this.loadScheduled = false;
-      if (!this.resourcePopupStore.assetExplorePopupRef()) {
-        return;
-      }
-      void this.loadCards();
-    });
   }
 
   private queryFromPopup(
@@ -1458,43 +1456,15 @@ export class EventResourceAssetExploreComponent implements DoCheck {
     };
   }
 
-  private queryKey(query: AppDTOs.AssetExploreQueryDTO): string {
+  private queryKey(query: AppDTOs.AssetExploreQueryDTO, order: AssetExploreOrder = this.order): string {
     return [
       query.userId.trim(),
       query.type,
       `${query.category ?? ''}`.trim(),
       `${query.startAtIso ?? ''}`.trim(),
-      `${query.endAtIso ?? ''}`.trim()
+      `${query.endAtIso ?? ''}`.trim(),
+      order
     ].join('|');
-  }
-
-  private peekWarmCache(query: AppDTOs.AssetExploreQueryDTO): ResourceAssetDTO[] | null {
-    const cached = this.warmCacheByKey.get(this.queryKey(query));
-    return cached ? cached.map(card => this.cloneAsset(card)) : null;
-  }
-
-  private storeWarmCache(key: string, cards: readonly ResourceAssetDTO[]): void {
-    this.warmCacheByKey.set(key, cards.map(card => this.cloneAsset(card)));
-    if (this.warmCacheByKey.size <= 18) {
-      return;
-    }
-    const oldestKey = this.warmCacheByKey.keys().next().value;
-    if (oldestKey) {
-      this.warmCacheByKey.delete(oldestKey);
-    }
-  }
-
-  private sortCards(cards: readonly ResourceAssetDTO[], startAtIso: string, endAtIso: string): ResourceAssetDTO[] {
-    return cards
-      .map(card => this.cloneAsset(card))
-      .sort((left, right) => {
-        const availabilityDelta = this.availableQuantityForWindow(right, startAtIso, endAtIso)
-          - this.availableQuantityForWindow(left, startAtIso, endAtIso);
-        if (availabilityDelta !== 0) {
-          return availabilityDelta;
-        }
-        return left.title.localeCompare(right.title) || left.id.localeCompare(right.id);
-      });
   }
 
   private availabilityLabel(card: ResourceAssetDTO): string {
@@ -2607,14 +2577,6 @@ export class EventResourceAssetExploreComponent implements DoCheck {
         feedback: 0
       }
     };
-  }
-
-  private runAfterNextPaint(task: () => void): void {
-    if (typeof window !== 'undefined' && typeof window.requestAnimationFrame === 'function') {
-      window.requestAnimationFrame(() => window.requestAnimationFrame(task));
-      return;
-    }
-    setTimeout(task, 0);
   }
 
   private openGoogleMapsSearch(query: string): void {

@@ -247,6 +247,10 @@ export class LocalAssetsMapper {
     };
   }
 
+  static toAssetDtos(records: readonly AssetRecord[], options: LocalAssetProjectionOptions = {}): AppDTOs.AssetDTO[] {
+    return records.map(record => this.toAssetDto(record, options));
+  }
+
   static toAssetDetailDto(record: AssetRecord, options: LocalAssetProjectionOptions = {}): AppDTOs.AssetDetailDTO {
     const viewerUserId = options.viewerUserId?.trim() ?? '';
     return {

@@ -53,6 +53,22 @@ export class AssetsService extends BaseRouteModeService {
     });
   }
 
+  async queryVisibleAssetsPage(query: AppDTOs.AssetExplorePageQueryDTO): Promise<AppDTOs.AssetExplorePageResultDTO> {
+    const normalizedUserId = query.userId.trim();
+    if (!normalizedUserId) {
+      return {
+        items: [],
+        total: 0,
+        nextCursor: null
+      };
+    }
+    return this.assetsService.queryVisibleAssetsPage({
+      ...query,
+      userId: normalizedUserId,
+      pageSize: Math.max(1, Math.trunc(Number(query.pageSize) || 1))
+    });
+  }
+
   async saveOwnedAsset(userId: string, asset: AppDTOs.AssetDetailDTO): Promise<AppDTOs.AssetDTO> {
     return this.assetsService.saveOwnedAsset(userId, asset);
   }

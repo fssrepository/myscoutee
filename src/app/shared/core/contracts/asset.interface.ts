@@ -321,6 +321,21 @@ export interface AssetExploreQueryDTO {
   endAtIso?: string;
 }
 
+export type AssetExploreOrder = 'availability' | 'lowest-price' | 'fewest-policies';
+
+export interface AssetExplorePageQueryDTO extends AssetExploreQueryDTO {
+  page?: number;
+  pageSize: number;
+  cursor?: string | null;
+  order?: AssetExploreOrder;
+}
+
+export interface AssetExplorePageResultDTO {
+  items: AssetDTO[];
+  total: number;
+  nextCursor?: string | null;
+}
+
 export interface AssetTicketPageQueryDTO {
   userId: string;
   page: number;

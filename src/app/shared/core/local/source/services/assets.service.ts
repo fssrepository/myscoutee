@@ -2,6 +2,7 @@ import { Injectable, inject } from '@angular/core';
 
 import { LocalRouteDelayService } from './route-delay.service';
 import { LocalAssetsRepository } from '../repositories/assets.repository';
+import { LocalAssetsMapper } from '../mappers/asset.mapper';
 
 import type * as AppDTOs from '../../../contracts';
 @Injectable({
@@ -32,6 +33,16 @@ export class LocalAssetsService extends LocalRouteDelayService {
   async queryVisibleAssets(query: AppDTOs.AssetExploreQueryDTO): Promise<AppDTOs.AssetDTO[]> {
     await this.waitForRouteDelay(LocalAssetsService.ASSETS_ROUTE);
     return this.assetsRepository.queryVisibleAssets(query);
+  }
+
+  async queryVisibleAssetsPage(query: AppDTOs.AssetExplorePageQueryDTO): Promise<AppDTOs.AssetExplorePageResultDTO> {
+    await this.waitForRouteDelay(LocalAssetsService.ASSETS_ROUTE);
+    const result = this.assetsRepository.queryVisibleAssetRecordsPage(query);
+    return {
+      items: LocalAssetsMapper.toAssetDtos(result.items),
+      total: result.total,
+      nextCursor: result.nextCursor ?? null
+    };
   }
 
   async saveOwnedAsset(userId: string, asset: AppDTOs.AssetDetailDTO): Promise<AppDTOs.AssetDTO> {

@@ -1,7 +1,7 @@
 import { Injectable, inject } from '@angular/core';
 
 import { AppUtils } from '../../../../app-utils';
-import { PricingBuilder } from '../../../base/builders';
+import { AssetCardBuilder, PricingBuilder } from '../../../base/builders';
 import { UserProfileState } from '../../../common/user-profile-state';
 import type { UserDto } from '../../../contracts/user.interface';
 import { LocalMemoryDb } from '../../../common/app.db';
@@ -20,6 +20,20 @@ import {
 
 import type * as AppDTOs from '../../../contracts';
 import type * as AppConstants from '../../../common/constants';
+
+interface AssetExploreRecordProjection {
+  record: AssetRecord;
+  availability: number;
+  price: number;
+  policyCount: number;
+}
+
+export interface AssetExploreRecordPageResult {
+  items: AssetRecord[];
+  total: number;
+  nextCursor?: string | null;
+}
+
 @Injectable({
   providedIn: 'root'
 })
@@ -100,6 +114,43 @@ export class LocalAssetsRepository {
     return this.readVisibleAssets(normalizedUserId)
       .filter(card => card.type === query.type)
       .filter(card => !normalizedCategory || card.category === normalizedCategory);
+  }
+
+  queryVisibleAssetRecordsPage(query: AppDTOs.AssetExplorePageQueryDTO): AssetExploreRecordPageResult {
+    const normalizedUserId = query.userId.trim();
+    if (!normalizedUserId) {
+      return {
+        items: [],
+        total: 0,
+        nextCursor: null
+      };
+    }
+    const normalizedCategory = `${query.category ?? ''}`.trim();
+    const normalizedOrder = this.normalizeAssetExploreOrder(query.order);
+    const pageSize = Math.max(1, Math.trunc(Number(query.pageSize) || 10));
+    const page = Math.max(0, Math.trunc(Number(query.page) || 0));
+    const startAtIso = `${query.startAtIso ?? ''}`.trim();
+    const endAtIso = `${query.endAtIso ?? ''}`.trim();
+
+    const records = this.readVisibleAssetRecords(normalizedUserId)
+      .filter(record => record.type === query.type)
+      .filter(record => !normalizedCategory || record.category === normalizedCategory)
+      .map(record => this.toAssetExploreProjection(record, startAtIso, endAtIso))
+      .filter(item => item.availability > 0)
+      .sort((left, right) => this.compareAssetExploreProjections(left, right, normalizedOrder));
+    const total = records.length;
+    const cursorOffset = this.parseAssetExploreCursor(query.cursor);
+    const startIndex = Math.min(total, cursorOffset ?? (page * pageSize));
+    const endIndex = Math.min(total, startIndex + pageSize);
+    const items = records
+      .slice(startIndex, endIndex)
+      .map(item => LocalAssetsMapper.cloneRecord(item.record));
+
+    return {
+      items,
+      total,
+      nextCursor: endIndex < total ? `${endIndex}` : null
+    };
   }
 
   peekVisibleAssetById(userId: string, type: AppConstants.AssetType, assetId: string): AppDTOs.AssetDTO | null {
@@ -528,18 +579,23 @@ export class LocalAssetsRepository {
   }
 
   private readVisibleAssets(activeUserId: string): AppDTOs.AssetDTO[] {
+    return this.readVisibleAssetRecords(activeUserId)
+      .map(record => this.toAssetDto(record, activeUserId));
+  }
+
+  private readVisibleAssetRecords(activeUserId: string): AssetRecord[] {
     const table = this.normalizeCollection(this.memoryDb.read()[ASSETS_TABLE_NAME]);
     const visibleOwnerIds = new Set(this.queryVisibleExploreOwners(activeUserId).map(user => user.id));
     const viewerAffinity = this.queryUserAffinity(activeUserId);
     return table.ids
       .map(id => table.byId[id])
       .filter((record): record is AssetRecord => Boolean(record))
+      .filter(record => !this.isSuppressedAssetStatus(record.status))
       .filter(record => record.ownerUserId !== activeUserId)
       .filter(record => visibleOwnerIds.size === 0 || visibleOwnerIds.has(record.ownerUserId))
       .filter(record => record.visibility === 'Public'
         || (record.visibility === 'Friends only' && UserProfileState.isFriendOfActiveUser(record.ownerUserId, activeUserId)))
-      .sort((left, right) => this.compareVisibleAssetRecords(left, right, viewerAffinity))
-      .map(record => this.toAssetDto(record, activeUserId));
+      .sort((left, right) => this.compareVisibleAssetRecords(left, right, viewerAffinity));
   }
 
   private compareVisibleAssetRecords(
@@ -552,6 +608,105 @@ export class LocalAssetsRepository {
       return scoreDelta;
     }
     return left.title.localeCompare(right.title) || left.id.localeCompare(right.id);
+  }
+
+  private normalizeAssetExploreOrder(order: AppDTOs.AssetExploreOrder | null | undefined): AppDTOs.AssetExploreOrder {
+    return order === 'lowest-price' || order === 'fewest-policies'
+      ? order
+      : 'availability';
+  }
+
+  private parseAssetExploreCursor(cursor: string | null | undefined): number | null {
+    const value = Math.trunc(Number(`${cursor ?? ''}`.trim()));
+    return Number.isFinite(value) && value >= 0 ? value : null;
+  }
+
+  private toAssetExploreProjection(
+    record: AssetRecord,
+    startAtIso: string,
+    endAtIso: string
+  ): AssetExploreRecordProjection {
+    return {
+      record,
+      availability: this.availableQuantityForWindow(record, startAtIso, endAtIso),
+      price: this.assetPriceAmount(record),
+      policyCount: record.policiesEnabled === true ? (record.policies ?? []).length : 0
+    };
+  }
+
+  private compareAssetExploreProjections(
+    left: AssetExploreRecordProjection,
+    right: AssetExploreRecordProjection,
+    order: AppDTOs.AssetExploreOrder
+  ): number {
+    if (order === 'lowest-price') {
+      return (left.price - right.price)
+        || (right.availability - left.availability)
+        || this.compareAssetExploreProjectionIdentity(left, right);
+    }
+    if (order === 'fewest-policies') {
+      return (left.policyCount - right.policyCount)
+        || (right.availability - left.availability)
+        || this.compareAssetExploreProjectionIdentity(left, right);
+    }
+    return (right.availability - left.availability)
+      || (left.price - right.price)
+      || this.compareAssetExploreProjectionIdentity(left, right);
+  }
+
+  private compareAssetExploreProjectionIdentity(
+    left: AssetExploreRecordProjection,
+    right: AssetExploreRecordProjection
+  ): number {
+    return left.record.title.localeCompare(right.record.title)
+      || (left.record.ownerName ?? '').localeCompare(right.record.ownerName ?? '')
+      || left.record.id.localeCompare(right.record.id);
+  }
+
+  private availableQuantityForWindow(record: AssetRecord, startAtIso: string, endAtIso: string): number {
+    const totalQuantity = AssetCardBuilder.storedQuantityValue(record);
+    const overlappingCommitted = (record.requests ?? [])
+      .filter(request => request.status === 'accepted' || request.requestKind === 'manual')
+      .filter(request => request.booking?.inventoryApplied !== true)
+      .filter(request => this.isAssetRequestWindowOverlap(request, startAtIso, endAtIso))
+      .reduce((sum, request) => sum + this.assetRequestQuantity(request), 0);
+    return Math.max(0, totalQuantity - overlappingCommitted);
+  }
+
+  private assetRequestQuantity(request: AppDTOs.AssetMemberRequestDTO): number {
+    return Math.max(1, Math.trunc(Number(request.booking?.quantity) || 1));
+  }
+
+  private isAssetRequestWindowOverlap(
+    request: AppDTOs.AssetMemberRequestDTO,
+    startAtIso: string,
+    endAtIso: string
+  ): boolean {
+    const requestStart = this.parseLocalDateMs(request.booking?.startAtIso);
+    const requestEnd = this.parseLocalDateMs(request.booking?.endAtIso);
+    const windowStart = this.parseLocalDateMs(startAtIso);
+    const windowEnd = this.parseLocalDateMs(endAtIso);
+    if (requestStart !== null && requestEnd !== null && windowStart !== null && windowEnd !== null) {
+      return requestStart < windowEnd && windowStart < requestEnd;
+    }
+    const requestWindow = [
+      `${request.booking?.eventId ?? ''}`.trim(),
+      `${request.booking?.subEventId ?? ''}`.trim(),
+      `${request.booking?.slotKey ?? ''}`.trim(),
+      `${request.booking?.timeframe ?? ''}`.trim()
+    ].filter(Boolean).join('|');
+    const targetWindow = [startAtIso.trim(), endAtIso.trim()].filter(Boolean).join('|');
+    return Boolean(requestWindow && targetWindow && requestWindow === targetWindow);
+  }
+
+  private parseLocalDateMs(value: string | null | undefined): number | null {
+    const parsed = AppUtils.isoLocalDateTimeToDate(`${value ?? ''}`.trim());
+    return parsed ? parsed.getTime() : null;
+  }
+
+  private assetPriceAmount(record: AssetRecord): number {
+    const amount = Number(record.pricing?.basePrice);
+    return Number.isFinite(amount) ? Math.max(0, amount) : 0;
   }
 
   private assetExploreScore(record: AssetRecord, viewerAffinity: number): number {
