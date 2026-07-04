@@ -121,7 +121,7 @@ export class PricingEditorPopupComponent extends PricingEditorInputComponent imp
   private pricingPopupHeaderActions(popup: FormFlowPricingEditorPopupState): readonly PopupAction[] {
     const actions: PopupAction[] = [{
       id: 'pricing-info-toggle',
-      icon: 'summarize',
+      icon: 'query_stats',
       ariaLabel: this.showPricingInfoPanel ? 'Hide pricing summary' : 'Show pricing summary',
       palette: 'blue',
       active: this.showPricingInfoPanel,
