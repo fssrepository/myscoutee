@@ -1,24 +1,22 @@
+import { DragDropModule, type CdkDragDrop } from '@angular/cdk/drag-drop';
 import { CommonModule } from '@angular/common';
 import {
   ChangeDetectionStrategy,
   ChangeDetectorRef,
   Component,
   Input,
-  OnDestroy,
-  Type,
-  computed,
-  effect,
   forwardRef,
-  inject,
-  untracked
+  inject
 } from '@angular/core';
 import { ControlValueAccessor, FormsModule, NG_VALUE_ACCESSOR } from '@angular/forms';
 import { MatIconModule } from '@angular/material/icon';
 
 import {
-  FormFlowPopupStore,
-  type FormFlowRouteInputEditorActionRequest
-} from '../../flow/form-flow-popup.store';
+  PopupComponent,
+  type PopupAction,
+  type PopupActionEvent,
+  type PopupModel
+} from '../../../popup';
 
 export type RouteInputConfigValue<TValue> = TValue | (() => TValue);
 
@@ -70,52 +68,24 @@ export class RouteInputComponent implements ControlValueAccessor {
   protected routes: string[] = [];
   protected saving = false;
   protected error = '';
+  protected showRoutePopup = false;
 
   private readonly cdr = inject(ChangeDetectorRef);
-  protected readonly formFlowPopupStore = inject(FormFlowPopupStore);
-  protected readonly routeEditorOutletInputs = computed(() => ({
-    editor: this.formFlowPopupStore.routeInputEditorRef()
-  }));
-
   private rowIdSequence = 0;
   private controlDisabled = false;
   private workingRoutes: string[] = [];
   private routeRowIds: string[] = [];
   private onModelChange: (value: string[]) => void = () => {};
   private onModelTouched: () => void = () => {};
-  private lastRouteEditorActionRequestId = 0;
-  private readonly destroyEffects: Array<{ destroy: () => void }> = [];
-
-  constructor() {
-    this.destroyEffects.push(
-      effect(() => {
-        if (this.formFlowPopupStore.routeInputEditorRef()) {
-          void this.formFlowPopupStore.ensureRouteInputEditorLoaded();
-        }
-      }),
-      effect(() => {
-        const request = this.formFlowPopupStore.routeInputEditorActionRequest();
-        if (!request || request.requestId <= this.lastRouteEditorActionRequestId) {
-          return;
-        }
-        this.lastRouteEditorActionRequestId = request.requestId;
-        untracked(() => this.handleRouteEditorActionRequest(request));
-      })
-    );
-  }
 
   ngOnDestroy(): void {
-    this.destroyEffects.forEach(item => item.destroy());
-    if (this.routeEditorIsOpen()) {
-      this.formFlowPopupStore.closeRouteInputEditor();
-    }
+    this.showRoutePopup = false;
   }
 
   writeValue(value: readonly string[] | null | undefined): void {
     this.routes = this.normalizeRoutes(value);
-    if (this.routeEditorIsOpen() && !this.saving) {
+    if (this.showRoutePopup && !this.saving) {
       this.resetWorkingRoutes();
-      this.updateEditorState();
     }
     this.cdr.markForCheck();
   }
@@ -173,7 +143,7 @@ export class RouteInputComponent implements ControlValueAccessor {
   }
 
   protected routeEnabled(): boolean {
-    return this.resolveConfigValue(this.config.enabled, this.hasRoute()) === true || this.routeEditorIsOpen();
+    return this.resolveConfigValue(this.config.enabled, this.hasRoute()) === true || this.showRoutePopup;
   }
 
   protected async toggleRouteEnabled(event?: Event): Promise<void> {
@@ -186,7 +156,7 @@ export class RouteInputComponent implements ControlValueAccessor {
       this.openRoutePopup(event);
       return;
     }
-    this.formFlowPopupStore.closeRouteInputEditor();
+    this.showRoutePopup = false;
     await this.saveRouteValue(false, this.routes);
   }
 
@@ -198,23 +168,23 @@ export class RouteInputComponent implements ControlValueAccessor {
     }
     this.resetWorkingRoutes();
     this.error = '';
-    this.formFlowPopupStore.openRouteInputEditor(this.buildEditorState());
+    this.showRoutePopup = true;
     this.onModelTouched();
     this.cdr.markForCheck();
   }
 
-  private closeRoutePopup(event?: Event): void {
+  protected closeRoutePopup(event?: Event): void {
     event?.preventDefault();
     event?.stopPropagation();
     if (this.saving) {
       return;
     }
-    this.formFlowPopupStore.closeRouteInputEditor();
+    this.showRoutePopup = false;
     this.error = '';
     this.cdr.markForCheck();
   }
 
-  private addStop(event?: Event): void {
+  protected addStop(event?: Event): void {
     event?.preventDefault();
     event?.stopPropagation();
     if (this.locked() || this.saving) {
@@ -223,11 +193,10 @@ export class RouteInputComponent implements ControlValueAccessor {
     this.workingRoutes = [...this.workingRoutes, ''];
     this.routeRowIds = [...this.routeRowIds, this.nextRouteRowId()];
     this.error = '';
-    this.updateEditorState();
     this.cdr.markForCheck();
   }
 
-  private removeStop(index: number, event?: Event): void {
+  protected removeStop(index: number, event?: Event): void {
     event?.preventDefault();
     event?.stopPropagation();
     if (this.locked() || this.saving || index < 0 || index >= this.workingRoutes.length) {
@@ -240,11 +209,10 @@ export class RouteInputComponent implements ControlValueAccessor {
       this.routeRowIds = [this.nextRouteRowId()];
     }
     this.error = '';
-    this.updateEditorState();
     this.cdr.markForCheck();
   }
 
-  private updateStop(index: number, value: string): void {
+  protected updateStop(index: number, value: string): void {
     if (this.locked() || this.saving || index < 0 || index >= this.workingRoutes.length) {
       return;
     }
@@ -252,11 +220,12 @@ export class RouteInputComponent implements ControlValueAccessor {
     routes[index] = value;
     this.workingRoutes = routes;
     this.error = '';
-    this.updateEditorState();
     this.cdr.markForCheck();
   }
 
-  private dropStop(previousIndex: number, currentIndex: number): void {
+  protected dropStop(event: CdkDragDrop<string[]>): void {
+    const previousIndex = event.previousIndex;
+    const currentIndex = event.currentIndex;
     if (this.locked() || this.saving || previousIndex === currentIndex) {
       return;
     }
@@ -269,7 +238,6 @@ export class RouteInputComponent implements ControlValueAccessor {
     this.workingRoutes = routes;
     this.routeRowIds = rowIds;
     this.error = '';
-    this.updateEditorState();
     this.cdr.markForCheck();
   }
 
@@ -294,20 +262,17 @@ export class RouteInputComponent implements ControlValueAccessor {
   private async saveRouteValue(routeEnabled: boolean, normalized: string[]): Promise<void> {
     this.saving = true;
     this.error = '';
-    this.updateEditorState();
     this.cdr.markForCheck();
     try {
       const result = await this.config.onSave?.({ routeEnabled, routes: normalized });
       const nextRoutes = this.normalizeRoutes(this.routeSaveResultRoutes(result, normalized));
       this.routes = nextRoutes;
-      this.formFlowPopupStore.closeRouteInputEditor();
+      this.showRoutePopup = false;
       this.emitRoutes();
     } catch {
       this.error = 'Unable to save route changes.';
-      this.updateEditorState();
     } finally {
       this.saving = false;
-      this.updateEditorState();
       this.cdr.markForCheck();
     }
   }
@@ -358,77 +323,50 @@ export class RouteInputComponent implements ControlValueAccessor {
     return `route-input-stop-${Date.now()}-${this.rowIdSequence}`;
   }
 
-  private routeEditorIsOpen(): boolean {
-    return this.formFlowPopupStore.routeInputEditorRef() !== null;
+  protected routeRowTrack(_stop: string, index: number): string {
+    return this.routeRowIds[index] ?? `route-input-stop-${index}`;
   }
 
-  private buildEditorState(): {
-    title: string;
-    subtitle: string;
-    zIndex: number;
-    routes: string[];
-    routeRowIds: string[];
-    saving: boolean;
-    error: string | null;
-    canSave: boolean;
-  } {
+  protected routePopupModel(): PopupModel {
     return {
       title: this.resolveConfigValue(this.config.popupTitle, 'Route Setup'),
       subtitle: this.resolveConfigValue(this.config.popupSubtitle, 'Set the runtime route for this event asset.'),
-      zIndex: this.routePopupZIndex(),
-      routes: [...this.workingRoutes],
-      routeRowIds: [...this.routeRowIds],
-      saving: this.saving,
-      error: this.error || null,
-      canSave: this.canSaveRoute()
+      ariaLabel: 'Route setup',
+      closeAriaLabel: 'Close route setup',
+      size: 'wide',
+      height: 'full',
+      headerTone: 'accent',
+      bodyLayout: 'fill',
+      backdropTone: 'dim',
+      headerActions: this.routePopupHeaderActions(),
+      onClose: event => this.closeRoutePopup(event),
+      onAction: event => this.onRoutePopupAction(event)
     };
   }
 
-  private updateEditorState(): void {
-    if (!this.routeEditorIsOpen()) {
-      return;
-    }
-    this.formFlowPopupStore.updateRouteInputEditor(this.buildEditorState());
+  private routePopupHeaderActions(): readonly PopupAction[] {
+    const hasError = this.error.trim().length > 0;
+    return [{
+      id: 'route-save',
+      icon: 'done',
+      ariaLabel: 'Save route',
+      palette: hasError || (!this.canSaveRoute() && !this.saving) ? 'danger' : 'success',
+      disabled: !this.canSaveRoute()
+    }];
   }
 
-  private routePopupZIndex(): number {
+  private onRoutePopupAction(event: PopupActionEvent): void {
+    if (event.action.id !== 'route-save') {
+      return;
+    }
+    void this.saveRoute(event.sourceEvent);
+  }
+
+  protected routePopupZIndex(): number {
     const parentZIndex = Number(this.resolveConfigValue(this.config.parentZIndex, null));
     return Number.isFinite(parentZIndex) && parentZIndex > 0
       ? Math.trunc(parentZIndex) + 100
       : 12600;
-  }
-
-  protected routeEditorComponent(): Type<unknown> | null {
-    return this.formFlowPopupStore.routeInputEditorComponent();
-  }
-
-  private handleRouteEditorActionRequest(request: FormFlowRouteInputEditorActionRequest): void {
-    switch (request.kind) {
-      case 'close':
-        this.closeRoutePopup(request.event);
-        return;
-      case 'save':
-        void this.saveRoute(request.event);
-        return;
-      case 'addStop':
-        this.addStop(request.event);
-        return;
-      case 'removeStop':
-        this.removeStop(request.index, request.event);
-        return;
-      case 'updateStop':
-        this.updateStop(request.index, request.value);
-        return;
-      case 'dropStop':
-        this.dropStop(request.previousIndex, request.currentIndex);
-        return;
-      case 'openStopMap':
-        this.openStopMap(this.workingRoutes[request.index] ?? request.stop, request.event);
-        return;
-      case 'openRouteMap':
-        this.openGoogleMapsDirections(this.workingRoutes);
-        return;
-    }
   }
 
   private routeSaveResultRoutes(result: void | RouteInputSaveValue, fallback: readonly string[]): readonly string[] {
