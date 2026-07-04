@@ -202,7 +202,7 @@ export class PricingEditorInputComponent implements OnChanges, DoCheck, OnDestro
   }
 
   setDisabledState(isDisabled: boolean): void {
-    this.readOnly = isDisabled;
+    this.disabled = isDisabled;
     this.cdr.markForCheck();
   }
 

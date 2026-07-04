@@ -103,7 +103,7 @@ export class PoliciesInputComponent implements ControlValueAccessor {
   }
 
   setDisabledState(isDisabled: boolean): void {
-    this.readOnly = isDisabled;
+    this.disabled = isDisabled;
     this.cdr.markForCheck();
   }
 
