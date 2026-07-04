@@ -1,7 +1,7 @@
 @if (popup; as popup) {
   <app-popup [model]="pricingPopupModel(popup)" [zIndex]="popup.zIndex">
     <div class="pricing-editor__wizard-body">
-      @if (resolvedConfig.showPreview) {
+      @if (resolvedConfig.showPreview && showPricingInfoPanel) {
         <aside class="pricing-editor__preview pricing-editor__preview--wizard-sticky">
           <ng-container [ngTemplateOutlet]="pricingWizardPreviewCard"></ng-container>
         </aside>

@@ -416,7 +416,7 @@ export class PoliciesInputComponent implements ControlValueAccessor {
   }
 
   protected policyRequirementLabel(policy: PolicyInputModel): string {
-    return policy.required !== false
+    return this.policyRequired(policy)
       ? this.resolveConfigValue(this.config.requiredApprovalLabel, 'Required approval')
       : this.resolveConfigValue(this.config.optionalPolicyLabel, 'Optional policy');
   }
@@ -429,6 +429,10 @@ export class PoliciesInputComponent implements ControlValueAccessor {
     return policy.required !== false
       ? this.resolveConfigValue(this.config.requiredPreview, 'Attendees must approve this policy before joining.')
       : this.resolveConfigValue(this.config.optionalPreview, 'Optional policy shown during join or checkout.');
+  }
+
+  protected policyRequired(policy: PolicyInputModel): boolean {
+    return policy.required !== false;
   }
 
   private syncPoliciesFromWorkingPolicies(): void {

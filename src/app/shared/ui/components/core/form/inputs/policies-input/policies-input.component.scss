@@ -188,6 +188,16 @@
     linear-gradient(180deg, rgba(255, 255, 255, 0.92) 0%, rgba(250, 248, 255, 0.88) 100%);
 }
 
+.event-policy-summary-card--mandatory {
+  border-color: rgba(176, 70, 70, 0.28);
+  background: linear-gradient(180deg, #fff7f7 0%, #fff0f0 100%);
+}
+
+.event-policy-summary-card--optional {
+  border-color: rgba(53, 113, 185, 0.26);
+  background: linear-gradient(180deg, #f6fbff 0%, #eef6ff 100%);
+}
+
 .event-policy-summary-card-head {
   display: flex;
   align-items: center;
@@ -205,11 +215,20 @@
   min-height: 24px;
   padding: 0.22rem 0.48rem;
   border-radius: 999px;
-  border: 1px solid rgba(107, 88, 154, 0.2);
-  color: #675292;
-  background: linear-gradient(180deg, #fff 0%, #f4f0ff 100%);
   font-size: 0.72rem;
   font-weight: 800;
+}
+
+.event-policy-summary-badge--mandatory {
+  border: 1px solid rgba(176, 70, 70, 0.34);
+  color: #a23d3d;
+  background: linear-gradient(180deg, #fff0f0 0%, #ffe4e4 100%);
+}
+
+.event-policy-summary-badge--optional {
+  border: 1px solid rgba(53, 113, 185, 0.34);
+  color: #2d5ea8;
+  background: linear-gradient(180deg, #eef6ff 0%, #e3efff 100%);
 }
 
 .event-slots-summary-title {

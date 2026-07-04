@@ -52,6 +52,7 @@ export class PricingEditorPopupComponent extends PricingEditorInputComponent imp
   @Input() popup: FormFlowPricingEditorPopupState | null = null;
 
   protected draftValue: ContractTypes.PricingConfig = PricingBuilder.createDefaultPricingConfig('event');
+  protected showPricingInfoPanel = true;
 
   private locallyDirty = false;
   private originalValue: ContractTypes.PricingConfig = PricingBuilder.createDefaultPricingConfig('event');
@@ -105,6 +106,12 @@ export class PricingEditorPopupComponent extends PricingEditorInputComponent imp
   }
 
   private onPricingPopupAction(popup: FormFlowPricingEditorPopupState, event: PopupActionEvent): void {
+    if (event.action.id === 'pricing-info-toggle') {
+      event.sourceEvent.preventDefault();
+      event.sourceEvent.stopPropagation();
+      this.showPricingInfoPanel = !this.showPricingInfoPanel;
+      return;
+    }
     if (event.action.id !== 'pricing-save') {
       return;
     }
@@ -112,17 +119,26 @@ export class PricingEditorPopupComponent extends PricingEditorInputComponent imp
   }
 
   private pricingPopupHeaderActions(popup: FormFlowPricingEditorPopupState): readonly PopupAction[] {
+    const actions: PopupAction[] = [{
+      id: 'pricing-info-toggle',
+      icon: 'summarize',
+      ariaLabel: this.showPricingInfoPanel ? 'Hide pricing summary' : 'Show pricing summary',
+      palette: 'blue',
+      active: this.showPricingInfoPanel,
+      compactOnMobile: true
+    }];
     if (popup.readOnly) {
-      return [];
+      return actions;
     }
     const canSave = this.canSubmit(popup);
-    return [{
+    actions.push({
       id: 'pricing-save',
       icon: 'done',
       ariaLabel: 'Apply pricing draft',
       palette: canSave ? 'success' : 'danger',
       disabled: !canSave
-    }];
+    });
+    return actions;
   }
 
   private canSubmit(popup: FormFlowPricingEditorPopupState): boolean {

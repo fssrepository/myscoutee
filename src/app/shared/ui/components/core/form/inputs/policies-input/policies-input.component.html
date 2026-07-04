@@ -38,10 +38,20 @@
         @if (policies.length > 0) {
         <div class="event-slots-summary-list">
           @for (policy of policies; track trackPolicy($index, policy)) {
-            <article class="event-policy-summary-card">
+            <article
+              class="event-policy-summary-card"
+              [class.event-policy-summary-card--mandatory]="policyRequired(policy)"
+              [class.event-policy-summary-card--optional]="!policyRequired(policy)"
+              >
               <div class="event-policy-summary-card-head">
                 <span class="event-slots-summary-title">{{ policy.title }}</span>
-                <span class="event-policy-summary-badge">{{ policyRequirementLabel(policy) }}</span>
+                <span
+                  class="event-policy-summary-badge"
+                  [class.event-policy-summary-badge--mandatory]="policyRequired(policy)"
+                  [class.event-policy-summary-badge--optional]="!policyRequired(policy)"
+                  >
+                  {{ policyRequirementLabel(policy) }}
+                </span>
               </div>
               <p class="event-slots-summary-note">{{ policySummaryDescription(policy) }}</p>
             </article>
