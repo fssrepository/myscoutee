@@ -1,6 +1,6 @@
 {
   "lang": "hu",
-  "version": "2026.07.02.hu.1",
+  "version": "2026.07.03.hu.1",
   "messages": {
     "about": "Rólam",
     "accommodation": "Szállás",
@@ -1494,6 +1494,12 @@
     "article.html": "Cikk HTML",
     "asset": "Eszköz",
     "asset.misuse": "Eszköz-visszaélés",
+    "asset.owned.empty.accommodation.label": "Még nincs szállásod",
+    "asset.owned.empty.accommodation.description": "Adj hozzá egy ingatlant, szállást, szobát vagy helyet, hogy megjelenjen itt.",
+    "asset.owned.empty.car.label": "Még nincs autód",
+    "asset.owned.empty.car.description": "Adj hozzá egy autót vagy fuvart, hogy megjelenjen itt.",
+    "asset.owned.empty.supplies.label": "Még nincsenek eszközeid",
+    "asset.owned.empty.supplies.description": "Adj hozzá eszközöket vagy megosztható felszerelést, hogy a lista feltöltődhessen.",
     "asset.requests.actions.open": "Kérésműveletek megnyitása",
     "asset.requests.close": "Eszközkérések bezárása",
     "asset.requests.empty.no.activity": "Még nincs kölcsönzés vagy hozzárendelés.",
