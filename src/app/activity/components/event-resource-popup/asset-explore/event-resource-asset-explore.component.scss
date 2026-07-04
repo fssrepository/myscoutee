@@ -9,7 +9,7 @@ app-event-resource-asset-explore {
 }
 
 .app-popup.event-resource-popup-shell.asset-explore-shell {
-  z-index: 2630;
+  z-index: var(--asset-explore-shell-z-index, 2630);
   padding: var(--event-resource-shell-gap, 0.6rem);
 }
 

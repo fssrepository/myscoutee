@@ -1,18 +1,6 @@
 @if (dialog; as dialog) {
-  <section class="experience-form-overlay subevent-form-overlay subevent-group-form-overlay subevent-asset-capacity-overlay asset-explore-borrow-overlay asset-explore-borrow-shell">
-    <div class="experience-form-overlay-backdrop" (click)="close($event)"></div>
-    <div class="experience-form-popup subevent-form-popup subevent-group-popup asset-explore-borrow-popup">
-      <div class="experience-form-header subevent-group-header">
-        <div class="subevent-group-header-main">
-          <h3>{{ dialog.title }}</h3>
-          <p class="subevent-group-stage-subtitle">{{ dialog.subtitle }}</p>
-        </div>
-        <div class="experience-form-header-controls">
-          <button type="button" class="experience-form-close-btn" (click)="close($event)" aria-label="Close borrow request">
-            <mat-icon>close</mat-icon>
-          </button>
-        </div>
-      </div>
+  <app-popup [model]="borrowPopupModel(dialog)" [zIndex]="borrowPopupZIndex()">
+    <div class="asset-explore-borrow-content">
       <section class="experience-form-panel subevent-form-panel subevent-group-form-panel asset-explore-borrow-panel">
         <div class="asset-explore-borrow-form">
           @if (!dialog.paymentStep) {
@@ -244,5 +232,5 @@
         </div>
       </section>
     </div>
-  </section>
+  </app-popup>
 }

@@ -1,35 +1,6 @@
 @if (view; as view) {
-  <section class="experience-form-overlay subevent-form-overlay subevent-group-form-overlay subevent-asset-view-overlay">
-    <div class="experience-form-overlay-backdrop" (click)="close($event)"></div>
-    <div class="experience-form-popup subevent-form-popup subevent-asset-view-popup" (click)="$event.stopPropagation()">
-      <div class="experience-form-header subevent-group-header">
-        <div class="subevent-group-header-main">
-          <h3>{{ title(view) }}</h3>
-          <p class="subevent-group-stage-subtitle">{{ view.card.title }}</p>
-        </div>
-        <div class="experience-form-header-controls">
-          @if (canRequestMembers()) {
-            <button
-              type="button"
-              class="chat-members-stack chat-members-stack-large chat-header-members event-editor-members-trigger event-editor-members-trigger-members subevent-asset-view-members-btn"
-              (click)="requestMembers(view, $event)"
-            >
-              <span class="event-editor-members-invite">
-                <mat-icon>groups</mat-icon>
-                <span>Members</span>
-              </span>
-              @if (view.card.pending > 0) {
-                <span class="card-badge event-editor-members-pending-badge">
-                  {{ view.card.pending | counterBadge }}
-                </span>
-              }
-            </button>
-          }
-          <button type="button" class="experience-form-close-btn" (click)="close($event)" aria-label="Close asset view">
-            <mat-icon>close</mat-icon>
-          </button>
-        </div>
-      </div>
+  <app-popup [model]="assetViewPopupModel(view)" [zIndex]="assetViewPopupZIndex()">
+    <div class="subevent-asset-view-content">
       <section class="experience-form-panel subevent-form-panel subevent-asset-view-panel" [ngClass]="resourceTypeClass(view.card.type)">
         <div class="subevent-asset-view-image-field">
           <span>Image</span>
@@ -206,7 +177,7 @@
           </section>
         </div>
       </section>
-    </div>
+
     @if (showPoliciesPopup) {
       <div class="subevent-asset-view-policy-backdrop" (click)="closePoliciesPopup($event)"></div>
       <section class="subevent-asset-view-policy-popup" role="dialog" aria-modal="true" aria-label="Lending policies">
@@ -240,5 +211,6 @@
         </div>
       </section>
     }
-  </section>
+    </div>
+  </app-popup>
 }

@@ -9,7 +9,10 @@
 </ng-template>
 
 @if (popupViewState(); as explore) {
-  <section class="app-popup app-popup-stacked app-popup-stacked-over-subevents event-resource-popup-shell asset-explore-shell">
+  <section
+    class="app-popup app-popup-stacked app-popup-stacked-over-subevents event-resource-popup-shell asset-explore-shell"
+    [style.--asset-explore-shell-z-index]="assetExplorePopupZIndex()"
+  >
     <div class="app-popup-backdrop" (click)="closeExplorePopup($event)"></div>
     <div class="app-popup-panel popup-panel-asset-members asset-explore-shell-panel" (click)="$event.stopPropagation()">
       <div class="popup-header popup-header-with-progress asset-explore-shell-header">

@@ -1,84 +1,17 @@
 @use '../../../../shared/ui/styles' as ui;
 
-@include ui.popup-shell();
 @include ui.form-controls();
 @include ui.interactive-motion();
 
-.event-resource-popup-shell .experience-form-overlay {
-  position: absolute;
-  inset: 0;
-  z-index: 20;
-  display: flex;
-  align-items: center;
-  padding: 0;
-}
-
-.event-resource-popup-shell .experience-form-overlay-backdrop {
-  position: absolute;
-  inset: 0;
-  background: rgba(8, 16, 30, 0.54);
-  backdrop-filter: blur(2px);
-}
-
-.event-resource-popup-shell .experience-form-popup {
+.subevent-asset-view-content {
   position: relative;
-  z-index: 1;
-  width: min(620px, calc(100% - 2rem));
-  max-width: min(620px, calc(100vw - 2rem));
-  max-height: calc(100% - 1.8rem);
-  border-radius: 16px;
-  border: 1px solid rgba(42, 66, 102, 0.28);
-  background: #fff;
-  box-shadow: 0 24px 60px rgba(14, 32, 58, 0.26);
-  overflow: hidden;
-  box-sizing: border-box;
   display: flex;
   flex-direction: column;
-  font-family: inherit;
+  flex: 1 1 auto;
+  min-height: 0;
 }
 
-.event-resource-popup-shell .experience-form-header {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 0.6rem;
-  padding: 0.82rem 1rem;
-  border-bottom: 1px solid rgba(187, 199, 217, 0.7);
-  background: linear-gradient(180deg, #ffffff 0%, #f4f8ff 100%);
-}
-
-.event-resource-popup-shell .experience-form-header h3 {
-  margin: 0;
-  color: #1e385a;
-  font-size: 1.12rem;
-  font-weight: 700;
-}
-
-.event-resource-popup-shell .subevent-group-header {
-  align-items: flex-start;
-}
-
-.event-resource-popup-shell .subevent-group-header-main {
-  min-width: 0;
-  display: grid;
-  gap: 0.3rem;
-}
-
-.event-resource-popup-shell .subevent-group-stage-subtitle {
-  margin: 0;
-  color: rgba(35, 57, 88, 0.76);
-  font-size: 0.8rem;
-  font-weight: 600;
-  line-height: 1.24;
-}
-
-.event-resource-popup-shell .experience-form-header-controls {
-  display: inline-flex;
-  align-items: center;
-  gap: 0.44rem;
-}
-
-.event-resource-popup-shell .experience-form-panel {
+.subevent-asset-view-content .experience-form-panel {
   border: 1px solid rgba(43, 71, 107, 0.2);
   border-radius: 14px;
   background: linear-gradient(180deg, #f8fbff 0%, #f4f8ff 100%);
@@ -94,7 +27,7 @@
   -webkit-overflow-scrolling: touch;
 }
 
-.event-resource-popup-shell .experience-form-grid {
+.subevent-asset-view-content .experience-form-grid {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
   max-width: none;
@@ -105,241 +38,139 @@
   row-gap: 0.9rem;
 }
 
-.event-resource-popup-shell .experience-type-select.asset-filter-car {
+.subevent-asset-view-content .experience-type-select.asset-filter-car {
   background: linear-gradient(180deg, #eef6ff 0%, #e2efff 100%);
   border-color: rgba(43, 111, 179, 0.32);
 }
 
-.event-resource-popup-shell .experience-type-select.asset-filter-accommodation {
+.subevent-asset-view-content .experience-type-select.asset-filter-accommodation {
   background: linear-gradient(180deg, #edf9f4 0%, #e1f3ea 100%);
   border-color: rgba(37, 127, 95, 0.32);
 }
 
-.event-resource-popup-shell .experience-type-select.asset-filter-supplies {
+.subevent-asset-view-content .experience-type-select.asset-filter-supplies {
   background: linear-gradient(180deg, #fff5ec 0%, #feead9 100%);
   border-color: rgba(151, 92, 41, 0.32);
 }
 
-.event-resource-popup-shell .asset-filter-car {
+.subevent-asset-view-content .asset-filter-car {
   color: #295d96;
 }
 
-.event-resource-popup-shell .asset-filter-accommodation {
+.subevent-asset-view-content .asset-filter-accommodation {
   color: #236d51;
 }
 
-.event-resource-popup-shell .asset-filter-supplies {
+.subevent-asset-view-content .asset-filter-supplies {
   color: #8a5428;
 }
 
-.event-resource-popup-shell .experience-type-select.asset-category-camping {
+.subevent-asset-view-content .experience-type-select.asset-category-camping {
   background: linear-gradient(180deg, #f6f3e7 0%, #ece3c5 100%);
   border-color: rgba(129, 110, 53, 0.3);
 }
 
-.event-resource-popup-shell .experience-type-select.asset-category-cooking {
+.subevent-asset-view-content .experience-type-select.asset-category-cooking {
   background: linear-gradient(180deg, #fff3e6 0%, #ffe2c2 100%);
   border-color: rgba(165, 96, 33, 0.3);
 }
 
-.event-resource-popup-shell .experience-type-select.asset-category-games {
+.subevent-asset-view-content .experience-type-select.asset-category-games {
   background: linear-gradient(180deg, #f3edff 0%, #e5d8ff 100%);
   border-color: rgba(102, 76, 171, 0.3);
 }
 
-.event-resource-popup-shell .experience-type-select.asset-category-audio {
+.subevent-asset-view-content .experience-type-select.asset-category-audio {
   background: linear-gradient(180deg, #ecf8ff 0%, #d9effb 100%);
   border-color: rgba(43, 118, 155, 0.3);
 }
 
-.event-resource-popup-shell .experience-type-select.asset-category-sports {
+.subevent-asset-view-content .experience-type-select.asset-category-sports {
   background: linear-gradient(180deg, #fff1eb 0%, #ffd7ca 100%);
   border-color: rgba(176, 78, 46, 0.3);
 }
 
-.event-resource-popup-shell .experience-type-select.asset-category-safety {
+.subevent-asset-view-content .experience-type-select.asset-category-safety {
   background: linear-gradient(180deg, #fff2f3 0%, #ffdfe3 100%);
   border-color: rgba(182, 73, 101, 0.3);
 }
 
-.event-resource-popup-shell .experience-type-select.asset-category-decor {
+.subevent-asset-view-content .experience-type-select.asset-category-decor {
   background: linear-gradient(180deg, #fff1f8 0%, #ffe0ef 100%);
   border-color: rgba(169, 82, 131, 0.3);
 }
 
-.event-resource-popup-shell .experience-type-select.asset-category-tech {
+.subevent-asset-view-content .experience-type-select.asset-category-tech {
   background: linear-gradient(180deg, #eef4ff 0%, #dde9ff 100%);
   border-color: rgba(56, 99, 174, 0.3);
 }
 
-.event-resource-popup-shell .asset-category-camping {
+.subevent-asset-view-content .asset-category-camping {
   color: #7a6423;
 }
 
-.event-resource-popup-shell .asset-category-cooking {
+.subevent-asset-view-content .asset-category-cooking {
   color: #9a531c;
 }
 
-.event-resource-popup-shell .asset-category-games {
+.subevent-asset-view-content .asset-category-games {
   color: #5f43a5;
 }
 
-.event-resource-popup-shell .asset-category-audio {
+.subevent-asset-view-content .asset-category-audio {
   color: #2a7196;
 }
 
-.event-resource-popup-shell .asset-category-sports {
+.subevent-asset-view-content .asset-category-sports {
   color: #a34d28;
 }
 
-.event-resource-popup-shell .asset-category-safety {
+.subevent-asset-view-content .asset-category-safety {
   color: #a84360;
 }
 
-.event-resource-popup-shell .asset-category-decor {
+.subevent-asset-view-content .asset-category-decor {
   color: #9c4a79;
 }
 
-.event-resource-popup-shell .asset-category-tech {
+.subevent-asset-view-content .asset-category-tech {
   color: #2f5fa8;
 }
 
-.event-resource-popup-shell .chat-members-stack {
-  display: inline-flex;
-  align-items: center;
-  min-width: 0;
-  padding: 0;
-  border: 0;
-  background: transparent;
-  font: inherit;
-  gap: 0.34rem;
-}
-
-.event-resource-popup-shell .chat-header-members {
-  position: relative;
-  overflow: visible;
-  cursor: pointer;
-  border-radius: 999px;
-  transition: background-color 0.16s ease, border-color 0.16s ease, box-shadow 0.16s ease, color 0.16s ease;
-  padding: 2px 4px 2px 2px;
-}
-
-.event-resource-popup-shell .event-editor-members-trigger {
-  border: 1px solid rgba(160, 106, 44, 0.36);
-  border-radius: 999px;
-  background: linear-gradient(180deg, rgba(255, 246, 228, 0.98) 0%, rgba(252, 236, 201, 0.95) 100%);
-  min-height: 34px;
-  padding: 2px 10px 2px 4px;
-  box-shadow: 0 2px 6px rgba(74, 44, 14, 0.08);
-}
-
-.event-resource-popup-shell .event-editor-members-trigger-members {
-  border-color: rgba(64, 103, 150, 0.34);
-  background: linear-gradient(180deg, rgba(237, 246, 255, 0.98) 0%, rgba(219, 234, 252, 0.95) 100%);
-  box-shadow: 0 2px 6px rgba(32, 72, 120, 0.08);
-}
-
-.event-resource-popup-shell .event-editor-members-trigger-members .event-editor-members-invite {
-  color: rgba(29, 63, 102, 0.95);
-}
-
-.event-resource-popup-shell .event-editor-members-trigger-members .event-editor-members-invite .mat-icon {
-  color: #2e689f;
-}
-
-.event-resource-popup-shell .event-editor-members-pending-badge {
-  position: absolute;
-  top: -12px;
-  right: -10px;
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  box-sizing: border-box;
-  min-width: 20px;
-  height: 20px;
-  padding: 0 5px;
-  border-radius: 999px;
-  background: #e5484d;
-  color: #fff;
-  font-size: 10px;
-  font-weight: 700;
-  line-height: 1;
-  border: 1px solid #fff;
-  box-shadow: 0 0 0 1px rgba(255, 255, 255, 0.76);
-  z-index: 2;
-}
-
-.event-resource-popup-shell .event-editor-members-invite {
-  display: inline-flex;
-  align-items: center;
-  gap: 0.32rem;
-  padding: 0 2px;
-  color: rgba(97, 57, 22, 0.95);
-  font-size: 0.75rem;
-  font-weight: 700;
-  line-height: 1;
-  white-space: nowrap;
-}
-
-.event-resource-popup-shell .event-editor-members-invite .mat-icon {
-  width: 16px;
-  height: 16px;
-  font-size: 16px;
-  line-height: 16px;
-  color: #ae661f;
-}
-
-.subevent-asset-view-popup {
-  width: min(780px, calc(100% - 2rem));
-}
-
-.event-resource-popup-shell .subevent-asset-view-overlay {
-  z-index: 88;
-}
-
-.event-resource-popup-shell .subevent-asset-view-popup {
-  width: min(780px, calc(100vw - 2rem));
-  max-width: min(780px, calc(100vw - 2rem));
-}
-
-.event-resource-popup-shell .subevent-asset-view-media img {
+.subevent-asset-view-content .subevent-asset-view-media img {
   width: 100%;
   height: clamp(160px, 30vh, 230px);
   object-fit: cover;
 }
 
-.event-resource-popup-shell .subevent-asset-view-grid.experience-form-grid {
+.subevent-asset-view-content .subevent-asset-view-grid.experience-form-grid {
   grid-template-columns: repeat(2, minmax(0, 1fr));
 }
 
-.event-resource-popup-shell .subevent-asset-view-grid .experience-description-field,
-.event-resource-popup-shell .subevent-asset-view-summary-panel {
+.subevent-asset-view-content .subevent-asset-view-grid .experience-description-field,
+.subevent-asset-view-content .subevent-asset-view-summary-panel {
   grid-column: 1 / -1;
 }
 
-.event-resource-popup-shell .subevent-asset-view-summary-body .event-slots-open-btn {
+.subevent-asset-view-content .subevent-asset-view-summary-body .event-slots-open-btn {
   justify-self: start;
 }
 
-.event-resource-popup-shell .subevent-asset-view-pricing .subevent-asset-view-summary-body {
+.subevent-asset-view-content .subevent-asset-view-pricing .subevent-asset-view-summary-body {
   grid-template-columns: repeat(2, minmax(0, 1fr));
 }
 
-.event-resource-popup-shell .subevent-asset-view-pricing .subevent-asset-view-summary-card {
+.subevent-asset-view-content .subevent-asset-view-pricing .subevent-asset-view-summary-card {
   min-height: 118px;
 }
 
-.event-resource-popup-shell .subevent-asset-view-policies .subevent-asset-view-summary-body {
+.subevent-asset-view-content .subevent-asset-view-policies .subevent-asset-view-summary-body {
   grid-template-columns: auto minmax(0, 1fr);
   align-items: start;
 }
 
-.event-resource-popup-shell .subevent-asset-view-policies .event-slots-summary {
+.subevent-asset-view-content .subevent-asset-view-policies .event-slots-summary {
   min-width: 0;
-}
-
-.subevent-asset-view-members-btn {
-  flex: 0 0 auto;
 }
 
 .subevent-asset-view-panel {
@@ -709,31 +540,27 @@
 }
 
 @media (max-width: 760px) {
-  .event-resource-popup-shell .subevent-asset-view-popup {
-    width: min(100vw - 1rem, 420px);
-  }
-
   .subevent-asset-view-panel {
     gap: 0.78rem;
     padding: 0.72rem;
   }
 
-  .event-resource-popup-shell .subevent-asset-view-media img {
+  .subevent-asset-view-content .subevent-asset-view-media img {
     height: clamp(158px, 44vw, 178px);
   }
 
-  .event-resource-popup-shell .subevent-asset-view-grid.experience-form-grid {
+  .subevent-asset-view-content .subevent-asset-view-grid.experience-form-grid {
     grid-template-columns: minmax(0, 1fr);
     row-gap: 0.72rem;
   }
 
-  .event-resource-popup-shell .subevent-asset-view-grid.experience-form-grid > label,
-  .event-resource-popup-shell .subevent-asset-view-grid .experience-description-field,
-  .event-resource-popup-shell .subevent-asset-view-summary-panel {
+  .subevent-asset-view-content .subevent-asset-view-grid.experience-form-grid > label,
+  .subevent-asset-view-content .subevent-asset-view-grid .experience-description-field,
+  .subevent-asset-view-content .subevent-asset-view-summary-panel {
     grid-column: 1 / -1;
   }
 
-  .event-resource-popup-shell .subevent-asset-view-summary-panel {
+  .subevent-asset-view-content .subevent-asset-view-summary-panel {
     padding: 0.78rem;
     border-radius: 14px;
   }
@@ -742,17 +569,17 @@
     gap: 0.5rem;
   }
 
-  .event-resource-popup-shell .subevent-asset-view-pricing .subevent-asset-view-summary-body,
-  .event-resource-popup-shell .subevent-asset-view-policies .subevent-asset-view-summary-body {
+  .subevent-asset-view-content .subevent-asset-view-pricing .subevent-asset-view-summary-body,
+  .subevent-asset-view-content .subevent-asset-view-policies .subevent-asset-view-summary-body {
     grid-template-columns: minmax(0, 1fr);
   }
 
-  .event-resource-popup-shell .subevent-asset-view-pricing .subevent-asset-view-summary-card {
+  .subevent-asset-view-content .subevent-asset-view-pricing .subevent-asset-view-summary-card {
     min-height: 0;
   }
 
-  .event-resource-popup-shell .subevent-asset-view-summary-body .event-slots-open-btn,
-  .event-resource-popup-shell .subevent-asset-view-policy-popup-body .event-slots-open-btn {
+  .subevent-asset-view-content .subevent-asset-view-summary-body .event-slots-open-btn,
+  .subevent-asset-view-content .subevent-asset-view-policy-popup-body .event-slots-open-btn {
     justify-self: start;
     width: auto;
   }

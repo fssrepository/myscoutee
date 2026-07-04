@@ -3,6 +3,7 @@
     class="app-popup app-popup-stacked app-popup-stacked-over-subevents event-resource-popup-shell"
     [class.event-resource-popup-shell--standalone-asset-view]="resourcePopupStore.resourceAssetViewReturnToChatRef()"
     [class.event-resource-popup-shell--asset-explore-view]="resourcePopupStore.assetExploreOnlyRef() && resourceAssetView()"
+    [style.--event-resource-shell-z-index]="resourcePopupZIndex()"
     >
   <div class="app-popup-backdrop" (click)="closeResourceShellBackdrop($event)"></div>
   <div class="app-popup-panel popup-panel-asset-members" (click)="$event.stopPropagation()">

@@ -236,6 +236,7 @@ export class EventResourceAssetExploreComponent implements DoCheck {
   private listTotal = 0;
   private pendingBorrowRequestVersion = 0;
   private lastAssetExploreOutletActionRequestId = 0;
+  private readonly assetExploreBaseZIndex = 2630;
   private readonly localReservationsByKey = new Map<string, {
     startAtIso: string;
     endAtIso: string;
@@ -245,11 +246,13 @@ export class EventResourceAssetExploreComponent implements DoCheck {
   protected order: AssetExploreOrder = 'availability';
   protected readonly orderOptions = ASSET_EXPLORE_ORDER_OPTIONS;
   protected readonly assetViewOutletInputs = computed(() => ({
-    view: this.assetView()
+    view: this.assetView(),
+    parentZIndex: this.assetExplorePopupZIndex()
   }));
   protected readonly borrowDialogOutletInputs = computed(() => ({
     dialog: this.borrowDialogViewState(),
-    canSubmit: this.canSubmitBorrow()
+    canSubmit: this.canSubmitBorrow(),
+    parentZIndex: this.assetExplorePopupZIndex()
   }));
   protected smartListQuery: Partial<ListQuery<AssetExploreSmartListFilters>> = {
     filters: {
@@ -422,6 +425,10 @@ export class EventResourceAssetExploreComponent implements DoCheck {
       this.lastAssetExploreOutletActionRequestId = request.requestId;
       untracked(() => this.handleAssetExploreOutletActionRequest(request));
     });
+  }
+
+  protected assetExplorePopupZIndex(): number {
+    return this.assetExploreBaseZIndex;
   }
 
   private handleAssetExploreOutletActionRequest(request: EventResourceAssetExploreOutletActionRequest): void {

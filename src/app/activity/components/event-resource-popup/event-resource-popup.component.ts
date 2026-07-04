@@ -163,9 +163,11 @@ export class EventResourcePopupComponent {
   private lastResourcePopupOutletActionRequestId = 0;
   private ownedAssetsHydrationLoadedUserId = '';
   private ownedAssetsHydrationLoadingUserId = '';
+  private readonly resourcePopupBaseZIndex = 2600;
 
   protected readonly resourceAssetViewOutletInputs = computed(() => ({
-    view: this.resourceAssetView()
+    view: this.resourceAssetView(),
+    parentZIndex: this.resourcePopupZIndex()
   }));
   protected readonly capacityEditorOutletInputs = computed(() => ({
     editor: this.resourcePopupStore.capacityEditorRef()
@@ -176,6 +178,10 @@ export class EventResourcePopupComponent {
   protected readonly assignedAssetJoinDialogOutletInputs = computed(() => ({
     dialog: this.assignedAssetJoinDialogViewState()
   }));
+
+  protected resourcePopupZIndex(): number {
+    return this.resourcePopupBaseZIndex;
+  }
 
   constructor() {
     effect(() => {

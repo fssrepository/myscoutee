@@ -1,39 +1,53 @@
 @use '../../../../shared/ui/styles' as ui;
 
-@include ui.popup-shell();
 @include ui.form-controls();
 @include ui.interactive-motion();
 
-.event-resource-popup-shell .asset-explore-borrow-shell {
-  z-index: 24;
+.asset-explore-borrow-content {
+  display: flex;
+  flex-direction: column;
+  flex: 1 1 auto;
+  min-height: 0;
 }
 
-.event-resource-popup-shell .asset-explore-borrow-popup {
-  width: min(760px, calc(100vw - 1.6rem));
+.asset-explore-borrow-content .asset-explore-borrow-panel {
+  border: 1px solid rgba(43, 71, 107, 0.2);
+  border-radius: 14px;
+  background: linear-gradient(180deg, #f8fbff 0%, #f4f8ff 100%);
+  padding: 0.74rem;
+  display: grid;
+  gap: 0.78rem;
+  margin: 0;
+  box-sizing: border-box;
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow-y: auto;
+  overflow-x: hidden;
+  -webkit-overflow-scrolling: touch;
 }
 
-.event-resource-popup-shell .asset-explore-borrow-form {
+.asset-explore-borrow-content .asset-explore-borrow-form {
   display: grid;
   gap: 0.95rem;
 }
 
-.event-resource-popup-shell .asset-explore-borrow-quantity-field {
+.asset-explore-borrow-content .asset-explore-borrow-quantity-field {
   display: grid;
   gap: 0.38rem;
 }
 
-.event-resource-popup-shell .asset-explore-borrow-date-range-input {
+.asset-explore-borrow-content .asset-explore-borrow-date-range-input {
   display: block;
   min-width: 0;
 }
 
-.event-resource-popup-shell .asset-explore-borrow-quantity-field > span {
+.asset-explore-borrow-content .asset-explore-borrow-quantity-field > span {
   font-size: 0.8rem;
   font-weight: 800;
   color: rgba(29, 48, 75, 0.78);
 }
 
-.event-resource-popup-shell .asset-explore-borrow-quantity-field input {
+.asset-explore-borrow-content .asset-explore-borrow-quantity-field input {
   width: 100%;
   min-height: 40px;
   padding: 0 0.9rem;
@@ -46,20 +60,20 @@
   box-sizing: border-box;
 }
 
-.event-resource-popup-shell .asset-explore-borrow-quantity-field input:focus {
+.asset-explore-borrow-content .asset-explore-borrow-quantity-field input:focus {
   border-color: rgba(52, 103, 182, 0.72);
   box-shadow: 0 0 0 3px rgba(55, 116, 212, 0.14);
   outline: none;
 }
 
-.event-resource-popup-shell .asset-explore-borrow-availability {
+.asset-explore-borrow-content .asset-explore-borrow-availability {
   margin: 0.1rem 0 0;
   font-size: 0.84rem;
   font-weight: 700;
   color: rgba(48, 87, 56, 0.82);
 }
 
-.event-resource-popup-shell .asset-explore-borrow-review-card {
+.asset-explore-borrow-content .asset-explore-borrow-review-card {
   display: grid;
   gap: 0.7rem;
   padding: 0.85rem 0.95rem;
@@ -69,52 +83,52 @@
   box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.75);
 }
 
-.event-resource-popup-shell .asset-explore-borrow-review-card--payment {
+.asset-explore-borrow-content .asset-explore-borrow-review-card--payment {
   background: linear-gradient(180deg, rgba(251, 247, 239, 0.98) 0%, rgba(247, 239, 224, 0.98) 100%);
   border-color: rgba(224, 191, 142, 0.78);
 }
 
-.event-resource-popup-shell .asset-explore-borrow-review-card__head {
+.asset-explore-borrow-content .asset-explore-borrow-review-card__head {
   display: flex;
   align-items: flex-start;
   justify-content: space-between;
   gap: 0.75rem;
 }
 
-.event-resource-popup-shell .asset-explore-borrow-review-card__head > div {
+.asset-explore-borrow-content .asset-explore-borrow-review-card__head > div {
   display: grid;
   gap: 0.22rem;
 }
 
-.event-resource-popup-shell .asset-explore-borrow-review-card__head h4 {
+.asset-explore-borrow-content .asset-explore-borrow-review-card__head h4 {
   margin: 0;
   font-size: 0.94rem;
   font-weight: 800;
   color: #214168;
 }
 
-.event-resource-popup-shell .asset-explore-borrow-review-card__head span {
+.asset-explore-borrow-content .asset-explore-borrow-review-card__head span {
   color: rgba(35, 57, 88, 0.74);
   font-size: 0.8rem;
   font-weight: 600;
   line-height: 1.28;
 }
 
-.event-resource-popup-shell .asset-explore-borrow-review-card__head strong {
+.asset-explore-borrow-content .asset-explore-borrow-review-card__head strong {
   color: #214168;
   font-size: 0.94rem;
   font-weight: 800;
   white-space: nowrap;
 }
 
-.event-resource-popup-shell .asset-explore-borrow-review-card__list,
-.event-resource-popup-shell .asset-explore-borrow-policy-list {
+.asset-explore-borrow-content .asset-explore-borrow-review-card__list,
+.asset-explore-borrow-content .asset-explore-borrow-policy-list {
   display: grid;
   gap: 0.55rem;
 }
 
-.event-resource-popup-shell .asset-explore-borrow-review-card__item,
-.event-resource-popup-shell .asset-explore-borrow-policy-card {
+.asset-explore-borrow-content .asset-explore-borrow-review-card__item,
+.asset-explore-borrow-content .asset-explore-borrow-policy-card {
   display: flex;
   align-items: flex-start;
   justify-content: space-between;
@@ -125,32 +139,32 @@
   background: rgba(255, 255, 255, 0.95);
 }
 
-.event-resource-popup-shell .asset-explore-borrow-review-card__item > div,
-.event-resource-popup-shell .asset-explore-borrow-policy-card > div {
+.asset-explore-borrow-content .asset-explore-borrow-review-card__item > div,
+.asset-explore-borrow-content .asset-explore-borrow-policy-card > div {
   display: grid;
   gap: 0.24rem;
   min-width: 0;
 }
 
-.event-resource-popup-shell .asset-explore-borrow-review-card__item strong,
-.event-resource-popup-shell .asset-explore-borrow-policy-card strong {
+.asset-explore-borrow-content .asset-explore-borrow-review-card__item strong,
+.asset-explore-borrow-content .asset-explore-borrow-policy-card strong {
   color: #24456d;
   font-size: 0.9rem;
   font-weight: 800;
 }
 
-.event-resource-popup-shell .asset-explore-borrow-review-card__item span,
-.event-resource-popup-shell .asset-explore-borrow-policy-card span {
+.asset-explore-borrow-content .asset-explore-borrow-review-card__item span,
+.asset-explore-borrow-content .asset-explore-borrow-policy-card span {
   color: rgba(35, 57, 88, 0.74);
   font-size: 0.8rem;
   line-height: 1.3;
 }
 
-.event-resource-popup-shell .asset-explore-borrow-policy-card {
+.asset-explore-borrow-content .asset-explore-borrow-policy-card {
   align-items: center;
 }
 
-.event-resource-popup-shell .asset-explore-borrow-policy-card input {
+.asset-explore-borrow-content .asset-explore-borrow-policy-card input {
   width: 18px;
   height: 18px;
   margin: 0.1rem 0 0;
@@ -158,12 +172,12 @@
   flex: 0 0 auto;
 }
 
-.event-resource-popup-shell .asset-explore-borrow-policy-card.is-required {
+.asset-explore-borrow-content .asset-explore-borrow-policy-card.is-required {
   border-color: rgba(228, 189, 122, 0.78);
   background: linear-gradient(180deg, rgba(255, 251, 244, 0.98) 0%, rgba(255, 247, 233, 0.96) 100%);
 }
 
-.event-resource-popup-shell .asset-explore-borrow-policy-card em {
+.asset-explore-borrow-content .asset-explore-borrow-policy-card em {
   color: #9e6422;
   font-size: 0.74rem;
   font-style: normal;
@@ -171,14 +185,14 @@
   white-space: nowrap;
 }
 
-.event-resource-popup-shell .asset-explore-borrow-payment-summary,
-.event-resource-popup-shell .asset-explore-borrow-payment-grid {
+.asset-explore-borrow-content .asset-explore-borrow-payment-summary,
+.asset-explore-borrow-content .asset-explore-borrow-payment-grid {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
   gap: 0.65rem;
 }
 
-.event-resource-popup-shell .asset-explore-borrow-payment-summary article {
+.asset-explore-borrow-content .asset-explore-borrow-payment-summary article {
   display: grid;
   gap: 0.24rem;
   padding: 0.75rem 0.8rem;
@@ -187,32 +201,32 @@
   background: rgba(255, 255, 255, 0.9);
 }
 
-.event-resource-popup-shell .asset-explore-borrow-payment-summary span,
-.event-resource-popup-shell .asset-explore-borrow-payment-grid span {
+.asset-explore-borrow-content .asset-explore-borrow-payment-summary span,
+.asset-explore-borrow-content .asset-explore-borrow-payment-grid span {
   color: rgba(86, 60, 31, 0.76);
   font-size: 0.78rem;
   font-weight: 700;
 }
 
-.event-resource-popup-shell .asset-explore-borrow-payment-summary strong {
+.asset-explore-borrow-content .asset-explore-borrow-payment-summary strong {
   color: #6a4a1c;
   font-size: 0.94rem;
   font-weight: 800;
 }
 
-.event-resource-popup-shell .asset-explore-borrow-payment-note {
+.asset-explore-borrow-content .asset-explore-borrow-payment-note {
   margin: 0;
   color: rgba(86, 60, 31, 0.76);
   font-size: 0.8rem;
   line-height: 1.35;
 }
 
-.event-resource-popup-shell .asset-explore-borrow-payment-grid label {
+.asset-explore-borrow-content .asset-explore-borrow-payment-grid label {
   display: grid;
   gap: 0.35rem;
 }
 
-.event-resource-popup-shell .asset-explore-borrow-payment-grid input {
+.asset-explore-borrow-content .asset-explore-borrow-payment-grid input {
   height: 46px;
   border-radius: 16px;
   border: 1px solid rgba(192, 212, 232, 0.9);
@@ -222,14 +236,14 @@
   box-sizing: border-box;
 }
 
-.event-resource-popup-shell .asset-explore-borrow-actions {
+.asset-explore-borrow-content .asset-explore-borrow-actions {
   display: flex;
   justify-content: flex-end;
   gap: 0.7rem;
   padding-top: 0.1rem;
 }
 
-.event-resource-popup-shell .asset-explore-borrow-confirm-shell {
+.asset-explore-borrow-content .asset-explore-borrow-confirm-shell {
   position: relative;
   display: inline-flex;
   align-items: stretch;
@@ -242,13 +256,13 @@
   overflow: hidden;
 }
 
-.event-resource-popup-shell .asset-explore-borrow-confirm-ring {
+.asset-explore-borrow-content .asset-explore-borrow-confirm-ring {
   position: absolute;
   inset: 0;
   pointer-events: none;
 }
 
-.event-resource-popup-shell .asset-explore-borrow-actions__btn {
+.asset-explore-borrow-content .asset-explore-borrow-actions__btn {
   min-height: 42px;
   padding: 0 1rem;
   border-radius: 999px;
@@ -260,18 +274,18 @@
   transition: transform 120ms ease, box-shadow 120ms ease, background 120ms ease;
 }
 
-.event-resource-popup-shell .asset-explore-borrow-actions__btn:disabled {
+.asset-explore-borrow-content .asset-explore-borrow-actions__btn:disabled {
   cursor: not-allowed;
   opacity: 0.55;
   transform: none;
 }
 
-.event-resource-popup-shell .asset-explore-borrow-actions__btn--secondary {
+.asset-explore-borrow-content .asset-explore-borrow-actions__btn--secondary {
   background: rgba(255, 255, 255, 0.96);
   color: #496789;
 }
 
-.event-resource-popup-shell .asset-explore-borrow-actions__btn--primary {
+.asset-explore-borrow-content .asset-explore-borrow-actions__btn--primary {
   min-width: 164px;
   background: linear-gradient(180deg, rgba(138, 181, 236, 0.96) 0%, rgba(102, 151, 217, 0.96) 100%);
   border-color: rgba(93, 138, 202, 0.92);
@@ -279,7 +293,7 @@
   box-shadow: 0 10px 24px rgba(52, 103, 182, 0.22);
 }
 
-.event-resource-popup-shell .asset-explore-borrow-actions__btn--confirm {
+.asset-explore-borrow-content .asset-explore-borrow-actions__btn--confirm {
   position: relative;
   z-index: 1;
   width: 100%;
@@ -289,9 +303,9 @@
   border-color: transparent;
 }
 
-.event-resource-popup-shell .asset-explore-borrow-confirm-shell.is-loading .asset-explore-borrow-actions__btn--confirm,
-.event-resource-popup-shell .asset-explore-borrow-confirm-shell.is-loading .asset-explore-borrow-actions__btn--confirm:hover,
-.event-resource-popup-shell .asset-explore-borrow-confirm-shell.is-loading .asset-explore-borrow-actions__btn--confirm:disabled {
+.asset-explore-borrow-content .asset-explore-borrow-confirm-shell.is-loading .asset-explore-borrow-actions__btn--confirm,
+.asset-explore-borrow-content .asset-explore-borrow-confirm-shell.is-loading .asset-explore-borrow-actions__btn--confirm:hover,
+.asset-explore-borrow-content .asset-explore-borrow-confirm-shell.is-loading .asset-explore-borrow-actions__btn--confirm:disabled {
   border-color: rgba(181, 117, 23, 0.76);
   background: linear-gradient(180deg, #ffe7bf 0%, #ffd085 100%);
   color: #8e4f0d;
@@ -301,8 +315,8 @@
   transform: none;
 }
 
-.event-resource-popup-shell .asset-explore-borrow-confirm-shell.is-error .asset-explore-borrow-actions__btn--confirm,
-.event-resource-popup-shell .asset-explore-borrow-confirm-shell.is-error .asset-explore-borrow-actions__btn--confirm:hover {
+.asset-explore-borrow-content .asset-explore-borrow-confirm-shell.is-error .asset-explore-borrow-actions__btn--confirm,
+.asset-explore-borrow-content .asset-explore-borrow-confirm-shell.is-error .asset-explore-borrow-actions__btn--confirm:hover {
   border-color: rgba(176, 31, 46, 0.82);
   background: linear-gradient(180deg, #f36a79 0%, #d4374a 100%);
   color: #fff;
@@ -311,23 +325,23 @@
   transform: none;
 }
 
-.event-resource-popup-shell .asset-explore-borrow-actions__btn:not(:disabled):hover {
+.asset-explore-borrow-content .asset-explore-borrow-actions__btn:not(:disabled):hover {
   transform: translateY(-1px);
 }
 
 @media (max-width: 640px) {
-  .event-resource-popup-shell .asset-explore-borrow-actions {
+  .asset-explore-borrow-content .asset-explore-borrow-actions {
     flex-direction: column;
     align-items: stretch;
   }
 
-  .event-resource-popup-shell .asset-explore-borrow-payment-summary,
-  .event-resource-popup-shell .asset-explore-borrow-payment-grid {
+  .asset-explore-borrow-content .asset-explore-borrow-payment-summary,
+  .asset-explore-borrow-content .asset-explore-borrow-payment-grid {
     grid-template-columns: minmax(0, 1fr);
   }
 
-  .event-resource-popup-shell .asset-explore-borrow-confirm-shell,
-  .event-resource-popup-shell .asset-explore-borrow-actions__btn--primary {
+  .asset-explore-borrow-content .asset-explore-borrow-confirm-shell,
+  .asset-explore-borrow-content .asset-explore-borrow-actions__btn--primary {
     min-width: 0;
   }
 }

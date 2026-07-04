@@ -14,6 +14,10 @@ import { AppUtils } from '../../../../shared/app-utils';
 import type * as ActivityContracts from '../../../../shared/core/contracts/activity.interface';
 import type * as ContractTypes from '../../../../shared/core/contracts';
 import { SubEventResourcePopupStore } from '../../../../shared/ui/context/stores/sub-event-resource-popup.store';
+import {
+  PopupComponent,
+  type PopupModel
+} from '../../../../shared/ui/components/core/popup';
 
 export interface AssetExploreBorrowDialogViewState {
   title: string;
@@ -45,7 +49,8 @@ export interface AssetExploreBorrowDialogViewState {
     FormsModule,
     DateInputComponent,
     MatIconModule,
-    IndicatorComponent
+    IndicatorComponent,
+    PopupComponent
   ],
   templateUrl: './event-resource-asset-explore-borrow-dialog.component.html',
   styleUrl: './event-resource-asset-explore-borrow-dialog.component.scss',
@@ -55,6 +60,7 @@ export interface AssetExploreBorrowDialogViewState {
 export class EventResourceAssetExploreBorrowDialogComponent {
   @Input() dialog: AssetExploreBorrowDialogViewState | null = null;
   @Input() canSubmit = false;
+  @Input() parentZIndex = 2600;
 
   private readonly resourcePopupStore = inject(SubEventResourcePopupStore);
 
@@ -66,6 +72,26 @@ export class EventResourceAssetExploreBorrowDialogComponent {
       end: { label: 'End' }
     }
   };
+
+  protected borrowPopupModel(dialog: AssetExploreBorrowDialogViewState): PopupModel {
+    return {
+      title: dialog.title,
+      subtitle: dialog.subtitle,
+      ariaLabel: dialog.title,
+      closeAriaLabel: 'Close borrow request',
+      closeOnBackdrop: true,
+      size: 'wide',
+      height: 'full',
+      headerTone: 'accent',
+      bodyLayout: 'fill',
+      backdropTone: 'dim',
+      onClose: event => this.close(event)
+    };
+  }
+
+  protected borrowPopupZIndex(): number {
+    return this.parentZIndex + 100;
+  }
 
   protected formatMoney(amount: number, currency = 'USD'): string {
     switch ((currency || '').trim().toUpperCase()) {
