@@ -1305,6 +1305,15 @@
 }
 
 .chat-voice-cancel-btn {
+  width: var(--chat-voice-control-size) !important;
+  min-width: var(--chat-voice-control-size) !important;
+  max-width: var(--chat-voice-control-size) !important;
+  height: var(--chat-voice-control-size) !important;
+  min-height: var(--chat-voice-control-size) !important;
+  max-height: var(--chat-voice-control-size) !important;
+  padding: 0 !important;
+  border: 0 !important;
+  border-color: transparent !important;
   background: rgba(255, 255, 255, 0.2);
   color: #fff;
 }
