@@ -375,7 +375,7 @@ export class InfoCardComponent implements OnDestroy {
 
   protected descriptionLines(): number {
     const value = Math.trunc(Number(this.card?.descriptionLines));
-    return Number.isFinite(value) && value > 0 ? value : 3;
+    return Number.isFinite(value) && value > 0 ? value : 2;
   }
 
   protected descriptionMaxHeight(): string {

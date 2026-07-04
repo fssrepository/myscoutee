@@ -29,6 +29,7 @@
   position: relative;
   display: grid;
   grid-auto-rows: max-content;
+  align-content: start;
   flex: 1 1 auto;
   gap: 0.32rem;
   width: 100%;
@@ -454,10 +455,11 @@ button.asset-occupancy-badge:active::after,
   line-height: 1.4;
   color: rgba(20, 37, 61, 0.84);
   display: -webkit-box;
-  min-height: calc(var(--ui-info-card-description-lines, 3) * 1.4em);
-  max-height: var(--ui-info-card-description-max-height, 4.2em);
+  min-height: calc(var(--ui-info-card-description-lines, 2) * 1.4em);
+  max-height: var(--ui-info-card-description-max-height, 2.8em);
   overflow: hidden;
-  -webkit-line-clamp: var(--ui-info-card-description-lines, 3);
+  -webkit-line-clamp: var(--ui-info-card-description-lines, 2);
+  line-clamp: var(--ui-info-card-description-lines, 2);
   -webkit-box-orient: vertical;
 }
 
