@@ -84,59 +84,16 @@
           </section>
 
           @if (borrowDraftCount() > 0) {
-            <div class="asset-explore-basket">
-              @if (showBorrowBasket) {
-                <section class="asset-explore-basket-panel">
-                  <header class="asset-explore-basket-panel__head">
-                    <div>
-                      <strong>Basket</strong>
-                      <span>{{ borrowDraftCount() }} pending {{ borrowDraftCount() === 1 ? 'request' : 'requests' }}</span>
-                    </div>
-                    <button
-                      type="button"
-                      class="asset-explore-basket-panel__close"
-                      (click)="toggleBorrowBasket($event)"
-                      aria-label="Close basket"
-                    >
-                      <mat-icon>close</mat-icon>
-                    </button>
-                  </header>
-                  <div class="asset-explore-basket-panel__list">
-                    @for (entry of borrowDrafts(); track entry.cardId) {
-                      <article class="asset-explore-basket-item">
-                        <div class="asset-explore-basket-item__copy">
-                          <strong>{{ entry.title }}</strong>
-                          <span>{{ entry.timeframe }}</span>
-                          <span>Quantity {{ entry.quantity }} · {{ entry.availabilityLabel }}</span>
-                        </div>
-                        <div class="asset-explore-basket-item__actions">
-                          <button type="button" class="asset-explore-basket-item__btn" (click)="continueBorrowDraft(entry.cardId, $event)">
-                            Continue
-                          </button>
-                          <button
-                            type="button"
-                            class="asset-explore-basket-item__btn asset-explore-basket-item__btn--clear"
-                            (click)="clearBorrowDraft(entry.cardId, $event)"
-                          >
-                            Clear
-                          </button>
-                        </div>
-                      </article>
-                    }
-                  </div>
-                </section>
-              }
-              <button
-                type="button"
-                class="asset-explore-basket-fab"
-                [class.is-open]="showBorrowBasket"
-                (click)="toggleBorrowBasket($event)"
-                aria-label="Open basket"
-              >
-                <mat-icon>shopping_basket</mat-icon>
-                <span class="asset-explore-basket-fab__count">{{ borrowDraftCount() }}</span>
-              </button>
-            </div>
+            <app-menu
+              class="asset-explore-basket-menu"
+              kind="fab"
+              title="Borrow Basket"
+              [trigger]="borrowDraftMenuTrigger()"
+              [items]="borrowDraftMenuItems()"
+              [panelAlign]="'end'"
+              [mobileBreakpointPx]="900"
+              (itemSelect)="onMenuSelect($event)"
+            ></app-menu>
           }
 
           @if (assetView()) {

@@ -156,6 +156,7 @@ type AssetExploreOrderOption = {
 type AssetExploreMenuContext =
   | { menu: 'asset-explore-order'; order: AssetExploreOrder }
   | { menu: 'asset-explore-category'; category: AppConstants.AssetCategory }
+  | { menu: 'asset-explore-borrow-draft'; entry: AssetExploreBorrowDraftViewState }
   | {
       menu: 'asset-explore-card';
       card: ResourceAssetDTO;
@@ -241,7 +242,6 @@ export class EventResourceAssetExploreComponent implements DoCheck {
     quantity: number;
   }>();
 
-  protected showBorrowBasket = false;
   protected order: AssetExploreOrder = 'availability';
   protected readonly orderOptions = ASSET_EXPLORE_ORDER_OPTIONS;
   protected readonly assetViewOutletInputs = computed(() => ({
@@ -373,8 +373,8 @@ export class EventResourceAssetExploreComponent implements DoCheck {
       acceptedPolicyIds: [...dialog.acceptedPolicyIds],
       payable: pricing.amount > 0,
       paymentStep: dialog.paymentStep,
-      submitLabel: pricing.amount > 0 ? (dialog.paymentStep ? 'Buy' : 'Checkout') : 'Send borrow request',
-      busyLabel: pricing.amount > 0 ? (dialog.paymentStep ? 'Buying...' : 'Checking out...') : 'Sending request...',
+      submitLabel: pricing.amount > 0 ? (dialog.paymentStep ? 'Confirm borrow' : 'Checkout') : 'Send borrow request',
+      busyLabel: pricing.amount > 0 ? (dialog.paymentStep ? 'Confirming borrow...' : 'Checking out...') : 'Sending request...',
       busy: dialog.busy,
       error: dialog.error
     };
@@ -462,7 +462,6 @@ export class EventResourceAssetExploreComponent implements DoCheck {
   ngDoCheck(): void {
     const explore = this.popupViewState();
     if (!explore) {
-      this.showBorrowBasket = false;
       this.resourcePopupStore.assetExploreAssetViewIdRef.set(null);
     }
     const cards = explore?.cards ?? [];
@@ -537,27 +536,10 @@ export class EventResourceAssetExploreComponent implements DoCheck {
       this.closeAssetView();
       return;
     }
-    if (this.showBorrowBasket) {
-      keyboardEvent.preventDefault();
-      keyboardEvent.stopPropagation();
-      this.showBorrowBasket = false;
-      return;
-    }
     if (this.popupViewState()) {
       keyboardEvent.preventDefault();
       keyboardEvent.stopPropagation();
       this.closeExplorePopup();
-    }
-  }
-
-  @HostListener('document:click', ['$event'])
-  protected onDocumentClick(event: MouseEvent): void {
-    const target = event.target;
-    if (!(target instanceof Element)) {
-      return;
-    }
-    if (this.showBorrowBasket && !target.closest('.asset-explore-basket')) {
-      this.showBorrowBasket = false;
     }
   }
 
@@ -610,6 +592,14 @@ export class EventResourceAssetExploreComponent implements DoCheck {
     if (context.menu === 'asset-explore-category') {
       event.sourceEvent.stopPropagation();
       this.selectCategory(context.category, event.sourceEvent);
+      return;
+    }
+    if (context.menu === 'asset-explore-borrow-draft') {
+      if (event.action === 'remove') {
+        this.clearBorrowDraft(context.entry.cardId, event.sourceEvent);
+        return;
+      }
+      this.continueBorrowDraft(context.entry.cardId, event.sourceEvent);
       return;
     }
     this.onCardMenuAction(context.card, {
@@ -724,12 +714,10 @@ export class EventResourceAssetExploreComponent implements DoCheck {
     if (this.availableQuantity(card) <= 0) {
       return;
     }
-    this.showBorrowBasket = false;
     this.openBorrowDialog(card);
   }
 
   protected onCardMenuAction(card: ResourceAssetDTO, event: CardMenuActionEvent<InfoCardData>): void {
-    this.showBorrowBasket = false;
     if (event.actionId === 'viewAsset') {
       this.openAssetView(card, new Event('click'));
       return;
@@ -759,18 +747,55 @@ export class EventResourceAssetExploreComponent implements DoCheck {
     return this.borrowDrafts().length;
   }
 
-  protected toggleBorrowBasket(event?: Event): void {
-    event?.stopPropagation();
-    if (this.borrowDraftCount() <= 0) {
-      this.showBorrowBasket = false;
-      return;
-    }
-    this.showBorrowBasket = !this.showBorrowBasket;
+  protected borrowDraftMenuTrigger(): AppMenuTrigger {
+    const count = this.borrowDraftCount();
+    return {
+      icon: 'shopping_basket',
+      closeIcon: 'close',
+      ariaLabel: count === 1 ? 'Open borrow basket with 1 request' : `Open borrow basket with ${count} requests`,
+      counter: count,
+      hideLabel: true,
+      layout: 'icon',
+      palette: 'orange'
+    };
+  }
+
+  protected borrowDraftMenuItems(): readonly AppMenuItem<string, AssetExploreMenuContext>[] {
+    return this.borrowDrafts().map(entry => ({
+      id: `borrow-draft-${entry.cardId}`,
+      label: entry.title,
+      description: [
+        entry.timeframe || 'Pending borrow window',
+        `Quantity ${entry.quantity} · ${entry.availabilityLabel}`
+      ].join('\n'),
+      detail: this.borrowDraftMenuStatusLabel(entry),
+      icon: 'assignment_return',
+      kind: 'action',
+      palette: this.borrowDraftMenuPalette(entry),
+      surface: 'tinted',
+      layout: 'pill',
+      removable: true,
+      removeIcon: 'close',
+      removeAriaLabel: `Clear ${entry.title}`,
+      context: { menu: 'asset-explore-borrow-draft', entry }
+    }));
+  }
+
+  private borrowDraftMenuStatusLabel(entry: AssetExploreBorrowDraftViewState): string {
+    return this.borrowDraftUnavailable(entry) ? 'Review request' : 'Continue request';
+  }
+
+  private borrowDraftMenuPalette(entry: AssetExploreBorrowDraftViewState): AppMenuPalette {
+    return this.borrowDraftUnavailable(entry) ? 'amber' : 'orange';
+  }
+
+  private borrowDraftUnavailable(entry: AssetExploreBorrowDraftViewState): boolean {
+    const availability = entry.availabilityLabel.trim().toLowerCase();
+    return availability.startsWith('0 ') || availability.includes('unavailable');
   }
 
   protected continueBorrowDraft(cardId: string, event?: Event): void {
     event?.stopPropagation();
-    this.showBorrowBasket = false;
     this.resumeBorrowDraft(cardId, event);
   }
 
@@ -811,7 +836,6 @@ export class EventResourceAssetExploreComponent implements DoCheck {
   protected closeExplorePopup(event?: Event): void {
     event?.stopPropagation();
     this.resourcePopupStore.assetExploreAssetViewIdRef.set(null);
-    this.showBorrowBasket = false;
     if (this.resourcePopupStore.assetExploreOnlyRef()) {
       this.resourcePopupStore.closeResourcePopup();
       return;
