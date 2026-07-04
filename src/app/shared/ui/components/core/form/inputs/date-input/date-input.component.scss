@@ -5,6 +5,15 @@
   min-width: 0;
 }
 
+:host(.date-input-host--range-compact) {
+  grid-column: auto;
+  width: 286px;
+  min-width: 286px;
+  max-width: 286px;
+  flex: 0 0 286px;
+  overflow: visible;
+}
+
 .date-input {
   display: grid;
   gap: 0.62rem;
@@ -186,7 +195,7 @@
 :host ::ng-deep .date-input--range-compact .date-input__material .mat-mdc-text-field-wrapper {
   min-height: 34px;
   height: 34px;
-  padding: 0 0.18rem 0 0.58rem;
+  padding: 0 0.22rem 0 0.46rem;
   border-color: rgba(42, 83, 141, 0.26);
   border-radius: 999px;
   background: #f7fbff !important;
@@ -243,12 +252,24 @@
 }
 
 :host ::ng-deep .date-input--range-compact .date-input__material--range .mat-date-range-input-container {
-  grid-template-columns: minmax(76px, 1fr) 14px minmax(76px, 1fr);
+  grid-template-columns: 10ch 12px 10ch;
   column-gap: 0.12rem;
   width: 100%;
   min-height: 34px;
   height: 34px;
+  justify-content: center;
   overflow: hidden;
+}
+
+:host ::ng-deep .date-input--range-compact .date-input__material--range .mat-date-range-input-wrapper {
+  flex: 0 0 10ch !important;
+  width: 10ch;
+  max-width: 10ch;
+  justify-content: center;
+}
+
+:host ::ng-deep .date-input--range-compact .date-input__material--range .mat-date-range-input-end-wrapper {
+  flex-grow: 0 !important;
 }
 
 :host ::ng-deep .date-input--range-compact .date-input__material--range .mat-date-range-input-separator {
@@ -264,10 +285,12 @@
 
 :host ::ng-deep .date-input--range-compact .date-input__material--range .mat-date-range-input-inner,
 :host ::ng-deep .date-input--range-compact .date-input__material--range input {
+  height: 34px;
   min-height: 34px;
-  font-size: 0.78rem;
+  font-size: 0.76rem;
   font-weight: 700;
   color: #2c4c74;
+  line-height: 34px;
   text-align: center;
   align-self: center;
 }
@@ -569,7 +592,7 @@
   }
 
   :host ::ng-deep .date-input--range-compact .date-input__material--range .mat-date-range-input-container {
-    grid-template-columns: minmax(72px, 1fr) 14px minmax(72px, 1fr);
+    grid-template-columns: 10ch 12px 10ch;
     column-gap: 0.08rem;
   }
 

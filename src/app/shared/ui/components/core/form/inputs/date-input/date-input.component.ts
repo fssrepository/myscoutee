@@ -1,5 +1,5 @@
 import { CommonModule } from '@angular/common';
-import { ChangeDetectionStrategy, ChangeDetectorRef, Component, forwardRef, Input } from '@angular/core';
+import { ChangeDetectionStrategy, ChangeDetectorRef, Component, forwardRef, HostBinding, Input } from '@angular/core';
 import { ControlValueAccessor, FormsModule, NG_VALUE_ACCESSOR } from '@angular/forms';
 import { MatNativeDateModule } from '@angular/material/core';
 import { MatDatepicker, MatDatepickerModule, MatDateRangePicker } from '@angular/material/datepicker';
@@ -124,6 +124,11 @@ export interface DateInputModel {
 })
 export class DateInputComponent implements ControlValueAccessor {
   @Input() model: DateInputModel | null = null;
+
+  @HostBinding('class.date-input-host--range-compact')
+  protected get compactRangeHost(): boolean {
+    return this.isCompactRange();
+  }
 
   private static readonly horoscopeMetaBySign: Record<string, DateInputMetaValue> = {
     Aries: { label: 'Kos', icon: '♈', palette: 'aries' },
