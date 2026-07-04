@@ -59,25 +59,27 @@
                     <app-indicator kind="spinner-ring" [size]="compact ? 'sm' : 'md'"></app-indicator>
                   </span>
                 } @else if (imageUrl) {
-                  <button
-                    type="button"
-                    class="image-carousel__slot-action image-carousel__slot-action--copy"
-                    (click)="copySlot(imageUrl, slotIndex, $event)"
-                    aria-label="Copy image link"
-                    title="Copy link"
-                  >
-                    <mat-icon>content_copy</mat-icon>
-                  </button>
-                  <button
-                    type="button"
-                    class="image-carousel__slot-action image-carousel__slot-action--remove"
-                    (click)="removeSlot(imageUrl, slotIndex, $event)"
-                    aria-label="Remove image"
-                    title="Remove"
-                  >
-                    <mat-icon>close</mat-icon>
-                  </button>
-                } @else {
+                  @if (!isDisabled()) {
+                    <button
+                      type="button"
+                      class="image-carousel__slot-action image-carousel__slot-action--copy"
+                      (click)="copySlot(imageUrl, slotIndex, $event)"
+                      aria-label="Copy image link"
+                      title="Copy link"
+                    >
+                      <mat-icon>content_copy</mat-icon>
+                    </button>
+                    <button
+                      type="button"
+                      class="image-carousel__slot-action image-carousel__slot-action--remove"
+                      (click)="removeSlot(imageUrl, slotIndex, $event)"
+                      aria-label="Remove image"
+                      title="Remove"
+                    >
+                      <mat-icon>close</mat-icon>
+                    </button>
+                  }
+                } @else if (!isDisabled()) {
                   <span class="image-carousel__slot-add">+</span>
                 }
 

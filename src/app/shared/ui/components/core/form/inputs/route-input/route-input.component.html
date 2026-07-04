@@ -9,19 +9,17 @@
         <span class="route-input__subtitle">{{ panelSubtitle() }}</span>
       }
     </div>
-    @if (!locked()) {
-      <button
-        type="button"
-        class="route-input__toggle"
-        [class.is-on]="routeEnabled()"
-        [disabled]="saving"
-        [attr.aria-pressed]="routeEnabled()"
-        (click)="toggleRouteEnabled($event)"
-      >
-        <mat-icon>{{ routeEnabled() ? 'toggle_on' : 'toggle_off' }}</mat-icon>
-        <span>{{ routeEnabled() ? 'On' : 'Off' }}</span>
-      </button>
-    }
+    <button
+      type="button"
+      class="route-input__toggle"
+      [class.is-on]="routeEnabled()"
+      [disabled]="locked() || saving"
+      [attr.aria-pressed]="routeEnabled()"
+      (click)="toggleRouteEnabled($event)"
+    >
+      <mat-icon>{{ routeEnabled() ? 'toggle_on' : 'toggle_off' }}</mat-icon>
+      <span>{{ routeEnabled() ? 'On' : 'Off' }}</span>
+    </button>
   </header>
 
   <div class="route-input__body">

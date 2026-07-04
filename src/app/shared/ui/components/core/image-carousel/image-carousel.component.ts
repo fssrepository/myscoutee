@@ -248,6 +248,9 @@ export class ImageCarouselComponent implements ControlValueAccessor, OnChanges {
 
   protected removeSlot(_imageUrl: string, slotIndex: number, event?: Event): void {
     event?.stopPropagation();
+    if (this.isDisabled()) {
+      return;
+    }
     this.onTouched();
     const slots = this.imageSlots();
     slots[this.clampSlotIndex(slotIndex)] = null;

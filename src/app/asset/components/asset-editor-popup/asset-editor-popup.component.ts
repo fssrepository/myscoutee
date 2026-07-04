@@ -22,6 +22,7 @@ import {
 } from '../../../shared/core';
 import {
   AssetStore,
+  type AssetEditorRuntimeRouteState,
   type AssetFormState
 } from '../../../shared/ui/context/stores/asset.store';
 import {
@@ -48,7 +49,8 @@ import { UserProfileStore } from '../../../shared/ui/context/stores/user-profile
 type AssetEditorMenuContext =
   | { menu: 'visibility'; visibility: AppConstants.EventVisibility }
   | { menu: 'category'; category: AppConstants.AssetCategory }
-  | { menu: 'save' };
+  | { menu: 'save' }
+  | { menu: 'runtime-route-save' };
 type AssetEditorFlowValue = AssetFormState & {
   imageUrls: string[];
   routeLocation: string;
@@ -69,6 +71,8 @@ type AssetEditorFlowValue = AssetFormState & {
   styleUrl: './asset-editor-popup.component.scss'
 })
 export class AssetEditorPopupComponent {
+  private static readonly RUNTIME_ROUTE_SAVE_MINIMUM_MS = 520;
+
   private readonly userProfileStore = inject(UserProfileStore);
   private readonly assetsService = inject(AssetsService);
   protected readonly assetStore = inject(AssetStore);
@@ -419,7 +423,7 @@ export class AssetEditorPopupComponent {
 
   private assetEditorPopupHeaderControls(): readonly PopupControl<AssetEditorMenuContext>[] {
     if (this.assetEditorReadOnly()) {
-      return [];
+      return this.runtimeRouteHeaderControls();
     }
     return [
       {
@@ -438,6 +442,20 @@ export class AssetEditorPopupComponent {
         closeOnSelect: false
       }
     ];
+  }
+
+  private runtimeRouteHeaderControls(): readonly PopupControl<AssetEditorMenuContext>[] {
+    const runtimeRoute = this.assetStore.assetFormRuntimeRoute();
+    if (!runtimeRoute?.editable) {
+      return [];
+    }
+    return [{
+      kind: 'menu',
+      id: 'asset-editor-runtime-route-save',
+      menuKind: 'inline',
+      items: this.runtimeRouteSaveMenuItems(),
+      closeOnSelect: false
+    }];
   }
 
   protected get isLoading(): boolean {
@@ -486,6 +504,25 @@ export class AssetEditorPopupComponent {
           }
         : null,
       context: { menu: 'save' }
+    }];
+  }
+
+  protected runtimeRouteSaveMenuItems(): readonly AppMenuItem<string, AssetEditorMenuContext>[] {
+    const canSave = this.canSaveRuntimeRoute();
+    return [{
+      id: 'asset-editor-runtime-route-save',
+      icon: 'done',
+      layout: 'action',
+      palette: canSave || this.isSavePending ? 'success' : 'danger',
+      disabled: !canSave || this.isLoading,
+      ariaLabel: 'Save route assignment',
+      progress: this.isSavePending
+        ? {
+            state: 'loading',
+            shape: 'circle'
+          }
+        : null,
+      context: { menu: 'runtime-route-save' }
     }];
   }
 
@@ -540,11 +577,15 @@ export class AssetEditorPopupComponent {
   }
 
   protected onAssetEditorMenuSelect(event: AppMenuItemSelectEvent<string, unknown>): void {
-    if (this.isLoading || this.assetEditorReadOnly()) {
-      return;
-    }
     const context = event.context as AssetEditorMenuContext | undefined;
     if (!context) {
+      return;
+    }
+    if (context.menu === 'runtime-route-save') {
+      void this.saveRuntimeRouteAssignment();
+      return;
+    }
+    if (this.isLoading || this.assetEditorReadOnly()) {
       return;
     }
     if (context.menu === 'visibility') {
@@ -556,6 +597,52 @@ export class AssetEditorPopupComponent {
       return;
     }
     this.setAssetEditorCategory(context.category);
+  }
+
+  private canSaveRuntimeRoute(): boolean {
+    const current = this.assetStore.assetFormRuntimeRoute();
+    return !this.isLoading
+      && !this.isSavePending
+      && current?.editable === true
+      && typeof current.onSave === 'function'
+      && this.runtimeRouteDirty(current, this.assetStore.assetFormSavedRuntimeRoute());
+  }
+
+  private runtimeRouteDirty(
+    current: AssetEditorRuntimeRouteState | null,
+    saved: AssetEditorRuntimeRouteState | null
+  ): boolean {
+    if (!current || !saved) {
+      return false;
+    }
+    return current.routeEnabled !== saved.routeEnabled
+      || !this.stringListsEqual(current.routes, saved.routes);
+  }
+
+  private async saveRuntimeRouteAssignment(): Promise<void> {
+    const current = this.assetStore.assetFormRuntimeRoute();
+    if (!this.canSaveRuntimeRoute() || !current?.onSave || !this.assetStore.beginAssetEditorRuntimeRouteSave()) {
+      return;
+    }
+    try {
+      const [saved] = await Promise.all([
+        current.onSave({
+          routeEnabled: current.routeEnabled,
+          routes: current.routes
+        }),
+        this.waitForRuntimeRouteSaveIndicator()
+      ]);
+      this.assetStore.completeAssetEditorRuntimeRouteSave(saved ?? {
+        routeEnabled: current.routeEnabled,
+        routes: current.routes
+      });
+    } catch {
+      this.assetStore.failAssetEditorSave();
+    }
+  }
+
+  private waitForRuntimeRouteSaveIndicator(): Promise<void> {
+    return new Promise(resolve => setTimeout(resolve, AssetEditorPopupComponent.RUNTIME_ROUTE_SAVE_MINIMUM_MS));
   }
 
   protected assetFormRouteStops(): string[] {

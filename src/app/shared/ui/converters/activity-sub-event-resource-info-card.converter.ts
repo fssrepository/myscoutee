@@ -100,9 +100,6 @@ export class ActivitySubEventResourceInfoCardConverter {
     options: ActivitySubEventResourceInfoCardConverterOptions
   ): readonly CardMenuActionId[] {
     const actions: CardMenuActionId[] = ['viewAsset'];
-    if (this.canEditRoute(card, options)) {
-      actions.push('editAsset');
-    }
     if (this.canJoin(card, options)) {
       actions.push('joinResource');
     } else if (this.canLeave(card, options)) {
@@ -140,20 +137,6 @@ export class ActivitySubEventResourceInfoCardConverter {
     return this.isAssignableAsset(card);
   }
 
-  private static canEditCapacity(
-    card: AppDTOs.SubEventResourceCardDTO,
-    options: ActivitySubEventResourceInfoCardConverterOptions
-  ): boolean {
-    return this.isSourceAssetOwnedByActiveUser(card, options);
-  }
-
-  private static canEditRoute(
-    card: AppDTOs.SubEventResourceCardDTO,
-    options: ActivitySubEventResourceInfoCardConverterOptions
-  ): boolean {
-    return card.type === 'Car' && this.canEditCapacity(card, options);
-  }
-
   private static canJoin(
     card: AppDTOs.SubEventResourceCardDTO,
     options: ActivitySubEventResourceInfoCardConverterOptions
@@ -178,25 +161,6 @@ export class ActivitySubEventResourceInfoCardConverter {
       && (card.type === 'Car' || card.type === 'Accommodation')
       && !!this.sourceAsset(card, options)
       && !this.isSourceAssetManagedByActiveUser(card, options);
-  }
-
-  private static isSourceAssetOwnedByActiveUser(
-    card: AppDTOs.SubEventResourceCardDTO,
-    options: ActivitySubEventResourceInfoCardConverterOptions
-  ): boolean {
-    const sourceAsset = this.sourceAsset(card, options);
-    const activeUserId = this.normalizeId(options.activeUserId);
-    if (!sourceAsset || !activeUserId) {
-      return false;
-    }
-    const ownerUserId = this.normalizeId(sourceAsset.ownerUserId);
-    if (ownerUserId) {
-      return ownerUserId === activeUserId;
-    }
-    return (options.activeUserAssets ?? []).some(asset =>
-      this.normalizeId(asset.id) === this.normalizeId(sourceAsset.id)
-      && asset.type === sourceAsset.type
-    );
   }
 
   private static isSourceAssetManagedByActiveUser(

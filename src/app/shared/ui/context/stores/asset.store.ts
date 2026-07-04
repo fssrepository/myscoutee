@@ -61,6 +61,7 @@ export class AssetStore {
   readonly assetFormReadOnlyRef = signal(false);
   readonly assetFormParentZIndexRef = signal<number | null>(null);
   readonly assetFormRuntimeRouteRef = signal<AssetEditorRuntimeRouteState | null>(null);
+  readonly assetFormSavedRuntimeRouteRef = signal<AssetEditorRuntimeRouteState | null>(null);
   readonly assetFormLoadingRef = signal(false);
   readonly assetFormSavePendingRef = signal(false);
   readonly pendingAssetDeleteCardIdRef = signal<string | null>(null);
@@ -98,6 +99,7 @@ export class AssetStore {
   readonly assetFormReadOnly = this.assetFormReadOnlyRef.asReadonly();
   readonly assetFormParentZIndex = this.assetFormParentZIndexRef.asReadonly();
   readonly assetFormRuntimeRoute = this.assetFormRuntimeRouteRef.asReadonly();
+  readonly assetFormSavedRuntimeRoute = this.assetFormSavedRuntimeRouteRef.asReadonly();
   readonly assetFormLoading = this.assetFormLoadingRef.asReadonly();
   readonly assetFormSavePending = this.assetFormSavePendingRef.asReadonly();
   readonly pendingAssetDeleteCardId = this.pendingAssetDeleteCardIdRef.asReadonly();
@@ -283,6 +285,7 @@ export class AssetStore {
     this.assetFormReadOnlyRef.set(false);
     this.assetFormParentZIndexRef.set(null);
     this.assetFormRuntimeRouteRef.set(null);
+    this.assetFormSavedRuntimeRouteRef.set(null);
     this.editingAssetIdRef.set(null);
     this.assetFormDraftIdRef.set(draftId.trim() || `asset-${Date.now()}`);
     this.assetFormVisibilityRef.set('Public');
@@ -306,7 +309,9 @@ export class AssetStore {
     this.assetFormSavePendingRef.set(false);
     this.assetFormReadOnlyRef.set(options.readOnly === true);
     this.assetFormParentZIndexRef.set(this.normalizeParentZIndex(options.parentZIndex));
-    this.assetFormRuntimeRouteRef.set(this.cloneRuntimeRoute(options.runtimeRoute));
+    const runtimeRoute = this.cloneRuntimeRoute(options.runtimeRoute);
+    this.assetFormRuntimeRouteRef.set(runtimeRoute);
+    this.assetFormSavedRuntimeRouteRef.set(this.cloneRuntimeRoute(runtimeRoute));
     this.assetFormDraftIdRef.set('');
     this.editingAssetIdRef.set(options.cardId);
     this.assetFormVisibilityRef.set(options.visibility);
@@ -333,6 +338,7 @@ export class AssetStore {
     this.assetFormReadOnlyRef.set(false);
     this.assetFormParentZIndexRef.set(null);
     this.assetFormRuntimeRouteRef.set(null);
+    this.assetFormSavedRuntimeRouteRef.set(null);
     this.assetFormLoadingRef.set(false);
     this.assetFormSavePendingRef.set(false);
     this.assetFormDraftIdRef.set('');
@@ -400,6 +406,16 @@ export class AssetStore {
     return true;
   }
 
+  beginAssetEditorRuntimeRouteSave(): boolean {
+    const current = this.assetFormRuntimeRouteRef();
+    if (!current?.editable || this.assetFormLoadingRef() || this.assetFormSavePendingRef()) {
+      return false;
+    }
+    this.assetFormSavePendingRef.set(true);
+    this.touchUiState();
+    return true;
+  }
+
   completeAssetEditorSave(): void {
     this.assetFormSavePendingRef.set(false);
     this.closeAssetEditor();
@@ -408,6 +424,24 @@ export class AssetStore {
   failAssetEditorSave(): void {
     this.assetFormSavePendingRef.set(false);
     this.touchUiState();
+  }
+
+  completeAssetEditorRuntimeRouteSave(state: {
+    routeEnabled: boolean;
+    routes: readonly string[];
+  }): void {
+    const current = this.assetFormRuntimeRouteRef();
+    if (current) {
+      const next = this.cloneRuntimeRoute({
+        ...current,
+        routeEnabled: state.routeEnabled === true,
+        routes: this.cloneStringList(state.routes)
+      });
+      this.assetFormRuntimeRouteRef.set(next);
+      this.assetFormSavedRuntimeRouteRef.set(this.cloneRuntimeRoute(next));
+    }
+    this.assetFormSavePendingRef.set(false);
+    this.closeAssetEditor();
   }
 
   private bumpAssetEditorGeneration(): number {

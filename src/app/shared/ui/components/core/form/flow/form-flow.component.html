@@ -231,6 +231,7 @@
                         [ariaLabel]="image.ariaLabel || control.label || 'Images'"
                         [uploadOwnerId]="image.uploadOwnerId || ''"
                         [uploadEntityId]="image.uploadEntityId || 'image'"
+                        [disabled]="isControlDisabled(control)"
                         [ngModel]="controlStringArrayValue(control)"
                         (ngModelChange)="updateControlValue(control, $event)"
                       ></app-image-carousel>

@@ -303,8 +303,29 @@ export class SubEventResourcePopupStore {
       revision,
       ownerId: context.ownerId,
       subEventId: context.subEvent.id,
-      subEvent: { ...context.subEvent }
+      subEvent: this.subEventRuntimeMenuMetrics(context.subEvent)
     });
+  }
+
+  private subEventRuntimeMenuMetrics(subEvent: ContractTypes.SubEventDTO): ContractTypes.SubEventDTO {
+    return {
+      ...subEvent,
+      carsAccepted: this.assignedAssetCountForMenu(subEvent.id, 'Car', subEvent.carsAccepted),
+      accommodationAccepted: this.assignedAssetCountForMenu(subEvent.id, 'Accommodation', subEvent.accommodationAccepted),
+      suppliesAccepted: this.assignedAssetCountForMenu(subEvent.id, 'Supplies', subEvent.suppliesAccepted)
+    };
+  }
+
+  private assignedAssetCountForMenu(
+    subEventId: string,
+    type: AppConstants.AssetType,
+    fallback: number | null | undefined
+  ): number {
+    const stored = this.assignedAssetIdsByKey[this.assetAssignmentKey(subEventId, type)];
+    if (Array.isArray(stored)) {
+      return stored.length;
+    }
+    return Math.max(0, Math.trunc(Number(fallback) || 0));
   }
 
   requestResourceAssetViewClose(event?: Event): void {

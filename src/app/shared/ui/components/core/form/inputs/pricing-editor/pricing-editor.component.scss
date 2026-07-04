@@ -320,7 +320,14 @@
 
 
 
-.pricing-editor__toggle:disabled,
+.pricing-editor__toggle:disabled {
+  cursor: default;
+  opacity: 0.66;
+  pointer-events: none;
+  filter: saturate(0.66);
+  box-shadow: none;
+}
+
 .pricing-editor__add-btn:disabled,
 .pricing-editor__rule-remove:disabled,
 .pricing-editor__open-btn:disabled {
@@ -348,6 +355,11 @@
   pointer-events: none;
   filter: grayscale(0.35);
   box-shadow: none;
+}
+
+:host-context(.popup-panel-event-editor-readonly) .pricing-editor__toggle {
+  opacity: 0.66;
+  filter: saturate(0.66);
 }
 
 .pricing-editor__grid,
