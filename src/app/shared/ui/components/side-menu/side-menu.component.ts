@@ -200,6 +200,11 @@ export class SideMenuComponent implements OnDestroy {
   private readonly assetStore = inject(AssetStore);
   protected readonly eventEditorStore = inject(EventEditorPopupStore);
   protected readonly subEventResourceStore = inject(SubEventResourcePopupStore);
+  protected readonly stackedEventChatPopupInputs = computed(() => ({
+    chatSession: this.activitiesStore.stackedEventChatSession(),
+    chatHeader: this.activitiesStore.stackedEventChatHeader(),
+    closeHostedChat: () => this.activitiesStore.closeStackedEventChat()
+  }));
   private readonly currentRoutePathRef = signal(AppUtils.normalizeRoutePath(this.router.url));
   private readonly menuOpenRef = signal(false);
   private readonly userMenuLoadOverdueRef = signal(false);
@@ -992,7 +997,7 @@ export class SideMenuComponent implements OnDestroy {
     });
 
     effect(() => {
-      const isAssetPopupVisible = this.assetPopupStore.visible();
+      const isAssetPopupVisible = this.assetPopupStore.visible() || this.assetStore.showAssetForm();
       if (isAssetPopupVisible) {
         void this.assetPopupStore.ensureAssetPopupLoaded();
       }

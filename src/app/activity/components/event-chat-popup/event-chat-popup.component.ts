@@ -3,11 +3,13 @@ import {
   ChangeDetectorRef,
   Component,
   ElementRef,
+  Input,
   OnDestroy,
   ViewChild,
   computed,
   effect,
-  inject
+  inject,
+  signal
 } from '@angular/core';
 import {
   CommonModule,
@@ -218,10 +220,29 @@ export class EventChatPopupComponent implements OnDestroy {
   private readonly mediaService = inject(MediaService);
   private readonly profileStore = inject(ProfileStore);
   private readonly location = inject(Location);
+  private readonly hostedSessionRef = signal<EventChatSession | null>(null);
+  private readonly hostedHeaderRef = signal<EventChatHeaderState | null>(null);
+  private closeHostedChatHandler: (() => void) | null = null;
+
+  @Input()
+  set chatSession(session: EventChatSession | null | undefined) {
+    this.hostedSessionRef.set(session ?? null);
+  }
+
+  @Input()
+  set chatHeader(header: EventChatHeaderState | null | undefined) {
+    this.hostedHeaderRef.set(header ? this.cloneEventChatHeader(header) : null);
+  }
+
+  @Input()
+  set closeHostedChat(handler: (() => void) | null | undefined) {
+    this.closeHostedChatHandler = handler ?? null;
+  }
 
   protected readonly session = computed<EventChatViewSession | null>(() => {
-    const session = this.activitiesStore.eventChatSession();
-    const header = this.activitiesStore.eventChatHeader();
+    const hostedSession = this.hostedSessionRef();
+    const session = hostedSession ?? this.activitiesStore.eventChatSession();
+    const header = hostedSession ? this.hostedHeaderRef() : this.activitiesStore.eventChatHeader();
     if (!session || !header || `${session.request.chatId ?? ''}`.trim() !== `${header.chatId ?? ''}`.trim()) {
       return null;
     }
@@ -230,6 +251,12 @@ export class EventChatPopupComponent implements OnDestroy {
       item: this.chatFromHeader(header)
     };
   });
+  protected readonly resourcePopupOutletInputs = computed(() => ({
+    parentZIndex: this.currentChatPopupZIndex()
+  }));
+  protected readonly assetExplorePopupOutletInputs = computed(() => ({
+    parentZIndex: this.currentChatPopupZIndex()
+  }));
   protected chatInitialLoadPending = false;
   protected messages: ContractTypes.ChatMessageDto[] = [];
   protected draftMessage = '';
@@ -494,6 +521,10 @@ export class EventChatPopupComponent implements OnDestroy {
     this.loadedSessionKey = null;
     this.chatThreadQuery = {};
     this.closeTransientMessageUi();
+    if (this.hostedSessionRef()) {
+      this.closeHostedChatHandler?.();
+      return;
+    }
     if (this.isBlockedSupportChat()) {
       this.activitiesStore.closeActivities();
       return;
@@ -517,6 +548,18 @@ export class EventChatPopupComponent implements OnDestroy {
       onClose: () => this.close(),
       onMenuSelect: event => this.onInlineChatMenuSelect(event.itemSelect)
     };
+  }
+
+  protected chatPopupZIndex(chatSession: EventChatViewSession): number {
+    const parentZIndex = Number(chatSession.request.parentZIndex);
+    return Number.isFinite(parentZIndex) && parentZIndex > 0
+      ? Math.trunc(parentZIndex) + 100
+      : 2360;
+  }
+
+  private currentChatPopupZIndex(): number {
+    const session = this.session();
+    return session ? this.chatPopupZIndex(session) : 2360;
   }
 
   private chatPopupHeaderControls(): readonly PopupControl<ChatMenuContext>[] {
@@ -604,6 +647,44 @@ export class EventChatPopupComponent implements OnDestroy {
           }
         : header.metrics
     };
+  }
+
+  private cloneEventChatHeader(header: EventChatHeaderState): EventChatHeaderState {
+    return {
+      ...header,
+      chatId: `${header.chatId ?? ''}`.trim(),
+      ownerId: `${header.ownerId ?? ''}`.trim() || null,
+      parentZIndex: Number.isFinite(Number(header.parentZIndex))
+        ? Math.max(0, Math.trunc(Number(header.parentZIndex)))
+        : null,
+      memberIds: [...(header.memberIds ?? [])],
+      members: (header.members ?? []).map(member => ({ ...member })),
+      supportCase: header.supportCase
+        ? {
+            ...header.supportCase,
+            assignee: header.supportCase.assignee ? { ...header.supportCase.assignee } : header.supportCase.assignee
+          }
+        : header.supportCase,
+      metrics: header.metrics
+        ? {
+            members: header.metrics.members ? { ...header.metrics.members } : null,
+            car: header.metrics.car ? { ...header.metrics.car } : null,
+            accommodation: header.metrics.accommodation ? { ...header.metrics.accommodation } : null,
+            supplies: header.metrics.supplies ? { ...header.metrics.supplies } : null,
+            groupsCount: header.metrics.groupsCount ?? null,
+            pendingTotal: Math.max(0, Math.trunc(Number(header.metrics.pendingTotal) || 0))
+          }
+        : header.metrics
+    };
+  }
+
+  private patchCurrentEventChatHeader(headerUpdater: (header: EventChatHeaderState) => EventChatHeaderState): void {
+    const hostedHeader = this.hostedHeaderRef();
+    if (this.hostedSessionRef() && hostedHeader) {
+      this.hostedHeaderRef.set(this.cloneEventChatHeader(headerUpdater(this.cloneEventChatHeader(hostedHeader))));
+      return;
+    }
+    this.activitiesStore.patchEventChatHeader(headerUpdater);
   }
 
   protected chatHeaderTitle(chatSession: EventChatViewSession): string {
@@ -3748,7 +3829,7 @@ export class EventChatPopupComponent implements OnDestroy {
       unread: nextUnread,
       unreadDelta
     });
-    this.activitiesStore.patchEventChatHeader(header =>
+    this.patchCurrentEventChatHeader(header =>
       `${header.chatId ?? ''}`.trim() === `${chat.id ?? ''}`.trim()
         ? { ...header, unread: nextUnread }
         : header
@@ -4668,7 +4749,7 @@ export class EventChatPopupComponent implements OnDestroy {
     }
     const nextMetrics = this.chatMetricsWithBucket(state.metrics, patch);
     this.resolvedChatResourceState = null;
-    this.activitiesStore.patchEventChatHeader(header => {
+    this.patchCurrentEventChatHeader(header => {
       const headerChat = this.chatFromHeader(header);
       if (this.chatMetricIdentity(headerChat) !== patch.identity) {
         return header;

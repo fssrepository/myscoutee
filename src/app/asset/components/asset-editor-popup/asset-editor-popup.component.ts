@@ -113,7 +113,11 @@ export class AssetEditorPopupComponent {
   }
 
   protected get title(): string {
-    const mode = this.assetStore.editingAssetId() ? 'Edit' : 'Add';
+    const mode = this.assetEditorReadOnly()
+      ? 'View'
+      : this.assetStore.editingAssetId()
+        ? 'Edit'
+        : 'Add';
     return `${mode} ${AssetDefaultsBuilder.assetTypeLabel(this.assetForm.type)}`;
   }
 
@@ -133,7 +137,8 @@ export class AssetEditorPopupComponent {
   }
 
   protected assetEditorPopupZIndex(): number {
-    return 4200;
+    const parentZIndex = this.assetStore.assetFormParentZIndex();
+    return parentZIndex ? parentZIndex + 100 : 4200;
   }
 
   protected assetEditorFlowModel(): FormFlowModel {
@@ -355,6 +360,9 @@ export class AssetEditorPopupComponent {
   }
 
   private assetEditorPopupHeaderControls(): readonly PopupControl<AssetEditorMenuContext>[] {
+    if (this.assetEditorReadOnly()) {
+      return [];
+    }
     return [
       {
         kind: 'menu',
@@ -691,7 +699,7 @@ export class AssetEditorPopupComponent {
   }
 
   protected assetEditorReadOnly(): boolean {
-    return this.isSavePending;
+    return this.assetStore.assetFormReadOnly() || this.isSavePending;
   }
 
   protected isPropertyAssetForm(): boolean {

@@ -40,6 +40,8 @@ export class AssetStore {
   readonly activeOwnerUserIdRef = signal('');
   readonly showAssetFormRef = signal(false);
   readonly editingAssetIdRef = signal<string | null>(null);
+  readonly assetFormReadOnlyRef = signal(false);
+  readonly assetFormParentZIndexRef = signal<number | null>(null);
   readonly assetFormLoadingRef = signal(false);
   readonly assetFormSavePendingRef = signal(false);
   readonly pendingAssetDeleteCardIdRef = signal<string | null>(null);
@@ -74,6 +76,8 @@ export class AssetStore {
   readonly activeOwnerUserId = this.activeOwnerUserIdRef.asReadonly();
   readonly showAssetForm = this.showAssetFormRef.asReadonly();
   readonly editingAssetId = this.editingAssetIdRef.asReadonly();
+  readonly assetFormReadOnly = this.assetFormReadOnlyRef.asReadonly();
+  readonly assetFormParentZIndex = this.assetFormParentZIndexRef.asReadonly();
   readonly assetFormLoading = this.assetFormLoadingRef.asReadonly();
   readonly assetFormSavePending = this.assetFormSavePendingRef.asReadonly();
   readonly pendingAssetDeleteCardId = this.pendingAssetDeleteCardIdRef.asReadonly();
@@ -256,6 +260,8 @@ export class AssetStore {
     this.showAssetFormRef.set(true);
     this.assetFormLoadingRef.set(false);
     this.assetFormSavePendingRef.set(false);
+    this.assetFormReadOnlyRef.set(false);
+    this.assetFormParentZIndexRef.set(null);
     this.editingAssetIdRef.set(null);
     this.assetFormDraftIdRef.set(draftId.trim() || `asset-${Date.now()}`);
     this.assetFormVisibilityRef.set('Public');
@@ -269,11 +275,15 @@ export class AssetStore {
     form: AssetFormState;
     visibility: AppConstants.EventVisibility;
     loading: boolean;
+    readOnly?: boolean;
+    parentZIndex?: number | null;
   }): number {
     const generation = this.bumpAssetEditorGeneration();
     this.showAssetFormRef.set(true);
     this.assetFormLoadingRef.set(options.loading);
     this.assetFormSavePendingRef.set(false);
+    this.assetFormReadOnlyRef.set(options.readOnly === true);
+    this.assetFormParentZIndexRef.set(this.normalizeParentZIndex(options.parentZIndex));
     this.assetFormDraftIdRef.set('');
     this.editingAssetIdRef.set(options.cardId);
     this.assetFormVisibilityRef.set(options.visibility);
@@ -297,6 +307,8 @@ export class AssetStore {
     const generation = this.bumpAssetEditorGeneration();
     this.showAssetFormRef.set(false);
     this.editingAssetIdRef.set(null);
+    this.assetFormReadOnlyRef.set(false);
+    this.assetFormParentZIndexRef.set(null);
     this.assetFormLoadingRef.set(false);
     this.assetFormSavePendingRef.set(false);
     this.assetFormDraftIdRef.set('');
@@ -311,7 +323,7 @@ export class AssetStore {
   }
 
   setAssetEditorVisibility(option: AppConstants.EventVisibility): void {
-    if (this.assetFormLoadingRef() || this.assetFormSavePendingRef()) {
+    if (this.assetFormReadOnlyRef() || this.assetFormLoadingRef() || this.assetFormSavePendingRef()) {
       return;
     }
     this.assetFormVisibilityRef.set(option);
@@ -319,7 +331,7 @@ export class AssetStore {
   }
 
   setAssetEditorForm(form: AssetFormState): void {
-    if (this.assetFormLoadingRef() || this.assetFormSavePendingRef()) {
+    if (this.assetFormReadOnlyRef() || this.assetFormLoadingRef() || this.assetFormSavePendingRef()) {
       return;
     }
     this.assetFormRef.set(this.cloneAssetForm(form));
@@ -327,6 +339,9 @@ export class AssetStore {
   }
 
   setAssetEditorImageUrl(imageUrl: string): void {
+    if (this.assetFormReadOnlyRef() || this.assetFormLoadingRef() || this.assetFormSavePendingRef()) {
+      return;
+    }
     this.assetFormRef().imageUrl = imageUrl.trim();
     this.touchUiState();
   }
@@ -337,7 +352,7 @@ export class AssetStore {
   }
 
   beginAssetEditorSave(): boolean {
-    if (this.assetFormLoadingRef() || this.assetFormSavePendingRef()) {
+    if (this.assetFormReadOnlyRef() || this.assetFormLoadingRef() || this.assetFormSavePendingRef()) {
       return false;
     }
     this.assetFormSavePendingRef.set(true);
@@ -359,6 +374,11 @@ export class AssetStore {
     const nextGeneration = this.assetFormLoadGenerationRef() + 1;
     this.assetFormLoadGenerationRef.set(nextGeneration);
     return nextGeneration;
+  }
+
+  private normalizeParentZIndex(value: number | null | undefined): number | null {
+    const parsed = Number(value);
+    return Number.isFinite(parsed) && parsed > 0 ? Math.trunc(parsed) : null;
   }
 
   private cloneAssetForm(form: AssetFormState): AssetFormState {

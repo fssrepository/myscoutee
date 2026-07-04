@@ -113,11 +113,18 @@
 @if (activitiesStore.activitiesPopupComponent(); as activitiesComponent) {
   <ng-container *ngComponentOutlet="activitiesComponent"></ng-container>
 }
-@if (activitiesStore.eventChatPopupComponent(); as chatComponent) {
-  <ng-container *ngComponentOutlet="chatComponent"></ng-container>
+@if (activitiesStore.eventChatSession()) {
+  @if (activitiesStore.eventChatPopupComponent(); as chatComponent) {
+    <ng-container *ngComponentOutlet="chatComponent"></ng-container>
+  }
 }
 @if (activitiesStore.eventExplorePopupComponent(); as exploreComponent) {
   <ng-container *ngComponentOutlet="exploreComponent"></ng-container>
+}
+@if (activitiesStore.stackedEventChatSession() && activitiesStore.stackedEventChatHeader()) {
+  @if (activitiesStore.eventChatPopupComponent(); as stackedChatComponent) {
+    <ng-container *ngComponentOutlet="stackedChatComponent; inputs: stackedEventChatPopupInputs()"></ng-container>
+  }
 }
 @if (eventEditorStore.eventEditorPopupComponent(); as popupComponent) {
   <ng-container *ngComponentOutlet="popupComponent"></ng-container>

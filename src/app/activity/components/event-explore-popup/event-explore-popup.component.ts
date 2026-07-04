@@ -375,6 +375,10 @@ export class EventExplorePopupComponent {
     };
   }
 
+  protected eventExplorePopupZIndex(): number {
+    return 2400;
+  }
+
   protected closeEventExplore(): void {
     this.isOpen = false;
     this.slotPickerRecord = null;
@@ -1141,8 +1145,16 @@ export class EventExplorePopupComponent {
     if (!chat) {
       return;
     }
-    this.activitiesStore.openEventChat(
-      eventChatPopupRequestFromChat(chat),
+    void this.openStackedEventExploreServiceChat(chat);
+  }
+
+  private async openStackedEventExploreServiceChat(chat: ChatDTO & { ownerUserId?: string }): Promise<void> {
+    await this.activitiesStore.ensureEventChatPopupLoaded();
+    this.activitiesStore.openStackedEventChat(
+      {
+        ...eventChatPopupRequestFromChat(chat),
+        parentZIndex: this.eventExplorePopupZIndex()
+      },
       eventChatHeaderStateFromChat(chat)
     );
   }

@@ -10,6 +10,7 @@ export interface EventChatPopupRequest {
   chatId: string;
   ownerId?: string | null;
   channelType?: ContractTypes.ChatChannelType | null;
+  parentZIndex?: number | null;
 }
 
 export interface EventChatHeaderState extends EventChatPopupRequest {
@@ -136,6 +137,8 @@ export class ActivitiesPopupStore {
   private readonly _activityEventSave = signal<ActivityEventDTO | null>(null);
   private readonly _eventChatSession = signal<EventChatSession | null>(null);
   private readonly _eventChatHeader = signal<EventChatHeaderState | null>(null);
+  private readonly _stackedEventChatSession = signal<EventChatSession | null>(null);
+  private readonly _stackedEventChatHeader = signal<EventChatHeaderState | null>(null);
   private readonly _eventChatRowPatch = signal<EventChatRowPatch | null>(null);
   private readonly activitiesPopupComponentRef = signal<Type<unknown> | null>(null);
   private readonly eventChatPopupComponentRef = signal<Type<unknown> | null>(null);
@@ -166,6 +169,8 @@ export class ActivitiesPopupStore {
   readonly activityEventSave = this._activityEventSave.asReadonly();
   readonly eventChatSession = this._eventChatSession.asReadonly();
   readonly eventChatHeader = this._eventChatHeader.asReadonly();
+  readonly stackedEventChatSession = this._stackedEventChatSession.asReadonly();
+  readonly stackedEventChatHeader = this._stackedEventChatHeader.asReadonly();
   readonly eventChatRowPatch = this._eventChatRowPatch.asReadonly();
   readonly activitiesPopupComponent = this.activitiesPopupComponentRef.asReadonly();
   readonly eventChatPopupComponent = this.eventChatPopupComponentRef.asReadonly();
@@ -175,6 +180,7 @@ export class ActivitiesPopupStore {
 
   readonly activitiesOpenBoolean = computed(() => this._uiState().open);
   readonly eventChatOpen = computed(() => this._eventChatSession() !== null);
+  readonly stackedEventChatOpen = computed(() => this._stackedEventChatSession() !== null);
   private eventChatRowPatchRevision = 0;
 
   openActivities(
@@ -230,6 +236,8 @@ export class ActivitiesPopupStore {
     this.patchUiState({ open: false, adminServiceOnly: false, supportCaseFilter: 'all' });
     this._eventChatSession.set(null);
     this._eventChatHeader.set(null);
+    this._stackedEventChatSession.set(null);
+    this._stackedEventChatHeader.set(null);
   }
 
   get isActivitiesOpen(): boolean {
@@ -401,11 +409,15 @@ export class ActivitiesPopupStore {
       ...header,
       ...normalizedRequest
     }));
+    this._stackedEventChatSession.set(null);
+    this._stackedEventChatHeader.set(null);
   }
 
   closeEventChat(): void {
     this._eventChatSession.set(null);
     this._eventChatHeader.set(null);
+    this._stackedEventChatSession.set(null);
+    this._stackedEventChatHeader.set(null);
   }
 
   patchEventChatHeader(headerUpdater: (header: EventChatHeaderState) => EventChatHeaderState): void {
@@ -414,6 +426,34 @@ export class ActivitiesPopupStore {
       return;
     }
     this._eventChatHeader.set(this.cloneEventChatHeader(headerUpdater(this.cloneEventChatHeader(header))));
+  }
+
+  openStackedEventChat(request: EventChatPopupRequest, header: EventChatHeaderState): void {
+    const normalizedRequest = this.normalizeEventChatRequest(request);
+    if (!normalizedRequest) {
+      return;
+    }
+    this._stackedEventChatSession.set({
+      request: normalizedRequest,
+      openedAtIso: new Date().toISOString()
+    });
+    this._stackedEventChatHeader.set(this.cloneEventChatHeader({
+      ...header,
+      ...normalizedRequest
+    }));
+  }
+
+  closeStackedEventChat(): void {
+    this._stackedEventChatSession.set(null);
+    this._stackedEventChatHeader.set(null);
+  }
+
+  patchStackedEventChatHeader(headerUpdater: (header: EventChatHeaderState) => EventChatHeaderState): void {
+    const header = this._stackedEventChatHeader();
+    if (!header) {
+      return;
+    }
+    this._stackedEventChatHeader.set(this.cloneEventChatHeader(headerUpdater(this.cloneEventChatHeader(header))));
   }
 
   emitEventChatRowPatch(patch: Omit<EventChatRowPatch, 'revision'>): void {
@@ -540,13 +580,15 @@ export class ActivitiesPopupStore {
     const chatId = `${request.chatId ?? ''}`.trim();
     const ownerId = `${request.ownerId ?? ''}`.trim();
     const channelType = request.channelType ?? null;
+    const parentZIndex = Number(request.parentZIndex);
     if (!chatId && !ownerId) {
       return null;
     }
     return {
       chatId,
       ownerId: ownerId || null,
-      channelType
+      channelType,
+      parentZIndex: Number.isFinite(parentZIndex) ? Math.max(0, Math.trunc(parentZIndex)) : null
     };
   }
 
@@ -555,6 +597,9 @@ export class ActivitiesPopupStore {
       ...header,
       chatId: `${header.chatId ?? ''}`.trim(),
       ownerId: `${header.ownerId ?? ''}`.trim() || null,
+      parentZIndex: Number.isFinite(Number(header.parentZIndex))
+        ? Math.max(0, Math.trunc(Number(header.parentZIndex)))
+        : null,
       memberIds: [...(header.memberIds ?? [])],
       members: (header.members ?? []).map(member => ({ ...member })),
       supportCase: header.supportCase

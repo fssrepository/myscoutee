@@ -131,6 +131,10 @@
     }
   }
 
+  @if (!assetStore.popupOpen() && assetStore.showAssetForm()) {
+    <app-asset-editor-popup></app-asset-editor-popup>
+  }
+
   <ng-template #ticketItemTemplate let-row let-groupLabel="groupLabel">
     <app-info-card
       [card]="ticketInfoCard(row, { groupLabel: groupLabel })"

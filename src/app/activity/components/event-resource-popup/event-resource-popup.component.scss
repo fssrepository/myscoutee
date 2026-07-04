@@ -515,10 +515,6 @@
   color: #ae661f;
 }
 
-.app-popup.event-resource-popup-shell.asset-explore-shell {
-  z-index: calc(var(--event-resource-shell-z-index) + 14);
-}
-
 .app-popup.event-resource-popup-shell.event-resource-popup-shell--asset-explore-view {
   z-index: calc(var(--event-resource-shell-z-index) + 28);
 }

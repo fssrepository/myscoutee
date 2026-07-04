@@ -89,7 +89,7 @@ export class LinkInputComponent implements ControlValueAccessor {
   protected actionItems(): readonly AppMenuItem<string, { action: LinkInputAction }>[] {
     const disabled = this.inputDisabled();
     const normalizedUrl = this.normalizedUrl();
-    return [
+    const items: AppMenuItem<string, { action: LinkInputAction }>[] = [
       {
         id: 'link-input-paste',
         icon: 'content_paste',
@@ -118,6 +118,9 @@ export class LinkInputComponent implements ControlValueAccessor {
         context: { action: 'delete' }
       }
     ];
+    return this.readOnly
+      ? items.filter(item => item.context?.action === 'open')
+      : items;
   }
 
   protected onPaste(event: ClipboardEvent): void {

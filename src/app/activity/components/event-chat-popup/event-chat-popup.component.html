@@ -3,7 +3,7 @@
     class="event-chat-popup-shell"
     [style.--chat-compose-detached-space.px]="chatComposeDetachedSpace"
     [model]="chatPopupModel(chatSession)"
-    [zIndex]="2360"
+    [zIndex]="chatPopupZIndex(chatSession)"
     [attr.data-chat-id]="chatSession.item.id"
   >
     <div class="chat-popup-wrap">
@@ -620,12 +620,12 @@
 
 @if (shouldHostChatResourcePopup()) {
   @if (resourcePopupStore.eventResourcePopupComponent(); as resourcePopupComponent) {
-    <ng-container *ngComponentOutlet="resourcePopupComponent"></ng-container>
+    <ng-container *ngComponentOutlet="resourcePopupComponent; inputs: resourcePopupOutletInputs()"></ng-container>
   }
 }
 @if (shouldHostChatResourcePopup() && resourcePopupStore.assetExplorePopupRef()) {
   @if (resourcePopupStore.eventResourceAssetExploreComponent(); as assetExplorePopupComponent) {
-    <ng-container *ngComponentOutlet="assetExplorePopupComponent"></ng-container>
+    <ng-container *ngComponentOutlet="assetExplorePopupComponent; inputs: assetExplorePopupOutletInputs()"></ng-container>
   }
 }
 @if (shouldHostChatSupplyContributionsPopup()) {

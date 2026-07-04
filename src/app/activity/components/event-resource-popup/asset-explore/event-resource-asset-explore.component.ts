@@ -5,6 +5,7 @@ import {
   Component,
   DoCheck,
   HostListener,
+  Input,
   ViewChild,
   ViewEncapsulation,
   computed,
@@ -113,6 +114,9 @@ import {
 import {
   AssetStore
 } from '../../../../shared/ui/context/stores/asset.store';
+import {
+  AssetPopupStore
+} from '../../../../shared/ui/context/stores/asset-popup.store';
 import {
   SubEventResourcePopupStore
 } from '../../../../shared/ui/context/stores/sub-event-resource-popup.store';
@@ -223,6 +227,7 @@ export class EventResourceAssetExploreComponent implements DoCheck {
   private readonly eventsService = inject(EventsService);
   private readonly usersService = inject(UsersService);
   private readonly assetStore = inject(AssetStore);
+  private readonly assetPopupStore = inject(AssetPopupStore);
   private readonly dialogStore = inject(DialogStore);
   private readonly shareTokensService = inject(ShareTokensService);
   private readonly profileStore = inject(ProfileStore);
@@ -236,12 +241,13 @@ export class EventResourceAssetExploreComponent implements DoCheck {
   private listTotal = 0;
   private pendingBorrowRequestVersion = 0;
   private lastAssetExploreOutletActionRequestId = 0;
-  private readonly assetExploreBaseZIndex = 2630;
   private readonly localReservationsByKey = new Map<string, {
     startAtIso: string;
     endAtIso: string;
     quantity: number;
   }>();
+
+  @Input() parentZIndex = 2530;
 
   protected order: AssetExploreOrder = 'availability';
   protected readonly orderOptions = ASSET_EXPLORE_ORDER_OPTIONS;
@@ -428,7 +434,7 @@ export class EventResourceAssetExploreComponent implements DoCheck {
   }
 
   protected assetExplorePopupZIndex(): number {
-    return this.assetExploreBaseZIndex;
+    return this.parentZIndex + 100;
   }
 
   private handleAssetExploreOutletActionRequest(request: EventResourceAssetExploreOutletActionRequest): void {
@@ -826,8 +832,44 @@ export class EventResourceAssetExploreComponent implements DoCheck {
 
   protected openAssetView(card: ResourceAssetDTO, event?: Event): void {
     event?.stopPropagation();
-    this.resourcePopupStore.assetExploreAssetViewIdRef.set(card.id);
+    this.resourcePopupStore.assetExploreAssetViewIdRef.set(null);
     this.resourcePopupStore.assetExploreBorrowDialogRef.set(null);
+    void this.openReadonlyAssetEditor(card);
+  }
+
+  private async openReadonlyAssetEditor(card: ResourceAssetDTO): Promise<void> {
+    const ownerUserId = `${card.ownerUserId ?? ''}`.trim();
+    const generation = this.assetStore.openAssetEditorEdit({
+      cardId: card.id,
+      form: AssetCardBuilder.buildAssetFormFromCard(card),
+      visibility: AssetCardBuilder.visibilityFromCard(card),
+      loading: Boolean(ownerUserId),
+      readOnly: true,
+      parentZIndex: this.assetExplorePopupZIndex()
+    });
+    void this.assetPopupStore.ensureAssetPopupLoaded();
+    if (!ownerUserId) {
+      this.assetStore.setAssetEditorLoading(false);
+      return;
+    }
+    try {
+      const loadedCard = await this.assetsService.loadOwnedAssetDetailById(ownerUserId, card.id);
+      if (!this.assetStore.isCurrentAssetEditorLoad(generation, card.id)) {
+        return;
+      }
+      if (loadedCard) {
+        this.assetStore.applyAssetEditorForm(
+          loadedCard.id,
+          AssetCardBuilder.visibilityFromCard(loadedCard),
+          AssetCardBuilder.buildAssetFormFromCard(loadedCard)
+        );
+      }
+      this.assetStore.setAssetEditorLoading(false);
+    } catch {
+      if (this.assetStore.isCurrentAssetEditorLoad(generation, card.id)) {
+        this.assetStore.setAssetEditorLoading(false);
+      }
+    }
   }
 
   protected closeAssetView(event?: Event): void {
@@ -1611,8 +1653,16 @@ export class EventResourceAssetExploreComponent implements DoCheck {
       lastSenderId: ownerUserId || activeUserId,
       avatarSource: card.ownerName || card.title
     });
-    this.activitiesStore.openEventChat(
-      eventChatPopupRequestFromChat(chat),
+    void this.openStackedServiceChat(chat);
+  }
+
+  private async openStackedServiceChat(chat: ChatDTO & { ownerUserId?: string }): Promise<void> {
+    await this.activitiesStore.ensureEventChatPopupLoaded();
+    this.activitiesStore.openStackedEventChat(
+      {
+        ...eventChatPopupRequestFromChat(chat),
+        parentZIndex: this.assetExplorePopupZIndex()
+      },
       eventChatHeaderStateFromChat(chat)
     );
   }

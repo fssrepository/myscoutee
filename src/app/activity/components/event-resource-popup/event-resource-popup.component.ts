@@ -4,6 +4,7 @@ import {
 import {
   Component,
   HostListener,
+  Input,
   computed,
   effect,
   inject,
@@ -141,6 +142,8 @@ export class EventResourcePopupComponent {
   private readonly shareTokensService = inject(ShareTokensService);
   private readonly activityResourcesService = inject(ActivityResourcesService);
 
+  @Input() parentZIndex = 2500;
+
   private get users(): UserDto[] {
     return this.usersService.peekCachedUsers();
   }
@@ -163,7 +166,6 @@ export class EventResourcePopupComponent {
   private lastResourcePopupOutletActionRequestId = 0;
   private ownedAssetsHydrationLoadedUserId = '';
   private ownedAssetsHydrationLoadingUserId = '';
-  private readonly resourcePopupBaseZIndex = 2600;
 
   protected readonly resourceAssetViewOutletInputs = computed(() => ({
     view: this.resourceAssetView(),
@@ -180,7 +182,7 @@ export class EventResourcePopupComponent {
   }));
 
   protected resourcePopupZIndex(): number {
-    return this.resourcePopupBaseZIndex;
+    return this.parentZIndex + 100;
   }
 
   constructor() {
@@ -506,8 +508,16 @@ export class EventResourcePopupComponent {
       lastSenderId: managerUserId || activeUserId,
       avatarSource: sourceCard?.ownerName || sourceCard?.title || card.title
     });
-    this.activitiesStore.openEventChat(
-      eventChatPopupRequestFromChat(chat),
+    void this.openStackedResourceServiceChat(chat);
+  }
+
+  private async openStackedResourceServiceChat(chat: ChatDTO & { ownerUserId?: string }): Promise<void> {
+    await this.activitiesStore.ensureEventChatPopupLoaded();
+    this.activitiesStore.openStackedEventChat(
+      {
+        ...eventChatPopupRequestFromChat(chat),
+        parentZIndex: this.resourcePopupZIndex()
+      },
       eventChatHeaderStateFromChat(chat)
     );
   }
@@ -1093,6 +1103,10 @@ export class EventResourcePopupComponent {
     event?: Event
   ): void {
     event?.stopPropagation();
+    if (mode === 'view') {
+      void this.openReadonlyResourceAssetEditor(card);
+      return;
+    }
     const assetId = `${card.sourceAssetId ?? ''}`.trim();
     if (!assetId) {
       return;
@@ -1101,6 +1115,53 @@ export class EventResourcePopupComponent {
     this.resourcePopupStore.resourceAssetViewModeRef.set(mode);
     this.resourcePopupStore.resourceAssetViewReturnToChatRef.set(false);
     this.resourcePopupStore.assetExplorePopupRef.set(null);
+  }
+
+  private async openReadonlyResourceAssetEditor(card: AppDTOs.SubEventResourceCardDTO): Promise<void> {
+    const context = this.resourcePopupStore.popupContextRef();
+    const assetId = `${card.sourceAssetId ?? ''}`.trim();
+    if (!context || !assetId || !this.isAssignableAssetType(card.type)) {
+      return;
+    }
+    const sourceCard = this.resolveSubEventAssignedAssetCard(context.subEvent.id, card.type, assetId);
+    if (!sourceCard) {
+      return;
+    }
+    this.resourcePopupStore.resourceAssetViewIdRef.set(null);
+    this.resourcePopupStore.resourceAssetViewModeRef.set('view');
+    this.resourcePopupStore.assetExplorePopupRef.set(null);
+    const ownerUserId = `${sourceCard.ownerUserId ?? ''}`.trim();
+    const generation = this.assetStore.openAssetEditorEdit({
+      cardId: sourceCard.id,
+      form: AssetCardBuilder.buildAssetFormFromCard(sourceCard),
+      visibility: AssetCardBuilder.visibilityFromCard(sourceCard),
+      loading: Boolean(ownerUserId),
+      readOnly: true,
+      parentZIndex: this.resourcePopupZIndex()
+    });
+    void this.assetPopupStore.ensureAssetPopupLoaded();
+    if (!ownerUserId) {
+      this.assetStore.setAssetEditorLoading(false);
+      return;
+    }
+    try {
+      const loadedCard = await this.assetsService.loadOwnedAssetDetailById(ownerUserId, sourceCard.id);
+      if (!this.assetStore.isCurrentAssetEditorLoad(generation, sourceCard.id)) {
+        return;
+      }
+      if (loadedCard) {
+        this.assetStore.applyAssetEditorForm(
+          loadedCard.id,
+          AssetCardBuilder.visibilityFromCard(loadedCard),
+          AssetCardBuilder.buildAssetFormFromCard(loadedCard)
+        );
+      }
+      this.assetStore.setAssetEditorLoading(false);
+    } catch {
+      if (this.assetStore.isCurrentAssetEditorLoad(generation, sourceCard.id)) {
+        this.assetStore.setAssetEditorLoading(false);
+      }
+    }
   }
 
   closeResourceAssetView(event?: Event): void {
