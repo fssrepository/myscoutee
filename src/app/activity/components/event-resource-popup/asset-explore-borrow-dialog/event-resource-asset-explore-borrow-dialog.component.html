@@ -129,8 +129,8 @@
             <section class="asset-explore-borrow-review-card asset-explore-borrow-review-card--payment">
               <div class="asset-explore-borrow-review-card__head">
                 <div>
-                  <h4>Checkout</h4>
-                  <span>This borrow window triggers asset pricing, so the request moves through the payment step next.</span>
+                  <h4>Borrow Request</h4>
+                  <span>Confirm the borrow window first. Payment can be completed after the request is held.</span>
                 </div>
                 <strong>{{ formatMoney(dialog.totalAmount, dialog.currency) }}</strong>
               </div>
@@ -141,11 +141,11 @@
                 </article>
                 <article>
                   <span>Next step</span>
-                  <strong>Dummy payment</strong>
+                  <strong>Payment</strong>
                 </article>
               </div>
               <p class="asset-explore-borrow-payment-note">
-                This follows the same paid path as event explore: checkout first, then confirm on the dummy pay screen.
+                The borrow request is confirmed before payment, so the payment step can remain available from the basket.
               </p>
             </section>
           }
@@ -155,7 +155,7 @@
               <div class="asset-explore-borrow-review-card__head">
                 <div>
                   <h4>Payment</h4>
-                  <span>Custom dummy pay screen for borrow checkout review.</span>
+                  <span>Pay for the confirmed borrow window.</span>
                 </div>
                 <strong>Dummy pay</strong>
               </div>
@@ -166,11 +166,11 @@
                 </article>
                 <article>
                   <span>Status</span>
-                  <strong>Review before confirm</strong>
+                  <strong>Ready to pay</strong>
                 </article>
               </div>
               <p class="asset-explore-borrow-payment-note">
-                The fields stay locked here, but the total, timeframe, and policy approval have already been reviewed.
+                The fields stay locked here, but the amount, timeframe, and policy approval have already been reviewed.
               </p>
               <div class="asset-explore-borrow-payment-grid">
                 <label>

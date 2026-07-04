@@ -60,7 +60,6 @@ import {
   type AppMenuModel,
   type AppMenuPalette,
   type AppMenuTrigger,
-  EventCheckoutPopupComponent,
   type CardProfileViewData,
   type ImageCardData,
   type InfoCardData,
@@ -97,9 +96,6 @@ import type {
 import {
   DialogStore
 } from '../../../shared/ui/context/stores/dialog.store';
-import {
-  EventCheckoutDialogStore
-} from '../../../shared/ui/context/stores/event-checkout-dialog.store';
 import {
   EventCheckoutDraftStore,
   type EventCheckoutDraft
@@ -190,7 +186,6 @@ type ActivitiesPopupMenuContext =
     ActivitiesEventTemplateComponent,
     ActivitiesChatTemplateComponent,
     ActivitiesRateTemplateComponent,
-    EventCheckoutPopupComponent,
     PopupComponent,
   ],
   templateUrl: './activities-popup.component.html',
@@ -220,7 +215,6 @@ export class ActivitiesPopupComponent implements OnDestroy {
   protected readonly eventSubeventsStore = inject(EventSubeventsPopupStore);
   private readonly assetStore = inject(AssetStore);
   protected readonly dialogStore = inject(DialogStore);
-  protected readonly eventCheckoutDialogStore = inject(EventCheckoutDialogStore);
   protected readonly profileStore = inject(ProfileStore);
   private readonly eventCheckoutDraftStore = inject(EventCheckoutDraftStore);
   private readonly i18nService = inject(I18nService);

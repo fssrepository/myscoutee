@@ -373,8 +373,8 @@ export class EventResourceAssetExploreComponent implements DoCheck {
       acceptedPolicyIds: [...dialog.acceptedPolicyIds],
       payable: pricing.amount > 0,
       paymentStep: dialog.paymentStep,
-      submitLabel: pricing.amount > 0 ? (dialog.paymentStep ? 'Confirm borrow' : 'Checkout') : 'Send borrow request',
-      busyLabel: pricing.amount > 0 ? (dialog.paymentStep ? 'Confirming borrow...' : 'Checking out...') : 'Sending request...',
+      submitLabel: pricing.amount > 0 ? (dialog.paymentStep ? 'Pay' : 'Confirm borrow') : 'Send borrow request',
+      busyLabel: pricing.amount > 0 ? (dialog.paymentStep ? 'Paying...' : 'Confirming borrow...') : 'Sending request...',
       busy: dialog.busy,
       error: dialog.error
     };
