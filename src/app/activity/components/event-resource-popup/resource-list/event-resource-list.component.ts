@@ -14,6 +14,7 @@ import { from } from 'rxjs';
 import { APP_STATIC_DATA } from '../../../../shared/app-static-data';
 import { AssetDefaultsBuilder } from '../../../../shared/core/base/builders/asset-defaults.builder';
 import type * as AppConstants from '../../../../shared/core/common/constants';
+import type * as ContractTypes from '../../../../shared/core/contracts';
 import type * as AppDTOs from '../../../../shared/core/contracts/activity.interface';
 import { ActivityResourcesService } from '../../../../shared/core/base/services/activity-resources.service';
 import type { ListQuery, PageResult } from '../../../../shared/core/contracts/list.interface';
@@ -21,6 +22,7 @@ import {
   ActivityStore,
   type ActivityChatMetricBucketType
 } from '../../../../shared/ui/context/stores/activity.store';
+import { SubEventResourcePopupStore } from '../../../../shared/ui/context/stores/sub-event-resource-popup.store';
 import { AppMenuComponent } from '../../../../shared/ui/components/core/menu/menu.component';
 import { AppMenuDispatcher } from '../../../../shared/ui/components/core/menu/menu-dispatcher.service';
 import { AppMenuOutletComponent } from '../../../../shared/ui/components/core/menu/outlet/menu-outlet.component';
@@ -117,6 +119,7 @@ export class EventResourceListComponent implements DoCheck {
   @Output() cardActionRequested = new EventEmitter<EventResourceCardActionRequest>();
   private readonly appMenuDispatcher = inject(AppMenuDispatcher);
   private readonly activityStore = inject(ActivityStore);
+  private readonly resourcePopupStore = inject(SubEventResourcePopupStore);
   private readonly activityResourcesService = inject(ActivityResourcesService);
 
   private lastItemsSignature = '';
@@ -340,12 +343,14 @@ export class EventResourceListComponent implements DoCheck {
 
   protected onResourceSmartListRefresh(event: SmartListRefreshEvent<EventResourceListItem, ResourceSmartListFilters>): void {
     const model = this.currentModel();
+    const refreshedItems = this.resourceListItemsFromRefresh(event);
+    const metricItems = refreshedItems.length >= model.items.length ? refreshedItems : model.items;
+    this.publishSubEventResourceMetricsFromRefresh(model.filter, metricItems);
     const identity = `${model.metricIdentity ?? ''}`.trim();
     const bucketType = this.chatMetricBucketType(model.filter);
     if (!identity || !bucketType) {
       return;
     }
-    const refreshedItems = this.resourceListItemsFromRefresh(event);
     this.activityStore.emitActivityChatMetricBucketPatch({
       identity,
       bucketType,
@@ -356,6 +361,77 @@ export class EventResourceListComponent implements DoCheck {
         capacityMax: refreshedItems.reduce((sum, item) => sum + this.nonNegativeCount(item.card.capacityTotal), 0)
       }
     });
+  }
+
+  private publishSubEventResourceMetricsFromRefresh(
+    filter: AppConstants.AssetType,
+    items: readonly EventResourceListItem[]
+  ): void {
+    const context = this.resourcePopupStore.popupContextRef();
+    if (!context) {
+      return;
+    }
+    const metrics = {
+      accepted: items.reduce((sum, item) => sum + this.nonNegativeCount(item.card.accepted), 0),
+      pending: items.reduce((sum, item) => sum + this.nonNegativeCount(item.card.pending), 0),
+      capacityMin: this.resourceCapacityMin(context.subEvent.id, filter, items),
+      capacityMax: items.reduce((sum, item) => sum + this.nonNegativeCount(item.card.capacityTotal), 0)
+    };
+    const nextSubEvent = { ...context.subEvent };
+    if (filter === 'Car') {
+      nextSubEvent.carsAccepted = metrics.accepted;
+      nextSubEvent.carsPending = metrics.pending;
+      nextSubEvent.carsCapacityMin = metrics.capacityMin;
+      nextSubEvent.carsCapacityMax = metrics.capacityMax;
+    } else if (filter === 'Accommodation') {
+      nextSubEvent.accommodationAccepted = metrics.accepted;
+      nextSubEvent.accommodationPending = metrics.pending;
+      nextSubEvent.accommodationCapacityMin = metrics.capacityMin;
+      nextSubEvent.accommodationCapacityMax = metrics.capacityMax;
+    } else {
+      nextSubEvent.suppliesAccepted = metrics.accepted;
+      nextSubEvent.suppliesPending = metrics.pending;
+      nextSubEvent.suppliesCapacityMin = metrics.capacityMin;
+      nextSubEvent.suppliesCapacityMax = metrics.capacityMax;
+    }
+    if (!this.subEventResourceMetricsChanged(context.subEvent, nextSubEvent)) {
+      return;
+    }
+    const nextContext = {
+      ...context,
+      subEvent: nextSubEvent
+    };
+    this.resourcePopupStore.popupContextRef.set(nextContext);
+    this.resourcePopupStore.publishSubEventResourceMetrics(nextContext);
+  }
+
+  private resourceCapacityMin(
+    subEventId: string,
+    filter: AppConstants.AssetType,
+    items: readonly EventResourceListItem[]
+  ): number {
+    const settings = this.resourcePopupStore.assignedAssetSettingsByKey[
+      this.resourcePopupStore.assetAssignmentKey(subEventId, filter)
+    ] ?? {};
+    return items.reduce((sum, item) => {
+      const assetId = `${item.card.sourceAssetId ?? ''}`.trim();
+      return sum + this.nonNegativeCount(assetId ? settings[assetId]?.capacityMin : 0);
+    }, 0);
+  }
+
+  private subEventResourceMetricsChanged(current: ContractTypes.SubEventDTO, next: ContractTypes.SubEventDTO): boolean {
+    return current.carsAccepted !== next.carsAccepted
+      || current.carsPending !== next.carsPending
+      || current.carsCapacityMin !== next.carsCapacityMin
+      || current.carsCapacityMax !== next.carsCapacityMax
+      || current.accommodationAccepted !== next.accommodationAccepted
+      || current.accommodationPending !== next.accommodationPending
+      || current.accommodationCapacityMin !== next.accommodationCapacityMin
+      || current.accommodationCapacityMax !== next.accommodationCapacityMax
+      || current.suppliesAccepted !== next.suppliesAccepted
+      || current.suppliesPending !== next.suppliesPending
+      || current.suppliesCapacityMin !== next.suppliesCapacityMin
+      || current.suppliesCapacityMax !== next.suppliesCapacityMax;
   }
 
   private async loadResourceSmartListPage(
