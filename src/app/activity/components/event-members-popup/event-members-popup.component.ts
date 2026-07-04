@@ -119,6 +119,7 @@ export class EventMembersPopupComponent {
   private readonly usersService = inject(UsersService);
   private readonly profileStore = inject(ProfileStore);
   private readonly membersCacheByOwnerId = new Map<string, ActivityContracts.ActivityMemberDTO[]>();
+  private readonly pendingInitialMembersDelayOwnerIds = new Set<string>();
   private lastAppliedActivityMembersUpdatedMs = 0;
   private openMembersHydrationTimer: ReturnType<typeof setTimeout> | null = null;
 
@@ -291,6 +292,7 @@ export class EventMembersPopupComponent {
     }
     if (this.ownerId) {
       this.membersCacheByOwnerId.delete(this.ownerId);
+      this.pendingInitialMembersDelayOwnerIds.delete(this.ownerId);
     }
     this.isOpen = false;
     this.ownerId = '';
@@ -781,12 +783,15 @@ export class EventMembersPopupComponent {
     this.isLocalMembersSource = initialMembers !== null;
     if (initialMembers) {
       this.membersCacheByOwnerId.set(normalizedOwnerId, initialMembers);
+      this.pendingInitialMembersDelayOwnerIds.add(normalizedOwnerId);
       void this.usersService.warmCachedUsers(
         initialMembers
           .map(member => `${member.userId ?? ''}`.trim())
           .filter(userId => userId.length > 0)
       );
       this.syncCanManageMembers(initialMembers);
+    } else {
+      this.pendingInitialMembersDelayOwnerIds.delete(normalizedOwnerId);
     }
     this.membersChangeHandler = options?.onMembersChanged ?? null;
     this.membersSmartListQuery = {};
@@ -881,6 +886,16 @@ export class EventMembersPopupComponent {
     }
 
     let members = this.membersCacheByOwnerId.get(ownerId);
+    if (members && this.pendingInitialMembersDelayOwnerIds.delete(ownerId)) {
+      await this.activityMembersService.waitForMembersRouteDelay();
+      if (!this.isOpen || this.ownerId !== ownerId) {
+        return {
+          items: [],
+          total: 0
+        };
+      }
+      members = this.membersCacheByOwnerId.get(ownerId) ?? members;
+    }
     if (!members) {
       const owner = this.ownerRef && this.ownerRef.ownerId === ownerId
         ? this.ownerRef
