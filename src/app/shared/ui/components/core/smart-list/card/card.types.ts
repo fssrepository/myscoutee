@@ -200,6 +200,7 @@ export const CARD_MENU_ACTIONS: Readonly<Record<CardMenuActionId, CardMenuAction
   accept: { label: 'accept', icon: 'done', tone: 'accent' },
   addOrganizerNote: { label: 'add.organizer.note', icon: 'edit_note' },
   askOrganizer: { label: 'ask.organizer', icon: 'support_agent' },
+  assetAvailability: { label: 'asset.availability', icon: 'event_available', tone: 'accent' },
   bookEvent: { label: 'book.event', icon: 'person_add', tone: 'accent' },
   borrowAsset: { label: 'borrow', icon: 'volunteer_activism', tone: 'accent' },
   capacity: { label: 'capacity', icon: 'groups' },

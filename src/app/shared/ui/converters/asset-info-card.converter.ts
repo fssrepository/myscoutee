@@ -245,6 +245,9 @@ export class AssetInfoCardConverter {
     const actions = configuredActions.length > 0
       ? [...configuredActions]
       : ['shareAsset', 'editAsset', 'delete'];
+    if (!actions.includes('assetAvailability')) {
+      actions.unshift('assetAvailability');
+    }
     const sourceLink = AppUtils.normalizeHttpUrl(card.sourceLink ?? '');
     if (sourceLink && !actions.includes('externalInfo')) {
       const shareIndex = actions.findIndex(action => action === 'shareAsset' || action === 'share');
@@ -268,6 +271,7 @@ export class AssetInfoCardConverter {
     return {
       variant: 'badge',
       shape: 'circle',
+      actionId: 'assetAvailability',
       tone: card.type === 'Supplies' ? 'warm' : 'default',
       label: AssetCardBuilder.quantityLabel(card),
       detailLabel: AssetCardBuilder.capacityLabel(card),

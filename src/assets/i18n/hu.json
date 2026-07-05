@@ -1493,6 +1493,7 @@
     "article.editor": "Cikkszerkesztő",
     "article.html": "Cikk HTML",
     "asset": "Eszköz",
+    "asset.availability": "Elérhetőség",
     "asset.misuse": "Eszköz-visszaélés",
     "asset.owned.empty.accommodation.label": "Még nincs szállásod",
     "asset.owned.empty.accommodation.description": "Adj hozzá egy ingatlant, szállást, szobát vagy helyet, hogy megjelenjen itt.",

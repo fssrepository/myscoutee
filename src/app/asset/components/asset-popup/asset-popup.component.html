@@ -72,7 +72,7 @@
       [useSharedMenuTrigger]="true"
       [sharedMenuContext]="{ menu: 'asset-info-card', assetCard: card }"
       (mediaStartClick)="openOwnedAssetMap(card)"
-      (mediaEndClick)="openSupplyRequestList(card)"
+      (mediaEndClick)="openOwnedAssetAvailability(card)"
       (menuAction)="onOwnedAssetCardMenuAction(card, $event, selectMode ? selectItem : null)"
     ></app-info-card>
   </ng-template>

@@ -1496,6 +1496,7 @@
     "article.editor": "Article editor",
     "article.html": "Article HTML",
     "asset": "Asset",
+    "asset.availability": "Availability",
     "asset.misuse": "Asset misuse",
     "asset.owned.empty.accommodation.label": "No properties yet",
     "asset.owned.empty.accommodation.description": "Add a property, stay, room, or place so it can show up here.",

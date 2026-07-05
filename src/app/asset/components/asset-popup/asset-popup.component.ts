@@ -608,6 +608,10 @@ export class AssetPopupComponent {
       this.openOwnedAssetShareDialog(card);
       return;
     }
+    if (event.actionId === 'assetAvailability') {
+      this.openOwnedAssetAvailability(card);
+      return;
+    }
     if (event.actionId === 'externalInfo') {
       AppUtils.openExternalUrl(AppUtils.normalizeHttpUrl(card.sourceLink ?? ''));
       return;
@@ -1219,7 +1223,7 @@ export class AssetPopupComponent {
     this.resourcePopupStore.selectedAssignAssetIdsRef.set([...selectedIds, cardId]);
   }
 
-  protected openSupplyRequestList(card: AppDTOs.AssetDTO, event?: Event): void {
+  protected openOwnedAssetAvailability(card: AppDTOs.AssetDTO, event?: Event): void {
     event?.stopPropagation();
     if (this.isBasketMode()) {
       return;
