@@ -104,7 +104,7 @@ export class AssetDefaultsBuilder {
       case 'venue':
         return 'stadium';
       case 'campsite':
-        return 'camping';
+        return 'cabin';
       case 'storage':
         return 'warehouse';
       case 'workspace':
