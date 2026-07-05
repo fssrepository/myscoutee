@@ -129,10 +129,10 @@ interface ResourceAssignmentRemovalRequest {
 })
 export class EventResourcePopupComponent {
   protected readonly resourcePopupStore = inject(SubEventResourcePopupStore);
+  protected readonly activitiesStore = inject(ActivitiesPopupStore);
 
   private readonly userProfileStore = inject(UserProfileStore);
   private readonly memberMenuStore = inject(MemberMenuStore);
-  private readonly activitiesStore = inject(ActivitiesPopupStore);
   private readonly assetPopupStore = inject(AssetPopupStore);
   private readonly assetStore = inject(AssetStore);
   private readonly assetsService = inject(SharedAssetsService);
@@ -175,6 +175,9 @@ export class EventResourcePopupComponent {
   protected readonly assignedAssetJoinDialogOutletInputs = computed(() => ({
     dialog: this.assignedAssetJoinDialogViewState()
   }));
+  protected readonly membersPopupOutletInputs = computed(() => ({
+    parentZIndex: this.resourcePopupZIndex()
+  }));
 
   protected resourcePopupZIndex(): number {
     return this.parentZIndex + 100;
@@ -200,6 +203,14 @@ export class EventResourcePopupComponent {
         return;
       }
       this.openFromChatRequest(request);
+    });
+
+    effect(() => {
+      const request = this.memberMenuStore.activitiesNavigationRequest();
+      if (!request || (request.type !== 'members' && request.type !== 'eventEditorMembers')) {
+        return;
+      }
+      void this.activitiesStore.ensureEventMembersPopupLoaded();
     });
 
     effect(() => {

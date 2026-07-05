@@ -291,7 +291,7 @@ export class AssetAvailabilityPopupComponent {
     return {
       title: header?.title ?? 'Asset availability',
       subtitle: this.availabilitySubtitle(),
-      secondarySubtitle: header ? `${header.capacity} capacity` : null,
+      secondarySubtitle: null,
       size: 'wide',
       height: 'full',
       bodyLayout: 'fill',

@@ -60,3 +60,7 @@
   </div>
   </section>
 }
+
+@if (activitiesStore.eventMembersPopupComponent(); as membersComponent) {
+  <ng-container *ngComponentOutlet="membersComponent; inputs: membersPopupOutletInputs()"></ng-container>
+}

@@ -85,7 +85,7 @@
 
 <app-dialog></app-dialog>
 
-@if (activitiesStore.eventMembersPopupComponent(); as membersComponent) {
+@if (!subEventResourceStore.popupContextRef() && activitiesStore.eventMembersPopupComponent(); as membersComponent) {
   <ng-container *ngComponentOutlet="membersComponent"></ng-container>
 }
 @if (!activitiesStore.eventChatSession() && subEventResourceStore.popupContextRef()?.origin === 'chat') {

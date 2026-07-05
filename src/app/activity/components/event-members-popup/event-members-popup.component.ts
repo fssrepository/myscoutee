@@ -6,6 +6,7 @@ import {
   ChangeDetectorRef,
   Component,
   HostListener,
+  Input,
   TemplateRef,
   ViewChild,
   effect,
@@ -106,6 +107,8 @@ type MembersSummaryState = {
   changeDetection: ChangeDetectionStrategy.OnPush
 })
 export class EventMembersPopupComponent {
+  private static readonly DEFAULT_POPUP_Z_INDEX = 3800;
+
   private readonly cdr = inject(ChangeDetectorRef);
   private readonly dialogStore = inject(DialogStore);
   private readonly activityMembersService = inject(ActivityMembersService);
@@ -156,6 +159,8 @@ export class EventMembersPopupComponent {
   private lastEmittedMemberMetricBucketSignature = '';
 
   protected membersSmartListQuery: Partial<ListQuery<MembersSmartListFilters>> = {};
+
+  @Input() parentZIndex: number | null = null;
 
   @ViewChild('membersSmartList')
   private membersSmartList?: SmartListComponent<ActivityContracts.ActivityMemberDTO, MembersSmartListFilters>;
@@ -236,6 +241,14 @@ export class EventMembersPopupComponent {
       this.lastAppliedActivityMembersUpdatedMs = sync.updatedMs;
       this.applyActivityMembersSync(sync);
     });
+  }
+
+  protected membersPopupZIndex(): number {
+    const parentZIndex = Math.trunc(Number(this.parentZIndex) || 0);
+    if (parentZIndex <= 0) {
+      return EventMembersPopupComponent.DEFAULT_POPUP_Z_INDEX;
+    }
+    return Math.max(EventMembersPopupComponent.DEFAULT_POPUP_Z_INDEX, parentZIndex + 100);
   }
 
   @HostListener('window:resize')
