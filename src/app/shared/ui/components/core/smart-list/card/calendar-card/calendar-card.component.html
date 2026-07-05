@@ -8,127 +8,163 @@
         class="smart-list__page smart-list__page--month smart-list__calendar-page smart-list__calendar-page--month"
         [style.--month-week-count]="page.weeks.length"
         [class.smart-list__calendar-page--month-six-weeks]="page.weeks.length === 6"
-        [class.smart-list__calendar-page--month-rates]="isRateCountCalendarVariant()"
+        [class.smart-list__calendar-page--month-counter]="isCounterCalendarVariant()"
       >
-      <div class="smart-list__calendar-weekdays">
-        @for (dayLabel of calendarWeekdayLabels(); track dayLabel) {
-          <span>{{ dayLabel }}</span>
-        }
-      </div>
-      <div class="smart-list__month-grid" [class.smart-list__month-grid--rates]="isRateCountCalendarVariant()">
-        @for (week of page.weeks; track trackByCalendarMonthWeekKey($index, week)) {
-          <div
-            class="smart-list__month-week"
-            [class.smart-list__month-week--rates]="isRateCountCalendarVariant()"
-          >
-            @for (day of week.days; track trackByCalendarDayKey($index, day)) {
-              <div
-                class="smart-list__month-cell"
-                [class.smart-list__month-cell--outside]="!day.inCurrentMonth"
-                [class.smart-list__month-cell--today]="day.isToday"
-                [class.smart-list__month-cell--rates]="isRateCountCalendarVariant()"
-              >
-                <div class="smart-list__month-day-num">{{ day.dayNumber }}</div>
-                @if (isRateCountCalendarVariant() && monthRateCount(day); as rateCount) {
-                  <div
-                    class="smart-list__month-rate-count"
-                    [ngClass]="rateHeatClassByCount(rateCount)"
-                  >
-                    {{ rateCountLabel(rateCount) }}
-                  </div>
-                }
-              </div>
-            }
-            @if (!isRateCountCalendarVariant() && week.spans.length > 0) {
-              <div class="smart-list__month-week-spans">
-                @for (span of week.spans; track trackByCalendarSpanKey($index, span)) {
-                  <button
-                    type="button"
-                    class="smart-list__calendar-badge smart-list__month-span-badge"
-                    [ngClass]="calendarBadgeToneClass(span.item)"
-                    [style.left.%]="(span.startCol * 100) / 7"
-                    [style.width.%]="((span.endCol - span.startCol + 1) * 100) / 7"
-                    [style.top.px]="18 + (span.lane * 20)"
-                    (click)="selectItem(span.item, $event)"
-                  >
-                    <span>{{ calendarBadgeLabel(span.item) }}</span>
-                  </button>
-                }
-              </div>
-            }
-          </div>
-        }
-      </div>
+        <div class="smart-list__calendar-weekdays">
+          @for (dayLabel of calendarWeekdayLabels(); track dayLabel) {
+            <span>{{ dayLabel }}</span>
+          }
+        </div>
+        <div class="smart-list__month-grid" [class.smart-list__month-grid--counter]="isCounterCalendarVariant()">
+          @for (week of page.weeks; track trackByCalendarMonthWeekKey($index, week)) {
+            <div
+              class="smart-list__month-week"
+              [class.smart-list__month-week--counter]="isCounterCalendarVariant()"
+            >
+              @for (day of week.days; track trackByCalendarDayKey($index, day)) {
+                <div
+                  class="smart-list__month-cell"
+                  [class.smart-list__month-cell--outside]="!day.inCurrentMonth"
+                  [class.smart-list__month-cell--today]="day.isToday"
+                  [class.smart-list__month-cell--counter]="isCounterCalendarVariant()"
+                >
+                  <div class="smart-list__month-day-num">{{ day.dayNumber }}</div>
+                  @if (isCounterCalendarVariant() && calendarDayCounter(day); as counter) {
+                    <button
+                      type="button"
+                      class="smart-list__month-counter"
+                      [ngClass]="calendarCounterClass(counter)"
+                      [attr.aria-label]="counter.ariaLabel || counter.label"
+                      (click)="selectCalendarDay(day, $event)"
+                    >
+                      <span>{{ counter.label }}</span>
+                      @if (counter.alertLabel) {
+                        <strong [attr.aria-label]="counter.alertAriaLabel || null">{{ counter.alertLabel }}</strong>
+                      }
+                    </button>
+                  }
+                </div>
+              }
+              @if (!isCounterCalendarVariant() && week.spans.length > 0) {
+                <div class="smart-list__month-week-spans">
+                  @for (span of week.spans; track trackByCalendarSpanKey($index, span)) {
+                    <button
+                      type="button"
+                      class="smart-list__calendar-badge smart-list__month-span-badge"
+                      [ngClass]="calendarBadgeToneClass(span.item)"
+                      [style.left.%]="(span.startCol * 100) / 7"
+                      [style.width.%]="((span.endCol - span.startCol + 1) * 100) / 7"
+                      [style.top.px]="18 + (span.lane * 20)"
+                      (click)="selectItem(span.item, $event)"
+                    >
+                      <span>{{ calendarBadgeLabel(span.item) }}</span>
+                    </button>
+                  }
+                </div>
+              }
+            </div>
+          }
+        </div>
       </section>
     }
   } @else {
     @for (page of weekPages(); track trackByCalendarPageKey($index, page)) {
       <section class="smart-list__page smart-list__page--week smart-list__calendar-page smart-list__calendar-page--week">
-      <div class="smart-list__week-board" [style.--week-slot-count]="calendarWeekHours().length">
-        <div class="smart-list__week-board-corner"></div>
-        @for (day of page.days; track trackByCalendarDayKey($index, day); let dayIndex = $index) {
-          <div
-            class="smart-list__week-board-day-head"
-            [class.smart-list__week-board-day-head--today]="day.isToday"
-          >
-            <span>{{ calendarWeekdayLabels()[dayIndex] }}</span>
-            <strong>{{ day.dayNumber }}</strong>
-            @if (isRateCountCalendarVariant() && weekRateDayCount(day); as dayCount) {
-              <div
-                class="smart-list__week-rate-count"
-                [ngClass]="rateHeatClassByCount(dayCount)"
-              >
-                {{ rateCountLabel(dayCount) }}
+        <div class="smart-list__week-board" [style.--week-slot-count]="calendarWeekHours().length">
+          <div class="smart-list__week-board-corner"></div>
+          @for (day of page.days; track trackByCalendarDayKey($index, day); let dayIndex = $index) {
+            <div
+              class="smart-list__week-board-day-head"
+              [class.smart-list__week-board-day-head--today]="day.isToday"
+            >
+              <span>{{ calendarWeekdayLabels()[dayIndex] }}</span>
+              <strong>{{ day.dayNumber }}</strong>
+              @if (isCounterCalendarVariant() && calendarDayCounter(day); as counter) {
+                <button
+                  type="button"
+                  class="smart-list__week-counter-head"
+                  [ngClass]="calendarCounterClass(counter)"
+                  [attr.aria-label]="counter.ariaLabel || counter.label"
+                  (click)="selectCalendarDay(day, $event)"
+                >
+                  <span>{{ counter.label }}</span>
+                  @if (counter.alertLabel) {
+                    <strong [attr.aria-label]="counter.alertAriaLabel || null">{{ counter.alertLabel }}</strong>
+                  }
+                </button>
+              }
+            </div>
+          }
+          <div class="smart-list__week-hours-col">
+            @for (hour of calendarWeekHours(); track hour) {
+              <div class="smart-list__week-hour-label">
+                {{ weekHourLabel(hour) }}
               </div>
             }
           </div>
-        }
-        <div class="smart-list__week-hours-col">
-          @for (hour of calendarWeekHours(); track hour) {
-            <div class="smart-list__week-hour-label">
-              {{ weekHourLabel(hour) }}
+          @for (day of page.days; track trackByCalendarDayKey($index, day)) {
+            <div
+              class="smart-list__week-day-col"
+              [class.smart-list__week-day-col--today]="day.isToday"
+              [class.smart-list__week-day-col--counter]="isCounterCalendarVariant()"
+            >
+              @if (isCounterCalendarVariant() && calendarCounterGranularity() === 'hour') {
+                @for (hour of calendarWeekHours(); track hour) {
+                  <div class="smart-list__week-hour-slot smart-list__week-counter-slot">
+                    @if (calendarHourCounter(day, hour); as counter) {
+                      <button
+                        type="button"
+                        class="smart-list__week-hour-counter"
+                        [ngClass]="calendarCounterClass(counter)"
+                        [attr.aria-label]="counter.ariaLabel || counter.label"
+                        (click)="selectCalendarDay(day, $event)"
+                      >
+                        <span>{{ counter.label }}</span>
+                        @if (counter.alertLabel) {
+                          <strong [attr.aria-label]="counter.alertAriaLabel || null">{{ counter.alertLabel }}</strong>
+                        }
+                      </button>
+                    }
+                  </div>
+                }
+              } @else if (isCounterCalendarVariant()) {
+                @for (hour of calendarWeekHours(); track hour) {
+                  <div class="smart-list__week-hour-slot"></div>
+                }
+                @if (calendarDayCounter(day); as counter) {
+                  <button
+                    type="button"
+                    class="smart-list__week-counter"
+                    [ngClass]="calendarCounterClass(counter)"
+                    [attr.aria-label]="counter.ariaLabel || counter.label"
+                    (click)="selectCalendarDay(day, $event)"
+                  >
+                    <span>{{ counter.label }}</span>
+                    @if (counter.alertLabel) {
+                      <strong [attr.aria-label]="counter.alertAriaLabel || null">{{ counter.alertLabel }}</strong>
+                    }
+                  </button>
+                }
+              } @else {
+                @for (hour of calendarWeekHours(); track hour) {
+                  <div class="smart-list__week-hour-slot"></div>
+                }
+                @for (badge of weekDayTimedBadges(day); track trackByCalendarTimedBadge($index, badge)) {
+                  <button
+                    type="button"
+                    class="smart-list__calendar-badge smart-list__week-timed-badge"
+                    [ngClass]="calendarBadgeToneClass(badge.item)"
+                    [style.top.%]="badge.topPct"
+                    [style.height.%]="badge.heightPct"
+                    (click)="selectItem(badge.item, $event)"
+                  >
+                    <span>{{ calendarBadgeLabel(badge.item) }}</span>
+                  </button>
+                }
+              }
             </div>
           }
         </div>
-        @for (day of page.days; track trackByCalendarDayKey($index, day)) {
-          <div
-            class="smart-list__week-day-col"
-            [class.smart-list__week-day-col--today]="day.isToday"
-            [class.smart-list__week-day-col--rates]="isRateCountCalendarVariant()"
-          >
-            @if (isRateCountCalendarVariant()) {
-              @for (hour of calendarWeekHours(); track hour) {
-                <div class="smart-list__week-hour-slot smart-list__week-rate-slot">
-                  @if (weekRateHourCount(day, hour); as hourCount) {
-                    <div
-                      class="smart-list__week-rate-badge"
-                      [ngClass]="rateHeatClassByCount(hourCount)"
-                    >
-                      {{ rateCountLabel(hourCount) }}
-                    </div>
-                  }
-                </div>
-              }
-            } @else {
-              @for (hour of calendarWeekHours(); track hour) {
-                <div class="smart-list__week-hour-slot"></div>
-              }
-              @for (badge of weekDayTimedBadges(day); track trackByCalendarTimedBadge($index, badge)) {
-                <button
-                  type="button"
-                  class="smart-list__calendar-badge smart-list__week-timed-badge"
-                  [ngClass]="calendarBadgeToneClass(badge.item)"
-                  [style.top.%]="badge.topPct"
-                  [style.height.%]="badge.heightPct"
-                  (click)="selectItem(badge.item, $event)"
-                >
-                  <span>{{ calendarBadgeLabel(badge.item) }}</span>
-                </button>
-              }
-            }
-          </div>
-        }
-      </div>
       </section>
     }
   }

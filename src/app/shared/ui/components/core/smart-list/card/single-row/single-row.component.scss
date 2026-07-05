@@ -340,6 +340,24 @@
     flex-wrap: wrap;
   }
 
+  .ui-single-row--with-top-right .ui-single-row__side {
+    position: absolute;
+    top: 2.48rem;
+    right: 0.7rem;
+    grid-column: auto;
+    width: auto;
+    justify-self: end;
+    justify-content: flex-end;
+    flex-wrap: nowrap;
+    padding-top: 0;
+    z-index: 2;
+  }
+
+  .ui-single-row--with-top-right .ui-single-row__menu,
+  .ui-single-row--with-top-right .ui-single-row__menu-trigger {
+    margin-top: 0;
+  }
+
   .ui-single-row__top-right {
     max-width: 80%;
   }

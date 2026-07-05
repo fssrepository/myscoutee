@@ -21,6 +21,16 @@ export interface EventFeedbackRecordCollection {
   ids: string[];
 }
 
+export interface EventFeedbackStatRecord {
+  eventId: string;
+  viewerUserId: string;
+  submittedAtIso: string;
+  updatedAtIso: string;
+  overallValue: string;
+  improveValue: string;
+  personalityTraitIds: string[];
+}
+
 export type EventFeedbackMemorySchema = Record<typeof EVENT_FEEDBACK_TABLE_NAME, EventFeedbackRecordCollection>;
 
 export interface ActivityEventRecordCollection {

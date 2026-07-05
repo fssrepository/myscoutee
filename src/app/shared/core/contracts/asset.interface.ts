@@ -1,4 +1,4 @@
-import type * as AppConstants from '../common/constants';
+import * as AppConstants from '../common/constants';
 import type { PricingConfig } from './pricing.interface';
 
 export interface EventPolicyItemDTO {
@@ -40,6 +40,14 @@ export interface AssetMemberRequestDTO {
   menuActions?: string[];
 }
 
+export interface AssetRequestMetricsDTO {
+  allItems: number;
+  activeItems: number;
+  assignedItems: number;
+  borrowedItems: number;
+  pendingItems: number;
+}
+
 export interface AssetDTO {
   id: string;
   type: AppConstants.AssetType;
@@ -51,14 +59,17 @@ export interface AssetDTO {
   quantity: number;
   description: string;
   imageUrl: string;
+  sourceLink?: string;
   locationLabel?: string;
   priceLabel?: string;
+  policiesEnabled?: boolean;
   policyCount?: number;
   visibility?: AppConstants.EventVisibility;
   status?: AppConstants.AssetLifecycleStatus | string;
   ownerUserId?: string;
   ownerName?: string;
   requests: AssetMemberRequestDTO[];
+  metrics?: AssetRequestMetricsDTO | null;
   menuActions?: string[];
 }
 
@@ -76,6 +87,7 @@ export interface AssetDetailDTO {
   sourceLink: string;
   routes?: string[];
   topics?: string[];
+  policiesEnabled?: boolean;
   policies?: EventPolicyItemDTO[];
   pricing?: PricingConfig | null;
   visibility?: AppConstants.EventVisibility;
@@ -83,12 +95,13 @@ export interface AssetDetailDTO {
   ownerUserId?: string;
   ownerName?: string;
   requests: AssetMemberRequestDTO[];
+  metrics?: AssetRequestMetricsDTO | null;
   menuActions?: string[];
 }
 
 export class AssetDto implements AssetDTO {
   id = '';
-  type: AppConstants.AssetType = 'Car';
+  type: AppConstants.AssetType = AppConstants.ASSET_TYPE_TRANSPORT;
   title = '';
   subtitle = '';
   category?: AppConstants.AssetCategory;
@@ -97,14 +110,17 @@ export class AssetDto implements AssetDTO {
   quantity = 0;
   description = '';
   imageUrl = '';
+  sourceLink = '';
   locationLabel?: string;
   priceLabel?: string;
+  policiesEnabled?: boolean;
   policyCount?: number;
   visibility?: AppConstants.EventVisibility;
   status?: AppConstants.AssetLifecycleStatus | string;
   ownerUserId?: string;
   ownerName?: string;
   requests: AssetMemberRequestDTO[] = [];
+  metrics?: AssetRequestMetricsDTO | null;
   menuActions?: string[];
 
   constructor(card?: AssetDTO | AssetDetailDTO | null) {
@@ -112,6 +128,7 @@ export class AssetDto implements AssetDTO {
       return;
     }
     const detailCard = 'details' in card ? card : null;
+    const policiesEnabled = AssetDto.assetPoliciesEnabled(card);
     Object.assign(this, {
       id: card.id,
       type: card.type,
@@ -123,9 +140,13 @@ export class AssetDto implements AssetDTO {
       quantity: card.quantity,
       description: 'description' in card ? card.description : card.details,
       imageUrl: card.imageUrl,
+      sourceLink: ('sourceLink' in card ? card.sourceLink : detailCard?.sourceLink)?.trim() ?? '',
       locationLabel: 'locationLabel' in card ? card.locationLabel : detailCard ? AssetDto.locationLabelFromDetail(detailCard) : card.city,
       priceLabel: 'priceLabel' in card ? card.priceLabel : undefined,
-      policyCount: 'policyCount' in card ? card.policyCount : (detailCard?.policies ?? []).length,
+      policiesEnabled,
+      policyCount: policiesEnabled
+        ? ('policyCount' in card ? card.policyCount : (detailCard?.policies ?? []).length)
+        : 0,
       visibility: card.visibility,
       status: card.status,
       ownerUserId: card.ownerUserId,
@@ -139,6 +160,7 @@ export class AssetDto implements AssetDTO {
             }
           : null
       })),
+      metrics: AssetDto.cloneMetrics(card.metrics),
       menuActions: card.menuActions ? [...card.menuActions] : undefined
     });
   }
@@ -157,14 +179,17 @@ export class AssetDto implements AssetDTO {
       && this.quantity === other.quantity
       && this.description === other.description
       && this.imageUrl === other.imageUrl
+      && this.sourceLink === (other.sourceLink ?? '')
       && (this.locationLabel ?? '') === (other.locationLabel ?? '')
       && (this.priceLabel ?? '') === (other.priceLabel ?? '')
+      && (this.policiesEnabled ?? false) === (other.policiesEnabled ?? false)
       && (this.policyCount ?? 0) === (other.policyCount ?? 0)
       && (this.visibility ?? '') === (other.visibility ?? '')
       && (this.status ?? '') === (other.status ?? '')
       && (this.ownerUserId ?? '') === (other.ownerUserId ?? '')
       && (this.ownerName ?? '') === (other.ownerName ?? '')
       && AssetDto.sameRequests(this.requests, other.requests)
+      && AssetDto.sameMetrics(this.metrics, other.metrics)
       && AssetDto.sameStringList(this.menuActions, other.menuActions);
   }
 
@@ -191,7 +216,7 @@ export class AssetDto implements AssetDTO {
   }
 
   private static locationLabelFromDetail(card: AssetDetailDTO): string {
-    if (card.type !== 'Accommodation') {
+    if (card.type !== AppConstants.ASSET_TYPE_ACCOMMODATION) {
       return card.city;
     }
     return (card.routes ?? [])
@@ -200,11 +225,51 @@ export class AssetDto implements AssetDTO {
       ?? card.city;
   }
 
+  private static assetPoliciesEnabled(card: AssetDTO | AssetDetailDTO): boolean {
+    if ('policiesEnabled' in card && card.policiesEnabled !== undefined) {
+      return card.policiesEnabled === true;
+    }
+    if ('policyCount' in card && Number.isFinite(Number(card.policyCount)) && Number(card.policyCount) > 0) {
+      return true;
+    }
+    return 'policies' in card && (card.policies ?? []).length > 0;
+  }
+
   private static sameStringList(left: readonly string[] | null | undefined, right: readonly string[] | null | undefined): boolean {
     const leftItems = left ?? [];
     const rightItems = right ?? [];
     return leftItems.length === rightItems.length
       && leftItems.every((item, index) => item === rightItems[index]);
+  }
+
+  static cloneMetrics(metrics: AssetRequestMetricsDTO | null | undefined): AssetRequestMetricsDTO | null {
+    return metrics
+      ? {
+          allItems: AssetDto.normalizeCount(metrics.allItems),
+          activeItems: AssetDto.normalizeCount(metrics.activeItems),
+          assignedItems: AssetDto.normalizeCount(metrics.assignedItems),
+          borrowedItems: AssetDto.normalizeCount(metrics.borrowedItems),
+          pendingItems: AssetDto.normalizeCount(metrics.pendingItems)
+        }
+      : null;
+  }
+
+  private static sameMetrics(
+    left: AssetRequestMetricsDTO | null | undefined,
+    right: AssetRequestMetricsDTO | null | undefined
+  ): boolean {
+    const leftMetrics = AssetDto.cloneMetrics(left);
+    const rightMetrics = AssetDto.cloneMetrics(right);
+    return (leftMetrics?.allItems ?? 0) === (rightMetrics?.allItems ?? 0)
+      && (leftMetrics?.activeItems ?? 0) === (rightMetrics?.activeItems ?? 0)
+      && (leftMetrics?.assignedItems ?? 0) === (rightMetrics?.assignedItems ?? 0)
+      && (leftMetrics?.borrowedItems ?? 0) === (rightMetrics?.borrowedItems ?? 0)
+      && (leftMetrics?.pendingItems ?? 0) === (rightMetrics?.pendingItems ?? 0);
+  }
+
+  private static normalizeCount(value: unknown): number {
+    const numeric = Number(value);
+    return Number.isFinite(numeric) ? Math.max(0, Math.trunc(numeric)) : 0;
   }
 
   private static sameRequests(
@@ -241,7 +306,7 @@ export class AssetDto implements AssetDTO {
 
 export class AssetDetailDto implements AssetDetailDTO {
   id = '';
-  type: AppConstants.AssetType = 'Car';
+  type: AppConstants.AssetType = AppConstants.ASSET_TYPE_TRANSPORT;
   title = '';
   subtitle = '';
   category?: AppConstants.AssetCategory;
@@ -253,6 +318,7 @@ export class AssetDetailDto implements AssetDetailDTO {
   sourceLink = '';
   routes?: string[];
   topics?: string[];
+  policiesEnabled?: boolean;
   policies?: EventPolicyItemDTO[];
   pricing?: PricingConfig | null;
   visibility?: AppConstants.EventVisibility;
@@ -260,6 +326,7 @@ export class AssetDetailDto implements AssetDetailDTO {
   ownerUserId?: string;
   ownerName?: string;
   requests: AssetMemberRequestDTO[] = [];
+  metrics?: AssetRequestMetricsDTO | null;
   menuActions?: string[];
 
   constructor(card?: AssetDetailDTO | null) {
@@ -281,6 +348,7 @@ export class AssetDetailDto implements AssetDetailDTO {
             }
           : null
       })),
+      metrics: AssetDto.cloneMetrics(card.metrics),
       menuActions: card.menuActions ? [...card.menuActions] : undefined
     });
   }
@@ -298,14 +366,19 @@ export interface AssetExploreQueryDTO {
   endAtIso?: string;
 }
 
-export interface AssetSourcePreviewDTO {
-  enabled: boolean;
-  supported: boolean;
-  normalizedUrl: string;
-  title: string;
-  subtitle: string;
-  details: string;
-  imageUrl: string;
+export type AssetExploreOrder = 'availability' | 'lowest-price' | 'fewest-policies';
+
+export interface AssetExplorePageQueryDTO extends AssetExploreQueryDTO {
+  page?: number;
+  pageSize: number;
+  cursor?: string | null;
+  order?: AssetExploreOrder;
+}
+
+export interface AssetExplorePageResultDTO {
+  items: AssetDTO[];
+  total: number;
+  nextCursor?: string | null;
 }
 
 export interface AssetTicketPageQueryDTO {
@@ -336,6 +409,67 @@ export interface AssetTicketDTO {
 export interface AssetTicketPageResultDTO {
   items: AssetTicketDTO[];
   total: number;
+}
+
+export type AssetAvailabilityFilter = 'all' | 'active-items' | 'pending-requests' | 'borrowed-items';
+export type AssetAvailabilityView = 'day' | 'week' | 'month';
+export type AssetAvailabilityOrder = 'earlier' | 'later';
+
+export interface AssetOccupancyStatDTO {
+  id: string;
+  assetId: string;
+  ownerUserId: string;
+  dateIso: string;
+  startAtIso: string;
+  endAtIso: string;
+  occupied: number;
+  capacity: number;
+  pendingCount: number;
+  pendingQuantity: number;
+  itemCount: number;
+}
+
+export interface AssetOccupancyRowDTO {
+  id: string;
+  assetId: string;
+  ownerUserId: string;
+  dateIso: string;
+  startAtIso?: string;
+  endAtIso?: string;
+  title: string;
+  subtitle?: string;
+  detail?: string;
+  scheduleLabel?: string;
+  avatarInitials?: string;
+  avatarUrl?: string;
+  gender: AppConstants.UserGender;
+  status: AppConstants.AssetRequestStatus | 'assigned';
+  requestKind: AppConstants.AssetRequestKind;
+  quantity: number;
+  occupied: number;
+  capacity: number;
+  remaining: number;
+  pendingCount: number;
+  pendingQuantity: number;
+  eventId?: string;
+  eventTitle?: string;
+  subEventId?: string;
+  subEventTitle?: string;
+  subEventStartAtIso?: string;
+  subEventEndAtIso?: string;
+  menuActions?: AppConstants.AssetRequestAction[];
+}
+
+export interface AssetOccupancyStatsPageResultDTO {
+  items: AssetOccupancyStatDTO[];
+  total: number;
+  nextCursor?: string | null;
+}
+
+export interface AssetOccupancyPageResultDTO {
+  items: AssetOccupancyRowDTO[];
+  total: number;
+  nextCursor?: string | null;
 }
 
 export interface TicketScanPayloadDTO {

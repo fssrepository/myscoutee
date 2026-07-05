@@ -2,6 +2,7 @@ import { SHARE_TOKENS_TABLE_NAME, type ShareTokenRecord } from '../entity/sharin
 import { Injectable, inject } from '@angular/core';
 
 import { LocalMemoryDb } from '../../../common/app.db';
+import * as AppConstants from '../../../common/constants';
 import type { ShareTokenCreateRequest, ShareTokenResolvedItem } from '../../../contracts/share.interface';
 
 import { LocalEventsRepository } from './events.repository';
@@ -139,7 +140,7 @@ export class LocalShareTokensRepository {
       };
     }
     const assetType = record.assetType;
-    if (assetType !== 'Car' && assetType !== 'Accommodation' && assetType !== 'Supplies') {
+    if (!AppConstants.isAssetType(assetType)) {
       return null;
     }
     const asset = this.assetsRepository.peekVisibleAssetById(userId, assetType, record.entityId);

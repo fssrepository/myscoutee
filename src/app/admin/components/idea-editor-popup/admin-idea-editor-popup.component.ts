@@ -7,8 +7,7 @@ import {
   HostListener,
   ViewChild,
   effect,
-  inject,
-  signal
+  inject
 } from '@angular/core';
 import {
   FormsModule
@@ -169,7 +168,6 @@ export class AdminIdeaEditorPopupComponent {
   private readonly postsByLang = new Map<string, IdeaPostLangCache>();
   private adminPostList: IdeaPostDto[] = [];
   private adminPostIndex = new Map<string, IdeaPostDto>();
-  private adminIdeaCardList: IdeaInfoCard[] = [];
   private adminIdeaCardIndex = new Map<string, IdeaInfoCard>();
   private readonly featuredPendingIds = new Set<string>();
 
@@ -737,14 +735,12 @@ export class AdminIdeaEditorPopupComponent {
 
     this.adminPostList = posts;
     this.adminPostIndex = postIndex;
-    this.adminIdeaCardList = cards;
     this.adminIdeaCardIndex = cardIndex;
   }
 
   private clearAdminIndexes(): void {
     this.adminPostList = [];
     this.adminPostIndex.clear();
-    this.adminIdeaCardList = [];
     this.adminIdeaCardIndex.clear();
   }
 

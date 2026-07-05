@@ -86,6 +86,11 @@
             <div class="support-popup event-feedback-organizer-popup">
               @if (selectedOrganizerEventFeedbackItem(); as item) {
                 <article class="editor-list-card support-card event-feedback-organizer-shell">
+                  @if (organizerEventFeedbackStatLoading()) {
+                    <div class="event-feedback-organizer-loading">
+                      <app-indicator kind="load-ring" state="loading"></app-indicator>
+                    </div>
+                  } @else {
                   <div class="event-feedback-organizer-overview-grid">
                     <div class="event-feedback-info-card-shell event-feedback-organizer-info-card-shell">
                       @if (selectedOrganizerEventFeedbackInfoCard(); as detailCard) {
@@ -206,6 +211,7 @@
                       <p class="event-feedback-organizer-empty-copy">No feedback has been submitted for this event yet.</p>
                     }
                   </section>
+                  }
                 </article>
               } @else {
                 <article class="editor-list-card support-card event-feedback-empty-card">

@@ -3,7 +3,7 @@ import { PricingBuilder } from './pricing.builder';
 
 import { AssetDto } from '../../contracts';
 import type * as AppDTOs from '../../contracts';
-import type * as AppConstants from '../../common/constants';
+import * as AppConstants from '../../common/constants';
 
 export type AssetCardFormValue = Omit<AppDTOs.AssetDetailDTO, 'id' | 'requests'>;
 
@@ -15,13 +15,14 @@ export class AssetCardBuilder {
       subtitle: '',
       category: AssetDefaultsBuilder.defaultCategory(type),
       city: '',
-      capacityTotal: type === 'Supplies' ? 6 : 4,
+      capacityTotal: type === AppConstants.ASSET_TYPE_SUPPLIES ? 6 : 4,
       quantity: this.defaultQuantity(type),
       details: '',
       imageUrl: '',
       sourceLink: '',
       routes: this.normalizeAssetRoutes(type, []),
       topics: [],
+      policiesEnabled: false,
       policies: [],
       pricing: PricingBuilder.createDefaultPricingConfig('asset')
     };
@@ -30,7 +31,7 @@ export class AssetCardBuilder {
   static buildAssetFormFromCard(card: AppDTOs.AssetDTO | AppDTOs.AssetDetailDTO): AssetCardFormValue {
     const detailCard = this.asDetail(card);
     const imageUrl = this.normalizeAssetLink(card.imageUrl);
-    const sourceLink = this.normalizeAssetLink(detailCard?.sourceLink, imageUrl);
+    const sourceLink = this.normalizeAssetLink(card.sourceLink ?? detailCard?.sourceLink);
     return {
       type: card.type,
       title: card.title,
@@ -44,6 +45,7 @@ export class AssetCardBuilder {
       sourceLink,
       routes: this.normalizeAssetRoutes(card.type, detailCard?.routes),
       topics: [...(detailCard?.topics ?? [])],
+      policiesEnabled: this.assetPoliciesEnabled(card),
       policies: (detailCard?.policies ?? []).map(item => ({ ...item })),
       pricing: PricingBuilder.clonePricingConfig(detailCard?.pricing ?? PricingBuilder.createDefaultPricingConfig('asset'))
     };
@@ -58,20 +60,21 @@ export class AssetCardBuilder {
     const routes = this.normalizeAssetRoutes(assetForm.type, assetForm.routes);
     const accommodationLocation = routes.find(stop => stop.trim().length > 0)?.trim() || '';
     const imageUrl = this.normalizeAssetLink(resolvedImageUrl || assetForm.imageUrl);
-    const sourceLink = this.normalizeAssetLink(assetForm.sourceLink, imageUrl);
+    const sourceLink = this.normalizeAssetLink(assetForm.sourceLink);
     return {
       type: assetForm.type,
       title,
       subtitle: assetForm.subtitle.trim(),
       category: AssetDefaultsBuilder.normalizeCategory(assetForm.type, assetForm.category),
-      city: assetForm.type === 'Accommodation' ? accommodationLocation : city,
-      capacityTotal: Math.max(1, Number(assetForm.capacityTotal) || (assetForm.type === 'Supplies' ? 6 : 4)),
+      city: assetForm.type === AppConstants.ASSET_TYPE_ACCOMMODATION ? accommodationLocation : city,
+      capacityTotal: Math.max(1, Number(assetForm.capacityTotal) || (assetForm.type === AppConstants.ASSET_TYPE_SUPPLIES ? 6 : 4)),
       quantity: this.normalizeQuantity(assetForm.type, assetForm.quantity, assetForm.capacityTotal),
       details: assetForm.details.trim(),
       imageUrl,
       sourceLink,
       routes,
       topics: [...(assetForm.topics ?? [])],
+      policiesEnabled: assetForm.policiesEnabled === true,
       policies: this.normalizePolicies(assetForm.policies),
       pricing: PricingBuilder.compactPricingConfig(
         assetForm.pricing ?? PricingBuilder.createDefaultPricingConfig('asset'),
@@ -89,13 +92,13 @@ export class AssetCardBuilder {
   }
 
   static activeAssetTypeFromFilter(filter: AppConstants.AssetFilterType): AppConstants.AssetType {
-    if (filter === 'Accommodation') {
-      return 'Accommodation';
+    if (filter === AppConstants.ASSET_TYPE_ACCOMMODATION) {
+      return AppConstants.ASSET_TYPE_ACCOMMODATION;
     }
-    if (filter === 'Supplies') {
-      return 'Supplies';
+    if (filter === AppConstants.ASSET_TYPE_SUPPLIES) {
+      return AppConstants.ASSET_TYPE_SUPPLIES;
     }
-    return 'Car';
+    return AppConstants.ASSET_TYPE_TRANSPORT;
   }
 
   static cloneCard(card: AppDTOs.AssetDTO | AppDTOs.AssetDetailDTO): AppDTOs.AssetDTO {
@@ -146,13 +149,13 @@ export class AssetCardBuilder {
   }
 
   static normalizeAssetRoutes(type: AppConstants.AssetType, routes: string[] | undefined | null): string[] {
-    if (type === 'Supplies') {
+    if (type === AppConstants.ASSET_TYPE_SUPPLIES) {
       return [];
     }
     const cleaned = (routes ?? [])
       .map(value => value.trim())
       .filter((value, index, arr) => value.length > 0 && arr.indexOf(value) === index);
-    if (type === 'Accommodation') {
+    if (type === AppConstants.ASSET_TYPE_ACCOMMODATION) {
       return cleaned.length > 0 ? [cleaned[0]] : [''];
     }
     return cleaned.length > 0 ? cleaned : [''];
@@ -216,7 +219,7 @@ export class AssetCardBuilder {
   }
 
   static defaultQuantity(type: AppConstants.AssetType): number {
-    return type === 'Supplies' ? 6 : 1;
+    return type === AppConstants.ASSET_TYPE_SUPPLIES ? 6 : 1;
   }
 
   static normalizeQuantity(
@@ -228,20 +231,33 @@ export class AssetCardBuilder {
     if (parsed > 0) {
       return parsed;
     }
-    if (type === 'Supplies') {
+    if (type === AppConstants.ASSET_TYPE_SUPPLIES) {
       return Math.max(1, Math.trunc(Number(capacityFallback) || 0));
     }
     return this.defaultQuantity(type);
   }
 
   static primaryLocation(card: AppDTOs.AssetDTO): string {
-    return card.type === 'Accommodation'
+    return card.type === AppConstants.ASSET_TYPE_ACCOMMODATION
       ? (card.locationLabel?.trim() || card.city.trim())
       : '';
   }
 
   static canOpenMap(card: AppDTOs.AssetDTO): boolean {
-    return card.type === 'Accommodation' && this.primaryLocation(card).length > 0;
+    return card.type === AppConstants.ASSET_TYPE_ACCOMMODATION && this.primaryLocation(card).length > 0;
+  }
+
+  static assetPoliciesEnabled(card: AppDTOs.AssetDTO | AppDTOs.AssetDetailDTO | null | undefined): boolean {
+    if (!card) {
+      return false;
+    }
+    if ('policiesEnabled' in card && card.policiesEnabled !== undefined) {
+      return card.policiesEnabled === true;
+    }
+    if ('policyCount' in card && Number.isFinite(Number(card.policyCount)) && Number(card.policyCount) > 0) {
+      return true;
+    }
+    return 'policies' in card && (card.policies ?? []).length > 0;
   }
 
   private static normalizePolicies(

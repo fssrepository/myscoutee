@@ -1,4 +1,5 @@
 export * from './builders';
+export * from './mappers';
 export { RateOutboxRepository } from './repositories/rate-outbox.repository';
 export { I18nBundleRepository, type StoredI18nBundle } from './repositories/i18n-bundle.repository';
 export type { UserGameCardsStackSnapshot } from '../contracts/activity.interface';

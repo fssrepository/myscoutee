@@ -2,9 +2,14 @@ import { Injectable, inject } from '@angular/core';
 
 import type { UserGameMode, UserRatesSyncResult } from '../../contracts/activity.interface';
 import type { ActivityRateDTO } from '../../contracts/activity.interface';
-import type { UserRateOutboxRecord, UserRateRecord } from '../../local/source/entity/rate.entity';
+import type { UserRateOutboxRecord } from '../../local/source/entity/rate.entity';
 import { HttpRatesService } from '../../http/services/rates.service';
 import { LocalRatesRepository } from '../../local/source/repositories/rates.repository';
+import {
+  BaseUserRatesMapper,
+  type UserRateGameCardPairRecordDTO,
+  type UserRateGameCardRecordDTO
+} from '../mappers';
 import { RateOutboxRepository } from '../repositories/rate-outbox.repository';
 import { BaseRouteModeService } from './base-route-mode.service';
 
@@ -16,40 +21,18 @@ export class RateOutboxService extends BaseRouteModeService {
   private readonly localRatesRepository = inject(LocalRatesRepository);
   private readonly httpRatesService = inject(HttpRatesService);
 
-  enqueueGameCardRatingOutbox(
-    raterUserId: string,
-    ratedUserId: string,
-    rating: number,
-    mode: 'single' | 'pair' = 'single',
-    socialContext?: UserRateRecord['socialContext'],
-    bridgeUserId?: string,
-    bridgeCount?: number
-  ): void {
-    this.rateOutboxRepository.enqueueGameCardRatingOutbox(
-      raterUserId,
-      ratedUserId,
-      rating,
-      mode,
-      socialContext,
-      bridgeUserId,
-      bridgeCount
-    );
+  enqueueGameCardRatingOutbox(input: UserRateGameCardRecordDTO): void {
+    const nextRecord = BaseUserRatesMapper.toRecord(input);
+    if (nextRecord) {
+      this.rateOutboxRepository.enqueueUserRateOutbox(nextRecord);
+    }
   }
 
-  enqueueGameCardPairRatingOutbox(
-    raterUserId: string,
-    firstRatedUserId: string,
-    secondRatedUserId: string,
-    rating: number,
-    socialContext?: UserRateRecord['socialContext']
-  ): void {
-    this.rateOutboxRepository.enqueueGameCardPairRatingOutbox(
-      raterUserId,
-      firstRatedUserId,
-      secondRatedUserId,
-      rating,
-      socialContext
-    );
+  enqueueGameCardPairRatingOutbox(input: UserRateGameCardPairRecordDTO): void {
+    const nextRecord = BaseUserRatesMapper.toRecord(input);
+    if (nextRecord) {
+      this.rateOutboxRepository.enqueueUserRateOutbox(nextRecord);
+    }
   }
 
   enqueueActivityRateOutbox(
@@ -58,15 +41,70 @@ export class RateOutboxService extends BaseRouteModeService {
     rating: number,
     direction?: ActivityRateDTO['direction'] | null
   ): void {
-    this.rateOutboxRepository.enqueueActivityRateOutbox(ownerUserId, item, rating, direction);
+    const nextRecord = BaseUserRatesMapper.toRecord({
+      kind: 'activity-rate',
+      ownerUserId,
+      item,
+      rating,
+      direction
+    });
+    if (nextRecord) {
+      this.rateOutboxRepository.enqueueUserRateOutbox(nextRecord);
+    }
   }
 
   queryPendingRatedGameCardUserIds(raterUserId: string, mode: UserGameMode = 'single'): string[] {
-    return this.rateOutboxRepository.queryPendingRatedGameCardUserIds(raterUserId, mode);
+    const normalizedRaterId = raterUserId.trim();
+    if (!normalizedRaterId) {
+      return [];
+    }
+    const ratedUserIds = new Set<string>();
+    for (const record of this.rateOutboxRepository.queryPendingUserRateRecords()) {
+      if (record.ownerUserId?.trim() !== normalizedRaterId) {
+        continue;
+      }
+      const item = BaseUserRatesMapper.toDto(record);
+      if (!this.shouldExcludePendingItemFromHome(item)) {
+        continue;
+      }
+      if (mode === 'single' && item.mode !== 'individual') {
+        continue;
+      }
+      if (mode !== 'single' && item.mode !== 'pair') {
+        continue;
+      }
+      const primaryUserId = item.userId.trim();
+      const secondaryUserId = item.secondaryUserId?.trim() ?? '';
+      if (primaryUserId && primaryUserId !== normalizedRaterId) {
+        ratedUserIds.add(primaryUserId);
+      }
+      if (secondaryUserId && secondaryUserId !== normalizedRaterId) {
+        ratedUserIds.add(secondaryUserId);
+      }
+    }
+    return [...ratedUserIds];
   }
 
   queryPendingRatedGameCardPairKeys(ownerUserId: string): string[] {
-    return this.rateOutboxRepository.queryPendingRatedGameCardPairKeys(ownerUserId);
+    const normalizedOwnerUserId = ownerUserId.trim();
+    if (!normalizedOwnerUserId) {
+      return [];
+    }
+    const pairKeys = new Set<string>();
+    for (const record of this.rateOutboxRepository.queryPendingUserRateRecords()) {
+      if (record.ownerUserId?.trim() !== normalizedOwnerUserId) {
+        continue;
+      }
+      const item = BaseUserRatesMapper.toDto(record);
+      if (!this.shouldExcludePendingItemFromHome(item) || item.mode !== 'pair') {
+        continue;
+      }
+      const pairKey = this.toSortedPairKey(item.userId, item.secondaryUserId ?? '');
+      if (pairKey) {
+        pairKeys.add(pairKey);
+      }
+    }
+    return [...pairKeys];
   }
 
   queryPendingUserRatesOutbox(limit = 50): UserRateOutboxRecord[] {
@@ -86,10 +124,50 @@ export class RateOutboxService extends BaseRouteModeService {
   }
 
   mergePendingOutboxRateItems(userId: string, items: readonly ActivityRateDTO[]): ActivityRateDTO[] {
-    return this.rateOutboxRepository.mergePendingOutboxRateItems(userId, items);
+    const normalizedUserId = userId.trim();
+    if (!normalizedUserId) {
+      return [];
+    }
+    const itemsById = new Map<string, ActivityRateDTO>();
+    for (const item of items) {
+      const normalizedId = item.id.trim();
+      if (!normalizedId) {
+        continue;
+      }
+      itemsById.set(normalizedId, { ...item });
+    }
+    for (const record of this.rateOutboxRepository.queryPendingUserRateRecords()) {
+      if (record.ownerUserId?.trim() !== normalizedUserId) {
+        continue;
+      }
+      const item = BaseUserRatesMapper.toDto(record);
+      if (!item?.id?.trim()) {
+        continue;
+      }
+      itemsById.set(item.id.trim(), { ...item });
+    }
+    return [...itemsById.values()]
+      .sort((left, right) => right.happenedAt.localeCompare(left.happenedAt) || left.id.localeCompare(right.id));
   }
 
-  toUserRateSyncPayload(record: UserRateRecord): UserRateRecord | null {
-    return this.rateOutboxRepository.toUserRateSyncPayload(record);
+  private shouldExcludePendingItemFromHome(item: ActivityRateDTO | null): item is ActivityRateDTO {
+    if (!item) {
+      return false;
+    }
+    if (item.direction === 'met') {
+      return true;
+    }
+    return Number.isFinite(item.scoreGiven) && item.scoreGiven > 0;
+  }
+
+  private toSortedPairKey(leftUserId: string, rightUserId: string): string | null {
+    const normalizedLeftUserId = leftUserId.trim();
+    const normalizedRightUserId = rightUserId.trim();
+    if (!normalizedLeftUserId || !normalizedRightUserId || normalizedLeftUserId === normalizedRightUserId) {
+      return null;
+    }
+    return [normalizedLeftUserId, normalizedRightUserId]
+      .sort((left, right) => left.localeCompare(right))
+      .join(':');
   }
 }

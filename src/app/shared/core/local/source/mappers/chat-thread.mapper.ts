@@ -93,7 +93,7 @@ export class LocalChatThreadMapper {
     return metrics
       ? {
           members: metrics.members ? { ...metrics.members } : null,
-          car: metrics.car ? { ...metrics.car } : null,
+          transport: metrics.transport ? { ...metrics.transport } : null,
           accommodation: metrics.accommodation ? { ...metrics.accommodation } : null,
           supplies: metrics.supplies ? { ...metrics.supplies } : null,
           groupsCount: metrics.groupsCount ?? null,

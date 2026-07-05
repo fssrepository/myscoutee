@@ -2,6 +2,7 @@ import { Injectable, inject } from '@angular/core';
 
 import type * as ContractTypes from '../../../contracts';
 import { AppUtils } from '../../../../app-utils';
+import * as AppConstants from '../../../common/constants';
 import type { AssetType } from '../../../common/constants';
 import type { ActivitiesFeedFilters, ListQuery } from '../../../contracts';
 import type {
@@ -17,6 +18,7 @@ import { ActivityResourceBuilder } from '../../../base/builders';
 import { LocalRouteDelayService } from './route-delay.service';
 import { LocalChatsRepository } from '../repositories/chats.repository';
 import { LocalUsersRepository } from '../repositories/users.repository';
+import { LocalAssetsRepository } from '../repositories/assets.repository';
 import { LocalActivityMembersRepository } from '../repositories/activity-members.repository';
 import { LocalActivityResourcesRepository } from '../repositories/activity-resources.repository';
 import { LocalActivitySubEventStageRuntimeRepository } from '../repositories/activity-sub-event-stage-runtime.repository';
@@ -39,6 +41,7 @@ export class LocalChatsService extends LocalRouteDelayService implements IChatsS
 
   private readonly chatsRepository = inject(LocalChatsRepository);
   private readonly usersRepository = inject(LocalUsersRepository);
+  private readonly assetsRepository = inject(LocalAssetsRepository);
   private readonly userProfileStore = inject(UserProfileStore);
   private readonly activityMembersRepository = inject(LocalActivityMembersRepository);
   private readonly activityResourcesRepository = inject(LocalActivityResourcesRepository);
@@ -317,15 +320,15 @@ export class LocalChatsService extends LocalRouteDelayService implements IChatsS
       };
       if ((channelType === 'optionalSubEvent' || channelType === 'groupSubEvent') && parts.subEventId) {
         const resourceRecords = this.metricResourceRecords(resourcesByMetricKey, parts.eventId, ownerId, parts.subEventId);
-        metrics.car = this.assetBucket(resourceRecords, 'Car');
-        metrics.accommodation = this.assetBucket(resourceRecords, 'Accommodation');
-        metrics.supplies = this.assetBucket(resourceRecords, 'Supplies');
+        metrics.transport = this.assetBucket(resourceRecords, AppConstants.ASSET_TYPE_TRANSPORT);
+        metrics.accommodation = this.assetBucket(resourceRecords, AppConstants.ASSET_TYPE_ACCOMMODATION);
+        metrics.supplies = this.assetBucket(resourceRecords, AppConstants.ASSET_TYPE_SUPPLIES);
         metrics.groupsCount = this.countValue(
           stageRuntimeByMetricKey.get(`${parts.eventId}:${parts.subEventId}`)?.groupsCount
             ?? stageRuntimeByMetricKey.get(`${ownerId}:${parts.subEventId}`)?.groupsCount
         );
         metrics.pendingTotal = this.countValue(metrics.members?.pending)
-          + this.countValue(metrics.car?.pending)
+          + this.countValue(metrics.transport?.pending)
           + this.countValue(metrics.accommodation?.pending)
           + this.countValue(metrics.supplies?.pending);
       }
@@ -384,25 +387,52 @@ export class LocalChatsService extends LocalRouteDelayService implements IChatsS
 
   private assetBucket(records: readonly ActivitySubEventResourceRecord[], type: AssetType): ChatMetricBucketDTO {
     let accepted = 0;
+    let pending = 0;
     let capacityMin = 0;
     let capacityMax = 0;
     for (const record of records) {
+      const assignedIds = ActivityResourceBuilder.cloneAssetAssignmentIds(record.assetAssignmentIds)[type] ?? [];
       const settings = ActivityResourceBuilder.cloneAssetSettingsByType(record.assetSettingsByType)[type] ?? {};
-      for (const item of Object.values(settings)) {
-        capacityMin += this.countValue(item.capacityMin);
-        capacityMax += this.countValue(item.capacityMax);
-      }
-      if (type === 'Supplies') {
+      if (type === AppConstants.ASSET_TYPE_SUPPLIES) {
         for (const entries of Object.values(record.supplyContributionEntriesByAssetId ?? {})) {
           accepted += (entries ?? []).reduce((sum, entry) => sum + this.countValue(entry.quantity), 0);
         }
+        for (const item of Object.values(settings)) {
+          capacityMin += this.countValue(item.capacityMin);
+          capacityMax += this.countValue(item.capacityMax);
+        }
+        continue;
+      }
+      for (const assetId of assignedIds) {
+        const setting = settings[assetId];
+        const asset = this.assetsRepository.peekOwnedAssetById(record.assetOwnerUserId, assetId);
+        capacityMin += this.countValue(setting?.capacityMin);
+        capacityMax += this.countValue(setting?.capacityMax ?? asset?.capacityTotal);
+        const counts = asset
+          ? this.assetRequestCountsForMetric(asset, record.subEventId)
+          : { accepted: 0, pending: 0 };
+        accepted += counts.accepted;
+        pending += counts.pending;
       }
     }
     return {
       accepted,
-      pending: 0,
+      pending,
       capacityMin,
-      capacityMax: Math.max(capacityMin, capacityMax, accepted)
+      capacityMax: Math.max(capacityMin, capacityMax, accepted + pending)
+    };
+  }
+
+  private assetRequestCountsForMetric(
+    asset: ContractTypes.AssetDTO,
+    subEventId: string
+  ): { accepted: number; pending: number } {
+    const normalizedSubEventId = `${subEventId ?? ''}`.trim();
+    const scopedRequests = (asset.requests ?? [])
+      .filter(request => ActivityResourceBuilder.isSubEventScopedAssetRequest(request, normalizedSubEventId));
+    return {
+      accepted: scopedRequests.filter(request => request.status === 'accepted').length,
+      pending: scopedRequests.filter(request => request.status === 'pending').length
     };
   }
 

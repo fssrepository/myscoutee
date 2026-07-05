@@ -1,10 +1,12 @@
 export * from './admin';
-export { SeedAssetBuilder } from './asset-seed.builder';
+export { SeedAssetBuilder, type SeedAssetTemplate } from './asset-seed.builder';
 export { SeedChatsBuilder } from './chats-seed.builder';
 export { SeedEventBuilder } from './event-seed.builder';
 export { SeedEventFeedbackBuilder } from './event-feedback-seed.builder';
 export { SeedEventsBuilder } from './events-seed.builder';
+export { SeedHelpCenterContentBuilder } from './help-center-content-seed.builder';
 export { SeedIdeaPostsBuilder } from './idea-posts-seed.builder';
+export { SeedPricingBuilder } from './pricing-seed.builder';
 export { SeedProfileExperienceBuilder } from './profile-experience-seed.builder';
 export { SeedUserImpressionsBuilder } from './user-impressions-seed.builder';
 export { SeedUserRatesBuilder } from './user-rates-seed.builder';

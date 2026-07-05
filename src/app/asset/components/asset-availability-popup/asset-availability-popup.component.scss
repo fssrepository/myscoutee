@@ -1,0 +1,11 @@
+:host {
+  display: contents;
+}
+
+.asset-availability-popup .ui-popup__toolbar {
+  justify-content: flex-end;
+}
+
+.asset-availability-popup--day-list .ui-popup__panel {
+  max-width: min(720px, calc(100vw - 1.5rem));
+}

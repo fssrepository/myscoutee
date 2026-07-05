@@ -58,6 +58,8 @@ import {
   type InfiniteStepperSurfaceState as StepperSurfaceState
 } from './infinite-stepper';
 import { FiniteStepper } from './finite-stepper';
+import { UiTaskScheduler } from '../../../scheduler';
+import { I18nPipe } from '../../../pipes';
 import type {
   ListDirection,
   ListQuery,
@@ -85,6 +87,7 @@ import type {
   SmartListPaginationStep,
   SmartListPresentation,
   SmartListPrependRestoreMode,
+  SmartListRefreshEvent,
   SmartListSortableConfig,
   SmartListStateChange,
   SmartListViewConfig,
@@ -99,7 +102,8 @@ import type {
     MatIconModule,
     IndicatorComponent,
     AppMenuOutletComponent,
-    SmartListPageCardComponent
+    SmartListPageCardComponent,
+    I18nPipe
   ],
   providers: [AppMenuDispatcher],
   templateUrl: './smart-list.component.html',
@@ -121,7 +125,6 @@ export class SmartListComponent<T, TFilters extends SmartListFilters = SmartList
   private static readonly LIST_CARD_SNAP_TARGET_SELECTOR =
     '.activities-row-item, .asset-item-card, .activities-card, .event-explore-card, .experience-item-card';
   private readonly cdr = inject(ChangeDetectorRef);
-  private readonly hostRef = inject(ElementRef<HTMLElement>);
   protected readonly itemTemplateInjector = inject(Injector);
   private readonly itemMenuDispatcher = inject(AppMenuDispatcher);
   private restoreAnchorSequence = 0;
@@ -150,13 +153,14 @@ export class SmartListComponent<T, TFilters extends SmartListFilters = SmartList
   @Output() readonly viewChange = new EventEmitter<string>();
   @Output() readonly itemSelect = new EventEmitter<SmartListItemSelectEvent<T, TFilters>>();
   @Output() readonly menuItemSelect = new EventEmitter<AppMenuItemSelectEvent<string, unknown>>();
+  @Output() readonly refresh = new EventEmitter<SmartListRefreshEvent<T, TFilters>>();
 
   protected items: T[] = [];
   protected groups: SmartListGroup<T>[] = [];
   protected prependRestoreSpacerAnchorKey: string | null = null;
   protected prependRestoreSpacerId: string | null = null;
   protected prependRestoreSpacerHeight = 0;
-  protected pages: SmartListPage<T>[] = [];
+  protected pages: SmartListPage[] = [];
   protected stickyLabel = '';
   protected stickyHeaderHeightPx = 0;
   protected autoFooterSpacerHeightPx = 0;
@@ -168,6 +172,7 @@ export class SmartListComponent<T, TFilters extends SmartListFilters = SmartList
   private total = 0;
   private resolvedListTrackKeys: Array<string | number> = [];
   private fallbackTrackKeyByObject = new WeakMap<object, string>();
+  private sourceItemByIdentity = new Map<string, unknown>();
   private listItemIndexByObject = new WeakMap<object, number>();
   private resolvedListTrackKeyByObject = new WeakMap<object, string | number>();
   private fallbackTrackKeySequence = 0;
@@ -307,11 +312,15 @@ export class SmartListComponent<T, TFilters extends SmartListFilters = SmartList
   private stepperPageLoadAbortController: AbortController | null = null;
   private stepperPreloadAbortController: AbortController | null = null;
   private activePageAdapter: AnySmartListPageAdapter<T, TFilters> | null = null;
-  private weekRateViewportPageKey: string | null = null;
-  private forceAnimatedLoadingCompletion = false;
+  private weekCounterViewportPageKey: string | null = null;
   private hostedFullscreenPendingDelta = 0;
   private hostedFullscreenCompletingTransition = false;
   private hostedFullscreenTransitionTimer: ReturnType<typeof setTimeout> | null = null;
+  private readonly pollScheduler = new UiTaskScheduler<ListQuery<TFilters>>({
+    intervalMs: () => this.resolvedPollIntervalMs(),
+    state: () => this.visiblePollQuery(),
+    task: ({ state, signal }) => this.pollVisibleItems(state, signal)
+  });
 
   private suspendSnapReactivation = false;
   private deferSnapReactivationUntilScroll = false;
@@ -402,7 +411,7 @@ export class SmartListComponent<T, TFilters extends SmartListFilters = SmartList
   });
   private readonly stepper = new Stepper<
     Date,
-    SmartListPage<T>,
+    SmartListPage,
     T,
     ListQuery<TFilters>,
     any
@@ -430,7 +439,7 @@ export class SmartListComponent<T, TFilters extends SmartListFilters = SmartList
       currentProgress: () => this.progress,
       applySnapshot: snapshot => this.applyPageSnapshot(snapshot),
       applySurfaceState: (state, scrollElement) => this.applyPageSurfaceState(state, scrollElement),
-      afterSnapshotApplied: () => this.focusVisibleWeekRateHourSoon(),
+      afterSnapshotApplied: () => this.focusVisibleWeekCounterHourSoon(),
       detectChanges: () => this.cdr.detectChanges(),
       emitState: () => this.emitState(),
       markForCheck: () => this.cdr.markForCheck()
@@ -515,6 +524,7 @@ export class SmartListComponent<T, TFilters extends SmartListFilters = SmartList
 
   ngOnDestroy(): void {
     this.loadSequence += 1;
+    this.pollScheduler.destroy();
     this.stepper.reset();
     this.clearListSnapSettleTimers();
     this.clearHorizontalCursorScrollLock();
@@ -825,6 +835,7 @@ export class SmartListComponent<T, TFilters extends SmartListFilters = SmartList
 
     if (!sameShape) {
       this.replaceVisibleItems(nextItems, { total: nextTotal });
+      this.emitRefresh();
       return true;
     }
 
@@ -848,6 +859,7 @@ export class SmartListComponent<T, TFilters extends SmartListFilters = SmartList
     this.syncGroups();
     this.finiteStepper.syncBounds();
     this.emitState();
+    this.emitRefresh();
     this.cdr.markForCheck();
     return true;
   }
@@ -859,7 +871,9 @@ export class SmartListComponent<T, TFilters extends SmartListFilters = SmartList
     if (!converter) {
       return [];
     }
-    return converter.convertList(sources, this.converterOptions(query));
+    const items = converter.convertList(sources, this.converterOptions(query));
+    this.cacheSourceItems(items, sources);
+    return items;
   }
 
   public async moveCursor(delta: number): Promise<boolean> {
@@ -1151,6 +1165,7 @@ export class SmartListComponent<T, TFilters extends SmartListFilters = SmartList
     return {
       $implicit: item,
       index,
+      sourceItem: this.sourceItemForItem(item, index),
       groupLabel,
       query: this.currentQuery(),
       selectMode: this.resolvedSelectMode(),
@@ -1222,6 +1237,7 @@ export class SmartListComponent<T, TFilters extends SmartListFilters = SmartList
     return {
       $implicit: item,
       index,
+      sourceItem: this.sourceItemForItem(item, index),
       groupLabel: '',
       query: this.currentQuery(),
       selectMode: this.resolvedSelectMode(),
@@ -1245,15 +1261,76 @@ export class SmartListComponent<T, TFilters extends SmartListFilters = SmartList
     };
   }
 
-  private selectSmartListItem(item: T, event?: Event): void {
+  private selectSmartListItem(
+    item: T,
+    event?: Event,
+    context?: Pick<SmartListItemSelectEvent<T, TFilters>, 'calendarDate' | 'calendarDateIso'>
+  ): void {
     event?.stopPropagation();
+    const itemIndex = this.items.indexOf(item);
     this.itemSelect.emit({
       item,
+      sourceItem: this.sourceItemForItem(item, itemIndex),
       query: this.currentQuery(),
       currentView: this.currentViewKey,
       currentViewMode: this.currentViewMode,
       selectMode: this.resolvedSelectMode(),
-      sourceEvent: event
+      sourceEvent: event,
+      calendarDate: context?.calendarDate,
+      calendarDateIso: context?.calendarDateIso
+    });
+  }
+
+  private cacheSourceItems<TSource>(items: readonly T[], sources: readonly TSource[]): void {
+    for (const [index, item] of items.entries()) {
+      const identity = `${this.cacheTrackKey(item, index)}`.trim();
+      if (!identity) {
+        continue;
+      }
+      this.sourceItemByIdentity.set(identity, sources[index]);
+    }
+  }
+
+  private sourceItemForItem(item: T, index: number): unknown {
+    const identity = `${this.cacheTrackKey(item, Math.max(0, index))}`.trim();
+    return identity ? this.sourceItemByIdentity.get(identity) : undefined;
+  }
+
+  public sourceItemSnapshot(identity: string): unknown | undefined {
+    const normalizedIdentity = identity.trim();
+    return normalizedIdentity ? this.sourceItemByIdentity.get(normalizedIdentity) : undefined;
+  }
+
+  public sourceItemsSnapshot(): unknown[] {
+    return this.items.map((item, index) => this.sourceItemForItem(item, index) ?? item);
+  }
+
+  private cacheVisibleSourceItem(source: unknown, item: T): void {
+    const itemKey = `${smartListItemKeyFromItem(item) ?? ''}`.trim();
+    const index = this.items.findIndex((candidate, candidateIndex) => {
+      if (candidate === item) {
+        return true;
+      }
+      const candidateKey = `${smartListItemKeyFromItem(candidate) ?? ''}`.trim();
+      return (!!itemKey && candidateKey === itemKey)
+        || (!!itemKey && `${this.cacheTrackKey(candidate, candidateIndex)}`.trim() === itemKey);
+    });
+    if (index < 0) {
+      return;
+    }
+    const identity = `${this.cacheTrackKey(this.items[index] as T, index)}`.trim();
+    if (identity) {
+      this.sourceItemByIdentity.set(identity, source);
+    }
+  }
+
+  private emitRefresh(): void {
+    this.refresh.emit({
+      items: [...this.items],
+      sourceItems: this.sourceItemsSnapshot(),
+      query: this.currentQuery(),
+      currentView: this.currentViewKey,
+      currentViewMode: this.currentViewMode
     });
   }
 
@@ -1299,8 +1376,8 @@ export class SmartListComponent<T, TFilters extends SmartListFilters = SmartList
     return this.pages.length > 0;
   }
 
-  protected isRateCountPageVariant(): boolean {
-    return this.activePageAdapter?.variant(this.config, this.currentBaseQuery()) === 'rate-counts';
+  protected isCounterPageVariant(): boolean {
+    return this.activePageAdapter?.variant(this.config, this.currentBaseQuery()) === 'counter';
   }
 
   protected pageCardModel(): SmartListPageCardModel<T, TFilters> {
@@ -1309,15 +1386,19 @@ export class SmartListComponent<T, TFilters extends SmartListFilters = SmartList
       pages: this.pages,
       config: this.activePageAdapter?.config(this.config) ?? null,
       query: this.currentQuery(),
-      variant: this.isRateCountPageVariant() ? 'rate-counts' : 'default',
+      variant: this.isCounterPageVariant() ? 'counter' : 'default',
       touching: this.isTouchingSurface,
       trackByItem: (index, item) => this.pageTrackKey(index, item),
       onItemSelect: this.selectPageCardItem
     };
   }
 
-  private readonly selectPageCardItem = (item: T, event?: Event): void => {
-    this.selectSmartListItem(item, event);
+  private readonly selectPageCardItem = (
+    item: T,
+    event?: Event,
+    context?: Pick<SmartListItemSelectEvent<T, TFilters>, 'calendarDate' | 'calendarDateIso'>
+  ): void => {
+    this.selectSmartListItem(item, event, context);
   };
 
   protected readonly navigatePageHeader = (direction: -1 | 1, event?: Event): void => {
@@ -1349,7 +1430,8 @@ export class SmartListComponent<T, TFilters extends SmartListFilters = SmartList
     this.stickyLabel = this.resolveEmptyStickyLabel();
     this.progress = 0;
     this.scrollable = false;
-    this.weekRateViewportPageKey = null;
+    this.weekCounterViewportPageKey = null;
+    this.pollScheduler.restart();
 
     if (this.currentViewMode === 'list') {
       this.stepper.clearWindow();
@@ -1364,6 +1446,41 @@ export class SmartListComponent<T, TFilters extends SmartListFilters = SmartList
     this.emitState();
     this.resetScrollSoon();
     void this.loadPageWindow();
+  }
+
+  private visiblePollQuery(): ListQuery<TFilters> {
+    const pageSize = Math.max(1, this.items.length || this.resolveEffectivePageSize());
+    return {
+      ...this.currentQuery(0),
+      page: 0,
+      pageSize,
+      cursor: undefined
+    };
+  }
+
+  private async pollVisibleItems(query: ListQuery<TFilters>, signal?: AbortSignal): Promise<void> {
+    const loader = this.resolveLoadPage();
+    if (
+      signal?.aborted
+      || !loader
+      || this.currentViewMode !== 'list'
+      || this.initialLoading
+      || this.loading
+    ) {
+      return;
+    }
+
+    const sequence = this.loadSequence;
+    const result = await firstValueFrom(loader(query, { signal }));
+    if (signal?.aborted || sequence !== this.loadSequence || this.currentViewMode !== 'list') {
+      return;
+    }
+
+    const items = Array.isArray(result?.items) ? result.items : [];
+    const total = Number.isFinite(result?.total)
+      ? Math.max(0, Math.trunc(Number(result?.total)))
+      : undefined;
+    this.syncVisibleItems(items, { total });
   }
 
   private async loadInitialListPages(): Promise<void> {
@@ -2423,7 +2540,7 @@ export class SmartListComponent<T, TFilters extends SmartListFilters = SmartList
     }
   }
 
-  private applyPageSnapshot(snapshot: StepperSnapshot<Date, SmartListPage<T>, T>): void {
+  private applyPageSnapshot(snapshot: StepperSnapshot<Date, SmartListPage, T>): void {
     if (!this.isPageMode()) {
       this.pages = [];
       this.items = [];
@@ -2589,7 +2706,7 @@ export class SmartListComponent<T, TFilters extends SmartListFilters = SmartList
     const refresh = () => {
       if (this.isPageMode()) {
         this.applyPageSurfaceState();
-        this.focusVisibleWeekRateHourSoon();
+        this.focusVisibleWeekCounterHourSoon();
       } else {
         if (this.shouldShowStickyHeader()) {
           this.updateStickyLabel(this.scrollHostRef?.nativeElement?.scrollTop ?? 0);
@@ -2615,9 +2732,9 @@ export class SmartListComponent<T, TFilters extends SmartListFilters = SmartList
     setTimeout(refresh, 0);
   }
 
-  private focusVisibleWeekRateHourSoon(): void {
-    if (!this.isWeekMode() || !this.isRateCountPageVariant()) {
-      this.weekRateViewportPageKey = null;
+  private focusVisibleWeekCounterHourSoon(): void {
+    if (!this.isWeekMode() || !this.isCounterPageVariant()) {
+      this.weekCounterViewportPageKey = null;
       return;
     }
 
@@ -2629,13 +2746,13 @@ export class SmartListComponent<T, TFilters extends SmartListFilters = SmartList
 
     const pageIndex = this.stepper.currentPageIndex(scrollElement, pages.length);
     const visiblePageKey = pages[pageIndex]?.key ?? null;
-    if (!visiblePageKey || this.weekRateViewportPageKey === visiblePageKey) {
+    if (!visiblePageKey || this.weekCounterViewportPageKey === visiblePageKey) {
       return;
     }
 
     const run = () => {
       const currentScrollElement = this.scrollHostRef?.nativeElement;
-      if (!currentScrollElement || !this.isWeekMode() || !this.isRateCountPageVariant()) {
+      if (!currentScrollElement || !this.isWeekMode() || !this.isCounterPageVariant()) {
         return;
       }
       const pageElements = Array.from(
@@ -2651,12 +2768,12 @@ export class SmartListComponent<T, TFilters extends SmartListFilters = SmartList
       if (!pageElement) {
         return;
       }
-      const firstBadge = pageElement.querySelector<HTMLElement>('.smart-list__week-rate-badge');
-      this.weekRateViewportPageKey = currentVisiblePageKey;
+      const firstBadge = pageElement.querySelector<HTMLElement>('.smart-list__week-hour-counter');
+      this.weekCounterViewportPageKey = currentVisiblePageKey;
       if (!firstBadge) {
         return;
       }
-      const slot = firstBadge.closest<HTMLElement>('.smart-list__week-rate-slot');
+      const slot = firstBadge.closest<HTMLElement>('.smart-list__week-counter-slot');
       if (!slot) {
         return;
       }
@@ -3705,6 +3822,10 @@ private updateListSnapNearEndSuppression(scrollElement?: HTMLDivElement | null):
     return fallback;
   }
 
+  private resolvedPollIntervalMs(): number {
+    return Math.max(0, Math.trunc(Number(this.resolveConfigValue(this.config.pollIntervalMs, null)) || 0));
+  }
+
   private resolveConfigValue<TValue>(value: TValue | ((query: ListQuery<TFilters>) => TValue) | undefined, fallback: TValue): TValue {
     if (typeof value === 'function') {
       return (value as (query: ListQuery<TFilters>) => TValue)(this.currentQuery());
@@ -4007,7 +4128,12 @@ private updateListSnapNearEndSuppression(scrollElement?: HTMLDivElement | null):
     if (!predicate) {
       return false;
     }
-    return this.patchVisibleItem(predicate, () => nextItem);
+    if (!this.patchVisibleItem(predicate, () => nextItem)) {
+      return false;
+    }
+    this.cacheVisibleSourceItem(source, nextItem);
+    this.emitRefresh();
+    return true;
   }
 
   public upsertConvertedVisibleItem<TSource>(
@@ -4029,9 +4155,16 @@ private updateListSnapNearEndSuppression(scrollElement?: HTMLDivElement | null):
         ? (item: T, index: number) => `${this.cacheTrackKey(item, index)}`.trim() === normalizedIdentity
         : null);
     if (predicate && this.patchVisibleItem(predicate, () => nextItem)) {
+      this.cacheVisibleSourceItem(source, nextItem);
+      this.emitRefresh();
       return true;
     }
-    return this.reinsertVisibleItem(nextItem, { totalDelta: options.totalDelta });
+    if (!this.reinsertVisibleItem(nextItem, { totalDelta: options.totalDelta })) {
+      return false;
+    }
+    this.cacheVisibleSourceItem(source, nextItem);
+    this.emitRefresh();
+    return true;
   }
 
   public removeVisibleItems(
@@ -4048,6 +4181,7 @@ private updateListSnapNearEndSuppression(scrollElement?: HTMLDivElement | null):
     this.replaceVisibleItems(nextItems, {
       total: Math.max(nextItems.length, this.total + (options.totalDelta ?? -1))
     });
+    this.emitRefresh();
     return true;
   }
 

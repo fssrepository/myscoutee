@@ -6,13 +6,14 @@ import type {
 import type {
   SmartListConfig,
   SmartListFilters,
+  SmartListItemSelectEvent,
   SmartListViewMode
 } from './smart-list.types';
 
 export type SmartListPageMode = Exclude<SmartListViewMode, 'list'>;
 export type SmartListPageVariant = string;
 
-export interface SmartListPage<T> {
+export interface SmartListPage {
   key: string;
   label: string;
   anchor: Date;
@@ -20,13 +21,17 @@ export interface SmartListPage<T> {
 
 export interface SmartListPageCardModel<T, TFilters extends SmartListFilters = SmartListFilters> {
   mode: SmartListPageMode;
-  pages: readonly SmartListPage<T>[];
+  pages: readonly SmartListPage[];
   config: unknown | null;
   query: ListQuery<TFilters>;
   variant: SmartListPageVariant;
   touching: boolean;
   trackByItem?: ((index: number, item: T) => unknown) | null;
-  onItemSelect?: ((item: T, event?: Event) => void) | null;
+  onItemSelect?: ((
+    item: T,
+    event?: Event,
+    context?: Pick<SmartListItemSelectEvent<T, TFilters>, 'calendarDate' | 'calendarDateIso'>
+  ) => void) | null;
 }
 
 export type SmartListPageBuildContext<
@@ -39,7 +44,7 @@ export interface SmartListPageAdapter<
   T,
   TFilters extends SmartListFilters = SmartListFilters,
   TConfig = unknown,
-  TPage extends SmartListPage<T> = SmartListPage<T>
+  TPage extends SmartListPage = SmartListPage
 > extends InfiniteStepperPageAdapter<Date, TPage, T, ListQuery<TFilters>, TConfig> {
   mode: SmartListPageMode;
   config: (config: SmartListConfig<T, TFilters>) => TConfig | null;

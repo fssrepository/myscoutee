@@ -1,0 +1,25 @@
+<label class="link-input" [class.link-input--disabled]="inputDisabled()">
+  <span class="link-input__label">
+    <span>{{ label() }}</span>
+    @if (required()) {
+      <span class="link-input__required">*</span>
+    }
+  </span>
+  <span class="link-input__row">
+    <input
+      type="url"
+      [ngModel]="value"
+      [readonly]="inputReadOnly()"
+      [disabled]="inputDisabled()"
+      [placeholder]="placeholder()"
+      (paste)="onPaste($event)"
+      (blur)="onBlur()"
+      />
+    <app-menu
+      class="link-input__actions"
+      kind="inline"
+      [items]="actionItems()"
+      (itemSelect)="onAction($event)"
+    ></app-menu>
+  </span>
+</label>

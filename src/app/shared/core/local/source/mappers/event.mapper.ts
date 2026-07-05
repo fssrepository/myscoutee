@@ -13,7 +13,7 @@ import {
   type SubEventDefinitionDTO,
   type SubEventsSlotDTO
 } from '../../../contracts/activity.interface';
-import type * as AppConstants from '../../../common/constants';
+import * as AppConstants from '../../../common/constants';
 import type * as EventContracts from '../../../contracts/event.interface';
 import type * as PricingContracts from '../../../contracts/pricing.interface';
 import type { LocationCoordinates } from '../../../contracts/user.interface';
@@ -27,6 +27,11 @@ export interface SubEventResourceLookup {
 export interface SubEventStateLookups {
   resourceLookups: SubEventResourceLookup[];
   stageRuntimeLookups: ActivitySubEventStageRuntimeStateRefDTO[];
+}
+
+export interface SubEventResourceMetric {
+  accepted: number;
+  pending: number;
 }
 
 interface SubEventsSlotSource {
@@ -196,20 +201,39 @@ export class LocalActivityEventsMapper {
     return ownerId && subEventId ? `${ownerId}:${subEventId}` : '';
   }
 
+  static subEventResourceMetricKey(
+    ownerIdValue: string | null | undefined,
+    subEventIdValue: string | null | undefined,
+    typeValue: string | null | undefined
+  ): string {
+    const ownerId = `${ownerIdValue ?? ''}`.trim();
+    const subEventId = `${subEventIdValue ?? ''}`.trim();
+    const type = `${typeValue ?? ''}`.trim();
+    return ownerId && subEventId && type ? `${ownerId}:${subEventId}:${type}` : '';
+  }
+
   static withSubEventStates(
     slots: readonly SubEventsSlotDTO[],
     resourcesByKey: ReadonlyMap<string, ActivitySubEventResourceStateDTO>,
     stageRuntimeByKey: ReadonlyMap<string, ActivitySubEventStageRuntimeStateDTO>,
-    assetOwnerUserId: string
+    assetOwnerUserId: string,
+    resourceMetricsByKey: ReadonlyMap<string, SubEventResourceMetric> = new Map()
   ): SubEventsSlotDTO[] {
-    return slots.map(slot => this.withSubEventStatesForSlot(slot, resourcesByKey, stageRuntimeByKey, assetOwnerUserId));
+    return slots.map(slot => this.withSubEventStatesForSlot(
+      slot,
+      resourcesByKey,
+      stageRuntimeByKey,
+      assetOwnerUserId,
+      resourceMetricsByKey
+    ));
   }
 
   private static withSubEventStatesForSlot(
     slot: SubEventsSlotDTO,
     resourcesByKey: ReadonlyMap<string, ActivitySubEventResourceStateDTO>,
     stageRuntimeByKey: ReadonlyMap<string, ActivitySubEventStageRuntimeStateDTO>,
-    assetOwnerUserId: string
+    assetOwnerUserId: string,
+    resourceMetricsByKey: ReadonlyMap<string, SubEventResourceMetric>
   ): SubEventsSlotDTO {
     const ownerId = this.subEventResourceOwnerIdFromSlot(slot);
     return {
@@ -225,7 +249,7 @@ export class LocalActivityEventsMapper {
           ownerId,
           subEventId
         })) ?? null;
-        return this.withSubEventStageRuntime(this.withSubEventResource(item, resource), stageRuntime);
+        return this.withSubEventStageRuntime(this.withSubEventResource(item, resource, resourceMetricsByKey), stageRuntime);
       })
     };
   }
@@ -701,26 +725,27 @@ export class LocalActivityEventsMapper {
 
   private static withSubEventResource(
     item: EventContracts.SubEventDTO,
-    resource: ActivitySubEventResourceStateDTO | null
+    resource: ActivitySubEventResourceStateDTO | null,
+    resourceMetricsByKey: ReadonlyMap<string, SubEventResourceMetric>
   ): EventContracts.SubEventDTO {
-    const car = this.resourceMetric(resource, 'Car', {
+    const car = this.resourceMetric(resource, AppConstants.ASSET_TYPE_TRANSPORT, {
       accepted: item.carsAccepted,
       pending: item.carsPending,
       capacityMin: item.carsCapacityMin,
       capacityMax: item.carsCapacityMax
-    });
-    const accommodation = this.resourceMetric(resource, 'Accommodation', {
+    }, resourceMetricsByKey);
+    const accommodation = this.resourceMetric(resource, AppConstants.ASSET_TYPE_ACCOMMODATION, {
       accepted: item.accommodationAccepted,
       pending: item.accommodationPending,
       capacityMin: item.accommodationCapacityMin,
       capacityMax: item.accommodationCapacityMax
-    });
-    const supplies = this.resourceMetric(resource, 'Supplies', {
+    }, resourceMetricsByKey);
+    const supplies = this.resourceMetric(resource, AppConstants.ASSET_TYPE_SUPPLIES, {
       accepted: item.suppliesAccepted,
       pending: item.suppliesPending,
       capacityMin: item.suppliesCapacityMin,
       capacityMax: item.suppliesCapacityMax
-    });
+    }, resourceMetricsByKey);
     return {
       ...item,
       carsAccepted: car.accepted,
@@ -758,13 +783,14 @@ export class LocalActivityEventsMapper {
 
   private static resourceMetric(
     resource: ActivitySubEventResourceStateDTO | null,
-    type: 'Car' | 'Accommodation' | 'Supplies',
+    type: AppConstants.AssetType,
     fallback: {
       accepted?: number | null;
       pending?: number | null;
       capacityMin?: number | null;
       capacityMax?: number | null;
-    }
+    },
+    resourceMetricsByKey: ReadonlyMap<string, SubEventResourceMetric>
   ): { accepted: number; pending: number; capacityMin: number; capacityMax: number } {
     if (!resource) {
       return {
@@ -776,25 +802,38 @@ export class LocalActivityEventsMapper {
     }
     const settingsById = resource.assetSettingsByType[type] ?? {};
     const assignedIds = resource.assetAssignmentIds[type] ?? [];
-    const assetIds = assignedIds.length > 0 ? assignedIds : Object.keys(settingsById);
+    const assetIds = this.normalizedAssetIds(assignedIds.length > 0 ? assignedIds : Object.keys(settingsById));
     const capacityMin = assetIds.reduce((sum, assetId) => (
       sum + this.nonNegativeInteger(settingsById[assetId]?.capacityMin)
     ), 0);
     const capacityMax = assetIds.reduce((sum, assetId) => (
       sum + this.nonNegativeInteger(settingsById[assetId]?.capacityMax)
     ), 0);
-    const accepted = type === 'Supplies'
+    const accepted = type === AppConstants.ASSET_TYPE_SUPPLIES
       ? assetIds.reduce((sum, assetId) => (
           sum + (resource.supplyContributionEntriesByAssetId[assetId] ?? [])
             .reduce((entrySum, entry) => entrySum + this.nonNegativeInteger(entry.quantity), 0)
         ), 0)
-      : 0;
+      : assetIds.length;
+    const pending = 0;
+    const metric = resourceMetricsByKey.get(this.subEventResourceMetricKey(resource.ownerId, resource.subEventId, type));
     return {
-      accepted,
-      pending: 0,
+      accepted: metric ? this.nonNegativeInteger(metric.accepted) : accepted,
+      pending: metric ? this.nonNegativeInteger(metric.pending) : pending,
       capacityMin,
       capacityMax
     };
+  }
+
+  private static normalizedAssetIds(source: readonly string[]): string[] {
+    const ids = new Set<string>();
+    source.forEach(item => {
+      const assetId = `${item ?? ''}`.trim();
+      if (assetId) {
+        ids.add(assetId);
+      }
+    });
+    return [...ids];
   }
 
   private static subEventResourceOwnerIdFromSlot(slot: SubEventsSlotDTO): string {

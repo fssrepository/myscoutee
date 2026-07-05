@@ -6,6 +6,7 @@ import {
   ChangeDetectorRef,
   Component,
   HostListener,
+  Input,
   TemplateRef,
   ViewChild,
   effect,
@@ -35,6 +36,7 @@ import {
 import type { ActivityEventRecord } from '../../../shared/core/contracts/activity.interface';
 import {
   CounterBadgePipe,
+  I18nPipe,
   ImageCardComponent,
   SmartListComponent,
   type AppMenuItem,
@@ -97,13 +99,16 @@ type MembersSummaryState = {
     MatIconModule,
     SmartListComponent,
     ImageCardComponent,
-    CounterBadgePipe
+    CounterBadgePipe,
+    I18nPipe
   ],
   templateUrl: './event-members-popup.component.html',
   styleUrls: ['./event-members-popup.component.scss'],
   changeDetection: ChangeDetectionStrategy.OnPush
 })
 export class EventMembersPopupComponent {
+  private static readonly DEFAULT_POPUP_Z_INDEX = 3800;
+
   private readonly cdr = inject(ChangeDetectorRef);
   private readonly dialogStore = inject(DialogStore);
   private readonly activityMembersService = inject(ActivityMembersService);
@@ -117,6 +122,7 @@ export class EventMembersPopupComponent {
   private readonly usersService = inject(UsersService);
   private readonly profileStore = inject(ProfileStore);
   private readonly membersCacheByOwnerId = new Map<string, ActivityContracts.ActivityMemberDTO[]>();
+  private readonly pendingInitialMembersDelayOwnerIds = new Set<string>();
   private lastAppliedActivityMembersUpdatedMs = 0;
   private openMembersHydrationTimer: ReturnType<typeof setTimeout> | null = null;
 
@@ -149,8 +155,12 @@ export class EventMembersPopupComponent {
   private suppressedOwnerSyncId: string | null = null;
   private requestedCanManageMembers = false;
   private viewOnlyMode = false;
+  private memberMetricIdentity = '';
+  private lastEmittedMemberMetricBucketSignature = '';
 
   protected membersSmartListQuery: Partial<ListQuery<MembersSmartListFilters>> = {};
+
+  @Input() parentZIndex: number | null = null;
 
   @ViewChild('membersSmartList')
   private membersSmartList?: SmartListComponent<ActivityContracts.ActivityMemberDTO, MembersSmartListFilters>;
@@ -158,7 +168,7 @@ export class EventMembersPopupComponent {
   protected membersItemTemplateRef?: TemplateRef<SmartListItemTemplateContext<ActivityContracts.ActivityMemberDTO, MembersSmartListFilters>>;
 
   @ViewChild('memberItemTemplate', { read: TemplateRef })
-  private set membersItemTemplate(
+  protected set membersItemTemplate(
     value: TemplateRef<SmartListItemTemplateContext<ActivityContracts.ActivityMemberDTO, MembersSmartListFilters>> | undefined
   ) {
     this.membersItemTemplateRef = value;
@@ -209,6 +219,7 @@ export class EventMembersPopupComponent {
           acceptedMembers: request.acceptedMembers,
           pendingMembers: request.pendingMembers,
           capacityTotal: request.capacityTotal,
+          metricIdentity: request.metricIdentity,
           initialMembers: request.members,
           lookup: request.lookup,
           onMembersChanged: request.onMembersChanged
@@ -230,6 +241,14 @@ export class EventMembersPopupComponent {
       this.lastAppliedActivityMembersUpdatedMs = sync.updatedMs;
       this.applyActivityMembersSync(sync);
     });
+  }
+
+  protected membersPopupZIndex(): number {
+    const parentZIndex = Math.trunc(Number(this.parentZIndex) || 0);
+    if (parentZIndex <= 0) {
+      return EventMembersPopupComponent.DEFAULT_POPUP_Z_INDEX;
+    }
+    return Math.max(EventMembersPopupComponent.DEFAULT_POPUP_Z_INDEX, parentZIndex + 100);
   }
 
   @HostListener('window:resize')
@@ -286,6 +305,7 @@ export class EventMembersPopupComponent {
     }
     if (this.ownerId) {
       this.membersCacheByOwnerId.delete(this.ownerId);
+      this.pendingInitialMembersDelayOwnerIds.delete(this.ownerId);
     }
     this.isOpen = false;
     this.ownerId = '';
@@ -736,6 +756,7 @@ export class EventMembersPopupComponent {
       acceptedMembers?: number;
       pendingMembers?: number;
       capacityTotal?: number;
+      metricIdentity?: string;
       initialMembers?: readonly ActivityContracts.ActivityMemberDTO[];
       onMembersChanged?: (members: readonly ActivityContracts.ActivityMemberDTO[]) => void;
     }
@@ -751,6 +772,8 @@ export class EventMembersPopupComponent {
       : null;
     this.isOpen = true;
     this.ownerId = normalizedOwnerId;
+    this.memberMetricIdentity = `${options?.metricIdentity ?? ''}`.trim();
+    this.lastEmittedMemberMetricBucketSignature = '';
     this.lookupRef = lookup ? { ...lookup } : null;
     this.ownerRef = lookup?.type === 'chat'
       ? null
@@ -773,12 +796,15 @@ export class EventMembersPopupComponent {
     this.isLocalMembersSource = initialMembers !== null;
     if (initialMembers) {
       this.membersCacheByOwnerId.set(normalizedOwnerId, initialMembers);
+      this.pendingInitialMembersDelayOwnerIds.add(normalizedOwnerId);
       void this.usersService.warmCachedUsers(
         initialMembers
           .map(member => `${member.userId ?? ''}`.trim())
           .filter(userId => userId.length > 0)
       );
       this.syncCanManageMembers(initialMembers);
+    } else {
+      this.pendingInitialMembersDelayOwnerIds.delete(normalizedOwnerId);
     }
     this.membersChangeHandler = options?.onMembersChanged ?? null;
     this.membersSmartListQuery = {};
@@ -873,6 +899,16 @@ export class EventMembersPopupComponent {
     }
 
     let members = this.membersCacheByOwnerId.get(ownerId);
+    if (members && this.pendingInitialMembersDelayOwnerIds.delete(ownerId)) {
+      await this.activityMembersService.waitForMembersRouteDelay();
+      if (!this.isOpen || this.ownerId !== ownerId) {
+        return {
+          items: [],
+          total: 0
+        };
+      }
+      members = this.membersCacheByOwnerId.get(ownerId) ?? members;
+    }
     if (!members) {
       const owner = this.ownerRef && this.ownerRef.ownerId === ownerId
         ? this.ownerRef
@@ -887,7 +923,6 @@ export class EventMembersPopupComponent {
       this.membersCacheByOwnerId.set(ownerId, members);
       if (this.isOpen && this.ownerId === ownerId) {
         this.syncCanManageMembers(members);
-        this.applySummaryFromMembers(members);
       }
     }
 
@@ -1223,6 +1258,7 @@ export class EventMembersPopupComponent {
       pendingCount: 0,
       capacityTotal: 0
     };
+    this.lastEmittedMemberMetricBucketSignature = '';
   }
 
   private flushPendingSummary(): void {
@@ -1236,6 +1272,29 @@ export class EventMembersPopupComponent {
       ? `${this.acceptedCount} members · ${this.pendingCount} pending`
       : `${this.acceptedCount} members`;
     this.isSummaryVisible = true;
+    this.emitMemberMetricBucketPatch();
+  }
+
+  private emitMemberMetricBucketPatch(): void {
+    const identity = this.memberMetricIdentity.trim();
+    if (!identity) {
+      return;
+    }
+    const signature = `${identity}:${this.acceptedCount}:${this.pendingCount}:${this.capacityTotal}`;
+    if (signature === this.lastEmittedMemberMetricBucketSignature) {
+      return;
+    }
+    this.lastEmittedMemberMetricBucketSignature = signature;
+    this.activityStore.emitActivityChatMetricBucketPatch({
+      identity,
+      bucketType: 'members',
+      bucket: {
+        accepted: this.acceptedCount,
+        pending: this.pendingCount,
+        capacityMin: 0,
+        capacityMax: this.capacityTotal
+      }
+    });
   }
 
   private ownerScopeLabel(): string {

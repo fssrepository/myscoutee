@@ -8,6 +8,7 @@ import type {
   UiAccordionActionMenuSelectEvent,
   UiAccordionBadge,
   UiAccordionItem,
+  UiAccordionLabelSize,
   UiAccordionModel,
   UiAccordionSelectionToggleEvent,
   UiAccordionToggleEvent
@@ -114,6 +115,10 @@ export class AccordionComponent<TId extends string = string, TContext = unknown,
 
   protected itemPalette(item: UiAccordionItem<TId, TContext, TMenuContext>): string {
     return item.palette ?? 'default';
+  }
+
+  protected itemLabelSize(item: UiAccordionItem<TId, TContext, TMenuContext>): UiAccordionLabelSize {
+    return item.labelSize ?? this.model?.labelSize ?? 'default';
   }
 
   private hasBadgeValue(value: string | number | null | undefined): value is string | number {

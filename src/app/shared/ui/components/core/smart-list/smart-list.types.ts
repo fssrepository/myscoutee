@@ -23,7 +23,7 @@ import type { UiListConverter } from '../../../converters/converter.types';
 export type SmartListViewMode = 'list' | 'month' | 'week';
 export type SmartListPresentation = 'list' | 'fullscreen';
 export type SmartListClassValue = string | string[] | Set<string> | Record<string, boolean> | null;
-export type SmartListCalendarVariant = 'default' | 'rate-counts';
+export type SmartListCalendarVariant = 'default' | 'counter';
 export type SmartListListLayout = 'stack' | 'card-grid' | 'thread';
 export type SmartListListFlow = 'normal' | 'reverse';
 export type SmartListOrientation = 'vertical' | 'horizontal';
@@ -93,6 +93,7 @@ export interface SmartListCursorState<T> {
 export interface SmartListItemTemplateContext<T, TFilters extends SmartListFilters = SmartListFilters> {
   $implicit: T;
   index: number;
+  sourceItem?: unknown;
   groupLabel: string;
   query: ListQuery<TFilters>;
   selectMode: boolean;
@@ -171,15 +172,30 @@ export interface SmartListCalendarTimedBadge<T> {
   heightPct: number;
 }
 
+export interface SmartListCalendarCounter {
+  label: string;
+  ariaLabel?: string | null;
+  alertLabel?: string | null;
+  alertAriaLabel?: string | null;
+  toneClass?: SmartListClassValue;
+}
+
 export interface SmartListCalendarConfig<T, TFilters extends SmartListFilters = SmartListFilters> {
   weekdayLabels?: ReadonlyArray<string>;
   weekStartHour?: number;
   weekEndHour?: number;
   anchorRadius?: number;
   initialAnchor?: SmartListConfigValue<string | Date | null | undefined, TFilters>;
+  counterGranularity?: 'day' | 'hour';
   resolveDateRange: (item: T, query: ListQuery<TFilters>) => SmartListCalendarDateRange | null;
   badgeLabel?: (item: T, query: ListQuery<TFilters>) => string;
   badgeToneClass?: (item: T, query: ListQuery<TFilters>) => SmartListClassValue;
+  dayCounter?: (day: SmartListCalendarDay<T>, query: ListQuery<TFilters>) => SmartListCalendarCounter | null;
+  hourCounter?: (
+    day: SmartListCalendarDay<T>,
+    hour: number,
+    query: ListQuery<TFilters>
+  ) => SmartListCalendarCounter | null;
 }
 
 export interface SmartListViewConfig<T, TFilters extends SmartListFilters = SmartListFilters> {
@@ -202,11 +218,22 @@ export interface SmartListGroupMarkerContext<T, TFilters extends SmartListFilter
 
 export interface SmartListItemSelectEvent<T, TFilters extends SmartListFilters = SmartListFilters> {
   item: T;
+  sourceItem?: unknown;
   query: ListQuery<TFilters>;
   currentView: string | null;
   currentViewMode: SmartListViewMode;
   selectMode: boolean;
   sourceEvent?: Event;
+  calendarDate?: Date;
+  calendarDateIso?: string;
+}
+
+export interface SmartListRefreshEvent<T, TFilters extends SmartListFilters = SmartListFilters> {
+  items: ReadonlyArray<T>;
+  sourceItems: ReadonlyArray<unknown>;
+  query: ListQuery<TFilters>;
+  currentView: string | null;
+  currentViewMode: SmartListViewMode;
 }
 
 export interface SmartListMenuItemsContext<T, TFilters extends SmartListFilters = SmartListFilters> {
@@ -246,6 +273,7 @@ export interface SmartListConfig<T, TFilters extends SmartListFilters = SmartLis
   initialPageSize?: number;
   preloadOffsetPx?: number;
   showBackgroundLoadingProgress?: SmartListConfigValue<boolean, TFilters>;
+  pollIntervalMs?: SmartListConfigValue<number | null, TFilters>;
   loadingDelayMs?: number;
   loadingWindowMs?: number;
   defaultView?: string;

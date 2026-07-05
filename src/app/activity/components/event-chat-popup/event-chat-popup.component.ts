@@ -3,11 +3,13 @@ import {
   ChangeDetectorRef,
   Component,
   ElementRef,
+  Input,
   OnDestroy,
   ViewChild,
   computed,
   effect,
-  inject
+  inject,
+  signal
 } from '@angular/core';
 import {
   CommonModule,
@@ -16,9 +18,6 @@ import {
 import {
   FormsModule
 } from '@angular/forms';
-import {
-  MatButtonModule
-} from '@angular/material/button';
 import {
   MatIconModule
 } from '@angular/material/icon';
@@ -42,6 +41,7 @@ import {
 } from '../../../shared/ui/context/stores/activities-popup.store';
 import {
   ActivityResourceBuilder,
+  AssetDefaultsBuilder,
   ActivityResourcesService,
   ChatsService,
   ChatVoiceClipsService,
@@ -53,22 +53,25 @@ import type { ChatDTO } from '../../../shared/core/contracts/chat.interface';
 import type { ActivityEventRecord } from '../../../shared/core/contracts/activity.interface';
 import {
   ASSET_TYPES,
+  type ActivityMemberOwnerType,
   type AssetType,
   type SubEventResourceFilter
 } from '../../../shared/core/common/constants';
 import {
   AppMenuComponent,
   AppMenuTriggerComponent,
-  CounterBadgePipe,
-  I18nPipe,
+  PopupComponent,
   SmartListComponent,
   type AppMenuGroup,
+  type AppMenuImageStackItem,
   type AppMenuItem,
   type AppMenuItemSelectEvent,
   type AppMenuPalette,
   type AppMenuTrigger,
   type ListQuery,
   type PageResult,
+  type PopupControl,
+  type PopupModel,
   type SmartListConfig,
   type SmartListLoadPage
 } from '../../../shared/ui';
@@ -80,17 +83,23 @@ import {
 } from '../../../shared/ui/context/stores/profile.store';
 
 import type * as AppDTOs from '../../../shared/core/contracts';
-import type * as AppConstants from '../../../shared/core/common/constants';
+import * as AppConstants from '../../../shared/core/common/constants';
 import { UserProfileStore } from '../../../shared/ui/context/stores/user-profile.store';
 import { AppRuntimeStore } from '../../../shared/ui/context/stores/app-runtime.store';
+import {
+  ActivityStore,
+  type ActivityChatMetricBucketPatch
+} from '../../../shared/ui/context/stores/activity.store';
 import { MemberMenuStore } from '../../../shared/ui/context/stores/member-menu.store';
 import { EventSubeventsPopupStore } from '../../../shared/ui/context/stores/event-subevents-popup.store';
 import {
   SubEventResourcePopupStore,
-  type SubEventResourceMetricsUpdate,
+  type SubEventResourcePopupPresentationHeader,
   type SubEventResourcePopupRequest
 } from '../../../shared/ui/context/stores/sub-event-resource-popup.store';
 import {
+  ActivityChatSingleRowConverter,
+  ChatPopupHeaderContextConverter,
   ActivityEventInfoCardMenuConverter,
   type ActivityEventInfoCardMenuSubject
 } from '../../../shared/ui/converters';
@@ -122,9 +131,9 @@ interface ChatTextSegment {
 }
 
 type SelectedChatActionTone =
-  | 'popup-chat-context-btn-tone-main-event'
-  | 'popup-chat-context-btn-tone-optional'
-  | 'popup-chat-context-btn-tone-group';
+  | 'main-event'
+  | 'optional'
+  | 'group';
 
 type SelectedChatResourceType = 'Members' | AppConstants.AssetType;
 type SubEventAssetAssignmentIds = Partial<Record<AssetType, string[]>>;
@@ -135,6 +144,8 @@ type SubEventAssetCard = (AppDTOs.AssetDTO | AppDTOs.AssetDetailDTO) & {
 type SubEventAssetCardsByType = Partial<Record<AssetType, SubEventAssetCard[]>>;
 
 type ChatMenuContext =
+  | { menu: 'chat-header'; action: 'members'; control: AppUiTypes.PopupHeaderControl }
+  | { menu: 'chat-header'; action: 'pins' }
   | { menu: 'chat-context'; control: AppUiTypes.PopupHeaderControl }
   | { menu: 'composer'; action: 'image' | 'voice' | 'poll' | 'event' | 'asset' }
   | { menu: 'message-action'; message: ContractTypes.ChatMessageDto; action: 'view' | 'reply' | 'edit' | 'unsend' | 'pin' | 'report' };
@@ -159,6 +170,7 @@ interface SelectedChatNavigationState {
   group: SelectedChatGroupState | null;
   assetAssignmentIds: SubEventAssetAssignmentIds;
   assetCardsByType: SubEventAssetCardsByType;
+  metrics: ContractTypes.ChatMetricsDTO | null;
 }
 
 interface ChatOwnerParts {
@@ -182,13 +194,11 @@ type EventChatViewSession = EventChatSession & {
   imports: [
     CommonModule,
     FormsModule,
-    MatButtonModule,
     MatIconModule,
+    PopupComponent,
     AppMenuComponent,
     AppMenuTriggerComponent,
-    SmartListComponent,
-    CounterBadgePipe,
-    I18nPipe
+    SmartListComponent
   ],
   templateUrl: './event-chat-popup.component.html',
   styleUrl: './event-chat-popup.component.scss',
@@ -199,6 +209,7 @@ export class EventChatPopupComponent implements OnDestroy {
   protected readonly activitiesStore = inject(ActivitiesPopupStore);
   private readonly userProfileStore = inject(UserProfileStore);
   private readonly runtimeStore = inject(AppRuntimeStore);
+  private readonly activityStore = inject(ActivityStore);
   protected readonly memberMenuStore = inject(MemberMenuStore);
   protected readonly eventSubeventsStore = inject(EventSubeventsPopupStore);
   protected readonly resourcePopupStore = inject(SubEventResourcePopupStore);
@@ -211,10 +222,29 @@ export class EventChatPopupComponent implements OnDestroy {
   private readonly mediaService = inject(MediaService);
   private readonly profileStore = inject(ProfileStore);
   private readonly location = inject(Location);
+  private readonly hostedSessionRef = signal<EventChatSession | null>(null);
+  private readonly hostedHeaderRef = signal<EventChatHeaderState | null>(null);
+  private closeHostedChatHandler: (() => void) | null = null;
+
+  @Input()
+  set chatSession(session: EventChatSession | null | undefined) {
+    this.hostedSessionRef.set(session ?? null);
+  }
+
+  @Input()
+  set chatHeader(header: EventChatHeaderState | null | undefined) {
+    this.hostedHeaderRef.set(header ? this.cloneEventChatHeader(header) : null);
+  }
+
+  @Input()
+  set closeHostedChat(handler: (() => void) | null | undefined) {
+    this.closeHostedChatHandler = handler ?? null;
+  }
 
   protected readonly session = computed<EventChatViewSession | null>(() => {
-    const session = this.activitiesStore.eventChatSession();
-    const header = this.activitiesStore.eventChatHeader();
+    const hostedSession = this.hostedSessionRef();
+    const session = hostedSession ?? this.activitiesStore.eventChatSession();
+    const header = hostedSession ? this.hostedHeaderRef() : this.activitiesStore.eventChatHeader();
     if (!session || !header || `${session.request.chatId ?? ''}`.trim() !== `${header.chatId ?? ''}`.trim()) {
       return null;
     }
@@ -223,6 +253,12 @@ export class EventChatPopupComponent implements OnDestroy {
       item: this.chatFromHeader(header)
     };
   });
+  protected readonly resourcePopupOutletInputs = computed(() => ({
+    parentZIndex: this.currentChatPopupZIndex()
+  }));
+  protected readonly assetExplorePopupOutletInputs = computed(() => ({
+    parentZIndex: this.currentChatPopupZIndex()
+  }));
   protected chatInitialLoadPending = false;
   protected messages: ContractTypes.ChatMessageDto[] = [];
   protected draftMessage = '';
@@ -235,6 +271,7 @@ export class EventChatPopupComponent implements OnDestroy {
   private resolvedChatResourceStateKey = '';
   private resolvedChatGroupSnapshot: ContractTypes.EventTournamentGroupDTO | null = null;
   private resolvedChatGroupSnapshotKey = '';
+  private lastAppliedActivityChatMetricBucketPatchUpdatedMs = 0;
   protected typingIndicators: ContractTypes.ChatTypingIndicator[] = [];
   protected voiceComposerOpen = false;
   protected voiceRecordingState: 'idle' | 'recording' | 'recorded' | 'saving' = 'idle';
@@ -340,7 +377,7 @@ export class EventChatPopupComponent implements OnDestroy {
   private imageAttachmentInput?: ElementRef<HTMLInputElement>;
 
   @ViewChild('chatComposeBox')
-  private set chatComposeBox(value: ElementRef<HTMLDivElement> | undefined) {
+  protected set chatComposeBoxElement(value: ElementRef<HTMLDivElement> | undefined) {
     this.chatComposeBoxRef = value;
     this.observeChatComposeBox();
   }
@@ -369,7 +406,6 @@ export class EventChatPopupComponent implements OnDestroy {
   private voiceRecorderChunks: BlobPart[] = [];
   private voiceRecorderTimer: ReturnType<typeof setInterval> | null = null;
   private chatThreadScrollDismissElement: HTMLElement | null = null;
-  private suppressTouchContextMenuUntilMs = 0;
   private readonly dismissMessageUiOnChatScroll = () => {
     if (!this.selectedMessageId && !this.quickReactionMessageId && !this.emojiPickerMessageId && !(this.chatThreadSmartList?.menuOpen() ?? false)) {
       return;
@@ -405,11 +441,12 @@ export class EventChatPopupComponent implements OnDestroy {
     });
 
     effect(() => {
-      const update = this.resourcePopupStore.subEventResourceMetricsUpdate();
-      if (!update) {
+      const patch = this.activityStore.activityChatMetricBucketPatch();
+      if (!patch || patch.updatedMs <= this.lastAppliedActivityChatMetricBucketPatchUpdatedMs) {
         return;
       }
-      this.applySelectedChatResourceMetricsUpdate(update);
+      this.lastAppliedActivityChatMetricBucketPatchUpdatedMs = patch.updatedMs;
+      this.applySelectedChatMetricBucketPatch(patch);
     });
 
     effect(() => {
@@ -476,7 +513,6 @@ export class EventChatPopupComponent implements OnDestroy {
 
   protected close(): void {
     this.chatThreadSmartList?.closeMenu();
-    this.resourcePopupStore.closeResourcePopup();
     this.stopLocalTyping();
     this.resetVoiceRecorder();
     this.teardownLiveChatUpdates();
@@ -486,11 +522,102 @@ export class EventChatPopupComponent implements OnDestroy {
     this.loadedSessionKey = null;
     this.chatThreadQuery = {};
     this.closeTransientMessageUi();
+    if (this.hostedSessionRef()) {
+      this.closeHostedChatHandler?.();
+      return;
+    }
+    this.resourcePopupStore.closeResourcePopup();
     if (this.isBlockedSupportChat()) {
       this.activitiesStore.closeActivities();
       return;
     }
     this.activitiesStore.closeEventChat();
+  }
+
+  protected chatPopupModel(chatSession: EventChatViewSession): PopupModel<ChatMenuContext> {
+    const title = this.chatHeaderTitle(chatSession);
+    return {
+      title,
+      ariaLabel: title,
+      closeAriaLabel: 'Close chat popup',
+      size: 'wide',
+      height: 'full',
+      headerTone: 'accent',
+      bodyLayout: 'fill',
+      backdropTone: 'dim',
+      headerControls: this.chatPopupHeaderControls(),
+      toolbarControls: this.chatPopupToolbarControls(),
+      onClose: () => this.close(),
+      onMenuSelect: event => this.onInlineChatMenuSelect(event.itemSelect)
+    };
+  }
+
+  protected chatPopupZIndex(chatSession: EventChatViewSession): number {
+    const parentZIndex = Number(chatSession.request.parentZIndex);
+    return Number.isFinite(parentZIndex) && parentZIndex > 0
+      ? Math.trunc(parentZIndex) + 100
+      : 2360;
+  }
+
+  private currentChatPopupZIndex(): number {
+    const session = this.session();
+    return session ? this.chatPopupZIndex(session) : 2360;
+  }
+
+  private chatPopupHeaderControls(): readonly PopupControl<ChatMenuContext>[] {
+    if (this.isServiceChat() || this.isBlockedSupportChat()) {
+      return [];
+    }
+    if (this.selectedChatHasSubEventMenu()) {
+      return [{
+        kind: 'menu',
+        id: 'chat-context-menu',
+        menuKind: 'select',
+        title: this.selectedChatContextMenuTitle(),
+        trigger: this.selectedChatContextMenuTrigger(),
+        groups: this.selectedChatContextMenuGroupsModel(),
+        panelAlign: 'end'
+      }];
+    }
+    return [{
+      kind: 'menu',
+      id: 'chat-context-primary',
+      menuKind: 'inline',
+      items: [this.selectedChatPrimaryMenuItem()]
+    }];
+  }
+
+  private chatPopupToolbarControls(): readonly PopupControl<ChatMenuContext>[] {
+    return [{
+      kind: 'menu',
+      id: 'chat-header-actions',
+      align: 'end',
+      menuKind: 'inline',
+      items: this.chatHeaderActionMenuItems(this.chatHeaderMembersControl())
+    }];
+  }
+
+  private selectedChatPrimaryControl(): AppUiTypes.PopupHeaderControl {
+    return this.selectedChatContextControl() ?? {
+      id: 'fallback-event',
+      label: 'View Event',
+      visual: { kind: 'icon', icon: 'event' }
+    };
+  }
+
+  private selectedChatPrimaryMenuItem(): AppMenuItem<string, ChatMenuContext> {
+    const control = this.selectedChatPrimaryControl();
+    const counter = this.chatHeaderControlBadgeValue(control);
+    return {
+      id: `chat-context-primary-${control.id}`,
+      label: control.label,
+      icon: this.chatHeaderControlIcon(control),
+      kind: 'action',
+      layout: 'pill',
+      palette: this.selectedChatHeaderActionPalette(),
+      counter: counter > 0 ? counter : null,
+      context: { menu: 'chat-context', control }
+    };
   }
 
   private chatFromHeader(header: EventChatHeaderState): ChatDTO {
@@ -514,7 +641,7 @@ export class EventChatPopupComponent implements OnDestroy {
       metrics: header.metrics
         ? {
             members: header.metrics.members ? { ...header.metrics.members } : null,
-            car: header.metrics.car ? { ...header.metrics.car } : null,
+            transport: header.metrics.transport ? { ...header.metrics.transport } : null,
             accommodation: header.metrics.accommodation ? { ...header.metrics.accommodation } : null,
             supplies: header.metrics.supplies ? { ...header.metrics.supplies } : null,
             groupsCount: header.metrics.groupsCount ?? null,
@@ -522,6 +649,44 @@ export class EventChatPopupComponent implements OnDestroy {
           }
         : header.metrics
     };
+  }
+
+  private cloneEventChatHeader(header: EventChatHeaderState): EventChatHeaderState {
+    return {
+      ...header,
+      chatId: `${header.chatId ?? ''}`.trim(),
+      ownerId: `${header.ownerId ?? ''}`.trim() || null,
+      parentZIndex: Number.isFinite(Number(header.parentZIndex))
+        ? Math.max(0, Math.trunc(Number(header.parentZIndex)))
+        : null,
+      memberIds: [...(header.memberIds ?? [])],
+      members: (header.members ?? []).map(member => ({ ...member })),
+      supportCase: header.supportCase
+        ? {
+            ...header.supportCase,
+            assignee: header.supportCase.assignee ? { ...header.supportCase.assignee } : header.supportCase.assignee
+          }
+        : header.supportCase,
+      metrics: header.metrics
+        ? {
+            members: header.metrics.members ? { ...header.metrics.members } : null,
+            transport: header.metrics.transport ? { ...header.metrics.transport } : null,
+            accommodation: header.metrics.accommodation ? { ...header.metrics.accommodation } : null,
+            supplies: header.metrics.supplies ? { ...header.metrics.supplies } : null,
+            groupsCount: header.metrics.groupsCount ?? null,
+            pendingTotal: Math.max(0, Math.trunc(Number(header.metrics.pendingTotal) || 0))
+          }
+        : header.metrics
+    };
+  }
+
+  private patchCurrentEventChatHeader(headerUpdater: (header: EventChatHeaderState) => EventChatHeaderState): void {
+    const hostedHeader = this.hostedHeaderRef();
+    if (this.hostedSessionRef() && hostedHeader) {
+      this.hostedHeaderRef.set(this.cloneEventChatHeader(headerUpdater(this.cloneEventChatHeader(hostedHeader))));
+      return;
+    }
+    this.activitiesStore.patchEventChatHeader(headerUpdater);
   }
 
   protected chatHeaderTitle(chatSession: EventChatViewSession): string {
@@ -561,6 +726,60 @@ export class EventChatPopupComponent implements OnDestroy {
     return Math.max(0, Math.trunc(Number(control.badge?.value) || 0));
   }
 
+  protected chatHeaderActionMenuItems(control: AppUiTypes.PopupHeaderControl | null): readonly AppMenuItem<string, ChatMenuContext>[] {
+    return [
+      ...(control ? [this.chatHeaderMembersMenuItem(control)] : []),
+      this.chatHeaderPinMenuItem()
+    ];
+  }
+
+  private chatHeaderMembersMenuItem(control: AppUiTypes.PopupHeaderControl): AppMenuItem<string, ChatMenuContext> {
+    const badgeValue = this.chatHeaderControlBadgeValue(control);
+    const thumbStack = control.visual?.kind === 'thumbStack'
+      ? this.chatHeaderThumbs(control).map(thumb => this.chatHeaderThumbStackItem(thumb))
+      : [];
+    return {
+      id: `chat-header-${control.id}`,
+      label: control.visual?.kind === 'thumbStack' ? null : this.chatHeaderControlLabel(control),
+      icon: control.visual?.kind === 'thumbStack' ? null : this.chatHeaderControlIcon(control),
+      layout: control.visual?.kind === 'thumbStack' ? 'image-stack' : 'action',
+      palette: 'blue',
+      imageStack: thumbStack,
+      imageStackMaxVisible: control.visual?.kind === 'thumbStack' ? control.visual.maxVisible : null,
+      counter: badgeValue > 0 ? this.chatHeaderControlCounterLabel(badgeValue) : null,
+      ariaLabel: this.chatHeaderControlLabel(control),
+      context: { menu: 'chat-header', action: 'members', control }
+    };
+  }
+
+  private chatHeaderPinMenuItem(): AppMenuItem<string, ChatMenuContext> {
+    return {
+      id: 'chat-header-pins',
+      icon: 'push_pin',
+      palette: this.pinnedMessages().length > 0 ? 'blue' : 'default',
+      active: this.pinnedMessages().length > 0,
+      ariaLabel: 'Open pinned messages',
+      context: { menu: 'chat-header', action: 'pins' }
+    };
+  }
+
+  private chatHeaderThumbStackItem(thumb: AppUiTypes.PopupHeaderThumb): AppMenuImageStackItem {
+    return {
+      id: thumb.id,
+      imageUrl: thumb.imageUrl,
+      imageAlt: thumb.label || thumb.initials,
+      imageFallback: thumb.initials
+    };
+  }
+
+  private chatHeaderControlCounterLabel(value: number): string {
+    const count = Math.max(0, Math.trunc(Number(value) || 0));
+    if (count <= 0) {
+      return '';
+    }
+    return count > 99 ? '+99+' : `+${count}`;
+  }
+
   protected openChatHeaderControl(control: AppUiTypes.PopupHeaderControl, event?: Event): void {
     event?.stopPropagation();
     if (control.id !== 'members') {
@@ -571,11 +790,16 @@ export class EventChatPopupComponent implements OnDestroy {
     if (!ownerId) {
       return;
     }
+    const session = this.session();
+    const memberCount = Math.max(0, session?.item.memberIds?.length ?? session?.item.members?.length ?? 0);
     this.memberMenuStore.requestActivitiesNavigation({
       type: 'members',
       ownerId,
       subtitle: this.chatHeaderContext?.title ?? this.session()?.item.title ?? 'Chat',
       viewOnly: true,
+      acceptedMembers: memberCount,
+      pendingMembers: 0,
+      capacityTotal: memberCount,
       lookup: lookup ? { ...lookup } : undefined
     });
   }
@@ -598,6 +822,9 @@ export class EventChatPopupComponent implements OnDestroy {
   }
 
   protected shouldHostChatResourcePopup(): boolean {
+    if (this.hostedSessionRef()) {
+      return false;
+    }
     const request = this.memberMenuStore.activitiesNavigationRequest();
     return Boolean(this.session())
       && (request?.type === 'chatResource'
@@ -664,13 +891,6 @@ export class EventChatPopupComponent implements OnDestroy {
     return this.selectedChatContextControl()?.label ?? 'View Event';
   }
 
-  protected selectedChatHeaderActionToneClass(): string {
-    if (this.isServiceChat()) {
-      return 'popup-chat-context-btn-tone-service';
-    }
-    return this.selectedChatActionToneClass();
-  }
-
   protected selectedChatHeaderActionBadgeCount(): number {
     return this.chatHeaderControlBadgeValue(this.selectedChatContextControl() ?? {
       id: 'fallback-event',
@@ -727,6 +947,14 @@ export class EventChatPopupComponent implements OnDestroy {
   protected onInlineChatMenuSelect(event: AppMenuItemSelectEvent<string, ChatMenuContext>): void {
     const context = event.context;
     if (!context) {
+      return;
+    }
+    if (context.menu === 'chat-header') {
+      if (context.action === 'members') {
+        this.openChatHeaderControl(context.control, event.sourceEvent);
+        return;
+      }
+      this.openPinnedMessagesDialog(event.sourceEvent);
       return;
     }
     if (context.menu === 'chat-context') {
@@ -923,7 +1151,12 @@ export class EventChatPopupComponent implements OnDestroy {
     if (!session || !state?.subEvent) {
       return;
     }
+    const popupHeader = this.selectedChatResourcePopupHeader(session, state);
     this.chatThreadSmartList?.closeMenu();
+    if (type === 'Members' && !openExplore && !assetViewId) {
+      this.openSelectedChatMembers(session, state);
+      return;
+    }
     if (!openExplore && !assetViewId) {
       const ownerId = `${state.eventId ?? this.chatOwnerParts(session.item).eventId}`.trim();
       const subEventId = `${state.subEvent.id ?? ''}`.trim();
@@ -935,6 +1168,7 @@ export class EventChatPopupComponent implements OnDestroy {
         ownerId,
         parentTitle: `${state.eventTitle ?? session.item.title ?? ''}`.trim() || session.item.title,
         subEventId,
+        popupHeader,
         subEventHeader: {
           name: state.subEvent.name,
           title: state.subEvent.name,
@@ -953,6 +1187,7 @@ export class EventChatPopupComponent implements OnDestroy {
       item: session.item,
       resourceType: type,
       subEvent: state.subEvent,
+      popupHeader,
       assetAssignmentIds: state.assetAssignmentIds,
       assetCardsByType: state.assetCardsByType,
       openExplore,
@@ -966,22 +1201,133 @@ export class EventChatPopupComponent implements OnDestroy {
       });
   }
 
+  private selectedChatResourcePopupHeader(
+    session: EventChatViewSession,
+    state: SelectedChatNavigationState
+  ): SubEventResourcePopupPresentationHeader {
+    const eventTitle = `${state.eventTitle ?? session.item.title ?? ''}`.trim();
+    const subEventTitle = `${state.subEvent?.name ?? ''}`.trim();
+    const groupLabel = `${state.group?.label ?? ''}`.trim();
+    return {
+      title: this.joinDistinctHeaderLabels([eventTitle, subEventTitle, groupLabel]) || eventTitle || 'Event',
+      subtitle: this.resourcePopupDateRangeLabel(state.subEvent?.startAt, state.subEvent?.endAt) || null
+    };
+  }
+
+  private resourcePopupDateRangeLabel(
+    startAtIso: string | null | undefined,
+    endAtIso: string | null | undefined
+  ): string {
+    return AppUtils.dateTimeRangeLabel(startAtIso, endAtIso, '');
+  }
+
+  private joinDistinctHeaderLabels(parts: readonly string[]): string {
+    const seen = new Set<string>();
+    const labels: string[] = [];
+    for (const part of parts) {
+      const value = `${part ?? ''}`.trim();
+      const key = value.toLocaleLowerCase();
+      if (!value || seen.has(key)) {
+        continue;
+      }
+      seen.add(key);
+      labels.push(value);
+    }
+    return labels.join(' - ');
+  }
+
+  private openSelectedChatMembers(
+    session: EventChatViewSession,
+    state: SelectedChatNavigationState
+  ): void {
+    const ownerId = `${session.item.ownerId ?? ''}`.trim();
+    if (!ownerId) {
+      return;
+    }
+    const canManage = this.canEditSelectedChatEvent(
+      this.selectedChatEventRecord(`${state.eventId ?? ''}`),
+      state
+    );
+    const summary = this.selectedChatMembersSummary(state);
+    this.memberMenuStore.requestActivitiesNavigation({
+      type: 'members',
+      ownerId,
+      ownerType: this.selectedChatMembersOwnerType(state),
+      subtitle: this.selectedChatMembersSubtitle(session, state),
+      canManage,
+      viewOnly: state.channelType === 'groupSubEvent' ? !canManage : undefined,
+      acceptedMembers: summary.acceptedMembers,
+      pendingMembers: summary.pendingMembers,
+      capacityTotal: summary.capacityTotal,
+      metricIdentity: this.chatMetricIdentity(session.item)
+    });
+  }
+
+  private selectedChatMembersOwnerType(state: SelectedChatNavigationState): ActivityMemberOwnerType {
+    if (state.channelType === 'groupSubEvent') {
+      return 'group';
+    }
+    if (state.channelType === 'optionalSubEvent') {
+      return 'subEvent';
+    }
+    return 'event';
+  }
+
+  private selectedChatMembersSubtitle(
+    session: EventChatViewSession,
+    state: SelectedChatNavigationState
+  ): string {
+    if (state.channelType === 'groupSubEvent') {
+      const groupLabel = this.selectedChatGroupDisplayLabel(session.item, state);
+      const subEventName = `${state.subEvent?.name ?? ''}`.trim();
+      return [groupLabel, subEventName]
+        .filter((part, index, parts) => part && parts.indexOf(part) === index)
+        .join(' · ')
+        || 'Members';
+    }
+    return `${state.subEvent?.name ?? state.eventTitle ?? session.item.title ?? ''}`.trim() || 'Members';
+  }
+
+  private selectedChatMembersSummary(state: SelectedChatNavigationState): {
+    acceptedMembers: number;
+    pendingMembers: number;
+    capacityTotal: number;
+  } {
+    const bucket = state.metrics?.members ?? null;
+    const acceptedMembers = this.chatCountValue(
+      bucket?.accepted ?? state.group?.accepted ?? state.subEvent?.membersAccepted
+    );
+    const pendingMembers = this.chatCountValue(
+      bucket?.pending ?? state.group?.pending ?? state.subEvent?.membersPending
+    );
+    const capacityTotal = Math.max(
+      acceptedMembers,
+      this.chatCountValue(
+        bucket?.capacityMax ?? state.group?.capacityMax ?? state.subEvent?.capacityMax
+      )
+    );
+    return {
+      acceptedMembers,
+      pendingMembers,
+      capacityTotal
+    };
+  }
+
   private selectedChatResourceRequestGroup(type: SubEventResourceFilter): SubEventResourcePopupRequest['group'] {
     const state = this.selectedChatNavigationState;
     const group = state?.group;
     if (!state || !group) {
       return null;
     }
-    const isMembersPopup = type === 'Members';
     return {
       id: group.id,
       groupLabel: group.label,
       source: group.source ?? null,
-      accepted: isMembersPopup ? undefined : group.accepted,
-      pending: isMembersPopup ? undefined : group.pending,
+      accepted: group.accepted,
+      pending: group.pending,
       capacityMin: group.capacityMin,
       capacityMax: group.capacityMax,
-      canManage: isMembersPopup
+      canManage: type === 'Members'
         ? this.canEditSelectedChatEvent(this.selectedChatEventRecord(`${state.eventId ?? ''}`), state)
         : undefined
     };
@@ -1346,7 +1692,7 @@ export class EventChatPopupComponent implements OnDestroy {
 
   protected selectPollOption(
     message: ContractTypes.ChatMessageDto,
-    attachment: ContractTypes.ChatMessageAttachment,
+    _attachment: ContractTypes.ChatMessageAttachment,
     option: ChatPollOptionState,
     event?: Event
   ): void {
@@ -1467,12 +1813,12 @@ export class EventChatPopupComponent implements OnDestroy {
     const state = this.selectedChatNavigationState;
     const resourceType = this.firstAvailableAssetType();
     if (state?.subEvent) {
-      this.openSelectedChatSubEventResource(resourceType ?? 'Car', event, true);
+      this.openSelectedChatSubEventResource(resourceType ?? AppConstants.ASSET_TYPE_TRANSPORT, event, true);
       return;
     }
     this.memberMenuStore.requestActivitiesNavigation({
       type: 'assetExplore',
-      assetType: resourceType ?? 'Car'
+      assetType: resourceType ?? AppConstants.ASSET_TYPE_TRANSPORT
     });
   }
 
@@ -1610,7 +1956,6 @@ export class EventChatPopupComponent implements OnDestroy {
     if (!messageId || message.deletedAtIso) {
       return;
     }
-    this.suppressTouchContextMenuUntilMs = Date.now() + 1100;
     this.clearMessageLongPress();
     this.messageLongPressTimer = setTimeout(() => {
       this.selectedMessageId = messageId;
@@ -2266,25 +2611,6 @@ export class EventChatPopupComponent implements OnDestroy {
       });
   }
 
-  private buildCurrentEventAttachment(): ContractTypes.ChatMessageAttachment | null {
-    const session = this.session();
-    const eventId = `${this.selectedChatNavigationState?.eventId ?? this.chatOwnerParts(session?.item ?? null).eventId}`.trim();
-    const title = `${this.selectedChatNavigationState?.eventTitle ?? session?.item.title ?? ''}`.trim();
-    if (!eventId || !title) {
-      return null;
-    }
-    return {
-      id: `event:${eventId}:${Date.now()}`,
-      type: 'event',
-      entityId: eventId,
-      title,
-      subtitle: `${session?.item.lastMessage ?? ''}`.trim() || null,
-      description: null,
-      url: null,
-      previewUrl: null
-    };
-  }
-
   private async resolveShareAttachmentFromText(text: string): Promise<ContractTypes.ChatMessageAttachment | null> {
     const token = this.parseShareToken(text);
     if (!token) {
@@ -2329,32 +2655,6 @@ export class EventChatPopupComponent implements OnDestroy {
     return normalized.match(/^myscoutee:token:[A-Za-z0-9-]+$/) ? normalized : null;
   }
 
-  private buildFirstAssetAttachment(): ContractTypes.ChatMessageAttachment | null {
-    const state = this.selectedChatNavigationState;
-    if (!state) {
-      return null;
-    }
-    for (const type of ASSET_TYPES) {
-      const card = state.assetCardsByType[type]?.[0];
-      if (!card) {
-        continue;
-      }
-      return {
-        id: `asset:${card.id}:${Date.now()}`,
-        type: 'asset',
-        entityId: card.id,
-        assetType: type,
-        ownerUserId: card.ownerUserId ?? null,
-        title: card.title,
-        subtitle: [type, card.city].filter(Boolean).join(' - ') || null,
-        description: `${card.description ?? card.details ?? card.subtitle ?? ''}`.trim() || null,
-        url: null,
-        previewUrl: `${card.imageUrl ?? ''}`.trim() || null
-      };
-    }
-    return null;
-  }
-
   private findSharedAssetResourceType(
     attachment: ContractTypes.ChatMessageAttachment
   ): AssetType | null {
@@ -2384,7 +2684,7 @@ export class EventChatPopupComponent implements OnDestroy {
     }
     this.memberMenuStore.requestActivitiesNavigation({
       type: 'assetExplore',
-      assetType: this.normalizeAttachmentAssetType(attachment.assetType) ?? 'Car',
+      assetType: this.normalizeAttachmentAssetType(attachment.assetType) ?? AppConstants.ASSET_TYPE_TRANSPORT,
       assetId: `${attachment.entityId ?? ''}`.trim() || undefined,
       viewOnly: true,
       fallbackAsset: this.assetAttachmentToViewCard(attachment)
@@ -2393,7 +2693,7 @@ export class EventChatPopupComponent implements OnDestroy {
 
   private assetAttachmentToViewCard(attachment: ContractTypes.ChatMessageAttachment): AppDTOs.AssetDTO | undefined {
     const assetId = `${attachment.entityId ?? ''}`.trim();
-    const assetType = this.normalizeAttachmentAssetType(attachment.assetType) ?? 'Car';
+    const assetType = this.normalizeAttachmentAssetType(attachment.assetType) ?? AppConstants.ASSET_TYPE_TRANSPORT;
     if (!assetId) {
       return undefined;
     }
@@ -2417,7 +2717,7 @@ export class EventChatPopupComponent implements OnDestroy {
   }
 
   private normalizeAttachmentAssetType(value: unknown): AppConstants.AssetType | null {
-    return value === 'Car' || value === 'Accommodation' || value === 'Supplies' ? value : null;
+    return AppConstants.isAssetType(value) ? value : null;
   }
 
   private openExternalAttachmentUrl(attachment: ContractTypes.ChatMessageAttachment): void {
@@ -3572,7 +3872,7 @@ export class EventChatPopupComponent implements OnDestroy {
       unread: nextUnread,
       unreadDelta
     });
-    this.activitiesStore.patchEventChatHeader(header =>
+    this.patchCurrentEventChatHeader(header =>
       `${header.chatId ?? ''}`.trim() === `${chat.id ?? ''}`.trim()
         ? { ...header, unread: nextUnread }
         : header
@@ -3647,7 +3947,7 @@ export class EventChatPopupComponent implements OnDestroy {
 
   private withResolvedChatMessageId(
     message: ContractTypes.ChatMessageDto,
-    fallbackIndex: number | null
+    _fallbackIndex: number | null
   ): ContractTypes.ChatMessageDto {
     const messageId = `${message.id ?? ''}`.trim();
     if (messageId) {
@@ -3940,7 +4240,7 @@ export class EventChatPopupComponent implements OnDestroy {
   ): AppUiTypes.PopupHeaderContext {
     const baseContext = loadedContext
       ? this.clonePopupHeaderContext(loadedContext)
-      : this.chatsService.buildChatPopupHeaderContext(chat, { includeThumbs: true });
+      : ChatPopupHeaderContextConverter.convert(chat, { includeThumbs: true });
     const controls = [...(baseContext.controls ?? []).map(control => ({ ...control }))];
     if (chat.channelType === 'appSupport') {
       controls.push(this.buildAppSupportChatContextControl());
@@ -4059,7 +4359,7 @@ export class EventChatPopupComponent implements OnDestroy {
     if (!state.subEvent || (state.channelType !== 'optionalSubEvent' && state.channelType !== 'groupSubEvent')) {
       return null;
     }
-    const assetControls = (['Car', 'Accommodation', 'Supplies'] as const)
+    const assetControls = AppConstants.ASSET_TYPES
       .map(type => this.buildResourceControl(state.subEvent as ContractTypes.SubEventDTO, state, type));
     return {
       title: primaryControl.label || state.subEvent.name,
@@ -4086,11 +4386,16 @@ export class EventChatPopupComponent implements OnDestroy {
     state: SelectedChatNavigationState,
     type: SelectedChatResourceType
   ): AppUiTypes.PopupHeaderControl {
-    const pending = this.resourcePendingCount(subEvent, state, type);
+    const metricsBucket = this.chatMetricsBucket(state.metrics, type);
+    const pending = metricsBucket
+      ? this.chatCountValue(metricsBucket.pending)
+      : this.resourcePendingCount(subEvent, state, type);
     return {
       id: `chat-resource-${type.toLowerCase()}`,
       label: this.resourceTypeLabel(type),
-      summary: this.resourceSummary(subEvent, state, type),
+      summary: metricsBucket
+        ? this.chatMetricsBucketSummary(metricsBucket)
+        : this.resourceSummary(subEvent, state, type),
       visual: { kind: 'icon', icon: this.resourceTypeIcon(type) },
       badge: pending > 0 ? { value: pending, tone: 'danger' } : null,
       lookup: {
@@ -4128,7 +4433,8 @@ export class EventChatPopupComponent implements OnDestroy {
         chat.metrics
       ),
       assetAssignmentIds: ActivityResourceBuilder.cloneAssetAssignmentIds(resourceState?.assetAssignmentIds),
-      assetCardsByType
+      assetCardsByType,
+      metrics: chat.metrics ?? null
     };
   }
 
@@ -4145,10 +4451,10 @@ export class EventChatPopupComponent implements OnDestroy {
       membersPending: metrics.members?.pending ?? subEvent.membersPending,
       capacityMin: metrics.members?.capacityMin ?? subEvent.capacityMin,
       capacityMax: metrics.members?.capacityMax ?? subEvent.capacityMax,
-      carsAccepted: metrics.car?.accepted ?? subEvent.carsAccepted,
-      carsPending: metrics.car?.pending ?? subEvent.carsPending,
-      carsCapacityMin: metrics.car?.capacityMin ?? subEvent.carsCapacityMin,
-      carsCapacityMax: metrics.car?.capacityMax ?? subEvent.carsCapacityMax,
+      carsAccepted: metrics.transport?.accepted ?? subEvent.carsAccepted,
+      carsPending: metrics.transport?.pending ?? subEvent.carsPending,
+      carsCapacityMin: metrics.transport?.capacityMin ?? subEvent.carsCapacityMin,
+      carsCapacityMax: metrics.transport?.capacityMax ?? subEvent.carsCapacityMax,
       accommodationAccepted: metrics.accommodation?.accepted ?? subEvent.accommodationAccepted,
       accommodationPending: metrics.accommodation?.pending ?? subEvent.accommodationPending,
       accommodationCapacityMin: metrics.accommodation?.capacityMin ?? subEvent.accommodationCapacityMin,
@@ -4454,16 +4760,16 @@ export class EventChatPopupComponent implements OnDestroy {
     state: AppDTOs.ActivitySubEventResourceStateDTO | null,
     assetCards: readonly SubEventAssetCard[]
   ): ContractTypes.SubEventDTO {
-    for (const type of ['Car', 'Accommodation', 'Supplies'] as const) {
+    for (const type of AppConstants.ASSET_TYPES) {
       const accepted = ActivityResourceBuilder.resourceAcceptedCount(subEvent, type, state, assetCards);
       const pending = ActivityResourceBuilder.resourcePendingCount(subEvent, type, state, assetCards);
       const bounds = ActivityResourceBuilder.resourceCapacityBounds(subEvent, type, state, assetCards, accepted, pending);
-      if (type === 'Car') {
+      if (type === AppConstants.ASSET_TYPE_TRANSPORT) {
         subEvent.carsAccepted = accepted;
         subEvent.carsPending = pending;
         subEvent.carsCapacityMin = bounds.capacityMin;
         subEvent.carsCapacityMax = bounds.capacityMax;
-      } else if (type === 'Accommodation') {
+      } else if (type === AppConstants.ASSET_TYPE_ACCOMMODATION) {
         subEvent.accommodationAccepted = accepted;
         subEvent.accommodationPending = pending;
         subEvent.accommodationCapacityMin = bounds.capacityMin;
@@ -4478,44 +4784,80 @@ export class EventChatPopupComponent implements OnDestroy {
     return subEvent;
   }
 
-  private applySelectedChatResourceMetricsUpdate(update: SubEventResourceMetricsUpdate): void {
+  private applySelectedChatMetricBucketPatch(patch: ActivityChatMetricBucketPatch): void {
     const session = this.session();
     const state = this.selectedChatNavigationState;
-    const ownerId = `${state?.eventId ?? this.chatOwnerParts(session?.item ?? null).eventId}`.trim();
-    const subEventId = `${state?.subEvent?.id ?? ''}`.trim();
-    if (
-      !session
-      || !state?.subEvent
-      || !ownerId
-      || !subEventId
-      || `${update.ownerId ?? ''}`.trim() !== ownerId
-      || `${update.subEventId ?? ''}`.trim() !== subEventId
-    ) {
+    if (!session || !state || this.chatMetricIdentity(session.item) !== patch.identity) {
       return;
     }
-    const nextSubEvent: ContractTypes.SubEventDTO = {
-      ...state.subEvent,
-      carsAccepted: update.subEvent.carsAccepted,
-      carsPending: update.subEvent.carsPending,
-      carsCapacityMin: update.subEvent.carsCapacityMin,
-      carsCapacityMax: update.subEvent.carsCapacityMax,
-      accommodationAccepted: update.subEvent.accommodationAccepted,
-      accommodationPending: update.subEvent.accommodationPending,
-      accommodationCapacityMin: update.subEvent.accommodationCapacityMin,
-      accommodationCapacityMax: update.subEvent.accommodationCapacityMax,
-      suppliesAccepted: update.subEvent.suppliesAccepted,
-      suppliesPending: update.subEvent.suppliesPending,
-      suppliesCapacityMin: update.subEvent.suppliesCapacityMin,
-      suppliesCapacityMax: update.subEvent.suppliesCapacityMax
-    };
+    const nextMetrics = this.chatMetricsWithBucket(state.metrics, patch);
     this.resolvedChatResourceState = null;
-    this.resolvedChatResourceStateKey = `${ownerId}:${subEventId}`;
+    this.patchCurrentEventChatHeader(header => {
+      const headerChat = this.chatFromHeader(header);
+      if (this.chatMetricIdentity(headerChat) !== patch.identity) {
+        return header;
+      }
+      return {
+        ...header,
+        metrics: nextMetrics
+      };
+    });
     this.selectedChatNavigationState = {
       ...state,
-      subEvent: nextSubEvent
+      metrics: nextMetrics,
+      subEvent: state.subEvent ? this.applyChatMetricsToSubEvent(state.subEvent, nextMetrics) : state.subEvent,
+      group: this.applyChatMetricsToGroup(state.group, nextMetrics)
     };
     this.chatHeaderContext = this.buildSelectedChatHeaderContext(session.item, this.selectedChatNavigationState);
     this.cdr.markForCheck();
+  }
+
+  private chatMetricIdentity(chat: ChatDTO): string {
+    return ActivityChatSingleRowConverter.smartListKeyForIdentity(
+      this.chatChannelType(chat),
+      chat.ownerId,
+      chat.id
+    );
+  }
+
+  private chatMetricsWithBucket(
+    metrics: ContractTypes.ChatMetricsDTO | null | undefined,
+    patch: ActivityChatMetricBucketPatch
+  ): ContractTypes.ChatMetricsDTO {
+    const next: ContractTypes.ChatMetricsDTO = this.cloneChatMetrics(metrics) ?? {
+      members: null,
+      transport: null,
+      accommodation: null,
+      supplies: null,
+      groupsCount: null,
+      pendingTotal: 0
+    };
+    next[patch.bucketType] = { ...patch.bucket };
+    next.pendingTotal = this.chatMetricPendingTotal(next);
+    return next;
+  }
+
+  private cloneChatMetrics(
+    metrics: ContractTypes.ChatMetricsDTO | null | undefined
+  ): ContractTypes.ChatMetricsDTO | null | undefined {
+    if (!metrics) {
+      return metrics;
+    }
+    return {
+      members: metrics.members ? { ...metrics.members } : null,
+      transport: metrics.transport ? { ...metrics.transport } : null,
+      accommodation: metrics.accommodation ? { ...metrics.accommodation } : null,
+      supplies: metrics.supplies ? { ...metrics.supplies } : null,
+      groupsCount: metrics.groupsCount ?? null,
+      pendingTotal: this.chatMetricCount(metrics.pendingTotal)
+    };
+  }
+
+  private chatMetricPendingTotal(metrics: ContractTypes.ChatMetricsDTO): number {
+    return this.chatMetricCount(metrics.members?.pending)
+      + this.chatMetricCount(metrics.transport?.pending)
+      + this.chatMetricCount(metrics.accommodation?.pending)
+      + this.chatMetricCount(metrics.supplies?.pending);
   }
 
   private cloneSubEvent(subEvent: ContractTypes.SubEventDTO): ContractTypes.SubEventDTO {
@@ -4525,27 +4867,27 @@ export class EventChatPopupComponent implements OnDestroy {
   }
 
   private flattenAssetCards(assetCardsByType: SubEventAssetCardsByType): SubEventAssetCard[] {
-    return (['Car', 'Accommodation', 'Supplies'] as const)
+    return AppConstants.ASSET_TYPES
       .flatMap(type => assetCardsByType[type] ?? []);
   }
 
   private selectedChatActionToneClass(): SelectedChatActionTone {
     const channelType = this.selectedChatNavigationState?.channelType;
     if (channelType === 'groupSubEvent') {
-      return 'popup-chat-context-btn-tone-group';
+      return 'group';
     }
     if (channelType === 'optionalSubEvent') {
-      return 'popup-chat-context-btn-tone-optional';
+      return 'optional';
     }
-    return 'popup-chat-context-btn-tone-main-event';
+    return 'main-event';
   }
 
   private selectedChatHeaderActionPalette(): AppMenuPalette {
     const tone = this.selectedChatActionToneClass();
-    if (tone === 'popup-chat-context-btn-tone-group') {
+    if (tone === 'group') {
       return 'green';
     }
-    if (tone === 'popup-chat-context-btn-tone-optional') {
+    if (tone === 'optional') {
       return 'violet';
     }
     return 'blue';
@@ -4606,6 +4948,33 @@ export class EventChatPopupComponent implements OnDestroy {
     return Math.max(0, Math.trunc(Number(value) || 0));
   }
 
+  private chatMetricsBucket(
+    metrics: ContractTypes.ChatMetricsDTO | null | undefined,
+    type: SelectedChatResourceType
+  ): ContractTypes.ChatMetricBucketDTO | null {
+    if (!metrics) {
+      return null;
+    }
+    if (type === 'Members') {
+      return metrics.members ?? null;
+    }
+    if (type === AppConstants.ASSET_TYPE_TRANSPORT) {
+      return metrics.transport ?? null;
+    }
+    if (type === AppConstants.ASSET_TYPE_ACCOMMODATION) {
+      return metrics.accommodation ?? null;
+    }
+    return metrics.supplies ?? null;
+  }
+
+  private chatMetricsBucketSummary(bucket: ContractTypes.ChatMetricBucketDTO): string {
+    const accepted = this.chatCountValue(bucket.accepted);
+    const pending = this.chatCountValue(bucket.pending);
+    const min = this.chatCountValue(bucket.capacityMin);
+    const max = Math.max(min, this.chatCountValue(bucket.capacityMax), accepted + pending);
+    return `${accepted} / ${min} - ${max}`;
+  }
+
   private resourceSummary(
     subEvent: ContractTypes.SubEventDTO,
     state: SelectedChatNavigationState,
@@ -4664,7 +5033,7 @@ export class EventChatPopupComponent implements OnDestroy {
       return null;
     }
     const id = `${control.lookup.id ?? ''}`.trim();
-    return id === 'Members' || id === 'Car' || id === 'Accommodation' || id === 'Supplies'
+    return id === 'Members' || AppConstants.isAssetType(id)
       ? id
       : null;
   }
@@ -4673,10 +5042,10 @@ export class EventChatPopupComponent implements OnDestroy {
     if (type === 'Members') {
       return 'violet';
     }
-    if (type === 'Car') {
+    if (type === AppConstants.ASSET_TYPE_TRANSPORT) {
       return 'blue';
     }
-    if (type === 'Accommodation') {
+    if (type === AppConstants.ASSET_TYPE_ACCOMMODATION) {
       return 'green';
     }
     return 'brown';
@@ -4686,17 +5055,17 @@ export class EventChatPopupComponent implements OnDestroy {
     if (type === 'Members') {
       return 'groups';
     }
-    if (type === 'Car') {
+    if (type === AppConstants.ASSET_TYPE_TRANSPORT) {
       return 'directions_car';
     }
-    if (type === 'Accommodation') {
+    if (type === AppConstants.ASSET_TYPE_ACCOMMODATION) {
       return 'apartment';
     }
     return 'inventory_2';
   }
 
   private resourceTypeLabel(type: SelectedChatResourceType): string {
-    return type === 'Accommodation' ? 'Property' : type;
+    return type === 'Members' ? 'Members' : AssetDefaultsBuilder.assetTypeLabel(type);
   }
 
   private firstAvailableAssetType(): AppConstants.AssetType | null {
@@ -4704,7 +5073,7 @@ export class EventChatPopupComponent implements OnDestroy {
     if (!state) {
       return null;
     }
-    return (['Car', 'Accommodation', 'Supplies'] as const)
+    return AppConstants.ASSET_TYPES
       .find(type => (state.assetCardsByType[type]?.length ?? 0) > 0)
       ?? null;
   }

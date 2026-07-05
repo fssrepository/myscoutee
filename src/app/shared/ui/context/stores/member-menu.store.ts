@@ -14,7 +14,10 @@ import type { ChatDTO } from '../../../core/contracts/chat.interface';
 import type { AssetDTO } from '../../../core/contracts';
 import type { EventEditorTarget, SubEventDTO } from '../../../core/contracts/event.interface';
 import type { PopupHeaderLookup } from '../../models';
-import type { ResourceAssetDTO } from './sub-event-resource-popup.store';
+import type {
+  ResourceAssetDTO,
+  SubEventResourcePopupPresentationHeader
+} from './sub-event-resource-popup.store';
 
 export interface NavigatorActivitiesRequest {
   updatedMs: number;
@@ -42,7 +45,15 @@ export type ActivitiesNavigationRequest =
       item: ChatDTO;
       resourceType: SubEventResourceFilter;
       subEvent: SubEventDTO;
-      group?: { id: string; groupLabel: string } | null;
+      popupHeader?: SubEventResourcePopupPresentationHeader | null;
+      group?: {
+        id: string;
+        groupLabel: string;
+        accepted?: number;
+        pending?: number;
+        capacityMax?: number;
+        canManage?: boolean;
+      } | null;
       assetAssignmentIds?: Partial<Record<AssetType, string[]>>;
       assetCardsByType?: Partial<Record<AssetType, ResourceAssetDTO[]>>;
       openExplore?: boolean;
@@ -59,6 +70,7 @@ export type ActivitiesNavigationRequest =
       pendingMembers?: number;
       capacityTotal?: number;
       members?: readonly ActivityMemberDTO[];
+      metricIdentity?: string;
       lookup?: PopupHeaderLookup;
       onMembersChanged?: (members: readonly ActivityMemberDTO[]) => void;
     }

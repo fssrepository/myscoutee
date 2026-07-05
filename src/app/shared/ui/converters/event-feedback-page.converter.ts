@@ -6,6 +6,8 @@ import type {
   EventFeedbackDto,
   EventFeedbackPageResultDto,
   EventFeedbackReceivedEntryDto,
+  EventFeedbackStatDto,
+  EventFeedbackStatSectionDto,
   SubmittedEventFeedbackAnswer
 } from '../../core/contracts/activity.interface';
 import type { AppMenuItem, AppMenuPalette, AppMenuTrigger } from '../components/core/menu';
@@ -249,38 +251,48 @@ export interface EventFeedbackOrganizerEventInput {
   eventId: string;
 }
 
-export class EventFeedbackOrganizerCarouselSectionConverter {
-  static convert(input: EventFeedbackOrganizerEventInput): EventFeedbackOrganizerCarouselSectionData[] {
-    const entries = input.result?.organizerEntries(input.eventId) ?? [];
-    const totalEntries = entries.length;
+export interface EventFeedbackOrganizerStatInput {
+  stat: EventFeedbackStatDto | null | undefined;
+}
 
+export class EventFeedbackOrganizerCarouselSectionConverter {
+  static convert(input: EventFeedbackOrganizerStatInput): EventFeedbackOrganizerCarouselSectionData[] {
+    const stat = input.stat ?? null;
+    const sectionByKey = new Map((stat?.sections ?? []).map(section => [section.key, section]));
+    const totalResponses = Math.max(0, Math.trunc(Number(stat?.totalResponses) || 0));
     return [
       this.buildSection(
-        totalEntries,
+        totalResponses,
         'overall',
         'Overall',
         'sentiment_satisfied',
         'Most selected event impression',
         'event-feedback-organizer-carousel-card-tone-overall',
-        this.organizerOverallStats(entries)
+        this.optionStats(
+          APP_STATIC_DATA.eventFeedbackEventOverallOptions,
+          sectionByKey.get('overall')
+        )
       ),
       this.buildSection(
-        totalEntries,
+        totalResponses,
         'improve',
         'Improve Next',
         'campaign',
         'Most requested improvement next time',
         'event-feedback-organizer-carousel-card-tone-improve',
-        this.organizerImproveStats(entries)
+        this.optionStats(
+          APP_STATIC_DATA.eventFeedbackHostImproveOptions,
+          sectionByKey.get('improve')
+        )
       ),
       this.buildSection(
-        totalEntries,
+        totalResponses,
         'traits',
         'Host Traits',
         'groups',
         'Traits attendees mentioned most',
         'event-feedback-organizer-carousel-card-tone-traits',
-        this.organizerTraitStats(entries)
+        this.traitStats(sectionByKey.get('traits'))
       )
     ].filter((section): section is EventFeedbackOrganizerCarouselSectionData => section !== null);
   }
@@ -317,41 +329,8 @@ export class EventFeedbackOrganizerCarouselSectionConverter {
     };
   }
 
-  private static organizerOverallStats(
-    entries: readonly EventFeedbackReceivedEntryDto[]
-  ): EventFeedbackOrganizerStatItemData[] {
-    return this.optionStats(
-      APP_STATIC_DATA.eventFeedbackEventOverallOptions,
-      entries.map(entry => this.entryEventAnswer(entry)?.primaryValue ?? '')
-    );
-  }
-
-  private static organizerImproveStats(
-    entries: readonly EventFeedbackReceivedEntryDto[]
-  ): EventFeedbackOrganizerStatItemData[] {
-    return this.optionStats(
-      APP_STATIC_DATA.eventFeedbackHostImproveOptions,
-      entries.map(entry => this.entryEventAnswer(entry)?.secondaryValue ?? '')
-    );
-  }
-
-  private static organizerTraitStats(
-    entries: readonly EventFeedbackReceivedEntryDto[]
-  ): EventFeedbackOrganizerStatItemData[] {
-    const countsByTraitId = new Map<string, number>();
-    for (const entry of entries) {
-      const answer = this.entryEventAnswer(entry);
-      if (!answer) {
-        continue;
-      }
-      for (const traitId of answer.personalityTraitIds ?? []) {
-        const normalizedTraitId = traitId.trim();
-        if (!normalizedTraitId) {
-          continue;
-        }
-        countsByTraitId.set(normalizedTraitId, (countsByTraitId.get(normalizedTraitId) ?? 0) + 1);
-      }
-    }
+  private static traitStats(section: EventFeedbackStatSectionDto | undefined): EventFeedbackOrganizerStatItemData[] {
+    const countsByTraitId = this.optionCountByKey(section);
     return APP_STATIC_DATA.eventFeedbackPersonalityTraitOptions
       .map(option => ({
         key: option.id,
@@ -365,16 +344,9 @@ export class EventFeedbackOrganizerCarouselSectionConverter {
 
   private static optionStats(
     options: readonly { value: string; label: string; icon: string }[],
-    values: readonly string[]
+    section: EventFeedbackStatSectionDto | undefined
   ): EventFeedbackOrganizerStatItemData[] {
-    const countsByValue = new Map<string, number>();
-    for (const value of values) {
-      const normalizedValue = value.trim();
-      if (!normalizedValue) {
-        continue;
-      }
-      countsByValue.set(normalizedValue, (countsByValue.get(normalizedValue) ?? 0) + 1);
-    }
+    const countsByValue = this.optionCountByKey(section);
     return options
       .map(option => ({
         key: option.value,
@@ -386,14 +358,23 @@ export class EventFeedbackOrganizerCarouselSectionConverter {
       .sort((left, right) => right.count - left.count || left.label.localeCompare(right.label));
   }
 
-  private static entryEventAnswer(entry: EventFeedbackReceivedEntryDto): SubmittedEventFeedbackAnswer | null {
-    return (entry.answers ?? []).find(answer => answer.kind === 'event') ?? null;
+  private static optionCountByKey(section: EventFeedbackStatSectionDto | undefined): Map<string, number> {
+    const countsByKey = new Map<string, number>();
+    for (const option of section?.options ?? []) {
+      const key = option.key?.trim() ?? '';
+      const count = Math.max(0, Math.trunc(Number(option.count) || 0));
+      if (!key || count <= 0) {
+        continue;
+      }
+      countsByKey.set(key, count);
+    }
+    return countsByKey;
   }
 }
 
 export const eventFeedbackOrganizerCarouselSectionConverter =
   EventFeedbackOrganizerCarouselSectionConverter satisfies UiConverter<
-    EventFeedbackOrganizerEventInput,
+    EventFeedbackOrganizerStatInput,
     EventFeedbackOrganizerCarouselSectionData[]
   >;
 

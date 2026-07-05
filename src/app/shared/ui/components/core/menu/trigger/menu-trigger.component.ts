@@ -42,6 +42,7 @@ import { appMenuModelSummary } from '../menu-summary';
         [ngClass]="triggerPaletteClass()"
         [class.app-menu__trigger--open]="isOpen()"
         [class.app-menu__trigger--label-hidden]="trigger?.hideLabel"
+        [class.app-menu__trigger--collapsible]="trigger?.collapsible"
         [class.app-menu__trigger--placeholder]="usesDefaultSelectTriggerLabel()"
         [class.app-menu__trigger--layout-field]="triggerLayout() === 'field'"
         [class.app-menu__trigger--layout-pill]="triggerLayout() === 'pill'"

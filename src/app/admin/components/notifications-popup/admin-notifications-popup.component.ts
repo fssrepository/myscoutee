@@ -305,12 +305,6 @@ const ROLLING_DATE_SCHEDULE_FREQUENCIES = new Set<string>([
   SCHEDULE_FREQUENCY.monthly,
   SCHEDULE_FREQUENCY.yearly
 ]);
-const DATE_INPUT_SCHEDULE_FREQUENCIES = new Set<string>([
-  SCHEDULE_FREQUENCY.oneTime,
-  SCHEDULE_FREQUENCY.monthly,
-  SCHEDULE_FREQUENCY.yearly
-]);
-
 const DEFAULT_RUN_WINDOW = {
   frequency: SCHEDULE_FREQUENCY.daily,
   dayOfWeek: 1,
@@ -1059,18 +1053,6 @@ export class AdminNotificationsPopupComponent implements OnDestroy {
     return `0 ${minute} ${hour} * * ?`;
   }
 
-  private cronForInterval(intervalMinutes: number): string {
-    return `0 0/${Math.max(1, Math.trunc(Number(intervalMinutes) || 60))} * * * ?`;
-  }
-
-  private cronForIntervalSeconds(intervalSeconds: number): string {
-    const seconds = Math.max(1, Math.trunc(Number(intervalSeconds) || 60));
-    if (seconds < INTERVAL_UNIT_SECONDS.minutes) {
-      return `0/${seconds} * * * * ?`;
-    }
-    return this.cronForInterval(Math.ceil(seconds / INTERVAL_UNIT_SECONDS.minutes));
-  }
-
   private intervalExpression(rule: AdminNotificationRule): string {
     const amount = this.intervalAmount(rule);
     const unit = this.intervalUnit(rule);
@@ -1458,11 +1440,6 @@ export class AdminNotificationsPopupComponent implements OnDestroy {
     rule.scheduleSlots = [];
   }
 
-  private isLastRunProblem(rule: AdminNotificationRule): boolean {
-    const status = `${rule.runState.lastRunStatus || rule.runState.currentStatus || ''}`.trim().toLowerCase();
-    return PROCESS_PROBLEM_RUNTIME_STATUSES.has(status);
-  }
-
   protected dayOfMonth(value: string): number {
     return this.monthDayParts(value).day;
   }
@@ -1484,10 +1461,4 @@ export class AdminNotificationsPopupComponent implements OnDestroy {
     return /^\d{2}:\d{2}$/.test(normalized) ? normalized : DEFAULT_RUN_WINDOW.time;
   }
 
-  private todayIsoDate(): string {
-    const now = new Date();
-    const month = `${now.getMonth() + 1}`.padStart(2, '0');
-    const day = `${now.getDate()}`.padStart(2, '0');
-    return `${now.getFullYear()}-${month}-${day}`;
-  }
 }

@@ -51,6 +51,11 @@
   box-shadow: 0 0 0 3px rgba(55, 116, 212, 0.14);
 }
 
+:host-context(.form-flow__control.is-required-missing) .location-input input {
+  border-color: #ef9a9a;
+  background: #fff1f1;
+}
+
 .location-input input:read-only,
 .location-input input:disabled {
   background: linear-gradient(180deg, #f7f9fc 0%, #edf2f7 100%);
@@ -63,6 +68,12 @@
 .location-input input:disabled:focus {
   border-color: rgba(122, 140, 168, 0.42);
   box-shadow: none;
+}
+
+:host-context(.form-flow__control.is-required-missing) .location-input input:read-only,
+:host-context(.form-flow__control.is-required-missing) .location-input input:disabled {
+  border-color: #ef9a9a;
+  background: #fff1f1;
 }
 
 .location-input__map-menu {

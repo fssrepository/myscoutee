@@ -653,20 +653,6 @@ export class LocalChatsRepository {
     };
   }
 
-  private countUnreadMessages(
-    messages: readonly ChatMessageRecord[],
-    ownerUserId: string
-  ): number {
-    const normalizedOwnerUserId = `${ownerUserId ?? ''}`.trim();
-    if (!normalizedOwnerUserId) {
-      return 0;
-    }
-    return messages.filter(message =>
-      !message.mine
-      && !(message.readBy ?? []).some(reader => `${reader.userId ?? ''}`.trim() === normalizedOwnerUserId)
-    ).length;
-  }
-
   private resolvePageStartIndex(query: ListQuery<ActivitiesFeedFilters>, pageSize: number): number {
     const cursorIndex = Number(query.cursor);
     if (Number.isFinite(cursorIndex)) {

@@ -165,7 +165,8 @@ export class DocumentViewerComponent implements OnChanges, OnInit {
         selectionAriaLabel: this.selectionAriaLabel(section),
         context: section
       })),
-      multi: false
+      multi: false,
+      labelSize: 'large'
     };
   }
 

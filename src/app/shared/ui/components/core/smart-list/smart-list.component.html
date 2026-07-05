@@ -349,9 +349,9 @@
 <ng-template #fullscreenEmptyState>
   @if (!initialLoading) {
     <div class="smart-list__fullscreen-empty">
-      <h4>{{ hostedFullscreenEmptyLabel() }}</h4>
+      <h4>{{ hostedFullscreenEmptyLabel() | i18n }}</h4>
       @if (hostedFullscreenEmptyDescription()) {
-        <p>{{ hostedFullscreenEmptyDescription() }}</p>
+        <p>{{ hostedFullscreenEmptyDescription() | i18n }}</p>
       }
     </div>
   }
@@ -360,9 +360,9 @@
 <ng-template #emptyState>
   @if (!initialLoading) {
     <div class="smart-list__empty">
-      <h4>{{ emptyLabel() }}</h4>
+      <h4>{{ emptyLabel() | i18n }}</h4>
       @if (emptyDescription()) {
-        <p>{{ emptyDescription() }}</p>
+        <p>{{ emptyDescription() | i18n }}</p>
       }
     </div>
   }

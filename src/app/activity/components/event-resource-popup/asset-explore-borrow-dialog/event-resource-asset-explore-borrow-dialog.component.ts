@@ -1,18 +1,28 @@
 import { CommonModule } from '@angular/common';
 import { ChangeDetectionStrategy, Component, Input, ViewEncapsulation, inject } from '@angular/core';
 import { FormsModule } from '@angular/forms';
-import { MatNativeDateModule } from '@angular/material/core';
-import { MatDatepickerModule } from '@angular/material/datepicker';
-import { MatFormFieldModule } from '@angular/material/form-field';
-import { MatIconModule } from '@angular/material/icon';
-import { MatInputModule } from '@angular/material/input';
-import { MatTimepickerModule } from '@angular/material/timepicker';
 
-import { IndicatorComponent } from '../../../../shared/ui/components/core/indicator/indicator.component';
+import {
+  DateInputComponent,
+  type DateInputModel,
+  type DateInputRangeValue,
+  type DateInputValue
+} from '../../../../shared/ui/components/core/form/inputs/date-input/date-input.component';
 import { AppUtils } from '../../../../shared/app-utils';
 import type * as ActivityContracts from '../../../../shared/core/contracts/activity.interface';
 import type * as ContractTypes from '../../../../shared/core/contracts';
 import { SubEventResourcePopupStore } from '../../../../shared/ui/context/stores/sub-event-resource-popup.store';
+import {
+  PopupComponent,
+  type PopupModel
+} from '../../../../shared/ui/components/core/popup';
+import {
+  AppMenuComponent,
+  type AppMenuItem,
+  type AppMenuItemSelectEvent
+} from '../../../../shared/ui/components/core/menu';
+
+type BorrowDialogActionId = 'borrow-back' | 'borrow-cancel' | 'borrow-confirm';
 
 export interface AssetExploreBorrowDialogViewState {
   title: string;
@@ -20,10 +30,7 @@ export interface AssetExploreBorrowDialogViewState {
   timeframe: string;
   quantity: number;
   availableQuantity: number;
-  startDate: Date | null;
-  endDate: Date | null;
-  startTime: string;
-  endTime: string;
+  dateRange: DateInputRangeValue;
   lineItems: ActivityContracts.EventCheckoutLineItem[];
   totalAmount: number;
   currency: string;
@@ -39,29 +46,15 @@ export interface AssetExploreBorrowDialogViewState {
   error: string | null;
 }
 
-export interface AssetExploreBorrowDateRangeChange {
-  start: Date | null;
-  end: Date | null;
-}
-
-export interface AssetExploreBorrowTimeChange {
-  edge: 'start' | 'end';
-  value: string;
-}
-
 @Component({
   selector: 'app-event-resource-asset-explore-borrow-dialog',
   standalone: true,
   imports: [
     CommonModule,
     FormsModule,
-    MatDatepickerModule,
-    MatFormFieldModule,
-    MatIconModule,
-    MatInputModule,
-    MatNativeDateModule,
-    MatTimepickerModule,
-    IndicatorComponent
+    DateInputComponent,
+    PopupComponent,
+    AppMenuComponent
   ],
   templateUrl: './event-resource-asset-explore-borrow-dialog.component.html',
   styleUrl: './event-resource-asset-explore-borrow-dialog.component.scss',
@@ -71,8 +64,81 @@ export interface AssetExploreBorrowTimeChange {
 export class EventResourceAssetExploreBorrowDialogComponent {
   @Input() dialog: AssetExploreBorrowDialogViewState | null = null;
   @Input() canSubmit = false;
+  @Input() parentZIndex = 2600;
 
   private readonly resourcePopupStore = inject(SubEventResourcePopupStore);
+
+  protected readonly borrowDateRangeInputModel: DateInputModel = {
+    mode: 'range',
+    precision: 'minute',
+    range: {
+      start: { label: 'Start' },
+      end: { label: 'End' }
+    }
+  };
+
+  protected borrowPopupModel(dialog: AssetExploreBorrowDialogViewState): PopupModel {
+    return {
+      title: dialog.title,
+      subtitle: dialog.subtitle,
+      ariaLabel: dialog.title,
+      closeAriaLabel: 'Close borrow request',
+      closeOnBackdrop: true,
+      size: 'wide',
+      height: 'full',
+      headerTone: 'accent',
+      bodyLayout: 'fill',
+      backdropTone: 'dim',
+      onClose: event => this.close(event)
+    };
+  }
+
+  protected borrowPopupZIndex(): number {
+    return this.parentZIndex + 100;
+  }
+
+  protected borrowFooterMenuItems(
+    dialog: AssetExploreBorrowDialogViewState
+  ): readonly AppMenuItem<BorrowDialogActionId>[] {
+    const hasError = !dialog.busy && !!dialog.error;
+    const submitLabel = dialog.busy ? dialog.busyLabel : dialog.submitLabel;
+    return [
+      {
+        id: dialog.paymentStep ? 'borrow-back' : 'borrow-cancel',
+        label: dialog.paymentStep ? 'Back' : 'Cancel',
+        layout: 'action',
+        palette: 'neutral',
+        disabled: dialog.busy,
+        ariaLabel: dialog.paymentStep ? 'Back' : 'Cancel'
+      },
+      {
+        id: 'borrow-confirm',
+        label: submitLabel,
+        layout: 'action',
+        palette: hasError ? 'danger' : 'blue',
+        disabled: !this.canSubmit || dialog.busy,
+        ariaLabel: submitLabel,
+        progress: dialog.busy || hasError
+          ? {
+              state: dialog.busy ? 'loading' : 'error',
+              shape: 'button'
+            }
+          : null
+      }
+    ];
+  }
+
+  protected onBorrowActionMenuSelect(event: AppMenuItemSelectEvent<BorrowDialogActionId>): void {
+    if (event.id === 'borrow-back') {
+      this.back(event.sourceEvent);
+      return;
+    }
+    if (event.id === 'borrow-cancel') {
+      this.close(event.sourceEvent);
+      return;
+    }
+    this.confirm(event.sourceEvent);
+  }
 
   protected formatMoney(amount: number, currency = 'USD'): string {
     switch ((currency || '').trim().toUpperCase()) {
@@ -223,12 +289,18 @@ export class EventResourceAssetExploreBorrowDialogComponent {
     this.resourcePopupStore.requestBorrowConfirm(event);
   }
 
-  protected changeDateRange(start: Date | null, end: Date | null): void {
-    this.resourcePopupStore.requestBorrowDateRangeChange(start, end);
+  protected changeDateInputRange(value: DateInputValue): void {
+    if (!this.isDateInputRangeValue(value)) {
+      return;
+    }
+    this.changeDateRange(
+      AppUtils.isoLocalDateTimeToDate(value.startAt),
+      AppUtils.isoLocalDateTimeToDate(value.endAt)
+    );
   }
 
-  protected changeTime(edge: 'start' | 'end', value: string): void {
-    this.resourcePopupStore.requestBorrowTimeChange(edge, value);
+  protected changeDateRange(start: Date | null, end: Date | null): void {
+    this.resourcePopupStore.requestBorrowDateRangeChange(start, end);
   }
 
   protected changeQuantity(value: number | string): void {
@@ -237,6 +309,13 @@ export class EventResourceAssetExploreBorrowDialogComponent {
 
   protected blurQuantity(value: number | string): void {
     this.resourcePopupStore.requestBorrowQuantityBlur(value);
+  }
+
+  private isDateInputRangeValue(value: DateInputValue): value is DateInputRangeValue {
+    return !!value
+      && typeof value === 'object'
+      && 'startAt' in value
+      && 'endAt' in value;
   }
 
   protected togglePolicy(policyId: string): void {

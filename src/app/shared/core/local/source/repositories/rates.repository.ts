@@ -59,7 +59,7 @@ export class LocalRatesRepository {
       }
     }
 
-    for (const userId of this.rateOutboxRepository.queryPendingRatedGameCardUserIds(normalizedRaterId, mode)) {
+    for (const userId of this.queryPendingRatedGameCardUserIds(normalizedRaterId, mode)) {
       ratedUserIds.add(userId);
     }
 
@@ -72,7 +72,7 @@ export class LocalRatesRepository {
     if (!normalizedOwnerUserId) {
       return [];
     }
-    const pairKeys = new Set(this.rateOutboxRepository.queryPendingRatedGameCardPairKeys(normalizedOwnerUserId));
+    const pairKeys = new Set(this.queryPendingRatedGameCardPairKeys(normalizedOwnerUserId));
     const ratesTable = this.memoryDb.read()[USER_RATES_TABLE_NAME];
     for (const id of ratesTable.ids) {
       const record = ratesTable.byId[id];
@@ -92,6 +92,70 @@ export class LocalRatesRepository {
       }
     }
     return [...pairKeys];
+  }
+
+  private queryPendingRatedGameCardUserIds(raterUserId: string, mode: UserGameMode = 'single'): string[] {
+    const normalizedRaterId = raterUserId.trim();
+    if (!normalizedRaterId) {
+      return [];
+    }
+    const ratedUserIds = new Set<string>();
+    for (const record of this.rateOutboxRepository.queryPendingUserRateRecords()) {
+      if (record.ownerUserId?.trim() !== normalizedRaterId) {
+        continue;
+      }
+      const item = LocalUserRatesMapper.toDto(record);
+      if (!this.shouldExcludePendingItemFromHome(item)) {
+        continue;
+      }
+      if (mode === 'single' && item.mode !== 'individual') {
+        continue;
+      }
+      if (mode !== 'single' && item.mode !== 'pair') {
+        continue;
+      }
+      const primaryUserId = item.userId.trim();
+      const secondaryUserId = item.secondaryUserId?.trim() ?? '';
+      if (primaryUserId && primaryUserId !== normalizedRaterId) {
+        ratedUserIds.add(primaryUserId);
+      }
+      if (secondaryUserId && secondaryUserId !== normalizedRaterId) {
+        ratedUserIds.add(secondaryUserId);
+      }
+    }
+    return [...ratedUserIds];
+  }
+
+  private queryPendingRatedGameCardPairKeys(ownerUserId: string): string[] {
+    const normalizedOwnerUserId = ownerUserId.trim();
+    if (!normalizedOwnerUserId) {
+      return [];
+    }
+    const pairKeys = new Set<string>();
+    for (const record of this.rateOutboxRepository.queryPendingUserRateRecords()) {
+      if (record.ownerUserId?.trim() !== normalizedOwnerUserId) {
+        continue;
+      }
+      const item = LocalUserRatesMapper.toDto(record);
+      if (!this.shouldExcludePendingItemFromHome(item) || item.mode !== 'pair') {
+        continue;
+      }
+      const pairKey = this.sortedPairKey(item.userId, item.secondaryUserId ?? '');
+      if (pairKey) {
+        pairKeys.add(pairKey);
+      }
+    }
+    return [...pairKeys];
+  }
+
+  private shouldExcludePendingItemFromHome(item: ActivityRateDTO | null): item is ActivityRateDTO {
+    if (!item) {
+      return false;
+    }
+    if (item.direction === 'met') {
+      return true;
+    }
+    return Number.isFinite(item.scoreGiven) && item.scoreGiven > 0;
   }
 
   private sortedPairKey(leftUserId: string, rightUserId: string): string | null {
@@ -753,14 +817,15 @@ export class LocalRatesRepository {
     if (!item) {
       return null;
     }
-    const normalized = this.rateOutboxRepository.buildNormalizedActivityRateRecord(
+    const normalized = LocalUserRatesMapper.toRecord({
+      kind: 'activity-rate',
       ownerUserId,
       item,
-      Number.isFinite(Number(record.scoreGiven)) && Number(record.scoreGiven) > 0
+      rating: Number.isFinite(Number(record.scoreGiven)) && Number(record.scoreGiven) > 0
         ? Number(record.scoreGiven)
         : record.rate,
-      record.displayDirection ?? item.direction
-    );
+      direction: record.displayDirection ?? item.direction
+    });
     if (!normalized) {
       return null;
     }

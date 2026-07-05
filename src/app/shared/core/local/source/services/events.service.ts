@@ -20,6 +20,8 @@ import type {
   EventFeedbackReceivedEventDto,
   EventFeedbackNoteRequestDto,
   EventFeedbackPageQueryDto,
+  EventFeedbackStatDto,
+  EventFeedbackStatQueryDto,
   EventFeedbackStateDto
 } from '../../../contracts/activity.interface';
 import type { ActivitiesFeedFilters, ListQuery } from '../../../contracts';
@@ -166,7 +168,12 @@ export class LocalEventsService extends LocalRouteDelayService implements IEvent
     );
     return {
       mode,
-      slots: LocalActivityEventsMapper.withSubEventStates(baseSlots, resourceStatesByKey, stageRuntimeByKey, normalizedUserId)
+      slots: LocalActivityEventsMapper.withSubEventStates(
+        baseSlots,
+        resourceStatesByKey,
+        stageRuntimeByKey,
+        normalizedUserId
+      )
     };
   }
 
@@ -240,6 +247,29 @@ export class LocalEventsService extends LocalRouteDelayService implements IEvent
       activeUser,
       states: this.eventFeedbackRepository.queryEventFeedbackStates(normalizedUserId),
       receivedEvents: this.eventFeedbackRepository.queryReceivedEventFeedback(normalizedUserId)
+    });
+  }
+
+  async loadEventFeedbackStatById(query: EventFeedbackStatQueryDto): Promise<EventFeedbackStatDto> {
+    const normalizedUserId = query.userId.trim();
+    const normalizedEventId = query.eventId.trim();
+    if (!normalizedUserId || !normalizedEventId) {
+      return {
+        eventId: normalizedEventId,
+        totalResponses: 0,
+        sections: []
+      };
+    }
+    await this.waitForRouteDelay(LocalEventsService.EVENTS_ROUTE);
+    return LocalEventFeedbackMapper.toStat({
+      query: {
+        userId: normalizedUserId,
+        eventId: normalizedEventId
+      },
+      records: this.eventFeedbackRepository.queryReceivedEventFeedbackStatRecords(
+        normalizedUserId,
+        normalizedEventId
+      )
     });
   }
 

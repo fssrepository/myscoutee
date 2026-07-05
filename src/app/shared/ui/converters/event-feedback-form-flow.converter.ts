@@ -6,7 +6,6 @@ import type {
   AppMenuPalette
 } from '../components/core/menu';
 import type { FormFlowMenuControlConfig, FormFlowModel } from '../components/core/form/flow';
-import type { UiConverter } from './converter.types';
 import {
   EventFeedbackDetailConverter,
   EventFeedbackDetailImageCardConverter,

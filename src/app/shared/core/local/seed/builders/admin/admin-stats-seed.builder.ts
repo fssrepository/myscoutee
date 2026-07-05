@@ -259,7 +259,7 @@ export class AdminStatsSeedBuilder {
         ],
         assetCategories: [
           { key: 'accommodation', labelKey: 'accommodation', label: '', value: 84000, total: 213000, icon: 'hotel', tone: 'gold' },
-          { key: 'car', labelKey: 'car', label: '', value: 77000, total: 213000, icon: 'directions_car', tone: 'blue' },
+          { key: 'transport', labelKey: 'transport', label: '', value: 77000, total: 213000, icon: 'directions_car', tone: 'blue' },
           { key: 'supplies', labelKey: 'supplies', label: '', value: 52000, total: 213000, icon: 'category', tone: 'green' }
         ],
         timeline: revenueTimeline

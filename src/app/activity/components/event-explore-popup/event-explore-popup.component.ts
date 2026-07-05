@@ -198,7 +198,7 @@ export class EventExplorePopupComponent {
   protected eventExploreItemTemplateRef?: TemplateRef<SmartListItemTemplateContext<ActivityEventRecord, EventExploreFeedFilters>>;
 
   @ViewChild('eventExploreItemTemplate', { read: TemplateRef })
-  private set eventExploreItemTemplate(value: TemplateRef<SmartListItemTemplateContext<ActivityEventRecord, EventExploreFeedFilters>> | undefined) {
+  protected set eventExploreItemTemplate(value: TemplateRef<SmartListItemTemplateContext<ActivityEventRecord, EventExploreFeedFilters>> | undefined) {
     this.eventExploreItemTemplateRef = value;
     this.cdr.markForCheck();
   }
@@ -373,6 +373,10 @@ export class EventExplorePopupComponent {
       onClose: () => this.closeEventExplore(),
       onMenuSelect: event => this.onEventExploreMenuSelect(event.itemSelect)
     };
+  }
+
+  protected eventExplorePopupZIndex(): number {
+    return 2400;
   }
 
   protected closeEventExplore(): void {
@@ -1141,8 +1145,16 @@ export class EventExplorePopupComponent {
     if (!chat) {
       return;
     }
-    this.activitiesStore.openEventChat(
-      eventChatPopupRequestFromChat(chat),
+    void this.openStackedEventExploreServiceChat(chat);
+  }
+
+  private async openStackedEventExploreServiceChat(chat: ChatDTO & { ownerUserId?: string }): Promise<void> {
+    await this.activitiesStore.ensureEventChatPopupLoaded();
+    this.activitiesStore.openStackedEventChat(
+      {
+        ...eventChatPopupRequestFromChat(chat),
+        parentZIndex: this.eventExplorePopupZIndex()
+      },
       eventChatHeaderStateFromChat(chat)
     );
   }
@@ -1389,21 +1401,8 @@ export class EventExplorePopupComponent {
     return {
       id: record.id,
       type: record.type,
-      isAdmin: true,
-      acceptedMembers: record.acceptedMembers,
-      pendingMembers: record.pendingMembers,
-      capacityTotal: record.capacityTotal,
-      capacityMax: record.capacityMax
+      isAdmin: true
     };
-  }
-
-  private async loadEventExploreMembers(owner: ActivityMemberOwnerRef, record: ActivityEventRecord): Promise<void> {
-    const members = await this.activityMembersService.queryMembersByOwner(owner);
-    if (!this.selectedMembersRecord || this.selectedMembersRecord.id !== record.id) {
-      return;
-    }
-    this.selectedMembers = this.sortMembersByActionTimeDesc(members);
-    this.cdr.markForCheck();
   }
 
   private buildMemberEntries(record: ActivityEventRecord): ActivityContracts.ActivityMemberDTO[] {
@@ -1507,7 +1506,7 @@ export class EventExplorePopupComponent {
 
   private resolveCheckoutDraftMembershipStatus(
     sourceId: string,
-    record: ActivityEventRecord | null
+    _record: ActivityEventRecord | null
   ): 'accepted' | 'pending' | 'none' {
     const activeUserId = this.activeUserId.trim();
     const ownerId = sourceId.trim();
@@ -1622,11 +1621,6 @@ export class EventExplorePopupComponent {
       failureMessage: this.eventExploreJoinFailureMessage(record, dialogOptions),
       onSubmit: (selection) => this.submitEventExploreJoinRequest(record, selection)
     });
-  }
-
-  private openEventExploreSlotPicker(record: ActivityEventRecord): void {
-    this.slotPickerRecord = record;
-    this.cdr.markForCheck();
   }
 
   private async submitEventExploreJoinRequest(
@@ -2088,17 +2082,6 @@ export class EventExplorePopupComponent {
   private stopDomEvent(event?: { stopPropagation?: () => void; preventDefault?: () => void } | null): void {
     event?.preventDefault?.();
     event?.stopPropagation?.();
-  }
-
-  private resolveFilters(query: ListQuery<EventExploreFeedFilters>): EventExploreFeedFilters {
-    return {
-      userId: query.filters?.userId?.trim() || this.activeUserId,
-      order: query.filters?.order ?? this.eventExploreOrder,
-      view: query.filters?.view ?? this.eventExploreView,
-      friendsOnly: query.filters?.friendsOnly ?? this.eventExploreFilterFriendsOnly,
-      openSpotsOnly: query.filters?.openSpotsOnly ?? this.eventExploreFilterHasRooms,
-      topic: query.filters?.topic ?? this.normalizeTopic(this.eventExploreFilterTopic)
-    };
   }
 
   private refreshUsersDirectory(): void {

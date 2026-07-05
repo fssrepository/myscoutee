@@ -23,8 +23,6 @@ import type {
   UserMenuCounterDeltasDto,
   UserMenuCountersDto,
   UserRealtimeLongPollResponseDto,
-  UserRealtimeLongPollStop,
-  UserRealtimeLongPollTask,
   UserSelectorListItemDto,
   UserSelectorRole,
   UserService,
@@ -47,7 +45,6 @@ import {
 import { LocalActivityMembersService } from './activity-members.service';
 import { LocalCountryPartitionsRepository } from '../repositories/country-partitions.repository';
 import { APP_STORAGE_KEYS } from '../../../common/storage-scope';
-import { RouteIntervalSchedulerService } from '../../../base/services/route-interval-scheduler.service';
 
 @Injectable({
   providedIn: 'root'
@@ -68,7 +65,6 @@ export class LocalUsersService extends LocalRouteDelayService implements UserSer
   private readonly countryPartitionsRepository = inject(LocalCountryPartitionsRepository);
   private readonly usersRepository = inject(LocalUsersRepository);
   private readonly profileExperiencesRepository = inject(LocalProfileExperiencesRepository);
-  private readonly routeIntervalScheduler = inject(RouteIntervalSchedulerService);
   private readonly realtimeCursorByUserId: Record<string, number> = {};
   private readonly realtimeLastAdvanceAtByUserId: Record<string, number> = {};
   private readonly realtimeStateByUserId: Record<string, LocalUserRealtimeSnapshotState> = {};
@@ -251,14 +247,6 @@ export class LocalUsersService extends LocalRouteDelayService implements UserSer
     return LocalUserRealtimeSnapshotBuilder.snapshotForState(state, {
       suppressImpressionChangeFlags: !advanced
     });
-  }
-
-  startUserRealtimeLongPoll(task: UserRealtimeLongPollTask): UserRealtimeLongPollStop {
-    return this.routeIntervalScheduler.startInterval(
-      LocalUsersService.USER_REALTIME_LONG_POLL_DELAY_KEY,
-      task,
-      { fallbackIntervalMs: LocalUsersService.USER_REALTIME_LONG_POLL_SIMULATION_STEP_MS }
-    );
   }
 
   private primeLocalRealtimeState(user: UserDto): void {

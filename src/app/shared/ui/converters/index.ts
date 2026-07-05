@@ -18,10 +18,24 @@ export {
   type AssetTicketInfoCardModel
 } from './asset-ticket-info-card.converter';
 export {
+  AssetAvailabilitySingleRowConverter,
+  assetAvailabilitySingleRowConverter,
+  type AssetAvailabilitySingleRowConverterOptions
+} from './asset-availability-single-row.converter';
+export {
   ActivityChatSingleRowConverter,
   activityChatSingleRowConverter,
   type ActivityChatSingleRowConverterOptions
 } from './activity-chat-single-row.converter';
+export {
+  ChatPopupHeaderContextConverter,
+  type ChatPopupHeaderContextConverterOptions
+} from './chat-popup-header-context.converter';
+export {
+  EventPolicySingleRowConverter,
+  eventPolicySingleRowConverter,
+  type EventPolicySingleRowConverterOptions
+} from './event-policy-single-row.converter';
 export {
   ActivityMemberImageCardConverter,
   activityMemberImageCardConverter,

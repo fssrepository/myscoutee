@@ -1,0 +1,92 @@
+@if (editor; as editor) {
+  <app-popup [model]="routePopupModel(editor)" [zIndex]="editor.zIndex">
+    <div class="route-input-popup__body">
+      <div class="route-input-popup__toolbar">
+        <span>Route Stops</span>
+        <div class="route-input-popup__toolbar-actions" [class.route-input-popup__toolbar-actions--single]="editor.readOnly">
+          <button
+            type="button"
+            class="route-input-popup__icon-btn route-input-popup__main-map-btn"
+            [disabled]="!canOpenRouteMap(editor)"
+            (click)="openRouteMap(editor, $event)"
+            aria-label="Open multistep route on map"
+          >
+            <mat-icon>location_on</mat-icon>
+          </button>
+          @if (!editor.readOnly) {
+            <button
+              type="button"
+              class="route-input-popup__icon-btn route-input-popup__add-btn"
+              [disabled]="editor.saving"
+              (click)="addStop(editor, $event)"
+              aria-label="Add route stop"
+            >
+              <mat-icon>add</mat-icon>
+            </button>
+          }
+        </div>
+      </div>
+      <div class="route-input-popup__toolbar-separator"></div>
+      <div
+        class="route-input-popup__list"
+        cdkDropList
+        [cdkDropListData]="routes"
+        [cdkDropListDisabled]="editor.readOnly || editor.saving"
+        (cdkDropListDropped)="dropStop(editor, $event)"
+      >
+        @for (stop of visibleStops(editor); track routeStopTrack(stop, $index); let stopIndex = $index) {
+          <div
+            class="route-input-popup__row"
+            cdkDrag
+            [cdkDragDisabled]="editor.readOnly || editor.saving"
+          >
+            <button
+              type="button"
+              class="route-input-popup__icon-btn route-input-popup__drag-btn"
+              cdkDragHandle
+              [disabled]="editor.readOnly || editor.saving"
+              aria-label="Drag route stop"
+            >
+              <mat-icon>drag_indicator</mat-icon>
+            </button>
+            <input
+              type="text"
+              [ngModel]="stop"
+              (ngModelChange)="updateStop(editor, stopIndex, $event)"
+              [disabled]="editor.readOnly || editor.saving"
+              [placeholder]="'Route stop ' + (stopIndex + 1)"
+            />
+            <button
+              type="button"
+              class="route-input-popup__icon-btn route-input-popup__map-btn"
+              [disabled]="editor.saving || !stop.trim()"
+              (click)="openStopMap(editor, stop, $event)"
+              aria-label="Open stop on map"
+            >
+              <mat-icon>location_on</mat-icon>
+            </button>
+            @if (!editor.readOnly && routes.length > 1) {
+              <button
+                type="button"
+                class="route-input-popup__icon-btn route-input-popup__delete-btn"
+                [disabled]="editor.saving"
+                (click)="removeStop(editor, stopIndex, $event)"
+                aria-label="Delete route stop"
+              >
+                <mat-icon>delete</mat-icon>
+              </button>
+            }
+          </div>
+        }
+        @if (editor.readOnly && visibleStops(editor).length === 0) {
+          <div class="route-input-popup__empty">
+            <span>No route set yet.</span>
+          </div>
+        }
+      </div>
+      @if (saveErrorMessage(editor)) {
+        <p class="route-input-popup__error">{{ saveErrorMessage(editor) }}</p>
+      }
+    </div>
+  </app-popup>
+}

@@ -33,7 +33,7 @@ export class LocalAdminNotificationsService extends LocalRouteDelayService {
 
   async saveNotificationCenter(
     rules: readonly AdminNotificationRule[],
-    adminUserId?: string | null,
+    _adminUserId?: string | null,
     options?: LocalAdminNotificationDelayOptions
   ): Promise<AdminNotificationCenterState> {
     const existing = await this.readNotificationCenter();

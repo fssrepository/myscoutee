@@ -10,7 +10,7 @@ import { Injectable, inject } from '@angular/core';
 
 import { LocalMemoryDb } from '../../../common/app.db';
 import { ACTIVITY_MEMBERS_TABLE_NAME, ACTIVITY_RESOURCES_TABLE_NAME } from '../../source/entity/activity.entity';
-import { ASSETS_TABLE_NAME } from '../../source/entity/asset.entity';
+import { ASSETS_TABLE_NAME, type AssetRecord } from '../../source/entity/asset.entity';
 
 
 
@@ -34,7 +34,6 @@ import { SeedUsersRatingsRepository } from '../repositories/users-ratings-seed.r
 import { SeedUsersRepository } from '../repositories/users-seed.repository';
 import { SeedBootstrapRegistryService } from './bootstrap-registry.service';
 
-import type * as AppDTOs from '../../../contracts';
 export type SeedDemoBootstrapMode = 'member' | 'admin';
 
 @Injectable({
@@ -258,7 +257,7 @@ export class SeedDemoBootstrapService {
     try {
       let seededUsers: readonly UserRecord[] = [];
       let seededUserIds: readonly string[] = [];
-      let assetsByUserId: Map<string, AppDTOs.AssetDTO[]> = new Map();
+      let assetsByUserId: Map<string, AssetRecord[]> = new Map();
       const ownerUserIds = (): readonly string[] | undefined => seededUserIds.length > 0 ? seededUserIds : undefined;
 
       await this.runBootstrapStep('chats', async () => {

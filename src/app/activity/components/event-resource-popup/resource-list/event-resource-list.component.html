@@ -37,6 +37,7 @@
   [itemTemplate]="resourceItemTemplate"
   [query]="resourceSmartListQuery"
   (stateChange)="onResourceSmartListStateChange($event)"
+  (refresh)="onResourceSmartListRefresh($event)"
 ></app-smart-list>
 
 <app-menu-outlet

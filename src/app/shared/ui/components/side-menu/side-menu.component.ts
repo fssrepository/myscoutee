@@ -28,6 +28,7 @@ import {
   type AppMenuValueMap,
   HeaderCardComponent,
   type HeaderCardModel,
+  UiTaskScheduler,
   type UserImpressionChangeFlags
 } from '../..';
 import {
@@ -69,6 +70,7 @@ import {
 import {
   USER_LOGOUT_CONTEXT_KEY
 } from '../../../core/base/services/users.service';
+import * as AppConstants from '../../../core/common/constants';
 import {
   DialogComponent
 } from '../core/dialog/dialog.component';
@@ -124,7 +126,7 @@ type NavigatorMenuShortcutId =
   | 'invitations'
   | 'events'
   | 'hosting'
-  | 'car'
+  | 'transport'
   | 'accommodation'
   | 'supplies'
   | 'tickets'
@@ -172,6 +174,8 @@ type NavigatorHeaderActionMenuItemId =
   styleUrl: './side-menu.component.scss'
 })
 export class SideMenuComponent implements OnDestroy {
+  private static readonly USER_REALTIME_POLL_INTERVAL_MS = 30000;
+
   private static readonly ACCOUNT_REACTIVATION_WINDOW_MS = 30 * 24 * 60 * 60 * 1000;
   private static readonly ADMIN_SESSION_STORAGE_KEY = APP_STORAGE_KEYS.adminSession;
   private static readonly USER_MENU_LOAD_DURATION_MS = 3000;
@@ -197,6 +201,11 @@ export class SideMenuComponent implements OnDestroy {
   private readonly assetStore = inject(AssetStore);
   protected readonly eventEditorStore = inject(EventEditorPopupStore);
   protected readonly subEventResourceStore = inject(SubEventResourcePopupStore);
+  protected readonly stackedEventChatPopupInputs = computed(() => ({
+    chatSession: this.activitiesStore.stackedEventChatSession(),
+    chatHeader: this.activitiesStore.stackedEventChatHeader(),
+    closeHostedChat: () => this.activitiesStore.closeStackedEventChat()
+  }));
   private readonly currentRoutePathRef = signal(AppUtils.normalizeRoutePath(this.router.url));
   private readonly menuOpenRef = signal(false);
   private readonly userMenuLoadOverdueRef = signal(false);
@@ -211,8 +220,11 @@ export class SideMenuComponent implements OnDestroy {
   private lastHandledAssetRequestMs = 0;
   private lastHandledEventFeedbackRequestMs = 0;
   private hydrationRequestVersion = 0;
-  private stopUserRealtimeLongPollInterval: (() => void) | null = null;
-  private userRealtimeLongPollInFlight = false;
+  private readonly userRealtimeScheduler = new UiTaskScheduler<string>({
+    intervalMs: () => this.userRealtimePollIntervalMs(),
+    state: () => this.userProfileStore.activeUserId().trim(),
+    task: ({ state }) => this.runUserRealtimeLongPollTick(state)
+  });
   private reactivationPromptUserId = '';
   private privacyConsentCheckToken = 0;
   private userMenuLoadOverdueTimer: ReturnType<typeof setTimeout> | null = null;
@@ -505,7 +517,7 @@ export class SideMenuComponent implements OnDestroy {
       invitations: user.activities.invitations,
       events: user.activities.events,
       hosting: user.activities.hosting,
-      car: user.activities.cars,
+      transport: user.activities.cars,
       accommodation: user.activities.accommodation,
       supplies: user.activities.supplies,
       tickets: user.activities.tickets,
@@ -628,35 +640,35 @@ export class SideMenuComponent implements OnDestroy {
           palette: 'brown',
           items: [
             {
-              id: 'car',
-              label: 'Car',
+              id: 'transport',
+              label: AppConstants.ASSET_TYPE_TRANSPORT,
               icon: 'directions_car',
               palette: 'blue',
-              ariaLabel: 'Car',
+              ariaLabel: AppConstants.ASSET_TYPE_TRANSPORT,
               disabled: primaryDisabled
             },
             {
               id: 'accommodation',
-              label: 'Property',
+              label: AppConstants.ASSET_TYPE_ACCOMMODATION,
               icon: 'apartment',
               palette: 'green',
-              ariaLabel: 'Property',
+              ariaLabel: AppConstants.ASSET_TYPE_ACCOMMODATION,
               disabled: primaryDisabled
             },
             {
               id: 'supplies',
-              label: 'Supplies',
+              label: AppConstants.ASSET_TYPE_SUPPLIES,
               icon: 'inventory_2',
               palette: 'brown',
-              ariaLabel: 'Supplies',
+              ariaLabel: AppConstants.ASSET_TYPE_SUPPLIES,
               disabled: primaryDisabled
             },
             {
               id: 'tickets',
-              label: 'Ticket',
+              label: AppConstants.ASSET_FILTER_TICKET,
               icon: 'qr_code_2',
               palette: 'blue',
-              ariaLabel: 'Ticket',
+              ariaLabel: AppConstants.ASSET_FILTER_TICKET,
               disabled: primaryDisabled
             },
             {
@@ -952,6 +964,7 @@ export class SideMenuComponent implements OnDestroy {
       if (!request || (request.type !== 'eventExplore' && request.type !== 'eventCheckoutDraft')) {
         return;
       }
+      void this.activitiesStore.ensureActivitiesPopupLoaded();
       void this.activitiesStore.ensureEventExplorePopupLoaded();
     });
 
@@ -985,7 +998,7 @@ export class SideMenuComponent implements OnDestroy {
     });
 
     effect(() => {
-      const isAssetPopupVisible = this.assetPopupStore.visible();
+      const isAssetPopupVisible = this.assetPopupStore.visible() || this.assetStore.showAssetForm();
       if (isAssetPopupVisible) {
         void this.assetPopupStore.ensureAssetPopupLoaded();
       }
@@ -1138,8 +1151,8 @@ export class SideMenuComponent implements OnDestroy {
       case 'hosting':
         this.openHostingShortcut(event.sourceEvent);
         return;
-      case 'car':
-        this.openAssetCarPopup(event.sourceEvent);
+      case 'transport':
+        this.openAssetTransportPopup(event.sourceEvent);
         return;
       case 'accommodation':
         this.openAssetAccommodationPopup(event.sourceEvent);
@@ -1299,12 +1312,12 @@ export class SideMenuComponent implements OnDestroy {
     this.openActivitiesShortcut('events', 'my-events');
   }
 
-  protected openAssetCarPopup(event?: Event): void {
+  protected openAssetTransportPopup(event?: Event): void {
     event?.stopPropagation();
     if (!this.runtimeStore.isOnline() || this.isBlockedUser()) {
       return;
     }
-    this.memberMenuStore.openNavigatorAssetRequest('Car');
+    this.memberMenuStore.openNavigatorAssetRequest(AppConstants.ASSET_TYPE_TRANSPORT);
   }
 
   protected openAssetAccommodationPopup(event?: Event): void {
@@ -1312,7 +1325,7 @@ export class SideMenuComponent implements OnDestroy {
     if (!this.runtimeStore.isOnline() || this.isBlockedUser()) {
       return;
     }
-    this.memberMenuStore.openNavigatorAssetRequest('Accommodation');
+    this.memberMenuStore.openNavigatorAssetRequest(AppConstants.ASSET_TYPE_ACCOMMODATION);
   }
 
   protected openAssetSuppliesPopup(event?: Event): void {
@@ -1320,12 +1333,12 @@ export class SideMenuComponent implements OnDestroy {
     if (!this.runtimeStore.isOnline() || this.isBlockedUser()) {
       return;
     }
-    this.memberMenuStore.openNavigatorAssetRequest('Supplies');
+    this.memberMenuStore.openNavigatorAssetRequest(AppConstants.ASSET_TYPE_SUPPLIES);
   }
 
   protected openAssetTicketsPopup(event?: Event): void {
     event?.stopPropagation();
-    this.memberMenuStore.openNavigatorAssetRequest('Ticket');
+    this.memberMenuStore.openNavigatorAssetRequest(AppConstants.ASSET_FILTER_TICKET);
   }
 
   protected openContactsPopup(event?: Event): void {
@@ -1438,7 +1451,8 @@ export class SideMenuComponent implements OnDestroy {
   ngOnDestroy(): void {
     this.routerEventsSubscription.unsubscribe();
     this.profileStore.clearBindings(this.profileBindings);
-    this.stopUserRealtimeLongPoll();
+    this.userRealtimeScheduler.destroy();
+    this.userProfileStore.setUserRealtimePollInFlight(false);
     this.clearUserMenuLoadState();
   }
 
@@ -1679,10 +1693,10 @@ export class SideMenuComponent implements OnDestroy {
   private openLogoutConfirm(): void {
     const activeUserName = this.userProfileStore.activeUserProfile()?.name?.trim() || '';
     this.dialogStore.open({
-      title: 'Biztosan kilép?',
+      title: 'Logout?',
       message: activeUserName,
-      cancelLabel: 'Mégsem',
-      confirmLabel: 'Kilépés',
+      cancelLabel: 'Cancel',
+      confirmLabel: 'Logout',
       confirmTone: 'accent',
       onConfirm: async () => {
         this.closeSideMenu();
@@ -1745,21 +1759,18 @@ export class SideMenuComponent implements OnDestroy {
     if (!normalizedUserId || this.userProfileStore.activeUserId().trim() !== normalizedUserId) {
       return;
     }
-    this.startUserRealtimeLongPoll();
-  }
-
-  private startUserRealtimeLongPoll(): void {
-    if (this.stopUserRealtimeLongPollInterval) {
-      return;
-    }
-    this.stopUserRealtimeLongPollInterval = this.usersService.startUserRealtimeLongPoll(() => this.runUserRealtimeLongPollTick());
+    this.userRealtimeScheduler.restart();
   }
 
   private stopUserRealtimeLongPoll(): void {
-    this.stopUserRealtimeLongPollInterval?.();
-    this.stopUserRealtimeLongPollInterval = null;
-    this.userRealtimeLongPollInFlight = false;
+    this.userRealtimeScheduler.stop({ abort: true });
     this.userProfileStore.setUserRealtimePollInFlight(false);
+  }
+
+  private userRealtimePollIntervalMs(): number {
+    return this.sessionService.session() && this.userProfileStore.activeUserId().trim()
+      ? SideMenuComponent.USER_REALTIME_POLL_INTERVAL_MS
+      : 0;
   }
 
   private isAdminWorkspaceRoute(routeUrl = this.currentRoutePathRef()): boolean {
@@ -1775,15 +1786,10 @@ export class SideMenuComponent implements OnDestroy {
     return path !== '/' && !path.startsWith('/entry') && !path.startsWith('/admin');
   }
 
-  private async runUserRealtimeLongPollTick(): Promise<void> {
-    if (this.userRealtimeLongPollInFlight) {
-      return;
-    }
-    const userId = this.userProfileStore.activeUserId().trim();
+  private async runUserRealtimeLongPollTick(userId: string): Promise<void> {
     if (!userId) {
       return;
     }
-    this.userRealtimeLongPollInFlight = true;
     this.userProfileStore.setUserRealtimePollInFlight(true);
     try {
       const cursor = this.userProfileStore.getUserRealtimeCursor(userId);
@@ -1793,7 +1799,6 @@ export class SideMenuComponent implements OnDestroy {
       }
       this.userProfileStore.applyUserRealtimeSnapshot(userId, snapshot);
     } finally {
-      this.userRealtimeLongPollInFlight = false;
       this.userProfileStore.setUserRealtimePollInFlight(false);
     }
   }

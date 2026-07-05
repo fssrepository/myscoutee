@@ -15,7 +15,7 @@ export interface AppMenuStaticOptionGroup {
   options: readonly string[];
 }
 
-export interface BuildTabbedMenuGroupsParams<TId extends string, TContext> {
+export interface BuildTabbedMenuGroupsParams<TContext> {
   idPrefix: string;
   groups: readonly AppMenuStaticOptionGroup[];
   selected?: readonly string[];
@@ -33,13 +33,13 @@ export interface BuildTabbedMenuGroupsParams<TId extends string, TContext> {
   removeAriaLabel?: (option: string, group: AppMenuStaticOptionGroup) => string;
 }
 
-export interface BuildTabbedMenuModelParams<TId extends string, TContext>
-  extends BuildTabbedMenuGroupsParams<TId, TContext> {
+export interface BuildTabbedMenuModelParams<TContext>
+  extends BuildTabbedMenuGroupsParams<TContext> {
   summary?: AppMenuSummary | null;
 }
 
 export function buildTabbedMenuModel<TId extends string = string, TContext = unknown>(
-  params: BuildTabbedMenuModelParams<TId, TContext>
+  params: BuildTabbedMenuModelParams<TContext>
 ): AppMenuModel<TId, TContext> {
   const { summary, ...groupParams } = params;
   return {
@@ -51,7 +51,7 @@ export function buildTabbedMenuModel<TId extends string = string, TContext = unk
 }
 
 export function buildTabbedMenuGroups<TId extends string = string, TContext = unknown>(
-  params: BuildTabbedMenuGroupsParams<TId, TContext>
+  params: BuildTabbedMenuGroupsParams<TContext>
 ): readonly AppMenuGroup<TId, TContext>[] {
   const normalize = params.normalize ?? appMenuNormalizeStaticOption;
   const selectedKeys = new Set((params.selected ?? []).map(item => normalize(item)));
