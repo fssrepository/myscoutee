@@ -8,7 +8,10 @@ import { LocalMemoryDb } from '../../../common/app.db';
 import { LocalAssetsMapper } from '../mappers/asset.mapper';
 import { LocalUsersRepository } from './users.repository';
 import {
+  ASSET_REQUESTS_TABLE_NAME,
   ASSETS_TABLE_NAME,
+  type AssetRequestRecord,
+  type AssetRequestsRecordCollection,
   type AssetRecord,
   type AssetsRecordCollection
 } from '../entity/asset.entity';
@@ -71,14 +74,17 @@ export class LocalAssetsRepository {
     if (normalizedUserIds.length === 0) {
       return assetsByUserId;
     }
-    const table = this.normalizeCollection(this.memoryDb.read()[ASSETS_TABLE_NAME]);
+    const state = this.memoryDb.read();
+    const table = this.normalizeCollection(state[ASSETS_TABLE_NAME]);
+    const requestTable = this.normalizeAssetRequestsCollection(state[ASSET_REQUESTS_TABLE_NAME]);
     for (const userId of normalizedUserIds) {
-      const assets = (table.idsByOwnerUserId[userId] ?? [])
+      const records = (table.idsByOwnerUserId[userId] ?? [])
         .map(id => table.byId[id])
         .filter((record): record is AssetRecord => Boolean(record))
         .filter(record => !this.isSuppressedAssetStatus(record.status))
-        .sort((left, right) => right.updatedMs - left.updatedMs)
-        .map(record => this.toAssetDto(record, userId));
+        .sort((left, right) => right.updatedMs - left.updatedMs);
+      const metricsByAssetId = this.assetRequestMetricsByAssetId(requestTable, records);
+      const assets = records.map(record => this.toAssetDto(record, userId, metricsByAssetId.get(record.id)));
       assetsByUserId.set(userId, assets);
     }
     return assetsByUserId;
@@ -98,10 +104,16 @@ export class LocalAssetsRepository {
     if (!normalizedUserId || !normalizedAssetId) {
       return null;
     }
-    const table = this.normalizeCollection(this.memoryDb.read()[ASSETS_TABLE_NAME]);
+    const state = this.memoryDb.read();
+    const table = this.normalizeCollection(state[ASSETS_TABLE_NAME]);
+    const requestTable = this.normalizeAssetRequestsCollection(state[ASSET_REQUESTS_TABLE_NAME]);
     const record = table.byId[normalizedAssetId];
     return record && record.ownerUserId === normalizedUserId && !this.isSuppressedAssetStatus(record.status)
-      ? this.toAssetDetailDto(record, normalizedUserId)
+      ? this.toAssetDetailDto(
+          record,
+          normalizedUserId,
+          this.assetRequestMetricsByAssetId(requestTable, [record]).get(record.id)
+        )
       : null;
   }
 
@@ -150,6 +162,25 @@ export class LocalAssetsRepository {
       items,
       total,
       nextCursor: endIndex < total ? `${endIndex}` : null
+    };
+  }
+
+  queryVisibleAssetsPage(query: AppDTOs.AssetExplorePageQueryDTO): AppDTOs.AssetExplorePageResultDTO {
+    const normalizedUserId = query.userId.trim();
+    const result = this.queryVisibleAssetRecordsPage(query);
+    if (!normalizedUserId || result.items.length === 0) {
+      return {
+        items: [],
+        total: result.total,
+        nextCursor: result.nextCursor ?? null
+      };
+    }
+    const requestTable = this.normalizeAssetRequestsCollection(this.memoryDb.read()[ASSET_REQUESTS_TABLE_NAME]);
+    const metricsByAssetId = this.assetRequestMetricsByAssetId(requestTable, result.items);
+    return {
+      items: result.items.map(record => this.toAssetDto(record, normalizedUserId, metricsByAssetId.get(record.id))),
+      total: result.total,
+      nextCursor: result.nextCursor ?? null
     };
   }
 
@@ -569,22 +600,28 @@ export class LocalAssetsRepository {
   }
 
   private readOwnerAssets(ownerUserId: string): AppDTOs.AssetDTO[] {
-    const table = this.normalizeCollection(this.memoryDb.read()[ASSETS_TABLE_NAME]);
-    return (table.idsByOwnerUserId[ownerUserId] ?? [])
+    const state = this.memoryDb.read();
+    const table = this.normalizeCollection(state[ASSETS_TABLE_NAME]);
+    const requestTable = this.normalizeAssetRequestsCollection(state[ASSET_REQUESTS_TABLE_NAME]);
+    const records = (table.idsByOwnerUserId[ownerUserId] ?? [])
       .map(id => table.byId[id])
       .filter((record): record is AssetRecord => Boolean(record))
       .filter(record => !this.isSuppressedAssetStatus(record.status))
-      .sort((left, right) => right.updatedMs - left.updatedMs)
-      .map(record => this.toAssetDto(record, ownerUserId));
+      .sort((left, right) => right.updatedMs - left.updatedMs);
+    const metricsByAssetId = this.assetRequestMetricsByAssetId(requestTable, records);
+    return records.map(record => this.toAssetDto(record, ownerUserId, metricsByAssetId.get(record.id)));
   }
 
   private readVisibleAssets(activeUserId: string): AppDTOs.AssetDTO[] {
-    return this.readVisibleAssetRecords(activeUserId)
-      .map(record => this.toAssetDto(record, activeUserId));
+    const state = this.memoryDb.read();
+    const requestTable = this.normalizeAssetRequestsCollection(state[ASSET_REQUESTS_TABLE_NAME]);
+    const records = this.readVisibleAssetRecords(activeUserId, state);
+    const metricsByAssetId = this.assetRequestMetricsByAssetId(requestTable, records);
+    return records.map(record => this.toAssetDto(record, activeUserId, metricsByAssetId.get(record.id)));
   }
 
-  private readVisibleAssetRecords(activeUserId: string): AssetRecord[] {
-    const table = this.normalizeCollection(this.memoryDb.read()[ASSETS_TABLE_NAME]);
+  private readVisibleAssetRecords(activeUserId: string, state = this.memoryDb.read()): AssetRecord[] {
+    const table = this.normalizeCollection(state[ASSETS_TABLE_NAME]);
     const visibleOwnerIds = new Set(this.queryVisibleExploreOwners(activeUserId).map(user => user.id));
     const viewerAffinity = this.queryUserAffinity(activeUserId);
     return table.ids
@@ -596,6 +633,33 @@ export class LocalAssetsRepository {
       .filter(record => record.visibility === 'Public'
         || (record.visibility === 'Friends only' && UserProfileState.isFriendOfActiveUser(record.ownerUserId, activeUserId)))
       .sort((left, right) => this.compareVisibleAssetRecords(left, right, viewerAffinity));
+  }
+
+  private assetRequestMetricsByAssetId(
+    requestTable: AssetRequestsRecordCollection,
+    records: readonly AssetRecord[]
+  ): Map<string, AppDTOs.AssetRequestMetricsDTO> {
+    const metricsByAssetId = new Map<string, AppDTOs.AssetRequestMetricsDTO>();
+    for (const record of records) {
+      const requests = this.assetRequestRecordsForAsset(requestTable, record);
+      metricsByAssetId.set(
+        record.id,
+        LocalAssetsMapper.toAssetRequestMetrics(requests)
+      );
+    }
+    return metricsByAssetId;
+  }
+
+  private assetRequestRecordsForAsset(
+    requestTable: AssetRequestsRecordCollection,
+    record: AssetRecord
+  ): AssetRequestRecord[] {
+    return (requestTable.idsByOwnerKey[this.assetRequestOwnerKey(record.id)] ?? [])
+      .map(id => requestTable.byId[id])
+      .filter((request): request is AssetRequestRecord =>
+        Boolean(request)
+        && request.assetId === record.id
+        && request.ownerUserId === record.ownerUserId);
   }
 
   private compareVisibleAssetRecords(
@@ -728,17 +792,27 @@ export class LocalAssetsRepository {
     return Number.isFinite(stored) ? Math.max(0, stored) : this.resolveAssetBoost(record);
   }
 
-  private toAssetDto(record: AssetRecord, viewerUserId = ''): AppDTOs.AssetDTO {
+  private toAssetDto(
+    record: AssetRecord,
+    viewerUserId = '',
+    requestMetrics?: AppDTOs.AssetRequestMetricsDTO | null
+  ): AppDTOs.AssetDTO {
     return LocalAssetsMapper.toAssetDto(record, {
       viewerUserId,
+      requestMetrics,
       resolveMenuActions: (assetRecord, activeUserId) => this.resolveMenuActions(assetRecord, activeUserId),
       resolveRequestMenuActions: (assetRecord, request, activeUserId) => this.resolveRequestMenuActions(assetRecord, request, activeUserId)
     });
   }
 
-  private toAssetDetailDto(record: AssetRecord, viewerUserId = ''): AppDTOs.AssetDetailDTO {
+  private toAssetDetailDto(
+    record: AssetRecord,
+    viewerUserId = '',
+    requestMetrics?: AppDTOs.AssetRequestMetricsDTO | null
+  ): AppDTOs.AssetDetailDTO {
     return LocalAssetsMapper.toAssetDetailDto(record, {
       viewerUserId,
+      requestMetrics,
       resolveMenuActions: (assetRecord, activeUserId) => this.resolveMenuActions(assetRecord, activeUserId),
       resolveRequestMenuActions: (assetRecord, request, activeUserId) => this.resolveRequestMenuActions(assetRecord, request, activeUserId)
     });
@@ -835,6 +909,36 @@ export class LocalAssetsRepository {
     }
     const user = this.queryUsers().find(item => item.id === normalizedUserId);
     return Math.max(0, Math.trunc(Number(user?.affinity) || 0));
+  }
+
+  private normalizeAssetRequestsCollection(value: unknown): AssetRequestsRecordCollection {
+    const source = value as Partial<AssetRequestsRecordCollection> | null | undefined;
+    return {
+      byId: source?.byId && typeof source.byId === 'object'
+        ? { ...(source.byId as Record<string, AssetRequestRecord>) }
+        : {},
+      ids: Array.isArray(source?.ids)
+        ? source.ids.map(id => String(id)).filter(Boolean)
+        : [],
+      idsByOwnerKey: this.cloneAssetRequestOwnerKeyIndex(source?.idsByOwnerKey)
+    };
+  }
+
+  private cloneAssetRequestOwnerKeyIndex(
+    index: Record<string, readonly string[] | string[] | undefined> | undefined
+  ): Record<string, string[]> {
+    const next: Record<string, string[]> = {};
+    for (const [ownerKey, ids] of Object.entries(index ?? {})) {
+      if (!ownerKey.trim() || !Array.isArray(ids)) {
+        continue;
+      }
+      next[ownerKey] = ids.map(id => String(id)).filter(id => id.length > 0);
+    }
+    return next;
+  }
+
+  private assetRequestOwnerKey(assetId: string): string {
+    return `asset:${assetId.trim()}`;
   }
 
   private normalizeCollection(value: unknown): AssetsRecordCollection {

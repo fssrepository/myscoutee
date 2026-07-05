@@ -111,6 +111,7 @@ export class AssetsService extends BaseRouteModeService {
     assetId: string;
     rangeStart?: string | null;
     rangeEnd?: string | null;
+    filter?: AppDTOs.AssetAvailabilityFilter | null;
     page?: number;
     pageSize: number;
     cursor?: string | null;

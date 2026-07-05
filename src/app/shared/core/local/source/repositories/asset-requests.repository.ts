@@ -67,6 +67,8 @@ export class LocalAssetRequestsRepository {
       };
     }
     const requests = this.queryRecordsByOwner(normalizedOwnerUserId, normalizedAssetId);
+    const filter = this.normalizeAvailabilityFilter(query.filter);
+    const filteredRequests = requests.filter(request => this.matchesAvailabilityFilter(request, filter));
     const range = this.availabilityStatsRange(query.rangeStart, query.rangeEnd);
     const assetCapacity = this.resolveAssetCapacity(requests);
     const dates: Date[] = [];
@@ -80,7 +82,7 @@ export class LocalAssetRequestsRepository {
         ownerUserId: normalizedOwnerUserId,
         assetCapacity,
         date,
-        requests
+        requests: filteredRequests
       })),
       total: dates.length,
       nextCursor: page.nextCursor

@@ -267,6 +267,7 @@ export class AssetAvailabilityPopupComponent {
         assetId: request.assetId,
         rangeStart: query.rangeStart ?? query.filters?.dateIso ?? undefined,
         rangeEnd: query.rangeEnd ?? query.filters?.dateIso ?? undefined,
+        filter: query.filters?.filter ?? request.filter,
         page: query.page,
         pageSize: query.pageSize,
         cursor: query.cursor ?? null
@@ -457,7 +458,7 @@ export class AssetAvailabilityPopupComponent {
       kind: 'menu',
       id: 'filter',
       align: 'end',
-      trigger: this.filterMenuTrigger(this.availabilityFilter()),
+      trigger: this.filterMenuTrigger(this.availabilityFilter(), 'availability'),
       items: this.filterMenuItems('availability')
     }];
   }
@@ -467,7 +468,7 @@ export class AssetAvailabilityPopupComponent {
       kind: 'menu',
       id: 'day-list-filter',
       align: 'end',
-      trigger: this.filterMenuTrigger(this.dayListFilter()),
+      trigger: this.filterMenuTrigger(this.dayListFilter(), 'day-list'),
       items: this.filterMenuItems('day-list')
     }];
   }
@@ -501,13 +502,17 @@ export class AssetAvailabilityPopupComponent {
       });
   }
 
-  private filterMenuTrigger(filter: AppDTOs.AssetAvailabilityFilter): AppMenuTrigger {
+  private filterMenuTrigger(
+    filter: AppDTOs.AssetAvailabilityFilter,
+    target: 'availability' | 'day-list'
+  ): AppMenuTrigger {
     const option = this.filterOptions().find(item => item.key === filter) ?? this.filterOptions()[0];
     return this.selectTrigger({
       label: option.label,
       icon: option.icon,
       palette: this.filterPalette(filter),
-      ariaLabel: 'asset.requests.filter.open'
+      ariaLabel: 'asset.requests.filter.open',
+      counter: this.filterCounter(filter, target)
     });
   }
 
@@ -523,6 +528,7 @@ export class AssetAvailabilityPopupComponent {
       active: option.key === activeFilter,
       palette: this.filterPalette(option.key),
       surface: 'tinted',
+      counter: this.menuCounter(this.filterCounter(option.key, target)),
       context: { menu: 'filter', target, filter: option.key }
     }));
   }
@@ -541,14 +547,51 @@ export class AssetAvailabilityPopupComponent {
     icon: string;
     palette: AppMenuPalette;
     ariaLabel: string;
+    counter?: number | null;
   }): AppMenuTrigger {
+    const counter = Math.max(0, Math.trunc(Number(input.counter) || 0));
     return {
       label: input.label,
       icon: input.icon,
       palette: input.palette,
       layout: 'pill',
-      ariaLabel: input.ariaLabel
+      ariaLabel: input.ariaLabel,
+      counter: counter > 0 ? { value: counter, max: 99 } : null
     };
+  }
+
+  private menuCounter(count: number): AppMenuItem<string, AssetAvailabilityPopupMenuContext>['counter'] {
+    const normalized = Math.max(0, Math.trunc(Number(count) || 0));
+    return normalized > 0 ? { value: normalized, max: 99 } : null;
+  }
+
+  private filterCounter(
+    filter: AppDTOs.AssetAvailabilityFilter,
+    target: 'availability' | 'day-list'
+  ): number {
+    if (target !== 'availability') {
+      return 0;
+    }
+    const metrics = this.availabilityHeader()?.metrics;
+    if (!metrics) {
+      return 0;
+    }
+    switch (filter) {
+      case 'active-items':
+        return this.normalizeCount(metrics.activeItems);
+      case 'pending-requests':
+        return this.normalizeCount(metrics.pendingItems);
+      case 'borrowed-items':
+        return this.normalizeCount(metrics.borrowedItems);
+      case 'all':
+      default:
+        return this.normalizeCount(metrics.activeItems) + this.normalizeCount(metrics.pendingItems);
+    }
+  }
+
+  private normalizeCount(value: unknown): number {
+    const numeric = Number(value);
+    return Number.isFinite(numeric) ? Math.max(0, Math.trunc(numeric)) : 0;
   }
 
   private viewPalette(view: string): AppMenuPalette {

@@ -215,6 +215,7 @@ export class HttpAssetsService {
     assetId: string;
     rangeStart?: string | null;
     rangeEnd?: string | null;
+    filter?: AppDTOs.AssetAvailabilityFilter | null;
     page?: number;
     pageSize: number;
     cursor?: string | null;
@@ -239,6 +240,7 @@ export class HttpAssetsService {
                 .set('userId', normalizedUserId)
                 .set('rangeStart', `${query.rangeStart ?? ''}`.trim())
                 .set('rangeEnd', `${query.rangeEnd ?? ''}`.trim())
+                .set('filter', `${query.filter ?? 'all'}`.trim())
                 .set('page', `${Math.max(0, Math.trunc(Number(query.page) || 0))}`)
                 .set('pageSize', `${Math.max(1, Math.trunc(Number(query.pageSize) || 1))}`)
                 .set('cursor', `${query.cursor ?? ''}`.trim())
@@ -430,6 +432,7 @@ export class HttpAssetsService {
     if (type !== 'Car' && type !== 'Accommodation' && type !== 'Supplies') {
       return null;
     }
+    const requests = this.normalizeRequests(card?.requests);
     return {
       id,
       type,
@@ -461,49 +464,8 @@ export class HttpAssetsService {
       menuActions: Array.isArray(card?.menuActions)
         ? card.menuActions.map((action: string) => `${action ?? ''}`.trim()).filter((action: string) => action.length > 0)
         : [],
-      requests: Array.isArray(card?.requests)
-        ? card.requests
-          .map(request => ({
-            id: `${request?.id ?? ''}`.trim(),
-            userId: `${request?.userId ?? ''}`.trim() || undefined,
-            name: `${request?.name ?? ''}`.trim(),
-            initials: `${request?.initials ?? ''}`.trim(),
-            gender: (request?.gender === 'woman' ? 'woman' : 'man') as 'woman' | 'man',
-            status: (request?.status === 'accepted' ? 'accepted' : 'pending') as AppConstants.AssetRequestStatus,
-            note: `${request?.note ?? ''}`.trim(),
-            requestKind: (request?.requestKind === 'manual' ? 'manual' : 'borrow') as AppConstants.AssetRequestKind,
-            requestedAtIso: `${request?.requestedAtIso ?? ''}`.trim() || undefined,
-            menuActions: Array.isArray(request?.menuActions)
-              ? request.menuActions.map((action: string) => `${action ?? ''}`.trim()).filter((action: string) => action.length > 0)
-              : [],
-            booking: request?.booking
-              ? {
-                  eventId: `${request.booking.eventId ?? ''}`.trim() || undefined,
-                  eventTitle: `${request.booking.eventTitle ?? ''}`.trim() || undefined,
-                  subEventId: `${request.booking.subEventId ?? ''}`.trim() || undefined,
-                  subEventTitle: `${request.booking.subEventTitle ?? ''}`.trim() || undefined,
-                  slotKey: `${request.booking.slotKey ?? ''}`.trim() || undefined,
-                  slotLabel: `${request.booking.slotLabel ?? ''}`.trim() || undefined,
-                  timeframe: `${request.booking.timeframe ?? ''}`.trim() || undefined,
-                  startAtIso: `${request.booking.startAtIso ?? ''}`.trim() || undefined,
-                  endAtIso: `${request.booking.endAtIso ?? ''}`.trim() || undefined,
-                  quantity: Number.isFinite(Number(request.booking.quantity))
-                    ? Math.max(1, Math.trunc(Number(request.booking.quantity)))
-                    : null,
-                  totalAmount: Number.isFinite(Number(request.booking.totalAmount))
-                    ? Math.max(0, Number(request.booking.totalAmount))
-                    : null,
-                  currency: `${request.booking.currency ?? ''}`.trim() || undefined,
-                  paymentSessionId: `${request.booking.paymentSessionId ?? ''}`.trim() || null,
-                  inventoryApplied: request.booking.inventoryApplied === true ? true : null,
-                  acceptedPolicyIds: Array.isArray(request.booking.acceptedPolicyIds)
-                    ? request.booking.acceptedPolicyIds.map((item: string) => `${item ?? ''}`.trim()).filter((item: string) => item.length > 0)
-                    : []
-                }
-              : null
-          }))
-          .filter(request => request.id.length > 0)
-        : []
+      requests,
+      metrics: this.assetRequestMetrics(card?.metrics)
     };
   }
 
@@ -516,6 +478,7 @@ export class HttpAssetsService {
     if (type !== 'Car' && type !== 'Accommodation' && type !== 'Supplies') {
       return null;
     }
+    const requests = this.normalizeRequests(card?.requests);
     return {
       id,
       type,
@@ -561,7 +524,8 @@ export class HttpAssetsService {
       menuActions: Array.isArray(card?.menuActions)
         ? card.menuActions.map((action: string) => `${action ?? ''}`.trim()).filter((action: string) => action.length > 0)
         : [],
-      requests: this.normalizeRequests(card?.requests)
+      requests,
+      metrics: this.assetRequestMetrics(card?.metrics)
     };
   }
 
@@ -609,6 +573,22 @@ export class HttpAssetsService {
         }))
         .filter(request => request.id.length > 0)
       : [];
+  }
+
+  private assetRequestMetrics(
+    metrics: AppDTOs.AssetRequestMetricsDTO | null | undefined
+  ): AppDTOs.AssetRequestMetricsDTO {
+    const normalized = AssetDto.cloneMetrics(metrics);
+    if (normalized) {
+      return normalized;
+    }
+    return {
+      allItems: 0,
+      activeItems: 0,
+      assignedItems: 0,
+      borrowedItems: 0,
+      pendingItems: 0
+    };
   }
 
   private assetDescription(card: AppDTOs.AssetDTO | AppDTOs.AssetDetailDTO): string {

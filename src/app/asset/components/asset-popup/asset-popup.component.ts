@@ -1258,7 +1258,8 @@ export class AssetPopupComponent {
         title: card.title,
         subtitle: card.subtitle,
         type: card.type,
-        capacity: AssetCardBuilder.storedQuantityValue(card)
+        capacity: AssetCardBuilder.storedQuantityValue(card),
+        metrics: AssetDto.cloneMetrics(card.metrics)
       }
     );
     void this.assetAvailabilityPopupStore.ensureAssetAvailabilityPopupLoaded();

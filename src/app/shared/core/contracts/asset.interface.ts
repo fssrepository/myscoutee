@@ -40,6 +40,14 @@ export interface AssetMemberRequestDTO {
   menuActions?: string[];
 }
 
+export interface AssetRequestMetricsDTO {
+  allItems: number;
+  activeItems: number;
+  assignedItems: number;
+  borrowedItems: number;
+  pendingItems: number;
+}
+
 export interface AssetDTO {
   id: string;
   type: AppConstants.AssetType;
@@ -61,6 +69,7 @@ export interface AssetDTO {
   ownerUserId?: string;
   ownerName?: string;
   requests: AssetMemberRequestDTO[];
+  metrics?: AssetRequestMetricsDTO | null;
   menuActions?: string[];
 }
 
@@ -86,6 +95,7 @@ export interface AssetDetailDTO {
   ownerUserId?: string;
   ownerName?: string;
   requests: AssetMemberRequestDTO[];
+  metrics?: AssetRequestMetricsDTO | null;
   menuActions?: string[];
 }
 
@@ -110,6 +120,7 @@ export class AssetDto implements AssetDTO {
   ownerUserId?: string;
   ownerName?: string;
   requests: AssetMemberRequestDTO[] = [];
+  metrics?: AssetRequestMetricsDTO | null;
   menuActions?: string[];
 
   constructor(card?: AssetDTO | AssetDetailDTO | null) {
@@ -149,6 +160,7 @@ export class AssetDto implements AssetDTO {
             }
           : null
       })),
+      metrics: AssetDto.cloneMetrics(card.metrics),
       menuActions: card.menuActions ? [...card.menuActions] : undefined
     });
   }
@@ -177,6 +189,7 @@ export class AssetDto implements AssetDTO {
       && (this.ownerUserId ?? '') === (other.ownerUserId ?? '')
       && (this.ownerName ?? '') === (other.ownerName ?? '')
       && AssetDto.sameRequests(this.requests, other.requests)
+      && AssetDto.sameMetrics(this.metrics, other.metrics)
       && AssetDto.sameStringList(this.menuActions, other.menuActions);
   }
 
@@ -227,6 +240,36 @@ export class AssetDto implements AssetDTO {
     const rightItems = right ?? [];
     return leftItems.length === rightItems.length
       && leftItems.every((item, index) => item === rightItems[index]);
+  }
+
+  static cloneMetrics(metrics: AssetRequestMetricsDTO | null | undefined): AssetRequestMetricsDTO | null {
+    return metrics
+      ? {
+          allItems: AssetDto.normalizeCount(metrics.allItems),
+          activeItems: AssetDto.normalizeCount(metrics.activeItems),
+          assignedItems: AssetDto.normalizeCount(metrics.assignedItems),
+          borrowedItems: AssetDto.normalizeCount(metrics.borrowedItems),
+          pendingItems: AssetDto.normalizeCount(metrics.pendingItems)
+        }
+      : null;
+  }
+
+  private static sameMetrics(
+    left: AssetRequestMetricsDTO | null | undefined,
+    right: AssetRequestMetricsDTO | null | undefined
+  ): boolean {
+    const leftMetrics = AssetDto.cloneMetrics(left);
+    const rightMetrics = AssetDto.cloneMetrics(right);
+    return (leftMetrics?.allItems ?? 0) === (rightMetrics?.allItems ?? 0)
+      && (leftMetrics?.activeItems ?? 0) === (rightMetrics?.activeItems ?? 0)
+      && (leftMetrics?.assignedItems ?? 0) === (rightMetrics?.assignedItems ?? 0)
+      && (leftMetrics?.borrowedItems ?? 0) === (rightMetrics?.borrowedItems ?? 0)
+      && (leftMetrics?.pendingItems ?? 0) === (rightMetrics?.pendingItems ?? 0);
+  }
+
+  private static normalizeCount(value: unknown): number {
+    const numeric = Number(value);
+    return Number.isFinite(numeric) ? Math.max(0, Math.trunc(numeric)) : 0;
   }
 
   private static sameRequests(
@@ -283,6 +326,7 @@ export class AssetDetailDto implements AssetDetailDTO {
   ownerUserId?: string;
   ownerName?: string;
   requests: AssetMemberRequestDTO[] = [];
+  metrics?: AssetRequestMetricsDTO | null;
   menuActions?: string[];
 
   constructor(card?: AssetDetailDTO | null) {
@@ -304,6 +348,7 @@ export class AssetDetailDto implements AssetDetailDTO {
             }
           : null
       })),
+      metrics: AssetDto.cloneMetrics(card.metrics),
       menuActions: card.menuActions ? [...card.menuActions] : undefined
     });
   }

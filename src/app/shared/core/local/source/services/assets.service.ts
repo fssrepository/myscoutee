@@ -40,12 +40,7 @@ export class LocalAssetsService extends LocalRouteDelayService {
 
   async queryVisibleAssetsPage(query: AppDTOs.AssetExplorePageQueryDTO): Promise<AppDTOs.AssetExplorePageResultDTO> {
     await this.waitForRouteDelay(LocalAssetsService.ASSETS_ROUTE);
-    const result = this.assetsRepository.queryVisibleAssetRecordsPage(query);
-    return {
-      items: LocalAssetsMapper.toAssetDtos(result.items),
-      total: result.total,
-      nextCursor: result.nextCursor ?? null
-    };
+    return this.assetsRepository.queryVisibleAssetsPage(query);
   }
 
   async loadOccupancyByAssetId(query: {
@@ -71,6 +66,7 @@ export class LocalAssetsService extends LocalRouteDelayService {
     assetId: string;
     rangeStart?: string | null;
     rangeEnd?: string | null;
+    filter?: AppDTOs.AssetAvailabilityFilter | null;
     page?: number;
     pageSize: number;
     cursor?: string | null;

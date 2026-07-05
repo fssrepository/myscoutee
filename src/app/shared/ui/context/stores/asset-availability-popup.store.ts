@@ -2,7 +2,8 @@ import { Injectable, Type, signal } from '@angular/core';
 
 import type {
   AssetAvailabilityFilter,
-  AssetAvailabilityView
+  AssetAvailabilityView,
+  AssetRequestMetricsDTO
 } from '../../../core/contracts/asset.interface';
 
 export interface AssetAvailabilityPopupRequest {
@@ -23,6 +24,7 @@ export interface AssetAvailabilityHeaderState {
   subtitle?: string | null;
   type?: string | null;
   capacity: number;
+  metrics?: AssetRequestMetricsDTO | null;
 }
 
 export type AssetAvailabilityPopupOpenRequest = {
@@ -135,8 +137,27 @@ export class AssetAvailabilityPopupStore {
       title,
       subtitle: `${header?.subtitle ?? ''}`.trim() || null,
       type: `${header?.type ?? ''}`.trim() || null,
-      capacity: Math.max(0, Math.trunc(Number(header?.capacity) || 0))
+      capacity: Math.max(0, Math.trunc(Number(header?.capacity) || 0)),
+      metrics: this.normalizeMetrics(header?.metrics)
     };
+  }
+
+  private normalizeMetrics(metrics: AssetRequestMetricsDTO | null | undefined): AssetRequestMetricsDTO | null {
+    if (!metrics) {
+      return null;
+    }
+    return {
+      allItems: this.normalizeCount(metrics.allItems),
+      activeItems: this.normalizeCount(metrics.activeItems),
+      assignedItems: this.normalizeCount(metrics.assignedItems),
+      borrowedItems: this.normalizeCount(metrics.borrowedItems),
+      pendingItems: this.normalizeCount(metrics.pendingItems)
+    };
+  }
+
+  private normalizeCount(value: unknown): number {
+    const numeric = Number(value);
+    return Number.isFinite(numeric) ? Math.max(0, Math.trunc(numeric)) : 0;
   }
 
   private normalizeFilter(filter: AssetAvailabilityFilter | null | undefined): AssetAvailabilityFilter {

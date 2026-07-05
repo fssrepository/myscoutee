@@ -87,6 +87,7 @@ export interface AssetAvailabilityStatRecordPageQuery {
   assetId: string;
   rangeStart?: string | null;
   rangeEnd?: string | null;
+  filter?: AssetAvailabilityFilterRecord | null;
   page?: number;
   pageSize: number;
   cursor?: string | null;

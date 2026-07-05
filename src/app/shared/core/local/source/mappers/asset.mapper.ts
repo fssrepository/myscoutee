@@ -18,6 +18,7 @@ import type * as AppConstants from '../../../common/constants';
 
 export interface LocalAssetProjectionOptions {
   viewerUserId?: string;
+  requestMetrics?: AppDTOs.AssetRequestMetricsDTO | null;
   resolveMenuActions?: (record: AssetRecord, viewerUserId: string) => string[];
   resolveRequestMenuActions?: (
     record: AssetRecord,
@@ -46,6 +47,7 @@ export class LocalAssetsMapper {
     if (type !== 'Car' && type !== 'Accommodation' && type !== 'Supplies') {
       return null;
     }
+    const requests = this.normalizeRequests(card?.requests);
     return {
       id,
       type,
@@ -75,53 +77,13 @@ export class LocalAssetsMapper {
       menuActions: Array.isArray(card?.menuActions)
         ? card.menuActions.map((action: string) => `${action ?? ''}`.trim()).filter((action: string) => action.length > 0)
         : [],
-      requests: Array.isArray(card?.requests)
-        ? card.requests
-          .map(request => ({
-            id: `${request?.id ?? ''}`.trim(),
-            userId: `${request?.userId ?? ''}`.trim() || undefined,
-            name: `${request?.name ?? ''}`.trim(),
-            initials: `${request?.initials ?? ''}`.trim(),
-            gender: (request?.gender === 'woman' ? 'woman' : 'man') as 'woman' | 'man',
-            status: (request?.status === 'accepted' ? 'accepted' : 'pending') as AppConstants.AssetRequestStatus,
-            note: `${request?.note ?? ''}`.trim(),
-            requestKind: (request?.requestKind === 'manual' ? 'manual' : 'borrow') as AppConstants.AssetRequestKind,
-            requestedAtIso: `${request?.requestedAtIso ?? ''}`.trim() || undefined,
-            menuActions: Array.isArray(request?.menuActions)
-              ? request.menuActions.map((action: string) => `${action ?? ''}`.trim()).filter((action: string) => action.length > 0)
-              : [],
-            booking: request?.booking
-              ? {
-                  eventId: `${request.booking.eventId ?? ''}`.trim() || undefined,
-                  eventTitle: `${request.booking.eventTitle ?? ''}`.trim() || undefined,
-                  subEventId: `${request.booking.subEventId ?? ''}`.trim() || undefined,
-                  subEventTitle: `${request.booking.subEventTitle ?? ''}`.trim() || undefined,
-                  slotKey: `${request.booking.slotKey ?? ''}`.trim() || undefined,
-                  slotLabel: `${request.booking.slotLabel ?? ''}`.trim() || undefined,
-                  timeframe: `${request.booking.timeframe ?? ''}`.trim() || undefined,
-                  startAtIso: `${request.booking.startAtIso ?? ''}`.trim() || undefined,
-                  endAtIso: `${request.booking.endAtIso ?? ''}`.trim() || undefined,
-                  quantity: Number.isFinite(Number(request.booking.quantity))
-                    ? Math.max(1, Math.trunc(Number(request.booking.quantity)))
-                    : null,
-                  totalAmount: Number.isFinite(Number(request.booking.totalAmount))
-                    ? Math.max(0, Number(request.booking.totalAmount))
-                    : null,
-                  currency: `${request.booking.currency ?? ''}`.trim() || undefined,
-                  paymentSessionId: `${request.booking.paymentSessionId ?? ''}`.trim() || null,
-                  inventoryApplied: request.booking.inventoryApplied === true ? true : null,
-                  acceptedPolicyIds: Array.isArray(request.booking.acceptedPolicyIds)
-                    ? request.booking.acceptedPolicyIds.map((item: string) => `${item ?? ''}`.trim()).filter((item: string) => item.length > 0)
-                    : []
-                }
-              : null
-          }))
-          .filter(request => request.id.length > 0)
-        : []
+      requests,
+      metrics: this.assetRequestMetrics(card?.metrics)
     };
   }
 
   static fallbackAssetDto(card: AppDTOs.AssetDTO | AppDTOs.AssetDetailDTO): AppDTOs.AssetDTO {
+    const requests = this.normalizeRequests(card.requests);
     return this.normalizeCard(card) ?? {
       id: `${card.id ?? ''}`.trim(),
       type: card.type === 'Accommodation' || card.type === 'Supplies' ? card.type : 'Car',
@@ -142,7 +104,8 @@ export class LocalAssetsMapper {
       status: this.normalizeAssetStatus(card.status),
       ownerUserId: `${card.ownerUserId ?? ''}`.trim() || undefined,
       ownerName: `${card.ownerName ?? ''}`.trim() || undefined,
-      requests: this.normalizeRequests(card.requests),
+      requests,
+      metrics: this.assetRequestMetrics(card.metrics),
       menuActions: Array.isArray(card.menuActions) ? [...card.menuActions] : undefined
     };
   }
@@ -156,6 +119,7 @@ export class LocalAssetsMapper {
     if (type !== 'Car' && type !== 'Accommodation' && type !== 'Supplies') {
       return null;
     }
+    const requests = this.normalizeRequests(card?.requests);
     return {
       id,
       type,
@@ -201,7 +165,8 @@ export class LocalAssetsMapper {
       menuActions: Array.isArray(card?.menuActions)
         ? card.menuActions.map((action: string) => `${action ?? ''}`.trim()).filter((action: string) => action.length > 0)
         : [],
-      requests: this.normalizeRequests(card?.requests)
+      requests,
+      metrics: this.assetRequestMetrics(card?.metrics)
     };
   }
 
@@ -252,6 +217,7 @@ export class LocalAssetsMapper {
           menuActions: options.resolveRequestMenuActions?.(record, dto, viewerUserId) ?? dto.menuActions ?? []
         };
       }),
+      metrics: this.assetRequestMetrics(options.requestMetrics),
       menuActions: options.resolveMenuActions?.(record, viewerUserId) ?? [...(record.menuActions ?? [])]
     };
   }
@@ -294,6 +260,7 @@ export class LocalAssetsMapper {
           menuActions: options.resolveRequestMenuActions?.(record, dto, viewerUserId) ?? dto.menuActions ?? []
         };
       }),
+      metrics: this.assetRequestMetrics(options.requestMetrics),
       menuActions: options.resolveMenuActions?.(record, viewerUserId) ?? [...(record.menuActions ?? [])]
     };
   }
@@ -498,6 +465,53 @@ export class LocalAssetsMapper {
         : ['accept', 'remove'];
     }
     return (request.menuActions ?? []).includes('makeManager') ? ['makeManager'] : [];
+  }
+
+  private static normalizedCount(value: unknown): number {
+    const numeric = Number(value);
+    return Number.isFinite(numeric) ? Math.max(0, Math.trunc(numeric)) : 0;
+  }
+
+  static toAssetRequestMetrics(
+    requests: readonly Pick<AppDTOs.AssetMemberRequestDTO, 'status' | 'requestKind'>[] | null | undefined
+  ): AppDTOs.AssetRequestMetricsDTO {
+    const rows = requests ?? [];
+    const assignedItems = rows.filter(request => request.requestKind === 'manual').length;
+    const borrowedItems = rows.filter(request => request.status === 'accepted' && request.requestKind !== 'manual').length;
+    const pendingItems = rows.filter(request => request.status === 'pending' && request.requestKind !== 'manual').length;
+    const activeItems = assignedItems + borrowedItems;
+    return {
+      allItems: activeItems + pendingItems,
+      activeItems,
+      assignedItems,
+      borrowedItems,
+      pendingItems
+    };
+  }
+
+  static assetRequestMetrics(
+    metrics: AppDTOs.AssetRequestMetricsDTO | null | undefined
+  ): AppDTOs.AssetRequestMetricsDTO {
+    if (metrics) {
+      return {
+        allItems: this.normalizedCount(metrics.allItems),
+        activeItems: this.normalizedCount(metrics.activeItems),
+        assignedItems: this.normalizedCount(metrics.assignedItems),
+        borrowedItems: this.normalizedCount(metrics.borrowedItems),
+        pendingItems: this.normalizedCount(metrics.pendingItems)
+      };
+    }
+    return this.emptyAssetRequestMetrics();
+  }
+
+  static emptyAssetRequestMetrics(): AppDTOs.AssetRequestMetricsDTO {
+    return {
+      allItems: 0,
+      activeItems: 0,
+      assignedItems: 0,
+      borrowedItems: 0,
+      pendingItems: 0
+    };
   }
 
   static toAssetRecord(
