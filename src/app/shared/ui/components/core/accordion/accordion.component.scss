@@ -172,6 +172,15 @@
   font-weight: 800;
 }
 
+.ui-accordion__item[data-label-size='large'] .ui-accordion__header {
+  min-height: 4.1rem;
+}
+
+.ui-accordion__item[data-label-size='large'] .ui-accordion__copy strong {
+  font-size: 0.98rem;
+  font-weight: 850;
+}
+
 .ui-accordion__copy small {
   color: rgba(37, 64, 96, 0.72);
   font-size: 0.7rem;
