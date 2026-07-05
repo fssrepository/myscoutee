@@ -36,6 +36,24 @@
   </app-popup>
 }
 
+@if (shouldHostResourcePopup()) {
+  @if (resourcePopupStore.eventResourcePopupComponent(); as resourcePopupComponent) {
+    <ng-container *ngComponentOutlet="resourcePopupComponent; inputs: resourcePopupOutletInputs()"></ng-container>
+  }
+}
+
+@if (shouldHostResourcePopup() && resourcePopupStore.assetExplorePopupRef()) {
+  @if (resourcePopupStore.eventResourceAssetExploreComponent(); as assetExplorePopupComponent) {
+    <ng-container *ngComponentOutlet="assetExplorePopupComponent; inputs: assetExplorePopupOutletInputs()"></ng-container>
+  }
+}
+
+@if (shouldHostSupplyContributionsPopup()) {
+  @if (resourcePopupStore.eventSupplyContributionsPopupComponent(); as supplyContributionsPopupComponent) {
+    <ng-container *ngComponentOutlet="supplyContributionsPopupComponent"></ng-container>
+  }
+}
+
 <ng-template #availabilityRowTemplate let-item let-groupLabel="groupLabel">
   @if (isAvailabilityRow(item)) {
     <single-row

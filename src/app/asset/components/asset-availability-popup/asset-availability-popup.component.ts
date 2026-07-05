@@ -4,6 +4,7 @@ import {
   ChangeDetectorRef,
   Component,
   computed,
+  effect,
   inject,
   signal
 } from '@angular/core';
@@ -93,7 +94,7 @@ export class AssetAvailabilityPopupComponent {
   private readonly assetsService = inject(AssetsService);
   private readonly i18n = inject(I18nService);
   private readonly assetStore = inject(AssetStore);
-  private readonly resourcePopupStore = inject(SubEventResourcePopupStore);
+  protected readonly resourcePopupStore = inject(SubEventResourcePopupStore);
   protected readonly availabilityPopupStore = inject(AssetAvailabilityPopupStore);
   private readonly cdr = inject(ChangeDetectorRef);
 
@@ -162,7 +163,44 @@ export class AssetAvailabilityPopupComponent {
   protected readonly dayListHeader = computed<AssetAvailabilityHeaderState | null>(
     () => this.availabilityPopupStore.dayListHeader() ?? this.availabilityPopupStore.availabilityHeader()
   );
+  protected readonly resourcePopupOutletInputs = computed(() => ({
+    parentZIndex: this.resourcePopupParentZIndex()
+  }));
+  protected readonly assetExplorePopupOutletInputs = computed(() => ({
+    parentZIndex: this.resourcePopupParentZIndex()
+  }));
   protected rowBusyKey = '';
+
+  constructor() {
+    effect(() => {
+      const request = this.resourcePopupStore.subEventResourcePopupRequest();
+      if (!request || !this.isAnyAvailabilityPopupOpen()) {
+        return;
+      }
+      void this.resourcePopupStore.ensureEventResourcePopupLoaded();
+    });
+
+    effect(() => {
+      if (!this.shouldHostResourcePopup()) {
+        return;
+      }
+      void this.resourcePopupStore.ensureEventResourcePopupLoaded();
+    });
+
+    effect(() => {
+      if (!this.shouldHostResourcePopup() || !this.resourcePopupStore.assetExplorePopupRef()) {
+        return;
+      }
+      void this.resourcePopupStore.ensureEventResourceAssetExploreLoaded();
+    });
+
+    effect(() => {
+      if (!this.shouldHostSupplyContributionsPopup()) {
+        return;
+      }
+      void this.resourcePopupStore.ensureEventSupplyContributionsPopupLoaded();
+    });
+  }
 
   protected readonly availabilitySmartListConfig: SmartListConfig<AssetAvailabilityListItem, AssetAvailabilityListFilters> = {
     pageSize: 40,
@@ -226,6 +264,26 @@ export class AssetAvailabilityPopupComponent {
 
   protected isDayListOpen(): boolean {
     return this.availabilityPopupStore.dayListPopup() !== null;
+  }
+
+  protected shouldHostResourcePopup(): boolean {
+    return this.isAnyAvailabilityPopupOpen()
+      && (this.resourcePopupStore.subEventResourcePopupRequest() !== null
+        || this.resourcePopupStore.popupContextRef()?.origin === 'subEventResource');
+  }
+
+  protected shouldHostSupplyContributionsPopup(): boolean {
+    return this.shouldHostResourcePopup()
+      && !this.resourcePopupStore.assetExploreOnlyRef()
+      && this.resourcePopupStore.supplyPopupRef() !== null;
+  }
+
+  private isAnyAvailabilityPopupOpen(): boolean {
+    return this.isAvailabilityOpen() || this.isDayListOpen();
+  }
+
+  private resourcePopupParentZIndex(): number {
+    return Math.max(this.availabilityPopupZIndex, this.dayListPopupZIndex);
   }
 
   protected availabilityPopupModel(): PopupModel<AssetAvailabilityPopupMenuContext> {
