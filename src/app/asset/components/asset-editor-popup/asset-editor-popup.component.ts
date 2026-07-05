@@ -497,7 +497,7 @@ export class AssetEditorPopupComponent {
   }
 
   protected submitForm(): void {
-    if (this.isLoading || !this.canSubmitAssetEditor() || this.assetEditorReadOnly()) {
+    if (this.isLoading || this.isSavePending || !this.canSubmitAssetEditor() || this.assetEditorReadOnly()) {
       return;
     }
     void this.saveAssetCard();
@@ -510,7 +510,7 @@ export class AssetEditorPopupComponent {
       icon: 'done',
       layout: 'action',
       palette: canSave || this.isSavePending ? 'success' : 'danger',
-      disabled: !canSave || this.assetEditorReadOnly() || this.isLoading,
+      disabled: !canSave || this.assetEditorReadOnly() || this.isLoading || this.isSavePending,
       ariaLabel: 'Save asset',
       progress: this.isSavePending
         ? {
@@ -546,7 +546,7 @@ export class AssetEditorPopupComponent {
       label: this.assetFormVisibility,
       icon: this.visibilityIcon(this.assetFormVisibility),
       palette: this.visibilityPalette(this.assetFormVisibility),
-      disabled: () => this.assetEditorReadOnly() || this.isLoading,
+      disabled: () => this.assetEditorReadOnly() || this.isLoading || this.isSavePending,
       layout: 'pill',
       ariaLabel: 'Open asset visibility selector'
     };
@@ -561,7 +561,7 @@ export class AssetEditorPopupComponent {
       active: option === this.assetFormVisibility,
       palette: this.visibilityPalette(option),
       surface: 'tinted',
-      disabled: () => this.assetEditorReadOnly() || this.isLoading,
+      disabled: () => this.assetEditorReadOnly() || this.isLoading || this.isSavePending,
       context: { menu: 'visibility', visibility: option }
     }));
   }
@@ -572,7 +572,7 @@ export class AssetEditorPopupComponent {
       icon: this.assetCategoryIcon(this.assetForm.category),
       palette: this.assetCategoryPalette(this.assetForm.category),
       layout: 'field',
-      disabled: () => this.assetEditorReadOnly() || this.isLoading,
+      disabled: () => this.assetEditorReadOnly() || this.isLoading || this.isSavePending,
       ariaLabel: 'Open asset category'
     };
   }
@@ -586,7 +586,7 @@ export class AssetEditorPopupComponent {
       active: option === this.assetForm.category,
       palette: this.assetCategoryPalette(option),
       surface: 'tinted',
-      disabled: () => this.assetEditorReadOnly() || this.isLoading,
+      disabled: () => this.assetEditorReadOnly() || this.isLoading || this.isSavePending,
       context: { menu: 'category', category: option }
     }));
   }
@@ -600,15 +600,15 @@ export class AssetEditorPopupComponent {
       void this.saveRuntimeRouteAssignment();
       return;
     }
-    if (this.isLoading || this.assetEditorReadOnly()) {
+    if (context.menu === 'save') {
+      this.submitForm();
+      return;
+    }
+    if (this.isLoading || this.isSavePending || this.assetEditorReadOnly()) {
       return;
     }
     if (context.menu === 'visibility') {
       this.assetStore.setAssetEditorVisibility(context.visibility);
-      return;
-    }
-    if (context.menu === 'save') {
-      this.submitForm();
       return;
     }
     this.setAssetEditorCategory(context.category);
@@ -879,7 +879,7 @@ export class AssetEditorPopupComponent {
   }
 
   protected assetEditorReadOnly(): boolean {
-    return this.assetStore.assetFormReadOnly() || this.isSavePending;
+    return this.assetStore.assetFormReadOnly();
   }
 
   private applyRuntimeRouteValueFromFlow(value: unknown): void {
