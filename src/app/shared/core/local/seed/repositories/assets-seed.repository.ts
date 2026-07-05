@@ -248,6 +248,34 @@ export class SeedAssetsRepository {
           note: 'Awaiting owner confirmation.',
           eventTitle: 'Volunteer Run',
           subEventTitle: 'Afternoon pickup'
+        }),
+        this.seedAssetRequest(assetId, owner.id, card, 'van-borrow-2', members[1], 'borrow', 'accepted', anchorDate, 6, 16, 2, {
+          quantity: 1,
+          note: 'Approved for the late volunteer transfer.',
+          eventTitle: 'Crew Shuttle',
+          subEventTitle: 'Evening return'
+        })
+      ];
+    }
+    if (card.id === 'asset-car-4') {
+      return [
+        this.seedAssetRequest(assetId, owner.id, card, 'summit-assigned-1', members[0], 'manual', 'accepted', anchorDate, 7, 8, 1, {
+          quantity: 1,
+          note: 'Assigned by the owner for the speaker transfer.',
+          eventTitle: 'Summit Logistics',
+          subEventTitle: 'Speaker pickup'
+        }),
+        this.seedAssetRequest(assetId, owner.id, card, 'summit-pending-1', members[2], 'borrow', 'pending', anchorDate, 7, 10, 1, {
+          quantity: 1,
+          note: 'Awaiting owner confirmation for the hotel return.',
+          eventTitle: 'Summit Logistics',
+          subEventTitle: 'Hotel return'
+        }),
+        this.seedAssetRequest(assetId, owner.id, card, 'summit-borrow-1', members[4] ?? members[1], 'borrow', 'accepted', anchorDate, 9, 15, 2, {
+          quantity: 1,
+          note: 'Borrow request approved for the afternoon transfer.',
+          eventTitle: 'Partner Meetup',
+          subEventTitle: 'Station transfer'
         })
       ];
     }

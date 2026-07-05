@@ -9,12 +9,22 @@ import type * as AppDTOs from '../../contracts';
   providedIn: 'root'
 })
 export class AssetsService extends BaseRouteModeService {
+  private static readonly ASSETS_ROUTE = '/assets';
+  private static readonly ASSET_AVAILABILITY_ROUTE = '/assets/availability';
   private readonly localAssetsService = inject(LocalAssetsService);
   private readonly httpAssetsService = inject(HttpAssetsService);
 
 
   private get assetsService(): LocalAssetsService | HttpAssetsService {
-    return this.resolveRouteService('/assets', this.localAssetsService, this.httpAssetsService);
+    return this.resolveRouteService(AssetsService.ASSETS_ROUTE, this.localAssetsService, this.httpAssetsService);
+  }
+
+  private get assetAvailabilityService(): LocalAssetsService | HttpAssetsService {
+    return this.resolveRouteService(
+      AssetsService.ASSET_AVAILABILITY_ROUTE,
+      this.localAssetsService,
+      this.httpAssetsService
+    );
   }
 
   peekOwnedAssetsByUser(userId: string): AppDTOs.AssetDTO[] {
@@ -87,7 +97,7 @@ export class AssetsService extends BaseRouteModeService {
         nextCursor: null
       };
     }
-    return this.assetsService.loadOccupancyByAssetId({
+    return this.assetAvailabilityService.loadOccupancyByAssetId({
       ...query,
       userId: normalizedUserId,
       assetId: normalizedAssetId,
@@ -114,7 +124,7 @@ export class AssetsService extends BaseRouteModeService {
         nextCursor: null
       };
     }
-    return this.assetsService.loadStatByAssetId({
+    return this.assetAvailabilityService.loadStatByAssetId({
       ...query,
       userId: normalizedUserId,
       assetId: normalizedAssetId,

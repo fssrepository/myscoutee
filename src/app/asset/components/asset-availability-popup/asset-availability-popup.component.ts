@@ -79,6 +79,8 @@ type AssetAvailabilityPopupMenuContext =
   changeDetection: ChangeDetectionStrategy.OnPush
 })
 export class AssetAvailabilityPopupComponent {
+  protected readonly availabilityPopupZIndex = 12100;
+  protected readonly dayListPopupZIndex = 12200;
   private readonly assetsService = inject(AssetsService);
   private readonly assetStore = inject(AssetStore);
   private readonly userProfileStore = inject(UserProfileStore);
@@ -130,6 +132,10 @@ export class AssetAvailabilityPopupComponent {
     },
     emptyLabel: 'No availability items',
     emptyDescription: '',
+    headerProgress: {
+      enabled: true,
+      state: 'active'
+    },
     listLayout: 'card-grid',
     desktopColumns: 1,
     snapMode: 'mandatory',
@@ -147,6 +153,10 @@ export class AssetAvailabilityPopupComponent {
     ],
     emptyLabel: 'No items for this day',
     emptyDescription: '',
+    headerProgress: {
+      enabled: true,
+      state: 'active'
+    },
     listLayout: 'card-grid',
     desktopColumns: 1,
     snapMode: 'proximity',

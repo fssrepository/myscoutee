@@ -11,6 +11,7 @@ import type * as AppDTOs from '../../../contracts';
 })
 export class LocalAssetsService extends LocalRouteDelayService {
   private static readonly ASSETS_ROUTE = '/assets';
+  private static readonly ASSET_AVAILABILITY_ROUTE = '/assets/availability';
   private readonly assetsRepository = inject(LocalAssetsRepository);
   private readonly assetRequestsRepository = inject(LocalAssetRequestsRepository);
 
@@ -56,7 +57,7 @@ export class LocalAssetsService extends LocalRouteDelayService {
     pageSize: number;
     cursor?: string | null;
   }): Promise<AppDTOs.AssetOccupancyPageResultDTO> {
-    await this.waitForRouteDelay(LocalAssetsService.ASSETS_ROUTE);
+    await this.waitForRouteDelay(LocalAssetsService.ASSET_AVAILABILITY_ROUTE);
     const page = this.assetRequestsRepository.queryAssetAvailabilityRecordPage(query);
     return LocalAssetsMapper.toAssetAvailabilityDtoPage(page);
   }
@@ -70,7 +71,7 @@ export class LocalAssetsService extends LocalRouteDelayService {
     pageSize: number;
     cursor?: string | null;
   }): Promise<AppDTOs.AssetOccupancyStatsPageResultDTO> {
-    await this.waitForRouteDelay(LocalAssetsService.ASSETS_ROUTE);
+    await this.waitForRouteDelay(LocalAssetsService.ASSET_AVAILABILITY_ROUTE);
     const page = this.assetRequestsRepository.queryAssetAvailabilityStatRecordPage(query);
     return LocalAssetsMapper.toAssetAvailabilityStatDtoPage(page);
   }

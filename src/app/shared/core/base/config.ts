@@ -265,6 +265,10 @@ export const ROUTE_CONFIG: RouteConfig = {
       demoDelayMs: 1500
     },
     {
+      routePrefix: '/assets/availability',
+      demoDelayMs: 1500
+    },
+    {
       routePrefix: '/assets/tickets',
       demoDelayMs: 1500
     },

@@ -2,7 +2,7 @@
   <app-popup
     class="asset-availability-popup"
     [model]="availabilityPopupModel()"
-    [zIndex]="2380"
+    [zIndex]="availabilityPopupZIndex"
   >
     <app-smart-list
       #availabilitySmartList
@@ -22,7 +22,7 @@
   <app-popup
     class="asset-availability-popup asset-availability-popup--day-list"
     [model]="dayListPopupModel()"
-    [zIndex]="2460"
+    [zIndex]="dayListPopupZIndex"
   >
     <app-smart-list
       #dayListSmartList

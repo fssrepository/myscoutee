@@ -3,6 +3,7 @@ import { Injectable, inject } from '@angular/core';
 
 import { environment } from '../../../../../environments/environment';
 import { AssetCardBuilder, AssetDefaultsBuilder, PricingBuilder } from '../../base/builders';
+import { RouteDelayService } from '../../base/services/route-delay.service';
 import { AssetDto } from '../../contracts';
 import type * as AppDTOs from '../../contracts';
 import type * as AppConstants from '../../common/constants';
@@ -10,7 +11,9 @@ import type * as AppConstants from '../../common/constants';
   providedIn: 'root'
 })
 export class HttpAssetsService {
+  private static readonly ASSET_AVAILABILITY_ROUTE = '/assets/availability';
   private readonly http = inject(HttpClient);
+  private readonly routeDelay = inject(RouteDelayService);
   private readonly apiBaseUrl = environment.apiBaseUrl ?? '/api';
   private readonly cachedAssetsByUserId: Record<string, AppDTOs.AssetDTO[]> = {};
   private readonly inflightAssetsByUserId: Record<string, Promise<AppDTOs.AssetDTO[]>> = {};
@@ -171,8 +174,9 @@ export class HttpAssetsService {
       };
     }
     try {
-      const response = await this.http
-        .get<AppDTOs.AssetOccupancyPageResultDTO | null>(
+      const response = await this.routeDelay.withRequestTimeout(
+        HttpAssetsService.ASSET_AVAILABILITY_ROUTE,
+        this.http.get<AppDTOs.AssetOccupancyPageResultDTO | null>(
           `${this.apiBaseUrl}/assets/${encodeURIComponent(normalizedAssetId)}/availability`,
           {
             params: new HttpParams()
@@ -183,8 +187,9 @@ export class HttpAssetsService {
               .set('pageSize', `${Math.max(1, Math.trunc(Number(query.pageSize) || 1))}`)
               .set('cursor', `${query.cursor ?? ''}`.trim())
           }
-        )
-        .toPromise();
+        ).toPromise(),
+        'Asset availability request timed out.'
+      );
       return this.normalizeOccupancyPage(response);
     } catch {
       return {
@@ -214,8 +219,9 @@ export class HttpAssetsService {
       };
     }
     try {
-      const response = await this.http
-        .get<AppDTOs.AssetOccupancyStatsPageResultDTO | null>(
+      const response = await this.routeDelay.withRequestTimeout(
+        HttpAssetsService.ASSET_AVAILABILITY_ROUTE,
+        this.http.get<AppDTOs.AssetOccupancyStatsPageResultDTO | null>(
           `${this.apiBaseUrl}/assets/${encodeURIComponent(normalizedAssetId)}/availability/stats`,
           {
             params: new HttpParams()
@@ -226,8 +232,9 @@ export class HttpAssetsService {
               .set('pageSize', `${Math.max(1, Math.trunc(Number(query.pageSize) || 1))}`)
               .set('cursor', `${query.cursor ?? ''}`.trim())
           }
-        )
-        .toPromise();
+        ).toPromise(),
+        'Asset availability stats request timed out.'
+      );
       return this.normalizeOccupancyStatsPage(response);
     } catch {
       return {
