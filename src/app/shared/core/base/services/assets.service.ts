@@ -87,7 +87,7 @@ export class AssetsService extends BaseRouteModeService {
     page?: number;
     pageSize: number;
     cursor?: string | null;
-  }): Promise<AppDTOs.AssetOccupancyPageResultDTO> {
+  }, options: { signal?: AbortSignal } = {}): Promise<AppDTOs.AssetOccupancyPageResultDTO> {
     const normalizedUserId = query.userId.trim();
     const normalizedAssetId = query.assetId.trim();
     if (!normalizedUserId || !normalizedAssetId) {
@@ -103,7 +103,7 @@ export class AssetsService extends BaseRouteModeService {
       assetId: normalizedAssetId,
       page: Math.max(0, Math.trunc(Number(query.page) || 0)),
       pageSize: Math.max(1, Math.trunc(Number(query.pageSize) || 1))
-    });
+    }, options);
   }
 
   async loadStatByAssetId(query: {
@@ -114,7 +114,7 @@ export class AssetsService extends BaseRouteModeService {
     page?: number;
     pageSize: number;
     cursor?: string | null;
-  }): Promise<AppDTOs.AssetOccupancyStatsPageResultDTO> {
+  }, options: { signal?: AbortSignal } = {}): Promise<AppDTOs.AssetOccupancyStatsPageResultDTO> {
     const normalizedUserId = query.userId.trim();
     const normalizedAssetId = query.assetId.trim();
     if (!normalizedUserId || !normalizedAssetId) {
@@ -130,7 +130,7 @@ export class AssetsService extends BaseRouteModeService {
       assetId: normalizedAssetId,
       page: Math.max(0, Math.trunc(Number(query.page) || 0)),
       pageSize: Math.max(1, Math.trunc(Number(query.pageSize) || 1))
-    });
+    }, options);
   }
 
   async saveOwnedAsset(userId: string, asset: AppDTOs.AssetDetailDTO): Promise<AppDTOs.AssetDTO> {

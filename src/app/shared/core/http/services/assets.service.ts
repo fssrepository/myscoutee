@@ -1,5 +1,6 @@
 import { HttpClient, HttpParams } from '@angular/common/http';
 import { Injectable, inject } from '@angular/core';
+import type { Observable } from 'rxjs';
 
 import { environment } from '../../../../../environments/environment';
 import { AssetCardBuilder, AssetDefaultsBuilder, PricingBuilder } from '../../base/builders';
@@ -146,7 +147,10 @@ export class HttpAssetsService {
           ? response.nextCursor
           : null
       };
-    } catch {
+    } catch (error) {
+      if (this.isAbortError(error)) {
+        throw error;
+      }
       return {
         items: [],
         total: 0,
@@ -163,7 +167,7 @@ export class HttpAssetsService {
     page?: number;
     pageSize: number;
     cursor?: string | null;
-  }): Promise<AppDTOs.AssetOccupancyPageResultDTO> {
+  }, options: { signal?: AbortSignal } = {}): Promise<AppDTOs.AssetOccupancyPageResultDTO> {
     const normalizedUserId = query.userId.trim();
     const normalizedAssetId = query.assetId.trim();
     if (!normalizedUserId || !normalizedAssetId) {
@@ -176,22 +180,28 @@ export class HttpAssetsService {
     try {
       const response = await this.routeDelay.withRequestTimeout(
         HttpAssetsService.ASSET_AVAILABILITY_ROUTE,
-        this.http.get<AppDTOs.AssetOccupancyPageResultDTO | null>(
-          `${this.apiBaseUrl}/assets/${encodeURIComponent(normalizedAssetId)}/availability`,
-          {
-            params: new HttpParams()
-              .set('userId', normalizedUserId)
-              .set('dateIso', `${query.dateIso ?? ''}`.trim())
-              .set('filter', `${query.filter ?? 'all'}`.trim())
-              .set('page', `${Math.max(0, Math.trunc(Number(query.page) || 0))}`)
-              .set('pageSize', `${Math.max(1, Math.trunc(Number(query.pageSize) || 1))}`)
-              .set('cursor', `${query.cursor ?? ''}`.trim())
-          }
-        ).toPromise(),
+        this.requestWithAbort(
+          this.http.get<AppDTOs.AssetOccupancyPageResultDTO | null>(
+            `${this.apiBaseUrl}/assets/${encodeURIComponent(normalizedAssetId)}/availability`,
+            {
+              params: new HttpParams()
+                .set('userId', normalizedUserId)
+                .set('dateIso', `${query.dateIso ?? ''}`.trim())
+                .set('filter', `${query.filter ?? 'all'}`.trim())
+                .set('page', `${Math.max(0, Math.trunc(Number(query.page) || 0))}`)
+                .set('pageSize', `${Math.max(1, Math.trunc(Number(query.pageSize) || 1))}`)
+                .set('cursor', `${query.cursor ?? ''}`.trim())
+            }
+          ),
+          options.signal
+        ),
         'Asset availability request timed out.'
       );
       return this.normalizeOccupancyPage(response);
-    } catch {
+    } catch (error) {
+      if (this.isAbortError(error)) {
+        throw error;
+      }
       return {
         items: [],
         total: 0,
@@ -208,7 +218,7 @@ export class HttpAssetsService {
     page?: number;
     pageSize: number;
     cursor?: string | null;
-  }): Promise<AppDTOs.AssetOccupancyStatsPageResultDTO> {
+  }, options: { signal?: AbortSignal } = {}): Promise<AppDTOs.AssetOccupancyStatsPageResultDTO> {
     const normalizedUserId = query.userId.trim();
     const normalizedAssetId = query.assetId.trim();
     if (!normalizedUserId || !normalizedAssetId) {
@@ -221,18 +231,21 @@ export class HttpAssetsService {
     try {
       const response = await this.routeDelay.withRequestTimeout(
         HttpAssetsService.ASSET_AVAILABILITY_ROUTE,
-        this.http.get<AppDTOs.AssetOccupancyStatsPageResultDTO | null>(
-          `${this.apiBaseUrl}/assets/${encodeURIComponent(normalizedAssetId)}/availability/stats`,
-          {
-            params: new HttpParams()
-              .set('userId', normalizedUserId)
-              .set('rangeStart', `${query.rangeStart ?? ''}`.trim())
-              .set('rangeEnd', `${query.rangeEnd ?? ''}`.trim())
-              .set('page', `${Math.max(0, Math.trunc(Number(query.page) || 0))}`)
-              .set('pageSize', `${Math.max(1, Math.trunc(Number(query.pageSize) || 1))}`)
-              .set('cursor', `${query.cursor ?? ''}`.trim())
-          }
-        ).toPromise(),
+        this.requestWithAbort(
+          this.http.get<AppDTOs.AssetOccupancyStatsPageResultDTO | null>(
+            `${this.apiBaseUrl}/assets/${encodeURIComponent(normalizedAssetId)}/availability/stats`,
+            {
+              params: new HttpParams()
+                .set('userId', normalizedUserId)
+                .set('rangeStart', `${query.rangeStart ?? ''}`.trim())
+                .set('rangeEnd', `${query.rangeEnd ?? ''}`.trim())
+                .set('page', `${Math.max(0, Math.trunc(Number(query.page) || 0))}`)
+                .set('pageSize', `${Math.max(1, Math.trunc(Number(query.pageSize) || 1))}`)
+                .set('cursor', `${query.cursor ?? ''}`.trim())
+            }
+          ),
+          options.signal
+        ),
         'Asset availability stats request timed out.'
       );
       return this.normalizeOccupancyStatsPage(response);
@@ -747,6 +760,66 @@ export class HttpAssetsService {
           action === 'accept' || action === 'remove' || action === 'makeManager')
         : []
     };
+  }
+
+  private requestWithAbort<T>(request$: Observable<T>, signal?: AbortSignal): Promise<T> {
+    return new Promise<T>((resolve, reject) => {
+      if (signal?.aborted) {
+        reject(this.createAbortError());
+        return;
+      }
+      let settled = false;
+      let subscription: { unsubscribe: () => void } | null = null;
+      const cleanup = () => {
+        signal?.removeEventListener('abort', onAbort);
+      };
+      const onAbort = () => {
+        if (settled) {
+          return;
+        }
+        settled = true;
+        subscription?.unsubscribe();
+        cleanup();
+        reject(this.createAbortError());
+      };
+      signal?.addEventListener('abort', onAbort, { once: true });
+      subscription = request$.subscribe({
+        next: value => {
+          if (settled) {
+            return;
+          }
+          settled = true;
+          cleanup();
+          resolve(value);
+        },
+        error: error => {
+          if (settled) {
+            return;
+          }
+          settled = true;
+          cleanup();
+          reject(error);
+        },
+        complete: () => {
+          if (settled) {
+            return;
+          }
+          settled = true;
+          cleanup();
+          resolve(null as T);
+        }
+      });
+    });
+  }
+
+  private createAbortError(): Error {
+    const error = new Error('Request aborted.');
+    error.name = 'AbortError';
+    return error;
+  }
+
+  private isAbortError(error: unknown): boolean {
+    return error instanceof Error && error.name === 'AbortError';
   }
 
   private restoredAssetStatus(_card: AppDTOs.AssetDTO): string {

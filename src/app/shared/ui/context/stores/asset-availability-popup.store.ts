@@ -55,7 +55,7 @@ export class AssetAvailabilityPopupStore {
     request: AssetAvailabilityPopupOpenRequest,
     header?: AssetAvailabilityHeaderState | null
   ): void {
-    const normalized = this.normalizeRequest(request, 'asset-availability', 'month');
+    const normalized = this.normalizeRequest(request, 'asset-availability', 'day');
     if (!normalized) {
       return;
     }

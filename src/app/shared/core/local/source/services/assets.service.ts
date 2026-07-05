@@ -56,8 +56,12 @@ export class LocalAssetsService extends LocalRouteDelayService {
     page?: number;
     pageSize: number;
     cursor?: string | null;
-  }): Promise<AppDTOs.AssetOccupancyPageResultDTO> {
-    await this.waitForRouteDelay(LocalAssetsService.ASSET_AVAILABILITY_ROUTE);
+  }, options: { signal?: AbortSignal } = {}): Promise<AppDTOs.AssetOccupancyPageResultDTO> {
+    await this.waitForRouteDelay(
+      LocalAssetsService.ASSET_AVAILABILITY_ROUTE,
+      options.signal,
+      'Asset availability request aborted.'
+    );
     const page = this.assetRequestsRepository.queryAssetAvailabilityRecordPage(query);
     return LocalAssetsMapper.toAssetAvailabilityDtoPage(page);
   }
@@ -70,8 +74,12 @@ export class LocalAssetsService extends LocalRouteDelayService {
     page?: number;
     pageSize: number;
     cursor?: string | null;
-  }): Promise<AppDTOs.AssetOccupancyStatsPageResultDTO> {
-    await this.waitForRouteDelay(LocalAssetsService.ASSET_AVAILABILITY_ROUTE);
+  }, options: { signal?: AbortSignal } = {}): Promise<AppDTOs.AssetOccupancyStatsPageResultDTO> {
+    await this.waitForRouteDelay(
+      LocalAssetsService.ASSET_AVAILABILITY_ROUTE,
+      options.signal,
+      'Asset availability stats request aborted.'
+    );
     const page = this.assetRequestsRepository.queryAssetAvailabilityStatRecordPage(query);
     return LocalAssetsMapper.toAssetAvailabilityStatDtoPage(page);
   }

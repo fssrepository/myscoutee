@@ -3,8 +3,9 @@ import {
   ChangeDetectionStrategy,
   ChangeDetectorRef,
   Component,
-  effect,
-  inject
+  computed,
+  inject,
+  signal
 } from '@angular/core';
 import { from, map } from 'rxjs';
 
@@ -35,6 +36,7 @@ import {
   type SmartListCalendarDay,
   type SmartListConfig,
   type SmartListItemSelectEvent,
+  type SmartListLoadContext,
   type SmartListLoadPage
 } from '../../../shared/ui';
 import {
@@ -58,12 +60,16 @@ interface AssetAvailabilityListFilters {
   revision: number;
   filter: AppDTOs.AssetAvailabilityFilter;
   dateIso?: string | null;
-  requestKey: string;
 }
 
 type AssetAvailabilityPopupMenuContext =
   | { menu: 'view'; view: AppDTOs.AssetAvailabilityView }
   | { menu: 'filter'; target: 'availability' | 'day-list'; filter: AppDTOs.AssetAvailabilityFilter };
+
+interface AssetAvailabilityScopedOverride<T> {
+  requestIdentity: string;
+  value: T;
+}
 
 @Component({
   selector: 'app-asset-availability-popup',
@@ -87,33 +93,66 @@ export class AssetAvailabilityPopupComponent {
   protected readonly availabilityPopupStore = inject(AssetAvailabilityPopupStore);
   private readonly cdr = inject(ChangeDetectorRef);
 
-  protected availabilityView: AppDTOs.AssetAvailabilityView = 'month';
-  protected availabilityFilter: AppDTOs.AssetAvailabilityFilter = 'all';
-  protected dayListFilter: AppDTOs.AssetAvailabilityFilter = 'all';
-  protected availabilityQuery: Partial<ListQuery<AssetAvailabilityListFilters>> = this.buildQuery(
-    'month',
-    'all',
-    null,
-    'initial'
-  );
-  protected dayListQuery: Partial<ListQuery<AssetAvailabilityListFilters>> = this.buildQuery(
-    'day',
-    'all',
-    null,
-    'initial-day-list'
-  );
-  protected header: AssetAvailabilityHeaderState | null = null;
-  protected rowBusyKey = '';
+  private readonly availabilityRevision = signal(0);
+  private readonly dayListRevision = signal(0);
+  private readonly availabilityViewOverride = signal<AssetAvailabilityScopedOverride<AppDTOs.AssetAvailabilityView> | null>(null);
+  private readonly availabilityFilterOverride = signal<AssetAvailabilityScopedOverride<AppDTOs.AssetAvailabilityFilter> | null>(null);
+  private readonly dayListFilterOverride = signal<AssetAvailabilityScopedOverride<AppDTOs.AssetAvailabilityFilter> | null>(null);
 
-  private availabilityRevision = 0;
-  private dayListRevision = 0;
-  private lastAvailabilityRequestKey = '';
-  private lastDayListRequestKey = '';
+  protected readonly availabilityView = computed<AppDTOs.AssetAvailabilityView>(() => {
+    const request = this.availabilityPopupStore.availabilityPopup();
+    return this.scopedOverrideValue(
+      this.availabilityViewOverride(),
+      this.requestIdentity(request),
+      request?.view ?? 'day'
+    );
+  });
+  protected readonly availabilityFilter = computed<AppDTOs.AssetAvailabilityFilter>(() => {
+    const request = this.availabilityPopupStore.availabilityPopup();
+    return this.scopedOverrideValue(
+      this.availabilityFilterOverride(),
+      this.requestIdentity(request),
+      request?.filter ?? 'all'
+    );
+  });
+  protected readonly dayListFilter = computed<AppDTOs.AssetAvailabilityFilter>(() => {
+    const request = this.availabilityPopupStore.dayListPopup();
+    return this.scopedOverrideValue(
+      this.dayListFilterOverride(),
+      this.requestIdentity(request),
+      request?.filter ?? 'all'
+    );
+  });
+  protected readonly availabilityQuery = computed<Partial<ListQuery<AssetAvailabilityListFilters>>>(() => {
+    const request = this.availabilityPopupStore.availabilityPopup();
+    return this.buildQuery(
+      this.availabilityView(),
+      this.availabilityFilter(),
+      request?.initialDateIso ?? null,
+      this.availabilityRevision()
+    );
+  });
+  protected readonly dayListQuery = computed<Partial<ListQuery<AssetAvailabilityListFilters>>>(() => {
+    const request = this.availabilityPopupStore.dayListPopup();
+    return this.buildQuery(
+      'day',
+      this.dayListFilter(),
+      request?.initialDateIso ?? null,
+      this.dayListRevision()
+    );
+  });
+  protected readonly availabilityHeader = computed<AssetAvailabilityHeaderState | null>(
+    () => this.availabilityPopupStore.availabilityHeader()
+  );
+  protected readonly dayListHeader = computed<AssetAvailabilityHeaderState | null>(
+    () => this.availabilityPopupStore.dayListHeader() ?? this.availabilityPopupStore.availabilityHeader()
+  );
+  protected rowBusyKey = '';
 
   protected readonly availabilitySmartListConfig: SmartListConfig<AssetAvailabilityListItem, AssetAvailabilityListFilters> = {
     pageSize: 40,
     initialPageSize: 40,
-    defaultView: 'month',
+    defaultView: 'day',
     views: [
       { key: 'month', label: 'Month', mode: 'month', pageSize: 42 },
       { key: 'week', label: 'Week', mode: 'week', pageSize: 14 },
@@ -166,55 +205,6 @@ export class AssetAvailabilityPopupComponent {
     trackBy: (_index, item) => item.id
   };
 
-  constructor() {
-    effect(() => {
-      const request = this.availabilityPopupStore.availabilityPopup();
-      if (!request) {
-        return;
-      }
-      const requestKey = this.requestKey(request);
-      if (requestKey === this.lastAvailabilityRequestKey) {
-        return;
-      }
-      this.lastAvailabilityRequestKey = requestKey;
-      this.availabilityView = request.view;
-      this.availabilityFilter = request.filter;
-      this.header = this.availabilityPopupStore.availabilityHeader();
-      this.availabilityRevision += 1;
-      this.availabilityQuery = this.buildQuery(
-        this.availabilityView,
-        this.availabilityFilter,
-        request.initialDateIso ?? null,
-        requestKey,
-        this.availabilityRevision
-      );
-      this.cdr.markForCheck();
-    });
-
-    effect(() => {
-      const request = this.availabilityPopupStore.dayListPopup();
-      if (!request) {
-        return;
-      }
-      const requestKey = this.requestKey(request);
-      if (requestKey === this.lastDayListRequestKey) {
-        return;
-      }
-      this.lastDayListRequestKey = requestKey;
-      this.dayListFilter = request.filter;
-      this.header = this.availabilityPopupStore.dayListHeader() ?? this.availabilityPopupStore.availabilityHeader();
-      this.dayListRevision += 1;
-      this.dayListQuery = this.buildQuery(
-        'day',
-        this.dayListFilter,
-        request.initialDateIso ?? null,
-        requestKey,
-        this.dayListRevision
-      );
-      this.cdr.markForCheck();
-    });
-  }
-
   protected isAvailabilityOpen(): boolean {
     return this.availabilityPopupStore.availabilityPopup() !== null;
   }
@@ -224,10 +214,11 @@ export class AssetAvailabilityPopupComponent {
   }
 
   protected availabilityPopupModel(): PopupModel<AssetAvailabilityPopupMenuContext> {
+    const header = this.availabilityHeader();
     return {
-      title: this.header?.title ?? 'Asset availability',
+      title: header?.title ?? 'Asset availability',
       subtitle: this.availabilitySubtitle(),
-      secondarySubtitle: this.header ? `${this.header.capacity} capacity` : null,
+      secondarySubtitle: header ? `${header.capacity} capacity` : null,
       size: 'wide',
       height: 'full',
       bodyLayout: 'fill',
@@ -240,9 +231,10 @@ export class AssetAvailabilityPopupComponent {
   }
 
   protected dayListPopupModel(): PopupModel<AssetAvailabilityPopupMenuContext> {
+    const header = this.dayListHeader();
     return {
       title: this.dayListTitle(),
-      subtitle: this.header?.title ?? null,
+      subtitle: header?.title ?? null,
       size: 'wide',
       height: 'full',
       bodyLayout: 'fill',
@@ -255,15 +247,17 @@ export class AssetAvailabilityPopupComponent {
   }
 
   protected readonly availabilitySmartListLoadPage: SmartListLoadPage<AssetAvailabilityListItem, AssetAvailabilityListFilters> =
-    (query): ReturnType<SmartListLoadPage<AssetAvailabilityListItem, AssetAvailabilityListFilters>> => {
+    (query, context): ReturnType<SmartListLoadPage<AssetAvailabilityListItem, AssetAvailabilityListFilters>> => {
       if (query.view === 'week' || query.view === 'month') {
-        return this.loadStatsPage(query);
+        return this.loadStatsPage(query, context);
       }
-      return this.loadRowsPage(query);
+      return this.loadRowsPage(query, context);
     };
 
-  private readonly loadStatsPage: SmartListLoadPage<AssetAvailabilityListItem, AssetAvailabilityListFilters> =
-    (query): ReturnType<SmartListLoadPage<AssetAvailabilityListItem, AssetAvailabilityListFilters>> => {
+  private readonly loadStatsPage = (
+    query: ListQuery<AssetAvailabilityListFilters>,
+    context?: SmartListLoadContext
+  ): ReturnType<SmartListLoadPage<AssetAvailabilityListItem, AssetAvailabilityListFilters>> => {
       const request = this.availabilityPopupStore.availabilityPopup();
       if (!request) {
         return from([this.emptyPage<AssetAvailabilityListItem>()]);
@@ -276,16 +270,18 @@ export class AssetAvailabilityPopupComponent {
         page: query.page,
         pageSize: query.pageSize,
         cursor: query.cursor ?? null
-      })).pipe(map(result => ({
+      }, { signal: context?.signal })).pipe(map(result => ({
           items: result.items,
           total: result.total,
           nextCursor: result.nextCursor ?? null
         })));
     };
 
-  private readonly loadRowsPage: SmartListLoadPage<AssetAvailabilityListItem, AssetAvailabilityListFilters> =
-    (query): ReturnType<SmartListLoadPage<AssetAvailabilityListItem, AssetAvailabilityListFilters>> => {
-      const request = this.requestForQuery(query);
+  private readonly loadRowsPage = (
+    query: ListQuery<AssetAvailabilityListFilters>,
+    context?: SmartListLoadContext
+  ): ReturnType<SmartListLoadPage<AssetAvailabilityListItem, AssetAvailabilityListFilters>> => {
+      const request = this.availabilityPopupStore.availabilityPopup();
       if (!request) {
         return from([this.emptyPage<AssetAvailabilityListItem>()]);
       }
@@ -297,7 +293,7 @@ export class AssetAvailabilityPopupComponent {
         page: query.page,
         pageSize: query.pageSize,
         cursor: query.cursor ?? null
-      })).pipe(map(result => ({
+      }, { signal: context?.signal })).pipe(map(result => ({
           items: result.items,
           total: result.total,
           nextCursor: result.nextCursor ?? null
@@ -305,8 +301,8 @@ export class AssetAvailabilityPopupComponent {
     };
 
   protected readonly dayListSmartListLoadPage: SmartListLoadPage<AppDTOs.AssetOccupancyRowDTO, AssetAvailabilityListFilters> =
-    (query): ReturnType<SmartListLoadPage<AppDTOs.AssetOccupancyRowDTO, AssetAvailabilityListFilters>> => {
-      const request = this.requestForQuery(query);
+    (query, context): ReturnType<SmartListLoadPage<AppDTOs.AssetOccupancyRowDTO, AssetAvailabilityListFilters>> => {
+      const request = this.availabilityPopupStore.dayListPopup();
       if (!request) {
         return from([this.emptyPage<AppDTOs.AssetOccupancyRowDTO>()]);
       }
@@ -318,10 +314,10 @@ export class AssetAvailabilityPopupComponent {
         page: query.page,
         pageSize: query.pageSize,
         cursor: query.cursor ?? null
-      })).pipe(map(result => ({
-          items: result.items,
-          total: result.total,
-          nextCursor: result.nextCursor ?? null
+      }, { signal: context?.signal })).pipe(map(result => ({
+        items: result.items,
+        total: result.total,
+        nextCursor: result.nextCursor ?? null
         })));
     };
 
@@ -378,11 +374,11 @@ export class AssetAvailabilityPopupComponent {
         assetId: request.assetId,
         ownerUserId: request.ownerUserId,
         initialDateIso: dateIso,
-        filter: this.availabilityFilter,
+        filter: this.availabilityFilter(),
         view: 'day',
         source: 'calendar-cell'
       },
-      this.header
+      this.availabilityHeader()
     );
     void this.availabilityPopupStore.ensureAssetAvailabilityPopupLoaded();
   }
@@ -412,54 +408,39 @@ export class AssetAvailabilityPopupComponent {
   }
 
   private selectAvailabilityView(view: AppDTOs.AssetAvailabilityView): void {
-    if (this.availabilityView === view) {
+    if (this.availabilityView() === view) {
       return;
     }
-    this.availabilityView = view;
-    this.availabilityRevision += 1;
     const request = this.availabilityPopupStore.availabilityPopup();
-    this.availabilityQuery = this.buildQuery(
-      view,
-      this.availabilityFilter,
-      request?.initialDateIso ?? null,
-      this.requestKey(request),
-      this.availabilityRevision
-    );
-    this.cdr.markForCheck();
+    this.availabilityViewOverride.set({
+      requestIdentity: this.requestIdentity(request),
+      value: view
+    });
+    this.availabilityRevision.update(revision => revision + 1);
   }
 
   private selectAvailabilityFilter(filter: AppDTOs.AssetAvailabilityFilter): void {
-    if (this.availabilityFilter === filter) {
+    if (this.availabilityFilter() === filter) {
       return;
     }
-    this.availabilityFilter = filter;
-    this.availabilityRevision += 1;
     const request = this.availabilityPopupStore.availabilityPopup();
-    this.availabilityQuery = this.buildQuery(
-      this.availabilityView,
-      filter,
-      request?.initialDateIso ?? null,
-      this.requestKey(request),
-      this.availabilityRevision
-    );
-    this.cdr.markForCheck();
+    this.availabilityFilterOverride.set({
+      requestIdentity: this.requestIdentity(request),
+      value: filter
+    });
+    this.availabilityRevision.update(revision => revision + 1);
   }
 
   private selectDayListFilter(filter: AppDTOs.AssetAvailabilityFilter): void {
-    if (this.dayListFilter === filter) {
+    if (this.dayListFilter() === filter) {
       return;
     }
-    this.dayListFilter = filter;
-    this.dayListRevision += 1;
     const request = this.availabilityPopupStore.dayListPopup();
-    this.dayListQuery = this.buildQuery(
-      'day',
-      filter,
-      request?.initialDateIso ?? null,
-      this.requestKey(request),
-      this.dayListRevision
-    );
-    this.cdr.markForCheck();
+    this.dayListFilterOverride.set({
+      requestIdentity: this.requestIdentity(request),
+      value: filter
+    });
+    this.dayListRevision.update(revision => revision + 1);
   }
 
   private availabilityHeaderControls(): PopupControl<AssetAvailabilityPopupMenuContext>[] {
@@ -476,7 +457,7 @@ export class AssetAvailabilityPopupComponent {
       kind: 'menu',
       id: 'filter',
       align: 'end',
-      trigger: this.filterMenuTrigger(this.availabilityFilter),
+      trigger: this.filterMenuTrigger(this.availabilityFilter()),
       items: this.filterMenuItems('availability')
     }];
   }
@@ -486,17 +467,18 @@ export class AssetAvailabilityPopupComponent {
       kind: 'menu',
       id: 'day-list-filter',
       align: 'end',
-      trigger: this.filterMenuTrigger(this.dayListFilter),
+      trigger: this.filterMenuTrigger(this.dayListFilter()),
       items: this.filterMenuItems('day-list')
     }];
   }
 
   private viewMenuTrigger(): AppMenuTrigger {
-    const option = APP_STATIC_DATA.activitiesViewOptions.find(item => item.key === this.availabilityView);
+    const view = this.availabilityView();
+    const option = APP_STATIC_DATA.activitiesViewOptions.find(item => item.key === view);
     return this.selectTrigger({
       label: option?.label ?? 'View',
       icon: option?.icon ?? 'view_agenda',
-      palette: this.viewPalette(this.availabilityView),
+      palette: this.viewPalette(view),
       ariaLabel: 'Open availability view'
     });
   }
@@ -511,7 +493,7 @@ export class AssetAvailabilityPopupComponent {
         label: option.label,
         icon: option.icon,
         kind: 'radio',
-        active: view === this.availabilityView,
+        active: view === this.availabilityView(),
         palette: this.viewPalette(view),
         surface: 'tinted',
         context: { menu: 'view', view }
@@ -532,7 +514,7 @@ export class AssetAvailabilityPopupComponent {
   private filterMenuItems(
     target: 'availability' | 'day-list'
   ): readonly AppMenuItem<string, AssetAvailabilityPopupMenuContext>[] {
-    const activeFilter = target === 'day-list' ? this.dayListFilter : this.availabilityFilter;
+    const activeFilter = target === 'day-list' ? this.dayListFilter() : this.availabilityFilter();
     return this.filterOptions().map(option => ({
       id: `asset-availability-filter:${target}:${option.key}`,
       label: option.label,
@@ -601,7 +583,7 @@ export class AssetAvailabilityPopupComponent {
     if (!stat) {
       return null;
     }
-    const capacity = stat.capacity > 0 ? stat.capacity : (this.header?.capacity ?? 0);
+    const capacity = stat.capacity > 0 ? stat.capacity : (this.availabilityHeader()?.capacity ?? 0);
     return {
       label: `${stat.occupied}/${capacity}`,
       ariaLabel: `${stat.occupied} occupied of ${capacity} capacity`,
@@ -720,35 +702,8 @@ export class AssetAvailabilityPopupComponent {
   }
 
   private reloadLists(): void {
-    this.availabilityRevision += 1;
-    this.dayListRevision += 1;
-    const availabilityRequest = this.availabilityPopupStore.availabilityPopup();
-    const dayListRequest = this.availabilityPopupStore.dayListPopup();
-    this.availabilityQuery = this.buildQuery(
-      this.availabilityView,
-      this.availabilityFilter,
-      availabilityRequest?.initialDateIso ?? null,
-      this.requestKey(availabilityRequest),
-      this.availabilityRevision
-    );
-    this.dayListQuery = this.buildQuery(
-      'day',
-      this.dayListFilter,
-      dayListRequest?.initialDateIso ?? null,
-      this.requestKey(dayListRequest),
-      this.dayListRevision
-    );
-  }
-
-  private requestForQuery(
-    query: ListQuery<AssetAvailabilityListFilters>
-  ): AssetAvailabilityPopupRequest | null {
-    const requestKey = `${query.filters?.requestKey ?? ''}`.trim();
-    const dayList = this.availabilityPopupStore.dayListPopup();
-    if (dayList && this.requestKey(dayList) === requestKey) {
-      return dayList;
-    }
-    return this.availabilityPopupStore.availabilityPopup();
+    this.availabilityRevision.update(revision => revision + 1);
+    this.dayListRevision.update(revision => revision + 1);
   }
 
   private emptyPage<T>(): PageResult<T> {
@@ -759,7 +714,6 @@ export class AssetAvailabilityPopupComponent {
     view: AppDTOs.AssetAvailabilityView,
     filter: AppDTOs.AssetAvailabilityFilter,
     dateIso: string | null,
-    requestKey: string,
     revision = 0
   ): Partial<ListQuery<AssetAvailabilityListFilters>> {
     return {
@@ -767,13 +721,20 @@ export class AssetAvailabilityPopupComponent {
       filters: {
         revision,
         filter,
-        dateIso: `${dateIso ?? ''}`.trim() || null,
-        requestKey
+        dateIso: `${dateIso ?? ''}`.trim() || null
       }
     };
   }
 
-  private requestKey(request: AssetAvailabilityPopupRequest | null | undefined): string {
+  private scopedOverrideValue<T>(
+    override: AssetAvailabilityScopedOverride<T> | null,
+    requestIdentity: string,
+    fallback: T
+  ): T {
+    return override?.requestIdentity === requestIdentity ? override.value : fallback;
+  }
+
+  private requestIdentity(request: AssetAvailabilityPopupRequest | null | undefined): string {
     if (!request) {
       return '';
     }
@@ -793,10 +754,11 @@ export class AssetAvailabilityPopupComponent {
   }
 
   private availabilitySubtitle(): string | null {
-    if (!this.header) {
+    const header = this.availabilityHeader();
+    if (!header) {
       return 'Time-based requests and assignments';
     }
-    return this.header.subtitle || 'Time-based requests and assignments';
+    return header.subtitle || 'Time-based requests and assignments';
   }
 
   private dayListTitle(): string {

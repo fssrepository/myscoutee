@@ -1249,7 +1249,7 @@ export class AssetPopupComponent {
         assetId: card.id,
         ownerUserId,
         filter: 'all',
-        view: 'month',
+        view: 'day',
         source: 'asset-card'
       },
       {
