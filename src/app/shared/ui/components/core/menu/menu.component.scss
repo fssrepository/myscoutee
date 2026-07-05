@@ -551,6 +551,20 @@
   padding: 0;
 }
 
+@media (max-width: 760px) {
+  .app-menu__trigger--collapsible {
+    width: 2.25rem;
+    height: 2.25rem;
+    padding: 0;
+    gap: 0;
+  }
+
+  .app-menu__trigger--collapsible .app-menu__trigger-label,
+  .app-menu__trigger--collapsible .app-menu__trigger-caret {
+    display: none;
+  }
+}
+
 .app-menu__trigger--layout-icon {
   width: 34px;
   height: 34px;

@@ -341,7 +341,7 @@ export class AssetAvailabilityPopupComponent {
         rangeStart: query.rangeStart ?? query.filters?.dateIso ?? undefined,
         rangeEnd: query.rangeEnd ?? query.filters?.dateIso ?? undefined,
         filter: query.filters?.filter ?? request.filter,
-        order: query.filters?.order ?? this.orderFromDirection(query.direction),
+        order: undefined,
         page: query.page,
         pageSize: query.pageSize,
         cursor: query.cursor ?? null
@@ -545,20 +545,22 @@ export class AssetAvailabilityPopupComponent {
   }
 
   private availabilityHeaderControls(): PopupControl<AssetAvailabilityPopupMenuContext>[] {
-    return [
-      {
+    const controls: PopupControl<AssetAvailabilityPopupMenuContext>[] = [];
+    if (this.availabilityView() === 'day') {
+      controls.push({
         kind: 'menu',
         id: 'order',
         trigger: this.orderMenuTrigger(),
         items: this.orderMenuItems()
-      },
-      {
-        kind: 'menu',
-        id: 'view',
-        trigger: this.viewMenuTrigger(),
-        items: this.viewMenuItems()
-      }
-    ];
+      });
+    }
+    controls.push({
+      kind: 'menu',
+      id: 'view',
+      trigger: this.viewMenuTrigger(),
+      items: this.viewMenuItems()
+    });
+    return controls;
   }
 
   private availabilityToolbarControls(): PopupControl<AssetAvailabilityPopupMenuContext>[] {
@@ -584,22 +586,24 @@ export class AssetAvailabilityPopupComponent {
   private viewMenuTrigger(): AppMenuTrigger {
     const view = this.availabilityView();
     const option = APP_STATIC_DATA.activitiesViewOptions.find(item => item.key === view);
-    return this.selectTrigger({
+    return this.availabilitySelectTrigger({
       label: option?.label ?? 'View',
       icon: option?.icon ?? 'view_agenda',
       palette: this.viewPalette(view),
-      ariaLabel: 'Open availability view'
+      ariaLabel: 'Open availability view',
+      collapsible: true
     });
   }
 
   private orderMenuTrigger(): AppMenuTrigger {
     const order = this.availabilityOrder();
     const option = this.orderMenuOptions().find(item => item.key === order) ?? this.orderMenuOptions()[0];
-    return this.selectTrigger({
+    return this.availabilitySelectTrigger({
       label: option.label,
       icon: option.icon,
       palette: this.orderPalette(order),
-      ariaLabel: 'asset.requests.order.open'
+      ariaLabel: 'asset.requests.order.open',
+      collapsible: true
     });
   }
 
@@ -647,7 +651,7 @@ export class AssetAvailabilityPopupComponent {
     target: 'availability' | 'day-list'
   ): AppMenuTrigger {
     const option = this.filterOptions().find(item => item.key === filter) ?? this.filterOptions()[0];
-    return this.selectTrigger({
+    return this.availabilitySelectTrigger({
       label: option.label,
       icon: option.icon,
       palette: this.filterPalette(filter),
@@ -682,20 +686,25 @@ export class AssetAvailabilityPopupComponent {
     ];
   }
 
-  private selectTrigger(input: {
+  private availabilitySelectTrigger(options: {
     label: string;
     icon: string;
     palette: AppMenuPalette;
-    ariaLabel: string;
-    counter?: number | null;
+    counter?: number;
+    layout?: AppMenuTrigger['layout'];
+    hideLabel?: boolean;
+    collapsible?: boolean;
+    ariaLabel?: string;
   }): AppMenuTrigger {
-    const counter = Math.max(0, Math.trunc(Number(input.counter) || 0));
+    const counter = Math.max(0, Math.trunc(Number(options.counter) || 0));
     return {
-      label: input.label,
-      icon: input.icon,
-      palette: input.palette,
-      layout: 'pill',
-      ariaLabel: input.ariaLabel,
+      label: options.label,
+      icon: options.icon,
+      palette: options.palette,
+      layout: options.layout ?? 'pill',
+      hideLabel: options.hideLabel,
+      collapsible: options.collapsible,
+      ariaLabel: options.ariaLabel,
       counter: counter > 0 ? { value: counter, max: 99 } : null
     };
   }

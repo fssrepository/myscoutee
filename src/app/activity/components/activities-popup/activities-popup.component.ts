@@ -1380,7 +1380,7 @@ export class ActivitiesPopupComponent implements OnDestroy {
       icon: this.activitiesSecondaryFilterIcon(),
       palette: this.activitiesSecondaryPalette(filter),
       layout: 'pill',
-      hideLabel: this.isMobileView
+      collapsible: true
     });
   }
 
@@ -1401,7 +1401,7 @@ export class ActivitiesPopupComponent implements OnDestroy {
       icon: APP_STATIC_DATA.activitiesViewOptions.find(option => option.key === this.activitiesView)?.icon ?? 'view_agenda',
       palette: this.activitiesViewPalette(this.activitiesView),
       layout: 'pill',
-      hideLabel: this.isMobileView
+      collapsible: true
     });
   }
 
@@ -1641,6 +1641,7 @@ export class ActivitiesPopupComponent implements OnDestroy {
     counter?: number;
     layout?: AppMenuTrigger['layout'];
     hideLabel?: boolean;
+    collapsible?: boolean;
   }): AppMenuTrigger {
     const counter = Math.max(0, Math.trunc(Number(options.counter) || 0));
     return {
@@ -1649,6 +1650,7 @@ export class ActivitiesPopupComponent implements OnDestroy {
       palette: options.palette,
       layout: options.layout ?? 'pill',
       hideLabel: options.hideLabel,
+      collapsible: options.collapsible,
       counter: counter > 0 ? { value: counter, max: 99 } : null
     };
   }

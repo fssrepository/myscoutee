@@ -14,8 +14,11 @@ import {
   type ActivitySubEventSupplyContributionsByAssetIdRecord
 } from '../../source/entity/activity.entity';
 import {
+  ASSET_REQUESTS_TABLE_NAME,
   ASSETS_TABLE_NAME,
   type AssetMemberRequestRecord,
+  type AssetRequestRecord,
+  type AssetRequestsRecordCollection,
   type AssetRecord,
   type AssetSnapshotRecord,
   type AssetsRecordCollection
@@ -54,10 +57,12 @@ export class SeedActivityResourcesRepository {
     const state = this.memoryDb.read();
     const eventsTable = state[EVENTS_TABLE_NAME];
     const currentTable = this.normalizeCollection(state[ACTIVITY_RESOURCES_TABLE_NAME]);
+    const currentAssetRequestsTable = this.normalizeAssetRequestsCollection(state[ASSET_REQUESTS_TABLE_NAME]);
     const seedToken = [
       eventsTable.ids.length,
       currentTable.ids.length,
       Object.keys(currentTable.idsByOwnerKey).length,
+      currentAssetRequestsTable.ids.length,
       normalizedUserIds.join('|')
     ].join(':');
     if (this.lastSeedToken === seedToken) {
@@ -71,7 +76,7 @@ export class SeedActivityResourcesRepository {
       this.collectSourceRecordsByUserId(normalizedUserIds)
     );
     const contributorUserIdsByEventId = new Map<string, string[]>();
-    const desiredRecords = normalizedUserIds.flatMap(userId =>
+    const generatedEventResourceRecords = normalizedUserIds.flatMap(userId =>
       this.buildSeededRecordsForUser(
         userId,
         sourceRecords.get(userId),
@@ -79,6 +84,15 @@ export class SeedActivityResourcesRepository {
         contributorUserIdsByEventId
       )
     );
+    const manualAssignmentResourceRecords = this.buildAssetRequestResourceRecords(
+      normalizedUserIds,
+      currentAssetRequestsTable,
+      ownedAssetsByUserId
+    );
+    const desiredRecords = this.uniqueSeededResourceRecords([
+      ...generatedEventResourceRecords,
+      ...manualAssignmentResourceRecords
+    ]);
     const desiredRecordIds = new Set(desiredRecords.map(record => record.id));
     const managedUserIds = new Set(normalizedUserIds);
     const nextRecords: ActivitySubEventResourceRecord[] = [];
@@ -130,6 +144,7 @@ export class SeedActivityResourcesRepository {
       eventsTable.ids.length,
       nextTable.ids.length,
       Object.keys(nextTable.idsByOwnerKey).length,
+      currentAssetRequestsTable.ids.length,
       normalizedUserIds.join('|')
     ].join(':');
   }
@@ -361,6 +376,191 @@ export class SeedActivityResourcesRepository {
     return assetsByUserId;
   }
 
+  private buildAssetRequestResourceRecords(
+    ownerUserIds: readonly string[],
+    requestsTable: AssetRequestsRecordCollection,
+    assetsByUserId: ReadonlyMap<string, readonly AssetRecord[]>
+  ): ActivitySubEventResourceRecord[] {
+    const managedUserIds = new Set(ownerUserIds.map(userId => `${userId ?? ''}`.trim()).filter(Boolean));
+    const assetById = new Map<string, AssetRecord>();
+    for (const [userId, assets] of assetsByUserId.entries()) {
+      if (!managedUserIds.has(`${userId ?? ''}`.trim())) {
+        continue;
+      }
+      for (const asset of assets ?? []) {
+        const assetId = `${asset?.id ?? ''}`.trim();
+        if (assetId) {
+          assetById.set(assetId, asset);
+        }
+      }
+    }
+
+    const recordsById = new Map<string, ActivitySubEventResourceRecord>();
+    for (const requestId of requestsTable.ids) {
+      const request = requestsTable.byId[requestId];
+      if (!this.isAcceptedManualBookedRequest(request)) {
+        continue;
+      }
+      const ownerUserId = `${request.ownerUserId ?? ''}`.trim();
+      if (!managedUserIds.has(ownerUserId)) {
+        continue;
+      }
+      const asset = assetById.get(`${request.assetId ?? ''}`.trim());
+      if (!asset || `${asset.ownerUserId ?? ''}`.trim() !== ownerUserId) {
+        continue;
+      }
+      const normalizedRef = this.normalizeRef({
+        ownerId: `${request.booking?.eventId ?? ''}`.trim(),
+        subEventId: `${request.booking?.subEventId ?? ''}`.trim(),
+        assetOwnerUserId: ownerUserId
+      });
+      if (!normalizedRef) {
+        continue;
+      }
+      const recordId = this.resourceRecordId(normalizedRef);
+      const record = recordsById.get(recordId) ?? this.createAssetRequestResourceRecord(normalizedRef, request);
+      this.applyAssetRequestAssignment(record, asset, request);
+      recordsById.set(recordId, record);
+    }
+
+    return [...recordsById.values()];
+  }
+
+  private uniqueSeededResourceRecords(
+    records: readonly ActivitySubEventResourceRecord[]
+  ): ActivitySubEventResourceRecord[] {
+    const byId = new Map<string, ActivitySubEventResourceRecord>();
+    for (const record of records) {
+      byId.set(record.id, this.cloneRecord(record));
+    }
+    return [...byId.values()];
+  }
+
+  private createAssetRequestResourceRecord(
+    ref: SeedActivityResourceRef,
+    request: AssetRequestRecord
+  ): ActivitySubEventResourceRecord {
+    const createdMs = this.assetRequestSeedMs(request);
+    const createdAtIso = request.createdAtIso || new Date(createdMs).toISOString();
+    return {
+      id: this.resourceRecordId(ref),
+      status: 'A',
+      ownerKey: this.resourceOwnerKey(ref),
+      ownerId: ref.ownerId,
+      subEventId: ref.subEventId,
+      assetOwnerUserId: ref.assetOwnerUserId,
+      assetAssignmentIds: {},
+      assetSettingsByType: {},
+      supplyContributionEntriesByAssetId: {},
+      fallbackAssetCardsByType: {},
+      createdMs,
+      updatedMs: createdMs,
+      createdAtIso,
+      updatedAtIso: createdAtIso
+    };
+  }
+
+  private applyAssetRequestAssignment(
+    record: ActivitySubEventResourceRecord,
+    asset: AssetRecord,
+    request: AssetRequestRecord
+  ): void {
+    const type = asset.type;
+    const assetId = asset.id.trim();
+    if (!assetId) {
+      return;
+    }
+
+    const assignedIds = record.assetAssignmentIds[type] ?? [];
+    if (!assignedIds.includes(assetId)) {
+      record.assetAssignmentIds[type] = [...assignedIds, assetId];
+    }
+
+    const routes = this.normalizeRoutes(asset.routes);
+    const settingsByAssetId = record.assetSettingsByType[type] ?? {};
+    record.assetSettingsByType[type] = {
+      ...settingsByAssetId,
+      [assetId]: {
+        capacityMin: 0,
+        capacityMax: this.assetRequestAssignmentCapacity(asset, request),
+        addedByUserId: record.assetOwnerUserId,
+        routeEnabled: routes.length > 0,
+        routes
+      }
+    };
+
+    if (type === 'Supplies') {
+      const quantity = this.assetRequestQuantity(request);
+      const entryId = `${request.id}:seed-supply`;
+      const existingEntries = record.supplyContributionEntriesByAssetId[assetId] ?? [];
+      if (!existingEntries.some(entry => entry.id === entryId)) {
+        record.supplyContributionEntriesByAssetId[assetId] = [
+          ...existingEntries,
+          {
+            id: entryId,
+            userId: record.assetOwnerUserId,
+            quantity,
+            addedAtIso: request.createdAtIso || record.createdAtIso
+          }
+        ];
+      }
+    }
+
+    const updatedMs = this.assetRequestUpdatedMs(request);
+    if (updatedMs >= record.updatedMs) {
+      record.updatedMs = updatedMs;
+      record.updatedAtIso = request.updatedAtIso || new Date(updatedMs).toISOString();
+    }
+  }
+
+  private isAcceptedManualBookedRequest(
+    request: AssetRequestRecord | null | undefined
+  ): request is AssetRequestRecord {
+    return Boolean(
+      request
+      && request.requestKind === 'manual'
+      && request.status === 'accepted'
+      && `${request.assetId ?? ''}`.trim()
+      && `${request.ownerUserId ?? ''}`.trim()
+      && `${request.booking?.eventId ?? ''}`.trim()
+      && `${request.booking?.subEventId ?? ''}`.trim()
+    );
+  }
+
+  private assetRequestAssignmentCapacity(asset: AssetRecord, request: AssetRequestRecord): number {
+    if (asset.type === 'Supplies') {
+      return this.assetRequestQuantity(request);
+    }
+    const quantity = Math.trunc(Number(asset.quantity));
+    if (Number.isFinite(quantity) && quantity > 0) {
+      return quantity;
+    }
+    return 1;
+  }
+
+  private assetRequestQuantity(request: AssetRequestRecord): number {
+    const quantity = Math.trunc(Number(request.booking?.quantity));
+    return Number.isFinite(quantity) && quantity > 0 ? quantity : 1;
+  }
+
+  private assetRequestSeedMs(request: AssetRequestRecord): number {
+    const createdMs = Math.trunc(Number(request.createdMs));
+    if (Number.isFinite(createdMs) && createdMs > 0) {
+      return createdMs;
+    }
+    const sortableCreatedAt = AppUtils.toSortableDate(request.createdAtIso);
+    return sortableCreatedAt > 0 ? sortableCreatedAt : Date.now();
+  }
+
+  private assetRequestUpdatedMs(request: AssetRequestRecord): number {
+    const updatedMs = Math.trunc(Number(request.updatedMs));
+    if (Number.isFinite(updatedMs) && updatedMs > 0) {
+      return updatedMs;
+    }
+    const sortableUpdatedAt = AppUtils.toSortableDate(request.updatedAtIso);
+    return sortableUpdatedAt > 0 ? sortableUpdatedAt : this.assetRequestSeedMs(request);
+  }
+
   private buildCollection(records: readonly ActivitySubEventResourceRecord[]): ActivityResourcesRecordCollection {
     const byId: Record<string, ActivitySubEventResourceRecord> = {};
     const ids: string[] = [];
@@ -404,6 +604,26 @@ export class SeedActivityResourcesRepository {
       idsByOwnerKey[ownerKey] = bucket;
     }
     return { byId, ids, idsByOwnerKey };
+  }
+
+  private normalizeAssetRequestsCollection(value: unknown): AssetRequestsRecordCollection {
+    const source = value as Partial<AssetRequestsRecordCollection> | null | undefined;
+    return {
+      byId: source?.byId && typeof source.byId === 'object'
+        ? { ...(source.byId as Record<string, AssetRequestRecord>) }
+        : {},
+      ids: Array.isArray(source?.ids)
+        ? source.ids.map(id => `${id}`).filter(Boolean)
+        : [],
+      idsByOwnerKey: source?.idsByOwnerKey && typeof source.idsByOwnerKey === 'object'
+        ? Object.fromEntries(
+            Object.entries(source.idsByOwnerKey).map(([ownerKey, requestIds]) => [
+              `${ownerKey ?? ''}`.trim(),
+              Array.isArray(requestIds) ? requestIds.map(id => `${id}`).filter(Boolean) : []
+            ]).filter(([ownerKey]) => ownerKey.length > 0)
+          )
+        : {}
+    };
   }
 
   private cloneRecord(record: ActivitySubEventResourceRecord): ActivitySubEventResourceRecord {
