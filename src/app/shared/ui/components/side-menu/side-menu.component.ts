@@ -517,7 +517,7 @@ export class SideMenuComponent implements OnDestroy {
       invitations: user.activities.invitations,
       events: user.activities.events,
       hosting: user.activities.hosting,
-      car: user.activities.cars,
+      transport: user.activities.cars,
       accommodation: user.activities.accommodation,
       supplies: user.activities.supplies,
       tickets: user.activities.tickets,
