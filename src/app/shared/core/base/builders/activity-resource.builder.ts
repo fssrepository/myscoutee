@@ -293,13 +293,6 @@ export class ActivityResourceBuilder {
     return { capacityMin: min, capacityMax: max };
   }
 
-  static buildSeededState(
-    ref: AppDTOs.ActivitySubEventResourceStateRefDTO,
-    _assets: readonly ActivityResourceAssetDTO[]
-  ): AppDTOs.ActivitySubEventResourceStateDTO {
-    return this.createEmptyState(ref);
-  }
-
   private static resolveAssignedCards(
     type: AppConstants.AssetType,
     state: AppDTOs.ActivitySubEventResourceStateDTO | null | undefined,
