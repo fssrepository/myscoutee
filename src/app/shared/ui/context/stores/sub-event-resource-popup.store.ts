@@ -98,6 +98,14 @@ export interface SubEventResourceMetricsUpdate {
   ownerId: string;
   subEventId: string;
   subEvent: ContractTypes.SubEventDTO;
+  assignmentQuantityUpdates?: readonly SubEventResourceAssignmentQuantityUpdate[];
+}
+
+export interface SubEventResourceAssignmentQuantityUpdate {
+  assetId: string;
+  type: AppConstants.AssetType;
+  subEventId: string;
+  quantity: number;
 }
 
 export interface CapacityEditorState {
@@ -296,14 +304,20 @@ export class SubEventResourcePopupStore {
     return this.supplyContributionEntriesByAssignmentKey[this.supplyAssignmentKey(subEventId, cardId)] ?? [];
   }
 
-  publishSubEventResourceMetrics(context: ResourcePopupContext): void {
+  publishSubEventResourceMetrics(
+    context: ResourcePopupContext,
+    options: {
+      assignmentQuantityUpdates?: readonly SubEventResourceAssignmentQuantityUpdate[];
+    } = {}
+  ): void {
     const revision = this.resourceMetricsRevisionRef() + 1;
     this.resourceMetricsRevisionRef.set(revision);
     this.subEventResourceMetricsUpdateRef.set({
       revision,
       ownerId: context.ownerId,
       subEventId: context.subEvent.id,
-      subEvent: { ...context.subEvent }
+      subEvent: { ...context.subEvent },
+      assignmentQuantityUpdates: [...(options.assignmentQuantityUpdates ?? [])]
     });
   }
 

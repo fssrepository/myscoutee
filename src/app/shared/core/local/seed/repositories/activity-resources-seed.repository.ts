@@ -483,6 +483,7 @@ export class SeedActivityResourcesRepository {
       [assetId]: {
         capacityMin: 0,
         capacityMax: this.assetRequestAssignmentCapacity(asset, request),
+        quantity: this.assetRequestQuantity(request),
         addedByUserId: record.assetOwnerUserId,
         routeEnabled: routes.length > 0,
         routes
@@ -531,15 +532,22 @@ export class SeedActivityResourcesRepository {
     if (asset.type === 'Supplies') {
       return this.assetRequestQuantity(request);
     }
-    const quantity = Math.trunc(Number(asset.quantity));
-    if (Number.isFinite(quantity) && quantity > 0) {
-      return quantity;
+    const capacity = Math.trunc(Number(asset.capacityTotal));
+    if (Number.isFinite(capacity) && capacity > 0) {
+      return capacity;
     }
     return 1;
   }
 
   private assetRequestQuantity(request: AssetRequestRecord): number {
     const quantity = Math.trunc(Number(request.booking?.quantity));
+    return Number.isFinite(quantity) && quantity > 0 ? quantity : 1;
+  }
+
+  private assignmentRecordQuantity(
+    settings: { quantity?: unknown } | null | undefined
+  ): number {
+    const quantity = Math.trunc(Number(settings?.quantity));
     return Number.isFinite(quantity) && quantity > 0 ? quantity : 1;
   }
 
@@ -664,10 +672,12 @@ export class SeedActivityResourcesRepository {
             this.isSubEventManualAssignmentRequest(request, subEventId)
           );
           const existingRequest = existingRequestIndex >= 0 ? card.requests[existingRequestIndex] : null;
+          const settings = record.assetSettingsByType[type]?.[assetId] ?? null;
           const quantity = type === 'Supplies'
             ? (record.supplyContributionEntriesByAssetId[assetId] ?? [])
                 .reduce((sum, entry) => sum + entry.quantity, 0)
-            : 0;
+              || this.assignmentRecordQuantity(settings)
+            : this.assignmentRecordQuantity(settings);
           if (type === 'Supplies' && quantity <= 0) {
             if (existingRequestIndex >= 0) {
               const nextRequests = [...card.requests];
@@ -697,7 +707,7 @@ export class SeedActivityResourcesRepository {
               subEventId,
               startAtIso: event.startAtIso,
               endAtIso: event.endAtIso,
-              quantity: type === 'Supplies' ? quantity : 1,
+              quantity,
               totalAmount: 0,
               currency: 'USD',
               acceptedPolicyIds: [],
@@ -793,6 +803,7 @@ export class SeedActivityResourcesRepository {
         normalizedMap[normalizedAssetId] = {
           capacityMin: Math.max(0, Math.trunc(Number(settings.capacityMin) || 0)),
           capacityMax: Math.max(0, Math.trunc(Number(settings.capacityMax) || 0)),
+          quantity: this.assignmentRecordQuantity(settings),
           addedByUserId: `${settings.addedByUserId ?? ''}`.trim(),
           routeEnabled: settings.routeEnabled === true && routes.length > 0,
           routes

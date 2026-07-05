@@ -303,7 +303,7 @@ export class SeedAssetsRepository {
       assetId,
       ownerUserId,
       ownerKey: this.assetRequestOwnerKey(assetId),
-      assetCapacity: this.storedQuantityValue(card),
+      assetCapacity: this.assetRequestCapacity(card),
       userId: user.id,
       name: user.name,
       initials: user.initials,
@@ -432,6 +432,14 @@ export class SeedAssetsRepository {
       return parsed;
     }
     return this.normalizeQuantity(card.type, card.quantity, card.capacityTotal);
+  }
+
+  private assetRequestCapacity(card: Pick<SeedAssetTemplate, 'type' | 'capacityTotal'> & { quantity: unknown }): number {
+    if (card.type === 'Supplies') {
+      return this.storedQuantityValue(card);
+    }
+    const capacity = Math.trunc(Number(card.capacityTotal));
+    return Number.isFinite(capacity) && capacity > 0 ? capacity : 1;
   }
 
   private normalizeQuantity(

@@ -1935,9 +1935,11 @@ export class EventResourceAssetExploreComponent implements DoCheck {
     const currentSettings = { ...(this.resourcePopupStore.assignedAssetSettingsByKey[key] ?? {}) };
     if (!currentSettings[card.id]) {
       const capacityLimit = Math.max(0, card.capacityTotal);
+      const quantityLimit = Math.max(1, AssetCardBuilder.storedQuantityValue(card));
       currentSettings[card.id] = {
         capacityMin: 0,
         capacityMax: capacityLimit,
+        quantity: Math.min(quantityLimit, Math.max(1, Math.trunc(Number(quantity) || 1))),
         addedByUserId: this.activeUser().id,
         routeEnabled: card.type === 'Car' && this.normalizeRoutes(card.type, card.routes).length > 0,
         routes: this.normalizeRoutes(card.type, card.routes)
@@ -2110,6 +2112,7 @@ export class EventResourceAssetExploreComponent implements DoCheck {
       next[assetId] = {
         capacityMin,
         capacityMax,
+        quantity: Math.max(1, Math.trunc(Number(previous?.quantity) || 1)),
         addedByUserId: previous?.addedByUserId ?? this.activeUser().id,
         routeEnabled: previous?.routeEnabled ?? this.normalizeRoutes(type, previous?.routes).length > 0,
         routes: this.normalizeRoutes(type, previous?.routes)

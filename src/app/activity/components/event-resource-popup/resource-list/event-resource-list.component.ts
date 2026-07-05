@@ -377,6 +377,7 @@ export class EventResourceListComponent implements DoCheck {
       capacityMin: this.resourceCapacityMin(context.subEvent.id, filter, items),
       capacityMax: items.reduce((sum, item) => sum + this.nonNegativeCount(item.card.capacityTotal), 0)
     };
+    const assignmentQuantityUpdates = this.assignmentQuantityUpdates(context.subEvent.id, filter, items);
     const nextSubEvent = { ...context.subEvent };
     if (filter === 'Car') {
       nextSubEvent.carsAccepted = metrics.accepted;
@@ -394,15 +395,44 @@ export class EventResourceListComponent implements DoCheck {
       nextSubEvent.suppliesCapacityMin = metrics.capacityMin;
       nextSubEvent.suppliesCapacityMax = metrics.capacityMax;
     }
-    if (!this.subEventResourceMetricsChanged(context.subEvent, nextSubEvent)) {
+    const metricsChanged = this.subEventResourceMetricsChanged(context.subEvent, nextSubEvent);
+    if (!metricsChanged && assignmentQuantityUpdates.length === 0) {
       return;
     }
-    const nextContext = {
-      ...context,
-      subEvent: nextSubEvent
-    };
-    this.resourcePopupStore.popupContextRef.set(nextContext);
-    this.resourcePopupStore.publishSubEventResourceMetrics(nextContext);
+    const nextContext = metricsChanged
+      ? {
+          ...context,
+          subEvent: nextSubEvent
+        }
+      : context;
+    if (metricsChanged) {
+      this.resourcePopupStore.popupContextRef.set(nextContext);
+    }
+    this.resourcePopupStore.publishSubEventResourceMetrics(nextContext, { assignmentQuantityUpdates });
+  }
+
+  private assignmentQuantityUpdates(
+    subEventId: string,
+    filter: AppConstants.AssetType,
+    items: readonly EventResourceListItem[]
+  ): { assetId: string; type: AppConstants.AssetType; subEventId: string; quantity: number }[] {
+    const settings = this.resourcePopupStore.assignedAssetSettingsByKey[
+      this.resourcePopupStore.assetAssignmentKey(subEventId, filter)
+    ] ?? {};
+    return items
+      .map(item => {
+        const assetId = `${item.card.sourceAssetId ?? ''}`.trim();
+        const quantity = Math.trunc(Number(assetId ? settings[assetId]?.quantity : 0));
+        return assetId && Number.isFinite(quantity) && quantity > 0
+          ? {
+              assetId,
+              type: filter,
+              subEventId,
+              quantity
+            }
+          : null;
+      })
+      .filter((item): item is { assetId: string; type: AppConstants.AssetType; subEventId: string; quantity: number } => item !== null);
   }
 
   private resourceCapacityMin(

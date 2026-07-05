@@ -687,6 +687,7 @@ export class EventSupplyContributionsPopupComponent implements DoCheck {
       next[assetId] = {
         capacityMin: Math.max(0, Math.trunc(Number(previous?.capacityMin) || 0)),
         capacityMax: Math.max(0, Math.trunc(Number(previous?.capacityMax ?? source?.capacityTotal) || 0)),
+        quantity: Math.max(1, Math.trunc(Number(previous?.quantity) || 1)),
         addedByUserId: `${previous?.addedByUserId ?? ''}`.trim() || this.activeUser().id,
         routeEnabled: previous?.routeEnabled ?? false,
         routes: Array.isArray(previous?.routes) ? [...previous.routes] : []

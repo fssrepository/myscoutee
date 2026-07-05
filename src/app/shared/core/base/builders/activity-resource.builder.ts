@@ -111,6 +111,7 @@ export class ActivityResourceBuilder {
         normalizedMap[normalizedAssetId] = {
           capacityMin: Math.max(0, Math.trunc(Number(settings.capacityMin) || 0)),
           capacityMax: Math.max(0, Math.trunc(Number(settings.capacityMax) || 0)),
+          quantity: Math.max(0, Math.trunc(Number(settings.quantity) || 0)),
           addedByUserId: `${settings.addedByUserId ?? ''}`.trim(),
           routeEnabled: this.normalizeRouteEnabled(settings, routes),
           routes

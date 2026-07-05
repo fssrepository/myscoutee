@@ -3,6 +3,7 @@ import {
   ChangeDetectionStrategy,
   ChangeDetectorRef,
   Component,
+  ViewChild,
   computed,
   effect,
   inject,
@@ -24,6 +25,7 @@ import {
   SingleRowComponent,
   SmartListComponent,
   type AppMenuItem,
+  type AppMenuItemSelectEvent,
   type AppMenuPalette,
   type AppMenuTrigger,
   type CardMenuActionEvent,
@@ -53,7 +55,8 @@ import {
   AssetStore
 } from '../../../shared/ui/context/stores/asset.store';
 import {
-  SubEventResourcePopupStore
+  SubEventResourcePopupStore,
+  type SubEventResourceMetricsUpdate
 } from '../../../shared/ui/context/stores/sub-event-resource-popup.store';
 
 type AssetAvailabilityListItem = AppDTOs.AssetOccupancyStatDTO | AppDTOs.AssetOccupancyRowDTO;
@@ -104,6 +107,8 @@ export class AssetAvailabilityPopupComponent {
   private readonly availabilityOrderOverride = signal<AssetAvailabilityScopedOverride<AppDTOs.AssetAvailabilityOrder> | null>(null);
   private readonly availabilityFilterOverride = signal<AssetAvailabilityScopedOverride<AppDTOs.AssetAvailabilityFilter> | null>(null);
   private readonly dayListFilterOverride = signal<AssetAvailabilityScopedOverride<AppDTOs.AssetAvailabilityFilter> | null>(null);
+  @ViewChild('availabilitySmartList') private availabilitySmartList?: SmartListComponent<AssetAvailabilityListItem, AssetAvailabilityListFilters>;
+  @ViewChild('dayListSmartList') private dayListSmartList?: SmartListComponent<AppDTOs.AssetOccupancyRowDTO, AssetAvailabilityListFilters>;
 
   protected readonly availabilityView = computed<AppDTOs.AssetAvailabilityView>(() => {
     const request = this.availabilityPopupStore.availabilityPopup();
@@ -200,6 +205,14 @@ export class AssetAvailabilityPopupComponent {
         return;
       }
       void this.resourcePopupStore.ensureEventSupplyContributionsPopupLoaded();
+    });
+
+    effect(() => {
+      const update = this.resourcePopupStore.subEventResourceMetricsUpdate();
+      if (!update || !this.isAnyAvailabilityPopupOpen()) {
+        return;
+      }
+      this.applyResourceAssignmentQuantityUpdate(update);
     });
   }
 
@@ -417,6 +430,50 @@ export class AssetAvailabilityPopupComponent {
     };
   }
 
+  private applyResourceAssignmentQuantityUpdate(update: SubEventResourceMetricsUpdate): void {
+    const updates = update.assignmentQuantityUpdates ?? [];
+    if (updates.length === 0) {
+      return;
+    }
+    let patched = false;
+    for (const item of updates) {
+      const assetId = `${item.assetId ?? ''}`.trim();
+      const subEventId = `${item.subEventId ?? ''}`.trim();
+      const quantity = Math.max(1, Math.trunc(Number(item.quantity) || 1));
+      if (!assetId || !subEventId) {
+        continue;
+      }
+      const patchRow = (row: AppDTOs.AssetOccupancyRowDTO): AppDTOs.AssetOccupancyRowDTO => {
+        const delta = quantity - Math.max(1, Math.trunc(Number(row.quantity) || 1));
+        const occupied = Math.max(0, Math.trunc(Number(row.occupied) || 0) + delta);
+        return {
+          ...row,
+          quantity,
+          occupied,
+          remaining: Math.max(0, Math.trunc(Number(row.capacity) || 0) - occupied)
+        };
+      };
+      const predicate = (row: AppDTOs.AssetOccupancyRowDTO): boolean =>
+        `${row.assetId ?? ''}`.trim() === assetId
+        && `${row.subEventId ?? ''}`.trim() === subEventId
+        && row.requestKind === 'manual';
+      patched = this.availabilitySmartList?.patchVisibleItem(
+        (row): row is AppDTOs.AssetOccupancyRowDTO => this.isAvailabilityRow(row) && predicate(row),
+        row => this.isAvailabilityRow(row) ? patchRow(row) : row
+      ) === true || patched;
+      patched = this.dayListSmartList?.patchVisibleItem(
+        row => predicate(row),
+        row => patchRow(row)
+      ) === true || patched;
+    }
+    if (this.isCalendarAvailabilityView(this.availabilityView())) {
+      this.availabilityRevision.update(revision => revision + 1);
+    }
+    if (patched) {
+      this.cdr.markForCheck();
+    }
+  }
+
   protected async onRowMenuAction(
     event: CardMenuActionEvent<SingleRowData>
   ): Promise<void> {
@@ -445,6 +502,27 @@ export class AssetAvailabilityPopupComponent {
       }
       this.cdr.markForCheck();
     }
+  }
+
+  protected onSharedRowMenuAction(event: AppMenuItemSelectEvent<string, unknown>): void {
+    const context = event.context as {
+      row?: SingleRowData;
+      card?: SingleRowData;
+      action?: { id?: string };
+    } | null | undefined;
+    const row = context?.row ?? context?.card ?? null;
+    const actionId = `${context?.action?.id ?? event.id ?? ''}`.trim();
+    if (!row || !actionId) {
+      return;
+    }
+    void this.onRowMenuAction({
+      id: row.id,
+      actionId,
+      action: {
+        id: actionId
+      } as CardMenuActionEvent<SingleRowData>['action'],
+      card: row
+    });
   }
 
   protected onCalendarItemSelect(event: SmartListItemSelectEvent<AssetAvailabilityListItem, AssetAvailabilityListFilters>): void {

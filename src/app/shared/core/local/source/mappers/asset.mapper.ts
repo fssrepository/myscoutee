@@ -288,7 +288,7 @@ export class LocalAssetsMapper {
       .filter(request => this.assetRequestDateRangeOverlaps(request, day, nextDay));
     const occupied = overlapping
       .filter(request => this.isCommittedAssetRequest(request))
-      .reduce((sum, request) => sum + this.assetRequestQuantity(request), 0);
+      .reduce((sum, request) => sum + this.assetRequestOccupancyCount(request), 0);
     const pending = overlapping
       .filter(request => this.isPendingAssetRequest(request));
     const pendingQuantity = pending.reduce((sum, request) => sum + this.assetRequestQuantity(request), 0);
@@ -320,7 +320,7 @@ export class LocalAssetsMapper {
         }
         return this.assetRequestsOverlap(request, other);
       })
-      .reduce((sum, other) => sum + this.assetRequestQuantity(other), 0);
+      .reduce((sum, other) => sum + this.assetRequestOccupancyCount(other), 0);
     const pendingCurrentQuantity = this.isCommittedAssetRequest(request) ? 0 : this.assetRequestQuantity(request);
     const capacity = Math.max(0, Math.trunc(Number(request.assetCapacity) || 0));
     const pendingForWindow = record.requests
@@ -426,6 +426,10 @@ export class LocalAssetsMapper {
 
   private static assetRequestQuantity(request: AssetRequestRecord): number {
     return Math.max(1, Math.trunc(Number(request.booking?.quantity) || 1));
+  }
+
+  private static assetRequestOccupancyCount(request: AssetRequestRecord): number {
+    return request.requestKind === 'manual' ? 1 : this.assetRequestQuantity(request);
   }
 
   private static visibleAssetRequestNote(request: AssetRequestRecord): string | undefined {

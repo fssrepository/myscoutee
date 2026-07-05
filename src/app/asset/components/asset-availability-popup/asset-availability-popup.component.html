@@ -14,6 +14,7 @@
       [itemTemplate]="availabilityRowTemplate"
       (viewChange)="onViewChange($event)"
       (itemSelect)="onCalendarItemSelect($event)"
+      (menuItemSelect)="onSharedRowMenuAction($event)"
     ></app-smart-list>
   </app-popup>
 }
@@ -32,6 +33,7 @@
       [query]="dayListQuery()"
       [view]="'day'"
       [itemTemplate]="dayRowTemplate"
+      (menuItemSelect)="onSharedRowMenuAction($event)"
     ></app-smart-list>
   </app-popup>
 }
@@ -54,18 +56,22 @@
   }
 }
 
-<ng-template #availabilityRowTemplate let-item let-groupLabel="groupLabel">
+<ng-template #availabilityRowTemplate let-item let-groupLabel="groupLabel" let-openMenu="openMenu">
   @if (isAvailabilityRow(item)) {
     <single-row
       [row]="availabilityRow(item, groupLabel)"
+      [useSharedMenu]="true"
+      (menuRequest)="openMenu($event)"
       (menuAction)="onRowMenuAction($event)"
     ></single-row>
   }
 </ng-template>
 
-<ng-template #dayRowTemplate let-row let-groupLabel="groupLabel">
+<ng-template #dayRowTemplate let-row let-groupLabel="groupLabel" let-openMenu="openMenu">
   <single-row
     [row]="availabilityRow(row, groupLabel)"
+    [useSharedMenu]="true"
+    (menuRequest)="openMenu($event)"
     (menuAction)="onRowMenuAction($event)"
   ></single-row>
 </ng-template>

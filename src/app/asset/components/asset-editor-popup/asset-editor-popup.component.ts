@@ -22,6 +22,7 @@ import {
 } from '../../../shared/core';
 import {
   AssetStore,
+  type AssetEditorRuntimeAssignmentState,
   type AssetEditorRuntimeRouteState,
   type AssetFormState
 } from '../../../shared/ui/context/stores/asset.store';
@@ -150,7 +151,8 @@ export class AssetEditorPopupComponent {
   protected assetEditorFlowModel(): FormFlowModel {
     const disabled = this.assetEditorReadOnly() || this.isLoading;
     const runtimeRoute = this.assetStore.assetFormRuntimeRoute();
-    const assetDefinitionDisabled = disabled || runtimeRoute !== null;
+    const runtimeAssignment = this.assetStore.assetFormRuntimeAssignment();
+    const assetDefinitionDisabled = disabled || runtimeRoute !== null || runtimeAssignment !== null;
     const cacheKey = [
       this.title,
       this.assetForm.type,
@@ -158,7 +160,12 @@ export class AssetEditorPopupComponent {
       this.assetFormVisibility,
       this.assetImageUploadOwnerId,
       this.assetImageUploadEntity(),
-      runtimeRoute ? `${runtimeRoute.editable}:${runtimeRoute.routeEnabled}:${runtimeRoute.routes.join('>')}` : 'no-runtime-route',
+      runtimeRoute
+        ? `${runtimeRoute.editable}:${runtimeRoute.routeEnabled}:${runtimeRoute.routes.join('>')}`
+        : 'no-runtime-route',
+      runtimeAssignment
+        ? `${runtimeAssignment.editable}:${runtimeAssignment.quantity}:${runtimeAssignment.quantityMax}:${runtimeAssignment.quantityLabel ?? ''}`
+        : 'no-runtime-assignment',
       assetDefinitionDisabled ? 'definition-disabled' : 'definition-enabled',
       disabled ? 'disabled' : 'enabled'
     ].join('|');
@@ -222,12 +229,14 @@ export class AssetEditorPopupComponent {
             id: 'quantity',
             bind: 'quantity',
             kind: 'number',
-            label: 'Quantity',
+            label: runtimeAssignment?.quantityLabel ?? 'Quantity',
+            description: runtimeAssignment?.quantityDescription,
             required: true,
             min: 1,
+            max: runtimeAssignment?.quantityMax,
             step: 1,
             layout: 'half',
-            disabled
+            disabled: runtimeAssignment ? this.assetRuntimeAssignmentControlDisabled() : disabled
           }
         ]
       },
@@ -385,6 +394,11 @@ export class AssetEditorPopupComponent {
     return this.isLoading || this.isSavePending || runtimeRoute?.editable !== true;
   }
 
+  private assetRuntimeAssignmentControlDisabled(): boolean {
+    const runtimeAssignment = this.assetStore.assetFormRuntimeAssignment();
+    return this.isLoading || this.isSavePending || runtimeAssignment?.editable !== true;
+  }
+
   protected assetEditorFlowValue(): AssetEditorFlowValue {
     const cacheKey = `${this.assetStore.uiRevision()}:${this.assetStore.assetFormLoadGeneration()}`;
     if (this.assetEditorFlowValueCacheKey === cacheKey && this.assetEditorFlowValueCache) {
@@ -406,6 +420,7 @@ export class AssetEditorPopupComponent {
       return;
     }
     this.applyRuntimeRouteValueFromFlow(value);
+    this.applyRuntimeAssignmentValueFromFlow(value);
     if (this.assetEditorReadOnly()) {
       return;
     }
@@ -445,8 +460,8 @@ export class AssetEditorPopupComponent {
   }
 
   private runtimeRouteHeaderControls(): readonly PopupControl<AssetEditorMenuContext>[] {
-    const runtimeRoute = this.assetStore.assetFormRuntimeRoute();
-    if (!runtimeRoute?.editable) {
+    const runtimeAssignment = this.assetStore.assetFormRuntimeAssignment();
+    if (!runtimeAssignment?.editable) {
       return [];
     }
     return [{
@@ -600,12 +615,25 @@ export class AssetEditorPopupComponent {
   }
 
   private canSaveRuntimeRoute(): boolean {
-    const current = this.assetStore.assetFormRuntimeRoute();
+    const currentAssignment = this.assetStore.assetFormRuntimeAssignment();
     return !this.isLoading
       && !this.isSavePending
-      && current?.editable === true
-      && typeof current.onSave === 'function'
-      && this.runtimeRouteDirty(current, this.assetStore.assetFormSavedRuntimeRoute());
+      && currentAssignment?.editable === true
+      && typeof currentAssignment.onSave === 'function'
+      && (
+        this.runtimeAssignmentDirty(currentAssignment, this.assetStore.assetFormSavedRuntimeAssignment())
+        || this.runtimeRouteDirty(this.assetStore.assetFormRuntimeRoute(), this.assetStore.assetFormSavedRuntimeRoute())
+      );
+  }
+
+  private runtimeAssignmentDirty(
+    current: AssetEditorRuntimeAssignmentState | null,
+    saved: AssetEditorRuntimeAssignmentState | null
+  ): boolean {
+    if (!current || !saved) {
+      return false;
+    }
+    return current.quantity !== saved.quantity;
   }
 
   private runtimeRouteDirty(
@@ -620,21 +648,28 @@ export class AssetEditorPopupComponent {
   }
 
   private async saveRuntimeRouteAssignment(): Promise<void> {
-    const current = this.assetStore.assetFormRuntimeRoute();
-    if (!this.canSaveRuntimeRoute() || !current?.onSave || !this.assetStore.beginAssetEditorRuntimeRouteSave()) {
+    const currentAssignment = this.assetStore.assetFormRuntimeAssignment();
+    const currentRoute = this.assetStore.assetFormRuntimeRoute();
+    if (
+      !this.canSaveRuntimeRoute()
+      || !currentAssignment?.onSave
+      || !this.assetStore.beginAssetEditorRuntimeAssignmentSave()
+    ) {
       return;
     }
     try {
       const [saved] = await Promise.all([
-        current.onSave({
-          routeEnabled: current.routeEnabled,
-          routes: current.routes
+        currentAssignment.onSave({
+          quantity: currentAssignment.quantity,
+          routeEnabled: currentRoute?.routeEnabled === true,
+          routes: currentRoute?.routes ?? []
         }),
         this.waitForRuntimeRouteSaveIndicator()
       ]);
-      this.assetStore.completeAssetEditorRuntimeRouteSave(saved ?? {
-        routeEnabled: current.routeEnabled,
-        routes: current.routes
+      this.assetStore.completeAssetEditorRuntimeAssignmentSave(saved ?? {
+        quantity: currentAssignment.quantity,
+        routeEnabled: currentRoute?.routeEnabled === true,
+        routes: currentRoute?.routes ?? []
       });
     } catch {
       this.assetStore.failAssetEditorSave();
@@ -863,6 +898,35 @@ export class AssetEditorPopupComponent {
     this.assetStore.setAssetEditorRuntimeRouteState({ routes: nextRoutes });
     this.assetEditorFlowValueCacheKey = '';
     this.assetEditorFlowModelCacheKey = '';
+  }
+
+  private applyRuntimeAssignmentValueFromFlow(value: unknown): void {
+    const runtimeAssignment = this.assetStore.assetFormRuntimeAssignment();
+    if (!runtimeAssignment || !this.isRecord(value)) {
+      return;
+    }
+    const sourceQuantity = (value as Partial<AssetEditorFlowValue>).quantity;
+    if (sourceQuantity === undefined) {
+      return;
+    }
+    const nextQuantity = this.normalizeRuntimeQuantity(sourceQuantity, runtimeAssignment.quantityMax, runtimeAssignment.quantity);
+    if (nextQuantity === runtimeAssignment.quantity) {
+      return;
+    }
+    this.assetStore.setAssetEditorRuntimeAssignmentState({ quantity: nextQuantity });
+    this.assetEditorFlowValueCacheKey = '';
+    this.assetEditorFlowModelCacheKey = '';
+  }
+
+  private normalizeRuntimeQuantity(value: unknown, max: unknown, fallback = 1): number {
+    const parsedMax = Math.trunc(Number(max));
+    const limit = Number.isFinite(parsedMax) && parsedMax > 0 ? parsedMax : 1;
+    const parsed = Math.trunc(Number(value));
+    const fallbackValue = Math.trunc(Number(fallback));
+    const resolved = Number.isFinite(parsed) && parsed > 0
+      ? parsed
+      : (Number.isFinite(fallbackValue) && fallbackValue > 0 ? fallbackValue : 1);
+    return Math.min(limit, Math.max(1, resolved));
   }
 
   private stringListsEqual(left: readonly string[], right: readonly string[] | null | undefined): boolean {

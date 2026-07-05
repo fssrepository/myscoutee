@@ -312,6 +312,7 @@ export interface SubEventResourceCardDTO {
 export interface SubEventAssignedAssetSettingsDTO {
   capacityMin: number;
   capacityMax: number;
+  quantity: number;
   addedByUserId: string;
   routeEnabled: boolean;
   routes: string[];

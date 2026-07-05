@@ -67,6 +67,7 @@ import {
 } from '../../../shared/ui/context/stores/member-menu.store';
 import {
   AssetStore,
+  type AssetEditorRuntimeAssignmentState,
   type AssetEditorRuntimeRouteState
 } from '../../../shared/ui/context/stores/asset.store';
 import {
@@ -84,7 +85,8 @@ import {
   eventChatPopupRequestFromChat
 } from '../../../shared/ui/context/stores/activities-popup.store';
 import {
-  SubEventResourcePopupStore
+  SubEventResourcePopupStore,
+  type SubEventResourceAssignmentQuantityUpdate
 } from '../../../shared/ui/context/stores/sub-event-resource-popup.store';
 import type {
   AssignedAssetJoinPricingPreview,
@@ -1104,7 +1106,8 @@ export class EventResourcePopupComponent {
       loading: Boolean(ownerUserId),
       readOnly: true,
       parentZIndex: this.resourcePopupZIndex(),
-      runtimeRoute: this.assignedAssetRuntimeRouteState(context.subEvent.id, card, sourceCard)
+      runtimeRoute: this.assignedAssetRuntimeRouteState(context.subEvent.id, card, sourceCard),
+      runtimeAssignment: this.assignedAssetRuntimeAssignmentState(context.subEvent.id, card, sourceCard)
     });
     void this.assetPopupStore.ensureAssetPopupLoaded();
     if (!ownerUserId) {
@@ -1158,12 +1161,42 @@ export class EventResourcePopupComponent {
       readOnlyEmptyLabel: 'No route is set for this event asset.',
       popupTitle: `Route Setup - ${card.title}`,
       popupSubtitle: 'Set the route used by this car for the selected event assignment.',
-      parentZIndex: this.resourcePopupZIndex(),
-      onSave: state => this.saveAssignedAssetRuntimeRoutes(subEventId, 'Car', assetId, state)
+      parentZIndex: this.resourcePopupZIndex()
+    };
+  }
+
+  private assignedAssetRuntimeAssignmentState(
+    subEventId: string,
+    card: AppDTOs.SubEventResourceCardDTO,
+    sourceCard: ResourceAssetDTO
+  ): AssetEditorRuntimeAssignmentState | null {
+    const assetId = `${card.sourceAssetId ?? sourceCard.id ?? ''}`.trim();
+    if (!assetId || !this.isAssignableAssetType(card.type) || sourceCard.type !== card.type) {
+      return null;
+    }
+    const type = card.type;
+    const settings = this.getSubEventAssignedAssetSettings(subEventId, type);
+    const quantityMax = this.assignedRuntimeQuantityMax(sourceCard);
+    const quantity = this.normalizeAssignedRuntimeQuantity(settings[assetId]?.quantity, quantityMax);
+    return {
+      quantity,
+      quantityMax,
+      quantityLabel: 'Assigned quantity',
+      quantityDescription: `Available: ${quantityMax}`,
+      editable: this.canEditAssignedAssetRuntimeAssignment(subEventId, sourceCard, assetId),
+      onSave: state => this.saveAssignedAssetRuntimeAssignment(subEventId, type, assetId, state)
     };
   }
 
   private canEditAssignedAssetRuntimeRoute(
+    subEventId: string,
+    sourceCard: ResourceAssetDTO,
+    assetId: string
+  ): boolean {
+    return this.canEditAssignedAssetRuntimeAssignment(subEventId, sourceCard, assetId);
+  }
+
+  private canEditAssignedAssetRuntimeAssignment(
     subEventId: string,
     sourceCard: ResourceAssetDTO,
     assetId: string
@@ -1175,7 +1208,7 @@ export class EventResourcePopupComponent {
     if (this.isAssetOwnedByActiveUser(sourceCard, activeUserId)) {
       return true;
     }
-    const managerUserId = this.assignedAssetManagerUserId(subEventId, 'Car', assetId);
+    const managerUserId = this.assignedAssetManagerUserId(subEventId, sourceCard.type, assetId);
     if (managerUserId === activeUserId) {
       return true;
     }
@@ -1209,7 +1242,7 @@ export class EventResourcePopupComponent {
     const fallbackMembers = this.assetMemberEntries(sourceCard, managerUserId, context.subEvent.id);
     const acceptedMembers = fallbackMembers.filter(member => member.status === 'accepted').length;
     const pendingMembers = fallbackMembers.filter(member => member.status === 'pending').length;
-    const capacityTotal = settings[card.sourceAssetId]?.capacityMax ?? Math.max(0, sourceCard.capacityTotal);
+    const capacityTotal = this.assignedAssetOccupancyCapacityTotal(sourceCard, settings[card.sourceAssetId]);
     const subtitle = `${sourceCard.title} · ${this.subEventDisplayName(context.subEvent) || 'Sub Event'}`;
     this.memberMenuStore.requestActivitiesNavigation({
       type: 'members',
@@ -1277,27 +1310,28 @@ export class EventResourcePopupComponent {
       ))
       .filter((card): card is ResourceAssetDTO => card !== null)
       .map(card => {
-      const managerUserId = (type === 'Car' || type === 'Accommodation' || type === 'Supplies')
-        ? (`${settings[card.id]?.addedByUserId ?? ''}`.trim() || null)
-        : null;
-      return ({
-      id: `subevent-${card.id}`,
-      type: card.type,
-      sourceAssetId: card.id,
-      title: card.title,
-      subtitle: card.subtitle,
-      city: card.city,
-      details: ActivityResourceBuilder.assetDetailText(card),
-      imageUrl: card.imageUrl,
-      sourceLink: ActivityResourceBuilder.assetSourceLink(card),
-      routes: this.assignedResourceCardRoutes(card, settings[card.id]),
-      capacityTotal: settings[card.id]?.capacityMax ?? Math.max(0, card.capacityTotal),
-      accepted: card.type === 'Supplies'
-        ? this.subEventSupplyProvidedCount(card.id, context.subEvent.id)
-        : this.assetAcceptedCount(card, context.subEvent.id, managerUserId),
-      pending: this.assetPendingCount(card, context.subEvent.id, managerUserId),
-      isMembers: false
-      });
+        const assignmentSettings = settings[card.id];
+        const managerUserId = (type === 'Car' || type === 'Accommodation' || type === 'Supplies')
+          ? (`${assignmentSettings?.addedByUserId ?? ''}`.trim() || null)
+          : null;
+        return ({
+          id: `subevent-${card.id}`,
+          type: card.type,
+          sourceAssetId: card.id,
+          title: card.title,
+          subtitle: card.subtitle,
+          city: card.city,
+          details: ActivityResourceBuilder.assetDetailText(card),
+          imageUrl: card.imageUrl,
+          sourceLink: ActivityResourceBuilder.assetSourceLink(card),
+          routes: this.assignedResourceCardRoutes(card, assignmentSettings),
+          capacityTotal: this.assignedAssetOccupancyCapacityTotal(card, assignmentSettings),
+          accepted: card.type === 'Supplies'
+            ? this.subEventSupplyProvidedCount(card.id, context.subEvent.id)
+            : this.assetAcceptedCount(card, context.subEvent.id, managerUserId),
+          pending: this.assetPendingCount(card, context.subEvent.id, managerUserId),
+          isMembers: false
+        });
       });
   }
 
@@ -1318,7 +1352,7 @@ export class EventResourcePopupComponent {
 
   private assignedAssetManagerUserId(
     subEventId: string,
-    type: 'Car' | 'Accommodation',
+    type: AppConstants.AssetType,
     assetId: string
   ): string | null {
     const settings = this.getSubEventAssignedAssetSettings(subEventId, type);
@@ -1822,9 +1856,13 @@ export class EventResourcePopupComponent {
     const nextSettings = {
       ...(nextState.assetSettingsByType[editor.type] ?? {})
     };
+    const source = this.resolveSubEventAssignedAssetCard(editor.subEventId, editor.type, editor.assetId)
+      ?? this.ownedAssetCards().find(item => item.id === editor.assetId && item.type === editor.type)
+      ?? null;
     const current = nextSettings[editor.assetId] ?? {
       capacityMin: 0,
       capacityMax: editor.capacityLimit,
+      quantity: this.normalizeAssignedRuntimeQuantity(undefined, source ? this.assignedRuntimeQuantityMax(source) : 1),
       addedByUserId: this.activeUser().id,
       routeEnabled: false,
       routes: []
@@ -1897,13 +1935,45 @@ export class EventResourcePopupComponent {
     return candidates.find(routes => routes.length > 0) ?? [''];
   }
 
-  private async saveAssignedAssetRuntimeRoutes(
+  private assignedRuntimeQuantityMax(card: ResourceAssetDTO): number {
+    return Math.max(1, AssetCardBuilder.storedQuantityValue(card));
+  }
+
+  private assignedRuntimeQuantityValue(value: unknown, fallback = 1): number {
+    const parsed = Math.trunc(Number(value));
+    if (Number.isFinite(parsed) && parsed > 0) {
+      return parsed;
+    }
+    const fallbackValue = Math.trunc(Number(fallback));
+    return Number.isFinite(fallbackValue) && fallbackValue > 0 ? fallbackValue : 1;
+  }
+
+  private assignedAssetOccupancyCapacityTotal(
+    card: ResourceAssetDTO,
+    settings: AppDTOs.SubEventAssignedAssetSettingsDTO | null | undefined
+  ): number {
+    const capacity = Math.max(0, Math.trunc(Number(card.capacityTotal) || 0));
+    return capacity * this.assignedRuntimeQuantityValue(settings?.quantity);
+  }
+
+  private normalizeAssignedRuntimeQuantity(value: unknown, max: unknown, fallback = 1): number {
+    const parsedMax = Math.trunc(Number(max));
+    const limit = Number.isFinite(parsedMax) && parsedMax > 0 ? parsedMax : 1;
+    const parsed = Math.trunc(Number(value));
+    const fallbackValue = Math.trunc(Number(fallback));
+    const resolved = Number.isFinite(parsed) && parsed > 0
+      ? parsed
+      : (Number.isFinite(fallbackValue) && fallbackValue > 0 ? fallbackValue : 1);
+    return Math.min(limit, Math.max(1, resolved));
+  }
+
+  private async saveAssignedAssetRuntimeAssignment(
     subEventId: string,
-    type: 'Car',
+    type: AppConstants.AssetType,
     assetId: string,
-    state: { routeEnabled: boolean; routes: readonly string[] },
+    state: { quantity: number; routeEnabled: boolean; routes: readonly string[] },
     signal?: AbortSignal
-  ): Promise<{ routeEnabled: boolean; routes: string[] }> {
+  ): Promise<{ quantity: number; routeEnabled: boolean; routes: string[] }> {
     const context = this.resourcePopupStore.popupContextRef();
     const normalizedSubEventId = subEventId.trim();
     const normalizedAssetId = assetId.trim();
@@ -1921,17 +1991,21 @@ export class EventResourcePopupComponent {
     const source = this.resolveSubEventAssignedAssetCard(normalizedSubEventId, type, normalizedAssetId)
       ?? this.ownedAssetCards().find(item => item.id === normalizedAssetId && item.type === type)
       ?? null;
+    const quantityMax = source ? this.assignedRuntimeQuantityMax(source) : 1;
+    const quantity = this.normalizeAssignedRuntimeQuantity(state.quantity, quantityMax);
     const current = nextSettings[normalizedAssetId] ?? {
       capacityMin: 0,
       capacityMax: Math.max(0, source?.capacityTotal ?? 0),
+      quantity,
       addedByUserId: this.activeUser().id,
       routeEnabled: false,
       routes: []
     };
     nextSettings[normalizedAssetId] = {
       ...current,
-      routeEnabled: state.routeEnabled === true,
-      routes: normalizedRoutes
+      quantity,
+      routeEnabled: type === 'Car' && state.routeEnabled === true,
+      routes: type === 'Car' ? normalizedRoutes : []
     };
     nextState.assetSettingsByType = {
       ...nextState.assetSettingsByType,
@@ -1941,11 +2015,22 @@ export class EventResourcePopupComponent {
     const savedState = await this.activityResourcesService.replaceSubEventResourceState(nextState, signal);
     const resolvedState = ActivityResourceBuilder.normalizeState(savedState, nextState) ?? nextState;
     this.applyPersistedPopupState(resolvedState);
-    this.syncPopupSubEventMetrics(false);
+    this.syncSubEventManualAssetRequests(context.subEvent, true);
+    this.syncPopupSubEventMetrics({
+      assignmentQuantityUpdates: [{
+        assetId: normalizedAssetId,
+        type,
+        subEventId: normalizedSubEventId,
+        quantity
+      }]
+    });
     const savedSettings = resolvedState.assetSettingsByType[type]?.[normalizedAssetId] ?? null;
     return {
-      routeEnabled: savedSettings?.routeEnabled ?? state.routeEnabled === true,
-      routes: ActivityResourceBuilder.normalizeAssetRoutes(type, savedSettings?.routes ?? normalizedRoutes)
+      quantity: this.normalizeAssignedRuntimeQuantity(savedSettings?.quantity ?? quantity, quantityMax),
+      routeEnabled: type === 'Car' && (savedSettings?.routeEnabled ?? state.routeEnabled === true),
+      routes: type === 'Car'
+        ? ActivityResourceBuilder.normalizeAssetRoutes(type, savedSettings?.routes ?? normalizedRoutes)
+        : []
     };
   }
 
@@ -2170,6 +2255,7 @@ export class EventResourcePopupComponent {
       next[assetId] = {
         capacityMin,
         capacityMax,
+        quantity: this.assignedRuntimeQuantityValue(previous?.quantity),
         addedByUserId: previous?.addedByUserId ?? this.activeUser().id,
         routeEnabled: previous?.routeEnabled ?? ActivityResourceBuilder.normalizeAssetRoutes(type, previous?.routes).length > 0,
         routes: ActivityResourceBuilder.normalizeAssetRoutes(type, previous?.routes)
@@ -2288,13 +2374,20 @@ export class EventResourcePopupComponent {
     };
   }
 
-  private syncPopupSubEventMetrics(options: boolean | { persistResourceState?: boolean; persistAssetRequests?: boolean } = false): void {
+  private syncPopupSubEventMetrics(
+    options: boolean | {
+      persistResourceState?: boolean;
+      persistAssetRequests?: boolean;
+      assignmentQuantityUpdates?: readonly SubEventResourceAssignmentQuantityUpdate[];
+    } = false
+  ): void {
     const context = this.resourcePopupStore.popupContextRef();
     if (!context) {
       return;
     }
     const persistResourceState = typeof options === 'boolean' ? options : options.persistResourceState === true;
     const persistAssetRequests = typeof options === 'boolean' ? options : options.persistAssetRequests === true;
+    const assignmentQuantityUpdates = typeof options === 'boolean' ? [] : [...(options.assignmentQuantityUpdates ?? [])];
     const nextSubEvent = this.cloneSubEvent(context.subEvent);
     const cars = this.subEventAssetCapacityMetrics(nextSubEvent, 'Car', { normalizeStore: false });
     const accommodation = this.subEventAssetCapacityMetrics(nextSubEvent, 'Accommodation', { normalizeStore: false });
@@ -2331,7 +2424,9 @@ export class EventResourcePopupComponent {
       : context;
     if (metricsChanged) {
       this.resourcePopupStore.popupContextRef.set(nextContext);
-      this.resourcePopupStore.publishSubEventResourceMetrics(nextContext);
+    }
+    if (metricsChanged || assignmentQuantityUpdates.length > 0) {
+      this.resourcePopupStore.publishSubEventResourceMetrics(nextContext, { assignmentQuantityUpdates });
     }
     this.syncSubEventManualAssetRequests(nextContext.subEvent, persistAssetRequests);
     if (persistResourceState) {
@@ -2572,8 +2667,9 @@ export class EventResourcePopupComponent {
         return null;
       }
       const settings = this.getSubEventAssignedAssetSettings(subEvent.id, 'Supplies')[card.id];
+      const quantityMax = this.assignedRuntimeQuantityMax(card);
       const quantity = this.subEventSupplyProvidedCount(card.id, subEvent.id)
-        || Math.max(0, Math.trunc(Number(settings?.capacityMax ?? card.capacityTotal) || 0));
+        || this.normalizeAssignedRuntimeQuantity(settings?.quantity, quantityMax);
       if (quantity <= 0) {
         return null;
       }
@@ -2598,6 +2694,11 @@ export class EventResourcePopupComponent {
     if (!assignedIds.has(card.id)) {
       return null;
     }
+    const settings = this.getSubEventAssignedAssetSettings(subEvent.id, card.type)[card.id];
+    const quantity = this.normalizeAssignedRuntimeQuantity(
+      settings?.quantity,
+      this.assignedRuntimeQuantityMax(card)
+    );
     const existing = card.requests.find(request => ActivityResourceBuilder.isSubEventManualAssignmentRequest(request, subEvent.id)) ?? null;
     return {
       id: existing?.id ?? `manual:${subEvent.id}:${card.id}`,
@@ -2609,7 +2710,7 @@ export class EventResourcePopupComponent {
       note: 'Reserved and assigned by the owner.',
       requestKind: 'manual',
       requestedAtIso: existing?.requestedAtIso ?? new Date().toISOString(),
-      booking: this.assetRequestBookingForSubEvent(subEvent, 1, ownerId, parentTitle)
+      booking: this.assetRequestBookingForSubEvent(subEvent, quantity, ownerId, parentTitle)
     };
   }
 
@@ -2899,7 +3000,9 @@ export class EventResourcePopupComponent {
     const requests = subEventId
       ? this.assetRequestsForView(card, subEventId, managerUserId)
       : card.requests;
-    return requests.filter(request => request.status === 'pending').length;
+    return requests
+      .filter(request => request.status === 'pending')
+      .length;
   }
 
   private assetAcceptedCount(
@@ -2910,7 +3013,9 @@ export class EventResourcePopupComponent {
     const requests = subEventId
       ? this.assetRequestsForView(card, subEventId, managerUserId)
       : card.requests;
-    return requests.filter(request => request.status === 'accepted').length;
+    return requests
+      .filter(request => request.status === 'accepted')
+      .length;
   }
 
   private subEventSupplyContributionEntries(subEventId: string, cardId: string): AppDTOs.SubEventSupplyContributionEntryDTO[] {
