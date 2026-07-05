@@ -29,11 +29,14 @@ export interface UiAccordionBadge {
   title?: string | null;
 }
 
+export type UiAccordionLabelSize = 'default' | 'large';
+
 export interface UiAccordionItem<TId extends string = string, TContext = unknown, TMenuContext = unknown> {
   id: TId;
   title: string;
   subtitle?: string | null;
   icon?: string | null;
+  labelSize?: UiAccordionLabelSize | null;
   badge?: string | number | null;
   badges?: readonly UiAccordionBadge[] | null;
   palette?: AppMenuPalette;
@@ -49,6 +52,7 @@ export interface UiAccordionItem<TId extends string = string, TContext = unknown
 export interface UiAccordionModel<TId extends string = string, TContext = unknown, TMenuContext = unknown> {
   items: readonly UiAccordionItem<TId, TContext, TMenuContext>[];
   multi?: boolean;
+  labelSize?: UiAccordionLabelSize | null;
   emptyTitle?: string | null;
   emptyDescription?: string | null;
 }

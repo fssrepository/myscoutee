@@ -1,3 +1,5 @@
+import { APP_STATIC_DATA } from '../../app-static-data';
+import * as AppConstants from '../../core/common/constants';
 import type { SubEventResourceFilter } from '../../core/common/constants';
 import type { EventMode, SubEventDTO, TournamentStageStatus } from '../../core/contracts/event.interface';
 import type { AppMenuItem, AppMenuPalette } from '../components/core/menu';
@@ -14,7 +16,7 @@ export type EventSubeventRuntimeMenuItemId =
   | EventSubeventRuntimeStageAction
   | 'groups'
   | 'members'
-  | 'car'
+  | 'transport'
   | 'accommodation'
   | 'supplies'
   | 'runtime-divider'
@@ -333,9 +335,9 @@ export class EventSubeventRuntimeMenuConverter {
         label: 'Tools',
         disabled: true
       },
-      this.resourceItem('car', 'Car', 'Car', item, this.assetLabel(item, 'Car'), item.carsPending, sourceId, subEventIndex),
-      this.resourceItem('accommodation', 'Accommodation', 'Accommodation', item, this.assetLabel(item, 'Accommodation'), item.accommodationPending, sourceId, subEventIndex),
-      this.resourceItem('supplies', 'Supplies', 'Supplies', item, this.assetLabel(item, 'Supplies'), item.suppliesPending, sourceId, subEventIndex)
+      this.resourceItem('transport', APP_STATIC_DATA.assetTypeLabels[AppConstants.ASSET_TYPE_TRANSPORT], AppConstants.ASSET_TYPE_TRANSPORT, item, this.assetLabel(item, AppConstants.ASSET_TYPE_TRANSPORT), item.carsPending, sourceId, subEventIndex),
+      this.resourceItem('accommodation', APP_STATIC_DATA.assetTypeLabels[AppConstants.ASSET_TYPE_ACCOMMODATION], AppConstants.ASSET_TYPE_ACCOMMODATION, item, this.assetLabel(item, AppConstants.ASSET_TYPE_ACCOMMODATION), item.accommodationPending, sourceId, subEventIndex),
+      this.resourceItem('supplies', APP_STATIC_DATA.assetTypeLabels[AppConstants.ASSET_TYPE_SUPPLIES], AppConstants.ASSET_TYPE_SUPPLIES, item, this.assetLabel(item, AppConstants.ASSET_TYPE_SUPPLIES), item.suppliesPending, sourceId, subEventIndex)
     );
     return items;
   }
@@ -388,7 +390,7 @@ export class EventSubeventRuntimeMenuConverter {
   }
 
   private static resourceItem(
-    id: 'members' | 'car' | 'accommodation' | 'supplies',
+    id: 'members' | 'transport' | 'accommodation' | 'supplies',
     label: string,
     resourceType: SubEventResourceFilter,
     item: SubEventDTO,
@@ -460,10 +462,10 @@ export class EventSubeventRuntimeMenuConverter {
     item: SubEventDTO,
     type: Exclude<SubEventResourceFilter, 'Members'>
   ): string {
-    if (type === 'Car') {
+    if (type === AppConstants.ASSET_TYPE_TRANSPORT) {
       return this.rangeLabel(item.carsAccepted, item.carsCapacityMin, item.carsCapacityMax);
     }
-    if (type === 'Accommodation') {
+    if (type === AppConstants.ASSET_TYPE_ACCOMMODATION) {
       return this.rangeLabel(item.accommodationAccepted, item.accommodationCapacityMin, item.accommodationCapacityMax);
     }
     return this.rangeLabel(item.suppliesAccepted, item.suppliesCapacityMin, item.suppliesCapacityMax);
@@ -480,11 +482,11 @@ export class EventSubeventRuntimeMenuConverter {
     switch (type) {
       case 'Members':
         return 'groups';
-      case 'Car':
+      case AppConstants.ASSET_TYPE_TRANSPORT:
         return 'directions_car';
-      case 'Accommodation':
+      case AppConstants.ASSET_TYPE_ACCOMMODATION:
         return 'apartment';
-      case 'Supplies':
+      case AppConstants.ASSET_TYPE_SUPPLIES:
         return 'inventory_2';
       default:
         return 'category';
@@ -495,11 +497,11 @@ export class EventSubeventRuntimeMenuConverter {
     switch (type) {
       case 'Members':
         return 'blue';
-      case 'Car':
+      case AppConstants.ASSET_TYPE_TRANSPORT:
         return 'sky';
-      case 'Accommodation':
+      case AppConstants.ASSET_TYPE_ACCOMMODATION:
         return 'green';
-      case 'Supplies':
+      case AppConstants.ASSET_TYPE_SUPPLIES:
         return 'brown';
       default:
         return 'default';

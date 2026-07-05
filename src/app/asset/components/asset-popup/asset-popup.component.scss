@@ -229,8 +229,8 @@
   flex: 0 0 16px;
 }
 
-.asset-popup .experience-filter-select.asset-filter-car,
-.asset-popup .experience-type-select.asset-filter-car {
+.asset-popup .experience-filter-select.asset-filter-transport,
+.asset-popup .experience-type-select.asset-filter-transport {
   background: linear-gradient(180deg, #eef6ff 0%, #e2efff 100%);
   border-color: rgba(43, 111, 179, 0.32);
 }
@@ -252,7 +252,7 @@
   border-color: rgba(53, 109, 183, 0.3);
 }
 
-.asset-popup .asset-filter-car {
+.asset-popup .asset-filter-transport {
   color: #295d96;
 }
 
@@ -949,9 +949,9 @@
   justify-self: end;
 }
 
-.mat-mdc-option.status-option.asset-filter-car,
-.mat-mdc-option.status-option.asset-filter-car .status-option-content,
-.mat-mdc-option.status-option.asset-filter-car .status-option-content .mat-icon {
+.mat-mdc-option.status-option.asset-filter-transport,
+.mat-mdc-option.status-option.asset-filter-transport .status-option-content,
+.mat-mdc-option.status-option.asset-filter-transport .status-option-content .mat-icon {
   background: linear-gradient(0deg, #ffffff, #eef6ff);
   color: #295d96;
 }

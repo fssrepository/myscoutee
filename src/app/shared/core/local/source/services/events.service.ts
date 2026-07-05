@@ -168,7 +168,12 @@ export class LocalEventsService extends LocalRouteDelayService implements IEvent
     );
     return {
       mode,
-      slots: LocalActivityEventsMapper.withSubEventStates(baseSlots, resourceStatesByKey, stageRuntimeByKey, normalizedUserId)
+      slots: LocalActivityEventsMapper.withSubEventStates(
+        baseSlots,
+        resourceStatesByKey,
+        stageRuntimeByKey,
+        normalizedUserId
+      )
     };
   }
 

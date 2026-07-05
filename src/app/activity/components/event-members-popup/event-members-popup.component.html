@@ -1,5 +1,8 @@
 @if (isOpen) {
-  <section class="app-popup app-popup-stacked app-popup-stacked-over-subevents app-popup-super-stacked activity-members-popup-shell">
+  <section
+    class="app-popup app-popup-stacked app-popup-stacked-over-subevents app-popup-super-stacked activity-members-popup-shell"
+    [style.--activity-members-shell-z-index]="membersPopupZIndex()"
+    >
     <div class="app-popup-backdrop" (click)="closeMembersPopup()"></div>
     <div class="app-popup-panel popup-panel-members popup-panel-wide popup-panel-full-height" (click)="$event.stopPropagation()">
       <div class="popup-header" (click)="$event.stopPropagation()">

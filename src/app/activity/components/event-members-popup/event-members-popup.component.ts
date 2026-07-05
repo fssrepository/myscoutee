@@ -6,6 +6,7 @@ import {
   ChangeDetectorRef,
   Component,
   HostListener,
+  Input,
   TemplateRef,
   ViewChild,
   effect,
@@ -106,6 +107,8 @@ type MembersSummaryState = {
   changeDetection: ChangeDetectionStrategy.OnPush
 })
 export class EventMembersPopupComponent {
+  private static readonly DEFAULT_POPUP_Z_INDEX = 3800;
+
   private readonly cdr = inject(ChangeDetectorRef);
   private readonly dialogStore = inject(DialogStore);
   private readonly activityMembersService = inject(ActivityMembersService);
@@ -119,6 +122,7 @@ export class EventMembersPopupComponent {
   private readonly usersService = inject(UsersService);
   private readonly profileStore = inject(ProfileStore);
   private readonly membersCacheByOwnerId = new Map<string, ActivityContracts.ActivityMemberDTO[]>();
+  private readonly pendingInitialMembersDelayOwnerIds = new Set<string>();
   private lastAppliedActivityMembersUpdatedMs = 0;
   private openMembersHydrationTimer: ReturnType<typeof setTimeout> | null = null;
 
@@ -155,6 +159,8 @@ export class EventMembersPopupComponent {
   private lastEmittedMemberMetricBucketSignature = '';
 
   protected membersSmartListQuery: Partial<ListQuery<MembersSmartListFilters>> = {};
+
+  @Input() parentZIndex: number | null = null;
 
   @ViewChild('membersSmartList')
   private membersSmartList?: SmartListComponent<ActivityContracts.ActivityMemberDTO, MembersSmartListFilters>;
@@ -237,6 +243,14 @@ export class EventMembersPopupComponent {
     });
   }
 
+  protected membersPopupZIndex(): number {
+    const parentZIndex = Math.trunc(Number(this.parentZIndex) || 0);
+    if (parentZIndex <= 0) {
+      return EventMembersPopupComponent.DEFAULT_POPUP_Z_INDEX;
+    }
+    return Math.max(EventMembersPopupComponent.DEFAULT_POPUP_Z_INDEX, parentZIndex + 100);
+  }
+
   @HostListener('window:resize')
   protected onViewportResize(): void {
     this.syncMobileViewFromViewport();
@@ -291,6 +305,7 @@ export class EventMembersPopupComponent {
     }
     if (this.ownerId) {
       this.membersCacheByOwnerId.delete(this.ownerId);
+      this.pendingInitialMembersDelayOwnerIds.delete(this.ownerId);
     }
     this.isOpen = false;
     this.ownerId = '';
@@ -781,12 +796,15 @@ export class EventMembersPopupComponent {
     this.isLocalMembersSource = initialMembers !== null;
     if (initialMembers) {
       this.membersCacheByOwnerId.set(normalizedOwnerId, initialMembers);
+      this.pendingInitialMembersDelayOwnerIds.add(normalizedOwnerId);
       void this.usersService.warmCachedUsers(
         initialMembers
           .map(member => `${member.userId ?? ''}`.trim())
           .filter(userId => userId.length > 0)
       );
       this.syncCanManageMembers(initialMembers);
+    } else {
+      this.pendingInitialMembersDelayOwnerIds.delete(normalizedOwnerId);
     }
     this.membersChangeHandler = options?.onMembersChanged ?? null;
     this.membersSmartListQuery = {};
@@ -881,6 +899,16 @@ export class EventMembersPopupComponent {
     }
 
     let members = this.membersCacheByOwnerId.get(ownerId);
+    if (members && this.pendingInitialMembersDelayOwnerIds.delete(ownerId)) {
+      await this.activityMembersService.waitForMembersRouteDelay();
+      if (!this.isOpen || this.ownerId !== ownerId) {
+        return {
+          items: [],
+          total: 0
+        };
+      }
+      members = this.membersCacheByOwnerId.get(ownerId) ?? members;
+    }
     if (!members) {
       const owner = this.ownerRef && this.ownerRef.ownerId === ownerId
         ? this.ownerRef

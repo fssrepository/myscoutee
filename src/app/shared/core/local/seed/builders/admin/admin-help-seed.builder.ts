@@ -1,4 +1,5 @@
 import type { AdminSeedHelpTarget } from './admin-seed.models';
+import * as AppConstants from '../../../../common/constants';
 
 export class AdminHelpSeedBuilder {
   static demoAdminHelpTargets(): AdminSeedHelpTarget[] {
@@ -34,13 +35,13 @@ export class AdminHelpSeedBuilder {
         attachmentId: 'admin-help:u1:asset-supplies',
         attachmentType: 'asset',
         attachmentEntityId: 'asset-sup-2',
-        assetType: 'Supplies',
+        assetType: AppConstants.ASSET_TYPE_SUPPLIES,
         title: 'Game Night Box',
-        subtitle: 'Supplies - Austin',
+        subtitle: `${AppConstants.ASSET_TYPE_SUPPLIES} - Austin`,
         description: 'Board games, cards, and speakers ready for the venue.',
         previewUrl: 'https://picsum.photos/seed/supplies-gear-asset-sup-2/1200/700',
         text: 'Please check this shared asset screen.',
-        targetUrl: '/game?supportTarget=asset&assetFilter=Supplies&assetId=asset-sup-2&assetTitle=Game%20Night%20Box&assetSubtitle=Board%20games%20%2B%20cards%20%2B%20speakers&assetCity=Austin&assetDetails=Board%20games%2C%20cards%2C%20and%20speakers%20ready%20for%20the%20venue.&assetPreview=https%3A%2F%2Fpicsum.photos%2Fseed%2Fsupplies-gear-asset-sup-2%2F1200%2F700'
+        targetUrl: `/game?supportTarget=asset&assetFilter=${AppConstants.ASSET_TYPE_SUPPLIES}&assetId=asset-sup-2&assetTitle=Game%20Night%20Box&assetSubtitle=Board%20games%20%2B%20cards%20%2B%20speakers&assetCity=Austin&assetDetails=Board%20games%2C%20cards%2C%20and%20speakers%20ready%20for%20the%20venue.&assetPreview=https%3A%2F%2Fpicsum.photos%2Fseed%2Fsupplies-gear-asset-sup-2%2F1200%2F700`
       }
     ];
   }

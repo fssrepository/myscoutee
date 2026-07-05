@@ -189,7 +189,9 @@
                 "@firebase/installations",
                 "@firebase/logger",
                 "@firebase/messaging",
-                "@firebase/util"
+                "@firebase/util",
+                "@angular/material",
+                "@angular/cdk"
               ]
             }
           },

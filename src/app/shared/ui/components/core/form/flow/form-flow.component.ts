@@ -34,10 +34,11 @@ import { IndicatorComponent } from '../../indicator';
 import { ImageCardComponent, InfoCardComponent } from '../../smart-list/card';
 import { UiTaskScheduler } from '../../../../scheduler';
 import { DateInputComponent, type DateInputModel, type DateInputValue } from '../inputs/date-input';
-import { EventPoliciesInputComponent, type EventPoliciesInputConfig } from '../inputs/event-policies-input';
 import { LinkInputComponent, type LinkInputConfig } from '../inputs/link-input';
 import { LocationInputComponent, type LocationInputConfig } from '../inputs/location-input';
+import { PoliciesInputComponent, type PoliciesInputConfig } from '../inputs/policies-input';
 import { PricingEditorInputComponent, type PricingEditorConfig } from '../inputs/pricing-editor';
+import { RouteInputComponent, type RouteInputConfig } from '../inputs/route-input';
 import type {
   FormFlowActionEvent,
   FormFlowControlModel,
@@ -50,6 +51,7 @@ import type {
   FormFlowPoliciesControlConfig,
   FormFlowPricingControlConfig,
   FormFlowPushEvent,
+  FormFlowRouteControlConfig,
   FormFlowSaveEvent,
   FormFlowStepModel,
   FormFlowTone
@@ -59,6 +61,7 @@ import {
   formFlowIsControlMissingRequired,
   formFlowMissingRequiredControls
 } from './form-flow.utils';
+import { FormFlowPopupStore } from './form-flow-popup.store';
 
 interface FormFlowSelectedMenuItem {
   item: AppMenuItem<string, unknown>;
@@ -76,8 +79,9 @@ interface FormFlowSelectedMenuItem {
     DateInputComponent,
     LinkInputComponent,
     LocationInputComponent,
-    EventPoliciesInputComponent,
+    PoliciesInputComponent,
     PricingEditorInputComponent,
+    RouteInputComponent,
     ImageCarouselComponent,
     IndicatorComponent,
     ImageCardComponent,
@@ -86,6 +90,7 @@ interface FormFlowSelectedMenuItem {
   templateUrl: './form-flow.component.html',
   styleUrl: './form-flow.component.scss',
   providers: [
+    FormFlowPopupStore,
     {
       provide: NG_VALUE_ACCESSOR,
       useExisting: forwardRef(() => FormFlowComponent),
@@ -567,11 +572,15 @@ export class FormFlowComponent implements ControlValueAccessor, OnChanges, OnDes
     return this.isPricingControlConfig(control.config) ? control.config.model ?? {} : {};
   }
 
+  protected routeConfig(control: FormFlowControlModel): RouteInputConfig {
+    return this.isRouteControlConfig(control.config) ? control.config.model ?? {} : {};
+  }
+
   protected policiesConfig(control: FormFlowControlModel): FormFlowPoliciesControlConfig {
     return this.isPoliciesControlConfig(control.config) ? control.config : {};
   }
 
-  protected policiesInputConfig(control: FormFlowControlModel): EventPoliciesInputConfig {
+  protected policiesInputConfig(control: FormFlowControlModel): PoliciesInputConfig {
     return this.policiesConfig(control).model ?? {};
   }
 
@@ -1116,6 +1125,10 @@ export class FormFlowComponent implements ControlValueAccessor, OnChanges, OnDes
   }
 
   private isPricingControlConfig(config: FormFlowControlModel['config']): config is FormFlowPricingControlConfig {
+    return this.isRecord(config) && this.isRecord(config['model']);
+  }
+
+  private isRouteControlConfig(config: FormFlowControlModel['config']): config is FormFlowRouteControlConfig {
     return this.isRecord(config) && this.isRecord(config['model']);
   }
 

@@ -18,6 +18,11 @@ export {
   type AssetTicketInfoCardModel
 } from './asset-ticket-info-card.converter';
 export {
+  AssetAvailabilitySingleRowConverter,
+  assetAvailabilitySingleRowConverter,
+  type AssetAvailabilitySingleRowConverterOptions
+} from './asset-availability-single-row.converter';
+export {
   ActivityChatSingleRowConverter,
   activityChatSingleRowConverter,
   type ActivityChatSingleRowConverterOptions

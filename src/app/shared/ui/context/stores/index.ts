@@ -29,6 +29,12 @@ export {
   type AssetVisibleListPatch,
   type AssetVisibleListState
 } from './asset.store';
+export {
+  AssetAvailabilityPopupStore,
+  type AssetAvailabilityHeaderState,
+  type AssetAvailabilityPopupOpenRequest,
+  type AssetAvailabilityPopupRequest
+} from './asset-availability-popup.store';
 export { AdminMenuStore, type AdminMenuKind } from './admin-menu.store';
 export { AdminWorkspaceStore } from './admin-workspace.store';
 export {
@@ -90,8 +96,8 @@ export {
   type PendingAssignSaveState,
   type ResourceAssetDTO,
   type ResourcePopupContext,
-  type RouteEditorState,
   type SubEventResourcePopupHeader,
+  type SubEventResourcePopupPresentationHeader,
   type SubEventResourcePopupRequest,
   type SubEventResourcePopupType,
   type SupplyBringDialogState,

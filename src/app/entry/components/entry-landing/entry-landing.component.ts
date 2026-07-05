@@ -71,7 +71,7 @@ export class EntryLandingComponent implements OnInit, OnChanges, OnDestroy {
       message: '1-10 score, not just yes/no. Show real interest level from low to high with clearer signals.',
       tone: 'blue',
       sliceX: '0%',
-      sliceY: '23%'
+      sliceY: '0%'
     },
     {
       id: 'matched-group-chat',
@@ -82,7 +82,7 @@ export class EntryLandingComponent implements OnInit, OnChanges, OnDestroy {
       message: 'Group-first chat. Join top matches where interest matches both ways.',
       tone: 'purple',
       sliceX: '100%',
-      sliceY: '23%'
+      sliceY: '0%'
     },
     {
       id: 'meet-through-events',
@@ -93,7 +93,7 @@ export class EntryLandingComponent implements OnInit, OnChanges, OnDestroy {
       message: 'Live updates. Change priorities anytime, then meet through events and go offline.',
       tone: 'pink',
       sliceX: '0%',
-      sliceY: '99%'
+      sliceY: '100%'
     },
     {
       id: 'host-events',
@@ -104,7 +104,7 @@ export class EntryLandingComponent implements OnInit, OnChanges, OnDestroy {
       message: 'Create events for everyone, friends, or invite-only.',
       tone: 'orange',
       sliceX: '100%',
-      sliceY: '99%'
+      sliceY: '100%'
     }
   ];
 

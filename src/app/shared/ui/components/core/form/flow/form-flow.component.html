@@ -231,6 +231,7 @@
                         [ariaLabel]="image.ariaLabel || control.label || 'Images'"
                         [uploadOwnerId]="image.uploadOwnerId || ''"
                         [uploadEntityId]="image.uploadEntityId || 'image'"
+                        [disabled]="isControlDisabled(control)"
                         [ngModel]="controlStringArrayValue(control)"
                         (ngModelChange)="updateControlValue(control, $event)"
                       ></app-image-carousel>
@@ -287,8 +288,16 @@
                         [ngModel]="controlValue(control)"
                         (ngModelChange)="updateControlValue(control, $event)"
                       ></app-pricing-editor-input>
+                    } @else if (control.kind === 'route') {
+                      <app-route-input
+                        class="form-flow__route-input"
+                        [config]="routeConfig(control)"
+                        [readOnly]="isControlDisabled(control)"
+                        [ngModel]="controlStringArrayValue(control)"
+                        (ngModelChange)="updateControlValue(control, $event)"
+                      ></app-route-input>
                     } @else if (control.kind === 'policies') {
-                      <app-event-policies-input
+                      <app-policies-input
                         class="form-flow__policies-input"
                         [config]="policiesInputConfig(control)"
                         [enabled]="policiesEnabled(control)"
@@ -296,7 +305,7 @@
                         [readOnly]="isControlDisabled(control)"
                         [ngModel]="controlValue(control)"
                         (ngModelChange)="updateControlValue(control, $event)"
-                      ></app-event-policies-input>
+                      ></app-policies-input>
                     } @else {
                       <label class="form-flow__label">
                         <span>{{ control.label }}@if (control.required) { <strong>*</strong> }</span>

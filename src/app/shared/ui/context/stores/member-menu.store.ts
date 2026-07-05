@@ -14,7 +14,10 @@ import type { ChatDTO } from '../../../core/contracts/chat.interface';
 import type { AssetDTO } from '../../../core/contracts';
 import type { EventEditorTarget, SubEventDTO } from '../../../core/contracts/event.interface';
 import type { PopupHeaderLookup } from '../../models';
-import type { ResourceAssetDTO } from './sub-event-resource-popup.store';
+import type {
+  ResourceAssetDTO,
+  SubEventResourcePopupPresentationHeader
+} from './sub-event-resource-popup.store';
 
 export interface NavigatorActivitiesRequest {
   updatedMs: number;
@@ -42,6 +45,7 @@ export type ActivitiesNavigationRequest =
       item: ChatDTO;
       resourceType: SubEventResourceFilter;
       subEvent: SubEventDTO;
+      popupHeader?: SubEventResourcePopupPresentationHeader | null;
       group?: {
         id: string;
         groupLabel: string;

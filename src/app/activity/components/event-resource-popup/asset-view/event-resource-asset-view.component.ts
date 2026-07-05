@@ -14,22 +14,25 @@ import { MatIconModule } from '@angular/material/icon';
 import { APP_STATIC_DATA } from '../../../../shared/app-static-data';
 import { AssetCardBuilder } from '../../../../shared/core/base/builders';
 import { AssetDefaultsBuilder } from '../../../../shared/core/base/builders/asset-defaults.builder';
-import type * as AppConstants from '../../../../shared/core/common/constants';
+import * as AppConstants from '../../../../shared/core/common/constants';
 import type * as ContractTypes from '../../../../shared/core/contracts';
-import { CounterBadgePipe } from '../../../../shared/ui/pipes/counter-badge.pipe';
 import {
   SubEventResourcePopupStore,
-  type ResourceAssetViewRequest,
   type ResourceAssetViewState
 } from '../../../../shared/ui/context/stores/sub-event-resource-popup.store';
+import {
+  PopupComponent,
+  type PopupAction,
+  type PopupActionEvent,
+  type PopupModel
+} from '../../../../shared/ui/components/core/popup';
 
 export type EventResourceAssetViewModel = ResourceAssetViewState;
-export type EventResourceAssetViewRequest = ResourceAssetViewRequest;
 
 @Component({
   selector: 'app-event-resource-asset-view',
   standalone: true,
-  imports: [CommonModule, FormsModule, MatIconModule, CounterBadgePipe],
+  imports: [CommonModule, FormsModule, MatIconModule, PopupComponent],
   templateUrl: './event-resource-asset-view.component.html',
   styleUrl: './event-resource-asset-view.component.scss',
   encapsulation: ViewEncapsulation.None,
@@ -37,9 +40,11 @@ export type EventResourceAssetViewRequest = ResourceAssetViewRequest;
 })
 export class EventResourceAssetViewComponent implements OnChanges {
   @Input() view: EventResourceAssetViewModel | null = null;
+  @Input() parentZIndex = 2600;
 
   private readonly resourcePopupStore = inject(SubEventResourcePopupStore);
 
+  protected readonly assetTypeTransport = AppConstants.ASSET_TYPE_TRANSPORT;
   protected showPoliciesPopup = false;
 
   ngOnChanges(changes: SimpleChanges): void {
@@ -58,16 +63,6 @@ export class EventResourceAssetViewComponent implements OnChanges {
     this.resourcePopupStore.requestResourceAssetViewMembers(view, event);
   }
 
-  protected requestRouteView(view: EventResourceAssetViewModel, event: Event): void {
-    event.stopPropagation();
-    this.resourcePopupStore.requestResourceAssetViewRouteView(view, event);
-  }
-
-  protected requestRouteSetup(view: EventResourceAssetViewModel, event: Event): void {
-    event.stopPropagation();
-    this.resourcePopupStore.requestResourceAssetViewRouteSetup(view, event);
-  }
-
   protected canRequestMembers(): boolean {
     return this.resourcePopupStore.assetViewOutletContext() === 'resourcePopup';
   }
@@ -82,12 +77,57 @@ export class EventResourceAssetViewComponent implements OnChanges {
     this.showPoliciesPopup = false;
   }
 
+  protected assetViewPopupModel(view: EventResourceAssetViewModel): PopupModel {
+    return {
+      title: this.title(view),
+      subtitle: view.card.title,
+      ariaLabel: this.title(view),
+      closeAriaLabel: 'Close asset view',
+      closeOnBackdrop: true,
+      size: 'wide',
+      height: 'full',
+      headerTone: 'accent',
+      bodyLayout: 'fill',
+      backdropTone: 'dim',
+      headerActions: this.assetViewHeaderActions(view),
+      onClose: event => this.close(event),
+      onAction: event => this.onAssetViewPopupAction(view, event)
+    };
+  }
+
+  protected assetViewPopupZIndex(): number {
+    return this.parentZIndex + 100;
+  }
+
+  private assetViewHeaderActions(view: EventResourceAssetViewModel): readonly PopupAction[] {
+    if (!this.canRequestMembers()) {
+      return [];
+    }
+    const pending = Math.max(0, Math.trunc(Number(view.card.pending) || 0));
+    return [{
+      id: 'members',
+      icon: 'groups',
+      label: pending > 0 ? `Members ${pending}` : 'Members',
+      ariaLabel: 'Open asset members',
+      palette: 'blue'
+    }];
+  }
+
+  private onAssetViewPopupAction(
+    view: EventResourceAssetViewModel,
+    event: PopupActionEvent
+  ): void {
+    if (event.action.id === 'members') {
+      this.requestMembers(view, event.sourceEvent);
+    }
+  }
+
   protected title(view: EventResourceAssetViewModel): string {
     return view.mode === 'edit' ? 'Edit Asset' : 'View Asset';
   }
 
   protected resourceTypeClass(type: AppConstants.SubEventResourceFilter): string {
-    return AssetDefaultsBuilder.assetTypeClass(type === 'Members' ? 'Car' : type);
+    return AssetDefaultsBuilder.assetTypeClass(type === 'Members' ? AppConstants.ASSET_TYPE_TRANSPORT : type);
   }
 
   protected resourceTypeIcon(type: AppConstants.SubEventResourceFilter): string {

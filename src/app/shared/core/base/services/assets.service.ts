@@ -9,12 +9,22 @@ import type * as AppDTOs from '../../contracts';
   providedIn: 'root'
 })
 export class AssetsService extends BaseRouteModeService {
+  private static readonly ASSETS_ROUTE = '/assets';
+  private static readonly ASSET_AVAILABILITY_ROUTE = '/assets/availability';
   private readonly localAssetsService = inject(LocalAssetsService);
   private readonly httpAssetsService = inject(HttpAssetsService);
 
 
   private get assetsService(): LocalAssetsService | HttpAssetsService {
-    return this.resolveRouteService('/assets', this.localAssetsService, this.httpAssetsService);
+    return this.resolveRouteService(AssetsService.ASSETS_ROUTE, this.localAssetsService, this.httpAssetsService);
+  }
+
+  private get assetAvailabilityService(): LocalAssetsService | HttpAssetsService {
+    return this.resolveRouteService(
+      AssetsService.ASSET_AVAILABILITY_ROUTE,
+      this.localAssetsService,
+      this.httpAssetsService
+    );
   }
 
   peekOwnedAssetsByUser(userId: string): AppDTOs.AssetDTO[] {
@@ -51,6 +61,81 @@ export class AssetsService extends BaseRouteModeService {
       ...query,
       userId: normalizedUserId
     });
+  }
+
+  async queryVisibleAssetsPage(query: AppDTOs.AssetExplorePageQueryDTO): Promise<AppDTOs.AssetExplorePageResultDTO> {
+    const normalizedUserId = query.userId.trim();
+    if (!normalizedUserId) {
+      return {
+        items: [],
+        total: 0,
+        nextCursor: null
+      };
+    }
+    return this.assetsService.queryVisibleAssetsPage({
+      ...query,
+      userId: normalizedUserId,
+      pageSize: Math.max(1, Math.trunc(Number(query.pageSize) || 1))
+    });
+  }
+
+  async loadOccupancyByAssetId(query: {
+    userId: string;
+    assetId: string;
+    dateIso?: string | null;
+    rangeStart?: string | null;
+    rangeEnd?: string | null;
+    filter?: AppDTOs.AssetAvailabilityFilter | null;
+    order?: AppDTOs.AssetAvailabilityOrder | null;
+    page?: number;
+    pageSize: number;
+    cursor?: string | null;
+  }, options: { signal?: AbortSignal } = {}): Promise<AppDTOs.AssetOccupancyPageResultDTO> {
+    const normalizedUserId = query.userId.trim();
+    const normalizedAssetId = query.assetId.trim();
+    if (!normalizedUserId || !normalizedAssetId) {
+      return {
+        items: [],
+        total: 0,
+        nextCursor: null
+      };
+    }
+    return this.assetAvailabilityService.loadOccupancyByAssetId({
+      ...query,
+      userId: normalizedUserId,
+      assetId: normalizedAssetId,
+      page: Math.max(0, Math.trunc(Number(query.page) || 0)),
+      pageSize: Math.max(1, Math.trunc(Number(query.pageSize) || 1))
+    }, options);
+  }
+
+  async loadStatByAssetId(query: {
+    userId: string;
+    assetId: string;
+    rangeStart?: string | null;
+    rangeEnd?: string | null;
+    filter?: AppDTOs.AssetAvailabilityFilter | null;
+    order?: AppDTOs.AssetAvailabilityOrder | null;
+    page?: number;
+    pageSize: number;
+    cursor?: string | null;
+  }, options: { signal?: AbortSignal } = {}): Promise<AppDTOs.AssetOccupancyStatsPageResultDTO> {
+    const normalizedUserId = query.userId.trim();
+    const normalizedAssetId = query.assetId.trim();
+    if (!normalizedUserId || !normalizedAssetId) {
+      return {
+        items: [],
+        total: 0,
+        nextCursor: null
+      };
+    }
+    return this.assetAvailabilityService.loadStatByAssetId({
+      ...query,
+      userId: normalizedUserId,
+      assetId: normalizedAssetId,
+      page: Math.max(0, Math.trunc(Number(query.page) || 0)),
+      pageSize: Math.max(1, Math.trunc(Number(query.pageSize) || 1))
+    }, options);
   }
 
   async saveOwnedAsset(userId: string, asset: AppDTOs.AssetDetailDTO): Promise<AppDTOs.AssetDTO> {

@@ -5,6 +5,7 @@ import {
   Component,
   DoCheck,
   HostListener,
+  Input,
   ViewChild,
   ViewEncapsulation,
   computed,
@@ -16,20 +17,8 @@ import {
   FormsModule
 } from '@angular/forms';
 import {
-  MatNativeDateModule
-} from '@angular/material/core';
-import {
-  MatDatepickerModule
-} from '@angular/material/datepicker';
-import {
-  MatFormFieldModule
-} from '@angular/material/form-field';
-import {
   MatIconModule
 } from '@angular/material/icon';
-import {
-  MatInputModule
-} from '@angular/material/input';
 import {
   from
 } from 'rxjs';
@@ -50,6 +39,10 @@ import {
   AppMenuOutletComponent
 } from '../../../../shared/ui/components/core/menu/outlet/menu-outlet.component';
 import {
+  PopupComponent,
+  type PopupModel
+} from '../../../../shared/ui/components/core/popup';
+import {
   CARD_MENU_ACTIONS,
   type CardMenuAction,
   type CardMenuActionEvent,
@@ -62,6 +55,11 @@ import {
 import {
   SmartListComponent
 } from '../../../../shared/ui/components/core/smart-list/smart-list.component';
+import {
+  type DateInputModel,
+  type DateInputRangeValue,
+  type DateInputValue
+} from '../../../../shared/ui/components/core/form/inputs/date-input/date-input.component';
 import type {
   ListQuery,
   PageResult,
@@ -117,13 +115,16 @@ import {
   AssetStore
 } from '../../../../shared/ui/context/stores/asset.store';
 import {
+  AssetPopupStore
+} from '../../../../shared/ui/context/stores/asset-popup.store';
+import {
   SubEventResourcePopupStore
 } from '../../../../shared/ui/context/stores/sub-event-resource-popup.store';
 import {
   ProfileStore
 } from '../../../../shared/ui/context/stores/profile.store';
 import type * as ActivityContracts from '../../../../shared/core/contracts/activity.interface';
-import type * as AppConstants from '../../../../shared/core/common/constants';
+import * as AppConstants from '../../../../shared/core/common/constants';
 import type * as AppDTOs from '../../../../shared/core/contracts';
 import type * as ContractTypes from '../../../../shared/core/contracts';
 import type { ChatDTO } from '../../../../shared/core/contracts/chat.interface';
@@ -134,7 +135,6 @@ import type {
   EventResourceAssetExploreOutletActionRequest,
   AssetExplorePopupState,
   ResourceAssetDTO,
-  ResourceAssetViewRequest,
   ResourceAssetViewState,
   ResourcePopupContext
 } from '../../../../shared/ui/context/stores/sub-event-resource-popup.store';
@@ -159,6 +159,7 @@ type AssetExploreOrderOption = {
 type AssetExploreMenuContext =
   | { menu: 'asset-explore-order'; order: AssetExploreOrder }
   | { menu: 'asset-explore-category'; category: AppConstants.AssetCategory }
+  | { menu: 'asset-explore-borrow-draft'; entry: AssetExploreBorrowDraftViewState }
   | {
       menu: 'asset-explore-card';
       card: ResourceAssetDTO;
@@ -178,10 +179,10 @@ export interface AssetExplorePopupViewState {
   type: AppConstants.AssetType;
   category: AppConstants.AssetCategory;
   categoryOptions: readonly AppConstants.AssetCategory[];
+  dateRange: DateInputRangeValue;
+  dateRangeModel: DateInputModel;
   startDate: Date | null;
   endDate: Date | null;
-  windowStartDate: Date | null;
-  windowEndDate: Date | null;
   startTime: string;
   endTime: string;
   loading: boolean;
@@ -203,13 +204,10 @@ interface AssetExploreBorrowDraftViewState {
   imports: [
     CommonModule,
     FormsModule,
-    MatDatepickerModule,
-    MatFormFieldModule,
     MatIconModule,
-    MatInputModule,
-    MatNativeDateModule,
     AppMenuComponent,
     AppMenuOutletComponent,
+    PopupComponent,
     InfoCardComponent,
     SmartListComponent
   ],
@@ -227,6 +225,7 @@ export class EventResourceAssetExploreComponent implements DoCheck {
   private readonly eventsService = inject(EventsService);
   private readonly usersService = inject(UsersService);
   private readonly assetStore = inject(AssetStore);
+  private readonly assetPopupStore = inject(AssetPopupStore);
   private readonly dialogStore = inject(DialogStore);
   private readonly shareTokensService = inject(ShareTokensService);
   private readonly profileStore = inject(ProfileStore);
@@ -237,26 +236,27 @@ export class EventResourceAssetExploreComponent implements DoCheck {
   private lastCardCount = 0;
   private listReady = false;
   private listVisibleCount = 0;
-  private pendingRequestVersion = 0;
+  private listTotal = 0;
   private pendingBorrowRequestVersion = 0;
-  private loadScheduled = false;
   private lastAssetExploreOutletActionRequestId = 0;
-  private readonly warmCacheByKey = new Map<string, ResourceAssetDTO[]>();
   private readonly localReservationsByKey = new Map<string, {
     startAtIso: string;
     endAtIso: string;
     quantity: number;
   }>();
 
-  protected showBorrowBasket = false;
+  @Input() parentZIndex = 2530;
+
   protected order: AssetExploreOrder = 'availability';
   protected readonly orderOptions = ASSET_EXPLORE_ORDER_OPTIONS;
   protected readonly assetViewOutletInputs = computed(() => ({
-    view: this.assetView()
+    view: this.assetView(),
+    parentZIndex: this.assetExplorePopupZIndex()
   }));
   protected readonly borrowDialogOutletInputs = computed(() => ({
     dialog: this.borrowDialogViewState(),
-    canSubmit: this.canSubmitBorrow()
+    canSubmit: this.canSubmitBorrow(),
+    parentZIndex: this.assetExplorePopupZIndex()
   }));
   protected smartListQuery: Partial<ListQuery<AssetExploreSmartListFilters>> = {
     filters: {
@@ -306,20 +306,21 @@ export class EventResourceAssetExploreComponent implements DoCheck {
     }
     const stageLabel = this.subEventStageLabel(context.subEvent);
     const windowRange = this.defaultRange(context.subEvent);
+    const dateRangeModel = this.assetExploreDateRangeModel(windowRange);
     return {
       title: stageLabel ? `Explore - ${stageLabel}` : 'Explore',
       subtitle: this.popupSubtitle(),
       type: popup.type,
       category: popup.category,
-      categoryOptions: [
-        ...AssetDefaultsBuilder.assetCategoryOptions('Car'),
-        ...AssetDefaultsBuilder.assetCategoryOptions('Accommodation'),
-        ...AssetDefaultsBuilder.assetCategoryOptions('Supplies')
-      ],
+      categoryOptions: AppConstants.ASSET_TYPES.flatMap(type => AssetDefaultsBuilder.assetCategoryOptions(type)),
+      dateRange: {
+        startAt: popup.startAtIso,
+        endAt: popup.endAtIso,
+        precision: 'date'
+      },
+      dateRangeModel,
       startDate: AppUtils.isoLocalDateTimeToDate(popup.startAtIso),
       endDate: AppUtils.isoLocalDateTimeToDate(popup.endAtIso),
-      windowStartDate: AppUtils.isoLocalDateTimeToDate(windowRange.startAtIso),
-      windowEndDate: AppUtils.isoLocalDateTimeToDate(windowRange.endAtIso),
       startTime: AppUtils.isoLocalTimePart(popup.startAtIso),
       endTime: AppUtils.isoLocalTimePart(popup.endAtIso),
       loading: popup.loading,
@@ -352,10 +353,11 @@ export class EventResourceAssetExploreComponent implements DoCheck {
       timeframe,
       quantity: dialog.quantity,
       availableQuantity: dialog.availableQuantity,
-      startDate: AppUtils.isoLocalDateTimeToDate(dialog.startAtIso),
-      endDate: AppUtils.isoLocalDateTimeToDate(dialog.endAtIso),
-      startTime: AppUtils.isoLocalTimePart(dialog.startAtIso),
-      endTime: AppUtils.isoLocalTimePart(dialog.endAtIso),
+      dateRange: {
+        startAt: dialog.startAtIso,
+        endAt: dialog.endAtIso,
+        precision: 'minute'
+      },
       lineItems: [
         {
           id: `resource:${card.id}`,
@@ -374,8 +376,8 @@ export class EventResourceAssetExploreComponent implements DoCheck {
       acceptedPolicyIds: [...dialog.acceptedPolicyIds],
       payable: pricing.amount > 0,
       paymentStep: dialog.paymentStep,
-      submitLabel: pricing.amount > 0 ? (dialog.paymentStep ? 'Buy' : 'Checkout') : 'Send borrow request',
-      busyLabel: pricing.amount > 0 ? (dialog.paymentStep ? 'Buying...' : 'Checking out...') : 'Sending request...',
+      submitLabel: pricing.amount > 0 ? (dialog.paymentStep ? 'Pay' : 'Confirm borrow') : 'Send borrow request',
+      busyLabel: pricing.amount > 0 ? (dialog.paymentStep ? 'Paying...' : 'Confirming borrow...') : 'Sending request...',
       busy: dialog.busy,
       error: dialog.error
     };
@@ -425,13 +427,61 @@ export class EventResourceAssetExploreComponent implements DoCheck {
     });
   }
 
+  protected assetExplorePopupZIndex(): number {
+    return this.parentZIndex + 100;
+  }
+
+  protected assetExplorePopupModel(explore: AssetExplorePopupViewState): PopupModel<AssetExploreMenuContext> {
+    return {
+      title: explore.title,
+      subtitle: explore.subtitle,
+      ariaLabel: explore.title,
+      closeAriaLabel: 'Close asset explore',
+      closeOnBackdrop: true,
+      size: 'wide',
+      height: 'full',
+      headerTone: 'accent',
+      bodyLayout: 'fill',
+      backdropTone: 'dim',
+      headerControls: [
+        {
+          kind: 'menu',
+          id: 'asset-explore-order',
+          menuKind: 'select',
+          trigger: this.orderMenuTrigger(),
+          items: this.orderMenuItems(),
+          panelAlign: 'end',
+          mobileBreakpointPx: 900
+        }
+      ],
+      toolbarControls: [
+        {
+          kind: 'menu',
+          id: 'asset-explore-category',
+          menuKind: 'select',
+          trigger: this.categoryMenuTrigger(explore),
+          items: this.categoryMenuItems(explore),
+          panelAlign: 'start',
+          mobileBreakpointPx: 900
+        },
+        {
+          kind: 'date-input',
+          id: 'asset-explore-date-range',
+          align: 'end',
+          model: explore.dateRangeModel,
+          value: explore.dateRange
+        }
+      ],
+      onClose: event => this.closeExplorePopup(event),
+      onMenuSelect: event => this.onMenuSelect(event.itemSelect),
+      onDateInputChange: event => this.onDateInputRangeChange(event.value)
+    };
+  }
+
   private handleAssetExploreOutletActionRequest(request: EventResourceAssetExploreOutletActionRequest): void {
     switch (request.kind) {
       case 'assetViewClose':
         this.closeAssetView(request.event);
-        return;
-      case 'assetViewRouteView':
-        this.openAssetViewRoutePopup(request.request);
         return;
       case 'borrowDialogClose':
         this.closeBorrowDialog(request.event);
@@ -461,14 +511,8 @@ export class EventResourceAssetExploreComponent implements DoCheck {
   }
 
   ngDoCheck(): void {
-    const pending = this.resourcePopupStore.assetExplorePopupRef();
-    if (pending?.loading === true && !this.loadScheduled) {
-      this.scheduleCardsLoad();
-    }
-
     const explore = this.popupViewState();
     if (!explore) {
-      this.showBorrowBasket = false;
       this.resourcePopupStore.assetExploreAssetViewIdRef.set(null);
     }
     const cards = explore?.cards ?? [];
@@ -499,6 +543,7 @@ export class EventResourceAssetExploreComponent implements DoCheck {
       this.lastCardCount = cards.length;
       this.listReady = false;
       this.listVisibleCount = 0;
+      this.listTotal = 0;
       this.smartListQuery = {
         filters: {
           revision: Date.now(),
@@ -515,7 +560,9 @@ export class EventResourceAssetExploreComponent implements DoCheck {
     const previousCardCount = this.lastCardCount;
     this.lastCardsSignature = signature;
     this.lastCardCount = cards.length;
-    this.syncVisibleCards(cards, previousCardCount);
+    if (cards.length <= previousCardCount) {
+      this.syncVisibleCards(cards, previousCardCount);
+    }
   }
 
   @HostListener('window:keydown.escape', ['$event'])
@@ -540,12 +587,6 @@ export class EventResourceAssetExploreComponent implements DoCheck {
       this.closeAssetView();
       return;
     }
-    if (this.showBorrowBasket) {
-      keyboardEvent.preventDefault();
-      keyboardEvent.stopPropagation();
-      this.showBorrowBasket = false;
-      return;
-    }
     if (this.popupViewState()) {
       keyboardEvent.preventDefault();
       keyboardEvent.stopPropagation();
@@ -553,48 +594,12 @@ export class EventResourceAssetExploreComponent implements DoCheck {
     }
   }
 
-  @HostListener('document:click', ['$event'])
-  protected onDocumentClick(event: MouseEvent): void {
-    const target = event.target;
-    if (!(target instanceof Element)) {
-      return;
-    }
-    if (this.showBorrowBasket && !target.closest('.asset-explore-basket')) {
-      this.showBorrowBasket = false;
-    }
-  }
-
-  protected readonly dateFilter = (date: Date | null): boolean => {
-    const explore = this.popupViewState();
-    if (!date || !explore?.windowStartDate || !explore.windowEndDate) {
-      return false;
-    }
-    const candidate = new Date(date.getFullYear(), date.getMonth(), date.getDate()).getTime();
-    const min = new Date(
-      explore.windowStartDate.getFullYear(),
-      explore.windowStartDate.getMonth(),
-      explore.windowStartDate.getDate()
-    ).getTime();
-    const max = new Date(
-      explore.windowEndDate.getFullYear(),
-      explore.windowEndDate.getMonth(),
-      explore.windowEndDate.getDate()
-    ).getTime();
-    return candidate >= min && candidate <= max;
-  };
-
   protected onSmartListStateChange(
     change: SmartListStateChange<ResourceAssetDTO, AssetExploreSmartListFilters>
   ): void {
     this.listVisibleCount = change.items.length;
+    this.listTotal = change.total;
     this.listReady = !change.initialLoading;
-    if (!this.listReady) {
-      return;
-    }
-    const cards = this.cardsForView();
-    if (change.total !== cards.length) {
-      this.syncVisibleCards(cards, change.total);
-    }
   }
 
   protected itemInfoCard(card: ResourceAssetDTO, options: { groupLabel?: string | null } = {}): InfoCardData {
@@ -640,6 +645,14 @@ export class EventResourceAssetExploreComponent implements DoCheck {
       this.selectCategory(context.category, event.sourceEvent);
       return;
     }
+    if (context.menu === 'asset-explore-borrow-draft') {
+      if (event.action === 'remove') {
+        this.clearBorrowDraft(context.entry.cardId, event.sourceEvent);
+        return;
+      }
+      this.continueBorrowDraft(context.entry.cardId, event.sourceEvent);
+      return;
+    }
     this.onCardMenuAction(context.card, {
       id: context.infoCard.id,
       actionId: context.action.id,
@@ -678,22 +691,47 @@ export class EventResourceAssetExploreComponent implements DoCheck {
       icon: AssetDefaultsBuilder.assetCategoryIcon(explore.category),
       ariaLabel: 'Open asset explore category',
       palette: this.assetCategoryPalette(explore.category),
-      layout: 'field'
+      layout: 'pill'
     };
   }
 
   protected categoryMenuItems(explore: AssetExplorePopupViewState): readonly AppMenuItem<string, AssetExploreMenuContext>[] {
-    return explore.categoryOptions.map(option => ({
+    const selectedType = AssetDefaultsBuilder.assetCategoryType(explore.category);
+    const items: AppMenuItem<string, AssetExploreMenuContext>[] = [];
+    for (const type of AppConstants.ASSET_TYPES) {
+      const options = explore.categoryOptions.filter(option => AssetDefaultsBuilder.assetCategoryType(option) === type);
+      if (options.length === 0) {
+        continue;
+      }
+      items.push({
+        id: `asset-explore-category-${type.toLowerCase()}`,
+        label: AssetDefaultsBuilder.assetTypeLabel(type),
+        icon: AssetDefaultsBuilder.assetTypeIcon(type),
+        kind: 'branch',
+        active: selectedType === type,
+        palette: this.resourceTypePalette(type),
+        surface: 'tinted',
+        items: options.map(option => this.categoryMenuItem(option, explore.category))
+      });
+    }
+    return items;
+  }
+
+  private categoryMenuItem(
+    option: AppConstants.AssetCategory,
+    activeCategory: AppConstants.AssetCategory
+  ): AppMenuItem<string, AssetExploreMenuContext> {
+    return {
       id: `asset-explore-category-${option}`,
       label: AssetDefaultsBuilder.assetCategoryLabel(option),
       icon: AssetDefaultsBuilder.assetCategoryIcon(option),
       kind: 'radio',
-      active: option === explore.category,
-      checked: option === explore.category,
+      active: option === activeCategory,
+      checked: option === activeCategory,
       palette: this.assetCategoryPalette(option),
       surface: 'tinted',
       context: { menu: 'asset-explore-category', category: option }
-    }));
+    };
   }
 
   protected selectOrder(order: AssetExploreOrder, event: Event): void {
@@ -711,20 +749,24 @@ export class EventResourceAssetExploreComponent implements DoCheck {
     return this.orderOptions.find(option => option.key === order)?.icon ?? 'inventory_2';
   }
 
-  protected onDateRangeChange(start: Date | null, end: Date | null): void {
-    this.setDateRange(start, end);
+  protected onDateInputRangeChange(value: DateInputValue): void {
+    if (!this.isDateInputRangeValue(value)) {
+      return;
+    }
+    this.setDateRange(
+      AppUtils.isoLocalDateTimeToDate(value.startAt),
+      AppUtils.isoLocalDateTimeToDate(value.endAt)
+    );
   }
 
   protected openBorrowFromBadge(card: ResourceAssetDTO): void {
     if (this.availableQuantity(card) <= 0) {
       return;
     }
-    this.showBorrowBasket = false;
     this.openBorrowDialog(card);
   }
 
   protected onCardMenuAction(card: ResourceAssetDTO, event: CardMenuActionEvent<InfoCardData>): void {
-    this.showBorrowBasket = false;
     if (event.actionId === 'viewAsset') {
       this.openAssetView(card, new Event('click'));
       return;
@@ -754,18 +796,55 @@ export class EventResourceAssetExploreComponent implements DoCheck {
     return this.borrowDrafts().length;
   }
 
-  protected toggleBorrowBasket(event?: Event): void {
-    event?.stopPropagation();
-    if (this.borrowDraftCount() <= 0) {
-      this.showBorrowBasket = false;
-      return;
-    }
-    this.showBorrowBasket = !this.showBorrowBasket;
+  protected borrowDraftMenuTrigger(): AppMenuTrigger {
+    const count = this.borrowDraftCount();
+    return {
+      icon: 'shopping_basket',
+      closeIcon: 'close',
+      ariaLabel: count === 1 ? 'Open borrow basket with 1 request' : `Open borrow basket with ${count} requests`,
+      counter: count,
+      hideLabel: true,
+      layout: 'icon',
+      palette: 'orange'
+    };
+  }
+
+  protected borrowDraftMenuItems(): readonly AppMenuItem<string, AssetExploreMenuContext>[] {
+    return this.borrowDrafts().map(entry => ({
+      id: `borrow-draft-${entry.cardId}`,
+      label: entry.title,
+      description: [
+        entry.timeframe || 'Pending borrow window',
+        `Quantity ${entry.quantity} · ${entry.availabilityLabel}`
+      ].join('\n'),
+      detail: this.borrowDraftMenuStatusLabel(entry),
+      icon: 'assignment_return',
+      kind: 'action',
+      palette: this.borrowDraftMenuPalette(entry),
+      surface: 'tinted',
+      layout: 'pill',
+      removable: true,
+      removeIcon: 'close',
+      removeAriaLabel: `Clear ${entry.title}`,
+      context: { menu: 'asset-explore-borrow-draft', entry }
+    }));
+  }
+
+  private borrowDraftMenuStatusLabel(entry: AssetExploreBorrowDraftViewState): string {
+    return this.borrowDraftUnavailable(entry) ? 'Review request' : 'Continue request';
+  }
+
+  private borrowDraftMenuPalette(entry: AssetExploreBorrowDraftViewState): AppMenuPalette {
+    return this.borrowDraftUnavailable(entry) ? 'amber' : 'orange';
+  }
+
+  private borrowDraftUnavailable(entry: AssetExploreBorrowDraftViewState): boolean {
+    const availability = entry.availabilityLabel.trim().toLowerCase();
+    return availability.startsWith('0 ') || availability.includes('unavailable');
   }
 
   protected continueBorrowDraft(cardId: string, event?: Event): void {
     event?.stopPropagation();
-    this.showBorrowBasket = false;
     this.resumeBorrowDraft(cardId, event);
   }
 
@@ -789,8 +868,44 @@ export class EventResourceAssetExploreComponent implements DoCheck {
 
   protected openAssetView(card: ResourceAssetDTO, event?: Event): void {
     event?.stopPropagation();
-    this.resourcePopupStore.assetExploreAssetViewIdRef.set(card.id);
+    this.resourcePopupStore.assetExploreAssetViewIdRef.set(null);
     this.resourcePopupStore.assetExploreBorrowDialogRef.set(null);
+    void this.openReadonlyAssetEditor(card);
+  }
+
+  private async openReadonlyAssetEditor(card: ResourceAssetDTO): Promise<void> {
+    const ownerUserId = `${card.ownerUserId ?? ''}`.trim();
+    const generation = this.assetStore.openAssetEditorEdit({
+      cardId: card.id,
+      form: AssetCardBuilder.buildAssetFormFromCard(card),
+      visibility: AssetCardBuilder.visibilityFromCard(card),
+      loading: Boolean(ownerUserId),
+      readOnly: true,
+      parentZIndex: this.assetExplorePopupZIndex()
+    });
+    void this.assetPopupStore.ensureAssetPopupLoaded();
+    if (!ownerUserId) {
+      this.assetStore.setAssetEditorLoading(false);
+      return;
+    }
+    try {
+      const loadedCard = await this.assetsService.loadOwnedAssetDetailById(ownerUserId, card.id);
+      if (!this.assetStore.isCurrentAssetEditorLoad(generation, card.id)) {
+        return;
+      }
+      if (loadedCard) {
+        this.assetStore.applyAssetEditorForm(
+          loadedCard.id,
+          AssetCardBuilder.visibilityFromCard(loadedCard),
+          AssetCardBuilder.buildAssetFormFromCard(loadedCard)
+        );
+      }
+      this.assetStore.setAssetEditorLoading(false);
+    } catch {
+      if (this.assetStore.isCurrentAssetEditorLoad(generation, card.id)) {
+        this.assetStore.setAssetEditorLoading(false);
+      }
+    }
   }
 
   protected closeAssetView(event?: Event): void {
@@ -798,15 +913,9 @@ export class EventResourceAssetExploreComponent implements DoCheck {
     this.resourcePopupStore.assetExploreAssetViewIdRef.set(null);
   }
 
-  protected openAssetViewRoutePopup(request: ResourceAssetViewRequest): void {
-    request.sourceEvent.stopPropagation();
-    this.openGoogleMapsDirections(request.view.card.routes);
-  }
-
   protected closeExplorePopup(event?: Event): void {
     event?.stopPropagation();
     this.resourcePopupStore.assetExploreAssetViewIdRef.set(null);
-    this.showBorrowBasket = false;
     if (this.resourcePopupStore.assetExploreOnlyRef()) {
       this.resourcePopupStore.closeResourcePopup();
       return;
@@ -825,7 +934,38 @@ export class EventResourceAssetExploreComponent implements DoCheck {
       startAtIso: AppUtils.applyDatePartToIsoLocal(popup.startAtIso, start),
       endAtIso: AppUtils.applyDatePartToIsoLocal(popup.endAtIso, end)
     }));
-    this.scheduleCardsLoad();
+  }
+
+  private assetExploreDateRangeModel(bounds: { startAtIso: string; endAtIso: string }): DateInputModel {
+    return {
+      mode: 'range',
+      precision: 'date',
+      valueFormat: 'iso-date-time',
+      range: {
+        layout: 'compact',
+        bounds: {
+          start: bounds.startAtIso,
+          end: bounds.endAtIso
+        },
+        start: {
+          placeholder: 'Start date',
+          min: bounds.startAtIso,
+          max: bounds.endAtIso
+        },
+        end: {
+          placeholder: 'End date',
+          min: bounds.startAtIso,
+          max: bounds.endAtIso
+        }
+      }
+    };
+  }
+
+  private isDateInputRangeValue(value: DateInputValue): value is DateInputRangeValue {
+    return !!value
+      && typeof value === 'object'
+      && 'startAt' in value
+      && 'endAt' in value;
   }
 
   protected setBorrowDateRange(start: Date | null, end: Date | null): void {
@@ -837,8 +977,8 @@ export class EventResourceAssetExploreComponent implements DoCheck {
     if (!card) {
       return;
     }
-    const startAtIso = AppUtils.applyDatePartToIsoLocal(dialog.startAtIso, start);
-    const endAtIso = AppUtils.applyDatePartToIsoLocal(dialog.endAtIso, end);
+    const startAtIso = start ? AppUtils.toIsoDateTimeLocal(start) : dialog.startAtIso;
+    const endAtIso = end ? AppUtils.toIsoDateTimeLocal(end) : dialog.endAtIso;
     const availableQuantity = this.availableQuantityForWindow(card, startAtIso, endAtIso);
     const invalidated = this.invalidateBorrowCheckout(dialog);
     this.resourcePopupStore.assetExploreBorrowDialogRef.set({
@@ -1177,7 +1317,6 @@ export class EventResourceAssetExploreComponent implements DoCheck {
           ...currentPopup,
           cards: nextCards
         });
-        this.storeWarmCache(this.queryKey(this.queryFromPopup(currentPopup)), nextCards);
         this.closeBorrowDialog();
       })
       .catch(error => {
@@ -1236,18 +1375,59 @@ export class EventResourceAssetExploreComponent implements DoCheck {
   private async loadSmartListPage(
     query: ListQuery<AssetExploreSmartListFilters>
   ): Promise<PageResult<ResourceAssetDTO>> {
-    await this.activityResourcesService.waitForResourceRouteDelay();
-    const cards = this.cardsForView();
+    const popup = this.resourcePopupStore.assetExplorePopupRef();
+    if (!popup) {
+      return {
+        items: [],
+        total: 0,
+        nextCursor: null
+      };
+    }
     const page = Math.max(0, Math.trunc(Number(query.page) || 0));
     const pageSize = Math.max(1, Math.trunc(Number(query.pageSize) || 1));
     const basePageSize = Math.max(1, Math.trunc(Number(query.pageSize) || Number(this.smartListConfig.pageSize) || 1));
     const initialPageSize = this.initialPageSize(basePageSize);
-    const start = page === 0 ? 0 : initialPageSize + ((page - 1) * basePageSize);
     const size = page === 0 ? Math.max(pageSize, initialPageSize) : pageSize;
-    return {
-      items: cards.slice(start, start + size),
-      total: cards.length
+    const pageQuery: AppDTOs.AssetExplorePageQueryDTO = {
+      ...this.queryFromPopup(popup),
+      page,
+      pageSize: size,
+      cursor: query.cursor ?? null,
+      order: this.order
     };
+    const requestKey = this.queryKey(pageQuery, pageQuery.order);
+    try {
+      const result = await this.assetsService.queryVisibleAssetsPage(pageQuery);
+      const current = this.resourcePopupStore.assetExplorePopupRef();
+      if (!current || this.queryKey(this.queryFromPopup(current), pageQuery.order) !== requestKey) {
+        return {
+          items: [],
+          total: 0,
+          nextCursor: null
+        };
+      }
+      const items = result.items.map(card => this.cloneAsset(card));
+      this.mergeLoadedPage(current, items, pageQuery);
+      return {
+        items,
+        total: result.total,
+        nextCursor: result.nextCursor ?? null
+      };
+    } catch {
+      const current = this.resourcePopupStore.assetExplorePopupRef();
+      if (current && this.queryKey(this.queryFromPopup(current), pageQuery.order) === requestKey) {
+        this.resourcePopupStore.assetExplorePopupRef.set({
+          ...current,
+          loading: false,
+          error: current.cards.length > 0 ? null : 'Unable to load visible assets right now.'
+        });
+      }
+      return {
+        items: [],
+        total: 0,
+        nextCursor: null
+      };
+    }
   }
 
   private syncVisibleCards(cards: ResourceAssetDTO[], previousCardCount: number): void {
@@ -1262,7 +1442,29 @@ export class EventResourceAssetExploreComponent implements DoCheck {
     }
     const orderedCards = this.cardsForView(cards);
     this.smartList.replaceVisibleItems(orderedCards.slice(0, nextVisibleCount), {
-      total: orderedCards.length
+      total: Math.max(orderedCards.length, this.listTotal)
+    });
+  }
+
+  private mergeLoadedPage(
+    popup: AssetExplorePopupState,
+    items: readonly ResourceAssetDTO[],
+    query: AppDTOs.AssetExplorePageQueryDTO
+  ): void {
+    const replace = Math.max(0, Math.trunc(Number(query.page) || 0)) === 0 && !`${query.cursor ?? ''}`.trim();
+    const nextById = new Map<string, ResourceAssetDTO>();
+    const source = replace ? [] : popup.cards;
+    for (const card of source) {
+      nextById.set(card.id, this.cloneAsset(card));
+    }
+    for (const card of items) {
+      nextById.set(card.id, this.cloneAsset(card));
+    }
+    this.resourcePopupStore.assetExplorePopupRef.set({
+      ...popup,
+      loading: false,
+      error: null,
+      cards: [...nextById.values()]
     });
   }
 
@@ -1356,75 +1558,22 @@ export class EventResourceAssetExploreComponent implements DoCheck {
     if (nextType === popup.type && nextCategory === popup.category) {
       return;
     }
-    this.resourcePopupStore.assetExplorePopupRef.set({
+    this.resourcePopupStore.assetExplorePopupRef.set(this.resolvePopupState({
       ...popup,
       type: nextType,
-      category: nextCategory,
-      loading: true,
-      error: null
-    });
-    this.scheduleCardsLoad();
-  }
-
-  private async loadCards(): Promise<void> {
-    const popup = this.resourcePopupStore.assetExplorePopupRef();
-    if (!popup) {
-      return;
-    }
-    const query = this.queryFromPopup(popup);
-    const key = this.queryKey(query);
-    const requestVersion = ++this.pendingRequestVersion;
-    try {
-      const cards = await this.assetsService.queryVisibleAssets(query);
-      const sortedCards = this.sortCards(cards, query.startAtIso ?? '', query.endAtIso ?? '');
-      this.storeWarmCache(key, sortedCards);
-      const current = this.resourcePopupStore.assetExplorePopupRef();
-      if (!current || requestVersion !== this.pendingRequestVersion || this.queryKey(this.queryFromPopup(current)) !== key) {
-        return;
-      }
-      this.resourcePopupStore.assetExplorePopupRef.set({
-        ...current,
-        loading: false,
-        error: null,
-        cards: sortedCards.map(card => this.cloneAsset(card))
-      });
-    } catch {
-      const current = this.resourcePopupStore.assetExplorePopupRef();
-      if (!current || requestVersion !== this.pendingRequestVersion) {
-        return;
-      }
-      this.resourcePopupStore.assetExplorePopupRef.set({
-        ...current,
-        loading: false,
-        error: current.cards.length > 0 ? null : 'Unable to load visible assets right now.'
-      });
-    }
+      category: nextCategory
+    }));
   }
 
   private resolvePopupState(
     popup: Pick<AssetExplorePopupState, 'subEventId' | 'type' | 'category' | 'startAtIso' | 'endAtIso'>
   ): AssetExplorePopupState {
-    const cachedCards = this.peekWarmCache(this.queryFromPopup(popup));
     return {
       ...popup,
-      loading: cachedCards === null,
+      loading: true,
       error: null,
-      cards: cachedCards ?? []
+      cards: []
     };
-  }
-
-  private scheduleCardsLoad(): void {
-    if (this.loadScheduled) {
-      return;
-    }
-    this.loadScheduled = true;
-    this.runAfterNextPaint(() => {
-      this.loadScheduled = false;
-      if (!this.resourcePopupStore.assetExplorePopupRef()) {
-        return;
-      }
-      void this.loadCards();
-    });
   }
 
   private queryFromPopup(
@@ -1439,43 +1588,15 @@ export class EventResourceAssetExploreComponent implements DoCheck {
     };
   }
 
-  private queryKey(query: AppDTOs.AssetExploreQueryDTO): string {
+  private queryKey(query: AppDTOs.AssetExploreQueryDTO, order: AssetExploreOrder = this.order): string {
     return [
       query.userId.trim(),
       query.type,
       `${query.category ?? ''}`.trim(),
       `${query.startAtIso ?? ''}`.trim(),
-      `${query.endAtIso ?? ''}`.trim()
+      `${query.endAtIso ?? ''}`.trim(),
+      order
     ].join('|');
-  }
-
-  private peekWarmCache(query: AppDTOs.AssetExploreQueryDTO): ResourceAssetDTO[] | null {
-    const cached = this.warmCacheByKey.get(this.queryKey(query));
-    return cached ? cached.map(card => this.cloneAsset(card)) : null;
-  }
-
-  private storeWarmCache(key: string, cards: readonly ResourceAssetDTO[]): void {
-    this.warmCacheByKey.set(key, cards.map(card => this.cloneAsset(card)));
-    if (this.warmCacheByKey.size <= 18) {
-      return;
-    }
-    const oldestKey = this.warmCacheByKey.keys().next().value;
-    if (oldestKey) {
-      this.warmCacheByKey.delete(oldestKey);
-    }
-  }
-
-  private sortCards(cards: readonly ResourceAssetDTO[], startAtIso: string, endAtIso: string): ResourceAssetDTO[] {
-    return cards
-      .map(card => this.cloneAsset(card))
-      .sort((left, right) => {
-        const availabilityDelta = this.availableQuantityForWindow(right, startAtIso, endAtIso)
-          - this.availableQuantityForWindow(left, startAtIso, endAtIso);
-        if (availabilityDelta !== 0) {
-          return availabilityDelta;
-        }
-        return left.title.localeCompare(right.title) || left.id.localeCompare(right.id);
-      });
   }
 
   private availabilityLabel(card: ResourceAssetDTO): string {
@@ -1563,8 +1684,16 @@ export class EventResourceAssetExploreComponent implements DoCheck {
       lastSenderId: ownerUserId || activeUserId,
       avatarSource: card.ownerName || card.title
     });
-    this.activitiesStore.openEventChat(
-      eventChatPopupRequestFromChat(chat),
+    void this.openStackedServiceChat(chat);
+  }
+
+  private async openStackedServiceChat(chat: ChatDTO & { ownerUserId?: string }): Promise<void> {
+    await this.activitiesStore.ensureEventChatPopupLoaded();
+    this.activitiesStore.openStackedEventChat(
+      {
+        ...eventChatPopupRequestFromChat(chat),
+        parentZIndex: this.assetExplorePopupZIndex()
+      },
       eventChatHeaderStateFromChat(chat)
     );
   }
@@ -1772,7 +1901,7 @@ export class EventResourceAssetExploreComponent implements DoCheck {
       sourceLink: this.assetSourceLink(card),
       routes: this.normalizeRoutes(card.type, card.routes),
       capacityTotal: Math.max(0, card.capacityTotal),
-      accepted: card.type === 'Supplies'
+      accepted: card.type === AppConstants.ASSET_TYPE_SUPPLIES
         ? this.subEventSupplyProvidedCount(card.id, subEventId)
         : this.assetAcceptedCount(card, subEventId, managerUserId),
       pending: this.assetPendingCount(card, subEventId, managerUserId),
@@ -1800,15 +1929,18 @@ export class EventResourceAssetExploreComponent implements DoCheck {
     const currentSettings = { ...(this.resourcePopupStore.assignedAssetSettingsByKey[key] ?? {}) };
     if (!currentSettings[card.id]) {
       const capacityLimit = Math.max(0, card.capacityTotal);
+      const quantityLimit = Math.max(1, AssetCardBuilder.storedQuantityValue(card));
       currentSettings[card.id] = {
         capacityMin: 0,
         capacityMax: capacityLimit,
+        quantity: Math.min(quantityLimit, Math.max(1, Math.trunc(Number(quantity) || 1))),
         addedByUserId: this.activeUser().id,
+        routeEnabled: card.type === AppConstants.ASSET_TYPE_TRANSPORT && this.normalizeRoutes(card.type, card.routes).length > 0,
         routes: this.normalizeRoutes(card.type, card.routes)
       };
       this.resourcePopupStore.assignedAssetSettingsByKey[key] = currentSettings;
     }
-    if (card.type === 'Supplies') {
+    if (card.type === AppConstants.ASSET_TYPE_SUPPLIES) {
       const contributionKey = this.supplyAssignmentKey(context.subEvent.id, card.id);
       const currentEntries = this.resourcePopupStore.supplyContributionEntriesByAssignmentKey[contributionKey] ?? [];
       this.resourcePopupStore.supplyContributionEntriesByAssignmentKey[contributionKey] = [
@@ -1850,9 +1982,9 @@ export class EventResourceAssetExploreComponent implements DoCheck {
       return;
     }
     const nextSubEvent = this.cloneSubEvent(context.subEvent);
-    const cars = this.capacityMetrics(nextSubEvent, 'Car');
-    const accommodation = this.capacityMetrics(nextSubEvent, 'Accommodation');
-    const supplies = this.capacityMetrics(nextSubEvent, 'Supplies');
+    const cars = this.capacityMetrics(nextSubEvent, AppConstants.ASSET_TYPE_TRANSPORT);
+    const accommodation = this.capacityMetrics(nextSubEvent, AppConstants.ASSET_TYPE_ACCOMMODATION);
+    const supplies = this.capacityMetrics(nextSubEvent, AppConstants.ASSET_TYPE_SUPPLIES);
     nextSubEvent.carsAccepted = cars.joined;
     nextSubEvent.carsPending = cars.pending;
     nextSubEvent.carsCapacityMin = cars.capacityMin;
@@ -1899,25 +2031,25 @@ export class EventResourceAssetExploreComponent implements DoCheck {
       subEventId,
       assetOwnerUserId,
       assetAssignmentIds: {
-        Car: [...this.resolveAssignedAssetIds(subEventId, 'Car')],
-        Accommodation: [...this.resolveAssignedAssetIds(subEventId, 'Accommodation')],
-        Supplies: [...this.resolveAssignedAssetIds(subEventId, 'Supplies')]
+        [AppConstants.ASSET_TYPE_TRANSPORT]: [...this.resolveAssignedAssetIds(subEventId, AppConstants.ASSET_TYPE_TRANSPORT)],
+        [AppConstants.ASSET_TYPE_ACCOMMODATION]: [...this.resolveAssignedAssetIds(subEventId, AppConstants.ASSET_TYPE_ACCOMMODATION)],
+        [AppConstants.ASSET_TYPE_SUPPLIES]: [...this.resolveAssignedAssetIds(subEventId, AppConstants.ASSET_TYPE_SUPPLIES)]
       },
       assetSettingsByType: {
-        Car: { ...this.getAssignedAssetSettings(subEventId, 'Car') },
-        Accommodation: { ...this.getAssignedAssetSettings(subEventId, 'Accommodation') },
-        Supplies: { ...this.getAssignedAssetSettings(subEventId, 'Supplies') }
+        [AppConstants.ASSET_TYPE_TRANSPORT]: { ...this.getAssignedAssetSettings(subEventId, AppConstants.ASSET_TYPE_TRANSPORT) },
+        [AppConstants.ASSET_TYPE_ACCOMMODATION]: { ...this.getAssignedAssetSettings(subEventId, AppConstants.ASSET_TYPE_ACCOMMODATION) },
+        [AppConstants.ASSET_TYPE_SUPPLIES]: { ...this.getAssignedAssetSettings(subEventId, AppConstants.ASSET_TYPE_SUPPLIES) }
       },
       supplyContributionEntriesByAssetId: Object.fromEntries(
-        this.resolveAssignedAssetIds(subEventId, 'Supplies').map(assetId => [
+        this.resolveAssignedAssetIds(subEventId, AppConstants.ASSET_TYPE_SUPPLIES).map(assetId => [
           assetId,
           this.supplyContributionEntries(subEventId, assetId).map(entry => ({ ...entry }))
         ])
       ),
       fallbackAssetCardsByType: {
-        Car: this.persistedFallbackCards(context, 'Car'),
-        Accommodation: this.persistedFallbackCards(context, 'Accommodation'),
-        Supplies: this.persistedFallbackCards(context, 'Supplies')
+        [AppConstants.ASSET_TYPE_TRANSPORT]: this.persistedFallbackCards(context, AppConstants.ASSET_TYPE_TRANSPORT),
+        [AppConstants.ASSET_TYPE_ACCOMMODATION]: this.persistedFallbackCards(context, AppConstants.ASSET_TYPE_ACCOMMODATION),
+        [AppConstants.ASSET_TYPE_SUPPLIES]: this.persistedFallbackCards(context, AppConstants.ASSET_TYPE_SUPPLIES)
       }
     };
   }
@@ -1932,10 +2064,10 @@ export class EventResourceAssetExploreComponent implements DoCheck {
     const settings = this.getAssignedAssetSettings(subEvent.id, type);
     const capacityMax = cards.reduce((sum, card) => sum + (settings[card.id]?.capacityMax ?? Math.max(0, card.capacityTotal)), 0);
     const capacityMin = cards.reduce((sum, card) => sum + (settings[card.id]?.capacityMin ?? 0), 0);
-    const pending = type === 'Supplies'
+    const pending = type === AppConstants.ASSET_TYPE_SUPPLIES
       ? 0
       : cards.reduce((sum, card) => sum + ActivityResourceBuilder.subEventOccupancyRequestCount(card, subEvent.id, 'pending'), 0);
-    if (type === 'Supplies') {
+    if (type === AppConstants.ASSET_TYPE_SUPPLIES) {
       return {
         joined: cards.reduce((sum, card) => sum + this.subEventSupplyProvidedCount(card.id, subEvent.id), 0),
         capacityMin,
@@ -1974,7 +2106,9 @@ export class EventResourceAssetExploreComponent implements DoCheck {
       next[assetId] = {
         capacityMin,
         capacityMax,
+        quantity: Math.max(1, Math.trunc(Number(previous?.quantity) || 1)),
         addedByUserId: previous?.addedByUserId ?? this.activeUser().id,
+        routeEnabled: previous?.routeEnabled ?? this.normalizeRoutes(type, previous?.routes).length > 0,
         routes: this.normalizeRoutes(type, previous?.routes)
       };
     }
@@ -2035,7 +2169,7 @@ export class EventResourceAssetExploreComponent implements DoCheck {
     fallbackCardsByType?: Partial<Record<AppConstants.AssetType, ResourceAssetDTO[]>>
   ): Partial<Record<AppConstants.AssetType, ResourceAssetDTO[]>> {
     const next: Partial<Record<AppConstants.AssetType, ResourceAssetDTO[]>> = {};
-    for (const type of ['Car', 'Accommodation', 'Supplies'] as const) {
+    for (const type of AppConstants.ASSET_TYPES) {
       const cards = fallbackCardsByType?.[type];
       if (!Array.isArray(cards) || cards.length === 0) {
         continue;
@@ -2213,7 +2347,11 @@ export class EventResourceAssetExploreComponent implements DoCheck {
       quantity: AssetCardBuilder.storedQuantityValue(card),
       description: this.assetDetailText(card),
       imageUrl: card.imageUrl,
-      locationLabel: card.locationLabel ?? (card.type === 'Accommodation' ? this.normalizeRoutes(card.type, card.routes).find(Boolean) : card.city),
+      locationLabel: card.locationLabel ?? (
+        card.type === AppConstants.ASSET_TYPE_ACCOMMODATION
+          ? this.normalizeRoutes(card.type, card.routes).find(Boolean)
+          : card.city
+      ),
       priceLabel: card.priceLabel ?? this.priceLabel(card),
       policiesEnabled: AssetCardBuilder.assetPoliciesEnabled(card),
       policyCount: AssetCardBuilder.assetPoliciesEnabled(card) ? card.policyCount ?? (card.policies ?? []).length : 0,
@@ -2294,13 +2432,13 @@ export class EventResourceAssetExploreComponent implements DoCheck {
   }
 
   private normalizeRoutes(type: AppConstants.AssetType, routes: string[] | undefined | null): string[] {
-    if (type === 'Supplies') {
+    if (type === AppConstants.ASSET_TYPE_SUPPLIES) {
       return [];
     }
     const cleaned = (routes ?? [])
       .map(value => value.trim())
       .filter((value, index, arr) => value.length > 0 && arr.indexOf(value) === index);
-    if (type === 'Accommodation') {
+    if (type === AppConstants.ASSET_TYPE_ACCOMMODATION) {
       return cleaned.length > 0 ? [cleaned[0]] : [''];
     }
     return cleaned.length > 0 ? cleaned : [''];
@@ -2506,11 +2644,11 @@ export class EventResourceAssetExploreComponent implements DoCheck {
     switch (type) {
       case 'Members':
         return 'blue';
-      case 'Car':
+      case AppConstants.ASSET_TYPE_TRANSPORT:
         return 'sky';
-      case 'Accommodation':
+      case AppConstants.ASSET_TYPE_ACCOMMODATION:
         return 'green';
-      case 'Supplies':
+      case AppConstants.ASSET_TYPE_SUPPLIES:
         return 'brown';
       default:
         return 'default';
@@ -2588,14 +2726,6 @@ export class EventResourceAssetExploreComponent implements DoCheck {
         feedback: 0
       }
     };
-  }
-
-  private runAfterNextPaint(task: () => void): void {
-    if (typeof window !== 'undefined' && typeof window.requestAnimationFrame === 'function') {
-      window.requestAnimationFrame(() => window.requestAnimationFrame(task));
-      return;
-    }
-    setTimeout(task, 0);
   }
 
   private openGoogleMapsSearch(query: string): void {

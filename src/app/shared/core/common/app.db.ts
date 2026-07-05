@@ -13,7 +13,7 @@ import {
   type UserRateRecord
 } from '../local/source/entity/rate.entity';
 import { USERS_TABLE_NAME } from '../local/source/entity/user.entity';
-import { ASSETS_TABLE_NAME } from '../local/source/entity/asset.entity';
+import { ASSET_REQUESTS_TABLE_NAME, ASSETS_TABLE_NAME } from '../local/source/entity/asset.entity';
 import {
   ACTIVITY_MEMBERS_TABLE_NAME,
   ACTIVITY_RESOURCES_TABLE_NAME,
@@ -56,6 +56,7 @@ export class AppMemoryDb {
     ACTIVITY_RESOURCES_TABLE_NAME,
     ACTIVITY_SUB_EVENT_GROUPS_TABLE_NAME,
     ACTIVITY_SUB_EVENT_STAGE_RUNTIME_TABLE_NAME,
+    ASSET_REQUESTS_TABLE_NAME,
     USER_RATES_TABLE_NAME,
     USER_RATES_OUTBOX_TABLE_NAME,
     USER_FILTER_PREFERENCES_TABLE_NAME,
@@ -265,6 +266,11 @@ export class AppMemoryDb {
         byId: {},
         ids: [],
         idsByOwnerUserId: {}
+      },
+      [ASSET_REQUESTS_TABLE_NAME]: {
+        byId: {},
+        ids: [],
+        idsByOwnerKey: {}
       },
       [ACTIVITY_MEMBERS_TABLE_NAME]: {
         byId: {},
@@ -803,6 +809,7 @@ export class AppMemoryDb {
     const source = (value && typeof value === 'object') ? value as Partial<AppMemorySchema> : {};
     const usersSource = source[USERS_TABLE_NAME] as Partial<AppMemorySchema[typeof USERS_TABLE_NAME]> | undefined;
     const assetsSource = source[ASSETS_TABLE_NAME] as Partial<AppMemorySchema[typeof ASSETS_TABLE_NAME]> | undefined;
+    const assetRequestsSource = source[ASSET_REQUESTS_TABLE_NAME] as Partial<AppMemorySchema[typeof ASSET_REQUESTS_TABLE_NAME]> | undefined;
     const activityMembersSource = source[ACTIVITY_MEMBERS_TABLE_NAME] as Partial<AppMemorySchema[typeof ACTIVITY_MEMBERS_TABLE_NAME]> | undefined;
     const activityResourcesSource = source[ACTIVITY_RESOURCES_TABLE_NAME] as Partial<AppMemorySchema[typeof ACTIVITY_RESOURCES_TABLE_NAME]> | undefined;
     const activitySubEventGroupsSource = source[ACTIVITY_SUB_EVENT_GROUPS_TABLE_NAME] as Partial<AppMemorySchema[typeof ACTIVITY_SUB_EVENT_GROUPS_TABLE_NAME]> | undefined;
@@ -848,6 +855,11 @@ export class AppMemoryDb {
         byId: this.normalizeAssetsById(assetsSource?.byId, fallback[ASSETS_TABLE_NAME].byId),
         ids: this.normalizeIdList(assetsSource?.ids, fallback[ASSETS_TABLE_NAME].ids),
         idsByOwnerUserId: this.normalizeAssetsIdsByOwnerUserId(assetsSource)
+      },
+      [ASSET_REQUESTS_TABLE_NAME]: {
+        byId: this.normalizeAssetRequestsById(assetRequestsSource?.byId, fallback[ASSET_REQUESTS_TABLE_NAME].byId),
+        ids: this.normalizeIdList(assetRequestsSource?.ids, fallback[ASSET_REQUESTS_TABLE_NAME].ids),
+        idsByOwnerKey: this.normalizeAssetRequestsIdsByOwnerKey(assetRequestsSource)
       },
       [ACTIVITY_MEMBERS_TABLE_NAME]: {
         byId: this.normalizeActivityMembersById(activityMembersSource?.byId, fallback[ACTIVITY_MEMBERS_TABLE_NAME].byId),
@@ -1051,6 +1063,15 @@ export class AppMemoryDb {
   ): AppMemorySchema[typeof ASSETS_TABLE_NAME]['byId'] {
     return value && typeof value === 'object'
       ? { ...(value as AppMemorySchema[typeof ASSETS_TABLE_NAME]['byId']) }
+      : { ...fallback };
+  }
+
+  private normalizeAssetRequestsById(
+    value: unknown,
+    fallback: AppMemorySchema[typeof ASSET_REQUESTS_TABLE_NAME]['byId']
+  ): AppMemorySchema[typeof ASSET_REQUESTS_TABLE_NAME]['byId'] {
+    return value && typeof value === 'object'
+      ? { ...(value as AppMemorySchema[typeof ASSET_REQUESTS_TABLE_NAME]['byId']) }
       : { ...fallback };
   }
 
@@ -1282,6 +1303,41 @@ export class AppMemoryDb {
     source: Partial<AppMemorySchema[typeof ACTIVITY_MEMBERS_TABLE_NAME]> | undefined
   ): Record<string, string[]> {
     const normalizedById = this.normalizeActivityMembersById(source?.byId, {});
+    const normalizedIds = this.normalizeIdList(source?.ids, []);
+    const next: Record<string, string[]> = {};
+
+    const rawIndex = source?.idsByOwnerKey;
+    if (rawIndex && typeof rawIndex === 'object') {
+      for (const [ownerKey, ids] of Object.entries(rawIndex)) {
+        if (!Array.isArray(ids) || !ownerKey.trim()) {
+          continue;
+        }
+        next[ownerKey] = ids
+          .map(id => String(id))
+          .filter(id => Boolean(normalizedById[id]));
+      }
+    }
+
+    for (const id of normalizedIds) {
+      const record = normalizedById[id];
+      const ownerKey = typeof record?.ownerKey === 'string' ? record.ownerKey.trim() : '';
+      if (!ownerKey) {
+        continue;
+      }
+      const bucket = next[ownerKey] ?? [];
+      if (!bucket.includes(id)) {
+        bucket.push(id);
+      }
+      next[ownerKey] = bucket;
+    }
+
+    return next;
+  }
+
+  private normalizeAssetRequestsIdsByOwnerKey(
+    source: Partial<AppMemorySchema[typeof ASSET_REQUESTS_TABLE_NAME]> | undefined
+  ): Record<string, string[]> {
+    const normalizedById = this.normalizeAssetRequestsById(source?.byId, {});
     const normalizedIds = this.normalizeIdList(source?.ids, []);
     const next: Record<string, string[]> = {};
 

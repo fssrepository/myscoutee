@@ -19,7 +19,18 @@ import type {
   EventFeedbackOption,
   EventFeedbackTraitOption
 } from './ui/models';
-import { EVENT_FEEDBACK_LIST_FILTERS, EVENT_VISIBILITIES, SUB_EVENT_RESOURCE_FILTERS } from './core/common/constants';
+import {
+  ASSET_CATEGORY_OPTIONS_BY_TYPE as CORE_ASSET_CATEGORY_OPTIONS_BY_TYPE,
+  ASSET_FILTER_TYPES,
+  ASSET_FILTER_TICKET,
+  ASSET_TYPE_ACCOMMODATION,
+  ASSET_TYPE_SUPPLIES,
+  ASSET_TYPE_TRANSPORT,
+  ASSET_TYPES,
+  EVENT_FEEDBACK_LIST_FILTERS,
+  EVENT_VISIBILITIES,
+  SUB_EVENT_RESOURCE_FILTERS
+} from './core/common/constants';
 import type {
   AssetCategory,
   AssetFilterType,
@@ -393,7 +404,7 @@ const EXPLAINABLE_SURFACES: ExplainableSurface[] = [
   { key: 'profile.view', label: 'Profile details', icon: 'visibility', owner: 'popup', order: 40, enabled: true },
   { key: 'contacts', label: 'Contacts', icon: 'contacts', owner: 'popup', order: 45, enabled: true },
   { key: 'assets', label: 'Assets', icon: 'inventory_2', owner: 'popup', order: 50, enabled: true },
-  { key: 'assets.car', label: 'Assets · Car', icon: 'directions_car', owner: 'popup', order: 51, enabled: true },
+  { key: 'assets.transport', label: 'Assets · Transport', icon: 'directions_car', owner: 'popup', order: 51, enabled: true },
   { key: 'assets.accommodation', label: 'Assets · Accommodation', icon: 'apartment', owner: 'popup', order: 52, enabled: true },
   { key: 'assets.supplies', label: 'Assets · Supplies', icon: 'inventory_2', owner: 'popup', order: 53, enabled: true },
   { key: 'assets.tickets', label: 'Assets · Tickets', icon: 'qr_code_2', owner: 'popup', order: 54, enabled: true },
@@ -644,18 +655,18 @@ const PROFILE_SAMPLE_EXPERIENCE_ENTRIES: ExperienceEntry[] = [
   }
 ];
 
-const ASSET_TYPE_OPTIONS: AssetType[] = ['Car', 'Accommodation', 'Supplies'];
-const ASSET_FILTER_OPTIONS: AssetFilterType[] = ['Car', 'Accommodation', 'Supplies', 'Ticket'];
+const ASSET_TYPE_OPTIONS: AssetType[] = [...ASSET_TYPES];
+const ASSET_FILTER_OPTIONS: AssetFilterType[] = [...ASSET_FILTER_TYPES];
 const ASSET_TYPE_LABELS: Record<AssetFilterType, string> = {
-  Car: 'Car',
-  Accommodation: 'Property',
-  Supplies: 'Supplies',
-  Ticket: 'Ticket'
+  [ASSET_TYPE_TRANSPORT]: ASSET_TYPE_TRANSPORT,
+  [ASSET_TYPE_ACCOMMODATION]: ASSET_TYPE_ACCOMMODATION,
+  [ASSET_TYPE_SUPPLIES]: ASSET_TYPE_SUPPLIES,
+  [ASSET_FILTER_TICKET]: ASSET_FILTER_TICKET
 };
 const ASSET_CATEGORY_OPTIONS_BY_TYPE: Record<AssetType, AssetCategory[]> = {
-  Car: ['Ride'],
-  Accommodation: ['Stay'],
-  Supplies: ['Camping', 'Cooking', 'Games', 'Audio', 'Sports', 'Safety', 'Decor', 'Tech']
+  [ASSET_TYPE_TRANSPORT]: [...CORE_ASSET_CATEGORY_OPTIONS_BY_TYPE[ASSET_TYPE_TRANSPORT]],
+  [ASSET_TYPE_ACCOMMODATION]: [...CORE_ASSET_CATEGORY_OPTIONS_BY_TYPE[ASSET_TYPE_ACCOMMODATION]],
+  [ASSET_TYPE_SUPPLIES]: [...CORE_ASSET_CATEGORY_OPTIONS_BY_TYPE[ASSET_TYPE_SUPPLIES]]
 };
 const ACTIVITIES_PRIMARY_FILTERS: Array<{ key: ActivitiesPrimaryFilter; label: string; icon: string }> = [
   { key: 'rates', label: 'Rates', icon: 'star' },
@@ -979,9 +990,9 @@ const EVENT_BLIND_MODE_OPTIONS: EventBlindMode[] = ['Open Event', 'Blind Event']
 const SUB_EVENT_RESOURCE_FILTER_OPTIONS: SubEventResourceFilter[] = [...SUB_EVENT_RESOURCE_FILTERS];
 const SUB_EVENT_RESOURCE_FILTER_LABELS: Record<SubEventResourceFilter, string> = {
   Members: 'Members',
-  Car: 'Car',
-  Accommodation: 'Property',
-  Supplies: 'Supplies'
+  [ASSET_TYPE_TRANSPORT]: ASSET_TYPE_TRANSPORT,
+  [ASSET_TYPE_ACCOMMODATION]: ASSET_TYPE_ACCOMMODATION,
+  [ASSET_TYPE_SUPPLIES]: ASSET_TYPE_SUPPLIES
 };
 const EVENT_MODE_OPTIONS: EventMode[] = ['Casual', 'Tournament'];
 const TOURNAMENT_LEADERBOARD_TYPE_OPTIONS: TournamentLeaderboardType[] = ['Score', 'Fifa'];
@@ -1079,9 +1090,9 @@ const HELP_CENTER_SECTIONS: HelpCenterSectionDto[] = [
     id: 'resources',
     icon: 'inventory_2',
     title: 'Resources and Capacity',
-    blurb: 'Assign people, cars, accommodation, and supplies with limits.',
+    blurb: 'Assign people, transport, accommodation, and supplies with limits.',
     contentHtml: `
-      <p><strong>Assign people, cars, accommodation, and supplies with limits.</strong></p>
+      <p><strong>Assign people, transport, accommodation, and supplies with limits.</strong></p>
       <p>Use resource menus to assign assets into sub events and groups, then adjust capacity ranges directly where needed.</p>
       <p>Badges summarize pending requests and remaining capacity so action priorities are visible at a glance.</p>
       <ul>
@@ -1293,8 +1304,8 @@ const HELP_CENTER_SECTIONS_HU: HelpCenterSectionDto[] = [
     id: 'resources',
     icon: 'inventory_2',
     title: 'Erőforrások és kapacitás',
-    blurb: 'Rendelj embereket, autókat, szállást és kellékeket limitekkel.',
-    contentHtml: '<p><strong>Rendelj embereket, autókat, szállást és kellékeket limitekkel.</strong></p><p>Az erőforrásmenükben eszközöket rendelhetsz aleseményekhez és csoportokhoz, majd közvetlenül állíthatod a kapacitásokat.</p><ul><li>Minimum/maximum kapacitás feladatonként</li><li>Kontextusos jelvények függő kérésekhez</li><li>Útvonal- és helytámogatás utazási erőforrásokhoz</li></ul>'
+    blurb: 'Rendelj embereket, transportkat, szállást és kellékeket limitekkel.',
+    contentHtml: '<p><strong>Rendelj embereket, transportkat, szállást és kellékeket limitekkel.</strong></p><p>Az erőforrásmenükben eszközöket rendelhetsz aleseményekhez és csoportokhoz, majd közvetlenül állíthatod a kapacitásokat.</p><ul><li>Minimum/maximum kapacitás feladatonként</li><li>Kontextusos jelvények függő kérésekhez</li><li>Útvonal- és helytámogatás utazási erőforrásokhoz</li></ul>'
   },
   {
     id: 'activities',
@@ -2019,7 +2030,7 @@ const EXPLANATION_ASSETS_SECTIONS: HelpCenterSectionDto[] = [
     icon: 'inventory_2',
     title: 'Your assets',
     blurb: 'This popup starts from your own things, not from one event.',
-    contentHtml: '<p>The type menu switches between <strong>Car</strong>, <strong>Accommodation</strong>, <strong>Supplies</strong>, and <strong>Ticket</strong>. The red number is the count for that type.</p><p><strong>Car</strong>, <strong>Accommodation</strong>, and <strong>Supplies</strong> are editable assets you own. The plus button creates a new one. <strong>Ticket</strong> is different: it is for event entry codes and scanning, not for editing a physical asset.</p>'
+    contentHtml: '<p>The type menu switches between <strong>Transport</strong>, <strong>Accommodation</strong>, <strong>Supplies</strong>, and <strong>Ticket</strong>. The red number is the count for that type.</p><p><strong>Transport</strong>, <strong>Accommodation</strong>, and <strong>Supplies</strong> are editable assets you own. The plus button creates a new one. <strong>Ticket</strong> is different: it is for event entry codes and scanning, not for editing a physical asset.</p>'
   },
   {
     id: 'assets-card',
@@ -2032,7 +2043,7 @@ const EXPLANATION_ASSETS_SECTIONS: HelpCenterSectionDto[] = [
     id: 'assets-editor',
     icon: 'edit',
     title: 'Common asset editor',
-    blurb: 'Cars, accommodation, and supplies share this basic editor.',
+    blurb: 'Transport, accommodation, and supplies share this basic editor.',
     contentHtml: '<p>For every real asset you set the image/source link, type, title, category, capacity, quantity, details, visibility, optional pricing, and lending policies.</p><p><strong>Public</strong> can be found broadly in Asset Explorer. <strong>Friends only</strong> limits discovery to your friend/network context. <strong>Invitation only</strong> keeps it out of normal discovery, so it is used by direct sharing or assignment.</p>'
   },
   {
@@ -2057,20 +2068,20 @@ const EXPLANATION_ASSETS_SECTIONS_HU: HelpCenterSectionDto[] = [
     icon: 'inventory_2',
     title: 'Saját eszközeid',
     blurb: 'Ez a popup a saját dolgaidból indul ki, nem egy konkrét eseményből.',
-    contentHtml: '<p>A típusmenü vált: <strong>Autó</strong>, <strong>Ingatlan</strong>, <strong>Kellékek</strong> és <strong>Jegy</strong>. A piros szám az adott típus darabszáma.</p><p>Az <strong>Autó</strong>, <strong>Ingatlan</strong> és <strong>Kellékek</strong> szerkeszthető saját eszközök. A plusz gomb újat hoz létre. A <strong>Jegy</strong> más: belépőkódokra és szkennelésre való, nem tárgyi eszköz szerkesztésére.</p>'
+    contentHtml: '<p>A típusmenü vált: <strong>Transport</strong>, <strong>Accommodation</strong>, <strong>Kellékek</strong> és <strong>Jegy</strong>. A piros szám az adott típus darabszáma.</p><p>A <strong>Transport</strong>, <strong>Accommodation</strong> és <strong>Kellékek</strong> szerkeszthető saját eszközök. A plusz gomb újat hoz létre. A <strong>Jegy</strong> más: belépőkódokra és szkennelésre való, nem tárgyi eszköz szerkesztésére.</p>'
   },
   {
     id: 'assets-card',
     icon: 'view_agenda',
     title: 'Egy eszközkártya',
     blurb: 'Ez egy saját eszköz rövid, olvasható változata.',
-    contentHtml: '<p>A kép az eszköz fotója; ha nincs kép, a kártya a beépített nincs-kép jelzést mutatja. A kis ikon a típust jelzi. A cím az eszköz neve, alatta típus/kategória/város, a szöveg pedig praktikus megjegyzés.</p><p>A jobb oldali jelvény a hasznos szám: férőhely, ágy, mennyiség vagy függő kérés. A hárompontos menüben tulajdonosi műveletek vannak: <strong>Megosztás</strong>, <strong>Szerkesztés</strong>, <strong>Törlés</strong>. Ingatlannál helyszín/térkép gomb is megjelenhet.</p>'
+    contentHtml: '<p>A kép az eszköz fotója; ha nincs kép, a kártya a beépített nincs-kép jelzést mutatja. A kis ikon a típust jelzi. A cím az eszköz neve, alatta típus/kategória/város, a szöveg pedig praktikus megjegyzés.</p><p>A jobb oldali jelvény a hasznos szám: férőhely, ágy, mennyiség vagy függő kérés. A hárompontos menüben tulajdonosi műveletek vannak: <strong>Megosztás</strong>, <strong>Szerkesztés</strong>, <strong>Törlés</strong>. Accommodation típusnál helyszín/térkép gomb is megjelenhet.</p>'
   },
   {
     id: 'assets-editor',
     icon: 'edit',
     title: 'Közös eszközszerkesztő',
-    blurb: 'Az autó, ingatlan és kellék ugyanarra az alap szerkesztőre épül.',
+    blurb: 'A Transport, Accommodation és kellék ugyanarra az alap szerkesztőre épül.',
     contentHtml: '<p>Minden valódi eszköznél képet/forráslinket, típust, címet, kategóriát, kapacitást, mennyiséget, leírást, láthatóságot, opcionális árat és kölcsönzési szabályokat adhatsz meg.</p><p>A <strong>Public</strong> szélesen megjelenhet az Eszköz Felfedezésben. A <strong>Friends only</strong> az ismerősi/hálózati körre szűkít. Az <strong>Invitation only</strong> nem normál felfedezésre való, hanem közvetlen megosztásra vagy hozzárendelésre.</p>'
   },
   {
@@ -2099,21 +2110,21 @@ function assetExplanationSections(
   }));
 }
 
-const EXPLANATION_ASSETS_CAR_SECTIONS: HelpCenterSectionDto[] = assetExplanationSections(EXPLANATION_ASSETS_SECTIONS, {
+const EXPLANATION_ASSETS_TRANSPORT_SECTIONS: HelpCenterSectionDto[] = assetExplanationSections(EXPLANATION_ASSETS_SECTIONS, {
   'assets-entry': {
     icon: 'directions_car',
-    title: 'Your cars',
-    blurb: 'Cars use the common editor, with travel details added.',
-    contentHtml: '<p>The <strong>Car</strong> tab lists vehicles you own or manage as your own assets. Use plus to add a car, then describe seats, route, city, pickup notes, rules, price, and visibility.</p><p>A public or friends-only car can be discovered in Asset Explorer and requested. The same car can also be assigned to an event or sub-event from that event&rsquo;s resource screen.</p>'
+    title: 'Your transport',
+    blurb: 'Transport uses the common editor, with travel details added.',
+    contentHtml: '<p>The <strong>Transport</strong> tab lists vehicles and transfer options you own or manage as your own assets. Use plus to add transport, then describe seats, route, city, pickup notes, rules, price, and visibility.</p><p>Public or friends-only transport can be discovered in Asset Explorer and requested. The same transport asset can also be assigned to an event or sub-event from that event&rsquo;s resource screen.</p>'
   },
   'assets-card': {
     icon: 'directions_car',
-    title: 'Reading a car card',
-    contentHtml: '<p>The photo shows the car. The icon confirms it is a car, the title is the car name, and the second line can show model, transmission, category, route, or city.</p><p>The right badge is seats or pending requests. The three-dot menu is where the owner shares, edits, or deletes the car.</p>'
+    title: 'Reading a transport card',
+    contentHtml: '<p>The photo shows the transport asset. The icon confirms it is transport, the title is the asset name, and the second line can show model, transmission, category, route, or city.</p><p>The right badge is seats or pending requests. The three-dot menu is where the owner shares, edits, or deletes the asset.</p>'
   },
   'assets-editor': {
-    title: 'Car-specific fields',
-    contentHtml: '<p>Beyond the common fields, a car is mainly about <strong>seats</strong> and <strong>route</strong>. Use details for pickup window, luggage limits, fuel sharing, route stops, driver notes, and whether people can request it outside your own events.</p>'
+    title: 'Transport-specific fields',
+    contentHtml: '<p>Beyond the common fields, transport is mainly about <strong>seats</strong> and <strong>route</strong>. Use details for pickup window, luggage limits, fuel sharing, route stops, driver notes, and whether people can request it outside your own events.</p>'
   }
 });
 
@@ -2122,7 +2133,7 @@ const EXPLANATION_ASSETS_ACCOMMODATION_SECTIONS: HelpCenterSectionDto[] = assetE
     icon: 'apartment',
     title: 'Your accommodation',
     blurb: 'Accommodation uses the common editor, with location as the important extra.',
-    contentHtml: '<p>The <strong>Accommodation</strong> tab lists places, rooms, beds, or stays you own or manage as your own assets. Add a place, then describe location, sleeping capacity, rules, price, and visibility.</p><p>A public or friends-only stay can be discovered in Asset Explorer and requested. It can also be assigned to an event or sub-event from that event&rsquo;s resource screen.</p>'
+    contentHtml: '<p>The <strong>Accommodation</strong> tab lists places, rooms, beds, venues, or storage you own or manage as your own assets. Add accommodation, then describe location, sleeping capacity, rules, price, and visibility.</p><p>Public or friends-only accommodation can be discovered in Asset Explorer and requested. It can also be assigned to an event or sub-event from that event&rsquo;s resource screen.</p>'
   },
   'assets-card': {
     icon: 'apartment',
@@ -2159,14 +2170,14 @@ const EXPLANATION_ASSETS_TICKETS_SECTIONS: HelpCenterSectionDto[] = [
     icon: 'qr_code_2',
     title: 'Your tickets',
     blurb: 'Tickets are event entry records, not editable owned assets.',
-    contentHtml: '<p>The <strong>Ticket</strong> tab is separate from Car, Accommodation, and Supplies. It lists ticketed events and entry codes connected to you.</p><p>Use <strong>Upcoming</strong> and <strong>Past</strong> to change the list. The <strong>Scan Ticket</strong> button opens scanner mode for reading another person&rsquo;s QR code at check-in.</p>'
+    contentHtml: '<p>The <strong>Ticket</strong> tab is separate from Transport, Accommodation, and Supplies. It lists ticketed events and entry codes connected to you.</p><p>Use <strong>Upcoming</strong> and <strong>Past</strong> to change the list. The <strong>Scan Ticket</strong> button opens scanner mode for reading another person&rsquo;s QR code at check-in.</p>'
   },
   {
     id: 'assets-ticket-card',
     icon: 'confirmation_number',
     title: 'Reading a ticket card',
     blurb: 'A ticket card points back to an event.',
-    contentHtml: '<p>The card shows the event image, title, date, role, and ticket context. Tap the QR badge in the top-right corner to open your own code for that ticket.</p><p>You do not edit this like a car or supply. Its data comes from the event, booking, member role, and ticketing/check-in setup.</p>'
+    contentHtml: '<p>The card shows the event image, title, date, role, and ticket context. Tap the QR badge in the top-right corner to open your own code for that ticket.</p><p>You do not edit this like a transport asset or supply. Its data comes from the event, booking, member role, and ticketing/check-in setup.</p>'
   },
   {
     id: 'assets-ticket-scanner',
@@ -2177,39 +2188,39 @@ const EXPLANATION_ASSETS_TICKETS_SECTIONS: HelpCenterSectionDto[] = [
   }
 ];
 
-const EXPLANATION_ASSETS_CAR_SECTIONS_HU: HelpCenterSectionDto[] = assetExplanationSections(EXPLANATION_ASSETS_SECTIONS_HU, {
+const EXPLANATION_ASSETS_TRANSPORT_SECTIONS_HU: HelpCenterSectionDto[] = assetExplanationSections(EXPLANATION_ASSETS_SECTIONS_HU, {
   'assets-entry': {
     icon: 'directions_car',
-    title: 'Saját autóid',
-    blurb: 'Az autó a közös eszközszerkesztőt használja, utazási adatokkal kiegészítve.',
-    contentHtml: '<p>Az <strong>Autó</strong> tab azokat a járműveket listázza, amelyeket saját eszközként birtokolsz vagy kezelsz. A plusz gombbal adhatsz hozzá autót, majd megadhatod a férőhelyet, útvonalat, várost, indulási megjegyzést, szabályokat, árat és láthatóságot.</p><p>A nyilvános vagy ismerősöknek látható autó megjelenhet az Eszköz Felfedezésben, és kérhető. Ugyanez az autó eseményhez vagy aleseményhez is hozzárendelhető az esemény erőforrás képernyőjén.</p>'
+    title: 'Saját transport eszközeid',
+    blurb: 'A Transport a közös eszközszerkesztőt használja, utazási adatokkal kiegészítve.',
+    contentHtml: '<p>Az <strong>Transport</strong> tab azokat a járműveket listázza, amelyeket saját eszközként birtokolsz vagy kezelsz. A plusz gombbal adhatsz hozzá transportot, majd megadhatod a férőhelyet, útvonalat, várost, indulási megjegyzést, szabályokat, árat és láthatóságot.</p><p>A nyilvános vagy ismerősöknek látható transport megjelenhet az Eszköz Felfedezésben, és kérhető. Ugyanez a transport eseményhez vagy aleseményhez is hozzárendelhető az esemény erőforrás képernyőjén.</p>'
   },
   'assets-card': {
     icon: 'directions_car',
-    title: 'Egy autókártya',
-    contentHtml: '<p>A kép az autót mutatja. Az ikon jelzi, hogy autóról van szó, a cím az autó neve, alatta modell, váltó, kategória, útvonal vagy város jelenhet meg.</p><p>A jobb oldali jelvény férőhelyet vagy függő kérést mutat. A hárompontos menüben a tulajdonos megoszt, szerkeszt vagy töröl.</p>'
+    title: 'Egy transport kártya',
+    contentHtml: '<p>A kép a transportot mutatja. Az ikon jelzi, hogy transportról van szó, a cím a transport neve, alatta modell, váltó, kategória, útvonal vagy város jelenhet meg.</p><p>A jobb oldali jelvény férőhelyet vagy függő kérést mutat. A hárompontos menüben a tulajdonos megoszt, szerkeszt vagy töröl.</p>'
   },
   'assets-editor': {
-    title: 'Autóra jellemző mezők',
-    contentHtml: '<p>A közös mezőkön túl az autó főleg <strong>férőhelyről</strong> és <strong>útvonalról</strong> szól. Írd a részletekhez az indulási ablakot, csomaglimitet, üzemanyag-megosztást, megállókat, sofőr megjegyzést, és hogy kérhető-e a saját eseményeiden kívül is.</p>'
+    title: 'Transportra jellemző mezők',
+    contentHtml: '<p>A közös mezőkön túl a transport főleg <strong>férőhelyről</strong> és <strong>útvonalról</strong> szól. Írd a részletekhez az indulási ablakot, csomaglimitet, üzemanyag-megosztást, megállókat, sofőr megjegyzést, és hogy kérhető-e a saját eseményeiden kívül is.</p>'
   }
 });
 
 const EXPLANATION_ASSETS_ACCOMMODATION_SECTIONS_HU: HelpCenterSectionDto[] = assetExplanationSections(EXPLANATION_ASSETS_SECTIONS_HU, {
   'assets-entry': {
     icon: 'apartment',
-    title: 'Saját ingatlanok',
-    blurb: 'Az ingatlan a közös eszközszerkesztőt használja, helyszínnel kiegészítve.',
-    contentHtml: '<p>Az <strong>Ingatlan</strong> tab szállást, szobát, ágyat vagy helyet listáz, amit saját eszközként birtokolsz vagy kezelsz. Adj hozzá helyet, majd írd le a lokációt, alvó kapacitást, szabályokat, árat és láthatóságot.</p><p>A nyilvános vagy ismerősöknek látható szállás megjelenhet az Eszköz Felfedezésben, és kérhető. Eseményhez vagy aleseményhez is hozzárendelhető az esemény erőforrás képernyőjén.</p>'
+    title: 'Saját szállások',
+    blurb: 'Az Accommodation a közös eszközszerkesztőt használja, helyszínnel kiegészítve.',
+    contentHtml: '<p>Az <strong>Accommodation</strong> tab szállást, szobát, ágyat vagy helyet listáz, amit saját eszközként birtokolsz vagy kezelsz. Adj hozzá helyet, majd írd le a lokációt, alvó kapacitást, szabályokat, árat és láthatóságot.</p><p>A nyilvános vagy ismerősöknek látható szállás megjelenhet az Eszköz Felfedezésben, és kérhető. Eseményhez vagy aleseményhez is hozzárendelhető az esemény erőforrás képernyőjén.</p>'
   },
   'assets-card': {
     icon: 'apartment',
-    title: 'Egy ingatlankártya',
-    contentHtml: '<p>A kép a helyet mutatja. Az ikon jelzi, hogy ingatlan/szállás, a cím a hely neve, alatta típus, város vagy kategória jelenhet meg.</p><p>A jobb oldali jelvény ágyat, szobát, kapacitást vagy függő kérést mutathat. A hely ikon térképet nyithat, ha van helyszín.</p>'
+    title: 'Egy szálláskártya',
+    contentHtml: '<p>A kép a helyet mutatja. Az ikon jelzi, hogy Accommodation/szállás, a cím a hely neve, alatta típus, város vagy kategória jelenhet meg.</p><p>A jobb oldali jelvény ágyat, szobát, kapacitást vagy függő kérést mutathat. A hely ikon térképet nyithat, ha van helyszín.</p>'
   },
   'assets-editor': {
-    title: 'Ingatlanra jellemző mezők',
-    contentHtml: '<p>A közös mezőkön túl az ingatlannál a <strong>helyszín</strong> fontos. A térkép/helyszín gomb ezt használja. Írd a részletekhez a bejutást, alvási rendet, közös szobát, csendidőt, kisállatot, parkolást és amit kérés előtt tudni kell.</p>'
+    title: 'Accommodation típusra jellemző mezők',
+    contentHtml: '<p>A közös mezőkön túl az Accommodation típusnál a <strong>helyszín</strong> fontos. A térkép/helyszín gomb ezt használja. Írd a részletekhez a bejutást, alvási rendet, közös szobát, csendidőt, kisállatot, parkolást és amit kérés előtt tudni kell.</p>'
   }
 });
 
@@ -2237,14 +2248,14 @@ const EXPLANATION_ASSETS_TICKETS_SECTIONS_HU: HelpCenterSectionDto[] = [
     icon: 'qr_code_2',
     title: 'Saját jegyek',
     blurb: 'A jegy belépési rekord, nem szerkeszthető saját tárgyi eszköz.',
-    contentHtml: '<p>A <strong>Jegy</strong> tab külön van az Autó, Ingatlan és Kellékek típusoktól. Jegyes eseményeket és hozzád kapcsolódó belépőkódokat listáz.</p><p>A <strong>Közelgő</strong> és <strong>Korábbi</strong> a listát váltja. A <strong>Scan Ticket</strong> gomb szkenner módot nyit, amikor más ember QR kódját kell beolvasni beléptetésnél.</p>'
+    contentHtml: '<p>A <strong>Jegy</strong> tab külön van a Transport, Accommodation és Kellékek típusoktól. Jegyes eseményeket és hozzád kapcsolódó belépőkódokat listáz.</p><p>A <strong>Közelgő</strong> és <strong>Korábbi</strong> a listát váltja. A <strong>Scan Ticket</strong> gomb szkenner módot nyit, amikor más ember QR kódját kell beolvasni beléptetésnél.</p>'
   },
   {
     id: 'assets-ticket-card',
     icon: 'confirmation_number',
     title: 'Egy jegykártya',
     blurb: 'A jegykártya egy eseményre mutat vissza.',
-    contentHtml: '<p>A kártya eseményképet, címet, dátumot, szerepet és jegykörnyezetet mutat. A jobb felső QR jelvényre koppintva a saját jegykódod nyílik meg.</p><p>Ezt nem úgy szerkeszted, mint egy autót vagy kelléket. Az adatai az eseményből, foglalásból, tagszerepből és ticketing/check-in beállításból jönnek.</p>'
+    contentHtml: '<p>A kártya eseményképet, címet, dátumot, szerepet és jegykörnyezetet mutat. A jobb felső QR jelvényre koppintva a saját jegykódod nyílik meg.</p><p>Ezt nem úgy szerkeszted, mint egy transport eszközt vagy kelléket. Az adatai az eseményből, foglalásból, tagszerepből és ticketing/check-in beállításból jönnek.</p>'
   },
   {
     id: 'assets-ticket-scanner',
@@ -2289,14 +2300,14 @@ const EXPLANATION_EVENT_EDITOR_SECTIONS: HelpCenterSectionDto[] = [
     icon: 'groups',
     title: 'Members and roles',
     blurb: 'This popup is where organizers handle people.',
-    contentHtml: '<p><strong>Admin</strong> is the main organizer. <strong>Manager</strong> is a helper under Admin: managers can help with members and resources, and can also appear because someone manages an assigned car, accommodation, or supply. <strong>Member</strong> is a normal attendee.</p><p><strong>Invite</strong> adds people. <strong>Pending only</strong> shows waiting requests/invites. The status chip shows Admin, Manager, Member, pending, invite, or disqualified. The eye opens a profile; the three-dot menu can approve, reject/delete, remove, disqualify, reinstate, or report depending on your role and the member state.</p>'
+    contentHtml: '<p><strong>Admin</strong> is the main organizer. <strong>Manager</strong> is a helper under Admin: managers can help with members and resources, and can also appear because someone manages an assigned transport, accommodation, or supply. <strong>Member</strong> is a normal attendee.</p><p><strong>Invite</strong> adds people. <strong>Pending only</strong> shows waiting requests/invites. The status chip shows Admin, Manager, Member, pending, invite, or disqualified. The eye opens a profile; the three-dot menu can approve, reject/delete, remove, disqualify, reinstate, or report depending on your role and the member state.</p>'
   },
   {
     id: 'event-editor-assets',
     icon: 'inventory_2',
     title: 'Resources',
     blurb: 'Resources are the people and things assigned to one part.',
-    contentHtml: '<p>From a sub-event or group menu you can open <strong>Members</strong>, <strong>Car</strong>, <strong>Accommodation</strong>, or <strong>Supplies</strong>. <strong>Assign</strong> attaches something you already control. <strong>Explore</strong> searches available assets and can start a request/booking flow.</p><p>Counts show accepted and pending assignments. Capacity tells you whether that part has enough people, car seats, beds/rooms, or supplies. If a resource has its own manager, that person can become a Manager for the event context.</p>'
+    contentHtml: '<p>From a sub-event or group menu you can open <strong>Members</strong>, <strong>Transport</strong>, <strong>Accommodation</strong>, or <strong>Supplies</strong>. <strong>Assign</strong> attaches something you already control. <strong>Explore</strong> searches available assets and can start a request/booking flow.</p><p>Counts show accepted and pending assignments. Capacity tells you whether that part has enough people, transport seats, beds/rooms, or supplies. If a resource has its own manager, that person can become a Manager for the event context.</p>'
   }
 ];
 
@@ -2334,14 +2345,14 @@ const EXPLANATION_EVENT_EDITOR_SECTIONS_HU: HelpCenterSectionDto[] = [
     icon: 'groups',
     title: 'Tagok és szerepek',
     blurb: 'Ez az a popup, ahol a szervező embereket kezel.',
-    contentHtml: '<p>Az <strong>Admin</strong> a fő szervező. A <strong>Manager</strong> Admin alatti segítő: kezelhet tagokat és erőforrásokat, és akkor is megjelenhet, ha valaki egy hozzárendelt autó, szállás vagy kellék felelőse. A <strong>Member</strong> sima résztvevő.</p><p>A <strong>Invite</strong> meghív. A <strong>Pending only</strong> csak a várakozó kéréseket/meghívásokat mutatja. A jelvény mutatja: Admin, Manager, Member, függő kérés, kiküldött meghívó vagy kizárt. A szem profilra visz; a hárompontos menü szereptől és állapottól függően jóváhagyást, elutasítást/törlést, eltávolítást, kizárást, visszaállítást vagy jelentést ad.</p>'
+    contentHtml: '<p>Az <strong>Admin</strong> a fő szervező. A <strong>Manager</strong> Admin alatti segítő: kezelhet tagokat és erőforrásokat, és akkor is megjelenhet, ha valaki egy hozzárendelt transport, szállás vagy kellék felelőse. A <strong>Member</strong> sima résztvevő.</p><p>A <strong>Invite</strong> meghív. A <strong>Pending only</strong> csak a várakozó kéréseket/meghívásokat mutatja. A jelvény mutatja: Admin, Manager, Member, függő kérés, kiküldött meghívó vagy kizárt. A szem profilra visz; a hárompontos menü szereptől és állapottól függően jóváhagyást, elutasítást/törlést, eltávolítást, kizárást, visszaállítást vagy jelentést ad.</p>'
   },
   {
     id: 'event-editor-assets',
     icon: 'inventory_2',
     title: 'Erőforrások',
     blurb: 'Erőforrás az ember vagy dolog, amit egy részhez hozzárendelsz.',
-    contentHtml: '<p>Egy alesemény vagy csoport menüjéből nyitható: <strong>Members</strong>, <strong>Car</strong>, <strong>Accommodation</strong> és <strong>Supplies</strong>. Az <strong>Assign</strong> olyat tesz hozzá, amit már kezelsz. Az <strong>Explore</strong> elérhető eszközt keres, és kérés/foglalás folyamatot indíthat.</p><p>A számok az elfogadott és függő hozzárendeléseket mutatják. A kapacitásból látod, elég ember, ülés, szálláshely vagy kellék van-e ahhoz a részhez. Ha egy erőforrásnak saját felelőse van, ő Managerként is megjelenhet az esemény környezetében.</p>'
+    contentHtml: '<p>Egy alesemény vagy csoport menüjéből nyitható: <strong>Members</strong>, <strong>Transport</strong>, <strong>Accommodation</strong> és <strong>Supplies</strong>. Az <strong>Assign</strong> olyat tesz hozzá, amit már kezelsz. Az <strong>Explore</strong> elérhető eszközt keres, és kérés/foglalás folyamatot indíthat.</p><p>A számok az elfogadott és függő hozzárendeléseket mutatják. A kapacitásból látod, elég ember, transport férőhely, szálláshely vagy kellék van-e ahhoz a részhez. Ha egy erőforrásnak saját felelőse van, ő Managerként is megjelenhet az esemény környezetében.</p>'
   }
 ];
 
@@ -2519,23 +2530,23 @@ const DEFAULT_EXPLANATION_ASSETS_REVISION_HU: HelpCenterRevisionDto = {
   sections: withSeededExplanationImages('assets', EXPLANATION_ASSETS_SECTIONS_HU, 'hu')
 };
 
-const DEFAULT_EXPLANATION_ASSETS_CAR_REVISION: HelpCenterRevisionDto = {
+const DEFAULT_EXPLANATION_ASSETS_TRANSPORT_REVISION: HelpCenterRevisionDto = {
   ...DEFAULT_EXPLANATION_ASSETS_REVISION,
-  id: 'explanation-assets-car-default-v1',
-  contextKey: 'assets.car',
-  title: 'Car assets explanation',
-  summary: 'Own cars, car cards, car editor, and car requests',
-  sections: withSeededExplanationImages('assets.car', EXPLANATION_ASSETS_CAR_SECTIONS, 'en')
+  id: 'explanation-assets-transport-default-v1',
+  contextKey: 'assets.transport',
+  title: 'Transport assets explanation',
+  summary: 'Own transport assets, transport cards, editor, and requests',
+  sections: withSeededExplanationImages('assets.transport', EXPLANATION_ASSETS_TRANSPORT_SECTIONS, 'en')
 };
 
-const DEFAULT_EXPLANATION_ASSETS_CAR_REVISION_HU: HelpCenterRevisionDto = {
-  ...DEFAULT_EXPLANATION_ASSETS_CAR_REVISION,
-  id: 'explanation-assets-car-default-hu-v1',
+const DEFAULT_EXPLANATION_ASSETS_TRANSPORT_REVISION_HU: HelpCenterRevisionDto = {
+  ...DEFAULT_EXPLANATION_ASSETS_TRANSPORT_REVISION,
+  id: 'explanation-assets-transport-default-hu-v1',
   lang: 'hu',
   languageLabel: 'Magyar',
-  title: 'Autó eszközök magyarázat',
-  summary: 'Saját autók, autókártyák, szerkesztés és kérések',
-  sections: withSeededExplanationImages('assets.car', EXPLANATION_ASSETS_CAR_SECTIONS_HU, 'hu')
+  title: 'Transport eszközök magyarázat',
+  summary: 'Saját transport eszközök, kártyák, szerkesztés és kérések',
+  sections: withSeededExplanationImages('assets.transport', EXPLANATION_ASSETS_TRANSPORT_SECTIONS_HU, 'hu')
 };
 
 const DEFAULT_EXPLANATION_ASSETS_ACCOMMODATION_REVISION: HelpCenterRevisionDto = {
@@ -2552,8 +2563,8 @@ const DEFAULT_EXPLANATION_ASSETS_ACCOMMODATION_REVISION_HU: HelpCenterRevisionDt
   id: 'explanation-assets-accommodation-default-hu-v1',
   lang: 'hu',
   languageLabel: 'Magyar',
-  title: 'Ingatlan eszközök magyarázat',
-  summary: 'Saját ingatlanok, helyszín, szerkesztés és kérések',
+  title: 'Accommodation eszközök magyarázata',
+  summary: 'Saját szállások, helyszín, szerkesztés és kérések',
   sections: withSeededExplanationImages('assets.accommodation', EXPLANATION_ASSETS_ACCOMMODATION_SECTIONS_HU, 'hu')
 };
 
@@ -2839,9 +2850,9 @@ export const APP_STATIC_DATA = {
       en: DEFAULT_EXPLANATION_ASSETS_REVISION,
       hu: DEFAULT_EXPLANATION_ASSETS_REVISION_HU
     },
-    'assets.car': {
-      en: DEFAULT_EXPLANATION_ASSETS_CAR_REVISION,
-      hu: DEFAULT_EXPLANATION_ASSETS_CAR_REVISION_HU
+    'assets.transport': {
+      en: DEFAULT_EXPLANATION_ASSETS_TRANSPORT_REVISION,
+      hu: DEFAULT_EXPLANATION_ASSETS_TRANSPORT_REVISION_HU
     },
     'assets.accommodation': {
       en: DEFAULT_EXPLANATION_ASSETS_ACCOMMODATION_REVISION,

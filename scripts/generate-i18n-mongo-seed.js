@@ -17,7 +17,7 @@ const bundleDocs = bundles.map(bundle => ({
   _id: `i18n-bundle-${bundle.lang}`,
   lang: bundle.lang,
   version: bundle.version,
-  updatedAt: Date.UTC(2026, 5, 22)
+  updatedAt: bundleUpdatedAt(bundle.version)
 }));
 const messageDocs = bundles.flatMap(bundle =>
   Object.entries(bundle.messages).map(([key, value]) => ({
@@ -54,6 +54,18 @@ function writeJson(filePath, data) {
 
 function normalizeText(value) {
   return `${value ?? ''}`.trim();
+}
+
+function bundleUpdatedAt(version) {
+  const match = normalizeText(version).match(/^(\d{4})\.(\d{2})\.(\d{2})\./);
+  if (!match) {
+    throw new Error(`Invalid i18n bundle version date: ${version}`);
+  }
+  return Date.UTC(
+    Number.parseInt(match[1], 10),
+    Number.parseInt(match[2], 10) - 1,
+    Number.parseInt(match[3], 10)
+  );
 }
 
 function stableSlug(value) {

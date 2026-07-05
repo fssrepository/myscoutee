@@ -2,7 +2,7 @@ import { Injectable, computed, signal } from '@angular/core';
 
 import { AssetDto } from '../../../core/contracts';
 import { PricingBuilder } from '../../../core/base/builders';
-import type * as AppConstants from '../../../core/common/constants';
+import * as AppConstants from '../../../core/common/constants';
 import type * as AppDTOs from '../../../core/contracts';
 
 export interface AssetVisibleListState {
@@ -23,6 +23,32 @@ export interface AssetDeletedEvent {
 
 export type AssetFormState = Omit<AppDTOs.AssetDetailDTO, 'id' | 'requests'>;
 
+export interface AssetEditorRuntimeRouteState {
+  routeEnabled: boolean;
+  routes: string[];
+  editable: boolean;
+  title?: string;
+  subtitle?: string;
+  openLabel?: string;
+  emptyLabel?: string;
+  readOnlyEmptyLabel?: string;
+  popupTitle?: string;
+  popupSubtitle?: string;
+  parentZIndex?: number | null;
+}
+
+export interface AssetEditorRuntimeAssignmentState {
+  quantity: number;
+  quantityMax: number;
+  quantityLabel?: string;
+  quantityDescription?: string;
+  editable: boolean;
+  onSave?: (state: { quantity: number; routeEnabled: boolean; routes: readonly string[] }) =>
+    void
+    | { quantity: number; routeEnabled: boolean; routes: readonly string[] }
+    | Promise<void | { quantity: number; routeEnabled: boolean; routes: readonly string[] }>;
+}
+
 @Injectable({
   providedIn: 'root'
 })
@@ -35,11 +61,17 @@ export class AssetStore {
   private visibleListReady = false;
   private visibleListRenderedCount = 0;
 
-  readonly assetFilterRef = signal<AppConstants.AssetFilterType>('Car');
+  readonly assetFilterRef = signal<AppConstants.AssetFilterType>(AppConstants.ASSET_TYPE_TRANSPORT);
   readonly activePopupFilterRef = signal<AppConstants.AssetFilterType | null>(null);
   readonly activeOwnerUserIdRef = signal('');
   readonly showAssetFormRef = signal(false);
   readonly editingAssetIdRef = signal<string | null>(null);
+  readonly assetFormReadOnlyRef = signal(false);
+  readonly assetFormParentZIndexRef = signal<number | null>(null);
+  readonly assetFormRuntimeRouteRef = signal<AssetEditorRuntimeRouteState | null>(null);
+  readonly assetFormSavedRuntimeRouteRef = signal<AssetEditorRuntimeRouteState | null>(null);
+  readonly assetFormRuntimeAssignmentRef = signal<AssetEditorRuntimeAssignmentState | null>(null);
+  readonly assetFormSavedRuntimeAssignmentRef = signal<AssetEditorRuntimeAssignmentState | null>(null);
   readonly assetFormLoadingRef = signal(false);
   readonly assetFormSavePendingRef = signal(false);
   readonly pendingAssetDeleteCardIdRef = signal<string | null>(null);
@@ -47,7 +79,7 @@ export class AssetStore {
   readonly pendingAssetDeleteLabelRef = signal('');
   readonly pendingAssetDeleteErrorRef = signal('');
   readonly assetFormRef = signal<AssetFormState>({
-    type: 'Car',
+    type: AppConstants.ASSET_TYPE_TRANSPORT,
     title: '',
     subtitle: '',
     city: '',
@@ -74,6 +106,12 @@ export class AssetStore {
   readonly activeOwnerUserId = this.activeOwnerUserIdRef.asReadonly();
   readonly showAssetForm = this.showAssetFormRef.asReadonly();
   readonly editingAssetId = this.editingAssetIdRef.asReadonly();
+  readonly assetFormReadOnly = this.assetFormReadOnlyRef.asReadonly();
+  readonly assetFormParentZIndex = this.assetFormParentZIndexRef.asReadonly();
+  readonly assetFormRuntimeRoute = this.assetFormRuntimeRouteRef.asReadonly();
+  readonly assetFormSavedRuntimeRoute = this.assetFormSavedRuntimeRouteRef.asReadonly();
+  readonly assetFormRuntimeAssignment = this.assetFormRuntimeAssignmentRef.asReadonly();
+  readonly assetFormSavedRuntimeAssignment = this.assetFormSavedRuntimeAssignmentRef.asReadonly();
   readonly assetFormLoading = this.assetFormLoadingRef.asReadonly();
   readonly assetFormSavePending = this.assetFormSavePendingRef.asReadonly();
   readonly pendingAssetDeleteCardId = this.pendingAssetDeleteCardIdRef.asReadonly();
@@ -90,7 +128,7 @@ export class AssetStore {
   readonly uiRevision = this.uiRevisionRef.asReadonly();
   readonly deletedAssetEvent = this.deletedAssetEventRef.asReadonly();
   readonly popupOpen = computed(() => this.activePopupFilterRef() !== null);
-  readonly ticketPopup = computed(() => this.popupOpen() && this.assetFilterRef() === 'Ticket');
+  readonly ticketPopup = computed(() => this.popupOpen() && this.assetFilterRef() === AppConstants.ASSET_FILTER_TICKET);
 
   setAssetCards(cards: readonly AppDTOs.AssetDTO[]): void {
     this.assetCardsRef.set(AssetDto.cloneList(cards));
@@ -256,6 +294,12 @@ export class AssetStore {
     this.showAssetFormRef.set(true);
     this.assetFormLoadingRef.set(false);
     this.assetFormSavePendingRef.set(false);
+    this.assetFormReadOnlyRef.set(false);
+    this.assetFormParentZIndexRef.set(null);
+    this.assetFormRuntimeRouteRef.set(null);
+    this.assetFormSavedRuntimeRouteRef.set(null);
+    this.assetFormRuntimeAssignmentRef.set(null);
+    this.assetFormSavedRuntimeAssignmentRef.set(null);
     this.editingAssetIdRef.set(null);
     this.assetFormDraftIdRef.set(draftId.trim() || `asset-${Date.now()}`);
     this.assetFormVisibilityRef.set('Public');
@@ -269,15 +313,32 @@ export class AssetStore {
     form: AssetFormState;
     visibility: AppConstants.EventVisibility;
     loading: boolean;
+    readOnly?: boolean;
+    parentZIndex?: number | null;
+    runtimeRoute?: AssetEditorRuntimeRouteState | null;
+    runtimeAssignment?: AssetEditorRuntimeAssignmentState | null;
   }): number {
     const generation = this.bumpAssetEditorGeneration();
     this.showAssetFormRef.set(true);
     this.assetFormLoadingRef.set(options.loading);
     this.assetFormSavePendingRef.set(false);
+    this.assetFormReadOnlyRef.set(options.readOnly === true);
+    this.assetFormParentZIndexRef.set(this.normalizeParentZIndex(options.parentZIndex));
+    const runtimeRoute = this.cloneRuntimeRoute(options.runtimeRoute);
+    const runtimeAssignment = this.cloneRuntimeAssignment(options.runtimeAssignment);
+    this.assetFormRuntimeRouteRef.set(runtimeRoute);
+    this.assetFormSavedRuntimeRouteRef.set(this.cloneRuntimeRoute(runtimeRoute));
+    this.assetFormRuntimeAssignmentRef.set(runtimeAssignment);
+    this.assetFormSavedRuntimeAssignmentRef.set(this.cloneRuntimeAssignment(runtimeAssignment));
     this.assetFormDraftIdRef.set('');
     this.editingAssetIdRef.set(options.cardId);
     this.assetFormVisibilityRef.set(options.visibility);
-    this.assetFormRef.set(options.form);
+    this.assetFormRef.set(runtimeAssignment
+      ? {
+          ...options.form,
+          quantity: runtimeAssignment.quantity
+        }
+      : options.form);
     this.touchUiState();
     return generation;
   }
@@ -287,9 +348,15 @@ export class AssetStore {
     visibility: AppConstants.EventVisibility,
     form: AssetFormState
   ): void {
+    const runtimeAssignment = this.assetFormRuntimeAssignmentRef();
     this.editingAssetIdRef.set(cardId);
     this.assetFormVisibilityRef.set(visibility);
-    this.assetFormRef.set(form);
+    this.assetFormRef.set(runtimeAssignment
+      ? {
+          ...form,
+          quantity: runtimeAssignment.quantity
+        }
+      : form);
     this.touchUiState();
   }
 
@@ -297,6 +364,12 @@ export class AssetStore {
     const generation = this.bumpAssetEditorGeneration();
     this.showAssetFormRef.set(false);
     this.editingAssetIdRef.set(null);
+    this.assetFormReadOnlyRef.set(false);
+    this.assetFormParentZIndexRef.set(null);
+    this.assetFormRuntimeRouteRef.set(null);
+    this.assetFormSavedRuntimeRouteRef.set(null);
+    this.assetFormRuntimeAssignmentRef.set(null);
+    this.assetFormSavedRuntimeAssignmentRef.set(null);
     this.assetFormLoadingRef.set(false);
     this.assetFormSavePendingRef.set(false);
     this.assetFormDraftIdRef.set('');
@@ -311,7 +384,7 @@ export class AssetStore {
   }
 
   setAssetEditorVisibility(option: AppConstants.EventVisibility): void {
-    if (this.assetFormLoadingRef() || this.assetFormSavePendingRef()) {
+    if (this.assetFormReadOnlyRef() || this.assetFormLoadingRef() || this.assetFormSavePendingRef()) {
       return;
     }
     this.assetFormVisibilityRef.set(option);
@@ -319,14 +392,54 @@ export class AssetStore {
   }
 
   setAssetEditorForm(form: AssetFormState): void {
-    if (this.assetFormLoadingRef() || this.assetFormSavePendingRef()) {
+    if (this.assetFormReadOnlyRef() || this.assetFormLoadingRef() || this.assetFormSavePendingRef()) {
       return;
     }
     this.assetFormRef.set(this.cloneAssetForm(form));
     this.touchUiState();
   }
 
+  setAssetEditorRuntimeRouteState(state: {
+    routeEnabled?: boolean | null;
+    routes?: readonly string[] | null;
+  }): void {
+    const current = this.assetFormRuntimeRouteRef();
+    if (!current) {
+      return;
+    }
+    this.assetFormRuntimeRouteRef.set({
+      ...current,
+      routeEnabled: typeof state.routeEnabled === 'boolean' ? state.routeEnabled : current.routeEnabled,
+      routes: state.routes === undefined ? current.routes : this.cloneStringList(state.routes)
+    });
+    this.touchUiState();
+  }
+
+  setAssetEditorRuntimeAssignmentState(state: {
+    quantity?: number | null;
+  }): void {
+    const current = this.assetFormRuntimeAssignmentRef();
+    if (!current) {
+      return;
+    }
+    const quantity = state.quantity === undefined
+      ? current.quantity
+      : this.normalizeRuntimeQuantity(state.quantity, current.quantityMax, current.quantity);
+    this.assetFormRuntimeAssignmentRef.set({
+      ...current,
+      quantity
+    });
+    this.assetFormRef.set({
+      ...this.assetFormRef(),
+      quantity
+    });
+    this.touchUiState();
+  }
+
   setAssetEditorImageUrl(imageUrl: string): void {
+    if (this.assetFormReadOnlyRef() || this.assetFormLoadingRef() || this.assetFormSavePendingRef()) {
+      return;
+    }
     this.assetFormRef().imageUrl = imageUrl.trim();
     this.touchUiState();
   }
@@ -337,7 +450,17 @@ export class AssetStore {
   }
 
   beginAssetEditorSave(): boolean {
-    if (this.assetFormLoadingRef() || this.assetFormSavePendingRef()) {
+    if (this.assetFormReadOnlyRef() || this.assetFormLoadingRef() || this.assetFormSavePendingRef()) {
+      return false;
+    }
+    this.assetFormSavePendingRef.set(true);
+    this.touchUiState();
+    return true;
+  }
+
+  beginAssetEditorRuntimeAssignmentSave(): boolean {
+    const current = this.assetFormRuntimeAssignmentRef();
+    if (!current?.editable || this.assetFormLoadingRef() || this.assetFormSavePendingRef()) {
       return false;
     }
     this.assetFormSavePendingRef.set(true);
@@ -355,10 +478,88 @@ export class AssetStore {
     this.touchUiState();
   }
 
+  completeAssetEditorRuntimeAssignmentSave(state: {
+    quantity: number;
+    routeEnabled: boolean;
+    routes: readonly string[];
+  }): void {
+    const currentAssignment = this.assetFormRuntimeAssignmentRef();
+    if (currentAssignment) {
+      const nextAssignment = this.cloneRuntimeAssignment({
+        ...currentAssignment,
+        quantity: state.quantity
+      });
+      this.assetFormRuntimeAssignmentRef.set(nextAssignment);
+      this.assetFormSavedRuntimeAssignmentRef.set(this.cloneRuntimeAssignment(nextAssignment));
+    }
+    const currentRoute = this.assetFormRuntimeRouteRef();
+    if (currentRoute) {
+      const next = this.cloneRuntimeRoute({
+        ...currentRoute,
+        routeEnabled: state.routeEnabled === true,
+        routes: this.cloneStringList(state.routes)
+      });
+      this.assetFormRuntimeRouteRef.set(next);
+      this.assetFormSavedRuntimeRouteRef.set(this.cloneRuntimeRoute(next));
+    }
+    this.assetFormSavePendingRef.set(false);
+    this.closeAssetEditor();
+  }
+
   private bumpAssetEditorGeneration(): number {
     const nextGeneration = this.assetFormLoadGenerationRef() + 1;
     this.assetFormLoadGenerationRef.set(nextGeneration);
     return nextGeneration;
+  }
+
+  private normalizeParentZIndex(value: number | null | undefined): number | null {
+    const parsed = Number(value);
+    return Number.isFinite(parsed) && parsed > 0 ? Math.trunc(parsed) : null;
+  }
+
+  private cloneRuntimeRoute(
+    state: AssetEditorRuntimeRouteState | null | undefined
+  ): AssetEditorRuntimeRouteState | null {
+    if (!state) {
+      return null;
+    }
+    return {
+      ...state,
+      routeEnabled: state.routeEnabled === true,
+      routes: this.cloneStringList(state.routes),
+      editable: state.editable === true,
+      parentZIndex: this.normalizeParentZIndex(state.parentZIndex)
+    };
+  }
+
+  private cloneRuntimeAssignment(
+    state: AssetEditorRuntimeAssignmentState | null | undefined
+  ): AssetEditorRuntimeAssignmentState | null {
+    if (!state) {
+      return null;
+    }
+    const quantityMax = this.normalizeRuntimeQuantityMax(state.quantityMax);
+    return {
+      ...state,
+      quantityMax,
+      quantity: this.normalizeRuntimeQuantity(state.quantity, quantityMax),
+      editable: state.editable === true
+    };
+  }
+
+  private normalizeRuntimeQuantityMax(value: unknown): number {
+    const parsed = Math.trunc(Number(value));
+    return Number.isFinite(parsed) && parsed > 0 ? parsed : 1;
+  }
+
+  private normalizeRuntimeQuantity(value: unknown, max: unknown, fallback = 1): number {
+    const limit = this.normalizeRuntimeQuantityMax(max);
+    const parsed = Math.trunc(Number(value));
+    const fallbackValue = Math.trunc(Number(fallback));
+    const resolved = Number.isFinite(parsed) && parsed > 0
+      ? parsed
+      : (Number.isFinite(fallbackValue) && fallbackValue > 0 ? fallbackValue : 1);
+    return Math.min(limit, Math.max(1, resolved));
   }
 
   private cloneAssetForm(form: AssetFormState): AssetFormState {
@@ -369,6 +570,10 @@ export class AssetStore {
       policies: (form.policies ?? []).map(policy => ({ ...policy })),
       pricing: PricingBuilder.clonePricingConfig(form.pricing ?? null)
     };
+  }
+
+  private cloneStringList(items: readonly string[] | null | undefined): string[] {
+    return (items ?? []).map(item => `${item ?? ''}`.trim()).filter(item => item.length > 0);
   }
 
   cardsByType(type: AppConstants.AssetType): AppDTOs.AssetDTO[] {

@@ -60,7 +60,6 @@ import {
   type AppMenuModel,
   type AppMenuPalette,
   type AppMenuTrigger,
-  EventCheckoutPopupComponent,
   type CardProfileViewData,
   type ImageCardData,
   type InfoCardData,
@@ -98,15 +97,18 @@ import {
   DialogStore
 } from '../../../shared/ui/context/stores/dialog.store';
 import {
-  EventCheckoutDialogStore
-} from '../../../shared/ui/context/stores/event-checkout-dialog.store';
-import {
   EventCheckoutDraftStore,
   type EventCheckoutDraft
 } from '../../../shared/ui/context/stores/event-checkout-draft.store';
 import {
+  EventCheckoutDialogStore
+} from '../../../shared/ui/context/stores/event-checkout-dialog.store';
+import {
   ProfileStore
 } from '../../../shared/ui/context/stores/profile.store';
+import {
+  EventCheckoutPopupComponent
+} from '../event-checkout-popup';
 import {
   ActivitiesChatTemplateComponent,
   ActivitiesChatsController
@@ -220,9 +222,9 @@ export class ActivitiesPopupComponent implements OnDestroy {
   protected readonly eventSubeventsStore = inject(EventSubeventsPopupStore);
   private readonly assetStore = inject(AssetStore);
   protected readonly dialogStore = inject(DialogStore);
-  protected readonly eventCheckoutDialogStore = inject(EventCheckoutDialogStore);
   protected readonly profileStore = inject(ProfileStore);
   private readonly eventCheckoutDraftStore = inject(EventCheckoutDraftStore);
+  private readonly eventCheckoutDialogStore = inject(EventCheckoutDialogStore);
   private readonly i18nService = inject(I18nService);
   private readonly explanationGuide = inject(ExplanationGuideService);
   readonly activitiesRates = new ActivitiesRatesController({
@@ -430,7 +432,7 @@ export class ActivitiesPopupComponent implements OnDestroy {
       ratingBarValue: () => this.activitiesRates.ratingBarValue(),
       onRatingSelect: (_item, score) => this.activitiesRates.setSelectedOwnRating(score)
     },
-    calendarVariant: () => this.activitiesPrimaryFilter === 'rates' ? 'rate-counts' : 'default',
+    calendarVariant: () => this.activitiesPrimaryFilter === 'rates' ? 'counter' : 'default',
     views: [
       { key: 'day', label: 'Day', mode: 'list', pageSize: 10 },
       { key: 'distance', label: 'Distance', mode: 'list', pageSize: 10 },
@@ -1378,7 +1380,7 @@ export class ActivitiesPopupComponent implements OnDestroy {
       icon: this.activitiesSecondaryFilterIcon(),
       palette: this.activitiesSecondaryPalette(filter),
       layout: 'pill',
-      hideLabel: this.isMobileView
+      collapsible: true
     });
   }
 
@@ -1399,7 +1401,7 @@ export class ActivitiesPopupComponent implements OnDestroy {
       icon: APP_STATIC_DATA.activitiesViewOptions.find(option => option.key === this.activitiesView)?.icon ?? 'view_agenda',
       palette: this.activitiesViewPalette(this.activitiesView),
       layout: 'pill',
-      hideLabel: this.isMobileView
+      collapsible: true
     });
   }
 
@@ -1639,6 +1641,7 @@ export class ActivitiesPopupComponent implements OnDestroy {
     counter?: number;
     layout?: AppMenuTrigger['layout'];
     hideLabel?: boolean;
+    collapsible?: boolean;
   }): AppMenuTrigger {
     const counter = Math.max(0, Math.trunc(Number(options.counter) || 0));
     return {
@@ -1647,6 +1650,7 @@ export class ActivitiesPopupComponent implements OnDestroy {
       palette: options.palette,
       layout: options.layout ?? 'pill',
       hideLabel: options.hideLabel,
+      collapsible: options.collapsible,
       counter: counter > 0 ? { value: counter, max: 99 } : null
     };
   }
@@ -2181,7 +2185,7 @@ export class ActivitiesPopupComponent implements OnDestroy {
     return metrics
       ? {
         members: metrics.members ? { ...metrics.members } : null,
-        car: metrics.car ? { ...metrics.car } : null,
+        transport: metrics.transport ? { ...metrics.transport } : null,
         accommodation: metrics.accommodation ? { ...metrics.accommodation } : null,
         supplies: metrics.supplies ? { ...metrics.supplies } : null,
         groupsCount: metrics.groupsCount ?? null,
@@ -2196,7 +2200,7 @@ export class ActivitiesPopupComponent implements OnDestroy {
   ): ContractTypes.ChatMetricsDTO {
     const next: ContractTypes.ChatMetricsDTO = this.cloneChatMetrics(metrics) ?? {
       members: null,
-      car: null,
+      transport: null,
       accommodation: null,
       supplies: null,
       groupsCount: null,
@@ -2208,7 +2212,7 @@ export class ActivitiesPopupComponent implements OnDestroy {
   }
 
   private chatMetricPendingTotal(metrics: ContractTypes.ChatMetricsDTO): number {
-    return (['members', 'car', 'accommodation', 'supplies'] as const)
+    return (['members', 'transport', 'accommodation', 'supplies'] as const)
       .reduce((sum, key) => sum + Math.max(0, Math.trunc(Number(metrics[key]?.pending) || 0)), 0);
   }
 

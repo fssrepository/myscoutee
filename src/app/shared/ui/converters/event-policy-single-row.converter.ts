@@ -33,11 +33,12 @@ export class EventPolicySingleRowConverter {
     return {
       id: `${policy.id ?? ''}`.trim() || `policy-${resolved.index + 1}`,
       title,
-      subtitle: required ? resolved.requiredApprovalLabel : resolved.optionalPolicyLabel,
       detail: this.preview(policy, resolved),
       icon: 'policy',
       avatarShape: 'circle',
-      surfaceTone: required ? 'accent' : 'neutral',
+      surfaceTone: required ? 'danger' : 'info',
+      sideLabel: required ? resolved.requiredApprovalLabel : resolved.optionalPolicyLabel,
+      sideLabelTone: required ? 'danger' : 'info',
       clickable: true,
       menuActions: resolved.locked ? [] : ['delete'],
       eagerDetail: { ...policy }

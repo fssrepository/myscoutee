@@ -3,15 +3,36 @@ import { Injectable, inject } from '@angular/core';
 import { environment } from '../../../../../../environments/environment';
 
 import { AppUtils } from '../../../../app-utils';
-import { ActivityResourceBuilder } from '../../../base/builders';
 import { LocalMemoryDb } from '../../../common/app.db';
 import { ACTIVITY_MEMBERS_TABLE_NAME } from '../../source/entity/activity.entity';
-import { ACTIVITY_RESOURCES_TABLE_NAME, type ActivityResourcesRecordCollection, type ActivitySubEventResourceRecord } from '../../source/entity/activity.entity';
-import { ASSETS_TABLE_NAME, type AssetRecord, type AssetsRecordCollection } from '../../source/entity/asset.entity';
-import { LocalAssetsMapper } from '../../source/mappers/asset.mapper';
+import {
+  ACTIVITY_RESOURCES_TABLE_NAME,
+  type ActivityResourcesRecordCollection,
+  type ActivitySubEventAssetAssignmentIdsRecord,
+  type ActivitySubEventAssetSettingsByTypeRecord,
+  type ActivitySubEventResourceRecord,
+  type ActivitySubEventSupplyContributionsByAssetIdRecord
+} from '../../source/entity/activity.entity';
+import {
+  ASSET_REQUESTS_TABLE_NAME,
+  ASSETS_TABLE_NAME,
+  type AssetMemberRequestRecord,
+  type AssetRequestRecord,
+  type AssetRequestsRecordCollection,
+  type AssetRecord,
+  type AssetSnapshotRecord,
+  type AssetsRecordCollection
+} from '../../source/entity/asset.entity';
 import type { ActivityEventRecord } from '../../../contracts/activity.interface';
 
-import type * as AppDTOs from '../../../contracts';
+import * as AppConstants from '../../../common/constants';
+
+interface SeedActivityResourceRef {
+  ownerId: string;
+  subEventId: string;
+  assetOwnerUserId: string;
+}
+
 @Injectable({
   providedIn: 'root'
 })
@@ -22,7 +43,7 @@ export class SeedActivityResourcesRepository {
   seedDefaults(
     ownerUserIds?: readonly string[],
     sourceRecordsByUserId?: ReadonlyMap<string, readonly ActivityEventRecord[]>,
-    assetsByUserId?: ReadonlyMap<string, readonly AppDTOs.AssetDTO[]>
+    assetsByUserId?: ReadonlyMap<string, readonly AssetRecord[]>
   ): void {
     const normalizedUserIds = Array.from(new Set(
       (ownerUserIds ?? [])
@@ -36,10 +57,12 @@ export class SeedActivityResourcesRepository {
     const state = this.memoryDb.read();
     const eventsTable = state[EVENTS_TABLE_NAME];
     const currentTable = this.normalizeCollection(state[ACTIVITY_RESOURCES_TABLE_NAME]);
+    const currentAssetRequestsTable = this.normalizeAssetRequestsCollection(state[ASSET_REQUESTS_TABLE_NAME]);
     const seedToken = [
       eventsTable.ids.length,
       currentTable.ids.length,
       Object.keys(currentTable.idsByOwnerKey).length,
+      currentAssetRequestsTable.ids.length,
       normalizedUserIds.join('|')
     ].join(':');
     if (this.lastSeedToken === seedToken) {
@@ -53,7 +76,7 @@ export class SeedActivityResourcesRepository {
       this.collectSourceRecordsByUserId(normalizedUserIds)
     );
     const contributorUserIdsByEventId = new Map<string, string[]>();
-    const desiredRecords = normalizedUserIds.flatMap(userId =>
+    const generatedEventResourceRecords = normalizedUserIds.flatMap(userId =>
       this.buildSeededRecordsForUser(
         userId,
         sourceRecords.get(userId),
@@ -61,6 +84,15 @@ export class SeedActivityResourcesRepository {
         contributorUserIdsByEventId
       )
     );
+    const manualAssignmentResourceRecords = this.buildAssetRequestResourceRecords(
+      normalizedUserIds,
+      currentAssetRequestsTable,
+      ownedAssetsByUserId
+    );
+    const desiredRecords = this.uniqueSeededResourceRecords([
+      ...generatedEventResourceRecords,
+      ...manualAssignmentResourceRecords
+    ]);
     const desiredRecordIds = new Set(desiredRecords.map(record => record.id));
     const managedUserIds = new Set(normalizedUserIds);
     const nextRecords: ActivitySubEventResourceRecord[] = [];
@@ -112,6 +144,7 @@ export class SeedActivityResourcesRepository {
       eventsTable.ids.length,
       nextTable.ids.length,
       Object.keys(nextTable.idsByOwnerKey).length,
+      currentAssetRequestsTable.ids.length,
       normalizedUserIds.join('|')
     ].join(':');
   }
@@ -119,14 +152,13 @@ export class SeedActivityResourcesRepository {
   private buildSeededRecordsForUser(
     userId: string,
     seedSourceRecords?: readonly ActivityEventRecord[],
-    seedAssets?: readonly AppDTOs.AssetDTO[],
+    _seedAssets?: readonly AssetRecord[],
     contributorUserIdsByEventId?: Map<string, string[]>
   ): ActivitySubEventResourceRecord[] {
     const normalizedUserId = userId.trim();
     if (!normalizedUserId) {
       return [];
     }
-    const assets = seedAssets ?? [];
     const sourceRecords = seedSourceRecords ?? [];
     const seenRecordIds = new Set<string>();
     const nextRecords: ActivitySubEventResourceRecord[] = [];
@@ -149,23 +181,22 @@ export class SeedActivityResourcesRepository {
         if (!normalizedRef) {
           continue;
         }
-        const recordId = ActivityResourceBuilder.recordId(normalizedRef);
+        const recordId = this.resourceRecordId(normalizedRef);
         if (seenRecordIds.has(recordId)) {
           continue;
         }
         seenRecordIds.add(recordId);
-        const seededState = ActivityResourceBuilder.buildSeededState(normalizedRef, assets);
         const createdAtIso = new Date(createdMs).toISOString();
         nextRecords.push({
           id: recordId,
-          ownerKey: ActivityResourceBuilder.ownerKey(normalizedRef),
+          ownerKey: this.resourceOwnerKey(normalizedRef),
           ownerId: normalizedRef.ownerId,
           subEventId: normalizedRef.subEventId,
           assetOwnerUserId: normalizedRef.assetOwnerUserId,
-          assetAssignmentIds: ActivityResourceBuilder.cloneAssetAssignmentIds(seededState.assetAssignmentIds),
-          assetSettingsByType: ActivityResourceBuilder.cloneAssetSettingsByType(seededState.assetSettingsByType),
+          assetAssignmentIds: {},
+          assetSettingsByType: {},
           supplyContributionEntriesByAssetId: {},
-          fallbackAssetCardsByType: ActivityResourceBuilder.cloneFallbackAssetCardsByType(seededState.fallbackAssetCardsByType),
+          fallbackAssetCardsByType: {},
           createdMs,
           updatedMs: createdMs,
           createdAtIso,
@@ -331,19 +362,211 @@ export class SeedActivityResourcesRepository {
     return `${status ?? 'A'}`.trim() === 'A';
   }
 
-  private readOwnedAssetsByUsers(userIds: readonly string[]): Map<string, AppDTOs.AssetDTO[]> {
+  private readOwnedAssetsByUsers(userIds: readonly string[]): Map<string, AssetRecord[]> {
     const table = this.normalizeAssetsCollection(this.memoryDb.read()[ASSETS_TABLE_NAME]);
-    const assetsByUserId = new Map<string, AppDTOs.AssetDTO[]>();
+    const assetsByUserId = new Map<string, AssetRecord[]>();
     for (const userId of userIds) {
       assetsByUserId.set(
         userId,
         (table.idsByOwnerUserId[userId] ?? [])
           .map(id => table.byId[id])
           .filter((record): record is AssetRecord => Boolean(record))
-          .map(record => LocalAssetsMapper.toAssetDto(record))
       );
     }
     return assetsByUserId;
+  }
+
+  private buildAssetRequestResourceRecords(
+    ownerUserIds: readonly string[],
+    requestsTable: AssetRequestsRecordCollection,
+    assetsByUserId: ReadonlyMap<string, readonly AssetRecord[]>
+  ): ActivitySubEventResourceRecord[] {
+    const managedUserIds = new Set(ownerUserIds.map(userId => `${userId ?? ''}`.trim()).filter(Boolean));
+    const assetById = new Map<string, AssetRecord>();
+    for (const [userId, assets] of assetsByUserId.entries()) {
+      if (!managedUserIds.has(`${userId ?? ''}`.trim())) {
+        continue;
+      }
+      for (const asset of assets ?? []) {
+        const assetId = `${asset?.id ?? ''}`.trim();
+        if (assetId) {
+          assetById.set(assetId, asset);
+        }
+      }
+    }
+
+    const recordsById = new Map<string, ActivitySubEventResourceRecord>();
+    for (const requestId of requestsTable.ids) {
+      const request = requestsTable.byId[requestId];
+      if (!this.isAcceptedManualBookedRequest(request)) {
+        continue;
+      }
+      const ownerUserId = `${request.ownerUserId ?? ''}`.trim();
+      if (!managedUserIds.has(ownerUserId)) {
+        continue;
+      }
+      const asset = assetById.get(`${request.assetId ?? ''}`.trim());
+      if (!asset || `${asset.ownerUserId ?? ''}`.trim() !== ownerUserId) {
+        continue;
+      }
+      const normalizedRef = this.normalizeRef({
+        ownerId: `${request.booking?.eventId ?? ''}`.trim(),
+        subEventId: `${request.booking?.subEventId ?? ''}`.trim(),
+        assetOwnerUserId: ownerUserId
+      });
+      if (!normalizedRef) {
+        continue;
+      }
+      const recordId = this.resourceRecordId(normalizedRef);
+      const record = recordsById.get(recordId) ?? this.createAssetRequestResourceRecord(normalizedRef, request);
+      this.applyAssetRequestAssignment(record, asset, request);
+      recordsById.set(recordId, record);
+    }
+
+    return [...recordsById.values()];
+  }
+
+  private uniqueSeededResourceRecords(
+    records: readonly ActivitySubEventResourceRecord[]
+  ): ActivitySubEventResourceRecord[] {
+    const byId = new Map<string, ActivitySubEventResourceRecord>();
+    for (const record of records) {
+      byId.set(record.id, this.cloneRecord(record));
+    }
+    return [...byId.values()];
+  }
+
+  private createAssetRequestResourceRecord(
+    ref: SeedActivityResourceRef,
+    request: AssetRequestRecord
+  ): ActivitySubEventResourceRecord {
+    const createdMs = this.assetRequestSeedMs(request);
+    const createdAtIso = request.createdAtIso || new Date(createdMs).toISOString();
+    return {
+      id: this.resourceRecordId(ref),
+      status: 'A',
+      ownerKey: this.resourceOwnerKey(ref),
+      ownerId: ref.ownerId,
+      subEventId: ref.subEventId,
+      assetOwnerUserId: ref.assetOwnerUserId,
+      assetAssignmentIds: {},
+      assetSettingsByType: {},
+      supplyContributionEntriesByAssetId: {},
+      fallbackAssetCardsByType: {},
+      createdMs,
+      updatedMs: createdMs,
+      createdAtIso,
+      updatedAtIso: createdAtIso
+    };
+  }
+
+  private applyAssetRequestAssignment(
+    record: ActivitySubEventResourceRecord,
+    asset: AssetRecord,
+    request: AssetRequestRecord
+  ): void {
+    const type = asset.type;
+    const assetId = asset.id.trim();
+    if (!assetId) {
+      return;
+    }
+
+    const assignedIds = record.assetAssignmentIds[type] ?? [];
+    if (!assignedIds.includes(assetId)) {
+      record.assetAssignmentIds[type] = [...assignedIds, assetId];
+    }
+
+    const routes = this.normalizeRoutes(asset.routes);
+    const settingsByAssetId = record.assetSettingsByType[type] ?? {};
+    record.assetSettingsByType[type] = {
+      ...settingsByAssetId,
+      [assetId]: {
+        capacityMin: 0,
+        capacityMax: this.assetRequestAssignmentCapacity(asset, request),
+        quantity: this.assetRequestQuantity(request),
+        addedByUserId: record.assetOwnerUserId,
+        routeEnabled: routes.length > 0,
+        routes
+      }
+    };
+
+    if (type === AppConstants.ASSET_TYPE_SUPPLIES) {
+      const quantity = this.assetRequestQuantity(request);
+      const entryId = `${request.id}:seed-supply`;
+      const existingEntries = record.supplyContributionEntriesByAssetId[assetId] ?? [];
+      if (!existingEntries.some(entry => entry.id === entryId)) {
+        record.supplyContributionEntriesByAssetId[assetId] = [
+          ...existingEntries,
+          {
+            id: entryId,
+            userId: record.assetOwnerUserId,
+            quantity,
+            addedAtIso: request.createdAtIso || record.createdAtIso
+          }
+        ];
+      }
+    }
+
+    const updatedMs = this.assetRequestUpdatedMs(request);
+    if (updatedMs >= record.updatedMs) {
+      record.updatedMs = updatedMs;
+      record.updatedAtIso = request.updatedAtIso || new Date(updatedMs).toISOString();
+    }
+  }
+
+  private isAcceptedManualBookedRequest(
+    request: AssetRequestRecord | null | undefined
+  ): request is AssetRequestRecord {
+    return Boolean(
+      request
+      && request.requestKind === 'manual'
+      && request.status === 'accepted'
+      && `${request.assetId ?? ''}`.trim()
+      && `${request.ownerUserId ?? ''}`.trim()
+      && `${request.booking?.eventId ?? ''}`.trim()
+      && `${request.booking?.subEventId ?? ''}`.trim()
+    );
+  }
+
+  private assetRequestAssignmentCapacity(asset: AssetRecord, request: AssetRequestRecord): number {
+    if (asset.type === AppConstants.ASSET_TYPE_SUPPLIES) {
+      return this.assetRequestQuantity(request);
+    }
+    const capacity = Math.trunc(Number(asset.capacityTotal));
+    if (Number.isFinite(capacity) && capacity > 0) {
+      return capacity;
+    }
+    return 1;
+  }
+
+  private assetRequestQuantity(request: AssetRequestRecord): number {
+    const quantity = Math.trunc(Number(request.booking?.quantity));
+    return Number.isFinite(quantity) && quantity > 0 ? quantity : 1;
+  }
+
+  private assignmentRecordQuantity(
+    settings: { quantity?: unknown } | null | undefined
+  ): number {
+    const quantity = Math.trunc(Number(settings?.quantity));
+    return Number.isFinite(quantity) && quantity > 0 ? quantity : 1;
+  }
+
+  private assetRequestSeedMs(request: AssetRequestRecord): number {
+    const createdMs = Math.trunc(Number(request.createdMs));
+    if (Number.isFinite(createdMs) && createdMs > 0) {
+      return createdMs;
+    }
+    const sortableCreatedAt = AppUtils.toSortableDate(request.createdAtIso);
+    return sortableCreatedAt > 0 ? sortableCreatedAt : Date.now();
+  }
+
+  private assetRequestUpdatedMs(request: AssetRequestRecord): number {
+    const updatedMs = Math.trunc(Number(request.updatedMs));
+    if (Number.isFinite(updatedMs) && updatedMs > 0) {
+      return updatedMs;
+    }
+    const sortableUpdatedAt = AppUtils.toSortableDate(request.updatedAtIso);
+    return sortableUpdatedAt > 0 ? sortableUpdatedAt : this.assetRequestSeedMs(request);
   }
 
   private buildCollection(records: readonly ActivitySubEventResourceRecord[]): ActivityResourcesRecordCollection {
@@ -391,15 +614,35 @@ export class SeedActivityResourcesRepository {
     return { byId, ids, idsByOwnerKey };
   }
 
+  private normalizeAssetRequestsCollection(value: unknown): AssetRequestsRecordCollection {
+    const source = value as Partial<AssetRequestsRecordCollection> | null | undefined;
+    return {
+      byId: source?.byId && typeof source.byId === 'object'
+        ? { ...(source.byId as Record<string, AssetRequestRecord>) }
+        : {},
+      ids: Array.isArray(source?.ids)
+        ? source.ids.map(id => `${id}`).filter(Boolean)
+        : [],
+      idsByOwnerKey: source?.idsByOwnerKey && typeof source.idsByOwnerKey === 'object'
+        ? Object.fromEntries(
+            Object.entries(source.idsByOwnerKey).map(([ownerKey, requestIds]) => [
+              `${ownerKey ?? ''}`.trim(),
+              Array.isArray(requestIds) ? requestIds.map(id => `${id}`).filter(Boolean) : []
+            ]).filter(([ownerKey]) => ownerKey.length > 0)
+          )
+        : {}
+    };
+  }
+
   private cloneRecord(record: ActivitySubEventResourceRecord): ActivitySubEventResourceRecord {
     return {
       ...record,
-      assetAssignmentIds: ActivityResourceBuilder.cloneAssetAssignmentIds(record.assetAssignmentIds),
-      assetSettingsByType: ActivityResourceBuilder.cloneAssetSettingsByType(record.assetSettingsByType),
-      supplyContributionEntriesByAssetId: ActivityResourceBuilder.cloneSupplyContributionEntriesByAssetId(
+      assetAssignmentIds: this.cloneAssetAssignmentIds(record.assetAssignmentIds),
+      assetSettingsByType: this.cloneAssetSettingsByType(record.assetSettingsByType),
+      supplyContributionEntriesByAssetId: this.cloneSupplyContributionEntriesByAssetId(
         record.supplyContributionEntriesByAssetId
       ),
-      fallbackAssetCardsByType: ActivityResourceBuilder.cloneFallbackAssetCardsByType(
+      fallbackAssetCardsByType: this.cloneFallbackAssetCardsByType(
         record.fallbackAssetCardsByType
       )
     };
@@ -418,7 +661,7 @@ export class SeedActivityResourcesRepository {
       if (!event || !subEventId) {
         continue;
       }
-      for (const type of ['Car', 'Accommodation', 'Supplies'] as const) {
+      for (const type of AppConstants.ASSET_TYPES) {
         const assignedIds = record.assetAssignmentIds[type] ?? [];
         for (const assetId of assignedIds) {
           const card = nextById[assetId];
@@ -426,14 +669,16 @@ export class SeedActivityResourcesRepository {
             continue;
           }
           const existingRequestIndex = card.requests.findIndex(request =>
-            ActivityResourceBuilder.isSubEventManualAssignmentRequest(request, subEventId)
+            this.isSubEventManualAssignmentRequest(request, subEventId)
           );
           const existingRequest = existingRequestIndex >= 0 ? card.requests[existingRequestIndex] : null;
-          const quantity = type === 'Supplies'
+          const settings = record.assetSettingsByType[type]?.[assetId] ?? null;
+          const quantity = type === AppConstants.ASSET_TYPE_SUPPLIES
             ? (record.supplyContributionEntriesByAssetId[assetId] ?? [])
                 .reduce((sum, entry) => sum + entry.quantity, 0)
-            : 0;
-          if (type === 'Supplies' && quantity <= 0) {
+              || this.assignmentRecordQuantity(settings)
+            : this.assignmentRecordQuantity(settings);
+          if (type === AppConstants.ASSET_TYPE_SUPPLIES && quantity <= 0) {
             if (existingRequestIndex >= 0) {
               const nextRequests = [...card.requests];
               nextRequests.splice(existingRequestIndex, 1);
@@ -447,7 +692,7 @@ export class SeedActivityResourcesRepository {
             }
             continue;
           }
-          const desiredRequest: AppDTOs.AssetMemberRequestDTO = {
+          const desiredRequest: AssetMemberRequestRecord = {
             id: existingRequest?.id ?? `manual:${subEventId}:${card.id}`,
             userId: record.assetOwnerUserId,
             name: 'Demo User',
@@ -462,7 +707,7 @@ export class SeedActivityResourcesRepository {
               subEventId,
               startAtIso: event.startAtIso,
               endAtIso: event.endAtIso,
-              quantity: type === 'Supplies' ? quantity : 1,
+              quantity,
               totalAmount: 0,
               currency: 'USD',
               acceptedPolicyIds: [],
@@ -472,8 +717,7 @@ export class SeedActivityResourcesRepository {
           };
           if (
             !existingRequest
-            || ActivityResourceBuilder.assetRequestSyncSignature(existingRequest)
-              !== ActivityResourceBuilder.assetRequestSyncSignature(desiredRequest)
+            || this.assetRequestSyncSignature(existingRequest) !== this.assetRequestSyncSignature(desiredRequest)
           ) {
             const nextRequests = [...card.requests];
             if (existingRequestIndex >= 0) {
@@ -505,8 +749,8 @@ export class SeedActivityResourcesRepository {
   }
 
   private normalizeRef(
-    ref: AppDTOs.ActivitySubEventResourceStateRefDTO | null | undefined
-  ): AppDTOs.ActivitySubEventResourceStateRefDTO | null {
+    ref: SeedActivityResourceRef | null | undefined
+  ): SeedActivityResourceRef | null {
     const ownerId = `${ref?.ownerId ?? ''}`.trim();
     const subEventId = `${ref?.subEventId ?? ''}`.trim();
     const assetOwnerUserId = `${ref?.assetOwnerUserId ?? ''}`.trim();
@@ -514,5 +758,144 @@ export class SeedActivityResourcesRepository {
       return null;
     }
     return { ownerId, subEventId, assetOwnerUserId };
+  }
+
+  private resourceOwnerKey(ref: SeedActivityResourceRef): string {
+    return `${ref.assetOwnerUserId}:${ref.ownerId}`;
+  }
+
+  private resourceRecordId(ref: SeedActivityResourceRef): string {
+    return `${ref.assetOwnerUserId}:${ref.ownerId}:${ref.subEventId}`;
+  }
+
+  private cloneAssetAssignmentIds(
+    source: ActivitySubEventAssetAssignmentIdsRecord | null | undefined
+  ): ActivitySubEventAssetAssignmentIdsRecord {
+    const next: ActivitySubEventAssetAssignmentIdsRecord = {};
+    for (const type of this.assetTypes()) {
+      const ids = Array.isArray(source?.[type]) ? source?.[type] : [];
+      const normalizedIds = Array.from(new Set(ids
+        .map(id => `${id ?? ''}`.trim())
+        .filter(id => id.length > 0)));
+      if (normalizedIds.length > 0) {
+        next[type] = normalizedIds;
+      }
+    }
+    return next;
+  }
+
+  private cloneAssetSettingsByType(
+    source: ActivitySubEventAssetSettingsByTypeRecord | null | undefined
+  ): ActivitySubEventAssetSettingsByTypeRecord {
+    const next: ActivitySubEventAssetSettingsByTypeRecord = {};
+    for (const type of this.assetTypes()) {
+      const rawMap = source?.[type];
+      if (!rawMap || typeof rawMap !== 'object') {
+        continue;
+      }
+      const normalizedMap: NonNullable<ActivitySubEventAssetSettingsByTypeRecord[typeof type]> = {};
+      for (const [assetId, settings] of Object.entries(rawMap)) {
+        const normalizedAssetId = `${assetId ?? ''}`.trim();
+        if (!normalizedAssetId || !settings) {
+          continue;
+        }
+        const routes = this.normalizeRoutes(settings.routes);
+        normalizedMap[normalizedAssetId] = {
+          capacityMin: Math.max(0, Math.trunc(Number(settings.capacityMin) || 0)),
+          capacityMax: Math.max(0, Math.trunc(Number(settings.capacityMax) || 0)),
+          quantity: this.assignmentRecordQuantity(settings),
+          addedByUserId: `${settings.addedByUserId ?? ''}`.trim(),
+          routeEnabled: settings.routeEnabled === true && routes.length > 0,
+          routes
+        };
+      }
+      if (Object.keys(normalizedMap).length > 0) {
+        next[type] = normalizedMap;
+      }
+    }
+    return next;
+  }
+
+  private cloneSupplyContributionEntriesByAssetId(
+    source: ActivitySubEventSupplyContributionsByAssetIdRecord | null | undefined
+  ): ActivitySubEventSupplyContributionsByAssetIdRecord {
+    const next: ActivitySubEventSupplyContributionsByAssetIdRecord = {};
+    if (!source || typeof source !== 'object') {
+      return next;
+    }
+    for (const [assetId, rawEntries] of Object.entries(source)) {
+      const normalizedAssetId = `${assetId ?? ''}`.trim();
+      if (!normalizedAssetId || !Array.isArray(rawEntries)) {
+        continue;
+      }
+      const entries = rawEntries
+        .map(entry => ({
+          id: `${entry?.id ?? ''}`.trim(),
+          userId: `${entry?.userId ?? ''}`.trim(),
+          quantity: Math.max(0, Math.trunc(Number(entry?.quantity) || 0)),
+          addedAtIso: `${entry?.addedAtIso ?? ''}`.trim()
+        }))
+        .filter(entry => entry.id.length > 0 && entry.userId.length > 0 && entry.quantity > 0)
+        .sort((left, right) => AppUtils.toSortableDate(left.addedAtIso) - AppUtils.toSortableDate(right.addedAtIso));
+      if (entries.length > 0) {
+        next[normalizedAssetId] = entries;
+      }
+    }
+    return next;
+  }
+
+  private cloneFallbackAssetCardsByType(
+    source: Partial<Record<AppConstants.AssetType, AssetSnapshotRecord[]>> | null | undefined
+  ): Partial<Record<AppConstants.AssetType, AssetSnapshotRecord[]>> {
+    const next: Partial<Record<AppConstants.AssetType, AssetSnapshotRecord[]>> = {};
+    for (const type of this.assetTypes()) {
+      const cards = source?.[type];
+      if (!Array.isArray(cards) || cards.length === 0) {
+        continue;
+      }
+      next[type] = cards.map(card => ({
+        ...card,
+        requests: (card.requests ?? []).map(request => ({
+          ...request,
+          booking: request.booking
+            ? {
+                ...request.booking,
+                acceptedPolicyIds: [...(request.booking.acceptedPolicyIds ?? [])]
+              }
+            : null,
+          menuActions: [...(request.menuActions ?? [])]
+        })),
+        menuActions: [...(card.menuActions ?? [])]
+      }));
+    }
+    return next;
+  }
+
+  private isSubEventManualAssignmentRequest(request: AssetMemberRequestRecord, subEventId: string): boolean {
+    const normalizedSubEventId = subEventId.trim();
+    return request.requestKind === 'manual'
+      && normalizedSubEventId.length > 0
+      && request.id.startsWith(`manual:${normalizedSubEventId}:`);
+  }
+
+  private assetRequestSyncSignature(request: AssetMemberRequestRecord): string {
+    return JSON.stringify({
+      id: request.id,
+      userId: request.userId ?? '',
+      status: request.status,
+      requestKind: request.requestKind ?? '',
+      bookingQuantity: request.booking?.quantity ?? '',
+      bookingAcceptedPolicyIds: [...(request.booking?.acceptedPolicyIds ?? [])]
+    });
+  }
+
+  private normalizeRoutes(routes: readonly string[] | undefined | null): string[] {
+    return Array.from(new Set((routes ?? [])
+      .map(route => `${route ?? ''}`.trim())
+      .filter(route => route.length > 0)));
+  }
+
+  private assetTypes(): readonly AppConstants.AssetType[] {
+    return AppConstants.ASSET_TYPES;
   }
 }

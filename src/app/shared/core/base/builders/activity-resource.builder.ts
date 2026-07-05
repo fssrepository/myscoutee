@@ -3,7 +3,7 @@ import type * as ContractTypes from '../../contracts';
 import { PricingBuilder } from './pricing.builder';
 
 import type * as AppDTOs from '../../contracts';
-import type * as AppConstants from '../../common/constants';
+import * as AppConstants from '../../common/constants';
 
 type ActivityResourceAssetDTO = AppDTOs.AssetDTO | AppDTOs.AssetDetailDTO;
 
@@ -80,7 +80,7 @@ export class ActivityResourceBuilder {
     source: AppDTOs.ActivitySubEventAssetAssignmentIdsDTO | null | undefined
   ): AppDTOs.ActivitySubEventAssetAssignmentIdsDTO {
     const next: AppDTOs.ActivitySubEventAssetAssignmentIdsDTO = {};
-    for (const type of ['Car', 'Accommodation', 'Supplies'] as const) {
+    for (const type of AppConstants.ASSET_TYPES) {
       const ids = Array.isArray(source?.[type]) ? source?.[type] : [];
       const normalizedIds = Array.from(new Set(ids
         .map(id => `${id ?? ''}`.trim())
@@ -96,7 +96,7 @@ export class ActivityResourceBuilder {
     source: AppDTOs.ActivitySubEventAssetSettingsByTypeDTO | null | undefined
   ): AppDTOs.ActivitySubEventAssetSettingsByTypeDTO {
     const next: AppDTOs.ActivitySubEventAssetSettingsByTypeDTO = {};
-    for (const type of ['Car', 'Accommodation', 'Supplies'] as const) {
+    for (const type of AppConstants.ASSET_TYPES) {
       const rawMap = source?.[type];
       if (!rawMap || typeof rawMap !== 'object') {
         continue;
@@ -107,11 +107,14 @@ export class ActivityResourceBuilder {
         if (!normalizedAssetId || !settings) {
           continue;
         }
+        const routes = this.normalizeRoutes(settings.routes);
         normalizedMap[normalizedAssetId] = {
           capacityMin: Math.max(0, Math.trunc(Number(settings.capacityMin) || 0)),
           capacityMax: Math.max(0, Math.trunc(Number(settings.capacityMax) || 0)),
+          quantity: Math.max(0, Math.trunc(Number(settings.quantity) || 0)),
           addedByUserId: `${settings.addedByUserId ?? ''}`.trim(),
-          routes: this.normalizeRoutes(settings.routes)
+          routeEnabled: this.normalizeRouteEnabled(settings, routes),
+          routes
         };
       }
       if (Object.keys(normalizedMap).length > 0) {
@@ -153,7 +156,7 @@ export class ActivityResourceBuilder {
     source: Partial<Record<AppConstants.AssetType, AppDTOs.AssetDetailDTO[]>> | null | undefined
   ): Partial<Record<AppConstants.AssetType, AppDTOs.AssetDetailDTO[]>> {
     const next: Partial<Record<AppConstants.AssetType, AppDTOs.AssetDetailDTO[]>> = {};
-    for (const type of ['Car', 'Accommodation', 'Supplies'] as const) {
+    for (const type of AppConstants.ASSET_TYPES) {
       const cards = source?.[type];
       if (!Array.isArray(cards) || cards.length === 0) {
         continue;
@@ -204,7 +207,7 @@ export class ActivityResourceBuilder {
   ): number {
     const assignedCards = this.resolveAssignedCards(type, state, assets);
     if (assignedCards.length > 0) {
-      if (type === 'Supplies') {
+      if (type === AppConstants.ASSET_TYPE_SUPPLIES) {
         return assignedCards.reduce((sum, card) => (
           sum + this.resolveSupplyContributionEntries(state, card.id)
             .reduce((entrySum, entry) => entrySum + Math.max(0, Math.trunc(Number(entry.quantity) || 0)), 0)
@@ -217,10 +220,10 @@ export class ActivityResourceBuilder {
     if (state) {
       return 0;
     }
-    if (type === 'Car') {
+    if (type === AppConstants.ASSET_TYPE_TRANSPORT) {
       return Math.max(0, Math.trunc(Number(subEvent.carsAccepted) || 0));
     }
-    if (type === 'Accommodation') {
+    if (type === AppConstants.ASSET_TYPE_ACCOMMODATION) {
       return Math.max(0, Math.trunc(Number(subEvent.accommodationAccepted) || 0));
     }
     return Math.max(0, Math.trunc(Number(subEvent.suppliesAccepted) || 0));
@@ -234,7 +237,7 @@ export class ActivityResourceBuilder {
   ): number {
     const assignedCards = this.resolveAssignedCards(type, state, assets);
     if (assignedCards.length > 0) {
-      if (type === 'Supplies') {
+      if (type === AppConstants.ASSET_TYPE_SUPPLIES) {
         return 0;
       }
       return assignedCards.reduce((sum, card) => (
@@ -244,10 +247,10 @@ export class ActivityResourceBuilder {
     if (state) {
       return 0;
     }
-    if (type === 'Car') {
+    if (type === AppConstants.ASSET_TYPE_TRANSPORT) {
       return Math.max(0, Math.trunc(Number(subEvent.carsPending) || 0));
     }
-    if (type === 'Accommodation') {
+    if (type === AppConstants.ASSET_TYPE_ACCOMMODATION) {
       return Math.max(0, Math.trunc(Number(subEvent.accommodationPending) || 0));
     }
     return Math.max(0, Math.trunc(Number(subEvent.suppliesPending) || 0));
@@ -276,12 +279,12 @@ export class ActivityResourceBuilder {
     }
 
     const observed = Math.max(accepted, accepted + pending);
-    if (type === 'Car') {
+    if (type === AppConstants.ASSET_TYPE_TRANSPORT) {
       const min = Math.max(0, Math.trunc(Number(subEvent.carsCapacityMin) || 0));
       const max = Math.max(min, Math.trunc(Number(subEvent.carsCapacityMax) || observed));
       return { capacityMin: min, capacityMax: max };
     }
-    if (type === 'Accommodation') {
+    if (type === AppConstants.ASSET_TYPE_ACCOMMODATION) {
       const min = Math.max(0, Math.trunc(Number(subEvent.accommodationCapacityMin) || 0));
       const max = Math.max(min, Math.trunc(Number(subEvent.accommodationCapacityMax) || observed));
       return { capacityMin: min, capacityMax: max };
@@ -289,13 +292,6 @@ export class ActivityResourceBuilder {
     const min = Math.max(0, Math.trunc(Number(subEvent.suppliesCapacityMin) || 0));
     const max = Math.max(min, Math.trunc(Number(subEvent.suppliesCapacityMax) || observed));
     return { capacityMin: min, capacityMax: max };
-  }
-
-  static buildSeededState(
-    ref: AppDTOs.ActivitySubEventResourceStateRefDTO,
-    _assets: readonly ActivityResourceAssetDTO[]
-  ): AppDTOs.ActivitySubEventResourceStateDTO {
-    return this.createEmptyState(ref);
   }
 
   private static resolveAssignedCards(
@@ -399,13 +395,13 @@ export class ActivityResourceBuilder {
     type: AppConstants.AssetType,
     routes: readonly string[] | undefined | null
   ): string[] {
-    if (type === 'Supplies') {
+    if (type === AppConstants.ASSET_TYPE_SUPPLIES) {
       return [];
     }
     const cleaned = (routes ?? [])
       .map(value => `${value ?? ''}`.trim())
       .filter((value, index, arr) => value.length > 0 && arr.indexOf(value) === index);
-    if (type === 'Accommodation') {
+    if (type === AppConstants.ASSET_TYPE_ACCOMMODATION) {
       return cleaned.length > 0 ? [cleaned[0]] : [''];
     }
     return cleaned.length > 0 ? cleaned : [''];
@@ -473,5 +469,14 @@ export class ActivityResourceBuilder {
     return routes
       .map(route => `${route ?? ''}`.trim())
       .filter(route => route.length > 0);
+  }
+
+  private static normalizeRouteEnabled(
+    settings: Partial<AppDTOs.SubEventAssignedAssetSettingsDTO>,
+    routes: readonly string[]
+  ): boolean {
+    return typeof settings.routeEnabled === 'boolean'
+      ? settings.routeEnabled
+      : routes.length > 0;
   }
 }

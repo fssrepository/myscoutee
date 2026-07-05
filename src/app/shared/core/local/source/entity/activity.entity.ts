@@ -55,7 +55,9 @@ export type ActivityMembersMemorySchema = Record<typeof ACTIVITY_MEMBERS_TABLE_N
 export interface ActivitySubEventAssignedAssetSettingsRecord {
   capacityMin: number;
   capacityMax: number;
+  quantity: number;
   addedByUserId: string;
+  routeEnabled: boolean;
   routes: string[];
 }
 

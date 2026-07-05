@@ -1,0 +1,112 @@
+@if (shouldShowPanel()) {
+<section class="event-policies-panel" [class.is-on]="effectivePanelEnabled()" [class.is-off]="!effectivePanelEnabled()">
+  <div class="event-policies-panel-head">
+    <div class="event-policies-panel-title-wrap">
+      <span class="event-policies-panel-title">
+        <mat-icon>policy</mat-icon>
+        <span>{{ panelTitle() }}</span>
+      </span>
+      @if (!locked()) {
+      <p class="event-policies-panel-subtitle">{{ panelSubtitle() }}</p>
+      }
+    </div>
+    @if (policiesToggleable()) {
+    <button
+      type="button"
+      class="event-policies-toggle"
+      [class.is-on]="effectivePanelEnabled()"
+      [disabled]="locked()"
+      [attr.aria-pressed]="effectivePanelEnabled()"
+      (click)="togglePoliciesEnabled($event)"
+    >
+      <mat-icon>{{ effectivePanelEnabled() ? 'toggle_on' : 'toggle_off' }}</mat-icon>
+      <span>{{ effectivePanelEnabled() ? 'On' : 'Off' }}</span>
+    </button>
+    }
+  </div>
+  @if (effectivePanelEnabled()) {
+  <div class="event-policies-panel-body">
+    @if (!locked()) {
+    <button type="button" class="event-slots-open-btn event-slots-open-btn-inline" (click)="openPoliciesPopup($event)">
+      <mat-icon>gavel</mat-icon>
+      <span>{{ openPoliciesLabel() }}</span>
+    </button>
+    }
+    <div class="event-slots-summary">
+      <section class="event-slots-summary-block">
+        <span class="event-slots-summary-label">Summary</span>
+        @if (policies.length > 0) {
+        <div class="event-slots-summary-list">
+          @for (policy of policies; track trackPolicy($index, policy)) {
+            <article
+              class="event-policy-summary-card"
+              [class.event-policy-summary-card--mandatory]="policyRequired(policy)"
+              [class.event-policy-summary-card--optional]="!policyRequired(policy)"
+              >
+              <div class="event-policy-summary-card-head">
+                <span class="event-slots-summary-title">{{ policy.title }}</span>
+                <span
+                  class="event-policy-summary-badge"
+                  [class.event-policy-summary-badge--mandatory]="policyRequired(policy)"
+                  [class.event-policy-summary-badge--optional]="!policyRequired(policy)"
+                  >
+                  {{ policyRequirementLabel(policy) }}
+                </span>
+              </div>
+              <p class="event-slots-summary-note">{{ policySummaryDescription(policy) }}</p>
+            </article>
+          }
+        </div>
+        } @else {
+        <p class="event-slots-summary-note">
+          {{ emptyPoliciesLabel() }}
+        </p>
+        }
+      </section>
+    </div>
+  </div>
+  }
+</section>
+}
+
+@if (showPoliciesPopup) {
+<app-popup [model]="policySetupPopupModel()" [zIndex]="policySetupPopupZIndex()">
+  <div class="event-policies-popup-body">
+    <div class="event-policies-list event-policies-list-compact">
+      @for (policy of workingPolicies; track policy.id; let i = $index) {
+      <single-row
+        [row]="policySingleRow(policy, i)"
+        (rowClick)="openPolicyEditor(i, $event)"
+        (menuAction)="onPolicyRowMenuAction(i, $event)"
+      ></single-row>
+      }
+      @if (workingPolicies.length === 0) {
+      <div class="event-slot-empty-state event-policy-empty-state">
+        <span>No policies yet.</span>
+      </div>
+      }
+    </div>
+  </div>
+</app-popup>
+
+@if (showPolicyEditorPopup) {
+<app-popup [model]="policyEditorPopupModel()" [zIndex]="policyEditorPopupZIndex()">
+  <div class="event-policy-editor-body">
+    <article class="event-policy-card">
+      <label class="event-policy-field">
+        <span>Title</span>
+        <input type="text" [(ngModel)]="workingPolicyDraft.title" [readonly]="locked()" placeholder="Policy title" />
+      </label>
+      <label class="event-policy-field">
+        <span>Description</span>
+        <textarea rows="6" [(ngModel)]="workingPolicyDraft.description" [readonly]="locked()" placeholder="Explain the policy clearly."></textarea>
+      </label>
+      <label class="event-policy-check">
+        <input type="checkbox" [(ngModel)]="workingPolicyDraft.required" [disabled]="locked()" />
+        <span>{{ requiredCheckboxLabel() }}</span>
+      </label>
+    </article>
+  </div>
+</app-popup>
+}
+}

@@ -98,10 +98,10 @@
             </section>
             <app-pricing-editor-input class="experience-description-field event-pricing-field" [(ngModel)]="eventDetailDTO.pricing"
               [config]="eventPricingEditorConfig" [readOnly]="eventStructureReadOnly()" [disabled]="eventStructureReadOnly()"></app-pricing-editor-input>
-            <app-event-policies-input [(ngModel)]="eventDetailDTO.policies"
+            <app-policies-input [(ngModel)]="eventDetailDTO.policies"
               [(enabled)]="eventDetailDTO.policiesEnabled"
               [readOnly]="eventPoliciesReadOnly()"
-              [disabled]="eventPoliciesReadOnly()"></app-event-policies-input>
+              [disabled]="eventPoliciesReadOnly()"></app-policies-input>
           </div>
         </div>
       </section>

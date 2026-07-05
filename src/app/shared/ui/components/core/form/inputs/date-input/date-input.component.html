@@ -37,6 +37,57 @@
       </div>
     </label>
   </div>
+} @else if (isCompactRange()) {
+  <div class="date-input date-input--range-compact">
+    <label class="date-input__field">
+      <div class="date-input__row">
+        <mat-form-field appearance="outline" class="date-input__material date-input__material--range" subscriptSizing="dynamic">
+          <mat-date-range-input [rangePicker]="rangePicker">
+            <input
+              matStartDate
+              [ngModel]="startDateValue"
+              (ngModelChange)="onStartDateChange($event)"
+              (blur)="markTouched()"
+              [min]="resolvedStartMin()"
+              [max]="resolvedStartMax()"
+              [disabled]="inputDisabled()"
+              [placeholder]="startPlaceholder"
+              [attr.aria-label]="startLabel"
+            />
+            <input
+              matEndDate
+              [ngModel]="endDateValue"
+              (ngModelChange)="onEndDateChange($event)"
+              (blur)="markTouched()"
+              [min]="resolvedEndMin()"
+              [max]="resolvedEndMax()"
+              [disabled]="inputDisabled()"
+              [placeholder]="endPlaceholder"
+              [attr.aria-label]="endLabel"
+            />
+          </mat-date-range-input>
+          <button
+            matSuffix
+            type="button"
+            class="date-input__toggle"
+            [class.date-input__toggle--open]="isPickerOpen('range-date')"
+            [attr.aria-pressed]="isPickerOpen('range-date')"
+            [disabled]="inputDisabled()"
+            (mousedown)="$event.preventDefault()"
+            (click)="toggleDateRangePicker(rangePicker, 'range-date', $event)"
+            aria-label="Toggle date range picker"
+          >
+            <mat-icon>{{ pickerIcon('range-date', 'calendar_month') }}</mat-icon>
+          </button>
+          <mat-date-range-picker
+            #rangePicker
+            (opened)="setPickerOpen('range-date', true)"
+            (closed)="setPickerOpen('range-date', false)"
+          ></mat-date-range-picker>
+        </mat-form-field>
+      </div>
+    </label>
+  </div>
 } @else if (isRange()) {
   <div class="date-input date-input--range" [class.date-input--with-time]="hasTime()">
     <label class="date-input__field">

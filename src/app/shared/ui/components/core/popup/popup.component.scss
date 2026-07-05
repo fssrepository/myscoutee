@@ -151,8 +151,14 @@ app-popup {
 }
 
 .ui-popup__toolbar-group--end .ui-popup__action,
-.ui-popup__toolbar-group--end .ui-popup__control {
+.ui-popup__toolbar-group--end .ui-popup__control,
+.ui-popup__toolbar-group--end .ui-popup__date-input {
   flex: 0 0 auto;
+}
+
+.ui-popup__date-input {
+  flex: 0 0 auto;
+  min-width: 0;
 }
 
 .ui-popup__body {

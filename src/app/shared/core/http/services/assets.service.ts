@@ -1,16 +1,20 @@
 import { HttpClient, HttpParams } from '@angular/common/http';
 import { Injectable, inject } from '@angular/core';
+import type { Observable } from 'rxjs';
 
 import { environment } from '../../../../../environments/environment';
 import { AssetCardBuilder, AssetDefaultsBuilder, PricingBuilder } from '../../base/builders';
+import { RouteDelayService } from '../../base/services/route-delay.service';
 import { AssetDto } from '../../contracts';
 import type * as AppDTOs from '../../contracts';
-import type * as AppConstants from '../../common/constants';
+import * as AppConstants from '../../common/constants';
 @Injectable({
   providedIn: 'root'
 })
 export class HttpAssetsService {
+  private static readonly ASSET_AVAILABILITY_ROUTE = '/assets/availability';
   private readonly http = inject(HttpClient);
+  private readonly routeDelay = inject(RouteDelayService);
   private readonly apiBaseUrl = environment.apiBaseUrl ?? '/api';
   private readonly cachedAssetsByUserId: Record<string, AppDTOs.AssetDTO[]> = {};
   private readonly inflightAssetsByUserId: Record<string, Promise<AppDTOs.AssetDTO[]>> = {};
@@ -96,6 +100,171 @@ export class HttpAssetsService {
       return this.normalizeCards(Array.isArray(response) ? response : []);
     } catch {
       return [];
+    }
+  }
+
+  async queryVisibleAssetsPage(query: AppDTOs.AssetExplorePageQueryDTO): Promise<AppDTOs.AssetExplorePageResultDTO> {
+    const normalizedUserId = query.userId.trim();
+    if (!normalizedUserId) {
+      return {
+        items: [],
+        total: 0,
+        nextCursor: null
+      };
+    }
+    const page = Math.max(0, Math.trunc(Number(query.page) || 0));
+    const pageSize = Math.max(1, Math.trunc(Number(query.pageSize) || 1));
+    try {
+      const response = await this.http
+        .get<AppDTOs.AssetDTO[] | AppDTOs.AssetExplorePageResultDTO | null>(`${this.apiBaseUrl}/assets/explore`, {
+          params: new HttpParams()
+            .set('userId', normalizedUserId)
+            .set('type', query.type)
+            .set('category', `${query.category ?? ''}`.trim())
+            .set('startAtIso', `${query.startAtIso ?? ''}`.trim())
+            .set('endAtIso', `${query.endAtIso ?? ''}`.trim())
+            .set('page', `${page}`)
+            .set('pageSize', `${pageSize}`)
+            .set('order', `${query.order ?? 'availability'}`.trim())
+            .set('cursor', `${query.cursor ?? ''}`.trim())
+        })
+        .toPromise();
+      if (Array.isArray(response)) {
+        const items = this.normalizeCards(response);
+        return {
+          items,
+          total: items.length,
+          nextCursor: null
+        };
+      }
+      const items = this.normalizeCards(response?.items ?? []);
+      return {
+        items,
+        total: Number.isFinite(response?.total)
+          ? Math.max(0, Math.trunc(Number(response?.total)))
+          : items.length,
+        nextCursor: typeof response?.nextCursor === 'string' && response.nextCursor.trim().length > 0
+          ? response.nextCursor
+          : null
+      };
+    } catch (error) {
+      if (this.isAbortError(error)) {
+        throw error;
+      }
+      return {
+        items: [],
+        total: 0,
+        nextCursor: null
+      };
+    }
+  }
+
+  async loadOccupancyByAssetId(query: {
+    userId: string;
+    assetId: string;
+    dateIso?: string | null;
+    rangeStart?: string | null;
+    rangeEnd?: string | null;
+    filter?: AppDTOs.AssetAvailabilityFilter | null;
+    order?: AppDTOs.AssetAvailabilityOrder | null;
+    page?: number;
+    pageSize: number;
+    cursor?: string | null;
+  }, options: { signal?: AbortSignal } = {}): Promise<AppDTOs.AssetOccupancyPageResultDTO> {
+    const normalizedUserId = query.userId.trim();
+    const normalizedAssetId = query.assetId.trim();
+    if (!normalizedUserId || !normalizedAssetId) {
+      return {
+        items: [],
+        total: 0,
+        nextCursor: null
+      };
+    }
+    try {
+      const response = await this.routeDelay.withRequestTimeout(
+        HttpAssetsService.ASSET_AVAILABILITY_ROUTE,
+        this.requestWithAbort(
+          this.http.get<AppDTOs.AssetOccupancyPageResultDTO | null>(
+            `${this.apiBaseUrl}/assets/${encodeURIComponent(normalizedAssetId)}/availability`,
+            {
+              params: new HttpParams()
+                .set('userId', normalizedUserId)
+                .set('dateIso', `${query.dateIso ?? ''}`.trim())
+                .set('rangeStart', `${query.rangeStart ?? ''}`.trim())
+                .set('rangeEnd', `${query.rangeEnd ?? ''}`.trim())
+                .set('filter', `${query.filter ?? 'all'}`.trim())
+                .set('order', `${query.order ?? 'later'}`.trim())
+                .set('page', `${Math.max(0, Math.trunc(Number(query.page) || 0))}`)
+                .set('pageSize', `${Math.max(1, Math.trunc(Number(query.pageSize) || 1))}`)
+                .set('cursor', `${query.cursor ?? ''}`.trim())
+            }
+          ),
+          options.signal
+        ),
+        'Asset availability request timed out.'
+      );
+      return this.normalizeOccupancyPage(response);
+    } catch (error) {
+      if (this.isAbortError(error)) {
+        throw error;
+      }
+      return {
+        items: [],
+        total: 0,
+        nextCursor: null
+      };
+    }
+  }
+
+  async loadStatByAssetId(query: {
+    userId: string;
+    assetId: string;
+    rangeStart?: string | null;
+    rangeEnd?: string | null;
+    filter?: AppDTOs.AssetAvailabilityFilter | null;
+    order?: AppDTOs.AssetAvailabilityOrder | null;
+    page?: number;
+    pageSize: number;
+    cursor?: string | null;
+  }, options: { signal?: AbortSignal } = {}): Promise<AppDTOs.AssetOccupancyStatsPageResultDTO> {
+    const normalizedUserId = query.userId.trim();
+    const normalizedAssetId = query.assetId.trim();
+    if (!normalizedUserId || !normalizedAssetId) {
+      return {
+        items: [],
+        total: 0,
+        nextCursor: null
+      };
+    }
+    try {
+      const response = await this.routeDelay.withRequestTimeout(
+        HttpAssetsService.ASSET_AVAILABILITY_ROUTE,
+        this.requestWithAbort(
+          this.http.get<AppDTOs.AssetOccupancyStatsPageResultDTO | null>(
+            `${this.apiBaseUrl}/assets/${encodeURIComponent(normalizedAssetId)}/availability/stats`,
+            {
+              params: new HttpParams()
+                .set('userId', normalizedUserId)
+                .set('rangeStart', `${query.rangeStart ?? ''}`.trim())
+                .set('rangeEnd', `${query.rangeEnd ?? ''}`.trim())
+                .set('filter', `${query.filter ?? 'all'}`.trim())
+                .set('order', `${query.order ?? ''}`.trim())
+                .set('page', `${Math.max(0, Math.trunc(Number(query.page) || 0))}`)
+                .set('pageSize', `${Math.max(1, Math.trunc(Number(query.pageSize) || 1))}`)
+                .set('cursor', `${query.cursor ?? ''}`.trim())
+            }
+          ),
+          options.signal
+        ),
+        'Asset availability stats request timed out.'
+      );
+      return this.normalizeOccupancyStatsPage(response);
+    } catch {
+      return {
+        items: [],
+        total: 0,
+        nextCursor: null
+      };
     }
   }
 
@@ -268,9 +437,10 @@ export class HttpAssetsService {
       return null;
     }
     const type = card?.type;
-    if (type !== 'Car' && type !== 'Accommodation' && type !== 'Supplies') {
+    if (!AppConstants.isAssetType(type)) {
       return null;
     }
+    const requests = this.normalizeRequests(card?.requests);
     return {
       id,
       type,
@@ -302,49 +472,8 @@ export class HttpAssetsService {
       menuActions: Array.isArray(card?.menuActions)
         ? card.menuActions.map((action: string) => `${action ?? ''}`.trim()).filter((action: string) => action.length > 0)
         : [],
-      requests: Array.isArray(card?.requests)
-        ? card.requests
-          .map(request => ({
-            id: `${request?.id ?? ''}`.trim(),
-            userId: `${request?.userId ?? ''}`.trim() || undefined,
-            name: `${request?.name ?? ''}`.trim(),
-            initials: `${request?.initials ?? ''}`.trim(),
-            gender: (request?.gender === 'woman' ? 'woman' : 'man') as 'woman' | 'man',
-            status: (request?.status === 'accepted' ? 'accepted' : 'pending') as AppConstants.AssetRequestStatus,
-            note: `${request?.note ?? ''}`.trim(),
-            requestKind: (request?.requestKind === 'manual' ? 'manual' : 'borrow') as AppConstants.AssetRequestKind,
-            requestedAtIso: `${request?.requestedAtIso ?? ''}`.trim() || undefined,
-            menuActions: Array.isArray(request?.menuActions)
-              ? request.menuActions.map((action: string) => `${action ?? ''}`.trim()).filter((action: string) => action.length > 0)
-              : [],
-            booking: request?.booking
-              ? {
-                  eventId: `${request.booking.eventId ?? ''}`.trim() || undefined,
-                  eventTitle: `${request.booking.eventTitle ?? ''}`.trim() || undefined,
-                  subEventId: `${request.booking.subEventId ?? ''}`.trim() || undefined,
-                  subEventTitle: `${request.booking.subEventTitle ?? ''}`.trim() || undefined,
-                  slotKey: `${request.booking.slotKey ?? ''}`.trim() || undefined,
-                  slotLabel: `${request.booking.slotLabel ?? ''}`.trim() || undefined,
-                  timeframe: `${request.booking.timeframe ?? ''}`.trim() || undefined,
-                  startAtIso: `${request.booking.startAtIso ?? ''}`.trim() || undefined,
-                  endAtIso: `${request.booking.endAtIso ?? ''}`.trim() || undefined,
-                  quantity: Number.isFinite(Number(request.booking.quantity))
-                    ? Math.max(1, Math.trunc(Number(request.booking.quantity)))
-                    : null,
-                  totalAmount: Number.isFinite(Number(request.booking.totalAmount))
-                    ? Math.max(0, Number(request.booking.totalAmount))
-                    : null,
-                  currency: `${request.booking.currency ?? ''}`.trim() || undefined,
-                  paymentSessionId: `${request.booking.paymentSessionId ?? ''}`.trim() || null,
-                  inventoryApplied: request.booking.inventoryApplied === true ? true : null,
-                  acceptedPolicyIds: Array.isArray(request.booking.acceptedPolicyIds)
-                    ? request.booking.acceptedPolicyIds.map((item: string) => `${item ?? ''}`.trim()).filter((item: string) => item.length > 0)
-                    : []
-                }
-              : null
-          }))
-          .filter(request => request.id.length > 0)
-        : []
+      requests,
+      metrics: this.assetRequestMetrics(card?.metrics)
     };
   }
 
@@ -354,9 +483,10 @@ export class HttpAssetsService {
       return null;
     }
     const type = card?.type;
-    if (type !== 'Car' && type !== 'Accommodation' && type !== 'Supplies') {
+    if (!AppConstants.isAssetType(type)) {
       return null;
     }
+    const requests = this.normalizeRequests(card?.requests);
     return {
       id,
       type,
@@ -402,7 +532,8 @@ export class HttpAssetsService {
       menuActions: Array.isArray(card?.menuActions)
         ? card.menuActions.map((action: string) => `${action ?? ''}`.trim()).filter((action: string) => action.length > 0)
         : [],
-      requests: this.normalizeRequests(card?.requests)
+      requests,
+      metrics: this.assetRequestMetrics(card?.metrics)
     };
   }
 
@@ -452,6 +583,22 @@ export class HttpAssetsService {
       : [];
   }
 
+  private assetRequestMetrics(
+    metrics: AppDTOs.AssetRequestMetricsDTO | null | undefined
+  ): AppDTOs.AssetRequestMetricsDTO {
+    const normalized = AssetDto.cloneMetrics(metrics);
+    if (normalized) {
+      return normalized;
+    }
+    return {
+      allItems: 0,
+      activeItems: 0,
+      assignedItems: 0,
+      borrowedItems: 0,
+      pendingItems: 0
+    };
+  }
+
   private assetDescription(card: AppDTOs.AssetDTO | AppDTOs.AssetDetailDTO): string {
     return 'description' in card
       ? card.description.trim()
@@ -462,7 +609,7 @@ export class HttpAssetsService {
     if ('locationLabel' in card && card.locationLabel?.trim()) {
       return card.locationLabel.trim();
     }
-    if (type !== 'Accommodation' || !('routes' in card)) {
+    if (type !== AppConstants.ASSET_TYPE_ACCOMMODATION || !('routes' in card)) {
       return card.city?.trim() ?? '';
     }
     return (card.routes ?? [])
@@ -502,6 +649,171 @@ export class HttpAssetsService {
       return Math.max(0, Math.trunc(Number(card.policyCount)));
     }
     return 'policies' in card ? (card.policies ?? []).length : 0;
+  }
+
+  private normalizeOccupancyPage(
+    response: AppDTOs.AssetOccupancyPageResultDTO | null | undefined
+  ): AppDTOs.AssetOccupancyPageResultDTO {
+    const items = Array.isArray(response?.items)
+      ? response.items
+        .map(row => this.normalizeOccupancyRow(row))
+        .filter((row): row is AppDTOs.AssetOccupancyRowDTO => Boolean(row))
+      : [];
+    return {
+      items,
+      total: Number.isFinite(response?.total)
+        ? Math.max(0, Math.trunc(Number(response?.total)))
+        : items.length,
+      nextCursor: typeof response?.nextCursor === 'string' && response.nextCursor.trim().length > 0
+        ? response.nextCursor
+        : null
+    };
+  }
+
+  private normalizeOccupancyStatsPage(
+    response: AppDTOs.AssetOccupancyStatsPageResultDTO | null | undefined
+  ): AppDTOs.AssetOccupancyStatsPageResultDTO {
+    const items = Array.isArray(response?.items)
+      ? response.items
+        .map(row => this.normalizeOccupancyStat(row))
+        .filter((row): row is AppDTOs.AssetOccupancyStatDTO => Boolean(row))
+      : [];
+    return {
+      items,
+      total: Number.isFinite(response?.total)
+        ? Math.max(0, Math.trunc(Number(response?.total)))
+        : items.length,
+      nextCursor: typeof response?.nextCursor === 'string' && response.nextCursor.trim().length > 0
+        ? response.nextCursor
+        : null
+    };
+  }
+
+  private normalizeOccupancyStat(
+    row: AppDTOs.AssetOccupancyStatDTO | null | undefined
+  ): AppDTOs.AssetOccupancyStatDTO | null {
+    const id = `${row?.id ?? ''}`.trim();
+    const assetId = `${row?.assetId ?? ''}`.trim();
+    const dateIso = `${row?.dateIso ?? ''}`.trim();
+    if (!id || !assetId || !dateIso) {
+      return null;
+    }
+    return {
+      id,
+      assetId,
+      ownerUserId: `${row?.ownerUserId ?? ''}`.trim(),
+      dateIso,
+      startAtIso: `${row?.startAtIso ?? ''}`.trim(),
+      endAtIso: `${row?.endAtIso ?? ''}`.trim(),
+      occupied: Math.max(0, Math.trunc(Number(row?.occupied) || 0)),
+      capacity: Math.max(0, Math.trunc(Number(row?.capacity) || 0)),
+      pendingCount: Math.max(0, Math.trunc(Number(row?.pendingCount) || 0)),
+      pendingQuantity: Math.max(0, Math.trunc(Number(row?.pendingQuantity) || 0)),
+      itemCount: Math.max(0, Math.trunc(Number(row?.itemCount) || 0))
+    };
+  }
+
+  private normalizeOccupancyRow(
+    row: AppDTOs.AssetOccupancyRowDTO | null | undefined
+  ): AppDTOs.AssetOccupancyRowDTO | null {
+    const id = `${row?.id ?? ''}`.trim();
+    const assetId = `${row?.assetId ?? ''}`.trim();
+    if (!id || !assetId) {
+      return null;
+    }
+    return {
+      id,
+      assetId,
+      ownerUserId: `${row?.ownerUserId ?? ''}`.trim(),
+      dateIso: `${row?.dateIso ?? ''}`.trim(),
+      startAtIso: `${row?.startAtIso ?? ''}`.trim() || undefined,
+      endAtIso: `${row?.endAtIso ?? ''}`.trim() || undefined,
+      title: `${row?.title ?? ''}`.trim(),
+      subtitle: `${row?.subtitle ?? ''}`.trim() || undefined,
+      detail: `${row?.detail ?? ''}`.trim() || undefined,
+      scheduleLabel: `${row?.scheduleLabel ?? ''}`.trim() || undefined,
+      avatarInitials: `${row?.avatarInitials ?? ''}`.trim() || undefined,
+      avatarUrl: `${row?.avatarUrl ?? ''}`.trim() || undefined,
+      gender: row?.gender === 'woman' ? 'woman' : 'man',
+      status: row?.status === 'assigned' ? 'assigned' : row?.status === 'accepted' ? 'accepted' : 'pending',
+      requestKind: row?.requestKind === 'manual' ? 'manual' : 'borrow',
+      quantity: Math.max(1, Math.trunc(Number(row?.quantity) || 1)),
+      occupied: Math.max(0, Math.trunc(Number(row?.occupied) || 0)),
+      capacity: Math.max(0, Math.trunc(Number(row?.capacity) || 0)),
+      remaining: Math.trunc(Number(row?.remaining) || 0),
+      pendingCount: Math.max(0, Math.trunc(Number(row?.pendingCount) || 0)),
+      pendingQuantity: Math.max(0, Math.trunc(Number(row?.pendingQuantity) || 0)),
+      eventId: `${row?.eventId ?? ''}`.trim() || undefined,
+      eventTitle: `${row?.eventTitle ?? ''}`.trim() || undefined,
+      subEventId: `${row?.subEventId ?? ''}`.trim() || undefined,
+      subEventTitle: `${row?.subEventTitle ?? ''}`.trim() || undefined,
+      subEventStartAtIso: `${row?.subEventStartAtIso ?? ''}`.trim() || undefined,
+      subEventEndAtIso: `${row?.subEventEndAtIso ?? ''}`.trim() || undefined,
+      menuActions: Array.isArray(row?.menuActions)
+        ? row.menuActions.filter((action): action is AppConstants.AssetRequestAction =>
+          action === 'accept' || action === 'remove' || action === 'makeManager' || action === 'manage')
+        : []
+    };
+  }
+
+  private requestWithAbort<T>(request$: Observable<T>, signal?: AbortSignal): Promise<T> {
+    return new Promise<T>((resolve, reject) => {
+      if (signal?.aborted) {
+        reject(this.createAbortError());
+        return;
+      }
+      let settled = false;
+      let subscription: { unsubscribe: () => void } | null = null;
+      const cleanup = () => {
+        signal?.removeEventListener('abort', onAbort);
+      };
+      const onAbort = () => {
+        if (settled) {
+          return;
+        }
+        settled = true;
+        subscription?.unsubscribe();
+        cleanup();
+        reject(this.createAbortError());
+      };
+      signal?.addEventListener('abort', onAbort, { once: true });
+      subscription = request$.subscribe({
+        next: value => {
+          if (settled) {
+            return;
+          }
+          settled = true;
+          cleanup();
+          resolve(value);
+        },
+        error: error => {
+          if (settled) {
+            return;
+          }
+          settled = true;
+          cleanup();
+          reject(error);
+        },
+        complete: () => {
+          if (settled) {
+            return;
+          }
+          settled = true;
+          cleanup();
+          resolve(null as T);
+        }
+      });
+    });
+  }
+
+  private createAbortError(): Error {
+    const error = new Error('Request aborted.');
+    error.name = 'AbortError';
+    return error;
+  }
+
+  private isAbortError(error: unknown): boolean {
+    return error instanceof Error && error.name === 'AbortError';
   }
 
   private restoredAssetStatus(_card: AppDTOs.AssetDTO): string {

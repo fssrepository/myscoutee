@@ -4,7 +4,7 @@ import type {
   ActivitySubEventGroupsMemorySchema,
   ActivitySubEventStageRuntimeMemorySchema
 } from '../source/entity/activity.entity';
-import type { AssetsMemorySchema } from '../source/entity/asset.entity';
+import type { AssetRequestsMemorySchema, AssetsMemorySchema } from '../source/entity/asset.entity';
 import type { ChatsMemorySchema } from '../source/entity/chat.entity';
 import type { HelpCenterMemorySchema, IdeaPostsMemorySchema } from '../source/entity/content.entity';
 import type { ActivityEventsMemorySchema, EventFeedbackMemorySchema } from '../source/entity/event.entity';
@@ -16,6 +16,7 @@ import type { UsersMemorySchema } from '../source/entity/user.entity';
 export type AppMemorySchema = UsersMemorySchema
   & UserRatesMemorySchema
   & AssetsMemorySchema
+  & AssetRequestsMemorySchema
   & ActivityMembersMemorySchema
   & ActivityResourcesMemorySchema
   & ActivitySubEventGroupsMemorySchema

@@ -8,10 +8,11 @@ import type {
   AppMenuTrigger
 } from '../../menu';
 import type { DateInputMetaModel, DateInputModel } from '../inputs/date-input';
-import type { EventPoliciesInputConfig } from '../inputs/event-policies-input';
 import type { LinkInputConfig } from '../inputs/link-input';
 import type { LocationInputConfig } from '../inputs/location-input';
+import type { PoliciesInputConfig } from '../inputs/policies-input';
 import type { PricingEditorConfig } from '../inputs/pricing-editor';
+import type { RouteInputConfig } from '../inputs/route-input';
 import type { ImageCardData, InfoCardData } from '../../smart-list/card';
 
 export interface FormFlowDraft<TData> {
@@ -34,6 +35,7 @@ export type FormFlowControlKind =
   | 'policies'
   | 'pricing'
   | 'review'
+  | 'route'
   | 'section'
   | 'static'
   | 'text'
@@ -90,8 +92,12 @@ export interface FormFlowPricingControlConfig {
   model?: PricingEditorConfig | null;
 }
 
+export interface FormFlowRouteControlConfig {
+  model?: RouteInputConfig | null;
+}
+
 export interface FormFlowPoliciesControlConfig {
-  model?: EventPoliciesInputConfig | null;
+  model?: PoliciesInputConfig | null;
 }
 
 export interface FormFlowControlSummaryConfig {
@@ -144,6 +150,7 @@ export interface FormFlowControlModel {
     | FormFlowLocationControlConfig
     | FormFlowPoliciesControlConfig
     | FormFlowPricingControlConfig
+    | FormFlowRouteControlConfig
     | null;
   accessory?: { menu?: FormFlowMenuControlConfig | null } | null;
   summary?: FormFlowControlSummaryConfig | null;

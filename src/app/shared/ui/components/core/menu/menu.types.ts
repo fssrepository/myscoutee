@@ -113,6 +113,7 @@ export interface AppMenuTrigger {
   counter?: AppMenuCounter | AppMenuCounterValue | null;
   disabled?: AppMenuLiveValue<boolean | null | undefined>;
   hideLabel?: boolean;
+  collapsible?: boolean;
   layout?: AppMenuTriggerLayout;
   action?: AppMenuTriggerAction;
   context?: unknown;

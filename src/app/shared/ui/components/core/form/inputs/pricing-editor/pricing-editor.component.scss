@@ -49,6 +49,17 @@
     radial-gradient(circle at top right, rgba(146, 165, 194, 0.1), transparent 36%);
 }
 
+.pricing-editor--embedded {
+  height: 100%;
+  min-height: 0;
+  padding: 0;
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+  box-shadow: none;
+  overflow: hidden;
+}
+
 .pricing-editor--summary-popup.pricing-editor--enabled .pricing-editor__title-text,
 .pricing-editor--summary-popup.pricing-editor--enabled .pricing-editor__title-text mat-icon {
   color: #235d53;
@@ -250,6 +261,17 @@
   align-items: start;
 }
 
+.pricing-editor--embedded .pricing-editor__layout {
+  height: 100%;
+  min-height: 0;
+  overflow-y: auto;
+  overflow-x: hidden;
+  padding: 0.12rem 0 0.8rem;
+  box-sizing: border-box;
+  scrollbar-width: thin;
+  scrollbar-color: #8aa0b8 #eaf1fa;
+}
+
 .pricing-editor__main {
   display: grid;
   gap: 0.92rem;
@@ -298,7 +320,14 @@
 
 
 
-.pricing-editor__toggle:disabled,
+.pricing-editor__toggle:disabled {
+  cursor: default;
+  opacity: 0.66;
+  pointer-events: none;
+  filter: saturate(0.66);
+  box-shadow: none;
+}
+
 .pricing-editor__add-btn:disabled,
 .pricing-editor__rule-remove:disabled,
 .pricing-editor__open-btn:disabled {
@@ -326,6 +355,11 @@
   pointer-events: none;
   filter: grayscale(0.35);
   box-shadow: none;
+}
+
+:host-context(.popup-panel-event-editor-readonly) .pricing-editor__toggle {
+  opacity: 0.66;
+  filter: saturate(0.66);
 }
 
 .pricing-editor__grid,
@@ -1060,8 +1094,6 @@
   scrollbar-width: thin;
   scrollbar-color: #8aa0b8 #eaf1fa;
   scrollbar-gutter: stable;
-  transform: translateZ(0);
-  backface-visibility: hidden;
 }
 
 .pricing-editor__wizard-body .pricing-editor__main {

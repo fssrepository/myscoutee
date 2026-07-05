@@ -23,13 +23,19 @@
   border: 1px solid var(--line);
   border-radius: 12px;
   padding: 0.6rem;
-  display: flex;
-  flex-direction: column;
+  display: grid;
+  grid-template-rows: minmax(0, 1fr) auto auto;
   gap: 0.45rem;
   overflow: visible;
   min-height: 0;
   height: 100%;
   background: linear-gradient(180deg, #f9fcff 0%, #f3f8ff 100%);
+}
+
+.chat-popup-box > app-smart-list {
+  display: flex;
+  min-height: 0;
+  overflow: hidden;
 }
 
 .editor-list-card {
@@ -1240,12 +1246,11 @@
 }
 
 .chat-compose-box {
-  position: sticky;
-  bottom: 0;
+  position: relative;
   z-index: 70;
   background: #fff;
   padding-top: 0.18rem;
-  margin-top: auto;
+  margin-top: 0;
   min-height: 42px;
   display: flex;
   align-items: center;
@@ -1258,6 +1263,8 @@
 }
 
 .chat-voice-composer {
+  --chat-voice-control-size: 28px;
+  --chat-voice-control-gap: 0.46rem;
   position: relative;
   min-width: 0;
   flex: 1 1 auto;
@@ -1265,31 +1272,49 @@
   min-height: 0;
   box-sizing: border-box;
   display: grid;
-  grid-template-columns: 30px minmax(0, 1fr) auto 32px;
+  grid-template-columns: var(--chat-voice-control-size) minmax(0, 1fr) auto var(--chat-voice-control-size);
   align-items: center;
-  gap: 0.32rem;
-  padding: 0.18rem 0.22rem;
+  gap: var(--chat-voice-control-gap);
+  padding: 0 0.22rem;
   border: 1px solid rgba(192, 19, 154, 0.28);
   border-radius: 999px;
   background: #d100a7;
   color: #fff;
+  line-height: 1;
+}
+
+.chat-voice-composer > * {
+  align-self: center;
 }
 
 .chat-voice-cancel-btn,
 .chat-voice-record-btn,
 .chat-voice-send-btn {
-  width: 28px;
-  height: 28px;
+  width: var(--chat-voice-control-size);
+  height: var(--chat-voice-control-size);
+  box-sizing: border-box;
+  padding: 0;
   border: 0;
   border-radius: 50%;
   display: inline-flex;
   align-items: center;
   justify-content: center;
+  flex: 0 0 var(--chat-voice-control-size);
+  line-height: 0;
   cursor: pointer;
 }
 
 .chat-voice-cancel-btn {
-  background: transparent;
+  width: var(--chat-voice-control-size) !important;
+  min-width: var(--chat-voice-control-size) !important;
+  max-width: var(--chat-voice-control-size) !important;
+  height: var(--chat-voice-control-size) !important;
+  min-height: var(--chat-voice-control-size) !important;
+  max-height: var(--chat-voice-control-size) !important;
+  padding: 0 !important;
+  border: 0 !important;
+  border-color: transparent !important;
+  background: rgba(255, 255, 255, 0.2);
   color: #fff;
 }
 
@@ -1322,13 +1347,15 @@
 
 .chat-voice-recorder-shell {
   min-width: 0;
+  height: var(--chat-voice-control-size);
   display: flex;
   align-items: center;
-  gap: 0.46rem;
+  gap: var(--chat-voice-control-gap);
 }
 
 .chat-voice-bars {
   min-width: 0;
+  height: var(--chat-voice-control-size);
   display: inline-flex;
   align-items: center;
   gap: 3px;
@@ -1361,12 +1388,18 @@
 
 .chat-voice-timer {
   min-width: 42px;
-  padding: 0.16rem 0.38rem;
+  height: var(--chat-voice-control-size);
+  box-sizing: border-box;
+  padding: 0 0.38rem;
   border-radius: 999px;
   background: #fff;
   color: #c0139a;
   font-size: 0.78rem;
+  line-height: 1;
   font-weight: 900;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
   text-align: center;
 }
 
@@ -2117,18 +2150,18 @@
   }
 
   .chat-compose-box {
-    position: fixed;
-    left: max(0.45rem, env(safe-area-inset-left, 0px));
-    right: max(0.45rem, env(safe-area-inset-right, 0px));
-    bottom: 0;
+    position: relative;
+    left: auto;
+    right: auto;
+    bottom: auto;
     z-index: 70;
     margin-top: 0;
     padding: 0.45rem 0.45rem max(0.45rem, env(safe-area-inset-bottom, 0px));
-    background: linear-gradient(180deg, rgba(243, 248, 255, 0) 0%, rgba(243, 248, 255, 0.92) 24%, #f3f8ff 100%);
-    box-shadow: 0 -10px 24px rgba(15, 29, 47, 0.12);
-    transform: translateZ(0);
-    will-change: transform;
-    backface-visibility: hidden;
+    background: #fff;
+    box-shadow: 0 -4px 14px rgba(15, 29, 47, 0.08);
+    transform: none;
+    will-change: auto;
+    backface-visibility: visible;
   }
 
   .chat-compose-box textarea {

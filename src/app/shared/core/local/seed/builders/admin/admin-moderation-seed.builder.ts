@@ -1,4 +1,5 @@
 import type { AdminSeedChatMessageDto, AdminSeedModerationStore } from './admin-seed.models';
+import * as AppConstants from '../../../../common/constants';
 
 export interface AdminModerationSeedContext {
   userImageUrl(userId: string): string | null | undefined;
@@ -64,7 +65,7 @@ export class AdminModerationSeedBuilder {
           sourceId: 'f7b9be40d648a5448d018308',
           sourceText: 'Game Night Box request needs moderation review.',
           assetId: 'f7b9be40d648a5448d018308',
-          assetType: 'Supplies',
+          assetType: AppConstants.ASSET_TYPE_SUPPLIES,
           createdDate: '2026-04-27T09:20:00.000Z'
         }
       ],

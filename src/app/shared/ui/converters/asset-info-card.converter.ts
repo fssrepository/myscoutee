@@ -2,7 +2,7 @@ import { AppUtils } from '../../app-utils';
 import { AssetCardBuilder } from '../../core/base/builders/asset-card.builder';
 import { AssetDefaultsBuilder } from '../../core/base/builders/asset-defaults.builder';
 import type * as AppDTOs from '../../core/contracts';
-import type * as AppConstants from '../../core/common/constants';
+import * as AppConstants from '../../core/common/constants';
 import type { CardMenuActionId, InfoCardData } from '../components/core/smart-list/card/card.types';
 import type { UiListConverter } from './converter.types';
 
@@ -245,6 +245,9 @@ export class AssetInfoCardConverter {
     const actions = configuredActions.length > 0
       ? [...configuredActions]
       : ['shareAsset', 'editAsset', 'delete'];
+    if (!actions.includes('assetAvailability')) {
+      actions.unshift('assetAvailability');
+    }
     const sourceLink = AppUtils.normalizeHttpUrl(card.sourceLink ?? '');
     if (sourceLink && !actions.includes('externalInfo')) {
       const shareIndex = actions.findIndex(action => action === 'shareAsset' || action === 'share');
@@ -264,17 +267,42 @@ export class AssetInfoCardConverter {
         ariaLabel: statusLabel
       };
     }
-    const pendingCount = card.requests.filter(request => request.status === 'pending' && request.requestKind !== 'manual').length;
+    const metrics = this.assetRequestMetrics(card);
     return {
       variant: 'badge',
       shape: 'circle',
-      tone: card.type === 'Supplies' ? 'warm' : 'default',
-      label: AssetCardBuilder.quantityLabel(card),
+      actionId: 'assetAvailability',
+      tone: card.type === AppConstants.ASSET_TYPE_SUPPLIES ? 'warm' : 'default',
+      label: `${metrics.activeItems}`,
       detailLabel: AssetCardBuilder.capacityLabel(card),
       interactive: true,
-      pendingCount,
-      ariaLabel: 'Open asset requests and assignments'
+      pendingCount: metrics.pendingItems,
+      ariaLabel: `${metrics.activeItems} active items, ${metrics.pendingItems} pending items`
     };
+  }
+
+  private static assetRequestMetrics(card: AppDTOs.AssetDTO): AppDTOs.AssetRequestMetricsDTO {
+    if (card.metrics) {
+      return {
+        allItems: this.normalizeCount(card.metrics.allItems),
+        activeItems: this.normalizeCount(card.metrics.activeItems),
+        assignedItems: this.normalizeCount(card.metrics.assignedItems),
+        borrowedItems: this.normalizeCount(card.metrics.borrowedItems),
+        pendingItems: this.normalizeCount(card.metrics.pendingItems)
+      };
+    }
+    return {
+      allItems: 0,
+      activeItems: 0,
+      assignedItems: 0,
+      borrowedItems: 0,
+      pendingItems: 0
+    };
+  }
+
+  private static normalizeCount(value: unknown): number {
+    const numeric = Number(value);
+    return Number.isFinite(numeric) ? Math.max(0, Math.trunc(numeric)) : 0;
   }
 
   private static assetStatusCode(card: AppDTOs.AssetDTO): string {

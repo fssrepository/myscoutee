@@ -12,6 +12,7 @@ import {
 import {
   BaseRouteModeService
 } from './base-route-mode.service';
+import { RouteDelayService } from './route-delay.service';
 import type { ActivityMemberOwnerType } from '../../common/constants';
 import type { ActivityMemberOwnerRef, ActivityMembersSummaryDto } from '../../contracts/activity.interface';
 import type * as ActivityContracts from '../../contracts/activity.interface';
@@ -22,13 +23,22 @@ import { ActivityStore } from '../../../ui/context/stores/activity.store';
   providedIn: 'root'
 })
 export class ActivityMembersService extends BaseRouteModeService {
+  private static readonly MEMBERS_ROUTE = '/activities/events/members';
   private static readonly OWNER_TYPES: readonly ActivityMemberOwnerType[] = ['event', 'subEvent', 'group', 'asset'];
   private readonly localActivityMembersService = inject(LocalActivityMembersService);
   private readonly httpActivityMembersService = inject(HttpActivityMembersService);
   private readonly userProfileStore = inject(UserProfileStore);
   private readonly activityStore = inject(ActivityStore);
+  private readonly routeDelay = inject(RouteDelayService);
   private get activityMembersService(): LocalActivityMembersService | HttpActivityMembersService {
-    return this.resolveRouteService('/activities/events/members', this.localActivityMembersService, this.httpActivityMembersService);
+    return this.resolveRouteService(ActivityMembersService.MEMBERS_ROUTE, this.localActivityMembersService, this.httpActivityMembersService);
+  }
+
+  async waitForMembersRouteDelay(): Promise<void> {
+    if (!this.isLocalRouteEnabled(ActivityMembersService.MEMBERS_ROUTE)) {
+      return;
+    }
+    await this.routeDelay.waitForRouteDelay(ActivityMembersService.MEMBERS_ROUTE);
   }
 
   peekMembersByOwner(owner: ActivityMemberOwnerRef): ActivityContracts.ActivityMemberDTO[] {
