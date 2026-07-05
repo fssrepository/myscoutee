@@ -387,7 +387,9 @@ export class LocalAssetsMapper {
       : false;
   }
 
-  private static assetRequestDateRange(request: AssetRequestRecord): { start: Date; end: Date } | null {
+  private static assetRequestDateRange(
+    request: Pick<AssetRequestRecord, 'requestedAtIso' | 'booking'>
+  ): { start: Date; end: Date } | null {
     const start = this.parseAssetRequestDate(request.booking?.startAtIso ?? request.requestedAtIso);
     if (!start) {
       return null;
@@ -486,9 +488,12 @@ export class LocalAssetsMapper {
   }
 
   static toAssetRequestMetrics(
-    requests: readonly Pick<AppDTOs.AssetMemberRequestDTO, 'status' | 'requestKind'>[] | null | undefined
+    requests: readonly (
+      Pick<AppDTOs.AssetMemberRequestDTO, 'status' | 'requestKind' | 'requestedAtIso'>
+      & { booking?: Pick<AppDTOs.AssetHireRequestBookingDTO, 'startAtIso' | 'endAtIso'> | null }
+    )[] | null | undefined
   ): AppDTOs.AssetRequestMetricsDTO {
-    const rows = requests ?? [];
+    const rows = (requests ?? []).filter(request => this.isLaterAssetRequestMetric(request));
     const assignedItems = rows.filter(request => request.requestKind === 'manual').length;
     const borrowedItems = rows.filter(request => request.status === 'accepted' && request.requestKind !== 'manual').length;
     const pendingItems = rows.filter(request => request.status === 'pending' && request.requestKind !== 'manual').length;
@@ -500,6 +505,16 @@ export class LocalAssetsMapper {
       borrowedItems,
       pendingItems
     };
+  }
+
+  private static isLaterAssetRequestMetric(
+    request: Pick<AppDTOs.AssetMemberRequestDTO, 'requestedAtIso'> & {
+      booking?: Pick<AppDTOs.AssetHireRequestBookingDTO, 'startAtIso' | 'endAtIso'> | null;
+    }
+  ): boolean {
+    const end = this.assetRequestDateRange(request)?.end
+      ?? this.parseAssetRequestDate(request.requestedAtIso);
+    return end !== null && end.getTime() >= Date.now();
   }
 
   static assetRequestMetrics(

@@ -444,13 +444,17 @@ export class AssetAvailabilityPopupComponent {
         continue;
       }
       const patchRow = (row: AppDTOs.AssetOccupancyRowDTO): AppDTOs.AssetOccupancyRowDTO => {
-        const delta = quantity - Math.max(1, Math.trunc(Number(row.quantity) || 1));
-        const occupied = Math.max(0, Math.trunc(Number(row.occupied) || 0) + delta);
+        const previousQuantity = Math.max(1, Math.trunc(Number(row.quantity) || 1));
+        const previousCapacity = Math.max(0, Math.trunc(Number(row.capacity) || 0));
+        const baseCapacity = Math.max(0, Math.trunc(previousCapacity / previousQuantity));
+        const capacity = baseCapacity * quantity;
+        const occupied = Math.max(0, Math.trunc(Number(row.occupied) || 0));
         return {
           ...row,
           quantity,
+          capacity,
           occupied,
-          remaining: Math.max(0, Math.trunc(Number(row.capacity) || 0) - occupied)
+          remaining: Math.max(0, capacity - occupied)
         };
       };
       const predicate = (row: AppDTOs.AssetOccupancyRowDTO): boolean =>
