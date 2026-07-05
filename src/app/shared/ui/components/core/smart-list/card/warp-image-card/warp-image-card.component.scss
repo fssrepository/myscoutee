@@ -89,10 +89,10 @@
 .ui-warp-image-card__visual::before {
   content: '';
   position: absolute;
-  inset: -1px 0 -12px;
+  inset: 0;
   background-image: url('../../../../../../../../assets/logo/cards_no_edges.png');
   background-repeat: no-repeat;
-  background-size: 200% 286%;
+  background-size: 200% 200%;
   background-position: var(--warp-image-slice-x, 0%) var(--warp-image-slice-y, 0%);
 }
 
