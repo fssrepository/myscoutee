@@ -413,6 +413,7 @@ export interface AssetTicketPageResultDTO {
 
 export type AssetAvailabilityFilter = 'all' | 'active-items' | 'pending-requests' | 'borrowed-items';
 export type AssetAvailabilityView = 'day' | 'week' | 'month';
+export type AssetAvailabilityOrder = 'earlier' | 'later';
 
 export interface AssetOccupancyStatDTO {
   id: string;
@@ -450,6 +451,12 @@ export interface AssetOccupancyRowDTO {
   remaining: number;
   pendingCount: number;
   pendingQuantity: number;
+  eventId?: string;
+  eventTitle?: string;
+  subEventId?: string;
+  subEventTitle?: string;
+  subEventStartAtIso?: string;
+  subEventEndAtIso?: string;
   menuActions?: AppConstants.AssetRequestAction[];
 }
 

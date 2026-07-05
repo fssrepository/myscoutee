@@ -13,7 +13,8 @@ import { APP_STATIC_DATA } from '../../../shared/app-static-data';
 import { AppUtils } from '../../../shared/app-utils';
 import { AssetCardBuilder } from '../../../shared/core/base/builders';
 import {
-  AssetsService
+  AssetsService,
+  I18nService
 } from '../../../shared/core';
 import type * as AppConstants from '../../../shared/core/common/constants';
 import type * as AppDTOs from '../../../shared/core/contracts';
@@ -51,18 +52,20 @@ import {
   AssetStore
 } from '../../../shared/ui/context/stores/asset.store';
 import {
-  UserProfileStore
-} from '../../../shared/ui/context/stores/user-profile.store';
+  SubEventResourcePopupStore
+} from '../../../shared/ui/context/stores/sub-event-resource-popup.store';
 
 type AssetAvailabilityListItem = AppDTOs.AssetOccupancyStatDTO | AppDTOs.AssetOccupancyRowDTO;
 
 interface AssetAvailabilityListFilters {
   revision: number;
   filter: AppDTOs.AssetAvailabilityFilter;
+  order: AppDTOs.AssetAvailabilityOrder;
   dateIso?: string | null;
 }
 
 type AssetAvailabilityPopupMenuContext =
+  | { menu: 'order'; order: AppDTOs.AssetAvailabilityOrder }
   | { menu: 'view'; view: AppDTOs.AssetAvailabilityView }
   | { menu: 'filter'; target: 'availability' | 'day-list'; filter: AppDTOs.AssetAvailabilityFilter };
 
@@ -88,14 +91,16 @@ export class AssetAvailabilityPopupComponent {
   protected readonly availabilityPopupZIndex = 12100;
   protected readonly dayListPopupZIndex = 12200;
   private readonly assetsService = inject(AssetsService);
+  private readonly i18n = inject(I18nService);
   private readonly assetStore = inject(AssetStore);
-  private readonly userProfileStore = inject(UserProfileStore);
+  private readonly resourcePopupStore = inject(SubEventResourcePopupStore);
   protected readonly availabilityPopupStore = inject(AssetAvailabilityPopupStore);
   private readonly cdr = inject(ChangeDetectorRef);
 
   private readonly availabilityRevision = signal(0);
   private readonly dayListRevision = signal(0);
   private readonly availabilityViewOverride = signal<AssetAvailabilityScopedOverride<AppDTOs.AssetAvailabilityView> | null>(null);
+  private readonly availabilityOrderOverride = signal<AssetAvailabilityScopedOverride<AppDTOs.AssetAvailabilityOrder> | null>(null);
   private readonly availabilityFilterOverride = signal<AssetAvailabilityScopedOverride<AppDTOs.AssetAvailabilityFilter> | null>(null);
   private readonly dayListFilterOverride = signal<AssetAvailabilityScopedOverride<AppDTOs.AssetAvailabilityFilter> | null>(null);
 
@@ -105,6 +110,14 @@ export class AssetAvailabilityPopupComponent {
       this.availabilityViewOverride(),
       this.requestIdentity(request),
       request?.view ?? 'day'
+    );
+  });
+  protected readonly availabilityOrder = computed<AppDTOs.AssetAvailabilityOrder>(() => {
+    const request = this.availabilityPopupStore.availabilityPopup();
+    return this.scopedOverrideValue(
+      this.availabilityOrderOverride(),
+      this.requestIdentity(request),
+      'later'
     );
   });
   protected readonly availabilityFilter = computed<AppDTOs.AssetAvailabilityFilter>(() => {
@@ -129,7 +142,8 @@ export class AssetAvailabilityPopupComponent {
       this.availabilityView(),
       this.availabilityFilter(),
       request?.initialDateIso ?? null,
-      this.availabilityRevision()
+      this.availabilityRevision(),
+      this.availabilityOrder()
     );
   });
   protected readonly dayListQuery = computed<Partial<ListQuery<AssetAvailabilityListFilters>>>(() => {
@@ -138,7 +152,8 @@ export class AssetAvailabilityPopupComponent {
       'day',
       this.dayListFilter(),
       request?.initialDateIso ?? null,
-      this.dayListRevision()
+      this.dayListRevision(),
+      this.availabilityOrder()
     );
   });
   protected readonly availabilityHeader = computed<AssetAvailabilityHeaderState | null>(
@@ -268,6 +283,7 @@ export class AssetAvailabilityPopupComponent {
         rangeStart: query.rangeStart ?? query.filters?.dateIso ?? undefined,
         rangeEnd: query.rangeEnd ?? query.filters?.dateIso ?? undefined,
         filter: query.filters?.filter ?? request.filter,
+        order: query.filters?.order ?? this.orderFromDirection(query.direction),
         page: query.page,
         pageSize: query.pageSize,
         cursor: query.cursor ?? null
@@ -291,6 +307,7 @@ export class AssetAvailabilityPopupComponent {
         assetId: request.assetId,
         dateIso: query.filters?.dateIso ?? request.initialDateIso ?? undefined,
         filter: query.filters?.filter ?? request.filter,
+        order: query.filters?.order ?? this.orderFromDirection(query.direction),
         page: query.page,
         pageSize: query.pageSize,
         cursor: query.cursor ?? null
@@ -312,6 +329,7 @@ export class AssetAvailabilityPopupComponent {
         assetId: request.assetId,
         dateIso: query.filters?.dateIso ?? request.initialDateIso ?? undefined,
         filter: query.filters?.filter ?? request.filter,
+        order: query.filters?.order ?? this.orderFromDirection(query.direction),
         page: query.page,
         pageSize: query.pageSize,
         cursor: query.cursor ?? null
@@ -330,7 +348,10 @@ export class AssetAvailabilityPopupComponent {
     row: AppDTOs.AssetOccupancyRowDTO,
     groupLabel: string | null | undefined
   ): SingleRowData<AppDTOs.AssetOccupancyRowDTO> {
-    const converted = AssetAvailabilitySingleRowConverter.convert(row, { groupLabel });
+    const converted = AssetAvailabilitySingleRowConverter.convert(row, {
+      groupLabel,
+      translate: (key, fallback) => this.i18n.translate(key, fallback)
+    });
     return {
       ...converted,
       menuActions: this.rowMenuActions(row)
@@ -342,7 +363,11 @@ export class AssetAvailabilityPopupComponent {
   ): Promise<void> {
     const row = this.rowDetail(event.card.eagerDetail);
     const action = event.actionId as AppConstants.AssetRequestAction;
-    if (!row || (action !== 'accept' && action !== 'remove' && action !== 'makeManager')) {
+    if (!row || (action !== 'accept' && action !== 'remove' && action !== 'makeManager' && action !== 'manage')) {
+      return;
+    }
+    if (action === 'manage') {
+      this.openAvailabilityResourceManager(row);
       return;
     }
     const busyKey = `${row.assetId}:${row.id}:${action}`;
@@ -395,6 +420,10 @@ export class AssetAvailabilityPopupComponent {
     if (!context) {
       return;
     }
+    if (context.menu === 'order') {
+      this.selectAvailabilityOrder(context.order);
+      return;
+    }
     if (context.menu === 'view') {
       this.selectAvailabilityView(context.view);
       return;
@@ -418,6 +447,19 @@ export class AssetAvailabilityPopupComponent {
       value: view
     });
     this.availabilityRevision.update(revision => revision + 1);
+  }
+
+  private selectAvailabilityOrder(order: AppDTOs.AssetAvailabilityOrder): void {
+    if (this.availabilityOrder() === order) {
+      return;
+    }
+    const request = this.availabilityPopupStore.availabilityPopup();
+    this.availabilityOrderOverride.set({
+      requestIdentity: this.requestIdentity(request),
+      value: order
+    });
+    this.availabilityRevision.update(revision => revision + 1);
+    this.dayListRevision.update(revision => revision + 1);
   }
 
   private selectAvailabilityFilter(filter: AppDTOs.AssetAvailabilityFilter): void {
@@ -445,12 +487,20 @@ export class AssetAvailabilityPopupComponent {
   }
 
   private availabilityHeaderControls(): PopupControl<AssetAvailabilityPopupMenuContext>[] {
-    return [{
-      kind: 'menu',
-      id: 'view',
-      trigger: this.viewMenuTrigger(),
-      items: this.viewMenuItems()
-    }];
+    return [
+      {
+        kind: 'menu',
+        id: 'order',
+        trigger: this.orderMenuTrigger(),
+        items: this.orderMenuItems()
+      },
+      {
+        kind: 'menu',
+        id: 'view',
+        trigger: this.viewMenuTrigger(),
+        items: this.viewMenuItems()
+      }
+    ];
   }
 
   private availabilityToolbarControls(): PopupControl<AssetAvailabilityPopupMenuContext>[] {
@@ -482,6 +532,38 @@ export class AssetAvailabilityPopupComponent {
       palette: this.viewPalette(view),
       ariaLabel: 'Open availability view'
     });
+  }
+
+  private orderMenuTrigger(): AppMenuTrigger {
+    const order = this.availabilityOrder();
+    const option = this.orderMenuOptions().find(item => item.key === order) ?? this.orderMenuOptions()[0];
+    return this.selectTrigger({
+      label: option.label,
+      icon: option.icon,
+      palette: this.orderPalette(order),
+      ariaLabel: 'asset.requests.order.open'
+    });
+  }
+
+  private orderMenuItems(): readonly AppMenuItem<string, AssetAvailabilityPopupMenuContext>[] {
+    const activeOrder = this.availabilityOrder();
+    return this.orderMenuOptions().map(option => ({
+      id: `asset-availability-order:${option.key}`,
+      label: option.label,
+      icon: option.icon,
+      kind: 'radio',
+      active: option.key === activeOrder,
+      palette: this.orderPalette(option.key),
+      surface: 'tinted',
+      context: { menu: 'order', order: option.key }
+    }));
+  }
+
+  private orderMenuOptions(): Array<{ key: AppDTOs.AssetAvailabilityOrder; label: string; icon: string }> {
+    return [
+      { key: 'earlier', label: 'asset.requests.order.earlier', icon: 'history' },
+      { key: 'later', label: 'asset.requests.order.later', icon: 'schedule' }
+    ];
   }
 
   private viewMenuItems(): readonly AppMenuItem<string, AssetAvailabilityPopupMenuContext>[] {
@@ -607,6 +689,10 @@ export class AssetAvailabilityPopupComponent {
     }
   }
 
+  private orderPalette(order: AppDTOs.AssetAvailabilityOrder): AppMenuPalette {
+    return order === 'later' ? 'blue' : 'slate';
+  }
+
   private filterPalette(filter: AppDTOs.AssetAvailabilityFilter): AppMenuPalette {
     switch (filter) {
       case 'pending-requests':
@@ -668,6 +754,41 @@ export class AssetAvailabilityPopupComponent {
       return [...actions];
     }
     return [];
+  }
+
+  private openAvailabilityResourceManager(row: AppDTOs.AssetOccupancyRowDTO): void {
+    const ownerId = `${row.eventId ?? ''}`.trim();
+    const subEventId = `${row.subEventId ?? ''}`.trim();
+    const type = this.availabilityResourceType(row);
+    if (!ownerId || !subEventId || !type) {
+      return;
+    }
+    this.resourcePopupStore.requestSubEventResourcePopup({
+      type,
+      ownerId,
+      parentTitle: `${row.eventTitle ?? ''}`.trim() || this.availabilityHeader()?.title || 'Event',
+      subEventId,
+      subEventHeader: {
+        name: `${row.subEventTitle ?? ''}`.trim() || 'Sub Event',
+        title: `${row.subEventTitle ?? ''}`.trim() || null,
+        startAt: `${row.subEventStartAtIso ?? row.startAtIso ?? ''}`.trim() || null,
+        endAt: `${row.subEventEndAtIso ?? row.endAtIso ?? ''}`.trim() || null
+      }
+    });
+    void this.resourcePopupStore.ensureEventResourcePopupLoaded();
+  }
+
+  private availabilityResourceType(row: AppDTOs.AssetOccupancyRowDTO): AppConstants.AssetType | null {
+    const headerType = `${this.availabilityHeader()?.type ?? this.dayListHeader()?.type ?? ''}`.trim();
+    if (this.isAssetResourceType(headerType)) {
+      return headerType;
+    }
+    const assetType = this.assetStore.findAsset(row.assetId)?.type ?? '';
+    return this.isAssetResourceType(assetType) ? assetType : null;
+  }
+
+  private isAssetResourceType(value: string): value is AppConstants.AssetType {
+    return value === 'Car' || value === 'Accommodation' || value === 'Supplies';
   }
 
   private async applyAssetRequestAction(
@@ -757,16 +878,23 @@ export class AssetAvailabilityPopupComponent {
     view: AppDTOs.AssetAvailabilityView,
     filter: AppDTOs.AssetAvailabilityFilter,
     dateIso: string | null,
-    revision = 0
+    revision = 0,
+    order: AppDTOs.AssetAvailabilityOrder = 'later'
   ): Partial<ListQuery<AssetAvailabilityListFilters>> {
     return {
       view,
+      direction: order === 'earlier' ? 'desc' : 'asc',
       filters: {
         revision,
         filter,
+        order,
         dateIso: `${dateIso ?? ''}`.trim() || null
       }
     };
+  }
+
+  private orderFromDirection(direction: string | null | undefined): AppDTOs.AssetAvailabilityOrder {
+    return direction === 'desc' ? 'earlier' : 'later';
   }
 
   private scopedOverrideValue<T>(

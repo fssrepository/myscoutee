@@ -6,6 +6,7 @@ import {
   ASSET_REQUESTS_TABLE_NAME,
   type AssetAvailabilityDateRangeRecord,
   type AssetAvailabilityFilterRecord,
+  type AssetAvailabilityOrderRecord,
   type AssetAvailabilityRecordPageQuery,
   type AssetAvailabilityRecordPageResult,
   type AssetAvailabilityStatRecordPageQuery,
@@ -39,11 +40,13 @@ export class LocalAssetRequestsRepository {
   queryAssetAvailabilityRecordPage(query: AssetAvailabilityRecordPageQuery): AssetAvailabilityRecordPageResult {
     const requests = this.queryRecordsByOwner(query.userId, query.assetId);
     const filter = this.normalizeAvailabilityFilter(query.filter);
+    const order = this.normalizeAvailabilityOrder(query.order);
     const dateRange = this.availabilityDateRange(query.dateIso);
     const filtered = requests
+      .filter(request => this.matchesAvailabilityOrder(request, order))
       .filter(request => this.matchesAvailabilityFilter(request, filter))
       .filter(request => !dateRange || this.assetRequestDateRangeOverlaps(request, dateRange.start, dateRange.end))
-      .sort((left, right) => this.compareAvailabilityRequests(left, right));
+      .sort((left, right) => this.compareAvailabilityRequests(left, right, order));
     const page = this.slicePage(filtered, query.page, query.pageSize, query.cursor);
     return {
       records: page.items.map(request => ({
@@ -68,12 +71,18 @@ export class LocalAssetRequestsRepository {
     }
     const requests = this.queryRecordsByOwner(normalizedOwnerUserId, normalizedAssetId);
     const filter = this.normalizeAvailabilityFilter(query.filter);
-    const filteredRequests = requests.filter(request => this.matchesAvailabilityFilter(request, filter));
+    const order = this.normalizeAvailabilityOrder(query.order);
+    const filteredRequests = requests
+      .filter(request => this.matchesAvailabilityOrder(request, order))
+      .filter(request => this.matchesAvailabilityFilter(request, filter));
     const range = this.availabilityStatsRange(query.rangeStart, query.rangeEnd);
     const assetCapacity = this.resolveAssetCapacity(requests);
     const dates: Date[] = [];
     for (let cursor = new Date(range.start); cursor.getTime() <= range.end.getTime(); cursor = AppUtils.addDays(cursor, 1)) {
       dates.push(new Date(cursor));
+    }
+    if (order === 'earlier') {
+      dates.reverse();
     }
     const page = this.slicePage(dates, query.page, query.pageSize, query.cursor);
     return {
@@ -95,6 +104,10 @@ export class LocalAssetRequestsRepository {
       : 'all';
   }
 
+  private normalizeAvailabilityOrder(order: AssetAvailabilityOrderRecord | null | undefined): AssetAvailabilityOrderRecord {
+    return order === 'earlier' ? 'earlier' : 'later';
+  }
+
   private matchesAvailabilityFilter(
     request: AssetRequestRecord,
     filter: AssetAvailabilityFilterRecord
@@ -111,9 +124,28 @@ export class LocalAssetRequestsRepository {
     return true;
   }
 
-  private compareAvailabilityRequests(left: AssetRequestRecord, right: AssetRequestRecord): number {
-    return this.availabilityBucketOrder(left) - this.availabilityBucketOrder(right)
-      || this.availabilityRequestSortTime(right) - this.availabilityRequestSortTime(left)
+  private matchesAvailabilityOrder(
+    request: AssetRequestRecord,
+    order: AssetAvailabilityOrderRecord
+  ): boolean {
+    const end = this.assetRequestDateRange(request)?.end
+      ?? this.parseAvailabilityDate(request.requestedAtIso);
+    if (!end) {
+      return false;
+    }
+    const finished = end.getTime() < Date.now();
+    return order === 'earlier' ? finished : !finished;
+  }
+
+  private compareAvailabilityRequests(
+    left: AssetRequestRecord,
+    right: AssetRequestRecord,
+    order: AssetAvailabilityOrderRecord
+  ): number {
+    const direction = order === 'earlier' ? -1 : 1;
+    return direction * (this.availabilityRequestDaySortTime(left) - this.availabilityRequestDaySortTime(right))
+      || direction * (this.availabilityRequestSortTime(left) - this.availabilityRequestSortTime(right))
+      || this.availabilityBucketOrder(left) - this.availabilityBucketOrder(right)
       || left.id.localeCompare(right.id);
   }
 
@@ -131,6 +163,11 @@ export class LocalAssetRequestsRepository {
     return this.assetRequestDateRange(request)?.start.getTime()
       ?? this.parseAvailabilityDate(request.requestedAtIso)?.getTime()
       ?? 0;
+  }
+
+  private availabilityRequestDaySortTime(request: AssetRequestRecord): number {
+    const timestamp = this.availabilityRequestSortTime(request);
+    return timestamp > 0 ? AppUtils.dateOnly(new Date(timestamp)).getTime() : 0;
   }
 
   private assetRequestDateRangeOverlaps(request: AssetRequestRecord, start: Date, end: Date): boolean {

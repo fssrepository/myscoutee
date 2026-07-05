@@ -13,8 +13,13 @@ export class AssetAvailabilitySingleRowConverter {
     options: AssetAvailabilitySingleRowConverterOptions = {}
   ): SingleRowData<AssetOccupancyRowDTO> {
     const status = this.statusLabel(row, options);
-    const quantity = this.quantityLabel(row, options);
+    const quantityValue = Math.max(1, Math.trunc(Number(row.quantity) || 1));
     const schedule = `${row.scheduleLabel ?? ''}`.trim();
+    const badges = [{
+      label: `${status}: ${quantityValue}`,
+      tone: this.statusBadgeTone(row),
+      position: 'top-right' as const
+    }];
     return {
       id: row.id,
       smartListKey: `asset-availability:${row.assetId}:${row.id}`,
@@ -30,18 +35,7 @@ export class AssetAvailabilitySingleRowConverter {
       avatarUrl: row.avatarUrl ?? null,
       avatarToneClass: `user-color-${row.gender}`,
       surfaceTone: this.surfaceTone(row),
-      badges: [
-        {
-          label: status,
-          tone: this.statusBadgeTone(row),
-          position: 'inline'
-        },
-        {
-          label: quantity,
-          tone: 'muted',
-          position: 'inline'
-        }
-      ],
+      badges,
       metaRows: schedule && row.detail ? [schedule] : [],
       menuActions: row.menuActions ?? [],
       eagerDetail: row
@@ -66,18 +60,6 @@ export class AssetAvailabilitySingleRowConverter {
       return this.translate(options, 'asset.requests.status.borrowed', 'Borrowed');
     }
     return this.translate(options, 'asset.requests.status.pending', 'Pending');
-  }
-
-  private static quantityLabel(
-    row: AssetOccupancyRowDTO,
-    options: AssetAvailabilitySingleRowConverterOptions
-  ): string {
-    const quantity = Math.max(1, Math.trunc(Number(row.quantity) || 1));
-    return this.translate(
-      options,
-      quantity === 1 ? 'asset.requests.quantity.one' : 'asset.requests.quantity.many',
-      quantity === 1 ? `${quantity} item` : `${quantity} items`
-    ).replace('{count}', `${quantity}`);
   }
 
   private static surfaceTone(row: AssetOccupancyRowDTO): NonNullable<SingleRowData['surfaceTone']> {

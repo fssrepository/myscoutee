@@ -66,6 +66,7 @@ export interface AssetRequestRecord extends AssetMemberRequestRecord {
 }
 
 export type AssetAvailabilityFilterRecord = 'all' | 'active-items' | 'pending-requests' | 'borrowed-items';
+export type AssetAvailabilityOrderRecord = 'earlier' | 'later';
 
 export interface AssetAvailabilityDateRangeRecord {
   start: Date;
@@ -77,6 +78,7 @@ export interface AssetAvailabilityRecordPageQuery {
   assetId: string;
   dateIso?: string | null;
   filter?: AssetAvailabilityFilterRecord | null;
+  order?: AssetAvailabilityOrderRecord | null;
   page?: number;
   pageSize: number;
   cursor?: string | null;
@@ -88,6 +90,7 @@ export interface AssetAvailabilityStatRecordPageQuery {
   rangeStart?: string | null;
   rangeEnd?: string | null;
   filter?: AssetAvailabilityFilterRecord | null;
+  order?: AssetAvailabilityOrderRecord | null;
   page?: number;
   pageSize: number;
   cursor?: string | null;

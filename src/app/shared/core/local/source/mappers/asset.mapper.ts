@@ -355,6 +355,12 @@ export class LocalAssetsMapper {
       remaining: capacity - overlappingCommitted - pendingCurrentQuantity,
       pendingCount: pendingForWindow.length,
       pendingQuantity: pendingForWindow.reduce((sum, other) => sum + this.assetRequestQuantity(other), 0),
+      eventId: `${request.booking?.eventId ?? ''}`.trim() || undefined,
+      eventTitle: `${request.booking?.eventTitle ?? ''}`.trim() || undefined,
+      subEventId: `${request.booking?.subEventId ?? ''}`.trim() || undefined,
+      subEventTitle: `${request.booking?.subEventTitle ?? ''}`.trim() || undefined,
+      subEventStartAtIso: `${request.booking?.startAtIso ?? ''}`.trim() || undefined,
+      subEventEndAtIso: `${request.booking?.endAtIso ?? ''}`.trim() || undefined,
       menuActions: this.assetRequestMenuActions(request)
     };
   }
@@ -463,6 +469,9 @@ export class LocalAssetsMapper {
       return (request.menuActions ?? []).includes('makeManager')
         ? ['accept', 'makeManager', 'remove']
         : ['accept', 'remove'];
+    }
+    if (request.requestKind === 'manual') {
+      return request.booking?.eventId && request.booking?.subEventId ? ['manage'] : [];
     }
     return (request.menuActions ?? []).includes('makeManager') ? ['makeManager'] : [];
   }

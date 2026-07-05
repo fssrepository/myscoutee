@@ -34,7 +34,7 @@ export type AssetFilterType = typeof ASSET_FILTER_TYPES[number];
 export const SUB_EVENT_RESOURCE_FILTERS = ['Members', ...ASSET_TYPES] as const;
 export type SubEventResourceFilter = typeof SUB_EVENT_RESOURCE_FILTERS[number];
 
-export const ASSET_REQUEST_ACTIONS = ['accept', 'remove', 'makeManager'] as const;
+export const ASSET_REQUEST_ACTIONS = ['accept', 'remove', 'makeManager', 'manage'] as const;
 export type AssetRequestAction = typeof ASSET_REQUEST_ACTIONS[number];
 
 export const ASSET_REQUEST_STATUSES = ['pending', 'accepted'] as const;

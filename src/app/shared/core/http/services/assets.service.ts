@@ -164,6 +164,7 @@ export class HttpAssetsService {
     assetId: string;
     dateIso?: string | null;
     filter?: AppDTOs.AssetAvailabilityFilter | null;
+    order?: AppDTOs.AssetAvailabilityOrder | null;
     page?: number;
     pageSize: number;
     cursor?: string | null;
@@ -188,6 +189,7 @@ export class HttpAssetsService {
                 .set('userId', normalizedUserId)
                 .set('dateIso', `${query.dateIso ?? ''}`.trim())
                 .set('filter', `${query.filter ?? 'all'}`.trim())
+                .set('order', `${query.order ?? 'later'}`.trim())
                 .set('page', `${Math.max(0, Math.trunc(Number(query.page) || 0))}`)
                 .set('pageSize', `${Math.max(1, Math.trunc(Number(query.pageSize) || 1))}`)
                 .set('cursor', `${query.cursor ?? ''}`.trim())
@@ -216,6 +218,7 @@ export class HttpAssetsService {
     rangeStart?: string | null;
     rangeEnd?: string | null;
     filter?: AppDTOs.AssetAvailabilityFilter | null;
+    order?: AppDTOs.AssetAvailabilityOrder | null;
     page?: number;
     pageSize: number;
     cursor?: string | null;
@@ -241,6 +244,7 @@ export class HttpAssetsService {
                 .set('rangeStart', `${query.rangeStart ?? ''}`.trim())
                 .set('rangeEnd', `${query.rangeEnd ?? ''}`.trim())
                 .set('filter', `${query.filter ?? 'all'}`.trim())
+                .set('order', `${query.order ?? 'later'}`.trim())
                 .set('page', `${Math.max(0, Math.trunc(Number(query.page) || 0))}`)
                 .set('pageSize', `${Math.max(1, Math.trunc(Number(query.pageSize) || 1))}`)
                 .set('cursor', `${query.cursor ?? ''}`.trim())
@@ -735,9 +739,15 @@ export class HttpAssetsService {
       remaining: Math.trunc(Number(row?.remaining) || 0),
       pendingCount: Math.max(0, Math.trunc(Number(row?.pendingCount) || 0)),
       pendingQuantity: Math.max(0, Math.trunc(Number(row?.pendingQuantity) || 0)),
+      eventId: `${row?.eventId ?? ''}`.trim() || undefined,
+      eventTitle: `${row?.eventTitle ?? ''}`.trim() || undefined,
+      subEventId: `${row?.subEventId ?? ''}`.trim() || undefined,
+      subEventTitle: `${row?.subEventTitle ?? ''}`.trim() || undefined,
+      subEventStartAtIso: `${row?.subEventStartAtIso ?? ''}`.trim() || undefined,
+      subEventEndAtIso: `${row?.subEventEndAtIso ?? ''}`.trim() || undefined,
       menuActions: Array.isArray(row?.menuActions)
         ? row.menuActions.filter((action): action is AppConstants.AssetRequestAction =>
-          action === 'accept' || action === 'remove' || action === 'makeManager')
+          action === 'accept' || action === 'remove' || action === 'makeManager' || action === 'manage')
         : []
     };
   }
