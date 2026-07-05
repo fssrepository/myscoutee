@@ -83,7 +83,7 @@ export interface ActivityResourceSyncState {
   assetOwnerUserId: string;
 }
 
-export type ActivityChatMetricBucketType = 'members' | 'car' | 'accommodation' | 'supplies';
+export type ActivityChatMetricBucketType = 'members' | 'transport' | 'accommodation' | 'supplies';
 
 export interface ActivityChatMetricBucketPatch {
   updatedMs: number;

@@ -2185,7 +2185,7 @@ export class ActivitiesPopupComponent implements OnDestroy {
     return metrics
       ? {
         members: metrics.members ? { ...metrics.members } : null,
-        car: metrics.car ? { ...metrics.car } : null,
+        transport: metrics.transport ? { ...metrics.transport } : null,
         accommodation: metrics.accommodation ? { ...metrics.accommodation } : null,
         supplies: metrics.supplies ? { ...metrics.supplies } : null,
         groupsCount: metrics.groupsCount ?? null,
@@ -2200,7 +2200,7 @@ export class ActivitiesPopupComponent implements OnDestroy {
   ): ContractTypes.ChatMetricsDTO {
     const next: ContractTypes.ChatMetricsDTO = this.cloneChatMetrics(metrics) ?? {
       members: null,
-      car: null,
+      transport: null,
       accommodation: null,
       supplies: null,
       groupsCount: null,
@@ -2212,7 +2212,7 @@ export class ActivitiesPopupComponent implements OnDestroy {
   }
 
   private chatMetricPendingTotal(metrics: ContractTypes.ChatMetricsDTO): number {
-    return (['members', 'car', 'accommodation', 'supplies'] as const)
+    return (['members', 'transport', 'accommodation', 'supplies'] as const)
       .reduce((sum, key) => sum + Math.max(0, Math.trunc(Number(metrics[key]?.pending) || 0)), 0);
   }
 

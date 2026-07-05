@@ -1,6 +1,6 @@
 import type * as AppDTOs from '../../../shared/core/contracts';
 import type * as ContractTypes from '../../../shared/core/contracts';
-import type * as AppConstants from '../../../shared/core/common/constants';
+import * as AppConstants from '../../../shared/core/common/constants';
 
 import {
   Component,
@@ -307,8 +307,8 @@ export class EventSupplyContributionsPopupComponent implements DoCheck {
     if (!context) {
       return;
     }
-    const source = this.ownedAssetCards().find(card => card.id === context.assetId && card.type === 'Supplies');
-    const settings = this.getSubEventAssignedAssetSettings(context.subEventId, 'Supplies');
+    const source = this.ownedAssetCards().find(card => card.id === context.assetId && card.type === AppConstants.ASSET_TYPE_SUPPLIES);
+    const settings = this.getSubEventAssignedAssetSettings(context.subEventId, AppConstants.ASSET_TYPE_SUPPLIES);
     const max = Math.max(1, settings[context.assetId]?.capacityMax ?? source?.capacityTotal ?? 1);
     this.resourcePopupStore.bringDialogRef.set({
       subEventId: context.subEventId,
@@ -537,25 +537,25 @@ export class EventSupplyContributionsPopupComponent implements DoCheck {
       subEventId,
       assetOwnerUserId,
       assetAssignmentIds: {
-        Car: [...this.resolveSubEventAssignedAssetIds(subEventId, 'Car')],
-        Accommodation: [...this.resolveSubEventAssignedAssetIds(subEventId, 'Accommodation')],
-        Supplies: [...this.resolveSubEventAssignedAssetIds(subEventId, 'Supplies')]
+        [AppConstants.ASSET_TYPE_TRANSPORT]: [...this.resolveSubEventAssignedAssetIds(subEventId, AppConstants.ASSET_TYPE_TRANSPORT)],
+        [AppConstants.ASSET_TYPE_ACCOMMODATION]: [...this.resolveSubEventAssignedAssetIds(subEventId, AppConstants.ASSET_TYPE_ACCOMMODATION)],
+        [AppConstants.ASSET_TYPE_SUPPLIES]: [...this.resolveSubEventAssignedAssetIds(subEventId, AppConstants.ASSET_TYPE_SUPPLIES)]
       },
       assetSettingsByType: {
-        Car: { ...this.getSubEventAssignedAssetSettings(subEventId, 'Car') },
-        Accommodation: { ...this.getSubEventAssignedAssetSettings(subEventId, 'Accommodation') },
-        Supplies: { ...this.getSubEventAssignedAssetSettings(subEventId, 'Supplies') }
+        [AppConstants.ASSET_TYPE_TRANSPORT]: { ...this.getSubEventAssignedAssetSettings(subEventId, AppConstants.ASSET_TYPE_TRANSPORT) },
+        [AppConstants.ASSET_TYPE_ACCOMMODATION]: { ...this.getSubEventAssignedAssetSettings(subEventId, AppConstants.ASSET_TYPE_ACCOMMODATION) },
+        [AppConstants.ASSET_TYPE_SUPPLIES]: { ...this.getSubEventAssignedAssetSettings(subEventId, AppConstants.ASSET_TYPE_SUPPLIES) }
       },
       supplyContributionEntriesByAssetId: Object.fromEntries(
-        this.resolveSubEventAssignedAssetIds(subEventId, 'Supplies').map(assetId => [
+        this.resolveSubEventAssignedAssetIds(subEventId, AppConstants.ASSET_TYPE_SUPPLIES).map(assetId => [
           assetId,
           this.subEventSupplyContributionEntries(subEventId, assetId).map(entry => ({ ...entry }))
         ])
       ),
       fallbackAssetCardsByType: {
-        Car: this.persistedAssignedFallbackCards(context, 'Car'),
-        Accommodation: this.persistedAssignedFallbackCards(context, 'Accommodation'),
-        Supplies: this.persistedAssignedFallbackCards(context, 'Supplies')
+        [AppConstants.ASSET_TYPE_TRANSPORT]: this.persistedAssignedFallbackCards(context, AppConstants.ASSET_TYPE_TRANSPORT),
+        [AppConstants.ASSET_TYPE_ACCOMMODATION]: this.persistedAssignedFallbackCards(context, AppConstants.ASSET_TYPE_ACCOMMODATION),
+        [AppConstants.ASSET_TYPE_SUPPLIES]: this.persistedAssignedFallbackCards(context, AppConstants.ASSET_TYPE_SUPPLIES)
       }
     };
   }
@@ -580,7 +580,7 @@ export class EventSupplyContributionsPopupComponent implements DoCheck {
         )
       });
     }
-    for (const type of ['Car', 'Accommodation', 'Supplies'] as const) {
+    for (const type of AppConstants.ASSET_TYPES) {
       this.resourcePopupStore.assignedAssetIdsByKey[this.subEventAssetAssignmentKey(normalizedState.subEventId, type)] = [
         ...(normalizedState.assetAssignmentIds[type] ?? [])
       ];
@@ -605,9 +605,9 @@ export class EventSupplyContributionsPopupComponent implements DoCheck {
       return;
     }
     const nextSubEvent = this.cloneSubEvent(context.subEvent);
-    const cars = this.subEventAssetCapacityMetrics(nextSubEvent, 'Car');
-    const accommodation = this.subEventAssetCapacityMetrics(nextSubEvent, 'Accommodation');
-    const supplies = this.subEventAssetCapacityMetrics(nextSubEvent, 'Supplies');
+    const cars = this.subEventAssetCapacityMetrics(nextSubEvent, AppConstants.ASSET_TYPE_TRANSPORT);
+    const accommodation = this.subEventAssetCapacityMetrics(nextSubEvent, AppConstants.ASSET_TYPE_ACCOMMODATION);
+    const supplies = this.subEventAssetCapacityMetrics(nextSubEvent, AppConstants.ASSET_TYPE_SUPPLIES);
     nextSubEvent.carsAccepted = cars.joined;
     nextSubEvent.carsPending = cars.pending;
     nextSubEvent.carsCapacityMin = cars.capacityMin;
@@ -650,12 +650,12 @@ export class EventSupplyContributionsPopupComponent implements DoCheck {
     const settings = this.getSubEventAssignedAssetSettings(subEvent.id, type);
     const capacityMax = cards.reduce((sum, card) => sum + (settings[card.id]?.capacityMax ?? Math.max(0, card.capacityTotal)), 0);
     const capacityMin = cards.reduce((sum, card) => sum + (settings[card.id]?.capacityMin ?? 0), 0);
-    const pending = type === 'Supplies'
+    const pending = type === AppConstants.ASSET_TYPE_SUPPLIES
       ? 0
       : cards.reduce((sum, card) => (
         sum + ActivityResourceBuilder.subEventOccupancyRequestCount(card, subEvent.id, 'pending')
       ), 0);
-    if (type === 'Supplies') {
+    if (type === AppConstants.ASSET_TYPE_SUPPLIES) {
       return {
         joined: cards.reduce((sum, card) => sum + this.subEventSupplyProvidedCount(card.id, subEvent.id), 0),
         capacityMin,
@@ -755,7 +755,7 @@ export class EventSupplyContributionsPopupComponent implements DoCheck {
     subEventId: string
   ): Partial<Record<AppConstants.AssetType, ResourceAssetDTO[]>> {
     const next: Partial<Record<AppConstants.AssetType, ResourceAssetDTO[]>> = {};
-    for (const type of ['Car', 'Accommodation', 'Supplies'] as const) {
+    for (const type of AppConstants.ASSET_TYPES) {
       const cardsById = new Map<string, ResourceAssetDTO>();
       for (const card of current?.[type] ?? []) {
         cardsById.set(card.id, this.cloneAsset(card));

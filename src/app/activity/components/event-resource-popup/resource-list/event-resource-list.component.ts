@@ -13,7 +13,7 @@ import { from } from 'rxjs';
 
 import { APP_STATIC_DATA } from '../../../../shared/app-static-data';
 import { AssetDefaultsBuilder } from '../../../../shared/core/base/builders/asset-defaults.builder';
-import type * as AppConstants from '../../../../shared/core/common/constants';
+import * as AppConstants from '../../../../shared/core/common/constants';
 import type * as ContractTypes from '../../../../shared/core/contracts';
 import type * as AppDTOs from '../../../../shared/core/contracts/activity.interface';
 import { ActivityResourcesService } from '../../../../shared/core/base/services/activity-resources.service';
@@ -81,13 +81,13 @@ type EventResourceListMenuContext =
     };
 
 const EMPTY_FILTER_COUNTS: Record<AppConstants.AssetType, number> = {
-  Car: 0,
-  Accommodation: 0,
-  Supplies: 0
+  [AppConstants.ASSET_TYPE_TRANSPORT]: 0,
+  [AppConstants.ASSET_TYPE_ACCOMMODATION]: 0,
+  [AppConstants.ASSET_TYPE_SUPPLIES]: 0
 };
 
 const EMPTY_MODEL: EventResourceListModel = {
-  filter: 'Car',
+  filter: AppConstants.ASSET_TYPE_TRANSPORT,
   metricIdentity: '',
   filterCounts: EMPTY_FILTER_COUNTS,
   items: []
@@ -128,7 +128,7 @@ export class EventResourceListComponent implements DoCheck {
   private resourceListReady = false;
   private resourceListVisibleCount = 0;
 
-  protected readonly resourceFilterOptions: readonly AppConstants.AssetType[] = ['Car', 'Accommodation', 'Supplies'];
+  protected readonly resourceFilterOptions: readonly AppConstants.AssetType[] = AppConstants.ASSET_TYPES;
 
   protected resourceSmartListQuery: Partial<ListQuery<ResourceSmartListFilters>> = {
     filters: {
@@ -379,12 +379,12 @@ export class EventResourceListComponent implements DoCheck {
     };
     const assignmentQuantityUpdates = this.assignmentQuantityUpdates(context.subEvent.id, filter, items);
     const nextSubEvent = { ...context.subEvent };
-    if (filter === 'Car') {
+    if (filter === AppConstants.ASSET_TYPE_TRANSPORT) {
       nextSubEvent.carsAccepted = metrics.accepted;
       nextSubEvent.carsPending = metrics.pending;
       nextSubEvent.carsCapacityMin = metrics.capacityMin;
       nextSubEvent.carsCapacityMax = metrics.capacityMax;
-    } else if (filter === 'Accommodation') {
+    } else if (filter === AppConstants.ASSET_TYPE_ACCOMMODATION) {
       nextSubEvent.accommodationAccepted = metrics.accepted;
       nextSubEvent.accommodationPending = metrics.pending;
       nextSubEvent.accommodationCapacityMin = metrics.capacityMin;
@@ -537,13 +537,13 @@ export class EventResourceListComponent implements DoCheck {
   }
 
   private chatMetricBucketType(type: AppConstants.SubEventResourceFilter): ActivityChatMetricBucketType | null {
-    if (type === 'Car') {
-      return 'car';
+    if (type === AppConstants.ASSET_TYPE_TRANSPORT) {
+      return 'transport';
     }
-    if (type === 'Accommodation') {
+    if (type === AppConstants.ASSET_TYPE_ACCOMMODATION) {
       return 'accommodation';
     }
-    if (type === 'Supplies') {
+    if (type === AppConstants.ASSET_TYPE_SUPPLIES) {
       return 'supplies';
     }
     return null;
@@ -625,11 +625,11 @@ export class EventResourceListComponent implements DoCheck {
     switch (type) {
       case 'Members':
         return 'blue';
-      case 'Car':
+      case AppConstants.ASSET_TYPE_TRANSPORT:
         return 'sky';
-      case 'Accommodation':
+      case AppConstants.ASSET_TYPE_ACCOMMODATION:
         return 'green';
-      case 'Supplies':
+      case AppConstants.ASSET_TYPE_SUPPLIES:
         return 'brown';
       default:
         return 'default';

@@ -133,7 +133,7 @@ export interface ChatMetricBucketDTO {
 
 export interface ChatMetricsDTO {
   members?: ChatMetricBucketDTO | null;
-  car?: ChatMetricBucketDTO | null;
+  transport?: ChatMetricBucketDTO | null;
   accommodation?: ChatMetricBucketDTO | null;
   supplies?: ChatMetricBucketDTO | null;
   groupsCount?: number | null;

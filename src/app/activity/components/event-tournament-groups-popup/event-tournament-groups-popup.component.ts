@@ -18,11 +18,13 @@ import {
 
 import {
   ActivityResourceBuilder,
+  AssetDefaultsBuilder,
   ActivityResourcesService,
   EventsService
 } from '../../../shared/core';
 import type * as AppDTOs from '../../../shared/core/contracts';
 import type * as ContractTypes from '../../../shared/core/contracts';
+import * as AppConstants from '../../../shared/core/common/constants';
 import type { AssetType, SubEventResourceFilter } from '../../../shared/core/common/constants';
 import {
   AccordionComponent,
@@ -67,7 +69,7 @@ type TournamentGroupsAction =
   | 'edit-group'
   | 'delete-group'
   | 'members'
-  | 'car'
+  | 'transport'
   | 'accommodation'
   | 'supplies';
 type TournamentGroupsHeaderAction = 'add-group';
@@ -75,7 +77,7 @@ type TournamentGroupsTab = 'standings' | 'history';
 type TournamentLeaderboardMode = 'Score' | 'Fifa';
 type TournamentResourceMetricsByType = Partial<Record<AssetType, TournamentResourceMetrics>>;
 
-const TOURNAMENT_RESOURCE_TYPES: readonly AssetType[] = ['Car', 'Accommodation', 'Supplies'] as const;
+const TOURNAMENT_RESOURCE_TYPES: readonly AssetType[] = AppConstants.ASSET_TYPES;
 
 interface TournamentGroupsActionContext {
   action: TournamentGroupsAction;
@@ -430,9 +432,9 @@ export class EventTournamentGroupsPopupComponent {
           id: 'assets',
           label: 'Assets',
           items: [
-            this.resourceMenuItem('car', 'Autó', 'directions_car', 'sky', contextBase, this.resourceMetricLabel(stage.subEventId, 'Car')),
-            this.resourceMenuItem('accommodation', 'Ingatlan', 'apartment', 'green', contextBase, this.resourceMetricLabel(stage.subEventId, 'Accommodation')),
-            this.resourceMenuItem('supplies', 'Kellékek', 'inventory_2', 'brown', contextBase, this.resourceMetricLabel(stage.subEventId, 'Supplies'))
+            this.resourceMenuItem('transport', AssetDefaultsBuilder.assetTypeLabel(AppConstants.ASSET_TYPE_TRANSPORT), 'directions_car', 'sky', contextBase, this.resourceMetricLabel(stage.subEventId, AppConstants.ASSET_TYPE_TRANSPORT)),
+            this.resourceMenuItem('accommodation', AssetDefaultsBuilder.assetTypeLabel(AppConstants.ASSET_TYPE_ACCOMMODATION), 'apartment', 'green', contextBase, this.resourceMetricLabel(stage.subEventId, AppConstants.ASSET_TYPE_ACCOMMODATION)),
+            this.resourceMenuItem('supplies', AssetDefaultsBuilder.assetTypeLabel(AppConstants.ASSET_TYPE_SUPPLIES), 'inventory_2', 'brown', contextBase, this.resourceMetricLabel(stage.subEventId, AppConstants.ASSET_TYPE_SUPPLIES))
           ]
         }
       ]
@@ -462,14 +464,14 @@ export class EventTournamentGroupsPopupComponent {
       case 'members':
         this.openResourcePopup('Members', stage, group, event.sourceEvent);
         return;
-      case 'car':
-        this.openResourcePopup('Car', stage, group, event.sourceEvent);
+      case 'transport':
+        this.openResourcePopup(AppConstants.ASSET_TYPE_TRANSPORT, stage, group, event.sourceEvent);
         return;
       case 'accommodation':
-        this.openResourcePopup('Accommodation', stage, group, event.sourceEvent);
+        this.openResourcePopup(AppConstants.ASSET_TYPE_ACCOMMODATION, stage, group, event.sourceEvent);
         return;
       case 'supplies':
-        this.openResourcePopup('Supplies', stage, group, event.sourceEvent);
+        this.openResourcePopup(AppConstants.ASSET_TYPE_SUPPLIES, stage, group, event.sourceEvent);
         return;
     }
   }

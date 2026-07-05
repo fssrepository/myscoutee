@@ -1,4 +1,4 @@
-import type * as AppConstants from '../common/constants';
+import * as AppConstants from '../common/constants';
 import type * as AssetContracts from './asset.interface';
 import type * as ChatContracts from './chat.interface';
 import type { DateRangeDto } from './date.interface';
@@ -321,7 +321,7 @@ export interface SubEventAssignedAssetSettingsDTO {
 export interface SubEventAssetMembersContextDTO {
   subEventId: string;
   assetId: string;
-  type: 'Car' | 'Accommodation';
+  type: typeof AppConstants.ASSET_TYPE_TRANSPORT | typeof AppConstants.ASSET_TYPE_ACCOMMODATION;
   ownerUserId: string | null;
 }
 

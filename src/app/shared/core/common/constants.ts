@@ -25,10 +25,15 @@ export const ACTIVITY_MEMBER_OWNER_TYPES = ['event', 'subEvent', 'group', 'asset
 export type ActivityMemberOwnerType = typeof ACTIVITY_MEMBER_OWNER_TYPES[number];
 
 // Asset
-export const ASSET_TYPES = ['Car', 'Accommodation', 'Supplies'] as const;
+export const ASSET_TYPE_TRANSPORT = 'Transport' as const;
+export const ASSET_TYPE_ACCOMMODATION = 'Accommodation' as const;
+export const ASSET_TYPE_SUPPLIES = 'Supplies' as const;
+export const ASSET_FILTER_TICKET = 'Ticket' as const;
+
+export const ASSET_TYPES = [ASSET_TYPE_TRANSPORT, ASSET_TYPE_ACCOMMODATION, ASSET_TYPE_SUPPLIES] as const;
 export type AssetType = typeof ASSET_TYPES[number];
 
-export const ASSET_FILTER_TYPES = [...ASSET_TYPES, 'Ticket'] as const;
+export const ASSET_FILTER_TYPES = [...ASSET_TYPES, ASSET_FILTER_TICKET] as const;
 export type AssetFilterType = typeof ASSET_FILTER_TYPES[number];
 
 export const SUB_EVENT_RESOURCE_FILTERS = ['Members', ...ASSET_TYPES] as const;
@@ -47,6 +52,84 @@ export const ASSET_REQUEST_KINDS = ['manual', 'borrow'] as const;
 export type AssetRequestKind = typeof ASSET_REQUEST_KINDS[number];
 
 export type AssetCategory = string;
+
+export const TRANSPORT_CATEGORY_SEDAN = 'Sedan' as const;
+export const TRANSPORT_CATEGORY_SUV = 'SUV' as const;
+export const TRANSPORT_CATEGORY_VAN = 'Van' as const;
+export const TRANSPORT_CATEGORY_BUS = 'Bus' as const;
+export const TRANSPORT_CATEGORY_TRUCK = 'Truck' as const;
+export const TRANSPORT_CATEGORY_MOTORCYCLE = 'Motorcycle' as const;
+export const TRANSPORT_CATEGORY_BICYCLE = 'Bicycle' as const;
+export const TRANSPORT_CATEGORY_BOAT = 'Boat' as const;
+export const TRANSPORT_CATEGORY_FLIGHT = 'Flight' as const;
+export const TRANSPORT_CATEGORY_SHUTTLE = 'Shuttle' as const;
+
+export const ACCOMMODATION_CATEGORY_HOTEL = 'Hotel' as const;
+export const ACCOMMODATION_CATEGORY_APARTMENT = 'Apartment' as const;
+export const ACCOMMODATION_CATEGORY_HOUSE = 'House' as const;
+export const ACCOMMODATION_CATEGORY_ROOM = 'Room' as const;
+export const ACCOMMODATION_CATEGORY_VENUE = 'Venue' as const;
+export const ACCOMMODATION_CATEGORY_CAMPSITE = 'Campsite' as const;
+export const ACCOMMODATION_CATEGORY_STORAGE = 'Storage' as const;
+export const ACCOMMODATION_CATEGORY_WORKSPACE = 'Workspace' as const;
+
+export const SUPPLIES_CATEGORY_CAMPING = 'Camping' as const;
+export const SUPPLIES_CATEGORY_COOKING = 'Cooking' as const;
+export const SUPPLIES_CATEGORY_GAMES = 'Games' as const;
+export const SUPPLIES_CATEGORY_AUDIO = 'Audio' as const;
+export const SUPPLIES_CATEGORY_SPORTS = 'Sports' as const;
+export const SUPPLIES_CATEGORY_SAFETY = 'Safety' as const;
+export const SUPPLIES_CATEGORY_DECOR = 'Decor' as const;
+export const SUPPLIES_CATEGORY_TECH = 'Tech' as const;
+
+export const TRANSPORT_ASSET_CATEGORIES = [
+  TRANSPORT_CATEGORY_SEDAN,
+  TRANSPORT_CATEGORY_SUV,
+  TRANSPORT_CATEGORY_VAN,
+  TRANSPORT_CATEGORY_BUS,
+  TRANSPORT_CATEGORY_TRUCK,
+  TRANSPORT_CATEGORY_MOTORCYCLE,
+  TRANSPORT_CATEGORY_BICYCLE,
+  TRANSPORT_CATEGORY_BOAT,
+  TRANSPORT_CATEGORY_FLIGHT,
+  TRANSPORT_CATEGORY_SHUTTLE
+] as const;
+
+export const ACCOMMODATION_ASSET_CATEGORIES = [
+  ACCOMMODATION_CATEGORY_HOTEL,
+  ACCOMMODATION_CATEGORY_APARTMENT,
+  ACCOMMODATION_CATEGORY_HOUSE,
+  ACCOMMODATION_CATEGORY_ROOM,
+  ACCOMMODATION_CATEGORY_VENUE,
+  ACCOMMODATION_CATEGORY_CAMPSITE,
+  ACCOMMODATION_CATEGORY_STORAGE,
+  ACCOMMODATION_CATEGORY_WORKSPACE
+] as const;
+
+export const SUPPLIES_ASSET_CATEGORIES = [
+  SUPPLIES_CATEGORY_CAMPING,
+  SUPPLIES_CATEGORY_COOKING,
+  SUPPLIES_CATEGORY_GAMES,
+  SUPPLIES_CATEGORY_AUDIO,
+  SUPPLIES_CATEGORY_SPORTS,
+  SUPPLIES_CATEGORY_SAFETY,
+  SUPPLIES_CATEGORY_DECOR,
+  SUPPLIES_CATEGORY_TECH
+] as const;
+
+export const ASSET_CATEGORY_OPTIONS_BY_TYPE = {
+  [ASSET_TYPE_TRANSPORT]: TRANSPORT_ASSET_CATEGORIES,
+  [ASSET_TYPE_ACCOMMODATION]: ACCOMMODATION_ASSET_CATEGORIES,
+  [ASSET_TYPE_SUPPLIES]: SUPPLIES_ASSET_CATEGORIES
+} as const satisfies Record<AssetType, readonly AssetCategory[]>;
+
+export function isAssetType(value: unknown): value is AssetType {
+  return ASSET_TYPES.includes(value as AssetType);
+}
+
+export function isAssetFilterType(value: unknown): value is AssetFilterType {
+  return ASSET_FILTER_TYPES.includes(value as AssetFilterType);
+}
 
 export const ASSET_LIFECYCLE_STATUSES = [
   'A',

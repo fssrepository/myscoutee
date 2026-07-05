@@ -14,7 +14,7 @@ import { MatIconModule } from '@angular/material/icon';
 import { APP_STATIC_DATA } from '../../../../shared/app-static-data';
 import { AssetCardBuilder } from '../../../../shared/core/base/builders';
 import { AssetDefaultsBuilder } from '../../../../shared/core/base/builders/asset-defaults.builder';
-import type * as AppConstants from '../../../../shared/core/common/constants';
+import * as AppConstants from '../../../../shared/core/common/constants';
 import type * as ContractTypes from '../../../../shared/core/contracts';
 import {
   SubEventResourcePopupStore,
@@ -44,6 +44,7 @@ export class EventResourceAssetViewComponent implements OnChanges {
 
   private readonly resourcePopupStore = inject(SubEventResourcePopupStore);
 
+  protected readonly assetTypeTransport = AppConstants.ASSET_TYPE_TRANSPORT;
   protected showPoliciesPopup = false;
 
   ngOnChanges(changes: SimpleChanges): void {
@@ -126,7 +127,7 @@ export class EventResourceAssetViewComponent implements OnChanges {
   }
 
   protected resourceTypeClass(type: AppConstants.SubEventResourceFilter): string {
-    return AssetDefaultsBuilder.assetTypeClass(type === 'Members' ? 'Car' : type);
+    return AssetDefaultsBuilder.assetTypeClass(type === 'Members' ? AppConstants.ASSET_TYPE_TRANSPORT : type);
   }
 
   protected resourceTypeIcon(type: AppConstants.SubEventResourceFilter): string {

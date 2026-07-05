@@ -25,6 +25,7 @@ import {
 } from '../../../shared/core/base/services/session.service';
 import type { AssetDTO } from '../../../shared/core/contracts/asset.interface';
 import type { ShareTokenResolvedItem } from '../../../shared/core/contracts/share.interface';
+import * as AppConstants from '../../../shared/core/common/constants';
 import type { AssetType } from '../../../shared/core/common/constants';
 import { DemoBootstrapSelectorStore } from '../../../shared/ui/context/stores/demo-bootstrap-selector.store';
 import { MemberMenuStore } from '../../../shared/ui/context/stores/member-menu.store';
@@ -211,7 +212,7 @@ export class AdminHelpSessionPageComponent implements OnInit {
   }
 
   private parseDemoAdminHelpPayload(payload: string): { ownerUserId: string; targetKey: string } | null {
-    const targetKeys = ['service-chat', 'events', 'asset-supplies', 'asset-car'];
+    const targetKeys = ['service-chat', 'events', 'asset-supplies', 'asset-transport'];
     const targetKey = targetKeys.find(key => payload.endsWith(`-${key}`)) ?? 'current';
     const userPayload = targetKey === 'current' ? payload : payload.slice(0, -(targetKey.length + 1));
     const ownerUserId = userPayload.split('-').pop()?.trim() ?? '';
@@ -226,8 +227,8 @@ export class AdminHelpSessionPageComponent implements OnInit {
         return '/game?supportTarget=event&eventId=e1';
       case 'asset-supplies':
         return '/game?supportTarget=asset&assetFilter=Supplies&assetId=asset-sup-2&assetTitle=Game%20Night%20Box&assetSubtitle=Board%20games%20%2B%20cards%20%2B%20speakers&assetCity=Austin&assetDetails=Board%20games%2C%20cards%2C%20and%20speakers%20ready%20for%20the%20venue.&assetPreview=https%3A%2F%2Fpicsum.photos%2Fseed%2Fsupplies-gear-asset-sup-2%2F1200%2F700';
-      case 'asset-car':
-        return '/game?supportTarget=asset&assetFilter=Car';
+      case 'asset-transport':
+        return '/game?supportTarget=asset&assetFilter=Transport';
       default:
         return '/game';
     }
@@ -311,8 +312,8 @@ export class AdminHelpSessionPageComponent implements OnInit {
       subtitle,
       category,
       city: city || this.defaultSupportAssetCity(assetType),
-      capacityTotal: this.positiveIntegerParam(parsed, 'assetCapacity') || (assetType === 'Supplies' ? 4 : 1),
-      quantity: this.positiveIntegerParam(parsed, 'assetQuantity') || (assetType === 'Supplies' ? 4 : 1),
+      capacityTotal: this.positiveIntegerParam(parsed, 'assetCapacity') || (assetType === AppConstants.ASSET_TYPE_SUPPLIES ? 4 : 1),
+      quantity: this.positiveIntegerParam(parsed, 'assetQuantity') || (assetType === AppConstants.ASSET_TYPE_SUPPLIES ? 4 : 1),
       description: details || subtitle || title,
       imageUrl,
       visibility: 'Public',
@@ -326,14 +327,14 @@ export class AdminHelpSessionPageComponent implements OnInit {
   }
 
   private defaultSupportAssetCity(assetType: AssetType): string {
-    return assetType === 'Supplies' ? 'Austin' : '';
+    return assetType === AppConstants.ASSET_TYPE_SUPPLIES ? 'Austin' : '';
   }
 
   private defaultSupportAssetImage(assetType: AssetType, seed: string): string {
-    const flavor = assetType === 'Car'
-      ? 'road'
-      : assetType === 'Accommodation'
-        ? 'stay'
+    const flavor = assetType === AppConstants.ASSET_TYPE_TRANSPORT
+      ? 'transport'
+      : assetType === AppConstants.ASSET_TYPE_ACCOMMODATION
+        ? 'property'
         : 'gear';
     const normalizedSeed = encodeURIComponent(`${assetType.toLowerCase()}-${flavor}-${seed || assetType.toLowerCase()}`);
     return `https://picsum.photos/seed/${normalizedSeed}/1200/700`;
@@ -362,12 +363,12 @@ export class AdminHelpSessionPageComponent implements OnInit {
 
   private toAssetFilter(value: string | null): AssetType | null {
     switch (`${value ?? ''}`.trim()) {
-      case 'Car':
-        return 'Car';
-      case 'Accommodation':
-        return 'Accommodation';
-      case 'Supplies':
-        return 'Supplies';
+      case AppConstants.ASSET_TYPE_TRANSPORT:
+        return AppConstants.ASSET_TYPE_TRANSPORT;
+      case AppConstants.ASSET_TYPE_ACCOMMODATION:
+        return AppConstants.ASSET_TYPE_ACCOMMODATION;
+      case AppConstants.ASSET_TYPE_SUPPLIES:
+        return AppConstants.ASSET_TYPE_SUPPLIES;
       default:
         return null;
     }

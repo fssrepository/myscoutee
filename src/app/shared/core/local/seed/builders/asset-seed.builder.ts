@@ -1,6 +1,6 @@
 import type { AssetPolicyRecord, AssetPricingConfigRecord } from '../../source/entity/asset.entity';
 
-import type * as AppConstants from '../../../common/constants';
+import * as AppConstants from '../../../common/constants';
 
 export interface SeedAssetTemplate {
   id: string;
@@ -141,31 +141,31 @@ export class SeedAssetBuilder {
   }
 
   static defaultAssetImage(type: AppConstants.AssetType, seed = type.toLowerCase()): string {
-    const flavor = type === 'Car'
-      ? 'road'
-      : type === 'Accommodation'
-        ? 'stay'
+    const flavor = type === AppConstants.ASSET_TYPE_TRANSPORT
+      ? 'transport'
+      : type === AppConstants.ASSET_TYPE_ACCOMMODATION
+        ? 'property'
         : 'gear';
     const normalizedSeed = encodeURIComponent(`${type.toLowerCase()}-${flavor}-${seed || type.toLowerCase()}`);
     return `https://picsum.photos/seed/${normalizedSeed}/1200/700`;
   }
 
   static defaultAssetSubtitle(type: AppConstants.AssetType): string {
-    if (type === 'Car') {
-      return 'Seats + luggage capacity';
+    if (type === AppConstants.ASSET_TYPE_TRANSPORT) {
+      return 'Passenger capacity + luggage space';
     }
-    if (type === 'Accommodation') {
+    if (type === AppConstants.ASSET_TYPE_ACCOMMODATION) {
       return 'Rooms + sleeping spots';
     }
     return 'Packed items + delivery window';
   }
 
   static defaultAssetDetails(type: AppConstants.AssetType): string {
-    if (type === 'Car') {
+    if (type === AppConstants.ASSET_TYPE_TRANSPORT) {
       return 'Route, pickup time, and luggage constraints are confirmed.';
     }
-    if (type === 'Accommodation') {
-      return 'Check-in details, room setup, and stay notes are confirmed.';
+    if (type === AppConstants.ASSET_TYPE_ACCOMMODATION) {
+      return 'Check-in details, room setup, and property notes are confirmed.';
     }
     return 'Item condition, handoff location, and timing are confirmed.';
   }
@@ -186,11 +186,11 @@ export class SeedAssetBuilder {
       pricingMode: AppConstants.PricingMode;
     }> = [
       {
-        id: 'asset-car-1',
-        type: 'Car',
+        id: 'asset-transport-1',
+        type: AppConstants.ASSET_TYPE_TRANSPORT,
         title: 'City-to-Lake SUV',
         subtitle: 'Hyundai Tucson · Automatic',
-        category: 'Ride',
+        category: AppConstants.TRANSPORT_CATEGORY_SUV,
         city: 'Austin',
         capacityTotal: 4,
         quantity: 1,
@@ -199,11 +199,11 @@ export class SeedAssetBuilder {
         pricingMode: 'hybrid'
       },
       {
-        id: 'asset-car-2',
-        type: 'Car',
+        id: 'asset-transport-2',
+        type: AppConstants.ASSET_TYPE_TRANSPORT,
         title: 'Airport Shuttle Hatchback',
         subtitle: 'Volkswagen Golf · Manual',
-        category: 'Ride',
+        category: AppConstants.TRANSPORT_CATEGORY_SHUTTLE,
         city: 'Austin',
         capacityTotal: 4,
         quantity: 1,
@@ -212,11 +212,11 @@ export class SeedAssetBuilder {
         pricingMode: 'demand-based'
       },
       {
-        id: 'asset-car-3',
-        type: 'Car',
+        id: 'asset-transport-3',
+        type: AppConstants.ASSET_TYPE_TRANSPORT,
         title: 'Volunteer Crew Van',
         subtitle: 'Ford Transit · Automatic',
-        category: 'Ride',
+        category: AppConstants.TRANSPORT_CATEGORY_VAN,
         city: 'Austin',
         capacityTotal: 7,
         quantity: 1,
@@ -225,11 +225,11 @@ export class SeedAssetBuilder {
         pricingMode: 'time-based'
       },
       {
-        id: 'asset-car-4',
-        type: 'Car',
+        id: 'asset-transport-4',
+        type: AppConstants.ASSET_TYPE_TRANSPORT,
         title: 'Summit Transfer Sedan',
         subtitle: 'Toyota Corolla · Hybrid',
-        category: 'Ride',
+        category: AppConstants.TRANSPORT_CATEGORY_SEDAN,
         city: 'Austin',
         capacityTotal: 4,
         quantity: 1,
@@ -239,10 +239,10 @@ export class SeedAssetBuilder {
       },
       {
         id: 'asset-acc-1',
-        type: 'Accommodation',
+        type: AppConstants.ASSET_TYPE_ACCOMMODATION,
         title: 'South Congress Loft',
         subtitle: '2 bedrooms · 1 living room',
-        category: 'Stay',
+        category: AppConstants.ACCOMMODATION_CATEGORY_APARTMENT,
         city: 'Austin',
         capacityTotal: 4,
         quantity: 1,
@@ -252,10 +252,10 @@ export class SeedAssetBuilder {
       },
       {
         id: 'asset-acc-2',
-        type: 'Accommodation',
+        type: AppConstants.ASSET_TYPE_ACCOMMODATION,
         title: 'Eastside Guest Room',
         subtitle: 'Private room · Shared bathroom',
-        category: 'Stay',
+        category: AppConstants.ACCOMMODATION_CATEGORY_ROOM,
         city: 'Austin',
         capacityTotal: 2,
         quantity: 1,
@@ -265,10 +265,10 @@ export class SeedAssetBuilder {
       },
       {
         id: 'asset-acc-3',
-        type: 'Accommodation',
+        type: AppConstants.ASSET_TYPE_ACCOMMODATION,
         title: 'Harbor View Studio',
         subtitle: 'Studio loft · Self check-in',
-        category: 'Stay',
+        category: AppConstants.ACCOMMODATION_CATEGORY_APARTMENT,
         city: 'San Diego',
         capacityTotal: 2,
         quantity: 1,
@@ -278,10 +278,10 @@ export class SeedAssetBuilder {
       },
       {
         id: 'asset-acc-4',
-        type: 'Accommodation',
+        type: AppConstants.ASSET_TYPE_ACCOMMODATION,
         title: 'Riverside Family Flat',
         subtitle: '3 rooms · Kitchen access',
-        category: 'Stay',
+        category: AppConstants.ACCOMMODATION_CATEGORY_HOUSE,
         city: 'Denver',
         capacityTotal: 5,
         quantity: 1,
@@ -291,10 +291,10 @@ export class SeedAssetBuilder {
       },
       {
         id: 'asset-sup-1',
-        type: 'Supplies',
+        type: AppConstants.ASSET_TYPE_SUPPLIES,
         title: 'Camping Gear Kit',
         subtitle: 'Tent + lamps + first aid',
-        category: 'Camping',
+        category: AppConstants.SUPPLIES_CATEGORY_CAMPING,
         city: 'Austin',
         capacityTotal: 6,
         quantity: 6,
@@ -304,10 +304,10 @@ export class SeedAssetBuilder {
       },
       {
         id: 'asset-sup-2',
-        type: 'Supplies',
+        type: AppConstants.ASSET_TYPE_SUPPLIES,
         title: 'Game Night Box',
         subtitle: 'Board games + cards + speakers',
-        category: 'Games',
+        category: AppConstants.SUPPLIES_CATEGORY_GAMES,
         city: 'Austin',
         capacityTotal: 4,
         quantity: 4,
@@ -317,10 +317,10 @@ export class SeedAssetBuilder {
       },
       {
         id: 'asset-sup-3',
-        type: 'Supplies',
+        type: AppConstants.ASSET_TYPE_SUPPLIES,
         title: 'Field Kitchen Crate',
         subtitle: 'Burners + pots + serving tools',
-        category: 'Cooking',
+        category: AppConstants.SUPPLIES_CATEGORY_COOKING,
         city: 'Austin',
         capacityTotal: 5,
         quantity: 5,
@@ -330,10 +330,10 @@ export class SeedAssetBuilder {
       },
       {
         id: 'asset-sup-4',
-        type: 'Supplies',
+        type: AppConstants.ASSET_TYPE_SUPPLIES,
         title: 'PA Speaker Pack',
         subtitle: 'Mixer + speakers + stands',
-        category: 'Audio',
+        category: AppConstants.SUPPLIES_CATEGORY_AUDIO,
         city: 'Austin',
         capacityTotal: 3,
         quantity: 3,
@@ -343,10 +343,10 @@ export class SeedAssetBuilder {
       },
       {
         id: 'asset-sup-5',
-        type: 'Supplies',
+        type: AppConstants.ASSET_TYPE_SUPPLIES,
         title: 'Safety Marshal Kit',
         subtitle: 'Radios + torches + hi-vis gear',
-        category: 'Safety',
+        category: AppConstants.SUPPLIES_CATEGORY_SAFETY,
         city: 'Austin',
         capacityTotal: 8,
         quantity: 8,
@@ -356,10 +356,10 @@ export class SeedAssetBuilder {
       },
       {
         id: 'asset-sup-6',
-        type: 'Supplies',
+        type: AppConstants.ASSET_TYPE_SUPPLIES,
         title: 'Popup Decor Set',
         subtitle: 'Lanterns + signage + table runners',
-        category: 'Decor',
+        category: AppConstants.SUPPLIES_CATEGORY_DECOR,
         city: 'Austin',
         capacityTotal: 6,
         quantity: 6,
@@ -369,10 +369,10 @@ export class SeedAssetBuilder {
       },
       {
         id: 'asset-sup-7',
-        type: 'Supplies',
+        type: AppConstants.ASSET_TYPE_SUPPLIES,
         title: 'Trail Repair Tools',
         subtitle: 'Pumps + patches + multi-tools',
-        category: 'Sports',
+        category: AppConstants.SUPPLIES_CATEGORY_SPORTS,
         city: 'Austin',
         capacityTotal: 5,
         quantity: 5,
@@ -382,10 +382,10 @@ export class SeedAssetBuilder {
       },
       {
         id: 'asset-sup-8',
-        type: 'Supplies',
+        type: AppConstants.ASSET_TYPE_SUPPLIES,
         title: 'Charging Station Tote',
         subtitle: 'Power banks + strips + cables',
-        category: 'Tech',
+        category: AppConstants.SUPPLIES_CATEGORY_TECH,
         city: 'Austin',
         capacityTotal: 7,
         quantity: 7,

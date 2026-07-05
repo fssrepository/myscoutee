@@ -3,7 +3,7 @@ import { PricingBuilder } from './pricing.builder';
 
 import { AssetDto } from '../../contracts';
 import type * as AppDTOs from '../../contracts';
-import type * as AppConstants from '../../common/constants';
+import * as AppConstants from '../../common/constants';
 
 export type AssetCardFormValue = Omit<AppDTOs.AssetDetailDTO, 'id' | 'requests'>;
 
@@ -15,7 +15,7 @@ export class AssetCardBuilder {
       subtitle: '',
       category: AssetDefaultsBuilder.defaultCategory(type),
       city: '',
-      capacityTotal: type === 'Supplies' ? 6 : 4,
+      capacityTotal: type === AppConstants.ASSET_TYPE_SUPPLIES ? 6 : 4,
       quantity: this.defaultQuantity(type),
       details: '',
       imageUrl: '',
@@ -66,8 +66,8 @@ export class AssetCardBuilder {
       title,
       subtitle: assetForm.subtitle.trim(),
       category: AssetDefaultsBuilder.normalizeCategory(assetForm.type, assetForm.category),
-      city: assetForm.type === 'Accommodation' ? accommodationLocation : city,
-      capacityTotal: Math.max(1, Number(assetForm.capacityTotal) || (assetForm.type === 'Supplies' ? 6 : 4)),
+      city: assetForm.type === AppConstants.ASSET_TYPE_ACCOMMODATION ? accommodationLocation : city,
+      capacityTotal: Math.max(1, Number(assetForm.capacityTotal) || (assetForm.type === AppConstants.ASSET_TYPE_SUPPLIES ? 6 : 4)),
       quantity: this.normalizeQuantity(assetForm.type, assetForm.quantity, assetForm.capacityTotal),
       details: assetForm.details.trim(),
       imageUrl,
@@ -92,13 +92,13 @@ export class AssetCardBuilder {
   }
 
   static activeAssetTypeFromFilter(filter: AppConstants.AssetFilterType): AppConstants.AssetType {
-    if (filter === 'Accommodation') {
-      return 'Accommodation';
+    if (filter === AppConstants.ASSET_TYPE_ACCOMMODATION) {
+      return AppConstants.ASSET_TYPE_ACCOMMODATION;
     }
-    if (filter === 'Supplies') {
-      return 'Supplies';
+    if (filter === AppConstants.ASSET_TYPE_SUPPLIES) {
+      return AppConstants.ASSET_TYPE_SUPPLIES;
     }
-    return 'Car';
+    return AppConstants.ASSET_TYPE_TRANSPORT;
   }
 
   static cloneCard(card: AppDTOs.AssetDTO | AppDTOs.AssetDetailDTO): AppDTOs.AssetDTO {
@@ -149,13 +149,13 @@ export class AssetCardBuilder {
   }
 
   static normalizeAssetRoutes(type: AppConstants.AssetType, routes: string[] | undefined | null): string[] {
-    if (type === 'Supplies') {
+    if (type === AppConstants.ASSET_TYPE_SUPPLIES) {
       return [];
     }
     const cleaned = (routes ?? [])
       .map(value => value.trim())
       .filter((value, index, arr) => value.length > 0 && arr.indexOf(value) === index);
-    if (type === 'Accommodation') {
+    if (type === AppConstants.ASSET_TYPE_ACCOMMODATION) {
       return cleaned.length > 0 ? [cleaned[0]] : [''];
     }
     return cleaned.length > 0 ? cleaned : [''];
@@ -219,7 +219,7 @@ export class AssetCardBuilder {
   }
 
   static defaultQuantity(type: AppConstants.AssetType): number {
-    return type === 'Supplies' ? 6 : 1;
+    return type === AppConstants.ASSET_TYPE_SUPPLIES ? 6 : 1;
   }
 
   static normalizeQuantity(
@@ -231,20 +231,20 @@ export class AssetCardBuilder {
     if (parsed > 0) {
       return parsed;
     }
-    if (type === 'Supplies') {
+    if (type === AppConstants.ASSET_TYPE_SUPPLIES) {
       return Math.max(1, Math.trunc(Number(capacityFallback) || 0));
     }
     return this.defaultQuantity(type);
   }
 
   static primaryLocation(card: AppDTOs.AssetDTO): string {
-    return card.type === 'Accommodation'
+    return card.type === AppConstants.ASSET_TYPE_ACCOMMODATION
       ? (card.locationLabel?.trim() || card.city.trim())
       : '';
   }
 
   static canOpenMap(card: AppDTOs.AssetDTO): boolean {
-    return card.type === 'Accommodation' && this.primaryLocation(card).length > 0;
+    return card.type === AppConstants.ASSET_TYPE_ACCOMMODATION && this.primaryLocation(card).length > 0;
   }
 
   static assetPoliciesEnabled(card: AppDTOs.AssetDTO | AppDTOs.AssetDetailDTO | null | undefined): boolean {

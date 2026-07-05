@@ -124,7 +124,7 @@ import {
   ProfileStore
 } from '../../../../shared/ui/context/stores/profile.store';
 import type * as ActivityContracts from '../../../../shared/core/contracts/activity.interface';
-import type * as AppConstants from '../../../../shared/core/common/constants';
+import * as AppConstants from '../../../../shared/core/common/constants';
 import type * as AppDTOs from '../../../../shared/core/contracts';
 import type * as ContractTypes from '../../../../shared/core/contracts';
 import type { ChatDTO } from '../../../../shared/core/contracts/chat.interface';
@@ -312,11 +312,7 @@ export class EventResourceAssetExploreComponent implements DoCheck {
       subtitle: this.popupSubtitle(),
       type: popup.type,
       category: popup.category,
-      categoryOptions: [
-        ...AssetDefaultsBuilder.assetCategoryOptions('Car'),
-        ...AssetDefaultsBuilder.assetCategoryOptions('Accommodation'),
-        ...AssetDefaultsBuilder.assetCategoryOptions('Supplies')
-      ],
+      categoryOptions: AppConstants.ASSET_TYPES.flatMap(type => AssetDefaultsBuilder.assetCategoryOptions(type)),
       dateRange: {
         startAt: popup.startAtIso,
         endAt: popup.endAtIso,
@@ -700,24 +696,22 @@ export class EventResourceAssetExploreComponent implements DoCheck {
   }
 
   protected categoryMenuItems(explore: AssetExplorePopupViewState): readonly AppMenuItem<string, AssetExploreMenuContext>[] {
-    const directOptions = explore.categoryOptions
-      .filter(option => AssetDefaultsBuilder.assetCategoryType(option) !== 'Supplies');
-    const suppliesOptions = explore.categoryOptions
-      .filter(option => AssetDefaultsBuilder.assetCategoryType(option) === 'Supplies');
-    const items: AppMenuItem<string, AssetExploreMenuContext>[] = directOptions.map(option =>
-      this.categoryMenuItem(option, explore.category)
-    );
-    if (suppliesOptions.length > 0) {
-      const suppliesActive = AssetDefaultsBuilder.assetCategoryType(explore.category) === 'Supplies';
+    const selectedType = AssetDefaultsBuilder.assetCategoryType(explore.category);
+    const items: AppMenuItem<string, AssetExploreMenuContext>[] = [];
+    for (const type of AppConstants.ASSET_TYPES) {
+      const options = explore.categoryOptions.filter(option => AssetDefaultsBuilder.assetCategoryType(option) === type);
+      if (options.length === 0) {
+        continue;
+      }
       items.push({
-        id: 'asset-explore-category-supplies',
-        label: 'Kellékek',
-        icon: AssetDefaultsBuilder.assetTypeIcon('Supplies'),
+        id: `asset-explore-category-${type.toLowerCase()}`,
+        label: AssetDefaultsBuilder.assetTypeLabel(type),
+        icon: AssetDefaultsBuilder.assetTypeIcon(type),
         kind: 'branch',
-        active: suppliesActive,
-        palette: this.resourceTypePalette('Supplies'),
+        active: selectedType === type,
+        palette: this.resourceTypePalette(type),
         surface: 'tinted',
-        items: suppliesOptions.map(option => this.categoryMenuItem(option, explore.category))
+        items: options.map(option => this.categoryMenuItem(option, explore.category))
       });
     }
     return items;
@@ -1907,7 +1901,7 @@ export class EventResourceAssetExploreComponent implements DoCheck {
       sourceLink: this.assetSourceLink(card),
       routes: this.normalizeRoutes(card.type, card.routes),
       capacityTotal: Math.max(0, card.capacityTotal),
-      accepted: card.type === 'Supplies'
+      accepted: card.type === AppConstants.ASSET_TYPE_SUPPLIES
         ? this.subEventSupplyProvidedCount(card.id, subEventId)
         : this.assetAcceptedCount(card, subEventId, managerUserId),
       pending: this.assetPendingCount(card, subEventId, managerUserId),
@@ -1941,12 +1935,12 @@ export class EventResourceAssetExploreComponent implements DoCheck {
         capacityMax: capacityLimit,
         quantity: Math.min(quantityLimit, Math.max(1, Math.trunc(Number(quantity) || 1))),
         addedByUserId: this.activeUser().id,
-        routeEnabled: card.type === 'Car' && this.normalizeRoutes(card.type, card.routes).length > 0,
+        routeEnabled: card.type === AppConstants.ASSET_TYPE_TRANSPORT && this.normalizeRoutes(card.type, card.routes).length > 0,
         routes: this.normalizeRoutes(card.type, card.routes)
       };
       this.resourcePopupStore.assignedAssetSettingsByKey[key] = currentSettings;
     }
-    if (card.type === 'Supplies') {
+    if (card.type === AppConstants.ASSET_TYPE_SUPPLIES) {
       const contributionKey = this.supplyAssignmentKey(context.subEvent.id, card.id);
       const currentEntries = this.resourcePopupStore.supplyContributionEntriesByAssignmentKey[contributionKey] ?? [];
       this.resourcePopupStore.supplyContributionEntriesByAssignmentKey[contributionKey] = [
@@ -1988,9 +1982,9 @@ export class EventResourceAssetExploreComponent implements DoCheck {
       return;
     }
     const nextSubEvent = this.cloneSubEvent(context.subEvent);
-    const cars = this.capacityMetrics(nextSubEvent, 'Car');
-    const accommodation = this.capacityMetrics(nextSubEvent, 'Accommodation');
-    const supplies = this.capacityMetrics(nextSubEvent, 'Supplies');
+    const cars = this.capacityMetrics(nextSubEvent, AppConstants.ASSET_TYPE_TRANSPORT);
+    const accommodation = this.capacityMetrics(nextSubEvent, AppConstants.ASSET_TYPE_ACCOMMODATION);
+    const supplies = this.capacityMetrics(nextSubEvent, AppConstants.ASSET_TYPE_SUPPLIES);
     nextSubEvent.carsAccepted = cars.joined;
     nextSubEvent.carsPending = cars.pending;
     nextSubEvent.carsCapacityMin = cars.capacityMin;
@@ -2037,25 +2031,25 @@ export class EventResourceAssetExploreComponent implements DoCheck {
       subEventId,
       assetOwnerUserId,
       assetAssignmentIds: {
-        Car: [...this.resolveAssignedAssetIds(subEventId, 'Car')],
-        Accommodation: [...this.resolveAssignedAssetIds(subEventId, 'Accommodation')],
-        Supplies: [...this.resolveAssignedAssetIds(subEventId, 'Supplies')]
+        [AppConstants.ASSET_TYPE_TRANSPORT]: [...this.resolveAssignedAssetIds(subEventId, AppConstants.ASSET_TYPE_TRANSPORT)],
+        [AppConstants.ASSET_TYPE_ACCOMMODATION]: [...this.resolveAssignedAssetIds(subEventId, AppConstants.ASSET_TYPE_ACCOMMODATION)],
+        [AppConstants.ASSET_TYPE_SUPPLIES]: [...this.resolveAssignedAssetIds(subEventId, AppConstants.ASSET_TYPE_SUPPLIES)]
       },
       assetSettingsByType: {
-        Car: { ...this.getAssignedAssetSettings(subEventId, 'Car') },
-        Accommodation: { ...this.getAssignedAssetSettings(subEventId, 'Accommodation') },
-        Supplies: { ...this.getAssignedAssetSettings(subEventId, 'Supplies') }
+        [AppConstants.ASSET_TYPE_TRANSPORT]: { ...this.getAssignedAssetSettings(subEventId, AppConstants.ASSET_TYPE_TRANSPORT) },
+        [AppConstants.ASSET_TYPE_ACCOMMODATION]: { ...this.getAssignedAssetSettings(subEventId, AppConstants.ASSET_TYPE_ACCOMMODATION) },
+        [AppConstants.ASSET_TYPE_SUPPLIES]: { ...this.getAssignedAssetSettings(subEventId, AppConstants.ASSET_TYPE_SUPPLIES) }
       },
       supplyContributionEntriesByAssetId: Object.fromEntries(
-        this.resolveAssignedAssetIds(subEventId, 'Supplies').map(assetId => [
+        this.resolveAssignedAssetIds(subEventId, AppConstants.ASSET_TYPE_SUPPLIES).map(assetId => [
           assetId,
           this.supplyContributionEntries(subEventId, assetId).map(entry => ({ ...entry }))
         ])
       ),
       fallbackAssetCardsByType: {
-        Car: this.persistedFallbackCards(context, 'Car'),
-        Accommodation: this.persistedFallbackCards(context, 'Accommodation'),
-        Supplies: this.persistedFallbackCards(context, 'Supplies')
+        [AppConstants.ASSET_TYPE_TRANSPORT]: this.persistedFallbackCards(context, AppConstants.ASSET_TYPE_TRANSPORT),
+        [AppConstants.ASSET_TYPE_ACCOMMODATION]: this.persistedFallbackCards(context, AppConstants.ASSET_TYPE_ACCOMMODATION),
+        [AppConstants.ASSET_TYPE_SUPPLIES]: this.persistedFallbackCards(context, AppConstants.ASSET_TYPE_SUPPLIES)
       }
     };
   }
@@ -2070,10 +2064,10 @@ export class EventResourceAssetExploreComponent implements DoCheck {
     const settings = this.getAssignedAssetSettings(subEvent.id, type);
     const capacityMax = cards.reduce((sum, card) => sum + (settings[card.id]?.capacityMax ?? Math.max(0, card.capacityTotal)), 0);
     const capacityMin = cards.reduce((sum, card) => sum + (settings[card.id]?.capacityMin ?? 0), 0);
-    const pending = type === 'Supplies'
+    const pending = type === AppConstants.ASSET_TYPE_SUPPLIES
       ? 0
       : cards.reduce((sum, card) => sum + ActivityResourceBuilder.subEventOccupancyRequestCount(card, subEvent.id, 'pending'), 0);
-    if (type === 'Supplies') {
+    if (type === AppConstants.ASSET_TYPE_SUPPLIES) {
       return {
         joined: cards.reduce((sum, card) => sum + this.subEventSupplyProvidedCount(card.id, subEvent.id), 0),
         capacityMin,
@@ -2175,7 +2169,7 @@ export class EventResourceAssetExploreComponent implements DoCheck {
     fallbackCardsByType?: Partial<Record<AppConstants.AssetType, ResourceAssetDTO[]>>
   ): Partial<Record<AppConstants.AssetType, ResourceAssetDTO[]>> {
     const next: Partial<Record<AppConstants.AssetType, ResourceAssetDTO[]>> = {};
-    for (const type of ['Car', 'Accommodation', 'Supplies'] as const) {
+    for (const type of AppConstants.ASSET_TYPES) {
       const cards = fallbackCardsByType?.[type];
       if (!Array.isArray(cards) || cards.length === 0) {
         continue;
@@ -2353,7 +2347,11 @@ export class EventResourceAssetExploreComponent implements DoCheck {
       quantity: AssetCardBuilder.storedQuantityValue(card),
       description: this.assetDetailText(card),
       imageUrl: card.imageUrl,
-      locationLabel: card.locationLabel ?? (card.type === 'Accommodation' ? this.normalizeRoutes(card.type, card.routes).find(Boolean) : card.city),
+      locationLabel: card.locationLabel ?? (
+        card.type === AppConstants.ASSET_TYPE_ACCOMMODATION
+          ? this.normalizeRoutes(card.type, card.routes).find(Boolean)
+          : card.city
+      ),
       priceLabel: card.priceLabel ?? this.priceLabel(card),
       policiesEnabled: AssetCardBuilder.assetPoliciesEnabled(card),
       policyCount: AssetCardBuilder.assetPoliciesEnabled(card) ? card.policyCount ?? (card.policies ?? []).length : 0,
@@ -2434,13 +2432,13 @@ export class EventResourceAssetExploreComponent implements DoCheck {
   }
 
   private normalizeRoutes(type: AppConstants.AssetType, routes: string[] | undefined | null): string[] {
-    if (type === 'Supplies') {
+    if (type === AppConstants.ASSET_TYPE_SUPPLIES) {
       return [];
     }
     const cleaned = (routes ?? [])
       .map(value => value.trim())
       .filter((value, index, arr) => value.length > 0 && arr.indexOf(value) === index);
-    if (type === 'Accommodation') {
+    if (type === AppConstants.ASSET_TYPE_ACCOMMODATION) {
       return cleaned.length > 0 ? [cleaned[0]] : [''];
     }
     return cleaned.length > 0 ? cleaned : [''];
@@ -2646,11 +2644,11 @@ export class EventResourceAssetExploreComponent implements DoCheck {
     switch (type) {
       case 'Members':
         return 'blue';
-      case 'Car':
+      case AppConstants.ASSET_TYPE_TRANSPORT:
         return 'sky';
-      case 'Accommodation':
+      case AppConstants.ASSET_TYPE_ACCOMMODATION:
         return 'green';
-      case 'Supplies':
+      case AppConstants.ASSET_TYPE_SUPPLIES:
         return 'brown';
       default:
         return 'default';

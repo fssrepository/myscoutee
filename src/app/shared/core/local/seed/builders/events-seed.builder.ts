@@ -121,8 +121,8 @@ function buildCheckoutDemoSubEventDefinitions(options: {
       pricing: paidAddOnPricing
     },
     {
-      id: `${options.sourceId}-ride-share`,
-      name: 'Ride-share Pickup',
+      id: `${options.sourceId}-transport-pickup`,
+      name: 'Transport Pickup',
       description: 'Optional transport-style add-on so checkout can show an asset request path too.',
       timing: 'During',
       offsetMinutes: 0,
@@ -265,7 +265,7 @@ const SEED_INVITATIONS_BY_USER: Record<string, ActivityInvitationSeedItem[]> = {
       id: 'i3',
       avatar: 'SY',
       inviter: 'System',
-      description: 'Chat: Last-minute Ski Carpool',
+      description: 'Chat: Last-minute Ski Transfer',
       when: 'Sat Feb 21, 9:15 AM',
       unread: 2,
       acceptedMemberUserIds: ['u11', 'u24'],

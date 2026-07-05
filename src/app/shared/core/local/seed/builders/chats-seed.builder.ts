@@ -228,7 +228,7 @@ const SEED_CHAT_ITEMS_BY_USER: Record<string, ChatRecord[]> = {
       id: 'c5',
       avatar: 'LP',
       title: 'Trail Group - Transport',
-      lastMessage: 'Need one more car seat.',
+      lastMessage: 'Need one more transport seat.',
       lastSenderId: 'u5',
       memberIds: ['u5', 'u7', 'u10', 'u1'],
       unread: 4

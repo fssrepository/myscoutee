@@ -2,6 +2,7 @@ import { Injectable, inject } from '@angular/core';
 
 import type * as ContractTypes from '../../../contracts';
 import { AppUtils } from '../../../../app-utils';
+import * as AppConstants from '../../../common/constants';
 import type { AssetType } from '../../../common/constants';
 import type { ActivitiesFeedFilters, ListQuery } from '../../../contracts';
 import type {
@@ -319,15 +320,15 @@ export class LocalChatsService extends LocalRouteDelayService implements IChatsS
       };
       if ((channelType === 'optionalSubEvent' || channelType === 'groupSubEvent') && parts.subEventId) {
         const resourceRecords = this.metricResourceRecords(resourcesByMetricKey, parts.eventId, ownerId, parts.subEventId);
-        metrics.car = this.assetBucket(resourceRecords, 'Car');
-        metrics.accommodation = this.assetBucket(resourceRecords, 'Accommodation');
-        metrics.supplies = this.assetBucket(resourceRecords, 'Supplies');
+        metrics.transport = this.assetBucket(resourceRecords, AppConstants.ASSET_TYPE_TRANSPORT);
+        metrics.accommodation = this.assetBucket(resourceRecords, AppConstants.ASSET_TYPE_ACCOMMODATION);
+        metrics.supplies = this.assetBucket(resourceRecords, AppConstants.ASSET_TYPE_SUPPLIES);
         metrics.groupsCount = this.countValue(
           stageRuntimeByMetricKey.get(`${parts.eventId}:${parts.subEventId}`)?.groupsCount
             ?? stageRuntimeByMetricKey.get(`${ownerId}:${parts.subEventId}`)?.groupsCount
         );
         metrics.pendingTotal = this.countValue(metrics.members?.pending)
-          + this.countValue(metrics.car?.pending)
+          + this.countValue(metrics.transport?.pending)
           + this.countValue(metrics.accommodation?.pending)
           + this.countValue(metrics.supplies?.pending);
       }
@@ -392,7 +393,7 @@ export class LocalChatsService extends LocalRouteDelayService implements IChatsS
     for (const record of records) {
       const assignedIds = ActivityResourceBuilder.cloneAssetAssignmentIds(record.assetAssignmentIds)[type] ?? [];
       const settings = ActivityResourceBuilder.cloneAssetSettingsByType(record.assetSettingsByType)[type] ?? {};
-      if (type === 'Supplies') {
+      if (type === AppConstants.ASSET_TYPE_SUPPLIES) {
         for (const entries of Object.values(record.supplyContributionEntriesByAssetId ?? {})) {
           accepted += (entries ?? []).reduce((sum, entry) => sum + this.countValue(entry.quantity), 0);
         }

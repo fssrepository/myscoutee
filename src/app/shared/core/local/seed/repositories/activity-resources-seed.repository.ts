@@ -25,7 +25,7 @@ import {
 } from '../../source/entity/asset.entity';
 import type { ActivityEventRecord } from '../../../contracts/activity.interface';
 
-import type * as AppConstants from '../../../common/constants';
+import * as AppConstants from '../../../common/constants';
 
 interface SeedActivityResourceRef {
   ownerId: string;
@@ -490,7 +490,7 @@ export class SeedActivityResourcesRepository {
       }
     };
 
-    if (type === 'Supplies') {
+    if (type === AppConstants.ASSET_TYPE_SUPPLIES) {
       const quantity = this.assetRequestQuantity(request);
       const entryId = `${request.id}:seed-supply`;
       const existingEntries = record.supplyContributionEntriesByAssetId[assetId] ?? [];
@@ -529,7 +529,7 @@ export class SeedActivityResourcesRepository {
   }
 
   private assetRequestAssignmentCapacity(asset: AssetRecord, request: AssetRequestRecord): number {
-    if (asset.type === 'Supplies') {
+    if (asset.type === AppConstants.ASSET_TYPE_SUPPLIES) {
       return this.assetRequestQuantity(request);
     }
     const capacity = Math.trunc(Number(asset.capacityTotal));
@@ -661,7 +661,7 @@ export class SeedActivityResourcesRepository {
       if (!event || !subEventId) {
         continue;
       }
-      for (const type of ['Car', 'Accommodation', 'Supplies'] as const) {
+      for (const type of AppConstants.ASSET_TYPES) {
         const assignedIds = record.assetAssignmentIds[type] ?? [];
         for (const assetId of assignedIds) {
           const card = nextById[assetId];
@@ -673,12 +673,12 @@ export class SeedActivityResourcesRepository {
           );
           const existingRequest = existingRequestIndex >= 0 ? card.requests[existingRequestIndex] : null;
           const settings = record.assetSettingsByType[type]?.[assetId] ?? null;
-          const quantity = type === 'Supplies'
+          const quantity = type === AppConstants.ASSET_TYPE_SUPPLIES
             ? (record.supplyContributionEntriesByAssetId[assetId] ?? [])
                 .reduce((sum, entry) => sum + entry.quantity, 0)
               || this.assignmentRecordQuantity(settings)
             : this.assignmentRecordQuantity(settings);
-          if (type === 'Supplies' && quantity <= 0) {
+          if (type === AppConstants.ASSET_TYPE_SUPPLIES && quantity <= 0) {
             if (existingRequestIndex >= 0) {
               const nextRequests = [...card.requests];
               nextRequests.splice(existingRequestIndex, 1);
@@ -896,6 +896,6 @@ export class SeedActivityResourcesRepository {
   }
 
   private assetTypes(): readonly AppConstants.AssetType[] {
-    return ['Car', 'Accommodation', 'Supplies'];
+    return AppConstants.ASSET_TYPES;
   }
 }

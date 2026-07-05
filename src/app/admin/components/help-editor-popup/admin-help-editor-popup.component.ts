@@ -26,6 +26,7 @@ import {
   HelpCenterService,
   I18nService
 } from '../../../shared/core';
+import * as AppConstants from '../../../shared/core/common/constants';
 import type {
   ExplainableSurface,
   HelpCenterDocumentKind,
@@ -320,8 +321,8 @@ export class AdminHelpEditorPopupComponent {
     { icon: 'record_voice_over', label: 'Announcements', group: 'People', keywords: ['speak', 'message', 'broadcast'] },
     { icon: 'volunteer_activism', label: 'Care', group: 'People', keywords: ['support', 'community', 'help'] },
     { icon: 'inventory_2', label: 'Resources', group: 'Logistics', keywords: ['asset', 'capacity', 'supplies'] },
-    { icon: 'directions_car', label: 'Transport', group: 'Logistics', keywords: ['car', 'travel', 'vehicle'] },
-    { icon: 'apartment', label: 'Accommodation', group: 'Logistics', keywords: ['stay', 'room', 'hotel'] },
+    { icon: 'directions_car', label: AppConstants.ASSET_TYPE_TRANSPORT, group: 'Logistics', keywords: ['transport', 'travel', 'vehicle'] },
+    { icon: 'apartment', label: AppConstants.ASSET_TYPE_ACCOMMODATION, group: 'Logistics', keywords: ['accommodation', 'room', 'hotel'] },
     { icon: 'restaurant', label: 'Food', group: 'Logistics', keywords: ['meal', 'catering', 'dining'] },
     { icon: 'payments', label: 'Payments', group: 'Logistics', keywords: ['price', 'money', 'cost'] },
     { icon: 'qr_code_2', label: 'Tickets', group: 'Logistics', keywords: ['qr', 'pass', 'entry'] },
@@ -334,7 +335,7 @@ export class AdminHelpEditorPopupComponent {
     { icon: 'build', label: 'Tools', group: 'Logistics', keywords: ['fix', 'setup', 'equipment'] },
     { icon: 'construction', label: 'Construction', group: 'Logistics', keywords: ['work', 'setup', 'build'] },
     { icon: 'room_service', label: 'Service', group: 'Logistics', keywords: ['hospitality', 'food', 'support'] },
-    { icon: 'shopping_bag', label: 'Supplies', group: 'Logistics', keywords: ['items', 'goods', 'purchase'] },
+    { icon: 'shopping_bag', label: AppConstants.ASSET_TYPE_SUPPLIES, group: 'Logistics', keywords: ['items', 'goods', 'purchase'] },
     { icon: 'verified_user', label: 'Verified', group: 'Safety', keywords: ['trust', 'profile', 'approved'] },
     { icon: 'shield', label: 'Shield', group: 'Safety', keywords: ['safe', 'protect', 'security'] },
     { icon: 'policy', label: 'Policy', group: 'Safety', keywords: ['rules', 'moderation', 'terms'] },

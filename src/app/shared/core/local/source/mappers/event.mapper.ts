@@ -13,7 +13,7 @@ import {
   type SubEventDefinitionDTO,
   type SubEventsSlotDTO
 } from '../../../contracts/activity.interface';
-import type * as AppConstants from '../../../common/constants';
+import * as AppConstants from '../../../common/constants';
 import type * as EventContracts from '../../../contracts/event.interface';
 import type * as PricingContracts from '../../../contracts/pricing.interface';
 import type { LocationCoordinates } from '../../../contracts/user.interface';
@@ -728,19 +728,19 @@ export class LocalActivityEventsMapper {
     resource: ActivitySubEventResourceStateDTO | null,
     resourceMetricsByKey: ReadonlyMap<string, SubEventResourceMetric>
   ): EventContracts.SubEventDTO {
-    const car = this.resourceMetric(resource, 'Car', {
+    const car = this.resourceMetric(resource, AppConstants.ASSET_TYPE_TRANSPORT, {
       accepted: item.carsAccepted,
       pending: item.carsPending,
       capacityMin: item.carsCapacityMin,
       capacityMax: item.carsCapacityMax
     }, resourceMetricsByKey);
-    const accommodation = this.resourceMetric(resource, 'Accommodation', {
+    const accommodation = this.resourceMetric(resource, AppConstants.ASSET_TYPE_ACCOMMODATION, {
       accepted: item.accommodationAccepted,
       pending: item.accommodationPending,
       capacityMin: item.accommodationCapacityMin,
       capacityMax: item.accommodationCapacityMax
     }, resourceMetricsByKey);
-    const supplies = this.resourceMetric(resource, 'Supplies', {
+    const supplies = this.resourceMetric(resource, AppConstants.ASSET_TYPE_SUPPLIES, {
       accepted: item.suppliesAccepted,
       pending: item.suppliesPending,
       capacityMin: item.suppliesCapacityMin,
@@ -783,7 +783,7 @@ export class LocalActivityEventsMapper {
 
   private static resourceMetric(
     resource: ActivitySubEventResourceStateDTO | null,
-    type: 'Car' | 'Accommodation' | 'Supplies',
+    type: AppConstants.AssetType,
     fallback: {
       accepted?: number | null;
       pending?: number | null;
@@ -809,7 +809,7 @@ export class LocalActivityEventsMapper {
     const capacityMax = assetIds.reduce((sum, assetId) => (
       sum + this.nonNegativeInteger(settingsById[assetId]?.capacityMax)
     ), 0);
-    const accepted = type === 'Supplies'
+    const accepted = type === AppConstants.ASSET_TYPE_SUPPLIES
       ? assetIds.reduce((sum, assetId) => (
           sum + (resource.supplyContributionEntriesByAssetId[assetId] ?? [])
             .reduce((entrySum, entry) => entrySum + this.nonNegativeInteger(entry.quantity), 0)

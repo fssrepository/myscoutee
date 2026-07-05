@@ -2,7 +2,7 @@ import { Injectable, computed, signal } from '@angular/core';
 
 import { AssetDto } from '../../../core/contracts';
 import { PricingBuilder } from '../../../core/base/builders';
-import type * as AppConstants from '../../../core/common/constants';
+import * as AppConstants from '../../../core/common/constants';
 import type * as AppDTOs from '../../../core/contracts';
 
 export interface AssetVisibleListState {
@@ -61,7 +61,7 @@ export class AssetStore {
   private visibleListReady = false;
   private visibleListRenderedCount = 0;
 
-  readonly assetFilterRef = signal<AppConstants.AssetFilterType>('Car');
+  readonly assetFilterRef = signal<AppConstants.AssetFilterType>(AppConstants.ASSET_TYPE_TRANSPORT);
   readonly activePopupFilterRef = signal<AppConstants.AssetFilterType | null>(null);
   readonly activeOwnerUserIdRef = signal('');
   readonly showAssetFormRef = signal(false);
@@ -79,7 +79,7 @@ export class AssetStore {
   readonly pendingAssetDeleteLabelRef = signal('');
   readonly pendingAssetDeleteErrorRef = signal('');
   readonly assetFormRef = signal<AssetFormState>({
-    type: 'Car',
+    type: AppConstants.ASSET_TYPE_TRANSPORT,
     title: '',
     subtitle: '',
     city: '',
@@ -128,7 +128,7 @@ export class AssetStore {
   readonly uiRevision = this.uiRevisionRef.asReadonly();
   readonly deletedAssetEvent = this.deletedAssetEventRef.asReadonly();
   readonly popupOpen = computed(() => this.activePopupFilterRef() !== null);
-  readonly ticketPopup = computed(() => this.popupOpen() && this.assetFilterRef() === 'Ticket');
+  readonly ticketPopup = computed(() => this.popupOpen() && this.assetFilterRef() === AppConstants.ASSET_FILTER_TICKET);
 
   setAssetCards(cards: readonly AppDTOs.AssetDTO[]): void {
     this.assetCardsRef.set(AssetDto.cloneList(cards));

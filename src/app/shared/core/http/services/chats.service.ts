@@ -29,7 +29,7 @@ import {
 
 import type * as ActivityContracts from '../../contracts/activity.interface';
 
-import type * as AppConstants from '../../common/constants';
+import * as AppConstants from '../../common/constants';
 import { UserProfileStore } from '../../../ui/context/stores/user-profile.store';
 
 interface HttpChatDto {
@@ -847,7 +847,7 @@ export class HttpChatsService implements IChatsService {
     return metrics
       ? {
           members: metrics.members ? { ...metrics.members } : null,
-          car: metrics.car ? { ...metrics.car } : null,
+          transport: metrics.transport ? { ...metrics.transport } : null,
           accommodation: metrics.accommodation ? { ...metrics.accommodation } : null,
           supplies: metrics.supplies ? { ...metrics.supplies } : null,
           groupsCount: metrics.groupsCount ?? null,
@@ -1242,7 +1242,7 @@ export class HttpChatsService implements IChatsService {
   }
 
   private normalizeAssetType(value: unknown): AppConstants.AssetType | null {
-    return value === 'Car' || value === 'Accommodation' || value === 'Supplies' ? value : null;
+    return AppConstants.isAssetType(value) ? value : null;
   }
 
   private normalizeAttachmentStatus(value: unknown): ContractTypes.ChatMessageAttachment['status'] {

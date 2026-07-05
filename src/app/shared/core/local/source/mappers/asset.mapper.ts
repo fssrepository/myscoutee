@@ -14,7 +14,7 @@ import type {
 } from '../entity/asset.entity';
 
 import type * as AppDTOs from '../../../contracts';
-import type * as AppConstants from '../../../common/constants';
+import * as AppConstants from '../../../common/constants';
 
 export interface LocalAssetProjectionOptions {
   viewerUserId?: string;
@@ -44,7 +44,7 @@ export class LocalAssetsMapper {
       return null;
     }
     const type = card?.type;
-    if (type !== 'Car' && type !== 'Accommodation' && type !== 'Supplies') {
+    if (!AppConstants.isAssetType(type)) {
       return null;
     }
     const requests = this.normalizeRequests(card?.requests);
@@ -86,14 +86,14 @@ export class LocalAssetsMapper {
     const requests = this.normalizeRequests(card.requests);
     return this.normalizeCard(card) ?? {
       id: `${card.id ?? ''}`.trim(),
-      type: card.type === 'Accommodation' || card.type === 'Supplies' ? card.type : 'Car',
+      type: AppConstants.isAssetType(card.type) ? card.type : AppConstants.ASSET_TYPE_TRANSPORT,
       title: `${card.title ?? ''}`.trim(),
       subtitle: `${card.subtitle ?? ''}`.trim(),
       category: AssetDefaultsBuilder.normalizeCategory(card.type, card.category),
       city: `${card.city ?? ''}`.trim(),
       capacityTotal: AssetCardBuilder.capacityValue({ capacityTotal: card.capacityTotal ?? 0 }),
       quantity: AssetCardBuilder.storedQuantityValue({
-        type: card.type === 'Accommodation' || card.type === 'Supplies' ? card.type : 'Car',
+        type: AppConstants.isAssetType(card.type) ? card.type : AppConstants.ASSET_TYPE_TRANSPORT,
         quantity: card.quantity,
         capacityTotal: card.capacityTotal ?? 0
       }),
@@ -116,7 +116,7 @@ export class LocalAssetsMapper {
       return null;
     }
     const type = card?.type;
-    if (type !== 'Car' && type !== 'Accommodation' && type !== 'Supplies') {
+    if (!AppConstants.isAssetType(type)) {
       return null;
     }
     const requests = this.normalizeRequests(card?.requests);
@@ -200,7 +200,7 @@ export class LocalAssetsMapper {
       description: record.details,
       imageUrl: record.imageUrl,
       sourceLink: record.sourceLink,
-      locationLabel: record.type === 'Accommodation'
+      locationLabel: record.type === AppConstants.ASSET_TYPE_ACCOMMODATION
         ? ((record.routes ?? []).map(route => route.trim()).find(Boolean) ?? record.city)
         : record.city,
       priceLabel: this.assetPriceLabelFromRecord(record),
@@ -622,7 +622,7 @@ export class LocalAssetsMapper {
     if ('locationLabel' in card && card.locationLabel?.trim()) {
       return card.locationLabel.trim();
     }
-    if (type !== 'Accommodation' || !('routes' in card)) {
+    if (type !== AppConstants.ASSET_TYPE_ACCOMMODATION || !('routes' in card)) {
       return card.city?.trim() ?? '';
     }
     return (card.routes ?? [])

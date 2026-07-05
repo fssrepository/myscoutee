@@ -7,7 +7,7 @@ import { AssetCardBuilder, AssetDefaultsBuilder, PricingBuilder } from '../../ba
 import { RouteDelayService } from '../../base/services/route-delay.service';
 import { AssetDto } from '../../contracts';
 import type * as AppDTOs from '../../contracts';
-import type * as AppConstants from '../../common/constants';
+import * as AppConstants from '../../common/constants';
 @Injectable({
   providedIn: 'root'
 })
@@ -437,7 +437,7 @@ export class HttpAssetsService {
       return null;
     }
     const type = card?.type;
-    if (type !== 'Car' && type !== 'Accommodation' && type !== 'Supplies') {
+    if (!AppConstants.isAssetType(type)) {
       return null;
     }
     const requests = this.normalizeRequests(card?.requests);
@@ -483,7 +483,7 @@ export class HttpAssetsService {
       return null;
     }
     const type = card?.type;
-    if (type !== 'Car' && type !== 'Accommodation' && type !== 'Supplies') {
+    if (!AppConstants.isAssetType(type)) {
       return null;
     }
     const requests = this.normalizeRequests(card?.requests);
@@ -609,7 +609,7 @@ export class HttpAssetsService {
     if ('locationLabel' in card && card.locationLabel?.trim()) {
       return card.locationLabel.trim();
     }
-    if (type !== 'Accommodation' || !('routes' in card)) {
+    if (type !== AppConstants.ASSET_TYPE_ACCOMMODATION || !('routes' in card)) {
       return card.city?.trim() ?? '';
     }
     return (card.routes ?? [])

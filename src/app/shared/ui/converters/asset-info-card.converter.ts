@@ -2,7 +2,7 @@ import { AppUtils } from '../../app-utils';
 import { AssetCardBuilder } from '../../core/base/builders/asset-card.builder';
 import { AssetDefaultsBuilder } from '../../core/base/builders/asset-defaults.builder';
 import type * as AppDTOs from '../../core/contracts';
-import type * as AppConstants from '../../core/common/constants';
+import * as AppConstants from '../../core/common/constants';
 import type { CardMenuActionId, InfoCardData } from '../components/core/smart-list/card/card.types';
 import type { UiListConverter } from './converter.types';
 
@@ -272,7 +272,7 @@ export class AssetInfoCardConverter {
       variant: 'badge',
       shape: 'circle',
       actionId: 'assetAvailability',
-      tone: card.type === 'Supplies' ? 'warm' : 'default',
+      tone: card.type === AppConstants.ASSET_TYPE_SUPPLIES ? 'warm' : 'default',
       label: `${metrics.activeItems}`,
       detailLabel: AssetCardBuilder.capacityLabel(card),
       interactive: true,

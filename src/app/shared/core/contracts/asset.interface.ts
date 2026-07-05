@@ -1,4 +1,4 @@
-import type * as AppConstants from '../common/constants';
+import * as AppConstants from '../common/constants';
 import type { PricingConfig } from './pricing.interface';
 
 export interface EventPolicyItemDTO {
@@ -101,7 +101,7 @@ export interface AssetDetailDTO {
 
 export class AssetDto implements AssetDTO {
   id = '';
-  type: AppConstants.AssetType = 'Car';
+  type: AppConstants.AssetType = AppConstants.ASSET_TYPE_TRANSPORT;
   title = '';
   subtitle = '';
   category?: AppConstants.AssetCategory;
@@ -216,7 +216,7 @@ export class AssetDto implements AssetDTO {
   }
 
   private static locationLabelFromDetail(card: AssetDetailDTO): string {
-    if (card.type !== 'Accommodation') {
+    if (card.type !== AppConstants.ASSET_TYPE_ACCOMMODATION) {
       return card.city;
     }
     return (card.routes ?? [])
@@ -306,7 +306,7 @@ export class AssetDto implements AssetDTO {
 
 export class AssetDetailDto implements AssetDetailDTO {
   id = '';
-  type: AppConstants.AssetType = 'Car';
+  type: AppConstants.AssetType = AppConstants.ASSET_TYPE_TRANSPORT;
   title = '';
   subtitle = '';
   category?: AppConstants.AssetCategory;

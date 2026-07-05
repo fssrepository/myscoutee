@@ -3,6 +3,7 @@ import { ChangeDetectionStrategy, Component, inject } from '@angular/core';
 import { MatIconModule } from '@angular/material/icon';
 
 import { ExplanationGuideService } from '../../../core';
+import * as AppConstants from '../../../core/common/constants';
 import type { HelpCenterSectionDto } from '../../../core/contracts';
 import { I18nPipe } from '../../pipes';
 import { LazyBgImageDirective } from '../../directives';
@@ -224,10 +225,9 @@ export class ExplanationPopupComponent {
           disqualify: 'Kizárás',
           restore: 'Visszaállítás',
           assign: 'Assign',
-          car: 'Car',
-          accommodation: 'Accommodation',
-          property: 'Accommodation',
-          supplies: 'Supplies',
+          transport: AppConstants.ASSET_TYPE_TRANSPORT,
+          accommodation: AppConstants.ASSET_TYPE_ACCOMMODATION,
+          supplies: AppConstants.ASSET_TYPE_SUPPLIES,
           accepted: 'Elfogadott',
           capacityRange: 'Min-max',
           slots: 'Slotok',
@@ -356,10 +356,9 @@ export class ExplanationPopupComponent {
           disqualify: 'Disqualify',
           restore: 'Restore',
           assign: 'Assign',
-          car: 'Car',
-          accommodation: 'Accommodation',
-          property: 'Accommodation',
-          supplies: 'Supplies',
+          transport: AppConstants.ASSET_TYPE_TRANSPORT,
+          accommodation: AppConstants.ASSET_TYPE_ACCOMMODATION,
+          supplies: AppConstants.ASSET_TYPE_SUPPLIES,
           accepted: 'Accepted',
           capacityRange: 'Min-max',
           slots: 'Slots',
@@ -406,8 +405,8 @@ export class ExplanationPopupComponent {
     const labels: Record<string, string> = hu
       ? {
           assets: 'Eszközök',
-          car: 'Autó',
-          accommodation: 'Ingatlan',
+          transport: AppConstants.ASSET_TYPE_TRANSPORT,
+          accommodation: AppConstants.ASSET_TYPE_ACCOMMODATION,
           supplies: 'Kellékek',
           ticket: 'Jegy',
           add: 'Új',
@@ -450,10 +449,10 @@ export class ExplanationPopupComponent {
         }
       : {
           assets: 'Assets',
-          car: 'Car',
-          accommodation: 'Accommodation',
-          supplies: 'Supplies',
-          ticket: 'Ticket',
+          transport: AppConstants.ASSET_TYPE_TRANSPORT,
+          accommodation: AppConstants.ASSET_TYPE_ACCOMMODATION,
+          supplies: AppConstants.ASSET_TYPE_SUPPLIES,
+          ticket: AppConstants.ASSET_FILTER_TICKET,
           add: 'Add',
           sourceLink: 'Source link',
           type: 'Type',

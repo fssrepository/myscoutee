@@ -61,7 +61,7 @@ export function eventChatHeaderStateFromChat(chat: ChatDTO): EventChatHeaderStat
     metrics: chat.metrics
       ? {
           members: chat.metrics.members ? { ...chat.metrics.members } : null,
-          car: chat.metrics.car ? { ...chat.metrics.car } : null,
+          transport: chat.metrics.transport ? { ...chat.metrics.transport } : null,
           accommodation: chat.metrics.accommodation ? { ...chat.metrics.accommodation } : null,
           supplies: chat.metrics.supplies ? { ...chat.metrics.supplies } : null,
           groupsCount: chat.metrics.groupsCount ?? null,
@@ -611,7 +611,7 @@ export class ActivitiesPopupStore {
       metrics: header.metrics
         ? {
             members: header.metrics.members ? { ...header.metrics.members } : null,
-            car: header.metrics.car ? { ...header.metrics.car } : null,
+            transport: header.metrics.transport ? { ...header.metrics.transport } : null,
             accommodation: header.metrics.accommodation ? { ...header.metrics.accommodation } : null,
             supplies: header.metrics.supplies ? { ...header.metrics.supplies } : null,
             groupsCount: header.metrics.groupsCount ?? null,

@@ -6,7 +6,7 @@ import {
   AppUtils
 } from '../../app-utils';
 import type * as AppDTOs from '../../core/contracts';
-import type * as AppConstants from '../../core/common/constants';
+import * as AppConstants from '../../core/common/constants';
 import type { UserDto } from '../../core/contracts/user.interface';
 import type { CardMenuActionId, InfoCardData } from '../components/core/smart-list/card';
 import type { UiListConverter } from './converter.types';
@@ -91,7 +91,7 @@ export class ActivitySubEventResourceInfoCardConverter {
       tone: 'default',
       icon: 'location_on',
       interactive: true,
-      ariaLabel: card.type === 'Car' ? 'Open route map' : 'Open accommodation map'
+      ariaLabel: card.type === AppConstants.ASSET_TYPE_TRANSPORT ? 'Open route map' : 'Open accommodation map'
     };
   }
 
@@ -115,14 +115,14 @@ export class ActivitySubEventResourceInfoCardConverter {
   }
 
   private static resourceCardAssetType(card: AppDTOs.SubEventResourceCardDTO): AppConstants.AssetType | null {
-    if (!card.sourceAssetId || (card.type !== 'Car' && card.type !== 'Accommodation' && card.type !== 'Supplies')) {
+    if (!card.sourceAssetId || !AppConstants.isAssetType(card.type)) {
       return null;
     }
     return card.type;
   }
 
   private static canOpenMap(card: AppDTOs.SubEventResourceCardDTO): boolean {
-    if (!card.sourceAssetId || (card.type !== 'Car' && card.type !== 'Accommodation')) {
+    if (!card.sourceAssetId || (card.type !== AppConstants.ASSET_TYPE_TRANSPORT && card.type !== AppConstants.ASSET_TYPE_ACCOMMODATION)) {
       return false;
     }
     return ActivityResourceBuilder.normalizeAssetRoutes(card.type, card.routes)
@@ -158,7 +158,7 @@ export class ActivitySubEventResourceInfoCardConverter {
     options: ActivitySubEventResourceInfoCardConverterOptions
   ): boolean {
     return !!card.sourceAssetId
-      && (card.type === 'Car' || card.type === 'Accommodation')
+      && (card.type === AppConstants.ASSET_TYPE_TRANSPORT || card.type === AppConstants.ASSET_TYPE_ACCOMMODATION)
       && !!this.sourceAsset(card, options)
       && !this.isSourceAssetManagedByActiveUser(card, options);
   }
@@ -201,7 +201,7 @@ export class ActivitySubEventResourceInfoCardConverter {
 
   private static isAssignableAsset(card: AppDTOs.SubEventResourceCardDTO): boolean {
     return !!card.sourceAssetId
-      && (card.type === 'Car' || card.type === 'Accommodation' || card.type === 'Supplies');
+      && AppConstants.isAssetType(card.type);
   }
 
   private static occupancyLabel(card: AppDTOs.SubEventResourceCardDTO): string {
@@ -238,7 +238,7 @@ export class ActivitySubEventResourceInfoCardConverter {
   ): string | null {
     const subEventId = this.contextSubEventId(options);
     const sourceAssetId = this.normalizeId(card.sourceAssetId);
-    if (!subEventId || !sourceAssetId || (card.type !== 'Car' && card.type !== 'Accommodation')) {
+    if (!subEventId || !sourceAssetId || (card.type !== AppConstants.ASSET_TYPE_TRANSPORT && card.type !== AppConstants.ASSET_TYPE_ACCOMMODATION)) {
       return null;
     }
     const settings = options.assetSettingsByKey?.[ActivityResourceBuilder.subEventAssetAssignmentKey(subEventId, card.type)];

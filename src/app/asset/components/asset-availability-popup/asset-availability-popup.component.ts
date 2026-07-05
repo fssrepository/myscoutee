@@ -18,7 +18,7 @@ import {
   AssetsService,
   I18nService
 } from '../../../shared/core';
-import type * as AppConstants from '../../../shared/core/common/constants';
+import * as AppConstants from '../../../shared/core/common/constants';
 import type * as AppDTOs from '../../../shared/core/contracts';
 import {
   PopupComponent,
@@ -1056,7 +1056,7 @@ export class AssetAvailabilityPopupComponent {
   }
 
   private isAssetResourceType(value: string): value is AppConstants.AssetType {
-    return value === 'Car' || value === 'Accommodation' || value === 'Supplies';
+    return AppConstants.isAssetType(value);
   }
 
   private async applyAssetRequestAction(

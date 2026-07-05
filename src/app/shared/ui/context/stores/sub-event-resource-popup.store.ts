@@ -1,6 +1,6 @@
 import { Injectable, Type, computed, signal } from '@angular/core';
 
-import type * as AppConstants from '../../../core/common/constants';
+import * as AppConstants from '../../../core/common/constants';
 import type * as AppDTOs from '../../../core/contracts';
 import type * as ContractTypes from '../../../core/contracts';
 import type { ActivityMemberDTO } from '../../../core/contracts/activity.interface';
@@ -167,7 +167,7 @@ export interface AssetExploreBorrowDialogState {
 
 export interface AssignedAssetJoinDialogState {
   cardId: string;
-  type: 'Car' | 'Accommodation';
+  type: typeof AppConstants.ASSET_TYPE_TRANSPORT | typeof AppConstants.ASSET_TYPE_ACCOMMODATION;
   sourceAssetId: string;
   acceptedPolicyIds: string[];
   busy: boolean;
@@ -222,7 +222,7 @@ export class SubEventResourcePopupStore {
   readonly supplyContributionEntriesByAssignmentKey: Record<string, AppDTOs.SubEventSupplyContributionEntryDTO[]> = {};
 
   readonly popupContextRef = signal<ResourcePopupContext | null>(null);
-  readonly resourceFilterRef = signal<AppConstants.AssetType>('Car');
+  readonly resourceFilterRef = signal<AppConstants.AssetType>(AppConstants.ASSET_TYPE_TRANSPORT);
   readonly resourceAssetViewIdRef = signal<string | null>(null);
   readonly resourceAssetViewModeRef = signal<'view' | 'edit'>('view');
   readonly resourceAssetViewReturnToChatRef = signal(false);

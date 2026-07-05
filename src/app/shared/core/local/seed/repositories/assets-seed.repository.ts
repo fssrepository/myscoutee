@@ -15,7 +15,7 @@ import type { UserRecord } from '../../source/entity/user.entity';
 import { SeedAssetBuilder, type SeedAssetTemplate } from '../builders';
 import { SEED_SCHEDULE_REFERENCE_DATE } from '../seed-constants';
 
-import type * as AppConstants from '../../../common/constants';
+import * as AppConstants from '../../../common/constants';
 
 @Injectable({
   providedIn: 'root'
@@ -228,7 +228,7 @@ export class SeedAssetsRepository {
         })
       ];
     }
-    if (card.id === 'asset-car-3') {
+    if (card.id === 'asset-transport-3') {
       return [
         this.seedAssetRequest(assetId, owner.id, card, 'van-borrow-1', members[3] ?? members[0], 'borrow', 'accepted', anchorDate, 4, 7, 1, {
           quantity: 1,
@@ -250,7 +250,7 @@ export class SeedAssetsRepository {
         })
       ];
     }
-    if (card.id === 'asset-car-4') {
+    if (card.id === 'asset-transport-4') {
       return [
         this.seedAssetRequest(assetId, owner.id, card, 'summit-assigned-1', members[0], 'manual', 'accepted', anchorDate, 7, 8, 1, {
           quantity: 1,
@@ -435,7 +435,7 @@ export class SeedAssetsRepository {
   }
 
   private assetRequestCapacity(card: Pick<SeedAssetTemplate, 'type' | 'capacityTotal'> & { quantity: unknown }): number {
-    if (card.type === 'Supplies') {
+    if (card.type === AppConstants.ASSET_TYPE_SUPPLIES) {
       return this.storedQuantityValue(card);
     }
     const capacity = Math.trunc(Number(card.capacityTotal));
@@ -455,7 +455,7 @@ export class SeedAssetsRepository {
     if (Number.isFinite(capacity) && capacity >= 0) {
       return capacity;
     }
-    return type === 'Supplies' ? 6 : 1;
+    return type === AppConstants.ASSET_TYPE_SUPPLIES ? 6 : 1;
   }
 
   private cloneOwnerUserIdIndex(value: Record<string, readonly string[] | string[] | undefined> | undefined): Record<string, string[]> {

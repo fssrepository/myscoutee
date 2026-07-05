@@ -392,7 +392,7 @@
                                   <small>10:20</small>
                                 </span>
                                 <span class="explanation-popup__chat-poll-mini">
-                                  <strong>{{ activityText(revision.lang, 'sharedPoll') }} · Ride time?</strong>
+                                  <strong>{{ activityText(revision.lang, 'sharedPoll') }} · Transport time?</strong>
                                   <span><span>10:00</span><em></em></span>
                                   <span><span>10:30</span><em></em></span>
                                   <button type="button">Vote</button>
@@ -460,7 +460,7 @@
                           <span><mat-icon>close</mat-icon></span>
                         </span>
                         <span class="explanation-popup__assets-filter-mini">
-                          <span class="is-car"><mat-icon>directions_car</mat-icon>{{ assetText(revision.lang, 'car') }}<strong>4</strong></span>
+                          <span class="is-transport"><mat-icon>directions_car</mat-icon>{{ assetText(revision.lang, 'transport') }}<strong>4</strong></span>
                           <span class="is-home"><mat-icon>apartment</mat-icon>{{ assetText(revision.lang, 'accommodation') }}<strong>2</strong></span>
                           <span class="is-supplies"><mat-icon>inventory_2</mat-icon>{{ assetText(revision.lang, 'supplies') }}<strong>8</strong></span>
                           <span class="is-ticket"><mat-icon>qr_code_2</mat-icon>{{ assetText(revision.lang, 'ticket') }}</span>
@@ -477,7 +477,7 @@
                             <span class="explanation-popup__asset-leading-mini"><mat-icon>directions_car</mat-icon></span>
                             <span class="explanation-popup__asset-card-copy-mini">
                               <strong>City-to-Lake SUV</strong>
-                              <small>{{ assetText(revision.lang, 'car') }} · Volkswagen Golf · Austin</small>
+                              <small>{{ assetText(revision.lang, 'transport') }} · Volkswagen Golf · Austin</small>
                               <em>Airport run before midnight, fuel split evenly.</em>
                             </span>
                             <span class="explanation-popup__asset-card-menu-mini"><mat-icon>more_vert</mat-icon></span>
@@ -493,7 +493,7 @@
                     @case ('assets-editor') {
                       <span class="explanation-popup__visual-assets-editor">
                         <span class="explanation-popup__asset-editor-head-mini">
-                          <strong>{{ assetText(revision.lang, 'add') }} {{ assetText(revision.lang, 'car') }}</strong>
+                          <strong>{{ assetText(revision.lang, 'add') }} {{ assetText(revision.lang, 'transport') }}</strong>
                           <span class="is-public"><mat-icon>public</mat-icon>{{ assetText(revision.lang, 'public') }}</span>
                           <span class="is-save"><mat-icon>done</mat-icon></span>
                           <span><mat-icon>close</mat-icon></span>
@@ -501,9 +501,9 @@
                         <span class="explanation-popup__asset-editor-grid-mini">
                           <span class="is-photo"><mat-icon>add</mat-icon></span>
                           <span><small>{{ assetText(revision.lang, 'sourceLink') }}</small><strong>https://...</strong></span>
-                          <span><small>{{ assetText(revision.lang, 'type') }}</small><strong><mat-icon>directions_car</mat-icon>{{ assetText(revision.lang, 'car') }}</strong></span>
+                          <span><small>{{ assetText(revision.lang, 'type') }}</small><strong><mat-icon>directions_car</mat-icon>{{ assetText(revision.lang, 'transport') }}</strong></span>
                           <span><small>{{ assetText(revision.lang, 'title') }} *</small><strong>City-to-Lake SUV</strong></span>
-                          <span><small>{{ assetText(revision.lang, 'category') }}</small><strong>Ride</strong></span>
+                          <span><small>{{ assetText(revision.lang, 'category') }}</small><strong>Shuttle</strong></span>
                           <span><small>{{ assetText(revision.lang, 'capacity') }} *</small><strong>4</strong></span>
                           <span><small>{{ assetText(revision.lang, 'quantity') }} *</small><strong>1</strong></span>
                           <span class="is-wide"><small>{{ assetText(revision.lang, 'details') }}</small><strong>Flexible pickup, compact luggage.</strong></span>
@@ -674,7 +674,7 @@
                               <span class="explanation-popup__subevent-menu-mini">
                                 <span><mat-icon>edit</mat-icon>{{ activityText(revision.lang, 'editEvent') }}</span>
                                 <span><mat-icon>groups</mat-icon>{{ activityText(revision.lang, 'members') }}</span>
-                                <span><mat-icon>directions_car</mat-icon>{{ activityText(revision.lang, 'car') }}</span>
+                                <span><mat-icon>directions_car</mat-icon>{{ activityText(revision.lang, 'transport') }}</span>
                                 <span><mat-icon>apartment</mat-icon>{{ activityText(revision.lang, 'accommodation') }}</span>
                                 <span><mat-icon>inventory_2</mat-icon>{{ activityText(revision.lang, 'supplies') }}</span>
                               </span>
@@ -733,7 +733,7 @@
                       <span class="explanation-popup__visual-event-editor-assets">
                         <span class="explanation-popup__resource-filter-mini">
                           <span><mat-icon>groups</mat-icon>{{ activityText(revision.lang, 'members') }}</span>
-                          <span><mat-icon>directions_car</mat-icon>{{ activityText(revision.lang, 'car') }}</span>
+                          <span><mat-icon>directions_car</mat-icon>{{ activityText(revision.lang, 'transport') }}</span>
                           <span><mat-icon>apartment</mat-icon>{{ activityText(revision.lang, 'accommodation') }}</span>
                           <span><mat-icon>inventory_2</mat-icon>{{ activityText(revision.lang, 'supplies') }}</span>
                         </span>
@@ -745,8 +745,8 @@
                           </span>
                         </span>
                         <span class="explanation-popup__resource-card-mini">
-                          <strong>Ride seats</strong>
-                          <small>{{ activityText(revision.lang, 'car') }} · {{ activityText(revision.lang, 'capacityRange') }} 2-4</small>
+                          <strong>Transport seats</strong>
+                          <small>{{ activityText(revision.lang, 'transport') }} · {{ activityText(revision.lang, 'capacityRange') }} 2-4</small>
                           <em>2 {{ activityText(revision.lang, 'accepted') }} · 1 {{ activityText(revision.lang, 'pending') }}</em>
                         </span>
                         <span class="explanation-popup__resource-detail-mini">

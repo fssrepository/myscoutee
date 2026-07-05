@@ -44,7 +44,7 @@ import {
   type RouteInputConfig
 } from '../../../shared/ui';
 
-import type * as AppConstants from '../../../shared/core/common/constants';
+import * as AppConstants from '../../../shared/core/common/constants';
 import type * as AppDTOs from '../../../shared/core/contracts';
 import { UserProfileStore } from '../../../shared/ui/context/stores/user-profile.store';
 type AssetEditorMenuContext =
@@ -92,7 +92,7 @@ export class AssetEditorPopupComponent {
   };
   protected readonly assetLocationInputConfig: LocationInputConfig = {
     label: 'Location',
-    placeholder: 'Property address',
+    placeholder: 'Accommodation address',
     required: true,
     routeStops: () => this.assetFormRouteStops(),
     mapMode: 'search',
@@ -331,7 +331,7 @@ export class AssetEditorPopupComponent {
   }
 
   private assetLocationFlowControls(disabled: boolean): FormFlowModel['steps'][number]['controls'] {
-    if (!this.isPropertyAssetForm()) {
+    if (!this.isAccommodationAssetForm()) {
       return [];
     }
     return [{
@@ -350,7 +350,7 @@ export class AssetEditorPopupComponent {
 
   private assetRuntimeRouteFlowSteps(): FormFlowModel['steps'] {
     const runtimeRoute = this.assetStore.assetFormRuntimeRoute();
-    if (!runtimeRoute || this.assetForm.type !== 'Car') {
+    if (!runtimeRoute || this.assetForm.type !== AppConstants.ASSET_TYPE_TRANSPORT) {
       return [];
     }
     return [{
@@ -701,7 +701,7 @@ export class AssetEditorPopupComponent {
       ? imageUrls[0] ?? ''
       : `${source.imageUrl ?? current.imageUrl ?? ''}`.trim();
     const routeLocation = `${source.routeLocation ?? this.assetFormRouteStops()[0] ?? ''}`.trim();
-    const routes = type === 'Accommodation'
+    const routes = type === AppConstants.ASSET_TYPE_ACCOMMODATION
       ? AssetCardBuilder.normalizeAssetRoutes(type, [routeLocation])
       : AssetCardBuilder.normalizeAssetRoutes(type, source.routes ?? current.routes);
     return {
@@ -835,7 +835,7 @@ export class AssetEditorPopupComponent {
     if (!title || capacityTotal < 1 || quantity < 1) {
       return false;
     }
-    if (assetForm.type !== 'Accommodation') {
+    if (assetForm.type !== AppConstants.ASSET_TYPE_ACCOMMODATION) {
       return true;
     }
     return AssetCardBuilder.normalizeAssetRoutes(assetForm.type, assetForm.routes)
@@ -934,8 +934,8 @@ export class AssetEditorPopupComponent {
     return left.length === normalizedRight.length && left.every((item, index) => item === normalizedRight[index]);
   }
 
-  protected isPropertyAssetForm(): boolean {
-    return this.assetForm?.type === 'Accommodation';
+  protected isAccommodationAssetForm(): boolean {
+    return this.assetForm?.type === AppConstants.ASSET_TYPE_ACCOMMODATION;
   }
 
   protected eventVisibilityClass(option: AppConstants.EventVisibility): string {
@@ -967,13 +967,13 @@ export class AssetEditorPopupComponent {
   }
 
   private assetTypePalette(type: AppConstants.AssetFilterType): AppMenuPalette {
-    if (type === 'Accommodation') {
+    if (type === AppConstants.ASSET_TYPE_ACCOMMODATION) {
       return 'green';
     }
-    if (type === 'Supplies') {
+    if (type === AppConstants.ASSET_TYPE_SUPPLIES) {
       return 'brown';
     }
-    if (type === 'Ticket') {
+    if (type === AppConstants.ASSET_FILTER_TICKET) {
       return 'sky';
     }
     return 'blue';
@@ -981,13 +981,13 @@ export class AssetEditorPopupComponent {
 
   private assetCategoryPalette(category: AppConstants.AssetCategory | null | undefined): AppMenuPalette {
     const className = this.assetCategoryClass(category);
-    if (className.includes('accommodation') || className.includes('property')) {
+    if (className.includes('accommodation')) {
       return 'green';
     }
     if (className.includes('supply') || className.includes('supplies')) {
       return 'brown';
     }
-    if (className.includes('vehicle') || className.includes('car')) {
+    if (className.includes('transport') || className.includes('vehicle')) {
       return 'blue';
     }
     return this.assetTypePalette(this.assetForm.type);

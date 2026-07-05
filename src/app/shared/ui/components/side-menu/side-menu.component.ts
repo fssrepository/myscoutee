@@ -70,6 +70,7 @@ import {
 import {
   USER_LOGOUT_CONTEXT_KEY
 } from '../../../core/base/services/users.service';
+import * as AppConstants from '../../../core/common/constants';
 import {
   DialogComponent
 } from '../core/dialog/dialog.component';
@@ -125,7 +126,7 @@ type NavigatorMenuShortcutId =
   | 'invitations'
   | 'events'
   | 'hosting'
-  | 'car'
+  | 'transport'
   | 'accommodation'
   | 'supplies'
   | 'tickets'
@@ -639,35 +640,35 @@ export class SideMenuComponent implements OnDestroy {
           palette: 'brown',
           items: [
             {
-              id: 'car',
-              label: 'Car',
+              id: 'transport',
+              label: AppConstants.ASSET_TYPE_TRANSPORT,
               icon: 'directions_car',
               palette: 'blue',
-              ariaLabel: 'Car',
+              ariaLabel: AppConstants.ASSET_TYPE_TRANSPORT,
               disabled: primaryDisabled
             },
             {
               id: 'accommodation',
-              label: 'Property',
+              label: AppConstants.ASSET_TYPE_ACCOMMODATION,
               icon: 'apartment',
               palette: 'green',
-              ariaLabel: 'Property',
+              ariaLabel: AppConstants.ASSET_TYPE_ACCOMMODATION,
               disabled: primaryDisabled
             },
             {
               id: 'supplies',
-              label: 'Supplies',
+              label: AppConstants.ASSET_TYPE_SUPPLIES,
               icon: 'inventory_2',
               palette: 'brown',
-              ariaLabel: 'Supplies',
+              ariaLabel: AppConstants.ASSET_TYPE_SUPPLIES,
               disabled: primaryDisabled
             },
             {
               id: 'tickets',
-              label: 'Ticket',
+              label: AppConstants.ASSET_FILTER_TICKET,
               icon: 'qr_code_2',
               palette: 'blue',
-              ariaLabel: 'Ticket',
+              ariaLabel: AppConstants.ASSET_FILTER_TICKET,
               disabled: primaryDisabled
             },
             {
@@ -1150,8 +1151,8 @@ export class SideMenuComponent implements OnDestroy {
       case 'hosting':
         this.openHostingShortcut(event.sourceEvent);
         return;
-      case 'car':
-        this.openAssetCarPopup(event.sourceEvent);
+      case 'transport':
+        this.openAssetTransportPopup(event.sourceEvent);
         return;
       case 'accommodation':
         this.openAssetAccommodationPopup(event.sourceEvent);
@@ -1311,12 +1312,12 @@ export class SideMenuComponent implements OnDestroy {
     this.openActivitiesShortcut('events', 'my-events');
   }
 
-  protected openAssetCarPopup(event?: Event): void {
+  protected openAssetTransportPopup(event?: Event): void {
     event?.stopPropagation();
     if (!this.runtimeStore.isOnline() || this.isBlockedUser()) {
       return;
     }
-    this.memberMenuStore.openNavigatorAssetRequest('Car');
+    this.memberMenuStore.openNavigatorAssetRequest(AppConstants.ASSET_TYPE_TRANSPORT);
   }
 
   protected openAssetAccommodationPopup(event?: Event): void {
@@ -1324,7 +1325,7 @@ export class SideMenuComponent implements OnDestroy {
     if (!this.runtimeStore.isOnline() || this.isBlockedUser()) {
       return;
     }
-    this.memberMenuStore.openNavigatorAssetRequest('Accommodation');
+    this.memberMenuStore.openNavigatorAssetRequest(AppConstants.ASSET_TYPE_ACCOMMODATION);
   }
 
   protected openAssetSuppliesPopup(event?: Event): void {
@@ -1332,12 +1333,12 @@ export class SideMenuComponent implements OnDestroy {
     if (!this.runtimeStore.isOnline() || this.isBlockedUser()) {
       return;
     }
-    this.memberMenuStore.openNavigatorAssetRequest('Supplies');
+    this.memberMenuStore.openNavigatorAssetRequest(AppConstants.ASSET_TYPE_SUPPLIES);
   }
 
   protected openAssetTicketsPopup(event?: Event): void {
     event?.stopPropagation();
-    this.memberMenuStore.openNavigatorAssetRequest('Ticket');
+    this.memberMenuStore.openNavigatorAssetRequest(AppConstants.ASSET_FILTER_TICKET);
   }
 
   protected openContactsPopup(event?: Event): void {

@@ -59,7 +59,7 @@ app-event-resource-list {
   box-shadow: 0 5px 14px rgba(30, 64, 106, 0.2);
 }
 
-.event-resource-popup-shell .assets-toolbar .profile-status-select-wrap.asset-filter-car.asset-filter-open {
+.event-resource-popup-shell .assets-toolbar .profile-status-select-wrap.asset-filter-transport.asset-filter-open {
   background: linear-gradient(180deg, #d6e8ff 0%, #c7dcfa 100%);
   color: #173d69;
 }
@@ -78,8 +78,8 @@ app-event-resource-list {
   transform: rotate(45deg);
 }
 
-.event-resource-popup-shell .experience-filter-select.asset-filter-car,
-.event-resource-popup-shell .experience-type-select.asset-filter-car {
+.event-resource-popup-shell .experience-filter-select.asset-filter-transport,
+.event-resource-popup-shell .experience-type-select.asset-filter-transport {
   background: linear-gradient(180deg, #eef6ff 0%, #e2efff 100%);
   border-color: rgba(43, 111, 179, 0.32);
 }
@@ -96,7 +96,7 @@ app-event-resource-list {
   border-color: rgba(151, 92, 41, 0.32);
 }
 
-.event-resource-popup-shell .asset-filter-car {
+.event-resource-popup-shell .asset-filter-transport {
   color: #295d96;
 }
 

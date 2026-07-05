@@ -93,7 +93,7 @@ import {
 
 import type * as AppDTOs from '../../../shared/core/contracts';
 import type * as AssetContracts from '../../../shared/core/contracts/asset.interface';
-import type * as AppConstants from '../../../shared/core/common/constants';
+import * as AppConstants from '../../../shared/core/common/constants';
 import { UserProfileStore } from '../../../shared/ui/context/stores/user-profile.store';
 import { AppRuntimeStore } from '../../../shared/ui/context/stores/app-runtime.store';
 import { ActivityStore } from '../../../shared/ui/context/stores/activity.store';
@@ -201,8 +201,8 @@ export class AssetPopupComponent {
   protected readonly assetSmartListConfig: SmartListConfig<AppDTOs.AssetDTO, OwnedAssetListFilters> = {
     pageSize: 18,
     defaultView: 'list',
-    emptyLabel: query => this.ownedAssetEmptyLabelKey(query.filters?.type ?? 'Car'),
-    emptyDescription: query => this.ownedAssetEmptyDescriptionKey(query.filters?.type ?? 'Car'),
+    emptyLabel: query => this.ownedAssetEmptyLabelKey(query.filters?.type ?? AppConstants.ASSET_TYPE_TRANSPORT),
+    emptyDescription: query => this.ownedAssetEmptyDescriptionKey(query.filters?.type ?? AppConstants.ASSET_TYPE_TRANSPORT),
     headerProgress: {
       enabled: true,
       state: () => this.runtimeStore.isOnline() ? 'active' : 'inactive'
@@ -258,7 +258,7 @@ export class AssetPopupComponent {
       if (!activeFilter) {
         return;
       }
-      if (activeFilter === 'Ticket') {
+      if (activeFilter === AppConstants.ASSET_FILTER_TICKET) {
         this.assetPopupStore.prepareTicketPopupOpen(
           this.assetTicketsService.peekTicketCountByUser(this.userProfileStore.activeUserId().trim())
         );
@@ -967,13 +967,13 @@ export class AssetPopupComponent {
     type: AppConstants.AssetFilterType
   ): Extract<ActivityCounterKey, 'cars' | 'accommodation' | 'supplies' | 'tickets'> | null {
     switch (type) {
-      case 'Car':
+      case AppConstants.ASSET_TYPE_TRANSPORT:
         return 'cars';
-      case 'Accommodation':
+      case AppConstants.ASSET_TYPE_ACCOMMODATION:
         return 'accommodation';
-      case 'Supplies':
+      case AppConstants.ASSET_TYPE_SUPPLIES:
         return 'supplies';
-      case 'Ticket':
+      case AppConstants.ASSET_FILTER_TICKET:
         return 'tickets';
       default:
         return null;
@@ -1125,23 +1125,23 @@ export class AssetPopupComponent {
   }
 
   private ownedAssetEmptyLabelKey(type: AppConstants.AssetType): string {
-    if (type === 'Accommodation') {
+    if (type === AppConstants.ASSET_TYPE_ACCOMMODATION) {
       return 'asset.owned.empty.accommodation.label';
     }
-    if (type === 'Supplies') {
+    if (type === AppConstants.ASSET_TYPE_SUPPLIES) {
       return 'asset.owned.empty.supplies.label';
     }
-    return 'asset.owned.empty.car.label';
+    return 'asset.owned.empty.transport.label';
   }
 
   private ownedAssetEmptyDescriptionKey(type: AppConstants.AssetType): string {
-    if (type === 'Accommodation') {
+    if (type === AppConstants.ASSET_TYPE_ACCOMMODATION) {
       return 'asset.owned.empty.accommodation.description';
     }
-    if (type === 'Supplies') {
+    if (type === AppConstants.ASSET_TYPE_SUPPLIES) {
       return 'asset.owned.empty.supplies.description';
     }
-    return 'asset.owned.empty.car.description';
+    return 'asset.owned.empty.transport.description';
   }
 
   private async runSupplyRequestRowAction(
@@ -1161,13 +1161,13 @@ export class AssetPopupComponent {
   }
 
   private assetFilterPalette(filter: AppConstants.AssetFilterType): AppMenuPalette {
-    if (filter === 'Accommodation') {
+    if (filter === AppConstants.ASSET_TYPE_ACCOMMODATION) {
       return 'green';
     }
-    if (filter === 'Supplies') {
+    if (filter === AppConstants.ASSET_TYPE_SUPPLIES) {
       return 'brown';
     }
-    if (filter === 'Ticket') {
+    if (filter === AppConstants.ASSET_FILTER_TICKET) {
       return 'sky';
     }
     return 'blue';
@@ -1741,7 +1741,7 @@ export class AssetPopupComponent {
     this.assetSmartListQuery = {
       filters: {
         userId: this.userProfileStore.activeUserId().trim(),
-        type: filter === 'Ticket' ? 'Car' : filter,
+        type: filter === AppConstants.ASSET_FILTER_TICKET ? AppConstants.ASSET_TYPE_TRANSPORT : filter,
         refreshToken: this.assetStore.assetListReloadRevision()
       }
     };
@@ -1892,7 +1892,7 @@ export class AssetPopupComponent {
       ...nextState.assetSettingsByType,
       [context.type]: draft.nextSettings
     };
-    if (context.type === 'Supplies') {
+    if (context.type === AppConstants.ASSET_TYPE_SUPPLIES) {
       nextState.supplyContributionEntriesByAssetId = Object.fromEntries(
         Object.entries(nextState.supplyContributionEntriesByAssetId)
           .filter(([assetId]) => draft.nextIds.includes(assetId))
@@ -1918,17 +1918,17 @@ export class AssetPopupComponent {
       subEventId,
       assetOwnerUserId,
       assetAssignmentIds: {
-        Car: [...this.currentAssignedAssetIds(subEventId, 'Car')],
-        Accommodation: [...this.currentAssignedAssetIds(subEventId, 'Accommodation')],
-        Supplies: [...this.currentAssignedAssetIds(subEventId, 'Supplies')]
+        [AppConstants.ASSET_TYPE_TRANSPORT]: [...this.currentAssignedAssetIds(subEventId, AppConstants.ASSET_TYPE_TRANSPORT)],
+        [AppConstants.ASSET_TYPE_ACCOMMODATION]: [...this.currentAssignedAssetIds(subEventId, AppConstants.ASSET_TYPE_ACCOMMODATION)],
+        [AppConstants.ASSET_TYPE_SUPPLIES]: [...this.currentAssignedAssetIds(subEventId, AppConstants.ASSET_TYPE_SUPPLIES)]
       },
       assetSettingsByType: {
-        Car: { ...this.getSubEventAssignedAssetSettings(subEventId, 'Car') },
-        Accommodation: { ...this.getSubEventAssignedAssetSettings(subEventId, 'Accommodation') },
-        Supplies: { ...this.getSubEventAssignedAssetSettings(subEventId, 'Supplies') }
+        [AppConstants.ASSET_TYPE_TRANSPORT]: { ...this.getSubEventAssignedAssetSettings(subEventId, AppConstants.ASSET_TYPE_TRANSPORT) },
+        [AppConstants.ASSET_TYPE_ACCOMMODATION]: { ...this.getSubEventAssignedAssetSettings(subEventId, AppConstants.ASSET_TYPE_ACCOMMODATION) },
+        [AppConstants.ASSET_TYPE_SUPPLIES]: { ...this.getSubEventAssignedAssetSettings(subEventId, AppConstants.ASSET_TYPE_SUPPLIES) }
       },
       supplyContributionEntriesByAssetId: Object.fromEntries(
-        this.currentAssignedAssetIds(subEventId, 'Supplies').map(assetId => [
+        this.currentAssignedAssetIds(subEventId, AppConstants.ASSET_TYPE_SUPPLIES).map(assetId => [
           assetId,
           this.resourcePopupStore.supplyContributionEntries(subEventId, assetId).map(entry => ({ ...entry }))
         ])
@@ -1936,9 +1936,9 @@ export class AssetPopupComponent {
       fallbackAssetCardsByType: context.origin === 'subEventResource'
         ? {}
         : {
-            Car: this.persistedAssignedFallbackCards(context, 'Car'),
-            Accommodation: this.persistedAssignedFallbackCards(context, 'Accommodation'),
-            Supplies: this.persistedAssignedFallbackCards(context, 'Supplies')
+            [AppConstants.ASSET_TYPE_TRANSPORT]: this.persistedAssignedFallbackCards(context, AppConstants.ASSET_TYPE_TRANSPORT),
+            [AppConstants.ASSET_TYPE_ACCOMMODATION]: this.persistedAssignedFallbackCards(context, AppConstants.ASSET_TYPE_ACCOMMODATION),
+            [AppConstants.ASSET_TYPE_SUPPLIES]: this.persistedAssignedFallbackCards(context, AppConstants.ASSET_TYPE_SUPPLIES)
           }
     };
   }
@@ -1993,7 +1993,7 @@ export class AssetPopupComponent {
             )
       });
     }
-    for (const type of ['Car', 'Accommodation', 'Supplies'] as const) {
+    for (const type of AppConstants.ASSET_TYPES) {
       this.resourcePopupStore.assignedAssetIdsByKey[this.assetAssignmentKey(normalizedState.subEventId, type)] = [
         ...(normalizedState.assetAssignmentIds[type] ?? [])
       ];
@@ -2018,9 +2018,9 @@ export class AssetPopupComponent {
       return;
     }
     const nextSubEvent = { ...context.subEvent };
-    const cars = this.subEventAssetCapacityMetrics(nextSubEvent, 'Car');
-    const accommodation = this.subEventAssetCapacityMetrics(nextSubEvent, 'Accommodation');
-    const supplies = this.subEventAssetCapacityMetrics(nextSubEvent, 'Supplies');
+    const cars = this.subEventAssetCapacityMetrics(nextSubEvent, AppConstants.ASSET_TYPE_TRANSPORT);
+    const accommodation = this.subEventAssetCapacityMetrics(nextSubEvent, AppConstants.ASSET_TYPE_ACCOMMODATION);
+    const supplies = this.subEventAssetCapacityMetrics(nextSubEvent, AppConstants.ASSET_TYPE_SUPPLIES);
     nextSubEvent.carsAccepted = cars.joined;
     nextSubEvent.carsPending = cars.pending;
     nextSubEvent.carsCapacityMin = cars.capacityMin;
@@ -2048,10 +2048,10 @@ export class AssetPopupComponent {
     const settings = this.getSubEventAssignedAssetSettings(subEvent.id, type);
     const capacityMax = cards.reduce((sum, card) => sum + (settings[card.id]?.capacityMax ?? Math.max(0, card.capacityTotal)), 0);
     const capacityMin = cards.reduce((sum, card) => sum + (settings[card.id]?.capacityMin ?? 0), 0);
-    const pending = type === 'Supplies'
+    const pending = type === AppConstants.ASSET_TYPE_SUPPLIES
       ? 0
       : cards.reduce((sum, card) => sum + ActivityResourceBuilder.subEventOccupancyRequestCount(card, subEvent.id, 'pending'), 0);
-    if (type === 'Supplies') {
+    if (type === AppConstants.ASSET_TYPE_SUPPLIES) {
       return {
         joined: cards.reduce((sum, card) => sum + this.resourcePopupStore.supplyContributionEntries(subEvent.id, card.id)
           .reduce((entrySum, entry) => entrySum + AppUtils.clampNumber(Math.trunc(entry.quantity), 0, Number.MAX_SAFE_INTEGER), 0), 0),
@@ -2124,12 +2124,12 @@ export class AssetPopupComponent {
     parentTitle: string,
     activeUser: AppDTOs.UserDto
   ): AppDTOs.AssetMemberRequestDTO | null {
-    if (card.type === 'Supplies') {
-      const assignedSupplyIds = new Set(this.currentAssignedAssetIds(subEvent.id, 'Supplies'));
+    if (card.type === AppConstants.ASSET_TYPE_SUPPLIES) {
+      const assignedSupplyIds = new Set(this.currentAssignedAssetIds(subEvent.id, AppConstants.ASSET_TYPE_SUPPLIES));
       if (!assignedSupplyIds.has(card.id)) {
         return null;
       }
-      const settings = this.getSubEventAssignedAssetSettings(subEvent.id, 'Supplies')[card.id];
+      const settings = this.getSubEventAssignedAssetSettings(subEvent.id, AppConstants.ASSET_TYPE_SUPPLIES)[card.id];
       const quantity = this.resourcePopupStore.supplyContributionEntries(subEvent.id, card.id)
         .reduce((sum, entry) => sum + AppUtils.clampNumber(Math.trunc(entry.quantity), 0, Number.MAX_SAFE_INTEGER), 0)
         || Math.max(0, Math.trunc(Number(settings?.capacityMax ?? card.capacityTotal) || 0));
@@ -2139,7 +2139,7 @@ export class AssetPopupComponent {
       const existing = card.requests.find(request => ActivityResourceBuilder.isSubEventManualAssignmentRequest(request, subEvent.id)) ?? null;
       return this.manualAssetRequest(card, subEvent, ownerId, parentTitle, activeUser, existing, quantity);
     }
-    if (card.type !== 'Car' && card.type !== 'Accommodation') {
+    if (card.type !== AppConstants.ASSET_TYPE_TRANSPORT && card.type !== AppConstants.ASSET_TYPE_ACCOMMODATION) {
       return null;
     }
     const assignedIds = new Set(this.currentAssignedAssetIds(subEvent.id, card.type));
@@ -2296,7 +2296,7 @@ export class AssetPopupComponent {
     subEventId: string
   ): Partial<Record<AppConstants.AssetType, AppDTOs.AssetDTO[]>> {
     const next: Partial<Record<AppConstants.AssetType, AppDTOs.AssetDTO[]>> = {};
-    for (const type of ['Car', 'Accommodation', 'Supplies'] as const) {
+    for (const type of AppConstants.ASSET_TYPES) {
       const nextById = new Map((current?.[type] ?? []).map(card => [card.id, new AssetDto(card)] as const));
       for (const card of persisted?.[type] ?? []) {
         nextById.set(card.id, new AssetDto({
@@ -2345,13 +2345,13 @@ export class AssetPopupComponent {
   }
 
   private normalizeAssetRoutes(type: AppConstants.AssetType, routes: string[] | undefined | null): string[] {
-    if (type === 'Supplies') {
+    if (type === AppConstants.ASSET_TYPE_SUPPLIES) {
       return [];
     }
     const cleaned = (routes ?? [])
       .map(value => value.trim())
       .filter((value, index, values) => value.length > 0 && values.indexOf(value) === index);
-    if (type === 'Accommodation') {
+    if (type === AppConstants.ASSET_TYPE_ACCOMMODATION) {
       return cleaned.length > 0 ? [cleaned[0]] : [''];
     }
     return cleaned.length > 0 ? cleaned : [''];
@@ -2514,15 +2514,15 @@ export class AssetPopupComponent {
 
   private assetExplanationContextForFilter(filter: AppConstants.AssetFilterType): string {
     switch (filter) {
-      case 'Accommodation':
+      case AppConstants.ASSET_TYPE_ACCOMMODATION:
         return 'assets.accommodation';
-      case 'Supplies':
+      case AppConstants.ASSET_TYPE_SUPPLIES:
         return 'assets.supplies';
-      case 'Ticket':
+      case AppConstants.ASSET_FILTER_TICKET:
         return 'assets.tickets';
-      case 'Car':
+      case AppConstants.ASSET_TYPE_TRANSPORT:
       default:
-        return 'assets.car';
+        return 'assets.transport';
     }
   }
 
@@ -2547,7 +2547,9 @@ export class AssetPopupComponent {
       return assignType;
     }
     const currentFilter = this.assetStore.assetFilter();
-    return currentFilter === 'Accommodation' || currentFilter === 'Supplies' ? currentFilter : 'Car';
+    return currentFilter === AppConstants.ASSET_TYPE_ACCOMMODATION || currentFilter === AppConstants.ASSET_TYPE_SUPPLIES
+      ? currentFilter
+      : AppConstants.ASSET_TYPE_TRANSPORT;
   }
 
   private syncVisibleOwnedAssetListFromStore(): void {
@@ -2611,7 +2613,7 @@ export class AssetPopupComponent {
   ): Promise<{ items: AppDTOs.AssetDTO[]; total: number }> {
     const userId = query.filters?.userId?.trim() || this.userProfileStore.activeUserId().trim();
     const type = query.filters?.type;
-    if (!userId || (type !== 'Car' && type !== 'Accommodation' && type !== 'Supplies')) {
+    if (!userId || !AppConstants.isAssetType(type)) {
       return {
         items: [],
         total: 0

@@ -57,7 +57,7 @@
             <span>Details</span>
             <textarea rows="3" [ngModel]="view.card.details" disabled></textarea>
           </label>
-          @if (view.card.type === 'Car') {
+          @if (view.card.type === assetTypeTransport) {
             <section class="experience-description-field subevent-asset-view-summary-panel subevent-asset-view-route">
               <div class="event-policies-panel-head">
                 <div class="event-policies-panel-title-wrap">

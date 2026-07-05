@@ -41,6 +41,7 @@ import {
 } from '../../../shared/ui/context/stores/activities-popup.store';
 import {
   ActivityResourceBuilder,
+  AssetDefaultsBuilder,
   ActivityResourcesService,
   ChatsService,
   ChatVoiceClipsService,
@@ -82,7 +83,7 @@ import {
 } from '../../../shared/ui/context/stores/profile.store';
 
 import type * as AppDTOs from '../../../shared/core/contracts';
-import type * as AppConstants from '../../../shared/core/common/constants';
+import * as AppConstants from '../../../shared/core/common/constants';
 import { UserProfileStore } from '../../../shared/ui/context/stores/user-profile.store';
 import { AppRuntimeStore } from '../../../shared/ui/context/stores/app-runtime.store';
 import {
@@ -640,7 +641,7 @@ export class EventChatPopupComponent implements OnDestroy {
       metrics: header.metrics
         ? {
             members: header.metrics.members ? { ...header.metrics.members } : null,
-            car: header.metrics.car ? { ...header.metrics.car } : null,
+            transport: header.metrics.transport ? { ...header.metrics.transport } : null,
             accommodation: header.metrics.accommodation ? { ...header.metrics.accommodation } : null,
             supplies: header.metrics.supplies ? { ...header.metrics.supplies } : null,
             groupsCount: header.metrics.groupsCount ?? null,
@@ -669,7 +670,7 @@ export class EventChatPopupComponent implements OnDestroy {
       metrics: header.metrics
         ? {
             members: header.metrics.members ? { ...header.metrics.members } : null,
-            car: header.metrics.car ? { ...header.metrics.car } : null,
+            transport: header.metrics.transport ? { ...header.metrics.transport } : null,
             accommodation: header.metrics.accommodation ? { ...header.metrics.accommodation } : null,
             supplies: header.metrics.supplies ? { ...header.metrics.supplies } : null,
             groupsCount: header.metrics.groupsCount ?? null,
@@ -1812,12 +1813,12 @@ export class EventChatPopupComponent implements OnDestroy {
     const state = this.selectedChatNavigationState;
     const resourceType = this.firstAvailableAssetType();
     if (state?.subEvent) {
-      this.openSelectedChatSubEventResource(resourceType ?? 'Car', event, true);
+      this.openSelectedChatSubEventResource(resourceType ?? AppConstants.ASSET_TYPE_TRANSPORT, event, true);
       return;
     }
     this.memberMenuStore.requestActivitiesNavigation({
       type: 'assetExplore',
-      assetType: resourceType ?? 'Car'
+      assetType: resourceType ?? AppConstants.ASSET_TYPE_TRANSPORT
     });
   }
 
@@ -2683,7 +2684,7 @@ export class EventChatPopupComponent implements OnDestroy {
     }
     this.memberMenuStore.requestActivitiesNavigation({
       type: 'assetExplore',
-      assetType: this.normalizeAttachmentAssetType(attachment.assetType) ?? 'Car',
+      assetType: this.normalizeAttachmentAssetType(attachment.assetType) ?? AppConstants.ASSET_TYPE_TRANSPORT,
       assetId: `${attachment.entityId ?? ''}`.trim() || undefined,
       viewOnly: true,
       fallbackAsset: this.assetAttachmentToViewCard(attachment)
@@ -2692,7 +2693,7 @@ export class EventChatPopupComponent implements OnDestroy {
 
   private assetAttachmentToViewCard(attachment: ContractTypes.ChatMessageAttachment): AppDTOs.AssetDTO | undefined {
     const assetId = `${attachment.entityId ?? ''}`.trim();
-    const assetType = this.normalizeAttachmentAssetType(attachment.assetType) ?? 'Car';
+    const assetType = this.normalizeAttachmentAssetType(attachment.assetType) ?? AppConstants.ASSET_TYPE_TRANSPORT;
     if (!assetId) {
       return undefined;
     }
@@ -2716,7 +2717,7 @@ export class EventChatPopupComponent implements OnDestroy {
   }
 
   private normalizeAttachmentAssetType(value: unknown): AppConstants.AssetType | null {
-    return value === 'Car' || value === 'Accommodation' || value === 'Supplies' ? value : null;
+    return AppConstants.isAssetType(value) ? value : null;
   }
 
   private openExternalAttachmentUrl(attachment: ContractTypes.ChatMessageAttachment): void {
@@ -4358,7 +4359,7 @@ export class EventChatPopupComponent implements OnDestroy {
     if (!state.subEvent || (state.channelType !== 'optionalSubEvent' && state.channelType !== 'groupSubEvent')) {
       return null;
     }
-    const assetControls = (['Car', 'Accommodation', 'Supplies'] as const)
+    const assetControls = AppConstants.ASSET_TYPES
       .map(type => this.buildResourceControl(state.subEvent as ContractTypes.SubEventDTO, state, type));
     return {
       title: primaryControl.label || state.subEvent.name,
@@ -4450,10 +4451,10 @@ export class EventChatPopupComponent implements OnDestroy {
       membersPending: metrics.members?.pending ?? subEvent.membersPending,
       capacityMin: metrics.members?.capacityMin ?? subEvent.capacityMin,
       capacityMax: metrics.members?.capacityMax ?? subEvent.capacityMax,
-      carsAccepted: metrics.car?.accepted ?? subEvent.carsAccepted,
-      carsPending: metrics.car?.pending ?? subEvent.carsPending,
-      carsCapacityMin: metrics.car?.capacityMin ?? subEvent.carsCapacityMin,
-      carsCapacityMax: metrics.car?.capacityMax ?? subEvent.carsCapacityMax,
+      carsAccepted: metrics.transport?.accepted ?? subEvent.carsAccepted,
+      carsPending: metrics.transport?.pending ?? subEvent.carsPending,
+      carsCapacityMin: metrics.transport?.capacityMin ?? subEvent.carsCapacityMin,
+      carsCapacityMax: metrics.transport?.capacityMax ?? subEvent.carsCapacityMax,
       accommodationAccepted: metrics.accommodation?.accepted ?? subEvent.accommodationAccepted,
       accommodationPending: metrics.accommodation?.pending ?? subEvent.accommodationPending,
       accommodationCapacityMin: metrics.accommodation?.capacityMin ?? subEvent.accommodationCapacityMin,
@@ -4759,16 +4760,16 @@ export class EventChatPopupComponent implements OnDestroy {
     state: AppDTOs.ActivitySubEventResourceStateDTO | null,
     assetCards: readonly SubEventAssetCard[]
   ): ContractTypes.SubEventDTO {
-    for (const type of ['Car', 'Accommodation', 'Supplies'] as const) {
+    for (const type of AppConstants.ASSET_TYPES) {
       const accepted = ActivityResourceBuilder.resourceAcceptedCount(subEvent, type, state, assetCards);
       const pending = ActivityResourceBuilder.resourcePendingCount(subEvent, type, state, assetCards);
       const bounds = ActivityResourceBuilder.resourceCapacityBounds(subEvent, type, state, assetCards, accepted, pending);
-      if (type === 'Car') {
+      if (type === AppConstants.ASSET_TYPE_TRANSPORT) {
         subEvent.carsAccepted = accepted;
         subEvent.carsPending = pending;
         subEvent.carsCapacityMin = bounds.capacityMin;
         subEvent.carsCapacityMax = bounds.capacityMax;
-      } else if (type === 'Accommodation') {
+      } else if (type === AppConstants.ASSET_TYPE_ACCOMMODATION) {
         subEvent.accommodationAccepted = accepted;
         subEvent.accommodationPending = pending;
         subEvent.accommodationCapacityMin = bounds.capacityMin;
@@ -4825,7 +4826,7 @@ export class EventChatPopupComponent implements OnDestroy {
   ): ContractTypes.ChatMetricsDTO {
     const next: ContractTypes.ChatMetricsDTO = this.cloneChatMetrics(metrics) ?? {
       members: null,
-      car: null,
+      transport: null,
       accommodation: null,
       supplies: null,
       groupsCount: null,
@@ -4844,7 +4845,7 @@ export class EventChatPopupComponent implements OnDestroy {
     }
     return {
       members: metrics.members ? { ...metrics.members } : null,
-      car: metrics.car ? { ...metrics.car } : null,
+      transport: metrics.transport ? { ...metrics.transport } : null,
       accommodation: metrics.accommodation ? { ...metrics.accommodation } : null,
       supplies: metrics.supplies ? { ...metrics.supplies } : null,
       groupsCount: metrics.groupsCount ?? null,
@@ -4854,7 +4855,7 @@ export class EventChatPopupComponent implements OnDestroy {
 
   private chatMetricPendingTotal(metrics: ContractTypes.ChatMetricsDTO): number {
     return this.chatMetricCount(metrics.members?.pending)
-      + this.chatMetricCount(metrics.car?.pending)
+      + this.chatMetricCount(metrics.transport?.pending)
       + this.chatMetricCount(metrics.accommodation?.pending)
       + this.chatMetricCount(metrics.supplies?.pending);
   }
@@ -4866,7 +4867,7 @@ export class EventChatPopupComponent implements OnDestroy {
   }
 
   private flattenAssetCards(assetCardsByType: SubEventAssetCardsByType): SubEventAssetCard[] {
-    return (['Car', 'Accommodation', 'Supplies'] as const)
+    return AppConstants.ASSET_TYPES
       .flatMap(type => assetCardsByType[type] ?? []);
   }
 
@@ -4957,10 +4958,10 @@ export class EventChatPopupComponent implements OnDestroy {
     if (type === 'Members') {
       return metrics.members ?? null;
     }
-    if (type === 'Car') {
-      return metrics.car ?? null;
+    if (type === AppConstants.ASSET_TYPE_TRANSPORT) {
+      return metrics.transport ?? null;
     }
-    if (type === 'Accommodation') {
+    if (type === AppConstants.ASSET_TYPE_ACCOMMODATION) {
       return metrics.accommodation ?? null;
     }
     return metrics.supplies ?? null;
@@ -5032,7 +5033,7 @@ export class EventChatPopupComponent implements OnDestroy {
       return null;
     }
     const id = `${control.lookup.id ?? ''}`.trim();
-    return id === 'Members' || id === 'Car' || id === 'Accommodation' || id === 'Supplies'
+    return id === 'Members' || AppConstants.isAssetType(id)
       ? id
       : null;
   }
@@ -5041,10 +5042,10 @@ export class EventChatPopupComponent implements OnDestroy {
     if (type === 'Members') {
       return 'violet';
     }
-    if (type === 'Car') {
+    if (type === AppConstants.ASSET_TYPE_TRANSPORT) {
       return 'blue';
     }
-    if (type === 'Accommodation') {
+    if (type === AppConstants.ASSET_TYPE_ACCOMMODATION) {
       return 'green';
     }
     return 'brown';
@@ -5054,17 +5055,17 @@ export class EventChatPopupComponent implements OnDestroy {
     if (type === 'Members') {
       return 'groups';
     }
-    if (type === 'Car') {
+    if (type === AppConstants.ASSET_TYPE_TRANSPORT) {
       return 'directions_car';
     }
-    if (type === 'Accommodation') {
+    if (type === AppConstants.ASSET_TYPE_ACCOMMODATION) {
       return 'apartment';
     }
     return 'inventory_2';
   }
 
   private resourceTypeLabel(type: SelectedChatResourceType): string {
-    return type === 'Accommodation' ? 'Property' : type;
+    return type === 'Members' ? 'Members' : AssetDefaultsBuilder.assetTypeLabel(type);
   }
 
   private firstAvailableAssetType(): AppConstants.AssetType | null {
@@ -5072,7 +5073,7 @@ export class EventChatPopupComponent implements OnDestroy {
     if (!state) {
       return null;
     }
-    return (['Car', 'Accommodation', 'Supplies'] as const)
+    return AppConstants.ASSET_TYPES
       .find(type => (state.assetCardsByType[type]?.length ?? 0) > 0)
       ?? null;
   }

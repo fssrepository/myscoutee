@@ -1,38 +1,42 @@
 import { APP_STATIC_DATA } from '../../../app-static-data';
 
-import type * as AppConstants from '../../common/constants';
+import * as AppConstants from '../../common/constants';
 export class AssetDefaultsBuilder {
+  private static readonly transportCategories: readonly string[] = AppConstants.TRANSPORT_ASSET_CATEGORIES;
+  private static readonly accommodationCategories: readonly string[] = AppConstants.ACCOMMODATION_ASSET_CATEGORIES;
+  private static readonly suppliesCategories: readonly string[] = AppConstants.SUPPLIES_ASSET_CATEGORIES;
+
   static assetTypeLabel(type: AppConstants.AssetFilterType): string {
     return APP_STATIC_DATA.assetTypeLabels[type];
   }
 
   static assetTypeIcon(type: AppConstants.AssetFilterType): string {
-    if (type === 'Car') {
+    if (type === AppConstants.ASSET_TYPE_TRANSPORT) {
       return 'directions_car';
     }
-    if (type === 'Accommodation') {
+    if (type === AppConstants.ASSET_TYPE_ACCOMMODATION) {
       return 'apartment';
     }
-    if (type === 'Ticket') {
+    if (type === AppConstants.ASSET_FILTER_TICKET) {
       return 'qr_code_2';
     }
     return 'inventory_2';
   }
 
   static assetTypeClass(type: AppConstants.AssetFilterType): string {
-    if (type === 'Car') {
-      return 'asset-filter-car';
+    if (type === AppConstants.ASSET_TYPE_TRANSPORT) {
+      return 'asset-filter-transport';
     }
-    if (type === 'Accommodation') {
+    if (type === AppConstants.ASSET_TYPE_ACCOMMODATION) {
       return 'asset-filter-accommodation';
     }
-    if (type === 'Supplies') {
+    if (type === AppConstants.ASSET_TYPE_SUPPLIES) {
       return 'asset-filter-supplies';
     }
-    if (type === 'Ticket') {
+    if (type === AppConstants.ASSET_FILTER_TICKET) {
       return 'asset-filter-ticket';
     }
-    return 'asset-filter-car';
+    return 'asset-filter-transport';
   }
 
   static eventVisibilityClass(option: AppConstants.EventVisibility): string {
@@ -70,10 +74,41 @@ export class AssetDefaultsBuilder {
     fallbackType: AppConstants.AssetType = this.assetCategoryType(category)
   ): string {
     switch (`${category ?? ''}`.trim().toLowerCase()) {
-      case 'ride':
-        return this.assetTypeIcon('Car');
-      case 'stay':
-        return this.assetTypeIcon('Accommodation');
+      case 'sedan':
+        return 'directions_car';
+      case 'suv':
+        return 'directions_car';
+      case 'van':
+      case 'shuttle':
+        return 'airport_shuttle';
+      case 'bus':
+        return 'directions_bus';
+      case 'truck':
+        return 'local_shipping';
+      case 'motorcycle':
+        return 'two_wheeler';
+      case 'bicycle':
+        return 'pedal_bike';
+      case 'boat':
+        return 'directions_boat';
+      case 'flight':
+        return 'flight';
+      case 'hotel':
+        return 'hotel';
+      case 'apartment':
+        return 'apartment';
+      case 'house':
+        return 'home';
+      case 'room':
+        return 'meeting_room';
+      case 'venue':
+        return 'stadium';
+      case 'campsite':
+        return 'camping';
+      case 'storage':
+        return 'warehouse';
+      case 'workspace':
+        return 'business_center';
       case 'camping':
         return 'forest';
       case 'cooking':
@@ -100,10 +135,6 @@ export class AssetDefaultsBuilder {
     fallbackType: AppConstants.AssetType = this.assetCategoryType(category)
   ): string {
     switch (`${category ?? ''}`.trim().toLowerCase()) {
-      case 'ride':
-        return this.assetTypeClass('Car');
-      case 'stay':
-        return this.assetTypeClass('Accommodation');
       case 'camping':
         return 'asset-category-camping';
       case 'cooking':
@@ -126,14 +157,17 @@ export class AssetDefaultsBuilder {
   }
 
   static assetCategoryType(category: AppConstants.AssetCategory | null | undefined): AppConstants.AssetType {
-    switch (`${category ?? ''}`.trim().toLowerCase()) {
-      case 'ride':
-        return 'Car';
-      case 'stay':
-        return 'Accommodation';
-      default:
-        return 'Supplies';
+    const normalized = this.normalizedCategory(category);
+    if (this.includesCategory(this.transportCategories, normalized)) {
+      return AppConstants.ASSET_TYPE_TRANSPORT;
     }
+    if (this.includesCategory(this.accommodationCategories, normalized)) {
+      return AppConstants.ASSET_TYPE_ACCOMMODATION;
+    }
+    if (this.includesCategory(this.suppliesCategories, normalized)) {
+      return AppConstants.ASSET_TYPE_SUPPLIES;
+    }
+    return AppConstants.ASSET_TYPE_SUPPLIES;
   }
 
   static defaultCategory(type: AppConstants.AssetType): AppConstants.AssetCategory {
@@ -147,5 +181,13 @@ export class AssetDefaultsBuilder {
       return normalized;
     }
     return this.defaultCategory(type);
+  }
+
+  private static normalizedCategory(category: AppConstants.AssetCategory | null | undefined): string {
+    return `${category ?? ''}`.trim().toLowerCase();
+  }
+
+  private static includesCategory(options: readonly string[], normalizedCategory: string): boolean {
+    return options.some(option => option.toLowerCase() === normalizedCategory);
   }
 }
