@@ -55,6 +55,7 @@ export interface ResourcePopupContext {
   origin: 'chat' | 'subEventResource';
   ownerId: string;
   parentTitle: string;
+  popupHeader?: SubEventResourcePopupPresentationHeader | null;
   subEvent: ContractTypes.SubEventDTO;
   groupId?: string;
   groupName?: string;
@@ -62,6 +63,11 @@ export interface ResourcePopupContext {
 }
 
 export type SubEventResourcePopupType = AppConstants.SubEventResourceFilter;
+
+export interface SubEventResourcePopupPresentationHeader {
+  title: string;
+  subtitle?: string | null;
+}
 
 export interface SubEventResourcePopupHeader {
   name?: string | null;
@@ -78,6 +84,7 @@ export interface SubEventResourcePopupRequest {
   subEventId?: string | null;
   subEventIndex?: number | null;
   subEventHeader?: SubEventResourcePopupHeader | null;
+  popupHeader?: SubEventResourcePopupPresentationHeader | null;
   parentTitle?: string;
   group?: {
     id?: string | null;

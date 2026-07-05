@@ -97,6 +97,7 @@ export {
   type ResourceAssetDTO,
   type ResourcePopupContext,
   type SubEventResourcePopupHeader,
+  type SubEventResourcePopupPresentationHeader,
   type SubEventResourcePopupRequest,
   type SubEventResourcePopupType,
   type SupplyBringDialogState,

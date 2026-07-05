@@ -1,64 +1,43 @@
 @if (!resourcePopupStore.assetExploreOnlyRef() || resourceAssetView()) {
-  <section
-    class="app-popup app-popup-stacked app-popup-stacked-over-subevents event-resource-popup-shell"
+  <app-popup
+    class="event-resource-popup-shell"
     [class.event-resource-popup-shell--standalone-asset-view]="resourcePopupStore.resourceAssetViewReturnToChatRef()"
     [class.event-resource-popup-shell--asset-explore-view]="resourcePopupStore.assetExploreOnlyRef() && resourceAssetView()"
-    [style.--event-resource-shell-z-index]="resourcePopupZIndex()"
-    >
-  <div class="app-popup-backdrop" (click)="closeResourceShellBackdrop($event)"></div>
-  <div class="app-popup-panel popup-panel-asset-members" (click)="$event.stopPropagation()">
-    @if (!resourcePopupStore.resourceAssetViewReturnToChatRef() && !resourcePopupStore.assetExploreOnlyRef()) {
-      <div class="popup-header popup-header-members-invite-mobile-layout">
-        <div class="popup-title popup-title-members">
-          <div class="popup-chat-title-block">
-            <h2>{{ popupTitle() }}</h2>
-            <p>{{ popupSubtitle() }}</p>
-          </div>
-        </div>
-        @if (popupSummary(); as summary) {
-          <span class="header-members-count members-header-summary-badge" [ngClass]="resourceTypeClass(resourcePopupStore.resourceFilterRef())">{{ summary }}</span>
-        }
-        <button mat-icon-button class="popup-close" (click)="closeResourcePopup()" aria-label="Close">
-          <mat-icon>close</mat-icon>
-        </button>
-      </div>
-    }
+    [model]="resourcePopupModel()"
+    [zIndex]="resourcePopupZIndex()"
+  >
+    <div class="experience-popup assets-popup subevent-assets-popup">
+      @if (!resourcePopupStore.resourceAssetViewReturnToChatRef() && !resourcePopupStore.assetExploreOnlyRef()) {
+        <app-event-resource-list
+          [model]="resourceListModel()"
+          (filterSelected)="selectResourceFilter($event)"
+          (assignRequested)="openAssignPopup($event)"
+          (exploreRequested)="openExplorePopup($event)"
+          (mapRequested)="openResourceMap($event)"
+          (badgeDetailsRequested)="openResourceBadgeDetails($event)"
+          (cardActionRequested)="onResourceCardMenuAction($event.card, $event.event)"
+        ></app-event-resource-list>
+      }
 
-    <div class="popup-body popup-body-members">
-      <div class="experience-popup assets-popup subevent-assets-popup">
-        @if (!resourcePopupStore.resourceAssetViewReturnToChatRef() && !resourcePopupStore.assetExploreOnlyRef()) {
-          <app-event-resource-list
-            [model]="resourceListModel()"
-            (filterSelected)="selectResourceFilter($event)"
-            (assignRequested)="openAssignPopup($event)"
-            (exploreRequested)="openExplorePopup($event)"
-            (mapRequested)="openResourceMap($event)"
-            (badgeDetailsRequested)="openResourceBadgeDetails($event)"
-            (cardActionRequested)="onResourceCardMenuAction($event.card, $event.event)"
-          ></app-event-resource-list>
+      @if (resourceAssetView()) {
+        @if (resourcePopupStore.eventResourceAssetViewComponent(); as assetViewComponent) {
+          <ng-container *ngComponentOutlet="assetViewComponent; inputs: resourceAssetViewOutletInputs()"></ng-container>
         }
+      }
 
-        @if (resourceAssetView()) {
-          @if (resourcePopupStore.eventResourceAssetViewComponent(); as assetViewComponent) {
-            <ng-container *ngComponentOutlet="assetViewComponent; inputs: resourceAssetViewOutletInputs()"></ng-container>
-          }
+      @if (resourcePopupStore.capacityEditorRef()) {
+        @if (resourcePopupStore.eventResourceCapacityEditorComponent(); as capacityEditorComponent) {
+          <ng-container *ngComponentOutlet="capacityEditorComponent; inputs: capacityEditorOutletInputs()"></ng-container>
         }
+      }
 
-        @if (resourcePopupStore.capacityEditorRef()) {
-          @if (resourcePopupStore.eventResourceCapacityEditorComponent(); as capacityEditorComponent) {
-            <ng-container *ngComponentOutlet="capacityEditorComponent; inputs: capacityEditorOutletInputs()"></ng-container>
-          }
+      @if (assignedAssetJoinDialogViewState()) {
+        @if (resourcePopupStore.eventResourceAssignedAssetJoinDialogComponent(); as assignedAssetJoinDialogComponent) {
+          <ng-container *ngComponentOutlet="assignedAssetJoinDialogComponent; inputs: assignedAssetJoinDialogOutletInputs()"></ng-container>
         }
-
-        @if (assignedAssetJoinDialogViewState()) {
-          @if (resourcePopupStore.eventResourceAssignedAssetJoinDialogComponent(); as assignedAssetJoinDialogComponent) {
-            <ng-container *ngComponentOutlet="assignedAssetJoinDialogComponent; inputs: assignedAssetJoinDialogOutletInputs()"></ng-container>
-          }
-        }
-      </div>
+      }
     </div>
-  </div>
-  </section>
+  </app-popup>
 }
 
 @if (activitiesStore.eventMembersPopupComponent(); as membersComponent) {

@@ -93,6 +93,7 @@ import { MemberMenuStore } from '../../../shared/ui/context/stores/member-menu.s
 import { EventSubeventsPopupStore } from '../../../shared/ui/context/stores/event-subevents-popup.store';
 import {
   SubEventResourcePopupStore,
+  type SubEventResourcePopupPresentationHeader,
   type SubEventResourcePopupRequest
 } from '../../../shared/ui/context/stores/sub-event-resource-popup.store';
 import {
@@ -1149,6 +1150,7 @@ export class EventChatPopupComponent implements OnDestroy {
     if (!session || !state?.subEvent) {
       return;
     }
+    const popupHeader = this.selectedChatResourcePopupHeader(session, state);
     this.chatThreadSmartList?.closeMenu();
     if (type === 'Members' && !openExplore && !assetViewId) {
       this.openSelectedChatMembers(session, state);
@@ -1165,6 +1167,7 @@ export class EventChatPopupComponent implements OnDestroy {
         ownerId,
         parentTitle: `${state.eventTitle ?? session.item.title ?? ''}`.trim() || session.item.title,
         subEventId,
+        popupHeader,
         subEventHeader: {
           name: state.subEvent.name,
           title: state.subEvent.name,
@@ -1183,6 +1186,7 @@ export class EventChatPopupComponent implements OnDestroy {
       item: session.item,
       resourceType: type,
       subEvent: state.subEvent,
+      popupHeader,
       assetAssignmentIds: state.assetAssignmentIds,
       assetCardsByType: state.assetCardsByType,
       openExplore,
@@ -1194,6 +1198,41 @@ export class EventChatPopupComponent implements OnDestroy {
           }
         : null
       });
+  }
+
+  private selectedChatResourcePopupHeader(
+    session: EventChatViewSession,
+    state: SelectedChatNavigationState
+  ): SubEventResourcePopupPresentationHeader {
+    const eventTitle = `${state.eventTitle ?? session.item.title ?? ''}`.trim();
+    const subEventTitle = `${state.subEvent?.name ?? ''}`.trim();
+    const groupLabel = `${state.group?.label ?? ''}`.trim();
+    return {
+      title: this.joinDistinctHeaderLabels([eventTitle, subEventTitle, groupLabel]) || eventTitle || 'Event',
+      subtitle: this.resourcePopupDateRangeLabel(state.subEvent?.startAt, state.subEvent?.endAt) || null
+    };
+  }
+
+  private resourcePopupDateRangeLabel(
+    startAtIso: string | null | undefined,
+    endAtIso: string | null | undefined
+  ): string {
+    return AppUtils.dateTimeRangeLabel(startAtIso, endAtIso, '');
+  }
+
+  private joinDistinctHeaderLabels(parts: readonly string[]): string {
+    const seen = new Set<string>();
+    const labels: string[] = [];
+    for (const part of parts) {
+      const value = `${part ?? ''}`.trim();
+      const key = value.toLocaleLowerCase();
+      if (!value || seen.has(key)) {
+        continue;
+      }
+      seen.add(key);
+      labels.push(value);
+    }
+    return labels.join(' - ');
   }
 
   private openSelectedChatMembers(

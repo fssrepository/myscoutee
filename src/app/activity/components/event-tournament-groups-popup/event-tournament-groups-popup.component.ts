@@ -1478,11 +1478,25 @@ export class EventTournamentGroupsPopupComponent {
   ): void {
     event?.stopPropagation();
     const isMembersPopup = type === 'Members';
+    const parentTitle = `${this.state?.title ?? ''}`.trim();
+    const stageTitle = `${stage.title ?? ''}`.trim();
+    const groupLabel = `${group.name ?? ''}`.trim();
     this.resourcePopupStore.requestSubEventResourcePopup({
       type,
       ownerId: this.eventId(),
       parentTitle: this.state?.title ?? '',
       subEventId: stage.subEventId,
+      popupHeader: {
+        title: this.joinDistinctResourcePopupHeaderLabels([parentTitle, stageTitle, groupLabel])
+          || parentTitle
+          || stageTitle
+          || groupLabel
+          || 'Event',
+        subtitle: ActivityResourceBuilder.assetRequestTimeframeLabel(
+          `${stage.startAt ?? ''}`.trim(),
+          `${stage.endAt ?? ''}`.trim()
+        ) || null
+      },
       subEventHeader: {
         name: stage.title,
         title: stage.title,
@@ -1505,6 +1519,21 @@ export class EventTournamentGroupsPopupComponent {
           : undefined
       }
     });
+  }
+
+  private joinDistinctResourcePopupHeaderLabels(parts: readonly string[]): string {
+    const seen = new Set<string>();
+    const labels: string[] = [];
+    for (const part of parts) {
+      const value = `${part ?? ''}`.trim();
+      const key = value.toLocaleLowerCase();
+      if (!value || seen.has(key)) {
+        continue;
+      }
+      seen.add(key);
+      labels.push(value);
+    }
+    return labels.join(' - ');
   }
 
   private syncGroupMembersFromPopup(

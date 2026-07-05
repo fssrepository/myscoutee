@@ -997,19 +997,43 @@ export class AssetAvailabilityPopupComponent {
     if (!ownerId || !subEventId || !type) {
       return;
     }
+    const eventTitle = `${row.eventTitle ?? ''}`.trim() || this.availabilityHeader()?.title || 'Event';
+    const subEventTitle = `${row.subEventTitle ?? ''}`.trim() || 'Sub Event';
+    const startAt = `${row.subEventStartAtIso ?? row.startAtIso ?? ''}`.trim();
+    const endAt = `${row.subEventEndAtIso ?? row.endAtIso ?? ''}`.trim();
+    const timeframe = AppUtils.dateTimeRangeLabel(startAt, endAt, '');
     this.resourcePopupStore.requestSubEventResourcePopup({
       type,
       ownerId,
-      parentTitle: `${row.eventTitle ?? ''}`.trim() || this.availabilityHeader()?.title || 'Event',
+      parentTitle: eventTitle,
       subEventId,
+      popupHeader: {
+        title: this.joinDistinctResourcePopupHeaderLabels([eventTitle, subEventTitle]) || eventTitle,
+        subtitle: timeframe || null
+      },
       subEventHeader: {
-        name: `${row.subEventTitle ?? ''}`.trim() || 'Sub Event',
-        title: `${row.subEventTitle ?? ''}`.trim() || null,
-        startAt: `${row.subEventStartAtIso ?? row.startAtIso ?? ''}`.trim() || null,
-        endAt: `${row.subEventEndAtIso ?? row.endAtIso ?? ''}`.trim() || null
+        name: subEventTitle,
+        title: subEventTitle,
+        startAt: startAt || null,
+        endAt: endAt || null
       }
     });
     void this.resourcePopupStore.ensureEventResourcePopupLoaded();
+  }
+
+  private joinDistinctResourcePopupHeaderLabels(parts: readonly string[]): string {
+    const seen = new Set<string>();
+    const labels: string[] = [];
+    for (const part of parts) {
+      const value = `${part ?? ''}`.trim();
+      const key = value.toLocaleLowerCase();
+      if (!value || seen.has(key)) {
+        continue;
+      }
+      seen.add(key);
+      labels.push(value);
+    }
+    return labels.join(' - ');
   }
 
   private availabilityResourceType(row: AppDTOs.AssetOccupancyRowDTO): AppConstants.AssetType | null {

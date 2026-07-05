@@ -762,12 +762,19 @@ export class EventSubeventsListPopupComponent {
     if (!ownerId) {
       return;
     }
+    const parentTitle = this.popupSubtitle();
+    const itemTitle = `${item.name ?? ''}`.trim();
+    const timeframe = AppUtils.dateTimeRangeLabel(item.startAt, item.endAt, '');
     this.resourcePopupStore.requestSubEventResourcePopup({
       type: context.resourceType,
       ownerId,
       parentTitle: this.popupSubtitle(),
       subEventId: `${item.id ?? ''}`.trim(),
       subEventIndex: context.subEventIndex,
+      popupHeader: {
+        title: this.joinDistinctResourcePopupHeaderLabels([parentTitle, itemTitle]) || parentTitle || itemTitle || 'Event',
+        subtitle: timeframe || null
+      },
       subEventHeader: {
         name: item.name,
         description: item.description,
@@ -776,6 +783,21 @@ export class EventSubeventsListPopupComponent {
         endAt: item.endAt
       }
     });
+  }
+
+  private joinDistinctResourcePopupHeaderLabels(parts: readonly string[]): string {
+    const seen = new Set<string>();
+    const labels: string[] = [];
+    for (const part of parts) {
+      const value = `${part ?? ''}`.trim();
+      const key = value.toLocaleLowerCase();
+      if (!value || seen.has(key)) {
+        continue;
+      }
+      seen.add(key);
+      labels.push(value);
+    }
+    return labels.join(' - ');
   }
 
   private openTournamentGroupsPopup(

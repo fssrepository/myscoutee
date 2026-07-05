@@ -14,13 +14,6 @@ import {
   FormsModule
 } from '@angular/forms';
 import {
-  MatButtonModule
-} from '@angular/material/button';
-import {
-  MatIconModule
-} from '@angular/material/icon';
-
-import {
   ActivityResourceBuilder
 } from '../../../shared/core/base/builders/activity-resource.builder';
 import {
@@ -58,6 +51,10 @@ import {
 } from '../../../shared/app-static-data';
 import type { CardMenuActionEvent, InfoCardData } from '../../../shared/ui/components/core/smart-list/card/card.types';
 import {
+  PopupComponent,
+  type PopupModel
+} from '../../../shared/ui/components/core/popup';
+import {
   ActivityChatSingleRowConverter,
   ActivitySubEventResourceInfoCardConverter,
   type ActivitySubEventResourceInfoCardConverterOptions
@@ -94,6 +91,7 @@ import type {
   ResourceAssetDTO,
   ResourceAssetViewState,
   ResourcePopupContext,
+  SubEventResourcePopupPresentationHeader,
   SubEventResourcePopupRequest
 } from '../../../shared/ui/context/stores/sub-event-resource-popup.store';
 import type { ChatDTO } from '../../../shared/core/contracts/chat.interface';
@@ -122,8 +120,7 @@ interface ResourceAssignmentRemovalRequest {
   imports: [
     CommonModule,
     FormsModule,
-    MatButtonModule,
-    MatIconModule,
+    PopupComponent,
     EventResourceListComponent
   ],
   templateUrl: './event-resource-popup.component.html',
@@ -278,8 +275,21 @@ export class EventResourcePopupComponent {
     }
   }
 
-  protected resourceTypeClass(type: AppConstants.SubEventResourceFilter): string {
-    return AssetDefaultsBuilder.assetTypeClass(type === 'Members' ? 'Car' : type);
+  protected resourcePopupModel(): PopupModel {
+    const showHeader = !this.resourcePopupStore.resourceAssetViewReturnToChatRef()
+      && !this.resourcePopupStore.assetExploreOnlyRef();
+    return {
+      title: this.popupTitle(),
+      subtitle: this.popupSubtitle(),
+      secondarySubtitle: this.popupSummary(),
+      size: 'wide',
+      height: 'full',
+      bodyLayout: 'fill',
+      backdropTone: 'dim',
+      showHeader,
+      closeAriaLabel: 'Close resource assignment',
+      onClose: () => this.closeResourcePopup()
+    };
   }
 
   protected resourceListModel(): EventResourceListModel {
@@ -356,14 +366,6 @@ export class EventResourcePopupComponent {
   protected openAssetViewMembers(view: ResourceAssetViewState, event: Event): void {
     event.stopPropagation();
     this.openAssetMembersPopup(view.card, event);
-  }
-
-  protected closeResourceShellBackdrop(event: Event): void {
-    if (this.resourcePopupStore.assetExploreOnlyRef() && this.resourceAssetView()) {
-      this.closeResourceAssetView(event);
-      return;
-    }
-    this.closeResourcePopup();
   }
 
   protected onResourceCardMenuAction(card: AppDTOs.SubEventResourceCardDTO, event: CardMenuActionEvent<InfoCardData>): void {
@@ -641,7 +643,8 @@ export class EventResourcePopupComponent {
       request.resourceType,
       request.subEvent,
       request.group ?? null,
-      request.assetCardsByType
+      request.assetCardsByType,
+      request.popupHeader ?? null
     );
     this.seedAssignmentsFromRequest(context.subEvent.id, request.assetAssignmentIds, context.fallbackCardsByType);
     this.openPopupContext(context, request.resourceType);
@@ -683,6 +686,7 @@ export class EventResourcePopupComponent {
       origin: 'chat',
       ownerId: this.activeUser().id,
       parentTitle: 'Assets',
+      popupHeader: { title: 'Assets', subtitle: null },
       subEvent,
       fallbackCardsByType: request.fallbackAsset ? { [type]: [this.cloneAsset(request.fallbackAsset)] } : {}
     }, type, { hydrate: !request.viewOnly });
@@ -729,7 +733,9 @@ export class EventResourcePopupComponent {
       request.parentTitle?.trim() || 'Event',
       request.type,
       subEvent,
-      request.group ?? null
+      request.group ?? null,
+      undefined,
+      request.popupHeader ?? null
     );
     this.openPopupContext(context, request.type);
   }
@@ -776,7 +782,8 @@ export class EventResourcePopupComponent {
     type: AppConstants.AssetType,
     rawSubEvent: ContractTypes.SubEventDTO,
     group: SubEventResourcePopupRequest['group'],
-    fallbackCardsByType?: Partial<Record<AppConstants.AssetType, ResourceAssetDTO[]>>
+    fallbackCardsByType?: Partial<Record<AppConstants.AssetType, ResourceAssetDTO[]>>,
+    popupHeader?: SubEventResourcePopupPresentationHeader | null
   ): ResourcePopupContext {
     const subEvent = this.cloneSubEvent(rawSubEvent);
     const scopedSubEvent = group?.id
@@ -787,12 +794,25 @@ export class EventResourcePopupComponent {
       origin,
       ownerId: ownerId.trim(),
       parentTitle: parentTitle.trim() || 'Event',
+      popupHeader: this.normalizePopupHeader(popupHeader, parentTitle),
       subEvent: scopedSubEvent,
       groupId: group?.id?.trim() || undefined,
       groupName: group?.groupLabel?.trim() || undefined,
       fallbackCardsByType: origin === 'subEventResource'
         ? {}
         : this.cloneFallbackCards(fallbackCardsByType)
+    };
+  }
+
+  private normalizePopupHeader(
+    popupHeader: SubEventResourcePopupPresentationHeader | null | undefined,
+    fallbackTitle: string
+  ): SubEventResourcePopupPresentationHeader {
+    const title = `${popupHeader?.title ?? ''}`.trim() || fallbackTitle.trim() || 'Event';
+    const subtitle = `${popupHeader?.subtitle ?? ''}`.trim();
+    return {
+      title,
+      subtitle: subtitle || null
     };
   }
 
@@ -1007,25 +1027,13 @@ export class EventResourcePopupComponent {
 
   popupTitle(): string {
     const context = this.resourcePopupStore.popupContextRef();
-    const subEvent = context?.subEvent;
     const typeLabel = APP_STATIC_DATA.assetTypeLabels[this.resourcePopupStore.resourceFilterRef()];
-    if (!context || !subEvent) {
-      return typeLabel;
-    }
-    const stageLabel = this.subEventStageLabel(subEvent);
-    return stageLabel ? `${typeLabel} - ${stageLabel}` : typeLabel;
+    return `${context?.popupHeader?.title ?? ''}`.trim() || typeLabel;
   }
 
   popupSubtitle(): string {
     const context = this.resourcePopupStore.popupContextRef();
-    if (!context) {
-      return 'Event';
-    }
-    const subEventName = this.subEventDisplayName(context.subEvent);
-    if (context.parentTitle && subEventName) {
-      return `${context.parentTitle} - ${subEventName}`;
-    }
-    return context.parentTitle || subEventName || 'Event';
+    return `${context?.popupHeader?.subtitle ?? ''}`.trim();
   }
 
   popupSummary(): string | null {
