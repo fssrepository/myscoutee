@@ -66,7 +66,7 @@ export interface AssetRequestRecord extends AssetMemberRequestRecord {
 }
 
 export type AssetAvailabilityFilterRecord = 'all' | 'active-items' | 'pending-requests' | 'borrowed-items';
-export type AssetAvailabilityOrderRecord = 'earlier' | 'later';
+export type AssetAvailabilityOrderRecord = 'all' | 'earlier' | 'later';
 
 export interface AssetAvailabilityDateRangeRecord {
   start: Date;

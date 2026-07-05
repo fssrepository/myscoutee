@@ -61,7 +61,7 @@ type AssetAvailabilityListItem = AppDTOs.AssetOccupancyStatDTO | AppDTOs.AssetOc
 interface AssetAvailabilityListFilters {
   revision: number;
   filter: AppDTOs.AssetAvailabilityFilter;
-  order: AppDTOs.AssetAvailabilityOrder;
+  order?: AppDTOs.AssetAvailabilityOrder;
   dateIso?: string | null;
 }
 
@@ -139,12 +139,13 @@ export class AssetAvailabilityPopupComponent {
   });
   protected readonly availabilityQuery = computed<Partial<ListQuery<AssetAvailabilityListFilters>>>(() => {
     const request = this.availabilityPopupStore.availabilityPopup();
+    const view = this.availabilityView();
     return this.buildQuery(
-      this.availabilityView(),
+      view,
       this.availabilityFilter(),
       request?.initialDateIso ?? null,
       this.availabilityRevision(),
-      this.availabilityOrder()
+      this.isCalendarAvailabilityView(view) ? null : this.availabilityOrder()
     );
   });
   protected readonly dayListQuery = computed<Partial<ListQuery<AssetAvailabilityListFilters>>>(() => {
@@ -946,18 +947,23 @@ export class AssetAvailabilityPopupComponent {
     filter: AppDTOs.AssetAvailabilityFilter,
     dateIso: string | null,
     revision = 0,
-    order: AppDTOs.AssetAvailabilityOrder = 'later'
+    order: AppDTOs.AssetAvailabilityOrder | null = 'later'
   ): Partial<ListQuery<AssetAvailabilityListFilters>> {
+    const isCalendarView = this.isCalendarAvailabilityView(view);
     return {
       view,
-      direction: order === 'earlier' ? 'desc' : 'asc',
+      direction: isCalendarView ? undefined : (order === 'earlier' ? 'desc' : 'asc'),
       filters: {
         revision,
         filter,
-        order,
+        ...(isCalendarView || !order ? {} : { order }),
         dateIso: `${dateIso ?? ''}`.trim() || null
       }
     };
+  }
+
+  private isCalendarAvailabilityView(view: AppDTOs.AssetAvailabilityView): boolean {
+    return view === 'week' || view === 'month';
   }
 
   private orderFromDirection(direction: string | null | undefined): AppDTOs.AssetAvailabilityOrder {

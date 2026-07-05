@@ -71,7 +71,7 @@ export class LocalAssetRequestsRepository {
     }
     const requests = this.queryRecordsByOwner(normalizedOwnerUserId, normalizedAssetId);
     const filter = this.normalizeAvailabilityFilter(query.filter);
-    const order = this.normalizeAvailabilityOrder(query.order);
+    const order = this.normalizeAvailabilityStatsOrder(query.order);
     const filteredRequests = requests
       .filter(request => this.matchesAvailabilityOrder(request, order))
       .filter(request => this.matchesAvailabilityFilter(request, filter));
@@ -108,6 +108,13 @@ export class LocalAssetRequestsRepository {
     return order === 'earlier' ? 'earlier' : 'later';
   }
 
+  private normalizeAvailabilityStatsOrder(order: AssetAvailabilityOrderRecord | null | undefined): AssetAvailabilityOrderRecord {
+    if (order === 'earlier' || order === 'later') {
+      return order;
+    }
+    return 'all';
+  }
+
   private matchesAvailabilityFilter(
     request: AssetRequestRecord,
     filter: AssetAvailabilityFilterRecord
@@ -128,6 +135,9 @@ export class LocalAssetRequestsRepository {
     request: AssetRequestRecord,
     order: AssetAvailabilityOrderRecord
   ): boolean {
+    if (order === 'all') {
+      return true;
+    }
     const end = this.assetRequestDateRange(request)?.end
       ?? this.parseAvailabilityDate(request.requestedAtIso);
     if (!end) {

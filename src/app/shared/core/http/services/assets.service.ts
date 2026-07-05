@@ -244,7 +244,7 @@ export class HttpAssetsService {
                 .set('rangeStart', `${query.rangeStart ?? ''}`.trim())
                 .set('rangeEnd', `${query.rangeEnd ?? ''}`.trim())
                 .set('filter', `${query.filter ?? 'all'}`.trim())
-                .set('order', `${query.order ?? 'later'}`.trim())
+                .set('order', `${query.order ?? ''}`.trim())
                 .set('page', `${Math.max(0, Math.trunc(Number(query.page) || 0))}`)
                 .set('pageSize', `${Math.max(1, Math.trunc(Number(query.pageSize) || 1))}`)
                 .set('cursor', `${query.cursor ?? ''}`.trim())
