@@ -102,14 +102,6 @@ export class AssetAvailabilityPopupComponent {
   );
   protected header: AssetAvailabilityHeaderState | null = null;
   protected rowBusyKey = '';
-  protected readonly availabilityViewChangeHandler = (view: string): void => this.onViewChange(view);
-  protected readonly availabilityItemSelectHandler = (
-    event: SmartListItemSelectEvent<unknown, AssetAvailabilityListFilters>
-  ): void => this.onCalendarItemSelect(event as SmartListItemSelectEvent<AssetAvailabilityListItem, AssetAvailabilityListFilters>);
-  protected readonly noopViewChangeHandler = (_view: string): void => {};
-  protected readonly noopItemSelectHandler = (
-    _event: SmartListItemSelectEvent<unknown, AssetAvailabilityListFilters>
-  ): void => {};
 
   private availabilityRevision = 0;
   private dayListRevision = 0;
@@ -383,20 +375,6 @@ export class AssetAvailabilityPopupComponent {
       this.header
     );
     void this.availabilityPopupStore.ensureAssetAvailabilityPopupLoaded();
-  }
-
-  protected dispatchViewChange(
-    view: string,
-    handler: ((view: string) => void) | null | undefined
-  ): void {
-    handler?.(view);
-  }
-
-  protected dispatchItemSelect(
-    event: SmartListItemSelectEvent<unknown, AssetAvailabilityListFilters>,
-    handler: ((event: SmartListItemSelectEvent<unknown, AssetAvailabilityListFilters>) => void) | null | undefined
-  ): void {
-    handler?.(event);
   }
 
   protected onViewChange(view: string): void {

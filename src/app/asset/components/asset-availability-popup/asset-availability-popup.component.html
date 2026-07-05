@@ -4,17 +4,17 @@
     [model]="availabilityPopupModel()"
     [zIndex]="2380"
   >
-    <ng-container
-      *ngTemplateOutlet="availabilitySmartListShell; context: {
-        config: availabilitySmartListConfig,
-        loadPage: availabilitySmartListLoadPage,
-        query: availabilityQuery,
-        view: availabilityView,
-        itemTemplate: availabilityRowTemplate,
-        viewChangeHandler: availabilityViewChangeHandler,
-        itemSelectHandler: availabilityItemSelectHandler
-      }"
-    ></ng-container>
+    <app-smart-list
+      #availabilitySmartList
+      class="asset-availability-popup__list"
+      [config]="availabilitySmartListConfig"
+      [loadPage]="availabilitySmartListLoadPage"
+      [query]="availabilityQuery"
+      [view]="availabilityView"
+      [itemTemplate]="availabilityRowTemplate"
+      (viewChange)="onViewChange($event)"
+      (itemSelect)="onCalendarItemSelect($event)"
+    ></app-smart-list>
   </app-popup>
 }
 
@@ -24,41 +24,17 @@
     [model]="dayListPopupModel()"
     [zIndex]="2460"
   >
-    <ng-container
-      *ngTemplateOutlet="availabilitySmartListShell; context: {
-        config: dayListSmartListConfig,
-        loadPage: dayListSmartListLoadPage,
-        query: dayListQuery,
-        view: 'day',
-        itemTemplate: dayRowTemplate,
-        viewChangeHandler: noopViewChangeHandler,
-        itemSelectHandler: noopItemSelectHandler
-      }"
-    ></ng-container>
+    <app-smart-list
+      #dayListSmartList
+      class="asset-availability-popup__list"
+      [config]="dayListSmartListConfig"
+      [loadPage]="dayListSmartListLoadPage"
+      [query]="dayListQuery"
+      [view]="'day'"
+      [itemTemplate]="dayRowTemplate"
+    ></app-smart-list>
   </app-popup>
 }
-
-<ng-template
-  #availabilitySmartListShell
-  let-config="config"
-  let-loadPage="loadPage"
-  let-query="query"
-  let-view="view"
-  let-itemTemplate="itemTemplate"
-  let-viewChangeHandler="viewChangeHandler"
-  let-itemSelectHandler="itemSelectHandler"
->
-  <app-smart-list
-    class="asset-availability-popup__list"
-    [config]="config"
-    [loadPage]="loadPage"
-    [query]="query"
-    [view]="view"
-    [itemTemplate]="itemTemplate"
-    (viewChange)="dispatchViewChange($event, viewChangeHandler)"
-    (itemSelect)="dispatchItemSelect($event, itemSelectHandler)"
-  ></app-smart-list>
-</ng-template>
 
 <ng-template #availabilityRowTemplate let-item let-groupLabel="groupLabel">
   @if (isAvailabilityRow(item)) {
