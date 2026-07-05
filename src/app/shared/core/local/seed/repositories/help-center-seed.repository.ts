@@ -9,8 +9,8 @@ import { APP_STATIC_DATA } from '../../../../app-static-data';
 import { LocalMemoryDb } from '../../../common/app.db';
 
 import type { HelpCenterAuditEntryDto, HelpCenterDocumentKind, HelpCenterRevisionDto } from '../../../contracts';
-import { HelpCenterContentBuilder } from '../../../base/builders';
 import { LocalHelpCenterMapper } from '../../source/mappers';
+import { SeedHelpCenterContentBuilder } from '../builders';
 
 @Injectable({
   providedIn: 'root'
@@ -26,7 +26,7 @@ export class SeedHelpCenterRepository {
       changed = this.ensureSeeded('help', language) || changed;
       changed = this.ensureSeeded('privacy', language) || changed;
       changed = this.ensureSeeded('terms', language) || changed;
-      for (const contextKey of HelpCenterContentBuilder.explanationBootstrapContextKeys()) {
+      for (const contextKey of SeedHelpCenterContentBuilder.explanationBootstrapContextKeys()) {
         changed = this.ensureSeeded('explanation', language, contextKey) || changed;
       }
     }
@@ -45,13 +45,13 @@ export class SeedHelpCenterRepository {
       return this.ensureActiveRevision(table, kind, language, context, existingRevisions);
     }
 
-    const revision = this.cloneRevision(HelpCenterContentBuilder.defaultRevision(kind, language, context), kind);
+    const revision = this.cloneRevision(SeedHelpCenterContentBuilder.defaultRevision(kind, language, context), kind);
     const revisionContextKey = this.revisionContextKey(revision);
     const audit = this.auditEntry({
       action: 'seed',
       actorUserId: 'system',
       revision,
-      message: `Seeded default ${HelpCenterContentBuilder.documentLabel(kind).toLowerCase()} revision v${revision.version}.`
+      message: `Seeded default ${SeedHelpCenterContentBuilder.documentLabel(kind).toLowerCase()} revision v${revision.version}.`
     });
 
     this.memoryDb.write(state => {

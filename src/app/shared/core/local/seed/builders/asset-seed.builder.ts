@@ -1,9 +1,145 @@
-import type { UserDto } from '../../../contracts/user.interface';
-import { PricingBuilder } from '../../../base/builders/pricing.builder';
+import type { AssetPolicyRecord, AssetPricingConfigRecord } from '../../source/entity/asset.entity';
 
-import type * as AppDTOs from '../../../contracts';
 import type * as AppConstants from '../../../common/constants';
+
+export interface SeedAssetTemplate {
+  id: string;
+  type: AppConstants.AssetType;
+  title: string;
+  subtitle: string;
+  category: AppConstants.AssetCategory;
+  city: string;
+  capacityTotal: number;
+  quantity: number;
+  details: string;
+  imageUrl: string;
+  sourceLink: string;
+  routes: string[];
+  topics?: string[];
+  policies?: AssetPolicyRecord[];
+  pricing?: AssetPricingConfigRecord | null;
+  requests: [];
+  menuActions?: string[];
+}
+
 export class SeedAssetBuilder {
+  static createSamplePricingConfig(
+    mode: AppConstants.PricingMode = 'hybrid'
+  ): AssetPricingConfigRecord {
+    return {
+      enabled: true,
+      mode,
+      basePrice: 25,
+      currency: 'USD',
+      taxMode: 'excluded',
+      chargeType: 'per_attendee',
+      minPrice: 15,
+      maxPrice: 60,
+      rounding: 'whole',
+      demandRulesEnabled: mode === 'demand-based' || mode === 'hybrid',
+      demandRules: [
+        {
+          id: 'demand-rule-1',
+          operator: 'gte',
+          capacityFilledPercent: 50,
+          action: {
+            kind: 'increase_percent',
+            value: 10
+          },
+          appliesTo: 'all_slots',
+          slotIds: []
+        }
+      ],
+      timeRulesEnabled: mode === 'time-based' || mode === 'hybrid',
+      timeRules: [
+        {
+          id: 'time-rule-1',
+          trigger: 'days_before_start',
+          offsetValue: 7,
+          specificDateStart: null,
+          specificDateEnd: null,
+          action: {
+            kind: 'decrease_percent',
+            value: 5
+          },
+          appliesTo: 'all_slots',
+          slotIds: []
+        }
+      ],
+      cancellationPolicy: {
+        enabled: true,
+        rules: [
+          {
+            id: 'cancellation-rule-1',
+            offsetUnit: 'days',
+            offsetValue: 7,
+            refundKind: 'percent',
+            refundValue: 50
+          },
+          {
+            id: 'cancellation-rule-2',
+            offsetUnit: 'hours',
+            offsetValue: 24,
+            refundKind: 'none',
+            refundValue: null
+          }
+        ]
+      },
+      slotPricingEnabled: false,
+      slotOverrides: [],
+      audience: {
+        enabled: false,
+        memberPrice: 20,
+        vipPrice: 15,
+        inviteOnlyDiscountPercent: 25,
+        promoCodes: [
+          {
+            id: 'promo-code-1',
+            code: 'EARLY',
+            action: {
+              kind: 'decrease_percent',
+              value: 10
+            }
+          }
+        ],
+        soldOutLabel: 'Show "Sold Out"'
+      }
+    };
+  }
+
+  static clonePricingConfig(
+    pricing: AssetPricingConfigRecord | null | undefined
+  ): AssetPricingConfigRecord | null {
+    if (!pricing) {
+      return null;
+    }
+    return {
+      ...pricing,
+      demandRules: (pricing.demandRules ?? []).map(rule => ({
+        ...rule,
+        action: { ...rule.action },
+        slotIds: [...(rule.slotIds ?? [])]
+      })),
+      timeRules: (pricing.timeRules ?? []).map(rule => ({
+        ...rule,
+        action: { ...rule.action },
+        slotIds: [...(rule.slotIds ?? [])]
+      })),
+      cancellationPolicy: {
+        enabled: pricing.cancellationPolicy?.enabled === true,
+        rules: (pricing.cancellationPolicy?.rules ?? []).map(rule => ({ ...rule }))
+      },
+      slotOverrides: (pricing.slotOverrides ?? []).map(item => ({ ...item })),
+      audience: {
+        ...pricing.audience,
+        promoCodes: (pricing.audience?.promoCodes ?? []).map(code => ({
+          ...code,
+          action: { ...code.action }
+        }))
+      }
+    };
+  }
+
   static defaultAssetImage(type: AppConstants.AssetType, seed = type.toLowerCase()): string {
     const flavor = type === 'Car'
       ? 'road'
@@ -34,7 +170,7 @@ export class SeedAssetBuilder {
     return 'Item condition, handoff location, and timing are confirmed.';
   }
 
-  static buildSampleAssetCards(users: readonly UserDto[]): AppDTOs.AssetDetailDTO[] {
+  static buildSampleAssetCards(users: readonly unknown[]): SeedAssetTemplate[] {
     void users;
     const sampleSpecs: Array<{
       id: string;
@@ -274,7 +410,7 @@ export class SeedAssetBuilder {
         imageUrl,
         sourceLink: '',
         routes: [...spec.routes],
-        pricing: PricingBuilder.createSamplePricingConfig(spec.pricingMode),
+        pricing: this.createSamplePricingConfig(spec.pricingMode),
         requests: []
       };
     });

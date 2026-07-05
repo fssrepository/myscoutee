@@ -1,8 +1,8 @@
 import type { ActivityEventRecordCollection } from '../../source/entity/event.entity';
 import { environment } from '../../../../../../environments/environment';
 import { APP_STATIC_DATA } from '../../../../app-static-data';
-import { PricingBuilder } from '../../../base/builders/pricing.builder';
 import { SeedEventBuilder } from './event-seed.builder';
+import { SeedPricingBuilder } from './pricing-seed.builder';
 import { SeedUserBuilder } from './user-seed.builder';
 import { SEED_SCHEDULE_REFERENCE_DATE } from '../seed-constants';
 import type * as ContractTypes from '../../../contracts';
@@ -45,7 +45,7 @@ function buildCheckoutDemoPricing(
   basePrice: number,
   slotTemplates: readonly ContractTypes.EventSlotTemplateDTO[] = []
 ): ContractTypes.PricingConfig {
-  const pricing = PricingBuilder.createSamplePricingConfig(slotTemplates.length > 0 ? 'hybrid' : 'fixed');
+  const pricing = SeedPricingBuilder.createSamplePricingConfig(slotTemplates.length > 0 ? 'hybrid' : 'fixed');
   pricing.enabled = true;
   pricing.basePrice = basePrice;
   pricing.minPrice = Math.max(0, basePrice - 12);
@@ -76,8 +76,8 @@ function buildCheckoutDemoSubEventDefinitions(options: {
   sourceId: string;
   includePaidOptional: boolean;
 }): ContractTypes.SubEventDefinitionDTO[] {
-  const includedPricing = PricingBuilder.createDefaultPricingConfig('subevent');
-  const paidAddOnPricing = PricingBuilder.createDefaultPricingConfig('subevent');
+  const includedPricing = SeedPricingBuilder.createDefaultPricingConfig('subevent');
+  const paidAddOnPricing = SeedPricingBuilder.createDefaultPricingConfig('subevent');
   paidAddOnPricing.enabled = options.includePaidOptional;
   paidAddOnPricing.basePrice = options.includePaidOptional ? 16 : 0;
   paidAddOnPricing.currency = 'USD';
@@ -85,7 +85,7 @@ function buildCheckoutDemoSubEventDefinitions(options: {
   paidAddOnPricing.minPrice = options.includePaidOptional ? 12 : 0;
   paidAddOnPricing.maxPrice = options.includePaidOptional ? 24 : 0;
 
-  const transportPricing = PricingBuilder.createDefaultPricingConfig('subevent');
+  const transportPricing = SeedPricingBuilder.createDefaultPricingConfig('subevent');
   transportPricing.enabled = options.includePaidOptional;
   transportPricing.basePrice = options.includePaidOptional ? 8 : 0;
   transportPricing.currency = 'USD';
@@ -643,7 +643,7 @@ const SEED_EVENTS_BY_USER: Record<string, ActivityEventSeedItem[]> = {
           startAt: '2026-04-14T15:00:00'
         }
       ],
-      pricing: PricingBuilder.createDefaultPricingConfig('event'),
+      pricing: SeedPricingBuilder.createDefaultPricingConfig('event'),
       subEventDefinitions: buildCheckoutDemoSubEventDefinitions({
         sourceId: 'checkout-free-slots',
         includePaidOptional: false
@@ -692,7 +692,7 @@ const SEED_EVENTS_BY_USER: Record<string, ActivityEventSeedItem[]> = {
           )
         }
       ],
-      pricing: PricingBuilder.createDefaultPricingConfig('event'),
+      pricing: SeedPricingBuilder.createDefaultPricingConfig('event'),
       subEventsEnabled: true,
       subEventDefinitions: buildActiveTournamentDemoSubEventDefinitions('active-tournament-slots'),
       mode: 'Tournament',
@@ -862,7 +862,7 @@ export class SeedEventsBuilder {
         userId,
         items.map(item => ({
           ...item,
-          pricing: item.pricing ? PricingBuilder.clonePricingConfig(item.pricing) : item.pricing,
+          pricing: item.pricing ? SeedPricingBuilder.clonePricingConfig(item.pricing) : item.pricing,
           policiesEnabled: item.policiesEnabled === true,
           policies: item.policies ? item.policies.map(policy => ({ ...policy })) : item.policies,
           slotTemplates: this.cloneSlotTemplates(item.slotTemplates) ?? item.slotTemplates,
@@ -931,7 +931,7 @@ export class SeedEventsBuilder {
         userId,
         items.map(item => ({
           ...item,
-          pricing: item.pricing ? PricingBuilder.clonePricingConfig(item.pricing) : item.pricing,
+          pricing: item.pricing ? SeedPricingBuilder.clonePricingConfig(item.pricing) : item.pricing,
           policiesEnabled: item.policiesEnabled === true,
           policies: item.policies ? item.policies.map(policy => ({ ...policy })) : item.policies,
           slotTemplates: this.cloneSlotTemplates(item.slotTemplates) ?? item.slotTemplates,
@@ -1331,7 +1331,7 @@ export class SeedEventsBuilder {
             ? Math.max(1, Math.ceil(Math.max(1, record.capacityMax ?? capacityMax) / tournamentGroupCapacityMax))
             : undefined,
           optional: item.optional === true,
-          pricing: item.pricing ? PricingBuilder.clonePricingConfig(item.pricing) : item.pricing,
+          pricing: item.pricing ? SeedPricingBuilder.clonePricingConfig(item.pricing) : item.pricing,
           capacityMin,
           capacityMax,
           membersAccepted: acceptedSeed,
@@ -1541,7 +1541,7 @@ export class SeedEventsBuilder {
       invitedMemberUserIds: [...(record.invitedMemberUserIds ?? [])],
       pendingRequestMemberUserIds: [...(record.pendingRequestMemberUserIds ?? [])],
       locationCoordinates: this.cloneLocationCoordinates(record.locationCoordinates),
-      pricing: record.pricing ? PricingBuilder.clonePricingConfig(record.pricing) : undefined,
+      pricing: record.pricing ? SeedPricingBuilder.clonePricingConfig(record.pricing) : undefined,
       policiesEnabled: record.policiesEnabled === true,
       policies: (record.policies ?? []).map(item => ({ ...item })),
       slotTemplates: this.cloneSlotTemplates(record.slotTemplates) ?? [],
@@ -1551,7 +1551,7 @@ export class SeedEventsBuilder {
       subEventsEnabled: record.subEventsEnabled !== false,
       subEventDefinitions: (record.subEventDefinitions ?? []).map(item => ({
         ...item,
-        pricing: item.pricing ? PricingBuilder.clonePricingConfig(item.pricing) : item.pricing
+        pricing: item.pricing ? SeedPricingBuilder.clonePricingConfig(item.pricing) : item.pricing
       })),
       subEvents: ActivityEventDetailDTO.normalizeSubEvents(record.subEvents ?? [])
     };
@@ -1798,7 +1798,7 @@ export class SeedEventsBuilder {
       ticketing,
       pricing: record.seed?.pricing
         ? this.rebasePricingConfig(record.seed.pricing)
-        : PricingBuilder.createSamplePricingConfig(ticketing ? 'hybrid' : 'fixed'),
+        : SeedPricingBuilder.createSamplePricingConfig(ticketing ? 'hybrid' : 'fixed'),
       policiesEnabled: record.seed?.policiesEnabled === true,
       policies: this.clonePolicies(record.seed?.policies) ?? [],
       slotsEnabled,
@@ -2282,7 +2282,7 @@ export class SeedEventsBuilder {
       capacityTotal: item.capacityTotal,
       acceptedMemberUserIds: item.acceptedMemberUserIds ? [...item.acceptedMemberUserIds] : undefined,
       pendingMemberUserIds: item.pendingMemberUserIds ? [...item.pendingMemberUserIds] : undefined,
-      pricing: 'pricing' in item && item.pricing ? PricingBuilder.clonePricingConfig(item.pricing) : ('pricing' in item ? item.pricing : undefined),
+      pricing: 'pricing' in item && item.pricing ? SeedPricingBuilder.clonePricingConfig(item.pricing) : ('pricing' in item ? item.pricing : undefined),
       policiesEnabled: item.policiesEnabled === true,
       policies: this.clonePolicies(item.policies) ?? undefined,
       slotsEnabled: 'slotsEnabled' in item ? item.slotsEnabled : undefined,
@@ -2328,7 +2328,7 @@ export class SeedEventsBuilder {
     }
     return items.map(item => ({
       ...item,
-      pricing: item.pricing ? PricingBuilder.clonePricingConfig(item.pricing) : item.pricing
+      pricing: item.pricing ? SeedPricingBuilder.clonePricingConfig(item.pricing) : item.pricing
     }));
   }
 
@@ -2423,7 +2423,7 @@ export class SeedEventsBuilder {
   }
 
   private static rebasePricingConfig(value: ContractTypes.PricingConfig): ContractTypes.PricingConfig {
-    const pricing = PricingBuilder.clonePricingConfig(value);
+    const pricing = SeedPricingBuilder.clonePricingConfig(value);
     pricing.slotOverrides = (pricing.slotOverrides ?? []).map(item => ({
       ...item,
       startAt: this.rebaseSeedDateTime(item.startAt) ?? item.startAt,

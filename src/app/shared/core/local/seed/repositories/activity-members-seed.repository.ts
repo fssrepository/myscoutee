@@ -4,18 +4,12 @@ import { USERS_TABLE_NAME } from '../../source/entity/user.entity';
 import { Injectable, inject } from '@angular/core';
 import { environment } from '../../../../../../environments/environment';
 
-import { APP_STATIC_DATA } from '../../../../app-static-data';
 import { AppUtils } from '../../../../app-utils';
-import {
-  ActivityMembersBuilder,
-  type ActivityMemberSourceModel
-} from '../../../base/builders/activity-members.builder';
 import { LocalMemoryDb } from '../../../common/app.db';
 import type { UserDto } from '../../../contracts/user.interface';
 import type { UserRecord } from '../../source/entity/user.entity';
 import { ACTIVITY_MEMBERS_TABLE_NAME, type ActivityMemberRecord, type ActivityMembersRecordCollection } from '../../source/entity/activity.entity';
-import { ASSETS_TABLE_NAME, type AssetRecord } from '../../source/entity/asset.entity';
-import { LocalAssetsMapper } from '../../source/mappers/asset.mapper';
+import { ASSETS_TABLE_NAME, type AssetMemberRequestRecord, type AssetRecord } from '../../source/entity/asset.entity';
 import type { ActivityEventRecord } from '../../../contracts/activity.interface';
 import { UserProfileState } from '../../../common/user-profile-state';
 
@@ -24,8 +18,16 @@ import { SEED_SCHEDULE_REFERENCE_DATE } from '../seed-constants';
 import type { ActivityMemberOwnerRef } from '../../../contracts/activity.interface';
 import type * as ActivityContracts from '../../../contracts/activity.interface';
 
-import type * as AppDTOs from '../../../contracts';
 import type * as AppConstants from '../../../common/constants';
+
+type ActivityMemberSourceType = 'events' | 'hosting' | 'invitations';
+
+interface ActivityMemberSourceModel {
+  id: string;
+  type: ActivityMemberSourceType;
+  isAdmin?: boolean;
+}
+
 interface ExplicitSeedMemberUserIds {
   accepted: string[];
   pending: string[];
@@ -38,13 +40,20 @@ export class SeedActivityMembersRepository {
   private static readonly MAX_BOOTSTRAP_RECORDS = 1000;
   private static readonly MAX_SEEDED_ASSETS_PER_USER = 2;
   private static readonly MAX_SEEDED_ASSET_REQUESTS_PER_OWNER = 1;
+  private static readonly MEMBER_MET_PLACES = [
+    'Coffee Social',
+    'Workshop',
+    'Gallery Evening',
+    'Trail Weekend',
+    'Game Night'
+  ];
 
   private readonly memoryDb = inject(LocalMemoryDb);
   private lastSeedToken = '';
 
   seedDefaults(
     ownerUserIds?: readonly string[],
-    assetsByUserId?: ReadonlyMap<string, readonly AppDTOs.AssetDTO[]>,
+    assetsByUserId?: ReadonlyMap<string, readonly AssetRecord[]>,
     seedUsers: readonly UserRecord[] = []
   ): void {
     const state = this.memoryDb.read();
@@ -366,18 +375,31 @@ export class SeedActivityMembersRepository {
     const isAdmin = this.normalizeMemberUserIds(options.adminIds).includes(user.id);
     const pendingSource = status === 'accepted' ? null : options.pendingSource ?? 'admin';
     const requestKind = status === 'accepted' ? null : options.requestKind ?? 'invite';
-    const base = ActivityMembersBuilder.toActivityMemberDTO(
-      user,
-      row,
-      rowKey,
-      creator.id,
-      {
-        status,
-        pendingSource,
-        invitedByActiveUser: false
-      },
-      APP_STATIC_DATA.activityMemberMetPlaces
-    );
+    const seed = AppUtils.hashText(`${rowKey}:${user.id}`);
+    const metAt = AppUtils.addDays(new Date('2026-02-24T12:00:00'), -((seed % 220) + 1));
+    const place = SeedActivityMembersRepository.MEMBER_MET_PLACES[
+      seed % SeedActivityMembersRepository.MEMBER_MET_PLACES.length
+    ] ?? 'Demo event';
+    const base: ActivityContracts.ActivityMemberDTO = {
+      id: `${rowKey}:${user.id}`,
+      userId: user.id,
+      name: user.name,
+      initials: user.initials,
+      gender: user.gender,
+      city: user.city,
+      statusText: user.statusText,
+      role: row.isAdmin && user.id === creator.id ? 'Admin' : 'Member',
+      status,
+      pendingSource,
+      requestKind: status === 'pending' ? 'invite' : null,
+      invitedByActiveUser: false,
+      invitedByUserId: null,
+      metAtIso: AppUtils.toIsoDateTime(metAt),
+      actionAtIso: AppUtils.toIsoDateTime(metAt),
+      metWhere: place,
+      avatarUrl: AppUtils.firstImageUrl(user.images),
+      profile: user
+    };
     return {
       ...base,
       role: isAdmin ? 'Admin' : 'Member',
@@ -437,7 +459,7 @@ export class SeedActivityMembersRepository {
 
   private buildSeededAssetOwnerRecordsForUser(
     ownerUserId: string,
-    assets: readonly AppDTOs.AssetDTO[],
+    assets: readonly AssetRecord[],
     users: readonly UserDto[],
     usersById: ReadonlyMap<string, UserDto>
   ): ActivityMemberRecord[] {
@@ -449,7 +471,7 @@ export class SeedActivityMembersRepository {
 
   private buildSeededEntriesForAsset(
     ownerUserId: string,
-    asset: AppDTOs.AssetDTO,
+    asset: AssetRecord,
     users: readonly UserDto[],
     usersById: ReadonlyMap<string, UserDto>
   ): ActivityContracts.ActivityMemberDTO[] {
@@ -473,8 +495,8 @@ export class SeedActivityMembersRepository {
       requestKind: null,
       invitedByActiveUser: false,
       invitedByUserId: null,
-      metAtIso: (asset as { updatedAtIso?: string }).updatedAtIso ?? seedBaseDate.toISOString(),
-      actionAtIso: (asset as { updatedAtIso?: string }).updatedAtIso ?? seedBaseDate.toISOString(),
+      metAtIso: asset.updatedAtIso ?? seedBaseDate.toISOString(),
+      actionAtIso: asset.updatedAtIso ?? seedBaseDate.toISOString(),
       metWhere: asset.title,
       avatarUrl: AppUtils.firstImageUrl(owner.images),
       profile: owner
@@ -519,9 +541,9 @@ export class SeedActivityMembersRepository {
 
   private buildFallbackAssetRequests(
     ownerUserId: string,
-    asset: AppDTOs.AssetDTO,
+    asset: AssetRecord,
     users: readonly UserDto[]
-  ): AppDTOs.AssetMemberRequestDTO[] {
+  ): AssetMemberRequestRecord[] {
     const requestUsers = UserProfileState.friendUsersForActiveUser(users, ownerUserId, 2);
     return requestUsers.map((user, index) => ({
       id: `${asset.id}:request:${index + 1}`,
@@ -731,13 +753,12 @@ export class SeedActivityMembersRepository {
     };
   }
 
-  private readOwnedAssetsByUser(ownerUserId: string): AppDTOs.AssetDTO[] {
+  private readOwnedAssetsByUser(ownerUserId: string): AssetRecord[] {
     const table = this.memoryDb.read()[ASSETS_TABLE_NAME];
     return (table.idsByOwnerUserId[ownerUserId] ?? [])
       .map(id => table.byId[id])
       .filter((record): record is AssetRecord => Boolean(record))
-      .filter(record => !this.isSuppressedAssetStatus(record.status))
-      .map(record => LocalAssetsMapper.toAssetDto(record));
+      .filter(record => !this.isSuppressedAssetStatus(record.status));
   }
 
   private normalizeCollection(value: unknown): ActivityMembersRecordCollection {

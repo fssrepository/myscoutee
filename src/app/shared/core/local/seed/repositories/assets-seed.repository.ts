@@ -2,7 +2,6 @@ import { Injectable, inject } from '@angular/core';
 import { environment } from '../../../../../../environments/environment';
 
 import { AppUtils } from '../../../../app-utils';
-import { AssetCardBuilder, AssetDefaultsBuilder, PricingBuilder } from '../../../base/builders';
 import { LocalMemoryDb } from '../../../common/app.db';
 import {
   ASSET_REQUESTS_TABLE_NAME,
@@ -12,13 +11,12 @@ import {
   type AssetRecord,
   type AssetsRecordCollection
 } from '../../source/entity/asset.entity';
-import { LocalAssetsMapper } from '../../source/mappers/asset.mapper';
 import type { UserRecord } from '../../source/entity/user.entity';
-import { SeedAssetBuilder } from '../builders';
+import { SeedAssetBuilder, type SeedAssetTemplate } from '../builders';
 import { SEED_SCHEDULE_REFERENCE_DATE } from '../seed-constants';
 
 import type * as AppConstants from '../../../common/constants';
-import type * as AppDTOs from '../../../contracts';
+
 @Injectable({
   providedIn: 'root'
 })
@@ -28,7 +26,7 @@ export class SeedAssetsRepository {
   private readonly memoryDb = inject(LocalMemoryDb);
   private lastSeedToken = '';
 
-  seedDefaults(ownerUserIds?: readonly string[], seedUsers: readonly UserRecord[] = []): Map<string, AppDTOs.AssetDTO[]> {
+  seedDefaults(ownerUserIds?: readonly string[], seedUsers: readonly UserRecord[] = []): Map<string, AssetRecord[]> {
     const allUsers = seedUsers
       .filter(user => user.profileStatus === 'public');
     const normalizedOwnerIds = Array.from(new Set(
@@ -59,9 +57,9 @@ export class SeedAssetsRepository {
     return this.peekOwnedAssetsByUsers(normalizedOwnerIds);
   }
 
-  peekOwnedAssetsByUsers(userIds: readonly string[]): Map<string, AppDTOs.AssetDTO[]> {
+  peekOwnedAssetsByUsers(userIds: readonly string[]): Map<string, AssetRecord[]> {
     const table = this.normalizeCollection(this.memoryDb.read()[ASSETS_TABLE_NAME]);
-    const assetsByUserId = new Map<string, AppDTOs.AssetDTO[]>();
+    const assetsByUserId = new Map<string, AssetRecord[]>();
     for (const userId of userIds) {
       const normalizedUserId = `${userId ?? ''}`.trim();
       if (!normalizedUserId) {
@@ -71,8 +69,7 @@ export class SeedAssetsRepository {
         .map(id => table.byId[id])
         .filter((record): record is AssetRecord => Boolean(record))
         .filter(record => !this.isSuppressedAssetStatus(record.status))
-        .sort((left, right) => right.updatedMs - left.updatedMs)
-        .map(record => this.toAssetCard(record));
+        .sort((left, right) => right.updatedMs - left.updatedMs);
       assetsByUserId.set(normalizedUserId, assets);
     }
     return assetsByUserId;
@@ -123,7 +120,7 @@ export class SeedAssetsRepository {
         const record: AssetRecord = {
           ...card,
           id,
-          category: AssetDefaultsBuilder.normalizeCategory(card.type, card.category),
+          category: card.category,
           city: owner.city || card.city,
           imageUrl,
           sourceLink: '',
@@ -132,7 +129,7 @@ export class SeedAssetsRepository {
           visibility: index % 3 === 0 ? 'Friends only' : 'Public',
           status: index === 0 ? 'UR' : index === 1 ? 'D' : 'A',
           statusBeforeSuppression: index === 0 || index === 1 ? 'A' : null,
-          pricing: card.pricing ? PricingBuilder.clonePricingConfig(card.pricing) : undefined,
+          pricing: SeedAssetBuilder.clonePricingConfig(card.pricing) ?? undefined,
           policies: (card.policies ?? []).map(policy => ({ ...policy })),
           requests: [],
           routes: [...(card.routes ?? [])],
@@ -168,13 +165,9 @@ export class SeedAssetsRepository {
     };
   }
 
-  private toAssetCard(record: AssetRecord): AppDTOs.AssetDTO {
-    return LocalAssetsMapper.toAssetDto(record);
-  }
-
   private seedAssetRequests(
     assetId: string,
-    card: AppDTOs.AssetDetailDTO,
+    card: SeedAssetTemplate,
     owner: UserRecord,
     allUsers: readonly UserRecord[],
     anchorDate: Date
@@ -285,7 +278,7 @@ export class SeedAssetsRepository {
   private seedAssetRequest(
     assetId: string,
     ownerUserId: string,
-    card: AppDTOs.AssetDetailDTO,
+    card: SeedAssetTemplate,
     requestKey: string,
     user: UserRecord,
     requestKind: AppConstants.AssetRequestKind,
@@ -310,7 +303,7 @@ export class SeedAssetsRepository {
       assetId,
       ownerUserId,
       ownerKey: this.assetRequestOwnerKey(assetId),
-      assetCapacity: AssetCardBuilder.storedQuantityValue(card),
+      assetCapacity: this.storedQuantityValue(card),
       userId: user.id,
       name: user.name,
       initials: user.initials,
@@ -429,6 +422,32 @@ export class SeedAssetsRepository {
 
   private assetRequestOwnerKey(assetId: string): string {
     return `asset:${assetId.trim()}`;
+  }
+
+  private storedQuantityValue(
+    card: Pick<SeedAssetTemplate, 'type' | 'capacityTotal'> & { quantity: unknown }
+  ): number {
+    const parsed = Math.trunc(Number(card.quantity));
+    if (Number.isFinite(parsed) && parsed >= 0) {
+      return parsed;
+    }
+    return this.normalizeQuantity(card.type, card.quantity, card.capacityTotal);
+  }
+
+  private normalizeQuantity(
+    type: AppConstants.AssetType,
+    value: unknown,
+    capacityTotal: unknown
+  ): number {
+    const parsed = Math.trunc(Number(value));
+    if (Number.isFinite(parsed) && parsed >= 0) {
+      return parsed;
+    }
+    const capacity = Math.trunc(Number(capacityTotal));
+    if (Number.isFinite(capacity) && capacity >= 0) {
+      return capacity;
+    }
+    return type === 'Supplies' ? 6 : 1;
   }
 
   private cloneOwnerUserIdIndex(value: Record<string, readonly string[] | string[] | undefined> | undefined): Record<string, string[]> {
