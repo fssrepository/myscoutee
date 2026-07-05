@@ -41,7 +41,7 @@ export class LocalAssetRequestsRepository {
     const requests = this.queryRecordsByOwner(query.userId, query.assetId);
     const filter = this.normalizeAvailabilityFilter(query.filter);
     const order = this.normalizeAvailabilityOrder(query.order);
-    const dateRange = this.availabilityDateRange(query.dateIso);
+    const dateRange = this.availabilityDateRange(query.dateIso, query.rangeStart, query.rangeEnd);
     const filtered = requests
       .filter(request => this.matchesAvailabilityOrder(request, order))
       .filter(request => this.matchesAvailabilityFilter(request, filter))
@@ -199,7 +199,15 @@ export class LocalAssetRequestsRepository {
     return { start, end };
   }
 
-  private availabilityDateRange(dateIso: string | null | undefined): AssetAvailabilityDateRangeRecord | null {
+  private availabilityDateRange(
+    dateIso: string | null | undefined,
+    rangeStart: string | null | undefined,
+    rangeEnd: string | null | undefined
+  ): AssetAvailabilityDateRangeRecord | null {
+    const range = this.availabilityQueryRange(rangeStart, rangeEnd);
+    if (range) {
+      return range;
+    }
     const parsed = AppUtils.parseDateOnlyLocal(`${dateIso ?? ''}`.trim());
     if (!parsed) {
       return null;
@@ -208,6 +216,48 @@ export class LocalAssetRequestsRepository {
       start: parsed,
       end: AppUtils.addDays(parsed, 1)
     };
+  }
+
+  private availabilityQueryRange(
+    rangeStart: string | null | undefined,
+    rangeEnd: string | null | undefined
+  ): AssetAvailabilityDateRangeRecord | null {
+    const startInput = `${rangeStart ?? ''}`.trim();
+    const endInput = `${rangeEnd ?? ''}`.trim();
+    if (!startInput && !endInput) {
+      return null;
+    }
+    const start = this.parseAvailabilityRangeBoundary(startInput || endInput, false);
+    const explicitEnd = Boolean(endInput);
+    let end = explicitEnd
+      ? this.parseAvailabilityRangeBoundary(endInput, true)
+      : null;
+    if (!start) {
+      return null;
+    }
+    end = end ?? AppUtils.addDays(start, 1);
+    if (end.getTime() < start.getTime()) {
+      return { start: end, end: start };
+    }
+    if (end.getTime() === start.getTime()) {
+      return { start, end: AppUtils.addDays(start, 1) };
+    }
+    return { start, end };
+  }
+
+  private parseAvailabilityRangeBoundary(value: string, isEnd: boolean): Date | null {
+    const normalized = `${value ?? ''}`.trim();
+    if (!normalized) {
+      return null;
+    }
+    const dateOnly = /^\d{4}-\d{2}-\d{2}$/.test(normalized);
+    const parsed = dateOnly
+      ? AppUtils.parseDateOnlyLocal(normalized)
+      : this.parseAvailabilityDate(normalized);
+    if (!parsed) {
+      return null;
+    }
+    return isEnd && dateOnly ? AppUtils.addDays(parsed, 1) : parsed;
   }
 
   private availabilityStatsRange(

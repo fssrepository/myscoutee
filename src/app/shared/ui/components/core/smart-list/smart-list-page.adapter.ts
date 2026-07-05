@@ -6,6 +6,7 @@ import type {
 import type {
   SmartListConfig,
   SmartListFilters,
+  SmartListItemSelectEvent,
   SmartListViewMode
 } from './smart-list.types';
 
@@ -26,7 +27,11 @@ export interface SmartListPageCardModel<T, TFilters extends SmartListFilters = S
   variant: SmartListPageVariant;
   touching: boolean;
   trackByItem?: ((index: number, item: T) => unknown) | null;
-  onItemSelect?: ((item: T, event?: Event) => void) | null;
+  onItemSelect?: ((
+    item: T,
+    event?: Event,
+    context?: Pick<SmartListItemSelectEvent<T, TFilters>, 'calendarDate' | 'calendarDateIso'>
+  ) => void) | null;
 }
 
 export type SmartListPageBuildContext<

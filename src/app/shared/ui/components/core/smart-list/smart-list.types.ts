@@ -224,6 +224,8 @@ export interface SmartListItemSelectEvent<T, TFilters extends SmartListFilters =
   currentViewMode: SmartListViewMode;
   selectMode: boolean;
   sourceEvent?: Event;
+  calendarDate?: Date;
+  calendarDateIso?: string;
 }
 
 export interface SmartListRefreshEvent<T, TFilters extends SmartListFilters = SmartListFilters> {

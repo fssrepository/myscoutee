@@ -12,6 +12,8 @@ export interface AssetAvailabilityPopupRequest {
   assetId: string;
   ownerUserId: string;
   initialDateIso?: string | null;
+  rangeStart?: string | null;
+  rangeEnd?: string | null;
   filter: AssetAvailabilityFilter;
   view: AssetAvailabilityView;
   source?: 'asset-card' | 'calendar-cell' | null;
@@ -32,6 +34,8 @@ export type AssetAvailabilityPopupOpenRequest = {
   assetId: string;
   ownerUserId: string;
   initialDateIso?: string | null;
+  rangeStart?: string | null;
+  rangeEnd?: string | null;
   filter?: AssetAvailabilityFilter | null;
   view?: AssetAvailabilityView | null;
   source?: AssetAvailabilityPopupRequest['source'];
@@ -90,6 +94,27 @@ export class AssetAvailabilityPopupStore {
     this.dayListHeaderRef.set(null);
   }
 
+  updateDayListRange(
+    rangeStart: string | null,
+    rangeEnd: string | null,
+    filter?: AssetAvailabilityFilter | null
+  ): void {
+    const request = this.dayListPopupRef();
+    if (!request) {
+      return;
+    }
+    const normalizedStart = `${rangeStart ?? ''}`.trim() || null;
+    const normalizedEnd = `${rangeEnd ?? ''}`.trim() || null;
+    this.dayListPopupRef.set({
+      ...request,
+      updatedMs: Date.now(),
+      initialDateIso: normalizedStart ?? request.initialDateIso ?? null,
+      rangeStart: normalizedStart,
+      rangeEnd: normalizedEnd,
+      filter: this.normalizeFilter(filter ?? request.filter)
+    });
+  }
+
   async ensureAssetAvailabilityPopupLoaded(): Promise<void> {
     if (this.assetAvailabilityPopupComponentRef()) {
       return;
@@ -115,6 +140,8 @@ export class AssetAvailabilityPopupStore {
       assetId,
       ownerUserId,
       initialDateIso: `${request.initialDateIso ?? ''}`.trim() || null,
+      rangeStart: `${request.rangeStart ?? ''}`.trim() || null,
+      rangeEnd: `${request.rangeEnd ?? ''}`.trim() || null,
       filter: this.normalizeFilter(request.filter),
       view,
       source: request.source ?? null

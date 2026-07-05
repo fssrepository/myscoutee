@@ -77,6 +77,8 @@ export interface AssetAvailabilityRecordPageQuery {
   userId: string;
   assetId: string;
   dateIso?: string | null;
+  rangeStart?: string | null;
+  rangeEnd?: string | null;
   filter?: AssetAvailabilityFilterRecord | null;
   order?: AssetAvailabilityOrderRecord | null;
   page?: number;

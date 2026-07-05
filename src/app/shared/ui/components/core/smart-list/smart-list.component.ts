@@ -1261,7 +1261,11 @@ export class SmartListComponent<T, TFilters extends SmartListFilters = SmartList
     };
   }
 
-  private selectSmartListItem(item: T, event?: Event): void {
+  private selectSmartListItem(
+    item: T,
+    event?: Event,
+    context?: Pick<SmartListItemSelectEvent<T, TFilters>, 'calendarDate' | 'calendarDateIso'>
+  ): void {
     event?.stopPropagation();
     const itemIndex = this.items.indexOf(item);
     this.itemSelect.emit({
@@ -1271,7 +1275,9 @@ export class SmartListComponent<T, TFilters extends SmartListFilters = SmartList
       currentView: this.currentViewKey,
       currentViewMode: this.currentViewMode,
       selectMode: this.resolvedSelectMode(),
-      sourceEvent: event
+      sourceEvent: event,
+      calendarDate: context?.calendarDate,
+      calendarDateIso: context?.calendarDateIso
     });
   }
 
@@ -1387,8 +1393,12 @@ export class SmartListComponent<T, TFilters extends SmartListFilters = SmartList
     };
   }
 
-  private readonly selectPageCardItem = (item: T, event?: Event): void => {
-    this.selectSmartListItem(item, event);
+  private readonly selectPageCardItem = (
+    item: T,
+    event?: Event,
+    context?: Pick<SmartListItemSelectEvent<T, TFilters>, 'calendarDate' | 'calendarDateIso'>
+  ): void => {
+    this.selectSmartListItem(item, event, context);
   };
 
   protected readonly navigatePageHeader = (direction: -1 | 1, event?: Event): void => {

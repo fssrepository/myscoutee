@@ -163,6 +163,8 @@ export class HttpAssetsService {
     userId: string;
     assetId: string;
     dateIso?: string | null;
+    rangeStart?: string | null;
+    rangeEnd?: string | null;
     filter?: AppDTOs.AssetAvailabilityFilter | null;
     order?: AppDTOs.AssetAvailabilityOrder | null;
     page?: number;
@@ -188,6 +190,8 @@ export class HttpAssetsService {
               params: new HttpParams()
                 .set('userId', normalizedUserId)
                 .set('dateIso', `${query.dateIso ?? ''}`.trim())
+                .set('rangeStart', `${query.rangeStart ?? ''}`.trim())
+                .set('rangeEnd', `${query.rangeEnd ?? ''}`.trim())
                 .set('filter', `${query.filter ?? 'all'}`.trim())
                 .set('order', `${query.order ?? 'later'}`.trim())
                 .set('page', `${Math.max(0, Math.trunc(Number(query.page) || 0))}`)

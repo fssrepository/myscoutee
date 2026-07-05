@@ -29,9 +29,13 @@ import {
   type AppMenuPalette,
   type AppMenuTrigger,
   type CardMenuActionEvent,
+  type DateInputModel,
+  type DateInputRangeValue,
+  type DateInputValue,
   type ListQuery,
   type PageResult,
   type PopupControl,
+  type PopupDateInputChangeEvent,
   type PopupMenuSelectEvent,
   type PopupModel,
   type SingleRowData,
@@ -66,6 +70,8 @@ interface AssetAvailabilityListFilters {
   filter: AppDTOs.AssetAvailabilityFilter;
   order?: AppDTOs.AssetAvailabilityOrder;
   dateIso?: string | null;
+  rangeStart?: string | null;
+  rangeEnd?: string | null;
 }
 
 type AssetAvailabilityPopupMenuContext =
@@ -149,6 +155,8 @@ export class AssetAvailabilityPopupComponent {
       view,
       this.availabilityFilter(),
       request?.initialDateIso ?? null,
+      request?.rangeStart ?? null,
+      request?.rangeEnd ?? null,
       this.availabilityRevision(),
       this.isCalendarAvailabilityView(view) ? null : this.availabilityOrder()
     );
@@ -159,6 +167,8 @@ export class AssetAvailabilityPopupComponent {
       'day',
       this.dayListFilter(),
       request?.initialDateIso ?? null,
+      request?.rangeStart ?? null,
+      request?.rangeEnd ?? null,
       this.dayListRevision(),
       this.availabilityOrder()
     );
@@ -169,6 +179,31 @@ export class AssetAvailabilityPopupComponent {
   protected readonly dayListHeader = computed<AssetAvailabilityHeaderState | null>(
     () => this.availabilityPopupStore.dayListHeader() ?? this.availabilityPopupStore.availabilityHeader()
   );
+  private readonly dayListDateRangeInputModel: DateInputModel = {
+    mode: 'range',
+    precision: 'date',
+    valueFormat: 'iso-date',
+    range: {
+      layout: 'compact',
+      start: {
+        placeholder: 'Start date'
+      },
+      end: {
+        placeholder: 'End date'
+      }
+    }
+  };
+  private readonly dayListDateRangeInputValue = computed<DateInputRangeValue>(() => {
+    const request = this.availabilityPopupStore.dayListPopup();
+    const fallback = this.dateInputDateKey(request?.initialDateIso) ?? AppUtils.toIsoDate(new Date());
+    const startAt = this.dateInputDateKey(request?.rangeStart) ?? fallback;
+    const endAt = this.dateInputDateKey(request?.rangeEnd) ?? startAt;
+    return {
+      startAt,
+      endAt,
+      precision: 'date'
+    };
+  });
   protected readonly resourcePopupOutletInputs = computed(() => ({
     parentZIndex: this.resourcePopupParentZIndex()
   }));
@@ -320,8 +355,8 @@ export class AssetAvailabilityPopupComponent {
   protected dayListPopupModel(): PopupModel<AssetAvailabilityPopupMenuContext> {
     const header = this.dayListHeader();
     return {
-      title: this.dayListTitle(),
-      subtitle: header?.title ?? null,
+      title: header?.title ?? 'Availability items',
+      subtitle: header?.subtitle ?? null,
       size: 'wide',
       height: 'full',
       bodyLayout: 'fill',
@@ -329,7 +364,8 @@ export class AssetAvailabilityPopupComponent {
       closeAriaLabel: 'Close day availability',
       toolbarControls: this.dayListToolbarControls(),
       onClose: () => this.availabilityPopupStore.closeDayListPopup(),
-      onMenuSelect: event => this.onPopupMenuSelect(event)
+      onMenuSelect: event => this.onPopupMenuSelect(event),
+      onDateInputChange: event => this.onPopupDateInputChange(event)
     };
   }
 
@@ -378,6 +414,8 @@ export class AssetAvailabilityPopupComponent {
         userId: request.ownerUserId,
         assetId: request.assetId,
         dateIso: query.filters?.dateIso ?? request.initialDateIso ?? undefined,
+        rangeStart: query.rangeStart ?? query.filters?.rangeStart ?? request.rangeStart ?? undefined,
+        rangeEnd: query.rangeEnd ?? query.filters?.rangeEnd ?? request.rangeEnd ?? undefined,
         filter: query.filters?.filter ?? request.filter,
         order: query.filters?.order ?? this.orderFromDirection(query.direction),
         page: query.page,
@@ -400,6 +438,8 @@ export class AssetAvailabilityPopupComponent {
         userId: request.ownerUserId,
         assetId: request.assetId,
         dateIso: query.filters?.dateIso ?? request.initialDateIso ?? undefined,
+        rangeStart: query.rangeStart ?? query.filters?.rangeStart ?? request.rangeStart ?? undefined,
+        rangeEnd: query.rangeEnd ?? query.filters?.rangeEnd ?? request.rangeEnd ?? undefined,
         filter: query.filters?.filter ?? request.filter,
         order: query.filters?.order ?? this.orderFromDirection(query.direction),
         page: query.page,
@@ -531,16 +571,22 @@ export class AssetAvailabilityPopupComponent {
 
   protected onCalendarItemSelect(event: SmartListItemSelectEvent<AssetAvailabilityListItem, AssetAvailabilityListFilters>): void {
     const request = this.availabilityPopupStore.availabilityPopup();
-    const dateIso = `${event.item.dateIso ?? ''}`.trim();
+    const dateIso = this.dateInputDateKey(event.calendarDateIso ?? event.calendarDate)
+      ?? this.dateInputDateKey(event.item.dateIso)
+      ?? `${event.item.dateIso ?? ''}`.trim();
     if (!request || !dateIso) {
       return;
     }
+    const rangeStart = this.dateInputDateKey(dateIso) ?? dateIso;
+    const rangeEnd = rangeStart;
     this.availabilityPopupStore.openDayListPopup(
       {
-        instanceId: `asset-availability-day:${request.assetId}:${dateIso}`,
+        instanceId: `asset-availability-day:${request.assetId}:${rangeStart}:${rangeEnd}`,
         assetId: request.assetId,
         ownerUserId: request.ownerUserId,
-        initialDateIso: dateIso,
+        initialDateIso: rangeStart,
+        rangeStart,
+        rangeEnd,
         filter: this.availabilityFilter(),
         view: 'day',
         source: 'calendar-cell'
@@ -554,6 +600,13 @@ export class AssetAvailabilityPopupComponent {
     if (view === 'day' || view === 'week' || view === 'month') {
       this.selectAvailabilityView(view);
     }
+  }
+
+  private onPopupDateInputChange(event: PopupDateInputChangeEvent<AssetAvailabilityPopupMenuContext>): void {
+    if (event.control.id !== 'day-list-date-range') {
+      return;
+    }
+    this.selectDayListRange(event.value);
   }
 
   private onPopupMenuSelect(event: PopupMenuSelectEvent<AssetAvailabilityPopupMenuContext>): void {
@@ -627,6 +680,25 @@ export class AssetAvailabilityPopupComponent {
     this.dayListRevision.update(revision => revision + 1);
   }
 
+  private selectDayListRange(value: DateInputValue): void {
+    if (!this.isDateInputRangeValue(value)) {
+      return;
+    }
+    const startAt = this.dateInputDateKey(value.startAt) ?? this.dateInputDateKey(value.endAt);
+    const endAt = this.dateInputDateKey(value.endAt) ?? startAt;
+    if (!startAt || !endAt) {
+      return;
+    }
+    const request = this.availabilityPopupStore.dayListPopup();
+    if (
+      this.dateInputDateKey(request?.rangeStart) === startAt
+      && this.dateInputDateKey(request?.rangeEnd) === endAt
+    ) {
+      return;
+    }
+    this.availabilityPopupStore.updateDayListRange(startAt, endAt, this.dayListFilter());
+  }
+
   private availabilityHeaderControls(): PopupControl<AssetAvailabilityPopupMenuContext>[] {
     const controls: PopupControl<AssetAvailabilityPopupMenuContext>[] = [];
     if (this.availabilityView() === 'day') {
@@ -657,13 +729,21 @@ export class AssetAvailabilityPopupComponent {
   }
 
   private dayListToolbarControls(): PopupControl<AssetAvailabilityPopupMenuContext>[] {
-    return [{
-      kind: 'menu',
-      id: 'day-list-filter',
-      align: 'end',
-      trigger: this.filterMenuTrigger(this.dayListFilter(), 'day-list'),
-      items: this.filterMenuItems('day-list')
-    }];
+    return [
+      {
+        kind: 'date-input',
+        id: 'day-list-date-range',
+        model: this.dayListDateRangeInputModel,
+        value: this.dayListDateRangeInputValue()
+      },
+      {
+        kind: 'menu',
+        id: 'day-list-filter',
+        align: 'end',
+        trigger: this.filterMenuTrigger(this.dayListFilter(), 'day-list'),
+        items: this.filterMenuItems('day-list')
+      }
+    ];
   }
 
   private viewMenuTrigger(): AppMenuTrigger {
@@ -890,6 +970,10 @@ export class AssetAvailabilityPopupComponent {
     if (!start) {
       return null;
     }
+    if (this.isAvailabilityStat(item)) {
+      const day = AppUtils.parseDateOnlyLocal(item.dateIso) ?? AppUtils.dateOnly(start);
+      return { start: day, end: day };
+    }
     const end = AppUtils.parseDate(item.endAtIso) ?? AppUtils.addDays(start, 1);
     return { start, end };
   }
@@ -1028,18 +1112,26 @@ export class AssetAvailabilityPopupComponent {
     view: AppDTOs.AssetAvailabilityView,
     filter: AppDTOs.AssetAvailabilityFilter,
     dateIso: string | null,
+    rangeStart: string | null,
+    rangeEnd: string | null,
     revision = 0,
     order: AppDTOs.AssetAvailabilityOrder | null = 'later'
   ): Partial<ListQuery<AssetAvailabilityListFilters>> {
     const isCalendarView = this.isCalendarAvailabilityView(view);
+    const normalizedRangeStart = `${rangeStart ?? ''}`.trim() || undefined;
+    const normalizedRangeEnd = `${rangeEnd ?? ''}`.trim() || undefined;
     return {
       view,
       direction: isCalendarView ? undefined : (order === 'earlier' ? 'desc' : 'asc'),
+      ...(normalizedRangeStart ? { rangeStart: normalizedRangeStart } : {}),
+      ...(normalizedRangeEnd ? { rangeEnd: normalizedRangeEnd } : {}),
       filters: {
         revision,
         filter,
         ...(isCalendarView || !order ? {} : { order }),
-        dateIso: `${dateIso ?? ''}`.trim() || null
+        dateIso: `${dateIso ?? ''}`.trim() || null,
+        rangeStart: normalizedRangeStart ?? null,
+        rangeEnd: normalizedRangeEnd ?? null
       }
     };
   }
@@ -1050,6 +1142,18 @@ export class AssetAvailabilityPopupComponent {
 
   private orderFromDirection(direction: string | null | undefined): AppDTOs.AssetAvailabilityOrder {
     return direction === 'desc' ? 'earlier' : 'later';
+  }
+
+  private isDateInputRangeValue(value: DateInputValue): value is DateInputRangeValue {
+    return !!value
+      && typeof value === 'object'
+      && 'startAt' in value
+      && 'endAt' in value;
+  }
+
+  private dateInputDateKey(value: unknown): string | null {
+    const parsed = AppUtils.parseDateOnlyLocal(value);
+    return parsed ? AppUtils.toIsoDate(parsed) : null;
   }
 
   private scopedOverrideValue<T>(
@@ -1069,6 +1173,8 @@ export class AssetAvailabilityPopupComponent {
       request.assetId,
       request.ownerUserId,
       request.initialDateIso ?? '',
+      request.rangeStart ?? '',
+      request.rangeEnd ?? '',
       request.filter,
       request.view,
       request.updatedMs
@@ -1085,12 +1191,6 @@ export class AssetAvailabilityPopupComponent {
       return 'Time-based requests and assignments';
     }
     return header.subtitle || 'Time-based requests and assignments';
-  }
-
-  private dayListTitle(): string {
-    const request = this.availabilityPopupStore.dayListPopup();
-    const dateIso = `${request?.initialDateIso ?? ''}`.trim();
-    return dateIso ? this.groupLabelForDate(dateIso, 'day') : 'Availability items';
   }
 
   private groupLabelForItem(

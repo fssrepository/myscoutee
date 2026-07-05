@@ -230,11 +230,18 @@ export class CalendarCardComponent<T, TFilters extends SmartListFilters = SmartL
     if (!item) {
       return;
     }
-    this.selectItem(item, sourceEvent);
+    this.selectItem(item, sourceEvent, {
+      calendarDate: new Date(day.date),
+      calendarDateIso: day.key
+    });
   }
 
-  protected selectItem(item: T, sourceEvent?: Event): void {
-    this.model?.onItemSelect?.(item, sourceEvent);
+  protected selectItem(
+    item: T,
+    sourceEvent?: Event,
+    context?: { calendarDate?: Date; calendarDateIso?: string }
+  ): void {
+    this.model?.onItemSelect?.(item, sourceEvent, context);
   }
 
   private calendarWeekStartHour(): number {
