@@ -152,6 +152,92 @@ export class HttpAssetsService {
     }
   }
 
+  async loadOccupancyByAssetId(query: {
+    userId: string;
+    assetId: string;
+    dateIso?: string | null;
+    filter?: AppDTOs.AssetAvailabilityFilter | null;
+    page?: number;
+    pageSize: number;
+    cursor?: string | null;
+  }): Promise<AppDTOs.AssetOccupancyPageResultDTO> {
+    const normalizedUserId = query.userId.trim();
+    const normalizedAssetId = query.assetId.trim();
+    if (!normalizedUserId || !normalizedAssetId) {
+      return {
+        items: [],
+        total: 0,
+        nextCursor: null
+      };
+    }
+    try {
+      const response = await this.http
+        .get<AppDTOs.AssetOccupancyPageResultDTO | null>(
+          `${this.apiBaseUrl}/assets/${encodeURIComponent(normalizedAssetId)}/availability`,
+          {
+            params: new HttpParams()
+              .set('userId', normalizedUserId)
+              .set('dateIso', `${query.dateIso ?? ''}`.trim())
+              .set('filter', `${query.filter ?? 'all'}`.trim())
+              .set('page', `${Math.max(0, Math.trunc(Number(query.page) || 0))}`)
+              .set('pageSize', `${Math.max(1, Math.trunc(Number(query.pageSize) || 1))}`)
+              .set('cursor', `${query.cursor ?? ''}`.trim())
+          }
+        )
+        .toPromise();
+      return this.normalizeOccupancyPage(response);
+    } catch {
+      return {
+        items: [],
+        total: 0,
+        nextCursor: null
+      };
+    }
+  }
+
+  async loadStatByAssetId(query: {
+    userId: string;
+    assetId: string;
+    rangeStart?: string | null;
+    rangeEnd?: string | null;
+    page?: number;
+    pageSize: number;
+    cursor?: string | null;
+  }): Promise<AppDTOs.AssetOccupancyStatsPageResultDTO> {
+    const normalizedUserId = query.userId.trim();
+    const normalizedAssetId = query.assetId.trim();
+    if (!normalizedUserId || !normalizedAssetId) {
+      return {
+        items: [],
+        total: 0,
+        nextCursor: null
+      };
+    }
+    try {
+      const response = await this.http
+        .get<AppDTOs.AssetOccupancyStatsPageResultDTO | null>(
+          `${this.apiBaseUrl}/assets/${encodeURIComponent(normalizedAssetId)}/availability/stats`,
+          {
+            params: new HttpParams()
+              .set('userId', normalizedUserId)
+              .set('rangeStart', `${query.rangeStart ?? ''}`.trim())
+              .set('rangeEnd', `${query.rangeEnd ?? ''}`.trim())
+              .set('page', `${Math.max(0, Math.trunc(Number(query.page) || 0))}`)
+              .set('pageSize', `${Math.max(1, Math.trunc(Number(query.pageSize) || 1))}`)
+              .set('cursor', `${query.cursor ?? ''}`.trim())
+          }
+        )
+        .toPromise();
+      return this.normalizeOccupancyStatsPage(response);
+    } catch {
+      return {
+        items: [],
+        total: 0,
+        nextCursor: null
+      };
+    }
+  }
+
   async saveOwnedAsset(userId: string, asset: AppDTOs.AssetDetailDTO): Promise<AppDTOs.AssetDTO> {
     const normalizedUserId = userId.trim();
     const normalizedDetail = this.normalizeDetail(asset);
@@ -555,6 +641,105 @@ export class HttpAssetsService {
       return Math.max(0, Math.trunc(Number(card.policyCount)));
     }
     return 'policies' in card ? (card.policies ?? []).length : 0;
+  }
+
+  private normalizeOccupancyPage(
+    response: AppDTOs.AssetOccupancyPageResultDTO | null | undefined
+  ): AppDTOs.AssetOccupancyPageResultDTO {
+    const items = Array.isArray(response?.items)
+      ? response.items
+        .map(row => this.normalizeOccupancyRow(row))
+        .filter((row): row is AppDTOs.AssetOccupancyRowDTO => Boolean(row))
+      : [];
+    return {
+      items,
+      total: Number.isFinite(response?.total)
+        ? Math.max(0, Math.trunc(Number(response?.total)))
+        : items.length,
+      nextCursor: typeof response?.nextCursor === 'string' && response.nextCursor.trim().length > 0
+        ? response.nextCursor
+        : null
+    };
+  }
+
+  private normalizeOccupancyStatsPage(
+    response: AppDTOs.AssetOccupancyStatsPageResultDTO | null | undefined
+  ): AppDTOs.AssetOccupancyStatsPageResultDTO {
+    const items = Array.isArray(response?.items)
+      ? response.items
+        .map(row => this.normalizeOccupancyStat(row))
+        .filter((row): row is AppDTOs.AssetOccupancyStatDTO => Boolean(row))
+      : [];
+    return {
+      items,
+      total: Number.isFinite(response?.total)
+        ? Math.max(0, Math.trunc(Number(response?.total)))
+        : items.length,
+      nextCursor: typeof response?.nextCursor === 'string' && response.nextCursor.trim().length > 0
+        ? response.nextCursor
+        : null
+    };
+  }
+
+  private normalizeOccupancyStat(
+    row: AppDTOs.AssetOccupancyStatDTO | null | undefined
+  ): AppDTOs.AssetOccupancyStatDTO | null {
+    const id = `${row?.id ?? ''}`.trim();
+    const assetId = `${row?.assetId ?? ''}`.trim();
+    const dateIso = `${row?.dateIso ?? ''}`.trim();
+    if (!id || !assetId || !dateIso) {
+      return null;
+    }
+    return {
+      id,
+      assetId,
+      ownerUserId: `${row?.ownerUserId ?? ''}`.trim(),
+      dateIso,
+      startAtIso: `${row?.startAtIso ?? ''}`.trim(),
+      endAtIso: `${row?.endAtIso ?? ''}`.trim(),
+      occupied: Math.max(0, Math.trunc(Number(row?.occupied) || 0)),
+      capacity: Math.max(0, Math.trunc(Number(row?.capacity) || 0)),
+      pendingCount: Math.max(0, Math.trunc(Number(row?.pendingCount) || 0)),
+      pendingQuantity: Math.max(0, Math.trunc(Number(row?.pendingQuantity) || 0)),
+      itemCount: Math.max(0, Math.trunc(Number(row?.itemCount) || 0))
+    };
+  }
+
+  private normalizeOccupancyRow(
+    row: AppDTOs.AssetOccupancyRowDTO | null | undefined
+  ): AppDTOs.AssetOccupancyRowDTO | null {
+    const id = `${row?.id ?? ''}`.trim();
+    const assetId = `${row?.assetId ?? ''}`.trim();
+    if (!id || !assetId) {
+      return null;
+    }
+    return {
+      id,
+      assetId,
+      ownerUserId: `${row?.ownerUserId ?? ''}`.trim(),
+      dateIso: `${row?.dateIso ?? ''}`.trim(),
+      startAtIso: `${row?.startAtIso ?? ''}`.trim() || undefined,
+      endAtIso: `${row?.endAtIso ?? ''}`.trim() || undefined,
+      title: `${row?.title ?? ''}`.trim(),
+      subtitle: `${row?.subtitle ?? ''}`.trim() || undefined,
+      detail: `${row?.detail ?? ''}`.trim() || undefined,
+      scheduleLabel: `${row?.scheduleLabel ?? ''}`.trim() || undefined,
+      avatarInitials: `${row?.avatarInitials ?? ''}`.trim() || undefined,
+      avatarUrl: `${row?.avatarUrl ?? ''}`.trim() || undefined,
+      gender: row?.gender === 'woman' ? 'woman' : 'man',
+      status: row?.status === 'assigned' ? 'assigned' : row?.status === 'accepted' ? 'accepted' : 'pending',
+      requestKind: row?.requestKind === 'manual' ? 'manual' : 'borrow',
+      quantity: Math.max(1, Math.trunc(Number(row?.quantity) || 1)),
+      occupied: Math.max(0, Math.trunc(Number(row?.occupied) || 0)),
+      capacity: Math.max(0, Math.trunc(Number(row?.capacity) || 0)),
+      remaining: Math.trunc(Number(row?.remaining) || 0),
+      pendingCount: Math.max(0, Math.trunc(Number(row?.pendingCount) || 0)),
+      pendingQuantity: Math.max(0, Math.trunc(Number(row?.pendingQuantity) || 0)),
+      menuActions: Array.isArray(row?.menuActions)
+        ? row.menuActions.filter((action): action is AppConstants.AssetRequestAction =>
+          action === 'accept' || action === 'remove' || action === 'makeManager')
+        : []
+    };
   }
 
   private restoredAssetStatus(_card: AppDTOs.AssetDTO): string {

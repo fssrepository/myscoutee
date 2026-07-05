@@ -48,7 +48,6 @@ import {
 import {
   AppMenuDispatcher,
   AppMenuOutletComponent,
-  AppMenuTriggerComponent,
   InfoCardComponent,
   PopupComponent,
   SmartListComponent,
@@ -76,6 +75,9 @@ import {
   AssetPopupStore
 } from '../../../shared/ui/context/stores/asset-popup.store';
 import {
+  AssetAvailabilityPopupStore
+} from '../../../shared/ui/context/stores/asset-availability-popup.store';
+import {
   AssetStore,
   type AssetVisibleListPatch
 } from '../../../shared/ui/context/stores/asset.store';
@@ -85,9 +87,6 @@ import {
 import {
   I18nService
 } from '../../../shared/core';
-import {
-  I18nPipe
-} from '../../../shared/ui';
 import {
   AssetDto
 } from '../../../shared/core/contracts';
@@ -138,12 +137,10 @@ type AssetPopupMenuContext =
     CommonModule,
     MatIconModule,
     AppMenuOutletComponent,
-    AppMenuTriggerComponent,
     InfoCardComponent,
     PopupComponent,
     SmartListComponent,
     DialogComponent,
-    I18nPipe,
     AssetEditorPopupComponent,
     AssetTicketScanPopupComponent
   ],
@@ -163,6 +160,7 @@ export class AssetPopupComponent {
   private readonly i18n = inject(I18nService);
   private readonly cdr = inject(ChangeDetectorRef);
   protected readonly assetPopupStore = inject(AssetPopupStore);
+  protected readonly assetAvailabilityPopupStore = inject(AssetAvailabilityPopupStore);
   protected readonly assetStore = inject(AssetStore);
   private readonly resourcePopupStore = inject(SubEventResourcePopupStore);
   private readonly activityResourcesService = inject(ActivityResourcesService);
@@ -1226,11 +1224,40 @@ export class AssetPopupComponent {
     if (this.isBasketMode()) {
       return;
     }
-    this.selectedSupplyAssetId = card.id;
-    this.showSupplyRequestList = true;
+    const ownerUserId = [
+      card.ownerUserId,
+      this.assetStore.activeOwnerUserIdRef(),
+      this.userProfileStore.getActiveUserId()
+    ]
+      .map(value => `${value ?? ''}`.trim())
+      .find(value => value.length > 0) ?? '';
+    if (!card.id.trim() || !ownerUserId) {
+      return;
+    }
+    this.selectedSupplyAssetId = null;
+    this.showSupplyRequestList = false;
     this.supplyRequestFilter = 'all';
     this.supplyRequestBusyKey = '';
     this.appMenuDispatcher.close();
+    this.assetAvailabilityPopupStore.openAvailabilityPopup(
+      {
+        instanceId: `asset-availability:${card.id}`,
+        assetId: card.id,
+        ownerUserId,
+        filter: 'all',
+        view: 'month',
+        source: 'asset-card'
+      },
+      {
+        assetId: card.id,
+        ownerUserId,
+        title: card.title,
+        subtitle: card.subtitle,
+        type: card.type,
+        capacity: AssetCardBuilder.storedQuantityValue(card)
+      }
+    );
+    void this.assetAvailabilityPopupStore.ensureAssetAvailabilityPopupLoaded();
   }
 
   protected closeSupplyRequestList(event?: Event): void {

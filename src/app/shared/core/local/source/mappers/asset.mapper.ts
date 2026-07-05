@@ -1,8 +1,17 @@
 import { AssetCardBuilder, AssetDefaultsBuilder, PricingBuilder } from '../../../base/builders';
+import { AppUtils } from '../../../../app-utils';
 import { LocalActivityEventsMapper } from './event.mapper';
 import type * as ActivityContracts from '../../../contracts/activity.interface';
 import type * as AssetContracts from '../../../contracts/asset.interface';
-import type { AssetMemberRequestRecord, AssetRecord } from '../entity/asset.entity';
+import type {
+  AssetAvailabilityRowRecord,
+  AssetAvailabilityStatRecord,
+  AssetAvailabilityRecordPageResult,
+  AssetAvailabilityStatRecordPageResult,
+  AssetMemberRequestRecord,
+  AssetRecord,
+  AssetRequestRecord
+} from '../entity/asset.entity';
 
 import type * as AppDTOs from '../../../contracts';
 import type * as AppConstants from '../../../common/constants';
@@ -287,6 +296,208 @@ export class LocalAssetsMapper {
       }),
       menuActions: options.resolveMenuActions?.(record, viewerUserId) ?? [...(record.menuActions ?? [])]
     };
+  }
+
+  static toAssetAvailabilityDtoPage(page: AssetAvailabilityRecordPageResult): AppDTOs.AssetOccupancyPageResultDTO {
+    return {
+      items: page.records.map(record => this.toAssetAvailabilityRowDto(record)),
+      total: page.total,
+      nextCursor: page.nextCursor
+    };
+  }
+
+  static toAssetAvailabilityStatDtoPage(page: AssetAvailabilityStatRecordPageResult): AppDTOs.AssetOccupancyStatsPageResultDTO {
+    return {
+      items: page.records.map(record => this.toAssetAvailabilityStatDto(record)),
+      total: page.total,
+      nextCursor: page.nextCursor
+    };
+  }
+
+  private static toAssetAvailabilityStatDto(record: AssetAvailabilityStatRecord): AppDTOs.AssetOccupancyStatDTO {
+    const day = AppUtils.dateOnly(record.date);
+    const nextDay = AppUtils.addDays(day, 1);
+    const overlapping = record.requests
+      .filter(request => this.assetRequestDateRangeOverlaps(request, day, nextDay));
+    const occupied = overlapping
+      .filter(request => this.isCommittedAssetRequest(request))
+      .reduce((sum, request) => sum + this.assetRequestQuantity(request), 0);
+    const pending = overlapping
+      .filter(request => this.isPendingAssetRequest(request));
+    const pendingQuantity = pending.reduce((sum, request) => sum + this.assetRequestQuantity(request), 0);
+    const dateIso = AppUtils.dateKey(day);
+    return {
+      id: `${record.assetId}:${dateIso}`,
+      assetId: record.assetId,
+      ownerUserId: record.ownerUserId,
+      dateIso,
+      startAtIso: AppUtils.toIsoDateTimeLocal(day),
+      endAtIso: AppUtils.toIsoDateTimeLocal(nextDay),
+      occupied,
+      capacity: Math.max(0, Math.trunc(Number(record.assetCapacity) || 0)),
+      pendingCount: pending.length,
+      pendingQuantity,
+      itemCount: overlapping.length
+    };
+  }
+
+  private static toAssetAvailabilityRowDto(record: AssetAvailabilityRowRecord): AppDTOs.AssetOccupancyRowDTO {
+    const request = record.request;
+    const requestRange = this.assetRequestDateRange(request);
+    const status = request.requestKind === 'manual' ? 'assigned' : request.status;
+    const overlappingCommitted = record.requests
+      .filter(other => this.isCommittedAssetRequest(other))
+      .filter(other => {
+        if (record.dateRange) {
+          return this.assetRequestDateRangeOverlaps(other, record.dateRange.start, record.dateRange.end);
+        }
+        return this.assetRequestsOverlap(request, other);
+      })
+      .reduce((sum, other) => sum + this.assetRequestQuantity(other), 0);
+    const pendingCurrentQuantity = this.isCommittedAssetRequest(request) ? 0 : this.assetRequestQuantity(request);
+    const capacity = Math.max(0, Math.trunc(Number(request.assetCapacity) || 0));
+    const pendingForWindow = record.requests
+      .filter(other => this.isPendingAssetRequest(other))
+      .filter(other => {
+        if (record.dateRange) {
+          return this.assetRequestDateRangeOverlaps(other, record.dateRange.start, record.dateRange.end);
+        }
+        return this.assetRequestsOverlap(request, other);
+      });
+    return {
+      id: request.id,
+      assetId: request.assetId,
+      ownerUserId: request.ownerUserId,
+      dateIso: requestRange ? AppUtils.dateKey(requestRange.start) : '',
+      startAtIso: request.booking?.startAtIso,
+      endAtIso: request.booking?.endAtIso,
+      title: request.name,
+      subtitle: [
+        `${request.booking?.eventTitle ?? ''}`.trim(),
+        `${request.booking?.subEventTitle ?? ''}`.trim()
+      ].filter(Boolean).join(' · ') || undefined,
+      detail: this.visibleAssetRequestNote(request),
+      scheduleLabel: this.assetRequestScheduleLabel(request),
+      avatarInitials: request.initials,
+      gender: request.gender,
+      status,
+      requestKind: request.requestKind ?? 'borrow',
+      quantity: this.assetRequestQuantity(request),
+      occupied: overlappingCommitted,
+      capacity,
+      remaining: capacity - overlappingCommitted - pendingCurrentQuantity,
+      pendingCount: pendingForWindow.length,
+      pendingQuantity: pendingForWindow.reduce((sum, other) => sum + this.assetRequestQuantity(other), 0),
+      menuActions: this.assetRequestMenuActions(request)
+    };
+  }
+
+  private static assetRequestsOverlap(left: AssetRequestRecord, right: AssetRequestRecord): boolean {
+    if (left.id === right.id) {
+      return true;
+    }
+    const leftRange = this.assetRequestDateRange(left);
+    const rightRange = this.assetRequestDateRange(right);
+    if (leftRange && rightRange) {
+      return leftRange.start.getTime() < rightRange.end.getTime()
+        && rightRange.start.getTime() < leftRange.end.getTime();
+    }
+    const leftWindow = this.assetRequestWindowKey(left);
+    const rightWindow = this.assetRequestWindowKey(right);
+    return Boolean(leftWindow && rightWindow && leftWindow === rightWindow);
+  }
+
+  private static assetRequestDateRangeOverlaps(request: AssetRequestRecord, start: Date, end: Date): boolean {
+    const range = this.assetRequestDateRange(request);
+    return range
+      ? range.start.getTime() < end.getTime() && start.getTime() < range.end.getTime()
+      : false;
+  }
+
+  private static assetRequestDateRange(request: AssetRequestRecord): { start: Date; end: Date } | null {
+    const start = this.parseAssetRequestDate(request.booking?.startAtIso ?? request.requestedAtIso);
+    if (!start) {
+      return null;
+    }
+    const parsedEnd = this.parseAssetRequestDate(request.booking?.endAtIso);
+    const end = parsedEnd && parsedEnd.getTime() > start.getTime()
+      ? parsedEnd
+      : AppUtils.addDays(start, 1);
+    return { start, end };
+  }
+
+  private static assetRequestWindowKey(request: AssetRequestRecord): string {
+    return [
+      `${request.booking?.eventId ?? ''}`.trim(),
+      `${request.booking?.subEventId ?? ''}`.trim(),
+      `${request.booking?.slotLabel ?? ''}`.trim(),
+      `${request.booking?.timeframe ?? ''}`.trim()
+    ].filter(Boolean).join('|');
+  }
+
+  private static parseAssetRequestDate(value: string | null | undefined): Date | null {
+    const normalized = `${value ?? ''}`.trim();
+    if (!normalized) {
+      return null;
+    }
+    return AppUtils.isoLocalDateTimeToDate(normalized) ?? AppUtils.parseDate(normalized);
+  }
+
+  private static isCommittedAssetRequest(request: AssetRequestRecord): boolean {
+    return request.status === 'accepted' || request.requestKind === 'manual';
+  }
+
+  private static isPendingAssetRequest(request: AssetRequestRecord): boolean {
+    return request.status === 'pending' && request.requestKind !== 'manual';
+  }
+
+  private static assetRequestQuantity(request: AssetRequestRecord): number {
+    return Math.max(1, Math.trunc(Number(request.booking?.quantity) || 1));
+  }
+
+  private static visibleAssetRequestNote(request: AssetRequestRecord): string | undefined {
+    const note = `${request.note ?? ''}`.trim();
+    if (!note || this.isSystemAssetRequestNote(note)) {
+      return undefined;
+    }
+    return note;
+  }
+
+  private static isSystemAssetRequestNote(note: string): boolean {
+    return note === 'Awaiting owner confirmation.'
+      || note === 'Approved and synced with the plan.'
+      || note === 'Reserved and assigned by the owner.'
+      || note === 'Borrow request approved by the owner.'
+      || note === 'Promoted to asset manager.';
+  }
+
+  private static assetRequestScheduleLabel(request: AssetRequestRecord): string | undefined {
+    const start = this.parseAssetRequestDate(request.booking?.startAtIso);
+    const end = this.parseAssetRequestDate(request.booking?.endAtIso);
+    if (start && end) {
+      return this.formatAssetRequestDateRange(start, end);
+    }
+    return `${request.booking?.timeframe ?? request.booking?.slotLabel ?? ''}`.trim() || undefined;
+  }
+
+  private static formatAssetRequestDateRange(start: Date, end: Date): string {
+    const sameDay = AppUtils.dateKey(start) === AppUtils.dateKey(end);
+    const startDate = start.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+    const endDate = end.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+    const startTime = start.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' });
+    const endTime = end.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' });
+    return sameDay
+      ? `${startDate} ${startTime} - ${endTime}`
+      : `${startDate} ${startTime} - ${endDate} ${endTime}`;
+  }
+
+  private static assetRequestMenuActions(request: AssetRequestRecord): AppConstants.AssetRequestAction[] {
+    if (this.isPendingAssetRequest(request)) {
+      return (request.menuActions ?? []).includes('makeManager')
+        ? ['accept', 'makeManager', 'remove']
+        : ['accept', 'remove'];
+    }
+    return (request.menuActions ?? []).includes('makeManager') ? ['makeManager'] : [];
   }
 
   static toAssetRecord(

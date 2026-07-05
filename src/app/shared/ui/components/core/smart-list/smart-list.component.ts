@@ -312,7 +312,7 @@ export class SmartListComponent<T, TFilters extends SmartListFilters = SmartList
   private stepperPageLoadAbortController: AbortController | null = null;
   private stepperPreloadAbortController: AbortController | null = null;
   private activePageAdapter: AnySmartListPageAdapter<T, TFilters> | null = null;
-  private weekRateViewportPageKey: string | null = null;
+  private weekCounterViewportPageKey: string | null = null;
   private hostedFullscreenPendingDelta = 0;
   private hostedFullscreenCompletingTransition = false;
   private hostedFullscreenTransitionTimer: ReturnType<typeof setTimeout> | null = null;
@@ -439,7 +439,7 @@ export class SmartListComponent<T, TFilters extends SmartListFilters = SmartList
       currentProgress: () => this.progress,
       applySnapshot: snapshot => this.applyPageSnapshot(snapshot),
       applySurfaceState: (state, scrollElement) => this.applyPageSurfaceState(state, scrollElement),
-      afterSnapshotApplied: () => this.focusVisibleWeekRateHourSoon(),
+      afterSnapshotApplied: () => this.focusVisibleWeekCounterHourSoon(),
       detectChanges: () => this.cdr.detectChanges(),
       emitState: () => this.emitState(),
       markForCheck: () => this.cdr.markForCheck()
@@ -1370,8 +1370,8 @@ export class SmartListComponent<T, TFilters extends SmartListFilters = SmartList
     return this.pages.length > 0;
   }
 
-  protected isRateCountPageVariant(): boolean {
-    return this.activePageAdapter?.variant(this.config, this.currentBaseQuery()) === 'rate-counts';
+  protected isCounterPageVariant(): boolean {
+    return this.activePageAdapter?.variant(this.config, this.currentBaseQuery()) === 'counter';
   }
 
   protected pageCardModel(): SmartListPageCardModel<T, TFilters> {
@@ -1380,7 +1380,7 @@ export class SmartListComponent<T, TFilters extends SmartListFilters = SmartList
       pages: this.pages,
       config: this.activePageAdapter?.config(this.config) ?? null,
       query: this.currentQuery(),
-      variant: this.isRateCountPageVariant() ? 'rate-counts' : 'default',
+      variant: this.isCounterPageVariant() ? 'counter' : 'default',
       touching: this.isTouchingSurface,
       trackByItem: (index, item) => this.pageTrackKey(index, item),
       onItemSelect: this.selectPageCardItem
@@ -1420,7 +1420,7 @@ export class SmartListComponent<T, TFilters extends SmartListFilters = SmartList
     this.stickyLabel = this.resolveEmptyStickyLabel();
     this.progress = 0;
     this.scrollable = false;
-    this.weekRateViewportPageKey = null;
+    this.weekCounterViewportPageKey = null;
     this.pollScheduler.restart();
 
     if (this.currentViewMode === 'list') {
@@ -2696,7 +2696,7 @@ export class SmartListComponent<T, TFilters extends SmartListFilters = SmartList
     const refresh = () => {
       if (this.isPageMode()) {
         this.applyPageSurfaceState();
-        this.focusVisibleWeekRateHourSoon();
+        this.focusVisibleWeekCounterHourSoon();
       } else {
         if (this.shouldShowStickyHeader()) {
           this.updateStickyLabel(this.scrollHostRef?.nativeElement?.scrollTop ?? 0);
@@ -2722,9 +2722,9 @@ export class SmartListComponent<T, TFilters extends SmartListFilters = SmartList
     setTimeout(refresh, 0);
   }
 
-  private focusVisibleWeekRateHourSoon(): void {
-    if (!this.isWeekMode() || !this.isRateCountPageVariant()) {
-      this.weekRateViewportPageKey = null;
+  private focusVisibleWeekCounterHourSoon(): void {
+    if (!this.isWeekMode() || !this.isCounterPageVariant()) {
+      this.weekCounterViewportPageKey = null;
       return;
     }
 
@@ -2736,13 +2736,13 @@ export class SmartListComponent<T, TFilters extends SmartListFilters = SmartList
 
     const pageIndex = this.stepper.currentPageIndex(scrollElement, pages.length);
     const visiblePageKey = pages[pageIndex]?.key ?? null;
-    if (!visiblePageKey || this.weekRateViewportPageKey === visiblePageKey) {
+    if (!visiblePageKey || this.weekCounterViewportPageKey === visiblePageKey) {
       return;
     }
 
     const run = () => {
       const currentScrollElement = this.scrollHostRef?.nativeElement;
-      if (!currentScrollElement || !this.isWeekMode() || !this.isRateCountPageVariant()) {
+      if (!currentScrollElement || !this.isWeekMode() || !this.isCounterPageVariant()) {
         return;
       }
       const pageElements = Array.from(
@@ -2758,12 +2758,12 @@ export class SmartListComponent<T, TFilters extends SmartListFilters = SmartList
       if (!pageElement) {
         return;
       }
-      const firstBadge = pageElement.querySelector<HTMLElement>('.smart-list__week-rate-badge');
-      this.weekRateViewportPageKey = currentVisiblePageKey;
+      const firstBadge = pageElement.querySelector<HTMLElement>('.smart-list__week-hour-counter');
+      this.weekCounterViewportPageKey = currentVisiblePageKey;
       if (!firstBadge) {
         return;
       }
-      const slot = firstBadge.closest<HTMLElement>('.smart-list__week-rate-slot');
+      const slot = firstBadge.closest<HTMLElement>('.smart-list__week-counter-slot');
       if (!slot) {
         return;
       }

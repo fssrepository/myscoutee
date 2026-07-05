@@ -1,6 +1,7 @@
 import { Injectable, inject } from '@angular/core';
 
 import { LocalRouteDelayService } from './route-delay.service';
+import { LocalAssetRequestsRepository } from '../repositories/asset-requests.repository';
 import { LocalAssetsRepository } from '../repositories/assets.repository';
 import { LocalAssetsMapper } from '../mappers/asset.mapper';
 
@@ -11,6 +12,7 @@ import type * as AppDTOs from '../../../contracts';
 export class LocalAssetsService extends LocalRouteDelayService {
   private static readonly ASSETS_ROUTE = '/assets';
   private readonly assetsRepository = inject(LocalAssetsRepository);
+  private readonly assetRequestsRepository = inject(LocalAssetRequestsRepository);
 
   peekOwnedAssetsByUser(userId: string): AppDTOs.AssetDTO[] {
     return this.assetsRepository.peekOwnedAssetsByUser(userId);
@@ -43,6 +45,34 @@ export class LocalAssetsService extends LocalRouteDelayService {
       total: result.total,
       nextCursor: result.nextCursor ?? null
     };
+  }
+
+  async loadOccupancyByAssetId(query: {
+    userId: string;
+    assetId: string;
+    dateIso?: string | null;
+    filter?: AppDTOs.AssetAvailabilityFilter | null;
+    page?: number;
+    pageSize: number;
+    cursor?: string | null;
+  }): Promise<AppDTOs.AssetOccupancyPageResultDTO> {
+    await this.waitForRouteDelay(LocalAssetsService.ASSETS_ROUTE);
+    const page = this.assetRequestsRepository.queryAssetAvailabilityRecordPage(query);
+    return LocalAssetsMapper.toAssetAvailabilityDtoPage(page);
+  }
+
+  async loadStatByAssetId(query: {
+    userId: string;
+    assetId: string;
+    rangeStart?: string | null;
+    rangeEnd?: string | null;
+    page?: number;
+    pageSize: number;
+    cursor?: string | null;
+  }): Promise<AppDTOs.AssetOccupancyStatsPageResultDTO> {
+    await this.waitForRouteDelay(LocalAssetsService.ASSETS_ROUTE);
+    const page = this.assetRequestsRepository.queryAssetAvailabilityStatRecordPage(query);
+    return LocalAssetsMapper.toAssetAvailabilityStatDtoPage(page);
   }
 
   async saveOwnedAsset(userId: string, asset: AppDTOs.AssetDetailDTO): Promise<AppDTOs.AssetDTO> {

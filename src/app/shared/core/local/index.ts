@@ -5,7 +5,14 @@ export type { ActivityEventsMemorySchema } from './source/entity/event.entity';
 export type { HelpCenterMemorySchema, IdeaPostsMemorySchema } from './source/entity/content.entity';
 export { CONTACTS_TABLE_NAME, PROFILE_EXPERIENCES_TABLE_NAME } from './source/entity/profile.entity';
 export type { ContactsMemorySchema, ProfileExperiencesMemorySchema } from './source/entity/profile.entity';
-export { ASSETS_TABLE_NAME, type AssetRecord, type AssetsMemorySchema } from './source/entity/asset.entity';
+export {
+  ASSET_REQUESTS_TABLE_NAME,
+  ASSETS_TABLE_NAME,
+  type AssetRequestRecord,
+  type AssetRequestsMemorySchema,
+  type AssetRecord,
+  type AssetsMemorySchema
+} from './source/entity/asset.entity';
 export { ACTIVITY_MEMBERS_TABLE_NAME, ACTIVITY_RESOURCES_TABLE_NAME, type ActivityMemberRecord, type ActivityMembersMemorySchema, type ActivityResourcesMemorySchema, type ActivitySubEventResourceRecord } from './source/entity/activity.entity';
 
 export { type CountryPartition, type CountryPartitionBounds } from './source/entity/country-partition.entity';
@@ -16,6 +23,7 @@ export { type ActivityEventRecord } from '../contracts/activity.interface';
 
 export { USERS_TABLE_NAME, type UsersMemorySchema } from './source/entity/user.entity';
 export { LocalAssetsRepository } from './source/repositories/assets.repository';
+export { LocalAssetRequestsRepository } from './source/repositories/asset-requests.repository';
 export { LocalAdminAffinityGraphRepository } from './source/repositories/admin-affinity-graph.repository';
 export { LocalAdminParamsRepository } from './source/repositories/admin-params.repository';
 export { LocalAdminMonitoringRepository } from './source/repositories/admin-monitoring.repository';

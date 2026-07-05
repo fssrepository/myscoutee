@@ -7,6 +7,7 @@ import {
 import type {
   ListQuery,
   SmartListCalendarConfig,
+  SmartListCalendarCounter,
   SmartListCalendarDay,
   SmartListCalendarMonthPage,
   SmartListCalendarMonthSpan,
@@ -67,8 +68,8 @@ export class CalendarCardComponent<T, TFilters extends SmartListFilters = SmartL
     return this.model?.mode !== 'week';
   }
 
-  protected isRateCountCalendarVariant(): boolean {
-    return this.model?.variant === 'rate-counts';
+  protected isCounterCalendarVariant(): boolean {
+    return this.model?.variant === 'counter';
   }
 
   protected calendarWeekdayLabels(): readonly string[] {
@@ -88,30 +89,45 @@ export class CalendarCardComponent<T, TFilters extends SmartListFilters = SmartL
     return `${`${hour}`.padStart(2, '0')}:00`;
   }
 
-  protected monthRateCount(day: SmartListCalendarDay<T>): number {
-    return day.items.length;
+  protected calendarCounterGranularity(): 'day' | 'hour' {
+    return this.calendar()?.counterGranularity ?? 'hour';
   }
 
-  protected weekRateDayCount(day: SmartListCalendarDay<T>): number {
-    return day.items.length;
+  protected calendarDayCounter(day: SmartListCalendarDay<T>): SmartListCalendarCounter | null {
+    const calendar = this.calendar();
+    const query = this.query();
+    if (!query) {
+      return null;
+    }
+    const customCounter = calendar?.dayCounter?.(day, query) ?? null;
+    if (customCounter) {
+      return customCounter;
+    }
+    const count = day.items.length;
+    return count > 0 ? this.counterFromCount(count) : null;
   }
 
-  protected weekRateHourCount(day: SmartListCalendarDay<T>, hour: number): number {
+  protected calendarHourCounter(day: SmartListCalendarDay<T>, hour: number): SmartListCalendarCounter | null {
     const calendar = this.calendar();
     const query = this.query();
     if (!calendar || !query) {
-      return 0;
+      return null;
+    }
+    const customCounter = calendar.hourCounter?.(day, hour, query) ?? null;
+    if (customCounter) {
+      return customCounter;
     }
     const slotStart = new Date(day.date);
     slotStart.setHours(hour, 0, 0, 0);
     const slotEnd = new Date(slotStart);
     slotEnd.setHours(hour + 1, 0, 0, 0);
-    return countSmartListCalendarOverlaps(
+    const count = countSmartListCalendarOverlaps(
       day.items,
       slotStart,
       slotEnd,
       item => calendar.resolveDateRange(item, query)
     );
+    return count > 0 ? this.counterFromCount(count) : null;
   }
 
   protected weekDayTimedBadges(day: SmartListCalendarDay<T>): SmartListCalendarTimedBadge<T>[] {
@@ -149,31 +165,31 @@ export class CalendarCardComponent<T, TFilters extends SmartListFilters = SmartL
     return badges;
   }
 
-  protected rateHeatClassByCount(count: number): string {
+  protected counterHeatClassByCount(count: number): string {
     if (count <= 0) {
-      return 'activities-rate-heat-0';
+      return 'calendar-counter-heat-0';
     }
     const clamped = Math.min(100, count);
     const normalized = (clamped - 1) / 99;
     if (normalized <= 0.16) {
-      return 'activities-rate-heat-1';
+      return 'calendar-counter-heat-1';
     }
     if (normalized <= 0.32) {
-      return 'activities-rate-heat-2';
+      return 'calendar-counter-heat-2';
     }
     if (normalized <= 0.5) {
-      return 'activities-rate-heat-3';
+      return 'calendar-counter-heat-3';
     }
     if (normalized <= 0.68) {
-      return 'activities-rate-heat-4';
+      return 'calendar-counter-heat-4';
     }
     if (normalized <= 0.84) {
-      return 'activities-rate-heat-5';
+      return 'calendar-counter-heat-5';
     }
-    return 'activities-rate-heat-6';
+    return 'calendar-counter-heat-6';
   }
 
-  protected rateCountLabel(value: number): string {
+  protected counterLabel(value: number): string {
     if (!Number.isFinite(value) || value <= 0) {
       return '0';
     }
@@ -205,6 +221,18 @@ export class CalendarCardComponent<T, TFilters extends SmartListFilters = SmartL
     return query ? this.calendar()?.badgeToneClass?.(item, query) ?? null : null;
   }
 
+  protected calendarCounterClass(counter: SmartListCalendarCounter | null): SmartListClassValue {
+    return counter?.toneClass ?? null;
+  }
+
+  protected selectCalendarDay(day: SmartListCalendarDay<T>, sourceEvent?: Event): void {
+    const item = day.items[0];
+    if (!item) {
+      return;
+    }
+    this.selectItem(item, sourceEvent);
+  }
+
   protected selectItem(item: T, sourceEvent?: Event): void {
     this.model?.onItemSelect?.(item, sourceEvent);
   }
@@ -227,5 +255,12 @@ export class CalendarCardComponent<T, TFilters extends SmartListFilters = SmartL
 
   private query(): ListQuery<TFilters> | null {
     return this.model?.query ?? null;
+  }
+
+  private counterFromCount(count: number): SmartListCalendarCounter {
+    return {
+      label: this.counterLabel(count),
+      toneClass: this.counterHeatClassByCount(count)
+    };
   }
 }

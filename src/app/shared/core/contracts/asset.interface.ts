@@ -366,6 +366,60 @@ export interface AssetTicketPageResultDTO {
   total: number;
 }
 
+export type AssetAvailabilityFilter = 'all' | 'active-items' | 'pending-requests' | 'borrowed-items';
+export type AssetAvailabilityView = 'day' | 'week' | 'month';
+
+export interface AssetOccupancyStatDTO {
+  id: string;
+  assetId: string;
+  ownerUserId: string;
+  dateIso: string;
+  startAtIso: string;
+  endAtIso: string;
+  occupied: number;
+  capacity: number;
+  pendingCount: number;
+  pendingQuantity: number;
+  itemCount: number;
+}
+
+export interface AssetOccupancyRowDTO {
+  id: string;
+  assetId: string;
+  ownerUserId: string;
+  dateIso: string;
+  startAtIso?: string;
+  endAtIso?: string;
+  title: string;
+  subtitle?: string;
+  detail?: string;
+  scheduleLabel?: string;
+  avatarInitials?: string;
+  avatarUrl?: string;
+  gender: AppConstants.UserGender;
+  status: AppConstants.AssetRequestStatus | 'assigned';
+  requestKind: AppConstants.AssetRequestKind;
+  quantity: number;
+  occupied: number;
+  capacity: number;
+  remaining: number;
+  pendingCount: number;
+  pendingQuantity: number;
+  menuActions?: AppConstants.AssetRequestAction[];
+}
+
+export interface AssetOccupancyStatsPageResultDTO {
+  items: AssetOccupancyStatDTO[];
+  total: number;
+  nextCursor?: string | null;
+}
+
+export interface AssetOccupancyPageResultDTO {
+  items: AssetOccupancyRowDTO[];
+  total: number;
+  nextCursor?: string | null;
+}
+
 export interface TicketScanPayloadDTO {
   code: string;
   holderUserId: string;

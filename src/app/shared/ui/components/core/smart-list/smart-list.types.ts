@@ -23,7 +23,7 @@ import type { UiListConverter } from '../../../converters/converter.types';
 export type SmartListViewMode = 'list' | 'month' | 'week';
 export type SmartListPresentation = 'list' | 'fullscreen';
 export type SmartListClassValue = string | string[] | Set<string> | Record<string, boolean> | null;
-export type SmartListCalendarVariant = 'default' | 'rate-counts';
+export type SmartListCalendarVariant = 'default' | 'counter';
 export type SmartListListLayout = 'stack' | 'card-grid' | 'thread';
 export type SmartListListFlow = 'normal' | 'reverse';
 export type SmartListOrientation = 'vertical' | 'horizontal';
@@ -172,15 +172,30 @@ export interface SmartListCalendarTimedBadge<T> {
   heightPct: number;
 }
 
+export interface SmartListCalendarCounter {
+  label: string;
+  ariaLabel?: string | null;
+  alertLabel?: string | null;
+  alertAriaLabel?: string | null;
+  toneClass?: SmartListClassValue;
+}
+
 export interface SmartListCalendarConfig<T, TFilters extends SmartListFilters = SmartListFilters> {
   weekdayLabels?: ReadonlyArray<string>;
   weekStartHour?: number;
   weekEndHour?: number;
   anchorRadius?: number;
   initialAnchor?: SmartListConfigValue<string | Date | null | undefined, TFilters>;
+  counterGranularity?: 'day' | 'hour';
   resolveDateRange: (item: T, query: ListQuery<TFilters>) => SmartListCalendarDateRange | null;
   badgeLabel?: (item: T, query: ListQuery<TFilters>) => string;
   badgeToneClass?: (item: T, query: ListQuery<TFilters>) => SmartListClassValue;
+  dayCounter?: (day: SmartListCalendarDay<T>, query: ListQuery<TFilters>) => SmartListCalendarCounter | null;
+  hourCounter?: (
+    day: SmartListCalendarDay<T>,
+    hour: number,
+    query: ListQuery<TFilters>
+  ) => SmartListCalendarCounter | null;
 }
 
 export interface SmartListViewConfig<T, TFilters extends SmartListFilters = SmartListFilters> {

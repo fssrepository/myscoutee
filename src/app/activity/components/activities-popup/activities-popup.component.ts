@@ -432,7 +432,7 @@ export class ActivitiesPopupComponent implements OnDestroy {
       ratingBarValue: () => this.activitiesRates.ratingBarValue(),
       onRatingSelect: (_item, score) => this.activitiesRates.setSelectedOwnRating(score)
     },
-    calendarVariant: () => this.activitiesPrimaryFilter === 'rates' ? 'rate-counts' : 'default',
+    calendarVariant: () => this.activitiesPrimaryFilter === 'rates' ? 'counter' : 'default',
     views: [
       { key: 'day', label: 'Day', mode: 'list', pageSize: 10 },
       { key: 'distance', label: 'Distance', mode: 'list', pageSize: 10 },

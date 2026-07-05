@@ -119,7 +119,7 @@
   box-shadow: inset 0 0 0 1px rgba(57, 108, 182, 0.42);
 }
 
-.smart-list__month-rate-count {
+.smart-list__month-counter {
   justify-self: start;
   align-self: end;
   min-width: 1.24rem;
@@ -132,10 +132,14 @@
   display: inline-flex;
   align-items: center;
   justify-content: center;
+  gap: 0.22rem;
   padding: 0 0.22rem;
+  font: inherit;
+  cursor: pointer;
+  touch-action: pan-x pan-y;
 }
 
-.smart-list__month-cell--rates {
+.smart-list__month-cell--counter {
   grid-template-rows: auto 1fr;
   align-content: stretch;
   align-items: stretch;
@@ -143,14 +147,90 @@
   gap: 0;
 }
 
-.smart-list__month-cell--rates .smart-list__month-day-num {
+.smart-list__month-cell--counter .smart-list__month-day-num {
   justify-self: center;
   align-self: start;
 }
 
-.smart-list__month-cell--rates .smart-list__month-rate-count {
+.smart-list__month-cell--counter .smart-list__month-counter {
   justify-self: center;
   align-self: center;
+}
+
+.smart-list__month-counter,
+.smart-list__week-counter,
+.smart-list__week-counter-head,
+.smart-list__week-hour-counter {
+  border: 1px solid rgba(37, 63, 96, 0.18);
+  background: #eef7f0;
+  color: #1f5135;
+  font: inherit;
+  font-size: 0.68rem;
+  font-weight: 900;
+  line-height: 1;
+  cursor: pointer;
+  touch-action: pan-x pan-y;
+}
+
+.smart-list__month-counter,
+.smart-list__week-counter {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.22rem;
+  min-width: 0;
+  min-height: 1.48rem;
+  border-radius: 999px;
+  padding: 0.16rem 0.36rem;
+}
+
+.smart-list__month-counter {
+  justify-self: center;
+  align-self: center;
+  margin-top: 0.12rem;
+}
+
+.smart-list__month-counter strong,
+.smart-list__week-counter strong,
+.smart-list__week-counter-head strong,
+.smart-list__week-hour-counter strong {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 1rem;
+  height: 1rem;
+  border-radius: 999px;
+  background: #c93838;
+  color: #fff;
+  font-size: 0.56rem;
+  font-weight: 900;
+  padding: 0 0.2rem;
+}
+
+.smart-list__month-counter.calendar-counter-empty,
+.smart-list__week-counter.calendar-counter-empty,
+.smart-list__week-counter-head.calendar-counter-empty,
+.smart-list__week-hour-counter.calendar-counter-empty {
+  background: #f4f7fb;
+  color: #5a6f88;
+}
+
+.smart-list__month-counter.calendar-counter-full,
+.smart-list__week-counter.calendar-counter-full,
+.smart-list__week-counter-head.calendar-counter-full,
+.smart-list__week-hour-counter.calendar-counter-full {
+  background: #fff3e4;
+  border-color: rgba(183, 113, 37, 0.3);
+  color: #7a4515;
+}
+
+.smart-list__month-counter.calendar-counter-over,
+.smart-list__week-counter.calendar-counter-over,
+.smart-list__week-counter-head.calendar-counter-over,
+.smart-list__week-hour-counter.calendar-counter-over {
+  background: #fff0f0;
+  border-color: rgba(196, 60, 60, 0.34);
+  color: #8a2828;
 }
 
 .smart-list__month-week-spans {
@@ -279,7 +359,7 @@
   font-weight: 900;
 }
 
-.smart-list__week-rate-count {
+.smart-list__week-counter-head {
   margin-top: 0.1rem;
   min-width: 1.24rem;
   height: 1.24rem;
@@ -291,7 +371,23 @@
   display: inline-flex;
   align-items: center;
   justify-content: center;
+  gap: 0.14rem;
   padding: 0 0.22rem;
+  font: inherit;
+  cursor: pointer;
+  touch-action: pan-x pan-y;
+}
+
+.smart-list__week-counter-head {
+  margin-top: 0.08rem;
+  min-height: 1.16rem;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.14rem;
+  border-radius: 999px;
+  padding: 0.1rem 0.24rem;
+  font-size: 0.58rem;
 }
 
 .smart-list__week-board-day-head--today {
@@ -354,7 +450,7 @@
   box-shadow: inset 0 0 0 1px rgba(57, 108, 182, 0.42);
 }
 
-.smart-list__week-day-col--rates {
+.smart-list__week-day-col--counter {
   background-image: none;
 }
 
@@ -363,18 +459,18 @@
   border: 0;
 }
 
-.smart-list__week-rate-slot {
+.smart-list__week-counter-slot {
   border-top: 1px solid rgba(33, 54, 82, 0.12);
   display: flex;
   align-items: center;
   justify-content: center;
 }
 
-.smart-list__week-rate-slot:first-child {
+.smart-list__week-counter-slot:first-child {
   border-top: 0;
 }
 
-.smart-list__week-rate-badge {
+.smart-list__week-hour-counter {
   min-width: 1.18rem;
   height: 1.18rem;
   border-radius: 999px;
@@ -385,7 +481,20 @@
   display: inline-flex;
   align-items: center;
   justify-content: center;
+  gap: 0.14rem;
   padding: 0 0.18rem;
+  font: inherit;
+  cursor: pointer;
+  touch-action: pan-x pan-y;
+}
+
+.smart-list__week-counter {
+  position: absolute;
+  z-index: 2;
+  left: 4px;
+  right: 4px;
+  top: 8px;
+  min-height: 1.7rem;
 }
 
 .smart-list__week-timed-badge {
@@ -417,57 +526,57 @@
   line-height: 1.15;
 }
 
-.smart-list__month-rate-count.activities-rate-heat-0,
-.smart-list__week-rate-count.activities-rate-heat-0,
-.smart-list__week-rate-badge.activities-rate-heat-0 {
+.smart-list__month-counter.calendar-counter-heat-0,
+.smart-list__week-counter-head.calendar-counter-heat-0,
+.smart-list__week-hour-counter.calendar-counter-heat-0 {
   background: linear-gradient(180deg, #f4f7fb 0%, #e8eef7 100%);
   border-color: rgba(97, 120, 154, 0.18);
   color: #6a7890;
 }
 
-.smart-list__month-rate-count.activities-rate-heat-1,
-.smart-list__week-rate-count.activities-rate-heat-1,
-.smart-list__week-rate-badge.activities-rate-heat-1 {
+.smart-list__month-counter.calendar-counter-heat-1,
+.smart-list__week-counter-head.calendar-counter-heat-1,
+.smart-list__week-hour-counter.calendar-counter-heat-1 {
   background: linear-gradient(180deg, #eef5ff 0%, #dfeafb 100%);
   border-color: rgba(70, 118, 183, 0.22);
   color: #2d5c99;
 }
 
-.smart-list__month-rate-count.activities-rate-heat-2,
-.smart-list__week-rate-count.activities-rate-heat-2,
-.smart-list__week-rate-badge.activities-rate-heat-2 {
+.smart-list__month-counter.calendar-counter-heat-2,
+.smart-list__week-counter-head.calendar-counter-heat-2,
+.smart-list__week-hour-counter.calendar-counter-heat-2 {
   background: linear-gradient(180deg, #e8f8f3 0%, #d8f1e7 100%);
   border-color: rgba(55, 146, 104, 0.24);
   color: #256d4d;
 }
 
-.smart-list__month-rate-count.activities-rate-heat-3,
-.smart-list__week-rate-count.activities-rate-heat-3,
-.smart-list__week-rate-badge.activities-rate-heat-3 {
+.smart-list__month-counter.calendar-counter-heat-3,
+.smart-list__week-counter-head.calendar-counter-heat-3,
+.smart-list__week-hour-counter.calendar-counter-heat-3 {
   background: linear-gradient(180deg, #fff6e7 0%, #ffecce 100%);
   border-color: rgba(198, 145, 45, 0.24);
   color: #8f6115;
 }
 
-.smart-list__month-rate-count.activities-rate-heat-4,
-.smart-list__week-rate-count.activities-rate-heat-4,
-.smart-list__week-rate-badge.activities-rate-heat-4 {
+.smart-list__month-counter.calendar-counter-heat-4,
+.smart-list__week-counter-head.calendar-counter-heat-4,
+.smart-list__week-hour-counter.calendar-counter-heat-4 {
   background: linear-gradient(180deg, #fff0e7 0%, #ffe2d2 100%);
   border-color: rgba(200, 116, 61, 0.26);
   color: #9b4f23;
 }
 
-.smart-list__month-rate-count.activities-rate-heat-5,
-.smart-list__week-rate-count.activities-rate-heat-5,
-.smart-list__week-rate-badge.activities-rate-heat-5 {
+.smart-list__month-counter.calendar-counter-heat-5,
+.smart-list__week-counter-head.calendar-counter-heat-5,
+.smart-list__week-hour-counter.calendar-counter-heat-5 {
   background: linear-gradient(180deg, #ffeaf0 0%, #ffd7e2 100%);
   border-color: rgba(196, 77, 121, 0.28);
   color: #9d2d57;
 }
 
-.smart-list__month-rate-count.activities-rate-heat-6,
-.smart-list__week-rate-count.activities-rate-heat-6,
-.smart-list__week-rate-badge.activities-rate-heat-6 {
+.smart-list__month-counter.calendar-counter-heat-6,
+.smart-list__week-counter-head.calendar-counter-heat-6,
+.smart-list__week-hour-counter.calendar-counter-heat-6 {
   background: linear-gradient(180deg, #f0e6ff 0%, #e2d3ff 100%);
   border-color: rgba(113, 82, 193, 0.28);
   color: #5a3d9d;
@@ -489,12 +598,12 @@
       1px 0 0 #fff;
   }
 
-  .smart-list__calendar-page--month-rates {
+  .smart-list__calendar-page--month-counter {
     grid-template-rows: auto auto;
   }
 
   .smart-list__month-grid,
-  .smart-list__month-grid--rates {
+  .smart-list__month-grid--counter {
     display: flex;
     flex-direction: column;
     gap: 0.44rem;
@@ -505,7 +614,7 @@
   }
 
   .smart-list__month-week,
-  .smart-list__month-week--rates {
+  .smart-list__month-week--counter {
     flex: 0 0 5.6rem;
     height: 5.6rem;
     min-height: 5.6rem;
@@ -516,7 +625,7 @@
   }
 
   .smart-list__month-week .smart-list__month-cell,
-  .smart-list__month-week--rates .smart-list__month-cell {
+  .smart-list__month-week--counter .smart-list__month-cell {
     min-height: 0;
     height: 100%;
     padding: 0.14rem;
@@ -524,13 +633,13 @@
   }
 
   .smart-list__calendar-page--month-six-weeks .smart-list__month-week,
-  .smart-list__calendar-page--month-six-weeks .smart-list__month-week--rates {
+  .smart-list__calendar-page--month-six-weeks .smart-list__month-week--counter {
     flex: 0 0 4.72rem;
     height: 4.72rem;
     min-height: 4.72rem;
   }
 
-  .smart-list__month-week--rates .smart-list__month-cell--rates {
+  .smart-list__month-week--counter .smart-list__month-cell--counter {
     grid-template-rows: auto 1fr;
     align-content: stretch;
     align-items: stretch;
@@ -538,13 +647,13 @@
     gap: 0;
   }
 
-  .smart-list__month-week--rates .smart-list__month-day-num {
+  .smart-list__month-week--counter .smart-list__month-day-num {
     justify-self: center;
     align-self: start;
     font-size: 0.62rem;
   }
 
-  .smart-list__month-week--rates .smart-list__month-rate-count {
+  .smart-list__month-week--counter .smart-list__month-counter {
     min-width: 0.94rem;
     height: 0.94rem;
     font-size: 0.54rem;

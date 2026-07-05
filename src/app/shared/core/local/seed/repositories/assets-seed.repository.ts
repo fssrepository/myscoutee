@@ -2,14 +2,22 @@ import { Injectable, inject } from '@angular/core';
 import { environment } from '../../../../../../environments/environment';
 
 import { AppUtils } from '../../../../app-utils';
-import { AssetDefaultsBuilder, PricingBuilder } from '../../../base/builders';
+import { AssetCardBuilder, AssetDefaultsBuilder, PricingBuilder } from '../../../base/builders';
 import { LocalMemoryDb } from '../../../common/app.db';
-import { ASSETS_TABLE_NAME, type AssetRecord, type AssetsRecordCollection } from '../../source/entity/asset.entity';
+import {
+  ASSET_REQUESTS_TABLE_NAME,
+  ASSETS_TABLE_NAME,
+  type AssetRequestRecord,
+  type AssetRequestsRecordCollection,
+  type AssetRecord,
+  type AssetsRecordCollection
+} from '../../source/entity/asset.entity';
 import { LocalAssetsMapper } from '../../source/mappers/asset.mapper';
 import type { UserRecord } from '../../source/entity/user.entity';
 import { SeedAssetBuilder } from '../builders';
 import { SEED_SCHEDULE_REFERENCE_DATE } from '../seed-constants';
 
+import type * as AppConstants from '../../../common/constants';
 import type * as AppDTOs from '../../../contracts';
 @Injectable({
   providedIn: 'root'
@@ -32,14 +40,17 @@ export class SeedAssetsRepository {
       return new Map();
     }
 
-    const currentTable = this.normalizeCollection(this.memoryDb.read()[ASSETS_TABLE_NAME]);
+    const currentState = this.memoryDb.read();
+    const currentTable = this.normalizeCollection(currentState[ASSETS_TABLE_NAME]);
+    const currentRequestsTable = this.normalizeRequestsCollection(currentState[ASSET_REQUESTS_TABLE_NAME]);
     const seedToken = `${currentTable.ids.length}:${normalizedOwnerIds.join('|')}`;
     if (this.lastSeedToken !== seedToken) {
-      const nextTable = this.mergeSeededRecords(currentTable, normalizedOwnerIds, allUsers);
+      const nextTable = this.mergeSeededRecords(currentTable, currentRequestsTable, normalizedOwnerIds, allUsers);
       if (nextTable.changed) {
         this.memoryDb.write(state => ({
           ...state,
-          [ASSETS_TABLE_NAME]: nextTable.table
+          [ASSETS_TABLE_NAME]: nextTable.assetsTable,
+          [ASSET_REQUESTS_TABLE_NAME]: nextTable.requestsTable
         }));
       }
       this.lastSeedToken = seedToken;
@@ -69,9 +80,10 @@ export class SeedAssetsRepository {
 
   private mergeSeededRecords(
     currentTable: AssetsRecordCollection,
+    currentRequestsTable: AssetRequestsRecordCollection,
     ownerUserIds: readonly string[],
     allUsers: readonly UserRecord[]
-  ): { table: AssetsRecordCollection; changed: boolean } {
+  ): { assetsTable: AssetsRecordCollection; requestsTable: AssetRequestsRecordCollection; changed: boolean } {
     const sampleCards = SeedAssetBuilder.buildSampleAssetCards(allUsers)
       .slice(0, SeedAssetsRepository.DEFAULT_ASSET_LIMIT_PER_OWNER);
     const usersById = new Map(allUsers.map(user => [user.id, user]));
@@ -79,6 +91,7 @@ export class SeedAssetsRepository {
     const nextIds = [...currentTable.ids];
     const nextIdSet = new Set(nextIds);
     const nextIdsByOwnerUserId = this.cloneOwnerUserIdIndex(currentTable.idsByOwnerUserId);
+    let nextRequestsTable = this.cloneRequestsCollection(currentRequestsTable);
     let changed = false;
 
     for (const ownerUserId of ownerUserIds) {
@@ -95,6 +108,12 @@ export class SeedAssetsRepository {
       );
       for (const [index, card] of sampleCards.entries()) {
         const id = `${ownerUserId}:${card.id}`;
+        const seededRequests = this.seedAssetRequests(id, card, owner, allUsers, createdAt);
+        for (const request of seededRequests) {
+          const upserted = this.upsertAssetRequest(nextRequestsTable, request);
+          nextRequestsTable = upserted.table;
+          changed = upserted.changed || changed;
+        }
         if (ownerIdSet.has(id)) {
           continue;
         }
@@ -115,7 +134,7 @@ export class SeedAssetsRepository {
           statusBeforeSuppression: index === 0 || index === 1 ? 'A' : null,
           pricing: card.pricing ? PricingBuilder.clonePricingConfig(card.pricing) : undefined,
           policies: (card.policies ?? []).map(policy => ({ ...policy })),
-          requests: (card.requests ?? []).map(request => ({ ...request })),
+          requests: [],
           routes: [...(card.routes ?? [])],
           topics: [...(card.topics ?? [])],
           menuActions: [...(card.menuActions ?? [])],
@@ -139,17 +158,181 @@ export class SeedAssetsRepository {
     }
 
     return {
-      table: {
+      assetsTable: {
         byId: nextById,
         ids: nextIds,
         idsByOwnerUserId: nextIdsByOwnerUserId
       },
+      requestsTable: nextRequestsTable,
       changed
     };
   }
 
   private toAssetCard(record: AssetRecord): AppDTOs.AssetDTO {
     return LocalAssetsMapper.toAssetDto(record);
+  }
+
+  private seedAssetRequests(
+    assetId: string,
+    card: AppDTOs.AssetDetailDTO,
+    owner: UserRecord,
+    allUsers: readonly UserRecord[],
+    anchorDate: Date
+  ): AssetRequestRecord[] {
+    const members = allUsers
+      .filter(user => user.id !== owner.id)
+      .slice(0, 6);
+    if (members.length === 0) {
+      return [];
+    }
+    if (card.id === 'asset-sup-1') {
+      return [
+        this.seedAssetRequest(assetId, owner.id, card, 'camp-assigned-1', members[0], 'manual', 'accepted', anchorDate, 1, 9, 1, {
+          quantity: 1,
+          note: 'Reserved and assigned by the owner.',
+          eventTitle: 'Trail Weekend',
+          subEventTitle: 'Base camp setup'
+        }),
+        this.seedAssetRequest(assetId, owner.id, card, 'camp-borrow-1', members[1], 'borrow', 'accepted', anchorDate, 1, 10, 2, {
+          quantity: 2,
+          note: 'Borrow request approved by the owner.',
+          eventTitle: 'Trail Weekend',
+          subEventTitle: 'Overnight gear'
+        }),
+        this.seedAssetRequest(assetId, owner.id, card, 'camp-pending-1', members[2], 'borrow', 'pending', anchorDate, 1, 12, 1, {
+          quantity: 1,
+          note: 'Awaiting owner confirmation.',
+          eventTitle: 'Trail Weekend',
+          subEventTitle: 'Extra lamp'
+        }),
+        this.seedAssetRequest(assetId, owner.id, card, 'camp-borrow-2', members[3], 'borrow', 'accepted', anchorDate, 3, 14, 1, {
+          quantity: 1,
+          note: 'Approved and synced with the plan.',
+          eventTitle: 'Lake Picnic',
+          subEventTitle: 'Shelter kit'
+        }),
+        this.seedAssetRequest(assetId, owner.id, card, 'camp-pending-2', members[4] ?? members[0], 'borrow', 'pending', anchorDate, 6, 11, 2, {
+          quantity: 2,
+          note: 'Awaiting owner confirmation.',
+          eventTitle: 'Outdoor Skills',
+          subEventTitle: 'Tent handoff'
+        })
+      ];
+    }
+    if (card.id === 'asset-sup-3') {
+      return [
+        this.seedAssetRequest(assetId, owner.id, card, 'kitchen-borrow-1', members[1], 'borrow', 'accepted', anchorDate, 2, 8, 2, {
+          quantity: 2,
+          note: 'Borrow request approved by the owner.',
+          eventTitle: 'Field Breakfast',
+          subEventTitle: 'Cooking block'
+        }),
+        this.seedAssetRequest(assetId, owner.id, card, 'kitchen-pending-1', members[2], 'borrow', 'pending', anchorDate, 2, 10, 1, {
+          quantity: 1,
+          note: 'Awaiting owner confirmation.',
+          eventTitle: 'Field Breakfast',
+          subEventTitle: 'Serving tools'
+        })
+      ];
+    }
+    if (card.id === 'asset-car-3') {
+      return [
+        this.seedAssetRequest(assetId, owner.id, card, 'van-borrow-1', members[3] ?? members[0], 'borrow', 'accepted', anchorDate, 4, 7, 1, {
+          quantity: 1,
+          note: 'Borrow request approved by the owner.',
+          eventTitle: 'Volunteer Run',
+          subEventTitle: 'Morning transfer'
+        }),
+        this.seedAssetRequest(assetId, owner.id, card, 'van-pending-1', members[4] ?? members[1], 'borrow', 'pending', anchorDate, 4, 13, 1, {
+          quantity: 1,
+          note: 'Awaiting owner confirmation.',
+          eventTitle: 'Volunteer Run',
+          subEventTitle: 'Afternoon pickup'
+        })
+      ];
+    }
+    return [];
+  }
+
+  private seedAssetRequest(
+    assetId: string,
+    ownerUserId: string,
+    card: AppDTOs.AssetDetailDTO,
+    requestKey: string,
+    user: UserRecord,
+    requestKind: AppConstants.AssetRequestKind,
+    status: AppConstants.AssetRequestStatus,
+    anchorDate: Date,
+    offsetDays: number,
+    hour: number,
+    durationHours: number,
+    options: {
+      quantity: number;
+      note: string;
+      eventTitle: string;
+      subEventTitle: string;
+    }
+  ): AssetRequestRecord {
+    const start = this.seedRequestDate(anchorDate, offsetDays, hour);
+    const end = new Date(start.getTime() + Math.max(1, durationHours) * 60 * 60 * 1000);
+    const requestedAtIso = AppUtils.addDays(start, -1).toISOString();
+    const createdMs = start.getTime() - 24 * 60 * 60 * 1000;
+    return {
+      id: `${assetId}:${requestKey}`,
+      assetId,
+      ownerUserId,
+      ownerKey: this.assetRequestOwnerKey(assetId),
+      assetCapacity: AssetCardBuilder.storedQuantityValue(card),
+      userId: user.id,
+      name: user.name,
+      initials: user.initials,
+      gender: user.gender,
+      status,
+      note: options.note,
+      requestKind,
+      requestedAtIso,
+      booking: {
+        eventId: `${requestKey}:event`,
+        eventTitle: options.eventTitle,
+        subEventId: `${requestKey}:sub-event`,
+        subEventTitle: options.subEventTitle,
+        slotKey: `${requestKey}:slot`,
+        slotLabel: options.subEventTitle,
+        timeframe: `${start.toLocaleDateString('en-US', { month: 'short', day: 'numeric' })} ${start.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' })}`,
+        startAtIso: start.toISOString(),
+        endAtIso: end.toISOString(),
+        quantity: Math.max(1, Math.trunc(Number(options.quantity) || 1)),
+        totalAmount: null,
+        currency: null,
+        acceptedPolicyIds: [],
+        paymentSessionId: null,
+        inventoryApplied: status === 'accepted' && requestKind !== 'manual'
+      },
+      menuActions: status === 'accepted' && requestKind !== 'manual' ? ['makeManager'] : [],
+      createdMs,
+      updatedMs: createdMs,
+      createdAtIso: requestedAtIso,
+      updatedAtIso: requestedAtIso
+    };
+  }
+
+  private seedRequestDate(anchorDate: Date, offsetDays: number, hour: number): Date {
+    const date = AppUtils.addDays(anchorDate, offsetDays);
+    date.setHours(Math.max(0, Math.min(23, Math.trunc(hour))), 0, 0, 0);
+    return date;
+  }
+
+  private cloneAssetRequest(request: AssetRequestRecord): AssetRequestRecord {
+    return {
+      ...request,
+      booking: request.booking
+        ? {
+            ...request.booking,
+            acceptedPolicyIds: [...(request.booking.acceptedPolicyIds ?? [])]
+          }
+        : null,
+      menuActions: [...(request.menuActions ?? [])]
+    };
   }
 
   private normalizeCollection(value: unknown): AssetsRecordCollection {
@@ -163,6 +346,61 @@ export class SeedAssetsRepository {
         : [],
       idsByOwnerUserId: this.cloneOwnerUserIdIndex(source?.idsByOwnerUserId)
     };
+  }
+
+  private normalizeRequestsCollection(value: unknown): AssetRequestsRecordCollection {
+    const source = value as Partial<AssetRequestsRecordCollection> | null | undefined;
+    return {
+      byId: source?.byId && typeof source.byId === 'object'
+        ? { ...(source.byId as Record<string, AssetRequestRecord>) }
+        : {},
+      ids: Array.isArray(source?.ids)
+        ? source.ids.map(id => String(id)).filter(Boolean)
+        : [],
+      idsByOwnerKey: this.cloneOwnerUserIdIndex(source?.idsByOwnerKey)
+    };
+  }
+
+  private cloneRequestsCollection(table: AssetRequestsRecordCollection): AssetRequestsRecordCollection {
+    return {
+      byId: Object.fromEntries(
+        Object.entries(table.byId).map(([id, request]) => [id, this.cloneAssetRequest(request)])
+      ),
+      ids: [...table.ids],
+      idsByOwnerKey: this.cloneOwnerUserIdIndex(table.idsByOwnerKey)
+    };
+  }
+
+  private upsertAssetRequest(
+    table: AssetRequestsRecordCollection,
+    request: AssetRequestRecord
+  ): { table: AssetRequestsRecordCollection; changed: boolean } {
+    const existing = table.byId[request.id];
+    if (existing && existing.updatedAtIso === request.updatedAtIso) {
+      return { table, changed: false };
+    }
+    const nextById = {
+      ...table.byId,
+      [request.id]: this.cloneAssetRequest(request)
+    };
+    const nextIds = table.ids.includes(request.id) ? [...table.ids] : [request.id, ...table.ids];
+    const nextIdsByOwnerKey = this.cloneOwnerUserIdIndex(table.idsByOwnerKey);
+    const ownerBucket = nextIdsByOwnerKey[request.ownerKey] ?? [];
+    nextIdsByOwnerKey[request.ownerKey] = ownerBucket.includes(request.id)
+      ? [...ownerBucket]
+      : [request.id, ...ownerBucket];
+    return {
+      table: {
+        byId: nextById,
+        ids: nextIds,
+        idsByOwnerKey: nextIdsByOwnerKey
+      },
+      changed: true
+    };
+  }
+
+  private assetRequestOwnerKey(assetId: string): string {
+    return `asset:${assetId.trim()}`;
   }
 
   private cloneOwnerUserIdIndex(value: Record<string, readonly string[] | string[] | undefined> | undefined): Record<string, string[]> {

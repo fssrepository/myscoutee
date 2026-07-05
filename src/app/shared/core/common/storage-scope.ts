@@ -25,6 +25,7 @@ export const APP_INDEXED_DB_KEYS = {
   activityResources: 'activityResources',
   activitySubEventGroups: 'activitySubEventGroups',
   activitySubEventStageRuntime: 'activitySubEventStageRuntime',
+  assetRequests: 'assetRequests',
   assets: 'assets',
   chats: 'chats',
   chatMessages: 'chatMessages',

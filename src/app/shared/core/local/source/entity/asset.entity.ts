@@ -20,6 +20,7 @@ import type {
 } from '../../../common/constants';
 
 export const ASSETS_TABLE_NAME = APP_INDEXED_DB_KEYS.assets;
+export const ASSET_REQUESTS_TABLE_NAME = APP_INDEXED_DB_KEYS.assetRequests;
 
 export interface AssetHireRequestBookingRecord {
   eventId?: string;
@@ -51,6 +52,70 @@ export interface AssetMemberRequestRecord {
   requestedAtIso?: string;
   booking?: AssetHireRequestBookingRecord | null;
   menuActions?: string[];
+}
+
+export interface AssetRequestRecord extends AssetMemberRequestRecord {
+  assetId: string;
+  ownerUserId: string;
+  ownerKey: string;
+  assetCapacity: number;
+  createdMs: number;
+  updatedMs: number;
+  createdAtIso: string;
+  updatedAtIso: string;
+}
+
+export type AssetAvailabilityFilterRecord = 'all' | 'active-items' | 'pending-requests' | 'borrowed-items';
+
+export interface AssetAvailabilityDateRangeRecord {
+  start: Date;
+  end: Date;
+}
+
+export interface AssetAvailabilityRecordPageQuery {
+  userId: string;
+  assetId: string;
+  dateIso?: string | null;
+  filter?: AssetAvailabilityFilterRecord | null;
+  page?: number;
+  pageSize: number;
+  cursor?: string | null;
+}
+
+export interface AssetAvailabilityStatRecordPageQuery {
+  userId: string;
+  assetId: string;
+  rangeStart?: string | null;
+  rangeEnd?: string | null;
+  page?: number;
+  pageSize: number;
+  cursor?: string | null;
+}
+
+export interface AssetAvailabilityRowRecord {
+  request: AssetRequestRecord;
+  requests: readonly AssetRequestRecord[];
+  dateRange: AssetAvailabilityDateRangeRecord | null;
+}
+
+export interface AssetAvailabilityStatRecord {
+  assetId: string;
+  ownerUserId: string;
+  assetCapacity: number;
+  date: Date;
+  requests: readonly AssetRequestRecord[];
+}
+
+export interface AssetAvailabilityRecordPageResult {
+  records: AssetAvailabilityRowRecord[];
+  total: number;
+  nextCursor: string | null;
+}
+
+export interface AssetAvailabilityStatRecordPageResult {
+  records: AssetAvailabilityStatRecord[];
+  total: number;
+  nextCursor: string | null;
 }
 
 export interface AssetPolicyRecord {
@@ -206,4 +271,11 @@ export interface AssetsRecordCollection {
   idsByOwnerUserId: Record<string, string[]>;
 }
 
+export interface AssetRequestsRecordCollection {
+  byId: Record<string, AssetRequestRecord>;
+  ids: string[];
+  idsByOwnerKey: Record<string, string[]>;
+}
+
 export type AssetsMemorySchema = Record<typeof ASSETS_TABLE_NAME, AssetsRecordCollection>;
+export type AssetRequestsMemorySchema = Record<typeof ASSET_REQUESTS_TABLE_NAME, AssetRequestsRecordCollection>;
