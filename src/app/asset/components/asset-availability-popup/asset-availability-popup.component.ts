@@ -271,8 +271,8 @@ export class AssetAvailabilityPopupComponent {
       resolveDateRange: item => this.availabilityDateRange(item),
       dayCounter: day => this.availabilityDayCounter(day)
     },
-    emptyLabel: 'No availability items',
-    emptyDescription: '',
+    emptyLabel: 'asset.requests.empty.availability.label',
+    emptyDescription: query => this.assetAvailabilityEmptyDescription(query),
     headerProgress: {
       enabled: true,
       state: 'active'
@@ -292,8 +292,8 @@ export class AssetAvailabilityPopupComponent {
     views: [
       { key: 'day', label: 'Day', mode: 'list', pageSize: 20 }
     ],
-    emptyLabel: 'No items for this day',
-    emptyDescription: '',
+    emptyLabel: 'asset.requests.empty.day.label',
+    emptyDescription: query => this.assetAvailabilityEmptyDescription(query),
     headerProgress: {
       enabled: true,
       state: 'active'
@@ -921,6 +921,16 @@ export class AssetAvailabilityPopupComponent {
 
   private orderPalette(order: AppDTOs.AssetAvailabilityOrder): AppMenuPalette {
     return order === 'later' ? 'blue' : 'slate';
+  }
+
+  private assetAvailabilityEmptyDescription(query: ListQuery<AssetAvailabilityListFilters>): string {
+    if (this.isCalendarAvailabilityView(query.view as AppDTOs.AssetAvailabilityView)) {
+      return '';
+    }
+    const order = query.filters?.order ?? this.orderFromDirection(query.direction);
+    return order === 'earlier'
+      ? 'asset.requests.empty.earlier.description'
+      : 'asset.requests.empty.later.description';
   }
 
   private filterPalette(filter: AppDTOs.AssetAvailabilityFilter): AppMenuPalette {

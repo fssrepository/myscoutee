@@ -167,8 +167,8 @@ export class EventSubeventsListPopupComponent {
       badgeToneClass: section => `event-subevents-calendar-badge--${section.tone}`
     },
     showStickyHeader: true,
-    emptyLabel: 'No sub events yet',
-    emptyDescription: '',
+    emptyLabel: 'event.subevents.empty.label',
+    emptyDescription: () => this.subEventsEmptyDescription(),
     listLayout: 'card-grid',
     desktopColumns: 1,
     snapMode: 'mandatory',
@@ -184,8 +184,8 @@ export class EventSubeventsListPopupComponent {
     defaultView: 'list',
     showStickyHeader: true,
     showGroupMarker: () => false,
-    emptyLabel: 'No sub events in this slot',
-    emptyDescription: '',
+    emptyLabel: 'event.subevents.empty.slot.label',
+    emptyDescription: () => this.subEventsEmptyDescription(),
     listLayout: 'card-grid',
     orientation: 'horizontal',
     desktopColumns: 3,
@@ -209,8 +209,8 @@ export class EventSubeventsListPopupComponent {
     defaultView: 'list',
     showStickyHeader: false,
     showGroupMarker: () => false,
-    emptyLabel: 'No sub events in this event',
-    emptyDescription: '',
+    emptyLabel: 'event.subevents.empty.event.label',
+    emptyDescription: () => this.subEventsEmptyDescription(),
     listLayout: 'card-grid',
     desktopColumns: 3,
     snapMode: 'proximity',
@@ -372,6 +372,12 @@ export class EventSubeventsListPopupComponent {
   protected popupSubtitle(): string {
     const requestTitle = this.eventSubeventsStore.eventSubeventsListPopup()?.title ?? '';
     return this.event?.title || requestTitle || 'Event';
+  }
+
+  private subEventsEmptyDescription(): string {
+    return this.order === 'past'
+      ? 'event.subevents.empty.past.description'
+      : 'event.subevents.empty.upcoming.description';
   }
 
   protected popupHeaderSubtitle(): string {
