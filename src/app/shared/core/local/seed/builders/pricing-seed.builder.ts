@@ -12,6 +12,8 @@ export class SeedPricingBuilder {
       currency: 'USD',
       taxMode: 'excluded',
       chargeType: context === 'asset' ? 'per_booking' : 'per_attendee',
+      quantityRulesEnabled: false,
+      quantityRules: [],
       minPrice: null,
       maxPrice: null,
       rounding: 'none',
@@ -46,6 +48,8 @@ export class SeedPricingBuilder {
       currency: 'USD',
       taxMode: 'excluded',
       chargeType: 'per_attendee',
+      quantityRulesEnabled: false,
+      quantityRules: [],
       minPrice: 15,
       maxPrice: 60,
       rounding: 'whole',
@@ -126,6 +130,10 @@ export class SeedPricingBuilder {
     const normalized = pricing ?? this.createDefaultPricingConfig();
     return {
       ...normalized,
+      quantityRules: (normalized.quantityRules ?? []).map(rule => ({
+        ...rule,
+        action: { ...rule.action }
+      })),
       demandRules: (normalized.demandRules ?? []).map(rule => ({
         ...rule,
         action: { ...rule.action },

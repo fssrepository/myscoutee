@@ -606,6 +606,12 @@
   padding: 0 0.7rem;
 }
 
+.pricing-editor__select-shell--static {
+  justify-content: center;
+  color: #213d5d;
+  font-weight: 700;
+}
+
 .pricing-editor__select-shell ::ng-deep .mat-mdc-select-trigger {
   min-height: 44px;
 }
@@ -889,9 +895,15 @@
   height: 32px;
   border-radius: 50%;
   cursor: pointer;
-  color: #62778f;
-  background: rgba(240, 245, 251, 0.96);
-  box-shadow: inset 0 0 0 1px rgba(127, 148, 175, 0.22);
+  color: #b4233a;
+  background: rgba(255, 235, 238, 0.96);
+  box-shadow: inset 0 0 0 1px rgba(214, 64, 88, 0.26);
+}
+
+.pricing-editor__rule-remove:hover {
+  color: #9f1830;
+  background: rgba(255, 224, 229, 0.98);
+  box-shadow: inset 0 0 0 1px rgba(214, 64, 88, 0.34), 0 10px 20px rgba(173, 38, 60, 0.16);
 }
 
 .pricing-editor__rule-remove mat-icon {

@@ -37,9 +37,12 @@ import type * as AppConstants from '../../../../../../core/common/constants';
 interface PricingPreviewState {
   basePrice: number;
   slotOverridePrice: number | null;
+  quantityLabel: string | null;
+  quantityDelta: number;
   demandDelta: number;
   timeDelta: number;
   finalPrice: number;
+  quantityNotes: string[];
   demandNotes: string[];
   timeNotes: string[];
 }
@@ -118,7 +121,13 @@ export class PricingEditorInputComponent implements OnChanges, DoCheck, OnDestro
   protected readonly taxModeOptions: readonly AppConstants.PricingTaxMode[] = ['excluded', 'included'];
   protected readonly roundingOptions: readonly AppConstants.PricingRoundingMode[] = ['none', 'whole', 'half'];
   protected readonly demandOperatorOptions: readonly AppConstants.PricingDemandOperator[] = ['gte', 'lte'];
-  protected readonly actionKindOptions: readonly AppConstants.PricingRuleActionKind[] = ['increase_percent', 'decrease_percent', 'set_exact_price'];
+  protected readonly actionKindOptions: readonly AppConstants.PricingRuleActionKind[] = [
+    'increase_percent',
+    'decrease_percent',
+    'increase_amount',
+    'decrease_amount',
+    'set_exact_price'
+  ];
   protected readonly ruleScopeOptions: readonly AppConstants.PricingRuleScope[] = ['all_slots', 'selected_slots'];
   protected readonly timeTriggerOptions: readonly AppConstants.PricingTimeRuleTrigger[] = ['days_before_start', 'hours_before_start', 'specific_date'];
   protected readonly cancellationUnitOptions: readonly AppConstants.PricingCancellationUnit[] = ['hours', 'days', 'weeks', 'months'];
@@ -212,6 +221,10 @@ export class PricingEditorInputComponent implements OnChanges, DoCheck, OnDestro
     switch (action) {
       case 'decrease_percent':
         return 'Decrease by %';
+      case 'increase_amount':
+        return 'Increase by amount';
+      case 'decrease_amount':
+        return 'Decrease by amount';
       case 'set_exact_price':
         return 'Set exact price';
       default:
@@ -291,6 +304,10 @@ export class PricingEditorInputComponent implements OnChanges, DoCheck, OnDestro
 
   protected showSlotSection(): boolean {
     return this.resolvedConfig.allowSlotFeatures;
+  }
+
+  protected showQuantitySection(): boolean {
+    return this.resolvedConfig.context === 'event';
   }
 
   protected showCancellationSection(): boolean {
@@ -486,6 +503,17 @@ export class PricingEditorInputComponent implements OnChanges, DoCheck, OnDestro
     this.emitPricing();
   }
 
+  protected toggleQuantityRulesEnabled(): void {
+    if (this.readOnly) {
+      return;
+    }
+    this.workingPricing.quantityRulesEnabled = !this.workingPricing.quantityRulesEnabled;
+    if (this.workingPricing.quantityRulesEnabled && this.workingPricing.quantityRules.length === 0) {
+      this.workingPricing.quantityRules = [this.createDefaultQuantityRule()];
+    }
+    this.emitPricing();
+  }
+
   protected toggleTimeRulesEnabled(): void {
     if (this.readOnly) {
       return;
@@ -533,6 +561,26 @@ export class PricingEditorInputComponent implements OnChanges, DoCheck, OnDestro
       return;
     }
     this.workingPricing.demandRules = this.workingPricing.demandRules.filter((_, itemIndex) => itemIndex !== index);
+    this.emitPricing();
+  }
+
+  protected addQuantityRule(): void {
+    if (this.readOnly) {
+      return;
+    }
+    this.workingPricing.quantityRules = [
+      ...this.workingPricing.quantityRules,
+      this.createDefaultQuantityRule()
+    ];
+    this.workingPricing.quantityRulesEnabled = true;
+    this.emitPricing();
+  }
+
+  protected removeQuantityRule(index: number): void {
+    if (this.readOnly || index < 0 || index >= this.workingPricing.quantityRules.length) {
+      return;
+    }
+    this.workingPricing.quantityRules = this.workingPricing.quantityRules.filter((_, itemIndex) => itemIndex !== index);
     this.emitPricing();
   }
 
@@ -610,6 +658,17 @@ export class PricingEditorInputComponent implements OnChanges, DoCheck, OnDestro
   }
 
   protected onDemandRuleActionValueChange(rule: ContractTypes.PricingDemandRule, value: number | string): void {
+    rule.action.value = this.parseMoney(value) ?? 0;
+    this.emitPricing();
+  }
+
+  protected onQuantityRuleMinChange(rule: ContractTypes.PricingQuantityRule, value: number | string): void {
+    rule.minQuantity = this.parseInteger(value) ?? rule.minQuantity;
+    rule.minQuantity = Math.max(1, rule.minQuantity);
+    this.emitPricing();
+  }
+
+  protected onQuantityRuleActionValueChange(rule: ContractTypes.PricingQuantityRule, value: number | string): void {
     rule.action.value = this.parseMoney(value) ?? 0;
     this.emitPricing();
   }
@@ -947,8 +1006,24 @@ export class PricingEditorInputComponent implements OnChanges, DoCheck, OnDestro
     const previewSlotId = activeSlotOverride?.slotId ?? null;
     let runningPrice = activeSlotOverride?.price ?? normalized.basePrice;
     const basePrice = runningPrice;
+    let quantityLabel: string | null = null;
+    const quantityNotes: string[] = [];
     const demandNotes: string[] = [];
     const timeNotes: string[] = [];
+
+    if (this.showQuantitySection() && normalized.quantityRulesEnabled && normalized.quantityRules.length > 0) {
+      const previewQuantity = this.previewQuantityForRules(normalized.quantityRules);
+      quantityLabel = `Quantity pricing (per ${previewQuantity} ${previewQuantity === 1 ? 'item' : 'items'})`;
+      for (const rule of normalized.quantityRules) {
+        if (!this.matchesQuantityRule(rule, previewQuantity)) {
+          continue;
+        }
+        const nextPrice = this.applyRuleAction(runningPrice, rule.action);
+        quantityNotes.push(this.describeQuantityRule(rule, previewQuantity));
+        runningPrice = nextPrice;
+      }
+    }
+    const priceAfterQuantity = runningPrice;
 
     if (this.showDemandSection() && normalized.demandRulesEnabled) {
       for (const rule of normalized.demandRules) {
@@ -978,9 +1053,12 @@ export class PricingEditorInputComponent implements OnChanges, DoCheck, OnDestro
     return {
       basePrice,
       slotOverridePrice: activeSlotOverride?.price ?? null,
-      demandDelta: priceAfterDemand - basePrice,
+      quantityLabel,
+      quantityDelta: priceAfterQuantity - basePrice,
+      demandDelta: priceAfterDemand - priceAfterQuantity,
       timeDelta: clamped - priceAfterDemand,
       finalPrice,
+      quantityNotes,
       demandNotes,
       timeNotes
     };
@@ -990,6 +1068,7 @@ export class PricingEditorInputComponent implements OnChanges, DoCheck, OnDestro
     const preview = this.calculatePreviewState();
     return [
       ...(preview.slotOverridePrice !== null ? [`A slot override is active, so this preview starts from ${this.formatMoney(preview.slotOverridePrice)} instead of the global base price.`] : []),
+      ...preview.quantityNotes,
       ...preview.demandNotes,
       ...preview.timeNotes
     ];
@@ -1012,6 +1091,10 @@ export class PricingEditorInputComponent implements OnChanges, DoCheck, OnDestro
       if (this.showTimeSection() && !this.workingPricing.timeRulesEnabled) {
         lines.push('Time rules are available in this mode, but they are currently turned off.');
       }
+    }
+
+    if (this.showQuantitySection() && !this.workingPricing.quantityRulesEnabled) {
+      lines.push('Quantity rules are off, so buying multiple events uses the same base price per event.');
     }
 
     if (this.resolvedConfig.allowSlotFeatures) {
@@ -1194,6 +1277,17 @@ export class PricingEditorInputComponent implements OnChanges, DoCheck, OnDestro
     };
   }
 
+  private createDefaultQuantityRule(): ContractTypes.PricingQuantityRule {
+    return {
+      id: this.nextId('quantity-rule'),
+      minQuantity: 5,
+      action: {
+        kind: 'decrease_amount',
+        value: 2
+      }
+    };
+  }
+
   private createDefaultTimeRule(): ContractTypes.PricingTimeRule {
     return {
       id: this.nextId('time-rule'),
@@ -1326,6 +1420,10 @@ export class PricingEditorInputComponent implements OnChanges, DoCheck, OnDestro
     return capacityFilledPercent >= rule.capacityFilledPercent;
   }
 
+  private matchesQuantityRule(rule: ContractTypes.PricingQuantityRule, quantity: number): boolean {
+    return Math.max(1, Math.trunc(Number(quantity) || 1)) >= Math.max(1, Math.trunc(Number(rule.minQuantity) || 1));
+  }
+
   private matchesTimeRule(
     rule: ContractTypes.PricingTimeRule,
     hoursUntilStart: number,
@@ -1358,6 +1456,10 @@ export class PricingEditorInputComponent implements OnChanges, DoCheck, OnDestro
     switch (action.kind) {
       case 'decrease_percent':
         return Math.max(0, price - ((price * value) / 100));
+      case 'increase_amount':
+        return price + value;
+      case 'decrease_amount':
+        return Math.max(0, price - value);
       case 'set_exact_price':
         return value;
       default:
@@ -1391,6 +1493,11 @@ export class PricingEditorInputComponent implements OnChanges, DoCheck, OnDestro
 
   private describeDemandRule(rule: ContractTypes.PricingDemandRule): string {
     return `Demand rule active: when capacity filled is ${rule.operator === 'lte' ? '<=' : '>='} ${rule.capacityFilledPercent}%, ${this.describeAction(rule.action)}${this.describeRuleScope(rule)}.`;
+  }
+
+  private describeQuantityRule(rule: ContractTypes.PricingQuantityRule, previewQuantity: number): string {
+    const minQuantity = Math.max(1, Math.trunc(Number(rule.minQuantity) || 1));
+    return `Quantity rule active: previewing ${previewQuantity} events, and quantity >= ${minQuantity}, ${this.describeAction(rule.action)}.`;
   }
 
   private describeTimeRule(rule: ContractTypes.PricingTimeRule): string {
@@ -1428,6 +1535,10 @@ export class PricingEditorInputComponent implements OnChanges, DoCheck, OnDestro
     switch (action.kind) {
       case 'decrease_percent':
         return `the price decreases by ${value}%`;
+      case 'increase_amount':
+        return `the price increases by ${this.formatMoney(value)}`;
+      case 'decrease_amount':
+        return `the price decreases by ${this.formatMoney(value)}`;
       case 'set_exact_price':
         return `the price is set to ${this.formatMoney(value)}`;
       default:
@@ -1446,6 +1557,13 @@ export class PricingEditorInputComponent implements OnChanges, DoCheck, OnDestro
       return ` for ${this.slotLabelById(rule.slotIds[0]) || 'the selected slot'}`;
     }
     return ` for ${rule.slotIds.length} selected slots`;
+  }
+
+  private previewQuantityForRules(rules: readonly ContractTypes.PricingQuantityRule[]): number {
+    const quantities = rules
+      .map(rule => Math.max(1, Math.trunc(Number(rule.minQuantity) || 1)))
+      .filter(quantity => quantity > 1);
+    return quantities.length > 0 ? Math.min(...quantities) : 5;
   }
 
   private isoDateToDate(value: string | null | undefined): Date | null {

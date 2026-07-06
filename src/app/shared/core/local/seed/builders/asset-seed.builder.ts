@@ -33,6 +33,8 @@ export class SeedAssetBuilder {
       currency: 'USD',
       taxMode: 'excluded',
       chargeType: 'per_attendee',
+      quantityRulesEnabled: false,
+      quantityRules: [],
       minPrice: 15,
       maxPrice: 60,
       rounding: 'whole',
@@ -115,6 +117,10 @@ export class SeedAssetBuilder {
     }
     return {
       ...pricing,
+      quantityRules: (pricing.quantityRules ?? []).map(rule => ({
+        ...rule,
+        action: { ...rule.action }
+      })),
       demandRules: (pricing.demandRules ?? []).map(rule => ({
         ...rule,
         action: { ...rule.action },

@@ -910,6 +910,12 @@ export class EventCheckoutPopupComponent {
     if (action.kind === 'set_exact_price') {
       return Math.max(0, value);
     }
+    if (action.kind === 'increase_amount') {
+      return Math.max(0, currentPrice + value);
+    }
+    if (action.kind === 'decrease_amount') {
+      return Math.max(0, currentPrice - value);
+    }
     const percent = value / 100;
     if (action.kind === 'decrease_percent') {
       return Math.max(0, currentPrice * (1 - percent));

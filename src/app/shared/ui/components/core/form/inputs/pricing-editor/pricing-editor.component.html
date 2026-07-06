@@ -297,6 +297,94 @@
     </div>
   </section>
 
+  @if (showQuantitySection()) {
+    <section class="pricing-editor__surface">
+      <div class="pricing-editor__section-head">
+        <span>Quantity Rules</span>
+        <button
+          type="button"
+          class="pricing-editor__toggle"
+          [class.is-on]="workingPricing.quantityRulesEnabled"
+          [disabled]="readOnly"
+          (click)="toggleQuantityRulesEnabled()"
+          >
+          <mat-icon>{{ workingPricing.quantityRulesEnabled ? 'toggle_on' : 'toggle_off' }}</mat-icon>
+          <span>{{ workingPricing.quantityRulesEnabled ? 'On' : 'Off' }}</span>
+        </button>
+      </div>
+      @if (workingPricing.quantityRulesEnabled) {
+        <div class="pricing-editor__rules">
+          @for (rule of workingPricing.quantityRules; track trackByRule($index, rule)) {
+            <article class="pricing-editor__rule-card">
+              <div class="pricing-editor__rule-grid">
+                <label class="pricing-editor__field">
+                  <span>If</span>
+                  <div class="pricing-editor__select-shell pricing-editor__select-shell--static">
+                    <span>Event quantity &gt;=</span>
+                  </div>
+                </label>
+                <label class="pricing-editor__field">
+                  <span>Quantity</span>
+                  <input
+                    type="number"
+                    min="1"
+                    step="1"
+                    [ngModel]="rule.minQuantity"
+                    (ngModelChange)="onQuantityRuleMinChange(rule, $event)"
+                    [disabled]="readOnly"
+                    />
+                </label>
+                <label class="pricing-editor__field">
+                  <span>Then</span>
+                  <div class="pricing-editor__select-shell">
+                    <mat-select
+                      [(ngModel)]="rule.action.kind"
+                      (ngModelChange)="emitPricing()"
+                      [disabled]="readOnly"
+                      [panelWidth]="null"
+                      disableOptionCentering
+                      panelClass="selector-options-panel profile-bottom-sheet-panel"
+                      >
+                      @for (option of actionKindOptions; track option) {
+                        <mat-option [value]="option">{{ actionLabel(option) }}</mat-option>
+                      }
+                    </mat-select>
+                  </div>
+                </label>
+                <label class="pricing-editor__field">
+                  <span>Value</span>
+                  <input
+                    type="number"
+                    min="0"
+                    step="0.01"
+                    [ngModel]="rule.action.value"
+                    (ngModelChange)="onQuantityRuleActionValueChange(rule, $event)"
+                    [disabled]="readOnly"
+                    />
+                </label>
+              </div>
+              <button
+                type="button"
+                class="pricing-editor__rule-remove"
+                [disabled]="readOnly"
+                (click)="removeQuantityRule($index)"
+                aria-label="Remove quantity rule"
+                >
+                <mat-icon>delete</mat-icon>
+              </button>
+            </article>
+          }
+        </div>
+        <button type="button" class="pricing-editor__add-btn" [disabled]="readOnly" (click)="addQuantityRule()">
+          <mat-icon>add</mat-icon>
+          <span>Add Quantity Rule</span>
+        </button>
+      } @else {
+        <p class="pricing-editor__hint">Quantity pricing is currently off. Turn it on when a multi-event slot should reduce the total from the one-event base price.</p>
+      }
+    </section>
+  }
+
   @if (showDemandSection()) {
     <section class="pricing-editor__surface">
       <div class="pricing-editor__section-head">
@@ -853,6 +941,14 @@
       <span>Base</span>
       <strong>{{ currencySymbol(workingPricing.currency) }}{{ currentPreview.basePrice | number:'1.0-2' }}</strong>
     </div>
+    @if (currentPreview.quantityDelta !== 0) {
+      <div class="pricing-editor__preview-line">
+        <span>{{ currentPreview.quantityLabel || 'Quantity pricing' }}</span>
+        <strong [class.positive]="currentPreview.quantityDelta > 0" [class.negative]="currentPreview.quantityDelta < 0">
+          {{ currentPreview.quantityDelta > 0 ? '+' : '' }}{{ currencySymbol(workingPricing.currency) }}{{ currentPreview.quantityDelta | number:'1.0-2' }}
+        </strong>
+      </div>
+    }
     @if (currentPreview.demandDelta !== 0) {
       <div class="pricing-editor__preview-line">
         <span>Demand adjustment</span>

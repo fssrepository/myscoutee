@@ -22,6 +22,12 @@ export interface PricingSlotOverride {
   currency?: string | null;
 }
 
+export interface PricingQuantityRule {
+  id: string;
+  minQuantity: number;
+  action: PricingAction;
+}
+
 export interface PricingDemandRule {
   id: string;
   operator: AppConstants.PricingDemandOperator;
@@ -77,6 +83,8 @@ export interface PricingConfig {
   currency: string;
   taxMode: AppConstants.PricingTaxMode;
   chargeType: AppConstants.PricingChargeType;
+  quantityRulesEnabled: boolean;
+  quantityRules: PricingQuantityRule[];
   minPrice: number | null;
   maxPrice: number | null;
   rounding: AppConstants.PricingRoundingMode;

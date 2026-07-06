@@ -167,7 +167,7 @@ export type PricingChargeType = typeof PRICING_CHARGE_TYPES[number];
 export const PRICING_ROUNDING_MODES = ['none', 'whole', 'half'] as const;
 export type PricingRoundingMode = typeof PRICING_ROUNDING_MODES[number];
 
-export const PRICING_RULE_ACTION_KINDS = ['increase_percent', 'decrease_percent', 'set_exact_price'] as const;
+export const PRICING_RULE_ACTION_KINDS = ['increase_percent', 'decrease_percent', 'increase_amount', 'decrease_amount', 'set_exact_price'] as const;
 export type PricingRuleActionKind = typeof PRICING_RULE_ACTION_KINDS[number];
 
 export const PRICING_RULE_SCOPES = ['all_slots', 'selected_slots'] as const;
