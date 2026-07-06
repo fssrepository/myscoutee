@@ -14,6 +14,7 @@ import {
   type AdminModerationUserPatch,
   type AdminReportedUserDto,
   type AdminUserDto,
+  type ProfileExtDto,
   type UserDto
 } from '../../../core';
 import {
@@ -296,7 +297,7 @@ export class AdminWorkspaceStore {
     const admin = dashboard.activeAdmin;
     const user = this.buildAdminProfile(admin, dashboard);
     const chatUnread = this.adminChatUnreadCount(dashboard);
-    this.userProfileStore.setUserProfile(user);
+    this.userProfileStore.setProfileExt(this.buildAdminProfileExt(user));
     this.userProfileStore.setActiveUserId(user.id);
     this.runtimeStore.setStatus(USER_BY_ID_LOAD_CONTEXT_KEY, 'success');
     this.activityStore.patchUserCounterOverrides(user.id, {
@@ -370,6 +371,13 @@ export class AdminWorkspaceStore {
         adminJobs: Math.max(0, Math.trunc(Number(existingAdminProfile?.activities?.adminJobs) || 0)),
         adminMetrics: Math.max(0, Math.trunc(Number(existingAdminProfile?.activities?.adminMetrics) || 0))
       }
+    };
+  }
+
+  private buildAdminProfileExt(user: UserDto): ProfileExtDto {
+    return {
+      profile: user,
+      experienceEntries: this.userProfileStore.getProfileExt(user.id)?.experienceEntries ?? []
     };
   }
 
