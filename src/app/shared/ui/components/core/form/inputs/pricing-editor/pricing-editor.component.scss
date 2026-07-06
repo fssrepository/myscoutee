@@ -951,7 +951,7 @@
 }
 
 .pricing-editor__preview--summary {
-  grid-template-columns: repeat(2, minmax(0, 1fr));
+  grid-template-columns: minmax(0, 1fr);
 }
 
 .pricing-editor__preview-card {
@@ -1019,6 +1019,43 @@
   color: rgba(57, 82, 113, 0.8);
   font-size: 0.84rem;
   line-height: 1.55;
+}
+
+.pricing-editor__preview-details {
+  display: grid;
+  gap: 0.42rem;
+  padding-top: 0.72rem;
+  border-top: 1px solid rgba(136, 157, 186, 0.18);
+}
+
+.pricing-editor__preview-detail {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 0.8rem;
+  min-width: 0;
+  color: rgba(57, 82, 113, 0.82);
+  font-size: 0.84rem;
+}
+
+.pricing-editor__preview-detail > span {
+  display: grid;
+  gap: 0.12rem;
+  min-width: 0;
+}
+
+.pricing-editor__preview-detail strong {
+  color: #233d5d;
+  font-weight: 900;
+}
+
+.pricing-editor__preview-detail em {
+  overflow: hidden;
+  color: rgba(65, 87, 116, 0.76);
+  font-style: normal;
+  line-height: 1.35;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .pricing-editor__scope-sheet-backdrop {

@@ -886,6 +886,19 @@
             </strong>
           </div>
         }
+        <div class="pricing-editor__preview-details">
+          @for (item of pricingSummaryItems(); track item.id) {
+            <article class="pricing-editor__preview-detail">
+              <span>
+                <strong>{{ item.label }}</strong>
+                @if (item.detail) {
+                  <em>{{ item.detail }}</em>
+                }
+              </span>
+              <strong>{{ item.value }}</strong>
+            </article>
+          }
+        </div>
         <div class="pricing-editor__preview-total">
           <span>Final price</span>
           <strong>{{ currencySymbol(workingPricing.currency) }}{{ currentPreview.finalPrice | number:'1.0-2' }}</strong>
@@ -927,26 +940,23 @@
             </strong>
           </div>
         }
+        <div class="pricing-editor__preview-details">
+          @for (item of pricingSummaryItems(); track item.id) {
+            <article class="pricing-editor__preview-detail">
+              <span>
+                <strong>{{ item.label }}</strong>
+                @if (item.detail) {
+                  <em>{{ item.detail }}</em>
+                }
+              </span>
+              <strong>{{ item.value }}</strong>
+            </article>
+          }
+        </div>
         <div class="pricing-editor__preview-total">
           <span>Final price</span>
           <strong>{{ currencySymbol(workingPricing.currency) }}{{ currentPreview.finalPrice | number:'1.0-2' }}</strong>
         </div>
-      </div>
-      <div class="pricing-editor__preview-card pricing-editor__preview-card--light">
-        <div class="pricing-editor__preview-head">
-          <span>Why this price?</span>
-          <mat-icon>help_outline</mat-icon>
-        </div>
-        
-        @if (currentExplanationLines.length > 0) {
-          @for (line of currentExplanationLines; track line) {
-            <p class="pricing-editor__preview-note">{{ line }}</p>
-          }
-        } @else {
-          @for (line of currentFallbackLines; track line) {
-            <p class="pricing-editor__preview-note">{{ line }}</p>
-          }
-        }
       </div>
     </ng-template>
   </app-popup>

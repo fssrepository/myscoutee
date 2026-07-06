@@ -47,6 +47,13 @@ interface PricingPreviewState {
   timeNotes: string[];
 }
 
+interface PricingSummaryItem {
+  id: string;
+  label: string;
+  value: string;
+  detail?: string;
+}
+
 type PricingScopedRule = ContractTypes.PricingDemandRule | ContractTypes.PricingTimeRule;
 
 interface RuleScopePickerState {
@@ -1120,6 +1127,76 @@ export class PricingEditorInputComponent implements OnChanges, DoCheck, OnDestro
     return lines;
   }
 
+  protected pricingSummaryItems(): PricingSummaryItem[] {
+    const pricing = this.normalizePricingWithCapabilities(this.workingPricing);
+    const items: PricingSummaryItem[] = [{
+      id: 'charge',
+      label: 'Charge',
+      value: this.chargeTypeLabel(pricing.chargeType),
+      detail: this.priceBasisDetail(pricing)
+    }];
+
+    if (this.showQuantitySection() && pricing.quantityRulesEnabled && pricing.quantityRules.length > 0) {
+      items.push({
+        id: 'quantity',
+        label: 'Quantity',
+        value: this.countLabel(pricing.quantityRules.length, 'rule'),
+        detail: pricing.quantityRules.map(rule => this.quantityRuleSummary(rule)).join('; ')
+      });
+    }
+
+    const dynamicParts: string[] = [];
+    if (this.showDemandSection() && pricing.demandRulesEnabled && pricing.demandRules.length > 0) {
+      dynamicParts.push(`Demand ${this.countLabel(pricing.demandRules.length, 'rule')}`);
+    }
+    if (this.showTimeSection() && pricing.timeRulesEnabled && pricing.timeRules.length > 0) {
+      dynamicParts.push(`Time ${this.countLabel(pricing.timeRules.length, 'rule')}`);
+    }
+    if (dynamicParts.length > 0) {
+      items.push({
+        id: 'dynamic',
+        label: 'Dynamic rules',
+        value: `${pricing.demandRules.length + pricing.timeRules.length}`,
+        detail: dynamicParts.join(' · ')
+      });
+    }
+
+    if (this.resolvedConfig.allowSlotFeatures && pricing.slotPricingEnabled) {
+      const pricedOverrides = pricing.slotOverrides.filter(item => item.price !== null);
+      if (pricedOverrides.length > 0) {
+        items.push({
+          id: 'slots',
+          label: 'Slots',
+          value: this.countLabel(pricedOverrides.length, 'override'),
+          detail: pricedOverrides.slice(0, 2).map(item => `${item.label}: ${this.formatMoney(item.price)}`).join('; ')
+        });
+      }
+    }
+
+    if (this.showCancellationSection()) {
+      const policy = pricing.cancellationPolicy;
+      items.push({
+        id: 'cancellation',
+        label: 'Cancellation',
+        value: policy.enabled && policy.rules.length > 0 ? this.countLabel(policy.rules.length, 'rule') : 'Off',
+        detail: policy.enabled && policy.rules.length > 0
+          ? policy.rules.slice(0, 2).map(rule => this.cancellationRuleSummary(rule)).join('; ')
+          : 'No reimbursement schedule'
+      });
+    }
+
+    if (this.resolvedConfig.showAudienceSection && pricing.audience.enabled) {
+      items.push({
+        id: 'audience',
+        label: 'Audience',
+        value: 'Active',
+        detail: this.audienceSummary(pricing.audience)
+      });
+    }
+
+    return items;
+  }
+
   protected trackByRule(index: number, rule: { id: string }): string {
     return rule.id || `rule-${index}`;
   }
@@ -1564,6 +1641,85 @@ export class PricingEditorInputComponent implements OnChanges, DoCheck, OnDestro
       .map(rule => Math.max(1, Math.trunc(Number(rule.minQuantity) || 1)))
       .filter(quantity => quantity > 1);
     return quantities.length > 0 ? Math.min(...quantities) : 5;
+  }
+
+  private priceBasisDetail(pricing: ContractTypes.PricingConfig): string {
+    const parts = [
+      `${this.taxModeLabel(pricing.taxMode)} tax`,
+      this.roundingLabel(pricing.rounding)
+    ];
+    if (pricing.minPrice !== null || pricing.maxPrice !== null) {
+      parts.push([
+        pricing.minPrice !== null ? `min ${this.formatMoney(pricing.minPrice)}` : '',
+        pricing.maxPrice !== null ? `max ${this.formatMoney(pricing.maxPrice)}` : ''
+      ].filter(Boolean).join(' · '));
+    }
+    return parts.filter(Boolean).join(' · ');
+  }
+
+  private quantityRuleSummary(rule: ContractTypes.PricingQuantityRule): string {
+    const quantity = Math.max(1, Math.trunc(Number(rule.minQuantity) || 1));
+    return `${quantity}+ items: ${this.compactActionLabel(rule.action)} each`;
+  }
+
+  private compactActionLabel(action: ContractTypes.PricingAction): string {
+    const value = Math.max(0, Number(action.value) || 0);
+    switch (action.kind) {
+      case 'decrease_percent':
+        return `-${value}%`;
+      case 'increase_amount':
+        return `+${this.formatMoney(value)}`;
+      case 'decrease_amount':
+        return `-${this.formatMoney(value)}`;
+      case 'set_exact_price':
+        return this.formatMoney(value);
+      default:
+        return `+${value}%`;
+    }
+  }
+
+  private cancellationRuleSummary(rule: ContractTypes.PricingCancellationRule): string {
+    return `${this.cancellationWindowLabel(rule)}: ${this.cancellationRefundLabel(rule)}`;
+  }
+
+  private cancellationWindowLabel(rule: ContractTypes.PricingCancellationRule): string {
+    const value = Math.max(0, Math.trunc(Number(rule.offsetValue) || 0));
+    const unit = rule.offsetUnit === 'hours'
+      ? (value === 1 ? 'hour' : 'hours')
+      : rule.offsetUnit === 'weeks'
+        ? (value === 1 ? 'week' : 'weeks')
+        : rule.offsetUnit === 'months'
+          ? (value === 1 ? 'month' : 'months')
+          : (value === 1 ? 'day' : 'days');
+    return `${value} ${unit}`;
+  }
+
+  private cancellationRefundLabel(rule: ContractTypes.PricingCancellationRule): string {
+    if (rule.refundKind === 'full') {
+      return 'full refund';
+    }
+    if (rule.refundKind === 'none') {
+      return 'no refund';
+    }
+    if (rule.refundKind === 'fixed_amount') {
+      return `${this.formatMoney(rule.refundValue)} refund`;
+    }
+    return `${Math.max(0, Number(rule.refundValue) || 0)}% refund`;
+  }
+
+  private audienceSummary(audience: ContractTypes.PricingAudienceSettings): string {
+    const parts = [
+      audience.memberPrice !== null ? `member ${this.formatMoney(audience.memberPrice)}` : '',
+      audience.vipPrice !== null ? `VIP ${this.formatMoney(audience.vipPrice)}` : '',
+      audience.inviteOnlyDiscountPercent !== null ? `invite -${audience.inviteOnlyDiscountPercent}%` : '',
+      audience.promoCodes.length > 0 ? this.countLabel(audience.promoCodes.length, 'promo') : ''
+    ].filter(Boolean);
+    return parts.length > 0 ? parts.join(' · ') : audience.soldOutLabel;
+  }
+
+  private countLabel(count: number, singular: string): string {
+    const normalized = Math.max(0, Math.trunc(Number(count) || 0));
+    return `${normalized} ${singular}${normalized === 1 ? '' : 's'}`;
   }
 
   private isoDateToDate(value: string | null | undefined): Date | null {
