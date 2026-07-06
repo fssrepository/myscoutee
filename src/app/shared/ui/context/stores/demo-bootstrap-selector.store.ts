@@ -11,11 +11,12 @@ export type DemoBootstrapSelectorMode = 'member' | 'admin';
 export interface DemoBootstrapSelectorState {
   updatedMs: number;
   mode: DemoBootstrapSelectorMode;
+  selectableModes: readonly DemoBootstrapSelectorMode[];
   title?: string;
   subtitle?: string;
   autoSelectUserId?: string;
   users?: readonly UserSelectorListItemDto[];
-  onSelect: (userId: string) => boolean | Promise<boolean>;
+  onSelect: (userId: string, mode: DemoBootstrapSelectorMode) => boolean | Promise<boolean>;
   onNewProfile?: () => boolean | Promise<boolean>;
   onClose?: () => void;
 }
@@ -32,24 +33,28 @@ export class DemoBootstrapSelectorStore {
 
   openDemoBootstrapSelector(payload: {
     mode: DemoBootstrapSelectorMode;
+    selectableModes?: readonly DemoBootstrapSelectorMode[];
     title?: string;
     subtitle?: string;
     autoSelectUserId?: string;
     users?: readonly UserSelectorListItemDto[];
-    onSelect: (userId: string) => boolean | Promise<boolean>;
+    onSelect: (userId: string, mode: DemoBootstrapSelectorMode) => boolean | Promise<boolean>;
     onNewProfile?: () => boolean | Promise<boolean>;
     onClose?: () => void;
   }): void {
     void this.ensureDemoBootstrapSelectorLoaded();
+    const mode = payload.mode === 'admin' ? 'admin' : 'member';
+    const selectableModes = this.normalizeSelectableModes(payload.selectableModes, mode);
     this.demoBootstrapSelectorRef.set({
       updatedMs: Date.now(),
-      mode: payload.mode === 'admin' ? 'admin' : 'member',
+      mode,
+      selectableModes,
       title: payload.title?.trim() || undefined,
       subtitle: payload.subtitle?.trim() || undefined,
       autoSelectUserId: payload.autoSelectUserId?.trim() || undefined,
       users: payload.users?.map(user => ({ ...user })),
-      onSelect: async userId => {
-        const accepted = await payload.onSelect(userId);
+      onSelect: async (userId, selectedMode) => {
+        const accepted = await payload.onSelect(userId, selectedMode);
         if (accepted !== false) {
           this.closeDemoBootstrapSelector();
         }
@@ -76,6 +81,18 @@ export class DemoBootstrapSelectorStore {
 
   closeDemoBootstrapSelector(): void {
     this.demoBootstrapSelectorRef.set(null);
+  }
+
+  private normalizeSelectableModes(
+    selectableModes: readonly DemoBootstrapSelectorMode[] | null | undefined,
+    fallbackMode: DemoBootstrapSelectorMode
+  ): readonly DemoBootstrapSelectorMode[] {
+    const modes = (selectableModes ?? [fallbackMode])
+      .map(mode => mode === 'admin' ? 'admin' : 'member');
+    const uniqueModes = [...new Set(modes)];
+    return uniqueModes.includes(fallbackMode)
+      ? uniqueModes
+      : [fallbackMode, ...uniqueModes];
   }
 
   async ensureDemoBootstrapSelectorLoaded(): Promise<void> {

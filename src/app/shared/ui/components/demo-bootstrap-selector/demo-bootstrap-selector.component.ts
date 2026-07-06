@@ -20,6 +20,7 @@ import {
 } from '@angular/material/core';
 
 import {
+  type DemoBootstrapSelectorMode,
   type DemoBootstrapSelectorState
 } from '../../context/stores/demo-bootstrap-selector.store';
 import {
@@ -28,7 +29,8 @@ import {
 import {
   AppMenuComponent,
   type AppMenuItem,
-  type AppMenuItemSelectEvent
+  type AppMenuItemSelectEvent,
+  type AppMenuTrigger
 } from '../core/menu';
 import {
   I18nPipe
@@ -47,9 +49,14 @@ import {
 import { DemoBootstrapSelectorStore } from '../../context/stores/demo-bootstrap-selector.store';
 
 type DemoSelectorHeaderMenuItemId = 'new-profile';
+type DemoSelectorRoleMenuItemId = DemoBootstrapSelectorMode;
 
 interface DemoSelectorHeaderMenuContext {
   action: 'new-profile';
+}
+
+interface DemoSelectorRoleMenuContext {
+  mode: DemoBootstrapSelectorMode;
 }
 
 @Component({
@@ -75,6 +82,8 @@ export class DemoBootstrapSelectorComponent {
   private contextRequest: DemoBootstrapSelectorState | null = null;
   private contextRequestToken = 0;
   private contextControlled = false;
+  private contextSelectorSeedReady = false;
+  private selectedMode: DemoBootstrapSelectorMode = 'member';
 
   @Input() open = false;
   @Input() loading = false;
@@ -205,6 +214,37 @@ export class DemoBootstrapSelectorComponent {
     }];
   }
 
+  protected selectorRoleMenuTrigger(): AppMenuTrigger {
+    return {
+      label: this.selectorRoleLabel(this.selectedMode),
+      icon: this.selectorRoleIcon(this.selectedMode),
+      trailingIcon: 'expand_more',
+      ariaLabel: 'Filter demo users',
+      palette: this.selectorRolePalette(this.selectedMode),
+      layout: 'pill',
+      disabled: () => this.submitting
+    };
+  }
+
+  protected selectorRoleMenuItems(): readonly AppMenuItem<DemoSelectorRoleMenuItemId, DemoSelectorRoleMenuContext>[] {
+    const modes = this.contextRequest?.selectableModes ?? [this.selectedMode];
+    if (modes.length <= 1) {
+      return [];
+    }
+    return modes.map(mode => ({
+      id: mode,
+      label: this.selectorRoleLabel(mode),
+      icon: this.selectorRoleIcon(mode),
+      kind: 'radio',
+      palette: this.selectorRolePalette(mode),
+      surface: 'tinted',
+      active: () => this.selectedMode === mode,
+      disabled: () => this.submitting,
+      ariaLabel: `Show ${this.selectorRoleLabel(mode)} demo users`,
+      context: { mode }
+    }));
+  }
+
   protected onHeaderMenuSelect(
     event: AppMenuItemSelectEvent<DemoSelectorHeaderMenuItemId, DemoSelectorHeaderMenuContext>
   ): void {
@@ -212,6 +252,13 @@ export class DemoBootstrapSelectorComponent {
       return;
     }
     this.requestNewProfile();
+  }
+
+  protected onSelectorRoleMenuSelect(
+    event: AppMenuItemSelectEvent<DemoSelectorRoleMenuItemId, DemoSelectorRoleMenuContext>
+  ): void {
+    const mode = event.context?.mode ?? event.id;
+    this.selectContextMode(mode);
   }
 
   protected visibleUsers(): readonly UserSelectorListItemDto[] {
@@ -242,10 +289,12 @@ export class DemoBootstrapSelectorComponent {
     const requestToken = ++this.contextRequestToken;
     this.contextRequest = request;
     this.contextControlled = true;
+    this.contextSelectorSeedReady = false;
     this.commit(() => {
       this.open = true;
       this.title = request.title ?? 'Select demo user';
       this.subtitle = request.subtitle ?? 'Login disabled mode. Choose a demo user to open perspective-based data.';
+      this.selectedMode = request.mode;
       this.users = request.users?.map(user => ({ ...user })) ?? [];
       this.loading = true;
       this.loadingUserList = false;
@@ -256,44 +305,61 @@ export class DemoBootstrapSelectorComponent {
       this.submitting = false;
       this.selectedUserId = '';
     });
-    void this.loadContextUsers(request, requestToken);
+    void this.loadContextUsers(request, requestToken, request.mode, true);
   }
 
   private async loadContextUsers(
     request: DemoBootstrapSelectorState,
-    requestToken: number
+    requestToken: number,
+    mode: DemoBootstrapSelectorMode,
+    showSelectorProgress: boolean
   ): Promise<void> {
     await this.waitForPopupPaint();
     if (!this.isCurrentContextRequest(requestToken)) {
       return;
     }
     try {
-      if (this.usersService.localModeEnabled) {
-        await this.seedBootstrap.ensureDemoSelectorReady(request.mode, state => {
-          if (!this.isCurrentContextRequest(requestToken)) {
-            return;
-          }
-          this.commit(() => {
-            this.loadingUserList = false;
-            this.loadingProgress = state.percent;
-            this.loadingLabel = state.label;
-            this.loadingStage = state.stage;
+      if (this.usersService.localModeEnabled && !this.contextSelectorSeedReady) {
+        if (showSelectorProgress) {
+          await this.seedBootstrap.ensureDemoSelectorReady(this.selectorSeedMode(request), state => {
+            if (!this.isCurrentContextRequest(requestToken)) {
+              return;
+            }
+            this.commit(() => {
+              this.loadingUserList = false;
+              this.loadingProgress = state.percent;
+              this.loadingLabel = state.label;
+              this.loadingStage = state.stage;
+            });
           });
-        });
-        await this.waitForPhaseReadyBlink();
+        } else {
+          this.commit(() => {
+            this.loadingUserList = true;
+            this.loadingProgress = 0;
+            this.loadingLabel = `Loading ${this.selectorRoleLabel(mode).toLowerCase()} demo users`;
+            this.loadingStage = 'users';
+          });
+          await this.seedBootstrap.ensureDemoSelectorReady(this.selectorSeedMode(request));
+        }
+        this.contextSelectorSeedReady = true;
+        if (showSelectorProgress) {
+          await this.waitForPhaseReadyBlink();
+        }
       }
       if (!this.isCurrentContextRequest(requestToken)) {
         return;
       }
-      let users = request.users?.map(user => ({ ...user })) ?? null;
+      let users = mode === request.mode
+        ? request.users?.map(user => ({ ...user })) ?? null
+        : null;
       if (!users) {
         this.commit(() => {
           this.loadingUserList = true;
           this.loadingProgress = 0;
-          this.loadingLabel = 'Loading demo users';
+          this.loadingLabel = `Loading ${this.selectorRoleLabel(mode).toLowerCase()} demo users`;
           this.loadingStage = 'users';
         });
-        users = await this.usersService.loadAvailableDemoUsers(request.mode);
+        users = await this.usersService.loadAvailableDemoUsers(mode);
       }
       if (!this.isCurrentContextRequest(requestToken)) {
         return;
@@ -302,9 +368,10 @@ export class DemoBootstrapSelectorComponent {
         this.users = users;
         this.errorMessage = '';
         this.loadingUserList = false;
+        this.selectedMode = mode;
       });
       const autoSelectUserId = `${request.autoSelectUserId ?? ''}`.trim();
-      if (autoSelectUserId) {
+      if (autoSelectUserId && mode === request.mode) {
         const autoSelectedUser = users.find(user => user.id.trim() === autoSelectUserId) ?? null;
         if (!autoSelectedUser) {
           this.commit(() => {
@@ -353,7 +420,7 @@ export class DemoBootstrapSelectorComponent {
         this.selectedUserId = normalizedUserId;
         this.errorMessage = '';
       });
-      void this.completeContextSelection(normalizedUserId, requestToken);
+      void this.completeContextSelection(normalizedUserId, this.selectedMode, requestToken);
       return;
     }
     this.commit(() => {
@@ -367,7 +434,34 @@ export class DemoBootstrapSelectorComponent {
       this.errorMessage = '';
     });
 
-    void this.prepareContextUser(normalizedUserId, requestToken);
+    void this.prepareContextUser(normalizedUserId, this.selectedMode, requestToken);
+  }
+
+  private selectContextMode(mode: DemoBootstrapSelectorMode): void {
+    if (!this.contextRequest) {
+      return;
+    }
+    const normalizedMode = mode === 'admin' ? 'admin' : 'member';
+    if (normalizedMode === this.selectedMode || this.submitting) {
+      return;
+    }
+    if (!this.contextRequest.selectableModes.includes(normalizedMode)) {
+      return;
+    }
+    const request = this.contextRequest;
+    const requestToken = ++this.contextRequestToken;
+    this.commit(() => {
+      this.selectedMode = normalizedMode;
+      this.users = [];
+      this.selectedUserId = '';
+      this.loading = true;
+      this.loadingUserList = true;
+      this.loadingProgress = 0;
+      this.loadingLabel = `Loading ${this.selectorRoleLabel(normalizedMode).toLowerCase()} demo users`;
+      this.loadingStage = 'users';
+      this.errorMessage = '';
+    });
+    void this.loadContextUsers(request, requestToken, normalizedMode, false);
   }
 
   private requestNewProfile(): void {
@@ -399,13 +493,17 @@ export class DemoBootstrapSelectorComponent {
     void this.completeContextNewProfileSelection(requestToken);
   }
 
-  private async prepareContextUser(userId: string, requestToken: number): Promise<void> {
+  private async prepareContextUser(
+    userId: string,
+    mode: DemoBootstrapSelectorMode,
+    requestToken: number
+  ): Promise<void> {
     await this.waitForPopupPaint();
     if (!this.isCurrentContextRequest(requestToken) || !this.contextRequest) {
       return;
     }
     try {
-      await this.seedBootstrap.ensureUserReady(userId, this.contextRequest.mode, state => {
+      await this.seedBootstrap.ensureUserReady(userId, mode, state => {
         if (!this.isCurrentContextRequest(requestToken)) {
           return;
         }
@@ -427,7 +525,7 @@ export class DemoBootstrapSelectorComponent {
       if (!this.isCurrentContextRequest(requestToken)) {
         return;
       }
-      await this.completeContextSelection(userId, requestToken);
+      await this.completeContextSelection(userId, mode, requestToken);
     } catch {
       if (this.isCurrentContextRequest(requestToken)) {
         this.resetContextSelectionFailure('Unable to open demo session.');
@@ -435,13 +533,17 @@ export class DemoBootstrapSelectorComponent {
     }
   }
 
-  private async completeContextSelection(userId: string, requestToken: number): Promise<void> {
+  private async completeContextSelection(
+    userId: string,
+    mode: DemoBootstrapSelectorMode,
+    requestToken: number
+  ): Promise<void> {
     const request = this.contextRequest;
     if (!request || !this.isCurrentContextRequest(requestToken)) {
       return;
     }
     try {
-      const accepted = await request.onSelect(userId);
+      const accepted = await request.onSelect(userId, mode);
       if (!this.isCurrentContextRequest(requestToken)) {
         return;
       }
@@ -479,9 +581,25 @@ export class DemoBootstrapSelectorComponent {
 
   private newProfileAvailable(): boolean {
     if (this.contextRequest) {
-      return this.contextRequest.mode === 'member' && Boolean(this.contextRequest.onNewProfile);
+      return this.selectedMode === 'member' && Boolean(this.contextRequest.onNewProfile);
     }
     return true;
+  }
+
+  private selectorSeedMode(request: DemoBootstrapSelectorState): DemoBootstrapSelectorMode | 'union' {
+    return request.selectableModes.length > 1 ? 'union' : request.mode;
+  }
+
+  private selectorRoleLabel(mode: DemoBootstrapSelectorMode): string {
+    return mode === 'admin' ? 'Admin' : 'Member';
+  }
+
+  private selectorRoleIcon(mode: DemoBootstrapSelectorMode): string {
+    return mode === 'admin' ? 'admin_panel_settings' : 'person';
+  }
+
+  private selectorRolePalette(mode: DemoBootstrapSelectorMode): 'blue' | 'green' {
+    return mode === 'admin' ? 'blue' : 'green';
   }
 
   private resetContextSelectionFailure(message: string): void {
@@ -508,6 +626,7 @@ export class DemoBootstrapSelectorComponent {
     this.contextRequestToken += 1;
     this.contextRequest = null;
     this.contextControlled = false;
+    this.contextSelectorSeedReady = false;
     this.open = false;
     this.loading = false;
     this.loadingUserList = false;
@@ -518,6 +637,7 @@ export class DemoBootstrapSelectorComponent {
     this.submitting = false;
     this.selectedUserId = '';
     this.users = [];
+    this.selectedMode = 'member';
     this.changeDetectorRef.markForCheck();
   }
 

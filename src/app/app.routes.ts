@@ -18,7 +18,7 @@ const restrictedAreaGuard: CanActivateFn = async (_route, state) => {
       const { UsersService } = await import('./shared/core/base/services/users.service');
       const usersService = injector.get(UsersService);
       const user = await usersService.loadUserById(undefined, 8000).catch(() => null);
-      if (user?.admin === true) {
+      if (isAdminUser(user)) {
         return router.createUrlTree(['/admin']);
       }
       if (requiresProfileOnboarding(user)) {
@@ -37,12 +37,51 @@ const restrictedAreaGuard: CanActivateFn = async (_route, state) => {
   });
 };
 
+const adminAreaGuard: CanActivateFn = async (_route, state) => {
+  const injector = inject(Injector);
+  const sessionService = inject(SessionService);
+  const router = inject(Router);
+  const session = await sessionService.ensureSession();
+  if (!session) {
+    return entryRedirect(router, state.url);
+  }
+
+  if (session.kind === 'demo') {
+    const { AdminWorkspaceStore } = await import('./shared/ui/context/stores/admin-workspace.store');
+    const adminWorkspace = injector.get(AdminWorkspaceStore);
+    const userId = session.userId.trim();
+    const storedAdminId = adminWorkspace.readStoredAdminId();
+    if (userId && (userId === storedAdminId || userId.startsWith('admin-demo-'))) {
+      return true;
+    }
+    return entryRedirect(router, state.url);
+  }
+
+  const { UsersService } = await import('./shared/core/base/services/users.service');
+  const usersService = injector.get(UsersService);
+  const user = await usersService.loadUserById(undefined).catch(() => null);
+  if (isAdminUser(user)) {
+    return true;
+  }
+  return entryRedirect(router, state.url);
+};
+
+function entryRedirect(router: Router, redirectUrl: string) {
+  return router.createUrlTree(['/entry'], {
+    queryParams: redirectUrl && redirectUrl !== '/' ? { redirect: redirectUrl } : undefined
+  });
+}
+
 function requiresProfileOnboarding(user: UserDto | null | undefined): boolean {
-  if (!user || user.admin === true || user.profileStatus === 'blocked' || user.profileStatus === 'deleted' || user.hostTier === 'Admin') {
+  if (!user || isAdminUser(user) || user.profileStatus === 'blocked' || user.profileStatus === 'deleted') {
     return false;
   }
   return user.profileStatus === 'onboarding'
     || AppUtils.positiveInteger(user.profileFormVersion) < CURRENT_PROFILE_FORM_VERSION;
+}
+
+function isAdminUser(user: UserDto | null | undefined): boolean {
+  return user?.admin === true || `${user?.hostTier ?? ''}`.trim().toLowerCase() === 'admin';
 }
 
 export const routes: Routes = [
@@ -66,7 +105,12 @@ export const routes: Routes = [
     data: { documentKind: 'terms' }
   },
   {
+    path: 'admin/help/:token',
+    loadComponent: () => import('./admin/components/admin-help-session-page/admin-help-session-page.component').then(m => m.AdminHelpSessionPageComponent)
+  },
+  {
     path: 'admin',
+    canActivate: [adminAreaGuard],
     loadChildren: () => import('./admin/admin.module').then(m => m.AdminModule)
   },
   {

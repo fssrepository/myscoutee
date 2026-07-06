@@ -18,6 +18,18 @@
               ></app-menu>
             }
           }
+          @if (selectorRoleMenuItems(); as selectorRoleItems) {
+            @if (selectorRoleItems.length > 0) {
+              <app-menu
+                class="demo-selector-role-menu"
+                kind="select"
+                [trigger]="selectorRoleMenuTrigger()"
+                [items]="selectorRoleItems"
+                panelAlign="end"
+                (itemSelect)="onSelectorRoleMenuSelect($event)"
+              ></app-menu>
+            }
+          }
           <button
             mat-icon-button
             type="button"

@@ -14,7 +14,7 @@ import { LocalAdminModerationRepository } from '../repositories/admin-moderation
 import { LocalAdminSupportSessionService } from './admin-support-session.service';
 import { LocalRouteDelayService } from './route-delay.service';
 
-const ADMIN_WORKSPACE_LOAD_ROUTE = '/admin/workspace';
+const ADMIN_WORKSPACE_LOAD_ROUTE = '/admin';
 const ADMIN_REPORTS_LOAD_ROUTE = '/admin/reports';
 const ADMIN_BLOCKED_USERS_LOAD_ROUTE = '/admin/reports/blocked-users';
 const ADMIN_FEEDBACK_LOAD_ROUTE = '/admin/feedback';

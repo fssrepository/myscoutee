@@ -17,7 +17,8 @@ import { AdminPageComponent } from './components/admin-page/admin-page.component
       },
       {
         path: 'workspace',
-        component: AdminPageComponent
+        redirectTo: '',
+        pathMatch: 'full'
       },
       {
         path: '',

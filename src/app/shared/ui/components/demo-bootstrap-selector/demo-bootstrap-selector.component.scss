@@ -70,6 +70,11 @@
   flex: 0 0 auto;
 }
 
+.demo-selector-role-menu {
+  position: relative;
+  flex: 0 0 auto;
+}
+
 .demo-login-panel h2 {
   margin: 0;
   font-size: 1.45rem;
@@ -359,6 +364,10 @@
 
   .demo-login-header-actions {
     gap: 0.32rem;
+  }
+
+  .demo-selector-role-menu {
+    max-width: 8.25rem;
   }
 
   .demo-login-panel {

@@ -76,7 +76,7 @@ export class AdminPageComponent implements OnInit, OnDestroy {
   private readonly affinityGraphPopupComponentRef = signal<Type<unknown> | null>(null);
   private readonly monitoringPopupComponentRef = signal<Type<unknown> | null>(null);
 
-  protected readonly restoringWorkspace = signal(this.currentRouteIsWorkspace());
+  protected readonly restoringWorkspace = signal(this.currentRouteIsAdminShell());
   protected readonly reportsPopupComponent = this.reportsPopupComponentRef.asReadonly();
   protected readonly feedbackPopupComponent = this.feedbackPopupComponentRef.asReadonly();
   protected readonly helpEditorPopupComponent = this.helpEditorPopupComponentRef.asReadonly();
@@ -134,12 +134,11 @@ export class AdminPageComponent implements OnInit, OnDestroy {
         const dashboard = await this.bootstrapAdmin();
         this.restoringWorkspace.set(false);
         if (dashboard) {
-          await this.router.navigateByUrl('/admin/workspace', { replaceUrl: true });
           return;
         }
       }
     }
-    if (!this.isWorkspaceRoute() || this.workspace.dashboard()) {
+    if (!this.isAdminShellRoute() || this.workspace.dashboard()) {
       this.restoringWorkspace.set(false);
       return;
     }
@@ -147,7 +146,10 @@ export class AdminPageComponent implements OnInit, OnDestroy {
     const restored = await this.restoreAdminSession();
     this.restoringWorkspace.set(false);
     if (!restored) {
-      await this.router.navigateByUrl('/admin', { replaceUrl: true });
+      await this.router.navigate(['/entry'], {
+        queryParams: { redirect: this.router.url },
+        replaceUrl: true
+      });
     }
   }
 
@@ -167,7 +169,7 @@ export class AdminPageComponent implements OnInit, OnDestroy {
     }
     const dashboard = await this.bootstrapAdmin();
     if (dashboard) {
-      await this.router.navigateByUrl('/admin/workspace', { replaceUrl: true });
+      await this.router.navigateByUrl('/admin', { replaceUrl: true });
       return;
     }
     if (this.workspace.accessDenied()) {
@@ -271,13 +273,13 @@ export class AdminPageComponent implements OnInit, OnDestroy {
       return false;
     }
     this.prepareSelectedAdminSession(normalizedAdminUserId);
-    void this.navigateToAdminWorkspaceAfterSelectorClose();
+    void this.navigateToAdminAfterSelectorClose();
     return true;
   }
 
-  private async navigateToAdminWorkspaceAfterSelectorClose(): Promise<void> {
+  private async navigateToAdminAfterSelectorClose(): Promise<void> {
     await this.waitForDemoSelectorClose();
-    await this.router.navigateByUrl('/admin/workspace', { replaceUrl: true });
+    await this.router.navigateByUrl('/admin', { replaceUrl: true });
   }
 
   private waitForDemoSelectorClose(): Promise<void> {
@@ -303,12 +305,13 @@ export class AdminPageComponent implements OnInit, OnDestroy {
     }
   }
 
-  private isWorkspaceRoute(): boolean {
-    return this.currentRouteIsWorkspace();
+  private isAdminShellRoute(): boolean {
+    return this.currentRouteIsAdminShell();
   }
 
-  private currentRouteIsWorkspace(): boolean {
-    return this.router.url.split('?')[0] === '/admin/workspace';
+  private currentRouteIsAdminShell(): boolean {
+    const route = this.router.url.split('?')[0];
+    return route === '/admin' || route === '/admin/workspace';
   }
 
   private async ensureReportsPopupLoaded(): Promise<void> {

@@ -198,8 +198,7 @@ export class App implements OnDestroy {
     const normalizedPath = (url || '/').split('?')[0].trim() || '/';
     return normalizedPath !== '/'
       && !normalizedPath.startsWith('/entry')
-      && normalizedPath !== '/admin'
-      && normalizedPath !== '/admin/';
+      && !normalizedPath.startsWith('/admin/help');
   }
 
   protected onRouteActivated(): void {
