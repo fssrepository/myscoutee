@@ -96,6 +96,7 @@ import { UserProfileStore } from '../../../shared/ui/context/stores/user-profile
 import { AppRuntimeStore } from '../../../shared/ui/context/stores/app-runtime.store';
 import { ActivityStore } from '../../../shared/ui/context/stores/activity.store';
 import { MemberMenuStore } from '../../../shared/ui/context/stores/member-menu.store';
+import { EventSubeventsPopupStore } from '../../../shared/ui/context/stores/event-subevents-popup.store';
 
 type CheckoutDraftEntry = {
   draft: EventCheckoutDraft;
@@ -150,6 +151,7 @@ export class EventExplorePopupComponent {
   private readonly activityStore = inject(ActivityStore);
   private readonly memberMenuStore = inject(MemberMenuStore);
   private readonly activitiesStore = inject(ActivitiesPopupStore);
+  protected readonly eventSubeventsStore = inject(EventSubeventsPopupStore);
 
   protected readonly eventExploreOrderOptions = APP_STATIC_DATA.eventExploreOrderOptions;
   protected readonly eventExploreViewOptions = APP_STATIC_DATA.activitiesViewOptions.filter(
@@ -288,6 +290,14 @@ export class EventExplorePopupComponent {
     });
 
     effect(() => {
+      const request = this.eventSubeventsStore.eventSubeventsListPopup();
+      if (!request || request.host !== 'eventExplore' || !this.isOpen) {
+        return;
+      }
+      void this.eventSubeventsStore.ensureEventSubeventsListPopupLoaded();
+    });
+
+    effect(() => {
       this.eventCheckoutDraftStore.drafts();
       const nextPendingDraftSourceIds = this.pendingCheckoutDraftSourceIds();
       const removedPendingDraftSourceIds = [...this.lastPendingCheckoutDraftSourceIds]
@@ -382,6 +392,7 @@ export class EventExplorePopupComponent {
   protected closeEventExplore(): void {
     this.isOpen = false;
     this.slotPickerRecord = null;
+    this.closeEventExploreSubeventsPopup();
     this.closeMembersPopup();
     this.resetHeaderState();
     this.cdr.markForCheck();
@@ -778,13 +789,25 @@ export class EventExplorePopupComponent {
     event?: { stopPropagation?: () => void; preventDefault?: () => void }
   ): void {
     this.stopDomEvent(event);
-    this.memberMenuStore.requestActivitiesNavigation({
-      type: 'eventEditor',
+    this.eventSubeventsStore.openEventSubeventsListPopup({
       eventId: record.id,
+      host: 'eventExplore',
       target: record.type === 'hosting' ? 'hosting' : 'events',
-      readOnly: true
+      title: record.title,
+      timeframe: record.slotsEnabled && record.nextSlot ? record.nextSlot.timeframe : record.timeframe,
+      startAtIso: record.startAtIso,
+      endAtIso: record.endAtIso,
+      mode: record.mode ?? null,
+      canEdit: false
     });
     this.cdr.markForCheck();
+  }
+
+  private closeEventExploreSubeventsPopup(): void {
+    if (this.eventSubeventsStore.eventSubeventsListPopup()?.host !== 'eventExplore') {
+      return;
+    }
+    this.eventSubeventsStore.closeEventSubeventsListPopup();
   }
 
   protected runEventExploreJoinAction(

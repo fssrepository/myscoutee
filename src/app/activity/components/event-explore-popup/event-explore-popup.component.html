@@ -64,4 +64,10 @@
       </section>
     }
   </app-popup>
+
+  @if (eventSubeventsStore.eventSubeventsListPopup()?.host === 'eventExplore') {
+    @if (eventSubeventsStore.eventSubeventsListPopupComponent(); as subeventsPopupComponent) {
+      <ng-container *ngComponentOutlet="subeventsPopupComponent"></ng-container>
+    }
+  }
 }

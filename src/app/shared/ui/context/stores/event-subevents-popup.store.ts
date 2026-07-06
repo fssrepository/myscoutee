@@ -4,7 +4,7 @@ import type { EventEditorTarget, EventMode, EventTournamentStageDTO } from '../.
 
 export interface EventSubeventsListPopupRequest {
   updatedMs: number;
-  host: 'activities' | 'chat';
+  host: 'activities' | 'chat' | 'eventExplore';
   eventId: string;
   target: EventEditorTarget;
   title: string | null;
@@ -42,7 +42,7 @@ export class EventSubeventsPopupStore {
 
   openEventSubeventsListPopup(payload: {
     eventId: string;
-    host?: 'activities' | 'chat';
+    host?: 'activities' | 'chat' | 'eventExplore';
     target?: EventEditorTarget;
     title?: string | null;
     timeframe?: string | null;
