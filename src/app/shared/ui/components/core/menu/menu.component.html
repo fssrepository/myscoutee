@@ -104,7 +104,7 @@
                   <mat-icon>{{ actionRowItemIcon(item) }}</mat-icon>
                 }
               </span>
-            } @else if (actionRowItemIcon(item)) {
+            } @else if (actionRowItemIcon(item) && (isInlineRowBig || !isLabeledActionRowItem(item) || !actionRowItemLabel(item))) {
               <mat-icon>{{ actionRowItemIcon(item) }}</mat-icon>
             }
             @if (isInlineRowBig) {
@@ -141,7 +141,12 @@
               }
             } @else {
               @if (isLabeledActionRowItem(item) && actionRowItemLabel(item)) {
-                <span class="app-menu__button-row-label">{{ actionRowItemLabel(item) | i18n }}</span>
+                <span class="app-menu__button-row-main">
+                  @if (actionRowItemIcon(item)) {
+                    <mat-icon>{{ actionRowItemIcon(item) }}</mat-icon>
+                  }
+                  <span class="app-menu__button-row-label">{{ actionRowItemLabel(item) | i18n }}</span>
+                </span>
               }
               @if (hasItemCounter(item)) {
                 <span

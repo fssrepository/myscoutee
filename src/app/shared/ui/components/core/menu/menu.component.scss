@@ -1070,6 +1070,25 @@
   color: var(--app-menu-fg);
 }
 
+.app-menu__button-row-main {
+  position: relative;
+  z-index: 3;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.34rem;
+  max-width: 100%;
+  min-width: 0;
+}
+
+:host(.app-menu-host--compact) .app-menu__button-row-main {
+  gap: var(--app-menu-compact-row-item-gap);
+}
+
+.app-menu__button-row-main .app-menu__button-row-label {
+  flex: 0 1 auto;
+}
+
 .app-menu__button-row-label {
   flex: 1 1 auto;
   min-width: 0;
