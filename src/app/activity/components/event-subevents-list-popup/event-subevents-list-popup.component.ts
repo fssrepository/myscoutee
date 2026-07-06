@@ -535,7 +535,7 @@ export class EventSubeventsListPopupComponent {
     return [
       {
         id: 'participant-filter',
-        label: 'Részt veszek',
+        label: 'Részvételem',
         icon: this.participantOnly ? 'person_pin_circle' : 'person_pin',
         kind: 'toggle',
         palette: this.participantOnly ? 'green' : 'slate',
