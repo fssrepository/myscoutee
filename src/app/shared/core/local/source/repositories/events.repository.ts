@@ -6,6 +6,7 @@ import { environment } from '../../../../../../environments/environment';
 
 import { AppUtils } from '../../../../app-utils';
 import { LocalMemoryDb } from '../../../common/app.db';
+import { LocalActivityMembersRepository } from './activity-members.repository';
 import { LocalActivitySubEventStageRuntimeMapper } from '../mappers/activity.mapper';
 import { LocalActivityEventsMapper } from '../mappers/event.mapper';
 
@@ -35,6 +36,14 @@ import type { LocationCoordinates } from '../../../contracts/user.interface';
 import type * as ActivityContracts from '../../../contracts/activity.interface';
 
 import type * as AppConstants from '../../../common/constants';
+
+interface SubEventParticipantSlotCandidate {
+  slot: ActivityContracts.SubEventsSlotDTO;
+  eventOwnerIds: Set<string>;
+  subEventOwnerIdsByIndex: Map<number, Set<string>>;
+  groupOwnerIds: Set<string>;
+}
+
 interface ActivityEventActivitiesCursor {
   id: string;
   distanceMeters: number;
@@ -73,6 +82,7 @@ export class LocalEventsRepository {
   private static readonly AFFINITY_DISTANCE_BOOST_SCALE = 10_000;
   private static readonly SLOT_READ_MODEL_USER_ID = '__slot_read_model__';
   private readonly memoryDb = inject(LocalMemoryDb);
+  private readonly activityMembersRepository = inject(LocalActivityMembersRepository);
   private readonly localScoreEntriesByGroupKey = new Map<string, ContractTypes.SubEventLeaderboardScoreEntry[]>();
   private readonly localFifaMatchesByGroupKey = new Map<string, ContractTypes.SubEventLeaderboardFifaMatch[]>();
 
@@ -544,6 +554,178 @@ export class LocalEventsRepository {
       parentEventId,
       parentRecord
     };
+  }
+
+  filterSubEventsSlotsForParticipant(
+    userId: string,
+    slots: readonly ActivityContracts.SubEventsSlotDTO[],
+    enabled: boolean
+  ): ActivityContracts.SubEventsSlotDTO[] {
+    const normalizedUserId = userId.trim();
+    if (!enabled) {
+      return slots.map(slot => ({
+        ...slot,
+        subEventItems: [...(slot.subEventItems ?? [])]
+      }));
+    }
+    if (!normalizedUserId || slots.length === 0) {
+      return [];
+    }
+    const candidates = slots.map(slot => this.subEventParticipantSlotCandidate(slot));
+    const acceptedEventOwnerIds = this.acceptedParticipantOwnerIds(
+      'event',
+      this.flattenCandidateOwnerIds(candidates, candidate => candidate.eventOwnerIds),
+      normalizedUserId
+    );
+    const acceptedSubEventOwnerIds = this.acceptedParticipantOwnerIds(
+      'subEvent',
+      candidates.flatMap(candidate => [...candidate.subEventOwnerIdsByIndex.values()]
+        .flatMap(ownerIds => [...ownerIds])),
+      normalizedUserId
+    );
+    const acceptedGroupOwnerIds = this.acceptedParticipantOwnerIds(
+      'group',
+      this.flattenCandidateOwnerIds(candidates, candidate => candidate.groupOwnerIds),
+      normalizedUserId
+    );
+
+    return candidates.flatMap(candidate => {
+      const items = candidate.slot.subEventItems ?? [];
+      const hasSlotParticipation = this.hasOwnerIntersection(candidate.eventOwnerIds, acceptedEventOwnerIds)
+        || this.hasOwnerIntersection(candidate.groupOwnerIds, acceptedGroupOwnerIds)
+        || items.some((item, index) => this.isTournamentSubEvent(item)
+          && this.hasOwnerIntersection(candidate.subEventOwnerIdsByIndex.get(index), acceptedSubEventOwnerIds));
+      if (hasSlotParticipation) {
+        return [{
+          ...candidate.slot,
+          subEventItems: [...items]
+        }];
+      }
+      const filteredItems = items.filter((_item, index) =>
+        this.hasOwnerIntersection(candidate.subEventOwnerIdsByIndex.get(index), acceptedSubEventOwnerIds));
+      return filteredItems.length > 0
+        ? [{
+            ...candidate.slot,
+            subEventItems: filteredItems
+          }]
+        : [];
+    });
+  }
+
+  private subEventParticipantSlotCandidate(slot: ActivityContracts.SubEventsSlotDTO): SubEventParticipantSlotCandidate {
+    const slotOwnerId = this.subEventParticipantSlotOwnerId(slot);
+    const eventOwnerIds = new Set(this.uniqueParticipantOwnerIds(
+      slotOwnerId,
+      slot.parentEventId,
+      slot.slotSourceId,
+      slot.id
+    ));
+    const subEventOwnerIdsByIndex = new Map<number, Set<string>>();
+    const groupOwnerIds = new Set<string>();
+    const items = slot.subEventItems ?? [];
+    items.forEach((item, index) => {
+      const subEventId = this.subEventParticipantItemId(item, index);
+      const itemOwnerIds = new Set(this.subEventParticipantOwnerIds(eventOwnerIds, subEventId));
+      subEventOwnerIdsByIndex.set(index, itemOwnerIds);
+      this.groupParticipantOwnerIds(slotOwnerId, subEventId, item)
+        .forEach(ownerId => groupOwnerIds.add(ownerId));
+    });
+    return {
+      slot,
+      eventOwnerIds,
+      subEventOwnerIdsByIndex,
+      groupOwnerIds
+    };
+  }
+
+  private acceptedParticipantOwnerIds(
+    ownerType: AppConstants.ActivityMemberOwnerType,
+    ownerIds: readonly string[],
+    userId: string
+  ): Set<string> {
+    return this.activityMembersRepository.queryAcceptedOwnerIdsByUserAndOwners(
+      ownerType,
+      this.uniqueParticipantOwnerIds(...ownerIds),
+      userId
+    );
+  }
+
+  private flattenCandidateOwnerIds(
+    candidates: readonly SubEventParticipantSlotCandidate[],
+    selectOwnerIds: (candidate: SubEventParticipantSlotCandidate) => ReadonlySet<string>
+  ): string[] {
+    return this.uniqueParticipantOwnerIds(...candidates.flatMap(candidate => [...selectOwnerIds(candidate)]));
+  }
+
+  private subEventParticipantSlotOwnerId(slot: ActivityContracts.SubEventsSlotDTO): string {
+    return `${slot.slotSourceId ?? ''}`.trim()
+      || `${slot.parentEventId ?? ''}`.trim()
+      || `${slot.id ?? ''}`.trim();
+  }
+
+  private subEventParticipantItemId(item: ContractTypes.SubEventDTO | null | undefined, index: number): string {
+    return `${item?.id ?? ''}`.trim() || `subevent-${index + 1}`;
+  }
+
+  private subEventParticipantOwnerIds(eventOwnerIds: ReadonlySet<string>, subEventId: string): string[] {
+    const normalizedSubEventId = `${subEventId ?? ''}`.trim();
+    if (!normalizedSubEventId) {
+      return [];
+    }
+    return this.uniqueParticipantOwnerIds(
+      normalizedSubEventId,
+      ...[...eventOwnerIds].map(ownerId => `${ownerId}:${normalizedSubEventId}`)
+    );
+  }
+
+  private groupParticipantOwnerIds(
+    slotOwnerId: string,
+    subEventId: string,
+    item: ContractTypes.SubEventDTO | null | undefined
+  ): string[] {
+    const normalizedSlotOwnerId = `${slotOwnerId ?? ''}`.trim();
+    const normalizedSubEventId = `${subEventId ?? ''}`.trim();
+    if (!normalizedSubEventId) {
+      return [];
+    }
+    const ownerIds: string[] = [];
+    const groupCount = Math.max(0, Math.trunc(Number(item?.groupsCount) || 0));
+    for (let index = 1; index <= groupCount; index += 1) {
+      ownerIds.push(`${normalizedSubEventId}:group:${index}`);
+      ownerIds.push(`${normalizedSubEventId}-group-${index}`);
+    }
+    if (normalizedSlotOwnerId) {
+      this.manualGroupRecords(normalizedSlotOwnerId, normalizedSubEventId)
+        .forEach(group => ownerIds.push(group.groupId));
+    }
+    return this.uniqueParticipantOwnerIds(...ownerIds);
+  }
+
+  private hasOwnerIntersection(
+    ownerIds: ReadonlySet<string> | null | undefined,
+    acceptedOwnerIds: ReadonlySet<string>
+  ): boolean {
+    if (!ownerIds || ownerIds.size === 0 || acceptedOwnerIds.size === 0) {
+      return false;
+    }
+    for (const ownerId of ownerIds) {
+      if (acceptedOwnerIds.has(ownerId)) {
+        return true;
+      }
+    }
+    return false;
+  }
+
+  private isTournamentSubEvent(item: ContractTypes.SubEventDTO | null | undefined): boolean {
+    return Math.max(0, Math.trunc(Number(item?.groupsCount) || 0)) > 0
+      || `${item?.tournamentLeaderboardType ?? ''}`.trim() === 'Score'
+      || `${item?.tournamentLeaderboardType ?? ''}`.trim() === 'Fifa';
+  }
+
+  private uniqueParticipantOwnerIds(...values: readonly (string | null | undefined)[]): string[] {
+    return Array.from(new Set(values
+      .map(value => `${value ?? ''}`.trim())
+      .filter(value => value.length > 0)));
   }
 
   private preferredSubEventsDefinitionRecord(

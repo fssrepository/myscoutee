@@ -146,7 +146,11 @@ export class LocalEventsService extends LocalRouteDelayService implements IEvent
     if (mode !== 'Casual' && mode !== 'Tournament') {
       return null;
     }
-    const baseSlots = LocalActivityEventsMapper.toSubEventsSlots(result.parentEventId, result.parentRecord, query);
+    const baseSlots = this.eventsRepository.filterSubEventsSlotsForParticipant(
+      normalizedUserId,
+      LocalActivityEventsMapper.toSubEventsSlots(result.parentEventId, result.parentRecord, query),
+      query?.participantOnly === true
+    );
     const { resourceLookups, stageRuntimeLookups } = LocalActivityEventsMapper.subEventStateLookups(baseSlots, normalizedUserId);
     const resourceStates = this.activityResourcesRepository.querySubEventResourceRecordsByRefs(resourceLookups)
       .map(record => LocalActivityResourcesMapper.toState(record))

@@ -429,6 +429,7 @@ export interface ActivityEventSubEventsQueryDTO {
   anchorDate?: string | null;
   rangeStart?: string | null;
   rangeEnd?: string | null;
+  participantOnly?: boolean | null;
 }
 
 export interface SubEventsSlotDTO {

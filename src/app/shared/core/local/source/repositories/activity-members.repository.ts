@@ -59,6 +59,40 @@ export class LocalActivityMembersRepository {
     return result;
   }
 
+  queryAcceptedOwnerIdsByUserAndOwners(
+    ownerType: ActivityMemberOwnerRef['ownerType'],
+    ownerIds: readonly string[],
+    userId: string
+  ): Set<string> {
+    const normalizedUserId = userId.trim();
+    const normalizedOwnerIds = new Set(ownerIds
+      .map(ownerId => `${ownerId ?? ''}`.trim())
+      .filter(ownerId => ownerId.length > 0));
+    if (!normalizedUserId || normalizedOwnerIds.size === 0) {
+      return new Set<string>();
+    }
+    const table = this.normalizeCollection(this.memoryDb.read()[ACTIVITY_MEMBERS_TABLE_NAME]);
+    const acceptedOwnerIds = new Set<string>();
+    for (const ownerId of normalizedOwnerIds) {
+      const owner = this.normalizeOwnerRef({ ownerType, ownerId });
+      if (!owner) {
+        continue;
+      }
+      for (const id of table.idsByOwnerKey[this.ownerKey(owner)] ?? []) {
+        const record = table.byId[id];
+        if (
+          record?.status === 'accepted'
+          && record.userId?.trim() === normalizedUserId
+          && record.ownerType === ownerType
+          && record.ownerId?.trim() === ownerId
+        ) {
+          acceptedOwnerIds.add(ownerId);
+        }
+      }
+    }
+    return acceptedOwnerIds;
+  }
+
   queryAcceptedEventMemberGroups(): DemoAcceptedEventMemberGroup[] {
     const table = this.normalizeCollection(this.memoryDb.read()[ACTIVITY_MEMBERS_TABLE_NAME]);
     return this.acceptedEventMemberGroupsFromTable(table);

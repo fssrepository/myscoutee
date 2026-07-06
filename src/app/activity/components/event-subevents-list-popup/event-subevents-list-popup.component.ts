@@ -32,6 +32,7 @@ import {
   SmartListComponent,
   type AppMenuItem,
   type AppMenuItemSelectEvent,
+  type AppMenuModel,
   type AppMenuTrigger,
   type InfoCardData,
   type ListQuery,
@@ -68,7 +69,7 @@ import {
 
 type EventSubeventsListView = 'day' | 'week' | 'month';
 type EventSubeventsListOrder = 'upcoming' | 'past';
-type EventSubeventsListContextAction = 'edit' | 'view' | 'members';
+type EventSubeventsListContextAction = 'participantFilter' | 'edit' | 'view' | 'members';
 type EventSubeventsListPopupMenuContext =
   | { menu: 'order'; order: EventSubeventsListOrder }
   | { menu: 'view'; view: EventSubeventsListView }
@@ -127,6 +128,7 @@ export class EventSubeventsListPopupComponent {
   protected slotSections: EventSubeventsSlotModel[] = [];
   protected view: EventSubeventsListView = 'day';
   protected order: EventSubeventsListOrder = 'upcoming';
+  protected participantOnly = false;
   protected isMobileView = false;
   protected query: Partial<ListQuery<EventSubeventsListFilters>> = {
     view: 'day',
@@ -143,6 +145,9 @@ export class EventSubeventsListPopupComponent {
   private loadedQueryKey = '';
   private loadingQueryKey = '';
   private loadingPromise: Promise<void> | null = null;
+  private readonly compactToolbarMenuModel: AppMenuModel<string, EventSubeventsListPopupMenuContext> = {
+    density: 'compact'
+  };
 
   private readonly slotSectionLoaders = new Map<string, SmartListLoadPage<SubEventDTO, EventSubeventsListFilters>>();
   private readonly slotSectionConfigs = new Map<string, SmartListConfig<SubEventDTO, EventSubeventsListFilters>>();
@@ -238,6 +243,7 @@ export class EventSubeventsListPopupComponent {
         this.event = null;
         this.items = [];
         this.slotSections = [];
+        this.participantOnly = false;
         this.slotSectionLoaders.clear();
         this.slotSectionConfigs.clear();
         this.slotSectionHeaderLabels.clear();
@@ -255,6 +261,7 @@ export class EventSubeventsListPopupComponent {
       this.event = null;
       this.items = [];
       this.slotSections = [];
+      this.participantOnly = false;
       this.slotSectionLoaders.clear();
       this.slotSectionConfigs.clear();
       this.slotSectionHeaderLabels.clear();
@@ -416,6 +423,7 @@ export class EventSubeventsListPopupComponent {
         id: 'context',
         align: 'end',
         menuKind: 'inline',
+        model: this.compactToolbarMenuModel,
         items: this.contextMenuItems()
       }
     ];
@@ -526,6 +534,18 @@ export class EventSubeventsListPopupComponent {
     const memberCount = this.eventMembersCount();
     return [
       {
+        id: 'participant-filter',
+        label: 'Részt veszek',
+        icon: this.participantOnly ? 'person_pin_circle' : 'person_pin',
+        kind: 'toggle',
+        palette: this.participantOnly ? 'green' : 'slate',
+        surface: 'tinted',
+        layout: 'action',
+        checked: this.participantOnly,
+        active: this.participantOnly,
+        context: { menu: 'context', action: 'participantFilter' }
+      },
+      {
         id: canEdit ? 'edit' : 'view',
         label: canEdit ? 'Szerkesztés' : 'Megtekintés',
         icon: canEdit ? 'edit' : 'visibility',
@@ -549,11 +569,20 @@ export class EventSubeventsListPopupComponent {
   }
 
   private selectContextAction(action: EventSubeventsListContextAction): void {
+    if (action === 'participantFilter') {
+      this.toggleParticipantFilter();
+      return;
+    }
     if (action === 'members') {
       this.openMembers();
       return;
     }
     this.openEventEditor();
+  }
+
+  private toggleParticipantFilter(): void {
+    this.participantOnly = !this.participantOnly;
+    this.invalidateLoadedRuntime();
   }
 
   protected openEventEditor(): void {
@@ -1184,7 +1213,8 @@ export class EventSubeventsListPopupComponent {
       loadQuery.view ?? '',
       loadQuery.anchorDate ?? '',
       loadQuery.rangeStart ?? '',
-      loadQuery.rangeEnd ?? ''
+      loadQuery.rangeEnd ?? '',
+      loadQuery.participantOnly === true ? 'participantOnly' : 'allParts'
     ].join('|');
   }
 
@@ -1199,7 +1229,8 @@ export class EventSubeventsListPopupComponent {
       view: (query.view as EventSubeventsListView | undefined) ?? this.view,
       anchorDate: query.anchorDate ?? null,
       rangeStart: query.rangeStart ?? null,
-      rangeEnd: query.rangeEnd ?? null
+      rangeEnd: query.rangeEnd ?? null,
+      participantOnly: this.participantOnly
     };
   }
 
