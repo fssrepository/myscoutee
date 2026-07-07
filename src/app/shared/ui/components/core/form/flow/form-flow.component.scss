@@ -400,6 +400,12 @@
     color: #c1262e;
   }
 
+  &.is-complete {
+    border-color: #8dcc9b;
+    background: #edf9f0;
+    color: #27733d;
+  }
+
   mat-icon {
     width: 17px;
     height: 17px;

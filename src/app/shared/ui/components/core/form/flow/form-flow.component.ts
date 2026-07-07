@@ -688,6 +688,17 @@ export class FormFlowComponent implements ControlValueAccessor, OnChanges, OnDes
     return step ? this.stepMissingRequiredCount(step) : this.totalMissingRequiredCount();
   }
 
+  protected currentPageRequiredComplete(): boolean {
+    if (this.isGroupedLayout()) {
+      return this.totalRequiredControlCount() > 0 && this.totalMissingRequiredCount() === 0;
+    }
+    const step = this.activeStep();
+    if (step) {
+      return this.stepRequiredControlCount(step) > 0 && this.stepMissingRequiredCount(step) === 0;
+    }
+    return this.totalRequiredControlCount() > 0 && this.totalMissingRequiredCount() === 0;
+  }
+
   protected isRequiredControlMissing(control: FormFlowControlModel): boolean {
     return this.isControlMissingRequired(control);
   }
@@ -825,6 +836,16 @@ export class FormFlowComponent implements ControlValueAccessor, OnChanges, OnDes
       title: '',
       steps: [step]
     }, this.formValue).length;
+  }
+
+  private stepRequiredControlCount(step: FormFlowStepModel): number {
+    return step.controls.filter(control =>
+      control.required === true && this.normalizePath(control.bind).length > 0
+    ).length;
+  }
+
+  private totalRequiredControlCount(): number {
+    return this.pages().reduce((total, step) => total + this.stepRequiredControlCount(step), 0);
   }
 
   private isControlMissingRequired(control: FormFlowControlModel): boolean {

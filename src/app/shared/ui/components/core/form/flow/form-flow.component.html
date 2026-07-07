@@ -99,11 +99,17 @@
     >
       @if (isCarouselLayout() && !activeStepHasCardHeader()) {
         <div class="form-flow__carousel-head">
-          <span class="form-flow__step-badge" [class.is-missing]="currentPageMissingRequired()">
+          <span
+            class="form-flow__step-badge"
+            [class.is-missing]="currentPageMissingRequired()"
+            [class.is-complete]="currentPageRequiredComplete()"
+          >
             <mat-icon>{{ activeStepIcon() }}</mat-icon>
             <span>{{ activeTitle() }}</span>
             @if (currentPageMissingRequired()) {
               <mat-icon>priority_high</mat-icon>
+            } @else if (currentPageRequiredComplete()) {
+              <mat-icon>check</mat-icon>
             }
           </span>
           <ng-container [ngTemplateOutlet]="progressControls"></ng-container>
