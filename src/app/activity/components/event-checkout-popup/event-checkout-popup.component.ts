@@ -1,6 +1,6 @@
 import { CommonModule } from '@angular/common';
 import { HttpErrorResponse } from '@angular/common/http';
-import { Component, HostListener, effect, inject } from '@angular/core';
+import { Component, HostListener, effect, inject, signal } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { MatButtonModule } from '@angular/material/button';
 import { MatDatepickerModule } from '@angular/material/datepicker';
@@ -18,10 +18,12 @@ import { EventsService } from '../../../shared/core/base/services/events.service
 import type { ActivityEventRecord } from '../../../shared/core/contracts/activity.interface';
 import { EventCheckoutDraftStore } from '../../../shared/ui/context/stores/event-checkout-draft.store';
 import { EventCheckoutDialogStore, type EventCheckoutDialogState } from '../../../shared/ui/context/stores/event-checkout-dialog.store';
+import { DialogStore } from '../../../shared/ui/context/stores/dialog.store';
 import { EventEditorPopupStore } from '../../../shared/ui/context/stores/event-editor-popup.store';
 import {
   type AppMenuItem,
-  type AppMenuItemSelectEvent
+  type AppMenuItemSelectEvent,
+  type AppMenuPalette
 } from '../../../shared/ui/components/core/menu';
 import { PopupComponent, type PopupModel } from '../../../shared/ui/components/core/popup';
 import { IndicatorComponent } from '../../../shared/ui/components/core/indicator';
@@ -65,6 +67,7 @@ export class EventCheckoutPopupComponent {
   private readonly eventEditorStore = inject(EventEditorPopupStore);
   private readonly eventsService = inject(EventsService);
   private readonly checkoutDraftStore = inject(EventCheckoutDraftStore);
+  private readonly confirmationDialogStore = inject(DialogStore);
 
   protected selectedSlotSourceId: string | null = null;
   protected selectedSlotDateValue: Date | null = null;
@@ -77,6 +80,8 @@ export class EventCheckoutPopupComponent {
 
   private renderedDialogId = 0;
   private checkoutReviewDialogId = 0;
+  private readonly checkoutReviewBodyLoading = signal(false);
+  private checkoutBusyActionId: string | null = null;
   private checkoutSessionId: string | null = null;
   private checkoutBasket: ActivityContracts.EventCheckoutBasket | null = null;
   private availableSlotsCache: ContractTypes.EventSlotOccurrenceDTO[] = [];
@@ -133,17 +138,32 @@ export class EventCheckoutPopupComponent {
   private async openCheckoutReviewEditor(dialog: EventCheckoutDialogState): Promise<void> {
     const dialogId = dialog.id;
     this.checkoutReviewDialogId = dialogId;
-    await this.loadRuntimeCheckoutBasket(dialog);
+    this.checkoutReviewBodyLoading.set(true);
+    this.openCheckoutReviewEditorShell(dialog);
     await this.eventEditorStore.ensureEventEditorPopupLoaded();
     if (this.dialogStore.dialog()?.id !== dialogId) {
       return;
     }
+    this.openCheckoutReviewEditorShell(dialog);
+    await this.loadRuntimeCheckoutBasket(dialog);
+    if (this.dialogStore.dialog()?.id !== dialogId) {
+      return;
+    }
+    this.checkoutReviewBodyLoading.set(false);
+    this.openCheckoutReviewEditorShell(dialog);
+  }
+
+  private openCheckoutReviewEditorShell(dialog: EventCheckoutDialogState): void {
     this.eventEditorStore.openCheckoutReview({
       ...dialog.record,
       checkoutBasket: this.checkoutBasket
     }, {
       title: this.sectionTitle(),
       subtitle: dialog.record.title,
+      checkoutPhase: this.paymentStep ? 'payment' : 'review',
+      hideSubEventsPanel: true,
+      hideSlotsPanel: true,
+      loading: () => this.checkoutReviewBodyLoading(),
       basketItems: () => this.checkoutBasketPresentationItems(),
       basketPricingSummaryRows: () => this.checkoutBasketPricingSummaryRows(),
       basketTotalAmount: () => this.totalAmount(),
@@ -168,6 +188,7 @@ export class EventCheckoutPopupComponent {
       return;
     }
     this.checkoutReviewDialogId = 0;
+    this.checkoutReviewBodyLoading.set(false);
     if (this.eventEditorStore.presentation().mode === 'checkout-review') {
       this.eventEditorStore.close();
     }
@@ -178,6 +199,7 @@ export class EventCheckoutPopupComponent {
       return;
     }
     this.checkoutReviewDialogId = 0;
+    this.checkoutReviewBodyLoading.set(false);
     this.dialogStore.close();
   }
 
@@ -356,14 +378,6 @@ export class EventCheckoutPopupComponent {
     return record?.policiesEnabled === true ? record.policies ?? [] : [];
   }
 
-  protected requiredPolicyIds(): string[] {
-    return this.policies().filter(item => item.required !== false).map(item => item.id);
-  }
-
-  protected missingRequiredPolicies(): boolean {
-    return this.requiredPolicyIds().some(id => !this.acceptedPolicyIds.has(id));
-  }
-
   protected toggleSlot(slotId: string): void {
     this.selectedSlotSourceId = this.selectedSlotSourceId === slotId ? null : slotId;
     this.invalidateCheckoutDraft();
@@ -393,7 +407,17 @@ export class EventCheckoutPopupComponent {
       this.acceptedPolicyIds.add(id);
     }
     if (this.checkoutSessionId) {
-      this.persistCheckoutDraft();
+      this.busy = true;
+      this.checkoutBusyActionId = null;
+      void this.persistCheckoutDraft()
+        .catch(error => {
+          const dialog = this.dialog();
+          this.errorMessage = this.resolveErrorMessage(error, dialog?.failureMessage ?? 'Unable to update checkout.');
+        })
+        .finally(() => {
+          this.busy = false;
+          this.checkoutBusyActionId = null;
+        });
     }
   }
 
@@ -441,21 +465,26 @@ export class EventCheckoutPopupComponent {
     return items;
   }
 
-  private checkoutBasketItems(): ActivityContracts.EventCheckoutBasketItem[] {
+  private checkoutBasketItems(
+    statusOverride?: ActivityContracts.EventCheckoutState,
+    resultStateOverride?: ActivityContracts.EventCheckoutResultState
+  ): ActivityContracts.EventCheckoutBasketItem[] {
     return this.checkoutBasketSnapshot()?.items.map(item => ({
       ...item,
+      status: statusOverride ?? item.status,
+      resultState: resultStateOverride ?? item.resultState ?? 'active',
       pricingSummaryRows: [...(item.pricingSummaryRows ?? [])]
     })) ?? [];
   }
 
   private activeCheckoutBasketItems(): ActivityContracts.EventCheckoutBasketItem[] {
     const activeItems = (this.checkoutBasket?.items ?? [])
-      .filter(item => item.status !== 'deleted');
+      .filter(item => !this.isInactiveCheckoutResultState(item.resultState));
     return activeItems.map(item => ({ ...item, pricingSummaryRows: [...(item.pricingSummaryRows ?? [])] }));
   }
 
   private checkoutBasketSnapshot(): ActivityContracts.EventCheckoutBasket | null {
-    if (this.checkoutBasket?.items?.some(item => item.status !== 'deleted')) {
+    if (this.checkoutBasket?.items?.some(item => !this.isInactiveCheckoutResultState(item.resultState))) {
       return this.checkoutBasket;
     }
     if (this.requiresSlotSelection()) {
@@ -464,6 +493,10 @@ export class EventCheckoutPopupComponent {
     const basket = this.buildRuntimeBasketFromCurrentSelection();
     this.checkoutBasket = basket;
     return basket;
+  }
+
+  private isInactiveCheckoutResultState(resultState: ActivityContracts.EventCheckoutResultState | string | null | undefined): boolean {
+    return resultState === 'deleted' || resultState === 'succeeded';
   }
 
   private buildBasketItemsFromCurrentSelection(): ActivityContracts.EventCheckoutBasketItem[] {
@@ -507,6 +540,7 @@ export class EventCheckoutPopupComponent {
         currency: eventPricing.currency,
         quantity: 1,
         status: state,
+        resultState: 'active',
         pricingSummaryRows: eventPricing.rows,
         checkoutSessionId: this.checkoutSessionId,
         createdAtIso: nowIso,
@@ -531,6 +565,7 @@ export class EventCheckoutPopupComponent {
         currency: pricing.currency,
         quantity: 1,
         status: state,
+        resultState: 'active',
         pricingSummaryRows: pricing.rows,
         checkoutSessionId: this.checkoutSessionId,
         createdAtIso: nowIso,
@@ -573,10 +608,11 @@ export class EventCheckoutPopupComponent {
     return !this.requiresSlotSelection()
       || this.availableSlots().length === 0
       || this.nextAvailableCheckoutBasketSlot() === null
-      || this.busy;
+      || this.busy
+      || this.checkoutReviewBodyLoading();
   }
 
-  private addCheckoutBasketSlot(event?: Event): void {
+  private async addCheckoutBasketSlot(event?: Event): Promise<void> {
     event?.preventDefault();
     event?.stopPropagation();
     if (this.checkoutBasketAddDisabled()) {
@@ -593,8 +629,19 @@ export class EventCheckoutPopupComponent {
       ...current,
       ...this.buildBasketItemsFromCurrentSelection().filter(item => !current.some(existing => existing.id === item.id))
     ];
+    this.resetCheckoutSubmissionForEdit();
     this.checkoutBasket = this.buildRuntimeBasketFromItems(nextItems);
-    this.persistCheckoutDraft();
+    this.busy = true;
+    this.checkoutBusyActionId = null;
+    this.errorMessage = '';
+    try {
+      await this.persistCheckoutDraft(true, null, 'draft');
+    } catch (error) {
+      this.errorMessage = this.resolveErrorMessage(error, 'Unable to update checkout basket.');
+    } finally {
+      this.busy = false;
+      this.checkoutBusyActionId = null;
+    }
   }
 
   private nextAvailableCheckoutBasketSlot(): ContractTypes.EventSlotOccurrenceDTO | null {
@@ -614,29 +661,55 @@ export class EventCheckoutPopupComponent {
     event.sourceEvent.preventDefault();
     event.sourceEvent.stopPropagation();
     if (event.id === 'remove') {
-      this.removeCheckoutBasketItem(item.id);
+      this.requestRemoveCheckoutBasketItem(item.id);
     }
   }
 
-  private removeCheckoutBasketItem(itemId: string): void {
+  private requestRemoveCheckoutBasketItem(itemId: string): void {
     const normalizedItemId = itemId.trim();
     if (!normalizedItemId) {
       return;
     }
-    const currentItems = this.activeCheckoutBasketItems();
-    const remainingItems = currentItems.filter(item => item.id !== normalizedItemId);
-    const dialog = this.dialog();
-    if (!dialog) {
+    const item = this.activeCheckoutBasketItems().find(current => current.id === normalizedItemId);
+    if (!item) {
       return;
     }
+    this.confirmationDialogStore.open({
+      title: 'Remove checkout item?',
+      message: item.label,
+      warningMessage: 'The item will be removed from the basket and from the runtime price summary.',
+      cancelLabel: 'Cancel',
+      confirmLabel: 'Eltávolítás',
+      busyConfirmLabel: 'Eltávolítás...',
+      confirmTone: 'danger',
+      confirmPalette: 'danger',
+      failureMessage: 'Unable to remove this checkout item.',
+      onConfirm: async () => this.removeCheckoutBasketItem(normalizedItemId)
+    });
+  }
+
+  private async removeCheckoutBasketItem(itemId: string): Promise<void> {
+    const normalizedItemId = itemId.trim();
+    const dialog = this.dialog();
+    if (!dialog || !normalizedItemId) {
+      return;
+    }
+    const remainingItems = this.activeCheckoutBasketItems()
+      .filter(item => item.id !== normalizedItemId);
+    this.resetCheckoutSubmissionForEdit();
     this.checkoutBasket = this.buildRuntimeBasketFromItems(remainingItems);
+    this.selectedSlotSourceId = remainingItems[0]?.slotSourceId ?? null;
+    const savedBasket = await this.eventsService.saveCheckoutBasket(this.buildCheckoutRequest({
+      checkoutState: 'draft',
+      pendingReason: null
+    }));
+    this.checkoutBasket = savedBasket ?? this.checkoutBasket;
     if (remainingItems.length === 0) {
       this.selectedSlotSourceId = null;
       this.clearCheckoutDraft();
       return;
     }
-    this.selectedSlotSourceId = remainingItems[0]?.slotSourceId ?? null;
-    this.persistCheckoutDraft();
+    await this.persistCheckoutDraft(false, null, 'draft');
   }
 
   private buildRuntimeBasketFromCurrentSelection(): ActivityContracts.EventCheckoutBasket | null {
@@ -875,16 +948,13 @@ export class EventCheckoutPopupComponent {
     if (!dialog) {
       return 'Continue';
     }
+    if (this.checkoutDecisionPending()) {
+      return this.checkoutDecisionPendingReason() === 'waitlist' ? 'Helyre vár' : 'Jóváhagyásra vár';
+    }
     if (this.paymentStep) {
-      return 'Checkout';
+      return 'Fizetés';
     }
-    if (this.shouldAwaitApprovalBeforePayment() || this.isWaitingListSelection()) {
-      return dialog.confirmLabel;
-    }
-    if (this.totalAmount() > 0) {
-      return dialog.confirmLabel;
-    }
-    return dialog.confirmLabel;
+    return 'Megerősítés';
   }
 
   protected busyLabel(): string {
@@ -897,35 +967,196 @@ export class EventCheckoutPopupComponent {
     }
     if (this.totalAmount() > 0) {
       return this.paymentStep
-        ? (this.paymentDisabled() ? dialog.busyConfirmLabel : 'Buying...')
-        : 'Checking out...';
+        ? 'Fizetés...'
+        : 'Megerősítés...';
     }
     return dialog.busyConfirmLabel;
   }
 
+  private checkoutActionsDisabled(): boolean {
+    return this.busy || this.dialog()?.loading === true || this.checkoutReviewBodyLoading();
+  }
+
+  private checkoutActionProgressState(actionId: string): 'loading' | null {
+    return this.checkoutBusyActionId === actionId ? 'loading' : null;
+  }
+
   protected checkoutFooterMenuItems(): readonly AppMenuItem<string>[] {
-    return [
+    const items: AppMenuItem<string>[] = [
       {
         id: 'checkout-secondary',
-        label: () => this.paymentStep ? 'Back' : 'Cancel',
+        label: () => this.paymentStep ? 'Vissza' : 'Mégse',
         layout: 'action',
         palette: 'neutral',
-        disabled: () => this.busy,
-        ariaLabel: () => this.paymentStep ? 'Back' : 'Cancel'
-      },
+        disabled: () => this.checkoutActionsDisabled(),
+        ariaLabel: () => this.paymentStep ? 'Vissza' : 'Mégse'
+      }
+    ];
+    if (this.showCheckoutLifecycleCancel()) {
+      items.push({
+        id: 'checkout-cancel-lifecycle',
+        label: () => this.checkoutLifecycleCancelLabel(),
+        layout: 'action',
+        palette: 'danger',
+        disabled: () => this.checkoutActionsDisabled(),
+        ariaLabel: () => this.checkoutLifecycleCancelLabel(),
+        progress: {
+          state: () => this.checkoutActionProgressState('checkout-cancel-lifecycle'),
+          shape: 'button'
+        }
+      });
+    }
+    items.push(
       {
         id: 'checkout-confirm',
-        label: () => this.busy ? this.busyLabel() : this.continueLabel(),
+        label: () => this.checkoutBusyActionId === 'checkout-confirm' ? this.busyLabel() : this.continueLabel(),
         layout: 'action',
-        palette: 'blue',
-        disabled: () => !this.canContinue() || this.busy,
-        ariaLabel: () => this.busy ? this.busyLabel() : this.continueLabel(),
+        palette: this.checkoutConfirmPalette(),
+        disabled: () => !this.canContinue() || this.checkoutActionsDisabled(),
+        ariaLabel: () => this.checkoutBusyActionId === 'checkout-confirm' ? this.busyLabel() : this.continueLabel(),
         progress: {
-          state: () => this.busy ? 'loading' : (!this.busy && this.errorMessage ? 'error' : null),
+          state: () => this.checkoutBusyActionId === 'checkout-confirm' ? 'loading' : (!this.busy && this.errorMessage ? 'error' : null),
           shape: 'button'
         }
       }
-    ];
+    );
+    return items;
+  }
+
+  private checkoutConfirmPalette(): AppMenuPalette {
+    if (!this.checkoutDecisionPending()) {
+      return 'blue';
+    }
+    return this.checkoutDecisionPendingReason() === 'waitlist' ? 'amber' : 'orange';
+  }
+
+  private showCheckoutLifecycleCancel(): boolean {
+    if (this.activeCheckoutBasketItems().some(item => item.status === 'pay')) {
+      return false;
+    }
+    return Boolean(this.checkoutSessionId)
+      || this.checkoutDecisionPending()
+      || this.checkoutBasketItems().length > 0
+      || this.totalAmount() > 0;
+  }
+
+  private checkoutLifecycleCancelLabel(): string {
+    if (this.checkoutDecisionPendingReason() === 'approval') {
+      return 'Cancel request';
+    }
+    if (this.checkoutDecisionPendingReason() === 'waitlist') {
+      return 'Leave waitlist';
+    }
+    if (this.paymentStep || this.checkoutSessionId) {
+      return 'Cancel payment';
+    }
+    return 'Cancel checkout';
+  }
+
+  private requestCancelCheckoutLifecycle(event?: Event): void {
+    event?.preventDefault();
+    event?.stopPropagation();
+    if (this.busy || !this.showCheckoutLifecycleCancel()) {
+      return;
+    }
+    this.confirmationDialogStore.open({
+      title: `${this.checkoutLifecycleCancelLabel()}?`,
+      message: this.dialog()?.record.title ?? 'Checkout',
+      warningMessage: 'The current checkout lifecycle will be closed and kept as a cancelled audit record.',
+      cancelLabel: 'Back',
+      confirmLabel: this.checkoutLifecycleCancelLabel(),
+      busyConfirmLabel: 'Cancelling...',
+      confirmTone: 'danger',
+      confirmPalette: 'danger',
+      failureMessage: 'Unable to cancel this checkout.',
+      onConfirm: async () => this.cancelCheckoutLifecycle()
+    });
+  }
+
+  private async cancelCheckoutLifecycle(): Promise<void> {
+    const dialog = this.dialog();
+    if (!dialog || this.activeCheckoutBasketItems().some(item => item.status === 'pay')) {
+      return;
+    }
+    const basket = this.checkoutBasketSnapshot();
+    if (basket?.items?.length) {
+      await this.eventsService.saveCheckoutBasket(this.buildCheckoutRequest({
+        checkoutState: 'cancelled',
+        resultState: 'succeeded',
+        pendingReason: null
+      }));
+    }
+    this.checkoutDraftStore.clear(dialog.userId, dialog.record.id);
+    this.paymentStep = false;
+    this.checkoutSessionId = null;
+    this.checkoutBasket = null;
+    this.closeCheckoutDialog();
+  }
+
+  private async persistCheckoutLifecycleState(
+    checkoutState: ActivityContracts.EventCheckoutState,
+    resultState: ActivityContracts.EventCheckoutResultState,
+    pendingReason: AppConstants.ActivityPendingReason = null
+  ): Promise<void> {
+    const basket = this.checkoutBasketSnapshot();
+    if (!basket?.items?.length) {
+      return;
+    }
+    await this.eventsService.saveCheckoutBasket(this.buildCheckoutRequest({
+      checkoutState,
+      resultState,
+      pendingReason
+    }));
+  }
+
+  private async markCheckoutFailed(): Promise<void> {
+    try {
+      await this.persistCheckoutLifecycleState(
+        this.currentCheckoutState(this.totalAmount()),
+        'failed',
+        this.checkoutDecisionPendingReason()
+      );
+    } catch {
+      // Keep the local draft visible; the next successful sync can repair the runtime state.
+    }
+  }
+
+  private successfulCheckoutLifecycleState(paymentSessionId: string | null): ActivityContracts.EventCheckoutState {
+    if (paymentSessionId || this.checkoutSessionId || this.totalAmount() > 0) {
+      return 'pay';
+    }
+    if (this.isApprovedAfterOwnerReview()) {
+      return 'approved';
+    }
+    return 'confirmed';
+  }
+
+  private resetCheckoutSubmissionForEdit(): void {
+    const dialog = this.dialog();
+    if (this.activeCheckoutBasketItems().some(item => item.status === 'pay')) {
+      return;
+    }
+    this.paymentStep = false;
+    this.checkoutSessionId = null;
+    if (dialog) {
+      this.checkoutDraftStore.clear(dialog.userId, dialog.record.id);
+    }
+    if (!this.checkoutBasket) {
+      return;
+    }
+    this.checkoutBasket = {
+      ...this.checkoutBasket,
+      status: 'draft',
+      checkoutSessionId: null,
+      items: this.checkoutBasket.items.map(item => this.isInactiveCheckoutResultState(item.resultState)
+        ? item
+        : {
+            ...item,
+            status: 'draft',
+            resultState: 'active',
+            checkoutSessionId: null
+          })
+    };
   }
 
   protected onCheckoutActionMenuSelect(event: AppMenuItemSelectEvent<string>): void {
@@ -935,6 +1166,10 @@ export class EventCheckoutPopupComponent {
       } else {
         this.close(event.sourceEvent);
       }
+      return;
+    }
+    if (event.id === 'checkout-cancel-lifecycle') {
+      this.requestCancelCheckoutLifecycle(event.sourceEvent);
       return;
     }
     if (event.id === 'checkout-confirm') {
@@ -947,46 +1182,86 @@ export class EventCheckoutPopupComponent {
   }
 
   protected canContinue(): boolean {
-    if (this.busy || this.dialog()?.loading) {
+    if (this.busy || this.dialog()?.loading || this.checkoutReviewBodyLoading()) {
+      return false;
+    }
+    if (this.checkoutDecisionPending()) {
       return false;
     }
     if (this.requiresSlotSelection() && !this.selectedSlot() && this.checkoutBasketItems().length === 0) {
       return false;
     }
-    if (this.missingRequiredPolicies()) {
-      return false;
-    }
     return true;
   }
 
-  private currentCheckoutState(totalAmount?: number): ActivityContracts.EventCheckoutState {
-    if (this.paymentStep || this.checkoutSessionId) {
-      return 'confirmed';
+  private currentCheckoutState(
+    _totalAmount?: number,
+    pendingReasonOverride?: AppConstants.ActivityPendingReason
+  ): ActivityContracts.EventCheckoutState {
+    if (this.activeCheckoutBasketItems().some(item => item.status === 'pay')) {
+      return 'pay';
     }
-    const approvalPending = typeof totalAmount === 'number'
-      ? this.shouldAwaitApprovalBeforePaymentForAmount(totalAmount)
-      : this.hasPendingApprovalGate();
-    if (approvalPending || this.isWaitingListSelection()) {
+    const pendingReason = pendingReasonOverride === undefined
+      ? this.checkoutDecisionPendingReason()
+      : pendingReasonOverride;
+    if (pendingReason === 'approval') {
+      return 'approval-pending';
+    }
+    if (this.isApprovedAfterOwnerReview()) {
+      return 'approved';
+    }
+    if (this.paymentStep || this.checkoutSessionId || pendingReason === 'waitlist') {
       return 'confirmed';
     }
     return 'draft';
+  }
+
+  private isApprovedAfterOwnerReview(): boolean {
+    const dialog = this.dialog();
+    if (!dialog?.approvalGranted) {
+      return false;
+    }
+    const draft = this.checkoutDraftStore.read(dialog.userId, dialog.record.id);
+    return draft?.pendingReason === 'approval'
+      || draft?.checkoutState === 'approval-pending'
+      || draft?.checkoutState === 'approved'
+      || this.checkoutBasket?.status === 'approval-pending'
+      || this.checkoutBasket?.status === 'approved';
   }
 
   protected shouldAwaitApprovalBeforePayment(): boolean {
     return this.shouldAwaitApprovalBeforePaymentForAmount(this.totalAmount());
   }
 
-  private shouldAwaitApprovalBeforePaymentForAmount(totalAmount: number): boolean {
+  private shouldAwaitApprovalBeforePaymentForAmount(_totalAmount: number): boolean {
     const dialog = this.dialog();
     if (!dialog) {
       return false;
     }
-    return dialog.requiresApprovalBeforePayment && !dialog.approvalGranted && totalAmount > 0;
+    return dialog.requiresApprovalBeforePayment && !dialog.approvalGranted;
   }
 
-  private hasPendingApprovalGate(): boolean {
+  private checkoutDecisionPending(): boolean {
+    return this.checkoutDecisionPendingReason() !== null;
+  }
+
+  private pendingReasonForJoinRequest(): AppConstants.ActivityPendingReason {
+    if (this.isWaitingListSelection()) {
+      return 'waitlist';
+    }
+    return this.shouldAwaitApprovalBeforePayment() ? 'approval' : null;
+  }
+
+  private checkoutDecisionPendingReason(): AppConstants.ActivityPendingReason {
     const dialog = this.dialog();
-    return !!dialog && dialog.requiresApprovalBeforePayment && !dialog.approvalGranted;
+    if (!dialog || dialog.approvalGranted) {
+      return null;
+    }
+    const draft = this.checkoutDraftStore.read(dialog.userId, dialog.record.id);
+    if (draft?.pendingReason === 'approval' || draft?.pendingReason === 'waitlist') {
+      return draft.pendingReason;
+    }
+    return null;
   }
 
   protected isWaitingListSelection(): boolean {
@@ -1029,38 +1304,47 @@ export class EventCheckoutPopupComponent {
     }
     if (!this.paymentStep && (this.shouldAwaitApprovalBeforePayment() || this.isWaitingListSelection())) {
       this.busy = true;
+      this.checkoutBusyActionId = 'checkout-confirm';
       this.errorMessage = '';
       try {
-        await Promise.resolve(dialog.onSubmit(this.buildSelection(null, false)));
-        this.persistCheckoutDraft();
+        const pendingReason = this.pendingReasonForJoinRequest();
+        const checkoutState: ActivityContracts.EventCheckoutState = pendingReason === 'approval'
+          ? 'approval-pending'
+          : 'confirmed';
+        await Promise.resolve(dialog.onSubmit(this.buildSelection(null, false, {
+          checkoutState,
+          pendingReason
+        })));
+        await this.persistCheckoutDraft(true, pendingReason, checkoutState);
         this.closeCheckoutDialog();
       } catch (error) {
         this.errorMessage = this.resolveErrorMessage(error, dialog.failureMessage);
       } finally {
         this.busy = false;
+        this.checkoutBusyActionId = null;
       }
       return;
     }
     if (!this.paymentStep && this.totalAmount() > 0) {
       this.busy = true;
+      this.checkoutBusyActionId = 'checkout-confirm';
       this.errorMessage = '';
       try {
-        const session = await this.eventsService.createCheckoutSession(this.buildCheckoutRequest());
-        if (!session?.id) {
-          throw new Error('Unable to start checkout.');
-        }
-        this.checkoutSessionId = session.id;
+        this.checkoutSessionId = null;
+        await this.persistCheckoutDraft(true, null, 'confirmed');
         this.paymentStep = true;
-        this.persistCheckoutDraft(false);
+        this.openCheckoutReviewEditorShell(dialog);
       } catch (error) {
-        this.errorMessage = this.resolveErrorMessage(error, 'Unable to start checkout.');
+        this.errorMessage = this.resolveErrorMessage(error, dialog.failureMessage);
       } finally {
         this.busy = false;
+        this.checkoutBusyActionId = null;
       }
       return;
     }
 
     this.busy = true;
+    this.checkoutBusyActionId = 'checkout-confirm';
     this.errorMessage = '';
     try {
       let paymentSessionId = this.checkoutSessionId;
@@ -1083,15 +1367,22 @@ export class EventCheckoutPopupComponent {
         this.checkoutSessionId = paymentSessionId;
       }
       await Promise.resolve(dialog.onSubmit(this.buildSelection(paymentSessionId)));
+      await this.persistCheckoutLifecycleState(
+        this.successfulCheckoutLifecycleState(paymentSessionId),
+        'succeeded',
+        null
+      );
       this.clearCheckoutDraft();
       this.closeCheckoutDialog();
     } catch (error) {
       if (await this.recoverStalePaymentSession(error)) {
         return;
       }
+      await this.markCheckoutFailed();
       this.errorMessage = this.resolveErrorMessage(error, dialog.failureMessage);
     } finally {
       this.busy = false;
+      this.checkoutBusyActionId = null;
     }
   }
 
@@ -1100,7 +1391,11 @@ export class EventCheckoutPopupComponent {
     if (this.busy) {
       return;
     }
-    this.paymentStep = false;
+    this.releaseUnpaidPaymentSession();
+    const dialog = this.dialog();
+    if (dialog) {
+      this.openCheckoutReviewEditorShell(dialog);
+    }
     this.errorMessage = '';
   }
 
@@ -1159,6 +1454,7 @@ export class EventCheckoutPopupComponent {
       }
       : null;
     this.busy = false;
+    this.checkoutBusyActionId = null;
     this.errorMessage = '';
   }
 
@@ -1203,40 +1499,60 @@ export class EventCheckoutPopupComponent {
     this.checkoutSessionId = null;
     this.checkoutBasket = null;
     this.busy = false;
+    this.checkoutBusyActionId = null;
     this.errorMessage = '';
   }
 
   private buildSelection(
     paymentSessionId: string | null,
-    bookingConfirmed = true
+    bookingConfirmed = true,
+    options: {
+      checkoutState?: ActivityContracts.EventCheckoutState;
+      resultState?: ActivityContracts.EventCheckoutResultState;
+      pendingReason?: AppConstants.ActivityPendingReason;
+    } = {}
   ): ActivityContracts.EventCheckoutSelection {
     const dialog = this.dialog();
     if (!dialog) {
       throw new Error('Checkout session is not available.');
     }
+    const pendingReason = options.pendingReason === undefined
+      ? (bookingConfirmed === false ? this.pendingReasonForJoinRequest() : null)
+      : options.pendingReason;
+    const checkoutState = options.checkoutState
+      ?? this.currentCheckoutState(this.totalAmount(), pendingReason);
     return {
       sourceId: dialog.record.id,
       slotSourceId: this.selectedSlotSourceId,
       optionalSubEventIds: [...this.selectedOptionalSubEventIds],
       assetSelections: [],
       acceptedPolicyIds: [...this.acceptedPolicyIds],
-      basketItems: this.checkoutBasketItems(),
+      basketItems: this.checkoutBasketItems(checkoutState, options.resultState),
       pricingSummaryRows: this.checkoutBasketPricingSummaryRows(),
-      checkoutState: this.currentCheckoutState(this.totalAmount()),
+      checkoutState,
       lineItems: this.lineItems(),
       totalAmount: this.totalAmount(),
       currency: this.currency(),
       paymentSessionId,
       bookingConfirmed,
-      pendingReason: this.isWaitingListSelection() ? 'waitlist' : (this.shouldAwaitApprovalBeforePayment() ? 'approval' : null)
+      pendingReason
     };
   }
 
-  private buildCheckoutRequest(): ActivityContracts.EventCheckoutRequest {
+  private buildCheckoutRequest(options: {
+    checkoutState?: ActivityContracts.EventCheckoutState;
+    resultState?: ActivityContracts.EventCheckoutResultState;
+    pendingReason?: AppConstants.ActivityPendingReason;
+  } = {}): ActivityContracts.EventCheckoutRequest {
     const dialog = this.dialog();
     if (!dialog) {
       throw new Error('Checkout session is not available.');
     }
+    const pendingReason = options.pendingReason === undefined
+      ? this.checkoutDecisionPendingReason()
+      : options.pendingReason;
+    const checkoutState = options.checkoutState
+      ?? this.currentCheckoutState(this.totalAmount(), pendingReason);
     return {
       userId: dialog.userId,
       sourceId: dialog.record.id,
@@ -1244,13 +1560,13 @@ export class EventCheckoutPopupComponent {
       optionalSubEventIds: [...this.selectedOptionalSubEventIds],
       assetSelections: [],
       acceptedPolicyIds: [...this.acceptedPolicyIds],
-      basketItems: this.checkoutBasketItems(),
+      basketItems: this.checkoutBasketItems(checkoutState, options.resultState),
       pricingSummaryRows: this.checkoutBasketPricingSummaryRows(),
-      checkoutState: this.currentCheckoutState(this.totalAmount()),
+      checkoutState,
       lineItems: this.lineItems(),
       totalAmount: this.totalAmount(),
       currency: this.currency(),
-      pendingReason: this.isWaitingListSelection() ? 'waitlist' : (this.shouldAwaitApprovalBeforePayment() ? 'approval' : null)
+      pendingReason
     };
   }
 
@@ -1562,7 +1878,7 @@ export class EventCheckoutPopupComponent {
       }
       this.checkoutSessionId = session.id;
       this.paymentStep = true;
-      this.persistCheckoutDraft(false);
+      await this.persistCheckoutDraft(false);
       this.errorMessage = 'Checkout details changed. A fresh payment session is ready.';
       return true;
     } catch (recoveryError) {
@@ -1613,10 +1929,18 @@ export class EventCheckoutPopupComponent {
     return `${value.getFullYear()}-${AppUtils.pad2(value.getMonth() + 1)}-${AppUtils.pad2(value.getDate())}`;
   }
 
-  private persistCheckoutDraft(syncRuntimeBasket = true): void {
+  private async persistCheckoutDraft(
+    syncRuntimeBasket = true,
+    pendingReasonOverride: AppConstants.ActivityPendingReason | undefined = undefined,
+    checkoutStateOverride?: ActivityContracts.EventCheckoutState
+  ): Promise<void> {
     const dialog = this.dialog();
-    const basketItems = this.checkoutBasketItems();
-    if (!dialog || (basketItems.length === 0 && this.totalAmount() <= 0 && !this.isWaitingListSelection())) {
+    const pendingReason = pendingReasonOverride === undefined
+      ? this.checkoutDecisionPendingReason()
+      : pendingReasonOverride;
+    const checkoutState = checkoutStateOverride ?? this.currentCheckoutState(this.totalAmount(), pendingReason);
+    const basketItems = this.checkoutBasketItems(checkoutState);
+    if (!dialog || (basketItems.length === 0 && this.totalAmount() <= 0 && !pendingReason)) {
       return;
     }
     const basket = this.checkoutBasketSnapshot();
@@ -1631,28 +1955,34 @@ export class EventCheckoutPopupComponent {
       acceptedPolicyIds: [...this.acceptedPolicyIds],
       basketItems,
       pricingSummaryRows: this.checkoutBasketPricingSummaryRows(),
-      checkoutState: this.currentCheckoutState(this.totalAmount()),
+      checkoutState,
       lineItems: this.lineItems(),
       totalAmount: this.totalAmount(),
       currency: this.currency(),
       checkoutSessionId: this.checkoutSessionId,
       expiresAtIso: basket?.expiresAtIso ?? null,
-      pendingReason: this.isWaitingListSelection() ? 'waitlist' : (this.shouldAwaitApprovalBeforePayment() ? 'approval' : null),
+      pendingReason,
       updatedAtMs: Date.now()
     });
     if (syncRuntimeBasket) {
-      void this.syncRuntimeCheckoutBasket();
+      await this.syncRuntimeCheckoutBasket(checkoutState, pendingReason);
     }
   }
 
-  private async syncRuntimeCheckoutBasket(): Promise<void> {
+  private async syncRuntimeCheckoutBasket(
+    checkoutStateOverride?: ActivityContracts.EventCheckoutState,
+    pendingReasonOverride: AppConstants.ActivityPendingReason | undefined = undefined
+  ): Promise<void> {
     const dialog = this.dialog();
     const basketItems = this.checkoutBasketItems();
     if (!dialog || basketItems.length === 0) {
       return;
     }
     try {
-      const basket = await this.eventsService.saveCheckoutBasket(this.buildCheckoutRequest());
+      const basket = await this.eventsService.saveCheckoutBasket(this.buildCheckoutRequest({
+        checkoutState: checkoutStateOverride,
+        pendingReason: pendingReasonOverride
+      }));
       if (basket) {
         this.checkoutBasket = basket;
       }
@@ -1669,6 +1999,30 @@ export class EventCheckoutPopupComponent {
     this.checkoutDraftStore.clear(dialog.userId, dialog.record.id);
     this.checkoutSessionId = null;
     this.checkoutBasket = null;
+  }
+
+  private releaseUnpaidPaymentSession(): void {
+    const paidItems = this.activeCheckoutBasketItems().some(item => item.status === 'pay');
+    if (paidItems) {
+      return;
+    }
+    const hadSession = this.paymentStep || Boolean(this.checkoutSessionId);
+    this.paymentStep = false;
+    this.checkoutSessionId = null;
+    if (!hadSession || !this.checkoutBasket) {
+      return;
+    }
+    const nextStatus = this.currentCheckoutState(this.checkoutBasket.totalAmount);
+    this.checkoutBasket = {
+      ...this.checkoutBasket,
+      status: nextStatus,
+      checkoutSessionId: null,
+      items: this.checkoutBasket.items.map(item => ({
+        ...item,
+        status: item.status === 'deleted' ? 'deleted' : nextStatus,
+        checkoutSessionId: null
+      }))
+    };
   }
 
   private invalidateCheckoutDraft(): void {

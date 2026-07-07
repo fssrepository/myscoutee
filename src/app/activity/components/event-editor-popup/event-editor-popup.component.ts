@@ -41,6 +41,7 @@ import {
 import {
   APP_STATIC_DATA
 } from '../../../shared/app-static-data';
+import { environment } from '../../../../environments/environment';
 import {
   AppUtils
 } from '../../../shared/app-utils';
@@ -90,6 +91,10 @@ import {
   type EventBasketInputPricingSummaryRow
 } from './event-basket-input';
 import {
+  EventPaymentInputComponent,
+  type EventPaymentInputItem
+} from './event-payment-input';
+import {
   EventSubeventDefinitionsPanelComponent
 } from '../event-subevent-definitions-panel';
 import type * as ActivityContracts from '../../../shared/core/contracts/activity.interface';
@@ -100,7 +105,7 @@ import { ActivityStore } from '../../../shared/ui/context/stores/activity.store'
 import { MemberMenuStore } from '../../../shared/ui/context/stores/member-menu.store';
 type EventEditorMenuContext =
   | { menu: 'visibility'; visibility: AppConstants.EventVisibility }
-  | { menu: 'event-intel'; action: 'toggle-blind-mode' | 'toggle-auto-inviter' | 'toggle-ticketing' }
+  | { menu: 'event-intel'; action: 'toggle-blind-mode' | 'toggle-auto-inviter' | 'toggle-ticketing' | 'toggle-approval-required' }
   | { menu: 'topics'; topic: string }
   | { menu: 'checkout-draft'; sourceId: string }
   | { menu: 'checkout-review-action'; actionId: string }
@@ -127,6 +132,7 @@ interface SlotOverrideEditorState {
     AppMenuComponent,
     DateInputComponent,
     EventBasketInputComponent,
+    EventPaymentInputComponent,
     ImageCarouselComponent,
     PoliciesInputComponent,
     EventSlotsInputComponent,
@@ -384,7 +390,7 @@ export class EventEditorPopupComponent implements OnInit, OnDestroy {
 
   private eventEditorPopupHeaderControls(): readonly PopupControl<EventEditorMenuContext>[] {
     const controls: PopupControl<EventEditorMenuContext>[] = [];
-    if (this.eventVisibilityReady()) {
+    if (this.eventVisibilityReady() && !this.eventEditorBodyLoading()) {
       controls.push({
         kind: 'menu',
         id: 'event-editor-visibility',
@@ -393,6 +399,10 @@ export class EventEditorPopupComponent implements OnInit, OnDestroy {
         items: this.eventVisibilityMenuItems(),
         mobileBreakpointPx: 900
       });
+    }
+    const checkoutDraft = this.eventEditorCheckoutDraft();
+    if (this.checkoutReviewMode()) {
+      return controls;
     }
     if (this.showEventEditorSaveAction()) {
       controls.push({
@@ -403,7 +413,6 @@ export class EventEditorPopupComponent implements OnInit, OnDestroy {
         closeOnSelect: false
       });
     }
-    const checkoutDraft = this.eventEditorCheckoutDraft();
     if (checkoutDraft) {
       controls.push({
         kind: 'menu',
@@ -427,6 +436,15 @@ export class EventEditorPopupComponent implements OnInit, OnDestroy {
 
   protected checkoutReviewMode(): boolean {
     return this.eventEditorStore.presentation().mode === 'checkout-review';
+  }
+
+  protected checkoutPaymentPhase(): boolean {
+    return this.checkoutReviewMode() && this.eventEditorStore.presentation().checkoutPhase === 'payment';
+  }
+
+  protected eventEditorBodyLoading(): boolean {
+    return this.isLoadingEventData()
+      || this.resolvePresentationValue(this.eventEditorStore.presentation().loading, false) === true;
   }
 
   protected showSubEventDefinitionsPanel(): boolean {
@@ -454,6 +472,54 @@ export class EventEditorPopupComponent implements OnInit, OnDestroy {
       status: item.status ?? null,
       pricingSummaryRows: (item.pricingSummaryRows ?? []).map(row => ({ ...row }))
     }));
+  }
+
+  protected checkoutPaymentInputItems(): readonly EventPaymentInputItem[] {
+    return this.checkoutBasketInputItems().map(item => ({
+      id: item.id,
+      title: item.title,
+      meta: item.meta,
+      detail: item.detail ?? null,
+      amount: item.amount,
+      currency: item.currency,
+      quantity: item.quantity ?? 1
+    }));
+  }
+
+  protected checkoutPaymentEventTimeframe(): string {
+    return `${this.eventDetailDTO.timeframe ?? ''}`.trim()
+      || this.formatCheckoutDateRange(this.eventDetailDTO.dateRange.startAt, this.eventDetailDTO.dateRange.endAt);
+  }
+
+  protected checkoutPaymentIntegrationEnabled(): boolean {
+    return environment.paymentIntegrationEnabled;
+  }
+
+  private formatCheckoutDateRange(startAtIso: string | null | undefined, endAtIso: string | null | undefined): string {
+    const start = AppUtils.isoLocalDateTimeToDate(`${startAtIso ?? ''}`.trim());
+    const end = AppUtils.isoLocalDateTimeToDate(`${endAtIso ?? ''}`.trim());
+    if (!start && !end) {
+      return '';
+    }
+    const dateFormatter = new Intl.DateTimeFormat('en-US', {
+      month: 'short',
+      day: 'numeric',
+      year: 'numeric'
+    });
+    const timeFormatter = new Intl.DateTimeFormat('en-US', {
+      hour: 'numeric',
+      minute: '2-digit'
+    });
+    if (start && end) {
+      const sameDate = start.getFullYear() === end.getFullYear()
+        && start.getMonth() === end.getMonth()
+        && start.getDate() === end.getDate();
+      return sameDate
+        ? `${dateFormatter.format(start)} · ${timeFormatter.format(start)} - ${timeFormatter.format(end)}`
+        : `${dateFormatter.format(start)}, ${timeFormatter.format(start)} - ${dateFormatter.format(end)}, ${timeFormatter.format(end)}`;
+    }
+    const value = start ?? end;
+    return value ? `${dateFormatter.format(value)} · ${timeFormatter.format(value)}` : '';
   }
 
   protected checkoutBasketPricingSummaryRows(): readonly EventBasketInputPricingSummaryRow[] {
@@ -597,6 +663,7 @@ export class EventEditorPopupComponent implements OnInit, OnDestroy {
       autoInviter: false,
       frequency: 'One-time',
       ticketing: false,
+      approvalRequired: false,
       pricing: PricingBuilder.createDefaultPricingConfig('event'),
       policiesEnabled: false,
       policies: [],
@@ -815,6 +882,19 @@ export class EventEditorPopupComponent implements OnInit, OnDestroy {
         disabled: this.eventStructureReadOnly(),
         closeOnSelect: false,
         context: { menu: 'event-intel', action: 'toggle-ticketing' }
+      },
+      {
+        id: 'event-approval-required',
+        label: this.eventApprovalRequiredLabel(this.eventDetailDTO.approvalRequired),
+        detail: this.eventApprovalRequiredDescription(this.eventDetailDTO.approvalRequired),
+        icon: this.eventApprovalRequiredIcon(this.eventDetailDTO.approvalRequired),
+        kind: 'toggle',
+        layout: 'big',
+        active: this.eventDetailDTO.approvalRequired,
+        checked: this.eventDetailDTO.approvalRequired,
+        palette: this.eventDetailDTO.approvalRequired ? 'orange' : 'green',
+        closeOnSelect: false,
+        context: { menu: 'event-intel', action: 'toggle-approval-required' }
       }
     ];
   }
@@ -908,6 +988,20 @@ export class EventEditorPopupComponent implements OnInit, OnDestroy {
       : 'No QR check-in scanning.';
   }
 
+  eventApprovalRequiredIcon(enabled: boolean): string {
+    return enabled ? 'pending_actions' : 'event_available';
+  }
+
+  eventApprovalRequiredLabel(enabled: boolean): string {
+    return enabled ? 'Auto approve Off' : 'Auto approve On';
+  }
+
+  eventApprovalRequiredDescription(enabled: boolean): string {
+    return enabled
+      ? 'Join requests wait for event admin approval.'
+      : 'Confirmed bookings can continue without admin approval.';
+  }
+
   protected eventEditorCheckoutDraft(): EventCheckoutDraft | null {
     this.eventCheckoutDraftStore.drafts();
     if (!this.eventEditorStore.readOnly()) {
@@ -968,6 +1062,10 @@ export class EventEditorPopupComponent implements OnInit, OnDestroy {
       }
       if (event.context.action === 'toggle-auto-inviter') {
         this.toggleEventAutoInviter(event.sourceEvent);
+        return;
+      }
+      if (event.context.action === 'toggle-approval-required') {
+        this.toggleEventApprovalRequired(event.sourceEvent);
         return;
       }
       this.toggleEventTicketing(event.sourceEvent);
@@ -1602,6 +1700,14 @@ export class EventEditorPopupComponent implements OnInit, OnDestroy {
       return;
     }
     this.eventDetailDTO.ticketing = !this.eventDetailDTO.ticketing;
+  }
+
+  toggleEventApprovalRequired(event: Event): void {
+    event.preventDefault();
+    if (this.eventStructureReadOnly()) {
+      return;
+    }
+    this.eventDetailDTO.approvalRequired = !this.eventDetailDTO.approvalRequired;
   }
 
   onEventLocationChange(value: string): void {

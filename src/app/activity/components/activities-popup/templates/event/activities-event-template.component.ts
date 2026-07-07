@@ -782,6 +782,7 @@ export class ActivitiesEventsController {
       autoInviter: source?.autoInviter === true,
       frequency: source?.frequency ?? 'One-time',
       ticketing: source?.ticketing === true,
+      approvalRequired: source?.approvalRequired === true,
       pricing: source?.pricing ?? null,
       policiesEnabled: source?.policiesEnabled === true,
       policies: Array.isArray(source?.policies) ? source.policies.map((item: ContractTypes.EventPolicyDTO) => ({ ...item })) : [],
@@ -1393,6 +1394,7 @@ export class ActivitiesEventsController {
         autoInviter: record?.autoInviter ?? relatedSource.autoInviter,
         frequency: record?.frequency ?? relatedSource.frequency,
         ticketing: record?.ticketing ?? relatedSource.ticketing,
+        approvalRequired: record?.approvalRequired ?? relatedSource.approvalRequired,
         pricing: record?.pricing ?? relatedSource.pricing,
         policiesEnabled: record?.policiesEnabled ?? relatedSource.policiesEnabled ?? false,
         policies: Array.isArray(record?.policies)

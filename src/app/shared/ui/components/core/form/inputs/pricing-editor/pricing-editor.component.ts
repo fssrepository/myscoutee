@@ -319,23 +319,43 @@ export class PricingEditorInputComponent implements OnChanges, DoCheck, OnDestro
   }
 
   protected showDemandSection(): boolean {
-    return true;
+    return this.showToggleableSection(this.workingPricing.demandRulesEnabled);
   }
 
   protected showTimeSection(): boolean {
-    return true;
+    return this.showToggleableSection(this.workingPricing.timeRulesEnabled);
   }
 
   protected showSlotSection(): boolean {
-    return this.resolvedConfig.allowSlotFeatures;
+    return this.resolvedConfig.allowSlotFeatures
+      && this.showToggleableSection(this.workingPricing.slotPricingEnabled);
   }
 
   protected showQuantitySection(): boolean {
-    return this.resolvedConfig.context === 'event';
+    return this.resolvedConfig.context === 'event'
+      && this.showToggleableSection(this.workingPricing.quantityRulesEnabled);
   }
 
   protected showCancellationSection(): boolean {
-    return this.resolvedConfig.context === 'event' || this.resolvedConfig.context === 'asset';
+    return (this.resolvedConfig.context === 'event' || this.resolvedConfig.context === 'asset')
+      && this.showToggleableSection(this.workingPricing.cancellationPolicy.enabled);
+  }
+
+  protected showAudienceSection(): boolean {
+    return this.resolvedConfig.showAudienceSection
+      && this.showToggleableSection(this.workingPricing.audience.enabled);
+  }
+
+  protected showPricingPanel(): boolean {
+    return !this.editorLocked() || this.isPricingEnabled();
+  }
+
+  protected showToggleControl(): boolean {
+    return !this.editorLocked();
+  }
+
+  private showToggleableSection(enabled: boolean): boolean {
+    return !this.editorLocked() || enabled;
   }
 
   protected isDynamicMode(): boolean {

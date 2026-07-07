@@ -1204,8 +1204,11 @@
 :host(.app-menu-host--inline-row-big) .app-menu__button-row-detail > span:first-child {
   min-width: 0;
   overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
+  display: -webkit-box;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+  line-clamp: 2;
+  white-space: normal;
 }
 
 :host(.app-menu-host--inline-row-big) .app-menu__button-row-trailing {

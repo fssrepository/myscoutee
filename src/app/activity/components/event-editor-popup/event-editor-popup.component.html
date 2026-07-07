@@ -1,13 +1,39 @@
 @if (eventEditorStore.isOpenBoolean()) {
 <app-popup [model]="eventEditorPopupModel()" [zIndex]="eventEditorPopupZIndex()">
     <div class="popup-body" [class.popup-panel-event-editor-readonly]="eventStructureReadOnly()">
-      @if (isLoadingEventData()) {
+      @if (eventEditorBodyLoading()) {
       <div class="popup-loading-overlay" aria-busy="true">
         <app-indicator
           kind="load-ring"
           state="loading"
         ></app-indicator>
       </div>
+      } @else {
+      @if (checkoutPaymentPhase()) {
+      <section class="editor-list-card editor-list-card--payment">
+        <div class="event-checkout-payment-stack">
+          <app-event-basket-input
+            title="Basket"
+            subtitle="Fizetés tárgya"
+            [contextTitle]="eventDetailDTO.title"
+            [contextMeta]="eventDetailDTO.location"
+            [contextDetail]="checkoutPaymentEventTimeframe()"
+            [items]="checkoutBasketInputItems()"
+            [totalAmount]="checkoutBasketTotalAmount()"
+            [currency]="checkoutBasketCurrency()"
+            [readOnly]="true"
+            [showAdd]="false"
+            [showItemMenu]="false"
+          ></app-event-basket-input>
+          <app-pricing-editor-input class="event-pricing-field" [(ngModel)]="eventDetailDTO.pricing"
+            [config]="eventPricingEditorConfig" [readOnly]="true" [disabled]="true"></app-pricing-editor-input>
+          <app-event-payment-input
+            [totalAmount]="checkoutBasketTotalAmount()"
+            [currency]="checkoutBasketCurrency()"
+            [paymentIntegrationEnabled]="checkoutPaymentIntegrationEnabled()"
+          ></app-event-payment-input>
+        </div>
+      </section>
       } @else {
       <section class="editor-list-card">
         <div class="experience-form-panel" [ngClass]="eventVisibilityClass(eventDetailDTO.visibility)">
@@ -123,6 +149,7 @@
           </div>
         </div>
       </section>
+      }
       }
     </div>
     @if (checkoutReviewMode() && checkoutReviewFooterMenuItems().length > 0) {

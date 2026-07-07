@@ -145,6 +145,10 @@ export class EventSubeventDefinitionsPanelComponent implements ControlValueAcces
     return !this.readOnly && !this.disabled;
   }
 
+  protected shouldShowPanel(): boolean {
+    return this.canEdit() || this.enabled;
+  }
+
   protected canConfigureDefinitions(): boolean {
     return this.canEdit() && this.enabled;
   }

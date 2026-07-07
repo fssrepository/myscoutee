@@ -4,6 +4,7 @@ import { Subject } from 'rxjs';
 import type { AppMenuItem, AppMenuItemSelectEvent } from '../../components/core/menu';
 
 export type EventEditorPresentationMode = 'default' | 'checkout-review';
+export type EventEditorCheckoutPhase = 'review' | 'payment';
 export type EventEditorPresentationValue<TValue> = TValue | (() => TValue);
 
 export interface EventEditorBasketPricingSummaryRow {
@@ -29,8 +30,10 @@ export interface EventEditorBasketPresentationItem {
 
 export interface EventEditorPresentationOptions {
   mode?: EventEditorPresentationMode;
+  checkoutPhase?: EventEditorCheckoutPhase | null;
   title?: string | null;
   subtitle?: string | null;
+  loading?: EventEditorPresentationValue<boolean | null | undefined> | null;
   hideSubEventsPanel?: boolean | null;
   hideSlotsPanel?: boolean | null;
   basketItems?: EventEditorPresentationValue<readonly EventEditorBasketPresentationItem[] | null | undefined> | null;
@@ -106,8 +109,8 @@ export class EventEditorPopupStore {
     this.open('edit', sourceEvent, true, {
       ...presentation,
       mode: 'checkout-review',
-      hideSubEventsPanel: presentation?.hideSubEventsPanel !== false,
-      hideSlotsPanel: presentation?.hideSlotsPanel !== false
+      hideSubEventsPanel: presentation?.hideSubEventsPanel === true,
+      hideSlotsPanel: presentation?.hideSlotsPanel === true
     });
   }
 
@@ -166,14 +169,14 @@ export class EventEditorPopupStore {
     const mode = presentation?.mode === 'checkout-review' ? 'checkout-review' : 'default';
     return {
       mode,
+      checkoutPhase: mode === 'checkout-review' && presentation?.checkoutPhase === 'payment'
+        ? 'payment'
+        : 'review',
       title: `${presentation?.title ?? ''}`.trim() || null,
       subtitle: `${presentation?.subtitle ?? ''}`.trim() || null,
-      hideSubEventsPanel: mode === 'checkout-review'
-        ? presentation?.hideSubEventsPanel !== false
-        : presentation?.hideSubEventsPanel === true,
-      hideSlotsPanel: mode === 'checkout-review'
-        ? presentation?.hideSlotsPanel !== false
-        : presentation?.hideSlotsPanel === true,
+      loading: presentation?.loading ?? null,
+      hideSubEventsPanel: presentation?.hideSubEventsPanel === true,
+      hideSlotsPanel: presentation?.hideSlotsPanel === true,
       basketItems: typeof presentation?.basketItems === 'function'
         ? presentation.basketItems
         : [...(presentation?.basketItems ?? [])],

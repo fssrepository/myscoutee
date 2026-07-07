@@ -47,11 +47,18 @@ export interface EventBasketInputItemMenuEvent {
 export class EventBasketInputComponent {
   @Input() title = 'Basket';
   @Input() subtitle = 'Selected checkout items';
+  @Input() contextTitle = '';
+  @Input() contextMeta = '';
+  @Input() contextDetail = '';
+  @Input() contextAmount: number | null = null;
   @Input() items: readonly EventBasketInputItem[] = [];
   @Input() pricingSummaryRows: readonly EventBasketInputPricingSummaryRow[] = [];
   @Input() totalAmount = 0;
   @Input() currency = 'USD';
   @Input() addDisabled = false;
+  @Input() readOnly = false;
+  @Input() showAdd = true;
+  @Input() showItemMenu = true;
   @Input() emptyLabel = 'No basket items yet. Use + to add a slot.';
 
   @Output() readonly addSelect = new EventEmitter<Event>();
@@ -71,7 +78,7 @@ export class EventBasketInputComponent {
   protected onAddSelect(event: AppMenuItemSelectEvent<string, unknown>): void {
     event.sourceEvent.preventDefault();
     event.sourceEvent.stopPropagation();
-    if (event.id !== 'add' || this.addDisabled) {
+    if (event.id !== 'add' || this.readOnly || this.addDisabled) {
       return;
     }
     this.addSelect.emit(event.sourceEvent);
@@ -96,6 +103,9 @@ export class EventBasketInputComponent {
   }
 
   protected itemMenuItems(): readonly AppMenuItem<string, unknown>[] {
+    if (this.readOnly || !this.showItemMenu) {
+      return [];
+    }
     return [
       {
         id: 'view',
@@ -115,6 +125,9 @@ export class EventBasketInputComponent {
   }
 
   protected onItemMenuSelect(item: EventBasketInputItem, menuEvent: AppMenuItemSelectEvent<string, unknown>): void {
+    if (this.readOnly || !this.showItemMenu) {
+      return;
+    }
     this.itemMenuSelect.emit({ item, menuEvent });
   }
 
@@ -134,5 +147,37 @@ export class EventBasketInputComponent {
 
   private itemQuantity(item: EventBasketInputItem): number {
     return Math.max(1, Math.trunc(Number(item.quantity) || 1));
+  }
+
+  protected hasContext(): boolean {
+    return Boolean(this.contextTitle?.trim() || this.contextMeta?.trim() || this.contextDetail?.trim());
+  }
+
+  protected contextAmountLabel(): string {
+    return Number.isFinite(this.contextAmount)
+      ? this.formatMoney(Number(this.contextAmount), this.currency)
+      : '';
+  }
+
+  protected itemAmountLabel(item: EventBasketInputItem): string {
+    const quantity = this.itemQuantity(item);
+    const amount = (Number(item.amount) || 0) * quantity;
+    return amount > 0 ? this.formatMoney(amount, item.currency || this.currency) : 'Included';
+  }
+
+  private formatMoney(amount: number, currency: string): string {
+    const symbol = this.currencySymbol(currency);
+    return `${symbol}${(Number(amount) || 0).toFixed(2)}`;
+  }
+
+  private currencySymbol(currency: string): string {
+    switch ((currency || '').trim().toUpperCase()) {
+      case 'EUR':
+        return 'EUR ';
+      case 'GBP':
+        return 'GBP ';
+      default:
+        return '$';
+    }
   }
 }

@@ -4,6 +4,7 @@ import type {
   EventCheckoutBasketItem,
   EventCheckoutLineItem,
   EventCheckoutPricingSummaryRow,
+  EventCheckoutResultState,
   EventCheckoutState
 } from '../../../core/contracts/activity.interface';
 import type { ActivityPendingReason } from '../../../core/common/constants';
@@ -150,6 +151,7 @@ export class EventCheckoutDraftStore {
       currency,
       quantity: Math.max(1, Math.trunc(Number(item?.quantity) || 1)),
       status: this.normalizeCheckoutState(item?.status),
+      resultState: this.normalizeCheckoutResultState(item?.resultState),
       pricingSummaryRows: (item?.pricingSummaryRows ?? []).map(row => ({
         key: row.key?.trim() || row.label?.trim() || 'pricing',
         label: row.label?.trim() || 'Pricing',
@@ -181,7 +183,19 @@ export class EventCheckoutDraftStore {
   }
 
   private normalizeCheckoutState(value: unknown): EventCheckoutState {
-    return value === 'confirmed' || value === 'pay' || value === 'deleted' ? value : 'draft';
+    return value === 'confirmed'
+      || value === 'approval-pending'
+      || value === 'approved'
+      || value === 'pay'
+      || value === 'cancelled'
+      || value === 'rejected'
+      || value === 'deleted'
+        ? value
+        : 'draft';
+  }
+
+  private normalizeCheckoutResultState(value: unknown): EventCheckoutResultState {
+    return value === 'deleted' || value === 'succeeded' || value === 'failed' ? value : 'active';
   }
 
   private readInitialDrafts(): Record<string, EventCheckoutDraft> {

@@ -83,6 +83,7 @@ export class LocalActivityEventsMapper {
       invitedMemberUserIds: [...(record.invitedMemberUserIds ?? [])],
       pendingRequestMemberUserIds: [...(record.pendingRequestMemberUserIds ?? [])],
       pendingReason: record.pendingReason,
+      approvalRequired: record.approvalRequired === true,
       boost: record.boost
     };
   }
@@ -889,6 +890,7 @@ export class LocalActivityEventDetailsMapper {
     const policies = this.normalizePolicies(payload.policies);
     const slotCatalog = PricingBuilder.slotCatalogFromEventSlotTemplates(slotTemplates);
     const ticketing = payload.ticketing === true;
+    const approvalRequired = payload.approvalRequired === true;
     const pricing = PricingBuilder.syncSlotOverrides(
       PricingBuilder.normalizePricingConfig(payload.pricing, {
         context: 'event',
@@ -953,6 +955,7 @@ export class LocalActivityEventDetailsMapper {
       autoInviter: payload.autoInviter === true,
       frequency,
       ticketing,
+      approvalRequired,
       pricing,
       policiesEnabled,
       policies,
@@ -1022,6 +1025,7 @@ export class LocalActivityEventDetailsMapper {
       autoInviter: record.autoInviter ?? false,
       frequency: record.frequency ?? 'One-time',
       ticketing: record.ticketing,
+      approvalRequired: record.approvalRequired === true,
       pricing: record.pricing ?? null,
       policiesEnabled: record.policiesEnabled === true,
       policies: record.policies ?? [],

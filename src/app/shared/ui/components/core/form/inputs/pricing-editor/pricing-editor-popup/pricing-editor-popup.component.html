@@ -222,6 +222,7 @@
         <section class="pricing-editor__surface">
           <div class="pricing-editor__section-head">
             <span>Quantity Rules</span>
+            @if (showToggleControl()) {
             <button
               type="button"
               class="pricing-editor__toggle"
@@ -232,6 +233,7 @@
               <mat-icon>{{ workingPricing.quantityRulesEnabled ? 'toggle_on' : 'toggle_off' }}</mat-icon>
               <span>{{ workingPricing.quantityRulesEnabled ? 'On' : 'Off' }}</span>
             </button>
+            }
           </div>
           @if (workingPricing.quantityRulesEnabled) {
             <div class="pricing-editor__rules">
@@ -310,6 +312,7 @@
         <section class="pricing-editor__surface">
           <div class="pricing-editor__section-head">
             <span>Demand Rules</span>
+            @if (showToggleControl()) {
             <button
               type="button"
               class="pricing-editor__toggle"
@@ -320,6 +323,7 @@
               <mat-icon>{{ workingPricing.demandRulesEnabled ? 'toggle_on' : 'toggle_off' }}</mat-icon>
               <span>{{ workingPricing.demandRulesEnabled ? 'On' : 'Off' }}</span>
             </button>
+            }
           </div>
           @if (workingPricing.demandRulesEnabled) {
             <div class="pricing-editor__rules">
@@ -438,6 +442,7 @@
         <section class="pricing-editor__surface">
           <div class="pricing-editor__section-head">
             <span>Time Rules</span>
+            @if (showToggleControl()) {
             <button
               type="button"
               class="pricing-editor__toggle"
@@ -448,6 +453,7 @@
               <mat-icon>{{ workingPricing.timeRulesEnabled ? 'toggle_on' : 'toggle_off' }}</mat-icon>
               <span>{{ workingPricing.timeRulesEnabled ? 'On' : 'Off' }}</span>
             </button>
+            }
           </div>
           @if (workingPricing.timeRulesEnabled) {
             <div class="pricing-editor__rules">
@@ -592,6 +598,7 @@
         <section class="pricing-editor__surface">
           <div class="pricing-editor__section-head">
             <span>Cancellation & Reimbursement</span>
+            @if (showToggleControl()) {
             <button
               type="button"
               class="pricing-editor__toggle"
@@ -602,6 +609,7 @@
               <mat-icon>{{ workingPricing.cancellationPolicy.enabled ? 'toggle_on' : 'toggle_off' }}</mat-icon>
               <span>{{ workingPricing.cancellationPolicy.enabled ? 'On' : 'Off' }}</span>
             </button>
+            }
           </div>
           @if (workingPricing.cancellationPolicy.enabled) {
             <div class="pricing-editor__rules">
@@ -707,10 +715,11 @@
         ></app-pricing-slot-panel>
       }
     
-      @if (resolvedConfig.showAudienceSection) {
+      @if (showAudienceSection()) {
         <section class="pricing-editor__surface">
           <div class="pricing-editor__section-head">
             <span>Advanced Audience Pricing</span>
+            @if (showToggleControl()) {
             <button
               type="button"
               class="pricing-editor__toggle"
@@ -721,6 +730,7 @@
               <mat-icon>{{ workingPricing.audience.enabled ? 'toggle_on' : 'toggle_off' }}</mat-icon>
               <span>{{ workingPricing.audience.enabled ? 'On' : 'Off' }}</span>
             </button>
+            }
           </div>
           @if (workingPricing.audience.enabled) {
             <div class="pricing-editor__grid pricing-editor__grid--compact">

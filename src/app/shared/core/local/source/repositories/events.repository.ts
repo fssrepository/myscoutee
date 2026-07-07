@@ -1577,6 +1577,9 @@ export class LocalEventsRepository {
     if (!preferredRecord) {
       return null;
     }
+    const approvalRequested = preferredRecord.approvalRequired === true
+      && !this.eventAcceptedMemberUserIds(preferredRecord).includes(normalizedUserId);
+    const acceptedStatus = accepted && !approvalRequested;
 
     const idsToJoin = Array.from(new Set([
       normalizedSourceId,
@@ -1602,8 +1605,9 @@ export class LocalEventsRepository {
           nextMembersTable,
           current,
           normalizedUserId,
-          accepted ? 'accepted' : 'pending',
+          acceptedStatus ? 'accepted' : 'pending',
           waitingList,
+          approvalRequested,
           usersTable.byId[normalizedUserId] ?? null
         );
       }
@@ -2381,6 +2385,7 @@ export class LocalEventsRepository {
       invitedMemberUserIds: this.normalizeUserIds(record.invitedMemberUserIds),
       pendingRequestMemberUserIds: this.normalizeUserIds(record.pendingRequestMemberUserIds),
       policiesEnabled: record.policiesEnabled === true,
+      approvalRequired: record.approvalRequired === true,
       policies: ActivityEventDetailDTO.normalizePolicies(record.policies ?? []),
       slotTemplates: ActivityEventDetailDTO.normalizeSlotTemplates(record.slotTemplates ?? []),
       upcomingSlots: (record.upcomingSlots ?? []).map(item => ({ ...item })),
@@ -2417,6 +2422,7 @@ export class LocalEventsRepository {
     userId: string,
     status: AppConstants.ActivityMemberStatus,
     waitingList: boolean,
+    approvalRequested: boolean,
     profile: {
       id?: string;
       name?: string;
@@ -2452,11 +2458,13 @@ export class LocalEventsRepository {
       initials,
       gender: profile?.gender === 'woman' ? 'woman' : 'man',
       city: profile?.city?.trim() || '',
-      statusText: pending ? (waitingList ? 'Wait-list request pending.' : 'Join request pending.') : 'Going.',
+      statusText: pending
+        ? (waitingList ? 'Wait-list request pending.' : approvalRequested ? 'Waiting for admin approval.' : 'Join request pending.')
+        : 'Going.',
       role: normalizedUserId === event.creatorUserId ? 'Admin' : 'Member',
       status: nextStatus,
       pendingSource: pending ? 'member' : null,
-      requestKind: pending ? (waitingList ? 'waitlist' : 'join') : null,
+      requestKind: pending ? (waitingList ? 'waitlist' : approvalRequested ? 'approval' : 'join') : null,
       invitedByActiveUser: false,
       invitedByUserId: null,
       metAtIso: existing?.metAtIso?.trim() || nowIso,
@@ -3423,6 +3431,7 @@ export class LocalEventsRepository {
           autoInviter: parent.autoInviter,
           frequency: parent.frequency,
           ticketing: parent.ticketing,
+          approvalRequired: parent.approvalRequired === true,
           slotsEnabled: false,
           slotTemplates: [],
           parentEventId: parent.id,
@@ -3510,6 +3519,7 @@ export class LocalEventsRepository {
         autoInviter: parent.autoInviter,
         frequency: parent.frequency,
         ticketing: parent.ticketing,
+        approvalRequired: parent.approvalRequired === true,
         slotsEnabled: false,
         slotTemplates: [],
         parentEventId: parent.id,

@@ -1540,10 +1540,10 @@ export class EventExplorePopupComponent {
     record: ActivityEventRecord | null,
     draft: EventCheckoutDraft | null = null
   ): boolean {
-    if (record?.ticketing === true) {
+    if (record?.approvalRequired === true) {
       return true;
     }
-    return Math.max(0, Number(draft?.totalAmount) || 0) > 0;
+    return draft?.pendingReason === 'approval';
   }
 
   private checkoutDraftPendingReason(entry: CheckoutDraftEntry): 'approval' | 'waitlist' {
@@ -1635,6 +1635,9 @@ export class EventExplorePopupComponent {
 
   private shouldUseCheckoutFlow(record: ActivityEventRecord): boolean {
     if (this.isEventExploreRecordFull(record)) {
+      return true;
+    }
+    if (record.approvalRequired === true) {
       return true;
     }
     if ((record.upcomingSlots?.length ?? 0) > 0) {
@@ -1998,7 +2001,7 @@ export class EventExplorePopupComponent {
     return {
       ...entry,
       role: 'Member',
-      requestKind: accepted ? null : (pendingReason === 'waitlist' ? 'waitlist' : 'join'),
+      requestKind: accepted ? null : (pendingReason === 'waitlist' ? 'waitlist' : pendingReason === 'approval' ? 'approval' : 'join'),
       statusText: accepted
         ? 'Joined event.'
         : pendingReason === 'waitlist'
@@ -2083,6 +2086,7 @@ export class EventExplorePopupComponent {
       autoInviter: record.autoInviter,
       frequency: record.frequency,
       ticketing: record.ticketing,
+      approvalRequired: record.approvalRequired === true,
       visibility: record.visibility,
       blindMode: record.blindMode,
       status: record.status ?? 'A',

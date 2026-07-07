@@ -127,6 +127,12 @@
   background: transparent;
 }
 
+.event-checkout-payment-stack {
+  display: grid;
+  gap: 0.82rem;
+  min-width: 0;
+}
+
 .card-badge {
   min-width: 22px;
   height: 22px;

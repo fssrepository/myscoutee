@@ -10,7 +10,7 @@
       <p class="event-policies-panel-subtitle">{{ panelSubtitle() }}</p>
       }
     </div>
-    @if (policiesToggleable()) {
+    @if (policiesToggleable() && !locked()) {
     <button
       type="button"
       class="event-policies-toggle"

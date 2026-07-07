@@ -4,6 +4,7 @@
       <h4>{{ title }}</h4>
       <p>{{ description }}</p>
     </div>
+    @if (!readOnly) {
     <button
       type="button"
       class="pricing-slot-panel__toggle"
@@ -15,6 +16,7 @@
       <mat-icon>{{ enabled ? 'toggle_on' : 'toggle_off' }}</mat-icon>
       <span>{{ enabled ? 'On' : 'Off' }}</span>
     </button>
+    }
   </div>
 
   @if (slotCatalog.length === 0) {

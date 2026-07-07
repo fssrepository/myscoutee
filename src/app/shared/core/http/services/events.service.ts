@@ -1143,6 +1143,7 @@ export class HttpEventsService implements IEventsService {
         autoInviter: record.autoInviter === true,
         frequency: record.frequency ?? '',
         ticketing: record.ticketing === true,
+        approvalRequired: record.approvalRequired === true,
         pricing: record.pricing ? PricingBuilder.clonePricingConfig(record.pricing) : undefined,
         policiesEnabled: record.policiesEnabled === true,
         policies: (record.policies ?? []).map(item => ({ ...item })),

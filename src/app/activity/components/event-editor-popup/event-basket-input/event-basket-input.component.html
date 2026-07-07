@@ -11,6 +11,7 @@
         <p class="event-basket-panel-subtitle">{{ subtitle }}</p>
       }
     </div>
+    @if (showAdd && !readOnly) {
     <div class="event-basket-panel-actions">
       <app-menu
         class="event-basket-add-menu"
@@ -19,12 +20,50 @@
         (itemSelect)="onAddSelect($event)"
       ></app-menu>
     </div>
+    }
   </div>
 
   <div class="event-basket-panel-body">
+    @if (hasContext()) {
+      <article class="event-basket-context">
+        <div>
+          @if (contextTitle) {
+            <strong>{{ contextTitle }}</strong>
+          }
+          @if (contextMeta) {
+            <span>{{ contextMeta }}</span>
+          }
+          @if (contextDetail) {
+            <small>{{ contextDetail }}</small>
+          }
+        </div>
+        @if (contextAmountLabel()) {
+          <strong>{{ contextAmountLabel() }}</strong>
+        }
+      </article>
+    }
+
     @if (items.length > 0) {
+      @if (readOnly) {
+        <div class="event-basket-section-head">
+          <span>Kiválasztott elemek</span>
+          <strong>{{ items.length }} item</strong>
+        </div>
+      }
       <div class="event-basket-list">
         @for (item of items; track itemTrackId($index, item)) {
+          @if (readOnly) {
+            <article class="event-basket-readonly-row">
+              <div>
+                <strong>{{ item.title }}</strong>
+                <span>{{ item.meta }}</span>
+                @if (itemDetail(item)) {
+                  <small>{{ itemDetail(item) }}</small>
+                }
+              </div>
+              <strong>{{ itemAmountLabel(item) }}</strong>
+            </article>
+          } @else {
           <app-text-card
             class="event-basket-card"
             [tone]="itemTone(item)"
@@ -38,6 +77,7 @@
             [menuItems]="itemMenuItems()"
             (menuSelect)="onItemMenuSelect(item, $event)"
           ></app-text-card>
+          }
         }
       </div>
     } @else {

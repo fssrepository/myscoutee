@@ -230,6 +230,7 @@ export interface ActivityEventRecord {
   autoInviter?: boolean;
   frequency?: string;
   ticketing: boolean;
+  approvalRequired?: boolean;
   pricing?: PricingContracts.PricingConfig | null;
   policiesEnabled?: boolean;
   policies?: EventContracts.EventPolicyDTO[];
@@ -420,6 +421,7 @@ export interface ActivityEventDTO {
   invitedMemberUserIds?: string[];
   pendingRequestMemberUserIds?: string[];
   pendingReason?: AppConstants.ActivityPendingReason;
+  approvalRequired?: boolean;
   boost: number;
   subEventDefinitions?: SubEventDefinitionDTO[];
 }
@@ -509,6 +511,7 @@ export class ActivityEventDetailDTO {
   autoInviter = false;
   frequency = 'One-time';
   ticketing = false;
+  approvalRequired = false;
   pricing: PricingContracts.PricingConfig | null = null;
   policiesEnabled = false;
   policies: EventContracts.EventPolicyDTO[] = [];
@@ -582,6 +585,7 @@ export class ActivityEventDetailDTO {
     this.autoInviter = update.autoInviter ?? this.autoInviter;
     this.frequency = update.frequency ?? this.frequency;
     this.ticketing = update.ticketing ?? this.ticketing;
+    this.approvalRequired = update.approvalRequired ?? this.approvalRequired;
     this.pricing = ActivityEventDetailDTO.clonePricingConfig(update.pricing ?? this.pricing);
     this.policiesEnabled = update.policiesEnabled ?? this.policiesEnabled;
     this.applyPolicies(update.policies ?? this.policies);
@@ -668,6 +672,7 @@ export class ActivityEventDetailDTO {
       currency,
       quantity: Math.max(1, Math.trunc(Number(value?.quantity) || 1)),
       status: ActivityEventDetailDTO.normalizeCheckoutState(value?.status),
+      resultState: ActivityEventDetailDTO.normalizeCheckoutResultState(value?.resultState),
       pricingSummaryRows: (value?.pricingSummaryRows ?? []).map(row => ({
         key: row.key?.trim() || row.label?.trim() || 'pricing',
         label: row.label?.trim() || 'Pricing',
@@ -699,7 +704,19 @@ export class ActivityEventDetailDTO {
   }
 
   static normalizeCheckoutState(value: unknown): EventCheckoutState {
-    return value === 'confirmed' || value === 'pay' || value === 'deleted' ? value : 'draft';
+    return value === 'confirmed'
+      || value === 'approval-pending'
+      || value === 'approved'
+      || value === 'pay'
+      || value === 'cancelled'
+      || value === 'rejected'
+      || value === 'deleted'
+        ? value
+        : 'draft';
+  }
+
+  static normalizeCheckoutResultState(value: unknown): EventCheckoutResultState {
+    return value === 'deleted' || value === 'succeeded' || value === 'failed' ? value : 'active';
   }
 
   clone(): ActivityEventDetailDTO {
@@ -1237,7 +1254,17 @@ export interface EventCheckoutLineItem {
   currency: string;
 }
 
-export type EventCheckoutState = 'draft' | 'confirmed' | 'pay' | 'deleted';
+export type EventCheckoutState =
+  | 'draft'
+  | 'confirmed'
+  | 'approval-pending'
+  | 'approved'
+  | 'pay'
+  | 'cancelled'
+  | 'rejected'
+  | 'deleted';
+
+export type EventCheckoutResultState = 'active' | 'deleted' | 'succeeded' | 'failed';
 
 export interface EventCheckoutPricingSummaryRow {
   key: string;
@@ -1263,6 +1290,7 @@ export interface EventCheckoutBasketItem {
   currency: string;
   quantity: number;
   status: EventCheckoutState;
+  resultState?: EventCheckoutResultState | null;
   pricingSummaryRows: EventCheckoutPricingSummaryRow[];
   checkoutSessionId?: string | null;
   createdAtIso?: string | null;

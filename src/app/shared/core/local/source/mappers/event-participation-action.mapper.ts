@@ -17,7 +17,7 @@ export class LocalEventParticipationActionMapper {
     const acceptedMembers = this.nonNegativeInteger(record.acceptedMembers);
     const pendingMembers = this.nonNegativeInteger(record.pendingMembers);
     const capacityTotal = Math.max(acceptedMembers, this.nonNegativeInteger(record.capacityTotal));
-    const pendingReason = this.normalizePendingReason(options.pendingReason);
+    const pendingReason = this.normalizePendingReason(options.pendingReason ?? record.pendingReason);
     const normalizedUserId = userId.trim();
 
     return {

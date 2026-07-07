@@ -132,7 +132,7 @@ export class EventSlotsInputComponent implements OnChanges, DoCheck, ControlValu
   }
 
   protected shouldShowPanel(): boolean {
-    return true;
+    return this.canUpdateSlotsConfig() || this.slotsEnabled();
   }
 
   protected canUpdateSlotsConfig(): boolean {

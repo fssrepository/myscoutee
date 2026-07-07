@@ -363,7 +363,9 @@ const SEED_EVENTS_BY_USER: Record<string, ActivityEventSeedItem[]> = {
           id: 'sunset-beach-volley-sunday-evening',
           startAt: '2026-02-22T17:00:00'
         }
-      ])
+      ]),
+      policiesEnabled: true,
+      policies: buildCheckoutDemoPolicies()
     },
     {
       id: 'e7',
@@ -827,6 +829,7 @@ interface ActivityEventSeedOverrides {
   autoInviter?: boolean;
   frequency?: string;
   ticketing?: boolean;
+  approvalRequired?: boolean;
   visibility?: ActivityEventRecord['visibility'];
   blindMode?: ActivityEventRecord['blindMode'];
   imageUrl?: string;
@@ -1557,6 +1560,7 @@ export class SeedEventsBuilder {
       pendingRequestMemberUserIds: [...(record.pendingRequestMemberUserIds ?? [])],
       locationCoordinates: this.cloneLocationCoordinates(record.locationCoordinates),
       pricing: record.pricing ? SeedPricingBuilder.clonePricingConfig(record.pricing) : undefined,
+      approvalRequired: record.approvalRequired === true,
       policiesEnabled: record.policiesEnabled === true,
       policies: (record.policies ?? []).map(item => ({ ...item })),
       slotTemplates: this.cloneSlotTemplates(record.slotTemplates) ?? [],
@@ -1789,6 +1793,7 @@ export class SeedEventsBuilder {
       .filter((user): user is UserDto => Boolean(user));
     const location = record.seed?.location?.trim() || this.buildSeededLocation(record, creator);
     const ticketing = record.seed?.ticketing ?? this.resolveTicketing(record);
+    const approvalRequired = record.seed?.approvalRequired === true;
     return {
       creatorUserId: creator.id,
       creatorName: creator.name,
@@ -1812,6 +1817,7 @@ export class SeedEventsBuilder {
       autoInviter: record.seed?.autoInviter ?? this.resolveAutoInviter(record),
       frequency,
       ticketing,
+      approvalRequired,
       pricing: record.seed?.pricing
         ? this.rebasePricingConfig(record.seed.pricing)
         : SeedPricingBuilder.createSamplePricingConfig(ticketing ? 'hybrid' : 'fixed'),
@@ -2287,6 +2293,7 @@ export class SeedEventsBuilder {
       autoInviter: 'autoInviter' in item ? item.autoInviter : undefined,
       frequency: 'frequency' in item ? item.frequency : undefined,
       ticketing: 'ticketing' in item ? item.ticketing : undefined,
+      approvalRequired: 'approvalRequired' in item ? item.approvalRequired : undefined,
       visibility: 'visibility' in item ? item.visibility : undefined,
       blindMode: 'blindMode' in item ? item.blindMode : undefined,
       imageUrl: item.imageUrl,

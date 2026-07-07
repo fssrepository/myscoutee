@@ -7,6 +7,7 @@ import type {
   EventCheckoutLineItem,
   EventCheckoutPricingSummaryRow,
   EventCheckoutRequest,
+  EventCheckoutResultState,
   EventCheckoutState
 } from '../../../contracts/activity.interface';
 import { AppMemoryDb } from '../../../common/app.db';
@@ -29,7 +30,7 @@ export class LocalEventCheckoutBasketsRepository {
       return null;
     }
     const table = await this.readTable();
-    return ActivityEventDetailDTO.cloneCheckoutBasket(table.byKey[key]);
+    return this.activeBasket(table.byKey[key]);
   }
 
   async saveBasket(request: EventCheckoutRequest): Promise<EventCheckoutBasket | null> {
@@ -41,33 +42,44 @@ export class LocalEventCheckoutBasketsRepository {
     }
     const status = this.normalizeStatus(request.checkoutState);
     const items = (request.basketItems ?? [])
-      .map(item => this.normalizeBasketItem(item, status, request.currency))
+      .map(item => this.normalizeBasketItem({
+        ...item,
+        status: item?.status === 'pay' ? 'pay' : status,
+        resultState: item?.resultState ?? 'active'
+      }, status, request.currency))
       .filter((item): item is EventCheckoutBasketItem => Boolean(item));
+    const table = await this.readTable();
+    const incomingItemIds = new Set(items.map(item => item.id));
+    const deletedExistingItems = (table.byKey[key]?.items ?? [])
+      .filter(item => !this.isInactiveResultState(item.resultState) && !incomingItemIds.has(item.id))
+      .map(item => this.normalizeBasketItem({ ...item, resultState: 'deleted' }, status, request.currency))
+      .filter((item): item is EventCheckoutBasketItem => Boolean(item));
+    const storedItems = [...deletedExistingItems, ...items];
+    const activeItems = storedItems.filter(item => !this.isInactiveResultState(item.resultState));
     const basket = ActivityEventDetailDTO.cloneCheckoutBasket({
       userId,
       sourceId,
-      status,
-      items,
-      pricingSummaryRows: this.normalizePricingSummaryRows(request.pricingSummaryRows, request.currency),
-      lineItems: this.normalizeLineItems(request.lineItems),
-      totalAmount: Math.max(0, Number(request.totalAmount) || 0),
+      status: storedItems.length > 0 ? status : 'deleted',
+      items: storedItems,
+      pricingSummaryRows: this.aggregatePricingSummaryRows(activeItems),
+      lineItems: this.lineItemsFromBasketItems(activeItems),
+      totalAmount: this.totalAmountFromBasketItems(activeItems),
       currency: request.currency?.trim() || 'USD',
-      slotSourceId: request.slotSourceId ?? items.find(item => item.slotSourceId?.trim())?.slotSourceId ?? null,
-      selectedDateKey: items.find(item => item.selectedDateKey?.trim())?.selectedDateKey ?? null,
-      checkoutSessionId: items.find(item => item.checkoutSessionId?.trim())?.checkoutSessionId ?? null,
-      expiresAtIso: items.find(item => item.expiresAtIso?.trim())?.expiresAtIso ?? null
+      slotSourceId: request.slotSourceId ?? activeItems.find(item => item.slotSourceId?.trim())?.slotSourceId ?? null,
+      selectedDateKey: activeItems.find(item => item.selectedDateKey?.trim())?.selectedDateKey ?? null,
+      checkoutSessionId: activeItems.find(item => item.checkoutSessionId?.trim())?.checkoutSessionId ?? null,
+      expiresAtIso: activeItems.find(item => item.expiresAtIso?.trim())?.expiresAtIso ?? null
     });
     if (!basket) {
       return null;
     }
-    const table = await this.readTable();
     const byKey = {
       ...table.byKey,
       [key]: basket
     };
     const keys = table.keys.includes(key) ? [...table.keys] : [...table.keys, key];
     await this.memoryDb.writeIndexedDbTableEntry(APP_INDEXED_DB_KEYS.eventCheckoutBaskets, { byKey, keys });
-    return ActivityEventDetailDTO.cloneCheckoutBasket(basket);
+    return this.activeBasket(basket);
   }
 
   async clearBasket(userId: string, sourceId: string): Promise<void> {
@@ -132,6 +144,7 @@ export class LocalEventCheckoutBasketsRepository {
       currency,
       quantity: Math.max(1, Math.trunc(Number(item?.quantity) || 1)),
       status: this.normalizeStatus(item?.status ?? fallbackStatus),
+      resultState: this.normalizeResultState(item?.resultState),
       pricingSummaryRows: this.normalizePricingSummaryRows(item?.pricingSummaryRows, currency),
       checkoutSessionId: item?.checkoutSessionId?.trim() || null,
       createdAtIso: item?.createdAtIso?.trim() || null,
@@ -140,17 +153,91 @@ export class LocalEventCheckoutBasketsRepository {
     };
   }
 
-  private normalizeLineItems(
-    lineItems: readonly EventCheckoutLineItem[] | null | undefined
-  ): EventCheckoutLineItem[] {
-    return (lineItems ?? []).map(item => ({
-      id: item.id?.trim() ?? '',
+  private activeBasket(basket: EventCheckoutBasket | null | undefined): EventCheckoutBasket | null {
+    const cloned = ActivityEventDetailDTO.cloneCheckoutBasket(basket);
+    const activeItems = (cloned?.items ?? []).filter(item => !this.isInactiveResultState(item.resultState));
+    if (!cloned || activeItems.length === 0) {
+      return null;
+    }
+    const currency = cloned.currency || activeItems.find(item => item.currency)?.currency || 'USD';
+    return ActivityEventDetailDTO.cloneCheckoutBasket({
+      ...cloned,
+      status: activeItems.some(item => item.status === 'pay')
+        ? 'pay'
+        : activeItems.some(item => item.status === 'approved')
+          ? 'approved'
+          : activeItems.some(item => item.status === 'approval-pending')
+            ? 'approval-pending'
+            : activeItems.some(item => item.status === 'confirmed')
+              ? 'confirmed'
+              : 'draft',
+      items: activeItems,
+      pricingSummaryRows: this.aggregatePricingSummaryRows(activeItems),
+      lineItems: this.lineItemsFromBasketItems(activeItems),
+      totalAmount: this.totalAmountFromBasketItems(activeItems),
+      currency,
+      slotSourceId: activeItems.find(item => item.slotSourceId?.trim())?.slotSourceId ?? null,
+      selectedDateKey: activeItems.find(item => item.selectedDateKey?.trim())?.selectedDateKey ?? null,
+      checkoutSessionId: activeItems.find(item => item.checkoutSessionId?.trim())?.checkoutSessionId ?? null,
+      expiresAtIso: activeItems.find(item => item.expiresAtIso?.trim())?.expiresAtIso ?? null
+    });
+  }
+
+  private lineItemsFromBasketItems(items: readonly EventCheckoutBasketItem[]): EventCheckoutLineItem[] {
+    return items.map(item => ({
+      id: item.id,
       kind: item.kind,
-      label: item.label?.trim() ?? '',
-      detail: item.detail?.trim() ?? '',
-      amount: Math.round((Number(item.amount) || 0) * 100) / 100,
-      currency: item.currency?.trim() || 'USD'
+      label: item.label,
+      detail: item.detail,
+      amount: Math.round((Number(item.amount) || 0) * Math.max(1, Math.trunc(Number(item.quantity) || 1)) * 100) / 100,
+      currency: item.currency || 'USD'
     })).filter(item => item.id && item.label);
+  }
+
+  private totalAmountFromBasketItems(items: readonly EventCheckoutBasketItem[]): number {
+    return Math.round(this.lineItemsFromBasketItems(items)
+      .reduce((sum, item) => sum + (Number(item.amount) || 0), 0) * 100) / 100;
+  }
+
+  private aggregatePricingSummaryRows(
+    items: readonly EventCheckoutBasketItem[]
+  ): EventCheckoutPricingSummaryRow[] {
+    const grouped = new Map<string, EventCheckoutPricingSummaryRow>();
+    for (const item of items) {
+      const fallbackCurrency = item.currency?.trim() || 'USD';
+      for (const row of item.pricingSummaryRows ?? []) {
+        const label = row.label?.trim() || '';
+        if (!label) {
+          continue;
+        }
+        const detail = row.detail?.trim() || '';
+        const amount = Number.isFinite(row.amount) ? Number(row.amount) : null;
+        const currency = row.currency?.trim() || fallbackCurrency;
+        const key = `${row.key?.trim() || label}::${detail}::${amount === null ? 'none' : amount}::${currency}`;
+        const multiplier = Math.max(1, Math.trunc(Number(row.multiplier) || 1));
+        const existing = grouped.get(key);
+        if (existing) {
+          const nextMultiplier = Math.max(1, Math.trunc(Number(existing.multiplier) || 1)) + multiplier;
+          grouped.set(key, {
+            ...existing,
+            multiplier: nextMultiplier,
+            amount: existing.amount !== null && amount !== null
+              ? Math.round((Number(existing.amount) + (amount * multiplier)) * 100) / 100
+              : existing.amount ?? amount
+          });
+          continue;
+        }
+        grouped.set(key, {
+          key,
+          label,
+          detail: detail || null,
+          amount: amount === null ? null : Math.round(amount * multiplier * 100) / 100,
+          currency,
+          multiplier
+        });
+      }
+    }
+    return [...grouped.values()];
   }
 
   private normalizePricingSummaryRows(
@@ -169,7 +256,23 @@ export class LocalEventCheckoutBasketsRepository {
   }
 
   private normalizeStatus(value: unknown): EventCheckoutState {
-    return value === 'confirmed' || value === 'pay' || value === 'deleted' ? value : 'draft';
+    return value === 'confirmed'
+      || value === 'approval-pending'
+      || value === 'approved'
+      || value === 'pay'
+      || value === 'cancelled'
+      || value === 'rejected'
+      || value === 'deleted'
+        ? value
+        : 'draft';
+  }
+
+  private normalizeResultState(value: unknown): EventCheckoutResultState {
+    return value === 'deleted' || value === 'succeeded' || value === 'failed' ? value : 'active';
+  }
+
+  private isInactiveResultState(resultState: EventCheckoutResultState | string | null | undefined): boolean {
+    return resultState === 'deleted' || resultState === 'succeeded';
   }
 
   private recordKey(userId: string, sourceId: string): string {
