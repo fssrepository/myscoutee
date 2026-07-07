@@ -243,23 +243,25 @@ export class LocalEventsService extends LocalRouteDelayService implements IEvent
       normalizedSourceId,
       basket.slotSourceId ?? null,
       true,
+      false,
       false
     );
-    await this.eventCheckoutBasketsRepository.updateBasketState({
-      userId: normalizedUserId,
-      sourceId: normalizedSourceId,
-      checkoutState: 'pay',
-      resultState: 'succeeded',
-      checkoutSessionId
-    });
-    await this.eventsRepository.flushToIndexedDb();
-    return record
+    const result = record
       ? LocalEventParticipationActionMapper.toResult(record, this.resolveDemoActivityUserId(normalizedUserId), {
           slotSourceId: basket.slotSourceId ?? null,
           paymentSessionId: checkoutSessionId,
           pendingReason: null
         })
       : null;
+    await this.eventCheckoutBasketsRepository.updateBasketState({
+      userId: normalizedUserId,
+      sourceId: normalizedSourceId,
+      checkoutState: result?.membershipStatus === 'accepted' ? 'pay' : 'approval-pending',
+      resultState: result?.membershipStatus === 'accepted' ? 'succeeded' : null,
+      checkoutSessionId
+    });
+    await this.eventsRepository.flushToIndexedDb();
+    return result;
   }
 
   async queryExploreItems(userId: string): Promise<ActivityEventRecord[]> {
@@ -663,7 +665,8 @@ export class LocalEventsService extends LocalRouteDelayService implements IEvent
       normalizedSourceId,
       options.slotSourceId ?? null,
       options.bookingConfirmed === true && options.pendingReason !== 'approval' && options.pendingReason !== 'waitlist',
-      options.pendingReason === 'waitlist'
+      options.pendingReason === 'waitlist',
+      options.pendingReason === 'approval'
     );
     await this.patchLocalUserActivityCounterDeltas(normalizedUserId, options.counterDelta ?? null);
     await this.eventsRepository.flushToIndexedDb();

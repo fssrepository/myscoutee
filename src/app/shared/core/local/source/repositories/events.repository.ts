@@ -1563,7 +1563,8 @@ export class LocalEventsRepository {
     sourceId: string,
     slotSourceId: string | null = null,
     accepted = false,
-    waitingList = false
+    waitingList = false,
+    approvalRequested = false
   ): ActivityEventRecord | null {
     const normalizedUserId = userId.trim();
     const normalizedSourceId = sourceId.trim();
@@ -1577,8 +1578,6 @@ export class LocalEventsRepository {
     if (!preferredRecord) {
       return null;
     }
-    const approvalRequested = preferredRecord.approvalRequired === true
-      && !this.eventAcceptedMemberUserIds(preferredRecord).includes(normalizedUserId);
     const acceptedStatus = accepted && !approvalRequested;
 
     const idsToJoin = Array.from(new Set([
@@ -1800,6 +1799,7 @@ export class LocalEventsRepository {
     const directIds = new Set(directRecords.map(record => record.id));
     const membershipRecords = preferredRecords
       .filter(record => record.creatorUserId !== normalizedUserId)
+      .filter(record => !this.isGeneratedSlotRecord(record))
       .filter(record => !this.isTrashStatus(record))
       .filter(record => !directIds.has(record.id))
       .filter(record => this.hasTrackedUserParticipation(record, normalizedUserId))
@@ -1850,6 +1850,7 @@ export class LocalEventsRepository {
       const directIds = directIdsByUserId.get(userId) ?? new Set<string>();
       const membershipRecords = preferredRecords
         .filter(record => record.creatorUserId !== userId)
+        .filter(record => !this.isGeneratedSlotRecord(record))
         .filter(record => !this.isTrashStatus(record))
         .filter(record => !directIds.has(record.id))
         .filter(record => this.hasTrackedUserParticipation(record, userId))

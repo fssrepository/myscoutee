@@ -1371,7 +1371,7 @@ export class EventCheckoutPopupComponent {
         'succeeded',
         null
       ));
-      if (!joinResult || joinResult.membershipStatus === 'unchanged') {
+      if (!joinResult || joinResult.membershipStatus !== 'accepted') {
         throw new Error(dialog.failureMessage);
       }
       this.checkoutSessionId = joinResult.paymentSessionId ?? null;
