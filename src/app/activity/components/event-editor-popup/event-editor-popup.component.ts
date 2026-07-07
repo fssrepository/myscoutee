@@ -71,9 +71,9 @@ import {
   DateInputComponent,
   type DateInputModel,
   ImageCarouselComponent,
-  EventSlotsInputComponent,
-  type EventSlotsInputConfig,
-  type EventSlotOverrideRequest,
+  SlotsInputComponent,
+  type SlotsInputConfig,
+  type SlotOverrideRequest,
   LocationInputComponent,
   type LocationInputConfig,
   PricingEditorInputComponent,
@@ -136,7 +136,7 @@ interface SlotOverrideEditorState {
     EventPaymentInputComponent,
     ImageCarouselComponent,
     PoliciesInputComponent,
-    EventSlotsInputComponent,
+    SlotsInputComponent,
     LocationInputComponent,
     EventSubeventDefinitionsPanelComponent,
     PricingEditorInputComponent,
@@ -294,7 +294,7 @@ export class EventEditorPopupComponent implements OnInit, OnDestroy {
     runtimePreview: () => this.checkoutPricingRuntimePreview()
   };
 
-  protected readonly eventSlotsInputConfig: EventSlotsInputConfig = {
+  protected readonly slotsInputConfig: SlotsInputConfig = {
     startAtIso: () => this.eventDetailDTO.dateRange.startAt,
     endAtIso: () => this.eventDetailDTO.dateRange.endAt,
     frequency: () => this.eventDetailDTO.frequency,
@@ -453,7 +453,7 @@ export class EventEditorPopupComponent implements OnInit, OnDestroy {
     return this.eventEditorStore.presentation().hideSubEventsPanel !== true;
   }
 
-  protected showEventSlotsInput(): boolean {
+  protected showSlotsInput(): boolean {
     return this.eventEditorStore.presentation().hideSlotsPanel !== true;
   }
 
@@ -1223,7 +1223,7 @@ export class EventEditorPopupComponent implements OnInit, OnDestroy {
     this.normalizeEventSlotTemplates();
   }
 
-  protected openSlotOverrideEditor(request: EventSlotOverrideRequest): void {
+  protected openSlotOverrideEditor(request: SlotOverrideRequest): void {
     if (this.eventStructureReadOnly()) {
       return;
     }

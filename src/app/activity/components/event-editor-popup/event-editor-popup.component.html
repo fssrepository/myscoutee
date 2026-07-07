@@ -120,12 +120,12 @@
                   (ngModelChange)="onEventDateRangeChange($event)"
                 ></app-date-input>
               </section>
-              @if (showEventSlotsInput()) {
-                <app-event-slots-input [(ngModel)]="eventDetailDTO.slotTemplates"
-                    [config]="eventSlotsInputConfig"
+              @if (showSlotsInput()) {
+                <app-slots-input [(ngModel)]="eventDetailDTO.slotTemplates"
+                    [config]="slotsInputConfig"
                     [readOnly]="eventStructureReadOnly()"
                     [disabled]="eventStructureReadOnly()"
-                    (overrideSelect)="openSlotOverrideEditor($event)"></app-event-slots-input>
+                    (overrideSelect)="openSlotOverrideEditor($event)"></app-slots-input>
               }
             </section>
             @if (showCheckoutBasketInput()) {
