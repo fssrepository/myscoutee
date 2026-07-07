@@ -113,7 +113,13 @@
         #flowViewport
         class="form-flow__body"
         [class.form-flow__body--mobile]="isMobileViewport && !isGroupedLayout()"
+        [class.is-swipe-blocked]="allHorizontalSwipeBlocked()"
         (scroll)="onFlowViewportScroll()"
+        (touchstart)="onFlowViewportTouchStart($event)"
+        (touchmove)="onFlowViewportTouchMove($event)"
+        (touchend)="onFlowViewportTouchEnd()"
+        (touchcancel)="onFlowViewportTouchEnd()"
+        (wheel)="onFlowViewportWheel($event)"
       >
         <div class="form-flow__track" [style.transform]="pageTrackTransform()">
           @for (step of pages(); track step.id; let stepIndex = $index) {

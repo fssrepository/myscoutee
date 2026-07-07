@@ -238,6 +238,11 @@
   padding: 0;
 }
 
+.form-flow__body.is-swipe-blocked {
+  touch-action: pan-y;
+  overscroll-behavior-x: none;
+}
+
 .form-flow__track {
   display: flex;
   flex-wrap: nowrap;

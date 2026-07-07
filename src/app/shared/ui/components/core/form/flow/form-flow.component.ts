@@ -101,6 +101,7 @@ interface FormFlowSelectedMenuItem {
 })
 export class FormFlowComponent implements ControlValueAccessor, OnChanges, OnDestroy {
   private static readonly MOBILE_BREAKPOINT_PX = 720;
+  private static readonly HORIZONTAL_SWIPE_THRESHOLD_PX = 8;
 
   @ViewChild('flowViewport')
   private flowViewportRef?: ElementRef<HTMLDivElement>;
@@ -129,6 +130,8 @@ export class FormFlowComponent implements ControlValueAccessor, OnChanges, OnDes
   private onControlTouched: () => void = () => undefined;
   private viewportScrollLockTargetIndex: number | null = null;
   private viewportScrollLockTimer: ReturnType<typeof setTimeout> | null = null;
+  private touchStartX: number | null = null;
+  private touchStartY: number | null = null;
   private lastEmittedPercent: number | null = null;
   private pendingPercent: number | null = null;
   private percentEmitQueued = false;
@@ -701,6 +704,14 @@ export class FormFlowComponent implements ControlValueAccessor, OnChanges, OnDes
     return currentIndex < this.totalPageCount() - 1 && this.isForwardNavigationBlocked(currentIndex + 1);
   }
 
+  protected forwardSwipeBlocked(): boolean {
+    return (this.isCarouselLayout() || this.isMobileViewport) && this.nextStepBlocked();
+  }
+
+  protected allHorizontalSwipeBlocked(): boolean {
+    return this.forwardSwipeBlocked() && this.visiblePageIndex() <= 0;
+  }
+
   protected pageTrackTransform(): string | null {
     if (this.isGroupedLayout()) {
       return null;
@@ -729,6 +740,50 @@ export class FormFlowComponent implements ControlValueAccessor, OnChanges, OnDes
     }
     this.pendingPageIndex = null;
     this.setPageIndex(nextIndex);
+  }
+
+  protected onFlowViewportTouchStart(event: TouchEvent): void {
+    if (!this.forwardSwipeBlocked()) {
+      this.clearTouchState();
+      return;
+    }
+    const touch = event.touches.item(0);
+    if (!touch) {
+      this.clearTouchState();
+      return;
+    }
+    this.touchStartX = touch.clientX;
+    this.touchStartY = touch.clientY;
+  }
+
+  protected onFlowViewportTouchMove(event: TouchEvent): void {
+    if (!this.forwardSwipeBlocked()) {
+      this.clearTouchState();
+      return;
+    }
+    const touch = event.touches.item(0);
+    if (!touch || this.touchStartX === null || this.touchStartY === null) {
+      return;
+    }
+    const deltaX = touch.clientX - this.touchStartX;
+    const deltaY = touch.clientY - this.touchStartY;
+    if (!this.isForwardTouchGesture(deltaX, deltaY)) {
+      return;
+    }
+    event.preventDefault();
+    event.stopPropagation();
+  }
+
+  protected onFlowViewportTouchEnd(): void {
+    this.clearTouchState();
+  }
+
+  protected onFlowViewportWheel(event: WheelEvent): void {
+    if (!this.forwardSwipeBlocked() || !this.isForwardWheelGesture(event.deltaX, event.deltaY)) {
+      return;
+    }
+    event.preventDefault();
+    event.stopPropagation();
   }
 
   protected trackByStepId(_index: number, step: FormFlowStepModel): string {
@@ -1216,6 +1271,24 @@ export class FormFlowComponent implements ControlValueAccessor, OnChanges, OnDes
     }
     this.viewportScrollLockTargetIndex = null;
     this.pendingPageIndex = null;
+  }
+
+  private clearTouchState(): void {
+    this.touchStartX = null;
+    this.touchStartY = null;
+  }
+
+  private isHorizontalGesture(deltaX: number, deltaY: number): boolean {
+    const absoluteX = Math.abs(deltaX);
+    return absoluteX > FormFlowComponent.HORIZONTAL_SWIPE_THRESHOLD_PX && absoluteX > Math.abs(deltaY);
+  }
+
+  private isForwardTouchGesture(deltaX: number, deltaY: number): boolean {
+    return deltaX < 0 && this.isHorizontalGesture(deltaX, deltaY);
+  }
+
+  private isForwardWheelGesture(deltaX: number, deltaY: number): boolean {
+    return deltaX > 0 && this.isHorizontalGesture(deltaX, deltaY);
   }
 
   private resetViewportScroll(): void {
