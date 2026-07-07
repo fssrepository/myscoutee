@@ -18,8 +18,8 @@ import { EventsService } from '../../../shared/core/base/services/events.service
 import type { ActivityEventRecord } from '../../../shared/core/contracts/activity.interface';
 import { EventCheckoutDraftStore } from '../../../shared/ui/context/stores/event-checkout-draft.store';
 import { EventCheckoutDialogStore, type EventCheckoutDialogState } from '../../../shared/ui/context/stores/event-checkout-dialog.store';
+import { EventEditorPopupStore } from '../../../shared/ui/context/stores/event-editor-popup.store';
 import {
-  AppMenuComponent,
   type AppMenuItem,
   type AppMenuItemSelectEvent
 } from '../../../shared/ui/components/core/menu';
@@ -50,7 +50,6 @@ type CancellationPreview = {
     MatIconModule,
     MatInputModule,
     MatNativeDateModule,
-    AppMenuComponent,
     PopupComponent,
     IndicatorComponent
   ],
@@ -61,6 +60,7 @@ export class EventCheckoutPopupComponent {
   private static readonly MAX_VISIBLE_SLOTS = 10;
   protected readonly environment = environment;
   protected readonly dialogStore = inject(EventCheckoutDialogStore);
+  private readonly eventEditorStore = inject(EventEditorPopupStore);
   private readonly eventsService = inject(EventsService);
   private readonly checkoutDraftStore = inject(EventCheckoutDraftStore);
 
@@ -74,6 +74,7 @@ export class EventCheckoutPopupComponent {
   protected errorMessage = '';
 
   private renderedDialogId = 0;
+  private checkoutReviewDialogId = 0;
   private checkoutSessionId: string | null = null;
   private availableSlotsCache: ContractTypes.EventSlotOccurrenceDTO[] = [];
   private availableSlotDateEntriesCache: Array<{ key: string; value: Date; label: string; count: number }> = [];
@@ -83,6 +84,7 @@ export class EventCheckoutPopupComponent {
     effect(() => {
       const dialog = this.dialogStore.dialog();
       if (!dialog) {
+        this.closeCheckoutReviewEditor();
         this.resetDialogState();
         return;
       }
@@ -91,6 +93,9 @@ export class EventCheckoutPopupComponent {
       }
       this.renderedDialogId = dialog.id;
       this.initializeDialogState(dialog);
+      if (!dialog.loading) {
+        this.openCheckoutReviewEditor(dialog);
+      }
     });
   }
 
@@ -119,6 +124,47 @@ export class EventCheckoutPopupComponent {
     if (this.busy) {
       return;
     }
+    this.closeCheckoutDialog();
+  }
+
+  private openCheckoutReviewEditor(dialog: EventCheckoutDialogState): void {
+    const dialogId = dialog.id;
+    this.checkoutReviewDialogId = dialogId;
+    void this.eventEditorStore.ensureEventEditorPopupLoaded().then(() => {
+      if (this.dialogStore.dialog()?.id !== dialogId) {
+        return;
+      }
+      this.eventEditorStore.openCheckoutReview(dialog.record, {
+        title: this.sectionTitle(),
+        subtitle: dialog.record.title,
+        footerItems: this.checkoutFooterMenuItems(),
+        footerMessage: () => this.errorMessage,
+        onFooterItemSelect: event => this.onCheckoutActionMenuSelect(event),
+        onClose: () => this.onCheckoutReviewEditorClose()
+      });
+    });
+  }
+
+  private closeCheckoutDialog(): void {
+    this.dialogStore.close();
+    this.closeCheckoutReviewEditor();
+  }
+
+  private closeCheckoutReviewEditor(): void {
+    if (!this.checkoutReviewDialogId) {
+      return;
+    }
+    this.checkoutReviewDialogId = 0;
+    if (this.eventEditorStore.presentation().mode === 'checkout-review') {
+      this.eventEditorStore.close();
+    }
+  }
+
+  private onCheckoutReviewEditorClose(): void {
+    if (!this.checkoutReviewDialogId) {
+      return;
+    }
+    this.checkoutReviewDialogId = 0;
     this.dialogStore.close();
   }
 
@@ -526,41 +572,37 @@ export class EventCheckoutPopupComponent {
   }
 
   protected checkoutFooterMenuItems(): readonly AppMenuItem<string>[] {
-    const hasError = !this.busy && !!this.errorMessage;
-    const continueLabel = this.busy ? this.busyLabel() : this.continueLabel();
     return [
       {
-        id: this.paymentStep ? 'checkout-back' : 'checkout-cancel',
-        label: this.paymentStep ? 'Back' : 'Cancel',
+        id: 'checkout-secondary',
+        label: () => this.paymentStep ? 'Back' : 'Cancel',
         layout: 'action',
         palette: 'neutral',
-        disabled: this.busy,
-        ariaLabel: this.paymentStep ? 'Back' : 'Cancel'
+        disabled: () => this.busy,
+        ariaLabel: () => this.paymentStep ? 'Back' : 'Cancel'
       },
       {
         id: 'checkout-confirm',
-        label: continueLabel,
+        label: () => this.busy ? this.busyLabel() : this.continueLabel(),
         layout: 'action',
-        palette: hasError ? 'danger' : 'blue',
-        disabled: !this.canContinue() || this.busy,
-        ariaLabel: continueLabel,
-        progress: this.busy || hasError
-          ? {
-              state: this.busy ? 'loading' : 'error',
-              shape: 'button'
-            }
-          : null
+        palette: 'blue',
+        disabled: () => !this.canContinue() || this.busy,
+        ariaLabel: () => this.busy ? this.busyLabel() : this.continueLabel(),
+        progress: {
+          state: () => this.busy ? 'loading' : (!this.busy && this.errorMessage ? 'error' : null),
+          shape: 'button'
+        }
       }
     ];
   }
 
   protected onCheckoutActionMenuSelect(event: AppMenuItemSelectEvent<string>): void {
-    if (event.id === 'checkout-back') {
-      this.backToDetails(event.sourceEvent);
-      return;
-    }
-    if (event.id === 'checkout-cancel') {
-      this.close(event.sourceEvent);
+    if (event.id === 'checkout-secondary') {
+      if (this.paymentStep) {
+        this.backToDetails(event.sourceEvent);
+      } else {
+        this.close(event.sourceEvent);
+      }
       return;
     }
     if (event.id === 'checkout-confirm') {
@@ -637,7 +679,7 @@ export class EventCheckoutPopupComponent {
       try {
         await Promise.resolve(dialog.onSubmit(this.buildSelection(null, false)));
         this.persistCheckoutDraft();
-        this.dialogStore.close();
+        this.closeCheckoutDialog();
       } catch (error) {
         this.errorMessage = this.resolveErrorMessage(error, dialog.failureMessage);
       } finally {
@@ -688,7 +730,7 @@ export class EventCheckoutPopupComponent {
       }
       await Promise.resolve(dialog.onSubmit(this.buildSelection(paymentSessionId)));
       this.clearCheckoutDraft();
-      this.dialogStore.close();
+      this.closeCheckoutDialog();
     } catch (error) {
       if (await this.recoverStalePaymentSession(error)) {
         return;

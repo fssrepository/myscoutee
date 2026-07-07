@@ -96,6 +96,7 @@ type EventEditorMenuContext =
   | { menu: 'event-intel'; action: 'toggle-blind-mode' | 'toggle-auto-inviter' | 'toggle-ticketing' }
   | { menu: 'topics'; topic: string }
   | { menu: 'checkout-draft'; sourceId: string }
+  | { menu: 'checkout-review-action'; actionId: string }
   | { menu: 'save' };
 
 interface SlotOverrideEditorState {
@@ -314,10 +315,18 @@ export class EventEditorPopupComponent implements OnInit, OnDestroy {
     this.isLoadingEventData.set(false);
     this.eventVisibilityReady.set(false);
     this.clearEventEditorExplanationContext();
+    const checkoutReviewClose = this.checkoutReviewMode()
+      ? this.eventEditorStore.presentation().onClose
+      : null;
     this.eventEditorStore.close();
+    checkoutReviewClose?.();
   }
 
   getPopupTitle(): string {
+    const presentationTitle = `${this.eventEditorStore.presentation().title ?? ''}`.trim();
+    if (presentationTitle) {
+      return presentationTitle;
+    }
     const mode = this.eventEditorStore.mode();
     const readOnly = this.eventEditorStore.readOnly();
 
@@ -351,10 +360,14 @@ export class EventEditorPopupComponent implements OnInit, OnDestroy {
   }
 
   protected eventEditorPopupZIndex(): number {
-    return 2500;
+    return this.checkoutReviewMode() ? 4700 : 2500;
   }
 
   private eventEditorPopupSubtitle(): string | null {
+    const presentationSubtitle = `${this.eventEditorStore.presentation().subtitle ?? ''}`.trim();
+    if (presentationSubtitle) {
+      return presentationSubtitle;
+    }
     return this.eventEditorStore.readOnly() && this.eventDetailDTO.title
       ? this.eventDetailDTO.title
       : null;
@@ -401,6 +414,31 @@ export class EventEditorPopupComponent implements OnInit, OnDestroy {
 
   protected eventStructureReadOnly(): boolean {
     return this.eventEditorStore.readOnly() || this.isPublishedManageMode();
+  }
+
+  protected checkoutReviewMode(): boolean {
+    return this.eventEditorStore.presentation().mode === 'checkout-review';
+  }
+
+  protected showSubEventDefinitionsPanel(): boolean {
+    return this.eventEditorStore.presentation().hideSubEventsPanel !== true;
+  }
+
+  protected showEventSlotsInput(): boolean {
+    return this.eventEditorStore.presentation().hideSlotsPanel !== true;
+  }
+
+  protected checkoutReviewFooterMenuItems(): readonly AppMenuItem<string, EventEditorMenuContext>[] {
+    return (this.eventEditorStore.presentation().footerItems ?? []).map(item => ({
+      ...item,
+      context: { menu: 'checkout-review-action', actionId: item.id }
+    })) as readonly AppMenuItem<string, EventEditorMenuContext>[];
+  }
+
+  protected checkoutReviewFooterMessage(): string {
+    const message = this.eventEditorStore.presentation().footerMessage;
+    const resolved = typeof message === 'function' ? message() : message;
+    return `${resolved ?? ''}`.trim();
   }
 
   protected eventPoliciesReadOnly(): boolean {
@@ -823,6 +861,12 @@ export class EventEditorPopupComponent implements OnInit, OnDestroy {
     }
     if (event.context.menu === 'checkout-draft') {
       this.continueEventEditorCheckoutDraft(event.context.sourceId, event.sourceEvent);
+      return;
+    }
+    if (event.context.menu === 'checkout-review-action') {
+      void this.eventEditorStore.presentation().onFooterItemSelect?.(
+        event as unknown as AppMenuItemSelectEvent<string>
+      );
       return;
     }
     if (event.context.menu === 'save') {
