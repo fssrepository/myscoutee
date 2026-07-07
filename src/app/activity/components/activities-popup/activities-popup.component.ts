@@ -2145,15 +2145,17 @@ export class ActivitiesPopupComponent implements OnDestroy {
     query: ListQuery<ActivitiesSmartListFilters>
   ): ActivityListItem {
     const primaryFilter = query.filters?.primaryFilter ?? this.activitiesPrimaryFilter;
+    const eventScope = query.filters?.eventScopeFilter ?? this.activitiesEventScope;
     if (primaryFilter === 'rates') {
       return ActivityRateImageCardConverter.convert(source as ActivityRateDTO, {
         ratedUsers: (query as ActivitiesSmartListConverterQuery).context?.rateUsers ?? []
       });
     }
     if (primaryFilter === 'events' || primaryFilter === 'hosting' || primaryFilter === 'invitations') {
-      return ActivityEventInfoCardConverter.convert(source as ActivityEventDTO, {
-        activeUserId: this.activeUser.id
-      });
+      return ActivityEventInfoCardConverter.convert(
+        source as ActivityEventDTO,
+        this.activityEventInfoCardConverterOptions(eventScope)
+      );
     }
     return ActivityChatSingleRowConverter.convert(source as ChatDTO, {
       activeUser: this.activeUser,
@@ -2167,21 +2169,32 @@ export class ActivitiesPopupComponent implements OnDestroy {
     query: ListQuery<ActivitiesSmartListFilters>
   ): ActivityListItem[] {
     const primaryFilter = query.filters?.primaryFilter ?? this.activitiesPrimaryFilter;
+    const eventScope = query.filters?.eventScopeFilter ?? this.activitiesEventScope;
     if (primaryFilter === 'rates') {
       return ActivityRateImageCardConverter.convertList(sources as readonly ActivityRateDTO[], {
         ratedUsers: (query as ActivitiesSmartListConverterQuery).context?.rateUsers ?? []
       });
     }
     if (primaryFilter === 'events' || primaryFilter === 'hosting' || primaryFilter === 'invitations') {
-      return ActivityEventInfoCardConverter.convertList(sources as readonly ActivityEventDTO[], {
-        activeUserId: this.activeUser.id
-      });
+      return ActivityEventInfoCardConverter.convertList(
+        sources as readonly ActivityEventDTO[],
+        this.activityEventInfoCardConverterOptions(eventScope)
+      );
     }
     return ActivityChatSingleRowConverter.convertList(sources as readonly ChatDTO[], {
       activeUser: this.activeUser,
       adminServiceMode: query.filters?.adminServiceOnly === true,
       translate: key => this.i18nService.translate(key)
     });
+  }
+
+  private activityEventInfoCardConverterOptions(
+    eventScope: ContractTypes.ActivitiesEventScope = this.activitiesEventScope
+  ) {
+    return {
+      activeUserId: this.activeUser.id,
+      trashView: eventScope === 'trash'
+    };
   }
 
   private chatRowMetricScore(row: ActivityListItem): number {

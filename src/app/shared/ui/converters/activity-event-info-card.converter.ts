@@ -15,6 +15,7 @@ import type { UiListConverter } from './converter.types';
 export interface ActivityEventInfoCardConverterOptions {
   activeUserId?: string | null;
   groupLabel?: string | null;
+  trashView?: boolean;
   state?: InfoCardData['state'];
 }
 
@@ -34,6 +35,7 @@ export class ActivityEventInfoCardConverter {
     const statusBadgeLabelKey = this.statusBadgeLabelKey(status, dto, activeUserId);
     const pending = this.isPending(dto, activeUserId);
     const invited = this.isInvited(dto, activeUserId);
+    const trashView = options.trashView === true;
     const title = dto.title;
 
     return {
@@ -46,7 +48,7 @@ export class ActivityEventInfoCardConverter {
       ownerUserId: dto.creatorUserId,
       groupLabel: options.groupLabel ?? null,
       title,
-      surfaceTone: this.surfaceTone(status, dto, activeUserId),
+      surfaceTone: trashView ? 'deleted' : this.surfaceTone(status, dto, activeUserId),
       imageUrl: dto.imageUrl?.trim() || null,
       placeholderLabel: dto.imageUrl?.trim() ? null : title,
       metaRows: [
@@ -66,7 +68,7 @@ export class ActivityEventInfoCardConverter {
       mediaStart: this.mediaStart(dto),
       mediaEnd: {
         variant: 'badge',
-        tone: this.mediaEndTone(status, dto, activeUserId),
+        tone: trashView ? 'deleted' : this.mediaEndTone(status, dto, activeUserId),
         label: statusBadgeLabelKey || this.capacityLabel(dto),
         ariaLabel: statusBadgeLabelKey || 'open.members',
         interactive: !statusBadgeLabelKey,
