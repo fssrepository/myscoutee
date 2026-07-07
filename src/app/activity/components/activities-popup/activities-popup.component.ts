@@ -310,7 +310,6 @@ export class ActivitiesPopupComponent implements OnDestroy {
   protected readonly activityPendingMembersById: Record<string, number> = {};
   protected readonly eventVisibilityById: Record<string, AppConstants.EventVisibility> = {};
   private readonly eventCapacityById: Record<string, ContractTypes.EventCapacityRange> = {};
-  private lastPendingCheckoutDraftSourceIds = new Set<string>();
   protected readonly activityMembersByRowId: Record<string, ActivityContracts.ActivityMemberDTO[]> = {};
   private readonly activitiesEventCardRevisionByRowId: Record<string, number> = {};
   protected activitiesRateCardRevision = 0;
@@ -848,21 +847,7 @@ export class ActivitiesPopupComponent implements OnDestroy {
 
     effect(() => {
       this.eventCheckoutDraftStore.drafts();
-      const nextPendingDraftSourceIds = this.pendingCheckoutDraftSourceIds();
-      const hadPendingDraftRemoval = [...this.lastPendingCheckoutDraftSourceIds]
-        .some(sourceId => !nextPendingDraftSourceIds.has(sourceId));
-      const hasNewPendingDraft = [...nextPendingDraftSourceIds]
-        .some(sourceId => !this.lastPendingCheckoutDraftSourceIds.has(sourceId));
-      this.lastPendingCheckoutDraftSourceIds = nextPendingDraftSourceIds;
       this.refreshSectionBadges();
-      const shouldReloadEventList = this.activitiesStore.activitiesOpen()
-        && (hadPendingDraftRemoval || hasNewPendingDraft)
-        && this.activitiesPrimaryFilter === 'events'
-        && this.activitiesEventScope !== 'pending'
-        && this.activitiesEventScope !== 'invitations';
-      if (shouldReloadEventList) {
-        this.activitiesSmartList?.reload();
-      }
       this.cdr.markForCheck();
     });
 
@@ -2591,24 +2576,6 @@ export class ActivitiesPopupComponent implements OnDestroy {
 
   protected get filteredActivityRows(): ActivityListItem[] {
     return [...(this.activitiesSmartList?.itemsSnapshot() ?? [])];
-  }
-
-  private pendingCheckoutDraftSourceIds(): Set<string> {
-    const activeUserId = this.activeUser?.id?.trim() ?? '';
-    if (!activeUserId) {
-      return new Set<string>();
-    }
-    return new Set(
-      this.eventCheckoutDraftStore.listByUser(activeUserId)
-        .filter(draft => this.shouldTrackPendingCheckoutDraft(draft))
-        .map(draft => draft.sourceId.trim())
-        .filter(sourceId => sourceId.length > 0)
-    );
-  }
-
-  private shouldTrackPendingCheckoutDraft(draft: EventCheckoutDraft | null | undefined): boolean {
-    return draft?.pendingReason === 'waitlist'
-      || Math.max(0, Number(draft?.totalAmount) || 0) > 0;
   }
 
   // =========================================================================

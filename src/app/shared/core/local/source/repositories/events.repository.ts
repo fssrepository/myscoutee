@@ -134,7 +134,7 @@ export class LocalEventsRepository {
   }
 
   queryTrashedItemsByUser(userId: string): ActivityEventRecord[] {
-    return this.queryUserRecords(userId).filter(record => this.isTrashStatus(record));
+    return this.queryTrashRecordsByUser(userId);
   }
 
   private queryEventRecordsByFilter(
@@ -177,7 +177,7 @@ export class LocalEventsRepository {
       return draftItems;
     }
     if (filter === 'trash') {
-      return userItems.filter(record => this.isTrashStatus(record));
+      return this.queryTrashRecordsByUser(userId);
     }
     return activeEventItems;
   }
@@ -1887,6 +1887,25 @@ export class LocalEventsRepository {
     return [...directRecords, ...membershipRecords];
   }
 
+  private queryTrashRecordsByUser(userId: string): ActivityEventRecord[] {
+    const normalizedUserId = userId.trim();
+    if (!normalizedUserId || this.isSetupRequiredDemoProfile(normalizedUserId)) {
+      return [];
+    }
+    const table = this.memoryDb.read()[EVENTS_TABLE_NAME];
+    const trashedDirectRecords = this.queryUserRecords(normalizedUserId)
+      .filter(record => this.isTrashStatus(record));
+    const trashIds = new Set(trashedDirectRecords.map(record => record.id));
+    const deletedMembershipRecords = this.computePreferredEventRecords(table)
+      .filter(record => record.creatorUserId !== normalizedUserId)
+      .filter(record => !this.isGeneratedSlotRecord(record))
+      .filter(record => !this.isTrashStatus(record))
+      .filter(record => !trashIds.has(record.id))
+      .filter(record => this.hasDeletedEventMembership(record, normalizedUserId))
+      .map(record => this.buildMembershipProjectionRecord(normalizedUserId, this.withResolvedSlotContext(record, table)));
+    return [...trashedDirectRecords, ...deletedMembershipRecords];
+  }
+
   private queryUserRecordsByUsers(
     userIds: readonly string[],
     table: ActivityEventRecordCollection
@@ -2006,6 +2025,15 @@ export class LocalEventsRepository {
     return this.eventAcceptedMemberUserIds(record).includes(normalizedUserId)
       || this.eventPendingRequestMemberUserIds(record).includes(normalizedUserId)
       || this.eventInvitedMemberUserIds(record).includes(normalizedUserId);
+  }
+
+  private hasDeletedEventMembership(
+    record: ActivityEventRecord,
+    userId: string
+  ): boolean {
+    const normalizedUserId = userId.trim();
+    return !!normalizedUserId
+      && this.eventMemberUserIdsByStatus(record.id, 'deleted').includes(normalizedUserId);
   }
 
   private isSetupRequiredDemoProfile(userId: string): boolean {
