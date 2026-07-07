@@ -16,7 +16,7 @@ import type * as ContractTypes from '../../../shared/core/contracts';
 import type * as ActivityContracts from '../../../shared/core/contracts/activity.interface';
 import { EventsService } from '../../../shared/core/base/services/events.service';
 import type { ActivityEventRecord } from '../../../shared/core/contracts/activity.interface';
-import { EventCheckoutDraftStore } from '../../../shared/ui/context/stores/event-checkout-draft.store';
+import { EventCheckoutDraftStore, type EventCheckoutDraft } from '../../../shared/ui/context/stores/event-checkout-draft.store';
 import { EventCheckoutDialogStore, type EventCheckoutDialogState } from '../../../shared/ui/context/stores/event-checkout-dialog.store';
 import { DialogStore } from '../../../shared/ui/context/stores/dialog.store';
 import { EventEditorPopupStore } from '../../../shared/ui/context/stores/event-editor-popup.store';
@@ -472,7 +472,7 @@ export class EventCheckoutPopupComponent {
     return this.checkoutBasketSnapshot()?.items.map(item => ({
       ...item,
       status: statusOverride ?? item.status,
-      resultState: resultStateOverride ?? item.resultState ?? 'active',
+      resultState: resultStateOverride ?? item.resultState ?? 'pending',
       pricingSummaryRows: [...(item.pricingSummaryRows ?? [])]
     })) ?? [];
   }
@@ -540,7 +540,7 @@ export class EventCheckoutPopupComponent {
         currency: eventPricing.currency,
         quantity: 1,
         status: state,
-        resultState: 'active',
+        resultState: 'pending',
         pricingSummaryRows: eventPricing.rows,
         checkoutSessionId: this.checkoutSessionId,
         createdAtIso: nowIso,
@@ -565,7 +565,7 @@ export class EventCheckoutPopupComponent {
         currency: pricing.currency,
         quantity: 1,
         status: state,
-        resultState: 'active',
+        resultState: 'pending',
         pricingSummaryRows: pricing.rows,
         checkoutSessionId: this.checkoutSessionId,
         createdAtIso: nowIso,
@@ -1080,11 +1080,20 @@ export class EventCheckoutPopupComponent {
     }
     const basket = this.checkoutBasketSnapshot();
     if (basket?.items?.length) {
-      await this.eventsService.saveCheckoutBasket(this.buildCheckoutRequest({
-        checkoutState: 'cancelled',
-        resultState: 'succeeded',
-        pendingReason: null
-      }));
+      if (this.runtimeCheckoutBasketExists()) {
+        await this.eventsService.updateCheckoutBasketState(this.buildCheckoutStateChangeRequest(
+          'cancelled',
+          'succeeded',
+          null,
+          this.checkoutSessionId
+        ));
+      } else {
+        await this.eventsService.saveCheckoutBasket(this.buildCheckoutRequest({
+          checkoutState: 'cancelled',
+          resultState: 'succeeded',
+          pendingReason: null
+        }));
+      }
     }
     this.checkoutDraftStore.clear(dialog.userId, dialog.record.id);
     this.paymentStep = false;
@@ -1100,6 +1109,15 @@ export class EventCheckoutPopupComponent {
   ): Promise<void> {
     const basket = this.checkoutBasketSnapshot();
     if (!basket?.items?.length) {
+      return;
+    }
+    if (this.runtimeCheckoutBasketExists()) {
+      await this.eventsService.updateCheckoutBasketState(this.buildCheckoutStateChangeRequest(
+        checkoutState,
+        resultState,
+        pendingReason,
+        this.checkoutSessionId
+      ));
       return;
     }
     await this.eventsService.saveCheckoutBasket(this.buildCheckoutRequest({
@@ -1153,7 +1171,7 @@ export class EventCheckoutPopupComponent {
         : {
             ...item,
             status: 'draft',
-            resultState: 'active',
+            resultState: 'pending',
             checkoutSessionId: null
           })
     };
@@ -1311,11 +1329,12 @@ export class EventCheckoutPopupComponent {
         const checkoutState: ActivityContracts.EventCheckoutState = pendingReason === 'approval'
           ? 'approval-pending'
           : 'confirmed';
-        await Promise.resolve(dialog.onSubmit(this.buildSelection(null, false, {
+        await dialog.onSubmit(this.buildSelection(null, false, {
           checkoutState,
-          pendingReason
-        })));
-        await this.persistCheckoutDraft(true, pendingReason, checkoutState);
+          pendingReason,
+          includeBasketPayload: !this.runtimeCheckoutBasketExists()
+        }));
+        await this.persistCheckoutDraft(false, pendingReason, checkoutState);
         this.closeCheckoutDialog();
       } catch (error) {
         this.errorMessage = this.resolveErrorMessage(error, dialog.failureMessage);
@@ -1347,38 +1366,18 @@ export class EventCheckoutPopupComponent {
     this.checkoutBusyActionId = 'checkout-confirm';
     this.errorMessage = '';
     try {
-      let paymentSessionId = this.checkoutSessionId;
-      if (this.totalAmount() > 0) {
-        if (!paymentSessionId) {
-          const session = await this.eventsService.createCheckoutSession(this.buildCheckoutRequest());
-          if (!session?.id) {
-            throw new Error('Unable to start payment.');
-          }
-          paymentSessionId = session.id;
-        }
-        const paymentSession = await this.eventsService.payCheckoutSession(
-          this.buildCheckoutRequest(),
-          paymentSessionId
-        );
-        if (!paymentSession?.id) {
-          throw new Error('Unable to start payment.');
-        }
-        paymentSessionId = paymentSession.id;
-        this.checkoutSessionId = paymentSessionId;
-      }
-      await Promise.resolve(dialog.onSubmit(this.buildSelection(paymentSessionId)));
-      await this.persistCheckoutLifecycleState(
-        this.successfulCheckoutLifecycleState(paymentSessionId),
+      const joinResult = await this.eventsService.payEventCheckout(this.buildCheckoutStateChangeRequest(
+        'pay',
         'succeeded',
         null
-      );
+      ));
+      if (!joinResult || joinResult.membershipStatus === 'unchanged') {
+        throw new Error(dialog.failureMessage);
+      }
+      this.checkoutSessionId = joinResult.paymentSessionId ?? null;
       this.clearCheckoutDraft();
       this.closeCheckoutDialog();
     } catch (error) {
-      if (await this.recoverStalePaymentSession(error)) {
-        return;
-      }
-      await this.markCheckoutFailed();
       this.errorMessage = this.resolveErrorMessage(error, dialog.failureMessage);
     } finally {
       this.busy = false;
@@ -1435,7 +1434,7 @@ export class EventCheckoutPopupComponent {
     this.slotPageIndex = 0;
     this.selectedOptionalSubEventIds = new Set((draft?.optionalSubEventIds ?? []).filter(item => validOptionalIds.has(item)));
     this.acceptedPolicyIds = new Set((draft?.acceptedPolicyIds ?? []).filter(item => validPolicyIds.has(item)));
-    this.paymentStep = Boolean(draft?.checkoutSessionId);
+    this.paymentStep = this.shouldOpenPaymentStepFromDraft(draft);
     this.checkoutSessionId = draft?.checkoutSessionId ?? null;
     this.checkoutBasket = draft?.basketItems?.length
       ? {
@@ -1482,7 +1481,30 @@ export class EventCheckoutPopupComponent {
       this.selectedSlotDateValue = this.slotDateValueFromKey(selectedDateKey) ?? this.selectedSlotDateValue;
     }
     this.checkoutSessionId = basket.checkoutSessionId ?? this.checkoutSessionId;
-    this.paymentStep = Boolean(this.checkoutSessionId);
+    this.paymentStep = this.shouldOpenPaymentStepFromBasket(basket);
+  }
+
+  private shouldOpenPaymentStepFromDraft(draft: EventCheckoutDraft | null): boolean {
+    if (!draft) {
+      return false;
+    }
+    if (Boolean(draft.checkoutSessionId?.trim())) {
+      return true;
+    }
+    return draft.checkoutState === 'confirmed'
+      && !draft.pendingReason
+      && Math.max(0, Number(draft.totalAmount) || 0) > 0;
+  }
+
+  private shouldOpenPaymentStepFromBasket(basket: ActivityContracts.EventCheckoutBasket | null): boolean {
+    if (!basket) {
+      return this.paymentStep;
+    }
+    if (Boolean(basket.checkoutSessionId?.trim())) {
+      return true;
+    }
+    return basket.status === 'confirmed'
+      && Math.max(0, Number(basket.totalAmount) || 0) > 0;
   }
 
   private resetDialogState(): void {
@@ -1510,6 +1532,7 @@ export class EventCheckoutPopupComponent {
       checkoutState?: ActivityContracts.EventCheckoutState;
       resultState?: ActivityContracts.EventCheckoutResultState;
       pendingReason?: AppConstants.ActivityPendingReason;
+      includeBasketPayload?: boolean;
     } = {}
   ): ActivityContracts.EventCheckoutSelection {
     const dialog = this.dialog();
@@ -1521,14 +1544,17 @@ export class EventCheckoutPopupComponent {
       : options.pendingReason;
     const checkoutState = options.checkoutState
       ?? this.currentCheckoutState(this.totalAmount(), pendingReason);
+    const includeBasketPayload = options.includeBasketPayload !== false;
     return {
       sourceId: dialog.record.id,
       slotSourceId: this.selectedSlotSourceId,
       optionalSubEventIds: [...this.selectedOptionalSubEventIds],
       assetSelections: [],
       acceptedPolicyIds: [...this.acceptedPolicyIds],
-      basketItems: this.checkoutBasketItems(checkoutState, options.resultState),
-      pricingSummaryRows: this.checkoutBasketPricingSummaryRows(),
+      ...(includeBasketPayload ? {
+        basketItems: this.checkoutBasketItems(checkoutState, options.resultState),
+        pricingSummaryRows: this.checkoutBasketPricingSummaryRows()
+      } : {}),
       checkoutState,
       lineItems: this.lineItems(),
       totalAmount: this.totalAmount(),
@@ -1567,6 +1593,26 @@ export class EventCheckoutPopupComponent {
       totalAmount: this.totalAmount(),
       currency: this.currency(),
       pendingReason
+    };
+  }
+
+  private buildCheckoutStateChangeRequest(
+    checkoutState: ActivityContracts.EventCheckoutState,
+    resultState: ActivityContracts.EventCheckoutResultState | null = null,
+    pendingReason: AppConstants.ActivityPendingReason = null,
+    checkoutSessionId: string | null = null
+  ): ActivityContracts.EventCheckoutStateChangeRequest {
+    const dialog = this.dialog();
+    if (!dialog) {
+      throw new Error('Checkout session is not available.');
+    }
+    return {
+      userId: dialog.userId,
+      sourceId: dialog.record.id,
+      checkoutState,
+      resultState,
+      pendingReason,
+      checkoutSessionId
     };
   }
 
@@ -1979,16 +2025,34 @@ export class EventCheckoutPopupComponent {
       return;
     }
     try {
-      const basket = await this.eventsService.saveCheckoutBasket(this.buildCheckoutRequest({
-        checkoutState: checkoutStateOverride,
-        pendingReason: pendingReasonOverride
-      }));
+      const shouldMutateStoredBasket = this.runtimeCheckoutBasketExists()
+        && checkoutStateOverride != null
+        && checkoutStateOverride !== 'draft';
+      const basket = shouldMutateStoredBasket
+        ? await this.eventsService.updateCheckoutBasketState(this.buildCheckoutStateChangeRequest(
+            checkoutStateOverride,
+            null,
+            pendingReasonOverride === undefined ? null : pendingReasonOverride,
+            this.checkoutSessionId
+          ))
+        : await this.eventsService.saveCheckoutBasket(this.buildCheckoutRequest({
+            checkoutState: checkoutStateOverride,
+            pendingReason: pendingReasonOverride
+          }));
       if (basket) {
         this.checkoutBasket = basket;
       }
     } catch {
       // Local draft remains the immediate source of truth if runtime basket sync fails.
     }
+  }
+
+  private runtimeCheckoutBasketExists(): boolean {
+    return (this.checkoutBasket?.items ?? []).some(item =>
+      item.resultState !== 'deleted'
+      && item.resultState !== 'succeeded'
+      && Boolean(item.id?.trim())
+    );
   }
 
   private clearCheckoutDraft(): void {
@@ -2019,7 +2083,7 @@ export class EventCheckoutPopupComponent {
       checkoutSessionId: null,
       items: this.checkoutBasket.items.map(item => ({
         ...item,
-        status: item.status === 'deleted' ? 'deleted' : nextStatus,
+        status: nextStatus,
         checkoutSessionId: null
       }))
     };

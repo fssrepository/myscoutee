@@ -93,6 +93,8 @@ export interface IEventsService {
   ): Promise<ActivityEventSubEventsResultDTO | null>;
   loadCheckoutBasketByEvent(userId: string, sourceId: string): Promise<EventCheckoutBasket | null>;
   saveCheckoutBasket(request: EventCheckoutRequest): Promise<EventCheckoutBasket | null>;
+  updateCheckoutBasketState(request: EventCheckoutStateChangeRequest): Promise<EventCheckoutBasket | null>;
+  payEventCheckout(request: EventCheckoutStateChangeRequest): Promise<EventParticipationActionResultDTO | null>;
   loadEventFeedbackPage(
     query: EventFeedbackPageQueryDto
   ): Promise<EventFeedbackPageResultDto>;
@@ -126,6 +128,12 @@ export interface IEventsService {
       paymentSessionId?: string | null;
       bookingConfirmed?: boolean;
       pendingReason?: AppConstants.ActivityPendingReason;
+      checkoutState?: EventCheckoutState;
+      basketItems?: EventCheckoutBasketItem[];
+      pricingSummaryRows?: EventCheckoutPricingSummaryRow[];
+      lineItems?: EventCheckoutLineItem[];
+      totalAmount?: number | null;
+      currency?: string | null;
       skipLocalRouteDelay?: boolean;
       counterDelta?: UserContracts.UserMenuCounterDeltasDto | null;
     }
@@ -710,13 +718,14 @@ export class ActivityEventDetailDTO {
       || value === 'pay'
       || value === 'cancelled'
       || value === 'rejected'
-      || value === 'deleted'
         ? value
         : 'draft';
   }
 
   static normalizeCheckoutResultState(value: unknown): EventCheckoutResultState {
-    return value === 'deleted' || value === 'succeeded' || value === 'failed' ? value : 'active';
+    return value === 'deleted' || value === 'succeeded' || value === 'failed'
+      ? value
+      : 'pending';
   }
 
   clone(): ActivityEventDetailDTO {
@@ -1261,10 +1270,9 @@ export type EventCheckoutState =
   | 'approved'
   | 'pay'
   | 'cancelled'
-  | 'rejected'
-  | 'deleted';
+  | 'rejected';
 
-export type EventCheckoutResultState = 'active' | 'deleted' | 'succeeded' | 'failed';
+export type EventCheckoutResultState = 'pending' | 'deleted' | 'succeeded' | 'failed';
 
 export interface EventCheckoutPricingSummaryRow {
   key: string;
@@ -1344,6 +1352,15 @@ export interface EventCheckoutRequest {
   totalAmount: number;
   currency: string;
   pendingReason?: AppConstants.ActivityPendingReason;
+}
+
+export interface EventCheckoutStateChangeRequest {
+  userId: string;
+  sourceId: string;
+  checkoutState: EventCheckoutState;
+  resultState?: EventCheckoutResultState | null;
+  pendingReason?: AppConstants.ActivityPendingReason;
+  checkoutSessionId?: string | null;
 }
 
 export interface EventCheckoutSession {

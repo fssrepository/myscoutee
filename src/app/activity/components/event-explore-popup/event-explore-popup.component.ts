@@ -103,6 +103,12 @@ type CheckoutDraftEntry = {
   record: ActivityEventRecord | null;
 };
 
+type CheckoutDraftMenuVisual = {
+  label: string;
+  icon: string;
+  palette: AppMenuPalette;
+};
+
 type EventExploreMenuContext =
   | { menu: 'order'; order: ContractTypes.EventExploreOrder }
   | { menu: 'view'; view: ContractTypes.EventExploreView }
@@ -934,7 +940,7 @@ export class EventExplorePopupComponent {
         label: entry.draft.eventTitle,
         description: [
           entry.draft.eventTimeframe || entry.record?.timeframe || 'Pending checkout',
-          `${itemCount} ${itemCount === 1 ? 'item' : 'items'} · ${entry.draft.currency} ${entry.draft.totalAmount.toFixed(2)}`
+          `${itemCount} elem · ${entry.draft.currency} ${entry.draft.totalAmount.toFixed(2)}`
         ].join('\n'),
         detail: clearing ? 'Releasing...' : this.checkoutDraftMenuStatusLabel(entry),
         icon: this.checkoutDraftMenuIcon(entry),
@@ -956,31 +962,130 @@ export class EventExplorePopupComponent {
   }
 
   private checkoutDraftMenuStatusLabel(entry: CheckoutDraftEntry): string {
-    if (this.canContinueCheckoutDraft(entry)) {
-      return 'Checkout ready';
-    }
-    return this.checkoutDraftPendingReason(entry) === 'waitlist'
-      ? 'Waiting for spot'
-      : 'Waiting for approval';
+    return this.checkoutDraftMenuVisual(entry).label;
   }
 
   private checkoutDraftMenuIcon(entry: CheckoutDraftEntry): string {
-    if (this.canContinueCheckoutDraft(entry)) {
-      return 'event_available';
-    }
-    return this.checkoutDraftPendingReason(entry) === 'waitlist'
-      ? 'hourglass_empty'
-      : 'pending_actions';
+    return this.checkoutDraftMenuVisual(entry).icon;
   }
 
   private checkoutDraftMenuPalette(entry: CheckoutDraftEntry): AppMenuPalette {
+    return this.checkoutDraftMenuVisual(entry).palette;
+  }
+
+  private checkoutDraftMenuVisual(entry: CheckoutDraftEntry): CheckoutDraftMenuVisual {
     if (this.isCheckoutDraftClearing(entry.draft.sourceId)) {
-      return 'warning';
+      return {
+        label: 'Felszabadítás...',
+        icon: 'hourglass_empty',
+        palette: 'warning'
+      };
     }
+
+    const resultState = this.checkoutDraftResultState(entry.draft);
+    if (resultState === 'failed') {
+      return {
+        label: 'Sikertelen',
+        icon: 'error',
+        palette: 'danger'
+      };
+    }
+
+    if (entry.draft.checkoutState === 'cancelled') {
+      return {
+        label: 'Lemondva',
+        icon: 'block',
+        palette: 'neutral'
+      };
+    }
+
+    if (entry.draft.checkoutState === 'rejected') {
+      return {
+        label: 'Elutasítva',
+        icon: 'block',
+        palette: 'danger'
+      };
+    }
+
+    if (entry.draft.pendingReason === 'waitlist') {
+      return {
+        label: 'Várólistán',
+        icon: 'hourglass_empty',
+        palette: 'amber'
+      };
+    }
+
+    if (entry.draft.pendingReason === 'approval' || entry.draft.checkoutState === 'approval-pending') {
+      return {
+        label: 'Jóváhagyásra vár',
+        icon: 'pending_actions',
+        palette: 'orange'
+      };
+    }
+
+    if (entry.draft.checkoutState === 'confirmed') {
+      return Math.max(0, Number(entry.draft.totalAmount) || 0) > 0
+        ? {
+            label: 'Fizetésre kész',
+            icon: 'payments',
+            palette: 'green'
+          }
+        : {
+            label: 'Megerősítve',
+            icon: 'event_available',
+            palette: 'green'
+          };
+    }
+
+    if (entry.draft.checkoutState === 'approved') {
+      return Math.max(0, Number(entry.draft.totalAmount) || 0) > 0
+        ? {
+            label: 'Fizetésre kész',
+            icon: 'payments',
+            palette: 'green'
+          }
+        : {
+            label: 'Jóváhagyva',
+            icon: 'verified',
+            palette: 'success'
+          };
+    }
+
+    if (entry.draft.checkoutState === 'pay') {
+      return {
+        label: 'Fizetés alatt',
+        icon: 'payments',
+        palette: 'green'
+      };
+    }
+
     if (this.canContinueCheckoutDraft(entry)) {
-      return 'red';
+      return {
+        label: 'Folytatható',
+        icon: 'event_available',
+        palette: 'teal'
+      };
     }
-    return this.checkoutDraftPendingReason(entry) === 'waitlist' ? 'amber' : 'orange';
+
+    return {
+      label: 'Piszkozat',
+      icon: 'shopping_basket',
+      palette: 'blue'
+    };
+  }
+
+  private checkoutDraftResultState(draft: EventCheckoutDraft): ActivityContracts.EventCheckoutResultState {
+    const resultStates = (draft.basketItems ?? []).map(item => item.resultState ?? 'pending');
+    if (resultStates.some(resultState => resultState === 'failed')) {
+      return 'failed';
+    }
+    if (resultStates.length > 0 && resultStates.every(resultState => resultState === 'deleted')) {
+      return 'deleted';
+    }
+    if (resultStates.length > 0 && resultStates.every(resultState => resultState === 'deleted' || resultState === 'succeeded')) {
+      return 'succeeded';
+    }
+    return 'pending';
   }
 
   protected async continueCheckoutDraft(
@@ -1546,13 +1651,6 @@ export class EventExplorePopupComponent {
     return draft?.pendingReason === 'approval';
   }
 
-  private checkoutDraftPendingReason(entry: CheckoutDraftEntry): 'approval' | 'waitlist' {
-    if (entry.draft.pendingReason === 'waitlist') {
-      return 'waitlist';
-    }
-    return this.isEventExploreRecordFull(entry.record) ? 'waitlist' : 'approval';
-  }
-
   private resolveCheckoutDraftMembershipStatus(
     sourceId: string,
     _record: ActivityEventRecord | null
@@ -1577,8 +1675,20 @@ export class EventExplorePopupComponent {
   }
 
   private isTrackableCheckoutDraft(draft: EventCheckoutDraft | null | undefined): boolean {
+    if (!draft) {
+      return false;
+    }
+    const resultState = this.checkoutDraftResultState(draft);
+    if (resultState === 'deleted' || resultState === 'succeeded') {
+      return false;
+    }
+    if (resultState === 'failed') {
+      return true;
+    }
     return Math.max(0, Number(draft?.totalAmount) || 0) > 0
-      || draft?.pendingReason === 'waitlist';
+      || draft?.pendingReason === 'waitlist'
+      || draft?.pendingReason === 'approval'
+      || draft?.checkoutState === 'approval-pending';
   }
 
   private eventExploreJoinDialogTitle(
@@ -1719,7 +1829,13 @@ export class EventExplorePopupComponent {
         acceptedPolicyIds: selection?.acceptedPolicyIds ?? [],
         paymentSessionId: selection?.paymentSessionId ?? null,
         bookingConfirmed: isAcceptedBooking,
-        pendingReason
+        pendingReason,
+        checkoutState: selection?.checkoutState,
+        basketItems: selection?.basketItems?.length ? selection.basketItems : undefined,
+        pricingSummaryRows: selection?.basketItems?.length ? (selection.pricingSummaryRows ?? []) : undefined,
+        lineItems: selection?.basketItems?.length ? selection.lineItems : undefined,
+        totalAmount: selection?.basketItems?.length ? selection.totalAmount : undefined,
+        currency: selection?.basketItems?.length ? selection.currency : undefined
       });
       const [joinResult] = await Promise.all([requestJoinPromise, exitPromise]);
       if (!joinResult || joinResult.membershipStatus === 'unchanged') {

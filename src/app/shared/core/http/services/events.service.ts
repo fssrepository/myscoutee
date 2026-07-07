@@ -26,7 +26,12 @@ import type { ActivitiesFeedFilters, ListQuery } from '../../contracts';
 import type {
   EventCheckoutAssetSelection,
   EventCheckoutBasket,
+  EventCheckoutBasketItem,
+  EventCheckoutLineItem,
+  EventCheckoutPricingSummaryRow,
   EventCheckoutRequest,
+  EventCheckoutState,
+  EventCheckoutStateChangeRequest,
   EventCheckoutSession,
   EventParticipationActionResultDTO,
   EventFeedbackQueryDto,
@@ -386,6 +391,47 @@ export class HttpEventsService implements IEventsService {
     }
   }
 
+  async updateCheckoutBasketState(request: EventCheckoutStateChangeRequest): Promise<EventCheckoutBasket | null> {
+    const normalizedUserId = request.userId?.trim();
+    const normalizedSourceId = request.sourceId?.trim();
+    if (!normalizedUserId || !normalizedSourceId) {
+      return null;
+    }
+    const response = await this.http
+      .post<EventCheckoutBasket | null>(
+        `${this.apiBaseUrl}/activities/events/checkout/state`,
+        {
+          ...request,
+          userId: normalizedUserId,
+          sourceId: normalizedSourceId
+        }
+      )
+      .toPromise();
+    return ActivityEventDetailDTO.cloneCheckoutBasket(response);
+  }
+
+  async payEventCheckout(request: EventCheckoutStateChangeRequest): Promise<EventParticipationActionResultDTO | null> {
+    const normalizedUserId = request.userId?.trim();
+    const normalizedSourceId = request.sourceId?.trim();
+    if (!normalizedUserId || !normalizedSourceId) {
+      return null;
+    }
+    const response = await this.http
+      .post<EventParticipationActionResultDTO | null>(
+        `${this.apiBaseUrl}/activities/events/checkout/pay`,
+        {
+          ...request,
+          userId: normalizedUserId,
+          sourceId: normalizedSourceId,
+          checkoutState: 'pay',
+          resultState: 'succeeded',
+          pendingReason: null
+        }
+      )
+      .toPromise();
+    return this.normalizeParticipationActionResult(response);
+  }
+
   async queryEventExplorePage(query: ActivityEventExploreQuery): Promise<ActivityEventExploreQueryResult> {
     const normalizedUserId = query.userId.trim();
     if (!normalizedUserId) {
@@ -619,6 +665,12 @@ export class HttpEventsService implements IEventsService {
       paymentSessionId?: string | null;
       bookingConfirmed?: boolean;
       pendingReason?: ActivityPendingReason;
+      checkoutState?: EventCheckoutState;
+      basketItems?: EventCheckoutBasketItem[];
+      pricingSummaryRows?: EventCheckoutPricingSummaryRow[];
+      lineItems?: EventCheckoutLineItem[];
+      totalAmount?: number | null;
+      currency?: string | null;
       skipLocalRouteDelay?: boolean;
       counterDelta?: UserMenuCounterDeltasDto | null;
     } = {}
@@ -641,7 +693,13 @@ export class HttpEventsService implements IEventsService {
         bookingConfirmed: options.bookingConfirmed === true,
         pendingReason: options.pendingReason === 'waitlist'
           ? 'waitlist'
-          : (options.pendingReason === 'approval' ? 'approval' : null)
+          : (options.pendingReason === 'approval' ? 'approval' : null),
+        checkoutState: options.checkoutState ?? null,
+        basketItems: options.basketItems?.length ? [...options.basketItems] : undefined,
+        pricingSummaryRows: options.basketItems?.length ? [...(options.pricingSummaryRows ?? [])] : undefined,
+        lineItems: options.basketItems?.length ? [...(options.lineItems ?? [])] : undefined,
+        totalAmount: options.basketItems?.length ? (Number(options.totalAmount) || 0) : undefined,
+        currency: options.basketItems?.length ? (options.currency?.trim() || 'USD') : undefined
       })
       .toPromise();
     return this.normalizeParticipationActionResult(response);

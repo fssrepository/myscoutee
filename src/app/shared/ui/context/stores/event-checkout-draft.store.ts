@@ -189,13 +189,14 @@ export class EventCheckoutDraftStore {
       || value === 'pay'
       || value === 'cancelled'
       || value === 'rejected'
-      || value === 'deleted'
         ? value
         : 'draft';
   }
 
   private normalizeCheckoutResultState(value: unknown): EventCheckoutResultState {
-    return value === 'deleted' || value === 'succeeded' || value === 'failed' ? value : 'active';
+    return value === 'deleted' || value === 'succeeded' || value === 'failed'
+      ? value
+      : 'pending';
   }
 
   private readInitialDrafts(): Record<string, EventCheckoutDraft> {

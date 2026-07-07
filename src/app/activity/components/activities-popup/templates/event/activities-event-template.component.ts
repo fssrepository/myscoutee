@@ -1246,6 +1246,12 @@ export class ActivitiesEventsController {
       paymentSessionId: selection?.paymentSessionId ?? null,
       bookingConfirmed: pendingReason == null && selection?.bookingConfirmed !== false,
       pendingReason,
+      checkoutState: selection?.checkoutState,
+      basketItems: selection?.basketItems?.length ? selection.basketItems : undefined,
+      pricingSummaryRows: selection?.basketItems?.length ? (selection.pricingSummaryRows ?? []) : undefined,
+      lineItems: selection?.basketItems?.length ? selection.lineItems : undefined,
+      totalAmount: selection?.basketItems?.length ? selection.totalAmount : undefined,
+      currency: selection?.basketItems?.length ? selection.currency : undefined,
       skipLocalRouteDelay: Boolean(selection?.paymentSessionId),
       counterDelta
     });

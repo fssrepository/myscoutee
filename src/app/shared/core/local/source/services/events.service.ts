@@ -14,9 +14,13 @@ import type {
 import type {
   EventCheckoutAssetSelection,
   EventCheckoutBasket,
+  EventCheckoutBasketItem,
+  EventCheckoutLineItem,
+  EventCheckoutPricingSummaryRow,
   EventCheckoutRequest,
-  EventCheckoutSession,
   EventCheckoutState,
+  EventCheckoutStateChangeRequest,
+  EventCheckoutSession,
   EventParticipationActionResultDTO,
   EventFeedbackQueryDto,
   EventFeedbackReceivedEventDto,
@@ -206,6 +210,56 @@ export class LocalEventsService extends LocalRouteDelayService implements IEvent
       userId: normalizedUserId,
       sourceId: normalizedSourceId
     });
+  }
+
+  async updateCheckoutBasketState(request: EventCheckoutStateChangeRequest): Promise<EventCheckoutBasket | null> {
+    const normalizedUserId = request.userId?.trim();
+    const normalizedSourceId = request.sourceId?.trim();
+    if (!normalizedUserId || !normalizedSourceId) {
+      return null;
+    }
+    await this.waitForRouteDelay(LocalEventsService.EVENTS_CHECKOUT_ROUTE);
+    return this.eventCheckoutBasketsRepository.updateBasketState({
+      ...request,
+      userId: normalizedUserId,
+      sourceId: normalizedSourceId
+    });
+  }
+
+  async payEventCheckout(request: EventCheckoutStateChangeRequest): Promise<EventParticipationActionResultDTO | null> {
+    const normalizedUserId = request.userId?.trim();
+    const normalizedSourceId = request.sourceId?.trim();
+    if (!normalizedUserId || !normalizedSourceId) {
+      return null;
+    }
+    await this.waitForRouteDelay(LocalEventsService.EVENTS_CHECKOUT_ROUTE);
+    const basket = await this.eventCheckoutBasketsRepository.loadBasketByEvent(normalizedUserId, normalizedSourceId);
+    if (!basket) {
+      return null;
+    }
+    const checkoutSessionId = `checkout-${Date.now()}`;
+    const record = this.eventsRepository.requestJoin(
+      normalizedUserId,
+      normalizedSourceId,
+      basket.slotSourceId ?? null,
+      true,
+      false
+    );
+    await this.eventCheckoutBasketsRepository.updateBasketState({
+      userId: normalizedUserId,
+      sourceId: normalizedSourceId,
+      checkoutState: 'pay',
+      resultState: 'succeeded',
+      checkoutSessionId
+    });
+    await this.eventsRepository.flushToIndexedDb();
+    return record
+      ? LocalEventParticipationActionMapper.toResult(record, this.resolveDemoActivityUserId(normalizedUserId), {
+          slotSourceId: basket.slotSourceId ?? null,
+          paymentSessionId: checkoutSessionId,
+          pendingReason: null
+        })
+      : null;
   }
 
   async queryExploreItems(userId: string): Promise<ActivityEventRecord[]> {
@@ -562,24 +616,62 @@ export class LocalEventsService extends LocalRouteDelayService implements IEvent
       paymentSessionId?: string | null;
       bookingConfirmed?: boolean;
       pendingReason?: ActivityPendingReason;
+      checkoutState?: EventCheckoutState;
+      basketItems?: EventCheckoutBasketItem[];
+      pricingSummaryRows?: EventCheckoutPricingSummaryRow[];
+      lineItems?: EventCheckoutLineItem[];
+      totalAmount?: number | null;
+      currency?: string | null;
       skipLocalRouteDelay?: boolean;
       counterDelta?: UserMenuCounterDeltasDto | null;
     } = {}
   ): Promise<EventParticipationActionResultDTO | null> {
+    const normalizedUserId = userId.trim();
+    const normalizedSourceId = sourceId.trim();
+    if (!normalizedUserId || !normalizedSourceId) {
+      return null;
+    }
+    if (options.checkoutState) {
+      if (options.basketItems?.length) {
+        await this.eventCheckoutBasketsRepository.saveBasket({
+          userId: normalizedUserId,
+          sourceId: normalizedSourceId,
+          slotSourceId: options.slotSourceId ?? null,
+          optionalSubEventIds: options.optionalSubEventIds ?? [],
+          assetSelections: options.assetSelections ?? [],
+          acceptedPolicyIds: options.acceptedPolicyIds ?? [],
+          basketItems: options.basketItems,
+          pricingSummaryRows: options.pricingSummaryRows ?? [],
+          checkoutState: options.checkoutState,
+          lineItems: options.lineItems ?? [],
+          totalAmount: Number(options.totalAmount) || 0,
+          currency: options.currency?.trim() || 'USD',
+          pendingReason: options.pendingReason
+        });
+      } else {
+        await this.eventCheckoutBasketsRepository.updateBasketState({
+          userId: normalizedUserId,
+          sourceId: normalizedSourceId,
+          checkoutState: options.checkoutState,
+          resultState: null,
+          checkoutSessionId: options.paymentSessionId ?? null
+        });
+      }
+    }
     const record = this.eventsRepository.requestJoin(
-      userId,
-      sourceId,
+      normalizedUserId,
+      normalizedSourceId,
       options.slotSourceId ?? null,
       options.bookingConfirmed === true && options.pendingReason !== 'approval' && options.pendingReason !== 'waitlist',
       options.pendingReason === 'waitlist'
     );
-    await this.patchLocalUserActivityCounterDeltas(userId, options.counterDelta ?? null);
+    await this.patchLocalUserActivityCounterDeltas(normalizedUserId, options.counterDelta ?? null);
     await this.eventsRepository.flushToIndexedDb();
     if (options.skipLocalRouteDelay !== true) {
       await this.waitForRouteDelay(LocalEventsService.EVENTS_ROUTE);
     }
     return record
-      ? LocalEventParticipationActionMapper.toResult(record, this.resolveDemoActivityUserId(userId), options)
+      ? LocalEventParticipationActionMapper.toResult(record, this.resolveDemoActivityUserId(normalizedUserId), options)
       : null;
   }
 

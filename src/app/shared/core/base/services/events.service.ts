@@ -22,7 +22,12 @@ import type { UserMenuCounterDeltasDto } from '../../contracts/user.interface';
 import type {
   EventCheckoutAssetSelection,
   EventCheckoutBasket,
+  EventCheckoutBasketItem,
+  EventCheckoutLineItem,
+  EventCheckoutPricingSummaryRow,
   EventCheckoutRequest,
+  EventCheckoutState,
+  EventCheckoutStateChangeRequest,
   EventCheckoutSession,
   EventFeedbackQueryDto,
   EventFeedbackDetailDto,
@@ -248,6 +253,32 @@ export class EventsService extends BaseRouteModeService implements IEventsServic
     });
   }
 
+  async updateCheckoutBasketState(request: EventCheckoutStateChangeRequest): Promise<EventCheckoutBasket | null> {
+    const normalizedUserId = request.userId?.trim();
+    const normalizedSourceId = request.sourceId?.trim();
+    if (!normalizedUserId || !normalizedSourceId) {
+      return null;
+    }
+    return this.eventsService.updateCheckoutBasketState({
+      ...request,
+      userId: normalizedUserId,
+      sourceId: normalizedSourceId
+    });
+  }
+
+  async payEventCheckout(request: EventCheckoutStateChangeRequest): Promise<EventParticipationActionResultDTO | null> {
+    const normalizedUserId = request.userId?.trim();
+    const normalizedSourceId = request.sourceId?.trim();
+    if (!normalizedUserId || !normalizedSourceId) {
+      return null;
+    }
+    return this.eventsService.payEventCheckout({
+      ...request,
+      userId: normalizedUserId,
+      sourceId: normalizedSourceId
+    });
+  }
+
   trashItem(
     userId: string,
     sourceId: string,
@@ -327,6 +358,12 @@ export class EventsService extends BaseRouteModeService implements IEventsServic
       paymentSessionId?: string | null;
       bookingConfirmed?: boolean;
       pendingReason?: ActivityPendingReason;
+      checkoutState?: EventCheckoutState;
+      basketItems?: EventCheckoutBasketItem[];
+      pricingSummaryRows?: EventCheckoutPricingSummaryRow[];
+      lineItems?: EventCheckoutLineItem[];
+      totalAmount?: number | null;
+      currency?: string | null;
       skipLocalRouteDelay?: boolean;
       counterDelta?: UserMenuCounterDeltasDto | null;
     } = {}

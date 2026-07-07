@@ -45,7 +45,7 @@ export class LocalEventCheckoutBasketsRepository {
       .map(item => this.normalizeBasketItem({
         ...item,
         status: item?.status === 'pay' ? 'pay' : status,
-        resultState: item?.resultState ?? 'active'
+        resultState: item?.resultState ?? 'pending'
       }, status, request.currency))
       .filter((item): item is EventCheckoutBasketItem => Boolean(item));
     const table = await this.readTable();
@@ -59,7 +59,7 @@ export class LocalEventCheckoutBasketsRepository {
     const basket = ActivityEventDetailDTO.cloneCheckoutBasket({
       userId,
       sourceId,
-      status: storedItems.length > 0 ? status : 'deleted',
+      status,
       items: storedItems,
       pricingSummaryRows: this.aggregatePricingSummaryRows(activeItems),
       lineItems: this.lineItemsFromBasketItems(activeItems),
@@ -79,6 +79,55 @@ export class LocalEventCheckoutBasketsRepository {
     };
     const keys = table.keys.includes(key) ? [...table.keys] : [...table.keys, key];
     await this.memoryDb.writeIndexedDbTableEntry(APP_INDEXED_DB_KEYS.eventCheckoutBaskets, { byKey, keys });
+    return this.activeBasket(basket);
+  }
+
+  async updateBasketState(request: {
+    userId: string;
+    sourceId: string;
+    checkoutState: EventCheckoutState;
+    resultState?: EventCheckoutResultState | null;
+    checkoutSessionId?: string | null;
+  }): Promise<EventCheckoutBasket | null> {
+    const userId = request.userId?.trim() ?? '';
+    const sourceId = request.sourceId?.trim() ?? '';
+    const key = this.recordKey(userId, sourceId);
+    if (!key) {
+      return null;
+    }
+    const table = await this.readTable();
+    const current = table.byKey[key];
+    if (!current) {
+      return null;
+    }
+    const checkoutState = this.normalizeStatus(request.checkoutState);
+    const resultState = request.resultState == null
+      ? null
+      : this.normalizeResultState(request.resultState);
+    const checkoutSessionId = request.checkoutSessionId?.trim() || null;
+    const updatedAtIso = new Date().toISOString();
+    const basket = ActivityEventDetailDTO.cloneCheckoutBasket({
+      ...current,
+      status: checkoutState,
+      checkoutSessionId: checkoutSessionId ?? current.checkoutSessionId ?? null,
+      items: current.items.map(item => ({
+        ...item,
+        status: checkoutState,
+        resultState: resultState ?? item.resultState ?? 'pending',
+        checkoutSessionId: checkoutSessionId ?? item.checkoutSessionId ?? null,
+        updatedAtIso
+      }))
+    });
+    if (!basket) {
+      return null;
+    }
+    await this.memoryDb.writeIndexedDbTableEntry(APP_INDEXED_DB_KEYS.eventCheckoutBaskets, {
+      byKey: {
+        ...table.byKey,
+        [key]: basket
+      },
+      keys: table.keys.includes(key) ? table.keys : [...table.keys, key]
+    });
     return this.activeBasket(basket);
   }
 
@@ -262,13 +311,14 @@ export class LocalEventCheckoutBasketsRepository {
       || value === 'pay'
       || value === 'cancelled'
       || value === 'rejected'
-      || value === 'deleted'
         ? value
         : 'draft';
   }
 
   private normalizeResultState(value: unknown): EventCheckoutResultState {
-    return value === 'deleted' || value === 'succeeded' || value === 'failed' ? value : 'active';
+    return value === 'deleted' || value === 'succeeded' || value === 'failed'
+      ? value
+      : 'pending';
   }
 
   private isInactiveResultState(resultState: EventCheckoutResultState | string | null | undefined): boolean {
