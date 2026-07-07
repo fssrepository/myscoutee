@@ -828,9 +828,9 @@ export class EventExplorePopupComponent {
       return;
     }
     if (this.hasTrackedMembership(record, activeUserId)) {
-      this.dialogStore.openInfo(`A membership entry already exists for ${record.title}.`, {
-        title: 'Already requested',
-        confirmTone: 'neutral'
+      this.openEventExploreCheckout(record, {
+        approvalGranted: false,
+        pendingReason: record.pendingReason ?? (this.isEventExploreRecordFull(record) ? 'waitlist' : 'approval')
       });
       return;
     }
@@ -876,7 +876,10 @@ export class EventExplorePopupComponent {
         void this.openCheckoutDraftForm({ draft, record });
         return;
       }
-      void this.continueCheckoutDraftBySourceId(record.id);
+      this.openEventExploreCheckout(record, {
+        approvalGranted: false,
+        pendingReason: record.pendingReason ?? (this.isEventExploreRecordFull(record) ? 'waitlist' : 'approval')
+      });
       return;
     }
     if (this.isEventExploreJoinMenuAction(action.actionId)) {
@@ -1964,6 +1967,7 @@ export class EventExplorePopupComponent {
       const refreshedRecord = this.eventsService.peekKnownRecordById(activeUserId, record.id) ?? record;
       const nextRecord = this.withEventExploreMemberSummary(refreshedRecord, displayMembers);
       this.locallyTrackedMembershipSourceIds.add(record.id);
+      this.restoreVisibleEventExploreRecord(nextRecord);
       this.activitiesStore.emitActivityEventSaveResult(
         this.buildActivityEventDetailDTO(nextRecord, displayMembers, joinResult.paymentSessionId ?? selection?.paymentSessionId ?? null)
       );
@@ -2066,10 +2070,6 @@ export class EventExplorePopupComponent {
   }
 
   private shouldShowRestoredEventExploreRecord(record: ActivityEventRecord): boolean {
-    const activeUserId = this.activeUserId.trim();
-    if (activeUserId && this.hasTrackedMembership(record, activeUserId) && !this.hasPendingCheckoutDraft(record.id, activeUserId)) {
-      return false;
-    }
     if (this.eventExploreFilterFriendsOnly) {
       return false;
     }
@@ -2110,23 +2110,7 @@ export class EventExplorePopupComponent {
   }
 
   private pruneVisibleTrackedEventExploreRecords(): void {
-    if (!this.eventExploreSmartList) {
-      return;
-    }
-    const activeUserId = this.activeUserId.trim();
-    if (!activeUserId) {
-      return;
-    }
-    const currentItems = [...this.eventExploreSmartList.itemsSnapshot()];
-    const nextItems = currentItems.filter(item =>
-      !this.hasTrackedMembership(item, activeUserId) || this.hasPendingCheckoutDraft(item.id, activeUserId)
-    );
-    if (nextItems.length === currentItems.length) {
-      return;
-    }
-    this.eventExploreSmartList.replaceVisibleItems(nextItems, {
-      total: Math.max(nextItems.length, this.eventExploreSmartList.cursorState().total - (currentItems.length - nextItems.length))
-    });
+    // Event Explore keeps visible cards in place during checkout/member transitions.
   }
 
   private isEventExploreRecordLeaving(record: ActivityEventRecord): boolean {

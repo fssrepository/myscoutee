@@ -1291,18 +1291,7 @@ export class EventCheckoutPopupComponent {
     if (this.busy) {
       return;
     }
-    this.confirmationDialogStore.open({
-      title: 'Close checkout?',
-      message: this.dialog()?.record.title ?? 'Checkout',
-      warningMessage: 'The checkout popup will close and the current basket state will stay unchanged.',
-      cancelLabel: 'Back',
-      confirmLabel: 'Mégse',
-      busyConfirmLabel: 'Closing...',
-      confirmTone: 'neutral',
-      confirmPalette: 'slate',
-      failureMessage: 'Unable to close checkout.',
-      onConfirm: () => this.closeCheckoutDialog()
-    });
+    this.closeCheckoutDialog();
   }
 
   private requestCheckoutBackToDetails(event?: Event): void {
