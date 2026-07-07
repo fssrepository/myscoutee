@@ -14,9 +14,7 @@ import {
   inject
 } from '@angular/core';
 import { ControlValueAccessor, FormsModule, NG_VALUE_ACCESSOR } from '@angular/forms';
-import { DateAdapter, MAT_DATE_FORMATS, MatNativeDateModule } from '@angular/material/core';
-import { MatDatepickerModule } from '@angular/material/datepicker';
-import { MatFormFieldModule } from '@angular/material/form-field';
+import { DateAdapter, MAT_DATE_FORMATS } from '@angular/material/core';
 import { MatIconModule } from '@angular/material/icon';
 import { from } from 'rxjs';
 
@@ -38,6 +36,15 @@ import {
   type AppMenuPalette,
   type AppMenuTrigger
 } from '../../../menu';
+import {
+  FormFlowComponent,
+  type FormFlowModel
+} from '../../flow';
+import {
+  PopupComponent,
+  type PopupActionEvent,
+  type PopupModel
+} from '../../../popup';
 import {
   SingleRowComponent,
   type SingleRowData
@@ -89,11 +96,10 @@ export interface ProfileExperienceEntriesChange {
   imports: [
     CommonModule,
     FormsModule,
-    MatDatepickerModule,
-    MatFormFieldModule,
     MatIconModule,
-    MatNativeDateModule,
     AppMenuComponent,
+    FormFlowComponent,
+    PopupComponent,
     SmartListComponent,
     SingleRowComponent
   ],
@@ -129,7 +135,7 @@ export class ProfileExperienceManagerComponent implements ControlValueAccessor, 
   private experienceImportToken = 0;
   private overlayOpen = false;
   private experienceEntriesRevision = 0;
-  private controlDisabled = false;
+  protected controlDisabled = false;
   private onValueChange: (entries: ExperienceEntry[]) => void = () => undefined;
   private onTouched: () => void = () => undefined;
 
@@ -143,8 +149,6 @@ export class ProfileExperienceManagerComponent implements ControlValueAccessor, 
   protected pendingExperienceDeleteId: string | null = null;
   protected highlightedImportedExperienceIds = new Set<string>();
   protected experienceImportDialog: ExperienceImportDialogState = this.createEmptyExperienceImportDialogState();
-  protected experienceRangeStart: Date | null = null;
-  protected experienceRangeEnd: Date | null = null;
   protected experienceForm: Omit<ExperienceEntry, 'id'> = this.createEmptyExperienceForm();
   protected experienceSmartListQuery: Partial<ListQuery<ExperienceListFilters>> = this.createExperienceSmartListQuery();
   protected readonly experienceSmartListConfig: SmartListConfig<ExperienceListRow, ExperienceListFilters> = {
@@ -212,7 +216,11 @@ export class ProfileExperienceManagerComponent implements ControlValueAccessor, 
   }
 
   protected get canSaveExperienceEntry(): boolean {
-    return Boolean(this.experienceForm.title.trim() && this.experienceForm.org.trim() && this.experienceRangeStart);
+    return Boolean(
+      this.experienceForm.title.trim()
+      && this.experienceForm.org.trim()
+      && this.isoDateToYearMonth(this.experienceForm.dateFrom)
+    );
   }
 
   protected get canSubmitExperienceImport(): boolean {
@@ -274,7 +282,10 @@ export class ProfileExperienceManagerComponent implements ControlValueAccessor, 
         this.setFilter(context.value);
         return;
       case 'experienceType':
-        this.experienceForm.type = context.value;
+        this.experienceForm = {
+          ...this.experienceForm,
+          type: context.value
+        };
         return;
       case 'experienceQuickAction':
         if (context.action === 'create') {
@@ -393,11 +404,164 @@ export class ProfileExperienceManagerComponent implements ControlValueAccessor, 
       label: option,
       icon: this.experienceTypeIcon(option),
       kind: 'radio',
+      value: option,
       active: option === this.experienceForm.type,
       palette: this.paletteFromProfileTone(this.experienceTypeToneClass(option)),
       surface: 'tinted',
       context: { kind: 'experienceType', value: option }
     }));
+  }
+
+  protected experienceFormPopupModel(): PopupModel {
+    return {
+      title: this.editingExperienceId ? 'Edit Experience' : 'Add Experience',
+      ariaLabel: this.editingExperienceId ? 'Edit experience' : 'Add experience',
+      closeAriaLabel: 'Close experience form',
+      size: 'wide',
+      headerTone: 'accent',
+      backdropTone: 'dim',
+      closeOnBackdrop: true,
+      headerActions: [
+        {
+          id: 'experience-form-save',
+          icon: 'done',
+          ariaLabel: 'Save experience',
+          palette: 'green',
+          disabled: !this.canSaveExperienceEntry
+        }
+      ],
+      onClose: () => this.closeExperienceForm(),
+      onAction: event => this.onExperienceFormPopupAction(event)
+    };
+  }
+
+  protected experienceFormPopupZIndex(): number {
+    return 4300;
+  }
+
+  protected experienceFormFlowModel(): FormFlowModel {
+    return {
+      title: 'Experience',
+      layout: 'grouped',
+      tone: this.experienceFormFlowTone(),
+      header: false,
+      completion: {
+        controls: 'required'
+      },
+      steps: [
+        {
+          id: 'experience-details',
+          title: 'Experience',
+          icon: this.experienceTypeIcon(this.experienceForm.type),
+          controls: [
+            {
+              id: 'type',
+              bind: 'type',
+              kind: 'menu',
+              label: 'Type',
+              layout: 'half',
+              required: true,
+              config: {
+                kind: 'select',
+                title: 'Experience Type',
+                trigger: this.experienceTypeMenuTrigger(),
+                items: this.experienceTypeMenuItems(),
+                closeOnSelect: true
+              }
+            },
+            {
+              id: 'city',
+              bind: 'city',
+              kind: 'text',
+              label: 'City',
+              layout: 'half'
+            },
+            {
+              id: 'title',
+              bind: 'title',
+              kind: 'text',
+              label: 'Title',
+              layout: 'half',
+              required: true
+            },
+            {
+              id: 'org',
+              bind: 'org',
+              kind: 'text',
+              label: 'Organization',
+              layout: 'half',
+              required: true
+            },
+            {
+              id: 'dateFrom',
+              bind: 'dateFrom',
+              kind: 'date',
+              label: 'From',
+              layout: 'half',
+              required: true,
+              config: {
+                model: {
+                  mode: 'single',
+                  precision: 'date',
+                  valueFormat: 'iso-date',
+                  field: {
+                    label: 'From',
+                    placeholder: 'YYYY/MM/DD',
+                    required: true
+                  }
+                }
+              }
+            },
+            {
+              id: 'dateTo',
+              bind: 'dateTo',
+              kind: 'date',
+              label: 'To',
+              layout: 'half',
+              config: {
+                model: {
+                  mode: 'single',
+                  precision: 'date',
+                  valueFormat: 'iso-date',
+                  field: {
+                    label: 'To',
+                    placeholder: 'Present'
+                  }
+                }
+              }
+            },
+            {
+              id: 'description',
+              bind: 'description',
+              kind: 'textarea',
+              label: 'Description',
+              rows: 4,
+              layout: 'wide'
+            }
+          ]
+        }
+      ]
+    };
+  }
+
+  private experienceFormFlowTone(): FormFlowModel['tone'] {
+    switch (this.experienceForm.type) {
+      case 'Workspace':
+        return 'orange';
+      case 'School':
+        return 'blue';
+      case 'Online Session':
+        return 'green';
+      default:
+        return 'default';
+    }
+  }
+
+  private onExperienceFormPopupAction(event: PopupActionEvent): void {
+    if (event.action.id !== 'experience-form-save') {
+      return;
+    }
+    void this.saveExperienceEntry();
   }
 
   protected experienceTypeIcon(type: ExperienceEntry['type']): string {
@@ -469,12 +633,10 @@ export class ProfileExperienceManagerComponent implements ControlValueAccessor, 
         title: entry.title,
         org: entry.org,
         city: entry.city,
-        dateFrom: entry.dateFrom,
-        dateTo: entry.dateTo === 'Present' ? '' : entry.dateTo,
+        dateFrom: this.yearMonthToIsoDate(entry.dateFrom),
+        dateTo: entry.dateTo === 'Present' ? '' : this.yearMonthToIsoDate(entry.dateTo),
         description: entry.description
       };
-      this.experienceRangeStart = AppUtils.fromYearMonth(entry.dateFrom);
-      this.experienceRangeEnd = entry.dateTo === 'Present' ? null : AppUtils.fromYearMonth(entry.dateTo);
       this.syncOverlayState();
       this.cdr.markForCheck();
       return;
@@ -497,11 +659,11 @@ export class ProfileExperienceManagerComponent implements ControlValueAccessor, 
     if (this.controlDisabled || !this.canSaveExperienceEntry) {
       return;
     }
-    const dateFrom = this.experienceRangeStart ? AppUtils.toYearMonth(this.experienceRangeStart) : '';
+    const dateFrom = this.isoDateToYearMonth(this.experienceForm.dateFrom);
     if (!dateFrom) {
       return;
     }
-    const dateTo = this.experienceRangeEnd ? AppUtils.toYearMonth(this.experienceRangeEnd) : 'Present';
+    const dateTo = this.isoDateToYearMonth(this.experienceForm.dateTo) || 'Present';
     const payload: Omit<ExperienceEntry, 'id'> = {
       ...this.experienceForm,
       dateFrom,
@@ -662,8 +824,20 @@ export class ProfileExperienceManagerComponent implements ControlValueAccessor, 
 
   private resetExperienceForm(defaultType: ExperienceEntry['type'] = 'Workspace'): void {
     this.experienceForm = this.createEmptyExperienceForm(defaultType);
-    this.experienceRangeStart = null;
-    this.experienceRangeEnd = null;
+  }
+
+  private yearMonthToIsoDate(value: string): string {
+    const parsed = AppUtils.fromYearMonth(value);
+    return parsed ? AppUtils.toIsoDate(parsed) : '';
+  }
+
+  private isoDateToYearMonth(value: string): string {
+    const normalized = `${value ?? ''}`.trim();
+    if (/^\d{4}-\d{2}$/.test(normalized)) {
+      return normalized;
+    }
+    const parsed = AppUtils.fromIsoDate(normalized);
+    return parsed ? AppUtils.toYearMonth(parsed) : '';
   }
 
   private createEmptyExperienceImportDialogState(): ExperienceImportDialogState {

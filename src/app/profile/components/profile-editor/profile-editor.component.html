@@ -11,13 +11,7 @@
         <div
           class="popup-header"
           [class.popup-header-selector]="panel === 'experience'"
-          [class.popup-header-with-back]="panel !== 'profile'"
           >
-          @if (panel !== 'profile') {
-            <button mat-icon-button class="popup-close popup-back-btn" (click)="handleCloseAction()" aria-label="Back">
-              <mat-icon>arrow_back</mat-icon>
-            </button>
-          }
           <div class="popup-title">
             <h2>{{ popupTitle() }}</h2>
           </div>
@@ -36,6 +30,10 @@
                 (itemSelect)="onProfileEditorMenuSelect($event)"
               ></app-menu>
             </div>
+            <button mat-icon-button class="popup-close" (click)="handleCloseAction()" aria-label="Close">
+              <mat-icon>close</mat-icon>
+            </button>
+          } @else {
             <button mat-icon-button class="popup-close" (click)="handleCloseAction()" aria-label="Close">
               <mat-icon>close</mat-icon>
             </button>
