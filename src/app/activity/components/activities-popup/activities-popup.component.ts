@@ -2303,9 +2303,10 @@ export class ActivitiesPopupComponent implements OnDestroy {
     this.eventDistanceById[item.id] = item.distanceKm;
     this.hostingDistanceById[item.id] = item.distanceKm;
     if (this.activityEventSaveStatusCode(item) === 'T') {
-      const row = ActivityEventInfoCardConverter.convert(item, {
-        activeUserId: this.activeUser.id
-      });
+      const row = ActivityEventInfoCardConverter.convert(
+        item,
+        this.activityEventInfoCardConverterOptions()
+      );
       this.trashedActivityRowsByKey[this.activityRowIdentity(row)] = row;
     } else {
       delete this.trashedActivityRowsByKey[`events:${item.id}`];
@@ -3018,9 +3019,10 @@ export class ActivitiesPopupComponent implements OnDestroy {
     }
     const dto = this.eventsService.peekKnownItemById(this.activeUser.id, row.id);
     if (dto) {
-      return ActivityEventInfoCardConverter.convert(dto, {
-        activeUserId: this.activeUser.id
-      });
+      return ActivityEventInfoCardConverter.convert(
+        dto,
+        this.activityEventInfoCardConverterOptions()
+      );
     }
     return row;
   }
@@ -3119,9 +3121,10 @@ export class ActivitiesPopupComponent implements OnDestroy {
     }
     const matchingDTO = this.eventsService.peekKnownItemById(this.activeUser.id, row.id);
     if (matchingDTO) {
-      return ActivityEventInfoCardConverter.convert(matchingDTO, {
-        activeUserId: this.activeUser.id
-      });
+      return ActivityEventInfoCardConverter.convert(
+        matchingDTO,
+        this.activityEventInfoCardConverterOptions()
+      );
     }
     return row;
   }
@@ -3178,9 +3181,7 @@ export class ActivitiesPopupComponent implements OnDestroy {
           acceptedMembers,
           pendingMembers,
           capacityTotal
-        }), {
-          activeUserId: this.activeUser.id
-        });
+        }), this.activityEventInfoCardConverterOptions());
     };
     this.activitiesSmartList?.patchVisibleItem(
       row => row.id === sync.id && this.isEventStyleActivity(row),
@@ -3228,9 +3229,7 @@ export class ActivitiesPopupComponent implements OnDestroy {
       acceptedMembers: summary.acceptedMembers,
       pendingMembers: summary.pendingMembers,
       capacityTotal: summary.capacityTotal
-    }), {
-      activeUserId: this.activeUser.id
-    }));
+    }), this.activityEventInfoCardConverterOptions()));
   }
 
   protected persistSelectedActivityMembers(): void {
@@ -3474,9 +3473,10 @@ export class ActivitiesPopupComponent implements OnDestroy {
     this.activityCapacityById[sync.id] = `${acceptedMembers} / ${capacityTotal}`;
     this.activityPendingMembersById[sync.id] = pendingMembers;
 
-    const eventRow = ActivityEventInfoCardConverter.convert(dto, {
-      activeUserId: this.activeUser.id
-    });
+    const eventRow = ActivityEventInfoCardConverter.convert(
+      dto,
+      this.activityEventInfoCardConverterOptions()
+    );
     const summary: ActivityMembersSummaryDto = {
       ownerType: 'event',
       ownerId: sync.id,
