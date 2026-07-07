@@ -36,6 +36,8 @@ export interface EventEditorPresentationOptions {
   loading?: EventEditorPresentationValue<boolean | null | undefined> | null;
   hideSubEventsPanel?: boolean | null;
   hideSlotsPanel?: boolean | null;
+  showBasketPanel?: EventEditorPresentationValue<boolean | null | undefined> | null;
+  showPricingPanel?: EventEditorPresentationValue<boolean | null | undefined> | null;
   basketItems?: EventEditorPresentationValue<readonly EventEditorBasketPresentationItem[] | null | undefined> | null;
   basketPricingSummaryRows?: EventEditorPresentationValue<readonly EventEditorBasketPricingSummaryRow[] | null | undefined> | null;
   basketTotalAmount?: EventEditorPresentationValue<number | null | undefined> | null;
@@ -177,6 +179,8 @@ export class EventEditorPopupStore {
       loading: presentation?.loading ?? null,
       hideSubEventsPanel: presentation?.hideSubEventsPanel === true,
       hideSlotsPanel: presentation?.hideSlotsPanel === true,
+      showBasketPanel: presentation?.showBasketPanel ?? null,
+      showPricingPanel: presentation?.showPricingPanel ?? null,
       basketItems: typeof presentation?.basketItems === 'function'
         ? presentation.basketItems
         : [...(presentation?.basketItems ?? [])],

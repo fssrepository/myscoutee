@@ -289,6 +289,7 @@ export class EventEditorPopupComponent implements OnInit, OnDestroy {
     context: 'event',
     presentation: 'popup-summary',
     slotCatalog: () => this.pricingSlotCatalog(),
+    visible: () => this.checkoutPricingPanelVisibility(),
     runtimePreview: () => this.checkoutPricingRuntimePreview()
   };
 
@@ -456,7 +457,22 @@ export class EventEditorPopupComponent implements OnInit, OnDestroy {
   }
 
   protected showCheckoutBasketInput(): boolean {
-    return this.checkoutReviewMode() && this.eventDetailDTO.slotsEnabled === true;
+    if (!this.checkoutReviewMode()) {
+      return false;
+    }
+    const configured = this.resolvePresentationValue(this.eventEditorStore.presentation().showBasketPanel, null);
+    if (configured !== null && configured !== undefined) {
+      return configured === true;
+    }
+    return this.eventDetailDTO.slotsEnabled === true;
+  }
+
+  protected checkoutPricingPanelVisibility(): boolean | null {
+    if (!this.checkoutReviewMode()) {
+      return null;
+    }
+    const configured = this.resolvePresentationValue(this.eventEditorStore.presentation().showPricingPanel, null);
+    return configured === null || configured === undefined ? null : configured === true;
   }
 
   protected checkoutBasketInputItems(): readonly EventBasketInputItem[] {

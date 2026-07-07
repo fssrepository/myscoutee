@@ -164,6 +164,8 @@ export class EventCheckoutPopupComponent {
       hideSubEventsPanel: true,
       hideSlotsPanel: true,
       loading: () => this.checkoutReviewBodyLoading(),
+      showBasketPanel: true,
+      showPricingPanel: true,
       basketItems: () => this.checkoutBasketPresentationItems(),
       basketPricingSummaryRows: () => this.checkoutBasketPricingSummaryRows(),
       basketTotalAmount: () => this.totalAmount(),

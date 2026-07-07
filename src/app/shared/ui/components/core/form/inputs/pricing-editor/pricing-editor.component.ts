@@ -92,6 +92,7 @@ export interface PricingEditorConfig {
   showPreview?: PricingEditorConfigValue<boolean | null>;
   allowSlotFeatures?: PricingEditorConfigValue<boolean | null>;
   embedded?: PricingEditorConfigValue<boolean | null>;
+  visible?: PricingEditorConfigValue<boolean | null>;
   runtimePreview?: PricingEditorConfigValue<PricingEditorRuntimePreview | null>;
 }
 
@@ -347,11 +348,15 @@ export class PricingEditorInputComponent implements OnChanges, DoCheck, OnDestro
   }
 
   protected showPricingPanel(): boolean {
-    return !this.editorLocked() || this.showPricingContent();
+    const configured = this.pricingPanelVisibility();
+    if (configured !== null) {
+      return configured;
+    }
+    return !this.editorLocked() || this.isPricingEnabled();
   }
 
   protected showPricingContent(): boolean {
-    return this.isPricingEnabled() || this.runtimePreviewState() !== null;
+    return this.pricingPanelVisibility() === true || this.isPricingEnabled();
   }
 
   protected showToggleControl(): boolean {
@@ -360,6 +365,10 @@ export class PricingEditorInputComponent implements OnChanges, DoCheck, OnDestro
 
   private showToggleableSection(enabled: boolean): boolean {
     return !this.editorLocked() || enabled;
+  }
+
+  private pricingPanelVisibility(): boolean | null {
+    return this.resolveConfigValue(this.config.visible, null);
   }
 
   protected isDynamicMode(): boolean {
