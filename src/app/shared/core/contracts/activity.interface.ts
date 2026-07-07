@@ -713,6 +713,7 @@ export class ActivityEventDetailDTO {
 
   static normalizeCheckoutState(value: unknown): EventCheckoutState {
     return value === 'confirmed'
+      || value === 'waiting'
       || value === 'approval-pending'
       || value === 'approved'
       || value === 'pay'
@@ -1266,6 +1267,7 @@ export interface EventCheckoutLineItem {
 export type EventCheckoutState =
   | 'draft'
   | 'confirmed'
+  | 'waiting'
   | 'approval-pending'
   | 'approved'
   | 'pay'

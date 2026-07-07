@@ -949,7 +949,7 @@ export class EventCheckoutPopupComponent {
       return 'Continue';
     }
     if (this.checkoutDecisionPending()) {
-      return this.checkoutDecisionPendingReason() === 'waitlist' ? 'Helyre vár' : 'Jóváhagyásra vár';
+      return this.checkoutDecisionPendingReason() === 'waitlist' ? 'Várólistán' : 'Jóváhagyásra vár';
     }
     if (this.paymentStep) {
       return 'Fizetés';
@@ -1219,16 +1219,22 @@ export class EventCheckoutPopupComponent {
     if (this.activeCheckoutBasketItems().some(item => item.status === 'pay')) {
       return 'pay';
     }
+    if (this.activeCheckoutBasketItems().some(item => item.status === 'waiting')) {
+      return 'waiting';
+    }
     const pendingReason = pendingReasonOverride === undefined
       ? this.checkoutDecisionPendingReason()
       : pendingReasonOverride;
     if (pendingReason === 'approval') {
       return 'approval-pending';
     }
+    if (pendingReason === 'waitlist') {
+      return 'waiting';
+    }
     if (this.isApprovedAfterOwnerReview()) {
       return 'approved';
     }
-    if (this.paymentStep || this.checkoutSessionId || pendingReason === 'waitlist') {
+    if (this.paymentStep || this.checkoutSessionId) {
       return 'confirmed';
     }
     return 'draft';
@@ -1279,6 +1285,12 @@ export class EventCheckoutPopupComponent {
     if (draft?.pendingReason === 'approval' || draft?.pendingReason === 'waitlist') {
       return draft.pendingReason;
     }
+    if (draft?.checkoutState === 'waiting' || this.checkoutBasket?.status === 'waiting') {
+      return 'waitlist';
+    }
+    if (this.checkoutBasket?.status === 'approval-pending') {
+      return 'approval';
+    }
     return null;
   }
 
@@ -1320,6 +1332,7 @@ export class EventCheckoutPopupComponent {
     if (!dialog || !this.canContinue()) {
       return;
     }
+    let keepCheckoutReviewOpen = false;
     if (!this.paymentStep && (this.shouldAwaitApprovalBeforePayment() || this.isWaitingListSelection())) {
       this.busy = true;
       this.checkoutBusyActionId = 'checkout-confirm';
@@ -1328,6 +1341,8 @@ export class EventCheckoutPopupComponent {
         const pendingReason = this.pendingReasonForJoinRequest();
         const checkoutState: ActivityContracts.EventCheckoutState = pendingReason === 'approval'
           ? 'approval-pending'
+          : pendingReason === 'waitlist'
+            ? 'waiting'
           : 'confirmed';
         await dialog.onSubmit(this.buildSelection(null, false, {
           checkoutState,
@@ -1335,12 +1350,19 @@ export class EventCheckoutPopupComponent {
           includeBasketPayload: !this.runtimeCheckoutBasketExists()
         }));
         await this.persistCheckoutDraft(false, pendingReason, checkoutState);
-        this.closeCheckoutDialog();
+        keepCheckoutReviewOpen = pendingReason === 'waitlist';
+        if (!keepCheckoutReviewOpen) {
+          this.closeCheckoutDialog();
+        }
       } catch (error) {
         this.errorMessage = this.resolveErrorMessage(error, dialog.failureMessage);
       } finally {
         this.busy = false;
         this.checkoutBusyActionId = null;
+        if (keepCheckoutReviewOpen && this.dialog()?.id === dialog.id) {
+          this.paymentStep = false;
+          this.openCheckoutReviewEditorShell(dialog);
+        }
       }
       return;
     }

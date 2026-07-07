@@ -217,9 +217,11 @@ export class LocalEventCheckoutBasketsRepository {
           ? 'approved'
           : activeItems.some(item => item.status === 'approval-pending')
             ? 'approval-pending'
-            : activeItems.some(item => item.status === 'confirmed')
-              ? 'confirmed'
-              : 'draft',
+            : activeItems.some(item => item.status === 'waiting')
+              ? 'waiting'
+              : activeItems.some(item => item.status === 'confirmed')
+                ? 'confirmed'
+                : 'draft',
       items: activeItems,
       pricingSummaryRows: this.aggregatePricingSummaryRows(activeItems),
       lineItems: this.lineItemsFromBasketItems(activeItems),
@@ -306,6 +308,7 @@ export class LocalEventCheckoutBasketsRepository {
 
   private normalizeStatus(value: unknown): EventCheckoutState {
     return value === 'confirmed'
+      || value === 'waiting'
       || value === 'approval-pending'
       || value === 'approved'
       || value === 'pay'

@@ -92,6 +92,9 @@ export class EventBasketInputComponent {
     if (item.status === 'pay') {
       return 'violet';
     }
+    if (item.status === 'waiting') {
+      return 'amber';
+    }
     if (item.status === 'confirmed') {
       return 'teal';
     }
@@ -99,7 +102,11 @@ export class EventBasketInputComponent {
   }
 
   protected itemMenuPalette(item: EventBasketInputItem): AppMenuPalette {
-    return item.status === 'pay' ? 'violet' : 'teal';
+    return item.status === 'pay'
+      ? 'violet'
+      : item.status === 'waiting'
+        ? 'amber'
+        : 'teal';
   }
 
   protected itemMenuItems(): readonly AppMenuItem<string, unknown>[] {
@@ -135,6 +142,8 @@ export class EventBasketInputComponent {
     const quantity = this.itemQuantity(item);
     const status = item.status === 'pay'
       ? 'Paid'
+      : item.status === 'waiting'
+        ? 'Várólistán'
       : item.status === 'confirmed'
         ? 'Confirmed'
         : 'Draft';

@@ -256,7 +256,11 @@ export class LocalEventsService extends LocalRouteDelayService implements IEvent
     await this.eventCheckoutBasketsRepository.updateBasketState({
       userId: normalizedUserId,
       sourceId: normalizedSourceId,
-      checkoutState: result?.membershipStatus === 'accepted' ? 'pay' : 'approval-pending',
+      checkoutState: result?.membershipStatus === 'accepted'
+        ? 'pay'
+        : result?.pendingReason === 'waitlist'
+          ? 'waiting'
+          : 'approval-pending',
       resultState: result?.membershipStatus === 'accepted' ? 'succeeded' : null,
       checkoutSessionId
     });

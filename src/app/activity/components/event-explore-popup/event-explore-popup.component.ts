@@ -909,6 +909,9 @@ export class EventExplorePopupComponent {
     if (this.isCheckoutDraftClearing(entry.draft.sourceId)) {
       return false;
     }
+    if (entry.draft.pendingReason === 'waitlist' || entry.draft.checkoutState === 'waiting') {
+      return false;
+    }
     if (Boolean(entry.draft.checkoutSessionId?.trim())) {
       return true;
     }
@@ -1007,7 +1010,7 @@ export class EventExplorePopupComponent {
       };
     }
 
-    if (entry.draft.pendingReason === 'waitlist') {
+    if (entry.draft.pendingReason === 'waitlist' || entry.draft.checkoutState === 'waiting') {
       return {
         label: 'Várólistán',
         icon: 'hourglass_empty',
@@ -1108,8 +1111,10 @@ export class EventExplorePopupComponent {
       this.cdr.markForCheck();
       return;
     }
+    const pendingReason = this.checkoutDraftPendingReason(draft);
     this.openEventExploreCheckout(record, {
-      approvalGranted: this.canContinueCheckoutDraft({ draft, record })
+      approvalGranted: pendingReason ? false : this.canContinueCheckoutDraft({ draft, record }),
+      pendingReason
     });
   }
 
@@ -1134,8 +1139,10 @@ export class EventExplorePopupComponent {
       this.cdr.markForCheck();
       return;
     }
+    const pendingReason = this.checkoutDraftPendingReason(draft);
     this.openEventExploreCheckout(record, {
-      approvalGranted: this.canContinueCheckoutDraft({ draft, record })
+      approvalGranted: pendingReason ? false : this.canContinueCheckoutDraft({ draft, record }),
+      pendingReason
     });
   }
 
@@ -1651,6 +1658,16 @@ export class EventExplorePopupComponent {
     return draft?.pendingReason === 'approval';
   }
 
+  private checkoutDraftPendingReason(draft: EventCheckoutDraft | null | undefined): ActivityPendingReason {
+    if (draft?.pendingReason === 'waitlist' || draft?.checkoutState === 'waiting') {
+      return 'waitlist';
+    }
+    if (draft?.pendingReason === 'approval' || draft?.checkoutState === 'approval-pending') {
+      return 'approval';
+    }
+    return null;
+  }
+
   private resolveCheckoutDraftMembershipStatus(
     sourceId: string,
     _record: ActivityEventRecord | null
@@ -1688,6 +1705,7 @@ export class EventExplorePopupComponent {
     return Math.max(0, Number(draft?.totalAmount) || 0) > 0
       || draft?.pendingReason === 'waitlist'
       || draft?.pendingReason === 'approval'
+      || draft?.checkoutState === 'waiting'
       || draft?.checkoutState === 'approval-pending';
   }
 
@@ -1764,7 +1782,7 @@ export class EventExplorePopupComponent {
 
   private openEventExploreCheckout(
     record: ActivityEventRecord,
-    options: { approvalGranted?: boolean } = {}
+    options: { approvalGranted?: boolean; pendingReason?: ActivityPendingReason } = {}
   ): void {
     const dialogOptions = {
       approvalGranted: options.approvalGranted === true
@@ -1775,7 +1793,7 @@ export class EventExplorePopupComponent {
       record,
       requiresApprovalBeforePayment: this.requiresApprovalBeforePayment(record),
       approvalGranted: dialogOptions.approvalGranted,
-      pendingReason: this.isEventExploreRecordFull(record) ? 'waitlist' : 'approval',
+      pendingReason: options.pendingReason ?? (this.isEventExploreRecordFull(record) ? 'waitlist' : 'approval'),
       title: this.eventExploreJoinDialogTitle(record, dialogOptions),
       subtitle: record.timeframe,
       confirmLabel: this.eventExploreJoinConfirmLabel(record, dialogOptions),
@@ -1822,7 +1840,7 @@ export class EventExplorePopupComponent {
     this.emitActivityEventSave(nextEventDetailDTO);
 
     try {
-      const requestJoinPromise = this.eventsService.requestJoin(activeUserId, record.id, {
+      const joinResult = await this.eventsService.requestJoin(activeUserId, record.id, {
         slotSourceId: selection?.slotSourceId ?? null,
         optionalSubEventIds: selection?.optionalSubEventIds ?? [],
         assetSelections: selection?.assetSelections ?? [],
@@ -1837,14 +1855,11 @@ export class EventExplorePopupComponent {
         totalAmount: selection?.basketItems?.length ? selection.totalAmount : undefined,
         currency: selection?.basketItems?.length ? selection.currency : undefined
       });
-      const [joinResult] = await Promise.all([requestJoinPromise, exitPromise]);
+      await exitPromise;
       if (!joinResult || joinResult.membershipStatus === 'unchanged') {
         throw new Error(this.eventExploreJoinFailureMessage(record));
       }
-      const authoritativeMembers = this.sortMembersByActionTimeDesc(
-        await this.activityMembersService.queryMembersByOwner(this.eventMembersOwner(record))
-      );
-      const displayMembers = authoritativeMembers.length > 0 ? authoritativeMembers : nextMembers;
+      const displayMembers = nextMembers;
       const nextRecord = this.withEventExploreMemberSummary(record, displayMembers);
       this.emitActivityEventSave(
         this.buildActivityEventDetailDTO(nextRecord, displayMembers, joinResult.paymentSessionId ?? selection?.paymentSessionId ?? null)

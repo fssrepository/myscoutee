@@ -184,6 +184,7 @@ export class EventCheckoutDraftStore {
 
   private normalizeCheckoutState(value: unknown): EventCheckoutState {
     return value === 'confirmed'
+      || value === 'waiting'
       || value === 'approval-pending'
       || value === 'approved'
       || value === 'pay'
