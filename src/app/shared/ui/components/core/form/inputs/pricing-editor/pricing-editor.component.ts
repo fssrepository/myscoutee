@@ -26,7 +26,7 @@ import { MatSelectModule } from '@angular/material/select';
 
 import { PricingBuilder } from '../../../../../../core/base/builders';
 import type * as ContractTypes from '../../../../../../core/contracts';
-import { PricingSlotPanelComponent } from '../../popups/pricing-slot-panel';
+import { PricingSlotPanelComponent } from './pricing-slot-panel';
 import {
   FormFlowPopupStore,
   type FormFlowPricingEditorPopupActionRequest,
