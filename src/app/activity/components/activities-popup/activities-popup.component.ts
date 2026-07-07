@@ -3137,6 +3137,9 @@ export class ActivitiesPopupComponent implements OnDestroy {
   }
 
   private applyActivityMembersSyncState(sync: ActivityMembersSyncState): void {
+    if (sync.viewerMembershipRemoved) {
+      this.activitiesStore.clearActivityEventSave();
+    }
     if (sync.viewerMembershipRemoved && this.removeVisibleActivityMembershipRow(sync.id)) {
       this.bumpActivitiesEventCardRevision(`events:${sync.id}`);
       this.bumpActivitiesEventCardRevision(`invitations:${sync.id}`);

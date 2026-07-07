@@ -19,6 +19,7 @@ import { EventsService } from '../../../shared/core/base/services/events.service
 import type { ActivityEventRecord } from '../../../shared/core/contracts/activity.interface';
 import { EventCheckoutDraftStore, type EventCheckoutDraft } from '../../../shared/ui/context/stores/event-checkout-draft.store';
 import { EventCheckoutDialogStore, type EventCheckoutDialogState } from '../../../shared/ui/context/stores/event-checkout-dialog.store';
+import { ActivitiesPopupStore } from '../../../shared/ui/context/stores/activities-popup.store';
 import { DialogStore } from '../../../shared/ui/context/stores/dialog.store';
 import {
   EventEditorPopupStore,
@@ -72,6 +73,7 @@ export class EventCheckoutPopupComponent {
   private readonly eventEditorStore = inject(EventEditorPopupStore);
   private readonly eventsService = inject(EventsService);
   private readonly checkoutDraftStore = inject(EventCheckoutDraftStore);
+  private readonly activitiesStore = inject(ActivitiesPopupStore);
   private readonly confirmationDialogStore = inject(DialogStore);
   private readonly activityStore = inject(ActivityStore);
 
@@ -1200,6 +1202,7 @@ export class EventCheckoutPopupComponent {
     this.signalCheckoutCounterDelta(counterDelta);
     this.emitCheckoutMembershipSync(dialog.record.id, leaveResult, memberDelta, true);
     this.emitCheckoutMembershipSync(this.selectedSlotSourceId, leaveResult, memberDelta, true);
+    this.activitiesStore.clearActivityEventSave();
     this.checkoutDraftStore.clear(dialog.userId, dialog.record.id);
     this.paymentStep = false;
     this.checkoutSessionId = null;

@@ -1242,6 +1242,7 @@ export class EventExplorePopupComponent {
       this.signalEventExploreCounterDelta(activeUserId, counterDelta);
       const memberDelta = this.checkoutDraftCancelMemberDelta(draft);
       this.emitCheckoutDraftMembersSync(sourceId, leaveResult, memberDelta, true);
+      this.activitiesStore.clearActivityEventSave();
       this.eventCheckoutDraftStore.clear(activeUserId, sourceId);
       this.locallyTrackedMembershipSourceIds.delete(sourceId);
     } finally {

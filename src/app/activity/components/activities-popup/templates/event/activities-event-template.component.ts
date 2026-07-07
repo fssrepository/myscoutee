@@ -142,6 +142,7 @@ export class ActivitiesEventsController {
   private get eventCheckoutDraftStore() { return this.host.eventCheckoutDraftStore; }
   private get eventCheckoutDialogStore() { return this.host.eventCheckoutDialogStore; }
   private get eventsService() { return this.host.eventsService; }
+  private get activitiesStore() { return this.host.activitiesStore; }
   private get usersService() { return this.host.usersService; }
   private get hostingPublicationFilter() { return this.host.hostingPublicationFilter as ContractTypes.HostingPublicationFilter; }
   private get pendingActivityMemberDelete() { return this.host.pendingActivityMemberDelete as ActivityContracts.ActivityMemberDTO | null; }
@@ -1372,6 +1373,7 @@ export class ActivitiesEventsController {
     this.activitiesSmartList?.removeVisibleItemByIdentity(this.activityRowIdentity(row));
     this.signalActivityCounterDelta(activeUserId, counterDelta);
     this.emitActivityLeaveMembersSync(row, leaveResult);
+    this.activitiesStore.clearActivityEventSave();
     this.eventCheckoutDraftStore.clear(activeUserId, row.id);
     this.cdr.markForCheck();
   }
