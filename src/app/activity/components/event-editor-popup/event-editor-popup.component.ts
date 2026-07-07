@@ -77,11 +77,18 @@ import {
   PricingEditorInputComponent,
   PoliciesInputComponent,
   type PricingEditorConfig,
+  type PricingEditorRuntimePreview,
   IndicatorComponent,
   PopupComponent,
   type PopupControl,
   type PopupModel
 } from '../../../shared/ui';
+import {
+  EventBasketInputComponent,
+  type EventBasketInputItem,
+  type EventBasketInputItemMenuEvent,
+  type EventBasketInputPricingSummaryRow
+} from './event-basket-input';
 import {
   EventSubeventDefinitionsPanelComponent
 } from '../event-subevent-definitions-panel';
@@ -119,6 +126,7 @@ interface SlotOverrideEditorState {
     MatInputModule,
     AppMenuComponent,
     DateInputComponent,
+    EventBasketInputComponent,
     ImageCarouselComponent,
     PoliciesInputComponent,
     EventSlotsInputComponent,
@@ -274,7 +282,8 @@ export class EventEditorPopupComponent implements OnInit, OnDestroy {
   protected readonly eventPricingEditorConfig: PricingEditorConfig = {
     context: 'event',
     presentation: 'popup-summary',
-    slotCatalog: () => this.pricingSlotCatalog()
+    slotCatalog: () => this.pricingSlotCatalog(),
+    runtimePreview: () => this.checkoutPricingRuntimePreview()
   };
 
   protected readonly eventSlotsInputConfig: EventSlotsInputConfig = {
@@ -428,6 +437,75 @@ export class EventEditorPopupComponent implements OnInit, OnDestroy {
     return this.eventEditorStore.presentation().hideSlotsPanel !== true;
   }
 
+  protected showCheckoutBasketInput(): boolean {
+    return this.checkoutReviewMode() && this.eventDetailDTO.slotsEnabled === true;
+  }
+
+  protected checkoutBasketInputItems(): readonly EventBasketInputItem[] {
+    const items = this.resolvePresentationValue(this.eventEditorStore.presentation().basketItems, []);
+    return (items ?? []).map(item => ({
+      id: item.id,
+      title: item.title,
+      meta: item.meta,
+      detail: item.detail ?? null,
+      amount: Number(item.amount) || 0,
+      currency: item.currency || this.checkoutBasketCurrency(),
+      quantity: item.quantity ?? 1,
+      status: item.status ?? null,
+      pricingSummaryRows: (item.pricingSummaryRows ?? []).map(row => ({ ...row }))
+    }));
+  }
+
+  protected checkoutBasketPricingSummaryRows(): readonly EventBasketInputPricingSummaryRow[] {
+    const rows = this.resolvePresentationValue(this.eventEditorStore.presentation().basketPricingSummaryRows, []);
+    return (rows ?? []).map(row => ({ ...row }));
+  }
+
+  protected checkoutBasketTotalAmount(): number {
+    const configured = this.resolvePresentationValue(this.eventEditorStore.presentation().basketTotalAmount, null);
+    if (Number.isFinite(configured)) {
+      return Number(configured);
+    }
+    return this.checkoutBasketInputItems()
+      .reduce((sum, item) => sum + ((Number(item.amount) || 0) * Math.max(1, Math.trunc(Number(item.quantity) || 1))), 0);
+  }
+
+  protected checkoutBasketCurrency(): string {
+    const configured = this.resolvePresentationValue(this.eventEditorStore.presentation().basketCurrency, null);
+    return `${configured ?? this.eventDetailDTO.pricing?.currency ?? 'USD'}`.trim() || 'USD';
+  }
+
+  protected checkoutPricingRuntimePreview(): PricingEditorRuntimePreview | null {
+    if (!this.checkoutReviewMode() || this.eventDetailDTO.slotsEnabled !== true) {
+      return null;
+    }
+    const items = this.checkoutBasketInputItems();
+    return {
+      rows: this.checkoutBasketPricingSummaryRows(),
+      totalAmount: items.length > 0 ? this.checkoutBasketTotalAmount() : 0,
+      currency: this.checkoutBasketCurrency(),
+      emptyLabel: items.length === 0 ? 'No selected checkout items yet.' : null
+    };
+  }
+
+  protected checkoutBasketAddDisabled(): boolean {
+    return this.resolvePresentationValue(this.eventEditorStore.presentation().basketAddDisabled, false) === true;
+  }
+
+  protected onCheckoutBasketAdd(event?: Event): void {
+    event?.preventDefault();
+    event?.stopPropagation();
+    void this.eventEditorStore.presentation().onBasketAdd?.(event);
+  }
+
+  protected onCheckoutBasketItemMenuSelect(event: EventBasketInputItemMenuEvent): void {
+    const presentationItem = this.checkoutBasketInputItems().find(item => item.id === event.item.id) ?? event.item;
+    void this.eventEditorStore.presentation().onBasketItemMenuSelect?.(
+      presentationItem,
+      event.menuEvent as AppMenuItemSelectEvent<string>
+    );
+  }
+
   protected checkoutReviewFooterMenuItems(): readonly AppMenuItem<string, EventEditorMenuContext>[] {
     return (this.eventEditorStore.presentation().footerItems ?? []).map(item => ({
       ...item,
@@ -439,6 +517,16 @@ export class EventEditorPopupComponent implements OnInit, OnDestroy {
     const message = this.eventEditorStore.presentation().footerMessage;
     const resolved = typeof message === 'function' ? message() : message;
     return `${resolved ?? ''}`.trim();
+  }
+
+  private resolvePresentationValue<TValue>(
+    value: TValue | (() => TValue) | null | undefined,
+    fallback: TValue
+  ): TValue {
+    if (typeof value === 'function') {
+      return (value as () => TValue)();
+    }
+    return value ?? fallback;
   }
 
   protected eventPoliciesReadOnly(): boolean {

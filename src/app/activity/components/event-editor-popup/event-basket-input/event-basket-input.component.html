@@ -1,0 +1,47 @@
+<section class="event-basket-panel">
+  <div class="event-basket-panel-head">
+    <div class="event-basket-panel-title-wrap">
+      <span class="event-basket-panel-title">
+        <span class="event-basket-panel-title-line">
+          <mat-icon>shopping_basket</mat-icon>
+          <span>{{ title }}</span>
+        </span>
+      </span>
+      @if (subtitle) {
+        <p class="event-basket-panel-subtitle">{{ subtitle }}</p>
+      }
+    </div>
+    <div class="event-basket-panel-actions">
+      <app-menu
+        class="event-basket-add-menu"
+        kind="inline"
+        [items]="addMenuItems()"
+        (itemSelect)="onAddSelect($event)"
+      ></app-menu>
+    </div>
+  </div>
+
+  <div class="event-basket-panel-body">
+    @if (items.length > 0) {
+      <div class="event-basket-list">
+        @for (item of items; track itemTrackId($index, item)) {
+          <app-text-card
+            class="event-basket-card"
+            [tone]="itemTone(item)"
+            icon="event_seat"
+            [title]="item.title"
+            [subtitle]="itemSubtitle(item)"
+            [meta]="item.meta"
+            [detail]="itemDetail(item)"
+            [menuTitle]="item.title"
+            [menuPalette]="itemMenuPalette(item)"
+            [menuItems]="itemMenuItems()"
+            (menuSelect)="onItemMenuSelect(item, $event)"
+          ></app-text-card>
+        }
+      </div>
+    } @else {
+      <div class="event-basket-empty">{{ emptyLabel }}</div>
+    }
+  </div>
+</section>

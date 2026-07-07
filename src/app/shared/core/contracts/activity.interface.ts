@@ -91,6 +91,8 @@ export interface IEventsService {
     eventId: string,
     query?: ActivityEventSubEventsQueryDTO
   ): Promise<ActivityEventSubEventsResultDTO | null>;
+  loadCheckoutBasketByEvent(userId: string, sourceId: string): Promise<EventCheckoutBasket | null>;
+  saveCheckoutBasket(request: EventCheckoutRequest): Promise<EventCheckoutBasket | null>;
   loadEventFeedbackPage(
     query: EventFeedbackPageQueryDto
   ): Promise<EventFeedbackPageResultDto>;
@@ -239,6 +241,7 @@ export interface ActivityEventRecord {
   eventType?: EventContracts.EventRecordKind;
   nextSlot?: EventContracts.EventSlotOccurrenceDTO | null;
   upcomingSlots?: EventContracts.EventSlotOccurrenceDTO[];
+  checkoutBasket?: EventCheckoutBasket | null;
   acceptedMembers: number;
   pendingMembers: number;
   acceptedMemberUserIds?: string[];
@@ -517,6 +520,7 @@ export class ActivityEventDetailDTO {
   eventType: EventContracts.EventRecordKind = 'main';
   nextSlot: EventContracts.EventSlotOccurrenceDTO | null = null;
   upcomingSlots: EventContracts.EventSlotOccurrenceDTO[] = [];
+  checkoutBasket: EventCheckoutBasket | null = null;
   acceptedMembers = 0;
   pendingMembers = 0;
   acceptedMemberUserIds: string[] = [];
@@ -589,6 +593,7 @@ export class ActivityEventDetailDTO {
     this.eventType = update.eventType ?? this.eventType;
     this.nextSlot = update.nextSlot ? { ...update.nextSlot } : update.nextSlot === null ? null : this.nextSlot;
     this.upcomingSlots = (update.upcomingSlots ?? this.upcomingSlots).map(item => ({ ...item }));
+    this.checkoutBasket = update.checkoutBasket ? ActivityEventDetailDTO.cloneCheckoutBasket(update.checkoutBasket) : update.checkoutBasket === null ? null : this.checkoutBasket;
     this.acceptedMembers = ActivityEventDetailDTO.nonNegativeInteger(update.acceptedMembers ?? this.acceptedMembers);
     this.pendingMembers = ActivityEventDetailDTO.nonNegativeInteger(update.pendingMembers ?? this.pendingMembers);
     this.acceptedMemberUserIds = [...(update.acceptedMemberUserIds ?? this.acceptedMemberUserIds)];
@@ -606,6 +611,95 @@ export class ActivityEventDetailDTO {
     this.affinity = ActivityEventDetailDTO.nonNegativeInteger(update.affinity ?? this.affinity);
     this.paymentSessionId = update.paymentSessionId ?? this.paymentSessionId;
     return this;
+  }
+
+  static cloneCheckoutBasket(value: EventCheckoutBasket | null | undefined): EventCheckoutBasket | null {
+    if (!value) {
+      return null;
+    }
+    return {
+      userId: `${value.userId ?? ''}`.trim(),
+      sourceId: `${value.sourceId ?? ''}`.trim(),
+      status: ActivityEventDetailDTO.normalizeCheckoutState(value.status),
+      slotSourceId: value.slotSourceId?.trim() || null,
+      selectedDateKey: value.selectedDateKey?.trim() || null,
+      checkoutSessionId: value.checkoutSessionId?.trim() || null,
+      expiresAtIso: value.expiresAtIso?.trim() || null,
+      items: (value.items ?? []).map(item => ActivityEventDetailDTO.cloneCheckoutBasketItem(item)).filter(Boolean) as EventCheckoutBasketItem[],
+      pricingSummaryRows: ActivityEventDetailDTO.cloneCheckoutPricingSummaryRows(
+        (value.pricingSummaryRows ?? []).length > 0
+          ? value.pricingSummaryRows
+          : (value.items ?? []).flatMap(item => item.pricingSummaryRows ?? []),
+        value.currency
+      ),
+      lineItems: (value.lineItems ?? []).map(item => ({
+        id: item.id?.trim() ?? '',
+        kind: item.kind,
+        label: item.label?.trim() ?? '',
+        detail: item.detail?.trim() ?? '',
+        amount: Number(item.amount) || 0,
+        currency: item.currency?.trim() || value.currency?.trim() || 'USD'
+      })).filter(item => item.id && item.label),
+      totalAmount: Math.max(0, Number(value.totalAmount) || 0),
+      currency: value.currency?.trim() || 'USD'
+    };
+  }
+
+  static cloneCheckoutBasketItem(value: EventCheckoutBasketItem | null | undefined): EventCheckoutBasketItem | null {
+    const id = value?.id?.trim() ?? '';
+    const sourceId = value?.sourceId?.trim() ?? '';
+    const label = value?.label?.trim() ?? '';
+    if (!id || !sourceId || !label) {
+      return null;
+    }
+    const currency = value?.currency?.trim() || 'USD';
+    return {
+      id,
+      kind: value?.kind === 'sub_event' || value?.kind === 'resource' ? value.kind : 'event',
+      sourceId,
+      slotSourceId: value?.slotSourceId?.trim() || null,
+      slotTemplateId: value?.slotTemplateId?.trim() || null,
+      selectedDateKey: value?.selectedDateKey?.trim() || null,
+      subEventId: value?.subEventId?.trim() || null,
+      resourceType: value?.resourceType ?? null,
+      label,
+      detail: value?.detail?.trim() || '',
+      amount: Number(value?.amount) || 0,
+      currency,
+      quantity: Math.max(1, Math.trunc(Number(value?.quantity) || 1)),
+      status: ActivityEventDetailDTO.normalizeCheckoutState(value?.status),
+      pricingSummaryRows: (value?.pricingSummaryRows ?? []).map(row => ({
+        key: row.key?.trim() || row.label?.trim() || 'pricing',
+        label: row.label?.trim() || 'Pricing',
+        detail: row.detail?.trim() || null,
+        amount: Number.isFinite(row.amount) ? Number(row.amount) : null,
+        currency: row.currency?.trim() || currency,
+        multiplier: Number.isFinite(row.multiplier) ? Math.max(1, Math.trunc(Number(row.multiplier))) : null
+      })).filter(row => row.label),
+      checkoutSessionId: value?.checkoutSessionId?.trim() || null,
+      createdAtIso: value?.createdAtIso?.trim() || null,
+      updatedAtIso: value?.updatedAtIso?.trim() || null,
+      expiresAtIso: value?.expiresAtIso?.trim() || null
+    };
+  }
+
+  private static cloneCheckoutPricingSummaryRows(
+    value: readonly EventCheckoutPricingSummaryRow[] | null | undefined,
+    fallbackCurrency?: string | null
+  ): EventCheckoutPricingSummaryRow[] {
+    const currency = fallbackCurrency?.trim() || 'USD';
+    return (value ?? []).map(row => ({
+      key: row.key?.trim() || row.label?.trim() || 'pricing',
+      label: row.label?.trim() || 'Pricing',
+      detail: row.detail?.trim() || null,
+      amount: Number.isFinite(row.amount) ? Number(row.amount) : null,
+      currency: row.currency?.trim() || currency,
+      multiplier: Number.isFinite(row.multiplier) ? Math.max(1, Math.trunc(Number(row.multiplier))) : null
+    })).filter(row => row.label);
+  }
+
+  static normalizeCheckoutState(value: unknown): EventCheckoutState {
+    return value === 'confirmed' || value === 'pay' || value === 'deleted' ? value : 'draft';
   }
 
   clone(): ActivityEventDetailDTO {
@@ -1143,12 +1237,63 @@ export interface EventCheckoutLineItem {
   currency: string;
 }
 
+export type EventCheckoutState = 'draft' | 'confirmed' | 'pay' | 'deleted';
+
+export interface EventCheckoutPricingSummaryRow {
+  key: string;
+  label: string;
+  detail?: string | null;
+  amount?: number | null;
+  currency?: string | null;
+  multiplier?: number | null;
+}
+
+export interface EventCheckoutBasketItem {
+  id: string;
+  kind: 'event' | 'sub_event' | 'resource';
+  sourceId: string;
+  slotSourceId?: string | null;
+  slotTemplateId?: string | null;
+  selectedDateKey?: string | null;
+  subEventId?: string | null;
+  resourceType?: AppConstants.AssetType | null;
+  label: string;
+  detail: string;
+  amount: number;
+  currency: string;
+  quantity: number;
+  status: EventCheckoutState;
+  pricingSummaryRows: EventCheckoutPricingSummaryRow[];
+  checkoutSessionId?: string | null;
+  createdAtIso?: string | null;
+  updatedAtIso?: string | null;
+  expiresAtIso?: string | null;
+}
+
+export interface EventCheckoutBasket {
+  userId: string;
+  sourceId: string;
+  status: EventCheckoutState;
+  items: EventCheckoutBasketItem[];
+  pricingSummaryRows: EventCheckoutPricingSummaryRow[];
+  lineItems: EventCheckoutLineItem[];
+  totalAmount: number;
+  currency: string;
+  slotSourceId?: string | null;
+  selectedDateKey?: string | null;
+  checkoutSessionId?: string | null;
+  expiresAtIso?: string | null;
+}
+
 export interface EventCheckoutSelection {
   sourceId: string;
   slotSourceId?: string | null;
   optionalSubEventIds: string[];
   assetSelections: EventCheckoutAssetSelection[];
   acceptedPolicyIds: string[];
+  basketItems?: EventCheckoutBasketItem[];
+  pricingSummaryRows?: EventCheckoutPricingSummaryRow[];
+  checkoutState?: EventCheckoutState;
   lineItems: EventCheckoutLineItem[];
   totalAmount: number;
   currency: string;
@@ -1164,6 +1309,9 @@ export interface EventCheckoutRequest {
   optionalSubEventIds: string[];
   assetSelections: EventCheckoutAssetSelection[];
   acceptedPolicyIds: string[];
+  basketItems?: EventCheckoutBasketItem[];
+  pricingSummaryRows?: EventCheckoutPricingSummaryRow[];
+  checkoutState?: EventCheckoutState;
   lineItems: EventCheckoutLineItem[];
   totalAmount: number;
   currency: string;

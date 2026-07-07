@@ -21,6 +21,7 @@ import type { ActivitiesFeedFilters, ListQuery, PageResult } from '../../contrac
 import type { UserMenuCounterDeltasDto } from '../../contracts/user.interface';
 import type {
   EventCheckoutAssetSelection,
+  EventCheckoutBasket,
   EventCheckoutRequest,
   EventCheckoutSession,
   EventFeedbackQueryDto,
@@ -223,6 +224,28 @@ export class EventsService extends BaseRouteModeService implements IEventsServic
       return null;
     }
     return this.eventsService.loadSubEventsById(normalizedUserId, normalizedEventId, query);
+  }
+
+  async loadCheckoutBasketByEvent(userId: string, sourceId: string): Promise<EventCheckoutBasket | null> {
+    const normalizedUserId = userId.trim();
+    const normalizedSourceId = sourceId.trim();
+    if (!normalizedUserId || !normalizedSourceId) {
+      return null;
+    }
+    return this.eventsService.loadCheckoutBasketByEvent(normalizedUserId, normalizedSourceId);
+  }
+
+  async saveCheckoutBasket(request: EventCheckoutRequest): Promise<EventCheckoutBasket | null> {
+    const normalizedUserId = request.userId?.trim();
+    const normalizedSourceId = request.sourceId?.trim();
+    if (!normalizedUserId || !normalizedSourceId) {
+      return null;
+    }
+    return this.eventsService.saveCheckoutBasket({
+      ...request,
+      userId: normalizedUserId,
+      sourceId: normalizedSourceId
+    });
   }
 
   trashItem(

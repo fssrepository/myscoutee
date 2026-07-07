@@ -54,6 +54,22 @@ interface PricingSummaryItem {
   detail?: string;
 }
 
+export interface PricingEditorRuntimePreviewRow {
+  key: string;
+  label: string;
+  detail?: string | null;
+  amount?: number | null;
+  currency?: string | null;
+  multiplier?: number | null;
+}
+
+export interface PricingEditorRuntimePreview {
+  rows: readonly PricingEditorRuntimePreviewRow[];
+  totalAmount: number;
+  currency: string;
+  emptyLabel?: string | null;
+}
+
 type PricingScopedRule = ContractTypes.PricingDemandRule | ContractTypes.PricingTimeRule;
 
 interface RuleScopePickerState {
@@ -76,6 +92,7 @@ export interface PricingEditorConfig {
   showPreview?: PricingEditorConfigValue<boolean | null>;
   allowSlotFeatures?: PricingEditorConfigValue<boolean | null>;
   embedded?: PricingEditorConfigValue<boolean | null>;
+  runtimePreview?: PricingEditorConfigValue<PricingEditorRuntimePreview | null>;
 }
 
 interface ResolvedPricingEditorConfig {
@@ -1071,6 +1088,66 @@ export class PricingEditorInputComponent implements OnChanges, DoCheck, OnDestro
     };
   }
 
+  protected runtimePreviewState(): PricingEditorRuntimePreview | null {
+    const preview = this.resolveConfigValue(this.config.runtimePreview, null);
+    if (!preview) {
+      return null;
+    }
+    const currency = `${preview.currency ?? this.workingPricing.currency ?? 'USD'}`.trim() || 'USD';
+    const rows = (preview.rows ?? []).map(row => ({
+      key: `${row.key ?? row.label ?? 'pricing'}`.trim() || 'pricing',
+      label: `${row.label ?? 'Pricing'}`.trim() || 'Pricing',
+      detail: `${row.detail ?? ''}`.trim() || null,
+      amount: Number.isFinite(row.amount) ? Number(row.amount) : null,
+      currency: `${row.currency ?? currency}`.trim() || currency,
+      multiplier: Number.isFinite(row.multiplier) ? Math.max(1, Math.trunc(Number(row.multiplier))) : null
+    })).filter(row => row.label);
+    return {
+      rows,
+      totalAmount: Math.max(0, Number(preview.totalAmount) || 0),
+      currency,
+      emptyLabel: `${preview.emptyLabel ?? ''}`.trim() || null
+    };
+  }
+
+  protected runtimeBaseAmount(preview: PricingEditorRuntimePreview): number {
+    return Math.max(0, Number(this.runtimeBaseRow(preview)?.amount) || 0);
+  }
+
+  protected runtimeAdjustmentRows(preview: PricingEditorRuntimePreview): readonly PricingEditorRuntimePreviewRow[] {
+    const baseKey = this.runtimeBaseRow(preview)?.key ?? null;
+    return preview.rows.filter(row => row.key !== baseKey);
+  }
+
+  protected runtimePreviewCurrency(preview: PricingEditorRuntimePreview): string {
+    return `${preview.currency ?? this.workingPricing.currency ?? 'USD'}`.trim() || 'USD';
+  }
+
+  protected runtimeRowTrackId(index: number, row: PricingEditorRuntimePreviewRow): string {
+    return `${row.key || row.label || 'row'}-${index}`;
+  }
+
+  protected runtimeRowLabel(row: PricingEditorRuntimePreviewRow): string {
+    const multiplier = Math.max(1, Math.trunc(Number(row.multiplier) || 1));
+    return multiplier > 1 ? `${row.label} * ${multiplier}` : row.label;
+  }
+
+  protected runtimeRowAmount(row: PricingEditorRuntimePreviewRow, fallbackCurrency: string): string {
+    if (!Number.isFinite(row.amount)) {
+      return '';
+    }
+    const amount = Number(row.amount);
+    return this.formatSignedMoneyForCurrency(amount, `${row.currency ?? fallbackCurrency}`.trim() || fallbackCurrency);
+  }
+
+  protected runtimeTotalLabel(preview: PricingEditorRuntimePreview): string {
+    return this.formatMoneyForCurrency(preview.totalAmount, this.runtimePreviewCurrency(preview));
+  }
+
+  protected runtimeMoneyLabel(amount: number, currency: string): string {
+    return this.formatMoneyForCurrency(amount, currency);
+  }
+
   protected previewExplanationLines(): string[] {
     const preview = this.calculatePreviewState();
     return [
@@ -1594,8 +1671,16 @@ export class PricingEditorInputComponent implements OnChanges, DoCheck, OnDestro
   }
 
   private formatMoney(value: number | null | undefined): string {
+    return this.formatMoneyForCurrency(Math.max(0, Number(value) || 0), this.workingPricing.currency || 'USD');
+  }
+
+  private formatSignedMoneyForCurrency(value: number, currency: string): string {
+    const sign = value > 0 ? '+' : value < 0 ? '-' : '';
+    return `${sign}${this.formatMoneyForCurrency(Math.abs(value), currency)}`;
+  }
+
+  private formatMoneyForCurrency(value: number | null | undefined, currency: string): string {
     const amount = Math.max(0, Number(value) || 0);
-    const currency = this.workingPricing.currency || 'USD';
     try {
       return new Intl.NumberFormat('en-US', {
         style: 'currency',
@@ -1605,6 +1690,14 @@ export class PricingEditorInputComponent implements OnChanges, DoCheck, OnDestro
     } catch {
       return `${this.currencySymbol(currency)}${amount.toFixed(2)}`;
     }
+  }
+
+  private runtimeBaseRow(preview: PricingEditorRuntimePreview): PricingEditorRuntimePreviewRow | null {
+    return preview.rows.find(row => {
+      const key = `${row.key ?? ''}`.trim().toLowerCase();
+      const label = `${row.label ?? ''}`.trim().toLowerCase();
+      return key.startsWith('base') || label.includes('base');
+    }) ?? null;
   }
 
   private describeAction(action: ContractTypes.PricingAction): string {

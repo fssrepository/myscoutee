@@ -30,6 +30,7 @@ import type * as AppConstants from '../../../shared/core/common/constants';
 type PricingSnapshot = {
   amount: number;
   currency: string;
+  rows: ActivityContracts.EventCheckoutPricingSummaryRow[];
 };
 
 type CancellationPreview = {
@@ -58,6 +59,7 @@ type CancellationPreview = {
 })
 export class EventCheckoutPopupComponent {
   private static readonly MAX_VISIBLE_SLOTS = 10;
+  private static readonly CHECKOUT_BASKET_TTL_MS = 20 * 60 * 1000;
   protected readonly environment = environment;
   protected readonly dialogStore = inject(EventCheckoutDialogStore);
   private readonly eventEditorStore = inject(EventEditorPopupStore);
@@ -76,6 +78,7 @@ export class EventCheckoutPopupComponent {
   private renderedDialogId = 0;
   private checkoutReviewDialogId = 0;
   private checkoutSessionId: string | null = null;
+  private checkoutBasket: ActivityContracts.EventCheckoutBasket | null = null;
   private availableSlotsCache: ContractTypes.EventSlotOccurrenceDTO[] = [];
   private availableSlotDateEntriesCache: Array<{ key: string; value: Date; label: string; count: number }> = [];
   private availableSlotDateKeySet = new Set<string>();
@@ -94,7 +97,7 @@ export class EventCheckoutPopupComponent {
       this.renderedDialogId = dialog.id;
       this.initializeDialogState(dialog);
       if (!dialog.loading) {
-        this.openCheckoutReviewEditor(dialog);
+        void this.openCheckoutReviewEditor(dialog);
       }
     });
   }
@@ -127,21 +130,31 @@ export class EventCheckoutPopupComponent {
     this.closeCheckoutDialog();
   }
 
-  private openCheckoutReviewEditor(dialog: EventCheckoutDialogState): void {
+  private async openCheckoutReviewEditor(dialog: EventCheckoutDialogState): Promise<void> {
     const dialogId = dialog.id;
     this.checkoutReviewDialogId = dialogId;
-    void this.eventEditorStore.ensureEventEditorPopupLoaded().then(() => {
-      if (this.dialogStore.dialog()?.id !== dialogId) {
-        return;
-      }
-      this.eventEditorStore.openCheckoutReview(dialog.record, {
-        title: this.sectionTitle(),
-        subtitle: dialog.record.title,
-        footerItems: this.checkoutFooterMenuItems(),
-        footerMessage: () => this.errorMessage,
-        onFooterItemSelect: event => this.onCheckoutActionMenuSelect(event),
-        onClose: () => this.onCheckoutReviewEditorClose()
-      });
+    await this.loadRuntimeCheckoutBasket(dialog);
+    await this.eventEditorStore.ensureEventEditorPopupLoaded();
+    if (this.dialogStore.dialog()?.id !== dialogId) {
+      return;
+    }
+    this.eventEditorStore.openCheckoutReview({
+      ...dialog.record,
+      checkoutBasket: this.checkoutBasket
+    }, {
+      title: this.sectionTitle(),
+      subtitle: dialog.record.title,
+      basketItems: () => this.checkoutBasketPresentationItems(),
+      basketPricingSummaryRows: () => this.checkoutBasketPricingSummaryRows(),
+      basketTotalAmount: () => this.totalAmount(),
+      basketCurrency: () => this.currency(),
+      basketAddDisabled: () => this.checkoutBasketAddDisabled(),
+      onBasketAdd: event => this.addCheckoutBasketSlot(event),
+      onBasketItemMenuSelect: (item, event) => this.onCheckoutBasketItemMenuSelect(item, event),
+      footerItems: this.checkoutFooterMenuItems(),
+      footerMessage: () => this.errorMessage,
+      onFooterItemSelect: event => this.onCheckoutActionMenuSelect(event),
+      onClose: () => this.onCheckoutReviewEditorClose()
     });
   }
 
@@ -385,8 +398,15 @@ export class EventCheckoutPopupComponent {
   }
 
   protected lineItems(): ActivityContracts.EventCheckoutLineItem[] {
+    const basket = this.checkoutBasketSnapshot();
+    if (basket) {
+      return basket.lineItems.map(item => ({ ...item }));
+    }
     const dialog = this.dialog();
     if (!dialog) {
+      return [];
+    }
+    if (this.requiresSlotSelection()) {
       return [];
     }
     const slot = this.selectedSlot();
@@ -421,8 +441,319 @@ export class EventCheckoutPopupComponent {
     return items;
   }
 
+  private checkoutBasketItems(): ActivityContracts.EventCheckoutBasketItem[] {
+    return this.checkoutBasketSnapshot()?.items.map(item => ({
+      ...item,
+      pricingSummaryRows: [...(item.pricingSummaryRows ?? [])]
+    })) ?? [];
+  }
+
+  private activeCheckoutBasketItems(): ActivityContracts.EventCheckoutBasketItem[] {
+    const activeItems = (this.checkoutBasket?.items ?? [])
+      .filter(item => item.status !== 'deleted');
+    return activeItems.map(item => ({ ...item, pricingSummaryRows: [...(item.pricingSummaryRows ?? [])] }));
+  }
+
+  private checkoutBasketSnapshot(): ActivityContracts.EventCheckoutBasket | null {
+    if (this.checkoutBasket?.items?.some(item => item.status !== 'deleted')) {
+      return this.checkoutBasket;
+    }
+    if (this.requiresSlotSelection()) {
+      return null;
+    }
+    const basket = this.buildRuntimeBasketFromCurrentSelection();
+    this.checkoutBasket = basket;
+    return basket;
+  }
+
+  private buildBasketItemsFromCurrentSelection(): ActivityContracts.EventCheckoutBasketItem[] {
+    const dialog = this.dialog();
+    if (!dialog) {
+      return [];
+    }
+    const slot = this.selectedSlot();
+    if (this.requiresSlotSelection() && !slot) {
+      return [];
+    }
+    const slotId = slot?.slotTemplateId ?? null;
+    const selectedDateKey = slot?.startAtIso ? this.slotDateKeyFromIso(slot.startAtIso) : this.selectedSlotDateKey() || null;
+    const nowIso = new Date().toISOString();
+    const expiresAtIso = new Date(Date.now() + EventCheckoutPopupComponent.CHECKOUT_BASKET_TTL_MS).toISOString();
+    const eventPricing = this.resolvePricing(dialog.record.pricing, dialog.record, slotId, slot);
+    const selectedOptionalSubEvents = this.optionalSubEvents()
+      .filter(subEvent => this.selectedOptionalSubEventIds.has(subEvent.id))
+      .map(subEvent => ({
+        subEvent,
+        pricing: this.resolvePricing(subEvent.pricing, dialog.record, null, slot)
+      }));
+    const totalAmount = Math.round((
+      eventPricing.amount
+      + selectedOptionalSubEvents.reduce((sum, item) => sum + item.pricing.amount, 0)
+    ) * 100) / 100;
+    const state = this.currentCheckoutState(totalAmount);
+    const items: ActivityContracts.EventCheckoutBasketItem[] = [
+      {
+        id: `event:${dialog.record.id}:${slot?.id ?? 'main'}`,
+        kind: 'event',
+        sourceId: dialog.record.id,
+        slotSourceId: slot?.id ?? null,
+        slotTemplateId: slot?.slotTemplateId ?? null,
+        selectedDateKey,
+        subEventId: null,
+        resourceType: null,
+        label: dialog.record.title,
+        detail: slot?.timeframe || dialog.record.timeframe || 'Main event',
+        amount: eventPricing.amount,
+        currency: eventPricing.currency,
+        quantity: 1,
+        status: state,
+        pricingSummaryRows: eventPricing.rows,
+        checkoutSessionId: this.checkoutSessionId,
+        createdAtIso: nowIso,
+        updatedAtIso: nowIso,
+        expiresAtIso
+      }
+    ];
+
+    for (const { subEvent, pricing } of selectedOptionalSubEvents) {
+      items.push({
+        id: `subevent:${subEvent.id}:${slot?.id ?? 'main'}`,
+        kind: 'sub_event',
+        sourceId: dialog.record.id,
+        slotSourceId: slot?.id ?? null,
+        slotTemplateId: slot?.slotTemplateId ?? null,
+        selectedDateKey,
+        subEventId: subEvent.id,
+        resourceType: null,
+        label: subEvent.name,
+        detail: subEvent.description || 'Optional sub event',
+        amount: pricing.amount,
+        currency: pricing.currency,
+        quantity: 1,
+        status: state,
+        pricingSummaryRows: pricing.rows,
+        checkoutSessionId: this.checkoutSessionId,
+        createdAtIso: nowIso,
+        updatedAtIso: nowIso,
+        expiresAtIso
+      });
+    }
+    return items;
+  }
+
+  private checkoutBasketPresentationItems(): readonly {
+    id: string;
+    title: string;
+    meta: string;
+    detail: string | null;
+    amount: number;
+    currency: string;
+    quantity: number;
+    status: string;
+    pricingSummaryRows: readonly ActivityContracts.EventCheckoutPricingSummaryRow[];
+  }[] {
+    return this.checkoutBasketItems().map(item => ({
+      id: item.id,
+      title: item.label,
+      meta: item.detail,
+      detail: null,
+      amount: item.amount,
+      currency: item.currency,
+      quantity: item.quantity,
+      status: item.status,
+      pricingSummaryRows: item.pricingSummaryRows
+    }));
+  }
+
+  private checkoutBasketPricingSummaryRows(): ActivityContracts.EventCheckoutPricingSummaryRow[] {
+    return (this.checkoutBasketSnapshot()?.pricingSummaryRows ?? []).map(row => ({ ...row }));
+  }
+
+  private checkoutBasketAddDisabled(): boolean {
+    return !this.requiresSlotSelection()
+      || this.availableSlots().length === 0
+      || this.nextAvailableCheckoutBasketSlot() === null
+      || this.busy;
+  }
+
+  private addCheckoutBasketSlot(event?: Event): void {
+    event?.preventDefault();
+    event?.stopPropagation();
+    if (this.checkoutBasketAddDisabled()) {
+      return;
+    }
+    const nextSlot = this.nextAvailableCheckoutBasketSlot();
+    if (!nextSlot) {
+      return;
+    }
+    this.selectedSlotSourceId = nextSlot.id;
+    this.selectedSlotDateValue = this.slotDateValueFromIso(nextSlot.startAtIso);
+    const current = this.activeCheckoutBasketItems();
+    const nextItems = [
+      ...current,
+      ...this.buildBasketItemsFromCurrentSelection().filter(item => !current.some(existing => existing.id === item.id))
+    ];
+    this.checkoutBasket = this.buildRuntimeBasketFromItems(nextItems);
+    this.persistCheckoutDraft();
+  }
+
+  private nextAvailableCheckoutBasketSlot(): ContractTypes.EventSlotOccurrenceDTO | null {
+    const selectedSlotIds = new Set(
+      this.activeCheckoutBasketItems()
+        .map(item => item.slotSourceId?.trim() ?? '')
+        .filter(Boolean)
+    );
+    return [...this.filteredSlots(), ...this.availableSlots()]
+      .find(slot => !selectedSlotIds.has(slot.id)) ?? null;
+  }
+
+  private onCheckoutBasketItemMenuSelect(
+    item: { id: string },
+    event: AppMenuItemSelectEvent<string>
+  ): void {
+    event.sourceEvent.preventDefault();
+    event.sourceEvent.stopPropagation();
+    if (event.id === 'remove') {
+      this.removeCheckoutBasketItem(item.id);
+    }
+  }
+
+  private removeCheckoutBasketItem(itemId: string): void {
+    const normalizedItemId = itemId.trim();
+    if (!normalizedItemId) {
+      return;
+    }
+    const currentItems = this.activeCheckoutBasketItems();
+    const remainingItems = currentItems.filter(item => item.id !== normalizedItemId);
+    const dialog = this.dialog();
+    if (!dialog) {
+      return;
+    }
+    this.checkoutBasket = this.buildRuntimeBasketFromItems(remainingItems);
+    if (remainingItems.length === 0) {
+      this.selectedSlotSourceId = null;
+      this.clearCheckoutDraft();
+      return;
+    }
+    this.selectedSlotSourceId = remainingItems[0]?.slotSourceId ?? null;
+    this.persistCheckoutDraft();
+  }
+
+  private buildRuntimeBasketFromCurrentSelection(): ActivityContracts.EventCheckoutBasket | null {
+    const dialog = this.dialog();
+    if (!dialog) {
+      return null;
+    }
+    const items = this.buildBasketItemsFromCurrentSelection();
+    if (items.length === 0) {
+      return null;
+    }
+    const lineItems = this.lineItemsFromBasketItems(items);
+    const totalAmount = this.totalAmountFromLineItems(lineItems);
+    const currency = items.find(item => item.currency)?.currency ?? dialog.record.pricing?.currency ?? 'USD';
+    const state = this.currentCheckoutState(totalAmount);
+    return {
+      userId: dialog.userId,
+      sourceId: dialog.record.id,
+      status: state,
+      items: items.map(item => ({ ...item, status: state })),
+      pricingSummaryRows: this.aggregatePricingSummaryRows(items.flatMap(item => item.pricingSummaryRows ?? []), currency),
+      lineItems,
+      totalAmount,
+      currency,
+      slotSourceId: items[0]?.slotSourceId ?? null,
+      selectedDateKey: items[0]?.selectedDateKey ?? null,
+      checkoutSessionId: this.checkoutSessionId,
+      expiresAtIso: items.find(item => item.expiresAtIso)?.expiresAtIso ?? null
+    };
+  }
+
+  private buildRuntimeBasketFromItems(
+    items: readonly ActivityContracts.EventCheckoutBasketItem[]
+  ): ActivityContracts.EventCheckoutBasket | null {
+    const dialog = this.dialog();
+    if (!dialog || items.length === 0) {
+      return null;
+    }
+    const lineItems = this.lineItemsFromBasketItems(items);
+    const totalAmount = this.totalAmountFromLineItems(lineItems);
+    const currency = items.find(item => item.currency)?.currency ?? dialog.record.pricing?.currency ?? 'USD';
+    const state = this.currentCheckoutState(totalAmount);
+    return {
+      userId: dialog.userId,
+      sourceId: dialog.record.id,
+      status: state,
+      items: items.map(item => ({ ...item, status: state })),
+      pricingSummaryRows: this.aggregatePricingSummaryRows(items.flatMap(item => item.pricingSummaryRows ?? []), currency),
+      lineItems,
+      totalAmount,
+      currency,
+      slotSourceId: items[0]?.slotSourceId ?? null,
+      selectedDateKey: items[0]?.selectedDateKey ?? null,
+      checkoutSessionId: this.checkoutSessionId,
+      expiresAtIso: items.find(item => item.expiresAtIso)?.expiresAtIso ?? null
+    };
+  }
+
+  private lineItemsFromBasketItems(
+    items: readonly ActivityContracts.EventCheckoutBasketItem[]
+  ): ActivityContracts.EventCheckoutLineItem[] {
+    return items.map(item => ({
+      id: item.id,
+      kind: item.kind,
+      label: item.label,
+      detail: item.detail,
+      amount: Math.round((Number(item.amount) || 0) * Math.max(1, Math.trunc(Number(item.quantity) || 1)) * 100) / 100,
+      currency: item.currency
+    }));
+  }
+
+  private totalAmountFromLineItems(items: readonly ActivityContracts.EventCheckoutLineItem[]): number {
+    return Math.round(items.reduce((sum, item) => sum + (Number(item.amount) || 0), 0) * 100) / 100;
+  }
+
+  private aggregatePricingSummaryRows(
+    rows: readonly ActivityContracts.EventCheckoutPricingSummaryRow[],
+    fallbackCurrency: string
+  ): ActivityContracts.EventCheckoutPricingSummaryRow[] {
+    const grouped = new Map<string, ActivityContracts.EventCheckoutPricingSummaryRow>();
+    for (const row of rows) {
+      const label = `${row.label ?? ''}`.trim();
+      if (!label) {
+        continue;
+      }
+      const detail = `${row.detail ?? ''}`.trim();
+      const amount = Number.isFinite(row.amount) ? Number(row.amount) : null;
+      const currency = `${row.currency ?? fallbackCurrency ?? 'USD'}`.trim() || 'USD';
+      const key = `${row.key || label}::${detail}::${amount ?? 'none'}::${currency}`;
+      const multiplier = Math.max(1, Math.trunc(Number(row.multiplier) || 1));
+      const existing = grouped.get(key);
+      if (existing) {
+        const nextMultiplier = Math.max(1, Math.trunc(Number(existing.multiplier) || 1)) + multiplier;
+        grouped.set(key, {
+          ...existing,
+          multiplier: nextMultiplier,
+          amount: existing.amount !== null && amount !== null
+            ? Math.round((Number(existing.amount) + (amount * multiplier)) * 100) / 100
+            : existing.amount ?? amount
+        });
+        continue;
+      }
+      grouped.set(key, {
+        key,
+        label,
+        detail: detail || null,
+        amount: amount === null ? null : Math.round(amount * multiplier * 100) / 100,
+        currency,
+        multiplier
+      });
+    }
+    return [...grouped.values()];
+  }
+
   protected totalAmount(): number {
-    return Math.round(this.lineItems().reduce((sum, item) => sum + (Number(item.amount) || 0), 0) * 100) / 100;
+    return this.checkoutBasketSnapshot()?.totalAmount
+      ?? Math.round(this.lineItems().reduce((sum, item) => sum + (Number(item.amount) || 0), 0) * 100) / 100;
   }
 
   protected showCancellationPolicyCard(): boolean {
@@ -517,7 +848,8 @@ export class EventCheckoutPopupComponent {
   }
 
   protected currency(): string {
-    return this.lineItems().find(item => item.currency)?.currency
+    return this.checkoutBasketSnapshot()?.currency
+      ?? this.lineItems().find(item => item.currency)?.currency
       ?? this.dialog()?.record.pricing?.currency
       ?? 'USD';
   }
@@ -618,7 +950,7 @@ export class EventCheckoutPopupComponent {
     if (this.busy || this.dialog()?.loading) {
       return false;
     }
-    if (this.requiresSlotSelection() && !this.selectedSlot()) {
+    if (this.requiresSlotSelection() && !this.selectedSlot() && this.checkoutBasketItems().length === 0) {
       return false;
     }
     if (this.missingRequiredPolicies()) {
@@ -627,12 +959,34 @@ export class EventCheckoutPopupComponent {
     return true;
   }
 
+  private currentCheckoutState(totalAmount?: number): ActivityContracts.EventCheckoutState {
+    if (this.paymentStep || this.checkoutSessionId) {
+      return 'confirmed';
+    }
+    const approvalPending = typeof totalAmount === 'number'
+      ? this.shouldAwaitApprovalBeforePaymentForAmount(totalAmount)
+      : this.hasPendingApprovalGate();
+    if (approvalPending || this.isWaitingListSelection()) {
+      return 'confirmed';
+    }
+    return 'draft';
+  }
+
   protected shouldAwaitApprovalBeforePayment(): boolean {
+    return this.shouldAwaitApprovalBeforePaymentForAmount(this.totalAmount());
+  }
+
+  private shouldAwaitApprovalBeforePaymentForAmount(totalAmount: number): boolean {
     const dialog = this.dialog();
     if (!dialog) {
       return false;
     }
-    return dialog.requiresApprovalBeforePayment && !dialog.approvalGranted && this.totalAmount() > 0;
+    return dialog.requiresApprovalBeforePayment && !dialog.approvalGranted && totalAmount > 0;
+  }
+
+  private hasPendingApprovalGate(): boolean {
+    const dialog = this.dialog();
+    return !!dialog && dialog.requiresApprovalBeforePayment && !dialog.approvalGranted;
   }
 
   protected isWaitingListSelection(): boolean {
@@ -696,8 +1050,8 @@ export class EventCheckoutPopupComponent {
           throw new Error('Unable to start checkout.');
         }
         this.checkoutSessionId = session.id;
-        this.persistCheckoutDraft();
         this.paymentStep = true;
+        this.persistCheckoutDraft(false);
       } catch (error) {
         this.errorMessage = this.resolveErrorMessage(error, 'Unable to start checkout.');
       } finally {
@@ -788,8 +1142,51 @@ export class EventCheckoutPopupComponent {
     this.acceptedPolicyIds = new Set((draft?.acceptedPolicyIds ?? []).filter(item => validPolicyIds.has(item)));
     this.paymentStep = Boolean(draft?.checkoutSessionId);
     this.checkoutSessionId = draft?.checkoutSessionId ?? null;
+    this.checkoutBasket = draft?.basketItems?.length
+      ? {
+        userId: dialog.userId,
+        sourceId: dialog.record.id,
+        status: draft.checkoutState,
+        items: draft.basketItems,
+        pricingSummaryRows: draft.pricingSummaryRows,
+        lineItems: draft.lineItems,
+        totalAmount: draft.totalAmount,
+        currency: draft.currency,
+        slotSourceId: draft.slotSourceId,
+        selectedDateKey: draft.selectedDateKey,
+        checkoutSessionId: draft.checkoutSessionId,
+        expiresAtIso: draft.expiresAtIso
+      }
+      : null;
     this.busy = false;
     this.errorMessage = '';
+  }
+
+  private async loadRuntimeCheckoutBasket(dialog: EventCheckoutDialogState): Promise<void> {
+    let queriedBasket: ActivityContracts.EventCheckoutBasket | null = null;
+    try {
+      queriedBasket = await this.eventsService.loadCheckoutBasketByEvent(dialog.userId, dialog.record.id);
+    } catch {
+      queriedBasket = null;
+    }
+    const basket = queriedBasket ?? this.checkoutBasket;
+    this.checkoutBasket = basket;
+    if (!basket || basket.items.length === 0) {
+      return;
+    }
+    const firstSlotSourceId = basket.items.find(item => item.slotSourceId?.trim())?.slotSourceId?.trim() ?? null;
+    const validSlotIds = new Set(this.availableSlots().map(item => item.id));
+    this.selectedSlotSourceId = firstSlotSourceId && validSlotIds.has(firstSlotSourceId)
+      ? firstSlotSourceId
+      : this.selectedSlotSourceId;
+    const selectedDateKey = basket.selectedDateKey
+      ?? basket.items.find(item => item.selectedDateKey?.trim())?.selectedDateKey
+      ?? null;
+    if (selectedDateKey) {
+      this.selectedSlotDateValue = this.slotDateValueFromKey(selectedDateKey) ?? this.selectedSlotDateValue;
+    }
+    this.checkoutSessionId = basket.checkoutSessionId ?? this.checkoutSessionId;
+    this.paymentStep = Boolean(this.checkoutSessionId);
   }
 
   private resetDialogState(): void {
@@ -804,6 +1201,7 @@ export class EventCheckoutPopupComponent {
     this.acceptedPolicyIds = new Set<string>();
     this.paymentStep = false;
     this.checkoutSessionId = null;
+    this.checkoutBasket = null;
     this.busy = false;
     this.errorMessage = '';
   }
@@ -822,6 +1220,9 @@ export class EventCheckoutPopupComponent {
       optionalSubEventIds: [...this.selectedOptionalSubEventIds],
       assetSelections: [],
       acceptedPolicyIds: [...this.acceptedPolicyIds],
+      basketItems: this.checkoutBasketItems(),
+      pricingSummaryRows: this.checkoutBasketPricingSummaryRows(),
+      checkoutState: this.currentCheckoutState(this.totalAmount()),
       lineItems: this.lineItems(),
       totalAmount: this.totalAmount(),
       currency: this.currency(),
@@ -843,6 +1244,9 @@ export class EventCheckoutPopupComponent {
       optionalSubEventIds: [...this.selectedOptionalSubEventIds],
       assetSelections: [],
       acceptedPolicyIds: [...this.acceptedPolicyIds],
+      basketItems: this.checkoutBasketItems(),
+      pricingSummaryRows: this.checkoutBasketPricingSummaryRows(),
+      checkoutState: this.currentCheckoutState(this.totalAmount()),
       lineItems: this.lineItems(),
       totalAmount: this.totalAmount(),
       currency: this.currency(),
@@ -865,13 +1269,23 @@ export class EventCheckoutPopupComponent {
     if (!normalized.enabled) {
       return {
         amount: 0,
-        currency: normalized.currency || 'USD'
+        currency: normalized.currency || 'USD',
+        rows: []
       };
     }
 
+    const currency = normalized.currency || 'USD';
     const previewBase = normalized.slotPricingEnabled && slotId
       ? normalized.slotOverrides.find(item => item.slotId === slotId)?.price ?? normalized.basePrice
       : normalized.basePrice;
+    const rows: ActivityContracts.EventCheckoutPricingSummaryRow[] = [{
+      key: normalized.slotPricingEnabled && slotId ? `base:${slotId}` : 'base',
+      label: normalized.slotPricingEnabled && slotId ? 'Slot base price' : 'Base price',
+      detail: null,
+      amount: previewBase,
+      currency,
+      multiplier: 1
+    }];
     const capacityFilledPercent = record.capacityTotal > 0
       ? Math.round((record.acceptedMembers / record.capacityTotal) * 100)
       : 0;
@@ -883,7 +1297,16 @@ export class EventCheckoutPopupComponent {
         if (!this.matchesDemandRule(rule, capacityFilledPercent, slotId)) {
           continue;
         }
+        const previousPrice = nextPrice;
         nextPrice = this.applyPricingAction(nextPrice, rule.action);
+        rows.push({
+          key: `demand:${rule.id}`,
+          label: 'Demand pricing',
+          detail: this.describePricingAction(rule.action),
+          amount: Math.round((nextPrice - previousPrice) * 100) / 100,
+          currency,
+          multiplier: 1
+        });
       }
     }
     if ((normalized.mode === 'time-based' || normalized.mode === 'hybrid') && normalized.timeRulesEnabled) {
@@ -891,20 +1314,63 @@ export class EventCheckoutPopupComponent {
         if (!this.matchesTimeRule(rule, hoursUntilStart, slotId, slot?.startAtIso ?? record.startAtIso)) {
           continue;
         }
+        const previousPrice = nextPrice;
         nextPrice = this.applyPricingAction(nextPrice, rule.action);
+        rows.push({
+          key: `time:${rule.id}`,
+          label: 'Time pricing',
+          detail: this.describePricingAction(rule.action),
+          amount: Math.round((nextPrice - previousPrice) * 100) / 100,
+          currency,
+          multiplier: 1
+        });
       }
     }
 
     if (normalized.minPrice !== null) {
+      const previousPrice = nextPrice;
       nextPrice = Math.max(normalized.minPrice, nextPrice);
+      if (nextPrice !== previousPrice) {
+        rows.push({
+          key: 'min-price',
+          label: 'Minimum price',
+          detail: null,
+          amount: Math.round((nextPrice - previousPrice) * 100) / 100,
+          currency,
+          multiplier: 1
+        });
+      }
     }
     if (normalized.maxPrice !== null) {
+      const previousPrice = nextPrice;
       nextPrice = Math.min(normalized.maxPrice, nextPrice);
+      if (nextPrice !== previousPrice) {
+        rows.push({
+          key: 'max-price',
+          label: 'Maximum price',
+          detail: null,
+          amount: Math.round((nextPrice - previousPrice) * 100) / 100,
+          currency,
+          multiplier: 1
+        });
+      }
     }
 
+    const roundedPrice = this.applyRounding(nextPrice, normalized.rounding);
+    if (roundedPrice !== nextPrice) {
+      rows.push({
+        key: 'rounding',
+        label: 'Rounding',
+        detail: null,
+        amount: Math.round((roundedPrice - nextPrice) * 100) / 100,
+        currency,
+        multiplier: 1
+      });
+    }
     return {
-      amount: this.applyRounding(nextPrice, normalized.rounding),
-      currency: normalized.currency || 'USD'
+      amount: roundedPrice,
+      currency,
+      rows
     };
   }
 
@@ -963,6 +1429,22 @@ export class EventCheckoutPopupComponent {
       return Math.max(0, currentPrice * (1 - percent));
     }
     return Math.max(0, currentPrice * (1 + percent));
+  }
+
+  private describePricingAction(action: ContractTypes.PricingAction): string {
+    const value = Number(action.value) || 0;
+    switch (action.kind) {
+      case 'set_exact_price':
+        return `Set to ${value}`;
+      case 'increase_amount':
+        return `+${value}`;
+      case 'decrease_amount':
+        return `-${value}`;
+      case 'decrease_percent':
+        return `-${value}%`;
+      default:
+        return `+${value}%`;
+    }
   }
 
   private applyRounding(price: number, rounding: AppConstants.PricingRoundingMode): number {
@@ -1080,7 +1562,7 @@ export class EventCheckoutPopupComponent {
       }
       this.checkoutSessionId = session.id;
       this.paymentStep = true;
-      this.persistCheckoutDraft();
+      this.persistCheckoutDraft(false);
       this.errorMessage = 'Checkout details changed. A fresh payment session is ready.';
       return true;
     } catch (recoveryError) {
@@ -1131,11 +1613,13 @@ export class EventCheckoutPopupComponent {
     return `${value.getFullYear()}-${AppUtils.pad2(value.getMonth() + 1)}-${AppUtils.pad2(value.getDate())}`;
   }
 
-  private persistCheckoutDraft(): void {
+  private persistCheckoutDraft(syncRuntimeBasket = true): void {
     const dialog = this.dialog();
-    if (!dialog || (this.totalAmount() <= 0 && !this.isWaitingListSelection())) {
+    const basketItems = this.checkoutBasketItems();
+    if (!dialog || (basketItems.length === 0 && this.totalAmount() <= 0 && !this.isWaitingListSelection())) {
       return;
     }
+    const basket = this.checkoutBasketSnapshot();
     this.checkoutDraftStore.save({
       userId: dialog.userId,
       sourceId: dialog.record.id,
@@ -1145,13 +1629,36 @@ export class EventCheckoutPopupComponent {
       selectedDateKey: this.selectedSlotDateValue ? this.slotDateKeyFromDate(this.selectedSlotDateValue) : null,
       optionalSubEventIds: [...this.selectedOptionalSubEventIds],
       acceptedPolicyIds: [...this.acceptedPolicyIds],
+      basketItems,
+      pricingSummaryRows: this.checkoutBasketPricingSummaryRows(),
+      checkoutState: this.currentCheckoutState(this.totalAmount()),
       lineItems: this.lineItems(),
       totalAmount: this.totalAmount(),
       currency: this.currency(),
       checkoutSessionId: this.checkoutSessionId,
+      expiresAtIso: basket?.expiresAtIso ?? null,
       pendingReason: this.isWaitingListSelection() ? 'waitlist' : (this.shouldAwaitApprovalBeforePayment() ? 'approval' : null),
       updatedAtMs: Date.now()
     });
+    if (syncRuntimeBasket) {
+      void this.syncRuntimeCheckoutBasket();
+    }
+  }
+
+  private async syncRuntimeCheckoutBasket(): Promise<void> {
+    const dialog = this.dialog();
+    const basketItems = this.checkoutBasketItems();
+    if (!dialog || basketItems.length === 0) {
+      return;
+    }
+    try {
+      const basket = await this.eventsService.saveCheckoutBasket(this.buildCheckoutRequest());
+      if (basket) {
+        this.checkoutBasket = basket;
+      }
+    } catch {
+      // Local draft remains the immediate source of truth if runtime basket sync fails.
+    }
   }
 
   private clearCheckoutDraft(): void {
@@ -1161,9 +1668,11 @@ export class EventCheckoutPopupComponent {
     }
     this.checkoutDraftStore.clear(dialog.userId, dialog.record.id);
     this.checkoutSessionId = null;
+    this.checkoutBasket = null;
   }
 
   private invalidateCheckoutDraft(): void {
+    this.checkoutBasket = null;
     if (!this.checkoutSessionId) {
       return;
     }

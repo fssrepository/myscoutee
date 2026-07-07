@@ -343,12 +343,27 @@ const SEED_EVENTS_BY_USER: Record<string, ActivityEventSeedItem[]> = {
       avatar: 'SY',
       title: 'Sunset Beach Volley',
       shortDescription: 'Casual teams, rotation rounds, and post-game snacks.',
-      timeframe: 'Mar 14 · 5:00 PM - 8:30 PM',
+      timeframe: 'Every Sun · 5:00 PM - 8:30 PM',
       activity: 2,
       isAdmin: false,
       creatorUserId: 'u4',
-      startAt: '2026-02-23T17:00:00',
-      endAt: '2026-02-23T20:30:00'
+      startAt: '2026-02-22T17:00:00',
+      endAt: '2026-05-17T20:30:00',
+      frequency: 'Weekly',
+      ticketing: true,
+      slotsEnabled: true,
+      slotTemplates: [
+        {
+          id: 'sunset-beach-volley-sunday-evening',
+          startAt: '2026-02-22T17:00:00'
+        }
+      ],
+      pricing: buildCheckoutDemoPricing(24, [
+        {
+          id: 'sunset-beach-volley-sunday-evening',
+          startAt: '2026-02-22T17:00:00'
+        }
+      ])
     },
     {
       id: 'e7',
@@ -1547,6 +1562,7 @@ export class SeedEventsBuilder {
       slotTemplates: this.cloneSlotTemplates(record.slotTemplates) ?? [],
       nextSlot: record.nextSlot ? { ...record.nextSlot } : null,
       upcomingSlots: (record.upcomingSlots ?? []).map(item => ({ ...item })),
+      checkoutBasket: ActivityEventDetailDTO.cloneCheckoutBasket(record.checkoutBasket),
       topics: [...(record.topics ?? [])],
       subEventsEnabled: record.subEventsEnabled !== false,
       subEventDefinitions: (record.subEventDefinitions ?? []).map(item => ({

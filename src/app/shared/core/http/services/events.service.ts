@@ -25,6 +25,7 @@ import {
 import type { ActivitiesFeedFilters, ListQuery } from '../../contracts';
 import type {
   EventCheckoutAssetSelection,
+  EventCheckoutBasket,
   EventCheckoutRequest,
   EventCheckoutSession,
   EventParticipationActionResultDTO,
@@ -337,6 +338,52 @@ export class HttpEventsService implements IEventsService {
 
   peekKnownItemById(_userId: string, _itemId: string): ActivityEventDTO | null {
     return null;
+  }
+
+  async loadCheckoutBasketByEvent(userId: string, sourceId: string): Promise<EventCheckoutBasket | null> {
+    const normalizedUserId = userId.trim();
+    const normalizedSourceId = sourceId.trim();
+    if (!normalizedUserId || !normalizedSourceId) {
+      return null;
+    }
+    try {
+      const response = await this.http
+        .get<EventCheckoutBasket | null>(
+          `${this.apiBaseUrl}/activities/events/checkout/basket`,
+          {
+            params: new HttpParams()
+              .set('userId', normalizedUserId)
+              .set('sourceId', normalizedSourceId)
+          }
+        )
+        .toPromise();
+      return ActivityEventDetailDTO.cloneCheckoutBasket(response);
+    } catch {
+      return null;
+    }
+  }
+
+  async saveCheckoutBasket(request: EventCheckoutRequest): Promise<EventCheckoutBasket | null> {
+    const normalizedUserId = request.userId?.trim();
+    const normalizedSourceId = request.sourceId?.trim();
+    if (!normalizedUserId || !normalizedSourceId) {
+      return null;
+    }
+    try {
+      const response = await this.http
+        .post<EventCheckoutBasket | null>(
+          `${this.apiBaseUrl}/activities/events/checkout/basket`,
+          {
+            ...request,
+            userId: normalizedUserId,
+            sourceId: normalizedSourceId
+          }
+        )
+        .toPromise();
+      return ActivityEventDetailDTO.cloneCheckoutBasket(response);
+    } catch {
+      return null;
+    }
   }
 
   async queryEventExplorePage(query: ActivityEventExploreQuery): Promise<ActivityEventExploreQueryResult> {
@@ -1107,6 +1154,7 @@ export class HttpEventsService implements IEventsService {
         eventType: record.eventType ?? 'main',
         nextSlot: record.nextSlot ? { ...record.nextSlot } : null,
         upcomingSlots: (record.upcomingSlots ?? []).map(item => ({ ...item })),
+        checkoutBasket: ActivityEventDetailDTO.cloneCheckoutBasket(record.checkoutBasket),
         acceptedMembers: Math.max(0, Math.trunc(Number(record.acceptedMembers) || 0)),
         pendingMembers: Math.max(0, Math.trunc(Number(record.pendingMembers) || 0)),
         pendingReason: record.pendingReason ?? null,

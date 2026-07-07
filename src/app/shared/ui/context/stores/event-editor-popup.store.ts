@@ -4,6 +4,28 @@ import { Subject } from 'rxjs';
 import type { AppMenuItem, AppMenuItemSelectEvent } from '../../components/core/menu';
 
 export type EventEditorPresentationMode = 'default' | 'checkout-review';
+export type EventEditorPresentationValue<TValue> = TValue | (() => TValue);
+
+export interface EventEditorBasketPricingSummaryRow {
+  key: string;
+  label: string;
+  detail?: string | null;
+  amount?: number | null;
+  currency?: string | null;
+  multiplier?: number | null;
+}
+
+export interface EventEditorBasketPresentationItem {
+  id: string;
+  title: string;
+  meta: string;
+  detail?: string | null;
+  amount: number;
+  currency: string;
+  quantity?: number | null;
+  status?: string | null;
+  pricingSummaryRows?: readonly EventEditorBasketPricingSummaryRow[] | null;
+}
 
 export interface EventEditorPresentationOptions {
   mode?: EventEditorPresentationMode;
@@ -11,6 +33,16 @@ export interface EventEditorPresentationOptions {
   subtitle?: string | null;
   hideSubEventsPanel?: boolean | null;
   hideSlotsPanel?: boolean | null;
+  basketItems?: EventEditorPresentationValue<readonly EventEditorBasketPresentationItem[] | null | undefined> | null;
+  basketPricingSummaryRows?: EventEditorPresentationValue<readonly EventEditorBasketPricingSummaryRow[] | null | undefined> | null;
+  basketTotalAmount?: EventEditorPresentationValue<number | null | undefined> | null;
+  basketCurrency?: EventEditorPresentationValue<string | null | undefined> | null;
+  basketAddDisabled?: EventEditorPresentationValue<boolean | null | undefined> | null;
+  onBasketAdd?: (event?: Event) => void | Promise<void>;
+  onBasketItemMenuSelect?: (
+    item: EventEditorBasketPresentationItem,
+    event: AppMenuItemSelectEvent<string>
+  ) => void | Promise<void>;
   footerItems?: readonly AppMenuItem<string>[] | null;
   footerMessage?: string | (() => string | null | undefined) | null;
   onFooterItemSelect?: (event: AppMenuItemSelectEvent<string>) => void | Promise<void>;
@@ -142,6 +174,17 @@ export class EventEditorPopupStore {
       hideSlotsPanel: mode === 'checkout-review'
         ? presentation?.hideSlotsPanel !== false
         : presentation?.hideSlotsPanel === true,
+      basketItems: typeof presentation?.basketItems === 'function'
+        ? presentation.basketItems
+        : [...(presentation?.basketItems ?? [])],
+      basketPricingSummaryRows: typeof presentation?.basketPricingSummaryRows === 'function'
+        ? presentation.basketPricingSummaryRows
+        : [...(presentation?.basketPricingSummaryRows ?? [])],
+      basketTotalAmount: presentation?.basketTotalAmount ?? null,
+      basketCurrency: presentation?.basketCurrency ?? null,
+      basketAddDisabled: presentation?.basketAddDisabled ?? null,
+      onBasketAdd: presentation?.onBasketAdd,
+      onBasketItemMenuSelect: presentation?.onBasketItemMenuSelect,
       footerItems: [...(presentation?.footerItems ?? [])],
       footerMessage: presentation?.footerMessage ?? null,
       onFooterItemSelect: presentation?.onFooterItemSelect,

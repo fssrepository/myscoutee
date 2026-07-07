@@ -166,6 +166,8 @@ export class LocalAdminNotificationsService extends LocalRouteDelayService {
         return 2;
       case 'event-counter-expiry':
         return 6;
+      case 'event-checkout-basket-purge':
+        return 2;
       case 'notification-outbox':
         return 12;
       case 'affinity-recompute':

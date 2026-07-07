@@ -13,8 +13,10 @@ import type {
 } from '../../../contracts/event.interface';
 import type {
   EventCheckoutAssetSelection,
+  EventCheckoutBasket,
   EventCheckoutRequest,
   EventCheckoutSession,
+  EventCheckoutState,
   EventParticipationActionResultDTO,
   EventFeedbackQueryDto,
   EventFeedbackReceivedEventDto,
@@ -26,12 +28,13 @@ import type {
 } from '../../../contracts/activity.interface';
 import type { ActivitiesFeedFilters, ListQuery } from '../../../contracts';
 import type { UserMenuCounterDeltasDto } from '../../../contracts/user.interface';
-import { EventFeedbackDetailDto, EventFeedbackPageResultDto } from '../../../contracts/activity.interface';
+import { ActivityEventDetailDTO, EventFeedbackDetailDto, EventFeedbackPageResultDto } from '../../../contracts/activity.interface';
 import { LocalRouteDelayService } from './route-delay.service';
 import { LocalEventFeedbackRepository } from '../repositories/event-feedback.repository';
 import { LocalEventsRepository } from '../repositories/events.repository';
 import { LocalActivityResourcesRepository } from '../repositories/activity-resources.repository';
 import { LocalActivitySubEventStageRuntimeRepository } from '../repositories/activity-sub-event-stage-runtime.repository';
+import { LocalEventCheckoutBasketsRepository } from '../repositories/event-checkout-baskets.repository';
 import { LocalUsersRepository } from '../repositories/users.repository';
 import { LocalUsersService } from './users.service';
 import {
@@ -44,7 +47,6 @@ import {
   LocalUsersMapper
 } from '../mappers';
 import type {
-  ActivityEventDetailDTO,
   ActivityEventDTO,
   ActivityEventStageActionRequestDTO,
   ActivityEventStageActionResultDTO,
@@ -70,6 +72,7 @@ export class LocalEventsService extends LocalRouteDelayService implements IEvent
   private readonly eventsRepository = inject(LocalEventsRepository);
   private readonly activityResourcesRepository = inject(LocalActivityResourcesRepository);
   private readonly activitySubEventStageRuntimeRepository = inject(LocalActivitySubEventStageRuntimeRepository);
+  private readonly eventCheckoutBasketsRepository = inject(LocalEventCheckoutBasketsRepository);
   private readonly eventFeedbackRepository = inject(LocalEventFeedbackRepository);
   private readonly usersRepository = inject(LocalUsersRepository);
   private readonly usersService = inject(LocalUsersService);
@@ -179,6 +182,30 @@ export class LocalEventsService extends LocalRouteDelayService implements IEvent
         normalizedUserId
       )
     };
+  }
+
+  async loadCheckoutBasketByEvent(userId: string, sourceId: string): Promise<EventCheckoutBasket | null> {
+    const normalizedUserId = userId.trim();
+    const normalizedSourceId = sourceId.trim();
+    if (!normalizedUserId || !normalizedSourceId) {
+      return null;
+    }
+    await this.waitForRouteDelay(LocalEventsService.EVENTS_CHECKOUT_ROUTE);
+    return this.eventCheckoutBasketsRepository.loadBasketByEvent(normalizedUserId, normalizedSourceId);
+  }
+
+  async saveCheckoutBasket(request: EventCheckoutRequest): Promise<EventCheckoutBasket | null> {
+    const normalizedUserId = request.userId?.trim();
+    const normalizedSourceId = request.sourceId?.trim();
+    if (!normalizedUserId || !normalizedSourceId) {
+      return null;
+    }
+    await this.waitForRouteDelay(LocalEventsService.EVENTS_CHECKOUT_ROUTE);
+    return this.eventCheckoutBasketsRepository.saveBasket({
+      ...request,
+      userId: normalizedUserId,
+      sourceId: normalizedSourceId
+    });
   }
 
   async queryExploreItems(userId: string): Promise<ActivityEventRecord[]> {
@@ -601,7 +628,7 @@ export class LocalEventsService extends LocalRouteDelayService implements IEvent
 
   async createCheckoutSession(request: EventCheckoutRequest): Promise<EventCheckoutSession | null> {
     await this.waitForRouteDelay(LocalEventsService.EVENTS_CHECKOUT_ROUTE);
-    return {
+    const session: EventCheckoutSession = {
       id: `checkout-${Date.now()}`,
       provider: 'dummy',
       mode: 'dummy',
@@ -610,6 +637,10 @@ export class LocalEventsService extends LocalRouteDelayService implements IEvent
       currency: request.currency?.trim() || 'USD',
       paymentUrl: null
     };
+    await this.eventCheckoutBasketsRepository.saveBasket(
+      this.withCheckoutBasketState(request, 'confirmed', session.id)
+    );
+    return session;
   }
 
   async payCheckoutSession(
@@ -617,7 +648,7 @@ export class LocalEventsService extends LocalRouteDelayService implements IEvent
     paymentSessionId: string
   ): Promise<EventCheckoutSession | null> {
     await this.waitForRouteDelay(LocalEventsService.EVENTS_CHECKOUT_ROUTE);
-    return {
+    const session: EventCheckoutSession = {
       id: paymentSessionId.trim() || `checkout-${Date.now()}`,
       provider: 'dummy',
       mode: 'dummy',
@@ -625,6 +656,27 @@ export class LocalEventsService extends LocalRouteDelayService implements IEvent
       amount: Math.max(0, Number(request.totalAmount) || 0),
       currency: request.currency?.trim() || 'USD',
       paymentUrl: null
+    };
+    await this.eventCheckoutBasketsRepository.saveBasket(
+      this.withCheckoutBasketState(request, 'pay', session.id)
+    );
+    return session;
+  }
+
+  private withCheckoutBasketState(
+    request: EventCheckoutRequest,
+    checkoutState: EventCheckoutState,
+    checkoutSessionId: string
+  ): EventCheckoutRequest {
+    const normalizedSessionId = checkoutSessionId.trim();
+    return {
+      ...request,
+      checkoutState,
+      basketItems: (request.basketItems ?? []).map(item => ({
+        ...item,
+        status: checkoutState ?? item.status,
+        checkoutSessionId: item.checkoutSessionId?.trim() || normalizedSessionId
+      }))
     };
   }
 

@@ -262,6 +262,7 @@ const PROCESS_RULE_ICONS: Record<string, string> = {
   'event-auto-inviter': 'person_add',
   'event-tournament-review': 'emoji_events',
   'event-counter-expiry': 'event_available',
+  'event-checkout-basket-purge': 'shopping_basket',
   'notification-outbox': 'notifications_active',
   'affinity-recompute': 'sync_alt',
   'scheduled-messages': 'schedule_send',

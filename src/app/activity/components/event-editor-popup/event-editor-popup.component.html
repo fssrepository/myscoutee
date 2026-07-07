@@ -100,6 +100,20 @@
                     (overrideSelect)="openSlotOverrideEditor($event)"></app-event-slots-input>
               }
             </section>
+            @if (showCheckoutBasketInput()) {
+              <app-event-basket-input
+                class="experience-description-field"
+                title="Basket"
+                subtitle="Selected slot checkout items"
+                [items]="checkoutBasketInputItems()"
+                [pricingSummaryRows]="checkoutBasketPricingSummaryRows()"
+                [totalAmount]="checkoutBasketTotalAmount()"
+                [currency]="checkoutBasketCurrency()"
+                [addDisabled]="checkoutBasketAddDisabled()"
+                (addSelect)="onCheckoutBasketAdd($event)"
+                (itemMenuSelect)="onCheckoutBasketItemMenuSelect($event)"
+              ></app-event-basket-input>
+            }
             <app-pricing-editor-input class="experience-description-field event-pricing-field" [(ngModel)]="eventDetailDTO.pricing"
               [config]="eventPricingEditorConfig" [readOnly]="eventStructureReadOnly()" [disabled]="eventStructureReadOnly()"></app-pricing-editor-input>
             <app-policies-input [(ngModel)]="eventDetailDTO.policies"

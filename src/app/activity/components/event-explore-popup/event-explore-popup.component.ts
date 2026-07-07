@@ -592,7 +592,7 @@ export class EventExplorePopupComponent {
         void this.clearCheckoutDraft(context.entry.draft, event.sourceEvent);
         return;
       }
-      void this.viewCheckoutDraftEvent(context.entry, event.sourceEvent);
+      void this.openCheckoutDraftForm(context.entry, event.sourceEvent);
       return;
     }
     if (context.menu === 'topic-filter') {
@@ -993,6 +993,32 @@ export class EventExplorePopupComponent {
     }
     const { draft } = entry;
     const record = this.eventsService.peekKnownRecordById(this.activeUserId, draft.sourceId)
+      ?? await this.eventsService.queryKnownRecordById(this.activeUserId, draft.sourceId);
+    if (!record) {
+      this.eventCheckoutDraftStore.clear(this.activeUserId, draft.sourceId);
+      this.dialogStore.openInfo('This checkout draft can no longer be restored.', {
+        title: 'Basket unavailable',
+        confirmTone: 'neutral'
+      });
+      this.cdr.markForCheck();
+      return;
+    }
+    this.openEventExploreCheckout(record, {
+      approvalGranted: this.canContinueCheckoutDraft({ draft, record })
+    });
+  }
+
+  protected async openCheckoutDraftForm(
+    entry: CheckoutDraftEntry,
+    event?: { stopPropagation?: () => void; preventDefault?: () => void }
+  ): Promise<void> {
+    this.stopDomEvent(event);
+    if (this.isCheckoutDraftClearing(entry.draft.sourceId)) {
+      return;
+    }
+    const { draft } = entry;
+    const record = entry.record
+      ?? this.eventsService.peekKnownRecordById(this.activeUserId, draft.sourceId)
       ?? await this.eventsService.queryKnownRecordById(this.activeUserId, draft.sourceId);
     if (!record) {
       this.eventCheckoutDraftStore.clear(this.activeUserId, draft.sourceId);
