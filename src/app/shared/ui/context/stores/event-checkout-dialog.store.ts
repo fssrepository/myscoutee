@@ -18,6 +18,7 @@ export interface EventCheckoutDialogConfig {
   busyConfirmLabel?: string | null;
   allowBackdropClose?: boolean;
   allowEscapeClose?: boolean;
+  readOnlySummary?: boolean;
   failureMessage?: string | null;
   onSubmit: (selection: EventCheckoutSelection) => void | Promise<void>;
 }
@@ -37,6 +38,7 @@ export interface EventCheckoutDialogState {
   busyConfirmLabel: string;
   allowBackdropClose: boolean;
   allowEscapeClose: boolean;
+  readOnlySummary: boolean;
   failureMessage: string;
   onSubmit: (selection: EventCheckoutSelection) => void | Promise<void>;
 }
@@ -75,6 +77,7 @@ export class EventCheckoutDialogStore {
       busyConfirmLabel: config.busyConfirmLabel?.trim() || 'Working...',
       allowBackdropClose: config.allowBackdropClose !== false,
       allowEscapeClose: config.allowEscapeClose !== false,
+      readOnlySummary: config.readOnlySummary === true,
       failureMessage: config.failureMessage?.trim() || 'Unable to complete checkout.',
       onSubmit: config.onSubmit
     };

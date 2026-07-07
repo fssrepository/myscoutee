@@ -1664,15 +1664,95 @@ export class LocalEventsRepository {
     return this.buildMembershipProjectionRecord(normalizedUserId, refreshed);
   }
 
-  leaveEvent(userId: string, sourceId: string): ActivityEventRecord | null {
+  leaveEvent(
+    userId: string,
+    sourceId: string,
+    options: {
+      slotSourceId?: string | null;
+      removeMembershipOnly?: boolean;
+    } = {}
+  ): ActivityEventRecord | null {
     const normalizedUserId = userId.trim();
     const normalizedSourceId = sourceId.trim();
     if (!normalizedUserId || !normalizedSourceId) {
       return null;
     }
 
+    if (options.removeMembershipOnly === true) {
+      return this.removeEventActivityMembership(
+        normalizedUserId,
+        normalizedSourceId,
+        options.slotSourceId?.trim() || null
+      );
+    }
+
     this.trashItem(normalizedUserId, normalizedSourceId);
     return this.findItem(normalizedUserId, normalizedSourceId);
+  }
+
+  private removeEventActivityMembership(
+    normalizedUserId: string,
+    normalizedSourceId: string,
+    normalizedSlotSourceId: string | null
+  ): ActivityEventRecord | null {
+    const preferredRecord = this.computePreferredEventRecords(this.memoryDb.read()[EVENTS_TABLE_NAME])
+      .find(record => record.id === normalizedSourceId);
+    if (!preferredRecord) {
+      return null;
+    }
+    const idsToLeave = Array.from(new Set([
+      normalizedSourceId,
+      normalizedSlotSourceId?.trim() || ''
+    ].filter(Boolean)));
+
+    this.memoryDb.write(state => {
+      const eventTable = state[EVENTS_TABLE_NAME];
+      const nextMembersTable = this.normalizeActivityMembersCollection(state[ACTIVITY_MEMBERS_TABLE_NAME]);
+      for (const eventId of idsToLeave) {
+        this.deleteEventActivityMember(nextMembersTable, eventId, normalizedUserId);
+      }
+
+      const nextById = { ...eventTable.byId };
+      for (const recordKey of eventTable.ids) {
+        const current = eventTable.byId[recordKey];
+        if (!current || !idsToLeave.includes(current.id)) {
+          continue;
+        }
+        const acceptedMemberUserIds = this.eventMemberUserIdsByStatusFromTable(nextMembersTable, current.id, 'accepted');
+        const pendingMemberUserIds = this.eventMemberUserIdsByStatusFromTable(nextMembersTable, current.id, 'pending');
+        const invitedMemberUserIds = this.eventMemberUserIdsByPredicate(nextMembersTable, current.id, member =>
+          member.status === 'pending' && this.isInvitationMember(member)
+        );
+        const pendingRequestMemberUserIds = this.eventMemberUserIdsByPredicate(nextMembersTable, current.id, member =>
+          member.status === 'pending' && !this.isInvitationMember(member)
+        );
+        nextById[recordKey] = {
+          ...current,
+          acceptedMembers: acceptedMemberUserIds.length,
+          pendingMembers: pendingMemberUserIds.length,
+          acceptedMemberUserIds,
+          pendingMemberUserIds,
+          invitedMemberUserIds,
+          pendingRequestMemberUserIds,
+          capacityTotal: Math.max(acceptedMemberUserIds.length, current.capacityTotal)
+        };
+      }
+
+      return {
+        ...state,
+        [ACTIVITY_MEMBERS_TABLE_NAME]: nextMembersTable,
+        [EVENTS_TABLE_NAME]: {
+          byId: nextById,
+          ids: [...eventTable.ids]
+        }
+      };
+    });
+
+    this.materializeSlotRecords();
+    const refreshed = this.computePreferredEventRecords(this.memoryDb.read()[EVENTS_TABLE_NAME])
+      .find(record => record.id === normalizedSourceId)
+      ?? preferredRecord;
+    return this.buildMembershipProjectionRecord(normalizedUserId, refreshed);
   }
 
   isItemTrashed(userId: string, sourceId: string): boolean {
@@ -2506,6 +2586,31 @@ export class LocalEventsRepository {
       ownerBucket.push(id);
     }
     table.idsByOwnerKey[ownerKey] = ownerBucket;
+  }
+
+  private deleteEventActivityMember(
+    table: ActivityMembersRecordCollection,
+    eventId: string,
+    userId: string
+  ): void {
+    const normalizedEventId = eventId.trim();
+    const normalizedUserId = userId.trim();
+    if (!normalizedEventId || !normalizedUserId) {
+      return;
+    }
+    const ownerKey = `event:${normalizedEventId}`;
+    const ownerBucket = [...(table.idsByOwnerKey[ownerKey] ?? [])];
+    const memberId = ownerBucket.find(id => table.byId[id]?.userId === normalizedUserId);
+    if (!memberId) {
+      return;
+    }
+    table.byId[memberId] = {
+      ...table.byId[memberId],
+      status: 'deleted',
+      pendingSource: null,
+      requestKind: null,
+      updatedAtIso: new Date().toISOString()
+    };
   }
 
   private eventMemberUserIdsByStatus(

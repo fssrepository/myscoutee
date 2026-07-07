@@ -19,6 +19,7 @@ export type ActivityEventInfoCardMenuSubject = Record<string, unknown> & {
   invitedMemberUserIds?: readonly string[];
   pendingRequestMemberUserIds?: readonly string[];
   eventScope?: string | null;
+  checkoutMenuAction?: 'continueBooking' | 'paymentSummary' | null;
 };
 
 export interface ActivityEventInfoCardMenuContext {
@@ -42,9 +43,10 @@ export class ActivityEventInfoCardMenuConverter {
     'manageEvent',
     'viewInvitation',
     'view',
+    'paymentSummary',
+    'continueBooking',
     'notifyParticipants',
     'askOrganizer',
-    'contactOrganizer',
     'shareEvent',
     'unpublish',
     'reportOrganizer',
@@ -116,7 +118,10 @@ export class ActivityEventInfoCardMenuConverter {
     activeUserId: string
   ): boolean {
     if (this.isTrashed(subject)) {
-      return actionId === 'restore' && this.shouldRestore(subject);
+      if (this.isAdmin(subject, activeUserId)) {
+        return actionId === 'view' || actionId === 'notifyParticipants';
+      }
+      return actionId === 'view' || actionId === 'askOrganizer';
     }
     switch (actionId) {
       case 'restore':
@@ -140,12 +145,16 @@ export class ActivityEventInfoCardMenuConverter {
         return this.isInvited(subject, activeUserId) && !this.isPendingReview(subject);
       case 'view':
         return !this.isInvited(subject, activeUserId);
+      case 'paymentSummary':
+        return subject.checkoutMenuAction === 'paymentSummary'
+          && !this.isAdmin(subject, activeUserId);
+      case 'continueBooking':
+        return subject.checkoutMenuAction === 'continueBooking'
+          && !this.isAdmin(subject, activeUserId);
       case 'notifyParticipants':
         return this.isAdmin(subject, activeUserId);
       case 'askOrganizer':
-        return this.isInvited(subject, activeUserId) || this.isPendingRequest(subject, activeUserId);
-      case 'contactOrganizer':
-        return !this.isAdmin(subject, activeUserId) && !this.isInvited(subject, activeUserId);
+        return !this.isAdmin(subject, activeUserId);
       case 'shareEvent':
         return true;
       case 'unpublish':
@@ -172,10 +181,6 @@ export class ActivityEventInfoCardMenuConverter {
 
   private static isDraft(subject: ActivityEventInfoCardMenuSubject): boolean {
     return this.statusCode(subject.status) === 'DR';
-  }
-
-  private static shouldRestore(subject: ActivityEventInfoCardMenuSubject): boolean {
-    return this.statusCode(subject.status) === 'T';
   }
 
   private static shouldReport(subject: ActivityEventInfoCardMenuSubject, activeUserId: string): boolean {

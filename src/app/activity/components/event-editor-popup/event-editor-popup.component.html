@@ -21,6 +21,7 @@
             [items]="checkoutBasketInputItems()"
             [totalAmount]="checkoutBasketTotalAmount()"
             [currency]="checkoutBasketCurrency()"
+            [tone]="checkoutBasketTone()"
             [readOnly]="true"
             [showAdd]="false"
             [showItemMenu]="false"
@@ -30,6 +31,7 @@
           <app-event-payment-input
             [totalAmount]="checkoutBasketTotalAmount()"
             [currency]="checkoutBasketCurrency()"
+            [tone]="checkoutPaymentTone()"
             [paymentIntegrationEnabled]="checkoutPaymentIntegrationEnabled()"
           ></app-event-payment-input>
         </div>

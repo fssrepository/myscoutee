@@ -30,6 +30,7 @@ import type {
   EventCheckoutLineItem,
   EventCheckoutPricingSummaryRow,
   EventCheckoutRequest,
+  EventCheckoutResultState,
   EventCheckoutState,
   EventCheckoutStateChangeRequest,
   EventCheckoutSession,
@@ -708,7 +709,12 @@ export class HttpEventsService implements IEventsService {
   async leaveEvent(
     userId: string,
     sourceId: string,
-    _options: {
+    options: {
+      slotSourceId?: string | null;
+      removeMembershipOnly?: boolean;
+      checkoutState?: EventCheckoutState | null;
+      checkoutResultState?: EventCheckoutResultState | null;
+      checkoutSessionId?: string | null;
       counterDelta?: UserMenuCounterDeltasDto | null;
     } = {}
   ): Promise<EventParticipationActionResultDTO | null> {
@@ -717,23 +723,23 @@ export class HttpEventsService implements IEventsService {
     if (!normalizedUserId || !normalizedSourceId) {
       return null;
     }
-    await this.postVoid('/activities/events/trash', {
-      userId: normalizedUserId,
-      type: 'events',
-      sourceId: normalizedSourceId
-    });
-    return {
-      sourceId: normalizedSourceId,
-      slotSourceId: null,
-      action: 'leave',
-      membershipStatus: 'trashed',
-      pendingReason: null,
-      acceptedMembers: 0,
-      pendingMembers: 0,
-      capacityTotal: 0,
-      full: false,
-      paymentSessionId: null
-    };
+    const response = await this.http
+      .post<EventParticipationActionResultDTO | null>(
+        `${this.apiBaseUrl}/activities/events/trash`,
+        {
+          userId: normalizedUserId,
+          type: 'events',
+          sourceId: normalizedSourceId,
+          slotSourceId: options.slotSourceId?.trim() || null,
+          removeMembershipOnly: options.removeMembershipOnly === true,
+          checkoutState: options.checkoutState ?? null,
+          checkoutResultState: options.checkoutResultState ?? null,
+          checkoutSessionId: options.checkoutSessionId?.trim() || null,
+          counterDelta: options.counterDelta ?? null
+        }
+      )
+      .toPromise();
+    return this.normalizeParticipationActionResult(response);
   }
 
   async createCheckoutSession(request: EventCheckoutRequest): Promise<EventCheckoutSession | null> {

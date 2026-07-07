@@ -1,4 +1,10 @@
-<section class="event-basket-panel">
+<section
+  class="event-basket-panel"
+  [class.event-basket-panel--ready]="tone === 'ready'"
+  [class.event-basket-panel--payment]="tone === 'payment'"
+  [class.event-basket-panel--waiting]="tone === 'waiting'"
+  [class.event-basket-panel--approval]="tone === 'approval'"
+>
   <div class="event-basket-panel-head">
     <div class="event-basket-panel-title-wrap">
       <span class="event-basket-panel-title">

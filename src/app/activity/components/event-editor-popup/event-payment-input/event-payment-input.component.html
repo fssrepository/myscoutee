@@ -1,4 +1,10 @@
-<section class="event-payment-input-card">
+<section
+  class="event-payment-input-card"
+  [class.event-payment-input-card--ready]="tone === 'ready'"
+  [class.event-payment-input-card--payment]="tone === 'payment'"
+  [class.event-payment-input-card--waiting]="tone === 'waiting'"
+  [class.event-payment-input-card--approval]="tone === 'approval'"
+>
   <div class="event-payment-input-head">
     <div class="event-payment-panel-title">
       <mat-icon>payments</mat-icon>

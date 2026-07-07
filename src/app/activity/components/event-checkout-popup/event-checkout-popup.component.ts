@@ -14,12 +14,17 @@ import { AppUtils } from '../../../shared/app-utils';
 import { PricingBuilder } from '../../../shared/core/base/builders';
 import type * as ContractTypes from '../../../shared/core/contracts';
 import type * as ActivityContracts from '../../../shared/core/contracts/activity.interface';
+import type { UserMenuCounterDeltasDto } from '../../../shared/core/contracts/user.interface';
 import { EventsService } from '../../../shared/core/base/services/events.service';
 import type { ActivityEventRecord } from '../../../shared/core/contracts/activity.interface';
 import { EventCheckoutDraftStore, type EventCheckoutDraft } from '../../../shared/ui/context/stores/event-checkout-draft.store';
 import { EventCheckoutDialogStore, type EventCheckoutDialogState } from '../../../shared/ui/context/stores/event-checkout-dialog.store';
 import { DialogStore } from '../../../shared/ui/context/stores/dialog.store';
-import { EventEditorPopupStore } from '../../../shared/ui/context/stores/event-editor-popup.store';
+import {
+  EventEditorPopupStore,
+  type EventEditorCheckoutSurfaceTone
+} from '../../../shared/ui/context/stores/event-editor-popup.store';
+import { ActivityStore } from '../../../shared/ui/context/stores/activity.store';
 import {
   type AppMenuItem,
   type AppMenuItemSelectEvent,
@@ -68,6 +73,7 @@ export class EventCheckoutPopupComponent {
   private readonly eventsService = inject(EventsService);
   private readonly checkoutDraftStore = inject(EventCheckoutDraftStore);
   private readonly confirmationDialogStore = inject(DialogStore);
+  private readonly activityStore = inject(ActivityStore);
 
   protected selectedSlotSourceId: string | null = null;
   protected selectedSlotDateValue: Date | null = null;
@@ -160,12 +166,14 @@ export class EventCheckoutPopupComponent {
     }, {
       title: this.sectionTitle(),
       subtitle: dialog.record.title,
-      checkoutPhase: this.paymentStep ? 'payment' : 'review',
+      checkoutPhase: this.isReadOnlyCheckoutSummary() || this.paymentStep ? 'payment' : 'review',
       hideSubEventsPanel: true,
       hideSlotsPanel: true,
       loading: () => this.checkoutReviewBodyLoading(),
       showBasketPanel: true,
       showPricingPanel: true,
+      basketTone: () => this.checkoutBasketSurfaceTone(),
+      paymentTone: () => this.checkoutPaymentSurfaceTone(),
       basketItems: () => this.checkoutBasketPresentationItems(),
       basketPricingSummaryRows: () => this.checkoutBasketPricingSummaryRows(),
       basketTotalAmount: () => this.totalAmount(),
@@ -173,7 +181,7 @@ export class EventCheckoutPopupComponent {
       basketAddDisabled: () => this.checkoutBasketAddDisabled(),
       onBasketAdd: event => this.addCheckoutBasketSlot(event),
       onBasketItemMenuSelect: (item, event) => this.onCheckoutBasketItemMenuSelect(item, event),
-      footerItems: this.checkoutFooterMenuItems(),
+      footerItems: this.isReadOnlyCheckoutSummary() ? [] : this.checkoutFooterMenuItems(),
       footerMessage: () => this.errorMessage,
       onFooterItemSelect: event => this.onCheckoutActionMenuSelect(event),
       onClose: () => this.onCheckoutReviewEditorClose()
@@ -200,9 +208,7 @@ export class EventCheckoutPopupComponent {
     if (!this.checkoutReviewDialogId) {
       return;
     }
-    this.checkoutReviewDialogId = 0;
-    this.checkoutReviewBodyLoading.set(false);
-    this.dialogStore.close();
+    this.requestCheckoutClose();
   }
 
   protected sectionTitle(): string {
@@ -212,6 +218,9 @@ export class EventCheckoutPopupComponent {
     }
     if (dialog.mode === 'invitation') {
       return this.totalAmount() > 0 ? 'Accept Invitation & Pay' : 'Accept Invitation';
+    }
+    if (dialog.readOnlySummary) {
+      return 'Fizetési összegzés';
     }
     if (this.isWaitingListSelection()) {
       return 'Join Waiting List';
@@ -236,7 +245,7 @@ export class EventCheckoutPopupComponent {
       headerTone: 'accent',
       bodyLayout: 'fill',
       backdropTone: 'dim',
-      onClose: event => this.close(event)
+      onClose: event => this.requestCheckoutClose(event)
     };
   }
 
@@ -471,12 +480,16 @@ export class EventCheckoutPopupComponent {
     statusOverride?: ActivityContracts.EventCheckoutState,
     resultStateOverride?: ActivityContracts.EventCheckoutResultState
   ): ActivityContracts.EventCheckoutBasketItem[] {
-    return this.checkoutBasketSnapshot()?.items.map(item => ({
+    const snapshot = this.checkoutBasketSnapshot();
+    const sourceItems = this.isReadOnlyCheckoutSummary()
+      ? (snapshot?.items ?? []).filter(item => item.resultState !== 'deleted')
+      : (snapshot?.items ?? []).filter(item => !this.isInactiveCheckoutResultState(item.resultState));
+    return sourceItems.map(item => ({
       ...item,
       status: statusOverride ?? item.status,
       resultState: resultStateOverride ?? item.resultState ?? 'pending',
       pricingSummaryRows: [...(item.pricingSummaryRows ?? [])]
-    })) ?? [];
+    }));
   }
 
   private activeCheckoutBasketItems(): ActivityContracts.EventCheckoutBasketItem[] {
@@ -486,6 +499,12 @@ export class EventCheckoutPopupComponent {
   }
 
   private checkoutBasketSnapshot(): ActivityContracts.EventCheckoutBasket | null {
+    if (
+      this.isReadOnlyCheckoutSummary()
+      && this.checkoutBasket?.items?.some(item => item.resultState !== 'deleted')
+    ) {
+      return this.checkoutBasket;
+    }
     if (this.checkoutBasket?.items?.some(item => !this.isInactiveCheckoutResultState(item.resultState))) {
       return this.checkoutBasket;
     }
@@ -602,6 +621,31 @@ export class EventCheckoutPopupComponent {
     }));
   }
 
+  private checkoutBasketSurfaceTone(): EventEditorCheckoutSurfaceTone {
+    const pendingReason = this.checkoutDecisionPendingReason();
+    if (pendingReason === 'waitlist') {
+      return 'waiting';
+    }
+    if (pendingReason === 'approval') {
+      return 'approval';
+    }
+    if (this.paymentStep || this.checkoutSessionId || this.activeCheckoutBasketItems().some(item => item.status === 'pay')) {
+      return 'payment';
+    }
+    return this.totalAmount() > 0 ? 'ready' : 'neutral';
+  }
+
+  private checkoutPaymentSurfaceTone(): EventEditorCheckoutSurfaceTone {
+    const pendingReason = this.checkoutDecisionPendingReason();
+    if (pendingReason === 'waitlist') {
+      return 'waiting';
+    }
+    if (pendingReason === 'approval') {
+      return 'approval';
+    }
+    return this.paymentStep || this.checkoutSessionId ? 'payment' : 'ready';
+  }
+
   private checkoutBasketPricingSummaryRows(): ActivityContracts.EventCheckoutPricingSummaryRow[] {
     return (this.checkoutBasketSnapshot()?.pricingSummaryRows ?? []).map(row => ({ ...row }));
   }
@@ -674,17 +718,66 @@ export class EventCheckoutPopupComponent {
       return;
     }
     this.confirmationDialogStore.open({
-      title: 'Remove checkout item?',
+      title: this.checkoutRemoveItemTitle(item.status),
       message: item.label,
-      warningMessage: 'The item will be removed from the basket and from the runtime price summary.',
+      warningMessage: this.checkoutRemoveItemWarning(item.status),
       cancelLabel: 'Cancel',
-      confirmLabel: 'Eltávolítás',
-      busyConfirmLabel: 'Eltávolítás...',
+      confirmLabel: this.checkoutRemoveItemLabel(item.status),
+      busyConfirmLabel: `${this.checkoutRemoveItemLabel(item.status)}...`,
       confirmTone: 'danger',
-      confirmPalette: 'danger',
+      confirmPalette: this.checkoutRemoveItemPalette(item.status),
       failureMessage: 'Unable to remove this checkout item.',
       onConfirm: async () => this.removeCheckoutBasketItem(normalizedItemId)
     });
+  }
+
+  private checkoutRemoveItemTitle(status: string | null | undefined): string {
+    if (status === 'waiting') {
+      return 'Leave waitlist?';
+    }
+    if (status === 'approval-pending' || status === 'approved') {
+      return 'Cancel request?';
+    }
+    if (status === 'pay') {
+      return 'Cancel payment item?';
+    }
+    return 'Remove checkout item?';
+  }
+
+  private checkoutRemoveItemWarning(status: string | null | undefined): string {
+    if (status === 'waiting') {
+      return 'The waitlist item will be removed from the basket.';
+    }
+    if (status === 'approval-pending' || status === 'approved') {
+      return 'The pending request item will be removed from the basket.';
+    }
+    if (status === 'pay') {
+      return 'The payment item will be removed from the basket.';
+    }
+    return 'The item will be removed from the basket and from the runtime price summary.';
+  }
+
+  private checkoutRemoveItemLabel(status: string | null | undefined): string {
+    if (status === 'waiting') {
+      return 'Leave waitlist';
+    }
+    if (status === 'approval-pending' || status === 'approved') {
+      return 'Cancel request';
+    }
+    if (status === 'pay') {
+      return 'Cancel payment';
+    }
+    return 'Eltávolítás';
+  }
+
+  private checkoutRemoveItemPalette(status: string | null | undefined): AppMenuPalette {
+    if (status === 'waiting') {
+      return 'amber';
+    }
+    if (status === 'approval-pending' || status === 'approved') {
+      return 'orange';
+    }
+    return 'danger';
   }
 
   private async removeCheckoutBasketItem(itemId: string): Promise<void> {
@@ -973,7 +1066,10 @@ export class EventCheckoutPopupComponent {
   }
 
   private checkoutActionsDisabled(): boolean {
-    return this.busy || this.dialog()?.loading === true || this.checkoutReviewBodyLoading();
+    return this.isReadOnlyCheckoutSummary()
+      || this.busy
+      || this.dialog()?.loading === true
+      || this.checkoutReviewBodyLoading();
   }
 
   private checkoutActionProgressState(actionId: string): 'loading' | null {
@@ -1077,23 +1173,18 @@ export class EventCheckoutPopupComponent {
     if (!dialog || this.activeCheckoutBasketItems().some(item => item.status === 'pay')) {
       return;
     }
-    const basket = this.checkoutBasketSnapshot();
-    if (basket?.items?.length) {
-      if (this.runtimeCheckoutBasketExists()) {
-        await this.eventsService.updateCheckoutBasketState(this.buildCheckoutStateChangeRequest(
-          'cancelled',
-          'succeeded',
-          null,
-          this.checkoutSessionId
-        ));
-      } else {
-        await this.eventsService.saveCheckoutBasket(this.buildCheckoutRequest({
-          checkoutState: 'cancelled',
-          resultState: 'succeeded',
-          pendingReason: null
-        }));
-      }
-    }
+    const counterDelta = this.checkoutCancelCounterDelta();
+    const leaveResult = await this.eventsService.leaveEvent(dialog.userId, dialog.record.id, {
+      slotSourceId: this.selectedSlotSourceId,
+      removeMembershipOnly: true,
+      checkoutState: 'cancelled',
+      checkoutResultState: 'deleted',
+      checkoutSessionId: this.checkoutSessionId,
+      counterDelta
+    });
+    this.signalCheckoutCounterDelta(counterDelta);
+    this.emitCheckoutMembershipSync(dialog.record.id, leaveResult);
+    this.emitCheckoutMembershipSync(this.selectedSlotSourceId, leaveResult);
     this.checkoutDraftStore.clear(dialog.userId, dialog.record.id);
     this.paymentStep = false;
     this.checkoutSessionId = null;
@@ -1179,9 +1270,9 @@ export class EventCheckoutPopupComponent {
   protected onCheckoutActionMenuSelect(event: AppMenuItemSelectEvent<string>): void {
     if (event.id === 'checkout-secondary') {
       if (this.paymentStep) {
-        this.backToDetails(event.sourceEvent);
+        this.requestCheckoutBackToDetails(event.sourceEvent);
       } else {
-        this.close(event.sourceEvent);
+        this.requestCheckoutClose(event.sourceEvent);
       }
       return;
     }
@@ -1190,8 +1281,85 @@ export class EventCheckoutPopupComponent {
       return;
     }
     if (event.id === 'checkout-confirm') {
-      void this.submit(event.sourceEvent);
+      this.requestCheckoutConfirm(event.sourceEvent);
     }
+  }
+
+  private requestCheckoutClose(event?: Event): void {
+    event?.preventDefault();
+    event?.stopPropagation();
+    if (this.busy) {
+      return;
+    }
+    this.confirmationDialogStore.open({
+      title: 'Close checkout?',
+      message: this.dialog()?.record.title ?? 'Checkout',
+      warningMessage: 'The checkout popup will close and the current basket state will stay unchanged.',
+      cancelLabel: 'Back',
+      confirmLabel: 'Mégse',
+      busyConfirmLabel: 'Closing...',
+      confirmTone: 'neutral',
+      confirmPalette: 'slate',
+      failureMessage: 'Unable to close checkout.',
+      onConfirm: () => this.closeCheckoutDialog()
+    });
+  }
+
+  private requestCheckoutBackToDetails(event?: Event): void {
+    event?.preventDefault();
+    event?.stopPropagation();
+    if (this.busy || !this.paymentStep) {
+      return;
+    }
+    this.confirmationDialogStore.open({
+      title: 'Back to checkout?',
+      message: this.dialog()?.record.title ?? 'Checkout',
+      warningMessage: 'The payment step will close and the basket review will stay available.',
+      cancelLabel: 'Stay',
+      confirmLabel: 'Vissza',
+      busyConfirmLabel: 'Returning...',
+      confirmTone: 'neutral',
+      confirmPalette: 'slate',
+      failureMessage: 'Unable to return to checkout review.',
+      onConfirm: () => this.backToDetails()
+    });
+  }
+
+  private requestCheckoutConfirm(event?: Event): void {
+    event?.preventDefault();
+    event?.stopPropagation();
+    if (!this.canContinue()) {
+      return;
+    }
+    const label = this.continueLabel();
+    this.confirmationDialogStore.open({
+      title: `${label}?`,
+      message: this.dialog()?.record.title ?? 'Checkout',
+      warningMessage: this.checkoutConfirmWarningMessage(),
+      cancelLabel: 'Back',
+      confirmLabel: label,
+      busyConfirmLabel: this.busyLabel(),
+      confirmTone: 'accent',
+      confirmPalette: this.checkoutConfirmPalette(),
+      failureMessage: this.dialog()?.failureMessage ?? 'Unable to continue checkout.',
+      onConfirm: async () => this.submit()
+    });
+  }
+
+  private checkoutConfirmWarningMessage(): string {
+    if (this.isWaitingListSelection()) {
+      return 'The basket will join the waitlist and stay visible until it is cancelled or promoted.';
+    }
+    if (this.shouldAwaitApprovalBeforePayment()) {
+      return 'The basket will be submitted for approval and stay visible until it is cancelled or approved.';
+    }
+    if (!this.paymentStep && this.totalAmount() > 0) {
+      return 'The basket will be confirmed before opening payment.';
+    }
+    if (this.paymentStep || this.checkoutSessionId) {
+      return 'Payment will run for the selected basket item.';
+    }
+    return 'The selected basket item will be joined.';
   }
 
   protected paymentDisabled(): boolean {
@@ -1199,6 +1367,9 @@ export class EventCheckoutPopupComponent {
   }
 
   protected canContinue(): boolean {
+    if (this.isReadOnlyCheckoutSummary()) {
+      return false;
+    }
     if (this.busy || this.dialog()?.loading || this.checkoutReviewBodyLoading()) {
       return false;
     }
@@ -1266,6 +1437,91 @@ export class EventCheckoutPopupComponent {
 
   private checkoutDecisionPending(): boolean {
     return this.checkoutDecisionPendingReason() !== null;
+  }
+
+  private currentCheckoutDraft(): EventCheckoutDraft | null {
+    const dialog = this.dialog();
+    return dialog ? this.checkoutDraftStore.read(dialog.userId, dialog.record.id) : null;
+  }
+
+  private isReadOnlyCheckoutSummary(): boolean {
+    return this.dialog()?.readOnlySummary === true;
+  }
+
+  private checkoutHasStoredPendingMembership(): boolean {
+    const pendingStates: ActivityContracts.EventCheckoutState[] = ['waiting', 'approval-pending', 'approved'];
+    const draft = this.currentCheckoutDraft();
+    if (draft?.pendingReason === 'waitlist' || draft?.pendingReason === 'approval') {
+      return true;
+    }
+    if (draft?.checkoutState && pendingStates.includes(draft.checkoutState)) {
+      return true;
+    }
+    if (this.checkoutBasket?.status && pendingStates.includes(this.checkoutBasket.status)) {
+      return true;
+    }
+    return this.activeCheckoutBasketItems().some(item => pendingStates.includes(item.status));
+  }
+
+  private checkoutSuccessCounterDelta(): UserMenuCounterDeltasDto {
+    return this.checkoutHasStoredPendingMembership()
+      ? { event: { pending: -1, active: 1 } }
+      : { events: 1, event: { all: 1, active: 1 } };
+  }
+
+  private checkoutCancelCounterDelta(): UserMenuCounterDeltasDto | null {
+    if (this.checkoutHasStoredPendingMembership()) {
+      return { event: { all: -1, pending: -1, trash: 1 } };
+    }
+    if (this.checkoutSessionId || this.activeCheckoutBasketItems().some(item => item.status === 'pay')) {
+      return { events: -1, event: { all: -1, active: -1, trash: 1 } };
+    }
+    return null;
+  }
+
+  private signalCheckoutCounterDelta(delta: UserMenuCounterDeltasDto | null): void {
+    const dialog = this.dialog();
+    if (!dialog || !delta) {
+      return;
+    }
+    this.activityStore.patchUserCounterDeltas(dialog.userId, delta, null);
+  }
+
+  private emitCheckoutMembershipSync(
+    sourceId: string | null | undefined,
+    result: ActivityContracts.EventParticipationActionResultDTO | null
+  ): void {
+    const dialog = this.dialog();
+    const normalizedSourceId = sourceId?.trim() ?? '';
+    if (!dialog || !normalizedSourceId) {
+      return;
+    }
+    const record = this.eventsService.peekKnownRecordById(dialog.userId, normalizedSourceId);
+    const matchingResult = result?.sourceId === normalizedSourceId ? result : null;
+    const acceptedMembers = record
+      ? record.acceptedMembers
+      : matchingResult
+        ? matchingResult.acceptedMembers
+        : null;
+    const pendingMembers = record
+      ? record.pendingMembers
+      : matchingResult
+        ? matchingResult.pendingMembers
+        : null;
+    const capacityTotal = record
+      ? record.capacityTotal
+      : matchingResult
+        ? matchingResult.capacityTotal
+        : null;
+    if (acceptedMembers == null || pendingMembers == null || capacityTotal == null) {
+      return;
+    }
+    this.activityStore.emitActivityMembersSync({
+      id: normalizedSourceId,
+      acceptedMembers,
+      pendingMembers,
+      capacityTotal
+    });
   }
 
   private pendingReasonForJoinRequest(): AppConstants.ActivityPendingReason {
@@ -1387,14 +1643,20 @@ export class EventCheckoutPopupComponent {
     this.checkoutBusyActionId = 'checkout-confirm';
     this.errorMessage = '';
     try {
+      const counterDelta = this.checkoutSuccessCounterDelta();
       const joinResult = await this.eventsService.payEventCheckout(this.buildCheckoutStateChangeRequest(
         'pay',
         'succeeded',
-        null
+        null,
+        null,
+        counterDelta
       ));
       if (!joinResult || joinResult.membershipStatus !== 'accepted') {
         throw new Error(dialog.failureMessage);
       }
+      this.signalCheckoutCounterDelta(counterDelta);
+      this.emitCheckoutMembershipSync(dialog.record.id, joinResult);
+      this.emitCheckoutMembershipSync(this.selectedSlotSourceId, joinResult);
       this.checkoutSessionId = joinResult.paymentSessionId ?? null;
       this.clearCheckoutDraft();
       this.closeCheckoutDialog();
@@ -1506,6 +1768,9 @@ export class EventCheckoutPopupComponent {
   }
 
   private shouldOpenPaymentStepFromDraft(draft: EventCheckoutDraft | null): boolean {
+    if (this.isReadOnlyCheckoutSummary()) {
+      return true;
+    }
     if (!draft) {
       return false;
     }
@@ -1518,6 +1783,9 @@ export class EventCheckoutPopupComponent {
   }
 
   private shouldOpenPaymentStepFromBasket(basket: ActivityContracts.EventCheckoutBasket | null): boolean {
+    if (this.isReadOnlyCheckoutSummary()) {
+      return true;
+    }
     if (!basket) {
       return this.paymentStep;
     }
@@ -1621,7 +1889,8 @@ export class EventCheckoutPopupComponent {
     checkoutState: ActivityContracts.EventCheckoutState,
     resultState: ActivityContracts.EventCheckoutResultState | null = null,
     pendingReason: AppConstants.ActivityPendingReason = null,
-    checkoutSessionId: string | null = null
+    checkoutSessionId: string | null = null,
+    counterDelta: UserMenuCounterDeltasDto | null = null
   ): ActivityContracts.EventCheckoutStateChangeRequest {
     const dialog = this.dialog();
     if (!dialog) {
@@ -1630,10 +1899,12 @@ export class EventCheckoutPopupComponent {
     return {
       userId: dialog.userId,
       sourceId: dialog.record.id,
+      slotSourceId: this.selectedSlotSourceId,
       checkoutState,
       resultState,
       pendingReason,
-      checkoutSessionId
+      checkoutSessionId,
+      counterDelta
     };
   }
 

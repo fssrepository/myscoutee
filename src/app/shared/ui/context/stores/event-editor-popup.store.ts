@@ -5,6 +5,7 @@ import type { AppMenuItem, AppMenuItemSelectEvent } from '../../components/core/
 
 export type EventEditorPresentationMode = 'default' | 'checkout-review';
 export type EventEditorCheckoutPhase = 'review' | 'payment';
+export type EventEditorCheckoutSurfaceTone = 'neutral' | 'ready' | 'payment' | 'waiting' | 'approval';
 export type EventEditorPresentationValue<TValue> = TValue | (() => TValue);
 
 export interface EventEditorBasketPricingSummaryRow {
@@ -38,6 +39,8 @@ export interface EventEditorPresentationOptions {
   hideSlotsPanel?: boolean | null;
   showBasketPanel?: EventEditorPresentationValue<boolean | null | undefined> | null;
   showPricingPanel?: EventEditorPresentationValue<boolean | null | undefined> | null;
+  basketTone?: EventEditorPresentationValue<EventEditorCheckoutSurfaceTone | null | undefined> | null;
+  paymentTone?: EventEditorPresentationValue<EventEditorCheckoutSurfaceTone | null | undefined> | null;
   basketItems?: EventEditorPresentationValue<readonly EventEditorBasketPresentationItem[] | null | undefined> | null;
   basketPricingSummaryRows?: EventEditorPresentationValue<readonly EventEditorBasketPricingSummaryRow[] | null | undefined> | null;
   basketTotalAmount?: EventEditorPresentationValue<number | null | undefined> | null;
@@ -181,6 +184,8 @@ export class EventEditorPopupStore {
       hideSlotsPanel: presentation?.hideSlotsPanel === true,
       showBasketPanel: presentation?.showBasketPanel ?? null,
       showPricingPanel: presentation?.showPricingPanel ?? null,
+      basketTone: presentation?.basketTone ?? null,
+      paymentTone: presentation?.paymentTone ?? null,
       basketItems: typeof presentation?.basketItems === 'function'
         ? presentation.basketItems
         : [...(presentation?.basketItems ?? [])],

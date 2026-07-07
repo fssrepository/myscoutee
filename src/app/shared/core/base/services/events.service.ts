@@ -26,6 +26,7 @@ import type {
   EventCheckoutLineItem,
   EventCheckoutPricingSummaryRow,
   EventCheckoutRequest,
+  EventCheckoutResultState,
   EventCheckoutState,
   EventCheckoutStateChangeRequest,
   EventCheckoutSession,
@@ -375,6 +376,11 @@ export class EventsService extends BaseRouteModeService implements IEventsServic
     userId: string,
     sourceId: string,
     options: {
+      slotSourceId?: string | null;
+      removeMembershipOnly?: boolean;
+      checkoutState?: EventCheckoutState | null;
+      checkoutResultState?: EventCheckoutResultState | null;
+      checkoutSessionId?: string | null;
       counterDelta?: UserMenuCounterDeltasDto | null;
     } = {}
   ): Promise<EventParticipationActionResultDTO | null> {

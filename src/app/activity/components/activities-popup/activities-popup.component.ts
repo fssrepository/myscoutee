@@ -26,6 +26,8 @@ import {
 import type { ChatDTO } from '../../../shared/core/contracts/chat.interface';
 import {
   type ActivityEventDTO,
+  type EventCheckoutBasket,
+  type EventCheckoutResultState,
   type ActivityMembersSummaryDto
 } from '../../../shared/core/contracts/activity.interface';
 import type {
@@ -630,7 +632,11 @@ export class ActivitiesPopupComponent implements OnDestroy {
     if (!row || !this.isEventStyleActivity(row)) {
       return null;
     }
-    const dto = this.eventsService.peekKnownItemById(this.activeUser.id, row.id);
+    const activeUserId = this.userProfileStore.activeUserId().trim() || this.activeUser.id.trim();
+    const dto = this.eventsService.peekKnownItemById(activeUserId, row.id);
+    const record = this.eventsService.peekKnownRecordById(activeUserId, row.id);
+    const draft = activeUserId ? this.eventCheckoutDraftStore.read(activeUserId, row.id) : null;
+    const pendingForActiveUser = this.activityCheckoutPendingForActiveUser(activeUserId, dto, record);
     return {
       menu: 'activity-event-card',
       id: row.id,
@@ -641,8 +647,79 @@ export class ActivitiesPopupComponent implements OnDestroy {
       pendingMemberUserIds: [...(dto?.pendingMemberUserIds ?? [])],
       invitedMemberUserIds: [...(dto?.invitedMemberUserIds ?? [])],
       pendingRequestMemberUserIds: [...(dto?.pendingRequestMemberUserIds ?? [])],
-      eventScope: this.activitiesEventScope
+      eventScope: this.activitiesEventScope,
+      checkoutMenuAction: this.activityCheckoutMenuAction(draft, record?.checkoutBasket ?? null, pendingForActiveUser)
     };
+  }
+
+  private activityCheckoutMenuAction(
+    draft: EventCheckoutDraft | null,
+    basket: EventCheckoutBasket | null | undefined,
+    pendingForActiveUser = false
+  ): 'continueBooking' | 'paymentSummary' | null {
+    const draftResult = this.activityCheckoutDraftResultState(draft);
+    if (draftResult === 'succeeded') {
+      return 'paymentSummary';
+    }
+    if (draftResult && draftResult !== 'deleted') {
+      return 'continueBooking';
+    }
+
+    const basketResult = this.activityCheckoutBasketResultState(basket);
+    if (basketResult === 'succeeded') {
+      return 'paymentSummary';
+    }
+    if (basketResult && basketResult !== 'deleted') {
+      return 'continueBooking';
+    }
+    if (pendingForActiveUser) {
+      return 'continueBooking';
+    }
+    return null;
+  }
+
+  private activityCheckoutPendingForActiveUser(
+    activeUserId: string,
+    dto: ActivityEventDTO | null | undefined,
+    record: { pendingMemberUserIds?: string[]; pendingRequestMemberUserIds?: string[]; pendingReason?: unknown } | null | undefined
+  ): boolean {
+    const userId = activeUserId.trim();
+    if (!userId) {
+      return false;
+    }
+    const pendingReason = `${dto?.pendingReason ?? record?.pendingReason ?? ''}`.trim();
+    if (pendingReason === 'waitlist' || pendingReason === 'approval') {
+      return true;
+    }
+    return [
+      ...(dto?.pendingMemberUserIds ?? []),
+      ...(dto?.pendingRequestMemberUserIds ?? []),
+      ...(record?.pendingMemberUserIds ?? []),
+      ...(record?.pendingRequestMemberUserIds ?? [])
+    ].some(candidate => `${candidate ?? ''}`.trim() === userId);
+  }
+
+  private activityCheckoutDraftResultState(draft: EventCheckoutDraft | null | undefined): EventCheckoutResultState | null {
+    return draft ? this.activityCheckoutBasketResultState({ items: draft.basketItems } as EventCheckoutBasket) : null;
+  }
+
+  private activityCheckoutBasketResultState(
+    basket: Pick<EventCheckoutBasket, 'items'> | null | undefined
+  ): EventCheckoutResultState | null {
+    const resultStates = (basket?.items ?? []).map(item => item.resultState ?? 'pending');
+    if (resultStates.length === 0) {
+      return null;
+    }
+    if (resultStates.some(resultState => resultState === 'failed')) {
+      return 'failed';
+    }
+    if (resultStates.every(resultState => resultState === 'deleted')) {
+      return 'deleted';
+    }
+    if (resultStates.every(resultState => resultState === 'deleted' || resultState === 'succeeded')) {
+      return 'succeeded';
+    }
+    return 'pending';
   }
 
   private activityEventRowFromMenuSubject(subject: ActivityEventInfoCardMenuSubject): ActivityEventListItem | null {

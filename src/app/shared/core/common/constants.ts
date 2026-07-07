@@ -3,7 +3,7 @@ export const AUTH_MODES = ['selector', 'firebase'] as const;
 export type AuthMode = typeof AUTH_MODES[number];
 
 // Activity
-export const ACTIVITY_MEMBER_STATUSES = ['pending', 'accepted', 'disqualified'] as const;
+export const ACTIVITY_MEMBER_STATUSES = ['pending', 'accepted', 'disqualified', 'deleted'] as const;
 export type ActivityMemberStatus = typeof ACTIVITY_MEMBER_STATUSES[number];
 
 export const ACTIVITY_PENDING_SOURCES = ['admin', 'member', null] as const;

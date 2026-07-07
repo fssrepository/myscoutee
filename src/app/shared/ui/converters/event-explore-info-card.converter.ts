@@ -14,6 +14,7 @@ export interface EventExploreInfoCardConverterOptions {
   groupLabel?: string | null;
   topicToneGroups?: readonly EventExploreTopicToneGroup[];
   state?: CardRenderState | null;
+  activeUserId?: string | null;
 }
 
 export class EventExploreInfoCardConverter {
@@ -81,7 +82,7 @@ export class EventExploreInfoCardConverter {
           tone: record.blindMode === 'Open Event' ? 'positive' : 'negative'
         }
       },
-      menuActions: this.menuActionsForRecord(record),
+      menuActions: this.menuActionsForRecord(record, options.activeUserId ?? null),
       clickable: false,
       state: options.state ?? 'default'
     };
@@ -94,13 +95,30 @@ export class EventExploreInfoCardConverter {
     return records.map(record => this.convert(record, options));
   }
 
-  private static menuActionsForRecord(record: ActivityEventRecord): readonly CardMenuActionId[] {
+  private static menuActionsForRecord(
+    record: ActivityEventRecord,
+    activeUserId: string | null
+  ): readonly CardMenuActionId[] {
+    const normalizedUserId = `${activeUserId ?? ''}`.trim();
+    if (normalizedUserId && record.creatorUserId === normalizedUserId) {
+      return ['view', 'notifyParticipants'];
+    }
+    if (normalizedUserId && this.isPendingForActiveUser(record, normalizedUserId)) {
+      return ['view', 'askOrganizer', 'shareEvent', 'reportOrganizer'];
+    }
     const actions: CardMenuActionId[] = ['view'];
     actions.push(this.joinActionId(record));
-    actions.push('contactOrganizer');
+    actions.push('askOrganizer');
     actions.push('shareEvent');
     actions.push('reportOrganizer');
     return actions;
+  }
+
+  private static isPendingForActiveUser(record: ActivityEventRecord, activeUserId: string): boolean {
+    return (record.pendingMemberUserIds ?? []).some(userId => `${userId ?? ''}`.trim() === activeUserId)
+      || (record.pendingRequestMemberUserIds ?? []).some(userId => `${userId ?? ''}`.trim() === activeUserId)
+      || record.pendingReason === 'approval'
+      || record.pendingReason === 'waitlist';
   }
 
   private static creatorOverlayTone(record: ActivityEventRecord): 'cool' | 'cool-mid' | 'neutral' | 'warm-mid' | 'warm' {

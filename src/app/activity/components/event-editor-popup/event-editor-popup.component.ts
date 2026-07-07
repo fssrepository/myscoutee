@@ -32,7 +32,8 @@ import {
   ActivitiesPopupStore
 } from '../../../shared/ui/context/stores/activities-popup.store';
 import {
-  EventEditorPopupStore
+  EventEditorPopupStore,
+  type EventEditorCheckoutSurfaceTone
 } from '../../../shared/ui/context/stores/event-editor-popup.store';
 import {
   EventCheckoutDraftStore,
@@ -500,6 +501,16 @@ export class EventEditorPopupComponent implements OnInit, OnDestroy {
       currency: item.currency,
       quantity: item.quantity ?? 1
     }));
+  }
+
+  protected checkoutBasketTone(): EventEditorCheckoutSurfaceTone {
+    const configured = this.resolvePresentationValue(this.eventEditorStore.presentation().basketTone, null);
+    return configured ?? 'neutral';
+  }
+
+  protected checkoutPaymentTone(): EventEditorCheckoutSurfaceTone {
+    const configured = this.resolvePresentationValue(this.eventEditorStore.presentation().paymentTone, null);
+    return configured ?? 'payment';
   }
 
   protected checkoutPaymentEventTimeframe(): string {

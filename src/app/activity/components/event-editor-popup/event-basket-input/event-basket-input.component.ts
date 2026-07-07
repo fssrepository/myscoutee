@@ -4,6 +4,7 @@ import { MatIconModule } from '@angular/material/icon';
 
 import { AppMenuComponent, type AppMenuItem, type AppMenuItemSelectEvent, type AppMenuPalette } from '../../../../shared/ui/components/core/menu';
 import { TextCardComponent, type TextCardTone } from '../../../../shared/ui/components/core/smart-list/card';
+import type { EventEditorCheckoutSurfaceTone } from '../../../../shared/ui/context/stores/event-editor-popup.store';
 
 export interface EventBasketInputPricingSummaryRow {
   key: string;
@@ -60,6 +61,7 @@ export class EventBasketInputComponent {
   @Input() showAdd = true;
   @Input() showItemMenu = true;
   @Input() emptyLabel = 'No basket items yet. Use + to add a slot.';
+  @Input() tone: EventEditorCheckoutSurfaceTone = 'neutral';
 
   @Output() readonly addSelect = new EventEmitter<Event>();
   @Output() readonly itemMenuSelect = new EventEmitter<EventBasketInputItemMenuEvent>();
@@ -151,7 +153,7 @@ export class EventBasketInputComponent {
   }
 
   protected itemDetail(item: EventBasketInputItem): string {
-    return item.detail?.trim() || 'Selected checkout item';
+    return item.detail?.trim() || '';
   }
 
   private itemQuantity(item: EventBasketInputItem): number {

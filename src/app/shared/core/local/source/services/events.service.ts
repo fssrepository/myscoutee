@@ -18,6 +18,7 @@ import type {
   EventCheckoutLineItem,
   EventCheckoutPricingSummaryRow,
   EventCheckoutRequest,
+  EventCheckoutResultState,
   EventCheckoutState,
   EventCheckoutStateChangeRequest,
   EventCheckoutSession,
@@ -237,18 +238,19 @@ export class LocalEventsService extends LocalRouteDelayService implements IEvent
     if (!basket) {
       return null;
     }
+    const slotSourceId = basket.slotSourceId ?? request.slotSourceId ?? null;
     const checkoutSessionId = `checkout-${Date.now()}`;
     const record = this.eventsRepository.requestJoin(
       normalizedUserId,
       normalizedSourceId,
-      basket.slotSourceId ?? null,
+      slotSourceId,
       true,
       false,
       false
     );
     const result = record
       ? LocalEventParticipationActionMapper.toResult(record, this.resolveDemoActivityUserId(normalizedUserId), {
-          slotSourceId: basket.slotSourceId ?? null,
+          slotSourceId,
           paymentSessionId: checkoutSessionId,
           pendingReason: null
         })
@@ -264,6 +266,7 @@ export class LocalEventsService extends LocalRouteDelayService implements IEvent
       resultState: result?.membershipStatus === 'accepted' ? 'succeeded' : null,
       checkoutSessionId
     });
+    await this.patchLocalUserActivityCounterDeltas(normalizedUserId, request.counterDelta ?? null);
     await this.eventsRepository.flushToIndexedDb();
     return result;
   }
@@ -686,11 +689,33 @@ export class LocalEventsService extends LocalRouteDelayService implements IEvent
     userId: string,
     sourceId: string,
     options: {
+      slotSourceId?: string | null;
+      removeMembershipOnly?: boolean;
+      checkoutState?: EventCheckoutState | null;
+      checkoutResultState?: EventCheckoutResultState | null;
+      checkoutSessionId?: string | null;
       counterDelta?: UserMenuCounterDeltasDto | null;
     } = {}
   ): Promise<EventParticipationActionResultDTO | null> {
-    const record = this.eventsRepository.leaveEvent(userId, sourceId);
-    await this.patchLocalUserActivityCounterDeltas(userId, options.counterDelta ?? null);
+    const normalizedUserId = userId.trim();
+    const normalizedSourceId = sourceId.trim();
+    if (!normalizedUserId || !normalizedSourceId) {
+      return null;
+    }
+    if (options.checkoutState) {
+      await this.eventCheckoutBasketsRepository.updateBasketState({
+        userId: normalizedUserId,
+        sourceId: normalizedSourceId,
+        checkoutState: options.checkoutState,
+        resultState: options.checkoutResultState ?? null,
+        checkoutSessionId: options.checkoutSessionId ?? null
+      });
+    }
+    const record = this.eventsRepository.leaveEvent(userId, sourceId, {
+      slotSourceId: options.slotSourceId ?? null,
+      removeMembershipOnly: options.removeMembershipOnly === true
+    });
+    await this.patchLocalUserActivityCounterDeltas(normalizedUserId, options.counterDelta ?? null);
     await this.eventsRepository.flushToIndexedDb();
     await this.waitForRouteDelay(LocalEventsService.EVENTS_ROUTE);
     return record ? this.leftEventResult(record) : null;

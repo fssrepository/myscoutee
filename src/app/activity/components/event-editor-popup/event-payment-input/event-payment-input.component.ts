@@ -1,6 +1,7 @@
 import { CommonModule } from '@angular/common';
 import { ChangeDetectionStrategy, Component, Input } from '@angular/core';
 import { MatIconModule } from '@angular/material/icon';
+import type { EventEditorCheckoutSurfaceTone } from '../../../../shared/ui/context/stores/event-editor-popup.store';
 
 export interface EventPaymentInputPricingSummaryRow {
   key: string;
@@ -43,6 +44,7 @@ export class EventPaymentInputComponent {
   @Input() totalAmount = 0;
   @Input() currency = 'USD';
   @Input() paymentIntegrationEnabled = false;
+  @Input() tone: EventEditorCheckoutSurfaceTone = 'payment';
 
   protected itemTrackId(_index: number, item: EventPaymentInputItem): string {
     return item.id;

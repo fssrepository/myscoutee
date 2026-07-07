@@ -99,6 +99,22 @@
   padding: 0.78rem;
 }
 
+.event-payment-input-card--ready {
+  border-color: rgba(55, 132, 169, 0.34);
+  background: linear-gradient(180deg, rgba(244, 251, 255, 0.96) 0%, rgba(233, 245, 250, 0.96) 100%);
+}
+
+.event-payment-input-card--payment {
+  border-color: rgba(82, 94, 192, 0.34);
+  background: linear-gradient(180deg, rgba(246, 247, 255, 0.96) 0%, rgba(237, 240, 255, 0.96) 100%);
+}
+
+.event-payment-input-card--waiting,
+.event-payment-input-card--approval {
+  border-color: rgba(205, 143, 53, 0.36);
+  background: linear-gradient(180deg, rgba(255, 250, 240, 0.96) 0%, rgba(250, 241, 222, 0.96) 100%);
+}
+
 .event-payment-context {
   border: 1px solid rgba(89, 137, 151, 0.22);
   border-radius: 12px;

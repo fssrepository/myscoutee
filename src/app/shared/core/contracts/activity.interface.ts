@@ -142,6 +142,11 @@ export interface IEventsService {
     userId: string,
     sourceId: string,
     options?: {
+      slotSourceId?: string | null;
+      removeMembershipOnly?: boolean;
+      checkoutState?: EventCheckoutState | null;
+      checkoutResultState?: EventCheckoutResultState | null;
+      checkoutSessionId?: string | null;
       counterDelta?: UserContracts.UserMenuCounterDeltasDto | null;
     }
   ): Promise<EventParticipationActionResultDTO | null>;
@@ -1359,10 +1364,12 @@ export interface EventCheckoutRequest {
 export interface EventCheckoutStateChangeRequest {
   userId: string;
   sourceId: string;
+  slotSourceId?: string | null;
   checkoutState: EventCheckoutState;
   resultState?: EventCheckoutResultState | null;
   pendingReason?: AppConstants.ActivityPendingReason;
   checkoutSessionId?: string | null;
+  counterDelta?: UserContracts.UserMenuCounterDeltasDto | null;
 }
 
 export interface EventCheckoutSession {
