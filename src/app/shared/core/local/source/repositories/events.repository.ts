@@ -2022,6 +2022,9 @@ export class LocalEventsRepository {
     if (!normalizedUserId || this.isSetupRequiredDemoProfile(normalizedUserId)) {
       return false;
     }
+    if (this.hasDeletedEventMembership(record, normalizedUserId)) {
+      return false;
+    }
     return this.eventAcceptedMemberUserIds(record).includes(normalizedUserId)
       || this.eventPendingRequestMemberUserIds(record).includes(normalizedUserId)
       || this.eventInvitedMemberUserIds(record).includes(normalizedUserId);

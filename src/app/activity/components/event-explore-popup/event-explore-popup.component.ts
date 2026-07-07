@@ -1225,7 +1225,6 @@ export class EventExplorePopupComponent {
     }
 
     this.checkoutDraftReleaseSourceIds.add(sourceId);
-    this.eventCheckoutDraftStore.clear(activeUserId, sourceId);
     this.cdr.markForCheck();
     try {
       const record = this.eventsService.peekKnownRecordById(activeUserId, sourceId)
@@ -1246,6 +1245,7 @@ export class EventExplorePopupComponent {
       const memberDelta = this.checkoutDraftCancelMemberDelta(draft);
       this.emitCheckoutDraftMembersSync(sourceId, leaveResult, memberDelta, true);
       this.emitCheckoutDraftMembersSync(slotSourceId, leaveResult, memberDelta, true);
+      this.eventCheckoutDraftStore.clear(activeUserId, sourceId);
 
       if (!record) {
         return;
@@ -2051,14 +2051,10 @@ export class EventExplorePopupComponent {
     if (!this.eventExploreSmartList) {
       return;
     }
-    const currentItems = [...this.eventExploreSmartList.itemsSnapshot()];
-    const nextItems = currentItems.filter(item => item.id !== record.id);
-    if (nextItems.length === currentItems.length) {
-      return;
-    }
-    this.eventExploreSmartList.replaceVisibleItems(nextItems, {
-      total: Math.max(nextItems.length, this.eventExploreSmartList.cursorState().total - 1)
-    });
+    this.eventExploreSmartList.removeVisibleItems(
+      item => item.id === record.id,
+      { totalDelta: -1 }
+    );
   }
 
   private restoreVisibleEventExploreRecord(record: ActivityEventRecord): void {

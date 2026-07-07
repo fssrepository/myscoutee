@@ -1354,7 +1354,6 @@ export class ActivitiesEventsController {
     if (!activeUserId) {
       return;
     }
-    this.eventCheckoutDraftStore.clear(activeUserId, row.id);
     const counterDelta = this.leftEventCounterDelta(row);
     const leaveResult = await this.eventsService.leaveEvent(activeUserId, row.id, {
       counterDelta
@@ -1372,7 +1371,28 @@ export class ActivitiesEventsController {
 
     this.activitiesSmartList?.removeVisibleItemByIdentity(this.activityRowIdentity(row));
     this.signalActivityCounterDelta(activeUserId, counterDelta);
+    this.emitActivityLeaveMembersSync(row, leaveResult);
+    this.eventCheckoutDraftStore.clear(activeUserId, row.id);
     this.cdr.markForCheck();
+  }
+
+  private emitActivityLeaveMembersSync(
+    row: InfoCardData,
+    result: ActivityContracts.EventParticipationActionResultDTO | null
+  ): void {
+    const sourceId = `${result?.sourceId ?? row.id ?? ''}`.trim();
+    if (!sourceId || !result) {
+      return;
+    }
+    const acceptedMembers = Math.max(0, Math.trunc(Number(result.acceptedMembers) || 0));
+    const pendingMembers = Math.max(0, Math.trunc(Number(result.pendingMembers) || 0));
+    this.activityStore.emitActivityMembersSync({
+      id: sourceId,
+      acceptedMembers,
+      pendingMembers,
+      capacityTotal: Math.max(acceptedMembers, Math.trunc(Number(result.capacityTotal) || 0)),
+      viewerMembershipRemoved: true
+    });
   }
 
   private shouldUseCheckoutFlow(record: {

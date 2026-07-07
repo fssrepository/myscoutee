@@ -4174,9 +4174,22 @@ private updateListSnapNearEndSuppression(scrollElement?: HTMLDivElement | null):
     if (this.currentViewMode !== 'list') {
       return false;
     }
-    const nextItems = this.items.filter((item, index) => !predicate(item, index));
+    const removedIdentities: string[] = [];
+    const nextItems = this.items.filter((item, index) => {
+      const shouldRemove = predicate(item, index);
+      if (shouldRemove) {
+        const identity = `${this.cacheTrackKey(item, index)}`.trim();
+        if (identity) {
+          removedIdentities.push(identity);
+        }
+      }
+      return !shouldRemove;
+    });
     if (nextItems.length === this.items.length) {
       return false;
+    }
+    for (const identity of removedIdentities) {
+      this.sourceItemByIdentity.delete(identity);
     }
     this.replaceVisibleItems(nextItems, {
       total: Math.max(nextItems.length, this.total + (options.totalDelta ?? -1))

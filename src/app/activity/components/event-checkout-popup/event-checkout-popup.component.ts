@@ -508,6 +508,9 @@ export class EventCheckoutPopupComponent {
     if (this.checkoutBasket?.items?.some(item => !this.isInactiveCheckoutResultState(item.resultState))) {
       return this.checkoutBasket;
     }
+    if (this.shouldSuppressImplicitWaitlistBasket()) {
+      return null;
+    }
     if (this.requiresSlotSelection()) {
       return null;
     }
@@ -1077,16 +1080,17 @@ export class EventCheckoutPopupComponent {
   }
 
   protected checkoutFooterMenuItems(): readonly AppMenuItem<string>[] {
-    const items: AppMenuItem<string>[] = [
-      {
+    const items: AppMenuItem<string>[] = [];
+    if (this.paymentStep) {
+      items.push({
         id: 'checkout-secondary',
-        label: () => this.paymentStep ? 'Vissza' : 'Mégse',
+        label: 'Vissza',
         layout: 'action',
         palette: 'neutral',
         disabled: () => this.checkoutActionsDisabled(),
-        ariaLabel: () => this.paymentStep ? 'Vissza' : 'Mégse'
-      }
-    ];
+        ariaLabel: 'Vissza'
+      });
+    }
     if (this.showCheckoutLifecycleCancel()) {
       items.push({
         id: 'checkout-cancel-lifecycle',
@@ -1131,8 +1135,18 @@ export class EventCheckoutPopupComponent {
     }
     return Boolean(this.checkoutSessionId)
       || this.checkoutDecisionPending()
-      || this.checkoutBasketItems().length > 0
-      || this.totalAmount() > 0;
+      || this.checkoutLifecycleHasStarted();
+  }
+
+  private checkoutLifecycleHasStarted(): boolean {
+    const lifecycleStates: ActivityContracts.EventCheckoutState[] = [
+      'confirmed',
+      'approval-pending',
+      'approved',
+      'waiting'
+    ];
+    return Boolean(this.checkoutBasket?.status && lifecycleStates.includes(this.checkoutBasket.status))
+      || this.activeCheckoutBasketItems().some(item => lifecycleStates.includes(item.status));
   }
 
   private checkoutLifecycleCancelLabel(): string {
@@ -1730,7 +1744,7 @@ export class EventCheckoutPopupComponent {
     this.acceptedPolicyIds = new Set((draft?.acceptedPolicyIds ?? []).filter(item => validPolicyIds.has(item)));
     this.paymentStep = this.shouldOpenPaymentStepFromDraft(draft);
     this.checkoutSessionId = draft?.checkoutSessionId ?? null;
-    this.checkoutBasket = draft?.basketItems?.length
+    this.checkoutBasket = draft?.basketItems?.length && !this.shouldSuppressStoredWaitlistBasket(dialog, draft.basketItems)
       ? {
         userId: dialog.userId,
         sourceId: dialog.record.id,
@@ -1758,7 +1772,10 @@ export class EventCheckoutPopupComponent {
     } catch {
       queriedBasket = null;
     }
-    const basket = queriedBasket ?? this.checkoutBasket;
+    const candidateBasket = queriedBasket ?? this.checkoutBasket;
+    const basket = candidateBasket && this.shouldSuppressStoredWaitlistBasket(dialog, candidateBasket.items)
+      ? null
+      : candidateBasket;
     this.checkoutBasket = basket;
     if (!basket || basket.items.length === 0) {
       return;
@@ -1805,6 +1822,33 @@ export class EventCheckoutPopupComponent {
     }
     return basket.status === 'confirmed'
       && Math.max(0, Number(basket.totalAmount) || 0) > 0;
+  }
+
+  private shouldSuppressImplicitWaitlistBasket(): boolean {
+    const dialog = this.dialog();
+    return Boolean(dialog && !dialog.approvalGranted && dialog.pendingReason === 'waitlist');
+  }
+
+  private shouldSuppressStoredWaitlistBasket(
+    dialog: EventCheckoutDialogState,
+    items: readonly ActivityContracts.EventCheckoutBasketItem[] | null | undefined
+  ): boolean {
+    if (dialog.approvalGranted || dialog.pendingReason !== 'waitlist') {
+      return false;
+    }
+    const activeItems = (items ?? []).filter(item => !this.isInactiveCheckoutResultState(item.resultState));
+    return activeItems.length > 0 && activeItems.every(item => this.isImplicitMainEventBasketItem(dialog, item));
+  }
+
+  private isImplicitMainEventBasketItem(
+    dialog: EventCheckoutDialogState,
+    item: ActivityContracts.EventCheckoutBasketItem
+  ): boolean {
+    return item.kind === 'event'
+      && (item.sourceId?.trim() ?? '') === dialog.record.id
+      && !(item.slotSourceId?.trim())
+      && !(item.subEventId?.trim())
+      && !(item.resourceType?.trim());
   }
 
   private resetDialogState(): void {

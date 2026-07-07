@@ -3182,8 +3182,16 @@ export class ActivitiesPopupComponent implements OnDestroy {
     if (!this.activitiesSmartList || !this.shouldRemoveVisibleActivityMembershipRow()) {
       return false;
     }
+    const normalizedSourceId = sourceId.trim();
+    const matchingIdentities = new Set([
+      normalizedSourceId,
+      `events:${normalizedSourceId}`,
+      `hosting:${normalizedSourceId}`,
+      `invitations:${normalizedSourceId}`
+    ]);
     return this.activitiesSmartList.removeVisibleItems(
-      row => row.id === sourceId && this.isEventStyleActivity(row),
+      row => this.isEventStyleActivity(row)
+        && (row.id === normalizedSourceId || matchingIdentities.has(this.activityRowIdentity(row))),
       { totalDelta: -1 }
     );
   }
