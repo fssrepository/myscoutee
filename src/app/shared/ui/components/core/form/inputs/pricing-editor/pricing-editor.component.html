@@ -4,7 +4,7 @@
   [class.pricing-editor--readonly]="editorLocked()"
   [class.pricing-editor--summary-popup]="usesSummaryPopup()"
   [class.pricing-editor--wizard-open]="wizardOpen"
-  [class.pricing-editor--enabled]="isPricingEnabled()"
+  [class.pricing-editor--enabled]="showPricingContent()"
   [class.pricing-editor--embedded]="resolvedConfig.embedded"
   >
   @if (!resolvedConfig.embedded) {
@@ -59,7 +59,7 @@
   </header>
   }
 
-  @if (usesSummaryPopup() && isPricingEnabled()) {
+  @if (usesSummaryPopup() && showPricingContent()) {
     @if (!editorLocked()) {
       <div class="pricing-editor__summary-actions">
         <button type="button" class="pricing-editor__open-btn pricing-editor__open-btn--summary" (click)="openWizard()">
@@ -73,7 +73,7 @@
         <ng-container [ngTemplateOutlet]="pricingPreviewCards"></ng-container>
       </div>
     }
-  } @else if (isPricingEnabled()) {
+  } @else if (showPricingContent()) {
     <div class="pricing-editor__layout">
       <div class="pricing-editor__main">
         <ng-container [ngTemplateOutlet]="pricingEditorSurfaces"></ng-container>

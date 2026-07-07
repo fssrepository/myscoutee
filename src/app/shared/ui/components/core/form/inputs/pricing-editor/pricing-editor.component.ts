@@ -347,7 +347,11 @@ export class PricingEditorInputComponent implements OnChanges, DoCheck, OnDestro
   }
 
   protected showPricingPanel(): boolean {
-    return !this.editorLocked() || this.isPricingEnabled();
+    return !this.editorLocked() || this.showPricingContent();
+  }
+
+  protected showPricingContent(): boolean {
+    return this.isPricingEnabled() || this.runtimePreviewState() !== null;
   }
 
   protected showToggleControl(): boolean {

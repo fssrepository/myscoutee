@@ -542,7 +542,7 @@ export class EventEditorPopupComponent implements OnInit, OnDestroy {
   }
 
   protected checkoutPricingRuntimePreview(): PricingEditorRuntimePreview | null {
-    if (!this.checkoutReviewMode() || this.eventDetailDTO.slotsEnabled !== true) {
+    if (!this.checkoutReviewMode()) {
       return null;
     }
     const items = this.checkoutBasketInputItems();
