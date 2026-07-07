@@ -3121,6 +3121,11 @@ export class ActivitiesPopupComponent implements OnDestroy {
   }
 
   private applyActivityMembersSyncState(sync: ActivityMembersSyncState): void {
+    if (sync.viewerMembershipRemoved && this.removeVisibleActivityMembershipRow(sync.id)) {
+      this.bumpActivitiesEventCardRevision(`events:${sync.id}`);
+      this.bumpActivitiesEventCardRevision(`invitations:${sync.id}`);
+      return;
+    }
     const capacityParts = `${this.activityCapacityById[sync.id] ?? ''}`.split('/');
     const hasCurrentAcceptedMembers = (capacityParts[0] ?? '').trim().length > 0;
     const fallbackAcceptedMembers = Math.max(0, Math.trunc(Number(sync.acceptedMembers) || 0));
@@ -3171,6 +3176,26 @@ export class ActivitiesPopupComponent implements OnDestroy {
     this.bumpActivitiesEventCardRevision(`events:${sync.id}`);
     this.bumpActivitiesEventCardRevision(`hosting:${sync.id}`);
     this.bumpActivitiesEventCardRevision(`invitations:${sync.id}`);
+  }
+
+  private removeVisibleActivityMembershipRow(sourceId: string): boolean {
+    if (!this.activitiesSmartList || !this.shouldRemoveVisibleActivityMembershipRow()) {
+      return false;
+    }
+    return this.activitiesSmartList.removeVisibleItems(
+      row => row.id === sourceId && this.isEventStyleActivity(row),
+      { totalDelta: -1 }
+    );
+  }
+
+  private shouldRemoveVisibleActivityMembershipRow(): boolean {
+    if (!this.isEventActivitiesPrimaryFilter()) {
+      return false;
+    }
+    return this.activitiesEventScope === 'all'
+      || this.activitiesEventScope === 'active-events'
+      || this.activitiesEventScope === 'pending'
+      || this.activitiesEventScope === 'invitations';
   }
 
   private applyActivityMembersSummaryToRow(row: ActivityEventListItem, summary: ActivityMembersSummaryDto): void {

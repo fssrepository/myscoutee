@@ -76,6 +76,7 @@ export interface ActivityMembersSyncState {
   capacityTotal: number;
   acceptedMemberDelta?: number;
   pendingMemberDelta?: number;
+  viewerMembershipRemoved?: boolean;
 }
 
 export interface ActivityResourceSyncState {
@@ -365,7 +366,8 @@ export class ActivityStore {
         normalizeCounterValue(payload.capacityTotal)
       ),
       ...(acceptedMemberDelta !== null ? { acceptedMemberDelta } : {}),
-      ...(pendingMemberDelta !== null ? { pendingMemberDelta } : {})
+      ...(pendingMemberDelta !== null ? { pendingMemberDelta } : {}),
+      ...(payload.viewerMembershipRemoved === true ? { viewerMembershipRemoved: true } : {})
     });
   }
 

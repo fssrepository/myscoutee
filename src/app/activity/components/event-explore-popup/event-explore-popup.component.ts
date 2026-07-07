@@ -1244,8 +1244,8 @@ export class EventExplorePopupComponent {
       });
       this.signalEventExploreCounterDelta(activeUserId, counterDelta);
       const memberDelta = this.checkoutDraftCancelMemberDelta(draft);
-      this.emitCheckoutDraftMembersSync(sourceId, leaveResult, memberDelta);
-      this.emitCheckoutDraftMembersSync(slotSourceId, leaveResult, memberDelta);
+      this.emitCheckoutDraftMembersSync(sourceId, leaveResult, memberDelta, true);
+      this.emitCheckoutDraftMembersSync(slotSourceId, leaveResult, memberDelta, true);
 
       if (!record) {
         return;
@@ -1280,7 +1280,8 @@ export class EventExplorePopupComponent {
   private emitCheckoutDraftMembersSync(
     sourceId: string | null | undefined,
     result: ActivityContracts.EventParticipationActionResultDTO | null,
-    memberDelta: { acceptedMemberDelta?: number; pendingMemberDelta?: number } | null = null
+    memberDelta: { acceptedMemberDelta?: number; pendingMemberDelta?: number } | null = null,
+    viewerMembershipRemoved = false
   ): void {
     const normalizedSourceId = sourceId?.trim() ?? '';
     if (!normalizedSourceId) {
@@ -1299,6 +1300,7 @@ export class EventExplorePopupComponent {
       acceptedMembers,
       pendingMembers,
       capacityTotal,
+      ...(viewerMembershipRemoved ? { viewerMembershipRemoved: true } : {}),
       ...(memberDelta ?? {})
     });
   }

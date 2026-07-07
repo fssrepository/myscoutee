@@ -1184,8 +1184,8 @@ export class EventCheckoutPopupComponent {
       counterDelta
     });
     this.signalCheckoutCounterDelta(counterDelta);
-    this.emitCheckoutMembershipSync(dialog.record.id, leaveResult, memberDelta);
-    this.emitCheckoutMembershipSync(this.selectedSlotSourceId, leaveResult, memberDelta);
+    this.emitCheckoutMembershipSync(dialog.record.id, leaveResult, memberDelta, true);
+    this.emitCheckoutMembershipSync(this.selectedSlotSourceId, leaveResult, memberDelta, true);
     this.checkoutDraftStore.clear(dialog.userId, dialog.record.id);
     this.paymentStep = false;
     this.checkoutSessionId = null;
@@ -1496,7 +1496,8 @@ export class EventCheckoutPopupComponent {
   private emitCheckoutMembershipSync(
     sourceId: string | null | undefined,
     result: ActivityContracts.EventParticipationActionResultDTO | null,
-    memberDelta: { acceptedMemberDelta?: number; pendingMemberDelta?: number } | null = null
+    memberDelta: { acceptedMemberDelta?: number; pendingMemberDelta?: number } | null = null,
+    viewerMembershipRemoved = false
   ): void {
     const dialog = this.dialog();
     const normalizedSourceId = sourceId?.trim() ?? '';
@@ -1528,6 +1529,7 @@ export class EventCheckoutPopupComponent {
       acceptedMembers,
       pendingMembers,
       capacityTotal,
+      ...(viewerMembershipRemoved ? { viewerMembershipRemoved: true } : {}),
       ...(memberDelta ?? {})
     });
   }
