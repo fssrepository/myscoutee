@@ -3121,11 +3121,30 @@ export class ActivitiesPopupComponent implements OnDestroy {
   }
 
   private applyActivityMembersSyncState(sync: ActivityMembersSyncState): void {
-    const acceptedMembers = Math.max(0, Math.trunc(Number(sync.acceptedMembers) || 0));
-    const pendingMembers = Math.max(0, Math.trunc(Number(sync.pendingMembers) || 0));
+    const capacityParts = `${this.activityCapacityById[sync.id] ?? ''}`.split('/');
+    const hasCurrentAcceptedMembers = (capacityParts[0] ?? '').trim().length > 0;
+    const fallbackAcceptedMembers = Math.max(0, Math.trunc(Number(sync.acceptedMembers) || 0));
+    const currentAcceptedMembers = hasCurrentAcceptedMembers
+      ? Math.max(0, Math.trunc(Number(capacityParts[0]) || 0))
+      : fallbackAcceptedMembers;
+    const currentCapacityTotal = Math.max(
+      currentAcceptedMembers,
+      Math.trunc(Number(capacityParts[1]) || Number(sync.capacityTotal) || 0)
+    );
+    const hasCurrentPendingMembers = this.activityPendingMembersById[sync.id] !== undefined;
+    const fallbackPendingMembers = Math.max(0, Math.trunc(Number(sync.pendingMembers) || 0));
+    const currentPendingMembers = hasCurrentPendingMembers
+      ? Math.max(0, Math.trunc(Number(this.activityPendingMembersById[sync.id]) || 0))
+      : fallbackPendingMembers;
+    const acceptedMembers = Number.isFinite(Number(sync.acceptedMemberDelta))
+      ? Math.max(0, currentAcceptedMembers + Math.trunc(Number(sync.acceptedMemberDelta)))
+      : Math.max(0, Math.trunc(Number(sync.acceptedMembers) || 0));
+    const pendingMembers = Number.isFinite(Number(sync.pendingMemberDelta))
+      ? Math.max(0, currentPendingMembers + Math.trunc(Number(sync.pendingMemberDelta)))
+      : Math.max(0, Math.trunc(Number(sync.pendingMembers) || 0));
     const capacityTotal = Math.max(
       acceptedMembers,
-      Math.trunc(Number(sync.capacityTotal) || 0)
+      currentCapacityTotal
     );
     this.activityCapacityById[sync.id] = `${acceptedMembers} / ${capacityTotal}`;
     this.activityPendingMembersById[sync.id] = pendingMembers;
