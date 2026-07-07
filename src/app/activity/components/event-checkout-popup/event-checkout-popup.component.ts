@@ -1174,6 +1174,7 @@ export class EventCheckoutPopupComponent {
       return;
     }
     const counterDelta = this.checkoutCancelCounterDelta();
+    const memberDelta = this.checkoutCancelMemberDelta();
     const leaveResult = await this.eventsService.leaveEvent(dialog.userId, dialog.record.id, {
       slotSourceId: this.selectedSlotSourceId,
       removeMembershipOnly: true,
@@ -1183,8 +1184,8 @@ export class EventCheckoutPopupComponent {
       counterDelta
     });
     this.signalCheckoutCounterDelta(counterDelta);
-    this.emitCheckoutMembershipSync(dialog.record.id, leaveResult);
-    this.emitCheckoutMembershipSync(this.selectedSlotSourceId, leaveResult);
+    this.emitCheckoutMembershipSync(dialog.record.id, leaveResult, memberDelta);
+    this.emitCheckoutMembershipSync(this.selectedSlotSourceId, leaveResult, memberDelta);
     this.checkoutDraftStore.clear(dialog.userId, dialog.record.id);
     this.paymentStep = false;
     this.checkoutSessionId = null;
@@ -1468,6 +1469,22 @@ export class EventCheckoutPopupComponent {
     return null;
   }
 
+  private checkoutSuccessMemberDelta(): { acceptedMemberDelta: number; pendingMemberDelta: number } {
+    return this.checkoutHasStoredPendingMembership()
+      ? { acceptedMemberDelta: 1, pendingMemberDelta: -1 }
+      : { acceptedMemberDelta: 1, pendingMemberDelta: 0 };
+  }
+
+  private checkoutCancelMemberDelta(): { acceptedMemberDelta: number; pendingMemberDelta: number } | null {
+    if (this.checkoutHasStoredPendingMembership()) {
+      return { acceptedMemberDelta: 0, pendingMemberDelta: -1 };
+    }
+    if (this.checkoutSessionId || this.activeCheckoutBasketItems().some(item => item.status === 'pay')) {
+      return { acceptedMemberDelta: -1, pendingMemberDelta: 0 };
+    }
+    return null;
+  }
+
   private signalCheckoutCounterDelta(delta: UserMenuCounterDeltasDto | null): void {
     const dialog = this.dialog();
     if (!dialog || !delta) {
@@ -1478,7 +1495,8 @@ export class EventCheckoutPopupComponent {
 
   private emitCheckoutMembershipSync(
     sourceId: string | null | undefined,
-    result: ActivityContracts.EventParticipationActionResultDTO | null
+    result: ActivityContracts.EventParticipationActionResultDTO | null,
+    memberDelta: { acceptedMemberDelta?: number; pendingMemberDelta?: number } | null = null
   ): void {
     const dialog = this.dialog();
     const normalizedSourceId = sourceId?.trim() ?? '';
@@ -1509,7 +1527,8 @@ export class EventCheckoutPopupComponent {
       id: normalizedSourceId,
       acceptedMembers,
       pendingMembers,
-      capacityTotal
+      capacityTotal,
+      ...(memberDelta ?? {})
     });
   }
 
@@ -1633,6 +1652,7 @@ export class EventCheckoutPopupComponent {
     this.errorMessage = '';
     try {
       const counterDelta = this.checkoutSuccessCounterDelta();
+      const memberDelta = this.checkoutSuccessMemberDelta();
       const joinResult = await this.eventsService.payEventCheckout(this.buildCheckoutStateChangeRequest(
         'pay',
         'succeeded',
@@ -1644,8 +1664,8 @@ export class EventCheckoutPopupComponent {
         throw new Error(dialog.failureMessage);
       }
       this.signalCheckoutCounterDelta(counterDelta);
-      this.emitCheckoutMembershipSync(dialog.record.id, joinResult);
-      this.emitCheckoutMembershipSync(this.selectedSlotSourceId, joinResult);
+      this.emitCheckoutMembershipSync(dialog.record.id, joinResult, memberDelta);
+      this.emitCheckoutMembershipSync(this.selectedSlotSourceId, joinResult, memberDelta);
       this.checkoutSessionId = joinResult.paymentSessionId ?? null;
       this.clearCheckoutDraft();
       this.closeCheckoutDialog();

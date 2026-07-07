@@ -74,6 +74,8 @@ export interface ActivityMembersSyncState {
   acceptedMembers: number;
   pendingMembers: number;
   capacityTotal: number;
+  acceptedMemberDelta?: number;
+  pendingMemberDelta?: number;
 }
 
 export interface ActivityResourceSyncState {
@@ -347,6 +349,12 @@ export class ActivityStore {
     if (!normalizedId) {
       return;
     }
+    const acceptedMemberDelta = Number.isFinite(Number(payload.acceptedMemberDelta))
+      ? Math.trunc(Number(payload.acceptedMemberDelta))
+      : null;
+    const pendingMemberDelta = Number.isFinite(Number(payload.pendingMemberDelta))
+      ? Math.trunc(Number(payload.pendingMemberDelta))
+      : null;
     this._activityMembersSync.set({
       updatedMs: Date.now(),
       id: normalizedId,
@@ -355,7 +363,9 @@ export class ActivityStore {
       capacityTotal: Math.max(
         normalizeCounterValue(payload.acceptedMembers),
         normalizeCounterValue(payload.capacityTotal)
-      )
+      ),
+      ...(acceptedMemberDelta !== null ? { acceptedMemberDelta } : {}),
+      ...(pendingMemberDelta !== null ? { pendingMemberDelta } : {})
     });
   }
 

@@ -1243,8 +1243,9 @@ export class EventExplorePopupComponent {
         counterDelta
       });
       this.signalEventExploreCounterDelta(activeUserId, counterDelta);
-      this.emitCheckoutDraftMembersSync(sourceId, leaveResult);
-      this.emitCheckoutDraftMembersSync(slotSourceId, leaveResult);
+      const memberDelta = this.checkoutDraftCancelMemberDelta(draft);
+      this.emitCheckoutDraftMembersSync(sourceId, leaveResult, memberDelta);
+      this.emitCheckoutDraftMembersSync(slotSourceId, leaveResult, memberDelta);
 
       if (!record) {
         return;
@@ -1267,9 +1268,19 @@ export class EventExplorePopupComponent {
     return { events: -1, event: { all: -1, active: -1, trash: 1 } };
   }
 
+  private checkoutDraftCancelMemberDelta(
+    draft: EventCheckoutDraft
+  ): { acceptedMemberDelta: number; pendingMemberDelta: number } {
+    const pendingReason = this.checkoutDraftPendingReason(draft);
+    return pendingReason === 'waitlist' || pendingReason === 'approval'
+      ? { acceptedMemberDelta: 0, pendingMemberDelta: -1 }
+      : { acceptedMemberDelta: -1, pendingMemberDelta: 0 };
+  }
+
   private emitCheckoutDraftMembersSync(
     sourceId: string | null | undefined,
-    result: ActivityContracts.EventParticipationActionResultDTO | null
+    result: ActivityContracts.EventParticipationActionResultDTO | null,
+    memberDelta: { acceptedMemberDelta?: number; pendingMemberDelta?: number } | null = null
   ): void {
     const normalizedSourceId = sourceId?.trim() ?? '';
     if (!normalizedSourceId) {
@@ -1287,7 +1298,8 @@ export class EventExplorePopupComponent {
       id: normalizedSourceId,
       acceptedMembers,
       pendingMembers,
-      capacityTotal
+      capacityTotal,
+      ...(memberDelta ?? {})
     });
   }
 
@@ -1302,10 +1314,7 @@ export class EventExplorePopupComponent {
       ...record,
       acceptedMembers: Math.max(0, Math.trunc(Number(result.acceptedMembers) || 0)),
       pendingMembers: Math.max(0, Math.trunc(Number(result.pendingMembers) || 0)),
-      capacityTotal: Math.max(
-        Math.max(0, Math.trunc(Number(result.acceptedMembers) || 0)),
-        Math.max(0, Math.trunc(Number(result.capacityTotal) || 0))
-      )
+      capacityTotal: record.capacityTotal
     };
   }
 
@@ -1633,7 +1642,7 @@ export class EventExplorePopupComponent {
           capacityMax: dto.capacityMax ?? existing.capacityMax,
           capacityTotal: Math.max(
             acceptedMembers,
-            dto.capacityMax ?? dto.capacityTotal ?? existing.capacityTotal
+            dto.capacityTotal ?? existing.capacityTotal
           ),
           eventType: dto.eventType ?? existing.eventType,
           status: dto.status ?? existing.status
@@ -1967,8 +1976,10 @@ export class EventExplorePopupComponent {
       }
       const persistedMembers = this.activityMembersService.peekMembersByOwner(owner);
       const displayMembers = this.sortMembersByActionTimeDesc(persistedMembers.length > 0 ? persistedMembers : nextMembers);
-      const refreshedRecord = this.eventsService.peekKnownRecordById(activeUserId, record.id) ?? record;
-      const nextRecord = this.withEventExploreMemberSummary(refreshedRecord, displayMembers);
+      const nextRecord = this.withEventExploreMemberDelta(record, {
+        acceptedMemberDelta: isAcceptedBooking ? 1 : 0,
+        pendingMemberDelta: isAcceptedBooking ? 0 : 1
+      }, displayMembers, pendingReason);
       this.locallyTrackedMembershipSourceIds.add(record.id);
       this.restoreVisibleEventExploreRecord(nextRecord);
       this.activitiesStore.emitActivityEventSaveResult(
@@ -1982,7 +1993,7 @@ export class EventExplorePopupComponent {
       this.cdr.markForCheck();
     } catch (error) {
       this.locallyTrackedMembershipSourceIds.delete(record.id);
-      this.restoreVisibleEventExploreRecord(this.withEventExploreMemberSummary(record, existingMembers));
+      this.restoreVisibleEventExploreRecord(record);
       throw error;
     }
   }
@@ -2014,14 +2025,19 @@ export class EventExplorePopupComponent {
     if (!currentRecord) {
       return false;
     }
+    const acceptedMemberDelta = Number.isFinite(Number(sync.acceptedMemberDelta))
+      ? Math.trunc(Number(sync.acceptedMemberDelta))
+      : Math.max(0, Math.trunc(Number(sync.acceptedMembers) || 0))
+        - Math.max(0, Math.trunc(Number(currentRecord.acceptedMembers) || 0));
+    const pendingMemberDelta = Number.isFinite(Number(sync.pendingMemberDelta))
+      ? Math.trunc(Number(sync.pendingMemberDelta))
+      : Math.max(0, Math.trunc(Number(sync.pendingMembers) || 0))
+        - Math.max(0, Math.trunc(Number(currentRecord.pendingMembers) || 0));
     currentItems[currentIndex] = {
       ...currentRecord,
-      acceptedMembers: Math.max(0, Math.trunc(Number(sync.acceptedMembers) || 0)),
-      pendingMembers: Math.max(0, Math.trunc(Number(sync.pendingMembers) || 0)),
-      capacityTotal: Math.max(
-        Math.max(0, Math.trunc(Number(sync.acceptedMembers) || 0)),
-        Math.trunc(Number(sync.capacityTotal) || 0)
-      )
+      acceptedMembers: Math.max(0, Math.trunc(Number(currentRecord.acceptedMembers) || 0) + acceptedMemberDelta),
+      pendingMembers: Math.max(0, Math.trunc(Number(currentRecord.pendingMembers) || 0) + pendingMemberDelta),
+      capacityTotal: currentRecord.capacityTotal
     };
     this.eventExploreSmartList.replaceVisibleItems(currentItems, {
       total: this.eventExploreSmartList.cursorState().total
@@ -2354,13 +2370,46 @@ export class EventExplorePopupComponent {
       ...record,
       acceptedMembers: summary.acceptedMembers,
       pendingMembers: summary.pendingMembers,
-      capacityTotal: summary.capacityTotal,
+      capacityTotal: record.capacityTotal,
       acceptedMemberUserIds: [...summary.acceptedMemberUserIds],
       pendingMemberUserIds: [...summary.pendingMemberUserIds],
       pendingRequestMemberUserIds: this.pendingRequestMemberUserIdsFromMembers(members),
       pendingReason: members.some(member => member.status === 'pending' && member.requestKind === 'waitlist')
         ? 'waitlist'
         : record.pendingReason
+    };
+  }
+
+  private withEventExploreMemberDelta(
+    record: ActivityEventRecord,
+    memberDelta: { acceptedMemberDelta?: number; pendingMemberDelta?: number },
+    members: readonly ActivityContracts.ActivityMemberDTO[] = [],
+    pendingReason: ActivityPendingReason = null
+  ): ActivityEventRecord {
+    const acceptedMemberDelta = Math.trunc(Number(memberDelta.acceptedMemberDelta) || 0);
+    const pendingMemberDelta = Math.trunc(Number(memberDelta.pendingMemberDelta) || 0);
+    const hasMembers = members.length > 0;
+    return {
+      ...record,
+      acceptedMembers: Math.max(0, Math.trunc(Number(record.acceptedMembers) || 0) + acceptedMemberDelta),
+      pendingMembers: Math.max(0, Math.trunc(Number(record.pendingMembers) || 0) + pendingMemberDelta),
+      capacityTotal: record.capacityTotal,
+      ...(hasMembers ? {
+        acceptedMemberUserIds: members
+          .filter(member => member.status === 'accepted')
+          .map(member => member.userId.trim())
+          .filter(userId => userId.length > 0),
+        pendingMemberUserIds: members
+          .filter(member => member.status === 'pending')
+          .map(member => member.userId.trim())
+          .filter(userId => userId.length > 0),
+        pendingRequestMemberUserIds: this.pendingRequestMemberUserIdsFromMembers(members)
+      } : {}),
+      pendingReason: pendingReason === 'waitlist'
+        ? 'waitlist'
+        : hasMembers && members.some(member => member.status === 'pending' && member.requestKind === 'waitlist')
+          ? 'waitlist'
+          : record.pendingReason
     };
   }
 
