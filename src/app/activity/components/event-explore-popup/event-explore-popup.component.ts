@@ -869,7 +869,7 @@ export class EventExplorePopupComponent {
       this.runEventExploreViewAction(record);
       return;
     }
-    if (action.actionId === 'continueBooking') {
+    if (action.actionId === 'continueBooking' || action.actionId === 'continueBookingPending') {
       const activeUserId = this.activeUserId.trim();
       const draft = activeUserId ? this.trackableCheckoutDraft(record.id, activeUserId) : null;
       if (draft) {
@@ -1926,7 +1926,7 @@ export class EventExplorePopupComponent {
     const existingMembers = peekedMembers.length > 0 ? peekedMembers : this.buildMemberEntries(record);
     const existingEntry = existingMembers.find(member => member.userId === activeUserId);
 
-    if (existingEntry) {
+    if (existingEntry && existingEntry.status !== 'deleted') {
       if (this.selectedMembersRecord?.id === record.id) {
         this.selectedMembers = this.sortMembersByActionTimeDesc(existingMembers);
       }
@@ -1937,8 +1937,11 @@ export class EventExplorePopupComponent {
     const pendingReason = selection?.pendingReason ?? (this.isEventExploreSelectionFull(record, selection) ? 'waitlist' : null);
     const isAcceptedBooking = this.isConfirmedEventExploreBooking(record, selection);
     const counterDelta = this.eventExploreJoinCounterDelta(isAcceptedBooking);
+    const optimisticExistingMembers = existingEntry?.status === 'deleted'
+      ? existingMembers.filter(member => !(member.userId === activeUserId && member.status === 'deleted'))
+      : existingMembers;
     const nextMembers = this.sortMembersByActionTimeDesc([
-      ...existingMembers,
+      ...optimisticExistingMembers,
       this.buildJoinRequestEntry(record, isAcceptedBooking, pendingReason)
     ]);
 

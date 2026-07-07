@@ -104,7 +104,7 @@ export class EventExploreInfoCardConverter {
       return ['view', 'notifyParticipants'];
     }
     if (normalizedUserId && this.isPendingForActiveUser(record, normalizedUserId)) {
-      return ['view', 'continueBooking', 'askOrganizer', 'shareEvent', 'reportOrganizer'];
+      return ['view', 'continueBookingPending', 'askOrganizer', 'shareEvent', 'reportOrganizer'];
     }
     const actions: CardMenuActionId[] = ['view'];
     actions.push(this.joinActionId(record));
