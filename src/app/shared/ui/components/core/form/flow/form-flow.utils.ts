@@ -144,15 +144,20 @@ function formFlowHasRequiredValue(value: unknown, control?: FormFlowControlModel
     return false;
   }
   if (typeof value === 'string') {
+    if (control?.kind === 'number') {
+      const parsed = Number(value.trim());
+      if (!Number.isFinite(parsed)) {
+        return false;
+      }
+      return formFlowNumberInRange(parsed, control);
+    }
     return value.trim().length > 0;
   }
   if (typeof value === 'number') {
     if (!Number.isFinite(value)) {
       return false;
     }
-    const min = typeof control?.min === 'number' ? control.min : null;
-    const max = typeof control?.max === 'number' ? control.max : null;
-    return (min === null || value >= min) && (max === null || value <= max);
+    return formFlowNumberInRange(value, control);
   }
   if (typeof value === 'boolean') {
     return true;
@@ -169,6 +174,12 @@ function formFlowHasRequiredValue(value: unknown, control?: FormFlowControlModel
     return Object.keys(value).length > 0;
   }
   return true;
+}
+
+function formFlowNumberInRange(value: number, control?: FormFlowControlModel): boolean {
+  const min = typeof control?.min === 'number' ? control.min : null;
+  const max = typeof control?.max === 'number' ? control.max : null;
+  return (min === null || value >= min) && (max === null || value <= max);
 }
 
 function formFlowReadPath(source: unknown, path: FormFlowControlModel['bind']): unknown {
