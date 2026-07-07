@@ -1700,14 +1700,16 @@ export class LocalEventsRepository {
     if (!preferredRecord) {
       return null;
     }
-    const idsToLeave = Array.from(new Set([
-      normalizedSourceId,
-      normalizedSlotSourceId?.trim() || ''
-    ].filter(Boolean)));
-
     this.memoryDb.write(state => {
       const eventTable = state[EVENTS_TABLE_NAME];
       const nextMembersTable = this.normalizeActivityMembersCollection(state[ACTIVITY_MEMBERS_TABLE_NAME]);
+      const idsToLeave = this.membershipRemovalEventIds(
+        eventTable,
+        nextMembersTable,
+        normalizedUserId,
+        normalizedSourceId,
+        normalizedSlotSourceId
+      );
       for (const eventId of idsToLeave) {
         this.deleteEventActivityMember(nextMembersTable, eventId, normalizedUserId);
       }
@@ -2642,6 +2644,63 @@ export class LocalEventsRepository {
       requestKind: null,
       updatedAtIso: new Date().toISOString()
     };
+  }
+
+  private membershipRemovalEventIds(
+    table: ActivityEventRecordCollection,
+    membersTable: ActivityMembersRecordCollection,
+    userId: string,
+    sourceId: string,
+    slotSourceId: string | null
+  ): string[] {
+    const normalizedUserId = userId.trim();
+    const explicitIds = new Set(
+      [sourceId, slotSourceId ?? '']
+        .map(id => id.trim())
+        .filter(Boolean)
+    );
+    const records = table.ids
+      .map(id => table.byId[id])
+      .filter((record): record is ActivityEventRecord => Boolean(record));
+    const parentIds = new Set<string>();
+    for (const id of explicitIds) {
+      const record = records.find(item => item.id === id);
+      const parentId = record && this.isGeneratedSlotRecord(record)
+        ? `${record.parentEventId ?? ''}`.trim()
+        : id;
+      if (parentId) {
+        parentIds.add(parentId);
+      }
+    }
+    const idsToLeave = new Set<string>(explicitIds);
+    for (const parentId of parentIds) {
+      idsToLeave.add(parentId);
+      for (const record of records) {
+        if (
+          this.isGeneratedSlotRecord(record)
+          && `${record.parentEventId ?? ''}`.trim() === parentId
+          && this.hasEventActivityMemberFromTable(membersTable, record.id, normalizedUserId)
+        ) {
+          idsToLeave.add(record.id);
+        }
+      }
+    }
+    return [...idsToLeave];
+  }
+
+  private hasEventActivityMemberFromTable(
+    table: ActivityMembersRecordCollection,
+    eventId: string,
+    userId: string
+  ): boolean {
+    const normalizedEventId = eventId.trim();
+    const normalizedUserId = userId.trim();
+    if (!normalizedEventId || !normalizedUserId) {
+      return false;
+    }
+    const ownerKey = `event:${normalizedEventId}`;
+    return (table.idsByOwnerKey[ownerKey] ?? [])
+      .some(id => table.byId[id]?.userId === normalizedUserId);
   }
 
   private eventMemberUserIdsByStatus(
