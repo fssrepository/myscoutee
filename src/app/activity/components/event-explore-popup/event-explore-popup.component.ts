@@ -870,6 +870,12 @@ export class EventExplorePopupComponent {
       return;
     }
     if (action.actionId === 'continueBooking') {
+      const activeUserId = this.activeUserId.trim();
+      const draft = activeUserId ? this.trackableCheckoutDraft(record.id, activeUserId) : null;
+      if (draft) {
+        void this.openCheckoutDraftForm({ draft, record });
+        return;
+      }
       void this.continueCheckoutDraftBySourceId(record.id);
       return;
     }
@@ -900,7 +906,8 @@ export class EventExplorePopupComponent {
       .sort((left, right) => right.updatedAtMs - left.updatedAtMs)
       .map(draft => ({
         draft,
-        record: this.eventsService.peekKnownRecordById(activeUserId, draft.sourceId)
+        record: this.visibleEventExploreRecordById(draft.sourceId)
+          ?? this.eventsService.peekKnownRecordById(activeUserId, draft.sourceId)
       }));
   }
 
@@ -1099,7 +1106,9 @@ export class EventExplorePopupComponent {
       return;
     }
     const { draft } = entry;
-    const record = this.eventsService.peekKnownRecordById(this.activeUserId, draft.sourceId)
+    const record = entry.record
+      ?? this.visibleEventExploreRecordById(draft.sourceId)
+      ?? this.eventsService.peekKnownRecordById(this.activeUserId, draft.sourceId)
       ?? await this.eventsService.queryKnownRecordById(this.activeUserId, draft.sourceId);
     if (!record) {
       this.eventCheckoutDraftStore.clear(this.activeUserId, draft.sourceId);
@@ -1127,6 +1136,7 @@ export class EventExplorePopupComponent {
     }
     const { draft } = entry;
     const record = entry.record
+      ?? this.visibleEventExploreRecordById(draft.sourceId)
       ?? this.eventsService.peekKnownRecordById(this.activeUserId, draft.sourceId)
       ?? await this.eventsService.queryKnownRecordById(this.activeUserId, draft.sourceId);
     if (!record) {
@@ -1161,7 +1171,8 @@ export class EventExplorePopupComponent {
     }
     const entry: CheckoutDraftEntry = {
       draft,
-      record: this.eventsService.peekKnownRecordById(activeUserId, normalizedSourceId)
+      record: this.visibleEventExploreRecordById(normalizedSourceId)
+        ?? this.eventsService.peekKnownRecordById(activeUserId, normalizedSourceId)
         ?? await this.eventsService.queryKnownRecordById(activeUserId, normalizedSourceId)
     };
     await this.continueCheckoutDraft(entry);
@@ -1288,6 +1299,15 @@ export class EventExplorePopupComponent {
 
   private isEventExploreJoinMenuAction(actionId: string): boolean {
     return actionId === 'joinWaitlist' || actionId === 'bookEvent' || actionId === 'requestJoin';
+  }
+
+  private visibleEventExploreRecordById(sourceId: string): ActivityEventRecord | null {
+    const normalizedSourceId = sourceId.trim();
+    if (!normalizedSourceId) {
+      return null;
+    }
+    return this.eventExploreSmartList?.itemsSnapshot()
+      .find(record => record.id === normalizedSourceId) ?? null;
   }
 
   private buildEventExploreGroupLabel(
