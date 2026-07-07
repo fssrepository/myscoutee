@@ -607,10 +607,7 @@ export class EventCheckoutPopupComponent {
   }
 
   private checkoutBasketAddDisabled(): boolean {
-    return !this.requiresSlotSelection()
-      || this.availableSlots().length === 0
-      || this.nextAvailableCheckoutBasketSlot() === null
-      || this.busy
+    return this.busy
       || this.checkoutReviewBodyLoading();
   }
 
