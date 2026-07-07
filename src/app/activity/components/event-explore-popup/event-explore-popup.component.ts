@@ -305,18 +305,7 @@ export class EventExplorePopupComponent {
 
     effect(() => {
       this.eventCheckoutDraftStore.drafts();
-      const nextPendingDraftSourceIds = this.pendingCheckoutDraftSourceIds();
-      const removedPendingDraftSourceIds = [...this.lastPendingCheckoutDraftSourceIds]
-        .filter(sourceId => !nextPendingDraftSourceIds.has(sourceId));
-      const hasNewPendingDraft = [...nextPendingDraftSourceIds]
-        .some(sourceId => !this.lastPendingCheckoutDraftSourceIds.has(sourceId));
-      this.lastPendingCheckoutDraftSourceIds = nextPendingDraftSourceIds;
       if (this.isOpen) {
-        if (removedPendingDraftSourceIds.length > 0) {
-          this.restoreVisibleEventExploreRecordsById(removedPendingDraftSourceIds);
-        } else if (hasNewPendingDraft) {
-          this.pruneVisibleTrackedEventExploreRecords();
-        }
         this.cdr.markForCheck();
       }
     });
@@ -1259,23 +1248,10 @@ export class EventExplorePopupComponent {
         view: query.filters?.view ?? this.eventExploreView,
         friendsOnly: query.filters?.friendsOnly === true,
         openSpotsOnly: query.filters?.openSpotsOnly === true,
-        topic: query.filters?.topic ?? this.normalizeTopic(this.eventExploreFilterTopic),
-        excludedSourceIds: [...this.pendingCheckoutDraftSourceIds()]
+        topic: query.filters?.topic ?? this.normalizeTopic(this.eventExploreFilterTopic)
       }
     });
-    const activeUserId = this.activeUserId.trim();
-    if (!activeUserId) {
-      return page;
-    }
-    const filteredItems = page.items.filter(record => !this.hasTrackedMembership(record, activeUserId));
-    if (filteredItems.length === page.items.length) {
-      return page;
-    }
-    return {
-      items: filteredItems,
-      total: Math.max(filteredItems.length, page.total - (page.items.length - filteredItems.length)),
-      nextCursor: page.nextCursor ?? null
-    };
+    return page;
   }
 
   protected eventExploreInfoCard(record: ActivityEventRecord, groupLabel: string | null): InfoCardData {
@@ -1495,14 +1471,6 @@ export class EventExplorePopupComponent {
 
     if (currentIndex >= 0) {
       this.checkoutDraftClearSaveSourceIds.delete(sync.id);
-      if (userJoinedEvent) {
-        currentItems.splice(currentIndex, 1);
-        this.eventExploreSmartList.replaceVisibleItems(currentItems, {
-          total: Math.max(currentItems.length, this.eventExploreSmartList.cursorState().total - 1)
-        });
-        this.cdr.markForCheck();
-        return;
-      }
       const existing = currentItems[currentIndex];
       if (existing) {
         const nextEndIso = dto.endAtIso ?? dto.startAtIso;
@@ -1812,15 +1780,11 @@ export class EventExplorePopupComponent {
       return;
     }
     const owner = this.eventMembersOwner(record);
-    const exitPromise = this.runEventExploreExitTransition(record, () => {
-      this.removeVisibleEventExploreRecord(record);
-    });
     const peekedMembers = this.activityMembersService.peekMembersByOwner(owner);
     const existingMembers = peekedMembers.length > 0 ? peekedMembers : this.buildMemberEntries(record);
     const existingEntry = existingMembers.find(member => member.userId === activeUserId);
 
     if (existingEntry) {
-      await exitPromise;
       if (this.selectedMembersRecord?.id === record.id) {
         this.selectedMembers = this.sortMembersByActionTimeDesc(existingMembers);
       }
@@ -1836,7 +1800,6 @@ export class EventExplorePopupComponent {
     ]);
     const rollbackEventDetailDTO = this.buildActivityEventDetailDTO(record, existingMembers);
     const nextEventDetailDTO = this.buildActivityEventDetailDTO(record, nextMembers, selection?.paymentSessionId ?? null);
-    this.locallyTrackedMembershipSourceIds.add(record.id);
     this.emitActivityEventSave(nextEventDetailDTO);
 
     try {
@@ -1855,7 +1818,6 @@ export class EventExplorePopupComponent {
         totalAmount: selection?.basketItems?.length ? selection.totalAmount : undefined,
         currency: selection?.basketItems?.length ? selection.currency : undefined
       });
-      await exitPromise;
       if (!joinResult || joinResult.membershipStatus === 'unchanged') {
         throw new Error(this.eventExploreJoinFailureMessage(record));
       }
@@ -1870,7 +1832,6 @@ export class EventExplorePopupComponent {
       }
       this.cdr.markForCheck();
     } catch (error) {
-      await exitPromise;
       this.locallyTrackedMembershipSourceIds.delete(record.id);
       this.restoreVisibleEventExploreRecord(this.withEventExploreMemberSummary(record, existingMembers));
       this.emitActivityEventSave(rollbackEventDetailDTO);
@@ -1887,17 +1848,9 @@ export class EventExplorePopupComponent {
     if (currentIndex < 0) {
       return false;
     }
-    const activeUserId = this.activeUserId.trim();
     const currentRecord = currentItems[currentIndex];
     if (!currentRecord) {
       return false;
-    }
-    if (activeUserId && this.hasTrackedMembership(currentRecord, activeUserId)) {
-      currentItems.splice(currentIndex, 1);
-      this.eventExploreSmartList.replaceVisibleItems(currentItems, {
-        total: Math.max(currentItems.length, this.eventExploreSmartList.cursorState().total - 1)
-      });
-      return true;
     }
     currentItems[currentIndex] = {
       ...currentRecord,
