@@ -1227,8 +1227,6 @@ export class EventExplorePopupComponent {
     this.checkoutDraftReleaseSourceIds.add(sourceId);
     this.cdr.markForCheck();
     try {
-      const record = this.eventsService.peekKnownRecordById(activeUserId, sourceId)
-        ?? await this.eventsService.queryKnownRecordById(activeUserId, sourceId);
       const slotSourceId = draft.basketItems
         .map(item => item.slotSourceId?.trim() ?? '')
         .find(Boolean) ?? null;
@@ -1244,16 +1242,8 @@ export class EventExplorePopupComponent {
       this.signalEventExploreCounterDelta(activeUserId, counterDelta);
       const memberDelta = this.checkoutDraftCancelMemberDelta(draft);
       this.emitCheckoutDraftMembersSync(sourceId, leaveResult, memberDelta, true);
-      this.emitCheckoutDraftMembersSync(slotSourceId, leaveResult, memberDelta, true);
       this.eventCheckoutDraftStore.clear(activeUserId, sourceId);
-
-      if (!record) {
-        return;
-      }
-
       this.locallyTrackedMembershipSourceIds.delete(sourceId);
-      this.restoreVisibleEventExploreRecord(this.withEventExploreResultSummary(record, leaveResult));
-      this.cdr.markForCheck();
     } finally {
       this.checkoutDraftReleaseSourceIds.delete(sourceId);
       this.cdr.markForCheck();
