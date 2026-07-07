@@ -78,6 +78,7 @@ export type InfoCardMediaTone = 'default' | 'neutral';
 export interface CardBadgeConfig {
   label: string;
   ariaLabel?: string | null;
+  className?: string | null;
   active?: boolean;
   pending?: boolean;
   disabled?: boolean;

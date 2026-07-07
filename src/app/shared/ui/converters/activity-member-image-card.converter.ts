@@ -16,9 +16,10 @@ export class ActivityMemberImageCardConverter {
   ): ImageCardData {
     const age = Math.max(0, Math.trunc(Number(dto.profile?.age) || 0));
     const statusLabel = this.statusLabel(dto, options);
-    const pendingDetail = dto.status === 'pending' || dto.status === 'disqualified' || dto.status === 'deleted'
+    const pendingDetail = dto.status === 'pending' || dto.status === 'disqualified'
       ? statusLabel
       : null;
+    const statusChipLabel = dto.status === 'deleted' ? this.roleLabel(dto) : statusLabel;
 
     return {
       id: dto.id,
@@ -38,11 +39,18 @@ export class ActivityMemberImageCardConverter {
       ].filter(Boolean).join(' '),
       statusChip: {
         icon: this.statusIcon(dto),
-        title: statusLabel,
-        ariaLabel: statusLabel,
+        title: statusChipLabel,
+        ariaLabel: statusChipLabel,
         palette: this.statusPalette(dto),
         className: this.statusClass(dto)
-      }
+      },
+      badge: dto.status === 'deleted'
+        ? {
+          label: statusLabel,
+          ariaLabel: statusLabel,
+          className: 'ui-image-card__badge--danger'
+        }
+        : null
     };
   }
 
@@ -76,10 +84,7 @@ export class ActivityMemberImageCardConverter {
     if (dto.status === 'disqualified') {
       return 'member-status-disqualified';
     }
-    if (dto.status === 'deleted') {
-      return 'member-status-deleted';
-    }
-    if (dto.status === 'accepted') {
+    if (dto.status === 'accepted' || dto.status === 'deleted') {
       if (dto.role === 'Admin') {
         return 'member-status-admin';
       }
@@ -95,10 +100,7 @@ export class ActivityMemberImageCardConverter {
     if (dto.status === 'disqualified') {
       return 'gavel';
     }
-    if (dto.status === 'deleted') {
-      return 'cancel';
-    }
-    if (dto.status === 'accepted') {
+    if (dto.status === 'accepted' || dto.status === 'deleted') {
       if (dto.role === 'Admin') {
         return 'admin_panel_settings';
       }
@@ -144,10 +146,7 @@ export class ActivityMemberImageCardConverter {
     if (dto.status === 'disqualified') {
       return 'muted';
     }
-    if (dto.status === 'deleted') {
-      return 'muted';
-    }
-    if (dto.status === 'accepted') {
+    if (dto.status === 'accepted' || dto.status === 'deleted') {
       if (dto.role === 'Admin') {
         return 'blue';
       }
