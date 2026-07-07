@@ -58,7 +58,7 @@ export class ActivityEventInfoCardConverter {
         : dto.eventType === 'slot'
           ? `Slot occurrence${dto.subtitle ? ' · ' + dto.subtitle : ''}`
           : dto.subtitle,
-      footerChips: this.footerChips(pending),
+      footerChips: this.footerChips(dto, pending),
       descriptionLines: 2,
       leadingIcon: {
         icon: this.leadingIcon(dto, status, pending, activeUserId)
@@ -135,9 +135,12 @@ export class ActivityEventInfoCardConverter {
     return `${distanceKm} km`;
   }
 
-  private static footerChips(pending: boolean): NonNullable<InfoCardData['footerChips']> {
+  private static footerChips(dto: ActivityEventDTO, pending: boolean): NonNullable<InfoCardData['footerChips']> {
     if (!pending) {
       return [];
+    }
+    if (dto.pendingReason === 'waitlist') {
+      return [{ label: 'Várólistán' }];
     }
     return [{ label: 'waiting.for.approval' }];
   }
@@ -236,6 +239,9 @@ export class ActivityEventInfoCardConverter {
         return 'draft';
       default:
         if (this.isInvited(dto, activeUserId)) {
+          return 'pending';
+        }
+        if (this.isPending(dto, activeUserId)) {
           return 'pending';
         }
         if (this.statusCode(dto.status) === 'A') {

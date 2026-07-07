@@ -90,6 +90,7 @@ import {
 } from '../../../shared/ui/context/stores/profile.store';
 import type { ActivityEventDTO, ActivityEventRecord } from '../../../shared/core/contracts/activity.interface';
 import type { ChatDTO } from '../../../shared/core/contracts/chat.interface';
+import type { UserMenuCounterDeltasDto } from '../../../shared/core/contracts/user.interface';
 import type { ActivityMemberOwnerRef } from '../../../shared/core/contracts/activity.interface';
 import type * as ActivityContracts from '../../../shared/core/contracts/activity.interface';
 import { UserProfileStore } from '../../../shared/ui/context/stores/user-profile.store';
@@ -1794,13 +1795,11 @@ export class EventExplorePopupComponent {
 
     const pendingReason = selection?.pendingReason ?? (this.isEventExploreSelectionFull(record, selection) ? 'waitlist' : null);
     const isAcceptedBooking = this.isConfirmedEventExploreBooking(record, selection);
+    const counterDelta = this.eventExploreJoinCounterDelta(isAcceptedBooking);
     const nextMembers = this.sortMembersByActionTimeDesc([
       ...existingMembers,
       this.buildJoinRequestEntry(record, isAcceptedBooking, pendingReason)
     ]);
-    const rollbackEventDetailDTO = this.buildActivityEventDetailDTO(record, existingMembers);
-    const nextEventDetailDTO = this.buildActivityEventDetailDTO(record, nextMembers, selection?.paymentSessionId ?? null);
-    this.emitActivityEventSave(nextEventDetailDTO);
 
     try {
       const joinResult = await this.eventsService.requestJoin(activeUserId, record.id, {
@@ -1816,16 +1815,21 @@ export class EventExplorePopupComponent {
         pricingSummaryRows: selection?.basketItems?.length ? (selection.pricingSummaryRows ?? []) : undefined,
         lineItems: selection?.basketItems?.length ? selection.lineItems : undefined,
         totalAmount: selection?.basketItems?.length ? selection.totalAmount : undefined,
-        currency: selection?.basketItems?.length ? selection.currency : undefined
+        currency: selection?.basketItems?.length ? selection.currency : undefined,
+        counterDelta
       });
       if (!joinResult || joinResult.membershipStatus === 'unchanged') {
         throw new Error(this.eventExploreJoinFailureMessage(record));
       }
-      const displayMembers = nextMembers;
-      const nextRecord = this.withEventExploreMemberSummary(record, displayMembers);
-      this.emitActivityEventSave(
+      const persistedMembers = this.activityMembersService.peekMembersByOwner(owner);
+      const displayMembers = this.sortMembersByActionTimeDesc(persistedMembers.length > 0 ? persistedMembers : nextMembers);
+      const refreshedRecord = this.eventsService.peekKnownRecordById(activeUserId, record.id) ?? record;
+      const nextRecord = this.withEventExploreMemberSummary(refreshedRecord, displayMembers);
+      this.locallyTrackedMembershipSourceIds.add(record.id);
+      this.activitiesStore.emitActivityEventSaveResult(
         this.buildActivityEventDetailDTO(nextRecord, displayMembers, joinResult.paymentSessionId ?? selection?.paymentSessionId ?? null)
       );
+      this.signalEventExploreCounterDelta(activeUserId, counterDelta);
       if (this.selectedMembersRecord?.id === record.id) {
         this.selectedMembersRecord = nextRecord;
         this.selectedMembers = displayMembers;
@@ -1834,9 +1838,22 @@ export class EventExplorePopupComponent {
     } catch (error) {
       this.locallyTrackedMembershipSourceIds.delete(record.id);
       this.restoreVisibleEventExploreRecord(this.withEventExploreMemberSummary(record, existingMembers));
-      this.emitActivityEventSave(rollbackEventDetailDTO);
       throw error;
     }
+  }
+
+  private eventExploreJoinCounterDelta(accepted: boolean): UserMenuCounterDeltasDto {
+    return accepted
+      ? { events: 1, event: { all: 1, active: 1 } }
+      : { events: 1, event: { all: 1, pending: 1 } };
+  }
+
+  private signalEventExploreCounterDelta(activeUserId: string, delta: UserMenuCounterDeltasDto): void {
+    this.activityStore.patchUserCounterDeltas(
+      activeUserId,
+      delta,
+      null
+    );
   }
 
   private applyVisibleEventExploreMembersSync(sync: ActivityMembersSyncState): boolean {
@@ -2165,6 +2182,9 @@ export class EventExplorePopupComponent {
       acceptedMembers: summary.acceptedMembers,
       pendingMembers: summary.pendingMembers,
       capacityTotal: summary.capacityTotal,
+      acceptedMemberUserIds: [...summary.acceptedMemberUserIds],
+      pendingMemberUserIds: [...summary.pendingMemberUserIds],
+      pendingRequestMemberUserIds: this.pendingRequestMemberUserIdsFromMembers(members),
       capacityMin: record.capacityMin,
       capacityMax: record.capacityMax,
       autoInviter: record.autoInviter,
@@ -2182,6 +2202,9 @@ export class EventExplorePopupComponent {
       location: record.location,
       locationCoordinates: record.locationCoordinates ?? null,
       sourceLink: record.sourceLink,
+      pendingReason: members.some(member => member.status === 'pending' && member.requestKind === 'waitlist')
+        ? 'waitlist'
+        : record.pendingReason,
       topics: [...record.topics],
       subEvents: Array.isArray(record.subEvents)
         ? record.subEvents.map(item => ({ ...item }))
@@ -2206,8 +2229,22 @@ export class EventExplorePopupComponent {
       pendingMembers: summary.pendingMembers,
       capacityTotal: summary.capacityTotal,
       acceptedMemberUserIds: [...summary.acceptedMemberUserIds],
-      pendingMemberUserIds: [...summary.pendingMemberUserIds]
+      pendingMemberUserIds: [...summary.pendingMemberUserIds],
+      pendingRequestMemberUserIds: this.pendingRequestMemberUserIdsFromMembers(members),
+      pendingReason: members.some(member => member.status === 'pending' && member.requestKind === 'waitlist')
+        ? 'waitlist'
+        : record.pendingReason
     };
+  }
+
+  private pendingRequestMemberUserIdsFromMembers(
+    members: readonly ActivityContracts.ActivityMemberDTO[]
+  ): string[] {
+    return Array.from(new Set(members
+      .filter(member => member.status === 'pending')
+      .filter(member => member.requestKind !== 'invite' && member.requestKind !== 'waitlist-invite')
+      .map(member => member.userId.trim())
+      .filter(userId => userId.length > 0)));
   }
 
   private sortMembersByActionTimeDesc(entries: readonly ActivityContracts.ActivityMemberDTO[]): ActivityContracts.ActivityMemberDTO[] {

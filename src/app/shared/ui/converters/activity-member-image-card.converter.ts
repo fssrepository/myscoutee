@@ -65,9 +65,6 @@ export class ActivityMemberImageCardConverter {
       }
       return 'member-card-tone-accepted';
     }
-    if (this.isJoinRequest(dto)) {
-      return 'member-card-tone-awaiting-approval';
-    }
     return 'member-card-tone-invite-pending';
   }
 
@@ -83,9 +80,6 @@ export class ActivityMemberImageCardConverter {
         return 'member-status-manager';
       }
       return 'member-status-member';
-    }
-    if (this.isJoinRequest(dto)) {
-      return 'member-status-awaiting-approval';
     }
     return 'member-status-invite-pending';
   }
@@ -120,6 +114,9 @@ export class ActivityMemberImageCardConverter {
       return this.roleLabel(dto);
     }
     if (this.isJoinRequest(dto)) {
+      if (dto.requestKind === 'waitlist') {
+        return 'Várólistán';
+      }
       return dto.pendingSource === 'admin'
         ? 'Waiting For Admin Approval'
         : 'Waiting For Join Approval';
@@ -143,9 +140,6 @@ export class ActivityMemberImageCardConverter {
       }
       return 'green';
     }
-    if (this.isJoinRequest(dto)) {
-      return 'red';
-    }
     return 'orange';
   }
 
@@ -161,6 +155,8 @@ export class ActivityMemberImageCardConverter {
 
   private static isJoinRequest(dto: ActivityMemberDTO): boolean {
     return dto.requestKind === 'join'
+      || dto.requestKind === 'approval'
+      || dto.requestKind === 'waitlist'
       || (dto.requestKind == null && dto.pendingSource === 'member');
   }
 }

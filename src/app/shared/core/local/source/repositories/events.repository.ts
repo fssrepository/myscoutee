@@ -1868,8 +1868,30 @@ export class LocalEventsRepository {
       ...record,
       userId,
       type: 'events',
-      pendingReason: pending ? (record.pendingReason ?? 'approval') : null
+      pendingReason: pending ? this.pendingReasonForUser(record, normalizedUserId) : null
     };
+  }
+
+  private pendingReasonForUser(
+    record: ActivityEventRecord,
+    userId: string
+  ): AppConstants.ActivityPendingReason {
+    const normalizedUserId = userId.trim();
+    if (!normalizedUserId) {
+      return null;
+    }
+    const table = this.normalizeActivityMembersCollection(this.memoryDb.read()[ACTIVITY_MEMBERS_TABLE_NAME]);
+    const ownerKey = `event:${record.id.trim()}`;
+    const member = (table.idsByOwnerKey[ownerKey] ?? [])
+      .map(id => table.byId[id])
+      .find(entry => entry?.userId === normalizedUserId && entry.status === 'pending');
+    if (member?.requestKind === 'waitlist') {
+      return 'waitlist';
+    }
+    if (member?.requestKind === 'approval') {
+      return 'approval';
+    }
+    return record.pendingReason ?? 'approval';
   }
 
   private shouldIncludeUserDirectRecord(
@@ -2296,11 +2318,6 @@ export class LocalEventsRepository {
       return false;
     }
     if (record.creatorUserId === activeUserId) {
-      return false;
-    }
-    const acceptedMemberUserIds = this.eventAcceptedMemberUserIds(record);
-    const pendingRequestMemberUserIds = this.eventPendingRequestMemberUserIds(record);
-    if (acceptedMemberUserIds.includes(activeUserId) || pendingRequestMemberUserIds.includes(activeUserId)) {
       return false;
     }
     if (record.visibility === 'Invitation only') {

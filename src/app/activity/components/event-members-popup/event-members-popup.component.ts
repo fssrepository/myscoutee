@@ -1009,7 +1009,7 @@ export class EventMembersPopupComponent {
     members: readonly ActivityContracts.ActivityMemberDTO[],
     pendingOnly = this.pendingOnly
   ): ActivityContracts.ActivityMemberDTO[] {
-    const visibleMembers = members.filter(member => !this.isWaitlistMember(member));
+    const visibleMembers = [...members];
     return pendingOnly
       ? visibleMembers.filter(member => member.status === 'pending')
       : [...visibleMembers];
@@ -1091,7 +1091,7 @@ export class EventMembersPopupComponent {
   }
 
   private applySummaryFromMembers(members: readonly ActivityContracts.ActivityMemberDTO[]): void {
-    const visibleMembers = members.filter(member => !this.isWaitlistMember(member));
+    const visibleMembers = [...members];
     const acceptedCount = visibleMembers.filter(member => member.status === 'accepted').length;
     const pendingCount = visibleMembers.filter(member => member.status === 'pending').length;
     this.applySummary(
