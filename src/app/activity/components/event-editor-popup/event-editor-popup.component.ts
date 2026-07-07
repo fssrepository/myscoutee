@@ -893,6 +893,7 @@ export class EventEditorPopupComponent implements OnInit, OnDestroy {
         active: this.eventDetailDTO.approvalRequired,
         checked: this.eventDetailDTO.approvalRequired,
         palette: this.eventDetailDTO.approvalRequired ? 'orange' : 'green',
+        disabled: this.eventStructureReadOnly(),
         closeOnSelect: false,
         context: { menu: 'event-intel', action: 'toggle-approval-required' }
       }
