@@ -16,7 +16,7 @@ export class ActivityMemberImageCardConverter {
   ): ImageCardData {
     const age = Math.max(0, Math.trunc(Number(dto.profile?.age) || 0));
     const statusLabel = this.statusLabel(dto, options);
-    const pendingDetail = dto.status === 'pending' || dto.status === 'disqualified'
+    const pendingDetail = dto.status === 'pending' || dto.status === 'disqualified' || dto.status === 'deleted'
       ? statusLabel
       : null;
 
@@ -33,6 +33,7 @@ export class ActivityMemberImageCardConverter {
         'subevent-member-image-card',
         'activity-member-image-card',
         this.toneClass(dto),
+        dto.status === 'deleted' ? 'ui-image-card--deleted' : '',
         options.menuOpen === true ? 'menu-open' : ''
       ].filter(Boolean).join(' '),
       statusChip: {
@@ -56,6 +57,9 @@ export class ActivityMemberImageCardConverter {
     if (dto.status === 'disqualified') {
       return 'member-card-tone-disqualified';
     }
+    if (dto.status === 'deleted') {
+      return 'member-card-tone-deleted';
+    }
     if (dto.status === 'accepted') {
       if (dto.role === 'Admin') {
         return 'member-card-tone-admin';
@@ -72,6 +76,9 @@ export class ActivityMemberImageCardConverter {
     if (dto.status === 'disqualified') {
       return 'member-status-disqualified';
     }
+    if (dto.status === 'deleted') {
+      return 'member-status-deleted';
+    }
     if (dto.status === 'accepted') {
       if (dto.role === 'Admin') {
         return 'member-status-admin';
@@ -87,6 +94,9 @@ export class ActivityMemberImageCardConverter {
   private static statusIcon(dto: ActivityMemberDTO): string {
     if (dto.status === 'disqualified') {
       return 'gavel';
+    }
+    if (dto.status === 'deleted') {
+      return 'cancel';
     }
     if (dto.status === 'accepted') {
       if (dto.role === 'Admin') {
@@ -110,6 +120,9 @@ export class ActivityMemberImageCardConverter {
     if (dto.status === 'disqualified') {
       return 'Disqualified';
     }
+    if (dto.status === 'deleted') {
+      return 'Deleted';
+    }
     if (dto.status === 'accepted') {
       return this.roleLabel(dto);
     }
@@ -129,6 +142,9 @@ export class ActivityMemberImageCardConverter {
 
   private static statusPalette(dto: ActivityMemberDTO): AppMenuPalette {
     if (dto.status === 'disqualified') {
+      return 'muted';
+    }
+    if (dto.status === 'deleted') {
       return 'muted';
     }
     if (dto.status === 'accepted') {

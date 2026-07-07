@@ -41,6 +41,11 @@
   background: linear-gradient(180deg, rgba(8, 16, 28, 0.14) 0%, rgba(8, 15, 28, 0.82) 100%);
 }
 
+.ui-image-card--deleted {
+  filter: grayscale(0.78) saturate(0.54) contrast(0.86);
+  opacity: 0.86;
+}
+
 .ui-image-card__media {
   position: relative;
   min-height: 180px;
