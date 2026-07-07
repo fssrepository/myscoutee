@@ -206,6 +206,7 @@ export const CARD_MENU_ACTIONS: Readonly<Record<CardMenuActionId, CardMenuAction
   capacity: { label: 'capacity', icon: 'groups' },
   contactOrganizer: { label: 'contact.organizer', icon: 'support_agent' },
   contactOwner: { label: 'contact.owner', icon: 'support_agent' },
+  continueBooking: { label: 'Foglalás folytatása', icon: 'shopping_basket', tone: 'accent' },
   delete: { label: 'delete', icon: 'delete', tone: 'destructive' },
   deleteEvent: { label: 'delete.event', icon: 'delete', tone: 'destructive' },
   edit: { label: 'edit', icon: 'edit', tone: 'accent' },

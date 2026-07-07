@@ -953,7 +953,7 @@ export class EventCheckoutPopupComponent {
     if (this.paymentStep) {
       return 'Fizetés';
     }
-    return 'Megerősítés';
+    return 'Join';
   }
 
   protected busyLabel(): string {
@@ -967,7 +967,7 @@ export class EventCheckoutPopupComponent {
     if (this.totalAmount() > 0) {
       return this.paymentStep
         ? 'Fizetés...'
-        : 'Megerősítés...';
+        : 'Join...';
     }
     return dialog.busyConfirmLabel;
   }

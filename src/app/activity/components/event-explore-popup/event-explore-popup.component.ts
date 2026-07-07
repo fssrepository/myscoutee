@@ -822,6 +822,11 @@ export class EventExplorePopupComponent {
       });
       return;
     }
+    const existingDraft = this.trackableCheckoutDraft(record.id, activeUserId);
+    if (existingDraft) {
+      void this.openCheckoutDraftForm({ draft: existingDraft, record }, event);
+      return;
+    }
     if (this.hasTrackedMembership(record, activeUserId)) {
       this.dialogStore.openInfo(`A membership entry already exists for ${record.title}.`, {
         title: 'Already requested',
@@ -864,7 +869,11 @@ export class EventExplorePopupComponent {
       this.runEventExploreViewAction(record);
       return;
     }
-    if (action.actionId === 'joinWaitlist' || action.actionId === 'bookEvent' || action.actionId === 'requestJoin') {
+    if (action.actionId === 'continueBooking') {
+      void this.continueCheckoutDraftBySourceId(record.id);
+      return;
+    }
+    if (this.isEventExploreJoinMenuAction(action.actionId)) {
       this.runEventExploreJoinAction(record);
       return;
     }
@@ -1256,11 +1265,29 @@ export class EventExplorePopupComponent {
   }
 
   protected eventExploreInfoCard(record: ActivityEventRecord, groupLabel: string | null): InfoCardData {
-    return EventExploreInfoCardConverter.convert(record, {
+    const card = EventExploreInfoCardConverter.convert(record, {
       groupLabel,
       topicToneGroups: this.topicFilterGroups,
       state: this.isEventExploreRecordLeaving(record) ? 'leaving' : 'default'
     });
+    return this.withEventExploreCheckoutMenuActions(card, record);
+  }
+
+  private withEventExploreCheckoutMenuActions(card: InfoCardData, record: ActivityEventRecord): InfoCardData {
+    const activeUserId = this.activeUserId.trim();
+    if (!activeUserId || !this.trackableCheckoutDraft(record.id, activeUserId)) {
+      return card;
+    }
+    return {
+      ...card,
+      menuActions: (card.menuActions ?? []).map(actionId =>
+        this.isEventExploreJoinMenuAction(actionId) ? 'continueBooking' : actionId
+      )
+    };
+  }
+
+  private isEventExploreJoinMenuAction(actionId: string): boolean {
+    return actionId === 'joinWaitlist' || actionId === 'bookEvent' || actionId === 'requestJoin';
   }
 
   private buildEventExploreGroupLabel(
@@ -1601,7 +1628,12 @@ export class EventExplorePopupComponent {
   }
 
   private hasPendingCheckoutDraft(sourceId: string, userId: string): boolean {
-    return this.isTrackableCheckoutDraft(this.eventCheckoutDraftStore.read(userId, sourceId));
+    return this.trackableCheckoutDraft(sourceId, userId) !== null;
+  }
+
+  private trackableCheckoutDraft(sourceId: string, userId: string): EventCheckoutDraft | null {
+    const draft = this.eventCheckoutDraftStore.read(userId, sourceId);
+    return this.isTrackableCheckoutDraft(draft) ? draft : null;
   }
 
   private pendingCheckoutDraftSourceIds(): Set<string> {
@@ -1929,7 +1961,7 @@ export class EventExplorePopupComponent {
 
   private shouldShowRestoredEventExploreRecord(record: ActivityEventRecord): boolean {
     const activeUserId = this.activeUserId.trim();
-    if (activeUserId && this.hasTrackedMembership(record, activeUserId)) {
+    if (activeUserId && this.hasTrackedMembership(record, activeUserId) && !this.hasPendingCheckoutDraft(record.id, activeUserId)) {
       return false;
     }
     if (this.eventExploreFilterFriendsOnly) {
@@ -1980,7 +2012,9 @@ export class EventExplorePopupComponent {
       return;
     }
     const currentItems = [...this.eventExploreSmartList.itemsSnapshot()];
-    const nextItems = currentItems.filter(item => !this.hasTrackedMembership(item, activeUserId));
+    const nextItems = currentItems.filter(item =>
+      !this.hasTrackedMembership(item, activeUserId) || this.hasPendingCheckoutDraft(item.id, activeUserId)
+    );
     if (nextItems.length === currentItems.length) {
       return;
     }
