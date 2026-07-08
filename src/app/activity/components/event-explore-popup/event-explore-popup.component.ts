@@ -935,15 +935,19 @@ export class EventExplorePopupComponent {
   }
 
   protected checkoutDraftMenuTrigger(): AppMenuTrigger {
-    const count = this.checkoutDraftCount();
+    const entries = this.checkoutDraftEntries();
+    const count = entries.length;
+    const changedCount = entries.filter(entry => entry.draft.basketChanged === true).length;
     return {
       icon: 'shopping_basket',
       closeIcon: 'close',
-      ariaLabel: count === 1 ? 'Open basket with 1 item' : `Open basket with ${count} items`,
-      counter: count,
+      ariaLabel: changedCount > 0
+        ? (changedCount === 1 ? 'Open basket with 1 changed item' : `Open basket with ${changedCount} changed items`)
+        : (count === 1 ? 'Open basket with 1 item' : `Open basket with ${count} items`),
+      counter: changedCount > 0 ? changedCount : count,
       hideLabel: true,
       layout: 'icon',
-      palette: 'orange'
+      palette: changedCount > 0 ? 'orange' : 'green'
     };
   }
 
@@ -962,6 +966,7 @@ export class EventExplorePopupComponent {
         icon: this.checkoutDraftMenuIcon(entry),
         kind: 'action',
         palette: this.checkoutDraftMenuPalette(entry),
+        headerBadge: entry.draft.basketChanged === true ? 'Update' : null,
         surface: 'tinted',
         layout: 'pill',
         disabled: clearing,
@@ -1020,6 +1025,14 @@ export class EventExplorePopupComponent {
         label: 'Elutasítva',
         icon: 'block',
         palette: 'danger'
+      };
+    }
+
+    if (entry.draft.basketChanged === true) {
+      return {
+        label: 'Frissítés szükséges',
+        icon: 'edit_note',
+        palette: 'orange'
       };
     }
 

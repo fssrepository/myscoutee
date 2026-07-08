@@ -38,6 +38,13 @@
     linear-gradient(180deg, #fff9ed 0%, #f9efd9 100%);
 }
 
+.event-basket-panel--changed {
+  border-color: rgba(218, 137, 38, 0.42);
+  background:
+    radial-gradient(circle at 7% 8%, rgba(255, 255, 255, 0.84), transparent 34%),
+    linear-gradient(180deg, #fff7e8 0%, #f8ead0 100%);
+}
+
 .event-basket-panel-head {
   display: grid;
   grid-template-columns: minmax(0, 1fr) auto;

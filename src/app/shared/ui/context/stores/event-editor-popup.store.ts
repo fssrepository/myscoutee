@@ -5,7 +5,7 @@ import type { AppMenuItem, AppMenuItemSelectEvent } from '../../components/core/
 
 export type EventEditorPresentationMode = 'default' | 'checkout-review';
 export type EventEditorCheckoutPhase = 'review' | 'payment';
-export type EventEditorCheckoutSurfaceTone = 'neutral' | 'ready' | 'payment' | 'waiting' | 'approval';
+export type EventEditorCheckoutSurfaceTone = 'neutral' | 'ready' | 'payment' | 'waiting' | 'approval' | 'changed';
 export type EventEditorPresentationValue<TValue> = TValue | (() => TValue);
 
 export interface EventEditorBasketPricingSummaryRow {

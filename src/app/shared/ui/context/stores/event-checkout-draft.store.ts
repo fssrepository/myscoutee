@@ -28,6 +28,7 @@ export interface EventCheckoutDraft {
   checkoutSessionId: string | null;
   expiresAtIso: string | null;
   pendingReason: ActivityPendingReason;
+  basketChanged?: boolean;
   updatedAtMs: number;
 }
 
@@ -124,6 +125,7 @@ export class EventCheckoutDraftStore {
         : draft?.pendingReason === 'approval'
           ? 'approval'
           : null,
+      basketChanged: draft?.basketChanged === true,
       updatedAtMs: Math.max(0, Math.trunc(Number(draft?.updatedAtMs) || Date.now()))
     };
   }

@@ -773,6 +773,9 @@ export class EventCheckoutPopupComponent {
   }
 
   private checkoutBasketSurfaceTone(): EventEditorCheckoutSurfaceTone {
+    if (this.checkoutDraftBasketChanged()) {
+      return 'changed';
+    }
     const pendingReason = this.checkoutDecisionPendingReason();
     if (pendingReason === 'waitlist') {
       return 'waiting';
@@ -816,6 +819,7 @@ export class EventCheckoutPopupComponent {
     if (!dialog) {
       return;
     }
+    const basketChangeContext = this.checkoutBasketChangeContext();
     await this.eventCheckoutSlotPickerStore.ensureSlotPickerPopupLoaded();
     this.eventCheckoutSlotPickerStore.open({
       userId: dialog.userId,
@@ -823,8 +827,62 @@ export class EventCheckoutPopupComponent {
       checkoutBasket: this.checkoutBasketSnapshot(),
       checkoutSessionId: this.checkoutSessionId,
       selectedDateKey: this.checkoutSlotPickerSelectedDateKey(),
-      onSave: (basket, items) => this.applyCheckoutSlotPickerSave(basket, items)
+      onSave: (basket, items) => this.applyCheckoutSlotPickerSave(basket, items, basketChangeContext)
     });
+  }
+
+  private checkoutBasketChangeContext(): {
+    checkoutState: ActivityContracts.EventCheckoutState;
+    pendingReason: AppConstants.ActivityPendingReason;
+  } | null {
+    const pendingReason = this.checkoutActionPendingReason();
+    if (pendingReason) {
+      return {
+        checkoutState: pendingReason === 'waitlist' ? 'waiting' : 'approval-pending',
+        pendingReason
+      };
+    }
+    const draft = this.currentCheckoutDraft();
+    if (draft?.pendingReason === 'waitlist' || draft?.checkoutState === 'waiting') {
+      return {
+        checkoutState: 'waiting',
+        pendingReason: 'waitlist'
+      };
+    }
+    if (draft?.pendingReason === 'approval' || draft?.checkoutState === 'approval-pending') {
+      return {
+        checkoutState: 'approval-pending',
+        pendingReason: 'approval'
+      };
+    }
+    const basketState = this.checkoutBasket?.status ?? null;
+    if (basketState === 'waiting') {
+      return {
+        checkoutState: 'waiting',
+        pendingReason: 'waitlist'
+      };
+    }
+    if (basketState === 'approval-pending') {
+      return {
+        checkoutState: 'approval-pending',
+        pendingReason: 'approval'
+      };
+    }
+    if (
+      this.paymentStep
+      || this.checkoutPaymentReviewStarted()
+      || Boolean(this.checkoutSessionId)
+      || draft?.checkoutState === 'confirmed'
+      || draft?.checkoutState === 'pay'
+      || basketState === 'confirmed'
+      || basketState === 'pay'
+    ) {
+      return {
+        checkoutState: 'confirmed',
+        pendingReason: null
+      };
+    }
+    return null;
   }
 
   private checkoutSlotPickerSelectedDateKey(): string | null {
@@ -846,7 +904,11 @@ export class EventCheckoutPopupComponent {
 
   private applyCheckoutSlotPickerSave(
     basket: ActivityContracts.EventCheckoutBasket | null,
-    items: readonly ActivityContracts.EventCheckoutBasketItem[]
+    items: readonly ActivityContracts.EventCheckoutBasketItem[],
+    basketChangeContext: {
+      checkoutState: ActivityContracts.EventCheckoutState;
+      pendingReason: AppConstants.ActivityPendingReason;
+    } | null = null
   ): void {
     this.paymentStep = false;
     this.checkoutSessionId = null;
@@ -867,11 +929,35 @@ export class EventCheckoutPopupComponent {
         .map(item => item.subEventId?.trim() ?? '')
         .filter(id => Boolean(id) && validOptionalIds.has(id))
     );
+    if (basketChangeContext) {
+      this.markCheckoutDraftBasketChanged(basketChangeContext.checkoutState, basketChangeContext.pendingReason);
+    }
     this.errorMessage = '';
     const dialog = this.dialog();
     if (dialog) {
       this.openCheckoutReviewEditorShell(dialog);
     }
+  }
+
+  private markCheckoutDraftBasketChanged(
+    checkoutState: ActivityContracts.EventCheckoutState,
+    pendingReason: AppConstants.ActivityPendingReason
+  ): void {
+    const dialog = this.dialog();
+    if (!dialog) {
+      return;
+    }
+    const draft = this.checkoutDraftStore.read(dialog.userId, dialog.record.id);
+    if (!draft) {
+      return;
+    }
+    this.checkoutDraftStore.save({
+      ...draft,
+      checkoutState,
+      pendingReason,
+      basketChanged: true,
+      updatedAtMs: Date.now()
+    });
   }
 
   private onCheckoutBasketItemMenuSelect(
@@ -975,6 +1061,7 @@ export class EventCheckoutPopupComponent {
     const remainingItems = activeItems
       .filter(item => item.id !== normalizedItemId)
       .filter(item => !removedGroupKey || this.checkoutBasketPresentationGroupKey(item) !== removedGroupKey);
+    const basketChangeContext = this.checkoutBasketChangeContext();
     this.resetCheckoutSubmissionForEdit();
     this.checkoutBasket = this.buildRuntimeBasketFromItems(remainingItems);
     this.selectedSlotSourceId = remainingItems[0]?.slotSourceId ?? null;
@@ -988,10 +1075,16 @@ export class EventCheckoutPopupComponent {
       this.selectedOptionalSubEventIds = new Set<string>();
       this.checkoutBasket = null;
       this.saveEmptyCheckoutDraft(dialog, previousSelectedDateKey, previousExpiresAtIso);
+      if (basketChangeContext) {
+        this.markCheckoutDraftBasketChanged(basketChangeContext.checkoutState, basketChangeContext.pendingReason);
+      }
       this.openCheckoutReviewEditorShell(dialog);
       return;
     }
     await this.persistCheckoutDraft(false, null, 'draft');
+    if (basketChangeContext) {
+      this.markCheckoutDraftBasketChanged(basketChangeContext.checkoutState, basketChangeContext.pendingReason);
+    }
   }
 
   private saveEmptyCheckoutDraft(
@@ -1257,14 +1350,21 @@ export class EventCheckoutPopupComponent {
     if (!dialog) {
       return 'Continue';
     }
+    if (this.checkoutUpdateStepActive()) {
+      return 'Update';
+    }
     if (this.paymentStep) {
       return 'Fizetés';
     }
     if (this.checkoutPaymentReviewStarted()) {
       return this.hasCheckoutSelectionChanges() ? 'Frissítés' : 'Tovább';
     }
-    if (this.checkoutActionPendingReason()) {
-      return this.hasCheckoutSelectionChanges() ? 'Update' : 'Continue';
+    const pendingReason = this.checkoutActionPendingReason();
+    if (pendingReason) {
+      if (this.hasCheckoutSelectionChanges()) {
+        return 'Update';
+      }
+      return pendingReason === 'waitlist' ? 'Várólistán' : 'Jóváhagyásra vár';
     }
     return 'Join';
   }
@@ -1274,13 +1374,17 @@ export class EventCheckoutPopupComponent {
     if (!dialog) {
       return 'Working...';
     }
+    if (this.checkoutUpdateStepActive()) {
+      return 'Updating...';
+    }
     if (this.paymentStep) {
       return 'Fizetés...';
     }
     if (this.checkoutPaymentReviewStarted()) {
       return this.hasCheckoutSelectionChanges() ? 'Frissítés...' : 'Tovább...';
     }
-    if (this.checkoutActionPendingReason()) {
+    const pendingReason = this.checkoutActionPendingReason();
+    if (pendingReason) {
       return this.hasCheckoutSelectionChanges() ? 'Updating...' : 'Continuing...';
     }
     if (this.shouldAwaitApprovalBeforePayment() || this.isWaitingListSelection()) {
@@ -1347,11 +1451,18 @@ export class EventCheckoutPopupComponent {
   }
 
   private checkoutConfirmPalette(): AppMenuPalette {
+    if (this.checkoutUpdateStepActive()) {
+      return 'orange';
+    }
     if (this.checkoutPaymentReviewStarted()) {
       return this.hasCheckoutSelectionChanges() ? 'orange' : 'success';
     }
-    if (this.checkoutActionPendingReason()) {
-      return this.hasCheckoutSelectionChanges() ? 'blue' : 'success';
+    const pendingReason = this.checkoutActionPendingReason();
+    if (pendingReason) {
+      if (this.hasCheckoutSelectionChanges()) {
+        return 'orange';
+      }
+      return pendingReason === 'waitlist' ? 'amber' : 'orange';
     }
     return 'blue';
   }
@@ -1685,6 +1796,9 @@ export class EventCheckoutPopupComponent {
     if (this.busy || this.dialog()?.loading || this.checkoutReviewBodyLoading()) {
       return false;
     }
+    if (this.isUnchangedPendingCheckout()) {
+      return false;
+    }
     if (this.requiresSlotSelection() && this.checkoutBasketItems().length === 0) {
       return false;
     }
@@ -1760,8 +1874,17 @@ export class EventCheckoutPopupComponent {
     return this.checkoutActionPendingReason() !== null && !this.hasCheckoutSelectionChanges();
   }
 
+  private checkoutUpdateStepActive(): boolean {
+    return this.checkoutDraftBasketChanged();
+  }
+
   private hasCheckoutSelectionChanges(): boolean {
-    return this.checkoutSelectionSignature() !== this.checkoutBaselineSignature;
+    return this.checkoutDraftBasketChanged()
+      || this.checkoutSelectionSignature() !== this.checkoutBaselineSignature;
+  }
+
+  private checkoutDraftBasketChanged(): boolean {
+    return this.currentCheckoutDraft()?.basketChanged === true;
   }
 
   private refreshCheckoutBaseline(): void {
@@ -2717,7 +2840,8 @@ export class EventCheckoutPopupComponent {
     try {
       const shouldMutateStoredBasket = this.runtimeCheckoutBasketExists()
         && checkoutStateOverride != null
-        && checkoutStateOverride !== 'draft';
+        && checkoutStateOverride !== 'draft'
+        && !this.checkoutUpdateStepActive();
       const basket = shouldMutateStoredBasket
         ? await this.eventsService.updateCheckoutBasketState(this.buildCheckoutStateChangeRequest(
             checkoutStateOverride,
