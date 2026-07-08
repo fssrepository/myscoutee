@@ -172,7 +172,7 @@ export class EventCheckoutPopupComponent {
     }, {
       title: this.sectionTitle(),
       subtitle: dialog.record.title,
-      checkoutPhase: this.isReadOnlyCheckoutSummary() || this.paymentStep ? 'payment' : 'review',
+      checkoutPhase: this.checkoutEditorPhase(),
       hideSubEventsPanel: true,
       hideSlotsPanel: true,
       loading: () => this.checkoutReviewBodyLoading(),
@@ -1505,6 +1505,9 @@ export class EventCheckoutPopupComponent {
   }
 
   private checkoutPaymentReviewStarted(): boolean {
+    if (this.checkoutUpdateStepActive()) {
+      return false;
+    }
     if (this.paymentStep || this.totalAmount() <= 0) {
       return false;
     }
@@ -1899,7 +1902,13 @@ export class EventCheckoutPopupComponent {
   }
 
   private checkoutUpdateStepActive(): boolean {
-    return !this.paymentStep && this.checkoutDraftBasketChanged();
+    return this.checkoutDraftBasketChanged();
+  }
+
+  private checkoutEditorPhase(): 'review' | 'payment' {
+    return this.isReadOnlyCheckoutSummary() || (this.paymentStep && !this.checkoutUpdateStepActive())
+      ? 'payment'
+      : 'review';
   }
 
   private hasCheckoutSelectionChanges(): boolean {
@@ -2302,6 +2311,9 @@ export class EventCheckoutPopupComponent {
     if (!draft) {
       return false;
     }
+    if (draft.basketChanged === true) {
+      return false;
+    }
     if (Boolean(draft.checkoutSessionId?.trim())) {
       return true;
     }
@@ -2313,6 +2325,9 @@ export class EventCheckoutPopupComponent {
   private shouldOpenPaymentStepFromBasket(basket: ActivityContracts.EventCheckoutBasket | null): boolean {
     if (this.isReadOnlyCheckoutSummary()) {
       return true;
+    }
+    if (this.checkoutDraftBasketChanged()) {
+      return false;
     }
     if (!basket) {
       return this.paymentStep;
