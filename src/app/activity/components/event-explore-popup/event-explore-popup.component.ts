@@ -1928,7 +1928,14 @@ export class EventExplorePopupComponent {
     const existingMembers = peekedMembers.length > 0 ? peekedMembers : this.buildMemberEntries(record);
     const existingEntry = existingMembers.find(member => member.userId === activeUserId);
 
-    if (existingEntry && existingEntry.status !== 'deleted') {
+    const checkoutUpdateRequested = Boolean(
+      selection?.basketItems?.length
+      && (selection.checkoutState === 'waiting'
+        || selection.checkoutState === 'approval-pending'
+        || selection.pendingReason === 'waitlist'
+        || selection.pendingReason === 'approval')
+    );
+    if (existingEntry && existingEntry.status !== 'deleted' && !checkoutUpdateRequested) {
       if (this.selectedMembersRecord?.id === record.id) {
         this.selectedMembers = this.sortMembersByActionTimeDesc(existingMembers);
       }
@@ -1938,14 +1945,21 @@ export class EventExplorePopupComponent {
 
     const pendingReason = selection?.pendingReason ?? (this.isEventExploreSelectionFull(record, selection) ? 'waitlist' : null);
     const isAcceptedBooking = this.isConfirmedEventExploreBooking(record, selection);
-    const counterDelta = this.eventExploreJoinCounterDelta(isAcceptedBooking);
+    const updatesExistingMember = Boolean(existingEntry && existingEntry.status !== 'deleted');
+    const counterDelta = updatesExistingMember ? null : this.eventExploreJoinCounterDelta(isAcceptedBooking);
     const optimisticExistingMembers = existingEntry?.status === 'deleted'
       ? existingMembers.filter(member => !(member.userId === activeUserId && member.status === 'deleted'))
       : existingMembers;
-    const nextMembers = this.sortMembersByActionTimeDesc([
-      ...optimisticExistingMembers,
-      this.buildJoinRequestEntry(record, isAcceptedBooking, pendingReason)
-    ]);
+    const joinRequestEntry = this.buildJoinRequestEntry(record, isAcceptedBooking, pendingReason);
+    const nextMembers = this.sortMembersByActionTimeDesc(updatesExistingMember
+      ? [
+          ...optimisticExistingMembers.filter(member => member.userId !== activeUserId),
+          joinRequestEntry
+        ]
+      : [
+          ...optimisticExistingMembers,
+          joinRequestEntry
+        ]);
 
     try {
       const joinResult = await this.eventsService.requestJoin(activeUserId, record.id, {
@@ -1970,15 +1984,17 @@ export class EventExplorePopupComponent {
       const persistedMembers = this.activityMembersService.peekMembersByOwner(owner);
       const displayMembers = this.sortMembersByActionTimeDesc(persistedMembers.length > 0 ? persistedMembers : nextMembers);
       const nextRecord = this.withEventExploreMemberDelta(record, {
-        acceptedMemberDelta: isAcceptedBooking ? 1 : 0,
-        pendingMemberDelta: isAcceptedBooking ? 0 : 1
+        acceptedMemberDelta: updatesExistingMember ? 0 : (isAcceptedBooking ? 1 : 0),
+        pendingMemberDelta: updatesExistingMember ? 0 : (isAcceptedBooking ? 0 : 1)
       }, displayMembers, pendingReason);
       this.locallyTrackedMembershipSourceIds.add(record.id);
       this.restoreVisibleEventExploreRecord(nextRecord);
       this.activitiesStore.emitActivityEventSaveResult(
         this.buildActivityEventDetailDTO(nextRecord, displayMembers, joinResult.paymentSessionId ?? selection?.paymentSessionId ?? null)
       );
-      this.signalEventExploreCounterDelta(activeUserId, counterDelta);
+      if (counterDelta) {
+        this.signalEventExploreCounterDelta(activeUserId, counterDelta);
+      }
       if (this.selectedMembersRecord?.id === record.id) {
         this.selectedMembersRecord = nextRecord;
         this.selectedMembers = displayMembers;
