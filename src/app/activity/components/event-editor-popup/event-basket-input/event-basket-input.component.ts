@@ -60,6 +60,7 @@ export class EventBasketInputComponent {
   @Input() readOnly = false;
   @Input() showAdd = true;
   @Input() showItemMenu = true;
+  @Input() showPricingSummary = false;
   @Input() addIcon = 'edit';
   @Input() addAriaLabel = 'Edit checkout items';
   @Input() emptyLabel = 'No basket items yet. Use the edit button to add a slot.';
@@ -176,6 +177,40 @@ export class EventBasketInputComponent {
     const quantity = this.itemQuantity(item);
     const amount = (Number(item.amount) || 0) * quantity;
     return amount > 0 ? this.formatMoney(amount, item.currency || this.currency) : 'Included';
+  }
+
+  protected visiblePricingSummaryRows(): EventBasketInputPricingSummaryRow[] {
+    const rows = (this.pricingSummaryRows ?? []).length > 0
+      ? this.pricingSummaryRows
+      : this.items.flatMap(item => item.pricingSummaryRows ?? []);
+    return rows
+      .map(row => ({
+        key: `${row.key ?? row.label ?? ''}`.trim() || 'pricing',
+        label: `${row.label ?? ''}`.trim() || 'Pricing',
+        detail: `${row.detail ?? ''}`.trim() || null,
+        amount: Number.isFinite(row.amount) ? Number(row.amount) : null,
+        currency: `${row.currency ?? this.currency ?? 'USD'}`.trim() || 'USD',
+        multiplier: Number.isFinite(row.multiplier) ? Math.max(1, Math.trunc(Number(row.multiplier))) : null
+      }))
+      .filter(row => row.label);
+  }
+
+  protected hasPricingSummary(): boolean {
+    return this.showPricingSummary === true
+      && (this.visiblePricingSummaryRows().length > 0 || this.items.length > 0 || Number(this.totalAmount) > 0);
+  }
+
+  protected pricingSummaryAmountLabel(row: EventBasketInputPricingSummaryRow): string {
+    if (row.amount === null || row.amount === undefined) {
+      return '';
+    }
+    const amount = Number(row.amount) || 0;
+    const sign = amount < 0 ? '-' : amount > 0 && !`${row.key ?? ''}`.startsWith('base') ? '+' : '';
+    return `${sign}${this.formatMoney(Math.abs(amount), row.currency || this.currency)}`;
+  }
+
+  protected pricingSummaryTotalLabel(): string {
+    return this.formatMoney(Number(this.totalAmount) || 0, this.currency);
   }
 
   private formatMoney(amount: number, currency: string): string {

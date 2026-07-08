@@ -89,5 +89,32 @@
     } @else {
       <div class="event-basket-empty">{{ emptyLabel }}</div>
     }
+
+    @if (hasPricingSummary()) {
+      <section class="event-basket-pricing-summary" aria-label="Current price review">
+        <div class="event-basket-pricing-summary-head">
+          <span>Current Price Review</span>
+          <mat-icon>price_check</mat-icon>
+        </div>
+        @for (row of visiblePricingSummaryRows(); track row.key || row.label) {
+          <div class="event-basket-pricing-row">
+            <span class="event-basket-pricing-label">
+              <span>{{ row.label }}</span>
+              @if (row.detail) {
+                <small>{{ row.detail }}</small>
+              }
+            </span>
+            <strong>{{ pricingSummaryAmountLabel(row) }}</strong>
+          </div>
+        }
+        @if (visiblePricingSummaryRows().length === 0) {
+          <p class="event-basket-pricing-empty">No selected checkout items yet.</p>
+        }
+        <div class="event-basket-pricing-total">
+          <span>Final price</span>
+          <strong>{{ pricingSummaryTotalLabel() }}</strong>
+        </div>
+      </section>
+    }
   </div>
 </section>

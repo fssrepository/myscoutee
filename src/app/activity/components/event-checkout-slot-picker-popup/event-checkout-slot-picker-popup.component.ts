@@ -42,6 +42,10 @@ import {
   type TextCardTone
 } from '../../../shared/ui';
 import type { ActivityEventRecord } from '../../../shared/core/contracts/activity.interface';
+import {
+  EventBasketInputComponent,
+  type EventBasketInputItem
+} from '../event-editor-popup/event-basket-input/event-basket-input.component';
 
 interface SlotPickerFilters {
   dateKey: string;
@@ -69,7 +73,8 @@ type SlotListView = 'day' | 'basket';
     IndicatorComponent,
     PopupComponent,
     SmartListComponent,
-    TextCardComponent
+    TextCardComponent,
+    EventBasketInputComponent
   ],
   templateUrl: './event-checkout-slot-picker-popup.component.html',
   styleUrl: './event-checkout-slot-picker-popup.component.scss',
@@ -407,6 +412,15 @@ export class EventCheckoutSlotPickerPopupComponent {
         context: { menu: 'slot' as const, slot }
       }] : []),
       {
+        id: 'pricing',
+        label: 'Price summary',
+        icon: 'price_check',
+        palette: 'gold',
+        surface: 'tinted',
+        headerBadge: this.slotPriceLabel(slot),
+        context: { menu: 'slot', slot }
+      },
+      {
         id: 'delete',
         label: 'Eltavolitas',
         icon: 'delete',
@@ -423,6 +437,10 @@ export class EventCheckoutSlotPickerPopupComponent {
     event.sourceEvent.stopPropagation();
     if (event.id === 'delete') {
       this.requestRemoveSlot(slot);
+      return;
+    }
+    if (event.id === 'pricing') {
+      this.openPricingSummary(slot, event.sourceEvent);
       return;
     }
     if (event.id.startsWith('optional:')) {
@@ -685,13 +703,21 @@ export class EventCheckoutSlotPickerPopupComponent {
     }];
   }
 
-  protected pricingSummaryAmountLabel(row: EventCheckoutPricingSummaryRow): string {
-    if (row.amount === null || row.amount === undefined) {
-      return '';
+  protected pricingSummaryItems(slot: EventCheckoutSlot | null): EventBasketInputItem[] {
+    if (!slot) {
+      return [];
     }
-    const amount = Number(row.amount) || 0;
-    const sign = amount < 0 ? '-' : amount > 0 && !`${row.key ?? ''}`.startsWith('base') ? '+' : '';
-    return `${sign}${this.formatMoney(Math.abs(amount), row.currency || 'USD')}`;
+    return [{
+      id: `event:${slot.parentEventId}:${slot.id}`,
+      title: slot.title || 'Selected slot',
+      meta: slot.timeframe || this.formatDateGroup(slot.startAtIso),
+      detail: null,
+      amount: slot.amount,
+      currency: slot.currency,
+      quantity: 1,
+      status: this.isSelected(slot) ? 'confirmed' : 'draft',
+      pricingSummaryRows: this.pricingSummaryRows(slot)
+    }];
   }
 
   private closePricingSummary(event?: Event): void {

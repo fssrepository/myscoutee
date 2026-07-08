@@ -74,22 +74,19 @@
 
 @if (pricingSummarySlot) {
   <app-popup [model]="pricingSummaryPopupModel()" [zIndex]="4930">
-    <section class="event-checkout-slot-picker__pricing-summary">
-      @for (row of pricingSummaryRows(pricingSummarySlot); track row.key || row.label) {
-        <article class="event-checkout-slot-picker__pricing-row">
-          <span>
-            <strong>{{ row.label }}</strong>
-            @if (row.detail) {
-              <em>{{ row.detail }}</em>
-            }
-          </span>
-          <strong>{{ pricingSummaryAmountLabel(row) }}</strong>
-        </article>
-      }
-      <div class="event-checkout-slot-picker__pricing-total">
-        <span>Final price</span>
-        <strong>{{ slotPriceLabel(pricingSummarySlot) }}</strong>
-      </div>
-    </section>
+    <app-event-basket-input
+      class="event-checkout-slot-picker__pricing-summary"
+      title="Pricing"
+      subtitle="Read-only checkout price review"
+      [items]="pricingSummaryItems(pricingSummarySlot)"
+      [pricingSummaryRows]="pricingSummaryRows(pricingSummarySlot)"
+      [totalAmount]="pricingSummarySlot.amount"
+      [currency]="pricingSummarySlot.currency"
+      [readOnly]="true"
+      [showAdd]="false"
+      [showItemMenu]="false"
+      [showPricingSummary]="true"
+      tone="ready"
+    ></app-event-basket-input>
   </app-popup>
 }
