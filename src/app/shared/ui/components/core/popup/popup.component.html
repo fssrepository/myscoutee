@@ -64,6 +64,9 @@
                   @if (control.label) {
                     <span>{{ control.label | i18n }}</span>
                   }
+                  @if (actionCounterValue(control)) {
+                    <span class="ui-popup__action-counter">{{ actionCounterValue(control) }}</span>
+                  }
                 </button>
               }
             }
@@ -85,6 +88,9 @@
               <mat-icon>{{ headerAction.icon }}</mat-icon>
               @if (headerAction.label) {
                 <span>{{ headerAction.label | i18n }}</span>
+              }
+              @if (actionCounterValue(headerAction)) {
+                <span class="ui-popup__action-counter">{{ actionCounterValue(headerAction) }}</span>
               }
             </button>
           }
@@ -140,6 +146,9 @@
                   @if (control.label) {
                     <span>{{ control.label | i18n }}</span>
                   }
+                  @if (actionCounterValue(control)) {
+                    <span class="ui-popup__action-counter">{{ actionCounterValue(control) }}</span>
+                  }
                 </button>
               }
             }
@@ -185,6 +194,9 @@
                   <mat-icon>{{ control.icon }}</mat-icon>
                   @if (control.label) {
                     <span>{{ control.label | i18n }}</span>
+                  }
+                  @if (actionCounterValue(control)) {
+                    <span class="ui-popup__action-counter">{{ actionCounterValue(control) }}</span>
                   }
                 </button>
               }

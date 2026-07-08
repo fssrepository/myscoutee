@@ -1,50 +1,36 @@
 @if (popupState()) {
   <app-popup [model]="popupModel()" [zIndex]="4920">
     <div class="event-checkout-slot-picker" [class.is-saving]="saving">
-      @if (monthOverlayOpen) {
-        <section class="event-checkout-slot-picker__month-overlay" aria-label="Available slot calendar">
-          <div class="event-checkout-slot-picker__month-head">
-            <button type="button" class="event-checkout-slot-picker__month-nav" aria-label="Previous month" (click)="moveMonth(-1, $event)">
-              <mat-icon>chevron_left</mat-icon>
-            </button>
-            <strong>{{ monthTitle() }}</strong>
-            <button type="button" class="event-checkout-slot-picker__month-nav" aria-label="Next month" (click)="moveMonth(1, $event)">
-              <mat-icon>chevron_right</mat-icon>
-            </button>
-          </div>
-          <app-smart-list
-            class="event-checkout-slot-picker__month-list"
-            [config]="monthListConfig"
-            [loadPage]="monthLoadPage"
-            [query]="monthListQuery"
-            [view]="'month'"
-            (itemSelect)="onMonthDaySelect($event)"
-          ></app-smart-list>
-        </section>
-      }
-
       @if (errorMessage) {
         <p class="event-checkout-slot-picker__error">{{ errorMessage }}</p>
       }
 
-      <app-smart-list
-        class="event-checkout-slot-picker__slots"
-        [config]="slotListConfig"
-        [loadPage]="slotLoadPage"
-        [itemTemplate]="slotItemTemplate"
-        [query]="slotListQuery"
-      ></app-smart-list>
+      <div class="event-checkout-slot-picker__viewport">
+        <app-smart-list
+          class="event-checkout-slot-picker__slots"
+          [config]="slotListConfig"
+          [loadPage]="slotLoadPage"
+          [itemTemplate]="slotItemTemplate"
+          [query]="slotListQuery"
+          (itemSelect)="onSlotItemSelect($event)"
+        ></app-smart-list>
 
-      <ng-template #slotItemTemplate let-slot>
+        @if (isMonthView()) {
+          <section class="event-checkout-slot-picker__month-overlay" aria-label="Available slot calendar">
+            <app-smart-list
+              class="event-checkout-slot-picker__month-list"
+              [config]="monthListConfig"
+              [loadPage]="monthLoadPage"
+              [query]="monthListQuery"
+              [view]="'month'"
+              (itemSelect)="onMonthDaySelect($event)"
+            ></app-smart-list>
+          </section>
+        }
+      </div>
+
+      <ng-template #slotItemTemplate let-slot let-selectItem="selectItem">
         <article class="event-checkout-slot-picker__slot-card" [class.is-selected]="isSelected(slot)">
-          <button
-            type="button"
-            class="event-checkout-slot-picker__choose"
-            [attr.aria-label]="isSelected(slot) ? 'Remove slot from basket' : 'Choose slot'"
-            (click)="toggleSlot(slot, $event)"
-          >
-            <mat-icon>{{ isSelected(slot) ? 'check_circle' : 'radio_button_unchecked' }}</mat-icon>
-          </button>
           <app-text-card
             class="event-checkout-slot-picker__text-card"
             [tone]="isSelected(slot) ? 'teal' : 'cyan'"
@@ -53,12 +39,19 @@
             [subtitle]="slot.timeframe"
             [meta]="slotAvailabilityLabel(slot)"
             [detail]="selectedOptionalLabel(slot)"
+            [badge]="slotPriceLabel(slot)"
             [menuTitle]="slot.title"
             [menuPalette]="isSelected(slot) ? 'teal' : 'cyan'"
             [menuItems]="slotMenuItems(slot)"
+            [selectable]="true"
+            [selected]="isSelected(slot)"
+            [selectDisabled]="saving"
+            selectIcon="add"
+            selectedIcon="check"
+            [selectAriaLabel]="isSelected(slot) ? 'Remove slot from basket' : 'Add slot to basket'"
+            (selectionToggle)="selectItem($event)"
             (menuSelect)="onSlotMenuSelect(slot, $event)"
           ></app-text-card>
-          <span class="event-checkout-slot-picker__price">{{ slotPriceLabel(slot) }}</span>
         </article>
       </ng-template>
 

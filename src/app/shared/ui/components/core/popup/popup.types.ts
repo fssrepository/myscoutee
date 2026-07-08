@@ -1,4 +1,6 @@
 import type {
+  AppMenuCounter,
+  AppMenuCounterValue,
   AppMenuItem,
   AppMenuItemSelectEvent,
   AppMenuGroup,
@@ -31,6 +33,7 @@ export interface PopupAction extends PopupControlBase {
   label?: string | null;
   ariaLabel?: string | null;
   palette?: AppMenuPalette;
+  counter?: AppMenuCounter | AppMenuCounterValue | null;
   active?: boolean;
   disabled?: boolean;
   compactOnMobile?: boolean;

@@ -3,6 +3,7 @@ import { ChangeDetectionStrategy, ChangeDetectorRef, Component, effect, inject }
 import { MatIconModule } from '@angular/material/icon';
 import { from, of } from 'rxjs';
 
+import { APP_STATIC_DATA } from '../../../shared/app-static-data';
 import { AppUtils } from '../../../shared/app-utils';
 import { PricingBuilder } from '../../../shared/core/base/builders';
 import {
@@ -31,7 +32,6 @@ import {
   type DateInputValue,
   type ListQuery,
   type PopupActionEvent,
-  type PopupMenuSelectEvent,
   type PopupModel,
   type SmartListCalendarCounter,
   type SmartListCalendarDateRange,
@@ -43,6 +43,8 @@ import type { ActivityEventRecord } from '../../../shared/core/contracts/activit
 
 interface SlotPickerFilters {
   dateKey: string;
+  view: SlotListView;
+  revision: number;
 }
 
 interface SlotPickerMonthFilters {
@@ -54,9 +56,7 @@ interface SlotSelection {
   optionalSubEventIds: string[];
 }
 
-type SlotMenuContext =
-  | { menu: 'slot'; slot: EventCheckoutSlot }
-  | { menu: 'basket'; itemId?: string | null };
+type SlotListView = 'day' | 'basket';
 
 @Component({
   selector: 'app-event-checkout-slot-picker-popup',
@@ -83,12 +83,13 @@ export class EventCheckoutSlotPickerPopupComponent {
   private readonly cdr = inject(ChangeDetectorRef);
 
   protected selectedDateKey = this.todayKey();
+  protected basketMode = false;
   protected monthOverlayOpen = false;
   protected saving = false;
   protected errorMessage = '';
-  protected monthDays: EventCheckoutSlotDay[] = [];
   protected monthAnchor = this.monthStart(this.selectedDateKey);
   protected monthListQuery: Partial<ListQuery<SlotPickerMonthFilters>> = this.buildMonthListQuery();
+  private selectionRevision = 0;
   private readonly selectionsBySlotId = new Map<string, SlotSelection>();
 
   protected slotListQuery: Partial<ListQuery<SlotPickerFilters>> = this.buildSlotListQuery();
@@ -109,7 +110,10 @@ export class EventCheckoutSlotPickerPopupComponent {
     presentation: 'list',
     listLayout: 'card-grid',
     desktopColumns: 3,
-    emptyLabel: 'No available slots for this date.',
+    selectMode: true,
+    emptyLabel: () => this.basketMode
+      ? 'No basket items yet.'
+      : 'No available slots for this date.',
     trackBy: (_index, item) => item.id,
     groupBy: item => this.formatDateGroup(item.startAtIso),
     showGroupMarker: ({ groupIndex }) => groupIndex > 0,
@@ -119,37 +123,35 @@ export class EventCheckoutSlotPickerPopupComponent {
   };
 
   protected readonly monthListConfig: SmartListConfig<EventCheckoutSlotDay, SlotPickerMonthFilters> = {
-    pageSize: 42,
-    initialPageSize: 42,
+    pageSize: 240,
+    initialPageSize: 240,
     defaultView: 'month',
     views: [
-      { key: 'month', label: 'Month', mode: 'month', pageSize: 42 }
+      { key: 'month', label: 'Month', mode: 'month', pageSize: 240 }
     ],
     calendarVariant: 'counter',
     calendar: {
-      weekdayLabels: ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'],
-      anchorRadius: 0,
+      weekdayLabels: APP_STATIC_DATA.calendarWeekdayLabels,
+      weekStartHour: 0,
+      weekEndHour: 23,
+      anchorRadius: 2,
       counterGranularity: 'day',
       initialAnchor: query => query.filters?.anchor ?? this.monthAnchor,
       resolveDateRange: item => this.monthDateRange(item),
       dayCounter: day => this.monthDayCounter(day)
     },
-    showStickyHeader: false,
+    showStickyHeader: true,
     trackBy: (_index, item) => item.dateKey,
-    containerClass: {
-      'event-checkout-slot-picker-month-list': true
-    },
     emptyLabel: 'No slots in this month.'
   };
 
   protected readonly slotLoadPage = (query: ListQuery<SlotPickerFilters>) =>
-    from(this.loadSlotPage(query));
+    this.basketMode
+      ? of(this.selectedSlotsPage())
+      : from(this.loadSlotPage(query));
 
   protected readonly monthLoadPage = (_query: ListQuery<SlotPickerMonthFilters>) =>
-    of({
-      items: this.monthDays,
-      total: this.monthDays.length
-    });
+    from(this.loadMonthPage(_query));
 
   constructor() {
     effect(() => {
@@ -158,7 +160,6 @@ export class EventCheckoutSlotPickerPopupComponent {
         return;
       }
       this.initializeFromState(state.record, state.checkoutBasket ?? null, state.selectedDateKey ?? null);
-      void this.loadMonthDays();
     });
   }
 
@@ -166,7 +167,7 @@ export class EventCheckoutSlotPickerPopupComponent {
     return this.store.popup();
   }
 
-  protected popupModel(): PopupModel<SlotMenuContext> {
+  protected popupModel(): PopupModel {
     const state = this.popupState();
     const selectedCount = this.selectedCount();
     return {
@@ -184,23 +185,12 @@ export class EventCheckoutSlotPickerPopupComponent {
       headerControls: [
         {
           id: 'basket',
-          kind: 'menu',
           align: 'end',
-          menuKind: 'select',
-          title: 'Basket',
-          trigger: {
-            icon: 'shopping_basket',
-            closeIcon: 'close',
-            hideLabel: true,
-            layout: 'icon',
-            palette: 'orange',
-            counter: selectedCount,
-            ariaLabel: selectedCount === 1 ? 'Open selected basket item' : `Open ${selectedCount} selected basket items`
-          },
-          items: this.basketMenuItems(),
-          panelAlign: 'end',
-          mobileBreakpointPx: 900,
-          closeOnSelect: false
+          icon: this.basketMode ? 'close' : 'shopping_basket',
+          ariaLabel: selectedCount === 1 ? 'Show selected basket item' : `Show ${selectedCount} selected basket items`,
+          palette: this.basketMode ? 'orange' : 'neutral',
+          active: this.basketMode,
+          counter: selectedCount
         }
       ],
       toolbarControls: [
@@ -231,7 +221,6 @@ export class EventCheckoutSlotPickerPopupComponent {
       ],
       onClose: event => this.close(event),
       onAction: event => this.onPopupAction(event),
-      onMenuSelect: event => this.onPopupMenuSelect(event),
       onDateInputChange: event => {
         if (event.control.id === 'slot-picker-date') {
           this.onDateChange(event.value);
@@ -255,23 +244,42 @@ export class EventCheckoutSlotPickerPopupComponent {
     }
     this.selectedDateKey = dateKey;
     this.monthAnchor = this.monthStart(dateKey);
+    this.basketMode = false;
     this.monthOverlayOpen = false;
     this.refreshSlotQuery();
     this.refreshMonthQuery();
-    void this.loadMonthDays();
   }
 
-  protected toggleMonthOverlay(event?: Event): void {
+  protected toggleMonthView(event?: Event): void {
     event?.preventDefault();
     event?.stopPropagation();
     this.monthOverlayOpen = !this.monthOverlayOpen;
-    if (this.monthOverlayOpen) {
-      void this.loadMonthDays();
+    if (this.monthOverlayOpen && this.basketMode) {
+      this.basketMode = false;
+      this.refreshSlotQuery();
     }
+    this.refreshMonthQuery();
+  }
+
+  protected toggleBasketView(event?: Event): void {
+    event?.preventDefault();
+    event?.stopPropagation();
+    this.basketMode = !this.basketMode;
+    if (this.basketMode) {
+      this.monthOverlayOpen = false;
+    }
+    this.refreshSlotQuery();
   }
 
   protected onMonthDaySelect(event: SmartListItemSelectEvent<EventCheckoutSlotDay, SlotPickerMonthFilters>): void {
     this.selectMonthSummaryDay(event.item, event.sourceEvent);
+  }
+
+  protected onSlotItemSelect(event: SmartListItemSelectEvent<EventCheckoutSlot, SlotPickerFilters>): void {
+    if (!event.selectMode) {
+      return;
+    }
+    this.toggleSlot(event.item, event.sourceEvent);
   }
 
   protected selectMonthSummaryDay(day: EventCheckoutSlotDay | null, event?: Event): void {
@@ -282,18 +290,14 @@ export class EventCheckoutSlotPickerPopupComponent {
     }
     this.selectedDateKey = day.dateKey;
     this.monthAnchor = this.monthStart(day.dateKey);
+    this.basketMode = false;
     this.monthOverlayOpen = false;
     this.refreshSlotQuery();
+    this.refreshMonthQuery();
   }
 
-  protected moveMonth(delta: -1 | 1, event?: Event): void {
-    event?.preventDefault();
-    event?.stopPropagation();
-    const anchor = this.parseDateKey(this.monthAnchor) ?? new Date();
-    anchor.setUTCMonth(anchor.getUTCMonth() + delta);
-    this.monthAnchor = this.dateKey(anchor);
-    this.refreshMonthQuery();
-    void this.loadMonthDays();
+  protected isMonthView(): boolean {
+    return this.monthOverlayOpen;
   }
 
   protected isSelected(slot: EventCheckoutSlot): boolean {
@@ -322,6 +326,7 @@ export class EventCheckoutSlotPickerPopupComponent {
         optionalSubEventIds: []
       });
     }
+    this.selectionRevision += 1;
     this.cdr.markForCheck();
   }
 
@@ -377,15 +382,6 @@ export class EventCheckoutSlotPickerPopupComponent {
     return `${slot.availableSlots} available`;
   }
 
-  protected monthTitle(): string {
-    const anchor = this.parseDateKey(this.monthAnchor) ?? new Date();
-    return anchor.toLocaleDateString('en-US', {
-      month: 'long',
-      year: 'numeric',
-      timeZone: 'UTC'
-    });
-  }
-
   private initializeFromState(
     record: ActivityEventRecord,
     basket: EventCheckoutBasket | null,
@@ -411,6 +407,8 @@ export class EventCheckoutSlotPickerPopupComponent {
       || eventItems[0]?.selectedDateKey?.slice(0, 10)
       || this.todayKey();
     this.monthAnchor = this.monthStart(this.selectedDateKey);
+    this.basketMode = false;
+    this.monthOverlayOpen = false;
     this.errorMessage = '';
     this.saving = false;
     this.refreshSlotQuery();
@@ -437,22 +435,36 @@ export class EventCheckoutSlotPickerPopupComponent {
     };
   }
 
-  private async loadMonthDays(): Promise<void> {
+  private selectedSlotsPage(): PageResult<EventCheckoutSlot> {
+    const items = [...this.selectionsBySlotId.values()]
+      .map(selection => selection.slot)
+      .sort((left, right) => this.sortableDateMs(left.startAtIso) - this.sortableDateMs(right.startAtIso));
+    return {
+      items,
+      total: items.length
+    };
+  }
+
+  private async loadMonthPage(query: ListQuery<SlotPickerMonthFilters>): Promise<PageResult<EventCheckoutSlotDay>> {
     const state = this.popupState();
     if (!state) {
-      return;
+      return { items: [], total: 0 };
     }
+    const anchor = query.anchorDate ?? query.filters?.anchor ?? this.monthAnchor;
+    const rangeStart = query.rangeStart ?? this.monthStart(anchor);
+    const rangeEnd = query.rangeEnd ?? this.monthEnd(anchor);
     const result = await this.eventsService.loadCheckoutSlots({
       userId: state.userId,
       eventId: state.record.id,
       order: 'upcoming',
-      rangeStart: this.monthAnchor,
-      rangeEnd: this.monthEnd(this.monthAnchor),
+      rangeStart,
+      rangeEnd,
       limit: 1
     });
-    this.monthDays = result?.days ?? [];
-    this.refreshMonthQuery();
-    this.cdr.markForCheck();
+    return {
+      items: result?.days ?? [],
+      total: result?.days?.length ?? 0
+    };
   }
 
   private monthDateRange(day: EventCheckoutSlotDay): SmartListCalendarDateRange | null {
@@ -475,35 +487,8 @@ export class EventCheckoutSlotPickerPopupComponent {
       ariaLabel: `${priceLabel}, ${availableSlots} available slots`,
       alertLabel: `${availableSlots}`,
       alertAriaLabel: `${availableSlots} available slots`,
-      toneClass: availableSlots > 0
-        ? 'event-checkout-slot-picker__calendar-counter--available'
-        : 'event-checkout-slot-picker__calendar-counter--full'
+      toneClass: availableSlots > 0 ? null : 'calendar-counter-full'
     };
-  }
-
-  private basketMenuItems(): readonly AppMenuItem<string, SlotMenuContext>[] {
-    const selectedItems = [...this.selectionsBySlotId.values()];
-    return selectedItems.map(selection => ({
-      id: `basket:${selection.slot.id}`,
-      label: selection.slot.timeframe || selection.slot.title || selection.slot.id,
-      description: this.slotPriceLabel(selection.slot),
-      icon: 'event_seat',
-      palette: 'teal' as const,
-      surface: 'tinted' as const,
-      removable: true,
-      removeIcon: 'delete',
-      removeAriaLabel: 'Remove selected slot',
-      context: { menu: 'basket' as const, itemId: selection.slot.id }
-    }));
-  }
-
-  private onPopupMenuSelect(event: PopupMenuSelectEvent<SlotMenuContext>): void {
-    const itemEvent = event.itemSelect;
-    itemEvent.sourceEvent.preventDefault();
-    itemEvent.sourceEvent.stopPropagation();
-    if (itemEvent.action === 'remove' && itemEvent.context?.menu === 'basket' && itemEvent.context.itemId) {
-      this.requestRemoveSelectedSlot(itemEvent.context.itemId);
-    }
   }
 
   private onPopupAction(event: PopupActionEvent): void {
@@ -513,8 +498,12 @@ export class EventCheckoutSlotPickerPopupComponent {
       void this.saveBasket();
       return;
     }
+    if (event.action.id === 'basket') {
+      this.toggleBasketView(event.sourceEvent);
+      return;
+    }
     if (event.action.id === 'slot-picker-calendar') {
-      this.toggleMonthOverlay(event.sourceEvent);
+      this.toggleMonthView(event.sourceEvent);
     }
   }
 
@@ -530,6 +519,7 @@ export class EventCheckoutSlotPickerPopupComponent {
       slot,
       optionalSubEventIds
     });
+    this.selectionRevision += 1;
     this.cdr.markForCheck();
   }
 
@@ -554,6 +544,11 @@ export class EventCheckoutSlotPickerPopupComponent {
       failureMessage: 'Unable to remove this checkout item.',
       onConfirm: () => {
         this.selectionsBySlotId.delete(slotId);
+        this.selectionRevision += 1;
+        if (this.basketMode) {
+          this.refreshSlotQuery();
+          return;
+        }
         this.cdr.markForCheck();
       }
     });
@@ -820,7 +815,9 @@ export class EventCheckoutSlotPickerPopupComponent {
     return {
       cursor,
       filters: {
-        dateKey: this.selectedDateKey
+        dateKey: this.selectedDateKey,
+        view: this.basketMode ? 'basket' : 'day',
+        revision: this.selectionRevision
       }
     };
   }

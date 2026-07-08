@@ -135,6 +135,21 @@ export class PopupComponent<TContext = unknown> {
     return `ui-popup__action--${action.palette ?? 'default'}`;
   }
 
+  protected actionCounterValue(action: PopupAction): string {
+    const source = action.counter;
+    if (source === null || source === undefined) {
+      return '';
+    }
+    const value = typeof source === 'object' && 'value' in source
+      ? source.value
+      : source;
+    const resolved = typeof value === 'function'
+      ? value()
+      : value;
+    const normalized = `${resolved ?? ''}`.trim();
+    return normalized === '0' ? '' : normalized;
+  }
+
   protected panelSizeClass(): string {
     return `ui-popup__panel--${this.popupModel.size ?? 'default'}`;
   }

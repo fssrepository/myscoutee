@@ -1,4 +1,10 @@
 <article [ngClass]="rootClassList()">
+  @if (resolvedBadge()) {
+    <span class="ui-text-card__badge" [attr.aria-label]="resolvedBadgeAriaLabel()">
+      {{ resolvedBadge() }}
+    </span>
+  }
+
   <div class="ui-text-card__main">
     @if (resolvedIcon()) {
       <span class="ui-text-card__icon" aria-hidden="true">
@@ -19,17 +25,33 @@
     </span>
   </div>
 
-  @if (hasMenu()) {
-    <app-menu
-      class="ui-text-card__menu"
-      kind="select"
-      layout="list"
-      [title]="resolvedMenuTitle()"
-      [trigger]="menuTrigger()"
-      [items]="menuItems"
-      [panelAlign]="'auto'"
-      [mobileBreakpointPx]="900"
-      (itemSelect)="menuSelect.emit($event)"
-    ></app-menu>
+  @if (hasActions()) {
+    <div class="ui-text-card__actions">
+      @if (hasSelectAction()) {
+        <button
+          type="button"
+          [ngClass]="selectActionClassList()"
+          [disabled]="selectDisabled"
+          [attr.aria-label]="resolvedSelectAriaLabel()"
+          (click)="toggleSelection($event)"
+        >
+          <mat-icon>{{ selectActionIcon() }}</mat-icon>
+        </button>
+      }
+
+      @if (hasMenu()) {
+        <app-menu
+          class="ui-text-card__menu"
+          kind="select"
+          layout="list"
+          [title]="resolvedMenuTitle()"
+          [trigger]="menuTrigger()"
+          [items]="menuItems"
+          [panelAlign]="'auto'"
+          [mobileBreakpointPx]="900"
+          (itemSelect)="menuSelect.emit($event)"
+        ></app-menu>
+      }
+    </div>
   }
 </article>

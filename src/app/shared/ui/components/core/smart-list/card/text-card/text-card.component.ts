@@ -45,18 +45,30 @@ export class TextCardComponent {
   @Input() detail = '';
   @Input() icon = '';
   @Input() tone: TextCardTone = 'neutral';
+  @Input() badge = '';
+  @Input() badgeAriaLabel: string | null = null;
   @Input() menuTitle: string | null = null;
   @Input() menuPalette: AppMenuPalette = 'default';
   @Input() menuCounter: AppMenuCounter | AppMenuCounterValue | null = null;
   @Input() menuItems: readonly AppMenuItem<string, unknown>[] = [];
+  @Input() selectable = false;
+  @Input() selected = false;
+  @Input() selectDisabled = false;
+  @Input() selectIcon = 'add';
+  @Input() selectedIcon = 'check';
+  @Input() selectAriaLabel: string | null = null;
 
   @Output() menuSelect = new EventEmitter<AppMenuItemSelectEvent<string, unknown>>();
+  @Output() selectionToggle = new EventEmitter<Event>();
 
   protected rootClassList(): string[] {
     return [
       'ui-text-card',
-      `ui-text-card--tone-${this.tone || 'neutral'}`
-    ];
+      `ui-text-card--tone-${this.tone || 'neutral'}`,
+      this.selected ? 'ui-text-card--selected' : '',
+      this.hasActions() ? 'ui-text-card--with-actions' : '',
+      this.resolvedBadge() ? 'ui-text-card--with-badge' : ''
+    ].filter(Boolean);
   }
 
   protected resolvedTitle(): string {
@@ -79,8 +91,53 @@ export class TextCardComponent {
     return `${this.icon ?? ''}`.trim();
   }
 
+  protected resolvedBadge(): string {
+    return `${this.badge ?? ''}`.trim();
+  }
+
+  protected resolvedBadgeAriaLabel(): string | null {
+    const label = `${this.badgeAriaLabel ?? ''}`.trim();
+    return label || null;
+  }
+
   protected hasMenu(): boolean {
     return this.menuItems.length > 0;
+  }
+
+  protected hasActions(): boolean {
+    return this.hasSelectAction() || this.hasMenu();
+  }
+
+  protected hasSelectAction(): boolean {
+    return this.selectable === true;
+  }
+
+  protected selectActionIcon(): string {
+    return this.selected ? this.selectedIcon : this.selectIcon;
+  }
+
+  protected resolvedSelectAriaLabel(): string {
+    const label = `${this.selectAriaLabel ?? ''}`.trim();
+    if (label) {
+      return label;
+    }
+    return this.selected ? 'Remove selection' : 'Select';
+  }
+
+  protected selectActionClassList(): string[] {
+    return [
+      'ui-text-card__select-action',
+      this.selected ? 'ui-text-card__select-action--selected' : ''
+    ].filter(Boolean);
+  }
+
+  protected toggleSelection(event: Event): void {
+    event.preventDefault();
+    event.stopPropagation();
+    if (this.selectDisabled) {
+      return;
+    }
+    this.selectionToggle.emit(event);
   }
 
   protected resolvedMenuTitle(): string | null {
