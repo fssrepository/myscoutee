@@ -762,14 +762,24 @@ export class LocalEventsService extends LocalRouteDelayService implements IEvent
       options.pendingReason === 'waitlist',
       options.pendingReason === 'approval'
     );
+    const result = record
+      ? LocalEventParticipationActionMapper.toResult(record, this.resolveDemoActivityUserId(normalizedUserId), options)
+      : null;
+    if (result?.membershipStatus === 'accepted' && options.checkoutState) {
+      await this.updateCheckoutBasketStateRecord({
+        userId: normalizedUserId,
+        sourceId: normalizedSourceId,
+        checkoutState: options.checkoutState,
+        resultState: 'succeeded',
+        checkoutSessionId: options.paymentSessionId ?? null
+      });
+    }
     await this.patchLocalUserActivityCounterDeltas(normalizedUserId, options.counterDelta ?? null);
     await this.eventsRepository.flushToIndexedDb();
     if (options.skipLocalRouteDelay !== true) {
       await this.waitForRouteDelay(LocalEventsService.EVENTS_ROUTE);
     }
-    return record
-      ? LocalEventParticipationActionMapper.toResult(record, this.resolveDemoActivityUserId(normalizedUserId), options)
-      : null;
+    return result;
   }
 
   async leaveEvent(
@@ -908,7 +918,7 @@ export class LocalEventsService extends LocalRouteDelayService implements IEvent
     if (!item) {
       return false;
     }
-    if (item.resultState === 'deleted' || item.resultState === 'succeeded') {
+    if (item.resultState === 'deleted') {
       return false;
     }
     return item.status === 'draft'

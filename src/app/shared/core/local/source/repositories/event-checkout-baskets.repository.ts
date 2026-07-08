@@ -33,25 +33,18 @@ export class LocalEventCheckoutBasketsRepository {
     return this.activeBasket(table.byKey[key]);
   }
 
-  async loadActiveItemsByEvent(
-    sourceId: string,
-    excludeUserId?: string | null
-  ): Promise<LocalEventCheckoutBasketItemRecord[]> {
+  async loadActiveItemsByEvent(sourceId: string): Promise<LocalEventCheckoutBasketItemRecord[]> {
     const normalizedSourceId = `${sourceId ?? ''}`.trim();
     if (!normalizedSourceId) {
       return [];
     }
-    const normalizedExcludeUserId = `${excludeUserId ?? ''}`.trim();
     const table = await this.readTable();
     const activeItemsByKey = new Map<string, LocalEventCheckoutBasketItemRecord>();
     for (const basket of Object.values(table.byKey)) {
       if (basket?.sourceId !== normalizedSourceId) {
         continue;
       }
-      if (normalizedExcludeUserId && basket.userId === normalizedExcludeUserId) {
-        continue;
-      }
-      for (const item of this.uniqueActiveItems(basket.items ?? [])) {
+      for (const item of this.uniqueReservationItems(basket.items ?? [])) {
         activeItemsByKey.set(`${basket.userId}::${this.activeItemKey(item)}`, item);
       }
     }
@@ -77,9 +70,9 @@ export class LocalEventCheckoutBasketsRepository {
     const table = await this.readTable();
     const updatedAtIso = new Date().toISOString();
     const inactiveExistingItems = (table.byKey[key]?.items ?? [])
-      .filter(item => !this.isActiveItem(item));
+      .filter(item => !this.isDisplayItem(item));
     const deletedExistingItems = (table.byKey[key]?.items ?? [])
-      .filter(item => this.isActiveItem(item))
+      .filter(item => this.isDisplayItem(item))
       .map(item => this.normalizeBasketItem({
         ...item,
         status: 'deleted',
@@ -88,7 +81,7 @@ export class LocalEventCheckoutBasketsRepository {
       }, status, currency))
       .filter((item): item is LocalEventCheckoutBasketItemRecord => Boolean(item));
     const storedItems = [...inactiveExistingItems, ...deletedExistingItems, ...items];
-    const activeItems = this.uniqueActiveItems(storedItems);
+    const activeItems = this.uniqueDisplayItems(storedItems);
     const basket = LocalEventCheckoutBasketsMapper.cloneRecord({
       userId,
       sourceId,
@@ -139,7 +132,7 @@ export class LocalEventCheckoutBasketsRepository {
       ...current,
       status: checkoutState,
       checkoutSessionId: checkoutSessionId ?? current.checkoutSessionId ?? null,
-      items: current.items.map(item => this.isActiveItem(item)
+      items: current.items.map(item => this.isDisplayItem(item)
         ? {
             ...item,
             status: checkoutState,
@@ -209,7 +202,7 @@ export class LocalEventCheckoutBasketsRepository {
     basket: LocalEventCheckoutBasketRecord | null | undefined
   ): LocalEventCheckoutBasketRecord | null {
     const cloned = LocalEventCheckoutBasketsMapper.cloneRecord(basket);
-    const activeItems = this.uniqueActiveItems(cloned?.items ?? []);
+    const activeItems = this.uniqueDisplayItems(cloned?.items ?? []);
     if (!cloned || activeItems.length === 0) {
       return null;
     }
@@ -306,23 +299,47 @@ export class LocalEventCheckoutBasketsRepository {
     return LocalEventCheckoutBasketsMapper.normalizeResultState(value);
   }
 
-  private isInactiveResultState(
+  private isDeletedResultState(
     resultState: LocalEventCheckoutBasketResultState | string | null | undefined
   ): boolean {
-    return LocalEventCheckoutBasketsMapper.isInactiveResultState(resultState);
+    return resultState === 'deleted';
   }
 
-  private isActiveItem(item: LocalEventCheckoutBasketItemRecord): boolean {
+  private isReservationResultState(
+    resultState: LocalEventCheckoutBasketResultState | string | null | undefined
+  ): boolean {
+    return resultState !== 'deleted' && resultState !== 'succeeded';
+  }
+
+  private isDisplayItem(item: LocalEventCheckoutBasketItemRecord): boolean {
     return LocalEventCheckoutBasketsMapper.isActiveStatus(item.status)
-      && !this.isInactiveResultState(item.resultState);
+      && !this.isDeletedResultState(item.resultState);
   }
 
-  private uniqueActiveItems(
+  private isReservationItem(item: LocalEventCheckoutBasketItemRecord): boolean {
+    return LocalEventCheckoutBasketsMapper.isActiveStatus(item.status)
+      && this.isReservationResultState(item.resultState);
+  }
+
+  private uniqueDisplayItems(
     items: readonly LocalEventCheckoutBasketItemRecord[]
   ): LocalEventCheckoutBasketItemRecord[] {
     const byKey = new Map<string, LocalEventCheckoutBasketItemRecord>();
     for (const item of items) {
-      if (!this.isActiveItem(item)) {
+      if (!this.isDisplayItem(item)) {
+        continue;
+      }
+      byKey.set(this.activeItemKey(item), item);
+    }
+    return [...byKey.values()];
+  }
+
+  private uniqueReservationItems(
+    items: readonly LocalEventCheckoutBasketItemRecord[]
+  ): LocalEventCheckoutBasketItemRecord[] {
+    const byKey = new Map<string, LocalEventCheckoutBasketItemRecord>();
+    for (const item of items) {
+      if (!this.isReservationItem(item)) {
         continue;
       }
       byKey.set(this.activeItemKey(item), item);

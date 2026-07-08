@@ -99,6 +99,7 @@ export class EventCheckoutSlotPickerPopupComponent {
   private queryRevision = 0;
   private selectionRevision = 0;
   private readonly selectionsBySlotId = new Map<string, SlotSelection>();
+  private readonly removedCountedSlotIds = new Set<string>();
   private baselineSelectionSignature = '';
   private optionalSubEventOptions: EventCheckoutOptionalSubEvent[] = [];
   private checkoutBasketHydrated = false;
@@ -347,7 +348,9 @@ export class EventCheckoutSlotPickerPopupComponent {
   }
 
   protected isSlotUnavailable(slot: EventCheckoutSlot): boolean {
-    return !this.isSelected(slot) && this.slotAvailableCount(slot) <= 0;
+    return !this.isSelected(slot)
+      && !this.removedCountedSlotIds.has(slot.id)
+      && this.slotAvailableCount(slot) <= 0;
   }
 
   protected slotCardTone(slot: EventCheckoutSlot): TextCardTone {
@@ -359,11 +362,12 @@ export class EventCheckoutSlotPickerPopupComponent {
     const available = this.slotAvailableCount(slot);
     const selected = this.isSelected(slot);
     const selectedOccupancyDelta = selected && !this.selectionOccupancyCounted(slot) ? 1 : 0;
-    const availableIncludingSelection = available + (selected ? 1 : 0);
+    const removedOccupancyDelta = !selected && this.removedCountedSlotIds.has(slot.id) ? -1 : 0;
+    const availableIncludingSelection = available + (selected ? 1 : 0) + (removedOccupancyDelta < 0 ? 1 : 0);
     if (capacity <= 0 || availableIncludingSelection <= 0) {
       return 'Unavailable';
     }
-    const used = capacity - available + selectedOccupancyDelta;
+    const used = capacity - available + selectedOccupancyDelta + removedOccupancyDelta;
     return `${Math.max(0, Math.min(capacity, used))} / ${capacity}`;
   }
 
@@ -388,14 +392,19 @@ export class EventCheckoutSlotPickerPopupComponent {
     if (this.isSlotUnavailable(slot)) {
       return;
     }
-    if (this.selectionsBySlotId.has(slot.id)) {
+    const existing = this.selectionsBySlotId.get(slot.id);
+    if (existing) {
       this.selectionsBySlotId.delete(slot.id);
+      if (existing.occupancyCounted) {
+        this.removedCountedSlotIds.add(slot.id);
+      }
     } else {
+      const wasCountedBeforeRemoval = this.removedCountedSlotIds.delete(slot.id);
       this.selectionsBySlotId.set(slot.id, {
         slot,
         optionalSubEventIds: [],
         countedOptionalSubEventIds: [],
-        occupancyCounted: false
+        occupancyCounted: wasCountedBeforeRemoval
       });
     }
     this.selectionRevision += 1;
@@ -475,6 +484,7 @@ export class EventCheckoutSlotPickerPopupComponent {
     selectedDateKey: string | null
   ): void {
     this.selectionsBySlotId.clear();
+    this.removedCountedSlotIds.clear();
     this.optionalSubEventOptions = [];
     this.selectionRevision = 0;
     this.queryRevision += 1;
@@ -906,8 +916,7 @@ export class EventCheckoutSlotPickerPopupComponent {
 
   private isActiveBasketItem(item: EventCheckoutBasketItem): boolean {
     return this.isActiveCheckoutStatus(item.status)
-      && item.resultState !== 'deleted'
-      && item.resultState !== 'succeeded';
+      && item.resultState !== 'deleted';
   }
 
   private isActiveCheckoutStatus(status: EventCheckoutBasketItem['status'] | string | null | undefined): boolean {
