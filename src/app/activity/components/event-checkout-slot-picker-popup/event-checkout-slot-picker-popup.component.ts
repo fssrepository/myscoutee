@@ -115,8 +115,10 @@ export class EventCheckoutSlotPickerPopupComponent {
     listLayout: 'card-grid',
     desktopColumns: 3,
     selectMode: true,
+    headerProgress: {
+      enabled: true
+    },
     loadingDelayMs: 0,
-    loadingWindowMs: 1500,
     showBackgroundLoadingProgress: true,
     emptyLabel: () => this.basketMode
       ? 'No basket items yet.'
@@ -147,8 +149,10 @@ export class EventCheckoutSlotPickerPopupComponent {
       resolveDateRange: item => this.monthDateRange(item),
       dayCounter: day => this.monthDayCounter(day)
     },
+    headerProgress: {
+      enabled: true
+    },
     loadingDelayMs: 0,
-    loadingWindowMs: 1500,
     showBackgroundLoadingProgress: true,
     showStickyHeader: true,
     trackBy: (_index, item) => item.dateKey,
