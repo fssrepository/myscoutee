@@ -1791,6 +1791,9 @@ export class EventCheckoutPopupComponent {
   }
 
   private checkoutConfirmWarningMessage(): string {
+    if (this.checkoutUpdateStepActive()) {
+      return 'The updated basket will be saved before continuing.';
+    }
     if (this.checkoutPaymentReviewStarted() && this.hasCheckoutSelectionChanges()) {
       return 'The updated basket will be saved before returning to payment.';
     }
