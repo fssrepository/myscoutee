@@ -1505,9 +1505,16 @@ export class EventCheckoutPopupComponent {
   }
 
   private checkoutPaymentReviewStarted(): boolean {
-    if (this.paymentStep || this.checkoutActionPendingReason() || this.totalAmount() <= 0) {
+    if (this.paymentStep || this.totalAmount() <= 0) {
       return false;
     }
+    if (!this.checkoutPaymentReviewStateActive() && this.checkoutActionPendingReason()) {
+      return false;
+    }
+    return this.checkoutPaymentReviewStateActive();
+  }
+
+  private checkoutPaymentReviewStateActive(): boolean {
     const draft = this.currentCheckoutDraft();
     const checkoutStates: ActivityContracts.EventCheckoutState[] = ['confirmed', 'pay'];
     return Boolean(draft?.checkoutState && checkoutStates.includes(draft.checkoutState))
@@ -1881,7 +1888,7 @@ export class EventCheckoutPopupComponent {
 
   private checkoutActionPendingReason(): AppConstants.ActivityPendingReason {
     const dialog = this.dialog();
-    if (!dialog || dialog.approvalGranted) {
+    if (!dialog || dialog.approvalGranted || this.paymentStep || this.checkoutPaymentReviewStateActive()) {
       return null;
     }
     return this.checkoutDecisionPendingReason() ?? this.checkoutBaselinePendingReason;
@@ -1905,11 +1912,9 @@ export class EventCheckoutPopupComponent {
   }
 
   private refreshCheckoutBaseline(): void {
-    const dialog = this.dialog();
-    const draft = this.currentCheckoutDraft();
-    const hasStoredCheckout = Boolean(draft || (this.checkoutBasket?.items?.length ?? 0) > 0);
-    this.checkoutBaselinePendingReason = this.checkoutDecisionPendingReason()
-      ?? (hasStoredCheckout ? dialog?.pendingReason ?? null : null);
+    this.checkoutBaselinePendingReason = this.checkoutPaymentReviewStateActive()
+      ? null
+      : this.checkoutDecisionPendingReason();
     this.checkoutBaselineSignature = this.checkoutSelectionSignature();
   }
 

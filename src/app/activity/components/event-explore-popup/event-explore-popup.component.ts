@@ -833,7 +833,7 @@ export class EventExplorePopupComponent {
         approvalGranted: membershipStatus === 'accepted',
         pendingReason: membershipStatus === 'accepted'
           ? null
-          : record.pendingReason ?? (this.isEventExploreRecordFull(record) ? 'waitlist' : 'approval')
+          : this.eventExploreCheckoutPendingReason(record)
       });
       return;
     }
@@ -881,7 +881,7 @@ export class EventExplorePopupComponent {
       }
       this.openEventExploreCheckout(record, {
         approvalGranted: false,
-        pendingReason: record.pendingReason ?? (this.isEventExploreRecordFull(record) ? 'waitlist' : 'approval')
+        pendingReason: this.eventExploreCheckoutPendingReason(record)
       });
       return;
     }
@@ -1957,13 +1957,16 @@ export class EventExplorePopupComponent {
     const dialogOptions = {
       approvalGranted: options.approvalGranted === true
     };
+    const pendingReason = options.pendingReason !== undefined
+      ? options.pendingReason
+      : this.eventExploreCheckoutPendingReason(record);
     this.eventCheckoutDialogStore.open({
       mode: 'join',
       userId: this.activeUserId,
       record,
       requiresApprovalBeforePayment: this.requiresApprovalBeforePayment(record),
       approvalGranted: dialogOptions.approvalGranted,
-      pendingReason: options.pendingReason ?? (this.isEventExploreRecordFull(record) ? 'waitlist' : 'approval'),
+      pendingReason,
       title: this.eventExploreJoinDialogTitle(record, dialogOptions),
       subtitle: record.timeframe,
       confirmLabel: this.eventExploreJoinConfirmLabel(record, dialogOptions),
@@ -1971,6 +1974,16 @@ export class EventExplorePopupComponent {
       failureMessage: this.eventExploreJoinFailureMessage(record, dialogOptions),
       onSubmit: (selection) => this.submitEventExploreJoinRequest(record, selection)
     });
+  }
+
+  private eventExploreCheckoutPendingReason(record: ActivityEventRecord): ActivityPendingReason {
+    if (record.pendingReason === 'waitlist' || this.isEventExploreRecordFull(record)) {
+      return 'waitlist';
+    }
+    if (this.requiresApprovalBeforePayment(record)) {
+      return 'approval';
+    }
+    return null;
   }
 
   private async submitEventExploreJoinRequest(
@@ -2411,9 +2424,7 @@ export class EventExplorePopupComponent {
       location: record.location,
       locationCoordinates: record.locationCoordinates ?? null,
       sourceLink: record.sourceLink,
-      pendingReason: members.some(member => member.status === 'pending' && member.requestKind === 'waitlist')
-        ? 'waitlist'
-        : record.pendingReason,
+      pendingReason: this.eventExplorePendingReasonFromMembers(members),
       topics: [...record.topics],
       subEvents: Array.isArray(record.subEvents)
         ? record.subEvents.map(item => ({ ...item }))
@@ -2440,9 +2451,7 @@ export class EventExplorePopupComponent {
       acceptedMemberUserIds: [...summary.acceptedMemberUserIds],
       pendingMemberUserIds: [...summary.pendingMemberUserIds],
       pendingRequestMemberUserIds: this.pendingRequestMemberUserIdsFromMembers(members),
-      pendingReason: members.some(member => member.status === 'pending' && member.requestKind === 'waitlist')
-        ? 'waitlist'
-        : record.pendingReason
+      pendingReason: this.eventExplorePendingReasonFromMembers(members)
     };
   }
 
@@ -2471,12 +2480,20 @@ export class EventExplorePopupComponent {
           .filter(userId => userId.length > 0),
         pendingRequestMemberUserIds: this.pendingRequestMemberUserIdsFromMembers(members)
       } : {}),
-      pendingReason: pendingReason === 'waitlist'
-        ? 'waitlist'
-        : hasMembers && members.some(member => member.status === 'pending' && member.requestKind === 'waitlist')
-          ? 'waitlist'
-          : record.pendingReason
+      pendingReason: pendingReason ?? (hasMembers ? this.eventExplorePendingReasonFromMembers(members) : null)
     };
+  }
+
+  private eventExplorePendingReasonFromMembers(
+    members: readonly ActivityContracts.ActivityMemberDTO[]
+  ): ActivityPendingReason {
+    if (members.some(member => member.status === 'pending' && member.requestKind === 'waitlist')) {
+      return 'waitlist';
+    }
+    if (members.some(member => member.status === 'pending' && member.requestKind === 'approval')) {
+      return 'approval';
+    }
+    return null;
   }
 
   private pendingRequestMemberUserIdsFromMembers(
