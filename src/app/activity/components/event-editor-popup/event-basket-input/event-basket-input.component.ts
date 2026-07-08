@@ -60,7 +60,9 @@ export class EventBasketInputComponent {
   @Input() readOnly = false;
   @Input() showAdd = true;
   @Input() showItemMenu = true;
-  @Input() emptyLabel = 'No basket items yet. Use + to add a slot.';
+  @Input() addIcon = 'edit';
+  @Input() addAriaLabel = 'Edit checkout items';
+  @Input() emptyLabel = 'No basket items yet. Use the edit button to add a slot.';
   @Input() tone: EventEditorCheckoutSurfaceTone = 'neutral';
 
   @Output() readonly addSelect = new EventEmitter<Event>();
@@ -69,8 +71,8 @@ export class EventBasketInputComponent {
   protected addMenuItems(): readonly AppMenuItem<string, unknown>[] {
     return [{
       id: 'add',
-      icon: 'add',
-      ariaLabel: 'Add checkout item',
+      icon: this.addIcon,
+      ariaLabel: this.addAriaLabel,
       palette: 'amber',
       layout: 'action',
       disabled: this.addDisabled

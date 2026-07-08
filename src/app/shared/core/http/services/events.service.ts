@@ -34,6 +34,10 @@ import type {
   EventCheckoutState,
   EventCheckoutStateChangeRequest,
   EventCheckoutSession,
+  EventCheckoutSlot,
+  EventCheckoutSlotDay,
+  EventCheckoutSlotsQuery,
+  EventCheckoutSlotsResult,
   EventParticipationActionResultDTO,
   EventFeedbackQueryDto,
   EventFeedbackReceivedEventDto,
@@ -344,6 +348,29 @@ export class HttpEventsService implements IEventsService {
 
   peekKnownItemById(_userId: string, _itemId: string): ActivityEventDTO | null {
     return null;
+  }
+
+  async loadCheckoutSlots(query: EventCheckoutSlotsQuery): Promise<EventCheckoutSlotsResult | null> {
+    const normalizedUserId = query.userId?.trim();
+    const normalizedEventId = query.eventId?.trim();
+    if (!normalizedUserId || !normalizedEventId) {
+      return null;
+    }
+    try {
+      const response = await this.http
+        .post<EventCheckoutSlotsResult | null>(
+          `${this.apiBaseUrl}/activities/events/checkout/slots`,
+          {
+            ...query,
+            userId: normalizedUserId,
+            eventId: normalizedEventId
+          }
+        )
+        .toPromise();
+      return this.cloneCheckoutSlotsResult(response);
+    } catch {
+      return null;
+    }
   }
 
   async loadCheckoutBasketByEvent(userId: string, sourceId: string): Promise<EventCheckoutBasket | null> {
@@ -1165,6 +1192,51 @@ export class HttpEventsService implements IEventsService {
       capacityTotal,
       full: result.full === true || (capacityTotal > 0 && acceptedMembers >= capacityTotal),
       paymentSessionId: `${result.paymentSessionId ?? ''}`.trim() || null
+    };
+  }
+
+  private cloneCheckoutSlotsResult(value: EventCheckoutSlotsResult | null | undefined): EventCheckoutSlotsResult | null {
+    if (!value) {
+      return null;
+    }
+    return {
+      eventId: `${value.eventId ?? ''}`.trim(),
+      mode: value.mode ?? null,
+      days: (value.days ?? []).map(day => this.cloneCheckoutSlotDay(day)),
+      slots: (value.slots ?? []).map(slot => this.cloneCheckoutSlot(slot)),
+      total: Math.max(0, Math.trunc(Number(value.total) || 0)),
+      nextCursor: `${value.nextCursor ?? ''}`.trim() || null,
+      currency: `${value.currency ?? 'USD'}`.trim() || 'USD'
+    };
+  }
+
+  private cloneCheckoutSlotDay(value: EventCheckoutSlotDay): EventCheckoutSlotDay {
+    return {
+      dateKey: `${value.dateKey ?? ''}`.trim(),
+      slotCount: Math.max(0, Math.trunc(Number(value.slotCount) || 0)),
+      availableSlots: Math.max(0, Math.trunc(Number(value.availableSlots) || 0)),
+      lowestAmount: Math.max(0, Number(value.lowestAmount) || 0),
+      currency: `${value.currency ?? 'USD'}`.trim() || 'USD'
+    };
+  }
+
+  private cloneCheckoutSlot(value: EventCheckoutSlot): EventCheckoutSlot {
+    return {
+      id: `${value.id ?? ''}`.trim(),
+      parentEventId: `${value.parentEventId ?? ''}`.trim(),
+      slotSourceId: `${value.slotSourceId ?? value.id ?? ''}`.trim() || null,
+      slotTemplateId: `${value.slotTemplateId ?? ''}`.trim() || null,
+      title: `${value.title ?? ''}`.trim() || null,
+      timeframe: `${value.timeframe ?? ''}`.trim() || null,
+      startAtIso: `${value.startAtIso ?? ''}`.trim(),
+      endAtIso: `${value.endAtIso ?? ''}`.trim(),
+      capacityTotal: Math.max(0, Math.trunc(Number(value.capacityTotal) || 0)),
+      acceptedMembers: Math.max(0, Math.trunc(Number(value.acceptedMembers) || 0)),
+      pendingMembers: Math.max(0, Math.trunc(Number(value.pendingMembers) || 0)),
+      availableSlots: Math.max(0, Math.trunc(Number(value.availableSlots) || 0)),
+      amount: Math.max(0, Number(value.amount) || 0),
+      currency: `${value.currency ?? 'USD'}`.trim() || 'USD',
+      pricingSummaryRows: (value.pricingSummaryRows ?? []).map(row => ({ ...row }))
     };
   }
 

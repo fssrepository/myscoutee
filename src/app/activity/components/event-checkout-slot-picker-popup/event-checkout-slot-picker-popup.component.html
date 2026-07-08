@@ -1,0 +1,91 @@
+@if (popupState()) {
+  <app-popup [model]="popupModel()" [zIndex]="4920">
+    <div class="event-checkout-slot-picker" [class.is-saving]="saving">
+      <div class="event-checkout-slot-picker__toolbar">
+        <app-date-input
+          class="event-checkout-slot-picker__date"
+          [model]="dateInputModel"
+          [ngModel]="selectedDateValue()"
+          (ngModelChange)="onDateChange($event)"
+        ></app-date-input>
+        <button
+          type="button"
+          class="event-checkout-slot-picker__calendar-button"
+          [class.is-active]="monthOverlayOpen"
+          [attr.aria-pressed]="monthOverlayOpen"
+          aria-label="Open slot calendar"
+          (click)="toggleMonthOverlay($event)"
+        >
+          <mat-icon>calendar_month</mat-icon>
+        </button>
+      </div>
+
+      @if (monthOverlayOpen) {
+        <section class="event-checkout-slot-picker__month-overlay" aria-label="Available slot calendar">
+          <div class="event-checkout-slot-picker__month-head">
+            <button type="button" class="event-checkout-slot-picker__month-nav" aria-label="Previous month" (click)="moveMonth(-1, $event)">
+              <mat-icon>chevron_left</mat-icon>
+            </button>
+            <strong>{{ monthTitle() }}</strong>
+            <button type="button" class="event-checkout-slot-picker__month-nav" aria-label="Next month" (click)="moveMonth(1, $event)">
+              <mat-icon>chevron_right</mat-icon>
+            </button>
+          </div>
+          <app-smart-list
+            class="event-checkout-slot-picker__month-list"
+            [config]="monthListConfig"
+            [loadPage]="monthLoadPage"
+            [query]="monthListQuery"
+            [view]="'month'"
+            (itemSelect)="onMonthDaySelect($event)"
+          ></app-smart-list>
+        </section>
+      }
+
+      @if (errorMessage) {
+        <p class="event-checkout-slot-picker__error">{{ errorMessage }}</p>
+      }
+
+      <app-smart-list
+        class="event-checkout-slot-picker__slots"
+        [config]="slotListConfig"
+        [loadPage]="slotLoadPage"
+        [itemTemplate]="slotItemTemplate"
+        [query]="slotListQuery"
+      ></app-smart-list>
+
+      <ng-template #slotItemTemplate let-slot>
+        <article class="event-checkout-slot-picker__slot-card" [class.is-selected]="isSelected(slot)">
+          <button
+            type="button"
+            class="event-checkout-slot-picker__choose"
+            [attr.aria-label]="isSelected(slot) ? 'Remove slot from basket' : 'Choose slot'"
+            (click)="toggleSlot(slot, $event)"
+          >
+            <mat-icon>{{ isSelected(slot) ? 'check_circle' : 'radio_button_unchecked' }}</mat-icon>
+          </button>
+          <app-text-card
+            class="event-checkout-slot-picker__text-card"
+            [tone]="isSelected(slot) ? 'teal' : 'cyan'"
+            icon="event_seat"
+            [title]="slot.title"
+            [subtitle]="slot.timeframe"
+            [meta]="slotAvailabilityLabel(slot)"
+            [detail]="selectedOptionalLabel(slot)"
+            [menuTitle]="slot.title"
+            [menuPalette]="isSelected(slot) ? 'teal' : 'cyan'"
+            [menuItems]="slotMenuItems(slot)"
+            (menuSelect)="onSlotMenuSelect(slot, $event)"
+          ></app-text-card>
+          <span class="event-checkout-slot-picker__price">{{ slotPriceLabel(slot) }}</span>
+        </article>
+      </ng-template>
+
+      @if (saving) {
+        <div class="event-checkout-slot-picker__saving" aria-busy="true">
+          <app-indicator kind="load-ring" state="loading"></app-indicator>
+        </div>
+      }
+    </div>
+  </app-popup>
+}

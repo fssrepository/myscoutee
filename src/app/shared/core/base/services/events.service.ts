@@ -30,6 +30,8 @@ import type {
   EventCheckoutState,
   EventCheckoutStateChangeRequest,
   EventCheckoutSession,
+  EventCheckoutSlotsQuery,
+  EventCheckoutSlotsResult,
   EventFeedbackQueryDto,
   EventFeedbackDetailDto,
   EventParticipationActionResultDTO,
@@ -230,6 +232,19 @@ export class EventsService extends BaseRouteModeService implements IEventsServic
       return null;
     }
     return this.eventsService.loadSubEventsById(normalizedUserId, normalizedEventId, query);
+  }
+
+  async loadCheckoutSlots(query: EventCheckoutSlotsQuery): Promise<EventCheckoutSlotsResult | null> {
+    const normalizedUserId = query.userId?.trim();
+    const normalizedEventId = query.eventId?.trim();
+    if (!normalizedUserId || !normalizedEventId) {
+      return null;
+    }
+    return this.eventsService.loadCheckoutSlots({
+      ...query,
+      userId: normalizedUserId,
+      eventId: normalizedEventId
+    });
   }
 
   async loadCheckoutBasketByEvent(userId: string, sourceId: string): Promise<EventCheckoutBasket | null> {

@@ -91,6 +91,7 @@ export interface IEventsService {
     eventId: string,
     query?: ActivityEventSubEventsQueryDTO
   ): Promise<ActivityEventSubEventsResultDTO | null>;
+  loadCheckoutSlots(query: EventCheckoutSlotsQuery): Promise<EventCheckoutSlotsResult | null>;
   loadCheckoutBasketByEvent(userId: string, sourceId: string): Promise<EventCheckoutBasket | null>;
   saveCheckoutBasket(request: EventCheckoutRequest): Promise<EventCheckoutBasket | null>;
   updateCheckoutBasketState(request: EventCheckoutStateChangeRequest): Promise<EventCheckoutBasket | null>;
@@ -1288,6 +1289,53 @@ export interface EventCheckoutPricingSummaryRow {
   amount?: number | null;
   currency?: string | null;
   multiplier?: number | null;
+}
+
+export interface EventCheckoutSlotsQuery {
+  userId: string;
+  eventId: string;
+  order?: 'upcoming' | 'past' | string | null;
+  anchorDate?: string | null;
+  rangeStart?: string | null;
+  rangeEnd?: string | null;
+  limit?: number | null;
+  cursor?: string | null;
+}
+
+export interface EventCheckoutSlotDay {
+  dateKey: string;
+  slotCount: number;
+  availableSlots: number;
+  lowestAmount: number;
+  currency: string;
+}
+
+export interface EventCheckoutSlot {
+  id: string;
+  parentEventId: string;
+  slotSourceId?: string | null;
+  slotTemplateId?: string | null;
+  title?: string | null;
+  timeframe?: string | null;
+  startAtIso: string;
+  endAtIso: string;
+  capacityTotal: number;
+  acceptedMembers: number;
+  pendingMembers: number;
+  availableSlots: number;
+  amount: number;
+  currency: string;
+  pricingSummaryRows: EventCheckoutPricingSummaryRow[];
+}
+
+export interface EventCheckoutSlotsResult {
+  eventId: string;
+  mode?: EventContracts.EventMode | string | null;
+  days: EventCheckoutSlotDay[];
+  slots: EventCheckoutSlot[];
+  total: number;
+  nextCursor?: string | null;
+  currency: string;
 }
 
 export interface EventCheckoutBasketItem {

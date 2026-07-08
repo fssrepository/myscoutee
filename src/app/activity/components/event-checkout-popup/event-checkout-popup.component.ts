@@ -19,6 +19,7 @@ import { EventsService } from '../../../shared/core/base/services/events.service
 import type { ActivityEventRecord } from '../../../shared/core/contracts/activity.interface';
 import { EventCheckoutDraftStore, type EventCheckoutDraft } from '../../../shared/ui/context/stores/event-checkout-draft.store';
 import { EventCheckoutDialogStore, type EventCheckoutDialogState } from '../../../shared/ui/context/stores/event-checkout-dialog.store';
+import { EventCheckoutSlotPickerStore } from '../../../shared/ui/context/stores/event-checkout-slot-picker.store';
 import { ActivitiesPopupStore } from '../../../shared/ui/context/stores/activities-popup.store';
 import { DialogStore } from '../../../shared/ui/context/stores/dialog.store';
 import {
@@ -70,6 +71,7 @@ export class EventCheckoutPopupComponent {
   private static readonly CHECKOUT_BASKET_TTL_MS = 20 * 60 * 1000;
   protected readonly environment = environment;
   protected readonly dialogStore = inject(EventCheckoutDialogStore);
+  protected readonly eventCheckoutSlotPickerStore = inject(EventCheckoutSlotPickerStore);
   private readonly eventEditorStore = inject(EventEditorPopupStore);
   private readonly eventsService = inject(EventsService);
   private readonly checkoutDraftStore = inject(EventCheckoutDraftStore);
@@ -666,40 +668,51 @@ export class EventCheckoutPopupComponent {
     if (this.checkoutBasketAddDisabled()) {
       return;
     }
-    const nextSlot = this.nextAvailableCheckoutBasketSlot();
-    if (!nextSlot) {
+    const dialog = this.dialog();
+    if (!dialog) {
       return;
     }
-    this.selectedSlotSourceId = nextSlot.id;
-    this.selectedSlotDateValue = this.slotDateValueFromIso(nextSlot.startAtIso);
-    const current = this.activeCheckoutBasketItems();
-    const nextItems = [
-      ...current,
-      ...this.buildBasketItemsFromCurrentSelection().filter(item => !current.some(existing => existing.id === item.id))
-    ];
-    this.resetCheckoutSubmissionForEdit();
-    this.checkoutBasket = this.buildRuntimeBasketFromItems(nextItems);
-    this.busy = true;
-    this.checkoutBusyActionId = null;
-    this.errorMessage = '';
-    try {
-      await this.persistCheckoutDraft(true, null, 'draft');
-    } catch (error) {
-      this.errorMessage = this.resolveErrorMessage(error, 'Unable to update checkout basket.');
-    } finally {
-      this.busy = false;
-      this.checkoutBusyActionId = null;
-    }
+    await this.eventCheckoutSlotPickerStore.ensureSlotPickerPopupLoaded();
+    this.eventCheckoutSlotPickerStore.open({
+      userId: dialog.userId,
+      record: dialog.record,
+      checkoutBasket: this.checkoutBasketSnapshot(),
+      checkoutSessionId: this.checkoutSessionId,
+      selectedDateKey: this.selectedSlotDateValue
+        ? this.slotDateKeyFromDate(this.selectedSlotDateValue)
+        : this.checkoutBasket?.selectedDateKey ?? null,
+      onSave: (basket, items) => this.applyCheckoutSlotPickerSave(basket, items)
+    });
   }
 
-  private nextAvailableCheckoutBasketSlot(): ContractTypes.EventSlotOccurrenceDTO | null {
-    const selectedSlotIds = new Set(
-      this.activeCheckoutBasketItems()
-        .map(item => item.slotSourceId?.trim() ?? '')
-        .filter(Boolean)
+  private applyCheckoutSlotPickerSave(
+    basket: ActivityContracts.EventCheckoutBasket | null,
+    items: readonly ActivityContracts.EventCheckoutBasketItem[]
+  ): void {
+    this.paymentStep = false;
+    this.checkoutSessionId = null;
+    this.checkoutBasket = basket ?? this.buildRuntimeBasketFromItems(items);
+    const activeItems = this.activeCheckoutBasketItems();
+    this.selectedSlotSourceId = this.checkoutBasket?.slotSourceId
+      ?? activeItems.find(item => item.slotSourceId?.trim())?.slotSourceId?.trim()
+      ?? null;
+    const selectedDateKey = this.checkoutBasket?.selectedDateKey
+      ?? activeItems.find(item => item.selectedDateKey?.trim())?.selectedDateKey?.trim()
+      ?? null;
+    this.selectedSlotDateValue = selectedDateKey
+      ? this.slotDateValueFromKey(selectedDateKey) ?? this.selectedSlotDateValue
+      : null;
+    const validOptionalIds = new Set(this.optionalSubEvents().map(item => item.id));
+    this.selectedOptionalSubEventIds = new Set(
+      activeItems
+        .map(item => item.subEventId?.trim() ?? '')
+        .filter(id => Boolean(id) && validOptionalIds.has(id))
     );
-    return [...this.filteredSlots(), ...this.availableSlots()]
-      .find(slot => !selectedSlotIds.has(slot.id)) ?? null;
+    this.errorMessage = '';
+    const dialog = this.dialog();
+    if (dialog) {
+      this.openCheckoutReviewEditorShell(dialog);
+    }
   }
 
   private onCheckoutBasketItemMenuSelect(

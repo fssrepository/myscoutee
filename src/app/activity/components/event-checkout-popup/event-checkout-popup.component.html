@@ -10,3 +10,7 @@
     </app-popup>
   }
 }
+
+@if (eventCheckoutSlotPickerStore.slotPickerPopupComponent(); as slotPickerComponent) {
+  <ng-container *ngComponentOutlet="slotPickerComponent"></ng-container>
+}

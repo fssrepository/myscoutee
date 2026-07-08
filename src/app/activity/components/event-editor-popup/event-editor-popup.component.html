@@ -138,6 +138,7 @@
                 [totalAmount]="checkoutBasketTotalAmount()"
                 [currency]="checkoutBasketCurrency()"
                 [addDisabled]="checkoutBasketAddDisabled()"
+                [showItemMenu]="false"
                 (addSelect)="onCheckoutBasketAdd($event)"
                 (itemMenuSelect)="onCheckoutBasketItemMenuSelect($event)"
               ></app-event-basket-input>

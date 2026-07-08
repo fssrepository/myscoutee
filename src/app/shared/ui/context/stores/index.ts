@@ -56,6 +56,11 @@ export {
 export { DialogStore } from './dialog.store';
 export { EventCheckoutDialogStore } from './event-checkout-dialog.store';
 export { EventCheckoutDraftStore } from './event-checkout-draft.store';
+export {
+  EventCheckoutSlotPickerStore,
+  type EventCheckoutSlotPickerRequest,
+  type EventCheckoutSlotPickerState
+} from './event-checkout-slot-picker.store';
 export type { DialogConfig, DialogState, DialogTone } from './dialog.store';
 export type { EventCheckoutDialogConfig, EventCheckoutDialogState } from './event-checkout-dialog.store';
 export type { EventCheckoutDraft } from './event-checkout-draft.store';

@@ -7,6 +7,7 @@ import type {
   EventTournamentGroupsStateDTO,
   EventTournamentGroupDTO,
   EventTournamentGroupUpsertRequestDTO,
+  EventSlotOccurrenceDTO,
   EventTournamentStageGroupsQueryDTO,
   SubEventLeaderboardEntryUpsertRequestDTO,
   SubEventLeaderboardState
@@ -22,6 +23,10 @@ import type {
   EventCheckoutState,
   EventCheckoutStateChangeRequest,
   EventCheckoutSession,
+  EventCheckoutSlot,
+  EventCheckoutSlotDay,
+  EventCheckoutSlotsQuery,
+  EventCheckoutSlotsResult,
   EventParticipationActionResultDTO,
   EventFeedbackQueryDto,
   EventFeedbackReceivedEventDto,
@@ -33,6 +38,7 @@ import type {
 } from '../../../contracts/activity.interface';
 import type { ActivitiesFeedFilters, ListQuery } from '../../../contracts';
 import type { UserMenuCounterDeltasDto } from '../../../contracts/user.interface';
+import { PricingBuilder } from '../../../base/builders';
 import { ActivityEventDetailDTO, EventFeedbackDetailDto, EventFeedbackPageResultDto } from '../../../contracts/activity.interface';
 import { LocalRouteDelayService } from './route-delay.service';
 import { LocalEventFeedbackRepository } from '../repositories/event-feedback.repository';
@@ -186,6 +192,40 @@ export class LocalEventsService extends LocalRouteDelayService implements IEvent
         stageRuntimeByKey,
         normalizedUserId
       )
+    };
+  }
+
+  async loadCheckoutSlots(query: EventCheckoutSlotsQuery): Promise<EventCheckoutSlotsResult | null> {
+    const normalizedUserId = query.userId?.trim();
+    const normalizedEventId = query.eventId?.trim();
+    if (!normalizedUserId || !normalizedEventId) {
+      return null;
+    }
+    await this.waitForRouteDelay(LocalEventsService.EVENTS_CHECKOUT_ROUTE);
+    const selectedRecord = this.eventsRepository.queryEventRecordById(normalizedUserId, normalizedEventId);
+    const parentEventId = selectedRecord?.parentEventId?.trim() || selectedRecord?.id || normalizedEventId;
+    const record = this.eventsRepository.queryEventRecordById(normalizedUserId, parentEventId) ?? selectedRecord;
+    if (!record) {
+      return null;
+    }
+    const direction = query.order === 'past' ? -1 : 1;
+    const allSlots = (record.upcomingSlots ?? [])
+      .filter(slot => this.checkoutSlotMatchesOrder(slot, query))
+      .filter(slot => this.checkoutSlotOverlapsRange(slot, query))
+      .sort((left, right) => direction * (this.sortableDateMs(left.startAtIso) - this.sortableDateMs(right.startAtIso)))
+      .map(slot => this.toCheckoutSlot(record, slot));
+    const days = this.checkoutSlotDays(allSlots);
+    const offset = this.checkoutCursorOffset(query.cursor);
+    const limit = Math.max(1, Math.min(60, Math.trunc(Number(query.limit) || 15)));
+    const page = allSlots.slice(offset, offset + limit);
+    return {
+      eventId: record.id,
+      mode: record.mode,
+      days,
+      slots: page,
+      total: allSlots.length,
+      nextCursor: offset + limit < allSlots.length ? `${offset + limit}` : null,
+      currency: allSlots.find(slot => slot.currency)?.currency ?? record.pricing?.currency ?? 'USD'
     };
   }
 
@@ -737,6 +777,284 @@ export class LocalEventsService extends LocalRouteDelayService implements IEvent
       full: capacityTotal > 0 && acceptedMembers >= capacityTotal,
       paymentSessionId: null
     };
+  }
+
+  private toCheckoutSlot(record: ActivityEventRecord, slot: EventSlotOccurrenceDTO): EventCheckoutSlot {
+    const pricing = this.resolveCheckoutSlotPricing(record, slot);
+    const capacityTotal = Math.max(0, Math.trunc(Number(slot.capacityTotal) || 0));
+    const acceptedMembers = Math.max(0, Math.trunc(Number(slot.acceptedMembers) || 0));
+    return {
+      id: slot.id,
+      parentEventId: slot.parentEventId || record.id,
+      slotSourceId: slot.id,
+      slotTemplateId: slot.slotTemplateId ?? null,
+      title: slot.title || record.title,
+      timeframe: slot.timeframe || this.formatCheckoutSlotTimeframe(slot),
+      startAtIso: slot.startAtIso,
+      endAtIso: slot.endAtIso,
+      capacityTotal,
+      acceptedMembers,
+      pendingMembers: Math.max(0, Math.trunc(Number(slot.pendingMembers) || 0)),
+      availableSlots: Math.max(0, capacityTotal - acceptedMembers),
+      amount: pricing.amount,
+      currency: pricing.currency,
+      pricingSummaryRows: pricing.rows
+    };
+  }
+
+  private checkoutSlotDays(slots: readonly EventCheckoutSlot[]): EventCheckoutSlotDay[] {
+    const grouped = new Map<string, EventCheckoutSlotDay>();
+    for (const slot of slots) {
+      const dateKey = this.checkoutDateKey(slot.startAtIso);
+      if (!dateKey) {
+        continue;
+      }
+      const existing = grouped.get(dateKey);
+      if (!existing) {
+        grouped.set(dateKey, {
+          dateKey,
+          slotCount: 1,
+          availableSlots: Math.max(0, Math.trunc(Number(slot.availableSlots) || 0)),
+          lowestAmount: Math.max(0, Number(slot.amount) || 0),
+          currency: slot.currency || 'USD'
+        });
+        continue;
+      }
+      grouped.set(dateKey, {
+        ...existing,
+        slotCount: existing.slotCount + 1,
+        availableSlots: existing.availableSlots + Math.max(0, Math.trunc(Number(slot.availableSlots) || 0)),
+        lowestAmount: Math.min(existing.lowestAmount, Math.max(0, Number(slot.amount) || 0)),
+        currency: slot.currency || existing.currency
+      });
+    }
+    return [...grouped.values()];
+  }
+
+  private resolveCheckoutSlotPricing(
+    record: ActivityEventRecord,
+    slot: EventSlotOccurrenceDTO
+  ): { amount: number; currency: string; rows: EventCheckoutPricingSummaryRow[] } {
+    const normalized = PricingBuilder.compactPricingConfig(record.pricing, {
+      context: 'event',
+      slotCatalog: PricingBuilder.slotCatalogFromEventSlotTemplates(record.slotTemplates ?? []),
+      allowSlotFeatures: (record.slotTemplates?.length ?? 0) > 0
+    });
+    const currency = normalized.currency || 'USD';
+    if (!normalized.enabled) {
+      return {
+        amount: 0,
+        currency,
+        rows: []
+      };
+    }
+    const slotTemplateId = slot.slotTemplateId ?? null;
+    const previewBase = normalized.slotPricingEnabled && slotTemplateId
+      ? normalized.slotOverrides.find(item => item.slotId === slotTemplateId)?.price ?? normalized.basePrice
+      : normalized.basePrice;
+    const rows: EventCheckoutPricingSummaryRow[] = [{
+      key: normalized.slotPricingEnabled && slotTemplateId ? `base:${slotTemplateId}` : 'base',
+      label: normalized.slotPricingEnabled && slotTemplateId ? 'Slot base price' : 'Base price',
+      detail: null,
+      amount: previewBase,
+      currency,
+      multiplier: 1
+    }];
+    const capacityTotal = Math.max(0, Math.trunc(Number(slot.capacityTotal) || 0));
+    const capacityFilledPercent = capacityTotal > 0
+      ? Math.round((Math.max(0, Math.trunc(Number(slot.acceptedMembers) || 0)) / capacityTotal) * 100)
+      : 0;
+    const hoursUntilStart = this.resolveHoursUntilStart(slot.startAtIso);
+    let nextPrice = previewBase;
+    if ((normalized.mode === 'demand-based' || normalized.mode === 'hybrid') && normalized.demandRulesEnabled) {
+      for (const rule of normalized.demandRules) {
+        if (!this.matchesPricingDemandRule(rule, capacityFilledPercent, slotTemplateId)) {
+          continue;
+        }
+        const previousPrice = nextPrice;
+        nextPrice = this.applyPricingAction(nextPrice, rule.action);
+        rows.push({
+          key: `demand:${rule.id}`,
+          label: 'Demand pricing',
+          detail: this.describePricingAction(rule.action),
+          amount: this.roundMoney(nextPrice - previousPrice),
+          currency,
+          multiplier: 1
+        });
+      }
+    }
+    if ((normalized.mode === 'time-based' || normalized.mode === 'hybrid') && normalized.timeRulesEnabled) {
+      for (const rule of normalized.timeRules) {
+        if (!this.matchesPricingTimeRule(rule, hoursUntilStart, slotTemplateId, slot.startAtIso)) {
+          continue;
+        }
+        const previousPrice = nextPrice;
+        nextPrice = this.applyPricingAction(nextPrice, rule.action);
+        rows.push({
+          key: `time:${rule.id}`,
+          label: 'Time pricing',
+          detail: this.describePricingAction(rule.action),
+          amount: this.roundMoney(nextPrice - previousPrice),
+          currency,
+          multiplier: 1
+        });
+      }
+    }
+    if (normalized.minPrice !== null) {
+      nextPrice = Math.max(normalized.minPrice, nextPrice);
+    }
+    if (normalized.maxPrice !== null) {
+      nextPrice = Math.min(normalized.maxPrice, nextPrice);
+    }
+    return {
+      amount: this.roundMoney(this.applyPricingRounding(nextPrice, normalized.rounding)),
+      currency,
+      rows
+    };
+  }
+
+  private matchesPricingDemandRule(
+    rule: { operator: string; capacityFilledPercent: number; appliesTo: string; slotIds: string[] },
+    capacityFilledPercent: number,
+    slotTemplateId: string | null
+  ): boolean {
+    if (rule.appliesTo === 'selected_slots' && (!slotTemplateId || !(rule.slotIds ?? []).includes(slotTemplateId))) {
+      return false;
+    }
+    return rule.operator === 'lte'
+      ? capacityFilledPercent <= rule.capacityFilledPercent
+      : capacityFilledPercent >= rule.capacityFilledPercent;
+  }
+
+  private matchesPricingTimeRule(
+    rule: { trigger: string; offsetValue: number | null; specificDateStart?: string | null; specificDateEnd?: string | null; appliesTo: string; slotIds: string[] },
+    hoursUntilStart: number,
+    slotTemplateId: string | null,
+    comparisonIso: string
+  ): boolean {
+    if (rule.appliesTo === 'selected_slots' && (!slotTemplateId || !(rule.slotIds ?? []).includes(slotTemplateId))) {
+      return false;
+    }
+    if (rule.trigger === 'specific_date') {
+      const start = (rule.specificDateStart ?? '').trim();
+      const end = (rule.specificDateEnd ?? '').trim();
+      const comparisonDate = comparisonIso.slice(0, 10);
+      return Boolean(start && end && comparisonDate && comparisonDate >= start && comparisonDate <= end);
+    }
+    if (rule.trigger === 'hours_before_start') {
+      return hoursUntilStart <= Math.max(0, Number(rule.offsetValue) || 0);
+    }
+    return hoursUntilStart <= Math.max(0, Number(rule.offsetValue) || 0) * 24;
+  }
+
+  private applyPricingAction(currentPrice: number, action: { kind: string; value: number }): number {
+    const value = Number(action.value) || 0;
+    if (action.kind === 'set_exact_price') {
+      return Math.max(0, value);
+    }
+    if (action.kind === 'increase_amount') {
+      return Math.max(0, currentPrice + value);
+    }
+    if (action.kind === 'decrease_amount') {
+      return Math.max(0, currentPrice - value);
+    }
+    if (action.kind === 'decrease_percent') {
+      return Math.max(0, currentPrice * (1 - (value / 100)));
+    }
+    return Math.max(0, currentPrice * (1 + (value / 100)));
+  }
+
+  private describePricingAction(action: { kind: string; value: number }): string {
+    const value = Number(action.value) || 0;
+    if (action.kind === 'set_exact_price') {
+      return `Set to ${value}`;
+    }
+    if (action.kind === 'increase_amount') {
+      return `+${value}`;
+    }
+    if (action.kind === 'decrease_amount') {
+      return `-${value}`;
+    }
+    if (action.kind === 'decrease_percent') {
+      return `-${value}%`;
+    }
+    return `+${value}%`;
+  }
+
+  private applyPricingRounding(price: number, rounding: string): number {
+    if (rounding === 'whole') {
+      return Math.round(price);
+    }
+    if (rounding === 'half') {
+      return Math.round(price * 2) / 2;
+    }
+    return this.roundMoney(price);
+  }
+
+  private checkoutSlotMatchesOrder(slot: EventSlotOccurrenceDTO, query: EventCheckoutSlotsQuery): boolean {
+    const endMs = this.sortableDateMs(slot.endAtIso || slot.startAtIso);
+    if (!endMs) {
+      return false;
+    }
+    const past = endMs <= Date.now();
+    return query.order === 'past' ? past : !past;
+  }
+
+  private checkoutSlotOverlapsRange(slot: EventSlotOccurrenceDTO, query: EventCheckoutSlotsQuery): boolean {
+    const start = this.dateOnlyMs((query.rangeStart || query.anchorDate || '').slice(0, 10));
+    const end = this.dateOnlyMs((query.rangeEnd || '').slice(0, 10));
+    if (!start && !end) {
+      return true;
+    }
+    const slotStart = this.sortableDateMs(slot.startAtIso);
+    const slotEnd = this.sortableDateMs(slot.endAtIso || slot.startAtIso) || slotStart;
+    if (start && slotEnd < start) {
+      return false;
+    }
+    if (end && slotStart > end + 86_399_999) {
+      return false;
+    }
+    return true;
+  }
+
+  private checkoutCursorOffset(cursor: string | null | undefined): number {
+    return Math.max(0, Math.trunc(Number(cursor) || 0));
+  }
+
+  private checkoutDateKey(value: string | null | undefined): string {
+    const ms = this.sortableDateMs(value);
+    return ms ? new Date(ms).toISOString().slice(0, 10) : '';
+  }
+
+  private dateOnlyMs(value: string): number {
+    if (!value) {
+      return 0;
+    }
+    const ms = Date.parse(`${value}T00:00:00.000Z`);
+    return Number.isFinite(ms) ? ms : 0;
+  }
+
+  private sortableDateMs(value: string | null | undefined): number {
+    const ms = Date.parse(`${value ?? ''}`.trim());
+    return Number.isFinite(ms) ? ms : 0;
+  }
+
+  private resolveHoursUntilStart(startAtIso: string): number {
+    const startMs = this.sortableDateMs(startAtIso);
+    return startMs ? Math.max(0, Math.round((startMs - Date.now()) / (60 * 60 * 1000))) : 0;
+  }
+
+  private formatCheckoutSlotTimeframe(slot: EventSlotOccurrenceDTO): string {
+    const start = this.sortableDateMs(slot.startAtIso);
+    const end = this.sortableDateMs(slot.endAtIso);
+    if (!start || !end) {
+      return slot.timeframe || '';
+    }
+    return `${new Date(start).toLocaleDateString('en-US')} · ${new Date(start).toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' })} - ${new Date(end).toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' })}`;
+  }
+
+  private roundMoney(value: number): number {
+    return Math.round((Number(value) || 0) * 100) / 100;
   }
 
   private async patchLocalUserActivityCounterDeltas(
