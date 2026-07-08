@@ -5,6 +5,12 @@
     </span>
   }
 
+  @if (resolvedStatusBadge()) {
+    <span class="ui-text-card__status-badge" [attr.aria-label]="resolvedStatusBadgeAriaLabel()">
+      {{ resolvedStatusBadge() }}
+    </span>
+  }
+
   <div class="ui-text-card__main">
     @if (resolvedIcon()) {
       <span class="ui-text-card__icon" aria-hidden="true">

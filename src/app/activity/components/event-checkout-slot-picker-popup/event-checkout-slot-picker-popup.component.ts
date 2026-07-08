@@ -37,7 +37,9 @@ import {
   type SmartListCalendarDateRange,
   type SmartListCalendarDay,
   type SmartListConfig,
-  type SmartListItemSelectEvent
+  type SmartListItemSelectEvent,
+  type TextCardStatusTone,
+  type TextCardTone
 } from '../../../shared/ui';
 import type { ActivityEventRecord } from '../../../shared/core/contracts/activity.interface';
 
@@ -304,6 +306,28 @@ export class EventCheckoutSlotPickerPopupComponent {
     return this.selectionsBySlotId.has(slot.id);
   }
 
+  protected isSlotUnavailable(slot: EventCheckoutSlot): boolean {
+    return !this.isSelected(slot) && this.slotAvailableCount(slot) <= 0;
+  }
+
+  protected slotCardTone(slot: EventCheckoutSlot): TextCardTone {
+    return this.isSlotUnavailable(slot) ? 'muted' : 'slot';
+  }
+
+  protected slotCapacityBadge(slot: EventCheckoutSlot): string {
+    const capacity = this.slotCapacityTotal(slot);
+    const available = this.slotAvailableCount(slot);
+    if (capacity <= 0 || available <= 0) {
+      return 'Not available';
+    }
+    const used = capacity - available + (this.isSelected(slot) ? 1 : 0);
+    return `${Math.max(0, Math.min(capacity, used))} / ${capacity}`;
+  }
+
+  protected slotCapacityBadgeTone(slot: EventCheckoutSlot): TextCardStatusTone {
+    return this.isSlotUnavailable(slot) ? 'danger' : 'muted';
+  }
+
   protected selectedOptionalLabel(slot: EventCheckoutSlot): string {
     const selectedIds = this.selectionsBySlotId.get(slot.id)?.optionalSubEventIds ?? [];
     if (selectedIds.length === 0) {
@@ -340,8 +364,11 @@ export class EventCheckoutSlotPickerPopupComponent {
       kind: 'checkbox' as const,
       checked: () => this.selectionsBySlotId.get(slot.id)?.optionalSubEventIds.includes(subEvent.id) === true,
       showCheck: false,
-      palette: 'mint' as const,
+      disabled: () => this.isOptionalSubEventDisabled(slot, subEvent),
+      palette: this.optionalSubEventAvailableCount(subEvent) > 0 ? 'mint' as const : 'muted' as const,
       surface: 'tinted' as const,
+      counter: this.optionalSubEventCapacityBadge(subEvent),
+      detail: this.optionalSubEventAvailableCount(subEvent) > 0 ? null : 'Not available',
       closeOnSelect: false,
       context: { menu: 'slot' as const, slot }
     }));
@@ -381,7 +408,7 @@ export class EventCheckoutSlotPickerPopupComponent {
   }
 
   protected slotAvailabilityLabel(slot: EventCheckoutSlot): string {
-    return `${slot.availableSlots} available`;
+    return this.slotCapacityBadge(slot);
   }
 
   private initializeFromState(
@@ -527,6 +554,45 @@ export class EventCheckoutSlotPickerPopupComponent {
 
   private requestRemoveSlot(slot: EventCheckoutSlot): void {
     this.requestRemoveSelectedSlot(slot.id);
+  }
+
+  private slotCapacityTotal(slot: EventCheckoutSlot): number {
+    return Math.max(0, Math.trunc(Number(slot.capacityTotal) || 0));
+  }
+
+  private slotAvailableCount(slot: EventCheckoutSlot): number {
+    return Math.max(0, Math.trunc(Number(slot.availableSlots) || 0));
+  }
+
+  private optionalSubEventCapacityTotal(subEvent: SubEventDTO): number {
+    return Math.max(0, Math.trunc(Number(subEvent.capacityMax) || 0));
+  }
+
+  private optionalSubEventUsedCount(subEvent: SubEventDTO): number {
+    const accepted = Math.max(0, Math.trunc(Number(subEvent.membersAccepted) || 0));
+    const pending = Math.max(0, Math.trunc(Number(subEvent.membersPending) || 0));
+    return accepted + pending;
+  }
+
+  private optionalSubEventAvailableCount(subEvent: SubEventDTO): number {
+    const capacity = this.optionalSubEventCapacityTotal(subEvent);
+    return Math.max(0, capacity - this.optionalSubEventUsedCount(subEvent));
+  }
+
+  private optionalSubEventCapacityBadge(subEvent: SubEventDTO): string {
+    const capacity = this.optionalSubEventCapacityTotal(subEvent);
+    if (capacity <= 0) {
+      return '0 / 0';
+    }
+    return `${Math.min(capacity, this.optionalSubEventUsedCount(subEvent))} / ${capacity}`;
+  }
+
+  private isOptionalSubEventDisabled(slot: EventCheckoutSlot, subEvent: SubEventDTO): boolean {
+    const selectedIds = this.selectionsBySlotId.get(slot.id)?.optionalSubEventIds ?? [];
+    if (selectedIds.includes(subEvent.id)) {
+      return false;
+    }
+    return this.isSlotUnavailable(slot) || this.optionalSubEventAvailableCount(subEvent) <= 0;
   }
 
   private requestRemoveSelectedSlot(slotId: string): void {

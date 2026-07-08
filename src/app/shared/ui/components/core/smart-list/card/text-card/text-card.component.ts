@@ -26,6 +26,12 @@ export type TextCardTone =
   | 'gold'
   | 'danger'
   | 'muted';
+export type TextCardStatusTone =
+  | 'default'
+  | 'success'
+  | 'warning'
+  | 'danger'
+  | 'muted';
 
 @Component({
   selector: 'app-text-card',
@@ -46,8 +52,12 @@ export class TextCardComponent {
   @Input() detail = '';
   @Input() icon = '';
   @Input() tone: TextCardTone = 'neutral';
+  @Input() disabled = false;
   @Input() badge = '';
   @Input() badgeAriaLabel: string | null = null;
+  @Input() statusBadge = '';
+  @Input() statusBadgeAriaLabel: string | null = null;
+  @Input() statusBadgeTone: TextCardStatusTone = 'default';
   @Input() menuTitle: string | null = null;
   @Input() menuPalette: AppMenuPalette = 'default';
   @Input() menuCounter: AppMenuCounter | AppMenuCounterValue | null = null;
@@ -66,9 +76,12 @@ export class TextCardComponent {
     return [
       'ui-text-card',
       `ui-text-card--tone-${this.tone || 'neutral'}`,
+      this.disabled ? 'ui-text-card--disabled' : '',
       this.selected ? 'ui-text-card--selected' : '',
       this.hasActions() ? 'ui-text-card--with-actions' : '',
-      this.resolvedBadge() ? 'ui-text-card--with-badge' : ''
+      this.resolvedBadge() ? 'ui-text-card--with-badge' : '',
+      this.resolvedStatusBadge() ? 'ui-text-card--with-status-badge' : '',
+      this.resolvedStatusBadge() ? `ui-text-card--status-${this.statusBadgeTone || 'default'}` : ''
     ].filter(Boolean);
   }
 
@@ -98,6 +111,15 @@ export class TextCardComponent {
 
   protected resolvedBadgeAriaLabel(): string | null {
     const label = `${this.badgeAriaLabel ?? ''}`.trim();
+    return label || null;
+  }
+
+  protected resolvedStatusBadge(): string {
+    return `${this.statusBadge ?? ''}`.trim();
+  }
+
+  protected resolvedStatusBadgeAriaLabel(): string | null {
+    const label = `${this.statusBadgeAriaLabel ?? ''}`.trim();
     return label || null;
   }
 
