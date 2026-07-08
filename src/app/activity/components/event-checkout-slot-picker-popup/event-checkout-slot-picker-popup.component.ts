@@ -21,7 +21,6 @@ import {
 import {
   EventCheckoutDraftStore,
   EventCheckoutSlotPickerStore,
-  IndicatorComponent,
   PopupComponent,
   SmartListComponent,
   TextCardComponent,
@@ -31,6 +30,7 @@ import {
   type DateInputValue,
   type ListQuery,
   type PopupActionEvent,
+  type PopupMenuSelectEvent,
   type PopupModel,
   type SmartListCalendarCounter,
   type SmartListCalendarDateRange,
@@ -69,7 +69,6 @@ type SlotListView = 'day' | 'basket';
   imports: [
     CommonModule,
     MatIconModule,
-    IndicatorComponent,
     PopupComponent,
     SmartListComponent,
     TextCardComponent,
@@ -187,7 +186,6 @@ export class EventCheckoutSlotPickerPopupComponent {
 
   protected popupModel(): PopupModel {
     const state = this.popupState();
-    const selectedCount = this.selectedCount();
     return {
       title: state?.record.title ?? 'Slots',
       subtitle: state?.record.timeframe ?? this.formatRecordRange(state?.record ?? null),
@@ -202,13 +200,14 @@ export class EventCheckoutSlotPickerPopupComponent {
       backdropTone: 'dim',
       headerControls: [
         {
-          id: 'basket',
+          kind: 'menu',
+          id: 'slot-picker-actions',
           align: 'end',
-          icon: 'shopping_basket',
-          ariaLabel: selectedCount === 1 ? 'Show selected basket item' : `Show ${selectedCount} selected basket items`,
-          palette: this.basketMode ? 'blue' : 'neutral',
-          active: this.basketMode,
-          counter: selectedCount
+          menuKind: 'inline',
+          items: this.headerMenuItems(),
+          panelAlign: 'end',
+          mobileBreakpointPx: 900,
+          closeOnSelect: false
         }
       ],
       toolbarControls: [
@@ -228,17 +227,9 @@ export class EventCheckoutSlotPickerPopupComponent {
           active: this.monthOverlayOpen
         }
       ],
-      headerActions: [
-        {
-          id: 'save',
-          icon: 'done',
-          ariaLabel: 'Save basket',
-          palette: 'success',
-          disabled: this.saving || selectedCount === 0
-        }
-      ],
       onClose: event => this.close(event),
       onAction: event => this.onPopupAction(event),
+      onMenuSelect: event => this.onPopupMenuSelect(event),
       onDateInputChange: event => {
         if (event.control.id === 'slot-picker-date') {
           this.onDateChange(event.value);
@@ -249,6 +240,36 @@ export class EventCheckoutSlotPickerPopupComponent {
 
   protected selectedCount(): number {
     return this.selectionsBySlotId.size;
+  }
+
+  protected headerMenuItems(): readonly AppMenuItem<string, unknown>[] {
+    const selectedCount = this.selectedCount();
+    return [
+      {
+        id: 'basket',
+        icon: 'shopping_basket',
+        kind: 'action',
+        palette: this.basketMode ? 'blue' : 'neutral',
+        counter: selectedCount,
+        active: this.basketMode,
+        closeOnSelect: false,
+        ariaLabel: selectedCount === 1 ? 'Show selected basket item' : `Show ${selectedCount} selected basket items`
+      },
+      {
+        id: 'save',
+        icon: 'done',
+        kind: 'action',
+        layout: 'action',
+        palette: this.errorMessage ? 'danger' : 'success',
+        disabled: this.saving || selectedCount === 0,
+        closeOnSelect: false,
+        ariaLabel: 'Save basket',
+        progress: {
+          state: () => this.saving ? 'loading' : (this.errorMessage ? 'error' : null),
+          shape: 'circle'
+        }
+      }
+    ];
   }
 
   protected selectedDateValue(): string {
@@ -632,16 +653,20 @@ export class EventCheckoutSlotPickerPopupComponent {
   private onPopupAction(event: PopupActionEvent): void {
     event.sourceEvent.preventDefault();
     event.sourceEvent.stopPropagation();
-    if (event.action.id === 'save') {
+    if (event.action.id === 'slot-picker-calendar') {
+      this.toggleMonthView(event.sourceEvent);
+    }
+  }
+
+  private onPopupMenuSelect(event: PopupMenuSelectEvent): void {
+    event.itemSelect.sourceEvent.preventDefault();
+    event.itemSelect.sourceEvent.stopPropagation();
+    if (event.itemSelect.id === 'save') {
       void this.saveBasket();
       return;
     }
-    if (event.action.id === 'basket') {
-      this.toggleBasketView(event.sourceEvent);
-      return;
-    }
-    if (event.action.id === 'slot-picker-calendar') {
-      this.toggleMonthView(event.sourceEvent);
+    if (event.itemSelect.id === 'basket') {
+      this.toggleBasketView(event.itemSelect.sourceEvent);
     }
   }
 

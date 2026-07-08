@@ -615,17 +615,107 @@ export class EventCheckoutPopupComponent {
     status: string;
     pricingSummaryRows: readonly ActivityContracts.EventCheckoutPricingSummaryRow[];
   }[] {
-    return this.checkoutBasketItems().map(item => ({
+    const groups = new Map<string, {
+      order: number;
+      slot: ActivityContracts.EventCheckoutBasketItem | null;
+      optionals: ActivityContracts.EventCheckoutBasketItem[];
+    }>();
+    const standalone: Array<{
+      order: number;
+      item: ActivityContracts.EventCheckoutBasketItem;
+    }> = [];
+    const items = this.checkoutBasketItems();
+    items.forEach((item, index) => {
+      const groupKey = this.checkoutBasketPresentationGroupKey(item);
+      if (item.kind === 'sub_event' && groupKey) {
+        const group = groups.get(groupKey) ?? { order: index, slot: null, optionals: [] };
+        group.order = Math.min(group.order, index);
+        group.optionals.push(item);
+        groups.set(groupKey, group);
+        return;
+      }
+      if (item.kind === 'event' && groupKey) {
+        const group = groups.get(groupKey) ?? { order: index, slot: null, optionals: [] };
+        group.order = Math.min(group.order, index);
+        group.slot = item;
+        groups.set(groupKey, group);
+        return;
+      }
+      standalone.push({ order: index, item });
+    });
+    const groupedItems = [...groups.values()]
+      .sort((left, right) => left.order - right.order)
+      .flatMap(group => this.checkoutBasketGroupedPresentationItems(group.slot, group.optionals));
+    const standaloneItems = standalone
+      .sort((left, right) => left.order - right.order)
+      .map(entry => this.checkoutBasketPresentationItem(entry.item, []));
+    return [...groupedItems, ...standaloneItems];
+  }
+
+  private checkoutBasketGroupedPresentationItems(
+    slot: ActivityContracts.EventCheckoutBasketItem | null,
+    optionals: readonly ActivityContracts.EventCheckoutBasketItem[]
+  ): Array<{
+    id: string;
+    title: string;
+    meta: string;
+    detail: string | null;
+    amount: number;
+    currency: string;
+    quantity: number;
+    status: string;
+    pricingSummaryRows: readonly ActivityContracts.EventCheckoutPricingSummaryRow[];
+  }> {
+    if (!slot) {
+      return optionals.map(item => this.checkoutBasketPresentationItem(item, []));
+    }
+    return [this.checkoutBasketPresentationItem(slot, optionals)];
+  }
+
+  private checkoutBasketPresentationItem(
+    item: ActivityContracts.EventCheckoutBasketItem,
+    optionals: readonly ActivityContracts.EventCheckoutBasketItem[]
+  ): {
+    id: string;
+    title: string;
+    meta: string;
+    detail: string | null;
+    amount: number;
+    currency: string;
+    quantity: number;
+    status: string;
+    pricingSummaryRows: readonly ActivityContracts.EventCheckoutPricingSummaryRow[];
+  } {
+    const optionalLabels = optionals.map(optional => optional.label.trim()).filter(Boolean);
+    const optionalDetail = optionalLabels.length > 0 ? `Optional: ${optionalLabels.join(', ')}` : null;
+    const amount = [item, ...optionals]
+      .reduce((sum, current) => sum + ((Number(current.amount) || 0) * Math.max(1, Math.trunc(Number(current.quantity) || 1))), 0);
+    return {
       id: item.id,
       title: item.label,
       meta: item.detail,
-      detail: null,
-      amount: item.amount,
-      currency: item.currency,
-      quantity: item.quantity,
+      detail: optionalDetail,
+      amount: Math.round(amount * 100) / 100,
+      currency: item.currency || optionals.find(optional => optional.currency)?.currency || this.currency(),
+      quantity: 1,
       status: item.status,
-      pricingSummaryRows: item.pricingSummaryRows
-    }));
+      pricingSummaryRows: [item, ...optionals].flatMap(current => current.pricingSummaryRows ?? [])
+    };
+  }
+
+  private checkoutBasketPresentationGroupKey(item: ActivityContracts.EventCheckoutBasketItem): string {
+    const slotSourceId = `${item.slotSourceId ?? ''}`.trim();
+    if (slotSourceId) {
+      return slotSourceId;
+    }
+    const id = `${item.id ?? ''}`.trim();
+    if (item.kind === 'event' && id.startsWith('event:')) {
+      return id.split(':').slice(2).join(':') || 'main';
+    }
+    if (item.kind === 'sub_event' && id.startsWith('subevent:')) {
+      return id.split(':').slice(2).join(':') || 'main';
+    }
+    return '';
   }
 
   private checkoutBasketSurfaceTone(): EventEditorCheckoutSurfaceTone {
