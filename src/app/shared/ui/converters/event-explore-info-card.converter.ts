@@ -169,6 +169,9 @@ export class EventExploreInfoCardConverter {
   }
 
   private static membersLabel(record: ActivityEventRecord): string {
+    if (record.slotsEnabled === true) {
+      return 'Multislot';
+    }
     if (record.capacityTotal <= 0) {
       return '0 / 0';
     }
