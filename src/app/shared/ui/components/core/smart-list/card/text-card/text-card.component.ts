@@ -32,6 +32,17 @@ export type TextCardStatusTone =
   | 'warning'
   | 'danger'
   | 'muted';
+export type TextCardBadgeTone =
+  | 'default'
+  | 'price'
+  | 'muted'
+  | 'success'
+  | 'warning'
+  | 'danger';
+export type TextCardSelectPalette =
+  | 'default'
+  | 'picker'
+  | 'muted';
 
 @Component({
   selector: 'app-text-card',
@@ -55,6 +66,8 @@ export class TextCardComponent {
   @Input() disabled = false;
   @Input() badge = '';
   @Input() badgeAriaLabel: string | null = null;
+  @Input() badgeTone: TextCardBadgeTone = 'default';
+  @Input() badgeClickable = false;
   @Input() statusBadge = '';
   @Input() statusBadgeAriaLabel: string | null = null;
   @Input() statusBadgeTone: TextCardStatusTone = 'default';
@@ -65,12 +78,14 @@ export class TextCardComponent {
   @Input() selectable = false;
   @Input() selected = false;
   @Input() selectDisabled = false;
+  @Input() selectPalette: TextCardSelectPalette = 'default';
   @Input() selectIcon = 'add';
   @Input() selectedIcon = 'check';
   @Input() selectAriaLabel: string | null = null;
 
   @Output() menuSelect = new EventEmitter<AppMenuItemSelectEvent<string, unknown>>();
   @Output() selectionToggle = new EventEmitter<Event>();
+  @Output() badgeClick = new EventEmitter<Event>();
 
   protected rootClassList(): string[] {
     return [
@@ -80,6 +95,7 @@ export class TextCardComponent {
       this.selected ? 'ui-text-card--selected' : '',
       this.hasActions() ? 'ui-text-card--with-actions' : '',
       this.resolvedBadge() ? 'ui-text-card--with-badge' : '',
+      this.resolvedBadge() ? `ui-text-card--badge-${this.badgeTone || 'default'}` : '',
       this.resolvedStatusBadge() ? 'ui-text-card--with-status-badge' : '',
       this.resolvedStatusBadge() ? `ui-text-card--status-${this.statusBadgeTone || 'default'}` : ''
     ].filter(Boolean);
@@ -150,6 +166,7 @@ export class TextCardComponent {
   protected selectActionClassList(): string[] {
     return [
       'ui-text-card__select-action',
+      `ui-text-card__select-action--palette-${this.selectPalette || 'default'}`,
       this.selected ? 'ui-text-card__select-action--selected' : ''
     ].filter(Boolean);
   }
@@ -161,6 +178,12 @@ export class TextCardComponent {
       return;
     }
     this.selectionToggle.emit(event);
+  }
+
+  protected emitBadgeClick(event: Event): void {
+    event.preventDefault();
+    event.stopPropagation();
+    this.badgeClick.emit(event);
   }
 
   protected resolvedMenuTitle(): string | null {

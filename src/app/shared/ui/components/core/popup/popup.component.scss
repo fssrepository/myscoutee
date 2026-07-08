@@ -252,6 +252,22 @@ app-popup {
   box-shadow: 0 2px 8px rgba(31, 79, 132, 0.12);
 }
 
+.ui-popup__action--neutral,
+.ui-popup__action--muted {
+  border-color: rgba(90, 108, 130, 0.28);
+  background: linear-gradient(180deg, #f8fafc 0%, #edf1f6 100%);
+  color: #4c617a;
+  box-shadow: 0 2px 7px rgba(55, 75, 101, 0.12);
+}
+
+.ui-popup__action--neutral:hover,
+.ui-popup__action--muted:hover {
+  border-color: rgba(78, 98, 124, 0.4);
+  background: linear-gradient(180deg, #ffffff 0%, #e7edf4 100%);
+  color: #3f5570;
+  box-shadow: 0 4px 10px rgba(55, 75, 101, 0.16);
+}
+
 .ui-popup__action--gold,
 .ui-popup__action--amber {
   border-color: rgba(188, 138, 24, 0.5);

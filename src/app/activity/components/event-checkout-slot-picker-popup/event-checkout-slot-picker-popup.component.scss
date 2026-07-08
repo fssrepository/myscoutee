@@ -95,6 +95,64 @@
   background: rgba(255, 255, 255, 0.72);
 }
 
+.event-checkout-slot-picker__pricing-summary {
+  display: grid;
+  gap: 0.5rem;
+  padding: 0.78rem;
+  min-width: min(420px, calc(100vw - 2.4rem));
+  box-sizing: border-box;
+}
+
+.event-checkout-slot-picker__pricing-row,
+.event-checkout-slot-picker__pricing-total {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.8rem;
+  min-width: 0;
+  border-radius: 8px;
+  box-sizing: border-box;
+}
+
+.event-checkout-slot-picker__pricing-row {
+  padding: 0.56rem 0.64rem;
+  border: 1px solid rgba(57, 89, 122, 0.14);
+  background: linear-gradient(180deg, #fbfdff 0%, #f1f6fb 100%);
+}
+
+.event-checkout-slot-picker__pricing-row span {
+  display: grid;
+  min-width: 0;
+  gap: 0.08rem;
+}
+
+.event-checkout-slot-picker__pricing-row strong,
+.event-checkout-slot-picker__pricing-total strong {
+  color: #213e63;
+  font-size: 0.82rem;
+  font-weight: 900;
+}
+
+.event-checkout-slot-picker__pricing-row em {
+  color: rgba(34, 57, 88, 0.66);
+  font-size: 0.72rem;
+  font-style: normal;
+  font-weight: 750;
+}
+
+.event-checkout-slot-picker__pricing-total {
+  margin-top: 0.1rem;
+  padding: 0.66rem 0.72rem;
+  border: 1px solid rgba(181, 117, 20, 0.26);
+  background: linear-gradient(180deg, #fffaf0 0%, #fff0c9 100%);
+  color: #7c4a05;
+  font-weight: 900;
+}
+
+.event-checkout-slot-picker__pricing-total strong {
+  color: #7c4a05;
+}
+
 @media (max-width: 720px) {
   .event-checkout-slot-picker {
     padding: 0.7rem;

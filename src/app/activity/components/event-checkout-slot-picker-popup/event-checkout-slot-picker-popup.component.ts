@@ -89,6 +89,7 @@ export class EventCheckoutSlotPickerPopupComponent {
   protected monthOverlayOpen = false;
   protected saving = false;
   protected errorMessage = '';
+  protected pricingSummarySlot: EventCheckoutSlot | null = null;
   protected monthAnchor = this.monthStart(this.selectedDateKey);
   protected monthListQuery: Partial<ListQuery<SlotPickerMonthFilters>> = this.buildMonthListQuery();
   private selectionRevision = 0;
@@ -200,9 +201,9 @@ export class EventCheckoutSlotPickerPopupComponent {
         {
           id: 'basket',
           align: 'end',
-          icon: this.basketMode ? 'close' : 'shopping_basket',
+          icon: 'shopping_basket',
           ariaLabel: selectedCount === 1 ? 'Show selected basket item' : `Show ${selectedCount} selected basket items`,
-          palette: this.basketMode ? 'orange' : 'neutral',
+          palette: this.basketMode ? 'blue' : 'neutral',
           active: this.basketMode,
           counter: selectedCount
         }
@@ -466,6 +467,7 @@ export class EventCheckoutSlotPickerPopupComponent {
     this.monthAnchor = this.monthStart(this.selectedDateKey);
     this.basketMode = false;
     this.monthOverlayOpen = false;
+    this.pricingSummarySlot = null;
     this.errorMessage = '';
     this.saving = false;
     this.refreshSlotQuery();
@@ -639,6 +641,64 @@ export class EventCheckoutSlotPickerPopupComponent {
     if (event.action.id === 'slot-picker-calendar') {
       this.toggleMonthView(event.sourceEvent);
     }
+  }
+
+  protected openPricingSummary(slot: EventCheckoutSlot, event?: Event): void {
+    event?.preventDefault();
+    event?.stopPropagation();
+    this.pricingSummarySlot = slot;
+    this.cdr.markForCheck();
+  }
+
+  protected pricingSummaryPopupModel(): PopupModel {
+    const slot = this.pricingSummarySlot;
+    return {
+      title: 'Price summary',
+      subtitle: slot?.title ?? null,
+      secondarySubtitle: slot?.timeframe ?? null,
+      ariaLabel: 'Slot price summary',
+      closeAriaLabel: 'Close price summary',
+      closeOnBackdrop: true,
+      showClose: true,
+      size: 'default',
+      height: 'auto',
+      headerTone: 'accent',
+      backdropTone: 'dim',
+      onClose: event => this.closePricingSummary(event)
+    };
+  }
+
+  protected pricingSummaryRows(slot: EventCheckoutSlot | null): EventCheckoutPricingSummaryRow[] {
+    if (!slot) {
+      return [];
+    }
+    if ((slot.pricingSummaryRows ?? []).length > 0) {
+      return slot.pricingSummaryRows;
+    }
+    return [{
+      key: `slot:${slot.id}:base`,
+      label: 'Base price',
+      detail: null,
+      amount: slot.amount,
+      currency: slot.currency,
+      multiplier: 1
+    }];
+  }
+
+  protected pricingSummaryAmountLabel(row: EventCheckoutPricingSummaryRow): string {
+    if (row.amount === null || row.amount === undefined) {
+      return '';
+    }
+    const amount = Number(row.amount) || 0;
+    const sign = amount < 0 ? '-' : amount > 0 && !`${row.key ?? ''}`.startsWith('base') ? '+' : '';
+    return `${sign}${this.formatMoney(Math.abs(amount), row.currency || 'USD')}`;
+  }
+
+  private closePricingSummary(event?: Event): void {
+    event?.preventDefault();
+    event?.stopPropagation();
+    this.pricingSummarySlot = null;
+    this.cdr.markForCheck();
   }
 
   private toggleOptionalSlotEvent(slot: EventCheckoutSlot, subEventId: string): void {

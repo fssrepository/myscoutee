@@ -1,8 +1,19 @@
 <article [ngClass]="rootClassList()">
   @if (resolvedBadge()) {
-    <span class="ui-text-card__badge" [attr.aria-label]="resolvedBadgeAriaLabel()">
-      {{ resolvedBadge() }}
-    </span>
+    @if (badgeClickable) {
+      <button
+        type="button"
+        class="ui-text-card__badge ui-text-card__badge--button"
+        [attr.aria-label]="resolvedBadgeAriaLabel()"
+        (click)="emitBadgeClick($event)"
+      >
+        {{ resolvedBadge() }}
+      </button>
+    } @else {
+      <span class="ui-text-card__badge" [attr.aria-label]="resolvedBadgeAriaLabel()">
+        {{ resolvedBadge() }}
+      </span>
+    }
   }
 
   @if (resolvedStatusBadge()) {
