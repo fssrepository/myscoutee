@@ -151,7 +151,10 @@ export class EventBasketInputComponent {
         ? 'Várólistán'
       : item.status === 'confirmed'
         ? 'Confirmed'
-        : 'Draft';
+        : '';
+    if (!status) {
+      return quantity > 1 ? `${quantity} items` : '';
+    }
     return quantity > 1 ? `${status} · ${quantity} items` : status;
   }
 
