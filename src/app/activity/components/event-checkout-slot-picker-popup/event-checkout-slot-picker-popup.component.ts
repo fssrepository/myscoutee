@@ -97,6 +97,7 @@ export class EventCheckoutSlotPickerPopupComponent {
   private queryRevision = 0;
   private selectionRevision = 0;
   private readonly selectionsBySlotId = new Map<string, SlotSelection>();
+  private readonly baselineSelectedSlotIds = new Set<string>();
   private baselineSelectionSignature = '';
   private optionalSubEventOptions: EventCheckoutOptionalSubEvent[] = [];
   private checkoutBasketHydrated = false;
@@ -355,11 +356,13 @@ export class EventCheckoutSlotPickerPopupComponent {
   protected slotCapacityBadge(slot: EventCheckoutSlot): string {
     const capacity = this.slotCapacityTotal(slot);
     const available = this.slotAvailableCount(slot);
-    const availableIncludingSelection = available + (this.isSelected(slot) ? 1 : 0);
+    const selected = this.isSelected(slot);
+    const selectedOccupancyDelta = selected && !this.baselineSelectedSlotIds.has(slot.id) ? 1 : 0;
+    const availableIncludingSelection = available + (selected ? 1 : 0);
     if (capacity <= 0 || availableIncludingSelection <= 0) {
       return 'Unavailable';
     }
-    const used = capacity - available + (this.isSelected(slot) ? 1 : 0);
+    const used = capacity - available + selectedOccupancyDelta;
     return `${Math.max(0, Math.min(capacity, used))} / ${capacity}`;
   }
 
@@ -469,12 +472,13 @@ export class EventCheckoutSlotPickerPopupComponent {
     selectedDateKey: string | null
   ): void {
     this.selectionsBySlotId.clear();
+    this.baselineSelectedSlotIds.clear();
     this.optionalSubEventOptions = [];
     this.selectionRevision = 0;
     this.queryRevision += 1;
     this.checkoutBasketHydrated = false;
     const activeItems = (basket?.items ?? [])
-      .filter(item => item.resultState !== 'deleted' && item.resultState !== 'succeeded');
+      .filter(item => this.isActiveBasketItem(item));
     const eventItems = activeItems.filter(item => item.kind === 'event' && item.slotSourceId?.trim());
     for (const item of eventItems) {
       const slot = this.slotFromBasketItem(record, item);
@@ -494,7 +498,7 @@ export class EventCheckoutSlotPickerPopupComponent {
     this.pricingSummarySlot = null;
     this.errorMessage = '';
     this.saving = false;
-    this.baselineSelectionSignature = this.selectionSignature();
+    this.refreshBaselineSelection();
     this.refreshSlotQuery();
   }
 
@@ -572,7 +576,7 @@ export class EventCheckoutSlotPickerPopupComponent {
       this.hydrateSelectionsFromBasket(record, result?.checkoutBasket ?? null, result?.slots ?? []);
       this.checkoutBasketHydrated = true;
       if (this.selectionRevision === 0) {
-        this.baselineSelectionSignature = this.selectionSignature();
+        this.refreshBaselineSelection();
       }
     }
     this.cdr.markForCheck();
@@ -584,7 +588,7 @@ export class EventCheckoutSlotPickerPopupComponent {
     slots: readonly EventCheckoutSlot[]
   ): void {
     const activeItems = (basket?.items ?? [])
-      .filter(item => item.resultState !== 'deleted' && item.resultState !== 'succeeded');
+      .filter(item => this.isActiveBasketItem(item));
     const slotsById = new Map(slots.map(slot => [slot.id, slot]));
     for (const item of activeItems.filter(candidate => candidate.kind === 'event' && candidate.slotSourceId?.trim())) {
       const slotId = item.slotSourceId!.trim();
@@ -863,6 +867,20 @@ export class EventCheckoutSlotPickerPopupComponent {
     return this.selectionSignature() !== this.baselineSelectionSignature;
   }
 
+  private refreshBaselineSelection(): void {
+    this.baselineSelectionSignature = this.selectionSignature();
+    this.baselineSelectedSlotIds.clear();
+    for (const slotId of this.selectionsBySlotId.keys()) {
+      this.baselineSelectedSlotIds.add(slotId);
+    }
+  }
+
+  private isActiveBasketItem(item: EventCheckoutBasketItem): boolean {
+    return `${item.status ?? ''}` !== 'deleted'
+      && item.resultState !== 'deleted'
+      && item.resultState !== 'succeeded';
+  }
+
   private selectionSignature(): string {
     return [...this.selectionsBySlotId.values()]
       .map(selection => {
@@ -908,7 +926,7 @@ export class EventCheckoutSlotPickerPopupComponent {
         updatedAtMs: Date.now()
       });
       await state.onSave?.(savedBasket, request.basketItems ?? []);
-      this.baselineSelectionSignature = this.selectionSignature();
+      this.refreshBaselineSelection();
       this.store.close();
     } catch (error) {
       this.errorMessage = error instanceof Error && error.message.trim()

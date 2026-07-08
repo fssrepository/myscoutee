@@ -44,7 +44,7 @@ export class LocalEventCheckoutBasketsRepository {
       .filter(basket => basket?.sourceId === normalizedSourceId)
       .filter(basket => !normalizedExcludeUserId || basket.userId !== normalizedExcludeUserId)
       .flatMap(basket => basket.items ?? [])
-      .filter(item => !this.isInactiveResultState(item.resultState));
+      .filter(item => this.isActiveItem(item));
   }
 
   async saveBasket(request: EventCheckoutRequest): Promise<EventCheckoutBasket | null> {
@@ -65,11 +65,11 @@ export class LocalEventCheckoutBasketsRepository {
     const table = await this.readTable();
     const incomingItemIds = new Set(items.map(item => item.id));
     const deletedExistingItems = (table.byKey[key]?.items ?? [])
-      .filter(item => !this.isInactiveResultState(item.resultState) && !incomingItemIds.has(item.id))
+      .filter(item => this.isActiveItem(item) && !incomingItemIds.has(item.id))
       .map(item => this.normalizeBasketItem({ ...item, resultState: 'deleted' }, status, request.currency))
       .filter((item): item is EventCheckoutBasketItem => Boolean(item));
     const storedItems = [...deletedExistingItems, ...items];
-    const activeItems = storedItems.filter(item => !this.isInactiveResultState(item.resultState));
+    const activeItems = storedItems.filter(item => this.isActiveItem(item));
     const basket = ActivityEventDetailDTO.cloneCheckoutBasket({
       userId,
       sourceId,
@@ -218,7 +218,7 @@ export class LocalEventCheckoutBasketsRepository {
 
   private activeBasket(basket: EventCheckoutBasket | null | undefined): EventCheckoutBasket | null {
     const cloned = ActivityEventDetailDTO.cloneCheckoutBasket(basket);
-    const activeItems = (cloned?.items ?? []).filter(item => !this.isInactiveResultState(item.resultState));
+    const activeItems = (cloned?.items ?? []).filter(item => this.isActiveItem(item));
     if (!cloned || activeItems.length === 0) {
       return null;
     }
@@ -340,6 +340,10 @@ export class LocalEventCheckoutBasketsRepository {
 
   private isInactiveResultState(resultState: EventCheckoutResultState | string | null | undefined): boolean {
     return resultState === 'deleted' || resultState === 'succeeded';
+  }
+
+  private isActiveItem(item: EventCheckoutBasketItem): boolean {
+    return `${item.status ?? ''}` !== 'deleted' && !this.isInactiveResultState(item.resultState);
   }
 
   private recordKey(userId: string, sourceId: string): string {
