@@ -828,9 +828,12 @@ export class EventExplorePopupComponent {
       return;
     }
     if (this.hasTrackedMembership(record, activeUserId)) {
+      const membershipStatus = this.eventExploreMembershipStatus(record, activeUserId);
       this.openEventExploreCheckout(record, {
-        approvalGranted: false,
-        pendingReason: record.pendingReason ?? (this.isEventExploreRecordFull(record) ? 'waitlist' : 'approval')
+        approvalGranted: membershipStatus === 'accepted',
+        pendingReason: membershipStatus === 'accepted'
+          ? null
+          : record.pendingReason ?? (this.isEventExploreRecordFull(record) ? 'waitlist' : 'approval')
       });
       return;
     }
@@ -954,7 +957,7 @@ export class EventExplorePopupComponent {
   protected checkoutDraftMenuItems(): readonly AppMenuItem<string, EventExploreMenuContext>[] {
     return this.checkoutDraftEntries().map(entry => {
       const clearing = this.isCheckoutDraftClearing(entry.draft.sourceId);
-      const itemCount = entry.draft.lineItems.length;
+      const itemCount = this.checkoutDraftBasketItemCount(entry.draft);
       return {
         id: `checkout-draft-${entry.draft.sourceId}`,
         label: entry.draft.eventTitle,
@@ -976,6 +979,25 @@ export class EventExplorePopupComponent {
         context: { menu: 'checkout-draft', entry }
       };
     });
+  }
+
+  private checkoutDraftBasketItemCount(draft: EventCheckoutDraft): number {
+    const activeItems = (draft.basketItems ?? [])
+      .filter(item => item.resultState !== 'deleted' && item.resultState !== 'succeeded');
+    const primaryItems = activeItems.filter(item => item.kind !== 'sub_event');
+    if (primaryItems.length === 0) {
+      return activeItems.length > 0 ? 1 : Math.max(0, draft.lineItems.length);
+    }
+    const groupKeys = new Set(primaryItems.map(item => this.checkoutDraftBasketItemGroupKey(item)));
+    return Math.max(1, groupKeys.size);
+  }
+
+  private checkoutDraftBasketItemGroupKey(item: ActivityContracts.EventCheckoutBasketItem): string {
+    const slotSourceId = item.slotSourceId?.trim() ?? '';
+    if (slotSourceId) {
+      return slotSourceId;
+    }
+    return item.id?.trim() || item.label?.trim() || 'checkout-item';
   }
 
   protected isCheckoutDraftClearing(sourceId: string): boolean {
@@ -1749,6 +1771,29 @@ export class EventExplorePopupComponent {
     }
     return this.activityMembersService.peekMembersByOwner(this.eventMembersOwner(record))
       .some(member => member.userId === userId);
+  }
+
+  private eventExploreMembershipStatus(
+    record: ActivityEventRecord,
+    userId: string
+  ): 'accepted' | 'pending' | 'none' {
+    const normalizedUserId = userId.trim();
+    if (!normalizedUserId) {
+      return 'none';
+    }
+    const existingMember = this.activityMembersService.peekMembersByOwner(this.eventMembersOwner(record))
+      .find(member => member.userId === normalizedUserId);
+    if (existingMember?.status === 'accepted' || (record.acceptedMemberUserIds ?? []).includes(normalizedUserId)) {
+      return 'accepted';
+    }
+    if (
+      existingMember?.status === 'pending'
+      || (record.pendingMemberUserIds ?? []).includes(normalizedUserId)
+      || (record.pendingRequestMemberUserIds ?? []).includes(normalizedUserId)
+    ) {
+      return 'pending';
+    }
+    return 'none';
   }
 
   private hasPendingCheckoutDraft(sourceId: string, userId: string): boolean {

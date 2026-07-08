@@ -872,6 +872,8 @@ export class EventCheckoutPopupComponent {
       this.paymentStep
       || this.checkoutPaymentReviewStarted()
       || Boolean(this.checkoutSessionId)
+      || this.dialog()?.approvalGranted === true
+      || this.checkoutRecordAcceptedByCurrentUser()
       || draft?.checkoutState === 'confirmed'
       || draft?.checkoutState === 'pay'
       || basketState === 'confirmed'
@@ -883,6 +885,16 @@ export class EventCheckoutPopupComponent {
       };
     }
     return null;
+  }
+
+  private checkoutRecordAcceptedByCurrentUser(): boolean {
+    const dialog = this.dialog();
+    const userId = dialog?.userId.trim() ?? '';
+    if (!userId) {
+      return false;
+    }
+    return (dialog?.record.acceptedMemberUserIds ?? [])
+      .some(memberUserId => memberUserId.trim() === userId);
   }
 
   private checkoutSlotPickerSelectedDateKey(): string | null {
@@ -2794,6 +2806,7 @@ export class EventCheckoutPopupComponent {
     checkoutStateOverride?: ActivityContracts.EventCheckoutState
   ): Promise<void> {
     const dialog = this.dialog();
+    const updateStepActive = this.checkoutUpdateStepActive();
     const pendingReason = pendingReasonOverride === undefined
       ? this.checkoutDecisionPendingReason()
       : pendingReasonOverride;
@@ -2824,13 +2837,14 @@ export class EventCheckoutPopupComponent {
       updatedAtMs: Date.now()
     });
     if (syncRuntimeBasket) {
-      await this.syncRuntimeCheckoutBasket(checkoutState, pendingReason);
+      await this.syncRuntimeCheckoutBasket(checkoutState, pendingReason, updateStepActive);
     }
   }
 
   private async syncRuntimeCheckoutBasket(
     checkoutStateOverride?: ActivityContracts.EventCheckoutState,
-    pendingReasonOverride: AppConstants.ActivityPendingReason | undefined = undefined
+    pendingReasonOverride: AppConstants.ActivityPendingReason | undefined = undefined,
+    forceBasketPayload = false
   ): Promise<void> {
     const dialog = this.dialog();
     const basketItems = this.checkoutBasketItems();
@@ -2841,7 +2855,7 @@ export class EventCheckoutPopupComponent {
       const shouldMutateStoredBasket = this.runtimeCheckoutBasketExists()
         && checkoutStateOverride != null
         && checkoutStateOverride !== 'draft'
-        && !this.checkoutUpdateStepActive();
+        && !forceBasketPayload;
       const basket = shouldMutateStoredBasket
         ? await this.eventsService.updateCheckoutBasketState(this.buildCheckoutStateChangeRequest(
             checkoutStateOverride,
