@@ -43,10 +43,19 @@ export class LocalEventCheckoutBasketsRepository {
     }
     const normalizedExcludeUserId = `${excludeUserId ?? ''}`.trim();
     const table = await this.readTable();
-    return Object.values(table.byKey)
-      .filter(basket => basket?.sourceId === normalizedSourceId)
-      .filter(basket => !normalizedExcludeUserId || basket.userId !== normalizedExcludeUserId)
-      .flatMap(basket => this.uniqueActiveItems(basket.items ?? []));
+    const activeItemsByKey = new Map<string, LocalEventCheckoutBasketItemRecord>();
+    for (const basket of Object.values(table.byKey)) {
+      if (basket?.sourceId !== normalizedSourceId) {
+        continue;
+      }
+      if (normalizedExcludeUserId && basket.userId === normalizedExcludeUserId) {
+        continue;
+      }
+      for (const item of this.uniqueActiveItems(basket.items ?? [])) {
+        activeItemsByKey.set(`${basket.userId}::${this.activeItemKey(item)}`, item);
+      }
+    }
+    return [...activeItemsByKey.values()];
   }
 
   async saveBasket(record: LocalEventCheckoutBasketRecord): Promise<LocalEventCheckoutBasketRecord | null> {

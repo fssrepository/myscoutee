@@ -213,7 +213,7 @@ export class LocalEventsService extends LocalRouteDelayService implements IEvent
     const checkoutBasketRecord = await this.eventCheckoutBasketsRepository.loadBasketByEvent(normalizedUserId, record.id);
     const checkoutBasket = LocalEventCheckoutBasketsMapper.toDto(checkoutBasketRecord);
     const activeReservationItems = LocalEventCheckoutBasketsMapper.itemRecordsToDtos(
-      await this.eventCheckoutBasketsRepository.loadActiveItemsByEvent(record.id, normalizedUserId)
+      await this.eventCheckoutBasketsRepository.loadActiveItemsByEvent(record.id)
     );
     const slotReservations = this.checkoutReservationCounts(activeReservationItems, 'slot');
     const optionalReservations = this.checkoutReservationCounts(activeReservationItems, 'optional');
@@ -906,6 +906,9 @@ export class LocalEventsService extends LocalRouteDelayService implements IEvent
 
   private isActiveCheckoutItem(item: EventCheckoutBasketItem | null | undefined): item is EventCheckoutBasketItem {
     if (!item) {
+      return false;
+    }
+    if (item.resultState === 'deleted' || item.resultState === 'succeeded') {
       return false;
     }
     return item.status === 'draft'

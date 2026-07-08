@@ -59,6 +59,7 @@ interface SlotPickerMonthFilters {
 interface SlotSelection {
   slot: EventCheckoutSlot;
   optionalSubEventIds: string[];
+  countedOptionalSubEventIds: string[];
   occupancyCounted: boolean;
 }
 
@@ -393,6 +394,7 @@ export class EventCheckoutSlotPickerPopupComponent {
       this.selectionsBySlotId.set(slot.id, {
         slot,
         optionalSubEventIds: [],
+        countedOptionalSubEventIds: [],
         occupancyCounted: false
       });
     }
@@ -492,6 +494,7 @@ export class EventCheckoutSlotPickerPopupComponent {
       this.selectionsBySlotId.set(slot.id, {
         slot,
         optionalSubEventIds,
+        countedOptionalSubEventIds: optionalSubEventIds,
         occupancyCounted: this.checkoutItemOccupancyCounted(item)
       });
     }
@@ -609,6 +612,10 @@ export class EventCheckoutSlotPickerPopupComponent {
         slot,
         optionalSubEventIds: [...new Set([
           ...(existing?.optionalSubEventIds ?? []),
+          ...selectedOptionalIds
+        ])],
+        countedOptionalSubEventIds: [...new Set([
+          ...(existing?.countedOptionalSubEventIds ?? []),
           ...selectedOptionalIds
         ])],
         occupancyCounted: existing?.occupancyCounted ?? this.checkoutItemOccupancyCounted(item)
@@ -786,6 +793,7 @@ export class EventCheckoutSlotPickerPopupComponent {
     const current = this.selectionsBySlotId.get(slot.id) ?? {
       slot,
       optionalSubEventIds: [],
+      countedOptionalSubEventIds: [],
       occupancyCounted: false
     };
     const optionalSubEventIds = current.optionalSubEventIds.includes(subEventId)
@@ -794,6 +802,7 @@ export class EventCheckoutSlotPickerPopupComponent {
     this.selectionsBySlotId.set(slot.id, {
       slot,
       optionalSubEventIds,
+      countedOptionalSubEventIds: current.countedOptionalSubEventIds,
       occupancyCounted: current.occupancyCounted
     });
     this.selectionRevision += 1;
@@ -814,7 +823,7 @@ export class EventCheckoutSlotPickerPopupComponent {
 
   private optionalSubEventUsedCount(subEvent: EventCheckoutOptionalSubEvent): number {
     const reserved = Math.max(0, Math.trunc(Number(subEvent.reservedCount) || 0));
-    return reserved + this.selectedOptionalSubEventCount(subEvent.id);
+    return Math.max(0, reserved + this.selectedOptionalSubEventDelta(subEvent.id));
   }
 
   private optionalSubEventAvailableCount(subEvent: EventCheckoutOptionalSubEvent): number {
@@ -856,10 +865,19 @@ export class EventCheckoutSlotPickerPopupComponent {
     return slot.currency || this.selectedOptionalSubEvents(slot).find(item => item.currency)?.currency || 'USD';
   }
 
-  private selectedOptionalSubEventCount(subEventId: string): number {
+  private selectedOptionalSubEventDelta(subEventId: string): number {
     return [...this.selectionsBySlotId.values()]
-      .filter(selection => selection.optionalSubEventIds.includes(subEventId))
-      .length;
+      .reduce((sum, selection) => {
+        const selected = selection.optionalSubEventIds.includes(subEventId);
+        const counted = selection.countedOptionalSubEventIds.includes(subEventId);
+        if (selected && !counted) {
+          return sum + 1;
+        }
+        if (!selected && counted) {
+          return sum - 1;
+        }
+        return sum;
+      }, 0);
   }
 
   private isOptionalSubEventDisabled(slot: EventCheckoutSlot, subEvent: EventCheckoutOptionalSubEvent): boolean {
@@ -879,7 +897,7 @@ export class EventCheckoutSlotPickerPopupComponent {
   }
 
   private checkoutItemOccupancyCounted(item: EventCheckoutBasketItem): boolean {
-    return item.status !== 'draft' && this.isActiveCheckoutStatus(item.status);
+    return this.isActiveBasketItem(item);
   }
 
   private refreshBaselineSelection(): void {
