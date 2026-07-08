@@ -188,9 +188,23 @@ export class EventCheckoutPopupComponent {
       onBasketAdd: event => this.addCheckoutBasketSlot(event),
       onBasketItemMenuSelect: (item, event) => this.onCheckoutBasketItemMenuSelect(item, event),
       footerItems: this.isReadOnlyCheckoutSummary() ? [] : this.checkoutFooterMenuItems(),
-      footerMessage: () => this.errorMessage,
+      footerMessage: this.errorMessage,
       onFooterItemSelect: event => this.onCheckoutActionMenuSelect(event),
       onClose: () => this.onCheckoutReviewEditorClose()
+    });
+  }
+
+  private setCheckoutErrorMessage(
+    dialog: EventCheckoutDialogState | null | undefined,
+    error: unknown,
+    fallbackMessage: string
+  ): void {
+    this.errorMessage = this.resolveErrorMessage(error, fallbackMessage);
+    queueMicrotask(() => {
+      if (!dialog || this.dialog()?.id !== dialog.id || this.checkoutReviewDialogId !== dialog.id) {
+        return;
+      }
+      this.openCheckoutReviewEditorShell(dialog);
     });
   }
 
@@ -429,7 +443,7 @@ export class EventCheckoutPopupComponent {
       void this.persistCheckoutDraft()
         .catch(error => {
           const dialog = this.dialog();
-          this.errorMessage = this.resolveErrorMessage(error, dialog?.failureMessage ?? 'Unable to update checkout.');
+          this.setCheckoutErrorMessage(dialog, error, dialog?.failureMessage ?? 'Unable to update checkout.');
         })
         .finally(() => {
           this.busy = false;
@@ -1783,7 +1797,7 @@ export class EventCheckoutPopupComponent {
       this.paymentStep = true;
       this.openCheckoutReviewEditorShell(dialog);
     } catch (error) {
-      this.errorMessage = this.resolveErrorMessage(error, dialog.failureMessage);
+      this.setCheckoutErrorMessage(dialog, error, dialog.failureMessage);
     } finally {
       this.busy = false;
       this.checkoutBusyActionId = null;
@@ -2133,7 +2147,7 @@ export class EventCheckoutPopupComponent {
         this.paymentStep = false;
         this.openCheckoutReviewEditorShell(dialog);
       } catch (error) {
-        this.errorMessage = this.resolveErrorMessage(error, dialog.failureMessage);
+        this.setCheckoutErrorMessage(dialog, error, dialog.failureMessage);
       } finally {
         this.busy = false;
         this.checkoutBusyActionId = null;
@@ -2164,7 +2178,7 @@ export class EventCheckoutPopupComponent {
           this.closeCheckoutDialog();
         }
       } catch (error) {
-        this.errorMessage = this.resolveErrorMessage(error, dialog.failureMessage);
+        this.setCheckoutErrorMessage(dialog, error, dialog.failureMessage);
       } finally {
         this.busy = false;
         this.checkoutBusyActionId = null;
@@ -2186,7 +2200,7 @@ export class EventCheckoutPopupComponent {
         this.paymentStep = true;
         this.openCheckoutReviewEditorShell(dialog);
       } catch (error) {
-        this.errorMessage = this.resolveErrorMessage(error, dialog.failureMessage);
+        this.setCheckoutErrorMessage(dialog, error, dialog.failureMessage);
       } finally {
         this.busy = false;
         this.checkoutBusyActionId = null;
@@ -2217,7 +2231,7 @@ export class EventCheckoutPopupComponent {
       this.clearCheckoutDraft();
       this.closeCheckoutDialog();
     } catch (error) {
-      this.errorMessage = this.resolveErrorMessage(error, dialog.failureMessage);
+      this.setCheckoutErrorMessage(dialog, error, dialog.failureMessage);
     } finally {
       this.busy = false;
       this.checkoutBusyActionId = null;

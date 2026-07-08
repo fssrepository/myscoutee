@@ -3579,6 +3579,7 @@ export class LocalEventsRepository {
 
     const records: ActivityEventRecord[] = [];
     const templates = parent.slotTemplates ?? [];
+    const membersTable = this.normalizeActivityMembersCollection(this.memoryDb.read()[ACTIVITY_MEMBERS_TABLE_NAME]);
     const overrideDates = new Set(
       templates
         .map(template => this.slotOverrideDateKey(template.overrideDate))
@@ -3609,8 +3610,26 @@ export class LocalEventsRepository {
           .find(record => record.id === sourceId && this.isGeneratedSlotRecord(record))
           ?? null;
         const capacityTotal = Math.max(0, parent.capacityTotal);
-        const acceptedMembers = Math.max(0, Math.trunc(Number(existing?.acceptedMembers) || 0));
-        const pendingMembers = Math.max(0, Math.trunc(Number(existing?.pendingMembers) || 0));
+        const acceptedMemberUserIds = this.eventMemberUserIdsByStatusFromTable(membersTable, sourceId, 'accepted');
+        const pendingMemberUserIds = this.eventMemberUserIdsByStatusFromTable(membersTable, sourceId, 'pending');
+        const invitedMemberUserIds = this.eventMemberUserIdsByPredicate(
+          membersTable,
+          sourceId,
+          member => member.status === 'pending' && this.isInvitationMember(member)
+        );
+        const pendingRequestMemberUserIds = this.eventMemberUserIdsByPredicate(
+          membersTable,
+          sourceId,
+          member => member.status === 'pending' && !this.isInvitationMember(member)
+        );
+        const acceptedMembers = Math.max(
+          acceptedMemberUserIds.length,
+          Math.max(0, Math.trunc(Number(existing?.acceptedMembers) || 0))
+        );
+        const pendingMembers = Math.max(
+          pendingMemberUserIds.length,
+          Math.max(0, Math.trunc(Number(existing?.pendingMembers) || 0))
+        );
         records.push({
           id: sourceId,
           userId: LocalEventsRepository.SLOT_READ_MODEL_USER_ID,
@@ -3655,10 +3674,10 @@ export class LocalEventsRepository {
           upcomingSlots: [],
           acceptedMembers,
           pendingMembers,
-          acceptedMemberUserIds: [],
-          pendingMemberUserIds: [],
-          invitedMemberUserIds: [],
-          pendingRequestMemberUserIds: [],
+          acceptedMemberUserIds,
+          pendingMemberUserIds,
+          invitedMemberUserIds,
+          pendingRequestMemberUserIds,
           topics: [...parent.topics],
           subEventsEnabled: false,
           subEventDefinitions: ActivityEventDetailDTO.normalizeSubEventDefinitions(definitions),
@@ -3697,8 +3716,26 @@ export class LocalEventsRepository {
         .find(record => record.id === sourceId && this.isGeneratedSlotRecord(record))
         ?? null;
       const capacityTotal = Math.max(0, parent.capacityTotal);
-      const acceptedMembers = Math.max(0, Math.trunc(Number(existing?.acceptedMembers) || 0));
-      const pendingMembers = Math.max(0, Math.trunc(Number(existing?.pendingMembers) || 0));
+      const acceptedMemberUserIds = this.eventMemberUserIdsByStatusFromTable(membersTable, sourceId, 'accepted');
+      const pendingMemberUserIds = this.eventMemberUserIdsByStatusFromTable(membersTable, sourceId, 'pending');
+      const invitedMemberUserIds = this.eventMemberUserIdsByPredicate(
+        membersTable,
+        sourceId,
+        member => member.status === 'pending' && this.isInvitationMember(member)
+      );
+      const pendingRequestMemberUserIds = this.eventMemberUserIdsByPredicate(
+        membersTable,
+        sourceId,
+        member => member.status === 'pending' && !this.isInvitationMember(member)
+      );
+      const acceptedMembers = Math.max(
+        acceptedMemberUserIds.length,
+        Math.max(0, Math.trunc(Number(existing?.acceptedMembers) || 0))
+      );
+      const pendingMembers = Math.max(
+        pendingMemberUserIds.length,
+        Math.max(0, Math.trunc(Number(existing?.pendingMembers) || 0))
+      );
       records.push({
         id: sourceId,
         userId: LocalEventsRepository.SLOT_READ_MODEL_USER_ID,
@@ -3743,10 +3780,10 @@ export class LocalEventsRepository {
         upcomingSlots: [],
         acceptedMembers,
         pendingMembers,
-        acceptedMemberUserIds: [],
-        pendingMemberUserIds: [],
-        invitedMemberUserIds: [],
-        pendingRequestMemberUserIds: [],
+        acceptedMemberUserIds,
+        pendingMemberUserIds,
+        invitedMemberUserIds,
+        pendingRequestMemberUserIds,
         topics: [...parent.topics],
         subEventsEnabled: false,
         subEventDefinitions: ActivityEventDetailDTO.normalizeSubEventDefinitions(definitions),
