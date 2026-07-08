@@ -1,20 +1,20 @@
 import { Injectable, inject } from '@angular/core';
 
-import { ActivityEventDetailDTO } from '../../../contracts/activity.interface';
 import type {
-  EventCheckoutBasket,
-  EventCheckoutBasketItem,
-  EventCheckoutLineItem,
-  EventCheckoutPricingSummaryRow,
-  EventCheckoutRequest,
-  EventCheckoutResultState,
-  EventCheckoutState
-} from '../../../contracts/activity.interface';
+  LocalEventCheckoutBasketItemRecord,
+  LocalEventCheckoutBasketRecord,
+  LocalEventCheckoutBasketResultState,
+  LocalEventCheckoutBasketStatePatchRecord,
+  LocalEventCheckoutBasketStatus,
+  LocalEventCheckoutLineItemRecord,
+  LocalEventCheckoutPricingSummaryRowRecord
+} from '../mappers';
+import { LocalEventCheckoutBasketsMapper } from '../mappers';
 import { AppMemoryDb } from '../../../common/app.db';
 import { APP_INDEXED_DB_KEYS } from '../../../common/storage-scope';
 
 interface EventCheckoutBasketRecordCollection {
-  byKey: Record<string, EventCheckoutBasket>;
+  byKey: Record<string, LocalEventCheckoutBasketRecord>;
   keys: string[];
 }
 
@@ -24,7 +24,7 @@ interface EventCheckoutBasketRecordCollection {
 export class LocalEventCheckoutBasketsRepository {
   private readonly memoryDb = inject(AppMemoryDb);
 
-  async loadBasketByEvent(userId: string, sourceId: string): Promise<EventCheckoutBasket | null> {
+  async loadBasketByEvent(userId: string, sourceId: string): Promise<LocalEventCheckoutBasketRecord | null> {
     const key = this.recordKey(userId, sourceId);
     if (!key) {
       return null;
@@ -33,7 +33,10 @@ export class LocalEventCheckoutBasketsRepository {
     return this.activeBasket(table.byKey[key]);
   }
 
-  async loadActiveItemsByEvent(sourceId: string, excludeUserId?: string | null): Promise<EventCheckoutBasketItem[]> {
+  async loadActiveItemsByEvent(
+    sourceId: string,
+    excludeUserId?: string | null
+  ): Promise<LocalEventCheckoutBasketItemRecord[]> {
     const normalizedSourceId = `${sourceId ?? ''}`.trim();
     if (!normalizedSourceId) {
       return [];
@@ -47,30 +50,39 @@ export class LocalEventCheckoutBasketsRepository {
       .filter(item => this.isActiveItem(item));
   }
 
-  async saveBasket(request: EventCheckoutRequest): Promise<EventCheckoutBasket | null> {
-    const userId = request.userId?.trim() ?? '';
-    const sourceId = request.sourceId?.trim() ?? '';
+  async saveBasket(record: LocalEventCheckoutBasketRecord): Promise<LocalEventCheckoutBasketRecord | null> {
+    const userId = record.userId?.trim() ?? '';
+    const sourceId = record.sourceId?.trim() ?? '';
     const key = this.recordKey(userId, sourceId);
     if (!key) {
       return null;
     }
-    const status = this.normalizeStatus(request.checkoutState);
-    const items = (request.basketItems ?? [])
+    const status = this.normalizeStatus(record.status);
+    const currency = record.currency?.trim() || 'USD';
+    const items = (record.items ?? [])
       .map(item => this.normalizeBasketItem({
         ...item,
         status: item?.status === 'pay' ? 'pay' : status,
         resultState: item?.resultState ?? 'pending'
-      }, status, request.currency))
-      .filter((item): item is EventCheckoutBasketItem => Boolean(item));
+      }, status, currency))
+      .filter((item): item is LocalEventCheckoutBasketItemRecord => Boolean(item));
     const table = await this.readTable();
     const incomingItemIds = new Set(items.map(item => item.id));
+    const updatedAtIso = new Date().toISOString();
+    const inactiveExistingItems = (table.byKey[key]?.items ?? [])
+      .filter(item => !this.isActiveItem(item));
     const deletedExistingItems = (table.byKey[key]?.items ?? [])
       .filter(item => this.isActiveItem(item) && !incomingItemIds.has(item.id))
-      .map(item => this.normalizeBasketItem({ ...item, resultState: 'deleted' }, status, request.currency))
-      .filter((item): item is EventCheckoutBasketItem => Boolean(item));
-    const storedItems = [...deletedExistingItems, ...items];
+      .map(item => this.normalizeBasketItem({
+        ...item,
+        status: 'deleted',
+        resultState: 'deleted',
+        updatedAtIso
+      }, status, currency))
+      .filter((item): item is LocalEventCheckoutBasketItemRecord => Boolean(item));
+    const storedItems = [...inactiveExistingItems, ...deletedExistingItems, ...items];
     const activeItems = storedItems.filter(item => this.isActiveItem(item));
-    const basket = ActivityEventDetailDTO.cloneCheckoutBasket({
+    const basket = LocalEventCheckoutBasketsMapper.cloneRecord({
       userId,
       sourceId,
       status,
@@ -78,8 +90,8 @@ export class LocalEventCheckoutBasketsRepository {
       pricingSummaryRows: this.aggregatePricingSummaryRows(activeItems),
       lineItems: this.lineItemsFromBasketItems(activeItems),
       totalAmount: this.totalAmountFromBasketItems(activeItems),
-      currency: request.currency?.trim() || 'USD',
-      slotSourceId: request.slotSourceId ?? activeItems.find(item => item.slotSourceId?.trim())?.slotSourceId ?? null,
+      currency,
+      slotSourceId: record.slotSourceId ?? activeItems.find(item => item.slotSourceId?.trim())?.slotSourceId ?? null,
       selectedDateKey: activeItems.find(item => item.selectedDateKey?.trim())?.selectedDateKey ?? null,
       checkoutSessionId: activeItems.find(item => item.checkoutSessionId?.trim())?.checkoutSessionId ?? null,
       expiresAtIso: activeItems.find(item => item.expiresAtIso?.trim())?.expiresAtIso ?? null
@@ -96,13 +108,9 @@ export class LocalEventCheckoutBasketsRepository {
     return this.activeBasket(basket);
   }
 
-  async updateBasketState(request: {
-    userId: string;
-    sourceId: string;
-    checkoutState: EventCheckoutState;
-    resultState?: EventCheckoutResultState | null;
-    checkoutSessionId?: string | null;
-  }): Promise<EventCheckoutBasket | null> {
+  async updateBasketState(
+    request: LocalEventCheckoutBasketStatePatchRecord
+  ): Promise<LocalEventCheckoutBasketRecord | null> {
     const userId = request.userId?.trim() ?? '';
     const sourceId = request.sourceId?.trim() ?? '';
     const key = this.recordKey(userId, sourceId);
@@ -120,17 +128,19 @@ export class LocalEventCheckoutBasketsRepository {
       : this.normalizeResultState(request.resultState);
     const checkoutSessionId = request.checkoutSessionId?.trim() || null;
     const updatedAtIso = new Date().toISOString();
-    const basket = ActivityEventDetailDTO.cloneCheckoutBasket({
+    const basket = LocalEventCheckoutBasketsMapper.cloneRecord({
       ...current,
       status: checkoutState,
       checkoutSessionId: checkoutSessionId ?? current.checkoutSessionId ?? null,
-      items: current.items.map(item => ({
-        ...item,
-        status: checkoutState,
-        resultState: resultState ?? item.resultState ?? 'pending',
-        checkoutSessionId: checkoutSessionId ?? item.checkoutSessionId ?? null,
-        updatedAtIso
-      }))
+      items: current.items.map(item => this.isActiveItem(item)
+        ? {
+            ...item,
+            status: checkoutState,
+            resultState: resultState ?? item.resultState ?? 'pending',
+            checkoutSessionId: checkoutSessionId ?? item.checkoutSessionId ?? null,
+            updatedAtIso
+          }
+        : item)
     });
     if (!basket) {
       return null;
@@ -170,8 +180,8 @@ export class LocalEventCheckoutBasketsRepository {
     const byKey = entry?.byKey && typeof entry.byKey === 'object'
       ? Object.fromEntries(
           Object.entries(entry.byKey)
-            .map(([key, basket]) => [key, ActivityEventDetailDTO.cloneCheckoutBasket(basket)])
-            .filter((entry): entry is [string, EventCheckoutBasket] => Boolean(entry[1]))
+            .map(([key, basket]) => [key, LocalEventCheckoutBasketsMapper.cloneRecord(basket)])
+            .filter((entry): entry is [string, LocalEventCheckoutBasketRecord] => Boolean(entry[1]))
         )
       : {};
     const keys = Array.isArray(entry?.keys)
@@ -181,49 +191,23 @@ export class LocalEventCheckoutBasketsRepository {
   }
 
   private normalizeBasketItem(
-    item: EventCheckoutBasketItem | null | undefined,
-    fallbackStatus: EventCheckoutState,
+    item: LocalEventCheckoutBasketItemRecord | null | undefined,
+    fallbackStatus: LocalEventCheckoutBasketStatus,
     fallbackCurrency?: string | null
-  ): EventCheckoutBasketItem | null {
-    const id = item?.id?.trim() ?? '';
-    const sourceId = item?.sourceId?.trim() ?? '';
-    const label = item?.label?.trim() ?? '';
-    if (!id || !sourceId || !label) {
-      return null;
-    }
-    const currency = item?.currency?.trim() || fallbackCurrency?.trim() || 'USD';
-    return {
-      id,
-      kind: item?.kind === 'sub_event' || item?.kind === 'resource' ? item.kind : 'event',
-      sourceId,
-      slotSourceId: item?.slotSourceId?.trim() || null,
-      slotTemplateId: item?.slotTemplateId?.trim() || null,
-      selectedDateKey: item?.selectedDateKey?.trim() || null,
-      subEventId: item?.subEventId?.trim() || null,
-      resourceType: item?.resourceType ?? null,
-      label,
-      detail: item?.detail?.trim() || '',
-      amount: Math.round((Number(item?.amount) || 0) * 100) / 100,
-      currency,
-      quantity: Math.max(1, Math.trunc(Number(item?.quantity) || 1)),
-      status: this.normalizeStatus(item?.status ?? fallbackStatus),
-      resultState: this.normalizeResultState(item?.resultState),
-      pricingSummaryRows: this.normalizePricingSummaryRows(item?.pricingSummaryRows, currency),
-      checkoutSessionId: item?.checkoutSessionId?.trim() || null,
-      createdAtIso: item?.createdAtIso?.trim() || null,
-      updatedAtIso: item?.updatedAtIso?.trim() || null,
-      expiresAtIso: item?.expiresAtIso?.trim() || null
-    };
+  ): LocalEventCheckoutBasketItemRecord | null {
+    return LocalEventCheckoutBasketsMapper.cloneItemRecord(item, fallbackStatus, fallbackCurrency);
   }
 
-  private activeBasket(basket: EventCheckoutBasket | null | undefined): EventCheckoutBasket | null {
-    const cloned = ActivityEventDetailDTO.cloneCheckoutBasket(basket);
+  private activeBasket(
+    basket: LocalEventCheckoutBasketRecord | null | undefined
+  ): LocalEventCheckoutBasketRecord | null {
+    const cloned = LocalEventCheckoutBasketsMapper.cloneRecord(basket);
     const activeItems = (cloned?.items ?? []).filter(item => this.isActiveItem(item));
     if (!cloned || activeItems.length === 0) {
       return null;
     }
     const currency = cloned.currency || activeItems.find(item => item.currency)?.currency || 'USD';
-    return ActivityEventDetailDTO.cloneCheckoutBasket({
+    return LocalEventCheckoutBasketsMapper.cloneRecord({
       ...cloned,
       status: activeItems.some(item => item.status === 'pay')
         ? 'pay'
@@ -248,7 +232,9 @@ export class LocalEventCheckoutBasketsRepository {
     });
   }
 
-  private lineItemsFromBasketItems(items: readonly EventCheckoutBasketItem[]): EventCheckoutLineItem[] {
+  private lineItemsFromBasketItems(
+    items: readonly LocalEventCheckoutBasketItemRecord[]
+  ): LocalEventCheckoutLineItemRecord[] {
     return items.map(item => ({
       id: item.id,
       kind: item.kind,
@@ -259,15 +245,15 @@ export class LocalEventCheckoutBasketsRepository {
     })).filter(item => item.id && item.label);
   }
 
-  private totalAmountFromBasketItems(items: readonly EventCheckoutBasketItem[]): number {
+  private totalAmountFromBasketItems(items: readonly LocalEventCheckoutBasketItemRecord[]): number {
     return Math.round(this.lineItemsFromBasketItems(items)
       .reduce((sum, item) => sum + (Number(item.amount) || 0), 0) * 100) / 100;
   }
 
   private aggregatePricingSummaryRows(
-    items: readonly EventCheckoutBasketItem[]
-  ): EventCheckoutPricingSummaryRow[] {
-    const grouped = new Map<string, EventCheckoutPricingSummaryRow>();
+    items: readonly LocalEventCheckoutBasketItemRecord[]
+  ): LocalEventCheckoutPricingSummaryRowRecord[] {
+    const grouped = new Map<string, LocalEventCheckoutPricingSummaryRowRecord>();
     for (const item of items) {
       const fallbackCurrency = item.currency?.trim() || 'USD';
       for (const row of item.pricingSummaryRows ?? []) {
@@ -305,50 +291,25 @@ export class LocalEventCheckoutBasketsRepository {
     return [...grouped.values()];
   }
 
-  private normalizePricingSummaryRows(
-    rows: readonly EventCheckoutPricingSummaryRow[] | null | undefined,
-    fallbackCurrency?: string | null
-  ): EventCheckoutPricingSummaryRow[] {
-    const currency = fallbackCurrency?.trim() || 'USD';
-    return (rows ?? []).map(row => ({
-      key: row.key?.trim() || row.label?.trim() || 'pricing',
-      label: row.label?.trim() || 'Pricing',
-      detail: row.detail?.trim() || null,
-      amount: Number.isFinite(row.amount) ? Number(row.amount) : null,
-      currency: row.currency?.trim() || currency,
-      multiplier: Number.isFinite(row.multiplier) ? Math.max(1, Math.trunc(Number(row.multiplier))) : null
-    })).filter(row => row.label);
+  private normalizeStatus(value: unknown): LocalEventCheckoutBasketStatus {
+    return LocalEventCheckoutBasketsMapper.normalizeStatus(value);
   }
 
-  private normalizeStatus(value: unknown): EventCheckoutState {
-    return value === 'confirmed'
-      || value === 'waiting'
-      || value === 'approval-pending'
-      || value === 'approved'
-      || value === 'pay'
-      || value === 'cancelled'
-      || value === 'rejected'
-        ? value
-        : 'draft';
+  private normalizeResultState(value: unknown): LocalEventCheckoutBasketResultState {
+    return LocalEventCheckoutBasketsMapper.normalizeResultState(value);
   }
 
-  private normalizeResultState(value: unknown): EventCheckoutResultState {
-    return value === 'deleted' || value === 'succeeded' || value === 'failed'
-      ? value
-      : 'pending';
+  private isInactiveResultState(
+    resultState: LocalEventCheckoutBasketResultState | string | null | undefined
+  ): boolean {
+    return LocalEventCheckoutBasketsMapper.isInactiveResultState(resultState);
   }
 
-  private isInactiveResultState(resultState: EventCheckoutResultState | string | null | undefined): boolean {
-    return resultState === 'deleted' || resultState === 'succeeded';
-  }
-
-  private isActiveItem(item: EventCheckoutBasketItem): boolean {
+  private isActiveItem(item: LocalEventCheckoutBasketItemRecord): boolean {
     return `${item.status ?? ''}` !== 'deleted' && !this.isInactiveResultState(item.resultState);
   }
 
   private recordKey(userId: string, sourceId: string): string {
-    const normalizedUserId = `${userId ?? ''}`.trim();
-    const normalizedSourceId = `${sourceId ?? ''}`.trim();
-    return normalizedUserId && normalizedSourceId ? `${normalizedUserId}::${normalizedSourceId}` : '';
+    return LocalEventCheckoutBasketsMapper.recordKey(userId, sourceId);
   }
 }

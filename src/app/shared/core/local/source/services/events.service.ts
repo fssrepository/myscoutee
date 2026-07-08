@@ -54,6 +54,7 @@ import {
   LocalActivitySubEventStageRuntimeMapper,
   LocalActivityResourcesMapper,
   LocalActivityEventsMapper,
+  LocalEventCheckoutBasketsMapper,
   LocalEventFeedbackMapper,
   LocalEventParticipationActionMapper,
   LocalUsersMapper
@@ -209,8 +210,11 @@ export class LocalEventsService extends LocalRouteDelayService implements IEvent
     if (!record) {
       return null;
     }
-    const checkoutBasket = await this.eventCheckoutBasketsRepository.loadBasketByEvent(normalizedUserId, record.id);
-    const activeReservationItems = await this.eventCheckoutBasketsRepository.loadActiveItemsByEvent(record.id, normalizedUserId);
+    const checkoutBasketRecord = await this.eventCheckoutBasketsRepository.loadBasketByEvent(normalizedUserId, record.id);
+    const checkoutBasket = LocalEventCheckoutBasketsMapper.toDto(checkoutBasketRecord);
+    const activeReservationItems = LocalEventCheckoutBasketsMapper.itemRecordsToDtos(
+      await this.eventCheckoutBasketsRepository.loadActiveItemsByEvent(record.id, normalizedUserId)
+    );
     const slotReservations = this.checkoutReservationCounts(activeReservationItems, 'slot');
     const optionalReservations = this.checkoutReservationCounts(activeReservationItems, 'optional');
     const direction = query.order === 'past' ? -1 : 1;
@@ -255,7 +259,9 @@ export class LocalEventsService extends LocalRouteDelayService implements IEvent
       return null;
     }
     await this.waitForRouteDelay(LocalEventsService.EVENTS_CHECKOUT_ROUTE);
-    return this.eventCheckoutBasketsRepository.loadBasketByEvent(normalizedUserId, normalizedSourceId);
+    return LocalEventCheckoutBasketsMapper.toDto(
+      await this.eventCheckoutBasketsRepository.loadBasketByEvent(normalizedUserId, normalizedSourceId)
+    );
   }
 
   async saveCheckoutBasket(request: EventCheckoutRequest): Promise<EventCheckoutBasket | null> {
@@ -265,7 +271,7 @@ export class LocalEventsService extends LocalRouteDelayService implements IEvent
       return null;
     }
     await this.waitForRouteDelay(LocalEventsService.EVENTS_CHECKOUT_ROUTE);
-    return this.eventCheckoutBasketsRepository.saveBasket({
+    return this.saveCheckoutBasketRecord({
       ...request,
       userId: normalizedUserId,
       sourceId: normalizedSourceId
@@ -279,11 +285,33 @@ export class LocalEventsService extends LocalRouteDelayService implements IEvent
       return null;
     }
     await this.waitForRouteDelay(LocalEventsService.EVENTS_CHECKOUT_ROUTE);
-    return this.eventCheckoutBasketsRepository.updateBasketState({
+    return this.updateCheckoutBasketStateRecord({
       ...request,
       userId: normalizedUserId,
       sourceId: normalizedSourceId
     });
+  }
+
+  private async saveCheckoutBasketRecord(request: EventCheckoutRequest): Promise<EventCheckoutBasket | null> {
+    const record = LocalEventCheckoutBasketsMapper.toRecordFromRequest(request);
+    if (!record) {
+      return null;
+    }
+    return LocalEventCheckoutBasketsMapper.toDto(
+      await this.eventCheckoutBasketsRepository.saveBasket(record)
+    );
+  }
+
+  private async updateCheckoutBasketStateRecord(
+    request: EventCheckoutStateChangeRequest
+  ): Promise<EventCheckoutBasket | null> {
+    const record = LocalEventCheckoutBasketsMapper.toStatePatchRecord(request);
+    if (!record) {
+      return null;
+    }
+    return LocalEventCheckoutBasketsMapper.toDto(
+      await this.eventCheckoutBasketsRepository.updateBasketState(record)
+    );
   }
 
   async payEventCheckout(request: EventCheckoutStateChangeRequest): Promise<EventParticipationActionResultDTO | null> {
@@ -314,7 +342,7 @@ export class LocalEventsService extends LocalRouteDelayService implements IEvent
           pendingReason: null
         })
       : null;
-    await this.eventCheckoutBasketsRepository.updateBasketState({
+    await this.updateCheckoutBasketStateRecord({
       userId: normalizedUserId,
       sourceId: normalizedSourceId,
       checkoutState: result?.membershipStatus === 'accepted'
@@ -701,7 +729,7 @@ export class LocalEventsService extends LocalRouteDelayService implements IEvent
     }
     if (options.checkoutState) {
       if (options.basketItems?.length) {
-        await this.eventCheckoutBasketsRepository.saveBasket({
+        await this.saveCheckoutBasketRecord({
           userId: normalizedUserId,
           sourceId: normalizedSourceId,
           slotSourceId: options.slotSourceId ?? null,
@@ -717,7 +745,7 @@ export class LocalEventsService extends LocalRouteDelayService implements IEvent
           pendingReason: options.pendingReason
         });
       } else {
-        await this.eventCheckoutBasketsRepository.updateBasketState({
+        await this.updateCheckoutBasketStateRecord({
           userId: normalizedUserId,
           sourceId: normalizedSourceId,
           checkoutState: options.checkoutState,
@@ -762,7 +790,7 @@ export class LocalEventsService extends LocalRouteDelayService implements IEvent
       return null;
     }
     if (options.checkoutState) {
-      await this.eventCheckoutBasketsRepository.updateBasketState({
+      await this.updateCheckoutBasketStateRecord({
         userId: normalizedUserId,
         sourceId: normalizedSourceId,
         checkoutState: options.checkoutState,
@@ -1243,7 +1271,7 @@ export class LocalEventsService extends LocalRouteDelayService implements IEvent
       currency: request.currency?.trim() || 'USD',
       paymentUrl: null
     };
-    await this.eventCheckoutBasketsRepository.saveBasket(
+    await this.saveCheckoutBasketRecord(
       this.withCheckoutBasketState(request, 'confirmed', session.id)
     );
     return session;
@@ -1263,7 +1291,7 @@ export class LocalEventsService extends LocalRouteDelayService implements IEvent
       currency: request.currency?.trim() || 'USD',
       paymentUrl: null
     };
-    await this.eventCheckoutBasketsRepository.saveBasket(
+    await this.saveCheckoutBasketRecord(
       this.withCheckoutBasketState(request, 'pay', session.id)
     );
     return session;
