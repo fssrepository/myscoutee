@@ -894,8 +894,18 @@ export class EventCheckoutPopupComponent {
     if (!dialog || !normalizedItemId) {
       return;
     }
-    const remainingItems = this.activeCheckoutBasketItems()
-      .filter(item => item.id !== normalizedItemId);
+    const activeItems = this.activeCheckoutBasketItems();
+    const previousSelectedDateKey = this.checkoutBasket?.selectedDateKey
+      ?? activeItems.find(item => item.selectedDateKey?.trim())?.selectedDateKey?.trim()
+      ?? null;
+    const previousExpiresAtIso = this.checkoutBasket?.expiresAtIso
+      ?? activeItems.find(item => item.expiresAtIso?.trim())?.expiresAtIso?.trim()
+      ?? null;
+    const item = activeItems.find(current => current.id === normalizedItemId);
+    const removedGroupKey = item ? this.checkoutBasketPresentationGroupKey(item) : '';
+    const remainingItems = activeItems
+      .filter(item => item.id !== normalizedItemId)
+      .filter(item => !removedGroupKey || this.checkoutBasketPresentationGroupKey(item) !== removedGroupKey);
     this.resetCheckoutSubmissionForEdit();
     this.checkoutBasket = this.buildRuntimeBasketFromItems(remainingItems);
     this.selectedSlotSourceId = remainingItems[0]?.slotSourceId ?? null;
@@ -906,10 +916,40 @@ export class EventCheckoutPopupComponent {
     this.checkoutBasket = savedBasket ?? this.checkoutBasket;
     if (remainingItems.length === 0) {
       this.selectedSlotSourceId = null;
-      this.clearCheckoutDraft();
+      this.selectedOptionalSubEventIds = new Set<string>();
+      this.checkoutBasket = null;
+      this.saveEmptyCheckoutDraft(dialog, previousSelectedDateKey, previousExpiresAtIso);
+      this.openCheckoutReviewEditorShell(dialog);
       return;
     }
     await this.persistCheckoutDraft(false, null, 'draft');
+  }
+
+  private saveEmptyCheckoutDraft(
+    dialog: EventCheckoutDialogState,
+    selectedDateKey: string | null,
+    expiresAtIso: string | null
+  ): void {
+    this.checkoutDraftStore.save({
+      userId: dialog.userId,
+      sourceId: dialog.record.id,
+      eventTitle: dialog.record.title,
+      eventTimeframe: dialog.record.timeframe,
+      slotSourceId: null,
+      selectedDateKey,
+      optionalSubEventIds: [],
+      acceptedPolicyIds: [...this.acceptedPolicyIds],
+      basketItems: [],
+      pricingSummaryRows: [],
+      checkoutState: 'draft',
+      lineItems: [],
+      totalAmount: 0,
+      currency: dialog.record.pricing?.currency?.trim() || 'USD',
+      checkoutSessionId: null,
+      expiresAtIso,
+      pendingReason: null,
+      updatedAtMs: Date.now()
+    });
   }
 
   private buildRuntimeBasketFromCurrentSelection(): ActivityContracts.EventCheckoutBasket | null {
@@ -1240,7 +1280,8 @@ export class EventCheckoutPopupComponent {
     }
     return Boolean(this.checkoutSessionId)
       || this.checkoutDecisionPending()
-      || this.checkoutLifecycleHasStarted();
+      || this.checkoutLifecycleHasStarted()
+      || this.checkoutDraftHasStarted();
   }
 
   private checkoutLifecycleHasStarted(): boolean {
@@ -1252,6 +1293,18 @@ export class EventCheckoutPopupComponent {
     ];
     return Boolean(this.checkoutBasket?.status && lifecycleStates.includes(this.checkoutBasket.status))
       || this.activeCheckoutBasketItems().some(item => lifecycleStates.includes(item.status));
+  }
+
+  private checkoutDraftHasStarted(): boolean {
+    return this.currentCheckoutDraft() !== null;
+  }
+
+  private isDraftOnlyCheckout(): boolean {
+    return this.checkoutDraftHasStarted()
+      && !this.checkoutDecisionPending()
+      && !this.checkoutLifecycleHasStarted()
+      && !this.paymentStep
+      && !this.checkoutSessionId;
   }
 
   private checkoutLifecycleCancelLabel(): string {
@@ -1267,6 +1320,12 @@ export class EventCheckoutPopupComponent {
     return 'Cancel checkout';
   }
 
+  private checkoutLifecycleCancelWarning(): string {
+    return this.isDraftOnlyCheckout()
+      ? 'The draft checkout basket will be cancelled and removed.'
+      : 'The current checkout lifecycle will be closed and kept as a cancelled audit record.';
+  }
+
   private requestCancelCheckoutLifecycle(event?: Event): void {
     event?.preventDefault();
     event?.stopPropagation();
@@ -1276,7 +1335,7 @@ export class EventCheckoutPopupComponent {
     this.confirmationDialogStore.open({
       title: `${this.checkoutLifecycleCancelLabel()}?`,
       message: this.dialog()?.record.title ?? 'Checkout',
-      warningMessage: 'The current checkout lifecycle will be closed and kept as a cancelled audit record.',
+      warningMessage: this.checkoutLifecycleCancelWarning(),
       cancelLabel: 'Back',
       confirmLabel: this.checkoutLifecycleCancelLabel(),
       busyConfirmLabel: 'Cancelling...',
@@ -1290,6 +1349,10 @@ export class EventCheckoutPopupComponent {
   private async cancelCheckoutLifecycle(): Promise<void> {
     const dialog = this.dialog();
     if (!dialog || this.activeCheckoutBasketItems().some(item => item.status === 'pay')) {
+      return;
+    }
+    if (this.isDraftOnlyCheckout()) {
+      await this.cancelDraftCheckout(dialog);
       return;
     }
     const counterDelta = this.checkoutCancelCounterDelta();
@@ -1310,6 +1373,21 @@ export class EventCheckoutPopupComponent {
     this.paymentStep = false;
     this.checkoutSessionId = null;
     this.checkoutBasket = null;
+    this.closeCheckoutDialog();
+  }
+
+  private async cancelDraftCheckout(dialog: EventCheckoutDialogState): Promise<void> {
+    await this.eventsService.saveCheckoutBasket(this.buildCheckoutRequest({
+      checkoutState: 'cancelled',
+      resultState: 'deleted',
+      pendingReason: null
+    }));
+    this.checkoutDraftStore.clear(dialog.userId, dialog.record.id);
+    this.paymentStep = false;
+    this.checkoutSessionId = null;
+    this.checkoutBasket = null;
+    this.selectedSlotSourceId = null;
+    this.selectedOptionalSubEventIds = new Set<string>();
     this.closeCheckoutDialog();
   }
 
@@ -1486,7 +1564,7 @@ export class EventCheckoutPopupComponent {
     if (this.checkoutDecisionPending()) {
       return false;
     }
-    if (this.requiresSlotSelection() && !this.selectedSlot() && this.checkoutBasketItems().length === 0) {
+    if (this.requiresSlotSelection() && this.checkoutBasketItems().length === 0) {
       return false;
     }
     return true;

@@ -96,6 +96,7 @@ export class EventCheckoutSlotPickerPopupComponent {
   protected monthListQuery: Partial<ListQuery<SlotPickerMonthFilters>> = this.buildMonthListQuery();
   private selectionRevision = 0;
   private readonly selectionsBySlotId = new Map<string, SlotSelection>();
+  private baselineSelectionSignature = '';
   private optionalSubEventOptions: EventCheckoutOptionalSubEvent[] = [];
   private checkoutBasketHydrated = false;
 
@@ -259,9 +260,8 @@ export class EventCheckoutSlotPickerPopupComponent {
         id: 'save',
         icon: 'done',
         kind: 'action',
-        layout: 'action',
         palette: this.errorMessage ? 'danger' : 'success',
-        disabled: this.saving || selectedCount === 0,
+        disabled: this.saving || !this.hasSelectionChanges(),
         closeOnSelect: false,
         ariaLabel: 'Save basket',
         progress: {
@@ -468,6 +468,7 @@ export class EventCheckoutSlotPickerPopupComponent {
   ): void {
     this.selectionsBySlotId.clear();
     this.optionalSubEventOptions = [];
+    this.selectionRevision = 0;
     this.checkoutBasketHydrated = false;
     const activeItems = (basket?.items ?? [])
       .filter(item => item.resultState !== 'deleted' && item.resultState !== 'succeeded');
@@ -493,6 +494,7 @@ export class EventCheckoutSlotPickerPopupComponent {
     this.pricingSummarySlot = null;
     this.errorMessage = '';
     this.saving = false;
+    this.baselineSelectionSignature = this.selectionSignature();
     this.refreshSlotQuery();
   }
 
@@ -569,6 +571,9 @@ export class EventCheckoutSlotPickerPopupComponent {
     if (!this.checkoutBasketHydrated) {
       this.hydrateSelectionsFromBasket(record, result?.checkoutBasket ?? null, result?.slots ?? []);
       this.checkoutBasketHydrated = true;
+      if (this.selectionRevision === 0) {
+        this.baselineSelectionSignature = this.selectionSignature();
+      }
     }
     this.cdr.markForCheck();
   }
@@ -854,9 +859,26 @@ export class EventCheckoutSlotPickerPopupComponent {
     return this.isSlotUnavailable(slot) || this.optionalSubEventAvailableCount(subEvent) <= 0;
   }
 
+  private hasSelectionChanges(): boolean {
+    return this.selectionSignature() !== this.baselineSelectionSignature;
+  }
+
+  private selectionSignature(): string {
+    return [...this.selectionsBySlotId.values()]
+      .map(selection => {
+        const optionals = [...new Set(selection.optionalSubEventIds)]
+          .map(item => item.trim())
+          .filter(Boolean)
+          .sort();
+        return `${selection.slot.id}::${optionals.join(',')}`;
+      })
+      .sort()
+      .join('|');
+  }
+
   private async saveBasket(): Promise<void> {
     const state = this.popupState();
-    if (!state || this.saving || this.selectionsBySlotId.size === 0) {
+    if (!state || this.saving || !this.hasSelectionChanges()) {
       return;
     }
     this.saving = true;
@@ -886,6 +908,7 @@ export class EventCheckoutSlotPickerPopupComponent {
         updatedAtMs: Date.now()
       });
       await state.onSave?.(savedBasket, request.basketItems ?? []);
+      this.baselineSelectionSignature = this.selectionSignature();
       this.store.close();
     } catch (error) {
       this.errorMessage = error instanceof Error && error.message.trim()
