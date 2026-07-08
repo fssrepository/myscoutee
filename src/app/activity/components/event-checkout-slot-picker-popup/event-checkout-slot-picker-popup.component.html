@@ -1,25 +1,6 @@
 @if (popupState()) {
   <app-popup [model]="popupModel()" [zIndex]="4920">
     <div class="event-checkout-slot-picker" [class.is-saving]="saving">
-      <div class="event-checkout-slot-picker__toolbar">
-        <app-date-input
-          class="event-checkout-slot-picker__date"
-          [model]="dateInputModel"
-          [ngModel]="selectedDateValue()"
-          (ngModelChange)="onDateChange($event)"
-        ></app-date-input>
-        <button
-          type="button"
-          class="event-checkout-slot-picker__calendar-button"
-          [class.is-active]="monthOverlayOpen"
-          [attr.aria-pressed]="monthOverlayOpen"
-          aria-label="Open slot calendar"
-          (click)="toggleMonthOverlay($event)"
-        >
-          <mat-icon>calendar_month</mat-icon>
-        </button>
-      </div>
-
       @if (monthOverlayOpen) {
         <section class="event-checkout-slot-picker__month-overlay" aria-label="Available slot calendar">
           <div class="event-checkout-slot-picker__month-head">

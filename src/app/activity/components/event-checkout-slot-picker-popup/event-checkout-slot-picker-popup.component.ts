@@ -1,6 +1,5 @@
 import { CommonModule } from '@angular/common';
 import { ChangeDetectionStrategy, ChangeDetectorRef, Component, effect, inject } from '@angular/core';
-import { FormsModule } from '@angular/forms';
 import { MatIconModule } from '@angular/material/icon';
 import { from, of } from 'rxjs';
 
@@ -19,7 +18,6 @@ import {
   type SubEventDTO
 } from '../../../shared/core';
 import {
-  DateInputComponent,
   DialogStore,
   EventCheckoutDraftStore,
   EventCheckoutSlotPickerStore,
@@ -45,7 +43,6 @@ import type { ActivityEventRecord } from '../../../shared/core/contracts/activit
 
 interface SlotPickerFilters {
   dateKey: string;
-  basketOnly: boolean;
 }
 
 interface SlotPickerMonthFilters {
@@ -66,9 +63,7 @@ type SlotMenuContext =
   standalone: true,
   imports: [
     CommonModule,
-    FormsModule,
     MatIconModule,
-    DateInputComponent,
     IndicatorComponent,
     PopupComponent,
     SmartListComponent,
@@ -88,7 +83,6 @@ export class EventCheckoutSlotPickerPopupComponent {
   private readonly cdr = inject(ChangeDetectorRef);
 
   protected selectedDateKey = this.todayKey();
-  protected basketOnly = false;
   protected monthOverlayOpen = false;
   protected saving = false;
   protected errorMessage = '';
@@ -115,7 +109,7 @@ export class EventCheckoutSlotPickerPopupComponent {
     presentation: 'list',
     listLayout: 'card-grid',
     desktopColumns: 3,
-    emptyLabel: () => this.basketOnly ? 'No selected slots yet.' : 'No available slots for this date.',
+    emptyLabel: 'No available slots for this date.',
     trackBy: (_index, item) => item.id,
     groupBy: item => this.formatDateGroup(item.startAtIso),
     showGroupMarker: ({ groupIndex }) => groupIndex > 0,
@@ -149,9 +143,7 @@ export class EventCheckoutSlotPickerPopupComponent {
   };
 
   protected readonly slotLoadPage = (query: ListQuery<SlotPickerFilters>) =>
-    this.basketOnly
-      ? of(this.selectedSlotsPage())
-      : from(this.loadSlotPage(query));
+    from(this.loadSlotPage(query));
 
   protected readonly monthLoadPage = (_query: ListQuery<SlotPickerMonthFilters>) =>
     of({
@@ -201,7 +193,7 @@ export class EventCheckoutSlotPickerPopupComponent {
             closeIcon: 'close',
             hideLabel: true,
             layout: 'icon',
-            palette: this.basketOnly ? 'danger' : 'orange',
+            palette: 'orange',
             counter: selectedCount,
             ariaLabel: selectedCount === 1 ? 'Open selected basket item' : `Open ${selectedCount} selected basket items`
           },
@@ -209,6 +201,23 @@ export class EventCheckoutSlotPickerPopupComponent {
           panelAlign: 'end',
           mobileBreakpointPx: 900,
           closeOnSelect: false
+        }
+      ],
+      toolbarControls: [
+        {
+          kind: 'date-input',
+          id: 'slot-picker-date',
+          align: 'end',
+          model: this.dateInputModel,
+          value: this.selectedDateValue()
+        },
+        {
+          id: 'slot-picker-calendar',
+          align: 'end',
+          icon: 'calendar_month',
+          ariaLabel: 'Open slot calendar',
+          palette: this.monthOverlayOpen ? 'teal' : 'neutral',
+          active: this.monthOverlayOpen
         }
       ],
       headerActions: [
@@ -222,7 +231,12 @@ export class EventCheckoutSlotPickerPopupComponent {
       ],
       onClose: event => this.close(event),
       onAction: event => this.onPopupAction(event),
-      onMenuSelect: event => this.onPopupMenuSelect(event)
+      onMenuSelect: event => this.onPopupMenuSelect(event),
+      onDateInputChange: event => {
+        if (event.control.id === 'slot-picker-date') {
+          this.onDateChange(event.value);
+        }
+      }
     };
   }
 
@@ -308,7 +322,7 @@ export class EventCheckoutSlotPickerPopupComponent {
         optionalSubEventIds: []
       });
     }
-    this.refreshSlotQuery(false);
+    this.cdr.markForCheck();
   }
 
   protected slotMenuItems(slot: EventCheckoutSlot): readonly AppMenuItem<string, unknown>[] {
@@ -423,16 +437,6 @@ export class EventCheckoutSlotPickerPopupComponent {
     };
   }
 
-  private selectedSlotsPage(): PageResult<EventCheckoutSlot> {
-    const items = [...this.selectionsBySlotId.values()]
-      .map(selection => selection.slot)
-      .sort((left, right) => this.sortableDateMs(left.startAtIso) - this.sortableDateMs(right.startAtIso));
-    return {
-      items,
-      total: items.length
-    };
-  }
-
   private async loadMonthDays(): Promise<void> {
     const state = this.popupState();
     if (!state) {
@@ -479,44 +483,24 @@ export class EventCheckoutSlotPickerPopupComponent {
 
   private basketMenuItems(): readonly AppMenuItem<string, SlotMenuContext>[] {
     const selectedItems = [...this.selectionsBySlotId.values()];
-    return [
-      {
-        id: 'toggle-filter',
-        label: this.basketOnly ? 'Show all slots' : 'Selected only',
-        icon: this.basketOnly ? 'filter_alt_off' : 'filter_alt',
-        palette: this.basketOnly ? 'danger' : 'orange',
-        surface: 'tinted',
-        context: { menu: 'basket' }
-      },
-      ...(selectedItems.length > 0 ? [{
-        id: 'basket-divider',
-        kind: 'divider' as const,
-        context: { menu: 'basket' as const }
-      }] : []),
-      ...selectedItems.map(selection => ({
-        id: `basket:${selection.slot.id}`,
-        label: selection.slot.timeframe || selection.slot.title || selection.slot.id,
-        description: this.slotPriceLabel(selection.slot),
-        icon: 'event_seat',
-        palette: 'teal' as const,
-        surface: 'tinted' as const,
-        removable: true,
-        removeIcon: 'delete',
-        removeAriaLabel: 'Remove selected slot',
-        context: { menu: 'basket' as const, itemId: selection.slot.id }
-      }))
-    ];
+    return selectedItems.map(selection => ({
+      id: `basket:${selection.slot.id}`,
+      label: selection.slot.timeframe || selection.slot.title || selection.slot.id,
+      description: this.slotPriceLabel(selection.slot),
+      icon: 'event_seat',
+      palette: 'teal' as const,
+      surface: 'tinted' as const,
+      removable: true,
+      removeIcon: 'delete',
+      removeAriaLabel: 'Remove selected slot',
+      context: { menu: 'basket' as const, itemId: selection.slot.id }
+    }));
   }
 
   private onPopupMenuSelect(event: PopupMenuSelectEvent<SlotMenuContext>): void {
     const itemEvent = event.itemSelect;
     itemEvent.sourceEvent.preventDefault();
     itemEvent.sourceEvent.stopPropagation();
-    if (itemEvent.id === 'toggle-filter') {
-      this.basketOnly = !this.basketOnly;
-      this.refreshSlotQuery();
-      return;
-    }
     if (itemEvent.action === 'remove' && itemEvent.context?.menu === 'basket' && itemEvent.context.itemId) {
       this.requestRemoveSelectedSlot(itemEvent.context.itemId);
     }
@@ -527,6 +511,10 @@ export class EventCheckoutSlotPickerPopupComponent {
     event.sourceEvent.stopPropagation();
     if (event.action.id === 'save') {
       void this.saveBasket();
+      return;
+    }
+    if (event.action.id === 'slot-picker-calendar') {
+      this.toggleMonthOverlay(event.sourceEvent);
     }
   }
 
@@ -542,7 +530,7 @@ export class EventCheckoutSlotPickerPopupComponent {
       slot,
       optionalSubEventIds
     });
-    this.refreshSlotQuery(false);
+    this.cdr.markForCheck();
   }
 
   private requestRemoveSlot(slot: EventCheckoutSlot): void {
@@ -566,7 +554,7 @@ export class EventCheckoutSlotPickerPopupComponent {
       failureMessage: 'Unable to remove this checkout item.',
       onConfirm: () => {
         this.selectionsBySlotId.delete(slotId);
-        this.refreshSlotQuery();
+        this.cdr.markForCheck();
       }
     });
   }
@@ -832,8 +820,7 @@ export class EventCheckoutSlotPickerPopupComponent {
     return {
       cursor,
       filters: {
-        dateKey: this.selectedDateKey,
-        basketOnly: this.basketOnly
+        dateKey: this.selectedDateKey
       }
     };
   }
