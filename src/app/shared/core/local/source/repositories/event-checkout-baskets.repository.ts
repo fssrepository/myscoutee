@@ -33,6 +33,20 @@ export class LocalEventCheckoutBasketsRepository {
     return this.activeBasket(table.byKey[key]);
   }
 
+  async loadActiveItemsByEvent(sourceId: string, excludeUserId?: string | null): Promise<EventCheckoutBasketItem[]> {
+    const normalizedSourceId = `${sourceId ?? ''}`.trim();
+    if (!normalizedSourceId) {
+      return [];
+    }
+    const normalizedExcludeUserId = `${excludeUserId ?? ''}`.trim();
+    const table = await this.readTable();
+    return Object.values(table.byKey)
+      .filter(basket => basket?.sourceId === normalizedSourceId)
+      .filter(basket => !normalizedExcludeUserId || basket.userId !== normalizedExcludeUserId)
+      .flatMap(basket => basket.items ?? [])
+      .filter(item => !this.isInactiveResultState(item.resultState));
+  }
+
   async saveBasket(request: EventCheckoutRequest): Promise<EventCheckoutBasket | null> {
     const userId = request.userId?.trim() ?? '';
     const sourceId = request.sourceId?.trim() ?? '';

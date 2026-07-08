@@ -28,6 +28,7 @@ import type {
   EventCheckoutBasket,
   EventCheckoutBasketItem,
   EventCheckoutLineItem,
+  EventCheckoutOptionalSubEvent,
   EventCheckoutPricingSummaryRow,
   EventCheckoutRequest,
   EventCheckoutResultState,
@@ -1206,7 +1207,25 @@ export class HttpEventsService implements IEventsService {
       slots: (value.slots ?? []).map(slot => this.cloneCheckoutSlot(slot)),
       total: Math.max(0, Math.trunc(Number(value.total) || 0)),
       nextCursor: `${value.nextCursor ?? ''}`.trim() || null,
-      currency: `${value.currency ?? 'USD'}`.trim() || 'USD'
+      currency: `${value.currency ?? 'USD'}`.trim() || 'USD',
+      optionalSubEvents: (value.optionalSubEvents ?? []).map(item => this.cloneCheckoutOptionalSubEvent(item)),
+      checkoutBasket: ActivityEventDetailDTO.cloneCheckoutBasket(value.checkoutBasket)
+    };
+  }
+
+  private cloneCheckoutOptionalSubEvent(value: EventCheckoutOptionalSubEvent): EventCheckoutOptionalSubEvent {
+    return {
+      id: `${value.id ?? ''}`.trim(),
+      name: `${value.name ?? ''}`.trim(),
+      description: `${value.description ?? ''}`.trim() || null,
+      startAt: `${value.startAt ?? ''}`.trim() || null,
+      endAt: `${value.endAt ?? ''}`.trim() || null,
+      capacityTotal: Math.max(0, Math.trunc(Number(value.capacityTotal) || 0)),
+      reservedCount: Math.max(0, Math.trunc(Number(value.reservedCount) || 0)),
+      availableCount: Math.max(0, Math.trunc(Number(value.availableCount) || 0)),
+      amount: Math.max(0, Number(value.amount) || 0),
+      currency: `${value.currency ?? 'USD'}`.trim() || 'USD',
+      pricingSummaryRows: (value.pricingSummaryRows ?? []).map(row => ({ ...row }))
     };
   }
 

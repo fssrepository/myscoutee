@@ -1,22 +1,22 @@
 import { CommonModule } from '@angular/common';
 import { ChangeDetectionStrategy, ChangeDetectorRef, Component, effect, inject } from '@angular/core';
 import { MatIconModule } from '@angular/material/icon';
-import { from, of } from 'rxjs';
+import { from } from 'rxjs';
 
 import { APP_STATIC_DATA } from '../../../shared/app-static-data';
 import { AppUtils } from '../../../shared/app-utils';
-import { PricingBuilder } from '../../../shared/core/base/builders';
 import {
   EventsService,
   type EventCheckoutBasket,
   type EventCheckoutBasketItem,
   type EventCheckoutLineItem,
+  type EventCheckoutOptionalSubEvent,
   type EventCheckoutPricingSummaryRow,
   type EventCheckoutSlot,
   type EventCheckoutSlotDay,
   type EventCheckoutState,
-  type PageResult,
-  type SubEventDTO
+  type EventCheckoutSlotsResult,
+  type PageResult
 } from '../../../shared/core';
 import {
   DialogStore,
@@ -93,6 +93,8 @@ export class EventCheckoutSlotPickerPopupComponent {
   protected monthListQuery: Partial<ListQuery<SlotPickerMonthFilters>> = this.buildMonthListQuery();
   private selectionRevision = 0;
   private readonly selectionsBySlotId = new Map<string, SlotSelection>();
+  private optionalSubEventOptions: EventCheckoutOptionalSubEvent[] = [];
+  private checkoutBasketHydrated = false;
 
   protected slotListQuery: Partial<ListQuery<SlotPickerFilters>> = this.buildSlotListQuery();
 
@@ -113,6 +115,9 @@ export class EventCheckoutSlotPickerPopupComponent {
     listLayout: 'card-grid',
     desktopColumns: 3,
     selectMode: true,
+    loadingDelayMs: 0,
+    loadingWindowMs: 1500,
+    showBackgroundLoadingProgress: true,
     emptyLabel: () => this.basketMode
       ? 'No basket items yet.'
       : 'No available slots for this date.',
@@ -142,6 +147,9 @@ export class EventCheckoutSlotPickerPopupComponent {
       resolveDateRange: item => this.monthDateRange(item),
       dayCounter: day => this.monthDayCounter(day)
     },
+    loadingDelayMs: 0,
+    loadingWindowMs: 1500,
+    showBackgroundLoadingProgress: true,
     showStickyHeader: true,
     trackBy: (_index, item) => item.dateKey,
     emptyLabel: 'No slots in this month.'
@@ -149,7 +157,7 @@ export class EventCheckoutSlotPickerPopupComponent {
 
   protected readonly slotLoadPage = (query: ListQuery<SlotPickerFilters>) =>
     this.basketMode
-      ? of(this.selectedSlotsPage())
+      ? from(this.loadBasketSlotPage(query))
       : from(this.loadSlotPage(query));
 
   protected readonly monthLoadPage = (_query: ListQuery<SlotPickerMonthFilters>) =>
@@ -232,7 +240,8 @@ export class EventCheckoutSlotPickerPopupComponent {
   }
 
   protected selectedCount(): number {
-    return this.selectionsBySlotId.size;
+    return [...this.selectionsBySlotId.values()]
+      .reduce((sum, selection) => sum + 1 + selection.optionalSubEventIds.length, 0);
   }
 
   protected selectedDateValue(): string {
@@ -307,7 +316,7 @@ export class EventCheckoutSlotPickerPopupComponent {
   }
 
   protected isSlotUnavailable(slot: EventCheckoutSlot): boolean {
-    return this.slotAvailableCount(slot) <= 0;
+    return !this.isSelected(slot) && this.slotAvailableCount(slot) <= 0;
   }
 
   protected slotCardTone(slot: EventCheckoutSlot): TextCardTone {
@@ -317,7 +326,8 @@ export class EventCheckoutSlotPickerPopupComponent {
   protected slotCapacityBadge(slot: EventCheckoutSlot): string {
     const capacity = this.slotCapacityTotal(slot);
     const available = this.slotAvailableCount(slot);
-    if (capacity <= 0 || available <= 0) {
+    const availableIncludingSelection = available + (this.isSelected(slot) ? 1 : 0);
+    if (capacity <= 0 || availableIncludingSelection <= 0) {
       return 'Unavailable';
     }
     const used = capacity - available + (this.isSelected(slot) ? 1 : 0);
@@ -354,6 +364,10 @@ export class EventCheckoutSlotPickerPopupComponent {
       });
     }
     this.selectionRevision += 1;
+    if (this.basketMode) {
+      this.refreshSlotQuery();
+      return;
+    }
     this.cdr.markForCheck();
   }
 
@@ -373,6 +387,7 @@ export class EventCheckoutSlotPickerPopupComponent {
         disabled: () => this.isOptionalSubEventDisabled(slot, subEvent),
         palette: unavailable ? 'muted' as const : 'mint' as const,
         surface: 'tinted' as const,
+        headerBadge: this.optionalSubEventPriceLabel(subEvent),
         counter: unavailable ? 'Unavailable' : this.optionalSubEventCapacityBadge(subEvent),
         detail: unavailable ? null : undefined,
         closeOnSelect: false,
@@ -424,6 +439,8 @@ export class EventCheckoutSlotPickerPopupComponent {
     selectedDateKey: string | null
   ): void {
     this.selectionsBySlotId.clear();
+    this.optionalSubEventOptions = [];
+    this.checkoutBasketHydrated = false;
     const activeItems = (basket?.items ?? [])
       .filter(item => item.resultState !== 'deleted' && item.resultState !== 'succeeded');
     const eventItems = activeItems.filter(item => item.kind === 'event' && item.slotSourceId?.trim());
@@ -458,15 +475,47 @@ export class EventCheckoutSlotPickerPopupComponent {
     const result = await this.eventsService.loadCheckoutSlots({
       userId: state.userId,
       eventId: state.record.id,
+      view: 'day',
       order: 'upcoming',
       rangeStart: this.selectedDateKey,
       rangeEnd: this.selectedDateKey,
       limit: query.pageSize || 15,
       cursor: query.cursor ?? null
     });
+    this.applyCheckoutSlotsContext(state.record, result);
     return {
       items: result?.slots ?? [],
       total: result?.total ?? 0,
+      nextCursor: result?.nextCursor ?? null
+    };
+  }
+
+  private async loadBasketSlotPage(query: ListQuery<SlotPickerFilters>): Promise<PageResult<EventCheckoutSlot>> {
+    const state = this.popupState();
+    if (!state) {
+      return { items: [], total: 0 };
+    }
+    const result = await this.eventsService.loadCheckoutSlots({
+      userId: state.userId,
+      eventId: state.record.id,
+      view: 'basket',
+      order: 'upcoming',
+      limit: query.pageSize || 15,
+      cursor: query.cursor ?? null
+    });
+    this.applyCheckoutSlotsContext(state.record, result);
+    const mergedById = new Map<string, EventCheckoutSlot>();
+    for (const slot of result?.slots ?? []) {
+      mergedById.set(slot.id, slot);
+    }
+    for (const slot of this.selectedSlotsPage().items) {
+      mergedById.set(slot.id, mergedById.get(slot.id) ?? slot);
+    }
+    const items = [...mergedById.values()]
+      .sort((left, right) => this.sortableDateMs(left.startAtIso) - this.sortableDateMs(right.startAtIso));
+    return {
+      items,
+      total: Math.max(result?.total ?? 0, items.length),
       nextCursor: result?.nextCursor ?? null
     };
   }
@@ -481,6 +530,49 @@ export class EventCheckoutSlotPickerPopupComponent {
     };
   }
 
+  private applyCheckoutSlotsContext(
+    record: ActivityEventRecord,
+    result: EventCheckoutSlotsResult | null | undefined
+  ): void {
+    if (Array.isArray(result?.optionalSubEvents)) {
+      this.optionalSubEventOptions = result.optionalSubEvents;
+    }
+    if (!this.checkoutBasketHydrated) {
+      this.hydrateSelectionsFromBasket(record, result?.checkoutBasket ?? null, result?.slots ?? []);
+      this.checkoutBasketHydrated = true;
+    }
+    this.cdr.markForCheck();
+  }
+
+  private hydrateSelectionsFromBasket(
+    record: ActivityEventRecord,
+    basket: EventCheckoutBasket | null,
+    slots: readonly EventCheckoutSlot[]
+  ): void {
+    const activeItems = (basket?.items ?? [])
+      .filter(item => item.resultState !== 'deleted' && item.resultState !== 'succeeded');
+    const slotsById = new Map(slots.map(slot => [slot.id, slot]));
+    for (const item of activeItems.filter(candidate => candidate.kind === 'event' && candidate.slotSourceId?.trim())) {
+      const slotId = item.slotSourceId!.trim();
+      const slot = slotsById.get(slotId) ?? this.slotFromBasketItem(record, item);
+      if (!slot) {
+        continue;
+      }
+      const selectedOptionalIds = activeItems
+        .filter(candidate => candidate.kind === 'sub_event' && candidate.slotSourceId === slotId && candidate.subEventId)
+        .map(candidate => candidate.subEventId!)
+        .filter(Boolean);
+      const existing = this.selectionsBySlotId.get(slot.id);
+      this.selectionsBySlotId.set(slot.id, {
+        slot,
+        optionalSubEventIds: [...new Set([
+          ...(existing?.optionalSubEventIds ?? []),
+          ...selectedOptionalIds
+        ])]
+      });
+    }
+  }
+
   private async loadMonthPage(query: ListQuery<SlotPickerMonthFilters>): Promise<PageResult<EventCheckoutSlotDay>> {
     const state = this.popupState();
     if (!state) {
@@ -492,11 +584,13 @@ export class EventCheckoutSlotPickerPopupComponent {
     const result = await this.eventsService.loadCheckoutSlots({
       userId: state.userId,
       eventId: state.record.id,
+      view: 'day',
       order: 'upcoming',
       rangeStart,
       rangeEnd,
       limit: 1
     });
+    this.applyCheckoutSlotsContext(state.record, result);
     return {
       items: result?.days ?? [],
       total: result?.days?.length ?? 0
@@ -544,6 +638,10 @@ export class EventCheckoutSlotPickerPopupComponent {
   }
 
   private toggleOptionalSlotEvent(slot: EventCheckoutSlot, subEventId: string): void {
+    const option = this.optionalSubEvents().find(item => item.id === subEventId);
+    if (option && this.isOptionalSubEventDisabled(slot, option)) {
+      return;
+    }
     const current = this.selectionsBySlotId.get(slot.id) ?? {
       slot,
       optionalSubEventIds: []
@@ -571,27 +669,30 @@ export class EventCheckoutSlotPickerPopupComponent {
     return Math.max(0, Math.trunc(Number(slot.availableSlots) || 0));
   }
 
-  private optionalSubEventCapacityTotal(subEvent: SubEventDTO): number {
-    return Math.max(0, Math.trunc(Number(subEvent.capacityMax) || 0));
+  private optionalSubEventCapacityTotal(subEvent: EventCheckoutOptionalSubEvent): number {
+    return Math.max(0, Math.trunc(Number(subEvent.capacityTotal) || 0));
   }
 
-  private optionalSubEventUsedCount(subEvent: SubEventDTO): number {
-    const accepted = Math.max(0, Math.trunc(Number(subEvent.membersAccepted) || 0));
-    const pending = Math.max(0, Math.trunc(Number(subEvent.membersPending) || 0));
-    return accepted + pending + this.selectedOptionalSubEventCount(subEvent.id);
+  private optionalSubEventUsedCount(subEvent: EventCheckoutOptionalSubEvent): number {
+    const reserved = Math.max(0, Math.trunc(Number(subEvent.reservedCount) || 0));
+    return reserved + this.selectedOptionalSubEventCount(subEvent.id);
   }
 
-  private optionalSubEventAvailableCount(subEvent: SubEventDTO): number {
+  private optionalSubEventAvailableCount(subEvent: EventCheckoutOptionalSubEvent): number {
     const capacity = this.optionalSubEventCapacityTotal(subEvent);
     return Math.max(0, capacity - this.optionalSubEventUsedCount(subEvent));
   }
 
-  private optionalSubEventCapacityBadge(subEvent: SubEventDTO): string {
+  private optionalSubEventCapacityBadge(subEvent: EventCheckoutOptionalSubEvent): string {
     const capacity = this.optionalSubEventCapacityTotal(subEvent);
     if (capacity <= 0) {
       return 'Unavailable';
     }
     return `${Math.min(capacity, this.optionalSubEventUsedCount(subEvent))} / ${capacity}`;
+  }
+
+  private optionalSubEventPriceLabel(subEvent: EventCheckoutOptionalSubEvent): string {
+    return this.formatMoney(subEvent.amount, subEvent.currency);
   }
 
   private selectedOptionalSubEventCount(subEventId: string): number {
@@ -600,7 +701,7 @@ export class EventCheckoutSlotPickerPopupComponent {
       .length;
   }
 
-  private isOptionalSubEventDisabled(slot: EventCheckoutSlot, subEvent: SubEventDTO): boolean {
+  private isOptionalSubEventDisabled(slot: EventCheckoutSlot, subEvent: EventCheckoutOptionalSubEvent): boolean {
     const selectedIds = this.selectionsBySlotId.get(slot.id)?.optionalSubEventIds ?? [];
     if (selectedIds.includes(subEvent.id)) {
       return false;
@@ -757,27 +858,24 @@ export class EventCheckoutSlotPickerPopupComponent {
     return items;
   }
 
-  private resolveOptionalSubEventPricing(subEvent: SubEventDTO): { amount: number; currency: string; rows: EventCheckoutPricingSummaryRow[] } {
-    const normalized = PricingBuilder.compactPricingConfig(subEvent.pricing, {
-      context: 'subevent',
-      allowSlotFeatures: false
-    });
-    const currency = normalized.currency || 'USD';
-    if (!normalized.enabled) {
-      return { amount: 0, currency, rows: [] };
-    }
-    const amount = Math.max(0, Number(normalized.basePrice) || 0);
+  private resolveOptionalSubEventPricing(
+    subEvent: EventCheckoutOptionalSubEvent
+  ): { amount: number; currency: string; rows: EventCheckoutPricingSummaryRow[] } {
+    const amount = Math.max(0, Number(subEvent.amount) || 0);
+    const currency = subEvent.currency || 'USD';
     return {
       amount,
       currency,
-      rows: [{
-        key: `subevent:${subEvent.id}:base`,
-        label: subEvent.name || 'Optional sub event',
-        detail: null,
-        amount,
-        currency,
-        multiplier: 1
-      }]
+      rows: subEvent.pricingSummaryRows?.length
+        ? subEvent.pricingSummaryRows
+        : [{
+            key: `subevent:${subEvent.id}:base`,
+            label: subEvent.name || 'Optional sub event',
+            detail: null,
+            amount,
+            currency,
+            multiplier: 1
+          }]
     };
   }
 
@@ -878,8 +976,8 @@ export class EventCheckoutSlotPickerPopupComponent {
     };
   }
 
-  private optionalSubEvents(): SubEventDTO[] {
-    return (this.popupState()?.record.subEvents ?? []).filter(item => item.optional);
+  private optionalSubEvents(): EventCheckoutOptionalSubEvent[] {
+    return this.optionalSubEventOptions;
   }
 
   private refreshSlotQuery(reset = true): void {

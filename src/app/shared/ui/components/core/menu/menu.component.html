@@ -512,6 +512,14 @@
                 <span class="app-menu__item-main" [class.app-menu__item-main--with-body]="hasItemBody(item)">
                   <span class="app-menu__item-header">
                     <span class="app-menu__item-label">{{ itemLabel(item) | i18n }}</span>
+                    @if (hasItemHeaderBadge(item)) {
+                      <span
+                        class="app-menu__counter app-menu__counter--header-badge"
+                        [class.app-menu__counter--pulse]="isCounterPulsing(itemHeaderBadgeKey(item))"
+                        >
+                        {{ itemHeaderBadgeLabel(item) }}
+                      </span>
+                    }
                     @if (hasItemCounter(item)) {
                       <span
                         class="app-menu__counter"
@@ -569,6 +577,14 @@
                     <span class="app-menu__item-main" [class.app-menu__item-main--with-body]="hasItemBody(item)">
                       <span class="app-menu__item-header">
                         <span class="app-menu__item-label">{{ itemLabel(item) | i18n }}</span>
+                        @if (hasItemHeaderBadge(item)) {
+                          <span
+                            class="app-menu__counter app-menu__counter--header-badge"
+                            [class.app-menu__counter--pulse]="isCounterPulsing(itemHeaderBadgeKey(item))"
+                            >
+                            {{ itemHeaderBadgeLabel(item) }}
+                          </span>
+                        }
                         @if (hasItemCounter(item)) {
                           <span
                             class="app-menu__counter"
@@ -631,6 +647,14 @@
                   <span class="app-menu__item-main" [class.app-menu__item-main--with-body]="hasItemBody(item)">
                     <span class="app-menu__item-header">
                       <span class="app-menu__item-label">{{ itemLabel(item) | i18n }}</span>
+                      @if (hasItemHeaderBadge(item)) {
+                        <span
+                          class="app-menu__counter app-menu__counter--header-badge"
+                          [class.app-menu__counter--pulse]="isCounterPulsing(itemHeaderBadgeKey(item))"
+                          >
+                          {{ itemHeaderBadgeLabel(item) }}
+                        </span>
+                      }
                       @if (hasItemCounter(item)) {
                         <span
                           class="app-menu__counter"

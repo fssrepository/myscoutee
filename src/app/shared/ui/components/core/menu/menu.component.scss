@@ -2391,6 +2391,16 @@ a.app-menu__item {
   margin-left: auto;
 }
 
+.app-menu__item-header > .app-menu__counter--header-badge {
+  margin-left: auto;
+  background: rgba(255, 255, 255, 0.72);
+  color: var(--app-menu-fg);
+}
+
+.app-menu__item-header > .app-menu__counter--header-badge + .app-menu__counter {
+  margin-left: 0;
+}
+
 .app-menu__item-body {
   display: grid;
   justify-items: start;

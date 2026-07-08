@@ -1294,6 +1294,7 @@ export interface EventCheckoutPricingSummaryRow {
 export interface EventCheckoutSlotsQuery {
   userId: string;
   eventId: string;
+  view?: 'day' | 'basket' | string | null;
   order?: 'upcoming' | 'past' | string | null;
   anchorDate?: string | null;
   rangeStart?: string | null;
@@ -1328,6 +1329,20 @@ export interface EventCheckoutSlot {
   pricingSummaryRows: EventCheckoutPricingSummaryRow[];
 }
 
+export interface EventCheckoutOptionalSubEvent {
+  id: string;
+  name: string;
+  description?: string | null;
+  startAt?: string | null;
+  endAt?: string | null;
+  capacityTotal: number;
+  reservedCount: number;
+  availableCount: number;
+  amount: number;
+  currency: string;
+  pricingSummaryRows: EventCheckoutPricingSummaryRow[];
+}
+
 export interface EventCheckoutSlotsResult {
   eventId: string;
   mode?: EventContracts.EventMode | string | null;
@@ -1336,6 +1351,8 @@ export interface EventCheckoutSlotsResult {
   total: number;
   nextCursor?: string | null;
   currency: string;
+  optionalSubEvents?: EventCheckoutOptionalSubEvent[];
+  checkoutBasket?: EventCheckoutBasket | null;
 }
 
 export interface EventCheckoutBasketItem {

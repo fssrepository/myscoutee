@@ -17,6 +17,7 @@ import type {
   EventCheckoutBasket,
   EventCheckoutBasketItem,
   EventCheckoutLineItem,
+  EventCheckoutOptionalSubEvent,
   EventCheckoutPricingSummaryRow,
   EventCheckoutRequest,
   EventCheckoutResultState,
@@ -208,24 +209,42 @@ export class LocalEventsService extends LocalRouteDelayService implements IEvent
     if (!record) {
       return null;
     }
+    const checkoutBasket = await this.eventCheckoutBasketsRepository.loadBasketByEvent(normalizedUserId, record.id);
+    const activeReservationItems = await this.eventCheckoutBasketsRepository.loadActiveItemsByEvent(record.id, normalizedUserId);
+    const slotReservations = this.checkoutReservationCounts(activeReservationItems, 'slot');
+    const optionalReservations = this.checkoutReservationCounts(activeReservationItems, 'optional');
     const direction = query.order === 'past' ? -1 : 1;
+    const basketView = query.view === 'basket';
     const allSlots = (record.upcomingSlots ?? [])
       .filter(slot => this.checkoutSlotMatchesOrder(slot, query))
-      .filter(slot => this.checkoutSlotOverlapsRange(slot, query))
+      .filter(slot => basketView || this.checkoutSlotOverlapsRange(slot, query))
       .sort((left, right) => direction * (this.sortableDateMs(left.startAtIso) - this.sortableDateMs(right.startAtIso)))
-      .map(slot => this.toCheckoutSlot(record, slot));
+      .map(slot => this.toCheckoutSlot(record, slot, slotReservations.get(slot.id) ?? 0));
     const days = this.checkoutSlotDays(allSlots);
+    const allSlotsById = new Map(allSlots.map(slot => [slot.id, slot]));
+    const basketSlots = (checkoutBasket?.items ?? [])
+      .filter(item => this.isActiveCheckoutItem(item) && item.kind === 'event' && !!item.slotSourceId?.trim())
+      .map(item => allSlotsById.get(item.slotSourceId!.trim()) ?? this.checkoutSlotFromBasketItem(record, item))
+      .filter((slot): slot is EventCheckoutSlot => Boolean(slot))
+      .sort((left, right) => direction * (this.sortableDateMs(left.startAtIso) - this.sortableDateMs(right.startAtIso)));
+    const pageSource = basketView ? basketSlots : allSlots;
     const offset = this.checkoutCursorOffset(query.cursor);
     const limit = Math.max(1, Math.min(60, Math.trunc(Number(query.limit) || 15)));
-    const page = allSlots.slice(offset, offset + limit);
+    const page = pageSource.slice(offset, offset + limit);
+    const currency = pageSource.find(slot => slot.currency)?.currency
+      ?? allSlots.find(slot => slot.currency)?.currency
+      ?? record.pricing?.currency
+      ?? 'USD';
     return {
       eventId: record.id,
       mode: record.mode,
       days,
       slots: page,
-      total: allSlots.length,
-      nextCursor: offset + limit < allSlots.length ? `${offset + limit}` : null,
-      currency: allSlots.find(slot => slot.currency)?.currency ?? record.pricing?.currency ?? 'USD'
+      total: pageSource.length,
+      nextCursor: offset + limit < pageSource.length ? `${offset + limit}` : null,
+      currency,
+      optionalSubEvents: this.checkoutOptionalSubEvents(record, optionalReservations, currency),
+      checkoutBasket
     };
   }
 
@@ -779,11 +798,16 @@ export class LocalEventsService extends LocalRouteDelayService implements IEvent
     };
   }
 
-  private toCheckoutSlot(record: ActivityEventRecord, slot: EventSlotOccurrenceDTO): EventCheckoutSlot {
+  private toCheckoutSlot(
+    record: ActivityEventRecord,
+    slot: EventSlotOccurrenceDTO,
+    reservedCount = 0
+  ): EventCheckoutSlot {
     const pricing = this.resolveCheckoutSlotPricing(record, slot);
     const capacityTotal = Math.max(0, Math.trunc(Number(slot.capacityTotal) || 0));
     const acceptedMembers = Math.max(0, Math.trunc(Number(slot.acceptedMembers) || 0));
     const pendingMembers = Math.max(0, Math.trunc(Number(slot.pendingMembers) || 0));
+    const activeReservations = Math.max(0, Math.trunc(Number(reservedCount) || 0));
     return {
       id: slot.id,
       parentEventId: slot.parentEventId || record.id,
@@ -796,7 +820,119 @@ export class LocalEventsService extends LocalRouteDelayService implements IEvent
       capacityTotal,
       acceptedMembers,
       pendingMembers,
-      availableSlots: Math.max(0, capacityTotal - acceptedMembers - pendingMembers),
+      availableSlots: Math.max(0, capacityTotal - acceptedMembers - pendingMembers - activeReservations),
+      amount: pricing.amount,
+      currency: pricing.currency,
+      pricingSummaryRows: pricing.rows
+    };
+  }
+
+  private checkoutSlotFromBasketItem(
+    record: ActivityEventRecord,
+    item: EventCheckoutBasketItem
+  ): EventCheckoutSlot | null {
+    const slotId = item.slotSourceId?.trim();
+    if (!slotId) {
+      return null;
+    }
+    const selectedDateKey = item.selectedDateKey?.trim() || '';
+    const quantity = Math.max(1, Math.trunc(Number(item.quantity) || 1));
+    return {
+      id: slotId,
+      parentEventId: record.id,
+      slotSourceId: slotId,
+      slotTemplateId: item.slotTemplateId ?? null,
+      title: record.title,
+      timeframe: item.detail || record.timeframe || 'Selected slot',
+      startAtIso: selectedDateKey ? `${selectedDateKey}T00:00:00.000Z` : record.startAtIso,
+      endAtIso: selectedDateKey ? `${selectedDateKey}T23:59:59.000Z` : record.endAtIso,
+      capacityTotal: quantity,
+      acceptedMembers: 0,
+      pendingMembers: 0,
+      availableSlots: quantity,
+      amount: Math.max(0, Number(item.amount) || 0),
+      currency: item.currency || record.pricing?.currency || 'USD',
+      pricingSummaryRows: item.pricingSummaryRows ?? []
+    };
+  }
+
+  private checkoutReservationCounts(
+    items: readonly EventCheckoutBasketItem[],
+    kind: 'slot' | 'optional'
+  ): Map<string, number> {
+    const counts = new Map<string, number>();
+    for (const item of items) {
+      if (!this.isActiveCheckoutItem(item)) {
+        continue;
+      }
+      const key = kind === 'slot'
+        ? (item.kind === 'event' ? item.slotSourceId?.trim() : '')
+        : (item.kind === 'sub_event' ? item.subEventId?.trim() : '');
+      if (!key) {
+        continue;
+      }
+      counts.set(key, (counts.get(key) ?? 0) + Math.max(1, Math.trunc(Number(item.quantity) || 1)));
+    }
+    return counts;
+  }
+
+  private isActiveCheckoutItem(item: EventCheckoutBasketItem | null | undefined): item is EventCheckoutBasketItem {
+    if (!item) {
+      return false;
+    }
+    return item.status === 'draft'
+      || item.status === 'confirmed'
+      || item.status === 'waiting'
+      || item.status === 'approval-pending'
+      || item.status === 'approved'
+      || item.status === 'pay';
+  }
+
+  private checkoutOptionalSubEvents(
+    record: ActivityEventRecord,
+    reservedCounts: ReadonlyMap<string, number>,
+    fallbackCurrency: string
+  ): EventCheckoutOptionalSubEvent[] {
+    if (record.subEventsEnabled === false) {
+      return [];
+    }
+    const definitionsById = new Map<string, SubEventDefinitionDTO>();
+    const addDefinitions = (items: readonly SubEventDefinitionDTO[] | null | undefined): void => {
+      for (let index = 0; index < (items?.length ?? 0); index += 1) {
+        const item = items?.[index];
+        const id = `${item?.id ?? ''}`.trim() || this.fallbackSubEventId(index);
+        if (!item || !id || definitionsById.has(id)) {
+          continue;
+        }
+        definitionsById.set(id, { ...item, id });
+      }
+    };
+    addDefinitions(record.subEventDefinitions);
+    for (const template of record.slotTemplates ?? []) {
+      addDefinitions(template.subEventDefinitions);
+    }
+    return [...definitionsById.values()]
+      .filter(item => item.optional === true)
+      .map(item => this.toCheckoutOptionalSubEvent(item, reservedCounts.get(item.id) ?? 0, fallbackCurrency));
+  }
+
+  private toCheckoutOptionalSubEvent(
+    definition: SubEventDefinitionDTO,
+    reservedCount: number,
+    fallbackCurrency: string
+  ): EventCheckoutOptionalSubEvent {
+    const pricing = this.resolveCheckoutOptionalSubEventPricing(definition, fallbackCurrency);
+    const capacityTotal = Math.max(0, Math.trunc(Number(definition.capacityMax) || 0));
+    const normalizedReservedCount = Math.max(0, Math.trunc(Number(reservedCount) || 0));
+    return {
+      id: definition.id,
+      name: definition.name || definition.id,
+      description: definition.description || null,
+      startAt: null,
+      endAt: null,
+      capacityTotal,
+      reservedCount: normalizedReservedCount,
+      availableCount: Math.max(0, capacityTotal - normalizedReservedCount),
       amount: pricing.amount,
       currency: pricing.currency,
       pricingSummaryRows: pricing.rows
@@ -911,6 +1047,33 @@ export class LocalEventsService extends LocalRouteDelayService implements IEvent
       amount: this.roundMoney(this.applyPricingRounding(nextPrice, normalized.rounding)),
       currency,
       rows
+    };
+  }
+
+  private resolveCheckoutOptionalSubEventPricing(
+    definition: SubEventDefinitionDTO,
+    fallbackCurrency: string
+  ): { amount: number; currency: string; rows: EventCheckoutPricingSummaryRow[] } {
+    const normalized = PricingBuilder.compactPricingConfig(definition.pricing, {
+      context: 'subevent',
+      allowSlotFeatures: false
+    });
+    const currency = normalized.currency || fallbackCurrency || 'USD';
+    if (!normalized.enabled) {
+      return { amount: 0, currency, rows: [] };
+    }
+    const amount = Math.max(0, Number(normalized.basePrice) || 0);
+    return {
+      amount,
+      currency,
+      rows: [{
+        key: `subevent:${definition.id}:base`,
+        label: definition.name || 'Optional sub event',
+        detail: null,
+        amount,
+        currency,
+        multiplier: 1
+      }]
     };
   }
 
