@@ -2127,11 +2127,7 @@ export class EventCheckoutPopupComponent {
         const pendingReason = draft?.pendingReason ?? this.checkoutDecisionPendingReason();
         const checkoutState = draft?.checkoutState ?? this.currentCheckoutState(this.totalAmount(), pendingReason);
         this.checkoutSessionId = null;
-        await dialog.onSubmit(this.buildSelection(null, true, {
-          checkoutState,
-          pendingReason,
-          includeBasketPayload: true
-        }));
+        await this.syncRuntimeCheckoutBasket(checkoutState, pendingReason, true);
         await this.persistCheckoutDraft(false, pendingReason, checkoutState, false);
         this.refreshCheckoutBaseline();
         this.paymentStep = false;
