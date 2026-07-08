@@ -1990,6 +1990,9 @@ export class EventExplorePopupComponent {
       selection?.basketItems?.length
       && (selection.checkoutState === 'waiting'
         || selection.checkoutState === 'approval-pending'
+        || selection.checkoutState === 'approved'
+        || selection.checkoutState === 'confirmed'
+        || selection.checkoutState === 'pay'
         || selection.pendingReason === 'waitlist'
         || selection.pendingReason === 'approval')
     );
@@ -2036,7 +2039,7 @@ export class EventExplorePopupComponent {
         currency: selection?.basketItems?.length ? selection.currency : undefined,
         counterDelta
       });
-      if (!joinResult || joinResult.membershipStatus === 'unchanged') {
+      if (!joinResult || (joinResult.membershipStatus === 'unchanged' && !checkoutUpdateRequested)) {
         throw new Error(this.eventExploreJoinFailureMessage(record));
       }
       const persistedMembers = this.activityMembersService.peekMembersByOwner(owner);

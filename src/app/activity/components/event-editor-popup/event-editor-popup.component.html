@@ -158,9 +158,7 @@
     </div>
     @if (checkoutReviewMode() && checkoutReviewFooterMenuItems().length > 0) {
       <div class="event-editor-checkout-footer">
-        @if (checkoutReviewFooterMessage()) {
-          <p class="event-editor-checkout-footer__message">{{ checkoutReviewFooterMessage() }}</p>
-        }
+        <p class="event-editor-checkout-footer__message">{{ checkoutReviewFooterMessage() }}</p>
         <app-menu
           class="event-editor-checkout-footer__actions"
           kind="inline"

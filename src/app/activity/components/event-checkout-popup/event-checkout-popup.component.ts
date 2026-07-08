@@ -1763,7 +1763,12 @@ export class EventCheckoutPopupComponent {
     this.errorMessage = '';
     try {
       this.checkoutSessionId = null;
-      await this.persistCheckoutDraft(true, null, 'confirmed');
+      await dialog.onSubmit(this.buildSelection(null, true, {
+        checkoutState: 'confirmed',
+        pendingReason: null,
+        includeBasketPayload: true
+      }));
+      await this.persistCheckoutDraft(false, null, 'confirmed');
       this.refreshCheckoutBaseline();
       this.paymentStep = true;
       this.openCheckoutReviewEditorShell(dialog);
@@ -1887,7 +1892,7 @@ export class EventCheckoutPopupComponent {
   }
 
   private checkoutUpdateStepActive(): boolean {
-    return this.checkoutDraftBasketChanged();
+    return !this.paymentStep && this.checkoutDraftBasketChanged();
   }
 
   private hasCheckoutSelectionChanges(): boolean {
