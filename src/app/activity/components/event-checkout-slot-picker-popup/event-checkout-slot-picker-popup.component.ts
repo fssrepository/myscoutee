@@ -248,8 +248,7 @@ export class EventCheckoutSlotPickerPopupComponent {
   }
 
   protected selectedCount(): number {
-    return [...this.selectionsBySlotId.values()]
-      .reduce((sum, selection) => sum + 1 + selection.optionalSubEventIds.length, 0);
+    return this.selectionsBySlotId.size;
   }
 
   protected selectedDateValue(): string {
@@ -434,7 +433,7 @@ export class EventCheckoutSlotPickerPopupComponent {
   }
 
   protected slotPriceLabel(slot: EventCheckoutSlot): string {
-    return this.formatMoney(slot.amount, slot.currency);
+    return this.formatMoney(this.slotTotalAmount(slot), this.slotCurrency(slot));
   }
 
   protected slotAvailabilityLabel(slot: EventCheckoutSlot): string {
@@ -675,10 +674,9 @@ export class EventCheckoutSlotPickerPopupComponent {
     if (!slot) {
       return [];
     }
-    if ((slot.pricingSummaryRows ?? []).length > 0) {
-      return slot.pricingSummaryRows;
-    }
-    return [{
+    const slotRows = (slot.pricingSummaryRows ?? []).length > 0
+      ? slot.pricingSummaryRows
+      : [{
       key: `slot:${slot.id}:base`,
       label: 'Base price',
       detail: null,
@@ -686,13 +684,17 @@ export class EventCheckoutSlotPickerPopupComponent {
       currency: slot.currency,
       multiplier: 1
     }];
+    return [
+      ...slotRows,
+      ...this.selectedOptionalSubEvents(slot).flatMap(subEvent => this.resolveOptionalSubEventPricing(subEvent).rows)
+    ];
   }
 
   protected pricingSummaryItems(slot: EventCheckoutSlot | null): EventBasketInputItem[] {
     if (!slot) {
       return [];
     }
-    return [{
+    const items: EventBasketInputItem[] = [{
       id: `event:${slot.parentEventId}:${slot.id}`,
       title: slot.title || 'Selected slot',
       meta: slot.timeframe || this.formatDateGroup(slot.startAtIso),
@@ -701,8 +703,33 @@ export class EventCheckoutSlotPickerPopupComponent {
       currency: slot.currency,
       quantity: 1,
       status: this.isSelected(slot) ? 'confirmed' : 'draft',
-      pricingSummaryRows: this.pricingSummaryRows(slot)
+      pricingSummaryRows: (slot.pricingSummaryRows ?? []).length > 0
+        ? slot.pricingSummaryRows
+        : this.pricingSummaryRows(slot).filter(row => `${row.key ?? ''}`.startsWith(`slot:${slot.id}`))
     }];
+    for (const subEvent of this.selectedOptionalSubEvents(slot)) {
+      const pricing = this.resolveOptionalSubEventPricing(subEvent);
+      items.push({
+        id: `subevent:${subEvent.id}:${slot.id}`,
+        title: subEvent.name || 'Optional sub event',
+        meta: 'Optional add-on',
+        detail: subEvent.description || null,
+        amount: pricing.amount,
+        currency: pricing.currency,
+        quantity: 1,
+        status: 'draft',
+        pricingSummaryRows: pricing.rows
+      });
+    }
+    return items;
+  }
+
+  protected pricingSummaryTotalAmount(slot: EventCheckoutSlot | null): number {
+    return slot ? this.slotTotalAmount(slot) : 0;
+  }
+
+  protected pricingSummaryCurrency(slot: EventCheckoutSlot | null): string {
+    return slot ? this.slotCurrency(slot) : 'USD';
   }
 
   private closePricingSummary(event?: Event): void {
@@ -764,6 +791,28 @@ export class EventCheckoutSlotPickerPopupComponent {
 
   private optionalSubEventPriceLabel(subEvent: EventCheckoutOptionalSubEvent): string {
     return this.formatMoney(subEvent.amount, subEvent.currency);
+  }
+
+  private selectedOptionalSubEvents(slot: EventCheckoutSlot): EventCheckoutOptionalSubEvent[] {
+    const selectedIds = this.selectionsBySlotId.get(slot.id)?.optionalSubEventIds ?? [];
+    if (selectedIds.length === 0) {
+      return [];
+    }
+    const selectedIdSet = new Set(selectedIds);
+    return this.optionalSubEvents().filter(item => selectedIdSet.has(item.id));
+  }
+
+  private selectedOptionalSubEventAmount(slot: EventCheckoutSlot): number {
+    return this.selectedOptionalSubEvents(slot)
+      .reduce((sum, subEvent) => sum + (Number(subEvent.amount) || 0), 0);
+  }
+
+  private slotTotalAmount(slot: EventCheckoutSlot): number {
+    return this.roundMoney((Number(slot.amount) || 0) + this.selectedOptionalSubEventAmount(slot));
+  }
+
+  private slotCurrency(slot: EventCheckoutSlot): string {
+    return slot.currency || this.selectedOptionalSubEvents(slot).find(item => item.currency)?.currency || 'USD';
   }
 
   private selectedOptionalSubEventCount(subEventId: string): number {
