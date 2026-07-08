@@ -249,6 +249,7 @@ export class EventCheckoutSlotPickerPopupComponent {
 
   protected headerMenuItems(): readonly AppMenuItem<string, unknown>[] {
     const selectedCount = this.selectedCount();
+    const hasSelectionChanges = this.hasSelectionChanges();
     return [
       {
         id: 'basket',
@@ -264,8 +265,8 @@ export class EventCheckoutSlotPickerPopupComponent {
         id: 'save',
         icon: 'done',
         kind: 'action',
-        palette: this.errorMessage ? 'danger' : 'success',
-        disabled: this.saving || !this.hasSelectionChanges(),
+        palette: this.errorMessage || hasSelectionChanges ? 'danger' : 'success',
+        disabled: this.saving || !hasSelectionChanges,
         closeOnSelect: false,
         ariaLabel: 'Save basket',
         progress: {
