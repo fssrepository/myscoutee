@@ -14,6 +14,7 @@ import {
 
 export type TextCardTone =
   | 'neutral'
+  | 'slot'
   | 'blue'
   | 'cyan'
   | 'teal'

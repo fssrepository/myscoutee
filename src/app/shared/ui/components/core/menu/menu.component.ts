@@ -1220,6 +1220,9 @@ export class AppMenuComponent<TId extends string = string, TContext = unknown>
   }
 
   protected showItemCheck(item: AppMenuItem<TId, TContext>): boolean {
+    if (this.resolveLiveValue(item.showCheck) === false) {
+      return false;
+    }
     if (((this.isDropdownListKind && !this.currentTabbedModelLayout) || (this.isInlineRowLayout && !this.currentTabbedModelLayout)) && item.kind === 'radio') {
       return false;
     }

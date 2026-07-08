@@ -100,9 +100,9 @@ export class EventBasketInputComponent {
       return 'amber';
     }
     if (item.status === 'confirmed') {
-      return 'teal';
+      return 'slot';
     }
-    return 'cyan';
+    return 'slot';
   }
 
   protected itemMenuPalette(item: EventBasketInputItem): AppMenuPalette {
@@ -110,7 +110,7 @@ export class EventBasketInputComponent {
       ? 'violet'
       : item.status === 'waiting'
         ? 'amber'
-        : 'teal';
+        : 'blue';
   }
 
   protected itemMenuItems(): readonly AppMenuItem<string, unknown>[] {

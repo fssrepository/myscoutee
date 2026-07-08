@@ -339,7 +339,9 @@ export class EventCheckoutSlotPickerPopupComponent {
       icon: selection?.optionalSubEventIds.includes(subEvent.id) ? 'check_box' : 'check_box_outline_blank',
       kind: 'checkbox' as const,
       checked: () => this.selectionsBySlotId.get(slot.id)?.optionalSubEventIds.includes(subEvent.id) === true,
-      palette: 'teal' as const,
+      showCheck: false,
+      palette: 'mint' as const,
+      surface: 'tinted' as const,
       closeOnSelect: false,
       context: { menu: 'slot' as const, slot }
     }));

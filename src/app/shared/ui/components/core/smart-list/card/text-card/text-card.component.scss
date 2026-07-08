@@ -28,6 +28,13 @@
     linear-gradient(180deg, #f3f9ff 0%, #e7f2ff 100%);
 }
 
+.ui-text-card--tone-slot {
+  border-color: rgba(82, 112, 164, 0.34);
+  background:
+    radial-gradient(circle at 8% 0%, rgba(255, 255, 255, 0.84), transparent 35%),
+    linear-gradient(180deg, #f6f8ff 0%, #e8edf9 100%);
+}
+
 .ui-text-card--tone-cyan {
   border-color: rgba(38, 138, 158, 0.3);
   background:

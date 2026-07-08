@@ -33,7 +33,7 @@
         <article class="event-checkout-slot-picker__slot-card" [class.is-selected]="isSelected(slot)">
           <app-text-card
             class="event-checkout-slot-picker__text-card"
-            [tone]="isSelected(slot) ? 'teal' : 'cyan'"
+            tone="slot"
             icon="event_seat"
             [title]="slot.title"
             [subtitle]="slot.timeframe"
@@ -41,7 +41,7 @@
             [detail]="selectedOptionalLabel(slot)"
             [badge]="slotPriceLabel(slot)"
             [menuTitle]="slot.title"
-            [menuPalette]="isSelected(slot) ? 'teal' : 'cyan'"
+            menuPalette="blue"
             [menuItems]="slotMenuItems(slot)"
             [selectable]="true"
             [selected]="isSelected(slot)"
