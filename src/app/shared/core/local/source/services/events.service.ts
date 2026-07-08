@@ -727,6 +727,7 @@ export class LocalEventsService extends LocalRouteDelayService implements IEvent
     if (!normalizedUserId || !normalizedSourceId) {
       return null;
     }
+    let checkoutPayloadSaved = false;
     if (options.checkoutState) {
       if (options.basketItems?.length) {
         await this.saveCheckoutBasketRecord({
@@ -744,6 +745,7 @@ export class LocalEventsService extends LocalRouteDelayService implements IEvent
           currency: options.currency?.trim() || 'USD',
           pendingReason: options.pendingReason
         });
+        checkoutPayloadSaved = true;
       } else {
         await this.updateCheckoutBasketStateRecord({
           userId: normalizedUserId,
@@ -753,6 +755,31 @@ export class LocalEventsService extends LocalRouteDelayService implements IEvent
           checkoutSessionId: options.paymentSessionId ?? null
         });
       }
+    }
+    const existingCheckoutMembership = checkoutPayloadSaved
+      ? this.existingCheckoutMembershipRecord(normalizedUserId, normalizedSourceId, options.slotSourceId ?? null)
+      : null;
+    if (existingCheckoutMembership) {
+      const result = LocalEventParticipationActionMapper.toResult(
+        existingCheckoutMembership,
+        this.resolveDemoActivityUserId(normalizedUserId),
+        options
+      );
+      if (result.membershipStatus === 'accepted' && options.checkoutState) {
+        await this.updateCheckoutBasketStateRecord({
+          userId: normalizedUserId,
+          sourceId: normalizedSourceId,
+          checkoutState: options.checkoutState,
+          resultState: 'succeeded',
+          checkoutSessionId: options.paymentSessionId ?? null
+        });
+      }
+      await this.patchLocalUserActivityCounterDeltas(normalizedUserId, options.counterDelta ?? null);
+      await this.eventsRepository.flushToIndexedDb();
+      if (options.skipLocalRouteDelay !== true) {
+        await this.waitForRouteDelay(LocalEventsService.EVENTS_ROUTE);
+      }
+      return result;
     }
     const record = this.eventsRepository.requestJoin(
       normalizedUserId,
@@ -780,6 +807,29 @@ export class LocalEventsService extends LocalRouteDelayService implements IEvent
       await this.waitForRouteDelay(LocalEventsService.EVENTS_ROUTE);
     }
     return result;
+  }
+
+  private existingCheckoutMembershipRecord(
+    userId: string,
+    sourceId: string,
+    slotSourceId: string | null
+  ): ActivityEventRecord | null {
+    const normalizedUserId = userId.trim();
+    const sourceRecord = this.eventsRepository.queryEventRecordById(normalizedUserId, sourceId.trim());
+    const slotRecord = slotSourceId?.trim()
+      ? this.eventsRepository.queryEventRecordById(normalizedUserId, slotSourceId.trim())
+      : null;
+    return [slotRecord, sourceRecord].find(record => this.hasExistingCheckoutMembership(record, normalizedUserId)) ?? null;
+  }
+
+  private hasExistingCheckoutMembership(record: ActivityEventRecord | null, userId: string): boolean {
+    const normalizedUserId = userId.trim();
+    if (!record || !normalizedUserId) {
+      return false;
+    }
+    return (record.acceptedMemberUserIds ?? []).some(item => item.trim() === normalizedUserId)
+      || (record.pendingMemberUserIds ?? []).some(item => item.trim() === normalizedUserId)
+      || (record.pendingRequestMemberUserIds ?? []).some(item => item.trim() === normalizedUserId);
   }
 
   async leaveEvent(
