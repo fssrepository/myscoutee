@@ -2036,13 +2036,27 @@ export class EventCheckoutPopupComponent {
       return null;
     }
     const draft = this.checkoutDraftStore.read(dialog.userId, dialog.record.id);
+    const statePendingReason = this.checkoutStatePendingReason(draft?.checkoutState)
+      ?? this.checkoutStatePendingReason(this.checkoutBasket?.status);
+    if (statePendingReason) {
+      return statePendingReason;
+    }
+    if (draft?.checkoutState || this.checkoutBasket?.status) {
+      return null;
+    }
     if (draft?.pendingReason === 'approval' || draft?.pendingReason === 'waitlist') {
       return draft.pendingReason;
     }
-    if (draft?.checkoutState === 'waiting' || this.checkoutBasket?.status === 'waiting') {
+    return null;
+  }
+
+  private checkoutStatePendingReason(
+    checkoutState: ActivityContracts.EventCheckoutState | null | undefined
+  ): AppConstants.ActivityPendingReason {
+    if (checkoutState === 'waiting') {
       return 'waitlist';
     }
-    if (this.checkoutBasket?.status === 'approval-pending') {
+    if (checkoutState === 'approval-pending') {
       return 'approval';
     }
     return null;
