@@ -97,7 +97,6 @@ export class EventCheckoutSlotPickerPopupComponent {
   private queryRevision = 0;
   private selectionRevision = 0;
   private readonly selectionsBySlotId = new Map<string, SlotSelection>();
-  private readonly baselineSelectedSlotIds = new Set<string>();
   private baselineSelectionSignature = '';
   private optionalSubEventOptions: EventCheckoutOptionalSubEvent[] = [];
   private checkoutBasketHydrated = false;
@@ -357,7 +356,7 @@ export class EventCheckoutSlotPickerPopupComponent {
     const capacity = this.slotCapacityTotal(slot);
     const available = this.slotAvailableCount(slot);
     const selected = this.isSelected(slot);
-    const selectedOccupancyDelta = selected && !this.baselineSelectedSlotIds.has(slot.id) ? 1 : 0;
+    const selectedOccupancyDelta = selected ? 1 : 0;
     const availableIncludingSelection = available + (selected ? 1 : 0);
     if (capacity <= 0 || availableIncludingSelection <= 0) {
       return 'Unavailable';
@@ -472,7 +471,6 @@ export class EventCheckoutSlotPickerPopupComponent {
     selectedDateKey: string | null
   ): void {
     this.selectionsBySlotId.clear();
-    this.baselineSelectedSlotIds.clear();
     this.optionalSubEventOptions = [];
     this.selectionRevision = 0;
     this.queryRevision += 1;
@@ -869,10 +867,6 @@ export class EventCheckoutSlotPickerPopupComponent {
 
   private refreshBaselineSelection(): void {
     this.baselineSelectionSignature = this.selectionSignature();
-    this.baselineSelectedSlotIds.clear();
-    for (const slotId of this.selectionsBySlotId.keys()) {
-      this.baselineSelectedSlotIds.add(slotId);
-    }
   }
 
   private isActiveBasketItem(item: EventCheckoutBasketItem): boolean {
