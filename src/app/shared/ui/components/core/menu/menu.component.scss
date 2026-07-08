@@ -2378,6 +2378,26 @@ a.app-menu__item {
   gap: 0.08rem;
 }
 
+.app-menu__item-header {
+  display: flex;
+  align-items: center;
+  gap: 0.34rem;
+  width: 100%;
+  min-width: 0;
+}
+
+.app-menu__item-header > .app-menu__counter {
+  flex: 0 0 auto;
+  margin-left: auto;
+}
+
+.app-menu__item-body {
+  display: grid;
+  justify-items: start;
+  min-width: 0;
+  gap: 0.08rem;
+}
+
 .app-menu__item-label,
 .app-menu__tile-label {
   min-width: 0;
@@ -2389,6 +2409,10 @@ a.app-menu__item {
 .app-menu__item-label {
   font-size: 0.8rem;
   line-height: 1.2;
+}
+
+.app-menu__item-header > .app-menu__item-label {
+  flex: 1 1 auto;
 }
 
 .app-menu__panel--dropdown-list .app-menu__item-main {
@@ -2604,6 +2628,18 @@ a.app-menu__item {
   font-size: 0.68rem;
   font-weight: 900;
   box-shadow: none;
+}
+
+.app-menu__panel--dropdown-list .app-menu__item-header > .app-menu__counter {
+  margin-left: 0.34rem;
+  min-width: auto;
+  height: 18px;
+  padding: 0 0.4rem;
+}
+
+.app-menu__panel--dropdown-list .app-menu__item--disabled .app-menu__item-header > .app-menu__counter {
+  background: rgba(104, 116, 132, 0.16);
+  color: #697487;
 }
 
 .app-menu__panel--dropdown-list .app-menu__item--layout-pill .app-menu__counter {

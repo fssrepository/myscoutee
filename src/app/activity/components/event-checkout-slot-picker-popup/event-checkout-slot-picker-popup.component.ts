@@ -307,7 +307,7 @@ export class EventCheckoutSlotPickerPopupComponent {
   }
 
   protected isSlotUnavailable(slot: EventCheckoutSlot): boolean {
-    return !this.isSelected(slot) && this.slotAvailableCount(slot) <= 0;
+    return this.slotAvailableCount(slot) <= 0;
   }
 
   protected slotCardTone(slot: EventCheckoutSlot): TextCardTone {
@@ -318,14 +318,14 @@ export class EventCheckoutSlotPickerPopupComponent {
     const capacity = this.slotCapacityTotal(slot);
     const available = this.slotAvailableCount(slot);
     if (capacity <= 0 || available <= 0) {
-      return 'Not available';
+      return 'Unavailable';
     }
     const used = capacity - available + (this.isSelected(slot) ? 1 : 0);
     return `${Math.max(0, Math.min(capacity, used))} / ${capacity}`;
   }
 
   protected slotCapacityBadgeTone(slot: EventCheckoutSlot): TextCardStatusTone {
-    return this.isSlotUnavailable(slot) ? 'danger' : 'muted';
+    return 'muted';
   }
 
   protected selectedOptionalLabel(slot: EventCheckoutSlot): string {
@@ -342,6 +342,9 @@ export class EventCheckoutSlotPickerPopupComponent {
   protected toggleSlot(slot: EventCheckoutSlot, event?: Event): void {
     event?.preventDefault();
     event?.stopPropagation();
+    if (this.isSlotUnavailable(slot)) {
+      return;
+    }
     if (this.selectionsBySlotId.has(slot.id)) {
       this.selectionsBySlotId.delete(slot.id);
     } else {
@@ -356,22 +359,26 @@ export class EventCheckoutSlotPickerPopupComponent {
 
   protected slotMenuItems(slot: EventCheckoutSlot): readonly AppMenuItem<string, unknown>[] {
     const selection = this.selectionsBySlotId.get(slot.id);
-    const optionalItems = this.optionalSubEvents().map(subEvent => ({
-      id: `optional:${subEvent.id}`,
-      label: subEvent.name || subEvent.id,
-      description: subEvent.description || null,
-      icon: selection?.optionalSubEventIds.includes(subEvent.id) ? 'check_box' : 'check_box_outline_blank',
-      kind: 'checkbox' as const,
-      checked: () => this.selectionsBySlotId.get(slot.id)?.optionalSubEventIds.includes(subEvent.id) === true,
-      showCheck: false,
-      disabled: () => this.isOptionalSubEventDisabled(slot, subEvent),
-      palette: this.optionalSubEventAvailableCount(subEvent) > 0 ? 'mint' as const : 'muted' as const,
-      surface: 'tinted' as const,
-      counter: this.optionalSubEventCapacityBadge(subEvent),
-      detail: this.optionalSubEventAvailableCount(subEvent) > 0 ? null : 'Not available',
-      closeOnSelect: false,
-      context: { menu: 'slot' as const, slot }
-    }));
+    const optionalItems = this.optionalSubEvents().map(subEvent => {
+      const selected = selection?.optionalSubEventIds.includes(subEvent.id) === true;
+      const unavailable = this.isOptionalSubEventDisabled(slot, subEvent) && !selected;
+      return {
+        id: `optional:${subEvent.id}`,
+        label: subEvent.name || subEvent.id,
+        description: subEvent.description || null,
+        icon: unavailable ? 'block' : selected ? 'check_box' : 'check_box_outline_blank',
+        kind: 'checkbox' as const,
+        checked: () => this.selectionsBySlotId.get(slot.id)?.optionalSubEventIds.includes(subEvent.id) === true,
+        showCheck: false,
+        disabled: () => this.isOptionalSubEventDisabled(slot, subEvent),
+        palette: unavailable ? 'muted' as const : 'mint' as const,
+        surface: 'tinted' as const,
+        counter: unavailable ? 'Unavailable' : this.optionalSubEventCapacityBadge(subEvent),
+        detail: unavailable ? null : undefined,
+        closeOnSelect: false,
+        context: { menu: 'slot' as const, slot }
+      };
+    });
     return [
       ...optionalItems,
       ...(optionalItems.length > 0 ? [{
@@ -571,7 +578,7 @@ export class EventCheckoutSlotPickerPopupComponent {
   private optionalSubEventUsedCount(subEvent: SubEventDTO): number {
     const accepted = Math.max(0, Math.trunc(Number(subEvent.membersAccepted) || 0));
     const pending = Math.max(0, Math.trunc(Number(subEvent.membersPending) || 0));
-    return accepted + pending;
+    return accepted + pending + this.selectedOptionalSubEventCount(subEvent.id);
   }
 
   private optionalSubEventAvailableCount(subEvent: SubEventDTO): number {
@@ -582,9 +589,15 @@ export class EventCheckoutSlotPickerPopupComponent {
   private optionalSubEventCapacityBadge(subEvent: SubEventDTO): string {
     const capacity = this.optionalSubEventCapacityTotal(subEvent);
     if (capacity <= 0) {
-      return '0 / 0';
+      return 'Unavailable';
     }
     return `${Math.min(capacity, this.optionalSubEventUsedCount(subEvent))} / ${capacity}`;
+  }
+
+  private selectedOptionalSubEventCount(subEventId: string): number {
+    return [...this.selectionsBySlotId.values()]
+      .filter(selection => selection.optionalSubEventIds.includes(subEventId))
+      .length;
   }
 
   private isOptionalSubEventDisabled(slot: EventCheckoutSlot, subEvent: SubEventDTO): boolean {
@@ -840,7 +853,7 @@ export class EventCheckoutSlotPickerPopupComponent {
         capacityTotal: existing.capacityTotal,
         acceptedMembers: existing.acceptedMembers,
         pendingMembers: existing.pendingMembers,
-        availableSlots: Math.max(0, existing.capacityTotal - existing.acceptedMembers),
+        availableSlots: Math.max(0, existing.capacityTotal - existing.acceptedMembers - existing.pendingMembers),
         amount: item.amount,
         currency: item.currency,
         pricingSummaryRows: item.pricingSummaryRows ?? []

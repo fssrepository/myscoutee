@@ -783,6 +783,7 @@ export class LocalEventsService extends LocalRouteDelayService implements IEvent
     const pricing = this.resolveCheckoutSlotPricing(record, slot);
     const capacityTotal = Math.max(0, Math.trunc(Number(slot.capacityTotal) || 0));
     const acceptedMembers = Math.max(0, Math.trunc(Number(slot.acceptedMembers) || 0));
+    const pendingMembers = Math.max(0, Math.trunc(Number(slot.pendingMembers) || 0));
     return {
       id: slot.id,
       parentEventId: slot.parentEventId || record.id,
@@ -794,8 +795,8 @@ export class LocalEventsService extends LocalRouteDelayService implements IEvent
       endAtIso: slot.endAtIso,
       capacityTotal,
       acceptedMembers,
-      pendingMembers: Math.max(0, Math.trunc(Number(slot.pendingMembers) || 0)),
-      availableSlots: Math.max(0, capacityTotal - acceptedMembers),
+      pendingMembers,
+      availableSlots: Math.max(0, capacityTotal - acceptedMembers - pendingMembers),
       amount: pricing.amount,
       currency: pricing.currency,
       pricingSummaryRows: pricing.rows

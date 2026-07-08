@@ -1491,6 +1491,11 @@ export class AppMenuComponent<TId extends string = string, TContext = unknown>
     return this.counterVisible(this.itemCounter(item));
   }
 
+  protected hasItemBody(item: AppMenuItem<TId, TContext>): boolean {
+    return !!this.itemDescription(item)
+      || (!!this.itemDetail(item) && this.itemVisualLayout(item) === 'pill');
+  }
+
   protected itemCounterLabel(item: AppMenuItem<TId, TContext>): string {
     return this.counterLabel(this.itemCounter(item));
   }

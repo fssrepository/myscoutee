@@ -90,10 +90,13 @@
 }
 
 .ui-text-card--disabled {
-  border-color: rgba(108, 119, 136, 0.24);
-  background: linear-gradient(180deg, #f8f9fb 0%, #edf0f5 100%);
+  border-color: rgba(118, 118, 118, 0.24);
+  background: linear-gradient(180deg, #f8f8f8 0%, #eeeeee 100%);
+}
+
+.ui-text-card--disabled .ui-text-card__main {
   filter: grayscale(0.72);
-  opacity: 0.82;
+  opacity: 0.76;
 }
 
 .ui-text-card--selected {
