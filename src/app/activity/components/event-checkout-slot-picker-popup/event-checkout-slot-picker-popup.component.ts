@@ -94,6 +94,7 @@ export class EventCheckoutSlotPickerPopupComponent {
   protected pricingSummarySlot: EventCheckoutSlot | null = null;
   protected monthAnchor = this.monthStart(this.selectedDateKey);
   protected monthListQuery: Partial<ListQuery<SlotPickerMonthFilters>> = this.buildMonthListQuery();
+  private queryRevision = 0;
   private selectionRevision = 0;
   private readonly selectionsBySlotId = new Map<string, SlotSelection>();
   private baselineSelectionSignature = '';
@@ -393,6 +394,7 @@ export class EventCheckoutSlotPickerPopupComponent {
     }
     this.selectionRevision += 1;
     if (this.basketMode) {
+      this.queryRevision += 1;
       this.refreshSlotQuery();
       return;
     }
@@ -469,6 +471,7 @@ export class EventCheckoutSlotPickerPopupComponent {
     this.selectionsBySlotId.clear();
     this.optionalSubEventOptions = [];
     this.selectionRevision = 0;
+    this.queryRevision += 1;
     this.checkoutBasketHydrated = false;
     const activeItems = (basket?.items ?? [])
       .filter(item => item.resultState !== 'deleted' && item.resultState !== 'succeeded');
@@ -484,10 +487,7 @@ export class EventCheckoutSlotPickerPopupComponent {
         .filter(Boolean);
       this.selectionsBySlotId.set(slot.id, { slot, optionalSubEventIds });
     }
-    this.selectedDateKey = selectedDateKey?.slice(0, 10)
-      || basket?.selectedDateKey?.slice(0, 10)
-      || eventItems[0]?.selectedDateKey?.slice(0, 10)
-      || this.todayKey();
+    this.selectedDateKey = this.initialSelectedDateKey(record, basket, eventItems, selectedDateKey);
     this.monthAnchor = this.monthStart(this.selectedDateKey);
     this.basketMode = false;
     this.monthOverlayOpen = false;
@@ -1137,9 +1137,41 @@ export class EventCheckoutSlotPickerPopupComponent {
       filters: {
         dateKey: this.selectedDateKey,
         view: this.basketMode ? 'basket' : 'day',
-        revision: this.selectionRevision
+        revision: this.queryRevision
       }
     };
+  }
+
+  private initialSelectedDateKey(
+    record: ActivityEventRecord,
+    basket: EventCheckoutBasket | null,
+    eventItems: readonly EventCheckoutBasketItem[],
+    selectedDateKey: string | null
+  ): string {
+    const availableDateKeys = new Set(
+      (record.upcomingSlots ?? [])
+        .map(slot => this.checkoutDateKey(slot.startAtIso))
+        .filter(Boolean)
+    );
+    const selectedItemDateKeys = new Set(
+      eventItems
+        .map(item => item.selectedDateKey?.slice(0, 10) ?? '')
+        .filter(Boolean)
+    );
+    const candidates = [
+      selectedDateKey?.slice(0, 10) ?? '',
+      basket?.selectedDateKey?.slice(0, 10) ?? '',
+      eventItems[0]?.selectedDateKey?.slice(0, 10) ?? ''
+    ];
+    for (const candidate of candidates) {
+      if (
+        candidate
+        && (availableDateKeys.size === 0 || availableDateKeys.has(candidate) || selectedItemDateKeys.has(candidate))
+      ) {
+        return candidate;
+      }
+    }
+    return [...availableDateKeys].sort()[0] ?? this.todayKey();
   }
 
   private buildMonthListQuery(): Partial<ListQuery<SlotPickerMonthFilters>> {

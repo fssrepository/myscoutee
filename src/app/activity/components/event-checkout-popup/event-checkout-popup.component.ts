@@ -822,11 +822,26 @@ export class EventCheckoutPopupComponent {
       record: dialog.record,
       checkoutBasket: this.checkoutBasketSnapshot(),
       checkoutSessionId: this.checkoutSessionId,
-      selectedDateKey: this.selectedSlotDateValue
-        ? this.slotDateKeyFromDate(this.selectedSlotDateValue)
-        : this.checkoutBasket?.selectedDateKey ?? null,
+      selectedDateKey: this.checkoutSlotPickerSelectedDateKey(),
       onSave: (basket, items) => this.applyCheckoutSlotPickerSave(basket, items)
     });
+  }
+
+  private checkoutSlotPickerSelectedDateKey(): string | null {
+    const activeItems = this.activeCheckoutBasketItems();
+    const activeDateKey = this.checkoutBasket?.selectedDateKey?.slice(0, 10)
+      ?? activeItems.find(item => item.selectedDateKey?.trim())?.selectedDateKey?.slice(0, 10)
+      ?? null;
+    if (activeItems.length > 0 && activeDateKey) {
+      return activeDateKey;
+    }
+    const selectedDateKey = this.selectedSlotDateValue
+      ? this.slotDateKeyFromDate(this.selectedSlotDateValue)
+      : null;
+    if (selectedDateKey && this.availableSlotDateKeySet.has(selectedDateKey)) {
+      return selectedDateKey;
+    }
+    return this.availableSlotDateKeys()[0] ?? null;
   }
 
   private applyCheckoutSlotPickerSave(
