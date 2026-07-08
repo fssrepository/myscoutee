@@ -2115,6 +2115,32 @@ export class EventCheckoutPopupComponent {
       this.closeCheckoutDialog();
       return;
     }
+    if (this.checkoutUpdateStepActive()) {
+      this.busy = true;
+      this.checkoutBusyActionId = 'checkout-confirm';
+      this.errorMessage = '';
+      try {
+        const draft = this.currentCheckoutDraft();
+        const pendingReason = draft?.pendingReason ?? this.checkoutDecisionPendingReason();
+        const checkoutState = draft?.checkoutState ?? this.currentCheckoutState(this.totalAmount(), pendingReason);
+        this.checkoutSessionId = null;
+        await dialog.onSubmit(this.buildSelection(null, true, {
+          checkoutState,
+          pendingReason,
+          includeBasketPayload: true
+        }));
+        await this.persistCheckoutDraft(false, pendingReason, checkoutState, false);
+        this.refreshCheckoutBaseline();
+        this.paymentStep = false;
+        this.openCheckoutReviewEditorShell(dialog);
+      } catch (error) {
+        this.errorMessage = this.resolveErrorMessage(error, dialog.failureMessage);
+      } finally {
+        this.busy = false;
+        this.checkoutBusyActionId = null;
+      }
+      return;
+    }
     let keepCheckoutReviewOpen = false;
     if (!this.paymentStep && (pendingActionReason || this.shouldAwaitApprovalBeforePayment() || this.isWaitingListSelection())) {
       this.busy = true;
@@ -2842,7 +2868,8 @@ export class EventCheckoutPopupComponent {
   private async persistCheckoutDraft(
     syncRuntimeBasket = true,
     pendingReasonOverride: AppConstants.ActivityPendingReason | undefined = undefined,
-    checkoutStateOverride?: ActivityContracts.EventCheckoutState
+    checkoutStateOverride?: ActivityContracts.EventCheckoutState,
+    basketChanged = false
   ): Promise<void> {
     const dialog = this.dialog();
     const updateStepActive = this.checkoutUpdateStepActive();
@@ -2873,6 +2900,7 @@ export class EventCheckoutPopupComponent {
       checkoutSessionId: this.checkoutSessionId,
       expiresAtIso: basket?.expiresAtIso ?? null,
       pendingReason,
+      basketChanged,
       updatedAtMs: Date.now()
     });
     if (syncRuntimeBasket) {
