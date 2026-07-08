@@ -313,6 +313,15 @@ export class LocalEventCheckoutBasketsMapper {
     return resultState === 'deleted' || resultState === 'succeeded';
   }
 
+  static isActiveStatus(status: LocalEventCheckoutBasketStatus | string | null | undefined): boolean {
+    return status === 'draft'
+      || status === 'confirmed'
+      || status === 'waiting'
+      || status === 'approval-pending'
+      || status === 'approved'
+      || status === 'pay';
+  }
+
   static recordKey(userId: string, sourceId: string): string {
     const normalizedUserId = `${userId ?? ''}`.trim();
     const normalizedSourceId = `${sourceId ?? ''}`.trim();

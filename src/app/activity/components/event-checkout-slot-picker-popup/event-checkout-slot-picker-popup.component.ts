@@ -59,6 +59,7 @@ interface SlotPickerMonthFilters {
 interface SlotSelection {
   slot: EventCheckoutSlot;
   optionalSubEventIds: string[];
+  occupancyCounted: boolean;
 }
 
 type SlotListView = 'day' | 'basket';
@@ -356,7 +357,7 @@ export class EventCheckoutSlotPickerPopupComponent {
     const capacity = this.slotCapacityTotal(slot);
     const available = this.slotAvailableCount(slot);
     const selected = this.isSelected(slot);
-    const selectedOccupancyDelta = selected ? 1 : 0;
+    const selectedOccupancyDelta = selected && !this.selectionOccupancyCounted(slot) ? 1 : 0;
     const availableIncludingSelection = available + (selected ? 1 : 0);
     if (capacity <= 0 || availableIncludingSelection <= 0) {
       return 'Unavailable';
@@ -391,7 +392,8 @@ export class EventCheckoutSlotPickerPopupComponent {
     } else {
       this.selectionsBySlotId.set(slot.id, {
         slot,
-        optionalSubEventIds: []
+        optionalSubEventIds: [],
+        occupancyCounted: false
       });
     }
     this.selectionRevision += 1;
@@ -487,7 +489,11 @@ export class EventCheckoutSlotPickerPopupComponent {
         .filter(candidate => candidate.kind === 'sub_event' && candidate.slotSourceId === item.slotSourceId && candidate.subEventId)
         .map(candidate => candidate.subEventId!)
         .filter(Boolean);
-      this.selectionsBySlotId.set(slot.id, { slot, optionalSubEventIds });
+      this.selectionsBySlotId.set(slot.id, {
+        slot,
+        optionalSubEventIds,
+        occupancyCounted: this.checkoutItemOccupancyCounted(item)
+      });
     }
     this.selectedDateKey = this.initialSelectedDateKey(record, basket, eventItems, selectedDateKey);
     this.monthAnchor = this.monthStart(this.selectedDateKey);
@@ -604,7 +610,8 @@ export class EventCheckoutSlotPickerPopupComponent {
         optionalSubEventIds: [...new Set([
           ...(existing?.optionalSubEventIds ?? []),
           ...selectedOptionalIds
-        ])]
+        ])],
+        occupancyCounted: existing?.occupancyCounted ?? this.checkoutItemOccupancyCounted(item)
       });
     }
   }
@@ -778,14 +785,16 @@ export class EventCheckoutSlotPickerPopupComponent {
     }
     const current = this.selectionsBySlotId.get(slot.id) ?? {
       slot,
-      optionalSubEventIds: []
+      optionalSubEventIds: [],
+      occupancyCounted: false
     };
     const optionalSubEventIds = current.optionalSubEventIds.includes(subEventId)
       ? current.optionalSubEventIds.filter(item => item !== subEventId)
       : [...current.optionalSubEventIds, subEventId];
     this.selectionsBySlotId.set(slot.id, {
       slot,
-      optionalSubEventIds
+      optionalSubEventIds,
+      occupancyCounted: current.occupancyCounted
     });
     this.selectionRevision += 1;
     this.cdr.markForCheck();
@@ -865,14 +874,31 @@ export class EventCheckoutSlotPickerPopupComponent {
     return this.selectionSignature() !== this.baselineSelectionSignature;
   }
 
+  private selectionOccupancyCounted(slot: EventCheckoutSlot): boolean {
+    return this.selectionsBySlotId.get(slot.id)?.occupancyCounted === true;
+  }
+
+  private checkoutItemOccupancyCounted(item: EventCheckoutBasketItem): boolean {
+    return item.status !== 'draft' && this.isActiveCheckoutStatus(item.status);
+  }
+
   private refreshBaselineSelection(): void {
     this.baselineSelectionSignature = this.selectionSignature();
   }
 
   private isActiveBasketItem(item: EventCheckoutBasketItem): boolean {
-    return `${item.status ?? ''}` !== 'deleted'
+    return this.isActiveCheckoutStatus(item.status)
       && item.resultState !== 'deleted'
       && item.resultState !== 'succeeded';
+  }
+
+  private isActiveCheckoutStatus(status: EventCheckoutBasketItem['status'] | string | null | undefined): boolean {
+    return status === 'draft'
+      || status === 'confirmed'
+      || status === 'waiting'
+      || status === 'approval-pending'
+      || status === 'approved'
+      || status === 'pay';
   }
 
   private selectionSignature(): string {
