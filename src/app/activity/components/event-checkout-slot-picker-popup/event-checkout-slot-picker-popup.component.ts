@@ -19,7 +19,6 @@ import {
   type PageResult
 } from '../../../shared/core';
 import {
-  DialogStore,
   EventCheckoutDraftStore,
   EventCheckoutSlotPickerStore,
   IndicatorComponent,
@@ -86,7 +85,6 @@ export class EventCheckoutSlotPickerPopupComponent {
   private readonly store = inject(EventCheckoutSlotPickerStore);
   private readonly eventsService = inject(EventsService);
   private readonly checkoutDraftStore = inject(EventCheckoutDraftStore);
-  private readonly dialogStore = inject(DialogStore);
   private readonly cdr = inject(ChangeDetectorRef);
 
   protected selectedDateKey = this.todayKey();
@@ -419,15 +417,6 @@ export class EventCheckoutSlotPickerPopupComponent {
         surface: 'tinted',
         headerBadge: this.slotPriceLabel(slot),
         context: { menu: 'slot', slot }
-      },
-      {
-        id: 'delete',
-        label: 'Eltavolitas',
-        icon: 'delete',
-        palette: 'danger',
-        surface: 'tinted',
-        disabled: () => !this.selectionsBySlotId.has(slot.id),
-        context: { menu: 'slot', slot }
       }
     ];
   }
@@ -435,10 +424,6 @@ export class EventCheckoutSlotPickerPopupComponent {
   protected onSlotMenuSelect(slot: EventCheckoutSlot, event: AppMenuItemSelectEvent<string, unknown>): void {
     event.sourceEvent.preventDefault();
     event.sourceEvent.stopPropagation();
-    if (event.id === 'delete') {
-      this.requestRemoveSlot(slot);
-      return;
-    }
     if (event.id === 'pricing') {
       this.openPricingSummary(slot, event.sourceEvent);
       return;
@@ -747,10 +732,6 @@ export class EventCheckoutSlotPickerPopupComponent {
     this.cdr.markForCheck();
   }
 
-  private requestRemoveSlot(slot: EventCheckoutSlot): void {
-    this.requestRemoveSelectedSlot(slot.id);
-  }
-
   private slotCapacityTotal(slot: EventCheckoutSlot): number {
     return Math.max(0, Math.trunc(Number(slot.capacityTotal) || 0));
   }
@@ -797,33 +778,6 @@ export class EventCheckoutSlotPickerPopupComponent {
       return false;
     }
     return this.isSlotUnavailable(slot) || this.optionalSubEventAvailableCount(subEvent) <= 0;
-  }
-
-  private requestRemoveSelectedSlot(slotId: string): void {
-    const selection = this.selectionsBySlotId.get(slotId);
-    if (!selection) {
-      return;
-    }
-    this.dialogStore.open({
-      title: 'Remove checkout item?',
-      message: selection.slot.timeframe || selection.slot.title || 'Selected slot',
-      warningMessage: 'The slot will be removed from the draft basket.',
-      cancelLabel: 'Cancel',
-      confirmLabel: 'Eltavolitas',
-      busyConfirmLabel: 'Removing...',
-      confirmTone: 'danger',
-      confirmPalette: 'danger',
-      failureMessage: 'Unable to remove this checkout item.',
-      onConfirm: () => {
-        this.selectionsBySlotId.delete(slotId);
-        this.selectionRevision += 1;
-        if (this.basketMode) {
-          this.refreshSlotQuery();
-          return;
-        }
-        this.cdr.markForCheck();
-      }
-    });
   }
 
   private async saveBasket(): Promise<void> {
