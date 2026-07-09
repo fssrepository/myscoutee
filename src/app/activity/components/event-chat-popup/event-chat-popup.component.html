@@ -469,46 +469,36 @@
 }
 
 @if (pollVoteDialogContext(); as pollContext) {
-  <section class="chat-modal">
-    <div class="chat-modal-backdrop" (click)="closePollVoteDialog()"></div>
-    <div class="chat-modal-panel chat-poll-vote-panel" (click)="$event.stopPropagation()">
-      <header>
-        <h2>Vote</h2>
-        <button type="button" (click)="closePollVoteDialog()" aria-label="Close poll"><mat-icon>close</mat-icon></button>
-      </header>
-      <div class="chat-poll-vote-body">
-        <strong>{{ pollContext.poll.question }}</strong>
-        <div class="chat-poll-vote-options">
-          @for (option of pollContext.poll.options; track option.id) {
-            <button
-              type="button"
-              class="chat-poll-vote-option"
-              [class.is-selected]="selectedPollOptionId(pollContext.message, pollContext.attachment) === option.id"
-              (click)="selectPollOption(pollContext.message, pollContext.attachment, option, $event)"
-            >
-              <span class="chat-poll-check">
-                @if (selectedPollOptionId(pollContext.message, pollContext.attachment) === option.id) {
-                  <mat-icon>check</mat-icon>
-                }
-              </span>
-              <span>{{ option.text }}</span>
-            </button>
-          }
-        </div>
+  <app-popup [model]="pollVotePopupModel()" [zIndex]="chatDialogZIndex()">
+    <div class="chat-poll-vote-body">
+      <strong>{{ pollContext.poll.question }}</strong>
+      <div class="chat-poll-vote-options">
+        @for (option of pollContext.poll.options; track option.id) {
+          <button
+            type="button"
+            class="chat-poll-vote-option"
+            [class.is-selected]="selectedPollOptionId(pollContext.message, pollContext.attachment) === option.id"
+            (click)="selectPollOption(pollContext.message, pollContext.attachment, option, $event)"
+          >
+            <span class="chat-poll-check">
+              @if (selectedPollOptionId(pollContext.message, pollContext.attachment) === option.id) {
+                <mat-icon>check</mat-icon>
+              }
+            </span>
+            <span>{{ option.text }}</span>
+          </button>
+        }
       </div>
-      <footer class="chat-poll-vote-actions">
-        <button type="button" class="chat-poll-vote-cancel" (click)="closePollVoteDialog()">Cancel</button>
-        <button
-          type="button"
-          class="chat-poll-vote-submit"
-          (click)="submitPollVote(pollContext.message, pollContext.attachment, $event)"
-          [disabled]="!canSubmitPollVote(pollContext.message, pollContext.attachment)"
-        >
-          Submit
-        </button>
-      </footer>
     </div>
-  </section>
+    <footer class="chat-poll-vote-actions">
+      <app-menu
+        kind="inline"
+        layout="row"
+        [items]="pollVoteActionMenuItems(pollContext.message, pollContext.attachment)"
+        (itemSelect)="onPollVoteActionSelect(pollContext.message, pollContext.attachment, $event)"
+      ></app-menu>
+    </footer>
+  </app-popup>
 }
 
 @if (pinnedDialogOpen) {

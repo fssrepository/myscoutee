@@ -608,6 +608,21 @@ export class EventChatPopupComponent implements OnDestroy {
     };
   }
 
+  protected pollVotePopupModel(): PopupModel {
+    return {
+      title: 'Vote',
+      ariaLabel: 'Vote',
+      closeAriaLabel: 'Close poll',
+      closeOnBackdrop: true,
+      size: 'small',
+      height: 'auto',
+      headerTone: 'accent',
+      bodyLayout: 'flush',
+      backdropTone: 'dim',
+      onClose: () => this.closePollVoteDialog()
+    };
+  }
+
   protected chatDialogZIndex(): number {
     return this.currentChatPopupZIndex() + 10;
   }
@@ -1768,6 +1783,43 @@ export class EventChatPopupComponent implements OnDestroy {
     }
     const selectedOptionId = this.selectedPollOptionByMessageId[messageId] || '';
     return !!selectedOptionId && selectedOptionId !== this.pollOwnVoteOptionId(attachment);
+  }
+
+  protected pollVoteActionMenuItems(
+    message: ContractTypes.ChatMessageDto,
+    attachment: ContractTypes.ChatMessageAttachment
+  ): readonly AppMenuItem<string>[] {
+    return [
+      {
+        id: 'poll-vote-cancel',
+        label: 'Cancel',
+        layout: 'action',
+        palette: 'slate',
+        ariaLabel: 'Cancel vote'
+      },
+      {
+        id: 'poll-vote-submit',
+        label: 'Submit',
+        layout: 'action',
+        palette: 'blue',
+        disabled: !this.canSubmitPollVote(message, attachment),
+        ariaLabel: 'Submit vote'
+      }
+    ];
+  }
+
+  protected onPollVoteActionSelect(
+    message: ContractTypes.ChatMessageDto,
+    attachment: ContractTypes.ChatMessageAttachment,
+    event: AppMenuItemSelectEvent<string>
+  ): void {
+    if (event.id === 'poll-vote-cancel') {
+      this.closePollVoteDialog();
+      return;
+    }
+    if (event.id === 'poll-vote-submit') {
+      this.submitPollVote(message, attachment, event.sourceEvent);
+    }
   }
 
   protected submitPollVote(
