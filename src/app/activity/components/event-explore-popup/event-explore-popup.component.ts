@@ -2422,11 +2422,7 @@ export class EventExplorePopupComponent {
   }
 
   private isEventExploreRecordFull(record: ActivityEventRecord | null): boolean {
-    const capacityTotal = Math.max(0, Math.trunc(Number(record?.capacityTotal) || 0));
-    if (capacityTotal <= 0) {
-      return false;
-    }
-    return Math.max(0, Math.trunc(Number(record?.acceptedMembers) || 0)) >= capacityTotal;
+    return record?.full === true;
   }
 
   private isEventExploreSlotFull(slot: ContractTypes.EventSlotOccurrenceDTO): boolean {

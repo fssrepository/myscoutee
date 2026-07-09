@@ -3076,8 +3076,7 @@ export class EventCheckoutPopupComponent {
   }
 
   private isRecordFull(record: ActivityEventRecord): boolean {
-    return record.full === true || Math.max(0, Math.trunc(Number(record.capacityTotal) || 0)) > 0
-      && Math.max(0, Math.trunc(Number(record.acceptedMembers) || 0)) >= Math.max(0, Math.trunc(Number(record.capacityTotal) || 0));
+    return record.full === true;
   }
 
   private checkoutTargetUnavailable(): boolean {

@@ -179,7 +179,7 @@ export class EventExploreInfoCardConverter {
   }
 
   private static isFull(record: ActivityEventRecord): boolean {
-    return record.full === true || (record.capacityTotal > 0 && record.acceptedMembers >= record.capacityTotal);
+    return record.full === true;
   }
 
   private static canPreviewMembers(record: ActivityEventRecord): boolean {
