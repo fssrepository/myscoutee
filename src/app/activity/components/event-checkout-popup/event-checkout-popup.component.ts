@@ -1,6 +1,6 @@
 import { CommonModule } from '@angular/common';
 import { HttpErrorResponse } from '@angular/common/http';
-import { Component, HostListener, effect, inject } from '@angular/core';
+import { Component, HostListener, effect, inject, signal } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { MatButtonModule } from '@angular/material/button';
 import { MatDatepickerModule } from '@angular/material/datepicker';
@@ -14,14 +14,23 @@ import { AppUtils } from '../../../shared/app-utils';
 import { PricingBuilder } from '../../../shared/core/base/builders';
 import type * as ContractTypes from '../../../shared/core/contracts';
 import type * as ActivityContracts from '../../../shared/core/contracts/activity.interface';
+import type { UserMenuCounterDeltasDto } from '../../../shared/core/contracts/user.interface';
 import { EventsService } from '../../../shared/core/base/services/events.service';
 import type { ActivityEventRecord } from '../../../shared/core/contracts/activity.interface';
-import { EventCheckoutDraftStore } from '../../../shared/ui/context/stores/event-checkout-draft.store';
+import { EventCheckoutDraftStore, type EventCheckoutDraft } from '../../../shared/ui/context/stores/event-checkout-draft.store';
 import { EventCheckoutDialogStore, type EventCheckoutDialogState } from '../../../shared/ui/context/stores/event-checkout-dialog.store';
+import { EventCheckoutSlotPickerStore } from '../../../shared/ui/context/stores/event-checkout-slot-picker.store';
+import { ActivitiesPopupStore } from '../../../shared/ui/context/stores/activities-popup.store';
+import { DialogStore } from '../../../shared/ui/context/stores/dialog.store';
 import {
-  AppMenuComponent,
+  EventEditorPopupStore,
+  type EventEditorCheckoutSurfaceTone
+} from '../../../shared/ui/context/stores/event-editor-popup.store';
+import { ActivityStore } from '../../../shared/ui/context/stores/activity.store';
+import {
   type AppMenuItem,
-  type AppMenuItemSelectEvent
+  type AppMenuItemSelectEvent,
+  type AppMenuPalette
 } from '../../../shared/ui/components/core/menu';
 import { PopupComponent, type PopupModel } from '../../../shared/ui/components/core/popup';
 import { IndicatorComponent } from '../../../shared/ui/components/core/indicator';
@@ -30,6 +39,7 @@ import type * as AppConstants from '../../../shared/core/common/constants';
 type PricingSnapshot = {
   amount: number;
   currency: string;
+  rows: ActivityContracts.EventCheckoutPricingSummaryRow[];
 };
 
 type CancellationPreview = {
@@ -50,7 +60,6 @@ type CancellationPreview = {
     MatIconModule,
     MatInputModule,
     MatNativeDateModule,
-    AppMenuComponent,
     PopupComponent,
     IndicatorComponent
   ],
@@ -59,10 +68,16 @@ type CancellationPreview = {
 })
 export class EventCheckoutPopupComponent {
   private static readonly MAX_VISIBLE_SLOTS = 10;
+  private static readonly CHECKOUT_BASKET_TTL_MS = 20 * 60 * 1000;
   protected readonly environment = environment;
   protected readonly dialogStore = inject(EventCheckoutDialogStore);
+  protected readonly eventCheckoutSlotPickerStore = inject(EventCheckoutSlotPickerStore);
+  private readonly eventEditorStore = inject(EventEditorPopupStore);
   private readonly eventsService = inject(EventsService);
   private readonly checkoutDraftStore = inject(EventCheckoutDraftStore);
+  private readonly activitiesStore = inject(ActivitiesPopupStore);
+  private readonly confirmationDialogStore = inject(DialogStore);
+  private readonly activityStore = inject(ActivityStore);
 
   protected selectedSlotSourceId: string | null = null;
   protected selectedSlotDateValue: Date | null = null;
@@ -74,7 +89,13 @@ export class EventCheckoutPopupComponent {
   protected errorMessage = '';
 
   private renderedDialogId = 0;
+  private checkoutReviewDialogId = 0;
+  private readonly checkoutReviewBodyLoading = signal(false);
+  private checkoutBusyActionId: string | null = null;
   private checkoutSessionId: string | null = null;
+  private checkoutBasket: ActivityContracts.EventCheckoutBasket | null = null;
+  private checkoutBaselineSignature = '';
+  private checkoutBaselinePendingReason: AppConstants.ActivityPendingReason = null;
   private availableSlotsCache: ContractTypes.EventSlotOccurrenceDTO[] = [];
   private availableSlotDateEntriesCache: Array<{ key: string; value: Date; label: string; count: number }> = [];
   private availableSlotDateKeySet = new Set<string>();
@@ -83,6 +104,7 @@ export class EventCheckoutPopupComponent {
     effect(() => {
       const dialog = this.dialogStore.dialog();
       if (!dialog) {
+        this.closeCheckoutReviewEditor();
         this.resetDialogState();
         return;
       }
@@ -91,6 +113,9 @@ export class EventCheckoutPopupComponent {
       }
       this.renderedDialogId = dialog.id;
       this.initializeDialogState(dialog);
+      if (!dialog.loading) {
+        void this.openCheckoutReviewEditor(dialog);
+      }
     });
   }
 
@@ -119,7 +144,92 @@ export class EventCheckoutPopupComponent {
     if (this.busy) {
       return;
     }
+    this.closeCheckoutDialog();
+  }
+
+  private async openCheckoutReviewEditor(dialog: EventCheckoutDialogState): Promise<void> {
+    const dialogId = dialog.id;
+    this.checkoutReviewDialogId = dialogId;
+    this.checkoutReviewBodyLoading.set(true);
+    this.openCheckoutReviewEditorShell(dialog);
+    await this.eventEditorStore.ensureEventEditorPopupLoaded();
+    if (this.dialogStore.dialog()?.id !== dialogId) {
+      return;
+    }
+    this.openCheckoutReviewEditorShell(dialog);
+    await this.loadRuntimeCheckoutBasket(dialog);
+    if (this.dialogStore.dialog()?.id !== dialogId) {
+      return;
+    }
+    this.checkoutReviewBodyLoading.set(false);
+    this.openCheckoutReviewEditorShell(dialog);
+  }
+
+  private openCheckoutReviewEditorShell(dialog: EventCheckoutDialogState): void {
+    this.eventEditorStore.openCheckoutReview({
+      ...dialog.record,
+      checkoutBasket: this.checkoutBasket
+    }, {
+      title: this.sectionTitle(),
+      subtitle: dialog.record.title,
+      checkoutPhase: this.checkoutEditorPhase(),
+      hideSubEventsPanel: true,
+      hideSlotsPanel: true,
+      hidePaymentPanel: this.isReadOnlyCheckoutSummary(),
+      loading: () => this.checkoutReviewBodyLoading(),
+      showBasketPanel: true,
+      showPricingPanel: () => this.showCheckoutPricingPanel(),
+      basketTone: () => this.checkoutBasketSurfaceTone(),
+      paymentTone: () => this.checkoutPaymentSurfaceTone(),
+      basketItems: () => this.checkoutBasketPresentationItems(),
+      basketPricingSummaryRows: () => this.checkoutBasketPricingSummaryRows(),
+      basketTotalAmount: () => this.totalAmount(),
+      basketCurrency: () => this.currency(),
+      basketAddDisabled: () => this.checkoutBasketAddDisabled(),
+      onBasketAdd: event => this.addCheckoutBasketSlot(event),
+      onBasketItemMenuSelect: (item, event) => this.onCheckoutBasketItemMenuSelect(item, event),
+      footerItems: this.isReadOnlyCheckoutSummary() ? [] : this.checkoutFooterMenuItems(),
+      footerMessage: this.errorMessage,
+      onFooterItemSelect: event => this.onCheckoutActionMenuSelect(event),
+      onClose: () => this.onCheckoutReviewEditorClose()
+    });
+  }
+
+  private setCheckoutErrorMessage(
+    dialog: EventCheckoutDialogState | null | undefined,
+    error: unknown,
+    fallbackMessage: string
+  ): void {
+    this.errorMessage = this.resolveErrorMessage(error, fallbackMessage);
+    queueMicrotask(() => {
+      if (!dialog || this.dialog()?.id !== dialog.id || this.checkoutReviewDialogId !== dialog.id) {
+        return;
+      }
+      this.openCheckoutReviewEditorShell(dialog);
+    });
+  }
+
+  private closeCheckoutDialog(): void {
     this.dialogStore.close();
+    this.closeCheckoutReviewEditor();
+  }
+
+  private closeCheckoutReviewEditor(): void {
+    if (!this.checkoutReviewDialogId) {
+      return;
+    }
+    this.checkoutReviewDialogId = 0;
+    this.checkoutReviewBodyLoading.set(false);
+    if (this.eventEditorStore.presentation().mode === 'checkout-review') {
+      this.eventEditorStore.close();
+    }
+  }
+
+  private onCheckoutReviewEditorClose(): void {
+    if (!this.checkoutReviewDialogId) {
+      return;
+    }
+    this.requestCheckoutClose();
   }
 
   protected sectionTitle(): string {
@@ -129,6 +239,9 @@ export class EventCheckoutPopupComponent {
     }
     if (dialog.mode === 'invitation') {
       return this.totalAmount() > 0 ? 'Accept Invitation & Pay' : 'Accept Invitation';
+    }
+    if (dialog.readOnlySummary) {
+      return 'Fizetési összegzés';
     }
     if (this.isWaitingListSelection()) {
       return 'Join Waiting List';
@@ -153,7 +266,7 @@ export class EventCheckoutPopupComponent {
       headerTone: 'accent',
       bodyLayout: 'fill',
       backdropTone: 'dim',
-      onClose: event => this.close(event)
+      onClose: event => this.requestCheckoutClose(event)
     };
   }
 
@@ -297,14 +410,6 @@ export class EventCheckoutPopupComponent {
     return record?.policiesEnabled === true ? record.policies ?? [] : [];
   }
 
-  protected requiredPolicyIds(): string[] {
-    return this.policies().filter(item => item.required !== false).map(item => item.id);
-  }
-
-  protected missingRequiredPolicies(): boolean {
-    return this.requiredPolicyIds().some(id => !this.acceptedPolicyIds.has(id));
-  }
-
   protected toggleSlot(slotId: string): void {
     this.selectedSlotSourceId = this.selectedSlotSourceId === slotId ? null : slotId;
     this.invalidateCheckoutDraft();
@@ -334,13 +439,30 @@ export class EventCheckoutPopupComponent {
       this.acceptedPolicyIds.add(id);
     }
     if (this.checkoutSessionId) {
-      this.persistCheckoutDraft();
+      this.busy = true;
+      this.checkoutBusyActionId = null;
+      void this.persistCheckoutDraft()
+        .catch(error => {
+          const dialog = this.dialog();
+          this.setCheckoutErrorMessage(dialog, error, dialog?.failureMessage ?? 'Unable to update checkout.');
+        })
+        .finally(() => {
+          this.busy = false;
+          this.checkoutBusyActionId = null;
+        });
     }
   }
 
   protected lineItems(): ActivityContracts.EventCheckoutLineItem[] {
+    const basket = this.checkoutBasketSnapshot();
+    if (basket) {
+      return basket.lineItems.map(item => ({ ...item }));
+    }
     const dialog = this.dialog();
     if (!dialog) {
+      return [];
+    }
+    if (this.requiresSlotSelection()) {
       return [];
     }
     const slot = this.selectedSlot();
@@ -375,8 +497,795 @@ export class EventCheckoutPopupComponent {
     return items;
   }
 
+  private checkoutBasketItems(
+    statusOverride?: ActivityContracts.EventCheckoutState,
+    resultStateOverride?: ActivityContracts.EventCheckoutResultState
+  ): ActivityContracts.EventCheckoutBasketItem[] {
+    const snapshot = this.checkoutBasketSnapshot();
+    const sourceItems = this.isReadOnlyCheckoutSummary()
+      ? (snapshot?.items ?? []).filter(item => item.resultState !== 'deleted')
+      : (snapshot?.items ?? []).filter(item => !this.isInactiveCheckoutResultState(item.resultState));
+    return sourceItems.map(item => ({
+      ...item,
+      status: statusOverride ?? item.status,
+      resultState: resultStateOverride ?? item.resultState ?? 'pending',
+      pricingSummaryRows: [...(item.pricingSummaryRows ?? [])]
+    }));
+  }
+
+  private activeCheckoutBasketItems(): ActivityContracts.EventCheckoutBasketItem[] {
+    const activeItems = (this.checkoutBasket?.items ?? [])
+      .filter(item => !this.isInactiveCheckoutResultState(item.resultState));
+    return activeItems.map(item => ({ ...item, pricingSummaryRows: [...(item.pricingSummaryRows ?? [])] }));
+  }
+
+  private checkoutSelectionSignature(): string {
+    const fallbackCurrency = this.dialog()?.record.pricing?.currency?.trim() || 'USD';
+    const items = this.checkoutBasketItems();
+    const itemParts = items
+      .map(item => {
+        const itemCurrency = item.currency?.trim() || fallbackCurrency;
+        const pricingRows = (item.pricingSummaryRows ?? [])
+          .map(row => [
+            `${row.key ?? ''}`.trim(),
+            `${row.label ?? ''}`.trim(),
+            `${row.detail ?? ''}`.trim(),
+            Number.isFinite(row.amount) ? `${Math.round(Number(row.amount) * 100) / 100}` : '',
+            `${row.currency ?? itemCurrency}`.trim(),
+            Number.isFinite(row.multiplier) ? `${Math.max(1, Math.trunc(Number(row.multiplier)))}` : ''
+          ].join('~'))
+          .sort()
+          .join(',');
+        return [
+          `${item.id ?? ''}`.trim(),
+          `${item.kind ?? ''}`.trim(),
+          `${item.sourceId ?? ''}`.trim(),
+          `${item.slotSourceId ?? ''}`.trim(),
+          `${item.slotTemplateId ?? ''}`.trim(),
+          `${item.selectedDateKey ?? ''}`.trim(),
+          `${item.subEventId ?? ''}`.trim(),
+          `${item.resourceType ?? ''}`.trim(),
+          `${item.label ?? ''}`.trim(),
+          `${item.detail ?? ''}`.trim(),
+          `${Math.round((Number(item.amount) || 0) * 100) / 100}`,
+          itemCurrency,
+          `${Math.max(1, Math.trunc(Number(item.quantity) || 1))}`,
+          pricingRows
+        ].join('|');
+      })
+      .sort();
+    const totalAmount = items
+      .reduce((sum, item) => sum + ((Number(item.amount) || 0) * Math.max(1, Math.trunc(Number(item.quantity) || 1))), 0);
+    const currency = items.find(item => item.currency?.trim())?.currency?.trim() || fallbackCurrency;
+    const optionalIds = [...this.selectedOptionalSubEventIds].map(item => item.trim()).filter(Boolean).sort();
+    const policyIds = [...this.acceptedPolicyIds].map(item => item.trim()).filter(Boolean).sort();
+    return JSON.stringify({
+      pendingReason: this.checkoutActionPendingReason(),
+      slotSourceId: this.selectedSlotSourceId?.trim() || null,
+      selectedDateKey: this.selectedSlotDateValue ? this.slotDateKeyFromDate(this.selectedSlotDateValue) : null,
+      optionalIds,
+      policyIds,
+      itemParts,
+      totalAmount: Math.round(totalAmount * 100) / 100,
+      currency
+    });
+  }
+
+  private checkoutBasketSnapshot(): ActivityContracts.EventCheckoutBasket | null {
+    if (
+      this.isReadOnlyCheckoutSummary()
+      && this.checkoutBasket?.items?.some(item => item.resultState !== 'deleted')
+    ) {
+      return this.checkoutBasket;
+    }
+    if (this.checkoutBasket?.items?.some(item => !this.isInactiveCheckoutResultState(item.resultState))) {
+      return this.checkoutBasket;
+    }
+    if (this.shouldSuppressImplicitWaitlistBasket()) {
+      return null;
+    }
+    if (this.requiresSlotSelection()) {
+      return null;
+    }
+    const basket = this.buildRuntimeBasketFromCurrentSelection();
+    this.checkoutBasket = basket;
+    return basket;
+  }
+
+  private isInactiveCheckoutResultState(resultState: ActivityContracts.EventCheckoutResultState | string | null | undefined): boolean {
+    return resultState === 'deleted' || resultState === 'succeeded';
+  }
+
+  private buildBasketItemsFromCurrentSelection(): ActivityContracts.EventCheckoutBasketItem[] {
+    const dialog = this.dialog();
+    if (!dialog) {
+      return [];
+    }
+    const slot = this.selectedSlot();
+    if (this.requiresSlotSelection() && !slot) {
+      return [];
+    }
+    const slotId = slot?.slotTemplateId ?? null;
+    const selectedDateKey = slot?.startAtIso ? this.slotDateKeyFromIso(slot.startAtIso) : this.selectedSlotDateKey() || null;
+    const nowIso = new Date().toISOString();
+    const expiresAtIso = new Date(Date.now() + EventCheckoutPopupComponent.CHECKOUT_BASKET_TTL_MS).toISOString();
+    const eventPricing = this.resolvePricing(dialog.record.pricing, dialog.record, slotId, slot);
+    const selectedOptionalSubEvents = this.optionalSubEvents()
+      .filter(subEvent => this.selectedOptionalSubEventIds.has(subEvent.id))
+      .map(subEvent => ({
+        subEvent,
+        pricing: this.resolvePricing(subEvent.pricing, dialog.record, null, slot)
+      }));
+    const totalAmount = Math.round((
+      eventPricing.amount
+      + selectedOptionalSubEvents.reduce((sum, item) => sum + item.pricing.amount, 0)
+    ) * 100) / 100;
+    const state = this.currentCheckoutState(totalAmount);
+    const items: ActivityContracts.EventCheckoutBasketItem[] = [
+      {
+        id: `event:${dialog.record.id}:${slot?.id ?? 'main'}`,
+        kind: 'event',
+        sourceId: dialog.record.id,
+        slotSourceId: slot?.id ?? null,
+        slotTemplateId: slot?.slotTemplateId ?? null,
+        selectedDateKey,
+        subEventId: null,
+        resourceType: null,
+        label: dialog.record.title,
+        detail: slot?.timeframe || dialog.record.timeframe || 'Main event',
+        amount: eventPricing.amount,
+        currency: eventPricing.currency,
+        quantity: 1,
+        status: state,
+        resultState: 'pending',
+        pricingSummaryRows: eventPricing.rows,
+        checkoutSessionId: this.checkoutSessionId,
+        createdAtIso: nowIso,
+        updatedAtIso: nowIso,
+        expiresAtIso
+      }
+    ];
+
+    for (const { subEvent, pricing } of selectedOptionalSubEvents) {
+      items.push({
+        id: `subevent:${subEvent.id}:${slot?.id ?? 'main'}`,
+        kind: 'sub_event',
+        sourceId: dialog.record.id,
+        slotSourceId: slot?.id ?? null,
+        slotTemplateId: slot?.slotTemplateId ?? null,
+        selectedDateKey,
+        subEventId: subEvent.id,
+        resourceType: null,
+        label: subEvent.name,
+        detail: subEvent.description || 'Optional sub event',
+        amount: pricing.amount,
+        currency: pricing.currency,
+        quantity: 1,
+        status: state,
+        resultState: 'pending',
+        pricingSummaryRows: pricing.rows,
+        checkoutSessionId: this.checkoutSessionId,
+        createdAtIso: nowIso,
+        updatedAtIso: nowIso,
+        expiresAtIso
+      });
+    }
+    return items;
+  }
+
+  private checkoutBasketPresentationItems(): readonly {
+    id: string;
+    title: string;
+    meta: string;
+    detail: string | null;
+    amount: number;
+    currency: string;
+    quantity: number;
+    status: string;
+    pricingSummaryRows: readonly ActivityContracts.EventCheckoutPricingSummaryRow[];
+  }[] {
+    const groups = new Map<string, {
+      order: number;
+      slot: ActivityContracts.EventCheckoutBasketItem | null;
+      optionals: ActivityContracts.EventCheckoutBasketItem[];
+    }>();
+    const standalone: Array<{
+      order: number;
+      item: ActivityContracts.EventCheckoutBasketItem;
+    }> = [];
+    const items = this.checkoutBasketItems();
+    items.forEach((item, index) => {
+      const groupKey = this.checkoutBasketPresentationGroupKey(item);
+      if (item.kind === 'sub_event' && groupKey) {
+        const group = groups.get(groupKey) ?? { order: index, slot: null, optionals: [] };
+        group.order = Math.min(group.order, index);
+        group.optionals.push(item);
+        groups.set(groupKey, group);
+        return;
+      }
+      if (item.kind === 'event' && groupKey) {
+        const group = groups.get(groupKey) ?? { order: index, slot: null, optionals: [] };
+        group.order = Math.min(group.order, index);
+        group.slot = item;
+        groups.set(groupKey, group);
+        return;
+      }
+      standalone.push({ order: index, item });
+    });
+    const groupedItems = [...groups.values()]
+      .sort((left, right) => left.order - right.order)
+      .flatMap(group => this.checkoutBasketGroupedPresentationItems(group.slot, group.optionals));
+    const standaloneItems = standalone
+      .sort((left, right) => left.order - right.order)
+      .map(entry => this.checkoutBasketPresentationItem(entry.item, []));
+    return [...groupedItems, ...standaloneItems];
+  }
+
+  private checkoutBasketGroupedPresentationItems(
+    slot: ActivityContracts.EventCheckoutBasketItem | null,
+    optionals: readonly ActivityContracts.EventCheckoutBasketItem[]
+  ): Array<{
+    id: string;
+    title: string;
+    meta: string;
+    detail: string | null;
+    amount: number;
+    currency: string;
+    quantity: number;
+    status: string;
+    pricingSummaryRows: readonly ActivityContracts.EventCheckoutPricingSummaryRow[];
+  }> {
+    if (!slot) {
+      return optionals.map(item => this.checkoutBasketPresentationItem(item, []));
+    }
+    return [this.checkoutBasketPresentationItem(slot, optionals)];
+  }
+
+  private checkoutBasketPresentationItem(
+    item: ActivityContracts.EventCheckoutBasketItem,
+    optionals: readonly ActivityContracts.EventCheckoutBasketItem[]
+  ): {
+    id: string;
+    title: string;
+    meta: string;
+    detail: string | null;
+    amount: number;
+    currency: string;
+    quantity: number;
+    status: string;
+    pricingSummaryRows: readonly ActivityContracts.EventCheckoutPricingSummaryRow[];
+  } {
+    const optionalLabels = optionals.map(optional => optional.label.trim()).filter(Boolean);
+    const optionalDetail = optionalLabels.length > 0 ? `Optional: ${optionalLabels.join(', ')}` : null;
+    const amount = [item, ...optionals]
+      .reduce((sum, current) => sum + ((Number(current.amount) || 0) * Math.max(1, Math.trunc(Number(current.quantity) || 1))), 0);
+    return {
+      id: item.id,
+      title: item.label,
+      meta: item.detail,
+      detail: optionalDetail,
+      amount: Math.round(amount * 100) / 100,
+      currency: item.currency || optionals.find(optional => optional.currency)?.currency || this.currency(),
+      quantity: 1,
+      status: item.status,
+      pricingSummaryRows: [item, ...optionals].flatMap(current => current.pricingSummaryRows ?? [])
+    };
+  }
+
+  private checkoutBasketPresentationGroupKey(item: ActivityContracts.EventCheckoutBasketItem): string {
+    const slotSourceId = `${item.slotSourceId ?? ''}`.trim();
+    if (slotSourceId) {
+      return slotSourceId;
+    }
+    const id = `${item.id ?? ''}`.trim();
+    if (item.kind === 'event' && id.startsWith('event:')) {
+      return id.split(':').slice(2).join(':') || 'main';
+    }
+    if (item.kind === 'sub_event' && id.startsWith('subevent:')) {
+      return id.split(':').slice(2).join(':') || 'main';
+    }
+    return '';
+  }
+
+  private checkoutBasketSurfaceTone(): EventEditorCheckoutSurfaceTone {
+    if (this.checkoutDraftBasketChanged()) {
+      return 'changed';
+    }
+    const pendingReason = this.checkoutDecisionPendingReason();
+    if (pendingReason === 'waitlist') {
+      return 'waiting';
+    }
+    if (pendingReason === 'approval') {
+      return 'approval';
+    }
+    if (this.paymentStep || this.checkoutSessionId || this.activeCheckoutBasketItems().some(item => item.status === 'pay')) {
+      return 'payment';
+    }
+    return this.totalAmount() > 0 ? 'ready' : 'neutral';
+  }
+
+  private checkoutPaymentSurfaceTone(): EventEditorCheckoutSurfaceTone {
+    const pendingReason = this.checkoutDecisionPendingReason();
+    if (pendingReason === 'waitlist') {
+      return 'waiting';
+    }
+    if (pendingReason === 'approval') {
+      return 'approval';
+    }
+    return this.paymentStep || this.checkoutSessionId ? 'payment' : 'ready';
+  }
+
+  private checkoutBasketPricingSummaryRows(): ActivityContracts.EventCheckoutPricingSummaryRow[] {
+    return (this.checkoutBasketSnapshot()?.pricingSummaryRows ?? []).map(row => ({ ...row }));
+  }
+
+  private showCheckoutPricingPanel(): boolean {
+    const dialog = this.dialog();
+    if (!dialog) {
+      return false;
+    }
+    return this.checkoutRecordPricingEnabled(dialog.record) || this.checkoutBasketHasPayableItems();
+  }
+
+  private checkoutRecordPricingEnabled(record: ActivityEventRecord): boolean {
+    const slotCatalog = PricingBuilder.slotCatalogFromEventSlotTemplates(record.slotTemplates ?? []);
+    return PricingBuilder.compactPricingConfig(record.pricing, {
+      context: 'event',
+      slotCatalog,
+      allowSlotFeatures: slotCatalog.length > 0
+    }).enabled === true;
+  }
+
+  private checkoutBasketHasPayableItems(): boolean {
+    const basket = this.checkoutBasketSnapshot();
+    if (Number(basket?.totalAmount) > 0) {
+      return true;
+    }
+    if (this.checkoutBasketItems().some(item =>
+      (Number(item.amount) || 0) * Math.max(1, Math.trunc(Number(item.quantity) || 1)) > 0
+    )) {
+      return true;
+    }
+    return this.checkoutBasketPricingSummaryRows().some(row => Number(row.amount) > 0);
+  }
+
+  private checkoutBasketAddDisabled(): boolean {
+    return this.busy
+      || this.checkoutReviewBodyLoading();
+  }
+
+  private async addCheckoutBasketSlot(event?: Event): Promise<void> {
+    event?.preventDefault();
+    event?.stopPropagation();
+    if (this.checkoutBasketAddDisabled()) {
+      return;
+    }
+    const dialog = this.dialog();
+    if (!dialog) {
+      return;
+    }
+    const basketChangeContext = this.checkoutBasketChangeContext();
+    await this.eventCheckoutSlotPickerStore.ensureSlotPickerPopupLoaded();
+    this.eventCheckoutSlotPickerStore.open({
+      userId: dialog.userId,
+      record: dialog.record,
+      checkoutBasket: this.checkoutBasketSnapshot(),
+      checkoutSessionId: this.checkoutSessionId,
+      selectedDateKey: this.checkoutSlotPickerSelectedDateKey(),
+      onSave: (basket, items) => this.applyCheckoutSlotPickerSave(basket, items, basketChangeContext)
+    });
+  }
+
+  private checkoutBasketChangeContext(): {
+    checkoutState: ActivityContracts.EventCheckoutState;
+    pendingReason: AppConstants.ActivityPendingReason;
+  } | null {
+    const pendingReason = this.checkoutActionPendingReason();
+    if (pendingReason) {
+      return {
+        checkoutState: pendingReason === 'waitlist' ? 'waiting' : 'approval-pending',
+        pendingReason
+      };
+    }
+    const draft = this.currentCheckoutDraft();
+    if (draft?.pendingReason === 'waitlist' || draft?.checkoutState === 'waiting') {
+      return {
+        checkoutState: 'waiting',
+        pendingReason: 'waitlist'
+      };
+    }
+    if (draft?.pendingReason === 'approval' || draft?.checkoutState === 'approval-pending') {
+      return {
+        checkoutState: 'approval-pending',
+        pendingReason: 'approval'
+      };
+    }
+    const basketState = this.checkoutBasket?.status ?? null;
+    if (basketState === 'waiting') {
+      return {
+        checkoutState: 'waiting',
+        pendingReason: 'waitlist'
+      };
+    }
+    if (basketState === 'approval-pending') {
+      return {
+        checkoutState: 'approval-pending',
+        pendingReason: 'approval'
+      };
+    }
+    if (
+      this.paymentStep
+      || this.checkoutPaymentReviewStarted()
+      || Boolean(this.checkoutSessionId)
+      || this.dialog()?.approvalGranted === true
+      || this.checkoutRecordAcceptedByCurrentUser()
+      || draft?.checkoutState === 'confirmed'
+      || draft?.checkoutState === 'pay'
+      || basketState === 'confirmed'
+      || basketState === 'pay'
+    ) {
+      return {
+        checkoutState: 'confirmed',
+        pendingReason: null
+      };
+    }
+    return null;
+  }
+
+  private checkoutRecordAcceptedByCurrentUser(): boolean {
+    const dialog = this.dialog();
+    const userId = dialog?.userId.trim() ?? '';
+    if (!userId) {
+      return false;
+    }
+    return (dialog?.record.acceptedMemberUserIds ?? [])
+      .some(memberUserId => memberUserId.trim() === userId);
+  }
+
+  private checkoutSlotPickerSelectedDateKey(): string | null {
+    const activeItems = this.activeCheckoutBasketItems();
+    const activeDateKey = this.checkoutBasket?.selectedDateKey?.slice(0, 10)
+      ?? activeItems.find(item => item.selectedDateKey?.trim())?.selectedDateKey?.slice(0, 10)
+      ?? null;
+    if (activeItems.length > 0 && activeDateKey) {
+      return activeDateKey;
+    }
+    const selectedDateKey = this.selectedSlotDateValue
+      ? this.slotDateKeyFromDate(this.selectedSlotDateValue)
+      : null;
+    if (selectedDateKey && this.availableSlotDateKeySet.has(selectedDateKey)) {
+      return selectedDateKey;
+    }
+    return this.availableSlotDateKeys()[0] ?? null;
+  }
+
+  private applyCheckoutSlotPickerSave(
+    basket: ActivityContracts.EventCheckoutBasket | null,
+    items: readonly ActivityContracts.EventCheckoutBasketItem[],
+    basketChangeContext: {
+      checkoutState: ActivityContracts.EventCheckoutState;
+      pendingReason: AppConstants.ActivityPendingReason;
+    } | null = null
+  ): void {
+    this.paymentStep = false;
+    this.checkoutSessionId = null;
+    this.checkoutBasket = basket ?? this.buildRuntimeBasketFromItems(items);
+    const activeItems = this.activeCheckoutBasketItems();
+    this.selectedSlotSourceId = this.checkoutBasket?.slotSourceId
+      ?? activeItems.find(item => item.slotSourceId?.trim())?.slotSourceId?.trim()
+      ?? null;
+    const selectedDateKey = this.checkoutBasket?.selectedDateKey
+      ?? activeItems.find(item => item.selectedDateKey?.trim())?.selectedDateKey?.trim()
+      ?? null;
+    this.selectedSlotDateValue = selectedDateKey
+      ? this.slotDateValueFromKey(selectedDateKey) ?? this.selectedSlotDateValue
+      : null;
+    const validOptionalIds = new Set(this.optionalSubEvents().map(item => item.id));
+    this.selectedOptionalSubEventIds = new Set(
+      activeItems
+        .map(item => item.subEventId?.trim() ?? '')
+        .filter(id => Boolean(id) && validOptionalIds.has(id))
+    );
+    if (basketChangeContext) {
+      this.markCheckoutDraftBasketChanged(basketChangeContext.checkoutState, basketChangeContext.pendingReason);
+    }
+    this.errorMessage = '';
+    const dialog = this.dialog();
+    if (dialog) {
+      this.openCheckoutReviewEditorShell(dialog);
+    }
+  }
+
+  private markCheckoutDraftBasketChanged(
+    checkoutState: ActivityContracts.EventCheckoutState,
+    pendingReason: AppConstants.ActivityPendingReason
+  ): void {
+    const dialog = this.dialog();
+    if (!dialog) {
+      return;
+    }
+    const draft = this.checkoutDraftStore.read(dialog.userId, dialog.record.id);
+    if (!draft) {
+      return;
+    }
+    this.checkoutDraftStore.save({
+      ...draft,
+      checkoutState,
+      pendingReason,
+      basketChanged: true,
+      updatedAtMs: Date.now()
+    });
+  }
+
+  private onCheckoutBasketItemMenuSelect(
+    item: { id: string },
+    event: AppMenuItemSelectEvent<string>
+  ): void {
+    event.sourceEvent.preventDefault();
+    event.sourceEvent.stopPropagation();
+    if (event.id === 'remove') {
+      this.requestRemoveCheckoutBasketItem(item.id);
+    }
+  }
+
+  private requestRemoveCheckoutBasketItem(itemId: string): void {
+    const normalizedItemId = itemId.trim();
+    if (!normalizedItemId) {
+      return;
+    }
+    const item = this.activeCheckoutBasketItems().find(current => current.id === normalizedItemId);
+    if (!item) {
+      return;
+    }
+    this.confirmationDialogStore.open({
+      title: this.checkoutRemoveItemTitle(item.status),
+      message: item.label,
+      warningMessage: this.checkoutRemoveItemWarning(item.status),
+      cancelLabel: 'Cancel',
+      confirmLabel: this.checkoutRemoveItemLabel(item.status),
+      busyConfirmLabel: `${this.checkoutRemoveItemLabel(item.status)}...`,
+      confirmTone: 'danger',
+      confirmPalette: this.checkoutRemoveItemPalette(item.status),
+      failureMessage: 'Unable to remove this checkout item.',
+      onConfirm: async () => this.removeCheckoutBasketItem(normalizedItemId)
+    });
+  }
+
+  private checkoutRemoveItemTitle(status: string | null | undefined): string {
+    if (status === 'waiting') {
+      return 'Leave waitlist?';
+    }
+    if (status === 'approval-pending' || status === 'approved') {
+      return 'Cancel request?';
+    }
+    if (status === 'pay') {
+      return 'Cancel payment item?';
+    }
+    return 'Remove checkout item?';
+  }
+
+  private checkoutRemoveItemWarning(status: string | null | undefined): string {
+    if (status === 'waiting') {
+      return 'The waitlist item will be removed from the basket.';
+    }
+    if (status === 'approval-pending' || status === 'approved') {
+      return 'The pending request item will be removed from the basket.';
+    }
+    if (status === 'pay') {
+      return 'The payment item will be removed from the basket.';
+    }
+    return 'The item will be removed from the basket and from the runtime price summary.';
+  }
+
+  private checkoutRemoveItemLabel(status: string | null | undefined): string {
+    if (status === 'waiting') {
+      return 'Leave waitlist';
+    }
+    if (status === 'approval-pending' || status === 'approved') {
+      return 'Cancel request';
+    }
+    if (status === 'pay') {
+      return 'Cancel payment';
+    }
+    return 'Eltávolítás';
+  }
+
+  private checkoutRemoveItemPalette(status: string | null | undefined): AppMenuPalette {
+    if (status === 'waiting') {
+      return 'amber';
+    }
+    if (status === 'approval-pending' || status === 'approved') {
+      return 'orange';
+    }
+    return 'danger';
+  }
+
+  private async removeCheckoutBasketItem(itemId: string): Promise<void> {
+    const normalizedItemId = itemId.trim();
+    const dialog = this.dialog();
+    if (!dialog || !normalizedItemId) {
+      return;
+    }
+    const activeItems = this.activeCheckoutBasketItems();
+    const previousSelectedDateKey = this.checkoutBasket?.selectedDateKey
+      ?? activeItems.find(item => item.selectedDateKey?.trim())?.selectedDateKey?.trim()
+      ?? null;
+    const previousExpiresAtIso = this.checkoutBasket?.expiresAtIso
+      ?? activeItems.find(item => item.expiresAtIso?.trim())?.expiresAtIso?.trim()
+      ?? null;
+    const item = activeItems.find(current => current.id === normalizedItemId);
+    const removedGroupKey = item ? this.checkoutBasketPresentationGroupKey(item) : '';
+    const remainingItems = activeItems
+      .filter(item => item.id !== normalizedItemId)
+      .filter(item => !removedGroupKey || this.checkoutBasketPresentationGroupKey(item) !== removedGroupKey);
+    const basketChangeContext = this.checkoutBasketChangeContext();
+    this.resetCheckoutSubmissionForEdit();
+    this.checkoutBasket = this.buildRuntimeBasketFromItems(remainingItems);
+    this.selectedSlotSourceId = remainingItems[0]?.slotSourceId ?? null;
+    const savedBasket = await this.eventsService.saveCheckoutBasket(this.buildCheckoutRequest({
+      checkoutState: 'draft',
+      pendingReason: null
+    }));
+    this.checkoutBasket = savedBasket ?? this.checkoutBasket;
+    if (remainingItems.length === 0) {
+      this.selectedSlotSourceId = null;
+      this.selectedOptionalSubEventIds = new Set<string>();
+      this.checkoutBasket = null;
+      this.saveEmptyCheckoutDraft(dialog, previousSelectedDateKey, previousExpiresAtIso);
+      if (basketChangeContext) {
+        this.markCheckoutDraftBasketChanged(basketChangeContext.checkoutState, basketChangeContext.pendingReason);
+      }
+      this.openCheckoutReviewEditorShell(dialog);
+      return;
+    }
+    await this.persistCheckoutDraft(false, null, 'draft');
+    if (basketChangeContext) {
+      this.markCheckoutDraftBasketChanged(basketChangeContext.checkoutState, basketChangeContext.pendingReason);
+    }
+  }
+
+  private saveEmptyCheckoutDraft(
+    dialog: EventCheckoutDialogState,
+    selectedDateKey: string | null,
+    expiresAtIso: string | null
+  ): void {
+    this.checkoutDraftStore.save({
+      userId: dialog.userId,
+      sourceId: dialog.record.id,
+      eventTitle: dialog.record.title,
+      eventTimeframe: dialog.record.timeframe,
+      slotSourceId: null,
+      selectedDateKey,
+      optionalSubEventIds: [],
+      acceptedPolicyIds: [...this.acceptedPolicyIds],
+      basketItems: [],
+      pricingSummaryRows: [],
+      checkoutState: 'draft',
+      lineItems: [],
+      totalAmount: 0,
+      currency: dialog.record.pricing?.currency?.trim() || 'USD',
+      checkoutSessionId: null,
+      expiresAtIso,
+      pendingReason: null,
+      updatedAtMs: Date.now()
+    });
+  }
+
+  private buildRuntimeBasketFromCurrentSelection(): ActivityContracts.EventCheckoutBasket | null {
+    const dialog = this.dialog();
+    if (!dialog) {
+      return null;
+    }
+    const items = this.buildBasketItemsFromCurrentSelection();
+    if (items.length === 0) {
+      return null;
+    }
+    const lineItems = this.lineItemsFromBasketItems(items);
+    const totalAmount = this.totalAmountFromLineItems(lineItems);
+    const currency = items.find(item => item.currency)?.currency ?? dialog.record.pricing?.currency ?? 'USD';
+    const state = this.currentCheckoutState(totalAmount);
+    return {
+      userId: dialog.userId,
+      sourceId: dialog.record.id,
+      status: state,
+      items: items.map(item => ({ ...item, status: state })),
+      pricingSummaryRows: this.aggregatePricingSummaryRows(items.flatMap(item => item.pricingSummaryRows ?? []), currency),
+      lineItems,
+      totalAmount,
+      currency,
+      slotSourceId: items[0]?.slotSourceId ?? null,
+      selectedDateKey: items[0]?.selectedDateKey ?? null,
+      checkoutSessionId: this.checkoutSessionId,
+      expiresAtIso: items.find(item => item.expiresAtIso)?.expiresAtIso ?? null
+    };
+  }
+
+  private buildRuntimeBasketFromItems(
+    items: readonly ActivityContracts.EventCheckoutBasketItem[]
+  ): ActivityContracts.EventCheckoutBasket | null {
+    const dialog = this.dialog();
+    if (!dialog || items.length === 0) {
+      return null;
+    }
+    const lineItems = this.lineItemsFromBasketItems(items);
+    const totalAmount = this.totalAmountFromLineItems(lineItems);
+    const currency = items.find(item => item.currency)?.currency ?? dialog.record.pricing?.currency ?? 'USD';
+    const state = this.currentCheckoutState(totalAmount);
+    return {
+      userId: dialog.userId,
+      sourceId: dialog.record.id,
+      status: state,
+      items: items.map(item => ({ ...item, status: state })),
+      pricingSummaryRows: this.aggregatePricingSummaryRows(items.flatMap(item => item.pricingSummaryRows ?? []), currency),
+      lineItems,
+      totalAmount,
+      currency,
+      slotSourceId: items[0]?.slotSourceId ?? null,
+      selectedDateKey: items[0]?.selectedDateKey ?? null,
+      checkoutSessionId: this.checkoutSessionId,
+      expiresAtIso: items.find(item => item.expiresAtIso)?.expiresAtIso ?? null
+    };
+  }
+
+  private lineItemsFromBasketItems(
+    items: readonly ActivityContracts.EventCheckoutBasketItem[]
+  ): ActivityContracts.EventCheckoutLineItem[] {
+    return items.map(item => ({
+      id: item.id,
+      kind: item.kind,
+      label: item.label,
+      detail: item.detail,
+      amount: Math.round((Number(item.amount) || 0) * Math.max(1, Math.trunc(Number(item.quantity) || 1)) * 100) / 100,
+      currency: item.currency
+    }));
+  }
+
+  private totalAmountFromLineItems(items: readonly ActivityContracts.EventCheckoutLineItem[]): number {
+    return Math.round(items.reduce((sum, item) => sum + (Number(item.amount) || 0), 0) * 100) / 100;
+  }
+
+  private aggregatePricingSummaryRows(
+    rows: readonly ActivityContracts.EventCheckoutPricingSummaryRow[],
+    fallbackCurrency: string
+  ): ActivityContracts.EventCheckoutPricingSummaryRow[] {
+    const grouped = new Map<string, ActivityContracts.EventCheckoutPricingSummaryRow>();
+    for (const row of rows) {
+      const label = `${row.label ?? ''}`.trim();
+      if (!label) {
+        continue;
+      }
+      const detail = `${row.detail ?? ''}`.trim();
+      const amount = Number.isFinite(row.amount) ? Number(row.amount) : null;
+      const currency = `${row.currency ?? fallbackCurrency ?? 'USD'}`.trim() || 'USD';
+      const key = `${row.key || label}::${detail}::${amount ?? 'none'}::${currency}`;
+      const multiplier = Math.max(1, Math.trunc(Number(row.multiplier) || 1));
+      const existing = grouped.get(key);
+      if (existing) {
+        const nextMultiplier = Math.max(1, Math.trunc(Number(existing.multiplier) || 1)) + multiplier;
+        grouped.set(key, {
+          ...existing,
+          multiplier: nextMultiplier,
+          amount: existing.amount !== null && amount !== null
+            ? Math.round((Number(existing.amount) + (amount * multiplier)) * 100) / 100
+            : existing.amount ?? amount
+        });
+        continue;
+      }
+      grouped.set(key, {
+        key,
+        label,
+        detail: detail || null,
+        amount: amount === null ? null : Math.round(amount * multiplier * 100) / 100,
+        currency,
+        multiplier
+      });
+    }
+    return [...grouped.values()];
+  }
+
   protected totalAmount(): number {
-    return Math.round(this.lineItems().reduce((sum, item) => sum + (Number(item.amount) || 0), 0) * 100) / 100;
+    return this.checkoutBasketSnapshot()?.totalAmount
+      ?? Math.round(this.lineItems().reduce((sum, item) => sum + (Number(item.amount) || 0), 0) * 100) / 100;
   }
 
   protected showCancellationPolicyCard(): boolean {
@@ -471,7 +1380,8 @@ export class EventCheckoutPopupComponent {
   }
 
   protected currency(): string {
-    return this.lineItems().find(item => item.currency)?.currency
+    return this.checkoutBasketSnapshot()?.currency
+      ?? this.lineItems().find(item => item.currency)?.currency
       ?? this.dialog()?.record.pricing?.currency
       ?? 'USD';
   }
@@ -497,16 +1407,26 @@ export class EventCheckoutPopupComponent {
     if (!dialog) {
       return 'Continue';
     }
+    if (this.checkoutTargetUnavailable()) {
+      return 'Unavailable';
+    }
+    if (this.checkoutUpdateStepActive()) {
+      return 'Update';
+    }
     if (this.paymentStep) {
-      return 'Checkout';
+      return 'Fizetés';
     }
-    if (this.shouldAwaitApprovalBeforePayment() || this.isWaitingListSelection()) {
-      return dialog.confirmLabel;
+    if (this.checkoutPaymentReviewStarted()) {
+      return this.hasCheckoutSelectionChanges() ? 'Frissítés' : 'Tovább';
     }
-    if (this.totalAmount() > 0) {
-      return dialog.confirmLabel;
+    const pendingReason = this.checkoutActionPendingReason();
+    if (pendingReason) {
+      if (this.hasCheckoutSelectionChanges()) {
+        return 'Update';
+      }
+      return pendingReason === 'waitlist' ? 'Várólistán' : 'Jóváhagyásra vár';
     }
-    return dialog.confirmLabel;
+    return 'Join';
   }
 
   protected busyLabel(): string {
@@ -514,58 +1434,436 @@ export class EventCheckoutPopupComponent {
     if (!dialog) {
       return 'Working...';
     }
+    if (this.checkoutUpdateStepActive()) {
+      return 'Updating...';
+    }
+    if (this.paymentStep) {
+      return 'Fizetés...';
+    }
+    if (this.checkoutPaymentReviewStarted()) {
+      return this.hasCheckoutSelectionChanges() ? 'Frissítés...' : 'Tovább...';
+    }
+    const pendingReason = this.checkoutActionPendingReason();
+    if (pendingReason) {
+      return this.hasCheckoutSelectionChanges() ? 'Updating...' : 'Continuing...';
+    }
     if (this.shouldAwaitApprovalBeforePayment() || this.isWaitingListSelection()) {
       return dialog.busyConfirmLabel;
     }
     if (this.totalAmount() > 0) {
-      return this.paymentStep
-        ? (this.paymentDisabled() ? dialog.busyConfirmLabel : 'Buying...')
-        : 'Checking out...';
+      return 'Join...';
     }
     return dialog.busyConfirmLabel;
   }
 
+  private checkoutActionsDisabled(): boolean {
+    return this.isReadOnlyCheckoutSummary()
+      || this.busy
+      || this.dialog()?.loading === true
+      || this.checkoutReviewBodyLoading();
+  }
+
+  private checkoutActionProgressState(actionId: string): 'loading' | null {
+    return this.checkoutBusyActionId === actionId ? 'loading' : null;
+  }
+
   protected checkoutFooterMenuItems(): readonly AppMenuItem<string>[] {
-    const hasError = !this.busy && !!this.errorMessage;
-    const continueLabel = this.busy ? this.busyLabel() : this.continueLabel();
-    return [
-      {
-        id: this.paymentStep ? 'checkout-back' : 'checkout-cancel',
-        label: this.paymentStep ? 'Back' : 'Cancel',
+    const items: AppMenuItem<string>[] = [];
+    if (this.paymentStep) {
+      items.push({
+        id: 'checkout-secondary',
+        label: 'Vissza',
         layout: 'action',
         palette: 'neutral',
-        disabled: this.busy,
-        ariaLabel: this.paymentStep ? 'Back' : 'Cancel'
-      },
+        disabled: () => this.checkoutActionsDisabled(),
+        ariaLabel: 'Vissza'
+      });
+    }
+    if (this.showCheckoutLifecycleCancel()) {
+      items.push({
+        id: 'checkout-cancel-lifecycle',
+        label: () => this.checkoutLifecycleCancelLabel(),
+        layout: 'action',
+        palette: 'danger',
+        disabled: () => this.checkoutActionsDisabled(),
+        ariaLabel: () => this.checkoutLifecycleCancelLabel(),
+        progress: {
+          state: () => this.checkoutActionProgressState('checkout-cancel-lifecycle'),
+          shape: 'button'
+        }
+      });
+    }
+    items.push(
       {
         id: 'checkout-confirm',
-        label: continueLabel,
+        label: () => this.checkoutBusyActionId === 'checkout-confirm' ? this.busyLabel() : this.continueLabel(),
         layout: 'action',
-        palette: hasError ? 'danger' : 'blue',
-        disabled: !this.canContinue() || this.busy,
-        ariaLabel: continueLabel,
-        progress: this.busy || hasError
-          ? {
-              state: this.busy ? 'loading' : 'error',
-              shape: 'button'
-            }
-          : null
+        palette: this.checkoutConfirmPalette(),
+        disabled: () => !this.canContinue() || this.checkoutActionsDisabled(),
+        ariaLabel: () => this.checkoutBusyActionId === 'checkout-confirm' ? this.busyLabel() : this.continueLabel(),
+        progress: {
+          state: () => this.checkoutBusyActionId === 'checkout-confirm' ? 'loading' : (!this.busy && this.errorMessage ? 'error' : null),
+          shape: 'button'
+        }
       }
+    );
+    return items;
+  }
+
+  private checkoutConfirmPalette(): AppMenuPalette {
+    if (this.checkoutTargetUnavailable()) {
+      return 'neutral';
+    }
+    if (this.checkoutUpdateStepActive()) {
+      return 'orange';
+    }
+    if (this.checkoutPaymentReviewStarted()) {
+      return this.hasCheckoutSelectionChanges() ? 'orange' : 'success';
+    }
+    const pendingReason = this.checkoutActionPendingReason();
+    if (pendingReason) {
+      if (this.hasCheckoutSelectionChanges()) {
+        return 'orange';
+      }
+      return pendingReason === 'waitlist' ? 'amber' : 'orange';
+    }
+    return 'blue';
+  }
+
+  private showCheckoutLifecycleCancel(): boolean {
+    if (this.activeCheckoutBasketItems().some(item => item.status === 'pay')) {
+      return false;
+    }
+    return Boolean(this.checkoutSessionId)
+      || this.checkoutDecisionPending()
+      || this.checkoutLifecycleHasStarted()
+      || this.checkoutDraftHasStarted();
+  }
+
+  private checkoutLifecycleHasStarted(): boolean {
+    const lifecycleStates: ActivityContracts.EventCheckoutState[] = [
+      'confirmed',
+      'approval-pending',
+      'approved',
+      'waiting'
     ];
+    return Boolean(this.checkoutBasket?.status && lifecycleStates.includes(this.checkoutBasket.status))
+      || this.activeCheckoutBasketItems().some(item => lifecycleStates.includes(item.status));
+  }
+
+  private checkoutDraftHasStarted(): boolean {
+    return this.currentCheckoutDraft() !== null;
+  }
+
+  private checkoutPaymentReviewStarted(): boolean {
+    if (this.checkoutUpdateStepActive()) {
+      return false;
+    }
+    if (this.paymentStep || this.totalAmount() <= 0) {
+      return false;
+    }
+    if (!this.checkoutPaymentReviewStateActive() && this.checkoutActionPendingReason()) {
+      return false;
+    }
+    return this.checkoutPaymentReviewStateActive();
+  }
+
+  private checkoutPaymentReviewStateActive(): boolean {
+    const draft = this.currentCheckoutDraft();
+    const checkoutStates: ActivityContracts.EventCheckoutState[] = ['confirmed', 'pay'];
+    return Boolean(draft?.checkoutState && checkoutStates.includes(draft.checkoutState))
+      || Boolean(this.checkoutBasket?.status && checkoutStates.includes(this.checkoutBasket.status))
+      || this.activeCheckoutBasketItems().some(item => checkoutStates.includes(item.status))
+      || Boolean(this.checkoutSessionId);
+  }
+
+  private isDraftOnlyCheckout(): boolean {
+    return this.checkoutDraftHasStarted()
+      && !this.checkoutDecisionPending()
+      && !this.checkoutLifecycleHasStarted()
+      && !this.paymentStep
+      && !this.checkoutSessionId;
+  }
+
+  private checkoutLifecycleCancelLabel(): string {
+    if (this.checkoutDecisionPendingReason() === 'approval') {
+      return 'Cancel request';
+    }
+    if (this.checkoutDecisionPendingReason() === 'waitlist') {
+      return 'Leave waitlist';
+    }
+    if (this.paymentStep || this.checkoutSessionId) {
+      return 'Cancel payment';
+    }
+    return 'Cancel checkout';
+  }
+
+  private checkoutLifecycleCancelWarning(): string {
+    return this.isDraftOnlyCheckout()
+      ? 'The draft checkout basket will be cancelled and removed.'
+      : 'The current checkout lifecycle will be closed and kept as a cancelled audit record.';
+  }
+
+  private requestCancelCheckoutLifecycle(event?: Event): void {
+    event?.preventDefault();
+    event?.stopPropagation();
+    if (this.busy || !this.showCheckoutLifecycleCancel()) {
+      return;
+    }
+    this.confirmationDialogStore.open({
+      title: `${this.checkoutLifecycleCancelLabel()}?`,
+      message: this.dialog()?.record.title ?? 'Checkout',
+      warningMessage: this.checkoutLifecycleCancelWarning(),
+      cancelLabel: 'Back',
+      confirmLabel: this.checkoutLifecycleCancelLabel(),
+      busyConfirmLabel: 'Cancelling...',
+      confirmTone: 'danger',
+      confirmPalette: 'danger',
+      failureMessage: 'Unable to cancel this checkout.',
+      onConfirm: async () => this.cancelCheckoutLifecycle()
+    });
+  }
+
+  private async cancelCheckoutLifecycle(): Promise<void> {
+    const dialog = this.dialog();
+    if (!dialog || this.activeCheckoutBasketItems().some(item => item.status === 'pay')) {
+      return;
+    }
+    if (this.isDraftOnlyCheckout()) {
+      await this.cancelDraftCheckout(dialog);
+      return;
+    }
+    const counterDelta = this.checkoutCancelCounterDelta();
+    const memberDelta = this.checkoutCancelMemberDelta();
+    const leaveResult = await this.eventsService.leaveEvent(dialog.userId, dialog.record.id, {
+      slotSourceId: this.selectedSlotSourceId,
+      removeMembershipOnly: true,
+      checkoutState: 'cancelled',
+      checkoutResultState: 'deleted',
+      checkoutSessionId: this.checkoutSessionId,
+      counterDelta
+    });
+    this.signalCheckoutCounterDelta(counterDelta);
+    this.emitCheckoutMembershipSync(dialog.record.id, leaveResult, memberDelta, true);
+    this.emitCheckoutMembershipSync(this.selectedSlotSourceId, leaveResult, memberDelta, true);
+    this.activitiesStore.clearActivityEventSave();
+    this.checkoutDraftStore.clear(dialog.userId, dialog.record.id);
+    this.paymentStep = false;
+    this.checkoutSessionId = null;
+    this.checkoutBasket = null;
+    this.closeCheckoutDialog();
+  }
+
+  private async cancelDraftCheckout(dialog: EventCheckoutDialogState): Promise<void> {
+    await this.eventsService.saveCheckoutBasket(this.buildCheckoutRequest({
+      checkoutState: 'cancelled',
+      resultState: 'deleted',
+      pendingReason: null
+    }));
+    this.checkoutDraftStore.clear(dialog.userId, dialog.record.id);
+    this.paymentStep = false;
+    this.checkoutSessionId = null;
+    this.checkoutBasket = null;
+    this.selectedSlotSourceId = null;
+    this.selectedOptionalSubEventIds = new Set<string>();
+    this.closeCheckoutDialog();
+  }
+
+  private async persistCheckoutLifecycleState(
+    checkoutState: ActivityContracts.EventCheckoutState,
+    resultState: ActivityContracts.EventCheckoutResultState,
+    pendingReason: AppConstants.ActivityPendingReason = null
+  ): Promise<void> {
+    const basket = this.checkoutBasketSnapshot();
+    if (!basket?.items?.length) {
+      return;
+    }
+    if (this.runtimeCheckoutBasketExists()) {
+      await this.eventsService.updateCheckoutBasketState(this.buildCheckoutStateChangeRequest(
+        checkoutState,
+        resultState,
+        pendingReason,
+        this.checkoutSessionId
+      ));
+      return;
+    }
+    await this.eventsService.saveCheckoutBasket(this.buildCheckoutRequest({
+      checkoutState,
+      resultState,
+      pendingReason
+    }));
+  }
+
+  private async markCheckoutFailed(): Promise<void> {
+    try {
+      await this.persistCheckoutLifecycleState(
+        this.currentCheckoutState(this.totalAmount()),
+        'failed',
+        this.checkoutDecisionPendingReason()
+      );
+    } catch {
+      // Keep the local draft visible; the next successful sync can repair the runtime state.
+    }
+  }
+
+  private successfulCheckoutLifecycleState(paymentSessionId: string | null): ActivityContracts.EventCheckoutState {
+    if (paymentSessionId || this.checkoutSessionId || this.totalAmount() > 0) {
+      return 'pay';
+    }
+    if (this.isApprovedAfterOwnerReview()) {
+      return 'approved';
+    }
+    return 'confirmed';
+  }
+
+  private resetCheckoutSubmissionForEdit(): void {
+    const dialog = this.dialog();
+    if (this.activeCheckoutBasketItems().some(item => item.status === 'pay')) {
+      return;
+    }
+    this.paymentStep = false;
+    this.checkoutSessionId = null;
+    if (dialog) {
+      this.checkoutDraftStore.clear(dialog.userId, dialog.record.id);
+    }
+    if (!this.checkoutBasket) {
+      return;
+    }
+    this.checkoutBasket = {
+      ...this.checkoutBasket,
+      status: 'draft',
+      checkoutSessionId: null,
+      items: this.checkoutBasket.items.map(item => this.isInactiveCheckoutResultState(item.resultState)
+        ? item
+        : {
+            ...item,
+            status: 'draft',
+            resultState: 'pending',
+            checkoutSessionId: null
+          })
+    };
   }
 
   protected onCheckoutActionMenuSelect(event: AppMenuItemSelectEvent<string>): void {
-    if (event.id === 'checkout-back') {
-      this.backToDetails(event.sourceEvent);
+    if (event.id === 'checkout-secondary') {
+      if (this.paymentStep) {
+        this.requestCheckoutBackToDetails(event.sourceEvent);
+      } else {
+        this.requestCheckoutClose(event.sourceEvent);
+      }
       return;
     }
-    if (event.id === 'checkout-cancel') {
-      this.close(event.sourceEvent);
+    if (event.id === 'checkout-cancel-lifecycle') {
+      this.requestCancelCheckoutLifecycle(event.sourceEvent);
       return;
     }
     if (event.id === 'checkout-confirm') {
-      void this.submit(event.sourceEvent);
+      this.requestCheckoutConfirm(event.sourceEvent);
     }
+  }
+
+  private requestCheckoutClose(event?: Event): void {
+    event?.preventDefault();
+    event?.stopPropagation();
+    if (this.busy) {
+      return;
+    }
+    this.closeCheckoutDialog();
+  }
+
+  private requestCheckoutBackToDetails(event?: Event): void {
+    event?.preventDefault();
+    event?.stopPropagation();
+    if (this.busy || !this.paymentStep) {
+      return;
+    }
+    this.backToDetails(event);
+  }
+
+  private requestCheckoutConfirm(event?: Event): void {
+    event?.preventDefault();
+    event?.stopPropagation();
+    if (!this.canContinue()) {
+      return;
+    }
+    if (this.checkoutPaymentReviewStarted()) {
+      void this.continuePaymentReviewCheckout();
+      return;
+    }
+    if (this.isUnchangedPendingCheckout()) {
+      this.closeCheckoutDialog();
+      return;
+    }
+    const label = this.continueLabel();
+    this.confirmationDialogStore.open({
+      title: `${label}?`,
+      message: this.dialog()?.record.title ?? 'Checkout',
+      warningMessage: this.checkoutConfirmWarningMessage(),
+      cancelLabel: 'Back',
+      confirmLabel: label,
+      busyConfirmLabel: this.busyLabel(),
+      confirmTone: 'accent',
+      confirmPalette: this.checkoutConfirmPalette(),
+      failureMessage: this.dialog()?.failureMessage ?? 'Unable to continue checkout.',
+      onConfirm: async () => this.submit()
+    });
+  }
+
+  private async continuePaymentReviewCheckout(): Promise<void> {
+    const dialog = this.dialog();
+    if (!dialog || this.busy || !this.checkoutPaymentReviewStarted()) {
+      return;
+    }
+    if (!this.hasCheckoutSelectionChanges()) {
+      this.paymentStep = true;
+      this.openCheckoutReviewEditorShell(dialog);
+      return;
+    }
+    this.busy = true;
+    this.checkoutBusyActionId = 'checkout-confirm';
+    this.errorMessage = '';
+    try {
+      this.checkoutSessionId = null;
+      await dialog.onSubmit(this.buildSelection(null, true, {
+        checkoutState: 'confirmed',
+        pendingReason: null,
+        includeBasketPayload: true
+      }));
+      await this.persistCheckoutDraft(false, null, 'confirmed');
+      this.refreshCheckoutBaseline();
+      this.paymentStep = true;
+      this.openCheckoutReviewEditorShell(dialog);
+    } catch (error) {
+      this.setCheckoutErrorMessage(dialog, error, dialog.failureMessage);
+    } finally {
+      this.busy = false;
+      this.checkoutBusyActionId = null;
+    }
+  }
+
+  private checkoutConfirmWarningMessage(): string {
+    if (this.checkoutUpdateStepActive()) {
+      return 'The updated basket will be saved before continuing.';
+    }
+    if (this.checkoutPaymentReviewStarted() && this.hasCheckoutSelectionChanges()) {
+      return 'The updated basket will be saved before returning to payment.';
+    }
+    if (this.checkoutActionPendingReason() && this.hasCheckoutSelectionChanges()) {
+      return 'The updated basket will be sent to the organizer for review.';
+    }
+    if (this.isWaitingListSelection()) {
+      return 'The basket will join the waitlist and stay visible until it is cancelled or promoted.';
+    }
+    if (this.shouldAwaitApprovalBeforePayment()) {
+      return 'The basket will be submitted for approval and stay visible until it is cancelled or approved.';
+    }
+    if (!this.paymentStep && this.totalAmount() > 0) {
+      return 'The basket will be confirmed before opening payment.';
+    }
+    if (this.paymentStep || this.checkoutSessionId) {
+      return 'Payment will run for the selected basket item.';
+    }
+    return 'The selected basket item will be joined.';
   }
 
   protected paymentDisabled(): boolean {
@@ -573,24 +1871,374 @@ export class EventCheckoutPopupComponent {
   }
 
   protected canContinue(): boolean {
-    if (this.busy || this.dialog()?.loading) {
+    if (this.isReadOnlyCheckoutSummary()) {
       return false;
     }
-    if (this.requiresSlotSelection() && !this.selectedSlot()) {
+    if (this.busy || this.dialog()?.loading || this.checkoutReviewBodyLoading()) {
       return false;
     }
-    if (this.missingRequiredPolicies()) {
+    if (this.isUnchangedPendingCheckout()) {
+      return false;
+    }
+    if (this.checkoutTargetUnavailable()) {
+      return false;
+    }
+    if (this.requiresSlotSelection() && this.checkoutBasketItems().length === 0) {
       return false;
     }
     return true;
   }
 
+  private currentCheckoutState(
+    _totalAmount?: number,
+    pendingReasonOverride?: AppConstants.ActivityPendingReason
+  ): ActivityContracts.EventCheckoutState {
+    if (this.activeCheckoutBasketItems().some(item => item.status === 'pay')) {
+      return 'pay';
+    }
+    if (this.activeCheckoutBasketItems().some(item => item.status === 'waiting')) {
+      return 'waiting';
+    }
+    const pendingReason = pendingReasonOverride === undefined
+      ? this.checkoutDecisionPendingReason()
+      : pendingReasonOverride;
+    if (pendingReason === 'approval') {
+      return 'approval-pending';
+    }
+    if (pendingReason === 'waitlist') {
+      return 'waiting';
+    }
+    if (this.isApprovedAfterOwnerReview()) {
+      return 'approved';
+    }
+    if (this.paymentStep || this.checkoutSessionId) {
+      return 'confirmed';
+    }
+    return 'draft';
+  }
+
+  private isApprovedAfterOwnerReview(): boolean {
+    const dialog = this.dialog();
+    if (!dialog?.approvalGranted) {
+      return false;
+    }
+    const draft = this.checkoutDraftStore.read(dialog.userId, dialog.record.id);
+    return draft?.pendingReason === 'approval'
+      || draft?.checkoutState === 'approval-pending'
+      || draft?.checkoutState === 'approved'
+      || this.checkoutBasket?.status === 'approval-pending'
+      || this.checkoutBasket?.status === 'approved';
+  }
+
   protected shouldAwaitApprovalBeforePayment(): boolean {
+    return this.shouldAwaitApprovalBeforePaymentForAmount(this.totalAmount());
+  }
+
+  private shouldAwaitApprovalBeforePaymentForAmount(_totalAmount: number): boolean {
     const dialog = this.dialog();
     if (!dialog) {
       return false;
     }
-    return dialog.requiresApprovalBeforePayment && !dialog.approvalGranted && this.totalAmount() > 0;
+    return dialog.requiresApprovalBeforePayment && !dialog.approvalGranted;
+  }
+
+  private checkoutDecisionPending(): boolean {
+    return this.checkoutDecisionPendingReason() !== null;
+  }
+
+  private checkoutActionPendingReason(): AppConstants.ActivityPendingReason {
+    const dialog = this.dialog();
+    if (!dialog || dialog.approvalGranted || this.paymentStep || this.checkoutPaymentReviewStateActive()) {
+      return null;
+    }
+    return this.checkoutDecisionPendingReason() ?? this.checkoutBaselinePendingReason;
+  }
+
+  private isUnchangedPendingCheckout(): boolean {
+    return this.checkoutActionPendingReason() !== null && !this.hasCheckoutSelectionChanges();
+  }
+
+  private checkoutUpdateStepActive(): boolean {
+    return this.checkoutDraftBasketChanged();
+  }
+
+  private checkoutEditorPhase(): 'review' | 'payment' {
+    return this.isReadOnlyCheckoutSummary() || (this.paymentStep && !this.checkoutUpdateStepActive())
+      ? 'payment'
+      : 'review';
+  }
+
+  private hasCheckoutSelectionChanges(): boolean {
+    return this.checkoutDraftBasketChanged()
+      || this.checkoutSelectionSignature() !== this.checkoutBaselineSignature;
+  }
+
+  private checkoutDraftBasketChanged(): boolean {
+    return this.currentCheckoutDraft()?.basketChanged === true;
+  }
+
+  private refreshCheckoutBaseline(): void {
+    this.checkoutBaselinePendingReason = this.checkoutPaymentReviewStateActive()
+      ? null
+      : this.checkoutDecisionPendingReason();
+    this.checkoutBaselineSignature = this.checkoutSelectionSignature();
+  }
+
+  private currentCheckoutDraft(): EventCheckoutDraft | null {
+    const dialog = this.dialog();
+    return dialog ? this.checkoutDraftStore.read(dialog.userId, dialog.record.id) : null;
+  }
+
+  private isReadOnlyCheckoutSummary(): boolean {
+    return this.dialog()?.readOnlySummary === true;
+  }
+
+  private checkoutHasStoredPendingMembership(): boolean {
+    const pendingStates: ActivityContracts.EventCheckoutState[] = ['waiting', 'approval-pending', 'approved'];
+    const draft = this.currentCheckoutDraft();
+    if (draft?.pendingReason === 'waitlist' || draft?.pendingReason === 'approval') {
+      return true;
+    }
+    if (draft?.checkoutState && pendingStates.includes(draft.checkoutState)) {
+      return true;
+    }
+    if (this.checkoutBasket?.status && pendingStates.includes(this.checkoutBasket.status)) {
+      return true;
+    }
+    return this.activeCheckoutBasketItems().some(item => pendingStates.includes(item.status));
+  }
+
+  private checkoutSuccessCounterDelta(): UserMenuCounterDeltasDto {
+    return this.checkoutHasStoredPendingMembership()
+      ? { event: { pending: -1, active: 1 } }
+      : { events: 1, event: { all: 1, active: 1 } };
+  }
+
+  private checkoutCancelCounterDelta(): UserMenuCounterDeltasDto | null {
+    if (this.checkoutHasStoredPendingMembership()) {
+      return { event: { all: -1, pending: -1, trash: 1 } };
+    }
+    if (this.checkoutSessionId || this.activeCheckoutBasketItems().some(item => item.status === 'pay')) {
+      return { events: -1, event: { all: -1, active: -1, trash: 1 } };
+    }
+    return null;
+  }
+
+  private checkoutSuccessMemberDelta(): { acceptedMemberDelta: number; pendingMemberDelta: number } {
+    return this.checkoutHasStoredPendingMembership()
+      ? { acceptedMemberDelta: 1, pendingMemberDelta: -1 }
+      : { acceptedMemberDelta: 1, pendingMemberDelta: 0 };
+  }
+
+  private checkoutCancelMemberDelta(): { acceptedMemberDelta: number; pendingMemberDelta: number } | null {
+    if (this.checkoutHasStoredPendingMembership()) {
+      return { acceptedMemberDelta: 0, pendingMemberDelta: -1 };
+    }
+    if (this.checkoutSessionId || this.activeCheckoutBasketItems().some(item => item.status === 'pay')) {
+      return { acceptedMemberDelta: -1, pendingMemberDelta: 0 };
+    }
+    return null;
+  }
+
+  private signalCheckoutCounterDelta(delta: UserMenuCounterDeltasDto | null): void {
+    const dialog = this.dialog();
+    if (!dialog || !delta) {
+      return;
+    }
+    this.activityStore.patchUserCounterDeltas(dialog.userId, delta, null);
+  }
+
+  private emitCheckoutActivityEventSync(
+    dialog: EventCheckoutDialogState,
+    result: ActivityContracts.EventParticipationActionResultDTO
+  ): void {
+    this.activitiesStore.emitActivityEventSync(this.buildCheckoutActivityEventSync(dialog, result));
+  }
+
+  private buildCheckoutActivityEventSync(
+    dialog: EventCheckoutDialogState,
+    result: ActivityContracts.EventParticipationActionResultDTO
+  ): ActivityContracts.ActivityEventDTO {
+    const record = dialog.record;
+    const activeUserId = dialog.userId.trim();
+    const slot = this.checkoutActivityEventSlot(dialog, result);
+    const startAtIso = slot?.startAtIso ?? record.startAtIso;
+    const endAtIso = slot?.endAtIso ?? record.endAtIso ?? startAtIso;
+    const acceptedMemberUserIds = this.uniqueCheckoutUserIds([
+      ...(record.acceptedMemberUserIds ?? []),
+      activeUserId
+    ]);
+    const pendingMemberUserIds = this.uniqueCheckoutUserIds(record.pendingMemberUserIds ?? [])
+      .filter(userId => userId !== activeUserId);
+    const invitedMemberUserIds = this.uniqueCheckoutUserIds(record.invitedMemberUserIds ?? [])
+      .filter(userId => userId !== activeUserId);
+    const pendingRequestMemberUserIds = this.uniqueCheckoutUserIds(record.pendingRequestMemberUserIds ?? [])
+      .filter(userId => userId !== activeUserId);
+    const acceptedMembers = Math.max(
+      this.nonNegativeCheckoutInteger(result.acceptedMembers),
+      acceptedMemberUserIds.length
+    );
+    const pendingMembers = Math.max(
+      this.nonNegativeCheckoutInteger(result.pendingMembers),
+      pendingMemberUserIds.length,
+      pendingRequestMemberUserIds.length
+    );
+    const capacityTotal = Math.max(
+      acceptedMembers,
+      this.nonNegativeCheckoutInteger(result.capacityTotal),
+      this.nonNegativeCheckoutInteger(slot?.capacityTotal),
+      this.nonNegativeCheckoutInteger(record.capacityTotal)
+    );
+    return {
+      id: record.id,
+      userId: activeUserId || record.userId,
+      type: record.type,
+      status: record.status ?? 'A',
+      statusBeforeSuppression: record.statusBeforeSuppression ?? null,
+      adminIds: [...(record.adminIds ?? [])],
+      title: record.title,
+      subtitle: record.subtitle,
+      timeframe: slot?.timeframe ?? record.timeframe,
+      inviter: record.inviter ?? null,
+      activity: this.nonNegativeCheckoutInteger(record.activity),
+      creatorUserId: record.creatorUserId,
+      creatorName: record.creatorName,
+      creatorInitials: record.creatorInitials,
+      creatorCity: record.creatorCity,
+      visibility: record.visibility,
+      startAtIso,
+      endAtIso,
+      distanceKm: Number.isFinite(Number(record.distanceKm)) ? Number(record.distanceKm) : 0,
+      imageUrl: record.imageUrl,
+      location: record.location,
+      capacityTotal,
+      full: result.full === true || (capacityTotal > 0 && acceptedMembers >= capacityTotal),
+      capacityMin: record.capacityMin ?? null,
+      capacityMax: record.capacityMax ?? null,
+      eventType: record.eventType,
+      mode: record.mode,
+      slotsEnabled: record.slotsEnabled === true,
+      acceptedMembers,
+      pendingMembers,
+      acceptedMemberUserIds,
+      pendingMemberUserIds,
+      invitedMemberUserIds,
+      pendingRequestMemberUserIds,
+      pendingReason: null,
+      approvalRequired: record.approvalRequired === true,
+      checkoutResultState: 'succeeded',
+      boost: this.nonNegativeCheckoutInteger(record.boost),
+      subEventDefinitions: record.subEventDefinitions?.map(item => ({ ...item }))
+    };
+  }
+
+  private checkoutActivityEventSlot(
+    dialog: EventCheckoutDialogState,
+    result: ActivityContracts.EventParticipationActionResultDTO
+  ): ContractTypes.EventSlotOccurrenceDTO | null {
+    const slotSourceId = result.slotSourceId?.trim()
+      || this.selectedSlotSourceId?.trim()
+      || this.checkoutBasket?.slotSourceId?.trim()
+      || this.activeCheckoutBasketItems().find(item => item.slotSourceId?.trim())?.slotSourceId?.trim()
+      || '';
+    const slots = [
+      ...this.availableSlotsCache,
+      ...(dialog.record.upcomingSlots ?? []),
+      ...(dialog.record.nextSlot ? [dialog.record.nextSlot] : [])
+    ];
+    if (slotSourceId) {
+      const direct = slots.find(slot => slot.id === slotSourceId);
+      if (direct) {
+        return direct;
+      }
+    }
+    const selectedDateKey = this.checkoutSlotPickerSelectedDateKey();
+    return selectedDateKey
+      ? slots.find(slot => this.slotDateKeyFromIso(slot.startAtIso) === selectedDateKey) ?? null
+      : null;
+  }
+
+  private uniqueCheckoutUserIds(userIds: readonly string[]): string[] {
+    return [...new Set(userIds.map(userId => userId.trim()).filter(Boolean))];
+  }
+
+  private nonNegativeCheckoutInteger(value: unknown): number {
+    return Math.max(0, Math.trunc(Number(value) || 0));
+  }
+
+  private emitCheckoutMembershipSync(
+    sourceId: string | null | undefined,
+    result: ActivityContracts.EventParticipationActionResultDTO | null,
+    memberDelta: { acceptedMemberDelta?: number; pendingMemberDelta?: number } | null = null,
+    viewerMembershipRemoved = false,
+    checkoutResultState: ActivityContracts.EventCheckoutResultState | null = null
+  ): void {
+    const dialog = this.dialog();
+    const normalizedSourceId = sourceId?.trim() ?? '';
+    if (!dialog || !normalizedSourceId) {
+      return;
+    }
+    const record = this.eventsService.peekKnownRecordById(dialog.userId, normalizedSourceId);
+    const matchingResult = result?.sourceId === normalizedSourceId ? result : null;
+    const acceptedMembers = matchingResult?.acceptedMembers ?? record?.acceptedMembers ?? null;
+    const pendingMembers = matchingResult?.pendingMembers ?? record?.pendingMembers ?? null;
+    const capacityTotal = matchingResult?.capacityTotal ?? record?.capacityTotal ?? null;
+    if (acceptedMembers == null || pendingMembers == null || capacityTotal == null) {
+      return;
+    }
+    const full = matchingResult?.full === true
+      || record?.full === true
+      || (Math.max(0, Math.trunc(Number(capacityTotal) || 0)) > 0
+        && Math.max(0, Math.trunc(Number(acceptedMembers) || 0)) >= Math.max(0, Math.trunc(Number(capacityTotal) || 0)));
+    this.activityStore.emitActivityMembersSync({
+      id: normalizedSourceId,
+      acceptedMembers,
+      pendingMembers,
+      capacityTotal,
+      ...(full ? { full: true } : {}),
+      ...(checkoutResultState ? { checkoutResultState } : {}),
+      ...(viewerMembershipRemoved ? { viewerMembershipRemoved: true } : {}),
+      ...(memberDelta ?? {})
+    });
+  }
+
+  private pendingReasonForJoinRequest(): AppConstants.ActivityPendingReason {
+    if (this.isWaitingListSelection()) {
+      return 'waitlist';
+    }
+    return this.shouldAwaitApprovalBeforePayment() ? 'approval' : null;
+  }
+
+  private checkoutDecisionPendingReason(): AppConstants.ActivityPendingReason {
+    const dialog = this.dialog();
+    if (!dialog || dialog.approvalGranted) {
+      return null;
+    }
+    const draft = this.checkoutDraftStore.read(dialog.userId, dialog.record.id);
+    const statePendingReason = this.checkoutStatePendingReason(draft?.checkoutState)
+      ?? this.checkoutStatePendingReason(this.checkoutBasket?.status);
+    if (statePendingReason) {
+      return statePendingReason;
+    }
+    if (draft?.checkoutState || this.checkoutBasket?.status) {
+      return null;
+    }
+    if (draft?.pendingReason === 'approval' || draft?.pendingReason === 'waitlist') {
+      return draft.pendingReason;
+    }
+    return null;
+  }
+
+  private checkoutStatePendingReason(
+    checkoutState: ActivityContracts.EventCheckoutState | null | undefined
+  ): AppConstants.ActivityPendingReason {
+    if (checkoutState === 'waiting') {
+      return 'waitlist';
+    }
+    if (checkoutState === 'approval-pending') {
+      return 'approval';
+    }
+    return null;
   }
 
   protected isWaitingListSelection(): boolean {
@@ -631,71 +2279,120 @@ export class EventCheckoutPopupComponent {
     if (!dialog || !this.canContinue()) {
       return;
     }
-    if (!this.paymentStep && (this.shouldAwaitApprovalBeforePayment() || this.isWaitingListSelection())) {
+    if (this.checkoutTargetUnavailable()) {
+      this.errorMessage = 'This place is no longer available.';
+      return;
+    }
+    const pendingActionReason = this.checkoutActionPendingReason();
+    const selectionChanged = this.hasCheckoutSelectionChanges();
+    if (pendingActionReason && !selectionChanged) {
+      this.closeCheckoutDialog();
+      return;
+    }
+    if (this.checkoutUpdateStepActive()) {
       this.busy = true;
+      this.checkoutBusyActionId = 'checkout-confirm';
       this.errorMessage = '';
       try {
-        await Promise.resolve(dialog.onSubmit(this.buildSelection(null, false)));
-        this.persistCheckoutDraft();
-        this.dialogStore.close();
+        const draft = this.currentCheckoutDraft();
+        const pendingReason = draft?.pendingReason ?? this.checkoutDecisionPendingReason();
+        const checkoutState = draft?.checkoutState ?? this.currentCheckoutState(this.totalAmount(), pendingReason);
+        this.checkoutSessionId = null;
+        await this.syncRuntimeCheckoutBasket(checkoutState, pendingReason, true);
+        await this.persistCheckoutDraft(false, pendingReason, checkoutState, false);
+        this.refreshCheckoutBaseline();
+        this.paymentStep = false;
+        this.openCheckoutReviewEditorShell(dialog);
       } catch (error) {
-        this.errorMessage = this.resolveErrorMessage(error, dialog.failureMessage);
+        this.setCheckoutErrorMessage(dialog, error, dialog.failureMessage);
       } finally {
         this.busy = false;
+        this.checkoutBusyActionId = null;
+      }
+      return;
+    }
+    let keepCheckoutReviewOpen = false;
+    if (!this.paymentStep && (pendingActionReason || this.shouldAwaitApprovalBeforePayment() || this.isWaitingListSelection())) {
+      this.busy = true;
+      this.checkoutBusyActionId = 'checkout-confirm';
+      this.errorMessage = '';
+      try {
+        const pendingReason = pendingActionReason ?? this.pendingReasonForJoinRequest();
+        const checkoutState: ActivityContracts.EventCheckoutState = pendingReason === 'approval'
+          ? 'approval-pending'
+          : pendingReason === 'waitlist'
+            ? 'waiting'
+          : 'confirmed';
+        await dialog.onSubmit(this.buildSelection(null, false, {
+          checkoutState,
+          pendingReason,
+          includeBasketPayload: selectionChanged || !this.runtimeCheckoutBasketExists()
+        }));
+        await this.persistCheckoutDraft(false, pendingReason, checkoutState);
+        this.refreshCheckoutBaseline();
+        keepCheckoutReviewOpen = pendingReason === 'waitlist';
+        if (!keepCheckoutReviewOpen) {
+          this.closeCheckoutDialog();
+        }
+      } catch (error) {
+        this.setCheckoutErrorMessage(dialog, error, dialog.failureMessage);
+      } finally {
+        this.busy = false;
+        this.checkoutBusyActionId = null;
+        if (keepCheckoutReviewOpen && this.dialog()?.id === dialog.id) {
+          this.paymentStep = false;
+          this.openCheckoutReviewEditorShell(dialog);
+        }
       }
       return;
     }
     if (!this.paymentStep && this.totalAmount() > 0) {
       this.busy = true;
+      this.checkoutBusyActionId = 'checkout-confirm';
       this.errorMessage = '';
       try {
-        const session = await this.eventsService.createCheckoutSession(this.buildCheckoutRequest());
-        if (!session?.id) {
-          throw new Error('Unable to start checkout.');
-        }
-        this.checkoutSessionId = session.id;
-        this.persistCheckoutDraft();
+        this.checkoutSessionId = null;
+        await this.persistCheckoutDraft(true, null, 'confirmed');
+        this.refreshCheckoutBaseline();
         this.paymentStep = true;
+        this.openCheckoutReviewEditorShell(dialog);
       } catch (error) {
-        this.errorMessage = this.resolveErrorMessage(error, 'Unable to start checkout.');
+        this.setCheckoutErrorMessage(dialog, error, dialog.failureMessage);
       } finally {
         this.busy = false;
+        this.checkoutBusyActionId = null;
       }
       return;
     }
 
     this.busy = true;
+    this.checkoutBusyActionId = 'checkout-confirm';
     this.errorMessage = '';
     try {
-      let paymentSessionId = this.checkoutSessionId;
-      if (this.totalAmount() > 0) {
-        if (!paymentSessionId) {
-          const session = await this.eventsService.createCheckoutSession(this.buildCheckoutRequest());
-          if (!session?.id) {
-            throw new Error('Unable to start payment.');
-          }
-          paymentSessionId = session.id;
-        }
-        const paymentSession = await this.eventsService.payCheckoutSession(
-          this.buildCheckoutRequest(),
-          paymentSessionId
-        );
-        if (!paymentSession?.id) {
-          throw new Error('Unable to start payment.');
-        }
-        paymentSessionId = paymentSession.id;
-        this.checkoutSessionId = paymentSessionId;
+      const counterDelta = this.checkoutSuccessCounterDelta();
+      const memberDelta = this.checkoutSuccessMemberDelta();
+      const joinResult = await this.eventsService.payEventCheckout(this.buildCheckoutStateChangeRequest(
+        'pay',
+        'succeeded',
+        null,
+        null,
+        counterDelta
+      ));
+      if (!joinResult || joinResult.membershipStatus !== 'accepted') {
+        throw new Error(dialog.failureMessage);
       }
-      await Promise.resolve(dialog.onSubmit(this.buildSelection(paymentSessionId)));
+      this.signalCheckoutCounterDelta(counterDelta);
+      this.emitCheckoutActivityEventSync(dialog, joinResult);
+      this.emitCheckoutMembershipSync(dialog.record.id, joinResult, memberDelta, false, 'succeeded');
+      this.emitCheckoutMembershipSync(this.selectedSlotSourceId, joinResult, memberDelta);
+      this.checkoutSessionId = joinResult.paymentSessionId ?? null;
       this.clearCheckoutDraft();
-      this.dialogStore.close();
+      this.closeCheckoutDialog();
     } catch (error) {
-      if (await this.recoverStalePaymentSession(error)) {
-        return;
-      }
-      this.errorMessage = this.resolveErrorMessage(error, dialog.failureMessage);
+      this.setCheckoutErrorMessage(dialog, error, dialog.failureMessage);
     } finally {
       this.busy = false;
+      this.checkoutBusyActionId = null;
     }
   }
 
@@ -704,7 +2401,11 @@ export class EventCheckoutPopupComponent {
     if (this.busy) {
       return;
     }
-    this.paymentStep = false;
+    this.releaseUnpaidPaymentSession();
+    const dialog = this.dialog();
+    if (dialog) {
+      this.openCheckoutReviewEditorShell(dialog);
+    }
     this.errorMessage = '';
   }
 
@@ -744,10 +2445,147 @@ export class EventCheckoutPopupComponent {
     this.slotPageIndex = 0;
     this.selectedOptionalSubEventIds = new Set((draft?.optionalSubEventIds ?? []).filter(item => validOptionalIds.has(item)));
     this.acceptedPolicyIds = new Set((draft?.acceptedPolicyIds ?? []).filter(item => validPolicyIds.has(item)));
-    this.paymentStep = Boolean(draft?.checkoutSessionId);
-    this.checkoutSessionId = draft?.checkoutSessionId ?? null;
+    const draftHasVisibleItems = this.hasVisibleCheckoutItems(draft?.basketItems);
+    this.paymentStep = draftHasVisibleItems ? this.shouldOpenPaymentStepFromDraft(draft) : false;
+    this.checkoutSessionId = draftHasVisibleItems ? draft?.checkoutSessionId ?? null : null;
+    this.checkoutBasket = draftHasVisibleItems && draft?.basketItems?.length && !this.shouldSuppressStoredWaitlistBasket(dialog, draft.basketItems)
+      ? {
+        userId: dialog.userId,
+        sourceId: dialog.record.id,
+        status: draft.checkoutState,
+        items: draft.basketItems,
+        pricingSummaryRows: draft.pricingSummaryRows,
+        lineItems: draft.lineItems,
+        totalAmount: draft.totalAmount,
+        currency: draft.currency,
+        slotSourceId: draft.slotSourceId,
+        selectedDateKey: draft.selectedDateKey,
+        checkoutSessionId: draft.checkoutSessionId,
+        expiresAtIso: draft.expiresAtIso
+      }
+      : null;
+    this.refreshCheckoutBaseline();
     this.busy = false;
+    this.checkoutBusyActionId = null;
     this.errorMessage = '';
+  }
+
+  private async loadRuntimeCheckoutBasket(dialog: EventCheckoutDialogState): Promise<void> {
+    let queriedBasket: ActivityContracts.EventCheckoutBasket | null = null;
+    try {
+      queriedBasket = await this.eventsService.loadCheckoutBasketByEvent(dialog.userId, dialog.record.id);
+    } catch {
+      queriedBasket = null;
+    }
+    const candidateBasket = queriedBasket ?? this.checkoutBasket;
+    const basket = candidateBasket && this.shouldSuppressStoredWaitlistBasket(dialog, candidateBasket.items)
+      ? null
+      : candidateBasket;
+    const basketHasVisibleItems = this.hasVisibleCheckoutItems(basket?.items);
+    this.checkoutBasket = basketHasVisibleItems ? basket : null;
+    if (!basket || !basketHasVisibleItems) {
+      this.checkoutSessionId = null;
+      this.paymentStep = false;
+      this.refreshCheckoutBaseline();
+      return;
+    }
+    const firstSlotSourceId = basket.items.find(item => item.slotSourceId?.trim())?.slotSourceId?.trim() ?? null;
+    const validSlotIds = new Set(this.availableSlots().map(item => item.id));
+    this.selectedSlotSourceId = firstSlotSourceId && validSlotIds.has(firstSlotSourceId)
+      ? firstSlotSourceId
+      : this.selectedSlotSourceId;
+    const selectedDateKey = basket.selectedDateKey
+      ?? basket.items.find(item => item.selectedDateKey?.trim())?.selectedDateKey
+      ?? null;
+    if (selectedDateKey) {
+      this.selectedSlotDateValue = this.slotDateValueFromKey(selectedDateKey) ?? this.selectedSlotDateValue;
+    }
+    this.checkoutSessionId = basket.checkoutSessionId ?? this.checkoutSessionId;
+    this.paymentStep = this.shouldOpenPaymentStepFromBasket(basket);
+    this.refreshCheckoutBaseline();
+  }
+
+  private shouldOpenPaymentStepFromDraft(draft: EventCheckoutDraft | null): boolean {
+    if (this.isReadOnlyCheckoutSummary()) {
+      return true;
+    }
+    if (!draft) {
+      return false;
+    }
+    if (draft.basketChanged === true) {
+      return false;
+    }
+    if (!this.hasActiveCheckoutItems(draft.basketItems)) {
+      return false;
+    }
+    if (Boolean(draft.checkoutSessionId?.trim())) {
+      return true;
+    }
+    return draft.checkoutState === 'confirmed'
+      && !draft.pendingReason
+      && Math.max(0, Number(draft.totalAmount) || 0) > 0;
+  }
+
+  private shouldOpenPaymentStepFromBasket(basket: ActivityContracts.EventCheckoutBasket | null): boolean {
+    if (this.isReadOnlyCheckoutSummary()) {
+      return true;
+    }
+    if (this.checkoutDraftBasketChanged()) {
+      return false;
+    }
+    if (!basket) {
+      return this.paymentStep;
+    }
+    if (!this.hasActiveCheckoutItems(basket.items)) {
+      return false;
+    }
+    if (Boolean(basket.checkoutSessionId?.trim())) {
+      return true;
+    }
+    return basket.status === 'confirmed'
+      && Math.max(0, Number(basket.totalAmount) || 0) > 0;
+  }
+
+  private shouldSuppressImplicitWaitlistBasket(): boolean {
+    const dialog = this.dialog();
+    return Boolean(dialog && !dialog.approvalGranted && dialog.pendingReason === 'waitlist');
+  }
+
+  private shouldSuppressStoredWaitlistBasket(
+    dialog: EventCheckoutDialogState,
+    items: readonly ActivityContracts.EventCheckoutBasketItem[] | null | undefined
+  ): boolean {
+    if (dialog.approvalGranted || dialog.pendingReason !== 'waitlist') {
+      return false;
+    }
+    const activeItems = (items ?? []).filter(item => !this.isInactiveCheckoutResultState(item.resultState));
+    return activeItems.length > 0 && activeItems.every(item => this.isImplicitMainEventBasketItem(dialog, item));
+  }
+
+  private hasActiveCheckoutItems(
+    items: readonly ActivityContracts.EventCheckoutBasketItem[] | null | undefined
+  ): boolean {
+    return (items ?? []).some(item => !this.isInactiveCheckoutResultState(item.resultState));
+  }
+
+  private hasVisibleCheckoutItems(
+    items: readonly ActivityContracts.EventCheckoutBasketItem[] | null | undefined
+  ): boolean {
+    if (this.isReadOnlyCheckoutSummary()) {
+      return (items ?? []).some(item => item.resultState !== 'deleted');
+    }
+    return this.hasActiveCheckoutItems(items);
+  }
+
+  private isImplicitMainEventBasketItem(
+    dialog: EventCheckoutDialogState,
+    item: ActivityContracts.EventCheckoutBasketItem
+  ): boolean {
+    return item.kind === 'event'
+      && (item.sourceId?.trim() ?? '') === dialog.record.id
+      && !(item.slotSourceId?.trim())
+      && !(item.subEventId?.trim())
+      && !(item.resourceType?.trim());
   }
 
   private resetDialogState(): void {
@@ -762,34 +2600,92 @@ export class EventCheckoutPopupComponent {
     this.acceptedPolicyIds = new Set<string>();
     this.paymentStep = false;
     this.checkoutSessionId = null;
+    this.checkoutBasket = null;
+    this.checkoutBaselineSignature = '';
+    this.checkoutBaselinePendingReason = null;
     this.busy = false;
+    this.checkoutBusyActionId = null;
     this.errorMessage = '';
   }
 
   private buildSelection(
     paymentSessionId: string | null,
-    bookingConfirmed = true
+    bookingConfirmed = true,
+    options: {
+      checkoutState?: ActivityContracts.EventCheckoutState;
+      resultState?: ActivityContracts.EventCheckoutResultState;
+      pendingReason?: AppConstants.ActivityPendingReason;
+      includeBasketPayload?: boolean;
+    } = {}
   ): ActivityContracts.EventCheckoutSelection {
     const dialog = this.dialog();
     if (!dialog) {
       throw new Error('Checkout session is not available.');
     }
+    const pendingReason = options.pendingReason === undefined
+      ? (bookingConfirmed === false ? this.pendingReasonForJoinRequest() : null)
+      : options.pendingReason;
+    const checkoutState = options.checkoutState
+      ?? this.currentCheckoutState(this.totalAmount(), pendingReason);
+    const includeBasketPayload = options.includeBasketPayload !== false;
     return {
       sourceId: dialog.record.id,
       slotSourceId: this.selectedSlotSourceId,
       optionalSubEventIds: [...this.selectedOptionalSubEventIds],
       assetSelections: [],
       acceptedPolicyIds: [...this.acceptedPolicyIds],
+      ...(includeBasketPayload ? {
+        basketItems: this.checkoutBasketItems(checkoutState, options.resultState),
+        pricingSummaryRows: this.checkoutBasketPricingSummaryRows()
+      } : {}),
+      checkoutState,
       lineItems: this.lineItems(),
       totalAmount: this.totalAmount(),
       currency: this.currency(),
       paymentSessionId,
       bookingConfirmed,
-      pendingReason: this.isWaitingListSelection() ? 'waitlist' : (this.shouldAwaitApprovalBeforePayment() ? 'approval' : null)
+      pendingReason
     };
   }
 
-  private buildCheckoutRequest(): ActivityContracts.EventCheckoutRequest {
+  private buildCheckoutRequest(options: {
+    checkoutState?: ActivityContracts.EventCheckoutState;
+    resultState?: ActivityContracts.EventCheckoutResultState;
+    pendingReason?: AppConstants.ActivityPendingReason;
+  } = {}): ActivityContracts.EventCheckoutRequest {
+    const dialog = this.dialog();
+    if (!dialog) {
+      throw new Error('Checkout session is not available.');
+    }
+    const pendingReason = options.pendingReason === undefined
+      ? this.checkoutDecisionPendingReason()
+      : options.pendingReason;
+    const checkoutState = options.checkoutState
+      ?? this.currentCheckoutState(this.totalAmount(), pendingReason);
+    return {
+      userId: dialog.userId,
+      sourceId: dialog.record.id,
+      slotSourceId: this.selectedSlotSourceId,
+      optionalSubEventIds: [...this.selectedOptionalSubEventIds],
+      assetSelections: [],
+      acceptedPolicyIds: [...this.acceptedPolicyIds],
+      basketItems: this.checkoutBasketItems(checkoutState, options.resultState),
+      pricingSummaryRows: this.checkoutBasketPricingSummaryRows(),
+      checkoutState,
+      lineItems: this.lineItems(),
+      totalAmount: this.totalAmount(),
+      currency: this.currency(),
+      pendingReason
+    };
+  }
+
+  private buildCheckoutStateChangeRequest(
+    checkoutState: ActivityContracts.EventCheckoutState,
+    resultState: ActivityContracts.EventCheckoutResultState | null = null,
+    pendingReason: AppConstants.ActivityPendingReason = null,
+    checkoutSessionId: string | null = null,
+    counterDelta: UserMenuCounterDeltasDto | null = null
+  ): ActivityContracts.EventCheckoutStateChangeRequest {
     const dialog = this.dialog();
     if (!dialog) {
       throw new Error('Checkout session is not available.');
@@ -798,13 +2694,11 @@ export class EventCheckoutPopupComponent {
       userId: dialog.userId,
       sourceId: dialog.record.id,
       slotSourceId: this.selectedSlotSourceId,
-      optionalSubEventIds: [...this.selectedOptionalSubEventIds],
-      assetSelections: [],
-      acceptedPolicyIds: [...this.acceptedPolicyIds],
-      lineItems: this.lineItems(),
-      totalAmount: this.totalAmount(),
-      currency: this.currency(),
-      pendingReason: this.isWaitingListSelection() ? 'waitlist' : (this.shouldAwaitApprovalBeforePayment() ? 'approval' : null)
+      checkoutState,
+      resultState,
+      pendingReason,
+      checkoutSessionId,
+      counterDelta
     };
   }
 
@@ -823,13 +2717,23 @@ export class EventCheckoutPopupComponent {
     if (!normalized.enabled) {
       return {
         amount: 0,
-        currency: normalized.currency || 'USD'
+        currency: normalized.currency || 'USD',
+        rows: []
       };
     }
 
+    const currency = normalized.currency || 'USD';
     const previewBase = normalized.slotPricingEnabled && slotId
       ? normalized.slotOverrides.find(item => item.slotId === slotId)?.price ?? normalized.basePrice
       : normalized.basePrice;
+    const rows: ActivityContracts.EventCheckoutPricingSummaryRow[] = [{
+      key: normalized.slotPricingEnabled && slotId ? `base:${slotId}` : 'base',
+      label: normalized.slotPricingEnabled && slotId ? 'Slot base price' : 'Base price',
+      detail: null,
+      amount: previewBase,
+      currency,
+      multiplier: 1
+    }];
     const capacityFilledPercent = record.capacityTotal > 0
       ? Math.round((record.acceptedMembers / record.capacityTotal) * 100)
       : 0;
@@ -841,7 +2745,16 @@ export class EventCheckoutPopupComponent {
         if (!this.matchesDemandRule(rule, capacityFilledPercent, slotId)) {
           continue;
         }
+        const previousPrice = nextPrice;
         nextPrice = this.applyPricingAction(nextPrice, rule.action);
+        rows.push({
+          key: `demand:${rule.id}`,
+          label: 'Demand pricing',
+          detail: this.describePricingAction(rule.action),
+          amount: Math.round((nextPrice - previousPrice) * 100) / 100,
+          currency,
+          multiplier: 1
+        });
       }
     }
     if ((normalized.mode === 'time-based' || normalized.mode === 'hybrid') && normalized.timeRulesEnabled) {
@@ -849,20 +2762,63 @@ export class EventCheckoutPopupComponent {
         if (!this.matchesTimeRule(rule, hoursUntilStart, slotId, slot?.startAtIso ?? record.startAtIso)) {
           continue;
         }
+        const previousPrice = nextPrice;
         nextPrice = this.applyPricingAction(nextPrice, rule.action);
+        rows.push({
+          key: `time:${rule.id}`,
+          label: 'Time pricing',
+          detail: this.describePricingAction(rule.action),
+          amount: Math.round((nextPrice - previousPrice) * 100) / 100,
+          currency,
+          multiplier: 1
+        });
       }
     }
 
     if (normalized.minPrice !== null) {
+      const previousPrice = nextPrice;
       nextPrice = Math.max(normalized.minPrice, nextPrice);
+      if (nextPrice !== previousPrice) {
+        rows.push({
+          key: 'min-price',
+          label: 'Minimum price',
+          detail: null,
+          amount: Math.round((nextPrice - previousPrice) * 100) / 100,
+          currency,
+          multiplier: 1
+        });
+      }
     }
     if (normalized.maxPrice !== null) {
+      const previousPrice = nextPrice;
       nextPrice = Math.min(normalized.maxPrice, nextPrice);
+      if (nextPrice !== previousPrice) {
+        rows.push({
+          key: 'max-price',
+          label: 'Maximum price',
+          detail: null,
+          amount: Math.round((nextPrice - previousPrice) * 100) / 100,
+          currency,
+          multiplier: 1
+        });
+      }
     }
 
+    const roundedPrice = this.applyRounding(nextPrice, normalized.rounding);
+    if (roundedPrice !== nextPrice) {
+      rows.push({
+        key: 'rounding',
+        label: 'Rounding',
+        detail: null,
+        amount: Math.round((roundedPrice - nextPrice) * 100) / 100,
+        currency,
+        multiplier: 1
+      });
+    }
     return {
-      amount: this.applyRounding(nextPrice, normalized.rounding),
-      currency: normalized.currency || 'USD'
+      amount: roundedPrice,
+      currency,
+      rows
     };
   }
 
@@ -921,6 +2877,22 @@ export class EventCheckoutPopupComponent {
       return Math.max(0, currentPrice * (1 - percent));
     }
     return Math.max(0, currentPrice * (1 + percent));
+  }
+
+  private describePricingAction(action: ContractTypes.PricingAction): string {
+    const value = Number(action.value) || 0;
+    switch (action.kind) {
+      case 'set_exact_price':
+        return `Set to ${value}`;
+      case 'increase_amount':
+        return `+${value}`;
+      case 'decrease_amount':
+        return `-${value}`;
+      case 'decrease_percent':
+        return `-${value}%`;
+      default:
+        return `+${value}%`;
+    }
   }
 
   private applyRounding(price: number, rounding: AppConstants.PricingRoundingMode): number {
@@ -1038,7 +3010,7 @@ export class EventCheckoutPopupComponent {
       }
       this.checkoutSessionId = session.id;
       this.paymentStep = true;
-      this.persistCheckoutDraft();
+      await this.persistCheckoutDraft(false);
       this.errorMessage = 'Checkout details changed. A fresh payment session is ready.';
       return true;
     } catch (recoveryError) {
@@ -1089,11 +3061,23 @@ export class EventCheckoutPopupComponent {
     return `${value.getFullYear()}-${AppUtils.pad2(value.getMonth() + 1)}-${AppUtils.pad2(value.getDate())}`;
   }
 
-  private persistCheckoutDraft(): void {
+  private async persistCheckoutDraft(
+    syncRuntimeBasket = true,
+    pendingReasonOverride: AppConstants.ActivityPendingReason | undefined = undefined,
+    checkoutStateOverride?: ActivityContracts.EventCheckoutState,
+    basketChanged = false
+  ): Promise<void> {
     const dialog = this.dialog();
-    if (!dialog || (this.totalAmount() <= 0 && !this.isWaitingListSelection())) {
+    const updateStepActive = this.checkoutUpdateStepActive();
+    const pendingReason = pendingReasonOverride === undefined
+      ? this.checkoutDecisionPendingReason()
+      : pendingReasonOverride;
+    const checkoutState = checkoutStateOverride ?? this.currentCheckoutState(this.totalAmount(), pendingReason);
+    const basketItems = this.checkoutBasketItems(checkoutState);
+    if (!dialog || (basketItems.length === 0 && this.totalAmount() <= 0 && !pendingReason)) {
       return;
     }
+    const basket = this.checkoutBasketSnapshot();
     this.checkoutDraftStore.save({
       userId: dialog.userId,
       sourceId: dialog.record.id,
@@ -1103,13 +3087,63 @@ export class EventCheckoutPopupComponent {
       selectedDateKey: this.selectedSlotDateValue ? this.slotDateKeyFromDate(this.selectedSlotDateValue) : null,
       optionalSubEventIds: [...this.selectedOptionalSubEventIds],
       acceptedPolicyIds: [...this.acceptedPolicyIds],
+      basketItems,
+      pricingSummaryRows: this.checkoutBasketPricingSummaryRows(),
+      checkoutState,
       lineItems: this.lineItems(),
       totalAmount: this.totalAmount(),
       currency: this.currency(),
       checkoutSessionId: this.checkoutSessionId,
-      pendingReason: this.isWaitingListSelection() ? 'waitlist' : (this.shouldAwaitApprovalBeforePayment() ? 'approval' : null),
+      expiresAtIso: basket?.expiresAtIso ?? null,
+      pendingReason,
+      basketChanged,
       updatedAtMs: Date.now()
     });
+    if (syncRuntimeBasket) {
+      await this.syncRuntimeCheckoutBasket(checkoutState, pendingReason, updateStepActive);
+    }
+  }
+
+  private async syncRuntimeCheckoutBasket(
+    checkoutStateOverride?: ActivityContracts.EventCheckoutState,
+    pendingReasonOverride: AppConstants.ActivityPendingReason | undefined = undefined,
+    forceBasketPayload = false
+  ): Promise<void> {
+    const dialog = this.dialog();
+    const basketItems = this.checkoutBasketItems();
+    if (!dialog || basketItems.length === 0) {
+      return;
+    }
+    try {
+      const shouldMutateStoredBasket = this.runtimeCheckoutBasketExists()
+        && checkoutStateOverride != null
+        && checkoutStateOverride !== 'draft'
+        && !forceBasketPayload;
+      const basket = shouldMutateStoredBasket
+        ? await this.eventsService.updateCheckoutBasketState(this.buildCheckoutStateChangeRequest(
+            checkoutStateOverride,
+            null,
+            pendingReasonOverride === undefined ? null : pendingReasonOverride,
+            this.checkoutSessionId
+          ))
+        : await this.eventsService.saveCheckoutBasket(this.buildCheckoutRequest({
+            checkoutState: checkoutStateOverride,
+            pendingReason: pendingReasonOverride
+          }));
+      if (basket) {
+        this.checkoutBasket = basket;
+      }
+    } catch {
+      // Local draft remains the immediate source of truth if runtime basket sync fails.
+    }
+  }
+
+  private runtimeCheckoutBasketExists(): boolean {
+    return (this.checkoutBasket?.items ?? []).some(item =>
+      item.resultState !== 'deleted'
+      && item.resultState !== 'succeeded'
+      && Boolean(item.id?.trim())
+    );
   }
 
   private clearCheckoutDraft(): void {
@@ -1119,9 +3153,35 @@ export class EventCheckoutPopupComponent {
     }
     this.checkoutDraftStore.clear(dialog.userId, dialog.record.id);
     this.checkoutSessionId = null;
+    this.checkoutBasket = null;
+  }
+
+  private releaseUnpaidPaymentSession(): void {
+    const paidItems = this.activeCheckoutBasketItems().some(item => item.status === 'pay');
+    if (paidItems) {
+      return;
+    }
+    const hadSession = this.paymentStep || Boolean(this.checkoutSessionId);
+    this.paymentStep = false;
+    this.checkoutSessionId = null;
+    if (!hadSession || !this.checkoutBasket) {
+      return;
+    }
+    const nextStatus = this.currentCheckoutState(this.checkoutBasket.totalAmount);
+    this.checkoutBasket = {
+      ...this.checkoutBasket,
+      status: nextStatus,
+      checkoutSessionId: null,
+      items: this.checkoutBasket.items.map(item => ({
+        ...item,
+        status: nextStatus,
+        checkoutSessionId: null
+      }))
+    };
   }
 
   private invalidateCheckoutDraft(): void {
+    this.checkoutBasket = null;
     if (!this.checkoutSessionId) {
       return;
     }
@@ -1165,8 +3225,26 @@ export class EventCheckoutPopupComponent {
   }
 
   private isRecordFull(record: ActivityEventRecord): boolean {
-    return Math.max(0, Math.trunc(Number(record.capacityTotal) || 0)) > 0
-      && Math.max(0, Math.trunc(Number(record.acceptedMembers) || 0)) >= Math.max(0, Math.trunc(Number(record.capacityTotal) || 0));
+    return record.full === true;
+  }
+
+  private checkoutTargetUnavailable(): boolean {
+    const dialog = this.dialog();
+    if (!dialog || this.isWaitingListSelection()) {
+      return false;
+    }
+    const targetSourceId = this.selectedSlotSourceId?.trim() || dialog.record.id;
+    const knownRecord = targetSourceId
+      ? this.eventsService.peekKnownRecordById(dialog.userId, targetSourceId)
+      : null;
+    if (knownRecord && this.isRecordFull(knownRecord)) {
+      return true;
+    }
+    const slot = this.selectedSlot();
+    if (slot && this.isSlotFull(slot)) {
+      return true;
+    }
+    return !this.requiresSlotSelection() && this.isRecordFull(dialog.record);
   }
 
   private isSlotFull(slot: ContractTypes.EventSlotOccurrenceDTO): boolean {

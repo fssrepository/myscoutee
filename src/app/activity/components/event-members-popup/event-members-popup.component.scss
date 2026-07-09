@@ -382,6 +382,94 @@
   color: #6c3348;
 }
 
+.activity-members-involvement-list {
+  display: grid;
+  gap: 0.46rem;
+  min-width: 0;
+}
+
+.activity-members-involvement-row {
+  display: grid;
+  grid-template-columns: 34px minmax(0, 1fr);
+  align-items: center;
+  gap: 0.55rem;
+  min-height: 58px;
+  padding: 0.55rem 0.62rem;
+  border: 1px solid rgba(76, 115, 158, 0.22);
+  border-radius: 8px;
+  background: linear-gradient(180deg, rgba(247, 251, 255, 0.98) 0%, rgba(235, 244, 253, 0.92) 100%);
+  color: #18385d;
+}
+
+.activity-members-involvement-icon {
+  width: 34px;
+  height: 34px;
+  border-radius: 999px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(255, 255, 255, 0.82);
+  border: 1px solid rgba(65, 108, 154, 0.22);
+}
+
+.activity-members-involvement-icon .mat-icon {
+  width: 18px;
+  height: 18px;
+  font-size: 18px;
+  line-height: 18px;
+}
+
+.activity-members-involvement-copy {
+  display: grid;
+  gap: 0.12rem;
+  min-width: 0;
+}
+
+.activity-members-involvement-copy strong,
+.activity-members-involvement-copy small {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.activity-members-involvement-copy strong {
+  color: #123153;
+  font-size: 0.82rem;
+  font-weight: 800;
+}
+
+.activity-members-involvement-copy small {
+  color: rgba(32, 55, 84, 0.72);
+  font-size: 0.72rem;
+  font-weight: 700;
+}
+
+.activity-members-involvement-row--accepted {
+  border-color: rgba(52, 154, 101, 0.28);
+  background: linear-gradient(180deg, #f2fbf5 0%, #e2f5ea 100%);
+}
+
+.activity-members-involvement-row--pending {
+  border-color: rgba(186, 127, 49, 0.32);
+  background: linear-gradient(180deg, #fff9ee 0%, #fbeed4 100%);
+}
+
+.activity-members-involvement-row--group {
+  border-color: rgba(107, 91, 188, 0.3);
+  background: linear-gradient(180deg, #f7f4ff 0%, #ece8fb 100%);
+}
+
+.activity-members-involvement-row--asset {
+  border-color: rgba(36, 137, 147, 0.28);
+  background: linear-gradient(180deg, #f0fbfc 0%, #dff3f5 100%);
+}
+
+.activity-members-involvement-row--muted {
+  border-color: rgba(91, 94, 105, 0.24);
+  background: linear-gradient(180deg, #f8f8fa 0%, #eceff3 100%);
+  filter: saturate(0.85);
+}
+
 @media (max-width: 760px) {
   :host ::ng-deep .activity-members-smart-list .smart-list.activity-members-list-shell.smart-list--card-grid {
     display: grid;

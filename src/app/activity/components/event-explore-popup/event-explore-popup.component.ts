@@ -73,6 +73,7 @@ import {
   type PopupModel,
   type SmartListConfig,
   type SmartListItemTemplateContext,
+  type SmartListLocalSortKey,
   type SmartListStateChange
 } from '../../../shared/ui';
 import {
@@ -90,6 +91,7 @@ import {
 } from '../../../shared/ui/context/stores/profile.store';
 import type { ActivityEventDTO, ActivityEventRecord } from '../../../shared/core/contracts/activity.interface';
 import type { ChatDTO } from '../../../shared/core/contracts/chat.interface';
+import type { UserMenuCounterDeltasDto } from '../../../shared/core/contracts/user.interface';
 import type { ActivityMemberOwnerRef } from '../../../shared/core/contracts/activity.interface';
 import type * as ActivityContracts from '../../../shared/core/contracts/activity.interface';
 import { UserProfileStore } from '../../../shared/ui/context/stores/user-profile.store';
@@ -101,6 +103,12 @@ import { EventSubeventsPopupStore } from '../../../shared/ui/context/stores/even
 type CheckoutDraftEntry = {
   draft: EventCheckoutDraft;
   record: ActivityEventRecord | null;
+};
+
+type CheckoutDraftMenuVisual = {
+  label: string;
+  icon: string;
+  palette: AppMenuPalette;
 };
 
 type EventExploreMenuContext =
@@ -233,6 +241,9 @@ export class EventExplorePopupComponent {
     },
     stickyHeaderClass: 'event-explore-sticky-header',
     trackBy: (_index, record) => `${record.type}:${record.id}`,
+    sortable: {
+      sortKey: record => this.eventExploreRecordLocalSortKey(record)
+    },
     showGroupMarker: ({ groupIndex, scrollable }) => {
       if (groupIndex > 0) {
         return true;
@@ -299,18 +310,7 @@ export class EventExplorePopupComponent {
 
     effect(() => {
       this.eventCheckoutDraftStore.drafts();
-      const nextPendingDraftSourceIds = this.pendingCheckoutDraftSourceIds();
-      const removedPendingDraftSourceIds = [...this.lastPendingCheckoutDraftSourceIds]
-        .filter(sourceId => !nextPendingDraftSourceIds.has(sourceId));
-      const hasNewPendingDraft = [...nextPendingDraftSourceIds]
-        .some(sourceId => !this.lastPendingCheckoutDraftSourceIds.has(sourceId));
-      this.lastPendingCheckoutDraftSourceIds = nextPendingDraftSourceIds;
       if (this.isOpen) {
-        if (removedPendingDraftSourceIds.length > 0) {
-          this.restoreVisibleEventExploreRecordsById(removedPendingDraftSourceIds);
-        } else if (hasNewPendingDraft) {
-          this.pruneVisibleTrackedEventExploreRecords();
-        }
         this.cdr.markForCheck();
       }
     });
@@ -589,10 +589,10 @@ export class EventExplorePopupComponent {
     }
     if (context.menu === 'checkout-draft') {
       if (event.action === 'remove') {
-        void this.clearCheckoutDraft(context.entry.draft, event.sourceEvent);
+        this.requestClearCheckoutDraft(context.entry.draft, event.sourceEvent);
         return;
       }
-      void this.viewCheckoutDraftEvent(context.entry, event.sourceEvent);
+      void this.openCheckoutDraftForm(context.entry, event.sourceEvent);
       return;
     }
     if (context.menu === 'topic-filter') {
@@ -826,10 +826,18 @@ export class EventExplorePopupComponent {
       });
       return;
     }
+    const existingDraft = this.trackableCheckoutDraft(record.id, activeUserId);
+    if (existingDraft) {
+      void this.openCheckoutDraftForm({ draft: existingDraft, record }, event);
+      return;
+    }
     if (this.hasTrackedMembership(record, activeUserId)) {
-      this.dialogStore.openInfo(`A membership entry already exists for ${record.title}.`, {
-        title: 'Already requested',
-        confirmTone: 'neutral'
+      const membershipStatus = this.eventExploreMembershipStatus(record, activeUserId);
+      this.openEventExploreCheckout(record, {
+        approvalGranted: membershipStatus === 'accepted',
+        pendingReason: membershipStatus === 'accepted'
+          ? null
+          : this.eventExploreCheckoutPendingReason(record)
       });
       return;
     }
@@ -868,11 +876,28 @@ export class EventExplorePopupComponent {
       this.runEventExploreViewAction(record);
       return;
     }
-    if (action.actionId === 'joinWaitlist' || action.actionId === 'bookEvent' || action.actionId === 'requestJoin') {
+    if (action.actionId === 'continueBooking' || action.actionId === 'continueBookingPending') {
+      const activeUserId = this.activeUserId.trim();
+      const draft = activeUserId ? this.trackableCheckoutDraft(record.id, activeUserId) : null;
+      if (draft) {
+        void this.openCheckoutDraftForm({ draft, record });
+        return;
+      }
+      this.openEventExploreCheckout(record, {
+        approvalGranted: false,
+        pendingReason: this.eventExploreCheckoutPendingReason(record)
+      });
+      return;
+    }
+    if (this.isEventExploreJoinMenuAction(action.actionId)) {
       this.runEventExploreJoinAction(record);
       return;
     }
-    if (action.actionId === 'contactOrganizer') {
+    if (action.actionId === 'askOrganizer') {
+      this.runEventExploreServiceChatAction(record);
+      return;
+    }
+    if (action.actionId === 'notifyParticipants') {
       this.runEventExploreServiceChatAction(record);
       return;
     }
@@ -895,12 +920,16 @@ export class EventExplorePopupComponent {
       .sort((left, right) => right.updatedAtMs - left.updatedAtMs)
       .map(draft => ({
         draft,
-        record: this.eventsService.peekKnownRecordById(activeUserId, draft.sourceId)
+        record: this.visibleEventExploreRecordById(draft.sourceId)
+          ?? this.eventsService.peekKnownRecordById(activeUserId, draft.sourceId)
       }));
   }
 
   protected canContinueCheckoutDraft(entry: CheckoutDraftEntry): boolean {
     if (this.isCheckoutDraftClearing(entry.draft.sourceId)) {
+      return false;
+    }
+    if (entry.draft.pendingReason === 'waitlist' || entry.draft.checkoutState === 'waiting') {
       return false;
     }
     if (Boolean(entry.draft.checkoutSessionId?.trim())) {
@@ -913,33 +942,38 @@ export class EventExplorePopupComponent {
   }
 
   protected checkoutDraftMenuTrigger(): AppMenuTrigger {
-    const count = this.checkoutDraftCount();
+    const entries = this.checkoutDraftEntries();
+    const count = entries.length;
+    const changedCount = entries.filter(entry => entry.draft.basketChanged === true).length;
     return {
       icon: 'shopping_basket',
       closeIcon: 'close',
-      ariaLabel: count === 1 ? 'Open basket with 1 item' : `Open basket with ${count} items`,
-      counter: count,
+      ariaLabel: changedCount > 0
+        ? (changedCount === 1 ? 'Open basket with 1 changed item' : `Open basket with ${changedCount} changed items`)
+        : (count === 1 ? 'Open basket with 1 item' : `Open basket with ${count} items`),
+      counter: changedCount > 0 ? changedCount : count,
       hideLabel: true,
       layout: 'icon',
-      palette: 'orange'
+      palette: changedCount > 0 ? 'orange' : 'green'
     };
   }
 
   protected checkoutDraftMenuItems(): readonly AppMenuItem<string, EventExploreMenuContext>[] {
     return this.checkoutDraftEntries().map(entry => {
       const clearing = this.isCheckoutDraftClearing(entry.draft.sourceId);
-      const itemCount = entry.draft.lineItems.length;
+      const itemCount = this.checkoutDraftBasketItemCount(entry.draft);
       return {
         id: `checkout-draft-${entry.draft.sourceId}`,
         label: entry.draft.eventTitle,
         description: [
           entry.draft.eventTimeframe || entry.record?.timeframe || 'Pending checkout',
-          `${itemCount} ${itemCount === 1 ? 'item' : 'items'} · ${entry.draft.currency} ${entry.draft.totalAmount.toFixed(2)}`
+          `${itemCount} elem · ${entry.draft.currency} ${entry.draft.totalAmount.toFixed(2)}`
         ].join('\n'),
         detail: clearing ? 'Releasing...' : this.checkoutDraftMenuStatusLabel(entry),
         icon: this.checkoutDraftMenuIcon(entry),
         kind: 'action',
         palette: this.checkoutDraftMenuPalette(entry),
+        headerBadge: entry.draft.basketChanged === true ? 'Update' : null,
         surface: 'tinted',
         layout: 'pill',
         disabled: clearing,
@@ -951,36 +985,162 @@ export class EventExplorePopupComponent {
     });
   }
 
+  private checkoutDraftBasketItemCount(draft: EventCheckoutDraft): number {
+    const activeItems = (draft.basketItems ?? [])
+      .filter(item => item.resultState !== 'deleted' && item.resultState !== 'succeeded');
+    const primaryItems = activeItems.filter(item => item.kind !== 'sub_event');
+    if (primaryItems.length === 0) {
+      return activeItems.length > 0 ? 1 : Math.max(0, draft.lineItems.length);
+    }
+    const groupKeys = new Set(primaryItems.map(item => this.checkoutDraftBasketItemGroupKey(item)));
+    return Math.max(1, groupKeys.size);
+  }
+
+  private checkoutDraftBasketItemGroupKey(item: ActivityContracts.EventCheckoutBasketItem): string {
+    const slotSourceId = item.slotSourceId?.trim() ?? '';
+    if (slotSourceId) {
+      return slotSourceId;
+    }
+    return item.id?.trim() || item.label?.trim() || 'checkout-item';
+  }
+
   protected isCheckoutDraftClearing(sourceId: string): boolean {
     return this.checkoutDraftReleaseSourceIds.has(sourceId.trim());
   }
 
   private checkoutDraftMenuStatusLabel(entry: CheckoutDraftEntry): string {
-    if (this.canContinueCheckoutDraft(entry)) {
-      return 'Checkout ready';
-    }
-    return this.checkoutDraftPendingReason(entry) === 'waitlist'
-      ? 'Waiting for spot'
-      : 'Waiting for approval';
+    return this.checkoutDraftMenuVisual(entry).label;
   }
 
   private checkoutDraftMenuIcon(entry: CheckoutDraftEntry): string {
-    if (this.canContinueCheckoutDraft(entry)) {
-      return 'event_available';
-    }
-    return this.checkoutDraftPendingReason(entry) === 'waitlist'
-      ? 'hourglass_empty'
-      : 'pending_actions';
+    return this.checkoutDraftMenuVisual(entry).icon;
   }
 
   private checkoutDraftMenuPalette(entry: CheckoutDraftEntry): AppMenuPalette {
+    return this.checkoutDraftMenuVisual(entry).palette;
+  }
+
+  private checkoutDraftMenuVisual(entry: CheckoutDraftEntry): CheckoutDraftMenuVisual {
     if (this.isCheckoutDraftClearing(entry.draft.sourceId)) {
-      return 'warning';
+      return {
+        label: 'Felszabadítás...',
+        icon: 'hourglass_empty',
+        palette: 'warning'
+      };
     }
+
+    const resultState = this.checkoutDraftResultState(entry.draft);
+    if (resultState === 'failed') {
+      return {
+        label: 'Sikertelen',
+        icon: 'error',
+        palette: 'danger'
+      };
+    }
+
+    if (entry.draft.checkoutState === 'cancelled') {
+      return {
+        label: 'Lemondva',
+        icon: 'block',
+        palette: 'neutral'
+      };
+    }
+
+    if (entry.draft.checkoutState === 'rejected') {
+      return {
+        label: 'Elutasítva',
+        icon: 'block',
+        palette: 'danger'
+      };
+    }
+
+    if (entry.draft.basketChanged === true) {
+      return {
+        label: 'Frissítés szükséges',
+        icon: 'edit_note',
+        palette: 'orange'
+      };
+    }
+
+    if (entry.draft.pendingReason === 'waitlist' || entry.draft.checkoutState === 'waiting') {
+      return {
+        label: 'Várólistán',
+        icon: 'hourglass_empty',
+        palette: 'amber'
+      };
+    }
+
+    if (entry.draft.pendingReason === 'approval' || entry.draft.checkoutState === 'approval-pending') {
+      return {
+        label: 'Jóváhagyásra vár',
+        icon: 'pending_actions',
+        palette: 'orange'
+      };
+    }
+
+    if (entry.draft.checkoutState === 'confirmed') {
+      return Math.max(0, Number(entry.draft.totalAmount) || 0) > 0
+        ? {
+            label: 'Fizetésre kész',
+            icon: 'payments',
+            palette: 'green'
+          }
+        : {
+            label: 'Megerősítve',
+            icon: 'event_available',
+            palette: 'green'
+          };
+    }
+
+    if (entry.draft.checkoutState === 'approved') {
+      return Math.max(0, Number(entry.draft.totalAmount) || 0) > 0
+        ? {
+            label: 'Fizetésre kész',
+            icon: 'payments',
+            palette: 'green'
+          }
+        : {
+            label: 'Jóváhagyva',
+            icon: 'verified',
+            palette: 'success'
+          };
+    }
+
+    if (entry.draft.checkoutState === 'pay') {
+      return {
+        label: 'Fizetés alatt',
+        icon: 'payments',
+        palette: 'green'
+      };
+    }
+
     if (this.canContinueCheckoutDraft(entry)) {
-      return 'red';
+      return {
+        label: 'Folytatható',
+        icon: 'event_available',
+        palette: 'teal'
+      };
     }
-    return this.checkoutDraftPendingReason(entry) === 'waitlist' ? 'amber' : 'orange';
+
+    return {
+      label: 'Piszkozat',
+      icon: 'shopping_basket',
+      palette: 'blue'
+    };
+  }
+
+  private checkoutDraftResultState(draft: EventCheckoutDraft): ActivityContracts.EventCheckoutResultState {
+    const resultStates = (draft.basketItems ?? []).map(item => item.resultState ?? 'pending');
+    if (resultStates.some(resultState => resultState === 'failed')) {
+      return 'failed';
+    }
+    if (resultStates.length > 0 && resultStates.every(resultState => resultState === 'deleted')) {
+      return 'deleted';
+    }
+    if (resultStates.length > 0 && resultStates.every(resultState => resultState === 'deleted' || resultState === 'succeeded')) {
+      return 'succeeded';
+    }
+    return 'pending';
   }
 
   protected async continueCheckoutDraft(
@@ -992,7 +1152,9 @@ export class EventExplorePopupComponent {
       return;
     }
     const { draft } = entry;
-    const record = this.eventsService.peekKnownRecordById(this.activeUserId, draft.sourceId)
+    const record = entry.record
+      ?? this.visibleEventExploreRecordById(draft.sourceId)
+      ?? this.eventsService.peekKnownRecordById(this.activeUserId, draft.sourceId)
       ?? await this.eventsService.queryKnownRecordById(this.activeUserId, draft.sourceId);
     if (!record) {
       this.eventCheckoutDraftStore.clear(this.activeUserId, draft.sourceId);
@@ -1003,8 +1165,39 @@ export class EventExplorePopupComponent {
       this.cdr.markForCheck();
       return;
     }
+    const pendingReason = this.checkoutDraftPendingReason(draft);
     this.openEventExploreCheckout(record, {
-      approvalGranted: this.canContinueCheckoutDraft({ draft, record })
+      approvalGranted: pendingReason ? false : this.canContinueCheckoutDraft({ draft, record }),
+      pendingReason
+    });
+  }
+
+  protected async openCheckoutDraftForm(
+    entry: CheckoutDraftEntry,
+    event?: { stopPropagation?: () => void; preventDefault?: () => void }
+  ): Promise<void> {
+    this.stopDomEvent(event);
+    if (this.isCheckoutDraftClearing(entry.draft.sourceId)) {
+      return;
+    }
+    const { draft } = entry;
+    const record = entry.record
+      ?? this.visibleEventExploreRecordById(draft.sourceId)
+      ?? this.eventsService.peekKnownRecordById(this.activeUserId, draft.sourceId)
+      ?? await this.eventsService.queryKnownRecordById(this.activeUserId, draft.sourceId);
+    if (!record) {
+      this.eventCheckoutDraftStore.clear(this.activeUserId, draft.sourceId);
+      this.dialogStore.openInfo('This checkout draft can no longer be restored.', {
+        title: 'Basket unavailable',
+        confirmTone: 'neutral'
+      });
+      this.cdr.markForCheck();
+      return;
+    }
+    const pendingReason = this.checkoutDraftPendingReason(draft);
+    this.openEventExploreCheckout(record, {
+      approvalGranted: pendingReason ? false : this.canContinueCheckoutDraft({ draft, record }),
+      pendingReason
     });
   }
 
@@ -1024,7 +1217,8 @@ export class EventExplorePopupComponent {
     }
     const entry: CheckoutDraftEntry = {
       draft,
-      record: this.eventsService.peekKnownRecordById(activeUserId, normalizedSourceId)
+      record: this.visibleEventExploreRecordById(normalizedSourceId)
+        ?? this.eventsService.peekKnownRecordById(activeUserId, normalizedSourceId)
         ?? await this.eventsService.queryKnownRecordById(activeUserId, normalizedSourceId)
     };
     await this.continueCheckoutDraft(entry);
@@ -1070,44 +1264,127 @@ export class EventExplorePopupComponent {
     }
 
     this.checkoutDraftReleaseSourceIds.add(sourceId);
-    this.eventCheckoutDraftStore.clear(activeUserId, sourceId);
     this.cdr.markForCheck();
     try {
-      const record = this.eventsService.peekKnownRecordById(activeUserId, sourceId)
-        ?? await this.eventsService.queryKnownRecordById(activeUserId, sourceId);
-
-      if (!record) {
-        return;
-      }
-
-      const owner = this.eventMembersOwner(record);
-      const baseMembers = this.activityMembersService.peekMembersByOwner(owner);
-      const existingMembers = baseMembers.length > 0 ? baseMembers : this.buildMemberEntries(record);
-      const hadMembership = existingMembers.some(member => member.userId === activeUserId);
-      if (!hadMembership) {
-        this.locallyTrackedMembershipSourceIds.delete(sourceId);
-        this.restoreVisibleEventExploreRecord(record);
-        return;
-      }
-
-      const nextMembers = this.sortMembersByActionTimeDesc(
-        existingMembers.filter(member => member.userId !== activeUserId)
-      );
-      const eventDetailDTO = this.buildActivityEventDetailDTO(record, nextMembers);
-      const nextRecord = this.withEventExploreMemberSummary(record, nextMembers);
-      this.checkoutDraftClearSaveSourceIds.add(sourceId);
-      const persistence = this.emitActivityEventSave(eventDetailDTO);
-      this.restoreVisibleEventExploreRecord(nextRecord);
-      if (this.selectedMembersRecord?.id === record.id) {
-        this.selectedMembersRecord = nextRecord;
-        this.selectedMembers = nextMembers;
-      }
-      this.cdr.markForCheck();
-      await persistence;
+      const slotSourceId = draft.basketItems
+        .map(item => item.slotSourceId?.trim() ?? '')
+        .find(Boolean) ?? null;
+      const counterDelta = this.checkoutDraftCancelCounterDelta(draft);
+      const leaveResult = await this.eventsService.leaveEvent(activeUserId, sourceId, {
+        slotSourceId,
+        removeMembershipOnly: true,
+        checkoutState: 'cancelled',
+        checkoutResultState: 'deleted',
+        checkoutSessionId: draft.checkoutSessionId ?? null,
+        counterDelta
+      });
+      this.signalEventExploreCounterDelta(activeUserId, counterDelta);
+      const memberDelta = this.checkoutDraftCancelMemberDelta(draft);
+      this.emitCheckoutDraftMembersSync(sourceId, leaveResult, memberDelta, true);
+      this.activitiesStore.clearActivityEventSave();
+      this.eventCheckoutDraftStore.clear(activeUserId, sourceId);
+      this.locallyTrackedMembershipSourceIds.delete(sourceId);
     } finally {
       this.checkoutDraftReleaseSourceIds.delete(sourceId);
       this.cdr.markForCheck();
     }
+  }
+
+  private checkoutDraftCancelCounterDelta(draft: EventCheckoutDraft): UserMenuCounterDeltasDto {
+    const pendingReason = this.checkoutDraftPendingReason(draft);
+    if (pendingReason === 'waitlist' || pendingReason === 'approval') {
+      return { event: { all: -1, pending: -1, trash: 1 } };
+    }
+    return { events: -1, event: { all: -1, active: -1, trash: 1 } };
+  }
+
+  private checkoutDraftCancelMemberDelta(
+    draft: EventCheckoutDraft
+  ): { acceptedMemberDelta: number; pendingMemberDelta: number } {
+    const pendingReason = this.checkoutDraftPendingReason(draft);
+    return pendingReason === 'waitlist' || pendingReason === 'approval'
+      ? { acceptedMemberDelta: 0, pendingMemberDelta: -1 }
+      : { acceptedMemberDelta: -1, pendingMemberDelta: 0 };
+  }
+
+  private emitCheckoutDraftMembersSync(
+    sourceId: string | null | undefined,
+    result: ActivityContracts.EventParticipationActionResultDTO | null,
+    memberDelta: { acceptedMemberDelta?: number; pendingMemberDelta?: number } | null = null,
+    viewerMembershipRemoved = false
+  ): void {
+    const normalizedSourceId = sourceId?.trim() ?? '';
+    if (!normalizedSourceId) {
+      return;
+    }
+    const record = this.eventsService.peekKnownRecordById(this.activeUserId, normalizedSourceId);
+    const matchingResult = result?.sourceId === normalizedSourceId ? result : null;
+    const acceptedMembers = matchingResult?.acceptedMembers ?? record?.acceptedMembers;
+    const pendingMembers = matchingResult?.pendingMembers ?? record?.pendingMembers;
+    const capacityTotal = matchingResult?.capacityTotal ?? record?.capacityTotal;
+    if (acceptedMembers == null || pendingMembers == null || capacityTotal == null) {
+      return;
+    }
+    this.activityStore.emitActivityMembersSync({
+      id: normalizedSourceId,
+      acceptedMembers,
+      pendingMembers,
+      capacityTotal,
+      ...(viewerMembershipRemoved ? { viewerMembershipRemoved: true } : {}),
+      ...(memberDelta ?? {})
+    });
+  }
+
+  private withEventExploreResultSummary(
+    record: ActivityEventRecord,
+    result: ActivityContracts.EventParticipationActionResultDTO | null
+  ): ActivityEventRecord {
+    if (!result || result.sourceId !== record.id) {
+      return record;
+    }
+    return {
+      ...record,
+      acceptedMembers: Math.max(0, Math.trunc(Number(result.acceptedMembers) || 0)),
+      pendingMembers: Math.max(0, Math.trunc(Number(result.pendingMembers) || 0)),
+      capacityTotal: record.capacityTotal
+    };
+  }
+
+  private requestClearCheckoutDraft(
+    draft: EventCheckoutDraft,
+    event?: { stopPropagation?: () => void; preventDefault?: () => void }
+  ): void {
+    this.stopDomEvent(event);
+    if (this.isCheckoutDraftClearing(draft.sourceId)) {
+      return;
+    }
+    const visual = this.checkoutDraftMenuVisual({ draft, record: null });
+    const title = visual.label === 'Várólistán'
+      ? 'Leave waitlist?'
+      : visual.label === 'Jóváhagyásra vár'
+        ? 'Cancel request?'
+        : visual.label === 'Fizetésre kész' || visual.label === 'Fizetés alatt'
+          ? 'Cancel payment?'
+          : 'Clear basket?';
+    const confirmLabel = visual.label === 'Várólistán'
+      ? 'Leave waitlist'
+      : visual.label === 'Jóváhagyásra vár'
+        ? 'Cancel request'
+        : visual.label === 'Fizetésre kész' || visual.label === 'Fizetés alatt'
+          ? 'Cancel payment'
+          : 'Clear basket';
+    this.dialogStore.open({
+      title,
+      message: draft.eventTitle,
+      warningMessage: 'The basket item will be cancelled and removed from the visible checkout basket.',
+      cancelLabel: 'Back',
+      confirmLabel,
+      busyConfirmLabel: `${confirmLabel}...`,
+      confirmTone: visual.palette === 'danger' ? 'danger' : 'accent',
+      confirmPalette: visual.palette,
+      failureMessage: 'Unable to cancel this basket item.',
+      onConfirm: async () => this.clearCheckoutDraft(draft)
+    });
   }
 
   private async loadEventExplorePage(
@@ -1121,31 +1398,46 @@ export class EventExplorePopupComponent {
         view: query.filters?.view ?? this.eventExploreView,
         friendsOnly: query.filters?.friendsOnly === true,
         openSpotsOnly: query.filters?.openSpotsOnly === true,
-        topic: query.filters?.topic ?? this.normalizeTopic(this.eventExploreFilterTopic),
-        excludedSourceIds: [...this.pendingCheckoutDraftSourceIds()]
+        topic: query.filters?.topic ?? this.normalizeTopic(this.eventExploreFilterTopic)
       }
     });
-    const activeUserId = this.activeUserId.trim();
-    if (!activeUserId) {
-      return page;
-    }
-    const filteredItems = page.items.filter(record => !this.hasTrackedMembership(record, activeUserId));
-    if (filteredItems.length === page.items.length) {
-      return page;
-    }
-    return {
-      items: filteredItems,
-      total: Math.max(filteredItems.length, page.total - (page.items.length - filteredItems.length)),
-      nextCursor: page.nextCursor ?? null
-    };
+    return page;
   }
 
   protected eventExploreInfoCard(record: ActivityEventRecord, groupLabel: string | null): InfoCardData {
-    return EventExploreInfoCardConverter.convert(record, {
+    const card = EventExploreInfoCardConverter.convert(record, {
       groupLabel,
       topicToneGroups: this.topicFilterGroups,
+      activeUserId: this.activeUserId,
       state: this.isEventExploreRecordLeaving(record) ? 'leaving' : 'default'
     });
+    return this.withEventExploreCheckoutMenuActions(card, record);
+  }
+
+  private withEventExploreCheckoutMenuActions(card: InfoCardData, record: ActivityEventRecord): InfoCardData {
+    const activeUserId = this.activeUserId.trim();
+    if (!activeUserId || !this.trackableCheckoutDraft(record.id, activeUserId)) {
+      return card;
+    }
+    return {
+      ...card,
+      menuActions: (card.menuActions ?? []).map(actionId =>
+        this.isEventExploreJoinMenuAction(actionId) ? 'continueBooking' : actionId
+      )
+    };
+  }
+
+  private isEventExploreJoinMenuAction(actionId: string): boolean {
+    return actionId === 'joinWaitlist' || actionId === 'bookEvent' || actionId === 'requestJoin';
+  }
+
+  private visibleEventExploreRecordById(sourceId: string): ActivityEventRecord | null {
+    const normalizedSourceId = sourceId.trim();
+    if (!normalizedSourceId) {
+      return null;
+    }
+    return this.eventExploreSmartList?.itemsSnapshot()
+      .find(record => record.id === normalizedSourceId) ?? null;
   }
 
   private buildEventExploreGroupLabel(
@@ -1324,6 +1616,9 @@ export class EventExplorePopupComponent {
     if (this.isOpen && this.applyVisibleEventExploreMembersSync(sync)) {
       changed = true;
     }
+    if (this.isOpen && sync.checkoutResultState === 'succeeded') {
+      void this.restorePaidCheckoutEventExploreRecord(sync.id);
+    }
     if (changed) {
       this.cdr.markForCheck();
     }
@@ -1357,16 +1652,13 @@ export class EventExplorePopupComponent {
 
     if (currentIndex >= 0) {
       this.checkoutDraftClearSaveSourceIds.delete(sync.id);
-      if (userJoinedEvent) {
-        currentItems.splice(currentIndex, 1);
-        this.eventExploreSmartList.replaceVisibleItems(currentItems, {
-          total: Math.max(currentItems.length, this.eventExploreSmartList.cursorState().total - 1)
-        });
-        this.cdr.markForCheck();
-        return;
-      }
       const existing = currentItems[currentIndex];
       if (existing) {
+        if (dto.full === true && this.eventExploreFilterHasRooms) {
+          this.removeVisibleEventExploreRecord(existing);
+          this.cdr.markForCheck();
+          return;
+        }
         const nextEndIso = dto.endAtIso ?? dto.startAtIso;
         const acceptedMembers = Number.isFinite(Number(dto.acceptedMembers))
           ? Math.max(0, Math.trunc(Number(dto.acceptedMembers)))
@@ -1390,8 +1682,9 @@ export class EventExplorePopupComponent {
           capacityMax: dto.capacityMax ?? existing.capacityMax,
           capacityTotal: Math.max(
             acceptedMembers,
-            dto.capacityMax ?? dto.capacityTotal ?? existing.capacityTotal
+            dto.capacityTotal ?? existing.capacityTotal
           ),
+          full: dto.full ?? existing.full,
           eventType: dto.eventType ?? existing.eventType,
           status: dto.status ?? existing.status
         };
@@ -1493,8 +1786,36 @@ export class EventExplorePopupComponent {
       .some(member => member.userId === userId);
   }
 
+  private eventExploreMembershipStatus(
+    record: ActivityEventRecord,
+    userId: string
+  ): 'accepted' | 'pending' | 'none' {
+    const normalizedUserId = userId.trim();
+    if (!normalizedUserId) {
+      return 'none';
+    }
+    const existingMember = this.activityMembersService.peekMembersByOwner(this.eventMembersOwner(record))
+      .find(member => member.userId === normalizedUserId);
+    if (existingMember?.status === 'accepted' || (record.acceptedMemberUserIds ?? []).includes(normalizedUserId)) {
+      return 'accepted';
+    }
+    if (
+      existingMember?.status === 'pending'
+      || (record.pendingMemberUserIds ?? []).includes(normalizedUserId)
+      || (record.pendingRequestMemberUserIds ?? []).includes(normalizedUserId)
+    ) {
+      return 'pending';
+    }
+    return 'none';
+  }
+
   private hasPendingCheckoutDraft(sourceId: string, userId: string): boolean {
-    return this.isTrackableCheckoutDraft(this.eventCheckoutDraftStore.read(userId, sourceId));
+    return this.trackableCheckoutDraft(sourceId, userId) !== null;
+  }
+
+  private trackableCheckoutDraft(sourceId: string, userId: string): EventCheckoutDraft | null {
+    const draft = this.eventCheckoutDraftStore.read(userId, sourceId);
+    return this.isTrackableCheckoutDraft(draft) ? draft : null;
   }
 
   private pendingCheckoutDraftSourceIds(): Set<string> {
@@ -1514,17 +1835,20 @@ export class EventExplorePopupComponent {
     record: ActivityEventRecord | null,
     draft: EventCheckoutDraft | null = null
   ): boolean {
-    if (record?.ticketing === true) {
+    if (record?.approvalRequired === true) {
       return true;
     }
-    return Math.max(0, Number(draft?.totalAmount) || 0) > 0;
+    return draft?.pendingReason === 'approval';
   }
 
-  private checkoutDraftPendingReason(entry: CheckoutDraftEntry): 'approval' | 'waitlist' {
-    if (entry.draft.pendingReason === 'waitlist') {
+  private checkoutDraftPendingReason(draft: EventCheckoutDraft | null | undefined): ActivityPendingReason {
+    if (draft?.pendingReason === 'waitlist' || draft?.checkoutState === 'waiting') {
       return 'waitlist';
     }
-    return this.isEventExploreRecordFull(entry.record) ? 'waitlist' : 'approval';
+    if (draft?.pendingReason === 'approval' || draft?.checkoutState === 'approval-pending') {
+      return 'approval';
+    }
+    return null;
   }
 
   private resolveCheckoutDraftMembershipStatus(
@@ -1551,8 +1875,21 @@ export class EventExplorePopupComponent {
   }
 
   private isTrackableCheckoutDraft(draft: EventCheckoutDraft | null | undefined): boolean {
+    if (!draft) {
+      return false;
+    }
+    const resultState = this.checkoutDraftResultState(draft);
+    if (resultState === 'deleted' || resultState === 'succeeded') {
+      return false;
+    }
+    if (resultState === 'failed') {
+      return true;
+    }
     return Math.max(0, Number(draft?.totalAmount) || 0) > 0
-      || draft?.pendingReason === 'waitlist';
+      || draft?.pendingReason === 'waitlist'
+      || draft?.pendingReason === 'approval'
+      || draft?.checkoutState === 'waiting'
+      || draft?.checkoutState === 'approval-pending';
   }
 
   private eventExploreJoinDialogTitle(
@@ -1611,6 +1948,9 @@ export class EventExplorePopupComponent {
     if (this.isEventExploreRecordFull(record)) {
       return true;
     }
+    if (record.approvalRequired === true) {
+      return true;
+    }
     if ((record.upcomingSlots?.length ?? 0) > 0) {
       return true;
     }
@@ -1625,18 +1965,21 @@ export class EventExplorePopupComponent {
 
   private openEventExploreCheckout(
     record: ActivityEventRecord,
-    options: { approvalGranted?: boolean } = {}
+    options: { approvalGranted?: boolean; pendingReason?: ActivityPendingReason } = {}
   ): void {
     const dialogOptions = {
       approvalGranted: options.approvalGranted === true
     };
+    const pendingReason = options.pendingReason !== undefined
+      ? options.pendingReason
+      : this.eventExploreCheckoutPendingReason(record);
     this.eventCheckoutDialogStore.open({
       mode: 'join',
       userId: this.activeUserId,
       record,
       requiresApprovalBeforePayment: this.requiresApprovalBeforePayment(record),
       approvalGranted: dialogOptions.approvalGranted,
-      pendingReason: this.isEventExploreRecordFull(record) ? 'waitlist' : 'approval',
+      pendingReason,
       title: this.eventExploreJoinDialogTitle(record, dialogOptions),
       subtitle: record.timeframe,
       confirmLabel: this.eventExploreJoinConfirmLabel(record, dialogOptions),
@@ -1644,6 +1987,16 @@ export class EventExplorePopupComponent {
       failureMessage: this.eventExploreJoinFailureMessage(record, dialogOptions),
       onSubmit: (selection) => this.submitEventExploreJoinRequest(record, selection)
     });
+  }
+
+  private eventExploreCheckoutPendingReason(record: ActivityEventRecord): ActivityPendingReason {
+    if (record.pendingReason === 'waitlist' || this.isEventExploreRecordFull(record)) {
+      return 'waitlist';
+    }
+    if (this.requiresApprovalBeforePayment(record)) {
+      return 'approval';
+    }
+    return null;
   }
 
   private async submitEventExploreJoinRequest(
@@ -1655,15 +2008,21 @@ export class EventExplorePopupComponent {
       return;
     }
     const owner = this.eventMembersOwner(record);
-    const exitPromise = this.runEventExploreExitTransition(record, () => {
-      this.removeVisibleEventExploreRecord(record);
-    });
     const peekedMembers = this.activityMembersService.peekMembersByOwner(owner);
     const existingMembers = peekedMembers.length > 0 ? peekedMembers : this.buildMemberEntries(record);
     const existingEntry = existingMembers.find(member => member.userId === activeUserId);
 
-    if (existingEntry) {
-      await exitPromise;
+    const checkoutUpdateRequested = Boolean(
+      selection?.basketItems?.length
+      && (selection.checkoutState === 'waiting'
+        || selection.checkoutState === 'approval-pending'
+        || selection.checkoutState === 'approved'
+        || selection.checkoutState === 'confirmed'
+        || selection.checkoutState === 'pay'
+        || selection.pendingReason === 'waitlist'
+        || selection.pendingReason === 'approval')
+    );
+    if (existingEntry && existingEntry.status !== 'deleted' && !checkoutUpdateRequested) {
       if (this.selectedMembersRecord?.id === record.id) {
         this.selectedMembers = this.sortMembersByActionTimeDesc(existingMembers);
       }
@@ -1673,49 +2032,80 @@ export class EventExplorePopupComponent {
 
     const pendingReason = selection?.pendingReason ?? (this.isEventExploreSelectionFull(record, selection) ? 'waitlist' : null);
     const isAcceptedBooking = this.isConfirmedEventExploreBooking(record, selection);
-    const nextMembers = this.sortMembersByActionTimeDesc([
-      ...existingMembers,
-      this.buildJoinRequestEntry(record, isAcceptedBooking, pendingReason)
-    ]);
-    const rollbackEventDetailDTO = this.buildActivityEventDetailDTO(record, existingMembers);
-    const nextEventDetailDTO = this.buildActivityEventDetailDTO(record, nextMembers, selection?.paymentSessionId ?? null);
-    this.locallyTrackedMembershipSourceIds.add(record.id);
-    this.emitActivityEventSave(nextEventDetailDTO);
+    const updatesExistingMember = Boolean(existingEntry && existingEntry.status !== 'deleted');
+    const counterDelta = updatesExistingMember ? null : this.eventExploreJoinCounterDelta(isAcceptedBooking);
+    const optimisticExistingMembers = existingEntry?.status === 'deleted'
+      ? existingMembers.filter(member => !(member.userId === activeUserId && member.status === 'deleted'))
+      : existingMembers;
+    const joinRequestEntry = this.buildJoinRequestEntry(record, isAcceptedBooking, pendingReason);
+    const nextMembers = this.sortMembersByActionTimeDesc(updatesExistingMember
+      ? [
+          ...optimisticExistingMembers.filter(member => member.userId !== activeUserId),
+          joinRequestEntry
+        ]
+      : [
+          ...optimisticExistingMembers,
+          joinRequestEntry
+        ]);
 
     try {
-      const requestJoinPromise = this.eventsService.requestJoin(activeUserId, record.id, {
+      const joinResult = await this.eventsService.requestJoin(activeUserId, record.id, {
         slotSourceId: selection?.slotSourceId ?? null,
         optionalSubEventIds: selection?.optionalSubEventIds ?? [],
         assetSelections: selection?.assetSelections ?? [],
         acceptedPolicyIds: selection?.acceptedPolicyIds ?? [],
         paymentSessionId: selection?.paymentSessionId ?? null,
         bookingConfirmed: isAcceptedBooking,
-        pendingReason
+        pendingReason,
+        checkoutState: selection?.checkoutState,
+        basketItems: selection?.basketItems?.length ? selection.basketItems : undefined,
+        pricingSummaryRows: selection?.basketItems?.length ? (selection.pricingSummaryRows ?? []) : undefined,
+        lineItems: selection?.basketItems?.length ? selection.lineItems : undefined,
+        totalAmount: selection?.basketItems?.length ? selection.totalAmount : undefined,
+        currency: selection?.basketItems?.length ? selection.currency : undefined,
+        counterDelta
       });
-      const [joinResult] = await Promise.all([requestJoinPromise, exitPromise]);
-      if (!joinResult || joinResult.membershipStatus === 'unchanged') {
+      if (!joinResult || (joinResult.membershipStatus === 'unchanged' && !checkoutUpdateRequested)) {
         throw new Error(this.eventExploreJoinFailureMessage(record));
       }
-      const authoritativeMembers = this.sortMembersByActionTimeDesc(
-        await this.activityMembersService.queryMembersByOwner(this.eventMembersOwner(record))
-      );
-      const displayMembers = authoritativeMembers.length > 0 ? authoritativeMembers : nextMembers;
-      const nextRecord = this.withEventExploreMemberSummary(record, displayMembers);
-      this.emitActivityEventSave(
+      const persistedMembers = this.activityMembersService.peekMembersByOwner(owner);
+      const displayMembers = this.sortMembersByActionTimeDesc(persistedMembers.length > 0 ? persistedMembers : nextMembers);
+      const nextRecord = this.withEventExploreMemberDelta(record, {
+        acceptedMemberDelta: updatesExistingMember ? 0 : (isAcceptedBooking ? 1 : 0),
+        pendingMemberDelta: updatesExistingMember ? 0 : (isAcceptedBooking ? 0 : 1)
+      }, displayMembers, pendingReason);
+      this.locallyTrackedMembershipSourceIds.add(record.id);
+      this.restoreVisibleEventExploreRecord(nextRecord);
+      this.activitiesStore.emitActivityEventSaveResult(
         this.buildActivityEventDetailDTO(nextRecord, displayMembers, joinResult.paymentSessionId ?? selection?.paymentSessionId ?? null)
       );
+      if (counterDelta) {
+        this.signalEventExploreCounterDelta(activeUserId, counterDelta);
+      }
       if (this.selectedMembersRecord?.id === record.id) {
         this.selectedMembersRecord = nextRecord;
         this.selectedMembers = displayMembers;
       }
       this.cdr.markForCheck();
     } catch (error) {
-      await exitPromise;
       this.locallyTrackedMembershipSourceIds.delete(record.id);
-      this.restoreVisibleEventExploreRecord(this.withEventExploreMemberSummary(record, existingMembers));
-      this.emitActivityEventSave(rollbackEventDetailDTO);
+      this.restoreVisibleEventExploreRecord(record);
       throw error;
     }
+  }
+
+  private eventExploreJoinCounterDelta(accepted: boolean): UserMenuCounterDeltasDto {
+    return accepted
+      ? { events: 1, event: { all: 1, active: 1 } }
+      : { events: 1, event: { all: 1, pending: 1 } };
+  }
+
+  private signalEventExploreCounterDelta(activeUserId: string, delta: UserMenuCounterDeltasDto): void {
+    this.activityStore.patchUserCounterDeltas(
+      activeUserId,
+      delta,
+      null
+    );
   }
 
   private applyVisibleEventExploreMembersSync(sync: ActivityMembersSyncState): boolean {
@@ -1727,26 +2117,28 @@ export class EventExplorePopupComponent {
     if (currentIndex < 0) {
       return false;
     }
-    const activeUserId = this.activeUserId.trim();
     const currentRecord = currentItems[currentIndex];
     if (!currentRecord) {
       return false;
     }
-    if (activeUserId && this.hasTrackedMembership(currentRecord, activeUserId)) {
-      currentItems.splice(currentIndex, 1);
-      this.eventExploreSmartList.replaceVisibleItems(currentItems, {
-        total: Math.max(currentItems.length, this.eventExploreSmartList.cursorState().total - 1)
-      });
+    if (sync.full === true && this.eventExploreFilterHasRooms) {
+      this.removeVisibleEventExploreRecord(currentRecord);
       return true;
     }
+    const acceptedMemberDelta = Number.isFinite(Number(sync.acceptedMemberDelta))
+      ? Math.trunc(Number(sync.acceptedMemberDelta))
+      : Math.max(0, Math.trunc(Number(sync.acceptedMembers) || 0))
+        - Math.max(0, Math.trunc(Number(currentRecord.acceptedMembers) || 0));
+    const pendingMemberDelta = Number.isFinite(Number(sync.pendingMemberDelta))
+      ? Math.trunc(Number(sync.pendingMemberDelta))
+      : Math.max(0, Math.trunc(Number(sync.pendingMembers) || 0))
+        - Math.max(0, Math.trunc(Number(currentRecord.pendingMembers) || 0));
     currentItems[currentIndex] = {
       ...currentRecord,
-      acceptedMembers: Math.max(0, Math.trunc(Number(sync.acceptedMembers) || 0)),
-      pendingMembers: Math.max(0, Math.trunc(Number(sync.pendingMembers) || 0)),
-      capacityTotal: Math.max(
-        Math.max(0, Math.trunc(Number(sync.acceptedMembers) || 0)),
-        Math.trunc(Number(sync.capacityTotal) || 0)
-      )
+      acceptedMembers: Math.max(0, Math.trunc(Number(currentRecord.acceptedMembers) || 0) + acceptedMemberDelta),
+      pendingMembers: Math.max(0, Math.trunc(Number(currentRecord.pendingMembers) || 0) + pendingMemberDelta),
+      capacityTotal: currentRecord.capacityTotal,
+      full: sync.full === true ? true : currentRecord.full
     };
     this.eventExploreSmartList.replaceVisibleItems(currentItems, {
       total: this.eventExploreSmartList.cursorState().total
@@ -1758,30 +2150,47 @@ export class EventExplorePopupComponent {
     if (!this.eventExploreSmartList) {
       return;
     }
-    const currentItems = [...this.eventExploreSmartList.itemsSnapshot()];
-    const nextItems = currentItems.filter(item => item.id !== record.id);
-    if (nextItems.length === currentItems.length) {
-      return;
-    }
-    this.eventExploreSmartList.replaceVisibleItems(nextItems, {
-      total: Math.max(nextItems.length, this.eventExploreSmartList.cursorState().total - 1)
-    });
+    this.eventExploreSmartList.removeVisibleItems(
+      item => item.id === record.id,
+      { totalDelta: -1 }
+    );
   }
 
-  private restoreVisibleEventExploreRecord(record: ActivityEventRecord): void {
+  private restoreVisibleEventExploreRecord(
+    record: ActivityEventRecord,
+    options: { loadedRange?: 'any' | 'before-or-within' } = {}
+  ): void {
     if (!this.isOpen || !this.eventExploreSmartList || !this.shouldShowRestoredEventExploreRecord(record)) {
       return;
     }
     const currentItems = [...this.eventExploreSmartList.itemsSnapshot()];
     const currentIndex = currentItems.findIndex(item => item.id === record.id);
-    const nextItems = currentIndex >= 0
-      ? currentItems.map(item => item.id === record.id ? record : item)
-      : this.sortVisibleEventExploreRecords([...currentItems, record]);
-    this.eventExploreSmartList.replaceVisibleItems(nextItems, {
-      total: currentIndex >= 0
-        ? this.eventExploreSmartList.cursorState().total
-        : this.eventExploreSmartList.cursorState().total + 1
+    if (currentIndex >= 0) {
+      this.eventExploreSmartList.replaceVisibleItems(
+        currentItems.map(item => item.id === record.id ? record : item),
+        { total: this.eventExploreSmartList.cursorState().total }
+      );
+      return;
+    }
+    this.eventExploreSmartList.reinsertVisibleItem(record, {
+      totalDelta: 1,
+      loadedRange: options.loadedRange ?? 'any'
     });
+  }
+
+  private async restorePaidCheckoutEventExploreRecord(sourceId: string): Promise<void> {
+    const activeUserId = this.activeUserId.trim();
+    const normalizedSourceId = sourceId.trim();
+    if (!this.isOpen || !activeUserId || !normalizedSourceId) {
+      return;
+    }
+    const record = this.eventsService.peekKnownRecordById(activeUserId, normalizedSourceId)
+      ?? await this.eventsService.queryKnownRecordById(activeUserId, normalizedSourceId);
+    if (!record || !this.isOpen) {
+      return;
+    }
+    this.restoreVisibleEventExploreRecord(record, { loadedRange: 'before-or-within' });
+    this.cdr.markForCheck();
   }
 
   private restoreVisibleEventExploreRecordsById(sourceIds: readonly string[]): void {
@@ -1798,10 +2207,6 @@ export class EventExplorePopupComponent {
   }
 
   private shouldShowRestoredEventExploreRecord(record: ActivityEventRecord): boolean {
-    const activeUserId = this.activeUserId.trim();
-    if (activeUserId && this.hasTrackedMembership(record, activeUserId)) {
-      return false;
-    }
     if (this.eventExploreFilterFriendsOnly) {
       return false;
     }
@@ -1825,6 +2230,24 @@ export class EventExplorePopupComponent {
     });
   }
 
+  private eventExploreRecordLocalSortKey(record: ActivityEventRecord): SmartListLocalSortKey {
+    const startAt = AppUtils.toSortableDate(record.startAtIso);
+    const fallback = [record.title, record.id];
+    switch (this.eventExploreOrder) {
+      case 'nearby':
+        return [Number(record.distanceKm) || 0, startAt, ...fallback];
+      case 'top-rated':
+        return [-(Number(record.rating) || 0), startAt, ...fallback];
+      case 'most-relevant':
+        return [-(Number(record.affinity) || 0), startAt, ...fallback];
+      case 'past-events':
+        return [-startAt, ...fallback];
+      case 'upcoming':
+      default:
+        return [startAt, ...fallback];
+    }
+  }
+
   private compareEventExploreRecords(left: ActivityEventRecord, right: ActivityEventRecord): number {
     switch (this.eventExploreOrder) {
       case 'nearby':
@@ -1842,21 +2265,7 @@ export class EventExplorePopupComponent {
   }
 
   private pruneVisibleTrackedEventExploreRecords(): void {
-    if (!this.eventExploreSmartList) {
-      return;
-    }
-    const activeUserId = this.activeUserId.trim();
-    if (!activeUserId) {
-      return;
-    }
-    const currentItems = [...this.eventExploreSmartList.itemsSnapshot()];
-    const nextItems = currentItems.filter(item => !this.hasTrackedMembership(item, activeUserId));
-    if (nextItems.length === currentItems.length) {
-      return;
-    }
-    this.eventExploreSmartList.replaceVisibleItems(nextItems, {
-      total: Math.max(nextItems.length, this.eventExploreSmartList.cursorState().total - (currentItems.length - nextItems.length))
-    });
+    // Event Explore keeps visible cards in place during checkout/member transitions.
   }
 
   private isEventExploreRecordLeaving(record: ActivityEventRecord): boolean {
@@ -1972,7 +2381,7 @@ export class EventExplorePopupComponent {
     return {
       ...entry,
       role: 'Member',
-      requestKind: accepted ? null : (pendingReason === 'waitlist' ? 'waitlist' : 'join'),
+      requestKind: accepted ? null : (pendingReason === 'waitlist' ? 'waitlist' : pendingReason === 'approval' ? 'approval' : 'join'),
       statusText: accepted
         ? 'Joined event.'
         : pendingReason === 'waitlist'
@@ -2013,11 +2422,7 @@ export class EventExplorePopupComponent {
   }
 
   private isEventExploreRecordFull(record: ActivityEventRecord | null): boolean {
-    const capacityTotal = Math.max(0, Math.trunc(Number(record?.capacityTotal) || 0));
-    if (capacityTotal <= 0) {
-      return false;
-    }
-    return Math.max(0, Math.trunc(Number(record?.acceptedMembers) || 0)) >= capacityTotal;
+    return record?.full === true;
   }
 
   private isEventExploreSlotFull(slot: ContractTypes.EventSlotOccurrenceDTO): boolean {
@@ -2052,11 +2457,15 @@ export class EventExplorePopupComponent {
       acceptedMembers: summary.acceptedMembers,
       pendingMembers: summary.pendingMembers,
       capacityTotal: summary.capacityTotal,
+      acceptedMemberUserIds: [...summary.acceptedMemberUserIds],
+      pendingMemberUserIds: [...summary.pendingMemberUserIds],
+      pendingRequestMemberUserIds: this.pendingRequestMemberUserIdsFromMembers(members),
       capacityMin: record.capacityMin,
       capacityMax: record.capacityMax,
       autoInviter: record.autoInviter,
       frequency: record.frequency,
       ticketing: record.ticketing,
+      approvalRequired: record.approvalRequired === true,
       visibility: record.visibility,
       blindMode: record.blindMode,
       status: record.status ?? 'A',
@@ -2068,6 +2477,7 @@ export class EventExplorePopupComponent {
       location: record.location,
       locationCoordinates: record.locationCoordinates ?? null,
       sourceLink: record.sourceLink,
+      pendingReason: this.eventExplorePendingReasonFromMembers(members),
       topics: [...record.topics],
       subEvents: Array.isArray(record.subEvents)
         ? record.subEvents.map(item => ({ ...item }))
@@ -2090,10 +2500,63 @@ export class EventExplorePopupComponent {
       ...record,
       acceptedMembers: summary.acceptedMembers,
       pendingMembers: summary.pendingMembers,
-      capacityTotal: summary.capacityTotal,
+      capacityTotal: record.capacityTotal,
       acceptedMemberUserIds: [...summary.acceptedMemberUserIds],
-      pendingMemberUserIds: [...summary.pendingMemberUserIds]
+      pendingMemberUserIds: [...summary.pendingMemberUserIds],
+      pendingRequestMemberUserIds: this.pendingRequestMemberUserIdsFromMembers(members),
+      pendingReason: this.eventExplorePendingReasonFromMembers(members)
     };
+  }
+
+  private withEventExploreMemberDelta(
+    record: ActivityEventRecord,
+    memberDelta: { acceptedMemberDelta?: number; pendingMemberDelta?: number },
+    members: readonly ActivityContracts.ActivityMemberDTO[] = [],
+    pendingReason: ActivityPendingReason = null
+  ): ActivityEventRecord {
+    const acceptedMemberDelta = Math.trunc(Number(memberDelta.acceptedMemberDelta) || 0);
+    const pendingMemberDelta = Math.trunc(Number(memberDelta.pendingMemberDelta) || 0);
+    const hasMembers = members.length > 0;
+    return {
+      ...record,
+      acceptedMembers: Math.max(0, Math.trunc(Number(record.acceptedMembers) || 0) + acceptedMemberDelta),
+      pendingMembers: Math.max(0, Math.trunc(Number(record.pendingMembers) || 0) + pendingMemberDelta),
+      capacityTotal: record.capacityTotal,
+      ...(hasMembers ? {
+        acceptedMemberUserIds: members
+          .filter(member => member.status === 'accepted')
+          .map(member => member.userId.trim())
+          .filter(userId => userId.length > 0),
+        pendingMemberUserIds: members
+          .filter(member => member.status === 'pending')
+          .map(member => member.userId.trim())
+          .filter(userId => userId.length > 0),
+        pendingRequestMemberUserIds: this.pendingRequestMemberUserIdsFromMembers(members)
+      } : {}),
+      pendingReason: pendingReason ?? (hasMembers ? this.eventExplorePendingReasonFromMembers(members) : null)
+    };
+  }
+
+  private eventExplorePendingReasonFromMembers(
+    members: readonly ActivityContracts.ActivityMemberDTO[]
+  ): ActivityPendingReason {
+    if (members.some(member => member.status === 'pending' && member.requestKind === 'waitlist')) {
+      return 'waitlist';
+    }
+    if (members.some(member => member.status === 'pending' && member.requestKind === 'approval')) {
+      return 'approval';
+    }
+    return null;
+  }
+
+  private pendingRequestMemberUserIdsFromMembers(
+    members: readonly ActivityContracts.ActivityMemberDTO[]
+  ): string[] {
+    return Array.from(new Set(members
+      .filter(member => member.status === 'pending')
+      .filter(member => member.requestKind !== 'invite' && member.requestKind !== 'waitlist-invite')
+      .map(member => member.userId.trim())
+      .filter(userId => userId.length > 0)));
   }
 
   private sortMembersByActionTimeDesc(entries: readonly ActivityContracts.ActivityMemberDTO[]): ActivityContracts.ActivityMemberDTO[] {

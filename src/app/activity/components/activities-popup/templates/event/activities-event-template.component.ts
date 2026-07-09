@@ -40,6 +40,7 @@ import {
 import type * as AppConstants from '../../../../../shared/core/common/constants';
 import type { MemberMenuStore } from '../../../../../shared/ui/context/stores/member-menu.store';
 import type { EventSubeventsPopupStore } from '../../../../../shared/ui/context/stores/event-subevents-popup.store';
+import type { EventCheckoutDraft } from '../../../../../shared/ui/context/stores/event-checkout-draft.store';
 
 
 @Component({
@@ -95,12 +96,13 @@ export class ActivitiesEventTemplateComponent implements OnChanges {
 type ActivityInfoCardActionId =
   | 'accept'
   | 'askOrganizer'
-  | 'contactOrganizer'
+  | 'continueBooking'
   | 'deleteEvent'
   | 'editEvent'
   | 'leaveEvent'
   | 'manageEvent'
   | 'notifyParticipants'
+  | 'paymentSummary'
   | 'publish'
   | 'rejectInvitation'
   | 'reportOrganizer'
@@ -140,6 +142,7 @@ export class ActivitiesEventsController {
   private get eventCheckoutDraftStore() { return this.host.eventCheckoutDraftStore; }
   private get eventCheckoutDialogStore() { return this.host.eventCheckoutDialogStore; }
   private get eventsService() { return this.host.eventsService; }
+  private get activitiesStore() { return this.host.activitiesStore; }
   private get usersService() { return this.host.usersService; }
   private get hostingPublicationFilter() { return this.host.hostingPublicationFilter as ContractTypes.HostingPublicationFilter; }
   private get pendingActivityMemberDelete() { return this.host.pendingActivityMemberDelete as ActivityContracts.ActivityMemberDTO | null; }
@@ -388,7 +391,7 @@ export class ActivitiesEventsController {
     if (this.isActivityInvitationRow(row)) {
       return 'Ask Organizer';
     }
-    return 'Contact Organizer';
+    return 'Ask Organizer';
   }
 
   private isActivityInvitationRow(row: InfoCardData): boolean {
@@ -414,9 +417,14 @@ export class ActivitiesEventsController {
       case 'view':
         this.runActivityItemViewAction(row);
         break;
+      case 'continueBooking':
+        this.runActivityItemCheckoutAction(row, false);
+        break;
+      case 'paymentSummary':
+        this.runActivityItemCheckoutAction(row, true);
+        break;
       case 'notifyParticipants':
       case 'askOrganizer':
-      case 'contactOrganizer':
         this.runActivityItemServiceChatAction(row, action.card);
         break;
       case 'shareEvent':
@@ -464,6 +472,222 @@ export class ActivitiesEventsController {
     return ActivityEventInfoCardMenuConverter.canEditEvent(this.activityEventMenuSubjectFromRow(row), {
       activeUserId: this.activeUser.id
     });
+  }
+
+  public runActivityItemCheckoutAction(row: InfoCardData, readOnlySummary: boolean, event?: Event): void {
+    event?.stopPropagation();
+    void this.openActivityCheckout(row, readOnlySummary);
+  }
+
+  private async openActivityCheckout(row: InfoCardData, readOnlySummary: boolean): Promise<void> {
+    const activeUserId = this.activeUserId();
+    if (!activeUserId) {
+      return;
+    }
+    const relatedSource = this.activityDisplaySourceForRow(row);
+    const draft = this.eventCheckoutDraftStore.read(activeUserId, row.id);
+    const loadingDialog = this.eventCheckoutDialogStore.open({
+      mode: 'join',
+      userId: activeUserId,
+      record: this.buildActivityCheckoutLoadingRecord(row, activeUserId, relatedSource),
+      loading: true,
+      readOnlySummary,
+      title: readOnlySummary ? 'Fizetési összegzés' : 'Foglalás folytatása',
+      confirmLabel: 'Join',
+      busyConfirmLabel: 'Joining...',
+      failureMessage: readOnlySummary ? 'Unable to open payment summary.' : 'Unable to continue booking.',
+      onSubmit: (selection: ActivityContracts.EventCheckoutSelection) => this.submitActivityCheckoutContinuation(row, selection)
+    });
+    const loadingDialogId = loadingDialog?.id ?? null;
+    const record = await this.eventsService.queryKnownRecordById(activeUserId, row.id);
+    if (!this.eventCheckoutDialogStore.isCurrent(loadingDialogId)) {
+      return;
+    }
+    if (!record) {
+      this.eventCheckoutDialogStore.close();
+      this.dialogStore.openInfo('This checkout can no longer be restored.', {
+        title: 'Basket unavailable',
+        confirmTone: 'neutral'
+      });
+      this.cdr.markForCheck();
+      return;
+    }
+
+    const currentDraft = this.eventCheckoutDraftStore.read(activeUserId, row.id) ?? draft;
+    const approvalGranted = readOnlySummary || this.activityCheckoutApprovalGranted(record, currentDraft, row);
+    const pendingReason = readOnlySummary || approvalGranted
+      ? null
+      : this.activityCheckoutPendingReason(currentDraft, record);
+    this.eventCheckoutDialogStore.open({
+      mode: 'join',
+      userId: activeUserId,
+      record,
+      readOnlySummary,
+      requiresApprovalBeforePayment: this.activityCheckoutRequiresApprovalBeforePayment(record, currentDraft),
+      approvalGranted,
+      pendingReason,
+      title: readOnlySummary ? 'Fizetési összegzés' : 'Foglalás folytatása',
+      subtitle: record.timeframe,
+      confirmLabel: 'Join',
+      busyConfirmLabel: 'Joining...',
+      failureMessage: readOnlySummary ? 'Unable to open payment summary.' : 'Unable to continue booking.',
+      onSubmit: (selection: ActivityContracts.EventCheckoutSelection) => this.submitActivityCheckoutContinuation(row, selection)
+    });
+  }
+
+  private buildActivityCheckoutLoadingRecord(
+    row: InfoCardData,
+    activeUserId: string,
+    source: ActivityEventRecordLike
+  ): ActivityContracts.ActivityEventRecord {
+    return {
+      ...this.buildInvitationCheckoutLoadingRecord(row, activeUserId, source),
+      type: this.activityEventListTypeForRow(row)
+    };
+  }
+
+  private activityCheckoutPendingReason(
+    draft: EventCheckoutDraft | null | undefined,
+    record: ActivityContracts.ActivityEventRecord | null | undefined
+  ): AppConstants.ActivityPendingReason {
+    if (draft?.pendingReason === 'waitlist' || draft?.checkoutState === 'waiting') {
+      return 'waitlist';
+    }
+    if (draft?.pendingReason === 'approval' || draft?.checkoutState === 'approval-pending') {
+      return 'approval';
+    }
+    if (record?.pendingReason === 'waitlist' || record?.pendingReason === 'approval') {
+      return record.pendingReason;
+    }
+    return null;
+  }
+
+  private activityCheckoutRequiresApprovalBeforePayment(
+    record: ActivityContracts.ActivityEventRecord | null,
+    draft: EventCheckoutDraft | null = null
+  ): boolean {
+    return record?.approvalRequired === true || draft?.pendingReason === 'approval';
+  }
+
+  private activityCheckoutApprovalGranted(
+    record: ActivityContracts.ActivityEventRecord,
+    draft: EventCheckoutDraft | null,
+    row: InfoCardData
+  ): boolean {
+    const activeUserId = this.activeUserId();
+    return (
+      record.acceptedMemberUserIds ?? []
+    ).includes(activeUserId)
+      || this.activityCheckoutMemberStatus(row.id) === 'accepted'
+      || draft?.checkoutState === 'approved'
+      || draft?.checkoutState === 'confirmed'
+      || draft?.checkoutState === 'pay';
+  }
+
+  private activityCheckoutMemberStatus(sourceId: string): 'accepted' | 'pending' | 'none' {
+    const activeUserId = this.activeUserId();
+    const ownerId = sourceId.trim();
+    if (!activeUserId || !ownerId) {
+      return 'none';
+    }
+    const members = this.activityMembersService.peekMembersByOwner({
+      ownerType: 'event',
+      ownerId
+    });
+    const member = members.find((item: ActivityContracts.ActivityMemberDTO) => item.userId === activeUserId);
+    if (member?.status === 'accepted') {
+      return 'accepted';
+    }
+    if (member?.status === 'pending') {
+      return 'pending';
+    }
+    return 'none';
+  }
+
+  private async submitActivityCheckoutContinuation(
+    row: InfoCardData,
+    selection: ActivityContracts.EventCheckoutSelection
+  ): Promise<void> {
+    const activeUserId = this.activeUserId();
+    if (!activeUserId) {
+      throw new Error('Unable to resolve active user.');
+    }
+    const joinResult = await this.eventsService.requestJoin(activeUserId, row.id, {
+      slotSourceId: selection?.slotSourceId ?? null,
+      optionalSubEventIds: selection?.optionalSubEventIds ?? [],
+      assetSelections: selection?.assetSelections ?? [],
+      acceptedPolicyIds: selection?.acceptedPolicyIds ?? [],
+      paymentSessionId: selection?.paymentSessionId ?? null,
+      bookingConfirmed: selection?.bookingConfirmed !== false,
+      pendingReason: selection?.pendingReason ?? null,
+      checkoutState: selection?.checkoutState,
+      basketItems: selection?.basketItems?.length ? selection.basketItems : undefined,
+      pricingSummaryRows: selection?.basketItems?.length ? (selection.pricingSummaryRows ?? []) : undefined,
+      lineItems: selection?.basketItems?.length ? selection.lineItems : undefined,
+      totalAmount: selection?.basketItems?.length ? selection.totalAmount : undefined,
+      currency: selection?.basketItems?.length ? selection.currency : undefined,
+      skipLocalRouteDelay: Boolean(selection?.paymentSessionId)
+    });
+    if (!joinResult || joinResult.membershipStatus === 'unchanged') {
+      throw new Error('Unable to continue booking.');
+    }
+    this.emitAcceptedCheckoutActivityEventSync(row, activeUserId, joinResult);
+  }
+
+  private emitAcceptedCheckoutActivityEventSync(
+    row: InfoCardData,
+    activeUserId: string,
+    result: ActivityContracts.EventParticipationActionResultDTO
+  ): void {
+    if (result.membershipStatus !== 'accepted') {
+      return;
+    }
+    const dto = this.activityEventDTOForRow(row);
+    if (!dto) {
+      return;
+    }
+    const acceptedMemberUserIds = this.uniqueUserIds([
+      ...(dto.acceptedMemberUserIds ?? []),
+      activeUserId
+    ]);
+    const pendingMemberUserIds = this.uniqueUserIds(dto.pendingMemberUserIds ?? [])
+      .filter(userId => userId !== activeUserId);
+    const invitedMemberUserIds = this.uniqueUserIds(dto.invitedMemberUserIds ?? [])
+      .filter(userId => userId !== activeUserId);
+    const pendingRequestMemberUserIds = this.uniqueUserIds(dto.pendingRequestMemberUserIds ?? [])
+      .filter(userId => userId !== activeUserId);
+    const acceptedMembers = Math.max(
+      this.nonNegativeInteger(result.acceptedMembers),
+      acceptedMemberUserIds.length
+    );
+    const pendingMembers = Math.max(
+      this.nonNegativeInteger(result.pendingMembers),
+      pendingMemberUserIds.length,
+      pendingRequestMemberUserIds.length
+    );
+    const capacityTotal = Math.max(
+      acceptedMembers,
+      this.nonNegativeInteger(result.capacityTotal),
+      this.nonNegativeInteger(dto.capacityTotal)
+    );
+    this.activitiesStore.emitActivityEventSync({
+      ...dto,
+      status: dto.status ?? 'A',
+      acceptedMembers,
+      pendingMembers,
+      capacityTotal,
+      full: result.full === true || (capacityTotal > 0 && acceptedMembers >= capacityTotal),
+      acceptedMemberUserIds,
+      pendingMemberUserIds,
+      invitedMemberUserIds,
+      pendingRequestMemberUserIds,
+      pendingReason: null,
+      checkoutResultState: 'succeeded'
+    });
+  }
+
+  private nonNegativeInteger(value: unknown): number {
+    return Math.max(0, Math.trunc(Number(value) || 0));
   }
 
   private activityEventMenuSubjectFromRow(row: InfoCardData): ActivityEventInfoCardMenuSubject {
@@ -782,6 +1006,7 @@ export class ActivitiesEventsController {
       autoInviter: source?.autoInviter === true,
       frequency: source?.frequency ?? 'One-time',
       ticketing: source?.ticketing === true,
+      approvalRequired: source?.approvalRequired === true,
       pricing: source?.pricing ?? null,
       policiesEnabled: source?.policiesEnabled === true,
       policies: Array.isArray(source?.policies) ? source.policies.map((item: ContractTypes.EventPolicyDTO) => ({ ...item })) : [],
@@ -1187,9 +1412,11 @@ export class ActivitiesEventsController {
     if (!activeUserId) {
       return;
     }
-    this.eventCheckoutDraftStore.clear(activeUserId, row.id);
     const counterDelta = this.leftEventCounterDelta(row);
     const leaveResult = await this.eventsService.leaveEvent(activeUserId, row.id, {
+      removeMembershipOnly: true,
+      checkoutState: 'cancelled',
+      checkoutResultState: 'deleted',
       counterDelta
     });
     if (!leaveResult || leaveResult.membershipStatus === 'unchanged') {
@@ -1205,7 +1432,29 @@ export class ActivitiesEventsController {
 
     this.activitiesSmartList?.removeVisibleItemByIdentity(this.activityRowIdentity(row));
     this.signalActivityCounterDelta(activeUserId, counterDelta);
+    this.emitActivityLeaveMembersSync(row, leaveResult);
+    this.activitiesStore.clearActivityEventSave();
+    this.eventCheckoutDraftStore.clear(activeUserId, row.id);
     this.cdr.markForCheck();
+  }
+
+  private emitActivityLeaveMembersSync(
+    row: InfoCardData,
+    result: ActivityContracts.EventParticipationActionResultDTO | null
+  ): void {
+    const sourceId = `${result?.sourceId ?? row.id ?? ''}`.trim();
+    if (!sourceId || !result) {
+      return;
+    }
+    const acceptedMembers = Math.max(0, Math.trunc(Number(result.acceptedMembers) || 0));
+    const pendingMembers = Math.max(0, Math.trunc(Number(result.pendingMembers) || 0));
+    this.activityStore.emitActivityMembersSync({
+      id: sourceId,
+      acceptedMembers,
+      pendingMembers,
+      capacityTotal: Math.max(acceptedMembers, Math.trunc(Number(result.capacityTotal) || 0)),
+      viewerMembershipRemoved: true
+    });
   }
 
   private shouldUseCheckoutFlow(record: {
@@ -1245,12 +1494,19 @@ export class ActivitiesEventsController {
       paymentSessionId: selection?.paymentSessionId ?? null,
       bookingConfirmed: pendingReason == null && selection?.bookingConfirmed !== false,
       pendingReason,
+      checkoutState: selection?.checkoutState,
+      basketItems: selection?.basketItems?.length ? selection.basketItems : undefined,
+      pricingSummaryRows: selection?.basketItems?.length ? (selection.pricingSummaryRows ?? []) : undefined,
+      lineItems: selection?.basketItems?.length ? selection.lineItems : undefined,
+      totalAmount: selection?.basketItems?.length ? selection.totalAmount : undefined,
+      currency: selection?.basketItems?.length ? selection.currency : undefined,
       skipLocalRouteDelay: Boolean(selection?.paymentSessionId),
       counterDelta
     });
     if (!joinResult || joinResult.membershipStatus === 'unchanged') {
       throw new Error('Unable to accept invitation.');
     }
+    this.emitAcceptedCheckoutActivityEventSync(row, activeUserId, joinResult);
     const resolvedDelta = this.acceptedInvitationCounterDeltaFromResult(joinResult) ?? counterDelta;
     this.removeInvitationItem(eventDetailDTO.id);
     this.activitiesSmartList?.removeVisibleItemByIdentity(this.activityRowIdentity(row));
@@ -1393,6 +1649,7 @@ export class ActivitiesEventsController {
         autoInviter: record?.autoInviter ?? relatedSource.autoInviter,
         frequency: record?.frequency ?? relatedSource.frequency,
         ticketing: record?.ticketing ?? relatedSource.ticketing,
+        approvalRequired: record?.approvalRequired ?? relatedSource.approvalRequired,
         pricing: record?.pricing ?? relatedSource.pricing,
         policiesEnabled: record?.policiesEnabled ?? relatedSource.policiesEnabled ?? false,
         policies: Array.isArray(record?.policies)

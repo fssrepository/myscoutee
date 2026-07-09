@@ -1,0 +1,118 @@
+:host {
+  display: contents;
+}
+
+.event-checkout-slot-picker {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  gap: 0.85rem;
+  min-height: 0;
+  height: 100%;
+  padding: 0.85rem;
+  box-sizing: border-box;
+}
+
+:host ::ng-deep .ui-popup__toolbar .ui-popup__date-input .date-input__toggle {
+  display: none;
+}
+
+.event-checkout-slot-picker__error {
+  flex: 0 0 auto;
+  margin: 0;
+  padding: 0.58rem 0.72rem;
+  border: 1px solid rgba(185, 67, 79, 0.28);
+  border-radius: 8px;
+  color: #8b2935;
+  background: #fff6f7;
+  font-size: 0.82rem;
+  line-height: 1.35;
+  font-weight: 800;
+}
+
+.event-checkout-slot-picker__viewport {
+  position: relative;
+  flex: 1 1 auto;
+  display: flex;
+  min-height: 0;
+  min-width: 0;
+}
+
+.event-checkout-slot-picker__slots,
+.event-checkout-slot-picker__month-list {
+  flex: 1 1 auto;
+  min-height: 0;
+  min-width: 0;
+}
+
+.event-checkout-slot-picker__month-overlay {
+  position: absolute;
+  z-index: 40;
+  inset: 0;
+  display: flex;
+  min-width: 0;
+  min-height: 0;
+  background: #ffffff;
+  isolation: isolate;
+  overflow: hidden;
+}
+
+.event-checkout-slot-picker.is-month-view .event-checkout-slot-picker__slots {
+  visibility: hidden;
+  pointer-events: none;
+}
+
+:host ::ng-deep .event-checkout-slot-picker__month-list .smart-list__surface,
+:host ::ng-deep .event-checkout-slot-picker__month-list .smart-list__stage,
+:host ::ng-deep .event-checkout-slot-picker__month-list .smart-list__page-shell,
+:host ::ng-deep .event-checkout-slot-picker__month-list .smart-list--page,
+:host ::ng-deep .event-checkout-slot-picker__month-list .calendar-card__pages {
+  background: #ffffff;
+}
+
+:host ::ng-deep .event-checkout-slot-picker__slots .smart-list__surface,
+:host ::ng-deep .event-checkout-slot-picker__slots .smart-list__stage,
+:host ::ng-deep .event-checkout-slot-picker__slots .smart-list__stage-list-shell,
+:host ::ng-deep .event-checkout-slot-picker__slots .smart-list,
+:host ::ng-deep .event-checkout-slot-picker__month-list .smart-list__surface,
+:host ::ng-deep .event-checkout-slot-picker__month-list .smart-list__stage,
+:host ::ng-deep .event-checkout-slot-picker__month-list .smart-list__stage-list-shell,
+:host ::ng-deep .event-checkout-slot-picker__month-list .smart-list__page-shell,
+:host ::ng-deep .event-checkout-slot-picker__month-list .calendar-card__pages {
+  height: 100%;
+  min-height: 0;
+}
+
+:host ::ng-deep .event-checkout-slot-picker-list {
+  gap: 0.66rem;
+  padding: 0.1rem 0 0.5rem;
+}
+
+.event-checkout-slot-picker__slot-card {
+  position: relative;
+  min-width: 0;
+  height: 100%;
+}
+
+.event-checkout-slot-picker__text-card {
+  display: block;
+  height: 100%;
+}
+
+:host ::ng-deep .event-checkout-slot-picker__text-card.has-slot-badge-space .ui-text-card {
+  min-height: 128px;
+  padding-top: 2.45rem;
+}
+
+.event-checkout-slot-picker__pricing-summary {
+  display: block;
+  padding: 0.78rem;
+  min-width: min(460px, calc(100vw - 2.4rem));
+  box-sizing: border-box;
+}
+
+@media (max-width: 720px) {
+  .event-checkout-slot-picker {
+    padding: 0.7rem;
+  }
+}

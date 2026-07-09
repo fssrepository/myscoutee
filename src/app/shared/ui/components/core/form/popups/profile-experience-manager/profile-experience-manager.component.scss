@@ -253,6 +253,16 @@
   justify-content: flex-end;
 }
 
+.experience-form-flow {
+  display: block;
+  width: 100%;
+  height: min(620px, calc(100vh - 6.5rem));
+  height: min(620px, calc(100dvh - 6.5rem));
+  min-height: 420px;
+  --form-flow-control-min-height: 40px;
+  --form-flow-control-padding: 8px 12px;
+}
+
 .image-file-input-hidden {
   display: none;
 }

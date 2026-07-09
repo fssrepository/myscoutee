@@ -10,28 +10,28 @@ import { TextCardComponent, type TextCardTone } from '../../../smart-list/card';
 import { FormFlowComponent, type FormFlowControlModel, type FormFlowModel } from '../../flow';
 import type * as ContractTypes from '../../../../../../core/contracts';
 
-export type EventSlotsInputConfigValue<TValue> = TValue | (() => TValue);
-export type EventSlotsInputEditorMode = 'base' | 'date';
+export type SlotsInputConfigValue<TValue> = TValue | (() => TValue);
+export type SlotsInputEditorMode = 'base' | 'date';
 
-export interface EventSlotsInputConfig {
-  enabled?: EventSlotsInputConfigValue<boolean | null | undefined>;
+export interface SlotsInputConfig {
+  enabled?: SlotsInputConfigValue<boolean | null | undefined>;
   enabledChange?: (enabled: boolean) => void;
-  startAtIso?: EventSlotsInputConfigValue<string | null | undefined>;
-  endAtIso?: EventSlotsInputConfigValue<string | null | undefined>;
-  frequency?: EventSlotsInputConfigValue<string | null | undefined>;
-  frequencyOptions?: EventSlotsInputConfigValue<readonly string[] | null | undefined>;
+  startAtIso?: SlotsInputConfigValue<string | null | undefined>;
+  endAtIso?: SlotsInputConfigValue<string | null | undefined>;
+  frequency?: SlotsInputConfigValue<string | null | undefined>;
+  frequencyOptions?: SlotsInputConfigValue<readonly string[] | null | undefined>;
   frequencyChange?: (frequency: string) => void;
-  generated?: EventSlotsInputConfigValue<boolean | null | undefined>;
-  title?: EventSlotsInputConfigValue<string>;
-  subtitle?: EventSlotsInputConfigValue<string>;
+  generated?: SlotsInputConfigValue<boolean | null | undefined>;
+  title?: SlotsInputConfigValue<string>;
+  subtitle?: SlotsInputConfigValue<string>;
 }
 
-export interface EventSlotOverrideRequest {
+export interface SlotOverrideRequest {
   slot: ContractTypes.EventSlotTemplateDTO;
   slotIndex: number;
 }
 
-interface ResolvedEventSlotsInputConfig {
+interface ResolvedSlotsInputConfig {
   startAtIso: string;
   endAtIso: string;
   frequency: string;
@@ -52,7 +52,7 @@ interface EventSlotScheduleFormValue {
 }
 
 @Component({
-  selector: 'app-event-slots-input',
+  selector: 'app-slots-input',
   standalone: true,
   imports: [
     CommonModule,
@@ -62,27 +62,27 @@ interface EventSlotScheduleFormValue {
     TextCardComponent,
     FormFlowComponent
   ],
-  templateUrl: './event-slots-input.component.html',
-  styleUrl: './event-slots-input.component.scss',
+  templateUrl: './slots-input.component.html',
+  styleUrl: './slots-input.component.scss',
   changeDetection: ChangeDetectionStrategy.OnPush,
   providers: [
     {
       provide: NG_VALUE_ACCESSOR,
-      useExisting: forwardRef(() => EventSlotsInputComponent),
+      useExisting: forwardRef(() => SlotsInputComponent),
       multi: true
     }
   ]
 })
-export class EventSlotsInputComponent implements OnChanges, DoCheck, ControlValueAccessor {
-  @Input() config: EventSlotsInputConfig = {};
+export class SlotsInputComponent implements OnChanges, DoCheck, ControlValueAccessor {
+  @Input() config: SlotsInputConfig = {};
   @Input() readOnly = false;
   @Input() disabled = false;
-  @Output() readonly overrideSelect = new EventEmitter<EventSlotOverrideRequest>();
+  @Output() readonly overrideSelect = new EventEmitter<SlotOverrideRequest>();
 
   protected slotTemplates: ContractTypes.EventSlotTemplateDTO[] = [];
   protected showSchedulePopup = false;
   protected schedulePopupMode: 'create' | 'edit' = 'create';
-  protected resolvedConfig: ResolvedEventSlotsInputConfig = this.resolveConfig();
+  protected resolvedConfig: ResolvedSlotsInputConfig = this.resolveConfig();
   protected scheduleFlowValue: EventSlotScheduleFormValue = this.createScheduleFlowValue();
 
   private resolvedConfigSignature = this.buildResolvedConfigSignature(this.resolvedConfig);
@@ -132,7 +132,7 @@ export class EventSlotsInputComponent implements OnChanges, DoCheck, ControlValu
   }
 
   protected shouldShowPanel(): boolean {
-    return true;
+    return this.canUpdateSlotsConfig() || this.slotsEnabled();
   }
 
   protected canUpdateSlotsConfig(): boolean {
@@ -544,7 +544,7 @@ export class EventSlotsInputComponent implements OnChanges, DoCheck, ControlValu
     this.cdr.markForCheck();
   }
 
-  private resolveConfig(): ResolvedEventSlotsInputConfig {
+  private resolveConfig(): ResolvedSlotsInputConfig {
     const frequency = ActivityEventDetailDTO.normalizeFrequency(this.resolveConfigValue(this.config.frequency, 'One-time'));
     const frequencyOptions = this.resolveFrequencyOptions(this.resolveConfigValue(this.config.frequencyOptions, null));
     const configuredEnabled = this.resolveConfigValue(this.config.enabled, null);
@@ -561,7 +561,7 @@ export class EventSlotsInputComponent implements OnChanges, DoCheck, ControlValu
   }
 
   private resolveConfigValue<TValue>(
-    value: EventSlotsInputConfigValue<TValue> | null | undefined,
+    value: SlotsInputConfigValue<TValue> | null | undefined,
     fallback: TValue
   ): TValue {
     if (typeof value === 'function') {
@@ -576,7 +576,7 @@ export class EventSlotsInputComponent implements OnChanges, DoCheck, ControlValu
     return Array.from(new Set(options));
   }
 
-  private buildResolvedConfigSignature(config: ResolvedEventSlotsInputConfig): string {
+  private buildResolvedConfigSignature(config: ResolvedSlotsInputConfig): string {
     return JSON.stringify(config);
   }
 

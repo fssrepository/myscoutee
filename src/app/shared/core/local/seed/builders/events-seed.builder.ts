@@ -72,26 +72,28 @@ function buildCheckoutDemoPricing(
   return pricing;
 }
 
+function buildCheckoutDemoSubEventPricing(
+  basePrice: number,
+  enabled: boolean,
+  chargeType: ContractTypes.PricingConfig['chargeType'] = 'per_attendee'
+): ContractTypes.PricingConfig {
+  const pricing = SeedPricingBuilder.createDefaultPricingConfig('subevent');
+  pricing.enabled = enabled;
+  pricing.basePrice = enabled ? basePrice : 0;
+  pricing.currency = 'USD';
+  pricing.chargeType = chargeType;
+  pricing.minPrice = enabled ? Math.max(0, basePrice - 4) : 0;
+  pricing.maxPrice = enabled ? basePrice + 8 : 0;
+  return pricing;
+}
+
 function buildCheckoutDemoSubEventDefinitions(options: {
   sourceId: string;
   includePaidOptional: boolean;
 }): ContractTypes.SubEventDefinitionDTO[] {
   const includedPricing = SeedPricingBuilder.createDefaultPricingConfig('subevent');
-  const paidAddOnPricing = SeedPricingBuilder.createDefaultPricingConfig('subevent');
-  paidAddOnPricing.enabled = options.includePaidOptional;
-  paidAddOnPricing.basePrice = options.includePaidOptional ? 16 : 0;
-  paidAddOnPricing.currency = 'USD';
-  paidAddOnPricing.chargeType = 'per_booking';
-  paidAddOnPricing.minPrice = options.includePaidOptional ? 12 : 0;
-  paidAddOnPricing.maxPrice = options.includePaidOptional ? 24 : 0;
-
-  const transportPricing = SeedPricingBuilder.createDefaultPricingConfig('subevent');
-  transportPricing.enabled = options.includePaidOptional;
-  transportPricing.basePrice = options.includePaidOptional ? 8 : 0;
-  transportPricing.currency = 'USD';
-  transportPricing.chargeType = 'per_attendee';
-  transportPricing.minPrice = options.includePaidOptional ? 6 : 0;
-  transportPricing.maxPrice = options.includePaidOptional ? 12 : 0;
+  const paidAddOnPricing = buildCheckoutDemoSubEventPricing(16, options.includePaidOptional, 'per_booking');
+  const transportPricing = buildCheckoutDemoSubEventPricing(8, options.includePaidOptional);
 
   return [
     {
@@ -131,6 +133,38 @@ function buildCheckoutDemoSubEventDefinitions(options: {
       capacityMin: 0,
       capacityMax: 12,
       pricing: transportPricing
+    }
+  ];
+}
+
+function buildSunsetBeachVolleySubEventDefinitions(): ContractTypes.SubEventDefinitionDTO[] {
+  const includedPricing = SeedPricingBuilder.createDefaultPricingConfig('subevent');
+  return [
+    {
+      id: 'sunset-beach-volley-main-session',
+      name: 'Main Session',
+      description: 'Included beach volley rotation rounds for the selected Sunday slot.',
+      timing: 'During',
+      offsetMinutes: 0,
+      durationMinutes: 120,
+      optional: false,
+      capacityMin: 0,
+      capacityMax: 3,
+      pricing: includedPricing,
+      icon: 'sports_volleyball'
+    },
+    {
+      id: 'sunset-beach-volley-side-activity',
+      name: 'Side Activity',
+      description: 'Casual teams, rotation rounds, and post-game snacks.',
+      timing: 'After',
+      offsetMinutes: 0,
+      durationMinutes: 30,
+      optional: true,
+      capacityMin: 0,
+      capacityMax: 8,
+      pricing: buildCheckoutDemoSubEventPricing(9, true),
+      icon: 'local_activity'
     }
   ];
 }
@@ -343,12 +377,30 @@ const SEED_EVENTS_BY_USER: Record<string, ActivityEventSeedItem[]> = {
       avatar: 'SY',
       title: 'Sunset Beach Volley',
       shortDescription: 'Casual teams, rotation rounds, and post-game snacks.',
-      timeframe: 'Mar 14 · 5:00 PM - 8:30 PM',
+      timeframe: 'Every Sun · 5:00 PM - 8:30 PM',
       activity: 2,
       isAdmin: false,
       creatorUserId: 'u4',
-      startAt: '2026-02-23T17:00:00',
-      endAt: '2026-02-23T20:30:00'
+      startAt: '2026-02-22T17:00:00',
+      endAt: '2026-05-17T20:30:00',
+      frequency: 'Weekly',
+      ticketing: true,
+      slotsEnabled: true,
+      slotTemplates: [
+        {
+          id: 'sunset-beach-volley-sunday-evening',
+          startAt: '2026-02-22T17:00:00'
+        }
+      ],
+      pricing: buildCheckoutDemoPricing(24, [
+        {
+          id: 'sunset-beach-volley-sunday-evening',
+          startAt: '2026-02-22T17:00:00'
+        }
+      ]),
+      policiesEnabled: true,
+      policies: buildCheckoutDemoPolicies(),
+      subEventDefinitions: buildSunsetBeachVolleySubEventDefinitions()
     },
     {
       id: 'e7',
@@ -812,6 +864,7 @@ interface ActivityEventSeedOverrides {
   autoInviter?: boolean;
   frequency?: string;
   ticketing?: boolean;
+  approvalRequired?: boolean;
   visibility?: ActivityEventRecord['visibility'];
   blindMode?: ActivityEventRecord['blindMode'];
   imageUrl?: string;
@@ -1542,11 +1595,13 @@ export class SeedEventsBuilder {
       pendingRequestMemberUserIds: [...(record.pendingRequestMemberUserIds ?? [])],
       locationCoordinates: this.cloneLocationCoordinates(record.locationCoordinates),
       pricing: record.pricing ? SeedPricingBuilder.clonePricingConfig(record.pricing) : undefined,
+      approvalRequired: record.approvalRequired === true,
       policiesEnabled: record.policiesEnabled === true,
       policies: (record.policies ?? []).map(item => ({ ...item })),
       slotTemplates: this.cloneSlotTemplates(record.slotTemplates) ?? [],
       nextSlot: record.nextSlot ? { ...record.nextSlot } : null,
       upcomingSlots: (record.upcomingSlots ?? []).map(item => ({ ...item })),
+      checkoutBasket: ActivityEventDetailDTO.cloneCheckoutBasket(record.checkoutBasket),
       topics: [...(record.topics ?? [])],
       subEventsEnabled: record.subEventsEnabled !== false,
       subEventDefinitions: (record.subEventDefinitions ?? []).map(item => ({
@@ -1773,6 +1828,7 @@ export class SeedEventsBuilder {
       .filter((user): user is UserDto => Boolean(user));
     const location = record.seed?.location?.trim() || this.buildSeededLocation(record, creator);
     const ticketing = record.seed?.ticketing ?? this.resolveTicketing(record);
+    const approvalRequired = record.seed?.approvalRequired === true;
     return {
       creatorUserId: creator.id,
       creatorName: creator.name,
@@ -1796,6 +1852,7 @@ export class SeedEventsBuilder {
       autoInviter: record.seed?.autoInviter ?? this.resolveAutoInviter(record),
       frequency,
       ticketing,
+      approvalRequired,
       pricing: record.seed?.pricing
         ? this.rebasePricingConfig(record.seed.pricing)
         : SeedPricingBuilder.createSamplePricingConfig(ticketing ? 'hybrid' : 'fixed'),
@@ -2271,6 +2328,7 @@ export class SeedEventsBuilder {
       autoInviter: 'autoInviter' in item ? item.autoInviter : undefined,
       frequency: 'frequency' in item ? item.frequency : undefined,
       ticketing: 'ticketing' in item ? item.ticketing : undefined,
+      approvalRequired: 'approvalRequired' in item ? item.approvalRequired : undefined,
       visibility: 'visibility' in item ? item.visibility : undefined,
       blindMode: 'blindMode' in item ? item.blindMode : undefined,
       imageUrl: item.imageUrl,

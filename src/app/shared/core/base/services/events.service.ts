@@ -21,8 +21,17 @@ import type { ActivitiesFeedFilters, ListQuery, PageResult } from '../../contrac
 import type { UserMenuCounterDeltasDto } from '../../contracts/user.interface';
 import type {
   EventCheckoutAssetSelection,
+  EventCheckoutBasket,
+  EventCheckoutBasketItem,
+  EventCheckoutLineItem,
+  EventCheckoutPricingSummaryRow,
   EventCheckoutRequest,
+  EventCheckoutResultState,
+  EventCheckoutState,
+  EventCheckoutStateChangeRequest,
   EventCheckoutSession,
+  EventCheckoutSlotsQuery,
+  EventCheckoutSlotsResult,
   EventFeedbackQueryDto,
   EventFeedbackDetailDto,
   EventParticipationActionResultDTO,
@@ -225,6 +234,67 @@ export class EventsService extends BaseRouteModeService implements IEventsServic
     return this.eventsService.loadSubEventsById(normalizedUserId, normalizedEventId, query);
   }
 
+  async loadCheckoutSlots(query: EventCheckoutSlotsQuery): Promise<EventCheckoutSlotsResult | null> {
+    const normalizedUserId = query.userId?.trim();
+    const normalizedEventId = query.eventId?.trim();
+    if (!normalizedUserId || !normalizedEventId) {
+      return null;
+    }
+    return this.eventsService.loadCheckoutSlots({
+      ...query,
+      userId: normalizedUserId,
+      eventId: normalizedEventId
+    });
+  }
+
+  async loadCheckoutBasketByEvent(userId: string, sourceId: string): Promise<EventCheckoutBasket | null> {
+    const normalizedUserId = userId.trim();
+    const normalizedSourceId = sourceId.trim();
+    if (!normalizedUserId || !normalizedSourceId) {
+      return null;
+    }
+    return this.eventsService.loadCheckoutBasketByEvent(normalizedUserId, normalizedSourceId);
+  }
+
+  async saveCheckoutBasket(request: EventCheckoutRequest): Promise<EventCheckoutBasket | null> {
+    const normalizedUserId = request.userId?.trim();
+    const normalizedSourceId = request.sourceId?.trim();
+    if (!normalizedUserId || !normalizedSourceId) {
+      return null;
+    }
+    return this.eventsService.saveCheckoutBasket({
+      ...request,
+      userId: normalizedUserId,
+      sourceId: normalizedSourceId
+    });
+  }
+
+  async updateCheckoutBasketState(request: EventCheckoutStateChangeRequest): Promise<EventCheckoutBasket | null> {
+    const normalizedUserId = request.userId?.trim();
+    const normalizedSourceId = request.sourceId?.trim();
+    if (!normalizedUserId || !normalizedSourceId) {
+      return null;
+    }
+    return this.eventsService.updateCheckoutBasketState({
+      ...request,
+      userId: normalizedUserId,
+      sourceId: normalizedSourceId
+    });
+  }
+
+  async payEventCheckout(request: EventCheckoutStateChangeRequest): Promise<EventParticipationActionResultDTO | null> {
+    const normalizedUserId = request.userId?.trim();
+    const normalizedSourceId = request.sourceId?.trim();
+    if (!normalizedUserId || !normalizedSourceId) {
+      return null;
+    }
+    return this.eventsService.payEventCheckout({
+      ...request,
+      userId: normalizedUserId,
+      sourceId: normalizedSourceId
+    });
+  }
+
   trashItem(
     userId: string,
     sourceId: string,
@@ -304,6 +374,12 @@ export class EventsService extends BaseRouteModeService implements IEventsServic
       paymentSessionId?: string | null;
       bookingConfirmed?: boolean;
       pendingReason?: ActivityPendingReason;
+      checkoutState?: EventCheckoutState;
+      basketItems?: EventCheckoutBasketItem[];
+      pricingSummaryRows?: EventCheckoutPricingSummaryRow[];
+      lineItems?: EventCheckoutLineItem[];
+      totalAmount?: number | null;
+      currency?: string | null;
       skipLocalRouteDelay?: boolean;
       counterDelta?: UserMenuCounterDeltasDto | null;
     } = {}
@@ -315,6 +391,11 @@ export class EventsService extends BaseRouteModeService implements IEventsServic
     userId: string,
     sourceId: string,
     options: {
+      slotSourceId?: string | null;
+      removeMembershipOnly?: boolean;
+      checkoutState?: EventCheckoutState | null;
+      checkoutResultState?: EventCheckoutResultState | null;
+      checkoutSessionId?: string | null;
       counterDelta?: UserMenuCounterDeltasDto | null;
     } = {}
   ): Promise<EventParticipationActionResultDTO | null> {

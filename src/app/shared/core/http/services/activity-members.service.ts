@@ -2,7 +2,11 @@ import { HttpClient, HttpParams } from '@angular/common/http';
 import { Injectable, inject } from '@angular/core';
 
 import { environment } from '../../../../../environments/environment';
-import type { ActivityMemberOwnerRef, ActivityMembersSummaryDto } from '../../contracts/activity.interface';
+import type {
+  ActivityMemberOwnerRef,
+  ActivityMembersQueryOptions,
+  ActivityMembersSummaryDto
+} from '../../contracts/activity.interface';
 import type * as ActivityContracts from '../../contracts/activity.interface';
 
 @Injectable({
@@ -22,23 +26,33 @@ export class HttpActivityMembersService {
     return this.cloneEntries(this.cachedMembersByOwnerKey[this.ownerKey(normalizedOwner)] ?? []);
   }
 
-  async queryMembersByOwner(owner: ActivityMemberOwnerRef): Promise<ActivityContracts.ActivityMemberDTO[]> {
+  async queryMembersByOwner(
+    owner: ActivityMemberOwnerRef,
+    options?: ActivityMembersQueryOptions
+  ): Promise<ActivityContracts.ActivityMemberDTO[]> {
     const normalizedOwner = this.normalizeOwnerRef(owner);
     if (!normalizedOwner) {
       return [];
     }
+    const pendingOnly = options?.pendingOnly === true;
+    const params = new HttpParams()
+      .set('ownerType', normalizedOwner.ownerType)
+      .set('ownerId', normalizedOwner.ownerId);
     try {
       const response = await this.http
         .get<ActivityContracts.ActivityMemberDTO[] | null>(`${this.apiBaseUrl}/activities/events/members`, {
-          params: new HttpParams()
-            .set('ownerType', normalizedOwner.ownerType)
-            .set('ownerId', normalizedOwner.ownerId)
+          params: pendingOnly ? params.set('pendingOnly', 'true') : params
         })
         .toPromise();
       const members = this.cloneEntries(Array.isArray(response) ? response : []);
-      this.cacheMembers(normalizedOwner, members, this.cachedSummariesByOwnerKey[this.ownerKey(normalizedOwner)]?.capacityTotal ?? null);
+      if (!pendingOnly) {
+        this.cacheMembers(normalizedOwner, members, this.cachedSummariesByOwnerKey[this.ownerKey(normalizedOwner)]?.capacityTotal ?? null);
+      }
       return this.cloneEntries(members);
     } catch {
+      if (pendingOnly) {
+        return [];
+      }
       return this.peekMembersByOwner(normalizedOwner);
     }
   }
@@ -216,7 +230,12 @@ export class HttpActivityMembersService {
   }
 
   private cloneEntries(entries: readonly ActivityContracts.ActivityMemberDTO[]): ActivityContracts.ActivityMemberDTO[] {
-    return entries.map(entry => ({ ...entry }));
+    return entries.map(entry => ({
+      ...entry,
+      involvements: Array.isArray(entry.involvements)
+        ? entry.involvements.map(involvement => ({ ...involvement }))
+        : []
+    }));
   }
 
   private cloneSummary(summary: ActivityMembersSummaryDto): ActivityMembersSummaryDto {

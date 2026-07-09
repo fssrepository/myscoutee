@@ -290,6 +290,7 @@ export class SmartListComponent<T, TFilters extends SmartListFilters = SmartList
   private currentViewMode: SmartListViewMode = 'list';
   private previousPresentation: SmartListPresentation = 'list';
   private afterViewInit = false;
+  private pendingScrollResetAfterViewInit = false;
   private loadSequence = 0;
   private loadingCounter = 0;
   private loadingStartedAtMs = 0;
@@ -448,6 +449,10 @@ export class SmartListComponent<T, TFilters extends SmartListFilters = SmartList
 
   ngAfterViewInit(): void {
     this.afterViewInit = true;
+    if (this.pendingScrollResetAfterViewInit) {
+      this.pendingScrollResetAfterViewInit = false;
+      this.resetScrollSoon();
+    }
     this.refreshSurfaceSoon();
   }
 
@@ -790,7 +795,7 @@ export class SmartListComponent<T, TFilters extends SmartListFilters = SmartList
     this.cdr.markForCheck();
   }
 
-  public replaceVisibleItems(items: readonly T[], options: { total?: number } = {}): void {
+  public replaceVisibleItems(items: readonly T[], options: { total?: number; hasMore?: boolean } = {}): void {
     if (this.currentViewMode !== 'list') {
       return;
     }
@@ -803,7 +808,10 @@ export class SmartListComponent<T, TFilters extends SmartListFilters = SmartList
     this.total = Number.isFinite(options.total)
       ? Math.max(this.items.length, Math.trunc(Number(options.total)))
       : this.items.length;
-    this.hasMore = this.items.length < this.total;
+    const computedHasMore = this.items.length < this.total;
+    this.hasMore = typeof options.hasMore === 'boolean'
+      ? options.hasMore && computedHasMore
+      : computedHasMore;
     this.syncGroups();
     this.finiteStepper.syncBounds();
     this.emitState();
@@ -815,6 +823,7 @@ export class SmartListComponent<T, TFilters extends SmartListFilters = SmartList
     items: readonly T[],
     options: {
       total?: number;
+      hasMore?: boolean;
       equals?: (current: T, next: T, index: number) => boolean;
       trackBy?: (index: number, item: T) => unknown;
     } = {}
@@ -826,7 +835,12 @@ export class SmartListComponent<T, TFilters extends SmartListFilters = SmartList
     const nextTotal = Number.isFinite(options.total)
       ? Math.max(nextItems.length, Math.trunc(Number(options.total)))
       : nextItems.length;
+    const nextComputedHasMore = nextItems.length < nextTotal;
+    const nextHasMore = typeof options.hasMore === 'boolean'
+      ? options.hasMore && nextComputedHasMore
+      : nextComputedHasMore;
     const sameShape = this.total === nextTotal
+      && this.hasMore === nextHasMore
       && this.items.length === nextItems.length
       && this.items.every((item, index) =>
         this.cacheTrackKey(item, index, options.trackBy)
@@ -834,7 +848,7 @@ export class SmartListComponent<T, TFilters extends SmartListFilters = SmartList
       );
 
     if (!sameShape) {
-      this.replaceVisibleItems(nextItems, { total: nextTotal });
+      this.replaceVisibleItems(nextItems, { total: nextTotal, hasMore: nextHasMore });
       this.emitRefresh();
       return true;
     }
@@ -1477,10 +1491,16 @@ export class SmartListComponent<T, TFilters extends SmartListFilters = SmartList
     }
 
     const items = Array.isArray(result?.items) ? result.items : [];
+    const hasExplicitNextCursor = Boolean(result && Object.prototype.hasOwnProperty.call(result, 'nextCursor'));
+    const requestedPageSize = Math.max(1, Math.trunc(Number(query.pageSize) || this.resolveEffectivePageSize()));
+    const loadedShortPage = items.length > 0 && items.length < requestedPageSize;
     const total = Number.isFinite(result?.total)
       ? Math.max(0, Math.trunc(Number(result?.total)))
       : undefined;
-    this.syncVisibleItems(items, { total });
+    const hasMore = hasExplicitNextCursor
+      ? (typeof result?.nextCursor === 'string' && result.nextCursor.trim().length > 0)
+      : (items.length > 0 && items.length < (total ?? items.length) && !loadedShortPage);
+    this.syncVisibleItems(items, { total, hasMore });
   }
 
   private async loadInitialListPages(): Promise<void> {
@@ -1559,7 +1579,7 @@ export class SmartListComponent<T, TFilters extends SmartListFilters = SmartList
       if (shouldUseReverseAppendAnchorRestore) {
         reverseAppendAnchorContext = this.captureReverseAppendAnchorContext(isInitial) ?? reverseAppendAnchorContext;
       }
-      this.applyListPageResult(result, isInitial);
+      this.applyListPageResult(result, isInitial, query.pageSize);
       if (sequence !== this.loadSequence) {
         return;
       }
@@ -1653,7 +1673,11 @@ export class SmartListComponent<T, TFilters extends SmartListFilters = SmartList
     await this.loadAnchorPage(anchor, this.stepper.queryForAnchor(anchor), true);
   }
 
-  private applyListPageResult(result: PageResult<T> | null | undefined, isInitial: boolean): void {
+  private applyListPageResult(
+    result: PageResult<T> | null | undefined,
+    isInitial: boolean,
+    requestedPageSizeValue?: number | null
+  ): void {
     // Lock the snap reactivation if we were suppressing it at the bottom
     if (!isInitial && this.listMergeStrategy() !== 'prepend' && this.suppressListSnapNearEnd) {
       this.suspendSnapReactivation = true;
@@ -1661,6 +1685,11 @@ export class SmartListComponent<T, TFilters extends SmartListFilters = SmartList
 
     const nextItems = Array.isArray(result?.items) ? result.items : [];
     const hasExplicitNextCursor = Boolean(result && Object.prototype.hasOwnProperty.call(result, 'nextCursor'));
+    const requestedPageSize = Math.max(
+      1,
+      Math.trunc(Number(requestedPageSizeValue) || this.resolveEffectivePageSize())
+    );
+    const loadedShortPage = nextItems.length > 0 && nextItems.length < requestedPageSize;
     if (isInitial) {
       this.items = this.orderSortableItems(nextItems);
     } else if (this.listMergeStrategy() === 'prepend') {
@@ -1675,7 +1704,7 @@ export class SmartListComponent<T, TFilters extends SmartListFilters = SmartList
       : null;
     this.hasMore = hasExplicitNextCursor
       ? this.nextPageCursor !== null
-      : (nextItems.length > 0 && this.items.length < this.total);
+      : (nextItems.length > 0 && this.items.length < this.total && !loadedShortPage);
     if (nextItems.length > 0) {
       this.pageIndex += 1;
     } else {
@@ -3198,7 +3227,8 @@ private updateListSnapNearEndSuppression(scrollElement?: HTMLDivElement | null):
       if (this.isPageMode()) {
         const initialIndex = this.stepper.initialPageIndex();
         this.stepper.clearInitialPageIndexOverride();
-        const targetLeft = this.stepper.pageOffsetLeft(scrollElement, initialIndex);
+        const pageCount = this.stepper.pages().length || this.pages.length;
+        const targetLeft = this.stepper.pageTargetLeft(scrollElement, initialIndex, pageCount);
         if (targetLeft >= 0) {
           this.stepper.suppressSettle = true;
           const previousScrollBehavior = scrollElement.style.scrollBehavior;
@@ -3235,6 +3265,12 @@ private updateListSnapNearEndSuppression(scrollElement?: HTMLDivElement | null):
       this.cdr.markForCheck();
     };
     if (!this.afterViewInit) {
+      this.pendingScrollResetAfterViewInit = true;
+      return;
+    }
+    this.pendingScrollResetAfterViewInit = false;
+    if (typeof globalThis.requestAnimationFrame === 'function') {
+      globalThis.requestAnimationFrame(() => globalThis.requestAnimationFrame(reset));
       return;
     }
     setTimeout(reset, 0);
@@ -4141,6 +4177,7 @@ private updateListSnapNearEndSuppression(scrollElement?: HTMLDivElement | null):
     options: {
       predicate?: (item: T, index: number) => boolean;
       totalDelta?: number;
+      loadedRange?: 'any' | 'before-or-within';
     } = {}
   ): boolean {
     const query = this.currentQuery();
@@ -4159,7 +4196,10 @@ private updateListSnapNearEndSuppression(scrollElement?: HTMLDivElement | null):
       this.emitRefresh();
       return true;
     }
-    if (!this.reinsertVisibleItem(nextItem, { totalDelta: options.totalDelta })) {
+    if (!this.reinsertVisibleItem(nextItem, {
+      totalDelta: options.totalDelta,
+      loadedRange: options.loadedRange
+    })) {
       return false;
     }
     this.cacheVisibleSourceItem(source, nextItem);
@@ -4174,9 +4214,22 @@ private updateListSnapNearEndSuppression(scrollElement?: HTMLDivElement | null):
     if (this.currentViewMode !== 'list') {
       return false;
     }
-    const nextItems = this.items.filter((item, index) => !predicate(item, index));
+    const removedIdentities: string[] = [];
+    const nextItems = this.items.filter((item, index) => {
+      const shouldRemove = predicate(item, index);
+      if (shouldRemove) {
+        const identity = `${this.cacheTrackKey(item, index)}`.trim();
+        if (identity) {
+          removedIdentities.push(identity);
+        }
+      }
+      return !shouldRemove;
+    });
     if (nextItems.length === this.items.length) {
       return false;
+    }
+    for (const identity of removedIdentities) {
+      this.sourceItemByIdentity.delete(identity);
     }
     this.replaceVisibleItems(nextItems, {
       total: Math.max(nextItems.length, this.total + (options.totalDelta ?? -1))
@@ -4196,7 +4249,13 @@ private updateListSnapNearEndSuppression(scrollElement?: HTMLDivElement | null):
     );
   }
 
-  public reinsertVisibleItem(item: T, options: { totalDelta?: number } = {}): boolean {
+  public reinsertVisibleItem(
+    item: T,
+    options: {
+      totalDelta?: number;
+      loadedRange?: 'any' | 'before-or-within';
+    } = {}
+  ): boolean {
     if (this.currentViewMode !== 'list') {
       return false;
     }
@@ -4204,10 +4263,50 @@ private updateListSnapNearEndSuppression(scrollElement?: HTMLDivElement | null):
     if (this.items.some((currentItem, index) => `${this.cacheTrackKey(currentItem, index)}`.trim() === identity)) {
       return false;
     }
-    this.replaceVisibleItems([...this.items, item], {
+    const insertionIndex = this.visibleInsertionIndex(item);
+    const insertsAfterLoadedTail = insertionIndex >= this.items.length;
+    const loadedShortPage = this.items.length < this.resolveEffectivePageSize();
+    if (
+      options.loadedRange === 'before-or-within'
+      && this.items.length > 0
+      && this.hasMore
+      && !loadedShortPage
+      && insertsAfterLoadedTail
+      && !this.visibleGroupAlreadyLoaded(item)
+    ) {
+      return false;
+    }
+    const nextItems = [...this.items];
+    nextItems.splice(insertionIndex, 0, item);
+    this.replaceVisibleItems(nextItems, {
       total: Math.max(this.items.length + 1, this.total + (options.totalDelta ?? 1))
     });
     return true;
+  }
+
+  private visibleInsertionIndex(item: T): number {
+    if (!this.sortableConfig()) {
+      return this.items.length;
+    }
+    const query = this.currentQuery();
+    const itemSortKey = this.localSortKeyForItem(item, query, this.items.length);
+    const index = this.items.findIndex((currentItem, currentIndex) =>
+      compareSmartListLocalSortKeys(
+        itemSortKey,
+        this.localSortKeyForItem(currentItem, query, currentIndex)
+      ) < 0
+    );
+    return index >= 0 ? index : this.items.length;
+  }
+
+  private visibleGroupAlreadyLoaded(item: T): boolean {
+    const groupBy = this.config.groupBy;
+    if (!groupBy || this.items.length === 0) {
+      return false;
+    }
+    const query = this.currentQuery();
+    const label = groupBy(item, query);
+    return this.items.some(currentItem => groupBy(currentItem, query) === label);
   }
 
   private cancelPendingAnchorPreload(): void {

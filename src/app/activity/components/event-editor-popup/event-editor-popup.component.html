@@ -1,13 +1,44 @@
 @if (eventEditorStore.isOpenBoolean()) {
 <app-popup [model]="eventEditorPopupModel()" [zIndex]="eventEditorPopupZIndex()">
     <div class="popup-body" [class.popup-panel-event-editor-readonly]="eventStructureReadOnly()">
-      @if (isLoadingEventData()) {
+      @if (eventEditorBodyLoading()) {
       <div class="popup-loading-overlay" aria-busy="true">
         <app-indicator
           kind="load-ring"
           state="loading"
         ></app-indicator>
       </div>
+      } @else {
+      @if (checkoutPaymentPhase()) {
+      <section class="editor-list-card editor-list-card--payment">
+        <div class="event-checkout-payment-stack">
+          <app-event-basket-input
+            title="Basket"
+            subtitle="Fizetés tárgya"
+            [contextTitle]="eventDetailDTO.title"
+            [contextMeta]="eventDetailDTO.location"
+            [contextDetail]="checkoutPaymentEventTimeframe()"
+            [items]="checkoutBasketInputItems()"
+            [pricingSummaryRows]="checkoutBasketPricingSummaryRows()"
+            [totalAmount]="checkoutBasketTotalAmount()"
+            [currency]="checkoutBasketCurrency()"
+            [tone]="checkoutBasketTone()"
+            [readOnly]="true"
+            [showAdd]="false"
+            [showItemMenu]="false"
+          ></app-event-basket-input>
+          <app-pricing-editor-input class="event-pricing-field" [(ngModel)]="eventDetailDTO.pricing"
+            [config]="eventPricingEditorConfig" [readOnly]="true" [disabled]="true"></app-pricing-editor-input>
+          @if (showCheckoutPaymentPanel()) {
+            <app-event-payment-input
+              [totalAmount]="checkoutBasketTotalAmount()"
+              [currency]="checkoutBasketCurrency()"
+              [tone]="checkoutPaymentTone()"
+              [paymentIntegrationEnabled]="checkoutPaymentIntegrationEnabled()"
+            ></app-event-payment-input>
+          }
+        </div>
+      </section>
       } @else {
       <section class="editor-list-card">
         <div class="experience-form-panel" [ngClass]="eventVisibilityClass(eventDetailDTO.visibility)">
@@ -64,17 +95,19 @@
               <textarea rows="4" [(ngModel)]="eventDetailDTO.subtitle" [readonly]="eventStructureReadOnly()"
                 [class.field-required-invalid]="eventEditorFieldInvalid('subtitle')"></textarea>
             </label>
-            <app-event-subevent-definitions-panel
-              class="experience-description-field"
-              [ngModel]="eventDetailDTO.subEventDefinitions"
-              (ngModelChange)="onSubEventDefinitionsChange($event)"
-              [(mode)]="eventDetailDTO.mode"
-              [enabled]="eventDetailDTO.subEventsEnabled"
-              (enabledChange)="onSubEventsEnabledChange($event)"
-              [bounds]="eventDetailDTO.dateRange"
-              [readOnly]="eventStructureReadOnly()"
-              [disabled]="eventStructureReadOnly()"
-            ></app-event-subevent-definitions-panel>
+            @if (showSubEventDefinitionsPanel()) {
+              <app-event-subevent-definitions-panel
+                class="experience-description-field"
+                [ngModel]="eventDetailDTO.subEventDefinitions"
+                (ngModelChange)="onSubEventDefinitionsChange($event)"
+                [(mode)]="eventDetailDTO.mode"
+                [enabled]="eventDetailDTO.subEventsEnabled"
+                (enabledChange)="onSubEventsEnabledChange($event)"
+                [bounds]="eventDetailDTO.dateRange"
+                [readOnly]="eventStructureReadOnly()"
+                [disabled]="eventStructureReadOnly()"
+              ></app-event-subevent-definitions-panel>
+            }
             <section class="event-scheduling-stack">
               <section class="event-schedule-panel">
                 <div class="event-schedule-panel-head">
@@ -90,12 +123,29 @@
                   (ngModelChange)="onEventDateRangeChange($event)"
                 ></app-date-input>
               </section>
-            <app-event-slots-input [(ngModel)]="eventDetailDTO.slotTemplates"
-                [config]="eventSlotsInputConfig"
-                [readOnly]="eventStructureReadOnly()"
-                [disabled]="eventStructureReadOnly()"
-                (overrideSelect)="openSlotOverrideEditor($event)"></app-event-slots-input>
+              @if (showSlotsInput()) {
+                <app-slots-input [(ngModel)]="eventDetailDTO.slotTemplates"
+                    [config]="slotsInputConfig"
+                    [readOnly]="eventStructureReadOnly()"
+                    [disabled]="eventStructureReadOnly()"
+                    (overrideSelect)="openSlotOverrideEditor($event)"></app-slots-input>
+              }
             </section>
+            @if (showCheckoutBasketInput()) {
+              <app-event-basket-input
+                class="experience-description-field"
+                title="Basket"
+                subtitle="Selected slot checkout items"
+                [items]="checkoutBasketInputItems()"
+                [pricingSummaryRows]="checkoutBasketPricingSummaryRows()"
+                [totalAmount]="checkoutBasketTotalAmount()"
+                [currency]="checkoutBasketCurrency()"
+                [addDisabled]="checkoutBasketAddDisabled()"
+                [showItemMenu]="false"
+                (addSelect)="onCheckoutBasketAdd($event)"
+                (itemMenuSelect)="onCheckoutBasketItemMenuSelect($event)"
+              ></app-event-basket-input>
+            }
             <app-pricing-editor-input class="experience-description-field event-pricing-field" [(ngModel)]="eventDetailDTO.pricing"
               [config]="eventPricingEditorConfig" [readOnly]="eventStructureReadOnly()" [disabled]="eventStructureReadOnly()"></app-pricing-editor-input>
             <app-policies-input [(ngModel)]="eventDetailDTO.policies"
@@ -106,7 +156,20 @@
         </div>
       </section>
       }
+      }
     </div>
+    @if (checkoutReviewMode() && checkoutReviewFooterMenuItems().length > 0) {
+      <div class="event-editor-checkout-footer">
+        <p class="event-editor-checkout-footer__message">{{ checkoutReviewFooterMessage() }}</p>
+        <app-menu
+          class="event-editor-checkout-footer__actions"
+          kind="inline"
+          layout="row"
+          [items]="checkoutReviewFooterMenuItems()"
+          (itemSelect)="onEventEditorMenuSelect($event)"
+        ></app-menu>
+      </div>
+    }
     @if (slotOverrideEditor; as overrideEditor) {
     <div class="slot-override-popup-backdrop" (click)="closeSlotOverrideEditor($event)"></div>
     <section class="slot-override-popup" role="dialog" aria-modal="true" aria-label="Override slot">

@@ -1,9 +1,10 @@
+@if (showPricingPanel()) {
 <section
   class="pricing-editor"
   [class.pricing-editor--readonly]="editorLocked()"
   [class.pricing-editor--summary-popup]="usesSummaryPopup()"
   [class.pricing-editor--wizard-open]="wizardOpen"
-  [class.pricing-editor--enabled]="isPricingEnabled()"
+  [class.pricing-editor--enabled]="showPricingContent()"
   [class.pricing-editor--embedded]="resolvedConfig.embedded"
   >
   @if (!resolvedConfig.embedded) {
@@ -40,6 +41,7 @@
         }
       </span>
     </div>
+    @if (showToggleControl()) {
     <div class="pricing-editor__head-actions">
       <button
         type="button"
@@ -53,10 +55,11 @@
         <span>{{ isPricingEnabled() ? 'On' : 'Off' }}</span>
       </button>
     </div>
+    }
   </header>
   }
 
-  @if (usesSummaryPopup() && isPricingEnabled()) {
+  @if (usesSummaryPopup() && showPricingContent()) {
     @if (!editorLocked()) {
       <div class="pricing-editor__summary-actions">
         <button type="button" class="pricing-editor__open-btn pricing-editor__open-btn--summary" (click)="openWizard()">
@@ -70,7 +73,7 @@
         <ng-container [ngTemplateOutlet]="pricingPreviewCards"></ng-container>
       </div>
     }
-  } @else if (isPricingEnabled()) {
+  } @else if (showPricingContent()) {
     <div class="pricing-editor__layout">
       <div class="pricing-editor__main">
         <ng-container [ngTemplateOutlet]="pricingEditorSurfaces"></ng-container>
@@ -85,6 +88,7 @@
   }
 
 </section>
+}
 
 @if (pricingEditorPopupComponent(); as popupComponent) {
   <ng-container *ngComponentOutlet="popupComponent; inputs: pricingEditorPopupOutletInputs()"></ng-container>
@@ -301,6 +305,7 @@
     <section class="pricing-editor__surface">
       <div class="pricing-editor__section-head">
         <span>Quantity Rules</span>
+        @if (showToggleControl()) {
         <button
           type="button"
           class="pricing-editor__toggle"
@@ -311,6 +316,7 @@
           <mat-icon>{{ workingPricing.quantityRulesEnabled ? 'toggle_on' : 'toggle_off' }}</mat-icon>
           <span>{{ workingPricing.quantityRulesEnabled ? 'On' : 'Off' }}</span>
         </button>
+        }
       </div>
       @if (workingPricing.quantityRulesEnabled) {
         <div class="pricing-editor__rules">
@@ -389,6 +395,7 @@
     <section class="pricing-editor__surface">
       <div class="pricing-editor__section-head">
         <span>Demand Rules</span>
+        @if (showToggleControl()) {
         <button
           type="button"
           class="pricing-editor__toggle"
@@ -399,6 +406,7 @@
           <mat-icon>{{ workingPricing.demandRulesEnabled ? 'toggle_on' : 'toggle_off' }}</mat-icon>
           <span>{{ workingPricing.demandRulesEnabled ? 'On' : 'Off' }}</span>
         </button>
+        }
       </div>
       @if (workingPricing.demandRulesEnabled) {
         <div class="pricing-editor__rules">
@@ -517,6 +525,7 @@
     <section class="pricing-editor__surface">
       <div class="pricing-editor__section-head">
         <span>Time Rules</span>
+        @if (showToggleControl()) {
         <button
           type="button"
           class="pricing-editor__toggle"
@@ -527,6 +536,7 @@
           <mat-icon>{{ workingPricing.timeRulesEnabled ? 'toggle_on' : 'toggle_off' }}</mat-icon>
           <span>{{ workingPricing.timeRulesEnabled ? 'On' : 'Off' }}</span>
         </button>
+        }
       </div>
       @if (workingPricing.timeRulesEnabled) {
         <div class="pricing-editor__rules">
@@ -671,6 +681,7 @@
     <section class="pricing-editor__surface">
       <div class="pricing-editor__section-head">
         <span>Cancellation & Reimbursement</span>
+        @if (showToggleControl()) {
         <button
           type="button"
           class="pricing-editor__toggle"
@@ -681,6 +692,7 @@
           <mat-icon>{{ workingPricing.cancellationPolicy.enabled ? 'toggle_on' : 'toggle_off' }}</mat-icon>
           <span>{{ workingPricing.cancellationPolicy.enabled ? 'On' : 'Off' }}</span>
         </button>
+        }
       </div>
       @if (workingPricing.cancellationPolicy.enabled) {
         <div class="pricing-editor__rules">
@@ -786,10 +798,11 @@
     ></app-pricing-slot-panel>
   }
 
-  @if (resolvedConfig.showAudienceSection) {
+  @if (showAudienceSection()) {
     <section class="pricing-editor__surface">
       <div class="pricing-editor__section-head">
         <span>Advanced Audience Pricing</span>
+        @if (showToggleControl()) {
         <button
           type="button"
           class="pricing-editor__toggle"
@@ -800,6 +813,7 @@
           <mat-icon>{{ workingPricing.audience.enabled ? 'toggle_on' : 'toggle_off' }}</mat-icon>
           <span>{{ workingPricing.audience.enabled ? 'On' : 'Off' }}</span>
         </button>
+        }
       </div>
       @if (workingPricing.audience.enabled) {
         <div class="pricing-editor__grid pricing-editor__grid--compact">
@@ -937,50 +951,74 @@
       <span>Current Price Review</span>
       <mat-icon>query_stats</mat-icon>
     </div>
-    <div class="pricing-editor__preview-line">
-      <span>Base</span>
-      <strong>{{ currencySymbol(workingPricing.currency) }}{{ currentPreview.basePrice | number:'1.0-2' }}</strong>
-    </div>
-    @if (currentPreview.quantityDelta !== 0) {
+    @if (runtimePreviewState(); as runtimePreview) {
       <div class="pricing-editor__preview-line">
-        <span>{{ currentPreview.quantityLabel || 'Quantity pricing' }}</span>
-        <strong [class.positive]="currentPreview.quantityDelta > 0" [class.negative]="currentPreview.quantityDelta < 0">
-          {{ currentPreview.quantityDelta > 0 ? '+' : '' }}{{ currencySymbol(workingPricing.currency) }}{{ currentPreview.quantityDelta | number:'1.0-2' }}
-        </strong>
+        <span>Base</span>
+        <strong>{{ runtimeMoneyLabel(runtimeBaseAmount(runtimePreview), runtimePreviewCurrency(runtimePreview)) }}</strong>
       </div>
-    }
-    @if (currentPreview.demandDelta !== 0) {
-      <div class="pricing-editor__preview-line">
-        <span>Demand adjustment</span>
-        <strong [class.positive]="currentPreview.demandDelta > 0" [class.negative]="currentPreview.demandDelta < 0">
-          {{ currentPreview.demandDelta > 0 ? '+' : '' }}{{ currencySymbol(workingPricing.currency) }}{{ currentPreview.demandDelta | number:'1.0-2' }}
-        </strong>
-      </div>
-    }
-    @if (currentPreview.timeDelta !== 0) {
-      <div class="pricing-editor__preview-line">
-        <span>Time adjustment</span>
-        <strong [class.positive]="currentPreview.timeDelta > 0" [class.negative]="currentPreview.timeDelta < 0">
-          {{ currentPreview.timeDelta > 0 ? '+' : '' }}{{ currencySymbol(workingPricing.currency) }}{{ currentPreview.timeDelta | number:'1.0-2' }}
-        </strong>
-      </div>
-    }
-    <div class="pricing-editor__preview-details">
-      @for (item of pricingSummaryItems(); track item.id) {
-        <article class="pricing-editor__preview-detail">
-          <span>
-            <strong>{{ item.label }}</strong>
-            @if (item.detail) {
-              <em>{{ item.detail }}</em>
-            }
-          </span>
-          <strong>{{ item.value }}</strong>
-        </article>
+      @for (row of runtimeAdjustmentRows(runtimePreview); track runtimeRowTrackId($index, row)) {
+        <div class="pricing-editor__preview-line">
+          <span>{{ runtimeRowLabel(row) }}</span>
+          @if (runtimeRowAmount(row, runtimePreviewCurrency(runtimePreview))) {
+            <strong [class.positive]="(row.amount ?? 0) > 0" [class.negative]="(row.amount ?? 0) < 0">
+              {{ runtimeRowAmount(row, runtimePreviewCurrency(runtimePreview)) }}
+            </strong>
+          }
+        </div>
       }
-    </div>
-    <div class="pricing-editor__preview-total">
-      <span>Final price</span>
-      <strong>{{ currencySymbol(workingPricing.currency) }}{{ currentPreview.finalPrice | number:'1.0-2' }}</strong>
-    </div>
+      @if (runtimePreview.rows.length === 0 && runtimePreview.emptyLabel) {
+        <p class="pricing-editor__preview-note">{{ runtimePreview.emptyLabel }}</p>
+      }
+      <div class="pricing-editor__preview-total">
+        <span>Final price</span>
+        <strong>{{ runtimeTotalLabel(runtimePreview) }}</strong>
+      </div>
+    } @else {
+      <div class="pricing-editor__preview-line">
+        <span>Base</span>
+        <strong>{{ currencySymbol(workingPricing.currency) }}{{ currentPreview.basePrice | number:'1.0-2' }}</strong>
+      </div>
+      @if (currentPreview.quantityDelta !== 0) {
+        <div class="pricing-editor__preview-line">
+          <span>{{ currentPreview.quantityLabel || 'Quantity pricing' }}</span>
+          <strong [class.positive]="currentPreview.quantityDelta > 0" [class.negative]="currentPreview.quantityDelta < 0">
+            {{ currentPreview.quantityDelta > 0 ? '+' : '' }}{{ currencySymbol(workingPricing.currency) }}{{ currentPreview.quantityDelta | number:'1.0-2' }}
+          </strong>
+        </div>
+      }
+      @if (currentPreview.demandDelta !== 0) {
+        <div class="pricing-editor__preview-line">
+          <span>Demand adjustment</span>
+          <strong [class.positive]="currentPreview.demandDelta > 0" [class.negative]="currentPreview.demandDelta < 0">
+            {{ currentPreview.demandDelta > 0 ? '+' : '' }}{{ currencySymbol(workingPricing.currency) }}{{ currentPreview.demandDelta | number:'1.0-2' }}
+          </strong>
+        </div>
+      }
+      @if (currentPreview.timeDelta !== 0) {
+        <div class="pricing-editor__preview-line">
+          <span>Time adjustment</span>
+          <strong [class.positive]="currentPreview.timeDelta > 0" [class.negative]="currentPreview.timeDelta < 0">
+            {{ currentPreview.timeDelta > 0 ? '+' : '' }}{{ currencySymbol(workingPricing.currency) }}{{ currentPreview.timeDelta | number:'1.0-2' }}
+          </strong>
+        </div>
+      }
+      <div class="pricing-editor__preview-details">
+        @for (item of pricingSummaryItems(); track item.id) {
+          <article class="pricing-editor__preview-detail">
+            <span>
+              <strong>{{ item.label }}</strong>
+              @if (item.detail) {
+                <em>{{ item.detail }}</em>
+              }
+            </span>
+            <strong>{{ item.value }}</strong>
+          </article>
+        }
+      </div>
+      <div class="pricing-editor__preview-total">
+        <span>Final price</span>
+        <strong>{{ currencySymbol(workingPricing.currency) }}{{ currentPreview.finalPrice | number:'1.0-2' }}</strong>
+      </div>
+    }
   </div>
 </ng-template>

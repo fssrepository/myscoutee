@@ -134,7 +134,7 @@ export class LocalEventsRepository {
   }
 
   queryTrashedItemsByUser(userId: string): ActivityEventRecord[] {
-    return this.queryUserRecords(userId).filter(record => this.isTrashStatus(record));
+    return this.queryTrashRecordsByUser(userId);
   }
 
   private queryEventRecordsByFilter(
@@ -177,7 +177,7 @@ export class LocalEventsRepository {
       return draftItems;
     }
     if (filter === 'trash') {
-      return userItems.filter(record => this.isTrashStatus(record));
+      return this.queryTrashRecordsByUser(userId);
     }
     return activeEventItems;
   }
@@ -493,12 +493,16 @@ export class LocalEventsRepository {
 
     for (const id of table.ids) {
       const record = table.byId[id];
-      if (!record || this.isGeneratedSlotRecord(record) || !this.shouldIncludeExploreRecord(record, normalizedUserId)) {
+      if (!record || this.isGeneratedSlotRecord(record)) {
         continue;
       }
-      const existing = byEventId.get(record.id);
-      if (!existing || this.shouldPreferExploreRecord(record, existing)) {
-        byEventId.set(record.id, this.withResolvedSlotContext(record, table));
+      const resolvedRecord = this.withResolvedSlotContext(record, table);
+      if (!this.shouldIncludeExploreRecord(resolvedRecord, normalizedUserId)) {
+        continue;
+      }
+      const existing = byEventId.get(resolvedRecord.id);
+      if (!existing || this.shouldPreferExploreRecord(resolvedRecord, existing)) {
+        byEventId.set(resolvedRecord.id, resolvedRecord);
       }
     }
 
@@ -612,11 +616,16 @@ export class LocalEventsRepository {
     });
   }
 
+  queryAcceptedEventOwnerIdsByUser(ownerIds: readonly string[], userId: string): Set<string> {
+    return this.acceptedParticipantOwnerIds('event', ownerIds, userId);
+  }
+
   private subEventParticipantSlotCandidate(slot: ActivityContracts.SubEventsSlotDTO): SubEventParticipantSlotCandidate {
     const slotOwnerId = this.subEventParticipantSlotOwnerId(slot);
+    const concreteSlot = this.isConcreteSubEventSlot(slot);
     const eventOwnerIds = new Set(this.uniqueParticipantOwnerIds(
       slotOwnerId,
-      slot.parentEventId,
+      concreteSlot ? null : slot.parentEventId,
       slot.slotSourceId,
       slot.id
     ));
@@ -661,6 +670,12 @@ export class LocalEventsRepository {
     return `${slot.slotSourceId ?? ''}`.trim()
       || `${slot.parentEventId ?? ''}`.trim()
       || `${slot.id ?? ''}`.trim();
+  }
+
+  private isConcreteSubEventSlot(slot: ActivityContracts.SubEventsSlotDTO): boolean {
+    const slotSourceId = `${slot.slotSourceId ?? ''}`.trim();
+    const parentEventId = `${slot.parentEventId ?? ''}`.trim();
+    return !!slotSourceId && slotSourceId !== parentEventId;
   }
 
   private subEventParticipantItemId(item: ContractTypes.SubEventDTO | null | undefined, index: number): string {
@@ -1563,7 +1578,8 @@ export class LocalEventsRepository {
     sourceId: string,
     slotSourceId: string | null = null,
     accepted = false,
-    waitingList = false
+    waitingList = false,
+    approvalRequested = false
   ): ActivityEventRecord | null {
     const normalizedUserId = userId.trim();
     const normalizedSourceId = sourceId.trim();
@@ -1577,6 +1593,7 @@ export class LocalEventsRepository {
     if (!preferredRecord) {
       return null;
     }
+    const acceptedStatus = accepted && !approvalRequested;
 
     const idsToJoin = Array.from(new Set([
       normalizedSourceId,
@@ -1602,8 +1619,9 @@ export class LocalEventsRepository {
           nextMembersTable,
           current,
           normalizedUserId,
-          accepted ? 'accepted' : 'pending',
+          acceptedStatus ? 'accepted' : 'pending',
           waitingList,
+          approvalRequested,
           usersTable.byId[normalizedUserId] ?? null
         );
       }
@@ -1641,7 +1659,8 @@ export class LocalEventsRepository {
           pendingMemberUserIds,
           invitedMemberUserIds,
           pendingRequestMemberUserIds,
-          capacityTotal: Math.max(acceptedMemberUserIds.length, current.capacityTotal)
+          capacityTotal: Math.max(acceptedMemberUserIds.length, current.capacityTotal),
+          full: this.directRecordFull(acceptedMemberUserIds.length, Math.max(acceptedMemberUserIds.length, current.capacityTotal))
         };
       }
 
@@ -1661,15 +1680,98 @@ export class LocalEventsRepository {
     return this.buildMembershipProjectionRecord(normalizedUserId, refreshed);
   }
 
-  leaveEvent(userId: string, sourceId: string): ActivityEventRecord | null {
+  leaveEvent(
+    userId: string,
+    sourceId: string,
+    options: {
+      slotSourceId?: string | null;
+      removeMembershipOnly?: boolean;
+    } = {}
+  ): ActivityEventRecord | null {
     const normalizedUserId = userId.trim();
     const normalizedSourceId = sourceId.trim();
     if (!normalizedUserId || !normalizedSourceId) {
       return null;
     }
 
+    if (options.removeMembershipOnly === true) {
+      return this.removeEventActivityMembership(
+        normalizedUserId,
+        normalizedSourceId,
+        options.slotSourceId?.trim() || null
+      );
+    }
+
     this.trashItem(normalizedUserId, normalizedSourceId);
     return this.findItem(normalizedUserId, normalizedSourceId);
+  }
+
+  private removeEventActivityMembership(
+    normalizedUserId: string,
+    normalizedSourceId: string,
+    normalizedSlotSourceId: string | null
+  ): ActivityEventRecord | null {
+    const preferredRecord = this.computePreferredEventRecords(this.memoryDb.read()[EVENTS_TABLE_NAME])
+      .find(record => record.id === normalizedSourceId);
+    if (!preferredRecord) {
+      return null;
+    }
+    this.memoryDb.write(state => {
+      const eventTable = state[EVENTS_TABLE_NAME];
+      const nextMembersTable = this.normalizeActivityMembersCollection(state[ACTIVITY_MEMBERS_TABLE_NAME]);
+      const idsToLeave = this.membershipRemovalEventIds(
+        eventTable,
+        nextMembersTable,
+        normalizedUserId,
+        normalizedSourceId,
+        normalizedSlotSourceId
+      );
+      for (const eventId of idsToLeave) {
+        this.deleteEventActivityMember(nextMembersTable, eventId, normalizedUserId);
+      }
+
+      const nextById = { ...eventTable.byId };
+      for (const recordKey of eventTable.ids) {
+        const current = eventTable.byId[recordKey];
+        if (!current || !idsToLeave.includes(current.id)) {
+          continue;
+        }
+        const acceptedMemberUserIds = this.eventMemberUserIdsByStatusFromTable(nextMembersTable, current.id, 'accepted');
+        const pendingMemberUserIds = this.eventMemberUserIdsByStatusFromTable(nextMembersTable, current.id, 'pending');
+        const invitedMemberUserIds = this.eventMemberUserIdsByPredicate(nextMembersTable, current.id, member =>
+          member.status === 'pending' && this.isInvitationMember(member)
+        );
+        const pendingRequestMemberUserIds = this.eventMemberUserIdsByPredicate(nextMembersTable, current.id, member =>
+          member.status === 'pending' && !this.isInvitationMember(member)
+        );
+        nextById[recordKey] = {
+          ...current,
+          acceptedMembers: acceptedMemberUserIds.length,
+          pendingMembers: pendingMemberUserIds.length,
+          acceptedMemberUserIds,
+          pendingMemberUserIds,
+          invitedMemberUserIds,
+          pendingRequestMemberUserIds,
+          capacityTotal: Math.max(acceptedMemberUserIds.length, current.capacityTotal),
+          full: this.directRecordFull(acceptedMemberUserIds.length, Math.max(acceptedMemberUserIds.length, current.capacityTotal))
+        };
+      }
+
+      return {
+        ...state,
+        [ACTIVITY_MEMBERS_TABLE_NAME]: nextMembersTable,
+        [EVENTS_TABLE_NAME]: {
+          byId: nextById,
+          ids: [...eventTable.ids]
+        }
+      };
+    });
+
+    this.materializeSlotRecords();
+    const refreshed = this.computePreferredEventRecords(this.memoryDb.read()[EVENTS_TABLE_NAME])
+      .find(record => record.id === normalizedSourceId)
+      ?? preferredRecord;
+    return this.buildMembershipProjectionRecord(normalizedUserId, refreshed);
   }
 
   isItemTrashed(userId: string, sourceId: string): boolean {
@@ -1796,11 +1898,31 @@ export class LocalEventsRepository {
     const directIds = new Set(directRecords.map(record => record.id));
     const membershipRecords = preferredRecords
       .filter(record => record.creatorUserId !== normalizedUserId)
+      .filter(record => !this.isGeneratedSlotRecord(record))
       .filter(record => !this.isTrashStatus(record))
       .filter(record => !directIds.has(record.id))
       .filter(record => this.hasTrackedUserParticipation(record, normalizedUserId))
       .map(record => this.buildMembershipProjectionRecord(normalizedUserId, this.withResolvedSlotContext(record, table)));
     return [...directRecords, ...membershipRecords];
+  }
+
+  private queryTrashRecordsByUser(userId: string): ActivityEventRecord[] {
+    const normalizedUserId = userId.trim();
+    if (!normalizedUserId || this.isSetupRequiredDemoProfile(normalizedUserId)) {
+      return [];
+    }
+    const table = this.memoryDb.read()[EVENTS_TABLE_NAME];
+    const trashedDirectRecords = this.queryUserRecords(normalizedUserId)
+      .filter(record => this.isTrashStatus(record));
+    const trashIds = new Set(trashedDirectRecords.map(record => record.id));
+    const deletedMembershipRecords = this.computePreferredEventRecords(table)
+      .filter(record => record.creatorUserId !== normalizedUserId)
+      .filter(record => !this.isGeneratedSlotRecord(record))
+      .filter(record => !this.isTrashStatus(record))
+      .filter(record => !trashIds.has(record.id))
+      .filter(record => this.hasDeletedEventMembership(record, normalizedUserId))
+      .map(record => this.buildMembershipProjectionRecord(normalizedUserId, this.withResolvedSlotContext(record, table)));
+    return [...trashedDirectRecords, ...deletedMembershipRecords];
   }
 
   private queryUserRecordsByUsers(
@@ -1846,6 +1968,7 @@ export class LocalEventsRepository {
       const directIds = directIdsByUserId.get(userId) ?? new Set<string>();
       const membershipRecords = preferredRecords
         .filter(record => record.creatorUserId !== userId)
+        .filter(record => !this.isGeneratedSlotRecord(record))
         .filter(record => !this.isTrashStatus(record))
         .filter(record => !directIds.has(record.id))
         .filter(record => this.hasTrackedUserParticipation(record, userId))
@@ -1863,8 +1986,30 @@ export class LocalEventsRepository {
       ...record,
       userId,
       type: 'events',
-      pendingReason: pending ? (record.pendingReason ?? 'approval') : null
+      pendingReason: pending ? this.pendingReasonForUser(record, normalizedUserId) : null
     };
+  }
+
+  private pendingReasonForUser(
+    record: ActivityEventRecord,
+    userId: string
+  ): AppConstants.ActivityPendingReason {
+    const normalizedUserId = userId.trim();
+    if (!normalizedUserId) {
+      return null;
+    }
+    const table = this.normalizeActivityMembersCollection(this.memoryDb.read()[ACTIVITY_MEMBERS_TABLE_NAME]);
+    const ownerKey = `event:${record.id.trim()}`;
+    const member = (table.idsByOwnerKey[ownerKey] ?? [])
+      .map(id => table.byId[id])
+      .find(entry => entry?.userId === normalizedUserId && entry.status === 'pending');
+    if (member?.requestKind === 'waitlist') {
+      return 'waitlist';
+    }
+    if (member?.requestKind === 'approval') {
+      return 'approval';
+    }
+    return record.pendingReason ?? 'approval';
   }
 
   private shouldIncludeUserDirectRecord(
@@ -1896,9 +2041,21 @@ export class LocalEventsRepository {
     if (!normalizedUserId || this.isSetupRequiredDemoProfile(normalizedUserId)) {
       return false;
     }
+    if (this.hasDeletedEventMembership(record, normalizedUserId)) {
+      return false;
+    }
     return this.eventAcceptedMemberUserIds(record).includes(normalizedUserId)
       || this.eventPendingRequestMemberUserIds(record).includes(normalizedUserId)
       || this.eventInvitedMemberUserIds(record).includes(normalizedUserId);
+  }
+
+  private hasDeletedEventMembership(
+    record: ActivityEventRecord,
+    userId: string
+  ): boolean {
+    const normalizedUserId = userId.trim();
+    return !!normalizedUserId
+      && this.eventMemberUserIdsByStatus(record.id, 'deleted').includes(normalizedUserId);
   }
 
   private isSetupRequiredDemoProfile(userId: string): boolean {
@@ -2255,7 +2412,32 @@ export class LocalEventsRepository {
   }
 
   private exploreHasOpenSpots(record: ActivityEventRecord): boolean {
-    return record.capacityTotal > record.acceptedMembers;
+    return !this.isFullRecord(record);
+  }
+
+  private isFullRecord(record: ActivityEventRecord): boolean {
+    if (record.full === true) {
+      return true;
+    }
+    if (this.isSlotParentRecord(record)) {
+      return this.slotParentFull(record.upcomingSlots ?? []);
+    }
+    return this.directRecordFull(record.acceptedMembers, record.capacityTotal);
+  }
+
+  private slotParentFull(slots: readonly ContractTypes.EventSlotOccurrenceDTO[]): boolean {
+    return slots.length === 0 || slots.every(slot => this.slotOccurrenceFull(slot));
+  }
+
+  private slotOccurrenceFull(slot: ContractTypes.EventSlotOccurrenceDTO): boolean {
+    const capacityTotal = Math.max(0, Math.trunc(Number(slot.capacityTotal) || 0));
+    return capacityTotal > 0 && Math.max(0, Math.trunc(Number(slot.acceptedMembers) || 0)) >= capacityTotal;
+  }
+
+  private directRecordFull(acceptedMembers: unknown, capacityTotal: unknown): boolean {
+    const normalizedCapacityTotal = Math.max(0, Math.trunc(Number(capacityTotal) || 0));
+    return normalizedCapacityTotal > 0
+      && Math.max(0, Math.trunc(Number(acceptedMembers) || 0)) >= normalizedCapacityTotal;
   }
 
   private normalizeExploreTopic(value: string | null | undefined): string {
@@ -2291,11 +2473,6 @@ export class LocalEventsRepository {
       return false;
     }
     if (record.creatorUserId === activeUserId) {
-      return false;
-    }
-    const acceptedMemberUserIds = this.eventAcceptedMemberUserIds(record);
-    const pendingRequestMemberUserIds = this.eventPendingRequestMemberUserIds(record);
-    if (acceptedMemberUserIds.includes(activeUserId) || pendingRequestMemberUserIds.includes(activeUserId)) {
       return false;
     }
     if (record.visibility === 'Invitation only') {
@@ -2372,7 +2549,7 @@ export class LocalEventsRepository {
     if (!record) {
       return null;
     }
-    return {
+    const normalized = {
       ...record,
       acceptedMembers: this.normalizeCount(record.acceptedMembers) ?? 0,
       pendingMembers: this.normalizeCount(record.pendingMembers) ?? 0,
@@ -2381,6 +2558,7 @@ export class LocalEventsRepository {
       invitedMemberUserIds: this.normalizeUserIds(record.invitedMemberUserIds),
       pendingRequestMemberUserIds: this.normalizeUserIds(record.pendingRequestMemberUserIds),
       policiesEnabled: record.policiesEnabled === true,
+      approvalRequired: record.approvalRequired === true,
       policies: ActivityEventDetailDTO.normalizePolicies(record.policies ?? []),
       slotTemplates: ActivityEventDetailDTO.normalizeSlotTemplates(record.slotTemplates ?? []),
       upcomingSlots: (record.upcomingSlots ?? []).map(item => ({ ...item })),
@@ -2388,6 +2566,10 @@ export class LocalEventsRepository {
       subEventsEnabled: record.subEventsEnabled !== false,
       subEventDefinitions: ActivityEventDetailDTO.normalizeSubEventDefinitions(record.subEventDefinitions ?? []),
       subEvents: this.cloneSubEvents(record.subEvents)
+    };
+    return {
+      ...normalized,
+      full: this.isFullRecord(normalized)
     };
   }
 
@@ -2417,6 +2599,7 @@ export class LocalEventsRepository {
     userId: string,
     status: AppConstants.ActivityMemberStatus,
     waitingList: boolean,
+    approvalRequested: boolean,
     profile: {
       id?: string;
       name?: string;
@@ -2452,11 +2635,13 @@ export class LocalEventsRepository {
       initials,
       gender: profile?.gender === 'woman' ? 'woman' : 'man',
       city: profile?.city?.trim() || '',
-      statusText: pending ? (waitingList ? 'Wait-list request pending.' : 'Join request pending.') : 'Going.',
+      statusText: pending
+        ? (waitingList ? 'Wait-list request pending.' : approvalRequested ? 'Waiting for admin approval.' : 'Join request pending.')
+        : 'Going.',
       role: normalizedUserId === event.creatorUserId ? 'Admin' : 'Member',
       status: nextStatus,
       pendingSource: pending ? 'member' : null,
-      requestKind: pending ? (waitingList ? 'waitlist' : 'join') : null,
+      requestKind: pending ? (waitingList ? 'waitlist' : approvalRequested ? 'approval' : 'join') : null,
       invitedByActiveUser: false,
       invitedByUserId: null,
       metAtIso: existing?.metAtIso?.trim() || nowIso,
@@ -2480,6 +2665,100 @@ export class LocalEventsRepository {
       ownerBucket.push(id);
     }
     table.idsByOwnerKey[ownerKey] = ownerBucket;
+  }
+
+  private deleteEventActivityMember(
+    table: ActivityMembersRecordCollection,
+    eventId: string,
+    userId: string
+  ): void {
+    const normalizedEventId = eventId.trim();
+    const normalizedUserId = userId.trim();
+    if (!normalizedEventId || !normalizedUserId) {
+      return;
+    }
+    const ownerKey = `event:${normalizedEventId}`;
+    const ownerBucket = [...(table.idsByOwnerKey[ownerKey] ?? [])];
+    const memberId = ownerBucket.find(id => table.byId[id]?.userId === normalizedUserId);
+    if (!memberId) {
+      return;
+    }
+    table.byId[memberId] = {
+      ...table.byId[memberId],
+      status: 'deleted',
+      pendingSource: null,
+      requestKind: null,
+      updatedAtIso: new Date().toISOString()
+    };
+  }
+
+  private membershipRemovalEventIds(
+    table: ActivityEventRecordCollection,
+    membersTable: ActivityMembersRecordCollection,
+    userId: string,
+    sourceId: string,
+    slotSourceId: string | null
+  ): string[] {
+    const normalizedUserId = userId.trim();
+    const explicitIds = new Set(
+      [sourceId, slotSourceId ?? '']
+        .map(id => id.trim())
+        .filter(Boolean)
+    );
+    const records = table.ids
+      .map(id => table.byId[id])
+      .filter((record): record is ActivityEventRecord => Boolean(record));
+    const parentIds = new Set<string>();
+    for (const id of explicitIds) {
+      const record = records.find(item => item.id === id);
+      const parentId = record && this.isGeneratedSlotRecord(record)
+        ? `${record.parentEventId ?? ''}`.trim()
+        : id;
+      if (parentId) {
+        parentIds.add(parentId);
+      }
+    }
+    const idsToLeave = new Set<string>(explicitIds);
+    for (const parentId of parentIds) {
+      idsToLeave.add(parentId);
+      const generatedSlotPrefix = `${parentId}:slot:`;
+      for (const member of Object.values(membersTable.byId)) {
+        const ownerId = `${member?.ownerId ?? ''}`.trim();
+        if (
+          member?.ownerType === 'event'
+          && member.userId === normalizedUserId
+          && member.status !== 'deleted'
+          && ownerId.startsWith(generatedSlotPrefix)
+        ) {
+          idsToLeave.add(ownerId);
+        }
+      }
+      for (const record of records) {
+        if (
+          this.isGeneratedSlotRecord(record)
+          && `${record.parentEventId ?? ''}`.trim() === parentId
+          && this.hasEventActivityMemberFromTable(membersTable, record.id, normalizedUserId)
+        ) {
+          idsToLeave.add(record.id);
+        }
+      }
+    }
+    return [...idsToLeave];
+  }
+
+  private hasEventActivityMemberFromTable(
+    table: ActivityMembersRecordCollection,
+    eventId: string,
+    userId: string
+  ): boolean {
+    const normalizedEventId = eventId.trim();
+    const normalizedUserId = userId.trim();
+    if (!normalizedEventId || !normalizedUserId) {
+      return false;
+    }
+    const ownerKey = `event:${normalizedEventId}`;
+    return (table.idsByOwnerKey[ownerKey] ?? [])
+      .some(id => table.byId[id]?.userId === normalizedUserId);
   }
 
   private eventMemberUserIdsByStatus(
@@ -3358,6 +3637,7 @@ export class LocalEventsRepository {
 
     const records: ActivityEventRecord[] = [];
     const templates = parent.slotTemplates ?? [];
+    const membersTable = this.normalizeActivityMembersCollection(this.memoryDb.read()[ACTIVITY_MEMBERS_TABLE_NAME]);
     const overrideDates = new Set(
       templates
         .map(template => this.slotOverrideDateKey(template.overrideDate))
@@ -3387,14 +3667,13 @@ export class LocalEventsRepository {
         const existing = this.computePreferredEventRecords(table)
           .find(record => record.id === sourceId && this.isGeneratedSlotRecord(record))
           ?? null;
-        const capacityTotal = Math.max(0, parent.capacityTotal);
-        const acceptedMembers = Math.max(0, Math.trunc(Number(existing?.acceptedMembers) || 0));
-        const pendingMembers = Math.max(0, Math.trunc(Number(existing?.pendingMembers) || 0));
+        const slotMembers = this.generatedSlotMembers(parent, membersTable, sourceId, existing, definitions);
         records.push({
           id: sourceId,
           userId: LocalEventsRepository.SLOT_READ_MODEL_USER_ID,
           type: 'events',
           status: parent.status,
+          adminIds: [...slotMembers.adminUserIds],
           avatar: parent.avatar,
           title: parent.title,
           subtitle: parent.subtitle,
@@ -3419,10 +3698,12 @@ export class LocalEventsRepository {
           locationCoordinates: this.normalizeLocationCoordinates(parent.locationCoordinates),
           capacityMin: parent.capacityMin,
           capacityMax: parent.capacityMax,
-          capacityTotal,
+          capacityTotal: slotMembers.capacityTotal,
+          full: this.directRecordFull(slotMembers.acceptedMembers, slotMembers.capacityTotal),
           autoInviter: parent.autoInviter,
           frequency: parent.frequency,
           ticketing: parent.ticketing,
+          approvalRequired: parent.approvalRequired === true,
           slotsEnabled: false,
           slotTemplates: [],
           parentEventId: parent.id,
@@ -3431,12 +3712,12 @@ export class LocalEventsRepository {
           eventType: 'slot',
           nextSlot: null,
           upcomingSlots: [],
-          acceptedMembers,
-          pendingMembers,
-          acceptedMemberUserIds: [],
-          pendingMemberUserIds: [],
-          invitedMemberUserIds: [],
-          pendingRequestMemberUserIds: [],
+          acceptedMembers: slotMembers.acceptedMembers,
+          pendingMembers: slotMembers.pendingMembers,
+          acceptedMemberUserIds: slotMembers.acceptedMemberUserIds,
+          pendingMemberUserIds: slotMembers.pendingMemberUserIds,
+          invitedMemberUserIds: slotMembers.invitedMemberUserIds,
+          pendingRequestMemberUserIds: slotMembers.pendingRequestMemberUserIds,
           topics: [...parent.topics],
           subEventsEnabled: false,
           subEventDefinitions: ActivityEventDetailDTO.normalizeSubEventDefinitions(definitions),
@@ -3474,14 +3755,13 @@ export class LocalEventsRepository {
       const existing = this.computePreferredEventRecords(table)
         .find(record => record.id === sourceId && this.isGeneratedSlotRecord(record))
         ?? null;
-      const capacityTotal = Math.max(0, parent.capacityTotal);
-      const acceptedMembers = Math.max(0, Math.trunc(Number(existing?.acceptedMembers) || 0));
-      const pendingMembers = Math.max(0, Math.trunc(Number(existing?.pendingMembers) || 0));
+      const slotMembers = this.generatedSlotMembers(parent, membersTable, sourceId, existing, definitions);
       records.push({
         id: sourceId,
         userId: LocalEventsRepository.SLOT_READ_MODEL_USER_ID,
         type: 'events',
         status: parent.status,
+        adminIds: [...slotMembers.adminUserIds],
         avatar: parent.avatar,
         title: parent.title,
         subtitle: parent.subtitle,
@@ -3506,10 +3786,12 @@ export class LocalEventsRepository {
         locationCoordinates: this.normalizeLocationCoordinates(parent.locationCoordinates),
         capacityMin: parent.capacityMin,
         capacityMax: parent.capacityMax,
-        capacityTotal,
+        capacityTotal: slotMembers.capacityTotal,
+        full: this.directRecordFull(slotMembers.acceptedMembers, slotMembers.capacityTotal),
         autoInviter: parent.autoInviter,
         frequency: parent.frequency,
         ticketing: parent.ticketing,
+        approvalRequired: parent.approvalRequired === true,
         slotsEnabled: false,
         slotTemplates: [],
         parentEventId: parent.id,
@@ -3518,12 +3800,12 @@ export class LocalEventsRepository {
         eventType: 'slot',
         nextSlot: null,
         upcomingSlots: [],
-        acceptedMembers,
-        pendingMembers,
-        acceptedMemberUserIds: [],
-        pendingMemberUserIds: [],
-        invitedMemberUserIds: [],
-        pendingRequestMemberUserIds: [],
+        acceptedMembers: slotMembers.acceptedMembers,
+        pendingMembers: slotMembers.pendingMembers,
+        acceptedMemberUserIds: slotMembers.acceptedMemberUserIds,
+        pendingMemberUserIds: slotMembers.pendingMemberUserIds,
+        invitedMemberUserIds: slotMembers.invitedMemberUserIds,
+        pendingRequestMemberUserIds: slotMembers.pendingRequestMemberUserIds,
         topics: [...parent.topics],
         subEventsEnabled: false,
         subEventDefinitions: ActivityEventDetailDTO.normalizeSubEventDefinitions(definitions),
@@ -3542,14 +3824,16 @@ export class LocalEventsRepository {
       return {
         ...record,
         nextSlot: null,
-        upcomingSlots: []
+        upcomingSlots: [],
+        full: this.directRecordFull(record.acceptedMembers, record.capacityTotal)
       };
     }
     const upcomingSlots = this.resolveUpcomingSlotOccurrences(record, table);
     return {
       ...record,
       nextSlot: upcomingSlots[0] ?? null,
-      upcomingSlots
+      upcomingSlots,
+      full: this.slotParentFull(upcomingSlots)
     };
   }
 
@@ -3559,6 +3843,7 @@ export class LocalEventsRepository {
   ): ContractTypes.EventSlotOccurrenceDTO[] {
     const parentEventId = parent.id;
     const nowMs = Date.now() - (60 * 60 * 1000);
+    const membersTable = this.normalizeActivityMembersCollection(this.memoryDb.read()[ACTIVITY_MEMBERS_TABLE_NAME]);
     return table.ids
       .map(id => table.byId[id])
       .filter((record): record is ActivityEventRecord => Boolean(record))
@@ -3567,18 +3852,130 @@ export class LocalEventsRepository {
       .filter(record => this.generatedSlotFitsParentRange(record, parent))
       .filter(record => new Date(record.endAtIso).getTime() >= nowMs)
       .sort((left, right) => new Date(left.startAtIso).getTime() - new Date(right.startAtIso).getTime())
-      .map(record => ({
-        id: record.id,
-        parentEventId,
-        slotTemplateId: record.slotTemplateId ?? '',
-        title: record.title,
-        timeframe: record.timeframe,
-        startAtIso: record.startAtIso,
-        endAtIso: record.endAtIso,
-        capacityTotal: record.capacityTotal,
-        acceptedMembers: record.acceptedMembers,
-        pendingMembers: record.pendingMembers
-      }));
+      .map(record => {
+        const occupancy = this.slotRecordOccupancyIncludingParentAdmins(parent, record, membersTable);
+        return {
+          id: record.id,
+          parentEventId,
+          slotTemplateId: record.slotTemplateId ?? '',
+          title: record.title,
+          timeframe: record.timeframe,
+          startAtIso: record.startAtIso,
+          endAtIso: record.endAtIso,
+          capacityTotal: occupancy.capacityTotal,
+          acceptedMembers: occupancy.acceptedMembers,
+          pendingMembers: occupancy.pendingMembers
+        };
+      });
+  }
+
+  private generatedSlotMembers(
+    parent: ActivityEventRecord,
+    membersTable: ActivityMembersRecordCollection,
+    sourceId: string,
+    existing: ActivityEventRecord | null,
+    definitions: readonly ActivityContracts.SubEventDefinitionDTO[] | undefined = []
+  ): {
+    adminUserIds: string[];
+    acceptedMembers: number;
+    pendingMembers: number;
+    capacityTotal: number;
+    acceptedMemberUserIds: string[];
+    pendingMemberUserIds: string[];
+    invitedMemberUserIds: string[];
+    pendingRequestMemberUserIds: string[];
+  } {
+    const adminUserIds = this.normalizeUserIds(parent.adminIds ?? []);
+    const rawAcceptedMemberUserIds = this.eventMemberUserIdsByStatusFromTable(membersTable, sourceId, 'accepted');
+    const acceptedMemberUserIds = this.normalizeUserIds([
+      ...rawAcceptedMemberUserIds,
+      ...adminUserIds
+    ]);
+    const acceptedMemberSet = new Set(acceptedMemberUserIds);
+    const rawPendingMemberUserIds = this.eventMemberUserIdsByStatusFromTable(membersTable, sourceId, 'pending');
+    const pendingMemberUserIds = rawPendingMemberUserIds.filter(userId => !acceptedMemberSet.has(userId));
+    const invitedMemberUserIds = this.eventMemberUserIdsByPredicate(
+      membersTable,
+      sourceId,
+      member => member.status === 'pending' && this.isInvitationMember(member)
+    ).filter(userId => !acceptedMemberSet.has(userId));
+    const pendingRequestMemberUserIds = this.eventMemberUserIdsByPredicate(
+      membersTable,
+      sourceId,
+      member => member.status === 'pending' && !this.isInvitationMember(member)
+    ).filter(userId => !acceptedMemberSet.has(userId));
+    const existingAcceptedMembers = Math.max(0, Math.trunc(Number(existing?.acceptedMembers) || 0));
+    const acceptedMembers = acceptedMemberUserIds.length > 0
+      ? acceptedMemberUserIds.length
+      : existingAcceptedMembers;
+    const existingPendingMembers = Math.max(0, Math.trunc(Number(existing?.pendingMembers) || 0));
+    const pendingMembers = rawPendingMemberUserIds.length > 0
+      ? pendingMemberUserIds.length
+      : Math.max(pendingMemberUserIds.length, existingPendingMembers);
+    const slotCapacityTotal = this.slotDefinitionCapacityTotal(definitions);
+    const baseCapacityTotal = slotCapacityTotal > 0
+      ? slotCapacityTotal
+      : Math.max(0, parent.capacityTotal);
+    return {
+      adminUserIds,
+      acceptedMembers,
+      pendingMembers,
+      capacityTotal: Math.max(acceptedMembers, baseCapacityTotal),
+      acceptedMemberUserIds,
+      pendingMemberUserIds,
+      invitedMemberUserIds,
+      pendingRequestMemberUserIds
+    };
+  }
+
+  private slotRecordOccupancyIncludingParentAdmins(
+    parent: ActivityEventRecord,
+    slot: ActivityEventRecord,
+    membersTable: ActivityMembersRecordCollection | null = null
+  ): { capacityTotal: number; acceptedMembers: number; pendingMembers: number } {
+    const adminUserIds = this.normalizeUserIds(parent.adminIds ?? []);
+    const rawAcceptedMemberUserIds = this.normalizeUserIds([
+      ...(slot.acceptedMemberUserIds ?? []),
+      ...(membersTable ? this.eventMemberUserIdsByStatusFromTable(membersTable, slot.id, 'accepted') : [])
+    ]);
+    const acceptedMemberUserIds = this.normalizeUserIds([
+      ...rawAcceptedMemberUserIds,
+      ...adminUserIds
+    ]);
+    const acceptedMembers = acceptedMemberUserIds.length > 0
+      ? acceptedMemberUserIds.length
+      : Math.max(0, Math.trunc(Number(slot.acceptedMembers) || 0));
+    const acceptedMemberSet = new Set(acceptedMemberUserIds);
+    const rawPendingMemberUserIds = this.normalizeUserIds([
+      ...(slot.pendingMemberUserIds ?? []),
+      ...(membersTable ? this.eventMemberUserIdsByStatusFromTable(membersTable, slot.id, 'pending') : [])
+    ]);
+    const pendingMemberUserIds = rawPendingMemberUserIds.filter(userId => !acceptedMemberSet.has(userId));
+    const pendingMembers = rawPendingMemberUserIds.length > 0
+      ? pendingMemberUserIds.length
+      : Math.max(0, Math.trunc(Number(slot.pendingMembers) || 0));
+    const slotCapacityTotal = this.slotDefinitionCapacityTotal(slot.subEventDefinitions);
+    const baseCapacityTotal = slotCapacityTotal > 0
+      ? slotCapacityTotal
+      : Math.max(0, Math.trunc(Number(slot.capacityTotal) || 0));
+    return {
+      capacityTotal: Math.max(acceptedMembers, baseCapacityTotal),
+      acceptedMembers,
+      pendingMembers
+    };
+  }
+
+  private slotDefinitionCapacityTotal(
+    definitions: readonly ActivityContracts.SubEventDefinitionDTO[] | undefined
+  ): number {
+    const capacities = ActivityEventDetailDTO.normalizeSubEventDefinitions(definitions ?? [])
+      .filter(item => item.optional !== true)
+      .map(item => Math.max(0, Math.trunc(Number(item.capacityMax) || 0)))
+      .filter(capacity => capacity > 0);
+    if (capacities.length === 0) {
+      return 0;
+    }
+    return Math.min(...capacities);
   }
 
   private generatedSlotFitsParentRange(record: ActivityEventRecord, parent: ActivityEventRecord): boolean {

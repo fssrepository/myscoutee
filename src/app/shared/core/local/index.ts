@@ -36,6 +36,7 @@ export { LocalActivityResourcesRepository } from './source/repositories/activity
 export { LocalChatsRepository } from './source/repositories/chats.repository';
 export { LocalCountryPartitionsRepository } from './source/repositories/country-partitions.repository';
 export { LocalEventsRepository } from './source/repositories/events.repository';
+export { LocalEventCheckoutBasketsRepository } from './source/repositories/event-checkout-baskets.repository';
 export { LocalEventFeedbackRepository } from './source/repositories/event-feedback.repository';
 export { LocalHelpCenterRepository } from './source/repositories/help-center.repository';
 export { LocalIdeaPostsRepository } from './source/repositories/idea-posts.repository';

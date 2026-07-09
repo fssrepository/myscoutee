@@ -238,6 +238,11 @@
   padding: 0;
 }
 
+.form-flow__body.is-swipe-blocked {
+  touch-action: pan-y;
+  overscroll-behavior-x: none;
+}
+
 .form-flow__track {
   display: flex;
   flex-wrap: nowrap;
@@ -393,6 +398,12 @@
     border-color: #ff9b9b;
     background: #fff1f1;
     color: #c1262e;
+  }
+
+  &.is-complete {
+    border-color: #8dcc9b;
+    background: #edf9f0;
+    color: #27733d;
   }
 
   mat-icon {

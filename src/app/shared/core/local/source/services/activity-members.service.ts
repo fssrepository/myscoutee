@@ -7,7 +7,12 @@ import { LocalRouteDelayService } from './route-delay.service';
 import { LocalActivityMembersRepository } from '../repositories/activity-members.repository';
 import { LocalUsersRepository } from '../repositories/users.repository';
 import { LocalActivityMembersBuilder, type ActivityMemberProfileFallback, type LocalActivityMembersOwnerSnapshot } from '../mappers';
-import type { ActivityMemberDTO, ActivityMemberOwnerRef, ActivityMembersSummaryDto } from '../../../contracts/activity.interface';
+import type {
+  ActivityMemberDTO,
+  ActivityMemberOwnerRef,
+  ActivityMembersQueryOptions,
+  ActivityMembersSummaryDto
+} from '../../../contracts/activity.interface';
 
 @Injectable({
   providedIn: 'root'
@@ -18,12 +23,15 @@ export class LocalActivityMembersService extends LocalRouteDelayService {
   private readonly localUsersRepository = inject(LocalUsersRepository);
 
   peekMembersByOwner(owner: ActivityMemberOwnerRef): ActivityMemberDTO[] {
-    return this.entriesFromRecords(this.activityMembersRepository.peekRecordsByOwner(owner));
+    return this.entriesFromRecords(this.activityMembersRepository.peekRecordsByOwner(owner), owner);
   }
 
-  async queryMembersByOwner(owner: ActivityMemberOwnerRef): Promise<ActivityMemberDTO[]> {
+  async queryMembersByOwner(
+    owner: ActivityMemberOwnerRef,
+    options?: ActivityMembersQueryOptions
+  ): Promise<ActivityMemberDTO[]> {
     await this.waitForRouteDelay(LocalActivityMembersService.MEMBERS_ROUTE);
-    return this.entriesFromRecords(await this.activityMembersRepository.queryRecordsByOwner(owner));
+    return this.entriesFromRecords(await this.activityMembersRepository.queryRecordsByOwner(owner, options), owner);
   }
 
   peekSummaryByOwner(owner: ActivityMemberOwnerRef): ActivityMembersSummaryDto | null {
@@ -80,7 +88,7 @@ export class LocalActivityMembersService extends LocalRouteDelayService {
     }
 
     const previousRecords = this.activityMembersRepository.peekRecordsByOwner(normalizedOwner);
-    const previousMembers = this.entriesFromRecords(previousRecords);
+    const previousMembers = this.entriesFromRecords(previousRecords, normalizedOwner);
     const nowIso = AppUtils.toIsoDateTime(new Date());
     const nextMembers = previousMembers.map(member => {
       if (member.userId !== normalizedTargetUserId) {
@@ -127,14 +135,22 @@ export class LocalActivityMembersService extends LocalRouteDelayService {
       nextRecords,
       ownerSnapshot?.capacityTotal ?? null
     );
-    return this.entriesFromRecords(nextRecords);
+    return this.entriesFromRecords(nextRecords, normalizedOwner);
   }
 
-  private entriesFromRecords(records: readonly ActivityMemberRecord[]): ActivityMemberDTO[] {
+  private entriesFromRecords(
+    records: readonly ActivityMemberRecord[],
+    owner?: ActivityMemberOwnerRef
+  ): ActivityMemberDTO[] {
+    const userIds = records.map(record => record.userId);
+    const involvementRecordsByUserId = owner
+      ? this.activityMembersRepository.queryInvolvementRecordsByOwnerAndUsers(owner, userIds)
+      : new Map<string, ActivityMemberRecord[]>();
     return LocalActivityMembersBuilder.sortEntriesByActionTime(
       records.map(record => LocalActivityMembersBuilder.toEntry(
         record,
-        (userId, fallback) => this.resolveDemoUser(userId, fallback)
+        (userId, fallback) => this.resolveDemoUser(userId, fallback),
+        involvementRecordsByUserId.get(record.userId.trim()) ?? []
       ))
     );
   }

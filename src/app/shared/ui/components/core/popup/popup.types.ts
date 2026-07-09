@@ -1,4 +1,6 @@
 import type {
+  AppMenuCounter,
+  AppMenuCounterValue,
   AppMenuItem,
   AppMenuItemSelectEvent,
   AppMenuGroup,
@@ -14,7 +16,7 @@ import type {
   DateInputValue
 } from '../form/inputs/date-input/date-input.component';
 
-export type PopupSize = 'default' | 'wide';
+export type PopupSize = 'small' | 'default' | 'wide';
 export type PopupHeight = 'auto' | 'full';
 export type PopupHeaderTone = 'default' | 'accent';
 export type PopupBodyLayout = 'default' | 'fill';
@@ -31,6 +33,7 @@ export interface PopupAction extends PopupControlBase {
   label?: string | null;
   ariaLabel?: string | null;
   palette?: AppMenuPalette;
+  counter?: AppMenuCounter | AppMenuCounterValue | null;
   active?: boolean;
   disabled?: boolean;
   compactOnMobile?: boolean;

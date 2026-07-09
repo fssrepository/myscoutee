@@ -62,6 +62,16 @@
       </span>
     }
 
+    @if (resolvedBadge(); as badge) {
+      <span
+        [ngClass]="badgeClassList(badge)"
+        [attr.aria-label]="badge.ariaLabel || null"
+        [attr.title]="badge.ariaLabel || null"
+        >
+        {{ badge.label }}
+      </span>
+    }
+
     @for (position of mediaActionPositions; track position) {
       @if (hasPositionControls(position)) {
         <div

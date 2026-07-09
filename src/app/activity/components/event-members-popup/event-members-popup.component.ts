@@ -38,6 +38,7 @@ import {
   CounterBadgePipe,
   I18nPipe,
   ImageCardComponent,
+  PopupComponent,
   SmartListComponent,
   type AppMenuItem,
   type AppMenuItemSelectEvent,
@@ -48,6 +49,7 @@ import {
   type ImageCardMediaActionEvent,
   type ListQuery,
   type PageResult,
+  type PopupModel,
   type SmartListConfig,
   type SmartListItemTemplateContext,
   type SmartListLoaders,
@@ -76,7 +78,7 @@ interface MembersSmartListFilters {
   pendingOnly?: boolean;
 }
 
-type MemberMenuAction = 'approve' | 'remove' | 'disqualify' | 'reinstate' | 'report';
+type MemberMenuAction = 'approve' | 'remove' | 'disqualify' | 'reinstate' | 'report' | 'involvement';
 
 type MemberMenuContext = {
   menu: 'member-action';
@@ -90,6 +92,11 @@ type MembersSummaryState = {
   capacityTotal: number;
 };
 
+interface MemberInvolvementPopupState {
+  memberName: string;
+  rows: ActivityContracts.ActivityMemberInvolvementDTO[];
+}
+
 @Component({
   selector: 'app-event-members-popup',
   standalone: true,
@@ -97,6 +104,7 @@ type MembersSummaryState = {
     CommonModule,
     MatButtonModule,
     MatIconModule,
+    PopupComponent,
     SmartListComponent,
     ImageCardComponent,
     CounterBadgePipe,
@@ -138,6 +146,7 @@ export class EventMembersPopupComponent {
   protected acceptedCount = 0;
   protected capacityTotal = 0;
   protected canShowInviteButton = false;
+  protected memberInvolvementPopup: MemberInvolvementPopupState | null = null;
   private lookupRef: AppUiTypes.PopupHeaderLookup | null = null;
 
   private ownerRecord: ActivityEventRecord | null = null;
@@ -267,6 +276,10 @@ export class EventMembersPopupComponent {
     }
     keyboardEvent.preventDefault();
     keyboardEvent.stopPropagation();
+    if (this.memberInvolvementPopup) {
+      this.closeMemberInvolvementPopup();
+      return;
+    }
     if (this.membersSmartList?.menuOpen() ?? false) {
       this.membersSmartList?.closeMenu();
       this.cdr.markForCheck();
@@ -292,6 +305,7 @@ export class EventMembersPopupComponent {
       return;
     }
     this.pendingOnly = !this.pendingOnly;
+    this.invalidateMembersCacheForOwner(this.ownerId);
     this.membersSmartList?.closeMenu();
     this.syncMembersSmartListQuery();
     this.cdr.markForCheck();
@@ -304,8 +318,7 @@ export class EventMembersPopupComponent {
       this.openMembersHydrationTimer = null;
     }
     if (this.ownerId) {
-      this.membersCacheByOwnerId.delete(this.ownerId);
-      this.pendingInitialMembersDelayOwnerIds.delete(this.ownerId);
+      this.invalidateMembersCacheForOwner(this.ownerId);
     }
     this.isOpen = false;
     this.ownerId = '';
@@ -316,6 +329,7 @@ export class EventMembersPopupComponent {
     this.pendingOnly = false;
     this.canManageMembers = false;
     this.canShowInviteButton = false;
+    this.memberInvolvementPopup = null;
     this.isLocalMembersSource = false;
     this.membersChangeHandler = null;
     this.suppressedOwnerSyncId = null;
@@ -348,7 +362,8 @@ export class EventMembersPopupComponent {
   }
 
   protected canShowActionMenu(entry: ActivityContracts.ActivityMemberDTO): boolean {
-    return this.canApproveMember(entry)
+    return this.canShowMemberInvolvement(entry)
+      || this.canApproveMember(entry)
       || this.canDeleteMember(entry)
       || this.canDisqualifyMember(entry)
       || this.canReinstateMember(entry)
@@ -389,6 +404,15 @@ export class EventMembersPopupComponent {
 
   protected memberActionMenuItems(entry: ActivityContracts.ActivityMemberDTO): readonly AppMenuItem<string, MemberMenuContext>[] {
     const items: AppMenuItem<string, MemberMenuContext>[] = [];
+    if (this.canShowMemberInvolvement(entry)) {
+      items.push({
+        id: `member-action-involvement-${entry.id}`,
+        label: 'Részvétel',
+        icon: 'assignment_ind',
+        palette: 'teal',
+        context: { menu: 'member-action', member: entry, action: 'involvement' }
+      });
+    }
     if (this.canApproveMember(entry)) {
       items.push({
         id: `member-action-approve-${entry.id}`,
@@ -443,6 +467,9 @@ export class EventMembersPopupComponent {
       return;
     }
     switch (context.action) {
+      case 'involvement':
+        this.openMemberInvolvementPopup(context.member, event.sourceEvent);
+        break;
       case 'approve':
         this.approveMember(context.member, event.sourceEvent);
         break;
@@ -554,6 +581,79 @@ export class EventMembersPopupComponent {
       ownerType: this.ownerRef?.ownerType ?? 'event'
     });
     this.cdr.markForCheck();
+  }
+
+  protected canShowMemberInvolvement(entry: ActivityContracts.ActivityMemberDTO): boolean {
+    return Array.isArray(entry.involvements) && entry.involvements.length > 0;
+  }
+
+  protected openMemberInvolvementPopup(entry: ActivityContracts.ActivityMemberDTO, event: Event): void {
+    event.stopPropagation();
+    if (!this.canShowMemberInvolvement(entry)) {
+      return;
+    }
+    this.membersSmartList?.closeMenu();
+    this.memberInvolvementPopup = {
+      memberName: `${entry.name ?? ''}`.trim() || 'Member',
+      rows: this.memberInvolvementRows(entry)
+    };
+    this.cdr.markForCheck();
+  }
+
+  protected closeMemberInvolvementPopup(event?: Event): void {
+    event?.stopPropagation();
+    this.memberInvolvementPopup = null;
+    this.cdr.markForCheck();
+  }
+
+  protected memberInvolvementPopupModel(state: MemberInvolvementPopupState): PopupModel {
+    return {
+      title: 'Részvétel',
+      subtitle: state.memberName,
+      size: 'small',
+      closeOnBackdrop: true,
+      backdropTone: 'dim',
+      onClose: event => this.closeMemberInvolvementPopup(event)
+    };
+  }
+
+  protected memberInvolvementPopupZIndex(): number {
+    return this.membersPopupZIndex() + 40;
+  }
+
+  protected memberInvolvementRows(
+    entry: ActivityContracts.ActivityMemberDTO
+  ): ActivityContracts.ActivityMemberInvolvementDTO[] {
+    return (entry.involvements ?? []).map(involvement => ({ ...involvement }));
+  }
+
+  protected memberInvolvementIcon(entry: ActivityContracts.ActivityMemberInvolvementDTO): string {
+    switch (entry.ownerType) {
+      case 'event':
+        return 'event';
+      case 'subEvent':
+        return 'view_agenda';
+      case 'group':
+        return 'groups';
+      case 'asset':
+        return 'inventory_2';
+    }
+  }
+
+  protected memberInvolvementToneClass(entry: ActivityContracts.ActivityMemberInvolvementDTO): string {
+    if (entry.status === 'pending') {
+      return 'activity-members-involvement-row--pending';
+    }
+    if (entry.status === 'disqualified' || entry.status === 'deleted') {
+      return 'activity-members-involvement-row--muted';
+    }
+    if (entry.ownerType === 'group') {
+      return 'activity-members-involvement-row--group';
+    }
+    if (entry.ownerType === 'asset') {
+      return 'activity-members-involvement-row--asset';
+    }
+    return 'activity-members-involvement-row--accepted';
   }
 
   protected canViewMemberProfile(entry: ActivityContracts.ActivityMemberDTO): boolean {
@@ -787,7 +887,7 @@ export class EventMembersPopupComponent {
     this.pendingOnly = false;
     this.membersSmartList?.closeMenu();
     this.selectedMembersVisible = [];
-    this.membersCacheByOwnerId.delete(normalizedOwnerId);
+    this.invalidateMembersCacheForOwner(normalizedOwnerId);
     this.resetSummaryState();
     this.requestedCanManageMembers = options?.canManage === true;
     this.viewOnlyMode = options?.viewOnly === true;
@@ -795,7 +895,7 @@ export class EventMembersPopupComponent {
     this.canShowInviteButton = this.canManageMembers;
     this.isLocalMembersSource = initialMembers !== null;
     if (initialMembers) {
-      this.membersCacheByOwnerId.set(normalizedOwnerId, initialMembers);
+      this.membersCacheByOwnerId.set(this.membersCacheKey(normalizedOwnerId), initialMembers);
       this.pendingInitialMembersDelayOwnerIds.add(normalizedOwnerId);
       void this.usersService.warmCachedUsers(
         initialMembers
@@ -850,6 +950,20 @@ export class EventMembersPopupComponent {
     };
   }
 
+  private invalidateMembersCacheForOwner(ownerId: string): void {
+    const normalizedOwnerId = ownerId.trim();
+    if (!normalizedOwnerId) {
+      return;
+    }
+    this.membersCacheByOwnerId.delete(this.membersCacheKey(normalizedOwnerId));
+    this.membersCacheByOwnerId.delete(this.membersCacheKey(normalizedOwnerId, true));
+    this.pendingInitialMembersDelayOwnerIds.delete(normalizedOwnerId);
+  }
+
+  private membersCacheKey(ownerId: string, pendingOnly = false): string {
+    return `${ownerId.trim()}::pending:${pendingOnly ? '1' : '0'}`;
+  }
+
   private async resolveOwnerPresentation(
     ownerId: string,
     options?: {
@@ -891,6 +1005,7 @@ export class EventMembersPopupComponent {
     query: ListQuery<MembersSmartListFilters>
   ): Promise<PageResult<ActivityContracts.ActivityMemberDTO>> {
     const ownerId = query.filters?.ownerId?.trim() ?? '';
+    const pendingOnly = query.filters?.pendingOnly === true;
     if (!ownerId) {
       return {
         items: [],
@@ -898,8 +1013,9 @@ export class EventMembersPopupComponent {
       };
     }
 
-    let members = this.membersCacheByOwnerId.get(ownerId);
-    if (members && this.pendingInitialMembersDelayOwnerIds.delete(ownerId)) {
+    const cacheKey = this.membersCacheKey(ownerId, pendingOnly);
+    let members = this.membersCacheByOwnerId.get(cacheKey);
+    if (!pendingOnly && members && this.pendingInitialMembersDelayOwnerIds.delete(ownerId)) {
       await this.activityMembersService.waitForMembersRouteDelay();
       if (!this.isOpen || this.ownerId !== ownerId) {
         return {
@@ -907,7 +1023,7 @@ export class EventMembersPopupComponent {
           total: 0
         };
       }
-      members = this.membersCacheByOwnerId.get(ownerId) ?? members;
+      members = this.membersCacheByOwnerId.get(cacheKey) ?? members;
     }
     if (!members) {
       const owner = this.ownerRef && this.ownerRef.ownerId === ownerId
@@ -916,22 +1032,21 @@ export class EventMembersPopupComponent {
       const loadedMembers = this.lookupRef?.type === 'chat' && this.lookupRef.id === ownerId
         ? await this.chatsService.queryChatMemberEntries(ownerId)
         : owner
-        ? await this.activityMembersService.queryMembersByOwner(owner)
-        : await this.activityMembersService.queryMembersByOwnerId(ownerId);
+        ? await this.activityMembersService.queryMembersByOwner(owner, { pendingOnly })
+        : await this.activityMembersService.queryMembersByOwnerId(ownerId, { pendingOnly });
       members = this.sortMembersByActionTimeDesc(loadedMembers);
       void this.usersService.warmCachedUsers(members.map(member => member.userId));
-      this.membersCacheByOwnerId.set(ownerId, members);
-      if (this.isOpen && this.ownerId === ownerId) {
+      this.membersCacheByOwnerId.set(cacheKey, members);
+      if (!pendingOnly && this.isOpen && this.ownerId === ownerId) {
         this.syncCanManageMembers(members);
       }
     }
 
-    const filteredMembers = this.filterMembersForView(members, query.filters?.pendingOnly === true);
     const pageSize = Math.max(1, Number(query.pageSize) || 16);
     const startIndex = Math.max(0, Number(query.page) || 0) * pageSize;
     return {
-      items: filteredMembers.slice(startIndex, startIndex + pageSize),
-      total: filteredMembers.length
+      items: members.slice(startIndex, startIndex + pageSize),
+      total: members.length
     };
   }
 
@@ -973,7 +1088,8 @@ export class EventMembersPopupComponent {
         }
       }
     }
-    this.membersCacheByOwnerId.set(this.ownerId, normalizedMembers);
+    this.membersCacheByOwnerId.set(this.membersCacheKey(this.ownerId), normalizedMembers);
+    this.membersCacheByOwnerId.delete(this.membersCacheKey(this.ownerId, true));
     this.syncCanManageMembers(normalizedMembers);
     this.applySummaryFromMembers(normalizedMembers);
     this.membersSmartList?.closeMenu();
@@ -992,8 +1108,13 @@ export class EventMembersPopupComponent {
     if (!this.membersListReady || !this.membersSmartList) {
       return;
     }
-    const previousFilteredMembers = this.filterMembersForView(previousMembers);
-    const nextFilteredMembers = this.filterMembersForView(nextMembers);
+    if (this.pendingOnly && this.ownerId) {
+      this.membersCacheByOwnerId.delete(this.membersCacheKey(this.ownerId, true));
+      this.membersSmartList.reload();
+      return;
+    }
+    const previousFilteredMembers = [...previousMembers];
+    const nextFilteredMembers = [...nextMembers];
     const visibleCount = Math.max(this.selectedMembersVisible.length, this.membersSmartList.itemsSnapshot().length);
     const allMembersWereVisible = visibleCount >= previousFilteredMembers.length;
     let nextVisibleCount = Math.min(nextFilteredMembers.length, visibleCount);
@@ -1005,18 +1126,8 @@ export class EventMembersPopupComponent {
     });
   }
 
-  private filterMembersForView(
-    members: readonly ActivityContracts.ActivityMemberDTO[],
-    pendingOnly = this.pendingOnly
-  ): ActivityContracts.ActivityMemberDTO[] {
-    const visibleMembers = members.filter(member => !this.isWaitlistMember(member));
-    return pendingOnly
-      ? visibleMembers.filter(member => member.status === 'pending')
-      : [...visibleMembers];
-  }
-
   private currentOwnerMembers(): ActivityContracts.ActivityMemberDTO[] {
-    return [...(this.membersCacheByOwnerId.get(this.ownerId) ?? [])];
+    return [...(this.membersCacheByOwnerId.get(this.membersCacheKey(this.ownerId)) ?? [])];
   }
 
   protected canApproveMember(entry: ActivityContracts.ActivityMemberDTO): boolean {
@@ -1091,7 +1202,7 @@ export class EventMembersPopupComponent {
   }
 
   private applySummaryFromMembers(members: readonly ActivityContracts.ActivityMemberDTO[]): void {
-    const visibleMembers = members.filter(member => !this.isWaitlistMember(member));
+    const visibleMembers = [...members];
     const acceptedCount = visibleMembers.filter(member => member.status === 'accepted').length;
     const pendingCount = visibleMembers.filter(member => member.status === 'pending').length;
     this.applySummary(
@@ -1132,7 +1243,7 @@ export class EventMembersPopupComponent {
     }
     const owner = this.ownerRef && this.ownerRef.ownerId === sync.id ? this.ownerRef : null;
     if (!owner) {
-      this.membersCacheByOwnerId.delete(sync.id);
+      this.invalidateMembersCacheForOwner(sync.id);
       this.applySummary(sync.acceptedMembers, 0, sync.capacityTotal);
       this.cdr.markForCheck();
       return;
@@ -1144,7 +1255,8 @@ export class EventMembersPopupComponent {
           return;
         }
         const normalizedMembers = this.sortMembersByActionTimeDesc(members);
-        this.membersCacheByOwnerId.set(sync.id, normalizedMembers);
+        this.membersCacheByOwnerId.set(this.membersCacheKey(sync.id), normalizedMembers);
+        this.membersCacheByOwnerId.delete(this.membersCacheKey(sync.id, true));
         this.syncCanManageMembers(normalizedMembers);
         this.applySummaryFromMembers(normalizedMembers);
         this.syncVisibleMembers(previousMembers, normalizedMembers);
@@ -1212,7 +1324,8 @@ export class EventMembersPopupComponent {
       }
       throw error;
     }
-    this.membersCacheByOwnerId.set(this.ownerId, normalizedMembers);
+    this.membersCacheByOwnerId.set(this.membersCacheKey(this.ownerId), normalizedMembers);
+    this.membersCacheByOwnerId.delete(this.membersCacheKey(this.ownerId, true));
     this.syncCanManageMembers(normalizedMembers);
     this.applySummaryFromMembers(normalizedMembers);
     this.membersSmartList?.closeMenu();

@@ -80,4 +80,24 @@
       </div>
     </div>
   </section>
+  @if (memberInvolvementPopup; as involvement) {
+    <app-popup
+      [model]="memberInvolvementPopupModel(involvement)"
+      [zIndex]="memberInvolvementPopupZIndex()"
+      >
+      <div class="activity-members-involvement-list">
+        @for (row of involvement.rows; track row.id) {
+          <article class="activity-members-involvement-row" [ngClass]="memberInvolvementToneClass(row)">
+            <span class="activity-members-involvement-icon">
+              <mat-icon>{{ memberInvolvementIcon(row) }}</mat-icon>
+            </span>
+            <span class="activity-members-involvement-copy">
+              <strong>{{ row.label }}</strong>
+              <small>{{ row.detail }}</small>
+            </span>
+          </article>
+        }
+      </div>
+    </app-popup>
+  }
 }

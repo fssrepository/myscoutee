@@ -160,9 +160,11 @@ export interface AppMenuItem<TId extends string = string, TContext = unknown> {
   surface?: AppMenuItemSurface;
   layout?: AppMenuItemLayout;
   counter?: AppMenuCounter | AppMenuCounterValue | null;
+  headerBadge?: AppMenuCounter | AppMenuCounterValue | null;
   disabled?: AppMenuLiveValue<boolean | null | undefined>;
   active?: AppMenuLiveValue<boolean | null | undefined>;
   checked?: AppMenuLiveValue<boolean | null | undefined>;
+  showCheck?: AppMenuLiveValue<boolean | null | undefined>;
   removable?: AppMenuLiveValue<boolean | null | undefined>;
   removeIcon?: AppMenuLiveValue<string | null | undefined>;
   removeAriaLabel?: AppMenuLiveValue<string | null | undefined>;

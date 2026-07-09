@@ -516,7 +516,7 @@
     "leave.event": "Esemény elhagyása",
     "manage.event": "Esemény kezelése",
     "login": "Bejelentkezés",
-    "login.disabled.mode.choose.a.demo.user.to.open.perspective.based.data": "Bejelentkezés nélküli mód. Válassz demo felhasználót a nézőpont szerinti adatok megnyitásához.",
+    "login.disabled.mode.choose.a.demo.user.to.open.perspective.based.data": "Válassz demo profilt.",
     "login.disabled.mode.choose.an.admin.user.to.seed.moderation.data": "Bejelentkezés nélküli mód. Válassz admin felhasználót a moderációs adatok feltöltéséhez.",
     "moderation.and.support": "Moderáció és támogatás",
     "moderation.workspace": "Moderációs munkatér",

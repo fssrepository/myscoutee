@@ -254,6 +254,15 @@
 .smart-list__week-counter.calendar-counter-full,
 .smart-list__week-counter-head.calendar-counter-full,
 .smart-list__week-hour-counter.calendar-counter-full {
+  background: #f4f7fb;
+  border-color: rgba(105, 119, 140, 0.28);
+  color: #5a4658;
+}
+
+.smart-list__month-counter.calendar-counter-booked-full,
+.smart-list__week-counter.calendar-counter-booked-full,
+.smart-list__week-counter-head.calendar-counter-booked-full,
+.smart-list__week-hour-counter.calendar-counter-booked-full {
   background: #fff3e4;
   border-color: rgba(183, 113, 37, 0.3);
   color: #7a4515;

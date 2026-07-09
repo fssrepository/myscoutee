@@ -44,6 +44,7 @@ import {
   type SmartListLoadPage
 } from '../../../shared/ui';
 import {
+  ActivityChatSingleRowConverter,
   EventSubeventRuntimeInfoCardConverter,
   EventSubeventRuntimeMenuConverter,
   EventSubeventsSlotConverter,
@@ -792,6 +793,10 @@ export class EventSubeventsListPopupComponent {
     event: Event
   ): void {
     event.stopPropagation();
+    if (context.resourceType === 'Members') {
+      this.openSubEventMembersPopup(context);
+      return;
+    }
     const ownerId = `${context.sourceId ?? ''}`.trim();
     const item = context.item;
     if (!ownerId) {
@@ -818,6 +823,69 @@ export class EventSubeventsListPopupComponent {
         endAt: item.endAt
       }
     });
+  }
+
+  private openSubEventMembersPopup(
+    context: Extract<EventSubeventRuntimeMenuContext, { scope: 'resource' }>
+  ): void {
+    const ownerId = `${context.sourceId ?? ''}`.trim();
+    const item = context.item;
+    const subEventId = `${item.id ?? ''}`.trim();
+    const memberOwnerId = this.memberOwnerIdFromParts(ownerId, subEventId);
+    if (!memberOwnerId) {
+      return;
+    }
+    const acceptedMembers = this.nonNegativeInteger(item.membersAccepted);
+    const pendingMembers = this.nonNegativeInteger(item.membersPending);
+    const capacityTotal = Math.max(
+      acceptedMembers,
+      pendingMembers + acceptedMembers,
+      this.nonNegativeInteger(item.capacityMax)
+    );
+    void this.activitiesStore.ensureEventMembersPopupLoaded();
+    this.memberMenuStore.requestActivitiesNavigation({
+      type: 'members',
+      ownerId: memberOwnerId,
+      ownerType: 'subEvent',
+      subtitle: `${item.name ?? ''}`.trim() || this.popupSubtitle(),
+      canManage: this.eventSubeventsStore.eventSubeventsListPopup()?.canEdit === true,
+      acceptedMembers,
+      pendingMembers,
+      capacityTotal,
+      metricIdentity: this.chatMetricIdentityFromParts(ownerId, subEventId)
+    });
+  }
+
+  private memberOwnerIdFromParts(
+    ownerIdValue: string | null | undefined,
+    subEventIdValue: string | null | undefined
+  ): string {
+    const ownerId = `${ownerIdValue ?? ''}`.trim();
+    const subEventId = `${subEventIdValue ?? ''}`.trim();
+    if (ownerId && subEventId) {
+      return `${ownerId}:${subEventId}`;
+    }
+    return subEventId || ownerId;
+  }
+
+  private chatMetricIdentityFromParts(
+    ownerIdValue: string | null | undefined,
+    subEventIdValue: string | null | undefined
+  ): string {
+    const ownerId = `${ownerIdValue ?? ''}`.trim();
+    const subEventId = `${subEventIdValue ?? ''}`.trim();
+    if (!ownerId || !subEventId) {
+      return '';
+    }
+    const chatOwnerId = `${ownerId}:${subEventId}`;
+    return ActivityChatSingleRowConverter.smartListKeyForIdentity('optionalSubEvent', chatOwnerId, chatOwnerId);
+  }
+
+  private nonNegativeInteger(value: unknown): number {
+    if (!Number.isFinite(Number(value))) {
+      return 0;
+    }
+    return Math.max(0, Math.trunc(Number(value)));
   }
 
   private joinDistinctResourcePopupHeaderLabels(parts: readonly string[]): string {

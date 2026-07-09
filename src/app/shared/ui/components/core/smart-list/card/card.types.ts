@@ -78,6 +78,7 @@ export type InfoCardMediaTone = 'default' | 'neutral';
 export interface CardBadgeConfig {
   label: string;
   ariaLabel?: string | null;
+  className?: string | null;
   active?: boolean;
   pending?: boolean;
   disabled?: boolean;
@@ -204,8 +205,9 @@ export const CARD_MENU_ACTIONS: Readonly<Record<CardMenuActionId, CardMenuAction
   bookEvent: { label: 'book.event', icon: 'person_add', tone: 'accent' },
   borrowAsset: { label: 'borrow', icon: 'volunteer_activism', tone: 'accent' },
   capacity: { label: 'capacity', icon: 'groups' },
-  contactOrganizer: { label: 'contact.organizer', icon: 'support_agent' },
   contactOwner: { label: 'contact.owner', icon: 'support_agent' },
+  continueBooking: { label: 'Foglalás folytatása', icon: 'shopping_basket', tone: 'accent' },
+  continueBookingPending: { label: 'Foglalás folytatása', icon: 'shopping_basket', tone: 'warning' },
   delete: { label: 'delete', icon: 'delete', tone: 'destructive' },
   deleteEvent: { label: 'delete.event', icon: 'delete', tone: 'destructive' },
   edit: { label: 'edit', icon: 'edit', tone: 'accent' },
@@ -222,6 +224,7 @@ export const CARD_MENU_ACTIONS: Readonly<Record<CardMenuActionId, CardMenuAction
   manage: { label: 'manage', icon: 'settings', tone: 'accent' },
   manageEvent: { label: 'manage.event', icon: 'settings' },
   notifyParticipants: { label: 'notify.participants', icon: 'support_agent' },
+  paymentSummary: { label: 'Fizetési összegzés', icon: 'receipt_long' },
   publish: { label: 'publish', icon: 'campaign', tone: 'accent' },
   rejectInvitation: { label: 'reject.invitation', icon: 'block', tone: 'destructive' },
   remove: { label: 'reject', icon: 'delete', tone: 'destructive' },

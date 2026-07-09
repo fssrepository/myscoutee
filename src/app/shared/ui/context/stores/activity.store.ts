@@ -1,6 +1,6 @@
 import { Injectable, signal } from '@angular/core';
 
-import { EventFeedbackDetailDto } from '../../../core/contracts/activity.interface';
+import { EventFeedbackDetailDto, type EventCheckoutResultState } from '../../../core/contracts/activity.interface';
 import type { ChatMetricBucketDTO } from '../../../core/contracts/chat.interface';
 import type { UserMenuCounterDeltasDto } from '../../../core/contracts/user.interface';
 import {
@@ -74,6 +74,11 @@ export interface ActivityMembersSyncState {
   acceptedMembers: number;
   pendingMembers: number;
   capacityTotal: number;
+  full?: boolean;
+  checkoutResultState?: EventCheckoutResultState | null;
+  acceptedMemberDelta?: number;
+  pendingMemberDelta?: number;
+  viewerMembershipRemoved?: boolean;
 }
 
 export interface ActivityResourceSyncState {
@@ -347,6 +352,12 @@ export class ActivityStore {
     if (!normalizedId) {
       return;
     }
+    const acceptedMemberDelta = Number.isFinite(Number(payload.acceptedMemberDelta))
+      ? Math.trunc(Number(payload.acceptedMemberDelta))
+      : null;
+    const pendingMemberDelta = Number.isFinite(Number(payload.pendingMemberDelta))
+      ? Math.trunc(Number(payload.pendingMemberDelta))
+      : null;
     this._activityMembersSync.set({
       updatedMs: Date.now(),
       id: normalizedId,
@@ -355,7 +366,12 @@ export class ActivityStore {
       capacityTotal: Math.max(
         normalizeCounterValue(payload.acceptedMembers),
         normalizeCounterValue(payload.capacityTotal)
-      )
+      ),
+      ...(acceptedMemberDelta !== null ? { acceptedMemberDelta } : {}),
+      ...(pendingMemberDelta !== null ? { pendingMemberDelta } : {}),
+      ...(payload.full === true ? { full: true } : {}),
+      ...(payload.checkoutResultState ? { checkoutResultState: payload.checkoutResultState } : {}),
+      ...(payload.viewerMembershipRemoved === true ? { viewerMembershipRemoved: true } : {})
     });
   }
 

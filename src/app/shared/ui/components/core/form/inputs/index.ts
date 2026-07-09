@@ -1,5 +1,5 @@
 export * from './date-input';
-export * from './event-slots-input';
+export * from './slots-input';
 export * from './link-input';
 export * from './location-input';
 export * from './policies-input';

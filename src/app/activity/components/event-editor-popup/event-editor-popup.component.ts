@@ -32,7 +32,8 @@ import {
   ActivitiesPopupStore
 } from '../../../shared/ui/context/stores/activities-popup.store';
 import {
-  EventEditorPopupStore
+  EventEditorPopupStore,
+  type EventEditorCheckoutSurfaceTone
 } from '../../../shared/ui/context/stores/event-editor-popup.store';
 import {
   EventCheckoutDraftStore,
@@ -41,6 +42,7 @@ import {
 import {
   APP_STATIC_DATA
 } from '../../../shared/app-static-data';
+import { environment } from '../../../../environments/environment';
 import {
   AppUtils
 } from '../../../shared/app-utils';
@@ -69,19 +71,30 @@ import {
   DateInputComponent,
   type DateInputModel,
   ImageCarouselComponent,
-  EventSlotsInputComponent,
-  type EventSlotsInputConfig,
-  type EventSlotOverrideRequest,
+  SlotsInputComponent,
+  type SlotsInputConfig,
+  type SlotOverrideRequest,
   LocationInputComponent,
   type LocationInputConfig,
   PricingEditorInputComponent,
   PoliciesInputComponent,
   type PricingEditorConfig,
+  type PricingEditorRuntimePreview,
   IndicatorComponent,
   PopupComponent,
   type PopupControl,
   type PopupModel
 } from '../../../shared/ui';
+import {
+  EventBasketInputComponent,
+  type EventBasketInputItem,
+  type EventBasketInputItemMenuEvent,
+  type EventBasketInputPricingSummaryRow
+} from './event-basket-input';
+import {
+  EventPaymentInputComponent,
+  type EventPaymentInputItem
+} from './event-payment-input';
 import {
   EventSubeventDefinitionsPanelComponent
 } from '../event-subevent-definitions-panel';
@@ -93,9 +106,10 @@ import { ActivityStore } from '../../../shared/ui/context/stores/activity.store'
 import { MemberMenuStore } from '../../../shared/ui/context/stores/member-menu.store';
 type EventEditorMenuContext =
   | { menu: 'visibility'; visibility: AppConstants.EventVisibility }
-  | { menu: 'event-intel'; action: 'toggle-blind-mode' | 'toggle-auto-inviter' | 'toggle-ticketing' }
+  | { menu: 'event-intel'; action: 'toggle-blind-mode' | 'toggle-auto-inviter' | 'toggle-ticketing' | 'toggle-approval-required' }
   | { menu: 'topics'; topic: string }
   | { menu: 'checkout-draft'; sourceId: string }
+  | { menu: 'checkout-review-action'; actionId: string }
   | { menu: 'save' };
 
 interface SlotOverrideEditorState {
@@ -118,9 +132,11 @@ interface SlotOverrideEditorState {
     MatInputModule,
     AppMenuComponent,
     DateInputComponent,
+    EventBasketInputComponent,
+    EventPaymentInputComponent,
     ImageCarouselComponent,
     PoliciesInputComponent,
-    EventSlotsInputComponent,
+    SlotsInputComponent,
     LocationInputComponent,
     EventSubeventDefinitionsPanelComponent,
     PricingEditorInputComponent,
@@ -273,10 +289,12 @@ export class EventEditorPopupComponent implements OnInit, OnDestroy {
   protected readonly eventPricingEditorConfig: PricingEditorConfig = {
     context: 'event',
     presentation: 'popup-summary',
-    slotCatalog: () => this.pricingSlotCatalog()
+    slotCatalog: () => this.pricingSlotCatalog(),
+    visible: () => this.checkoutPricingPanelVisibility(),
+    runtimePreview: () => this.checkoutPricingRuntimePreview()
   };
 
-  protected readonly eventSlotsInputConfig: EventSlotsInputConfig = {
+  protected readonly slotsInputConfig: SlotsInputConfig = {
     startAtIso: () => this.eventDetailDTO.dateRange.startAt,
     endAtIso: () => this.eventDetailDTO.dateRange.endAt,
     frequency: () => this.eventDetailDTO.frequency,
@@ -314,10 +332,18 @@ export class EventEditorPopupComponent implements OnInit, OnDestroy {
     this.isLoadingEventData.set(false);
     this.eventVisibilityReady.set(false);
     this.clearEventEditorExplanationContext();
+    const checkoutReviewClose = this.checkoutReviewMode()
+      ? this.eventEditorStore.presentation().onClose
+      : null;
     this.eventEditorStore.close();
+    checkoutReviewClose?.();
   }
 
   getPopupTitle(): string {
+    const presentationTitle = `${this.eventEditorStore.presentation().title ?? ''}`.trim();
+    if (presentationTitle) {
+      return presentationTitle;
+    }
     const mode = this.eventEditorStore.mode();
     const readOnly = this.eventEditorStore.readOnly();
 
@@ -351,10 +377,14 @@ export class EventEditorPopupComponent implements OnInit, OnDestroy {
   }
 
   protected eventEditorPopupZIndex(): number {
-    return 2500;
+    return this.checkoutReviewMode() ? 4700 : 2500;
   }
 
   private eventEditorPopupSubtitle(): string | null {
+    const presentationSubtitle = `${this.eventEditorStore.presentation().subtitle ?? ''}`.trim();
+    if (presentationSubtitle) {
+      return presentationSubtitle;
+    }
     return this.eventEditorStore.readOnly() && this.eventDetailDTO.title
       ? this.eventDetailDTO.title
       : null;
@@ -362,7 +392,7 @@ export class EventEditorPopupComponent implements OnInit, OnDestroy {
 
   private eventEditorPopupHeaderControls(): readonly PopupControl<EventEditorMenuContext>[] {
     const controls: PopupControl<EventEditorMenuContext>[] = [];
-    if (this.eventVisibilityReady()) {
+    if (this.eventVisibilityReady() && !this.eventEditorBodyLoading()) {
       controls.push({
         kind: 'menu',
         id: 'event-editor-visibility',
@@ -371,6 +401,10 @@ export class EventEditorPopupComponent implements OnInit, OnDestroy {
         items: this.eventVisibilityMenuItems(),
         mobileBreakpointPx: 900
       });
+    }
+    const checkoutDraft = this.eventEditorCheckoutDraft();
+    if (this.checkoutReviewMode()) {
+      return controls;
     }
     if (this.showEventEditorSaveAction()) {
       controls.push({
@@ -381,7 +415,6 @@ export class EventEditorPopupComponent implements OnInit, OnDestroy {
         closeOnSelect: false
       });
     }
-    const checkoutDraft = this.eventEditorCheckoutDraft();
     if (checkoutDraft) {
       controls.push({
         kind: 'menu',
@@ -401,6 +434,196 @@ export class EventEditorPopupComponent implements OnInit, OnDestroy {
 
   protected eventStructureReadOnly(): boolean {
     return this.eventEditorStore.readOnly() || this.isPublishedManageMode();
+  }
+
+  protected checkoutReviewMode(): boolean {
+    return this.eventEditorStore.presentation().mode === 'checkout-review';
+  }
+
+  protected checkoutPaymentPhase(): boolean {
+    return this.checkoutReviewMode() && this.eventEditorStore.presentation().checkoutPhase === 'payment';
+  }
+
+  protected showCheckoutPaymentPanel(): boolean {
+    return this.checkoutPaymentPhase() && this.eventEditorStore.presentation().hidePaymentPanel !== true;
+  }
+
+  protected eventEditorBodyLoading(): boolean {
+    return this.isLoadingEventData()
+      || this.resolvePresentationValue(this.eventEditorStore.presentation().loading, false) === true;
+  }
+
+  protected showSubEventDefinitionsPanel(): boolean {
+    return this.eventEditorStore.presentation().hideSubEventsPanel !== true;
+  }
+
+  protected showSlotsInput(): boolean {
+    return this.eventEditorStore.presentation().hideSlotsPanel !== true;
+  }
+
+  protected showCheckoutBasketInput(): boolean {
+    if (!this.checkoutReviewMode()) {
+      return false;
+    }
+    const configured = this.resolvePresentationValue(this.eventEditorStore.presentation().showBasketPanel, null);
+    if (configured !== null && configured !== undefined) {
+      return configured === true;
+    }
+    return this.eventDetailDTO.slotsEnabled === true;
+  }
+
+  protected checkoutPricingPanelVisibility(): boolean | null {
+    if (!this.checkoutReviewMode()) {
+      return null;
+    }
+    const configured = this.resolvePresentationValue(this.eventEditorStore.presentation().showPricingPanel, null);
+    return configured === null || configured === undefined ? null : configured === true;
+  }
+
+  protected checkoutBasketInputItems(): readonly EventBasketInputItem[] {
+    const items = this.resolvePresentationValue(this.eventEditorStore.presentation().basketItems, []);
+    return (items ?? []).map(item => ({
+      id: item.id,
+      title: item.title,
+      meta: item.meta,
+      detail: item.detail ?? null,
+      amount: Number(item.amount) || 0,
+      currency: item.currency || this.checkoutBasketCurrency(),
+      quantity: item.quantity ?? 1,
+      status: item.status ?? null,
+      pricingSummaryRows: (item.pricingSummaryRows ?? []).map(row => ({ ...row }))
+    }));
+  }
+
+  protected checkoutPaymentInputItems(): readonly EventPaymentInputItem[] {
+    return this.checkoutBasketInputItems().map(item => ({
+      id: item.id,
+      title: item.title,
+      meta: item.meta,
+      detail: item.detail ?? null,
+      amount: item.amount,
+      currency: item.currency,
+      quantity: item.quantity ?? 1
+    }));
+  }
+
+  protected checkoutBasketTone(): EventEditorCheckoutSurfaceTone {
+    const configured = this.resolvePresentationValue(this.eventEditorStore.presentation().basketTone, null);
+    return configured ?? 'neutral';
+  }
+
+  protected checkoutPaymentTone(): EventEditorCheckoutSurfaceTone {
+    const configured = this.resolvePresentationValue(this.eventEditorStore.presentation().paymentTone, null);
+    return configured ?? 'payment';
+  }
+
+  protected checkoutPaymentEventTimeframe(): string {
+    return `${this.eventDetailDTO.timeframe ?? ''}`.trim()
+      || this.formatCheckoutDateRange(this.eventDetailDTO.dateRange.startAt, this.eventDetailDTO.dateRange.endAt);
+  }
+
+  protected checkoutPaymentIntegrationEnabled(): boolean {
+    return environment.paymentIntegrationEnabled;
+  }
+
+  private formatCheckoutDateRange(startAtIso: string | null | undefined, endAtIso: string | null | undefined): string {
+    const start = AppUtils.isoLocalDateTimeToDate(`${startAtIso ?? ''}`.trim());
+    const end = AppUtils.isoLocalDateTimeToDate(`${endAtIso ?? ''}`.trim());
+    if (!start && !end) {
+      return '';
+    }
+    const dateFormatter = new Intl.DateTimeFormat('en-US', {
+      month: 'short',
+      day: 'numeric',
+      year: 'numeric'
+    });
+    const timeFormatter = new Intl.DateTimeFormat('en-US', {
+      hour: 'numeric',
+      minute: '2-digit'
+    });
+    if (start && end) {
+      const sameDate = start.getFullYear() === end.getFullYear()
+        && start.getMonth() === end.getMonth()
+        && start.getDate() === end.getDate();
+      return sameDate
+        ? `${dateFormatter.format(start)} · ${timeFormatter.format(start)} - ${timeFormatter.format(end)}`
+        : `${dateFormatter.format(start)}, ${timeFormatter.format(start)} - ${dateFormatter.format(end)}, ${timeFormatter.format(end)}`;
+    }
+    const value = start ?? end;
+    return value ? `${dateFormatter.format(value)} · ${timeFormatter.format(value)}` : '';
+  }
+
+  protected checkoutBasketPricingSummaryRows(): readonly EventBasketInputPricingSummaryRow[] {
+    const rows = this.resolvePresentationValue(this.eventEditorStore.presentation().basketPricingSummaryRows, []);
+    return (rows ?? []).map(row => ({ ...row }));
+  }
+
+  protected checkoutBasketTotalAmount(): number {
+    const configured = this.resolvePresentationValue(this.eventEditorStore.presentation().basketTotalAmount, null);
+    if (Number.isFinite(configured)) {
+      return Number(configured);
+    }
+    return this.checkoutBasketInputItems()
+      .reduce((sum, item) => sum + ((Number(item.amount) || 0) * Math.max(1, Math.trunc(Number(item.quantity) || 1))), 0);
+  }
+
+  protected checkoutBasketCurrency(): string {
+    const configured = this.resolvePresentationValue(this.eventEditorStore.presentation().basketCurrency, null);
+    return `${configured ?? this.eventDetailDTO.pricing?.currency ?? 'USD'}`.trim() || 'USD';
+  }
+
+  protected checkoutPricingRuntimePreview(): PricingEditorRuntimePreview | null {
+    if (!this.checkoutReviewMode()) {
+      return null;
+    }
+    const items = this.checkoutBasketInputItems();
+    return {
+      rows: this.checkoutBasketPricingSummaryRows(),
+      totalAmount: items.length > 0 ? this.checkoutBasketTotalAmount() : 0,
+      currency: this.checkoutBasketCurrency(),
+      emptyLabel: items.length === 0 ? 'No selected checkout items yet.' : null
+    };
+  }
+
+  protected checkoutBasketAddDisabled(): boolean {
+    return this.resolvePresentationValue(this.eventEditorStore.presentation().basketAddDisabled, false) === true;
+  }
+
+  protected onCheckoutBasketAdd(event?: Event): void {
+    event?.preventDefault();
+    event?.stopPropagation();
+    void this.eventEditorStore.presentation().onBasketAdd?.(event);
+  }
+
+  protected onCheckoutBasketItemMenuSelect(event: EventBasketInputItemMenuEvent): void {
+    const presentationItem = this.checkoutBasketInputItems().find(item => item.id === event.item.id) ?? event.item;
+    void this.eventEditorStore.presentation().onBasketItemMenuSelect?.(
+      presentationItem,
+      event.menuEvent as AppMenuItemSelectEvent<string>
+    );
+  }
+
+  protected checkoutReviewFooterMenuItems(): readonly AppMenuItem<string, EventEditorMenuContext>[] {
+    return (this.eventEditorStore.presentation().footerItems ?? []).map(item => ({
+      ...item,
+      context: { menu: 'checkout-review-action', actionId: item.id }
+    })) as readonly AppMenuItem<string, EventEditorMenuContext>[];
+  }
+
+  protected checkoutReviewFooterMessage(): string {
+    const message = this.eventEditorStore.presentation().footerMessage;
+    const resolved = typeof message === 'function' ? message() : message;
+    return `${resolved ?? ''}`.trim();
+  }
+
+  private resolvePresentationValue<TValue>(
+    value: TValue | (() => TValue) | null | undefined,
+    fallback: TValue
+  ): TValue {
+    if (typeof value === 'function') {
+      return (value as () => TValue)();
+    }
+    return value ?? fallback;
   }
 
   protected eventPoliciesReadOnly(): boolean {
@@ -471,6 +694,7 @@ export class EventEditorPopupComponent implements OnInit, OnDestroy {
       autoInviter: false,
       frequency: 'One-time',
       ticketing: false,
+      approvalRequired: false,
       pricing: PricingBuilder.createDefaultPricingConfig('event'),
       policiesEnabled: false,
       policies: [],
@@ -689,6 +913,20 @@ export class EventEditorPopupComponent implements OnInit, OnDestroy {
         disabled: this.eventStructureReadOnly(),
         closeOnSelect: false,
         context: { menu: 'event-intel', action: 'toggle-ticketing' }
+      },
+      {
+        id: 'event-approval-required',
+        label: this.eventApprovalRequiredLabel(this.eventDetailDTO.approvalRequired),
+        detail: this.eventApprovalRequiredDescription(this.eventDetailDTO.approvalRequired),
+        icon: this.eventApprovalRequiredIcon(this.eventDetailDTO.approvalRequired),
+        kind: 'toggle',
+        layout: 'big',
+        active: this.eventDetailDTO.approvalRequired,
+        checked: this.eventDetailDTO.approvalRequired,
+        palette: this.eventDetailDTO.approvalRequired ? 'orange' : 'green',
+        disabled: this.eventStructureReadOnly(),
+        closeOnSelect: false,
+        context: { menu: 'event-intel', action: 'toggle-approval-required' }
       }
     ];
   }
@@ -782,6 +1020,20 @@ export class EventEditorPopupComponent implements OnInit, OnDestroy {
       : 'No QR check-in scanning.';
   }
 
+  eventApprovalRequiredIcon(enabled: boolean): string {
+    return enabled ? 'pending_actions' : 'event_available';
+  }
+
+  eventApprovalRequiredLabel(enabled: boolean): string {
+    return enabled ? 'Auto approve Off' : 'Auto approve On';
+  }
+
+  eventApprovalRequiredDescription(enabled: boolean): string {
+    return enabled
+      ? 'Join requests wait for event admin approval.'
+      : 'Confirmed bookings can continue without admin approval.';
+  }
+
   protected eventEditorCheckoutDraft(): EventCheckoutDraft | null {
     this.eventCheckoutDraftStore.drafts();
     if (!this.eventEditorStore.readOnly()) {
@@ -825,6 +1077,12 @@ export class EventEditorPopupComponent implements OnInit, OnDestroy {
       this.continueEventEditorCheckoutDraft(event.context.sourceId, event.sourceEvent);
       return;
     }
+    if (event.context.menu === 'checkout-review-action') {
+      void this.eventEditorStore.presentation().onFooterItemSelect?.(
+        event as unknown as AppMenuItemSelectEvent<string>
+      );
+      return;
+    }
     if (event.context.menu === 'save') {
       this.saveEventDetailDTO();
       return;
@@ -836,6 +1094,10 @@ export class EventEditorPopupComponent implements OnInit, OnDestroy {
       }
       if (event.context.action === 'toggle-auto-inviter') {
         this.toggleEventAutoInviter(event.sourceEvent);
+        return;
+      }
+      if (event.context.action === 'toggle-approval-required') {
+        this.toggleEventApprovalRequired(event.sourceEvent);
         return;
       }
       this.toggleEventTicketing(event.sourceEvent);
@@ -965,7 +1227,7 @@ export class EventEditorPopupComponent implements OnInit, OnDestroy {
     this.normalizeEventSlotTemplates();
   }
 
-  protected openSlotOverrideEditor(request: EventSlotOverrideRequest): void {
+  protected openSlotOverrideEditor(request: SlotOverrideRequest): void {
     if (this.eventStructureReadOnly()) {
       return;
     }
@@ -1470,6 +1732,14 @@ export class EventEditorPopupComponent implements OnInit, OnDestroy {
       return;
     }
     this.eventDetailDTO.ticketing = !this.eventDetailDTO.ticketing;
+  }
+
+  toggleEventApprovalRequired(event: Event): void {
+    event.preventDefault();
+    if (this.eventStructureReadOnly()) {
+      return;
+    }
+    this.eventDetailDTO.approvalRequired = !this.eventDetailDTO.approvalRequired;
   }
 
   onEventLocationChange(value: string): void {

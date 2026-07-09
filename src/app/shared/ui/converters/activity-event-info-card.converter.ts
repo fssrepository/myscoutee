@@ -15,6 +15,7 @@ import type { UiListConverter } from './converter.types';
 export interface ActivityEventInfoCardConverterOptions {
   activeUserId?: string | null;
   groupLabel?: string | null;
+  trashView?: boolean;
   state?: InfoCardData['state'];
 }
 
@@ -34,6 +35,7 @@ export class ActivityEventInfoCardConverter {
     const statusBadgeLabelKey = this.statusBadgeLabelKey(status, dto, activeUserId);
     const pending = this.isPending(dto, activeUserId);
     const invited = this.isInvited(dto, activeUserId);
+    const trashView = options.trashView === true;
     const title = dto.title;
 
     return {
@@ -46,7 +48,7 @@ export class ActivityEventInfoCardConverter {
       ownerUserId: dto.creatorUserId,
       groupLabel: options.groupLabel ?? null,
       title,
-      surfaceTone: this.surfaceTone(status, dto, activeUserId),
+      surfaceTone: trashView ? 'deleted' : this.surfaceTone(status, dto, activeUserId),
       imageUrl: dto.imageUrl?.trim() || null,
       placeholderLabel: dto.imageUrl?.trim() ? null : title,
       metaRows: [
@@ -58,7 +60,7 @@ export class ActivityEventInfoCardConverter {
         : dto.eventType === 'slot'
           ? `Slot occurrence${dto.subtitle ? ' · ' + dto.subtitle : ''}`
           : dto.subtitle,
-      footerChips: this.footerChips(pending),
+      footerChips: this.footerChips(dto, pending),
       descriptionLines: 2,
       leadingIcon: {
         icon: this.leadingIcon(dto, status, pending, activeUserId)
@@ -66,7 +68,7 @@ export class ActivityEventInfoCardConverter {
       mediaStart: this.mediaStart(dto),
       mediaEnd: {
         variant: 'badge',
-        tone: this.mediaEndTone(status, dto, activeUserId),
+        tone: trashView ? 'deleted' : this.mediaEndTone(status, dto, activeUserId),
         label: statusBadgeLabelKey || this.capacityLabel(dto),
         ariaLabel: statusBadgeLabelKey || 'open.members',
         interactive: !statusBadgeLabelKey,
@@ -135,9 +137,12 @@ export class ActivityEventInfoCardConverter {
     return `${distanceKm} km`;
   }
 
-  private static footerChips(pending: boolean): NonNullable<InfoCardData['footerChips']> {
+  private static footerChips(dto: ActivityEventDTO, pending: boolean): NonNullable<InfoCardData['footerChips']> {
     if (!pending) {
       return [];
+    }
+    if (dto.pendingReason === 'waitlist') {
+      return [{ label: 'Várólistán' }];
     }
     return [{ label: 'waiting.for.approval' }];
   }
@@ -171,11 +176,13 @@ export class ActivityEventInfoCardConverter {
 
   private static isFull(dto: ActivityEventDTO): boolean {
     return this.statusCode(dto.status) === 'A'
-      && dto.capacityTotal > 0
-      && dto.acceptedMembers >= dto.capacityTotal;
+      && (dto.full === true || (dto.capacityTotal > 0 && dto.acceptedMembers >= dto.capacityTotal));
   }
 
   private static capacityLabel(dto: ActivityEventDTO): string {
+    if (dto.slotsEnabled === true && dto.eventType !== 'slot') {
+      return 'Multislot';
+    }
     return `${Math.max(0, dto.acceptedMembers)} / ${Math.max(dto.acceptedMembers, dto.capacityTotal)}`;
   }
 
@@ -236,6 +243,9 @@ export class ActivityEventInfoCardConverter {
         return 'draft';
       default:
         if (this.isInvited(dto, activeUserId)) {
+          return 'pending';
+        }
+        if (this.isPending(dto, activeUserId)) {
           return 'pending';
         }
         if (this.statusCode(dto.status) === 'A') {

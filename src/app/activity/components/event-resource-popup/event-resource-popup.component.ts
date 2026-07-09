@@ -393,7 +393,7 @@ export class EventResourcePopupComponent {
       this.openResourceAssetView(card, 'edit', new Event('click'));
       return;
     }
-    if (event.actionId === 'contactOrganizer') {
+    if (event.actionId === 'askOrganizer') {
       this.openResourceServiceChat(card, new Event('click'));
       return;
     }

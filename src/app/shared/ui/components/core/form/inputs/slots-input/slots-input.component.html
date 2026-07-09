@@ -12,6 +12,7 @@
       <p class="event-slots-panel-subtitle">{{ slotsPanelSubtitle() }}</p>
       }
     </div>
+    @if (canUpdateSlotsConfig()) {
     <div class="event-slots-panel-actions">
       <button type="button" class="event-slots-enable-btn" [class.event-slots-enable-btn-on]="slotsEnabled()"
         [class.event-slots-enable-btn-off]="!slotsEnabled()" [disabled]="!canUpdateSlotsConfig()"
@@ -20,6 +21,7 @@
         <span>{{ slotsEnabled() ? 'On' : 'Off' }}</span>
       </button>
     </div>
+    }
     @if (canConfigureSlotsSeries()) {
     <div class="event-slots-panel-secondary-actions">
       <app-menu

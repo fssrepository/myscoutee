@@ -14,7 +14,7 @@ import {
 } from './base-route-mode.service';
 import { RouteDelayService } from './route-delay.service';
 import type { ActivityMemberOwnerType } from '../../common/constants';
-import type { ActivityMemberOwnerRef, ActivityMembersSummaryDto } from '../../contracts/activity.interface';
+import type { ActivityMemberOwnerRef, ActivityMembersQueryOptions, ActivityMembersSummaryDto } from '../../contracts/activity.interface';
 import type * as ActivityContracts from '../../contracts/activity.interface';
 import { UserProfileStore } from '../../../ui/context/stores/user-profile.store';
 import { ActivityStore } from '../../../ui/context/stores/activity.store';
@@ -53,17 +53,23 @@ export class ActivityMembersService extends BaseRouteModeService {
     return this.peekMembersByOwner(owner);
   }
 
-  async queryMembersByOwner(owner: ActivityMemberOwnerRef): Promise<ActivityContracts.ActivityMemberDTO[]> {
-    return this.presentMembers(await this.activityMembersService.queryMembersByOwner(owner));
+  async queryMembersByOwner(
+    owner: ActivityMemberOwnerRef,
+    options?: ActivityMembersQueryOptions
+  ): Promise<ActivityContracts.ActivityMemberDTO[]> {
+    return this.presentMembers(await this.activityMembersService.queryMembersByOwner(owner, options));
   }
 
-  async queryMembersByOwnerId(ownerId: string): Promise<ActivityContracts.ActivityMemberDTO[]> {
+  async queryMembersByOwnerId(
+    ownerId: string,
+    options?: ActivityMembersQueryOptions
+  ): Promise<ActivityContracts.ActivityMemberDTO[]> {
     const normalizedOwnerId = ownerId.trim();
     if (!normalizedOwnerId) {
       return [];
     }
     const owner = this.peekOwnerRefById(normalizedOwnerId) ?? this.ownerRef('event', normalizedOwnerId);
-    return this.queryMembersByOwner(owner);
+    return this.queryMembersByOwner(owner, options);
   }
 
   peekSummaryByOwner(owner: ActivityMemberOwnerRef): ActivityMembersSummaryDto | null {
@@ -195,7 +201,10 @@ export class ActivityMembersService extends BaseRouteModeService {
       return {
         ...entry,
         invitedByUserId,
-        invitedByActiveUser: this.isInviteOwnedByActiveUser(entry, activeUserId, invitedByUserId)
+        invitedByActiveUser: this.isInviteOwnedByActiveUser(entry, activeUserId, invitedByUserId),
+        involvements: Array.isArray(entry.involvements)
+          ? entry.involvements.map(involvement => ({ ...involvement }))
+          : []
       };
     });
   }
@@ -205,13 +214,14 @@ export class ActivityMembersService extends BaseRouteModeService {
   ): ActivityContracts.ActivityMemberDTO[] {
     const activeUserId = this.userProfileStore.activeUserId().trim();
     return entries.map(entry => {
+      const { involvements: _involvements, ...persistedEntry } = entry;
       const isPendingInvite = entry.status === 'pending'
         && (entry.requestKind === 'invite' || entry.requestKind === 'waitlist-invite');
       const invitedByUserId = isPendingInvite
         ? (`${entry.invitedByUserId ?? ''}`.trim() || (entry.invitedByActiveUser && activeUserId ? activeUserId : null))
         : null;
       return {
-        ...entry,
+        ...persistedEntry,
         invitedByUserId,
         invitedByActiveUser: this.isInviteOwnedByActiveUser(entry, activeUserId, invitedByUserId)
       };

@@ -520,10 +520,12 @@ export class ProfileFormFlowConverter {
       },
       {
         id: 'height',
-        kind: 'text',
+        kind: 'number',
         label: 'Magasság (cm)',
         bind: 'profile.height',
         required: true,
+        min: 1,
+        max: 260,
         placeholder: '180'
       },
       {

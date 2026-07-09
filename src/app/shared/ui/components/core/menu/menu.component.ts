@@ -1220,6 +1220,9 @@ export class AppMenuComponent<TId extends string = string, TContext = unknown>
   }
 
   protected showItemCheck(item: AppMenuItem<TId, TContext>): boolean {
+    if (this.resolveLiveValue(item.showCheck) === false) {
+      return false;
+    }
     if (((this.isDropdownListKind && !this.currentTabbedModelLayout) || (this.isInlineRowLayout && !this.currentTabbedModelLayout)) && item.kind === 'radio') {
       return false;
     }
@@ -1488,13 +1491,30 @@ export class AppMenuComponent<TId extends string = string, TContext = unknown>
     return this.counterVisible(this.itemCounter(item));
   }
 
+  protected hasItemHeaderBadge(item: AppMenuItem<TId, TContext>): boolean {
+    return this.counterVisible(item.headerBadge ?? null);
+  }
+
+  protected hasItemBody(item: AppMenuItem<TId, TContext>): boolean {
+    return !!this.itemDescription(item)
+      || (!!this.itemDetail(item) && this.itemVisualLayout(item) === 'pill');
+  }
+
   protected itemCounterLabel(item: AppMenuItem<TId, TContext>): string {
     return this.counterLabel(this.itemCounter(item));
+  }
+
+  protected itemHeaderBadgeLabel(item: AppMenuItem<TId, TContext>): string {
+    return this.counterLabel(item.headerBadge ?? null);
   }
 
   protected itemCounterKey(item: AppMenuItem<TId, TContext>, group?: AppMenuGroup<TId, TContext>): string {
     const itemKey = `${item.kind ?? 'action'}:${item.id}`;
     return group ? `node:${group.id}:${itemKey}` : `item:${itemKey}`;
+  }
+
+  protected itemHeaderBadgeKey(item: AppMenuItem<TId, TContext>, group?: AppMenuGroup<TId, TContext>): string {
+    return `${this.itemCounterKey(item, group)}:header-badge`;
   }
 
   protected isCounterPulsing(key: string): boolean {
@@ -1666,6 +1686,12 @@ export class AppMenuComponent<TId extends string = string, TContext = unknown>
       this.itemCounterKey(item, group),
       this.itemCounter(item),
       this.hasValueCounter(item.id) || this.isLiveCounter(item.counter ?? null),
+      visibleCounterKeys
+    );
+    this.observeCounterPulse(
+      this.itemHeaderBadgeKey(item, group),
+      item.headerBadge ?? null,
+      this.isLiveCounter(item.headerBadge ?? null),
       visibleCounterKeys
     );
     for (const action of item.headerActions ?? []) {

@@ -99,11 +99,17 @@
     >
       @if (isCarouselLayout() && !activeStepHasCardHeader()) {
         <div class="form-flow__carousel-head">
-          <span class="form-flow__step-badge" [class.is-missing]="currentPageMissingRequired()">
+          <span
+            class="form-flow__step-badge"
+            [class.is-missing]="currentPageMissingRequired()"
+            [class.is-complete]="currentPageRequiredComplete()"
+          >
             <mat-icon>{{ activeStepIcon() }}</mat-icon>
             <span>{{ activeTitle() }}</span>
             @if (currentPageMissingRequired()) {
               <mat-icon>priority_high</mat-icon>
+            } @else if (currentPageRequiredComplete()) {
+              <mat-icon>check</mat-icon>
             }
           </span>
           <ng-container [ngTemplateOutlet]="progressControls"></ng-container>
@@ -113,7 +119,13 @@
         #flowViewport
         class="form-flow__body"
         [class.form-flow__body--mobile]="isMobileViewport && !isGroupedLayout()"
+        [class.is-swipe-blocked]="allHorizontalSwipeBlocked()"
         (scroll)="onFlowViewportScroll()"
+        (touchstart)="onFlowViewportTouchStart($event)"
+        (touchmove)="onFlowViewportTouchMove($event)"
+        (touchend)="onFlowViewportTouchEnd()"
+        (touchcancel)="onFlowViewportTouchEnd()"
+        (wheel)="onFlowViewportWheel($event)"
       >
         <div class="form-flow__track" [style.transform]="pageTrackTransform()">
           @for (step of pages(); track step.id; let stepIndex = $index) {

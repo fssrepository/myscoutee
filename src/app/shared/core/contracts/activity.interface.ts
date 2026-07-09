@@ -91,6 +91,11 @@ export interface IEventsService {
     eventId: string,
     query?: ActivityEventSubEventsQueryDTO
   ): Promise<ActivityEventSubEventsResultDTO | null>;
+  loadCheckoutSlots(query: EventCheckoutSlotsQuery): Promise<EventCheckoutSlotsResult | null>;
+  loadCheckoutBasketByEvent(userId: string, sourceId: string): Promise<EventCheckoutBasket | null>;
+  saveCheckoutBasket(request: EventCheckoutRequest): Promise<EventCheckoutBasket | null>;
+  updateCheckoutBasketState(request: EventCheckoutStateChangeRequest): Promise<EventCheckoutBasket | null>;
+  payEventCheckout(request: EventCheckoutStateChangeRequest): Promise<EventParticipationActionResultDTO | null>;
   loadEventFeedbackPage(
     query: EventFeedbackPageQueryDto
   ): Promise<EventFeedbackPageResultDto>;
@@ -124,6 +129,12 @@ export interface IEventsService {
       paymentSessionId?: string | null;
       bookingConfirmed?: boolean;
       pendingReason?: AppConstants.ActivityPendingReason;
+      checkoutState?: EventCheckoutState;
+      basketItems?: EventCheckoutBasketItem[];
+      pricingSummaryRows?: EventCheckoutPricingSummaryRow[];
+      lineItems?: EventCheckoutLineItem[];
+      totalAmount?: number | null;
+      currency?: string | null;
       skipLocalRouteDelay?: boolean;
       counterDelta?: UserContracts.UserMenuCounterDeltasDto | null;
     }
@@ -132,6 +143,11 @@ export interface IEventsService {
     userId: string,
     sourceId: string,
     options?: {
+      slotSourceId?: string | null;
+      removeMembershipOnly?: boolean;
+      checkoutState?: EventCheckoutState | null;
+      checkoutResultState?: EventCheckoutResultState | null;
+      checkoutSessionId?: string | null;
       counterDelta?: UserContracts.UserMenuCounterDeltasDto | null;
     }
   ): Promise<EventParticipationActionResultDTO | null>;
@@ -225,9 +241,11 @@ export interface ActivityEventRecord {
   capacityMin: number | null;
   capacityMax: number | null;
   capacityTotal: number;
+  full?: boolean;
   autoInviter?: boolean;
   frequency?: string;
   ticketing: boolean;
+  approvalRequired?: boolean;
   pricing?: PricingContracts.PricingConfig | null;
   policiesEnabled?: boolean;
   policies?: EventContracts.EventPolicyDTO[];
@@ -239,6 +257,7 @@ export interface ActivityEventRecord {
   eventType?: EventContracts.EventRecordKind;
   nextSlot?: EventContracts.EventSlotOccurrenceDTO | null;
   upcomingSlots?: EventContracts.EventSlotOccurrenceDTO[];
+  checkoutBasket?: EventCheckoutBasket | null;
   acceptedMembers: number;
   pendingMembers: number;
   acceptedMemberUserIds?: string[];
@@ -406,10 +425,12 @@ export interface ActivityEventDTO {
   imageUrl: string;
   location: string;
   capacityTotal: number;
+  full?: boolean;
   capacityMin?: number | null;
   capacityMax?: number | null;
   eventType?: EventContracts.EventRecordKind;
   mode?: EventContracts.EventMode;
+  slotsEnabled?: boolean;
   acceptedMembers: number;
   pendingMembers: number;
   acceptedMemberUserIds?: string[];
@@ -417,6 +438,8 @@ export interface ActivityEventDTO {
   invitedMemberUserIds?: string[];
   pendingRequestMemberUserIds?: string[];
   pendingReason?: AppConstants.ActivityPendingReason;
+  approvalRequired?: boolean;
+  checkoutResultState?: EventCheckoutResultState | null;
   boost: number;
   subEventDefinitions?: SubEventDefinitionDTO[];
 }
@@ -503,9 +526,11 @@ export class ActivityEventDetailDTO {
   capacityMin: number | null = 0;
   capacityMax: number | null = 0;
   capacityTotal = 0;
+  full = false;
   autoInviter = false;
   frequency = 'One-time';
   ticketing = false;
+  approvalRequired = false;
   pricing: PricingContracts.PricingConfig | null = null;
   policiesEnabled = false;
   policies: EventContracts.EventPolicyDTO[] = [];
@@ -517,6 +542,7 @@ export class ActivityEventDetailDTO {
   eventType: EventContracts.EventRecordKind = 'main';
   nextSlot: EventContracts.EventSlotOccurrenceDTO | null = null;
   upcomingSlots: EventContracts.EventSlotOccurrenceDTO[] = [];
+  checkoutBasket: EventCheckoutBasket | null = null;
   acceptedMembers = 0;
   pendingMembers = 0;
   acceptedMemberUserIds: string[] = [];
@@ -575,9 +601,11 @@ export class ActivityEventDetailDTO {
     this.capacityMin = update.capacityMin ?? this.capacityMin;
     this.capacityMax = update.capacityMax ?? this.capacityMax;
     this.capacityTotal = ActivityEventDetailDTO.nonNegativeInteger(update.capacityTotal ?? this.capacityTotal);
+    this.full = update.full === undefined ? this.full : update.full === true;
     this.autoInviter = update.autoInviter ?? this.autoInviter;
     this.frequency = update.frequency ?? this.frequency;
     this.ticketing = update.ticketing ?? this.ticketing;
+    this.approvalRequired = update.approvalRequired ?? this.approvalRequired;
     this.pricing = ActivityEventDetailDTO.clonePricingConfig(update.pricing ?? this.pricing);
     this.policiesEnabled = update.policiesEnabled ?? this.policiesEnabled;
     this.applyPolicies(update.policies ?? this.policies);
@@ -589,6 +617,7 @@ export class ActivityEventDetailDTO {
     this.eventType = update.eventType ?? this.eventType;
     this.nextSlot = update.nextSlot ? { ...update.nextSlot } : update.nextSlot === null ? null : this.nextSlot;
     this.upcomingSlots = (update.upcomingSlots ?? this.upcomingSlots).map(item => ({ ...item }));
+    this.checkoutBasket = update.checkoutBasket ? ActivityEventDetailDTO.cloneCheckoutBasket(update.checkoutBasket) : update.checkoutBasket === null ? null : this.checkoutBasket;
     this.acceptedMembers = ActivityEventDetailDTO.nonNegativeInteger(update.acceptedMembers ?? this.acceptedMembers);
     this.pendingMembers = ActivityEventDetailDTO.nonNegativeInteger(update.pendingMembers ?? this.pendingMembers);
     this.acceptedMemberUserIds = [...(update.acceptedMemberUserIds ?? this.acceptedMemberUserIds)];
@@ -606,6 +635,110 @@ export class ActivityEventDetailDTO {
     this.affinity = ActivityEventDetailDTO.nonNegativeInteger(update.affinity ?? this.affinity);
     this.paymentSessionId = update.paymentSessionId ?? this.paymentSessionId;
     return this;
+  }
+
+  static cloneCheckoutBasket(value: EventCheckoutBasket | null | undefined): EventCheckoutBasket | null {
+    if (!value) {
+      return null;
+    }
+    return {
+      userId: `${value.userId ?? ''}`.trim(),
+      sourceId: `${value.sourceId ?? ''}`.trim(),
+      status: ActivityEventDetailDTO.normalizeCheckoutState(value.status),
+      slotSourceId: value.slotSourceId?.trim() || null,
+      selectedDateKey: value.selectedDateKey?.trim() || null,
+      checkoutSessionId: value.checkoutSessionId?.trim() || null,
+      expiresAtIso: value.expiresAtIso?.trim() || null,
+      items: (value.items ?? []).map(item => ActivityEventDetailDTO.cloneCheckoutBasketItem(item)).filter(Boolean) as EventCheckoutBasketItem[],
+      pricingSummaryRows: ActivityEventDetailDTO.cloneCheckoutPricingSummaryRows(
+        (value.pricingSummaryRows ?? []).length > 0
+          ? value.pricingSummaryRows
+          : (value.items ?? []).flatMap(item => item.pricingSummaryRows ?? []),
+        value.currency
+      ),
+      lineItems: (value.lineItems ?? []).map(item => ({
+        id: item.id?.trim() ?? '',
+        kind: item.kind,
+        label: item.label?.trim() ?? '',
+        detail: item.detail?.trim() ?? '',
+        amount: Number(item.amount) || 0,
+        currency: item.currency?.trim() || value.currency?.trim() || 'USD'
+      })).filter(item => item.id && item.label),
+      totalAmount: Math.max(0, Number(value.totalAmount) || 0),
+      currency: value.currency?.trim() || 'USD'
+    };
+  }
+
+  static cloneCheckoutBasketItem(value: EventCheckoutBasketItem | null | undefined): EventCheckoutBasketItem | null {
+    const id = value?.id?.trim() ?? '';
+    const sourceId = value?.sourceId?.trim() ?? '';
+    const label = value?.label?.trim() ?? '';
+    if (!id || !sourceId || !label) {
+      return null;
+    }
+    const currency = value?.currency?.trim() || 'USD';
+    return {
+      id,
+      kind: value?.kind === 'sub_event' || value?.kind === 'resource' ? value.kind : 'event',
+      sourceId,
+      slotSourceId: value?.slotSourceId?.trim() || null,
+      slotTemplateId: value?.slotTemplateId?.trim() || null,
+      selectedDateKey: value?.selectedDateKey?.trim() || null,
+      subEventId: value?.subEventId?.trim() || null,
+      resourceType: value?.resourceType ?? null,
+      label,
+      detail: value?.detail?.trim() || '',
+      amount: Number(value?.amount) || 0,
+      currency,
+      quantity: Math.max(1, Math.trunc(Number(value?.quantity) || 1)),
+      status: ActivityEventDetailDTO.normalizeCheckoutState(value?.status),
+      resultState: ActivityEventDetailDTO.normalizeCheckoutResultState(value?.resultState),
+      pricingSummaryRows: (value?.pricingSummaryRows ?? []).map(row => ({
+        key: row.key?.trim() || row.label?.trim() || 'pricing',
+        label: row.label?.trim() || 'Pricing',
+        detail: row.detail?.trim() || null,
+        amount: Number.isFinite(row.amount) ? Number(row.amount) : null,
+        currency: row.currency?.trim() || currency,
+        multiplier: Number.isFinite(row.multiplier) ? Math.max(1, Math.trunc(Number(row.multiplier))) : null
+      })).filter(row => row.label),
+      checkoutSessionId: value?.checkoutSessionId?.trim() || null,
+      createdAtIso: value?.createdAtIso?.trim() || null,
+      updatedAtIso: value?.updatedAtIso?.trim() || null,
+      expiresAtIso: value?.expiresAtIso?.trim() || null
+    };
+  }
+
+  private static cloneCheckoutPricingSummaryRows(
+    value: readonly EventCheckoutPricingSummaryRow[] | null | undefined,
+    fallbackCurrency?: string | null
+  ): EventCheckoutPricingSummaryRow[] {
+    const currency = fallbackCurrency?.trim() || 'USD';
+    return (value ?? []).map(row => ({
+      key: row.key?.trim() || row.label?.trim() || 'pricing',
+      label: row.label?.trim() || 'Pricing',
+      detail: row.detail?.trim() || null,
+      amount: Number.isFinite(row.amount) ? Number(row.amount) : null,
+      currency: row.currency?.trim() || currency,
+      multiplier: Number.isFinite(row.multiplier) ? Math.max(1, Math.trunc(Number(row.multiplier))) : null
+    })).filter(row => row.label);
+  }
+
+  static normalizeCheckoutState(value: unknown): EventCheckoutState {
+    return value === 'confirmed'
+      || value === 'waiting'
+      || value === 'approval-pending'
+      || value === 'approved'
+      || value === 'pay'
+      || value === 'cancelled'
+      || value === 'rejected'
+        ? value
+        : 'draft';
+  }
+
+  static normalizeCheckoutResultState(value: unknown): EventCheckoutResultState {
+    return value === 'deleted' || value === 'succeeded' || value === 'failed'
+      ? value
+      : 'pending';
   }
 
   clone(): ActivityEventDetailDTO {
@@ -978,6 +1111,17 @@ export interface ActivityEventExploreQueryResult {
   nextCursor: string | null;
 }
 
+export interface ActivityMemberInvolvementDTO {
+  id: string;
+  ownerType: AppConstants.ActivityMemberOwnerType;
+  ownerId: string;
+  label: string;
+  detail: string;
+  status: AppConstants.ActivityMemberStatus;
+  role: AppConstants.ActivityMemberRole;
+  actionAtIso: string;
+}
+
 export interface ActivityMemberDTO {
   id: string;
   userId: string;
@@ -997,11 +1141,16 @@ export interface ActivityMemberDTO {
   metWhere: string;
   avatarUrl: string;
   profile?: UserContracts.UserDto | null;
+  involvements?: ActivityMemberInvolvementDTO[];
 }
 
 export interface ActivityMemberOwnerRef {
   ownerType: AppConstants.ActivityMemberOwnerType;
   ownerId: string;
+}
+
+export interface ActivityMembersQueryOptions {
+  pendingOnly?: boolean;
 }
 
 export interface ActivityMembersSummaryDto {
@@ -1143,12 +1292,140 @@ export interface EventCheckoutLineItem {
   currency: string;
 }
 
+export type EventCheckoutState =
+  | 'draft'
+  | 'confirmed'
+  | 'waiting'
+  | 'approval-pending'
+  | 'approved'
+  | 'pay'
+  | 'cancelled'
+  | 'rejected';
+
+export type EventCheckoutResultState = 'pending' | 'deleted' | 'succeeded' | 'failed';
+
+export interface EventCheckoutPricingSummaryRow {
+  key: string;
+  label: string;
+  detail?: string | null;
+  amount?: number | null;
+  currency?: string | null;
+  multiplier?: number | null;
+}
+
+export interface EventCheckoutSlotsQuery {
+  userId: string;
+  eventId: string;
+  view?: 'day' | 'basket' | string | null;
+  order?: 'upcoming' | 'past' | string | null;
+  anchorDate?: string | null;
+  rangeStart?: string | null;
+  rangeEnd?: string | null;
+  limit?: number | null;
+  cursor?: string | null;
+}
+
+export interface EventCheckoutSlotDay {
+  dateKey: string;
+  slotCount: number;
+  availableSlots: number;
+  bookedByViewer?: boolean | null;
+  lowestAmount: number;
+  currency: string;
+}
+
+export interface EventCheckoutSlot {
+  id: string;
+  parentEventId: string;
+  slotSourceId?: string | null;
+  slotTemplateId?: string | null;
+  title?: string | null;
+  timeframe?: string | null;
+  startAtIso: string;
+  endAtIso: string;
+  capacityTotal: number;
+  acceptedMembers: number;
+  pendingMembers: number;
+  availableSlots: number;
+  bookedByViewer?: boolean | null;
+  amount: number;
+  currency: string;
+  pricingSummaryRows: EventCheckoutPricingSummaryRow[];
+}
+
+export interface EventCheckoutOptionalSubEvent {
+  id: string;
+  name: string;
+  description?: string | null;
+  startAt?: string | null;
+  endAt?: string | null;
+  capacityTotal: number;
+  reservedCount: number;
+  availableCount: number;
+  amount: number;
+  currency: string;
+  pricingSummaryRows: EventCheckoutPricingSummaryRow[];
+}
+
+export interface EventCheckoutSlotsResult {
+  eventId: string;
+  mode?: EventContracts.EventMode | string | null;
+  days: EventCheckoutSlotDay[];
+  slots: EventCheckoutSlot[];
+  total: number;
+  nextCursor?: string | null;
+  currency: string;
+  optionalSubEvents?: EventCheckoutOptionalSubEvent[];
+  checkoutBasket?: EventCheckoutBasket | null;
+}
+
+export interface EventCheckoutBasketItem {
+  id: string;
+  kind: 'event' | 'sub_event' | 'resource';
+  sourceId: string;
+  slotSourceId?: string | null;
+  slotTemplateId?: string | null;
+  selectedDateKey?: string | null;
+  subEventId?: string | null;
+  resourceType?: AppConstants.AssetType | null;
+  label: string;
+  detail: string;
+  amount: number;
+  currency: string;
+  quantity: number;
+  status: EventCheckoutState;
+  resultState?: EventCheckoutResultState | null;
+  pricingSummaryRows: EventCheckoutPricingSummaryRow[];
+  checkoutSessionId?: string | null;
+  createdAtIso?: string | null;
+  updatedAtIso?: string | null;
+  expiresAtIso?: string | null;
+}
+
+export interface EventCheckoutBasket {
+  userId: string;
+  sourceId: string;
+  status: EventCheckoutState;
+  items: EventCheckoutBasketItem[];
+  pricingSummaryRows: EventCheckoutPricingSummaryRow[];
+  lineItems: EventCheckoutLineItem[];
+  totalAmount: number;
+  currency: string;
+  slotSourceId?: string | null;
+  selectedDateKey?: string | null;
+  checkoutSessionId?: string | null;
+  expiresAtIso?: string | null;
+}
+
 export interface EventCheckoutSelection {
   sourceId: string;
   slotSourceId?: string | null;
   optionalSubEventIds: string[];
   assetSelections: EventCheckoutAssetSelection[];
   acceptedPolicyIds: string[];
+  basketItems?: EventCheckoutBasketItem[];
+  pricingSummaryRows?: EventCheckoutPricingSummaryRow[];
+  checkoutState?: EventCheckoutState;
   lineItems: EventCheckoutLineItem[];
   totalAmount: number;
   currency: string;
@@ -1164,10 +1441,24 @@ export interface EventCheckoutRequest {
   optionalSubEventIds: string[];
   assetSelections: EventCheckoutAssetSelection[];
   acceptedPolicyIds: string[];
+  basketItems?: EventCheckoutBasketItem[];
+  pricingSummaryRows?: EventCheckoutPricingSummaryRow[];
+  checkoutState?: EventCheckoutState;
   lineItems: EventCheckoutLineItem[];
   totalAmount: number;
   currency: string;
   pendingReason?: AppConstants.ActivityPendingReason;
+}
+
+export interface EventCheckoutStateChangeRequest {
+  userId: string;
+  sourceId: string;
+  slotSourceId?: string | null;
+  checkoutState: EventCheckoutState;
+  resultState?: EventCheckoutResultState | null;
+  pendingReason?: AppConstants.ActivityPendingReason;
+  checkoutSessionId?: string | null;
+  counterDelta?: UserContracts.UserMenuCounterDeltasDto | null;
 }
 
 export interface EventCheckoutSession {

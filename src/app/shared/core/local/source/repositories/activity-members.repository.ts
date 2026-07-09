@@ -2,7 +2,12 @@ import { EVENTS_TABLE_NAME } from '../entity/event.entity';
 import { Injectable, inject } from '@angular/core';
 
 import type { UserDto } from '../../../contracts/user.interface';
-import type { ActivityMemberOwnerRef, UserGameMode, UserGameSocialCard } from '../../../contracts/activity.interface';
+import type {
+  ActivityMemberOwnerRef,
+  ActivityMembersQueryOptions,
+  UserGameMode,
+  UserGameSocialCard
+} from '../../../contracts/activity.interface';
 import { LocalMemoryDb } from '../../../common/app.db';
 import type { ActivityEventRecord } from '../../../contracts/activity.interface';
 
@@ -38,8 +43,11 @@ export class LocalActivityMembersRepository {
     return this.readRecordsByOwner(owner);
   }
 
-  async queryRecordsByOwner(owner: ActivityMemberOwnerRef): Promise<ActivityMemberRecord[]> {
-    return this.readRecordsByOwner(owner);
+  async queryRecordsByOwner(
+    owner: ActivityMemberOwnerRef,
+    options?: ActivityMembersQueryOptions
+  ): Promise<ActivityMemberRecord[]> {
+    return this.readRecordsByOwner(owner, options);
   }
 
   queryRecordsByOwners(owners: readonly ActivityMemberOwnerRef[]): Map<string, ActivityMemberRecord[]> {
@@ -55,6 +63,44 @@ export class LocalActivityMembersRepository {
         .map(id => table.byId[id])
         .filter((record): record is ActivityMemberRecord => Boolean(record))
         .map(record => ({ ...record, profile: record.profile ? { ...record.profile } : record.profile })));
+    }
+    return result;
+  }
+
+  queryInvolvementRecordsByOwnerAndUsers(
+    owner: ActivityMemberOwnerRef,
+    userIds: readonly string[]
+  ): Map<string, ActivityMemberRecord[]> {
+    const normalizedOwner = this.normalizeOwnerRef(owner);
+    const normalizedUserIds = Array.from(new Set(userIds
+      .map(userId => `${userId ?? ''}`.trim())
+      .filter(userId => userId.length > 0)));
+    const result = new Map<string, ActivityMemberRecord[]>(
+      normalizedUserIds.map(userId => [userId, []])
+    );
+    if (!normalizedOwner || normalizedUserIds.length === 0) {
+      return result;
+    }
+    const userIdSet = new Set(normalizedUserIds);
+    const table = this.normalizeCollection(this.memoryDb.read()[ACTIVITY_MEMBERS_TABLE_NAME]);
+    for (const id of table.ids) {
+      const record = table.byId[id];
+      const userId = `${record?.userId ?? ''}`.trim();
+      if (
+        !record
+        || !userIdSet.has(userId)
+        || record.status === 'deleted'
+        || !this.isRecordInOwnerInvolvementScope(record, normalizedOwner)
+      ) {
+        continue;
+      }
+      result.get(userId)?.push(this.cloneRecord(record));
+    }
+    for (const records of result.values()) {
+      records.sort((left, right) => {
+        const actionDelta = `${left.actionAtIso ?? ''}`.localeCompare(`${right.actionAtIso ?? ''}`);
+        return actionDelta !== 0 ? actionDelta : this.ownerKey(left).localeCompare(this.ownerKey(right));
+      });
     }
     return result;
   }
@@ -513,6 +559,30 @@ export class LocalActivityMembersRepository {
     return `${owner.ownerType}:${owner.ownerId}`;
   }
 
+  private isRecordInOwnerInvolvementScope(
+    record: ActivityMemberRecord,
+    owner: ActivityMemberOwnerRef
+  ): boolean {
+    const ownerId = owner.ownerId.trim();
+    const recordOwnerId = `${record.ownerId ?? ''}`.trim();
+    if (!ownerId || !recordOwnerId) {
+      return false;
+    }
+    if (record.ownerType === owner.ownerType && recordOwnerId === ownerId) {
+      return true;
+    }
+    if (owner.ownerType === 'event') {
+      if (record.ownerType === 'event') {
+        return recordOwnerId.startsWith(`${ownerId}:slot:`);
+      }
+      return recordOwnerId.startsWith(`${ownerId}:`);
+    }
+    if (owner.ownerType === 'subEvent' || owner.ownerType === 'group') {
+      return recordOwnerId.startsWith(`${ownerId}:`);
+    }
+    return false;
+  }
+
   resolveOwnerCapacityTotal(owner: ActivityMemberOwnerRef, acceptedMembers: number): number {
     const ownerKey = this.ownerKey(owner);
     const storedCapacity = this.ownerCapacityByKey.get(ownerKey);
@@ -528,7 +598,10 @@ export class LocalActivityMembersRepository {
     );
   }
 
-  private readRecordsByOwner(owner: ActivityMemberOwnerRef): ActivityMemberRecord[] {
+  private readRecordsByOwner(
+    owner: ActivityMemberOwnerRef,
+    options?: ActivityMembersQueryOptions
+  ): ActivityMemberRecord[] {
     const normalizedOwner = this.normalizeOwnerRef(owner);
     if (!normalizedOwner) {
       return [];
@@ -538,6 +611,7 @@ export class LocalActivityMembersRepository {
     return (table.idsByOwnerKey[ownerKey] ?? [])
       .map(id => table.byId[id])
       .filter((record): record is ActivityMemberRecord => Boolean(record))
+      .filter(record => options?.pendingOnly === true ? record.status === 'pending' : true)
       .map(record => this.cloneRecord(record));
   }
 

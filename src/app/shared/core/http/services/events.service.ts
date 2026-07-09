@@ -25,8 +25,20 @@ import {
 import type { ActivitiesFeedFilters, ListQuery } from '../../contracts';
 import type {
   EventCheckoutAssetSelection,
+  EventCheckoutBasket,
+  EventCheckoutBasketItem,
+  EventCheckoutLineItem,
+  EventCheckoutOptionalSubEvent,
+  EventCheckoutPricingSummaryRow,
   EventCheckoutRequest,
+  EventCheckoutResultState,
+  EventCheckoutState,
+  EventCheckoutStateChangeRequest,
   EventCheckoutSession,
+  EventCheckoutSlot,
+  EventCheckoutSlotDay,
+  EventCheckoutSlotsQuery,
+  EventCheckoutSlotsResult,
   EventParticipationActionResultDTO,
   EventFeedbackQueryDto,
   EventFeedbackReceivedEventDto,
@@ -66,6 +78,13 @@ interface HttpEventsFilterRequest {
   rangeStart?: string;
   rangeEnd?: string;
 }
+
+type HttpActivityEventPageResponse = ActivityEventDTO[] | {
+  items?: ActivityEventDTO[] | null;
+  records?: ActivityEventDTO[] | null;
+  total?: number | null;
+  nextCursor?: string | null;
+} | null;
 
 @Injectable({
   providedIn: 'root'
@@ -109,7 +128,7 @@ export class HttpEventsService implements IEventsService {
     }
     try {
       const response = await this.requestWithAbort(
-        this.http.post<ActivityEventDTO[] | ActivityEventPageResultDTO | null>(
+        this.http.post<HttpActivityEventPageResponse>(
           `${this.apiBaseUrl}/activities/events/filter`,
           this.toHttpEventsFilterRequest(normalizedUserId, query)
         ),
@@ -123,7 +142,12 @@ export class HttpEventsService implements IEventsService {
           nextCursor: null
         };
       }
-      const items = this.cloneDTOs(response?.items);
+      const responseItems = Array.isArray(response?.items)
+        ? response.items
+        : Array.isArray(response?.records)
+          ? response.records
+          : [];
+      const items = this.cloneDTOs(responseItems);
       return {
         items,
         total: Number.isFinite(response?.total) ? Math.max(0, Math.trunc(Number(response?.total))) : items.length,
@@ -337,6 +361,116 @@ export class HttpEventsService implements IEventsService {
 
   peekKnownItemById(_userId: string, _itemId: string): ActivityEventDTO | null {
     return null;
+  }
+
+  async loadCheckoutSlots(query: EventCheckoutSlotsQuery): Promise<EventCheckoutSlotsResult | null> {
+    const normalizedUserId = query.userId?.trim();
+    const normalizedEventId = query.eventId?.trim();
+    if (!normalizedUserId || !normalizedEventId) {
+      return null;
+    }
+    try {
+      const response = await this.http
+        .post<EventCheckoutSlotsResult | null>(
+          `${this.apiBaseUrl}/activities/events/checkout/slots`,
+          {
+            ...query,
+            userId: normalizedUserId,
+            eventId: normalizedEventId
+          }
+        )
+        .toPromise();
+      return this.cloneCheckoutSlotsResult(response);
+    } catch {
+      return null;
+    }
+  }
+
+  async loadCheckoutBasketByEvent(userId: string, sourceId: string): Promise<EventCheckoutBasket | null> {
+    const normalizedUserId = userId.trim();
+    const normalizedSourceId = sourceId.trim();
+    if (!normalizedUserId || !normalizedSourceId) {
+      return null;
+    }
+    try {
+      const response = await this.http
+        .get<EventCheckoutBasket | null>(
+          `${this.apiBaseUrl}/activities/events/checkout/basket`,
+          {
+            params: new HttpParams()
+              .set('userId', normalizedUserId)
+              .set('sourceId', normalizedSourceId)
+          }
+        )
+        .toPromise();
+      return ActivityEventDetailDTO.cloneCheckoutBasket(response);
+    } catch {
+      return null;
+    }
+  }
+
+  async saveCheckoutBasket(request: EventCheckoutRequest): Promise<EventCheckoutBasket | null> {
+    const normalizedUserId = request.userId?.trim();
+    const normalizedSourceId = request.sourceId?.trim();
+    if (!normalizedUserId || !normalizedSourceId) {
+      return null;
+    }
+    try {
+      const response = await this.http
+        .post<EventCheckoutBasket | null>(
+          `${this.apiBaseUrl}/activities/events/checkout/basket`,
+          {
+            ...request,
+            userId: normalizedUserId,
+            sourceId: normalizedSourceId
+          }
+        )
+        .toPromise();
+      return ActivityEventDetailDTO.cloneCheckoutBasket(response);
+    } catch {
+      return null;
+    }
+  }
+
+  async updateCheckoutBasketState(request: EventCheckoutStateChangeRequest): Promise<EventCheckoutBasket | null> {
+    const normalizedUserId = request.userId?.trim();
+    const normalizedSourceId = request.sourceId?.trim();
+    if (!normalizedUserId || !normalizedSourceId) {
+      return null;
+    }
+    const response = await this.http
+      .post<EventCheckoutBasket | null>(
+        `${this.apiBaseUrl}/activities/events/checkout/state`,
+        {
+          ...request,
+          userId: normalizedUserId,
+          sourceId: normalizedSourceId
+        }
+      )
+      .toPromise();
+    return ActivityEventDetailDTO.cloneCheckoutBasket(response);
+  }
+
+  async payEventCheckout(request: EventCheckoutStateChangeRequest): Promise<EventParticipationActionResultDTO | null> {
+    const normalizedUserId = request.userId?.trim();
+    const normalizedSourceId = request.sourceId?.trim();
+    if (!normalizedUserId || !normalizedSourceId) {
+      return null;
+    }
+    const response = await this.http
+      .post<EventParticipationActionResultDTO | null>(
+        `${this.apiBaseUrl}/activities/events/checkout/pay`,
+        {
+          ...request,
+          userId: normalizedUserId,
+          sourceId: normalizedSourceId,
+          checkoutState: 'pay',
+          resultState: 'succeeded',
+          pendingReason: null
+        }
+      )
+      .toPromise();
+    return this.normalizeParticipationActionResult(response);
   }
 
   async queryEventExplorePage(query: ActivityEventExploreQuery): Promise<ActivityEventExploreQueryResult> {
@@ -572,6 +706,12 @@ export class HttpEventsService implements IEventsService {
       paymentSessionId?: string | null;
       bookingConfirmed?: boolean;
       pendingReason?: ActivityPendingReason;
+      checkoutState?: EventCheckoutState;
+      basketItems?: EventCheckoutBasketItem[];
+      pricingSummaryRows?: EventCheckoutPricingSummaryRow[];
+      lineItems?: EventCheckoutLineItem[];
+      totalAmount?: number | null;
+      currency?: string | null;
       skipLocalRouteDelay?: boolean;
       counterDelta?: UserMenuCounterDeltasDto | null;
     } = {}
@@ -594,7 +734,13 @@ export class HttpEventsService implements IEventsService {
         bookingConfirmed: options.bookingConfirmed === true,
         pendingReason: options.pendingReason === 'waitlist'
           ? 'waitlist'
-          : (options.pendingReason === 'approval' ? 'approval' : null)
+          : (options.pendingReason === 'approval' ? 'approval' : null),
+        checkoutState: options.checkoutState ?? null,
+        basketItems: options.basketItems?.length ? [...options.basketItems] : undefined,
+        pricingSummaryRows: options.basketItems?.length ? [...(options.pricingSummaryRows ?? [])] : undefined,
+        lineItems: options.basketItems?.length ? [...(options.lineItems ?? [])] : undefined,
+        totalAmount: options.basketItems?.length ? (Number(options.totalAmount) || 0) : undefined,
+        currency: options.basketItems?.length ? (options.currency?.trim() || 'USD') : undefined
       })
       .toPromise();
     return this.normalizeParticipationActionResult(response);
@@ -603,7 +749,12 @@ export class HttpEventsService implements IEventsService {
   async leaveEvent(
     userId: string,
     sourceId: string,
-    _options: {
+    options: {
+      slotSourceId?: string | null;
+      removeMembershipOnly?: boolean;
+      checkoutState?: EventCheckoutState | null;
+      checkoutResultState?: EventCheckoutResultState | null;
+      checkoutSessionId?: string | null;
       counterDelta?: UserMenuCounterDeltasDto | null;
     } = {}
   ): Promise<EventParticipationActionResultDTO | null> {
@@ -612,23 +763,23 @@ export class HttpEventsService implements IEventsService {
     if (!normalizedUserId || !normalizedSourceId) {
       return null;
     }
-    await this.postVoid('/activities/events/trash', {
-      userId: normalizedUserId,
-      type: 'events',
-      sourceId: normalizedSourceId
-    });
-    return {
-      sourceId: normalizedSourceId,
-      slotSourceId: null,
-      action: 'leave',
-      membershipStatus: 'trashed',
-      pendingReason: null,
-      acceptedMembers: 0,
-      pendingMembers: 0,
-      capacityTotal: 0,
-      full: false,
-      paymentSessionId: null
-    };
+    const response = await this.http
+      .post<EventParticipationActionResultDTO | null>(
+        `${this.apiBaseUrl}/activities/events/trash`,
+        {
+          userId: normalizedUserId,
+          type: 'events',
+          sourceId: normalizedSourceId,
+          slotSourceId: options.slotSourceId?.trim() || null,
+          removeMembershipOnly: options.removeMembershipOnly === true,
+          checkoutState: options.checkoutState ?? null,
+          checkoutResultState: options.checkoutResultState ?? null,
+          checkoutSessionId: options.checkoutSessionId?.trim() || null,
+          counterDelta: options.counterDelta ?? null
+        }
+      )
+      .toPromise();
+    return this.normalizeParticipationActionResult(response);
   }
 
   async createCheckoutSession(request: EventCheckoutRequest): Promise<EventCheckoutSession | null> {
@@ -1057,6 +1208,71 @@ export class HttpEventsService implements IEventsService {
     };
   }
 
+  private cloneCheckoutSlotsResult(value: EventCheckoutSlotsResult | null | undefined): EventCheckoutSlotsResult | null {
+    if (!value) {
+      return null;
+    }
+    return {
+      eventId: `${value.eventId ?? ''}`.trim(),
+      mode: value.mode ?? null,
+      days: (value.days ?? []).map(day => this.cloneCheckoutSlotDay(day)),
+      slots: (value.slots ?? []).map(slot => this.cloneCheckoutSlot(slot)),
+      total: Math.max(0, Math.trunc(Number(value.total) || 0)),
+      nextCursor: `${value.nextCursor ?? ''}`.trim() || null,
+      currency: `${value.currency ?? 'USD'}`.trim() || 'USD',
+      optionalSubEvents: (value.optionalSubEvents ?? []).map(item => this.cloneCheckoutOptionalSubEvent(item)),
+      checkoutBasket: ActivityEventDetailDTO.cloneCheckoutBasket(value.checkoutBasket)
+    };
+  }
+
+  private cloneCheckoutOptionalSubEvent(value: EventCheckoutOptionalSubEvent): EventCheckoutOptionalSubEvent {
+    return {
+      id: `${value.id ?? ''}`.trim(),
+      name: `${value.name ?? ''}`.trim(),
+      description: `${value.description ?? ''}`.trim() || null,
+      startAt: `${value.startAt ?? ''}`.trim() || null,
+      endAt: `${value.endAt ?? ''}`.trim() || null,
+      capacityTotal: Math.max(0, Math.trunc(Number(value.capacityTotal) || 0)),
+      reservedCount: Math.max(0, Math.trunc(Number(value.reservedCount) || 0)),
+      availableCount: Math.max(0, Math.trunc(Number(value.availableCount) || 0)),
+      amount: Math.max(0, Number(value.amount) || 0),
+      currency: `${value.currency ?? 'USD'}`.trim() || 'USD',
+      pricingSummaryRows: (value.pricingSummaryRows ?? []).map(row => ({ ...row }))
+    };
+  }
+
+  private cloneCheckoutSlotDay(value: EventCheckoutSlotDay): EventCheckoutSlotDay {
+    return {
+      dateKey: `${value.dateKey ?? ''}`.trim(),
+      slotCount: Math.max(0, Math.trunc(Number(value.slotCount) || 0)),
+      availableSlots: Math.max(0, Math.trunc(Number(value.availableSlots) || 0)),
+      bookedByViewer: value.bookedByViewer === true,
+      lowestAmount: Math.max(0, Number(value.lowestAmount) || 0),
+      currency: `${value.currency ?? 'USD'}`.trim() || 'USD'
+    };
+  }
+
+  private cloneCheckoutSlot(value: EventCheckoutSlot): EventCheckoutSlot {
+    return {
+      id: `${value.id ?? ''}`.trim(),
+      parentEventId: `${value.parentEventId ?? ''}`.trim(),
+      slotSourceId: `${value.slotSourceId ?? value.id ?? ''}`.trim() || null,
+      slotTemplateId: `${value.slotTemplateId ?? ''}`.trim() || null,
+      title: `${value.title ?? ''}`.trim() || null,
+      timeframe: `${value.timeframe ?? ''}`.trim() || null,
+      startAtIso: `${value.startAtIso ?? ''}`.trim(),
+      endAtIso: `${value.endAtIso ?? ''}`.trim(),
+      capacityTotal: Math.max(0, Math.trunc(Number(value.capacityTotal) || 0)),
+      acceptedMembers: Math.max(0, Math.trunc(Number(value.acceptedMembers) || 0)),
+      pendingMembers: Math.max(0, Math.trunc(Number(value.pendingMembers) || 0)),
+      availableSlots: Math.max(0, Math.trunc(Number(value.availableSlots) || 0)),
+      bookedByViewer: value.bookedByViewer === true,
+      amount: Math.max(0, Number(value.amount) || 0),
+      currency: `${value.currency ?? 'USD'}`.trim() || 'USD',
+      pricingSummaryRows: (value.pricingSummaryRows ?? []).map(row => ({ ...row }))
+    };
+  }
+
   private cloneRecords(records: ActivityEventRecord[] | null | undefined): ActivityEventRecord[] {
     if (!Array.isArray(records)) {
       return [];
@@ -1093,9 +1309,14 @@ export class HttpEventsService implements IEventsService {
         capacityMin: record.capacityMin ?? null,
         capacityMax: record.capacityMax ?? null,
         capacityTotal: Math.max(0, Math.trunc(Number(record.capacityTotal) || 0)),
+        full: record.full === true || (
+          Math.max(0, Math.trunc(Number(record.capacityTotal) || 0)) > 0
+          && Math.max(0, Math.trunc(Number(record.acceptedMembers) || 0)) >= Math.max(0, Math.trunc(Number(record.capacityTotal) || 0))
+        ),
         autoInviter: record.autoInviter === true,
         frequency: record.frequency ?? '',
         ticketing: record.ticketing === true,
+        approvalRequired: record.approvalRequired === true,
         pricing: record.pricing ? PricingBuilder.clonePricingConfig(record.pricing) : undefined,
         policiesEnabled: record.policiesEnabled === true,
         policies: (record.policies ?? []).map(item => ({ ...item })),
@@ -1107,6 +1328,7 @@ export class HttpEventsService implements IEventsService {
         eventType: record.eventType ?? 'main',
         nextSlot: record.nextSlot ? { ...record.nextSlot } : null,
         upcomingSlots: (record.upcomingSlots ?? []).map(item => ({ ...item })),
+        checkoutBasket: ActivityEventDetailDTO.cloneCheckoutBasket(record.checkoutBasket),
         acceptedMembers: Math.max(0, Math.trunc(Number(record.acceptedMembers) || 0)),
         pendingMembers: Math.max(0, Math.trunc(Number(record.pendingMembers) || 0)),
         pendingReason: record.pendingReason ?? null,
@@ -1131,11 +1353,23 @@ export class HttpEventsService implements IEventsService {
     return items.map(item => ({
       ...item,
       adminIds: [...(item.adminIds ?? [])],
+      full: item.full === true || (
+        Math.max(0, Math.trunc(Number(item.capacityTotal) || 0)) > 0
+        && Math.max(0, Math.trunc(Number(item.acceptedMembers) || 0)) >= Math.max(0, Math.trunc(Number(item.capacityTotal) || 0))
+      ),
       acceptedMemberUserIds: [...(item.acceptedMemberUserIds ?? [])],
       pendingMemberUserIds: [...(item.pendingMemberUserIds ?? [])],
       invitedMemberUserIds: [...(item.invitedMemberUserIds ?? [])],
-      pendingRequestMemberUserIds: [...(item.pendingRequestMemberUserIds ?? [])]
+      pendingRequestMemberUserIds: [...(item.pendingRequestMemberUserIds ?? [])],
+      checkoutResultState: this.normalizeCheckoutResultState(item.checkoutResultState)
     }));
+  }
+
+  private normalizeCheckoutResultState(value: unknown): EventCheckoutResultState | null {
+    if (value === 'pending' || value === 'deleted' || value === 'succeeded' || value === 'failed') {
+      return value;
+    }
+    return null;
   }
 
   private cloneEventFeedbackAnswersByCardId(

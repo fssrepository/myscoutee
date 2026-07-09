@@ -509,23 +509,37 @@
                 @if (itemIcon(item)) {
                   <mat-icon class="app-menu__item-icon" [class.app-menu__item-icon--symbol]="isSymbolIcon(itemIcon(item))">{{ itemIcon(item) }}</mat-icon>
                 }
-                <span class="app-menu__item-main">
-                  <span class="app-menu__item-label">{{ itemLabel(item) | i18n }}</span>
-                  @if (itemDescription(item)) {
-                    <span class="app-menu__item-description">{{ itemDescription(item) | i18n }}</span>
-                  }
-                  @if (itemDetail(item) && itemVisualLayout(item) === 'pill') {
-                    <span class="app-menu__item-detail app-menu__item-detail--badge">{{ itemDetail(item) | i18n }}</span>
+                <span class="app-menu__item-main" [class.app-menu__item-main--with-body]="hasItemBody(item)">
+                  <span class="app-menu__item-header">
+                    <span class="app-menu__item-label">{{ itemLabel(item) | i18n }}</span>
+                    @if (hasItemHeaderBadge(item)) {
+                      <span
+                        class="app-menu__counter app-menu__counter--header-badge"
+                        [class.app-menu__counter--pulse]="isCounterPulsing(itemHeaderBadgeKey(item))"
+                        >
+                        {{ itemHeaderBadgeLabel(item) }}
+                      </span>
+                    }
+                    @if (hasItemCounter(item)) {
+                      <span
+                        class="app-menu__counter"
+                        [class.app-menu__counter--pulse]="isCounterPulsing(itemCounterKey(item))"
+                        >
+                        {{ itemCounterLabel(item) }}
+                      </span>
+                    }
+                  </span>
+                  @if (hasItemBody(item)) {
+                    <span class="app-menu__item-body">
+                      @if (itemDescription(item)) {
+                        <span class="app-menu__item-description">{{ itemDescription(item) | i18n }}</span>
+                      }
+                      @if (itemDetail(item) && itemVisualLayout(item) === 'pill') {
+                        <span class="app-menu__item-detail app-menu__item-detail--badge">{{ itemDetail(item) | i18n }}</span>
+                      }
+                    </span>
                   }
                 </span>
-                @if (hasItemCounter(item)) {
-                  <span
-                    class="app-menu__counter"
-                    [class.app-menu__counter--pulse]="isCounterPulsing(itemCounterKey(item))"
-                    >
-                    {{ itemCounterLabel(item) }}
-                  </span>
-                }
                 @if (itemDetail(item) && itemVisualLayout(item) !== 'pill') {
                   <span class="app-menu__item-detail">{{ itemDetail(item) | i18n }}</span>
                 }
@@ -560,25 +574,39 @@
                     @if (itemIcon(item)) {
                       <mat-icon class="app-menu__item-icon" [class.app-menu__item-icon--symbol]="isSymbolIcon(itemIcon(item))">{{ itemIcon(item) }}</mat-icon>
                     }
-                    <span class="app-menu__item-main">
-                      <span class="app-menu__item-label">{{ itemLabel(item) | i18n }}</span>
-                      @if (itemDescription(item)) {
-                        <span class="app-menu__item-description">{{ itemDescription(item) | i18n }}</span>
-                      }
-                      @if (itemDetail(item) && itemVisualLayout(item) === 'pill') {
-                        <span class="app-menu__item-detail app-menu__item-detail--badge">{{ itemDetail(item) | i18n }}</span>
+                    <span class="app-menu__item-main" [class.app-menu__item-main--with-body]="hasItemBody(item)">
+                      <span class="app-menu__item-header">
+                        <span class="app-menu__item-label">{{ itemLabel(item) | i18n }}</span>
+                        @if (hasItemHeaderBadge(item)) {
+                          <span
+                            class="app-menu__counter app-menu__counter--header-badge"
+                            [class.app-menu__counter--pulse]="isCounterPulsing(itemHeaderBadgeKey(item))"
+                            >
+                            {{ itemHeaderBadgeLabel(item) }}
+                          </span>
+                        }
+                        @if (hasItemCounter(item)) {
+                          <span
+                            class="app-menu__counter"
+                            [class.app-menu__counter--pulse]="isCounterPulsing(itemCounterKey(item))"
+                            >
+                            {{ itemCounterLabel(item) }}
+                          </span>
+                        }
+                      </span>
+                      @if (hasItemBody(item)) {
+                        <span class="app-menu__item-body">
+                          @if (itemDescription(item)) {
+                            <span class="app-menu__item-description">{{ itemDescription(item) | i18n }}</span>
+                          }
+                          @if (itemDetail(item) && itemVisualLayout(item) === 'pill') {
+                            <span class="app-menu__item-detail app-menu__item-detail--badge">{{ itemDetail(item) | i18n }}</span>
+                          }
+                        </span>
                       }
                     </span>
                     @if (itemDetail(item) && itemVisualLayout(item) !== 'pill') {
                       <span class="app-menu__item-detail">{{ itemDetail(item) | i18n }}</span>
-                    }
-                    @if (hasItemCounter(item)) {
-                      <span
-                        class="app-menu__counter"
-                        [class.app-menu__counter--pulse]="isCounterPulsing(itemCounterKey(item))"
-                        >
-                        {{ itemCounterLabel(item) }}
-                      </span>
                     }
                     @if (showItemCheck(item)) {
                       <mat-icon class="app-menu__item-check">done</mat-icon>
@@ -616,25 +644,39 @@
                   @if (itemIcon(item)) {
                     <mat-icon class="app-menu__item-icon" [class.app-menu__item-icon--symbol]="isSymbolIcon(itemIcon(item))">{{ itemIcon(item) }}</mat-icon>
                   }
-                  <span class="app-menu__item-main">
-                    <span class="app-menu__item-label">{{ itemLabel(item) | i18n }}</span>
-                    @if (itemDescription(item)) {
-                      <span class="app-menu__item-description">{{ itemDescription(item) | i18n }}</span>
-                    }
-                    @if (itemDetail(item) && itemVisualLayout(item) === 'pill') {
-                      <span class="app-menu__item-detail app-menu__item-detail--badge">{{ itemDetail(item) | i18n }}</span>
+                  <span class="app-menu__item-main" [class.app-menu__item-main--with-body]="hasItemBody(item)">
+                    <span class="app-menu__item-header">
+                      <span class="app-menu__item-label">{{ itemLabel(item) | i18n }}</span>
+                      @if (hasItemHeaderBadge(item)) {
+                        <span
+                          class="app-menu__counter app-menu__counter--header-badge"
+                          [class.app-menu__counter--pulse]="isCounterPulsing(itemHeaderBadgeKey(item))"
+                          >
+                          {{ itemHeaderBadgeLabel(item) }}
+                        </span>
+                      }
+                      @if (hasItemCounter(item)) {
+                        <span
+                          class="app-menu__counter"
+                          [class.app-menu__counter--pulse]="isCounterPulsing(itemCounterKey(item))"
+                          >
+                          {{ itemCounterLabel(item) }}
+                        </span>
+                      }
+                    </span>
+                    @if (hasItemBody(item)) {
+                      <span class="app-menu__item-body">
+                        @if (itemDescription(item)) {
+                          <span class="app-menu__item-description">{{ itemDescription(item) | i18n }}</span>
+                        }
+                        @if (itemDetail(item) && itemVisualLayout(item) === 'pill') {
+                          <span class="app-menu__item-detail app-menu__item-detail--badge">{{ itemDetail(item) | i18n }}</span>
+                        }
+                      </span>
                     }
                   </span>
                   @if (itemDetail(item) && itemVisualLayout(item) !== 'pill') {
                     <span class="app-menu__item-detail">{{ itemDetail(item) | i18n }}</span>
-                  }
-                  @if (hasItemCounter(item)) {
-                    <span
-                      class="app-menu__counter"
-                      [class.app-menu__counter--pulse]="isCounterPulsing(itemCounterKey(item))"
-                      >
-                      {{ itemCounterLabel(item) }}
-                    </span>
                   }
                   @if (showItemCheck(item)) {
                     <mat-icon class="app-menu__item-check">done</mat-icon>

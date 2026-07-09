@@ -19,6 +19,7 @@ export class ActivityMemberImageCardConverter {
     const pendingDetail = dto.status === 'pending' || dto.status === 'disqualified'
       ? statusLabel
       : null;
+    const statusChipLabel = dto.status === 'deleted' ? this.roleLabel(dto) : statusLabel;
 
     return {
       id: dto.id,
@@ -33,15 +34,23 @@ export class ActivityMemberImageCardConverter {
         'subevent-member-image-card',
         'activity-member-image-card',
         this.toneClass(dto),
+        dto.status === 'deleted' ? 'ui-image-card--deleted' : '',
         options.menuOpen === true ? 'menu-open' : ''
       ].filter(Boolean).join(' '),
       statusChip: {
         icon: this.statusIcon(dto),
-        title: statusLabel,
-        ariaLabel: statusLabel,
+        title: statusChipLabel,
+        ariaLabel: statusChipLabel,
         palette: this.statusPalette(dto),
         className: this.statusClass(dto)
-      }
+      },
+      badge: dto.status === 'deleted'
+        ? {
+          label: statusLabel,
+          ariaLabel: statusLabel,
+          className: 'ui-image-card__badge--danger'
+        }
+        : null
     };
   }
 
@@ -56,6 +65,9 @@ export class ActivityMemberImageCardConverter {
     if (dto.status === 'disqualified') {
       return 'member-card-tone-disqualified';
     }
+    if (dto.status === 'deleted') {
+      return 'member-card-tone-deleted';
+    }
     if (dto.status === 'accepted') {
       if (dto.role === 'Admin') {
         return 'member-card-tone-admin';
@@ -65,9 +77,6 @@ export class ActivityMemberImageCardConverter {
       }
       return 'member-card-tone-accepted';
     }
-    if (this.isJoinRequest(dto)) {
-      return 'member-card-tone-awaiting-approval';
-    }
     return 'member-card-tone-invite-pending';
   }
 
@@ -75,7 +84,7 @@ export class ActivityMemberImageCardConverter {
     if (dto.status === 'disqualified') {
       return 'member-status-disqualified';
     }
-    if (dto.status === 'accepted') {
+    if (dto.status === 'accepted' || dto.status === 'deleted') {
       if (dto.role === 'Admin') {
         return 'member-status-admin';
       }
@@ -84,9 +93,6 @@ export class ActivityMemberImageCardConverter {
       }
       return 'member-status-member';
     }
-    if (this.isJoinRequest(dto)) {
-      return 'member-status-awaiting-approval';
-    }
     return 'member-status-invite-pending';
   }
 
@@ -94,7 +100,7 @@ export class ActivityMemberImageCardConverter {
     if (dto.status === 'disqualified') {
       return 'gavel';
     }
-    if (dto.status === 'accepted') {
+    if (dto.status === 'accepted' || dto.status === 'deleted') {
       if (dto.role === 'Admin') {
         return 'admin_panel_settings';
       }
@@ -116,10 +122,16 @@ export class ActivityMemberImageCardConverter {
     if (dto.status === 'disqualified') {
       return 'Disqualified';
     }
+    if (dto.status === 'deleted') {
+      return 'Deleted';
+    }
     if (dto.status === 'accepted') {
       return this.roleLabel(dto);
     }
     if (this.isJoinRequest(dto)) {
+      if (dto.requestKind === 'waitlist') {
+        return 'Várólistán';
+      }
       return dto.pendingSource === 'admin'
         ? 'Waiting For Admin Approval'
         : 'Waiting For Join Approval';
@@ -134,7 +146,7 @@ export class ActivityMemberImageCardConverter {
     if (dto.status === 'disqualified') {
       return 'muted';
     }
-    if (dto.status === 'accepted') {
+    if (dto.status === 'accepted' || dto.status === 'deleted') {
       if (dto.role === 'Admin') {
         return 'blue';
       }
@@ -142,9 +154,6 @@ export class ActivityMemberImageCardConverter {
         return 'gold';
       }
       return 'green';
-    }
-    if (this.isJoinRequest(dto)) {
-      return 'red';
     }
     return 'orange';
   }
@@ -161,6 +170,8 @@ export class ActivityMemberImageCardConverter {
 
   private static isJoinRequest(dto: ActivityMemberDTO): boolean {
     return dto.requestKind === 'join'
+      || dto.requestKind === 'approval'
+      || dto.requestKind === 'waitlist'
       || (dto.requestKind == null && dto.pendingSource === 'member');
   }
 }

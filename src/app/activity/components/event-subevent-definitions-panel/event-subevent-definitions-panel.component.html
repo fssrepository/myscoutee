@@ -1,3 +1,4 @@
+@if (shouldShowPanel()) {
 <section class="subevent-definition-panel">
   <header class="subevent-definition-panel__header">
     <div class="subevent-definition-panel__title">
@@ -8,7 +9,7 @@
       </div>
     </div>
     <div class="subevent-definition-panel__toggle-wrap">
-      @if (showEnableToggle) {
+      @if (showEnableToggle && canEdit()) {
       <button type="button" class="subevent-definition-panel__toggle" [class.is-on]="enabled"
         [disabled]="!canEdit()" (click)="toggleSubEventsEnabled($event)" aria-label="Toggle sub events">
         <mat-icon>{{ enabled ? 'toggle_on' : 'toggle_off' }}</mat-icon>
@@ -84,3 +85,4 @@
     ></app-event-subevent-stage-form-popup>
   }
 </section>
+}

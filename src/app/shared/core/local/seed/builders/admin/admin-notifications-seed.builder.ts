@@ -105,6 +105,23 @@ export class AdminNotificationsSeedBuilder {
           startTime: '00:00'
         }),
         this.defaultNotificationRule({
+          ruleKey: 'event-checkout-basket-purge',
+          label: 'admin.jobs.rule.event.checkout.basket.purge',
+          category: 'admin.jobs.category.scheduled',
+          description: 'admin.jobs.rule.event.checkout.basket.purge.description',
+          actionKey: 'event.checkout.basket.purge',
+          triggerKind: 'scheduled_process',
+          enabled: true,
+          manualRunEnabled: false,
+          adminManageable: true,
+          priority: 228,
+          pushEnabled: false,
+          emailEnabled: false,
+          timingMode: 'interval',
+          intervalMinutes: 1,
+          startTime: '00:00'
+        }),
+        this.defaultNotificationRule({
           ruleKey: 'notification-outbox',
           label: 'admin.jobs.rule.notification.outbox',
           category: 'admin.jobs.category.scheduled',
