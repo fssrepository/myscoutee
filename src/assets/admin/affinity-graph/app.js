@@ -2014,7 +2014,10 @@ function updateForestLoadingSpinner(force = false) {
     component.forestPosition ?? badge.position,
     component.forestScale ?? badge.scale.x,
     forestLoadingStartedAtMs,
-    componentMemberCount(component) > 0
+    {
+      count: componentMemberCount(component),
+      range: forestCounterRange()
+    }
   );
 }
 
@@ -2050,12 +2053,14 @@ function updateNodeLoadingSpinner(force = false) {
     node.position,
     badge.scale.x || node.badgeScale,
     nodeLoadingStartedAtMs,
-    nodeBadgeCount(node) > 0
+    {
+      count: nodeBadgeCount(node)
+    }
   );
 }
 
-function updateBadgeEdgeLoadingSpinner(sprite, center, baseScale, startedAtMs, reserveCounterBadge = false) {
-  updateLoadingRingTexture(sprite.material.map, startedAtMs, reserveCounterBadge);
+function updateBadgeEdgeLoadingSpinner(sprite, center, baseScale, startedAtMs, counterBadge = null) {
+  updateLoadingRingTexture(sprite.material.map, startedAtMs, counterBadge);
   sprite.visible = true;
   sprite.position.copy(center);
   sprite.scale.setScalar(baseScale);
@@ -4278,6 +4283,8 @@ function drawCounterBadgeLabel(ctx, count, textColor, yOffset, alpha) {
   ctx.globalAlpha = clamp(alpha, 0, 1);
   ctx.fillStyle = textColor;
   ctx.font = label.length > 2 ? '850 24px system-ui, sans-serif' : '900 29px system-ui, sans-serif';
+  ctx.textAlign = 'center';
+  ctx.textBaseline = 'middle';
   ctx.fillText(label, 0, 2 + yOffset);
   ctx.restore();
 }
@@ -4401,7 +4408,7 @@ function createLoadingRingTexture() {
   return texture;
 }
 
-function updateLoadingRingTexture(texture, startedAtMs, reserveCounterBadge = false) {
+function updateLoadingRingTexture(texture, startedAtMs, counterBadge = null) {
   const ctx = texture?.userData?.ctx;
   if (!ctx) {
     return;
@@ -4411,26 +4418,22 @@ function updateLoadingRingTexture(texture, startedAtMs, reserveCounterBadge = fa
   const overdue = elapsedMs >= BADGE_LOAD_OVERDUE_DELAY_MS;
   const center = 128;
   const rimRadius = 112;
-  const startAngle = Math.PI * 0.18;
+  const startAngle = -Math.PI / 2;
   ctx.clearRect(0, 0, 256, 256);
   ctx.lineCap = 'round';
   ctx.lineWidth = 9;
-  ctx.strokeStyle = overdue ? 'rgba(246, 192, 79, 0.2)' : 'rgba(255, 255, 255, 0.16)';
+  ctx.strokeStyle = overdue ? 'rgba(234, 146, 37, 0.28)' : 'rgba(241, 169, 73, 0.22)';
   ctx.beginPath();
   ctx.arc(center, center, rimRadius, 0, Math.PI * 2);
   ctx.stroke();
   ctx.lineWidth = 11;
-  ctx.strokeStyle = overdue ? '#f6c04f' : '#5ab3ff';
+  ctx.strokeStyle = overdue ? '#e88a1e' : '#f1a949';
   ctx.beginPath();
   ctx.arc(center, center, rimRadius, startAngle, startAngle + Math.PI * 2 * progress);
   ctx.stroke();
-  if (reserveCounterBadge) {
-    ctx.save();
-    ctx.globalCompositeOperation = 'destination-out';
-    ctx.beginPath();
-    ctx.arc(198, 58, 44, 0, Math.PI * 2);
-    ctx.fill();
-    ctx.restore();
+  const count = Math.max(0, Math.trunc(Number(counterBadge?.count) || 0));
+  if (count > 0) {
+    drawCounterBadge(ctx, null, count, counterBadge?.range ?? null);
   }
   texture.needsUpdate = true;
 }
