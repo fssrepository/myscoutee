@@ -3831,6 +3831,7 @@ export class LocalEventsRepository {
   ): ContractTypes.EventSlotOccurrenceDTO[] {
     const parentEventId = parent.id;
     const nowMs = Date.now() - (60 * 60 * 1000);
+    const membersTable = this.normalizeActivityMembersCollection(this.memoryDb.read()[ACTIVITY_MEMBERS_TABLE_NAME]);
     return table.ids
       .map(id => table.byId[id])
       .filter((record): record is ActivityEventRecord => Boolean(record))
@@ -3840,7 +3841,7 @@ export class LocalEventsRepository {
       .filter(record => new Date(record.endAtIso).getTime() >= nowMs)
       .sort((left, right) => new Date(left.startAtIso).getTime() - new Date(right.startAtIso).getTime())
       .map(record => {
-        const occupancy = this.slotRecordOccupancyIncludingParentAdmins(parent, record);
+        const occupancy = this.slotRecordOccupancyIncludingParentAdmins(parent, record, membersTable);
         return {
           id: record.id,
           parentEventId,
@@ -3912,10 +3913,14 @@ export class LocalEventsRepository {
 
   private slotRecordOccupancyIncludingParentAdmins(
     parent: ActivityEventRecord,
-    slot: ActivityEventRecord
+    slot: ActivityEventRecord,
+    membersTable: ActivityMembersRecordCollection | null = null
   ): { capacityTotal: number; acceptedMembers: number; pendingMembers: number } {
     const adminUserIds = this.normalizeUserIds(parent.adminIds ?? []);
-    const rawAcceptedMemberUserIds = this.normalizeUserIds(slot.acceptedMemberUserIds ?? []);
+    const rawAcceptedMemberUserIds = this.normalizeUserIds([
+      ...(slot.acceptedMemberUserIds ?? []),
+      ...(membersTable ? this.eventMemberUserIdsByStatusFromTable(membersTable, slot.id, 'accepted') : [])
+    ]);
     const acceptedMemberUserIds = this.normalizeUserIds([
       ...rawAcceptedMemberUserIds,
       ...adminUserIds
@@ -3924,7 +3929,10 @@ export class LocalEventsRepository {
       ? acceptedMemberUserIds.length
       : Math.max(0, Math.trunc(Number(slot.acceptedMembers) || 0));
     const acceptedMemberSet = new Set(acceptedMemberUserIds);
-    const rawPendingMemberUserIds = this.normalizeUserIds(slot.pendingMemberUserIds ?? []);
+    const rawPendingMemberUserIds = this.normalizeUserIds([
+      ...(slot.pendingMemberUserIds ?? []),
+      ...(membersTable ? this.eventMemberUserIdsByStatusFromTable(membersTable, slot.id, 'pending') : [])
+    ]);
     const pendingMemberUserIds = rawPendingMemberUserIds.filter(userId => !acceptedMemberSet.has(userId));
     const pendingMembers = rawPendingMemberUserIds.length > 0
       ? pendingMemberUserIds.length
