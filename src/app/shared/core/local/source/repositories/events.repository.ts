@@ -614,9 +614,10 @@ export class LocalEventsRepository {
 
   private subEventParticipantSlotCandidate(slot: ActivityContracts.SubEventsSlotDTO): SubEventParticipantSlotCandidate {
     const slotOwnerId = this.subEventParticipantSlotOwnerId(slot);
+    const concreteSlot = this.isConcreteSubEventSlot(slot);
     const eventOwnerIds = new Set(this.uniqueParticipantOwnerIds(
       slotOwnerId,
-      slot.parentEventId,
+      concreteSlot ? null : slot.parentEventId,
       slot.slotSourceId,
       slot.id
     ));
@@ -661,6 +662,12 @@ export class LocalEventsRepository {
     return `${slot.slotSourceId ?? ''}`.trim()
       || `${slot.parentEventId ?? ''}`.trim()
       || `${slot.id ?? ''}`.trim();
+  }
+
+  private isConcreteSubEventSlot(slot: ActivityContracts.SubEventsSlotDTO): boolean {
+    const slotSourceId = `${slot.slotSourceId ?? ''}`.trim();
+    const parentEventId = `${slot.parentEventId ?? ''}`.trim();
+    return !!slotSourceId && slotSourceId !== parentEventId;
   }
 
   private subEventParticipantItemId(item: ContractTypes.SubEventDTO | null | undefined, index: number): string {
