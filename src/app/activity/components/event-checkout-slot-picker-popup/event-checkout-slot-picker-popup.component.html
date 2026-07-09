@@ -1,6 +1,6 @@
 @if (popupState()) {
   <app-popup [model]="popupModel()" [zIndex]="4920">
-    <div class="event-checkout-slot-picker" [class.is-saving]="saving">
+    <div class="event-checkout-slot-picker" [class.is-saving]="saving" [class.is-month-view]="isMonthView()">
       @if (errorMessage) {
         <p class="event-checkout-slot-picker__error">{{ errorMessage }}</p>
       }
@@ -46,7 +46,7 @@
             [detail]="selectedOptionalLabel(slot)"
             [badge]="slotPriceLabel(slot)"
             badgeTone="price"
-            [badgeClickable]="true"
+            [badgeClickable]="slotShowsPrice(slot)"
             [badgeAriaLabel]="'Show price summary for ' + slot.title"
             [statusBadge]="slotCapacityBadge(slot)"
             [statusBadgeTone]="slotCapacityBadgeTone(slot)"

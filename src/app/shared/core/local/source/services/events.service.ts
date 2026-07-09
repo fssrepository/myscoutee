@@ -238,7 +238,9 @@ export class LocalEventsService extends LocalRouteDelayService implements IEvent
     const allSlotsById = new Map(allSlotDtos.map(slot => [slot.id, slot]));
     const basketSlots = (checkoutBasket?.items ?? [])
       .filter(item => this.isActiveCheckoutItem(item) && item.kind === 'event' && !!item.slotSourceId?.trim())
-      .map(item => allSlotsById.get(item.slotSourceId!.trim()) ?? this.checkoutSlotFromBasketItem(record, item))
+      .map(item => item.resultState === 'succeeded'
+        ? this.checkoutSlotFromBasketItem(record, item)
+        : allSlotsById.get(item.slotSourceId!.trim()) ?? this.checkoutSlotFromBasketItem(record, item))
       .filter((slot): slot is EventCheckoutSlot => Boolean(slot))
       .sort((left, right) => direction * (this.sortableDateMs(left.startAtIso) - this.sortableDateMs(right.startAtIso)));
     const pageSource = basketView ? basketSlots : allSlotDtos;
@@ -903,9 +905,6 @@ export class LocalEventsService extends LocalRouteDelayService implements IEvent
     bookedByViewer = false
   ): EventCheckoutSlot {
     const pricing = this.resolveCheckoutSlotPricing(record, slot);
-    const displayPricing = bookedByViewer
-      ? this.checkoutSlotBasePricing(pricing)
-      : pricing;
     const capacityTotal = Math.max(0, Math.trunc(Number(slot.capacityTotal) || 0));
     const acceptedMembers = Math.max(0, Math.trunc(Number(slot.acceptedMembers) || 0));
     const pendingMembers = Math.max(0, Math.trunc(Number(slot.pendingMembers) || 0));
@@ -924,23 +923,9 @@ export class LocalEventsService extends LocalRouteDelayService implements IEvent
       pendingMembers,
       availableSlots: Math.max(0, capacityTotal - acceptedMembers - pendingMembers - activeReservations),
       bookedByViewer,
-      amount: displayPricing.amount,
-      currency: displayPricing.currency,
-      pricingSummaryRows: displayPricing.rows
-    };
-  }
-
-  private checkoutSlotBasePricing(
-    pricing: { amount: number; currency: string; rows: EventCheckoutPricingSummaryRow[] }
-  ): { amount: number; currency: string; rows: EventCheckoutPricingSummaryRow[] } {
-    const baseRow = pricing.rows.find(row => `${row.key ?? ''}`.startsWith('base'));
-    const amount = baseRow?.amount == null
-      ? pricing.amount
-      : Math.max(0, Number(baseRow.amount) || 0);
-    return {
-      amount,
-      currency: pricing.currency || baseRow?.currency || 'USD',
-      rows: baseRow ? [baseRow] : pricing.rows
+      amount: pricing.amount,
+      currency: pricing.currency,
+      pricingSummaryRows: pricing.rows
     };
   }
 
@@ -1067,13 +1052,15 @@ export class LocalEventsService extends LocalRouteDelayService implements IEvent
       if (!dateKey) {
         continue;
       }
+      const availableSlots = Math.max(0, Math.trunc(Number(slot.availableSlots) || 0));
+      const amount = Math.max(0, Number(slot.amount) || 0);
       const existing = grouped.get(dateKey);
       if (!existing) {
         grouped.set(dateKey, {
           dateKey,
           slotCount: 1,
-          availableSlots: Math.max(0, Math.trunc(Number(slot.availableSlots) || 0)),
-          lowestAmount: Math.max(0, Number(slot.amount) || 0),
+          availableSlots,
+          lowestAmount: availableSlots > 0 ? amount : Number.POSITIVE_INFINITY,
           currency: slot.currency || 'USD'
         });
         continue;
@@ -1081,12 +1068,15 @@ export class LocalEventsService extends LocalRouteDelayService implements IEvent
       grouped.set(dateKey, {
         ...existing,
         slotCount: existing.slotCount + 1,
-        availableSlots: existing.availableSlots + Math.max(0, Math.trunc(Number(slot.availableSlots) || 0)),
-        lowestAmount: Math.min(existing.lowestAmount, Math.max(0, Number(slot.amount) || 0)),
+        availableSlots: existing.availableSlots + availableSlots,
+        lowestAmount: availableSlots > 0 ? Math.min(existing.lowestAmount, amount) : existing.lowestAmount,
         currency: slot.currency || existing.currency
       });
     }
-    return [...grouped.values()];
+    return [...grouped.values()].map(day => ({
+      ...day,
+      lowestAmount: Number.isFinite(day.lowestAmount) ? day.lowestAmount : 0
+    }));
   }
 
   private resolveCheckoutSlotPricing(
@@ -1165,7 +1155,7 @@ export class LocalEventsService extends LocalRouteDelayService implements IEvent
       nextPrice = Math.min(normalized.maxPrice, nextPrice);
     }
     return {
-      amount: this.roundMoney(this.applyPricingRounding(nextPrice, normalized.rounding)),
+      amount: this.roundMoney(nextPrice),
       currency,
       rows
     };
@@ -1264,16 +1254,6 @@ export class LocalEventsService extends LocalRouteDelayService implements IEvent
       return `-${value}%`;
     }
     return `+${value}%`;
-  }
-
-  private applyPricingRounding(price: number, rounding: string): number {
-    if (rounding === 'whole') {
-      return Math.round(price);
-    }
-    if (rounding === 'half') {
-      return Math.round(price * 2) / 2;
-    }
-    return this.roundMoney(price);
   }
 
   private checkoutSlotMatchesOrder(slot: EventSlotOccurrenceDTO, query: EventCheckoutSlotsQuery): boolean {

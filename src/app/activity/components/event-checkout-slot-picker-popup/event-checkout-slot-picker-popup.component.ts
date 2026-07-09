@@ -365,6 +365,10 @@ export class EventCheckoutSlotPickerPopupComponent {
     return this.isSlotBooked(slot) || this.isSlotUnavailable(slot);
   }
 
+  protected slotShowsPrice(slot: EventCheckoutSlot): boolean {
+    return !this.isSlotFullyUnavailable(slot);
+  }
+
   protected slotCardTone(slot: EventCheckoutSlot): TextCardTone {
     if (this.isSlotBooked(slot)) {
       return 'orange';
@@ -489,6 +493,9 @@ export class EventCheckoutSlotPickerPopupComponent {
   }
 
   protected slotPriceLabel(slot: EventCheckoutSlot): string {
+    if (!this.slotShowsPrice(slot)) {
+      return '';
+    }
     return this.formatMoney(this.slotTotalAmount(slot), this.slotCurrency(slot));
   }
 
@@ -691,6 +698,16 @@ export class EventCheckoutSlotPickerPopupComponent {
     }
     const priceLabel = this.formatMoney(summary.lowestAmount, summary.currency);
     const slotCount = Math.max(0, Math.trunc(Number(summary.slotCount) || 0));
+    const availableSlots = Math.max(0, Math.trunc(Number(summary.availableSlots) || 0));
+    if (slotCount > 0 && availableSlots <= 0) {
+      return {
+        label: 'Unavailable',
+        ariaLabel: `Unavailable, ${slotCount} slots`,
+        alertLabel: `${slotCount}`,
+        alertAriaLabel: `${slotCount} slots`,
+        toneClass: 'calendar-counter-full'
+      };
+    }
     return {
       label: priceLabel,
       ariaLabel: `${priceLabel}, ${slotCount} slots`,
@@ -844,6 +861,13 @@ export class EventCheckoutSlotPickerPopupComponent {
 
   private slotAvailableCount(slot: EventCheckoutSlot): number {
     return Math.max(0, Math.trunc(Number(slot.availableSlots) || 0));
+  }
+
+  private isSlotFullyUnavailable(slot: EventCheckoutSlot): boolean {
+    return this.slotCapacityTotal(slot) > 0
+      && !this.isSelected(slot)
+      && !this.removedCountedSlotIds.has(slot.id)
+      && this.slotAvailableCount(slot) <= 0;
   }
 
   private optionalSubEventCapacityTotal(subEvent: EventCheckoutOptionalSubEvent): number {

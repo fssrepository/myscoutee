@@ -57,6 +57,11 @@
   overflow: hidden;
 }
 
+.event-checkout-slot-picker.is-month-view .event-checkout-slot-picker__slots {
+  visibility: hidden;
+  pointer-events: none;
+}
+
 :host ::ng-deep .event-checkout-slot-picker__month-list .smart-list__surface,
 :host ::ng-deep .event-checkout-slot-picker__month-list .smart-list__stage,
 :host ::ng-deep .event-checkout-slot-picker__month-list .smart-list__page-shell,
