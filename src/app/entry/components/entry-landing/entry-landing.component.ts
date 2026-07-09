@@ -415,8 +415,6 @@ export class EntryLandingComponent implements OnInit, OnChanges, OnDestroy {
 
   protected previewGuidePopupModel(): PopupModel {
     return {
-      headerLabel: 'landing.preview.badge',
-      headerLabelIcon: 'bug_report',
       title: 'landing.preview.guide.title',
       subtitle: 'landing.preview.guide.intro',
       ariaLabel: 'Preview version guide',
