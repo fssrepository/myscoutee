@@ -292,7 +292,7 @@ h1 {
 
 .graph-app--panels-collapsed .panel-compact-summary {
   max-height: 58px;
-  margin-top: 16px;
+  margin-top: 20px;
   opacity: 1;
   transform: translateY(0);
 }
