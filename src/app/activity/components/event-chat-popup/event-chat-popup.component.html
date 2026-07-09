@@ -112,44 +112,6 @@
                     <span class="chat-voice-error">{{ voiceRecorderError }}</span>
                   }
                 </div>
-              } @else if (pollComposerOpen) {
-                <div class="chat-poll-composer" (click)="$event.stopPropagation()">
-                  <div class="chat-poll-composer-header">
-                    <input
-                      type="text"
-                      placeholder="Ask a question"
-                      [(ngModel)]="pollQuestionDraft"
-                      [disabled]="chatInitialLoadPending"
-                    />
-                    <button type="button" aria-label="Cancel poll" (click)="closePollComposer($event)">
-                      <mat-icon>close</mat-icon>
-                    </button>
-                  </div>
-                  <div class="chat-poll-composer-options">
-                    @for (option of pollOptionDrafts; track $index; let index = $index) {
-                      <span class="chat-poll-composer-option">
-                        <input
-                          type="text"
-                          [placeholder]="'Option ' + (index + 1)"
-                          [(ngModel)]="pollOptionDrafts[index]"
-                          [disabled]="chatInitialLoadPending"
-                        />
-                        <button type="button" [attr.aria-label]="'Remove option ' + (index + 1)" (click)="removePollOption(index, $event)">
-                          <mat-icon>close</mat-icon>
-                        </button>
-                      </span>
-                    }
-                  </div>
-                  <div class="chat-poll-composer-actions">
-                    <button type="button" class="chat-poll-add-option-btn" (click)="addPollOption($event)" [disabled]="pollOptionDrafts.length >= 6">
-                      <mat-icon>add_circle</mat-icon>
-                      Add option...
-                    </button>
-                    <button type="button" class="chat-poll-create-btn" (click)="sendPoll($event)" [disabled]="!canCreatePoll()">
-                      Create Poll
-                    </button>
-                  </div>
-                </div>
               } @else {
                 @if (composerEmojiSuggestions(); as emojiSuggestions) {
                   @if (emojiSuggestions.length > 0) {
@@ -185,6 +147,45 @@
                 </button>
               }
         </div>
+      </div>
+    </div>
+  </app-popup>
+}
+
+@if (pollComposerOpen) {
+  <app-popup [model]="createPollPopupModel()" [zIndex]="chatDialogZIndex()">
+    <div class="chat-poll-composer">
+      <div class="chat-poll-composer-header">
+        <input
+          type="text"
+          placeholder="Ask a question"
+          [(ngModel)]="pollQuestionDraft"
+          [disabled]="chatInitialLoadPending"
+        />
+      </div>
+      <div class="chat-poll-composer-options">
+        @for (option of pollOptionDrafts; track $index; let index = $index) {
+          <span class="chat-poll-composer-option">
+            <input
+              type="text"
+              [placeholder]="'Option ' + (index + 1)"
+              [(ngModel)]="pollOptionDrafts[index]"
+              [disabled]="chatInitialLoadPending"
+            />
+            <button type="button" [attr.aria-label]="'Remove option ' + (index + 1)" (click)="removePollOption(index, $event)">
+              <mat-icon>close</mat-icon>
+            </button>
+          </span>
+        }
+      </div>
+      <div class="chat-poll-composer-actions">
+        <button type="button" class="chat-poll-add-option-btn" (click)="addPollOption($event)" [disabled]="pollOptionDrafts.length >= 6">
+          <mat-icon>add_circle</mat-icon>
+          Add option...
+        </button>
+        <button type="button" class="chat-poll-create-btn" (click)="sendPoll($event)" [disabled]="!canCreatePoll()">
+          Create Poll
+        </button>
       </div>
     </div>
   </app-popup>
@@ -445,33 +446,26 @@
 </ng-template>
 
 @if (reactionDetailsMessage(); as reactionMessage) {
-  <section class="chat-modal">
-    <div class="chat-modal-backdrop" (click)="closeReactionDetails()"></div>
-    <div class="chat-modal-panel" (click)="$event.stopPropagation()">
-      <header>
-        <h2>Message reactions</h2>
-        <button type="button" (click)="closeReactionDetails()" aria-label="Close reactions"><mat-icon>close</mat-icon></button>
-      </header>
-      <div class="chat-reaction-tabs">
-        <button type="button" [class.active]="reactionDetailsFilter === 'all'" (click)="reactionDetailsFilter = 'all'">All {{ reactionMessage.reactions?.length ?? 0 }}</button>
-        @for (reaction of reactionSummary(reactionMessage); track reaction.emoji) {
-          <button type="button" [class.active]="reactionDetailsFilter === reaction.emoji" (click)="reactionDetailsFilter = reaction.emoji">{{ reaction.emoji }} {{ reaction.count }}</button>
-        }
-      </div>
-      <div class="chat-reaction-list">
-        @for (reaction of reactionDetailsRows(reactionMessage); track reaction.userId + reaction.emoji) {
-          <div class="chat-reaction-row">
-            <span class="chat-reaction-avatar" [class]="'user-color-' + reaction.userGender">{{ reaction.userInitials }}</span>
-            <span>
-              <strong>{{ reaction.userName }}</strong>
-              <small>Reacted with {{ reaction.emoji }}</small>
-            </span>
-            <span class="chat-reaction-row-emoji">{{ reaction.emoji }}</span>
-          </div>
-        }
-      </div>
+  <app-popup [model]="reactionDetailsPopupModel()" [zIndex]="chatDialogZIndex()">
+    <div class="chat-reaction-tabs">
+      <button type="button" [class.active]="reactionDetailsFilter === 'all'" (click)="reactionDetailsFilter = 'all'">All {{ reactionMessage.reactions?.length ?? 0 }}</button>
+      @for (reaction of reactionSummary(reactionMessage); track reaction.emoji) {
+        <button type="button" [class.active]="reactionDetailsFilter === reaction.emoji" (click)="reactionDetailsFilter = reaction.emoji">{{ reaction.emoji }} {{ reaction.count }}</button>
+      }
     </div>
-  </section>
+    <div class="chat-reaction-list">
+      @for (reaction of reactionDetailsRows(reactionMessage); track reaction.userId + reaction.emoji) {
+        <div class="chat-reaction-row">
+          <span class="chat-reaction-avatar" [class]="'user-color-' + reaction.userGender">{{ reaction.userInitials }}</span>
+          <span>
+            <strong>{{ reaction.userName }}</strong>
+            <small>Reacted with {{ reaction.emoji }}</small>
+          </span>
+          <span class="chat-reaction-row-emoji">{{ reaction.emoji }}</span>
+        </div>
+      }
+    </div>
+  </app-popup>
 }
 
 @if (pollVoteDialogContext(); as pollContext) {
@@ -518,77 +512,70 @@
 }
 
 @if (pinnedDialogOpen) {
-  <section class="chat-modal">
-    <div class="chat-modal-backdrop" (click)="closePinnedMessagesDialog()"></div>
-    <div class="chat-modal-panel chat-pinned-panel" (click)="$event.stopPropagation()">
-      <header>
-        <h2>Pinned messages</h2>
-        <button type="button" (click)="closePinnedMessagesDialog()" aria-label="Close pinned messages"><mat-icon>close</mat-icon></button>
-      </header>
-      <div class="chat-pinned-list">
-        @for (message of pinnedMessages(); track message.id) {
-          <button type="button" class="chat-pinned-message" (click)="selectPinnedMessage(message)">
-            <span class="chat-sender-avatar" [class]="'user-color-' + message.senderAvatar.gender">
-              @if (message.senderAvatar.imageUrl) {
-                <img [src]="message.senderAvatar.imageUrl" [alt]="message.sender" loading="lazy" decoding="async" />
-              } @else {
-                {{ message.senderAvatar.initials }}
-              }
-            </span>
-            <span class="chat-pinned-message-content">
-              <span class="chat-meta-row">
-                <strong class="chat-sender-name">{{ message.sender }}</strong>
-                <span class="chat-time-chip">{{ message.time }}</span>
-              </span>
-              @if ((message.attachments ?? []).length > 0) {
-                <span class="chat-pinned-attachment">{{ chatAttachmentSummary(message) }}</span>
-                @for (attachment of message.attachments; track attachment.id) {
-                  @if (attachment.type === 'image' && (attachment.previewUrl || attachment.url)) {
-                    <span class="chat-pinned-image-preview">
-                      <img
-                        [src]="attachment.previewUrl || attachment.url"
-                        [alt]="attachment.title"
-                        loading="lazy"
-                        decoding="async"
-                      />
-                    </span>
-                  }
-                }
-              }
-              @if (message.text) {
-                <span class="chat-line">{{ message.text }}</span>
-              }
-            </span>
-            <span class="chat-pin-badge chat-pinned-dialog-pin" aria-label="Pinned message">
-              <mat-icon>push_pin</mat-icon>
-            </span>
-            @if ((message.reactions ?? []).length > 0) {
-              <span class="chat-reaction-summary chat-pinned-reaction-summary">
-                @for (reaction of reactionSummary(message); track reaction.emoji) {
-                  <span>{{ reaction.emoji }} {{ reaction.count }}</span>
-                }
-              </span>
+  <app-popup [model]="pinnedMessagesPopupModel()" [zIndex]="chatDialogZIndex()">
+    <div class="chat-pinned-list">
+      @for (message of pinnedMessages(); track message.id) {
+        <button type="button" class="chat-pinned-message" (click)="selectPinnedMessage(message)">
+          <span class="chat-sender-avatar" [class]="'user-color-' + message.senderAvatar.gender">
+            @if (message.senderAvatar.imageUrl) {
+              <img [src]="message.senderAvatar.imageUrl" [alt]="message.sender" loading="lazy" decoding="async" />
+            } @else {
+              {{ message.senderAvatar.initials }}
             }
-            @if (message.readBy.length > 0) {
-              <span class="chat-readers chat-pinned-readers">
-                @for (reader of message.readBy; track trackByChatReader($index, reader)) {
-                  <span class="chat-reader" [class]="'user-color-' + reader.gender">
-                    @if (reader.imageUrl) {
-                      <img [src]="reader.imageUrl" [alt]="reader.initials" loading="lazy" decoding="async" />
-                    } @else {
-                      {{ reader.initials }}
-                    }
+          </span>
+          <span class="chat-pinned-message-content">
+            <span class="chat-meta-row">
+              <strong class="chat-sender-name">{{ message.sender }}</strong>
+              <span class="chat-time-chip">{{ message.time }}</span>
+            </span>
+            @if ((message.attachments ?? []).length > 0) {
+              <span class="chat-pinned-attachment">{{ chatAttachmentSummary(message) }}</span>
+              @for (attachment of message.attachments; track attachment.id) {
+                @if (attachment.type === 'image' && (attachment.previewUrl || attachment.url)) {
+                  <span class="chat-pinned-image-preview">
+                    <img
+                      [src]="attachment.previewUrl || attachment.url"
+                      [alt]="attachment.title"
+                      loading="lazy"
+                      decoding="async"
+                    />
                   </span>
                 }
-              </span>
+              }
             }
-          </button>
-        } @empty {
-          <p>No pinned messages yet.</p>
-        }
-      </div>
+            @if (message.text) {
+              <span class="chat-line">{{ message.text }}</span>
+            }
+          </span>
+          <span class="chat-pin-badge chat-pinned-dialog-pin" aria-label="Pinned message">
+            <mat-icon>push_pin</mat-icon>
+          </span>
+          @if ((message.reactions ?? []).length > 0) {
+            <span class="chat-reaction-summary chat-pinned-reaction-summary">
+              @for (reaction of reactionSummary(message); track reaction.emoji) {
+                <span>{{ reaction.emoji }} {{ reaction.count }}</span>
+              }
+            </span>
+          }
+          @if (message.readBy.length > 0) {
+            <span class="chat-readers chat-pinned-readers">
+              @for (reader of message.readBy; track trackByChatReader($index, reader)) {
+                <span class="chat-reader" [class]="'user-color-' + reader.gender">
+                  @if (reader.imageUrl) {
+                    <img [src]="reader.imageUrl" [alt]="reader.initials" loading="lazy" decoding="async" />
+                  } @else {
+                    {{ reader.initials }}
+                  }
+                </span>
+              }
+            </span>
+          }
+        </button>
+      } @empty {
+        <p>No pinned messages yet.</p>
+      }
     </div>
-  </section>
+  </app-popup>
 }
 
 @if (eventSubeventsStore.eventSubeventsListPopup()?.host === 'chat') {

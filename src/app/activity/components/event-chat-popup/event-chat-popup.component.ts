@@ -563,6 +563,55 @@ export class EventChatPopupComponent implements OnDestroy {
       : 2360;
   }
 
+  protected reactionDetailsPopupModel(): PopupModel {
+    return {
+      title: 'Message reactions',
+      ariaLabel: 'Message reactions',
+      closeAriaLabel: 'Close reactions',
+      closeOnBackdrop: true,
+      size: 'small',
+      height: 'auto',
+      headerTone: 'accent',
+      bodyLayout: 'flush',
+      backdropTone: 'dim',
+      onClose: () => this.closeReactionDetails()
+    };
+  }
+
+  protected createPollPopupModel(): PopupModel {
+    return {
+      title: 'Create Poll',
+      ariaLabel: 'Create Poll',
+      closeAriaLabel: 'Cancel poll',
+      closeOnBackdrop: true,
+      size: 'small',
+      height: 'auto',
+      headerTone: 'accent',
+      bodyLayout: 'flush',
+      backdropTone: 'dim',
+      onClose: event => this.closePollComposer(event)
+    };
+  }
+
+  protected pinnedMessagesPopupModel(): PopupModel {
+    return {
+      title: 'Pinned messages',
+      ariaLabel: 'Pinned messages',
+      closeAriaLabel: 'Close pinned messages',
+      closeOnBackdrop: true,
+      size: 'small',
+      height: 'auto',
+      headerTone: 'accent',
+      bodyLayout: 'flush',
+      backdropTone: 'dim',
+      onClose: () => this.closePinnedMessagesDialog()
+    };
+  }
+
+  protected chatDialogZIndex(): number {
+    return this.currentChatPopupZIndex() + 10;
+  }
+
   private currentChatPopupZIndex(): number {
     const session = this.session();
     return session ? this.chatPopupZIndex(session) : 2360;

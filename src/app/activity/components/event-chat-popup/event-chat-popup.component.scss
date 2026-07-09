@@ -1320,29 +1320,19 @@
 }
 
 .chat-poll-composer {
-  position: absolute;
-  left: 2.4rem;
-  right: 0.2rem;
-  bottom: calc(100% + 0.52rem);
-  z-index: 45;
   display: grid;
   gap: 0.62rem;
   padding: 0.85rem;
-  border: 1px solid rgba(33, 54, 82, 0.12);
-  border-radius: 12px;
-  background: #fff;
-  box-shadow: 0 18px 44px rgba(17, 24, 39, 0.18);
 }
 
 .chat-poll-composer-header {
-  display: grid;
-  grid-template-columns: minmax(0, 1fr) 30px;
-  align-items: center;
-  gap: 0.5rem;
+  display: block;
 }
 
 .chat-poll-composer input {
+  width: 100%;
   min-width: 0;
+  box-sizing: border-box;
   height: 34px;
   border: 0;
   border-bottom: 1px solid rgba(33, 54, 82, 0.14);
@@ -1358,7 +1348,6 @@
   text-align: center;
 }
 
-.chat-poll-composer-header button,
 .chat-poll-composer-option button {
   width: 30px;
   height: 30px;
@@ -1372,7 +1361,6 @@
   cursor: pointer;
 }
 
-.chat-poll-composer-header .mat-icon,
 .chat-poll-composer-option .mat-icon {
   width: 18px;
   height: 18px;
@@ -2081,11 +2069,6 @@
 
   .chat-poll-attachment {
     width: 200px;
-  }
-
-  .chat-poll-composer {
-    left: 0.45rem;
-    right: 0.45rem;
   }
 
   .chat-message {
