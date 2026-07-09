@@ -79,6 +79,13 @@ interface HttpEventsFilterRequest {
   rangeEnd?: string;
 }
 
+type HttpActivityEventPageResponse = ActivityEventDTO[] | {
+  items?: ActivityEventDTO[] | null;
+  records?: ActivityEventDTO[] | null;
+  total?: number | null;
+  nextCursor?: string | null;
+} | null;
+
 @Injectable({
   providedIn: 'root'
 })
@@ -121,7 +128,7 @@ export class HttpEventsService implements IEventsService {
     }
     try {
       const response = await this.requestWithAbort(
-        this.http.post<ActivityEventDTO[] | ActivityEventPageResultDTO | null>(
+        this.http.post<HttpActivityEventPageResponse>(
           `${this.apiBaseUrl}/activities/events/filter`,
           this.toHttpEventsFilterRequest(normalizedUserId, query)
         ),
@@ -135,7 +142,12 @@ export class HttpEventsService implements IEventsService {
           nextCursor: null
         };
       }
-      const items = this.cloneDTOs(response?.items);
+      const responseItems = Array.isArray(response?.items)
+        ? response.items
+        : Array.isArray(response?.records)
+          ? response.records
+          : [];
+      const items = this.cloneDTOs(responseItems);
       return {
         items,
         total: Number.isFinite(response?.total) ? Math.max(0, Math.trunc(Number(response?.total))) : items.length,

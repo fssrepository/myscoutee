@@ -2403,13 +2403,16 @@ export class ActivitiesPopupComponent implements OnDestroy {
     });
   }
 
-  private async restorePaidCheckoutActivityEventRow(sourceId: string): Promise<void> {
+  private async restorePaidCheckoutActivityEventRow(
+    sourceId: string,
+    sync: ActivityMembersSyncState | null = null
+  ): Promise<void> {
     const normalizedSourceId = sourceId.trim();
     const activeUserId = this.activeUser.id.trim();
     if (!normalizedSourceId || !activeUserId || !this.isEventActivitiesPrimaryFilter()) {
       return;
     }
-    const dto = await this.resolvePaidCheckoutActivityEventDTO(activeUserId, normalizedSourceId);
+    const dto = await this.resolvePaidCheckoutActivityEventDTO(activeUserId, normalizedSourceId, sync);
     if (!dto) {
       return;
     }
@@ -2420,17 +2423,22 @@ export class ActivitiesPopupComponent implements OnDestroy {
 
   private async resolvePaidCheckoutActivityEventDTO(
     activeUserId: string,
-    sourceId: string
+    sourceId: string,
+    sync: ActivityMembersSyncState | null = null
   ): Promise<ActivityEventDTO | null> {
     const known = this.eventsService.peekKnownItemById(activeUserId, sourceId);
     if (known) {
-      return this.withPaidCheckoutMembership(known, activeUserId);
+      return this.withPaidCheckoutMembership(known, activeUserId, sync);
     }
     const detail = await this.eventsService.loadEventDetailById(activeUserId, sourceId);
-    return detail ? this.withPaidCheckoutMembership(detail as ActivityEventDTO, activeUserId) : null;
+    return detail ? this.withPaidCheckoutMembership(detail as ActivityEventDTO, activeUserId, sync) : null;
   }
 
-  private withPaidCheckoutMembership(dto: ActivityEventDTO, activeUserId: string): ActivityEventDTO {
+  private withPaidCheckoutMembership(
+    dto: ActivityEventDTO,
+    activeUserId: string,
+    sync: ActivityMembersSyncState | null = null
+  ): ActivityEventDTO {
     const acceptedMemberUserIds = this.uniqueActivityUserIds([
       ...(dto.acceptedMemberUserIds ?? []),
       activeUserId
@@ -2442,11 +2450,20 @@ export class ActivitiesPopupComponent implements OnDestroy {
     const wasAccepted = (dto.acceptedMemberUserIds ?? []).includes(activeUserId);
     const wasPending = (dto.pendingMemberUserIds ?? []).includes(activeUserId)
       || (dto.pendingRequestMemberUserIds ?? []).includes(activeUserId);
-    const acceptedMembers = Math.max(
+    const syncedAcceptedMembers = Number.isFinite(Number(sync?.acceptedMembers))
+      ? Math.max(0, Math.trunc(Number(sync?.acceptedMembers)))
+      : null;
+    const syncedPendingMembers = Number.isFinite(Number(sync?.pendingMembers))
+      ? Math.max(0, Math.trunc(Number(sync?.pendingMembers)))
+      : null;
+    const syncedCapacityTotal = Number.isFinite(Number(sync?.capacityTotal))
+      ? Math.max(0, Math.trunc(Number(sync?.capacityTotal)))
+      : null;
+    const acceptedMembers = syncedAcceptedMembers ?? Math.max(
       acceptedMemberUserIds.length,
       Math.max(0, Math.trunc(Number(dto.acceptedMembers) || 0)) + (wasAccepted ? 0 : 1)
     );
-    const pendingMembers = Math.max(
+    const pendingMembers = syncedPendingMembers ?? Math.max(
       pendingMemberUserIds.length,
       pendingRequestMemberUserIds.length,
       Math.max(0, Math.trunc(Number(dto.pendingMembers) || 0)) - (wasPending ? 1 : 0)
@@ -2454,9 +2471,13 @@ export class ActivitiesPopupComponent implements OnDestroy {
     return this.cloneActivityEventDTO({
       ...dto,
       status: dto.status ?? 'A',
+      full: sync?.full === true ? true : dto.full,
       acceptedMembers,
       pendingMembers,
-      capacityTotal: Math.max(acceptedMembers, Math.max(0, Math.trunc(Number(dto.capacityTotal) || 0))),
+      capacityTotal: Math.max(
+        acceptedMembers,
+        syncedCapacityTotal ?? Math.max(0, Math.trunc(Number(dto.capacityTotal) || 0))
+      ),
       acceptedMemberUserIds,
       pendingMemberUserIds,
       pendingRequestMemberUserIds,
@@ -3232,7 +3253,7 @@ export class ActivitiesPopupComponent implements OnDestroy {
       return;
     }
     if (sync.checkoutResultState === 'succeeded') {
-      void this.restorePaidCheckoutActivityEventRow(sync.id);
+      void this.restorePaidCheckoutActivityEventRow(sync.id, sync);
     }
     const capacityParts = `${this.activityCapacityById[sync.id] ?? ''}`.split('/');
     const hasCurrentAcceptedMembers = (capacityParts[0] ?? '').trim().length > 0;

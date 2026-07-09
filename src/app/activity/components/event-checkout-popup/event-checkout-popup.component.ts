@@ -2032,21 +2032,9 @@ export class EventCheckoutPopupComponent {
     }
     const record = this.eventsService.peekKnownRecordById(dialog.userId, normalizedSourceId);
     const matchingResult = result?.sourceId === normalizedSourceId ? result : null;
-    const acceptedMembers = record
-      ? record.acceptedMembers
-      : matchingResult
-        ? matchingResult.acceptedMembers
-        : null;
-    const pendingMembers = record
-      ? record.pendingMembers
-      : matchingResult
-        ? matchingResult.pendingMembers
-        : null;
-    const capacityTotal = record
-      ? record.capacityTotal
-      : matchingResult
-        ? matchingResult.capacityTotal
-        : null;
+    const acceptedMembers = matchingResult?.acceptedMembers ?? record?.acceptedMembers ?? null;
+    const pendingMembers = matchingResult?.pendingMembers ?? record?.pendingMembers ?? null;
+    const capacityTotal = matchingResult?.capacityTotal ?? record?.capacityTotal ?? null;
     if (acceptedMembers == null || pendingMembers == null || capacityTotal == null) {
       return;
     }

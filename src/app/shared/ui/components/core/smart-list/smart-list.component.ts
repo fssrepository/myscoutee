@@ -795,7 +795,7 @@ export class SmartListComponent<T, TFilters extends SmartListFilters = SmartList
     this.cdr.markForCheck();
   }
 
-  public replaceVisibleItems(items: readonly T[], options: { total?: number } = {}): void {
+  public replaceVisibleItems(items: readonly T[], options: { total?: number; hasMore?: boolean } = {}): void {
     if (this.currentViewMode !== 'list') {
       return;
     }
@@ -808,7 +808,10 @@ export class SmartListComponent<T, TFilters extends SmartListFilters = SmartList
     this.total = Number.isFinite(options.total)
       ? Math.max(this.items.length, Math.trunc(Number(options.total)))
       : this.items.length;
-    this.hasMore = this.items.length < this.total;
+    const computedHasMore = this.items.length < this.total;
+    this.hasMore = typeof options.hasMore === 'boolean'
+      ? options.hasMore && computedHasMore
+      : computedHasMore;
     this.syncGroups();
     this.finiteStepper.syncBounds();
     this.emitState();
@@ -820,6 +823,7 @@ export class SmartListComponent<T, TFilters extends SmartListFilters = SmartList
     items: readonly T[],
     options: {
       total?: number;
+      hasMore?: boolean;
       equals?: (current: T, next: T, index: number) => boolean;
       trackBy?: (index: number, item: T) => unknown;
     } = {}
@@ -831,7 +835,12 @@ export class SmartListComponent<T, TFilters extends SmartListFilters = SmartList
     const nextTotal = Number.isFinite(options.total)
       ? Math.max(nextItems.length, Math.trunc(Number(options.total)))
       : nextItems.length;
+    const nextComputedHasMore = nextItems.length < nextTotal;
+    const nextHasMore = typeof options.hasMore === 'boolean'
+      ? options.hasMore && nextComputedHasMore
+      : nextComputedHasMore;
     const sameShape = this.total === nextTotal
+      && this.hasMore === nextHasMore
       && this.items.length === nextItems.length
       && this.items.every((item, index) =>
         this.cacheTrackKey(item, index, options.trackBy)
@@ -839,7 +848,7 @@ export class SmartListComponent<T, TFilters extends SmartListFilters = SmartList
       );
 
     if (!sameShape) {
-      this.replaceVisibleItems(nextItems, { total: nextTotal });
+      this.replaceVisibleItems(nextItems, { total: nextTotal, hasMore: nextHasMore });
       this.emitRefresh();
       return true;
     }
@@ -1482,10 +1491,16 @@ export class SmartListComponent<T, TFilters extends SmartListFilters = SmartList
     }
 
     const items = Array.isArray(result?.items) ? result.items : [];
+    const hasExplicitNextCursor = Boolean(result && Object.prototype.hasOwnProperty.call(result, 'nextCursor'));
+    const requestedPageSize = Math.max(1, Math.trunc(Number(query.pageSize) || this.resolveEffectivePageSize()));
+    const loadedShortPage = items.length > 0 && items.length < requestedPageSize;
     const total = Number.isFinite(result?.total)
       ? Math.max(0, Math.trunc(Number(result?.total)))
       : undefined;
-    this.syncVisibleItems(items, { total });
+    const hasMore = hasExplicitNextCursor
+      ? (typeof result?.nextCursor === 'string' && result.nextCursor.trim().length > 0)
+      : (items.length > 0 && items.length < (total ?? items.length) && !loadedShortPage);
+    this.syncVisibleItems(items, { total, hasMore });
   }
 
   private async loadInitialListPages(): Promise<void> {
@@ -1564,7 +1579,7 @@ export class SmartListComponent<T, TFilters extends SmartListFilters = SmartList
       if (shouldUseReverseAppendAnchorRestore) {
         reverseAppendAnchorContext = this.captureReverseAppendAnchorContext(isInitial) ?? reverseAppendAnchorContext;
       }
-      this.applyListPageResult(result, isInitial);
+      this.applyListPageResult(result, isInitial, query.pageSize);
       if (sequence !== this.loadSequence) {
         return;
       }
@@ -1658,7 +1673,11 @@ export class SmartListComponent<T, TFilters extends SmartListFilters = SmartList
     await this.loadAnchorPage(anchor, this.stepper.queryForAnchor(anchor), true);
   }
 
-  private applyListPageResult(result: PageResult<T> | null | undefined, isInitial: boolean): void {
+  private applyListPageResult(
+    result: PageResult<T> | null | undefined,
+    isInitial: boolean,
+    requestedPageSizeValue?: number | null
+  ): void {
     // Lock the snap reactivation if we were suppressing it at the bottom
     if (!isInitial && this.listMergeStrategy() !== 'prepend' && this.suppressListSnapNearEnd) {
       this.suspendSnapReactivation = true;
@@ -1666,7 +1685,10 @@ export class SmartListComponent<T, TFilters extends SmartListFilters = SmartList
 
     const nextItems = Array.isArray(result?.items) ? result.items : [];
     const hasExplicitNextCursor = Boolean(result && Object.prototype.hasOwnProperty.call(result, 'nextCursor'));
-    const requestedPageSize = Math.max(1, Math.trunc(Number(this.currentQuery().pageSize) || this.resolveEffectivePageSize()));
+    const requestedPageSize = Math.max(
+      1,
+      Math.trunc(Number(requestedPageSizeValue) || this.resolveEffectivePageSize())
+    );
     const loadedShortPage = nextItems.length > 0 && nextItems.length < requestedPageSize;
     if (isInitial) {
       this.items = this.orderSortableItems(nextItems);
