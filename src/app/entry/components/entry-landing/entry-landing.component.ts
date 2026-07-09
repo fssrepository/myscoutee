@@ -539,6 +539,22 @@ export class EntryLandingComponent implements OnInit, OnChanges, OnDestroy {
     };
   }
 
+  protected ideasPopupModel(): PopupModel {
+    const articleCount = this.publishedIdeaCards().length;
+    return {
+      title: 'MyScoutee articles',
+      subtitle: `${articleCount} ${articleCount === 1 ? 'article' : 'articles'}`,
+      ariaLabel: 'MyScoutee articles',
+      closeAriaLabel: 'Close articles',
+      translateSubtitle: false,
+      size: 'wide',
+      height: 'full',
+      headerTone: 'accent',
+      bodyLayout: 'fill',
+      onClose: () => this.closeIdeasPopup()
+    };
+  }
+
   protected scrollEntryTo(sectionId: string, event?: Event): void {
     event?.preventDefault();
     const target = document.getElementById(sectionId);

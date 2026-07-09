@@ -224,36 +224,24 @@
 }
 
 @if (ideasPopupOpen) {
-  <section class="app-popup entry-ideas-popup" role="dialog" aria-modal="true" aria-label="MyScoutee articles">
-    <div class="app-popup-backdrop entry-ideas-popup-backdrop" (click)="closeIdeasPopup()"></div>
-    <div class="app-popup-panel popup-panel-full-height entry-ideas-popup-panel">
-      <header class="popup-header entry-ideas-popup-header">
-        <div class="popup-title">
-          <h2>MyScoutee articles</h2>
-          <p>{{ publishedIdeaCards().length }} article{{ publishedIdeaCards().length === 1 ? '' : 's' }}</p>
-        </div>
-        <button type="button" class="popup-close" (click)="closeIdeasPopup()" aria-label="Close articles">
-          <mat-icon>close</mat-icon>
-        </button>
-      </header>
-      <div class="popup-body entry-ideas-popup-body">
-        <app-smart-list
-          class="entry-ideas-smart-list"
-          [config]="entryIdeaSmartListConfig"
-          [loadPage]="entryIdeaSmartListLoadPage"
-          [itemTemplate]="entryIdeaListCardTemplate"
-        ></app-smart-list>
+  <app-popup [model]="ideasPopupModel()" [zIndex]="2400">
+    <div class="entry-ideas-popup-body">
+      <app-smart-list
+        class="entry-ideas-smart-list"
+        [config]="entryIdeaSmartListConfig"
+        [loadPage]="entryIdeaSmartListLoadPage"
+        [itemTemplate]="entryIdeaListCardTemplate"
+      ></app-smart-list>
 
-        <ng-template #entryIdeaListCardTemplate let-card let-groupLabel="groupLabel" let-renderState="renderState">
-          <app-info-card
-            class="entry-idea-info-card"
-            [card]="entryIdeaListInfoCard(card, { groupLabel: groupLabel, renderState: renderState })"
-            (menuAction)="onFeaturedIdeaCardAction(card, $event.actionId)"
-          ></app-info-card>
-        </ng-template>
-      </div>
+      <ng-template #entryIdeaListCardTemplate let-card let-groupLabel="groupLabel" let-renderState="renderState">
+        <app-info-card
+          class="entry-idea-info-card"
+          [card]="entryIdeaListInfoCard(card, { groupLabel: groupLabel, renderState: renderState })"
+          (menuAction)="onFeaturedIdeaCardAction(card, $event.actionId)"
+        ></app-info-card>
+      </ng-template>
     </div>
-  </section>
+  </app-popup>
 }
 
 @if (ideaArticlePopupOpen && selectedIdeaDetail(); as post) {

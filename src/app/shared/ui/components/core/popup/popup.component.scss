@@ -372,6 +372,13 @@ app-popup {
   overflow: hidden;
 }
 
+@media (min-width: 761px) {
+  .ui-popup__panel--overflow-visible,
+  .ui-popup__body--overflow {
+    overflow: visible;
+  }
+}
+
 .ui-popup__action {
   position: relative;
   min-width: 2.25rem;
@@ -591,6 +598,11 @@ app-popup {
     margin: 0 !important;
     border-radius: 0;
     box-shadow: none;
+  }
+
+  .ui-popup__body--overflow {
+    overflow-y: auto;
+    overflow-x: hidden;
   }
 
   .ui-popup__header {

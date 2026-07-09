@@ -8,6 +8,7 @@
   <section
     class="ui-popup__panel"
     [ngClass]="[panelSizeClass(), panelHeightClass()]"
+    [class.ui-popup__panel--overflow-visible]="popupModel.bodyLayout === 'overflow'"
     role="dialog"
     aria-modal="true"
     [attr.aria-label]="ariaLabel"

@@ -1,18 +1,9 @@
 import {
-  CommonModule
-} from '@angular/common';
-import {
   Component,
   HostListener,
   effect,
   inject
 } from '@angular/core';
-import {
-  MatButtonModule
-} from '@angular/material/button';
-import {
-  MatIconModule
-} from '@angular/material/icon';
 
 import {
   AppUtils
@@ -33,6 +24,10 @@ import {
   type DocumentViewerConfig
 } from '../../../shared/ui/components/document-viewer';
 import {
+  PopupComponent,
+  type PopupModel
+} from '../../../shared/ui/components/core/popup';
+import {
   HelpCenterRevisionDocumentViewerConfigConverter
 } from '../../../shared/ui/converters';
 import {
@@ -51,10 +46,8 @@ import { UserProfileStore } from '../../../shared/ui/context/stores/user-profile
   selector: 'app-profile-settings-popups',
   standalone: true,
   imports: [
-    CommonModule,
-    MatButtonModule,
-    MatIconModule,
     DocumentViewerComponent,
+    PopupComponent,
     ProfileFeedbackPopupComponent,
     ProfileReportUserPopupComponent
   ],
@@ -105,6 +98,27 @@ export class ProfileSettingsPopupsComponent {
       default:
         return '';
     }
+  }
+
+  protected settingsPopupModel(popup: ProfileSettingsPopup): PopupModel {
+    const title = this.popupTitle(popup);
+    return {
+      title,
+      subtitle: popup === 'feedback'
+        ? 'Tell us what works well or what should be improved. Product feedback is triaged by category.'
+        : null,
+      ariaLabel: title,
+      closeAriaLabel: 'Close',
+      size: 'wide',
+      height: 'auto',
+      headerTone: 'accent',
+      bodyLayout: popup === 'feedback' ? 'overflow' : 'default',
+      onClose: () => this.closePopup()
+    };
+  }
+
+  protected settingsPopupZIndex(popup: ProfileSettingsPopup): number {
+    return popup === 'report-user' ? 3900 : 2400;
   }
 
   protected closePopup(): void {

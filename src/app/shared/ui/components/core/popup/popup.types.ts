@@ -21,7 +21,7 @@ export type PopupHeight = 'auto' | 'full';
 export type PopupHeaderTone = 'default' | 'accent';
 export type PopupHeaderLayout = 'default' | 'article' | 'document';
 export type PopupHeaderPalette = 'default' | 'amber' | 'blue' | 'green' | 'rose' | 'violet' | 'slate' | 'teal';
-export type PopupBodyLayout = 'default' | 'fill' | 'flush';
+export type PopupBodyLayout = 'default' | 'fill' | 'flush' | 'overflow';
 export type PopupControlAlign = 'start' | 'end';
 export type PopupBackdropTone = 'default' | 'dim';
 

@@ -3,6 +3,7 @@
   [class.is-loading]="loading"
   [class.form-flow--carousel]="isCarouselLayout()"
   [class.form-flow--grouped]="isGroupedLayout()"
+  [class.form-flow--menu-overflow]="model?.allowMenuOverflow === true"
   [ngClass]="toneClass()"
   [attr.aria-busy]="loading"
 >
@@ -250,12 +251,13 @@
                     } @else if (control.kind === 'textarea') {
                       <label class="form-flow__label">
                         <span>{{ control.label }}@if (control.required) { <strong>*</strong> }</span>
-                        @if (control.maxLength) {
-                          <small>{{ controlTextValue(control).length }}/{{ control.maxLength }}</small>
+                        @if (control.maxLength || control.minLength) {
+                          <small>{{ controlTextValue(control).length }}/{{ control.maxLength ?? control.minLength }}</small>
                         }
                       </label>
                       <textarea
                         [rows]="control.rows ?? 3"
+                        [attr.minlength]="control.minLength ?? null"
                         [attr.maxlength]="control.maxLength ?? null"
                         [placeholder]="control.placeholder || ''"
                         [disabled]="isControlDisabled(control)"
@@ -326,6 +328,7 @@
                         [type]="inputType(control)"
                         [attr.min]="control.min ?? null"
                         [attr.max]="control.max ?? null"
+                        [attr.minlength]="control.minLength ?? null"
                         [attr.step]="control.step ?? null"
                         [attr.maxlength]="control.maxLength ?? null"
                         [placeholder]="control.placeholder || ''"

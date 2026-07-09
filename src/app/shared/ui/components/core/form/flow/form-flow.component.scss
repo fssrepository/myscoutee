@@ -264,6 +264,11 @@
   scrollbar-gutter: stable;
 }
 
+.form-flow--grouped.form-flow--menu-overflow,
+.form-flow--grouped.form-flow--menu-overflow .form-flow__body {
+  overflow: visible;
+}
+
 .form-flow--grouped .form-flow__track {
   display: grid;
   gap: 12px;
@@ -656,7 +661,10 @@
 
   small {
     color: #71839b;
+    font-size: inherit;
     font-weight: 700;
+    line-height: 1;
+    font-variant-numeric: tabular-nums;
   }
 }
 

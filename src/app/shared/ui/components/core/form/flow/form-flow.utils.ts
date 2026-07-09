@@ -151,7 +151,9 @@ function formFlowHasRequiredValue(value: unknown, control?: FormFlowControlModel
       }
       return formFlowNumberInRange(parsed, control);
     }
-    return value.trim().length > 0;
+    const textLength = value.trim().length;
+    const minLength = Math.max(0, Math.trunc(Number(control?.minLength) || 0));
+    return textLength > 0 && textLength >= minLength;
   }
   if (typeof value === 'number') {
     if (!Number.isFinite(value)) {
