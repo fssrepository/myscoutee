@@ -356,8 +356,23 @@
   margin-bottom: 15px;
 }
 
-.help-editor-summary-color-btn {
-  color: #245c9c;
+.help-editor-summary-color-menu {
+  flex: 0 0 auto;
+}
+
+:host ::ng-deep .help-editor-summary-color-menu .app-menu__trigger {
+  width: 38px;
+  height: 38px;
+  min-width: 38px;
+  min-height: 38px;
+  border-radius: 50%;
+}
+
+:host ::ng-deep .help-editor-summary-color-menu .app-menu__trigger .mat-icon {
+  width: 18px;
+  height: 18px;
+  font-size: 18px;
+  line-height: 18px;
 }
 
 .help-editor-help-hero {
@@ -1128,46 +1143,6 @@
   display: grid;
   grid-template-rows: auto auto auto minmax(0, 1fr) auto;
   overflow: hidden;
-}
-
-.help-editor-color-picker {
-  grid-template-rows: auto minmax(0, 1fr);
-  width: min(360px, calc(100vw - 2rem));
-}
-
-.help-editor-color-grid {
-  display: grid;
-  gap: 0.44rem;
-  padding: 0.68rem;
-}
-
-.help-editor-color-option {
-  min-height: 42px;
-  border: 1px solid var(--help-editor-header-border);
-  border-radius: 10px;
-  background: var(--help-editor-header-bg);
-  color: #1f3658;
-  display: flex;
-  align-items: center;
-  gap: 0.48rem;
-  padding: 0 0.58rem;
-  font: inherit;
-  font-size: 0.78rem;
-  font-weight: 900;
-  cursor: pointer;
-}
-
-.help-editor-color-option.is-selected {
-  outline: 2px solid rgba(47, 101, 170, 0.34);
-  outline-offset: 1px;
-}
-
-.help-editor-color-swatch {
-  width: 22px;
-  height: 22px;
-  border-radius: 50%;
-  background: var(--help-editor-header-pill-bg);
-  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.66);
 }
 
 .help-editor-icon-picker button {

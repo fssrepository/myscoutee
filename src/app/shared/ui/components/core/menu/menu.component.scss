@@ -277,6 +277,17 @@
   --app-menu-shadow: rgba(155, 58, 86, 0.2);
 }
 
+.app-menu__palette--rose {
+  --app-menu-bg: linear-gradient(180deg, #fff1f4 0%, #ffe4eb 100%);
+  --app-menu-bg-hover: linear-gradient(180deg, #fff8fa 0%, #ffdce7 100%);
+  --app-menu-bg-strong: linear-gradient(180deg, #cb5272 0%, #a83a58 100%);
+  --app-menu-border: rgba(178, 69, 98, 0.38);
+  --app-menu-fg: #8c2e49;
+  --app-menu-icon: #b94462;
+  --app-menu-line: rgba(178, 69, 98, 0.32);
+  --app-menu-shadow: rgba(137, 45, 70, 0.22);
+}
+
 .app-menu__palette--red,
 .app-menu__palette--danger {
   --app-menu-bg: linear-gradient(180deg, #fff1f2 0%, #ffe5e7 100%);

@@ -43,9 +43,12 @@ import {
   IndicatorComponent
 } from '../../../shared/ui/components/core/indicator';
 import {
+  AppMenuComponent,
   type AppMenuItem,
+  type AppMenuItemSelectEvent,
   type AppMenuModel,
-  type AppMenuPalette
+  type AppMenuPalette,
+  type AppMenuTrigger
 } from '../../../shared/ui/components/core/menu';
 import {
   PopupComponent,
@@ -131,6 +134,13 @@ interface HelpEditorLanguageMenuContext {
   lang: string;
 }
 
+type HelpEditorHeaderColorMenuItemId = `header-color:${HelpCenterHeaderColor}`;
+
+interface HelpEditorHeaderColorMenuContext {
+  action: 'select-header-color';
+  color: HelpCenterHeaderColor;
+}
+
 type HelpEditorPopupMenuContext = HelpEditorDocumentMenuContext | HelpEditorLanguageMenuContext;
 
 @Component({
@@ -143,7 +153,8 @@ type HelpEditorPopupMenuContext = HelpEditorDocumentMenuContext | HelpEditorLang
     ImageCarouselComponent,
     IndicatorComponent,
     LazyBgImageDirective,
-    PopupComponent
+    PopupComponent,
+    AppMenuComponent
   ],
   templateUrl: './admin-help-editor-popup.component.html',
   styleUrl: './admin-help-editor-popup.component.scss'
@@ -197,7 +208,6 @@ export class AdminHelpEditorPopupComponent {
   protected openDraftSectionId = '';
   protected iconPickerSectionId = '';
   protected contextPickerOpen = false;
-  protected colorPickerOpen = false;
   protected iconPickerSearch = '';
   protected iconPickerGroup: HelpIconOption['group'] = 'Common';
   protected selectedExplanationContextKey = 'home.game';
@@ -423,7 +433,6 @@ export class AdminHelpEditorPopupComponent {
         this.loading.set(false);
         this.closeContextPicker();
         this.closeIconPicker();
-        this.closeColorPicker();
         return;
       }
       if (!this.stateLoadedForPopup) {
@@ -435,14 +444,13 @@ export class AdminHelpEditorPopupComponent {
 
   @HostListener('window:keydown.escape', ['$event'])
   protected onEscape(event: Event): void {
-    if (!this.iconPickerSectionId && !this.contextPickerOpen && !this.colorPickerOpen) {
+    if (!this.iconPickerSectionId && !this.contextPickerOpen) {
       return;
     }
     event.preventDefault();
     event.stopPropagation();
     this.closeContextPicker();
     this.closeIconPicker();
-    this.closeColorPicker();
   }
 
   protected async load(): Promise<void> {
@@ -558,7 +566,6 @@ export class AdminHelpEditorPopupComponent {
     this.openDraftSectionId = '';
     this.error = '';
     this.closeIconPicker();
-    this.closeColorPicker();
     await this.load();
   }
 
@@ -622,7 +629,6 @@ export class AdminHelpEditorPopupComponent {
       return;
     }
     this.closeIconPicker();
-    this.closeColorPicker();
     this.contextPickerOpen = true;
   }
 
@@ -684,7 +690,6 @@ export class AdminHelpEditorPopupComponent {
     this.draftAccordionOpen = true;
     this.closeContextPicker();
     this.closeIconPicker();
-    this.closeColorPicker();
     this.admin.closePopup();
   }
 
@@ -820,7 +825,6 @@ export class AdminHelpEditorPopupComponent {
     this.draftAccordionOpen = true;
     this.error = '';
     this.closeIconPicker();
-    this.closeColorPicker();
     this.closeContextPicker();
   }
 
@@ -950,7 +954,6 @@ export class AdminHelpEditorPopupComponent {
     this.iconPickerGroup = matchingOption?.group ?? 'Common';
     this.iconPickerSearch = '';
     this.closeContextPicker();
-    this.closeColorPicker();
     this.refreshIconPickerOptions();
   }
 
@@ -1333,16 +1336,50 @@ export class AdminHelpEditorPopupComponent {
     return `help-editor-header-color-${this.normalizeHeaderColor(color)}`;
   }
 
-  protected openColorPicker(event?: Event): void {
-    event?.stopPropagation();
-    this.colorPickerOpen = true;
-    this.closeIconPicker();
-    this.closeContextPicker();
+  protected headerColorMenuTrigger(color: string | null | undefined): AppMenuTrigger {
+    const option = this.headerColorOption(color);
+    const label = this.uiText(option.label);
+    return {
+      id: 'header-color-menu',
+      label,
+      icon: 'palette',
+      ariaLabel: `${this.uiText('Header color')}: ${label}`,
+      palette: option.id,
+      layout: 'icon',
+      hideLabel: true,
+      disabled: this.saving
+    };
   }
 
-  protected closeColorPicker(event?: Event): void {
-    event?.stopPropagation();
-    this.colorPickerOpen = false;
+  protected headerColorMenuItems(color: string | null | undefined): AppMenuItem<HelpEditorHeaderColorMenuItemId, HelpEditorHeaderColorMenuContext>[] {
+    const selected = this.normalizeHeaderColor(color);
+    return this.headerColorOptions.map(option => ({
+      id: `header-color:${option.id}`,
+      kind: 'radio',
+      label: this.uiText(option.label),
+      icon: 'circle',
+      palette: option.id,
+      surface: 'tinted',
+      active: selected === option.id,
+      checked: selected === option.id,
+      showCheck: selected === option.id,
+      ariaLabel: `${this.uiText('Use')} ${this.uiText(option.label)} ${this.uiText('header')}`,
+      context: {
+        action: 'select-header-color',
+        color: option.id
+      }
+    }));
+  }
+
+  protected onHeaderColorMenuSelect(
+    event: AppMenuItemSelectEvent<HelpEditorHeaderColorMenuItemId, HelpEditorHeaderColorMenuContext>
+  ): void {
+    event.sourceEvent.stopPropagation();
+    const color = event.context?.color;
+    if (!color) {
+      return;
+    }
+    this.selectHeaderColor(color, event.sourceEvent);
   }
 
   protected selectHeaderColor(color: HelpCenterHeaderColor, event?: Event): void {
@@ -1350,7 +1387,6 @@ export class AdminHelpEditorPopupComponent {
     if (this.draft) {
       this.draft.headerColor = color;
     }
-    this.closeColorPicker();
   }
 
   private selectInitialRevision(revisions: HelpCenterRevisionDto[], activeRevision: HelpCenterRevisionDto | null): void {
@@ -1390,7 +1426,6 @@ export class AdminHelpEditorPopupComponent {
     this.openPreviewSectionId = '';
     this.openDraftSectionId = draft.sections[0]?.localId ?? '';
     this.closeIconPicker();
-    this.closeColorPicker();
     this.closeContextPicker();
     this.editing = true;
   }
@@ -1683,6 +1718,11 @@ export class AdminHelpEditorPopupComponent {
 
   private normalizeHeaderColor(value: string | null | undefined): HelpCenterHeaderColor {
     return AppUtils.enumValue(value, APP_STATIC_DATA.helpCenterHeaderColors, 'amber');
+  }
+
+  private headerColorOption(value: string | null | undefined): { id: HelpCenterHeaderColor; label: string } {
+    const color = this.normalizeHeaderColor(value);
+    return this.headerColorOptions.find(option => option.id === color) ?? this.headerColorOptions[0]!;
   }
 
   private normalizeContentLang(lang: string | null | undefined): string {

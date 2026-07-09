@@ -93,16 +93,15 @@
                                       required
                                     />
                                   </label>
-                                  <button
-                                    type="button"
-                                    class="help-editor-icon-btn help-editor-color-btn help-editor-summary-color-btn"
-                                    [disabled]="saving"
-                                    (click)="openColorPicker($event)"
-                                    aria-label="Choose header color"
-                                    title="Header color"
-                                    >
-                                    <mat-icon>palette</mat-icon>
-                                  </button>
+                                  <app-menu
+                                    class="help-editor-summary-color-menu"
+                                    kind="select"
+                                    [trigger]="headerColorMenuTrigger(editDraft.headerColor)"
+                                    [items]="headerColorMenuItems(editDraft.headerColor)"
+                                    panelAlign="end"
+                                    panelMode="anchored"
+                                    (itemSelect)="onHeaderColorMenuSelect($event)"
+                                  ></app-menu>
                                 </div>
                                 @if (documentKind === 'explanation') {
                                   <label class="help-editor-inline-field help-editor-context-field">
@@ -489,37 +488,6 @@
                 >
                 <mat-icon>{{ iconPickerGroupIcon(group) }}</mat-icon>
                 <span>{{ group }}</span>
-              </button>
-            }
-          </div>
-        </div>
-      </section>
-    }
-    @if (colorPickerOpen && draft; as editDraft) {
-      <section class="help-editor-icon-modal" role="dialog" aria-modal="true" aria-label="Choose header color">
-        <div class="help-editor-icon-modal-backdrop" (click)="closeColorPicker($event)"></div>
-        <div class="help-editor-icon-picker help-editor-color-picker" (click)="$event.stopPropagation()">
-          <header class="help-editor-icon-picker-head">
-            <span class="help-editor-icon-picker-title">
-              <mat-icon>palette</mat-icon>
-              <strong>Header color</strong>
-            </span>
-            <button type="button" class="help-editor-icon-picker-close" data-motion="none" (click)="closeColorPicker($event)" aria-label="Close color picker">
-              <mat-icon>close</mat-icon>
-            </button>
-          </header>
-          <div class="help-editor-color-grid">
-            @for (option of headerColorOptions; track option.id) {
-              <button
-                type="button"
-                class="help-editor-color-option"
-                [ngClass]="headerColorClass(option.id)"
-                [class.is-selected]="editDraft.headerColor === option.id"
-                (click)="selectHeaderColor(option.id, $event)"
-                [attr.aria-label]="'Use ' + option.label + ' header'"
-                >
-                <span class="help-editor-color-swatch" aria-hidden="true"></span>
-                <span>{{ option.label }}</span>
               </button>
             }
           </div>
