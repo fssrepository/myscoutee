@@ -1797,6 +1797,34 @@
   filter: none;
 }
 
+.app-menu__tabs-items--icon-list .app-menu__tabs-item--layout-icon {
+  border-color: transparent;
+  background: transparent;
+  color: var(--app-menu-icon);
+  box-shadow: none;
+  filter: none;
+  transform: none;
+}
+
+.app-menu__tabs-items--icon-list .app-menu__tabs-item--layout-icon:not(:disabled):not(.app-menu__tabs-item--disabled):hover,
+.app-menu__tabs-items--icon-list .app-menu__tabs-item--layout-icon.app-menu__tabs-item--active:not(:disabled):not(.app-menu__tabs-item--disabled):hover {
+  border-color: transparent;
+  background: var(--app-menu-bg-hover);
+  color: var(--app-menu-icon);
+  box-shadow: none;
+  filter: none;
+  transform: none;
+}
+
+.app-menu__tabs-items--icon-list .app-menu__tabs-item--layout-icon.app-menu__tabs-item--active {
+  border-color: transparent;
+  background: var(--app-menu-bg-strong);
+  color: #fff;
+  box-shadow: none;
+  filter: none;
+  transform: none;
+}
+
 .app-menu__tabs-item--active .app-menu__tabs-item-icon,
 .app-menu__tabs-item--active .app-menu__tabs-item-description {
   color: currentColor;

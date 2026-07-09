@@ -2015,7 +2015,7 @@ export class EventChatPopupComponent implements OnDestroy {
         id: category.key,
         label: category.label,
         icon: category.icon,
-        palette: 'blue',
+        palette: this.emojiPickerCategoryPalette(category.key),
         items: category.emojis.map(emoji => ({
           id: `emoji:${emoji}`,
           label: emoji,
@@ -2032,6 +2032,29 @@ export class EventChatPopupComponent implements OnDestroy {
         }))
       }))
     };
+  }
+
+  private emojiPickerCategoryPalette(categoryKey: string): AppMenuPalette {
+    switch (categoryKey) {
+      case 'smileys':
+        return 'amber';
+      case 'animals':
+        return 'green';
+      case 'food':
+        return 'orange';
+      case 'activity':
+        return 'violet';
+      case 'travel':
+        return 'sky';
+      case 'objects':
+        return 'slate';
+      case 'symbols':
+        return 'purple';
+      case 'flags':
+        return 'red';
+      default:
+        return 'blue';
+    }
   }
 
   protected onEmojiPickerMenuSelect(
