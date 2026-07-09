@@ -198,6 +198,9 @@ let layoutCenterAnchor = null;
 let lazyTileTimer = null;
 let lazyTileRequestSerial = 0;
 let lazyTileSuppressUntil = 0;
+let lazyNeighborhoodTimer = null;
+let lazyNeighborhoodAbortController = null;
+let lazyNeighborhoodRequestKey = null;
 const loadedTileKeys = new Set(GRAPH_LAZY_ENABLED ? ['0:0:0:*'] : []);
 const pendingTileKeys = new Set();
 const loadedComponentKeys = new Set();
@@ -919,6 +922,9 @@ function selectNode(nodeId, options = {}) {
   const node = nodeById.get(nodeId) ?? null;
   const previousVisibleNodeIds = new Set(visibleNodeIds);
   const startScale = node?.badge?.scale.x ?? node?.badgeScale ?? 1;
+  if (selectedNode?.id !== nodeId) {
+    abortLazyNeighborhoodLoad({ stopLoading: true });
+  }
   selectionReturnMode = fullGraphExpanded ? 'graph' : activeComponentId !== null ? 'forest' : 'graph';
   selectedNode = node;
   fullGraphExpanded = false;
@@ -947,6 +953,7 @@ function selectForest(componentId) {
     return;
   }
   pendingComponentGraphId = componentId;
+  abortLazyNeighborhoodLoad({ stopLoading: true });
   startForestLoading(componentId);
   stopNodeLoading();
   selectedNode = null;
@@ -991,6 +998,7 @@ function clearSelection() {
   const returnMode = selectionReturnMode;
   selectionReturnMode = null;
   pendingComponentGraphId = null;
+  abortLazyNeighborhoodLoad({ stopLoading: true });
   stopForestLoading();
   stopNodeLoading();
 
@@ -1009,6 +1017,7 @@ function clearSelection() {
 
   activeComponentId = null;
   pendingComponentGraphId = null;
+  abortLazyNeighborhoodLoad({ stopLoading: true });
   stopForestLoading();
   stopNodeLoading();
   fullGraphExpanded = true;
@@ -1027,6 +1036,7 @@ function showFullGraph() {
   selectedNode = null;
   activeComponentId = null;
   pendingComponentGraphId = null;
+  abortLazyNeighborhoodLoad({ stopLoading: true });
   stopForestLoading();
   stopNodeLoading();
   selectionReturnMode = null;
@@ -1058,6 +1068,7 @@ function clearForest() {
   selectedNode = null;
   activeComponentId = null;
   pendingComponentGraphId = null;
+  abortLazyNeighborhoodLoad({ stopLoading: true });
   stopForestLoading();
   stopNodeLoading();
   selectionReturnMode = null;
@@ -2926,9 +2937,37 @@ function scheduleLazyNeighborhoodLoad(delayMs = 140) {
   if (!GRAPH_LAZY_ENABLED || !selectedNode) {
     return;
   }
-  setTimeout(() => {
+  const nextKey = neighborhoodCacheKey(selectedNode.id);
+  if (lazyNeighborhoodTimer) {
+    clearTimeout(lazyNeighborhoodTimer);
+  }
+  if (lazyNeighborhoodRequestKey && lazyNeighborhoodRequestKey !== nextKey) {
+    abortLazyNeighborhoodRequest();
+  }
+  lazyNeighborhoodTimer = setTimeout(() => {
+    lazyNeighborhoodTimer = null;
     void loadLazyNeighborhood();
   }, delayMs);
+}
+
+function abortLazyNeighborhoodLoad(options = {}) {
+  if (lazyNeighborhoodTimer) {
+    clearTimeout(lazyNeighborhoodTimer);
+    lazyNeighborhoodTimer = null;
+  }
+  abortLazyNeighborhoodRequest();
+  if (options.stopLoading) {
+    stopNodeLoading();
+  }
+}
+
+function abortLazyNeighborhoodRequest() {
+  const controller = lazyNeighborhoodAbortController;
+  lazyNeighborhoodAbortController = null;
+  lazyNeighborhoodRequestKey = null;
+  if (controller && !controller.signal.aborted) {
+    controller.abort();
+  }
 }
 
 async function loadLazyNeighborhood() {
@@ -2943,6 +2982,15 @@ async function loadLazyNeighborhood() {
     stopNodeLoading(requestedNodeId);
     return;
   }
+  if (lazyNeighborhoodRequestKey === key && lazyNeighborhoodAbortController && !lazyNeighborhoodAbortController.signal.aborted) {
+    return;
+  }
+  if (lazyNeighborhoodRequestKey && lazyNeighborhoodRequestKey !== key) {
+    abortLazyNeighborhoodRequest();
+  }
+  const abortController = new AbortController();
+  lazyNeighborhoodAbortController = abortController;
+  lazyNeighborhoodRequestKey = key;
   loadedNeighborhoodKeys.add(key);
   startNodeLoading(requestedNodeId);
   try {
@@ -2951,6 +2999,8 @@ async function loadLazyNeighborhood() {
       depth: requestedDepth,
       minWeight: weightRange.min,
       maxWeight: weightRange.max
+    }, {
+      signal: abortController.signal
     });
     if (selectedNode?.id !== requestedNodeId || currentLinkDepth() !== requestedDepth) {
       return;
@@ -2964,7 +3014,11 @@ async function loadLazyNeighborhood() {
   } catch {
     loadedNeighborhoodKeys.delete(key);
   } finally {
-    stopNodeLoading(requestedNodeId);
+    if (lazyNeighborhoodAbortController === abortController) {
+      lazyNeighborhoodAbortController = null;
+      lazyNeighborhoodRequestKey = null;
+      stopNodeLoading(requestedNodeId);
+    }
   }
 }
 
@@ -2991,15 +3045,48 @@ function tileRequestForCurrentView() {
   };
 }
 
-async function requestGraphData(method, params = {}) {
+async function requestGraphData(method, params = {}, options = {}) {
   if (!window.parent || window.parent === window) {
     throw new Error('Affinity graph bridge is unavailable.');
   }
+  const signal = options.signal;
+  if (signal?.aborted) {
+    throw createAbortError();
+  }
   const requestId = `${Date.now()}:${Math.random().toString(36).slice(2)}`;
   return await new Promise((resolve, reject) => {
-    const timeout = setTimeout(() => {
+    let settled = false;
+    let timeout = null;
+    const cleanup = () => {
+      if (timeout !== null) {
+        clearTimeout(timeout);
+        timeout = null;
+      }
+      signal?.removeEventListener('abort', onAbort);
       window.removeEventListener('message', onMessage);
-      reject(new Error('Affinity graph request timed out.'));
+    };
+    const finish = callback => {
+      if (settled) {
+        return;
+      }
+      settled = true;
+      cleanup();
+      callback();
+    };
+    const cancelParentRequest = () => {
+      window.parent.postMessage({
+        source: 'admin-affinity-graph',
+        type: 'cancel',
+        requestId
+      }, window.location.origin);
+    };
+    const onAbort = () => {
+      cancelParentRequest();
+      finish(() => reject(createAbortError()));
+    };
+    timeout = setTimeout(() => {
+      cancelParentRequest();
+      finish(() => reject(new Error('Affinity graph request timed out.')));
     }, 8000);
     const onMessage = event => {
       if (event.origin !== window.location.origin) {
@@ -3009,14 +3096,13 @@ async function requestGraphData(method, params = {}) {
       if (data?.source !== 'admin-affinity-graph' || data.type !== 'response' || data.requestId !== requestId) {
         return;
       }
-      clearTimeout(timeout);
-      window.removeEventListener('message', onMessage);
       if (data.ok) {
-        resolve(data.result);
+        finish(() => resolve(data.result));
       } else {
-        reject(new Error(data.error || 'Affinity graph request failed.'));
+        finish(() => reject(new Error(data.error || 'Affinity graph request failed.')));
       }
     };
+    signal?.addEventListener('abort', onAbort, { once: true });
     window.addEventListener('message', onMessage);
     window.parent.postMessage({
       source: 'admin-affinity-graph',
@@ -3026,6 +3112,12 @@ async function requestGraphData(method, params = {}) {
       params
     }, window.location.origin);
   });
+}
+
+function createAbortError() {
+  const error = new Error('Affinity graph request aborted.');
+  error.name = 'AbortError';
+  return error;
 }
 
 function mergeGraphPayload(payload) {

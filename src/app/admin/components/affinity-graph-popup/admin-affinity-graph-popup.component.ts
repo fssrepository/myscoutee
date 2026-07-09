@@ -62,6 +62,7 @@ export class AdminAffinityGraphPopupComponent implements OnDestroy {
   private graphStaticShellHideTimer: ReturnType<typeof setTimeout> | null = null;
   private graphOpenRequestId = 0;
   private graphLoadingCounter = 0;
+  private readonly graphRequestControllers = new Map<string, AbortController>();
 
   constructor() {
     this.document.defaultView?.addEventListener('message', this.graphMessageHandler);
@@ -73,6 +74,7 @@ export class AdminAffinityGraphPopupComponent implements OnDestroy {
         queueMicrotask(() => this.prepareGraphFrame());
       } else {
         this.graphOpenRequestId += 1;
+        this.abortGraphRequests();
         this.graphZoomProgress.set(0);
         this.graphFrameLoaded.set(false);
         this.graphStaticShellVisible.set(false);
@@ -84,6 +86,7 @@ export class AdminAffinityGraphPopupComponent implements OnDestroy {
 
   ngOnDestroy(): void {
     this.clearGraphStaticShellHideTimer();
+    this.abortGraphRequests();
     this.document.defaultView?.removeEventListener('message', this.graphMessageHandler);
     this.document.body.style.overflow = this.originalBodyOverflow;
     this.document.documentElement.style.overflow = this.originalHtmlOverflow;
@@ -152,6 +155,10 @@ export class AdminAffinityGraphPopupComponent implements OnDestroy {
       this.graphZoomProgress.set(this.clampUnit(data.zoomProgress));
       return;
     }
+    if (data.type === 'cancel' && data.requestId) {
+      this.cancelGraphRequest(data.requestId);
+      return;
+    }
     if (data.type !== 'request' || !data.requestId || !data.method) {
       return;
     }
@@ -159,32 +166,45 @@ export class AdminAffinityGraphPopupComponent implements OnDestroy {
     if (!target) {
       return;
     }
-    void this.resolveGraphRequest(data.method, data.params ?? {})
-      .then(result => target.postMessage({
-        source: 'admin-affinity-graph',
-        type: 'response',
-        requestId: data.requestId,
-        ok: true,
-        result
-      }, win.location.origin))
-      .catch(error => target.postMessage({
-        source: 'admin-affinity-graph',
-        type: 'response',
-        requestId: data.requestId,
-        ok: false,
-        error: error instanceof Error ? error.message : 'Affinity graph request failed.'
-      }, win.location.origin));
+    const controller = new AbortController();
+    this.graphRequestControllers.set(data.requestId, controller);
+    void this.resolveGraphRequest(data.method, data.params ?? {}, controller.signal)
+      .then(result => {
+        if (controller.signal.aborted) {
+          return;
+        }
+        target.postMessage({
+          source: 'admin-affinity-graph',
+          type: 'response',
+          requestId: data.requestId,
+          ok: true,
+          result
+        }, win.location.origin);
+      })
+      .catch(error => {
+        if (controller.signal.aborted || this.isAbortError(error)) {
+          return;
+        }
+        target.postMessage({
+          source: 'admin-affinity-graph',
+          type: 'response',
+          requestId: data.requestId,
+          ok: false,
+          error: error instanceof Error ? error.message : 'Affinity graph request failed.'
+        }, win.location.origin);
+      })
+      .finally(() => this.graphRequestControllers.delete(data.requestId));
   }
 
-  private resolveGraphRequest(method: string, params: Record<string, unknown>): Promise<unknown> {
+  private resolveGraphRequest(method: string, params: Record<string, unknown>, signal?: AbortSignal): Promise<unknown> {
     const adminUserId = this.userProfileStore.activeUserId().trim();
     switch (method) {
       case 'initialGraph':
-        return this.withGraphDataLoading(() => this.affinityGraph.loadInitialGraph(adminUserId));
+        return this.withGraphDataLoading(() => this.affinityGraph.loadInitialGraph(adminUserId, signal));
       case 'meta':
-        return this.withGraphDataLoading(() => this.affinityGraph.loadMeta(adminUserId, this.rangeParams(params)));
+        return this.withGraphDataLoading(() => this.affinityGraph.loadMeta(adminUserId, this.rangeParams(params), signal));
       case 'forests':
-        return this.withGraphDataLoading(() => this.affinityGraph.loadForests(adminUserId, this.forestParams(params)));
+        return this.withGraphDataLoading(() => this.affinityGraph.loadForests(adminUserId, this.forestParams(params), signal));
       case 'tile':
         return this.withGraphDataLoading(() => this.affinityGraph.loadTile(adminUserId, {
           ...this.rangeParams(params),
@@ -193,26 +213,30 @@ export class AdminAffinityGraphPopupComponent implements OnDestroy {
           z: this.optionalNumber(params['z']),
           x: this.optionalNumber(params['x']),
           y: this.optionalNumber(params['y'])
-        }));
+        }, signal));
       case 'neighborhood':
         return this.withGraphDataLoading(() => this.affinityGraph.loadNeighborhood(
           this.optionalString(params['userId']) ?? '',
           this.optionalNumber(params['depth']),
           adminUserId,
-          this.rangeParams(params)
+          this.rangeParams(params),
+          signal
         ));
       case 'lazyImage':
-        return this.loadLazyImage(params);
+        return this.loadLazyImage(params, signal);
       default:
         return Promise.reject(new Error(`Unsupported affinity graph request: ${method}`));
     }
   }
 
-  private async loadLazyImage(params: Record<string, unknown>): Promise<{ imageUrl: string; loaded: boolean }> {
+  private async loadLazyImage(params: Record<string, unknown>, signal?: AbortSignal): Promise<{ imageUrl: string; loaded: boolean }> {
+    this.throwIfAborted(signal);
     const imageUrl = this.optionalString(params['imageUrl']) ?? '';
+    const loaded = await LazyBgImageDirective.preloadImageUrl(imageUrl);
+    this.throwIfAborted(signal);
     return {
       imageUrl,
-      loaded: await LazyBgImageDirective.preloadImageUrl(imageUrl)
+      loaded
     };
   }
 
@@ -242,6 +266,34 @@ export class AdminAffinityGraphPopupComponent implements OnDestroy {
     if (this.graphLoadingCounter === 0) {
       this.graphDataLoading.set(false);
     }
+  }
+
+  private cancelGraphRequest(requestId: string): void {
+    const controller = this.graphRequestControllers.get(requestId);
+    if (!controller) {
+      return;
+    }
+    controller.abort();
+    this.graphRequestControllers.delete(requestId);
+  }
+
+  private abortGraphRequests(): void {
+    for (const controller of this.graphRequestControllers.values()) {
+      controller.abort();
+    }
+    this.graphRequestControllers.clear();
+  }
+
+  private throwIfAborted(signal?: AbortSignal): void {
+    if (signal?.aborted) {
+      const error = new Error('Affinity graph request aborted.');
+      error.name = 'AbortError';
+      throw error;
+    }
+  }
+
+  private isAbortError(error: unknown): boolean {
+    return error instanceof Error && error.name === 'AbortError';
   }
 
   private rangeParams(params: Record<string, unknown>): { minWeight?: number; maxWeight?: number } {
