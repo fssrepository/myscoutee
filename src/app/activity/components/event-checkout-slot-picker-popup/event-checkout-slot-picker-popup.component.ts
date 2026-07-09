@@ -920,7 +920,8 @@ export class EventCheckoutSlotPickerPopupComponent {
 
   private isActiveBasketItem(item: EventCheckoutBasketItem): boolean {
     return this.isActiveCheckoutStatus(item.status)
-      && item.resultState !== 'deleted';
+      && !this.isInactiveCheckoutResultState(item.resultState)
+      && !this.isExpiredBasketItem(item);
   }
 
   private isActiveCheckoutStatus(status: EventCheckoutBasketItem['status'] | string | null | undefined): boolean {
@@ -930,6 +931,15 @@ export class EventCheckoutSlotPickerPopupComponent {
       || status === 'approval-pending'
       || status === 'approved'
       || status === 'pay';
+  }
+
+  private isInactiveCheckoutResultState(resultState: EventCheckoutBasketItem['resultState'] | string | null | undefined): boolean {
+    return resultState === 'deleted' || resultState === 'succeeded';
+  }
+
+  private isExpiredBasketItem(item: EventCheckoutBasketItem): boolean {
+    const expiresAtMs = Date.parse(`${item.expiresAtIso ?? ''}`.trim());
+    return Number.isFinite(expiresAtMs) && expiresAtMs <= Date.now();
   }
 
   private selectionSignature(): string {
