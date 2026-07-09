@@ -37,6 +37,7 @@
         >
           <app-text-card
             class="event-checkout-slot-picker__text-card"
+            [class.has-slot-badge-space]="true"
             [tone]="slotCardTone(slot)"
             [disabled]="isSlotUnavailable(slot)"
             icon="event_seat"

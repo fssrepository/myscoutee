@@ -378,7 +378,7 @@ export class EventCheckoutSlotPickerPopupComponent {
 
   protected slotCapacityBadge(slot: EventCheckoutSlot): string {
     if (this.isSlotBooked(slot)) {
-      return 'Booked';
+      return this.isBookedSlotFull(slot) ? 'Fully booked' : 'Booked';
     }
     const capacity = this.slotCapacityTotal(slot);
     const available = this.slotAvailableCount(slot);
@@ -868,6 +868,10 @@ export class EventCheckoutSlotPickerPopupComponent {
       && !this.isSelected(slot)
       && !this.removedCountedSlotIds.has(slot.id)
       && this.slotAvailableCount(slot) <= 0;
+  }
+
+  private isBookedSlotFull(slot: EventCheckoutSlot): boolean {
+    return this.slotCapacityTotal(slot) > 0 && this.slotAvailableCount(slot) <= 0;
   }
 
   private optionalSubEventCapacityTotal(subEvent: EventCheckoutOptionalSubEvent): number {

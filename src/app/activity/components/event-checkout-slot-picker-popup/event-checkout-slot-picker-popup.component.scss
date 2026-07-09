@@ -99,6 +99,11 @@
   height: 100%;
 }
 
+:host ::ng-deep .event-checkout-slot-picker__text-card.has-slot-badge-space .ui-text-card {
+  min-height: 128px;
+  padding-top: 2.45rem;
+}
+
 .event-checkout-slot-picker__pricing-summary {
   display: block;
   padding: 0.78rem;
