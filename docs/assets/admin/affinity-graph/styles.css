@@ -10,6 +10,8 @@
   --amber: #efb655;
   --blue: #b9e6ff;
   --teal: #43d0bd;
+  --panel-edge-gap: 10px;
+  --panel-edge-gap-third: calc(var(--panel-edge-gap) / 3);
   font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
 }
 
@@ -52,10 +54,10 @@ input {
 .side-panel-stack {
   position: absolute;
   z-index: 5;
-  top: 56px;
-  right: 18px;
-  bottom: 18px;
-  width: min(390px, calc(100vw - 36px));
+  top: var(--panel-edge-gap);
+  right: var(--panel-edge-gap);
+  bottom: var(--panel-edge-gap);
+  width: min(390px, calc(100vw - (var(--panel-edge-gap) * 2)));
   display: flex;
   flex-direction: column;
   gap: 12px;
@@ -91,7 +93,7 @@ h1 {
   grid-template-columns: repeat(4, minmax(0, 1fr));
   gap: 6px;
   width: 100%;
-  margin: 10px 0 13px;
+  margin: var(--panel-edge-gap-third) 0 13px;
 }
 
 .metrics div {
@@ -155,6 +157,7 @@ h1 {
   display: flex;
   align-items: center;
   gap: 7px;
+  margin-right: 34px;
 }
 
 .graph-app--booting .metrics,
@@ -291,9 +294,13 @@ h1 {
 
 .graph-app--panels-collapsed .panel-compact-summary {
   max-height: 58px;
-  margin-top: 3px;
+  margin-top: calc(var(--panel-edge-gap) * 2);
   opacity: 1;
   transform: translateY(0);
+}
+
+.graph-app--panels-collapsed .side-panel-stack {
+  bottom: auto;
 }
 
 .range-field {
@@ -892,7 +899,6 @@ h1 {
 
   .control-header-actions {
     gap: 5px;
-    margin-right: 34px;
   }
 
   .reset-button,
@@ -919,14 +925,6 @@ h1 {
     max-height: min(420px, calc(100dvh - 300px));
     margin-right: -12px;
     padding-right: 12px;
-  }
-
-  .graph-app--panels-collapsed .side-panel-stack {
-    bottom: auto;
-  }
-
-  .metrics {
-    grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 
   .detail-grid {
