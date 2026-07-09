@@ -33,116 +33,46 @@
   </app-popup>
 
   @if (articlePanelLoading && articlePanelLoadingMode === 'viewer') {
-    <section class="idea-editor-nested-popup idea-editor-article-popup" role="dialog" aria-modal="true" aria-label="Article">
-      <div class="idea-editor-nested-backdrop" (click)="closeViewer($event)"></div>
-      <article class="idea-editor-nested-panel idea-editor-viewer-panel idea-editor-panel-loading" aria-busy="true">
+    <app-popup class="idea-editor-article-viewer-popup" [model]="articleViewerLoadingPopupModel()" [zIndex]="2500">
+      <div class="idea-editor-viewer-panel idea-editor-panel-loading" aria-busy="true">
         <div class="idea-editor-panel-loading-card">
           <app-indicator
             kind="load-ring"
             state="loading"
           ></app-indicator>
-          <span>{{ articlePanelLoadingLabel() }}</span>
+          <span>{{ articlePanelLoadingLabel() | i18n }}</span>
         </div>
-      </article>
-    </section>
+      </div>
+    </app-popup>
   } @else if (selectedViewerPost(); as post) {
-    <section class="idea-editor-nested-popup idea-editor-article-popup" role="dialog" aria-modal="true" aria-label="Article">
-      <div class="idea-editor-nested-backdrop" (click)="closeViewer($event)"></div>
-      <article class="idea-editor-nested-panel idea-editor-viewer-panel">
-        <header class="idea-editor-viewer-head">
-          <div class="idea-editor-viewer-title">
-            <span class="idea-editor-viewer-date">
-              <mat-icon>calendar_today</mat-icon>
-              <span>{{ postDateLabel(post) }}</span>
-            </span>
-            <h2 data-i18n-ignore>{{ post.title }}</h2>
-            @if (post.excerpt) {
-              <p data-i18n-ignore>{{ post.excerpt }}</p>
-            }
-          </div>
-          <button type="button" class="idea-editor-icon-btn idea-editor-viewer-close" (click)="closeViewer($event)" aria-label="Close article" title="Close">
-            <mat-icon>close</mat-icon>
-          </button>
-        </header>
-
+    <app-popup class="idea-editor-article-viewer-popup" [model]="articleViewerPopupModel(post)" [zIndex]="2500">
+      <article class="idea-editor-viewer-panel">
         <div class="idea-editor-viewer-body">
           <div class="idea-editor-html-preview idea-editor-viewer-html">
             <div class="idea-editor-html-preview-body" data-i18n-ignore [innerHTML]="articlePreviewHtml(post)"></div>
           </div>
         </div>
       </article>
-    </section>
+    </app-popup>
   }
 
   @if (articlePanelLoading && articlePanelLoadingMode === 'editor' && !draft) {
-    <section class="idea-editor-nested-popup" role="dialog" aria-modal="true" aria-label="Edit article">
-      <div class="idea-editor-nested-backdrop" (click)="closeEditor($event)"></div>
-      <article class="idea-editor-nested-panel idea-editor-form-panel idea-editor-panel-loading" aria-busy="true">
+    <app-popup class="idea-editor-article-editor-popup" [model]="articleEditorLoadingPopupModel()" [zIndex]="2400">
+      <div class="idea-editor-form-panel idea-editor-panel-loading" aria-busy="true">
         <div class="idea-editor-panel-loading-card">
           <app-indicator
             kind="load-ring"
             state="loading"
           ></app-indicator>
-          <span>{{ articlePanelLoadingLabel() }}</span>
+          <span>{{ articlePanelLoadingLabel() | i18n }}</span>
         </div>
-      </article>
-    </section>
+      </div>
+    </app-popup>
   }
 
   @if (editing && draft; as editDraft) {
-    <section class="idea-editor-nested-popup" role="dialog" aria-modal="true" aria-label="Edit article">
-      <div class="idea-editor-nested-backdrop" (click)="closeEditor($event)"></div>
-      <form class="idea-editor-nested-panel idea-editor-form-panel" (ngSubmit)="saveDraft($event)">
-        <header class="idea-editor-form-head">
-          <div class="idea-editor-form-title">
-            <span>{{ editDraft.published ? 'Published' : 'Draft' }}</span>
-            <h3>{{ editDraft.id ? 'Edit article' : 'New article' }}</h3>
-          </div>
-          <div class="idea-editor-form-actions">
-            <button
-              type="button"
-              class="idea-editor-icon-btn idea-editor-preview-btn"
-              [disabled]="saving"
-              (click)="openDraftPreview($event)"
-              aria-label="Preview article"
-              title="Preview"
-              >
-              <mat-icon>visibility</mat-icon>
-            </button>
-            <span class="idea-editor-action-ring-shell idea-editor-circle-ring-shell" [class.is-loading]="saving">
-              @if (saving) {
-                <app-indicator kind="action-ring" shape="circle" state="loading"></app-indicator>
-              }
-              <button
-                type="submit"
-                class="idea-editor-icon-btn idea-editor-confirm-btn"
-                [disabled]="saving"
-                aria-label="Save article"
-                title="Save"
-                >
-                <mat-icon>check</mat-icon>
-              </button>
-            </span>
-            <button
-              type="button"
-              class="idea-editor-icon-btn"
-              [disabled]="saving"
-              (click)="closeEditor($event)"
-              aria-label="Close editor"
-              title="Close"
-              >
-              <mat-icon>close</mat-icon>
-            </button>
-          </div>
-          <div class="idea-editor-form-language-row" aria-label="Content language" data-i18n-ignore>
-            <app-menu
-              class="idea-editor-language-menu-wrap"
-              kind="inline"
-              [model]="formLanguageMenuModel()"
-              (itemSelect)="onContentLanguageMenuSelect($event)"
-            ></app-menu>
-          </div>
-        </header>
+    <app-popup class="idea-editor-article-editor-popup" [model]="articleEditorPopupModel(editDraft)" [zIndex]="2400">
+      <form class="idea-editor-form-panel" (ngSubmit)="saveDraft($event)">
         @if (articlePanelLoading && articlePanelLoadingMode === 'editor') {
           <div class="idea-editor-form-loading-overlay" aria-busy="true">
             <div class="idea-editor-panel-loading-card">
@@ -150,7 +80,7 @@
                 kind="load-ring"
                 state="loading"
               ></app-indicator>
-              <span>{{ articlePanelLoadingLabel() }}</span>
+              <span>{{ articlePanelLoadingLabel() | i18n }}</span>
             </div>
           </div>
         }
@@ -189,6 +119,6 @@
           </section>
         </div>
       </form>
-    </section>
+    </app-popup>
   }
 }

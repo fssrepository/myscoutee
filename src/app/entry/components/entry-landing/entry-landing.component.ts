@@ -13,6 +13,10 @@ import {
 import {
   SmartListComponent, type ListQuery, type PageResult, type SmartListConfig, type SmartListItemRenderState, type SmartListLoadPage
 } from '../../../shared/ui/components/core/smart-list';
+import {
+  PopupComponent,
+  type PopupModel
+} from '../../../shared/ui/components/core/popup';
 import { LazyBgImageDirective } from '../../../shared/ui/directives';
 import { I18nPipe } from '../../../shared/ui';
 
@@ -33,6 +37,7 @@ type HowStepSlide = WarpImageCardData;
     InfoCardComponent,
     WarpImageCardComponent,
     SmartListComponent,
+    PopupComponent,
     LazyBgImageDirective,
     MatRippleModule,
     MatIconModule,
@@ -513,6 +518,25 @@ export class EntryLandingComponent implements OnInit, OnChanges, OnDestroy {
 
   protected ideaDateLabel(detail: IdeaArticleDetailDto | null): string {
     return detail?.dateLabel?.trim() || 'Fresh article';
+  }
+
+  protected ideaArticlePopupModel(detail: IdeaArticleDetailDto): PopupModel {
+    return {
+      headerLabel: this.ideaDateLabel(detail),
+      headerLabelIcon: 'calendar_today',
+      title: detail.title,
+      subtitle: detail.excerpt,
+      ariaLabel: 'Article',
+      closeAriaLabel: 'Close article',
+      translateHeaderLabel: false,
+      translateTitle: false,
+      translateSubtitle: false,
+      size: 'wide',
+      height: 'full',
+      headerLayout: 'article',
+      bodyLayout: 'flush',
+      onClose: () => this.closeIdeaArticlePopup()
+    };
   }
 
   protected scrollEntryTo(sectionId: string, event?: Event): void {

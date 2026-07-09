@@ -66,6 +66,7 @@ export class PopupComponent<TContext = unknown> {
         Boolean(this.popupModel.title?.trim())
         || Boolean(this.popupModel.subtitle?.trim())
         || Boolean(this.popupModel.secondarySubtitle?.trim())
+        || Boolean(this.popupModel.headerLabel?.trim())
         || this.hasHeaderControls
         || this.hasHeaderActions
         || this.showClose
@@ -160,6 +161,10 @@ export class PopupComponent<TContext = unknown> {
 
   protected headerToneClass(): string {
     return `ui-popup__header--${this.popupModel.headerTone ?? 'default'}`;
+  }
+
+  protected headerLayoutClass(): string {
+    return `ui-popup__header--layout-${this.popupModel.headerLayout ?? 'default'}`;
   }
 
   protected bodyLayoutClass(): string {

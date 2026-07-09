@@ -44,7 +44,6 @@ import {
 } from '../../../shared/ui/components/core/image-carousel';
 import {
   AppMenuDispatcher,
-  AppMenuComponent,
   AppMenuOutletComponent,
   type AppMenuItem,
   type AppMenuItemSelectEvent,
@@ -70,6 +69,9 @@ import {
 import {
   DialogStore
 } from '../../../shared/ui/context/stores/dialog.store';
+import {
+  I18nPipe
+} from '../../../shared/ui';
 import {
   AdminMenuStore
 } from '../../../shared/ui/context/stores/admin-menu.store';
@@ -131,12 +133,12 @@ interface IdeaPostLangCache {
     CommonModule,
     FormsModule,
     MatIconModule,
-    AppMenuComponent,
     AppMenuOutletComponent,
     SmartListComponent,
     InfoCardComponent,
     ImageCarouselComponent,
     IndicatorComponent,
+    I18nPipe,
     PopupComponent
   ],
   templateUrl: './admin-idea-editor-popup.component.html',
@@ -368,7 +370,123 @@ export class AdminIdeaEditorPopupComponent {
       this.setIdeaFilter(context.filter, event.itemSelect.sourceEvent);
       return;
     }
+    if (context.scope === 'form') {
+      void this.selectDraftContentLanguage(context.language, event.itemSelect.sourceEvent);
+      return;
+    }
     this.selectListContentLanguage(context.language, event.itemSelect.sourceEvent);
+  }
+
+  protected articleViewerLoadingPopupModel(): PopupModel {
+    return {
+      ariaLabel: 'Article',
+      closeAriaLabel: 'Close article',
+      size: 'wide',
+      height: 'full',
+      headerLayout: 'article',
+      bodyLayout: 'flush',
+      onClose: event => this.closeViewer(event)
+    };
+  }
+
+  protected articleViewerPopupModel(post: IdeaPostDto): PopupModel {
+    return {
+      headerLabel: this.postDateLabel(post),
+      headerLabelIcon: 'calendar_today',
+      title: post.title,
+      subtitle: post.excerpt,
+      ariaLabel: 'Article',
+      closeAriaLabel: 'Close article',
+      translateHeaderLabel: false,
+      translateTitle: false,
+      translateSubtitle: false,
+      size: 'wide',
+      height: 'full',
+      headerLayout: 'article',
+      bodyLayout: 'flush',
+      onClose: event => this.closeViewer(event)
+    };
+  }
+
+  protected articleEditorLoadingPopupModel(): PopupModel {
+    return {
+      title: 'edit.article',
+      ariaLabel: 'Edit article',
+      closeAriaLabel: 'Close editor',
+      size: 'wide',
+      height: 'full',
+      headerTone: 'accent',
+      bodyLayout: 'fill',
+      backdropTone: 'dim',
+      onClose: event => this.closeEditor(event)
+    };
+  }
+
+  protected articleEditorPopupModel(draft: IdeaPostDraft): PopupModel<IdeaPopupMenuContext> {
+    return {
+      title: draft.id ? 'edit.article' : 'new.article',
+      subtitle: draft.published ? 'published' : 'draft',
+      ariaLabel: draft.id ? 'Edit article' : 'New article',
+      closeAriaLabel: 'Close editor',
+      size: 'wide',
+      height: 'full',
+      headerTone: 'accent',
+      bodyLayout: 'fill',
+      backdropTone: 'dim',
+      showClose: false,
+      headerActions: [
+        {
+          id: 'article-preview',
+          icon: 'visibility',
+          ariaLabel: 'Preview article',
+          palette: 'amber',
+          disabled: this.saving
+        },
+        {
+          id: 'article-save',
+          icon: 'check',
+          ariaLabel: 'Save article',
+          palette: 'success',
+          disabled: this.saving
+        },
+        {
+          id: 'article-close',
+          icon: 'close',
+          ariaLabel: 'Close editor',
+          palette: 'neutral',
+          disabled: this.saving
+        }
+      ],
+      toolbarControls: [
+        {
+          kind: 'menu',
+          id: 'article-language',
+          align: 'end',
+          menuKind: 'inline',
+          model: this.formLanguageMenuModel(),
+          panelAlign: 'end'
+        }
+      ],
+      onClose: event => this.closeEditor(event),
+      onAction: event => void this.onArticleEditorPopupAction(event),
+      onMenuSelect: event => this.onIdeaEditorPopupMenuSelect(event)
+    };
+  }
+
+  private async onArticleEditorPopupAction(event: PopupActionEvent): Promise<void> {
+    switch (event.action.id) {
+      case 'article-preview':
+        await this.openDraftPreview(event.sourceEvent);
+        return;
+      case 'article-save':
+        await this.saveDraft(event.sourceEvent);
+        return;
+      case 'article-close':
+        this.closeEditor(event.sourceEvent);
+        return;
+      default:
+        return;
+    }
   }
 
   protected close(): void {
@@ -985,8 +1103,8 @@ export class AdminIdeaEditorPopupComponent {
 
   protected articlePanelLoadingLabel(): string {
     return this.articlePanelLoadingMode === 'viewer'
-      ? 'Loading article'
-      : 'Loading article editor';
+      ? 'loading.article'
+      : 'loading.article.editor';
   }
 
   protected filterLabel(): string {

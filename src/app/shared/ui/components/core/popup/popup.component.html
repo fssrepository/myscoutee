@@ -9,17 +9,29 @@
     (click)="onPanelClick($event)"
   >
     @if (hasHeader) {
-      <header class="ui-popup__header" [ngClass]="headerToneClass()">
+      <header class="ui-popup__header" [ngClass]="[headerToneClass(), headerLayoutClass()]">
         <div class="ui-popup__title">
+          @if (popupModel.headerLabel) {
+            <span class="ui-popup__label" [attr.data-i18n-ignore]="popupModel.translateHeaderLabel === false ? '' : null">
+              @if (popupModel.headerLabelIcon) {
+                <mat-icon>{{ popupModel.headerLabelIcon }}</mat-icon>
+              }
+              <span>{{ popupModel.translateHeaderLabel === false ? popupModel.headerLabel : (popupModel.headerLabel | i18n) }}</span>
+            </span>
+          }
           @if (popupModel.title) {
-            <h2>{{ popupModel.title | i18n }}</h2>
+            <h2 [attr.data-i18n-ignore]="popupModel.translateTitle === false ? '' : null">
+              {{ popupModel.translateTitle === false ? popupModel.title : (popupModel.title | i18n) }}
+            </h2>
           }
           @if (popupModel.subtitle) {
-            <p class="ui-popup__subtitle">{{ popupModel.subtitle | i18n }}</p>
+            <p class="ui-popup__subtitle" [attr.data-i18n-ignore]="popupModel.translateSubtitle === false ? '' : null">
+              {{ popupModel.translateSubtitle === false ? popupModel.subtitle : (popupModel.subtitle | i18n) }}
+            </p>
           }
           @if (popupModel.secondarySubtitle) {
-            <p class="ui-popup__subtitle ui-popup__subtitle--secondary">
-              {{ popupModel.secondarySubtitle | i18n }}
+            <p class="ui-popup__subtitle ui-popup__subtitle--secondary" [attr.data-i18n-ignore]="popupModel.translateSecondarySubtitle === false ? '' : null">
+              {{ popupModel.translateSecondarySubtitle === false ? popupModel.secondarySubtitle : (popupModel.secondarySubtitle | i18n) }}
             </p>
           }
         </div>

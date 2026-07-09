@@ -19,7 +19,8 @@ import type {
 export type PopupSize = 'small' | 'default' | 'wide';
 export type PopupHeight = 'auto' | 'full';
 export type PopupHeaderTone = 'default' | 'accent';
-export type PopupBodyLayout = 'default' | 'fill';
+export type PopupHeaderLayout = 'default' | 'article';
+export type PopupBodyLayout = 'default' | 'fill' | 'flush';
 export type PopupControlAlign = 'start' | 'end';
 export type PopupBackdropTone = 'default' | 'dim';
 
@@ -66,16 +67,23 @@ export type PopupControl<TContext = unknown> =
   | PopupDateInputControl<TContext>;
 
 export interface PopupModel<TContext = unknown> {
+  headerLabel?: string | null;
+  headerLabelIcon?: string | null;
   title?: string | null;
   subtitle?: string | null;
   secondarySubtitle?: string | null;
   ariaLabel?: string | null;
   closeAriaLabel?: string | null;
+  translateHeaderLabel?: boolean;
+  translateTitle?: boolean;
+  translateSubtitle?: boolean;
+  translateSecondarySubtitle?: boolean;
   closeOnBackdrop?: boolean;
   showHeader?: boolean;
   showClose?: boolean;
   size?: PopupSize;
   height?: PopupHeight;
+  headerLayout?: PopupHeaderLayout;
   headerTone?: PopupHeaderTone;
   bodyLayout?: PopupBodyLayout;
   backdropTone?: PopupBackdropTone;
