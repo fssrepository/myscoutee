@@ -1,7 +1,4 @@
 import {
-  CommonModule
-} from '@angular/common';
-import {
   Component,
   NgZone,
   OnDestroy,
@@ -10,12 +7,6 @@ import {
   inject,
   untracked
 } from '@angular/core';
-import {
-  MatButtonModule
-} from '@angular/material/button';
-import {
-  MatIconModule
-} from '@angular/material/icon';
 
 import {
   AssetTicketBuilder
@@ -30,6 +21,10 @@ import {
 import {
   AssetTicketScanConverter
 } from '../../../shared/ui/converters/asset-ticket-scan.converter';
+import {
+  PopupComponent,
+  type PopupModel
+} from '../../../shared/ui';
 import {
   AssetTicketCodePopupComponent
 } from '../asset-ticket-code-popup/asset-ticket-code-popup.component';
@@ -58,9 +53,7 @@ interface BrowserBarcodeDetectorConstructor {
   selector: 'app-asset-ticket-scan-popup',
   standalone: true,
   imports: [
-    CommonModule,
-    MatButtonModule,
-    MatIconModule,
+    PopupComponent,
     AssetTicketCodePopupComponent,
     AssetTicketScannerPopupComponent
   ],
@@ -122,13 +115,23 @@ export class AssetTicketScanPopupComponent implements OnDestroy {
     this.stopTicketScannerCamera();
   }
 
-  protected isMobileView(): boolean {
-    if (typeof window === 'undefined') {
-      return false;
-    }
-    const isNarrowViewport = window.matchMedia('(max-width: 760px)').matches;
-    const hasCoarsePointer = window.matchMedia('(pointer: coarse)').matches || navigator.maxTouchPoints > 0;
-    return isNarrowViewport && hasCoarsePointer;
+  protected ticketScanPopupModel(): PopupModel {
+    const isTicketCode = this.store.ticketScanMode() === 'ticketCode';
+    const title = isTicketCode ? 'Ticket' : 'Scan Ticket';
+    return {
+      title,
+      ariaLabel: title,
+      closeAriaLabel: 'Close',
+      size: 'wide',
+      height: isTicketCode ? 'full' : 'auto',
+      headerTone: 'accent',
+      bodyLayout: isTicketCode ? 'fill' : 'default',
+      onClose: event => this.closeTicketScanPopup(event)
+    };
+  }
+
+  protected ticketScanPopupZIndex(): number {
+    return 12100;
   }
 
   protected closeTicketScanPopup(event?: Event): void {

@@ -8,16 +8,20 @@
   height: 100%;
   min-height: 0;
   width: 100%;
+  box-sizing: border-box;
   display: flex;
   align-items: center;
   justify-content: center;
   padding: 1rem;
   background: linear-gradient(180deg, #eef2f9 0%, #e5ebf5 100%);
+  overflow: hidden;
 }
 
 .ticket-code-sheet {
-  --ticket-popup-content-width: min(680px, 96vw);
+  --ticket-popup-content-width: min(680px, calc(100vw - 4rem), calc(100dvh - 20rem));
   width: min(760px, 100%);
+  max-height: 100%;
+  box-sizing: border-box;
   border-radius: 14px;
   padding: 1rem 1rem 1.12rem;
   display: grid;
@@ -29,6 +33,7 @@
 .ticket-code-qr-wrap {
   width: var(--ticket-popup-content-width);
   aspect-ratio: 1 / 1;
+  box-sizing: border-box;
   border: 1px solid rgba(40, 71, 112, 0.24);
   border-radius: 12px;
   background: #fff;
@@ -111,8 +116,10 @@
   }
 
   .ticket-code-sheet {
+    --ticket-popup-content-width: min(calc(100vw - 1.28rem), calc(100dvh - 14rem));
     width: 100%;
     max-width: 100%;
+    max-height: 100%;
     min-height: 100%;
     border-radius: 0;
     border: 0;
@@ -122,8 +129,12 @@
 
   .ticket-scan-person-card,
   .ticket-code-qr-wrap {
-    width: 100%;
+    width: var(--ticket-popup-content-width);
     max-width: 100%;
+  }
+
+  .ticket-scan-person-card {
+    height: 104px;
   }
 
   .ticket-scan-person-body {
