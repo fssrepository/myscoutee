@@ -11,9 +11,6 @@ import {
   signal
 } from '@angular/core';
 import {
-  MatButtonModule
-} from '@angular/material/button';
-import {
   MatRippleModule
 } from '@angular/material/core';
 import {
@@ -30,6 +27,10 @@ import {
   resolveSideMenuPresentation,
   type SideMenuPresentation
 } from '../../../shared/ui/components/side-menu/side-menu-presenters';
+import {
+  PopupComponent,
+  type PopupModel
+} from '../../../shared/ui';
 import {
   ProfileStore
 } from '../../../shared/ui/context/stores/profile.store';
@@ -87,7 +88,7 @@ interface ProfileImpressionsTraitCardViewModel {
 @Component({
   selector: 'app-profile-impressions-popup',
   standalone: true,
-  imports: [CommonModule, MatButtonModule, MatIconModule, MatRippleModule],
+  imports: [CommonModule, MatIconModule, MatRippleModule, PopupComponent],
   templateUrl: './impressions-popup.component.html',
   styleUrl: './impressions-popup.component.scss'
 })
@@ -161,6 +162,22 @@ export class ProfileImpressionsPopupComponent implements OnDestroy {
       memberCategoryBadgeItems: this.resolveMemberCategoryBadgeItems(user)
     };
   });
+
+  protected impressionsPopupModel(): PopupModel {
+    return {
+      title: 'Impressions',
+      ariaLabel: 'Impressions',
+      closeAriaLabel: 'Close',
+      size: 'wide',
+      height: 'auto',
+      headerTone: 'accent',
+      onClose: () => this.closePopup()
+    };
+  }
+
+  protected impressionsPopupZIndex(): number {
+    return 2640;
+  }
 
   constructor() {
     effect(() => {
