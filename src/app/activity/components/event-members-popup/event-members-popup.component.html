@@ -1,85 +1,31 @@
 @if (isOpen) {
-  <section
-    class="app-popup app-popup-stacked app-popup-stacked-over-subevents app-popup-super-stacked activity-members-popup-shell"
-    [style.--activity-members-shell-z-index]="membersPopupZIndex()"
-    >
-    <div class="app-popup-backdrop" (click)="closeMembersPopup()"></div>
-    <div class="app-popup-panel popup-panel-members popup-panel-wide popup-panel-full-height" (click)="$event.stopPropagation()">
-      <div class="popup-header" (click)="$event.stopPropagation()">
-        <div class="popup-title popup-title-members">
-          <div class="popup-chat-title-block">
-            <h2>{{ title | i18n }}</h2>
-            <p>{{ subtitle }}</p>
-          </div>
-        </div>
-        <div class="popup-header-mobile-status-row">
-          @if (canShowInviteButton) {
-            <button
-              type="button"
-              class="chat-members-stack chat-members-stack-large chat-header-members event-editor-members-trigger activity-members-header-invite-trigger"
-              (click)="handleInvite($event)"
-              [attr.aria-label]="'Invite friends' | i18n"
-              >
-              <span class="event-editor-members-invite">
-                <mat-icon>person_add</mat-icon>
-                <span>{{ 'Invite' | i18n }}</span>
-              </span>
-            </button>
-          }
-          <button
-            type="button"
-            class="profile-status-select-wrap selector-like experience-filter-select activities-compact-select subevent-members-pending-toggle activity-members-header-pending-toggle"
-            [class.is-active]="pendingOnly"
-            (click)="togglePendingOnly($event)"
-            [attr.aria-label]="(pendingOnly ? 'Show all members' : 'Show pending members only') | i18n"
-            >
-            <span class="status-option-content activities-hosting-draft-content">
-              <mat-icon class="activities-toggle-icon">pending_actions</mat-icon>
-              <span class="activities-hosting-draft-label">{{ 'Pending only' | i18n }}</span>
-            </span>
-            @if (pendingCount > 0) {
-              <span class="rate-filter-count-badge rate-filter-trigger-badge activity-members-header-pending-badge">
-                {{ pendingCount | counterBadge }}
-              </span>
-            }
-          </button>
-        </div>
-        <div class="popup-header-mobile-actions-row">
-          @if (isSummaryVisible) {
-            <span class="header-members-count members-header-summary-badge">{{ summaryLabel }}</span>
-          }
-          <button type="button" class="popup-close" (click)="closeMembersPopup($event)" [attr.aria-label]="'Close' | i18n">
-            <mat-icon>close</mat-icon>
-          </button>
-        </div>
-      </div>
-      <div class="popup-body popup-body-members">
-        <div class="activity-members-popup-wrap">
-          <app-smart-list
-            #membersSmartList
-            class="activity-members-smart-list"
-            [config]="membersSmartListConfig"
-            [loaders]="membersSmartListLoaders"
-            [itemTemplate]="membersItemTemplateRef ?? null"
-            [query]="membersSmartListQuery"
-            (menuItemSelect)="onMemberActionMenuSelect($event)"
-            (stateChange)="onMembersSmartListStateChange($event)"
-          ></app-smart-list>
-          <ng-template #memberItemTemplate let-member>
-            <app-image-card
-              [card]="memberImageCard(member)"
-              [mediaActions]="memberImageCardMediaActions(member)"
-              [menuId]="memberActionMenuId(member)"
-              [menuTitle]="member.name"
-              [sharedMenuTrigger]="memberActionMenuTrigger(member)"
-              [sharedMenuItems]="memberImageCardSharedMenuItems(member)"
-              (mediaAction)="onMemberImageCardMediaAction(member, $event)"
-            ></app-image-card>
-          </ng-template>
-        </div>
+  <app-popup [model]="membersPopupModel()" [zIndex]="membersPopupZIndex()">
+    <div class="activity-members-popup-shell">
+      <div class="activity-members-popup-wrap">
+        <app-smart-list
+          #membersSmartList
+          class="activity-members-smart-list"
+          [config]="membersSmartListConfig"
+          [loaders]="membersSmartListLoaders"
+          [itemTemplate]="membersItemTemplateRef ?? null"
+          [query]="membersSmartListQuery"
+          (menuItemSelect)="onMemberActionMenuSelect($event)"
+          (stateChange)="onMembersSmartListStateChange($event)"
+        ></app-smart-list>
+        <ng-template #memberItemTemplate let-member>
+          <app-image-card
+            [card]="memberImageCard(member)"
+            [mediaActions]="memberImageCardMediaActions(member)"
+            [menuId]="memberActionMenuId(member)"
+            [menuTitle]="member.name"
+            [sharedMenuTrigger]="memberActionMenuTrigger(member)"
+            [sharedMenuItems]="memberImageCardSharedMenuItems(member)"
+            (mediaAction)="onMemberImageCardMediaAction(member, $event)"
+          ></app-image-card>
+        </ng-template>
       </div>
     </div>
-  </section>
+  </app-popup>
   @if (memberInvolvementPopup; as involvement) {
     <app-popup
       [model]="memberInvolvementPopupModel(involvement)"

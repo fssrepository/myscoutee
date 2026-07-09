@@ -13,9 +13,6 @@ import {
   inject
 } from '@angular/core';
 import {
-  MatButtonModule
-} from '@angular/material/button';
-import {
   MatIconModule
 } from '@angular/material/icon';
 import {
@@ -35,8 +32,6 @@ import {
 } from '../../../shared/core';
 import type { ActivityEventRecord } from '../../../shared/core/contracts/activity.interface';
 import {
-  CounterBadgePipe,
-  I18nPipe,
   ImageCardComponent,
   PopupComponent,
   SmartListComponent,
@@ -49,6 +44,7 @@ import {
   type ImageCardMediaActionEvent,
   type ListQuery,
   type PageResult,
+  type PopupActionEvent,
   type PopupModel,
   type SmartListConfig,
   type SmartListItemTemplateContext,
@@ -102,13 +98,10 @@ interface MemberInvolvementPopupState {
   standalone: true,
   imports: [
     CommonModule,
-    MatButtonModule,
     MatIconModule,
     PopupComponent,
     SmartListComponent,
-    ImageCardComponent,
-    CounterBadgePipe,
-    I18nPipe
+    ImageCardComponent
   ],
   templateUrl: './event-members-popup.component.html',
   styleUrls: ['./event-members-popup.component.scss'],
@@ -135,7 +128,6 @@ export class EventMembersPopupComponent {
   private openMembersHydrationTimer: ReturnType<typeof setTimeout> | null = null;
 
   protected isOpen = false;
-  protected isMobileView = false;
   protected ownerId = '';
   protected title = 'Members';
   protected subtitle = 'Event';
@@ -211,8 +203,6 @@ export class EventMembersPopupComponent {
   };
 
   constructor() {
-    this.syncMobileViewFromViewport();
-
     effect(() => {
       const request = this.memberMenuStore.activitiesNavigationRequest();
       if (!request || (request.type !== 'members' && request.type !== 'eventEditorMembers')) {
@@ -260,9 +250,54 @@ export class EventMembersPopupComponent {
     return Math.max(EventMembersPopupComponent.DEFAULT_POPUP_Z_INDEX, parentZIndex + 100);
   }
 
-  @HostListener('window:resize')
-  protected onViewportResize(): void {
-    this.syncMobileViewFromViewport();
+  protected membersPopupModel(): PopupModel {
+    return {
+      title: this.title,
+      subtitle: this.subtitle,
+      translateSubtitle: false,
+      ariaLabel: this.title,
+      closeAriaLabel: 'Close',
+      size: 'wide',
+      height: 'full',
+      headerTone: 'accent',
+      bodyLayout: 'fill',
+      headerBadge: this.isSummaryVisible ? this.summaryLabel : null,
+      translateHeaderBadge: false,
+      toolbarControls: [
+        ...(this.canShowInviteButton ? [{
+          id: 'invite',
+          align: 'end' as const,
+          icon: 'person_add',
+          label: 'Invite',
+          ariaLabel: 'Invite friends',
+          palette: 'blue' as const,
+          compactOnMobile: true
+        }] : []),
+        {
+          id: 'pending-only',
+          align: 'end',
+          icon: 'pending_actions',
+          label: 'Pending only',
+          ariaLabel: this.pendingOnly ? 'Show all members' : 'Show pending members only',
+          palette: 'rose',
+          active: this.pendingOnly,
+          counter: this.pendingCount > 0 ? this.pendingCount : null,
+          compactOnMobile: true
+        }
+      ],
+      onClose: event => this.closeMembersPopup(event),
+      onAction: event => this.onMembersPopupAction(event)
+    };
+  }
+
+  private onMembersPopupAction(event: PopupActionEvent): void {
+    if (event.action.id === 'invite') {
+      this.handleInvite(event.sourceEvent);
+      return;
+    }
+    if (event.action.id === 'pending-only') {
+      this.togglePendingOnly(event.sourceEvent);
+    }
   }
 
   @HostListener('window:keydown.escape', ['$event'])
@@ -1286,14 +1321,6 @@ export class EventMembersPopupComponent {
     return [...entries].sort((left, right) =>
       AppUtils.toSortableDate(right.actionAtIso) - AppUtils.toSortableDate(left.actionAtIso)
     );
-  }
-
-  private syncMobileViewFromViewport(): void {
-    if (typeof window === 'undefined') {
-      this.isMobileView = false;
-      return;
-    }
-    this.isMobileView = window.innerWidth <= 760;
   }
 
   private async runMemberUpdateAfterUiYield(

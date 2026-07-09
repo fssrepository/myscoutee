@@ -1,42 +1,16 @@
 @use '../../../shared/ui/styles' as ui;
 
-@include ui.popup-shell();
 @include ui.interactive-motion();
 @include ui.form-controls();
 
 :host {
-  --activity-members-shell-z-index: 3800;
   display: contents;
 }
 
-.app-popup.activity-members-popup-shell {
-  z-index: var(--activity-members-shell-z-index);
-}
-
-.activity-members-popup-shell .app-popup-panel.popup-panel-members {
-  position: relative;
-  min-height: calc(100vh - 1.2rem);
-  min-height: calc(100dvh - 1.2rem);
-  height: calc(100vh - 1.2rem);
-  height: calc(100dvh - 1.2rem);
-  max-height: calc(100vh - 1.2rem);
-  max-height: calc(100dvh - 1.2rem);
-}
-
-.activity-members-popup-shell.app-popup-stacked.app-popup-stacked-over-subevents .app-popup-panel.popup-panel-members {
-  height: calc(100vh - 1.2rem);
-  height: calc(100dvh - 1.2rem);
-  max-height: calc(100vh - 1.2rem);
-  max-height: calc(100dvh - 1.2rem);
-}
-
-.activity-members-popup-shell .popup-body {
-  overflow: hidden;
-}
-
-.activity-members-popup-shell .popup-body.popup-body-members {
+.activity-members-popup-shell {
   display: flex;
   flex: 1 1 auto;
+  width: 100%;
   height: 100%;
   min-height: 0;
 }
@@ -68,202 +42,14 @@
   overscroll-behavior: contain;
   -webkit-overflow-scrolling: touch;
   
-  /* CRITICAL: Fixes the 300ms 'wait' lag on touch start */
   touch-action: pan-y;
 }
 
 .activity-members-popup-shell .subevent-members-grid {
   display: grid;
-  /* Desktop: flexible columns */
   grid-template-columns: repeat(auto-fill, minmax(250px, 1fr));
   gap: 0.58rem;
   align-content: start;
-}
-
-.activity-members-popup-shell .popup-header {
-  display: grid !important;
-  grid-template-columns: minmax(0, 1fr) auto;
-  grid-template-rows: auto auto;
-  gap: 0.35rem 0.5rem !important;
-  padding: 0.74rem 0.65rem !important;
-  border-bottom: 1px solid rgba(46, 114, 184, 0.2);
-  position: relative;
-  box-sizing: border-box;
-}
-
-.activity-members-popup-shell .popup-header .popup-title {
-  grid-column: 1 / 2;
-  grid-row: 1 / 2;
-  align-self: center;
-  display: block;
-  min-width: 0;
-}
-
-.activity-members-popup-shell .popup-title h2 {
-  margin: 0;
-  font-size: 1.05rem;
-  color: var(--text-main);
-  font-weight: 700;
-}
-
-.activity-members-popup-shell .popup-chat-title-block p {
-  margin: 0.14rem 0 0;
-  font-size: 0.74rem;
-  font-weight: 700;
-  color: rgba(21, 39, 62, 0.72);
-}
-
-.activity-members-popup-shell .popup-header-mobile-actions-row {
-  display: flex;
-  grid-column: 2 / 3;
-  grid-row: 1 / 2;
-  align-items: center;
-  gap: 0.45rem;
-  justify-content: flex-end;
-}
-
-.activity-members-popup-shell .popup-header-mobile-status-row {
-  display: flex;
-  grid-column: 1 / 3;
-  grid-row: 2 / 3;
-  justify-content: flex-end;
-  gap: 0.5rem;
-  width: 100%;
-  margin-top: 0.1rem;
-}
-
-.activity-members-popup-shell .header-members-count {
-  min-width: fit-content;
-  height: 24px;
-  border-radius: 999px;
-  padding: 0 10px;
-  background: #dbe4ef;
-  color: rgba(24, 39, 61, 0.88);
-  font-size: 0.72rem;
-  font-weight: 700;
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  white-space: nowrap;
-}
-
-.activity-members-popup-shell .event-editor-members-trigger {
-  cursor: pointer;
-  min-height: 34px;
-  border: 1px solid rgba(64, 103, 150, 0.34);
-  border-radius: 999px;
-  background: linear-gradient(180deg, rgba(237, 246, 255, 0.98) 0%, rgba(219, 234, 252, 0.95) 100%);
-  padding-right: 8px;
-  display: inline-flex;
-  align-items: center;
-  gap: 0.32rem;
-  padding: 2px 10px 2px 4px;
-  transition: transform 0.14s ease, background-color 0.16s ease, border-color 0.16s ease;
-}
-
-.activity-members-popup-shell .event-editor-members-trigger:hover {
-  border-color: rgba(57, 105, 162, 0.5);
-  background: linear-gradient(180deg, rgba(242, 250, 255, 0.99) 0%, rgba(229, 241, 255, 0.97) 100%);
-}
-
-.activity-members-popup-shell .event-editor-members-invite {
-  display: inline-flex;
-  align-items: center;
-  gap: 0.32rem;
-  padding: 0 2px;
-  color: rgba(29, 63, 102, 0.95);
-  font-size: 0.75rem;
-  font-weight: 700;
-  line-height: 1;
-  white-space: nowrap;
-}
-
-.activity-members-popup-shell .event-editor-members-invite .mat-icon {
-  width: 16px;
-  height: 16px;
-  font-size: 16px;
-  line-height: 16px;
-  color: #2e689f;
-}
-
-.activity-members-popup-shell .activity-members-header-pending-toggle {
-  appearance: none;
-  cursor: pointer;
-  position: relative;
-  overflow: visible;
-  min-height: 34px;
-  margin-left: 0;
-  min-width: 122px;
-  padding: 0.16rem 0.62rem 0.16rem 0.78rem;
-  border-width: 1px;
-  border-style: solid;
-  border-radius: 999px;
-  background: linear-gradient(180deg, #fff4f5 0%, #ffe8eb 100%);
-  border-color: rgba(183, 88, 104, 0.42);
-  color: #9b3345;
-  box-shadow: 0 2px 6px rgba(38, 60, 92, 0.08);
-}
-
-.activity-members-popup-shell .activity-members-header-pending-toggle .status-option-content {
-  display: inline-flex;
-  align-items: center;
-  gap: 0.28rem;
-  min-width: 0;
-  width: auto;
-}
-
-.activity-members-popup-shell .activity-members-header-pending-toggle .activities-toggle-icon {
-  color: #ab3a4f;
-  opacity: 1;
-}
-
-.activity-members-popup-shell .activity-members-header-pending-toggle .activities-hosting-draft-label {
-  font-size: 0.78rem;
-  font-weight: 800;
-  white-space: nowrap;
-}
-
-.activity-members-popup-shell .activity-members-header-pending-toggle.is-active {
-  background: linear-gradient(180deg, #f7dde1 0%, #f2c8ce 100%);
-  border-color: rgba(167, 45, 66, 0.56);
-  color: #8b1f32;
-  box-shadow: 0 4px 12px rgba(186, 65, 86, 0.24);
-}
-
-.activity-members-popup-shell .activity-members-header-pending-toggle.is-active .activities-toggle-icon {
-  color: #7f1a2f;
-  font-variation-settings: 'FILL' 1;
-}
-
-.activity-members-popup-shell .rate-filter-count-badge {
-  margin-left: auto;
-  width: 20px;
-  height: 20px;
-  border-radius: 50%;
-  border: 1px solid #fff;
-  background: #d84d4d;
-  color: #fff;
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  padding: 0;
-  font-size: 0.68rem;
-  font-weight: 800;
-  line-height: 1;
-  box-shadow: 0 2px 8px rgba(120, 24, 24, 0.22);
-}
-
-.activity-members-popup-shell .rate-filter-trigger-badge {
-  position: absolute;
-  top: -8px;
-  right: -8px;
-  margin-left: 0;
-  z-index: 2;
-}
-
-.activity-members-popup-shell .activity-members-header-pending-toggle .activity-members-header-pending-badge {
-  top: -8px;
-  right: -8px;
 }
 
 .activity-members-popup-shell .activity-members-grid {
@@ -494,16 +280,4 @@
     will-change: transform;
   }
 
-  .activity-members-popup-shell .popup-chat-title-block p {
-    max-width: 100%;
-    overflow: hidden;
-    text-overflow: ellipsis;
-    white-space: nowrap;
-  }
-
-  .activity-members-popup-shell .popup-body.popup-body-members {
-    height: calc(100vh - 58px);
-    height: calc(100dvh - 58px);
-    padding: 0.45rem;
-  }
 }
