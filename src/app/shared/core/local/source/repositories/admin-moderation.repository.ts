@@ -17,4 +17,64 @@ export class LocalAdminModerationRepository {
   async readStore(): Promise<AdminModerationStore | null> {
     return await this.memoryDb.readIndexedDbTableEntry<AdminModerationStore>(APP_INDEXED_DB_KEYS.adminModeration);
   }
+
+  async writeStore(store: AdminModerationStore): Promise<void> {
+    await this.memoryDb.writeIndexedDbTableEntry(APP_INDEXED_DB_KEYS.adminModeration, store);
+  }
+
+  async setReportResolved(
+    reportId: string,
+    adminUserId: string,
+    resolvedAtIso: string | null
+  ): Promise<AdminModerationStore | null> {
+    const normalizedReportId = `${reportId ?? ''}`.trim();
+    if (!normalizedReportId) {
+      return await this.readStore();
+    }
+    const store = await this.readStore();
+    if (!store) {
+      return null;
+    }
+    const next: AdminModerationStore = {
+      ...store,
+      reports: (store.reports ?? []).map(report => report.id === normalizedReportId
+        ? {
+          ...report,
+          resolvedAtIso,
+          resolvedByAdminUserId: resolvedAtIso ? adminUserId : null
+        }
+        : report),
+      feedback: [...(store.feedback ?? [])]
+    };
+    await this.writeStore(next);
+    return next;
+  }
+
+  async setFeedbackResolved(
+    feedbackId: string,
+    adminUserId: string,
+    resolvedAtIso: string | null
+  ): Promise<AdminModerationStore | null> {
+    const normalizedFeedbackId = `${feedbackId ?? ''}`.trim();
+    if (!normalizedFeedbackId) {
+      return await this.readStore();
+    }
+    const store = await this.readStore();
+    if (!store) {
+      return null;
+    }
+    const next: AdminModerationStore = {
+      ...store,
+      reports: [...(store.reports ?? [])],
+      feedback: (store.feedback ?? []).map(item => item.id === normalizedFeedbackId
+        ? {
+          ...item,
+          resolvedAtIso,
+          resolvedByAdminUserId: resolvedAtIso ? adminUserId : null
+        }
+        : item)
+    };
+    await this.writeStore(next);
+    return next;
+  }
 }

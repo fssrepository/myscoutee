@@ -103,6 +103,23 @@ export class LocalAdminModerationService extends LocalRouteDelayService {
     };
   }
 
+  async sendSupportMessage(
+    userId: string,
+    admin: AdminUserDto | null | undefined,
+    message: string,
+    status: SupportCaseStatus
+  ): Promise<AdminModerationUserPatch | null> {
+    const normalizedUserId = userId.trim();
+    if (!normalizedUserId) {
+      return null;
+    }
+    const resolvedAdmin = this.resolveAdmin(admin);
+    if (!resolvedAdmin) {
+      return null;
+    }
+    return await this.appendSupportMessage(normalizedUserId, resolvedAdmin, message, status);
+  }
+
   private async appendSupportMessage(
     userId: string,
     admin: AdminUserDto,

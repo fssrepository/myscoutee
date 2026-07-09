@@ -2,17 +2,23 @@
   <app-popup [model]="reportsPopupModel()">
       <div class="admin-list-only-body">
         <app-smart-list
+          #reportsSmartList
           class="admin-smart-list admin-simple-list"
           [config]="reportsSmartListConfig"
           [loadPage]="reportsSmartListLoadPage"
+          [query]="reportsSmartListQuery"
           [itemTemplate]="reportItemTemplateRef ?? null"
+          (menuItemSelect)="onReportRowMenuSelect($event)"
         ></app-smart-list>
 
-        <ng-template #reportItemTemplate let-item let-groupLabel="groupLabel">
+        <ng-template #reportItemTemplate let-item let-groupLabel="groupLabel" let-openMenu="openMenu">
           <single-row
             [row]="reportSingleRow(item, groupLabel)"
             [clickable]="true"
+            [useSharedMenu]="true"
+            [sharedMenuContext]="reportRowMenuContext(item)"
             (rowClick)="openReportDetails(item)"
+            (menuRequest)="openMenu($event)"
           ></single-row>
         </ng-template>
       </div>

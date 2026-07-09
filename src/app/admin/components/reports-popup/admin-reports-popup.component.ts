@@ -31,6 +31,7 @@ import {
 import {
   AdminModerationService,
   AdminWorkspaceDataService,
+  type AdminDashboardDto,
   type AdminModerationActionResult,
   type AdminReportedUserDto,
   type AdminReportDto
@@ -53,11 +54,18 @@ import {
   type SmartListItemTemplateContext,
   type SmartListLoadPage
 } from '../../../shared/ui';
+import type {
+  AppMenuModel,
+  AppMenuPalette
+} from '../../../shared/ui/components/core/menu';
 import {
   PopupComponent,
   type PopupActionEvent,
+  type PopupControl,
+  type PopupMenuSelectEvent,
   type PopupModel
 } from '../../../shared/ui/components/core/popup';
+import type { AdminReviewStatusFilter } from '../../../shared/core/base/services/admin-workspace-data.service';
 import type { ChatDTO } from '../../../shared/core/contracts/chat.interface';
 import type { UserDto } from '../../../shared/core/contracts/user.interface';
 import {
@@ -87,6 +95,7 @@ interface AdminReportListItem {
 
 interface AdminReportListFilters {
   revision?: number;
+  status?: AdminReviewStatusFilter;
 }
 
 interface AdminBlockedUserListItem {
@@ -101,9 +110,18 @@ interface AdminBlockedUserListFilters {
 
 type AdminReportMenuAction = 'warn' | 'block' | 'unblock' | 'view-chat';
 type AdminReportMenuSource = 'report-detail' | 'blocked-user';
+type AdminReviewStatusMenuItemId = 'review-status-filter' | `review-status:${AdminReviewStatusFilter}`;
 type AdminReportActionsMenuItemId =
   | `report-detail:${string}`
   | `blocked-user:${string}`;
+
+interface AdminReviewStatusMenuContext {
+  status: AdminReviewStatusFilter;
+}
+
+interface AdminReportRowMenuContext extends Record<string, unknown> {
+  reportItem: AdminReportListItem;
+}
 
 interface AdminReportActionsMenuContext {
   action: AdminReportMenuAction;
@@ -141,6 +159,14 @@ export class AdminReportsPopupComponent {
   private readonly location = inject(Location);
   protected reportDetail: AdminReportListItem | null = null;
   protected blockedUsersOpen = false;
+  protected reportStatusFilter: AdminReviewStatusFilter = 'unresolved';
+  protected reportsSmartListQuery: Partial<ListQuery<AdminReportListFilters>> = {
+    filters: { status: 'unresolved' }
+  };
+  protected reportStatusCounts: Record<AdminReviewStatusFilter, number> = {
+    unresolved: 0,
+    resolved: 0
+  };
 
   protected reportItemTemplateRef?: TemplateRef<
     SmartListItemTemplateContext<AdminReportListItem, AdminReportListFilters>
@@ -155,6 +181,9 @@ export class AdminReportsPopupComponent {
   ) {
     this.reportItemTemplateRef = value;
   }
+
+  @ViewChild('reportsSmartList')
+  private reportsSmartList?: SmartListComponent<AdminReportListItem, AdminReportListFilters>;
 
   @ViewChild('blockedUserItemTemplate', { read: TemplateRef })
   protected set blockedUserItemTemplate(
@@ -221,7 +250,7 @@ export class AdminReportsPopupComponent {
     query
   ) => from(this.loadBlockedUsersPage(query));
 
-  protected reportsPopupModel(): PopupModel {
+  protected reportsPopupModel(): PopupModel<AdminReviewStatusMenuContext> {
     return {
       title: 'reported.users',
       subtitle: 'Only users with moderation reports are visible here.',
@@ -243,8 +272,12 @@ export class AdminReportsPopupComponent {
           compactOnMobile: true
         }
       ],
+      toolbarControls: [
+        this.reportStatusToolbarControl()
+      ],
       onClose: () => this.admin.closePopup(),
-      onAction: event => this.onReportsPopupAction(event)
+      onAction: event => this.onReportsPopupAction(event),
+      onMenuSelect: event => this.onReportsPopupMenuSelect(event)
     };
   }
 
@@ -284,6 +317,85 @@ export class AdminReportsPopupComponent {
     }
   }
 
+  private onReportsPopupMenuSelect(event: PopupMenuSelectEvent<AdminReviewStatusMenuContext>): void {
+    const status = event.itemSelect.context?.status;
+    if (!status) {
+      return;
+    }
+    this.selectReportStatus(status, event.itemSelect.sourceEvent);
+  }
+
+  private selectReportStatus(status: AdminReviewStatusFilter, event?: Event): void {
+    event?.stopPropagation();
+    if (this.reportStatusFilter === status) {
+      return;
+    }
+    this.reportStatusFilter = status;
+    this.closeReportDetails();
+    this.reportsSmartListQuery = {
+      filters: { status }
+    };
+  }
+
+  private reportStatusToolbarControl(): PopupControl<AdminReviewStatusMenuContext> {
+    return {
+      kind: 'menu',
+      id: 'reports-review-status-filter',
+      align: 'end',
+      menuKind: 'inline',
+      model: this.reportStatusMenuModel(),
+      panelAlign: 'end'
+    };
+  }
+
+  private reportStatusMenuModel(): AppMenuModel<AdminReviewStatusMenuItemId, AdminReviewStatusMenuContext> {
+    return {
+      nodes: [
+        {
+          id: 'reports-review-status-root',
+          items: [
+            {
+              id: 'review-status-filter',
+              kind: 'select-trigger',
+              label: this.reviewStatusLabel(this.reportStatusFilter),
+              icon: this.reviewStatusIcon(this.reportStatusFilter),
+              palette: this.reviewStatusPalette(this.reportStatusFilter),
+              counter: this.reportStatusCount(this.reportStatusFilter),
+              ariaLabel: 'Report status filter',
+              items: (['unresolved', 'resolved'] satisfies AdminReviewStatusFilter[]).map(status => ({
+                id: `review-status:${status}`,
+                kind: 'radio',
+                label: this.reviewStatusLabel(status),
+                icon: this.reviewStatusIcon(status),
+                palette: this.reviewStatusPalette(status),
+                surface: 'tinted',
+                checked: this.reportStatusFilter === status,
+                counter: this.reportStatusCount(status),
+                context: { status }
+              }))
+            }
+          ]
+        }
+      ]
+    };
+  }
+
+  private reviewStatusLabel(status: AdminReviewStatusFilter): string {
+    return status === 'resolved' ? 'Resolved' : 'Unresolved';
+  }
+
+  private reviewStatusIcon(status: AdminReviewStatusFilter): string {
+    return status === 'resolved' ? 'task_alt' : 'pending_actions';
+  }
+
+  private reviewStatusPalette(status: AdminReviewStatusFilter): AppMenuPalette {
+    return status === 'resolved' ? 'success' : 'warning';
+  }
+
+  private reportStatusCount(status: AdminReviewStatusFilter): number {
+    return Math.max(0, Math.trunc(Number(this.reportStatusCounts[status]) || 0));
+  }
+
   protected selectUser(user: AdminReportedUserDto): void {
     const firstReport = user.reports[0];
     if (firstReport) {
@@ -315,19 +427,35 @@ export class AdminReportsPopupComponent {
       surfaceTone: this.reportSingleRowTone(report),
       badges: [
         {
-          label: this.reportTime(report.createdDate),
-          tone: 'muted',
-          position: 'side'
-        },
-        {
           label: this.reportBadgeLabel(report),
+          title: this.reportBadgeLabel(report),
+          ariaLabel: this.reportBadgeLabel(report),
           tone: this.reportReasonBadgeTone(report),
-          position: 'side'
+          position: 'top-right'
         }
+      ],
+      menuActions: [
+        this.isReportResolved(report) ? 'markUnresolved' : 'markSolved'
       ],
       clickable: true,
       eagerDetail: item
     };
+  }
+
+  protected reportRowMenuContext(item: AdminReportListItem): AdminReportRowMenuContext {
+    return { reportItem: item };
+  }
+
+  protected onReportRowMenuSelect(event: AppMenuItemSelectEvent<string, unknown>): void {
+    const context = event.context as (AdminReportRowMenuContext & { action?: { id?: string } }) | undefined;
+    const actionId = `${context?.action?.id ?? ''}`.trim();
+    const item = context?.reportItem ?? null;
+    if (!item || (actionId !== 'markSolved' && actionId !== 'markUnresolved')) {
+      return;
+    }
+    event.sourceEvent.preventDefault();
+    event.sourceEvent.stopPropagation();
+    this.confirmReportResolved(item, actionId === 'markSolved');
   }
 
   protected closeReportDetails(): void {
@@ -367,6 +495,31 @@ export class AdminReportsPopupComponent {
         'Your account has been blocked after moderation review. You can reply here to contact MyScoutee support and ask for a review.'
       )
     });
+  }
+
+  private confirmReportResolved(item: AdminReportListItem, resolved: boolean): void {
+    this.dialogStore.open({
+      title: resolved ? 'Mark report solved?' : 'Mark report unresolved?',
+      message: resolved
+        ? `${item.report.reporterName || 'The reporter'} will receive a support message saying the report was reviewed.`
+        : 'The report will return to the unresolved list.',
+      confirmLabel: resolved ? 'Mark solved' : 'Mark unresolved',
+      busyConfirmLabel: resolved ? 'Marking solved...' : 'Reopening...',
+      confirmTone: resolved ? 'accent' : 'warning',
+      ringPerimeter: 112,
+      onConfirm: () => this.setReportResolved(item, resolved)
+    });
+  }
+
+  private async setReportResolved(item: AdminReportListItem, resolved: boolean): Promise<void> {
+    const dashboard = await this.workspaceData.setReportResolved(
+      item.report.id,
+      resolved,
+      this.workspace.currentAdminUserId()
+    );
+    this.applyReportDashboard(dashboard);
+    this.closeReportDetails();
+    this.reportsSmartList?.removeVisibleItemByIdentity(item.id, { totalDelta: -1 });
   }
 
   protected reportedUserImageCard(
@@ -633,6 +786,14 @@ export class AdminReportsPopupComponent {
     return this.reportSingleRowTone(report);
   }
 
+  protected isReportResolved(report: AdminReportDto): boolean {
+    return `${report.resolvedAtIso ?? ''}`.trim().length > 0;
+  }
+
+  protected reportReviewStatus(report: AdminReportDto): AdminReviewStatusFilter {
+    return this.isReportResolved(report) ? 'resolved' : 'unresolved';
+  }
+
   protected reportTime(value: string | null | undefined): string {
     const date = new Date(`${value ?? ''}`);
     if (Number.isNaN(date.getTime())) {
@@ -873,7 +1034,7 @@ export class AdminReportsPopupComponent {
   }
 
   private async loadReportsPage(query: ListQuery<AdminReportListFilters>): Promise<PageResult<AdminReportListItem>> {
-    const rows = this.reportRowsForUsers(await this.loadReportedUsers());
+    const rows = this.reportRowsForUsers(await this.loadReportedUsers(query.filters?.status ?? this.reportStatusFilter));
     const pageSize = Math.max(1, Math.trunc(Number(query.pageSize) || 24));
     const page = Math.max(0, Math.trunc(Number(query.page) || 0));
     const start = page * pageSize;
@@ -896,10 +1057,23 @@ export class AdminReportsPopupComponent {
     };
   }
 
-  private async loadReportedUsers(): Promise<AdminReportedUserDto[]> {
-    return this.workspace.applyReportedUsers(
-      await this.workspaceData.loadReportedUsers(this.workspace.currentAdminUserId())
-    );
+  private async loadReportedUsers(status: AdminReviewStatusFilter): Promise<AdminReportedUserDto[]> {
+    return this.applyReportDashboard(
+      await this.workspaceData.loadReportedUsersDashboard(this.workspace.currentAdminUserId(), status)
+    ).reportedUsers;
+  }
+
+  private applyReportDashboard(dashboard: AdminDashboardDto): AdminDashboardDto {
+    const normalized = this.workspace.applyDashboard(dashboard);
+    this.applyReportStatusCounts(normalized);
+    return normalized;
+  }
+
+  private applyReportStatusCounts(dashboard: AdminDashboardDto): void {
+    this.reportStatusCounts = {
+      unresolved: Math.max(0, Math.trunc(Number(dashboard.reviewCounts?.reportsUnresolved) || 0)),
+      resolved: Math.max(0, Math.trunc(Number(dashboard.reviewCounts?.reportsResolved) || 0))
+    };
   }
 
   private async loadBlockedUsers(): Promise<AdminReportedUserDto[]> {

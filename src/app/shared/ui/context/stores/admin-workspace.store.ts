@@ -247,7 +247,15 @@ export class AdminWorkspaceStore {
         : null,
       reportedUsers: (dashboard.reportedUsers ?? []).map(user => this.normalizeReportedUser(user)),
       blockedUsers: (dashboard.blockedUsers ?? []).map(user => this.normalizeReportedUser(user, true)),
-      feedback: (dashboard.feedback ?? []).map(item => this.normalizeFeedback(item))
+      feedback: (dashboard.feedback ?? []).map(item => this.normalizeFeedback(item)),
+      reviewCounts: dashboard.reviewCounts
+        ? {
+            reportsUnresolved: this.nonNegativeInteger(dashboard.reviewCounts.reportsUnresolved),
+            reportsResolved: this.nonNegativeInteger(dashboard.reviewCounts.reportsResolved),
+            feedbackUnresolved: this.nonNegativeInteger(dashboard.reviewCounts.feedbackUnresolved),
+            feedbackResolved: this.nonNegativeInteger(dashboard.reviewCounts.feedbackResolved)
+          }
+        : null
     };
   }
 
@@ -269,6 +277,10 @@ export class AdminWorkspaceStore {
       ...item,
       userImageUrl: `${item.userImageUrl ?? ''}`.trim() || null
     };
+  }
+
+  private nonNegativeInteger(value: unknown): number {
+    return Math.max(0, Math.trunc(Number(value) || 0));
   }
 
   private normalizeReportedUser(user: AdminReportedUserDto, blockedFallback = false): AdminReportedUserDto {

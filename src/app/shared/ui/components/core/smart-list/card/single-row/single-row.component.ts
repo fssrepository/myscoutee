@@ -79,6 +79,9 @@ export class SingleRowComponent {
     if (this.hasTopRightContent()) {
       classes.push('ui-single-row--with-top-right');
     }
+    if (this.hasMenuActions()) {
+      classes.push('ui-single-row--with-menu-actions');
+    }
     return classes;
   }
 

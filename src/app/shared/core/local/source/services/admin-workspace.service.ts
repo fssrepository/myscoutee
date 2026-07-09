@@ -8,9 +8,12 @@ import type {
   AdminModerationStore,
   AdminReportDto,
   AdminReportedUserDto,
+  AdminReviewCountsDto,
   AdminUserDto
 } from '../../../contracts/admin.interface';
+import type { AdminReviewStatusFilter } from '../../../base/services/admin-workspace-data.service';
 import { LocalAdminModerationRepository } from '../repositories/admin-moderation.repository';
+import { LocalAdminModerationService } from './admin-moderation.service';
 import { LocalAdminSupportSessionService } from './admin-support-session.service';
 import { LocalRouteDelayService } from './route-delay.service';
 
@@ -18,28 +21,96 @@ const ADMIN_WORKSPACE_LOAD_ROUTE = '/admin';
 const ADMIN_REPORTS_LOAD_ROUTE = '/admin/reports';
 const ADMIN_BLOCKED_USERS_LOAD_ROUTE = '/admin/reports/blocked-users';
 const ADMIN_FEEDBACK_LOAD_ROUTE = '/admin/feedback';
+const ADMIN_REPORTS_RESOLVE_ROUTE = '/admin/reports/resolve';
+const ADMIN_FEEDBACK_RESOLVE_ROUTE = '/admin/feedback/resolve';
 
 @Injectable({
   providedIn: 'root'
 })
 export class LocalAdminWorkspaceService extends LocalRouteDelayService {
   private readonly moderationRepository = inject(LocalAdminModerationRepository);
+  private readonly moderationService = inject(LocalAdminModerationService);
   private readonly supportSession = inject(LocalAdminSupportSessionService);
 
-  async loadDashboard(adminUserId?: string): Promise<AdminDashboardDto> {
-    return await this.loadDashboardSlice(adminUserId, ADMIN_WORKSPACE_LOAD_ROUTE, dashboard => dashboard);
+  async loadDashboard(
+    adminUserId?: string,
+    filters: { reportsStatus?: AdminReviewStatusFilter; feedbackStatus?: AdminReviewStatusFilter } = {}
+  ): Promise<AdminDashboardDto> {
+    return await this.loadDashboardSlice(adminUserId, ADMIN_WORKSPACE_LOAD_ROUTE, dashboard => ({
+      ...dashboard,
+      reportedUsers: this.filterReportedUsers(dashboard.reportedUsers, filters.reportsStatus),
+      feedback: this.filterFeedback(dashboard.feedback, filters.feedbackStatus)
+    }));
   }
 
-  async loadReportedUsers(adminUserId?: string): Promise<AdminReportedUserDto[]> {
-    return await this.loadDashboardSlice(adminUserId, ADMIN_REPORTS_LOAD_ROUTE, dashboard => dashboard.reportedUsers);
+  async loadReportedUsers(adminUserId?: string, status?: AdminReviewStatusFilter): Promise<AdminReportedUserDto[]> {
+    return await this.loadDashboardSlice(
+      adminUserId,
+      ADMIN_REPORTS_LOAD_ROUTE,
+      dashboard => this.filterReportedUsers(dashboard.reportedUsers, status)
+    );
   }
 
   async loadBlockedUsers(adminUserId?: string): Promise<AdminReportedUserDto[]> {
     return await this.loadDashboardSlice(adminUserId, ADMIN_BLOCKED_USERS_LOAD_ROUTE, dashboard => dashboard.blockedUsers);
   }
 
-  async loadFeedback(adminUserId?: string): Promise<AdminFeedbackDto[]> {
-    return await this.loadDashboardSlice(adminUserId, ADMIN_FEEDBACK_LOAD_ROUTE, dashboard => dashboard.feedback);
+  async loadFeedback(adminUserId?: string, status?: AdminReviewStatusFilter): Promise<AdminFeedbackDto[]> {
+    return await this.loadDashboardSlice(
+      adminUserId,
+      ADMIN_FEEDBACK_LOAD_ROUTE,
+      dashboard => this.filterFeedback(dashboard.feedback, status)
+    );
+  }
+
+  async setReportResolved(reportId: string, resolved: boolean, adminUserId?: string): Promise<AdminDashboardDto> {
+    await this.waitForRouteDelay(ADMIN_REPORTS_RESOLVE_ROUTE);
+    await this.moderationRepository.whenReady();
+    const admin = this.mergeStoredAdminProfile(this.resolveDemoAdmin(adminUserId));
+    const normalizedReportId = `${reportId ?? ''}`.trim();
+    const storeBefore = await this.moderationRepository.readStore();
+    const reportBefore = storeBefore?.reports?.find(report => report.id === normalizedReportId) ?? null;
+    const wasResolved = this.isReviewResolved(reportBefore);
+    const store = await this.moderationRepository.setReportResolved(
+      normalizedReportId,
+      admin.id,
+      resolved ? new Date().toISOString() : null
+    );
+    const report = store?.reports?.find(item => item.id === normalizedReportId) ?? null;
+    if (resolved && !wasResolved && report?.reporterUserId) {
+      await this.moderationService.sendSupportMessage(
+        report.reporterUserId,
+        admin,
+        this.reportResolvedMessage(report),
+        'solved'
+      );
+    }
+    return store ? this.buildDemoDashboard(admin, store) : await this.readDashboard(admin.id);
+  }
+
+  async setFeedbackResolved(feedbackId: string, resolved: boolean, adminUserId?: string): Promise<AdminDashboardDto> {
+    await this.waitForRouteDelay(ADMIN_FEEDBACK_RESOLVE_ROUTE);
+    await this.moderationRepository.whenReady();
+    const admin = this.mergeStoredAdminProfile(this.resolveDemoAdmin(adminUserId));
+    const normalizedFeedbackId = `${feedbackId ?? ''}`.trim();
+    const storeBefore = await this.moderationRepository.readStore();
+    const feedbackBefore = storeBefore?.feedback?.find(item => item.id === normalizedFeedbackId) ?? null;
+    const wasResolved = this.isReviewResolved(feedbackBefore);
+    const store = await this.moderationRepository.setFeedbackResolved(
+      normalizedFeedbackId,
+      admin.id,
+      resolved ? new Date().toISOString() : null
+    );
+    const feedback = store?.feedback?.find(item => item.id === normalizedFeedbackId) ?? null;
+    if (resolved && !wasResolved && feedback?.userId) {
+      await this.moderationService.sendSupportMessage(
+        feedback.userId,
+        admin,
+        this.feedbackResolvedMessage(feedback),
+        'solved'
+      );
+    }
+    return store ? this.buildDemoDashboard(admin, store) : await this.readDashboard(admin.id);
   }
 
   private async loadDashboardSlice<T>(
@@ -127,7 +198,8 @@ export class LocalAdminWorkspaceService extends LocalRouteDelayService {
       blockedUsers: this.demoBlockedUsers(store, reportsByUser, activeAdmin.id),
       feedback: [...store.feedback].sort((first, second) =>
         Date.parse(second.createdDate) - Date.parse(first.createdDate)
-      ).map(item => this.enrichDemoFeedback(item))
+      ).map(item => this.enrichDemoFeedback(item)),
+      reviewCounts: this.demoReviewCounts(store)
     };
   }
 
@@ -225,6 +297,68 @@ export class LocalAdminWorkspaceService extends LocalRouteDelayService {
     const chat = this.supportSession.findChatsByUser(normalizedAdminId)
       .find(item => item.id === `c-support-admin-${normalizedUserId}`);
     return Math.max(0, Math.trunc(Number(chat?.unread) || 0));
+  }
+
+  private demoReviewCounts(store: AdminModerationStore): AdminReviewCountsDto {
+    return {
+      reportsUnresolved: (store.reports ?? []).filter(report => !this.isReviewResolved(report)).length,
+      reportsResolved: (store.reports ?? []).filter(report => this.isReviewResolved(report)).length,
+      feedbackUnresolved: (store.feedback ?? []).filter(item => !this.isReviewResolved(item)).length,
+      feedbackResolved: (store.feedback ?? []).filter(item => this.isReviewResolved(item)).length
+    };
+  }
+
+  private filterReportedUsers(
+    users: readonly AdminReportedUserDto[],
+    status: AdminReviewStatusFilter | null | undefined
+  ): AdminReportedUserDto[] {
+    if (!status) {
+      return [...users];
+    }
+    return users.map(user => {
+      const reports = user.reports.filter(report => this.matchesReviewStatus(report, status));
+      return {
+        ...user,
+        reportCount: reports.length,
+        lastReportedAtIso: reports[0]?.createdDate ?? null,
+        reports
+      };
+    }).filter(user => user.reports.length > 0);
+  }
+
+  private filterFeedback(
+    feedback: readonly AdminFeedbackDto[],
+    status: AdminReviewStatusFilter | null | undefined
+  ): AdminFeedbackDto[] {
+    return status
+      ? feedback.filter(item => this.matchesReviewStatus(item, status))
+      : [...feedback];
+  }
+
+  private matchesReviewStatus(
+    item: { resolvedAtIso?: string | null } | null | undefined,
+    status: AdminReviewStatusFilter
+  ): boolean {
+    const resolved = this.isReviewResolved(item);
+    return status === 'resolved' ? resolved : !resolved;
+  }
+
+  private isReviewResolved(item: { resolvedAtIso?: string | null } | null | undefined): boolean {
+    return `${item?.resolvedAtIso ?? ''}`.trim().length > 0;
+  }
+
+  private reportResolvedMessage(report: AdminReportDto): string {
+    const subject = `${report.handle ?? ''}`.trim();
+    return subject
+      ? `Your report about ${subject} has been reviewed by MyScoutee moderation. Thank you for helping keep MyScoutee safe.`
+      : 'Your report has been reviewed by MyScoutee moderation. Thank you for helping keep MyScoutee safe.';
+  }
+
+  private feedbackResolvedMessage(feedback: AdminFeedbackDto): string {
+    const subject = `${feedback.subject ?? ''}`.trim();
+    return subject
+      ? `Your feedback "${subject}" has been reviewed by MyScoutee. Thank you for helping improve the app.`
+      : 'Your feedback has been reviewed by MyScoutee. Thank you for helping improve the app.';
   }
 
   private firstUserImage(user: UserDto | null | undefined): string | null {

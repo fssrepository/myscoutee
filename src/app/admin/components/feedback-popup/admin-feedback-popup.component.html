@@ -2,17 +2,23 @@
   <app-popup [model]="feedbackPopupModel()">
       <div class="admin-list-only-body">
         <app-smart-list
+          #feedbackSmartList
           class="admin-smart-list admin-simple-list"
           [config]="feedbackSmartListConfig"
           [loadPage]="feedbackSmartListLoadPage"
+          [query]="feedbackSmartListQuery"
           [itemTemplate]="feedbackItemTemplateRef ?? null"
+          (menuItemSelect)="onFeedbackRowMenuSelect($event)"
         ></app-smart-list>
 
-        <ng-template #feedbackItemTemplate let-item let-groupLabel="groupLabel">
+        <ng-template #feedbackItemTemplate let-item let-groupLabel="groupLabel" let-openMenu="openMenu">
           <single-row
             [row]="feedbackSingleRow(item, groupLabel)"
             [clickable]="true"
+            [useSharedMenu]="true"
+            [sharedMenuContext]="feedbackRowMenuContext(item)"
             (rowClick)="selectFeedback(item)"
+            (menuRequest)="openMenu($event)"
           ></single-row>
         </ng-template>
       </div>

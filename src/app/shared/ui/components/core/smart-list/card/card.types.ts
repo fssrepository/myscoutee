@@ -223,6 +223,8 @@ export const CARD_MENU_ACTIONS: Readonly<Record<CardMenuActionId, CardMenuAction
   makeManager: { label: 'asset.requests.promote.to.manager', icon: 'manage_accounts', tone: 'accent' },
   manage: { label: 'manage', icon: 'settings', tone: 'accent' },
   manageEvent: { label: 'manage.event', icon: 'settings' },
+  markSolved: { label: 'Mark solved', icon: 'check_circle', tone: 'accent' },
+  markUnresolved: { label: 'Mark unresolved', icon: 'restart_alt', tone: 'warning' },
   notifyParticipants: { label: 'notify.participants', icon: 'support_agent' },
   paymentSummary: { label: 'Fizetési összegzés', icon: 'receipt_long' },
   publish: { label: 'publish', icon: 'campaign', tone: 'accent' },

@@ -193,6 +193,9 @@ export class DialogComponent {
     if (state.confirmTone === 'neutral') {
       return 'slate';
     }
+    if (state.confirmTone === 'warning') {
+      return 'warning';
+    }
     return 'blue';
   }
 
