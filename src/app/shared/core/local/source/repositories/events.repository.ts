@@ -3851,12 +3851,10 @@ export class LocalEventsRepository {
       sourceId,
       member => member.status === 'pending' && !this.isInvitationMember(member)
     ).filter(userId => !acceptedMemberSet.has(userId));
-    const inheritedAdminCount = adminUserIds.filter(userId => !rawAcceptedMemberUserIds.includes(userId)).length;
     const existingAcceptedMembers = Math.max(0, Math.trunc(Number(existing?.acceptedMembers) || 0));
-    const acceptedMembers = Math.max(
-      acceptedMemberUserIds.length,
-      existingAcceptedMembers + inheritedAdminCount
-    );
+    const acceptedMembers = acceptedMemberUserIds.length > 0
+      ? acceptedMemberUserIds.length
+      : existingAcceptedMembers;
     const existingPendingMembers = Math.max(0, Math.trunc(Number(existing?.pendingMembers) || 0));
     const pendingMembers = rawPendingMemberUserIds.length > 0
       ? pendingMemberUserIds.length
@@ -3883,11 +3881,9 @@ export class LocalEventsRepository {
       ...rawAcceptedMemberUserIds,
       ...adminUserIds
     ]);
-    const inheritedAdminCount = adminUserIds.filter(userId => !rawAcceptedMemberUserIds.includes(userId)).length;
-    const acceptedMembers = Math.max(
-      acceptedMemberUserIds.length,
-      Math.max(0, Math.trunc(Number(slot.acceptedMembers) || 0)) + inheritedAdminCount
-    );
+    const acceptedMembers = acceptedMemberUserIds.length > 0
+      ? acceptedMemberUserIds.length
+      : Math.max(0, Math.trunc(Number(slot.acceptedMembers) || 0));
     const acceptedMemberSet = new Set(acceptedMemberUserIds);
     const rawPendingMemberUserIds = this.normalizeUserIds(slot.pendingMemberUserIds ?? []);
     const pendingMemberUserIds = rawPendingMemberUserIds.filter(userId => !acceptedMemberSet.has(userId));
