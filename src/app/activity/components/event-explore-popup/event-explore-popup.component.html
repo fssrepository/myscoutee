@@ -35,34 +35,6 @@
     <app-menu-outlet
       (itemSelect)="onEventExploreMenuSelect($event)"
     ></app-menu-outlet>
-    @if (slotPickerRecord) {
-      <div class="event-explore-slot-picker-backdrop" (click)="closeEventExploreSlotPicker()"></div>
-    }
-    @if (slotPickerRecord; as record) {
-      <section class="event-explore-slot-picker">
-        <header class="event-explore-slot-picker-head">
-          <div>
-            <h3>{{ record.title }}</h3>
-            <p>{{ record.ticketing ? 'Pick a slot to book' : 'Pick a slot to join' }}</p>
-          </div>
-          <button type="button" class="ui-popup__close" (click)="closeEventExploreSlotPicker()" aria-label="Close slot picker">
-            <mat-icon>close</mat-icon>
-          </button>
-        </header>
-        <div class="event-explore-slot-picker-list">
-          @for (slot of record.upcomingSlots ?? []; track slot) {
-            <button
-              type="button"
-              class="event-explore-slot-option"
-              (click)="selectEventExploreSlot(slot)"
-              >
-              <span class="event-explore-slot-option-title">{{ slot.timeframe }}</span>
-              <span class="event-explore-slot-option-meta">{{ slotPickerOccupancyLabel(slot) }}</span>
-            </button>
-          }
-        </div>
-      </section>
-    }
   </app-popup>
 
   @if (eventSubeventsStore.eventSubeventsListPopup()?.host === 'eventExplore') {

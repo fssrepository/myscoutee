@@ -172,7 +172,6 @@ export class EventExplorePopupComponent {
   private userByIdMap = new Map<string, UserDto>();
 
   protected isOpen = false;
-  protected slotPickerRecord: ActivityEventRecord | null = null;
   protected eventExploreOrder: ContractTypes.EventExploreOrder = 'upcoming';
   protected eventExploreView: ContractTypes.EventExploreView = 'day';
   protected eventExploreFilterFriendsOnly = false;
@@ -328,10 +327,6 @@ export class EventExplorePopupComponent {
       this.closeMembersPopup();
       return;
     }
-    if (this.slotPickerRecord) {
-      this.closeEventExploreSlotPicker();
-      return;
-    }
     this.closeEventExplore();
   }
 
@@ -391,7 +386,6 @@ export class EventExplorePopupComponent {
 
   protected closeEventExplore(): void {
     this.isOpen = false;
-    this.slotPickerRecord = null;
     this.closeEventExploreSubeventsPopup();
     this.closeMembersPopup();
     this.resetHeaderState();
@@ -1536,51 +1530,10 @@ export class EventExplorePopupComponent {
   }
 
 
-  protected closeEventExploreSlotPicker(): void {
-    this.slotPickerRecord = null;
-    this.cdr.markForCheck();
-  }
-
-  protected selectEventExploreSlot(slot: ContractTypes.EventSlotOccurrenceDTO): void {
-    const record = this.slotPickerRecord;
-    if (!record) {
-      return;
-    }
-    this.dialogStore.open({
-      title: this.eventExploreJoinDialogTitle(record),
-      message: `${record.title}\n${slot.timeframe}`,
-      cancelLabel: 'Cancel',
-      confirmLabel: this.eventExploreJoinConfirmLabel(record),
-      busyConfirmLabel: this.eventExploreJoinBusyLabel(record),
-      confirmTone: 'accent',
-      failureMessage: this.eventExploreJoinFailureMessage(record),
-      onConfirm: async () => {
-        await this.submitEventExploreJoinRequest(record, {
-          sourceId: record.id,
-          slotSourceId: slot.id,
-          optionalSubEventIds: [],
-          assetSelections: [],
-          acceptedPolicyIds: [],
-          lineItems: [],
-          totalAmount: 0,
-          currency: record.pricing?.currency ?? 'USD',
-          paymentSessionId: null,
-          bookingConfirmed: true
-        });
-        this.closeEventExploreSlotPicker();
-      }
-    });
-  }
-
-  protected slotPickerOccupancyLabel(slot: ContractTypes.EventSlotOccurrenceDTO): string {
-    return `${slot.acceptedMembers} / ${slot.capacityTotal}`;
-  }
-
   private openEventExplore(): void {
     this.isOpen = true;
     this.prewarmEventEditorPopup();
     this.refreshUsersDirectory();
-    this.slotPickerRecord = null;
     this.closeMembersPopup();
     this.syncEventExploreQuery();
     this.reloadEventExploreSmartList();
