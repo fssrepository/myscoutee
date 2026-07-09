@@ -126,6 +126,7 @@
               @if (showSlotsInput()) {
                 <app-slots-input [(ngModel)]="eventDetailDTO.slotTemplates"
                     [config]="slotsInputConfig"
+                    [popupZIndex]="eventEditorPopupZIndex() + 100"
                     [readOnly]="eventStructureReadOnly()"
                     [disabled]="eventStructureReadOnly()"
                     (overrideSelect)="openSlotOverrideEditor($event)"></app-slots-input>

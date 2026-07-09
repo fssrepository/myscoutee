@@ -63,31 +63,12 @@
 }
 
 @if (showSchedulePopup) {
-<div class="event-slots-popup-backdrop" (click)="closeSchedulePopup()"></div>
-<section class="event-slots-schedule-popup" role="dialog" aria-modal="true" aria-label="Add base schedule">
-  <header class="event-slots-popup-head">
-    <div class="event-slots-popup-copy">
-      <span class="event-slots-popup-title">{{ schedulePopupTitle() }}</span>
-      <span class="event-slots-popup-subtitle">{{ schedulePopupSubtitle() }}</span>
-    </div>
-    <div class="event-slots-popup-actions">
-      <app-menu
-        class="event-slots-schedule-confirm-menu"
-        kind="inline"
-        [items]="scheduleConfirmMenuItems()"
-        (itemSelect)="confirmSchedulePopup($event)"
-      ></app-menu>
-      <button type="button" class="event-slots-popup-close" (click)="closeSchedulePopup()" aria-label="Close schedule setup">
-        <mat-icon>close</mat-icon>
-      </button>
-    </div>
-  </header>
-
+<app-popup [model]="schedulePopupModel()" [zIndex]="popupZIndex">
   <app-form-flow
     class="event-slots-schedule-flow"
     [model]="scheduleFlowModel()"
     [ngModel]="scheduleFlowValue"
     (ngModelChange)="onScheduleFlowValueChange($event)"
   ></app-form-flow>
-</section>
+</app-popup>
 }

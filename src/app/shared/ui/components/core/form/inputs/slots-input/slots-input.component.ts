@@ -8,6 +8,7 @@ import { ActivityEventDetailDTO } from '../../../../../../core/contracts/activit
 import { AppMenuComponent, type AppMenuItem, type AppMenuItemSelectEvent, type AppMenuPalette, type AppMenuTrigger } from '../../../menu';
 import { TextCardComponent, type TextCardTone } from '../../../smart-list/card';
 import { FormFlowComponent, type FormFlowControlModel, type FormFlowModel } from '../../flow';
+import { PopupComponent, type PopupModel } from '../../../popup';
 import type * as ContractTypes from '../../../../../../core/contracts';
 
 export type SlotsInputConfigValue<TValue> = TValue | (() => TValue);
@@ -59,6 +60,7 @@ interface EventSlotScheduleFormValue {
     FormsModule,
     MatIconModule,
     AppMenuComponent,
+    PopupComponent,
     TextCardComponent,
     FormFlowComponent
   ],
@@ -75,6 +77,7 @@ interface EventSlotScheduleFormValue {
 })
 export class SlotsInputComponent implements OnChanges, DoCheck, ControlValueAccessor {
   @Input() config: SlotsInputConfig = {};
+  @Input() popupZIndex = 2600;
   @Input() readOnly = false;
   @Input() disabled = false;
   @Output() readonly overrideSelect = new EventEmitter<SlotOverrideRequest>();
@@ -328,6 +331,32 @@ export class SlotsInputComponent implements OnChanges, DoCheck, ControlValueAcce
       : 'Create a base slot start rule.';
   }
 
+  protected schedulePopupModel(): PopupModel<unknown> {
+    return {
+      title: this.schedulePopupTitle(),
+      subtitle: this.schedulePopupSubtitle(),
+      ariaLabel: this.schedulePopupTitle(),
+      closeAriaLabel: 'Close schedule setup',
+      closeOnBackdrop: true,
+      size: 'default',
+      height: 'auto',
+      headerTone: 'accent',
+      bodyLayout: 'overflow',
+      backdropTone: 'dim',
+      headerActions: [
+        {
+          id: this.schedulePopupMode === 'edit' ? 'save-schedule' : 'add-schedule',
+          icon: 'check',
+          ariaLabel: this.schedulePopupMode === 'edit' ? 'Save schedule' : 'Add schedule',
+          palette: 'green',
+          disabled: !this.canConfigureSlotsSeries()
+        }
+      ],
+      onClose: () => this.closeSchedulePopup(),
+      onAction: event => this.confirmSchedulePopup(event.sourceEvent)
+    };
+  }
+
   protected closeSchedulePopup(): void {
     this.showSchedulePopup = false;
     this.schedulePopupMode = 'create';
@@ -348,6 +377,7 @@ export class SlotsInputComponent implements OnChanges, DoCheck, ControlValueAcce
       title: 'Add Schedule',
       header: false,
       layout: 'grouped',
+      allowMenuOverflow: true,
       summary: { enabled: false },
       save: null,
       completion: { controls: 'none' },
@@ -414,17 +444,6 @@ export class SlotsInputComponent implements OnChanges, DoCheck, ControlValueAcce
     sourceEvent?.preventDefault();
     sourceEvent?.stopPropagation();
     this.createScheduleFromPopup();
-  }
-
-  protected scheduleConfirmMenuItems(): readonly AppMenuItem<string, unknown>[] {
-    return [{
-      id: this.schedulePopupMode === 'edit' ? 'save-schedule' : 'add-schedule',
-      icon: 'check',
-      layout: 'action',
-      ariaLabel: this.schedulePopupMode === 'edit' ? 'Save schedule' : 'Add schedule',
-      palette: 'success',
-      disabled: !this.canConfigureSlotsSeries()
-    }];
   }
 
   protected scheduleFrequencyOptions(): readonly string[] {
