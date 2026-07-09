@@ -4153,6 +4153,7 @@ private updateListSnapNearEndSuppression(scrollElement?: HTMLDivElement | null):
     options: {
       predicate?: (item: T, index: number) => boolean;
       totalDelta?: number;
+      loadedRange?: 'any' | 'before-or-within';
     } = {}
   ): boolean {
     const query = this.currentQuery();
@@ -4171,7 +4172,10 @@ private updateListSnapNearEndSuppression(scrollElement?: HTMLDivElement | null):
       this.emitRefresh();
       return true;
     }
-    if (!this.reinsertVisibleItem(nextItem, { totalDelta: options.totalDelta })) {
+    if (!this.reinsertVisibleItem(nextItem, {
+      totalDelta: options.totalDelta,
+      loadedRange: options.loadedRange
+    })) {
       return false;
     }
     this.cacheVisibleSourceItem(source, nextItem);
@@ -4221,7 +4225,13 @@ private updateListSnapNearEndSuppression(scrollElement?: HTMLDivElement | null):
     );
   }
 
-  public reinsertVisibleItem(item: T, options: { totalDelta?: number } = {}): boolean {
+  public reinsertVisibleItem(
+    item: T,
+    options: {
+      totalDelta?: number;
+      loadedRange?: 'any' | 'before-or-within';
+    } = {}
+  ): boolean {
     if (this.currentViewMode !== 'list') {
       return false;
     }
@@ -4229,10 +4239,48 @@ private updateListSnapNearEndSuppression(scrollElement?: HTMLDivElement | null):
     if (this.items.some((currentItem, index) => `${this.cacheTrackKey(currentItem, index)}`.trim() === identity)) {
       return false;
     }
-    this.replaceVisibleItems([...this.items, item], {
+    const insertionIndex = this.visibleInsertionIndex(item);
+    const insertsAfterLoadedTail = insertionIndex >= this.items.length;
+    if (
+      options.loadedRange === 'before-or-within'
+      && this.items.length > 0
+      && this.items.length < this.total
+      && insertsAfterLoadedTail
+      && !this.visibleGroupAlreadyLoaded(item)
+    ) {
+      return false;
+    }
+    const nextItems = [...this.items];
+    nextItems.splice(insertionIndex, 0, item);
+    this.replaceVisibleItems(nextItems, {
       total: Math.max(this.items.length + 1, this.total + (options.totalDelta ?? 1))
     });
     return true;
+  }
+
+  private visibleInsertionIndex(item: T): number {
+    if (!this.sortableConfig()) {
+      return this.items.length;
+    }
+    const query = this.currentQuery();
+    const itemSortKey = this.localSortKeyForItem(item, query, this.items.length);
+    const index = this.items.findIndex((currentItem, currentIndex) =>
+      compareSmartListLocalSortKeys(
+        itemSortKey,
+        this.localSortKeyForItem(currentItem, query, currentIndex)
+      ) < 0
+    );
+    return index >= 0 ? index : this.items.length;
+  }
+
+  private visibleGroupAlreadyLoaded(item: T): boolean {
+    const groupBy = this.config.groupBy;
+    if (!groupBy || this.items.length === 0) {
+      return false;
+    }
+    const query = this.currentQuery();
+    const label = groupBy(item, query);
+    return this.items.some(currentItem => groupBy(currentItem, query) === label);
   }
 
   private cancelPendingAnchorPreload(): void {

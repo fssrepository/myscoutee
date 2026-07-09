@@ -2021,7 +2021,8 @@ export class EventCheckoutPopupComponent {
     sourceId: string | null | undefined,
     result: ActivityContracts.EventParticipationActionResultDTO | null,
     memberDelta: { acceptedMemberDelta?: number; pendingMemberDelta?: number } | null = null,
-    viewerMembershipRemoved = false
+    viewerMembershipRemoved = false,
+    checkoutResultState: ActivityContracts.EventCheckoutResultState | null = null
   ): void {
     const dialog = this.dialog();
     const normalizedSourceId = sourceId?.trim() ?? '';
@@ -2058,6 +2059,7 @@ export class EventCheckoutPopupComponent {
       pendingMembers,
       capacityTotal,
       ...(full ? { full: true } : {}),
+      ...(checkoutResultState ? { checkoutResultState } : {}),
       ...(viewerMembershipRemoved ? { viewerMembershipRemoved: true } : {}),
       ...(memberDelta ?? {})
     });
@@ -2243,7 +2245,7 @@ export class EventCheckoutPopupComponent {
         throw new Error(dialog.failureMessage);
       }
       this.signalCheckoutCounterDelta(counterDelta);
-      this.emitCheckoutMembershipSync(dialog.record.id, joinResult, memberDelta);
+      this.emitCheckoutMembershipSync(dialog.record.id, joinResult, memberDelta, false, 'succeeded');
       this.emitCheckoutMembershipSync(this.selectedSlotSourceId, joinResult, memberDelta);
       this.checkoutSessionId = joinResult.paymentSessionId ?? null;
       this.clearCheckoutDraft();

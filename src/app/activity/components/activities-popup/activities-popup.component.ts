@@ -2361,7 +2361,10 @@ export class ActivitiesPopupComponent implements OnDestroy {
     });
   }
 
-  private upsertVisibleEventRowFromSave(sync: ActivityEventDTO): void {
+  private upsertVisibleEventRowFromSave(
+    sync: ActivityEventDTO,
+    options: { loadedRange?: 'any' | 'before-or-within' } = {}
+  ): void {
     if (!this.isEventActivitiesPrimaryFilter() || this.activitiesView === 'week' || this.activitiesView === 'month') {
       return;
     }
@@ -2379,8 +2382,74 @@ export class ActivitiesPopupComponent implements OnDestroy {
     }
     smartList.upsertConvertedVisibleItem(sync, {
       predicate: row => this.savedEventMatchesVisibleRow(row, sync),
-      totalDelta: removedExisting ? 0 : 1
+      totalDelta: removedExisting ? 0 : 1,
+      loadedRange: options.loadedRange
     });
+  }
+
+  private async restorePaidCheckoutActivityEventRow(sourceId: string): Promise<void> {
+    const normalizedSourceId = sourceId.trim();
+    const activeUserId = this.activeUser.id.trim();
+    if (!normalizedSourceId || !activeUserId || !this.isEventActivitiesPrimaryFilter()) {
+      return;
+    }
+    const dto = await this.resolvePaidCheckoutActivityEventDTO(activeUserId, normalizedSourceId);
+    if (!dto) {
+      return;
+    }
+    this.upsertVisibleEventRowFromSave(dto, { loadedRange: 'before-or-within' });
+    this.refreshSectionBadges();
+    this.cdr.markForCheck();
+  }
+
+  private async resolvePaidCheckoutActivityEventDTO(
+    activeUserId: string,
+    sourceId: string
+  ): Promise<ActivityEventDTO | null> {
+    const known = this.eventsService.peekKnownItemById(activeUserId, sourceId);
+    if (known) {
+      return this.withPaidCheckoutMembership(known, activeUserId);
+    }
+    const detail = await this.eventsService.loadEventDetailById(activeUserId, sourceId);
+    return detail ? this.withPaidCheckoutMembership(detail as ActivityEventDTO, activeUserId) : null;
+  }
+
+  private withPaidCheckoutMembership(dto: ActivityEventDTO, activeUserId: string): ActivityEventDTO {
+    const acceptedMemberUserIds = this.uniqueActivityUserIds([
+      ...(dto.acceptedMemberUserIds ?? []),
+      activeUserId
+    ]);
+    const pendingMemberUserIds = this.uniqueActivityUserIds(dto.pendingMemberUserIds ?? [])
+      .filter(userId => userId !== activeUserId);
+    const pendingRequestMemberUserIds = this.uniqueActivityUserIds(dto.pendingRequestMemberUserIds ?? [])
+      .filter(userId => userId !== activeUserId);
+    const wasAccepted = (dto.acceptedMemberUserIds ?? []).includes(activeUserId);
+    const wasPending = (dto.pendingMemberUserIds ?? []).includes(activeUserId)
+      || (dto.pendingRequestMemberUserIds ?? []).includes(activeUserId);
+    const acceptedMembers = Math.max(
+      acceptedMemberUserIds.length,
+      Math.max(0, Math.trunc(Number(dto.acceptedMembers) || 0)) + (wasAccepted ? 0 : 1)
+    );
+    const pendingMembers = Math.max(
+      pendingMemberUserIds.length,
+      pendingRequestMemberUserIds.length,
+      Math.max(0, Math.trunc(Number(dto.pendingMembers) || 0)) - (wasPending ? 1 : 0)
+    );
+    return this.cloneActivityEventDTO({
+      ...dto,
+      status: dto.status ?? 'A',
+      acceptedMembers,
+      pendingMembers,
+      capacityTotal: Math.max(acceptedMembers, Math.max(0, Math.trunc(Number(dto.capacityTotal) || 0))),
+      acceptedMemberUserIds,
+      pendingMemberUserIds,
+      pendingRequestMemberUserIds,
+      pendingReason: null
+    });
+  }
+
+  private uniqueActivityUserIds(userIds: readonly string[]): string[] {
+    return [...new Set(userIds.map(userId => userId.trim()).filter(Boolean))];
   }
 
   private savedEventMatchesVisibleRow(row: ActivityListItem, sync: ActivityEventDTO): boolean {
@@ -3144,6 +3213,9 @@ export class ActivitiesPopupComponent implements OnDestroy {
       this.bumpActivitiesEventCardRevision(`events:${sync.id}`);
       this.bumpActivitiesEventCardRevision(`invitations:${sync.id}`);
       return;
+    }
+    if (sync.checkoutResultState === 'succeeded') {
+      void this.restorePaidCheckoutActivityEventRow(sync.id);
     }
     const capacityParts = `${this.activityCapacityById[sync.id] ?? ''}`.split('/');
     const hasCurrentAcceptedMembers = (capacityParts[0] ?? '').trim().length > 0;

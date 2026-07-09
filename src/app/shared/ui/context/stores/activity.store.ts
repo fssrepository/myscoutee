@@ -1,6 +1,6 @@
 import { Injectable, signal } from '@angular/core';
 
-import { EventFeedbackDetailDto } from '../../../core/contracts/activity.interface';
+import { EventFeedbackDetailDto, type EventCheckoutResultState } from '../../../core/contracts/activity.interface';
 import type { ChatMetricBucketDTO } from '../../../core/contracts/chat.interface';
 import type { UserMenuCounterDeltasDto } from '../../../core/contracts/user.interface';
 import {
@@ -75,6 +75,7 @@ export interface ActivityMembersSyncState {
   pendingMembers: number;
   capacityTotal: number;
   full?: boolean;
+  checkoutResultState?: EventCheckoutResultState | null;
   acceptedMemberDelta?: number;
   pendingMemberDelta?: number;
   viewerMembershipRemoved?: boolean;
@@ -369,6 +370,7 @@ export class ActivityStore {
       ...(acceptedMemberDelta !== null ? { acceptedMemberDelta } : {}),
       ...(pendingMemberDelta !== null ? { pendingMemberDelta } : {}),
       ...(payload.full === true ? { full: true } : {}),
+      ...(payload.checkoutResultState ? { checkoutResultState: payload.checkoutResultState } : {}),
       ...(payload.viewerMembershipRemoved === true ? { viewerMembershipRemoved: true } : {})
     });
   }

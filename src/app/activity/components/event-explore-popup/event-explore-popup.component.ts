@@ -73,6 +73,7 @@ import {
   type PopupModel,
   type SmartListConfig,
   type SmartListItemTemplateContext,
+  type SmartListLocalSortKey,
   type SmartListStateChange
 } from '../../../shared/ui';
 import {
@@ -240,6 +241,9 @@ export class EventExplorePopupComponent {
     },
     stickyHeaderClass: 'event-explore-sticky-header',
     trackBy: (_index, record) => `${record.type}:${record.id}`,
+    sortable: {
+      sortKey: record => this.eventExploreRecordLocalSortKey(record)
+    },
     showGroupMarker: ({ groupIndex, scrollable }) => {
       if (groupIndex > 0) {
         return true;
@@ -1612,6 +1616,9 @@ export class EventExplorePopupComponent {
     if (this.isOpen && this.applyVisibleEventExploreMembersSync(sync)) {
       changed = true;
     }
+    if (this.isOpen && sync.checkoutResultState === 'succeeded') {
+      void this.restorePaidCheckoutEventExploreRecord(sync.id);
+    }
     if (changed) {
       this.cdr.markForCheck();
     }
@@ -2149,20 +2156,41 @@ export class EventExplorePopupComponent {
     );
   }
 
-  private restoreVisibleEventExploreRecord(record: ActivityEventRecord): void {
+  private restoreVisibleEventExploreRecord(
+    record: ActivityEventRecord,
+    options: { loadedRange?: 'any' | 'before-or-within' } = {}
+  ): void {
     if (!this.isOpen || !this.eventExploreSmartList || !this.shouldShowRestoredEventExploreRecord(record)) {
       return;
     }
     const currentItems = [...this.eventExploreSmartList.itemsSnapshot()];
     const currentIndex = currentItems.findIndex(item => item.id === record.id);
-    const nextItems = currentIndex >= 0
-      ? currentItems.map(item => item.id === record.id ? record : item)
-      : this.sortVisibleEventExploreRecords([...currentItems, record]);
-    this.eventExploreSmartList.replaceVisibleItems(nextItems, {
-      total: currentIndex >= 0
-        ? this.eventExploreSmartList.cursorState().total
-        : this.eventExploreSmartList.cursorState().total + 1
+    if (currentIndex >= 0) {
+      this.eventExploreSmartList.replaceVisibleItems(
+        currentItems.map(item => item.id === record.id ? record : item),
+        { total: this.eventExploreSmartList.cursorState().total }
+      );
+      return;
+    }
+    this.eventExploreSmartList.reinsertVisibleItem(record, {
+      totalDelta: 1,
+      loadedRange: options.loadedRange ?? 'any'
     });
+  }
+
+  private async restorePaidCheckoutEventExploreRecord(sourceId: string): Promise<void> {
+    const activeUserId = this.activeUserId.trim();
+    const normalizedSourceId = sourceId.trim();
+    if (!this.isOpen || !activeUserId || !normalizedSourceId) {
+      return;
+    }
+    const record = this.eventsService.peekKnownRecordById(activeUserId, normalizedSourceId)
+      ?? await this.eventsService.queryKnownRecordById(activeUserId, normalizedSourceId);
+    if (!record || !this.isOpen) {
+      return;
+    }
+    this.restoreVisibleEventExploreRecord(record, { loadedRange: 'before-or-within' });
+    this.cdr.markForCheck();
   }
 
   private restoreVisibleEventExploreRecordsById(sourceIds: readonly string[]): void {
@@ -2200,6 +2228,24 @@ export class EventExplorePopupComponent {
       }
       return left.title.localeCompare(right.title);
     });
+  }
+
+  private eventExploreRecordLocalSortKey(record: ActivityEventRecord): SmartListLocalSortKey {
+    const startAt = AppUtils.toSortableDate(record.startAtIso);
+    const fallback = [record.title, record.id];
+    switch (this.eventExploreOrder) {
+      case 'nearby':
+        return [Number(record.distanceKm) || 0, startAt, ...fallback];
+      case 'top-rated':
+        return [-(Number(record.rating) || 0), startAt, ...fallback];
+      case 'most-relevant':
+        return [-(Number(record.affinity) || 0), startAt, ...fallback];
+      case 'past-events':
+        return [-startAt, ...fallback];
+      case 'upcoming':
+      default:
+        return [startAt, ...fallback];
+    }
   }
 
   private compareEventExploreRecords(left: ActivityEventRecord, right: ActivityEventRecord): number {
