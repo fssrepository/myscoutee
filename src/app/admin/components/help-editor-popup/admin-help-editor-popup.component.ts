@@ -43,11 +43,16 @@ import {
   IndicatorComponent
 } from '../../../shared/ui/components/core/indicator';
 import {
-  AppMenuComponent,
   type AppMenuItem,
-  type AppMenuItemSelectEvent,
-  type AppMenuModel
+  type AppMenuModel,
+  type AppMenuPalette
 } from '../../../shared/ui/components/core/menu';
+import {
+  PopupComponent,
+  type PopupActionEvent,
+  type PopupMenuSelectEvent,
+  type PopupModel
+} from '../../../shared/ui/components/core/popup';
 import {
   LazyBgImageDirective
 } from '../../../shared/ui/directives';
@@ -126,6 +131,8 @@ interface HelpEditorLanguageMenuContext {
   lang: string;
 }
 
+type HelpEditorPopupMenuContext = HelpEditorDocumentMenuContext | HelpEditorLanguageMenuContext;
+
 @Component({
   selector: 'app-admin-help-editor-popup',
   standalone: true,
@@ -133,10 +140,10 @@ interface HelpEditorLanguageMenuContext {
     CommonModule,
     FormsModule,
     MatIconModule,
-    AppMenuComponent,
     ImageCarouselComponent,
     IndicatorComponent,
-    LazyBgImageDirective
+    LazyBgImageDirective,
+    PopupComponent
   ],
   templateUrl: './admin-help-editor-popup.component.html',
   styleUrl: './admin-help-editor-popup.component.scss'
@@ -194,6 +201,52 @@ export class AdminHelpEditorPopupComponent {
   protected iconPickerSearch = '';
   protected iconPickerGroup: HelpIconOption['group'] = 'Common';
   protected selectedExplanationContextKey = 'home.game';
+
+  protected helpEditorPopupModel(): PopupModel<HelpEditorPopupMenuContext> {
+    return {
+      title: this.editorTitle(),
+      subtitle: this.activeRevisionSubtitle(),
+      ariaLabel: this.editorTitle(),
+      closeAriaLabel: this.uiText('Close content editor'),
+      size: 'wide',
+      height: 'full',
+      headerTone: 'accent',
+      bodyLayout: 'fill',
+      headerControls: [
+        {
+          kind: 'menu',
+          id: 'help-document',
+          menuKind: 'inline',
+          model: this.documentMenuModel(),
+          panelAlign: 'end'
+        }
+      ],
+      headerActions: [
+        {
+          id: 'help-new-revision',
+          icon: 'add',
+          ariaLabel: this.createRevisionLabel(),
+          palette: 'green',
+          disabled: this.loading() || this.isAnyActionPending(),
+          compactOnMobile: true
+        }
+      ],
+      toolbarControls: [
+        {
+          kind: 'menu',
+          id: 'help-language',
+          align: 'end',
+          menuKind: 'inline',
+          model: this.languageMenuModel(),
+          panelAlign: 'end'
+        }
+      ],
+      onClose: () => this.close(),
+      onAction: event => this.onHelpEditorPopupAction(event),
+      onMenuSelect: event => void this.onHelpEditorPopupMenuSelect(event)
+    };
+  }
+
   protected documentMenuModel(): AppMenuModel<HelpEditorDocumentMenuItemId, HelpEditorDocumentMenuContext> {
     const disabled = this.loading() || this.isAnyActionPending();
     return {
@@ -206,6 +259,7 @@ export class AdminHelpEditorPopupComponent {
               kind: 'select-trigger',
               label: this.uiDocumentLabel(),
               icon: this.documentIcon(this.documentKind),
+              palette: this.documentPalette(this.documentKind),
               disabled,
               ariaLabel: this.uiText('Select content type'),
               items: [
@@ -217,6 +271,7 @@ export class AdminHelpEditorPopupComponent {
                   kind: 'branch',
                   label: this.uiText('Explanations'),
                   icon: 'tips_and_updates',
+                  palette: 'violet',
                   active: this.documentKind === 'explanation',
                   disabled,
                   items: this.explainableSurfaces().map(surface => this.explanationMenuSurfaceItem(surface, disabled)),
@@ -248,13 +303,15 @@ export class AdminHelpEditorPopupComponent {
               id: 'language-menu',
               kind: 'select-trigger',
               label: this.languageMenuItemLabel(this.selectedContentLang),
-              palette: 'success',
+              palette: this.languagePalette(this.selectedContentLang),
               disabled,
               ariaLabel: 'Content language',
               items: this.contentLanguages().map(language => ({
                 id: `language:${this.normalizeContentLang(language.lang)}`,
                 kind: 'radio',
                 label: this.languageMenuItemLabel(language.lang),
+                palette: this.languagePalette(language.lang),
+                surface: 'tinted',
                 checked: this.normalizeContentLang(language.lang) === this.selectedContentLang,
                 disabled,
                 context: {
@@ -416,34 +473,32 @@ export class AdminHelpEditorPopupComponent {
     }
   }
 
-  protected async onDocumentMenuSelect(
-    event: AppMenuItemSelectEvent<HelpEditorDocumentMenuItemId, HelpEditorDocumentMenuContext>
-  ): Promise<void> {
-    const context = event.context;
-    if (!context) {
-      return;
-    }
-    if (context.action === 'select-document' && context.documentKind) {
-      await this.selectDocumentKind(context.documentKind, event.sourceEvent);
-      return;
-    }
-    if (context.action === 'select-explanation' && context.surface) {
-      await this.selectExplanationSurface(context.surface, event.sourceEvent);
-      return;
-    }
-    if (context.action === 'create-explanation') {
-      await this.createExplanationItem(event.sourceEvent);
+  private onHelpEditorPopupAction(event: PopupActionEvent): void {
+    if (event.action.id === 'help-new-revision') {
+      this.startNewRevision(event.sourceEvent);
     }
   }
 
-  protected async onLanguageMenuSelect(
-    event: AppMenuItemSelectEvent<HelpEditorLanguageMenuItemId, HelpEditorLanguageMenuContext>
-  ): Promise<void> {
-    const context = event.context;
-    if (context?.action !== 'select-language') {
+  private async onHelpEditorPopupMenuSelect(event: PopupMenuSelectEvent<HelpEditorPopupMenuContext>): Promise<void> {
+    const context = event.itemSelect.context;
+    if (!context) {
       return;
     }
-    await this.selectContentLanguage(context.lang, event.sourceEvent);
+    if (context.action === 'select-language') {
+      await this.selectContentLanguage(context.lang, event.itemSelect.sourceEvent);
+      return;
+    }
+    if (context.action === 'select-document' && context.documentKind) {
+      await this.selectDocumentKind(context.documentKind, event.itemSelect.sourceEvent);
+      return;
+    }
+    if (context.action === 'select-explanation' && context.surface) {
+      await this.selectExplanationSurface(context.surface, event.itemSelect.sourceEvent);
+      return;
+    }
+    if (context.action === 'create-explanation') {
+      await this.createExplanationItem(event.itemSelect.sourceEvent);
+    }
   }
 
   private documentMenuKindItem(
@@ -455,6 +510,8 @@ export class AdminHelpEditorPopupComponent {
       kind: 'radio',
       label: this.uiText(this.documentMenuKindLabel(kind)),
       icon: this.documentIcon(kind),
+      palette: this.documentPalette(kind),
+      surface: 'tinted',
       checked: this.documentKind === kind,
       disabled,
       context: {
@@ -474,6 +531,8 @@ export class AdminHelpEditorPopupComponent {
       label: this.explanationMenuItemLabel(surface),
       description: `${surface.label} · ${this.explanationMenuItemMeta(surface)}`,
       icon: surface.icon,
+      palette: 'violet',
+      surface: 'tinted',
       checked: this.documentKind === 'explanation' && this.selectedExplanationContextKey === surface.key,
       disabled,
       context: {
@@ -1136,7 +1195,14 @@ export class AdminHelpEditorPopupComponent {
   }
 
   protected editorTitle(): string {
-    return this.uiText(`${this.documentLabel()} editor`);
+    return this.uiText('Tartalomszerkesztő');
+  }
+
+  protected activeRevisionSubtitle(): string {
+    const active = this.activeRevision();
+    return active
+      ? this.activeRevisionLabel(active.version)
+      : this.noActiveRevisionLabel();
   }
 
   protected uiDocumentLabel(): string {
@@ -1218,6 +1284,23 @@ export class AdminHelpEditorPopupComponent {
 
   protected uiText(source: string): string {
     return this.i18n.translate(source);
+  }
+
+  private documentPalette(kind: HelpCenterDocumentKind): AppMenuPalette {
+    switch (kind) {
+      case 'privacy':
+        return 'teal';
+      case 'terms':
+        return 'slate';
+      case 'explanation':
+        return 'violet';
+      default:
+        return 'blue';
+    }
+  }
+
+  private languagePalette(lang: string): AppMenuPalette {
+    return this.normalizeContentLang(lang) === 'hu' ? 'green' : 'blue';
   }
 
   protected defaultDescription(): string {

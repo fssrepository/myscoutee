@@ -1,51 +1,6 @@
 @if (admin.activePopup() === 'help-editor') {
-  <section class="app-popup">
-    <div class="app-popup-backdrop" (click)="close()"></div>
-    <div class="app-popup-panel popup-panel-admin popup-panel-help-editor">
-      <div class="popup-header">
-        <div class="popup-title">
-          <h2>{{ editorTitle() }}</h2>
-          <p class="popup-subtitle">
-            @if (activeRevision(); as active) {
-              <span class="help-editor-active-subtitle-main">{{ activeRevisionLabel(active.version) }}</span>
-              <span class="help-editor-active-subtitle-title" data-i18n-ignore>{{ active.title }}</span>
-            } @else {
-              {{ noActiveRevisionLabel() }}
-            }
-          </p>
-        </div>
-        <div class="help-editor-header-actions">
-          <app-menu
-            class="help-editor-document-menu-wrap"
-            kind="inline"
-            [model]="documentMenuModel()"
-            (itemSelect)="onDocumentMenuSelect($event)"
-          ></app-menu>
-          <button
-            type="button"
-            class="help-editor-icon-btn"
-            [disabled]="loading() || isAnyActionPending()"
-            (click)="startNewRevision($event)"
-            [attr.aria-label]="createRevisionLabel()"
-            title="Create empty revision"
-            >
-            <mat-icon>add</mat-icon>
-          </button>
-          <button type="button" class="popup-close" (click)="close()" aria-label="Close">
-            <mat-icon>close</mat-icon>
-          </button>
-        </div>
-        <div class="help-editor-language-row" aria-label="Content language" data-i18n-ignore>
-          <app-menu
-            class="help-editor-language-menu-wrap"
-            kind="inline"
-            [model]="languageMenuModel()"
-            (itemSelect)="onLanguageMenuSelect($event)"
-          ></app-menu>
-        </div>
-      </div>
-
-      <div class="popup-body help-editor-body">
+  <app-popup [model]="helpEditorPopupModel()">
+      <div class="help-editor-body">
         @if (loading()) {
           <div class="help-editor-state-card help-editor-loading-state" aria-busy="true">
             <app-indicator
@@ -479,7 +434,6 @@
           </section>
         }
       </div>
-    </div>
     @if (iconPickerSection(); as pickerSection) {
       <section class="help-editor-icon-modal" role="dialog" aria-modal="true" aria-label="Choose section icon">
         <div class="help-editor-icon-modal-backdrop" (click)="closeIconPicker($event)"></div>
@@ -612,5 +566,5 @@
         </div>
       </section>
     }
-  </section>
+  </app-popup>
 }

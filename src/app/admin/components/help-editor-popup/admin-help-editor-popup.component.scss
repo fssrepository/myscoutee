@@ -1,6 +1,5 @@
 @use '../../../shared/ui/styles' as ui;
 
-@include ui.popup-shell();
 @include ui.interactive-motion();
 @include ui.form-controls();
 
@@ -8,51 +7,12 @@
   display: contents;
 }
 
-.popup-panel-help-editor {
-  width: min(1080px, calc(100vw - 1.2rem));
-  height: calc(100vh - 1.2rem);
-  height: calc(100dvh - 1.2rem);
-}
-
-.help-editor-header-actions,
 .help-editor-form-actions,
 .help-editor-revision-actions,
 .help-editor-draft-actions {
   display: inline-flex;
   align-items: center;
   gap: 0.44rem;
-}
-
-.popup-panel-help-editor .popup-header {
-  flex-wrap: wrap;
-}
-
-.help-editor-language-row {
-  flex: 0 0 100%;
-  display: inline-flex;
-  align-items: center;
-  justify-content: flex-end;
-  gap: 0.34rem;
-  margin-top: 0.44rem;
-}
-
-.help-editor-language-menu-wrap {
-  position: relative;
-  z-index: 122;
-}
-
-.help-editor-active-subtitle-main,
-.help-editor-active-subtitle-title {
-  display: inline;
-}
-
-.help-editor-active-subtitle-title::before {
-  content: ' · ';
-}
-
-.help-editor-document-menu-wrap {
-  position: relative;
-  z-index: 132;
 }
 
 .help-editor-icon-btn,
@@ -110,7 +70,8 @@
   background: #f2fff7;
 }
 
-.popup-body.help-editor-body {
+.help-editor-body {
+  height: 100%;
   min-height: 0;
   display: flex;
   flex-direction: column;
@@ -1493,87 +1454,6 @@
 }
 
 @media (max-width: 760px) {
-  .popup-panel-help-editor {
-    width: calc(100vw - 0.8rem);
-    height: calc(100vh - 0.8rem);
-  }
-
-  .popup-panel-help-editor .popup-header {
-    display: block;
-    min-height: 7.6rem;
-    padding: 0.7rem 0.58rem 0.5rem;
-    box-sizing: border-box;
-  }
-
-  .popup-panel-help-editor .popup-header > .popup-title {
-    min-width: 0;
-    max-width: calc(100% - 10.6rem);
-    padding-right: 0;
-  }
-
-  .popup-panel-help-editor .help-editor-header-actions {
-    position: absolute;
-    top: 2.95rem;
-    right: 0.58rem;
-    display: inline-flex;
-    align-items: center;
-    justify-content: flex-end;
-    gap: 0.28rem;
-  }
-
-  .popup-panel-help-editor .help-editor-document-menu-wrap {
-    min-width: 0;
-  }
-
-  .popup-panel-help-editor .help-editor-header-actions > .help-editor-icon-btn {
-    width: 36px;
-    height: 36px;
-  }
-
-  .popup-panel-help-editor .help-editor-header-actions > .popup-close {
-    position: absolute;
-    top: -2.45rem;
-    right: 0;
-    z-index: 3;
-  }
-
-  .popup-panel-help-editor .help-editor-language-row {
-    position: absolute;
-    top: 5.38rem;
-    right: 0.58rem;
-    flex: 0 1 auto;
-    min-width: 0;
-    justify-content: end;
-    width: 160px;
-    margin-top: 0;
-  }
-
-  .popup-panel-help-editor .help-editor-language-menu-wrap {
-    width: 100%;
-    min-width: 0;
-  }
-
-  .popup-panel-help-editor .popup-close {
-    position: absolute;
-    top: 0.5rem;
-    right: 0.48rem;
-    z-index: 3;
-  }
-
-  .popup-subtitle {
-    display: grid;
-    gap: 0.06rem;
-  }
-
-  .help-editor-active-subtitle-main,
-  .help-editor-active-subtitle-title {
-    display: block;
-  }
-
-  .help-editor-active-subtitle-title::before {
-    content: '';
-  }
-
   .help-editor-draft-actions {
     grid-template-columns: 1fr;
     align-items: stretch;
