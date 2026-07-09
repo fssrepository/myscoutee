@@ -29,12 +29,14 @@
           ></app-event-basket-input>
           <app-pricing-editor-input class="event-pricing-field" [(ngModel)]="eventDetailDTO.pricing"
             [config]="eventPricingEditorConfig" [readOnly]="true" [disabled]="true"></app-pricing-editor-input>
-          <app-event-payment-input
-            [totalAmount]="checkoutBasketTotalAmount()"
-            [currency]="checkoutBasketCurrency()"
-            [tone]="checkoutPaymentTone()"
-            [paymentIntegrationEnabled]="checkoutPaymentIntegrationEnabled()"
-          ></app-event-payment-input>
+          @if (showCheckoutPaymentPanel()) {
+            <app-event-payment-input
+              [totalAmount]="checkoutBasketTotalAmount()"
+              [currency]="checkoutBasketCurrency()"
+              [tone]="checkoutPaymentTone()"
+              [paymentIntegrationEnabled]="checkoutPaymentIntegrationEnabled()"
+            ></app-event-payment-input>
+          }
         </div>
       </section>
       } @else {

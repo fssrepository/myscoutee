@@ -175,6 +175,7 @@ export class EventCheckoutPopupComponent {
       checkoutPhase: this.checkoutEditorPhase(),
       hideSubEventsPanel: true,
       hideSlotsPanel: true,
+      hidePaymentPanel: this.isReadOnlyCheckoutSummary(),
       loading: () => this.checkoutReviewBodyLoading(),
       showBasketPanel: true,
       showPricingPanel: true,

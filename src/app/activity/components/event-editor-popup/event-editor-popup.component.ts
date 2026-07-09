@@ -444,6 +444,10 @@ export class EventEditorPopupComponent implements OnInit, OnDestroy {
     return this.checkoutReviewMode() && this.eventEditorStore.presentation().checkoutPhase === 'payment';
   }
 
+  protected showCheckoutPaymentPanel(): boolean {
+    return this.checkoutPaymentPhase() && this.eventEditorStore.presentation().hidePaymentPanel !== true;
+  }
+
   protected eventEditorBodyLoading(): boolean {
     return this.isLoadingEventData()
       || this.resolvePresentationValue(this.eventEditorStore.presentation().loading, false) === true;

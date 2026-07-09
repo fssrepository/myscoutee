@@ -37,6 +37,7 @@ export interface EventEditorPresentationOptions {
   loading?: EventEditorPresentationValue<boolean | null | undefined> | null;
   hideSubEventsPanel?: boolean | null;
   hideSlotsPanel?: boolean | null;
+  hidePaymentPanel?: boolean | null;
   showBasketPanel?: EventEditorPresentationValue<boolean | null | undefined> | null;
   showPricingPanel?: EventEditorPresentationValue<boolean | null | undefined> | null;
   basketTone?: EventEditorPresentationValue<EventEditorCheckoutSurfaceTone | null | undefined> | null;
@@ -182,6 +183,7 @@ export class EventEditorPopupStore {
       loading: presentation?.loading ?? null,
       hideSubEventsPanel: presentation?.hideSubEventsPanel === true,
       hideSlotsPanel: presentation?.hideSlotsPanel === true,
+      hidePaymentPanel: presentation?.hidePaymentPanel === true,
       showBasketPanel: presentation?.showBasketPanel ?? null,
       showPricingPanel: presentation?.showPricingPanel ?? null,
       basketTone: presentation?.basketTone ?? null,
