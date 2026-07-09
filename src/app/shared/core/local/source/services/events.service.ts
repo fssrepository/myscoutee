@@ -893,7 +893,7 @@ export class LocalEventsService extends LocalRouteDelayService implements IEvent
       acceptedMembers,
       pendingMembers,
       capacityTotal,
-      full: capacityTotal > 0 && acceptedMembers >= capacityTotal,
+      full: record.full === true || (capacityTotal > 0 && acceptedMembers >= capacityTotal),
       paymentSessionId: null
     };
   }

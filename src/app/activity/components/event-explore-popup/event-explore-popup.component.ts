@@ -1647,6 +1647,11 @@ export class EventExplorePopupComponent {
       this.checkoutDraftClearSaveSourceIds.delete(sync.id);
       const existing = currentItems[currentIndex];
       if (existing) {
+        if (dto.full === true) {
+          this.removeVisibleEventExploreRecord(existing);
+          this.cdr.markForCheck();
+          return;
+        }
         const nextEndIso = dto.endAtIso ?? dto.startAtIso;
         const acceptedMembers = Number.isFinite(Number(dto.acceptedMembers))
           ? Math.max(0, Math.trunc(Number(dto.acceptedMembers)))
@@ -1672,6 +1677,7 @@ export class EventExplorePopupComponent {
             acceptedMembers,
             dto.capacityTotal ?? existing.capacityTotal
           ),
+          full: dto.full === true,
           eventType: dto.eventType ?? existing.eventType,
           status: dto.status ?? existing.status
         };
@@ -2107,6 +2113,10 @@ export class EventExplorePopupComponent {
     const currentRecord = currentItems[currentIndex];
     if (!currentRecord) {
       return false;
+    }
+    if (sync.full === true) {
+      this.removeVisibleEventExploreRecord(currentRecord);
+      return true;
     }
     const acceptedMemberDelta = Number.isFinite(Number(sync.acceptedMemberDelta))
       ? Math.trunc(Number(sync.acceptedMemberDelta))

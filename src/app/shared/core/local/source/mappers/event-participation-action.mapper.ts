@@ -31,7 +31,7 @@ export class LocalEventParticipationActionMapper {
       acceptedMembers,
       pendingMembers,
       capacityTotal,
-      full: capacityTotal > 0 && acceptedMembers >= capacityTotal,
+      full: record.full === true || (capacityTotal > 0 && acceptedMembers >= capacityTotal),
       paymentSessionId: options.paymentSessionId?.trim() || null
     };
   }

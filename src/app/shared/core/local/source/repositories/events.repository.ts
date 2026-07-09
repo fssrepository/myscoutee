@@ -493,12 +493,16 @@ export class LocalEventsRepository {
 
     for (const id of table.ids) {
       const record = table.byId[id];
-      if (!record || this.isGeneratedSlotRecord(record) || !this.shouldIncludeExploreRecord(record, normalizedUserId)) {
+      if (!record || this.isGeneratedSlotRecord(record)) {
         continue;
       }
-      const existing = byEventId.get(record.id);
-      if (!existing || this.shouldPreferExploreRecord(record, existing)) {
-        byEventId.set(record.id, this.withResolvedSlotContext(record, table));
+      const resolvedRecord = this.withResolvedSlotContext(record, table);
+      if (!this.shouldIncludeExploreRecord(resolvedRecord, normalizedUserId)) {
+        continue;
+      }
+      const existing = byEventId.get(resolvedRecord.id);
+      if (!existing || this.shouldPreferExploreRecord(resolvedRecord, existing)) {
+        byEventId.set(resolvedRecord.id, resolvedRecord);
       }
     }
 
@@ -1655,7 +1659,8 @@ export class LocalEventsRepository {
           pendingMemberUserIds,
           invitedMemberUserIds,
           pendingRequestMemberUserIds,
-          capacityTotal: Math.max(acceptedMemberUserIds.length, current.capacityTotal)
+          capacityTotal: Math.max(acceptedMemberUserIds.length, current.capacityTotal),
+          full: this.directRecordFull(acceptedMemberUserIds.length, Math.max(acceptedMemberUserIds.length, current.capacityTotal))
         };
       }
 
@@ -1747,7 +1752,8 @@ export class LocalEventsRepository {
           pendingMemberUserIds,
           invitedMemberUserIds,
           pendingRequestMemberUserIds,
-          capacityTotal: Math.max(acceptedMemberUserIds.length, current.capacityTotal)
+          capacityTotal: Math.max(acceptedMemberUserIds.length, current.capacityTotal),
+          full: this.directRecordFull(acceptedMemberUserIds.length, Math.max(acceptedMemberUserIds.length, current.capacityTotal))
         };
       }
 
@@ -2406,7 +2412,32 @@ export class LocalEventsRepository {
   }
 
   private exploreHasOpenSpots(record: ActivityEventRecord): boolean {
-    return record.capacityTotal > record.acceptedMembers;
+    return !this.isFullRecord(record);
+  }
+
+  private isFullRecord(record: ActivityEventRecord): boolean {
+    if (record.full === true) {
+      return true;
+    }
+    if (this.isSlotParentRecord(record)) {
+      return this.slotParentFull(record.upcomingSlots ?? []);
+    }
+    return this.directRecordFull(record.acceptedMembers, record.capacityTotal);
+  }
+
+  private slotParentFull(slots: readonly ContractTypes.EventSlotOccurrenceDTO[]): boolean {
+    return slots.length === 0 || slots.every(slot => this.slotOccurrenceFull(slot));
+  }
+
+  private slotOccurrenceFull(slot: ContractTypes.EventSlotOccurrenceDTO): boolean {
+    const capacityTotal = Math.max(0, Math.trunc(Number(slot.capacityTotal) || 0));
+    return capacityTotal > 0 && Math.max(0, Math.trunc(Number(slot.acceptedMembers) || 0)) >= capacityTotal;
+  }
+
+  private directRecordFull(acceptedMembers: unknown, capacityTotal: unknown): boolean {
+    const normalizedCapacityTotal = Math.max(0, Math.trunc(Number(capacityTotal) || 0));
+    return normalizedCapacityTotal > 0
+      && Math.max(0, Math.trunc(Number(acceptedMembers) || 0)) >= normalizedCapacityTotal;
   }
 
   private normalizeExploreTopic(value: string | null | undefined): string {
@@ -2439,6 +2470,9 @@ export class LocalEventsRepository {
       return false;
     }
     if (!this.isPublishedStatus(record.status)) {
+      return false;
+    }
+    if (this.isFullRecord(record)) {
       return false;
     }
     if (record.creatorUserId === activeUserId) {
@@ -2518,7 +2552,7 @@ export class LocalEventsRepository {
     if (!record) {
       return null;
     }
-    return {
+    const normalized = {
       ...record,
       acceptedMembers: this.normalizeCount(record.acceptedMembers) ?? 0,
       pendingMembers: this.normalizeCount(record.pendingMembers) ?? 0,
@@ -2535,6 +2569,10 @@ export class LocalEventsRepository {
       subEventsEnabled: record.subEventsEnabled !== false,
       subEventDefinitions: ActivityEventDetailDTO.normalizeSubEventDefinitions(record.subEventDefinitions ?? []),
       subEvents: this.cloneSubEvents(record.subEvents)
+    };
+    return {
+      ...normalized,
+      full: this.isFullRecord(normalized)
     };
   }
 
@@ -3652,6 +3690,7 @@ export class LocalEventsRepository {
           capacityMin: parent.capacityMin,
           capacityMax: parent.capacityMax,
           capacityTotal: slotMembers.capacityTotal,
+          full: this.directRecordFull(slotMembers.acceptedMembers, slotMembers.capacityTotal),
           autoInviter: parent.autoInviter,
           frequency: parent.frequency,
           ticketing: parent.ticketing,
@@ -3739,6 +3778,7 @@ export class LocalEventsRepository {
         capacityMin: parent.capacityMin,
         capacityMax: parent.capacityMax,
         capacityTotal: slotMembers.capacityTotal,
+        full: this.directRecordFull(slotMembers.acceptedMembers, slotMembers.capacityTotal),
         autoInviter: parent.autoInviter,
         frequency: parent.frequency,
         ticketing: parent.ticketing,
@@ -3775,14 +3815,16 @@ export class LocalEventsRepository {
       return {
         ...record,
         nextSlot: null,
-        upcomingSlots: []
+        upcomingSlots: [],
+        full: this.directRecordFull(record.acceptedMembers, record.capacityTotal)
       };
     }
     const upcomingSlots = this.resolveUpcomingSlotOccurrences(record, table);
     return {
       ...record,
       nextSlot: upcomingSlots[0] ?? null,
-      upcomingSlots
+      upcomingSlots,
+      full: this.slotParentFull(upcomingSlots)
     };
   }
 

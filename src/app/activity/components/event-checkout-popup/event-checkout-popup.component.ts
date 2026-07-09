@@ -1376,6 +1376,9 @@ export class EventCheckoutPopupComponent {
     if (!dialog) {
       return 'Continue';
     }
+    if (this.checkoutTargetUnavailable()) {
+      return 'Unavailable';
+    }
     if (this.checkoutUpdateStepActive()) {
       return 'Update';
     }
@@ -1477,6 +1480,9 @@ export class EventCheckoutPopupComponent {
   }
 
   private checkoutConfirmPalette(): AppMenuPalette {
+    if (this.checkoutTargetUnavailable()) {
+      return 'neutral';
+    }
     if (this.checkoutUpdateStepActive()) {
       return 'orange';
     }
@@ -1843,6 +1849,9 @@ export class EventCheckoutPopupComponent {
     if (this.isUnchangedPendingCheckout()) {
       return false;
     }
+    if (this.checkoutTargetUnavailable()) {
+      return false;
+    }
     if (this.requiresSlotSelection() && this.checkoutBasketItems().length === 0) {
       return false;
     }
@@ -2039,11 +2048,16 @@ export class EventCheckoutPopupComponent {
     if (acceptedMembers == null || pendingMembers == null || capacityTotal == null) {
       return;
     }
+    const full = matchingResult?.full === true
+      || record?.full === true
+      || (Math.max(0, Math.trunc(Number(capacityTotal) || 0)) > 0
+        && Math.max(0, Math.trunc(Number(acceptedMembers) || 0)) >= Math.max(0, Math.trunc(Number(capacityTotal) || 0)));
     this.activityStore.emitActivityMembersSync({
       id: normalizedSourceId,
       acceptedMembers,
       pendingMembers,
       capacityTotal,
+      ...(full ? { full: true } : {}),
       ...(viewerMembershipRemoved ? { viewerMembershipRemoved: true } : {}),
       ...(memberDelta ?? {})
     });
@@ -2124,6 +2138,10 @@ export class EventCheckoutPopupComponent {
     event?.stopPropagation();
     const dialog = this.dialog();
     if (!dialog || !this.canContinue()) {
+      return;
+    }
+    if (this.checkoutTargetUnavailable()) {
+      this.errorMessage = 'This place is no longer available.';
       return;
     }
     const pendingActionReason = this.checkoutActionPendingReason();
@@ -3067,8 +3085,27 @@ export class EventCheckoutPopupComponent {
   }
 
   private isRecordFull(record: ActivityEventRecord): boolean {
-    return Math.max(0, Math.trunc(Number(record.capacityTotal) || 0)) > 0
+    return record.full === true || Math.max(0, Math.trunc(Number(record.capacityTotal) || 0)) > 0
       && Math.max(0, Math.trunc(Number(record.acceptedMembers) || 0)) >= Math.max(0, Math.trunc(Number(record.capacityTotal) || 0));
+  }
+
+  private checkoutTargetUnavailable(): boolean {
+    const dialog = this.dialog();
+    if (!dialog || this.isWaitingListSelection()) {
+      return false;
+    }
+    const targetSourceId = this.selectedSlotSourceId?.trim() || dialog.record.id;
+    const knownRecord = targetSourceId
+      ? this.eventsService.peekKnownRecordById(dialog.userId, targetSourceId)
+      : null;
+    if (knownRecord && this.isRecordFull(knownRecord)) {
+      return true;
+    }
+    const slot = this.selectedSlot();
+    if (slot && this.isSlotFull(slot)) {
+      return true;
+    }
+    return !this.requiresSlotSelection() && this.isRecordFull(dialog.record);
   }
 
   private isSlotFull(slot: ContractTypes.EventSlotOccurrenceDTO): boolean {

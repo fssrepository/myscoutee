@@ -1296,6 +1296,10 @@ export class HttpEventsService implements IEventsService {
         capacityMin: record.capacityMin ?? null,
         capacityMax: record.capacityMax ?? null,
         capacityTotal: Math.max(0, Math.trunc(Number(record.capacityTotal) || 0)),
+        full: record.full === true || (
+          Math.max(0, Math.trunc(Number(record.capacityTotal) || 0)) > 0
+          && Math.max(0, Math.trunc(Number(record.acceptedMembers) || 0)) >= Math.max(0, Math.trunc(Number(record.capacityTotal) || 0))
+        ),
         autoInviter: record.autoInviter === true,
         frequency: record.frequency ?? '',
         ticketing: record.ticketing === true,
@@ -1336,6 +1340,10 @@ export class HttpEventsService implements IEventsService {
     return items.map(item => ({
       ...item,
       adminIds: [...(item.adminIds ?? [])],
+      full: item.full === true || (
+        Math.max(0, Math.trunc(Number(item.capacityTotal) || 0)) > 0
+        && Math.max(0, Math.trunc(Number(item.acceptedMembers) || 0)) >= Math.max(0, Math.trunc(Number(item.capacityTotal) || 0))
+      ),
       acceptedMemberUserIds: [...(item.acceptedMemberUserIds ?? [])],
       pendingMemberUserIds: [...(item.pendingMemberUserIds ?? [])],
       invitedMemberUserIds: [...(item.invitedMemberUserIds ?? [])],

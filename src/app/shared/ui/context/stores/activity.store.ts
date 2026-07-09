@@ -74,6 +74,7 @@ export interface ActivityMembersSyncState {
   acceptedMembers: number;
   pendingMembers: number;
   capacityTotal: number;
+  full?: boolean;
   acceptedMemberDelta?: number;
   pendingMemberDelta?: number;
   viewerMembershipRemoved?: boolean;
@@ -367,6 +368,7 @@ export class ActivityStore {
       ),
       ...(acceptedMemberDelta !== null ? { acceptedMemberDelta } : {}),
       ...(pendingMemberDelta !== null ? { pendingMemberDelta } : {}),
+      ...(payload.full === true ? { full: true } : {}),
       ...(payload.viewerMembershipRemoved === true ? { viewerMembershipRemoved: true } : {})
     });
   }

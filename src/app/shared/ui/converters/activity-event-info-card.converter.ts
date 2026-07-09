@@ -176,8 +176,7 @@ export class ActivityEventInfoCardConverter {
 
   private static isFull(dto: ActivityEventDTO): boolean {
     return this.statusCode(dto.status) === 'A'
-      && dto.capacityTotal > 0
-      && dto.acceptedMembers >= dto.capacityTotal;
+      && (dto.full === true || (dto.capacityTotal > 0 && dto.acceptedMembers >= dto.capacityTotal));
   }
 
   private static capacityLabel(dto: ActivityEventDTO): string {

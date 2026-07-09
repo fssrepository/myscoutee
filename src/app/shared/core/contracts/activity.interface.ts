@@ -241,6 +241,7 @@ export interface ActivityEventRecord {
   capacityMin: number | null;
   capacityMax: number | null;
   capacityTotal: number;
+  full?: boolean;
   autoInviter?: boolean;
   frequency?: string;
   ticketing: boolean;
@@ -424,6 +425,7 @@ export interface ActivityEventDTO {
   imageUrl: string;
   location: string;
   capacityTotal: number;
+  full?: boolean;
   capacityMin?: number | null;
   capacityMax?: number | null;
   eventType?: EventContracts.EventRecordKind;
@@ -523,6 +525,7 @@ export class ActivityEventDetailDTO {
   capacityMin: number | null = 0;
   capacityMax: number | null = 0;
   capacityTotal = 0;
+  full = false;
   autoInviter = false;
   frequency = 'One-time';
   ticketing = false;
@@ -597,6 +600,7 @@ export class ActivityEventDetailDTO {
     this.capacityMin = update.capacityMin ?? this.capacityMin;
     this.capacityMax = update.capacityMax ?? this.capacityMax;
     this.capacityTotal = ActivityEventDetailDTO.nonNegativeInteger(update.capacityTotal ?? this.capacityTotal);
+    this.full = update.full === undefined ? this.full : update.full === true;
     this.autoInviter = update.autoInviter ?? this.autoInviter;
     this.frequency = update.frequency ?? this.frequency;
     this.ticketing = update.ticketing ?? this.ticketing;
