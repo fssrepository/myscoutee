@@ -244,6 +244,7 @@ export class HomeComponent implements OnDestroy {
   private gameStackPaginating = false;
   private gameStackExhausted = false;
   private homeSmartListQueryKey = '';
+  private homeSmartListRefreshRevision = 0;
   private unregisterExplanationContext: (() => void) | null = null;
   private inFlightServiceCardStackReloadKey: string | null = null;
   private queuedServiceCardStackReloadKey: string | null = null;
@@ -257,6 +258,7 @@ export class HomeComponent implements OnDestroy {
   private readonly awaitingUserBootstrapRef = signal(false);
   private awaitingUserByIdLoadingSeen = false;
   private lastHandledActiveUserId = '';
+  private lastHandledProfileSavedRevision = 0;
 
   @ViewChild('homeSmartList')
   private homeSmartList?: SmartListComponent<HomeSmartListRow, HomeSmartListFilters>;
@@ -322,6 +324,8 @@ export class HomeComponent implements OnDestroy {
       this.homeSmartListQueryReady = true;
     }
     const activeUserIdSignal = this.userProfileStore.activeUserId;
+    const profileSavedSignal = this.userProfileStore.profileSaved;
+    this.lastHandledProfileSavedRevision = profileSavedSignal()?.revision ?? 0;
     const userByIdLoadState = this.runtimeStore.selectLoadingState(USER_BY_ID_LOAD_CONTEXT_KEY);
     effect(() => {
       const targetUserId = activeUserIdSignal().trim();
@@ -330,6 +334,14 @@ export class HomeComponent implements OnDestroy {
       }
       this.lastHandledActiveUserId = targetUserId;
       this.handleActiveUserChanged(targetUserId);
+    });
+    effect(() => {
+      const profileSaved = profileSavedSignal();
+      if (!profileSaved || profileSaved.revision === this.lastHandledProfileSavedRevision) {
+        return;
+      }
+      this.lastHandledProfileSavedRevision = profileSaved.revision;
+      this.reloadHomeSmartListAfterProfileSave();
     });
     effect(() => {
       if (!this.awaitingUserBootstrapRef()) {
@@ -1392,6 +1404,26 @@ export class HomeComponent implements OnDestroy {
     this.gameInitialCardsLoadPending = true;
     this.awaitingUserBootstrapRef.set(true);
     this.awaitingUserByIdLoadingSeen = false;
+    this.cdr.markForCheck();
+  }
+
+  private reloadHomeSmartListAfterProfileSave(): void {
+    if (!this.activeUserId) {
+      return;
+    }
+    this.homeSmartListRefreshRevision += 1;
+    this.resetServiceCardState();
+    this.cardIndex = 0;
+    this.resetCandidateImageState();
+    this.resetGameStackPaginationState(false);
+    this.syncHomeSmartListQuery();
+    this.homeSmartListQueryReady = true;
+    this.gameInitialCardsLoadPending = true;
+    if (this.homeSmartList) {
+      this.homeSmartList.reload();
+    } else {
+      void this.reloadServiceCardStack();
+    }
     this.cdr.markForCheck();
   }
 
@@ -2493,7 +2525,7 @@ export class HomeComponent implements OnDestroy {
   }
 
   private serviceCardStackReloadKey(): string {
-    return this.gameStackPaginationStateKey();
+    return `${this.gameStackPaginationStateKey()}|${this.homeSmartListRefreshRevision}`;
   }
 
   private gameStackPageSizeForCurrentMode(): number {
