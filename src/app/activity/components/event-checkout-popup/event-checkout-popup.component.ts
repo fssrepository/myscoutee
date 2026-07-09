@@ -178,7 +178,7 @@ export class EventCheckoutPopupComponent {
       hidePaymentPanel: this.isReadOnlyCheckoutSummary(),
       loading: () => this.checkoutReviewBodyLoading(),
       showBasketPanel: true,
-      showPricingPanel: true,
+      showPricingPanel: () => this.showCheckoutPricingPanel(),
       basketTone: () => this.checkoutBasketSurfaceTone(),
       paymentTone: () => this.checkoutPaymentSurfaceTone(),
       basketItems: () => this.checkoutBasketPresentationItems(),
@@ -817,6 +817,36 @@ export class EventCheckoutPopupComponent {
 
   private checkoutBasketPricingSummaryRows(): ActivityContracts.EventCheckoutPricingSummaryRow[] {
     return (this.checkoutBasketSnapshot()?.pricingSummaryRows ?? []).map(row => ({ ...row }));
+  }
+
+  private showCheckoutPricingPanel(): boolean {
+    const dialog = this.dialog();
+    if (!dialog) {
+      return false;
+    }
+    return this.checkoutRecordPricingEnabled(dialog.record) || this.checkoutBasketHasPayableItems();
+  }
+
+  private checkoutRecordPricingEnabled(record: ActivityEventRecord): boolean {
+    const slotCatalog = PricingBuilder.slotCatalogFromEventSlotTemplates(record.slotTemplates ?? []);
+    return PricingBuilder.compactPricingConfig(record.pricing, {
+      context: 'event',
+      slotCatalog,
+      allowSlotFeatures: slotCatalog.length > 0
+    }).enabled === true;
+  }
+
+  private checkoutBasketHasPayableItems(): boolean {
+    const basket = this.checkoutBasketSnapshot();
+    if (Number(basket?.totalAmount) > 0) {
+      return true;
+    }
+    if (this.checkoutBasketItems().some(item =>
+      (Number(item.amount) || 0) * Math.max(1, Math.trunc(Number(item.quantity) || 1)) > 0
+    )) {
+      return true;
+    }
+    return this.checkoutBasketPricingSummaryRows().some(row => Number(row.amount) > 0);
   }
 
   private checkoutBasketAddDisabled(): boolean {

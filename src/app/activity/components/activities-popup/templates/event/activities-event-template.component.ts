@@ -631,6 +631,63 @@ export class ActivitiesEventsController {
     if (!joinResult || joinResult.membershipStatus === 'unchanged') {
       throw new Error('Unable to continue booking.');
     }
+    this.emitAcceptedCheckoutActivityEventSync(row, activeUserId, joinResult);
+  }
+
+  private emitAcceptedCheckoutActivityEventSync(
+    row: InfoCardData,
+    activeUserId: string,
+    result: ActivityContracts.EventParticipationActionResultDTO
+  ): void {
+    if (result.membershipStatus !== 'accepted') {
+      return;
+    }
+    const dto = this.activityEventDTOForRow(row);
+    if (!dto) {
+      return;
+    }
+    const acceptedMemberUserIds = this.uniqueUserIds([
+      ...(dto.acceptedMemberUserIds ?? []),
+      activeUserId
+    ]);
+    const pendingMemberUserIds = this.uniqueUserIds(dto.pendingMemberUserIds ?? [])
+      .filter(userId => userId !== activeUserId);
+    const invitedMemberUserIds = this.uniqueUserIds(dto.invitedMemberUserIds ?? [])
+      .filter(userId => userId !== activeUserId);
+    const pendingRequestMemberUserIds = this.uniqueUserIds(dto.pendingRequestMemberUserIds ?? [])
+      .filter(userId => userId !== activeUserId);
+    const acceptedMembers = Math.max(
+      this.nonNegativeInteger(result.acceptedMembers),
+      acceptedMemberUserIds.length
+    );
+    const pendingMembers = Math.max(
+      this.nonNegativeInteger(result.pendingMembers),
+      pendingMemberUserIds.length,
+      pendingRequestMemberUserIds.length
+    );
+    const capacityTotal = Math.max(
+      acceptedMembers,
+      this.nonNegativeInteger(result.capacityTotal),
+      this.nonNegativeInteger(dto.capacityTotal)
+    );
+    this.activitiesStore.emitActivityEventSync({
+      ...dto,
+      status: dto.status ?? 'A',
+      acceptedMembers,
+      pendingMembers,
+      capacityTotal,
+      full: result.full === true || (capacityTotal > 0 && acceptedMembers >= capacityTotal),
+      acceptedMemberUserIds,
+      pendingMemberUserIds,
+      invitedMemberUserIds,
+      pendingRequestMemberUserIds,
+      pendingReason: null,
+      checkoutResultState: 'succeeded'
+    });
+  }
+
+  private nonNegativeInteger(value: unknown): number {
+    return Math.max(0, Math.trunc(Number(value) || 0));
   }
 
   private activityEventMenuSubjectFromRow(row: InfoCardData): ActivityEventInfoCardMenuSubject {
@@ -1449,6 +1506,7 @@ export class ActivitiesEventsController {
     if (!joinResult || joinResult.membershipStatus === 'unchanged') {
       throw new Error('Unable to accept invitation.');
     }
+    this.emitAcceptedCheckoutActivityEventSync(row, activeUserId, joinResult);
     const resolvedDelta = this.acceptedInvitationCounterDeltaFromResult(joinResult) ?? counterDelta;
     this.removeInvitationItem(eventDetailDTO.id);
     this.activitiesSmartList?.removeVisibleItemByIdentity(this.activityRowIdentity(row));
