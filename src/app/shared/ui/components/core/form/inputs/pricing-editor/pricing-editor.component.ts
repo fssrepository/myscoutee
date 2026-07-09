@@ -28,6 +28,12 @@ import { PricingBuilder } from '../../../../../../core/base/builders';
 import type * as ContractTypes from '../../../../../../core/contracts';
 import { PricingSlotPanelComponent } from './pricing-slot-panel';
 import {
+  AppMenuComponent,
+  type AppMenuItem,
+  type AppMenuItemSelectEvent,
+  type AppMenuTrigger
+} from '../../../menu';
+import {
   FormFlowPopupStore,
   type FormFlowPricingEditorPopupActionRequest,
   type FormFlowPricingEditorPopupState
@@ -79,6 +85,12 @@ interface RuleScopePickerState {
   slotIds: string[];
 }
 
+interface RuleScopeMenuContext {
+  action: 'select-scope' | 'toggle-slot' | 'apply';
+  scope?: AppConstants.PricingRuleScope;
+  slotId?: string;
+}
+
 export type PricingEditorContext = 'event' | 'asset' | 'subevent';
 export type PricingEditorPresentation = 'inline' | 'popup-summary';
 export type PricingEditorSubtitleKey = 'none' | 'event-enabled' | 'event-disabled' | 'asset' | 'subevent';
@@ -119,6 +131,7 @@ interface ResolvedPricingEditorConfig {
     MatInputModule,
     MatNativeDateModule,
     MatSelectModule,
+    AppMenuComponent,
     PricingSlotPanelComponent
   ],
   templateUrl: './pricing-editor.component.html',
@@ -133,7 +146,6 @@ interface ResolvedPricingEditorConfig {
   ]
 })
 export class PricingEditorInputComponent implements OnChanges, DoCheck, OnDestroy, ControlValueAccessor {
-  private static readonly MOBILE_SCOPE_SHEET_BREAKPOINT_PX = 760;
   private static ownerSequence = 0;
 
   @Input() config: PricingEditorConfig = {};
@@ -172,7 +184,6 @@ export class PricingEditorInputComponent implements OnChanges, DoCheck, OnDestro
   private resolvedConfigSignature = this.buildResolvedConfigSignature(this.resolvedConfig);
   private idSequence = 0;
   private ruleScopePickerState: RuleScopePickerState | null = null;
-  private mobileScopeSheetViewport = this.resolveMobileScopeSheetViewport();
   private pricingValue: ContractTypes.PricingConfig | null | undefined = null;
   private pricingPopupDraft: ContractTypes.PricingConfig | null = null;
   private onModelChange: (value: ContractTypes.PricingConfig) => void = () => {};
@@ -889,42 +900,12 @@ export class PricingEditorInputComponent implements OnChanges, DoCheck, OnDestro
     this.emitPricing();
   }
 
-  protected toggleRuleScopePicker(
-    kind: 'demand' | 'time',
-    rule: PricingScopedRule,
-    event?: Event
-  ): void {
-    event?.stopPropagation();
-    if (this.readOnly) {
-      return;
-    }
-    if (this.isRuleScopePickerOpen(kind, rule)) {
-      this.closeRuleScopePicker();
-      return;
-    }
-    this.ruleScopePickerState = {
-      kind,
-      ruleId: rule.id,
-      appliesTo: rule.appliesTo,
-      slotIds: [...(rule.slotIds ?? [])]
-    };
-    this.cdr.markForCheck();
-  }
-
-  protected shouldUseMobileRuleScopeSheet(): boolean {
-    return this.mobileScopeSheetViewport;
-  }
-
-  protected showMobileRuleScopeSheet(): boolean {
-    return this.mobileScopeSheetViewport && !!this.ruleScopePickerState;
-  }
-
   protected isRuleScopePickerOpen(kind: 'demand' | 'time', rule: PricingScopedRule): boolean {
     return this.ruleScopePickerState?.kind === kind && this.ruleScopePickerState.ruleId === rule.id;
   }
 
-  protected currentRuleScopeSheetTitle(): string {
-    return this.ruleScopePickerState?.kind === 'time' ? 'Time Rule Slots' : 'Demand Rule Slots';
+  protected ruleScopeMenuTitle(kind: 'demand' | 'time'): string {
+    return kind === 'time' ? 'Time Rule Slots' : 'Demand Rule Slots';
   }
 
   protected ruleScopeButtonLabel(rule: PricingScopedRule): string {
@@ -940,12 +921,147 @@ export class PricingEditorInputComponent implements OnChanges, DoCheck, OnDestro
     return `${rule.slotIds.length} slots selected`;
   }
 
-  protected currentRuleScopeDraftMode(): AppConstants.PricingRuleScope {
-    return this.ruleScopePickerState?.appliesTo ?? 'all_slots';
+  protected ruleScopeMenuTrigger(kind: 'demand' | 'time', rule: PricingScopedRule): AppMenuTrigger {
+    return {
+      id: `${kind}-${rule.id}-scope`,
+      label: this.ruleScopeButtonLabel(rule),
+      icon: 'view_week',
+      trailingIcon: 'expand_more',
+      openTrailingIcon: 'expand_less',
+      palette: 'mint',
+      layout: 'field',
+      disabled: this.readOnly
+    };
   }
 
-  protected currentRuleScopeDraftSlotIds(): string[] {
-    return [...(this.ruleScopePickerState?.slotIds ?? [])];
+  protected ruleScopeMenuItems(
+    kind: 'demand' | 'time',
+    rule: PricingScopedRule
+  ): readonly AppMenuItem<string, RuleScopeMenuContext>[] {
+    const state = this.isRuleScopePickerOpen(kind, rule)
+      ? this.ruleScopePickerState
+      : {
+          kind,
+          ruleId: rule.id,
+          appliesTo: rule.appliesTo,
+          slotIds: [...(rule.slotIds ?? [])]
+        };
+    const selectedSlots = new Set(state?.slotIds ?? []);
+    const items: AppMenuItem<string, RuleScopeMenuContext>[] = [
+      {
+        id: `${kind}-${rule.id}-all-slots`,
+        label: 'All slots',
+        icon: 'view_week',
+        kind: 'radio',
+        palette: 'mint',
+        checked: state?.appliesTo === 'all_slots',
+        closeOnSelect: false,
+        context: {
+          action: 'select-scope',
+          scope: 'all_slots'
+        }
+      },
+      {
+        id: `${kind}-${rule.id}-specific-slots`,
+        label: 'Specific slots',
+        icon: 'view_list',
+        kind: 'radio',
+        palette: 'teal',
+        checked: state?.appliesTo === 'selected_slots',
+        disabled: this.resolvedConfig.slotCatalog.length === 0,
+        closeOnSelect: false,
+        context: {
+          action: 'select-scope',
+          scope: 'selected_slots'
+        }
+      }
+    ];
+    if (state?.appliesTo === 'selected_slots') {
+      items.push({
+        id: `${kind}-${rule.id}-slot-section`,
+        label: 'Slots',
+        kind: 'section'
+      });
+      items.push(...this.resolvedConfig.slotCatalog.map(slot => ({
+        id: `${kind}-${rule.id}-slot-${slot.id}`,
+        label: slot.label,
+        description: this.slotScopeWindowLabel(slot),
+        icon: 'event',
+        kind: 'checkbox' as const,
+        palette: 'blue' as const,
+        checked: selectedSlots.has(slot.id),
+        closeOnSelect: false,
+        context: {
+          action: 'toggle-slot' as const,
+          slotId: slot.id
+        }
+      })));
+    }
+    items.push(
+      {
+        id: `${kind}-${rule.id}-apply-divider`,
+        kind: 'divider'
+      },
+      {
+        id: `${kind}-${rule.id}-apply`,
+        label: 'Apply',
+        icon: 'done',
+        kind: 'action',
+        layout: 'action',
+        palette: 'green',
+        disabled: !state || (state.appliesTo === 'selected_slots' && state.slotIds.length === 0),
+        closeOnSelect: true,
+        context: {
+          action: 'apply'
+        }
+      }
+    );
+    return items;
+  }
+
+  protected onRuleScopeMenuOpenChange(
+    kind: 'demand' | 'time',
+    rule: PricingScopedRule,
+    open: boolean
+  ): void {
+    if (open) {
+      if (this.readOnly) {
+        return;
+      }
+      this.ruleScopePickerState = {
+        kind,
+        ruleId: rule.id,
+        appliesTo: rule.appliesTo,
+        slotIds: [...(rule.slotIds ?? [])]
+      };
+      this.cdr.markForCheck();
+      return;
+    }
+    if (this.isRuleScopePickerOpen(kind, rule)) {
+      this.closeRuleScopePicker();
+    }
+  }
+
+  protected onRuleScopeMenuSelect(event: AppMenuItemSelectEvent<string, RuleScopeMenuContext>): void {
+    const context = event.context;
+    if (!context) {
+      return;
+    }
+    if (context.action === 'select-scope' && context.scope) {
+      this.selectRuleScopeDraftMode(context.scope, event.sourceEvent);
+      return;
+    }
+    if (context.action === 'toggle-slot' && context.slotId) {
+      this.toggleRuleScopeDraftSlot(context.slotId, event.sourceEvent);
+      return;
+    }
+    if (context.action === 'apply') {
+      this.applyCurrentRuleScopeDraft(event.sourceEvent);
+    }
+  }
+
+  protected currentRuleScopeDraftMode(): AppConstants.PricingRuleScope {
+    return this.ruleScopePickerState?.appliesTo ?? 'all_slots';
   }
 
   protected selectRuleScopeDraftMode(scope: AppConstants.PricingRuleScope, event?: Event): void {
@@ -960,6 +1076,7 @@ export class PricingEditorInputComponent implements OnChanges, DoCheck, OnDestro
         ? []
         : (this.ruleScopePickerState.slotIds.length > 0 ? [...this.ruleScopePickerState.slotIds] : this.defaultDraftSlotIds())
     };
+    this.cdr.markForCheck();
   }
 
   protected toggleRuleScopeDraftSlot(slotId: string, event?: Event): void {
@@ -981,10 +1098,7 @@ export class PricingEditorInputComponent implements OnChanges, DoCheck, OnDestro
       ...this.ruleScopePickerState,
       slotIds: [...slotIds]
     };
-  }
-
-  protected isRuleScopeDraftSlotSelected(slotId: string): boolean {
-    return this.ruleScopePickerState?.slotIds.includes(`${slotId}`.trim()) ?? false;
+    this.cdr.markForCheck();
   }
 
   protected canApplyRuleScopeDraft(): boolean {
@@ -1021,21 +1135,6 @@ export class PricingEditorInputComponent implements OnChanges, DoCheck, OnDestro
       return `Starts ${start}`;
     }
     return `${start} - ${end}`;
-  }
-
-  @HostListener('window:resize')
-  protected onWindowResize(): void {
-    const nextViewport = this.resolveMobileScopeSheetViewport();
-    if (nextViewport === this.mobileScopeSheetViewport) {
-      return;
-    }
-    this.mobileScopeSheetViewport = nextViewport;
-    this.cdr.markForCheck();
-  }
-
-  @HostListener('document:click')
-  protected onDocumentClick(): void {
-    this.closeRuleScopePicker();
   }
 
   @HostListener('document:keydown.escape', ['$event'])
@@ -1531,11 +1630,6 @@ export class PricingEditorInputComponent implements OnChanges, DoCheck, OnDestro
   private defaultDraftSlotIds(): string[] {
     const firstSlotId = `${this.resolvedConfig.slotCatalog[0]?.id ?? ''}`.trim();
     return firstSlotId ? [firstSlotId] : [];
-  }
-
-  private resolveMobileScopeSheetViewport(): boolean {
-    return typeof window !== 'undefined'
-      && window.innerWidth <= PricingEditorInputComponent.MOBILE_SCOPE_SHEET_BREAKPOINT_PX;
   }
 
   private slotLabelById(slotId: string | null | undefined): string {

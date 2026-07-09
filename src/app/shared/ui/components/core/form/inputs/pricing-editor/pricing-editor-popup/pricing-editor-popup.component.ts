@@ -21,6 +21,7 @@ import {
   type PopupActionEvent,
   type PopupModel
 } from '../../../../popup';
+import { AppMenuComponent } from '../../../../menu';
 import {
   PricingEditorInputComponent,
   type PricingEditorConfig
@@ -38,6 +39,7 @@ import {
     MatInputModule,
     MatNativeDateModule,
     MatSelectModule,
+    AppMenuComponent,
     PopupComponent,
     PricingSlotPanelComponent
   ],
