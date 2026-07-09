@@ -228,7 +228,12 @@ export class LocalEventsService extends LocalRouteDelayService implements IEvent
       normalizedUserId
     );
     const allSlotDtos = allSlots
-      .map(slot => this.toCheckoutSlot(record, slot, slotReservations.get(slot.id) ?? 0, bookedSlotIds.has(slot.id)));
+      .map(slot => this.toCheckoutSlot(
+        record,
+        slot,
+        slotReservations.get(slot.id) ?? 0,
+        bookedSlotIds.has(slot.id)
+      ));
     const days = this.checkoutSlotDays(allSlotDtos);
     const allSlotsById = new Map(allSlotDtos.map(slot => [slot.id, slot]));
     const basketSlots = (checkoutBasket?.items ?? [])
@@ -898,6 +903,9 @@ export class LocalEventsService extends LocalRouteDelayService implements IEvent
     bookedByViewer = false
   ): EventCheckoutSlot {
     const pricing = this.resolveCheckoutSlotPricing(record, slot);
+    const displayPricing = bookedByViewer
+      ? this.checkoutSlotBasePricing(pricing)
+      : pricing;
     const capacityTotal = Math.max(0, Math.trunc(Number(slot.capacityTotal) || 0));
     const acceptedMembers = Math.max(0, Math.trunc(Number(slot.acceptedMembers) || 0));
     const pendingMembers = Math.max(0, Math.trunc(Number(slot.pendingMembers) || 0));
@@ -916,9 +924,23 @@ export class LocalEventsService extends LocalRouteDelayService implements IEvent
       pendingMembers,
       availableSlots: Math.max(0, capacityTotal - acceptedMembers - pendingMembers - activeReservations),
       bookedByViewer,
-      amount: pricing.amount,
-      currency: pricing.currency,
-      pricingSummaryRows: pricing.rows
+      amount: displayPricing.amount,
+      currency: displayPricing.currency,
+      pricingSummaryRows: displayPricing.rows
+    };
+  }
+
+  private checkoutSlotBasePricing(
+    pricing: { amount: number; currency: string; rows: EventCheckoutPricingSummaryRow[] }
+  ): { amount: number; currency: string; rows: EventCheckoutPricingSummaryRow[] } {
+    const baseRow = pricing.rows.find(row => `${row.key ?? ''}`.startsWith('base'));
+    const amount = baseRow?.amount == null
+      ? pricing.amount
+      : Math.max(0, Number(baseRow.amount) || 0);
+    return {
+      amount,
+      currency: pricing.currency || baseRow?.currency || 'USD',
+      rows: baseRow ? [baseRow] : pricing.rows
     };
   }
 
