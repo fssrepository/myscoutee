@@ -2472,9 +2472,6 @@ export class LocalEventsRepository {
     if (!this.isPublishedStatus(record.status)) {
       return false;
     }
-    if (this.isFullRecord(record)) {
-      return false;
-    }
     if (record.creatorUserId === activeUserId) {
       return false;
     }

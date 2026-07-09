@@ -1647,7 +1647,7 @@ export class EventExplorePopupComponent {
       this.checkoutDraftClearSaveSourceIds.delete(sync.id);
       const existing = currentItems[currentIndex];
       if (existing) {
-        if (dto.full === true) {
+        if (dto.full === true && this.eventExploreFilterHasRooms) {
           this.removeVisibleEventExploreRecord(existing);
           this.cdr.markForCheck();
           return;
@@ -1677,7 +1677,7 @@ export class EventExplorePopupComponent {
             acceptedMembers,
             dto.capacityTotal ?? existing.capacityTotal
           ),
-          full: dto.full === true,
+          full: dto.full ?? existing.full,
           eventType: dto.eventType ?? existing.eventType,
           status: dto.status ?? existing.status
         };
@@ -2114,7 +2114,7 @@ export class EventExplorePopupComponent {
     if (!currentRecord) {
       return false;
     }
-    if (sync.full === true) {
+    if (sync.full === true && this.eventExploreFilterHasRooms) {
       this.removeVisibleEventExploreRecord(currentRecord);
       return true;
     }
@@ -2130,7 +2130,8 @@ export class EventExplorePopupComponent {
       ...currentRecord,
       acceptedMembers: Math.max(0, Math.trunc(Number(currentRecord.acceptedMembers) || 0) + acceptedMemberDelta),
       pendingMembers: Math.max(0, Math.trunc(Number(currentRecord.pendingMembers) || 0) + pendingMemberDelta),
-      capacityTotal: currentRecord.capacityTotal
+      capacityTotal: currentRecord.capacityTotal,
+      full: sync.full === true ? true : currentRecord.full
     };
     this.eventExploreSmartList.replaceVisibleItems(currentItems, {
       total: this.eventExploreSmartList.cursorState().total
