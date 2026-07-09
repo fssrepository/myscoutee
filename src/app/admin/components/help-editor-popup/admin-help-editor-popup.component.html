@@ -163,16 +163,18 @@
                                   [class.is-privacy-optional]="documentKind === 'privacy' && section.optional"
                                   >
                                   <div class="help-editor-edit-section-head">
-                                    <button
-                                      type="button"
-                                      class="help-editor-icon-picker-trigger"
-                                      [class.is-active]="iconPickerSectionId === section.localId"
-                                      (click)="openIconPicker(section, $event)"
-                                      aria-label="Change section icon"
-                                      title="Change icon"
-                                      >
-                                      <mat-icon>{{ section.icon || defaultSectionIcon() }}</mat-icon>
-                                    </button>
+                                    <app-menu
+                                      class="help-editor-section-icon-menu"
+                                      kind="select"
+                                      title="Search Material icons"
+                                      [trigger]="sectionIconMenuTrigger(section)"
+                                      [model]="sectionIconMenuModel(section)"
+                                      [filterable]="true"
+                                      panelAlign="start"
+                                      panelMode="anchored"
+                                      [closeOnSelect]="true"
+                                      (itemSelect)="onSectionIconMenuSelect(section, $event)"
+                                    ></app-menu>
                                     <input
                                       class="help-editor-section-title-input"
                                       type="text"
@@ -433,67 +435,6 @@
           </section>
         }
       </div>
-    @if (iconPickerSection(); as pickerSection) {
-      <section class="help-editor-icon-modal" role="dialog" aria-modal="true" aria-label="Choose section icon">
-        <div class="help-editor-icon-modal-backdrop" (click)="closeIconPicker($event)"></div>
-        <div class="help-editor-icon-picker" (click)="$event.stopPropagation()">
-          <header class="help-editor-icon-picker-head">
-            <span class="help-editor-icon-picker-title">
-              <mat-icon>{{ pickerSection.icon || defaultSectionIcon() }}</mat-icon>
-              <strong>Section icon</strong>
-            </span>
-            <button type="button" class="help-editor-icon-picker-close" data-motion="none" (click)="closeIconPicker($event)" aria-label="Close icon picker">
-              <mat-icon>close</mat-icon>
-            </button>
-          </header>
-          <div class="help-editor-icon-picker-search">
-            <mat-icon>search</mat-icon>
-            <input
-              type="search"
-              name="iconSearchModal"
-              [ngModel]="iconPickerSearch"
-              (ngModelChange)="setIconPickerSearch($event)"
-              [ngModelOptions]="{ standalone: true }"
-              placeholder="Search Material icons"
-              autocomplete="off"
-            />
-          </div>
-          <div class="help-editor-icon-picker-section">
-            <span>{{ iconPickerActiveLabel }}</span>
-            <small>{{ iconPickerActiveCount }}</small>
-          </div>
-          <div class="help-editor-icon-grid">
-            @for (option of visibleIconOptions; track option.icon) {
-              <button
-                type="button"
-                data-motion="none"
-                [class.is-selected]="pickerSection.icon === option.icon"
-                (click)="selectIcon(pickerSection, option.icon, $event)"
-                [attr.aria-label]="'Use ' + option.label + ' icon'"
-                >
-                <mat-icon>{{ option.icon }}</mat-icon>
-              </button>
-            } @empty {
-              <span class="help-editor-icon-empty">No icons found</span>
-            }
-          </div>
-          <div class="help-editor-icon-picker-tabs" role="tablist" aria-label="Icon groups">
-            @for (group of iconPickerGroups; track group) {
-              <button
-                type="button"
-                data-motion="none"
-                [class.is-active]="iconPickerGroup === group"
-                [attr.aria-label]="group"
-                (click)="setIconPickerGroup(group, $event)"
-                >
-                <mat-icon>{{ iconPickerGroupIcon(group) }}</mat-icon>
-                <span>{{ group }}</span>
-              </button>
-            }
-          </div>
-        </div>
-      </section>
-    }
     @if (contextPickerOpen && draft; as editDraft) {
       <section class="mobile-profile-selector-sheet-wrap help-editor-context-sheet-wrap" role="dialog" aria-modal="true" aria-label="Choose canonical screen" (click)="$event.stopPropagation()">
         <div class="mobile-profile-selector-backdrop" (click)="closeContextPicker($event)"></div>

@@ -382,11 +382,11 @@
           </button>
           <button
             type="button"
-            [class.chat-tool-btn-open]="(quickReactionMessageId && quickReactionMessageId === message.id) || (emojiPickerMessageId && emojiPickerMessageId === message.id)"
+            [class.chat-tool-btn-open]="quickReactionMessageId && quickReactionMessageId === message.id"
             (click)="toggleQuickReactions(message, $event)"
             aria-label="React"
             >
-            <mat-icon>{{ (quickReactionMessageId && quickReactionMessageId === message.id) || (emojiPickerMessageId && emojiPickerMessageId === message.id) ? 'add_reaction' : 'mood' }}</mat-icon>
+            <mat-icon>{{ quickReactionMessageId && quickReactionMessageId === message.id ? 'add_reaction' : 'mood' }}</mat-icon>
           </button>
           <app-menu-trigger
             class="chat-message-action-trigger"
@@ -408,9 +408,18 @@
           @for (emoji of quickReactionEmojis; track emoji) {
             <button type="button" (click)="toggleReaction(message, emoji, $event)">{{ emoji }}</button>
           }
-          <button type="button" class="chat-quick-reaction-add" (click)="openEmojiPicker(message, $event)">
-            <mat-icon>add</mat-icon>
-          </button>
+          <app-menu
+            class="chat-emoji-menu"
+            kind="select"
+            title="Search emoji"
+            [trigger]="emojiPickerMenuTrigger()"
+            [model]="emojiPickerMenuModel()"
+            [filterable]="true"
+            panelAlign="auto"
+            panelMode="anchored"
+            [closeOnSelect]="true"
+            (itemSelect)="onEmojiPickerMenuSelect(message, $event)"
+          ></app-menu>
         </div>
       }
       @if (message.id && !message.deletedAtIso && visibleReadReceiptsByMessageId[message.id]; as visibleReaders) {
@@ -435,36 +444,6 @@
     </div>
   </article>
 </ng-template>
-
-@if (emojiPickerMessage(); as emojiMessage) {
-  <section class="chat-modal chat-emoji-modal">
-    <div class="chat-modal-backdrop" (click)="closeEmojiPicker($event)"></div>
-    <div class="chat-emoji-picker" (click)="$event.stopPropagation()">
-      <header class="chat-emoji-picker-header">
-        <input type="search" placeholder="Search emoji" [(ngModel)]="emojiPickerQuery" />
-        <button type="button" (click)="closeEmojiPicker($event)" aria-label="Close emoji picker"><mat-icon>close</mat-icon></button>
-      </header>
-      <div class="chat-emoji-picker-section">{{ activeEmojiPickerCategoryLabel() }}</div>
-      <div class="chat-emoji-grid">
-        @for (emoji of filteredEmojiPickerEmojis(); track emoji) {
-          <button type="button" (click)="toggleReaction(emojiMessage, emoji, $event)">{{ emoji }}</button>
-        }
-      </div>
-      <div class="chat-emoji-tabs">
-        @for (category of emojiPickerCategories; track category.key) {
-          <button
-            type="button"
-            [class.active]="emojiPickerCategory === category.key"
-            [attr.aria-label]="category.label"
-            (click)="emojiPickerCategory = category.key"
-            >
-            <mat-icon>{{ category.icon }}</mat-icon>
-          </button>
-        }
-      </div>
-    </div>
-  </section>
-}
 
 @if (reactionDetailsMessage(); as reactionMessage) {
   <section class="chat-modal">

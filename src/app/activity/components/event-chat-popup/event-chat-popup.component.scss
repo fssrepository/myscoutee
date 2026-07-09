@@ -871,10 +871,6 @@
   box-shadow: 0 18px 44px rgba(17, 24, 39, 0.16);
 }
 
-.chat-modal.chat-emoji-modal {
-  z-index: calc(var(--chat-shell-z-index, 2360) + 20);
-}
-
 .chat-message-tools {
   top: 0;
   left: 50%;
@@ -897,8 +893,7 @@
 }
 
 .chat-message-tools button,
-.chat-quick-reactions button,
-.chat-emoji-picker button {
+.chat-quick-reactions > button {
   border: 0;
   background: transparent;
   cursor: pointer;
@@ -948,7 +943,7 @@
   right: auto;
 }
 
-.chat-quick-reactions button {
+.chat-quick-reactions > button {
   width: 30px;
   height: 30px;
   border-radius: 50%;
@@ -957,8 +952,7 @@
 
 @media (hover: hover) and (pointer: fine) {
   .chat-message-tools button:hover,
-  .chat-quick-reactions button:hover,
-  .chat-emoji-picker button:hover {
+  .chat-quick-reactions > button:hover {
     background: #eef4ff;
   }
 }
@@ -1005,107 +999,6 @@
     background: #eef4ff;
     outline: none;
   }
-}
-
-.chat-emoji-picker {
-  position: relative;
-  left: auto;
-  top: auto;
-  bottom: auto;
-  z-index: 1;
-  width: min(360px, calc(100vw - 2rem));
-  max-height: min(72vh, 34rem);
-  padding: 0.55rem;
-  border: 1px solid rgba(33, 54, 82, 0.14);
-  border-radius: 14px;
-  transform: none;
-  background: rgba(255, 255, 255, 0.98);
-  box-shadow: 0 18px 44px rgba(17, 24, 39, 0.16);
-  overflow: hidden;
-}
-
-.chat-message.mine .chat-emoji-picker {
-  left: auto;
-  right: auto;
-}
-
-.chat-emoji-picker-header {
-  display: flex;
-  align-items: center;
-  gap: 0.35rem;
-}
-
-.chat-emoji-picker-header button {
-  width: 34px;
-  height: 34px;
-  border-radius: 50%;
-  color: #263852;
-  flex: 0 0 auto;
-}
-
-.chat-emoji-picker-header .mat-icon {
-  width: 18px;
-  height: 18px;
-  font-size: 18px;
-}
-
-.chat-emoji-picker input {
-  width: 100%;
-  border: 0;
-  border-radius: 999px;
-  padding: 0.55rem 0.72rem;
-  background: #eef1f5;
-  color: #263852;
-}
-
-.chat-emoji-picker-section {
-  margin: 0.5rem 0 0.35rem;
-  color: rgba(38, 56, 82, 0.62);
-  font-size: 0.75rem;
-  font-weight: 800;
-}
-
-.chat-emoji-grid {
-  display: grid;
-  grid-template-columns: repeat(6, 1fr);
-  gap: 0.18rem;
-  max-height: 220px;
-  overflow: auto;
-  padding-bottom: 0.28rem;
-}
-
-.chat-emoji-grid button {
-  height: 32px;
-  border-radius: 8px;
-  font-size: 1.2rem;
-}
-
-.chat-emoji-tabs {
-  display: grid;
-  grid-template-columns: repeat(8, 1fr);
-  gap: 0.1rem;
-  margin: 0.35rem -0.55rem -0.55rem;
-  padding: 0.3rem 0.42rem;
-  border-top: 1px solid rgba(33, 54, 82, 0.12);
-  background: rgba(248, 250, 253, 0.94);
-  border-radius: 0 0 14px 14px;
-}
-
-.chat-emoji-tabs button {
-  height: 28px;
-  border-radius: 7px;
-  color: rgba(38, 56, 82, 0.62);
-}
-
-.chat-emoji-tabs button.active {
-  background: #e7f0ff;
-  color: #1f67b1;
-}
-
-.chat-emoji-tabs .mat-icon {
-  width: 16px;
-  height: 16px;
-  font-size: 16px;
 }
 
 .chat-message.chat-message-fresh .chat-bubble {
@@ -2207,42 +2100,4 @@
     margin-bottom: 0.8rem;
   }
 
-  .chat-emoji-modal {
-    align-items: flex-end;
-    justify-content: center;
-    padding: 0 0.8rem max(0.8rem, env(safe-area-inset-bottom, 0px));
-  }
-
-  .chat-emoji-picker {
-    left: auto;
-    right: auto;
-    top: auto;
-    bottom: auto;
-    width: min(100%, 27rem);
-    max-height: min(70vh, 32rem);
-    padding: 1.05rem 0.55rem 0.55rem;
-    border-radius: 14px;
-    transform: none;
-  }
-
-  .chat-emoji-picker::before {
-    content: '';
-    position: absolute;
-    top: 0.45rem;
-    left: 50%;
-    width: 42px;
-    height: 4px;
-    border-radius: 999px;
-    background: rgba(61, 76, 96, 0.24);
-    transform: translateX(-50%);
-  }
-
-  .chat-message.mine .chat-emoji-picker {
-    left: auto;
-    right: auto;
-  }
-
-  .chat-emoji-grid {
-    max-height: min(42vh, 18rem);
-  }
 }

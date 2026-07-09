@@ -33,6 +33,7 @@ import type {
   AppMenuCounter,
   AppMenuCounterValue,
   AppMenuGroup,
+  AppMenuIconKind,
   AppMenuImageStackItem,
   AppMenuLayout,
   AppMenuItemLayout,
@@ -923,6 +924,10 @@ export class AppMenuComponent<TId extends string = string, TContext = unknown>
     return this.itemVisualLayout(item) === 'image-stack';
   }
 
+  protected isIconLayoutItem(item: AppMenuItem<TId, TContext>): boolean {
+    return this.itemVisualLayout(item) === 'icon';
+  }
+
   protected actionRowItemIcon(item: AppMenuItem<TId, TContext>): string {
     if (this.isActionRowItemOpen(item)) {
       const openIcon = `${this.resolveLiveValue(item.closeIcon ?? item.openIcon) ?? ''}`.trim();
@@ -1110,6 +1115,14 @@ export class AppMenuComponent<TId extends string = string, TContext = unknown>
     return this.groupItems(group);
   }
 
+  protected isTabsIconList(group: AppMenuGroup<TId, TContext> | null): boolean {
+    if (!group) {
+      return false;
+    }
+    const items = this.tabsGroupItems(group).filter(item => !this.isDivider(item) && !this.isSection(item));
+    return items.length > 0 && items.every(item => this.isIconLayoutItem(item));
+  }
+
   protected tabsColumnCount(): string | null {
     const columns = this.autoTabsColumnCount();
     return columns === null ? null : `${columns}`;
@@ -1201,6 +1214,10 @@ export class AppMenuComponent<TId extends string = string, TContext = unknown>
 
   protected itemIcon(item: AppMenuItem<TId, TContext>): string {
     return `${this.resolveLiveValue(item.icon) ?? ''}`.trim();
+  }
+
+  protected itemIconKind(item: AppMenuItem<TId, TContext>): AppMenuIconKind {
+    return item.iconKind ?? 'material';
   }
 
   protected itemGridColumn(item: AppMenuItem<TId, TContext>): string | null {
@@ -1405,6 +1422,7 @@ export class AppMenuComponent<TId extends string = string, TContext = unknown>
 
   private itemMatchesFilter(item: AppMenuItem<TId, TContext>, query: string): boolean {
     return [
+      this.translatedFilterText(this.itemIcon(item)),
       this.translatedFilterText(this.itemLabel(item)),
       this.translatedFilterText(this.itemDescription(item)),
       this.translatedFilterText(this.itemDetail(item))
@@ -1635,6 +1653,11 @@ export class AppMenuComponent<TId extends string = string, TContext = unknown>
   }
 
   private estimatedPanelWidth(): number {
+    if (this.currentTabbedModelLayout) {
+      return this.tabsGroups.some(group => this.isTabsIconList(group))
+        ? 360
+        : 480;
+    }
     const labels = this.visibleListItems
       .map(item => `${this.resolveLiveValue(item.label) ?? this.resolveLiveValue(item.description) ?? ''}`.trim());
     const longestLabel = labels.reduce((longest, label) => Math.max(longest, label.length), 0);
@@ -1643,6 +1666,19 @@ export class AppMenuComponent<TId extends string = string, TContext = unknown>
   }
 
   private estimatedPanelHeight(): number {
+    if (this.currentTabbedModelLayout) {
+      const group = this.activeTabsGroup();
+      const itemCount = group
+        ? this.tabsGroupItems(group).filter(item => !this.isDivider(item) && !this.isSection(item)).length
+        : 0;
+      const iconList = this.isTabsIconList(group);
+      const filterHeight = this.isTabsFilterable() ? 46 : 0;
+      const tabsHeight = this.showTabsBar() ? 42 : 0;
+      const rows = iconList
+        ? Math.max(1, Math.ceil(Math.max(1, itemCount) / 8))
+        : Math.max(1, Math.ceil(Math.max(1, itemCount) / 3));
+      return Math.min(520, filterHeight + tabsHeight + rows * (iconList ? 42 : 46) + 36);
+    }
     const titleHeight = this.resolvedTitle ? 34 : 0;
     const itemCount = Math.max(1, this.visibleListItems.length);
     const branchHeaderHeight = this.visibleListItems.some(item => this.hasNestedItems(item)) ? 38 : 0;
@@ -1799,6 +1835,9 @@ export class AppMenuComponent<TId extends string = string, TContext = unknown>
   private autoTabsColumnCount(): number | null {
     const group = this.activeTabsGroup();
     if (!group) {
+      return null;
+    }
+    if (this.isTabsIconList(group)) {
       return null;
     }
     const items = this.tabsGroupItems(group).filter(item => !this.isDivider(item) && !this.isSection(item));

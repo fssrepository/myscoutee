@@ -141,6 +141,13 @@ interface HelpEditorHeaderColorMenuContext {
   color: HelpCenterHeaderColor;
 }
 
+type HelpEditorSectionIconMenuItemId = `section-icon:${string}`;
+
+interface HelpEditorSectionIconMenuContext {
+  action: 'select-section-icon';
+  icon: string;
+}
+
 type HelpEditorPopupMenuContext = HelpEditorDocumentMenuContext | HelpEditorLanguageMenuContext;
 
 @Component({
@@ -206,10 +213,7 @@ export class AdminHelpEditorPopupComponent {
   protected draft: HelpEditorRevisionDraft | null = null;
   protected draftAccordionOpen = true;
   protected openDraftSectionId = '';
-  protected iconPickerSectionId = '';
   protected contextPickerOpen = false;
-  protected iconPickerSearch = '';
-  protected iconPickerGroup: HelpIconOption['group'] = 'Common';
   protected selectedExplanationContextKey = 'home.game';
 
   protected helpEditorPopupModel(): PopupModel<HelpEditorPopupMenuContext> {
@@ -420,10 +424,6 @@ export class AdminHelpEditorPopupComponent {
     { icon: 'rule', label: 'Rules', group: 'Safety', keywords: ['policy', 'terms', 'check'] },
     { icon: 'gavel', label: 'Decision', group: 'Safety', keywords: ['moderation', 'rules', 'legal'] }
   ];
-  protected visibleIconOptions: HelpIconOption[] = [];
-  protected iconPickerActiveLabel = 'Common icons';
-  protected iconPickerActiveCount = 0;
-
   constructor() {
     effect(() => {
       if (this.admin.activePopup() !== 'help-editor') {
@@ -432,7 +432,6 @@ export class AdminHelpEditorPopupComponent {
         this.draft = null;
         this.loading.set(false);
         this.closeContextPicker();
-        this.closeIconPicker();
         return;
       }
       if (!this.stateLoadedForPopup) {
@@ -444,13 +443,12 @@ export class AdminHelpEditorPopupComponent {
 
   @HostListener('window:keydown.escape', ['$event'])
   protected onEscape(event: Event): void {
-    if (!this.iconPickerSectionId && !this.contextPickerOpen) {
+    if (!this.contextPickerOpen) {
       return;
     }
     event.preventDefault();
     event.stopPropagation();
     this.closeContextPicker();
-    this.closeIconPicker();
   }
 
   protected async load(): Promise<void> {
@@ -565,7 +563,6 @@ export class AdminHelpEditorPopupComponent {
     this.openPreviewSectionId = '';
     this.openDraftSectionId = '';
     this.error = '';
-    this.closeIconPicker();
     await this.load();
   }
 
@@ -628,7 +625,6 @@ export class AdminHelpEditorPopupComponent {
     if (this.loading() || this.saving || this.isAnyActionPending()) {
       return;
     }
-    this.closeIconPicker();
     this.contextPickerOpen = true;
   }
 
@@ -689,7 +685,6 @@ export class AdminHelpEditorPopupComponent {
     this.draft = null;
     this.draftAccordionOpen = true;
     this.closeContextPicker();
-    this.closeIconPicker();
     this.admin.closePopup();
   }
 
@@ -824,7 +819,6 @@ export class AdminHelpEditorPopupComponent {
     this.draft = null;
     this.draftAccordionOpen = true;
     this.error = '';
-    this.closeIconPicker();
     this.closeContextPicker();
   }
 
@@ -852,7 +846,6 @@ export class AdminHelpEditorPopupComponent {
     };
     this.draft.sections = [...this.draft.sections, next];
     this.openDraftSectionId = next.localId;
-    this.closeIconPicker();
   }
 
   protected removeDraftSection(section: HelpEditorSectionDraft, event?: Event): void {
@@ -863,9 +856,6 @@ export class AdminHelpEditorPopupComponent {
     this.draft.sections = this.draft.sections.filter(item => item.localId !== section.localId);
     if (this.openDraftSectionId === section.localId) {
       this.openDraftSectionId = this.draft.sections[0]?.localId ?? '';
-    }
-    if (this.iconPickerSectionId === section.localId) {
-      this.closeIconPicker();
     }
   }
 
@@ -879,7 +869,6 @@ export class AdminHelpEditorPopupComponent {
     event?.stopPropagation();
     if (this.openDraftSectionId !== section.localId) {
       this.openDraftSectionId = section.localId;
-      this.closeIconPicker();
     }
     section.mode = section.mode === 'html' ? 'preview' : 'html';
   }
@@ -943,40 +932,6 @@ export class AdminHelpEditorPopupComponent {
     });
   }
 
-  protected openIconPicker(section: HelpEditorSectionDraft, event?: Event): void {
-    event?.stopPropagation();
-    if (this.iconPickerSectionId === section.localId) {
-      this.closeIconPicker();
-      return;
-    }
-    const matchingOption = this.helpIconOptions.find(option => option.icon === section.icon);
-    this.iconPickerSectionId = section.localId;
-    this.iconPickerGroup = matchingOption?.group ?? 'Common';
-    this.iconPickerSearch = '';
-    this.closeContextPicker();
-    this.refreshIconPickerOptions();
-  }
-
-  protected closeIconPicker(event?: Event): void {
-    event?.stopPropagation();
-    this.iconPickerSectionId = '';
-    this.iconPickerSearch = '';
-    this.visibleIconOptions = [];
-    this.iconPickerActiveLabel = 'Common icons';
-    this.iconPickerActiveCount = 0;
-  }
-
-  protected setIconPickerGroup(group: HelpIconOption['group'], event?: Event): void {
-    event?.stopPropagation();
-    this.iconPickerGroup = group;
-    this.refreshIconPickerOptions();
-  }
-
-  protected setIconPickerSearch(value: string): void {
-    this.iconPickerSearch = value;
-    this.refreshIconPickerOptions();
-  }
-
   protected iconPickerGroupIcon(group: HelpIconOption['group']): string {
     switch (group) {
       case 'Planning':
@@ -992,34 +947,83 @@ export class AdminHelpEditorPopupComponent {
     }
   }
 
+  protected iconPickerGroupPalette(group: HelpIconOption['group']): AppMenuPalette {
+    switch (group) {
+      case 'Planning':
+        return 'blue';
+      case 'People':
+        return 'green';
+      case 'Logistics':
+        return 'amber';
+      case 'Safety':
+        return 'slate';
+      default:
+        return 'violet';
+    }
+  }
+
+  protected sectionIconMenuPalette(section: HelpEditorSectionDraft): AppMenuPalette {
+    if (this.documentKind === 'privacy' && !section.optional) {
+      return 'amber';
+    }
+    return 'blue';
+  }
+
   protected selectIcon(section: HelpEditorSectionDraft, icon: string, event?: Event): void {
     event?.stopPropagation();
     section.icon = icon;
-    this.closeIconPicker();
   }
 
-  protected iconPickerSection(): HelpEditorSectionDraft | null {
-    return this.draft?.sections.find(section => section.localId === this.iconPickerSectionId) ?? null;
+  protected sectionIconMenuTrigger(section: HelpEditorSectionDraft): AppMenuTrigger {
+    return {
+      id: `section-icon-menu:${section.localId}`,
+      icon: section.icon || this.defaultSectionIcon(),
+      ariaLabel: this.uiText('Change section icon'),
+      layout: 'icon',
+      hideLabel: true,
+      palette: this.sectionIconMenuPalette(section)
+    };
   }
 
-  private refreshIconPickerOptions(): void {
-    const query = this.iconPickerSearch.trim().toLowerCase();
-    const options = query
-      ? this.helpIconOptions
-      : this.helpIconOptions.filter(option => option.group === this.iconPickerGroup);
-    this.visibleIconOptions = options.filter(option => {
-      if (!query) {
-        return true;
-      }
-      return [
-        option.icon,
-        option.label,
-        option.group,
-        ...option.keywords
-      ].some(value => value.toLowerCase().includes(query));
-    });
-    this.iconPickerActiveLabel = query ? 'Search results' : `${this.iconPickerGroup} icons`;
-    this.iconPickerActiveCount = this.visibleIconOptions.length;
+  protected sectionIconMenuModel(section: HelpEditorSectionDraft): AppMenuModel<HelpEditorSectionIconMenuItemId, HelpEditorSectionIconMenuContext> {
+    return {
+      layout: 'tabs',
+      density: 'compact',
+      groups: this.iconPickerGroups.map(group => ({
+        id: group,
+        label: group,
+        icon: this.iconPickerGroupIcon(group),
+        palette: this.iconPickerGroupPalette(group),
+        items: this.helpIconOptions
+          .filter(option => option.group === group)
+          .map(option => ({
+            id: `section-icon:${option.icon}`,
+            label: option.label,
+            detail: [option.icon, ...option.keywords].join(' '),
+            icon: option.icon,
+            iconKind: 'material',
+            layout: 'icon',
+            active: section.icon === option.icon,
+            checked: section.icon === option.icon,
+            ariaLabel: `${this.uiText('Use')} ${this.uiText(option.label)} ${this.uiText('icon')}`,
+            context: {
+              action: 'select-section-icon',
+              icon: option.icon
+            }
+          }))
+      }))
+    };
+  }
+
+  protected onSectionIconMenuSelect(
+    section: HelpEditorSectionDraft,
+    event: AppMenuItemSelectEvent<HelpEditorSectionIconMenuItemId, HelpEditorSectionIconMenuContext>
+  ): void {
+    const icon = `${event.context?.icon ?? ''}`.trim();
+    if (!icon) {
+      return;
+    }
+    this.selectIcon(section, icon, event.sourceEvent);
   }
 
   protected async saveDraft(event?: Event): Promise<void> {
@@ -1052,7 +1056,6 @@ export class AdminHelpEditorPopupComponent {
       this.editing = false;
       this.draft = null;
       this.draftAccordionOpen = true;
-      this.closeIconPicker();
       this.closeContextPicker();
       this.selectNewestRevision(this.revisions(), this.activeRevision());
     } catch {
@@ -1425,7 +1428,6 @@ export class AdminHelpEditorPopupComponent {
     this.openRevisionId = '';
     this.openPreviewSectionId = '';
     this.openDraftSectionId = draft.sections[0]?.localId ?? '';
-    this.closeIconPicker();
     this.closeContextPicker();
     this.editing = true;
   }

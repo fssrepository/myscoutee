@@ -339,6 +339,7 @@
               <div
                 class="app-menu__tabs-items"
                 [class.app-menu__tabs-items--fixed-columns]="tabsColumnCount() !== null"
+                [class.app-menu__tabs-items--icon-list]="isTabsIconList(group)"
                 [style.--app-menu-tabs-columns]="tabsColumnCount()"
               >
                 @for (item of tabsGroupItems(group); track trackByItemId($index, item)) {
@@ -359,6 +360,7 @@
                       [class.app-menu__tabs-item--active]="isItemActive(item)"
                       [class.app-menu__tabs-item--disabled]="isItemDisabled(item)"
                       [class.app-menu__tabs-item--with-description]="itemDescription(item)"
+                      [class.app-menu__tabs-item--layout-icon]="isIconLayoutItem(item)"
                       [disabled]="isItemDisabled(item)"
                       [attr.role]="itemRole(item)"
                       [attr.aria-checked]="isItemChecked(item)"
@@ -366,35 +368,45 @@
                       [title]="itemAriaLabel(item) || itemLabel(item)"
                       (click)="selectItem(item, $event)"
                       >
-                      @if (itemIcon(item)) {
-                        <mat-icon class="app-menu__tabs-item-icon">{{ itemIcon(item) }}</mat-icon>
-                      }
-                      <span class="app-menu__tabs-item-main">
-                        <span class="app-menu__tabs-item-label">
-                          @for (part of itemLabelFilterParts(item); track $index) {
-                            @if (part.match) {
-                              <strong class="app-menu__tabs-filter-match">{{ part.text }}</strong>
-                            } @else {
-                              <span>{{ part.text }}</span>
+                      @if (isIconLayoutItem(item)) {
+                        @if (itemIcon(item)) {
+                          @if (itemIconKind(item) === 'text') {
+                            <span class="app-menu__tabs-item-icon app-menu__tabs-item-icon--text">{{ itemIcon(item) }}</span>
+                          } @else {
+                            <mat-icon class="app-menu__tabs-item-icon">{{ itemIcon(item) }}</mat-icon>
+                          }
+                        }
+                      } @else {
+                        @if (itemIcon(item)) {
+                          <mat-icon class="app-menu__tabs-item-icon">{{ itemIcon(item) }}</mat-icon>
+                        }
+                        <span class="app-menu__tabs-item-main">
+                          <span class="app-menu__tabs-item-label">
+                            @for (part of itemLabelFilterParts(item); track $index) {
+                              @if (part.match) {
+                                <strong class="app-menu__tabs-filter-match">{{ part.text }}</strong>
+                              } @else {
+                                <span>{{ part.text }}</span>
+                              }
                             }
+                          </span>
+                          @if (itemDescription(item)) {
+                            <span class="app-menu__tabs-item-description">{{ itemDescription(item) | i18n }}</span>
                           }
                         </span>
-                        @if (itemDescription(item)) {
-                          <span class="app-menu__tabs-item-description">{{ itemDescription(item) | i18n }}</span>
+                        @if (hasItemCounter(item)) {
+                          <span
+                            class="app-menu__counter"
+                            [class.app-menu__counter--pulse]="isCounterPulsing(itemCounterKey(item, group))"
+                            >
+                            {{ itemCounterLabel(item) }}
+                          </span>
                         }
-                      </span>
-                      @if (hasItemCounter(item)) {
-                        <span
-                          class="app-menu__counter"
-                          [class.app-menu__counter--pulse]="isCounterPulsing(itemCounterKey(item, group))"
-                          >
-                          {{ itemCounterLabel(item) }}
-                        </span>
-                      }
-                      @if (showTabsItemToggle(item)) {
-                        <span class="app-menu__tabs-toggle" [class.app-menu__tabs-toggle--active]="isItemActive(item)" aria-hidden="true">
-                          <span></span>
-                        </span>
+                        @if (showTabsItemToggle(item)) {
+                          <span class="app-menu__tabs-toggle" [class.app-menu__tabs-toggle--active]="isItemActive(item)" aria-hidden="true">
+                            <span></span>
+                          </span>
+                        }
                       }
                     </button>
                   }

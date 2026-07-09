@@ -14,6 +14,8 @@
   --app-menu-tabs-item-min-height: 38px;
   --app-menu-tabs-item-padding: 0.38rem 0.46rem;
   --app-menu-tabs-item-font-size: 0.78rem;
+  --app-menu-icon-list-item-size: 2.4rem;
+  --app-menu-icon-list-font-size: 1.28rem;
   --app-menu-text: #243f62;
   --app-menu-muted-text: rgba(32, 53, 82, 0.66);
 }
@@ -1715,6 +1717,12 @@
   grid-template-columns: repeat(var(--app-menu-tabs-columns), minmax(0, 1fr));
 }
 
+.app-menu__tabs-items--icon-list {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(var(--app-menu-icon-list-item-size), 1fr));
+  gap: 0.28rem;
+}
+
 .app-menu__tabs-item {
   appearance: none;
   -webkit-appearance: none;
@@ -1746,6 +1754,17 @@
 .app-menu__tabs-items--fixed-columns .app-menu__tabs-item {
   width: 100%;
   min-width: 0;
+}
+
+.app-menu__tabs-item--layout-icon {
+  flex: 0 0 var(--app-menu-icon-list-item-size);
+  width: 100%;
+  min-width: 0;
+  min-height: var(--app-menu-icon-list-item-size);
+  height: var(--app-menu-icon-list-item-size);
+  justify-content: center;
+  padding: 0;
+  text-align: center;
 }
 
 :host(.app-menu-host--layout-mobile) .app-menu__tabs-items--fixed-columns {
@@ -1846,6 +1865,25 @@
   font-size: 18px;
   line-height: 18px;
   color: var(--app-menu-icon);
+}
+
+.app-menu__tabs-item--layout-icon .app-menu__tabs-item-icon {
+  flex-basis: auto;
+  min-width: 0;
+  width: 1.35rem;
+  height: 1.35rem;
+  font-size: 1.35rem;
+  line-height: 1.35rem;
+  color: currentColor;
+}
+
+.app-menu__tabs-item-icon--text {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-family: 'Apple Color Emoji', 'Segoe UI Emoji', 'Noto Color Emoji', sans-serif;
+  font-size: var(--app-menu-icon-list-font-size);
+  line-height: 1;
 }
 
 .app-menu__tabs-item-check {
