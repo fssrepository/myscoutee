@@ -102,7 +102,7 @@ export class ActivityEventInfoCardMenuConverter {
       id: actionId,
       label: config.label,
       icon: config.icon,
-      palette: this.actionPalette(config.tone),
+      palette: this.actionPalette(actionId, config.tone),
       surface: 'tinted',
       context: {
         menu: 'activity-event-card',
@@ -262,7 +262,10 @@ export class ActivityEventInfoCardMenuConverter {
     }
   }
 
-  private static actionPalette(tone: CardMenuAction['tone']): AppMenuPalette {
+  private static actionPalette(actionId: string, tone: CardMenuAction['tone']): AppMenuPalette {
+    if (actionId === 'paymentSummary') {
+      return 'teal';
+    }
     switch (tone) {
       case 'accent':
         return 'brown';
