@@ -86,6 +86,7 @@ export class LocalActivityEventsMapper {
       pendingRequestMemberUserIds: [...(record.pendingRequestMemberUserIds ?? [])],
       pendingReason: record.pendingReason,
       approvalRequired: record.approvalRequired === true,
+      checkoutResultState: null,
       boost: record.boost
     };
   }

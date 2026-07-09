@@ -1348,8 +1348,16 @@ export class HttpEventsService implements IEventsService {
       acceptedMemberUserIds: [...(item.acceptedMemberUserIds ?? [])],
       pendingMemberUserIds: [...(item.pendingMemberUserIds ?? [])],
       invitedMemberUserIds: [...(item.invitedMemberUserIds ?? [])],
-      pendingRequestMemberUserIds: [...(item.pendingRequestMemberUserIds ?? [])]
+      pendingRequestMemberUserIds: [...(item.pendingRequestMemberUserIds ?? [])],
+      checkoutResultState: this.normalizeCheckoutResultState(item.checkoutResultState)
     }));
+  }
+
+  private normalizeCheckoutResultState(value: unknown): EventCheckoutResultState | null {
+    if (value === 'pending' || value === 'deleted' || value === 'succeeded' || value === 'failed') {
+      return value;
+    }
+    return null;
   }
 
   private cloneEventFeedbackAnswersByCardId(

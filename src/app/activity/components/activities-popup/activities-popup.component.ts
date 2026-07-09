@@ -632,7 +632,8 @@ export class ActivitiesPopupComponent implements OnDestroy {
       return null;
     }
     const activeUserId = this.userProfileStore.activeUserId().trim() || this.activeUser.id.trim();
-    const dto = this.eventsService.peekKnownItemById(activeUserId, row.id);
+    const dto = this.activityEventDTOFromVisibleSource(row)
+      ?? this.eventsService.peekKnownItemById(activeUserId, row.id);
     const record = this.eventsService.peekKnownRecordById(activeUserId, row.id);
     const draft = activeUserId ? this.eventCheckoutDraftStore.read(activeUserId, row.id) : null;
     const pendingForActiveUser = this.activityCheckoutPendingForActiveUser(activeUserId, dto, record);
@@ -647,14 +648,29 @@ export class ActivitiesPopupComponent implements OnDestroy {
       invitedMemberUserIds: [...(dto?.invitedMemberUserIds ?? [])],
       pendingRequestMemberUserIds: [...(dto?.pendingRequestMemberUserIds ?? [])],
       eventScope: this.activitiesEventScope,
-      checkoutMenuAction: this.activityCheckoutMenuAction(draft, record?.checkoutBasket ?? null, pendingForActiveUser)
+      checkoutMenuAction: this.activityCheckoutMenuAction(
+        draft,
+        record?.checkoutBasket ?? null,
+        pendingForActiveUser,
+        dto?.checkoutResultState ?? null
+      )
     };
+  }
+
+  private activityEventDTOFromVisibleSource(row: ActivityEventListItem): ActivityEventDTO | null {
+    const source = this.activitiesSmartList?.sourceItemSnapshot(this.activityRowIdentity(row));
+    if (!source || typeof source !== 'object') {
+      return null;
+    }
+    const dto = source as Partial<ActivityEventDTO>;
+    return `${dto.id ?? ''}`.trim() === row.id ? dto as ActivityEventDTO : null;
   }
 
   private activityCheckoutMenuAction(
     draft: EventCheckoutDraft | null,
     basket: EventCheckoutBasket | null | undefined,
-    pendingForActiveUser = false
+    pendingForActiveUser = false,
+    fallbackResultState: EventCheckoutResultState | null = null
   ): 'continueBooking' | 'paymentSummary' | null {
     const draftResult = this.activityCheckoutDraftResultState(draft);
     if (draftResult === 'succeeded') {
@@ -664,7 +680,7 @@ export class ActivitiesPopupComponent implements OnDestroy {
       return 'continueBooking';
     }
 
-    const basketResult = this.activityCheckoutBasketResultState(basket);
+    const basketResult = this.activityCheckoutBasketResultState(basket) ?? fallbackResultState;
     if (basketResult === 'succeeded') {
       return 'paymentSummary';
     }
@@ -2444,7 +2460,8 @@ export class ActivitiesPopupComponent implements OnDestroy {
       acceptedMemberUserIds,
       pendingMemberUserIds,
       pendingRequestMemberUserIds,
-      pendingReason: null
+      pendingReason: null,
+      checkoutResultState: 'succeeded'
     });
   }
 

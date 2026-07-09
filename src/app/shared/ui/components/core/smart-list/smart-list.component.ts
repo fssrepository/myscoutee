@@ -1666,6 +1666,8 @@ export class SmartListComponent<T, TFilters extends SmartListFilters = SmartList
 
     const nextItems = Array.isArray(result?.items) ? result.items : [];
     const hasExplicitNextCursor = Boolean(result && Object.prototype.hasOwnProperty.call(result, 'nextCursor'));
+    const requestedPageSize = Math.max(1, Math.trunc(Number(this.currentQuery().pageSize) || this.resolveEffectivePageSize()));
+    const loadedShortPage = nextItems.length > 0 && nextItems.length < requestedPageSize;
     if (isInitial) {
       this.items = this.orderSortableItems(nextItems);
     } else if (this.listMergeStrategy() === 'prepend') {
@@ -1680,7 +1682,7 @@ export class SmartListComponent<T, TFilters extends SmartListFilters = SmartList
       : null;
     this.hasMore = hasExplicitNextCursor
       ? this.nextPageCursor !== null
-      : (nextItems.length > 0 && this.items.length < this.total);
+      : (nextItems.length > 0 && this.items.length < this.total && !loadedShortPage);
     if (nextItems.length > 0) {
       this.pageIndex += 1;
     } else {
@@ -4244,7 +4246,7 @@ private updateListSnapNearEndSuppression(scrollElement?: HTMLDivElement | null):
     if (
       options.loadedRange === 'before-or-within'
       && this.items.length > 0
-      && this.items.length < this.total
+      && this.hasMore
       && insertsAfterLoadedTail
       && !this.visibleGroupAlreadyLoaded(item)
     ) {

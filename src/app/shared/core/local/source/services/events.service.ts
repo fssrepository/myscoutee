@@ -129,7 +129,54 @@ export class LocalEventsService extends LocalRouteDelayService implements IEvent
       this.resolveDemoActivityUserId(userId),
       query
     );
-    return LocalActivityEventsMapper.toDtoPage(page);
+    return this.withCheckoutResultStates(this.resolveDemoActivityUserId(userId), LocalActivityEventsMapper.toDtoPage(page));
+  }
+
+  private async withCheckoutResultStates(
+    userId: string,
+    page: ActivityEventPageResultDTO
+  ): Promise<ActivityEventPageResultDTO> {
+    const normalizedUserId = userId.trim();
+    if (!normalizedUserId || !page.items.length) {
+      return page;
+    }
+    const items = await Promise.all(page.items.map(async item => ({
+      ...item,
+      checkoutResultState: await this.checkoutResultStateForEvent(normalizedUserId, item.id)
+    })));
+    return {
+      ...page,
+      items
+    };
+  }
+
+  private async checkoutResultStateForEvent(
+    userId: string,
+    sourceId: string
+  ): Promise<EventCheckoutResultState | null> {
+    const basket = LocalEventCheckoutBasketsMapper.toDto(
+      await this.eventCheckoutBasketsRepository.loadBasketByEvent(userId, sourceId)
+    );
+    return this.checkoutBasketResultState(basket);
+  }
+
+  private checkoutBasketResultState(
+    basket: Pick<EventCheckoutBasket, 'items'> | null | undefined
+  ): EventCheckoutResultState | null {
+    const resultStates = (basket?.items ?? []).map(item => item.resultState ?? 'pending');
+    if (resultStates.length === 0) {
+      return null;
+    }
+    if (resultStates.some(resultState => resultState === 'failed')) {
+      return 'failed';
+    }
+    if (resultStates.every(resultState => resultState === 'deleted')) {
+      return 'deleted';
+    }
+    if (resultStates.every(resultState => resultState === 'deleted' || resultState === 'succeeded')) {
+      return 'succeeded';
+    }
+    return 'pending';
   }
 
   async loadEventDetailById(userId: string, eventId: string): Promise<ActivityEventDetailDTO | null> {

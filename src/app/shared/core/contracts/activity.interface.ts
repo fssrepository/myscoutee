@@ -439,6 +439,7 @@ export interface ActivityEventDTO {
   pendingRequestMemberUserIds?: string[];
   pendingReason?: AppConstants.ActivityPendingReason;
   approvalRequired?: boolean;
+  checkoutResultState?: EventCheckoutResultState | null;
   boost: number;
   subEventDefinitions?: SubEventDefinitionDTO[];
 }
