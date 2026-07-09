@@ -1357,6 +1357,9 @@ export class ActivitiesEventsController {
     }
     const counterDelta = this.leftEventCounterDelta(row);
     const leaveResult = await this.eventsService.leaveEvent(activeUserId, row.id, {
+      removeMembershipOnly: true,
+      checkoutState: 'cancelled',
+      checkoutResultState: 'deleted',
       counterDelta
     });
     if (!leaveResult || leaveResult.membershipStatus === 'unchanged') {

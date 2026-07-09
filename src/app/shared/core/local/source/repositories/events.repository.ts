@@ -2721,6 +2721,18 @@ export class LocalEventsRepository {
     const idsToLeave = new Set<string>(explicitIds);
     for (const parentId of parentIds) {
       idsToLeave.add(parentId);
+      const generatedSlotPrefix = `${parentId}:slot:`;
+      for (const member of Object.values(membersTable.byId)) {
+        const ownerId = `${member?.ownerId ?? ''}`.trim();
+        if (
+          member?.ownerType === 'event'
+          && member.userId === normalizedUserId
+          && member.status !== 'deleted'
+          && ownerId.startsWith(generatedSlotPrefix)
+        ) {
+          idsToLeave.add(ownerId);
+        }
+      }
       for (const record of records) {
         if (
           this.isGeneratedSlotRecord(record)
