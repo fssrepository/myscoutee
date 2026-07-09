@@ -1111,6 +1111,17 @@ export interface ActivityEventExploreQueryResult {
   nextCursor: string | null;
 }
 
+export interface ActivityMemberInvolvementDTO {
+  id: string;
+  ownerType: AppConstants.ActivityMemberOwnerType;
+  ownerId: string;
+  label: string;
+  detail: string;
+  status: AppConstants.ActivityMemberStatus;
+  role: AppConstants.ActivityMemberRole;
+  actionAtIso: string;
+}
+
 export interface ActivityMemberDTO {
   id: string;
   userId: string;
@@ -1130,6 +1141,7 @@ export interface ActivityMemberDTO {
   metWhere: string;
   avatarUrl: string;
   profile?: UserContracts.UserDto | null;
+  involvements?: ActivityMemberInvolvementDTO[];
 }
 
 export interface ActivityMemberOwnerRef {

@@ -59,6 +59,44 @@ export class LocalActivityMembersRepository {
     return result;
   }
 
+  queryInvolvementRecordsByOwnerAndUsers(
+    owner: ActivityMemberOwnerRef,
+    userIds: readonly string[]
+  ): Map<string, ActivityMemberRecord[]> {
+    const normalizedOwner = this.normalizeOwnerRef(owner);
+    const normalizedUserIds = Array.from(new Set(userIds
+      .map(userId => `${userId ?? ''}`.trim())
+      .filter(userId => userId.length > 0)));
+    const result = new Map<string, ActivityMemberRecord[]>(
+      normalizedUserIds.map(userId => [userId, []])
+    );
+    if (!normalizedOwner || normalizedUserIds.length === 0) {
+      return result;
+    }
+    const userIdSet = new Set(normalizedUserIds);
+    const table = this.normalizeCollection(this.memoryDb.read()[ACTIVITY_MEMBERS_TABLE_NAME]);
+    for (const id of table.ids) {
+      const record = table.byId[id];
+      const userId = `${record?.userId ?? ''}`.trim();
+      if (
+        !record
+        || !userIdSet.has(userId)
+        || record.status === 'deleted'
+        || !this.isRecordInOwnerInvolvementScope(record, normalizedOwner)
+      ) {
+        continue;
+      }
+      result.get(userId)?.push(this.cloneRecord(record));
+    }
+    for (const records of result.values()) {
+      records.sort((left, right) => {
+        const actionDelta = `${left.actionAtIso ?? ''}`.localeCompare(`${right.actionAtIso ?? ''}`);
+        return actionDelta !== 0 ? actionDelta : this.ownerKey(left).localeCompare(this.ownerKey(right));
+      });
+    }
+    return result;
+  }
+
   queryAcceptedOwnerIdsByUserAndOwners(
     ownerType: ActivityMemberOwnerRef['ownerType'],
     ownerIds: readonly string[],
@@ -511,6 +549,30 @@ export class LocalActivityMembersRepository {
 
   ownerKey(owner: ActivityMemberOwnerRef): string {
     return `${owner.ownerType}:${owner.ownerId}`;
+  }
+
+  private isRecordInOwnerInvolvementScope(
+    record: ActivityMemberRecord,
+    owner: ActivityMemberOwnerRef
+  ): boolean {
+    const ownerId = owner.ownerId.trim();
+    const recordOwnerId = `${record.ownerId ?? ''}`.trim();
+    if (!ownerId || !recordOwnerId) {
+      return false;
+    }
+    if (record.ownerType === owner.ownerType && recordOwnerId === ownerId) {
+      return true;
+    }
+    if (owner.ownerType === 'event') {
+      if (record.ownerType === 'event') {
+        return recordOwnerId.startsWith(`${ownerId}:slot:`);
+      }
+      return recordOwnerId.startsWith(`${ownerId}:`);
+    }
+    if (owner.ownerType === 'subEvent' || owner.ownerType === 'group') {
+      return recordOwnerId.startsWith(`${ownerId}:`);
+    }
+    return false;
   }
 
   resolveOwnerCapacityTotal(owner: ActivityMemberOwnerRef, acceptedMembers: number): number {

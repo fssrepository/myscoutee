@@ -216,7 +216,12 @@ export class HttpActivityMembersService {
   }
 
   private cloneEntries(entries: readonly ActivityContracts.ActivityMemberDTO[]): ActivityContracts.ActivityMemberDTO[] {
-    return entries.map(entry => ({ ...entry }));
+    return entries.map(entry => ({
+      ...entry,
+      involvements: Array.isArray(entry.involvements)
+        ? entry.involvements.map(involvement => ({ ...involvement }))
+        : []
+    }));
   }
 
   private cloneSummary(summary: ActivityMembersSummaryDto): ActivityMembersSummaryDto {

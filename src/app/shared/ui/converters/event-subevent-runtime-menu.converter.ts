@@ -91,7 +91,7 @@ export class EventSubeventRuntimeMenuConverter {
       return Math.max(0, this.toInteger(item.membersPending));
     }
     return [
-      item.optional ? item.membersPending : 0,
+      item.membersPending,
       item.carsPending,
       item.accommodationPending,
       item.suppliesPending
@@ -318,9 +318,7 @@ export class EventSubeventRuntimeMenuConverter {
     const items: AppMenuItem<EventSubeventRuntimeMenuItemId, EventSubeventRuntimeMenuContext>[] = [];
     const sourceId = `${options.sourceId ?? options.event?.id ?? ''}`.trim();
     const subEventIndex = Math.max(0, this.toInteger(options.subEventIndex));
-    if (item.optional) {
-      items.push(this.resourceItem('members', 'Members', 'Members', item, this.membersLabel(item), item.membersPending, sourceId, subEventIndex));
-    }
+    items.push(this.resourceItem('members', 'Members', 'Members', item, this.membersLabel(item), item.membersPending, sourceId, subEventIndex));
     if (items.length > 0) {
       items.push({
         id: 'runtime-divider',

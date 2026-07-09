@@ -38,6 +38,7 @@ import {
   CounterBadgePipe,
   I18nPipe,
   ImageCardComponent,
+  PopupComponent,
   SmartListComponent,
   type AppMenuItem,
   type AppMenuItemSelectEvent,
@@ -48,6 +49,7 @@ import {
   type ImageCardMediaActionEvent,
   type ListQuery,
   type PageResult,
+  type PopupModel,
   type SmartListConfig,
   type SmartListItemTemplateContext,
   type SmartListLoaders,
@@ -76,7 +78,7 @@ interface MembersSmartListFilters {
   pendingOnly?: boolean;
 }
 
-type MemberMenuAction = 'approve' | 'remove' | 'disqualify' | 'reinstate' | 'report';
+type MemberMenuAction = 'approve' | 'remove' | 'disqualify' | 'reinstate' | 'report' | 'involvement';
 
 type MemberMenuContext = {
   menu: 'member-action';
@@ -90,6 +92,11 @@ type MembersSummaryState = {
   capacityTotal: number;
 };
 
+interface MemberInvolvementPopupState {
+  memberName: string;
+  rows: ActivityContracts.ActivityMemberInvolvementDTO[];
+}
+
 @Component({
   selector: 'app-event-members-popup',
   standalone: true,
@@ -97,6 +104,7 @@ type MembersSummaryState = {
     CommonModule,
     MatButtonModule,
     MatIconModule,
+    PopupComponent,
     SmartListComponent,
     ImageCardComponent,
     CounterBadgePipe,
@@ -138,6 +146,7 @@ export class EventMembersPopupComponent {
   protected acceptedCount = 0;
   protected capacityTotal = 0;
   protected canShowInviteButton = false;
+  protected memberInvolvementPopup: MemberInvolvementPopupState | null = null;
   private lookupRef: AppUiTypes.PopupHeaderLookup | null = null;
 
   private ownerRecord: ActivityEventRecord | null = null;
@@ -267,6 +276,10 @@ export class EventMembersPopupComponent {
     }
     keyboardEvent.preventDefault();
     keyboardEvent.stopPropagation();
+    if (this.memberInvolvementPopup) {
+      this.closeMemberInvolvementPopup();
+      return;
+    }
     if (this.membersSmartList?.menuOpen() ?? false) {
       this.membersSmartList?.closeMenu();
       this.cdr.markForCheck();
@@ -316,6 +329,7 @@ export class EventMembersPopupComponent {
     this.pendingOnly = false;
     this.canManageMembers = false;
     this.canShowInviteButton = false;
+    this.memberInvolvementPopup = null;
     this.isLocalMembersSource = false;
     this.membersChangeHandler = null;
     this.suppressedOwnerSyncId = null;
@@ -348,7 +362,8 @@ export class EventMembersPopupComponent {
   }
 
   protected canShowActionMenu(entry: ActivityContracts.ActivityMemberDTO): boolean {
-    return this.canApproveMember(entry)
+    return this.canShowMemberInvolvement(entry)
+      || this.canApproveMember(entry)
       || this.canDeleteMember(entry)
       || this.canDisqualifyMember(entry)
       || this.canReinstateMember(entry)
@@ -389,6 +404,15 @@ export class EventMembersPopupComponent {
 
   protected memberActionMenuItems(entry: ActivityContracts.ActivityMemberDTO): readonly AppMenuItem<string, MemberMenuContext>[] {
     const items: AppMenuItem<string, MemberMenuContext>[] = [];
+    if (this.canShowMemberInvolvement(entry)) {
+      items.push({
+        id: `member-action-involvement-${entry.id}`,
+        label: 'Részvétel',
+        icon: 'assignment_ind',
+        palette: 'teal',
+        context: { menu: 'member-action', member: entry, action: 'involvement' }
+      });
+    }
     if (this.canApproveMember(entry)) {
       items.push({
         id: `member-action-approve-${entry.id}`,
@@ -443,6 +467,9 @@ export class EventMembersPopupComponent {
       return;
     }
     switch (context.action) {
+      case 'involvement':
+        this.openMemberInvolvementPopup(context.member, event.sourceEvent);
+        break;
       case 'approve':
         this.approveMember(context.member, event.sourceEvent);
         break;
@@ -554,6 +581,79 @@ export class EventMembersPopupComponent {
       ownerType: this.ownerRef?.ownerType ?? 'event'
     });
     this.cdr.markForCheck();
+  }
+
+  protected canShowMemberInvolvement(entry: ActivityContracts.ActivityMemberDTO): boolean {
+    return Array.isArray(entry.involvements) && entry.involvements.length > 0;
+  }
+
+  protected openMemberInvolvementPopup(entry: ActivityContracts.ActivityMemberDTO, event: Event): void {
+    event.stopPropagation();
+    if (!this.canShowMemberInvolvement(entry)) {
+      return;
+    }
+    this.membersSmartList?.closeMenu();
+    this.memberInvolvementPopup = {
+      memberName: `${entry.name ?? ''}`.trim() || 'Member',
+      rows: this.memberInvolvementRows(entry)
+    };
+    this.cdr.markForCheck();
+  }
+
+  protected closeMemberInvolvementPopup(event?: Event): void {
+    event?.stopPropagation();
+    this.memberInvolvementPopup = null;
+    this.cdr.markForCheck();
+  }
+
+  protected memberInvolvementPopupModel(state: MemberInvolvementPopupState): PopupModel {
+    return {
+      title: 'Részvétel',
+      subtitle: state.memberName,
+      size: 'small',
+      closeOnBackdrop: true,
+      backdropTone: 'dim',
+      onClose: event => this.closeMemberInvolvementPopup(event)
+    };
+  }
+
+  protected memberInvolvementPopupZIndex(): number {
+    return this.membersPopupZIndex() + 40;
+  }
+
+  protected memberInvolvementRows(
+    entry: ActivityContracts.ActivityMemberDTO
+  ): ActivityContracts.ActivityMemberInvolvementDTO[] {
+    return (entry.involvements ?? []).map(involvement => ({ ...involvement }));
+  }
+
+  protected memberInvolvementIcon(entry: ActivityContracts.ActivityMemberInvolvementDTO): string {
+    switch (entry.ownerType) {
+      case 'event':
+        return 'event';
+      case 'subEvent':
+        return 'view_agenda';
+      case 'group':
+        return 'groups';
+      case 'asset':
+        return 'inventory_2';
+    }
+  }
+
+  protected memberInvolvementToneClass(entry: ActivityContracts.ActivityMemberInvolvementDTO): string {
+    if (entry.status === 'pending') {
+      return 'activity-members-involvement-row--pending';
+    }
+    if (entry.status === 'disqualified' || entry.status === 'deleted') {
+      return 'activity-members-involvement-row--muted';
+    }
+    if (entry.ownerType === 'group') {
+      return 'activity-members-involvement-row--group';
+    }
+    if (entry.ownerType === 'asset') {
+      return 'activity-members-involvement-row--asset';
+    }
+    return 'activity-members-involvement-row--accepted';
   }
 
   protected canViewMemberProfile(entry: ActivityContracts.ActivityMemberDTO): boolean {

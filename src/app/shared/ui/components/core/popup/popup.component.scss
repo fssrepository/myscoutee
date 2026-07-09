@@ -41,6 +41,10 @@ app-popup {
   flex-direction: column;
 }
 
+.ui-popup__panel--small {
+  width: min(380px, calc(100vw - 1.2rem));
+}
+
 .ui-popup__panel--wide {
   width: min(1080px, calc(100vw - 1.2rem));
 }

@@ -195,7 +195,10 @@ export class ActivityMembersService extends BaseRouteModeService {
       return {
         ...entry,
         invitedByUserId,
-        invitedByActiveUser: this.isInviteOwnedByActiveUser(entry, activeUserId, invitedByUserId)
+        invitedByActiveUser: this.isInviteOwnedByActiveUser(entry, activeUserId, invitedByUserId),
+        involvements: Array.isArray(entry.involvements)
+          ? entry.involvements.map(involvement => ({ ...involvement }))
+          : []
       };
     });
   }
@@ -205,13 +208,14 @@ export class ActivityMembersService extends BaseRouteModeService {
   ): ActivityContracts.ActivityMemberDTO[] {
     const activeUserId = this.userProfileStore.activeUserId().trim();
     return entries.map(entry => {
+      const { involvements: _involvements, ...persistedEntry } = entry;
       const isPendingInvite = entry.status === 'pending'
         && (entry.requestKind === 'invite' || entry.requestKind === 'waitlist-invite');
       const invitedByUserId = isPendingInvite
         ? (`${entry.invitedByUserId ?? ''}`.trim() || (entry.invitedByActiveUser && activeUserId ? activeUserId : null))
         : null;
       return {
-        ...entry,
+        ...persistedEntry,
         invitedByUserId,
         invitedByActiveUser: this.isInviteOwnedByActiveUser(entry, activeUserId, invitedByUserId)
       };

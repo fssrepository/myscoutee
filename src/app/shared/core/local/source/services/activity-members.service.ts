@@ -18,12 +18,12 @@ export class LocalActivityMembersService extends LocalRouteDelayService {
   private readonly localUsersRepository = inject(LocalUsersRepository);
 
   peekMembersByOwner(owner: ActivityMemberOwnerRef): ActivityMemberDTO[] {
-    return this.entriesFromRecords(this.activityMembersRepository.peekRecordsByOwner(owner));
+    return this.entriesFromRecords(this.activityMembersRepository.peekRecordsByOwner(owner), owner);
   }
 
   async queryMembersByOwner(owner: ActivityMemberOwnerRef): Promise<ActivityMemberDTO[]> {
     await this.waitForRouteDelay(LocalActivityMembersService.MEMBERS_ROUTE);
-    return this.entriesFromRecords(await this.activityMembersRepository.queryRecordsByOwner(owner));
+    return this.entriesFromRecords(await this.activityMembersRepository.queryRecordsByOwner(owner), owner);
   }
 
   peekSummaryByOwner(owner: ActivityMemberOwnerRef): ActivityMembersSummaryDto | null {
@@ -80,7 +80,7 @@ export class LocalActivityMembersService extends LocalRouteDelayService {
     }
 
     const previousRecords = this.activityMembersRepository.peekRecordsByOwner(normalizedOwner);
-    const previousMembers = this.entriesFromRecords(previousRecords);
+    const previousMembers = this.entriesFromRecords(previousRecords, normalizedOwner);
     const nowIso = AppUtils.toIsoDateTime(new Date());
     const nextMembers = previousMembers.map(member => {
       if (member.userId !== normalizedTargetUserId) {
@@ -127,14 +127,22 @@ export class LocalActivityMembersService extends LocalRouteDelayService {
       nextRecords,
       ownerSnapshot?.capacityTotal ?? null
     );
-    return this.entriesFromRecords(nextRecords);
+    return this.entriesFromRecords(nextRecords, normalizedOwner);
   }
 
-  private entriesFromRecords(records: readonly ActivityMemberRecord[]): ActivityMemberDTO[] {
+  private entriesFromRecords(
+    records: readonly ActivityMemberRecord[],
+    owner?: ActivityMemberOwnerRef
+  ): ActivityMemberDTO[] {
+    const userIds = records.map(record => record.userId);
+    const involvementRecordsByUserId = owner
+      ? this.activityMembersRepository.queryInvolvementRecordsByOwnerAndUsers(owner, userIds)
+      : new Map<string, ActivityMemberRecord[]>();
     return LocalActivityMembersBuilder.sortEntriesByActionTime(
       records.map(record => LocalActivityMembersBuilder.toEntry(
         record,
-        (userId, fallback) => this.resolveDemoUser(userId, fallback)
+        (userId, fallback) => this.resolveDemoUser(userId, fallback),
+        involvementRecordsByUserId.get(record.userId.trim()) ?? []
       ))
     );
   }
