@@ -1,49 +1,12 @@
 @if (isOpen()) {
   @if (activeUser; as user) {
-    <section class="app-popup">
-      <div class="app-popup-backdrop" (click)="onBackdropClose()"></div>
+    <app-popup [model]="profileEditorPopupModel()">
       <div
-        class="app-popup-panel"
-        [class.popup-panel-image-editor]="panel === 'image'"
-        [class.popup-panel-profile-editor]="panel === 'profile' || panel === 'experience'"
-        (click)="$event.stopPropagation()"
-        >
-        <div
-          class="popup-header"
-          [class.popup-header-selector]="panel === 'experience'"
-          >
-          <div class="popup-title">
-            <h2>{{ popupTitle() }}</h2>
-          </div>
-          @if (panel === 'profile') {
-            <div class="profile-header-actions">
-              @if (!activeUserIsAdmin()) {
-                <app-menu
-                  kind="inline"
-                  [items]="profileHeaderStatusMenuItems()"
-                  [(ngModel)]="profileEditorData.profile.profileStatus"
-                ></app-menu>
-              }
-              <app-menu
-                kind="inline"
-                [items]="profileHeaderActionMenuItems()"
-                (itemSelect)="onProfileEditorMenuSelect($event)"
-              ></app-menu>
-            </div>
-            <button mat-icon-button class="popup-close" (click)="handleCloseAction()" aria-label="Close">
-              <mat-icon>close</mat-icon>
-            </button>
-          } @else {
-            <button mat-icon-button class="popup-close" (click)="handleCloseAction()" aria-label="Close">
-              <mat-icon>close</mat-icon>
-            </button>
-          }
-        </div>
-        <div
-          class="popup-body"
-          [class.popup-body-image-editor]="panel === 'image'"
-          [class.popup-body-experience]="panel === 'experience'"
-          >
+        class="profile-editor-popup-content"
+        [class.profile-editor-popup-content--profile]="panel === 'profile'"
+        [class.profile-editor-popup-content--image]="panel === 'image'"
+        [class.profile-editor-popup-content--experience]="panel === 'experience'"
+      >
           @if (panel === 'profile') {
             <div class="profile-editor-wrap" [class.profile-editor-wrap-admin]="activeUserIsAdmin()">
               <app-header-card
@@ -84,8 +47,7 @@
               (ngModelChange)="onExperienceEntriesChange($event)"
             ></app-profile-experience-manager>
           }
-        </div>
       </div>
-    </section>
+    </app-popup>
   }
 }

@@ -52,56 +52,6 @@
   height: 36px;
 }
 
-.experience-delete-confirm {
-  position: fixed;
-  inset: 0;
-  z-index: 4200;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  padding: 0.8rem;
-}
-
-.experience-delete-confirm-backdrop {
-  position: absolute;
-  inset: 0;
-  background: rgba(8, 16, 30, 0.46);
-}
-
-.experience-delete-confirm-panel {
-  position: relative;
-  z-index: 1;
-  width: min(420px, 100%);
-  border: 1px solid rgba(42, 67, 101, 0.28);
-  border-radius: 12px;
-  background: #fff;
-  padding: 0.72rem;
-  display: grid;
-  gap: 0.4rem;
-  text-align: center;
-  justify-items: center;
-}
-
-.experience-delete-confirm-panel h4,
-.experience-delete-confirm-panel p {
-  margin: 0;
-}
-
-.experience-delete-btn {
-  background: linear-gradient(180deg, #ef5f5f 0%, #d63a3a 100%);
-  border-color: rgba(156, 30, 30, 0.9);
-  color: #fff;
-}
-
-.experience-delete-btn:hover {
-  background: linear-gradient(180deg, #f06d6d 0%, #da4343 100%);
-  border-color: rgba(145, 24, 24, 0.96);
-}
-
-.experience-import-popup {
-  width: min(560px, 100%);
-}
-
 .experience-import-panel {
   display: grid;
   gap: 0.78rem;

@@ -1,6 +1,7 @@
 <div
   class="ui-popup"
   [class.ui-popup--fullscreen]="popupModel.size === 'fullscreen'"
+  [class.ui-popup--auto-height]="popupModel.height !== 'full' && popupModel.size !== 'fullscreen'"
   [style.z-index]="zIndex ?? null"
 >
   <div class="ui-popup__backdrop" [ngClass]="backdropToneClass()" (click)="onBackdropClick($event)"></div>

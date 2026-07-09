@@ -39,42 +39,9 @@
       (menuRequest)="openMenu($event)"
     ></single-row>
   </ng-template>
-  @if (pendingExperienceDeleteId) {
-    <section class="experience-delete-confirm">
-      <div class="experience-delete-confirm-backdrop" (click)="cancelExperienceDelete()"></div>
-      <div class="experience-delete-confirm-panel">
-        <h4>Delete experience?</h4>
-        <p>This entry will be removed from your profile.</p>
-        <div class="popup-actions">
-          <button type="button" class="link-btn neutral-btn" (click)="cancelExperienceDelete()">Cancel</button>
-          <button type="button" class="link-btn experience-delete-btn" (click)="confirmExperienceDelete()">Delete</button>
-        </div>
-      </div>
-    </section>
-  }
   @if (experienceImportDialog.visible) {
-    <section class="experience-import-dialog popup-surface-overlay">
-      <div class="experience-form-overlay-backdrop popup-surface-overlay-backdrop" (click)="cancelExperienceImportDialog()"></div>
-      <div class="experience-import-popup popup-surface">
-        <div class="experience-form-header popup-surface-header">
-          <div class="popup-surface-header-title">
-            <h3>Import Experience</h3>
-            @if (experienceImportDialog.fileName) {
-              <p>{{ experienceImportDialog.fileName }}</p>
-            }
-          </div>
-          <div class="experience-form-header-controls popup-surface-header-controls">
-            <button
-              type="button"
-              class="experience-form-close-btn popup-surface-close-btn"
-              (click)="cancelExperienceImportDialog()"
-              aria-label="Close import dialog"
-              >
-              <mat-icon>close</mat-icon>
-            </button>
-          </div>
-        </div>
-        <section class="experience-import-panel popup-surface-body">
+    <app-popup [model]="experienceImportPopupModel()" [zIndex]="experienceImportPopupZIndex()">
+        <section class="experience-import-panel">
           <div class="experience-import-progress-card">
             <div class="experience-import-progress-meta">
               <span>{{ experienceImportDialog.progress.label || 'Preparing upload' }}</span>
@@ -154,8 +121,7 @@
             </button>
           </div>
         </section>
-      </div>
-    </section>
+    </app-popup>
   }
   @if (showExperienceForm) {
     <app-popup [model]="experienceFormPopupModel()" [zIndex]="experienceFormPopupZIndex()">

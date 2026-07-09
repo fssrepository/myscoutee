@@ -22,6 +22,12 @@ app-popup {
   padding: 0;
 }
 
+@media (min-width: 761px) {
+  .ui-popup--auto-height {
+    align-items: center;
+  }
+}
+
 .ui-popup__backdrop {
   position: absolute;
   inset: 0;

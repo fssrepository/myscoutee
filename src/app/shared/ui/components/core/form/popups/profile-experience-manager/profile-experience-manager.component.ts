@@ -45,6 +45,7 @@ import {
   type PopupActionEvent,
   type PopupModel
 } from '../../../popup';
+import { DialogStore } from '../../../../../context/stores/dialog.store';
 import {
   SingleRowComponent,
   type SingleRowData
@@ -131,6 +132,7 @@ export class ProfileExperienceManagerComponent implements ControlValueAccessor, 
   @ViewChild('experienceImportInput') private experienceImportInput?: ElementRef<HTMLInputElement>;
 
   private readonly cdr = inject(ChangeDetectorRef);
+  private readonly dialogStore = inject(DialogStore);
   private readonly userExperiencesService = inject(UserExperiencesService);
   private experienceImportToken = 0;
   private overlayOpen = false;
@@ -439,6 +441,24 @@ export class ProfileExperienceManagerComponent implements ControlValueAccessor, 
     return 4300;
   }
 
+  protected experienceImportPopupModel(): PopupModel {
+    return {
+      title: 'Import Experience',
+      subtitle: this.experienceImportDialog.fileName,
+      ariaLabel: 'Import Experience',
+      closeAriaLabel: 'Close import dialog',
+      size: 'default',
+      headerTone: 'accent',
+      backdropTone: 'dim',
+      closeOnBackdrop: true,
+      onClose: () => this.cancelExperienceImportDialog()
+    };
+  }
+
+  protected experienceImportPopupZIndex(): number {
+    return 4300;
+  }
+
   protected experienceFormFlowModel(): FormFlowModel {
     return {
       title: 'Experience',
@@ -693,6 +713,17 @@ export class ProfileExperienceManagerComponent implements ControlValueAccessor, 
     }
     this.pendingExperienceDeleteId = entryId;
     this.syncOverlayState();
+    this.dialogStore.open({
+      title: 'Delete experience?',
+      message: 'This entry will be removed from your profile.',
+      cancelLabel: 'Cancel',
+      confirmLabel: 'Delete',
+      busyConfirmLabel: 'Deleting...',
+      confirmTone: 'danger',
+      failureMessage: 'Unable to delete this experience.',
+      onCancel: () => this.cancelExperienceDelete(),
+      onConfirm: () => this.confirmExperienceDelete()
+    });
     this.cdr.markForCheck();
   }
 
@@ -721,6 +752,7 @@ export class ProfileExperienceManagerComponent implements ControlValueAccessor, 
 
   protected cancelExperienceDelete(): void {
     this.pendingExperienceDeleteId = null;
+    this.dialogStore.close();
     this.syncOverlayState();
     this.cdr.markForCheck();
   }
@@ -1000,12 +1032,7 @@ export class ProfileExperienceManagerComponent implements ControlValueAccessor, 
           label: `${entry.dateFrom} - ${entry.dateTo}`,
           tone: 'inverse',
           position: 'top-right'
-        },
-        ...(
-          this.isExperienceEntryHighlighted(entry.id)
-            ? [{ label: 'Imported', icon: 'upload_file', tone: 'warning' as const, position: 'top-right' as const }]
-            : []
-        )
+        }
       ],
       menuActions: ['edit', 'delete'],
       entry,
