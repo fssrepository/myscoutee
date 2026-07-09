@@ -226,7 +226,9 @@ export class CalendarCardComponent<T, TFilters extends SmartListFilters = SmartL
   }
 
   protected selectCalendarDay(day: SmartListCalendarDay<T>, sourceEvent?: Event): void {
-    const item = day.items[0];
+    sourceEvent?.preventDefault();
+    sourceEvent?.stopPropagation();
+    const item = day.items[0] ?? null;
     if (!item) {
       return;
     }

@@ -47,11 +47,21 @@
 
 .event-checkout-slot-picker__month-overlay {
   position: absolute;
-  z-index: 4;
+  z-index: 40;
   inset: 0;
   display: flex;
   min-width: 0;
   min-height: 0;
+  background: #ffffff;
+  isolation: isolate;
+  overflow: hidden;
+}
+
+:host ::ng-deep .event-checkout-slot-picker__month-list .smart-list__surface,
+:host ::ng-deep .event-checkout-slot-picker__month-list .smart-list__stage,
+:host ::ng-deep .event-checkout-slot-picker__month-list .smart-list__page-shell,
+:host ::ng-deep .event-checkout-slot-picker__month-list .smart-list--page,
+:host ::ng-deep .event-checkout-slot-picker__month-list .calendar-card__pages {
   background: #ffffff;
 }
 

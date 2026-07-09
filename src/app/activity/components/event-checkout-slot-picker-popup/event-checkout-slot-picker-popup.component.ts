@@ -54,6 +54,7 @@ interface SlotPickerFilters {
 
 interface SlotPickerMonthFilters {
   anchor: string;
+  revision: number;
 }
 
 interface SlotSelection {
@@ -193,7 +194,7 @@ export class EventCheckoutSlotPickerPopupComponent {
     const state = this.popupState();
     return {
       title: state?.record.title ?? 'Slots',
-      subtitle: state?.record.timeframe ?? this.formatRecordRange(state?.record ?? null),
+      subtitle: this.formatRecordRange(state?.record ?? null),
       ariaLabel: 'Select checkout slots',
       closeAriaLabel: 'Close slot picker',
       closeOnBackdrop: !this.saving,
@@ -298,6 +299,7 @@ export class EventCheckoutSlotPickerPopupComponent {
     event?.preventDefault();
     event?.stopPropagation();
     this.monthOverlayOpen = !this.monthOverlayOpen;
+    this.monthAnchor = this.monthStart(this.selectedDateKey);
     if (this.monthOverlayOpen && this.basketMode) {
       this.basketMode = false;
       this.refreshSlotQuery();
@@ -518,6 +520,7 @@ export class EventCheckoutSlotPickerPopupComponent {
     this.saving = false;
     this.refreshBaselineSelection();
     this.refreshSlotQuery();
+    this.refreshMonthQuery();
   }
 
   private async loadSlotPage(query: ListQuery<SlotPickerFilters>): Promise<PageResult<EventCheckoutSlot>> {
@@ -639,7 +642,7 @@ export class EventCheckoutSlotPickerPopupComponent {
     if (!state) {
       return { items: [], total: 0 };
     }
-    const anchor = query.anchorDate ?? query.filters?.anchor ?? this.monthAnchor;
+    const anchor = query.filters?.anchor ?? query.anchorDate ?? this.monthAnchor;
     const rangeStart = query.rangeStart ?? this.monthStart(anchor);
     const rangeEnd = query.rangeEnd ?? this.monthEnd(anchor);
     const result = await this.eventsService.loadCheckoutSlots({
@@ -672,13 +675,13 @@ export class EventCheckoutSlotPickerPopupComponent {
       return null;
     }
     const priceLabel = this.formatMoney(summary.lowestAmount, summary.currency);
-    const availableSlots = Math.max(0, Math.trunc(Number(summary.availableSlots) || 0));
+    const slotCount = Math.max(0, Math.trunc(Number(summary.slotCount) || 0));
     return {
       label: priceLabel,
-      ariaLabel: `${priceLabel}, ${availableSlots} available slots`,
-      alertLabel: `${availableSlots}`,
-      alertAriaLabel: `${availableSlots} available slots`,
-      toneClass: availableSlots > 0 ? null : 'calendar-counter-full'
+      ariaLabel: `${priceLabel}, ${slotCount} slots`,
+      alertLabel: `${slotCount}`,
+      alertAriaLabel: `${slotCount} slots`,
+      toneClass: slotCount > 0 ? null : 'calendar-counter-empty'
     };
   }
 
@@ -1241,9 +1244,14 @@ export class EventCheckoutSlotPickerPopupComponent {
   }
 
   private buildMonthListQuery(): Partial<ListQuery<SlotPickerMonthFilters>> {
+    const anchor = this.monthStart(this.selectedDateKey);
     return {
+      anchorDate: anchor,
+      rangeStart: this.monthStart(anchor),
+      rangeEnd: this.monthEnd(anchor),
       filters: {
-        anchor: this.monthAnchor
+        anchor,
+        revision: this.queryRevision
       }
     };
   }
@@ -1261,7 +1269,28 @@ export class EventCheckoutSlotPickerPopupComponent {
     if (!record) {
       return '';
     }
-    return record.timeframe || this.formatDateGroup(record.startAtIso);
+    const timeframe = record.timeframe?.trim() || this.formatDateGroup(record.startAtIso);
+    const range = this.formatRecordDateRange(record);
+    return range ? `${timeframe} • ${range}` : timeframe;
+  }
+
+  private formatRecordDateRange(record: ActivityEventRecord): string {
+    const start = AppUtils.isoLocalDateTimeToDate(record.startAtIso);
+    const end = AppUtils.isoLocalDateTimeToDate(record.endAtIso);
+    if (!start || !end) {
+      return '';
+    }
+    if (start.toDateString() === end.toDateString()) {
+      return start.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
+    }
+    const sameYear = start.getFullYear() === end.getFullYear();
+    const startLabel = start.toLocaleDateString('en-US', {
+      month: 'short',
+      day: 'numeric',
+      ...(sameYear ? {} : { year: 'numeric' })
+    });
+    const endLabel = end.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
+    return `${startLabel} - ${endLabel}`;
   }
 
   private formatDateGroup(value: string): string {
