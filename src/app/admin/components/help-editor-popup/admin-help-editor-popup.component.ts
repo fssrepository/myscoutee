@@ -4,7 +4,6 @@ import {
 import {
   ChangeDetectorRef,
   Component,
-  HostListener,
   effect,
   inject,
   signal
@@ -148,6 +147,13 @@ interface HelpEditorSectionIconMenuContext {
   icon: string;
 }
 
+type HelpEditorContextMenuItemId = `context:${string}`;
+
+interface HelpEditorContextMenuContext {
+  action: 'select-draft-context';
+  surface: ExplainableSurface;
+}
+
 type HelpEditorPopupMenuContext = HelpEditorDocumentMenuContext | HelpEditorLanguageMenuContext;
 
 @Component({
@@ -213,7 +219,6 @@ export class AdminHelpEditorPopupComponent {
   protected draft: HelpEditorRevisionDraft | null = null;
   protected draftAccordionOpen = true;
   protected openDraftSectionId = '';
-  protected contextPickerOpen = false;
   protected selectedExplanationContextKey = 'home.game';
 
   protected helpEditorPopupModel(): PopupModel<HelpEditorPopupMenuContext> {
@@ -431,7 +436,6 @@ export class AdminHelpEditorPopupComponent {
         this.editing = false;
         this.draft = null;
         this.loading.set(false);
-        this.closeContextPicker();
         return;
       }
       if (!this.stateLoadedForPopup) {
@@ -439,16 +443,6 @@ export class AdminHelpEditorPopupComponent {
         void this.load();
       }
     });
-  }
-
-  @HostListener('window:keydown.escape', ['$event'])
-  protected onEscape(event: Event): void {
-    if (!this.contextPickerOpen) {
-      return;
-    }
-    event.preventDefault();
-    event.stopPropagation();
-    this.closeContextPicker();
   }
 
   protected async load(): Promise<void> {
@@ -537,7 +531,7 @@ export class AdminHelpEditorPopupComponent {
       label: this.explanationMenuItemLabel(surface),
       description: `${surface.label} · ${this.explanationMenuItemMeta(surface)}`,
       icon: surface.icon,
-      palette: 'violet',
+      palette: this.explanationSurfacePalette(surface),
       surface: 'tinted',
       checked: this.documentKind === 'explanation' && this.selectedExplanationContextKey === surface.key,
       disabled,
@@ -550,7 +544,6 @@ export class AdminHelpEditorPopupComponent {
 
   protected async selectDocumentKind(kind: HelpCenterDocumentKind, event?: Event): Promise<void> {
     event?.stopPropagation();
-    this.closeContextPicker();
     if (this.documentKind === kind || this.loading() || this.isAnyActionPending()) {
       return;
     }
@@ -620,26 +613,45 @@ export class AdminHelpEditorPopupComponent {
     }
   }
 
-  protected openContextPicker(event?: Event): void {
-    event?.stopPropagation();
-    if (this.loading() || this.saving || this.isAnyActionPending()) {
-      return;
-    }
-    this.contextPickerOpen = true;
+  protected contextMenuTrigger(draft: HelpEditorRevisionDraft): AppMenuTrigger {
+    const surface = this.explanationSurface(draft.contextKey);
+    return {
+      id: 'canonical-screen-menu',
+      label: surface?.label ?? this.uiText('Choose screen'),
+      icon: surface?.icon ?? 'add',
+      ariaLabel: this.uiText('Canonical screen'),
+      layout: 'field',
+      palette: surface ? this.explanationSurfacePalette(surface) : 'amber',
+      disabled: this.loading() || this.saving || this.isAnyActionPending()
+    };
   }
 
-  protected closeContextPicker(event?: Event): void {
-    event?.stopPropagation();
-    this.contextPickerOpen = false;
+  protected contextMenuItems(draft: HelpEditorRevisionDraft): readonly AppMenuItem<HelpEditorContextMenuItemId, HelpEditorContextMenuContext>[] {
+    const disabled = this.loading() || this.saving || this.isAnyActionPending();
+    return this.explainableSurfaces().map(surface => ({
+      id: `context:${surface.key}`,
+      kind: 'radio',
+      label: surface.label,
+      description: this.explanationMenuItemMeta(surface),
+      icon: surface.icon,
+      palette: this.explanationSurfacePalette(surface),
+      surface: 'tinted',
+      checked: draft.contextKey === surface.key,
+      disabled: disabled || !surface.enabled,
+      closeOnSelect: true,
+      context: {
+        action: 'select-draft-context',
+        surface
+      }
+    }));
   }
 
-  protected selectContextFromPicker(surface: ExplainableSurface, event?: Event): void {
-    event?.stopPropagation();
-    if (this.saving || !surface.enabled) {
+  protected onContextMenuSelect(event: AppMenuItemSelectEvent<HelpEditorContextMenuItemId, HelpEditorContextMenuContext>): void {
+    const surface = event.context?.surface;
+    if (!surface || this.saving || !surface.enabled) {
       return;
     }
     this.selectDraftContext(surface.key);
-    this.closeContextPicker();
   }
 
   protected selectedContentLanguageLabel(): string {
@@ -684,7 +696,6 @@ export class AdminHelpEditorPopupComponent {
     this.editing = false;
     this.draft = null;
     this.draftAccordionOpen = true;
-    this.closeContextPicker();
     this.admin.closePopup();
   }
 
@@ -819,7 +830,6 @@ export class AdminHelpEditorPopupComponent {
     this.draft = null;
     this.draftAccordionOpen = true;
     this.error = '';
-    this.closeContextPicker();
   }
 
   protected toggleDraftRevision(event?: Event): void {
@@ -1058,7 +1068,6 @@ export class AdminHelpEditorPopupComponent {
       this.editing = false;
       this.draft = null;
       this.draftAccordionOpen = true;
-      this.closeContextPicker();
       this.selectNewestRevision(this.revisions(), this.activeRevision());
     } catch {
       this.error = this.saveErrorLabel();
@@ -1311,6 +1320,31 @@ export class AdminHelpEditorPopupComponent {
     return this.normalizeContentLang(lang) === 'hu' ? 'green' : 'blue';
   }
 
+  private explanationSurfacePalette(surface: ExplainableSurface): AppMenuPalette {
+    if (surface.key.startsWith('assets')) {
+      return 'brown';
+    }
+    if (surface.key.startsWith('event')) {
+      return 'orange';
+    }
+    if (surface.key.startsWith('activities')) {
+      return 'gold';
+    }
+    if (surface.key.startsWith('profile')) {
+      return 'violet';
+    }
+    switch (surface.key) {
+      case 'home.game':
+        return 'green';
+      case 'chats':
+        return 'sky';
+      case 'contacts':
+        return 'teal';
+      default:
+        return surface.owner === 'route' ? 'green' : surface.owner === 'navigator' ? 'purple' : 'blue';
+    }
+  }
+
   protected defaultDescription(): string {
     switch (this.documentKind) {
       case 'privacy':
@@ -1430,7 +1464,6 @@ export class AdminHelpEditorPopupComponent {
     this.openRevisionId = '';
     this.openPreviewSectionId = '';
     this.openDraftSectionId = draft.sections[0]?.localId ?? '';
-    this.closeContextPicker();
     this.editing = true;
   }
 

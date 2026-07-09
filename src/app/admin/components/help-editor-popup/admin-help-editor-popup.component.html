@@ -106,28 +106,14 @@
                                 @if (documentKind === 'explanation') {
                                   <label class="help-editor-inline-field help-editor-context-field">
                                     <span>{{ uiText('Canonical screen') }}</span>
-                                    <button
-                                      type="button"
-                                      class="help-editor-context-select-wrap"
-                                      [disabled]="saving"
-                                      [attr.aria-expanded]="contextPickerOpen"
-                                      aria-haspopup="dialog"
-                                      data-motion="none"
-                                      (click)="openContextPicker($event)"
-                                      >
-                                      @if (explanationSurface(editDraft.contextKey); as currentSurface) {
-                                        <span class="help-editor-context-trigger">
-                                          <mat-icon>{{ currentSurface.icon }}</mat-icon>
-                                          <span data-i18n-ignore>{{ currentSurface.label }}</span>
-                                        </span>
-                                      } @else {
-                                        <span class="help-editor-context-trigger">
-                                          <mat-icon>add</mat-icon>
-                                          <span data-i18n-ignore>Choose screen</span>
-                                        </span>
-                                      }
-                                      <mat-icon class="help-editor-context-select-caret">expand_more</mat-icon>
-                                    </button>
+                                    <app-menu
+                                      kind="select"
+                                      [trigger]="contextMenuTrigger(editDraft)"
+                                      [items]="contextMenuItems(editDraft)"
+                                      panelAlign="start"
+                                      [closeOnSelect]="true"
+                                      (itemSelect)="onContextMenuSelect($event)"
+                                    ></app-menu>
                                   </label>
                                 }
                                 <div class="help-editor-description-line">
@@ -434,45 +420,5 @@
           </section>
         }
       </div>
-    @if (contextPickerOpen && draft; as editDraft) {
-      <section class="mobile-profile-selector-sheet-wrap help-editor-context-sheet-wrap" role="dialog" aria-modal="true" aria-label="Choose canonical screen" (click)="$event.stopPropagation()">
-        <div class="mobile-profile-selector-backdrop" (click)="closeContextPicker($event)"></div>
-        <div class="mobile-profile-selector-sheet help-editor-context-sheet" (click)="$event.stopPropagation()">
-          <div class="mobile-profile-selector-handle" aria-hidden="true"></div>
-          <div class="mobile-profile-selector-title help-editor-context-sheet-title">
-            <mat-icon>tips_and_updates</mat-icon>
-            <span>{{ uiText('Canonical screen') }}</span>
-            <button
-              type="button"
-              class="mobile-profile-selector-close-btn popup-surface-close-btn"
-              data-motion="none"
-              (click)="closeContextPicker($event)"
-              aria-label="Close canonical screen picker"
-              >
-              <mat-icon>close</mat-icon>
-            </button>
-          </div>
-          <div class="mobile-profile-selector-options help-editor-context-options">
-            @for (surface of explainableSurfaces(); track surface.key) {
-              <button
-                type="button"
-                class="mobile-profile-selector-option help-editor-context-option"
-                [class.active]="editDraft.contextKey === surface.key"
-                data-motion="none"
-                (click)="selectContextFromPicker(surface, $event)"
-                >
-                <span class="mobile-profile-selector-option-main">
-                  <mat-icon>{{ surface.icon }}</mat-icon>
-                  <span data-i18n-ignore>{{ surface.label }}</span>
-                </span>
-                @if (editDraft.contextKey === surface.key) {
-                  <mat-icon>check</mat-icon>
-                }
-              </button>
-            }
-          </div>
-        </div>
-      </section>
-    }
   </app-popup>
 }
