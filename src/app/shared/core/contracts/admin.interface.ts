@@ -153,6 +153,7 @@ export interface AdminMonitoringStateDto {
   generatedAtIso: string;
   source: AdminMonitoringSource;
   health: AdminMonitoringHealth;
+  filterCounts?: Record<string, number>;
   categories: AdminMonitoringCategoryDto[];
 }
 

@@ -4,6 +4,7 @@ import {
 import {
   Component,
   computed,
+  effect,
   inject,
   signal
 } from '@angular/core';
@@ -68,6 +69,8 @@ export class AdminStatsPopupComponent {
   protected readonly revenue = computed(() => this.stats()?.revenue ?? null);
   protected readonly graphBridgeUsers = computed(() => this.graph()?.bridgeUsers.slice(0, 5) ?? []);
   protected readonly graphCommunities = computed(() => this.graph()?.communities.slice(0, 5) ?? []);
+  private loadGeneration = 0;
+  private popupOpen = false;
   protected readonly timelineMetrics: { key: AdminStatsTimelineMetric; labelKey: string; tone: string }[] = [
     { key: 'activeUsers', labelKey: 'stats.timeline.active.users', tone: 'blue' },
     { key: 'registrations', labelKey: 'stats.timeline.registrations', tone: 'green' },
@@ -91,7 +94,19 @@ export class AdminStatsPopupComponent {
     { key: 'payingUsers', labelKey: 'stats.revenue.timeline.paying.users', tone: 'purple' }
   ];
   constructor() {
-    void this.load();
+    effect(() => {
+      const isOpen = this.admin.activePopup() === 'stats';
+      if (isOpen && !this.popupOpen) {
+        this.popupOpen = true;
+        this.resetForOpen();
+        queueMicrotask(() => void this.load());
+        return;
+      }
+      if (!isOpen && this.popupOpen) {
+        this.popupOpen = false;
+        this.cancelActiveLoad();
+      }
+    });
   }
 
   protected close(): void {
@@ -613,13 +628,14 @@ export class AdminStatsPopupComponent {
   }
 
   private async load(): Promise<void> {
-    if (this.loading()) {
-      return;
-    }
+    const generation = ++this.loadGeneration;
     this.loading.set(true);
     this.error.set('');
     try {
       const dashboard = await this.statsService.loadStatsDashboard(this.activeAdminId());
+      if (generation !== this.loadGeneration) {
+        return;
+      }
       this.stats.set(dashboard);
       this.selectedTimeline.set(dashboard.timeline.at(-1) ?? null);
       this.selectedGraphTimeline.set(dashboard.graph.timeline.at(-1) ?? null);
@@ -629,10 +645,38 @@ export class AdminStatsPopupComponent {
         value: `${dashboard.graph.healthScore}`
       });
     } catch (error) {
-      this.error.set(error instanceof Error ? error.message : 'Unable to load stats.');
+      if (generation === this.loadGeneration) {
+        this.error.set(error instanceof Error ? error.message : 'Unable to load stats.');
+      }
     } finally {
-      this.loading.set(false);
+      if (generation === this.loadGeneration) {
+        this.loading.set(false);
+      }
     }
+  }
+
+  private resetForOpen(): void {
+    this.loadGeneration += 1;
+    this.error.set('');
+    this.stats.set(null);
+    this.selectedTimeline.set(null);
+    this.selectedGraphTimeline.set(null);
+    this.selectedRevenueTimeline.set(null);
+    this.selectedGraphFocus.set(null);
+    this.graphHelpOpen.set(false);
+    this.timelineDragging.set(false);
+    this.graphTimelineDragging.set(false);
+    this.revenueTimelineDragging.set(false);
+    this.loading.set(true);
+  }
+
+  private cancelActiveLoad(): void {
+    this.loadGeneration += 1;
+    this.loading.set(false);
+    this.graphHelpOpen.set(false);
+    this.timelineDragging.set(false);
+    this.graphTimelineDragging.set(false);
+    this.revenueTimelineDragging.set(false);
   }
 
   private updateTimelineFromPointer(event: PointerEvent, points: AdminStatsTimelinePointDto[]): void {
