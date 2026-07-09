@@ -2,7 +2,13 @@ import { HttpClient } from '@angular/common/http';
 import { Injectable, inject } from '@angular/core';
 
 import { environment } from '../../../../../environments/environment';
-import type { IdeaPostDto, IdeaPostSaveRequestDto } from '../../contracts/content.interface';
+import type {
+  IdeaPostAdminCountsDto,
+  IdeaPostAdminPageQueryDto,
+  IdeaPostAdminPageResultDto,
+  IdeaPostDto,
+  IdeaPostSaveRequestDto
+} from '../../contracts/content.interface';
 
 @Injectable({
   providedIn: 'root'
@@ -32,6 +38,34 @@ export class HttpIdeaPostsService {
       })
       .toPromise();
     return this.normalizePosts(response);
+  }
+
+  async loadAdminPostsPage(
+    adminUserId: string,
+    lang = 'en',
+    query: IdeaPostAdminPageQueryDto = {}
+  ): Promise<IdeaPostAdminPageResultDto> {
+    const pageSize = Math.max(1, Math.trunc(Number(query.pageSize) || 10));
+    const page = Math.max(0, Math.trunc(Number(query.page) || 0));
+    const params: Record<string, string> = {
+      lang: this.normalizeLang(lang),
+      status: this.normalizeAdminStatus(query.status),
+      page: String(page),
+      pageSize: String(pageSize)
+    };
+    if (adminUserId.trim()) {
+      params['adminUserId'] = adminUserId.trim();
+    }
+    const cursor = `${query.cursor ?? ''}`.trim();
+    if (cursor) {
+      params['cursor'] = cursor;
+    }
+    const response = await this.http
+      .get<Array<Partial<IdeaPostDto>> | Partial<IdeaPostAdminPageResultDto> | null>(`${this.apiBaseUrl}/admin/ideas`, {
+        params
+      })
+      .toPromise();
+    return this.normalizeAdminPage(response);
   }
 
   async savePost(request: IdeaPostSaveRequestDto): Promise<IdeaPostDto> {
@@ -114,6 +148,91 @@ export class HttpIdeaPostsService {
       updatedAtIso: `${value?.updatedAtIso ?? value?.createdAtIso ?? ''}`.trim(),
       updatedByUserId: `${value?.updatedByUserId ?? value?.createdByUserId ?? ''}`.trim()
     };
+  }
+
+  private normalizeAdminPage(
+    value: Array<Partial<IdeaPostDto>> | Partial<IdeaPostAdminPageResultDto> | null | undefined
+  ): IdeaPostAdminPageResultDto {
+    if (Array.isArray(value)) {
+      const records = this.normalizePosts(value);
+      return {
+        records,
+        total: records.length,
+        nextCursor: null,
+        counts: this.countPosts(records)
+      };
+    }
+    const records = this.normalizePosts(Array.isArray(value?.records) ? value.records : []);
+    const explicitTotal = Math.trunc(Number(value?.total));
+    return {
+      records,
+      total: Number.isFinite(explicitTotal) && explicitTotal >= 0 ? explicitTotal : records.length,
+      nextCursor: typeof value?.nextCursor === 'string' && value.nextCursor.trim().length > 0
+        ? value.nextCursor.trim()
+        : null,
+      counts: this.normalizeCounts(value?.counts, records)
+    };
+  }
+
+  private normalizeCounts(
+    value: Partial<IdeaPostAdminCountsDto> | null | undefined,
+    fallbackPosts: readonly IdeaPostDto[]
+  ): IdeaPostAdminCountsDto {
+    const fallback = this.countPosts(fallbackPosts);
+    return {
+      all: this.nonNegativeInteger(value?.all, fallback.all),
+      featured: this.nonNegativeInteger(value?.featured, fallback.featured),
+      published: this.nonNegativeInteger(value?.published, fallback.published),
+      drafts: this.nonNegativeInteger(value?.drafts, fallback.drafts),
+      trashed: this.nonNegativeInteger(value?.trashed, fallback.trashed)
+    };
+  }
+
+  private countPosts(posts: readonly IdeaPostDto[]): IdeaPostAdminCountsDto {
+    return posts.reduce<IdeaPostAdminCountsDto>((counts, post) => {
+      if (post.trashed) {
+        counts.trashed += 1;
+        return counts;
+      }
+      counts.all += 1;
+      if (post.featured) {
+        counts.featured += 1;
+      }
+      if (post.published) {
+        counts.published += 1;
+      } else {
+        counts.drafts += 1;
+      }
+      return counts;
+    }, {
+      all: 0,
+      featured: 0,
+      published: 0,
+      drafts: 0,
+      trashed: 0
+    });
+  }
+
+  private nonNegativeInteger(value: number | null | undefined, fallback: number): number {
+    const parsed = Math.trunc(Number(value));
+    return Number.isFinite(parsed) && parsed >= 0 ? parsed : fallback;
+  }
+
+  private normalizeAdminStatus(value: string | null | undefined): string {
+    const normalized = `${value ?? ''}`.trim().toLowerCase();
+    switch (normalized) {
+      case 'featured':
+      case 'published':
+      case 'drafts':
+      case 'trashed':
+        return normalized;
+      case 'draft':
+        return 'drafts';
+      case 'trash':
+        return 'trashed';
+      default:
+        return 'all';
+    }
   }
 
   private excerptFromHtml(value: string): string {
