@@ -1677,17 +1677,24 @@
   color: var(--app-menu-icon);
 }
 
-.app-menu__tabs-tab:not(:disabled):hover,
-.app-menu__tabs-tab--active {
+.app-menu__tabs-tab:not(:disabled):hover {
   background: var(--app-menu-bg-hover);
   color: var(--app-menu-fg);
   transform: translateY(-1px);
   box-shadow: 0 3px 10px var(--app-menu-shadow);
 }
 
-.app-menu__tabs-tab--active {
-  border-color: var(--app-menu-border);
+.app-menu__tabs-tab--active,
+.app-menu__tabs-tab--active:not(:disabled):hover {
+  border-color: transparent;
+  background: var(--app-menu-bg-strong);
+  color: #fff;
+  transform: translateY(-1px);
   box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.5), 0 3px 10px var(--app-menu-shadow);
+}
+
+.app-menu__tabs-tab--active .mat-icon {
+  color: currentColor;
 }
 
 .app-menu__counter--tabs-tab {
