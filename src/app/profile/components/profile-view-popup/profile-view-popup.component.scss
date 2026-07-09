@@ -1,39 +1,17 @@
-@use '../../../shared/ui/styles' as ui;
-
-@include ui.popup-shell();
-
 :host {
   display: contents;
-}
-
-.profile-view-popup-shell {
-  z-index: 16000;
   font-family: 'Nunito Sans', 'Segoe UI', sans-serif;
 }
 
-.profile-view-popup-shell .app-popup-panel.popup-panel-profile-view {
-  width: min(1080px, calc(100vw - 1.2rem));
-  height: calc(100vh - 1.2rem);
-  height: calc(100dvh - 1.2rem);
-  max-height: calc(100vh - 1.2rem);
-  max-height: calc(100dvh - 1.2rem);
+.profile-view-body {
   display: flex;
   flex-direction: column;
-}
-
-.profile-view-header {
-  padding: 0.7rem 0.78rem;
-}
-
-.profile-view-title h2 {
-  font-size: 1.05rem;
-  font-weight: 900;
-}
-
-.profile-view-body {
   flex: 1 1 auto;
+  width: 100%;
+  min-width: 0;
   min-height: 0;
   padding: 0.78rem;
+  box-sizing: border-box;
   gap: 0.78rem;
   overflow-y: auto;
   overflow-x: hidden;
@@ -541,13 +519,6 @@
 }
 
 @media (max-width: 760px) {
-  .profile-view-popup-shell .app-popup-panel.popup-panel-profile-view {
-    width: 100vw !important;
-    height: 100dvh !important;
-    max-height: 100dvh !important;
-    border-radius: 0;
-  }
-
   .profile-view-body {
     padding: 0.65rem;
   }
