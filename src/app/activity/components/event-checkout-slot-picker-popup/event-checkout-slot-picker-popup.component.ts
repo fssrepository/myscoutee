@@ -351,16 +351,31 @@ export class EventCheckoutSlotPickerPopupComponent {
   }
 
   protected isSlotUnavailable(slot: EventCheckoutSlot): boolean {
-    return !this.isSelected(slot)
+    return !this.isSlotBooked(slot)
+      && !this.isSelected(slot)
       && !this.removedCountedSlotIds.has(slot.id)
       && this.slotAvailableCount(slot) <= 0;
   }
 
+  protected isSlotBooked(slot: EventCheckoutSlot): boolean {
+    return slot.bookedByViewer === true;
+  }
+
+  protected slotActionsDisabled(slot: EventCheckoutSlot): boolean {
+    return this.isSlotBooked(slot) || this.isSlotUnavailable(slot);
+  }
+
   protected slotCardTone(slot: EventCheckoutSlot): TextCardTone {
+    if (this.isSlotBooked(slot)) {
+      return 'orange';
+    }
     return this.isSlotUnavailable(slot) ? 'muted' : 'slot';
   }
 
   protected slotCapacityBadge(slot: EventCheckoutSlot): string {
+    if (this.isSlotBooked(slot)) {
+      return 'Booked';
+    }
     const capacity = this.slotCapacityTotal(slot);
     const available = this.slotAvailableCount(slot);
     const selected = this.isSelected(slot);
@@ -375,7 +390,7 @@ export class EventCheckoutSlotPickerPopupComponent {
   }
 
   protected slotCapacityBadgeTone(slot: EventCheckoutSlot): TextCardStatusTone {
-    return 'muted';
+    return this.isSlotBooked(slot) ? 'danger' : 'muted';
   }
 
   protected selectedOptionalLabel(slot: EventCheckoutSlot): string {
@@ -392,7 +407,7 @@ export class EventCheckoutSlotPickerPopupComponent {
   protected toggleSlot(slot: EventCheckoutSlot, event?: Event): void {
     event?.preventDefault();
     event?.stopPropagation();
-    if (this.isSlotUnavailable(slot)) {
+    if (this.slotActionsDisabled(slot)) {
       return;
     }
     const existing = this.selectionsBySlotId.get(slot.id);

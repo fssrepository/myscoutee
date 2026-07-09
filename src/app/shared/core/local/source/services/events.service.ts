@@ -222,21 +222,26 @@ export class LocalEventsService extends LocalRouteDelayService implements IEvent
     const allSlots = (record.upcomingSlots ?? [])
       .filter(slot => this.checkoutSlotMatchesOrder(slot, query))
       .filter(slot => basketView || this.checkoutSlotOverlapsRange(slot, query))
-      .sort((left, right) => direction * (this.sortableDateMs(left.startAtIso) - this.sortableDateMs(right.startAtIso)))
-      .map(slot => this.toCheckoutSlot(record, slot, slotReservations.get(slot.id) ?? 0));
-    const days = this.checkoutSlotDays(allSlots);
-    const allSlotsById = new Map(allSlots.map(slot => [slot.id, slot]));
+      .sort((left, right) => direction * (this.sortableDateMs(left.startAtIso) - this.sortableDateMs(right.startAtIso)));
+    const bookedSlotIds = this.eventsRepository.queryAcceptedEventOwnerIdsByUser(
+      allSlots.map(slot => slot.id),
+      normalizedUserId
+    );
+    const allSlotDtos = allSlots
+      .map(slot => this.toCheckoutSlot(record, slot, slotReservations.get(slot.id) ?? 0, bookedSlotIds.has(slot.id)));
+    const days = this.checkoutSlotDays(allSlotDtos);
+    const allSlotsById = new Map(allSlotDtos.map(slot => [slot.id, slot]));
     const basketSlots = (checkoutBasket?.items ?? [])
       .filter(item => this.isActiveCheckoutItem(item) && item.kind === 'event' && !!item.slotSourceId?.trim())
       .map(item => allSlotsById.get(item.slotSourceId!.trim()) ?? this.checkoutSlotFromBasketItem(record, item))
       .filter((slot): slot is EventCheckoutSlot => Boolean(slot))
       .sort((left, right) => direction * (this.sortableDateMs(left.startAtIso) - this.sortableDateMs(right.startAtIso)));
-    const pageSource = basketView ? basketSlots : allSlots;
+    const pageSource = basketView ? basketSlots : allSlotDtos;
     const offset = this.checkoutCursorOffset(query.cursor);
     const limit = Math.max(1, Math.min(60, Math.trunc(Number(query.limit) || 15)));
     const page = pageSource.slice(offset, offset + limit);
     const currency = pageSource.find(slot => slot.currency)?.currency
-      ?? allSlots.find(slot => slot.currency)?.currency
+      ?? allSlotDtos.find(slot => slot.currency)?.currency
       ?? record.pricing?.currency
       ?? 'USD';
     return {
@@ -889,7 +894,8 @@ export class LocalEventsService extends LocalRouteDelayService implements IEvent
   private toCheckoutSlot(
     record: ActivityEventRecord,
     slot: EventSlotOccurrenceDTO,
-    reservedCount = 0
+    reservedCount = 0,
+    bookedByViewer = false
   ): EventCheckoutSlot {
     const pricing = this.resolveCheckoutSlotPricing(record, slot);
     const capacityTotal = Math.max(0, Math.trunc(Number(slot.capacityTotal) || 0));
@@ -909,6 +915,7 @@ export class LocalEventsService extends LocalRouteDelayService implements IEvent
       acceptedMembers,
       pendingMembers,
       availableSlots: Math.max(0, capacityTotal - acceptedMembers - pendingMembers - activeReservations),
+      bookedByViewer,
       amount: pricing.amount,
       currency: pricing.currency,
       pricingSummaryRows: pricing.rows
@@ -938,6 +945,7 @@ export class LocalEventsService extends LocalRouteDelayService implements IEvent
       acceptedMembers: 0,
       pendingMembers: 0,
       availableSlots: quantity,
+      bookedByViewer: item.resultState === 'succeeded',
       amount: Math.max(0, Number(item.amount) || 0),
       currency: item.currency || record.pricing?.currency || 'USD',
       pricingSummaryRows: item.pricingSummaryRows ?? []

@@ -2287,9 +2287,10 @@ export class EventCheckoutPopupComponent {
     this.slotPageIndex = 0;
     this.selectedOptionalSubEventIds = new Set((draft?.optionalSubEventIds ?? []).filter(item => validOptionalIds.has(item)));
     this.acceptedPolicyIds = new Set((draft?.acceptedPolicyIds ?? []).filter(item => validPolicyIds.has(item)));
-    this.paymentStep = this.shouldOpenPaymentStepFromDraft(draft);
-    this.checkoutSessionId = draft?.checkoutSessionId ?? null;
-    this.checkoutBasket = draft?.basketItems?.length && !this.shouldSuppressStoredWaitlistBasket(dialog, draft.basketItems)
+    const draftHasVisibleItems = this.hasVisibleCheckoutItems(draft?.basketItems);
+    this.paymentStep = draftHasVisibleItems ? this.shouldOpenPaymentStepFromDraft(draft) : false;
+    this.checkoutSessionId = draftHasVisibleItems ? draft?.checkoutSessionId ?? null : null;
+    this.checkoutBasket = draftHasVisibleItems && draft?.basketItems?.length && !this.shouldSuppressStoredWaitlistBasket(dialog, draft.basketItems)
       ? {
         userId: dialog.userId,
         sourceId: dialog.record.id,
@@ -2322,8 +2323,11 @@ export class EventCheckoutPopupComponent {
     const basket = candidateBasket && this.shouldSuppressStoredWaitlistBasket(dialog, candidateBasket.items)
       ? null
       : candidateBasket;
-    this.checkoutBasket = basket;
-    if (!basket || basket.items.length === 0) {
+    const basketHasVisibleItems = this.hasVisibleCheckoutItems(basket?.items);
+    this.checkoutBasket = basketHasVisibleItems ? basket : null;
+    if (!basket || !basketHasVisibleItems) {
+      this.checkoutSessionId = null;
+      this.paymentStep = false;
       this.refreshCheckoutBaseline();
       return;
     }
@@ -2353,6 +2357,9 @@ export class EventCheckoutPopupComponent {
     if (draft.basketChanged === true) {
       return false;
     }
+    if (!this.hasActiveCheckoutItems(draft.basketItems)) {
+      return false;
+    }
     if (Boolean(draft.checkoutSessionId?.trim())) {
       return true;
     }
@@ -2370,6 +2377,9 @@ export class EventCheckoutPopupComponent {
     }
     if (!basket) {
       return this.paymentStep;
+    }
+    if (!this.hasActiveCheckoutItems(basket.items)) {
+      return false;
     }
     if (Boolean(basket.checkoutSessionId?.trim())) {
       return true;
@@ -2392,6 +2402,21 @@ export class EventCheckoutPopupComponent {
     }
     const activeItems = (items ?? []).filter(item => !this.isInactiveCheckoutResultState(item.resultState));
     return activeItems.length > 0 && activeItems.every(item => this.isImplicitMainEventBasketItem(dialog, item));
+  }
+
+  private hasActiveCheckoutItems(
+    items: readonly ActivityContracts.EventCheckoutBasketItem[] | null | undefined
+  ): boolean {
+    return (items ?? []).some(item => !this.isInactiveCheckoutResultState(item.resultState));
+  }
+
+  private hasVisibleCheckoutItems(
+    items: readonly ActivityContracts.EventCheckoutBasketItem[] | null | undefined
+  ): boolean {
+    if (this.isReadOnlyCheckoutSummary()) {
+      return (items ?? []).some(item => item.resultState !== 'deleted');
+    }
+    return this.hasActiveCheckoutItems(items);
   }
 
   private isImplicitMainEventBasketItem(

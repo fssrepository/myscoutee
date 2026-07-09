@@ -1325,6 +1325,7 @@ export interface EventCheckoutSlot {
   acceptedMembers: number;
   pendingMembers: number;
   availableSlots: number;
+  bookedByViewer?: boolean | null;
   amount: number;
   currency: string;
   pricingSummaryRows: EventCheckoutPricingSummaryRow[];

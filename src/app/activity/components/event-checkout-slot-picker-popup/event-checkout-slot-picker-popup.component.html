@@ -30,7 +30,11 @@
       </div>
 
       <ng-template #slotItemTemplate let-slot let-selectItem="selectItem">
-        <article class="event-checkout-slot-picker__slot-card" [class.is-selected]="isSelected(slot)">
+        <article
+          class="event-checkout-slot-picker__slot-card"
+          [class.is-selected]="isSelected(slot)"
+          [class.is-booked]="isSlotBooked(slot)"
+        >
           <app-text-card
             class="event-checkout-slot-picker__text-card"
             [tone]="slotCardTone(slot)"
@@ -48,10 +52,10 @@
             [statusBadgeTone]="slotCapacityBadgeTone(slot)"
             [menuTitle]="slot.title"
             menuPalette="muted"
-            [menuItems]="isSlotUnavailable(slot) ? [] : slotMenuItems(slot)"
-            [selectable]="!isSlotUnavailable(slot)"
+            [menuItems]="slotActionsDisabled(slot) ? [] : slotMenuItems(slot)"
+            [selectable]="!slotActionsDisabled(slot)"
             [selected]="isSelected(slot)"
-            [selectDisabled]="saving"
+            [selectDisabled]="saving || slotActionsDisabled(slot)"
             selectPalette="picker"
             selectIcon="add"
             selectedIcon="check"

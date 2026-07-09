@@ -612,6 +612,10 @@ export class LocalEventsRepository {
     });
   }
 
+  queryAcceptedEventOwnerIdsByUser(ownerIds: readonly string[], userId: string): Set<string> {
+    return this.acceptedParticipantOwnerIds('event', ownerIds, userId);
+  }
+
   private subEventParticipantSlotCandidate(slot: ActivityContracts.SubEventsSlotDTO): SubEventParticipantSlotCandidate {
     const slotOwnerId = this.subEventParticipantSlotOwnerId(slot);
     const concreteSlot = this.isConcreteSubEventSlot(slot);

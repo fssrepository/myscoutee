@@ -1253,6 +1253,7 @@ export class HttpEventsService implements IEventsService {
       acceptedMembers: Math.max(0, Math.trunc(Number(value.acceptedMembers) || 0)),
       pendingMembers: Math.max(0, Math.trunc(Number(value.pendingMembers) || 0)),
       availableSlots: Math.max(0, Math.trunc(Number(value.availableSlots) || 0)),
+      bookedByViewer: value.bookedByViewer === true,
       amount: Math.max(0, Number(value.amount) || 0),
       currency: `${value.currency ?? 'USD'}`.trim() || 'USD',
       pricingSummaryRows: (value.pricingSummaryRows ?? []).map(row => ({ ...row }))
