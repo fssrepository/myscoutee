@@ -1333,7 +1333,13 @@ export class AppMenuComponent<TId extends string = string, TContext = unknown>
   }
 
   private shouldCloseOnSelect(item: AppMenuItem<TId, TContext>): boolean {
-    return item.closeOnSelect ?? (this.currentTabbedModelLayout ? false : this.closeOnSelect);
+    if (item.closeOnSelect !== null && item.closeOnSelect !== undefined) {
+      return item.closeOnSelect;
+    }
+    if (this.currentTabbedModelLayout && this.isIconLayoutItem(item)) {
+      return this.closeOnSelect;
+    }
+    return this.currentTabbedModelLayout ? false : this.closeOnSelect;
   }
 
   private syncActiveTabsGroup(): void {

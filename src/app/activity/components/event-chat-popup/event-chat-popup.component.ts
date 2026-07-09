@@ -2000,6 +2000,7 @@ export class EventChatPopupComponent implements OnDestroy {
     return {
       id: 'emoji-picker',
       icon: 'add',
+      closeIcon: 'close',
       ariaLabel: 'Search emoji',
       layout: 'icon',
       hideLabel: true,

@@ -1006,6 +1006,7 @@ export class AdminHelpEditorPopupComponent {
             layout: 'icon',
             active: section.icon === option.icon,
             checked: section.icon === option.icon,
+            closeOnSelect: true,
             ariaLabel: `${this.uiText('Use')} ${this.uiText(option.label)} ${this.uiText('icon')}`,
             context: {
               action: 'select-section-icon',
