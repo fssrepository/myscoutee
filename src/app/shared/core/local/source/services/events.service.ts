@@ -1257,7 +1257,10 @@ export class LocalEventsService extends LocalRouteDelayService implements IEvent
 
   private checkoutSlotOverlapsRange(slot: EventSlotOccurrenceDTO, query: EventCheckoutSlotsQuery): boolean {
     const start = this.dateOnlyMs((query.rangeStart || query.anchorDate || '').slice(0, 10));
-    const end = this.dateOnlyMs((query.rangeEnd || '').slice(0, 10));
+    let end = this.dateOnlyMs((query.rangeEnd || '').slice(0, 10));
+    if (this.checkoutQueryIsUpcomingFromDate(query, start, end)) {
+      end = 0;
+    }
     if (!start && !end) {
       return true;
     }
@@ -1270,6 +1273,14 @@ export class LocalEventsService extends LocalRouteDelayService implements IEvent
       return false;
     }
     return true;
+  }
+
+  private checkoutQueryIsUpcomingFromDate(query: EventCheckoutSlotsQuery, start: number, end: number): boolean {
+    return start > 0
+      && end > 0
+      && start === end
+      && query.view === 'day'
+      && query.order !== 'past';
   }
 
   private checkoutCursorOffset(cursor: string | null | undefined): number {
