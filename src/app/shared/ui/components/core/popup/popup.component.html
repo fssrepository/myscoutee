@@ -1,4 +1,8 @@
-<div class="ui-popup" [style.z-index]="zIndex ?? null">
+<div
+  class="ui-popup"
+  [class.ui-popup--fullscreen]="popupModel.size === 'fullscreen'"
+  [style.z-index]="zIndex ?? null"
+>
   <div class="ui-popup__backdrop" [ngClass]="backdropToneClass()" (click)="onBackdropClick($event)"></div>
   <section
     class="ui-popup__panel"
@@ -118,6 +122,12 @@
           }
         </div>
       </header>
+    }
+
+    @if (!hasHeader && showClose) {
+      <button type="button" class="ui-popup__close ui-popup__close--floating" (click)="emitClose($event)" [attr.aria-label]="closeAriaLabel">
+        <mat-icon>close</mat-icon>
+      </button>
     }
 
     @if (hasToolbar) {

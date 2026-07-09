@@ -16,7 +16,7 @@ import type {
   DateInputValue
 } from '../form/inputs/date-input/date-input.component';
 
-export type PopupSize = 'small' | 'default' | 'wide';
+export type PopupSize = 'small' | 'default' | 'wide' | 'fullscreen';
 export type PopupHeight = 'auto' | 'full';
 export type PopupHeaderTone = 'default' | 'accent';
 export type PopupHeaderLayout = 'default' | 'article' | 'document';

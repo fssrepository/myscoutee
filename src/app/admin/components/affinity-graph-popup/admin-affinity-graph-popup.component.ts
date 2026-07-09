@@ -11,9 +11,6 @@ import {
   signal
 } from '@angular/core';
 import {
-  MatIconModule
-} from '@angular/material/icon';
-import {
   DomSanitizer,
   SafeResourceUrl
 } from '@angular/platform-browser';
@@ -28,7 +25,9 @@ import {
   LazyBgImageDirective
 } from '../../../shared/ui/directives';
 import {
-  IndicatorComponent
+  IndicatorComponent,
+  PopupComponent,
+  type PopupModel
 } from '../../../shared/ui/components';
 import { UserProfileStore } from '../../../shared/ui/context/stores/user-profile.store';
 import { AppRuntimeStore } from '../../../shared/ui/context/stores/app-runtime.store';
@@ -36,7 +35,7 @@ import { AppRuntimeStore } from '../../../shared/ui/context/stores/app-runtime.s
 @Component({
   selector: 'app-admin-affinity-graph-popup',
   standalone: true,
-  imports: [CommonModule, MatIconModule, IndicatorComponent],
+  imports: [CommonModule, IndicatorComponent, PopupComponent],
   templateUrl: './admin-affinity-graph-popup.component.html',
   styleUrl: './admin-affinity-graph-popup.component.scss'
 })
@@ -92,6 +91,19 @@ export class AdminAffinityGraphPopupComponent implements OnDestroy {
 
   protected close(): void {
     this.admin.closePopup();
+  }
+
+  protected affinityGraphPopupModel(): PopupModel {
+    return {
+      ariaLabel: 'Affinity graph view',
+      closeAriaLabel: 'Close affinity graph',
+      showHeader: false,
+      showClose: true,
+      size: 'fullscreen',
+      bodyLayout: 'flush',
+      backdropTone: 'dim',
+      onClose: () => this.close()
+    };
   }
 
   protected onGraphFrameLoad(): void {
