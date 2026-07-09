@@ -100,7 +100,7 @@ interface AdminBlockedUserListFilters {
   revision?: number;
 }
 
-type AdminReportMenuAction = 'warn' | 'block' | 'unblock' | 'view-chat';
+type AdminReportMenuAction = 'block' | 'unblock' | 'view-chat';
 type AdminReportMenuSource = 'report-detail' | 'blocked-user';
 type AdminReportActionsMenuItemId =
   | `report-detail:${string}`
@@ -353,10 +353,6 @@ export class AdminReportsPopupComponent {
     this.admin.openItemPreview(report);
   }
 
-  protected warnUser(user: AdminReportedUserDto): void {
-    this.admin.openWarnChat(user);
-  }
-
   protected blockUser(user: AdminReportedUserDto): void {
     this.dialogStore.open({
       title: `Block ${user.name}?`,
@@ -428,9 +424,6 @@ export class AdminReportsPopupComponent {
       return;
     }
     switch (context.action) {
-      case 'warn':
-        this.warnBlockedUser(context.user, event.sourceEvent);
-        break;
       case 'block':
         event.sourceEvent.preventDefault();
         event.sourceEvent.stopPropagation();
@@ -451,12 +444,6 @@ export class AdminReportsPopupComponent {
 
   protected blockedUsersCount(): number {
     return this.blockedUsers().length;
-  }
-
-  protected warnBlockedUser(user: AdminReportedUserDto, event?: Event): void {
-    event?.preventDefault();
-    event?.stopPropagation();
-    this.warnUser(user);
   }
 
   protected viewBlockedUserChat(user: AdminReportedUserDto, event?: Event): void {
@@ -497,7 +484,6 @@ export class AdminReportsPopupComponent {
       ];
     }
     return [
-      this.reportActionItem(user, source, 'warn', 'Warn in chat', 'chat'),
       this.reportActionItem(user, source, 'block', 'Block user', 'block', 'danger')
     ];
   }

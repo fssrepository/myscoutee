@@ -6,7 +6,6 @@ export type AdminMenuKind =
   | 'reports'
   | 'feedback'
   | 'chat-review'
-  | 'warn-chat'
   | 'help-editor'
   | 'idea-editor'
   | 'notifications'
@@ -75,11 +74,6 @@ export class AdminMenuStore {
   openChatReview(report: AdminReportDto): void {
     this.selectedReportRef.set(report);
     this.activePopupRef.set('chat-review');
-  }
-
-  openWarnChat(user: AdminReportedUserDto): void {
-    this.selectedReportedUserRef.set(user);
-    this.activePopupRef.set('warn-chat');
   }
 
   openItemPreview(report: AdminReportDto): void {
