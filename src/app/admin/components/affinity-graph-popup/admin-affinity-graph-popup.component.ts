@@ -166,8 +166,9 @@ export class AdminAffinityGraphPopupComponent implements OnDestroy {
     if (!target) {
       return;
     }
+    const requestId = data.requestId;
     const controller = new AbortController();
-    this.graphRequestControllers.set(data.requestId, controller);
+    this.graphRequestControllers.set(requestId, controller);
     void this.resolveGraphRequest(data.method, data.params ?? {}, controller.signal)
       .then(result => {
         if (controller.signal.aborted) {
@@ -176,7 +177,7 @@ export class AdminAffinityGraphPopupComponent implements OnDestroy {
         target.postMessage({
           source: 'admin-affinity-graph',
           type: 'response',
-          requestId: data.requestId,
+          requestId,
           ok: true,
           result
         }, win.location.origin);
@@ -188,12 +189,12 @@ export class AdminAffinityGraphPopupComponent implements OnDestroy {
         target.postMessage({
           source: 'admin-affinity-graph',
           type: 'response',
-          requestId: data.requestId,
+          requestId,
           ok: false,
           error: error instanceof Error ? error.message : 'Affinity graph request failed.'
         }, win.location.origin);
       })
-      .finally(() => this.graphRequestControllers.delete(data.requestId));
+      .finally(() => this.graphRequestControllers.delete(requestId));
   }
 
   private resolveGraphRequest(method: string, params: Record<string, unknown>, signal?: AbortSignal): Promise<unknown> {
