@@ -714,7 +714,7 @@ export class InfiniteStepper<TAnchor, TPage, TItem, TQuery, TViewConfig> {
     const targetIndex = clampIndex(pageIndex, pages.length);
     const targetPage = pages[targetIndex] ?? null;
     const targetPageKey = targetPage ? this.pageKeyForPage(targetPage) : null;
-    const targetLeft = this.pageOffsetLeft(scrollElement, targetIndex);
+    const targetLeft = this.pageTargetLeft(scrollElement, targetIndex, pages.length);
     if (targetLeft < 0) {
       this.programmaticTargetKeyValue = null;
       return;
@@ -849,6 +849,23 @@ export class InfiniteStepper<TAnchor, TPage, TItem, TQuery, TViewConfig> {
       return -1;
     }
     return pageWidth * pageIndex;
+  }
+
+  public pageTargetLeft(scrollElement: HTMLDivElement, pageIndex: number, totalPages = this.pagesValue.length): number {
+    const safeTotal = Math.max(0, Math.trunc(totalPages));
+    const safeIndex = clampIndex(pageIndex, safeTotal);
+    if (safeTotal <= 1) {
+      return 0;
+    }
+    const measuredLeft = this.pageOffsetLeft(scrollElement, safeIndex);
+    if (measuredLeft > 0 || safeIndex === 0) {
+      return measuredLeft;
+    }
+    const maxScrollLeft = Math.max(0, scrollElement.scrollWidth - scrollElement.clientWidth);
+    if (maxScrollLeft > 0) {
+      return (maxScrollLeft / Math.max(1, safeTotal - 1)) * safeIndex;
+    }
+    return measuredLeft;
   }
 
   public viewportWidth(scrollElement: HTMLDivElement): number {

@@ -290,6 +290,7 @@ export class SmartListComponent<T, TFilters extends SmartListFilters = SmartList
   private currentViewMode: SmartListViewMode = 'list';
   private previousPresentation: SmartListPresentation = 'list';
   private afterViewInit = false;
+  private pendingScrollResetAfterViewInit = false;
   private loadSequence = 0;
   private loadingCounter = 0;
   private loadingStartedAtMs = 0;
@@ -448,6 +449,10 @@ export class SmartListComponent<T, TFilters extends SmartListFilters = SmartList
 
   ngAfterViewInit(): void {
     this.afterViewInit = true;
+    if (this.pendingScrollResetAfterViewInit) {
+      this.pendingScrollResetAfterViewInit = false;
+      this.resetScrollSoon();
+    }
     this.refreshSurfaceSoon();
   }
 
@@ -3198,7 +3203,8 @@ private updateListSnapNearEndSuppression(scrollElement?: HTMLDivElement | null):
       if (this.isPageMode()) {
         const initialIndex = this.stepper.initialPageIndex();
         this.stepper.clearInitialPageIndexOverride();
-        const targetLeft = this.stepper.pageOffsetLeft(scrollElement, initialIndex);
+        const pageCount = this.stepper.pages().length || this.pages.length;
+        const targetLeft = this.stepper.pageTargetLeft(scrollElement, initialIndex, pageCount);
         if (targetLeft >= 0) {
           this.stepper.suppressSettle = true;
           const previousScrollBehavior = scrollElement.style.scrollBehavior;
@@ -3235,6 +3241,12 @@ private updateListSnapNearEndSuppression(scrollElement?: HTMLDivElement | null):
       this.cdr.markForCheck();
     };
     if (!this.afterViewInit) {
+      this.pendingScrollResetAfterViewInit = true;
+      return;
+    }
+    this.pendingScrollResetAfterViewInit = false;
+    if (typeof globalThis.requestAnimationFrame === 'function') {
+      globalThis.requestAnimationFrame(() => globalThis.requestAnimationFrame(reset));
       return;
     }
     setTimeout(reset, 0);
