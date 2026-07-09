@@ -38,7 +38,7 @@ import { appMenuModelSummary } from '../menu-summary';
     <div class="app-menu" [class.app-menu--open]="isOpen()">
       <button
         type="button"
-        class="app-menu__trigger"
+        class="app-menu__trigger motion-static"
         [ngClass]="triggerPaletteClass()"
         [class.app-menu__trigger--open]="isOpen()"
         [class.app-menu__trigger--label-hidden]="trigger?.hideLabel"

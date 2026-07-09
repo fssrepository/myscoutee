@@ -10,7 +10,7 @@
     <app-menu
       class="experience-filter-select"
       kind="select"
-      title="Experience"
+      [title]="'Experience'"
       [trigger]="experienceFilterMenuTrigger()"
       [items]="experienceFilterMenuItems()"
       (itemSelect)="onProfileExperienceMenuSelect($event)"
