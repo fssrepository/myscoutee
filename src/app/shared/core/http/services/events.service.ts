@@ -1234,6 +1234,7 @@ export class HttpEventsService implements IEventsService {
       dateKey: `${value.dateKey ?? ''}`.trim(),
       slotCount: Math.max(0, Math.trunc(Number(value.slotCount) || 0)),
       availableSlots: Math.max(0, Math.trunc(Number(value.availableSlots) || 0)),
+      bookedByViewer: value.bookedByViewer === true,
       lowestAmount: Math.max(0, Number(value.lowestAmount) || 0),
       currency: `${value.currency ?? 'USD'}`.trim() || 'USD'
     };

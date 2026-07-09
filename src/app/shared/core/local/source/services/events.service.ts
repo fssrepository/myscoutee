@@ -1053,6 +1053,7 @@ export class LocalEventsService extends LocalRouteDelayService implements IEvent
         continue;
       }
       const availableSlots = Math.max(0, Math.trunc(Number(slot.availableSlots) || 0));
+      const bookedByViewer = slot.bookedByViewer === true;
       const amount = Math.max(0, Number(slot.amount) || 0);
       const existing = grouped.get(dateKey);
       if (!existing) {
@@ -1060,6 +1061,7 @@ export class LocalEventsService extends LocalRouteDelayService implements IEvent
           dateKey,
           slotCount: 1,
           availableSlots,
+          bookedByViewer,
           lowestAmount: availableSlots > 0 ? amount : Number.POSITIVE_INFINITY,
           currency: slot.currency || 'USD'
         });
@@ -1069,6 +1071,7 @@ export class LocalEventsService extends LocalRouteDelayService implements IEvent
         ...existing,
         slotCount: existing.slotCount + 1,
         availableSlots: existing.availableSlots + availableSlots,
+        bookedByViewer: existing.bookedByViewer === true || bookedByViewer,
         lowestAmount: availableSlots > 0 ? Math.min(existing.lowestAmount, amount) : existing.lowestAmount,
         currency: slot.currency || existing.currency
       });

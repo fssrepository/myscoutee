@@ -700,12 +700,14 @@ export class EventCheckoutSlotPickerPopupComponent {
     const slotCount = Math.max(0, Math.trunc(Number(summary.slotCount) || 0));
     const availableSlots = Math.max(0, Math.trunc(Number(summary.availableSlots) || 0));
     if (slotCount > 0 && availableSlots <= 0) {
+      const bookedByViewer = summary.bookedByViewer === true;
+      const label = bookedByViewer ? 'Fully booked' : 'Unavailable';
       return {
-        label: 'Unavailable',
-        ariaLabel: `Unavailable, ${slotCount} slots`,
+        label,
+        ariaLabel: `${label}, ${slotCount} slots`,
         alertLabel: `${slotCount}`,
         alertAriaLabel: `${slotCount} slots`,
-        toneClass: 'calendar-counter-full'
+        toneClass: bookedByViewer ? 'calendar-counter-booked-full' : 'calendar-counter-full'
       };
     }
     return {

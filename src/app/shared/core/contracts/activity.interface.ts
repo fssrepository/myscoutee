@@ -1312,6 +1312,7 @@ export interface EventCheckoutSlotDay {
   dateKey: string;
   slotCount: number;
   availableSlots: number;
+  bookedByViewer?: boolean | null;
   lowestAmount: number;
   currency: string;
 }
