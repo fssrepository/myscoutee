@@ -19,7 +19,8 @@ import type {
 export type PopupSize = 'small' | 'default' | 'wide';
 export type PopupHeight = 'auto' | 'full';
 export type PopupHeaderTone = 'default' | 'accent';
-export type PopupHeaderLayout = 'default' | 'article';
+export type PopupHeaderLayout = 'default' | 'article' | 'document';
+export type PopupHeaderPalette = 'default' | 'amber' | 'blue' | 'green' | 'rose' | 'violet' | 'slate' | 'teal';
 export type PopupBodyLayout = 'default' | 'fill' | 'flush';
 export type PopupControlAlign = 'start' | 'end';
 export type PopupBackdropTone = 'default' | 'dim';
@@ -69,12 +70,14 @@ export type PopupControl<TContext = unknown> =
 export interface PopupModel<TContext = unknown> {
   headerLabel?: string | null;
   headerLabelIcon?: string | null;
+  headerBadge?: string | null;
   title?: string | null;
   subtitle?: string | null;
   secondarySubtitle?: string | null;
   ariaLabel?: string | null;
   closeAriaLabel?: string | null;
   translateHeaderLabel?: boolean;
+  translateHeaderBadge?: boolean;
   translateTitle?: boolean;
   translateSubtitle?: boolean;
   translateSecondarySubtitle?: boolean;
@@ -85,6 +88,7 @@ export interface PopupModel<TContext = unknown> {
   height?: PopupHeight;
   headerLayout?: PopupHeaderLayout;
   headerTone?: PopupHeaderTone;
+  headerPalette?: PopupHeaderPalette;
   bodyLayout?: PopupBodyLayout;
   backdropTone?: PopupBackdropTone;
   showToolbar?: boolean;

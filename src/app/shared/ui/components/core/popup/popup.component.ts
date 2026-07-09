@@ -67,6 +67,7 @@ export class PopupComponent<TContext = unknown> {
         || Boolean(this.popupModel.subtitle?.trim())
         || Boolean(this.popupModel.secondarySubtitle?.trim())
         || Boolean(this.popupModel.headerLabel?.trim())
+        || Boolean(this.popupModel.headerBadge?.trim())
         || this.hasHeaderControls
         || this.hasHeaderActions
         || this.showClose
@@ -111,6 +112,10 @@ export class PopupComponent<TContext = unknown> {
 
   protected get hasHeaderActions(): boolean {
     return this.headerActions.length > 0;
+  }
+
+  protected get hasHeaderBadge(): boolean {
+    return Boolean(this.popupModel.headerBadge?.trim());
   }
 
   protected onBackdropClick(event: MouseEvent): void {
@@ -165,6 +170,10 @@ export class PopupComponent<TContext = unknown> {
 
   protected headerLayoutClass(): string {
     return `ui-popup__header--layout-${this.popupModel.headerLayout ?? 'default'}`;
+  }
+
+  protected headerPaletteClass(): string {
+    return `ui-popup__header--palette-${this.popupModel.headerPalette ?? 'default'}`;
   }
 
   protected bodyLayoutClass(): string {
