@@ -134,7 +134,7 @@ export class ActivitiesPopupStore {
   private readonly activityStore = inject(ActivityStore);
   private readonly userProfileStore = inject(UserProfileStore);
   private readonly _uiState = signal<ActivitiesUiState>(DEFAULT_ACTIVITIES_UI_STATE);
-  private readonly _activityEventSave = signal<ActivityEventDTO | null>(null);
+  private readonly _activityEventSync = signal<ActivityEventDTO | null>(null);
   private readonly _eventChatSession = signal<EventChatSession | null>(null);
   private readonly _eventChatHeader = signal<EventChatHeaderState | null>(null);
   private readonly _stackedEventChatSession = signal<EventChatSession | null>(null);
@@ -166,7 +166,8 @@ export class ActivitiesPopupStore {
   readonly activitiesRatesFullscreenMode = computed(() => this._uiState().ratesFullscreenMode);
   readonly activitiesSelectedRateId = computed(() => this._uiState().selectedRateId);
   readonly activitiesAdminServiceOnly = computed(() => this._uiState().adminServiceOnly);
-  readonly activityEventSave = this._activityEventSave.asReadonly();
+  readonly activityEventSync = this._activityEventSync.asReadonly();
+  readonly activityEventSave = this.activityEventSync;
   readonly eventChatSession = this._eventChatSession.asReadonly();
   readonly eventChatHeader = this._eventChatHeader.asReadonly();
   readonly stackedEventChatSession = this._stackedEventChatSession.asReadonly();
@@ -388,12 +389,20 @@ export class ActivitiesPopupStore {
     this.patchUiState({ selectedRateId: rateId });
   }
 
+  emitActivityEventSync(sync: ActivityEventDTO): void {
+    this._activityEventSync.set(sync);
+  }
+
   emitActivityEventSaveResult(sync: ActivityEventDTO): void {
-    this._activityEventSave.set(sync);
+    this.emitActivityEventSync(sync);
+  }
+
+  clearActivityEventSync(): void {
+    this._activityEventSync.set(null);
   }
 
   clearActivityEventSave(): void {
-    this._activityEventSave.set(null);
+    this.clearActivityEventSync();
   }
 
   openEventChat(request: EventChatPopupRequest, header: EventChatHeaderState): void {

@@ -2018,6 +2018,124 @@ export class EventCheckoutPopupComponent {
     this.activityStore.patchUserCounterDeltas(dialog.userId, delta, null);
   }
 
+  private emitCheckoutActivityEventSync(
+    dialog: EventCheckoutDialogState,
+    result: ActivityContracts.EventParticipationActionResultDTO
+  ): void {
+    this.activitiesStore.emitActivityEventSync(this.buildCheckoutActivityEventSync(dialog, result));
+  }
+
+  private buildCheckoutActivityEventSync(
+    dialog: EventCheckoutDialogState,
+    result: ActivityContracts.EventParticipationActionResultDTO
+  ): ActivityContracts.ActivityEventDTO {
+    const record = dialog.record;
+    const activeUserId = dialog.userId.trim();
+    const slot = this.checkoutActivityEventSlot(dialog, result);
+    const startAtIso = slot?.startAtIso ?? record.startAtIso;
+    const endAtIso = slot?.endAtIso ?? record.endAtIso ?? startAtIso;
+    const acceptedMemberUserIds = this.uniqueCheckoutUserIds([
+      ...(record.acceptedMemberUserIds ?? []),
+      activeUserId
+    ]);
+    const pendingMemberUserIds = this.uniqueCheckoutUserIds(record.pendingMemberUserIds ?? [])
+      .filter(userId => userId !== activeUserId);
+    const invitedMemberUserIds = this.uniqueCheckoutUserIds(record.invitedMemberUserIds ?? [])
+      .filter(userId => userId !== activeUserId);
+    const pendingRequestMemberUserIds = this.uniqueCheckoutUserIds(record.pendingRequestMemberUserIds ?? [])
+      .filter(userId => userId !== activeUserId);
+    const acceptedMembers = Math.max(
+      this.nonNegativeCheckoutInteger(result.acceptedMembers),
+      acceptedMemberUserIds.length
+    );
+    const pendingMembers = Math.max(
+      this.nonNegativeCheckoutInteger(result.pendingMembers),
+      pendingMemberUserIds.length,
+      pendingRequestMemberUserIds.length
+    );
+    const capacityTotal = Math.max(
+      acceptedMembers,
+      this.nonNegativeCheckoutInteger(result.capacityTotal),
+      this.nonNegativeCheckoutInteger(slot?.capacityTotal),
+      this.nonNegativeCheckoutInteger(record.capacityTotal)
+    );
+    return {
+      id: record.id,
+      userId: activeUserId || record.userId,
+      type: record.type,
+      status: record.status ?? 'A',
+      statusBeforeSuppression: record.statusBeforeSuppression ?? null,
+      adminIds: [...(record.adminIds ?? [])],
+      title: record.title,
+      subtitle: record.subtitle,
+      timeframe: slot?.timeframe ?? record.timeframe,
+      inviter: record.inviter ?? null,
+      activity: this.nonNegativeCheckoutInteger(record.activity),
+      creatorUserId: record.creatorUserId,
+      creatorName: record.creatorName,
+      creatorInitials: record.creatorInitials,
+      creatorCity: record.creatorCity,
+      visibility: record.visibility,
+      startAtIso,
+      endAtIso,
+      distanceKm: Number.isFinite(Number(record.distanceKm)) ? Number(record.distanceKm) : 0,
+      imageUrl: record.imageUrl,
+      location: record.location,
+      capacityTotal,
+      full: result.full === true || (capacityTotal > 0 && acceptedMembers >= capacityTotal),
+      capacityMin: record.capacityMin ?? null,
+      capacityMax: record.capacityMax ?? null,
+      eventType: record.eventType,
+      mode: record.mode,
+      slotsEnabled: record.slotsEnabled === true,
+      acceptedMembers,
+      pendingMembers,
+      acceptedMemberUserIds,
+      pendingMemberUserIds,
+      invitedMemberUserIds,
+      pendingRequestMemberUserIds,
+      pendingReason: null,
+      approvalRequired: record.approvalRequired === true,
+      checkoutResultState: 'succeeded',
+      boost: this.nonNegativeCheckoutInteger(record.boost),
+      subEventDefinitions: record.subEventDefinitions?.map(item => ({ ...item }))
+    };
+  }
+
+  private checkoutActivityEventSlot(
+    dialog: EventCheckoutDialogState,
+    result: ActivityContracts.EventParticipationActionResultDTO
+  ): ContractTypes.EventSlotOccurrenceDTO | null {
+    const slotSourceId = result.slotSourceId?.trim()
+      || this.selectedSlotSourceId?.trim()
+      || this.checkoutBasket?.slotSourceId?.trim()
+      || this.activeCheckoutBasketItems().find(item => item.slotSourceId?.trim())?.slotSourceId?.trim()
+      || '';
+    const slots = [
+      ...this.availableSlotsCache,
+      ...(dialog.record.upcomingSlots ?? []),
+      ...(dialog.record.nextSlot ? [dialog.record.nextSlot] : [])
+    ];
+    if (slotSourceId) {
+      const direct = slots.find(slot => slot.id === slotSourceId);
+      if (direct) {
+        return direct;
+      }
+    }
+    const selectedDateKey = this.checkoutSlotPickerSelectedDateKey();
+    return selectedDateKey
+      ? slots.find(slot => this.slotDateKeyFromIso(slot.startAtIso) === selectedDateKey) ?? null
+      : null;
+  }
+
+  private uniqueCheckoutUserIds(userIds: readonly string[]): string[] {
+    return [...new Set(userIds.map(userId => userId.trim()).filter(Boolean))];
+  }
+
+  private nonNegativeCheckoutInteger(value: unknown): number {
+    return Math.max(0, Math.trunc(Number(value) || 0));
+  }
+
   private emitCheckoutMembershipSync(
     sourceId: string | null | undefined,
     result: ActivityContracts.EventParticipationActionResultDTO | null,
@@ -2234,6 +2352,7 @@ export class EventCheckoutPopupComponent {
         throw new Error(dialog.failureMessage);
       }
       this.signalCheckoutCounterDelta(counterDelta);
+      this.emitCheckoutActivityEventSync(dialog, joinResult);
       this.emitCheckoutMembershipSync(dialog.record.id, joinResult, memberDelta, false, 'succeeded');
       this.emitCheckoutMembershipSync(this.selectedSlotSourceId, joinResult, memberDelta);
       this.checkoutSessionId = joinResult.paymentSessionId ?? null;

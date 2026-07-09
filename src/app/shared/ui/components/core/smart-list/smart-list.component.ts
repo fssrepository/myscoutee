@@ -4265,10 +4265,12 @@ private updateListSnapNearEndSuppression(scrollElement?: HTMLDivElement | null):
     }
     const insertionIndex = this.visibleInsertionIndex(item);
     const insertsAfterLoadedTail = insertionIndex >= this.items.length;
+    const loadedShortPage = this.items.length < this.resolveEffectivePageSize();
     if (
       options.loadedRange === 'before-or-within'
       && this.items.length > 0
       && this.hasMore
+      && !loadedShortPage
       && insertsAfterLoadedTail
       && !this.visibleGroupAlreadyLoaded(item)
     ) {

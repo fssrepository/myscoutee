@@ -853,11 +853,11 @@ export class ActivitiesPopupComponent implements OnDestroy {
     });
 
     effect(() => {
-      const sync = this.activitiesStore.activityEventSave();
+      const sync = this.activitiesStore.activityEventSync();
       if (!sync) {
         return;
       }
-      this.applyActivityEventSave(sync);
+      this.applyActivityEventSync(sync);
       this.cdr.markForCheck();
     });
 
@@ -2318,7 +2318,7 @@ export class ActivitiesPopupComponent implements OnDestroy {
     this.hostingDatesById[item.id] = item.startAtIso;
     this.eventDistanceById[item.id] = item.distanceKm;
     this.hostingDistanceById[item.id] = item.distanceKm;
-    if (this.activityEventSaveStatusCode(item) === 'T') {
+    if (this.activityEventStatusCode(item) === 'T') {
       const row = ActivityEventInfoCardConverter.convert(
         item,
         this.activityEventInfoCardConverterOptions()
@@ -2377,7 +2377,7 @@ export class ActivitiesPopupComponent implements OnDestroy {
     });
   }
 
-  private upsertVisibleEventRowFromSave(
+  private upsertVisibleEventRowFromSync(
     sync: ActivityEventDTO,
     options: { loadedRange?: 'any' | 'before-or-within' } = {}
   ): void {
@@ -2388,109 +2388,22 @@ export class ActivitiesPopupComponent implements OnDestroy {
     if (!smartList) {
       return;
     }
-    const shouldShow = this.savedEventMatchesCurrentScope(sync);
+    const shouldShow = this.activityEventSyncMatchesCurrentScope(sync);
     const removedExisting = smartList.removeVisibleItems(
-      row => this.savedEventMatchesVisibleRow(row, sync),
+      row => this.activityEventSyncMatchesVisibleRow(row, sync),
       { totalDelta: shouldShow ? 0 : -1 }
     );
     if (!shouldShow) {
       return;
     }
     smartList.upsertConvertedVisibleItem(sync, {
-      predicate: row => this.savedEventMatchesVisibleRow(row, sync),
+      predicate: row => this.activityEventSyncMatchesVisibleRow(row, sync),
       totalDelta: removedExisting ? 0 : 1,
       loadedRange: options.loadedRange
     });
   }
 
-  private async restorePaidCheckoutActivityEventRow(
-    sourceId: string,
-    sync: ActivityMembersSyncState | null = null
-  ): Promise<void> {
-    const normalizedSourceId = sourceId.trim();
-    const activeUserId = this.activeUser.id.trim();
-    if (!normalizedSourceId || !activeUserId || !this.isEventActivitiesPrimaryFilter()) {
-      return;
-    }
-    const dto = await this.resolvePaidCheckoutActivityEventDTO(activeUserId, normalizedSourceId, sync);
-    if (!dto) {
-      return;
-    }
-    this.upsertVisibleEventRowFromSave(dto, { loadedRange: 'before-or-within' });
-    this.refreshSectionBadges();
-    this.cdr.markForCheck();
-  }
-
-  private async resolvePaidCheckoutActivityEventDTO(
-    activeUserId: string,
-    sourceId: string,
-    sync: ActivityMembersSyncState | null = null
-  ): Promise<ActivityEventDTO | null> {
-    const known = this.eventsService.peekKnownItemById(activeUserId, sourceId);
-    if (known) {
-      return this.withPaidCheckoutMembership(known, activeUserId, sync);
-    }
-    const detail = await this.eventsService.loadEventDetailById(activeUserId, sourceId);
-    return detail ? this.withPaidCheckoutMembership(detail as ActivityEventDTO, activeUserId, sync) : null;
-  }
-
-  private withPaidCheckoutMembership(
-    dto: ActivityEventDTO,
-    activeUserId: string,
-    sync: ActivityMembersSyncState | null = null
-  ): ActivityEventDTO {
-    const acceptedMemberUserIds = this.uniqueActivityUserIds([
-      ...(dto.acceptedMemberUserIds ?? []),
-      activeUserId
-    ]);
-    const pendingMemberUserIds = this.uniqueActivityUserIds(dto.pendingMemberUserIds ?? [])
-      .filter(userId => userId !== activeUserId);
-    const pendingRequestMemberUserIds = this.uniqueActivityUserIds(dto.pendingRequestMemberUserIds ?? [])
-      .filter(userId => userId !== activeUserId);
-    const wasAccepted = (dto.acceptedMemberUserIds ?? []).includes(activeUserId);
-    const wasPending = (dto.pendingMemberUserIds ?? []).includes(activeUserId)
-      || (dto.pendingRequestMemberUserIds ?? []).includes(activeUserId);
-    const syncedAcceptedMembers = Number.isFinite(Number(sync?.acceptedMembers))
-      ? Math.max(0, Math.trunc(Number(sync?.acceptedMembers)))
-      : null;
-    const syncedPendingMembers = Number.isFinite(Number(sync?.pendingMembers))
-      ? Math.max(0, Math.trunc(Number(sync?.pendingMembers)))
-      : null;
-    const syncedCapacityTotal = Number.isFinite(Number(sync?.capacityTotal))
-      ? Math.max(0, Math.trunc(Number(sync?.capacityTotal)))
-      : null;
-    const acceptedMembers = syncedAcceptedMembers ?? Math.max(
-      acceptedMemberUserIds.length,
-      Math.max(0, Math.trunc(Number(dto.acceptedMembers) || 0)) + (wasAccepted ? 0 : 1)
-    );
-    const pendingMembers = syncedPendingMembers ?? Math.max(
-      pendingMemberUserIds.length,
-      pendingRequestMemberUserIds.length,
-      Math.max(0, Math.trunc(Number(dto.pendingMembers) || 0)) - (wasPending ? 1 : 0)
-    );
-    return this.cloneActivityEventDTO({
-      ...dto,
-      status: dto.status ?? 'A',
-      full: sync?.full === true ? true : dto.full,
-      acceptedMembers,
-      pendingMembers,
-      capacityTotal: Math.max(
-        acceptedMembers,
-        syncedCapacityTotal ?? Math.max(0, Math.trunc(Number(dto.capacityTotal) || 0))
-      ),
-      acceptedMemberUserIds,
-      pendingMemberUserIds,
-      pendingRequestMemberUserIds,
-      pendingReason: null,
-      checkoutResultState: 'succeeded'
-    });
-  }
-
-  private uniqueActivityUserIds(userIds: readonly string[]): string[] {
-    return [...new Set(userIds.map(userId => userId.trim()).filter(Boolean))];
-  }
-
-  private savedEventMatchesVisibleRow(row: ActivityListItem, sync: ActivityEventDTO): boolean {
+  private activityEventSyncMatchesVisibleRow(row: ActivityListItem, sync: ActivityEventDTO): boolean {
     if (!this.isEventStyleActivity(row)) {
       return false;
     }
@@ -2506,8 +2419,8 @@ export class ActivitiesPopupComponent implements OnDestroy {
       || rowIdentity === `invitations:${eventId}`;
   }
 
-  private savedEventMatchesCurrentScope(sync: ActivityEventDTO): boolean {
-    const status = this.activityEventSaveStatusCode(sync);
+  private activityEventSyncMatchesCurrentScope(sync: ActivityEventDTO): boolean {
+    const status = this.activityEventStatusCode(sync);
     const activeUserId = this.activeUser.id.trim();
     const isTrashed = status === 'T';
     const isAdmin = this.activityEventDTOIsAdmin(sync);
@@ -2637,7 +2550,7 @@ export class ActivitiesPopupComponent implements OnDestroy {
     this.cdr.markForCheck();
   }
 
-  private activityEventSaveStatusCode(item: Pick<ActivityEventDTO, 'status'>): NonNullable<ActivityEventDTO['status']> {
+  private activityEventStatusCode(item: Pick<ActivityEventDTO, 'status'>): NonNullable<ActivityEventDTO['status']> {
     const status = `${item.status ?? ''}`.trim();
     switch (status) {
       case 'DR':
@@ -2661,7 +2574,7 @@ export class ActivitiesPopupComponent implements OnDestroy {
       );
   }
 
-  private isOwnedEventSave(sync: ActivityEventDTO): boolean {
+  private isOwnedActivityEventSync(sync: ActivityEventDTO): boolean {
     const activeUserId = this.activeUser?.id?.trim() ?? '';
     if (!activeUserId) {
       return false;
@@ -3252,9 +3165,6 @@ export class ActivitiesPopupComponent implements OnDestroy {
       this.bumpActivitiesEventCardRevision(`invitations:${sync.id}`);
       return;
     }
-    if (sync.checkoutResultState === 'succeeded') {
-      void this.restorePaidCheckoutActivityEventRow(sync.id, sync);
-    }
     const capacityParts = `${this.activityCapacityById[sync.id] ?? ''}`.split('/');
     const hasCurrentAcceptedMembers = (capacityParts[0] ?? '').trim().length > 0;
     const fallbackAcceptedMembers = Math.max(0, Math.trunc(Number(sync.acceptedMembers) || 0));
@@ -3463,10 +3373,10 @@ export class ActivitiesPopupComponent implements OnDestroy {
     return Math.max(0, Math.trunc(Number(value) || 0));
   }
 
-  protected applyActivityEventSave(sync: ActivityEventDTO): void {
+  protected applyActivityEventSync(sync: ActivityEventDTO): void {
     const dto = this.applyActivityEventDTO(sync);
-    const saveStatus = this.activityEventSaveStatusCode(dto);
-    const isOwned = this.isOwnedEventSave(sync);
+    const status = this.activityEventStatusCode(dto);
+    const isOwned = this.isOwnedActivityEventSync(sync);
 
     this.activityDateTimeRangeById[dto.id] = {
       startIso: dto.startAtIso,
@@ -3478,7 +3388,7 @@ export class ActivitiesPopupComponent implements OnDestroy {
     this.hostingDistanceById[dto.id] = dto.distanceKm;
     if (isOwned) {
       const nextActiveIds = new Set(this.activeHostingIds);
-      if (saveStatus === 'A') {
+      if (status === 'A') {
         nextActiveIds.add(dto.id);
       } else {
         nextActiveIds.delete(dto.id);
@@ -3500,9 +3410,9 @@ export class ActivitiesPopupComponent implements OnDestroy {
         max: dto.capacityMax ?? existingCapacity.max
       };
     }
-    this.clearInvitationMemberCacheFromEventSave(dto);
+    this.clearInvitationMemberCacheFromActivityEventSync(dto);
 
-    this.upsertVisibleEventRowFromSave(dto);
+    this.upsertVisibleEventRowFromSync(dto, { loadedRange: 'before-or-within' });
     this.applyActivitiesEventMemberSnapshot(dto);
     this.bumpActivitiesEventCardRevision(`events:${dto.id}`);
     this.bumpActivitiesEventCardRevision(`hosting:${dto.id}`);
@@ -3545,7 +3455,7 @@ export class ActivitiesPopupComponent implements OnDestroy {
     smartList.removeVisibleItemByIdentity(`rates:${item.id}`);
   }
 
-  private clearInvitationMemberCacheFromEventSave(sync: ActivityEventDTO): void {
+  private clearInvitationMemberCacheFromActivityEventSync(sync: ActivityEventDTO): void {
     const activeUserId = this.activeUser.id.trim();
     if (!activeUserId) {
       return;
