@@ -76,6 +76,7 @@ export class LocalActivityEventsMapper {
       capacityMax: record.capacityMax,
       eventType: record.eventType,
       mode: ActivityEventDetailDTO.normalizeMode(record.mode),
+      slotsEnabled: record.slotsEnabled === true,
       acceptedMembers: record.acceptedMembers,
       pendingMembers: record.pendingMembers,
       acceptedMemberUserIds: [...(record.acceptedMemberUserIds ?? [])],

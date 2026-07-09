@@ -181,6 +181,9 @@ export class ActivityEventInfoCardConverter {
   }
 
   private static capacityLabel(dto: ActivityEventDTO): string {
+    if (dto.slotsEnabled === true && dto.eventType !== 'slot') {
+      return 'Multislot';
+    }
     return `${Math.max(0, dto.acceptedMembers)} / ${Math.max(dto.acceptedMembers, dto.capacityTotal)}`;
   }
 

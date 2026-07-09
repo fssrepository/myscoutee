@@ -428,6 +428,7 @@ export interface ActivityEventDTO {
   capacityMax?: number | null;
   eventType?: EventContracts.EventRecordKind;
   mode?: EventContracts.EventMode;
+  slotsEnabled?: boolean;
   acceptedMembers: number;
   pendingMembers: number;
   acceptedMemberUserIds?: string[];

@@ -3609,32 +3609,13 @@ export class LocalEventsRepository {
         const existing = this.computePreferredEventRecords(table)
           .find(record => record.id === sourceId && this.isGeneratedSlotRecord(record))
           ?? null;
-        const capacityTotal = Math.max(0, parent.capacityTotal);
-        const acceptedMemberUserIds = this.eventMemberUserIdsByStatusFromTable(membersTable, sourceId, 'accepted');
-        const pendingMemberUserIds = this.eventMemberUserIdsByStatusFromTable(membersTable, sourceId, 'pending');
-        const invitedMemberUserIds = this.eventMemberUserIdsByPredicate(
-          membersTable,
-          sourceId,
-          member => member.status === 'pending' && this.isInvitationMember(member)
-        );
-        const pendingRequestMemberUserIds = this.eventMemberUserIdsByPredicate(
-          membersTable,
-          sourceId,
-          member => member.status === 'pending' && !this.isInvitationMember(member)
-        );
-        const acceptedMembers = Math.max(
-          acceptedMemberUserIds.length,
-          Math.max(0, Math.trunc(Number(existing?.acceptedMembers) || 0))
-        );
-        const pendingMembers = Math.max(
-          pendingMemberUserIds.length,
-          Math.max(0, Math.trunc(Number(existing?.pendingMembers) || 0))
-        );
+        const slotMembers = this.generatedSlotMembers(parent, membersTable, sourceId, existing);
         records.push({
           id: sourceId,
           userId: LocalEventsRepository.SLOT_READ_MODEL_USER_ID,
           type: 'events',
           status: parent.status,
+          adminIds: [...slotMembers.adminUserIds],
           avatar: parent.avatar,
           title: parent.title,
           subtitle: parent.subtitle,
@@ -3659,7 +3640,7 @@ export class LocalEventsRepository {
           locationCoordinates: this.normalizeLocationCoordinates(parent.locationCoordinates),
           capacityMin: parent.capacityMin,
           capacityMax: parent.capacityMax,
-          capacityTotal,
+          capacityTotal: slotMembers.capacityTotal,
           autoInviter: parent.autoInviter,
           frequency: parent.frequency,
           ticketing: parent.ticketing,
@@ -3672,12 +3653,12 @@ export class LocalEventsRepository {
           eventType: 'slot',
           nextSlot: null,
           upcomingSlots: [],
-          acceptedMembers,
-          pendingMembers,
-          acceptedMemberUserIds,
-          pendingMemberUserIds,
-          invitedMemberUserIds,
-          pendingRequestMemberUserIds,
+          acceptedMembers: slotMembers.acceptedMembers,
+          pendingMembers: slotMembers.pendingMembers,
+          acceptedMemberUserIds: slotMembers.acceptedMemberUserIds,
+          pendingMemberUserIds: slotMembers.pendingMemberUserIds,
+          invitedMemberUserIds: slotMembers.invitedMemberUserIds,
+          pendingRequestMemberUserIds: slotMembers.pendingRequestMemberUserIds,
           topics: [...parent.topics],
           subEventsEnabled: false,
           subEventDefinitions: ActivityEventDetailDTO.normalizeSubEventDefinitions(definitions),
@@ -3715,32 +3696,13 @@ export class LocalEventsRepository {
       const existing = this.computePreferredEventRecords(table)
         .find(record => record.id === sourceId && this.isGeneratedSlotRecord(record))
         ?? null;
-      const capacityTotal = Math.max(0, parent.capacityTotal);
-      const acceptedMemberUserIds = this.eventMemberUserIdsByStatusFromTable(membersTable, sourceId, 'accepted');
-      const pendingMemberUserIds = this.eventMemberUserIdsByStatusFromTable(membersTable, sourceId, 'pending');
-      const invitedMemberUserIds = this.eventMemberUserIdsByPredicate(
-        membersTable,
-        sourceId,
-        member => member.status === 'pending' && this.isInvitationMember(member)
-      );
-      const pendingRequestMemberUserIds = this.eventMemberUserIdsByPredicate(
-        membersTable,
-        sourceId,
-        member => member.status === 'pending' && !this.isInvitationMember(member)
-      );
-      const acceptedMembers = Math.max(
-        acceptedMemberUserIds.length,
-        Math.max(0, Math.trunc(Number(existing?.acceptedMembers) || 0))
-      );
-      const pendingMembers = Math.max(
-        pendingMemberUserIds.length,
-        Math.max(0, Math.trunc(Number(existing?.pendingMembers) || 0))
-      );
+      const slotMembers = this.generatedSlotMembers(parent, membersTable, sourceId, existing);
       records.push({
         id: sourceId,
         userId: LocalEventsRepository.SLOT_READ_MODEL_USER_ID,
         type: 'events',
         status: parent.status,
+        adminIds: [...slotMembers.adminUserIds],
         avatar: parent.avatar,
         title: parent.title,
         subtitle: parent.subtitle,
@@ -3765,7 +3727,7 @@ export class LocalEventsRepository {
         locationCoordinates: this.normalizeLocationCoordinates(parent.locationCoordinates),
         capacityMin: parent.capacityMin,
         capacityMax: parent.capacityMax,
-        capacityTotal,
+        capacityTotal: slotMembers.capacityTotal,
         autoInviter: parent.autoInviter,
         frequency: parent.frequency,
         ticketing: parent.ticketing,
@@ -3778,12 +3740,12 @@ export class LocalEventsRepository {
         eventType: 'slot',
         nextSlot: null,
         upcomingSlots: [],
-        acceptedMembers,
-        pendingMembers,
-        acceptedMemberUserIds,
-        pendingMemberUserIds,
-        invitedMemberUserIds,
-        pendingRequestMemberUserIds,
+        acceptedMembers: slotMembers.acceptedMembers,
+        pendingMembers: slotMembers.pendingMembers,
+        acceptedMemberUserIds: slotMembers.acceptedMemberUserIds,
+        pendingMemberUserIds: slotMembers.pendingMemberUserIds,
+        invitedMemberUserIds: slotMembers.invitedMemberUserIds,
+        pendingRequestMemberUserIds: slotMembers.pendingRequestMemberUserIds,
         topics: [...parent.topics],
         subEventsEnabled: false,
         subEventDefinitions: ActivityEventDetailDTO.normalizeSubEventDefinitions(definitions),
@@ -3827,18 +3789,105 @@ export class LocalEventsRepository {
       .filter(record => this.generatedSlotFitsParentRange(record, parent))
       .filter(record => new Date(record.endAtIso).getTime() >= nowMs)
       .sort((left, right) => new Date(left.startAtIso).getTime() - new Date(right.startAtIso).getTime())
-      .map(record => ({
-        id: record.id,
-        parentEventId,
-        slotTemplateId: record.slotTemplateId ?? '',
-        title: record.title,
-        timeframe: record.timeframe,
-        startAtIso: record.startAtIso,
-        endAtIso: record.endAtIso,
-        capacityTotal: record.capacityTotal,
-        acceptedMembers: record.acceptedMembers,
-        pendingMembers: record.pendingMembers
-      }));
+      .map(record => {
+        const occupancy = this.slotRecordOccupancyIncludingParentAdmins(parent, record);
+        return {
+          id: record.id,
+          parentEventId,
+          slotTemplateId: record.slotTemplateId ?? '',
+          title: record.title,
+          timeframe: record.timeframe,
+          startAtIso: record.startAtIso,
+          endAtIso: record.endAtIso,
+          capacityTotal: occupancy.capacityTotal,
+          acceptedMembers: occupancy.acceptedMembers,
+          pendingMembers: occupancy.pendingMembers
+        };
+      });
+  }
+
+  private generatedSlotMembers(
+    parent: ActivityEventRecord,
+    membersTable: ActivityMembersRecordCollection,
+    sourceId: string,
+    existing: ActivityEventRecord | null
+  ): {
+    adminUserIds: string[];
+    acceptedMembers: number;
+    pendingMembers: number;
+    capacityTotal: number;
+    acceptedMemberUserIds: string[];
+    pendingMemberUserIds: string[];
+    invitedMemberUserIds: string[];
+    pendingRequestMemberUserIds: string[];
+  } {
+    const adminUserIds = this.normalizeUserIds(parent.adminIds ?? []);
+    const rawAcceptedMemberUserIds = this.eventMemberUserIdsByStatusFromTable(membersTable, sourceId, 'accepted');
+    const acceptedMemberUserIds = this.normalizeUserIds([
+      ...rawAcceptedMemberUserIds,
+      ...adminUserIds
+    ]);
+    const acceptedMemberSet = new Set(acceptedMemberUserIds);
+    const rawPendingMemberUserIds = this.eventMemberUserIdsByStatusFromTable(membersTable, sourceId, 'pending');
+    const pendingMemberUserIds = rawPendingMemberUserIds.filter(userId => !acceptedMemberSet.has(userId));
+    const invitedMemberUserIds = this.eventMemberUserIdsByPredicate(
+      membersTable,
+      sourceId,
+      member => member.status === 'pending' && this.isInvitationMember(member)
+    ).filter(userId => !acceptedMemberSet.has(userId));
+    const pendingRequestMemberUserIds = this.eventMemberUserIdsByPredicate(
+      membersTable,
+      sourceId,
+      member => member.status === 'pending' && !this.isInvitationMember(member)
+    ).filter(userId => !acceptedMemberSet.has(userId));
+    const inheritedAdminCount = adminUserIds.filter(userId => !rawAcceptedMemberUserIds.includes(userId)).length;
+    const existingAcceptedMembers = Math.max(0, Math.trunc(Number(existing?.acceptedMembers) || 0));
+    const acceptedMembers = Math.max(
+      acceptedMemberUserIds.length,
+      existingAcceptedMembers + inheritedAdminCount
+    );
+    const existingPendingMembers = Math.max(0, Math.trunc(Number(existing?.pendingMembers) || 0));
+    const pendingMembers = rawPendingMemberUserIds.length > 0
+      ? pendingMemberUserIds.length
+      : Math.max(pendingMemberUserIds.length, existingPendingMembers);
+    return {
+      adminUserIds,
+      acceptedMembers,
+      pendingMembers,
+      capacityTotal: Math.max(acceptedMembers, Math.max(0, parent.capacityTotal)),
+      acceptedMemberUserIds,
+      pendingMemberUserIds,
+      invitedMemberUserIds,
+      pendingRequestMemberUserIds
+    };
+  }
+
+  private slotRecordOccupancyIncludingParentAdmins(
+    parent: ActivityEventRecord,
+    slot: ActivityEventRecord
+  ): { capacityTotal: number; acceptedMembers: number; pendingMembers: number } {
+    const adminUserIds = this.normalizeUserIds(parent.adminIds ?? []);
+    const rawAcceptedMemberUserIds = this.normalizeUserIds(slot.acceptedMemberUserIds ?? []);
+    const acceptedMemberUserIds = this.normalizeUserIds([
+      ...rawAcceptedMemberUserIds,
+      ...adminUserIds
+    ]);
+    const inheritedAdminCount = adminUserIds.filter(userId => !rawAcceptedMemberUserIds.includes(userId)).length;
+    const acceptedMembers = Math.max(
+      acceptedMemberUserIds.length,
+      Math.max(0, Math.trunc(Number(slot.acceptedMembers) || 0)) + inheritedAdminCount
+    );
+    const acceptedMemberSet = new Set(acceptedMemberUserIds);
+    const rawPendingMemberUserIds = this.normalizeUserIds(slot.pendingMemberUserIds ?? []);
+    const pendingMemberUserIds = rawPendingMemberUserIds.filter(userId => !acceptedMemberSet.has(userId));
+    const pendingMembers = rawPendingMemberUserIds.length > 0
+      ? pendingMemberUserIds.length
+      : Math.max(0, Math.trunc(Number(slot.pendingMembers) || 0));
+    return {
+      capacityTotal: Math.max(acceptedMembers, Math.max(0, Math.trunc(Number(slot.capacityTotal) || 0))),
+      acceptedMembers,
+      pendingMembers
+    };
   }
 
   private generatedSlotFitsParentRange(record: ActivityEventRecord, parent: ActivityEventRecord): boolean {
