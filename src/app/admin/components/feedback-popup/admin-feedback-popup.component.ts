@@ -5,10 +5,12 @@ import { from } from 'rxjs';
 
 import { APP_STATIC_DATA } from '../../../shared/app-static-data';
 import { AppUtils } from '../../../shared/app-utils';
+import { I18nService } from '../../../shared/core/base/services/i18n.service';
 import { AdminWorkspaceDataService, type AdminDashboardDto, type AdminFeedbackDto } from '../../../shared/core';
 import {
   SingleRowComponent,
   SmartListComponent,
+  I18nPipe,
   type AppMenuItemSelectEvent,
   type ListQuery,
   type PageResult,
@@ -59,7 +61,7 @@ interface AdminFeedbackRowMenuContext extends Record<string, unknown> {
 @Component({
   selector: 'app-admin-feedback-popup',
   standalone: true,
-  imports: [CommonModule, MatIconModule, SmartListComponent, SingleRowComponent, PopupComponent],
+  imports: [CommonModule, MatIconModule, SmartListComponent, SingleRowComponent, PopupComponent, I18nPipe],
   templateUrl: './admin-feedback-popup.component.html',
   styleUrl: './admin-feedback-popup.component.scss'
 })
@@ -68,6 +70,7 @@ export class AdminFeedbackPopupComponent {
   private readonly workspace = inject(AdminWorkspaceStore);
   private readonly workspaceData = inject(AdminWorkspaceDataService);
   private readonly dialogStore = inject(DialogStore);
+  private readonly i18n = inject(I18nService);
   private readonly feedbackCategories = new Set(APP_STATIC_DATA.feedbackCategories);
   protected feedbackDetail: AdminFeedbackDto | null = null;
   protected feedbackStatusFilter: AdminReviewStatusFilter = 'unresolved';
@@ -97,8 +100,8 @@ export class AdminFeedbackPopupComponent {
     pageSize: 10,
     initialPageSize: 20,
     defaultView: 'day',
-    emptyLabel: 'No feedback',
-    emptyDescription: 'No application feedback has been submitted.',
+    emptyLabel: 'admin.feedback.empty.title',
+    emptyDescription: 'admin.feedback.empty.description',
     showStickyHeader: true,
     showFirstGroupMarker: false,
     showGroupMarker: ({ groupIndex }) => groupIndex > 0,
@@ -198,7 +201,7 @@ export class AdminFeedbackPopupComponent {
               icon: this.reviewStatusIcon(this.feedbackStatusFilter),
               palette: this.reviewStatusPalette(this.feedbackStatusFilter),
               counter: this.feedbackStatusCount(this.feedbackStatusFilter),
-              ariaLabel: 'Feedback status filter',
+              ariaLabel: 'admin.feedback.review.status.filter',
               items: (['unresolved', 'resolved'] satisfies AdminReviewStatusFilter[]).map(status => ({
                 id: `review-status:${status}`,
                 kind: 'radio',
@@ -218,7 +221,7 @@ export class AdminFeedbackPopupComponent {
   }
 
   private reviewStatusLabel(status: AdminReviewStatusFilter): string {
-    return status === 'resolved' ? 'Resolved' : 'Unresolved';
+    return status === 'resolved' ? 'admin.review.status.resolved' : 'admin.review.status.unresolved';
   }
 
   private reviewStatusIcon(status: AdminReviewStatusFilter): string {
@@ -288,16 +291,28 @@ export class AdminFeedbackPopupComponent {
 
   private confirmFeedbackResolved(item: AdminFeedbackListItem, resolved: boolean): void {
     this.dialogStore.open({
-      title: resolved ? 'Mark feedback solved?' : 'Mark feedback unresolved?',
+      title: resolved
+        ? 'admin.feedback.confirm.mark.solved.title'
+        : 'admin.feedback.confirm.mark.unresolved.title',
       message: resolved
-        ? `${item.feedback.userName || 'The user'} will receive a support message saying the feedback was reviewed.`
-        : 'The feedback will return to the unresolved list.',
-      confirmLabel: resolved ? 'Mark solved' : 'Mark unresolved',
-      busyConfirmLabel: resolved ? 'Marking solved...' : 'Reopening...',
+        ? this.i18nText('admin.feedback.confirm.mark.solved.message', {
+          user: item.feedback.userName || this.i18nText('admin.feedback.fallback.user')
+        })
+        : 'admin.feedback.confirm.mark.unresolved.message',
+      confirmLabel: resolved ? 'admin.review.action.mark.solved' : 'admin.review.action.mark.unresolved',
+      busyConfirmLabel: resolved ? 'admin.review.action.mark.solved.busy' : 'admin.review.action.mark.unresolved.busy',
       confirmTone: resolved ? 'accent' : 'warning',
       ringPerimeter: 112,
       onConfirm: () => this.setFeedbackResolved(item, resolved)
     });
+  }
+
+  private i18nText(key: string, values: Record<string, string> = {}): string {
+    let text = this.i18n.translate(key);
+    Object.entries(values).forEach(([name, value]) => {
+      text = text.split(`{${name}}`).join(value);
+    });
+    return text;
   }
 
   private async setFeedbackResolved(item: AdminFeedbackListItem, resolved: boolean): Promise<void> {

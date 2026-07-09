@@ -46,15 +46,15 @@
               <span class="admin-feedback-time-badge admin-feedback-detail-time">{{ shortDate(item.createdDate) }}</span>
             </div>
             <span class="admin-feedback-category-badge admin-feedback-detail-badge">
-              {{ feedbackCategoryLabel(item) }}
+              {{ feedbackCategoryLabel(item) | i18n }}
             </span>
             <div class="admin-feedback-detail-fields">
               <div class="admin-feedback-detail-field">
-                <strong>Subject</strong>
+                <strong>{{ 'subject' | i18n }}</strong>
                 <p>{{ item.subject }}</p>
               </div>
               <div class="admin-feedback-detail-field">
-                <strong>Details</strong>
+                <strong>{{ 'details' | i18n }}</strong>
                 <p>{{ item.details }}</p>
               </div>
             </div>

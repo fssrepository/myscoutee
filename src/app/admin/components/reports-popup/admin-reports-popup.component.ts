@@ -28,6 +28,7 @@ import {
 import {
   AppUtils
 } from '../../../shared/app-utils';
+import { I18nService } from '../../../shared/core/base/services/i18n.service';
 import {
   AdminModerationService,
   AdminWorkspaceDataService,
@@ -41,6 +42,7 @@ import {
   AppMenuOutletComponent,
   ActivityChatSingleRowConverter,
   ImageCardComponent,
+  I18nPipe,
   SingleRowComponent,
   SmartListComponent,
   type AppMenuItem,
@@ -141,7 +143,8 @@ interface AdminReportActionsMenuContext {
     SmartListComponent,
     AdminChatReviewPopupComponent,
     AdminItemPreviewPopupComponent,
-    PopupComponent
+    PopupComponent,
+    I18nPipe
   ],
   templateUrl: './admin-reports-popup.component.html',
   styleUrl: './admin-reports-popup.component.scss',
@@ -157,6 +160,7 @@ export class AdminReportsPopupComponent {
   private readonly activitiesStore = inject(ActivitiesPopupStore);
   private readonly dialogStore = inject(DialogStore);
   private readonly location = inject(Location);
+  private readonly i18n = inject(I18nService);
   protected reportDetail: AdminReportListItem | null = null;
   protected blockedUsersOpen = false;
   protected reportStatusFilter: AdminReviewStatusFilter = 'unresolved';
@@ -196,8 +200,8 @@ export class AdminReportsPopupComponent {
     pageSize: 10,
     initialPageSize: 20,
     defaultView: 'day',
-    emptyLabel: 'No reports',
-    emptyDescription: 'No moderation reports are waiting for review.',
+    emptyLabel: 'admin.reports.empty.title',
+    emptyDescription: 'admin.reports.empty.description',
     showStickyHeader: true,
     showFirstGroupMarker: false,
     showGroupMarker: ({ groupIndex }) => groupIndex > 0,
@@ -225,8 +229,8 @@ export class AdminReportsPopupComponent {
     pageSize: 12,
     initialPageSize: 12,
     defaultView: 'day',
-    emptyLabel: 'No blocked users',
-    emptyDescription: 'No profiles are currently blocked by moderation.',
+    emptyLabel: 'admin.blocked.users.empty.title',
+    emptyDescription: 'admin.blocked.users.empty.description',
     showStickyHeader: true,
     showFirstGroupMarker: false,
     showGroupMarker: ({ groupIndex }) => groupIndex > 0,
@@ -253,7 +257,7 @@ export class AdminReportsPopupComponent {
   protected reportsPopupModel(): PopupModel<AdminReviewStatusMenuContext> {
     return {
       title: 'reported.users',
-      subtitle: 'Only users with moderation reports are visible here.',
+      subtitle: 'only.users.with.moderation.reports.are.visible.here',
       ariaLabel: 'reported.users',
       closeAriaLabel: 'close',
       size: 'wide',
@@ -264,7 +268,7 @@ export class AdminReportsPopupComponent {
         {
           id: 'blocked-users',
           icon: 'person_off',
-          label: 'Blocked users',
+          label: 'blocked.users',
           ariaLabel: 'open.blocked.users',
           palette: 'danger',
           counter: this.blockedUsersCount(),
@@ -283,9 +287,9 @@ export class AdminReportsPopupComponent {
 
   protected reportDetailPopupModel(item: AdminReportListItem): PopupModel {
     return {
-      title: 'Report details',
+      title: 'report.details',
       subtitle: this.reportListTitle(item),
-      ariaLabel: 'Report details',
+      ariaLabel: 'report.details',
       closeAriaLabel: 'close',
       size: 'wide',
       height: 'auto',
@@ -298,9 +302,9 @@ export class AdminReportsPopupComponent {
 
   protected blockedUsersPopupModel(): PopupModel {
     return {
-      title: 'Blocked users',
-      subtitle: 'Profiles currently blocked by moderation.',
-      ariaLabel: 'Blocked users',
+      title: 'blocked.users',
+      subtitle: 'admin.blocked.users.subtitle',
+      ariaLabel: 'blocked.users',
       closeAriaLabel: 'close',
       size: 'wide',
       height: 'full',
@@ -361,7 +365,7 @@ export class AdminReportsPopupComponent {
               icon: this.reviewStatusIcon(this.reportStatusFilter),
               palette: this.reviewStatusPalette(this.reportStatusFilter),
               counter: this.reportStatusCount(this.reportStatusFilter),
-              ariaLabel: 'Report status filter',
+              ariaLabel: 'admin.reports.review.status.filter',
               items: (['unresolved', 'resolved'] satisfies AdminReviewStatusFilter[]).map(status => ({
                 id: `review-status:${status}`,
                 kind: 'radio',
@@ -381,7 +385,7 @@ export class AdminReportsPopupComponent {
   }
 
   private reviewStatusLabel(status: AdminReviewStatusFilter): string {
-    return status === 'resolved' ? 'Resolved' : 'Unresolved';
+    return status === 'resolved' ? 'admin.review.status.resolved' : 'admin.review.status.unresolved';
   }
 
   private reviewStatusIcon(status: AdminReviewStatusFilter): string {
@@ -485,10 +489,10 @@ export class AdminReportsPopupComponent {
 
   protected blockUser(user: AdminReportedUserDto): void {
     this.dialogStore.open({
-      title: `Block ${user.name}?`,
-      message: 'The user will be blocked and a support chat message will be sent.',
-      confirmLabel: 'Block',
-      busyConfirmLabel: 'Blocking...',
+      title: this.i18nText('admin.reports.confirm.block.title', { user: user.name }),
+      message: 'admin.reports.confirm.block.message',
+      confirmLabel: 'admin.reports.action.block',
+      busyConfirmLabel: 'admin.reports.action.block.busy',
       confirmTone: 'danger',
       onConfirm: () => this.blockModerationUser(
         user.userId,
@@ -499,16 +503,28 @@ export class AdminReportsPopupComponent {
 
   private confirmReportResolved(item: AdminReportListItem, resolved: boolean): void {
     this.dialogStore.open({
-      title: resolved ? 'Mark report solved?' : 'Mark report unresolved?',
+      title: resolved
+        ? 'admin.reports.confirm.mark.solved.title'
+        : 'admin.reports.confirm.mark.unresolved.title',
       message: resolved
-        ? `${item.report.reporterName || 'The reporter'} will receive a support message saying the report was reviewed.`
-        : 'The report will return to the unresolved list.',
-      confirmLabel: resolved ? 'Mark solved' : 'Mark unresolved',
-      busyConfirmLabel: resolved ? 'Marking solved...' : 'Reopening...',
+        ? this.i18nText('admin.reports.confirm.mark.solved.message', {
+          user: item.report.reporterName || this.i18nText('admin.reports.fallback.reporter')
+        })
+        : 'admin.reports.confirm.mark.unresolved.message',
+      confirmLabel: resolved ? 'admin.review.action.mark.solved' : 'admin.review.action.mark.unresolved',
+      busyConfirmLabel: resolved ? 'admin.review.action.mark.solved.busy' : 'admin.review.action.mark.unresolved.busy',
       confirmTone: resolved ? 'accent' : 'warning',
       ringPerimeter: 112,
       onConfirm: () => this.setReportResolved(item, resolved)
     });
+  }
+
+  private i18nText(key: string, values: Record<string, string> = {}): string {
+    let text = this.i18n.translate(key);
+    Object.entries(values).forEach(([name, value]) => {
+      text = text.split(`{${name}}`).join(value);
+    });
+    return text;
   }
 
   private async setReportResolved(item: AdminReportListItem, resolved: boolean): Promise<void> {
@@ -622,10 +638,10 @@ export class AdminReportsPopupComponent {
     event?.preventDefault();
     event?.stopPropagation();
     this.dialogStore.open({
-      title: `Unblock ${user.name}?`,
-      message: 'The user profile status will be restored and they can use MyScoutee again.',
-      confirmLabel: 'Unblock',
-      busyConfirmLabel: 'Unblocking...',
+      title: this.i18nText('admin.reports.confirm.unblock.title', { user: user.name }),
+      message: 'admin.reports.confirm.unblock.message',
+      confirmLabel: 'admin.reports.action.unblock',
+      busyConfirmLabel: 'admin.reports.action.unblock.busy',
       confirmTone: 'accent',
       onConfirm: () => this.unblockModerationUser(user.userId)
     });
@@ -637,19 +653,19 @@ export class AdminReportsPopupComponent {
   ): AppMenuItem<AdminReportActionsMenuItemId, AdminReportActionsMenuContext>[] {
     if (source === 'blocked-user' || this.isUserBlocked(user)) {
       return [
-        this.reportActionItem(user, source, 'unblock', 'Unblock user', 'lock_open'),
-        this.reportActionItem(user, source, 'view-chat', 'View chat', 'forum', undefined, this.visibleSupportChatUnread(user))
+        this.reportActionItem(user, source, 'unblock', 'unblock.user', 'lock_open'),
+        this.reportActionItem(user, source, 'view-chat', 'view.chat', 'forum', undefined, this.visibleSupportChatUnread(user))
       ];
     }
     if (this.hasSupportChat(user)) {
       return [
-        this.reportActionItem(user, source, 'view-chat', 'View chat', 'forum', undefined, this.visibleSupportChatUnread(user)),
-        this.reportActionItem(user, source, 'block', 'Block user', 'block', 'danger')
+        this.reportActionItem(user, source, 'view-chat', 'view.chat', 'forum', undefined, this.visibleSupportChatUnread(user)),
+        this.reportActionItem(user, source, 'block', 'block.user', 'block', 'danger')
       ];
     }
     return [
       this.reportActionItem(user, source, 'warn', 'warn', 'chat'),
-      this.reportActionItem(user, source, 'block', 'Block user', 'block', 'danger')
+      this.reportActionItem(user, source, 'block', 'block.user', 'block', 'danger')
     ];
   }
 
