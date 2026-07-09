@@ -7,7 +7,12 @@ import { LocalRouteDelayService } from './route-delay.service';
 import { LocalActivityMembersRepository } from '../repositories/activity-members.repository';
 import { LocalUsersRepository } from '../repositories/users.repository';
 import { LocalActivityMembersBuilder, type ActivityMemberProfileFallback, type LocalActivityMembersOwnerSnapshot } from '../mappers';
-import type { ActivityMemberDTO, ActivityMemberOwnerRef, ActivityMembersSummaryDto } from '../../../contracts/activity.interface';
+import type {
+  ActivityMemberDTO,
+  ActivityMemberOwnerRef,
+  ActivityMembersQueryOptions,
+  ActivityMembersSummaryDto
+} from '../../../contracts/activity.interface';
 
 @Injectable({
   providedIn: 'root'
@@ -21,9 +26,12 @@ export class LocalActivityMembersService extends LocalRouteDelayService {
     return this.entriesFromRecords(this.activityMembersRepository.peekRecordsByOwner(owner), owner);
   }
 
-  async queryMembersByOwner(owner: ActivityMemberOwnerRef): Promise<ActivityMemberDTO[]> {
+  async queryMembersByOwner(
+    owner: ActivityMemberOwnerRef,
+    options?: ActivityMembersQueryOptions
+  ): Promise<ActivityMemberDTO[]> {
     await this.waitForRouteDelay(LocalActivityMembersService.MEMBERS_ROUTE);
-    return this.entriesFromRecords(await this.activityMembersRepository.queryRecordsByOwner(owner), owner);
+    return this.entriesFromRecords(await this.activityMembersRepository.queryRecordsByOwner(owner, options), owner);
   }
 
   peekSummaryByOwner(owner: ActivityMemberOwnerRef): ActivityMembersSummaryDto | null {

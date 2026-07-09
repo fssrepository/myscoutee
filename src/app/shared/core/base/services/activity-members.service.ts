@@ -14,7 +14,7 @@ import {
 } from './base-route-mode.service';
 import { RouteDelayService } from './route-delay.service';
 import type { ActivityMemberOwnerType } from '../../common/constants';
-import type { ActivityMemberOwnerRef, ActivityMembersSummaryDto } from '../../contracts/activity.interface';
+import type { ActivityMemberOwnerRef, ActivityMembersQueryOptions, ActivityMembersSummaryDto } from '../../contracts/activity.interface';
 import type * as ActivityContracts from '../../contracts/activity.interface';
 import { UserProfileStore } from '../../../ui/context/stores/user-profile.store';
 import { ActivityStore } from '../../../ui/context/stores/activity.store';
@@ -53,17 +53,23 @@ export class ActivityMembersService extends BaseRouteModeService {
     return this.peekMembersByOwner(owner);
   }
 
-  async queryMembersByOwner(owner: ActivityMemberOwnerRef): Promise<ActivityContracts.ActivityMemberDTO[]> {
-    return this.presentMembers(await this.activityMembersService.queryMembersByOwner(owner));
+  async queryMembersByOwner(
+    owner: ActivityMemberOwnerRef,
+    options?: ActivityMembersQueryOptions
+  ): Promise<ActivityContracts.ActivityMemberDTO[]> {
+    return this.presentMembers(await this.activityMembersService.queryMembersByOwner(owner, options));
   }
 
-  async queryMembersByOwnerId(ownerId: string): Promise<ActivityContracts.ActivityMemberDTO[]> {
+  async queryMembersByOwnerId(
+    ownerId: string,
+    options?: ActivityMembersQueryOptions
+  ): Promise<ActivityContracts.ActivityMemberDTO[]> {
     const normalizedOwnerId = ownerId.trim();
     if (!normalizedOwnerId) {
       return [];
     }
     const owner = this.peekOwnerRefById(normalizedOwnerId) ?? this.ownerRef('event', normalizedOwnerId);
-    return this.queryMembersByOwner(owner);
+    return this.queryMembersByOwner(owner, options);
   }
 
   peekSummaryByOwner(owner: ActivityMemberOwnerRef): ActivityMembersSummaryDto | null {

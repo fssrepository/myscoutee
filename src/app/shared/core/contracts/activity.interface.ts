@@ -1149,6 +1149,10 @@ export interface ActivityMemberOwnerRef {
   ownerId: string;
 }
 
+export interface ActivityMembersQueryOptions {
+  pendingOnly?: boolean;
+}
+
 export interface ActivityMembersSummaryDto {
   ownerType: AppConstants.ActivityMemberOwnerType;
   ownerId: string;

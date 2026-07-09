@@ -2,7 +2,12 @@ import { EVENTS_TABLE_NAME } from '../entity/event.entity';
 import { Injectable, inject } from '@angular/core';
 
 import type { UserDto } from '../../../contracts/user.interface';
-import type { ActivityMemberOwnerRef, UserGameMode, UserGameSocialCard } from '../../../contracts/activity.interface';
+import type {
+  ActivityMemberOwnerRef,
+  ActivityMembersQueryOptions,
+  UserGameMode,
+  UserGameSocialCard
+} from '../../../contracts/activity.interface';
 import { LocalMemoryDb } from '../../../common/app.db';
 import type { ActivityEventRecord } from '../../../contracts/activity.interface';
 
@@ -38,8 +43,11 @@ export class LocalActivityMembersRepository {
     return this.readRecordsByOwner(owner);
   }
 
-  async queryRecordsByOwner(owner: ActivityMemberOwnerRef): Promise<ActivityMemberRecord[]> {
-    return this.readRecordsByOwner(owner);
+  async queryRecordsByOwner(
+    owner: ActivityMemberOwnerRef,
+    options?: ActivityMembersQueryOptions
+  ): Promise<ActivityMemberRecord[]> {
+    return this.readRecordsByOwner(owner, options);
   }
 
   queryRecordsByOwners(owners: readonly ActivityMemberOwnerRef[]): Map<string, ActivityMemberRecord[]> {
@@ -590,7 +598,10 @@ export class LocalActivityMembersRepository {
     );
   }
 
-  private readRecordsByOwner(owner: ActivityMemberOwnerRef): ActivityMemberRecord[] {
+  private readRecordsByOwner(
+    owner: ActivityMemberOwnerRef,
+    options?: ActivityMembersQueryOptions
+  ): ActivityMemberRecord[] {
     const normalizedOwner = this.normalizeOwnerRef(owner);
     if (!normalizedOwner) {
       return [];
@@ -600,6 +611,7 @@ export class LocalActivityMembersRepository {
     return (table.idsByOwnerKey[ownerKey] ?? [])
       .map(id => table.byId[id])
       .filter((record): record is ActivityMemberRecord => Boolean(record))
+      .filter(record => options?.pendingOnly === true ? record.status === 'pending' : true)
       .map(record => this.cloneRecord(record));
   }
 
