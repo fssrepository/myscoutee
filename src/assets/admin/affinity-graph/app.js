@@ -2013,7 +2013,8 @@ function updateForestLoadingSpinner(force = false) {
     forestLoadingSprite,
     component.forestPosition ?? badge.position,
     component.forestScale ?? badge.scale.x,
-    forestLoadingStartedAtMs
+    forestLoadingStartedAtMs,
+    componentMemberCount(component) > 0
   );
 }
 
@@ -2044,14 +2045,20 @@ function updateNodeLoadingSpinner(force = false) {
     nodeLoadingSprite.visible = false;
     return;
   }
-  updateBadgeEdgeLoadingSpinner(nodeLoadingSprite, node.position, badge.scale.x || node.badgeScale, nodeLoadingStartedAtMs);
+  updateBadgeEdgeLoadingSpinner(
+    nodeLoadingSprite,
+    node.position,
+    badge.scale.x || node.badgeScale,
+    nodeLoadingStartedAtMs,
+    nodeBadgeCount(node) > 0
+  );
 }
 
-function updateBadgeEdgeLoadingSpinner(sprite, center, baseScale, startedAtMs) {
-  updateLoadingRingTexture(sprite.material.map, startedAtMs);
+function updateBadgeEdgeLoadingSpinner(sprite, center, baseScale, startedAtMs, reserveCounterBadge = false) {
+  updateLoadingRingTexture(sprite.material.map, startedAtMs, reserveCounterBadge);
   sprite.visible = true;
   sprite.position.copy(center);
-  sprite.scale.setScalar(baseScale * 1.02);
+  sprite.scale.setScalar(baseScale);
   sprite.material.rotation = 0;
   sprite.material.opacity = 0.94;
 }
@@ -4394,7 +4401,7 @@ function createLoadingRingTexture() {
   return texture;
 }
 
-function updateLoadingRingTexture(texture, startedAtMs) {
+function updateLoadingRingTexture(texture, startedAtMs, reserveCounterBadge = false) {
   const ctx = texture?.userData?.ctx;
   if (!ctx) {
     return;
@@ -4402,18 +4409,29 @@ function updateLoadingRingTexture(texture, startedAtMs) {
   const elapsedMs = Math.max(0, performance.now() - Math.max(0, Number(startedAtMs) || 0));
   const progress = Math.min(0.92, Math.max(0.02, elapsedMs / BADGE_LOAD_PROGRESS_WINDOW_MS));
   const overdue = elapsedMs >= BADGE_LOAD_OVERDUE_DELAY_MS;
+  const center = 128;
+  const rimRadius = 112;
+  const startAngle = Math.PI * 0.18;
   ctx.clearRect(0, 0, 256, 256);
   ctx.lineCap = 'round';
-  ctx.lineWidth = 18;
-  ctx.strokeStyle = overdue ? 'rgba(255, 225, 163, 0.32)' : 'rgba(255, 255, 255, 0.34)';
+  ctx.lineWidth = 9;
+  ctx.strokeStyle = overdue ? 'rgba(246, 192, 79, 0.2)' : 'rgba(255, 255, 255, 0.16)';
   ctx.beginPath();
-  ctx.arc(128, 128, 102, 0, Math.PI * 2);
+  ctx.arc(center, center, rimRadius, 0, Math.PI * 2);
   ctx.stroke();
-  ctx.lineWidth = 20;
+  ctx.lineWidth = 11;
   ctx.strokeStyle = overdue ? '#f6c04f' : '#5ab3ff';
   ctx.beginPath();
-  ctx.arc(128, 128, 102, -Math.PI / 2, -Math.PI / 2 + Math.PI * 2 * progress);
+  ctx.arc(center, center, rimRadius, startAngle, startAngle + Math.PI * 2 * progress);
   ctx.stroke();
+  if (reserveCounterBadge) {
+    ctx.save();
+    ctx.globalCompositeOperation = 'destination-out';
+    ctx.beginPath();
+    ctx.arc(198, 58, 44, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.restore();
+  }
   texture.needsUpdate = true;
 }
 
