@@ -1664,7 +1664,7 @@ export class SideMenuComponent implements OnDestroy {
             localStorage.removeItem(SideMenuComponent.ADMIN_SESSION_STORAGE_KEY);
           }
           window.dispatchEvent(new CustomEvent('adminLogoutRequested'));
-          await this.sessionService.logout().finally(() => this.router.navigate(['/admin']));
+          await this.sessionService.logout().finally(() => this.router.navigate(['/entry']));
           return;
         }
         const activeUserId = this.userProfileStore.activeUserId().trim();
@@ -1723,7 +1723,7 @@ export class SideMenuComponent implements OnDestroy {
             localStorage.removeItem(SideMenuComponent.ADMIN_SESSION_STORAGE_KEY);
           }
           window.dispatchEvent(new CustomEvent('adminLogoutRequested'));
-          await this.sessionService.logout().finally(() => this.router.navigate(['/admin']));
+          await this.sessionService.logout().finally(() => this.router.navigate(['/entry']));
           return;
         }
         if (activeUserId) {
