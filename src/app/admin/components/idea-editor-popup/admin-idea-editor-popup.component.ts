@@ -163,9 +163,6 @@ export class AdminIdeaEditorPopupComponent {
   protected draftContentLang = 'en';
   protected ideaListFilters: IdeaSmartListFilters = { status: 'all', revision: 0 };
   protected ideaFilterCounts: Partial<Record<IdeaPostFilter, number>> = {};
-  private stateLoadedForPopup = false;
-  private adminPostsLoadPromise: Promise<void> | null = null;
-  private adminPostsLoadGeneration = 0;
   private articlePanelLoadGeneration = 0;
   private listRevision = 0;
   private readonly postsByLang = new Map<string, IdeaPostLangCache>();
@@ -252,43 +249,9 @@ export class AdminIdeaEditorPopupComponent {
     }
   }
 
-  private async ensureAdminPostsLoaded(): Promise<void> {
-    if (this.stateLoadedForPopup) {
-      return;
-    }
-    if (!this.adminPostsLoadPromise) {
-      const loadGeneration = this.adminPostsLoadGeneration;
-      this.adminPostsLoadPromise = (async () => {
-        this.loading = true;
-        this.error = '';
-        this.refreshView();
-        try {
-          const posts = await this.ideaPosts.loadAdminPosts(this.actorUserId(), this.selectedContentLang);
-          this.reindexAdminPosts();
-          this.cachePosts(this.selectedContentLang, posts);
-          if (this.admin.activePopup() === 'idea-editor' && this.adminPostsLoadGeneration === loadGeneration) {
-            this.stateLoadedForPopup = true;
-          }
-        } catch (error) {
-          this.error = 'Unable to load articles.';
-          throw error;
-        } finally {
-          this.loading = false;
-          this.refreshView();
-        }
-      })().finally(() => {
-        this.adminPostsLoadPromise = null;
-      });
-    }
-    await this.adminPostsLoadPromise;
-  }
-
   constructor() {
     effect(() => {
       if (this.admin.activePopup() !== 'idea-editor') {
-        this.stateLoadedForPopup = false;
-        this.adminPostsLoadPromise = null;
-        this.adminPostsLoadGeneration += 1;
         this.editing = false;
         this.draft = null;
         this.viewerPostId = '';
@@ -335,12 +298,7 @@ export class AdminIdeaEditorPopupComponent {
   }
 
   protected async load(): Promise<void> {
-    try {
-      await this.ensureAdminPostsLoaded();
-      this.refreshIdeaList();
-    } catch {
-      this.error = 'Unable to load articles.';
-    }
+    this.refreshIdeaList();
   }
 
   protected close(): void {
@@ -922,10 +880,8 @@ export class AdminIdeaEditorPopupComponent {
     this.viewerPostId = '';
     this.viewerPost = null;
     this.cancelArticlePanelLoad();
-    this.stateLoadedForPopup = false;
     this.ideaFilterCounts = {};
     this.clearAdminIndexes();
-    this.adminPostsLoadGeneration += 1;
     this.refreshIdeaList();
   }
 
