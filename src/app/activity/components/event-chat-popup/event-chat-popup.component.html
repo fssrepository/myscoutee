@@ -1,6 +1,7 @@
 @if (session(); as chatSession) {
   <app-popup
     class="event-chat-popup-shell"
+    [style.--chat-shell-z-index]="chatPopupZIndex(chatSession)"
     [style.--chat-compose-detached-space.px]="chatComposeDetachedSpace"
     [model]="chatPopupModel(chatSession)"
     [zIndex]="chatPopupZIndex(chatSession)"

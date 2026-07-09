@@ -292,6 +292,7 @@ export class EventChatPopupComponent implements OnDestroy {
   protected quickReactionMessageId = '';
   protected quickReactionOpenDown = false;
   protected emojiPickerMessageId = '';
+  private emojiPickerMessageContext: ContractTypes.ChatMessageDto | null = null;
   protected emojiPickerQuery = '';
   protected emojiPickerCategory = 'smileys';
   protected reactionDetailsMessageId = '';
@@ -1949,6 +1950,7 @@ export class EventChatPopupComponent implements OnDestroy {
     this.quickReactionMessageId = '';
     this.quickReactionOpenDown = false;
     this.emojiPickerMessageId = '';
+    this.emojiPickerMessageContext = null;
   }
 
   protected startMessageLongPress(message: ContractTypes.ChatMessageDto): void {
@@ -1963,6 +1965,7 @@ export class EventChatPopupComponent implements OnDestroy {
       this.quickReactionMessageId = '';
       this.quickReactionOpenDown = false;
       this.emojiPickerMessageId = '';
+      this.emojiPickerMessageContext = null;
       this.chatThreadSmartList?.closeMenu();
       this.cdr.markForCheck();
     }, 420);
@@ -1988,6 +1991,7 @@ export class EventChatPopupComponent implements OnDestroy {
     this.selectedMessageId = messageId;
     this.chatThreadSmartList?.closeMenu();
     this.emojiPickerMessageId = '';
+    this.emojiPickerMessageContext = null;
     this.quickReactionOpenDown = this.shouldOpenQuickReactionsDown(event);
     this.quickReactionMessageId = wasOpen ? '' : messageId;
     if (wasOpen) {
@@ -2007,15 +2011,19 @@ export class EventChatPopupComponent implements OnDestroy {
     this.quickReactionOpenDown = false;
     this.chatThreadSmartList?.closeMenu();
     this.emojiPickerMessageId = messageId;
+    this.emojiPickerMessageContext = message;
     this.emojiPickerQuery = '';
     this.emojiPickerCategory = 'smileys';
+    this.cdr.markForCheck();
   }
 
   protected closeEmojiPicker(event?: Event): void {
     event?.stopPropagation();
     this.emojiPickerMessageId = '';
+    this.emojiPickerMessageContext = null;
     this.emojiPickerQuery = '';
     this.blurEventTarget(event);
+    this.cdr.markForCheck();
   }
 
   protected filteredEmojiPickerEmojis(): string[] {
@@ -2148,7 +2156,12 @@ export class EventChatPopupComponent implements OnDestroy {
     if (!messageId) {
       return null;
     }
-    return this.messages.find(message => message.id === messageId && !message.deletedAtIso) ?? null;
+    const loadedMessage = this.messages.find(message => message.id === messageId && !message.deletedAtIso) ?? null;
+    if (loadedMessage) {
+      return loadedMessage;
+    }
+    const contextMessage = this.emojiPickerMessageContext;
+    return contextMessage?.id === messageId && !contextMessage.deletedAtIso ? contextMessage : null;
   }
 
   protected reactionDetailsRows(message: ContractTypes.ChatMessageDto): ContractTypes.ChatMessageReaction[] {
@@ -2206,6 +2219,7 @@ export class EventChatPopupComponent implements OnDestroy {
     this.chatThreadSmartList?.closeMenu();
     this.quickReactionMessageId = '';
     this.emojiPickerMessageId = '';
+    this.emojiPickerMessageContext = null;
     this.cdr.markForCheck();
     this.scheduleChatThreadScrollToMessage(targetId);
     setTimeout(() => {
@@ -4072,6 +4086,7 @@ export class EventChatPopupComponent implements OnDestroy {
     this.quickReactionMessageId = '';
     this.quickReactionOpenDown = false;
     this.emojiPickerMessageId = '';
+    this.emojiPickerMessageContext = null;
     this.emojiPickerQuery = '';
     this.reactionDetailsMessageId = '';
     this.closePollVoteDialog();
