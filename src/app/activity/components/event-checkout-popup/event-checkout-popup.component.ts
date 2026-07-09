@@ -173,7 +173,7 @@ export class EventCheckoutPopupComponent {
       title: this.sectionTitle(),
       subtitle: dialog.record.title,
       checkoutPhase: this.checkoutEditorPhase(),
-      hideSubEventsPanel: true,
+      hideSubEventsPanel: !this.showCheckoutSubEventDefinitionsPanel(dialog),
       hideSlotsPanel: true,
       hidePaymentPanel: this.isReadOnlyCheckoutSummary(),
       loading: () => this.checkoutReviewBodyLoading(),
@@ -193,6 +193,11 @@ export class EventCheckoutPopupComponent {
       onFooterItemSelect: event => this.onCheckoutActionMenuSelect(event),
       onClose: () => this.onCheckoutReviewEditorClose()
     });
+  }
+
+  private showCheckoutSubEventDefinitionsPanel(dialog: EventCheckoutDialogState): boolean {
+    return dialog.record.subEventsEnabled !== false
+      && (dialog.record.subEventDefinitions ?? []).length > 0;
   }
 
   private setCheckoutErrorMessage(
