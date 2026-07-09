@@ -47,27 +47,13 @@
   background: #111317;
 }
 
-.affinity-graph-progress-shell {
-  position: absolute;
-  z-index: 7;
-  top: 110px;
-  right: 33px;
-  width: min(360px, calc(100vw - 66px));
-  pointer-events: none;
-}
-
-.affinity-graph-progress-shell app-header-progress-bar {
-  display: block;
-  width: 100%;
-}
-
 .affinity-graph-static-stack {
   position: absolute;
   z-index: 6;
-  top: 56px;
-  right: 18px;
-  bottom: 18px;
-  width: min(390px, calc(100vw - 36px));
+  top: 10px;
+  right: 10px;
+  bottom: 10px;
+  width: min(390px, calc(100vw - 20px));
   display: flex;
   flex-direction: column;
   gap: 12px;
@@ -306,10 +292,24 @@
   grid-row: 2;
 }
 
+.affinity-graph-progress-shell {
+  position: absolute;
+  z-index: 7;
+  top: 84px;
+  right: 25px;
+  width: min(360px, calc(100vw - 50px));
+  pointer-events: none;
+}
+
+.affinity-graph-progress-shell app-indicator {
+  display: block;
+  width: 100%;
+}
+
 .affinity-graph-close {
   position: absolute;
-  top: 0.8rem;
-  right: 0.8rem;
+  top: 10px;
+  right: 10px;
   z-index: 8;
   background: rgba(245, 246, 248, 0.94);
   color: rgba(32, 42, 56, 0.92);
@@ -325,14 +325,7 @@
 
 
 @media (max-width: 760px) {
-  .affinity-graph-progress-shell {
-    top: 61px;
-    right: 22px;
-    left: 22px;
-  }
-
   .affinity-graph-static-stack {
-    top: 10px;
     right: 10px;
     left: 10px;
     bottom: 10px;
@@ -341,5 +334,12 @@
 
   .affinity-graph-static-panel {
     padding: 12px;
+  }
+
+  .affinity-graph-progress-shell {
+    top: 74px;
+    right: 22px;
+    left: 22px;
+    width: auto;
   }
 }

@@ -94,13 +94,6 @@ export class AdminAffinityGraphPopupComponent implements OnDestroy {
     this.admin.closePopup();
   }
 
-  protected graphProgressState(loading: boolean): 'loading' | 'scrolling' | 'inactive' {
-    if (!this.runtimeStore.isOnline()) {
-      return 'inactive';
-    }
-    return loading ? 'loading' : 'scrolling';
-  }
-
   protected onGraphFrameLoad(): void {
     this.graphFrameLoaded.set(true);
     this.clearGraphStaticShellHideTimer();
@@ -218,6 +211,13 @@ export class AdminAffinityGraphPopupComponent implements OnDestroy {
     } finally {
       this.endGraphDataLoading();
     }
+  }
+
+  protected graphProgressState(loading: boolean): 'loading' | 'scrolling' | 'inactive' {
+    if (!this.runtimeStore.isOnline()) {
+      return 'inactive';
+    }
+    return loading ? 'loading' : 'scrolling';
   }
 
   private beginGraphDataLoading(): void {

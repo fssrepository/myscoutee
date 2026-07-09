@@ -52,10 +52,10 @@ input {
 .side-panel-stack {
   position: absolute;
   z-index: 5;
-  top: 56px;
-  right: 18px;
-  bottom: 18px;
-  width: min(390px, calc(100vw - 36px));
+  top: 10px;
+  right: 10px;
+  bottom: 10px;
+  width: min(390px, calc(100vw - 20px));
   display: flex;
   flex-direction: column;
   gap: 12px;
@@ -91,7 +91,7 @@ h1 {
   grid-template-columns: repeat(4, minmax(0, 1fr));
   gap: 6px;
   width: 100%;
-  margin: 10px 0 13px;
+  margin: 4px 0 13px;
 }
 
 .metrics div {
@@ -155,6 +155,7 @@ h1 {
   display: flex;
   align-items: center;
   gap: 7px;
+  margin-right: 34px;
 }
 
 .graph-app--booting .metrics,
@@ -291,9 +292,13 @@ h1 {
 
 .graph-app--panels-collapsed .panel-compact-summary {
   max-height: 58px;
-  margin-top: 3px;
+  margin-top: 16px;
   opacity: 1;
   transform: translateY(0);
+}
+
+.graph-app--panels-collapsed .side-panel-stack {
+  bottom: auto;
 }
 
 .range-field {
@@ -892,7 +897,6 @@ h1 {
 
   .control-header-actions {
     gap: 5px;
-    margin-right: 34px;
   }
 
   .reset-button,
@@ -919,14 +923,6 @@ h1 {
     max-height: min(420px, calc(100dvh - 300px));
     margin-right: -12px;
     padding-right: 12px;
-  }
-
-  .graph-app--panels-collapsed .side-panel-stack {
-    bottom: auto;
-  }
-
-  .metrics {
-    grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 
   .detail-grid {
