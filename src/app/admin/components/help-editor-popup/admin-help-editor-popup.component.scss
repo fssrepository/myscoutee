@@ -700,6 +700,13 @@
   flex: 0 0 auto;
 }
 
+:host ::ng-deep .help-editor-section-icon-menu .app-menu__trigger--layout-icon > .mat-icon:not(.app-menu__trigger-caret) {
+  width: 24px;
+  height: 24px;
+  font-size: 24px;
+  line-height: 24px;
+}
+
 .help-editor-privacy-optional-toggle {
   flex: 0 0 auto;
   height: 30px;
