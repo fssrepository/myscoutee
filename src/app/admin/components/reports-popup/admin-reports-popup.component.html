@@ -65,7 +65,7 @@
                   [menuId]="'report-detail-member-menu-' + (item.user.userId || item.user.name)"
                   [menuTitle]="memberCardTitle(item.user, reportedHandle(item))"
                   [sharedMenuTrigger]="reportedUserMenuTrigger(item.user, 'report-detail')"
-                  [sharedMenuItems]="reportedUserMenuItems(item.user, 'report-detail')"
+                  [sharedMenuItems]="reportedUserMenuItems(item.user, 'report-detail', item)"
                 ></app-image-card>
               </div>
 

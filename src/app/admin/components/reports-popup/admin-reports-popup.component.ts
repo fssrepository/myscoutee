@@ -129,6 +129,7 @@ interface AdminReportActionsMenuContext {
   action: AdminReportMenuAction;
   source: AdminReportMenuSource;
   user: AdminReportedUserDto;
+  reportItem?: AdminReportListItem | null;
 }
 
 @Component({
@@ -483,8 +484,8 @@ export class AdminReportsPopupComponent {
     this.admin.openItemPreview(report);
   }
 
-  protected warnUser(user: AdminReportedUserDto): void {
-    this.admin.openWarnChat(user);
+  protected warnUser(user: AdminReportedUserDto, report?: AdminReportDto | null): void {
+    this.admin.openWarnChat(user, report);
   }
 
   protected blockUser(user: AdminReportedUserDto): void {
@@ -584,9 +585,10 @@ export class AdminReportsPopupComponent {
 
   protected reportedUserMenuItems(
     user: AdminReportedUserDto,
-    source: AdminReportMenuSource
+    source: AdminReportMenuSource,
+    reportItem?: AdminReportListItem | null
   ): readonly AppMenuItem<string, unknown>[] {
-    return this.reportActionItems(user, source) as readonly AppMenuItem<string, unknown>[];
+    return this.reportActionItems(user, source, reportItem) as readonly AppMenuItem<string, unknown>[];
   }
 
   protected onReportActionsMenuSelect(event: AppMenuItemSelectEvent<string, unknown>): void {
@@ -596,7 +598,7 @@ export class AdminReportsPopupComponent {
     }
     switch (context.action) {
       case 'warn':
-        this.warnBlockedUser(context.user, event.sourceEvent);
+        this.warnReportedUser(context.user, context.reportItem, event.sourceEvent);
         break;
       case 'block':
         event.sourceEvent.preventDefault();
@@ -620,10 +622,13 @@ export class AdminReportsPopupComponent {
     return this.blockedUsers().length;
   }
 
-  protected warnBlockedUser(user: AdminReportedUserDto, event?: Event): void {
+  protected warnReportedUser(user: AdminReportedUserDto, reportItem?: AdminReportListItem | null, event?: Event): void {
     event?.preventDefault();
     event?.stopPropagation();
-    this.warnUser(user);
+    if (reportItem) {
+      this.admin.openReportDetail(reportItem.user, reportItem.report);
+    }
+    this.warnUser(user, reportItem?.report ?? null);
   }
 
   protected viewBlockedUserChat(user: AdminReportedUserDto, event?: Event): void {
@@ -649,24 +654,45 @@ export class AdminReportsPopupComponent {
 
   private reportActionItems(
     user: AdminReportedUserDto,
-    source: AdminReportMenuSource
+    source: AdminReportMenuSource,
+    reportItem?: AdminReportListItem | null
   ): AppMenuItem<AdminReportActionsMenuItemId, AdminReportActionsMenuContext>[] {
     if (source === 'blocked-user' || this.isUserBlocked(user)) {
       return [
-        this.reportActionItem(user, source, 'unblock', 'unblock.user', 'lock_open'),
-        this.reportActionItem(user, source, 'view-chat', 'view.chat', 'forum', undefined, this.visibleSupportChatUnread(user))
+        this.reportActionItem(user, source, 'unblock', 'unblock.user', 'lock_open', 'success', undefined, reportItem),
+        this.reportActionItem(
+          user,
+          source,
+          'view-chat',
+          'view.chat',
+          'forum',
+          'blue',
+          this.visibleSupportChatUnread(user),
+          reportItem
+        )
       ];
     }
-    if (this.hasSupportChat(user)) {
-      return [
-        this.reportActionItem(user, source, 'view-chat', 'view.chat', 'forum', undefined, this.visibleSupportChatUnread(user)),
-        this.reportActionItem(user, source, 'block', 'block.user', 'block', 'danger')
-      ];
+    const warned = this.isReportWarned(reportItem?.report);
+    const items: AppMenuItem<AdminReportActionsMenuItemId, AdminReportActionsMenuContext>[] = [];
+    if (!warned) {
+      items.push(this.reportActionItem(user, source, 'warn', 'warn', 'chat', 'warning', undefined, reportItem));
     }
-    return [
-      this.reportActionItem(user, source, 'warn', 'warn', 'chat'),
-      this.reportActionItem(user, source, 'block', 'block.user', 'block', 'danger')
-    ];
+    if (warned) {
+      items.push(
+        this.reportActionItem(
+          user,
+          source,
+          'view-chat',
+          'view.chat',
+          'forum',
+          'blue',
+          this.visibleSupportChatUnread(user),
+          reportItem
+        )
+      );
+    }
+    items.push(this.reportActionItem(user, source, 'block', 'block.user', 'block', 'danger', undefined, reportItem));
+    return items;
   }
 
   private reportActionItem(
@@ -675,16 +701,23 @@ export class AdminReportsPopupComponent {
     action: AdminReportMenuAction,
     label: string,
     icon: string,
-    palette?: 'danger',
-    counter?: number | null
+    palette?: AppMenuPalette,
+    counter?: number | null,
+    reportItem?: AdminReportListItem | null
   ): AppMenuItem<AdminReportActionsMenuItemId, AdminReportActionsMenuContext> {
+    const userId = user.userId || 'member';
+    const reportId = reportItem?.report.id || userId;
+    const scopeId = source === 'report-detail'
+      ? `${reportId}:${userId}`
+      : userId;
     return {
-      id: `${source}:${user.userId || 'member'}:${action}` as AdminReportActionsMenuItemId,
+      id: `${source}:${scopeId}:${action}` as AdminReportActionsMenuItemId,
       label,
       icon,
       palette,
+      surface: palette ? 'tinted' : undefined,
       counter,
-      context: { action, source, user }
+      context: { action, source, user, reportItem: reportItem ?? null }
     };
   }
 
@@ -698,10 +731,8 @@ export class AdminReportsPopupComponent {
     return `${resolved?.profileStatus ?? user?.profileStatus ?? ''}`.trim() === 'blocked';
   }
 
-  protected hasSupportChat(user: AdminReportedUserDto): boolean {
-    const userId = `${user.userId ?? ''}`.trim();
-    const resolved = this.resolveDashboardReportedUser(userId) ?? user;
-    return Boolean(resolved.hasSupportChat);
+  protected isReportWarned(report: AdminReportDto | null | undefined): boolean {
+    return `${report?.warnedAtIso ?? ''}`.trim().length > 0;
   }
 
   protected supportChatUnread(user: AdminReportedUserDto): number {

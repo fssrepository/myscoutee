@@ -5,6 +5,7 @@ import type { AdminUserDto } from '../../../contracts/admin.interface';
 import type { AdminModerationActionResult, AdminModerationUserPatch } from '../../../base/services/admin-moderation.service';
 import type { ChatMessageDto, SupportCaseStatus } from '../../../contracts/chat.interface';
 
+import { LocalAdminModerationRepository } from '../repositories/admin-moderation.repository';
 import { LocalAdminSupportSessionService } from './admin-support-session.service';
 import { LocalRouteDelayService } from './route-delay.service';
 
@@ -16,12 +17,14 @@ const ADMIN_MODERATION_UNBLOCK_ROUTE = '/admin/reports/unblock';
   providedIn: 'root'
 })
 export class LocalAdminModerationService extends LocalRouteDelayService {
+  private readonly moderationRepository = inject(LocalAdminModerationRepository);
   private readonly supportSession = inject(LocalAdminSupportSessionService);
 
   async warnUser(
     userId: string,
     admin: AdminUserDto | null | undefined,
-    message: string
+    message: string,
+    reportId?: string | null
   ): Promise<AdminModerationActionResult | null> {
     const normalizedUserId = userId.trim();
     if (!normalizedUserId) {
@@ -32,6 +35,15 @@ export class LocalAdminModerationService extends LocalRouteDelayService {
       return null;
     }
     await this.waitForRouteDelay(ADMIN_MODERATION_WARN_ROUTE);
+    const normalizedReportId = `${reportId ?? ''}`.trim();
+    if (normalizedReportId) {
+      await this.moderationRepository.whenReady();
+      await this.moderationRepository.setReportWarned(
+        normalizedReportId,
+        resolvedAdmin.id,
+        new Date().toISOString()
+      );
+    }
     const supportPatch = await this.appendSupportMessage(normalizedUserId, resolvedAdmin, message, 'warned');
     return { userPatch: supportPatch };
   }

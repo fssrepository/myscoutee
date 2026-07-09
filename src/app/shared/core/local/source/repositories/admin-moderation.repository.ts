@@ -50,6 +50,34 @@ export class LocalAdminModerationRepository {
     return next;
   }
 
+  async setReportWarned(
+    reportId: string,
+    adminUserId: string,
+    warnedAtIso: string
+  ): Promise<AdminModerationStore | null> {
+    const normalizedReportId = `${reportId ?? ''}`.trim();
+    if (!normalizedReportId) {
+      return await this.readStore();
+    }
+    const store = await this.readStore();
+    if (!store) {
+      return null;
+    }
+    const next: AdminModerationStore = {
+      ...store,
+      reports: (store.reports ?? []).map(report => report.id === normalizedReportId
+        ? {
+          ...report,
+          warnedAtIso,
+          warnedByAdminUserId: adminUserId
+        }
+        : report),
+      feedback: [...(store.feedback ?? [])]
+    };
+    await this.writeStore(next);
+    return next;
+  }
+
   async setFeedbackResolved(
     feedbackId: string,
     adminUserId: string,

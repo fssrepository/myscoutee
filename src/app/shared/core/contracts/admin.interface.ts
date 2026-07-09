@@ -45,6 +45,8 @@ export interface AdminReportDto {
   chatTitle?: string | null;
   chatMessages?: AdminChatMessageDto[];
   createdDate: string;
+  warnedAtIso?: string | null;
+  warnedByAdminUserId?: string | null;
   resolvedAtIso?: string | null;
   resolvedByAdminUserId?: string | null;
 }

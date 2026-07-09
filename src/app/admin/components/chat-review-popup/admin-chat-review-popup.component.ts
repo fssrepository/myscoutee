@@ -8,9 +8,6 @@ import {
 import {
   FormsModule
 } from '@angular/forms';
-import {
-  MatIconModule
-} from '@angular/material/icon';
 
 import {
   AdminModerationService as CoreAdminModerationService,
@@ -19,8 +16,14 @@ import {
   type AdminReportedUserDto
 } from '../../../shared/core';
 import {
-  IndicatorComponent
-} from '../../../shared/ui/components/core/indicator';
+  FormFlowComponent,
+  type FormFlowModel
+} from '../../../shared/ui/components/core/form/flow';
+import {
+  AppMenuComponent,
+  type AppMenuItem,
+  type AppMenuItemSelectEvent
+} from '../../../shared/ui/components/core/menu';
 import {
   PopupComponent,
   type PopupModel
@@ -36,7 +39,7 @@ import { UserProfileStore } from '../../../shared/ui/context/stores/user-profile
 @Component({
   selector: 'app-admin-chat-review-popup',
   standalone: true,
-  imports: [CommonModule, FormsModule, MatIconModule, IndicatorComponent, PopupComponent],
+  imports: [CommonModule, FormsModule, PopupComponent, FormFlowComponent, AppMenuComponent],
   templateUrl: './admin-chat-review-popup.component.html',
   styleUrl: './admin-chat-review-popup.component.scss'
 })
@@ -46,6 +49,9 @@ export class AdminChatReviewPopupComponent {
   private readonly workspace = inject(AdminWorkspaceStore);
   private readonly moderationData = inject(CoreAdminModerationService);
   protected warnMessage = 'Please update the reported behavior before your account is blocked.';
+  protected warningFormValue = {
+    message: this.warnMessage
+  };
   protected sending = false;
   protected sendState: 'idle' | 'sending' | 'success' | 'error' = 'idle';
   protected sendStatus = '';
@@ -71,12 +77,74 @@ export class AdminChatReviewPopupComponent {
     return message.id === this.admin.selectedReport()?.messageId;
   }
 
-  protected warningSendRingState(): 'loading' | 'error' {
-    return this.sendState === 'sending' ? 'loading' : 'error';
+  protected warningFlowModel(user: AdminReportedUserDto | null | undefined): FormFlowModel {
+    return {
+      title: 'Warning message',
+      subtitle: user ? `${user.name} · ${user.reportCount} reports` : 'Send a support chat message before blocking.',
+      layout: 'grouped',
+      tone: 'orange',
+      header: false,
+      summary: { enabled: false },
+      completion: { controls: 'required' },
+      save: null,
+      steps: [
+        {
+          id: 'warning',
+          title: 'Warning',
+          icon: 'chat',
+          controls: [
+            {
+              id: 'message',
+              bind: 'message',
+              kind: 'textarea',
+              layout: 'wide',
+              label: 'Warning message',
+              rows: 5,
+              required: true
+            }
+          ]
+        }
+      ]
+    };
+  }
+
+  protected onWarningFlowValueChange(value: unknown): void {
+    const record = this.isRecord(value) ? value : {};
+    const nextValue = {
+      message: `${record['message'] ?? ''}`
+    };
+    this.warningFormValue = nextValue;
+    this.warnMessage = nextValue.message;
+  }
+
+  protected warningActionMenuItems(): readonly AppMenuItem<'send-warning'>[] {
+    return [{
+      id: 'send-warning',
+      label: 'send.warning',
+      icon: this.sending ? 'hourglass_empty' : 'send',
+      layout: 'action',
+      palette: 'warning',
+      disabled: this.sending || !this.warnMessage.trim() || !this.admin.selectedReportedUser(),
+      ariaLabel: 'send.warning',
+      progress: this.sending || this.sendState === 'error'
+        ? {
+            state: this.sending ? 'loading' : 'error',
+            shape: 'button'
+          }
+        : null
+    }];
+  }
+
+  protected onWarningActionMenuSelect(event: AppMenuItemSelectEvent<'send-warning'>): void {
+    if (event.id !== 'send-warning') {
+      return;
+    }
+    void this.sendWarning();
   }
 
   protected async sendWarning(): Promise<void> {
     const user = this.admin.selectedReportedUser();
+    const reportId = this.admin.selectedReport()?.id ?? null;
     const message = this.warnMessage.trim();
     if (!user || !message || this.sending) {
       return;
@@ -85,10 +153,13 @@ export class AdminChatReviewPopupComponent {
     this.sendState = 'sending';
     this.sendStatus = '';
     try {
-      await this.warnUser(user.userId, message);
+      await this.warnUser(user.userId, message, reportId);
       this.sendState = 'success';
       this.sendStatus = 'Warning message was sent to the user.';
       this.warnMessage = '';
+      this.warningFormValue = {
+        message: ''
+      };
     } catch {
       this.sendState = 'error';
       this.sendStatus = 'Warning message could not be sent. Please try again.';
@@ -97,7 +168,7 @@ export class AdminChatReviewPopupComponent {
     }
   }
 
-  private async warnUser(userId: string, message: string): Promise<void> {
+  private async warnUser(userId: string, message: string, reportId?: string | null): Promise<void> {
     const normalizedUserId = userId.trim();
     if (!normalizedUserId) {
       return;
@@ -105,7 +176,8 @@ export class AdminChatReviewPopupComponent {
     const result = await this.moderationData.warnUser(
       normalizedUserId,
       this.userProfileStore.activeAdminUser(),
-      message
+      message,
+      reportId
     );
     this.applyModerationActionResult(normalizedUserId, result);
   }
@@ -132,6 +204,10 @@ export class AdminChatReviewPopupComponent {
       return;
     }
     this.admin.setSelectedReportedUser(this.resolveDashboardReportedUser(userId) ?? selected);
+  }
+
+  private isRecord(value: unknown): value is Record<string, unknown> {
+    return typeof value === 'object' && value !== null && !Array.isArray(value);
   }
 
   private resolveDashboardReportedUser(userId: string): AdminReportedUserDto | null {

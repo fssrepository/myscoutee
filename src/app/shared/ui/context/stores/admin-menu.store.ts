@@ -77,8 +77,11 @@ export class AdminMenuStore {
     this.activePopupRef.set('chat-review');
   }
 
-  openWarnChat(user: AdminReportedUserDto): void {
+  openWarnChat(user: AdminReportedUserDto, report?: AdminReportDto | null): void {
     this.selectedReportedUserRef.set(user);
+    if (report) {
+      this.selectedReportRef.set(report);
+    }
     this.activePopupRef.set('warn-chat');
   }
 
