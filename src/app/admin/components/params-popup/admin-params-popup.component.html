@@ -1,20 +1,6 @@
 @if (admin.activePopup() === 'params') {
-  <section class="app-popup">
-    <div class="app-popup-backdrop" (click)="close()"></div>
-    <div class="app-popup-panel admin-params-panel" (click)="$event.stopPropagation()">
-      <div class="popup-header">
-        <div class="popup-title">
-          <h2>{{ 'params' | i18n }}</h2>
-          <p class="popup-subtitle">{{ (selectedSection()?.labelKey || selectedSection()?.label || 'Platform') | i18n: (selectedSection()?.label || 'Platform') }} · v{{ selectedSection()?.version ?? 1 }}</p>
-        </div>
-        <div class="admin-params-header-actions">
-          <button type="button" class="popup-close" (click)="close()" [attr.aria-label]="'close' | i18n">
-            <mat-icon>close</mat-icon>
-          </button>
-        </div>
-      </div>
-
-      <div class="popup-body admin-params-body">
+  <app-popup [model]="paramsPopupModel()">
+      <div class="admin-params-body">
         @if (loading()) {
           <div class="admin-params-loading-state" aria-busy="true">
             <app-indicator
@@ -78,35 +64,12 @@
           <p class="admin-params-error">{{ error() | i18n }}</p>
         }
       </div>
-    </div>
-  </section>
+  </app-popup>
 }
 
 @if (editDraft(); as draft) {
-  <section class="app-popup app-popup-stacked">
-    <div class="app-popup-backdrop" (click)="cancelEdit()"></div>
-    <div class="app-popup-panel popup-panel-full-height admin-params-edit-panel" (click)="$event.stopPropagation()">
-      <div class="popup-header">
-        <div class="popup-title">
-          <h2>{{ (draft.section.labelKey || draft.section.label) | i18n: draft.section.label }}</h2>
-          <p class="popup-subtitle">v{{ draft.section.version }}</p>
-        </div>
-        <div class="admin-params-header-actions">
-          <span class="admin-params-action-ring-shell admin-params-circle-ring-shell" [class.is-loading]="saving()">
-            @if (saving()) {
-              <app-indicator kind="action-ring" shape="circle" state="loading"></app-indicator>
-            }
-            <button type="button" class="admin-params-icon-btn admin-params-save-btn" [disabled]="saving()" (click)="saveEdit()" [attr.aria-label]="'save' | i18n">
-              <mat-icon>check</mat-icon>
-            </button>
-          </span>
-          <button type="button" class="admin-params-icon-btn" [disabled]="saving()" (click)="cancelEdit()" [attr.aria-label]="'cancel' | i18n">
-            <mat-icon>close</mat-icon>
-          </button>
-        </div>
-      </div>
-
-      <div class="popup-body admin-params-edit-body">
+  <app-popup [model]="editPopupModel(draft)" [zIndex]="2400">
+      <div class="admin-params-edit-body">
         @for (group of fieldsByGroup(draft.fields); track group.group) {
           <section class="admin-params-edit-group">
             <h3>{{ (group.groupKey || group.group) | i18n: group.group }}</h3>
@@ -145,25 +108,12 @@
           </section>
         }
       </div>
-    </div>
-  </section>
+  </app-popup>
 }
 
 @if (history(); as historyState) {
-  <section class="app-popup app-popup-stacked">
-    <div class="app-popup-backdrop" (click)="closeHistory()"></div>
-    <div class="app-popup-panel admin-params-history-panel" (click)="$event.stopPropagation()">
-      <div class="popup-header">
-        <div class="popup-title">
-          <h2>{{ (historyState.labelKey || historyState.label) | i18n: historyState.label }}</h2>
-          <p class="popup-subtitle">{{ 'history' | i18n }}</p>
-        </div>
-        <button type="button" class="popup-close" [disabled]="reverting()" (click)="closeHistory()" [attr.aria-label]="'close' | i18n">
-          <mat-icon>close</mat-icon>
-        </button>
-      </div>
-
-      <div class="popup-body admin-params-history-body">
+  <app-popup [model]="historyPopupModel(historyState)" [zIndex]="2400">
+      <div class="admin-params-history-body">
         @if (historyLoading()) {
           <div class="admin-params-loading-state admin-params-history-loading-state" aria-busy="true">
             <app-indicator
@@ -223,6 +173,5 @@
           }
         }
       </div>
-    </div>
-  </section>
+  </app-popup>
 }

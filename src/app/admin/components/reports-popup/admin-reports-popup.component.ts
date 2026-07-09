@@ -54,6 +54,11 @@ import {
   type SmartListItemTemplateContext,
   type SmartListLoadPage
 } from '../../../shared/ui';
+import {
+  PopupComponent,
+  type PopupActionEvent,
+  type PopupModel
+} from '../../../shared/ui/components/core/popup';
 import type { ChatDTO } from '../../../shared/core/contracts/chat.interface';
 import type { UserDto } from '../../../shared/core/contracts/user.interface';
 import {
@@ -118,7 +123,8 @@ interface AdminReportActionsMenuContext {
     SingleRowComponent,
     SmartListComponent,
     AdminChatReviewPopupComponent,
-    AdminItemPreviewPopupComponent
+    AdminItemPreviewPopupComponent,
+    PopupComponent
   ],
   templateUrl: './admin-reports-popup.component.html',
   styleUrl: './admin-reports-popup.component.scss',
@@ -216,6 +222,69 @@ export class AdminReportsPopupComponent {
   protected readonly blockedUsersSmartListLoadPage: SmartListLoadPage<AdminBlockedUserListItem, AdminBlockedUserListFilters> = (
     query
   ) => from(this.loadBlockedUsersPage(query));
+
+  protected reportsPopupModel(): PopupModel {
+    return {
+      title: 'reported.users',
+      subtitle: 'Only users with moderation reports are visible here.',
+      ariaLabel: 'reported.users',
+      closeAriaLabel: 'close',
+      size: 'wide',
+      height: 'full',
+      headerTone: 'accent',
+      bodyLayout: 'fill',
+      headerActions: [
+        {
+          id: 'blocked-users',
+          icon: 'person_off',
+          label: 'Blocked users',
+          ariaLabel: 'open.blocked.users',
+          palette: 'danger',
+          counter: this.blockedUsersCount(),
+          disabled: this.blockedUsersCount() === 0,
+          compactOnMobile: true
+        }
+      ],
+      onClose: () => this.admin.closePopup(),
+      onAction: event => this.onReportsPopupAction(event)
+    };
+  }
+
+  protected reportDetailPopupModel(item: AdminReportListItem): PopupModel {
+    return {
+      title: 'Report details',
+      subtitle: this.reportListTitle(item),
+      ariaLabel: 'Report details',
+      closeAriaLabel: 'close',
+      size: 'wide',
+      height: 'auto',
+      headerTone: 'accent',
+      bodyLayout: 'fill',
+      backdropTone: 'dim',
+      onClose: () => this.closeReportDetails()
+    };
+  }
+
+  protected blockedUsersPopupModel(): PopupModel {
+    return {
+      title: 'Blocked users',
+      subtitle: 'Profiles currently blocked by moderation.',
+      ariaLabel: 'Blocked users',
+      closeAriaLabel: 'close',
+      size: 'wide',
+      height: 'full',
+      headerTone: 'accent',
+      bodyLayout: 'fill',
+      backdropTone: 'dim',
+      onClose: () => this.closeBlockedUsers()
+    };
+  }
+
+  private onReportsPopupAction(event: PopupActionEvent): void {
+    if (event.action.id === 'blocked-users') {
+      this.openBlockedUsers(event.sourceEvent);
+    }
+  }
 
   protected selectUser(user: AdminReportedUserDto): void {
     const firstReport = user.reports[0];

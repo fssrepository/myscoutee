@@ -1,6 +1,5 @@
 @use '../../../shared/ui/styles' as ui;
 
-@include ui.popup-shell();
 @include ui.interactive-motion();
 @include ui.form-controls();
 
@@ -8,39 +7,10 @@
   display: contents;
 }
 
-.popup-panel-stats {
-  width: min(1080px, calc(100vw - 1.2rem));
-  height: calc(100vh - 1.2rem);
-  height: calc(100dvh - 1.2rem);
-  position: relative;
-}
-
-.stats-header-actions {
-  display: inline-flex;
-  align-items: center;
-  gap: 0.44rem;
-}
-
-.stats-icon-btn {
-  width: 34px;
-  height: 34px;
-  border: 1px solid rgba(47, 86, 139, 0.22);
-  border-radius: 50%;
-  background: #f7faff;
-  color: #2f5f98;
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  padding: 0;
-  cursor: pointer;
-}
-
-.stats-icon-btn:disabled {
-  opacity: 0.5;
-  cursor: default;
-}
-
 .stats-body {
+  position: relative;
+  min-height: 0;
+  height: 100%;
   overflow: auto;
   display: flex;
   flex-direction: column;
@@ -1070,81 +1040,13 @@
   background: #5a6b82;
 }
 
-.stats-graph-help-overlay {
-  position: absolute;
-  inset: 0;
-  z-index: 70;
-  display: grid;
-  place-items: center;
-  padding: 1rem;
-}
-
-.stats-graph-help-backdrop {
-  position: absolute;
-  inset: 0;
-  border: 0;
-  background: rgba(16, 32, 54, 0.38);
-  backdrop-filter: blur(3px);
-  cursor: pointer;
-}
-
-.stats-graph-help-dialog {
-  position: relative;
-  width: min(780px, calc(100vw - 2rem));
-  max-height: min(760px, calc(100vh - 2rem));
-  border: 1px solid rgba(42, 81, 129, 0.18);
-  border-radius: 10px;
-  background: #f8fbff;
-  box-shadow: 0 24px 64px rgba(20, 43, 72, 0.28);
-  overflow: auto;
+.stats-graph-help-content {
+  min-height: 0;
+  max-height: min(680px, calc(100vh - 8rem));
+  overflow-y: auto;
+  overflow-x: hidden;
   display: grid;
   gap: 0.72rem;
-  padding: 0.9rem;
-}
-
-.stats-graph-help-dialog header {
-  display: flex;
-  align-items: flex-start;
-  justify-content: space-between;
-  gap: 0.8rem;
-  padding-bottom: 0.72rem;
-  border-bottom: 1px solid rgba(42, 81, 129, 0.12);
-}
-
-.stats-graph-help-dialog h3 {
-  margin: 0;
-  color: #15375f;
-  font-size: 1.05rem;
-}
-
-.stats-graph-help-dialog header p {
-  margin: 0.28rem 0 0;
-  color: rgba(28, 53, 84, 0.72);
-  font-size: 0.82rem;
-  line-height: 1.4;
-  font-weight: 850;
-}
-
-.stats-graph-help-close {
-  width: 36px;
-  height: 36px;
-  flex: 0 0 auto;
-  border: 1px solid rgba(47, 86, 139, 0.22);
-  border-radius: 50%;
-  background: linear-gradient(180deg, #ffffff, #eef5ff);
-  color: #245a93;
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  padding: 0;
-  cursor: pointer;
-  box-shadow: 0 8px 18px rgba(34, 73, 119, 0.14);
-}
-
-.stats-graph-help-close mat-icon {
-  font-size: 1.5rem;
-  width: 1.5rem;
-  height: 1.5rem;
 }
 
 .stats-graph-help-grid {
@@ -1189,11 +1091,6 @@
 }
 
 @media (max-width: 760px) {
-  .popup-panel-stats {
-    width: min(100vw, 430px);
-    height: 100vh;
-  }
-
   .stats-hero,
   .stats-grid,
   .stats-grid-charts,
@@ -1219,20 +1116,6 @@
 
   .stats-segment-items {
     grid-template-columns: 1fr;
-  }
-
-  .stats-graph-help-overlay {
-    padding: 0;
-  }
-
-  .stats-graph-help-dialog {
-    width: 100%;
-    height: 100%;
-    max-height: none;
-    border-radius: 0;
-    border-left: 0;
-    border-right: 0;
-    border-top: 0;
   }
 
   .stats-graph-help-grid {

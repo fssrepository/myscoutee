@@ -17,6 +17,10 @@ import {
   type SmartListLoadPage,
   ActivityChatSingleRowConverter
 } from '../../../shared/ui';
+import {
+  PopupComponent,
+  type PopupModel
+} from '../../../shared/ui/components/core/popup';
 import type { ChatDTO } from '../../../shared/core/contracts/chat.interface';
 import type { UserDto } from '../../../shared/core/contracts/user.interface';
 import { AdminMenuStore } from '../../../shared/ui/context/stores/admin-menu.store';
@@ -35,7 +39,7 @@ interface AdminFeedbackListItem {
 @Component({
   selector: 'app-admin-feedback-popup',
   standalone: true,
-  imports: [CommonModule, MatIconModule, SmartListComponent, SingleRowComponent],
+  imports: [CommonModule, MatIconModule, SmartListComponent, SingleRowComponent, PopupComponent],
   templateUrl: './admin-feedback-popup.component.html',
   styleUrl: './admin-feedback-popup.component.scss'
 })
@@ -84,6 +88,35 @@ export class AdminFeedbackPopupComponent {
   protected readonly feedbackSmartListLoadPage: SmartListLoadPage<AdminFeedbackListItem, AdminFeedbackListFilters> = (
     query
   ) => from(this.loadFeedbackPage(query));
+
+  protected feedbackPopupModel(): PopupModel {
+    return {
+      title: 'application.feedback',
+      subtitle: 'feedback.submitted.from.the.app',
+      ariaLabel: 'application.feedback',
+      closeAriaLabel: 'close',
+      size: 'wide',
+      height: 'full',
+      headerTone: 'accent',
+      bodyLayout: 'fill',
+      onClose: () => this.admin.closePopup()
+    };
+  }
+
+  protected feedbackDetailPopupModel(item: AdminFeedbackDto): PopupModel {
+    return {
+      title: 'feedback.details',
+      subtitle: `${item.userName} · ${this.feedbackListMeta(item)}`,
+      ariaLabel: 'feedback.details',
+      closeAriaLabel: 'close',
+      size: 'wide',
+      height: 'auto',
+      headerTone: 'accent',
+      bodyLayout: 'fill',
+      backdropTone: 'dim',
+      onClose: () => this.closeFeedbackDetails()
+    };
+  }
 
   protected selectFeedback(item: AdminFeedbackListItem): void {
     this.feedbackDetail = item.feedback;

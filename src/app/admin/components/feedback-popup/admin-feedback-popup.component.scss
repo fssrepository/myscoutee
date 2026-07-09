@@ -4,20 +4,7 @@
   display: contents;
 }
 
-@include ui.popup-shell();
 @include ui.interactive-motion();
-
-.app-popup-panel.popup-panel-admin {
-  width: min(1080px, calc(100vw - 1.2rem));
-  height: calc(100vh - 1.2rem);
-  height: calc(100dvh - 1.2rem);
-}
-
-.app-popup-panel.popup-panel-admin-detail {
-  width: min(1080px, calc(100vw - 1.2rem));
-  max-height: calc(100vh - 1.2rem);
-  max-height: calc(100dvh - 1.2rem);
-}
 
 .admin-list-only-body {
   height: 100%;
@@ -231,11 +218,6 @@ app-smart-list.admin-smart-list {
 }
 
 @media (max-width: 760px) {
-  .app-popup-panel.popup-panel-admin {
-    height: calc(100vh - 0.6rem);
-    max-height: calc(100vh - 0.6rem);
-  }
-
   .admin-feedback-category-badge {
     max-width: min(240px, 64vw);
   }

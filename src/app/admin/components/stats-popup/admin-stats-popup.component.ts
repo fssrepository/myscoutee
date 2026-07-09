@@ -14,6 +14,7 @@ import {
 
 import {
   AdminStatsService,
+  I18nService,
   type AdminStatsBreakdownItemDto,
   type AdminStatsDashboardDto,
   type AdminStatsGraphDto,
@@ -31,6 +32,11 @@ import {
   IndicatorComponent
 } from '../../../shared/ui/components/core/indicator';
 import {
+  PopupComponent,
+  type PopupActionEvent,
+  type PopupModel
+} from '../../../shared/ui/components/core/popup';
+import {
   AdminMenuStore
 } from '../../../shared/ui/context/stores/admin-menu.store';
 import { UserProfileStore } from '../../../shared/ui/context/stores/user-profile.store';
@@ -44,13 +50,14 @@ type AdminStatsGraphAction = { key: string; labelKey: string; icon: string; tone
 @Component({
   selector: 'app-admin-stats-popup',
   standalone: true,
-  imports: [CommonModule, MatIconModule, IndicatorComponent, I18nPipe],
+  imports: [CommonModule, MatIconModule, IndicatorComponent, I18nPipe, PopupComponent],
   templateUrl: './admin-stats-popup.component.html',
   styleUrl: './admin-stats-popup.component.scss'
 })
 export class AdminStatsPopupComponent {
   protected readonly admin = inject(AdminMenuStore);
   protected readonly statsService = inject(AdminStatsService);
+  private readonly i18n = inject(I18nService);
   private readonly userProfileStore = inject(UserProfileStore);
   protected readonly loading = signal(false);
   protected readonly error = signal('');
@@ -111,6 +118,57 @@ export class AdminStatsPopupComponent {
 
   protected close(): void {
     this.admin.closePopup();
+  }
+
+  protected statsPopupModel(): PopupModel {
+    return {
+      title: 'stats',
+      subtitle: this.statsSubtitle(),
+      ariaLabel: 'stats',
+      closeAriaLabel: 'close',
+      size: 'wide',
+      height: 'full',
+      headerTone: 'accent',
+      bodyLayout: 'fill',
+      headerActions: [
+        {
+          id: 'stats-refresh',
+          icon: 'refresh',
+          ariaLabel: 'refresh.stats',
+          palette: 'blue',
+          disabled: this.loading(),
+          compactOnMobile: true
+        }
+      ],
+      onClose: () => this.close(),
+      onAction: event => this.onStatsPopupAction(event)
+    };
+  }
+
+  protected graphHelpPopupModel(): PopupModel {
+    return {
+      title: 'stats.graph.help.title',
+      subtitle: 'stats.graph.help.intro',
+      ariaLabel: 'stats.graph.help.title',
+      closeAriaLabel: 'close',
+      size: 'default',
+      height: 'auto',
+      headerTone: 'accent',
+      backdropTone: 'dim',
+      onClose: () => this.closeGraphHelp()
+    };
+  }
+
+  private onStatsPopupAction(event: PopupActionEvent): void {
+    if (event.action.id === 'stats-refresh') {
+      void this.refresh();
+    }
+  }
+
+  private statsSubtitle(): string {
+    const label = this.i18n.translate('stats.snapshot.subtitle');
+    const date = this.formatDate(this.stats()?.generatedAtIso);
+    return date ? `${label}: ${date}` : label;
   }
 
   protected openGraphHelp(): void {

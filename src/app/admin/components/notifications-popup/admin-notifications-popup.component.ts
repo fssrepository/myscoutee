@@ -16,7 +16,8 @@ import {
 } from '@angular/material/icon';
 
 import {
-  AdminNotificationsService
+  AdminNotificationsService,
+  I18nService
 } from '../../../shared/core';
 import type {
   AdminNotificationCenterState,
@@ -32,10 +33,15 @@ import {
   I18nPipe
 } from '../../../shared/ui';
 import {
-  AppMenuComponent,
   type AppMenuItemSelectEvent,
   type AppMenuModel
 } from '../../../shared/ui/components/core/menu';
+import {
+  PopupComponent,
+  type PopupActionEvent,
+  type PopupMenuSelectEvent,
+  type PopupModel
+} from '../../../shared/ui/components/core/popup';
 import {
   IndicatorComponent
 } from '../../../shared/ui/components/core/indicator';
@@ -324,13 +330,14 @@ const STATUS_CLASS_PREFIX = 'is-';
 @Component({
   selector: 'app-admin-notifications-popup',
   standalone: true,
-  imports: [CommonModule, FormsModule, MatIconModule, AppMenuComponent, IndicatorComponent, I18nPipe],
+  imports: [CommonModule, FormsModule, MatIconModule, IndicatorComponent, I18nPipe, PopupComponent],
   templateUrl: './admin-notifications-popup.component.html',
   styleUrl: './admin-notifications-popup.component.scss'
 })
 export class AdminNotificationsPopupComponent implements OnDestroy {
   protected readonly admin = inject(AdminMenuStore);
   protected readonly notificationsService = inject(AdminNotificationsService);
+  private readonly i18n = inject(I18nService);
   private readonly userProfileStore = inject(UserProfileStore);
   protected readonly popupKey = ADMIN_POPUP_KEY;
   protected readonly jobI18n = JOB_I18N;
@@ -574,6 +581,131 @@ export class AdminNotificationsPopupComponent implements OnDestroy {
     this.admin.closePopup();
   }
 
+  protected notificationsPopupModel(): PopupModel<ProcessFilterMenuContext> {
+    return {
+      title: this.uiText('jobs'),
+      subtitle: `${this.processRules().length} ${this.uiText('admin.jobs.background.processes')}`,
+      ariaLabel: this.uiText('jobs'),
+      closeAriaLabel: this.uiText('close'),
+      size: 'wide',
+      height: 'full',
+      headerTone: 'accent',
+      bodyLayout: 'fill',
+      headerControls: this.loading() || this.detailOpen()
+        ? []
+        : [
+            {
+              kind: 'menu',
+              id: 'process-filter',
+              menuKind: 'inline',
+              model: this.processFilterMenuModel(),
+              panelAlign: 'end'
+            }
+          ],
+      onClose: () => this.close(),
+      onMenuSelect: event => this.onNotificationsPopupMenuSelect(event)
+    };
+  }
+
+  protected processDetailPopupModel(rule: AdminNotificationRule): PopupModel {
+    const dirty = this.isTimingDirty(rule) || this.isParameterDirty(rule);
+    return {
+      title: this.processTitle(rule),
+      subtitle: this.processDetailSubtitle(rule),
+      ariaLabel: this.uiText(this.processTitle(rule)),
+      closeAriaLabel: this.uiText('admin.jobs.close.detail'),
+      size: 'wide',
+      height: 'full',
+      headerTone: 'accent',
+      bodyLayout: 'fill',
+      backdropTone: 'dim',
+      showClose: false,
+      headerActions: [
+        {
+          id: 'process-detail-save',
+          icon: 'check',
+          ariaLabel: this.uiText('admin.jobs.save.process'),
+          palette: dirty ? 'danger' : 'success',
+          active: dirty,
+          disabled: this.loading() || this.saving() || !this.state() || !this.canManageProcess(rule)
+        },
+        {
+          id: 'process-detail-close',
+          icon: 'close',
+          ariaLabel: this.uiText('admin.jobs.close.detail'),
+          palette: 'neutral'
+        }
+      ],
+      onClose: () => this.closeDetail(),
+      onAction: event => void this.onProcessDetailPopupAction(event)
+    };
+  }
+
+  protected scheduleEditorPopupModel(rule: AdminNotificationRule): PopupModel {
+    return {
+      title: 'admin.jobs.timing',
+      subtitle: 'admin.jobs.timing.description',
+      secondarySubtitle: this.intervalCron(rule),
+      ariaLabel: this.uiText('admin.jobs.timing'),
+      closeAriaLabel: this.uiText('admin.jobs.close.run.window.editor'),
+      size: 'default',
+      height: 'auto',
+      headerTone: 'accent',
+      backdropTone: 'dim',
+      showClose: false,
+      headerActions: [
+        {
+          id: 'schedule-save',
+          icon: 'check',
+          ariaLabel: this.uiText('done'),
+          palette: 'success',
+          disabled: this.saving()
+        },
+        {
+          id: 'schedule-close',
+          icon: 'close',
+          ariaLabel: this.uiText('admin.jobs.close.run.window.editor'),
+          palette: 'neutral',
+          disabled: this.saving()
+        }
+      ],
+      onClose: () => this.closeScheduleEditor(),
+      onAction: event => void this.onScheduleEditorPopupAction(event)
+    };
+  }
+
+  protected parameterEditorPopupModel(): PopupModel {
+    return {
+      title: 'admin.jobs.parameters',
+      subtitle: 'admin.jobs.parameters.description',
+      ariaLabel: this.uiText('admin.jobs.parameters'),
+      closeAriaLabel: this.uiText('cancel'),
+      size: 'default',
+      height: 'auto',
+      headerTone: 'accent',
+      backdropTone: 'dim',
+      showClose: false,
+      headerActions: [
+        {
+          id: 'parameter-save',
+          icon: 'check',
+          ariaLabel: this.uiText('done'),
+          palette: 'success',
+          disabled: this.saving()
+        },
+        {
+          id: 'parameter-close',
+          icon: 'close',
+          ariaLabel: this.uiText('cancel'),
+          palette: 'neutral',
+          disabled: this.saving()
+        }
+      ],
+      onClose: () => this.closeParameterEditor(),
+      onAction: event => void this.onParameterEditorPopupAction(event)
+    };
+  }
+
   protected openDetail(rule: AdminNotificationRule): void {
     this.selectedRuleKey.set(rule.ruleKey);
     this.detailOpen.set(true);
@@ -651,12 +783,62 @@ export class AdminNotificationsPopupComponent implements OnDestroy {
     };
   }
 
-  protected onProcessFilterMenuSelect(event: AppMenuItemSelectEvent<ProcessFilterMenuItemId, ProcessFilterMenuContext>): void {
+  protected onProcessFilterMenuSelect(event: AppMenuItemSelectEvent<string, ProcessFilterMenuContext>): void {
     const nextFilter = event.context?.filter;
     if (!nextFilter) {
       return;
     }
     this.selectProcessFilter(nextFilter, event.sourceEvent);
+  }
+
+  private onNotificationsPopupMenuSelect(event: PopupMenuSelectEvent<ProcessFilterMenuContext>): void {
+    this.onProcessFilterMenuSelect(event.itemSelect);
+  }
+
+  private async onProcessDetailPopupAction(event: PopupActionEvent): Promise<void> {
+    event.sourceEvent.preventDefault();
+    event.sourceEvent.stopPropagation();
+    if (event.action.id === 'process-detail-save') {
+      await this.saveAndCloseDetail();
+      return;
+    }
+    if (event.action.id === 'process-detail-close') {
+      this.closeDetail();
+    }
+  }
+
+  private async onScheduleEditorPopupAction(event: PopupActionEvent): Promise<void> {
+    event.sourceEvent.preventDefault();
+    event.sourceEvent.stopPropagation();
+    if (event.action.id === 'schedule-save') {
+      await this.saveScheduleEditor();
+      return;
+    }
+    if (event.action.id === 'schedule-close') {
+      this.closeScheduleEditor();
+    }
+  }
+
+  private async onParameterEditorPopupAction(event: PopupActionEvent): Promise<void> {
+    event.sourceEvent.preventDefault();
+    event.sourceEvent.stopPropagation();
+    if (event.action.id === 'parameter-save') {
+      await this.saveParameterEditor();
+      return;
+    }
+    if (event.action.id === 'parameter-close') {
+      this.closeParameterEditor();
+    }
+  }
+
+  private processDetailSubtitle(rule: AdminNotificationRule): string {
+    return `${this.uiText('admin.jobs.scheduled.process')} · `
+      + `${this.uiText(this.processStatusLabelKeys[this.statusKind(rule)])} · `
+      + `${this.uiText('admin.jobs.last.changed')} ${this.uiText(this.shortDate(rule.updatedDate || ''))}`;
+  }
+
+  private uiText(value: string, fallback = ''): string {
+    return this.i18n.translate(value, fallback);
   }
 
   protected selectProcessFilter(filter: ProcessListFilter, event?: Event): void {
