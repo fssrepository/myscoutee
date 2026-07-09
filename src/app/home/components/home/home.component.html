@@ -114,19 +114,3 @@
     (closed)="onGameFilterPopupClosed($event)"
   ></app-home-game-filter-popup>
 }
-
-@if (!isAccountReactivationPending && localPopup === 'history') {
-  <section class="game-popup">
-    <div class="game-popup-backdrop" (click)="closeLocalPopup()"></div>
-    <div class="game-popup-panel" (click)="$event.stopPropagation()">
-      <header>
-        <h2>Game History</h2>
-        <button type="button" (click)="closeLocalPopup()" aria-label="Close">×</button>
-      </header>
-      <div class="game-popup-body">
-        <p>Recent ratings and mutual matches can appear here.</p>
-        <p>Current placeholder keeps popup structure ready.</p>
-      </div>
-    </div>
-  </section>
-}

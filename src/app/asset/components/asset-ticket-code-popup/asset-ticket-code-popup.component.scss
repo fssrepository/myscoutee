@@ -111,20 +111,21 @@
 
 @media (max-width: 760px) {
   .ticket-code-popup {
-    align-items: stretch;
+    align-items: center;
     padding: 0;
   }
 
   .ticket-code-sheet {
-    --ticket-popup-content-width: min(calc(100vw - 1.28rem), calc(100dvh - 14rem));
+    --ticket-popup-content-width: min(100%, calc(100dvh - 14rem));
     width: 100%;
     max-width: 100%;
     max-height: 100%;
-    min-height: 100%;
+    min-height: 0;
     border-radius: 0;
     border: 0;
     box-shadow: none;
     padding: 0.64rem;
+    align-content: center;
   }
 
   .ticket-scan-person-card,

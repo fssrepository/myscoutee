@@ -78,7 +78,7 @@ import { UserProfileStore } from '../../../shared/ui/context/stores/user-profile
 import { AppRuntimeStore } from '../../../shared/ui/context/stores/app-runtime.store';
 import { ActivityStore } from '../../../shared/ui/context/stores/activity.store';
 
-type LocalPopup = 'history' | 'filter' | null;
+type LocalPopup = 'filter' | null;
 
 interface LeavingGameCardState {
   candidate: UserDto;
