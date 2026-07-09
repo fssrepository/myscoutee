@@ -16,6 +16,8 @@ const FOREST_OVERVIEW_BASE_BUDGET = 12;
 const FOREST_OVERVIEW_MIN_BUDGET = 4;
 const FOREST_OVERVIEW_AREA_PX = 132000;
 const FOREST_OVERVIEW_LOAD_BUFFER = 4;
+const BADGE_LOAD_PROGRESS_WINDOW_MS = 3000;
+const BADGE_LOAD_OVERDUE_DELAY_MS = 1500;
 const GRAPH_LABEL_KEYS = {
   graphView: 'admin.affinity.graph.view',
   clusterDetail: 'admin.affinity.graph.cluster.detail',
@@ -170,6 +172,10 @@ const forestClickTargets = [];
 let selectedNode = null;
 let activeComponentId = null;
 let pendingComponentGraphId = null;
+let forestLoadingComponentId = null;
+let nodeLoadingNodeId = null;
+let forestLoadingStartedAtMs = 0;
+let nodeLoadingStartedAtMs = 0;
 let fullGraphExpanded = false;
 let selectionReturnMode = null;
 let hoverNode = null;
@@ -231,6 +237,30 @@ const selectionSprite = new THREE.Sprite(new THREE.SpriteMaterial({
 selectionSprite.visible = false;
 selectionSprite.renderOrder = 30;
 nodeGroup.add(selectionSprite);
+
+const forestLoadingSprite = new THREE.Sprite(new THREE.SpriteMaterial({
+  map: createLoadingRingTexture(),
+  transparent: true,
+  fog: false,
+  depthTest: false,
+  depthWrite: false,
+  opacity: 0
+}));
+forestLoadingSprite.visible = false;
+forestLoadingSprite.renderOrder = 42;
+forestGroup.add(forestLoadingSprite);
+
+const nodeLoadingSprite = new THREE.Sprite(new THREE.SpriteMaterial({
+  map: createLoadingRingTexture(),
+  transparent: true,
+  fog: false,
+  depthTest: false,
+  depthWrite: false,
+  opacity: 0
+}));
+nodeLoadingSprite.visible = false;
+nodeLoadingSprite.renderOrder = 42;
+nodeGroup.add(nodeLoadingSprite);
 
 syncPanelChrome();
 createNodes();
@@ -896,6 +926,9 @@ function selectNode(nodeId, options = {}) {
   if (selectedNode) {
     activeComponentId = selectedNode.componentId;
     layoutCenterAnchor = selectedNode.position.clone();
+    if (GRAPH_LAZY_ENABLED && !loadedNeighborhoodKeys.has(neighborhoodCacheKey(selectedNode.id))) {
+      startNodeLoading(selectedNode.id);
+    }
   }
   if (selectedNode && options.focus) {
     controls.target.copy(selectedNode.position);
@@ -913,18 +946,14 @@ function selectForest(componentId) {
   if (!component) {
     return;
   }
-  activeComponentId = componentId;
   pendingComponentGraphId = componentId;
+  startForestLoading(componentId);
+  stopNodeLoading();
   selectedNode = null;
   selectionReturnMode = null;
   fullGraphExpanded = false;
-  layoutCenterAnchor = componentLayoutCenter(component);
-  resetSemanticZoomLevel();
-  restoreHomeNodePositions();
-  rebuildEdges();
-  renderMemberPanel(null);
   if (GRAPH_LAZY_ENABLED) {
-    scheduleLazyComponentLoad(componentId, 60, { refresh: true, reveal: true });
+    void loadLazyComponent(componentId, { refresh: true, reveal: true });
   } else {
     revealComponentGraph(componentId, new Set(visibleNodeIds));
   }
@@ -932,10 +961,20 @@ function selectForest(componentId) {
 }
 
 function revealComponentGraph(componentId, previousVisibleNodeIds = new Set()) {
-  if (activeComponentId !== componentId || selectedNode) {
+  if (selectedNode || (activeComponentId !== componentId && pendingComponentGraphId !== componentId)) {
     return;
   }
+  const component = componentForId(componentId);
+  if (!component) {
+    return;
+  }
+  activeComponentId = componentId;
   pendingComponentGraphId = null;
+  stopForestLoading(componentId);
+  fullGraphExpanded = false;
+  layoutCenterAnchor = componentLayoutCenter(component);
+  resetSemanticZoomLevel();
+  restoreHomeNodePositions();
   rebuildEdges();
   renderMemberPanel(null);
   startVisibleRefit({ fitCamera: true, previousVisibleNodeIds });
@@ -952,6 +991,8 @@ function clearSelection() {
   const returnMode = selectionReturnMode;
   selectionReturnMode = null;
   pendingComponentGraphId = null;
+  stopForestLoading();
+  stopNodeLoading();
 
   if (returnMode === 'forest' && activeComponentId !== null) {
     fullGraphExpanded = false;
@@ -968,6 +1009,8 @@ function clearSelection() {
 
   activeComponentId = null;
   pendingComponentGraphId = null;
+  stopForestLoading();
+  stopNodeLoading();
   fullGraphExpanded = true;
   layoutCenterAnchor = null;
   resetSemanticZoomLevel();
@@ -984,6 +1027,8 @@ function showFullGraph() {
   selectedNode = null;
   activeComponentId = null;
   pendingComponentGraphId = null;
+  stopForestLoading();
+  stopNodeLoading();
   selectionReturnMode = null;
   fullGraphExpanded = true;
   layoutCenterAnchor = null;
@@ -1013,6 +1058,8 @@ function clearForest() {
   selectedNode = null;
   activeComponentId = null;
   pendingComponentGraphId = null;
+  stopForestLoading();
+  stopNodeLoading();
   selectionReturnMode = null;
   fullGraphExpanded = false;
   layoutCenterAnchor = null;
@@ -1935,6 +1982,80 @@ function isComponentGraphRevealPending() {
     && !selectedNode;
 }
 
+function startForestLoading(componentId) {
+  forestLoadingComponentId = componentId;
+  forestLoadingStartedAtMs = performance.now();
+  updateForestLoadingSpinner(true);
+}
+
+function stopForestLoading(componentId = null) {
+  if (componentId !== null && forestLoadingComponentId !== componentId) {
+    return;
+  }
+  forestLoadingComponentId = null;
+  forestLoadingStartedAtMs = 0;
+  forestLoadingSprite.visible = false;
+  forestLoadingSprite.material.opacity = 0;
+}
+
+function updateForestLoadingSpinner(force = false) {
+  if (forestLoadingComponentId === null || forestLoadingComponentId === undefined) {
+    forestLoadingSprite.visible = false;
+    return;
+  }
+  const component = componentForId(forestLoadingComponentId);
+  const badge = component?.forestBadge;
+  if (!component || !badge || (!force && !badge.visible)) {
+    forestLoadingSprite.visible = false;
+    return;
+  }
+  updateBadgeEdgeLoadingSpinner(
+    forestLoadingSprite,
+    component.forestPosition ?? badge.position,
+    component.forestScale ?? badge.scale.x,
+    forestLoadingStartedAtMs
+  );
+}
+
+function startNodeLoading(nodeId) {
+  nodeLoadingNodeId = nodeId;
+  nodeLoadingStartedAtMs = performance.now();
+  updateNodeLoadingSpinner(true);
+}
+
+function stopNodeLoading(nodeId = null) {
+  if (nodeId !== null && nodeLoadingNodeId !== nodeId) {
+    return;
+  }
+  nodeLoadingNodeId = null;
+  nodeLoadingStartedAtMs = 0;
+  nodeLoadingSprite.visible = false;
+  nodeLoadingSprite.material.opacity = 0;
+}
+
+function updateNodeLoadingSpinner(force = false) {
+  if (nodeLoadingNodeId === null || nodeLoadingNodeId === undefined) {
+    nodeLoadingSprite.visible = false;
+    return;
+  }
+  const node = nodeById.get(nodeLoadingNodeId);
+  const badge = node?.badge;
+  if (!node || !badge || (!force && !badge.visible)) {
+    nodeLoadingSprite.visible = false;
+    return;
+  }
+  updateBadgeEdgeLoadingSpinner(nodeLoadingSprite, node.position, badge.scale.x || node.badgeScale, nodeLoadingStartedAtMs);
+}
+
+function updateBadgeEdgeLoadingSpinner(sprite, center, baseScale, startedAtMs) {
+  updateLoadingRingTexture(sprite.material.map, startedAtMs);
+  sprite.visible = true;
+  sprite.position.copy(center);
+  sprite.scale.setScalar(baseScale * 1.02);
+  sprite.material.rotation = 0;
+  sprite.material.opacity = 0.94;
+}
+
 function pickNode(event) {
   const rect = canvas.getBoundingClientRect();
   const eventX = event.clientX - rect.left;
@@ -2741,16 +2862,19 @@ async function loadLazyComponent(componentId, options = {}) {
     const beforeSignature = visibleSceneSignature();
     const previousVisibleNodeIds = new Set(visibleNodeIds);
     const changed = mergeGraphPayload(result);
-    if (activeComponentId === componentId && !selectedNode) {
-      if (options.reveal && pendingComponentGraphId === componentId) {
-        revealComponentGraph(componentId, previousVisibleNodeIds);
-      } else if (changed && visibleSceneSignature() !== beforeSignature) {
+    if (options.reveal && pendingComponentGraphId === componentId && !selectedNode) {
+      revealComponentGraph(componentId, previousVisibleNodeIds);
+    } else if (activeComponentId === componentId && !selectedNode) {
+      if (changed && visibleSceneSignature() !== beforeSignature) {
         renderMemberPanel(null);
         startVisibleRefit({ fitCamera: true, previousVisibleNodeIds });
       }
     }
   } catch {
     loadedComponentKeys.delete(cacheKey);
+    if (options.reveal && pendingComponentGraphId === componentId && !selectedNode) {
+      revealComponentGraph(componentId, new Set(visibleNodeIds));
+    }
   } finally {
     pendingComponentKeys.delete(cacheKey);
   }
@@ -2802,11 +2926,13 @@ async function loadLazyNeighborhood() {
   const requestedNodeId = selectedNode.id;
   const requestedDepth = currentLinkDepth();
   const weightRange = currentWeightRange();
-  const key = `${requestedNodeId}:${requestedDepth}:${weightRange.min.toFixed(2)}:${weightRange.max.toFixed(2)}`;
+  const key = neighborhoodCacheKey(requestedNodeId, requestedDepth, weightRange);
   if (loadedNeighborhoodKeys.has(key)) {
+    stopNodeLoading(requestedNodeId);
     return;
   }
   loadedNeighborhoodKeys.add(key);
+  startNodeLoading(requestedNodeId);
   try {
     const result = await requestGraphData('neighborhood', {
       userId: requestedNodeId,
@@ -2825,7 +2951,13 @@ async function loadLazyNeighborhood() {
     }
   } catch {
     loadedNeighborhoodKeys.delete(key);
+  } finally {
+    stopNodeLoading(requestedNodeId);
   }
+}
+
+function neighborhoodCacheKey(nodeId, depth = currentLinkDepth(), weightRange = currentWeightRange()) {
+  return `${nodeId}:${depth}:${weightRange.min.toFixed(2)}:${weightRange.max.toFixed(2)}`;
 }
 
 function tileRequestForCurrentView() {
@@ -3063,6 +3195,8 @@ function animate() {
   updateCameraAnimation();
   updateSelectionVisualAnimation();
   updateBadgeCountAnimations();
+  updateForestLoadingSpinner();
+  updateNodeLoadingSpinner();
   controls.update();
   publishGraphState();
   renderer.render(scene, camera);
@@ -4245,6 +4379,42 @@ function createRingTexture() {
   const texture = new THREE.CanvasTexture(canvasEl);
   texture.colorSpace = THREE.SRGBColorSpace;
   return texture;
+}
+
+function createLoadingRingTexture() {
+  const canvasEl = document.createElement('canvas');
+  canvasEl.width = 256;
+  canvasEl.height = 256;
+  const ctx = canvasEl.getContext('2d');
+  const texture = new THREE.CanvasTexture(canvasEl);
+  texture.colorSpace = THREE.SRGBColorSpace;
+  texture.userData.canvas = canvasEl;
+  texture.userData.ctx = ctx;
+  updateLoadingRingTexture(texture, performance.now());
+  return texture;
+}
+
+function updateLoadingRingTexture(texture, startedAtMs) {
+  const ctx = texture?.userData?.ctx;
+  if (!ctx) {
+    return;
+  }
+  const elapsedMs = Math.max(0, performance.now() - Math.max(0, Number(startedAtMs) || 0));
+  const progress = Math.min(0.92, Math.max(0.02, elapsedMs / BADGE_LOAD_PROGRESS_WINDOW_MS));
+  const overdue = elapsedMs >= BADGE_LOAD_OVERDUE_DELAY_MS;
+  ctx.clearRect(0, 0, 256, 256);
+  ctx.lineCap = 'round';
+  ctx.lineWidth = 18;
+  ctx.strokeStyle = overdue ? 'rgba(255, 225, 163, 0.32)' : 'rgba(255, 255, 255, 0.34)';
+  ctx.beginPath();
+  ctx.arc(128, 128, 102, 0, Math.PI * 2);
+  ctx.stroke();
+  ctx.lineWidth = 20;
+  ctx.strokeStyle = overdue ? '#f6c04f' : '#5ab3ff';
+  ctx.beginPath();
+  ctx.arc(128, 128, 102, -Math.PI / 2, -Math.PI / 2 + Math.PI * 2 * progress);
+  ctx.stroke();
+  texture.needsUpdate = true;
 }
 
 function fibonacciPoint(index, count) {
