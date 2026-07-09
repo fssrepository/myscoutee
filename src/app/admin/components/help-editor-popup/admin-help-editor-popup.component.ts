@@ -978,6 +978,7 @@ export class AdminHelpEditorPopupComponent {
     return {
       id: `section-icon-menu:${section.localId}`,
       icon: section.icon || this.defaultSectionIcon(),
+      closeIcon: 'close',
       ariaLabel: this.uiText('Change section icon'),
       layout: 'icon',
       hideLabel: true,
