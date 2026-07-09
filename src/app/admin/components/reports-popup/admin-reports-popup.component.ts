@@ -8,8 +8,7 @@ import {
   Component,
   TemplateRef,
   ViewChild,
-  inject,
-  signal
+  inject
 } from '@angular/core';
 import {
   MatIconModule
@@ -100,7 +99,7 @@ interface AdminBlockedUserListFilters {
   revision?: number;
 }
 
-type AdminReportMenuAction = 'block' | 'unblock' | 'view-chat';
+type AdminReportMenuAction = 'warn' | 'block' | 'unblock' | 'view-chat';
 type AdminReportMenuSource = 'report-detail' | 'blocked-user';
 type AdminReportActionsMenuItemId =
   | `report-detail:${string}`
@@ -140,7 +139,6 @@ export class AdminReportsPopupComponent {
   private readonly activitiesStore = inject(ActivitiesPopupStore);
   private readonly dialogStore = inject(DialogStore);
   private readonly location = inject(Location);
-  private readonly warnedUserIdsRef = signal<Set<string>>(new Set());
   protected reportDetail: AdminReportListItem | null = null;
   protected blockedUsersOpen = false;
 
@@ -353,6 +351,10 @@ export class AdminReportsPopupComponent {
     this.admin.openItemPreview(report);
   }
 
+  protected warnUser(user: AdminReportedUserDto): void {
+    this.admin.openWarnChat(user);
+  }
+
   protected blockUser(user: AdminReportedUserDto): void {
     this.dialogStore.open({
       title: `Block ${user.name}?`,
@@ -424,6 +426,9 @@ export class AdminReportsPopupComponent {
       return;
     }
     switch (context.action) {
+      case 'warn':
+        this.warnBlockedUser(context.user, event.sourceEvent);
+        break;
       case 'block':
         event.sourceEvent.preventDefault();
         event.sourceEvent.stopPropagation();
@@ -444,6 +449,12 @@ export class AdminReportsPopupComponent {
 
   protected blockedUsersCount(): number {
     return this.blockedUsers().length;
+  }
+
+  protected warnBlockedUser(user: AdminReportedUserDto, event?: Event): void {
+    event?.preventDefault();
+    event?.stopPropagation();
+    this.warnUser(user);
   }
 
   protected viewBlockedUserChat(user: AdminReportedUserDto, event?: Event): void {
@@ -484,6 +495,7 @@ export class AdminReportsPopupComponent {
       ];
     }
     return [
+      this.reportActionItem(user, source, 'warn', 'warn', 'chat'),
       this.reportActionItem(user, source, 'block', 'Block user', 'block', 'danger')
     ];
   }
@@ -520,7 +532,7 @@ export class AdminReportsPopupComponent {
   protected hasSupportChat(user: AdminReportedUserDto): boolean {
     const userId = `${user.userId ?? ''}`.trim();
     const resolved = this.resolveDashboardReportedUser(userId) ?? user;
-    return Boolean(resolved.hasSupportChat) || this.warnedUserIdsRef().has(userId);
+    return Boolean(resolved.hasSupportChat);
   }
 
   protected supportChatUnread(user: AdminReportedUserDto): number {
@@ -776,7 +788,7 @@ export class AdminReportsPopupComponent {
       this.userProfileStore.activeAdminUser(),
       message
     );
-    this.applyModerationActionResult(normalizedUserId, result, { markWarned: true });
+    this.applyModerationActionResult(normalizedUserId, result);
   }
 
   private async unblockModerationUser(userId: string): Promise<void> {
@@ -793,8 +805,7 @@ export class AdminReportsPopupComponent {
 
   private applyModerationActionResult(
     userId: string,
-    result: AdminModerationActionResult | null | undefined,
-    options: { markWarned?: boolean } = {}
+    result: AdminModerationActionResult | null | undefined
   ): void {
     if (!result) {
       return;
@@ -804,9 +815,6 @@ export class AdminReportsPopupComponent {
     }
     if (result.userPatch) {
       this.workspace.patchModerationUser(result.userPatch);
-    }
-    if (options.markWarned === true) {
-      this.markUserWarned(userId);
     }
     this.refreshSelectedReportedUser(userId);
   }
@@ -821,18 +829,6 @@ export class AdminReportsPopupComponent {
       ...(dashboard.reportedUsers ?? []),
       ...(dashboard.blockedUsers ?? [])
     ].find(user => user.userId === normalizedUserId) ?? null;
-  }
-
-  private markUserWarned(userId: string): void {
-    const normalizedUserId = `${userId ?? ''}`.trim();
-    if (!normalizedUserId) {
-      return;
-    }
-    this.warnedUserIdsRef.update(current => {
-      const next = new Set(current);
-      next.add(normalizedUserId);
-      return next;
-    });
   }
 
   private refreshSelectedReportedUser(userId: string): void {

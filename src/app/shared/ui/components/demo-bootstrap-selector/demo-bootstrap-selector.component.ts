@@ -94,8 +94,8 @@ export class DemoBootstrapSelectorComponent {
   @Input() errorMessage = '';
   @Input() submitting = false;
   @Input() users: UserSelectorListItemDto[] = [];
-  @Input() title = 'Select demo user';
-  @Input() subtitle = 'Login disabled mode. Choose a demo user to open perspective-based data.';
+  @Input() title = 'select.demo.user';
+  @Input() subtitle = 'demo.selector.subtitle';
   @Input() selectedUserId = '';
 
   @Output() readonly closeRequested = new EventEmitter<void>();
@@ -292,8 +292,8 @@ export class DemoBootstrapSelectorComponent {
     this.contextSelectorSeedReady = false;
     this.commit(() => {
       this.open = true;
-      this.title = request.title ?? 'Select demo user';
-      this.subtitle = request.subtitle ?? 'Login disabled mode. Choose a demo user to open perspective-based data.';
+      this.title = request.title ?? 'select.demo.user';
+      this.subtitle = request.subtitle ?? 'demo.selector.subtitle';
       this.selectedMode = request.mode;
       this.users = request.users?.map(user => ({ ...user })) ?? [];
       this.loading = true;

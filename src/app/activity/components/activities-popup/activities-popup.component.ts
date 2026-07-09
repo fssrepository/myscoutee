@@ -1535,6 +1535,7 @@ export class ActivitiesPopupComponent implements OnDestroy {
     return [
       { key: 'all', labelKey: 'activities.support.case.filter.all', icon: 'list' },
       { key: 'pending', labelKey: 'activities.support.case.filter.pending', icon: 'pending_actions' },
+      { key: 'warned', labelKey: 'activities.support.case.filter.warned', icon: 'chat' },
       { key: 'picked', labelKey: 'activities.support.case.filter.picked', icon: 'assignment_ind' },
       { key: 'solved', labelKey: 'activities.support.case.filter.solved', icon: 'check_circle' },
       { key: 'blocked', labelKey: 'activities.support.case.filter.blocked', icon: 'block' }
@@ -1858,6 +1859,8 @@ export class ActivitiesPopupComponent implements OnDestroy {
     switch (filter) {
       case 'pending':
         return 'amber';
+      case 'warned':
+        return 'gold';
       case 'picked':
         return 'blue';
       case 'solved':
@@ -1910,6 +1913,7 @@ export class ActivitiesPopupComponent implements OnDestroy {
     return {
       all: this.supportCaseFilterCount('all'),
       pending: this.supportCaseFilterCount('pending'),
+      warned: this.supportCaseFilterCount('warned'),
       picked: this.supportCaseFilterCount('picked'),
       solved: this.supportCaseFilterCount('solved'),
       blocked: this.supportCaseFilterCount('blocked')
@@ -2015,7 +2019,7 @@ export class ActivitiesPopupComponent implements OnDestroy {
   }
 
   private normalizeSupportCaseFilter(filter: ContractTypes.SupportCaseFilter | ContractTypes.SupportCaseStatus | null | undefined): ContractTypes.SupportCaseFilter {
-    return filter === 'pending' || filter === 'picked' || filter === 'solved' || filter === 'blocked'
+    return filter === 'pending' || filter === 'warned' || filter === 'picked' || filter === 'solved' || filter === 'blocked'
       ? filter
       : 'all';
   }
@@ -2251,6 +2255,7 @@ export class ActivitiesPopupComponent implements OnDestroy {
 
   private supportStatusFromRowStatus(status: string): ContractTypes.SupportCaseStatus | null {
     return status === 'pending'
+      || status === 'warned'
       || status === 'picked'
       || status === 'solved'
       || status === 'blocked'

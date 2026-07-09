@@ -500,7 +500,7 @@ app-smart-list.admin-smart-list {
 }
 
 .admin-report-detail-bubble .admin-message-head {
-  padding-right: min(230px, 36%);
+  padding-right: min(470px, 56%);
 }
 
 .admin-message-head-title {
@@ -527,7 +527,15 @@ app-smart-list.admin-smart-list {
   position: absolute;
   top: 0.72rem;
   right: 0.72rem;
-  max-width: min(210px, 32%);
+  max-width: min(460px, calc(100% - 1.44rem));
+  height: auto;
+  padding-top: 0.34rem;
+  padding-bottom: 0.34rem;
+  line-height: 1.18;
+  white-space: normal;
+  overflow: visible;
+  text-overflow: clip;
+  text-align: center;
 }
 
 .admin-report-context-grid {

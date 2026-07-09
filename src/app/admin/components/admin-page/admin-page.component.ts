@@ -261,8 +261,8 @@ export class AdminPageComponent implements OnInit, OnDestroy {
   private openAdminSelector(): void {
     this.demoBootstrapSelectorStore.openDemoBootstrapSelector({
       mode: 'admin',
-      title: 'Select admin user',
-      subtitle: 'Login disabled mode. Choose an admin user to open moderation data.',
+      title: 'select.admin.user',
+      subtitle: 'demo.admin.selector.subtitle',
       onSelect: adminUserId => this.openSelectedAdmin(adminUserId)
     });
   }

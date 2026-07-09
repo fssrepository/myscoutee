@@ -299,7 +299,7 @@ export class ActivitiesPopupStore {
   }
 
   setActivitiesSupportCaseFilter(filter: ContractTypes.SupportCaseFilter): void {
-    const normalized = filter === 'pending' || filter === 'picked' || filter === 'solved' || filter === 'blocked'
+    const normalized = filter === 'pending' || filter === 'warned' || filter === 'picked' || filter === 'solved' || filter === 'blocked'
       ? filter
       : 'all';
     this.patchUiState({

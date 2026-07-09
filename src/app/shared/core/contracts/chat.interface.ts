@@ -110,7 +110,7 @@ export type ChatLiveEvent =
 
 export type ChatChannelType = 'general' | 'mainEvent' | 'optionalSubEvent' | 'groupSubEvent' | 'serviceEvent' | 'appSupport' | 'supportCase';
 export type ActivitiesChatContextFilter = 'all' | 'event' | 'subEvent' | 'group' | 'service' | 'appSupport';
-export type SupportCaseStatus = 'pending' | 'picked' | 'solved' | 'blocked';
+export type SupportCaseStatus = 'pending' | 'warned' | 'picked' | 'solved' | 'blocked';
 export type SupportCaseFilter = 'all' | SupportCaseStatus;
 export type SupportCaseAction = 'pick' | 'unpick' | 'solve' | 'block' | 'reopen';
 

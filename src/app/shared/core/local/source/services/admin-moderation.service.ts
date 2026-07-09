@@ -3,7 +3,7 @@ import { Injectable, inject } from '@angular/core';
 
 import type { AdminUserDto } from '../../../contracts/admin.interface';
 import type { AdminModerationActionResult, AdminModerationUserPatch } from '../../../base/services/admin-moderation.service';
-import type { ChatMessageDto } from '../../../contracts/chat.interface';
+import type { ChatMessageDto, SupportCaseStatus } from '../../../contracts/chat.interface';
 
 import { LocalAdminSupportSessionService } from './admin-support-session.service';
 import { LocalRouteDelayService } from './route-delay.service';
@@ -32,7 +32,7 @@ export class LocalAdminModerationService extends LocalRouteDelayService {
       return null;
     }
     await this.waitForRouteDelay(ADMIN_MODERATION_WARN_ROUTE);
-    const supportPatch = await this.appendSupportMessage(normalizedUserId, resolvedAdmin, message);
+    const supportPatch = await this.appendSupportMessage(normalizedUserId, resolvedAdmin, message, 'warned');
     return { userPatch: supportPatch };
   }
 
@@ -58,7 +58,7 @@ export class LocalAdminModerationService extends LocalRouteDelayService {
         profileStatus: 'blocked'
       });
     }
-    const supportPatch = await this.appendSupportMessage(normalizedUserId, resolvedAdmin, message);
+    const supportPatch = await this.appendSupportMessage(normalizedUserId, resolvedAdmin, message, 'blocked');
     return {
       userPatch: {
         ...supportPatch,
@@ -106,7 +106,8 @@ export class LocalAdminModerationService extends LocalRouteDelayService {
   private async appendSupportMessage(
     userId: string,
     admin: AdminUserDto,
-    text: string
+    text: string,
+    status: SupportCaseStatus
   ): Promise<AdminModerationUserPatch> {
     const reportedUser = this.supportSession.findUser(userId);
     const now = new Date();
@@ -128,7 +129,8 @@ export class LocalAdminModerationService extends LocalRouteDelayService {
       unread: 1,
       dateIso: nowIso,
       channelType: 'appSupport',
-      ownerUserId: userId
+      ownerUserId: userId,
+      supportCase: this.supportCase(status, admin, nowIso)
     };
     const userMessage: ChatMessageDto = {
       id: messageId,
@@ -150,7 +152,8 @@ export class LocalAdminModerationService extends LocalRouteDelayService {
       unread: 0,
       dateIso: nowIso,
       channelType: 'appSupport',
-      ownerUserId: admin.id
+      ownerUserId: admin.id,
+      supportCase: this.supportCase(status, admin, nowIso)
     };
     const adminMessage: ChatMessageDto = {
       ...userMessage,
@@ -163,6 +166,18 @@ export class LocalAdminModerationService extends LocalRouteDelayService {
       userId,
       hasSupportChat: true,
       supportChatUnread: 0
+    };
+  }
+
+  private supportCase(status: SupportCaseStatus, admin: AdminUserDto, updatedAtIso: string): ChatThreadRecord['supportCase'] {
+    return {
+      status,
+      assignee: {
+        userId: admin.id,
+        name: admin.name,
+        initials: admin.initials
+      },
+      updatedAtIso
     };
   }
 
