@@ -79,6 +79,27 @@ export class ActivityResourcesService extends BaseRouteModeService {
     return state;
   }
 
+  async querySupplyContributionPage(
+    ownerId: string | null | undefined,
+    subEventId: string | null | undefined,
+    assetId: string | null | undefined,
+    page: number,
+    pageSize: number,
+    assetOwnerUserId: string | null | undefined = this.activeAssetOwnerUserId()
+  ): Promise<AppDTOs.SubEventSupplyContributionPageDTO> {
+    const ref = this.normalizeRef(ownerId, subEventId, assetOwnerUserId);
+    const normalizedAssetId = this.normalizeId(assetId);
+    if (!ref || !normalizedAssetId) {
+      return { items: [], total: 0, page: 0, pageSize: Math.max(1, Math.trunc(pageSize) || 1) };
+    }
+    return this.activityResourcesService.querySupplyContributionPage(
+      ref,
+      normalizedAssetId,
+      Math.max(0, Math.trunc(page) || 0),
+      Math.max(1, Math.trunc(pageSize) || 1)
+    );
+  }
+
   async replaceSubEventResourceState(
     state: AppDTOs.ActivitySubEventResourceStateDTO | null | undefined,
     signal?: AbortSignal

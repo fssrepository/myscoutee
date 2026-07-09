@@ -581,6 +581,19 @@
   grid-row: 2;
 }
 
+.form-flow__control-description {
+  display: block;
+  margin-top: 0.28rem;
+  color: #506885;
+  font-size: 0.76rem;
+  font-weight: 700;
+  line-height: 1.35;
+}
+
+.form-flow__control--with-accessory > .form-flow__control-description {
+  grid-column: 1 / -1;
+}
+
 .form-flow--grouped .form-flow__controls {
   gap: 12px 14px;
 }

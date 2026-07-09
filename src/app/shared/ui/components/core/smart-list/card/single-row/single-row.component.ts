@@ -249,7 +249,7 @@ export class SingleRowComponent {
       items: this.rowMenuItems(),
       triggerRect: this.resolveMenuTriggerRect(trigger),
       openUp: false,
-      panelAlign: 'auto',
+      panelAlign: 'end',
       closeOnSelect: true,
       closeTrigger: () => {
         this.menuOpen = false;

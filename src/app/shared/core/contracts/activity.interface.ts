@@ -351,6 +351,13 @@ export interface SubEventSupplyContributionEntryDTO {
   addedAtIso: string;
 }
 
+export interface SubEventSupplyContributionPageDTO {
+  items: SubEventSupplyContributionEntryDTO[];
+  total: number;
+  page: number;
+  pageSize: number;
+}
+
 export interface SubEventSupplyContributionRowDTO {
   id: string;
   userId: string;

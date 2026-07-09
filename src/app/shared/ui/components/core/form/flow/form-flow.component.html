@@ -353,6 +353,9 @@
                         [closeOnSelect]="accessoryMenuCloseOnSelect(control)"
                       ></app-menu>
                     }
+                    @if (control.description && control.kind !== 'section') {
+                      <small class="form-flow__control-description">{{ control.description }}</small>
+                    }
                   </div>
                 }
                 </div>

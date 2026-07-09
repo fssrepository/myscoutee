@@ -28,6 +28,16 @@ export class LocalActivityResourcesService extends LocalRouteDelayService {
     return record ? this.toState(record) : null;
   }
 
+  async querySupplyContributionPage(
+    ref: AppDTOs.ActivitySubEventResourceStateRefDTO,
+    assetId: string,
+    page: number,
+    pageSize: number
+  ): Promise<AppDTOs.SubEventSupplyContributionPageDTO> {
+    await this.waitForRouteDelay(LocalActivityResourcesService.ROUTE);
+    return this.repository.querySupplyContributionPage(ref, assetId, page, pageSize);
+  }
+
   async replaceSubEventResourceState(
     state: AppDTOs.ActivitySubEventResourceStateDTO,
     signal?: AbortSignal

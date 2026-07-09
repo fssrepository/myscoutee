@@ -51,6 +51,36 @@ export class HttpActivityResourcesService {
     }
   }
 
+  async querySupplyContributionPage(
+    ref: AppDTOs.ActivitySubEventResourceStateRefDTO,
+    assetId: string,
+    page: number,
+    pageSize: number
+  ): Promise<AppDTOs.SubEventSupplyContributionPageDTO> {
+    const normalizedRef = this.normalizeRef(ref);
+    const normalizedAssetId = assetId.trim();
+    const normalizedPage = Math.max(0, Math.trunc(page) || 0);
+    const normalizedPageSize = Math.max(1, Math.trunc(pageSize) || 1);
+    if (!normalizedRef || !normalizedAssetId) {
+      return { items: [], total: 0, page: normalizedPage, pageSize: normalizedPageSize };
+    }
+    const response = await this.http
+      .get<AppDTOs.SubEventSupplyContributionPageDTO>(
+        `${this.apiBaseUrl}/activities/events/subevent-resources/contributions`,
+        {
+          params: new HttpParams()
+            .set('ownerId', normalizedRef.ownerId)
+            .set('subEventId', normalizedRef.subEventId)
+            .set('assetOwnerUserId', normalizedRef.assetOwnerUserId)
+            .set('assetId', normalizedAssetId)
+            .set('page', normalizedPage)
+            .set('pageSize', normalizedPageSize)
+        }
+      )
+      .toPromise();
+    return response ?? { items: [], total: 0, page: normalizedPage, pageSize: normalizedPageSize };
+  }
+
   async replaceSubEventResourceState(
     state: AppDTOs.ActivitySubEventResourceStateDTO,
     signal?: AbortSignal
