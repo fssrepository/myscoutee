@@ -103,6 +103,7 @@
   <app-popup [model]="blockedUsersPopupModel()" [zIndex]="2400">
       <div class="admin-blocked-users-body">
         <app-smart-list
+          #blockedUsersSmartList
           class="admin-smart-list admin-blocked-smart-list-host"
           [config]="blockedUsersSmartListConfig"
           [loadPage]="blockedUsersSmartListLoadPage"

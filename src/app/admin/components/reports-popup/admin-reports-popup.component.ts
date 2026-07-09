@@ -190,6 +190,9 @@ export class AdminReportsPopupComponent {
   @ViewChild('reportsSmartList')
   private reportsSmartList?: SmartListComponent<AdminReportListItem, AdminReportListFilters>;
 
+  @ViewChild('blockedUsersSmartList')
+  private blockedUsersSmartList?: SmartListComponent<AdminBlockedUserListItem, AdminBlockedUserListFilters>;
+
   @ViewChild('blockedUserItemTemplate', { read: TemplateRef })
   protected set blockedUserItemTemplate(
     value: TemplateRef<SmartListItemTemplateContext<AdminBlockedUserListItem, AdminBlockedUserListFilters>> | undefined
@@ -648,6 +651,7 @@ export class AdminReportsPopupComponent {
       confirmLabel: 'admin.reports.action.unblock',
       busyConfirmLabel: 'admin.reports.action.unblock.busy',
       confirmTone: 'accent',
+      confirmPalette: 'success',
       onConfirm: () => this.unblockModerationUser(user.userId)
     });
   }
@@ -657,9 +661,24 @@ export class AdminReportsPopupComponent {
     source: AdminReportMenuSource,
     reportItem?: AdminReportListItem | null
   ): AppMenuItem<AdminReportActionsMenuItemId, AdminReportActionsMenuContext>[] {
-    if (source === 'blocked-user' || this.isUserBlocked(user)) {
+    if (this.isUserBlocked(user)) {
       return [
         this.reportActionItem(user, source, 'unblock', 'unblock.user', 'lock_open', 'success', undefined, reportItem),
+        this.reportActionItem(
+          user,
+          source,
+          'view-chat',
+          'view.chat',
+          'forum',
+          'blue',
+          this.visibleSupportChatUnread(user),
+          reportItem
+        )
+      ];
+    }
+    if (source === 'blocked-user') {
+      return [
+        this.reportActionItem(user, source, 'block', 'block.user', 'block', 'danger', undefined, reportItem),
         this.reportActionItem(
           user,
           source,
@@ -997,6 +1016,7 @@ export class AdminReportsPopupComponent {
       message
     );
     this.applyModerationActionResult(normalizedUserId, result);
+    this.syncBlockedUserVisibleCard(normalizedUserId);
   }
 
   private async unblockModerationUser(userId: string): Promise<void> {
@@ -1009,6 +1029,7 @@ export class AdminReportsPopupComponent {
       this.userProfileStore.activeAdminUser()
     );
     this.applyModerationActionResult(normalizedUserId, result);
+    this.syncBlockedUserVisibleCard(normalizedUserId);
   }
 
   private applyModerationActionResult(
@@ -1045,6 +1066,21 @@ export class AdminReportsPopupComponent {
       return;
     }
     this.admin.setSelectedReportedUser(this.resolveDashboardReportedUser(userId) ?? selected);
+  }
+
+  private syncBlockedUserVisibleCard(userId: string): void {
+    if (!this.blockedUsersOpen) {
+      return;
+    }
+    const user = this.resolveDashboardReportedUser(userId);
+    if (!user) {
+      return;
+    }
+    const item = this.buildBlockedUserListItem(user);
+    const removed = this.blockedUsersSmartList?.removeVisibleItemByIdentity(item.id) ?? false;
+    if (removed) {
+      this.blockedUsersSmartList?.reinsertVisibleItem(item, { loadedRange: 'any' });
+    }
   }
 
   private openBlockedUserChat(user: AdminReportedUserDto): void {
@@ -1130,13 +1166,17 @@ export class AdminReportsPopupComponent {
   }
 
   private blockedUserRowsForUsers(users: readonly AdminReportedUserDto[]): AdminBlockedUserListItem[] {
-    return users.map(user => ({
+    return users.map(user => this.buildBlockedUserListItem(user)).sort((first, second) =>
+      Date.parse(this.blockedDate(second.user)) - Date.parse(this.blockedDate(first.user))
+    );
+  }
+
+  private buildBlockedUserListItem(user: AdminReportedUserDto): AdminBlockedUserListItem {
+    return {
       id: user.userId,
       user,
       row: this.buildBlockedUserActivityRow(user)
-    })).sort((first, second) =>
-      Date.parse(this.blockedDate(second.user)) - Date.parse(this.blockedDate(first.user))
-    );
+    };
   }
 
   private buildBlockedUserActivityRow(user: AdminReportedUserDto): SingleRowData {
