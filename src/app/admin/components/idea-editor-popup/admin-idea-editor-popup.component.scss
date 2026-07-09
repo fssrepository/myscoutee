@@ -1,6 +1,5 @@
 @use '../../../shared/ui/styles' as ui;
 
-@include ui.popup-shell();
 @include ui.interactive-motion();
 @include ui.form-controls();
 
@@ -8,13 +7,6 @@
   display: contents;
 }
 
-.popup-panel-idea-editor {
-  width: min(1080px, calc(100vw - 1.2rem));
-  height: calc(100vh - 1.2rem);
-  height: calc(100dvh - 1.2rem);
-}
-
-.idea-editor-header-actions,
 .idea-editor-form-actions,
 .idea-editor-viewer-actions,
 .idea-editor-toggle-row,
@@ -24,17 +16,11 @@
   gap: 0.44rem;
 }
 
-.idea-editor-header-actions {
-  position: relative;
-  margin-left: auto;
-}
-
-.popup-panel-idea-editor .popup-header,
 .idea-editor-form-head {
   flex-wrap: wrap;
 }
 
-.idea-editor-language-row {
+.idea-editor-form-language-row {
   flex: 0 0 100%;
   display: inline-flex;
   align-items: center;
@@ -48,7 +34,8 @@
   z-index: 90;
 }
 
-.popup-body.idea-editor-body {
+.idea-editor-body {
+  height: 100%;
   min-height: 0;
   flex: 1 1 auto;
   display: flex;
@@ -74,11 +61,6 @@
   color: #a63d50;
   font-size: 0.8rem;
   font-weight: 900;
-}
-
-.idea-editor-filter-wrap {
-  position: relative;
-  z-index: 160;
 }
 
 .idea-editor-mode-btn,
@@ -108,7 +90,6 @@
   cursor: pointer;
 }
 
-.idea-editor-add-btn,
 .idea-editor-confirm-btn {
   border-color: rgba(34, 123, 74, 0.28);
   background: #f2fff7;
@@ -694,20 +675,6 @@
   .idea-editor-form-panel,
   .idea-editor-viewer-panel {
     width: calc(100vw - 0.8rem);
-  }
-
-  .popup-panel-idea-editor {
-    width: calc(100vw - 0.6rem);
-    height: calc(100vh - 0.6rem);
-  }
-
-  .idea-editor-header-actions {
-    gap: 0.38rem;
-  }
-
-  .idea-editor-add-btn,
-  .idea-editor-header-actions > .popup-close {
-    flex: 0 0 34px;
   }
 
   .idea-editor-fields {

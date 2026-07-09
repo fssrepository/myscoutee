@@ -1,44 +1,6 @@
 @if (admin.activePopup() === 'idea-editor') {
-  <section class="app-popup">
-    <div class="app-popup-backdrop" (click)="close()"></div>
-    <div class="app-popup-panel popup-panel-admin popup-panel-idea-editor">
-      <div class="popup-header">
-        <div class="popup-title">
-          <h2>Article editor</h2>
-        </div>
-        <div class="idea-editor-header-actions">
-          <app-menu
-            class="idea-editor-filter-wrap"
-            kind="inline"
-            [model]="ideaFilterMenuModel()"
-            (itemSelect)="onIdeaFilterMenuSelect($event)"
-          ></app-menu>
-
-          <button
-            type="button"
-            class="idea-editor-icon-btn idea-editor-add-btn"
-            [disabled]="saving"
-            (click)="startNew($event)"
-            aria-label="New article"
-            title="New article"
-            >
-            <mat-icon>add</mat-icon>
-          </button>
-          <button type="button" class="popup-close" (click)="close()" aria-label="Close">
-            <mat-icon>close</mat-icon>
-          </button>
-        </div>
-        <div class="idea-editor-language-row" aria-label="Content language" data-i18n-ignore>
-          <app-menu
-            class="idea-editor-language-menu-wrap"
-            kind="inline"
-            [model]="listLanguageMenuModel()"
-            (itemSelect)="onContentLanguageMenuSelect($event)"
-          ></app-menu>
-        </div>
-      </div>
-
-      <div class="popup-body idea-editor-body">
+  <app-popup [model]="ideaEditorPopupModel()">
+      <div class="idea-editor-body">
         @if (error) {
           <div class="idea-editor-error">
             <mat-icon>warning</mat-icon>
@@ -68,8 +30,7 @@
           (itemSelect)="onIdeaDispatchedMenuSelect($event)"
         ></app-menu-outlet>
       </div>
-    </div>
-  </section>
+  </app-popup>
 
   @if (articlePanelLoading && articlePanelLoadingMode === 'viewer') {
     <section class="idea-editor-nested-popup idea-editor-article-popup" role="dialog" aria-modal="true" aria-label="Article">
@@ -173,7 +134,7 @@
               <mat-icon>close</mat-icon>
             </button>
           </div>
-          <div class="idea-editor-language-row idea-editor-form-language-row" aria-label="Content language" data-i18n-ignore>
+          <div class="idea-editor-form-language-row" aria-label="Content language" data-i18n-ignore>
             <app-menu
               class="idea-editor-language-menu-wrap"
               kind="inline"

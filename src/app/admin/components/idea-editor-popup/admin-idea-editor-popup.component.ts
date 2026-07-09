@@ -55,6 +55,12 @@ import {
   IndicatorComponent
 } from '../../../shared/ui/components/core/indicator';
 import {
+  PopupComponent,
+  type PopupActionEvent,
+  type PopupMenuSelectEvent,
+  type PopupModel
+} from '../../../shared/ui/components/core/popup';
+import {
   SmartListComponent,
   type ListQuery,
   type PageResult,
@@ -77,6 +83,7 @@ type IdeaInfoCard = InfoCardData<IdeaArticleDetailDto>;
 type IdeaFilterMenuItemId = 'idea-filter-menu' | `idea-filter:${IdeaPostFilter}`;
 type IdeaLanguageMenuScope = 'list' | 'form';
 type IdeaLanguageMenuItemId = `${IdeaLanguageMenuScope}-language-menu` | `${IdeaLanguageMenuScope}-language:${string}`;
+type IdeaPopupMenuContext = IdeaFilterMenuContext | IdeaLanguageMenuContext;
 
 interface IdeaFilterMenuContext {
   filter: IdeaPostFilter;
@@ -129,7 +136,8 @@ interface IdeaPostLangCache {
     SmartListComponent,
     InfoCardComponent,
     ImageCarouselComponent,
-    IndicatorComponent
+    IndicatorComponent,
+    PopupComponent
   ],
   templateUrl: './admin-idea-editor-popup.component.html',
   styleUrl: './admin-idea-editor-popup.component.scss',
@@ -299,6 +307,68 @@ export class AdminIdeaEditorPopupComponent {
 
   protected async load(): Promise<void> {
     this.refreshIdeaList();
+  }
+
+  protected ideaEditorPopupModel(): PopupModel<IdeaPopupMenuContext> {
+    return {
+      title: 'Article editor',
+      ariaLabel: 'Article editor',
+      closeAriaLabel: 'Close article editor',
+      size: 'wide',
+      height: 'full',
+      headerTone: 'accent',
+      bodyLayout: 'fill',
+      headerControls: [
+        {
+          kind: 'menu',
+          id: 'idea-filter',
+          menuKind: 'inline',
+          model: this.ideaFilterMenuModel(),
+          panelAlign: 'end'
+        }
+      ],
+      headerActions: [
+        {
+          id: 'idea-new',
+          icon: 'add',
+          ariaLabel: 'New article',
+          palette: 'green',
+          disabled: this.saving,
+          compactOnMobile: true
+        }
+      ],
+      toolbarControls: [
+        {
+          kind: 'menu',
+          id: 'idea-language',
+          align: 'end',
+          menuKind: 'inline',
+          model: this.listLanguageMenuModel(),
+          panelAlign: 'end'
+        }
+      ],
+      onClose: () => this.close(),
+      onAction: event => this.onIdeaEditorPopupAction(event),
+      onMenuSelect: event => this.onIdeaEditorPopupMenuSelect(event)
+    };
+  }
+
+  private onIdeaEditorPopupAction(event: PopupActionEvent): void {
+    if (event.action.id === 'idea-new') {
+      void this.startNew(event.sourceEvent);
+    }
+  }
+
+  private onIdeaEditorPopupMenuSelect(event: PopupMenuSelectEvent<IdeaPopupMenuContext>): void {
+    const context = event.itemSelect.context;
+    if (!context) {
+      return;
+    }
+    if ('filter' in context) {
+      this.setIdeaFilter(context.filter, event.itemSelect.sourceEvent);
+      return;
+    }
+    this.selectListContentLanguage(context.language, event.itemSelect.sourceEvent);
   }
 
   protected close(): void {
@@ -942,6 +1012,7 @@ export class AdminIdeaEditorPopupComponent {
               kind: 'select-trigger',
               label: this.filterLabel(),
               icon: this.filterIcon(),
+              palette: this.filterPalette(this.ideaFilter),
               counter: this.filterCount(),
               ariaLabel: 'Filter articles',
               items: this.filterOptions.map(option => ({
@@ -949,6 +1020,8 @@ export class AdminIdeaEditorPopupComponent {
                 kind: 'radio',
                 label: option.label,
                 icon: option.icon,
+                palette: this.filterPalette(option.id),
+                surface: 'tinted',
                 checked: this.ideaFilter === option.id,
                 counter: this.filterCount(option.id),
                 context: { filter: option.id }
@@ -958,14 +1031,6 @@ export class AdminIdeaEditorPopupComponent {
         }
       ]
     };
-  }
-
-  protected onIdeaFilterMenuSelect(event: AppMenuItemSelectEvent<IdeaFilterMenuItemId, IdeaFilterMenuContext>): void {
-    const filter = event.context?.filter;
-    if (!filter) {
-      return;
-    }
-    this.setIdeaFilter(filter, event.sourceEvent);
   }
 
   protected listLanguageMenuModel(): AppMenuModel<IdeaLanguageMenuItemId, IdeaLanguageMenuContext> {
@@ -1094,6 +1159,7 @@ export class AdminIdeaEditorPopupComponent {
               id: rootId,
               kind: 'select-trigger',
               label: this.contentLanguageMenuLabel(normalizedCurrentLanguage),
+              palette: 'blue',
               disabled,
               ariaLabel: 'Content language',
               items: this.contentLanguages().map(language => {
@@ -1102,6 +1168,8 @@ export class AdminIdeaEditorPopupComponent {
                   id: `${scope}-language:${normalizedLanguage}` as IdeaLanguageMenuItemId,
                   kind: 'radio',
                   label: this.contentLanguageMenuLabel(normalizedLanguage),
+                  palette: normalizedLanguage === 'hu' ? 'green' : 'blue',
+                  surface: 'tinted',
                   checked: normalizedCurrentLanguage === normalizedLanguage,
                   context: { scope, language: normalizedLanguage }
                 };
@@ -1117,11 +1185,26 @@ export class AdminIdeaEditorPopupComponent {
     return `${this.contentLanguageFlag(lang)} ${this.contentLanguageLabel(lang)}`;
   }
 
+  private filterPalette(filter: IdeaPostFilter): AppMenuPalette {
+    switch (filter) {
+      case 'featured':
+        return 'gold';
+      case 'published':
+        return 'blue';
+      case 'drafts':
+        return 'slate';
+      case 'trashed':
+        return 'danger';
+      default:
+        return 'blue';
+    }
+  }
+
   private hasOpenSharedMenu(): boolean {
     if (typeof document === 'undefined') {
       return false;
     }
-    return !!document.querySelector('.popup-panel-idea-editor .app-menu-host--open');
+    return !!document.querySelector('app-admin-idea-editor-popup .app-menu-host--open');
   }
 
   private beginEditing(draft: IdeaPostDraft): void {
