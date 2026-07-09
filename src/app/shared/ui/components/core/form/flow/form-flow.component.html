@@ -261,6 +261,7 @@
                         [attr.maxlength]="control.maxLength ?? null"
                         [placeholder]="control.placeholder || ''"
                         [disabled]="isControlDisabled(control)"
+                        [readOnly]="control.readOnly === true"
                         [ngModel]="controlTextValue(control)"
                         (ngModelChange)="updateControlValue(control, $event)"
                       ></textarea>
@@ -333,6 +334,7 @@
                         [attr.maxlength]="control.maxLength ?? null"
                         [placeholder]="control.placeholder || ''"
                         [disabled]="isControlDisabled(control)"
+                        [readOnly]="control.readOnly === true"
                         [ngModel]="control.kind === 'number' ? controlNumberValue(control) : controlTextValue(control)"
                         (ngModelChange)="updateControlValue(control, $event)"
                       />

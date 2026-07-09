@@ -106,13 +106,15 @@ export class ProfileSettingsPopupsComponent {
       title,
       subtitle: popup === 'feedback'
         ? 'Tell us what works well or what should be improved. Product feedback is triaged by category.'
-        : null,
+        : popup === 'report-user'
+          ? 'Share what happened. Reports are reviewed by moderation, and we use them to improve trust and safety.'
+          : null,
       ariaLabel: title,
       closeAriaLabel: 'Close',
       size: 'wide',
       height: 'auto',
       headerTone: 'accent',
-      bodyLayout: popup === 'feedback' ? 'overflow' : 'default',
+      bodyLayout: popup === 'feedback' || popup === 'report-user' ? 'overflow' : 'default',
       onClose: () => this.closePopup()
     };
   }

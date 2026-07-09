@@ -176,6 +176,10 @@ export class PopupComponent<TContext = unknown> {
     return `ui-popup__header--palette-${this.popupModel.headerPalette ?? 'default'}`;
   }
 
+  protected headerTitleToneClass(): string {
+    return `ui-popup__header--title-${this.popupModel.headerTitleTone ?? 'palette'}`;
+  }
+
   protected bodyLayoutClass(): string {
     return `ui-popup__body--${this.popupModel.bodyLayout ?? 'default'}`;
   }

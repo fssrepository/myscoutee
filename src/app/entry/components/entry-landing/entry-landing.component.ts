@@ -413,6 +413,23 @@ export class EntryLandingComponent implements OnInit, OnChanges, OnDestroy {
     this.syncLandingPopupScrollLock();
   }
 
+  protected previewGuidePopupModel(): PopupModel {
+    return {
+      headerLabel: 'landing.preview.badge',
+      headerLabelIcon: 'bug_report',
+      title: 'landing.preview.guide.title',
+      subtitle: 'landing.preview.guide.intro',
+      ariaLabel: 'Preview version guide',
+      closeAriaLabel: 'Close preview guide',
+      size: 'small',
+      height: 'auto',
+      headerLayout: 'document',
+      headerTone: 'accent',
+      headerPalette: 'amber',
+      onClose: () => this.closePreviewGuide()
+    };
+  }
+
   protected featuredIdeaCards(): IdeaInfoCard[] {
     const published = this.publishedIdeaCards();
     const featured = published.filter(card => this.ideaCardDetail(card)?.featured === true);

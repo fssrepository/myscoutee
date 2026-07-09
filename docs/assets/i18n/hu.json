@@ -1,6 +1,6 @@
 {
   "lang": "hu",
-  "version": "2026.07.09.hu.1",
+  "version": "2026.07.09.hu.3",
   "messages": {
     "about": "Rólam",
     "accommodation": "Szállás",
@@ -1882,6 +1882,17 @@
     "admin.reports.action.block.busy": "Letiltás...",
     "admin.reports.action.unblock": "Feloldás",
     "admin.reports.action.unblock.busy": "Feloldás...",
+    "share.what.happened.reports.are.reviewed.by.moderation.and.we.use.them.to.improve.trust.and.safety": "Mondd el, mi történt. A jelentéseket a moderátorok felülvizsgálják, és felhasználjuk őket a bizalom és a biztonság javítására.",
+    "user": "Felhasználó",
+    "event.context": "Esemény kontextusa",
+    "reason": "Indok",
+    "selected.member": "Kiválasztott tag",
+    "selected.member.placeholder": "Kiválasztott tag",
+    "submit.report": "Jelentés küldése",
+    "add.short.details.about.what.happened.and.why.you.are.reporting.this.member.placeholder": "Írd le röviden, mi történt, és miért jelented ezt a tagot.",
+    "reports.can.only.be.started.from.a.member.card.of.an.event.you.both.attended": "Jelentést csak olyan esemény tagkártyájáról indíthatsz, amelyen mindketten részt vettetek.",
+    "reports.can.only.be.started.from.an.event.organizer.or.a.member.card.tied.to.an.event": "Jelentést csak egy esemény szervezőjéről vagy az eseményhez tartozó tagkártyáról indíthatsz.",
+    "reports.can.only.be.submitted.for.an.event.organizer.or.a.member.you.shared.an.event.with": "Jelentést csak az esemény szervezőjéről vagy olyan tagról küldhetsz, akivel közös eseményen vettél részt.",
     "logout.question": "Biztosan kilép?"
   }
 }

@@ -21,6 +21,7 @@ export type PopupHeight = 'auto' | 'full';
 export type PopupHeaderTone = 'default' | 'accent';
 export type PopupHeaderLayout = 'default' | 'article' | 'document';
 export type PopupHeaderPalette = 'default' | 'amber' | 'blue' | 'green' | 'rose' | 'violet' | 'slate' | 'teal';
+export type PopupHeaderTitleTone = 'palette' | 'neutral';
 export type PopupBodyLayout = 'default' | 'fill' | 'flush' | 'overflow';
 export type PopupControlAlign = 'start' | 'end';
 export type PopupBackdropTone = 'default' | 'dim';
@@ -89,6 +90,7 @@ export interface PopupModel<TContext = unknown> {
   headerLayout?: PopupHeaderLayout;
   headerTone?: PopupHeaderTone;
   headerPalette?: PopupHeaderPalette;
+  headerTitleTone?: PopupHeaderTitleTone;
   bodyLayout?: PopupBodyLayout;
   backdropTone?: PopupBackdropTone;
   showToolbar?: boolean;

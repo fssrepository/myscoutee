@@ -135,6 +135,7 @@ export interface FormFlowControlModel {
   placeholder?: string;
   required?: boolean;
   disabled?: boolean;
+  readOnly?: boolean;
   min?: number;
   max?: number;
   minLength?: number;

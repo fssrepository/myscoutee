@@ -1,6 +1,6 @@
 {
   "lang": "en",
-  "version": "2026.07.09.en.1",
+  "version": "2026.07.09.en.3",
   "messages": {
     "about": "About",
     "accommodation": "Accommodation",
@@ -1884,6 +1884,17 @@
     "admin.reports.action.block.busy": "Blocking...",
     "admin.reports.action.unblock": "Unblock",
     "admin.reports.action.unblock.busy": "Unblocking...",
+    "share.what.happened.reports.are.reviewed.by.moderation.and.we.use.them.to.improve.trust.and.safety": "Share what happened. Reports are reviewed by moderation, and we use them to improve trust and safety.",
+    "user": "User",
+    "event.context": "Event context",
+    "reason": "Reason",
+    "selected.member": "Selected member",
+    "selected.member.placeholder": "Selected member",
+    "submit.report": "Submit report",
+    "add.short.details.about.what.happened.and.why.you.are.reporting.this.member.placeholder": "Add short details about what happened and why you are reporting this member.",
+    "reports.can.only.be.started.from.a.member.card.of.an.event.you.both.attended": "Reports can only be started from a member card of an event you both attended.",
+    "reports.can.only.be.started.from.an.event.organizer.or.a.member.card.tied.to.an.event": "Reports can only be started from an event organizer or a member card tied to an event.",
+    "reports.can.only.be.submitted.for.an.event.organizer.or.a.member.you.shared.an.event.with": "Reports can only be submitted for an event organizer or a member you shared an event with.",
     "logout.question": "Logout?"
   }
 }

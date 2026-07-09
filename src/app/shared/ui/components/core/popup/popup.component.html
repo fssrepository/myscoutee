@@ -15,7 +15,7 @@
     (click)="onPanelClick($event)"
   >
     @if (hasHeader) {
-      <header class="ui-popup__header" [ngClass]="[headerToneClass(), headerLayoutClass(), headerPaletteClass()]">
+      <header class="ui-popup__header" [ngClass]="[headerToneClass(), headerLayoutClass(), headerPaletteClass(), headerTitleToneClass()]">
         <div class="ui-popup__title">
           @if (popupModel.headerLabel) {
             <span class="ui-popup__label" [attr.data-i18n-ignore]="popupModel.translateHeaderLabel === false ? '' : null">

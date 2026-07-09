@@ -1,48 +1,6 @@
 @if (open) {
-  <section class="demo-login-overlay">
-    <div class="demo-login-backdrop" (click)="requestClose()"></div>
-    <div class="demo-login-panel" (click)="$event.stopPropagation()">
-      <div class="demo-login-header">
-        <div class="demo-login-title">
-          <h2>{{ title | i18n }}</h2>
-          <p>{{ subtitle | i18n }}</p>
-        </div>
-        <div class="demo-login-header-actions">
-          @if (newProfileMenuItems(); as newProfileItems) {
-            @if (newProfileItems.length > 0) {
-              <app-menu
-                class="demo-new-profile-menu"
-                kind="inline"
-                [items]="newProfileItems"
-                (itemSelect)="onHeaderMenuSelect($event)"
-              ></app-menu>
-            }
-          }
-          @if (selectorRoleMenuItems(); as selectorRoleItems) {
-            @if (selectorRoleItems.length > 0) {
-              <app-menu
-                class="demo-selector-role-menu"
-                kind="select"
-                [trigger]="selectorRoleMenuTrigger()"
-                [items]="selectorRoleItems"
-                panelAlign="end"
-                (itemSelect)="onSelectorRoleMenuSelect($event)"
-              ></app-menu>
-            }
-          }
-          <button
-            mat-icon-button
-            type="button"
-            class="popup-close"
-            [disabled]="submitting"
-            (click)="requestClose()"
-            [attr.aria-label]="'close.demo.user.popup' | i18n"
-            >
-            <span class="popup-close-glyph" aria-hidden="true">×</span>
-          </button>
-        </div>
-      </div>
-      <div class="demo-user-stage">
+  <app-popup [model]="popupModel()" [zIndex]="2800">
+    <div class="demo-user-stage">
         @if (loading) {
           <div class="demo-user-grid demo-user-grid-loading">
             <div class="demo-user-loading-shell">
@@ -175,7 +133,6 @@
             <p class="demo-user-loading-copy">{{ 'Opening demo session...' | i18n }}</p>
           </div>
         }
-      </div>
     </div>
-  </section>
+  </app-popup>
 }

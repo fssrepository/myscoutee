@@ -27,11 +27,15 @@ import {
   IndicatorComponent
 } from '../core/indicator';
 import {
-  AppMenuComponent,
   type AppMenuItem,
-  type AppMenuItemSelectEvent,
   type AppMenuTrigger
 } from '../core/menu';
+import {
+  PopupComponent,
+  type PopupControl,
+  type PopupMenuSelectEvent,
+  type PopupModel
+} from '../core/popup';
 import {
   I18nPipe
 } from '../../pipes';
@@ -59,6 +63,8 @@ interface DemoSelectorRoleMenuContext {
   mode: DemoBootstrapSelectorMode;
 }
 
+type DemoSelectorPopupMenuContext = DemoSelectorHeaderMenuContext | DemoSelectorRoleMenuContext;
+
 @Component({
   selector: 'app-demo-bootstrap-selector',
   standalone: true,
@@ -66,7 +72,7 @@ interface DemoSelectorRoleMenuContext {
     CommonModule,
     MatButtonModule,
     MatRippleModule,
-    AppMenuComponent,
+    PopupComponent,
     IndicatorComponent,
     I18nPipe
   ],
@@ -136,6 +142,46 @@ export class DemoBootstrapSelectorComponent {
       return;
     }
     this.closeRequested.emit();
+  }
+
+  protected popupModel(): PopupModel<DemoSelectorPopupMenuContext> {
+    const headerControls: PopupControl<DemoSelectorPopupMenuContext>[] = [];
+    const newProfileItems = this.newProfileMenuItems();
+    if (newProfileItems.length > 0) {
+      headerControls.push({
+        id: 'new-profile',
+        kind: 'menu',
+        menuKind: 'inline',
+        items: newProfileItems
+      });
+    }
+    const roleItems = this.selectorRoleMenuItems();
+    if (roleItems.length > 0) {
+      headerControls.push({
+        id: 'selector-role',
+        kind: 'menu',
+        menuKind: 'select',
+        trigger: this.selectorRoleMenuTrigger(),
+        items: roleItems,
+        panelAlign: 'end'
+      });
+    }
+    return {
+      title: this.title,
+      subtitle: this.subtitle,
+      ariaLabel: 'Demo user selector',
+      closeAriaLabel: 'Close demo user popup',
+      size: 'wide',
+      height: 'auto',
+      headerLayout: 'document',
+      headerTone: 'accent',
+      headerPalette: 'green',
+      headerTitleTone: 'neutral',
+      bodyLayout: 'flush',
+      headerControls,
+      onClose: () => this.requestClose(),
+      onMenuSelect: event => this.onPopupMenuSelect(event)
+    };
   }
 
   protected requestUserSelect(userId: string): void {
@@ -245,20 +291,16 @@ export class DemoBootstrapSelectorComponent {
     }));
   }
 
-  protected onHeaderMenuSelect(
-    event: AppMenuItemSelectEvent<DemoSelectorHeaderMenuItemId, DemoSelectorHeaderMenuContext>
-  ): void {
-    if (event.context?.action !== 'new-profile') {
+  protected onPopupMenuSelect(event: PopupMenuSelectEvent<DemoSelectorPopupMenuContext>): void {
+    if (event.control.id === 'new-profile') {
+      if (event.itemSelect.context && 'action' in event.itemSelect.context) {
+        this.requestNewProfile();
+      }
       return;
     }
-    this.requestNewProfile();
-  }
-
-  protected onSelectorRoleMenuSelect(
-    event: AppMenuItemSelectEvent<DemoSelectorRoleMenuItemId, DemoSelectorRoleMenuContext>
-  ): void {
-    const mode = event.context?.mode ?? event.id;
-    this.selectContextMode(mode);
+    const context = event.itemSelect.context;
+    const mode = context && 'mode' in context ? context.mode : event.itemSelect.id;
+    this.selectContextMode(mode as DemoBootstrapSelectorMode);
   }
 
   protected visibleUsers(): readonly UserSelectorListItemDto[] {
