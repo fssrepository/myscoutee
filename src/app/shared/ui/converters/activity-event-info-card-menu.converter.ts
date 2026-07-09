@@ -228,6 +228,9 @@ export class ActivityEventInfoCardMenuConverter {
     if (this.isAcceptedMember(subject, activeUserId)) {
       return true;
     }
+    if (subject.checkoutMenuAction === 'paymentSummary') {
+      return true;
+    }
     return subject.eventScope === 'active-events'
       && !this.isPendingRequest(subject, activeUserId);
   }

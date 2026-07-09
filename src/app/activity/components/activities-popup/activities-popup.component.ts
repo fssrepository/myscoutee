@@ -872,10 +872,10 @@ export class ActivitiesPopupComponent implements OnDestroy {
       if (!sync || sync.updatedMs <= this.lastAppliedActivityMembersUpdatedMs) {
         return;
       }
-      this.lastAppliedActivityMembersUpdatedMs = sync.updatedMs;
       if (this.eventEditorStore.isOpen()) {
         return;
       }
+      this.lastAppliedActivityMembersUpdatedMs = sync.updatedMs;
       this.applyActivityMembersSyncState(sync);
       this.cdr.markForCheck();
     });

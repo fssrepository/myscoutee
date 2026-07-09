@@ -3655,7 +3655,7 @@ export class LocalEventsRepository {
         const existing = this.computePreferredEventRecords(table)
           .find(record => record.id === sourceId && this.isGeneratedSlotRecord(record))
           ?? null;
-        const slotMembers = this.generatedSlotMembers(parent, membersTable, sourceId, existing);
+        const slotMembers = this.generatedSlotMembers(parent, membersTable, sourceId, existing, definitions);
         records.push({
           id: sourceId,
           userId: LocalEventsRepository.SLOT_READ_MODEL_USER_ID,
@@ -3743,7 +3743,7 @@ export class LocalEventsRepository {
       const existing = this.computePreferredEventRecords(table)
         .find(record => record.id === sourceId && this.isGeneratedSlotRecord(record))
         ?? null;
-      const slotMembers = this.generatedSlotMembers(parent, membersTable, sourceId, existing);
+      const slotMembers = this.generatedSlotMembers(parent, membersTable, sourceId, existing, definitions);
       records.push({
         id: sourceId,
         userId: LocalEventsRepository.SLOT_READ_MODEL_USER_ID,
@@ -3861,7 +3861,8 @@ export class LocalEventsRepository {
     parent: ActivityEventRecord,
     membersTable: ActivityMembersRecordCollection,
     sourceId: string,
-    existing: ActivityEventRecord | null
+    existing: ActivityEventRecord | null,
+    definitions: readonly ActivityContracts.SubEventDefinitionDTO[] | undefined = []
   ): {
     adminUserIds: string[];
     acceptedMembers: number;
@@ -3899,11 +3900,15 @@ export class LocalEventsRepository {
     const pendingMembers = rawPendingMemberUserIds.length > 0
       ? pendingMemberUserIds.length
       : Math.max(pendingMemberUserIds.length, existingPendingMembers);
+    const slotCapacityTotal = this.slotDefinitionCapacityTotal(definitions);
+    const baseCapacityTotal = slotCapacityTotal > 0
+      ? slotCapacityTotal
+      : Math.max(0, parent.capacityTotal);
     return {
       adminUserIds,
       acceptedMembers,
       pendingMembers,
-      capacityTotal: Math.max(acceptedMembers, Math.max(0, parent.capacityTotal)),
+      capacityTotal: Math.max(acceptedMembers, baseCapacityTotal),
       acceptedMemberUserIds,
       pendingMemberUserIds,
       invitedMemberUserIds,
@@ -3937,11 +3942,28 @@ export class LocalEventsRepository {
     const pendingMembers = rawPendingMemberUserIds.length > 0
       ? pendingMemberUserIds.length
       : Math.max(0, Math.trunc(Number(slot.pendingMembers) || 0));
+    const slotCapacityTotal = this.slotDefinitionCapacityTotal(slot.subEventDefinitions);
+    const baseCapacityTotal = slotCapacityTotal > 0
+      ? slotCapacityTotal
+      : Math.max(0, Math.trunc(Number(slot.capacityTotal) || 0));
     return {
-      capacityTotal: Math.max(acceptedMembers, Math.max(0, Math.trunc(Number(slot.capacityTotal) || 0))),
+      capacityTotal: Math.max(acceptedMembers, baseCapacityTotal),
       acceptedMembers,
       pendingMembers
     };
+  }
+
+  private slotDefinitionCapacityTotal(
+    definitions: readonly ActivityContracts.SubEventDefinitionDTO[] | undefined
+  ): number {
+    const capacities = ActivityEventDetailDTO.normalizeSubEventDefinitions(definitions ?? [])
+      .filter(item => item.optional !== true)
+      .map(item => Math.max(0, Math.trunc(Number(item.capacityMax) || 0)))
+      .filter(capacity => capacity > 0);
+    if (capacities.length === 0) {
+      return 0;
+    }
+    return Math.min(...capacities);
   }
 
   private generatedSlotFitsParentRange(record: ActivityEventRecord, parent: ActivityEventRecord): boolean {
