@@ -649,6 +649,7 @@ export class ActivitiesPopupComponent implements OnDestroy {
       invitedMemberUserIds: [...(dto?.invitedMemberUserIds ?? [])],
       pendingRequestMemberUserIds: [...(dto?.pendingRequestMemberUserIds ?? [])],
       eventScope: this.activitiesEventScope,
+      checkoutState: draft?.checkoutState ?? record?.checkoutBasket?.status ?? null,
       checkoutMenuAction: this.activityCheckoutMenuAction(
         draft,
         record?.checkoutBasket ?? null,

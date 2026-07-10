@@ -209,6 +209,16 @@ export class EventCheckoutPopupComponent {
     }, presentation);
   }
 
+  private switchCheckoutReviewPhase(): void {
+    if (!this.eventEditorStore.isOpen() || this.eventEditorStore.presentation().mode !== 'checkout-review') {
+      return;
+    }
+    this.eventEditorStore.updateCheckoutReviewPhase(
+      this.checkoutEditorPhase(),
+      this.isReadOnlyCheckoutSummary() ? [] : this.checkoutFooterMenuItems()
+    );
+  }
+
   private showCheckoutSubEventDefinitionsPanel(dialog: EventCheckoutDialogState): boolean {
     return dialog.record.subEventsEnabled !== false
       && (dialog.record.subEventDefinitions ?? []).length > 0;
@@ -1819,12 +1829,14 @@ export class EventCheckoutPopupComponent {
     }
     if (!this.hasCheckoutSelectionChanges()) {
       this.paymentStep = true;
-      this.openCheckoutReviewEditorShell(dialog);
+      this.switchCheckoutReviewPhase();
       return;
     }
     this.busy = true;
     this.checkoutBusyActionId = 'checkout-confirm';
     this.errorMessage = '';
+    this.paymentStep = true;
+    this.switchCheckoutReviewPhase();
     try {
       this.checkoutSessionId = null;
       await dialog.onSubmit(this.buildSelection(null, true, {
@@ -1834,13 +1846,13 @@ export class EventCheckoutPopupComponent {
       }));
       await this.persistCheckoutDraft(false, null, 'confirmed');
       this.refreshCheckoutBaseline();
-      this.paymentStep = true;
-      this.openCheckoutReviewEditorShell(dialog);
     } catch (error) {
+      this.paymentStep = false;
       this.setCheckoutErrorMessage(dialog, error, dialog.failureMessage);
     } finally {
       this.busy = false;
       this.checkoutBusyActionId = null;
+      this.switchCheckoutReviewPhase();
     }
   }
 
@@ -2354,18 +2366,18 @@ export class EventCheckoutPopupComponent {
       this.checkoutBusyActionId = 'checkout-confirm';
       this.errorMessage = '';
       this.paymentStep = true;
-      this.openCheckoutReviewEditorShell(dialog);
+      this.switchCheckoutReviewPhase();
       try {
         this.checkoutSessionId = null;
         await this.persistCheckoutDraft(true, null, 'confirmed');
         this.refreshCheckoutBaseline();
-        this.openCheckoutReviewEditorShell(dialog);
       } catch (error) {
         this.paymentStep = false;
         this.setCheckoutErrorMessage(dialog, error, dialog.failureMessage);
       } finally {
         this.busy = false;
         this.checkoutBusyActionId = null;
+        this.switchCheckoutReviewPhase();
       }
       return;
     }
@@ -2407,10 +2419,7 @@ export class EventCheckoutPopupComponent {
       return;
     }
     this.releaseUnpaidPaymentSession();
-    const dialog = this.dialog();
-    if (dialog) {
-      this.openCheckoutReviewEditorShell(dialog);
-    }
+    this.switchCheckoutReviewPhase();
     this.errorMessage = '';
   }
 

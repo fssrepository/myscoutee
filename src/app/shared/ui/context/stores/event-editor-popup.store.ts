@@ -132,6 +132,21 @@ export class EventEditorPopupStore {
     }));
   }
 
+  updateCheckoutReviewPhase(
+    checkoutPhase: EventEditorCheckoutPhase,
+    footerItems: readonly AppMenuItem<string>[]
+  ): void {
+    const current = this._presentation();
+    if (!this._isOpen() || current.mode !== 'checkout-review') {
+      return;
+    }
+    this._presentation.set({
+      ...current,
+      checkoutPhase,
+      footerItems: [...footerItems]
+    });
+  }
+
   openCreate(): void {
     this.open('create');
   }

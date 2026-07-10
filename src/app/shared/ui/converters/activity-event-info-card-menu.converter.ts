@@ -2,6 +2,7 @@ import type {
   AppMenuItem,
   AppMenuPalette
 } from '../components/core/menu';
+import type { EventCheckoutState } from '../../core/contracts/activity.interface';
 import {
   CARD_MENU_ACTIONS,
   type CardMenuAction
@@ -20,6 +21,7 @@ export type ActivityEventInfoCardMenuSubject = Record<string, unknown> & {
   pendingRequestMemberUserIds?: readonly string[];
   eventScope?: string | null;
   checkoutMenuAction?: 'continueBooking' | 'paymentSummary' | null;
+  checkoutState?: EventCheckoutState | null;
 };
 
 export interface ActivityEventInfoCardMenuContext {
@@ -164,7 +166,8 @@ export class ActivityEventInfoCardMenuConverter {
       case 'reportOrganizer':
         return this.shouldReport(subject, activeUserId);
       case 'accept':
-        return this.hasOutstandingInvitation(subject, activeUserId);
+        return this.hasOutstandingInvitation(subject, activeUserId)
+          && !this.checkoutJoinStarted(subject);
       case 'leaveEvent':
         return !this.isAdmin(subject, activeUserId)
           && this.isAcceptedOrActiveEventMember(subject, activeUserId)
@@ -173,7 +176,9 @@ export class ActivityEventInfoCardMenuConverter {
         return this.isAdmin(subject, activeUserId)
           && !this.isPendingReview(subject);
       case 'rejectInvitation':
-        return this.hasOutstandingInvitation(subject, activeUserId) && !this.isPendingReview(subject);
+        return this.hasOutstandingInvitation(subject, activeUserId)
+          && !this.checkoutJoinStarted(subject)
+          && !this.isPendingReview(subject);
       default:
         return false;
     }
@@ -231,6 +236,12 @@ export class ActivityEventInfoCardMenuConverter {
 
   private static isAcceptedMember(subject: ActivityEventInfoCardMenuSubject, activeUserId: string): boolean {
     return this.includesUserId(subject.acceptedMemberUserIds, activeUserId);
+  }
+
+  private static checkoutJoinStarted(subject: ActivityEventInfoCardMenuSubject): boolean {
+    return subject.checkoutState === 'approved'
+      || subject.checkoutState === 'confirmed'
+      || subject.checkoutState === 'pay';
   }
 
   private static isAcceptedOrActiveEventMember(subject: ActivityEventInfoCardMenuSubject, activeUserId: string): boolean {

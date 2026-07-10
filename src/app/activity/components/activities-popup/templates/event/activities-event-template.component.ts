@@ -692,6 +692,7 @@ export class ActivitiesEventsController {
 
   private activityEventMenuSubjectFromRow(row: InfoCardData): ActivityEventInfoCardMenuSubject {
     const dto = this.activityEventDTOForRow(row);
+    const draft = this.eventCheckoutDraftStore.read(this.activeUserId(), row.id);
     return {
       menu: 'activity-event-card',
       id: row.id,
@@ -702,7 +703,8 @@ export class ActivitiesEventsController {
       pendingMemberUserIds: [...(dto?.pendingMemberUserIds ?? [])],
       invitedMemberUserIds: [...(dto?.invitedMemberUserIds ?? [])],
       pendingRequestMemberUserIds: [...(dto?.pendingRequestMemberUserIds ?? [])],
-      eventScope: this.activitiesEventScope
+      eventScope: this.activitiesEventScope,
+      checkoutState: draft?.checkoutState ?? null
     };
   }
 
