@@ -8,6 +8,7 @@
               #nameInput
               type="text"
               [value]="draftModel.name"
+              (input)="syncDraftTextInput('name', $event)"
               (blur)="syncDraftTextInput('name', $event)"
               [class.field-required-invalid]="fieldInvalid('name')"
               placeholder="Name"
@@ -92,6 +93,7 @@
               #descriptionInput
               rows="3"
               [value]="draftModel.description"
+              (input)="syncDraftTextInput('description', $event)"
               (blur)="syncDraftTextInput('description', $event)"
               [class.field-required-invalid]="fieldInvalid('description')"
               placeholder="Describe this stage"
