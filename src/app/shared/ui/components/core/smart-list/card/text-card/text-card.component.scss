@@ -286,8 +286,20 @@
   width: 13px;
   height: 13px;
   font-size: 13px;
-  line-height: 13px;
+  line-height: 1;
   flex: 0 0 auto;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  margin: 0;
+  text-align: center;
+}
+
+.ui-text-card__badge > span {
+  display: inline-flex;
+  align-items: center;
+  font-weight: 900;
+  line-height: 1;
 }
 
 .ui-text-card--with-status-badge .ui-text-card__badge {

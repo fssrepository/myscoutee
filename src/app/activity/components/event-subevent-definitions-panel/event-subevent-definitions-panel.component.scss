@@ -205,7 +205,7 @@
 
 :host ::ng-deep .subevent-definition-panel__timeline-card .ui-text-card--with-badge {
   min-height: 0;
-  padding-top: 2rem;
+  padding-top: 2.35rem;
 }
 
 :host ::ng-deep .subevent-definition-panel__timeline-card .ui-text-card__main {
@@ -282,6 +282,9 @@
   border: 1px solid rgba(192, 125, 28, 0.34);
   background: rgba(255, 247, 226, 0.94);
   color: #8a5a12;
+  font-size: 0.68rem;
+  font-weight: 900;
+  line-height: 1;
   box-shadow: 0 5px 12px rgba(132, 82, 8, 0.14);
 }
 
