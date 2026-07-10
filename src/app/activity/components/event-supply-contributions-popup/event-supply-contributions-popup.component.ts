@@ -13,26 +13,28 @@ import {
   FormsModule
 } from '@angular/forms';
 import {
-  MatButtonModule
-} from '@angular/material/button';
-import {
-  MatIconModule
-} from '@angular/material/icon';
-import {
   from
 } from 'rxjs';
 import {
-  IndicatorComponent,
+  PopupComponent,
   SingleRowComponent,
   SmartListComponent,
-  type CardMenuActionEvent,
+  type AppMenuItem,
+  type AppMenuItemSelectEvent,
   type ListQuery,
+  type PopupActionEvent,
+  type PopupControl,
+  type PopupModel,
   type SingleRowData,
   type SmartListConfig,
   type SmartListItemTemplateContext,
-  type SmartListLoadPage,
-  type SmartListStateChange
+  type SmartListLoadPage
 } from '../../../shared/ui';
+import {
+  FormFlowComponent,
+  type FormFlowControlModel,
+  type FormFlowModel
+} from '../../../shared/ui/components/core/form/flow';
 import {
   APP_STATIC_DATA
 } from '../../../shared/app-static-data';
@@ -54,7 +56,10 @@ import {
 import {
   DialogStore
 } from '../../../shared/ui/context/stores/dialog.store';
-import type { ResourcePopupContext } from '../../../shared/ui/context/stores/sub-event-resource-popup.store';
+import type {
+  ResourcePopupContext,
+  SupplyBringDialogState
+} from '../../../shared/ui/context/stores/sub-event-resource-popup.store';
 import { UserProfileStore } from '../../../shared/ui/context/stores/user-profile.store';
 
 type ResourceAssetDTO = (AppDTOs.AssetDTO | AppDTOs.AssetDetailDTO) & {
@@ -86,9 +91,8 @@ interface SupplyContributionRemovalRequest {
   standalone: true,
   imports: [
     FormsModule,
-    MatButtonModule,
-    MatIconModule,
-    IndicatorComponent,
+    FormFlowComponent,
+    PopupComponent,
     SingleRowComponent,
     SmartListComponent
   ],
@@ -105,11 +109,7 @@ export class EventSupplyContributionsPopupComponent implements DoCheck {
   private readonly dialogStore = inject(DialogStore);
   private pendingSupplyBringAbortController: AbortController | null = null;
   private pendingSupplyBringRequestVersion = 0;
-  private lastRowsSignature = '';
   private lastContextKey = '';
-  private lastRowCount = 0;
-  private supplyContributionListReady = false;
-  private supplyContributionListVisibleCount = 0;
 
   private get users(): UserDto[] {
     return this.usersService.peekCachedUsers();
@@ -170,56 +170,35 @@ export class EventSupplyContributionsPopupComponent implements DoCheck {
       'assets-card-list': true,
       'subevent-supply-contribution-list': true
     },
-    trackBy: (_index, row) => row.id
+    trackBy: (_index, row) => row.id,
+    cacheable: {
+      identity: row => row.id,
+      equals: (current, next) => current.id === next.id
+        && current.userId === next.userId
+        && current.quantity === next.quantity
+        && current.addedAtIso === next.addedAtIso
+    },
+    sortable: {
+      sortKey: row => [-AppUtils.toSortableDate(row.addedAtIso), row.id]
+    }
   };
 
   ngDoCheck(): void {
-    const rows = this.supplyContributionRows();
-    const contextKey = `${this.supplyPopupTitle()}:${this.popupSubtitle()}`;
-    const signature = `${contextKey}:${rows.map(row => [
-      row.id,
-      row.userId,
-      row.quantity,
-      row.addedAtIso
-    ].join(':')).join('|')}`;
-
-    if (contextKey !== this.lastContextKey) {
-      this.lastContextKey = contextKey;
-      this.lastRowsSignature = signature;
-      this.lastRowCount = rows.length;
-      this.supplyContributionListReady = false;
-      this.supplyContributionListVisibleCount = 0;
-      this.supplyContributionSmartListQuery = {
-        filters: {
-          revision: Date.now(),
-          contextKey
-        }
-      };
+    const popup = this.resourcePopupStore.popupContextRef();
+    const supply = this.resourcePopupStore.supplyPopupRef();
+    const contextKey = popup && supply
+      ? `${popup.ownerId}:${supply.subEventId}:${supply.assetId}:${this.activeUser().id}`
+      : '';
+    if (contextKey === this.lastContextKey) {
       return;
     }
-
-    if (signature === this.lastRowsSignature) {
-      return;
-    }
-
-    const previousRowCount = this.lastRowCount;
-    this.lastRowsSignature = signature;
-    this.lastRowCount = rows.length;
-    this.syncSupplyContributionVisibleRows(rows, previousRowCount);
-  }
-
-  protected onSupplyContributionSmartListStateChange(
-    change: SmartListStateChange<AppDTOs.SubEventSupplyContributionRowDTO, SupplyContributionListFilters>
-  ): void {
-    this.supplyContributionListVisibleCount = change.items.length;
-    this.supplyContributionListReady = !change.initialLoading;
-    if (!this.supplyContributionListReady) {
-      return;
-    }
-    const rows = this.supplyContributionRows();
-    if (change.total !== rows.length) {
-      this.syncSupplyContributionVisibleRows(rows, change.total);
-    }
+    this.lastContextKey = contextKey;
+    this.supplyContributionSmartListQuery = {
+      filters: {
+        revision: Date.now(),
+        contextKey
+      }
+    };
   }
 
   protected supplyContributionSingleRow(row: AppDTOs.SubEventSupplyContributionRowDTO): SingleRowData {
@@ -229,18 +208,27 @@ export class EventSupplyContributionsPopupComponent implements DoCheck {
       subtitle: this.addedLabel(row.addedAtIso),
       avatarInitials: row.initials,
       avatarAriaLabel: row.name,
-      sideLabel: this.quantityLabel(row.quantity),
-      sideLabelTone: 'inverse',
-      menuActions: this.canDeleteSupplyContribution(row) ? ['delete'] : [],
-      eagerDetail: row
+      badges: [{
+        label: this.quantityLabel(row.quantity),
+        ariaLabel: this.quantityLabel(row.quantity),
+        tone: 'inverse',
+        position: 'top-right'
+      }],
+      menuActions: this.canDeleteSupplyContribution(row) ? ['delete'] : []
     };
   }
 
-  protected onSupplyContributionMenuAction(
-    row: AppDTOs.SubEventSupplyContributionRowDTO,
-    event: CardMenuActionEvent<SingleRowData>
-  ): void {
-    if (event.actionId !== 'delete' || !this.canDeleteSupplyContribution(row)) {
+  protected onSupplyContributionSharedMenuSelect(event: AppMenuItemSelectEvent<string, unknown>): void {
+    const context = event.context as {
+      row?: SingleRowData;
+      card?: SingleRowData;
+      action?: { id?: string };
+    } | null | undefined;
+    const menuRow = context?.row ?? context?.card;
+    const row = menuRow
+      ? this.supplyContributionSmartList?.findVisibleItem(item => item.id === menuRow.id)
+      : null;
+    if (!row || context?.action?.id !== 'delete' || !this.canDeleteSupplyContribution(row)) {
       return;
     }
     this.requestDeleteSupplyContribution(row);
@@ -268,19 +256,160 @@ export class EventSupplyContributionsPopupComponent implements DoCheck {
     return context.parentTitle || subEventName || 'Event';
   }
 
-  protected supplyContributionRows(): AppDTOs.SubEventSupplyContributionRowDTO[] {
-    const context = this.resourcePopupStore.supplyPopupRef();
-    if (!context) {
-      return [];
+  protected supplyContributionsPopupModel(): PopupModel {
+    const title = this.supplyPopupTitle();
+    return {
+      title,
+      subtitle: this.popupSubtitle(),
+      translateTitle: false,
+      translateSubtitle: false,
+      ariaLabel: title,
+      closeAriaLabel: 'Close',
+      size: 'wide',
+      height: 'full',
+      headerTone: 'accent',
+      bodyLayout: 'fill',
+      backdropTone: 'dim',
+      headerActions: [{
+        id: 'add-supply-quantity',
+        icon: 'add',
+        ariaLabel: 'Add supply quantity row',
+        palette: 'blue'
+      }],
+      onClose: () => this.closeSupplyContributionsPopup(),
+      onAction: event => this.onSupplyContributionsPopupAction(event)
+    };
+  }
+
+  protected supplyContributionsPopupZIndex(): number {
+    return 3200;
+  }
+
+  protected bringItemsPopupModel(dialog: SupplyBringDialogState): PopupModel {
+    return {
+      title: 'Bring Items',
+      subtitle: dialog.title,
+      translateSubtitle: false,
+      ariaLabel: 'Bring Items',
+      closeAriaLabel: 'Close bring items',
+      size: 'small',
+      height: 'auto',
+      headerTone: 'accent',
+      backdropTone: 'dim',
+      headerControls: this.bringItemsPopupHeaderControls(dialog),
+      onClose: () => this.cancelBringDialog(),
+      onMenuSelect: event => this.onBringItemsMenuSelect(event.itemSelect)
+    };
+  }
+
+  private bringItemsPopupHeaderControls(dialog: SupplyBringDialogState): readonly PopupControl[] {
+    return [{
+      kind: 'menu',
+      id: 'bring-items-save',
+      menuKind: 'inline',
+      items: this.bringItemsSaveMenuItems(dialog),
+      closeOnSelect: false
+    }];
+  }
+
+  private bringItemsSaveMenuItems(
+    dialog: SupplyBringDialogState
+  ): readonly AppMenuItem<'save-supply-quantity'>[] {
+    const canSave = this.canSubmitBringDialog();
+    return [{
+      id: 'save-supply-quantity',
+      icon: 'done',
+      kind: 'action',
+      palette: 'green',
+      disabled: !canSave || dialog.busy,
+      ariaLabel: 'Save supply quantity',
+      progress: dialog.busy
+        ? {
+            state: 'loading',
+            shape: 'circle'
+          }
+        : dialog.error
+          ? {
+              state: 'error',
+              shape: 'circle'
+            }
+          : null
+    }];
+  }
+
+  private onBringItemsMenuSelect(event: AppMenuItemSelectEvent<string>): void {
+    if (event.item.id === 'save-supply-quantity') {
+      this.confirmBringDialog(event.sourceEvent);
     }
-    return this.buildSupplyContributionRows(this.subEventSupplyContributionEntries(context.subEventId, context.assetId));
+  }
+
+  protected bringItemsPopupZIndex(): number {
+    return 3300;
+  }
+
+  protected bringItemsFlowModel(dialog: SupplyBringDialogState): FormFlowModel {
+    const controls: FormFlowControlModel[] = [{
+      id: 'quantity',
+      bind: 'quantity',
+      kind: 'number',
+      layout: 'wide',
+      label: 'Items',
+      description: `Range: ${dialog.min} - ${dialog.max}`,
+      required: true,
+      min: dialog.min,
+      max: dialog.max,
+      step: 1,
+      disabled: dialog.busy
+    }];
+    const errorMessage = this.bringErrorMessage();
+    if (errorMessage) {
+      controls.push({
+        id: 'save-error',
+        kind: 'static',
+        layout: 'wide',
+        label: 'Unable to save quantity',
+        summary: {
+          hidden: true,
+          value: () => errorMessage
+        }
+      });
+    }
+    return {
+      title: 'Bring Items',
+      layout: 'grouped',
+      tone: errorMessage ? 'orange' : 'blue',
+      header: false,
+      summary: { enabled: false },
+      completion: { controls: 'none' },
+      save: null,
+      steps: [{
+        id: 'quantity',
+        title: '',
+        chrome: 'none',
+        controls
+      }]
+    };
+  }
+
+  protected onBringItemsFlowValueChange(value: unknown): void {
+    if (typeof value !== 'object' || value === null || Array.isArray(value)) {
+      return;
+    }
+    this.onBringQuantityChange((value as Record<string, unknown>)['quantity'] as number | string);
+  }
+
+  private onSupplyContributionsPopupAction(event: PopupActionEvent): void {
+    if (event.action.id === 'add-supply-quantity') {
+      this.openBringDialog(event.sourceEvent);
+    }
   }
 
   protected async loadSupplyContributionRowsPage(
     query: ListQuery<SupplyContributionListFilters>
   ): Promise<{ items: AppDTOs.SubEventSupplyContributionRowDTO[]; total: number }> {
-    const rows = this.supplyContributionRows();
-    if (rows.length === 0 && !this.resourcePopupStore.supplyPopupRef()) {
+    const popup = this.resourcePopupStore.popupContextRef();
+    const supply = this.resourcePopupStore.supplyPopupRef();
+    if (!popup || !supply) {
       return {
         items: [],
         total: 0
@@ -288,10 +417,18 @@ export class EventSupplyContributionsPopupComponent implements DoCheck {
     }
     const page = Math.max(0, Math.trunc(Number(query.page) || 0));
     const pageSize = Math.max(1, Math.trunc(Number(query.pageSize) || 1));
-    const start = page * pageSize;
+    const result = await this.activityResourcesService.querySupplyContributionPage(
+      popup.ownerId,
+      supply.subEventId,
+      supply.assetId,
+      page,
+      pageSize,
+      this.activeUser().id
+    );
+    await this.usersService.warmCachedUsers(result.items.map(entry => entry.userId));
     return {
-      items: rows.slice(start, start + pageSize),
-      total: rows.length
+      items: this.buildSupplyContributionRows(result.items),
+      total: result.total
     };
   }
 
@@ -338,13 +475,17 @@ export class EventSupplyContributionsPopupComponent implements DoCheck {
       return;
     }
     const parsed = Number(value);
+    const quantity = AppUtils.clampNumber(
+      Number.isFinite(parsed) ? Math.trunc(parsed) : dialog.quantity,
+      dialog.min,
+      dialog.max
+    );
+    if (quantity === dialog.quantity && !dialog.error) {
+      return;
+    }
     this.resourcePopupStore.bringDialogRef.set({
       ...dialog,
-      quantity: AppUtils.clampNumber(
-        Number.isFinite(parsed) ? Math.trunc(parsed) : dialog.quantity,
-        dialog.min,
-        dialog.max
-      ),
+      quantity,
       error: null
     });
   }
@@ -397,6 +538,7 @@ export class EventSupplyContributionsPopupComponent implements DoCheck {
         const resolvedState = ActivityResourceBuilder.normalizeState(savedState, nextState) ?? nextState;
         this.applyPersistedPopupState(resolvedState);
         this.resourcePopupStore.bringDialogRef.set(null);
+        this.insertVisibleSupplyContribution(nextEntry);
         this.syncPopupSubEventMetrics();
       })
       .catch(error => {
@@ -424,10 +566,6 @@ export class EventSupplyContributionsPopupComponent implements DoCheck {
 
   protected canDeleteSupplyContribution(row: AppDTOs.SubEventSupplyContributionRowDTO): boolean {
     return row.userId === this.activeUser().id;
-  }
-
-  protected isBringPending(): boolean {
-    return this.resourcePopupStore.bringDialogRef()?.busy === true;
   }
 
   protected requestDeleteSupplyContribution(row: AppDTOs.SubEventSupplyContributionRowDTO, event?: Event): void {
@@ -472,11 +610,8 @@ export class EventSupplyContributionsPopupComponent implements DoCheck {
     const savedState = await this.activityResourcesService.replaceSubEventResourceState(nextState);
     const resolvedState = ActivityResourceBuilder.normalizeState(savedState, nextState) ?? nextState;
     this.applyPersistedPopupState(resolvedState);
+    this.supplyContributionSmartList?.removeVisibleItemByIdentity(pending.entryId, { totalDelta: -1 });
     this.syncPopupSubEventMetrics();
-  }
-
-  protected supplyContributionTotalLabel(): string {
-    return this.quantityLabel(this.supplyContributionTotalQuantity());
   }
 
   protected addedLabel(addedAtIso: string): string {
@@ -501,7 +636,6 @@ export class EventSupplyContributionsPopupComponent implements DoCheck {
   private buildSupplyContributionRows(
     entries: readonly AppDTOs.SubEventSupplyContributionEntryDTO[]
   ): AppDTOs.SubEventSupplyContributionRowDTO[] {
-    void this.usersService.warmCachedUsers(entries.map(entry => entry.userId));
     return entries
       .map(entry => {
         const user = this.userById.get(entry.userId) ?? null;
@@ -518,6 +652,18 @@ export class EventSupplyContributionsPopupComponent implements DoCheck {
         };
       })
       .sort((a, b) => AppUtils.toSortableDate(b.addedAtIso) - AppUtils.toSortableDate(a.addedAtIso));
+  }
+
+  private insertVisibleSupplyContribution(entry: AppDTOs.SubEventSupplyContributionEntryDTO): void {
+    const smartList = this.supplyContributionSmartList;
+    const row = this.buildSupplyContributionRows([entry])[0];
+    if (!smartList || !row) {
+      return;
+    }
+    smartList.reinsertVisibleItem(row, {
+      totalDelta: 1,
+      loadedRange: 'before-or-within'
+    });
   }
 
   private buildPopupResourceState(
@@ -781,15 +927,6 @@ export class EventSupplyContributionsPopupComponent implements DoCheck {
       .reduce((sum, entry) => sum + AppUtils.clampNumber(Math.trunc(entry.quantity), 0, Number.MAX_SAFE_INTEGER), 0);
   }
 
-  private supplyContributionTotalQuantity(): number {
-    const context = this.resourcePopupStore.supplyPopupRef();
-    if (!context) {
-      return 0;
-    }
-    return this.subEventSupplyContributionEntries(context.subEventId, context.assetId)
-      .reduce((sum, entry) => sum + AppUtils.clampNumber(Math.trunc(entry.quantity), 0, Number.MAX_SAFE_INTEGER), 0);
-  }
-
   private abortPendingSupplyBringRequest(): void {
     this.pendingSupplyBringRequestVersion += 1;
     const controller = this.pendingSupplyBringAbortController;
@@ -913,24 +1050,4 @@ export class EventSupplyContributionsPopupComponent implements DoCheck {
     return name || 'Sub Event';
   }
 
-  private syncSupplyContributionVisibleRows(
-    rows: AppDTOs.SubEventSupplyContributionRowDTO[],
-    previousRowCount: number
-  ): void {
-    if (!this.supplyContributionListReady || !this.supplyContributionSmartList) {
-      return;
-    }
-
-    const visibleCount = Math.max(this.supplyContributionListVisibleCount, this.supplyContributionSmartList.itemsSnapshot().length);
-    const allRowsWereVisible = visibleCount >= previousRowCount;
-    let nextVisibleCount = Math.min(rows.length, visibleCount);
-
-    if (rows.length > previousRowCount && allRowsWereVisible) {
-      nextVisibleCount = Math.min(rows.length, visibleCount + 1);
-    }
-
-    this.supplyContributionSmartList.replaceVisibleItems(rows.slice(0, nextVisibleCount), {
-      total: rows.length
-    });
-  }
 }

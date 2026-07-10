@@ -238,6 +238,11 @@
   padding: 0;
 }
 
+.form-flow__body.is-swipe-blocked {
+  touch-action: pan-y;
+  overscroll-behavior-x: none;
+}
+
 .form-flow__track {
   display: flex;
   flex-wrap: nowrap;
@@ -257,6 +262,11 @@
   scrollbar-width: thin;
   scrollbar-color: #8aa0b8 #eaf1fa;
   scrollbar-gutter: stable;
+}
+
+.form-flow--grouped.form-flow--menu-overflow,
+.form-flow--grouped.form-flow--menu-overflow .form-flow__body {
+  overflow: visible;
 }
 
 .form-flow--grouped .form-flow__track {
@@ -393,6 +403,12 @@
     border-color: #ff9b9b;
     background: #fff1f1;
     color: #c1262e;
+  }
+
+  &.is-complete {
+    border-color: #8dcc9b;
+    background: #edf9f0;
+    color: #27733d;
   }
 
   mat-icon {
@@ -565,6 +581,54 @@
   grid-row: 2;
 }
 
+.form-flow__control-description {
+  display: block;
+  margin-top: 0.28rem;
+  color: #506885;
+  font-size: 0.76rem;
+  font-weight: 700;
+  line-height: 1.35;
+}
+
+.form-flow__control--with-accessory > .form-flow__control-description {
+  grid-column: 1 / -1;
+}
+
+.form-flow__checkbox {
+  min-height: var(--form-flow-input-height, 34px);
+  display: inline-flex;
+  align-items: center;
+  gap: 0.58rem;
+  color: #233e61;
+  font-size: 0.8rem;
+  font-weight: 700;
+  cursor: pointer;
+
+  input[type='checkbox'] {
+    flex: 0 0 17px;
+    width: 17px;
+    height: 17px;
+    min-height: 17px;
+    margin: 0;
+    padding: 0;
+    border: 0;
+    border-radius: 3px;
+    accent-color: #3477d4;
+    box-shadow: none;
+    cursor: inherit;
+  }
+
+  strong {
+    color: #c63838;
+    margin-left: 3px;
+  }
+
+  &:has(input:disabled) {
+    cursor: default;
+    opacity: 0.64;
+  }
+}
+
 .form-flow--grouped .form-flow__controls {
   gap: 12px 14px;
 }
@@ -645,7 +709,10 @@
 
   small {
     color: #71839b;
+    font-size: inherit;
     font-weight: 700;
+    line-height: 1;
+    font-variant-numeric: tabular-nums;
   }
 }
 

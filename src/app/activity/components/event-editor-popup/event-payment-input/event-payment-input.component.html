@@ -1,0 +1,50 @@
+<section
+  class="event-payment-input-card"
+  [class.event-payment-input-card--ready]="tone === 'ready'"
+  [class.event-payment-input-card--payment]="tone === 'payment'"
+  [class.event-payment-input-card--waiting]="tone === 'waiting'"
+  [class.event-payment-input-card--approval]="tone === 'approval'"
+>
+  <div class="event-payment-input-head">
+    <div class="event-payment-panel-title">
+      <mat-icon>payments</mat-icon>
+      <div>
+        <h3>{{ title }}</h3>
+        <p>{{ subtitle }}</p>
+      </div>
+    </div>
+    <span>{{ paymentProviderLabel() }}</span>
+  </div>
+
+  <div class="event-payment-status-grid">
+    <article>
+      <span>Összeg</span>
+      <strong>{{ formatMoney(totalAmount, currency) }}</strong>
+    </article>
+    <article>
+      <span>Állapot</span>
+      <strong>{{ paymentStatusLabel() }}</strong>
+    </article>
+  </div>
+
+  <p class="event-payment-note">{{ paymentNote() }}</p>
+
+  <div class="event-payment-field-grid">
+    <label>
+      <span>Kártyaszám</span>
+      <input type="text" value="4242 4242 4242 4242" disabled />
+    </label>
+    <label>
+      <span>Név a kártyán</span>
+      <input type="text" value="Demo User" disabled />
+    </label>
+    <label>
+      <span>Lejárat</span>
+      <input type="text" value="12 / 30" disabled />
+    </label>
+    <label>
+      <span>CVC</span>
+      <input type="text" value="123" disabled />
+    </label>
+  </div>
+</section>

@@ -714,7 +714,7 @@ const ACTIVITIES_VIEW_OPTIONS: Array<{ key: ActivitiesView; label: string; icon:
 ];
 const EVENT_EXPLORE_ORDER_OPTIONS: Array<{ key: EventExploreOrder; label: string; icon: string }> = [
   { key: 'upcoming', label: 'Upcoming', icon: 'event_upcoming' },
-  { key: 'past-events', label: 'Past Events', icon: 'history' },
+  { key: 'past-events', label: 'Korábbi', icon: 'history' },
   { key: 'nearby', label: 'Nearby', icon: 'near_me' },
   { key: 'most-relevant', label: 'Most Relevant', icon: 'auto_awesome' },
   { key: 'top-rated', label: 'Top Rated', icon: 'emoji_events' }

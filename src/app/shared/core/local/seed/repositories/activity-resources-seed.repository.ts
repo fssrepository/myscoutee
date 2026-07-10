@@ -89,9 +89,11 @@ export class SeedActivityResourcesRepository {
       currentAssetRequestsTable,
       ownedAssetsByUserId
     );
+    const assetJoinShowcaseRecords = this.buildAssetJoinShowcaseRecords(sourceRecords, ownedAssetsByUserId);
     const desiredRecords = this.uniqueSeededResourceRecords([
       ...generatedEventResourceRecords,
-      ...manualAssignmentResourceRecords
+      ...manualAssignmentResourceRecords,
+      ...assetJoinShowcaseRecords
     ]);
     const desiredRecordIds = new Set(desiredRecords.map(record => record.id));
     const managedUserIds = new Set(normalizedUserIds);
@@ -207,6 +209,65 @@ export class SeedActivityResourcesRepository {
     }
 
     return nextRecords;
+  }
+
+  private buildAssetJoinShowcaseRecords(
+    sourceRecordsByUserId: ReadonlyMap<string, readonly ActivityEventRecord[]>,
+    assetsByUserId: ReadonlyMap<string, readonly AssetRecord[]>
+  ): ActivitySubEventResourceRecord[] {
+    const event = (sourceRecordsByUserId.get('u3') ?? [])
+      .find(record => record.id === 'asset-join-demo-nagy-eszter');
+    const activeUserId = 'u3';
+    const assetManagerUserId = 'u4';
+    const asset = (assetsByUserId.get(assetManagerUserId) ?? [])
+      .find(record => record.id === `${assetManagerUserId}:asset-transport-3`);
+    const subEventId = 'asset-join-demo-nagy-eszter-transport-pickup';
+    if (!event || !asset || !this.resourceSeedSubEventIds(event).includes(subEventId)) {
+      return [];
+    }
+
+    const ref = this.normalizeRef({
+      ownerId: event.id,
+      subEventId,
+      assetOwnerUserId: activeUserId
+    });
+    if (!ref) {
+      return [];
+    }
+
+    const createdMs = AppUtils.anchorDate(environment.bootstrapOffsetInDays).getTime() + 50_000;
+    const createdAtIso = new Date(createdMs).toISOString();
+    return [{
+      id: this.resourceRecordId(ref),
+      status: 'A',
+      ownerKey: this.resourceOwnerKey(ref),
+      ownerId: ref.ownerId,
+      subEventId: ref.subEventId,
+      assetOwnerUserId: ref.assetOwnerUserId,
+      assetAssignmentIds: {
+        [AppConstants.ASSET_TYPE_TRANSPORT]: [asset.id]
+      },
+      assetSettingsByType: {
+        [AppConstants.ASSET_TYPE_TRANSPORT]: {
+          [asset.id]: {
+            capacityMin: 0,
+            capacityMax: Math.max(1, Math.trunc(Number(asset.capacityTotal) || 1)),
+            quantity: 1,
+            addedByUserId: assetManagerUserId,
+            routeEnabled: (asset.routes ?? []).length > 0,
+            routes: this.normalizeRoutes(asset.routes)
+          }
+        }
+      },
+      supplyContributionEntriesByAssetId: {},
+      fallbackAssetCardsByType: this.cloneFallbackAssetCardsByType({
+        [AppConstants.ASSET_TYPE_TRANSPORT]: [asset]
+      }),
+      createdMs,
+      updatedMs: createdMs,
+      createdAtIso,
+      updatedAtIso: createdAtIso
+    }];
   }
 
   private shouldSeedResourcesForParticipant(

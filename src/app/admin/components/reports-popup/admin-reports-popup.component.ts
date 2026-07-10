@@ -8,8 +8,7 @@ import {
   Component,
   TemplateRef,
   ViewChild,
-  inject,
-  signal
+  inject
 } from '@angular/core';
 import {
   MatIconModule
@@ -29,9 +28,11 @@ import {
 import {
   AppUtils
 } from '../../../shared/app-utils';
+import { I18nService } from '../../../shared/core/base/services/i18n.service';
 import {
   AdminModerationService,
   AdminWorkspaceDataService,
+  type AdminDashboardDto,
   type AdminModerationActionResult,
   type AdminReportedUserDto,
   type AdminReportDto
@@ -41,6 +42,7 @@ import {
   AppMenuOutletComponent,
   ActivityChatSingleRowConverter,
   ImageCardComponent,
+  I18nPipe,
   SingleRowComponent,
   SmartListComponent,
   type AppMenuItem,
@@ -54,6 +56,18 @@ import {
   type SmartListItemTemplateContext,
   type SmartListLoadPage
 } from '../../../shared/ui';
+import type {
+  AppMenuModel,
+  AppMenuPalette
+} from '../../../shared/ui/components/core/menu';
+import {
+  PopupComponent,
+  type PopupActionEvent,
+  type PopupControl,
+  type PopupMenuSelectEvent,
+  type PopupModel
+} from '../../../shared/ui/components/core/popup';
+import type { AdminReviewStatusFilter } from '../../../shared/core/base/services/admin-workspace-data.service';
 import type { ChatDTO } from '../../../shared/core/contracts/chat.interface';
 import type { UserDto } from '../../../shared/core/contracts/user.interface';
 import {
@@ -83,6 +97,7 @@ interface AdminReportListItem {
 
 interface AdminReportListFilters {
   revision?: number;
+  status?: AdminReviewStatusFilter;
 }
 
 interface AdminBlockedUserListItem {
@@ -97,14 +112,24 @@ interface AdminBlockedUserListFilters {
 
 type AdminReportMenuAction = 'warn' | 'block' | 'unblock' | 'view-chat';
 type AdminReportMenuSource = 'report-detail' | 'blocked-user';
+type AdminReviewStatusMenuItemId = 'review-status-filter' | `review-status:${AdminReviewStatusFilter}`;
 type AdminReportActionsMenuItemId =
   | `report-detail:${string}`
   | `blocked-user:${string}`;
+
+interface AdminReviewStatusMenuContext {
+  status: AdminReviewStatusFilter;
+}
+
+interface AdminReportRowMenuContext extends Record<string, unknown> {
+  reportItem: AdminReportListItem;
+}
 
 interface AdminReportActionsMenuContext {
   action: AdminReportMenuAction;
   source: AdminReportMenuSource;
   user: AdminReportedUserDto;
+  reportItem?: AdminReportListItem | null;
 }
 
 @Component({
@@ -118,7 +143,9 @@ interface AdminReportActionsMenuContext {
     SingleRowComponent,
     SmartListComponent,
     AdminChatReviewPopupComponent,
-    AdminItemPreviewPopupComponent
+    AdminItemPreviewPopupComponent,
+    PopupComponent,
+    I18nPipe
   ],
   templateUrl: './admin-reports-popup.component.html',
   styleUrl: './admin-reports-popup.component.scss',
@@ -134,9 +161,17 @@ export class AdminReportsPopupComponent {
   private readonly activitiesStore = inject(ActivitiesPopupStore);
   private readonly dialogStore = inject(DialogStore);
   private readonly location = inject(Location);
-  private readonly warnedUserIdsRef = signal<Set<string>>(new Set());
+  private readonly i18n = inject(I18nService);
   protected reportDetail: AdminReportListItem | null = null;
   protected blockedUsersOpen = false;
+  protected reportStatusFilter: AdminReviewStatusFilter = 'unresolved';
+  protected reportsSmartListQuery: Partial<ListQuery<AdminReportListFilters>> = {
+    filters: { status: 'unresolved' }
+  };
+  protected reportStatusCounts: Record<AdminReviewStatusFilter, number> = {
+    unresolved: 0,
+    resolved: 0
+  };
 
   protected reportItemTemplateRef?: TemplateRef<
     SmartListItemTemplateContext<AdminReportListItem, AdminReportListFilters>
@@ -152,6 +187,12 @@ export class AdminReportsPopupComponent {
     this.reportItemTemplateRef = value;
   }
 
+  @ViewChild('reportsSmartList')
+  private reportsSmartList?: SmartListComponent<AdminReportListItem, AdminReportListFilters>;
+
+  @ViewChild('blockedUsersSmartList')
+  private blockedUsersSmartList?: SmartListComponent<AdminBlockedUserListItem, AdminBlockedUserListFilters>;
+
   @ViewChild('blockedUserItemTemplate', { read: TemplateRef })
   protected set blockedUserItemTemplate(
     value: TemplateRef<SmartListItemTemplateContext<AdminBlockedUserListItem, AdminBlockedUserListFilters>> | undefined
@@ -163,8 +204,8 @@ export class AdminReportsPopupComponent {
     pageSize: 10,
     initialPageSize: 20,
     defaultView: 'day',
-    emptyLabel: 'No reports',
-    emptyDescription: 'No moderation reports are waiting for review.',
+    emptyLabel: 'admin.reports.empty.title',
+    emptyDescription: 'admin.reports.empty.description',
     showStickyHeader: true,
     showFirstGroupMarker: false,
     showGroupMarker: ({ groupIndex }) => groupIndex > 0,
@@ -192,8 +233,8 @@ export class AdminReportsPopupComponent {
     pageSize: 12,
     initialPageSize: 12,
     defaultView: 'day',
-    emptyLabel: 'No blocked users',
-    emptyDescription: 'No profiles are currently blocked by moderation.',
+    emptyLabel: 'admin.blocked.users.empty.title',
+    emptyDescription: 'admin.blocked.users.empty.description',
     showStickyHeader: true,
     showFirstGroupMarker: false,
     showGroupMarker: ({ groupIndex }) => groupIndex > 0,
@@ -216,6 +257,152 @@ export class AdminReportsPopupComponent {
   protected readonly blockedUsersSmartListLoadPage: SmartListLoadPage<AdminBlockedUserListItem, AdminBlockedUserListFilters> = (
     query
   ) => from(this.loadBlockedUsersPage(query));
+
+  protected reportsPopupModel(): PopupModel<AdminReviewStatusMenuContext> {
+    return {
+      title: 'reported.users',
+      subtitle: 'only.users.with.moderation.reports.are.visible.here',
+      ariaLabel: 'reported.users',
+      closeAriaLabel: 'close',
+      size: 'wide',
+      height: 'full',
+      headerTone: 'accent',
+      bodyLayout: 'fill',
+      headerActions: [
+        {
+          id: 'blocked-users',
+          icon: 'person_off',
+          label: 'blocked.users',
+          ariaLabel: 'open.blocked.users',
+          palette: 'danger',
+          counter: this.blockedUsersCount(),
+          disabled: this.blockedUsersCount() === 0,
+          compactOnMobile: true
+        }
+      ],
+      toolbarControls: [
+        this.reportStatusToolbarControl()
+      ],
+      onClose: () => this.admin.closePopup(),
+      onAction: event => this.onReportsPopupAction(event),
+      onMenuSelect: event => this.onReportsPopupMenuSelect(event)
+    };
+  }
+
+  protected reportDetailPopupModel(item: AdminReportListItem): PopupModel {
+    return {
+      title: 'report.details',
+      subtitle: this.reportListTitle(item),
+      ariaLabel: 'report.details',
+      closeAriaLabel: 'close',
+      size: 'wide',
+      height: 'auto',
+      headerTone: 'accent',
+      bodyLayout: 'fill',
+      backdropTone: 'dim',
+      onClose: () => this.closeReportDetails()
+    };
+  }
+
+  protected blockedUsersPopupModel(): PopupModel {
+    return {
+      title: 'blocked.users',
+      subtitle: 'admin.blocked.users.subtitle',
+      ariaLabel: 'blocked.users',
+      closeAriaLabel: 'close',
+      size: 'wide',
+      height: 'full',
+      headerTone: 'accent',
+      bodyLayout: 'fill',
+      backdropTone: 'dim',
+      onClose: () => this.closeBlockedUsers()
+    };
+  }
+
+  private onReportsPopupAction(event: PopupActionEvent): void {
+    if (event.action.id === 'blocked-users') {
+      this.openBlockedUsers(event.sourceEvent);
+    }
+  }
+
+  private onReportsPopupMenuSelect(event: PopupMenuSelectEvent<AdminReviewStatusMenuContext>): void {
+    const status = event.itemSelect.context?.status;
+    if (!status) {
+      return;
+    }
+    this.selectReportStatus(status, event.itemSelect.sourceEvent);
+  }
+
+  private selectReportStatus(status: AdminReviewStatusFilter, event?: Event): void {
+    event?.stopPropagation();
+    if (this.reportStatusFilter === status) {
+      return;
+    }
+    this.reportStatusFilter = status;
+    this.closeReportDetails();
+    this.reportsSmartListQuery = {
+      filters: { status }
+    };
+  }
+
+  private reportStatusToolbarControl(): PopupControl<AdminReviewStatusMenuContext> {
+    return {
+      kind: 'menu',
+      id: 'reports-review-status-filter',
+      align: 'end',
+      menuKind: 'inline',
+      model: this.reportStatusMenuModel(),
+      panelAlign: 'end'
+    };
+  }
+
+  private reportStatusMenuModel(): AppMenuModel<AdminReviewStatusMenuItemId, AdminReviewStatusMenuContext> {
+    return {
+      nodes: [
+        {
+          id: 'reports-review-status-root',
+          items: [
+            {
+              id: 'review-status-filter',
+              kind: 'select-trigger',
+              label: this.reviewStatusLabel(this.reportStatusFilter),
+              icon: this.reviewStatusIcon(this.reportStatusFilter),
+              palette: this.reviewStatusPalette(this.reportStatusFilter),
+              counter: this.reportStatusCount(this.reportStatusFilter),
+              ariaLabel: 'admin.reports.review.status.filter',
+              items: (['unresolved', 'resolved'] satisfies AdminReviewStatusFilter[]).map(status => ({
+                id: `review-status:${status}`,
+                kind: 'radio',
+                label: this.reviewStatusLabel(status),
+                icon: this.reviewStatusIcon(status),
+                palette: this.reviewStatusPalette(status),
+                surface: 'tinted',
+                checked: this.reportStatusFilter === status,
+                counter: this.reportStatusCount(status),
+                context: { status }
+              }))
+            }
+          ]
+        }
+      ]
+    };
+  }
+
+  private reviewStatusLabel(status: AdminReviewStatusFilter): string {
+    return status === 'resolved' ? 'admin.review.status.resolved' : 'admin.review.status.unresolved';
+  }
+
+  private reviewStatusIcon(status: AdminReviewStatusFilter): string {
+    return status === 'resolved' ? 'task_alt' : 'pending_actions';
+  }
+
+  private reviewStatusPalette(status: AdminReviewStatusFilter): AppMenuPalette {
+    return status === 'resolved' ? 'success' : 'warning';
+  }
+
+  private reportStatusCount(status: AdminReviewStatusFilter): number {
+    return Math.max(0, Math.trunc(Number(this.reportStatusCounts[status]) || 0));
+  }
 
   protected selectUser(user: AdminReportedUserDto): void {
     const firstReport = user.reports[0];
@@ -248,19 +435,35 @@ export class AdminReportsPopupComponent {
       surfaceTone: this.reportSingleRowTone(report),
       badges: [
         {
-          label: this.reportTime(report.createdDate),
-          tone: 'muted',
-          position: 'side'
-        },
-        {
           label: this.reportBadgeLabel(report),
+          title: this.reportBadgeLabel(report),
+          ariaLabel: this.reportBadgeLabel(report),
           tone: this.reportReasonBadgeTone(report),
-          position: 'side'
+          position: 'top-right'
         }
+      ],
+      menuActions: [
+        this.isReportResolved(report) ? 'markUnresolved' : 'markSolved'
       ],
       clickable: true,
       eagerDetail: item
     };
+  }
+
+  protected reportRowMenuContext(item: AdminReportListItem): AdminReportRowMenuContext {
+    return { reportItem: item };
+  }
+
+  protected onReportRowMenuSelect(event: AppMenuItemSelectEvent<string, unknown>): void {
+    const context = event.context as (AdminReportRowMenuContext & { action?: { id?: string } }) | undefined;
+    const actionId = `${context?.action?.id ?? ''}`.trim();
+    const item = context?.reportItem ?? null;
+    if (!item || (actionId !== 'markSolved' && actionId !== 'markUnresolved')) {
+      return;
+    }
+    event.sourceEvent.preventDefault();
+    event.sourceEvent.stopPropagation();
+    this.confirmReportResolved(item, actionId === 'markSolved');
   }
 
   protected closeReportDetails(): void {
@@ -284,22 +487,59 @@ export class AdminReportsPopupComponent {
     this.admin.openItemPreview(report);
   }
 
-  protected warnUser(user: AdminReportedUserDto): void {
-    this.admin.openWarnChat(user);
+  protected warnUser(user: AdminReportedUserDto, report?: AdminReportDto | null): void {
+    this.admin.openWarnChat(user, report);
   }
 
   protected blockUser(user: AdminReportedUserDto): void {
     this.dialogStore.open({
-      title: `Block ${user.name}?`,
-      message: 'The user will be blocked and a support chat message will be sent.',
-      confirmLabel: 'Block',
-      busyConfirmLabel: 'Blocking...',
+      title: this.i18nText('admin.reports.confirm.block.title', { user: user.name }),
+      message: 'admin.reports.confirm.block.message',
+      confirmLabel: 'admin.reports.action.block',
+      busyConfirmLabel: 'admin.reports.action.block.busy',
       confirmTone: 'danger',
       onConfirm: () => this.blockModerationUser(
         user.userId,
         'Your account has been blocked after moderation review. You can reply here to contact MyScoutee support and ask for a review.'
       )
     });
+  }
+
+  private confirmReportResolved(item: AdminReportListItem, resolved: boolean): void {
+    this.dialogStore.open({
+      title: resolved
+        ? 'admin.reports.confirm.mark.solved.title'
+        : 'admin.reports.confirm.mark.unresolved.title',
+      message: resolved
+        ? this.i18nText('admin.reports.confirm.mark.solved.message', {
+          user: item.report.reporterName || this.i18nText('admin.reports.fallback.reporter')
+        })
+        : 'admin.reports.confirm.mark.unresolved.message',
+      confirmLabel: resolved ? 'admin.review.action.mark.solved' : 'admin.review.action.mark.unresolved',
+      busyConfirmLabel: resolved ? 'admin.review.action.mark.solved.busy' : 'admin.review.action.mark.unresolved.busy',
+      confirmTone: resolved ? 'accent' : 'warning',
+      ringPerimeter: 112,
+      onConfirm: () => this.setReportResolved(item, resolved)
+    });
+  }
+
+  private i18nText(key: string, values: Record<string, string> = {}): string {
+    let text = this.i18n.translate(key);
+    Object.entries(values).forEach(([name, value]) => {
+      text = text.split(`{${name}}`).join(value);
+    });
+    return text;
+  }
+
+  private async setReportResolved(item: AdminReportListItem, resolved: boolean): Promise<void> {
+    const dashboard = await this.workspaceData.setReportResolved(
+      item.report.id,
+      resolved,
+      this.workspace.currentAdminUserId()
+    );
+    this.applyReportDashboard(dashboard);
+    this.closeReportDetails();
+    this.reportsSmartList?.removeVisibleItemByIdentity(item.id, { totalDelta: -1 });
   }
 
   protected reportedUserImageCard(
@@ -348,9 +588,10 @@ export class AdminReportsPopupComponent {
 
   protected reportedUserMenuItems(
     user: AdminReportedUserDto,
-    source: AdminReportMenuSource
+    source: AdminReportMenuSource,
+    reportItem?: AdminReportListItem | null
   ): readonly AppMenuItem<string, unknown>[] {
-    return this.reportActionItems(user, source) as readonly AppMenuItem<string, unknown>[];
+    return this.reportActionItems(user, source, reportItem) as readonly AppMenuItem<string, unknown>[];
   }
 
   protected onReportActionsMenuSelect(event: AppMenuItemSelectEvent<string, unknown>): void {
@@ -360,7 +601,7 @@ export class AdminReportsPopupComponent {
     }
     switch (context.action) {
       case 'warn':
-        this.warnBlockedUser(context.user, event.sourceEvent);
+        this.warnReportedUser(context.user, context.reportItem, event.sourceEvent);
         break;
       case 'block':
         event.sourceEvent.preventDefault();
@@ -384,10 +625,13 @@ export class AdminReportsPopupComponent {
     return this.blockedUsers().length;
   }
 
-  protected warnBlockedUser(user: AdminReportedUserDto, event?: Event): void {
+  protected warnReportedUser(user: AdminReportedUserDto, reportItem?: AdminReportListItem | null, event?: Event): void {
     event?.preventDefault();
     event?.stopPropagation();
-    this.warnUser(user);
+    if (reportItem) {
+      this.admin.openReportDetail(reportItem.user, reportItem.report);
+    }
+    this.warnUser(user, reportItem?.report ?? null);
   }
 
   protected viewBlockedUserChat(user: AdminReportedUserDto, event?: Event): void {
@@ -402,35 +646,72 @@ export class AdminReportsPopupComponent {
     event?.preventDefault();
     event?.stopPropagation();
     this.dialogStore.open({
-      title: `Unblock ${user.name}?`,
-      message: 'The user profile status will be restored and they can use MyScoutee again.',
-      confirmLabel: 'Unblock',
-      busyConfirmLabel: 'Unblocking...',
+      title: this.i18nText('admin.reports.confirm.unblock.title', { user: user.name }),
+      message: 'admin.reports.confirm.unblock.message',
+      confirmLabel: 'admin.reports.action.unblock',
+      busyConfirmLabel: 'admin.reports.action.unblock.busy',
       confirmTone: 'accent',
+      confirmPalette: 'success',
       onConfirm: () => this.unblockModerationUser(user.userId)
     });
   }
 
   private reportActionItems(
     user: AdminReportedUserDto,
-    source: AdminReportMenuSource
+    source: AdminReportMenuSource,
+    reportItem?: AdminReportListItem | null
   ): AppMenuItem<AdminReportActionsMenuItemId, AdminReportActionsMenuContext>[] {
-    if (source === 'blocked-user' || this.isUserBlocked(user)) {
+    if (this.isUserBlocked(user)) {
       return [
-        this.reportActionItem(user, source, 'unblock', 'Unblock user', 'lock_open'),
-        this.reportActionItem(user, source, 'view-chat', 'View chat', 'forum', undefined, this.visibleSupportChatUnread(user))
+        this.reportActionItem(user, source, 'unblock', 'unblock.user', 'lock_open', 'success', undefined, reportItem),
+        this.reportActionItem(
+          user,
+          source,
+          'view-chat',
+          'view.chat',
+          'forum',
+          'blue',
+          this.visibleSupportChatUnread(user),
+          reportItem
+        )
       ];
     }
-    if (this.hasSupportChat(user)) {
+    if (source === 'blocked-user') {
       return [
-        this.reportActionItem(user, source, 'view-chat', 'View chat', 'forum', undefined, this.visibleSupportChatUnread(user)),
-        this.reportActionItem(user, source, 'block', 'Block user', 'block', 'danger')
+        this.reportActionItem(user, source, 'block', 'block.user', 'block', 'danger', undefined, reportItem),
+        this.reportActionItem(
+          user,
+          source,
+          'view-chat',
+          'view.chat',
+          'forum',
+          'blue',
+          this.visibleSupportChatUnread(user),
+          reportItem
+        )
       ];
     }
-    return [
-      this.reportActionItem(user, source, 'warn', 'Warn in chat', 'chat'),
-      this.reportActionItem(user, source, 'block', 'Block user', 'block', 'danger')
-    ];
+    const warned = this.isReportWarned(reportItem?.report);
+    const items: AppMenuItem<AdminReportActionsMenuItemId, AdminReportActionsMenuContext>[] = [];
+    if (!warned) {
+      items.push(this.reportActionItem(user, source, 'warn', 'warn', 'chat', 'warning', undefined, reportItem));
+    }
+    if (warned) {
+      items.push(
+        this.reportActionItem(
+          user,
+          source,
+          'view-chat',
+          'view.chat',
+          'forum',
+          'blue',
+          this.visibleSupportChatUnread(user),
+          reportItem
+        )
+      );
+    }
+    items.push(this.reportActionItem(user, source, 'block', 'block.user', 'block', 'danger', undefined, reportItem));
+    return items;
   }
 
   private reportActionItem(
@@ -439,16 +720,23 @@ export class AdminReportsPopupComponent {
     action: AdminReportMenuAction,
     label: string,
     icon: string,
-    palette?: 'danger',
-    counter?: number | null
+    palette?: AppMenuPalette,
+    counter?: number | null,
+    reportItem?: AdminReportListItem | null
   ): AppMenuItem<AdminReportActionsMenuItemId, AdminReportActionsMenuContext> {
+    const userId = user.userId || 'member';
+    const reportId = reportItem?.report.id || userId;
+    const scopeId = source === 'report-detail'
+      ? `${reportId}:${userId}`
+      : userId;
     return {
-      id: `${source}:${user.userId || 'member'}:${action}` as AdminReportActionsMenuItemId,
+      id: `${source}:${scopeId}:${action}` as AdminReportActionsMenuItemId,
       label,
       icon,
       palette,
+      surface: palette ? 'tinted' : undefined,
       counter,
-      context: { action, source, user }
+      context: { action, source, user, reportItem: reportItem ?? null }
     };
   }
 
@@ -462,10 +750,8 @@ export class AdminReportsPopupComponent {
     return `${resolved?.profileStatus ?? user?.profileStatus ?? ''}`.trim() === 'blocked';
   }
 
-  protected hasSupportChat(user: AdminReportedUserDto): boolean {
-    const userId = `${user.userId ?? ''}`.trim();
-    const resolved = this.resolveDashboardReportedUser(userId) ?? user;
-    return Boolean(resolved.hasSupportChat) || this.warnedUserIdsRef().has(userId);
+  protected isReportWarned(report: AdminReportDto | null | undefined): boolean {
+    return `${report?.warnedAtIso ?? ''}`.trim().length > 0;
   }
 
   protected supportChatUnread(user: AdminReportedUserDto): number {
@@ -564,6 +850,14 @@ export class AdminReportsPopupComponent {
 
   protected reportReasonBadgeTone(report: AdminReportDto): NonNullable<SingleRowData['sideLabelTone']> {
     return this.reportSingleRowTone(report);
+  }
+
+  protected isReportResolved(report: AdminReportDto): boolean {
+    return `${report.resolvedAtIso ?? ''}`.trim().length > 0;
+  }
+
+  protected reportReviewStatus(report: AdminReportDto): AdminReviewStatusFilter {
+    return this.isReportResolved(report) ? 'resolved' : 'unresolved';
   }
 
   protected reportTime(value: string | null | undefined): string {
@@ -721,7 +1015,8 @@ export class AdminReportsPopupComponent {
       this.userProfileStore.activeAdminUser(),
       message
     );
-    this.applyModerationActionResult(normalizedUserId, result, { markWarned: true });
+    this.applyModerationActionResult(normalizedUserId, result);
+    this.syncBlockedUserVisibleCard(normalizedUserId);
   }
 
   private async unblockModerationUser(userId: string): Promise<void> {
@@ -734,12 +1029,12 @@ export class AdminReportsPopupComponent {
       this.userProfileStore.activeAdminUser()
     );
     this.applyModerationActionResult(normalizedUserId, result);
+    this.syncBlockedUserVisibleCard(normalizedUserId);
   }
 
   private applyModerationActionResult(
     userId: string,
-    result: AdminModerationActionResult | null | undefined,
-    options: { markWarned?: boolean } = {}
+    result: AdminModerationActionResult | null | undefined
   ): void {
     if (!result) {
       return;
@@ -749,9 +1044,6 @@ export class AdminReportsPopupComponent {
     }
     if (result.userPatch) {
       this.workspace.patchModerationUser(result.userPatch);
-    }
-    if (options.markWarned === true) {
-      this.markUserWarned(userId);
     }
     this.refreshSelectedReportedUser(userId);
   }
@@ -768,24 +1060,27 @@ export class AdminReportsPopupComponent {
     ].find(user => user.userId === normalizedUserId) ?? null;
   }
 
-  private markUserWarned(userId: string): void {
-    const normalizedUserId = `${userId ?? ''}`.trim();
-    if (!normalizedUserId) {
-      return;
-    }
-    this.warnedUserIdsRef.update(current => {
-      const next = new Set(current);
-      next.add(normalizedUserId);
-      return next;
-    });
-  }
-
   private refreshSelectedReportedUser(userId: string): void {
     const selected = this.admin.selectedReportedUser();
     if (!selected || selected.userId !== userId) {
       return;
     }
     this.admin.setSelectedReportedUser(this.resolveDashboardReportedUser(userId) ?? selected);
+  }
+
+  private syncBlockedUserVisibleCard(userId: string): void {
+    if (!this.blockedUsersOpen) {
+      return;
+    }
+    const user = this.resolveDashboardReportedUser(userId);
+    if (!user) {
+      return;
+    }
+    const item = this.buildBlockedUserListItem(user);
+    const removed = this.blockedUsersSmartList?.removeVisibleItemByIdentity(item.id) ?? false;
+    if (removed) {
+      this.blockedUsersSmartList?.reinsertVisibleItem(item, { loadedRange: 'any' });
+    }
   }
 
   private openBlockedUserChat(user: AdminReportedUserDto): void {
@@ -822,7 +1117,7 @@ export class AdminReportsPopupComponent {
   }
 
   private async loadReportsPage(query: ListQuery<AdminReportListFilters>): Promise<PageResult<AdminReportListItem>> {
-    const rows = this.reportRowsForUsers(await this.loadReportedUsers());
+    const rows = this.reportRowsForUsers(await this.loadReportedUsers(query.filters?.status ?? this.reportStatusFilter));
     const pageSize = Math.max(1, Math.trunc(Number(query.pageSize) || 24));
     const page = Math.max(0, Math.trunc(Number(query.page) || 0));
     const start = page * pageSize;
@@ -845,10 +1140,23 @@ export class AdminReportsPopupComponent {
     };
   }
 
-  private async loadReportedUsers(): Promise<AdminReportedUserDto[]> {
-    return this.workspace.applyReportedUsers(
-      await this.workspaceData.loadReportedUsers(this.workspace.currentAdminUserId())
-    );
+  private async loadReportedUsers(status: AdminReviewStatusFilter): Promise<AdminReportedUserDto[]> {
+    return this.applyReportDashboard(
+      await this.workspaceData.loadReportedUsersDashboard(this.workspace.currentAdminUserId(), status)
+    ).reportedUsers;
+  }
+
+  private applyReportDashboard(dashboard: AdminDashboardDto): AdminDashboardDto {
+    const normalized = this.workspace.applyDashboard(dashboard);
+    this.applyReportStatusCounts(normalized);
+    return normalized;
+  }
+
+  private applyReportStatusCounts(dashboard: AdminDashboardDto): void {
+    this.reportStatusCounts = {
+      unresolved: Math.max(0, Math.trunc(Number(dashboard.reviewCounts?.reportsUnresolved) || 0)),
+      resolved: Math.max(0, Math.trunc(Number(dashboard.reviewCounts?.reportsResolved) || 0))
+    };
   }
 
   private async loadBlockedUsers(): Promise<AdminReportedUserDto[]> {
@@ -858,13 +1166,17 @@ export class AdminReportsPopupComponent {
   }
 
   private blockedUserRowsForUsers(users: readonly AdminReportedUserDto[]): AdminBlockedUserListItem[] {
-    return users.map(user => ({
+    return users.map(user => this.buildBlockedUserListItem(user)).sort((first, second) =>
+      Date.parse(this.blockedDate(second.user)) - Date.parse(this.blockedDate(first.user))
+    );
+  }
+
+  private buildBlockedUserListItem(user: AdminReportedUserDto): AdminBlockedUserListItem {
+    return {
       id: user.userId,
       user,
       row: this.buildBlockedUserActivityRow(user)
-    })).sort((first, second) =>
-      Date.parse(this.blockedDate(second.user)) - Date.parse(this.blockedDate(first.user))
-    );
+    };
   }
 
   private buildBlockedUserActivityRow(user: AdminReportedUserDto): SingleRowData {

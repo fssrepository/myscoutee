@@ -1,25 +1,43 @@
-<div class="ui-popup" [style.z-index]="zIndex ?? null">
+<div
+  class="ui-popup"
+  [class.ui-popup--fullscreen]="popupModel.size === 'fullscreen'"
+  [class.ui-popup--auto-height]="popupModel.height !== 'full' && popupModel.size !== 'fullscreen'"
+  [style.z-index]="zIndex ?? null"
+>
   <div class="ui-popup__backdrop" [ngClass]="backdropToneClass()" (click)="onBackdropClick($event)"></div>
   <section
     class="ui-popup__panel"
     [ngClass]="[panelSizeClass(), panelHeightClass()]"
+    [class.ui-popup__panel--overflow-visible]="popupModel.bodyLayout === 'overflow'"
     role="dialog"
     aria-modal="true"
     [attr.aria-label]="ariaLabel"
     (click)="onPanelClick($event)"
   >
     @if (hasHeader) {
-      <header class="ui-popup__header" [ngClass]="headerToneClass()">
+      <header class="ui-popup__header" [ngClass]="[headerToneClass(), headerLayoutClass(), headerPaletteClass(), headerTitleToneClass()]">
         <div class="ui-popup__title">
+          @if (popupModel.headerLabel) {
+            <span class="ui-popup__label" [attr.data-i18n-ignore]="popupModel.translateHeaderLabel === false ? '' : null">
+              @if (popupModel.headerLabelIcon) {
+                <mat-icon>{{ popupModel.headerLabelIcon }}</mat-icon>
+              }
+              <span>{{ popupModel.translateHeaderLabel === false ? popupModel.headerLabel : (popupModel.headerLabel | i18n) }}</span>
+            </span>
+          }
           @if (popupModel.title) {
-            <h2>{{ popupModel.title | i18n }}</h2>
+            <h2 [attr.data-i18n-ignore]="popupModel.translateTitle === false ? '' : null">
+              {{ popupModel.translateTitle === false ? popupModel.title : (popupModel.title | i18n) }}
+            </h2>
           }
           @if (popupModel.subtitle) {
-            <p class="ui-popup__subtitle">{{ popupModel.subtitle | i18n }}</p>
+            <p class="ui-popup__subtitle" [attr.data-i18n-ignore]="popupModel.translateSubtitle === false ? '' : null">
+              {{ popupModel.translateSubtitle === false ? popupModel.subtitle : (popupModel.subtitle | i18n) }}
+            </p>
           }
           @if (popupModel.secondarySubtitle) {
-            <p class="ui-popup__subtitle ui-popup__subtitle--secondary">
-              {{ popupModel.secondarySubtitle | i18n }}
+            <p class="ui-popup__subtitle ui-popup__subtitle--secondary" [attr.data-i18n-ignore]="popupModel.translateSecondarySubtitle === false ? '' : null">
+              {{ popupModel.translateSecondarySubtitle === false ? popupModel.secondarySubtitle : (popupModel.secondarySubtitle | i18n) }}
             </p>
           }
         </div>
@@ -64,12 +82,20 @@
                   @if (control.label) {
                     <span>{{ control.label | i18n }}</span>
                   }
+                  @if (actionCounterValue(control)) {
+                    <span class="ui-popup__action-counter">{{ actionCounterValue(control) }}</span>
+                  }
                 </button>
               }
             }
           </div>
         }
-        <div class="ui-popup__header-actions" [class.ui-popup__header-actions--empty]="!hasHeaderActions && !showClose">
+        <div class="ui-popup__header-actions" [class.ui-popup__header-actions--empty]="!hasHeaderBadge && !hasHeaderActions && !showClose">
+          @if (popupModel.headerBadge) {
+            <span class="ui-popup__badge" [attr.data-i18n-ignore]="popupModel.translateHeaderBadge === false ? '' : null">
+              {{ popupModel.translateHeaderBadge === false ? popupModel.headerBadge : (popupModel.headerBadge | i18n) }}
+            </span>
+          }
           @for (headerAction of headerActions; track headerAction.id) {
             <button
               type="button"
@@ -86,6 +112,9 @@
               @if (headerAction.label) {
                 <span>{{ headerAction.label | i18n }}</span>
               }
+              @if (actionCounterValue(headerAction)) {
+                <span class="ui-popup__action-counter">{{ actionCounterValue(headerAction) }}</span>
+              }
             </button>
           }
           @if (showClose) {
@@ -97,8 +126,19 @@
       </header>
     }
 
+    @if (!hasHeader && showClose) {
+      <button type="button" class="ui-popup__close ui-popup__close--floating" (click)="emitClose($event)" [attr.aria-label]="closeAriaLabel">
+        <mat-icon>close</mat-icon>
+      </button>
+    }
+
     @if (hasToolbar) {
-      <div class="ui-popup__toolbar">
+      <div
+        class="ui-popup__toolbar"
+        [class.ui-popup__toolbar--mobile-start]="popupModel.toolbarMobileAlign === 'start'"
+        [class.ui-popup__toolbar--mobile-center]="popupModel.toolbarMobileAlign === 'center'"
+        [class.ui-popup__toolbar--mobile-end]="popupModel.toolbarMobileAlign === 'end'"
+      >
         @if (hasToolbarStartControls) {
           <div class="ui-popup__toolbar-group ui-popup__toolbar-group--start">
             @for (control of toolbarStartControls; track control.id) {
@@ -139,6 +179,9 @@
                   <mat-icon>{{ control.icon }}</mat-icon>
                   @if (control.label) {
                     <span>{{ control.label | i18n }}</span>
+                  }
+                  @if (actionCounterValue(control)) {
+                    <span class="ui-popup__action-counter">{{ actionCounterValue(control) }}</span>
                   }
                 </button>
               }
@@ -185,6 +228,9 @@
                   <mat-icon>{{ control.icon }}</mat-icon>
                   @if (control.label) {
                     <span>{{ control.label | i18n }}</span>
+                  }
+                  @if (actionCounterValue(control)) {
+                    <span class="ui-popup__action-counter">{{ actionCounterValue(control) }}</span>
                   }
                 </button>
               }

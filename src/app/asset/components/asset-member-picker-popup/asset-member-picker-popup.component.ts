@@ -11,12 +11,6 @@ import {
   inject
 } from '@angular/core';
 import {
-  MatButtonModule
-} from '@angular/material/button';
-import {
-  MatIconModule
-} from '@angular/material/icon';
-import {
   from
 } from 'rxjs';
 
@@ -24,8 +18,8 @@ import {
   AppUtils
 } from '../../../shared/app-utils';
 import {
-  AppMenuComponent,
   ImageCardComponent,
+  PopupComponent,
   SmartListComponent,
   type AppMenuItem,
   type AppMenuItemSelectEvent,
@@ -35,6 +29,8 @@ import {
   type ImageCardMediaActionEvent,
   type ListQuery,
   type PageResult,
+  type PopupControl,
+  type PopupModel,
   type SmartListConfig,
   type SmartListItemTemplateContext,
   type SmartListLoaders,
@@ -73,9 +69,7 @@ type AssetMemberPickerMenuContext =
   selector: 'app-asset-member-picker-popup',
   standalone: true,
   imports: [
-    MatButtonModule,
-    MatIconModule,
-    AppMenuComponent,
+    PopupComponent,
     SmartListComponent,
     ImageCardComponent
   ],
@@ -147,6 +141,51 @@ export class AssetMemberPickerPopupComponent {
   protected readonly inviteSmartListLoaders: SmartListLoaders<ActivityContracts.ActivityMemberDTO, ActivityInviteFilters> = {
     list: query => from(this.loadInviteCandidatesPage(query))
   };
+
+  protected invitePopupModel(): PopupModel<AssetMemberPickerMenuContext> {
+    return {
+      title: 'Invite members',
+      subtitle: this.title !== 'Invite members' ? this.title : null,
+      translateSubtitle: false,
+      ariaLabel: 'Invite members',
+      closeAriaLabel: 'Close',
+      size: 'wide',
+      height: 'full',
+      headerTone: 'accent',
+      bodyLayout: 'fill',
+      headerControls: this.invitePopupHeaderControls(),
+      toolbarControls: this.invitePopupToolbarControls(),
+      onClose: event => this.closeInvitePopup(event),
+      onMenuSelect: event => this.onInviteMenuSelect(event.itemSelect)
+    };
+  }
+
+  protected invitePopupZIndex(): number {
+    return 12480;
+  }
+
+  private invitePopupHeaderControls(): PopupControl<AssetMemberPickerMenuContext>[] {
+    return [{
+      kind: 'menu',
+      id: 'invite-actions',
+      menuKind: 'inline',
+      items: this.inviteConfirmMenuItems(),
+      panelAlign: 'end',
+      mobileBreakpointPx: 900,
+      closeOnSelect: false
+    }];
+  }
+
+  private invitePopupToolbarControls(): PopupControl<AssetMemberPickerMenuContext>[] {
+    return [{
+      kind: 'menu',
+      id: 'invite-sort',
+      align: 'end',
+      trigger: this.inviteSortMenuTrigger(),
+      items: this.inviteSortMenuItems(),
+      mobileBreakpointPx: 900
+    }];
+  }
 
   constructor() {
     effect(() => {

@@ -96,6 +96,7 @@ export interface ActivityEventSeedItem {
   boost?: number;
   affinity?: number;
   ticketing?: boolean;
+  approvalRequired?: boolean;
 }
 
 export interface ActivityHostingSeedItem extends ActivityEventSeedItem {}

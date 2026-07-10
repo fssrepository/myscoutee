@@ -42,7 +42,7 @@
 }
 
 .date-input--single.date-input--with-meta {
-  grid-template-columns: minmax(0, 1fr) minmax(120px, 1fr);
+  grid-template-columns: minmax(0, 1fr) max-content;
   align-items: end;
 }
 
@@ -396,6 +396,7 @@
 .date-input__meta {
   display: grid;
   gap: 0.34rem;
+  justify-items: start;
   min-width: 0;
 }
 
@@ -604,7 +605,8 @@
   }
 
   .date-input--single.date-input--with-meta {
-    grid-template-columns: 1fr;
+    grid-template-columns: minmax(0, 1fr) max-content;
+    column-gap: 0.5rem;
   }
 
   .date-input--with-time .date-input__row {
@@ -627,6 +629,24 @@
 }
 
 @media (max-width: 520px) {
+  .date-input--single.date-input--with-meta {
+    column-gap: 0.42rem;
+  }
+
+  .date-input__meta-badge {
+    min-height: 36px;
+    padding: 0 10px;
+    gap: 6px;
+    font-size: 0.84rem;
+  }
+
+  .date-input__meta-icon {
+    width: 16px;
+    height: 16px;
+    font-size: 16px;
+    line-height: 16px;
+  }
+
   .date-input--with-time .date-input__row {
     grid-template-columns: minmax(0, 1fr) minmax(86px, 104px);
     gap: 0.42rem;

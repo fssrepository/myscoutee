@@ -4,6 +4,7 @@ import {
 import {
   Component,
   computed,
+  effect,
   inject,
   signal
 } from '@angular/core';
@@ -13,6 +14,7 @@ import {
 
 import {
   AdminStatsService,
+  I18nService,
   type AdminStatsBreakdownItemDto,
   type AdminStatsDashboardDto,
   type AdminStatsGraphDto,
@@ -30,6 +32,11 @@ import {
   IndicatorComponent
 } from '../../../shared/ui/components/core/indicator';
 import {
+  PopupComponent,
+  type PopupActionEvent,
+  type PopupModel
+} from '../../../shared/ui/components/core/popup';
+import {
   AdminMenuStore
 } from '../../../shared/ui/context/stores/admin-menu.store';
 import { UserProfileStore } from '../../../shared/ui/context/stores/user-profile.store';
@@ -43,13 +50,14 @@ type AdminStatsGraphAction = { key: string; labelKey: string; icon: string; tone
 @Component({
   selector: 'app-admin-stats-popup',
   standalone: true,
-  imports: [CommonModule, MatIconModule, IndicatorComponent, I18nPipe],
+  imports: [CommonModule, MatIconModule, IndicatorComponent, I18nPipe, PopupComponent],
   templateUrl: './admin-stats-popup.component.html',
   styleUrl: './admin-stats-popup.component.scss'
 })
 export class AdminStatsPopupComponent {
   protected readonly admin = inject(AdminMenuStore);
   protected readonly statsService = inject(AdminStatsService);
+  private readonly i18n = inject(I18nService);
   private readonly userProfileStore = inject(UserProfileStore);
   protected readonly loading = signal(false);
   protected readonly error = signal('');
@@ -68,6 +76,8 @@ export class AdminStatsPopupComponent {
   protected readonly revenue = computed(() => this.stats()?.revenue ?? null);
   protected readonly graphBridgeUsers = computed(() => this.graph()?.bridgeUsers.slice(0, 5) ?? []);
   protected readonly graphCommunities = computed(() => this.graph()?.communities.slice(0, 5) ?? []);
+  private loadGeneration = 0;
+  private popupOpen = false;
   protected readonly timelineMetrics: { key: AdminStatsTimelineMetric; labelKey: string; tone: string }[] = [
     { key: 'activeUsers', labelKey: 'stats.timeline.active.users', tone: 'blue' },
     { key: 'registrations', labelKey: 'stats.timeline.registrations', tone: 'green' },
@@ -91,11 +101,74 @@ export class AdminStatsPopupComponent {
     { key: 'payingUsers', labelKey: 'stats.revenue.timeline.paying.users', tone: 'purple' }
   ];
   constructor() {
-    void this.load();
+    effect(() => {
+      const isOpen = this.admin.activePopup() === 'stats';
+      if (isOpen && !this.popupOpen) {
+        this.popupOpen = true;
+        this.resetForOpen();
+        queueMicrotask(() => void this.load());
+        return;
+      }
+      if (!isOpen && this.popupOpen) {
+        this.popupOpen = false;
+        this.cancelActiveLoad();
+      }
+    });
   }
 
   protected close(): void {
     this.admin.closePopup();
+  }
+
+  protected statsPopupModel(): PopupModel {
+    return {
+      title: 'stats',
+      subtitle: this.statsSubtitle(),
+      ariaLabel: 'stats',
+      closeAriaLabel: 'close',
+      size: 'wide',
+      height: 'full',
+      headerTone: 'accent',
+      bodyLayout: 'fill',
+      headerActions: [
+        {
+          id: 'stats-refresh',
+          icon: 'refresh',
+          ariaLabel: 'refresh.stats',
+          palette: 'blue',
+          disabled: this.loading(),
+          compactOnMobile: true
+        }
+      ],
+      onClose: () => this.close(),
+      onAction: event => this.onStatsPopupAction(event)
+    };
+  }
+
+  protected graphHelpPopupModel(): PopupModel {
+    return {
+      title: 'stats.graph.help.title',
+      subtitle: 'stats.graph.help.intro',
+      ariaLabel: 'stats.graph.help.title',
+      closeAriaLabel: 'close',
+      size: 'default',
+      height: 'auto',
+      headerTone: 'accent',
+      backdropTone: 'dim',
+      onClose: () => this.closeGraphHelp()
+    };
+  }
+
+  private onStatsPopupAction(event: PopupActionEvent): void {
+    if (event.action.id === 'stats-refresh') {
+      void this.refresh();
+    }
+  }
+
+  private statsSubtitle(): string {
+    const label = this.i18n.translate('stats.snapshot.subtitle');
+    const date = this.formatDate(this.stats()?.generatedAtIso);
+    return date ? `${label}: ${date}` : label;
   }
 
   protected openGraphHelp(): void {
@@ -613,13 +686,14 @@ export class AdminStatsPopupComponent {
   }
 
   private async load(): Promise<void> {
-    if (this.loading()) {
-      return;
-    }
+    const generation = ++this.loadGeneration;
     this.loading.set(true);
     this.error.set('');
     try {
       const dashboard = await this.statsService.loadStatsDashboard(this.activeAdminId());
+      if (generation !== this.loadGeneration) {
+        return;
+      }
       this.stats.set(dashboard);
       this.selectedTimeline.set(dashboard.timeline.at(-1) ?? null);
       this.selectedGraphTimeline.set(dashboard.graph.timeline.at(-1) ?? null);
@@ -629,10 +703,38 @@ export class AdminStatsPopupComponent {
         value: `${dashboard.graph.healthScore}`
       });
     } catch (error) {
-      this.error.set(error instanceof Error ? error.message : 'Unable to load stats.');
+      if (generation === this.loadGeneration) {
+        this.error.set(error instanceof Error ? error.message : 'Unable to load stats.');
+      }
     } finally {
-      this.loading.set(false);
+      if (generation === this.loadGeneration) {
+        this.loading.set(false);
+      }
     }
+  }
+
+  private resetForOpen(): void {
+    this.loadGeneration += 1;
+    this.error.set('');
+    this.stats.set(null);
+    this.selectedTimeline.set(null);
+    this.selectedGraphTimeline.set(null);
+    this.selectedRevenueTimeline.set(null);
+    this.selectedGraphFocus.set(null);
+    this.graphHelpOpen.set(false);
+    this.timelineDragging.set(false);
+    this.graphTimelineDragging.set(false);
+    this.revenueTimelineDragging.set(false);
+    this.loading.set(true);
+  }
+
+  private cancelActiveLoad(): void {
+    this.loadGeneration += 1;
+    this.loading.set(false);
+    this.graphHelpOpen.set(false);
+    this.timelineDragging.set(false);
+    this.graphTimelineDragging.set(false);
+    this.revenueTimelineDragging.set(false);
   }
 
   private updateTimelineFromPointer(event: PointerEvent, points: AdminStatsTimelinePointDto[]): void {

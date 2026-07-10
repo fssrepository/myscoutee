@@ -3,6 +3,7 @@ import { ActivityResourceBuilder } from '../../../base/builders';
 import type { UserDto } from '../../../contracts/user.interface';
 import type {
   ActivityMemberDTO,
+  ActivityMemberInvolvementDTO,
   ActivityMemberOwnerRef,
   ActivityMembersSummaryDto,
   ActivityInviteCandidatesQuery
@@ -84,7 +85,8 @@ export interface LocalActivityMembersOwnerSnapshot {
 export class LocalActivityMembersBuilder {
   static toEntry(
     record: ActivityMemberRecord,
-    resolveProfile: ActivityMemberProfileResolver
+    resolveProfile: ActivityMemberProfileResolver,
+    involvementRecords: readonly ActivityMemberRecord[] = []
   ): ActivityMemberDTO {
     return {
       id: record.id,
@@ -104,6 +106,7 @@ export class LocalActivityMembersBuilder {
       actionAtIso: record.actionAtIso,
       metWhere: record.metWhere,
       avatarUrl: record.avatarUrl,
+      involvements: this.toInvolvementEntries(involvementRecords),
       profile: resolveProfile(record.userId, {
         name: record.name,
         initials: record.initials,
@@ -121,12 +124,13 @@ export class LocalActivityMembersBuilder {
     const normalizedOwner = this.normalizeOwner(owner);
     const nowMs = Date.now();
     const nowIso = new Date(nowMs).toISOString();
+    const { involvements: _involvements, ...persistedMember } = member;
     const invitedByUserId = member.status === 'pending'
       && (member.requestKind === 'invite' || member.requestKind === 'waitlist-invite')
         ? member.invitedByUserId?.trim() || null
         : null;
     return {
-      ...member,
+      ...persistedMember,
       invitedByUserId,
       invitedByActiveUser: invitedByUserId ? member.invitedByActiveUser === true : false,
       ownerType: normalizedOwner.ownerType,
@@ -191,6 +195,95 @@ export class LocalActivityMembersBuilder {
 
   static cloneRecords(records: readonly ActivityMemberRecord[]): ActivityMemberRecord[] {
     return records.map(record => this.cloneRecord(record));
+  }
+
+  static toInvolvementEntries(records: readonly ActivityMemberRecord[]): ActivityMemberInvolvementDTO[] {
+    const seen = new Set<string>();
+    return records
+      .filter(record => record.status !== 'deleted')
+      .map(record => this.toInvolvementEntry(record))
+      .filter((entry): entry is ActivityMemberInvolvementDTO => Boolean(entry))
+      .filter(entry => {
+        const key = `${entry.ownerType}:${entry.ownerId}`;
+        if (seen.has(key)) {
+          return false;
+        }
+        seen.add(key);
+        return true;
+      });
+  }
+
+  private static toInvolvementEntry(record: ActivityMemberRecord): ActivityMemberInvolvementDTO | null {
+    const ownerId = `${record.ownerId ?? ''}`.trim();
+    if (!ownerId) {
+      return null;
+    }
+    const scope = this.ownerTypeLabel(record.ownerType);
+    const slotDate = this.slotDateLabel(ownerId);
+    const label = [
+      record.metWhere?.trim() || scope,
+      slotDate
+    ].filter(value => value.length > 0).join(' · ');
+    const detail = [
+      scope,
+      this.statusLabel(record.status),
+      record.role
+    ].filter(value => value.length > 0).join(' · ');
+    return {
+      id: `${record.ownerType}:${ownerId}`,
+      ownerType: record.ownerType,
+      ownerId,
+      label,
+      detail,
+      status: record.status,
+      role: record.role,
+      actionAtIso: record.actionAtIso
+    };
+  }
+
+  private static ownerTypeLabel(ownerType: ActivityMemberOwnerRef['ownerType']): string {
+    switch (ownerType) {
+      case 'event':
+        return 'Event';
+      case 'subEvent':
+        return 'Sub event';
+      case 'group':
+        return 'Group';
+      case 'asset':
+        return 'Asset';
+    }
+  }
+
+  private static statusLabel(status: ActivityMemberRecord['status']): string {
+    switch (status) {
+      case 'accepted':
+        return 'Accepted';
+      case 'pending':
+        return 'Pending';
+      case 'disqualified':
+        return 'Disqualified';
+      case 'deleted':
+        return 'Deleted';
+    }
+  }
+
+  private static slotDateLabel(ownerId: string): string {
+    const marker = ':slot:';
+    const markerIndex = ownerId.indexOf(marker);
+    if (markerIndex < 0) {
+      return '';
+    }
+    const tail = ownerId.slice(markerIndex + marker.length);
+    const separatorIndex = tail.indexOf(':');
+    const dateText = separatorIndex >= 0 ? tail.slice(separatorIndex + 1) : tail;
+    const dateMs = Date.parse(dateText);
+    if (!Number.isFinite(dateMs)) {
+      return '';
+    }
+    return new Intl.DateTimeFormat('en-US', {
+      month: 'short',
+      day: 'numeric'
+    }).format(new Date(dateMs));
   }
 
   static sortEntriesByActionTime(entries: readonly ActivityMemberDTO[]): ActivityMemberDTO[] {

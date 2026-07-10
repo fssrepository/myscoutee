@@ -10,7 +10,7 @@ import { MatSelectModule } from '@angular/material/select';
 
 import { PricingBuilder } from '../../../../../../../core/base/builders';
 import type * as ContractTypes from '../../../../../../../core/contracts';
-import { PricingSlotPanelComponent } from '../../../popups/pricing-slot-panel';
+import { PricingSlotPanelComponent } from '../pricing-slot-panel';
 import {
   FormFlowPopupStore,
   type FormFlowPricingEditorPopupState
@@ -21,6 +21,11 @@ import {
   type PopupActionEvent,
   type PopupModel
 } from '../../../../popup';
+import {
+  AppMenuDispatcher,
+  AppMenuOutletComponent,
+  AppMenuTriggerComponent
+} from '../../../../menu';
 import {
   PricingEditorInputComponent,
   type PricingEditorConfig
@@ -38,6 +43,8 @@ import {
     MatInputModule,
     MatNativeDateModule,
     MatSelectModule,
+    AppMenuOutletComponent,
+    AppMenuTriggerComponent,
     PopupComponent,
     PricingSlotPanelComponent
   ],
@@ -46,7 +53,8 @@ import {
     '../pricing-editor.component.scss',
     './pricing-editor-popup.component.scss'
   ],
-  changeDetection: ChangeDetectionStrategy.OnPush
+  changeDetection: ChangeDetectionStrategy.OnPush,
+  providers: [AppMenuDispatcher]
 })
 export class PricingEditorPopupComponent extends PricingEditorInputComponent implements OnChanges {
   @Input() popup: FormFlowPricingEditorPopupState | null = null;

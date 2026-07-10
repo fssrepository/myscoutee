@@ -16,6 +16,8 @@ const FOREST_OVERVIEW_BASE_BUDGET = 12;
 const FOREST_OVERVIEW_MIN_BUDGET = 4;
 const FOREST_OVERVIEW_AREA_PX = 132000;
 const FOREST_OVERVIEW_LOAD_BUFFER = 4;
+const BADGE_LOAD_PROGRESS_WINDOW_MS = 3000;
+const BADGE_LOAD_OVERDUE_DELAY_MS = 1500;
 const GRAPH_LABEL_KEYS = {
   graphView: 'admin.affinity.graph.view',
   clusterDetail: 'admin.affinity.graph.cluster.detail',
@@ -170,6 +172,10 @@ const forestClickTargets = [];
 let selectedNode = null;
 let activeComponentId = null;
 let pendingComponentGraphId = null;
+let forestLoadingComponentId = null;
+let nodeLoadingNodeId = null;
+let forestLoadingStartedAtMs = 0;
+let nodeLoadingStartedAtMs = 0;
 let fullGraphExpanded = false;
 let selectionReturnMode = null;
 let hoverNode = null;
@@ -192,6 +198,9 @@ let layoutCenterAnchor = null;
 let lazyTileTimer = null;
 let lazyTileRequestSerial = 0;
 let lazyTileSuppressUntil = 0;
+let lazyNeighborhoodTimer = null;
+let lazyNeighborhoodAbortController = null;
+let lazyNeighborhoodRequestKey = null;
 const loadedTileKeys = new Set(GRAPH_LAZY_ENABLED ? ['0:0:0:*'] : []);
 const pendingTileKeys = new Set();
 const loadedComponentKeys = new Set();
@@ -231,6 +240,30 @@ const selectionSprite = new THREE.Sprite(new THREE.SpriteMaterial({
 selectionSprite.visible = false;
 selectionSprite.renderOrder = 30;
 nodeGroup.add(selectionSprite);
+
+const forestLoadingSprite = new THREE.Sprite(new THREE.SpriteMaterial({
+  map: createLoadingRingTexture(),
+  transparent: true,
+  fog: false,
+  depthTest: false,
+  depthWrite: false,
+  opacity: 0
+}));
+forestLoadingSprite.visible = false;
+forestLoadingSprite.renderOrder = 42;
+forestGroup.add(forestLoadingSprite);
+
+const nodeLoadingSprite = new THREE.Sprite(new THREE.SpriteMaterial({
+  map: createLoadingRingTexture(),
+  transparent: true,
+  fog: false,
+  depthTest: false,
+  depthWrite: false,
+  opacity: 0
+}));
+nodeLoadingSprite.visible = false;
+nodeLoadingSprite.renderOrder = 42;
+nodeGroup.add(nodeLoadingSprite);
 
 syncPanelChrome();
 createNodes();
@@ -889,6 +922,9 @@ function selectNode(nodeId, options = {}) {
   const node = nodeById.get(nodeId) ?? null;
   const previousVisibleNodeIds = new Set(visibleNodeIds);
   const startScale = node?.badge?.scale.x ?? node?.badgeScale ?? 1;
+  if (selectedNode?.id !== nodeId) {
+    abortLazyNeighborhoodLoad({ stopLoading: true });
+  }
   selectionReturnMode = fullGraphExpanded ? 'graph' : activeComponentId !== null ? 'forest' : 'graph';
   selectedNode = node;
   fullGraphExpanded = false;
@@ -896,6 +932,9 @@ function selectNode(nodeId, options = {}) {
   if (selectedNode) {
     activeComponentId = selectedNode.componentId;
     layoutCenterAnchor = selectedNode.position.clone();
+    if (GRAPH_LAZY_ENABLED && !loadedNeighborhoodKeys.has(neighborhoodCacheKey(selectedNode.id))) {
+      startNodeLoading(selectedNode.id);
+    }
   }
   if (selectedNode && options.focus) {
     controls.target.copy(selectedNode.position);
@@ -913,18 +952,15 @@ function selectForest(componentId) {
   if (!component) {
     return;
   }
-  activeComponentId = componentId;
   pendingComponentGraphId = componentId;
+  abortLazyNeighborhoodLoad({ stopLoading: true });
+  startForestLoading(componentId);
+  stopNodeLoading();
   selectedNode = null;
   selectionReturnMode = null;
   fullGraphExpanded = false;
-  layoutCenterAnchor = componentLayoutCenter(component);
-  resetSemanticZoomLevel();
-  restoreHomeNodePositions();
-  rebuildEdges();
-  renderMemberPanel(null);
   if (GRAPH_LAZY_ENABLED) {
-    scheduleLazyComponentLoad(componentId, 60, { refresh: true, reveal: true });
+    void loadLazyComponent(componentId, { refresh: true, reveal: true });
   } else {
     revealComponentGraph(componentId, new Set(visibleNodeIds));
   }
@@ -932,10 +968,20 @@ function selectForest(componentId) {
 }
 
 function revealComponentGraph(componentId, previousVisibleNodeIds = new Set()) {
-  if (activeComponentId !== componentId || selectedNode) {
+  if (selectedNode || (activeComponentId !== componentId && pendingComponentGraphId !== componentId)) {
     return;
   }
+  const component = componentForId(componentId);
+  if (!component) {
+    return;
+  }
+  activeComponentId = componentId;
   pendingComponentGraphId = null;
+  stopForestLoading(componentId);
+  fullGraphExpanded = false;
+  layoutCenterAnchor = componentLayoutCenter(component);
+  resetSemanticZoomLevel();
+  restoreHomeNodePositions();
   rebuildEdges();
   renderMemberPanel(null);
   startVisibleRefit({ fitCamera: true, previousVisibleNodeIds });
@@ -952,6 +998,9 @@ function clearSelection() {
   const returnMode = selectionReturnMode;
   selectionReturnMode = null;
   pendingComponentGraphId = null;
+  abortLazyNeighborhoodLoad({ stopLoading: true });
+  stopForestLoading();
+  stopNodeLoading();
 
   if (returnMode === 'forest' && activeComponentId !== null) {
     fullGraphExpanded = false;
@@ -968,6 +1017,9 @@ function clearSelection() {
 
   activeComponentId = null;
   pendingComponentGraphId = null;
+  abortLazyNeighborhoodLoad({ stopLoading: true });
+  stopForestLoading();
+  stopNodeLoading();
   fullGraphExpanded = true;
   layoutCenterAnchor = null;
   resetSemanticZoomLevel();
@@ -984,6 +1036,9 @@ function showFullGraph() {
   selectedNode = null;
   activeComponentId = null;
   pendingComponentGraphId = null;
+  abortLazyNeighborhoodLoad({ stopLoading: true });
+  stopForestLoading();
+  stopNodeLoading();
   selectionReturnMode = null;
   fullGraphExpanded = true;
   layoutCenterAnchor = null;
@@ -1013,6 +1068,9 @@ function clearForest() {
   selectedNode = null;
   activeComponentId = null;
   pendingComponentGraphId = null;
+  abortLazyNeighborhoodLoad({ stopLoading: true });
+  stopForestLoading();
+  stopNodeLoading();
   selectionReturnMode = null;
   fullGraphExpanded = false;
   layoutCenterAnchor = null;
@@ -1935,6 +1993,92 @@ function isComponentGraphRevealPending() {
     && !selectedNode;
 }
 
+function startForestLoading(componentId) {
+  forestLoadingComponentId = componentId;
+  forestLoadingStartedAtMs = performance.now();
+  updateForestLoadingSpinner(true);
+}
+
+function stopForestLoading(componentId = null) {
+  if (componentId !== null && forestLoadingComponentId !== componentId) {
+    return;
+  }
+  forestLoadingComponentId = null;
+  forestLoadingStartedAtMs = 0;
+  forestLoadingSprite.visible = false;
+  forestLoadingSprite.material.opacity = 0;
+}
+
+function updateForestLoadingSpinner(force = false) {
+  if (forestLoadingComponentId === null || forestLoadingComponentId === undefined) {
+    forestLoadingSprite.visible = false;
+    return;
+  }
+  const component = componentForId(forestLoadingComponentId);
+  const badge = component?.forestBadge;
+  if (!component || !badge || (!force && !badge.visible)) {
+    forestLoadingSprite.visible = false;
+    return;
+  }
+  updateBadgeEdgeLoadingSpinner(
+    forestLoadingSprite,
+    component.forestPosition ?? badge.position,
+    component.forestScale ?? badge.scale.x,
+    forestLoadingStartedAtMs,
+    {
+      count: componentMemberCount(component),
+      range: forestCounterRange()
+    }
+  );
+}
+
+function startNodeLoading(nodeId) {
+  nodeLoadingNodeId = nodeId;
+  nodeLoadingStartedAtMs = performance.now();
+  updateNodeLoadingSpinner(true);
+}
+
+function stopNodeLoading(nodeId = null) {
+  if (nodeId !== null && nodeLoadingNodeId !== nodeId) {
+    return;
+  }
+  nodeLoadingNodeId = null;
+  nodeLoadingStartedAtMs = 0;
+  nodeLoadingSprite.visible = false;
+  nodeLoadingSprite.material.opacity = 0;
+}
+
+function updateNodeLoadingSpinner(force = false) {
+  if (nodeLoadingNodeId === null || nodeLoadingNodeId === undefined) {
+    nodeLoadingSprite.visible = false;
+    return;
+  }
+  const node = nodeById.get(nodeLoadingNodeId);
+  const badge = node?.badge;
+  if (!node || !badge || (!force && !badge.visible)) {
+    nodeLoadingSprite.visible = false;
+    return;
+  }
+  updateBadgeEdgeLoadingSpinner(
+    nodeLoadingSprite,
+    node.position,
+    badge.scale.x || node.badgeScale,
+    nodeLoadingStartedAtMs,
+    {
+      count: nodeBadgeCount(node)
+    }
+  );
+}
+
+function updateBadgeEdgeLoadingSpinner(sprite, center, baseScale, startedAtMs, counterBadge = null) {
+  updateLoadingRingTexture(sprite.material.map, startedAtMs, counterBadge);
+  sprite.visible = true;
+  sprite.position.copy(center);
+  sprite.scale.setScalar(baseScale);
+  sprite.material.rotation = 0;
+  sprite.material.opacity = 0.94;
+}
+
 function pickNode(event) {
   const rect = canvas.getBoundingClientRect();
   const eventX = event.clientX - rect.left;
@@ -2741,16 +2885,19 @@ async function loadLazyComponent(componentId, options = {}) {
     const beforeSignature = visibleSceneSignature();
     const previousVisibleNodeIds = new Set(visibleNodeIds);
     const changed = mergeGraphPayload(result);
-    if (activeComponentId === componentId && !selectedNode) {
-      if (options.reveal && pendingComponentGraphId === componentId) {
-        revealComponentGraph(componentId, previousVisibleNodeIds);
-      } else if (changed && visibleSceneSignature() !== beforeSignature) {
+    if (options.reveal && pendingComponentGraphId === componentId && !selectedNode) {
+      revealComponentGraph(componentId, previousVisibleNodeIds);
+    } else if (activeComponentId === componentId && !selectedNode) {
+      if (changed && visibleSceneSignature() !== beforeSignature) {
         renderMemberPanel(null);
         startVisibleRefit({ fitCamera: true, previousVisibleNodeIds });
       }
     }
   } catch {
     loadedComponentKeys.delete(cacheKey);
+    if (options.reveal && pendingComponentGraphId === componentId && !selectedNode) {
+      revealComponentGraph(componentId, new Set(visibleNodeIds));
+    }
   } finally {
     pendingComponentKeys.delete(cacheKey);
   }
@@ -2790,9 +2937,37 @@ function scheduleLazyNeighborhoodLoad(delayMs = 140) {
   if (!GRAPH_LAZY_ENABLED || !selectedNode) {
     return;
   }
-  setTimeout(() => {
+  const nextKey = neighborhoodCacheKey(selectedNode.id);
+  if (lazyNeighborhoodTimer) {
+    clearTimeout(lazyNeighborhoodTimer);
+  }
+  if (lazyNeighborhoodRequestKey && lazyNeighborhoodRequestKey !== nextKey) {
+    abortLazyNeighborhoodRequest();
+  }
+  lazyNeighborhoodTimer = setTimeout(() => {
+    lazyNeighborhoodTimer = null;
     void loadLazyNeighborhood();
   }, delayMs);
+}
+
+function abortLazyNeighborhoodLoad(options = {}) {
+  if (lazyNeighborhoodTimer) {
+    clearTimeout(lazyNeighborhoodTimer);
+    lazyNeighborhoodTimer = null;
+  }
+  abortLazyNeighborhoodRequest();
+  if (options.stopLoading) {
+    stopNodeLoading();
+  }
+}
+
+function abortLazyNeighborhoodRequest() {
+  const controller = lazyNeighborhoodAbortController;
+  lazyNeighborhoodAbortController = null;
+  lazyNeighborhoodRequestKey = null;
+  if (controller && !controller.signal.aborted) {
+    controller.abort();
+  }
 }
 
 async function loadLazyNeighborhood() {
@@ -2802,17 +2977,30 @@ async function loadLazyNeighborhood() {
   const requestedNodeId = selectedNode.id;
   const requestedDepth = currentLinkDepth();
   const weightRange = currentWeightRange();
-  const key = `${requestedNodeId}:${requestedDepth}:${weightRange.min.toFixed(2)}:${weightRange.max.toFixed(2)}`;
+  const key = neighborhoodCacheKey(requestedNodeId, requestedDepth, weightRange);
   if (loadedNeighborhoodKeys.has(key)) {
+    stopNodeLoading(requestedNodeId);
     return;
   }
+  if (lazyNeighborhoodRequestKey === key && lazyNeighborhoodAbortController && !lazyNeighborhoodAbortController.signal.aborted) {
+    return;
+  }
+  if (lazyNeighborhoodRequestKey && lazyNeighborhoodRequestKey !== key) {
+    abortLazyNeighborhoodRequest();
+  }
+  const abortController = new AbortController();
+  lazyNeighborhoodAbortController = abortController;
+  lazyNeighborhoodRequestKey = key;
   loadedNeighborhoodKeys.add(key);
+  startNodeLoading(requestedNodeId);
   try {
     const result = await requestGraphData('neighborhood', {
       userId: requestedNodeId,
       depth: requestedDepth,
       minWeight: weightRange.min,
       maxWeight: weightRange.max
+    }, {
+      signal: abortController.signal
     });
     if (selectedNode?.id !== requestedNodeId || currentLinkDepth() !== requestedDepth) {
       return;
@@ -2825,7 +3013,17 @@ async function loadLazyNeighborhood() {
     }
   } catch {
     loadedNeighborhoodKeys.delete(key);
+  } finally {
+    if (lazyNeighborhoodAbortController === abortController) {
+      lazyNeighborhoodAbortController = null;
+      lazyNeighborhoodRequestKey = null;
+      stopNodeLoading(requestedNodeId);
+    }
   }
+}
+
+function neighborhoodCacheKey(nodeId, depth = currentLinkDepth(), weightRange = currentWeightRange()) {
+  return `${nodeId}:${depth}:${weightRange.min.toFixed(2)}:${weightRange.max.toFixed(2)}`;
 }
 
 function tileRequestForCurrentView() {
@@ -2847,15 +3045,48 @@ function tileRequestForCurrentView() {
   };
 }
 
-async function requestGraphData(method, params = {}) {
+async function requestGraphData(method, params = {}, options = {}) {
   if (!window.parent || window.parent === window) {
     throw new Error('Affinity graph bridge is unavailable.');
   }
+  const signal = options.signal;
+  if (signal?.aborted) {
+    throw createAbortError();
+  }
   const requestId = `${Date.now()}:${Math.random().toString(36).slice(2)}`;
   return await new Promise((resolve, reject) => {
-    const timeout = setTimeout(() => {
+    let settled = false;
+    let timeout = null;
+    const cleanup = () => {
+      if (timeout !== null) {
+        clearTimeout(timeout);
+        timeout = null;
+      }
+      signal?.removeEventListener('abort', onAbort);
       window.removeEventListener('message', onMessage);
-      reject(new Error('Affinity graph request timed out.'));
+    };
+    const finish = callback => {
+      if (settled) {
+        return;
+      }
+      settled = true;
+      cleanup();
+      callback();
+    };
+    const cancelParentRequest = () => {
+      window.parent.postMessage({
+        source: 'admin-affinity-graph',
+        type: 'cancel',
+        requestId
+      }, window.location.origin);
+    };
+    const onAbort = () => {
+      cancelParentRequest();
+      finish(() => reject(createAbortError()));
+    };
+    timeout = setTimeout(() => {
+      cancelParentRequest();
+      finish(() => reject(new Error('Affinity graph request timed out.')));
     }, 8000);
     const onMessage = event => {
       if (event.origin !== window.location.origin) {
@@ -2865,14 +3096,13 @@ async function requestGraphData(method, params = {}) {
       if (data?.source !== 'admin-affinity-graph' || data.type !== 'response' || data.requestId !== requestId) {
         return;
       }
-      clearTimeout(timeout);
-      window.removeEventListener('message', onMessage);
       if (data.ok) {
-        resolve(data.result);
+        finish(() => resolve(data.result));
       } else {
-        reject(new Error(data.error || 'Affinity graph request failed.'));
+        finish(() => reject(new Error(data.error || 'Affinity graph request failed.')));
       }
     };
+    signal?.addEventListener('abort', onAbort, { once: true });
     window.addEventListener('message', onMessage);
     window.parent.postMessage({
       source: 'admin-affinity-graph',
@@ -2882,6 +3112,12 @@ async function requestGraphData(method, params = {}) {
       params
     }, window.location.origin);
   });
+}
+
+function createAbortError() {
+  const error = new Error('Affinity graph request aborted.');
+  error.name = 'AbortError';
+  return error;
 }
 
 function mergeGraphPayload(payload) {
@@ -3063,6 +3299,8 @@ function animate() {
   updateCameraAnimation();
   updateSelectionVisualAnimation();
   updateBadgeCountAnimations();
+  updateForestLoadingSpinner();
+  updateNodeLoadingSpinner();
   controls.update();
   publishGraphState();
   renderer.render(scene, camera);
@@ -4137,6 +4375,8 @@ function drawCounterBadgeLabel(ctx, count, textColor, yOffset, alpha) {
   ctx.globalAlpha = clamp(alpha, 0, 1);
   ctx.fillStyle = textColor;
   ctx.font = label.length > 2 ? '850 24px system-ui, sans-serif' : '900 29px system-ui, sans-serif';
+  ctx.textAlign = 'center';
+  ctx.textBaseline = 'middle';
   ctx.fillText(label, 0, 2 + yOffset);
   ctx.restore();
 }
@@ -4245,6 +4485,49 @@ function createRingTexture() {
   const texture = new THREE.CanvasTexture(canvasEl);
   texture.colorSpace = THREE.SRGBColorSpace;
   return texture;
+}
+
+function createLoadingRingTexture() {
+  const canvasEl = document.createElement('canvas');
+  canvasEl.width = 256;
+  canvasEl.height = 256;
+  const ctx = canvasEl.getContext('2d');
+  const texture = new THREE.CanvasTexture(canvasEl);
+  texture.colorSpace = THREE.SRGBColorSpace;
+  texture.userData.canvas = canvasEl;
+  texture.userData.ctx = ctx;
+  updateLoadingRingTexture(texture, performance.now());
+  return texture;
+}
+
+function updateLoadingRingTexture(texture, startedAtMs, counterBadge = null) {
+  const ctx = texture?.userData?.ctx;
+  if (!ctx) {
+    return;
+  }
+  const elapsedMs = Math.max(0, performance.now() - Math.max(0, Number(startedAtMs) || 0));
+  const progress = Math.min(0.92, Math.max(0.02, elapsedMs / BADGE_LOAD_PROGRESS_WINDOW_MS));
+  const overdue = elapsedMs >= BADGE_LOAD_OVERDUE_DELAY_MS;
+  const center = 128;
+  const rimRadius = 112;
+  const startAngle = -Math.PI / 2;
+  ctx.clearRect(0, 0, 256, 256);
+  ctx.lineCap = 'round';
+  ctx.lineWidth = 9;
+  ctx.strokeStyle = overdue ? 'rgba(234, 146, 37, 0.28)' : 'rgba(241, 169, 73, 0.22)';
+  ctx.beginPath();
+  ctx.arc(center, center, rimRadius, 0, Math.PI * 2);
+  ctx.stroke();
+  ctx.lineWidth = 11;
+  ctx.strokeStyle = overdue ? '#e88a1e' : '#f1a949';
+  ctx.beginPath();
+  ctx.arc(center, center, rimRadius, startAngle, startAngle + Math.PI * 2 * progress);
+  ctx.stroke();
+  const count = Math.max(0, Math.trunc(Number(counterBadge?.count) || 0));
+  if (count > 0) {
+    drawCounterBadge(ctx, null, count, counterBadge?.range ?? null);
+  }
+  texture.needsUpdate = true;
 }
 
 function fibonacciPoint(index, count) {

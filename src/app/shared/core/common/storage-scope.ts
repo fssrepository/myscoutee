@@ -31,6 +31,7 @@ export const APP_INDEXED_DB_KEYS = {
   chatMessages: 'chatMessages',
   events: 'events',
   eventFeedback: 'eventFeedback',
+  eventCheckoutBaskets: 'eventCheckoutBaskets',
   helpCenter: 'helpCenter',
   ideaPosts: 'ideaPosts',
   contacts: 'contacts',

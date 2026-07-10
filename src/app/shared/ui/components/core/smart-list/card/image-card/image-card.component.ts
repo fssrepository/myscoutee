@@ -13,6 +13,7 @@ import {
 import { IndicatorComponent } from '../../../indicator';
 import {
   CARD_MENU_ACTIONS,
+  type CardBadgeConfig,
   type CardMenuAction,
   type ImageCardData,
   type ImageCardLayout,
@@ -67,6 +68,9 @@ export class ImageCardComponent {
     if (this.hasBottomRightControls()) {
       classes.push('ui-image-card--with-bottom-right-controls');
     }
+    if (this.hasPositionControls('top-right')) {
+      classes.push('ui-image-card--with-top-right-controls');
+    }
     return classes;
   }
 
@@ -107,6 +111,10 @@ export class ImageCardComponent {
 
   protected resolvedStatusChip(): ImageCardStatusChip | null {
     return this.card?.statusChip ?? null;
+  }
+
+  protected resolvedBadge(): CardBadgeConfig | null {
+    return this.card?.badge ?? null;
   }
 
   protected resolvedMediaActions(): readonly ImageCardMediaAction[] {
@@ -160,6 +168,24 @@ export class ImageCardComponent {
       classes.push(`ui-image-card__status-chip--palette-${chip.palette}`);
     }
     const className = `${chip.className ?? ''}`.trim();
+    if (className) {
+      classes.push(...className.split(/\s+/));
+    }
+    return classes;
+  }
+
+  protected badgeClassList(badge: CardBadgeConfig): string[] {
+    const classes = ['ui-image-card__badge'];
+    if (badge.active) {
+      classes.push('ui-image-card__badge--active');
+    }
+    if (badge.pending) {
+      classes.push('ui-image-card__badge--pending');
+    }
+    if (badge.disabled) {
+      classes.push('ui-image-card__badge--disabled');
+    }
+    const className = `${badge.className ?? ''}`.trim();
     if (className) {
       classes.push(...className.split(/\s+/));
     }

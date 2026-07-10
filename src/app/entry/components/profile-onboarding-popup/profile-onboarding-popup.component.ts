@@ -6,6 +6,7 @@ import { MatIconModule } from '@angular/material/icon';
 import { ProfileExperienceManagerComponent } from '../../../shared/ui/components/core/form/popups/profile-experience-manager';
 import { FormFlowComponent } from '../../../shared/ui/components/core/form/flow/form-flow.component';
 import type { FormFlowActionEvent, FormFlowDraft, FormFlowModel } from '../../../shared/ui/components/core/form/flow/form-flow.types';
+import { PopupComponent, type PopupModel } from '../../../shared/ui/components/core/popup';
 import { I18nPipe } from '../../../shared/ui/pipes/i18n.pipe';
 import { UsersService } from '../../../shared/core/base/services/users.service';
 import type { ProfileExtDto, UserDto } from '../../../shared/core/contracts/user.interface';
@@ -29,6 +30,7 @@ type OnboardingExperienceSelectorType = Extract<ExperienceEntry['type'], 'Worksp
     FormsModule,
     MatIconModule,
     FormFlowComponent,
+    PopupComponent,
     ProfileExperienceManagerComponent,
     I18nPipe
   ],
@@ -112,18 +114,39 @@ export class ProfileOnboardingPopupComponent implements OnChanges, OnDestroy {
     this.dismissed.emit();
   }
 
-  protected closeExperienceManager(): void {
-    this.experienceManagerOpen = false;
+  protected onboardingPopupModel(): PopupModel {
+    return {
+      title: this.title,
+      subtitle: this.message || null,
+      ariaLabel: this.title,
+      closeAriaLabel: 'Close profile setup',
+      closeOnBackdrop: false,
+      size: 'wide',
+      height: 'full',
+      headerLayout: 'document',
+      headerTone: 'accent',
+      headerPalette: 'teal',
+      bodyLayout: 'fill',
+      onClose: () => this.requestDismiss()
+    };
   }
 
-  protected experienceManagerTitle(): string {
-    if (this.experienceManagerFilter === 'Workspace') {
-      return 'profile.experience.workplace';
-    }
-    if (this.experienceManagerFilter === 'School') {
-      return 'profile.experience.school';
-    }
-    return 'Experience';
+  protected experienceManagerPopupModel(): PopupModel {
+    return {
+      title: 'Experience',
+      ariaLabel: 'Experience manager',
+      closeAriaLabel: 'Close experience manager',
+      size: 'wide',
+      height: 'full',
+      headerTone: 'accent',
+      bodyLayout: 'fill',
+      backdropTone: 'dim',
+      onClose: () => this.closeExperienceManager()
+    };
+  }
+
+  protected closeExperienceManager(): void {
+    this.experienceManagerOpen = false;
   }
 
   protected onExperienceManagerEntriesChange(entries: readonly ExperienceEntry[]): void {
@@ -221,6 +244,7 @@ export class ProfileOnboardingPopupComponent implements OnChanges, OnDestroy {
       ? ProfileFormFlowConverter.convert(this.draft, {
           title: this.title,
           subtitle: this.message,
+          showHeader: false,
           userId: this.user?.id ?? ''
         })
       : null;

@@ -66,6 +66,7 @@ import {
   type AppMenuImageStackItem,
   type AppMenuItem,
   type AppMenuItemSelectEvent,
+  type AppMenuModel,
   type AppMenuPalette,
   type AppMenuTrigger,
   type ListQuery,
@@ -184,6 +185,12 @@ type ChatThreadPageContext = {
   readReceipt?: ContractTypes.ChatReadReceipt | null;
 };
 
+type EmojiPickerMenuItemId = `emoji:${string}`;
+
+interface EmojiPickerMenuContext {
+  emoji: string;
+}
+
 type EventChatViewSession = EventChatSession & {
   item: ChatDTO;
 };
@@ -291,9 +298,6 @@ export class EventChatPopupComponent implements OnDestroy {
   protected selectedMessageToolsDown = false;
   protected quickReactionMessageId = '';
   protected quickReactionOpenDown = false;
-  protected emojiPickerMessageId = '';
-  protected emojiPickerQuery = '';
-  protected emojiPickerCategory = 'smileys';
   protected reactionDetailsMessageId = '';
   protected reactionDetailsFilter = 'all';
   protected pinnedDialogOpen = false;
@@ -407,7 +411,7 @@ export class EventChatPopupComponent implements OnDestroy {
   private voiceRecorderTimer: ReturnType<typeof setInterval> | null = null;
   private chatThreadScrollDismissElement: HTMLElement | null = null;
   private readonly dismissMessageUiOnChatScroll = () => {
-    if (!this.selectedMessageId && !this.quickReactionMessageId && !this.emojiPickerMessageId && !(this.chatThreadSmartList?.menuOpen() ?? false)) {
+    if (!this.selectedMessageId && !this.quickReactionMessageId && !(this.chatThreadSmartList?.menuOpen() ?? false)) {
       return;
     }
     this.closeTransientMessageUi();
@@ -557,6 +561,70 @@ export class EventChatPopupComponent implements OnDestroy {
     return Number.isFinite(parentZIndex) && parentZIndex > 0
       ? Math.trunc(parentZIndex) + 100
       : 2360;
+  }
+
+  protected reactionDetailsPopupModel(): PopupModel {
+    return {
+      title: 'Message reactions',
+      ariaLabel: 'Message reactions',
+      closeAriaLabel: 'Close reactions',
+      closeOnBackdrop: true,
+      size: 'small',
+      height: 'auto',
+      headerTone: 'accent',
+      bodyLayout: 'flush',
+      backdropTone: 'dim',
+      onClose: () => this.closeReactionDetails()
+    };
+  }
+
+  protected createPollPopupModel(): PopupModel {
+    return {
+      title: 'Create Poll',
+      ariaLabel: 'Create Poll',
+      closeAriaLabel: 'Cancel poll',
+      closeOnBackdrop: true,
+      size: 'small',
+      height: 'auto',
+      headerTone: 'accent',
+      bodyLayout: 'flush',
+      backdropTone: 'dim',
+      onClose: event => this.closePollComposer(event)
+    };
+  }
+
+  protected pinnedMessagesPopupModel(): PopupModel {
+    return {
+      title: 'Pinned messages',
+      ariaLabel: 'Pinned messages',
+      closeAriaLabel: 'Close pinned messages',
+      closeOnBackdrop: true,
+      size: 'small',
+      height: 'auto',
+      headerTone: 'accent',
+      bodyLayout: 'flush',
+      backdropTone: 'dim',
+      onClose: () => this.closePinnedMessagesDialog()
+    };
+  }
+
+  protected pollVotePopupModel(): PopupModel {
+    return {
+      title: 'Vote',
+      ariaLabel: 'Vote',
+      closeAriaLabel: 'Close poll',
+      closeOnBackdrop: true,
+      size: 'small',
+      height: 'auto',
+      headerTone: 'accent',
+      bodyLayout: 'flush',
+      backdropTone: 'dim',
+      onClose: () => this.closePollVoteDialog()
+    };
+  }
+
+  protected chatDialogZIndex(): number {
+    return this.currentChatPopupZIndex() + 10;
   }
 
   private currentChatPopupZIndex(): number {
@@ -1717,6 +1785,43 @@ export class EventChatPopupComponent implements OnDestroy {
     return !!selectedOptionId && selectedOptionId !== this.pollOwnVoteOptionId(attachment);
   }
 
+  protected pollVoteActionMenuItems(
+    message: ContractTypes.ChatMessageDto,
+    attachment: ContractTypes.ChatMessageAttachment
+  ): readonly AppMenuItem<string>[] {
+    return [
+      {
+        id: 'poll-vote-cancel',
+        label: 'Cancel',
+        layout: 'action',
+        palette: 'slate',
+        ariaLabel: 'Cancel vote'
+      },
+      {
+        id: 'poll-vote-submit',
+        label: 'Submit',
+        layout: 'action',
+        palette: 'blue',
+        disabled: !this.canSubmitPollVote(message, attachment),
+        ariaLabel: 'Submit vote'
+      }
+    ];
+  }
+
+  protected onPollVoteActionSelect(
+    message: ContractTypes.ChatMessageDto,
+    attachment: ContractTypes.ChatMessageAttachment,
+    event: AppMenuItemSelectEvent<string>
+  ): void {
+    if (event.id === 'poll-vote-cancel') {
+      this.closePollVoteDialog();
+      return;
+    }
+    if (event.id === 'poll-vote-submit') {
+      this.submitPollVote(message, attachment, event.sourceEvent);
+    }
+  }
+
   protected submitPollVote(
     message: ContractTypes.ChatMessageDto,
     attachment: ContractTypes.ChatMessageAttachment,
@@ -1948,7 +2053,6 @@ export class EventChatPopupComponent implements OnDestroy {
     this.chatThreadSmartList?.closeMenu();
     this.quickReactionMessageId = '';
     this.quickReactionOpenDown = false;
-    this.emojiPickerMessageId = '';
   }
 
   protected startMessageLongPress(message: ContractTypes.ChatMessageDto): void {
@@ -1962,7 +2066,6 @@ export class EventChatPopupComponent implements OnDestroy {
       this.selectedMessageToolsDown = this.shouldOpenMessageToolsDown();
       this.quickReactionMessageId = '';
       this.quickReactionOpenDown = false;
-      this.emojiPickerMessageId = '';
       this.chatThreadSmartList?.closeMenu();
       this.cdr.markForCheck();
     }, 420);
@@ -1987,7 +2090,6 @@ export class EventChatPopupComponent implements OnDestroy {
     const wasOpen = this.quickReactionMessageId === messageId;
     this.selectedMessageId = messageId;
     this.chatThreadSmartList?.closeMenu();
-    this.emojiPickerMessageId = '';
     this.quickReactionOpenDown = this.shouldOpenQuickReactionsDown(event);
     this.quickReactionMessageId = wasOpen ? '' : messageId;
     if (wasOpen) {
@@ -1995,39 +2097,77 @@ export class EventChatPopupComponent implements OnDestroy {
     }
   }
 
-  protected openEmojiPicker(message: ContractTypes.ChatMessageDto, event?: Event): void {
-    event?.stopPropagation();
-    const messageId = `${message.id ?? ''}`.trim();
-    if (!messageId) {
-      this.closeTransientMessageUi();
+  protected emojiPickerMenuTrigger(): AppMenuTrigger {
+    return {
+      id: 'emoji-picker',
+      icon: 'add',
+      closeIcon: 'close',
+      ariaLabel: 'Search emoji',
+      layout: 'icon',
+      hideLabel: true,
+      palette: 'blue'
+    };
+  }
+
+  protected emojiPickerMenuModel(): AppMenuModel<EmojiPickerMenuItemId, EmojiPickerMenuContext> {
+    return {
+      layout: 'tabs',
+      density: 'compact',
+      groups: this.emojiPickerCategories.map(category => ({
+        id: category.key,
+        label: category.label,
+        icon: category.icon,
+        palette: this.emojiPickerCategoryPalette(category.key),
+        items: category.emojis.map(emoji => ({
+          id: `emoji:${emoji}`,
+          label: emoji,
+          detail: category.label,
+          icon: emoji,
+          iconKind: 'text',
+          layout: 'icon',
+          ariaLabel: `React with ${emoji}`,
+          value: emoji,
+          closeOnSelect: true,
+          context: {
+            emoji
+          }
+        }))
+      }))
+    };
+  }
+
+  private emojiPickerCategoryPalette(categoryKey: string): AppMenuPalette {
+    switch (categoryKey) {
+      case 'smileys':
+        return 'amber';
+      case 'animals':
+        return 'green';
+      case 'food':
+        return 'orange';
+      case 'activity':
+        return 'violet';
+      case 'travel':
+        return 'sky';
+      case 'objects':
+        return 'slate';
+      case 'symbols':
+        return 'purple';
+      case 'flags':
+        return 'red';
+      default:
+        return 'blue';
+    }
+  }
+
+  protected onEmojiPickerMenuSelect(
+    message: ContractTypes.ChatMessageDto,
+    event: AppMenuItemSelectEvent<EmojiPickerMenuItemId, EmojiPickerMenuContext>
+  ): void {
+    const emoji = `${event.context?.emoji ?? event.value ?? ''}`.trim();
+    if (!emoji) {
       return;
     }
-    this.selectedMessageId = messageId;
-    this.quickReactionMessageId = '';
-    this.quickReactionOpenDown = false;
-    this.chatThreadSmartList?.closeMenu();
-    this.emojiPickerMessageId = messageId;
-    this.emojiPickerQuery = '';
-    this.emojiPickerCategory = 'smileys';
-  }
-
-  protected closeEmojiPicker(event?: Event): void {
-    event?.stopPropagation();
-    this.emojiPickerMessageId = '';
-    this.emojiPickerQuery = '';
-    this.blurEventTarget(event);
-  }
-
-  protected filteredEmojiPickerEmojis(): string[] {
-    const query = this.emojiPickerQuery.trim().toLowerCase();
-    const emojis = query
-      ? this.emojiPickerCategories.flatMap(category => category.emojis)
-      : (this.emojiPickerCategories.find(category => category.key === this.emojiPickerCategory)?.emojis ?? []);
-    return query ? emojis.filter(emoji => emoji.includes(query)) : emojis;
-  }
-
-  protected activeEmojiPickerCategoryLabel(): string {
-    return this.emojiPickerCategories.find(category => category.key === this.emojiPickerCategory)?.label ?? 'Smileys & people';
+    this.toggleReaction(message, emoji, event.sourceEvent);
   }
 
   protected toggleReaction(message: ContractTypes.ChatMessageDto, emoji: string, event?: Event): void {
@@ -2143,14 +2283,6 @@ export class EventChatPopupComponent implements OnDestroy {
     return message && (message.reactions?.length ?? 0) > 0 ? message : null;
   }
 
-  protected emojiPickerMessage(): ContractTypes.ChatMessageDto | null {
-    const messageId = `${this.emojiPickerMessageId ?? ''}`.trim();
-    if (!messageId) {
-      return null;
-    }
-    return this.messages.find(message => message.id === messageId && !message.deletedAtIso) ?? null;
-  }
-
   protected reactionDetailsRows(message: ContractTypes.ChatMessageDto): ContractTypes.ChatMessageReaction[] {
     return this.reactionDetailsFilter === 'all'
       ? (message.reactions ?? [])
@@ -2205,7 +2337,6 @@ export class EventChatPopupComponent implements OnDestroy {
     this.highlightedMessageId = targetId;
     this.chatThreadSmartList?.closeMenu();
     this.quickReactionMessageId = '';
-    this.emojiPickerMessageId = '';
     this.cdr.markForCheck();
     this.scheduleChatThreadScrollToMessage(targetId);
     setTimeout(() => {
@@ -4071,8 +4202,6 @@ export class EventChatPopupComponent implements OnDestroy {
     this.selectedMessageToolsDown = false;
     this.quickReactionMessageId = '';
     this.quickReactionOpenDown = false;
-    this.emojiPickerMessageId = '';
-    this.emojiPickerQuery = '';
     this.reactionDetailsMessageId = '';
     this.closePollVoteDialog();
     if (!options.keepEditing) {

@@ -9,6 +9,8 @@ export type InfoCardSurfaceTone =
   | 'default'
   | 'draft'
   | 'stage'
+  | 'subevent-light'
+  | 'subevent-strong'
   | 'stage-runtime'
   | 'full'
   | 'pending'
@@ -78,6 +80,7 @@ export type InfoCardMediaTone = 'default' | 'neutral';
 export interface CardBadgeConfig {
   label: string;
   ariaLabel?: string | null;
+  className?: string | null;
   active?: boolean;
   pending?: boolean;
   disabled?: boolean;
@@ -204,8 +207,9 @@ export const CARD_MENU_ACTIONS: Readonly<Record<CardMenuActionId, CardMenuAction
   bookEvent: { label: 'book.event', icon: 'person_add', tone: 'accent' },
   borrowAsset: { label: 'borrow', icon: 'volunteer_activism', tone: 'accent' },
   capacity: { label: 'capacity', icon: 'groups' },
-  contactOrganizer: { label: 'contact.organizer', icon: 'support_agent' },
   contactOwner: { label: 'contact.owner', icon: 'support_agent' },
+  continueBooking: { label: 'Foglalás folytatása', icon: 'shopping_basket', tone: 'accent' },
+  continueBookingPending: { label: 'Foglalás folytatása', icon: 'shopping_basket', tone: 'warning' },
   delete: { label: 'delete', icon: 'delete', tone: 'destructive' },
   deleteEvent: { label: 'delete.event', icon: 'delete', tone: 'destructive' },
   edit: { label: 'edit', icon: 'edit', tone: 'accent' },
@@ -221,7 +225,10 @@ export const CARD_MENU_ACTIONS: Readonly<Record<CardMenuActionId, CardMenuAction
   makeManager: { label: 'asset.requests.promote.to.manager', icon: 'manage_accounts', tone: 'accent' },
   manage: { label: 'manage', icon: 'settings', tone: 'accent' },
   manageEvent: { label: 'manage.event', icon: 'settings' },
+  markSolved: { label: 'admin.review.action.mark.solved', icon: 'check_circle', tone: 'accent' },
+  markUnresolved: { label: 'admin.review.action.mark.unresolved', icon: 'restart_alt', tone: 'warning' },
   notifyParticipants: { label: 'notify.participants', icon: 'support_agent' },
+  paymentSummary: { label: 'Fizetési összegzés', icon: 'receipt_long' },
   publish: { label: 'publish', icon: 'campaign', tone: 'accent' },
   rejectInvitation: { label: 'reject.invitation', icon: 'block', tone: 'destructive' },
   remove: { label: 'reject', icon: 'delete', tone: 'destructive' },
@@ -314,6 +321,7 @@ export interface InfoCardData<TEagerDetail = unknown> extends DisplayData<TEager
   leadingIcon?: InfoCardLeadingIconConfig | null;
   mediaStart?: InfoCardOverlayAction | null;
   mediaEnd?: InfoCardOverlayAction | null;
+  mediaBottomEnd?: InfoCardOverlayAction | null;
   hasMenuOptions?: boolean;
   menuActions?: readonly CardMenuActionId[];
   menuTitle?: string | null;

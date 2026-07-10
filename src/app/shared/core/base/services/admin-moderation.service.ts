@@ -32,9 +32,10 @@ export class AdminModerationService extends BaseRouteModeService {
   async warnUser(
     userId: string,
     admin: AdminUserDto | null | undefined,
-    message: string
+    message: string,
+    reportId?: string | null
   ): Promise<AdminModerationActionResult | null> {
-    return await this.moderationService.warnUser(userId, admin, message);
+    return await this.moderationService.warnUser(userId, admin, message, reportId);
   }
 
   async blockUser(

@@ -79,6 +79,9 @@ export class SingleRowComponent {
     if (this.hasTopRightContent()) {
       classes.push('ui-single-row--with-top-right');
     }
+    if (this.hasMenuActions()) {
+      classes.push('ui-single-row--with-menu-actions');
+    }
     return classes;
   }
 
@@ -246,7 +249,7 @@ export class SingleRowComponent {
       items: this.rowMenuItems(),
       triggerRect: this.resolveMenuTriggerRect(trigger),
       openUp: false,
-      panelAlign: 'auto',
+      panelAlign: 'end',
       closeOnSelect: true,
       closeTrigger: () => {
         this.menuOpen = false;

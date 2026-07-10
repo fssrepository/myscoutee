@@ -33,13 +33,15 @@ import {
   UserDto
 } from '../../../shared/core/contracts/user.interface';
 import {
-  ImageCarouselComponent,
   HeaderCardComponent,
+  ImageCarouselComponent,
+  PopupComponent,
   type HeaderCardModel,
+  type PopupControl,
+  type PopupModel,
   ProfileExperienceManagerComponent
 } from '../../../shared/ui';
 import {
-  AppMenuComponent,
   AppMenuDispatcher,
   AppMenuOutletComponent,
   type AppMenuItem,
@@ -71,7 +73,9 @@ import { AppRuntimeStore } from '../../../shared/ui/context/stores/app-runtime.s
 type ProfileEditorPanel = 'profile' | 'image' | 'experience';
 type ProfileEditorMenuId = string;
 
-type ProfileEditorMenuContext = { kind: 'profileSave' };
+type ProfileEditorMenuContext =
+  | { kind: 'profileSave' }
+  | { kind: 'profileStatus'; status: AppConstants.ProfileStatus };
 
 @Component({
   selector: 'app-profile-editor',
@@ -81,8 +85,8 @@ type ProfileEditorMenuContext = { kind: 'profileSave' };
     FormsModule,
     MatButtonModule,
     MatIconModule,
-    AppMenuComponent,
     AppMenuOutletComponent,
+    PopupComponent,
     FormFlowComponent,
     ImageCarouselComponent,
     HeaderCardComponent,
@@ -204,6 +208,46 @@ export class ProfileEditorComponent {
     }
   }
 
+  protected profileEditorPopupModel(): PopupModel<ProfileEditorMenuContext> {
+    const title = this.popupTitle();
+    return {
+      title,
+      ariaLabel: title,
+      closeAriaLabel: 'Close',
+      size: 'wide',
+      height: 'full',
+      bodyLayout: 'fill',
+      headerControls: this.profileEditorHeaderControls(),
+      onClose: () => this.handleCloseAction(),
+      onMenuSelect: event => this.onProfileEditorMenuSelect(event.itemSelect)
+    };
+  }
+
+  protected profileEditorHeaderControls(): readonly PopupControl<ProfileEditorMenuContext>[] {
+    if (this.panel !== 'profile') {
+      return [];
+    }
+    const controls: PopupControl<ProfileEditorMenuContext>[] = [];
+    if (!this.activeUserIsAdmin()) {
+      controls.push({
+        id: 'profile-status',
+        kind: 'menu',
+        menuKind: 'select',
+        trigger: this.profileStatusMenuTrigger(),
+        items: this.profileStatusMenuItems(),
+        panelAlign: 'end'
+      });
+    }
+    controls.push({
+      id: 'profile-actions',
+      kind: 'menu',
+      menuKind: 'inline',
+      items: this.profileHeaderActionMenuItems(),
+      panelAlign: 'end'
+    });
+    return controls;
+  }
+
   protected handleCloseAction(): void {
     if (this.panel !== 'profile') {
       this.panel = 'profile';
@@ -248,29 +292,30 @@ export class ProfileEditorComponent {
     this.refreshProfileEditorFlowModel();
   }
 
-  protected profileHeaderStatusMenuItems(): readonly AppMenuItem<ProfileEditorMenuId>[] {
+  protected profileStatusMenuTrigger() {
     const status = this.profileEditorData.profile.profileStatus ?? 'public';
-    return [{
-      id: 'profile-status-trigger',
+    return {
       label: status,
       icon: this.profileStatusIcon(status),
-      kind: 'select-trigger',
-      layout: 'pill',
       palette: this.profileStatusPalette(status),
-      ariaLabel: 'Open profile status selector',
-      items: this.profileStatusMenuItems()
-    }];
+      layout: 'pill' as const,
+      ariaLabel: 'Open profile status selector'
+    };
   }
 
-  private profileStatusMenuItems(): readonly AppMenuItem<ProfileEditorMenuId>[] {
+  private profileStatusMenuItems(): readonly AppMenuItem<ProfileEditorMenuId, ProfileEditorMenuContext>[] {
+    const currentStatus = this.profileEditorData.profile.profileStatus ?? 'public';
     return APP_STATIC_DATA.profileStatusOptions.map(option => ({
       id: `profile-status-${option.value}`,
       label: option.value,
       icon: option.icon,
       kind: 'radio',
       value: option.value,
+      active: option.value === currentStatus,
+      checked: option.value === currentStatus,
       palette: this.profileStatusPalette(option.value),
-      surface: 'tinted'
+      surface: 'tinted',
+      context: { kind: 'profileStatus', status: option.value }
     }));
   }
 
@@ -302,6 +347,17 @@ export class ProfileEditorComponent {
 
     if (context.kind === 'profileSave') {
       void this.saveProfileFromHeader(event.sourceEvent);
+      return;
+    }
+    if (context.kind === 'profileStatus') {
+      this.profileEditorData = {
+        ...this.profileEditorData,
+        profile: {
+          ...this.profileEditorData.profile,
+          profileStatus: context.status
+        }
+      };
+      this.refreshProfileEditorFlowModel();
     }
   }
 

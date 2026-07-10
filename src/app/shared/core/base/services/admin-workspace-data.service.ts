@@ -19,6 +19,8 @@ const ADMIN_REPORTS_ROUTE = '/admin/reports';
 const ADMIN_BLOCKED_USERS_ROUTE = '/admin/reports/blocked-users';
 const ADMIN_FEEDBACK_ROUTE = '/admin/feedback';
 
+export type AdminReviewStatusFilter = 'unresolved' | 'resolved';
+
 export interface AdminWorkspaceMenuCounters {
   adminJobs: number;
   adminMetrics: number;
@@ -70,9 +72,14 @@ export class AdminWorkspaceDataService extends BaseRouteModeService {
       : await this.httpService.loadDashboard(adminUserId);
   }
 
-  async loadReportedUsers(adminUserId?: string): Promise<AdminReportedUserDto[]> {
+  async loadReportedUsers(adminUserId?: string, status?: AdminReviewStatusFilter): Promise<AdminReportedUserDto[]> {
     const service = this.resolveRouteService(ADMIN_REPORTS_ROUTE, this.localService, this.httpService);
-    return await service.loadReportedUsers(adminUserId);
+    return await service.loadReportedUsers(adminUserId, status);
+  }
+
+  async loadReportedUsersDashboard(adminUserId?: string, status?: AdminReviewStatusFilter): Promise<AdminDashboardDto> {
+    const service = this.resolveRouteService(ADMIN_REPORTS_ROUTE, this.localService, this.httpService);
+    return await service.loadDashboard(adminUserId, { reportsStatus: status });
   }
 
   async loadBlockedUsers(adminUserId?: string): Promise<AdminReportedUserDto[]> {
@@ -80,9 +87,24 @@ export class AdminWorkspaceDataService extends BaseRouteModeService {
     return await service.loadBlockedUsers(adminUserId);
   }
 
-  async loadFeedback(adminUserId?: string): Promise<AdminFeedbackDto[]> {
+  async loadFeedback(adminUserId?: string, status?: AdminReviewStatusFilter): Promise<AdminFeedbackDto[]> {
     const service = this.resolveRouteService(ADMIN_FEEDBACK_ROUTE, this.localService, this.httpService);
-    return await service.loadFeedback(adminUserId);
+    return await service.loadFeedback(adminUserId, status);
+  }
+
+  async loadFeedbackDashboard(adminUserId?: string, status?: AdminReviewStatusFilter): Promise<AdminDashboardDto> {
+    const service = this.resolveRouteService(ADMIN_FEEDBACK_ROUTE, this.localService, this.httpService);
+    return await service.loadDashboard(adminUserId, { feedbackStatus: status });
+  }
+
+  async setReportResolved(reportId: string, resolved: boolean, adminUserId?: string): Promise<AdminDashboardDto> {
+    const service = this.resolveRouteService(ADMIN_REPORTS_ROUTE, this.localService, this.httpService);
+    return await service.setReportResolved(reportId, resolved, adminUserId);
+  }
+
+  async setFeedbackResolved(feedbackId: string, resolved: boolean, adminUserId?: string): Promise<AdminDashboardDto> {
+    const service = this.resolveRouteService(ADMIN_FEEDBACK_ROUTE, this.localService, this.httpService);
+    return await service.setFeedbackResolved(feedbackId, resolved, adminUserId);
   }
 
   async loadDashboardMenuCounters(adminUserId: string): Promise<AdminWorkspaceMenuCounters | null> {

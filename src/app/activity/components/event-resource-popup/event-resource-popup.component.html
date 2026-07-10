@@ -25,12 +25,6 @@
         }
       }
 
-      @if (resourcePopupStore.capacityEditorRef()) {
-        @if (resourcePopupStore.eventResourceCapacityEditorComponent(); as capacityEditorComponent) {
-          <ng-container *ngComponentOutlet="capacityEditorComponent; inputs: capacityEditorOutletInputs()"></ng-container>
-        }
-      }
-
       @if (assignedAssetJoinDialogViewState()) {
         @if (resourcePopupStore.eventResourceAssignedAssetJoinDialogComponent(); as assignedAssetJoinDialogComponent) {
           <ng-container *ngComponentOutlet="assignedAssetJoinDialogComponent; inputs: assignedAssetJoinDialogOutletInputs()"></ng-container>

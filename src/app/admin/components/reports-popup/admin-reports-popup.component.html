@@ -1,67 +1,33 @@
 @if (admin.activePopup() === 'reports') {
-  <section class="app-popup">
-    <div class="app-popup-backdrop" (click)="admin.closePopup()"></div>
-    <div class="app-popup-panel popup-panel-admin" (click)="$event.stopPropagation()">
-      <div class="popup-header">
-        <div class="popup-title">
-          <h2>Reported users</h2>
-          <p class="popup-subtitle">Only users with moderation reports are visible here.</p>
-        </div>
-        <div class="admin-report-header-actions">
-          <button
-            type="button"
-            class="admin-blocked-users-btn"
-            [disabled]="blockedUsersCount() === 0"
-            (click)="openBlockedUsers($event)"
-            aria-label="Open blocked users"
-            >
-            <mat-icon>person_off</mat-icon>
-            <span>Blocked users</span>
-            @if (blockedUsersCount() > 0) {
-              <span class="card-badge admin-blocked-users-badge">{{ blockedUsersCount() }}</span>
-            }
-          </button>
-          <button type="button" class="popup-close" (click)="admin.closePopup()" aria-label="Close">
-            <mat-icon>close</mat-icon>
-          </button>
-        </div>
-      </div>
-
-      <div class="popup-body admin-list-only-body">
+  <app-popup [model]="reportsPopupModel()">
+      <div class="admin-list-only-body">
         <app-smart-list
+          #reportsSmartList
           class="admin-smart-list admin-simple-list"
           [config]="reportsSmartListConfig"
           [loadPage]="reportsSmartListLoadPage"
+          [query]="reportsSmartListQuery"
           [itemTemplate]="reportItemTemplateRef ?? null"
+          (menuItemSelect)="onReportRowMenuSelect($event)"
         ></app-smart-list>
 
-        <ng-template #reportItemTemplate let-item let-groupLabel="groupLabel">
+        <ng-template #reportItemTemplate let-item let-groupLabel="groupLabel" let-openMenu="openMenu">
           <single-row
             [row]="reportSingleRow(item, groupLabel)"
             [clickable]="true"
+            [useSharedMenu]="true"
+            [sharedMenuContext]="reportRowMenuContext(item)"
             (rowClick)="openReportDetails(item)"
+            (menuRequest)="openMenu($event)"
           ></single-row>
         </ng-template>
       </div>
-    </div>
-  </section>
+  </app-popup>
 }
 
 @if (reportDetail; as item) {
-  <section class="app-popup app-popup-stacked">
-    <div class="app-popup-backdrop" (click)="closeReportDetails()"></div>
-    <div class="app-popup-panel popup-panel-admin-detail" (click)="$event.stopPropagation()">
-      <div class="popup-header">
-        <div class="popup-title">
-          <h2>Report details</h2>
-          <p class="popup-subtitle">{{ reportListTitle(item) }}</p>
-        </div>
-        <button type="button" class="popup-close" (click)="closeReportDetails()" aria-label="Close">
-          <mat-icon>close</mat-icon>
-        </button>
-      </div>
-
-      <div class="popup-body admin-detail-popup-body">
+  <app-popup [model]="reportDetailPopupModel(item)" [zIndex]="2400">
+      <div class="admin-detail-popup-body">
         <article class="admin-chat-detail-message">
           <div class="admin-message-bubble admin-report-detail-bubble" [ngClass]="reportReasonToneClass(item.report)">
             <div class="admin-message-head">
@@ -99,7 +65,7 @@
                   [menuId]="'report-detail-member-menu-' + (item.user.userId || item.user.name)"
                   [menuTitle]="memberCardTitle(item.user, reportedHandle(item))"
                   [sharedMenuTrigger]="reportedUserMenuTrigger(item.user, 'report-detail')"
-                  [sharedMenuItems]="reportedUserMenuItems(item.user, 'report-detail')"
+                  [sharedMenuItems]="reportedUserMenuItems(item.user, 'report-detail', item)"
                 ></app-image-card>
               </div>
 
@@ -123,32 +89,21 @@
                 <span class="admin-report-context-detail">{{ sourceCardSubtitle(item.report) }}</span>
                 <span class="admin-report-context-foot">
                   <mat-icon>open_in_new</mat-icon>
-                  <span>Open shared source</span>
+                  <span>{{ 'open.shared.source' | i18n }}</span>
                 </span>
               </button>
             </div>
           </div>
         </article>
       </div>
-    </div>
-  </section>
+  </app-popup>
 }
 
 @if (blockedUsersOpen) {
-  <section class="app-popup app-popup-stacked">
-    <div class="app-popup-backdrop" (click)="closeBlockedUsers()"></div>
-    <div class="app-popup-panel popup-panel-admin admin-blocked-users-panel" (click)="$event.stopPropagation()">
-      <div class="popup-header">
-        <div class="popup-title">
-          <h2>Blocked users</h2>
-          <p class="popup-subtitle">Profiles currently blocked by moderation.</p>
-        </div>
-        <button type="button" class="popup-close" (click)="closeBlockedUsers()" aria-label="Close">
-          <mat-icon>close</mat-icon>
-        </button>
-      </div>
-      <div class="popup-body admin-blocked-users-body">
+  <app-popup [model]="blockedUsersPopupModel()" [zIndex]="2400">
+      <div class="admin-blocked-users-body">
         <app-smart-list
+          #blockedUsersSmartList
           class="admin-smart-list admin-blocked-smart-list-host"
           [config]="blockedUsersSmartListConfig"
           [loadPage]="blockedUsersSmartListLoadPage"
@@ -166,8 +121,7 @@
           ></app-image-card>
         </ng-template>
       </div>
-    </div>
-  </section>
+  </app-popup>
 }
 
 <app-menu-outlet (itemSelect)="onReportActionsMenuSelect($event)"></app-menu-outlet>

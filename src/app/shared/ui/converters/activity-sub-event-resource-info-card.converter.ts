@@ -105,7 +105,7 @@ export class ActivitySubEventResourceInfoCardConverter {
     } else if (this.canLeave(card, options)) {
       actions.push('leaveResource');
     }
-    actions.push('contactOrganizer');
+    actions.push('askOrganizer');
     actions.push('shareAsset');
     if (this.canReportResourceManager(card, options)) {
       actions.push(card.sourceAssetId ? 'reportManager' : 'reportOrganizer');

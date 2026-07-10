@@ -2,6 +2,7 @@ import { EVENTS_TABLE_NAME, EVENT_FEEDBACK_TABLE_NAME } from '../../source/entit
 import { CHATS_TABLE_NAME } from '../../source/entity/chat.entity';
 import { CONTACTS_TABLE_NAME, PROFILE_EXPERIENCES_TABLE_NAME } from '../../source/entity/profile.entity';
 import { HELP_CENTER_TABLE_NAME, IDEA_POSTS_TABLE_NAME } from '../../source/entity/content.entity';
+import { SHARE_TOKENS_TABLE_NAME } from '../../source/entity/sharing.entity';
 import { USER_RATES_TABLE_NAME } from '../../source/entity/rate.entity';
 import { USERS_TABLE_NAME } from '../../source/entity/user.entity';
 import { TestBed } from '@angular/core/testing';
@@ -111,7 +112,7 @@ describe('Demo bootstrap seeding', () => {
     expect(JSON.stringify(state[EVENTS_TABLE_NAME].byId)).toBe(eventRecordsBefore);
   });
 
-  it('seeds common collections before admin-specific support data', async () => {
+  it('seeds common collections and admin users for the admin selector without workspace data', async () => {
     const bootstrap = TestBed.inject(SeedDemoBootstrapService);
 
     await bootstrap.ensureDemoSelectorReady('admin');
@@ -122,13 +123,15 @@ describe('Demo bootstrap seeding', () => {
     expect(state[USERS_TABLE_NAME].byId['u1']?.admin).not.toBe(true);
     expect(state[USERS_TABLE_NAME].byId['admin-demo-ava']?.admin).toBe(true);
     expect(state[CHATS_TABLE_NAME].ids).toContain('u1:c1');
-    expect(state[CHATS_TABLE_NAME].ids).toContain('admin-demo-ava:c-admin-service-help-u1');
+    expect(state[CHATS_TABLE_NAME].ids).not.toContain('admin-demo-ava:c-admin-service-help-u1');
     expect(state[EVENTS_TABLE_NAME].ids.length).toBeGreaterThan(0);
     expect(state[ASSETS_TABLE_NAME].ids.length).toBeGreaterThan(0);
     expect(state[ACTIVITY_RESOURCES_TABLE_NAME].ids.length).toBeGreaterThan(0);
+    expect(state[HELP_CENTER_TABLE_NAME].revisionIds.length).toBe(0);
+    expect(state[IDEA_POSTS_TABLE_NAME].ids.length).toBe(0);
   });
 
-  it('adds admin-specific support data after member common collections without reseeding common tables', async () => {
+  it('adds admin selector users after member common collections without reseeding common tables', async () => {
     const bootstrap = TestBed.inject(SeedDemoBootstrapService);
     const tableWriteSpy = vi.spyOn(memoryDb, 'writeIndexedDbTableEntry');
 
@@ -144,11 +147,35 @@ describe('Demo bootstrap seeding', () => {
     expect(state[USERS_TABLE_NAME].byId['u1']?.admin).not.toBe(true);
     expect(state[USERS_TABLE_NAME].byId['admin-demo-ava']?.admin).toBe(true);
     expect(state[CHATS_TABLE_NAME].ids).toContain('u1:c1');
-    expect(state[CHATS_TABLE_NAME].ids).toContain('admin-demo-ava:c-admin-service-help-u1');
+    expect(state[CHATS_TABLE_NAME].ids).not.toContain('admin-demo-ava:c-admin-service-help-u1');
     expect(flushedTables).not.toContain(EVENTS_TABLE_NAME);
     expect(flushedTables).not.toContain(ACTIVITY_RESOURCES_TABLE_NAME);
     expect(flushedTables).toContain(USERS_TABLE_NAME);
+    expect(flushedTables).not.toContain(CHATS_TABLE_NAME);
+  });
+
+  it('runs admin workspace bootstrap when an admin demo user is selected', async () => {
+    const bootstrap = TestBed.inject(SeedDemoBootstrapService);
+    const tableWriteSpy = vi.spyOn(memoryDb, 'writeIndexedDbTableEntry');
+
+    await bootstrap.ensureDemoSelectorReady('union');
+    tableWriteSpy.mockClear();
+
+    await bootstrap.ensureUserReady('admin-demo-ava', 'admin');
+
+    const state = memoryDb.read();
+    const flushedTables = tableWriteSpy.mock.calls.map(([tableName]: [string, unknown]) => tableName);
+    expect(state[CHATS_TABLE_NAME].ids).toContain('admin-demo-ava:c-admin-service-help-u1');
+    expect(state[HELP_CENTER_TABLE_NAME].revisionIds.length).toBeGreaterThan(0);
+    expect(state[IDEA_POSTS_TABLE_NAME].ids.length).toBeGreaterThan(0);
+    expect(state[SHARE_TOKENS_TABLE_NAME].tokens.length).toBeGreaterThan(0);
+    expect(flushedTables).toContain(HELP_CENTER_TABLE_NAME);
+    expect(flushedTables).toContain(IDEA_POSTS_TABLE_NAME);
+    expect(flushedTables).toContain(USERS_TABLE_NAME);
     expect(flushedTables).toContain(CHATS_TABLE_NAME);
+    expect(flushedTables).toContain(SHARE_TOKENS_TABLE_NAME);
+    expect(flushedTables).not.toContain(EVENTS_TABLE_NAME);
+    expect(flushedTables).not.toContain(ACTIVITY_RESOURCES_TABLE_NAME);
   });
 
   it('preboot static content seed does not clear unrelated demo tables', async () => {

@@ -26,7 +26,16 @@ import { MatSelectModule } from '@angular/material/select';
 
 import { PricingBuilder } from '../../../../../../core/base/builders';
 import type * as ContractTypes from '../../../../../../core/contracts';
-import { PricingSlotPanelComponent } from '../../popups/pricing-slot-panel';
+import { PricingSlotPanelComponent } from './pricing-slot-panel';
+import {
+  AppMenuDispatcher,
+  AppMenuOutletComponent,
+  AppMenuTriggerComponent,
+  type AppMenuDispatchState,
+  type AppMenuItem,
+  type AppMenuItemSelectEvent,
+  type AppMenuTrigger
+} from '../../../menu';
 import {
   FormFlowPopupStore,
   type FormFlowPricingEditorPopupActionRequest,
@@ -37,11 +46,37 @@ import type * as AppConstants from '../../../../../../core/common/constants';
 interface PricingPreviewState {
   basePrice: number;
   slotOverridePrice: number | null;
+  quantityLabel: string | null;
+  quantityDelta: number;
   demandDelta: number;
   timeDelta: number;
   finalPrice: number;
+  quantityNotes: string[];
   demandNotes: string[];
   timeNotes: string[];
+}
+
+interface PricingSummaryItem {
+  id: string;
+  label: string;
+  value: string;
+  detail?: string;
+}
+
+export interface PricingEditorRuntimePreviewRow {
+  key: string;
+  label: string;
+  detail?: string | null;
+  amount?: number | null;
+  currency?: string | null;
+  multiplier?: number | null;
+}
+
+export interface PricingEditorRuntimePreview {
+  rows: readonly PricingEditorRuntimePreviewRow[];
+  totalAmount: number;
+  currency: string;
+  emptyLabel?: string | null;
 }
 
 type PricingScopedRule = ContractTypes.PricingDemandRule | ContractTypes.PricingTimeRule;
@@ -51,6 +86,14 @@ interface RuleScopePickerState {
   ruleId: string;
   appliesTo: AppConstants.PricingRuleScope;
   slotIds: string[];
+}
+
+interface RuleScopeMenuContext {
+  action: 'select-scope' | 'toggle-slot' | 'apply';
+  kind: 'demand' | 'time';
+  ruleId: string;
+  scope?: AppConstants.PricingRuleScope;
+  slotId?: string;
 }
 
 export type PricingEditorContext = 'event' | 'asset' | 'subevent';
@@ -66,6 +109,8 @@ export interface PricingEditorConfig {
   showPreview?: PricingEditorConfigValue<boolean | null>;
   allowSlotFeatures?: PricingEditorConfigValue<boolean | null>;
   embedded?: PricingEditorConfigValue<boolean | null>;
+  visible?: PricingEditorConfigValue<boolean | null>;
+  runtimePreview?: PricingEditorConfigValue<PricingEditorRuntimePreview | null>;
 }
 
 interface ResolvedPricingEditorConfig {
@@ -91,6 +136,8 @@ interface ResolvedPricingEditorConfig {
     MatInputModule,
     MatNativeDateModule,
     MatSelectModule,
+    AppMenuOutletComponent,
+    AppMenuTriggerComponent,
     PricingSlotPanelComponent
   ],
   templateUrl: './pricing-editor.component.html',
@@ -101,11 +148,11 @@ interface ResolvedPricingEditorConfig {
       provide: NG_VALUE_ACCESSOR,
       useExisting: forwardRef(() => PricingEditorInputComponent),
       multi: true
-    }
+    },
+    AppMenuDispatcher
   ]
 })
 export class PricingEditorInputComponent implements OnChanges, DoCheck, OnDestroy, ControlValueAccessor {
-  private static readonly MOBILE_SCOPE_SHEET_BREAKPOINT_PX = 760;
   private static ownerSequence = 0;
 
   @Input() config: PricingEditorConfig = {};
@@ -118,7 +165,13 @@ export class PricingEditorInputComponent implements OnChanges, DoCheck, OnDestro
   protected readonly taxModeOptions: readonly AppConstants.PricingTaxMode[] = ['excluded', 'included'];
   protected readonly roundingOptions: readonly AppConstants.PricingRoundingMode[] = ['none', 'whole', 'half'];
   protected readonly demandOperatorOptions: readonly AppConstants.PricingDemandOperator[] = ['gte', 'lte'];
-  protected readonly actionKindOptions: readonly AppConstants.PricingRuleActionKind[] = ['increase_percent', 'decrease_percent', 'set_exact_price'];
+  protected readonly actionKindOptions: readonly AppConstants.PricingRuleActionKind[] = [
+    'increase_percent',
+    'decrease_percent',
+    'increase_amount',
+    'decrease_amount',
+    'set_exact_price'
+  ];
   protected readonly ruleScopeOptions: readonly AppConstants.PricingRuleScope[] = ['all_slots', 'selected_slots'];
   protected readonly timeTriggerOptions: readonly AppConstants.PricingTimeRuleTrigger[] = ['days_before_start', 'hours_before_start', 'specific_date'];
   protected readonly cancellationUnitOptions: readonly AppConstants.PricingCancellationUnit[] = ['hours', 'days', 'weeks', 'months'];
@@ -138,7 +191,8 @@ export class PricingEditorInputComponent implements OnChanges, DoCheck, OnDestro
   private resolvedConfigSignature = this.buildResolvedConfigSignature(this.resolvedConfig);
   private idSequence = 0;
   private ruleScopePickerState: RuleScopePickerState | null = null;
-  private mobileScopeSheetViewport = this.resolveMobileScopeSheetViewport();
+  private ruleScopeMenuSession: AppMenuDispatchState | null = null;
+  private readonly ruleScopeMenuDispatcher = inject(AppMenuDispatcher);
   private pricingValue: ContractTypes.PricingConfig | null | undefined = null;
   private pricingPopupDraft: ContractTypes.PricingConfig | null = null;
   private onModelChange: (value: ContractTypes.PricingConfig) => void = () => {};
@@ -212,6 +266,10 @@ export class PricingEditorInputComponent implements OnChanges, DoCheck, OnDestro
     switch (action) {
       case 'decrease_percent':
         return 'Decrease by %';
+      case 'increase_amount':
+        return 'Increase by amount';
+      case 'decrease_amount':
+        return 'Decrease by amount';
       case 'set_exact_price':
         return 'Set exact price';
       default:
@@ -282,19 +340,55 @@ export class PricingEditorInputComponent implements OnChanges, DoCheck, OnDestro
   }
 
   protected showDemandSection(): boolean {
-    return true;
+    return this.showToggleableSection(this.workingPricing.demandRulesEnabled);
   }
 
   protected showTimeSection(): boolean {
-    return true;
+    return this.showToggleableSection(this.workingPricing.timeRulesEnabled);
   }
 
   protected showSlotSection(): boolean {
-    return this.resolvedConfig.allowSlotFeatures;
+    return this.resolvedConfig.allowSlotFeatures
+      && this.showToggleableSection(this.workingPricing.slotPricingEnabled);
+  }
+
+  protected showQuantitySection(): boolean {
+    return this.resolvedConfig.context === 'event'
+      && this.showToggleableSection(this.workingPricing.quantityRulesEnabled);
   }
 
   protected showCancellationSection(): boolean {
-    return this.resolvedConfig.context === 'event' || this.resolvedConfig.context === 'asset';
+    return (this.resolvedConfig.context === 'event' || this.resolvedConfig.context === 'asset')
+      && this.showToggleableSection(this.workingPricing.cancellationPolicy.enabled);
+  }
+
+  protected showAudienceSection(): boolean {
+    return this.resolvedConfig.showAudienceSection
+      && this.showToggleableSection(this.workingPricing.audience.enabled);
+  }
+
+  protected showPricingPanel(): boolean {
+    const configured = this.pricingPanelVisibility();
+    if (configured !== null) {
+      return configured;
+    }
+    return !this.editorLocked() || this.isPricingEnabled();
+  }
+
+  protected showPricingContent(): boolean {
+    return this.pricingPanelVisibility() === true || this.isPricingEnabled();
+  }
+
+  protected showToggleControl(): boolean {
+    return !this.editorLocked();
+  }
+
+  private showToggleableSection(enabled: boolean): boolean {
+    return !this.editorLocked() || enabled;
+  }
+
+  private pricingPanelVisibility(): boolean | null {
+    return this.resolveConfigValue(this.config.visible, null);
   }
 
   protected isDynamicMode(): boolean {
@@ -486,6 +580,17 @@ export class PricingEditorInputComponent implements OnChanges, DoCheck, OnDestro
     this.emitPricing();
   }
 
+  protected toggleQuantityRulesEnabled(): void {
+    if (this.readOnly) {
+      return;
+    }
+    this.workingPricing.quantityRulesEnabled = !this.workingPricing.quantityRulesEnabled;
+    if (this.workingPricing.quantityRulesEnabled && this.workingPricing.quantityRules.length === 0) {
+      this.workingPricing.quantityRules = [this.createDefaultQuantityRule()];
+    }
+    this.emitPricing();
+  }
+
   protected toggleTimeRulesEnabled(): void {
     if (this.readOnly) {
       return;
@@ -533,6 +638,26 @@ export class PricingEditorInputComponent implements OnChanges, DoCheck, OnDestro
       return;
     }
     this.workingPricing.demandRules = this.workingPricing.demandRules.filter((_, itemIndex) => itemIndex !== index);
+    this.emitPricing();
+  }
+
+  protected addQuantityRule(): void {
+    if (this.readOnly) {
+      return;
+    }
+    this.workingPricing.quantityRules = [
+      ...this.workingPricing.quantityRules,
+      this.createDefaultQuantityRule()
+    ];
+    this.workingPricing.quantityRulesEnabled = true;
+    this.emitPricing();
+  }
+
+  protected removeQuantityRule(index: number): void {
+    if (this.readOnly || index < 0 || index >= this.workingPricing.quantityRules.length) {
+      return;
+    }
+    this.workingPricing.quantityRules = this.workingPricing.quantityRules.filter((_, itemIndex) => itemIndex !== index);
     this.emitPricing();
   }
 
@@ -610,6 +735,17 @@ export class PricingEditorInputComponent implements OnChanges, DoCheck, OnDestro
   }
 
   protected onDemandRuleActionValueChange(rule: ContractTypes.PricingDemandRule, value: number | string): void {
+    rule.action.value = this.parseMoney(value) ?? 0;
+    this.emitPricing();
+  }
+
+  protected onQuantityRuleMinChange(rule: ContractTypes.PricingQuantityRule, value: number | string): void {
+    rule.minQuantity = this.parseInteger(value) ?? rule.minQuantity;
+    rule.minQuantity = Math.max(1, rule.minQuantity);
+    this.emitPricing();
+  }
+
+  protected onQuantityRuleActionValueChange(rule: ContractTypes.PricingQuantityRule, value: number | string): void {
     rule.action.value = this.parseMoney(value) ?? 0;
     this.emitPricing();
   }
@@ -773,42 +909,12 @@ export class PricingEditorInputComponent implements OnChanges, DoCheck, OnDestro
     this.emitPricing();
   }
 
-  protected toggleRuleScopePicker(
-    kind: 'demand' | 'time',
-    rule: PricingScopedRule,
-    event?: Event
-  ): void {
-    event?.stopPropagation();
-    if (this.readOnly) {
-      return;
-    }
-    if (this.isRuleScopePickerOpen(kind, rule)) {
-      this.closeRuleScopePicker();
-      return;
-    }
-    this.ruleScopePickerState = {
-      kind,
-      ruleId: rule.id,
-      appliesTo: rule.appliesTo,
-      slotIds: [...(rule.slotIds ?? [])]
-    };
-    this.cdr.markForCheck();
+  protected ruleScopeMenuTitle(kind: 'demand' | 'time'): string {
+    return kind === 'time' ? 'Time Rule Slots' : 'Demand Rule Slots';
   }
 
-  protected shouldUseMobileRuleScopeSheet(): boolean {
-    return this.mobileScopeSheetViewport;
-  }
-
-  protected showMobileRuleScopeSheet(): boolean {
-    return this.mobileScopeSheetViewport && !!this.ruleScopePickerState;
-  }
-
-  protected isRuleScopePickerOpen(kind: 'demand' | 'time', rule: PricingScopedRule): boolean {
-    return this.ruleScopePickerState?.kind === kind && this.ruleScopePickerState.ruleId === rule.id;
-  }
-
-  protected currentRuleScopeSheetTitle(): string {
-    return this.ruleScopePickerState?.kind === 'time' ? 'Time Rule Slots' : 'Demand Rule Slots';
+  protected ruleScopeMenuId(kind: 'demand' | 'time', rule: PricingScopedRule): string {
+    return `pricing-${kind}-scope-${rule.id}`;
   }
 
   protected ruleScopeButtonLabel(rule: PricingScopedRule): string {
@@ -824,12 +930,148 @@ export class PricingEditorInputComponent implements OnChanges, DoCheck, OnDestro
     return `${rule.slotIds.length} slots selected`;
   }
 
-  protected currentRuleScopeDraftMode(): AppConstants.PricingRuleScope {
-    return this.ruleScopePickerState?.appliesTo ?? 'all_slots';
+  protected ruleScopeMenuTrigger(kind: 'demand' | 'time', rule: PricingScopedRule): AppMenuTrigger {
+    return {
+      id: `${kind}-${rule.id}-scope`,
+      label: this.ruleScopeButtonLabel(rule),
+      icon: 'view_week',
+      trailingIcon: 'expand_more',
+      openTrailingIcon: 'expand_less',
+      palette: 'mint',
+      layout: 'field',
+      disabled: this.readOnly
+    };
   }
 
-  protected currentRuleScopeDraftSlotIds(): string[] {
-    return [...(this.ruleScopePickerState?.slotIds ?? [])];
+  protected ruleScopeMenuItems(
+    kind: 'demand' | 'time',
+    rule: PricingScopedRule
+  ): readonly AppMenuItem<string, RuleScopeMenuContext>[] {
+    const activeMenu = this.ruleScopeMenuDispatcher.activeMenu();
+    const useDraft = this.ruleScopeMenuSession === activeMenu
+      && activeMenu?.id === this.ruleScopeMenuId(kind, rule)
+      && this.ruleScopePickerState?.kind === kind
+      && this.ruleScopePickerState.ruleId === rule.id;
+    const state = useDraft
+      ? this.ruleScopePickerState
+      : {
+          kind,
+          ruleId: rule.id,
+          appliesTo: rule.appliesTo,
+          slotIds: [...(rule.slotIds ?? [])]
+        };
+    const selectedSlots = new Set(state?.slotIds ?? []);
+    const items: AppMenuItem<string, RuleScopeMenuContext>[] = [
+      {
+        id: `${kind}-${rule.id}-all-slots`,
+        label: 'All slots',
+        icon: 'view_week',
+        kind: 'radio',
+        palette: 'mint',
+        checked: state?.appliesTo === 'all_slots',
+        closeOnSelect: false,
+        context: {
+          action: 'select-scope',
+          kind,
+          ruleId: rule.id,
+          scope: 'all_slots'
+        }
+      },
+      {
+        id: `${kind}-${rule.id}-specific-slots`,
+        label: 'Specific slots',
+        icon: 'view_list',
+        kind: 'radio',
+        palette: 'teal',
+        checked: state?.appliesTo === 'selected_slots',
+        disabled: this.resolvedConfig.slotCatalog.length === 0,
+        closeOnSelect: false,
+        context: {
+          action: 'select-scope',
+          kind,
+          ruleId: rule.id,
+          scope: 'selected_slots'
+        }
+      }
+    ];
+    if (state?.appliesTo === 'selected_slots') {
+      items.push({
+        id: `${kind}-${rule.id}-slot-section`,
+        label: 'Slots',
+        kind: 'section'
+      });
+      items.push(...this.resolvedConfig.slotCatalog.map(slot => ({
+        id: `${kind}-${rule.id}-slot-${slot.id}`,
+        label: slot.label,
+        description: this.slotScopeWindowLabel(slot),
+        icon: 'event',
+        kind: 'checkbox' as const,
+        palette: 'blue' as const,
+        checked: selectedSlots.has(slot.id),
+        closeOnSelect: false,
+        context: {
+          action: 'toggle-slot' as const,
+          kind,
+          ruleId: rule.id,
+          slotId: slot.id
+        }
+      })));
+    }
+    items.push(
+      {
+        id: `${kind}-${rule.id}-apply-divider`,
+        kind: 'divider'
+      },
+      {
+        id: `${kind}-${rule.id}-apply`,
+        label: 'Apply',
+        icon: 'done',
+        kind: 'action',
+        layout: 'action',
+        palette: 'green',
+        disabled: !state || (state.appliesTo === 'selected_slots' && state.slotIds.length === 0),
+        closeOnSelect: false,
+        context: {
+          action: 'apply',
+          kind,
+          ruleId: rule.id
+        }
+      }
+    );
+    return items;
+  }
+
+  protected activeRuleScopeMenuItems(): readonly AppMenuItem<string, RuleScopeMenuContext>[] | null {
+    const activeMenu = this.ruleScopeMenuDispatcher.activeMenu();
+    const state = this.ruleScopePickerState;
+    const rule = this.currentRuleScopeRule();
+    return state && rule && activeMenu && this.ruleScopeMenuSession === activeMenu
+      ? this.ruleScopeMenuItems(state.kind, rule)
+      : null;
+  }
+
+  protected onRuleScopeMenuSelect(event: AppMenuItemSelectEvent<string, unknown>): void {
+    const routedContext = event.context as { select?: () => void } | undefined;
+    if (typeof routedContext?.select === 'function') {
+      routedContext.select();
+      return;
+    }
+    const context = event.context as RuleScopeMenuContext | undefined;
+    if (!context || !this.prepareRuleScopeDraft(context)) {
+      return;
+    }
+    if (context.action === 'select-scope' && context.scope) {
+      this.selectRuleScopeDraftMode(context.scope, event.sourceEvent);
+      return;
+    }
+    if (context.action === 'toggle-slot' && context.slotId) {
+      this.toggleRuleScopeDraftSlot(context.slotId, event.sourceEvent);
+      return;
+    }
+    if (context.action === 'apply') {
+      this.applyCurrentRuleScopeDraft(event.sourceEvent);
+      this.ruleScopeMenuDispatcher.close();
+    }
   }
 
   protected selectRuleScopeDraftMode(scope: AppConstants.PricingRuleScope, event?: Event): void {
@@ -844,6 +1086,7 @@ export class PricingEditorInputComponent implements OnChanges, DoCheck, OnDestro
         ? []
         : (this.ruleScopePickerState.slotIds.length > 0 ? [...this.ruleScopePickerState.slotIds] : this.defaultDraftSlotIds())
     };
+    this.cdr.markForCheck();
   }
 
   protected toggleRuleScopeDraftSlot(slotId: string, event?: Event): void {
@@ -865,10 +1108,7 @@ export class PricingEditorInputComponent implements OnChanges, DoCheck, OnDestro
       ...this.ruleScopePickerState,
       slotIds: [...slotIds]
     };
-  }
-
-  protected isRuleScopeDraftSlotSelected(slotId: string): boolean {
-    return this.ruleScopePickerState?.slotIds.includes(`${slotId}`.trim()) ?? false;
+    this.cdr.markForCheck();
   }
 
   protected canApplyRuleScopeDraft(): boolean {
@@ -907,21 +1147,6 @@ export class PricingEditorInputComponent implements OnChanges, DoCheck, OnDestro
     return `${start} - ${end}`;
   }
 
-  @HostListener('window:resize')
-  protected onWindowResize(): void {
-    const nextViewport = this.resolveMobileScopeSheetViewport();
-    if (nextViewport === this.mobileScopeSheetViewport) {
-      return;
-    }
-    this.mobileScopeSheetViewport = nextViewport;
-    this.cdr.markForCheck();
-  }
-
-  @HostListener('document:click')
-  protected onDocumentClick(): void {
-    this.closeRuleScopePicker();
-  }
-
   @HostListener('document:keydown.escape', ['$event'])
   protected onEscape(event: Event): void {
     const keyboardEvent = event as KeyboardEvent;
@@ -947,8 +1172,24 @@ export class PricingEditorInputComponent implements OnChanges, DoCheck, OnDestro
     const previewSlotId = activeSlotOverride?.slotId ?? null;
     let runningPrice = activeSlotOverride?.price ?? normalized.basePrice;
     const basePrice = runningPrice;
+    let quantityLabel: string | null = null;
+    const quantityNotes: string[] = [];
     const demandNotes: string[] = [];
     const timeNotes: string[] = [];
+
+    if (this.showQuantitySection() && normalized.quantityRulesEnabled && normalized.quantityRules.length > 0) {
+      const previewQuantity = this.previewQuantityForRules(normalized.quantityRules);
+      quantityLabel = `Quantity pricing (per ${previewQuantity} ${previewQuantity === 1 ? 'item' : 'items'})`;
+      for (const rule of normalized.quantityRules) {
+        if (!this.matchesQuantityRule(rule, previewQuantity)) {
+          continue;
+        }
+        const nextPrice = this.applyRuleAction(runningPrice, rule.action);
+        quantityNotes.push(this.describeQuantityRule(rule, previewQuantity));
+        runningPrice = nextPrice;
+      }
+    }
+    const priceAfterQuantity = runningPrice;
 
     if (this.showDemandSection() && normalized.demandRulesEnabled) {
       for (const rule of normalized.demandRules) {
@@ -978,18 +1219,82 @@ export class PricingEditorInputComponent implements OnChanges, DoCheck, OnDestro
     return {
       basePrice,
       slotOverridePrice: activeSlotOverride?.price ?? null,
-      demandDelta: priceAfterDemand - basePrice,
+      quantityLabel,
+      quantityDelta: priceAfterQuantity - basePrice,
+      demandDelta: priceAfterDemand - priceAfterQuantity,
       timeDelta: clamped - priceAfterDemand,
       finalPrice,
+      quantityNotes,
       demandNotes,
       timeNotes
     };
+  }
+
+  protected runtimePreviewState(): PricingEditorRuntimePreview | null {
+    const preview = this.resolveConfigValue(this.config.runtimePreview, null);
+    if (!preview) {
+      return null;
+    }
+    const currency = `${preview.currency ?? this.workingPricing.currency ?? 'USD'}`.trim() || 'USD';
+    const rows = (preview.rows ?? []).map(row => ({
+      key: `${row.key ?? row.label ?? 'pricing'}`.trim() || 'pricing',
+      label: `${row.label ?? 'Pricing'}`.trim() || 'Pricing',
+      detail: `${row.detail ?? ''}`.trim() || null,
+      amount: Number.isFinite(row.amount) ? Number(row.amount) : null,
+      currency: `${row.currency ?? currency}`.trim() || currency,
+      multiplier: Number.isFinite(row.multiplier) ? Math.max(1, Math.trunc(Number(row.multiplier))) : null
+    })).filter(row => row.label);
+    return {
+      rows,
+      totalAmount: Math.max(0, Number(preview.totalAmount) || 0),
+      currency,
+      emptyLabel: `${preview.emptyLabel ?? ''}`.trim() || null
+    };
+  }
+
+  protected runtimeBaseAmount(preview: PricingEditorRuntimePreview): number {
+    return Math.max(0, Number(this.runtimeBaseRow(preview)?.amount) || 0);
+  }
+
+  protected runtimeAdjustmentRows(preview: PricingEditorRuntimePreview): readonly PricingEditorRuntimePreviewRow[] {
+    const baseKey = this.runtimeBaseRow(preview)?.key ?? null;
+    return preview.rows.filter(row => row.key !== baseKey);
+  }
+
+  protected runtimePreviewCurrency(preview: PricingEditorRuntimePreview): string {
+    return `${preview.currency ?? this.workingPricing.currency ?? 'USD'}`.trim() || 'USD';
+  }
+
+  protected runtimeRowTrackId(index: number, row: PricingEditorRuntimePreviewRow): string {
+    return `${row.key || row.label || 'row'}-${index}`;
+  }
+
+  protected runtimeRowLabel(row: PricingEditorRuntimePreviewRow): string {
+    const multiplier = Math.max(1, Math.trunc(Number(row.multiplier) || 1));
+    return multiplier > 1 ? `${row.label} * ${multiplier}` : row.label;
+  }
+
+  protected runtimeRowAmount(row: PricingEditorRuntimePreviewRow, fallbackCurrency: string): string {
+    if (!Number.isFinite(row.amount)) {
+      return '';
+    }
+    const amount = Number(row.amount);
+    return this.formatSignedMoneyForCurrency(amount, `${row.currency ?? fallbackCurrency}`.trim() || fallbackCurrency);
+  }
+
+  protected runtimeTotalLabel(preview: PricingEditorRuntimePreview): string {
+    return this.formatMoneyForCurrency(preview.totalAmount, this.runtimePreviewCurrency(preview));
+  }
+
+  protected runtimeMoneyLabel(amount: number, currency: string): string {
+    return this.formatMoneyForCurrency(amount, currency);
   }
 
   protected previewExplanationLines(): string[] {
     const preview = this.calculatePreviewState();
     return [
       ...(preview.slotOverridePrice !== null ? [`A slot override is active, so this preview starts from ${this.formatMoney(preview.slotOverridePrice)} instead of the global base price.`] : []),
+      ...preview.quantityNotes,
       ...preview.demandNotes,
       ...preview.timeNotes
     ];
@@ -1014,6 +1319,10 @@ export class PricingEditorInputComponent implements OnChanges, DoCheck, OnDestro
       }
     }
 
+    if (this.showQuantitySection() && !this.workingPricing.quantityRulesEnabled) {
+      lines.push('Quantity rules are off, so buying multiple events uses the same base price per event.');
+    }
+
     if (this.resolvedConfig.allowSlotFeatures) {
       if (this.resolvedConfig.slotCatalog.length === 0) {
         lines.push('Slot-specific pricing is unavailable until the event has at least one slot in the Slots section.');
@@ -1035,6 +1344,76 @@ export class PricingEditorInputComponent implements OnChanges, DoCheck, OnDestro
     }
 
     return lines;
+  }
+
+  protected pricingSummaryItems(): PricingSummaryItem[] {
+    const pricing = this.normalizePricingWithCapabilities(this.workingPricing);
+    const items: PricingSummaryItem[] = [{
+      id: 'charge',
+      label: 'Charge',
+      value: this.chargeTypeLabel(pricing.chargeType),
+      detail: this.priceBasisDetail(pricing)
+    }];
+
+    if (this.showQuantitySection() && pricing.quantityRulesEnabled && pricing.quantityRules.length > 0) {
+      items.push({
+        id: 'quantity',
+        label: 'Quantity',
+        value: this.countLabel(pricing.quantityRules.length, 'rule'),
+        detail: pricing.quantityRules.map(rule => this.quantityRuleSummary(rule)).join('; ')
+      });
+    }
+
+    const dynamicParts: string[] = [];
+    if (this.showDemandSection() && pricing.demandRulesEnabled && pricing.demandRules.length > 0) {
+      dynamicParts.push(`Demand ${this.countLabel(pricing.demandRules.length, 'rule')}`);
+    }
+    if (this.showTimeSection() && pricing.timeRulesEnabled && pricing.timeRules.length > 0) {
+      dynamicParts.push(`Time ${this.countLabel(pricing.timeRules.length, 'rule')}`);
+    }
+    if (dynamicParts.length > 0) {
+      items.push({
+        id: 'dynamic',
+        label: 'Dynamic rules',
+        value: `${pricing.demandRules.length + pricing.timeRules.length}`,
+        detail: dynamicParts.join(' · ')
+      });
+    }
+
+    if (this.resolvedConfig.allowSlotFeatures && pricing.slotPricingEnabled) {
+      const pricedOverrides = pricing.slotOverrides.filter(item => item.price !== null);
+      if (pricedOverrides.length > 0) {
+        items.push({
+          id: 'slots',
+          label: 'Slots',
+          value: this.countLabel(pricedOverrides.length, 'override'),
+          detail: pricedOverrides.slice(0, 2).map(item => `${item.label}: ${this.formatMoney(item.price)}`).join('; ')
+        });
+      }
+    }
+
+    if (this.showCancellationSection()) {
+      const policy = pricing.cancellationPolicy;
+      items.push({
+        id: 'cancellation',
+        label: 'Cancellation',
+        value: policy.enabled && policy.rules.length > 0 ? this.countLabel(policy.rules.length, 'rule') : 'Off',
+        detail: policy.enabled && policy.rules.length > 0
+          ? policy.rules.slice(0, 2).map(rule => this.cancellationRuleSummary(rule)).join('; ')
+          : 'No reimbursement schedule'
+      });
+    }
+
+    if (this.resolvedConfig.showAudienceSection && pricing.audience.enabled) {
+      items.push({
+        id: 'audience',
+        label: 'Audience',
+        value: 'Active',
+        detail: this.audienceSummary(pricing.audience)
+      });
+    }
+
+    return items;
   }
 
   protected trackByRule(index: number, rule: { id: string }): string {
@@ -1194,6 +1573,17 @@ export class PricingEditorInputComponent implements OnChanges, DoCheck, OnDestro
     };
   }
 
+  private createDefaultQuantityRule(): ContractTypes.PricingQuantityRule {
+    return {
+      id: this.nextId('quantity-rule'),
+      minQuantity: 5,
+      action: {
+        kind: 'decrease_amount',
+        value: 2
+      }
+    };
+  }
+
   private createDefaultTimeRule(): ContractTypes.PricingTimeRule {
     return {
       id: this.nextId('time-rule'),
@@ -1233,7 +1623,30 @@ export class PricingEditorInputComponent implements OnChanges, DoCheck, OnDestro
   protected closeRuleScopePicker(event?: Event): void {
     event?.stopPropagation();
     this.ruleScopePickerState = null;
+    this.ruleScopeMenuSession = null;
     this.cdr.markForCheck();
+  }
+
+  private prepareRuleScopeDraft(context: RuleScopeMenuContext): boolean {
+    const activeMenu = this.ruleScopeMenuDispatcher.activeMenu();
+    const rule = this.ruleScopeRule(context.kind, context.ruleId);
+    if (!activeMenu || !rule || activeMenu.id !== this.ruleScopeMenuId(context.kind, rule)) {
+      return false;
+    }
+    if (
+      this.ruleScopeMenuSession !== activeMenu
+      || this.ruleScopePickerState?.kind !== context.kind
+      || this.ruleScopePickerState.ruleId !== context.ruleId
+    ) {
+      this.ruleScopePickerState = {
+        kind: context.kind,
+        ruleId: context.ruleId,
+        appliesTo: rule.appliesTo,
+        slotIds: [...(rule.slotIds ?? [])]
+      };
+      this.ruleScopeMenuSession = activeMenu;
+    }
+    return true;
   }
 
   private currentRuleScopeRule(): PricingScopedRule | null {
@@ -1241,20 +1654,19 @@ export class PricingEditorInputComponent implements OnChanges, DoCheck, OnDestro
     if (!state) {
       return null;
     }
-    const rules = state.kind === 'demand'
+    return this.ruleScopeRule(state.kind, state.ruleId);
+  }
+
+  private ruleScopeRule(kind: 'demand' | 'time', ruleId: string): PricingScopedRule | null {
+    const rules = kind === 'demand'
       ? this.workingPricing.demandRules
       : this.workingPricing.timeRules;
-    return rules.find(rule => rule.id === state.ruleId) ?? null;
+    return rules.find(rule => rule.id === ruleId) ?? null;
   }
 
   private defaultDraftSlotIds(): string[] {
     const firstSlotId = `${this.resolvedConfig.slotCatalog[0]?.id ?? ''}`.trim();
     return firstSlotId ? [firstSlotId] : [];
-  }
-
-  private resolveMobileScopeSheetViewport(): boolean {
-    return typeof window !== 'undefined'
-      && window.innerWidth <= PricingEditorInputComponent.MOBILE_SCOPE_SHEET_BREAKPOINT_PX;
   }
 
   private slotLabelById(slotId: string | null | undefined): string {
@@ -1326,6 +1738,10 @@ export class PricingEditorInputComponent implements OnChanges, DoCheck, OnDestro
     return capacityFilledPercent >= rule.capacityFilledPercent;
   }
 
+  private matchesQuantityRule(rule: ContractTypes.PricingQuantityRule, quantity: number): boolean {
+    return Math.max(1, Math.trunc(Number(quantity) || 1)) >= Math.max(1, Math.trunc(Number(rule.minQuantity) || 1));
+  }
+
   private matchesTimeRule(
     rule: ContractTypes.PricingTimeRule,
     hoursUntilStart: number,
@@ -1358,6 +1774,10 @@ export class PricingEditorInputComponent implements OnChanges, DoCheck, OnDestro
     switch (action.kind) {
       case 'decrease_percent':
         return Math.max(0, price - ((price * value) / 100));
+      case 'increase_amount':
+        return price + value;
+      case 'decrease_amount':
+        return Math.max(0, price - value);
       case 'set_exact_price':
         return value;
       default:
@@ -1393,6 +1813,11 @@ export class PricingEditorInputComponent implements OnChanges, DoCheck, OnDestro
     return `Demand rule active: when capacity filled is ${rule.operator === 'lte' ? '<=' : '>='} ${rule.capacityFilledPercent}%, ${this.describeAction(rule.action)}${this.describeRuleScope(rule)}.`;
   }
 
+  private describeQuantityRule(rule: ContractTypes.PricingQuantityRule, previewQuantity: number): string {
+    const minQuantity = Math.max(1, Math.trunc(Number(rule.minQuantity) || 1));
+    return `Quantity rule active: previewing ${previewQuantity} events, and quantity >= ${minQuantity}, ${this.describeAction(rule.action)}.`;
+  }
+
   private describeTimeRule(rule: ContractTypes.PricingTimeRule): string {
     if (rule.trigger === 'specific_date') {
       const start = `${rule.specificDateStart ?? ''}`.trim();
@@ -1410,8 +1835,16 @@ export class PricingEditorInputComponent implements OnChanges, DoCheck, OnDestro
   }
 
   private formatMoney(value: number | null | undefined): string {
+    return this.formatMoneyForCurrency(Math.max(0, Number(value) || 0), this.workingPricing.currency || 'USD');
+  }
+
+  private formatSignedMoneyForCurrency(value: number, currency: string): string {
+    const sign = value > 0 ? '+' : value < 0 ? '-' : '';
+    return `${sign}${this.formatMoneyForCurrency(Math.abs(value), currency)}`;
+  }
+
+  private formatMoneyForCurrency(value: number | null | undefined, currency: string): string {
     const amount = Math.max(0, Number(value) || 0);
-    const currency = this.workingPricing.currency || 'USD';
     try {
       return new Intl.NumberFormat('en-US', {
         style: 'currency',
@@ -1423,11 +1856,23 @@ export class PricingEditorInputComponent implements OnChanges, DoCheck, OnDestro
     }
   }
 
+  private runtimeBaseRow(preview: PricingEditorRuntimePreview): PricingEditorRuntimePreviewRow | null {
+    return preview.rows.find(row => {
+      const key = `${row.key ?? ''}`.trim().toLowerCase();
+      const label = `${row.label ?? ''}`.trim().toLowerCase();
+      return key.startsWith('base') || label.includes('base');
+    }) ?? null;
+  }
+
   private describeAction(action: ContractTypes.PricingAction): string {
     const value = Math.max(0, Number(action.value) || 0);
     switch (action.kind) {
       case 'decrease_percent':
         return `the price decreases by ${value}%`;
+      case 'increase_amount':
+        return `the price increases by ${this.formatMoney(value)}`;
+      case 'decrease_amount':
+        return `the price decreases by ${this.formatMoney(value)}`;
       case 'set_exact_price':
         return `the price is set to ${this.formatMoney(value)}`;
       default:
@@ -1446,6 +1891,92 @@ export class PricingEditorInputComponent implements OnChanges, DoCheck, OnDestro
       return ` for ${this.slotLabelById(rule.slotIds[0]) || 'the selected slot'}`;
     }
     return ` for ${rule.slotIds.length} selected slots`;
+  }
+
+  private previewQuantityForRules(rules: readonly ContractTypes.PricingQuantityRule[]): number {
+    const quantities = rules
+      .map(rule => Math.max(1, Math.trunc(Number(rule.minQuantity) || 1)))
+      .filter(quantity => quantity > 1);
+    return quantities.length > 0 ? Math.min(...quantities) : 5;
+  }
+
+  private priceBasisDetail(pricing: ContractTypes.PricingConfig): string {
+    const parts = [
+      `${this.taxModeLabel(pricing.taxMode)} tax`,
+      this.roundingLabel(pricing.rounding)
+    ];
+    if (pricing.minPrice !== null || pricing.maxPrice !== null) {
+      parts.push([
+        pricing.minPrice !== null ? `min ${this.formatMoney(pricing.minPrice)}` : '',
+        pricing.maxPrice !== null ? `max ${this.formatMoney(pricing.maxPrice)}` : ''
+      ].filter(Boolean).join(' · '));
+    }
+    return parts.filter(Boolean).join(' · ');
+  }
+
+  private quantityRuleSummary(rule: ContractTypes.PricingQuantityRule): string {
+    const quantity = Math.max(1, Math.trunc(Number(rule.minQuantity) || 1));
+    return `${quantity}+ items: ${this.compactActionLabel(rule.action)} each`;
+  }
+
+  private compactActionLabel(action: ContractTypes.PricingAction): string {
+    const value = Math.max(0, Number(action.value) || 0);
+    switch (action.kind) {
+      case 'decrease_percent':
+        return `-${value}%`;
+      case 'increase_amount':
+        return `+${this.formatMoney(value)}`;
+      case 'decrease_amount':
+        return `-${this.formatMoney(value)}`;
+      case 'set_exact_price':
+        return this.formatMoney(value);
+      default:
+        return `+${value}%`;
+    }
+  }
+
+  private cancellationRuleSummary(rule: ContractTypes.PricingCancellationRule): string {
+    return `${this.cancellationWindowLabel(rule)}: ${this.cancellationRefundLabel(rule)}`;
+  }
+
+  private cancellationWindowLabel(rule: ContractTypes.PricingCancellationRule): string {
+    const value = Math.max(0, Math.trunc(Number(rule.offsetValue) || 0));
+    const unit = rule.offsetUnit === 'hours'
+      ? (value === 1 ? 'hour' : 'hours')
+      : rule.offsetUnit === 'weeks'
+        ? (value === 1 ? 'week' : 'weeks')
+        : rule.offsetUnit === 'months'
+          ? (value === 1 ? 'month' : 'months')
+          : (value === 1 ? 'day' : 'days');
+    return `${value} ${unit}`;
+  }
+
+  private cancellationRefundLabel(rule: ContractTypes.PricingCancellationRule): string {
+    if (rule.refundKind === 'full') {
+      return 'full refund';
+    }
+    if (rule.refundKind === 'none') {
+      return 'no refund';
+    }
+    if (rule.refundKind === 'fixed_amount') {
+      return `${this.formatMoney(rule.refundValue)} refund`;
+    }
+    return `${Math.max(0, Number(rule.refundValue) || 0)}% refund`;
+  }
+
+  private audienceSummary(audience: ContractTypes.PricingAudienceSettings): string {
+    const parts = [
+      audience.memberPrice !== null ? `member ${this.formatMoney(audience.memberPrice)}` : '',
+      audience.vipPrice !== null ? `VIP ${this.formatMoney(audience.vipPrice)}` : '',
+      audience.inviteOnlyDiscountPercent !== null ? `invite -${audience.inviteOnlyDiscountPercent}%` : '',
+      audience.promoCodes.length > 0 ? this.countLabel(audience.promoCodes.length, 'promo') : ''
+    ].filter(Boolean);
+    return parts.length > 0 ? parts.join(' · ') : audience.soldOutLabel;
+  }
+
+  private countLabel(count: number, singular: string): string {
+    const normalized = Math.max(0, Math.trunc(Number(count) || 0));
+    return `${normalized} ${singular}${normalized === 1 ? '' : 's'}`;
   }
 
   private isoDateToDate(value: string | null | undefined): Date | null {

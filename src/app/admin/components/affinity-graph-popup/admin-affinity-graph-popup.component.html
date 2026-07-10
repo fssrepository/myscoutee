@@ -1,72 +1,66 @@
 @if (admin.activePopup() === popupKey) {
-  <section class="app-popup affinity-graph-popup">
-    <div class="app-popup-backdrop" (click)="close()"></div>
-    <div class="app-popup-panel popup-panel-admin popup-panel-affinity-graph" (click)="$event.stopPropagation()">
-      @if (graphUrl(); as sourceUrl) {
-        <iframe
-          class="affinity-graph-frame"
-          [src]="sourceUrl"
-          title="Affinity graph view"
-          (load)="onGraphFrameLoad()"
-        ></iframe>
-      }
-      @if (graphStaticChromeVisible()) {
-        <div
-          class="affinity-graph-static-stack"
-          [class.affinity-graph-static-stack--leaving]="graphFrameLoaded()"
-        >
-          <section class="affinity-graph-static-panel" aria-label="Graph controls">
-            <header class="affinity-graph-static-header">
-              <h1>Affinity graph</h1>
-              <button class="affinity-graph-static-reset" type="button" tabindex="-1">Reset</button>
-            </header>
-          </section>
+  <app-popup class="affinity-graph-popup" [model]="affinityGraphPopupModel()">
+    @if (graphUrl(); as sourceUrl) {
+      <iframe
+        class="affinity-graph-frame"
+        [src]="sourceUrl"
+        title="Affinity graph view"
+        (load)="onGraphFrameLoad()"
+      ></iframe>
+    }
+    @if (graphStaticChromeVisible()) {
+      <div
+        class="affinity-graph-static-stack"
+        [class.affinity-graph-static-stack--leaving]="graphFrameLoaded()"
+      >
+        <section class="affinity-graph-static-panel" aria-label="Graph controls">
+          <header class="affinity-graph-static-header">
+            <h1>Affinity graph</h1>
+            <button class="affinity-graph-static-reset" type="button" tabindex="-1">Reset</button>
+          </header>
+        </section>
 
-          <aside class="affinity-graph-static-help" aria-label="Graph legend">
-            <div class="affinity-graph-static-legend">
-              <span><i class="affinity-graph-static-dot affinity-graph-static-dot--woman"></i>Women</span>
-              <span><i class="affinity-graph-static-dot affinity-graph-static-dot--man"></i>Men</span>
-            </div>
-            <div class="affinity-graph-static-actions">
-              <div class="affinity-graph-static-card">
-                <div class="affinity-graph-static-card-title">
-                  <span class="affinity-graph-static-mouse" aria-hidden="true"><i></i></span>
-                  <strong>Mouse</strong>
-                </div>
-                <p><b>Pan</b> left <b>Rotate</b> right <b>Zoom</b> wheel</p>
+        <aside class="affinity-graph-static-help" aria-label="Graph legend">
+          <div class="affinity-graph-static-legend">
+            <span><i class="affinity-graph-static-dot affinity-graph-static-dot--woman"></i>Women</span>
+            <span><i class="affinity-graph-static-dot affinity-graph-static-dot--man"></i>Men</span>
+          </div>
+          <div class="affinity-graph-static-actions">
+            <div class="affinity-graph-static-card">
+              <div class="affinity-graph-static-card-title">
+                <span class="affinity-graph-static-mouse" aria-hidden="true"><i></i></span>
+                <strong>Mouse</strong>
               </div>
-              <div class="affinity-graph-static-card">
-                <div class="affinity-graph-static-card-title">
-                  <span class="affinity-graph-static-arrows" aria-hidden="true"><i>↑</i><i>←</i><i>↓</i><i>→</i></span>
-                  <strong>Arrow pad</strong>
-                </div>
-                <p><b>Pan</b> step</p>
-              </div>
+              <p><b>Pan</b> left <b>Rotate</b> right <b>Zoom</b> wheel</p>
             </div>
-          </aside>
-        </div>
-      }
-      @if (graphProgressVisible()) {
-        <div class="affinity-graph-progress-shell">
-          @if (graphDataLoading()) {
-            <app-indicator
-              kind="bar"
-              placement="inline"
-              [state]="graphProgressState(true)"
-            ></app-indicator>
-          } @else {
-            <app-indicator
-              kind="bar"
-              placement="inline"
-              [state]="graphProgressState(false)"
-              [position]="graphZoomProgress()"
-            ></app-indicator>
-          }
-        </div>
-      }
-      <button type="button" class="popup-close affinity-graph-close" (click)="close()" aria-label="Close">
-        <mat-icon>close</mat-icon>
-      </button>
-    </div>
-  </section>
+            <div class="affinity-graph-static-card">
+              <div class="affinity-graph-static-card-title">
+                <span class="affinity-graph-static-arrows" aria-hidden="true"><i>↑</i><i>←</i><i>↓</i><i>→</i></span>
+                <strong>Arrow pad</strong>
+              </div>
+              <p><b>Pan</b> step</p>
+            </div>
+          </div>
+        </aside>
+      </div>
+    }
+    @if (graphProgressVisible()) {
+      <div class="affinity-graph-progress-shell">
+        @if (graphDataLoading()) {
+          <app-indicator
+            kind="bar"
+            placement="inline"
+            [state]="graphProgressState(true)"
+          ></app-indicator>
+        } @else {
+          <app-indicator
+            kind="bar"
+            placement="inline"
+            [state]="graphProgressState(false)"
+            [position]="graphZoomProgress()"
+          ></app-indicator>
+        }
+      </div>
+    }
+  </app-popup>
 }

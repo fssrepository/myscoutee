@@ -1,27 +1,13 @@
-@use '../../../shared/ui/styles' as ui;
-
-@include ui.popup-shell();
-
 :host {
   display: contents;
 }
 
 .profile-impressions-popup {
-  z-index: 2640;
+  width: 100%;
+  min-height: 0;
+  box-sizing: border-box;
+  padding: 0.35rem;
   font-family: 'Nunito Sans', 'Segoe UI', sans-serif;
-}
-
-.profile-impressions-popup .app-popup-panel {
-  width: min(960px, calc(100vw - 1.2rem));
-}
-
-.profile-impressions-popup .popup-title-impressions .popup-chat-title-block h2 {
-  font-size: 1.02rem;
-}
-
-.profile-impressions-popup .popup-body.popup-body-impressions {
-  display: block;
-  padding: 0.75rem;
   text-align: left;
 }
 
@@ -658,12 +644,8 @@
 
 
 @media (max-width: 760px) {
-  .profile-impressions-popup .app-popup-panel {
-    width: 100vw;
-  }
-
-  .profile-impressions-popup .popup-body.popup-body-impressions {
-    padding: 0.45rem;
+  .profile-impressions-popup {
+    padding: 0.05rem;
   }
 
   .profile-impressions-popup .social-proof-grid {

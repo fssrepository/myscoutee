@@ -2,7 +2,13 @@ import type { IdeaPostsTable } from '../entity/content.entity';
 import { Injectable, inject } from '@angular/core';
 
 import { APP_STATIC_DATA } from '../../../../app-static-data';
-import type { IdeaPostDto, IdeaPostSaveRequestDto } from '../../../contracts/content.interface';
+import type {
+  IdeaPostAdminCountsDto,
+  IdeaPostAdminPageQueryDto,
+  IdeaPostAdminPageResultDto,
+  IdeaPostDto,
+  IdeaPostSaveRequestDto
+} from '../../../contracts/content.interface';
 
 import { LocalIdeaPostsRepository } from '../repositories/idea-posts.repository';
 import { RouteDelayService } from '../../../base/services/route-delay.service';
@@ -28,6 +34,31 @@ export class LocalIdeaPostsService {
     await this.routeDelay.waitForRouteDelay(LocalIdeaPostsService.ADMIN_IDEAS_ROUTE);
     const language = this.normalizeLang(lang);
     return this.sortedPosts(this.table()).filter(post => post.lang === language);
+  }
+
+  async loadAdminPostsPage(
+    _adminUserId = '',
+    lang = 'en',
+    query: IdeaPostAdminPageQueryDto = {}
+  ): Promise<IdeaPostAdminPageResultDto> {
+    await this.ideaPostsRepository.whenReady();
+    await this.routeDelay.waitForRouteDelay(LocalIdeaPostsService.ADMIN_IDEAS_ROUTE);
+    const language = this.normalizeLang(lang);
+    const status = this.normalizeAdminStatus(query.status);
+    const allPosts = this.sortedPosts(this.table()).filter(post => post.lang === language);
+    const filtered = allPosts.filter(post => this.matchesAdminStatus(post, status));
+    const pageSize = Math.max(1, Math.trunc(Number(query.pageSize) || 10));
+    const page = Math.max(0, Math.trunc(Number(query.page) || 0));
+    const cursorOffset = this.cursorOffset(query.cursor);
+    const startIndex = Math.min(filtered.length, cursorOffset ?? page * pageSize);
+    const endIndex = Math.min(filtered.length, startIndex + pageSize);
+    const records = filtered.slice(startIndex, endIndex).map(post => this.clonePost(post));
+    return {
+      records,
+      total: filtered.length,
+      nextCursor: endIndex < filtered.length ? String(endIndex) : null,
+      counts: this.countAdminPosts(allPosts)
+    };
   }
 
   async savePost(request: IdeaPostSaveRequestDto): Promise<IdeaPostDto> {
@@ -163,6 +194,76 @@ export class LocalIdeaPostsService {
       .filter((post): post is IdeaPostDto => Boolean(post))
       .map(post => this.clonePost(this.normalizePost(post)))
       .sort((left, right) => this.sortValue(right) - this.sortValue(left));
+  }
+
+  private matchesAdminStatus(post: IdeaPostDto, status: string): boolean {
+    if (status === 'trashed') {
+      return post.trashed === true;
+    }
+    if (post.trashed) {
+      return false;
+    }
+    if (status === 'featured') {
+      return post.featured === true;
+    }
+    if (status === 'published') {
+      return post.published === true;
+    }
+    if (status === 'drafts') {
+      return post.published === false;
+    }
+    return true;
+  }
+
+  private countAdminPosts(posts: readonly IdeaPostDto[]): IdeaPostAdminCountsDto {
+    return posts.reduce<IdeaPostAdminCountsDto>((counts, post) => {
+      if (post.trashed) {
+        counts.trashed += 1;
+        return counts;
+      }
+      counts.all += 1;
+      if (post.featured) {
+        counts.featured += 1;
+      }
+      if (post.published) {
+        counts.published += 1;
+      } else {
+        counts.drafts += 1;
+      }
+      return counts;
+    }, {
+      all: 0,
+      featured: 0,
+      published: 0,
+      drafts: 0,
+      trashed: 0
+    });
+  }
+
+  private cursorOffset(cursor: string | null | undefined): number | null {
+    const normalized = `${cursor ?? ''}`.trim();
+    if (!normalized) {
+      return null;
+    }
+    const parsed = Math.trunc(Number(normalized));
+    return Number.isFinite(parsed) && parsed >= 0 ? parsed : null;
+  }
+
+  private normalizeAdminStatus(value: string | null | undefined): string {
+    const normalized = `${value ?? ''}`.trim().toLowerCase();
+    switch (normalized) {
+      case 'featured':
+      case 'published':
+      case 'drafts':
+      case 'trashed':
+        return normalized;
+      case 'draft':
+        return 'drafts';
+      case 'trash':
+        return 'trashed';
+      default:
+        return 'all';
+    }
   }
 
   private normalizePost(post: IdeaPostDto): IdeaPostDto {

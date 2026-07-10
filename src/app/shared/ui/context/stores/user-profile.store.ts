@@ -61,6 +61,13 @@ export interface UserRealtimeProfilePatch {
   clearChangeFlags: boolean;
 }
 
+export interface UserProfileSaveSignal {
+  revision: number;
+  userId: string;
+  profile: UserDto;
+  previousProfile: UserDto | null;
+}
+
 @Injectable({
   providedIn: 'root'
 })
@@ -73,9 +80,11 @@ export class UserProfileStore {
   private readonly _impressionsByUserId = signal<Record<string, UserImpressionsDto>>({});
   private readonly _impressionChangeFlagsByUserId = signal<Record<string, UserImpressionChangeFlags>>({});
   private readonly _activeUserId = signal<string>('');
+  private readonly _profileSaved = signal<UserProfileSaveSignal | null>(null);
   private readonly realtimeCursorByUserId: Record<string, string> = {};
   private readonly realtimeSeenImpressionsCursorByUserId: Record<string, string> = {};
   private readonly realtimeIgnoreNextImpressionsSnapshotByUserId: Record<string, boolean> = {};
+  private profileSavedRevision = 0;
   private realtimePollInFlight = false;
 
   readonly userProfilesByUserId = this._userProfilesByUserId.asReadonly();
@@ -85,6 +94,7 @@ export class UserProfileStore {
   readonly impressionsByUserId = this._impressionsByUserId.asReadonly();
   readonly impressionChangeFlagsByUserId = this._impressionChangeFlagsByUserId.asReadonly();
   readonly activeUserId = this._activeUserId.asReadonly();
+  readonly profileSaved = this._profileSaved.asReadonly();
   readonly activeUserProfile = computed(() => {
     const normalizedUserId = this._activeUserId().trim();
     if (!normalizedUserId) {
@@ -194,6 +204,24 @@ export class UserProfileStore {
       [normalizedUserId]: normalizedProfileExt
     }));
     this.setUserProfile(normalizedProfileExt.profile);
+  }
+
+  emitProfileSaved(profile: UserDto, previousProfile: UserDto | null = null): void {
+    const normalizedUserId = profile.id.trim();
+    if (!normalizedUserId) {
+      return;
+    }
+    this._profileSaved.set({
+      revision: ++this.profileSavedRevision,
+      userId: normalizedUserId,
+      profile: cloneUserProfile({
+        ...profile,
+        id: normalizedUserId
+      }),
+      previousProfile: previousProfile
+        ? cloneUserProfile(previousProfile)
+        : null
+    });
   }
 
   patchActiveUserProfile(

@@ -26,6 +26,7 @@ export interface FormFlowDraft<TData> {
 }
 
 export type FormFlowControlKind =
+  | 'checkbox'
   | 'date'
   | 'image-carousel'
   | 'link'
@@ -135,8 +136,10 @@ export interface FormFlowControlModel {
   placeholder?: string;
   required?: boolean;
   disabled?: boolean;
+  readOnly?: boolean;
   min?: number;
   max?: number;
+  minLength?: number;
   step?: number | string;
   rows?: number;
   maxLength?: number;
@@ -197,6 +200,7 @@ export interface FormFlowModel {
   layout?: 'default' | 'carousel' | 'grouped';
   tone?: FormFlowTone;
   header?: boolean;
+  allowMenuOverflow?: boolean;
   steps: readonly FormFlowStepModel[];
   summary?: FormFlowSummaryModel | null;
   save?: FormFlowSaveModel | null;

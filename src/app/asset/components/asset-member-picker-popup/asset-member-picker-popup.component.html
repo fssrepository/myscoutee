@@ -1,62 +1,25 @@
 @if (isOpen) {
-  <section class="app-popup app-popup-stacked app-popup-super-stacked asset-member-picker-popup-shell">
-    <div class="app-popup-backdrop" (click)="closeInvitePopup()"></div>
-    <div
-      class="app-popup-panel popup-panel-friends-picker popup-panel-friends-picker-members popup-panel-wide popup-panel-full-height"
-      (click)="$event.stopPropagation()"
-      >
-      <div class="popup-header popup-header-friends-picker">
-        <div class="popup-title">
-          <h2>Invite members</h2>
-          @if (title && title !== 'Invite members') {
-            <p>{{ title }}</p>
-          }
-        </div>
-        <div class="popup-header-mobile-status-row">
-          <app-menu
-            class="asset-member-picker-sort-menu"
-            kind="select"
-            [trigger]="inviteSortMenuTrigger()"
-            [items]="inviteSortMenuItems()"
-            (itemSelect)="onInviteMenuSelect($event)"
-          ></app-menu>
-        </div>
-        <div class="popup-header-mobile-actions-row">
-          <app-menu
-            class="asset-member-picker-confirm-menu"
-            kind="inline"
-            [items]="inviteConfirmMenuItems()"
-            [panelAlign]="'end'"
-            [mobileBreakpointPx]="900"
-            [closeOnSelect]="false"
-            (itemSelect)="onInviteMenuSelect($event)"
-          ></app-menu>
-          <button type="button" class="popup-close" (click)="closeInvitePopup($event)" aria-label="Close">
-            <mat-icon>close</mat-icon>
-          </button>
-        </div>
-      </div>
-      <div class="popup-body popup-body-friends-picker">
-        @if (confirmErrorMessage) {
-          <p class="asset-member-picker-confirm-error">{{ confirmErrorMessage }}</p>
-        }
-        <app-smart-list
-          #inviteSmartList
-          class="asset-member-picker-smart-list"
-          [config]="inviteSmartListConfig"
-          [loaders]="inviteSmartListLoaders"
-          [itemTemplate]="inviteItemTemplateRef ?? null"
-          [query]="inviteSmartListQuery"
-          (stateChange)="onInviteSmartListStateChange($event)"
-        ></app-smart-list>
-        <ng-template #inviteItemTemplate let-candidate>
-          <app-image-card
-            [card]="inviteCandidateCard(candidate)"
-            [mediaActions]="inviteCandidateMediaActions(candidate)"
-            (mediaAction)="onInviteCandidateMediaAction(candidate, $event)"
-          ></app-image-card>
-        </ng-template>
-      </div>
+  <app-popup [model]="invitePopupModel()" [zIndex]="invitePopupZIndex()">
+    <div class="asset-member-picker-content">
+      @if (confirmErrorMessage) {
+        <p class="asset-member-picker-confirm-error">{{ confirmErrorMessage }}</p>
+      }
+      <app-smart-list
+        #inviteSmartList
+        class="asset-member-picker-smart-list"
+        [config]="inviteSmartListConfig"
+        [loaders]="inviteSmartListLoaders"
+        [itemTemplate]="inviteItemTemplateRef ?? null"
+        [query]="inviteSmartListQuery"
+        (stateChange)="onInviteSmartListStateChange($event)"
+      ></app-smart-list>
+      <ng-template #inviteItemTemplate let-candidate>
+        <app-image-card
+          [card]="inviteCandidateCard(candidate)"
+          [mediaActions]="inviteCandidateMediaActions(candidate)"
+          (mediaAction)="onInviteCandidateMediaAction(candidate, $event)"
+        ></app-image-card>
+      </ng-template>
     </div>
-  </section>
+  </app-popup>
 }

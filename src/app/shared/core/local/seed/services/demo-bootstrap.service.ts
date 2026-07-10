@@ -34,7 +34,7 @@ import { SeedUsersRatingsRepository } from '../repositories/users-ratings-seed.r
 import { SeedUsersRepository } from '../repositories/users-seed.repository';
 import { SeedBootstrapRegistryService } from './bootstrap-registry.service';
 
-export type SeedDemoBootstrapMode = 'member' | 'admin';
+export type SeedDemoBootstrapMode = 'member' | 'admin' | 'union';
 
 @Injectable({
   providedIn: 'root'
@@ -59,6 +59,10 @@ export class SeedDemoBootstrapService {
   private selectorReady = false;
   private adminSelectorPromise: Promise<void> | null = null;
   private adminSelectorReady = false;
+  private unionSelectorPromise: Promise<void> | null = null;
+  private unionSelectorReady = false;
+  private adminWorkspacePromise: Promise<void> | null = null;
+  private adminWorkspaceReady = false;
   private commonCollectionsPromise: Promise<void> | null = null;
   private commonCollectionsReady = false;
   private readonly readyUserIds = new Set<string>();
@@ -73,6 +77,10 @@ export class SeedDemoBootstrapService {
     mode: SeedDemoBootstrapMode,
     onProgress?: BootstrapProcessListener
   ): Promise<void> {
+    if (mode === 'union') {
+      await this.ensureUnionSelectorReady(onProgress);
+      return;
+    }
     if (mode === 'admin') {
       await this.ensureAdminSelectorReady(onProgress);
       return;
@@ -112,8 +120,13 @@ export class SeedDemoBootstrapService {
     onProgress?: BootstrapProcessListener
   ): Promise<void> {
     const normalizedUserId = userId.trim();
-    if (!normalizedUserId || mode === 'admin') {
+    if (!normalizedUserId) {
       this.emitSessionReady(onProgress);
+      return;
+    }
+
+    if (mode === 'admin') {
+      await this.ensureAdminWorkspaceReady(normalizedUserId, onProgress);
       return;
     }
 
@@ -177,6 +190,9 @@ export class SeedDemoBootstrapService {
     await this.runBootstrapStep('indexedDb');
 
     this.selectorReady = true;
+    if (this.adminSelectorReady) {
+      this.unionSelectorReady = true;
+    }
     this.emitProgress(bootstrapProcessStep('ready'));
   }
 
@@ -195,7 +211,7 @@ export class SeedDemoBootstrapService {
     }
 
     if (!this.adminSelectorPromise) {
-      this.adminSelectorPromise = this.runAdminBootstrap().finally(() => {
+      this.adminSelectorPromise = this.runAdminSelectorBootstrap().finally(() => {
         this.adminSelectorPromise = null;
       });
     }
@@ -209,7 +225,7 @@ export class SeedDemoBootstrapService {
     }
   }
 
-  private async runAdminBootstrap(): Promise<void> {
+  private async runAdminSelectorBootstrap(): Promise<void> {
     if (this.adminSelectorReady) {
       this.emitProgress(bootstrapProcessStep('ready'));
       return;
@@ -219,6 +235,96 @@ export class SeedDemoBootstrapService {
 
     await this.runBootstrapStep('selector');
     await this.ensureCommonDemoCollectionsReady();
+    await this.seedDemoAdminUsers();
+    await this.runBootstrapStep('indexedDb');
+
+    this.selectorReady = true;
+    this.adminSelectorReady = true;
+    this.unionSelectorReady = true;
+    this.emitProgress(bootstrapProcessStep('ready'));
+  }
+
+  private async ensureUnionSelectorReady(onProgress?: BootstrapProcessListener): Promise<void> {
+    if (onProgress) {
+      this.listeners.add(onProgress);
+      onProgress(this.lastProcessState);
+    }
+
+    if (this.unionSelectorReady) {
+      this.emitProgress(bootstrapProcessStep('ready'));
+      if (onProgress) {
+        this.listeners.delete(onProgress);
+      }
+      return;
+    }
+
+    if (!this.unionSelectorPromise) {
+      this.unionSelectorPromise = this.runUnionSelectorBootstrap().finally(() => {
+        this.unionSelectorPromise = null;
+      });
+    }
+
+    try {
+      await this.unionSelectorPromise;
+    } finally {
+      if (onProgress) {
+        this.listeners.delete(onProgress);
+      }
+    }
+  }
+
+  private async runUnionSelectorBootstrap(): Promise<void> {
+    if (this.unionSelectorReady) {
+      this.emitProgress(bootstrapProcessStep('ready'));
+      return;
+    }
+
+    await this.usersSeed.whenReady();
+
+    await this.runBootstrapStep('selector');
+    await this.ensureCommonDemoCollectionsReady();
+    await this.seedDemoAdminUsers();
+    await this.runBootstrapStep('indexedDb');
+
+    this.selectorReady = true;
+    this.adminSelectorReady = true;
+    this.unionSelectorReady = true;
+    this.emitProgress(bootstrapProcessStep('ready'));
+  }
+
+  private async ensureAdminWorkspaceReady(
+    adminUserId: string,
+    onProgress?: BootstrapProcessListener
+  ): Promise<void> {
+    await this.ensureDemoSelectorReady('admin');
+    if (onProgress) {
+      this.listeners.add(onProgress);
+    }
+
+    if (!this.adminWorkspaceReady && !this.adminWorkspacePromise) {
+      this.adminWorkspacePromise = this.runAdminWorkspaceBootstrap().finally(() => {
+        this.adminWorkspacePromise = null;
+      });
+    }
+
+    try {
+      if (this.adminWorkspacePromise) {
+        await this.adminWorkspacePromise;
+      }
+      this.emitSessionReady(onProgress, adminUserId);
+    } finally {
+      if (onProgress) {
+        this.listeners.delete(onProgress);
+      }
+    }
+  }
+
+  private async runAdminWorkspaceBootstrap(): Promise<void> {
+    if (this.adminWorkspaceReady) {
+      this.emitProgress(bootstrapProcessStep('ready'));
+      return;
+    }
+
     await this.runBootstrapStep('helpCenter', async () => {
       await this.adminSeed.seedHelpCenter();
       await this.flushBootstrapTables([HELP_CENTER_TABLE_NAME]);
@@ -231,9 +337,15 @@ export class SeedDemoBootstrapService {
     await this.runBootstrapStep('affinityGraph', () => this.adminSeed.buildAndWriteAffinityGraphSnapshot());
     await this.runBootstrapStep('indexedDb');
 
-    this.selectorReady = true;
-    this.adminSelectorReady = true;
+    this.adminWorkspaceReady = true;
     this.emitProgress(bootstrapProcessStep('ready'));
+  }
+
+  private async seedDemoAdminUsers(): Promise<void> {
+    await this.runBootstrapStep('adminUsers', async () => {
+      await this.adminSeed.seedDemoAdminUsers();
+      await this.flushBootstrapTables([USERS_TABLE_NAME]);
+    });
   }
 
   private async ensureCommonDemoCollectionsReady(): Promise<void> {
@@ -311,10 +423,6 @@ export class SeedDemoBootstrapService {
   }
 
   private async seedAdminSpecificCollections(): Promise<void> {
-    await this.runBootstrapStep('adminUsers', async () => {
-      await this.adminSeed.seedDemoAdminUsers();
-      await this.flushBootstrapTables([USERS_TABLE_NAME]);
-    });
     await this.runBootstrapStep('adminWorkspaceData', async () => {
       const seedState = await this.adminSeed.seedDemoAdminStores();
       await this.adminSeed.seedDemoAdminMenuCounters(seedState);

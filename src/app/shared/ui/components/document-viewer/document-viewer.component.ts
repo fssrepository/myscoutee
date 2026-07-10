@@ -1,7 +1,6 @@
 import { CommonModule } from '@angular/common';
 import { Component, EventEmitter, Input, OnChanges, OnInit, Output, SimpleChanges, inject } from '@angular/core';
 import { MatIconModule } from '@angular/material/icon';
-import { MatRippleModule } from '@angular/material/core';
 import { ActivatedRoute } from '@angular/router';
 
 import { AppUtils } from '../../../app-utils';
@@ -18,6 +17,7 @@ import {
 } from '../core/accordion';
 import { AppMenuComponent, type AppMenuItem, type AppMenuItemSelectEvent, type AppMenuPalette } from '../core/menu';
 import { IndicatorComponent } from '../core/indicator';
+import { PopupComponent, type PopupModel } from '../core/popup';
 import type {
   DocumentViewerAction,
   DocumentViewerActionEvent,
@@ -35,11 +35,11 @@ import type {
   imports: [
     CommonModule,
     MatIconModule,
-    MatRippleModule,
     LazyBgImageDirective,
     AccordionComponent,
     IndicatorComponent,
-    AppMenuComponent
+    AppMenuComponent,
+    PopupComponent
   ],
   templateUrl: './document-viewer.component.html',
   styleUrl: './document-viewer.component.scss'
@@ -107,6 +107,28 @@ export class DocumentViewerComponent implements OnChanges, OnInit {
     return `document-viewer-header-${this.normalizeHeaderPalette(this.activeConfig()?.headerPalette)}`;
   }
 
+  protected documentPopupModel(): PopupModel {
+    const config = this.activeConfig();
+    return {
+      title: this.title(),
+      subtitle: this.description(),
+      headerBadge: this.versionLabel(),
+      ariaLabel: this.ariaLabel(),
+      closeAriaLabel: this.closeAriaLabel(),
+      translateTitle: false,
+      translateSubtitle: false,
+      translateHeaderBadge: false,
+      closeOnBackdrop: config?.closeOnBackdrop !== false,
+      size: 'wide',
+      height: 'full',
+      headerLayout: 'document',
+      headerPalette: this.normalizeHeaderPalette(config?.headerPalette),
+      bodyLayout: 'flush',
+      backdropTone: 'dim',
+      onClose: event => this.requestClose(event)
+    };
+  }
+
   protected showBrand(): boolean {
     return !this.isPopupShell() && this.activeConfig()?.showBrand !== false;
   }
@@ -126,13 +148,6 @@ export class DocumentViewerComponent implements OnChanges, OnInit {
   protected requestClose(sourceEvent?: Event): void {
     sourceEvent?.stopPropagation();
     this.activeConfig()?.onClose?.();
-  }
-
-  protected closeFromBackdrop(sourceEvent?: Event): void {
-    if (this.activeConfig()?.closeOnBackdrop === false) {
-      return;
-    }
-    this.requestClose(sourceEvent);
   }
 
   protected toggleSectionSelection(section: DocumentViewerSection, event?: Event): void {

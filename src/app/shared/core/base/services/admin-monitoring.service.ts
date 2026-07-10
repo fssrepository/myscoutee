@@ -34,11 +34,11 @@ export class AdminMonitoringService extends BaseRouteModeService {
     return this.routeDelay.resolveRequestTimeoutMs(ADMIN_MONITORING_ROUTE);
   }
 
-  async loadMonitoringState(adminUserId?: string | null): Promise<AdminMonitoringStateDto> {
+  async loadMonitoringState(adminUserId?: string | null, filter?: string | null): Promise<AdminMonitoringStateDto> {
     const source = this.monitoringService instanceof LocalAdminMonitoringService ? 'demo' : 'http';
     const state = this.monitoringService instanceof LocalAdminMonitoringService
-      ? await this.monitoringService.loadMonitoringState()
-      : await this.monitoringService.loadMonitoringState(adminUserId);
+      ? await this.monitoringService.loadMonitoringState(filter)
+      : await this.monitoringService.loadMonitoringState(adminUserId, filter);
     return this.normalizeMonitoringState(state, source);
   }
 
@@ -52,8 +52,27 @@ export class AdminMonitoringService extends BaseRouteModeService {
       generatedAtIso: `${state.generatedAtIso ?? ''}`.trim() || new Date().toISOString(),
       source: ['demo', 'http'].includes(normalizedSource) ? normalizedSource : source,
       health: this.normalizeMonitoringHealth(state.health),
+      filterCounts: this.normalizeMonitoringFilterCounts(state.filterCounts, categories),
       categories
     };
+  }
+
+  private normalizeMonitoringFilterCounts(
+    counts: Record<string, number> | null | undefined,
+    categories: readonly AdminMonitoringCategoryDto[]
+  ): Record<string, number> {
+    const fallback: Record<string, number> = {
+      all: categories.length
+    };
+    const normalized: Record<string, number> = {};
+    for (const [key, value] of Object.entries(counts ?? fallback)) {
+      const normalizedKey = `${key ?? ''}`.trim();
+      const parsed = Math.trunc(Number(value));
+      if (normalizedKey && Number.isFinite(parsed)) {
+        normalized[normalizedKey] = Math.max(0, parsed);
+      }
+    }
+    return Object.keys(normalized).length ? normalized : fallback;
   }
 
   private normalizeMonitoringCategory(category: AdminMonitoringCategoryDto): AdminMonitoringCategoryDto {

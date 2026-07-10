@@ -1,51 +1,6 @@
 @if (admin.activePopup() === 'help-editor') {
-  <section class="app-popup">
-    <div class="app-popup-backdrop" (click)="close()"></div>
-    <div class="app-popup-panel popup-panel-admin popup-panel-help-editor">
-      <div class="popup-header">
-        <div class="popup-title">
-          <h2>{{ editorTitle() }}</h2>
-          <p class="popup-subtitle">
-            @if (activeRevision(); as active) {
-              <span class="help-editor-active-subtitle-main">{{ activeRevisionLabel(active.version) }}</span>
-              <span class="help-editor-active-subtitle-title" data-i18n-ignore>{{ active.title }}</span>
-            } @else {
-              {{ noActiveRevisionLabel() }}
-            }
-          </p>
-        </div>
-        <div class="help-editor-header-actions">
-          <app-menu
-            class="help-editor-document-menu-wrap"
-            kind="inline"
-            [model]="documentMenuModel()"
-            (itemSelect)="onDocumentMenuSelect($event)"
-          ></app-menu>
-          <button
-            type="button"
-            class="help-editor-icon-btn"
-            [disabled]="loading() || isAnyActionPending()"
-            (click)="startNewRevision($event)"
-            [attr.aria-label]="createRevisionLabel()"
-            title="Create empty revision"
-            >
-            <mat-icon>add</mat-icon>
-          </button>
-          <button type="button" class="popup-close" (click)="close()" aria-label="Close">
-            <mat-icon>close</mat-icon>
-          </button>
-        </div>
-        <div class="help-editor-language-row" aria-label="Content language" data-i18n-ignore>
-          <app-menu
-            class="help-editor-language-menu-wrap"
-            kind="inline"
-            [model]="languageMenuModel()"
-            (itemSelect)="onLanguageMenuSelect($event)"
-          ></app-menu>
-        </div>
-      </div>
-
-      <div class="popup-body help-editor-body">
+  <app-popup [model]="helpEditorPopupModel()">
+      <div class="help-editor-body">
         @if (loading()) {
           <div class="help-editor-state-card help-editor-loading-state" aria-busy="true">
             <app-indicator
@@ -138,42 +93,27 @@
                                       required
                                     />
                                   </label>
-                                  <button
-                                    type="button"
-                                    class="help-editor-icon-btn help-editor-color-btn help-editor-summary-color-btn"
-                                    [disabled]="saving"
-                                    (click)="openColorPicker($event)"
-                                    aria-label="Choose header color"
-                                    title="Header color"
-                                    >
-                                    <mat-icon>palette</mat-icon>
-                                  </button>
+                                  <app-menu
+                                    class="help-editor-summary-color-menu"
+                                    kind="select"
+                                    [trigger]="headerColorMenuTrigger(editDraft.headerColor)"
+                                    [items]="headerColorMenuItems(editDraft.headerColor)"
+                                    panelAlign="end"
+                                    panelMode="anchored"
+                                    (itemSelect)="onHeaderColorMenuSelect($event)"
+                                  ></app-menu>
                                 </div>
                                 @if (documentKind === 'explanation') {
                                   <label class="help-editor-inline-field help-editor-context-field">
                                     <span>{{ uiText('Canonical screen') }}</span>
-                                    <button
-                                      type="button"
-                                      class="help-editor-context-select-wrap"
-                                      [disabled]="saving"
-                                      [attr.aria-expanded]="contextPickerOpen"
-                                      aria-haspopup="dialog"
-                                      data-motion="none"
-                                      (click)="openContextPicker($event)"
-                                      >
-                                      @if (explanationSurface(editDraft.contextKey); as currentSurface) {
-                                        <span class="help-editor-context-trigger">
-                                          <mat-icon>{{ currentSurface.icon }}</mat-icon>
-                                          <span data-i18n-ignore>{{ currentSurface.label }}</span>
-                                        </span>
-                                      } @else {
-                                        <span class="help-editor-context-trigger">
-                                          <mat-icon>add</mat-icon>
-                                          <span data-i18n-ignore>Choose screen</span>
-                                        </span>
-                                      }
-                                      <mat-icon class="help-editor-context-select-caret">expand_more</mat-icon>
-                                    </button>
+                                    <app-menu
+                                      kind="select"
+                                      [trigger]="contextMenuTrigger(editDraft)"
+                                      [items]="contextMenuItems(editDraft)"
+                                      panelAlign="start"
+                                      [closeOnSelect]="true"
+                                      (itemSelect)="onContextMenuSelect($event)"
+                                    ></app-menu>
                                   </label>
                                 }
                                 <div class="help-editor-description-line">
@@ -209,16 +149,17 @@
                                   [class.is-privacy-optional]="documentKind === 'privacy' && section.optional"
                                   >
                                   <div class="help-editor-edit-section-head">
-                                    <button
-                                      type="button"
-                                      class="help-editor-icon-picker-trigger"
-                                      [class.is-active]="iconPickerSectionId === section.localId"
-                                      (click)="openIconPicker(section, $event)"
-                                      aria-label="Change section icon"
-                                      title="Change icon"
-                                      >
-                                      <mat-icon>{{ section.icon || defaultSectionIcon() }}</mat-icon>
-                                    </button>
+                                    <app-menu
+                                      class="help-editor-section-icon-menu"
+                                      kind="select"
+                                      title="Search Material icons"
+                                      [trigger]="sectionIconMenuTrigger(section)"
+                                      [model]="sectionIconMenuModel(section)"
+                                      [filterable]="true"
+                                      panelAlign="start"
+                                      [closeOnSelect]="true"
+                                      (itemSelect)="onSectionIconMenuSelect(section, $event)"
+                                    ></app-menu>
                                     <input
                                       class="help-editor-section-title-input"
                                       type="text"
@@ -479,138 +420,5 @@
           </section>
         }
       </div>
-    </div>
-    @if (iconPickerSection(); as pickerSection) {
-      <section class="help-editor-icon-modal" role="dialog" aria-modal="true" aria-label="Choose section icon">
-        <div class="help-editor-icon-modal-backdrop" (click)="closeIconPicker($event)"></div>
-        <div class="help-editor-icon-picker" (click)="$event.stopPropagation()">
-          <header class="help-editor-icon-picker-head">
-            <span class="help-editor-icon-picker-title">
-              <mat-icon>{{ pickerSection.icon || defaultSectionIcon() }}</mat-icon>
-              <strong>Section icon</strong>
-            </span>
-            <button type="button" class="help-editor-icon-picker-close" data-motion="none" (click)="closeIconPicker($event)" aria-label="Close icon picker">
-              <mat-icon>close</mat-icon>
-            </button>
-          </header>
-          <div class="help-editor-icon-picker-search">
-            <mat-icon>search</mat-icon>
-            <input
-              type="search"
-              name="iconSearchModal"
-              [ngModel]="iconPickerSearch"
-              (ngModelChange)="setIconPickerSearch($event)"
-              [ngModelOptions]="{ standalone: true }"
-              placeholder="Search Material icons"
-              autocomplete="off"
-            />
-          </div>
-          <div class="help-editor-icon-picker-section">
-            <span>{{ iconPickerActiveLabel }}</span>
-            <small>{{ iconPickerActiveCount }}</small>
-          </div>
-          <div class="help-editor-icon-grid">
-            @for (option of visibleIconOptions; track option.icon) {
-              <button
-                type="button"
-                data-motion="none"
-                [class.is-selected]="pickerSection.icon === option.icon"
-                (click)="selectIcon(pickerSection, option.icon, $event)"
-                [attr.aria-label]="'Use ' + option.label + ' icon'"
-                >
-                <mat-icon>{{ option.icon }}</mat-icon>
-              </button>
-            } @empty {
-              <span class="help-editor-icon-empty">No icons found</span>
-            }
-          </div>
-          <div class="help-editor-icon-picker-tabs" role="tablist" aria-label="Icon groups">
-            @for (group of iconPickerGroups; track group) {
-              <button
-                type="button"
-                data-motion="none"
-                [class.is-active]="iconPickerGroup === group"
-                [attr.aria-label]="group"
-                (click)="setIconPickerGroup(group, $event)"
-                >
-                <mat-icon>{{ iconPickerGroupIcon(group) }}</mat-icon>
-                <span>{{ group }}</span>
-              </button>
-            }
-          </div>
-        </div>
-      </section>
-    }
-    @if (colorPickerOpen && draft; as editDraft) {
-      <section class="help-editor-icon-modal" role="dialog" aria-modal="true" aria-label="Choose header color">
-        <div class="help-editor-icon-modal-backdrop" (click)="closeColorPicker($event)"></div>
-        <div class="help-editor-icon-picker help-editor-color-picker" (click)="$event.stopPropagation()">
-          <header class="help-editor-icon-picker-head">
-            <span class="help-editor-icon-picker-title">
-              <mat-icon>palette</mat-icon>
-              <strong>Header color</strong>
-            </span>
-            <button type="button" class="help-editor-icon-picker-close" data-motion="none" (click)="closeColorPicker($event)" aria-label="Close color picker">
-              <mat-icon>close</mat-icon>
-            </button>
-          </header>
-          <div class="help-editor-color-grid">
-            @for (option of headerColorOptions; track option.id) {
-              <button
-                type="button"
-                class="help-editor-color-option"
-                [ngClass]="headerColorClass(option.id)"
-                [class.is-selected]="editDraft.headerColor === option.id"
-                (click)="selectHeaderColor(option.id, $event)"
-                [attr.aria-label]="'Use ' + option.label + ' header'"
-                >
-                <span class="help-editor-color-swatch" aria-hidden="true"></span>
-                <span>{{ option.label }}</span>
-              </button>
-            }
-          </div>
-        </div>
-      </section>
-    }
-    @if (contextPickerOpen && draft; as editDraft) {
-      <section class="mobile-profile-selector-sheet-wrap help-editor-context-sheet-wrap" role="dialog" aria-modal="true" aria-label="Choose canonical screen" (click)="$event.stopPropagation()">
-        <div class="mobile-profile-selector-backdrop" (click)="closeContextPicker($event)"></div>
-        <div class="mobile-profile-selector-sheet help-editor-context-sheet" (click)="$event.stopPropagation()">
-          <div class="mobile-profile-selector-handle" aria-hidden="true"></div>
-          <div class="mobile-profile-selector-title help-editor-context-sheet-title">
-            <mat-icon>tips_and_updates</mat-icon>
-            <span>{{ uiText('Canonical screen') }}</span>
-            <button
-              type="button"
-              class="mobile-profile-selector-close-btn popup-surface-close-btn"
-              data-motion="none"
-              (click)="closeContextPicker($event)"
-              aria-label="Close canonical screen picker"
-              >
-              <mat-icon>close</mat-icon>
-            </button>
-          </div>
-          <div class="mobile-profile-selector-options help-editor-context-options">
-            @for (surface of explainableSurfaces(); track surface.key) {
-              <button
-                type="button"
-                class="mobile-profile-selector-option help-editor-context-option"
-                [class.active]="editDraft.contextKey === surface.key"
-                data-motion="none"
-                (click)="selectContextFromPicker(surface, $event)"
-                >
-                <span class="mobile-profile-selector-option-main">
-                  <mat-icon>{{ surface.icon }}</mat-icon>
-                  <span data-i18n-ignore>{{ surface.label }}</span>
-                </span>
-                @if (editDraft.contextKey === surface.key) {
-                  <mat-icon>check</mat-icon>
-                }
-              </button>
-            }
-          </div>
-        </div>
-      </section>
-    }
-  </section>
+  </app-popup>
 }

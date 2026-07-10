@@ -1,0 +1,121 @@
+<section
+  class="event-basket-panel"
+  [class.event-basket-panel--ready]="tone === 'ready'"
+  [class.event-basket-panel--payment]="tone === 'payment'"
+  [class.event-basket-panel--waiting]="tone === 'waiting'"
+  [class.event-basket-panel--approval]="tone === 'approval'"
+  [class.event-basket-panel--changed]="tone === 'changed'"
+>
+  <div class="event-basket-panel-head">
+    <div class="event-basket-panel-title-wrap">
+      <span class="event-basket-panel-title">
+        <span class="event-basket-panel-title-line">
+          <mat-icon>shopping_basket</mat-icon>
+          <span>{{ title }}</span>
+        </span>
+      </span>
+      @if (subtitle) {
+        <p class="event-basket-panel-subtitle">{{ subtitle }}</p>
+      }
+    </div>
+    @if (showAdd && !readOnly) {
+    <div class="event-basket-panel-actions">
+      <app-menu
+        class="event-basket-add-menu"
+        kind="inline"
+        [items]="addMenuItems()"
+        (itemSelect)="onAddSelect($event)"
+      ></app-menu>
+    </div>
+    }
+  </div>
+
+  <div class="event-basket-panel-body">
+    @if (hasContext()) {
+      <article class="event-basket-context">
+        <div>
+          @if (contextTitle) {
+            <strong>{{ contextTitle }}</strong>
+          }
+          @if (contextMeta) {
+            <span>{{ contextMeta }}</span>
+          }
+          @if (contextDetail) {
+            <small>{{ contextDetail }}</small>
+          }
+        </div>
+        @if (contextAmountLabel()) {
+          <strong>{{ contextAmountLabel() }}</strong>
+        }
+      </article>
+    }
+
+    @if (items.length > 0) {
+      @if (readOnly) {
+        <div class="event-basket-section-head">
+          <span>Kiválasztott elemek</span>
+          <strong>{{ items.length }} item</strong>
+        </div>
+      }
+      <div class="event-basket-list">
+        @for (item of items; track itemTrackId($index, item)) {
+          @if (readOnly) {
+            <article class="event-basket-readonly-row">
+              <div>
+                <strong>{{ item.title }}</strong>
+                <span>{{ item.meta }}</span>
+                @if (itemDetail(item)) {
+                  <small>{{ itemDetail(item) }}</small>
+                }
+              </div>
+              <strong>{{ itemAmountLabel(item) }}</strong>
+            </article>
+          } @else {
+          <app-text-card
+            class="event-basket-card"
+            [tone]="itemTone(item)"
+            icon="event_seat"
+            [title]="item.title"
+            [subtitle]="itemSubtitle(item)"
+            [meta]="item.meta"
+            [detail]="itemDetail(item)"
+            [menuTitle]="item.title"
+            [menuPalette]="itemMenuPalette(item)"
+            [menuItems]="itemMenuItems()"
+            (menuSelect)="onItemMenuSelect(item, $event)"
+          ></app-text-card>
+          }
+        }
+      </div>
+    } @else {
+      <div class="event-basket-empty">{{ emptyLabel }}</div>
+    }
+
+    @if (hasPricingSummary()) {
+      <section class="event-basket-pricing-summary" aria-label="Current price review">
+        <div class="event-basket-pricing-summary-head">
+          <span>Current Price Review</span>
+          <mat-icon>price_check</mat-icon>
+        </div>
+        @for (row of visiblePricingSummaryRows(); track row.key || row.label) {
+          <div class="event-basket-pricing-row">
+            <span class="event-basket-pricing-label">
+              <span>{{ row.label }}</span>
+              @if (row.detail) {
+                <small>{{ row.detail }}</small>
+              }
+            </span>
+            <strong>{{ pricingSummaryAmountLabel(row) }}</strong>
+          </div>
+        }
+        @if (visiblePricingSummaryRows().length === 0) {
+          <p class="event-basket-pricing-empty">No selected checkout items yet.</p>
+        }
+        <div class="event-basket-pricing-total">
+          <span>Final price</span>
+          <strong>{{ pricingSummaryTotalLabel() }}</strong>
+        </div>
+      </section>
+    }
+  </div>
+</section>

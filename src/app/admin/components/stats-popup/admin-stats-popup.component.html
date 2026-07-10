@@ -1,28 +1,6 @@
 @if (admin.activePopup() === 'stats') {
-  <section class="app-popup">
-    <div class="app-popup-backdrop" (click)="close()"></div>
-    <div class="app-popup-panel popup-panel-admin popup-panel-stats" (click)="$event.stopPropagation()">
-      <div class="popup-header">
-        <div class="popup-title">
-          <h2>{{ 'stats' | i18n }}</h2>
-          <p class="popup-subtitle">
-            {{ 'stats.snapshot.subtitle' | i18n }}
-            @if (stats(); as dashboard) {
-              <span> · {{ formatDate(dashboard.generatedAtIso) }}</span>
-            }
-          </p>
-        </div>
-        <div class="stats-header-actions">
-          <button type="button" class="stats-icon-btn" (click)="refresh()" [disabled]="loading()" [attr.aria-label]="'refresh.stats' | i18n">
-            <mat-icon>refresh</mat-icon>
-          </button>
-          <button type="button" class="popup-close" (click)="close()" aria-label="Close">
-            <mat-icon>close</mat-icon>
-          </button>
-        </div>
-      </div>
-
-      <div class="popup-body stats-body">
+  <app-popup [model]="statsPopupModel()">
+      <div class="stats-body">
         @if (loading() && stats()) {
           <div class="stats-loading-overlay" aria-busy="true">
             <div class="stats-loading-scrim"></div>
@@ -589,19 +567,8 @@
       </div>
 
       @if (graphHelpOpen()) {
-        <div class="stats-graph-help-overlay" role="dialog" aria-modal="true" [attr.aria-label]="'stats.graph.help.title' | i18n">
-          <button type="button" class="stats-graph-help-backdrop" (click)="closeGraphHelp()" [attr.aria-label]="'close' | i18n"></button>
-          <section class="stats-graph-help-dialog" (click)="$event.stopPropagation()">
-            <header>
-              <div>
-                <h3>{{ 'stats.graph.help.title' | i18n }}</h3>
-                <p>{{ 'stats.graph.help.intro' | i18n }}</p>
-              </div>
-              <button type="button" class="stats-graph-help-close" (click)="closeGraphHelp()" [attr.aria-label]="'close' | i18n">
-                <mat-icon>close</mat-icon>
-              </button>
-            </header>
-
+        <app-popup [model]="graphHelpPopupModel()" [zIndex]="2400">
+          <div class="stats-graph-help-content">
             <div class="stats-graph-help-grid">
               <article>
                 <mat-icon>monitoring</mat-icon>
@@ -649,9 +616,8 @@
               <strong>{{ 'stats.graph.help.actions.title' | i18n }}</strong>
               <p>{{ 'stats.graph.help.actions.body' | i18n }}</p>
             </div>
-          </section>
-        </div>
+          </div>
+        </app-popup>
       }
-    </div>
-  </section>
+  </app-popup>
 }

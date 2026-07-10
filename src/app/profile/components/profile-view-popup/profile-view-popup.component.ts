@@ -5,6 +5,7 @@ import { MatIconModule } from '@angular/material/icon';
 import { AppUtils } from '../../../shared/app-utils';
 import { APP_STATIC_DATA } from '../../../shared/app-static-data';
 import { I18nPipe, IndicatorComponent } from '../../../shared/ui';
+import { PopupComponent, type PopupModel } from '../../../shared/ui/components/core/popup';
 import {
   ContactsService, type ExperienceEntry, type ProfileViewData, type ProfileDetailFormGroup, type ProfileDetailFormRow, type UserDto } from '../../../shared/core';
 import { ProfileStore } from '../../../shared/ui/context/stores/profile.store';
@@ -22,7 +23,8 @@ interface ProfileViewRow {
     CommonModule,
     MatIconModule,
     I18nPipe,
-    IndicatorComponent
+    IndicatorComponent,
+    PopupComponent
   ],
   templateUrl: './profile-view-popup.component.html',
   styleUrl: './profile-view-popup.component.scss',
@@ -93,6 +95,23 @@ export class ProfileViewPopupComponent {
   protected closePopup(event?: Event): void {
     event?.stopPropagation();
     this.profileStore.closeProfileView();
+  }
+
+  protected profileViewPopupModel(): PopupModel {
+    const user = this.user();
+    return {
+      title: this.headerTitle(user),
+      subtitle: this.headerSubtitle(user),
+      ariaLabel: this.headerTitle(user),
+      closeAriaLabel: 'Close profile',
+      translateTitle: false,
+      translateSubtitle: false,
+      size: 'wide',
+      height: 'full',
+      headerTone: 'accent',
+      bodyLayout: 'flush',
+      onClose: event => this.closePopup(event)
+    };
   }
 
   protected displayTitle(user: UserDto): string {

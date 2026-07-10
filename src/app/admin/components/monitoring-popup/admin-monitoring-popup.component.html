@@ -1,103 +1,78 @@
 @if (admin.activePopup() === popupKey) {
-  <section class="app-popup">
-    <div class="app-popup-backdrop" (click)="close()"></div>
-    <div class="app-popup-panel popup-panel-admin popup-panel-monitoring" (click)="$event.stopPropagation()">
-      <div class="popup-header">
-        <div class="popup-title">
-          <h2>{{ 'monitoring' | i18n }}</h2>
-          <p class="popup-subtitle">
-            {{ 'metrics' | i18n }} · {{ 'admin.monitoring.subtitle' | i18n }}
-          </p>
+  <app-popup [model]="monitoringPopupModel()">
+    <div class="monitoring-body">
+      @if (loading()) {
+        <div class="monitoring-state monitoring-loading-state" aria-busy="true">
+          <app-indicator
+            kind="load-ring"
+            state="loading"
+            [durationMs]="monitoringService.monitoringLoadProgressWindowMs()"
+          ></app-indicator>
+          <span>{{ 'admin.monitoring.loading' | i18n }}</span>
         </div>
-        <div class="monitoring-header-actions">
-          @if (!loading()) {
-            <app-menu
-              class="monitoring-filter-wrap"
-              kind="inline"
-              [model]="filterMenuModel()"
-              (itemSelect)="onFilterMenuSelect($event)"
-            ></app-menu>
-          }
-          <button type="button" class="popup-close" (click)="close()" [attr.aria-label]="'close' | i18n">
-            <mat-icon>close</mat-icon>
-          </button>
-        </div>
-      </div>
-
-      <div class="popup-body monitoring-body">
-        @if (loading()) {
-          <div class="monitoring-state monitoring-loading-state" aria-busy="true">
-            <app-indicator
-              kind="load-ring"
-              state="loading"
-              [durationMs]="monitoringService.monitoringLoadProgressWindowMs()"
-            ></app-indicator>
-            <span>{{ 'admin.monitoring.loading' | i18n }}</span>
+      } @else {
+        @if (error()) {
+          <div class="monitoring-error">
+            <mat-icon>warning</mat-icon>
+            <span>{{ error() | i18n }}</span>
           </div>
-        } @else {
-          @if (error()) {
-            <div class="monitoring-error">
-              <mat-icon>warning</mat-icon>
-              <span>{{ error() | i18n }}</span>
-            </div>
-          }
-
-          <section class="monitoring-grid">
-            @for (category of filteredCategories(); track category.key) {
-              <article class="monitoring-card" [ngClass]="['tone-' + category.tone, healthClass(category.health)]">
-                <header class="monitoring-card-head">
-                  <span class="monitoring-card-icon">
-                    <mat-icon>{{ category.icon }}</mat-icon>
-                  </span>
-                  <span class="monitoring-card-title">
-                    <strong>{{ category.labelKey | i18n }}</strong>
-                    <small>{{ category.summaryKey | i18n }}</small>
-                  </span>
-                  <span
-                    class="monitoring-health-pill"
-                    [ngClass]="healthClass(category.health)"
-                    [ngStyle]="categoryHealthStyle(category)"
-                  >
-                    {{ healthLabelKey(category.health) | i18n }}
-                  </span>
-                </header>
-
-                <div class="monitoring-flow" [style.--flow-count]="category.nodes.length">
-                  @for (node of category.nodes; track node.id; let index = $index; let last = $last) {
-                    <div class="monitoring-node" [ngClass]="['node-' + node.kind, 'tone-' + node.tone]">
-                      <span class="monitoring-node-icon">
-                        <mat-icon>{{ node.icon }}</mat-icon>
-                      </span>
-                      <strong>{{ node.labelKey | i18n }}</strong>
-                      <div class="monitoring-node-badges">
-                        @for (metric of node.metrics; track metric.key) {
-                          <span
-                            class="monitoring-badge"
-                            [ngClass]="['tone-' + metric.tone, healthClass(metric.status)]"
-                            [ngStyle]="metricChipStyle(metric)"
-                          >
-                            <span>{{ metric.labelKey | i18n }}</span>
-                            <strong>{{ metric.valueLabel }}</strong>
-                          </span>
-                        }
-                      </div>
-                    </div>
-                    @if (!last && edgeAfter(category, index); as edge) {
-                      <div class="monitoring-edge" [ngClass]="'tone-' + edge.tone">
-                        <span>{{ edge.labelKey | i18n }}</span>
-                        <strong>{{ edge.volume }}</strong>
-                        <mat-icon>arrow_forward</mat-icon>
-                      </div>
-                    }
-                  }
-                </div>
-              </article>
-            } @empty {
-              <div class="monitoring-empty">{{ 'admin.monitoring.empty.filter' | i18n }}</div>
-            }
-          </section>
         }
-      </div>
+
+        <section class="monitoring-grid">
+          @for (category of filteredCategories(); track category.key) {
+            <article class="monitoring-card" [ngClass]="['tone-' + category.tone, healthClass(category.health)]">
+              <header class="monitoring-card-head">
+                <span class="monitoring-card-icon">
+                  <mat-icon>{{ category.icon }}</mat-icon>
+                </span>
+                <span class="monitoring-card-title">
+                  <strong>{{ category.labelKey | i18n }}</strong>
+                  <small>{{ category.summaryKey | i18n }}</small>
+                </span>
+                <span
+                  class="monitoring-health-pill"
+                  [ngClass]="healthClass(category.health)"
+                  [ngStyle]="categoryHealthStyle(category)"
+                >
+                  {{ healthLabelKey(category.health) | i18n }}
+                </span>
+              </header>
+
+              <div class="monitoring-flow" [style.--flow-count]="category.nodes.length">
+                @for (node of category.nodes; track node.id; let index = $index; let last = $last) {
+                  <div class="monitoring-node" [ngClass]="['node-' + node.kind, 'tone-' + node.tone]">
+                    <span class="monitoring-node-icon">
+                      <mat-icon>{{ node.icon }}</mat-icon>
+                    </span>
+                    <strong>{{ node.labelKey | i18n }}</strong>
+                    <div class="monitoring-node-badges">
+                      @for (metric of node.metrics; track metric.key) {
+                        <span
+                          class="monitoring-badge"
+                          [ngClass]="['tone-' + metric.tone, healthClass(metric.status)]"
+                          [ngStyle]="metricChipStyle(metric)"
+                        >
+                          <span>{{ metric.labelKey | i18n }}</span>
+                          <strong>{{ metric.valueLabel }}</strong>
+                        </span>
+                      }
+                    </div>
+                  </div>
+                  @if (!last && edgeAfter(category, index); as edge) {
+                    <div class="monitoring-edge" [ngClass]="'tone-' + edge.tone">
+                      <span>{{ edge.labelKey | i18n }}</span>
+                      <strong>{{ edge.volume }}</strong>
+                      <mat-icon>arrow_forward</mat-icon>
+                    </div>
+                  }
+                }
+              </div>
+            </article>
+          } @empty {
+            <div class="monitoring-empty">{{ 'admin.monitoring.empty.filter' | i18n }}</div>
+          }
+        </section>
+      }
     </div>
-  </section>
+  </app-popup>
 }

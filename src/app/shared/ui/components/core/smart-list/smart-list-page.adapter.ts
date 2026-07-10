@@ -1,3 +1,4 @@
+import type { Injector, TemplateRef } from '@angular/core';
 import type { ListQuery } from '../../../../core/contracts/list.interface';
 import type {
   InfiniteStepperPageAdapter,
@@ -7,6 +8,7 @@ import type {
   SmartListConfig,
   SmartListFilters,
   SmartListItemSelectEvent,
+  SmartListItemTemplateContext,
   SmartListViewMode
 } from './smart-list.types';
 
@@ -27,10 +29,16 @@ export interface SmartListPageCardModel<T, TFilters extends SmartListFilters = S
   variant: SmartListPageVariant;
   touching: boolean;
   trackByItem?: ((index: number, item: T) => unknown) | null;
+  itemTemplate?: TemplateRef<SmartListItemTemplateContext<T, TFilters>> | null;
+  itemTemplateInjector?: Injector | null;
+  itemContext?: ((item: T, index: number) => SmartListItemTemplateContext<T, TFilters>) | null;
   onItemSelect?: ((
     item: T,
     event?: Event,
-    context?: Pick<SmartListItemSelectEvent<T, TFilters>, 'calendarDate' | 'calendarDateIso'>
+    context?: Pick<
+      SmartListItemSelectEvent<T, TFilters>,
+      'calendarDate' | 'calendarDateIso' | 'timelineStartOffsetMinutes' | 'timelineEndOffsetMinutes'
+    >
   ) => void) | null;
 }
 

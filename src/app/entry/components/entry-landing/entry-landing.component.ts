@@ -13,6 +13,10 @@ import {
 import {
   SmartListComponent, type ListQuery, type PageResult, type SmartListConfig, type SmartListItemRenderState, type SmartListLoadPage
 } from '../../../shared/ui/components/core/smart-list';
+import {
+  PopupComponent,
+  type PopupModel
+} from '../../../shared/ui/components/core/popup';
 import { LazyBgImageDirective } from '../../../shared/ui/directives';
 import { I18nPipe } from '../../../shared/ui';
 
@@ -33,6 +37,7 @@ type HowStepSlide = WarpImageCardData;
     InfoCardComponent,
     WarpImageCardComponent,
     SmartListComponent,
+    PopupComponent,
     LazyBgImageDirective,
     MatRippleModule,
     MatIconModule,
@@ -408,6 +413,21 @@ export class EntryLandingComponent implements OnInit, OnChanges, OnDestroy {
     this.syncLandingPopupScrollLock();
   }
 
+  protected previewGuidePopupModel(): PopupModel {
+    return {
+      title: 'landing.preview.guide.title',
+      subtitle: 'landing.preview.guide.intro',
+      ariaLabel: 'Preview version guide',
+      closeAriaLabel: 'Close preview guide',
+      size: 'small',
+      height: 'auto',
+      headerLayout: 'document',
+      headerTone: 'accent',
+      headerPalette: 'amber',
+      onClose: () => this.closePreviewGuide()
+    };
+  }
+
   protected featuredIdeaCards(): IdeaInfoCard[] {
     const published = this.publishedIdeaCards();
     const featured = published.filter(card => this.ideaCardDetail(card)?.featured === true);
@@ -513,6 +533,41 @@ export class EntryLandingComponent implements OnInit, OnChanges, OnDestroy {
 
   protected ideaDateLabel(detail: IdeaArticleDetailDto | null): string {
     return detail?.dateLabel?.trim() || 'Fresh article';
+  }
+
+  protected ideaArticlePopupModel(detail: IdeaArticleDetailDto): PopupModel {
+    return {
+      headerLabel: this.ideaDateLabel(detail),
+      headerLabelIcon: 'calendar_today',
+      title: detail.title,
+      subtitle: detail.excerpt,
+      ariaLabel: 'Article',
+      closeAriaLabel: 'Close article',
+      translateHeaderLabel: false,
+      translateTitle: false,
+      translateSubtitle: false,
+      size: 'wide',
+      height: 'full',
+      headerLayout: 'article',
+      bodyLayout: 'flush',
+      onClose: () => this.closeIdeaArticlePopup()
+    };
+  }
+
+  protected ideasPopupModel(): PopupModel {
+    const articleCount = this.publishedIdeaCards().length;
+    return {
+      title: 'MyScoutee articles',
+      subtitle: `${articleCount} ${articleCount === 1 ? 'article' : 'articles'}`,
+      ariaLabel: 'MyScoutee articles',
+      closeAriaLabel: 'Close articles',
+      translateSubtitle: false,
+      size: 'wide',
+      height: 'full',
+      headerTone: 'accent',
+      bodyLayout: 'fill',
+      onClose: () => this.closeIdeasPopup()
+    };
   }
 
   protected scrollEntryTo(sectionId: string, event?: Event): void {

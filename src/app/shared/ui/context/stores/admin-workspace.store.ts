@@ -14,6 +14,7 @@ import {
   type AdminModerationUserPatch,
   type AdminReportedUserDto,
   type AdminUserDto,
+  type ProfileExtDto,
   type UserDto
 } from '../../../core';
 import {
@@ -246,7 +247,15 @@ export class AdminWorkspaceStore {
         : null,
       reportedUsers: (dashboard.reportedUsers ?? []).map(user => this.normalizeReportedUser(user)),
       blockedUsers: (dashboard.blockedUsers ?? []).map(user => this.normalizeReportedUser(user, true)),
-      feedback: (dashboard.feedback ?? []).map(item => this.normalizeFeedback(item))
+      feedback: (dashboard.feedback ?? []).map(item => this.normalizeFeedback(item)),
+      reviewCounts: dashboard.reviewCounts
+        ? {
+            reportsUnresolved: this.nonNegativeInteger(dashboard.reviewCounts.reportsUnresolved),
+            reportsResolved: this.nonNegativeInteger(dashboard.reviewCounts.reportsResolved),
+            feedbackUnresolved: this.nonNegativeInteger(dashboard.reviewCounts.feedbackUnresolved),
+            feedbackResolved: this.nonNegativeInteger(dashboard.reviewCounts.feedbackResolved)
+          }
+        : null
     };
   }
 
@@ -268,6 +277,10 @@ export class AdminWorkspaceStore {
       ...item,
       userImageUrl: `${item.userImageUrl ?? ''}`.trim() || null
     };
+  }
+
+  private nonNegativeInteger(value: unknown): number {
+    return Math.max(0, Math.trunc(Number(value) || 0));
   }
 
   private normalizeReportedUser(user: AdminReportedUserDto, blockedFallback = false): AdminReportedUserDto {
@@ -296,7 +309,7 @@ export class AdminWorkspaceStore {
     const admin = dashboard.activeAdmin;
     const user = this.buildAdminProfile(admin, dashboard);
     const chatUnread = this.adminChatUnreadCount(dashboard);
-    this.userProfileStore.setUserProfile(user);
+    this.userProfileStore.setProfileExt(this.buildAdminProfileExt(user));
     this.userProfileStore.setActiveUserId(user.id);
     this.runtimeStore.setStatus(USER_BY_ID_LOAD_CONTEXT_KEY, 'success');
     this.activityStore.patchUserCounterOverrides(user.id, {
@@ -370,6 +383,13 @@ export class AdminWorkspaceStore {
         adminJobs: Math.max(0, Math.trunc(Number(existingAdminProfile?.activities?.adminJobs) || 0)),
         adminMetrics: Math.max(0, Math.trunc(Number(existingAdminProfile?.activities?.adminMetrics) || 0))
       }
+    };
+  }
+
+  private buildAdminProfileExt(user: UserDto): ProfileExtDto {
+    return {
+      profile: user,
+      experienceEntries: this.userProfileStore.getProfileExt(user.id)?.experienceEntries ?? []
     };
   }
 

@@ -18,8 +18,13 @@ import {
 } from '../../../shared/core';
 import {
   AppMenuComponent,
+  I18nPipe,
   type AppMenuItem,
-  type AppMenuItemSelectEvent
+  type AppMenuItemSelectEvent,
+  type AppMenuPalette,
+  FormFlowComponent,
+  type FormFlowControlModel,
+  type FormFlowModel
 } from '../../../shared/ui';
 import {
   ProfileStore
@@ -27,10 +32,19 @@ import {
 import { UserProfileStore } from '../../../shared/ui/context/stores/user-profile.store';
 import { AppRuntimeStore } from '../../../shared/ui/context/stores/app-runtime.store';
 
+interface ReportUserFormValue {
+  handle: string;
+  contextSummary: string;
+  reason: string;
+  details: string;
+}
+
+type ReportUserActionId = 'report-user-cancel' | 'report-user-submit';
+
 @Component({
   selector: 'app-profile-report-user-popup',
   standalone: true,
-  imports: [FormsModule, AppMenuComponent],
+  imports: [FormsModule, AppMenuComponent, FormFlowComponent, I18nPipe],
   templateUrl: './report-user-popup.component.html',
   styleUrl: './report-user-popup.component.scss'
 })
@@ -127,28 +141,147 @@ export class ProfileReportUserPopupComponent implements OnDestroy {
     return this.isContextualReport() && !this.isSubmitBusy() && this.reportUserHandleValid && this.reportUserDetailsValid;
   }
 
-  protected reportUserSubmitMenuItems(): readonly AppMenuItem<string>[] {
-    return [{
-      id: 'report-user-submit',
-      label: 'Submit report',
-      layout: 'action',
-      palette: this.hasSubmitError() ? 'danger' : this.isSubmitSuccess() ? 'success' : 'blue',
-      disabled: !this.canSubmitReportUser(),
-      ariaLabel: 'Submit report',
-      progress: this.showSubmitRing()
-        ? {
-            state: this.hasSubmitError() ? 'error' : this.isSubmitSuccess() ? 'success' : 'loading',
-            shape: 'button'
-          }
-        : null
-    }];
+  protected reportUserFlowModel(): FormFlowModel {
+    const disabled = this.isSubmitBusy();
+    const controls: FormFlowControlModel[] = [
+      {
+        id: 'report-user-handle',
+        bind: 'handle',
+        kind: 'text',
+        layout: 'wide',
+        label: 'User',
+        placeholder: 'Selected member',
+        required: true,
+        minLength: this.reportUserHandleMinLength,
+        readOnly: this.isContextualReport(),
+        disabled
+      }
+    ];
+    if (this.isContextualReport()) {
+      controls.push({
+        id: 'report-user-context',
+        bind: 'contextSummary',
+        kind: 'textarea',
+        layout: 'wide',
+        label: 'Event context',
+        rows: 3,
+        readOnly: true,
+        disabled
+      });
+    }
+    controls.push(
+      {
+        id: 'report-user-reason',
+        bind: 'reason',
+        kind: 'menu',
+        layout: 'wide',
+        label: 'Reason',
+        disabled,
+        config: {
+          kind: 'select',
+          layout: 'list',
+          title: 'Reason',
+          trigger: {
+            label: this.reportUserForm.reason,
+            icon: this.reportUserReasonIcon(this.reportUserForm.reason),
+            palette: this.reportUserReasonPalette(this.reportUserForm.reason),
+            layout: 'field',
+            disabled,
+            ariaLabel: 'Select report reason'
+          },
+          items: this.reportUserReasons.map((reason, index) => ({
+            id: `report-user-reason-${index}`,
+            label: reason,
+            icon: this.reportUserReasonIcon(reason),
+            kind: 'radio',
+            value: reason,
+            active: reason === this.reportUserForm.reason,
+            checked: reason === this.reportUserForm.reason,
+            palette: this.reportUserReasonPalette(reason),
+            surface: 'tinted',
+            disabled
+          }))
+        }
+      },
+      {
+        id: 'report-user-details',
+        bind: 'details',
+        kind: 'textarea',
+        layout: 'wide',
+        label: 'Details',
+        placeholder: 'Add short details about what happened and why you are reporting this member.',
+        rows: 4,
+        required: true,
+        minLength: this.reportUserDetailsMinLength,
+        disabled
+      }
+    );
+    return {
+      title: 'Report User',
+      layout: 'grouped',
+      tone: 'orange',
+      header: false,
+      allowMenuOverflow: true,
+      summary: { enabled: false },
+      completion: { controls: 'none' },
+      save: null,
+      steps: [{
+        id: 'report-user',
+        title: 'Report User',
+        chrome: 'none',
+        controls
+      }]
+    };
   }
 
-  protected onReportUserSubmitMenuSelect(event: AppMenuItemSelectEvent<string>): void {
-    if (event.id !== 'report-user-submit') {
-      return;
+  protected reportUserActionMenuItems(): readonly AppMenuItem<ReportUserActionId>[] {
+    return [
+      {
+        id: 'report-user-cancel',
+        label: 'Cancel',
+        layout: 'action',
+        palette: 'slate',
+        ariaLabel: 'Cancel report'
+      },
+      {
+        id: 'report-user-submit',
+        label: 'Submit report',
+        layout: 'action',
+        palette: this.hasSubmitError() ? 'danger' : this.isSubmitSuccess() ? 'success' : 'blue',
+        disabled: !this.canSubmitReportUser(),
+        ariaLabel: 'Submit report',
+        progress: this.showSubmitRing()
+          ? {
+              state: this.hasSubmitError() ? 'error' : this.isSubmitSuccess() ? 'success' : 'loading',
+              shape: 'button'
+            }
+          : null
+      }
+    ];
+  }
+
+  protected onReportUserFlowValueChange(value: unknown): void {
+    const record = this.isRecord(value) ? value : {};
+    const reason = `${record['reason'] ?? ''}`;
+    this.reportUserForm = {
+      handle: this.isContextualReport()
+        ? this.reportUserContext()?.targetName?.trim() || ''
+        : `${record['handle'] ?? ''}`,
+      contextSummary: this.reportContextSummary(),
+      reason: this.reportUserReasons.includes(reason)
+        ? reason
+        : this.reportUserReasons[0] ?? 'Harassment',
+      details: `${record['details'] ?? ''}`
+    };
+    this.clearSubmitStatus();
+  }
+
+  protected onReportUserActionMenuSelect(event: AppMenuItemSelectEvent<ReportUserActionId>): void {
+    if (event.id === 'report-user-cancel') {
+      this.closePopup();
+    } else if (event.id === 'report-user-submit') {
+      void this.submitReportUser();
     }
-    void this.submitReportUser();
   }
 
   protected reportContextSummary(): string {
@@ -255,13 +388,51 @@ export class ProfileReportUserPopupComponent implements OnDestroy {
     this.reportUserSubmitted = true;
   }
 
-  private createInitialForm(): { handle: string; reason: string; details: string } {
+  private reportUserReasonIcon(reason: string): string {
+    switch (reason) {
+      case 'Harassment':
+        return 'report';
+      case 'Spam':
+        return 'mark_email_unread';
+      case 'Impersonation':
+        return 'person_search';
+      case 'Hate speech':
+        return 'gpp_bad';
+      case 'Scam / Fraud':
+        return 'warning_amber';
+      default:
+        return 'flag';
+    }
+  }
+
+  private reportUserReasonPalette(reason: string): AppMenuPalette {
+    switch (reason) {
+      case 'Harassment':
+      case 'Hate speech':
+        return 'danger';
+      case 'Spam':
+        return 'orange';
+      case 'Impersonation':
+        return 'violet';
+      case 'Scam / Fraud':
+        return 'amber';
+      default:
+        return 'blue';
+    }
+  }
+
+  private createInitialForm(): ReportUserFormValue {
     const context = this.reportUserContext();
     return {
       handle: context?.targetName?.trim() || '',
+      contextSummary: this.reportContextSummary(),
       reason: this.reportUserReasons[0] ?? 'Harassment',
       details: ''
     };
+  }
+
+  private isRecord(value: unknown): value is Record<string, unknown> {
+    return typeof value === 'object' && value !== null && !Array.isArray(value);
   }
 
   private abortActiveSubmit(): void {

@@ -33,6 +33,7 @@ import type {
   AppMenuCounter,
   AppMenuCounterValue,
   AppMenuGroup,
+  AppMenuIconKind,
   AppMenuImageStackItem,
   AppMenuLayout,
   AppMenuItemLayout,
@@ -923,6 +924,10 @@ export class AppMenuComponent<TId extends string = string, TContext = unknown>
     return this.itemVisualLayout(item) === 'image-stack';
   }
 
+  protected isIconLayoutItem(item: AppMenuItem<TId, TContext>): boolean {
+    return this.itemVisualLayout(item) === 'icon';
+  }
+
   protected actionRowItemIcon(item: AppMenuItem<TId, TContext>): string {
     if (this.isActionRowItemOpen(item)) {
       const openIcon = `${this.resolveLiveValue(item.closeIcon ?? item.openIcon) ?? ''}`.trim();
@@ -1110,6 +1115,14 @@ export class AppMenuComponent<TId extends string = string, TContext = unknown>
     return this.groupItems(group);
   }
 
+  protected isTabsIconList(group: AppMenuGroup<TId, TContext> | null): boolean {
+    if (!group) {
+      return false;
+    }
+    const items = this.tabsGroupItems(group).filter(item => !this.isDivider(item) && !this.isSection(item));
+    return items.length > 0 && items.every(item => this.isIconLayoutItem(item));
+  }
+
   protected tabsColumnCount(): string | null {
     const columns = this.autoTabsColumnCount();
     return columns === null ? null : `${columns}`;
@@ -1203,6 +1216,10 @@ export class AppMenuComponent<TId extends string = string, TContext = unknown>
     return `${this.resolveLiveValue(item.icon) ?? ''}`.trim();
   }
 
+  protected itemIconKind(item: AppMenuItem<TId, TContext>): AppMenuIconKind {
+    return item.iconKind ?? 'material';
+  }
+
   protected itemGridColumn(item: AppMenuItem<TId, TContext>): string | null {
     const span = Math.max(1, Math.min(5, Math.trunc(Number(this.resolveLiveValue(item.span)) || 1)));
     return span > 1 ? `span ${span}` : null;
@@ -1220,6 +1237,9 @@ export class AppMenuComponent<TId extends string = string, TContext = unknown>
   }
 
   protected showItemCheck(item: AppMenuItem<TId, TContext>): boolean {
+    if (this.resolveLiveValue(item.showCheck) === false) {
+      return false;
+    }
     if (((this.isDropdownListKind && !this.currentTabbedModelLayout) || (this.isInlineRowLayout && !this.currentTabbedModelLayout)) && item.kind === 'radio') {
       return false;
     }
@@ -1313,7 +1333,13 @@ export class AppMenuComponent<TId extends string = string, TContext = unknown>
   }
 
   private shouldCloseOnSelect(item: AppMenuItem<TId, TContext>): boolean {
-    return item.closeOnSelect ?? (this.currentTabbedModelLayout ? false : this.closeOnSelect);
+    if (item.closeOnSelect !== null && item.closeOnSelect !== undefined) {
+      return item.closeOnSelect;
+    }
+    if (this.currentTabbedModelLayout && this.isIconLayoutItem(item)) {
+      return this.closeOnSelect;
+    }
+    return this.currentTabbedModelLayout ? false : this.closeOnSelect;
   }
 
   private syncActiveTabsGroup(): void {
@@ -1402,6 +1428,7 @@ export class AppMenuComponent<TId extends string = string, TContext = unknown>
 
   private itemMatchesFilter(item: AppMenuItem<TId, TContext>, query: string): boolean {
     return [
+      this.translatedFilterText(this.itemIcon(item)),
       this.translatedFilterText(this.itemLabel(item)),
       this.translatedFilterText(this.itemDescription(item)),
       this.translatedFilterText(this.itemDetail(item))
@@ -1488,13 +1515,30 @@ export class AppMenuComponent<TId extends string = string, TContext = unknown>
     return this.counterVisible(this.itemCounter(item));
   }
 
+  protected hasItemHeaderBadge(item: AppMenuItem<TId, TContext>): boolean {
+    return this.counterVisible(item.headerBadge ?? null);
+  }
+
+  protected hasItemBody(item: AppMenuItem<TId, TContext>): boolean {
+    return !!this.itemDescription(item)
+      || (!!this.itemDetail(item) && this.itemVisualLayout(item) === 'pill');
+  }
+
   protected itemCounterLabel(item: AppMenuItem<TId, TContext>): string {
     return this.counterLabel(this.itemCounter(item));
+  }
+
+  protected itemHeaderBadgeLabel(item: AppMenuItem<TId, TContext>): string {
+    return this.counterLabel(item.headerBadge ?? null);
   }
 
   protected itemCounterKey(item: AppMenuItem<TId, TContext>, group?: AppMenuGroup<TId, TContext>): string {
     const itemKey = `${item.kind ?? 'action'}:${item.id}`;
     return group ? `node:${group.id}:${itemKey}` : `item:${itemKey}`;
+  }
+
+  protected itemHeaderBadgeKey(item: AppMenuItem<TId, TContext>, group?: AppMenuGroup<TId, TContext>): string {
+    return `${this.itemCounterKey(item, group)}:header-badge`;
   }
 
   protected isCounterPulsing(key: string): boolean {
@@ -1615,6 +1659,11 @@ export class AppMenuComponent<TId extends string = string, TContext = unknown>
   }
 
   private estimatedPanelWidth(): number {
+    if (this.currentTabbedModelLayout) {
+      return this.tabsGroups.some(group => this.isTabsIconList(group))
+        ? 360
+        : 480;
+    }
     const labels = this.visibleListItems
       .map(item => `${this.resolveLiveValue(item.label) ?? this.resolveLiveValue(item.description) ?? ''}`.trim());
     const longestLabel = labels.reduce((longest, label) => Math.max(longest, label.length), 0);
@@ -1623,6 +1672,19 @@ export class AppMenuComponent<TId extends string = string, TContext = unknown>
   }
 
   private estimatedPanelHeight(): number {
+    if (this.currentTabbedModelLayout) {
+      const group = this.activeTabsGroup();
+      const itemCount = group
+        ? this.tabsGroupItems(group).filter(item => !this.isDivider(item) && !this.isSection(item)).length
+        : 0;
+      const iconList = this.isTabsIconList(group);
+      const filterHeight = this.isTabsFilterable() ? 46 : 0;
+      const tabsHeight = this.showTabsBar() ? 42 : 0;
+      const rows = iconList
+        ? Math.max(1, Math.ceil(Math.max(1, itemCount) / 8))
+        : Math.max(1, Math.ceil(Math.max(1, itemCount) / 3));
+      return Math.min(520, filterHeight + tabsHeight + rows * (iconList ? 42 : 46) + 36);
+    }
     const titleHeight = this.resolvedTitle ? 34 : 0;
     const itemCount = Math.max(1, this.visibleListItems.length);
     const branchHeaderHeight = this.visibleListItems.some(item => this.hasNestedItems(item)) ? 38 : 0;
@@ -1666,6 +1728,12 @@ export class AppMenuComponent<TId extends string = string, TContext = unknown>
       this.itemCounterKey(item, group),
       this.itemCounter(item),
       this.hasValueCounter(item.id) || this.isLiveCounter(item.counter ?? null),
+      visibleCounterKeys
+    );
+    this.observeCounterPulse(
+      this.itemHeaderBadgeKey(item, group),
+      item.headerBadge ?? null,
+      this.isLiveCounter(item.headerBadge ?? null),
       visibleCounterKeys
     );
     for (const action of item.headerActions ?? []) {
@@ -1773,6 +1841,9 @@ export class AppMenuComponent<TId extends string = string, TContext = unknown>
   private autoTabsColumnCount(): number | null {
     const group = this.activeTabsGroup();
     if (!group) {
+      return null;
+    }
+    if (this.isTabsIconList(group)) {
       return null;
     }
     const items = this.tabsGroupItems(group).filter(item => !this.isDivider(item) && !this.isSection(item));

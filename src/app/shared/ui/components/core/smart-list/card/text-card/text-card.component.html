@@ -1,4 +1,39 @@
-<article [ngClass]="rootClassList()">
+<article
+  [ngClass]="rootClassList()"
+  [style.--ui-text-card-accent-hue]="resolvedAccentHue()"
+>
+  @if (resolvedBadge()) {
+    @if (badgeClickable) {
+      <button
+        type="button"
+        class="ui-text-card__badge ui-text-card__badge--button"
+        [attr.aria-label]="resolvedBadgeAriaLabel()"
+        (click)="emitBadgeClick($event)"
+      >
+        @if (resolvedBadgeIcon()) {
+          <mat-icon aria-hidden="true">{{ resolvedBadgeIcon() }}</mat-icon>
+        }
+        <span>{{ resolvedBadge() }}</span>
+      </button>
+    } @else {
+      <span class="ui-text-card__badge" [attr.aria-label]="resolvedBadgeAriaLabel()">
+        @if (resolvedBadgeIcon()) {
+          <mat-icon aria-hidden="true">{{ resolvedBadgeIcon() }}</mat-icon>
+        }
+        <span>{{ resolvedBadge() }}</span>
+      </span>
+    }
+  }
+
+  @if (resolvedStatusBadge()) {
+    <span class="ui-text-card__status-badge" [attr.aria-label]="resolvedStatusBadgeAriaLabel()">
+      @if (resolvedStatusBadgeIcon()) {
+        <mat-icon aria-hidden="true">{{ resolvedStatusBadgeIcon() }}</mat-icon>
+      }
+      <span>{{ resolvedStatusBadge() }}</span>
+    </span>
+  }
+
   <div class="ui-text-card__main">
     @if (resolvedIcon()) {
       <span class="ui-text-card__icon" aria-hidden="true">
@@ -19,17 +54,45 @@
     </span>
   </div>
 
-  @if (hasMenu()) {
-    <app-menu
-      class="ui-text-card__menu"
-      kind="select"
-      layout="list"
-      [title]="resolvedMenuTitle()"
-      [trigger]="menuTrigger()"
-      [items]="menuItems"
-      [panelAlign]="'auto'"
-      [mobileBreakpointPx]="900"
-      (itemSelect)="menuSelect.emit($event)"
-    ></app-menu>
+  @if (hasActions()) {
+    <div class="ui-text-card__actions">
+      @if (hasSelectAction()) {
+        <button
+          type="button"
+          [ngClass]="selectActionClassList()"
+          [disabled]="selectDisabled"
+          [attr.aria-label]="resolvedSelectAriaLabel()"
+          (click)="toggleSelection($event)"
+        >
+          <mat-icon>{{ selectActionIcon() }}</mat-icon>
+        </button>
+      }
+
+      @if (hasMenu()) {
+        @if (useSharedMenuTrigger) {
+          <app-menu-trigger
+            class="ui-text-card__menu"
+            kind="select"
+            [menuId]="resolvedSharedMenuId()"
+            [title]="resolvedMenuTitle()"
+            [trigger]="menuTrigger()"
+            [items]="menuItems"
+            [context]="sharedMenuContext"
+          ></app-menu-trigger>
+        } @else {
+          <app-menu
+            class="ui-text-card__menu"
+            kind="select"
+            layout="list"
+            [title]="resolvedMenuTitle()"
+            [trigger]="menuTrigger()"
+            [items]="menuItems"
+            [panelAlign]="'auto'"
+            [mobileBreakpointPx]="900"
+            (itemSelect)="menuSelect.emit($event)"
+          ></app-menu>
+        }
+      }
+    </div>
   }
 </article>

@@ -1,3 +1,4 @@
+@if (shouldShowPanel()) {
 <section class="subevent-definition-panel">
   <header class="subevent-definition-panel__header">
     <div class="subevent-definition-panel__title">
@@ -8,7 +9,7 @@
       </div>
     </div>
     <div class="subevent-definition-panel__toggle-wrap">
-      @if (showEnableToggle) {
+      @if (showEnableToggle && canEdit()) {
       <button type="button" class="subevent-definition-panel__toggle" [class.is-on]="enabled"
         [disabled]="!canEdit()" (click)="toggleSubEventsEnabled($event)" aria-label="Toggle sub events">
         <mat-icon>{{ enabled ? 'toggle_on' : 'toggle_off' }}</mat-icon>
@@ -34,6 +35,13 @@
         (itemSelect)="onModeMenuSelect($event)"
       ></app-menu>
       }
+      <app-menu
+        class="subevent-definition-panel__view-menu"
+        kind="select"
+        [trigger]="viewMenuTrigger()"
+        [items]="viewMenuItems()"
+        (itemSelect)="onViewMenuSelect($event)"
+      ></app-menu>
       @if (canConfigureDefinitions()) {
       <app-menu
         class="subevent-definition-panel__add-menu"
@@ -51,7 +59,7 @@
     class="subevent-definition-panel__list"
     [config]="smartListConfig"
     [loadPage]="loadDefinitionsPage"
-    [itemTemplate]="definitionTemplate"
+    [itemTemplate]="definitionView === 'timeline' ? definitionTimelineTemplate : definitionTemplate"
     [query]="smartListQuery"
     (menuItemSelect)="onDefinitionMenuSelect($event)"
   ></app-smart-list>
@@ -64,6 +72,30 @@
       (menuAction)="onCardMenuAction(definition, $event)"
     ></app-info-card>
   </ng-template>
+
+  <ng-template #definitionTimelineTemplate let-definition>
+    <app-text-card
+      class="subevent-definition-panel__timeline-card"
+      [title]="definition.name"
+      [detail]="definitionTimelineDetail(definition)"
+      [icon]="definitionTimelineIcon(definition)"
+      [tone]="definitionTimelineTone(definition)"
+      [accentHue]="definitionTimelineAccentHue(definition)"
+      [badge]="durationMinutesBadgeLabel(definition.durationMinutes)"
+      badgeIcon="schedule"
+      [badgeAriaLabel]="'Duration ' + durationLabel(definition.durationMinutes)"
+      [badgeTone]="definitionTimelineBadgeTone(definition)"
+      [statusBadge]="definitionTimelineStatusLabel(definition)"
+      [statusBadgeIcon]="definitionTimelineStatusIcon(definition)"
+      [statusBadgeAriaLabel]="definitionTimelineStatusAriaLabel(definition)"
+      [statusBadgeTone]="definitionTimelineStatusTone(definition)"
+      [menuTitle]="definition.name"
+      [menuItems]="definitionTimelineMenuItems(definition)"
+      [useSharedMenuTrigger]="true"
+      [sharedMenuId]="'subevent-definition-timeline-actions-' + definition.id"
+      [sharedMenuContext]="definitionMenuContext(definition)"
+    ></app-text-card>
+  </ng-template>
   }
 
   @if (enabled && definitionForm) {
@@ -72,15 +104,7 @@
       [model]="definitionFormModelValue"
       (save)="saveDefinitionForm($event)"
       (cancel)="cancelDefinitionForm($event)"
-      (selectOptional)="selectDefinitionOptional($event)"
-      (selectInsertPlacement)="selectDefinitionInsertPlacement($event)"
-      (insertTargetChange)="onDefinitionInsertTargetChange($event)"
-      (capacityMinChange)="onDefinitionCapacityMinChange($event)"
-      (capacityMaxChange)="onDefinitionCapacityMaxChange($event)"
-      (tournamentGroupCapacityMinChange)="onDefinitionTournamentGroupCapacityMinChange($event)"
-      (tournamentGroupCapacityMaxChange)="onDefinitionTournamentGroupCapacityMaxChange($event)"
-      (tournamentLeaderboardTypeChange)="onDefinitionTournamentLeaderboardTypeChange($event)"
-      (tournamentAdvancePerGroupChange)="onDefinitionTournamentAdvancePerGroupChange($event)"
     ></app-event-subevent-stage-form-popup>
   }
 </section>
+}

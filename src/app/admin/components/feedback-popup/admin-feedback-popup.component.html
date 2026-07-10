@@ -1,52 +1,33 @@
 @if (admin.activePopup() === 'feedback') {
-  <section class="app-popup">
-    <div class="app-popup-backdrop" (click)="admin.closePopup()"></div>
-    <div class="app-popup-panel popup-panel-admin" (click)="$event.stopPropagation()">
-      <div class="popup-header">
-        <div class="popup-title">
-          <h2>Application feedback</h2>
-          <p class="popup-subtitle">Feedback submitted from the app.</p>
-        </div>
-        <button type="button" class="popup-close" (click)="admin.closePopup()" aria-label="Close">
-          <mat-icon>close</mat-icon>
-        </button>
-      </div>
-
-      <div class="popup-body admin-list-only-body">
+  <app-popup [model]="feedbackPopupModel()">
+      <div class="admin-list-only-body">
         <app-smart-list
+          #feedbackSmartList
           class="admin-smart-list admin-simple-list"
           [config]="feedbackSmartListConfig"
           [loadPage]="feedbackSmartListLoadPage"
+          [query]="feedbackSmartListQuery"
           [itemTemplate]="feedbackItemTemplateRef ?? null"
+          (menuItemSelect)="onFeedbackRowMenuSelect($event)"
         ></app-smart-list>
 
-        <ng-template #feedbackItemTemplate let-item let-groupLabel="groupLabel">
+        <ng-template #feedbackItemTemplate let-item let-groupLabel="groupLabel" let-openMenu="openMenu">
           <single-row
             [row]="feedbackSingleRow(item, groupLabel)"
             [clickable]="true"
+            [useSharedMenu]="true"
+            [sharedMenuContext]="feedbackRowMenuContext(item)"
             (rowClick)="selectFeedback(item)"
+            (menuRequest)="openMenu($event)"
           ></single-row>
         </ng-template>
       </div>
-    </div>
-  </section>
+  </app-popup>
 }
 
 @if (feedbackDetail; as item) {
-  <section class="app-popup app-popup-stacked">
-    <div class="app-popup-backdrop" (click)="closeFeedbackDetails()"></div>
-    <div class="app-popup-panel popup-panel-admin-detail" (click)="$event.stopPropagation()">
-      <div class="popup-header">
-        <div class="popup-title">
-          <h2>Feedback details</h2>
-          <p class="popup-subtitle">{{ item.userName }} · {{ feedbackListMeta(item) }}</p>
-        </div>
-        <button type="button" class="popup-close" (click)="closeFeedbackDetails()" aria-label="Close">
-          <mat-icon>close</mat-icon>
-        </button>
-      </div>
-
-      <div class="popup-body admin-detail-popup-body">
+  <app-popup [model]="feedbackDetailPopupModel(item)" [zIndex]="2400">
+      <div class="admin-detail-popup-body">
         <article class="admin-chat-detail-message">
           <div class="admin-message-bubble admin-feedback-detail-bubble" [ngClass]="feedbackCategoryToneClass(item)">
             <div class="admin-message-head">
@@ -65,21 +46,20 @@
               <span class="admin-feedback-time-badge admin-feedback-detail-time">{{ shortDate(item.createdDate) }}</span>
             </div>
             <span class="admin-feedback-category-badge admin-feedback-detail-badge">
-              {{ feedbackCategoryLabel(item) }}
+              {{ feedbackCategoryLabel(item) | i18n }}
             </span>
             <div class="admin-feedback-detail-fields">
               <div class="admin-feedback-detail-field">
-                <strong>Subject</strong>
+                <strong>{{ 'subject' | i18n }}</strong>
                 <p>{{ item.subject }}</p>
               </div>
               <div class="admin-feedback-detail-field">
-                <strong>Details</strong>
+                <strong>{{ 'details' | i18n }}</strong>
                 <p>{{ item.details }}</p>
               </div>
             </div>
           </div>
         </article>
       </div>
-    </div>
-  </section>
+  </app-popup>
 }

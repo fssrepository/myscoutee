@@ -1,45 +1,28 @@
 @if (visible()) {
-  <section class="app-popup app-popup-stacked asset-ticket-scan-popup">
-    <div class="app-popup-backdrop" (click)="closeTicketScanPopup()"></div>
-    <div
-      class="app-popup-panel"
-      [class.popup-panel-ticket-fullscreen]="isMobileView()"
-      (click)="$event.stopPropagation()"
-      >
-      <div class="popup-header">
-        <div class="popup-title">
-          <h2>{{ store.ticketScanMode() === 'ticketCode' ? 'Ticket' : 'Scan Ticket' }}</h2>
-        </div>
-        <button mat-icon-button class="popup-close" (click)="closeTicketScanPopup($event)" aria-label="Close">
-          <mat-icon>close</mat-icon>
-        </button>
-      </div>
-      <div class="popup-body">
-        @if (store.ticketScanMode() === 'ticketCode') {
-          <app-asset-ticket-code-popup
-            [selectedTicketRow]="store.selectedTicketRow()"
-            [avatarUrl]="ticketCodeView().avatarUrl"
-            [initials]="ticketCodeView().initials"
-            [personLine]="ticketCodeView().personLine"
-            [roleEventLine]="ticketCodeView().roleEventLine"
-            [dateLine]="ticketCodeView().dateLine"
-            [qrImageUrl]="ticketQrImageUrl()"
-          ></app-asset-ticket-code-popup>
-        }
-        @if (store.ticketScanMode() === 'ticketScanner') {
-          <app-asset-ticket-scanner-popup
-            [state]="store.ticketScannerState()"
-            [result]="store.ticketScannerResult()"
-            [avatarUrl]="ticketScannerView().avatarUrl"
-            [initials]="ticketScannerView().initials"
-            [personLine]="ticketScannerView().personLine"
-            [roleEventLine]="ticketScannerView().roleEventLine"
-            [dateLine]="ticketScannerView().dateLine"
-            [retry]="retryTicketScanner"
-            (videoElementChange)="onTicketScannerVideoElementChange($event)"
-          ></app-asset-ticket-scanner-popup>
-        }
-      </div>
-    </div>
-  </section>
+  <app-popup [model]="ticketScanPopupModel()" [zIndex]="ticketScanPopupZIndex()">
+    @if (store.ticketScanMode() === 'ticketCode') {
+      <app-asset-ticket-code-popup
+        [selectedTicketRow]="store.selectedTicketRow()"
+        [avatarUrl]="ticketCodeView().avatarUrl"
+        [initials]="ticketCodeView().initials"
+        [personLine]="ticketCodeView().personLine"
+        [roleEventLine]="ticketCodeView().roleEventLine"
+        [dateLine]="ticketCodeView().dateLine"
+        [qrImageUrl]="ticketQrImageUrl()"
+      ></app-asset-ticket-code-popup>
+    }
+    @if (store.ticketScanMode() === 'ticketScanner') {
+      <app-asset-ticket-scanner-popup
+        [state]="store.ticketScannerState()"
+        [result]="store.ticketScannerResult()"
+        [avatarUrl]="ticketScannerView().avatarUrl"
+        [initials]="ticketScannerView().initials"
+        [personLine]="ticketScannerView().personLine"
+        [roleEventLine]="ticketScannerView().roleEventLine"
+        [dateLine]="ticketScannerView().dateLine"
+        [retry]="retryTicketScanner"
+        (videoElementChange)="onTicketScannerVideoElementChange($event)"
+      ></app-asset-ticket-scanner-popup>
+    }
+  </app-popup>
 }
