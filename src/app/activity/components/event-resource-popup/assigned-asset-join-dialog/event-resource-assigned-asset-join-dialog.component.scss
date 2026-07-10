@@ -180,6 +180,9 @@
 
 .assigned-asset-join-content .assigned-asset-join-action-menu {
   display: inline-flex;
+  --app-menu-action-min-width: 138px;
+  --app-menu-action-height: 46px;
+  --app-menu-action-padding: 0 1rem;
 }
 
 @media (max-width: 640px) {
