@@ -282,19 +282,25 @@
 }
 
 .subevent-position-panel--optional {
-  border-color: rgba(78, 146, 171, 0.28);
+  border-color: rgba(180, 119, 24, 0.42);
   background:
-    linear-gradient(180deg, rgba(240, 249, 252, 0.98) 0%, rgba(226, 243, 248, 0.95) 100%),
-    radial-gradient(circle at top right, rgba(117, 194, 189, 0.2), transparent 34%),
-    radial-gradient(circle at bottom left, rgba(125, 170, 221, 0.12), transparent 42%);
+    linear-gradient(180deg, rgba(255, 247, 219, 0.99) 0%, rgba(255, 231, 166, 0.96) 100%),
+    radial-gradient(circle at top right, rgba(230, 148, 31, 0.3), transparent 34%),
+    radial-gradient(circle at bottom left, rgba(139, 80, 187, 0.12), transparent 42%);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.86),
+    0 10px 24px rgba(123, 80, 15, 0.1);
 }
 
 .subevent-position-panel--mandatory {
-  border-color: rgba(184, 103, 103, 0.3);
+  border-color: rgba(32, 135, 127, 0.42);
   background:
-    linear-gradient(180deg, rgba(255, 247, 247, 0.98) 0%, rgba(252, 235, 235, 0.95) 100%),
-    radial-gradient(circle at top right, rgba(213, 125, 125, 0.18), transparent 34%),
-    radial-gradient(circle at bottom left, rgba(220, 163, 118, 0.1), transparent 42%);
+    linear-gradient(180deg, rgba(225, 251, 246, 0.99) 0%, rgba(185, 237, 229, 0.96) 100%),
+    radial-gradient(circle at top right, rgba(35, 166, 153, 0.28), transparent 34%),
+    radial-gradient(circle at bottom left, rgba(33, 95, 166, 0.12), transparent 42%);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.86),
+    0 10px 24px rgba(18, 103, 96, 0.1);
 }
 
 .subevent-position-panel--tournament {
@@ -323,12 +329,12 @@
 
 .subevent-position-panel--optional .subevent-position-panel__title,
 .subevent-position-panel--optional .subevent-position-panel__title mat-icon {
-  color: #215f69;
+  color: #7b4b06;
 }
 
 .subevent-position-panel--mandatory .subevent-position-panel__title,
 .subevent-position-panel--mandatory .subevent-position-panel__title mat-icon {
-  color: #7d3838;
+  color: #12635c;
 }
 
 .subevent-position-panel--tournament .subevent-position-panel__title,
@@ -364,11 +370,11 @@
 }
 
 .subevent-position-panel--optional .subevent-position-field > span {
-  color: rgba(33, 95, 105, 0.78);
+  color: rgba(123, 75, 6, 0.82);
 }
 
 .subevent-position-panel--mandatory .subevent-position-field > span {
-  color: rgba(125, 56, 56, 0.78);
+  color: rgba(18, 99, 92, 0.82);
 }
 
 .subevent-position-panel--tournament .subevent-position-field > span {
