@@ -249,7 +249,7 @@ export class ActivityEventInfoCardConverter {
           return 'pending';
         }
         if (this.statusCode(dto.status) === 'A') {
-          return 'published';
+          return this.isOwnedByActiveUser(dto, activeUserId) ? 'published' : 'series';
         }
         return 'default';
     }
@@ -339,6 +339,11 @@ export class ActivityEventInfoCardConverter {
 
   private static isInvited(dto: ActivityEventDTO, activeUserId: string): boolean {
     return this.includesUserId(dto.invitedMemberUserIds, activeUserId);
+  }
+
+  private static isOwnedByActiveUser(dto: ActivityEventDTO, activeUserId: string): boolean {
+    const userId = activeUserId.trim();
+    return !userId || `${dto.creatorUserId ?? ''}`.trim() === userId;
   }
 
   private static includesUserId(userIds: readonly string[] | null | undefined, activeUserId: string): boolean {
