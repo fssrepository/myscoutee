@@ -808,7 +808,7 @@ export class EventEditorPopupComponent implements OnInit, OnDestroy {
     return [{
       id: 'event-editor-save',
       icon: 'done',
-      layout: 'action',
+      kind: 'action',
       palette: canSave || this.isSavePending ? 'success' : 'danger',
       disabled: !canSave || this.isSavePending,
       ariaLabel: 'Save event',
