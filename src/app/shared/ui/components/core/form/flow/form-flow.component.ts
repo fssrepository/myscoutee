@@ -374,6 +374,10 @@ export class FormFlowComponent implements ControlValueAccessor, OnChanges, OnDes
     return Number.isFinite(numberValue) ? numberValue : null;
   }
 
+  protected controlBooleanValue(control: FormFlowControlModel): boolean {
+    return this.controlValue(control) === true;
+  }
+
   protected controlStringArrayValue(control: FormFlowControlModel): readonly string[] {
     const value = this.controlValue(control);
     if (!Array.isArray(value)) {

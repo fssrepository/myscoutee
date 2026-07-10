@@ -594,6 +594,41 @@
   grid-column: 1 / -1;
 }
 
+.form-flow__checkbox {
+  min-height: var(--form-flow-input-height, 34px);
+  display: inline-flex;
+  align-items: center;
+  gap: 0.58rem;
+  color: #233e61;
+  font-size: 0.8rem;
+  font-weight: 700;
+  cursor: pointer;
+
+  input[type='checkbox'] {
+    flex: 0 0 17px;
+    width: 17px;
+    height: 17px;
+    min-height: 17px;
+    margin: 0;
+    padding: 0;
+    border: 0;
+    border-radius: 3px;
+    accent-color: #3477d4;
+    box-shadow: none;
+    cursor: inherit;
+  }
+
+  strong {
+    color: #c63838;
+    margin-left: 3px;
+  }
+
+  &:has(input:disabled) {
+    cursor: default;
+    opacity: 0.64;
+  }
+}
+
 .form-flow--grouped .form-flow__controls {
   gap: 12px 14px;
 }

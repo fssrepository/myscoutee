@@ -24,6 +24,16 @@ export interface FormFlowPricingEditorPopupState {
   canSave: boolean;
 }
 
+export interface FormFlowPolicyEditorPopupState {
+  ownerId: string;
+  title: string;
+  subtitle: string;
+  zIndex: number;
+  value: unknown;
+  requiredCheckboxLabel: string;
+  readOnly: boolean;
+}
+
 interface FormFlowRouteInputEditorActionBase {
   ownerId: string;
   requestId: number;
@@ -31,6 +41,12 @@ interface FormFlowRouteInputEditorActionBase {
 }
 
 interface FormFlowPricingEditorPopupActionBase {
+  ownerId: string;
+  requestId: number;
+  event?: Event;
+}
+
+interface FormFlowPolicyEditorPopupActionBase {
   ownerId: string;
   requestId: number;
   event?: Event;
@@ -51,6 +67,13 @@ export type FormFlowPricingEditorPopupActionRequest =
     value: unknown;
   });
 
+export type FormFlowPolicyEditorPopupActionRequest =
+  | (FormFlowPolicyEditorPopupActionBase & { kind: 'close' })
+  | (FormFlowPolicyEditorPopupActionBase & {
+    kind: 'save';
+    value: unknown;
+  });
+
 type FormFlowRouteInputEditorActionPayload =
   | (Omit<FormFlowRouteInputEditorActionBase, 'requestId'> & { kind: 'close' })
   | (Omit<FormFlowRouteInputEditorActionBase, 'requestId'> & {
@@ -66,24 +89,37 @@ type FormFlowPricingEditorPopupActionPayload =
     value: unknown;
   });
 
+type FormFlowPolicyEditorPopupActionPayload =
+  | (Omit<FormFlowPolicyEditorPopupActionBase, 'requestId'> & { kind: 'close' })
+  | (Omit<FormFlowPolicyEditorPopupActionBase, 'requestId'> & {
+    kind: 'save';
+    value: unknown;
+  });
+
 @Injectable({
   providedIn: 'root'
 })
 export class FormFlowPopupStore {
   readonly routeInputEditorRef = signal<FormFlowRouteInputEditorState | null>(null);
   readonly pricingEditorPopupRef = signal<FormFlowPricingEditorPopupState | null>(null);
+  readonly policyEditorPopupRef = signal<FormFlowPolicyEditorPopupState | null>(null);
 
   private readonly routeInputEditorComponentRef = signal<Type<unknown> | null>(null);
   private readonly routeInputEditorActionRequestRef = signal<FormFlowRouteInputEditorActionRequest | null>(null);
   private readonly pricingEditorPopupComponentRef = signal<Type<unknown> | null>(null);
   private readonly pricingEditorPopupActionRequestRef = signal<FormFlowPricingEditorPopupActionRequest | null>(null);
+  private readonly policyEditorPopupComponentRef = signal<Type<unknown> | null>(null);
+  private readonly policyEditorPopupActionRequestRef = signal<FormFlowPolicyEditorPopupActionRequest | null>(null);
   private routeInputEditorActionSequence = 0;
   private pricingEditorPopupActionSequence = 0;
+  private policyEditorPopupActionSequence = 0;
 
   readonly routeInputEditorComponent = this.routeInputEditorComponentRef.asReadonly();
   readonly routeInputEditorActionRequest = this.routeInputEditorActionRequestRef.asReadonly();
   readonly pricingEditorPopupComponent = this.pricingEditorPopupComponentRef.asReadonly();
   readonly pricingEditorPopupActionRequest = this.pricingEditorPopupActionRequestRef.asReadonly();
+  readonly policyEditorPopupComponent = this.policyEditorPopupComponentRef.asReadonly();
+  readonly policyEditorPopupActionRequest = this.policyEditorPopupActionRequestRef.asReadonly();
 
   openRouteInputEditor(editor: FormFlowRouteInputEditorState): void {
     this.routeInputEditorRef.set(this.cloneRouteInputEditor(editor));
@@ -125,6 +161,26 @@ export class FormFlowPopupStore {
     this.pricingEditorPopupRef.set(null);
   }
 
+  openPolicyEditorPopup(popup: FormFlowPolicyEditorPopupState): void {
+    this.policyEditorPopupRef.set({ ...popup });
+  }
+
+  updatePolicyEditorPopup(popup: FormFlowPolicyEditorPopupState): void {
+    const current = this.policyEditorPopupRef();
+    if (current && current.ownerId !== popup.ownerId) {
+      return;
+    }
+    this.policyEditorPopupRef.set({ ...popup });
+  }
+
+  closePolicyEditorPopup(ownerId?: string): void {
+    const current = this.policyEditorPopupRef();
+    if (ownerId && current?.ownerId !== ownerId) {
+      return;
+    }
+    this.policyEditorPopupRef.set(null);
+  }
+
   requestRouteInputEditorClose(ownerId: string, event?: Event): void {
     this.requestRouteInputEditorAction({ ownerId, kind: 'close', event });
   }
@@ -152,6 +208,14 @@ export class FormFlowPopupStore {
     this.requestPricingEditorPopupAction({ ownerId, kind: 'save', value, event });
   }
 
+  requestPolicyEditorPopupClose(ownerId: string, event?: Event): void {
+    this.requestPolicyEditorPopupAction({ ownerId, kind: 'close', event });
+  }
+
+  requestPolicyEditorPopupSave(ownerId: string, value: unknown, event?: Event): void {
+    this.requestPolicyEditorPopupAction({ ownerId, kind: 'save', value, event });
+  }
+
   async ensureRouteInputEditorLoaded(): Promise<void> {
     if (this.routeInputEditorComponentRef()) {
       return;
@@ -168,6 +232,14 @@ export class FormFlowPopupStore {
     this.pricingEditorPopupComponentRef.set(module.PricingEditorPopupComponent);
   }
 
+  async ensurePolicyEditorPopupLoaded(): Promise<void> {
+    if (this.policyEditorPopupComponentRef()) {
+      return;
+    }
+    const module = await import('../inputs/policies-input/policies-input-popup/policies-input-popup.component');
+    this.policyEditorPopupComponentRef.set(module.PoliciesInputPopupComponent);
+  }
+
   private requestRouteInputEditorAction(request: FormFlowRouteInputEditorActionPayload): void {
     this.routeInputEditorActionSequence += 1;
     this.routeInputEditorActionRequestRef.set({
@@ -181,6 +253,14 @@ export class FormFlowPopupStore {
     this.pricingEditorPopupActionRequestRef.set({
       ...request,
       requestId: this.pricingEditorPopupActionSequence
+    });
+  }
+
+  private requestPolicyEditorPopupAction(request: FormFlowPolicyEditorPopupActionPayload): void {
+    this.policyEditorPopupActionSequence += 1;
+    this.policyEditorPopupActionRequestRef.set({
+      ...request,
+      requestId: this.policyEditorPopupActionSequence
     });
   }
 

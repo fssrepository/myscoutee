@@ -248,6 +248,16 @@
                         [ngModel]="controlStringArrayValue(control)"
                         (ngModelChange)="updateControlValue(control, $event)"
                       ></app-image-carousel>
+                    } @else if (control.kind === 'checkbox') {
+                      <label class="form-flow__checkbox">
+                        <input
+                          type="checkbox"
+                          [disabled]="isControlDisabled(control) || control.readOnly === true"
+                          [ngModel]="controlBooleanValue(control)"
+                          (ngModelChange)="updateControlValue(control, $event)"
+                        />
+                        <span>{{ control.label }}@if (control.required) { <strong>*</strong> }</span>
+                      </label>
                     } @else if (control.kind === 'textarea') {
                       <label class="form-flow__label">
                         <span>{{ control.label }}@if (control.required) { <strong>*</strong> }</span>

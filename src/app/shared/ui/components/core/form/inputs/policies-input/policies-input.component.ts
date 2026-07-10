@@ -1,6 +1,21 @@
 import { CommonModule } from '@angular/common';
-import { ChangeDetectionStrategy, ChangeDetectorRef, Component, EventEmitter, forwardRef, HostListener, Input, Output } from '@angular/core';
-import { ControlValueAccessor, FormsModule, NG_VALUE_ACCESSOR } from '@angular/forms';
+import {
+  ChangeDetectionStrategy,
+  ChangeDetectorRef,
+  Component,
+  EventEmitter,
+  HostListener,
+  Input,
+  OnDestroy,
+  Output,
+  Type,
+  computed,
+  effect,
+  forwardRef,
+  inject,
+  untracked
+} from '@angular/core';
+import { ControlValueAccessor, NG_VALUE_ACCESSOR } from '@angular/forms';
 import { MatIconModule } from '@angular/material/icon';
 
 import type * as EventContracts from '../../../../../../core/contracts/event.interface';
@@ -13,6 +28,11 @@ import {
   type SingleRowData
 } from '../../../smart-list/card';
 import {
+  FormFlowPopupStore,
+  type FormFlowPolicyEditorPopupActionRequest,
+  type FormFlowPolicyEditorPopupState
+} from '../../flow/form-flow-popup.store';
+import {
   PopupComponent,
   type PopupControl,
   type PopupMenuSelectEvent,
@@ -20,15 +40,10 @@ import {
 } from '../../../popup';
 
 type PolicyInputModel = EventContracts.EventPolicyDTO;
-type PolicyPopupMenuContext =
-  | {
-      menu: 'policy-setup';
-      action: 'add';
-    }
-  | {
-      menu: 'policy-editor';
-      action: 'save';
-    };
+type PolicyPopupMenuContext = {
+  menu: 'policy-setup';
+  action: 'add';
+};
 export type PoliciesInputConfigValue<TValue> = TValue | (() => TValue);
 
 export interface PoliciesInputConfig {
@@ -53,7 +68,6 @@ export interface PoliciesInputConfig {
   standalone: true,
   imports: [
     CommonModule,
-    FormsModule,
     MatIconModule,
     PopupComponent,
     SingleRowComponent
@@ -69,7 +83,9 @@ export interface PoliciesInputConfig {
     }
   ]
 })
-export class PoliciesInputComponent implements ControlValueAccessor {
+export class PoliciesInputComponent implements ControlValueAccessor, OnDestroy {
+  private static ownerSequence = 0;
+
   @Input() readOnly = false;
   @Input() disabled = false;
   @Input() config: PoliciesInputConfig = {};
@@ -81,13 +97,46 @@ export class PoliciesInputComponent implements ControlValueAccessor {
   protected workingPolicyDraft: PolicyInputModel = this.createEmptyPolicyDraft();
   protected editingPolicyDraftIndex: number | null = null;
   protected showPoliciesPopup = false;
-  protected showPolicyEditorPopup = false;
+
+  private readonly formFlowPopupStore = inject(FormFlowPopupStore);
+  private readonly ownerId = this.nextOwnerId();
+  protected readonly policyEditorPopupOutletInputs = computed(() => {
+    const popup = this.formFlowPopupStore.policyEditorPopupRef();
+    return {
+      popup: popup?.ownerId === this.ownerId ? popup : null
+    };
+  });
 
   private idSequence = 0;
   private onModelChange: (value: PolicyInputModel[]) => void = () => {};
   private onModelTouched: () => void = () => {};
+  private lastPolicyEditorActionRequestId = 0;
+  private readonly destroyEffects: Array<{ destroy: () => void }> = [];
 
-  constructor(private readonly cdr: ChangeDetectorRef) {}
+  constructor(private readonly cdr: ChangeDetectorRef) {
+    this.destroyEffects.push(
+      effect(() => {
+        if (this.policyEditorIsOpen()) {
+          void this.formFlowPopupStore.ensurePolicyEditorPopupLoaded();
+        }
+      }),
+      effect(() => {
+        const request = this.formFlowPopupStore.policyEditorPopupActionRequest();
+        if (!request || request.requestId <= this.lastPolicyEditorActionRequestId) {
+          return;
+        }
+        this.lastPolicyEditorActionRequestId = request.requestId;
+        untracked(() => this.handlePolicyEditorActionRequest(request));
+      })
+    );
+  }
+
+  ngOnDestroy(): void {
+    this.destroyEffects.forEach(item => item.destroy());
+    if (this.policyEditorIsOpen()) {
+      this.formFlowPopupStore.closePolicyEditorPopup(this.ownerId);
+    }
+  }
 
   writeValue(value: readonly PolicyInputModel[] | null | undefined): void {
     this.policies = this.normalizePolicies(value ?? []);
@@ -113,7 +162,7 @@ export class PoliciesInputComponent implements ControlValueAccessor {
   @HostListener('document:keydown.escape', ['$event'])
   protected handleEscape(event: Event): void {
     const keyboardEvent = event as KeyboardEvent;
-    if (this.showPolicyEditorPopup) {
+    if (this.policyEditorIsOpen()) {
       keyboardEvent.preventDefault();
       this.closePolicyEditor();
       return;
@@ -164,7 +213,7 @@ export class PoliciesInputComponent implements ControlValueAccessor {
     this.onModelTouched();
     if (!nextEnabled) {
       this.showPoliciesPopup = false;
-      this.showPolicyEditorPopup = false;
+      this.formFlowPopupStore.closePolicyEditorPopup(this.ownerId);
       this.workingPolicies = [];
       this.workingPolicyDraft = this.createEmptyPolicyDraft();
       this.editingPolicyDraftIndex = null;
@@ -176,17 +225,17 @@ export class PoliciesInputComponent implements ControlValueAccessor {
     event?.preventDefault();
     this.workingPolicies = this.clonePolicies(this.policies);
     this.showPoliciesPopup = true;
-    this.showPolicyEditorPopup = false;
+    this.formFlowPopupStore.closePolicyEditorPopup(this.ownerId);
     this.onModelTouched();
     this.cdr.markForCheck();
   }
 
   protected closePoliciesPopup(): void {
-    if (this.showPoliciesPopup || this.showPolicyEditorPopup) {
+    if (this.showPoliciesPopup || this.policyEditorIsOpen()) {
       this.syncPoliciesFromWorkingPolicies();
     }
     this.showPoliciesPopup = false;
-    this.showPolicyEditorPopup = false;
+    this.formFlowPopupStore.closePolicyEditorPopup(this.ownerId);
     this.workingPolicies = [];
     this.workingPolicyDraft = this.createEmptyPolicyDraft();
     this.editingPolicyDraftIndex = null;
@@ -206,12 +255,14 @@ export class PoliciesInputComponent implements ControlValueAccessor {
     this.workingPolicyDraft = existing
       ? { ...existing }
       : this.createEmptyPolicyDraft();
-    this.showPolicyEditorPopup = true;
+    this.formFlowPopupStore.openPolicyEditorPopup(this.buildPolicyEditorPopupState());
     this.cdr.markForCheck();
   }
 
-  protected closePolicyEditor(): void {
-    this.showPolicyEditorPopup = false;
+  protected closePolicyEditor(event?: Event): void {
+    event?.preventDefault();
+    event?.stopPropagation();
+    this.formFlowPopupStore.closePolicyEditorPopup(this.ownerId);
     this.workingPolicyDraft = this.createEmptyPolicyDraft();
     this.editingPolicyDraftIndex = null;
     this.cdr.markForCheck();
@@ -225,13 +276,15 @@ export class PoliciesInputComponent implements ControlValueAccessor {
     }
     this.workingPolicies = this.workingPolicies.filter((_, itemIndex) => itemIndex !== index);
     if (this.editingPolicyDraftIndex === index) {
-      this.editingPolicyDraftIndex = null;
-      this.workingPolicyDraft = this.createEmptyPolicyDraft();
+      this.closePolicyEditor();
     }
     this.syncPoliciesFromWorkingPolicies();
   }
 
-  protected savePolicyDraft(): void {
+  protected savePolicyDraft(value: unknown, event?: Event): void {
+    event?.preventDefault();
+    event?.stopPropagation();
+    this.workingPolicyDraft = this.policyDraftFromValue(value);
     if (this.locked() || !this.canSavePolicyDraft()) {
       return;
     }
@@ -272,24 +325,30 @@ export class PoliciesInputComponent implements ControlValueAccessor {
     return 12600;
   }
 
-  protected policyEditorPopupModel(): PopupModel<PolicyPopupMenuContext> {
+  private policyEditorPopupZIndex(): number {
+    return 12700;
+  }
+
+  private buildPolicyEditorPopupState(): FormFlowPolicyEditorPopupState {
     return {
+      ownerId: this.ownerId,
       title: this.policyPopupTitle(),
       subtitle: this.editorSubtitle(),
-      ariaLabel: this.policyPopupTitle(),
-      closeAriaLabel: 'Close policy form',
-      size: 'default',
-      height: 'auto',
-      headerTone: 'accent',
-      backdropTone: 'dim',
-      headerControls: this.policyEditorHeaderControls(),
-      onClose: () => this.closePolicyEditor(),
-      onMenuSelect: event => this.onPolicyPopupMenuSelect(event)
+      zIndex: this.policyEditorPopupZIndex(),
+      value: { ...this.workingPolicyDraft },
+      requiredCheckboxLabel: this.requiredCheckboxLabel(),
+      readOnly: this.locked()
     };
   }
 
-  protected policyEditorPopupZIndex(): number {
-    return 12700;
+  protected policyEditorPopupComponent(): Type<unknown> | null {
+    return this.policyEditorIsOpen()
+      ? this.formFlowPopupStore.policyEditorPopupComponent()
+      : null;
+  }
+
+  private policyEditorIsOpen(): boolean {
+    return this.formFlowPopupStore.policyEditorPopupRef()?.ownerId === this.ownerId;
   }
 
   protected policySingleRow(policy: PolicyInputModel, index: number): SingleRowData<PolicyInputModel> {
@@ -327,38 +386,8 @@ export class PoliciesInputComponent implements ControlValueAccessor {
     }];
   }
 
-  private policyEditorHeaderControls(): readonly PopupControl<PolicyPopupMenuContext>[] {
-    if (this.locked()) {
-      return [];
-    }
-    return [{
-      kind: 'menu',
-      id: 'policy-editor-actions',
-      menuKind: 'inline',
-      closeOnSelect: false,
-      items: [{
-        id: 'policy-save',
-        icon: 'done',
-        kind: 'action',
-        palette: 'green',
-        disabled: !this.canSavePolicyDraft(),
-        closeOnSelect: false,
-        ariaLabel: 'Save policy',
-        context: {
-          menu: 'policy-editor',
-          action: 'save'
-        }
-      }]
-    }];
-  }
-
   private onPolicyPopupMenuSelect(event: PopupMenuSelectEvent<PolicyPopupMenuContext>): void {
     const context = event.itemSelect.context;
-    if (context?.menu === 'policy-editor' && context.action === 'save') {
-      event.itemSelect.sourceEvent.preventDefault();
-      this.savePolicyDraft();
-      return;
-    }
     if (context?.menu === 'policy-setup' && context.action === 'add') {
       this.openPolicyEditor(undefined, event.itemSelect.sourceEvent);
     }
@@ -410,7 +439,7 @@ export class PoliciesInputComponent implements ControlValueAccessor {
 
   protected canSavePolicyDraft(): boolean {
     return `${this.workingPolicyDraft.title ?? ''}`.trim().length > 0
-      || `${this.workingPolicyDraft.description ?? ''}`.trim().length > 0;
+      && `${this.workingPolicyDraft.description ?? ''}`.trim().length > 0;
   }
 
   protected policiesCountLabel(): string {
@@ -494,6 +523,37 @@ export class PoliciesInputComponent implements ControlValueAccessor {
   private createPolicyId(): string {
     this.idSequence += 1;
     return `policy-${Date.now()}-${this.idSequence}`;
+  }
+
+  private policyDraftFromValue(value: unknown): PolicyInputModel {
+    const record = value && typeof value === 'object'
+      ? value as Record<string, unknown>
+      : {};
+    return {
+      id: `${record['id'] ?? this.workingPolicyDraft.id ?? ''}`.trim() || this.createPolicyId(),
+      title: `${record['title'] ?? ''}`,
+      description: `${record['description'] ?? ''}`,
+      required: record['required'] !== false
+    };
+  }
+
+  private handlePolicyEditorActionRequest(request: FormFlowPolicyEditorPopupActionRequest): void {
+    if (request.ownerId !== this.ownerId) {
+      return;
+    }
+    switch (request.kind) {
+      case 'close':
+        this.closePolicyEditor(request.event);
+        return;
+      case 'save':
+        this.savePolicyDraft(request.value, request.event);
+        return;
+    }
+  }
+
+  private nextOwnerId(): string {
+    PoliciesInputComponent.ownerSequence += 1;
+    return `policies-input-${Date.now()}-${PoliciesInputComponent.ownerSequence}`;
   }
 
   private resolveConfigValue<TValue>(

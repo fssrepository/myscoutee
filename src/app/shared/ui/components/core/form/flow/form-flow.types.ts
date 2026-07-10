@@ -26,6 +26,7 @@ export interface FormFlowDraft<TData> {
 }
 
 export type FormFlowControlKind =
+  | 'checkbox'
   | 'date'
   | 'image-carousel'
   | 'link'
