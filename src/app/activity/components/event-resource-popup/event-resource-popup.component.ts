@@ -40,6 +40,9 @@ import {
 import {
   UsersService
 } from '../../../shared/core/base/services/users.service';
+import {
+  AssetDto
+} from '../../../shared/core/contracts';
 import type * as ContractTypes from '../../../shared/core/contracts';
 import type * as ActivityContracts from '../../../shared/core/contracts/activity.interface';
 import type { UserDto } from '../../../shared/core/contracts/user.interface';
@@ -167,7 +170,8 @@ export class EventResourcePopupComponent {
     parentZIndex: this.resourcePopupZIndex()
   }));
   protected readonly assignedAssetJoinDialogOutletInputs = computed(() => ({
-    dialog: this.assignedAssetJoinDialogViewState()
+    dialog: this.assignedAssetJoinDialogViewState(),
+    parentZIndex: this.resourcePopupZIndex()
   }));
   protected readonly membersPopupOutletInputs = computed(() => ({
     parentZIndex: this.resourcePopupZIndex()
@@ -1658,7 +1662,7 @@ export class EventResourcePopupComponent {
       .some(policy => policy.required !== false && !acceptedPolicyIds.has(policy.id));
   }
 
-  confirmAssignedAssetJoin(event?: Event): void {
+  async confirmAssignedAssetJoin(event?: Event): Promise<void> {
     event?.stopPropagation();
     const dialog = this.resourcePopupStore.assignedAssetJoinDialogRef();
     const context = this.resourcePopupStore.popupContextRef();
@@ -1742,15 +1746,33 @@ export class EventResourcePopupComponent {
             }
           : asset
       ));
-      if (this.assetStore.applyAssetCards(nextCards, { mutation: true, reloadList: false })) {
-        const ownerUserId = this.assetStore.activeOwnerUserIdRef().trim()
-          || this.userProfileStore.getActiveUserId().trim();
-        if (ownerUserId) {
-          void this.assetsService.replaceOwnedAssets(ownerUserId, this.assetStore.assetCards());
-        }
+      const ownerUserId = this.assetStore.activeOwnerUserIdRef().trim()
+        || this.userProfileStore.getActiveUserId().trim();
+      if (!ownerUserId) {
+        this.resourcePopupStore.assignedAssetJoinDialogRef.set({
+          ...dialog,
+          acceptedPolicyIds,
+          busy: false,
+          error: 'Unable to save the join request.'
+        });
+        return;
       }
-      this.resourcePopupStore.assignedAssetJoinDialogRef.set(null);
-      this.syncPopupSubEventMetrics();
+      try {
+        const savedCards = await this.assetsService.replaceOwnedAssets(
+          ownerUserId,
+          nextCards.map(card => new AssetDto(card))
+        );
+        this.assetStore.applyAssetCards(savedCards, { mutation: true, reloadList: false });
+        this.resourcePopupStore.assignedAssetJoinDialogRef.set(null);
+        this.syncPopupSubEventMetrics();
+      } catch {
+        this.resourcePopupStore.assignedAssetJoinDialogRef.set({
+          ...dialog,
+          acceptedPolicyIds,
+          busy: false,
+          error: 'Unable to save the join request.'
+        });
+      }
       return;
     }
 
@@ -1771,10 +1793,33 @@ export class EventResourcePopupComponent {
       ...activeContext,
       fallbackCardsByType: nextFallbackCards
     };
-    this.resourcePopupStore.popupContextRef.set(nextContext);
-    this.syncPopupSubEventMetrics(false);
-    this.persistPopupResourceState(nextContext);
-    this.resourcePopupStore.assignedAssetJoinDialogRef.set(null);
+    const nextState = this.buildPopupResourceState(nextContext);
+    if (!nextState) {
+      this.resourcePopupStore.assignedAssetJoinDialogRef.set({
+        ...dialog,
+        acceptedPolicyIds,
+        busy: false,
+        error: 'Unable to save the join request.'
+      });
+      return;
+    }
+    try {
+      const savedState = await this.activityResourcesService.replaceSubEventResourceState(nextState);
+      if (!savedState) {
+        throw new Error('Join request was not saved.');
+      }
+      this.resourcePopupStore.popupContextRef.set(nextContext);
+      this.applyPersistedPopupState(savedState);
+      this.syncPopupSubEventMetrics(false);
+      this.resourcePopupStore.assignedAssetJoinDialogRef.set(null);
+    } catch {
+      this.resourcePopupStore.assignedAssetJoinDialogRef.set({
+        ...dialog,
+        acceptedPolicyIds,
+        busy: false,
+        error: 'Unable to save the join request.'
+      });
+    }
   }
 
   private resolveViewableCarRoutes(
