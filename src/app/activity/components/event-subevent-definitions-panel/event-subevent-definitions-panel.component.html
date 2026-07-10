@@ -35,6 +35,13 @@
         (itemSelect)="onModeMenuSelect($event)"
       ></app-menu>
       }
+      <app-menu
+        class="subevent-definition-panel__view-menu"
+        kind="select"
+        [trigger]="viewMenuTrigger()"
+        [items]="viewMenuItems()"
+        (itemSelect)="onViewMenuSelect($event)"
+      ></app-menu>
       @if (canConfigureDefinitions()) {
       <app-menu
         class="subevent-definition-panel__add-menu"

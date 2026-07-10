@@ -46,6 +46,7 @@ import {
   type SmartListPageMode
 } from './smart-list-page.adapter';
 import { SmartListCalendarAdapter } from './smart-list-calendar.adapter';
+import { SmartListTimelineAdapter } from './smart-list-timeline.adapter';
 import {
   compareSmartListLocalSortKeys,
   smartListLocalSortKeyFromItem
@@ -463,7 +464,7 @@ export class SmartListComponent<T, TFilters extends SmartListFilters = SmartList
     this.currentViewKey = nextViewKey;
     this.currentViewMode = this.resolveViewMode(nextViewKey);
     this.activePageAdapter = this.isPageMode()
-      ? SmartListCalendarAdapter.getInstance<T, TFilters>(this.currentViewMode as SmartListPageMode)
+      ? this.pageAdapterForMode(this.currentViewMode as SmartListPageMode)
       : null;
     this.previousPresentation = this.resolvedPresentation();
 
@@ -942,7 +943,9 @@ export class SmartListComponent<T, TFilters extends SmartListFilters = SmartList
   }
 
   protected isPageMode(): boolean {
-    return this.currentViewMode === 'month' || this.currentViewMode === 'week';
+    return this.currentViewMode === 'month'
+      || this.currentViewMode === 'week'
+      || this.currentViewMode === 'timeline';
   }
 
   protected isMonthMode(): boolean {
@@ -951,6 +954,10 @@ export class SmartListComponent<T, TFilters extends SmartListFilters = SmartList
 
   protected isWeekMode(): boolean {
     return this.currentViewMode === 'week';
+  }
+
+  protected isTimelineMode(): boolean {
+    return this.currentViewMode === 'timeline';
   }
 
   protected resolvedContainerClass(): SmartListClassValue {
@@ -1278,7 +1285,10 @@ export class SmartListComponent<T, TFilters extends SmartListFilters = SmartList
   private selectSmartListItem(
     item: T,
     event?: Event,
-    context?: Pick<SmartListItemSelectEvent<T, TFilters>, 'calendarDate' | 'calendarDateIso'>
+    context?: Pick<
+      SmartListItemSelectEvent<T, TFilters>,
+      'calendarDate' | 'calendarDateIso' | 'timelineStartOffsetMinutes' | 'timelineEndOffsetMinutes'
+    >
   ): void {
     event?.stopPropagation();
     const itemIndex = this.items.indexOf(item);
@@ -1291,7 +1301,9 @@ export class SmartListComponent<T, TFilters extends SmartListFilters = SmartList
       selectMode: this.resolvedSelectMode(),
       sourceEvent: event,
       calendarDate: context?.calendarDate,
-      calendarDateIso: context?.calendarDateIso
+      calendarDateIso: context?.calendarDateIso,
+      timelineStartOffsetMinutes: context?.timelineStartOffsetMinutes,
+      timelineEndOffsetMinutes: context?.timelineEndOffsetMinutes
     });
   }
 
@@ -1403,6 +1415,9 @@ export class SmartListComponent<T, TFilters extends SmartListFilters = SmartList
       variant: this.isCounterPageVariant() ? 'counter' : 'default',
       touching: this.isTouchingSurface,
       trackByItem: (index, item) => this.pageTrackKey(index, item),
+      itemTemplate: this.itemTemplate,
+      itemTemplateInjector: this.itemTemplateInjector,
+      itemContext: (item, index) => this.itemContext(item, index, ''),
       onItemSelect: this.selectPageCardItem
     };
   }
@@ -1410,7 +1425,10 @@ export class SmartListComponent<T, TFilters extends SmartListFilters = SmartList
   private readonly selectPageCardItem = (
     item: T,
     event?: Event,
-    context?: Pick<SmartListItemSelectEvent<T, TFilters>, 'calendarDate' | 'calendarDateIso'>
+    context?: Pick<
+      SmartListItemSelectEvent<T, TFilters>,
+      'calendarDate' | 'calendarDateIso' | 'timelineStartOffsetMinutes' | 'timelineEndOffsetMinutes'
+    >
   ): void => {
     this.selectSmartListItem(item, event, context);
   };
@@ -3830,10 +3848,15 @@ private updateListSnapNearEndSuppression(scrollElement?: HTMLDivElement | null):
     if (activeView?.mode) {
       return activeView.mode;
     }
-    if (viewKey === 'month' || viewKey === 'week') {
+    if (viewKey === 'month' || viewKey === 'week' || viewKey === 'timeline') {
       return viewKey;
     }
     return 'list';
+  }
+
+  private pageAdapterForMode(mode: SmartListPageMode): AnySmartListPageAdapter<T, TFilters> | null {
+    return SmartListCalendarAdapter.getInstance<T, TFilters>(mode)
+      ?? SmartListTimelineAdapter.getInstance<T, TFilters>(mode);
   }
 
   private activeViewConfig(viewKey: string | null = this.currentViewKey): SmartListViewConfig<T, TFilters> | null {

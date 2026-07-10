@@ -19,10 +19,10 @@ export interface InfiniteStepperPageAdapter<TAnchor, TPage, TItem, TQuery, TView
   anchorRadius: (viewConfig: TViewConfig | null) => number;
   initialAnchor: (viewConfig: TViewConfig | null, query: TQuery) => TAnchor | null;
   initialAnchorKey: (viewConfig: TViewConfig | null, query: TQuery) => string;
-  normalizeAnchor: (anchor: TAnchor) => TAnchor;
-  keyForAnchor: (anchor: TAnchor) => string;
-  shiftAnchor: (anchor: TAnchor, direction: -1 | 1) => TAnchor;
-  queryForAnchor: (query: TQuery, anchor: TAnchor) => TQuery;
+  normalizeAnchor: (anchor: TAnchor, viewConfig: TViewConfig | null, query: TQuery) => TAnchor;
+  keyForAnchor: (anchor: TAnchor, viewConfig: TViewConfig | null, query: TQuery) => string;
+  shiftAnchor: (anchor: TAnchor, direction: -1 | 1, viewConfig: TViewConfig | null, query: TQuery) => TAnchor;
+  queryForAnchor: (query: TQuery, anchor: TAnchor, viewConfig: TViewConfig | null) => TQuery;
   buildPage: (context: InfiniteStepperPageBuildContext<TAnchor, TItem, TQuery, TViewConfig>) => TPage;
   anchorForPage: (page: TPage) => TAnchor;
   labelForPage: (page: TPage) => string;
@@ -174,15 +174,26 @@ export class InfiniteStepper<TAnchor, TPage, TItem, TQuery, TViewConfig> {
   public pageKey(anchor: TAnchor): string {
     const adapter = this.callbacks.pageAdapter();
     const normalizedAnchor = this.normalizeAnchor(anchor);
-    return adapter ? adapter.keyForAnchor(normalizedAnchor) : String(normalizedAnchor);
+    return adapter
+      ? adapter.keyForAnchor(normalizedAnchor, this.callbacks.viewConfig(), this.callbacks.baseQuery())
+      : String(normalizedAnchor);
   }
 
   public normalizeAnchor(anchor: TAnchor): TAnchor {
-    return this.callbacks.pageAdapter()?.normalizeAnchor(anchor) ?? anchor;
+    return this.callbacks.pageAdapter()?.normalizeAnchor(
+      anchor,
+      this.callbacks.viewConfig(),
+      this.callbacks.baseQuery()
+    ) ?? anchor;
   }
 
   public shiftAnchor(anchor: TAnchor, direction: -1 | 1): TAnchor {
-    return this.callbacks.pageAdapter()?.shiftAnchor(anchor, direction) ?? anchor;
+    return this.callbacks.pageAdapter()?.shiftAnchor(
+      anchor,
+      direction,
+      this.callbacks.viewConfig(),
+      this.callbacks.baseQuery()
+    ) ?? anchor;
   }
 
   public pageKeyForPage(page: TPage): string {
@@ -303,7 +314,8 @@ export class InfiniteStepper<TAnchor, TPage, TItem, TQuery, TViewConfig> {
   }
 
   public queryForAnchor(anchor: TAnchor, baseQuery: TQuery = this.callbacks.baseQuery()): TQuery {
-    return this.callbacks.pageAdapter()?.queryForAnchor(baseQuery, this.normalizeAnchor(anchor)) ?? baseQuery;
+    const viewConfig = this.callbacks.viewConfig();
+    return this.callbacks.pageAdapter()?.queryForAnchor(baseQuery, this.normalizeAnchor(anchor), viewConfig) ?? baseQuery;
   }
 
   public applySnapshot(options: { flushDeferred?: boolean } = {}): InfiniteStepperSnapshot<TAnchor, TPage, TItem> {
@@ -336,7 +348,7 @@ export class InfiniteStepper<TAnchor, TPage, TItem, TQuery, TViewConfig> {
       return adapter.buildPage({
         anchor: normalizedAnchor,
         items: this.itemsForAnchor(normalizedAnchor),
-        query: adapter.queryForAnchor(baseQuery, normalizedAnchor),
+        query: adapter.queryForAnchor(baseQuery, normalizedAnchor, viewConfig),
         viewConfig,
         trackByKey: this.callbacks.trackByKey
       });

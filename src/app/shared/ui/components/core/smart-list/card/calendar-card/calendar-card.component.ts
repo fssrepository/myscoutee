@@ -1,5 +1,5 @@
 import { CommonModule } from '@angular/common';
-import { ChangeDetectionStrategy, Component, HostBinding, Input } from '@angular/core';
+import { ChangeDetectionStrategy, Component, HostBinding, Input, TemplateRef } from '@angular/core';
 
 import {
   countSmartListCalendarOverlaps
@@ -15,7 +15,12 @@ import type {
   SmartListCalendarTimedBadge,
   SmartListCalendarWeekPage,
   SmartListClassValue,
-  SmartListFilters
+  SmartListFilters,
+  SmartListItemTemplateContext,
+  SmartListTimelineConfig,
+  SmartListTimelinePage,
+  SmartListTimelineSpan,
+  SmartListTimelineTick
 } from '../../smart-list.types';
 import type { CalendarCardModel } from './calendar-card.types';
 
@@ -37,7 +42,7 @@ export class CalendarCardComponent<T, TFilters extends SmartListFilters = SmartL
 
   protected readonly trackByCalendarPageKey = (
     _index: number,
-    page: SmartListCalendarMonthPage<T> | SmartListCalendarWeekPage<T>
+    page: SmartListCalendarMonthPage<T> | SmartListCalendarWeekPage<T> | SmartListTimelinePage<T>
   ): string => page.key;
 
   protected readonly trackByCalendarMonthWeekKey = (_index: number, week: SmartListCalendarMonthWeek<T>): string =>
@@ -50,8 +55,12 @@ export class CalendarCardComponent<T, TFilters extends SmartListFilters = SmartL
   protected readonly trackByCalendarTimedBadge = (index: number, badge: SmartListCalendarTimedBadge<T>): unknown =>
     this.calendarTrackKey(index, badge.item);
 
+  protected readonly trackByTimelineTickKey = (_index: number, tick: SmartListTimelineTick): string => tick.key;
+
+  protected readonly trackByTimelineSpanKey = (_index: number, span: SmartListTimelineSpan<T>): string => span.key;
+
   protected monthPages(): readonly SmartListCalendarMonthPage<T>[] {
-    if (this.model?.mode === 'week') {
+    if (this.model?.mode !== 'month') {
       return [];
     }
     return (this.model?.pages ?? []) as readonly SmartListCalendarMonthPage<T>[];
@@ -64,8 +73,19 @@ export class CalendarCardComponent<T, TFilters extends SmartListFilters = SmartL
     return (this.model?.pages ?? []) as readonly SmartListCalendarWeekPage<T>[];
   }
 
+  protected timelinePages(): readonly SmartListTimelinePage<T>[] {
+    if (this.model?.mode !== 'timeline') {
+      return [];
+    }
+    return (this.model?.pages ?? []) as readonly SmartListTimelinePage<T>[];
+  }
+
   protected isMonthMode(): boolean {
-    return this.model?.mode !== 'week';
+    return this.model?.mode === 'month';
+  }
+
+  protected isWeekMode(): boolean {
+    return this.model?.mode === 'week';
   }
 
   protected isCounterCalendarVariant(): boolean {
@@ -241,9 +261,58 @@ export class CalendarCardComponent<T, TFilters extends SmartListFilters = SmartL
   protected selectItem(
     item: T,
     sourceEvent?: Event,
-    context?: { calendarDate?: Date; calendarDateIso?: string }
+    context?: {
+      calendarDate?: Date;
+      calendarDateIso?: string;
+      timelineStartOffsetMinutes?: number;
+      timelineEndOffsetMinutes?: number;
+    }
   ): void {
     this.model?.onItemSelect?.(item, sourceEvent, context);
+  }
+
+  protected selectTimelineSpan(span: SmartListTimelineSpan<T>, sourceEvent?: Event): void {
+    sourceEvent?.preventDefault();
+    sourceEvent?.stopPropagation();
+    this.selectItem(span.item, sourceEvent, {
+      timelineStartOffsetMinutes: span.startOffsetMinutes,
+      timelineEndOffsetMinutes: span.endOffsetMinutes
+    });
+  }
+
+  protected onTimelineSpanKeydown(span: SmartListTimelineSpan<T>, event: KeyboardEvent): void {
+    if (event.key !== 'Enter' && event.key !== ' ') {
+      return;
+    }
+    this.selectTimelineSpan(span, event);
+  }
+
+  protected timelineRows(page: SmartListTimelinePage<T>): number[] {
+    return Array.from({ length: Math.max(1, page.rowCount) }, (_item, index) => index);
+  }
+
+  protected timelineItemContext(
+    span: SmartListTimelineSpan<T>,
+    index: number
+  ): SmartListItemTemplateContext<T, TFilters> | null {
+    return this.model?.itemContext?.(span.item, index) ?? null;
+  }
+
+  protected timelineItemTemplate(): TemplateRef<SmartListItemTemplateContext<T, TFilters>> | null {
+    if (!this.shouldUseTimelineItemTemplate()) {
+      return null;
+    }
+    return this.model?.itemTemplate ?? null;
+  }
+
+  private shouldUseTimelineItemTemplate(): boolean {
+    const config = this.timeline();
+    const query = this.query();
+    const value = config?.useItemTemplate;
+    if (typeof value === 'function' && query) {
+      return value(query) === true;
+    }
+    return value === true;
   }
 
   private calendarWeekStartHour(): number {
@@ -260,6 +329,10 @@ export class CalendarCardComponent<T, TFilters extends SmartListFilters = SmartL
 
   private calendar(): SmartListCalendarConfig<T, TFilters> | null {
     return (this.model?.config ?? null) as SmartListCalendarConfig<T, TFilters> | null;
+  }
+
+  private timeline(): SmartListTimelineConfig<T, TFilters> | null {
+    return (this.model?.config ?? null) as SmartListTimelineConfig<T, TFilters> | null;
   }
 
   private query(): ListQuery<TFilters> | null {

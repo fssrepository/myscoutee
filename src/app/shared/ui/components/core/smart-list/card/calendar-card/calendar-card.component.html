@@ -67,7 +67,7 @@
         </div>
       </section>
     }
-  } @else {
+  } @else if (isWeekMode()) {
     @for (page of weekPages(); track trackByCalendarPageKey($index, page)) {
       <section class="smart-list__page smart-list__page--week smart-list__calendar-page smart-list__calendar-page--week">
         <div class="smart-list__week-board" [style.--week-slot-count]="calendarWeekHours().length">
@@ -164,6 +164,66 @@
               }
             </div>
           }
+        </div>
+      </section>
+    }
+  } @else {
+    @for (page of timelinePages(); track trackByCalendarPageKey($index, page)) {
+      <section class="smart-list__page smart-list__page--timeline smart-list__timeline-page">
+        <div
+          class="smart-list__timeline-board"
+          [style.--timeline-step-count]="page.ticks.length"
+          [style.--timeline-row-count]="page.rowCount"
+          [style.--timeline-row-h]="page.rowHeightPx + 'px'"
+        >
+          <div class="smart-list__timeline-header">
+            @for (tick of page.ticks; track trackByTimelineTickKey($index, tick)) {
+              <div class="smart-list__timeline-header-cell">
+                <span>{{ tick.label }}</span>
+              </div>
+            }
+          </div>
+          <div class="smart-list__timeline-grid">
+            @for (row of timelineRows(page); track row) {
+              <div class="smart-list__timeline-row">
+                @for (tick of page.ticks; track trackByTimelineTickKey($index, tick)) {
+                  <div class="smart-list__timeline-cell"></div>
+                }
+              </div>
+            }
+            @for (span of page.spans; track trackByTimelineSpanKey($index, span)) {
+              <div
+                class="smart-list__timeline-span"
+                role="button"
+                tabindex="0"
+                [ngClass]="span.toneClass"
+                [class.smart-list__timeline-span--continues-before]="span.continuesBefore"
+                [class.smart-list__timeline-span--continues-after]="span.continuesAfter"
+                [style.left.%]="span.leftPct"
+                [style.width.%]="span.widthPct"
+                [style.top.px]="span.topPx"
+                [style.height.px]="span.heightPx"
+                [attr.aria-label]="span.ariaLabel"
+                (click)="selectTimelineSpan(span, $event)"
+                (keydown)="onTimelineSpanKeydown(span, $event)"
+              >
+                @if (timelineItemTemplate(); as templateRef) {
+                  @if (timelineItemContext(span, $index); as timelineContext) {
+                    <ng-container
+                      [ngTemplateOutlet]="templateRef"
+                      [ngTemplateOutletContext]="timelineContext"
+                      [ngTemplateOutletInjector]="model?.itemTemplateInjector || null"
+                    ></ng-container>
+                  }
+                } @else {
+                  <span>{{ span.label }}</span>
+                  @if (span.meta) {
+                    <small>{{ span.meta }}</small>
+                  }
+                }
+              </div>
+            }
+          </div>
         </div>
       </section>
     }

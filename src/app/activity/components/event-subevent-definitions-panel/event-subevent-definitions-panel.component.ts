@@ -36,6 +36,8 @@ interface SubEventDefinitionsPanelFilters {
   revision: number;
 }
 
+type SubEventDefinitionSmartListView = 'timeline' | 'list';
+
 interface SubEventDefinitionFormState {
   index: number | null;
   id: string;
@@ -95,17 +97,35 @@ export class EventSubeventDefinitionsPanelComponent implements ControlValueAcces
   protected definitionForm: SubEventDefinitionFormState | null = null;
   protected definitionFormModelValue: EventSubeventStageFormModel = this.createDefinitionFormModel(null, 1);
   protected definitionFormView: EventSubeventStageFormPopupView = this.createDefinitionFormPopupView(null, this.definitionFormModelValue);
+  protected definitionView: SubEventDefinitionSmartListView = 'timeline';
   protected smartListQuery: Partial<ListQuery<SubEventDefinitionsPanelFilters>> = {
+    view: 'timeline',
     filters: { revision: 0 }
   };
 
   protected readonly smartListConfig: SmartListConfig<SubEventDefinitionDTO, SubEventDefinitionsPanelFilters> = {
     pageSize: 20,
-    defaultView: 'list',
+    defaultView: 'timeline',
+    views: [
+      { key: 'timeline', label: 'Timeline', mode: 'timeline', pageSize: 20 },
+      { key: 'list', label: 'Cards', mode: 'list', pageSize: 20 }
+    ],
     showStickyHeader: false,
     showGroupMarker: () => false,
     emptyLabel: 'No sub event definitions yet',
     emptyDescription: '',
+    timeline: {
+      stepMinutes: 30,
+      visibleDurationMinutes: () => this.definitionTimelineVisibleDurationMinutes(),
+      pageStepMinutes: () => this.definitionTimelineVisibleDurationMinutes(),
+      anchorRadius: 1,
+      rowHeightPx: 62,
+      resolveRange: item => this.definitionTimelineRange(item),
+      badgeLabel: item => item.name,
+      badgeMeta: item => `Duration ${this.durationLabel(item.durationMinutes)}`,
+      badgeToneClass: item => `calendar-badge-tone-${((this.definitions.indexOf(item) + 6) % 6) + 1}`,
+      offsetLabel: offset => this.minutesLabel(offset)
+    },
     listLayout: 'card-grid',
     orientation: 'horizontal',
     desktopColumns: 3,
@@ -223,6 +243,47 @@ export class EventSubeventDefinitionsPanelComponent implements ControlValueAcces
     }
     this.mode = event.id === 'Tournament' ? 'Tournament' : 'Casual';
     this.modeChange.emit(this.mode);
+  }
+
+  protected viewMenuTrigger(): AppMenuTrigger {
+    const timeline = this.definitionView === 'timeline';
+    return {
+      label: timeline ? 'Timeline' : 'Cards',
+      icon: timeline ? 'timeline' : 'view_carousel',
+      palette: timeline ? 'teal' : 'slate',
+      layout: 'pill',
+      disabled: !this.enabled
+    };
+  }
+
+  protected viewMenuItems(): readonly AppMenuItem<SubEventDefinitionSmartListView, unknown>[] {
+    return [
+      {
+        id: 'timeline',
+        label: 'Timeline',
+        icon: 'timeline',
+        kind: 'radio',
+        palette: 'teal',
+        surface: 'tinted',
+        active: this.definitionView === 'timeline',
+        checked: this.definitionView === 'timeline'
+      },
+      {
+        id: 'list',
+        label: 'Cards',
+        icon: 'view_carousel',
+        kind: 'radio',
+        palette: 'slate',
+        surface: 'tinted',
+        active: this.definitionView === 'list',
+        checked: this.definitionView === 'list'
+      }
+    ];
+  }
+
+  protected onViewMenuSelect(event: AppMenuItemSelectEvent<SubEventDefinitionSmartListView, unknown>): void {
+    this.definitionView = event.id === 'list' ? 'list' : 'timeline';
+    this.bumpList();
   }
 
   protected addMenuItems(): readonly AppMenuItem<string, unknown>[] {
@@ -772,6 +833,7 @@ export class EventSubeventDefinitionsPanelComponent implements ControlValueAcces
   private bumpList(): void {
     this.revision += 1;
     this.smartListQuery = {
+      view: this.definitionView,
       filters: { revision: this.revision }
     };
   }
@@ -831,5 +893,39 @@ export class EventSubeventDefinitionsPanelComponent implements ControlValueAcces
       return `${hours}h`;
     }
     return `${hours}h ${minutes}m`;
+  }
+
+  private definitionTimelineRange(item: SubEventDefinitionDTO): { startOffsetMinutes: number; endOffsetMinutes: number } | null {
+    const entry = this.definitionTimelineEntries().find(candidate => candidate.item === item);
+    if (!entry) {
+      return null;
+    }
+    return {
+      startOffsetMinutes: entry.startOffsetMinutes,
+      endOffsetMinutes: entry.startOffsetMinutes + entry.durationMinutes
+    };
+  }
+
+  private definitionTimelineVisibleDurationMinutes(): number {
+    const maxEndOffset = this.definitionTimelineEntries()
+      .reduce((max, entry) => Math.max(max, entry.startOffsetMinutes + entry.durationMinutes), 0);
+    return Math.max(120, Math.ceil(maxEndOffset / 30) * 30);
+  }
+
+  private definitionTimelineEntries(): Array<{ item: SubEventDefinitionDTO; startOffsetMinutes: number; durationMinutes: number }> {
+    let previousStartOffsetMinutes = 0;
+    let previousEndOffsetMinutes = 0;
+    return this.definitions.map((item, index) => {
+      const durationMinutes = this.toPositiveInteger(item.durationMinutes);
+      const offsetMinutes = this.toNonNegativeInteger(item.offsetMinutes);
+      const startOffsetMinutes = index <= 0
+        ? offsetMinutes
+        : item.timing === 'During'
+          ? previousStartOffsetMinutes + offsetMinutes
+          : previousEndOffsetMinutes + offsetMinutes;
+      previousStartOffsetMinutes = startOffsetMinutes;
+      previousEndOffsetMinutes = startOffsetMinutes + durationMinutes;
+      return { item, startOffsetMinutes, durationMinutes };
+    });
   }
 }

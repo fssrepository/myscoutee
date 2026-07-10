@@ -20,7 +20,7 @@ import type {
 import type { SmartListLocalSortKey } from './smart-list-local-sort';
 import type { UiListConverter } from '../../../converters/converter.types';
 
-export type SmartListViewMode = 'list' | 'month' | 'week';
+export type SmartListViewMode = 'list' | 'month' | 'week' | 'timeline';
 export type SmartListPresentation = 'list' | 'fullscreen';
 export type SmartListClassValue = string | string[] | Set<string> | Record<string, boolean> | null;
 export type SmartListCalendarVariant = 'default' | 'counter';
@@ -180,6 +180,52 @@ export interface SmartListCalendarCounter {
   toneClass?: SmartListClassValue;
 }
 
+export interface SmartListTimelineRange {
+  startOffsetMinutes: number;
+  endOffsetMinutes: number;
+  row?: number | null;
+}
+
+export interface SmartListTimelineTick {
+  key: string;
+  offsetMinutes: number;
+  label: string;
+}
+
+export interface SmartListTimelineSpan<T> {
+  key: string;
+  item: T;
+  startOffsetMinutes: number;
+  endOffsetMinutes: number;
+  visibleStartOffsetMinutes: number;
+  visibleEndOffsetMinutes: number;
+  row: number;
+  leftPct: number;
+  widthPct: number;
+  topPx: number;
+  heightPx: number;
+  label: string;
+  meta: string | null;
+  ariaLabel: string;
+  toneClass?: SmartListClassValue;
+  continuesBefore: boolean;
+  continuesAfter: boolean;
+}
+
+export interface SmartListTimelinePage<T> {
+  key: string;
+  label: string;
+  anchor: Date;
+  startOffsetMinutes: number;
+  endOffsetMinutes: number;
+  visibleDurationMinutes: number;
+  stepMinutes: number;
+  rowCount: number;
+  rowHeightPx: number;
+  ticks: SmartListTimelineTick[];
+  spans: SmartListTimelineSpan<T>[];
+}
+
 export interface SmartListCalendarConfig<T, TFilters extends SmartListFilters = SmartListFilters> {
   weekdayLabels?: ReadonlyArray<string>;
   weekStartHour?: number;
@@ -196,6 +242,24 @@ export interface SmartListCalendarConfig<T, TFilters extends SmartListFilters = 
     hour: number,
     query: ListQuery<TFilters>
   ) => SmartListCalendarCounter | null;
+}
+
+export interface SmartListTimelineConfig<T, TFilters extends SmartListFilters = SmartListFilters> {
+  startOffsetMinutes?: SmartListConfigValue<number, TFilters>;
+  initialOffsetMinutes?: SmartListConfigValue<number | null | undefined, TFilters>;
+  stepMinutes?: SmartListConfigValue<number, TFilters>;
+  visibleDurationMinutes?: SmartListConfigValue<number, TFilters>;
+  pageStepMinutes?: SmartListConfigValue<number, TFilters>;
+  anchorRadius?: number;
+  rowCount?: SmartListConfigValue<number | null | undefined, TFilters>;
+  rowHeightPx?: SmartListConfigValue<number, TFilters>;
+  useItemTemplate?: SmartListConfigValue<boolean, TFilters>;
+  resolveRange: (item: T, query: ListQuery<TFilters>) => SmartListTimelineRange | null;
+  badgeLabel?: (item: T, query: ListQuery<TFilters>) => string;
+  badgeMeta?: (item: T, query: ListQuery<TFilters>) => string | null;
+  badgeAriaLabel?: (item: T, query: ListQuery<TFilters>) => string;
+  badgeToneClass?: (item: T, query: ListQuery<TFilters>) => SmartListClassValue;
+  offsetLabel?: (offsetMinutes: number, query: ListQuery<TFilters>) => string;
 }
 
 export interface SmartListViewConfig<T, TFilters extends SmartListFilters = SmartListFilters> {
@@ -226,6 +290,8 @@ export interface SmartListItemSelectEvent<T, TFilters extends SmartListFilters =
   sourceEvent?: Event;
   calendarDate?: Date;
   calendarDateIso?: string;
+  timelineStartOffsetMinutes?: number;
+  timelineEndOffsetMinutes?: number;
 }
 
 export interface SmartListRefreshEvent<T, TFilters extends SmartListFilters = SmartListFilters> {
@@ -300,6 +366,7 @@ export interface SmartListConfig<T, TFilters extends SmartListFilters = SmartLis
   prependRevealPx?: number;
   views?: ReadonlyArray<SmartListViewConfig<T, TFilters>>;
   calendar?: SmartListCalendarConfig<T, TFilters>;
+  timeline?: SmartListTimelineConfig<T, TFilters>;
   containerClass?: SmartListConfigValue<SmartListClassValue, TFilters>;
   stickyHeaderClass?: SmartListConfigValue<SmartListClassValue, TFilters>;
   groupMarkerClass?: SmartListConfigValue<SmartListClassValue, TFilters>;
