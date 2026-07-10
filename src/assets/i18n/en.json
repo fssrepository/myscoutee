@@ -1789,7 +1789,7 @@
     "asset.lending.policies.description": "Add the rules borrowers need to read and approve before borrowing this asset.",
     "asset.lending.policies.empty": "No lending policies yet. Add policies if borrowers must review terms before sending the request.",
     "asset.lending.policies.popup.subtitle": "Keep the list compact here. Open a policy to edit the details borrowers need to read and approve.",
-    "asset.lending.policies.editor.subtitle": "Write the lending policy clearly and choose whether borrowers must approve it before sending the request.",
+    "asset.lending.policies.editor.subtitle": "Describe the policy and choose if approval is required.",
     "total.capacity": "Total capacity",
     "source.link": "Source link",
     "save.asset": "Save asset",

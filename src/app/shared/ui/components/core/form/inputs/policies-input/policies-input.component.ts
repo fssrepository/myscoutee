@@ -14,18 +14,21 @@ import {
 } from '../../../smart-list/card';
 import {
   PopupComponent,
-  type PopupAction,
-  type PopupActionEvent,
   type PopupControl,
   type PopupMenuSelectEvent,
   type PopupModel
 } from '../../../popup';
 
 type PolicyInputModel = EventContracts.EventPolicyDTO;
-type PolicyPopupMenuContext = {
-  menu: 'policy-setup';
-  action: 'add';
-};
+type PolicyPopupMenuContext =
+  | {
+      menu: 'policy-setup';
+      action: 'add';
+    }
+  | {
+      menu: 'policy-editor';
+      action: 'save';
+    };
 export type PoliciesInputConfigValue<TValue> = TValue | (() => TValue);
 
 export interface PoliciesInputConfig {
@@ -279,9 +282,9 @@ export class PoliciesInputComponent implements ControlValueAccessor {
       height: 'auto',
       headerTone: 'accent',
       backdropTone: 'dim',
-      headerActions: this.policyEditorHeaderActions(),
+      headerControls: this.policyEditorHeaderControls(),
       onClose: () => this.closePolicyEditor(),
-      onAction: event => this.onPolicyPopupAction(event)
+      onMenuSelect: event => this.onPolicyPopupMenuSelect(event)
     };
   }
 
@@ -311,8 +314,8 @@ export class PoliciesInputComponent implements ControlValueAccessor {
       items: [{
         id: 'policy-add',
         icon: 'add',
-        palette: 'green',
-        layout: 'action',
+        kind: 'action',
+        palette: 'blue',
         ariaLabel: 'Add policy',
         context: {
           menu: 'policy-setup',
@@ -324,33 +327,41 @@ export class PoliciesInputComponent implements ControlValueAccessor {
     }];
   }
 
-  private policyEditorHeaderActions(): readonly PopupAction[] {
+  private policyEditorHeaderControls(): readonly PopupControl<PolicyPopupMenuContext>[] {
     if (this.locked()) {
       return [];
     }
     return [{
-      id: 'policy-save',
-      icon: 'done',
-      ariaLabel: 'Save policy',
-      palette: 'success',
-      disabled: !this.canSavePolicyDraft()
+      kind: 'menu',
+      id: 'policy-editor-actions',
+      menuKind: 'inline',
+      closeOnSelect: false,
+      items: [{
+        id: 'policy-save',
+        icon: 'done',
+        kind: 'action',
+        palette: 'green',
+        disabled: !this.canSavePolicyDraft(),
+        closeOnSelect: false,
+        ariaLabel: 'Save policy',
+        context: {
+          menu: 'policy-editor',
+          action: 'save'
+        }
+      }]
     }];
   }
 
   private onPolicyPopupMenuSelect(event: PopupMenuSelectEvent<PolicyPopupMenuContext>): void {
     const context = event.itemSelect.context;
-    if (context?.menu !== 'policy-setup' || context.action !== 'add') {
+    if (context?.menu === 'policy-editor' && context.action === 'save') {
+      event.itemSelect.sourceEvent.preventDefault();
+      this.savePolicyDraft();
       return;
     }
-    this.openPolicyEditor(undefined, event.itemSelect.sourceEvent);
-  }
-
-  private onPolicyPopupAction(event: PopupActionEvent): void {
-    if (event.action.id !== 'policy-save') {
-      return;
+    if (context?.menu === 'policy-setup' && context.action === 'add') {
+      this.openPolicyEditor(undefined, event.itemSelect.sourceEvent);
     }
-    event.sourceEvent.preventDefault();
-    this.savePolicyDraft();
   }
 
   protected onPolicyRowMenuAction(index: number, event: CardMenuActionEvent<SingleRowData>): void {

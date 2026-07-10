@@ -107,7 +107,7 @@ export class AssetEditorPopupComponent {
     emptyLabel: 'No lending policies yet. Add policies if borrowers must review terms before sending the request.',
     readOnlyEmptyLabel: 'No lending policies are configured for this asset.',
     popupSubtitle: 'Keep the list compact here. Open a policy to edit the details borrowers need to read and approve.',
-    editorSubtitle: 'Write the lending policy clearly and choose whether borrowers must approve it before sending the request.',
+    editorSubtitle: 'Describe the policy and choose if approval is required.',
     requiredApprovalLabel: 'Required approval',
     optionalPolicyLabel: 'Optional policy',
     requiredPreview: 'Borrowers must approve this lending policy before sending the request.',
