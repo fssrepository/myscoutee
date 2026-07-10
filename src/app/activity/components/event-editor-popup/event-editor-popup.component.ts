@@ -458,7 +458,7 @@ export class EventEditorPopupComponent implements OnInit, OnDestroy {
   }
 
   protected showSubEventDefinitionsPanel(): boolean {
-    return false;
+    return this.eventEditorStore.presentation().hideSubEventsPanel !== true;
   }
 
   protected showSlotsInput(): boolean {
