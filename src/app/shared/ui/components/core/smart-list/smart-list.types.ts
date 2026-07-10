@@ -253,6 +253,7 @@ export interface SmartListTimelineConfig<T, TFilters extends SmartListFilters = 
   anchorRadius?: number;
   rowCount?: SmartListConfigValue<number | null | undefined, TFilters>;
   rowHeightPx?: SmartListConfigValue<number, TFilters>;
+  minimumLaneDurationMinutes?: SmartListConfigValue<number, TFilters>;
   useItemTemplate?: SmartListConfigValue<boolean, TFilters>;
   itemInteractive?: SmartListConfigValue<boolean, TFilters>;
   resolveRange: (item: T, query: ListQuery<TFilters>) => SmartListTimelineRange | null;

@@ -33,6 +33,8 @@ interface TimelineSpanCandidate<T> {
   endOffsetMinutes: number;
   visibleStartOffsetMinutes: number;
   visibleEndOffsetMinutes: number;
+  collisionStartOffsetMinutes: number;
+  collisionEndOffsetMinutes: number;
   row: number | null;
 }
 
@@ -209,6 +211,7 @@ function timelineSpanCandidates<T, TFilters extends SmartListFilters>(
   context: SmartListTimelinePageBuildContext<T, TFilters>
 ): TimelineSpanCandidate<T>[] {
   const candidates: TimelineSpanCandidate<T>[] = [];
+  const minimumLaneDuration = minimumLaneDurationMinutes(context.viewConfig, context.query);
   for (const item of items) {
     const range = normalizeTimelineRange(context.viewConfig.resolveRange(item, context.query));
     if (!range) {
@@ -217,12 +220,19 @@ function timelineSpanCandidates<T, TFilters extends SmartListFilters>(
     if (range.startOffsetMinutes >= pageEndOffset || range.endOffsetMinutes <= pageStartOffset) {
       continue;
     }
+    const visibleStartOffsetMinutes = Math.max(range.startOffsetMinutes, pageStartOffset);
+    const visibleEndOffsetMinutes = Math.min(range.endOffsetMinutes, pageEndOffset);
     candidates.push({
       item,
       startOffsetMinutes: range.startOffsetMinutes,
       endOffsetMinutes: range.endOffsetMinutes,
-      visibleStartOffsetMinutes: Math.max(range.startOffsetMinutes, pageStartOffset),
-      visibleEndOffsetMinutes: Math.min(range.endOffsetMinutes, pageEndOffset),
+      visibleStartOffsetMinutes,
+      visibleEndOffsetMinutes,
+      collisionStartOffsetMinutes: visibleStartOffsetMinutes,
+      collisionEndOffsetMinutes: Math.min(
+        pageEndOffset,
+        Math.max(visibleEndOffsetMinutes, visibleStartOffsetMinutes + minimumLaneDuration)
+      ),
       row: normalizedRow(range.row)
     });
   }
@@ -244,8 +254,8 @@ function assignTimelineRows<T>(candidates: readonly TimelineSpanCandidate<T>[]):
       lanes[row] = [];
     }
     lanes[row].push({
-      startOffsetMinutes: candidate.visibleStartOffsetMinutes,
-      endOffsetMinutes: candidate.visibleEndOffsetMinutes
+      startOffsetMinutes: candidate.collisionStartOffsetMinutes,
+      endOffsetMinutes: candidate.collisionEndOffsetMinutes
     });
     assigned.push({ ...candidate, row });
   }
@@ -262,8 +272,8 @@ function firstAvailableTimelineRow<T>(
   let row = 0;
   while (row < lanes.length) {
     const conflict = lanes[row].some(item =>
-      candidate.visibleStartOffsetMinutes < item.endOffsetMinutes
-      && candidate.visibleEndOffsetMinutes > item.startOffsetMinutes
+      candidate.collisionStartOffsetMinutes < item.endOffsetMinutes
+      && candidate.collisionEndOffsetMinutes > item.startOffsetMinutes
     );
     if (!conflict) {
       return row;
@@ -399,6 +409,13 @@ function timelineRowHeightPx<T, TFilters extends SmartListFilters>(
   query: ListQuery<TFilters>
 ): number {
   return Math.max(44, resolvedInteger(timeline.rowHeightPx, DEFAULT_TIMELINE_ROW_HEIGHT_PX, query));
+}
+
+function minimumLaneDurationMinutes<T, TFilters extends SmartListFilters>(
+  timeline: SmartListTimelineConfig<T, TFilters>,
+  query: ListQuery<TFilters>
+): number {
+  return Math.max(1, resolvedInteger(timeline.minimumLaneDurationMinutes, 1, query));
 }
 
 function resolvedInteger<TFilters extends SmartListFilters>(

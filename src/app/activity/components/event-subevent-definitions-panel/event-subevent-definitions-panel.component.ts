@@ -146,6 +146,7 @@ export class EventSubeventDefinitionsPanelComponent implements ControlValueAcces
       anchorRadius: 0,
       rowCount: 1,
       rowHeightPx: 92,
+      minimumLaneDurationMinutes: this.definitionTimelineStepMinutes,
       useItemTemplate: true,
       resolveRange: item => this.definitionTimelineRange(item),
       badgeLabel: item => item.name,
