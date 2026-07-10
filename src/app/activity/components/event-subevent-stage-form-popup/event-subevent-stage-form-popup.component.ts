@@ -1,10 +1,11 @@
 import { CommonModule } from '@angular/common';
-import { Component, EventEmitter, Input, OnChanges, Output } from '@angular/core';
+import { Component, ElementRef, EventEmitter, Input, OnChanges, Output, ViewChild } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { MatFormFieldModule } from '@angular/material/form-field';
 import { MatIconModule } from '@angular/material/icon';
 import { MatInputModule } from '@angular/material/input';
 import { AppUtils } from '../../../shared/app-utils';
+import { PricingBuilder } from '../../../shared/core/base/builders';
 import type * as ContractTypes from '../../../shared/core/contracts';
 import {
   AppMenuComponent,
@@ -92,6 +93,13 @@ export interface EventSubeventStageFormModel {
   tournamentAdvancePerGroup?: number;
 }
 
+export interface EventSubeventStageFormSubmit {
+  sourceEvent: Event;
+  model: EventSubeventStageFormModel;
+  insertPlacement: EventSubeventStageInsertPlacement;
+  insertTargetId: string | null;
+}
+
 @Component({
   selector: 'app-event-subevent-stage-form-popup',
   standalone: true,
@@ -125,17 +133,17 @@ export class EventSubeventStageFormPopupComponent implements OnChanges {
     capacityMax: 0
   };
 
-  @Output() readonly save = new EventEmitter<Event>();
+  @Output() readonly save = new EventEmitter<EventSubeventStageFormSubmit>();
   @Output() readonly cancel = new EventEmitter<Event>();
-  @Output() readonly selectOptional = new EventEmitter<boolean>();
-  @Output() readonly selectInsertPlacement = new EventEmitter<EventSubeventStageInsertPlacement>();
-  @Output() readonly insertTargetChange = new EventEmitter<string | null>();
-  @Output() readonly capacityMinChange = new EventEmitter<number | string>();
-  @Output() readonly capacityMaxChange = new EventEmitter<number | string>();
-  @Output() readonly tournamentGroupCapacityMinChange = new EventEmitter<number | string>();
-  @Output() readonly tournamentGroupCapacityMaxChange = new EventEmitter<number | string>();
-  @Output() readonly tournamentLeaderboardTypeChange = new EventEmitter<EventSubeventTournamentLeaderboardType | string | null | undefined>();
-  @Output() readonly tournamentAdvancePerGroupChange = new EventEmitter<number | string>();
+
+  @ViewChild('nameInput') private nameInput?: ElementRef<HTMLInputElement>;
+  @ViewChild('descriptionInput') private descriptionInput?: ElementRef<HTMLTextAreaElement>;
+
+  protected draftModel: EventSubeventStageFormModel = this.cloneModel(this.model);
+  protected draftInsertPlacement: EventSubeventStageInsertPlacement = 'after';
+  protected draftInsertTargetId: string | null = null;
+  private lastModelInput: EventSubeventStageFormModel | null = null;
+  private lastOpen = false;
 
   protected readonly subeventPricingEditorConfig: PricingEditorConfig = {
     context: 'subevent',
@@ -150,11 +158,12 @@ export class EventSubeventStageFormPopupComponent implements OnChanges {
     mapAriaLabel: 'Open sub event location on map'
   };
   ngOnChanges(): void {
+    this.syncDraftFromInputs();
     if (this.usesDurationInput()) {
-      this.normalizeDuration();
+      this.normalizeDuration(this.draftModel);
       return;
     }
-    this.normalizeDateRange();
+    this.normalizeDateRange(this.draftModel);
   }
 
   protected stagePopupModel(): PopupModel<EventSubeventStageFormMenuContext> {
@@ -218,7 +227,7 @@ export class EventSubeventStageFormPopupComponent implements OnChanges {
       icon: 'done',
       kind: 'action',
       palette: canSave ? 'green' : 'danger',
-      disabled: !canSave,
+      disabled: false,
       ariaLabel: 'Save sub event',
       context: { menu: 'save' }
     }];
@@ -226,7 +235,16 @@ export class EventSubeventStageFormPopupComponent implements OnChanges {
 
   private onStagePopupMenuSelect(event: PopupMenuSelectEvent<EventSubeventStageFormMenuContext>): void {
     if (event.itemSelect.context?.menu === 'save') {
-      this.save.emit(event.itemSelect.sourceEvent);
+      this.syncTextDraftFromElements();
+      if (!this.canSaveCurrentModel()) {
+        return;
+      }
+      this.save.emit({
+        sourceEvent: event.itemSelect.sourceEvent,
+        model: this.normalizedDraftModel(),
+        insertPlacement: this.draftInsertPlacement,
+        insertTargetId: this.draftInsertTargetId
+      });
       return;
     }
     this.onStageFormMenuSelect(event.itemSelect);
@@ -238,22 +256,22 @@ export class EventSubeventStageFormPopupComponent implements OnChanges {
 
   protected canSaveCurrentModel(): boolean {
     return !this.view.readOnly
-      && this.hasText(this.model.name)
-      && this.hasText(this.model.description)
+      && this.hasText(this.draftModel.name)
+      && this.hasText(this.draftModel.description)
       && (this.usesDurationInput()
-        ? this.positiveInteger(this.model.durationMinutes) > 0
-        : this.hasText(this.model.dateRange?.startAt) && this.hasText(this.model.dateRange?.endAt));
+        ? this.positiveInteger(this.draftModel.durationMinutes) > 0
+        : this.hasText(this.draftModel.dateRange?.startAt) && this.hasText(this.draftModel.dateRange?.endAt));
   }
 
   protected fieldInvalid(field: 'name' | 'description'): boolean {
-    return !this.hasText(this.model[field]);
+    return !this.hasText(this.draftModel[field]);
   }
 
   protected optionalMenuTrigger(): AppMenuTrigger {
     return {
-      label: this.model.optional ? 'Optional' : 'Mandatory',
-      icon: this.view.modeIcon,
-      palette: this.model.optional ? 'blue' : 'red',
+      label: this.draftModel.optional ? 'Optional' : 'Mandatory',
+      icon: this.draftModeIcon(),
+      palette: this.draftModel.optional ? 'blue' : 'red',
       ariaLabel: 'Sub event optional mode',
       layout: 'pill'
     };
@@ -268,7 +286,7 @@ export class EventSubeventStageFormPopupComponent implements OnChanges {
         kind: 'radio',
         palette: 'red',
         surface: 'tinted',
-        active: !this.model.optional,
+        active: !this.draftModel.optional,
         context: { menu: 'optional', optional: false }
       },
       {
@@ -278,14 +296,14 @@ export class EventSubeventStageFormPopupComponent implements OnChanges {
         kind: 'radio',
         palette: 'blue',
         surface: 'tinted',
-        active: this.model.optional,
+        active: this.draftModel.optional,
         context: { menu: 'optional', optional: true }
       }
     ];
   }
 
   protected insertPlacementMenuTrigger(): AppMenuTrigger {
-    const placement = this.view.insertPlacement;
+    const placement = this.draftInsertPlacement;
     return {
       label: this.insertPlacementLabel(placement),
       icon: this.insertPlacementIcon(placement),
@@ -303,7 +321,7 @@ export class EventSubeventStageFormPopupComponent implements OnChanges {
       kind: 'radio',
       palette: this.insertPlacementPalette(placement),
       surface: 'tinted',
-      active: placement === this.view.insertPlacement,
+      active: placement === this.draftInsertPlacement,
       context: { menu: 'insert-placement', placement }
     }));
   }
@@ -328,16 +346,16 @@ export class EventSubeventStageFormPopupComponent implements OnChanges {
       kind: 'radio',
       palette: option.palette,
       surface: 'tinted',
-      active: option.id === this.view.insertTargetId,
+      active: option.id === this.draftInsertTargetId,
       context: { menu: 'insert-target', targetId: option.id }
     }));
   }
 
   protected tournamentLeaderboardMenuTrigger(): AppMenuTrigger {
-    const value = this.view.tournamentLeaderboardTypeValue;
+    const value = this.draftTournamentLeaderboardType();
     return {
       label: value,
-      icon: this.view.tournamentLeaderboardTypeIcon,
+      icon: this.tournamentLeaderboardIcon(value),
       palette: this.tournamentLeaderboardPalette(value),
       ariaLabel: 'Leaderboard type',
       layout: 'field'
@@ -352,7 +370,7 @@ export class EventSubeventStageFormPopupComponent implements OnChanges {
       kind: 'radio',
       palette: this.tournamentLeaderboardPalette(option),
       surface: 'tinted',
-      active: option === this.view.tournamentLeaderboardTypeValue,
+      active: option === this.draftTournamentLeaderboardType(),
       context: { menu: 'leaderboard-type', leaderboardType: option }
     }));
   }
@@ -365,16 +383,19 @@ export class EventSubeventStageFormPopupComponent implements OnChanges {
 
     switch (context.menu) {
       case 'optional':
-        this.selectOptional.emit(context.optional);
+        this.draftModel.optional = this.view.showTournamentFields ? false : context.optional;
         break;
       case 'insert-placement':
-        this.selectInsertPlacement.emit(context.placement);
+        if (this.view.showTournamentFields && context.placement === 'during') {
+          return;
+        }
+        this.draftInsertPlacement = context.placement;
         break;
       case 'insert-target':
-        this.insertTargetChange.emit(context.targetId);
+        this.draftInsertTargetId = context.targetId;
         break;
       case 'leaderboard-type':
-        this.tournamentLeaderboardTypeChange.emit(context.leaderboardType);
+        this.draftModel.tournamentLeaderboardType = context.leaderboardType;
         break;
     }
   }
@@ -421,7 +442,7 @@ export class EventSubeventStageFormPopupComponent implements OnChanges {
   }
 
   private insertTargetOption(): EventSubeventStageInsertOption | null {
-    return this.view.insertOptions.find(option => option.id === this.view.insertTargetId) ?? null;
+    return this.view.insertOptions.find(option => option.id === this.draftInsertTargetId) ?? null;
   }
 
   private tournamentLeaderboardIcon(option: EventSubeventTournamentLeaderboardType): string {
@@ -436,9 +457,38 @@ export class EventSubeventStageFormPopupComponent implements OnChanges {
     return this.view.timingInputMode === 'duration';
   }
 
-  private normalizeDuration(): void {
-    this.model.offsetMinutes = this.positiveInteger(this.model.offsetMinutes);
-    this.model.durationMinutes = this.positiveInteger(this.model.durationMinutes) || 60;
+  protected syncDraftTextInput(field: 'name' | 'description', event: Event): void {
+    const target = event.target as HTMLInputElement | HTMLTextAreaElement | null;
+    this.draftModel[field] = target?.value ?? '';
+  }
+
+  protected draftModeClass(): EventSubeventStageFormModeClass {
+    return this.draftModel.optional && !this.view.showTournamentFields
+      ? 'subevent-mode-optional'
+      : 'subevent-mode-mandatory';
+  }
+
+  protected draftModeIcon(): string {
+    return this.draftModel.optional && !this.view.showTournamentFields ? 'toggle_on' : 'lock';
+  }
+
+  protected draftTournamentEstimatedGroupCountLabel(): string {
+    const groupMin = Math.max(1, this.positiveInteger(this.draftModel.tournamentGroupCapacityMin ?? 0) || 1);
+    const groupMax = Math.max(groupMin, this.positiveInteger(this.draftModel.tournamentGroupCapacityMax ?? groupMin));
+    const stageMin = this.positiveInteger(this.draftModel.capacityMin);
+    const stageMax = Math.max(stageMin, this.positiveInteger(this.draftModel.capacityMax));
+    const estimateMin = Math.max(1, Math.ceil(stageMin / groupMax));
+    const estimateMax = Math.max(estimateMin, Math.ceil(stageMax / groupMin));
+    return `${estimateMin} - ${estimateMax}`;
+  }
+
+  private draftTournamentLeaderboardType(): EventSubeventTournamentLeaderboardType {
+    return this.draftModel.tournamentLeaderboardType === 'Fifa' ? 'Fifa' : 'Score';
+  }
+
+  private normalizeDuration(target: EventSubeventStageFormModel): void {
+    target.offsetMinutes = this.positiveInteger(target.offsetMinutes);
+    target.durationMinutes = this.positiveInteger(target.durationMinutes) || 60;
   }
 
   private positiveInteger(value: unknown): number {
@@ -446,7 +496,7 @@ export class EventSubeventStageFormPopupComponent implements OnChanges {
     return Number.isFinite(parsed) ? Math.max(0, parsed) : 0;
   }
 
-  private normalizeDateRange(): void {
+  private normalizeDateRange(target: EventSubeventStageFormModel): void {
     const boundStart = this.parseDateTime(this.view.dateInput?.range?.bounds?.start);
     const boundEnd = this.parseDateTime(this.view.dateInput?.range?.bounds?.end);
     const defaultStart = boundStart ?? new Date();
@@ -454,7 +504,7 @@ export class EventSubeventStageFormPopupComponent implements OnChanges {
       ? Math.max(15 * 60 * 1000, Math.min(60 * 60 * 1000, boundEnd.getTime() - boundStart.getTime()))
       : (60 * 60 * 1000);
 
-    const currentRange = this.model.dateRange ?? { startAt: '', endAt: '', precision: 'minute' as const };
+    const currentRange = target.dateRange ?? { startAt: '', endAt: '', precision: 'minute' as const };
     let start = this.parseDateTime(currentRange.startAt) ?? new Date(defaultStart.getTime());
     let safeEnd = this.parseDateTime(currentRange.endAt);
     if (!safeEnd || safeEnd.getTime() <= start.getTime()) {
@@ -484,11 +534,67 @@ export class EventSubeventStageFormPopupComponent implements OnChanges {
       safeEnd = new Date(endMs);
     }
 
-    this.model.dateRange = {
+    target.dateRange = {
       startAt: AppUtils.toIsoDateTimeLocal(start),
       endAt: AppUtils.toIsoDateTimeLocal(safeEnd),
       precision: 'minute'
     };
+  }
+
+  private syncDraftFromInputs(): void {
+    const opening = this.view.open && !this.lastOpen;
+    if (opening || this.lastModelInput !== this.model) {
+      this.draftModel = this.cloneModel(this.model);
+      this.draftInsertPlacement = this.view.showTournamentFields && this.view.insertPlacement === 'during'
+        ? 'after'
+        : this.view.insertPlacement;
+      this.draftInsertTargetId = this.view.insertTargetId ?? this.view.insertOptions[this.view.insertOptions.length - 1]?.id ?? null;
+      this.lastModelInput = this.model;
+    }
+    if (this.view.showTournamentFields) {
+      this.draftModel.optional = false;
+      if (this.draftInsertPlacement === 'during') {
+        this.draftInsertPlacement = 'after';
+      }
+    }
+    this.lastOpen = this.view.open;
+  }
+
+  private normalizedDraftModel(): EventSubeventStageFormModel {
+    this.syncTextDraftFromElements();
+    const next = this.cloneModel(this.draftModel);
+    next.name = `${next.name ?? ''}`.trim();
+    next.description = `${next.description ?? ''}`.trim();
+    next.location = `${next.location ?? ''}`.trim();
+    next.optional = this.view.showTournamentFields ? false : next.optional === true;
+    next.capacityMin = this.positiveInteger(next.capacityMin);
+    next.capacityMax = this.positiveInteger(next.capacityMax);
+    next.tournamentGroupCapacityMin = this.positiveInteger(next.tournamentGroupCapacityMin ?? 0);
+    next.tournamentGroupCapacityMax = Math.max(
+      next.tournamentGroupCapacityMin,
+      this.positiveInteger(next.tournamentGroupCapacityMax ?? next.tournamentGroupCapacityMin)
+    );
+    next.tournamentLeaderboardType = this.draftTournamentLeaderboardType();
+    next.tournamentAdvancePerGroup = this.positiveInteger(next.tournamentAdvancePerGroup ?? 0);
+    if (this.usesDurationInput()) {
+      this.normalizeDuration(next);
+    } else {
+      this.normalizeDateRange(next);
+    }
+    return next;
+  }
+
+  private cloneModel(value: EventSubeventStageFormModel): EventSubeventStageFormModel {
+    return {
+      ...value,
+      dateRange: value.dateRange ? { ...value.dateRange } : undefined,
+      pricing: value.pricing ? PricingBuilder.clonePricingConfig(value.pricing) : null
+    };
+  }
+
+  private syncTextDraftFromElements(): void {
+    this.draftModel.name = this.nameInput?.nativeElement.value ?? this.draftModel.name;
+    this.draftModel.description = this.descriptionInput?.nativeElement.value ?? this.draftModel.description;
   }
 
   private defaultView(): EventSubeventStageFormPopupView {

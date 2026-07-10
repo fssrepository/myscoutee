@@ -1,12 +1,20 @@
 @if (view.open) {
   <app-popup [model]="stagePopupModel()" [zIndex]="4600">
-      <section class="experience-form-panel subevent-form-panel" [ngClass]="view.modeClass">
+      <section class="experience-form-panel subevent-form-panel" [ngClass]="draftModeClass()">
         <div class="experience-form-grid subevent-form-grid" [class.subevent-form-grid-with-insert]="view.showInsertControls">
           <label class="experience-title-field subevent-name-field">
             <span>Name <span class="required-star">*</span></span>
-            <input type="text" [(ngModel)]="model.name" [class.field-required-invalid]="fieldInvalid('name')" placeholder="Name" />
+            <input
+              #nameInput
+              type="text"
+              [value]="draftModel.name"
+              (blur)="syncDraftTextInput('name', $event)"
+              [class.field-required-invalid]="fieldInvalid('name')"
+              placeholder="Name"
+              required
+            />
           </label>
-          @if (model.optional) {
+          @if (draftModel.optional) {
             <label class="subevent-capacity-range-field">
               <span>Capacity</span>
               <div class="subevent-capacity-range">
@@ -14,8 +22,7 @@
                   type="number"
                   min="0"
                   step="1"
-                  [ngModel]="model.capacityMin"
-                  (ngModelChange)="capacityMinChange.emit($event)"
+                  [(ngModel)]="draftModel.capacityMin"
                   placeholder="Min"
                   />
                 <span class="subevent-capacity-separator">-</span>
@@ -23,8 +30,7 @@
                   type="number"
                   min="0"
                   step="1"
-                  [ngModel]="model.capacityMax"
-                  (ngModelChange)="capacityMaxChange.emit($event)"
+                  [(ngModel)]="draftModel.capacityMax"
                   placeholder="Max"
                   />
               </div>
@@ -60,7 +66,7 @@
                     type="number"
                     min="0"
                     step="5"
-                    [(ngModel)]="model.offsetMinutes"
+                    [(ngModel)]="draftModel.offsetMinutes"
                     placeholder="0"
                     aria-label="Offset minutes"
                     />
@@ -71,7 +77,15 @@
           }
           <label class="experience-description-field">
             <span>Description <span class="required-star">*</span></span>
-            <textarea rows="3" [(ngModel)]="model.description" [class.field-required-invalid]="fieldInvalid('description')" placeholder="Describe this stage"></textarea>
+            <textarea
+              #descriptionInput
+              rows="3"
+              [value]="draftModel.description"
+              (blur)="syncDraftTextInput('description', $event)"
+              [class.field-required-invalid]="fieldInvalid('description')"
+              placeholder="Describe this stage"
+              required
+            ></textarea>
           </label>
           @if (usesDurationInput()) {
             <div class="subevent-duration-row">
@@ -82,7 +96,7 @@
                     type="number"
                     min="1"
                     step="5"
-                    [(ngModel)]="model.durationMinutes"
+                    [(ngModel)]="draftModel.durationMinutes"
                     placeholder="60"
                     />
                   <span>minutes</span>
@@ -96,7 +110,7 @@
                       type="number"
                       min="0"
                       step="5"
-                      [(ngModel)]="model.offsetMinutes"
+                      [(ngModel)]="draftModel.offsetMinutes"
                       placeholder="0"
                       />
                     <span>minutes</span>
@@ -108,19 +122,19 @@
             <app-date-input
               class="experience-description-field subevent-date-input"
               [model]="view.dateInput ?? null"
-              [(ngModel)]="model.dateRange"
+              [(ngModel)]="draftModel.dateRange"
             ></app-date-input>
           }
           <app-location-input
             class="experience-description-field subevent-location-field"
-            [(ngModel)]="model.location"
+            [(ngModel)]="draftModel.location"
             [config]="subeventLocationInputConfig"
             [readOnly]="view.readOnly"
           ></app-location-input>
-          @if (model.optional) {
+          @if (draftModel.optional) {
             <app-pricing-editor-input
               class="experience-description-field subevent-pricing-field"
-              [(ngModel)]="model.pricing"
+              [(ngModel)]="draftModel.pricing"
               [config]="subeventPricingEditorConfig"
               [readOnly]="view.readOnly"
             ></app-pricing-editor-input>
@@ -144,8 +158,7 @@
                       type="number"
                       min="0"
                       step="1"
-                      [ngModel]="model.tournamentGroupCapacityMin ?? ''"
-                      (ngModelChange)="tournamentGroupCapacityMinChange.emit($event)"
+                      [(ngModel)]="draftModel.tournamentGroupCapacityMin"
                       placeholder="Min"
                       />
                   </label>
@@ -156,8 +169,7 @@
                       type="number"
                       min="0"
                       step="1"
-                      [ngModel]="model.tournamentGroupCapacityMax ?? ''"
-                      (ngModelChange)="tournamentGroupCapacityMaxChange.emit($event)"
+                      [(ngModel)]="draftModel.tournamentGroupCapacityMax"
                       placeholder="Max"
                       />
                   </label>
@@ -180,15 +192,14 @@
                       type="number"
                       min="0"
                       step="1"
-                      [ngModel]="model.tournamentAdvancePerGroup ?? ''"
-                      (ngModelChange)="tournamentAdvancePerGroupChange.emit($event)"
+                      [(ngModel)]="draftModel.tournamentAdvancePerGroup"
                       placeholder="0"
                       />
                   </label>
                 </div>
                 <label class="subevent-tournament-field subevent-tournament-field-readonly">
                   <span>Estimated Group Count</span>
-                  <input type="text" [value]="view.tournamentEstimatedGroupCountLabel" readonly />
+                  <input type="text" [value]="draftTournamentEstimatedGroupCountLabel()" readonly />
                 </label>
               </div>
             </fieldset>

@@ -34,6 +34,7 @@ import {
   EventSubeventStageFormPopupComponent,
   type EventSubeventStageFormModel,
   type EventSubeventStageFormPopupView,
+  type EventSubeventStageFormSubmit,
   type EventSubeventStageInsertOption,
   type EventSubeventStageInsertPlacement,
   type EventSubeventTournamentLeaderboardType
@@ -655,19 +656,25 @@ export class EventSubeventDefinitionsPanelComponent implements ControlValueAcces
     };
   }
 
-  protected saveDefinitionForm(event?: Event): void {
-    event?.stopPropagation();
+  protected saveDefinitionForm(submit?: EventSubeventStageFormSubmit): void {
+    submit?.sourceEvent.stopPropagation();
     const state = this.definitionForm;
-    if (!state || !this.canConfigureDefinitions() || !this.canSaveDefinitionForm(state.model)) {
+    if (!state || !submit || !this.canConfigureDefinitions() || !this.canSaveDefinitionForm(submit.model)) {
       return;
     }
 
-    const definition = this.definitionFromFormState(state);
+    const submittedState: SubEventDefinitionFormState = {
+      ...state,
+      model: submit.model,
+      insertPlacement: submit.insertPlacement,
+      insertTargetId: submit.insertTargetId
+    };
+    const definition = this.definitionFromFormState(submittedState);
     const next = [...this.definitions];
-    if (state.index === null) {
-      next.splice(this.definitionInsertIndex(state), 0, definition);
+    if (submittedState.index === null) {
+      next.splice(this.definitionInsertIndex(submittedState), 0, definition);
     } else {
-      next[state.index] = definition;
+      next[submittedState.index] = definition;
     }
     this.setDefinitionForm(null);
     this.commit(next);
