@@ -32,6 +32,8 @@ export type TextCardTone =
 export type TextCardStatusTone =
   | 'default'
   | 'stage'
+  | 'public'
+  | 'blocked'
   | 'success'
   | 'warning'
   | 'danger'

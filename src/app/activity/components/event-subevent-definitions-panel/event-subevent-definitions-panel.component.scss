@@ -266,12 +266,12 @@
 }
 
 :host ::ng-deep .subevent-definition-panel__timeline-card .ui-text-card--with-badge .ui-text-card__actions {
-  top: 1.9rem;
+  top: 2.25rem;
   right: 0.32rem;
 }
 
 :host ::ng-deep .subevent-definition-panel__timeline-card .ui-text-card--with-status-badge .ui-text-card__actions {
-  top: 1.9rem;
+  top: 2.25rem;
 }
 
 :host ::ng-deep .subevent-definition-panel__timeline-card .ui-text-card--badge-warning .ui-text-card__badge {
@@ -279,44 +279,6 @@
   background: rgba(255, 247, 226, 0.94);
   color: #8a5a12;
   box-shadow: 0 5px 12px rgba(132, 82, 8, 0.14);
-}
-
-:host ::ng-deep .subevent-definition-panel__timeline-card .ui-text-card--status-success .ui-text-card__status-badge {
-  border-color: rgba(46, 111, 178, 0.4);
-  background: linear-gradient(180deg, #eef7ff 0%, #dcecff 100%);
-  color: #2f6cae;
-  box-shadow: 0 7px 16px rgba(35, 89, 149, 0.18);
-}
-
-:host ::ng-deep .subevent-definition-panel__timeline-card .ui-text-card--status-success .ui-text-card__status-badge .mat-icon {
-  width: 16px;
-  height: 16px;
-  font-size: 14px;
-  line-height: 16px;
-  border-radius: 50%;
-  background: linear-gradient(180deg, #edf8ee 0%, #e2f1e4 100%);
-  color: #2d7d47;
-  box-shadow: inset 0 0 0 1px rgba(44, 126, 72, 0.32);
-}
-
-:host ::ng-deep .subevent-definition-panel__timeline-card .ui-text-card--status-danger .ui-text-card__status-badge {
-  border-color: rgba(255, 255, 255, 0.96);
-  background: linear-gradient(180deg, #e45f66 0%, #bd2635 100%);
-  color: #ffffff;
-  text-shadow: 0 1px 1px rgba(80, 0, 8, 0.28);
-  box-shadow:
-    0 8px 18px rgba(128, 23, 34, 0.36),
-    inset 0 0 0 1px rgba(137, 17, 29, 0.5);
-}
-
-:host ::ng-deep .subevent-definition-panel__timeline-card .ui-text-card--status-danger .ui-text-card__status-badge .mat-icon {
-  width: 16px;
-  height: 16px;
-  font-size: 14px;
-  line-height: 16px;
-  border-radius: 50%;
-  background: rgba(255, 255, 255, 0.22);
-  color: #ffffff;
 }
 
 :host ::ng-deep .subevent-definition-panel__timeline-card .ui-text-card__actions .app-menu__trigger--layout-icon {

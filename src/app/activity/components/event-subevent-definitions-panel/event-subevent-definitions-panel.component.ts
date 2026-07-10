@@ -496,7 +496,7 @@ export class EventSubeventDefinitionsPanelComponent implements ControlValueAcces
     if (this.mode === 'Tournament') {
       return 'stage';
     }
-    return item.optional ? 'success' : 'danger';
+    return item.optional ? 'public' : 'blocked';
   }
 
   protected definitionTimelineStatusAriaLabel(item: SubEventDefinitionDTO): string {
