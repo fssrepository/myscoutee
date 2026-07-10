@@ -265,9 +265,7 @@ export class EventSubeventDefinitionsPanelComponent implements ControlValueAcces
       mediaSubtitle: this.mode,
       mediaIcon: item.icon || (isTournament ? 'emoji_events' : 'inventory_2'),
       metaRows: [
-        index > 0
-          ? this.definitionTimingLabel(item, index)
-          : `Duration ${this.durationLabel(item.durationMinutes)}`,
+        this.definitionStartLabel(item, index),
         ...(capacityMetaRow ? [capacityMetaRow] : [])
       ],
       description: item.description || 'No description',
@@ -295,6 +293,14 @@ export class EventSubeventDefinitionsPanelComponent implements ControlValueAcces
           icon: status.icon,
           tone: status.accessoryTone
         }
+      },
+      mediaBottomEnd: {
+        variant: 'badge',
+        tone: 'stage-review',
+        icon: 'schedule',
+        label: this.durationMinutesBadgeLabel(item.durationMinutes),
+        ariaLabel: `Duration ${this.durationLabel(item.durationMinutes)}`,
+        interactive: false
       },
       menuActions: this.canConfigureDefinitions() ? ['edit', 'delete'] : []
     };
@@ -785,26 +791,34 @@ export class EventSubeventDefinitionsPanelComponent implements ControlValueAcces
     return this.minutesLabel(safeMinutes);
   }
 
+  private durationMinutesBadgeLabel(totalMinutes: number): string {
+    return `${this.toPositiveInteger(totalMinutes)}m`;
+  }
+
   private offsetLabel(totalMinutes: number): string {
     const safeMinutes = this.toNonNegativeInteger(totalMinutes);
     return this.minutesLabel(safeMinutes);
   }
 
-  private definitionTimingLabel(item: SubEventDefinitionDTO, index: number): string {
+  private definitionStartLabel(item: SubEventDefinitionDTO, index: number): string {
     const offsetMinutes = this.toNonNegativeInteger(item.offsetMinutes);
     const offsetLabel = this.offsetLabel(offsetMinutes);
-    const durationLabel = this.durationLabel(item.durationMinutes);
     if (index <= 0) {
       return offsetMinutes > 0
-        ? `Starts ${offsetLabel} after slot start for ${durationLabel}`
-        : `Starts at slot start for ${durationLabel}`;
+        ? `Starts ${offsetLabel} after event start`
+        : 'Starts at event start';
     }
 
     const previousLabel = this.definitionSequenceLabel(index - 1);
-    const anchor = item.timing === 'During' ? 'start' : 'end';
+    if (item.timing === 'During') {
+      return offsetMinutes > 0
+        ? `Starts ${offsetLabel} after ${previousLabel} starts`
+        : `Starts with ${previousLabel}`;
+    }
+
     return offsetMinutes > 0
-      ? `Starts ${offsetLabel} after ${previousLabel} ${anchor} for ${durationLabel}`
-      : `Starts at ${previousLabel} ${anchor} for ${durationLabel}`;
+      ? `Starts ${offsetLabel} after ${previousLabel}`
+      : `Starts after ${previousLabel}`;
   }
 
   private minutesLabel(totalMinutes: number): string {

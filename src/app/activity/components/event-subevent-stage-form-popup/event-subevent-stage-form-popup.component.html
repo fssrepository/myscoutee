@@ -31,37 +31,20 @@
             </label>
           }
           @if (view.showInsertControls) {
-            <label class="subevent-stage-insert-field">
-              <span>{{ view.insertFieldLabel }}</span>
+            <div class="subevent-stage-insert-field">
+              <div class="subevent-stage-insert-header">
+                <span>{{ view.insertFieldLabel }}</span>
+                <span>Offset</span>
+              </div>
               <div class="subevent-stage-insert-controls">
-                <span class="subevent-stage-insert-mode">
-                  <button
-                    type="button"
-                    class="subevent-stage-insert-mode-btn"
-                    [class.is-active]="view.insertPlacement === 'before'"
-                    (click)="selectInsertPlacement.emit('before')"
-                  >
-                    Before
-                  </button>
-                  @if (view.showDuringInsertPlacement) {
-                    <button
-                      type="button"
-                      class="subevent-stage-insert-mode-btn"
-                      [class.is-active]="view.insertPlacement === 'during'"
-                      (click)="selectInsertPlacement.emit('during')"
-                      >
-                      During
-                    </button>
-                  }
-                  <button
-                    type="button"
-                    class="subevent-stage-insert-mode-btn"
-                    [class.is-active]="view.insertPlacement === 'after'"
-                    (click)="selectInsertPlacement.emit('after')"
-                    >
-                    After
-                  </button>
-                </span>
+                <app-menu
+                  class="subevent-stage-insert-placement-menu"
+                  kind="select"
+                  [trigger]="insertPlacementMenuTrigger()"
+                  [items]="insertPlacementMenuItems()"
+                  panelAlign="start"
+                  (itemSelect)="onStageFormMenuSelect($event)"
+                ></app-menu>
                 <div class="subevent-stage-insert-target-select">
                   <app-menu
                     class="subevent-stage-insert-target-menu"
@@ -72,8 +55,19 @@
                     (itemSelect)="onStageFormMenuSelect($event)"
                   ></app-menu>
                 </div>
+                <div class="subevent-stage-insert-offset">
+                  <input
+                    type="number"
+                    min="0"
+                    step="5"
+                    [(ngModel)]="model.offsetMinutes"
+                    placeholder="0"
+                    aria-label="Offset minutes"
+                    />
+                  <span>min</span>
+                </div>
               </div>
-            </label>
+            </div>
           }
           <label class="experience-description-field">
             <span>Description <span class="required-star">*</span></span>
@@ -94,19 +88,21 @@
                   <span>minutes</span>
                 </div>
               </label>
-              <label class="subevent-duration-field subevent-offset-field">
-                <span>Offset</span>
-                <div class="subevent-duration-control">
-                  <input
-                    type="number"
-                    min="0"
-                    step="5"
-                    [(ngModel)]="model.offsetMinutes"
-                    placeholder="0"
-                    />
-                  <span>minutes</span>
-                </div>
-              </label>
+              @if (!view.showInsertControls) {
+                <label class="subevent-duration-field subevent-offset-field">
+                  <span>Offset</span>
+                  <div class="subevent-duration-control">
+                    <input
+                      type="number"
+                      min="0"
+                      step="5"
+                      [(ngModel)]="model.offsetMinutes"
+                      placeholder="0"
+                      />
+                    <span>minutes</span>
+                  </div>
+                </label>
+              }
             </div>
           } @else {
             <app-date-input

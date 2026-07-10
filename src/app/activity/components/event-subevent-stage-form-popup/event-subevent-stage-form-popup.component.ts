@@ -31,6 +31,7 @@ export type EventSubeventStageTimingInputMode = 'range' | 'duration';
 
 type EventSubeventStageFormMenuContext =
   | { menu: 'optional'; optional: boolean }
+  | { menu: 'insert-placement'; placement: EventSubeventStageInsertPlacement }
   | { menu: 'insert-target'; targetId: string | null }
   | { menu: 'leaderboard-type'; leaderboardType: EventSubeventTournamentLeaderboardType }
   | { menu: 'save' };
@@ -275,11 +276,35 @@ export class EventSubeventStageFormPopupComponent implements OnChanges {
     ];
   }
 
+  protected insertPlacementMenuTrigger(): AppMenuTrigger {
+    const placement = this.view.insertPlacement;
+    return {
+      label: this.insertPlacementLabel(placement),
+      icon: this.insertPlacementIcon(placement),
+      palette: this.insertPlacementPalette(placement),
+      ariaLabel: 'Insert sub event position',
+      layout: 'field'
+    };
+  }
+
+  protected insertPlacementMenuItems(): readonly AppMenuItem<string, EventSubeventStageFormMenuContext>[] {
+    return this.insertPlacementOptions().map(placement => ({
+      id: `subevent-insert-placement-${placement}`,
+      label: this.insertPlacementLabel(placement),
+      icon: this.insertPlacementIcon(placement),
+      kind: 'radio',
+      palette: this.insertPlacementPalette(placement),
+      surface: 'tinted',
+      active: placement === this.view.insertPlacement,
+      context: { menu: 'insert-placement', placement }
+    }));
+  }
+
   protected insertTargetMenuTrigger(): AppMenuTrigger {
     return {
       label: this.insertTargetLabel(),
-      icon: 'vertical_align_bottom',
-      palette: 'default',
+      icon: 'route',
+      palette: 'blue',
       ariaLabel: this.view.insertFieldLabel,
       layout: 'field'
     };
@@ -291,6 +316,8 @@ export class EventSubeventStageFormPopupComponent implements OnChanges {
       label: option.label,
       icon: 'route',
       kind: 'radio',
+      palette: 'blue',
+      surface: 'tinted',
       active: option.id === this.view.insertTargetId,
       context: { menu: 'insert-target', targetId: option.id }
     }));
@@ -330,6 +357,9 @@ export class EventSubeventStageFormPopupComponent implements OnChanges {
       case 'optional':
         this.selectOptional.emit(context.optional);
         break;
+      case 'insert-placement':
+        this.selectInsertPlacement.emit(context.placement);
+        break;
       case 'insert-target':
         this.insertTargetChange.emit(context.targetId);
         break;
@@ -337,6 +367,42 @@ export class EventSubeventStageFormPopupComponent implements OnChanges {
         this.tournamentLeaderboardTypeChange.emit(context.leaderboardType);
         break;
     }
+  }
+
+  private insertPlacementOptions(): readonly EventSubeventStageInsertPlacement[] {
+    return this.view.showDuringInsertPlacement
+      ? ['before', 'during', 'after']
+      : ['before', 'after'];
+  }
+
+  private insertPlacementLabel(placement: EventSubeventStageInsertPlacement): string {
+    if (placement === 'before') {
+      return 'Before';
+    }
+    if (placement === 'during') {
+      return 'During';
+    }
+    return 'After';
+  }
+
+  private insertPlacementIcon(placement: EventSubeventStageInsertPlacement): string {
+    if (placement === 'before') {
+      return 'keyboard_double_arrow_up';
+    }
+    if (placement === 'during') {
+      return 'merge_type';
+    }
+    return 'keyboard_double_arrow_down';
+  }
+
+  private insertPlacementPalette(placement: EventSubeventStageInsertPlacement): AppMenuPalette {
+    if (placement === 'before') {
+      return 'orange';
+    }
+    if (placement === 'during') {
+      return 'blue';
+    }
+    return 'green';
   }
 
   private insertTargetLabel(): string {

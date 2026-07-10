@@ -526,6 +526,11 @@ button.ui-info-card__overlay-action {
   right: 0.2rem;
 }
 
+.ui-info-card__overlay-action--bottom-end {
+  right: 0.38rem;
+  bottom: 0.38rem;
+}
+
 .ui-info-card__overlay-action--avatar {
   width: 26px;
   min-width: 26px;
@@ -899,6 +904,18 @@ button.ui-info-card__overlay-action {
   border-color: rgba(192, 125, 28, 0.34);
   background: rgba(255, 247, 226, 0.94);
   color: #8a5a12;
+}
+
+.ui-info-card__overlay-action--bottom-end.ui-info-card__overlay-action--badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.18rem;
+  height: 26px;
+  padding: 0 0.48rem;
+  border: 1px solid rgba(192, 125, 28, 0.34);
+  background: rgba(255, 247, 226, 0.94);
+  color: #8a5a12;
+  box-shadow: 0 7px 16px rgba(132, 82, 8, 0.16);
 }
 
 .ui-info-card__overlay-action--tone-stage-finalized.ui-info-card__overlay-action--badge {

@@ -228,6 +228,24 @@
           </span>
         }
       }
+      @if (card?.mediaBottomEnd; as mediaBottomEnd) {
+        <span
+          class="ui-info-card__overlay-action ui-info-card__overlay-action--bottom-end asset-occupancy-badge asset-occupancy-badge-static"
+          [class.ui-info-card__overlay-action--avatar]="overlayVariant(mediaBottomEnd) === 'avatar'"
+          [class.ui-info-card__overlay-action--badge]="overlayVariant(mediaBottomEnd) === 'badge'"
+          [class.ui-info-card__overlay-action--toggle]="overlayVariant(mediaBottomEnd) === 'toggle'"
+          [class.ui-info-card__overlay-action--shape-circle]="overlayShape(mediaBottomEnd) === 'circle'"
+          [class.ui-info-card__overlay-action--layout-avatar-metric]="overlayLayout(mediaBottomEnd) === 'avatar-metric'"
+          [class.ui-info-card__overlay-action--layout-badge-with-leading-accessory]="overlayLayout(mediaBottomEnd) === 'badge-with-leading-accessory'"
+          [class.ui-info-card__overlay-action--tone-stage-scheduled]="overlayTone(mediaBottomEnd) === 'stage-scheduled'"
+          [class.ui-info-card__overlay-action--tone-stage-review]="overlayTone(mediaBottomEnd) === 'stage-review'"
+          [class.ui-info-card__overlay-action--tone-neutral]="overlayTone(mediaBottomEnd) === 'neutral'"
+          [attr.aria-hidden]="mediaBottomEnd.ariaLabel ? null : true"
+          [attr.aria-label]="mediaBottomEnd.ariaLabel ? (mediaBottomEnd.ariaLabel | i18n) : null"
+          >
+          <ng-container *ngTemplateOutlet="overlayContent; context: { $implicit: mediaBottomEnd }"></ng-container>
+        </span>
+      }
   </div>
 
   <div

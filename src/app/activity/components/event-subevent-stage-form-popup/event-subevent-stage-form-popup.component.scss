@@ -90,11 +90,12 @@
 }
 
 .subevent-form-grid.subevent-form-grid-with-insert .subevent-stage-insert-field {
-  grid-column: 2 / 3;
+  grid-column: 1 / -1;
   align-self: end;
 }
 
-.experience-form-grid label {
+.experience-form-grid label,
+.subevent-stage-insert-field {
   display: grid;
   grid-template-rows: min-content;
   gap: 0 !important;
@@ -265,43 +266,22 @@
   width: 100%;
 }
 
+.subevent-stage-insert-header {
+  display: grid;
+  grid-template-columns: minmax(120px, 156px) minmax(0, 1fr) minmax(92px, 132px);
+  gap: 0.46rem;
+}
+
+.subevent-stage-insert-header span:last-child {
+  grid-column: 3;
+}
+
 .subevent-stage-insert-controls {
   display: grid;
-  grid-template-columns: auto minmax(0, 1fr);
+  grid-template-columns: minmax(120px, 156px) minmax(0, 1fr) minmax(92px, 132px);
   align-items: center;
   gap: 0.46rem;
   width: 100%;
-}
-
-.subevent-stage-insert-mode {
-  display: inline-flex;
-  align-items: center;
-  border: 1px solid rgba(52, 85, 126, 0.28);
-  border-radius: 999px;
-  background: linear-gradient(180deg, #f6f9ff 0%, #edf4ff 100%);
-  overflow: hidden;
-}
-
-.subevent-stage-insert-mode-btn {
-  appearance: none;
-  border: 0;
-  background: transparent;
-  color: #2f4e76;
-  font-size: 0.72rem;
-  font-weight: 700;
-  line-height: 1;
-  min-height: 30px;
-  padding: 0 0.58rem;
-  cursor: pointer;
-}
-
-.subevent-stage-insert-mode-btn + .subevent-stage-insert-mode-btn {
-  border-left: 1px solid rgba(52, 85, 126, 0.22);
-}
-
-.subevent-stage-insert-mode-btn.is-active {
-  background: linear-gradient(180deg, #dbe9ff 0%, #cfdefb 100%);
-  color: #1f4678;
 }
 
 .subevent-stage-insert-target-select {
@@ -310,11 +290,26 @@
   box-sizing: border-box;
 }
 
+.subevent-stage-insert-placement-menu,
 .subevent-stage-insert-target-menu,
 .subevent-tournament-type-menu {
   display: block;
   width: 100%;
   min-width: 0;
+}
+
+.subevent-stage-insert-offset {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 0.42rem;
+  min-width: 0;
+}
+
+.subevent-stage-insert-offset span {
+  color: rgba(31, 56, 89, 0.72);
+  font-size: 0.82rem;
+  font-weight: 800;
 }
 
 .subevent-tournament-fieldset {
@@ -582,14 +577,16 @@
   }
 
   .subevent-stage-insert-controls {
-    grid-template-columns: auto minmax(0, 1fr);
+    grid-template-columns: minmax(0, 1fr);
     gap: 0.34rem;
   }
 
-  .subevent-stage-insert-mode-btn {
-    min-height: 28px;
-    font-size: 0.7rem;
-    padding: 0 0.5rem;
+  .subevent-stage-insert-header {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .subevent-stage-insert-header span:last-child {
+    grid-column: auto;
   }
 
   .subevent-tournament-rule-row {
