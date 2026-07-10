@@ -426,7 +426,7 @@ export class EventSubeventDefinitionsPanelComponent implements ControlValueAcces
     }
     return {
       label: 'Mandatory',
-      icon: 'block',
+        icon: 'lock',
       overlayTone: 'blocked',
       leadingTone: 'invitation',
       accessoryTone: 'negative'
@@ -634,7 +634,7 @@ export class EventSubeventDefinitionsPanelComponent implements ControlValueAcces
       invalidDescription: !this.hasText(model.description),
       showOptionalToggle: !isTournament,
       modeClass: isOptional ? 'subevent-mode-optional' : 'subevent-mode-mandatory',
-      modeIcon: isOptional ? 'toggle_on' : 'block',
+      modeIcon: isOptional ? 'toggle_on' : 'lock',
       slotBoundTiming: Boolean(timingBounds),
       timingSummaryTitle: timingBounds ? 'Main event range' : 'Definition',
       timingSummaryText: '',

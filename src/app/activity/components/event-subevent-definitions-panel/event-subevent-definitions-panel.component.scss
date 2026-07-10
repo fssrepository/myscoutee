@@ -237,9 +237,10 @@
 }
 
 :host ::ng-deep .subevent-definition-panel__timeline-card .ui-text-card__detail {
-  display: block;
-  white-space: nowrap;
-  text-overflow: ellipsis;
+  display: -webkit-box;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+  white-space: normal;
   overflow: hidden;
 }
 
@@ -277,10 +278,25 @@
 :host ::ng-deep .subevent-definition-panel__timeline-card .ui-text-card--badge-warning .ui-text-card__badge {
   height: 26px;
   min-height: 26px;
+  padding-inline: 0.48rem;
   border: 1px solid rgba(192, 125, 28, 0.34);
   background: rgba(255, 247, 226, 0.94);
   color: #8a5a12;
   box-shadow: 0 5px 12px rgba(132, 82, 8, 0.14);
+}
+
+@container (max-width: 9rem) {
+  :host ::ng-deep .subevent-definition-panel__timeline-card .ui-text-card.ui-text-card--with-status-badge .ui-text-card__badge {
+    max-width: calc(100% - 3rem);
+  }
+
+  :host ::ng-deep .subevent-definition-panel__timeline-card .ui-text-card__status-badge {
+    width: 28px;
+    min-width: 28px;
+    max-width: 28px;
+    padding-inline: 0;
+    justify-content: center;
+  }
 }
 
 :host ::ng-deep .subevent-definition-panel__timeline-card .ui-text-card__actions .app-menu__trigger--layout-icon {

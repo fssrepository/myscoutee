@@ -202,7 +202,7 @@ export class EventSubeventStageFormPopupComponent implements OnChanges {
     }
     return {
       label: 'Mandatory',
-      icon: 'block',
+      icon: 'lock',
       palette: 'red',
       ariaLabel: 'Mandatory sub event',
       layout: 'pill',
@@ -264,7 +264,7 @@ export class EventSubeventStageFormPopupComponent implements OnChanges {
       {
         id: 'subevent-optional-mandatory',
         label: 'Mandatory',
-        icon: 'block',
+        icon: 'lock',
         kind: 'radio',
         palette: 'red',
         surface: 'tinted',
@@ -502,7 +502,7 @@ export class EventSubeventStageFormPopupComponent implements OnChanges {
       invalidDescription: false,
       showOptionalToggle: false,
       modeClass: 'subevent-mode-mandatory',
-      modeIcon: 'block',
+      modeIcon: 'lock',
       slotBoundTiming: false,
       timingSummaryTitle: '',
       timingSummaryText: '',
