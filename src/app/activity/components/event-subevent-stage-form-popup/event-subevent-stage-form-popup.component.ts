@@ -29,6 +29,14 @@ export type EventSubeventStageInsertPlacement = 'before' | 'during' | 'after';
 export type EventSubeventTournamentLeaderboardType = 'Score' | 'Fifa';
 export type EventSubeventStageTimingInputMode = 'range' | 'duration';
 
+export interface EventSubeventStageInsertOption {
+  id: string;
+  label: string;
+  description: string;
+  icon: string;
+  palette: AppMenuPalette;
+}
+
 type EventSubeventStageFormMenuContext =
   | { menu: 'optional'; optional: boolean }
   | { menu: 'insert-placement'; placement: EventSubeventStageInsertPlacement }
@@ -58,7 +66,7 @@ export interface EventSubeventStageFormPopupView {
   insertFieldLabel: string;
   insertPlacement: EventSubeventStageInsertPlacement;
   insertTargetId: string | null;
-  insertOptions: ReadonlyArray<{ id: string; label: string }>;
+  insertOptions: ReadonlyArray<EventSubeventStageInsertOption>;
   showTournamentFields: boolean;
   tournamentLeaderboardTypeOptions: readonly EventSubeventTournamentLeaderboardType[];
   tournamentLeaderboardTypeValue: EventSubeventTournamentLeaderboardType;
@@ -301,10 +309,11 @@ export class EventSubeventStageFormPopupComponent implements OnChanges {
   }
 
   protected insertTargetMenuTrigger(): AppMenuTrigger {
+    const selected = this.insertTargetOption();
     return {
       label: this.insertTargetLabel(),
-      icon: 'route',
-      palette: 'blue',
+      icon: selected?.icon ?? 'route',
+      palette: selected?.palette ?? 'blue',
       ariaLabel: this.view.insertFieldLabel,
       layout: 'field'
     };
@@ -314,9 +323,10 @@ export class EventSubeventStageFormPopupComponent implements OnChanges {
     return this.view.insertOptions.map(option => ({
       id: `subevent-insert-target-${option.id}`,
       label: option.label,
-      icon: 'route',
+      description: option.description,
+      icon: option.icon,
       kind: 'radio',
-      palette: 'blue',
+      palette: option.palette,
       surface: 'tinted',
       active: option.id === this.view.insertTargetId,
       context: { menu: 'insert-target', targetId: option.id }
@@ -406,8 +416,12 @@ export class EventSubeventStageFormPopupComponent implements OnChanges {
   }
 
   private insertTargetLabel(): string {
-    const selected = this.view.insertOptions.find(option => option.id === this.view.insertTargetId);
+    const selected = this.insertTargetOption();
     return selected?.label ?? this.view.insertOptions[0]?.label ?? 'Select stage';
+  }
+
+  private insertTargetOption(): EventSubeventStageInsertOption | null {
+    return this.view.insertOptions.find(option => option.id === this.view.insertTargetId) ?? null;
   }
 
   private tournamentLeaderboardIcon(option: EventSubeventTournamentLeaderboardType): string {

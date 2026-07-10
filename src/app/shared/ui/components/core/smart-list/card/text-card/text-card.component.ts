@@ -17,6 +17,8 @@ export type TextCardTone =
   | 'neutral'
   | 'draft'
   | 'stage'
+  | 'subevent-light'
+  | 'subevent-strong'
   | 'slot'
   | 'blue'
   | 'cyan'

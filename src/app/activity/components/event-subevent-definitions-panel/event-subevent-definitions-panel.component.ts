@@ -15,6 +15,7 @@ import {
   AppMenuComponent,
   TextCardComponent,
   type AppMenuItem,
+  type AppMenuPalette,
   SmartListComponent,
   type AppMenuItemSelectEvent,
   type AppMenuTrigger,
@@ -33,12 +34,18 @@ import {
   EventSubeventStageFormPopupComponent,
   type EventSubeventStageFormModel,
   type EventSubeventStageFormPopupView,
+  type EventSubeventStageInsertOption,
   type EventSubeventStageInsertPlacement,
   type EventSubeventTournamentLeaderboardType
 } from '../event-subevent-stage-form-popup/event-subevent-stage-form-popup.component';
 
 interface SubEventDefinitionsPanelFilters {
   revision: number;
+}
+
+interface SubEventDefinitionPalette {
+  accentHue: number;
+  menuPalette: AppMenuPalette;
 }
 
 type SubEventDefinitionSmartListView = 'timeline' | 'list';
@@ -86,6 +93,16 @@ export class EventSubeventDefinitionsPanelComponent implements ControlValueAcces
   private readonly tournamentLeaderboardTypeOptions: readonly EventSubeventTournamentLeaderboardType[] = ['Score', 'Fifa'];
   private readonly definitionTimelineStepMinutes = 60;
   private readonly definitionTimelineVisibleStepCount = 5;
+  private readonly casualDefinitionPalettes: readonly SubEventDefinitionPalette[] = [
+    { accentHue: 210, menuPalette: 'blue' },
+    { accentHue: 175, menuPalette: 'teal' },
+    { accentHue: 275, menuPalette: 'violet' },
+    { accentHue: 28, menuPalette: 'orange' },
+    { accentHue: 138, menuPalette: 'green' },
+    { accentHue: 330, menuPalette: 'pink' },
+    { accentHue: 195, menuPalette: 'cyan' },
+    { accentHue: 48, menuPalette: 'gold' }
+  ];
 
   @Input() mode: EventContracts.EventMode = 'Casual';
   @Input() enabled = false;
@@ -322,8 +339,7 @@ export class EventSubeventDefinitionsPanelComponent implements ControlValueAcces
   protected definitionCard(item: SubEventDefinitionDTO, index: number): InfoCardData {
     const isTournament = this.mode === 'Tournament';
     const stageNumber = index + 1;
-    const totalStages = Math.max(this.definitions.length, 1);
-    const accentHue = isTournament ? this.stageAccentHue(stageNumber, totalStages) : null;
+    const palette = this.definitionPalette(item, index);
     const sequenceLabel = isTournament ? `Stage ${stageNumber}` : `Sub Event ${stageNumber}`;
     const status = this.definitionStatus(item);
     const capacityMetaRow = this.definitionCapacityMetaRow(item, isTournament);
@@ -341,8 +357,8 @@ export class EventSubeventDefinitionsPanelComponent implements ControlValueAcces
       ],
       description: item.description || 'No description',
       descriptionLines: 2,
-      surfaceTone: isTournament ? 'stage' : 'draft',
-      accentHue,
+      surfaceTone: isTournament ? 'stage' : (item.optional ? 'subevent-light' : 'subevent-strong'),
+      accentHue: palette.accentHue,
       leadingIcon: {
         icon: isTournament ? 'emoji_events' : status.icon,
         tone: isTournament ? 'stage' : status.leadingTone
@@ -424,6 +440,40 @@ export class EventSubeventDefinitionsPanelComponent implements ControlValueAcces
     return Math.round(210 - (210 * ratio));
   }
 
+  private definitionPalette(_item: SubEventDefinitionDTO, index: number): SubEventDefinitionPalette {
+    const safeIndex = Math.max(0, index);
+    if (this.mode !== 'Tournament') {
+      return this.casualDefinitionPalettes[safeIndex % this.casualDefinitionPalettes.length];
+    }
+    const accentHue = this.stageAccentHue(safeIndex + 1, Math.max(this.definitions.length, 1));
+    return {
+      accentHue,
+      menuPalette: this.menuPaletteForAccentHue(accentHue)
+    };
+  }
+
+  private menuPaletteForAccentHue(accentHue: number): AppMenuPalette {
+    if (accentHue >= 198) {
+      return 'blue';
+    }
+    if (accentHue >= 168) {
+      return 'teal';
+    }
+    if (accentHue >= 112) {
+      return 'green';
+    }
+    if (accentHue >= 58) {
+      return 'gold';
+    }
+    if (accentHue >= 36) {
+      return 'amber';
+    }
+    if (accentHue >= 14) {
+      return 'orange';
+    }
+    return 'red';
+  }
+
   protected definitionMenuContext(item: SubEventDefinitionDTO): Record<string, unknown> {
     return { definitionId: item.id };
   }
@@ -462,18 +512,14 @@ export class EventSubeventDefinitionsPanelComponent implements ControlValueAcces
     return item.description || '';
   }
 
-  protected definitionTimelineTone(_item: SubEventDefinitionDTO): TextCardTone {
-    if (this.mode !== 'Tournament') {
-      return 'draft';
-    }
-    return 'stage';
+  protected definitionTimelineTone(item: SubEventDefinitionDTO): TextCardTone {
+    return this.mode === 'Tournament'
+      ? 'stage'
+      : (item.optional ? 'subevent-light' : 'subevent-strong');
   }
 
   protected definitionTimelineAccentHue(item: SubEventDefinitionDTO): number | null {
-    if (this.mode !== 'Tournament') {
-      return null;
-    }
-    return this.stageAccentHue(this.definitionIndex(item) + 1, Math.max(this.definitions.length, 1));
+    return this.definitionPalette(item, this.definitionIndex(item)).accentHue;
   }
 
   protected definitionTimelineBadgeTone(_item: SubEventDefinitionDTO): TextCardBadgeTone {
@@ -829,11 +875,20 @@ export class EventSubeventDefinitionsPanelComponent implements ControlValueAcces
     return 'after';
   }
 
-  private definitionInsertOptions(): ReadonlyArray<{ id: string; label: string }> {
-    return this.definitions.map((item, index) => ({
-      id: item.id,
-      label: this.definitionInsertOptionLabel(item, index)
-    }));
+  private definitionInsertOptions(): ReadonlyArray<EventSubeventStageInsertOption> {
+    return this.definitions.map((item, index) => {
+      const palette = this.definitionPalette(item, index);
+      const status = this.definitionStatus(item);
+      return {
+        id: item.id,
+        label: this.definitionInsertOptionLabel(item, index),
+        description: this.mode === 'Tournament'
+          ? this.definitionSequenceLabel(index)
+          : `${status.label} sub event`,
+        icon: this.mode === 'Tournament' ? 'emoji_events' : status.icon,
+        palette: palette.menuPalette
+      };
+    });
   }
 
   private definitionInsertOptionLabel(item: SubEventDefinitionDTO, index: number): string {

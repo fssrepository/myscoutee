@@ -47,6 +47,42 @@
   box-shadow: 0 8px 18px hsl(var(--ui-text-card-accent-hue) 42% 36% / 0.12);
 }
 
+.ui-text-card--tone-subevent-light {
+  border-color: hsl(var(--ui-text-card-accent-hue) 44% 66% / 0.38);
+  background:
+    radial-gradient(circle at 10% 4%, hsl(var(--ui-text-card-accent-hue) 92% 99% / 0.9), transparent 38%),
+    linear-gradient(
+      180deg,
+      hsl(var(--ui-text-card-accent-hue) 78% 98%) 0%,
+      hsl(var(--ui-text-card-accent-hue) 54% 94%) 100%
+    );
+  box-shadow: 0 7px 16px hsl(var(--ui-text-card-accent-hue) 34% 40% / 0.08);
+}
+
+.ui-text-card--tone-subevent-strong {
+  border-color: hsl(var(--ui-text-card-accent-hue) 56% 54% / 0.52);
+  background:
+    radial-gradient(circle at 10% 4%, hsl(var(--ui-text-card-accent-hue) 88% 97% / 0.82), transparent 36%),
+    linear-gradient(
+      180deg,
+      hsl(var(--ui-text-card-accent-hue) 72% 95%) 0%,
+      hsl(var(--ui-text-card-accent-hue) 54% 87%) 100%
+    );
+  box-shadow: 0 8px 18px hsl(var(--ui-text-card-accent-hue) 42% 34% / 0.15);
+}
+
+.ui-text-card--tone-subevent-light .ui-text-card__icon,
+.ui-text-card--tone-subevent-strong .ui-text-card__icon {
+  border: 1px solid hsl(var(--ui-text-card-accent-hue) 52% 56% / 0.36);
+  background: linear-gradient(
+    180deg,
+    hsl(var(--ui-text-card-accent-hue) 88% 96%) 0%,
+    hsl(var(--ui-text-card-accent-hue) 72% 90%) 100%
+  );
+  color: hsl(var(--ui-text-card-accent-hue) 64% 40%);
+  box-shadow: 0 4px 10px hsl(var(--ui-text-card-accent-hue) 38% 34% / 0.12);
+}
+
 .ui-text-card--tone-stage .ui-text-card__icon {
   border: 1px solid hsl(var(--ui-text-card-accent-hue) 54% 58% / 0.42);
   background: linear-gradient(

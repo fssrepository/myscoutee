@@ -9,6 +9,8 @@ export type InfoCardSurfaceTone =
   | 'default'
   | 'draft'
   | 'stage'
+  | 'subevent-light'
+  | 'subevent-strong'
   | 'stage-runtime'
   | 'full'
   | 'pending'
