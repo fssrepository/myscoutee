@@ -159,17 +159,20 @@
       }
       }
     </div>
-    @if (checkoutReviewMode() && checkoutReviewFooterMenuItems().length > 0) {
+    @if (checkoutReviewMode()) {
+      @let checkoutFooterItems = checkoutReviewFooterMenuItems();
+      @if (checkoutFooterItems.length > 0) {
       <div class="event-editor-checkout-footer">
         <p class="event-editor-checkout-footer__message">{{ checkoutReviewFooterMessage() }}</p>
         <app-menu
           class="event-editor-checkout-footer__actions"
           kind="inline"
           layout="row"
-          [items]="checkoutReviewFooterMenuItems()"
+          [items]="checkoutFooterItems"
           (itemSelect)="onEventEditorMenuSelect($event)"
         ></app-menu>
       </div>
+      }
     }
     @if (slotOverrideEditor; as overrideEditor) {
     <app-popup [model]="slotOverridePopupModel()" [zIndex]="eventEditorPopupZIndex() + 100">

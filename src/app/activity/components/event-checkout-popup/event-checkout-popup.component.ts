@@ -47,6 +47,16 @@ type CancellationPreview = {
   note: string;
 };
 
+type CheckoutFooterDecisionState = {
+  dialog: EventCheckoutDialogState | null;
+  targetUnavailable: boolean;
+  updateStepActive: boolean;
+  paymentReviewStarted: boolean;
+  pendingReason: AppConstants.ActivityPendingReason;
+  selectionChanged: boolean;
+  totalAmount: number;
+};
+
 @Component({
   selector: 'app-event-checkout-popup',
   standalone: true,
@@ -532,7 +542,7 @@ export class EventCheckoutPopupComponent {
     return activeItems.map(item => ({ ...item, pricingSummaryRows: [...(item.pricingSummaryRows ?? [])] }));
   }
 
-  private checkoutSelectionSignature(): string {
+  private checkoutSelectionSignature(pendingReasonOverride?: AppConstants.ActivityPendingReason): string {
     const fallbackCurrency = this.dialog()?.record.pricing?.currency?.trim() || 'USD';
     const items = this.checkoutBasketItems();
     const itemParts = items
@@ -573,7 +583,7 @@ export class EventCheckoutPopupComponent {
     const optionalIds = [...this.selectedOptionalSubEventIds].map(item => item.trim()).filter(Boolean).sort();
     const policyIds = [...this.acceptedPolicyIds].map(item => item.trim()).filter(Boolean).sort();
     return JSON.stringify({
-      pendingReason: this.checkoutActionPendingReason(),
+      pendingReason: pendingReasonOverride === undefined ? this.checkoutActionPendingReason() : pendingReasonOverride,
       slotSourceId: this.selectedSlotSourceId?.trim() || null,
       selectedDateKey: this.selectedSlotDateValue ? this.slotDateKeyFromDate(this.selectedSlotDateValue) : null,
       optionalIds,
@@ -1481,6 +1491,8 @@ export class EventCheckoutPopupComponent {
   }
 
   protected checkoutFooterMenuItems(): readonly AppMenuItem<string>[] {
+    const footerState = this.checkoutFooterDecisionState();
+    const actionsDisabled = this.checkoutActionsDisabled();
     const items: AppMenuItem<string>[] = [];
     if (this.paymentStep) {
       items.push({
@@ -1488,34 +1500,39 @@ export class EventCheckoutPopupComponent {
         label: 'Vissza',
         layout: 'action',
         palette: 'neutral',
-        disabled: () => this.checkoutActionsDisabled(),
+        disabled: actionsDisabled,
         ariaLabel: 'Vissza'
       });
     }
     if (this.showCheckoutLifecycleCancel()) {
+      const cancelLabel = this.checkoutLifecycleCancelLabel();
       items.push({
         id: 'checkout-cancel-lifecycle',
-        label: () => this.checkoutLifecycleCancelLabel(),
+        label: cancelLabel,
         layout: 'action',
         palette: 'danger',
-        disabled: () => this.checkoutActionsDisabled(),
-        ariaLabel: () => this.checkoutLifecycleCancelLabel(),
+        disabled: actionsDisabled,
+        ariaLabel: cancelLabel,
         progress: {
-          state: () => this.checkoutActionProgressState('checkout-cancel-lifecycle'),
+          state: this.checkoutActionProgressState('checkout-cancel-lifecycle'),
           shape: 'button'
         }
       });
     }
+    const confirmBusy = this.checkoutBusyActionId === 'checkout-confirm';
+    const confirmLabel = confirmBusy
+      ? this.checkoutBusyLabel(footerState)
+      : this.checkoutContinueLabel(footerState);
     items.push(
       {
         id: 'checkout-confirm',
-        label: () => this.checkoutBusyActionId === 'checkout-confirm' ? this.busyLabel() : this.continueLabel(),
+        label: confirmLabel,
         layout: 'action',
-        palette: this.checkoutConfirmPalette(),
-        disabled: () => !this.canContinue() || this.checkoutActionsDisabled(),
-        ariaLabel: () => this.checkoutBusyActionId === 'checkout-confirm' ? this.busyLabel() : this.continueLabel(),
+        palette: this.checkoutConfirmPalette(footerState),
+        disabled: !this.canContinue(footerState) || actionsDisabled,
+        ariaLabel: confirmLabel,
         progress: {
-          state: () => this.checkoutBusyActionId === 'checkout-confirm' ? 'loading' : (!this.busy && this.errorMessage ? 'error' : null),
+          state: confirmBusy ? 'loading' : (!this.busy && this.errorMessage ? 'error' : null),
           shape: 'button'
         }
       }
@@ -1523,22 +1540,100 @@ export class EventCheckoutPopupComponent {
     return items;
   }
 
-  private checkoutConfirmPalette(): AppMenuPalette {
-    if (this.checkoutTargetUnavailable()) {
+  private checkoutFooterDecisionState(): CheckoutFooterDecisionState {
+    const dialog = this.dialog();
+    const targetUnavailable = this.checkoutTargetUnavailable();
+    const updateStepActive = this.checkoutUpdateStepActive();
+    const totalAmount = dialog ? this.totalAmount() : 0;
+    const paymentReviewStateActive = dialog ? this.checkoutPaymentReviewStateActive() : false;
+    const pendingReason = !dialog || dialog.approvalGranted || this.paymentStep || paymentReviewStateActive
+      ? null
+      : this.checkoutDecisionPendingReason() ?? this.checkoutBaselinePendingReason;
+    const paymentReviewStarted = !updateStepActive
+      && !this.paymentStep
+      && totalAmount > 0
+      && paymentReviewStateActive;
+    const selectionChanged = Boolean(dialog) && (
+      updateStepActive
+      || this.checkoutSelectionSignature(pendingReason) !== this.checkoutBaselineSignature
+    );
+    return {
+      dialog,
+      targetUnavailable,
+      updateStepActive,
+      paymentReviewStarted,
+      pendingReason,
+      selectionChanged,
+      totalAmount
+    };
+  }
+
+  private checkoutContinueLabel(state: CheckoutFooterDecisionState): string {
+    if (!state.dialog) {
+      return 'Continue';
+    }
+    if (state.targetUnavailable) {
+      return 'Unavailable';
+    }
+    if (state.updateStepActive) {
+      return 'Update';
+    }
+    if (this.paymentStep) {
+      return 'Fizetés';
+    }
+    if (state.paymentReviewStarted) {
+      return state.selectionChanged ? 'Frissítés' : 'Tovább';
+    }
+    if (state.pendingReason) {
+      if (state.selectionChanged) {
+        return 'Update';
+      }
+      return state.pendingReason === 'waitlist' ? 'Várólistán' : 'Jóváhagyásra vár';
+    }
+    return 'Join';
+  }
+
+  private checkoutBusyLabel(state: CheckoutFooterDecisionState): string {
+    if (!state.dialog) {
+      return 'Working...';
+    }
+    if (state.updateStepActive) {
+      return 'Updating...';
+    }
+    if (this.paymentStep) {
+      return 'Fizetés...';
+    }
+    if (state.paymentReviewStarted) {
+      return state.selectionChanged ? 'Frissítés...' : 'Tovább...';
+    }
+    if (state.pendingReason) {
+      return state.selectionChanged ? 'Updating...' : 'Continuing...';
+    }
+    if (this.shouldAwaitApprovalBeforePaymentForAmount(state.totalAmount) || this.isWaitingListSelection()) {
+      return state.dialog.busyConfirmLabel;
+    }
+    if (state.totalAmount > 0) {
+      return 'Join...';
+    }
+    return state.dialog.busyConfirmLabel;
+  }
+
+  private checkoutConfirmPalette(state?: CheckoutFooterDecisionState): AppMenuPalette {
+    const footerState = state ?? this.checkoutFooterDecisionState();
+    if (footerState.targetUnavailable) {
       return 'neutral';
     }
-    if (this.checkoutUpdateStepActive()) {
+    if (footerState.updateStepActive) {
       return 'orange';
     }
-    if (this.checkoutPaymentReviewStarted()) {
-      return this.hasCheckoutSelectionChanges() ? 'orange' : 'success';
+    if (footerState.paymentReviewStarted) {
+      return footerState.selectionChanged ? 'orange' : 'success';
     }
-    const pendingReason = this.checkoutActionPendingReason();
-    if (pendingReason) {
-      if (this.hasCheckoutSelectionChanges()) {
+    if (footerState.pendingReason) {
+      if (footerState.selectionChanged) {
         return 'orange';
       }
-      return pendingReason === 'waitlist' ? 'amber' : 'orange';
+      return footerState.pendingReason === 'waitlist' ? 'amber' : 'orange';
     }
     return 'blue';
   }
@@ -1885,17 +1980,18 @@ export class EventCheckoutPopupComponent {
     return !environment.paymentIntegrationEnabled;
   }
 
-  protected canContinue(): boolean {
+  protected canContinue(state?: CheckoutFooterDecisionState): boolean {
     if (this.isReadOnlyCheckoutSummary()) {
       return false;
     }
     if (this.busy || this.dialog()?.loading || this.checkoutReviewBodyLoading()) {
       return false;
     }
-    if (this.isUnchangedPendingCheckout()) {
+    const footerState = state ?? this.checkoutFooterDecisionState();
+    if (footerState.pendingReason && !footerState.selectionChanged) {
       return false;
     }
-    if (this.checkoutTargetUnavailable()) {
+    if (footerState.targetUnavailable) {
       return false;
     }
     if (this.requiresSlotSelection() && this.checkoutBasketItems().length === 0) {

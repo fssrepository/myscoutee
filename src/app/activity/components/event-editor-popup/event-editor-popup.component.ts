@@ -175,6 +175,8 @@ export class EventEditorPopupComponent implements OnInit, OnDestroy {
   private lastHandledActivityMembersSyncMs = 0;
   private pricingSlotCatalogCacheKey = '';
   private pricingSlotCatalogCache: ContractTypes.PricingSlotReference[] = [];
+  private checkoutReviewFooterSourceItems: readonly AppMenuItem<string>[] | null = null;
+  private checkoutReviewFooterMappedItems: readonly AppMenuItem<string, EventEditorMenuContext>[] = [];
   private stopDraftAutosave: (() => void) | null = null;
   private lastDraftAutosaveSignature = '';
   private isDraftAutosavePending = false;
@@ -456,7 +458,7 @@ export class EventEditorPopupComponent implements OnInit, OnDestroy {
   }
 
   protected showSubEventDefinitionsPanel(): boolean {
-    return this.eventEditorStore.presentation().hideSubEventsPanel !== true;
+    return false;
   }
 
   protected showSlotsInput(): boolean {
@@ -606,10 +608,16 @@ export class EventEditorPopupComponent implements OnInit, OnDestroy {
   }
 
   protected checkoutReviewFooterMenuItems(): readonly AppMenuItem<string, EventEditorMenuContext>[] {
-    return (this.eventEditorStore.presentation().footerItems ?? []).map(item => ({
+    const footerItems = this.eventEditorStore.presentation().footerItems ?? [];
+    if (footerItems === this.checkoutReviewFooterSourceItems) {
+      return this.checkoutReviewFooterMappedItems;
+    }
+    this.checkoutReviewFooterSourceItems = footerItems;
+    this.checkoutReviewFooterMappedItems = footerItems.map(item => ({
       ...item,
       context: { menu: 'checkout-review-action', actionId: item.id }
     })) as readonly AppMenuItem<string, EventEditorMenuContext>[];
+    return this.checkoutReviewFooterMappedItems;
   }
 
   protected checkoutReviewFooterMessage(): string {
