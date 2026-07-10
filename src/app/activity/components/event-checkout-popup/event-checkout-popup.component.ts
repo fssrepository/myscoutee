@@ -181,6 +181,7 @@ export class EventCheckoutPopupComponent {
   }
 
   private openCheckoutReviewEditorShell(dialog: EventCheckoutDialogState): void {
+    const checkoutLoading = this.checkoutReviewBodyLoading();
     const presentation: EventEditorPresentationOptions = {
       title: this.sectionTitle(),
       subtitle: dialog.record.title,
@@ -188,7 +189,7 @@ export class EventCheckoutPopupComponent {
       hideSubEventsPanel: !this.showCheckoutSubEventDefinitionsPanel(dialog),
       hideSlotsPanel: true,
       hidePaymentPanel: this.isReadOnlyCheckoutSummary(),
-      loading: this.checkoutReviewBodyLoading(),
+      loading: checkoutLoading,
       showBasketPanel: true,
       showPricingPanel: this.showCheckoutPricingPanel(),
       basketTone: this.checkoutBasketSurfaceTone(),
@@ -200,7 +201,7 @@ export class EventCheckoutPopupComponent {
       basketAddDisabled: this.checkoutBasketAddDisabled(),
       onBasketAdd: event => this.addCheckoutBasketSlot(event),
       onBasketItemMenuSelect: (item, event) => this.onCheckoutBasketItemMenuSelect(item, event),
-      footerItems: this.isReadOnlyCheckoutSummary() ? [] : this.checkoutFooterMenuItems(),
+      footerItems: this.isReadOnlyCheckoutSummary() || checkoutLoading ? [] : this.checkoutFooterMenuItems(),
       onFooterItemSelect: event => this.onCheckoutActionMenuSelect(event),
       onClose: () => this.onCheckoutReviewEditorClose()
     };
