@@ -1,49 +1,5 @@
 @if (view.open) {
-  <section class="experience-form-overlay subevent-form-overlay" (click)="cancel.emit($event)">
-    <div class="experience-form-overlay-backdrop"></div>
-    <article class="experience-form-popup subevent-form-popup" (click)="$event.stopPropagation()">
-      <div class="experience-form-header">
-        <div class="subevent-form-header-title">
-          <h3 [attr.title]="view.title">{{ view.title }}</h3>
-          @if (view.parentTitle) {
-            <p [attr.title]="view.parentTitle">{{ view.parentTitle }}</p>
-          }
-        </div>
-        <div class="experience-form-header-controls">
-          @if (view.showOptionalToggle) {
-            <label class="subevent-optional-field subevent-optional-field-header">
-              <app-menu
-                class="subevent-optional-menu"
-                kind="select"
-                [trigger]="optionalMenuTrigger()"
-                [items]="optionalMenuItems()"
-                panelAlign="end"
-                (itemSelect)="onStageFormMenuSelect($event)"
-              ></app-menu>
-            </label>
-          } @else {
-            <span class="subevent-optional-toggle subevent-mode-mandatory subevent-optional-toggle-static">
-              <mat-icon>block</mat-icon>
-              <span>Mandatory</span>
-            </span>
-          }
-          @if (!view.readOnly) {
-            <button
-              type="button"
-              class="popup-header-add-btn subevent-leaderboard-save-btn"
-              [class.form-save-invalid]="!canSaveCurrentModel()"
-              [disabled]="!canSaveCurrentModel()"
-              (click)="save.emit($event)"
-              aria-label="Save sub event"
-              >
-              <mat-icon>done</mat-icon>
-            </button>
-          }
-          <button type="button" class="experience-form-close-btn" (click)="cancel.emit($event)" aria-label="Close sub event form">
-            <mat-icon>close</mat-icon>
-          </button>
-        </div>
-      </div>
+  <app-popup [model]="stagePopupModel()" [zIndex]="4600">
       <section class="experience-form-panel subevent-form-panel" [ngClass]="view.modeClass">
         <div class="experience-form-grid subevent-form-grid" [class.subevent-form-grid-with-insert]="view.showInsertControls">
           <label class="experience-title-field subevent-name-field">
@@ -243,6 +199,5 @@
           }
         </div>
       </section>
-    </article>
-  </section>
+  </app-popup>
 }

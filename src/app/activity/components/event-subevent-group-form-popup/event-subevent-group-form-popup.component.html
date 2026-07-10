@@ -1,32 +1,10 @@
 @if (open) {
-  <section class="subevent-group-form-overlay" (click)="cancel.emit($event)">
-    <div class="subevent-group-form-overlay__backdrop"></div>
-    <article class="subevent-group-popup" (click)="$event.stopPropagation()">
-      <header class="subevent-group-popup__header">
-        <div class="subevent-group-popup__title">
-          <h3>{{ title }}</h3>
-          @if (stageTitle) {
-            <p>{{ stageTitle }}</p>
-          }
-        </div>
-        <div class="subevent-group-popup__actions">
-          <app-menu
-            class="subevent-group-popup__save-menu"
-            kind="inline"
-            [items]="saveMenuItems()"
-            (itemSelect)="onSaveMenuSelect($event)"
-          ></app-menu>
-          <button type="button" class="subevent-group-popup__close" (click)="cancel.emit($event)" aria-label="Close group form">
-            <mat-icon>close</mat-icon>
-          </button>
-        </div>
-      </header>
+  <app-popup [model]="groupPopupModel()" [zIndex]="3910">
       <app-form-flow
         class="subevent-group-flow"
         [model]="flowModel()"
         [ngModel]="model"
         (ngModelChange)="onFlowValueChange($event)"
       ></app-form-flow>
-    </article>
-  </section>
+  </app-popup>
 }

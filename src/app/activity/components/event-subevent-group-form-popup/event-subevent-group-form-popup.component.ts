@@ -1,8 +1,12 @@
 import { Component, EventEmitter, Input, Output } from '@angular/core';
 import { FormsModule } from '@angular/forms';
-import { MatIconModule } from '@angular/material/icon';
 
-import { AppMenuComponent, type AppMenuItem, type AppMenuItemSelectEvent } from '../../../shared/ui';
+import {
+  type AppMenuItem,
+  PopupComponent,
+  type PopupMenuSelectEvent,
+  type PopupModel
+} from '../../../shared/ui';
 import { FormFlowComponent, type FormFlowModel } from '../../../shared/ui/components/core/form/flow';
 
 export interface GroupFormModel {
@@ -14,7 +18,7 @@ export interface GroupFormModel {
 @Component({
   selector: 'app-event-subevent-group-form-popup',
   standalone: true,
-  imports: [FormsModule, MatIconModule, AppMenuComponent, FormFlowComponent],
+  imports: [FormsModule, PopupComponent, FormFlowComponent],
   templateUrl: './event-subevent-group-form-popup.component.html',
   styleUrls: ['./event-subevent-group-form-popup.component.scss']
 })
@@ -35,11 +39,35 @@ export class EventSubeventGroupFormPopupComponent {
   @Output() readonly cancel = new EventEmitter<Event>();
   @Output() readonly modelChange = new EventEmitter<GroupFormModel>();
 
+  protected groupPopupModel(): PopupModel<unknown> {
+    return {
+      title: this.title,
+      subtitle: this.stageTitle || null,
+      ariaLabel: this.title,
+      closeAriaLabel: 'Close group form',
+      closeOnBackdrop: true,
+      size: 'default',
+      height: 'auto',
+      headerTone: 'accent',
+      bodyLayout: 'overflow',
+      backdropTone: 'dim',
+      headerControls: [{
+        kind: 'menu',
+        id: 'group-save',
+        menuKind: 'inline',
+        items: this.saveMenuItems(),
+        closeOnSelect: false
+      }],
+      onClose: event => this.cancel.emit(event),
+      onMenuSelect: event => this.onSaveMenuSelect(event)
+    };
+  }
+
   protected saveMenuItems(): readonly AppMenuItem<'save-group'>[] {
     return [{
       id: 'save-group',
       icon: 'done',
-      layout: 'action',
+      kind: 'action',
       palette: this.saving || this.canSave ? 'success' : 'danger',
       disabled: !this.canSave || this.saving,
       ariaLabel: 'Save group',
@@ -52,8 +80,10 @@ export class EventSubeventGroupFormPopupComponent {
     }];
   }
 
-  protected onSaveMenuSelect(event: AppMenuItemSelectEvent<'save-group'>): void {
-    this.save.emit(event.sourceEvent);
+  private onSaveMenuSelect(event: PopupMenuSelectEvent<unknown>): void {
+    if (event.itemSelect.id === 'save-group') {
+      this.save.emit(event.itemSelect.sourceEvent);
+    }
   }
 
   protected flowModel(): FormFlowModel {

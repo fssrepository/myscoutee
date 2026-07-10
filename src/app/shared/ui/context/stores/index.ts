@@ -97,7 +97,6 @@ export {
   type AssetExplorePopupState,
   type AssignedAssetJoinDialogState,
   type AssignedAssetJoinPricingPreview,
-  type CapacityEditorState,
   type PendingAssignSaveState,
   type ResourceAssetDTO,
   type ResourcePopupContext,

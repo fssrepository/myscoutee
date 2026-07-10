@@ -16,6 +16,10 @@ import {
   type AppMenuItemSelectEvent,
   type AppMenuPalette,
   type AppMenuTrigger,
+  PopupComponent,
+  type PopupControl,
+  type PopupMenuSelectEvent,
+  type PopupModel,
   PricingEditorInputComponent,
   type PricingEditorConfig
 } from '../../../shared/ui';
@@ -28,7 +32,8 @@ export type EventSubeventStageTimingInputMode = 'range' | 'duration';
 type EventSubeventStageFormMenuContext =
   | { menu: 'optional'; optional: boolean }
   | { menu: 'insert-target'; targetId: string | null }
-  | { menu: 'leaderboard-type'; leaderboardType: EventSubeventTournamentLeaderboardType };
+  | { menu: 'leaderboard-type'; leaderboardType: EventSubeventTournamentLeaderboardType }
+  | { menu: 'save' };
 
 export interface EventSubeventStageFormPopupView {
   open: boolean;
@@ -88,6 +93,7 @@ export interface EventSubeventStageFormModel {
     MatFormFieldModule,
     MatInputModule,
     AppMenuComponent,
+    PopupComponent,
     DateInputComponent,
     LocationInputComponent,
     PricingEditorInputComponent
@@ -140,6 +146,81 @@ export class EventSubeventStageFormPopupComponent implements OnChanges {
       return;
     }
     this.normalizeDateRange();
+  }
+
+  protected stagePopupModel(): PopupModel<EventSubeventStageFormMenuContext> {
+    return {
+      title: this.view.title,
+      subtitle: this.view.parentTitle || null,
+      ariaLabel: this.view.title,
+      closeAriaLabel: 'Close sub event form',
+      closeOnBackdrop: true,
+      size: 'wide',
+      height: 'full',
+      headerTone: 'accent',
+      bodyLayout: 'fill',
+      backdropTone: 'dim',
+      headerControls: this.stagePopupHeaderControls(),
+      onClose: event => this.cancel.emit(event),
+      onMenuSelect: event => this.onStagePopupMenuSelect(event)
+    };
+  }
+
+  private stagePopupHeaderControls(): readonly PopupControl<EventSubeventStageFormMenuContext>[] {
+    const controls: PopupControl<EventSubeventStageFormMenuContext>[] = [{
+      kind: 'menu',
+      id: 'subevent-mode',
+      menuKind: 'select',
+      trigger: this.stageModeTrigger(),
+      items: this.view.showOptionalToggle ? this.optionalMenuItems() : [],
+      panelAlign: 'end'
+    }];
+    if (!this.view.readOnly) {
+      controls.push({
+        kind: 'menu',
+        id: 'subevent-save',
+        menuKind: 'inline',
+        items: this.stageSaveMenuItems(),
+        closeOnSelect: false
+      });
+    }
+    return controls;
+  }
+
+  private stageModeTrigger(): AppMenuTrigger {
+    if (this.view.showOptionalToggle) {
+      return this.optionalMenuTrigger();
+    }
+    return {
+      label: 'Mandatory',
+      icon: 'block',
+      palette: 'red',
+      ariaLabel: 'Mandatory sub event',
+      layout: 'pill',
+      trailingIcon: '',
+      disabled: true
+    };
+  }
+
+  private stageSaveMenuItems(): readonly AppMenuItem<string, EventSubeventStageFormMenuContext>[] {
+    const canSave = this.canSaveCurrentModel();
+    return [{
+      id: 'subevent-save',
+      icon: 'done',
+      kind: 'action',
+      palette: canSave ? 'green' : 'danger',
+      disabled: !canSave,
+      ariaLabel: 'Save sub event',
+      context: { menu: 'save' }
+    }];
+  }
+
+  private onStagePopupMenuSelect(event: PopupMenuSelectEvent<EventSubeventStageFormMenuContext>): void {
+    if (event.itemSelect.context?.menu === 'save') {
+      this.save.emit(event.itemSelect.sourceEvent);
+      return;
+    }
+    this.onStageFormMenuSelect(event.itemSelect);
   }
 
   protected trackByInsertOption(_: number, option: { id: string }): string {

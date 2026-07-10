@@ -172,50 +172,7 @@
       </div>
     }
     @if (slotOverrideEditor; as overrideEditor) {
-    <div class="slot-override-popup-backdrop" (click)="closeSlotOverrideEditor($event)"></div>
-    <section class="slot-override-popup" role="dialog" aria-modal="true" aria-label="Override slot">
-      <header class="slot-override-popup__head">
-        <div class="slot-override-popup__copy">
-          <span class="slot-override-popup__title">{{ slotOverridePopupTitle() }}</span>
-          <app-menu
-            class="slot-override-popup__rule-badge"
-            kind="select"
-            [trigger]="slotOverrideRuleBadgeTrigger()"
-            [items]="[]"
-          ></app-menu>
-        </div>
-        <div class="slot-override-popup__head-actions">
-          <div class="slot-override-popup__picker-actions">
-            <app-menu
-              class="slot-override-popup__pager"
-              kind="inline"
-              [items]="slotOverridePrevPagerItems()"
-              (pointerdown)="$event.stopPropagation()"
-              (itemSelect)="onSlotOverridePagerSelect($event)"
-            ></app-menu>
-            <app-menu
-              class="slot-override-popup__date-menu"
-              kind="select"
-              [open]="slotOverrideOccurrenceMenuOpen"
-              (openChange)="slotOverrideOccurrenceMenuOpen = $event"
-              [trigger]="slotOverrideOccurrenceMenuTrigger()"
-              [items]="slotOverrideOccurrenceMenuItems()"
-              (itemSelect)="onSlotOverrideOccurrenceSelect($event)"
-            ></app-menu>
-            <app-menu
-              class="slot-override-popup__pager"
-              kind="inline"
-              [items]="slotOverrideNextPagerItems()"
-              (pointerdown)="$event.stopPropagation()"
-              (itemSelect)="onSlotOverridePagerSelect($event)"
-            ></app-menu>
-          </div>
-          <button type="button" class="popup-close slot-override-popup__close"
-            (click)="closeSlotOverrideEditor($event)" aria-label="Close override editor">
-            <mat-icon>close</mat-icon>
-          </button>
-        </div>
-      </header>
+    <app-popup [model]="slotOverridePopupModel()" [zIndex]="eventEditorPopupZIndex() + 100">
       <div class="slot-override-popup__body">
         <app-event-subevent-definitions-panel
           class="slot-override-popup__definitions"
@@ -230,7 +187,7 @@
           [disabled]="eventStructureReadOnly()"
         ></app-event-subevent-definitions-panel>
       </div>
-    </section>
+    </app-popup>
     }
 </app-popup>
 }

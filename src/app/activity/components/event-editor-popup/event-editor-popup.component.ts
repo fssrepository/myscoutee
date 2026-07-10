@@ -83,6 +83,7 @@ import {
   IndicatorComponent,
   PopupComponent,
   type PopupControl,
+  type PopupMenuSelectEvent,
   type PopupModel
 } from '../../../shared/ui';
 import {
@@ -279,7 +280,6 @@ export class EventEditorPopupComponent implements OnInit, OnDestroy {
   eventDetailDTO: ActivityEventDetailDTO = this.createEmptyEventDetailDTO();
 
   protected slotOverrideEditor: SlotOverrideEditorState | null = null;
-  protected slotOverrideOccurrenceMenuOpen = false;
   isSavePending = false;
 
   readonly visibilityOptions: AppConstants.EventVisibility[] = ['Public', 'Friends only', 'Invitation only'];
@@ -1244,14 +1244,79 @@ export class EventEditorPopupComponent implements OnInit, OnDestroy {
       definitions: this.slotOverrideDefinitionsForStart(request.slot, selectedStartAt),
       page: 0
     };
-    this.slotOverrideOccurrenceMenuOpen = false;
   }
 
   protected closeSlotOverrideEditor(event?: Event): void {
     event?.preventDefault();
     event?.stopPropagation();
     this.slotOverrideEditor = null;
-    this.slotOverrideOccurrenceMenuOpen = false;
+  }
+
+  protected slotOverridePopupModel(): PopupModel<unknown> {
+    const title = this.slotOverridePopupTitle();
+    return {
+      title,
+      subtitle: this.slotOverridePopupSubtitle(),
+      ariaLabel: title,
+      closeAriaLabel: 'Close override editor',
+      closeOnBackdrop: true,
+      size: 'wide',
+      height: 'full',
+      headerTone: 'accent',
+      bodyLayout: 'fill',
+      backdropTone: 'dim',
+      toolbarControls: this.slotOverrideToolbarControls(),
+      onClose: event => this.closeSlotOverrideEditor(event),
+      onMenuSelect: event => this.onSlotOverridePopupMenuSelect(event)
+    };
+  }
+
+  private slotOverrideToolbarControls(): readonly PopupControl<unknown>[] {
+    return [
+      {
+        kind: 'menu',
+        id: 'slot-override-rule',
+        align: 'start',
+        menuKind: 'select',
+        trigger: this.slotOverrideRuleBadgeTrigger(),
+        items: []
+      },
+      {
+        kind: 'menu',
+        id: 'slot-override-prev',
+        align: 'end',
+        menuKind: 'inline',
+        items: this.slotOverridePrevPagerItems(),
+        closeOnSelect: false
+      },
+      {
+        kind: 'menu',
+        id: 'slot-override-occurrence',
+        align: 'end',
+        menuKind: 'select',
+        trigger: this.slotOverrideOccurrenceMenuTrigger(),
+        items: this.slotOverrideOccurrenceMenuItems(),
+        panelAlign: 'end'
+      },
+      {
+        kind: 'menu',
+        id: 'slot-override-next',
+        align: 'end',
+        menuKind: 'inline',
+        items: this.slotOverrideNextPagerItems(),
+        closeOnSelect: false
+      }
+    ];
+  }
+
+  private onSlotOverridePopupMenuSelect(event: PopupMenuSelectEvent<unknown>): void {
+    if (event.control.id === 'slot-override-occurrence') {
+      this.onSlotOverrideOccurrenceSelect(event.itemSelect);
+      return;
+    }
+    if (event.control.id === 'slot-override-prev' || event.control.id === 'slot-override-next') {
+      this.onSlotOverridePagerSelect(event.itemSelect);
+    }
   }
 
   protected slotOverridePopupTitle(): string {
@@ -1325,7 +1390,6 @@ export class EventEditorPopupComponent implements OnInit, OnDestroy {
       selectedStartAt,
       definitions: this.slotOverrideDefinitionsForStart(this.slotOverrideEditor.slot, selectedStartAt)
     };
-    this.slotOverrideOccurrenceMenuOpen = false;
   }
 
   protected slotOverridePrevPagerItems(): readonly AppMenuItem<string, unknown>[] {
@@ -1367,7 +1431,6 @@ export class EventEditorPopupComponent implements OnInit, OnDestroy {
     }
     event.sourceEvent.preventDefault();
     event.sourceEvent.stopPropagation();
-    const keepMenuOpen = this.slotOverrideOccurrenceMenuOpen;
     const pageCount = this.slotOverridePageCount(this.slotOverrideEditor);
     const delta = event.id === 'prev' ? -1 : event.id === 'next' ? 1 : 0;
     if (delta === 0) {
@@ -1385,7 +1448,6 @@ export class EventEditorPopupComponent implements OnInit, OnDestroy {
       selectedStartAt,
       definitions: this.slotOverrideDefinitionsForStart(this.slotOverrideEditor.slot, selectedStartAt)
     };
-    this.slotOverrideOccurrenceMenuOpen = keepMenuOpen;
   }
 
   protected onSlotOverrideDefinitionsChange(value: readonly ActivityContracts.SubEventDefinitionDTO[]): void {

@@ -1,35 +1,6 @@
 @if (isOpen()) {
   @let vm = viewModel();
-  <section class="app-popup event-tournament-groups-popup-shell">
-    <div class="app-popup-backdrop" (click)="close()"></div>
-    <article class="app-popup-panel event-tournament-groups-panel" (click)="$event.stopPropagation()">
-      <header class="popup-header event-tournament-groups-header">
-        <div class="popup-title event-tournament-groups-title">
-          <h2>{{ vm.title }}</h2>
-          <p class="popup-subtitle-activities">{{ vm.subtitle }}</p>
-        </div>
-        <div class="event-tournament-groups-header-actions">
-          <app-menu
-            class="event-tournament-groups-stage-menu"
-            kind="select"
-            [trigger]="vm.stageTrigger"
-            [items]="vm.stageItems"
-            (itemSelect)="onStageSelect($event)"
-          ></app-menu>
-        </div>
-        <button type="button" class="popup-close event-tournament-groups-close" (click)="close()" aria-label="Close">
-          <mat-icon>close</mat-icon>
-        </button>
-        <div class="event-tournament-groups-context-row">
-          <app-menu
-            class="event-tournament-groups-add-menu"
-            kind="inline"
-            [items]="headerActionItems()"
-            (itemSelect)="onHeaderActionSelect($event)"
-          ></app-menu>
-        </div>
-      </header>
-
+  <app-popup [model]="tournamentGroupsPopupModel(vm)" [zIndex]="2440">
       <div class="popup-body event-tournament-groups-body">
         @if (isLoading) {
           <div class="event-tournament-groups-loading">
@@ -183,7 +154,7 @@
           }
         </ng-template>
       </div>
-    </article>
+  </app-popup>
 
     <app-event-subevent-group-form-popup
       [open]="showGroupForm"
@@ -199,26 +170,7 @@
     ></app-event-subevent-group-form-popup>
 
     @if (showEntryForm) {
-      <section class="experience-form-overlay event-tournament-entry-overlay" (click)="closeEntryForm($event)">
-        <div class="experience-form-overlay-backdrop"></div>
-        <article class="experience-form-popup event-tournament-entry-popup event-tournament-flow-popup" (click)="$event.stopPropagation()">
-          <header class="event-tournament-flow-header">
-            <div class="event-tournament-flow-title">
-              <h3>{{ entryGroupLabel() }}</h3>
-              <p>{{ entryFormSubtitle() }}</p>
-            </div>
-            <div class="event-tournament-flow-actions">
-              <app-menu
-                class="event-tournament-flow-save-menu"
-                kind="inline"
-                [items]="entrySaveMenuItems()"
-                (itemSelect)="onEntrySaveMenuSelect($event)"
-              ></app-menu>
-              <button type="button" class="popup-close event-tournament-flow-close" (click)="closeEntryForm($event)" aria-label="Close leaderboard editor">
-                <mat-icon>close</mat-icon>
-              </button>
-            </div>
-          </header>
+      <app-popup [model]="tournamentEntryPopupModel()" [zIndex]="3920">
           <app-form-flow
             class="event-tournament-entry-flow"
             [model]="entryFormFlowModel()"
@@ -226,8 +178,6 @@
             (ngModelChange)="onEntryFormFlowChange($event)"
             [disabled]="!canManageGroups()"
           ></app-form-flow>
-        </article>
-      </section>
+      </app-popup>
     }
-  </section>
 }

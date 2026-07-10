@@ -156,8 +156,6 @@ export class EventResourcePopupComponent {
     return new Map(this.users.map(user => [user.id, user]));
   }
 
-  private pendingCapacitySaveAbortController: AbortController | null = null;
-  private pendingCapacitySaveRequestVersion = 0;
   private pendingAssignSaveAbortController: AbortController | null = null;
   private pendingAssignSaveRequestVersion = 0;
   private lastResourcePopupOutletActionRequestId = 0;
@@ -167,9 +165,6 @@ export class EventResourcePopupComponent {
   protected readonly resourceAssetViewOutletInputs = computed(() => ({
     view: this.resourceAssetView(),
     parentZIndex: this.resourcePopupZIndex()
-  }));
-  protected readonly capacityEditorOutletInputs = computed(() => ({
-    editor: this.resourcePopupStore.capacityEditorRef()
   }));
   protected readonly assignedAssetJoinDialogOutletInputs = computed(() => ({
     dialog: this.assignedAssetJoinDialogViewState()
@@ -228,12 +223,6 @@ export class EventResourcePopupComponent {
     });
 
     effect(() => {
-      if (this.resourcePopupStore.capacityEditorRef()) {
-        void this.resourcePopupStore.ensureEventResourceCapacityEditorLoaded();
-      }
-    });
-
-    effect(() => {
       if (this.assignedAssetJoinDialogViewState()) {
         void this.resourcePopupStore.ensureEventResourceAssignedAssetJoinDialogLoaded();
       }
@@ -256,12 +245,6 @@ export class EventResourcePopupComponent {
         return;
       case 'assetViewMembers':
         this.openAssetViewMembers(request.view, request.event);
-        return;
-      case 'capacityEditorClose':
-        this.closeCapacityEditor(request.event);
-        return;
-      case 'capacityEditorSave':
-        this.saveCapacityEditor(request.event);
         return;
       case 'assignedAssetJoinClose':
         this.closeAssignedAssetJoinDialog(request.event);
@@ -383,10 +366,6 @@ export class EventResourcePopupComponent {
     }
     if (event.actionId === 'leaveResource') {
       this.leave(card, new Event('click'));
-      return;
-    }
-    if (event.actionId === 'capacity') {
-      this.openCapacityEditor(card, new Event('click'));
       return;
     }
     if (event.actionId === 'route') {
@@ -1013,7 +992,6 @@ export class EventResourcePopupComponent {
   }
 
   closeResourcePopup(): void {
-    this.abortPendingCapacitySaveRequest();
     this.resourcePopupStore.closeResourcePopup();
     this.abortPendingAssignSaveRequest();
     this.resourcePopupStore.pendingAssignSaveRef.set(null);
@@ -1287,7 +1265,6 @@ export class EventResourcePopupComponent {
     this.resourcePopupStore.resourceFilterRef.set(filter);
     this.resourcePopupStore.resourceAssetViewIdRef.set(null);
     this.resourcePopupStore.resourceAssetViewModeRef.set('view');
-    this.resourcePopupStore.capacityEditorRef.set(null);
     this.resourcePopupStore.assignedAssetJoinDialogRef.set(null);
     this.resourcePopupStore.assetExploreBorrowDialogRef.set(null);
     this.resourcePopupStore.assetExplorePopupRef.set(null);
@@ -1806,133 +1783,6 @@ export class EventResourcePopupComponent {
     this.syncPopupSubEventMetrics(false);
     this.persistPopupResourceState(nextContext);
     this.resourcePopupStore.assignedAssetJoinDialogRef.set(null);
-  }
-
-  openCapacityEditor(card: AppDTOs.SubEventResourceCardDTO, event: Event): void {
-    event.stopPropagation();
-    const context = this.resourcePopupStore.popupContextRef();
-    if (
-      !context
-      || !card.sourceAssetId
-    ) {
-      return;
-    }
-    const type = card.type as AppConstants.AssetType;
-    const source = this.ownedAssetCards().find(item => item.id === card.sourceAssetId && item.type === type);
-    if (!source) {
-      return;
-    }
-    const settings = this.getSubEventAssignedAssetSettings(context.subEvent.id, type);
-    const current = settings[card.sourceAssetId];
-    const capacityLimit = Math.max(0, source.capacityTotal);
-    const capacityMax = AppUtils.clampNumber(Math.trunc(current?.capacityMax ?? capacityLimit), 0, capacityLimit);
-    const capacityMin = AppUtils.clampNumber(Math.trunc(current?.capacityMin ?? 0), 0, capacityMax);
-    this.abortPendingCapacitySaveRequest();
-    this.resourcePopupStore.capacityEditorRef.set({
-      subEventId: context.subEvent.id,
-      type,
-      assetId: card.sourceAssetId,
-      title: card.title,
-      capacityMin,
-      capacityMax,
-      capacityLimit,
-      busy: false,
-      error: null
-    });
-  }
-
-  closeCapacityEditor(event?: Event): void {
-    event?.stopPropagation();
-    this.abortPendingCapacitySaveRequest();
-    this.resourcePopupStore.capacityEditorRef.set(null);
-  }
-
-  saveCapacityEditor(event?: Event): void {
-    event?.stopPropagation();
-    const editor = this.resourcePopupStore.capacityEditorRef();
-    if (
-      !editor
-      || editor.busy
-      || editor.capacityMin < 0
-      || editor.capacityMax < editor.capacityMin
-      || editor.capacityMax > editor.capacityLimit
-    ) {
-      return;
-    }
-    const nextState = this.buildPopupResourceState();
-    if (!nextState) {
-      return;
-    }
-    const nextSettings = {
-      ...(nextState.assetSettingsByType[editor.type] ?? {})
-    };
-    const source = this.resolveSubEventAssignedAssetCard(editor.subEventId, editor.type, editor.assetId)
-      ?? this.ownedAssetCards().find(item => item.id === editor.assetId && item.type === editor.type)
-      ?? null;
-    const current = nextSettings[editor.assetId] ?? {
-      capacityMin: 0,
-      capacityMax: editor.capacityLimit,
-      quantity: this.normalizeAssignedRuntimeQuantity(undefined, source ? this.assignedRuntimeQuantityMax(source) : 1),
-      addedByUserId: this.activeUser().id,
-      routeEnabled: false,
-      routes: []
-    };
-    nextSettings[editor.assetId] = {
-      ...current,
-      capacityMin: editor.capacityMin,
-      capacityMax: editor.capacityMax
-    };
-    nextState.assetSettingsByType = {
-      ...nextState.assetSettingsByType,
-      [editor.type]: nextSettings
-    };
-
-    const requestVersion = ++this.pendingCapacitySaveRequestVersion;
-    const abortController = new AbortController();
-    this.pendingCapacitySaveAbortController = abortController;
-    this.resourcePopupStore.capacityEditorRef.set({
-      ...editor,
-      busy: true,
-      error: null
-    });
-
-    void this.activityResourcesService.replaceSubEventResourceState(nextState, abortController.signal)
-      .then(savedState => {
-        if (this.pendingCapacitySaveAbortController === abortController) {
-          this.pendingCapacitySaveAbortController = null;
-        }
-        if (abortController.signal.aborted || requestVersion !== this.pendingCapacitySaveRequestVersion) {
-          return;
-        }
-        const resolvedState = ActivityResourceBuilder.normalizeState(savedState, nextState) ?? nextState;
-        this.applyPersistedPopupState(resolvedState);
-        this.resourcePopupStore.capacityEditorRef.set(null);
-        this.syncPopupSubEventMetrics(false);
-      })
-      .catch(error => {
-        if (this.pendingCapacitySaveAbortController === abortController) {
-          this.pendingCapacitySaveAbortController = null;
-        }
-        if (abortController.signal.aborted || this.isAbortError(error) || requestVersion !== this.pendingCapacitySaveRequestVersion) {
-          return;
-        }
-        const currentEditor = this.resourcePopupStore.capacityEditorRef();
-        if (!currentEditor || currentEditor.assetId !== editor.assetId || currentEditor.type !== editor.type) {
-          return;
-        }
-        this.resourcePopupStore.capacityEditorRef.set({
-          ...currentEditor,
-          busy: false,
-          error: 'Unable to save capacity changes.'
-        });
-      });
-  }
-
-  private abortPendingCapacitySaveRequest(): void {
-    this.pendingCapacitySaveRequestVersion += 1;
-    const controller = this.pendingCapacitySaveAbortController;
-    this.pendingCapacitySaveAbortController = null;
-    controller?.abort();
   }
 
   private resolveViewableCarRoutes(
