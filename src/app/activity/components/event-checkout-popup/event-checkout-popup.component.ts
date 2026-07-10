@@ -24,7 +24,8 @@ import { ActivitiesPopupStore } from '../../../shared/ui/context/stores/activiti
 import { DialogStore } from '../../../shared/ui/context/stores/dialog.store';
 import {
   EventEditorPopupStore,
-  type EventEditorCheckoutSurfaceTone
+  type EventEditorCheckoutSurfaceTone,
+  type EventEditorPresentationOptions
 } from '../../../shared/ui/context/stores/event-editor-popup.store';
 import { ActivityStore } from '../../../shared/ui/context/stores/activity.store';
 import {
@@ -88,6 +89,7 @@ export class EventCheckoutPopupComponent {
   private renderedDialogLoading = false;
   private checkoutReviewDialogId = 0;
   private checkoutReviewLoadSequence = 0;
+  private checkoutReviewSourceRecord: ActivityEventRecord | null = null;
   private readonly checkoutReviewBodyLoading = signal(false);
   private checkoutBusyActionId: string | null = null;
   private checkoutSessionId: string | null = null;
@@ -169,32 +171,42 @@ export class EventCheckoutPopupComponent {
   }
 
   private openCheckoutReviewEditorShell(dialog: EventCheckoutDialogState): void {
-    this.eventEditorStore.openCheckoutReview({
-      ...dialog.record,
-      checkoutBasket: this.checkoutBasket
-    }, {
+    const presentation: EventEditorPresentationOptions = {
       title: this.sectionTitle(),
       subtitle: dialog.record.title,
       checkoutPhase: this.checkoutEditorPhase(),
       hideSubEventsPanel: !this.showCheckoutSubEventDefinitionsPanel(dialog),
       hideSlotsPanel: true,
       hidePaymentPanel: this.isReadOnlyCheckoutSummary(),
-      loading: () => this.checkoutReviewBodyLoading(),
+      loading: this.checkoutReviewBodyLoading(),
       showBasketPanel: true,
-      showPricingPanel: () => this.showCheckoutPricingPanel(),
-      basketTone: () => this.checkoutBasketSurfaceTone(),
-      paymentTone: () => this.checkoutPaymentSurfaceTone(),
-      basketItems: () => this.checkoutBasketPresentationItems(),
-      basketPricingSummaryRows: () => this.checkoutBasketPricingSummaryRows(),
-      basketTotalAmount: () => this.totalAmount(),
-      basketCurrency: () => this.currency(),
-      basketAddDisabled: () => this.checkoutBasketAddDisabled(),
+      showPricingPanel: this.showCheckoutPricingPanel(),
+      basketTone: this.checkoutBasketSurfaceTone(),
+      paymentTone: this.checkoutPaymentSurfaceTone(),
+      basketItems: this.checkoutBasketPresentationItems(),
+      basketPricingSummaryRows: this.checkoutBasketPricingSummaryRows(),
+      basketTotalAmount: this.totalAmount(),
+      basketCurrency: this.currency(),
+      basketAddDisabled: this.checkoutBasketAddDisabled(),
       onBasketAdd: event => this.addCheckoutBasketSlot(event),
       onBasketItemMenuSelect: (item, event) => this.onCheckoutBasketItemMenuSelect(item, event),
       footerItems: this.isReadOnlyCheckoutSummary() ? [] : this.checkoutFooterMenuItems(),
       onFooterItemSelect: event => this.onCheckoutActionMenuSelect(event),
       onClose: () => this.onCheckoutReviewEditorClose()
-    });
+    };
+    if (
+      this.checkoutReviewSourceRecord === dialog.record
+      && this.eventEditorStore.isOpen()
+      && this.eventEditorStore.presentation().mode === 'checkout-review'
+    ) {
+      this.eventEditorStore.updateCheckoutReviewPresentation(presentation);
+      return;
+    }
+    this.checkoutReviewSourceRecord = dialog.record;
+    this.eventEditorStore.openCheckoutReview({
+      ...dialog.record,
+      checkoutBasket: this.checkoutBasket
+    }, presentation);
   }
 
   private showCheckoutSubEventDefinitionsPanel(dialog: EventCheckoutDialogState): boolean {
@@ -223,6 +235,7 @@ export class EventCheckoutPopupComponent {
 
   private closeCheckoutReviewEditor(): void {
     this.checkoutReviewLoadSequence += 1;
+    this.checkoutReviewSourceRecord = null;
     if (!this.checkoutReviewDialogId) {
       return;
     }
@@ -2340,13 +2353,15 @@ export class EventCheckoutPopupComponent {
       this.busy = true;
       this.checkoutBusyActionId = 'checkout-confirm';
       this.errorMessage = '';
+      this.paymentStep = true;
+      this.openCheckoutReviewEditorShell(dialog);
       try {
         this.checkoutSessionId = null;
         await this.persistCheckoutDraft(true, null, 'confirmed');
         this.refreshCheckoutBaseline();
-        this.paymentStep = true;
         this.openCheckoutReviewEditorShell(dialog);
       } catch (error) {
+        this.paymentStep = false;
         this.setCheckoutErrorMessage(dialog, error, dialog.failureMessage);
       } finally {
         this.busy = false;

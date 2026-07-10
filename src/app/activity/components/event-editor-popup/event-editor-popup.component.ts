@@ -1,4 +1,5 @@
 import {
+  ChangeDetectionStrategy,
   Component,
   inject,
   OnInit,
@@ -124,6 +125,7 @@ interface SlotOverrideEditorState {
 @Component({
   selector: 'app-event-editor-popup',
   standalone: true,
+  changeDetection: ChangeDetectionStrategy.OnPush,
   imports: [
     CommonModule,
     FormsModule,

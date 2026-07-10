@@ -120,6 +120,18 @@ export class EventEditorPopupStore {
     });
   }
 
+  updateCheckoutReviewPresentation(presentation?: EventEditorPresentationOptions | null): void {
+    if (!this._isOpen() || this._presentation().mode !== 'checkout-review') {
+      return;
+    }
+    this._presentation.set(this.normalizePresentation({
+      ...presentation,
+      mode: 'checkout-review',
+      hideSubEventsPanel: presentation?.hideSubEventsPanel === true,
+      hideSlotsPanel: presentation?.hideSlotsPanel === true
+    }));
+  }
+
   openCreate(): void {
     this.open('create');
   }

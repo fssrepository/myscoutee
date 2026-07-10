@@ -217,7 +217,7 @@ export class ActivityEventInfoCardMenuConverter {
   ): boolean {
     return this.isInvited(subject, activeUserId)
       && !this.isAcceptedMember(subject, activeUserId)
-      && subject.checkoutMenuAction == null;
+      && !this.isPendingRequest(subject, activeUserId);
   }
 
   private static isPendingRequest(subject: ActivityEventInfoCardMenuSubject, activeUserId: string): boolean {
