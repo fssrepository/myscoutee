@@ -422,7 +422,7 @@ export class PoliciesInputComponent implements ControlValueAccessor, OnDestroy {
   protected popupSubtitle(): string {
     return this.resolveConfigValue(
       this.config.popupSubtitle,
-      'Keep the list compact here. Open a policy to edit the details attendees need to read and approve.'
+      'Open a policy to edit its details.'
     );
   }
 

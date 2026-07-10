@@ -1,16 +1,3 @@
-@if (dialog(); as state) {
-  @if (state.loading) {
-    <app-popup [model]="checkoutPopupModel(state)" [zIndex]="4700">
-      <div class="event-checkout-dialog__loading" aria-busy="true">
-        <app-indicator
-          kind="load-ring"
-          state="loading"
-        ></app-indicator>
-      </div>
-    </app-popup>
-  }
-}
-
 @if (eventCheckoutSlotPickerStore.slotPickerPopupComponent(); as slotPickerComponent) {
   <ng-container *ngComponentOutlet="slotPickerComponent"></ng-container>
 }

@@ -1786,7 +1786,7 @@
     "lending.policies": "Kölcsönzési feltételek",
     "asset.lending.policies.description": "Add meg a szabályokat, amelyeket a kölcsönzőknek el kell olvasniuk és jóvá kell hagyniuk a kérés előtt.",
     "asset.lending.policies.empty": "Még nincsenek kölcsönzési feltételek. Akkor adj hozzá ilyet, ha a kölcsönzőknek kérés előtt feltételeket kell átnézniük.",
-    "asset.lending.policies.popup.subtitle": "Itt maradjon tömör a lista. Nyiss meg egy feltételt a kölcsönzőknek szánt részletek szerkesztéséhez.",
+    "asset.lending.policies.popup.subtitle": "Nyiss meg egy feltételt a részletek szerkesztéséhez.",
     "asset.lending.policies.editor.subtitle": "Írd le a feltételt, és válaszd ki, kötelező-e jóváhagyni.",
     "total.capacity": "Teljes kapacitás",
     "source.link": "Forráshivatkozás",

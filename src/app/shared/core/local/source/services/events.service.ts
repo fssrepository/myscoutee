@@ -67,6 +67,7 @@ import type {
   ActivityEventExploreQuery,
   ActivityEventExploreQueryResult,
   ActivityEventRecord,
+  EventInvitationContextDTO,
   ActivityEventSubEventsQueryDTO,
   ActivityEventSubEventsResultDTO,
   ActivitySubEventStageRuntimeStateDTO,
@@ -74,6 +75,7 @@ import type {
   SubEventDefinitionDTO
 } from '../../../contracts/activity.interface';
 import type { IEventsService } from '../../../contracts/activity.interface';
+import { LocalActivityMembersService } from './activity-members.service';
 
 @Injectable({
   providedIn: 'root'
@@ -88,6 +90,7 @@ export class LocalEventsService extends LocalRouteDelayService implements IEvent
   private readonly eventCheckoutBasketsRepository = inject(LocalEventCheckoutBasketsRepository);
   private readonly eventFeedbackRepository = inject(LocalEventFeedbackRepository);
   private readonly usersRepository = inject(LocalUsersRepository);
+  private readonly activityMembersService = inject(LocalActivityMembersService);
   private readonly usersService = inject(LocalUsersService);
 
   async queryItemsByUser(userId: string): Promise<ActivityEventRecord[]> {
@@ -188,6 +191,25 @@ export class LocalEventsService extends LocalRouteDelayService implements IEvent
     await this.waitForRouteDelay(LocalEventsService.EVENTS_ROUTE);
     const record = this.eventsRepository.queryEventRecordById(normalizedUserId, normalizedEventId);
     return record ? LocalActivityEventDetailsMapper.toDto(record) : null;
+  }
+
+  async loadInvitationContext(userId: string, eventId: string): Promise<EventInvitationContextDTO | null> {
+    const normalizedUserId = userId.trim();
+    const normalizedEventId = eventId.trim();
+    if (!normalizedUserId || !normalizedEventId) {
+      return null;
+    }
+    await this.waitForRouteDelay(LocalEventsService.EVENTS_ROUTE);
+    const [record, members, checkoutBasketRecord] = await Promise.all([
+      Promise.resolve(this.eventsRepository.queryEventRecordById(normalizedUserId, normalizedEventId)),
+      this.activityMembersService.loadMembersByOwner({ ownerType: 'event', ownerId: normalizedEventId }),
+      this.eventCheckoutBasketsRepository.loadBasketByEvent(normalizedUserId, normalizedEventId)
+    ]);
+    return {
+      record,
+      members,
+      checkoutBasket: LocalEventCheckoutBasketsMapper.toDto(checkoutBasketRecord)
+    };
   }
 
   async loadSubEventsById(

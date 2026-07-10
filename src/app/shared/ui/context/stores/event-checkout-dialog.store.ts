@@ -1,6 +1,6 @@
 import { Injectable, signal } from '@angular/core';
 
-import type { EventCheckoutSelection } from '../../../core/contracts/activity.interface';
+import type { EventCheckoutBasket, EventCheckoutSelection } from '../../../core/contracts/activity.interface';
 import type { ActivityEventRecord } from '../../../core/contracts/activity.interface';
 import type { ActivityPendingReason } from '../../../core/common/constants';
 
@@ -19,6 +19,7 @@ export interface EventCheckoutDialogConfig {
   allowBackdropClose?: boolean;
   allowEscapeClose?: boolean;
   readOnlySummary?: boolean;
+  preloadedCheckoutBasket?: EventCheckoutBasket | null;
   failureMessage?: string | null;
   onSubmit: (selection: EventCheckoutSelection) => void | Promise<void>;
 }
@@ -39,6 +40,8 @@ export interface EventCheckoutDialogState {
   allowBackdropClose: boolean;
   allowEscapeClose: boolean;
   readOnlySummary: boolean;
+  hasPreloadedCheckoutBasket: boolean;
+  preloadedCheckoutBasket: EventCheckoutBasket | null;
   failureMessage: string;
   onSubmit: (selection: EventCheckoutSelection) => void | Promise<void>;
 }
@@ -58,8 +61,30 @@ export class EventCheckoutDialogStore {
       return null;
     }
 
-    const state: EventCheckoutDialogState = {
-      id: ++this.nextId,
+    const state = this.buildState(++this.nextId, config, trimmedUserId);
+    this.stateRef.set(state);
+    return state;
+  }
+
+  update(id: number | null | undefined, config: EventCheckoutDialogConfig): EventCheckoutDialogState | null {
+    const current = this.stateRef();
+    const trimmedUserId = config.userId.trim();
+    if (id == null || current?.id !== id || !trimmedUserId) {
+      return null;
+    }
+
+    const state = this.buildState(current.id, config, trimmedUserId);
+    this.stateRef.set(state);
+    return state;
+  }
+
+  private buildState(
+    id: number,
+    config: EventCheckoutDialogConfig,
+    trimmedUserId: string
+  ): EventCheckoutDialogState {
+    return {
+      id,
       mode: config.mode,
       userId: trimmedUserId,
       record: config.record,
@@ -78,11 +103,11 @@ export class EventCheckoutDialogStore {
       allowBackdropClose: config.allowBackdropClose !== false,
       allowEscapeClose: config.allowEscapeClose !== false,
       readOnlySummary: config.readOnlySummary === true,
+      hasPreloadedCheckoutBasket: Object.prototype.hasOwnProperty.call(config, 'preloadedCheckoutBasket'),
+      preloadedCheckoutBasket: config.preloadedCheckoutBasket ?? null,
       failureMessage: config.failureMessage?.trim() || 'Unable to complete checkout.',
       onSubmit: config.onSubmit
     };
-    this.stateRef.set(state);
-    return state;
   }
 
   isCurrent(id: number | null | undefined): boolean {

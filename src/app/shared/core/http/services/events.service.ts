@@ -58,6 +58,8 @@ import type {
   ActivityEventExploreQuery,
   ActivityEventExploreQueryResult,
   ActivityEventRecord,
+  ActivityMemberDTO,
+  EventInvitationContextDTO,
   ActivityEventSubEventsQueryDTO,
   SubEventsSlotDTO,
   ActivityEventSubEventsResultDTO,
@@ -246,6 +248,38 @@ export class HttpEventsService implements IEventsService {
         })
         .toPromise();
       return response ? new ActivityEventDetailDTO().apply(response) : null;
+    } catch {
+      return null;
+    }
+  }
+
+  async loadInvitationContext(userId: string, eventId: string): Promise<EventInvitationContextDTO | null> {
+    const normalizedUserId = userId.trim();
+    const normalizedEventId = eventId.trim();
+    if (!normalizedUserId || !normalizedEventId) {
+      return null;
+    }
+    try {
+      const response = await this.http
+        .get<{
+          record?: ActivityEventRecord | null;
+          members?: ActivityMemberDTO[] | null;
+          checkoutBasket?: EventCheckoutBasket | null;
+        } | null>(`${this.apiBaseUrl}/activities/events/invitation-context`, {
+          params: new HttpParams()
+            .set('userId', normalizedUserId)
+            .set('eventId', normalizedEventId)
+        })
+        .toPromise();
+      return response ? {
+        record: this.cloneRecords(response.record ? [response.record] : [])[0] ?? null,
+        members: (response.members ?? []).map(member => ({
+          ...member,
+          profile: member.profile ? { ...member.profile } : member.profile,
+          involvements: (member.involvements ?? []).map(item => ({ ...item }))
+        })),
+        checkoutBasket: ActivityEventDetailDTO.cloneCheckoutBasket(response.checkoutBasket)
+      } : null;
     } catch {
       return null;
     }

@@ -86,6 +86,7 @@ export interface IEventsService {
     signal?: AbortSignal
   ): Promise<ActivityEventPageResultDTO>;
   loadEventDetailById(userId: string, eventId: string): Promise<ActivityEventDetailDTO | null>;
+  loadInvitationContext(userId: string, eventId: string): Promise<EventInvitationContextDTO | null>;
   loadSubEventsById(
     userId: string,
     eventId: string,
@@ -273,6 +274,12 @@ export interface ActivityEventRecord {
   rating: number;
   boost: number;
   affinity: number;
+}
+
+export interface EventInvitationContextDTO {
+  record: ActivityEventRecord | null;
+  members: ActivityMemberDTO[];
+  checkoutBasket: EventCheckoutBasket | null;
 }
 
 export interface ActivityEventStageActionRequestDTO {

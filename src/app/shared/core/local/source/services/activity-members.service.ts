@@ -31,6 +31,13 @@ export class LocalActivityMembersService extends LocalRouteDelayService {
     options?: ActivityMembersQueryOptions
   ): Promise<ActivityMemberDTO[]> {
     await this.waitForRouteDelay(LocalActivityMembersService.MEMBERS_ROUTE);
+    return this.loadMembersByOwner(owner, options);
+  }
+
+  async loadMembersByOwner(
+    owner: ActivityMemberOwnerRef,
+    options?: ActivityMembersQueryOptions
+  ): Promise<ActivityMemberDTO[]> {
     return this.entriesFromRecords(await this.activityMembersRepository.queryRecordsByOwner(owner, options), owner);
   }
 

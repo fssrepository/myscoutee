@@ -16,7 +16,7 @@ import type * as ContractTypes from '../../../shared/core/contracts';
 import type * as ActivityContracts from '../../../shared/core/contracts/activity.interface';
 import type { UserMenuCounterDeltasDto } from '../../../shared/core/contracts/user.interface';
 import { EventsService } from '../../../shared/core/base/services/events.service';
-import type { ActivityEventRecord } from '../../../shared/core/contracts/activity.interface';
+import { ActivityEventDetailDTO, type ActivityEventRecord } from '../../../shared/core/contracts/activity.interface';
 import { EventCheckoutDraftStore, type EventCheckoutDraft } from '../../../shared/ui/context/stores/event-checkout-draft.store';
 import { EventCheckoutDialogStore, type EventCheckoutDialogState } from '../../../shared/ui/context/stores/event-checkout-dialog.store';
 import { EventCheckoutSlotPickerStore } from '../../../shared/ui/context/stores/event-checkout-slot-picker.store';
@@ -32,8 +32,6 @@ import {
   type AppMenuItemSelectEvent,
   type AppMenuPalette
 } from '../../../shared/ui/components/core/menu';
-import { PopupComponent, type PopupModel } from '../../../shared/ui/components/core/popup';
-import { IndicatorComponent } from '../../../shared/ui/components/core/indicator';
 
 import type * as AppConstants from '../../../shared/core/common/constants';
 type PricingSnapshot = {
@@ -59,9 +57,7 @@ type CancellationPreview = {
     MatFormFieldModule,
     MatIconModule,
     MatInputModule,
-    MatNativeDateModule,
-    PopupComponent,
-    IndicatorComponent
+    MatNativeDateModule
   ],
   templateUrl: './event-checkout-popup.component.html',
   styleUrl: './event-checkout-popup.component.scss'
@@ -89,7 +85,9 @@ export class EventCheckoutPopupComponent {
   protected errorMessage = '';
 
   private renderedDialogId = 0;
+  private renderedDialogLoading = false;
   private checkoutReviewDialogId = 0;
+  private checkoutReviewLoadSequence = 0;
   private readonly checkoutReviewBodyLoading = signal(false);
   private checkoutBusyActionId: string | null = null;
   private checkoutSessionId: string | null = null;
@@ -108,14 +106,15 @@ export class EventCheckoutPopupComponent {
         this.resetDialogState();
         return;
       }
-      if (dialog.id === this.renderedDialogId) {
+      const dialogChanged = dialog.id !== this.renderedDialogId;
+      const loadingResolved = !dialogChanged && this.renderedDialogLoading && !dialog.loading;
+      if (!dialogChanged && !loadingResolved) {
         return;
       }
       this.renderedDialogId = dialog.id;
+      this.renderedDialogLoading = dialog.loading;
       this.initializeDialogState(dialog);
-      if (!dialog.loading) {
-        void this.openCheckoutReviewEditor(dialog);
-      }
+      void this.openCheckoutReviewEditor(dialog);
     });
   }
 
@@ -149,16 +148,20 @@ export class EventCheckoutPopupComponent {
 
   private async openCheckoutReviewEditor(dialog: EventCheckoutDialogState): Promise<void> {
     const dialogId = dialog.id;
+    const loadSequence = ++this.checkoutReviewLoadSequence;
     this.checkoutReviewDialogId = dialogId;
     this.checkoutReviewBodyLoading.set(true);
     this.openCheckoutReviewEditorShell(dialog);
     await this.eventEditorStore.ensureEventEditorPopupLoaded();
-    if (this.dialogStore.dialog()?.id !== dialogId) {
+    if (this.dialogStore.dialog()?.id !== dialogId || loadSequence !== this.checkoutReviewLoadSequence) {
       return;
     }
     this.openCheckoutReviewEditorShell(dialog);
+    if (dialog.loading) {
+      return;
+    }
     await this.loadRuntimeCheckoutBasket(dialog);
-    if (this.dialogStore.dialog()?.id !== dialogId) {
+    if (this.dialogStore.dialog()?.id !== dialogId || loadSequence !== this.checkoutReviewLoadSequence) {
       return;
     }
     this.checkoutReviewBodyLoading.set(false);
@@ -220,6 +223,7 @@ export class EventCheckoutPopupComponent {
   }
 
   private closeCheckoutReviewEditor(): void {
+    this.checkoutReviewLoadSequence += 1;
     if (!this.checkoutReviewDialogId) {
       return;
     }
@@ -255,24 +259,6 @@ export class EventCheckoutPopupComponent {
       return 'Review Join Request';
     }
     return this.totalAmount() > 0 ? 'Review Booking & Pay' : 'Join Event';
-  }
-
-  protected checkoutPopupModel(state: EventCheckoutDialogState): PopupModel {
-    const title = this.sectionTitle();
-    return {
-      title,
-      subtitle: state.record.title,
-      ariaLabel: title,
-      closeAriaLabel: 'Close checkout',
-      closeOnBackdrop: state.allowBackdropClose && !this.busy,
-      showClose: true,
-      size: 'wide',
-      height: 'full',
-      headerTone: 'accent',
-      bodyLayout: 'fill',
-      backdropTone: 'dim',
-      onClose: event => this.requestCheckoutClose(event)
-    };
   }
 
   protected availableSlots(): readonly ContractTypes.EventSlotOccurrenceDTO[] {
@@ -2469,6 +2455,9 @@ export class EventCheckoutPopupComponent {
         expiresAtIso: draft.expiresAtIso
       }
       : null;
+    if (dialog.hasPreloadedCheckoutBasket && this.hasVisibleCheckoutItems(dialog.preloadedCheckoutBasket?.items)) {
+      this.checkoutBasket = ActivityEventDetailDTO.cloneCheckoutBasket(dialog.preloadedCheckoutBasket);
+    }
     this.refreshCheckoutBaseline();
     this.busy = false;
     this.checkoutBusyActionId = null;
@@ -2477,10 +2466,14 @@ export class EventCheckoutPopupComponent {
 
   private async loadRuntimeCheckoutBasket(dialog: EventCheckoutDialogState): Promise<void> {
     let queriedBasket: ActivityContracts.EventCheckoutBasket | null = null;
-    try {
-      queriedBasket = await this.eventsService.loadCheckoutBasketByEvent(dialog.userId, dialog.record.id);
-    } catch {
-      queriedBasket = null;
+    if (dialog.hasPreloadedCheckoutBasket) {
+      queriedBasket = ActivityEventDetailDTO.cloneCheckoutBasket(dialog.preloadedCheckoutBasket);
+    } else {
+      try {
+        queriedBasket = await this.eventsService.loadCheckoutBasketByEvent(dialog.userId, dialog.record.id);
+      } catch {
+        queriedBasket = null;
+      }
     }
     const candidateBasket = queriedBasket ?? this.checkoutBasket;
     const basket = candidateBasket && this.shouldSuppressStoredWaitlistBasket(dialog, candidateBasket.items)
@@ -2595,6 +2588,7 @@ export class EventCheckoutPopupComponent {
 
   private resetDialogState(): void {
     this.renderedDialogId = 0;
+    this.renderedDialogLoading = false;
     this.availableSlotsCache = [];
     this.availableSlotDateEntriesCache = [];
     this.availableSlotDateKeySet = new Set<string>();

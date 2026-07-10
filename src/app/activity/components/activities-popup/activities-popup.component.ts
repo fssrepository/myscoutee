@@ -311,6 +311,7 @@ export class ActivitiesPopupComponent implements OnDestroy {
   protected readonly eventVisibilityById: Record<string, AppConstants.EventVisibility> = {};
   private readonly eventCapacityById: Record<string, ContractTypes.EventCapacityRange> = {};
   protected readonly activityMembersByRowId: Record<string, ActivityContracts.ActivityMemberDTO[]> = {};
+  private activitiesEventCardRevision = 0;
   private readonly activitiesEventCardRevisionByRowId: Record<string, number> = {};
   protected activitiesRateCardRevision = 0;
   protected readonly activityRateCardRevisionByRowId: Record<string, number> = {};
@@ -863,6 +864,7 @@ export class ActivitiesPopupComponent implements OnDestroy {
 
     effect(() => {
       this.eventCheckoutDraftStore.drafts();
+      this.bumpActivitiesEventCardRevision();
       this.refreshSectionBadges();
       this.cdr.markForCheck();
     });
@@ -3426,11 +3428,13 @@ export class ActivitiesPopupComponent implements OnDestroy {
   }
 
   protected activitiesEventCardRevisionForRow(row: ActivityListItem): number {
-    return this.activitiesEventCardRevisionByRowId[this.activityRowIdentity(row)] ?? 0;
+    return this.activitiesEventCardRevision
+      + (this.activitiesEventCardRevisionByRowId[this.activityRowIdentity(row)] ?? 0);
   }
 
   private bumpActivitiesEventCardRevision(row?: ActivityListItem | string | null): void {
     if (!row) {
+      this.activitiesEventCardRevision += 1;
       return;
     }
     const rowId = typeof row === 'string' ? row : this.activityRowIdentity(row);

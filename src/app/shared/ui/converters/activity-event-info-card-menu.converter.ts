@@ -142,9 +142,9 @@ export class ActivityEventInfoCardMenuConverter {
           && !this.isDraft(subject)
           && !this.isPendingReview(subject);
       case 'viewInvitation':
-        return this.isInvited(subject, activeUserId) && !this.isPendingReview(subject);
+        return this.hasOutstandingInvitation(subject, activeUserId) && !this.isPendingReview(subject);
       case 'view':
-        return !this.isInvited(subject, activeUserId);
+        return !this.hasOutstandingInvitation(subject, activeUserId);
       case 'paymentSummary':
         return subject.checkoutMenuAction === 'paymentSummary'
           && !this.isAdmin(subject, activeUserId);
@@ -164,16 +164,16 @@ export class ActivityEventInfoCardMenuConverter {
       case 'reportOrganizer':
         return this.shouldReport(subject, activeUserId);
       case 'accept':
-        return this.isInvited(subject, activeUserId);
+        return this.hasOutstandingInvitation(subject, activeUserId);
       case 'leaveEvent':
         return !this.isAdmin(subject, activeUserId)
           && this.isAcceptedOrActiveEventMember(subject, activeUserId)
-          && !this.isInvited(subject, activeUserId);
+          && !this.hasOutstandingInvitation(subject, activeUserId);
       case 'deleteEvent':
         return this.isAdmin(subject, activeUserId)
           && !this.isPendingReview(subject);
       case 'rejectInvitation':
-        return this.isInvited(subject, activeUserId) && !this.isPendingReview(subject);
+        return this.hasOutstandingInvitation(subject, activeUserId) && !this.isPendingReview(subject);
       default:
         return false;
     }
@@ -209,6 +209,15 @@ export class ActivityEventInfoCardMenuConverter {
 
   private static isInvited(subject: ActivityEventInfoCardMenuSubject, activeUserId: string): boolean {
     return this.includesUserId(subject.invitedMemberUserIds, activeUserId);
+  }
+
+  private static hasOutstandingInvitation(
+    subject: ActivityEventInfoCardMenuSubject,
+    activeUserId: string
+  ): boolean {
+    return this.isInvited(subject, activeUserId)
+      && !this.isAcceptedMember(subject, activeUserId)
+      && subject.checkoutMenuAction == null;
   }
 
   private static isPendingRequest(subject: ActivityEventInfoCardMenuSubject, activeUserId: string): boolean {

@@ -169,7 +169,7 @@ export class EventCheckoutSlotPickerPopupComponent {
   };
 
   protected readonly slotLoadPage = (query: ListQuery<SlotPickerFilters>) =>
-    this.basketMode
+    query.filters?.view === 'basket'
       ? from(this.loadBasketSlotPage(query))
       : from(this.loadSlotPage(query));
 
@@ -314,6 +314,7 @@ export class EventCheckoutSlotPickerPopupComponent {
     if (this.basketMode) {
       this.monthOverlayOpen = false;
     }
+    this.queryRevision += 1;
     this.refreshSlotQuery();
   }
 

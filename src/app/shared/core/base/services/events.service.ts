@@ -58,6 +58,7 @@ import type {
   ActivityEventExploreQuery,
   ActivityEventExploreQueryResult,
   ActivityEventRecord,
+  EventInvitationContextDTO,
   ActivityEventSubEventsQueryDTO,
   ActivityEventSubEventsResultDTO
 } from '../../contracts/activity.interface';
@@ -219,6 +220,15 @@ export class EventsService extends BaseRouteModeService implements IEventsServic
       return null;
     }
     return this.eventsService.loadEventDetailById(normalizedUserId, normalizedEventId);
+  }
+
+  async loadInvitationContext(userId: string, eventId: string): Promise<EventInvitationContextDTO | null> {
+    const normalizedUserId = userId.trim();
+    const normalizedEventId = eventId.trim();
+    if (!normalizedUserId || !normalizedEventId) {
+      return null;
+    }
+    return this.eventsService.loadInvitationContext(normalizedUserId, normalizedEventId);
   }
 
   async loadSubEventsById(

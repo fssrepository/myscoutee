@@ -518,7 +518,7 @@ export class ActivitiesEventsController {
     const pendingReason = readOnlySummary || approvalGranted
       ? null
       : this.activityCheckoutPendingReason(currentDraft, record);
-    this.eventCheckoutDialogStore.open({
+    this.eventCheckoutDialogStore.update(loadingDialogId, {
       mode: 'join',
       userId: activeUserId,
       record,
@@ -918,10 +918,9 @@ export class ActivitiesEventsController {
       onSubmit: (selection: ActivityContracts.EventCheckoutSelection) => this.confirmActivityInvitationApproval(row, selection)
     });
     const loadingDialogId = loadingDialog?.id ?? null;
-    const [record, currentMembers] = await Promise.all([
-      this.eventsService.queryKnownRecordById(activeUserId, row.id),
-      this.activityMembersService.queryMembersByOwnerId(row.id)
-    ]);
+    const invitationContext = await this.eventsService.loadInvitationContext(activeUserId, row.id);
+    const record = invitationContext?.record ?? null;
+    const currentMembers = invitationContext?.members ?? [];
     const requiresAdminApproval = this.resolveInvitationRequiresAdminApprovalFromMembers(
       currentMembers,
       record?.creatorUserId ?? relatedSource.creatorUserId
@@ -935,10 +934,11 @@ export class ActivitiesEventsController {
       requiresAdminApproval
     };
     if (record && this.shouldUseCheckoutFlow(record)) {
-      this.eventCheckoutDialogStore.open({
+      this.eventCheckoutDialogStore.update(loadingDialogId, {
         mode: 'invitation',
         userId: activeUserId,
         record,
+        preloadedCheckoutBasket: invitationContext?.checkoutBasket ?? null,
         requiresApprovalBeforePayment: requiresAdminApproval,
         title: 'Accept invitation?',
         subtitle: record.timeframe,
@@ -1542,12 +1542,11 @@ export class ActivitiesEventsController {
     }
 
     const relatedSource = this.activityDisplaySourceForRow(row);
-    const [record, currentMembers] = context
-      ? [context.record, context.currentMembers]
-      : await Promise.all([
-          this.eventsService.queryKnownRecordById(activeUserId, row.id),
-          this.activityMembersService.queryMembersByOwnerId(row.id)
-        ]);
+    const invitationContext = context
+      ? null
+      : await this.eventsService.loadInvitationContext(activeUserId, row.id);
+    const record = context?.record ?? invitationContext?.record ?? null;
+    const currentMembers = context?.currentMembers ?? invitationContext?.members ?? [];
     const activeInviteEntry = currentMembers.find((member: ActivityContracts.ActivityMemberDTO) =>
       member.userId === activeUserId
       && member.status === 'pending'
