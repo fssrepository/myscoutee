@@ -133,7 +133,12 @@
     }
 
     @if (hasToolbar) {
-      <div class="ui-popup__toolbar">
+      <div
+        class="ui-popup__toolbar"
+        [class.ui-popup__toolbar--mobile-start]="popupModel.toolbarMobileAlign === 'start'"
+        [class.ui-popup__toolbar--mobile-center]="popupModel.toolbarMobileAlign === 'center'"
+        [class.ui-popup__toolbar--mobile-end]="popupModel.toolbarMobileAlign === 'end'"
+      >
         @if (hasToolbarStartControls) {
           <div class="ui-popup__toolbar-group ui-popup__toolbar-group--start">
             @for (control of toolbarStartControls; track control.id) {

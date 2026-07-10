@@ -714,6 +714,39 @@ app-popup {
     min-width: 0;
   }
 
+  .ui-popup__toolbar--mobile-start,
+  .ui-popup__toolbar--mobile-center,
+  .ui-popup__toolbar--mobile-end {
+    .ui-popup__toolbar-group--end {
+      margin-left: 0;
+    }
+  }
+
+  .ui-popup__toolbar--mobile-start {
+    justify-content: flex-start;
+  }
+
+  .ui-popup__toolbar--mobile-center {
+    justify-content: center;
+
+    .ui-popup__toolbar-group {
+      flex: 1 1 auto;
+      width: 100%;
+      min-width: 0;
+      justify-content: center;
+    }
+
+    .ui-popup__toolbar-group app-menu.ui-popup__control.app-menu-host--kind-select {
+      flex: 1 1 auto;
+      width: auto;
+      min-width: 0;
+    }
+  }
+
+  .ui-popup__toolbar--mobile-end {
+    justify-content: flex-end;
+  }
+
   .ui-popup__toolbar .app-menu__trigger {
     gap: 0.22rem;
     min-width: 0;

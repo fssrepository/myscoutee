@@ -1265,6 +1265,7 @@ export class EventEditorPopupComponent implements OnInit, OnDestroy {
       headerTone: 'accent',
       bodyLayout: 'fill',
       backdropTone: 'dim',
+      toolbarMobileAlign: 'center',
       toolbarControls: this.slotOverrideToolbarControls(),
       onClose: event => this.closeSlotOverrideEditor(event),
       onMenuSelect: event => this.onSlotOverridePopupMenuSelect(event)
@@ -1273,14 +1274,6 @@ export class EventEditorPopupComponent implements OnInit, OnDestroy {
 
   private slotOverrideToolbarControls(): readonly PopupControl<unknown>[] {
     return [
-      {
-        kind: 'menu',
-        id: 'slot-override-rule',
-        align: 'start',
-        menuKind: 'select',
-        trigger: this.slotOverrideRuleBadgeTrigger(),
-        items: []
-      },
       {
         kind: 'menu',
         id: 'slot-override-prev',
@@ -1329,7 +1322,7 @@ export class EventEditorPopupComponent implements OnInit, OnDestroy {
     if (!editor) {
       return '';
     }
-    return this.slotOverrideSummaryLabel(editor.selectedStartAt);
+    return this.slotOverrideRuleBadgeLabel(editor);
   }
 
   protected slotOverrideOccurrenceMenuItems(): readonly AppMenuItem<string, unknown>[] {
@@ -1360,19 +1353,6 @@ export class EventEditorPopupComponent implements OnInit, OnDestroy {
       palette: 'violet',
       layout: 'field',
       disabled: !editor
-    };
-  }
-
-  protected slotOverrideRuleBadgeTrigger(): AppMenuTrigger {
-    const editor = this.slotOverrideEditor;
-    const frequency = ActivityEventDetailDTO.normalizeFrequency(this.eventDetailDTO.frequency);
-    return {
-      label: editor ? this.slotOverrideRuleBadgeLabel(editor) : 'Slot rule',
-      icon: this.slotOverrideFrequencyIcon(frequency),
-      palette: this.slotOverrideFrequencyPalette(frequency),
-      layout: 'pill',
-      trailingIcon: '',
-      action: 'custom'
     };
   }
 
@@ -1521,44 +1501,6 @@ export class EventEditorPopupComponent implements OnInit, OnDestroy {
 
   private slotOverrideWeekdayLabel(value: Date): string {
     return value.toLocaleDateString('en-US', { weekday: 'long' });
-  }
-
-  private slotOverrideFrequencyIcon(frequency: string): string {
-    switch (ActivityEventDetailDTO.normalizeFrequency(frequency)) {
-      case 'Custom':
-        return 'event';
-      case 'Daily':
-        return 'today';
-      case 'Weekly':
-        return 'calendar_view_week';
-      case 'Bi-weekly':
-        return 'date_range';
-      case 'Monthly':
-        return 'calendar_month';
-      case 'Yearly':
-        return 'event_available';
-      default:
-        return 'event';
-    }
-  }
-
-  private slotOverrideFrequencyPalette(frequency: string): AppMenuPalette {
-    switch (ActivityEventDetailDTO.normalizeFrequency(frequency)) {
-      case 'Custom':
-        return 'blue';
-      case 'Daily':
-        return 'green';
-      case 'Weekly':
-        return 'cyan';
-      case 'Bi-weekly':
-        return 'violet';
-      case 'Monthly':
-        return 'amber';
-      case 'Yearly':
-        return 'gold';
-      default:
-        return 'blue';
-    }
   }
 
   private slotOverrideVisibleCandidates(editor: SlotOverrideEditorState): Date[] {

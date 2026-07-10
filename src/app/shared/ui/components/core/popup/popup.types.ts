@@ -24,6 +24,7 @@ export type PopupHeaderPalette = 'default' | 'amber' | 'blue' | 'green' | 'rose'
 export type PopupHeaderTitleTone = 'palette' | 'neutral';
 export type PopupBodyLayout = 'default' | 'fill' | 'flush' | 'overflow';
 export type PopupControlAlign = 'start' | 'end';
+export type PopupToolbarMobileAlign = 'start' | 'center' | 'end';
 export type PopupBackdropTone = 'default' | 'dim';
 
 export interface PopupControlBase {
@@ -94,6 +95,7 @@ export interface PopupModel<TContext = unknown> {
   bodyLayout?: PopupBodyLayout;
   backdropTone?: PopupBackdropTone;
   showToolbar?: boolean;
+  toolbarMobileAlign?: PopupToolbarMobileAlign;
   headerControls?: readonly PopupControl<TContext>[];
   toolbarControls?: readonly PopupControl<TContext>[];
   headerActions?: readonly PopupAction[];
