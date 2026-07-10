@@ -462,12 +462,18 @@ export class EventSubeventDefinitionsPanelComponent implements ControlValueAcces
     return item.description || '';
   }
 
-  protected definitionTimelineTone(item: SubEventDefinitionDTO): TextCardTone {
+  protected definitionTimelineTone(_item: SubEventDefinitionDTO): TextCardTone {
     if (this.mode !== 'Tournament') {
       return 'draft';
     }
-    const tones: readonly TextCardTone[] = ['blue', 'cyan', 'teal', 'green', 'gold', 'amber', 'orange'];
-    return tones[this.definitionIndex(item) % tones.length];
+    return 'stage';
+  }
+
+  protected definitionTimelineAccentHue(item: SubEventDefinitionDTO): number | null {
+    if (this.mode !== 'Tournament') {
+      return null;
+    }
+    return this.stageAccentHue(this.definitionIndex(item) + 1, Math.max(this.definitions.length, 1));
   }
 
   protected definitionTimelineBadgeTone(_item: SubEventDefinitionDTO): TextCardBadgeTone {
@@ -488,7 +494,7 @@ export class EventSubeventDefinitionsPanelComponent implements ControlValueAcces
 
   protected definitionTimelineStatusTone(item: SubEventDefinitionDTO): TextCardStatusTone {
     if (this.mode === 'Tournament') {
-      return 'default';
+      return 'stage';
     }
     return item.optional ? 'success' : 'danger';
   }
@@ -992,7 +998,14 @@ export class EventSubeventDefinitionsPanelComponent implements ControlValueAcces
   }
 
   private definitionTimelineVisibleDurationMinutes(): number {
-    return this.definitionTimelineStepMinutes * this.definitionTimelineVisibleStepCount;
+    const minimumDuration = this.definitionTimelineStepMinutes * this.definitionTimelineVisibleStepCount;
+    const furthestEndOffset = this.definitionTimelineEntries().reduce(
+      (furthest, entry) => Math.max(furthest, entry.startOffsetMinutes + entry.durationMinutes),
+      0
+    );
+    const renderedDuration = Math.ceil(furthestEndOffset / this.definitionTimelineStepMinutes)
+      * this.definitionTimelineStepMinutes;
+    return Math.max(minimumDuration, renderedDuration);
   }
 
   private definitionTimelineEntries(): Array<{ item: SubEventDefinitionDTO; startOffsetMinutes: number; durationMinutes: number }> {

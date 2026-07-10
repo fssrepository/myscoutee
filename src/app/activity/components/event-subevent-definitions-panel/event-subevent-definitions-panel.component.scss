@@ -144,10 +144,34 @@
 }
 
 :host ::ng-deep .subevent-definition-panel__list .smart-list__page--timeline {
-  flex: 0 0 max(100%, calc(var(--subevent-definition-timeline-cells) * var(--subevent-definition-timeline-cell-min)));
-  width: max(100%, calc(var(--subevent-definition-timeline-cells) * var(--subevent-definition-timeline-cell-min)));
-  min-width: max(100%, calc(var(--subevent-definition-timeline-cells) * var(--subevent-definition-timeline-cell-min)));
+  --subevent-definition-rendered-cells: max(
+    var(--subevent-definition-timeline-cells),
+    var(--timeline-step-count, var(--subevent-definition-timeline-cells))
+  );
+  flex: 0 0 max(100%, calc(var(--subevent-definition-rendered-cells) * var(--subevent-definition-timeline-cell-min)));
+  width: max(100%, calc(var(--subevent-definition-rendered-cells) * var(--subevent-definition-timeline-cell-min)));
+  min-width: max(100%, calc(var(--subevent-definition-rendered-cells) * var(--subevent-definition-timeline-cell-min)));
   max-width: none;
+}
+
+@media (min-width: 761px) {
+  :host ::ng-deep .subevent-definition-panel__list .smart-list--timeline {
+    overflow-x: auto;
+    scrollbar-color: rgba(83, 111, 154, 0.46) rgba(222, 230, 242, 0.72);
+  }
+
+  :host ::ng-deep .subevent-definition-panel__list .smart-list--timeline::-webkit-scrollbar {
+    height: 8px;
+  }
+
+  :host ::ng-deep .subevent-definition-panel__list .smart-list--timeline::-webkit-scrollbar-track {
+    background: rgba(222, 230, 242, 0.72);
+  }
+
+  :host ::ng-deep .subevent-definition-panel__list .smart-list--timeline::-webkit-scrollbar-thumb {
+    border-radius: 999px;
+    background: rgba(83, 111, 154, 0.46);
+  }
 }
 
 :host ::ng-deep .subevent-definition-panel__list .smart-list__timeline-board {
@@ -238,7 +262,7 @@
 
 :host ::ng-deep .subevent-definition-panel__timeline-card .ui-text-card__status-badge {
   right: 0.32rem;
-  max-width: 4.4rem;
+  max-width: 5.2rem;
 }
 
 :host ::ng-deep .subevent-definition-panel__timeline-card .ui-text-card--with-badge .ui-text-card__actions {
@@ -261,18 +285,38 @@
   border-color: rgba(46, 111, 178, 0.4);
   background: linear-gradient(180deg, #eef7ff 0%, #dcecff 100%);
   color: #2f6cae;
-  box-shadow: 0 5px 12px rgba(35, 89, 149, 0.14);
+  box-shadow: 0 7px 16px rgba(35, 89, 149, 0.18);
 }
 
 :host ::ng-deep .subevent-definition-panel__timeline-card .ui-text-card--status-success .ui-text-card__status-badge .mat-icon {
+  width: 16px;
+  height: 16px;
+  font-size: 14px;
+  line-height: 16px;
+  border-radius: 50%;
+  background: linear-gradient(180deg, #edf8ee 0%, #e2f1e4 100%);
   color: #2d7d47;
+  box-shadow: inset 0 0 0 1px rgba(44, 126, 72, 0.32);
 }
 
 :host ::ng-deep .subevent-definition-panel__timeline-card .ui-text-card--status-danger .ui-text-card__status-badge {
-  border-color: rgba(184, 76, 98, 0.36);
-  background: linear-gradient(180deg, #fff0f2 0%, #fde5e9 100%);
-  color: #9d3048;
-  box-shadow: 0 5px 12px rgba(129, 43, 61, 0.12);
+  border-color: rgba(255, 255, 255, 0.96);
+  background: linear-gradient(180deg, #e45f66 0%, #bd2635 100%);
+  color: #ffffff;
+  text-shadow: 0 1px 1px rgba(80, 0, 8, 0.28);
+  box-shadow:
+    0 8px 18px rgba(128, 23, 34, 0.36),
+    inset 0 0 0 1px rgba(137, 17, 29, 0.5);
+}
+
+:host ::ng-deep .subevent-definition-panel__timeline-card .ui-text-card--status-danger .ui-text-card__status-badge .mat-icon {
+  width: 16px;
+  height: 16px;
+  font-size: 14px;
+  line-height: 16px;
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.22);
+  color: #ffffff;
 }
 
 :host ::ng-deep .subevent-definition-panel__timeline-card .ui-text-card__actions .app-menu__trigger--layout-icon {

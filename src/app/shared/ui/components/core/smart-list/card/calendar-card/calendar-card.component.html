@@ -169,7 +169,10 @@
     }
   } @else {
     @for (page of timelinePages(); track trackByCalendarPageKey($index, page)) {
-      <section class="smart-list__page smart-list__page--timeline smart-list__timeline-page">
+      <section
+        class="smart-list__page smart-list__page--timeline smart-list__timeline-page"
+        [style.--timeline-step-count]="page.ticks.length"
+      >
         <div
           class="smart-list__timeline-board"
           [style.--timeline-step-count]="page.ticks.length"

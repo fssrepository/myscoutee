@@ -1,4 +1,7 @@
-<article [ngClass]="rootClassList()">
+<article
+  [ngClass]="rootClassList()"
+  [style.--ui-text-card-accent-hue]="resolvedAccentHue()"
+>
   @if (resolvedBadge()) {
     @if (badgeClickable) {
       <button

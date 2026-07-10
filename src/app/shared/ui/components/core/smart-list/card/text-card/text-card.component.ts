@@ -16,6 +16,7 @@ import {
 export type TextCardTone =
   | 'neutral'
   | 'draft'
+  | 'stage'
   | 'slot'
   | 'blue'
   | 'cyan'
@@ -30,6 +31,7 @@ export type TextCardTone =
   | 'muted';
 export type TextCardStatusTone =
   | 'default'
+  | 'stage'
   | 'success'
   | 'warning'
   | 'danger'
@@ -66,6 +68,7 @@ export class TextCardComponent {
   @Input() detail = '';
   @Input() icon = '';
   @Input() tone: TextCardTone = 'neutral';
+  @Input() accentHue: number | null = null;
   @Input() disabled = false;
   @Input() badge = '';
   @Input() badgeIcon = '';
@@ -127,6 +130,11 @@ export class TextCardComponent {
 
   protected resolvedIcon(): string {
     return `${this.icon ?? ''}`.trim();
+  }
+
+  protected resolvedAccentHue(): string | null {
+    const hue = Math.trunc(Number(this.accentHue));
+    return Number.isFinite(hue) ? `${Math.max(0, Math.min(360, hue))}` : null;
   }
 
   protected resolvedBadge(): string {
