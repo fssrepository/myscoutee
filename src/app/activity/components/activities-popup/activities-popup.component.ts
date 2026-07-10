@@ -698,22 +698,44 @@ export class ActivitiesPopupComponent implements OnDestroy {
   private activityCheckoutPendingForActiveUser(
     activeUserId: string,
     dto: ActivityEventDTO | null | undefined,
-    record: { pendingMemberUserIds?: string[]; pendingRequestMemberUserIds?: string[]; pendingReason?: unknown } | null | undefined
+    record: {
+      pendingMemberUserIds?: string[];
+      invitedMemberUserIds?: string[];
+      pendingRequestMemberUserIds?: string[];
+      pendingReason?: unknown;
+    } | null | undefined
   ): boolean {
     const userId = activeUserId.trim();
     if (!userId) {
       return false;
     }
+    const pendingRequestUserIds = [
+      ...(dto?.pendingRequestMemberUserIds ?? []),
+      ...(record?.pendingRequestMemberUserIds ?? [])
+    ].map(candidate => `${candidate ?? ''}`.trim());
+    if (pendingRequestUserIds.some(candidate => candidate === userId)) {
+      return true;
+    }
+
+    const invitedUserIds = new Set([
+      ...(dto?.invitedMemberUserIds ?? []),
+      ...(record?.invitedMemberUserIds ?? [])
+    ].map(candidate => `${candidate ?? ''}`.trim()).filter(Boolean));
+    if (invitedUserIds.has(userId)) {
+      return false;
+    }
+
     const pendingReason = `${dto?.pendingReason ?? record?.pendingReason ?? ''}`.trim();
     if (pendingReason === 'waitlist' || pendingReason === 'approval') {
       return true;
     }
     return [
       ...(dto?.pendingMemberUserIds ?? []),
-      ...(dto?.pendingRequestMemberUserIds ?? []),
-      ...(record?.pendingMemberUserIds ?? []),
-      ...(record?.pendingRequestMemberUserIds ?? [])
-    ].some(candidate => `${candidate ?? ''}`.trim() === userId);
+      ...(record?.pendingMemberUserIds ?? [])
+    ].some(candidate => {
+      const candidateUserId = `${candidate ?? ''}`.trim();
+      return candidateUserId === userId && !invitedUserIds.has(candidateUserId);
+    });
   }
 
   private activityCheckoutDraftResultState(draft: EventCheckoutDraft | null | undefined): EventCheckoutResultState | null {
