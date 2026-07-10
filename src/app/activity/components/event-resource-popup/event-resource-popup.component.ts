@@ -777,9 +777,7 @@ export class EventResourcePopupComponent {
       subEvent: scopedSubEvent,
       groupId: group?.id?.trim() || undefined,
       groupName: group?.groupLabel?.trim() || undefined,
-      fallbackCardsByType: origin === 'subEventResource'
-        ? {}
-        : this.cloneFallbackCards(fallbackCardsByType)
+      fallbackCardsByType: this.cloneFallbackCards(fallbackCardsByType)
     };
   }
 
@@ -913,13 +911,11 @@ export class EventResourcePopupComponent {
     ) {
       this.resourcePopupStore.popupContextRef.set({
         ...activeContext,
-        fallbackCardsByType: activeContext.origin === 'subEventResource'
-          ? {}
-          : this.mergePersistedFallbackCards(
-              activeContext.fallbackCardsByType,
-              normalizedState.fallbackAssetCardsByType,
-              normalizedState.subEventId
-            )
+        fallbackCardsByType: this.mergePersistedFallbackCards(
+          activeContext.fallbackCardsByType,
+          normalizedState.fallbackAssetCardsByType,
+          normalizedState.subEventId
+        )
       });
     }
     for (const type of AppConstants.ASSET_TYPES) {
@@ -981,13 +977,11 @@ export class EventResourcePopupComponent {
           this.subEventSupplyContributionEntries(subEventId, assetId).map(entry => ({ ...entry }))
         ])
       ),
-      fallbackAssetCardsByType: context.origin === 'subEventResource'
-        ? {}
-        : {
-            [AppConstants.ASSET_TYPE_TRANSPORT]: this.persistedAssignedFallbackCards(context, AppConstants.ASSET_TYPE_TRANSPORT),
-            [AppConstants.ASSET_TYPE_ACCOMMODATION]: this.persistedAssignedFallbackCards(context, AppConstants.ASSET_TYPE_ACCOMMODATION),
-            [AppConstants.ASSET_TYPE_SUPPLIES]: this.persistedAssignedFallbackCards(context, AppConstants.ASSET_TYPE_SUPPLIES)
-          }
+      fallbackAssetCardsByType: {
+        [AppConstants.ASSET_TYPE_TRANSPORT]: this.persistedAssignedFallbackCards(context, AppConstants.ASSET_TYPE_TRANSPORT),
+        [AppConstants.ASSET_TYPE_ACCOMMODATION]: this.persistedAssignedFallbackCards(context, AppConstants.ASSET_TYPE_ACCOMMODATION),
+        [AppConstants.ASSET_TYPE_SUPPLIES]: this.persistedAssignedFallbackCards(context, AppConstants.ASSET_TYPE_SUPPLIES)
+      }
     };
   }
 
@@ -1282,9 +1276,7 @@ export class EventResourcePopupComponent {
     const settings = this.getSubEventAssignedAssetSettings(context.subEvent.id, type, {
       normalizeStore: false
     });
-    const fallbackCards = context.origin === 'subEventResource'
-      ? []
-      : context.fallbackCardsByType[type] ?? [];
+    const fallbackCards = context.fallbackCardsByType[type] ?? [];
     const fallbackCardById = new Map(fallbackCards.map(card => [card.id, card] as const));
 
     return assignedIds
@@ -2169,9 +2161,6 @@ export class EventResourcePopupComponent {
   ): ResourceAssetDTO[] {
     const context = this.resourcePopupStore.popupContextRef();
     if (context?.subEvent.id !== subEventId) {
-      return [];
-    }
-    if (context.origin === 'subEventResource') {
       return [];
     }
     return context.fallbackCardsByType[type] ?? [];

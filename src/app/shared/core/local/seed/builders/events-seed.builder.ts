@@ -572,6 +572,37 @@ const SEED_EVENTS_BY_USER: Record<string, ActivityEventSeedItem[]> = {
   ],
   u3: [
     {
+      id: 'asset-join-demo-nagy-eszter',
+      avatar: 'NE',
+      title: 'Asset Join Demo · Shuttle Seat',
+      shortDescription: 'Accepted event with a transport assignment that Nagy Eszter can join directly.',
+      timeframe: 'Jul 18 · 5:30 PM - 8:30 PM',
+      activity: 1,
+      status: 'A',
+      isAdmin: false,
+      creatorUserId: 'u11',
+      startAt: '2026-07-18T17:30:00',
+      endAt: '2026-07-18T20:30:00',
+      generated: true,
+      frequency: 'One-time',
+      ticketing: false,
+      visibility: 'Public',
+      blindMode: 'Open Event',
+      location: 'Seattle · Demo Pickup Point',
+      capacityMin: 2,
+      capacityMax: 12,
+      acceptedMemberUserIds: ['u3', 'u11'],
+      pendingMemberUserIds: [],
+      subEventsEnabled: true,
+      subEventDefinitions: buildCheckoutDemoSubEventDefinitions({
+        sourceId: 'asset-join-demo-nagy-eszter',
+        includePaidOptional: false
+      }),
+      topics: ['Demo', 'Transport', 'Asset Join'],
+      rating: 9.0,
+      boost: 100
+    },
+    {
       id: 'e5',
       avatar: 'SY',
       title: 'Creative Studio Meetup',
