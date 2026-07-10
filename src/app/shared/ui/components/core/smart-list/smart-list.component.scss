@@ -326,6 +326,10 @@
   display: none;
 }
 
+.smart-list__surface--timeline .smart-list__pagination-arrows {
+  display: none;
+}
+
 @keyframes smart-list-pagination-arrow-touch-feedback {
   0% {
     transform: translateY(-50%);
@@ -936,6 +940,10 @@
   }
 
   .smart-list__surface--horizontal .smart-list__pagination-arrows {
+    display: block;
+  }
+
+  .smart-list__surface--timeline .smart-list__pagination-arrows {
     display: block;
   }
 

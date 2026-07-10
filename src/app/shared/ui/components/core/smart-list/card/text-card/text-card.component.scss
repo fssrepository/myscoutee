@@ -28,6 +28,12 @@
     linear-gradient(180deg, #f3f9ff 0%, #e7f2ff 100%);
 }
 
+.ui-text-card--tone-draft {
+  border-color: rgba(96, 108, 136, 0.34);
+  background: linear-gradient(180deg, #fafbff 0%, #f0f3fb 100%);
+  box-shadow: 0 8px 18px rgba(74, 88, 118, 0.08);
+}
+
 .ui-text-card--tone-slot {
   border-color: rgba(42, 148, 96, 0.32);
   background:
@@ -198,6 +204,18 @@
   overflow: hidden;
   text-overflow: ellipsis;
   box-sizing: border-box;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.18rem;
+}
+
+.ui-text-card__badge .mat-icon,
+.ui-text-card__status-badge .mat-icon {
+  width: 13px;
+  height: 13px;
+  font-size: 13px;
+  line-height: 13px;
+  flex: 0 0 auto;
 }
 
 .ui-text-card--with-status-badge .ui-text-card__badge {
@@ -272,6 +290,9 @@
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.18rem;
 }
 
 .ui-text-card--status-success .ui-text-card__status-badge {

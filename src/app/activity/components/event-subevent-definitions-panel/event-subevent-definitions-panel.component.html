@@ -59,7 +59,7 @@
     class="subevent-definition-panel__list"
     [config]="smartListConfig"
     [loadPage]="loadDefinitionsPage"
-    [itemTemplate]="definitionTemplate"
+    [itemTemplate]="definitionView === 'timeline' ? definitionTimelineTemplate : definitionTemplate"
     [query]="smartListQuery"
     (menuItemSelect)="onDefinitionMenuSelect($event)"
   ></app-smart-list>
@@ -71,6 +71,29 @@
       [sharedMenuContext]="definitionMenuContext(definition)"
       (menuAction)="onCardMenuAction(definition, $event)"
     ></app-info-card>
+  </ng-template>
+
+  <ng-template #definitionTimelineTemplate let-definition>
+    <app-text-card
+      class="subevent-definition-panel__timeline-card"
+      [title]="definition.name"
+      [detail]="definitionTimelineDetail(definition)"
+      [icon]="definitionTimelineIcon(definition)"
+      [tone]="definitionTimelineTone(definition)"
+      [badge]="durationMinutesBadgeLabel(definition.durationMinutes)"
+      badgeIcon="schedule"
+      [badgeAriaLabel]="'Duration ' + durationLabel(definition.durationMinutes)"
+      [badgeTone]="definitionTimelineBadgeTone(definition)"
+      [statusBadge]="definitionTimelineStatusLabel(definition)"
+      [statusBadgeIcon]="definitionTimelineStatusIcon(definition)"
+      [statusBadgeAriaLabel]="definitionTimelineStatusAriaLabel(definition)"
+      [statusBadgeTone]="definitionTimelineStatusTone(definition)"
+      [menuTitle]="definition.name"
+      [menuItems]="definitionTimelineMenuItems(definition)"
+      [useSharedMenuTrigger]="true"
+      [sharedMenuId]="'subevent-definition-timeline-actions-' + definition.id"
+      [sharedMenuContext]="definitionMenuContext(definition)"
+    ></app-text-card>
   </ng-template>
   }
 

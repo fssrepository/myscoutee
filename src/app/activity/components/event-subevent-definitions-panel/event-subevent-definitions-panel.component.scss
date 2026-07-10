@@ -132,9 +132,161 @@
 }
 
 .subevent-definition-panel__list {
+  --subevent-definition-timeline-cells: 5;
+  --subevent-definition-timeline-cell-min: 10.5rem;
   display: flex;
   width: 100%;
   min-width: 0;
+}
+
+:host ::ng-deep .subevent-definition-panel__list .smart-list--timeline {
+  scrollbar-width: thin;
+}
+
+:host ::ng-deep .subevent-definition-panel__list .smart-list__page--timeline {
+  flex: 0 0 max(100%, calc(var(--subevent-definition-timeline-cells) * var(--subevent-definition-timeline-cell-min)));
+  width: max(100%, calc(var(--subevent-definition-timeline-cells) * var(--subevent-definition-timeline-cell-min)));
+  min-width: max(100%, calc(var(--subevent-definition-timeline-cells) * var(--subevent-definition-timeline-cell-min)));
+  max-width: none;
+}
+
+:host ::ng-deep .subevent-definition-panel__list .smart-list__timeline-board {
+  border-radius: 8px;
+}
+
+:host ::ng-deep .subevent-definition-panel__list .smart-list__timeline-header {
+  min-height: 36px;
+}
+
+:host ::ng-deep .subevent-definition-panel__list .smart-list__timeline-header-cell {
+  padding-inline: 0.5rem;
+  font-size: 0.68rem;
+}
+
+:host ::ng-deep .subevent-definition-panel__list .smart-list__timeline-span--template {
+  min-width: 8rem;
+}
+
+:host ::ng-deep .subevent-definition-panel__timeline-card {
+  display: block;
+  height: 100%;
+}
+
+:host ::ng-deep .subevent-definition-panel__timeline-card .ui-text-card {
+  border-radius: 8px;
+  padding: 2rem 0.5rem 0.42rem;
+  min-height: 0;
+  overflow: visible;
+}
+
+:host ::ng-deep .subevent-definition-panel__timeline-card .ui-text-card--with-badge {
+  min-height: 0;
+  padding-top: 2rem;
+}
+
+:host ::ng-deep .subevent-definition-panel__timeline-card .ui-text-card__main {
+  gap: 0.42rem;
+}
+
+:host ::ng-deep .subevent-definition-panel__timeline-card .ui-text-card__icon {
+  width: 26px;
+  height: 26px;
+}
+
+:host ::ng-deep .subevent-definition-panel__timeline-card .ui-text-card__icon .mat-icon {
+  width: 15px;
+  height: 15px;
+  font-size: 15px;
+  line-height: 15px;
+}
+
+:host ::ng-deep .subevent-definition-panel__timeline-card .ui-text-card__title {
+  font-size: 0.82rem;
+  line-height: 1.12;
+}
+
+:host ::ng-deep .subevent-definition-panel__timeline-card .ui-text-card__subtitle,
+:host ::ng-deep .subevent-definition-panel__timeline-card .ui-text-card__meta,
+:host ::ng-deep .subevent-definition-panel__timeline-card .ui-text-card__detail {
+  font-size: 0.68rem;
+  line-height: 1.18;
+}
+
+:host ::ng-deep .subevent-definition-panel__timeline-card .ui-text-card__detail {
+  display: block;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+  overflow: hidden;
+}
+
+:host ::ng-deep .subevent-definition-panel__timeline-card .ui-text-card__badge,
+:host ::ng-deep .subevent-definition-panel__timeline-card .ui-text-card__status-badge {
+  top: 0.46rem;
+  font-size: 0.61rem;
+  min-height: 22px;
+  padding: 0.16rem 0.4rem;
+}
+
+:host ::ng-deep .subevent-definition-panel__timeline-card .ui-text-card__badge {
+  left: 0.38rem;
+  max-width: 4.5rem;
+}
+
+:host ::ng-deep .subevent-definition-panel__timeline-card .ui-text-card.ui-text-card--with-status-badge .ui-text-card__badge {
+  max-width: calc(100% - 6rem);
+}
+
+:host ::ng-deep .subevent-definition-panel__timeline-card .ui-text-card__status-badge {
+  right: 0.32rem;
+  max-width: 4.4rem;
+}
+
+:host ::ng-deep .subevent-definition-panel__timeline-card .ui-text-card--with-badge .ui-text-card__actions {
+  top: 1.9rem;
+  right: 0.32rem;
+}
+
+:host ::ng-deep .subevent-definition-panel__timeline-card .ui-text-card--with-status-badge .ui-text-card__actions {
+  top: 1.9rem;
+}
+
+:host ::ng-deep .subevent-definition-panel__timeline-card .ui-text-card--badge-warning .ui-text-card__badge {
+  border: 1px solid rgba(192, 125, 28, 0.34);
+  background: rgba(255, 247, 226, 0.94);
+  color: #8a5a12;
+  box-shadow: 0 5px 12px rgba(132, 82, 8, 0.14);
+}
+
+:host ::ng-deep .subevent-definition-panel__timeline-card .ui-text-card--status-success .ui-text-card__status-badge {
+  border-color: rgba(46, 111, 178, 0.4);
+  background: linear-gradient(180deg, #eef7ff 0%, #dcecff 100%);
+  color: #2f6cae;
+  box-shadow: 0 5px 12px rgba(35, 89, 149, 0.14);
+}
+
+:host ::ng-deep .subevent-definition-panel__timeline-card .ui-text-card--status-success .ui-text-card__status-badge .mat-icon {
+  color: #2d7d47;
+}
+
+:host ::ng-deep .subevent-definition-panel__timeline-card .ui-text-card--status-danger .ui-text-card__status-badge {
+  border-color: rgba(184, 76, 98, 0.36);
+  background: linear-gradient(180deg, #fff0f2 0%, #fde5e9 100%);
+  color: #9d3048;
+  box-shadow: 0 5px 12px rgba(129, 43, 61, 0.12);
+}
+
+:host ::ng-deep .subevent-definition-panel__timeline-card .ui-text-card__actions .app-menu__trigger--layout-icon {
+  width: 28px;
+  height: 28px;
+  min-width: 28px;
+  min-height: 28px;
+}
+
+:host ::ng-deep .subevent-definition-panel__timeline-card .ui-text-card__actions .app-menu__trigger--layout-icon .mat-icon {
+  width: 15px;
+  height: 15px;
+  font-size: 15px;
+  line-height: 15px;
 }
 
 @media (max-width: 760px) {

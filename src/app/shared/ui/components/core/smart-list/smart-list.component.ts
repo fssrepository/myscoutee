@@ -352,7 +352,7 @@ export class SmartListComponent<T, TFilters extends SmartListFilters = SmartList
 
     const scrollElement = this.scrollHostRef?.nativeElement;
     if (scrollElement) {
-      if (this.shouldUseHorizontalMobileStepper()) {
+      if (this.shouldUseHorizontalMobileStepper() || this.shouldUseTimelineMobileStepper()) {
         return;
       }
 
@@ -379,7 +379,7 @@ export class SmartListComponent<T, TFilters extends SmartListFilters = SmartList
       this.touchStartScrollSnapType = null;
       return;
     }
-    if (!this.shouldUseHorizontalMobileStepper()) {
+    if (!this.shouldUseHorizontalMobileStepper() && !this.shouldUseTimelineMobileStepper()) {
       scrollElement.style.scrollSnapType = this.touchStartScrollSnapType ?? '';
       this.touchStartScrollSnapType = null;
     }
@@ -397,6 +397,11 @@ export class SmartListComponent<T, TFilters extends SmartListFilters = SmartList
     }
 
     if (this.isPageMode()) {
+      if (this.usesTimelineViewportScroll(scrollElement)) {
+        this.touchStartScrollSnapType = null;
+        this.updateTimelineViewportScrollState(scrollElement);
+        return;
+      }
       this.stepper.scheduleScrollEnd(scrollElement);
     }
   }
@@ -618,6 +623,13 @@ export class SmartListComponent<T, TFilters extends SmartListFilters = SmartList
   }
 
   protected canMovePagination(direction: -1 | 1): boolean {
+    if (this.isTimelineMode()) {
+      const scrollElement = this.scrollHostRef?.nativeElement ?? null;
+      if (this.pages.length === 1 && scrollElement) {
+        return this.canScrollTimelineViewport(direction, scrollElement);
+      }
+      return this.pages.length > 1 || (this.pages.length > 0 && direction > 0);
+    }
     const delta = this.paginationCursorDelta(direction);
     return delta !== 0 && this.finiteStepper.canMove(delta);
   }
@@ -712,6 +724,10 @@ export class SmartListComponent<T, TFilters extends SmartListFilters = SmartList
       void this.advanceHostedFullscreenPagination(-1);
       return;
     }
+    if (this.isTimelineMode()) {
+      this.moveTimelineViewport(-1);
+      return;
+    }
     void this.moveCursor(this.paginationCursorDelta(-1));
   }
 
@@ -721,6 +737,10 @@ export class SmartListComponent<T, TFilters extends SmartListFilters = SmartList
     if (this.shouldUseHostedFullscreenPagination()) {
       this.interruptHostedFullscreenTransition();
       void this.advanceHostedFullscreenPagination(1);
+      return;
+    }
+    if (this.isTimelineMode()) {
+      this.moveTimelineViewport(1);
       return;
     }
     void this.moveCursor(this.paginationCursorDelta(1));
@@ -1154,11 +1174,20 @@ export class SmartListComponent<T, TFilters extends SmartListFilters = SmartList
 
   protected onPageScroll(event: Event): void {
     const target = event.target as HTMLDivElement;
+    if (this.usesTimelineViewportScroll(target)) {
+      this.updateTimelineViewportScrollState(target);
+      return;
+    }
     this.stepper.onScroll(target);
   }
 
   protected onPageScrollEnd(event: Event): void {
-    this.stepper.onScrollEnd(event.target as HTMLDivElement);
+    const target = event.target as HTMLDivElement;
+    if (this.usesTimelineViewportScroll(target)) {
+      this.updateTimelineViewportScrollState(target);
+      return;
+    }
+    this.stepper.onScrollEnd(target);
   }
 
   protected readonly trackByGroup = (_index: number, group: SmartListGroup<T>): string => `${group.startIndex}:${group.label}`;
@@ -2938,6 +2967,58 @@ export class SmartListComponent<T, TFilters extends SmartListFilters = SmartList
       && this.isHorizontalList()
       && this.resolvedMobileStepper()
       && this.isMobileViewport();
+  }
+
+  private shouldUseTimelineMobileStepper(): boolean {
+    return this.isTimelineMode()
+      && this.resolvedMobileStepper()
+      && this.isMobileViewport();
+  }
+
+  private usesTimelineViewportScroll(scrollElement: HTMLDivElement | null): boolean {
+    return this.isTimelineMode()
+      && this.pages.length === 1
+      && Boolean(scrollElement)
+      && (scrollElement?.scrollWidth ?? 0) > (scrollElement?.clientWidth ?? 0) + 1;
+  }
+
+  private canScrollTimelineViewport(direction: -1 | 1, scrollElement: HTMLDivElement): boolean {
+    const maxScrollLeft = Math.max(0, scrollElement.scrollWidth - scrollElement.clientWidth);
+    return direction < 0
+      ? scrollElement.scrollLeft > 1
+      : scrollElement.scrollLeft < maxScrollLeft - 1;
+  }
+
+  private moveTimelineViewport(direction: -1 | 1): void {
+    const scrollElement = this.scrollHostRef?.nativeElement ?? null;
+    if (!scrollElement) {
+      return;
+    }
+    if (!this.usesTimelineViewportScroll(scrollElement)) {
+      this.stepper.navigateBy(direction);
+      return;
+    }
+    const firstCell = scrollElement.querySelector<HTMLElement>('.smart-list__timeline-header-cell');
+    const cellWidth = firstCell?.getBoundingClientRect().width ?? 0;
+    const visibleCellCount = cellWidth > 0
+      ? Math.max(1, Math.floor((scrollElement.clientWidth + 1) / cellWidth))
+      : 1;
+    const stepWidth = cellWidth > 0
+      ? visibleCellCount * cellWidth
+      : Math.max(1, scrollElement.clientWidth);
+    const maxScrollLeft = Math.max(0, scrollElement.scrollWidth - scrollElement.clientWidth);
+    const targetLeft = Math.max(0, Math.min(maxScrollLeft, scrollElement.scrollLeft + (direction * stepWidth)));
+    scrollElement.scrollTo({ left: targetLeft, behavior: 'smooth' });
+  }
+
+  private updateTimelineViewportScrollState(scrollElement: HTMLDivElement): void {
+    const maxScrollLeft = Math.max(0, scrollElement.scrollWidth - scrollElement.clientWidth);
+    this.scrollable = maxScrollLeft > 1;
+    this.progress = maxScrollLeft > 0
+      ? AppUtils.clampNumber(scrollElement.scrollLeft / maxScrollLeft, 0, 1)
+      : 0;
+    this.emitState();
+    this.cdr.markForCheck();
   }
 
   private isMobileViewport(): boolean {

@@ -21,6 +21,28 @@
   overflow-y: auto;
 }
 
+@media (max-width: 760px) {
+  :host(.smart-list--timeline.smart-list--mobile-stepper) {
+    scroll-snap-type: x mandatory;
+    scrollbar-width: none;
+    -ms-overflow-style: none;
+  }
+
+  :host(.smart-list--timeline.smart-list--mobile-stepper)::-webkit-scrollbar {
+    display: none;
+  }
+
+  :host(.smart-list--timeline.smart-list--mobile-stepper) .smart-list__page--timeline {
+    scroll-snap-align: none;
+    scroll-snap-stop: normal;
+  }
+
+  :host(.smart-list--timeline.smart-list--mobile-stepper) .smart-list__timeline-header-cell {
+    scroll-snap-align: start;
+    scroll-snap-stop: normal;
+  }
+}
+
 :host(.smart-list--month) {
   overflow-x: auto;
   overflow-y: clip;
@@ -688,6 +710,25 @@
   cursor: pointer;
   touch-action: pan-x pan-y;
   box-sizing: border-box;
+}
+
+.smart-list__timeline-span--template {
+  min-width: 6.5rem;
+  border: 0;
+  border-radius: 8px;
+  background: transparent;
+  box-shadow: none;
+  padding: 0;
+  overflow: visible;
+}
+
+.smart-list__timeline-span--static {
+  cursor: default;
+  -webkit-tap-highlight-color: transparent;
+  transition: none;
+  animation: none;
+  transform: none;
+  filter: none;
 }
 
 .smart-list__timeline-span:focus-visible {

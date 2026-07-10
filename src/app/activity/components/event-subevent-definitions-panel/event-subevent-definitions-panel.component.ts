@@ -10,8 +10,10 @@ import { ActivityEventDetailDTO, type SubEventDefinitionDTO } from '../../../sha
 import type { DateRangeDto } from '../../../shared/core/contracts/date.interface';
 import type * as EventContracts from '../../../shared/core/contracts/event.interface';
 import {
+  CARD_MENU_ACTIONS,
   InfoCardComponent,
   AppMenuComponent,
+  TextCardComponent,
   type AppMenuItem,
   SmartListComponent,
   type AppMenuItemSelectEvent,
@@ -21,7 +23,10 @@ import {
   type ListQuery,
   type PageResult,
   type SmartListConfig,
-  type SmartListLoadPage
+  type SmartListLoadPage,
+  type TextCardBadgeTone,
+  type TextCardStatusTone,
+  type TextCardTone
 } from '../../../shared/ui';
 import { DialogStore } from '../../../shared/ui/context/stores/dialog.store';
 import {
@@ -57,6 +62,7 @@ interface SubEventDefinitionFormState {
     AppMenuComponent,
     SmartListComponent,
     InfoCardComponent,
+    TextCardComponent,
     EventSubeventStageFormPopupComponent
   ],
   providers: [
@@ -78,6 +84,8 @@ export class EventSubeventDefinitionsPanelComponent implements ControlValueAcces
   private revision = 0;
   private boundsValue: DateRangeDto | null = null;
   private readonly tournamentLeaderboardTypeOptions: readonly EventSubeventTournamentLeaderboardType[] = ['Score', 'Fifa'];
+  private readonly definitionTimelineStepMinutes = 60;
+  private readonly definitionTimelineVisibleStepCount = 5;
 
   @Input() mode: EventContracts.EventMode = 'Casual';
   @Input() enabled = false;
@@ -115,11 +123,13 @@ export class EventSubeventDefinitionsPanelComponent implements ControlValueAcces
     emptyLabel: 'No sub event definitions yet',
     emptyDescription: '',
     timeline: {
-      stepMinutes: 30,
+      stepMinutes: this.definitionTimelineStepMinutes,
       visibleDurationMinutes: () => this.definitionTimelineVisibleDurationMinutes(),
       pageStepMinutes: () => this.definitionTimelineVisibleDurationMinutes(),
-      anchorRadius: 1,
-      rowHeightPx: 62,
+      anchorRadius: 0,
+      rowCount: 1,
+      rowHeightPx: 92,
+      useItemTemplate: true,
       resolveRange: item => this.definitionTimelineRange(item),
       badgeLabel: item => item.name,
       badgeMeta: item => `Duration ${this.durationLabel(item.durationMinutes)}`,
@@ -250,7 +260,7 @@ export class EventSubeventDefinitionsPanelComponent implements ControlValueAcces
     return {
       label: timeline ? 'Timeline' : 'Cards',
       icon: timeline ? 'timeline' : 'view_carousel',
-      palette: timeline ? 'teal' : 'slate',
+      palette: timeline ? 'teal' : 'violet',
       layout: 'pill',
       disabled: !this.enabled
     };
@@ -273,7 +283,7 @@ export class EventSubeventDefinitionsPanelComponent implements ControlValueAcces
         label: 'Cards',
         icon: 'view_carousel',
         kind: 'radio',
-        palette: 'slate',
+        palette: 'violet',
         surface: 'tinted',
         active: this.definitionView === 'list',
         checked: this.definitionView === 'list'
@@ -416,6 +426,77 @@ export class EventSubeventDefinitionsPanelComponent implements ControlValueAcces
 
   protected definitionMenuContext(item: SubEventDefinitionDTO): Record<string, unknown> {
     return { definitionId: item.id };
+  }
+
+  protected definitionTimelineMenuItems(item: SubEventDefinitionDTO): readonly AppMenuItem<string, unknown>[] {
+    if (!this.canConfigureDefinitions()) {
+      return [];
+    }
+    const editConfig = CARD_MENU_ACTIONS['edit'];
+    const deleteConfig = CARD_MENU_ACTIONS['delete'];
+    return [
+      {
+        id: 'edit',
+        label: editConfig.label,
+        icon: editConfig.icon,
+        palette: 'brown',
+        surface: 'tinted',
+        context: this.definitionMenuContext(item)
+      },
+      {
+        id: 'delete',
+        label: deleteConfig.label,
+        icon: deleteConfig.icon,
+        palette: 'danger',
+        surface: 'tinted',
+        context: this.definitionMenuContext(item)
+      }
+    ];
+  }
+
+  protected definitionTimelineIcon(item: SubEventDefinitionDTO): string {
+    return item.icon || (this.mode === 'Tournament' ? 'emoji_events' : 'inventory_2');
+  }
+
+  protected definitionTimelineDetail(item: SubEventDefinitionDTO): string {
+    return item.description || '';
+  }
+
+  protected definitionTimelineTone(item: SubEventDefinitionDTO): TextCardTone {
+    if (this.mode !== 'Tournament') {
+      return 'draft';
+    }
+    const tones: readonly TextCardTone[] = ['blue', 'cyan', 'teal', 'green', 'gold', 'amber', 'orange'];
+    return tones[this.definitionIndex(item) % tones.length];
+  }
+
+  protected definitionTimelineBadgeTone(_item: SubEventDefinitionDTO): TextCardBadgeTone {
+    return 'warning';
+  }
+
+  protected definitionTimelineStatusLabel(item: SubEventDefinitionDTO): string {
+    const index = this.definitionIndex(item);
+    if (this.mode === 'Tournament') {
+      return `Stage ${index + 1}`;
+    }
+    return this.definitionStatus(item).label;
+  }
+
+  protected definitionTimelineStatusIcon(item: SubEventDefinitionDTO): string {
+    return this.mode === 'Tournament' ? 'emoji_events' : this.definitionStatus(item).icon;
+  }
+
+  protected definitionTimelineStatusTone(item: SubEventDefinitionDTO): TextCardStatusTone {
+    if (this.mode === 'Tournament') {
+      return 'default';
+    }
+    return item.optional ? 'success' : 'danger';
+  }
+
+  protected definitionTimelineStatusAriaLabel(item: SubEventDefinitionDTO): string {
+    return this.mode === 'Tournament'
+      ? `${this.definitionTimelineStatusLabel(item)} definition`
+      : `${this.definitionTimelineStatusLabel(item)} sub event definition`;
   }
 
   protected onDefinitionMenuSelect(event: AppMenuItemSelectEvent<string, unknown>): void {
@@ -848,18 +929,22 @@ export class EventSubeventDefinitionsPanelComponent implements ControlValueAcces
     return Number.isFinite(parsed) ? Math.max(1, parsed) : 60;
   }
 
-  private durationLabel(totalMinutes: number): string {
+  protected durationLabel(totalMinutes: number): string {
     const safeMinutes = this.toPositiveInteger(totalMinutes);
     return this.minutesLabel(safeMinutes);
   }
 
-  private durationMinutesBadgeLabel(totalMinutes: number): string {
+  protected durationMinutesBadgeLabel(totalMinutes: number): string {
     return `${this.toPositiveInteger(totalMinutes)}m`;
   }
 
   private offsetLabel(totalMinutes: number): string {
     const safeMinutes = this.toNonNegativeInteger(totalMinutes);
     return this.minutesLabel(safeMinutes);
+  }
+
+  private definitionIndex(item: SubEventDefinitionDTO): number {
+    return Math.max(0, this.definitions.findIndex(candidate => candidate.id === item.id));
   }
 
   private definitionStartLabel(item: SubEventDefinitionDTO, index: number): string {
@@ -907,9 +992,7 @@ export class EventSubeventDefinitionsPanelComponent implements ControlValueAcces
   }
 
   private definitionTimelineVisibleDurationMinutes(): number {
-    const maxEndOffset = this.definitionTimelineEntries()
-      .reduce((max, entry) => Math.max(max, entry.startOffsetMinutes + entry.durationMinutes), 0);
-    return Math.max(120, Math.ceil(maxEndOffset / 30) * 30);
+    return this.definitionTimelineStepMinutes * this.definitionTimelineVisibleStepCount;
   }
 
   private definitionTimelineEntries(): Array<{ item: SubEventDefinitionDTO; startOffsetMinutes: number; durationMinutes: number }> {

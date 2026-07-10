@@ -272,6 +272,9 @@ export class CalendarCardComponent<T, TFilters extends SmartListFilters = SmartL
   }
 
   protected selectTimelineSpan(span: SmartListTimelineSpan<T>, sourceEvent?: Event): void {
+    if (!this.timelineItemInteractive()) {
+      return;
+    }
     sourceEvent?.preventDefault();
     sourceEvent?.stopPropagation();
     this.selectItem(span.item, sourceEvent, {
@@ -281,6 +284,9 @@ export class CalendarCardComponent<T, TFilters extends SmartListFilters = SmartL
   }
 
   protected onTimelineSpanKeydown(span: SmartListTimelineSpan<T>, event: KeyboardEvent): void {
+    if (!this.timelineItemInteractive()) {
+      return;
+    }
     if (event.key !== 'Enter' && event.key !== ' ') {
       return;
     }
@@ -303,6 +309,19 @@ export class CalendarCardComponent<T, TFilters extends SmartListFilters = SmartL
       return null;
     }
     return this.model?.itemTemplate ?? null;
+  }
+
+  protected timelineItemInteractive(): boolean {
+    const config = this.timeline();
+    const query = this.query();
+    const value = config?.itemInteractive;
+    if (typeof value === 'function' && query) {
+      return value(query) === true;
+    }
+    if (typeof value === 'boolean') {
+      return value;
+    }
+    return !this.shouldUseTimelineItemTemplate();
   }
 
   private shouldUseTimelineItemTemplate(): boolean {

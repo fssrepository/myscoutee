@@ -194,16 +194,19 @@
             @for (span of page.spans; track trackByTimelineSpanKey($index, span)) {
               <div
                 class="smart-list__timeline-span"
-                role="button"
-                tabindex="0"
+                [class.motion-static]="!timelineItemInteractive()"
+                [class.smart-list__timeline-span--static]="!timelineItemInteractive()"
+                [attr.role]="timelineItemInteractive() ? 'button' : null"
+                [attr.tabindex]="timelineItemInteractive() ? 0 : null"
                 [ngClass]="span.toneClass"
+                [class.smart-list__timeline-span--template]="timelineItemTemplate() !== null"
                 [class.smart-list__timeline-span--continues-before]="span.continuesBefore"
                 [class.smart-list__timeline-span--continues-after]="span.continuesAfter"
                 [style.left.%]="span.leftPct"
                 [style.width.%]="span.widthPct"
                 [style.top.px]="span.topPx"
                 [style.height.px]="span.heightPx"
-                [attr.aria-label]="span.ariaLabel"
+                [attr.aria-label]="timelineItemInteractive() ? span.ariaLabel : null"
                 (click)="selectTimelineSpan(span, $event)"
                 (keydown)="onTimelineSpanKeydown(span, $event)"
               >

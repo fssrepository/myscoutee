@@ -254,6 +254,7 @@ export interface SmartListTimelineConfig<T, TFilters extends SmartListFilters = 
   rowCount?: SmartListConfigValue<number | null | undefined, TFilters>;
   rowHeightPx?: SmartListConfigValue<number, TFilters>;
   useItemTemplate?: SmartListConfigValue<boolean, TFilters>;
+  itemInteractive?: SmartListConfigValue<boolean, TFilters>;
   resolveRange: (item: T, query: ListQuery<TFilters>) => SmartListTimelineRange | null;
   badgeLabel?: (item: T, query: ListQuery<TFilters>) => string;
   badgeMeta?: (item: T, query: ListQuery<TFilters>) => string | null;

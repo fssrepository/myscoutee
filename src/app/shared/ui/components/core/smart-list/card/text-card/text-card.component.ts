@@ -4,6 +4,7 @@ import { MatIconModule } from '@angular/material/icon';
 
 import {
   AppMenuComponent,
+  AppMenuTriggerComponent,
   type AppMenuItem,
   type AppMenuItemSelectEvent,
   type AppMenuCounter,
@@ -14,6 +15,7 @@ import {
 
 export type TextCardTone =
   | 'neutral'
+  | 'draft'
   | 'slot'
   | 'blue'
   | 'cyan'
@@ -50,7 +52,8 @@ export type TextCardSelectPalette =
   imports: [
     CommonModule,
     MatIconModule,
-    AppMenuComponent
+    AppMenuComponent,
+    AppMenuTriggerComponent
   ],
   templateUrl: './text-card.component.html',
   styleUrl: './text-card.component.scss',
@@ -65,16 +68,21 @@ export class TextCardComponent {
   @Input() tone: TextCardTone = 'neutral';
   @Input() disabled = false;
   @Input() badge = '';
+  @Input() badgeIcon = '';
   @Input() badgeAriaLabel: string | null = null;
   @Input() badgeTone: TextCardBadgeTone = 'default';
   @Input() badgeClickable = false;
   @Input() statusBadge = '';
+  @Input() statusBadgeIcon = '';
   @Input() statusBadgeAriaLabel: string | null = null;
   @Input() statusBadgeTone: TextCardStatusTone = 'default';
   @Input() menuTitle: string | null = null;
   @Input() menuPalette: AppMenuPalette = 'default';
   @Input() menuCounter: AppMenuCounter | AppMenuCounterValue | null = null;
   @Input() menuItems: readonly AppMenuItem<string, unknown>[] = [];
+  @Input() useSharedMenuTrigger = false;
+  @Input() sharedMenuId: string | null = null;
+  @Input() sharedMenuContext: unknown = null;
   @Input() selectable = false;
   @Input() selected = false;
   @Input() selectDisabled = false;
@@ -125,6 +133,10 @@ export class TextCardComponent {
     return `${this.badge ?? ''}`.trim();
   }
 
+  protected resolvedBadgeIcon(): string {
+    return `${this.badgeIcon ?? ''}`.trim();
+  }
+
   protected resolvedBadgeAriaLabel(): string | null {
     const label = `${this.badgeAriaLabel ?? ''}`.trim();
     return label || null;
@@ -132,6 +144,10 @@ export class TextCardComponent {
 
   protected resolvedStatusBadge(): string {
     return `${this.statusBadge ?? ''}`.trim();
+  }
+
+  protected resolvedStatusBadgeIcon(): string {
+    return `${this.statusBadgeIcon ?? ''}`.trim();
   }
 
   protected resolvedStatusBadgeAriaLabel(): string | null {
@@ -189,6 +205,10 @@ export class TextCardComponent {
   protected resolvedMenuTitle(): string | null {
     const title = `${this.menuTitle ?? this.resolvedTitle()}`.trim();
     return title || null;
+  }
+
+  protected resolvedSharedMenuId(): string {
+    return `${this.sharedMenuId ?? ''}`.trim();
   }
 
   protected menuTrigger(): AppMenuTrigger {

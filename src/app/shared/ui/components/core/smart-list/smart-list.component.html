@@ -1,6 +1,7 @@
 <div
   class="smart-list__surface"
   [class.smart-list__surface--horizontal]="isHorizontalList()"
+  [class.smart-list__surface--timeline]="isTimelineMode()"
   [class.smart-list__surface--compact-horizontal]="shouldUseCompactHorizontal()"
   [class.smart-list__surface--fullscreen]="resolvedPresentation() === 'fullscreen'"
   [class.smart-list__surface--fullscreen-with-rating-bar]="resolvedPresentation() === 'fullscreen' && shouldRenderPaginationRatingBar()"
@@ -19,6 +20,7 @@
             [class.smart-list--month]="isMonthMode()"
             [class.smart-list--week]="isWeekMode()"
             [class.smart-list--timeline]="isTimelineMode()"
+            [class.smart-list--mobile-stepper]="resolvedMobileStepper()"
             [class.smart-list--presentation-list]="resolvedPresentation() === 'list'"
             [class.smart-list--presentation-fullscreen]="resolvedPresentation() === 'fullscreen'"
             [class.smart-list--page-touching]="isTouchingSurface"

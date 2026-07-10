@@ -7,18 +7,27 @@
         [attr.aria-label]="resolvedBadgeAriaLabel()"
         (click)="emitBadgeClick($event)"
       >
-        {{ resolvedBadge() }}
+        @if (resolvedBadgeIcon()) {
+          <mat-icon aria-hidden="true">{{ resolvedBadgeIcon() }}</mat-icon>
+        }
+        <span>{{ resolvedBadge() }}</span>
       </button>
     } @else {
       <span class="ui-text-card__badge" [attr.aria-label]="resolvedBadgeAriaLabel()">
-        {{ resolvedBadge() }}
+        @if (resolvedBadgeIcon()) {
+          <mat-icon aria-hidden="true">{{ resolvedBadgeIcon() }}</mat-icon>
+        }
+        <span>{{ resolvedBadge() }}</span>
       </span>
     }
   }
 
   @if (resolvedStatusBadge()) {
     <span class="ui-text-card__status-badge" [attr.aria-label]="resolvedStatusBadgeAriaLabel()">
-      {{ resolvedStatusBadge() }}
+      @if (resolvedStatusBadgeIcon()) {
+        <mat-icon aria-hidden="true">{{ resolvedStatusBadgeIcon() }}</mat-icon>
+      }
+      <span>{{ resolvedStatusBadge() }}</span>
     </span>
   }
 
@@ -57,17 +66,29 @@
       }
 
       @if (hasMenu()) {
-        <app-menu
-          class="ui-text-card__menu"
-          kind="select"
-          layout="list"
-          [title]="resolvedMenuTitle()"
-          [trigger]="menuTrigger()"
-          [items]="menuItems"
-          [panelAlign]="'auto'"
-          [mobileBreakpointPx]="900"
-          (itemSelect)="menuSelect.emit($event)"
-        ></app-menu>
+        @if (useSharedMenuTrigger) {
+          <app-menu-trigger
+            class="ui-text-card__menu"
+            kind="select"
+            [menuId]="resolvedSharedMenuId()"
+            [title]="resolvedMenuTitle()"
+            [trigger]="menuTrigger()"
+            [items]="menuItems"
+            [context]="sharedMenuContext"
+          ></app-menu-trigger>
+        } @else {
+          <app-menu
+            class="ui-text-card__menu"
+            kind="select"
+            layout="list"
+            [title]="resolvedMenuTitle()"
+            [trigger]="menuTrigger()"
+            [items]="menuItems"
+            [panelAlign]="'auto'"
+            [mobileBreakpointPx]="900"
+            (itemSelect)="menuSelect.emit($event)"
+          ></app-menu>
+        }
       }
     </div>
   }
