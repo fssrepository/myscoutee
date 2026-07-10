@@ -483,7 +483,16 @@
     min-width: 28px;
     max-width: 28px;
     padding-inline: 0;
+    align-items: center;
     justify-content: center;
+  }
+
+  .ui-text-card__status-badge .mat-icon {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    margin: 0;
+    text-align: center;
   }
 
   .ui-text-card__status-badge > span {
