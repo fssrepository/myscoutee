@@ -38,41 +38,52 @@
           }
           @if (view.showInsertControls) {
             <div class="subevent-stage-insert-field">
-              <div class="subevent-stage-insert-header">
-                <span>{{ view.insertFieldLabel }}</span>
-                <span>Offset</span>
-              </div>
-              <div class="subevent-stage-insert-controls">
-                <app-menu
-                  class="subevent-stage-insert-placement-menu"
-                  kind="select"
-                  [trigger]="insertPlacementMenuTrigger()"
-                  [items]="insertPlacementMenuItems()"
-                  panelAlign="start"
-                  (itemSelect)="onStageFormMenuSelect($event)"
-                ></app-menu>
-                <div class="subevent-stage-insert-target-select">
-                  <app-menu
-                    class="subevent-stage-insert-target-menu"
-                    kind="select"
+              <section class="subevent-position-panel" [ngClass]="positionPanelClass()">
+                <div class="subevent-position-panel__head">
+                  <div class="subevent-position-panel__title">
+                    <mat-icon>low_priority</mat-icon>
+                    <span>Position</span>
+                  </div>
+                </div>
+                <div class="subevent-position-panel__grid">
+                  <label class="subevent-position-field subevent-position-field--placement">
+                    <span>Placement</span>
+                    <app-menu
+                      class="subevent-stage-insert-placement-menu"
+                      kind="select"
+                      [trigger]="insertPlacementMenuTrigger()"
+                      [items]="insertPlacementMenuItems()"
+                      panelAlign="start"
+                      (itemSelect)="onStageFormMenuSelect($event)"
+                    ></app-menu>
+                  </label>
+                  <label class="subevent-position-field subevent-position-field--anchor">
+                    <span>Event Anchor</span>
+                    <app-menu
+                      class="subevent-stage-insert-target-menu"
+                      kind="select"
                     [trigger]="insertTargetMenuTrigger()"
                     [items]="insertTargetMenuItems()"
-                    panelAlign="start"
-                    (itemSelect)="onStageFormMenuSelect($event)"
-                  ></app-menu>
+                      panelAlign="start"
+                      (itemSelect)="onStageFormMenuSelect($event)"
+                    ></app-menu>
+                  </label>
+                  <label class="subevent-position-field subevent-position-field--offset">
+                    <span>Offset</span>
+                    <div class="subevent-stage-insert-offset">
+                      <input
+                        type="number"
+                        min="0"
+                        step="5"
+                        [(ngModel)]="draftModel.offsetMinutes"
+                        placeholder="0"
+                        aria-label="Offset minutes"
+                        />
+                      <span>min</span>
+                    </div>
+                  </label>
                 </div>
-                <div class="subevent-stage-insert-offset">
-                  <input
-                    type="number"
-                    min="0"
-                    step="5"
-                    [(ngModel)]="draftModel.offsetMinutes"
-                    placeholder="0"
-                    aria-label="Offset minutes"
-                    />
-                  <span>min</span>
-                </div>
-              </div>
+              </section>
             </div>
           }
           <label class="experience-description-field">

@@ -266,28 +266,113 @@
   width: 100%;
 }
 
-.subevent-stage-insert-header {
+.subevent-position-panel {
   display: grid;
-  grid-template-columns: minmax(120px, 156px) minmax(0, 1fr) minmax(92px, 132px);
-  gap: 0.46rem;
-}
-
-.subevent-stage-insert-header span:last-child {
-  grid-column: 3;
-}
-
-.subevent-stage-insert-controls {
-  display: grid;
-  grid-template-columns: minmax(120px, 156px) minmax(0, 1fr) minmax(92px, 132px);
-  align-items: center;
-  gap: 0.46rem;
-  width: 100%;
-}
-
-.subevent-stage-insert-target-select {
+  gap: 0.62rem;
+  padding: 0.62rem 0.72rem;
+  border-radius: 16px;
+  border: 1px solid rgba(109, 149, 143, 0.24);
+  background:
+    linear-gradient(180deg, rgba(247, 250, 254, 0.97) 0%, rgba(237, 243, 249, 0.94) 100%),
+    radial-gradient(circle at top right, rgba(146, 165, 194, 0.1), transparent 36%);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.82),
+    0 10px 24px rgba(32, 57, 92, 0.05);
   min-width: 0;
+}
+
+.subevent-position-panel--optional {
+  border-color: rgba(78, 146, 171, 0.28);
+  background:
+    linear-gradient(180deg, rgba(240, 249, 252, 0.98) 0%, rgba(226, 243, 248, 0.95) 100%),
+    radial-gradient(circle at top right, rgba(117, 194, 189, 0.2), transparent 34%),
+    radial-gradient(circle at bottom left, rgba(125, 170, 221, 0.12), transparent 42%);
+}
+
+.subevent-position-panel--mandatory {
+  border-color: rgba(184, 103, 103, 0.3);
+  background:
+    linear-gradient(180deg, rgba(255, 247, 247, 0.98) 0%, rgba(252, 235, 235, 0.95) 100%),
+    radial-gradient(circle at top right, rgba(213, 125, 125, 0.18), transparent 34%),
+    radial-gradient(circle at bottom left, rgba(220, 163, 118, 0.1), transparent 42%);
+}
+
+.subevent-position-panel--tournament {
+  border-color: rgba(188, 143, 64, 0.3);
+  background:
+    linear-gradient(180deg, rgba(255, 251, 239, 0.98) 0%, rgba(250, 241, 214, 0.95) 100%),
+    radial-gradient(circle at top right, rgba(215, 173, 82, 0.2), transparent 34%),
+    radial-gradient(circle at bottom left, rgba(95, 170, 183, 0.12), transparent 42%);
+}
+
+.subevent-position-panel__head {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  align-items: start;
+}
+
+.subevent-position-panel__title {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.36rem;
+  min-width: 0;
+  color: #213a5b;
+  font-size: 1rem;
+  font-weight: 800;
+}
+
+.subevent-position-panel--optional .subevent-position-panel__title,
+.subevent-position-panel--optional .subevent-position-panel__title mat-icon {
+  color: #215f69;
+}
+
+.subevent-position-panel--mandatory .subevent-position-panel__title,
+.subevent-position-panel--mandatory .subevent-position-panel__title mat-icon {
+  color: #7d3838;
+}
+
+.subevent-position-panel--tournament .subevent-position-panel__title,
+.subevent-position-panel--tournament .subevent-position-panel__title mat-icon {
+  color: #755318;
+}
+
+.subevent-position-panel__title mat-icon {
+  width: 18px;
+  height: 18px;
+  font-size: 18px;
+  line-height: 18px;
+}
+
+.subevent-position-panel__grid {
+  display: grid;
+  grid-template-columns: minmax(120px, 156px) minmax(0, 1fr) minmax(92px, 132px);
+  align-items: end;
+  gap: 0.56rem;
   width: 100%;
-  box-sizing: border-box;
+}
+
+.subevent-position-field {
+  display: grid;
+  gap: 0.24rem !important;
+  min-width: 0;
+}
+
+.subevent-position-field > span {
+  color: rgba(31, 56, 89, 0.78);
+  font-size: 0.72rem;
+  font-weight: 800;
+}
+
+.subevent-position-panel--optional .subevent-position-field > span {
+  color: rgba(33, 95, 105, 0.78);
+}
+
+.subevent-position-panel--mandatory .subevent-position-field > span {
+  color: rgba(125, 56, 56, 0.78);
+}
+
+.subevent-position-panel--tournament .subevent-position-field > span {
+  color: rgba(117, 83, 24, 0.78);
 }
 
 .subevent-stage-insert-placement-menu,
@@ -576,17 +661,9 @@
     grid-column: 1 / -1;
   }
 
-  .subevent-stage-insert-controls {
+  .subevent-position-panel__grid {
     grid-template-columns: minmax(0, 1fr);
-    gap: 0.34rem;
-  }
-
-  .subevent-stage-insert-header {
-    grid-template-columns: minmax(0, 1fr);
-  }
-
-  .subevent-stage-insert-header span:last-child {
-    grid-column: auto;
+    gap: 0.46rem;
   }
 
   .subevent-tournament-rule-row {

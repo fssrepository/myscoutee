@@ -643,7 +643,6 @@ export class EventSubeventDefinitionsPanelComponent implements ControlValueAcces
       timingInputMode: 'duration',
       showInsertControls: state?.index === null && insertOptions.length > 0,
       showDuringInsertPlacement: !isTournament,
-      insertFieldLabel: isTournament ? 'Insert Stage' : 'Insert Sub Event',
       insertPlacement: isTournament && insertPlacement === 'during' ? 'after' : insertPlacement,
       insertTargetId: state?.insertTargetId ?? insertOptions[insertOptions.length - 1]?.id ?? null,
       insertOptions,
@@ -685,61 +684,6 @@ export class EventSubeventDefinitionsPanelComponent implements ControlValueAcces
     this.setDefinitionForm(null);
     this.onTouched();
     this.cdr.markForCheck();
-  }
-
-  protected selectDefinitionOptional(optional: boolean): void {
-    this.patchDefinitionFormModel({ optional });
-  }
-
-  protected selectDefinitionInsertPlacement(placement: EventSubeventStageInsertPlacement): void {
-    if (!this.definitionForm) {
-      return;
-    }
-    if (this.mode === 'Tournament' && placement === 'during') {
-      return;
-    }
-    this.setDefinitionForm({
-      ...this.definitionForm,
-      insertPlacement: placement
-    });
-    this.onTouched();
-    this.cdr.markForCheck();
-  }
-
-  protected onDefinitionInsertTargetChange(targetId: string | null): void {
-    if (!this.definitionForm) {
-      return;
-    }
-    this.setDefinitionForm({
-      ...this.definitionForm,
-      insertTargetId: targetId
-    });
-    this.onTouched();
-    this.cdr.markForCheck();
-  }
-
-  protected onDefinitionCapacityMinChange(value: number | string): void {
-    this.patchDefinitionFormModel({ capacityMin: this.toNonNegativeInteger(value) });
-  }
-
-  protected onDefinitionCapacityMaxChange(value: number | string): void {
-    this.patchDefinitionFormModel({ capacityMax: this.toNonNegativeInteger(value) });
-  }
-
-  protected onDefinitionTournamentGroupCapacityMinChange(value: number | string): void {
-    this.patchDefinitionFormModel({ tournamentGroupCapacityMin: this.toNonNegativeInteger(value) });
-  }
-
-  protected onDefinitionTournamentGroupCapacityMaxChange(value: number | string): void {
-    this.patchDefinitionFormModel({ tournamentGroupCapacityMax: this.toNonNegativeInteger(value) });
-  }
-
-  protected onDefinitionTournamentLeaderboardTypeChange(value: EventSubeventTournamentLeaderboardType | string | null | undefined): void {
-    this.patchDefinitionFormModel({ tournamentLeaderboardType: this.normalizedTournamentLeaderboardType(value) });
-  }
-
-  protected onDefinitionTournamentAdvancePerGroupChange(value: number | string): void {
-    this.patchDefinitionFormModel({ tournamentAdvancePerGroup: this.toNonNegativeInteger(value) });
   }
 
   private openEditDefinitionForm(index: number): void {
@@ -827,21 +771,6 @@ export class EventSubeventDefinitionsPanelComponent implements ControlValueAcces
       capacityMax,
       icon: state.icon
     }])[0];
-  }
-
-  private patchDefinitionFormModel(update: Partial<EventSubeventStageFormModel>): void {
-    if (!this.definitionForm) {
-      return;
-    }
-    this.setDefinitionForm({
-      ...this.definitionForm,
-      model: {
-        ...this.definitionForm.model,
-        ...update
-      }
-    });
-    this.onTouched();
-    this.cdr.markForCheck();
   }
 
   private setDefinitionForm(state: SubEventDefinitionFormState | null): void {

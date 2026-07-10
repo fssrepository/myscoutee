@@ -64,7 +64,6 @@ export interface EventSubeventStageFormPopupView {
   dateInput?: DateInputModel;
   showInsertControls: boolean;
   showDuringInsertPlacement: boolean;
-  insertFieldLabel: string;
   insertPlacement: EventSubeventStageInsertPlacement;
   insertTargetId: string | null;
   insertOptions: ReadonlyArray<EventSubeventStageInsertOption>;
@@ -308,7 +307,7 @@ export class EventSubeventStageFormPopupComponent implements OnChanges {
       label: this.insertPlacementLabel(placement),
       icon: this.insertPlacementIcon(placement),
       palette: this.insertPlacementPalette(placement),
-      ariaLabel: 'Insert sub event position',
+      ariaLabel: 'Position',
       layout: 'field'
     };
   }
@@ -332,7 +331,7 @@ export class EventSubeventStageFormPopupComponent implements OnChanges {
       label: this.insertTargetLabel(),
       icon: selected?.icon ?? 'route',
       palette: selected?.palette ?? 'blue',
-      ariaLabel: this.view.insertFieldLabel,
+      ariaLabel: 'Event Anchor',
       layout: 'field'
     };
   }
@@ -470,6 +469,15 @@ export class EventSubeventStageFormPopupComponent implements OnChanges {
 
   protected draftModeIcon(): string {
     return this.draftModel.optional && !this.view.showTournamentFields ? 'toggle_on' : 'lock';
+  }
+
+  protected positionPanelClass(): string {
+    if (this.view.showTournamentFields) {
+      return 'subevent-position-panel--tournament';
+    }
+    return this.draftModel.optional
+      ? 'subevent-position-panel--optional'
+      : 'subevent-position-panel--mandatory';
   }
 
   protected draftTournamentEstimatedGroupCountLabel(): string {
@@ -625,7 +633,6 @@ export class EventSubeventStageFormPopupComponent implements OnChanges {
       },
       showInsertControls: false,
       showDuringInsertPlacement: false,
-      insertFieldLabel: 'Insert Stage',
       insertPlacement: 'after',
       insertTargetId: null,
       insertOptions: [],
