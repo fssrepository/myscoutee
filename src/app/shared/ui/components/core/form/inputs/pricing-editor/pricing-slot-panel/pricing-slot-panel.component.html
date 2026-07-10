@@ -48,22 +48,13 @@
           <div class="pricing-slot-panel__card-grid">
             <label class="pricing-slot-panel__field">
               <span>Slot</span>
-              <div class="pricing-slot-panel__select-shell">
-                <mat-select
-                  [ngModel]="override.slotId ?? ''"
-                  (ngModelChange)="onSlotIdChange($index, $event)"
-                  [disabled]="readOnly"
-                  [panelWidth]="null"
-                  disableOptionCentering
-                  panelClass="selector-options-panel profile-bottom-sheet-panel"
-                  >
-                  @for (slot of availableSlotsFor(override); track slot.id) {
-                    <mat-option [value]="slot.id">
-                      {{ slot.label }}
-                    </mat-option>
-                  }
-                </mat-select>
-              </div>
+              <app-menu-trigger
+                [menuId]="slotMenuId(override)"
+                kind="select"
+                title="Slot"
+                [trigger]="slotMenuTrigger(override)"
+                [items]="slotMenuItems(override, $index)"
+              ></app-menu-trigger>
             </label>
             <label class="pricing-slot-panel__field">
               <span>Price</span>

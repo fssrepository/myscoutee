@@ -4,10 +4,19 @@ import { MatIconModule } from '@angular/material/icon';
 
 import { ExplanationGuideService } from '../../../core';
 import * as AppConstants from '../../../core/common/constants';
-import type { HelpCenterSectionDto } from '../../../core/contracts';
+import type {
+  HelpCenterRevisionDto,
+  HelpCenterSectionDto
+} from '../../../core/contracts';
 import { I18nPipe } from '../../pipes';
 import { LazyBgImageDirective } from '../../directives';
 import { IndicatorComponent } from '../core/indicator';
+import {
+  PopupComponent,
+  type PopupControl,
+  type PopupMenuSelectEvent,
+  type PopupModel
+} from '../core/popup';
 
 type HomeFilterModeOption = Readonly<{
   key: string;
@@ -20,7 +29,7 @@ type ExplanationSectionLayout = 'span-1' | 'span-2' | 'span-3';
 @Component({
   selector: 'app-explanation-popup',
   standalone: true,
-  imports: [CommonModule, MatIconModule, LazyBgImageDirective, IndicatorComponent, I18nPipe],
+  imports: [CommonModule, MatIconModule, LazyBgImageDirective, IndicatorComponent, I18nPipe, PopupComponent],
   templateUrl: './explanation-popup.component.html',
   styleUrl: './explanation-popup.component.scss',
   changeDetection: ChangeDetectionStrategy.OnPush
@@ -51,6 +60,71 @@ export class ExplanationPopupComponent {
     { key: 'separated-friends', label: 'Hálózaton belül', icon: 'group_add' },
     { key: 'pair', label: 'Hálózaton kívül', icon: 'groups' }
   ];
+
+  protected explanationPopupModel(revision: HelpCenterRevisionDto): PopupModel {
+    return {
+      title: revision.title,
+      translateTitle: false,
+      ariaLabel: revision.title,
+      showClose: false,
+      size: 'wide',
+      height: 'full',
+      headerLayout: 'document',
+      headerPalette: revision.headerColor ?? 'slate',
+      headerTitleTone: 'neutral',
+      bodyLayout: 'fill',
+      backdropTone: 'dim',
+      headerControls: this.explanationHeaderControls(),
+      onClose: event => this.close(event),
+      onMenuSelect: event => this.onExplanationMenuSelect(event)
+    };
+  }
+
+  protected loadingExplanationPopupModel(): PopupModel {
+    return {
+      ariaLabel: 'Loading explanation',
+      showClose: false,
+      size: 'wide',
+      height: 'full',
+      headerLayout: 'document',
+      headerPalette: 'slate',
+      headerTitleTone: 'neutral',
+      bodyLayout: 'fill',
+      backdropTone: 'dim',
+      headerControls: this.explanationHeaderControls(),
+      onClose: event => this.close(event),
+      onMenuSelect: event => this.onExplanationMenuSelect(event)
+    };
+  }
+
+  protected explanationPopupZIndex(): number {
+    return 20000;
+  }
+
+  private explanationHeaderControls(): readonly PopupControl[] {
+    return [{
+      kind: 'menu',
+      id: 'dismiss-explanation-guide',
+      menuKind: 'inline',
+      closeOnSelect: false,
+      items: [{
+        id: 'dismiss-explanation-guide',
+        label: 'got.it',
+        icon: 'done',
+        kind: 'action',
+        layout: 'action',
+        palette: 'green',
+        closeOnSelect: false,
+        ariaLabel: 'got.it'
+      }]
+    }];
+  }
+
+  private onExplanationMenuSelect(event: PopupMenuSelectEvent): void {
+    if (event.itemSelect.item.id === 'dismiss-explanation-guide') {
+      this.close(event.itemSelect.sourceEvent);
+    }
+  }
 
   protected homeFilterModeOptions(lang: string | null | undefined): ReadonlyArray<HomeFilterModeOption> {
     return lang === 'hu'

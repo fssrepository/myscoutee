@@ -2,118 +2,17 @@
   display: contents;
 }
 
-.explanation-popup {
-  position: fixed;
-  inset: 0;
-  z-index: 20000;
-  display: flex;
-  align-items: flex-start;
-  justify-content: center;
-  padding: 1rem;
-}
-
-.explanation-popup__backdrop {
-  position: absolute;
-  inset: 0;
-  background: rgba(9, 16, 29, 0.52);
-  backdrop-filter: blur(3px);
-}
-
-.explanation-popup__panel {
-  position: relative;
-  z-index: 1;
-  width: min(1080px, calc(100vw - 1.2rem));
-  height: calc(100vh - 1.2rem);
-  height: calc(100dvh - 1.2rem);
-  max-height: calc(100vh - 1.2rem);
-  max-height: calc(100dvh - 1.2rem);
-  overflow: hidden;
-  border: 1px solid rgba(255, 255, 255, 0.64);
-  border-radius: 18px;
-  background:
-    linear-gradient(180deg, rgba(255, 255, 255, 0.98) 0%, rgba(245, 249, 255, 0.98) 100%);
-  box-shadow: 0 24px 70px rgba(8, 16, 30, 0.34);
-  padding: 1rem;
-  display: flex;
-  flex-direction: column;
-  box-sizing: border-box;
-}
-
-.explanation-popup__panel--loading {
-  height: calc(100vh - 1.2rem);
-  height: calc(100dvh - 1.2rem);
-  max-height: calc(100vh - 1.2rem);
-  max-height: calc(100dvh - 1.2rem);
-}
-
-@supports not (height: 100dvh) {
-  .explanation-popup__panel {
-    height: calc(100vh - 1.2rem);
-    max-height: calc(100vh - 1.2rem);
-  }
-}
-
-.explanation-popup__primary .mat-icon {
-  width: 18px;
-  height: 18px;
-  font-size: 18px;
-  line-height: 18px;
-}
-
-.explanation-popup__header {
-  flex: 0 0 auto;
-  padding: 0.46rem 0.2rem 0.74rem;
-}
-
-.explanation-popup__headline {
-  min-width: 0;
-  display: grid;
-  gap: 0.26rem;
-}
-
-.explanation-popup__title-row {
-  min-width: 0;
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 0.76rem;
-}
-
-.explanation-popup__headline h2,
-.explanation-popup__headline p,
-.explanation-popup__description,
 .explanation-popup__item h3,
 .explanation-popup__item p {
   margin: 0;
 }
 
-.explanation-popup__headline h2 {
-  min-width: 0;
-  flex: 1 1 auto;
-  color: #1d3354;
-  font-size: 1.32rem;
-  font-weight: 950;
-  line-height: 1.12;
-}
-
-.explanation-popup__headline p,
-.explanation-popup__description {
-  color: rgba(42, 61, 88, 0.78);
-  font-size: 0.9rem;
-  font-weight: 750;
-  line-height: 1.38;
-}
-
-.explanation-popup__description {
-  flex: 0 0 auto;
-  padding: 0.2rem 0.2rem 0.86rem;
-}
-
 .explanation-popup__body {
+  flex: 1 1 auto;
   min-height: 0;
   overflow-y: auto;
   overflow-x: hidden;
-  padding: 0 0.12rem 0.1rem;
+  padding: 0.12rem;
 }
 
 .explanation-popup__loading-body {
@@ -3619,45 +3518,11 @@
 }
 
 
-.explanation-popup__footer {
-  display: flex;
-  justify-content: flex-end;
-  padding-top: 0.9rem;
-}
-
-.explanation-popup__primary {
-  flex: 0 0 auto;
-  min-height: 38px;
-  border: 1px solid rgba(42, 112, 72, 0.26);
-  border-radius: 999px;
-  background: linear-gradient(180deg, #eafbf1 0%, #d7f1e2 100%);
-  color: #1f7649;
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  gap: 0.32rem;
-  padding: 0 0.86rem;
-  font: inherit;
-  font-size: 0.82rem;
-  font-weight: 950;
-  cursor: pointer;
-}
-
-.explanation-popup__header-action {
-  min-height: 36px;
-  padding: 0 0.78rem;
-}
-
 @media (max-width: 760px) {
   .explanation-popup__item--span-1,
   .explanation-popup__item--span-2,
   .explanation-popup__item--span-3 {
     grid-column: auto;
-  }
-
-  .explanation-popup {
-    display: block;
-    padding: 0;
   }
 
   .explanation-popup__member-image-grid-mini,
@@ -3666,42 +3531,7 @@
     grid-template-columns: minmax(0, 1fr);
   }
 
-  .explanation-popup__panel {
-    width: 100%;
-    height: 100dvh;
-    max-height: 100dvh;
-    border: 0;
-    border-radius: 0;
-    padding: calc(0.78rem + env(safe-area-inset-top)) 0.78rem calc(0.78rem + env(safe-area-inset-bottom));
-    box-sizing: border-box;
-  }
-
-  @supports not (height: 100dvh) {
-    .explanation-popup__panel {
-      height: 100vh;
-      max-height: 100vh;
-    }
-  }
-
-  .explanation-popup__header {
-    padding: 0.34rem 0 0.66rem;
-  }
-
-  .explanation-popup__title-row {
-    gap: 0.5rem;
-  }
-
-  .explanation-popup__header-action {
-    min-height: 34px;
-    padding: 0 0.7rem;
-  }
-
-  .explanation-popup__description {
-    padding-bottom: 0.64rem;
-  }
-
   .explanation-popup__body {
-    margin: 0 -0.18rem;
     padding: 0 0.18rem 0.1rem;
   }
 

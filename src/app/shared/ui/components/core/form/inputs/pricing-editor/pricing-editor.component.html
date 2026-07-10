@@ -396,16 +396,14 @@
                 @if (resolvedConfig.allowSlotFeatures) {
                   <label class="pricing-editor__field">
                     <span>Applies To</span>
-                    <app-menu
+                    <app-menu-trigger
+                      [menuId]="ruleScopeMenuId('demand', rule)"
                       kind="select"
                       [title]="ruleScopeMenuTitle('demand')"
                       [trigger]="ruleScopeMenuTrigger('demand', rule)"
                       [items]="ruleScopeMenuItems('demand', rule)"
-                      [open]="isRuleScopePickerOpen('demand', rule)"
                       [closeOnSelect]="false"
-                      (openChange)="onRuleScopeMenuOpenChange('demand', rule, $event)"
-                      (itemSelect)="onRuleScopeMenuSelect($event)"
-                    ></app-menu>
+                    ></app-menu-trigger>
                   </label>
                 }
               </div>
@@ -542,16 +540,14 @@
                   @if (resolvedConfig.allowSlotFeatures) {
                   <label class="pricing-editor__field">
                     <span>Applies To</span>
-                    <app-menu
+                    <app-menu-trigger
+                      [menuId]="ruleScopeMenuId('time', rule)"
                       kind="select"
                       [title]="ruleScopeMenuTitle('time')"
                       [trigger]="ruleScopeMenuTrigger('time', rule)"
                       [items]="ruleScopeMenuItems('time', rule)"
-                      [open]="isRuleScopePickerOpen('time', rule)"
                       [closeOnSelect]="false"
-                      (openChange)="onRuleScopeMenuOpenChange('time', rule, $event)"
-                      (itemSelect)="onRuleScopeMenuSelect($event)"
-                    ></app-menu>
+                    ></app-menu-trigger>
                   </label>
                 }
               </div>
@@ -844,6 +840,11 @@
     </section>
   }
 </ng-template>
+
+<app-menu-outlet
+  [items]="activeRuleScopeMenuItems()"
+  (itemSelect)="onRuleScopeMenuSelect($event)"
+></app-menu-outlet>
 
 <ng-template #pricingPreviewCards>
   <div class="pricing-editor__preview-card">

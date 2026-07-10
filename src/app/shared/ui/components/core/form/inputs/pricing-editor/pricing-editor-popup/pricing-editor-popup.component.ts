@@ -21,7 +21,11 @@ import {
   type PopupActionEvent,
   type PopupModel
 } from '../../../../popup';
-import { AppMenuComponent } from '../../../../menu';
+import {
+  AppMenuDispatcher,
+  AppMenuOutletComponent,
+  AppMenuTriggerComponent
+} from '../../../../menu';
 import {
   PricingEditorInputComponent,
   type PricingEditorConfig
@@ -39,7 +43,8 @@ import {
     MatInputModule,
     MatNativeDateModule,
     MatSelectModule,
-    AppMenuComponent,
+    AppMenuOutletComponent,
+    AppMenuTriggerComponent,
     PopupComponent,
     PricingSlotPanelComponent
   ],
@@ -48,7 +53,8 @@ import {
     '../pricing-editor.component.scss',
     './pricing-editor-popup.component.scss'
   ],
-  changeDetection: ChangeDetectionStrategy.OnPush
+  changeDetection: ChangeDetectionStrategy.OnPush,
+  providers: [AppMenuDispatcher]
 })
 export class PricingEditorPopupComponent extends PricingEditorInputComponent implements OnChanges {
   @Input() popup: FormFlowPricingEditorPopupState | null = null;

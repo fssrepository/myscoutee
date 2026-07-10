@@ -2,10 +2,18 @@ import { CommonModule } from '@angular/common';
 import { Component, EventEmitter, Input, OnChanges, Output, SimpleChanges, ChangeDetectionStrategy, ChangeDetectorRef } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { MatIconModule } from '@angular/material/icon';
-import { MatSelectModule } from '@angular/material/select';
 
 import { PricingBuilder } from '../../../../../../../core/base/builders';
 import type * as ContractTypes from '../../../../../../../core/contracts';
+import {
+  AppMenuTriggerComponent,
+  type AppMenuItem,
+  type AppMenuTrigger
+} from '../../../../menu';
+
+interface PricingSlotMenuContext {
+  select: () => void;
+}
 
 @Component({
   selector: 'app-pricing-slot-panel',
@@ -13,8 +21,8 @@ import type * as ContractTypes from '../../../../../../../core/contracts';
   imports: [
     CommonModule,
     FormsModule,
+    AppMenuTriggerComponent,
     MatIconModule,
-    MatSelectModule
   ],
   templateUrl: './pricing-slot-panel.component.html',
   styleUrl: './pricing-slot-panel.component.scss',
@@ -102,6 +110,42 @@ export class PricingSlotPanelComponent implements OnChanges {
     this.emitOverrides();
   }
 
+  protected slotMenuId(override: ContractTypes.PricingSlotOverride): string {
+    return `pricing-slot-override-${override.id}`;
+  }
+
+  protected slotMenuTrigger(override: ContractTypes.PricingSlotOverride): AppMenuTrigger {
+    return {
+      id: this.slotMenuId(override),
+      label: override.label || 'Select slot',
+      icon: 'calendar_month',
+      trailingIcon: 'expand_more',
+      openTrailingIcon: 'expand_less',
+      palette: 'blue',
+      layout: 'field',
+      disabled: this.readOnly
+    };
+  }
+
+  protected slotMenuItems(
+    override: ContractTypes.PricingSlotOverride,
+    overrideIndex: number
+  ): readonly AppMenuItem<string, PricingSlotMenuContext>[] {
+    return this.availableSlotsFor(override).map(slot => ({
+      id: `${this.slotMenuId(override)}-${slot.id}`,
+      label: slot.label,
+      description: this.slotReferenceWindowLabel(slot),
+      icon: 'event',
+      kind: 'radio',
+      palette: 'blue',
+      surface: 'tinted',
+      checked: slot.id === override.slotId,
+      context: {
+        select: () => this.onSlotIdChange(overrideIndex, slot.id)
+      }
+    }));
+  }
+
   protected onPriceChange(index: number, value: number | string): void {
     if (this.readOnly || index < 0 || index >= this.workingOverrides.length) {
       return;
@@ -141,6 +185,21 @@ export class PricingSlotPanelComponent implements OnChanges {
     const end = this.formatDateTime(override.endAt);
     if (!start && !end) {
       return 'Time window will follow the selected slot.';
+    }
+    if (!start) {
+      return `Ends ${end}`;
+    }
+    if (!end) {
+      return `Starts ${start}`;
+    }
+    return `${start} - ${end}`;
+  }
+
+  private slotReferenceWindowLabel(slot: ContractTypes.PricingSlotReference): string {
+    const start = this.formatDateTime(slot.startAt);
+    const end = this.formatDateTime(slot.endAt);
+    if (!start && !end) {
+      return 'Time follows this slot.';
     }
     if (!start) {
       return `Ends ${end}`;

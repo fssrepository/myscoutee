@@ -123,6 +123,7 @@
 .pricing-slot-panel__remove {
   width: 28px;
   height: 28px;
+  padding: 0;
   border-radius: 50%;
   display: inline-flex;
   align-items: center;
@@ -133,9 +134,12 @@
 }
 
 .pricing-slot-panel__remove mat-icon {
+  display: block;
   width: 18px;
   height: 18px;
   font-size: 18px;
+  line-height: 18px;
+  margin: 0;
 }
 
 .pricing-slot-panel__card-grid {
@@ -157,27 +161,12 @@
   text-transform: uppercase;
 }
 
-.pricing-slot-panel__select-shell,
 .pricing-slot-panel__money-field {
   min-height: 46px;
   border-radius: 14px;
   border: 1px solid rgba(126, 149, 180, 0.28);
   background: rgba(255, 255, 255, 0.96);
   box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.92);
-}
-
-.pricing-slot-panel__select-shell {
-  display: flex;
-  align-items: center;
-  padding: 0 0.68rem;
-}
-
-.pricing-slot-panel__select-shell ::ng-deep .mat-mdc-select-trigger {
-  min-height: 44px;
-}
-
-.pricing-slot-panel__select-shell ::ng-deep .mat-mdc-form-field-subscript-wrapper {
-  display: none;
 }
 
 .pricing-slot-panel__money-field {
