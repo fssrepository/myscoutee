@@ -18,7 +18,10 @@ import {
 import {
   AppMenuComponent,
   type AppMenuItem,
-  type AppMenuItemSelectEvent
+  type AppMenuItemSelectEvent,
+  type AppMenuPalette,
+  FormFlowComponent,
+  type FormFlowModel
 } from '../../../shared/ui';
 import {
   ProfileStore
@@ -26,10 +29,18 @@ import {
 import { UserProfileStore } from '../../../shared/ui/context/stores/user-profile.store';
 import { AppRuntimeStore } from '../../../shared/ui/context/stores/app-runtime.store';
 
+interface FeedbackFormValue {
+  category: string;
+  subject: string;
+  details: string;
+}
+
+type FeedbackActionId = 'feedback-cancel' | 'feedback-submit';
+
 @Component({
   selector: 'app-profile-feedback-popup',
   standalone: true,
-  imports: [FormsModule, AppMenuComponent],
+  imports: [FormsModule, AppMenuComponent, FormFlowComponent],
   templateUrl: './feedback-popup.component.html',
   styleUrl: './feedback-popup.component.scss'
 })
@@ -87,28 +98,126 @@ export class ProfileFeedbackPopupComponent implements OnDestroy {
     return !this.isSubmitBusy() && !!this.feedbackForm.subject.trim() && this.feedbackDetailsRemaining === 0;
   }
 
-  protected feedbackSubmitMenuItems(): readonly AppMenuItem<string>[] {
-    return [{
-      id: 'feedback-submit',
-      label: 'Send feedback',
-      layout: 'action',
-      palette: this.hasSubmitError() ? 'danger' : this.isSubmitSuccess() ? 'success' : 'blue',
-      disabled: !this.canSubmitFeedback(),
-      ariaLabel: 'Send feedback',
-      progress: this.showSubmitRing()
-        ? {
-            state: this.hasSubmitError() ? 'error' : this.isSubmitSuccess() ? 'success' : 'loading',
-            shape: 'button'
+  protected feedbackFlowModel(): FormFlowModel {
+    const disabled = this.isSubmitBusy();
+    return {
+      title: 'Send Feedback',
+      layout: 'grouped',
+      tone: 'blue',
+      header: false,
+      allowMenuOverflow: true,
+      summary: { enabled: false },
+      completion: { controls: 'none' },
+      save: null,
+      steps: [{
+        id: 'feedback',
+        title: 'Feedback',
+        chrome: 'none',
+        controls: [
+          {
+            id: 'feedback-category',
+            bind: 'category',
+            kind: 'menu',
+            layout: 'wide',
+            label: 'Category',
+            disabled,
+            config: {
+              kind: 'select',
+              layout: 'list',
+              title: 'Category',
+              trigger: {
+                label: this.feedbackForm.category,
+                icon: 'category',
+                palette: this.feedbackCategoryPalette(this.feedbackForm.category),
+                layout: 'field',
+                disabled,
+                ariaLabel: 'Select feedback category'
+              },
+              items: this.feedbackCategories.map((category, index) => ({
+                id: `feedback-category-${index}`,
+                label: category,
+                icon: this.feedbackCategoryIcon(category),
+                kind: 'radio',
+                value: category,
+                active: category === this.feedbackForm.category,
+                checked: category === this.feedbackForm.category,
+                palette: this.feedbackCategoryPalette(category),
+                surface: 'tinted',
+                disabled
+              }))
+            }
+          },
+          {
+            id: 'feedback-subject',
+            bind: 'subject',
+            kind: 'text',
+            layout: 'wide',
+            label: 'Subject',
+            placeholder: 'Short summary',
+            disabled
+          },
+          {
+            id: 'feedback-details',
+            bind: 'details',
+            kind: 'textarea',
+            layout: 'wide',
+            label: 'Details',
+            placeholder: 'Describe your feedback. Include steps if this is a bug.',
+            rows: 4,
+            required: true,
+            minLength: this.feedbackDetailsMinLength,
+            disabled
           }
-        : null
-    }];
+        ]
+      }]
+    };
   }
 
-  protected onFeedbackSubmitMenuSelect(event: AppMenuItemSelectEvent<string>): void {
-    if (event.id !== 'feedback-submit') {
-      return;
+  protected feedbackActionMenuItems(): readonly AppMenuItem<FeedbackActionId>[] {
+    return [
+      {
+        id: 'feedback-cancel',
+        label: 'Cancel',
+        layout: 'action',
+        palette: 'slate',
+        ariaLabel: 'Cancel feedback'
+      },
+      {
+        id: 'feedback-submit',
+        label: 'Send feedback',
+        layout: 'action',
+        palette: this.hasSubmitError() ? 'danger' : this.isSubmitSuccess() ? 'success' : 'blue',
+        disabled: !this.canSubmitFeedback(),
+        ariaLabel: 'Send feedback',
+        progress: this.showSubmitRing()
+          ? {
+              state: this.hasSubmitError() ? 'error' : this.isSubmitSuccess() ? 'success' : 'loading',
+              shape: 'button'
+            }
+          : null
+      }
+    ];
+  }
+
+  protected onFeedbackFlowValueChange(value: unknown): void {
+    const record = this.isRecord(value) ? value : {};
+    const category = `${record['category'] ?? ''}`;
+    this.feedbackForm = {
+      category: this.feedbackCategories.includes(category)
+        ? category
+        : this.feedbackCategories[0] ?? 'General',
+      subject: `${record['subject'] ?? ''}`,
+      details: `${record['details'] ?? ''}`
+    };
+    this.clearSubmitStatus();
+  }
+
+  protected onFeedbackActionMenuSelect(event: AppMenuItemSelectEvent<FeedbackActionId>): void {
+    if (event.id === 'feedback-cancel') {
+      this.closePopup();
+    } else if (event.id === 'feedback-submit') {
+      void this.submitFeedback();
     }
-    void this.submitFeedback();
   }
 
   protected clearSubmitStatus(): void {
@@ -155,12 +264,46 @@ export class ProfileFeedbackPopupComponent implements OnDestroy {
     this.feedbackSubmitted = true;
   }
 
-  private createInitialForm(): { category: string; subject: string; details: string } {
+  private feedbackCategoryIcon(category: string): string {
+    switch (category) {
+      case 'Bug report':
+        return 'bug_report';
+      case 'Feature request':
+        return 'lightbulb';
+      case 'UX improvement':
+        return 'touch_app';
+      case 'Performance':
+        return 'speed';
+      default:
+        return 'category';
+    }
+  }
+
+  private feedbackCategoryPalette(category: string): AppMenuPalette {
+    switch (category) {
+      case 'Bug report':
+        return 'danger';
+      case 'Feature request':
+        return 'amber';
+      case 'UX improvement':
+        return 'violet';
+      case 'Performance':
+        return 'green';
+      default:
+        return 'blue';
+    }
+  }
+
+  private createInitialForm(): FeedbackFormValue {
     return {
       category: this.feedbackCategories[0] ?? 'General',
       subject: '',
       details: ''
     };
+  }
+
+  private isRecord(value: unknown): value is Record<string, unknown> {
+    return typeof value === 'object' && value !== null && !Array.isArray(value);
   }
 
   private abortActiveSubmit(): void {

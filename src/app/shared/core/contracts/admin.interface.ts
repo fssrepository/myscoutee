@@ -45,6 +45,10 @@ export interface AdminReportDto {
   chatTitle?: string | null;
   chatMessages?: AdminChatMessageDto[];
   createdDate: string;
+  warnedAtIso?: string | null;
+  warnedByAdminUserId?: string | null;
+  resolvedAtIso?: string | null;
+  resolvedByAdminUserId?: string | null;
 }
 
 export interface AdminReportedUserDto {
@@ -72,6 +76,8 @@ export interface AdminFeedbackDto {
   subject: string;
   details: string;
   createdDate: string;
+  resolvedAtIso?: string | null;
+  resolvedByAdminUserId?: string | null;
 }
 
 export interface AdminModerationStoreDto {
@@ -82,12 +88,20 @@ export interface AdminModerationStoreDto {
 
 export type AdminModerationStore = AdminModerationStoreDto;
 
+export interface AdminReviewCountsDto {
+  reportsUnresolved: number;
+  reportsResolved: number;
+  feedbackUnresolved: number;
+  feedbackResolved: number;
+}
+
 export interface AdminDashboardDto {
   activeAdmin: AdminUserDto;
   activeAdminProfile?: UserContracts.UserDto | null;
   reportedUsers: AdminReportedUserDto[];
   blockedUsers: AdminReportedUserDto[];
   feedback: AdminFeedbackDto[];
+  reviewCounts?: AdminReviewCountsDto | null;
 }
 
 export type AdminMonitoringHealth = 'ok' | 'watch' | 'alert';
@@ -153,6 +167,7 @@ export interface AdminMonitoringStateDto {
   generatedAtIso: string;
   source: AdminMonitoringSource;
   health: AdminMonitoringHealth;
+  filterCounts?: Record<string, number>;
   categories: AdminMonitoringCategoryDto[];
 }
 

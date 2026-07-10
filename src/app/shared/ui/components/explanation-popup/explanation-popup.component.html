@@ -1,20 +1,6 @@
 @if (popupOpen()) {
   @if (activeRevision(); as revision) {
-    <section class="explanation-popup" role="dialog" aria-modal="true" [attr.aria-label]="revision.title">
-    <div class="explanation-popup__backdrop" (click)="close($event)"></div>
-    <article class="explanation-popup__panel" (click)="$event.stopPropagation()">
-      <header class="explanation-popup__header">
-        <div class="explanation-popup__headline">
-          <div class="explanation-popup__title-row">
-            <h2 data-i18n-ignore>{{ revision.title }}</h2>
-            <button type="button" class="explanation-popup__primary explanation-popup__header-action" [attr.aria-label]="'close' | i18n: 'Close'" (click)="close($event)">
-              <span>{{ 'got.it' | i18n }}</span>
-              <mat-icon>check</mat-icon>
-            </button>
-          </div>
-        </div>
-      </header>
-
+    <app-popup [model]="explanationPopupModel(revision)" [zIndex]="explanationPopupZIndex()">
       <div class="explanation-popup__body">
         <div class="explanation-popup__grid">
           @for (section of revision.sections; track section.id) {
@@ -872,33 +858,17 @@
             </section>
           }
         </div>
-
       </div>
-    </article>
-    </section>
+    </app-popup>
   } @else {
-    <section class="explanation-popup" role="dialog" aria-modal="true" [attr.aria-label]="'loading.explanation' | i18n: 'Loading explanation'">
-      <div class="explanation-popup__backdrop" (click)="close($event)"></div>
-      <article class="explanation-popup__panel explanation-popup__panel--loading" (click)="$event.stopPropagation()">
-        <header class="explanation-popup__header">
-          <div class="explanation-popup__headline">
-            <div class="explanation-popup__title-row">
-              <h2>{{ 'loading.explanation' | i18n: 'Loading explanation' }}</h2>
-              <button type="button" class="explanation-popup__primary explanation-popup__header-action" [attr.aria-label]="'close' | i18n: 'Close'" (click)="close($event)">
-                <span>{{ 'got.it' | i18n }}</span>
-                <mat-icon>check</mat-icon>
-              </button>
-            </div>
-          </div>
-        </header>
-        <div class="explanation-popup__loading-body">
-          <app-indicator
-            kind="load-ring"
-            state="loading"
-          ></app-indicator>
-          <span>{{ 'loading.explanation.content' | i18n: 'Loading explanation content' }}</span>
-        </div>
-      </article>
-    </section>
+    <app-popup [model]="loadingExplanationPopupModel()" [zIndex]="explanationPopupZIndex()">
+      <div class="explanation-popup__loading-body">
+        <app-indicator
+          kind="load-ring"
+          state="loading"
+        ></app-indicator>
+        <span>{{ 'loading.explanation.content' | i18n: 'Loading explanation content' }}</span>
+      </div>
+    </app-popup>
   }
 }

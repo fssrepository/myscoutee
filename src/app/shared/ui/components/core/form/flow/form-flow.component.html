@@ -3,6 +3,7 @@
   [class.is-loading]="loading"
   [class.form-flow--carousel]="isCarouselLayout()"
   [class.form-flow--grouped]="isGroupedLayout()"
+  [class.form-flow--menu-overflow]="model?.allowMenuOverflow === true"
   [ngClass]="toneClass()"
   [attr.aria-busy]="loading"
 >
@@ -99,11 +100,17 @@
     >
       @if (isCarouselLayout() && !activeStepHasCardHeader()) {
         <div class="form-flow__carousel-head">
-          <span class="form-flow__step-badge" [class.is-missing]="currentPageMissingRequired()">
+          <span
+            class="form-flow__step-badge"
+            [class.is-missing]="currentPageMissingRequired()"
+            [class.is-complete]="currentPageRequiredComplete()"
+          >
             <mat-icon>{{ activeStepIcon() }}</mat-icon>
             <span>{{ activeTitle() }}</span>
             @if (currentPageMissingRequired()) {
               <mat-icon>priority_high</mat-icon>
+            } @else if (currentPageRequiredComplete()) {
+              <mat-icon>check</mat-icon>
             }
           </span>
           <ng-container [ngTemplateOutlet]="progressControls"></ng-container>
@@ -113,7 +120,13 @@
         #flowViewport
         class="form-flow__body"
         [class.form-flow__body--mobile]="isMobileViewport && !isGroupedLayout()"
+        [class.is-swipe-blocked]="allHorizontalSwipeBlocked()"
         (scroll)="onFlowViewportScroll()"
+        (touchstart)="onFlowViewportTouchStart($event)"
+        (touchmove)="onFlowViewportTouchMove($event)"
+        (touchend)="onFlowViewportTouchEnd()"
+        (touchcancel)="onFlowViewportTouchEnd()"
+        (wheel)="onFlowViewportWheel($event)"
       >
         <div class="form-flow__track" [style.transform]="pageTrackTransform()">
           @for (step of pages(); track step.id; let stepIndex = $index) {
@@ -235,18 +248,30 @@
                         [ngModel]="controlStringArrayValue(control)"
                         (ngModelChange)="updateControlValue(control, $event)"
                       ></app-image-carousel>
+                    } @else if (control.kind === 'checkbox') {
+                      <label class="form-flow__checkbox">
+                        <input
+                          type="checkbox"
+                          [disabled]="isControlDisabled(control) || control.readOnly === true"
+                          [ngModel]="controlBooleanValue(control)"
+                          (ngModelChange)="updateControlValue(control, $event)"
+                        />
+                        <span>{{ control.label }}@if (control.required) { <strong>*</strong> }</span>
+                      </label>
                     } @else if (control.kind === 'textarea') {
                       <label class="form-flow__label">
                         <span>{{ control.label }}@if (control.required) { <strong>*</strong> }</span>
-                        @if (control.maxLength) {
-                          <small>{{ controlTextValue(control).length }}/{{ control.maxLength }}</small>
+                        @if (control.maxLength || control.minLength) {
+                          <small>{{ controlTextValue(control).length }}/{{ control.maxLength ?? control.minLength }}</small>
                         }
                       </label>
                       <textarea
                         [rows]="control.rows ?? 3"
+                        [attr.minlength]="control.minLength ?? null"
                         [attr.maxlength]="control.maxLength ?? null"
                         [placeholder]="control.placeholder || ''"
                         [disabled]="isControlDisabled(control)"
+                        [readOnly]="control.readOnly === true"
                         [ngModel]="controlTextValue(control)"
                         (ngModelChange)="updateControlValue(control, $event)"
                       ></textarea>
@@ -314,10 +339,12 @@
                         [type]="inputType(control)"
                         [attr.min]="control.min ?? null"
                         [attr.max]="control.max ?? null"
+                        [attr.minlength]="control.minLength ?? null"
                         [attr.step]="control.step ?? null"
                         [attr.maxlength]="control.maxLength ?? null"
                         [placeholder]="control.placeholder || ''"
                         [disabled]="isControlDisabled(control)"
+                        [readOnly]="control.readOnly === true"
                         [ngModel]="control.kind === 'number' ? controlNumberValue(control) : controlTextValue(control)"
                         (ngModelChange)="updateControlValue(control, $event)"
                       />
@@ -335,6 +362,9 @@
                         (itemSelect)="emitControlAction(control, $event)"
                         [closeOnSelect]="accessoryMenuCloseOnSelect(control)"
                       ></app-menu>
+                    }
+                    @if (control.description && control.kind !== 'section') {
+                      <small class="form-flow__control-description">{{ control.description }}</small>
                     }
                   </div>
                 }

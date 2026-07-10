@@ -1,4 +1,3 @@
-import { CommonModule } from '@angular/common';
 import {
   ChangeDetectionStrategy,
   Component,
@@ -10,19 +9,21 @@ import {
   SimpleChanges
 } from '@angular/core';
 import { FormsModule } from '@angular/forms';
-import { MatIconModule } from '@angular/material/icon';
 import { MatSliderModule } from '@angular/material/slider';
 import type { UserDto } from '../../../shared/core/contracts/user.interface';
 import {
   AppMenuComponent,
   I18nPipe,
-  IndicatorComponent,
+  PopupComponent,
   buildTabbedMenuModel,
+  type AppMenuItem,
   type AppMenuItemSelectEvent,
   type AppMenuModel,
   type AppMenuPalette,
   type AppMenuStaticOptionGroup,
-  type AppMenuTrigger
+  type AppMenuTrigger,
+  type PopupControl,
+  type PopupModel
 } from '../../../shared/ui';
 import {
   GameFilterForm,
@@ -43,10 +44,9 @@ import type {
 } from '../../shared/home-game-filter.shared';
 
 type GameFilterMenuId = string;
-type GameFilterMenuContext = {
-  kind: GameFilterMenuKind;
-  value: string;
-};
+type GameFilterMenuContext =
+  | { kind: GameFilterMenuKind; value: string }
+  | { kind: 'apply' };
 
 @Component({
   selector: 'app-home-game-filter-popup',
@@ -54,12 +54,10 @@ type GameFilterMenuContext = {
   changeDetection: ChangeDetectionStrategy.OnPush,
   imports: [
     AppMenuComponent,
-    CommonModule,
     FormsModule,
     I18nPipe,
-    MatIconModule,
     MatSliderModule,
-    IndicatorComponent
+    PopupComponent
   ],
   templateUrl: './home-game-filter-popup.component.html',
   styleUrl: './home-game-filter-popup.component.scss'
@@ -126,6 +124,56 @@ export class HomeGameFilterPopupComponent implements OnChanges {
 
   protected get maxHeightBoundCm(): number {
     return GAME_FILTER_HEIGHT_MAX_CM;
+  }
+
+  protected gameFilterPopupModel(): PopupModel<GameFilterMenuContext> {
+    return {
+      title: 'game.filters',
+      ariaLabel: 'Game filters',
+      closeAriaLabel: 'Close filter popup',
+      size: 'wide',
+      height: 'full',
+      headerTone: 'accent',
+      bodyLayout: 'fill',
+      backdropTone: 'dim',
+      closeOnBackdrop: !this.saving,
+      headerControls: this.gameFilterPopupHeaderControls(),
+      onClose: event => this.requestClose(event),
+      onMenuSelect: event => this.onGameFilterMenuSelect(event.itemSelect)
+    };
+  }
+
+  protected gameFilterPopupZIndex(): number {
+    return 10020;
+  }
+
+  private gameFilterPopupHeaderControls(): PopupControl<GameFilterMenuContext>[] {
+    return [{
+      kind: 'menu',
+      id: 'game-filter-actions',
+      menuKind: 'inline',
+      items: this.gameFilterPopupActionItems(),
+      panelAlign: 'end',
+      closeOnSelect: false
+    }];
+  }
+
+  private gameFilterPopupActionItems(): readonly AppMenuItem<GameFilterMenuId, GameFilterMenuContext>[] {
+    return [{
+      id: 'game-filter-apply',
+      icon: 'check',
+      kind: 'action',
+      palette: 'green',
+      disabled: this.saving,
+      ariaLabel: this.saving ? 'Saving filters' : 'Apply filters',
+      progress: this.saving
+        ? {
+            state: 'loading',
+            shape: 'circle'
+          }
+        : null,
+      context: { kind: 'apply' }
+    }];
   }
 
   protected get availablePhysiques(): string[] {
@@ -272,6 +320,10 @@ export class HomeGameFilterPopupComponent implements OnChanges {
   ): void {
     const context = event.context;
     if (!context) {
+      return;
+    }
+    if (context.kind === 'apply') {
+      this.apply();
       return;
     }
     const value = `${event.value ?? context.value}`.trim();

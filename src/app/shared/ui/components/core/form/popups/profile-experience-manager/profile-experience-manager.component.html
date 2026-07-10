@@ -10,7 +10,7 @@
     <app-menu
       class="experience-filter-select"
       kind="select"
-      title="Experience"
+      [title]="'Experience'"
       [trigger]="experienceFilterMenuTrigger()"
       [items]="experienceFilterMenuItems()"
       (itemSelect)="onProfileExperienceMenuSelect($event)"
@@ -39,42 +39,9 @@
       (menuRequest)="openMenu($event)"
     ></single-row>
   </ng-template>
-  @if (pendingExperienceDeleteId) {
-    <section class="experience-delete-confirm">
-      <div class="experience-delete-confirm-backdrop" (click)="cancelExperienceDelete()"></div>
-      <div class="experience-delete-confirm-panel">
-        <h4>Delete experience?</h4>
-        <p>This entry will be removed from your profile.</p>
-        <div class="popup-actions">
-          <button type="button" class="link-btn neutral-btn" (click)="cancelExperienceDelete()">Cancel</button>
-          <button type="button" class="link-btn experience-delete-btn" (click)="confirmExperienceDelete()">Delete</button>
-        </div>
-      </div>
-    </section>
-  }
   @if (experienceImportDialog.visible) {
-    <section class="experience-import-dialog popup-surface-overlay">
-      <div class="experience-form-overlay-backdrop popup-surface-overlay-backdrop" (click)="cancelExperienceImportDialog()"></div>
-      <div class="experience-import-popup popup-surface">
-        <div class="experience-form-header popup-surface-header">
-          <div class="popup-surface-header-title">
-            <h3>Import Experience</h3>
-            @if (experienceImportDialog.fileName) {
-              <p>{{ experienceImportDialog.fileName }}</p>
-            }
-          </div>
-          <div class="experience-form-header-controls popup-surface-header-controls">
-            <button
-              type="button"
-              class="experience-form-close-btn popup-surface-close-btn"
-              (click)="cancelExperienceImportDialog()"
-              aria-label="Close import dialog"
-              >
-              <mat-icon>close</mat-icon>
-            </button>
-          </div>
-        </div>
-        <section class="experience-import-panel popup-surface-body">
+    <app-popup [model]="experienceImportPopupModel()" [zIndex]="experienceImportPopupZIndex()">
+        <section class="experience-import-panel">
           <div class="experience-import-progress-card">
             <div class="experience-import-progress-meta">
               <span>{{ experienceImportDialog.progress.label || 'Preparing upload' }}</span>
@@ -154,78 +121,16 @@
             </button>
           </div>
         </section>
-      </div>
-    </section>
+    </app-popup>
   }
   @if (showExperienceForm) {
-    <section class="experience-form-overlay popup-surface-overlay">
-      <div class="experience-form-overlay-backdrop popup-surface-overlay-backdrop" (click)="closeExperienceForm()"></div>
-      <div class="experience-form-popup popup-surface">
-        <div class="experience-form-header popup-surface-header">
-          <div class="popup-surface-header-title">
-            <h3>{{ editingExperienceId ? 'Edit Experience' : 'Add Experience' }}</h3>
-          </div>
-          <div class="experience-form-header-controls popup-surface-header-controls">
-            <button
-              type="button"
-              class="popup-header-add-btn subevent-leaderboard-save-btn"
-              [class.form-save-invalid]="!canSaveExperienceEntry"
-              [disabled]="!canSaveExperienceEntry"
-              (click)="saveExperienceEntry()"
-              aria-label="Save experience"
-              >
-              <mat-icon>done</mat-icon>
-            </button>
-            <button type="button" class="experience-form-close-btn popup-surface-close-btn" (click)="closeExperienceForm()" aria-label="Close add experience">
-              <mat-icon>close</mat-icon>
-            </button>
-          </div>
-        </div>
-        <section class="experience-form-panel popup-surface-body">
-          <div class="experience-form-grid popup-surface-form-grid">
-            <label class="experience-type-field">
-              <span>Type</span>
-              <app-menu
-                class="experience-type-select"
-                kind="select"
-                title="Experience Type"
-                [trigger]="experienceTypeMenuTrigger()"
-                [items]="experienceTypeMenuItems()"
-                (itemSelect)="onProfileExperienceMenuSelect($event)"
-              ></app-menu>
-            </label>
-            <label class="experience-title-field">
-              <span>Title</span>
-              <input type="text" [(ngModel)]="experienceForm.title" />
-            </label>
-            <label class="experience-org-field">
-              <span>Organization</span>
-              <input type="text" [(ngModel)]="experienceForm.org" />
-            </label>
-            <label class="experience-city-field">
-              <span>City</span>
-              <input type="text" [(ngModel)]="experienceForm.city" />
-            </label>
-            <label class="experience-date-range-label">
-              <span>Date range</span>
-              <mat-form-field appearance="fill" class="experience-date-range-field" subscriptSizing="dynamic">
-                <mat-label>Enter a date range</mat-label>
-                <mat-date-range-input [rangePicker]="experienceDateRangePicker">
-                  <input matStartDate [(ngModel)]="experienceRangeStart" name="experienceRangeStart" placeholder="YYYY/MM/DD" />
-                  <input matEndDate [(ngModel)]="experienceRangeEnd" name="experienceRangeEnd" placeholder="YYYY/MM/DD" />
-                </mat-date-range-input>
-                <mat-datepicker-toggle matSuffix [for]="experienceDateRangePicker"></mat-datepicker-toggle>
-                <mat-hint>YYYY/MM - YYYY/MM</mat-hint>
-                <mat-date-range-picker #experienceDateRangePicker></mat-date-range-picker>
-              </mat-form-field>
-            </label>
-            <label class="experience-description-field popup-surface-description-field">
-              <span>Description</span>
-              <textarea rows="4" [(ngModel)]="experienceForm.description"></textarea>
-            </label>
-          </div>
-        </section>
-      </div>
-    </section>
+    <app-popup [model]="experienceFormPopupModel()" [zIndex]="experienceFormPopupZIndex()">
+      <app-form-flow
+        class="experience-form-flow"
+        [model]="experienceFormFlowModel()"
+        [(ngModel)]="experienceForm"
+        [disabled]="controlDisabled"
+      ></app-form-flow>
+    </app-popup>
   }
 </div>

@@ -146,6 +146,12 @@ export interface AssetPricingSlotOverrideRecord {
   currency?: string | null;
 }
 
+export interface AssetPricingQuantityRuleRecord {
+  id: string;
+  minQuantity: number;
+  action: AssetPricingActionRecord;
+}
+
 export interface AssetPricingDemandRuleRecord {
   id: string;
   operator: PricingDemandOperator;
@@ -201,6 +207,8 @@ export interface AssetPricingConfigRecord {
   currency: string;
   taxMode: PricingTaxMode;
   chargeType: PricingChargeType;
+  quantityRulesEnabled: boolean;
+  quantityRules: AssetPricingQuantityRuleRecord[];
   minPrice: number | null;
   maxPrice: number | null;
   rounding: PricingRoundingMode;

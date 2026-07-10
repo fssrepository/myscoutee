@@ -1,32 +1,7 @@
 @if (context) {
-  <section class="game-popup">
-    <div class="game-popup-backdrop" (click)="requestClose($event)"></div>
-    <div class="game-popup-panel game-filter-popup-panel" (click)="$event.stopPropagation()">
-      <header class="game-filter-popup-header">
-        <h2>{{ 'game.filters' | i18n }}</h2>
-        <div class="game-filter-popup-header-actions">
-          <button
-            type="button"
-            class="game-popup-apply-btn"
-            [class.is-saving]="saving"
-            [disabled]="saving"
-            (click)="apply()"
-            [attr.aria-label]="saving ? ('saving.filters' | i18n) : ('apply.filters' | i18n)"
-            >
-            @if (saving) {
-              <span class="game-popup-apply-save-ring" aria-hidden="true">
-                <app-indicator kind="action-ring" shape="circle" state="loading"></app-indicator>
-              </span>
-            }
-            <mat-icon>check</mat-icon>
-          </button>
-          <button type="button" class="game-popup-close-btn" [disabled]="saving" (click)="requestClose($event)" [attr.aria-label]="'close.filter.popup' | i18n">
-            <mat-icon>close</mat-icon>
-          </button>
-        </div>
-      </header>
-      <div class="game-popup-body game-filter-body">
-        <div class="game-filter-layout-columns">
+  <app-popup [model]="gameFilterPopupModel()" [zIndex]="gameFilterPopupZIndex()">
+    <div class="game-filter-body">
+      <div class="game-filter-layout-columns">
           <div class="game-filter-layout-col game-filter-layout-col-basics">
             <section class="game-filter-group game-filter-group-basics">
               <div class="game-filter-group-head">
@@ -145,8 +120,7 @@
               }
             </section>
           </div>
-        </div>
       </div>
     </div>
-  </section>
+  </app-popup>
 }

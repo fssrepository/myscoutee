@@ -2,6 +2,7 @@ import type {
   AppMenuItem,
   AppMenuPalette
 } from '../components/core/menu';
+import type { EventCheckoutState } from '../../core/contracts/activity.interface';
 import {
   CARD_MENU_ACTIONS,
   type CardMenuAction
@@ -19,6 +20,8 @@ export type ActivityEventInfoCardMenuSubject = Record<string, unknown> & {
   invitedMemberUserIds?: readonly string[];
   pendingRequestMemberUserIds?: readonly string[];
   eventScope?: string | null;
+  checkoutMenuAction?: 'continueBooking' | 'paymentSummary' | null;
+  checkoutState?: EventCheckoutState | null;
 };
 
 export interface ActivityEventInfoCardMenuContext {
@@ -42,9 +45,10 @@ export class ActivityEventInfoCardMenuConverter {
     'manageEvent',
     'viewInvitation',
     'view',
+    'paymentSummary',
+    'continueBooking',
     'notifyParticipants',
     'askOrganizer',
-    'contactOrganizer',
     'shareEvent',
     'unpublish',
     'reportOrganizer',
@@ -100,7 +104,7 @@ export class ActivityEventInfoCardMenuConverter {
       id: actionId,
       label: config.label,
       icon: config.icon,
-      palette: this.actionPalette(config.tone),
+      palette: this.actionPalette(actionId, config.tone),
       surface: 'tinted',
       context: {
         menu: 'activity-event-card',
@@ -116,7 +120,10 @@ export class ActivityEventInfoCardMenuConverter {
     activeUserId: string
   ): boolean {
     if (this.isTrashed(subject)) {
-      return actionId === 'restore' && this.shouldRestore(subject);
+      if (this.isAdmin(subject, activeUserId)) {
+        return actionId === 'view' || actionId === 'notifyParticipants';
+      }
+      return actionId === 'view' || actionId === 'askOrganizer';
     }
     switch (actionId) {
       case 'restore':
@@ -137,15 +144,19 @@ export class ActivityEventInfoCardMenuConverter {
           && !this.isDraft(subject)
           && !this.isPendingReview(subject);
       case 'viewInvitation':
-        return this.isInvited(subject, activeUserId) && !this.isPendingReview(subject);
+        return this.hasOutstandingInvitation(subject, activeUserId) && !this.isPendingReview(subject);
       case 'view':
-        return !this.isInvited(subject, activeUserId);
+        return !this.hasOutstandingInvitation(subject, activeUserId);
+      case 'paymentSummary':
+        return subject.checkoutMenuAction === 'paymentSummary'
+          && !this.isAdmin(subject, activeUserId);
+      case 'continueBooking':
+        return subject.checkoutMenuAction === 'continueBooking'
+          && !this.isAdmin(subject, activeUserId);
       case 'notifyParticipants':
         return this.isAdmin(subject, activeUserId);
       case 'askOrganizer':
-        return this.isInvited(subject, activeUserId) || this.isPendingRequest(subject, activeUserId);
-      case 'contactOrganizer':
-        return !this.isAdmin(subject, activeUserId) && !this.isInvited(subject, activeUserId);
+        return !this.isAdmin(subject, activeUserId);
       case 'shareEvent':
         return true;
       case 'unpublish':
@@ -155,16 +166,19 @@ export class ActivityEventInfoCardMenuConverter {
       case 'reportOrganizer':
         return this.shouldReport(subject, activeUserId);
       case 'accept':
-        return this.isInvited(subject, activeUserId);
+        return this.hasOutstandingInvitation(subject, activeUserId)
+          && !this.checkoutJoinStarted(subject);
       case 'leaveEvent':
         return !this.isAdmin(subject, activeUserId)
           && this.isAcceptedOrActiveEventMember(subject, activeUserId)
-          && !this.isInvited(subject, activeUserId);
+          && !this.hasOutstandingInvitation(subject, activeUserId);
       case 'deleteEvent':
         return this.isAdmin(subject, activeUserId)
           && !this.isPendingReview(subject);
       case 'rejectInvitation':
-        return this.isInvited(subject, activeUserId) && !this.isPendingReview(subject);
+        return this.hasOutstandingInvitation(subject, activeUserId)
+          && !this.checkoutJoinStarted(subject)
+          && !this.isPendingReview(subject);
       default:
         return false;
     }
@@ -172,10 +186,6 @@ export class ActivityEventInfoCardMenuConverter {
 
   private static isDraft(subject: ActivityEventInfoCardMenuSubject): boolean {
     return this.statusCode(subject.status) === 'DR';
-  }
-
-  private static shouldRestore(subject: ActivityEventInfoCardMenuSubject): boolean {
-    return this.statusCode(subject.status) === 'T';
   }
 
   private static shouldReport(subject: ActivityEventInfoCardMenuSubject, activeUserId: string): boolean {
@@ -206,6 +216,15 @@ export class ActivityEventInfoCardMenuConverter {
     return this.includesUserId(subject.invitedMemberUserIds, activeUserId);
   }
 
+  private static hasOutstandingInvitation(
+    subject: ActivityEventInfoCardMenuSubject,
+    activeUserId: string
+  ): boolean {
+    return this.isInvited(subject, activeUserId)
+      && !this.isAcceptedMember(subject, activeUserId)
+      && !this.isPendingRequest(subject, activeUserId);
+  }
+
   private static isPendingRequest(subject: ActivityEventInfoCardMenuSubject, activeUserId: string): boolean {
     const userId = activeUserId.trim();
     return this.includesUserId(subject.pendingRequestMemberUserIds, userId)
@@ -219,8 +238,17 @@ export class ActivityEventInfoCardMenuConverter {
     return this.includesUserId(subject.acceptedMemberUserIds, activeUserId);
   }
 
+  private static checkoutJoinStarted(subject: ActivityEventInfoCardMenuSubject): boolean {
+    return subject.checkoutState === 'approved'
+      || subject.checkoutState === 'confirmed'
+      || subject.checkoutState === 'pay';
+  }
+
   private static isAcceptedOrActiveEventMember(subject: ActivityEventInfoCardMenuSubject, activeUserId: string): boolean {
     if (this.isAcceptedMember(subject, activeUserId)) {
+      return true;
+    }
+    if (subject.checkoutMenuAction === 'paymentSummary') {
       return true;
     }
     return subject.eventScope === 'active-events'
@@ -254,7 +282,10 @@ export class ActivityEventInfoCardMenuConverter {
     }
   }
 
-  private static actionPalette(tone: CardMenuAction['tone']): AppMenuPalette {
+  private static actionPalette(actionId: string, tone: CardMenuAction['tone']): AppMenuPalette {
+    if (actionId === 'paymentSummary') {
+      return 'teal';
+    }
     switch (tone) {
       case 'accent':
         return 'brown';

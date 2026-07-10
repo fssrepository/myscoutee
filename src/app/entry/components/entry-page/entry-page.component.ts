@@ -40,6 +40,9 @@ import type {
   UserLocationEligibilityResponseDto
 } from '../../../shared/core/contracts/user.interface';
 import {
+  AdminWorkspaceDataService
+} from '../../../shared/core/base/services/admin-workspace-data.service';
+import {
   HelpCenterService
 } from '../../../shared/core/base/services/help-center.service';
 import {
@@ -67,6 +70,9 @@ import {
 import {
   DialogStore
 } from '../../../shared/ui/context/stores/dialog.store';
+import {
+  AdminWorkspaceStore
+} from '../../../shared/ui/context/stores/admin-workspace.store';
 import type { InfoCardData } from '../../../shared/ui/components/core/smart-list/card/card.types';
 import {
   DocumentViewerComponent,
@@ -87,10 +93,14 @@ import {
 import {
   ProfileOnboardingPopupComponent
 } from '../profile-onboarding-popup/profile-onboarding-popup.component';
-import { DemoBootstrapSelectorStore } from '../../../shared/ui/context/stores/demo-bootstrap-selector.store';
+import {
+  DemoBootstrapSelectorStore,
+  type DemoBootstrapSelectorMode
+} from '../../../shared/ui/context/stores/demo-bootstrap-selector.store';
 
 interface EntryDemoUserSelectionEvent {
   userId: string;
+  mode: DemoBootstrapSelectorMode;
   complete: () => void;
   fail: () => void;
 }
@@ -127,6 +137,8 @@ export class EntryPageComponent implements OnInit, OnDestroy {
   private readonly changeDetectorRef = inject(ChangeDetectorRef);
   private readonly ngZone = inject(NgZone);
   private readonly demoBootstrapSelectorStore = inject(DemoBootstrapSelectorStore);
+  private readonly adminWorkspace = inject(AdminWorkspaceStore);
+  private readonly adminWorkspaceData = inject(AdminWorkspaceDataService);
   private readonly helpCenter = inject(HelpCenterService);
   private readonly privacyPolicy = inject(PrivacyPolicyService);
   protected readonly sessionService = inject(SessionService);
@@ -498,10 +510,12 @@ export class EntryPageComponent implements OnInit, OnDestroy {
   private openDemoUserSelectorPopup(): void {
     this.demoBootstrapSelectorStore.openDemoBootstrapSelector({
       mode: 'member',
-      onSelect: userId => new Promise<boolean>(resolve => {
+      selectableModes: ['member', 'admin'],
+      onSelect: (userId, mode) => new Promise<boolean>(resolve => {
         this.ngZone.run(() => {
           void this.onDemoUserSelected({
             userId,
+            mode,
             complete: () => resolve(true),
             fail: () => resolve(false)
           });
@@ -524,10 +538,14 @@ export class EntryPageComponent implements OnInit, OnDestroy {
       selection.fail();
       return;
     }
+    if (selection.mode === 'admin') {
+      await this.onDemoAdminSelected(selection, normalizedUserId);
+      return;
+    }
     const selectedUser = this.usersService.peekCachedUserById(normalizedUserId);
     if (selectedUser && this.requiresProfileOnboarding(selectedUser)) {
       this.pendingDemoSessionUserId = normalizedUserId;
-      this.openOnboardingGate(selectedUser, this.redirectUrl());
+      this.openOnboardingGate(selectedUser, this.memberRedirectUrl());
       selection.complete();
       return;
     }
@@ -537,7 +555,7 @@ export class EntryPageComponent implements OnInit, OnDestroy {
       return;
     }
     try {
-      const navigated = await this.router.navigateByUrl(this.redirectUrl());
+      const navigated = await this.router.navigateByUrl(this.memberRedirectUrl());
       if (!navigated) {
         selection.fail();
         return;
@@ -553,13 +571,39 @@ export class EntryPageComponent implements OnInit, OnDestroy {
     this.pendingDemoSessionUserId = user.id;
     this.openOnboardingGate(
       user,
-      this.redirectUrl(),
+      this.memberRedirectUrl(),
       {
         title: 'profile.setup',
         message: 'profile.setup.demo.message'
       }
     );
     request.complete();
+  }
+
+  private async onDemoAdminSelected(
+    selection: EntryDemoUserSelectionEvent,
+    adminUserId: string
+  ): Promise<void> {
+    const normalizedAdminUserId = this.adminWorkspace.prepareSelectedAdminSession(adminUserId);
+    if (!normalizedAdminUserId) {
+      selection.fail();
+      return;
+    }
+    this.adminWorkspaceData.prepareSelectedAdminSession(normalizedAdminUserId);
+    if (!this.sessionService.startDemoSession(normalizedAdminUserId)) {
+      selection.fail();
+      return;
+    }
+    try {
+      const navigated = await this.router.navigateByUrl('/admin');
+      if (!navigated) {
+        selection.fail();
+        return;
+      }
+      selection.complete();
+    } catch {
+      selection.fail();
+    }
   }
 
   protected async onFirebaseAuthRequested(request: FirebaseAuthRequestDto): Promise<void> {
@@ -625,6 +669,11 @@ export class EntryPageComponent implements OnInit, OnDestroy {
     return '/game';
   }
 
+  private memberRedirectUrl(): string {
+    const redirect = this.redirectUrl();
+    return this.isAdminShellRedirect(redirect) ? '/game' : redirect;
+  }
+
   private syncMobileView(): void {
     this.isMobileView = typeof window !== 'undefined' ? window.innerWidth <= 760 : false;
   }
@@ -647,7 +696,7 @@ export class EntryPageComponent implements OnInit, OnDestroy {
 
   private async runPostSessionGate(session: AppSession, redirectUrl: string): Promise<void> {
     const gateToken = ++this.postSessionGateToken;
-    const adminRedirect = this.isAdminRedirect(redirectUrl);
+    const adminShellRedirect = this.isAdminShellRedirect(redirectUrl);
     let user: UserDto | null = null;
     try {
       user = await this.usersService.loadUserById(session.kind === 'demo' ? session.userId : undefined, 8000);
@@ -673,14 +722,14 @@ export class EntryPageComponent implements OnInit, OnDestroy {
       await this.router.navigateByUrl(redirectUrl);
       return;
     }
-    if (user.admin === true) {
+    if (this.isAdminUser(user)) {
       this.closeOnboardingGate();
       await this.router.navigateByUrl('/admin');
       return;
     }
-    if (adminRedirect) {
+    if (adminShellRedirect) {
       this.closeOnboardingGate();
-      await this.router.navigateByUrl(redirectUrl);
+      await this.router.navigateByUrl('/game');
       return;
     }
     if (!this.requiresProfileOnboarding(user)) {
@@ -701,16 +750,20 @@ export class EntryPageComponent implements OnInit, OnDestroy {
   }
 
   private requiresProfileOnboarding(user: UserDto | null | undefined): boolean {
-    if (!user || user.admin === true || user.profileStatus === 'blocked' || user.profileStatus === 'deleted' || user.hostTier === 'Admin') {
+    if (!user || this.isAdminUser(user) || user.profileStatus === 'blocked' || user.profileStatus === 'deleted') {
       return false;
     }
     return user.profileStatus === 'onboarding'
       || AppUtils.positiveInteger(user.profileFormVersion) < CURRENT_PROFILE_FORM_VERSION;
   }
 
-  private isAdminRedirect(redirectUrl: string): boolean {
+  private isAdminUser(user: UserDto | null | undefined): boolean {
+    return user?.admin === true || `${user?.hostTier ?? ''}`.trim().toLowerCase() === 'admin';
+  }
+
+  private isAdminShellRedirect(redirectUrl: string): boolean {
     const normalizedRedirect = `${redirectUrl ?? ''}`.trim();
-    return normalizedRedirect === '/admin' || normalizedRedirect.startsWith('/admin/');
+    return normalizedRedirect === '/admin' || normalizedRedirect === '/admin/workspace';
   }
 
   private closeOnboardingGate(): void {

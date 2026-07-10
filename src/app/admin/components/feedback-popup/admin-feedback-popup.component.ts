@@ -5,10 +5,13 @@ import { from } from 'rxjs';
 
 import { APP_STATIC_DATA } from '../../../shared/app-static-data';
 import { AppUtils } from '../../../shared/app-utils';
-import { AdminWorkspaceDataService, type AdminFeedbackDto } from '../../../shared/core';
+import { I18nService } from '../../../shared/core/base/services/i18n.service';
+import { AdminWorkspaceDataService, type AdminDashboardDto, type AdminFeedbackDto } from '../../../shared/core';
 import {
   SingleRowComponent,
   SmartListComponent,
+  I18nPipe,
+  type AppMenuItemSelectEvent,
   type ListQuery,
   type PageResult,
   type SingleRowData,
@@ -17,13 +20,26 @@ import {
   type SmartListLoadPage,
   ActivityChatSingleRowConverter
 } from '../../../shared/ui';
+import type {
+  AppMenuModel,
+  AppMenuPalette
+} from '../../../shared/ui/components/core/menu';
+import {
+  PopupComponent,
+  type PopupControl,
+  type PopupMenuSelectEvent,
+  type PopupModel
+} from '../../../shared/ui/components/core/popup';
+import type { AdminReviewStatusFilter } from '../../../shared/core/base/services/admin-workspace-data.service';
 import type { ChatDTO } from '../../../shared/core/contracts/chat.interface';
 import type { UserDto } from '../../../shared/core/contracts/user.interface';
 import { AdminMenuStore } from '../../../shared/ui/context/stores/admin-menu.store';
 import { AdminWorkspaceStore } from '../../../shared/ui/context/stores/admin-workspace.store';
+import { DialogStore } from '../../../shared/ui/context/stores/dialog.store';
 
 interface AdminFeedbackListFilters {
   revision?: number;
+  status?: AdminReviewStatusFilter;
 }
 
 interface AdminFeedbackListItem {
@@ -32,10 +48,20 @@ interface AdminFeedbackListItem {
   row: SingleRowData;
 }
 
+type AdminReviewStatusMenuItemId = 'review-status-filter' | `review-status:${AdminReviewStatusFilter}`;
+
+interface AdminReviewStatusMenuContext {
+  status: AdminReviewStatusFilter;
+}
+
+interface AdminFeedbackRowMenuContext extends Record<string, unknown> {
+  feedbackItem: AdminFeedbackListItem;
+}
+
 @Component({
   selector: 'app-admin-feedback-popup',
   standalone: true,
-  imports: [CommonModule, MatIconModule, SmartListComponent, SingleRowComponent],
+  imports: [CommonModule, MatIconModule, SmartListComponent, SingleRowComponent, PopupComponent, I18nPipe],
   templateUrl: './admin-feedback-popup.component.html',
   styleUrl: './admin-feedback-popup.component.scss'
 })
@@ -43,8 +69,18 @@ export class AdminFeedbackPopupComponent {
   protected readonly admin = inject(AdminMenuStore);
   private readonly workspace = inject(AdminWorkspaceStore);
   private readonly workspaceData = inject(AdminWorkspaceDataService);
+  private readonly dialogStore = inject(DialogStore);
+  private readonly i18n = inject(I18nService);
   private readonly feedbackCategories = new Set(APP_STATIC_DATA.feedbackCategories);
   protected feedbackDetail: AdminFeedbackDto | null = null;
+  protected feedbackStatusFilter: AdminReviewStatusFilter = 'unresolved';
+  protected feedbackSmartListQuery: Partial<ListQuery<AdminFeedbackListFilters>> = {
+    filters: { status: 'unresolved' }
+  };
+  protected feedbackStatusCounts: Record<AdminReviewStatusFilter, number> = {
+    unresolved: 0,
+    resolved: 0
+  };
 
   protected feedbackItemTemplateRef?: TemplateRef<
     SmartListItemTemplateContext<AdminFeedbackListItem, AdminFeedbackListFilters>
@@ -57,12 +93,15 @@ export class AdminFeedbackPopupComponent {
     this.feedbackItemTemplateRef = value;
   }
 
+  @ViewChild('feedbackSmartList')
+  private feedbackSmartList?: SmartListComponent<AdminFeedbackListItem, AdminFeedbackListFilters>;
+
   protected readonly feedbackSmartListConfig: SmartListConfig<AdminFeedbackListItem, AdminFeedbackListFilters> = {
     pageSize: 10,
     initialPageSize: 20,
     defaultView: 'day',
-    emptyLabel: 'No feedback',
-    emptyDescription: 'No application feedback has been submitted.',
+    emptyLabel: 'admin.feedback.empty.title',
+    emptyDescription: 'admin.feedback.empty.description',
     showStickyHeader: true,
     showFirstGroupMarker: false,
     showGroupMarker: ({ groupIndex }) => groupIndex > 0,
@@ -85,6 +124,118 @@ export class AdminFeedbackPopupComponent {
     query
   ) => from(this.loadFeedbackPage(query));
 
+  protected feedbackPopupModel(): PopupModel<AdminReviewStatusMenuContext> {
+    return {
+      title: 'application.feedback',
+      subtitle: 'feedback.submitted.from.the.app',
+      ariaLabel: 'application.feedback',
+      closeAriaLabel: 'close',
+      size: 'wide',
+      height: 'full',
+      headerTone: 'accent',
+      bodyLayout: 'fill',
+      toolbarControls: [
+        this.feedbackStatusToolbarControl()
+      ],
+      onClose: () => this.admin.closePopup(),
+      onMenuSelect: event => this.onFeedbackPopupMenuSelect(event)
+    };
+  }
+
+  protected feedbackDetailPopupModel(item: AdminFeedbackDto): PopupModel {
+    return {
+      title: 'feedback.details',
+      subtitle: `${item.userName} · ${this.feedbackListMeta(item)}`,
+      ariaLabel: 'feedback.details',
+      closeAriaLabel: 'close',
+      size: 'wide',
+      height: 'auto',
+      headerTone: 'accent',
+      bodyLayout: 'fill',
+      backdropTone: 'dim',
+      onClose: () => this.closeFeedbackDetails()
+    };
+  }
+
+  private onFeedbackPopupMenuSelect(event: PopupMenuSelectEvent<AdminReviewStatusMenuContext>): void {
+    const status = event.itemSelect.context?.status;
+    if (!status) {
+      return;
+    }
+    this.selectFeedbackStatus(status, event.itemSelect.sourceEvent);
+  }
+
+  private selectFeedbackStatus(status: AdminReviewStatusFilter, event?: Event): void {
+    event?.stopPropagation();
+    if (this.feedbackStatusFilter === status) {
+      return;
+    }
+    this.feedbackStatusFilter = status;
+    this.closeFeedbackDetails();
+    this.feedbackSmartListQuery = {
+      filters: { status }
+    };
+  }
+
+  private feedbackStatusToolbarControl(): PopupControl<AdminReviewStatusMenuContext> {
+    return {
+      kind: 'menu',
+      id: 'feedback-review-status-filter',
+      align: 'end',
+      menuKind: 'inline',
+      model: this.feedbackStatusMenuModel(),
+      panelAlign: 'end'
+    };
+  }
+
+  private feedbackStatusMenuModel(): AppMenuModel<AdminReviewStatusMenuItemId, AdminReviewStatusMenuContext> {
+    return {
+      nodes: [
+        {
+          id: 'feedback-review-status-root',
+          items: [
+            {
+              id: 'review-status-filter',
+              kind: 'select-trigger',
+              label: this.reviewStatusLabel(this.feedbackStatusFilter),
+              icon: this.reviewStatusIcon(this.feedbackStatusFilter),
+              palette: this.reviewStatusPalette(this.feedbackStatusFilter),
+              counter: this.feedbackStatusCount(this.feedbackStatusFilter),
+              ariaLabel: 'admin.feedback.review.status.filter',
+              items: (['unresolved', 'resolved'] satisfies AdminReviewStatusFilter[]).map(status => ({
+                id: `review-status:${status}`,
+                kind: 'radio',
+                label: this.reviewStatusLabel(status),
+                icon: this.reviewStatusIcon(status),
+                palette: this.reviewStatusPalette(status),
+                surface: 'tinted',
+                checked: this.feedbackStatusFilter === status,
+                counter: this.feedbackStatusCount(status),
+                context: { status }
+              }))
+            }
+          ]
+        }
+      ]
+    };
+  }
+
+  private reviewStatusLabel(status: AdminReviewStatusFilter): string {
+    return status === 'resolved' ? 'admin.review.status.resolved' : 'admin.review.status.unresolved';
+  }
+
+  private reviewStatusIcon(status: AdminReviewStatusFilter): string {
+    return status === 'resolved' ? 'task_alt' : 'pending_actions';
+  }
+
+  private reviewStatusPalette(status: AdminReviewStatusFilter): AppMenuPalette {
+    return status === 'resolved' ? 'success' : 'warning';
+  }
+
+  private feedbackStatusCount(status: AdminReviewStatusFilter): number {
+    return Math.max(0, Math.trunc(Number(this.feedbackStatusCounts[status]) || 0));
+  }
+
   protected selectFeedback(item: AdminFeedbackListItem): void {
     this.feedbackDetail = item.feedback;
   }
@@ -103,23 +254,76 @@ export class AdminFeedbackPopupComponent {
       surfaceTone: this.feedbackSingleRowTone(feedback),
       badges: [
         {
-          label: this.feedbackTime(feedback.createdDate),
-          tone: 'muted',
-          position: 'side'
-        },
-        {
           label: this.feedbackCategoryLabel(feedback),
+          title: this.feedbackCategoryLabel(feedback),
+          ariaLabel: this.feedbackCategoryLabel(feedback),
           tone: this.feedbackCategoryBadgeTone(feedback),
-          position: 'side'
+          position: 'top-right'
         }
+      ],
+      menuActions: [
+        this.isFeedbackResolved(feedback) ? 'markUnresolved' : 'markSolved'
       ],
       clickable: true,
       eagerDetail: feedback
     };
   }
 
+  protected feedbackRowMenuContext(item: AdminFeedbackListItem): AdminFeedbackRowMenuContext {
+    return { feedbackItem: item };
+  }
+
+  protected onFeedbackRowMenuSelect(event: AppMenuItemSelectEvent<string, unknown>): void {
+    const context = event.context as (AdminFeedbackRowMenuContext & { action?: { id?: string } }) | undefined;
+    const actionId = `${context?.action?.id ?? ''}`.trim();
+    const item = context?.feedbackItem ?? null;
+    if (!item || (actionId !== 'markSolved' && actionId !== 'markUnresolved')) {
+      return;
+    }
+    event.sourceEvent.preventDefault();
+    event.sourceEvent.stopPropagation();
+    this.confirmFeedbackResolved(item, actionId === 'markSolved');
+  }
+
   protected closeFeedbackDetails(): void {
     this.feedbackDetail = null;
+  }
+
+  private confirmFeedbackResolved(item: AdminFeedbackListItem, resolved: boolean): void {
+    this.dialogStore.open({
+      title: resolved
+        ? 'admin.feedback.confirm.mark.solved.title'
+        : 'admin.feedback.confirm.mark.unresolved.title',
+      message: resolved
+        ? this.i18nText('admin.feedback.confirm.mark.solved.message', {
+          user: item.feedback.userName || this.i18nText('admin.feedback.fallback.user')
+        })
+        : 'admin.feedback.confirm.mark.unresolved.message',
+      confirmLabel: resolved ? 'admin.review.action.mark.solved' : 'admin.review.action.mark.unresolved',
+      busyConfirmLabel: resolved ? 'admin.review.action.mark.solved.busy' : 'admin.review.action.mark.unresolved.busy',
+      confirmTone: resolved ? 'accent' : 'warning',
+      ringPerimeter: 112,
+      onConfirm: () => this.setFeedbackResolved(item, resolved)
+    });
+  }
+
+  private i18nText(key: string, values: Record<string, string> = {}): string {
+    let text = this.i18n.translate(key);
+    Object.entries(values).forEach(([name, value]) => {
+      text = text.split(`{${name}}`).join(value);
+    });
+    return text;
+  }
+
+  private async setFeedbackResolved(item: AdminFeedbackListItem, resolved: boolean): Promise<void> {
+    const dashboard = await this.workspaceData.setFeedbackResolved(
+      item.feedback.id,
+      resolved,
+      this.workspace.currentAdminUserId()
+    );
+    this.applyFeedbackDashboard(dashboard);
+    this.closeFeedbackDetails();
+    this.feedbackSmartList?.removeVisibleItemByIdentity(item.id, { totalDelta: -1 });
   }
 
   protected isSelectedFeedback(item: AdminFeedbackDto): boolean {
@@ -178,6 +382,14 @@ export class AdminFeedbackPopupComponent {
     return this.feedbackSingleRowTone(item);
   }
 
+  protected isFeedbackResolved(item: AdminFeedbackDto): boolean {
+    return `${item.resolvedAtIso ?? ''}`.trim().length > 0;
+  }
+
+  protected feedbackReviewStatus(item: AdminFeedbackDto): AdminReviewStatusFilter {
+    return this.isFeedbackResolved(item) ? 'resolved' : 'unresolved';
+  }
+
   protected shortDate(value: string | null | undefined): string {
     const date = new Date(`${value ?? ''}`);
     if (Number.isNaN(date.getTime())) {
@@ -203,7 +415,7 @@ export class AdminFeedbackPopupComponent {
   }
 
   private async loadFeedbackPage(query: ListQuery<AdminFeedbackListFilters>): Promise<PageResult<AdminFeedbackListItem>> {
-    const rows = [...(await this.loadFeedback())].sort((first, second) =>
+    const rows = [...(await this.loadFeedback(query.filters?.status ?? this.feedbackStatusFilter))].sort((first, second) =>
       Date.parse(second.createdDate) - Date.parse(first.createdDate)
     ).map(feedback => ({
       id: feedback.id,
@@ -220,10 +432,23 @@ export class AdminFeedbackPopupComponent {
     };
   }
 
-  private async loadFeedback(): Promise<AdminFeedbackDto[]> {
-    return this.workspace.applyFeedback(
-      await this.workspaceData.loadFeedback(this.workspace.currentAdminUserId())
-    );
+  private async loadFeedback(status: AdminReviewStatusFilter): Promise<AdminFeedbackDto[]> {
+    return this.applyFeedbackDashboard(
+      await this.workspaceData.loadFeedbackDashboard(this.workspace.currentAdminUserId(), status)
+    ).feedback;
+  }
+
+  private applyFeedbackDashboard(dashboard: AdminDashboardDto): AdminDashboardDto {
+    const normalized = this.workspace.applyDashboard(dashboard);
+    this.applyFeedbackStatusCounts(normalized);
+    return normalized;
+  }
+
+  private applyFeedbackStatusCounts(dashboard: AdminDashboardDto): void {
+    this.feedbackStatusCounts = {
+      unresolved: Math.max(0, Math.trunc(Number(dashboard.reviewCounts?.feedbackUnresolved) || 0)),
+      resolved: Math.max(0, Math.trunc(Number(dashboard.reviewCounts?.feedbackResolved) || 0))
+    };
   }
 
   private buildFeedbackActivityRow(feedback: AdminFeedbackDto): SingleRowData {

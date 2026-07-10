@@ -936,14 +936,14 @@ export class HttpChatsService implements IChatsService {
 
   private activitiesSupportCaseFilter(query: ListQuery<ActivitiesFeedFilters>): ContractTypes.SupportCaseFilter {
     const value = query.filters?.supportCaseFilter;
-    return value === 'pending' || value === 'picked' || value === 'solved' || value === 'blocked' ? value : 'all';
+    return value === 'pending' || value === 'warned' || value === 'picked' || value === 'solved' || value === 'blocked' ? value : 'all';
   }
 
   private matchesSupportCaseFilter(
     item: Pick<ChatDTO, 'supportCase'>,
     filter?: ContractTypes.SupportCaseFilter
   ): boolean {
-    const normalizedFilter = filter === 'pending' || filter === 'picked' || filter === 'solved' || filter === 'blocked'
+    const normalizedFilter = filter === 'pending' || filter === 'warned' || filter === 'picked' || filter === 'solved' || filter === 'blocked'
       ? filter
       : 'all';
     return normalizedFilter === 'all' || item.supportCase?.status === normalizedFilter;
@@ -1092,7 +1092,7 @@ export class HttpChatsService implements IChatsService {
 
   private normalizeSupportCaseStatus(value: unknown): ContractTypes.SupportCaseStatus | null {
     const normalized = this.normalizeHttpText(value).toLowerCase();
-    return normalized === 'pending' || normalized === 'picked' || normalized === 'solved' || normalized === 'blocked'
+    return normalized === 'pending' || normalized === 'warned' || normalized === 'picked' || normalized === 'solved' || normalized === 'blocked'
       ? normalized
       : null;
   }

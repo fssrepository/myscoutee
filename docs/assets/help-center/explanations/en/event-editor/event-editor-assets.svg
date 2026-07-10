@@ -12,11 +12,11 @@
     <rect x="104" y="116" width="752" height="352" rx="24" fill="#f8fcff" stroke="#c7dbed" stroke-width="3"/>
   <rect x="150" y="150" width="250" height="46" rx="23" fill="#fff" stroke="#bed2eb" stroke-width="3"/>
   <text x="275" y="182" text-anchor="middle" font-family="Arial, sans-serif" font-size="27" font-weight="900" fill="#1f4778">Members</text><rect x="430" y="150" width="250" height="46" rx="23" fill="#fff" stroke="#bed2eb" stroke-width="3"/>
-  <text x="555" y="182" text-anchor="middle" font-family="Arial, sans-serif" font-size="27" font-weight="900" fill="#1f4778">Car</text>
+  <text x="555" y="182" text-anchor="middle" font-family="Arial, sans-serif" font-size="27" font-weight="900" fill="#1f4778">Transport</text>
   <rect x="150" y="214" width="250" height="46" rx="23" fill="#fff" stroke="#bed2eb" stroke-width="3"/>
   <text x="275" y="246" text-anchor="middle" font-family="Arial, sans-serif" font-size="27" font-weight="900" fill="#1f4778">Accommodation</text><rect x="430" y="214" width="250" height="46" rx="23" fill="#fff" stroke="#bed2eb" stroke-width="3"/>
   <text x="555" y="246" text-anchor="middle" font-family="Arial, sans-serif" font-size="27" font-weight="900" fill="#1f4778">Supplies</text>
-  <rect x="150" y="294" width="530" height="66" rx="16" fill="#fff" stroke="#d6e2f0" stroke-width="3"/><text x="178" y="334" font-family="Arial" font-size="22" font-weight="900" fill="#1d3354">Ride seats · 2 accepted · 1 pending</text>
+  <rect x="150" y="294" width="530" height="66" rx="16" fill="#fff" stroke="#d6e2f0" stroke-width="3"/><text x="178" y="334" font-family="Arial" font-size="22" font-weight="900" fill="#1d3354">Transport seats · 2 accepted · 1 pending</text>
   <rect x="150" y="386" width="110" height="46" rx="23" fill="#edf6ff" stroke="#bed2eb" stroke-width="3"/>
   <text x="205" y="418" text-anchor="middle" font-family="Arial, sans-serif" font-size="27" font-weight="900" fill="#1f4778">+</text><rect x="286" y="386" width="150" height="46" rx="23" fill="#edf6ff" stroke="#bed2eb" stroke-width="3"/>
   <text x="361" y="418" text-anchor="middle" font-family="Arial, sans-serif" font-size="27" font-weight="900" fill="#1f4778">Assign</text><rect x="462" y="386" width="170" height="46" rx="23" fill="#edf6ff" stroke="#bed2eb" stroke-width="3"/>

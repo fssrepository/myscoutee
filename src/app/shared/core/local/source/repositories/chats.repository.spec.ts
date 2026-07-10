@@ -51,7 +51,9 @@ describe('LocalChatsRepository chat pages', () => {
     ]);
 
     const page = repository.queryActivitiesChatPage('user-1', pageRequest({
-      chatContextFilter: 'service',
+      filters: {
+        chatContextFilter: 'service'
+      },
       pageSize: 10
     }));
 
@@ -82,15 +84,19 @@ describe('LocalChatsRepository chat pages', () => {
     ]);
 
     const adminPendingPage = repository.queryActivitiesChatPage('admin-demo-ava', pageRequest({
-      adminServiceOnly: true,
-      chatContextFilter: 'service',
-      supportCaseFilter: 'pending',
+      filters: {
+        adminServiceOnly: true,
+        chatContextFilter: 'service',
+        supportCaseFilter: 'pending'
+      },
       pageSize: 10
     }));
     const normalUserPage = repository.queryActivitiesChatPage('user-1', pageRequest({
-      adminServiceOnly: true,
-      chatContextFilter: 'service',
-      supportCaseFilter: 'pending',
+      filters: {
+        adminServiceOnly: true,
+        chatContextFilter: 'service',
+        supportCaseFilter: 'pending'
+      },
       pageSize: 10
     }));
 

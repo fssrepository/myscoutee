@@ -1,18 +1,6 @@
 @if (popupOpen() && viewModel(); as vm) {
-  <section class="app-popup app-popup-stacked app-popup-super-stacked profile-impressions-popup">
-    <div class="app-popup-backdrop" (click)="closePopup()"></div>
-    <div class="app-popup-panel popup-panel-members" (click)="$event.stopPropagation()">
-      <div class="popup-header popup-header-impressions">
-        <div class="popup-title popup-title-impressions">
-          <div class="popup-chat-title-block">
-            <h2>Impressions</h2>
-          </div>
-        </div>
-        <button mat-icon-button class="popup-close" (click)="closePopup()" aria-label="Close">
-          <mat-icon>close</mat-icon>
-        </button>
-      </div>
-      <div class="popup-body popup-body-impressions">
+  <app-popup [model]="impressionsPopupModel()" [zIndex]="impressionsPopupZIndex()">
+    <div class="profile-impressions-popup">
         @if (!vm.hasAvailableData) {
           <div class="profile-impressions-empty-state">
             <mat-icon>insights</mat-icon>
@@ -239,7 +227,6 @@
           </div>
         </div>
         }
-      </div>
     </div>
-  </section>
+  </app-popup>
 }

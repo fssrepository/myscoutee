@@ -15,9 +15,10 @@ export class HttpAdminModerationService {
   async warnUser(
     userId: string,
     admin: AdminUserDto | null | undefined,
-    message: string
+    message: string,
+    reportId?: string | null
   ): Promise<AdminModerationActionResult | null> {
-    return await this.postModerationAction(userId, 'warn', admin?.id ?? '', message);
+    return await this.postModerationAction(userId, 'warn', admin?.id ?? '', message, reportId);
   }
 
   async blockUser(
@@ -39,7 +40,8 @@ export class HttpAdminModerationService {
     userId: string,
     action: 'warn' | 'block' | 'unblock',
     adminUserId: string,
-    message: string
+    message: string,
+    reportId?: string | null
   ): Promise<AdminModerationActionResult | null> {
     const normalizedUserId = `${userId ?? ''}`.trim();
     if (!normalizedUserId) {
@@ -49,7 +51,8 @@ export class HttpAdminModerationService {
       `${this.apiBaseUrl}/admin/users/${encodeURIComponent(normalizedUserId)}/${action}`,
       {
         adminUserId,
-        message
+        message,
+        ...(`${reportId ?? ''}`.trim() ? { reportId: `${reportId ?? ''}`.trim() } : {})
       }
     ).toPromise() ?? null;
     return { dashboard };

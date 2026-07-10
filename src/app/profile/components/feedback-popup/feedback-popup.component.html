@@ -1,63 +1,26 @@
 <div class="support-popup">
   @if (!feedbackSubmitted) {
-    <article class="editor-list-card support-card">
-      <h4>Send Feedback</h4>
-      <p>Tell us what works well or what should be improved. Product feedback is triaged by category.</p>
-      <form class="support-form" (ngSubmit)="submitFeedback()">
-        @if (submitErrorMessage(); as errorMessage) {
-          <div class="support-submit-error" role="alert">{{ errorMessage }}</div>
-        }
-        <label>
-          <span>Category</span>
-          <select
-            name="feedbackCategory"
-            [(ngModel)]="feedbackForm.category"
-            [disabled]="isSubmitBusy()"
-            (ngModelChange)="clearSubmitStatus()"
-            >
-            @for (item of feedbackCategories; track item) {
-              <option [value]="item">{{ item }}</option>
-            }
-          </select>
-        </label>
-        <label>
-          <span>Subject</span>
-          <input
-            type="text"
-            name="feedbackSubject"
-            [(ngModel)]="feedbackForm.subject"
-            placeholder="Short summary"
-            [disabled]="isSubmitBusy()"
-            (ngModelChange)="clearSubmitStatus()"
-            />
-        </label>
-        <label>
-          <span>Details</span>
-          <textarea
-            rows="4"
-            name="feedbackDetails"
-            [(ngModel)]="feedbackForm.details"
-            placeholder="Describe your feedback. Include steps if this is a bug."
-            [disabled]="isSubmitBusy()"
-            (ngModelChange)="clearSubmitStatus()"
-          ></textarea>
-          <small class="support-form-help-text" [class.support-form-help-text-error]="feedbackDetailsRemaining > 0">
-            Minimum {{ feedbackDetailsMinLength }} characters ({{ feedbackDetailsRemaining }} left).
-          </small>
-        </label>
-        <div class="support-actions">
-          <button type="button" class="link-btn neutral-btn" (click)="closePopup()">Cancel</button>
-          <app-menu
-            class="support-submit-menu"
-            kind="inline"
-            [items]="feedbackSubmitMenuItems()"
-            (itemSelect)="onFeedbackSubmitMenuSelect($event)"
-          ></app-menu>
-        </div>
-      </form>
-    </article>
+    @if (submitErrorMessage(); as errorMessage) {
+      <div class="support-submit-error" role="alert">{{ errorMessage }}</div>
+    }
+    <app-form-flow
+      class="support-form-flow"
+      [model]="feedbackFlowModel()"
+      [ngModel]="feedbackForm"
+      [saving]="isSubmitting()"
+      [disabled]="isSubmitBusy()"
+      (ngModelChange)="onFeedbackFlowValueChange($event)"
+    ></app-form-flow>
+    <div class="support-actions">
+      <app-menu
+        class="support-action-menu"
+        kind="inline"
+        [items]="feedbackActionMenuItems()"
+        (itemSelect)="onFeedbackActionMenuSelect($event)"
+      ></app-menu>
+    </div>
   } @else {
-    <article class="editor-list-card support-card">
+    <article class="support-success-card">
       <div class="support-submit-success">{{ feedbackSubmitMessage }}</div>
     </article>
   }

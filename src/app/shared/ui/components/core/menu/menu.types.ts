@@ -33,6 +33,7 @@ export type AppMenuPalette =
   | 'violet'
   | 'purple'
   | 'pink'
+  | 'rose'
   | 'red'
   | 'orange'
   | 'amber'
@@ -61,7 +62,8 @@ export type AppMenuTriggerAction = 'menu' | 'custom';
 export type AppMenuItemSelectAction = 'select' | 'remove';
 export type AppMenuItemSurface = 'plain' | 'tinted';
 export type AppMenuLayout = 'row' | 'grid' | 'list' | 'tabs';
-export type AppMenuItemLayout = 'default' | 'pill' | 'action' | 'big' | 'image' | 'image-stack';
+export type AppMenuItemLayout = 'default' | 'pill' | 'action' | 'big' | 'image' | 'image-stack' | 'icon';
+export type AppMenuIconKind = 'material' | 'text';
 export type AppMenuDensity = 'default' | 'compact';
 export type AppMenuPanelAlign = 'auto' | 'start' | 'end';
 export type AppMenuPanelMode = 'auto' | 'anchored' | 'sheet' | 'dock' | 'fixed';
@@ -148,6 +150,7 @@ export interface AppMenuItem<TId extends string = string, TContext = unknown> {
   description?: AppMenuLiveValue<string | null | undefined>;
   detail?: AppMenuLiveValue<string | null | undefined>;
   icon?: AppMenuLiveValue<string | null | undefined>;
+  iconKind?: AppMenuIconKind;
   imageUrl?: AppMenuLiveValue<string | null | undefined>;
   imageAlt?: AppMenuLiveValue<string | null | undefined>;
   imageFallback?: AppMenuLiveValue<string | null | undefined>;
@@ -160,9 +163,11 @@ export interface AppMenuItem<TId extends string = string, TContext = unknown> {
   surface?: AppMenuItemSurface;
   layout?: AppMenuItemLayout;
   counter?: AppMenuCounter | AppMenuCounterValue | null;
+  headerBadge?: AppMenuCounter | AppMenuCounterValue | null;
   disabled?: AppMenuLiveValue<boolean | null | undefined>;
   active?: AppMenuLiveValue<boolean | null | undefined>;
   checked?: AppMenuLiveValue<boolean | null | undefined>;
+  showCheck?: AppMenuLiveValue<boolean | null | undefined>;
   removable?: AppMenuLiveValue<boolean | null | undefined>;
   removeIcon?: AppMenuLiveValue<string | null | undefined>;
   removeAriaLabel?: AppMenuLiveValue<string | null | undefined>;

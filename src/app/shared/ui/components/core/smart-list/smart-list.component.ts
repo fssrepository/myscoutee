@@ -46,6 +46,7 @@ import {
   type SmartListPageMode
 } from './smart-list-page.adapter';
 import { SmartListCalendarAdapter } from './smart-list-calendar.adapter';
+import { SmartListTimelineAdapter } from './smart-list-timeline.adapter';
 import {
   compareSmartListLocalSortKeys,
   smartListLocalSortKeyFromItem
@@ -290,6 +291,7 @@ export class SmartListComponent<T, TFilters extends SmartListFilters = SmartList
   private currentViewMode: SmartListViewMode = 'list';
   private previousPresentation: SmartListPresentation = 'list';
   private afterViewInit = false;
+  private pendingScrollResetAfterViewInit = false;
   private loadSequence = 0;
   private loadingCounter = 0;
   private loadingStartedAtMs = 0;
@@ -350,7 +352,7 @@ export class SmartListComponent<T, TFilters extends SmartListFilters = SmartList
 
     const scrollElement = this.scrollHostRef?.nativeElement;
     if (scrollElement) {
-      if (this.shouldUseHorizontalMobileStepper()) {
+      if (this.shouldUseHorizontalMobileStepper() || this.shouldUseTimelineMobileStepper()) {
         return;
       }
 
@@ -377,7 +379,7 @@ export class SmartListComponent<T, TFilters extends SmartListFilters = SmartList
       this.touchStartScrollSnapType = null;
       return;
     }
-    if (!this.shouldUseHorizontalMobileStepper()) {
+    if (!this.shouldUseHorizontalMobileStepper() && !this.shouldUseTimelineMobileStepper()) {
       scrollElement.style.scrollSnapType = this.touchStartScrollSnapType ?? '';
       this.touchStartScrollSnapType = null;
     }
@@ -395,6 +397,11 @@ export class SmartListComponent<T, TFilters extends SmartListFilters = SmartList
     }
 
     if (this.isPageMode()) {
+      if (this.usesTimelineViewportScroll(scrollElement)) {
+        this.touchStartScrollSnapType = null;
+        this.updateTimelineViewportScrollState(scrollElement);
+        return;
+      }
       this.stepper.scheduleScrollEnd(scrollElement);
     }
   }
@@ -448,6 +455,10 @@ export class SmartListComponent<T, TFilters extends SmartListFilters = SmartList
 
   ngAfterViewInit(): void {
     this.afterViewInit = true;
+    if (this.pendingScrollResetAfterViewInit) {
+      this.pendingScrollResetAfterViewInit = false;
+      this.resetScrollSoon();
+    }
     this.refreshSurfaceSoon();
   }
 
@@ -458,7 +469,7 @@ export class SmartListComponent<T, TFilters extends SmartListFilters = SmartList
     this.currentViewKey = nextViewKey;
     this.currentViewMode = this.resolveViewMode(nextViewKey);
     this.activePageAdapter = this.isPageMode()
-      ? SmartListCalendarAdapter.getInstance<T, TFilters>(this.currentViewMode as SmartListPageMode)
+      ? this.pageAdapterForMode(this.currentViewMode as SmartListPageMode)
       : null;
     this.previousPresentation = this.resolvedPresentation();
 
@@ -612,6 +623,13 @@ export class SmartListComponent<T, TFilters extends SmartListFilters = SmartList
   }
 
   protected canMovePagination(direction: -1 | 1): boolean {
+    if (this.isTimelineMode()) {
+      const scrollElement = this.scrollHostRef?.nativeElement ?? null;
+      if (this.pages.length === 1 && scrollElement) {
+        return this.canScrollTimelineViewport(direction, scrollElement);
+      }
+      return this.pages.length > 1 || (this.pages.length > 0 && direction > 0);
+    }
     const delta = this.paginationCursorDelta(direction);
     return delta !== 0 && this.finiteStepper.canMove(delta);
   }
@@ -706,6 +724,10 @@ export class SmartListComponent<T, TFilters extends SmartListFilters = SmartList
       void this.advanceHostedFullscreenPagination(-1);
       return;
     }
+    if (this.isTimelineMode()) {
+      this.moveTimelineViewport(-1);
+      return;
+    }
     void this.moveCursor(this.paginationCursorDelta(-1));
   }
 
@@ -715,6 +737,10 @@ export class SmartListComponent<T, TFilters extends SmartListFilters = SmartList
     if (this.shouldUseHostedFullscreenPagination()) {
       this.interruptHostedFullscreenTransition();
       void this.advanceHostedFullscreenPagination(1);
+      return;
+    }
+    if (this.isTimelineMode()) {
+      this.moveTimelineViewport(1);
       return;
     }
     void this.moveCursor(this.paginationCursorDelta(1));
@@ -790,7 +816,7 @@ export class SmartListComponent<T, TFilters extends SmartListFilters = SmartList
     this.cdr.markForCheck();
   }
 
-  public replaceVisibleItems(items: readonly T[], options: { total?: number } = {}): void {
+  public replaceVisibleItems(items: readonly T[], options: { total?: number; hasMore?: boolean } = {}): void {
     if (this.currentViewMode !== 'list') {
       return;
     }
@@ -803,7 +829,10 @@ export class SmartListComponent<T, TFilters extends SmartListFilters = SmartList
     this.total = Number.isFinite(options.total)
       ? Math.max(this.items.length, Math.trunc(Number(options.total)))
       : this.items.length;
-    this.hasMore = this.items.length < this.total;
+    const computedHasMore = this.items.length < this.total;
+    this.hasMore = typeof options.hasMore === 'boolean'
+      ? options.hasMore && computedHasMore
+      : computedHasMore;
     this.syncGroups();
     this.finiteStepper.syncBounds();
     this.emitState();
@@ -815,6 +844,7 @@ export class SmartListComponent<T, TFilters extends SmartListFilters = SmartList
     items: readonly T[],
     options: {
       total?: number;
+      hasMore?: boolean;
       equals?: (current: T, next: T, index: number) => boolean;
       trackBy?: (index: number, item: T) => unknown;
     } = {}
@@ -826,7 +856,12 @@ export class SmartListComponent<T, TFilters extends SmartListFilters = SmartList
     const nextTotal = Number.isFinite(options.total)
       ? Math.max(nextItems.length, Math.trunc(Number(options.total)))
       : nextItems.length;
+    const nextComputedHasMore = nextItems.length < nextTotal;
+    const nextHasMore = typeof options.hasMore === 'boolean'
+      ? options.hasMore && nextComputedHasMore
+      : nextComputedHasMore;
     const sameShape = this.total === nextTotal
+      && this.hasMore === nextHasMore
       && this.items.length === nextItems.length
       && this.items.every((item, index) =>
         this.cacheTrackKey(item, index, options.trackBy)
@@ -834,7 +869,7 @@ export class SmartListComponent<T, TFilters extends SmartListFilters = SmartList
       );
 
     if (!sameShape) {
-      this.replaceVisibleItems(nextItems, { total: nextTotal });
+      this.replaceVisibleItems(nextItems, { total: nextTotal, hasMore: nextHasMore });
       this.emitRefresh();
       return true;
     }
@@ -928,7 +963,9 @@ export class SmartListComponent<T, TFilters extends SmartListFilters = SmartList
   }
 
   protected isPageMode(): boolean {
-    return this.currentViewMode === 'month' || this.currentViewMode === 'week';
+    return this.currentViewMode === 'month'
+      || this.currentViewMode === 'week'
+      || this.currentViewMode === 'timeline';
   }
 
   protected isMonthMode(): boolean {
@@ -937,6 +974,10 @@ export class SmartListComponent<T, TFilters extends SmartListFilters = SmartList
 
   protected isWeekMode(): boolean {
     return this.currentViewMode === 'week';
+  }
+
+  protected isTimelineMode(): boolean {
+    return this.currentViewMode === 'timeline';
   }
 
   protected resolvedContainerClass(): SmartListClassValue {
@@ -1133,11 +1174,20 @@ export class SmartListComponent<T, TFilters extends SmartListFilters = SmartList
 
   protected onPageScroll(event: Event): void {
     const target = event.target as HTMLDivElement;
+    if (this.usesTimelineViewportScroll(target)) {
+      this.updateTimelineViewportScrollState(target);
+      return;
+    }
     this.stepper.onScroll(target);
   }
 
   protected onPageScrollEnd(event: Event): void {
-    this.stepper.onScrollEnd(event.target as HTMLDivElement);
+    const target = event.target as HTMLDivElement;
+    if (this.usesTimelineViewportScroll(target)) {
+      this.updateTimelineViewportScrollState(target);
+      return;
+    }
+    this.stepper.onScrollEnd(target);
   }
 
   protected readonly trackByGroup = (_index: number, group: SmartListGroup<T>): string => `${group.startIndex}:${group.label}`;
@@ -1264,7 +1314,10 @@ export class SmartListComponent<T, TFilters extends SmartListFilters = SmartList
   private selectSmartListItem(
     item: T,
     event?: Event,
-    context?: Pick<SmartListItemSelectEvent<T, TFilters>, 'calendarDate' | 'calendarDateIso'>
+    context?: Pick<
+      SmartListItemSelectEvent<T, TFilters>,
+      'calendarDate' | 'calendarDateIso' | 'timelineStartOffsetMinutes' | 'timelineEndOffsetMinutes'
+    >
   ): void {
     event?.stopPropagation();
     const itemIndex = this.items.indexOf(item);
@@ -1277,7 +1330,9 @@ export class SmartListComponent<T, TFilters extends SmartListFilters = SmartList
       selectMode: this.resolvedSelectMode(),
       sourceEvent: event,
       calendarDate: context?.calendarDate,
-      calendarDateIso: context?.calendarDateIso
+      calendarDateIso: context?.calendarDateIso,
+      timelineStartOffsetMinutes: context?.timelineStartOffsetMinutes,
+      timelineEndOffsetMinutes: context?.timelineEndOffsetMinutes
     });
   }
 
@@ -1389,6 +1444,9 @@ export class SmartListComponent<T, TFilters extends SmartListFilters = SmartList
       variant: this.isCounterPageVariant() ? 'counter' : 'default',
       touching: this.isTouchingSurface,
       trackByItem: (index, item) => this.pageTrackKey(index, item),
+      itemTemplate: this.itemTemplate,
+      itemTemplateInjector: this.itemTemplateInjector,
+      itemContext: (item, index) => this.itemContext(item, index, ''),
       onItemSelect: this.selectPageCardItem
     };
   }
@@ -1396,7 +1454,10 @@ export class SmartListComponent<T, TFilters extends SmartListFilters = SmartList
   private readonly selectPageCardItem = (
     item: T,
     event?: Event,
-    context?: Pick<SmartListItemSelectEvent<T, TFilters>, 'calendarDate' | 'calendarDateIso'>
+    context?: Pick<
+      SmartListItemSelectEvent<T, TFilters>,
+      'calendarDate' | 'calendarDateIso' | 'timelineStartOffsetMinutes' | 'timelineEndOffsetMinutes'
+    >
   ): void => {
     this.selectSmartListItem(item, event, context);
   };
@@ -1477,10 +1538,16 @@ export class SmartListComponent<T, TFilters extends SmartListFilters = SmartList
     }
 
     const items = Array.isArray(result?.items) ? result.items : [];
+    const hasExplicitNextCursor = Boolean(result && Object.prototype.hasOwnProperty.call(result, 'nextCursor'));
+    const requestedPageSize = Math.max(1, Math.trunc(Number(query.pageSize) || this.resolveEffectivePageSize()));
+    const loadedShortPage = items.length > 0 && items.length < requestedPageSize;
     const total = Number.isFinite(result?.total)
       ? Math.max(0, Math.trunc(Number(result?.total)))
       : undefined;
-    this.syncVisibleItems(items, { total });
+    const hasMore = hasExplicitNextCursor
+      ? (typeof result?.nextCursor === 'string' && result.nextCursor.trim().length > 0)
+      : (items.length > 0 && items.length < (total ?? items.length) && !loadedShortPage);
+    this.syncVisibleItems(items, { total, hasMore });
   }
 
   private async loadInitialListPages(): Promise<void> {
@@ -1559,7 +1626,7 @@ export class SmartListComponent<T, TFilters extends SmartListFilters = SmartList
       if (shouldUseReverseAppendAnchorRestore) {
         reverseAppendAnchorContext = this.captureReverseAppendAnchorContext(isInitial) ?? reverseAppendAnchorContext;
       }
-      this.applyListPageResult(result, isInitial);
+      this.applyListPageResult(result, isInitial, query.pageSize);
       if (sequence !== this.loadSequence) {
         return;
       }
@@ -1653,7 +1720,11 @@ export class SmartListComponent<T, TFilters extends SmartListFilters = SmartList
     await this.loadAnchorPage(anchor, this.stepper.queryForAnchor(anchor), true);
   }
 
-  private applyListPageResult(result: PageResult<T> | null | undefined, isInitial: boolean): void {
+  private applyListPageResult(
+    result: PageResult<T> | null | undefined,
+    isInitial: boolean,
+    requestedPageSizeValue?: number | null
+  ): void {
     // Lock the snap reactivation if we were suppressing it at the bottom
     if (!isInitial && this.listMergeStrategy() !== 'prepend' && this.suppressListSnapNearEnd) {
       this.suspendSnapReactivation = true;
@@ -1661,6 +1732,11 @@ export class SmartListComponent<T, TFilters extends SmartListFilters = SmartList
 
     const nextItems = Array.isArray(result?.items) ? result.items : [];
     const hasExplicitNextCursor = Boolean(result && Object.prototype.hasOwnProperty.call(result, 'nextCursor'));
+    const requestedPageSize = Math.max(
+      1,
+      Math.trunc(Number(requestedPageSizeValue) || this.resolveEffectivePageSize())
+    );
+    const loadedShortPage = nextItems.length > 0 && nextItems.length < requestedPageSize;
     if (isInitial) {
       this.items = this.orderSortableItems(nextItems);
     } else if (this.listMergeStrategy() === 'prepend') {
@@ -1675,7 +1751,7 @@ export class SmartListComponent<T, TFilters extends SmartListFilters = SmartList
       : null;
     this.hasMore = hasExplicitNextCursor
       ? this.nextPageCursor !== null
-      : (nextItems.length > 0 && this.items.length < this.total);
+      : (nextItems.length > 0 && this.items.length < this.total && !loadedShortPage);
     if (nextItems.length > 0) {
       this.pageIndex += 1;
     } else {
@@ -2893,6 +2969,58 @@ export class SmartListComponent<T, TFilters extends SmartListFilters = SmartList
       && this.isMobileViewport();
   }
 
+  private shouldUseTimelineMobileStepper(): boolean {
+    return this.isTimelineMode()
+      && this.resolvedMobileStepper()
+      && this.isMobileViewport();
+  }
+
+  private usesTimelineViewportScroll(scrollElement: HTMLDivElement | null): boolean {
+    return this.isTimelineMode()
+      && this.pages.length === 1
+      && Boolean(scrollElement)
+      && (scrollElement?.scrollWidth ?? 0) > (scrollElement?.clientWidth ?? 0) + 1;
+  }
+
+  private canScrollTimelineViewport(direction: -1 | 1, scrollElement: HTMLDivElement): boolean {
+    const maxScrollLeft = Math.max(0, scrollElement.scrollWidth - scrollElement.clientWidth);
+    return direction < 0
+      ? scrollElement.scrollLeft > 1
+      : scrollElement.scrollLeft < maxScrollLeft - 1;
+  }
+
+  private moveTimelineViewport(direction: -1 | 1): void {
+    const scrollElement = this.scrollHostRef?.nativeElement ?? null;
+    if (!scrollElement) {
+      return;
+    }
+    if (!this.usesTimelineViewportScroll(scrollElement)) {
+      this.stepper.navigateBy(direction);
+      return;
+    }
+    const firstCell = scrollElement.querySelector<HTMLElement>('.smart-list__timeline-header-cell');
+    const cellWidth = firstCell?.getBoundingClientRect().width ?? 0;
+    const visibleCellCount = cellWidth > 0
+      ? Math.max(1, Math.floor((scrollElement.clientWidth + 1) / cellWidth))
+      : 1;
+    const stepWidth = cellWidth > 0
+      ? visibleCellCount * cellWidth
+      : Math.max(1, scrollElement.clientWidth);
+    const maxScrollLeft = Math.max(0, scrollElement.scrollWidth - scrollElement.clientWidth);
+    const targetLeft = Math.max(0, Math.min(maxScrollLeft, scrollElement.scrollLeft + (direction * stepWidth)));
+    scrollElement.scrollTo({ left: targetLeft, behavior: 'smooth' });
+  }
+
+  private updateTimelineViewportScrollState(scrollElement: HTMLDivElement): void {
+    const maxScrollLeft = Math.max(0, scrollElement.scrollWidth - scrollElement.clientWidth);
+    this.scrollable = maxScrollLeft > 1;
+    this.progress = maxScrollLeft > 0
+      ? AppUtils.clampNumber(scrollElement.scrollLeft / maxScrollLeft, 0, 1)
+      : 0;
+    this.emitState();
+    this.cdr.markForCheck();
+  }
+
   private isMobileViewport(): boolean {
     const breakpointPx = SmartListComponent.DEFAULT_MOBILE_BREAKPOINT_PX;
     const matcher = globalThis.matchMedia?.(`(max-width: ${breakpointPx}px)`);
@@ -3198,7 +3326,8 @@ private updateListSnapNearEndSuppression(scrollElement?: HTMLDivElement | null):
       if (this.isPageMode()) {
         const initialIndex = this.stepper.initialPageIndex();
         this.stepper.clearInitialPageIndexOverride();
-        const targetLeft = this.stepper.pageOffsetLeft(scrollElement, initialIndex);
+        const pageCount = this.stepper.pages().length || this.pages.length;
+        const targetLeft = this.stepper.pageTargetLeft(scrollElement, initialIndex, pageCount);
         if (targetLeft >= 0) {
           this.stepper.suppressSettle = true;
           const previousScrollBehavior = scrollElement.style.scrollBehavior;
@@ -3235,6 +3364,12 @@ private updateListSnapNearEndSuppression(scrollElement?: HTMLDivElement | null):
       this.cdr.markForCheck();
     };
     if (!this.afterViewInit) {
+      this.pendingScrollResetAfterViewInit = true;
+      return;
+    }
+    this.pendingScrollResetAfterViewInit = false;
+    if (typeof globalThis.requestAnimationFrame === 'function') {
+      globalThis.requestAnimationFrame(() => globalThis.requestAnimationFrame(reset));
       return;
     }
     setTimeout(reset, 0);
@@ -3794,10 +3929,15 @@ private updateListSnapNearEndSuppression(scrollElement?: HTMLDivElement | null):
     if (activeView?.mode) {
       return activeView.mode;
     }
-    if (viewKey === 'month' || viewKey === 'week') {
+    if (viewKey === 'month' || viewKey === 'week' || viewKey === 'timeline') {
       return viewKey;
     }
     return 'list';
+  }
+
+  private pageAdapterForMode(mode: SmartListPageMode): AnySmartListPageAdapter<T, TFilters> | null {
+    return SmartListCalendarAdapter.getInstance<T, TFilters>(mode)
+      ?? SmartListTimelineAdapter.getInstance<T, TFilters>(mode);
   }
 
   private activeViewConfig(viewKey: string | null = this.currentViewKey): SmartListViewConfig<T, TFilters> | null {
@@ -4141,6 +4281,7 @@ private updateListSnapNearEndSuppression(scrollElement?: HTMLDivElement | null):
     options: {
       predicate?: (item: T, index: number) => boolean;
       totalDelta?: number;
+      loadedRange?: 'any' | 'before-or-within';
     } = {}
   ): boolean {
     const query = this.currentQuery();
@@ -4159,7 +4300,10 @@ private updateListSnapNearEndSuppression(scrollElement?: HTMLDivElement | null):
       this.emitRefresh();
       return true;
     }
-    if (!this.reinsertVisibleItem(nextItem, { totalDelta: options.totalDelta })) {
+    if (!this.reinsertVisibleItem(nextItem, {
+      totalDelta: options.totalDelta,
+      loadedRange: options.loadedRange
+    })) {
       return false;
     }
     this.cacheVisibleSourceItem(source, nextItem);
@@ -4174,9 +4318,22 @@ private updateListSnapNearEndSuppression(scrollElement?: HTMLDivElement | null):
     if (this.currentViewMode !== 'list') {
       return false;
     }
-    const nextItems = this.items.filter((item, index) => !predicate(item, index));
+    const removedIdentities: string[] = [];
+    const nextItems = this.items.filter((item, index) => {
+      const shouldRemove = predicate(item, index);
+      if (shouldRemove) {
+        const identity = `${this.cacheTrackKey(item, index)}`.trim();
+        if (identity) {
+          removedIdentities.push(identity);
+        }
+      }
+      return !shouldRemove;
+    });
     if (nextItems.length === this.items.length) {
       return false;
+    }
+    for (const identity of removedIdentities) {
+      this.sourceItemByIdentity.delete(identity);
     }
     this.replaceVisibleItems(nextItems, {
       total: Math.max(nextItems.length, this.total + (options.totalDelta ?? -1))
@@ -4196,7 +4353,13 @@ private updateListSnapNearEndSuppression(scrollElement?: HTMLDivElement | null):
     );
   }
 
-  public reinsertVisibleItem(item: T, options: { totalDelta?: number } = {}): boolean {
+  public reinsertVisibleItem(
+    item: T,
+    options: {
+      totalDelta?: number;
+      loadedRange?: 'any' | 'before-or-within';
+    } = {}
+  ): boolean {
     if (this.currentViewMode !== 'list') {
       return false;
     }
@@ -4204,10 +4367,50 @@ private updateListSnapNearEndSuppression(scrollElement?: HTMLDivElement | null):
     if (this.items.some((currentItem, index) => `${this.cacheTrackKey(currentItem, index)}`.trim() === identity)) {
       return false;
     }
-    this.replaceVisibleItems([...this.items, item], {
+    const insertionIndex = this.visibleInsertionIndex(item);
+    const insertsAfterLoadedTail = insertionIndex >= this.items.length;
+    const loadedShortPage = this.items.length < this.resolveEffectivePageSize();
+    if (
+      options.loadedRange === 'before-or-within'
+      && this.items.length > 0
+      && this.hasMore
+      && !loadedShortPage
+      && insertsAfterLoadedTail
+      && !this.visibleGroupAlreadyLoaded(item)
+    ) {
+      return false;
+    }
+    const nextItems = [...this.items];
+    nextItems.splice(insertionIndex, 0, item);
+    this.replaceVisibleItems(nextItems, {
       total: Math.max(this.items.length + 1, this.total + (options.totalDelta ?? 1))
     });
     return true;
+  }
+
+  private visibleInsertionIndex(item: T): number {
+    if (!this.sortableConfig()) {
+      return this.items.length;
+    }
+    const query = this.currentQuery();
+    const itemSortKey = this.localSortKeyForItem(item, query, this.items.length);
+    const index = this.items.findIndex((currentItem, currentIndex) =>
+      compareSmartListLocalSortKeys(
+        itemSortKey,
+        this.localSortKeyForItem(currentItem, query, currentIndex)
+      ) < 0
+    );
+    return index >= 0 ? index : this.items.length;
+  }
+
+  private visibleGroupAlreadyLoaded(item: T): boolean {
+    const groupBy = this.config.groupBy;
+    if (!groupBy || this.items.length === 0) {
+      return false;
+    }
+    const query = this.currentQuery();
+    const label = groupBy(item, query);
+    return this.items.some(currentItem => groupBy(currentItem, query) === label);
   }
 
   private cancelPendingAnchorPreload(): void {

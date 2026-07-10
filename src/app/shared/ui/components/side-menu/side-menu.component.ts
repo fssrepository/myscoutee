@@ -807,15 +807,13 @@ export class SideMenuComponent implements OnDestroy {
 
     effect(() => {
       const session = this.sessionService.session();
-      if (!session || this.userProfileStore.activeUserId().trim()) {
+      const sessionUserId = session?.kind === 'firebase'
+        ? session.profile.id.trim()
+        : session?.userId.trim() ?? '';
+      if (this.userProfileStore.activeUserId().trim() === sessionUserId) {
         return;
       }
-      const bootstrapUserId = session.kind === 'firebase'
-        ? session.profile.id.trim()
-        : session.userId.trim();
-      if (bootstrapUserId) {
-        this.userProfileStore.setActiveUserId(bootstrapUserId);
-      }
+      this.userProfileStore.setActiveUserId(sessionUserId);
     });
 
     effect(() => {
@@ -1666,7 +1664,7 @@ export class SideMenuComponent implements OnDestroy {
             localStorage.removeItem(SideMenuComponent.ADMIN_SESSION_STORAGE_KEY);
           }
           window.dispatchEvent(new CustomEvent('adminLogoutRequested'));
-          await this.sessionService.logout().finally(() => this.router.navigate(['/admin']));
+          await this.sessionService.logout().finally(() => this.router.navigate(['/']));
           return;
         }
         const activeUserId = this.userProfileStore.activeUserId().trim();
@@ -1725,7 +1723,7 @@ export class SideMenuComponent implements OnDestroy {
             localStorage.removeItem(SideMenuComponent.ADMIN_SESSION_STORAGE_KEY);
           }
           window.dispatchEvent(new CustomEvent('adminLogoutRequested'));
-          await this.sessionService.logout().finally(() => this.router.navigate(['/admin']));
+          await this.sessionService.logout().finally(() => this.router.navigate(['/']));
           return;
         }
         if (activeUserId) {

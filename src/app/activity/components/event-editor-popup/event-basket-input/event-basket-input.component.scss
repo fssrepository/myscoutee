@@ -1,0 +1,296 @@
+:host {
+  display: block;
+  grid-column: 1 / -1;
+}
+
+.event-basket-panel {
+  grid-column: 1 / -1;
+  border: 1px solid rgba(93, 108, 128, 0.3);
+  border-radius: 16px;
+  background:
+    radial-gradient(circle at 7% 8%, rgba(255, 255, 255, 0.78), transparent 34%),
+    linear-gradient(180deg, #f8fafc 0%, #eef5f5 100%);
+  box-shadow: 0 4px 12px rgba(39, 53, 72, 0.08);
+  padding: 0.62rem 0.72rem;
+  display: grid;
+  gap: 0.62rem;
+}
+
+.event-basket-panel--ready {
+  border-color: rgba(55, 132, 169, 0.34);
+  background:
+    radial-gradient(circle at 7% 8%, rgba(255, 255, 255, 0.82), transparent 34%),
+    linear-gradient(180deg, #f3fbff 0%, #e8f4f8 100%);
+}
+
+.event-basket-panel--payment {
+  border-color: rgba(82, 94, 192, 0.34);
+  background:
+    radial-gradient(circle at 7% 8%, rgba(255, 255, 255, 0.82), transparent 34%),
+    linear-gradient(180deg, #f5f6ff 0%, #ecefff 100%);
+}
+
+.event-basket-panel--waiting,
+.event-basket-panel--approval {
+  border-color: rgba(205, 143, 53, 0.36);
+  background:
+    radial-gradient(circle at 7% 8%, rgba(255, 255, 255, 0.82), transparent 34%),
+    linear-gradient(180deg, #fff9ed 0%, #f9efd9 100%);
+}
+
+.event-basket-panel--changed {
+  border-color: rgba(218, 137, 38, 0.42);
+  background:
+    radial-gradient(circle at 7% 8%, rgba(255, 255, 255, 0.84), transparent 34%),
+    linear-gradient(180deg, #fff7e8 0%, #f8ead0 100%);
+}
+
+.event-basket-panel-head {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: start;
+  gap: 0.75rem;
+}
+
+.event-basket-panel-title-wrap,
+.event-basket-panel-body,
+.event-basket-list,
+.event-basket-pricing-summary {
+  display: grid;
+}
+
+.event-basket-panel-title-wrap {
+  gap: 0.26rem;
+}
+
+.event-basket-panel-title,
+.event-basket-panel-title-line {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  min-width: 0;
+}
+
+.event-basket-panel-title-line {
+  color: #526174;
+  font-weight: 900;
+}
+
+.event-basket-panel-title-line .mat-icon {
+  width: 18px;
+  height: 18px;
+  font-size: 18px;
+  line-height: 18px;
+}
+
+.event-basket-panel-subtitle {
+  margin: 0;
+  color: rgba(37, 58, 88, 0.74);
+  font-size: 0.8rem;
+  line-height: 1.4;
+}
+
+.event-basket-panel-actions {
+  display: inline-flex;
+  align-items: center;
+  justify-content: flex-end;
+  min-width: 0;
+}
+
+.event-basket-add-menu {
+  justify-self: end;
+}
+
+.event-basket-panel-body {
+  gap: 0.72rem;
+}
+
+.event-basket-context,
+.event-basket-section-head,
+.event-basket-readonly-row {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 0.75rem;
+  min-width: 0;
+}
+
+.event-basket-context,
+.event-basket-readonly-row {
+  border: 1px solid rgba(192, 212, 232, 0.72);
+  border-radius: 12px;
+  background: rgba(249, 252, 255, 0.9);
+  padding: 0.64rem 0.72rem;
+}
+
+.event-basket-context {
+  background: rgba(238, 250, 248, 0.72);
+  border-color: rgba(89, 137, 151, 0.22);
+}
+
+.event-basket-context div,
+.event-basket-readonly-row div {
+  display: grid;
+  gap: 0.15rem;
+  min-width: 0;
+}
+
+.event-basket-context strong,
+.event-basket-readonly-row strong,
+.event-basket-section-head strong {
+  color: #183a5a;
+  font-weight: 900;
+}
+
+.event-basket-context > strong,
+.event-basket-readonly-row > strong {
+  justify-self: end;
+  color: #16836f;
+  white-space: nowrap;
+}
+
+.event-basket-context span,
+.event-basket-context small,
+.event-basket-readonly-row span,
+.event-basket-readonly-row small {
+  color: rgba(42, 64, 96, 0.72);
+  font-size: 0.82rem;
+  line-height: 1.35;
+}
+
+.event-basket-section-head span {
+  color: rgba(43, 64, 96, 0.66);
+  font-size: 0.76rem;
+  font-weight: 800;
+  text-transform: uppercase;
+}
+
+.event-basket-list {
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  align-items: stretch;
+  gap: 0.56rem;
+  min-width: 0;
+}
+
+.event-basket-card {
+  display: block;
+  height: 100%;
+  min-width: 0;
+}
+
+.event-basket-empty {
+  justify-self: start;
+  min-width: min(100%, 252px);
+  padding: 1rem 1.2rem;
+  border: 1px dashed rgba(128, 149, 176, 0.36);
+  border-radius: 14px;
+  color: #102a4a;
+  background: rgba(255, 255, 255, 0.58);
+  font-size: 0.9rem;
+  line-height: 1.35;
+  font-weight: 800;
+  box-sizing: border-box;
+}
+
+.event-basket-pricing-summary {
+  gap: 0.34rem;
+  padding: 0.62rem 0.72rem;
+  border: 1px solid rgba(89, 137, 151, 0.24);
+  border-radius: 12px;
+  background: rgba(255, 255, 255, 0.68);
+}
+
+.event-basket-pricing-summary-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+  color: #20395d;
+  font-size: 0.86rem;
+  font-weight: 900;
+}
+
+.event-basket-pricing-summary-head .mat-icon {
+  width: 18px;
+  height: 18px;
+  font-size: 18px;
+  line-height: 18px;
+  color: #2d4f7c;
+}
+
+.event-basket-pricing-row,
+.event-basket-pricing-total {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 0.75rem;
+  min-width: 0;
+  color: rgba(36, 58, 88, 0.78);
+  font-size: 0.8rem;
+  line-height: 1.35;
+}
+
+.event-basket-pricing-empty {
+  margin: 0.2rem 0 0.1rem;
+  color: rgba(42, 64, 96, 0.68);
+  font-size: 0.78rem;
+  line-height: 1.35;
+  font-weight: 750;
+}
+
+.event-basket-pricing-label {
+  display: inline-flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 0.32rem;
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+
+.event-basket-pricing-label small {
+  color: rgba(36, 58, 88, 0.56);
+  font-size: 0.72rem;
+  font-weight: 700;
+}
+
+.event-basket-pricing-row strong {
+  color: #24476f;
+  font-size: 0.8rem;
+  font-weight: 900;
+  white-space: nowrap;
+}
+
+.event-basket-pricing-total {
+  margin-top: 0.2rem;
+  padding-top: 0.46rem;
+  border-top: 1px solid rgba(89, 137, 151, 0.22);
+  color: #183653;
+  font-size: 0.9rem;
+  font-weight: 900;
+}
+
+.event-basket-pricing-total strong {
+  color: #16836f;
+  font-size: 1rem;
+  white-space: nowrap;
+}
+
+@media (max-width: 760px) {
+  .event-basket-list {
+    grid-template-columns: 1fr;
+  }
+
+  .event-basket-context,
+  .event-basket-readonly-row {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .event-basket-context > strong,
+  .event-basket-readonly-row > strong {
+    justify-self: start;
+  }
+
+  .event-basket-panel-actions {
+    justify-self: end;
+  }
+}

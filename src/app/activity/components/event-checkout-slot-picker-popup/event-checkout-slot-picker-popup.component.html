@@ -1,0 +1,91 @@
+@if (popupState()) {
+  <app-popup [model]="popupModel()" [zIndex]="4920">
+    <div class="event-checkout-slot-picker" [class.is-saving]="saving" [class.is-month-view]="isMonthView()">
+      @if (errorMessage) {
+        <p class="event-checkout-slot-picker__error">{{ errorMessage }}</p>
+      }
+
+      <div class="event-checkout-slot-picker__viewport">
+        <app-smart-list
+          class="event-checkout-slot-picker__slots"
+          [config]="slotListConfig"
+          [loadPage]="slotLoadPage"
+          [itemTemplate]="slotItemTemplate"
+          [query]="slotListQuery"
+          (itemSelect)="onSlotItemSelect($event)"
+        ></app-smart-list>
+
+        @if (isMonthView()) {
+          <section class="event-checkout-slot-picker__month-overlay" aria-label="Available slot calendar">
+            <app-smart-list
+              class="event-checkout-slot-picker__month-list"
+              [config]="monthListConfig"
+              [loadPage]="monthLoadPage"
+              [query]="monthListQuery"
+              [view]="'month'"
+              (itemSelect)="onMonthDaySelect($event)"
+            ></app-smart-list>
+          </section>
+        }
+      </div>
+
+      <ng-template #slotItemTemplate let-slot let-selectItem="selectItem">
+        <article
+          class="event-checkout-slot-picker__slot-card"
+          [class.is-selected]="isSelected(slot)"
+          [class.is-booked]="isSlotBooked(slot)"
+        >
+          <app-text-card
+            class="event-checkout-slot-picker__text-card"
+            [class.has-slot-badge-space]="true"
+            [tone]="slotCardTone(slot)"
+            [disabled]="isSlotUnavailable(slot)"
+            icon="event_seat"
+            [title]="slot.title"
+            [subtitle]="slot.timeframe"
+            [meta]="''"
+            [detail]="selectedOptionalLabel(slot)"
+            [badge]="slotPriceLabel(slot)"
+            badgeTone="price"
+            [badgeClickable]="slotShowsPrice(slot)"
+            [badgeAriaLabel]="'Show price summary for ' + slot.title"
+            [statusBadge]="slotCapacityBadge(slot)"
+            [statusBadgeTone]="slotCapacityBadgeTone(slot)"
+            [menuTitle]="slot.title"
+            menuPalette="muted"
+            [menuItems]="slotActionsDisabled(slot) ? [] : slotMenuItems(slot)"
+            [selectable]="!slotActionsDisabled(slot)"
+            [selected]="isSelected(slot)"
+            [selectDisabled]="saving || slotActionsDisabled(slot)"
+            selectPalette="picker"
+            selectIcon="add"
+            selectedIcon="check"
+            [selectAriaLabel]="isSelected(slot) ? 'Remove slot from basket' : 'Add slot to basket'"
+            (selectionToggle)="selectItem($event)"
+            (badgeClick)="openPricingSummary(slot, $event)"
+            (menuSelect)="onSlotMenuSelect(slot, $event)"
+          ></app-text-card>
+        </article>
+      </ng-template>
+    </div>
+  </app-popup>
+}
+
+@if (pricingSummarySlot) {
+  <app-popup [model]="pricingSummaryPopupModel()" [zIndex]="4930">
+    <app-event-basket-input
+      class="event-checkout-slot-picker__pricing-summary"
+      title="Pricing"
+      subtitle="Read-only checkout price review"
+      [items]="pricingSummaryItems(pricingSummarySlot)"
+      [pricingSummaryRows]="pricingSummaryRows(pricingSummarySlot)"
+      [totalAmount]="pricingSummaryTotalAmount(pricingSummarySlot)"
+      [currency]="pricingSummaryCurrency(pricingSummarySlot)"
+      [readOnly]="true"
+      [showAdd]="false"
+      [showItemMenu]="false"
+      [showPricingSummary]="true"
+      tone="ready"
+    ></app-event-basket-input>
+  </app-popup>
+}

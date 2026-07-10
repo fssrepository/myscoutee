@@ -40,6 +40,39 @@ export class LocalActivityResourcesRepository {
     return this.peekSubEventResourceRecord(ref);
   }
 
+  async querySupplyContributionPage(
+    ref: AppDTOs.ActivitySubEventResourceStateRefDTO,
+    assetId: string,
+    page: number,
+    pageSize: number
+  ): Promise<AppDTOs.SubEventSupplyContributionPageDTO> {
+    const normalizedRef = LocalActivityResourcesMapper.normalizeRef(ref);
+    const normalizedAssetId = assetId.trim();
+    const normalizedPage = Math.max(0, Math.trunc(page) || 0);
+    const normalizedPageSize = Math.max(1, Math.trunc(pageSize) || 1);
+    if (!normalizedRef || !normalizedAssetId) {
+      return { items: [], total: 0, page: normalizedPage, pageSize: normalizedPageSize };
+    }
+    const storedTable = await this.memoryDb.readIndexedDbTableEntry<ActivityResourcesRecordCollection>(
+      ACTIVITY_RESOURCES_TABLE_NAME
+    );
+    const table = this.normalizeCollection(
+      storedTable ?? this.memoryDb.read()[ACTIVITY_RESOURCES_TABLE_NAME]
+    );
+    const record = table.byId[LocalActivityResourcesMapper.recordId(normalizedRef)];
+    const entries = record && !LocalActivityResourcesMapper.isDeleted(record)
+      ? [...(record.supplyContributionEntriesByAssetId[normalizedAssetId] ?? [])]
+          .sort((left, right) => Date.parse(right.addedAtIso) - Date.parse(left.addedAtIso))
+      : [];
+    const start = normalizedPage * normalizedPageSize;
+    return {
+      items: entries.slice(start, start + normalizedPageSize).map(entry => ({ ...entry })),
+      total: entries.length,
+      page: normalizedPage,
+      pageSize: normalizedPageSize
+    };
+  }
+
   querySubEventResourceRecordsByRefs(
     refs: readonly AppDTOs.ActivitySubEventResourceStateRefDTO[]
   ): ActivitySubEventResourceRecord[] {

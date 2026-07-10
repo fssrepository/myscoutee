@@ -1,6 +1,12 @@
 import { Injectable, signal } from '@angular/core';
 
-import type { EventCheckoutLineItem } from '../../../core/contracts/activity.interface';
+import type {
+  EventCheckoutBasketItem,
+  EventCheckoutLineItem,
+  EventCheckoutPricingSummaryRow,
+  EventCheckoutResultState,
+  EventCheckoutState
+} from '../../../core/contracts/activity.interface';
 import type { ActivityPendingReason } from '../../../core/common/constants';
 import { APP_STORAGE_KEYS } from '../../../core/common/storage-scope';
 
@@ -13,11 +19,16 @@ export interface EventCheckoutDraft {
   selectedDateKey: string | null;
   optionalSubEventIds: string[];
   acceptedPolicyIds: string[];
+  basketItems: EventCheckoutBasketItem[];
+  pricingSummaryRows: EventCheckoutPricingSummaryRow[];
+  checkoutState: EventCheckoutState;
   lineItems: EventCheckoutLineItem[];
   totalAmount: number;
   currency: string;
   checkoutSessionId: string | null;
+  expiresAtIso: string | null;
   pendingReason: ActivityPendingReason;
+  basketChanged?: boolean;
   updatedAtMs: number;
 }
 
@@ -89,6 +100,14 @@ export class EventCheckoutDraftStore {
       selectedDateKey: draft?.selectedDateKey?.trim() || null,
       optionalSubEventIds: [...new Set(draft?.optionalSubEventIds ?? [])].map(item => item.trim()).filter(Boolean),
       acceptedPolicyIds: [...new Set(draft?.acceptedPolicyIds ?? [])].map(item => item.trim()).filter(Boolean),
+      basketItems: (draft?.basketItems ?? []).map(item => this.normalizeBasketItem(item)).filter(Boolean) as EventCheckoutBasketItem[],
+      pricingSummaryRows: this.normalizePricingSummaryRows(
+        (draft?.pricingSummaryRows ?? []).length > 0
+          ? draft?.pricingSummaryRows
+          : (draft?.basketItems ?? []).flatMap(item => item.pricingSummaryRows ?? []),
+        draft?.currency
+      ),
+      checkoutState: this.normalizeCheckoutState(draft?.checkoutState),
       lineItems: (draft?.lineItems ?? []).map(item => ({
         id: item.id?.trim() ?? '',
         kind: item.kind,
@@ -100,13 +119,87 @@ export class EventCheckoutDraftStore {
       totalAmount: Math.max(0, Number(draft?.totalAmount) || 0),
       currency: draft?.currency?.trim() || 'USD',
       checkoutSessionId: draft?.checkoutSessionId?.trim() || null,
+      expiresAtIso: draft?.expiresAtIso?.trim() || null,
       pendingReason: draft?.pendingReason === 'waitlist'
         ? 'waitlist'
         : draft?.pendingReason === 'approval'
           ? 'approval'
           : null,
+      basketChanged: draft?.basketChanged === true,
       updatedAtMs: Math.max(0, Math.trunc(Number(draft?.updatedAtMs) || Date.now()))
     };
+  }
+
+  private normalizeBasketItem(item: EventCheckoutBasketItem | null | undefined): EventCheckoutBasketItem | null {
+    const id = item?.id?.trim() ?? '';
+    const sourceId = item?.sourceId?.trim() ?? '';
+    const label = item?.label?.trim() ?? '';
+    if (!id || !sourceId || !label) {
+      return null;
+    }
+    const currency = item?.currency?.trim() || 'USD';
+    return {
+      id,
+      kind: item?.kind === 'sub_event' || item?.kind === 'resource' ? item.kind : 'event',
+      sourceId,
+      slotSourceId: item?.slotSourceId?.trim() || null,
+      slotTemplateId: item?.slotTemplateId?.trim() || null,
+      selectedDateKey: item?.selectedDateKey?.trim() || null,
+      subEventId: item?.subEventId?.trim() || null,
+      resourceType: item?.resourceType ?? null,
+      label,
+      detail: item?.detail?.trim() || '',
+      amount: Number(item?.amount) || 0,
+      currency,
+      quantity: Math.max(1, Math.trunc(Number(item?.quantity) || 1)),
+      status: this.normalizeCheckoutState(item?.status),
+      resultState: this.normalizeCheckoutResultState(item?.resultState),
+      pricingSummaryRows: (item?.pricingSummaryRows ?? []).map(row => ({
+        key: row.key?.trim() || row.label?.trim() || 'pricing',
+        label: row.label?.trim() || 'Pricing',
+        detail: row.detail?.trim() || null,
+        amount: Number.isFinite(row.amount) ? Number(row.amount) : null,
+        currency: row.currency?.trim() || currency,
+        multiplier: Number.isFinite(row.multiplier) ? Math.max(1, Math.trunc(Number(row.multiplier))) : null
+      })).filter(row => row.label),
+      checkoutSessionId: item?.checkoutSessionId?.trim() || null,
+      createdAtIso: item?.createdAtIso?.trim() || null,
+      updatedAtIso: item?.updatedAtIso?.trim() || null,
+      expiresAtIso: item?.expiresAtIso?.trim() || null
+    };
+  }
+
+  private normalizePricingSummaryRows(
+    rows: readonly EventCheckoutPricingSummaryRow[] | null | undefined,
+    fallbackCurrency?: string | null
+  ): EventCheckoutPricingSummaryRow[] {
+    const currency = fallbackCurrency?.trim() || 'USD';
+    return (rows ?? []).map(row => ({
+      key: row.key?.trim() || row.label?.trim() || 'pricing',
+      label: row.label?.trim() || 'Pricing',
+      detail: row.detail?.trim() || null,
+      amount: Number.isFinite(row.amount) ? Number(row.amount) : null,
+      currency: row.currency?.trim() || currency,
+      multiplier: Number.isFinite(row.multiplier) ? Math.max(1, Math.trunc(Number(row.multiplier))) : null
+    })).filter(row => row.label);
+  }
+
+  private normalizeCheckoutState(value: unknown): EventCheckoutState {
+    return value === 'confirmed'
+      || value === 'waiting'
+      || value === 'approval-pending'
+      || value === 'approved'
+      || value === 'pay'
+      || value === 'cancelled'
+      || value === 'rejected'
+        ? value
+        : 'draft';
+  }
+
+  private normalizeCheckoutResultState(value: unknown): EventCheckoutResultState {
+    return value === 'deleted' || value === 'succeeded' || value === 'failed'
+      ? value
+      : 'pending';
   }
 
   private readInitialDrafts(): Record<string, EventCheckoutDraft> {

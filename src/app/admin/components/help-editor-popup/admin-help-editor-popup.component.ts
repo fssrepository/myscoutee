@@ -4,7 +4,6 @@ import {
 import {
   ChangeDetectorRef,
   Component,
-  HostListener,
   effect,
   inject,
   signal
@@ -46,8 +45,16 @@ import {
   AppMenuComponent,
   type AppMenuItem,
   type AppMenuItemSelectEvent,
-  type AppMenuModel
+  type AppMenuModel,
+  type AppMenuPalette,
+  type AppMenuTrigger
 } from '../../../shared/ui/components/core/menu';
+import {
+  PopupComponent,
+  type PopupActionEvent,
+  type PopupMenuSelectEvent,
+  type PopupModel
+} from '../../../shared/ui/components/core/popup';
 import {
   LazyBgImageDirective
 } from '../../../shared/ui/directives';
@@ -126,6 +133,29 @@ interface HelpEditorLanguageMenuContext {
   lang: string;
 }
 
+type HelpEditorHeaderColorMenuItemId = `header-color:${HelpCenterHeaderColor}`;
+
+interface HelpEditorHeaderColorMenuContext {
+  action: 'select-header-color';
+  color: HelpCenterHeaderColor;
+}
+
+type HelpEditorSectionIconMenuItemId = `section-icon:${string}`;
+
+interface HelpEditorSectionIconMenuContext {
+  action: 'select-section-icon';
+  icon: string;
+}
+
+type HelpEditorContextMenuItemId = `context:${string}`;
+
+interface HelpEditorContextMenuContext {
+  action: 'select-draft-context';
+  surface: ExplainableSurface;
+}
+
+type HelpEditorPopupMenuContext = HelpEditorDocumentMenuContext | HelpEditorLanguageMenuContext;
+
 @Component({
   selector: 'app-admin-help-editor-popup',
   standalone: true,
@@ -133,10 +163,11 @@ interface HelpEditorLanguageMenuContext {
     CommonModule,
     FormsModule,
     MatIconModule,
-    AppMenuComponent,
     ImageCarouselComponent,
     IndicatorComponent,
-    LazyBgImageDirective
+    LazyBgImageDirective,
+    PopupComponent,
+    AppMenuComponent
   ],
   templateUrl: './admin-help-editor-popup.component.html',
   styleUrl: './admin-help-editor-popup.component.scss'
@@ -188,12 +219,53 @@ export class AdminHelpEditorPopupComponent {
   protected draft: HelpEditorRevisionDraft | null = null;
   protected draftAccordionOpen = true;
   protected openDraftSectionId = '';
-  protected iconPickerSectionId = '';
-  protected contextPickerOpen = false;
-  protected colorPickerOpen = false;
-  protected iconPickerSearch = '';
-  protected iconPickerGroup: HelpIconOption['group'] = 'Common';
   protected selectedExplanationContextKey = 'home.game';
+
+  protected helpEditorPopupModel(): PopupModel<HelpEditorPopupMenuContext> {
+    return {
+      title: this.editorTitle(),
+      subtitle: this.activeRevisionSubtitle(),
+      ariaLabel: this.editorTitle(),
+      closeAriaLabel: this.uiText('Close content editor'),
+      size: 'wide',
+      height: 'full',
+      headerTone: 'accent',
+      bodyLayout: 'fill',
+      headerControls: [
+        {
+          kind: 'menu',
+          id: 'help-document',
+          menuKind: 'inline',
+          model: this.documentMenuModel(),
+          panelAlign: 'end'
+        }
+      ],
+      headerActions: [
+        {
+          id: 'help-new-revision',
+          icon: 'add',
+          ariaLabel: this.createRevisionLabel(),
+          palette: 'green',
+          disabled: this.loading() || this.isAnyActionPending(),
+          compactOnMobile: true
+        }
+      ],
+      toolbarControls: [
+        {
+          kind: 'menu',
+          id: 'help-language',
+          align: 'end',
+          menuKind: 'inline',
+          model: this.languageMenuModel(),
+          panelAlign: 'end'
+        }
+      ],
+      onClose: () => this.close(),
+      onAction: event => this.onHelpEditorPopupAction(event),
+      onMenuSelect: event => void this.onHelpEditorPopupMenuSelect(event)
+    };
+  }
+
   protected documentMenuModel(): AppMenuModel<HelpEditorDocumentMenuItemId, HelpEditorDocumentMenuContext> {
     const disabled = this.loading() || this.isAnyActionPending();
     return {
@@ -206,6 +278,7 @@ export class AdminHelpEditorPopupComponent {
               kind: 'select-trigger',
               label: this.uiDocumentLabel(),
               icon: this.documentIcon(this.documentKind),
+              palette: this.documentPalette(this.documentKind),
               disabled,
               ariaLabel: this.uiText('Select content type'),
               items: [
@@ -217,6 +290,7 @@ export class AdminHelpEditorPopupComponent {
                   kind: 'branch',
                   label: this.uiText('Explanations'),
                   icon: 'tips_and_updates',
+                  palette: 'violet',
                   active: this.documentKind === 'explanation',
                   disabled,
                   items: this.explainableSurfaces().map(surface => this.explanationMenuSurfaceItem(surface, disabled)),
@@ -248,13 +322,15 @@ export class AdminHelpEditorPopupComponent {
               id: 'language-menu',
               kind: 'select-trigger',
               label: this.languageMenuItemLabel(this.selectedContentLang),
-              palette: 'success',
+              palette: this.languagePalette(this.selectedContentLang),
               disabled,
               ariaLabel: 'Content language',
               items: this.contentLanguages().map(language => ({
                 id: `language:${this.normalizeContentLang(language.lang)}`,
                 kind: 'radio',
                 label: this.languageMenuItemLabel(language.lang),
+                palette: this.languagePalette(language.lang),
+                surface: 'tinted',
                 checked: this.normalizeContentLang(language.lang) === this.selectedContentLang,
                 disabled,
                 context: {
@@ -353,10 +429,6 @@ export class AdminHelpEditorPopupComponent {
     { icon: 'rule', label: 'Rules', group: 'Safety', keywords: ['policy', 'terms', 'check'] },
     { icon: 'gavel', label: 'Decision', group: 'Safety', keywords: ['moderation', 'rules', 'legal'] }
   ];
-  protected visibleIconOptions: HelpIconOption[] = [];
-  protected iconPickerActiveLabel = 'Common icons';
-  protected iconPickerActiveCount = 0;
-
   constructor() {
     effect(() => {
       if (this.admin.activePopup() !== 'help-editor') {
@@ -364,9 +436,6 @@ export class AdminHelpEditorPopupComponent {
         this.editing = false;
         this.draft = null;
         this.loading.set(false);
-        this.closeContextPicker();
-        this.closeIconPicker();
-        this.closeColorPicker();
         return;
       }
       if (!this.stateLoadedForPopup) {
@@ -374,18 +443,6 @@ export class AdminHelpEditorPopupComponent {
         void this.load();
       }
     });
-  }
-
-  @HostListener('window:keydown.escape', ['$event'])
-  protected onEscape(event: Event): void {
-    if (!this.iconPickerSectionId && !this.contextPickerOpen && !this.colorPickerOpen) {
-      return;
-    }
-    event.preventDefault();
-    event.stopPropagation();
-    this.closeContextPicker();
-    this.closeIconPicker();
-    this.closeColorPicker();
   }
 
   protected async load(): Promise<void> {
@@ -416,34 +473,32 @@ export class AdminHelpEditorPopupComponent {
     }
   }
 
-  protected async onDocumentMenuSelect(
-    event: AppMenuItemSelectEvent<HelpEditorDocumentMenuItemId, HelpEditorDocumentMenuContext>
-  ): Promise<void> {
-    const context = event.context;
-    if (!context) {
-      return;
-    }
-    if (context.action === 'select-document' && context.documentKind) {
-      await this.selectDocumentKind(context.documentKind, event.sourceEvent);
-      return;
-    }
-    if (context.action === 'select-explanation' && context.surface) {
-      await this.selectExplanationSurface(context.surface, event.sourceEvent);
-      return;
-    }
-    if (context.action === 'create-explanation') {
-      await this.createExplanationItem(event.sourceEvent);
+  private onHelpEditorPopupAction(event: PopupActionEvent): void {
+    if (event.action.id === 'help-new-revision') {
+      this.startNewRevision(event.sourceEvent);
     }
   }
 
-  protected async onLanguageMenuSelect(
-    event: AppMenuItemSelectEvent<HelpEditorLanguageMenuItemId, HelpEditorLanguageMenuContext>
-  ): Promise<void> {
-    const context = event.context;
-    if (context?.action !== 'select-language') {
+  private async onHelpEditorPopupMenuSelect(event: PopupMenuSelectEvent<HelpEditorPopupMenuContext>): Promise<void> {
+    const context = event.itemSelect.context;
+    if (!context) {
       return;
     }
-    await this.selectContentLanguage(context.lang, event.sourceEvent);
+    if (context.action === 'select-language') {
+      await this.selectContentLanguage(context.lang, event.itemSelect.sourceEvent);
+      return;
+    }
+    if (context.action === 'select-document' && context.documentKind) {
+      await this.selectDocumentKind(context.documentKind, event.itemSelect.sourceEvent);
+      return;
+    }
+    if (context.action === 'select-explanation' && context.surface) {
+      await this.selectExplanationSurface(context.surface, event.itemSelect.sourceEvent);
+      return;
+    }
+    if (context.action === 'create-explanation') {
+      await this.createExplanationItem(event.itemSelect.sourceEvent);
+    }
   }
 
   private documentMenuKindItem(
@@ -455,6 +510,8 @@ export class AdminHelpEditorPopupComponent {
       kind: 'radio',
       label: this.uiText(this.documentMenuKindLabel(kind)),
       icon: this.documentIcon(kind),
+      palette: this.documentPalette(kind),
+      surface: 'tinted',
       checked: this.documentKind === kind,
       disabled,
       context: {
@@ -474,6 +531,8 @@ export class AdminHelpEditorPopupComponent {
       label: this.explanationMenuItemLabel(surface),
       description: `${surface.label} · ${this.explanationMenuItemMeta(surface)}`,
       icon: surface.icon,
+      palette: this.explanationSurfacePalette(surface),
+      surface: 'tinted',
       checked: this.documentKind === 'explanation' && this.selectedExplanationContextKey === surface.key,
       disabled,
       context: {
@@ -485,7 +544,6 @@ export class AdminHelpEditorPopupComponent {
 
   protected async selectDocumentKind(kind: HelpCenterDocumentKind, event?: Event): Promise<void> {
     event?.stopPropagation();
-    this.closeContextPicker();
     if (this.documentKind === kind || this.loading() || this.isAnyActionPending()) {
       return;
     }
@@ -498,8 +556,6 @@ export class AdminHelpEditorPopupComponent {
     this.openPreviewSectionId = '';
     this.openDraftSectionId = '';
     this.error = '';
-    this.closeIconPicker();
-    this.closeColorPicker();
     await this.load();
   }
 
@@ -557,28 +613,45 @@ export class AdminHelpEditorPopupComponent {
     }
   }
 
-  protected openContextPicker(event?: Event): void {
-    event?.stopPropagation();
-    if (this.loading() || this.saving || this.isAnyActionPending()) {
-      return;
-    }
-    this.closeIconPicker();
-    this.closeColorPicker();
-    this.contextPickerOpen = true;
+  protected contextMenuTrigger(draft: HelpEditorRevisionDraft): AppMenuTrigger {
+    const surface = this.explanationSurface(draft.contextKey);
+    return {
+      id: 'canonical-screen-menu',
+      label: surface?.label ?? this.uiText('Choose screen'),
+      icon: surface?.icon ?? 'add',
+      ariaLabel: this.uiText('Canonical screen'),
+      layout: 'field',
+      palette: surface ? this.explanationSurfacePalette(surface) : 'amber',
+      disabled: this.loading() || this.saving || this.isAnyActionPending()
+    };
   }
 
-  protected closeContextPicker(event?: Event): void {
-    event?.stopPropagation();
-    this.contextPickerOpen = false;
+  protected contextMenuItems(draft: HelpEditorRevisionDraft): readonly AppMenuItem<HelpEditorContextMenuItemId, HelpEditorContextMenuContext>[] {
+    const disabled = this.loading() || this.saving || this.isAnyActionPending();
+    return this.explainableSurfaces().map(surface => ({
+      id: `context:${surface.key}`,
+      kind: 'radio',
+      label: surface.label,
+      description: this.explanationMenuItemMeta(surface),
+      icon: surface.icon,
+      palette: this.explanationSurfacePalette(surface),
+      surface: 'tinted',
+      checked: draft.contextKey === surface.key,
+      disabled: disabled || !surface.enabled,
+      closeOnSelect: true,
+      context: {
+        action: 'select-draft-context',
+        surface
+      }
+    }));
   }
 
-  protected selectContextFromPicker(surface: ExplainableSurface, event?: Event): void {
-    event?.stopPropagation();
-    if (this.saving || !surface.enabled) {
+  protected onContextMenuSelect(event: AppMenuItemSelectEvent<HelpEditorContextMenuItemId, HelpEditorContextMenuContext>): void {
+    const surface = event.context?.surface;
+    if (!surface || this.saving || !surface.enabled) {
       return;
     }
     this.selectDraftContext(surface.key);
-    this.closeContextPicker();
   }
 
   protected selectedContentLanguageLabel(): string {
@@ -623,9 +696,6 @@ export class AdminHelpEditorPopupComponent {
     this.editing = false;
     this.draft = null;
     this.draftAccordionOpen = true;
-    this.closeContextPicker();
-    this.closeIconPicker();
-    this.closeColorPicker();
     this.admin.closePopup();
   }
 
@@ -760,9 +830,6 @@ export class AdminHelpEditorPopupComponent {
     this.draft = null;
     this.draftAccordionOpen = true;
     this.error = '';
-    this.closeIconPicker();
-    this.closeColorPicker();
-    this.closeContextPicker();
   }
 
   protected toggleDraftRevision(event?: Event): void {
@@ -789,7 +856,6 @@ export class AdminHelpEditorPopupComponent {
     };
     this.draft.sections = [...this.draft.sections, next];
     this.openDraftSectionId = next.localId;
-    this.closeIconPicker();
   }
 
   protected removeDraftSection(section: HelpEditorSectionDraft, event?: Event): void {
@@ -800,9 +866,6 @@ export class AdminHelpEditorPopupComponent {
     this.draft.sections = this.draft.sections.filter(item => item.localId !== section.localId);
     if (this.openDraftSectionId === section.localId) {
       this.openDraftSectionId = this.draft.sections[0]?.localId ?? '';
-    }
-    if (this.iconPickerSectionId === section.localId) {
-      this.closeIconPicker();
     }
   }
 
@@ -816,7 +879,6 @@ export class AdminHelpEditorPopupComponent {
     event?.stopPropagation();
     if (this.openDraftSectionId !== section.localId) {
       this.openDraftSectionId = section.localId;
-      this.closeIconPicker();
     }
     section.mode = section.mode === 'html' ? 'preview' : 'html';
   }
@@ -880,41 +942,6 @@ export class AdminHelpEditorPopupComponent {
     });
   }
 
-  protected openIconPicker(section: HelpEditorSectionDraft, event?: Event): void {
-    event?.stopPropagation();
-    if (this.iconPickerSectionId === section.localId) {
-      this.closeIconPicker();
-      return;
-    }
-    const matchingOption = this.helpIconOptions.find(option => option.icon === section.icon);
-    this.iconPickerSectionId = section.localId;
-    this.iconPickerGroup = matchingOption?.group ?? 'Common';
-    this.iconPickerSearch = '';
-    this.closeContextPicker();
-    this.closeColorPicker();
-    this.refreshIconPickerOptions();
-  }
-
-  protected closeIconPicker(event?: Event): void {
-    event?.stopPropagation();
-    this.iconPickerSectionId = '';
-    this.iconPickerSearch = '';
-    this.visibleIconOptions = [];
-    this.iconPickerActiveLabel = 'Common icons';
-    this.iconPickerActiveCount = 0;
-  }
-
-  protected setIconPickerGroup(group: HelpIconOption['group'], event?: Event): void {
-    event?.stopPropagation();
-    this.iconPickerGroup = group;
-    this.refreshIconPickerOptions();
-  }
-
-  protected setIconPickerSearch(value: string): void {
-    this.iconPickerSearch = value;
-    this.refreshIconPickerOptions();
-  }
-
   protected iconPickerGroupIcon(group: HelpIconOption['group']): string {
     switch (group) {
       case 'Planning':
@@ -930,34 +957,85 @@ export class AdminHelpEditorPopupComponent {
     }
   }
 
+  protected iconPickerGroupPalette(group: HelpIconOption['group']): AppMenuPalette {
+    switch (group) {
+      case 'Planning':
+        return 'blue';
+      case 'People':
+        return 'green';
+      case 'Logistics':
+        return 'amber';
+      case 'Safety':
+        return 'slate';
+      default:
+        return 'violet';
+    }
+  }
+
+  protected sectionIconMenuPalette(section: HelpEditorSectionDraft): AppMenuPalette {
+    if (this.documentKind === 'privacy' && !section.optional) {
+      return 'amber';
+    }
+    return 'blue';
+  }
+
   protected selectIcon(section: HelpEditorSectionDraft, icon: string, event?: Event): void {
     event?.stopPropagation();
     section.icon = icon;
-    this.closeIconPicker();
   }
 
-  protected iconPickerSection(): HelpEditorSectionDraft | null {
-    return this.draft?.sections.find(section => section.localId === this.iconPickerSectionId) ?? null;
+  protected sectionIconMenuTrigger(section: HelpEditorSectionDraft): AppMenuTrigger {
+    return {
+      id: `section-icon-menu:${section.localId}`,
+      icon: section.icon || this.defaultSectionIcon(),
+      closeIcon: 'close',
+      ariaLabel: this.uiText('Change section icon'),
+      layout: 'icon',
+      hideLabel: true,
+      palette: this.sectionIconMenuPalette(section)
+    };
   }
 
-  private refreshIconPickerOptions(): void {
-    const query = this.iconPickerSearch.trim().toLowerCase();
-    const options = query
-      ? this.helpIconOptions
-      : this.helpIconOptions.filter(option => option.group === this.iconPickerGroup);
-    this.visibleIconOptions = options.filter(option => {
-      if (!query) {
-        return true;
-      }
-      return [
-        option.icon,
-        option.label,
-        option.group,
-        ...option.keywords
-      ].some(value => value.toLowerCase().includes(query));
-    });
-    this.iconPickerActiveLabel = query ? 'Search results' : `${this.iconPickerGroup} icons`;
-    this.iconPickerActiveCount = this.visibleIconOptions.length;
+  protected sectionIconMenuModel(section: HelpEditorSectionDraft): AppMenuModel<HelpEditorSectionIconMenuItemId, HelpEditorSectionIconMenuContext> {
+    return {
+      layout: 'tabs',
+      density: 'compact',
+      groups: this.iconPickerGroups.map(group => ({
+        id: group,
+        label: group,
+        icon: this.iconPickerGroupIcon(group),
+        palette: this.iconPickerGroupPalette(group),
+        items: this.helpIconOptions
+          .filter(option => option.group === group)
+          .map(option => ({
+            id: `section-icon:${option.icon}`,
+            label: option.label,
+            detail: [option.icon, ...option.keywords].join(' '),
+            icon: option.icon,
+            iconKind: 'material',
+            layout: 'icon',
+            active: section.icon === option.icon,
+            checked: section.icon === option.icon,
+            closeOnSelect: true,
+            ariaLabel: `${this.uiText('Use')} ${this.uiText(option.label)} ${this.uiText('icon')}`,
+            context: {
+              action: 'select-section-icon',
+              icon: option.icon
+            }
+          }))
+      }))
+    };
+  }
+
+  protected onSectionIconMenuSelect(
+    section: HelpEditorSectionDraft,
+    event: AppMenuItemSelectEvent<HelpEditorSectionIconMenuItemId, HelpEditorSectionIconMenuContext>
+  ): void {
+    const icon = `${event.context?.icon ?? ''}`.trim();
+    if (!icon) {
+      return;
+    }
+    this.selectIcon(section, icon, event.sourceEvent);
   }
 
   protected async saveDraft(event?: Event): Promise<void> {
@@ -990,8 +1068,6 @@ export class AdminHelpEditorPopupComponent {
       this.editing = false;
       this.draft = null;
       this.draftAccordionOpen = true;
-      this.closeIconPicker();
-      this.closeContextPicker();
       this.selectNewestRevision(this.revisions(), this.activeRevision());
     } catch {
       this.error = this.saveErrorLabel();
@@ -1136,7 +1212,14 @@ export class AdminHelpEditorPopupComponent {
   }
 
   protected editorTitle(): string {
-    return this.uiText(`${this.documentLabel()} editor`);
+    return this.uiText('Tartalomszerkesztő');
+  }
+
+  protected activeRevisionSubtitle(): string {
+    const active = this.activeRevision();
+    return active
+      ? this.activeRevisionLabel(active.version)
+      : this.noActiveRevisionLabel();
   }
 
   protected uiDocumentLabel(): string {
@@ -1220,6 +1303,48 @@ export class AdminHelpEditorPopupComponent {
     return this.i18n.translate(source);
   }
 
+  private documentPalette(kind: HelpCenterDocumentKind): AppMenuPalette {
+    switch (kind) {
+      case 'privacy':
+        return 'teal';
+      case 'terms':
+        return 'slate';
+      case 'explanation':
+        return 'violet';
+      default:
+        return 'blue';
+    }
+  }
+
+  private languagePalette(lang: string): AppMenuPalette {
+    return this.normalizeContentLang(lang) === 'hu' ? 'green' : 'blue';
+  }
+
+  private explanationSurfacePalette(surface: ExplainableSurface): AppMenuPalette {
+    if (surface.key.startsWith('assets')) {
+      return 'brown';
+    }
+    if (surface.key.startsWith('event')) {
+      return 'orange';
+    }
+    if (surface.key.startsWith('activities')) {
+      return 'gold';
+    }
+    if (surface.key.startsWith('profile')) {
+      return 'violet';
+    }
+    switch (surface.key) {
+      case 'home.game':
+        return 'green';
+      case 'chats':
+        return 'sky';
+      case 'contacts':
+        return 'teal';
+      default:
+        return surface.owner === 'route' ? 'green' : surface.owner === 'navigator' ? 'purple' : 'blue';
+    }
+  }
+
   protected defaultDescription(): string {
     switch (this.documentKind) {
       case 'privacy':
@@ -1250,16 +1375,50 @@ export class AdminHelpEditorPopupComponent {
     return `help-editor-header-color-${this.normalizeHeaderColor(color)}`;
   }
 
-  protected openColorPicker(event?: Event): void {
-    event?.stopPropagation();
-    this.colorPickerOpen = true;
-    this.closeIconPicker();
-    this.closeContextPicker();
+  protected headerColorMenuTrigger(color: string | null | undefined): AppMenuTrigger {
+    const option = this.headerColorOption(color);
+    const label = this.uiText(option.label);
+    return {
+      id: 'header-color-menu',
+      label,
+      icon: 'palette',
+      ariaLabel: `${this.uiText('Header color')}: ${label}`,
+      palette: option.id,
+      layout: 'icon',
+      hideLabel: true,
+      disabled: this.saving
+    };
   }
 
-  protected closeColorPicker(event?: Event): void {
-    event?.stopPropagation();
-    this.colorPickerOpen = false;
+  protected headerColorMenuItems(color: string | null | undefined): AppMenuItem<HelpEditorHeaderColorMenuItemId, HelpEditorHeaderColorMenuContext>[] {
+    const selected = this.normalizeHeaderColor(color);
+    return this.headerColorOptions.map(option => ({
+      id: `header-color:${option.id}`,
+      kind: 'radio',
+      label: this.uiText(option.label),
+      icon: 'circle',
+      palette: option.id,
+      surface: 'tinted',
+      active: selected === option.id,
+      checked: selected === option.id,
+      showCheck: selected === option.id,
+      ariaLabel: `${this.uiText('Use')} ${this.uiText(option.label)} ${this.uiText('header')}`,
+      context: {
+        action: 'select-header-color',
+        color: option.id
+      }
+    }));
+  }
+
+  protected onHeaderColorMenuSelect(
+    event: AppMenuItemSelectEvent<HelpEditorHeaderColorMenuItemId, HelpEditorHeaderColorMenuContext>
+  ): void {
+    event.sourceEvent.stopPropagation();
+    const color = event.context?.color;
+    if (!color) {
+      return;
+    }
+    this.selectHeaderColor(color, event.sourceEvent);
   }
 
   protected selectHeaderColor(color: HelpCenterHeaderColor, event?: Event): void {
@@ -1267,7 +1426,6 @@ export class AdminHelpEditorPopupComponent {
     if (this.draft) {
       this.draft.headerColor = color;
     }
-    this.closeColorPicker();
   }
 
   private selectInitialRevision(revisions: HelpCenterRevisionDto[], activeRevision: HelpCenterRevisionDto | null): void {
@@ -1306,9 +1464,6 @@ export class AdminHelpEditorPopupComponent {
     this.openRevisionId = '';
     this.openPreviewSectionId = '';
     this.openDraftSectionId = draft.sections[0]?.localId ?? '';
-    this.closeIconPicker();
-    this.closeColorPicker();
-    this.closeContextPicker();
     this.editing = true;
   }
 
@@ -1600,6 +1755,11 @@ export class AdminHelpEditorPopupComponent {
 
   private normalizeHeaderColor(value: string | null | undefined): HelpCenterHeaderColor {
     return AppUtils.enumValue(value, APP_STATIC_DATA.helpCenterHeaderColors, 'amber');
+  }
+
+  private headerColorOption(value: string | null | undefined): { id: HelpCenterHeaderColor; label: string } {
+    const color = this.normalizeHeaderColor(value);
+    return this.headerColorOptions.find(option => option.id === color) ?? this.headerColorOptions[0]!;
   }
 
   private normalizeContentLang(lang: string | null | undefined): string {

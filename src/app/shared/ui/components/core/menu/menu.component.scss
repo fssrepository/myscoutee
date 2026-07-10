@@ -14,6 +14,8 @@
   --app-menu-tabs-item-min-height: 38px;
   --app-menu-tabs-item-padding: 0.38rem 0.46rem;
   --app-menu-tabs-item-font-size: 0.78rem;
+  --app-menu-icon-list-item-size: 2.4rem;
+  --app-menu-icon-list-font-size: 1.28rem;
   --app-menu-text: #243f62;
   --app-menu-muted-text: rgba(32, 53, 82, 0.66);
 }
@@ -226,6 +228,11 @@
   --app-menu-bg: linear-gradient(180deg, #edf9f4 0%, #e1f3ea 100%);
   --app-menu-bg-hover: linear-gradient(180deg, #f5fcf9 0%, #d9efe4 100%);
   --app-menu-bg-strong: linear-gradient(180deg, #3aa968 0%, #2f8d57 100%);
+  --app-menu-action-bg: linear-gradient(180deg, #edf9f4 0%, #e1f3ea 100%);
+  --app-menu-action-bg-hover: linear-gradient(180deg, #f5fcf9 0%, #d9efe4 100%);
+  --app-menu-action-fg: #236d51;
+  --app-menu-action-border: rgba(37, 127, 95, 0.28);
+  --app-menu-action-shadow: 0 5px 14px rgba(35, 118, 72, 0.14);
   --app-menu-border: rgba(37, 127, 95, 0.28);
   --app-menu-fg: #236d51;
   --app-menu-icon: #2f8a54;
@@ -275,6 +282,17 @@
   --app-menu-icon: #b85072;
   --app-menu-line: rgba(184, 92, 116, 0.34);
   --app-menu-shadow: rgba(155, 58, 86, 0.2);
+}
+
+.app-menu__palette--rose {
+  --app-menu-bg: linear-gradient(180deg, #fff1f4 0%, #ffe4eb 100%);
+  --app-menu-bg-hover: linear-gradient(180deg, #fff8fa 0%, #ffdce7 100%);
+  --app-menu-bg-strong: linear-gradient(180deg, #cb5272 0%, #a83a58 100%);
+  --app-menu-border: rgba(178, 69, 98, 0.38);
+  --app-menu-fg: #8c2e49;
+  --app-menu-icon: #b94462;
+  --app-menu-line: rgba(178, 69, 98, 0.32);
+  --app-menu-shadow: rgba(137, 45, 70, 0.22);
 }
 
 .app-menu__palette--red,
@@ -1070,6 +1088,25 @@
   color: var(--app-menu-fg);
 }
 
+.app-menu__button-row-main {
+  position: relative;
+  z-index: 3;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.34rem;
+  max-width: 100%;
+  min-width: 0;
+}
+
+:host(.app-menu-host--compact) .app-menu__button-row-main {
+  gap: var(--app-menu-compact-row-item-gap);
+}
+
+.app-menu__button-row-main .app-menu__button-row-label {
+  flex: 0 1 auto;
+}
+
 .app-menu__button-row-label {
   flex: 1 1 auto;
   min-width: 0;
@@ -1185,8 +1222,11 @@
 :host(.app-menu-host--inline-row-big) .app-menu__button-row-detail > span:first-child {
   min-width: 0;
   overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
+  display: -webkit-box;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+  line-clamp: 2;
+  white-space: normal;
 }
 
 :host(.app-menu-host--inline-row-big) .app-menu__button-row-trailing {
@@ -1642,17 +1682,24 @@
   color: var(--app-menu-icon);
 }
 
-.app-menu__tabs-tab:not(:disabled):hover,
-.app-menu__tabs-tab--active {
+.app-menu__tabs-tab:not(:disabled):hover {
   background: var(--app-menu-bg-hover);
   color: var(--app-menu-fg);
   transform: translateY(-1px);
   box-shadow: 0 3px 10px var(--app-menu-shadow);
 }
 
-.app-menu__tabs-tab--active {
-  border-color: var(--app-menu-border);
+.app-menu__tabs-tab--active,
+.app-menu__tabs-tab--active:not(:disabled):hover {
+  border-color: transparent;
+  background: var(--app-menu-bg-strong);
+  color: #fff;
+  transform: translateY(-1px);
   box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.5), 0 3px 10px var(--app-menu-shadow);
+}
+
+.app-menu__tabs-tab--active .mat-icon {
+  color: currentColor;
 }
 
 .app-menu__counter--tabs-tab {
@@ -1680,6 +1727,12 @@
 .app-menu__tabs-items--fixed-columns {
   display: grid;
   grid-template-columns: repeat(var(--app-menu-tabs-columns), minmax(0, 1fr));
+}
+
+.app-menu__tabs-items--icon-list {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(var(--app-menu-icon-list-item-size), 1fr));
+  gap: 0.28rem;
 }
 
 .app-menu__tabs-item {
@@ -1715,6 +1768,17 @@
   min-width: 0;
 }
 
+.app-menu__tabs-item--layout-icon {
+  flex: 0 0 var(--app-menu-icon-list-item-size);
+  width: 100%;
+  min-width: 0;
+  min-height: var(--app-menu-icon-list-item-size);
+  height: var(--app-menu-icon-list-item-size);
+  justify-content: center;
+  padding: 0;
+  text-align: center;
+}
+
 :host(.app-menu-host--layout-mobile) .app-menu__tabs-items--fixed-columns {
   display: flex;
 }
@@ -1743,6 +1807,38 @@
   background: var(--app-menu-bg-strong);
   color: #fff;
   filter: none;
+}
+
+.app-menu__tabs-items--icon-list .app-menu__tabs-item--layout-icon {
+  border-color: transparent;
+  background: transparent;
+  color: var(--app-menu-icon);
+  box-shadow: none;
+  filter: none;
+  transform: none;
+}
+
+.app-menu__tabs-items--icon-list .app-menu__tabs-item--layout-icon:not(:disabled):not(.app-menu__tabs-item--disabled):hover {
+  border-color: transparent;
+  background: transparent;
+  color: var(--app-menu-icon);
+  box-shadow: none;
+  filter: none;
+  transform: none;
+}
+
+.app-menu__tabs-items--icon-list .app-menu__tabs-item--layout-icon.app-menu__tabs-item--active {
+  border-color: transparent;
+  background: var(--app-menu-bg-strong);
+  color: #fff;
+  box-shadow: none;
+  filter: none;
+  transform: none;
+}
+
+.app-menu__tabs-items--icon-list .app-menu__tabs-item--layout-icon.app-menu__tabs-item--active:not(:disabled):not(.app-menu__tabs-item--disabled):hover {
+  background: var(--app-menu-bg-strong);
+  color: #fff;
 }
 
 .app-menu__tabs-item--active .app-menu__tabs-item-icon,
@@ -1813,6 +1909,25 @@
   font-size: 18px;
   line-height: 18px;
   color: var(--app-menu-icon);
+}
+
+.app-menu__tabs-item--layout-icon .app-menu__tabs-item-icon {
+  flex-basis: auto;
+  min-width: 0;
+  width: 1.35rem;
+  height: 1.35rem;
+  font-size: 1.35rem;
+  line-height: 1.35rem;
+  color: currentColor;
+}
+
+.app-menu__tabs-item-icon--text {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-family: 'Apple Color Emoji', 'Segoe UI Emoji', 'Noto Color Emoji', sans-serif;
+  font-size: var(--app-menu-icon-list-font-size);
+  line-height: 1;
 }
 
 .app-menu__tabs-item-check {
@@ -2356,6 +2471,36 @@ a.app-menu__item {
   gap: 0.08rem;
 }
 
+.app-menu__item-header {
+  display: flex;
+  align-items: center;
+  gap: 0.34rem;
+  width: 100%;
+  min-width: 0;
+}
+
+.app-menu__item-header > .app-menu__counter {
+  flex: 0 0 auto;
+  margin-left: auto;
+}
+
+.app-menu__item-header > .app-menu__counter--header-badge {
+  margin-left: auto;
+  background: rgba(255, 255, 255, 0.72);
+  color: var(--app-menu-fg);
+}
+
+.app-menu__item-header > .app-menu__counter--header-badge + .app-menu__counter {
+  margin-left: 0;
+}
+
+.app-menu__item-body {
+  display: grid;
+  justify-items: start;
+  min-width: 0;
+  gap: 0.08rem;
+}
+
 .app-menu__item-label,
 .app-menu__tile-label {
   min-width: 0;
@@ -2367,6 +2512,10 @@ a.app-menu__item {
 .app-menu__item-label {
   font-size: 0.8rem;
   line-height: 1.2;
+}
+
+.app-menu__item-header > .app-menu__item-label {
+  flex: 1 1 auto;
 }
 
 .app-menu__panel--dropdown-list .app-menu__item-main {
@@ -2584,6 +2733,18 @@ a.app-menu__item {
   box-shadow: none;
 }
 
+.app-menu__panel--dropdown-list .app-menu__item-header > .app-menu__counter {
+  margin-left: 0.34rem;
+  min-width: auto;
+  height: 18px;
+  padding: 0 0.4rem;
+}
+
+.app-menu__panel--dropdown-list .app-menu__item--disabled .app-menu__item-header > .app-menu__counter {
+  background: rgba(104, 116, 132, 0.16);
+  color: #697487;
+}
+
 .app-menu__panel--dropdown-list .app-menu__item--layout-pill .app-menu__counter {
   min-width: 20px;
   height: 20px;
@@ -2788,6 +2949,23 @@ a.app-menu__item {
   flex: 1 1 0;
   min-width: 0;
   padding-inline: 16px;
+}
+
+:host(.app-menu-host--layout-mobile.app-menu-host--inline-row-labelled-action.app-menu-host--compact) .app-menu__button-row-item--action.app-menu__button-row-item--labelled {
+  gap: 0;
+  padding-inline: 0.26rem;
+}
+
+:host(.app-menu-host--layout-mobile.app-menu-host--inline-row-labelled-action.app-menu-host--compact) .app-menu__button-row-main {
+  gap: 0.06rem;
+}
+
+:host(.app-menu-host--layout-mobile.app-menu-host--inline-row-labelled-action.app-menu-host--compact) .app-menu__button-row-main .mat-icon {
+  flex: 0 0 0.92rem;
+  width: 0.92rem;
+  height: 0.92rem;
+  font-size: 0.92rem;
+  line-height: 0.92rem;
 }
 
 :host(.app-menu-host--layout-mobile.app-menu-host--inline-row-big) .app-menu__button-row {

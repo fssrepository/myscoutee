@@ -17,6 +17,7 @@ import {
 
 import {
   AdminParamsService,
+  I18nService,
   type AdminParamFieldDto,
   type AdminParamOptionDto,
   type AdminParamsHistoryDto,
@@ -37,6 +38,11 @@ import {
   IndicatorComponent
 } from '../../../shared/ui/components/core/indicator';
 import {
+  PopupComponent,
+  type PopupActionEvent,
+  type PopupModel
+} from '../../../shared/ui/components/core/popup';
+import {
   AdminMenuStore
 } from '../../../shared/ui/context/stores/admin-menu.store';
 import { UserProfileStore } from '../../../shared/ui/context/stores/user-profile.store';
@@ -52,13 +58,14 @@ interface AdminParamSelectMenuContext {
 @Component({
   selector: 'app-admin-params-popup',
   standalone: true,
-  imports: [CommonModule, FormsModule, MatIconModule, AppMenuComponent, IndicatorComponent, I18nPipe],
+  imports: [CommonModule, FormsModule, MatIconModule, AppMenuComponent, IndicatorComponent, I18nPipe, PopupComponent],
   templateUrl: './admin-params-popup.component.html',
   styleUrl: './admin-params-popup.component.scss'
 })
 export class AdminParamsPopupComponent implements OnDestroy {
   protected readonly admin = inject(AdminMenuStore);
   protected readonly paramsService = inject(AdminParamsService);
+  private readonly i18n = inject(I18nService);
   private readonly userProfileStore = inject(UserProfileStore);
   protected readonly loading = signal(false);
   protected readonly saving = signal(false);
@@ -106,6 +113,98 @@ export class AdminParamsPopupComponent implements OnDestroy {
 
   protected close(): void {
     this.admin.closePopup();
+  }
+
+  protected paramsPopupModel(): PopupModel {
+    return {
+      title: 'params',
+      subtitle: `${this.selectedSectionLabel()} · v${this.selectedSection()?.version ?? 1}`,
+      ariaLabel: 'params',
+      closeAriaLabel: 'close',
+      size: 'wide',
+      height: 'full',
+      headerTone: 'accent',
+      bodyLayout: 'fill',
+      onClose: () => this.close()
+    };
+  }
+
+  protected editPopupModel(draft: { section: AdminParamsSectionDto; fields: AdminParamFieldDto[] }): PopupModel {
+    return {
+      title: draft.section.labelKey || draft.section.label,
+      subtitle: `v${draft.section.version}`,
+      ariaLabel: draft.section.labelKey || draft.section.label,
+      closeAriaLabel: 'cancel',
+      size: 'wide',
+      height: 'full',
+      headerTone: 'accent',
+      bodyLayout: 'fill',
+      backdropTone: 'dim',
+      showClose: false,
+      headerActions: [
+        {
+          id: 'save-edit',
+          icon: 'check',
+          ariaLabel: 'save',
+          palette: 'success',
+          disabled: this.saving(),
+          compactOnMobile: true
+        },
+        {
+          id: 'cancel-edit',
+          icon: 'close',
+          ariaLabel: 'cancel',
+          palette: 'default',
+          disabled: this.saving(),
+          compactOnMobile: true
+        }
+      ],
+      onClose: () => this.cancelEdit(),
+      onAction: event => this.onEditPopupAction(event)
+    };
+  }
+
+  protected historyPopupModel(historyState: AdminParamsHistoryDto): PopupModel {
+    return {
+      title: historyState.labelKey || historyState.label,
+      subtitle: 'history',
+      ariaLabel: historyState.labelKey || historyState.label,
+      closeAriaLabel: 'close',
+      size: 'wide',
+      height: 'full',
+      headerTone: 'accent',
+      bodyLayout: 'fill',
+      backdropTone: 'dim',
+      showClose: false,
+      headerActions: [
+        {
+          id: 'close-history',
+          icon: 'close',
+          ariaLabel: 'close',
+          palette: 'default',
+          disabled: this.reverting(),
+          compactOnMobile: true
+        }
+      ],
+      onClose: () => this.closeHistory(),
+      onAction: event => this.onHistoryPopupAction(event)
+    };
+  }
+
+  private onEditPopupAction(event: PopupActionEvent): void {
+    if (event.action.id === 'save-edit') {
+      void this.saveEdit();
+      return;
+    }
+    if (event.action.id === 'cancel-edit') {
+      this.cancelEdit();
+    }
+  }
+
+  private onHistoryPopupAction(event: PopupActionEvent): void {
+    if (event.action.id === 'close-history') {
+      this.closeHistory();
+    }
   }
 
   protected toggleSection(section: AdminParamsSectionDto): void {
@@ -266,6 +365,11 @@ export class AdminParamsPopupComponent implements OnDestroy {
       hour: 'numeric',
       minute: '2-digit'
     });
+  }
+
+  private selectedSectionLabel(): string {
+    const section = this.selectedSection();
+    return this.i18n.translate(section?.labelKey || section?.label || 'admin.params.platform', section?.label || 'Platform');
   }
 
   protected fieldValueLabel(field: AdminParamFieldDto): string {

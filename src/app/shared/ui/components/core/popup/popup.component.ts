@@ -66,6 +66,8 @@ export class PopupComponent<TContext = unknown> {
         Boolean(this.popupModel.title?.trim())
         || Boolean(this.popupModel.subtitle?.trim())
         || Boolean(this.popupModel.secondarySubtitle?.trim())
+        || Boolean(this.popupModel.headerLabel?.trim())
+        || Boolean(this.popupModel.headerBadge?.trim())
         || this.hasHeaderControls
         || this.hasHeaderActions
         || this.showClose
@@ -112,6 +114,10 @@ export class PopupComponent<TContext = unknown> {
     return this.headerActions.length > 0;
   }
 
+  protected get hasHeaderBadge(): boolean {
+    return Boolean(this.popupModel.headerBadge?.trim());
+  }
+
   protected onBackdropClick(event: MouseEvent): void {
     if (!this.closeOnBackdrop) {
       return;
@@ -135,6 +141,21 @@ export class PopupComponent<TContext = unknown> {
     return `ui-popup__action--${action.palette ?? 'default'}`;
   }
 
+  protected actionCounterValue(action: PopupAction): string {
+    const source = action.counter;
+    if (source === null || source === undefined) {
+      return '';
+    }
+    const value = typeof source === 'object' && 'value' in source
+      ? source.value
+      : source;
+    const resolved = typeof value === 'function'
+      ? value()
+      : value;
+    const normalized = `${resolved ?? ''}`.trim();
+    return normalized === '0' ? '' : normalized;
+  }
+
   protected panelSizeClass(): string {
     return `ui-popup__panel--${this.popupModel.size ?? 'default'}`;
   }
@@ -145,6 +166,18 @@ export class PopupComponent<TContext = unknown> {
 
   protected headerToneClass(): string {
     return `ui-popup__header--${this.popupModel.headerTone ?? 'default'}`;
+  }
+
+  protected headerLayoutClass(): string {
+    return `ui-popup__header--layout-${this.popupModel.headerLayout ?? 'default'}`;
+  }
+
+  protected headerPaletteClass(): string {
+    return `ui-popup__header--palette-${this.popupModel.headerPalette ?? 'default'}`;
+  }
+
+  protected headerTitleToneClass(): string {
+    return `ui-popup__header--title-${this.popupModel.headerTitleTone ?? 'palette'}`;
   }
 
   protected bodyLayoutClass(): string {

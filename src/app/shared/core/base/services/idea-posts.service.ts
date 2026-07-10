@@ -2,7 +2,13 @@ import { Injectable, inject, signal } from '@angular/core';
 
 import { LocalIdeaPostsService } from '../../local/source/services/idea-posts.service';
 import { HttpIdeaPostsService } from '../../http/services/idea-posts.service';
-import type { IdeaArticleDetailDto, IdeaPostDto, IdeaPostSaveRequestDto } from '../../contracts/content.interface';
+import type {
+  IdeaArticleDetailDto,
+  IdeaPostAdminPageQueryDto,
+  IdeaPostAdminPageResultDto,
+  IdeaPostDto,
+  IdeaPostSaveRequestDto
+} from '../../contracts/content.interface';
 import type { InfoCardData, CardMenuActionId } from '../../../ui';
 import { BaseRouteModeService } from './base-route-mode.service';
 
@@ -45,6 +51,31 @@ export class IdeaPostsService extends BaseRouteModeService {
   async loadAdminPostsSnapshot(adminUserId: string, lang = 'en'): Promise<IdeaPostDto[]> {
     const posts = await this.ideaService().loadAdminPosts(adminUserId, lang);
     return this.clonePosts(posts).sort((left, right) => this.sortValue(right) - this.sortValue(left));
+  }
+
+  async loadAdminPostsPage(
+    adminUserId: string,
+    lang = 'en',
+    query: IdeaPostAdminPageQueryDto = {}
+  ): Promise<IdeaPostAdminPageResultDto> {
+    const page = await this.ideaService().loadAdminPostsPage(adminUserId, lang, query);
+    const records = this.clonePosts(page.records).sort((left, right) => this.sortValue(right) - this.sortValue(left));
+    this.adminPostsLang = this.normalizeLang(lang);
+    this.adminPostsRef.set(this.shouldResetAdminPage(query)
+      ? records
+      : this.mergePostLists(this.adminPostsRef(), records));
+    return {
+      records,
+      total: Math.max(0, Math.trunc(Number(page.total) || 0)),
+      nextCursor: `${page.nextCursor ?? ''}`.trim() || null,
+      counts: {
+        all: Math.max(0, Math.trunc(Number(page.counts?.all) || 0)),
+        featured: Math.max(0, Math.trunc(Number(page.counts?.featured) || 0)),
+        published: Math.max(0, Math.trunc(Number(page.counts?.published) || 0)),
+        drafts: Math.max(0, Math.trunc(Number(page.counts?.drafts) || 0)),
+        trashed: Math.max(0, Math.trunc(Number(page.counts?.trashed) || 0))
+      }
+    };
   }
 
   async savePost(request: IdeaPostSaveRequestDto): Promise<IdeaPostDto> {
@@ -181,6 +212,23 @@ export class IdeaPostsService extends BaseRouteModeService {
     ]).sort((left, right) => this.sortValue(right) - this.sortValue(left));
     this.adminPostsRef.set(merged);
     this.applyPublishedPosts(merged.filter(current => current.published));
+  }
+
+  private shouldResetAdminPage(query: IdeaPostAdminPageQueryDto): boolean {
+    return Math.max(0, Math.trunc(Number(query.page) || 0)) === 0
+      && !`${query.cursor ?? ''}`.trim();
+  }
+
+  private mergePostLists(existing: readonly IdeaPostDto[], incoming: readonly IdeaPostDto[]): IdeaPostDto[] {
+    const byId = new Map<string, IdeaPostDto>();
+    for (const post of existing) {
+      byId.set(post.id, post);
+    }
+    for (const post of incoming) {
+      byId.set(post.id, post);
+    }
+    return this.clonePosts(Array.from(byId.values()))
+      .sort((left, right) => this.sortValue(right) - this.sortValue(left));
   }
 
   private ideaService(): LocalIdeaPostsService | HttpIdeaPostsService {

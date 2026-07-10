@@ -1,17 +1,6 @@
 @if (admin.activePopup() === 'item-preview') {
-  <section class="app-popup">
-    <div class="app-popup-backdrop" (click)="admin.closePopup()"></div>
-    <div class="app-popup-panel popup-panel-admin" (click)="$event.stopPropagation()">
-      <div class="popup-header">
-        <div class="popup-title">
-          <h2>Reported item</h2>
-          <p class="popup-subtitle">Report-scoped preview only.</p>
-        </div>
-        <button type="button" class="popup-close" (click)="admin.closePopup()" aria-label="Close">
-          <mat-icon>close</mat-icon>
-        </button>
-      </div>
-      <div class="popup-body">
+  <app-popup [model]="itemPreviewPopupModel()">
+      <div class="admin-item-preview-body">
         @if (admin.selectedReport(); as report) {
           <div class="admin-detail-pane">
             <div class="admin-detail-heading">
@@ -49,6 +38,5 @@
           </div>
         }
       </div>
-    </div>
-  </section>
+  </app-popup>
 }

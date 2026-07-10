@@ -278,6 +278,7 @@ export class UsersService extends BaseRouteModeService {
       return null;
     }
 
+    const previousUser = this.userProfileStore.getUserProfile(user.id);
     this.userProfileStore.setUserProfile(user);
     this.setLoadStatus(USER_PROFILE_SAVE_CONTEXT_KEY, 'loading');
 
@@ -285,6 +286,7 @@ export class UsersService extends BaseRouteModeService {
       const savedUser = await this.userService.saveUserProfile(user);
       if (savedUser) {
         this.userProfileStore.setUserProfile(savedUser);
+        this.userProfileStore.emitProfileSaved(savedUser, previousUser);
       }
       this.setLoadStatus(USER_PROFILE_SAVE_CONTEXT_KEY, 'success');
       return savedUser;
@@ -337,6 +339,7 @@ export class UsersService extends BaseRouteModeService {
       return null;
     }
 
+    const previousUser = this.userProfileStore.getUserProfile(profile.id);
     this.userProfileStore.setProfileExt(request);
     this.setLoadStatus(USER_PROFILE_SAVE_CONTEXT_KEY, 'loading');
 
@@ -347,6 +350,7 @@ export class UsersService extends BaseRouteModeService {
           profile: savedUser,
           experienceEntries: request.experienceEntries
         });
+        this.userProfileStore.emitProfileSaved(savedUser, previousUser);
       }
       this.setLoadStatus(USER_PROFILE_SAVE_CONTEXT_KEY, 'success');
       return savedUser;

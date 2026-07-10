@@ -34,8 +34,6 @@ type ResourceAssetViewOutletContext = 'resourcePopup' | 'assetExplore';
 export type EventResourcePopupOutletActionRequest =
   | (OutletActionRequest & { kind: 'assetViewClose'; event?: Event })
   | (OutletActionRequest & { kind: 'assetViewMembers'; view: ResourceAssetViewState; event: Event })
-  | (OutletActionRequest & { kind: 'capacityEditorClose'; event?: Event })
-  | (OutletActionRequest & { kind: 'capacityEditorSave'; event?: Event })
   | (OutletActionRequest & { kind: 'assignedAssetJoinClose'; event?: Event })
   | (OutletActionRequest & { kind: 'assignedAssetJoinPolicyToggle'; policyId: string })
   | (OutletActionRequest & { kind: 'assignedAssetJoinConfirm'; event?: Event });
@@ -113,18 +111,6 @@ export interface SubEventResourceAssignmentQuantityUpdate {
   type: AppConstants.AssetType;
   subEventId: string;
   quantity: number;
-}
-
-export interface CapacityEditorState {
-  subEventId: string;
-  type: AppConstants.AssetType;
-  assetId: string;
-  title: string;
-  capacityMin: number;
-  capacityMax: number;
-  capacityLimit: number;
-  busy: boolean;
-  error: string | null;
 }
 
 export interface SupplyContributionPopupState {
@@ -226,7 +212,6 @@ export class SubEventResourcePopupStore {
   readonly resourceAssetViewIdRef = signal<string | null>(null);
   readonly resourceAssetViewModeRef = signal<'view' | 'edit'>('view');
   readonly resourceAssetViewReturnToChatRef = signal(false);
-  readonly capacityEditorRef = signal<CapacityEditorState | null>(null);
   readonly supplyPopupRef = signal<SupplyContributionPopupState | null>(null);
   readonly bringDialogRef = signal<SupplyBringDialogState | null>(null);
   readonly pendingAssignSaveRef = signal<PendingAssignSaveState | null>(null);
@@ -243,7 +228,6 @@ export class SubEventResourcePopupStore {
   private readonly eventResourceAssetExploreComponentRef = signal<Type<unknown> | null>(null);
   private readonly eventSupplyContributionsPopupComponentRef = signal<Type<unknown> | null>(null);
   private readonly eventResourceAssetViewComponentRef = signal<Type<unknown> | null>(null);
-  private readonly eventResourceCapacityEditorComponentRef = signal<Type<unknown> | null>(null);
   private readonly eventResourceAssignedAssetJoinDialogComponentRef = signal<Type<unknown> | null>(null);
   private readonly eventResourceAssetExploreBorrowDialogComponentRef = signal<Type<unknown> | null>(null);
   private readonly eventResourcePopupOutletActionRequestRef = signal<EventResourcePopupOutletActionRequest | null>(null);
@@ -256,7 +240,6 @@ export class SubEventResourcePopupStore {
   readonly eventResourceAssetExploreComponent = this.eventResourceAssetExploreComponentRef.asReadonly();
   readonly eventSupplyContributionsPopupComponent = this.eventSupplyContributionsPopupComponentRef.asReadonly();
   readonly eventResourceAssetViewComponent = this.eventResourceAssetViewComponentRef.asReadonly();
-  readonly eventResourceCapacityEditorComponent = this.eventResourceCapacityEditorComponentRef.asReadonly();
   readonly eventResourceAssignedAssetJoinDialogComponent = this.eventResourceAssignedAssetJoinDialogComponentRef.asReadonly();
   readonly eventResourceAssetExploreBorrowDialogComponent = this.eventResourceAssetExploreBorrowDialogComponentRef.asReadonly();
   readonly eventResourcePopupOutletActionRequest = this.eventResourcePopupOutletActionRequestRef.asReadonly();
@@ -289,7 +272,6 @@ export class SubEventResourcePopupStore {
     this.resourceAssetViewIdRef.set(null);
     this.resourceAssetViewModeRef.set('view');
     this.resourceAssetViewReturnToChatRef.set(false);
-    this.capacityEditorRef.set(null);
     this.supplyPopupRef.set(null);
     this.bringDialogRef.set(null);
     this.assignedAssetJoinDialogRef.set(null);
@@ -356,22 +338,6 @@ export class SubEventResourcePopupStore {
       requestId: this.nextOutletActionRequestId(),
       kind: 'assetViewMembers',
       view,
-      event
-    });
-  }
-
-  requestCapacityEditorClose(event?: Event): void {
-    this.eventResourcePopupOutletActionRequestRef.set({
-      requestId: this.nextOutletActionRequestId(),
-      kind: 'capacityEditorClose',
-      event
-    });
-  }
-
-  requestCapacityEditorSave(event?: Event): void {
-    this.eventResourcePopupOutletActionRequestRef.set({
-      requestId: this.nextOutletActionRequestId(),
-      kind: 'capacityEditorSave',
       event
     });
   }
@@ -496,14 +462,6 @@ export class SubEventResourcePopupStore {
     }
     const module = await import('../../../../activity/components/event-resource-popup/asset-view/event-resource-asset-view.component');
     this.eventResourceAssetViewComponentRef.set(module.EventResourceAssetViewComponent);
-  }
-
-  async ensureEventResourceCapacityEditorLoaded(): Promise<void> {
-    if (this.eventResourceCapacityEditorComponentRef()) {
-      return;
-    }
-    const module = await import('../../../../activity/components/event-resource-popup/capacity-editor/event-resource-capacity-editor.component');
-    this.eventResourceCapacityEditorComponentRef.set(module.EventResourceCapacityEditorComponent);
   }
 
   async ensureEventResourceAssignedAssetJoinDialogLoaded(): Promise<void> {

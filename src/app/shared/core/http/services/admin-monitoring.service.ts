@@ -15,10 +15,13 @@ export class HttpAdminMonitoringService {
   private readonly routeDelay = inject(RouteDelayService);
   private readonly apiBaseUrl = environment.apiBaseUrl ?? '/api';
 
-  async loadMonitoringState(adminUserId?: string | null): Promise<AdminMonitoringStateDto> {
+  async loadMonitoringState(adminUserId?: string | null, filter?: string | null): Promise<AdminMonitoringStateDto> {
     const state = await this.routeDelay.withRequestTimeout(ADMIN_MONITORING_LOAD_ROUTE, this.http
       .get<AdminMonitoringStateDto>(`${this.apiBaseUrl}/admin/monitoring`, {
-        params: { adminUserId: `${adminUserId ?? ''}`.trim() }
+        params: {
+          adminUserId: `${adminUserId ?? ''}`.trim(),
+          filter: `${filter ?? ''}`.trim()
+        }
       })
       .toPromise(), 'Monitoring request timed out.');
     if (!state) {

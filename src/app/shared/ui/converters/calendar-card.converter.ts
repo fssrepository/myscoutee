@@ -25,7 +25,7 @@ export class CalendarCardConverter {
     input: CalendarCardConverterInput<T, TFilters>
   ): CalendarCardModel<T, TFilters> {
     return {
-      mode: input.viewMode === 'week' ? 'week' : 'month',
+      mode: input.viewMode === 'week' || input.viewMode === 'timeline' ? input.viewMode : 'month',
       pages: input.pages,
       config: input.calendar,
       query: input.query,

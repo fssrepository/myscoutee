@@ -1,7 +1,5 @@
 @if (admin.activePopup() === popupKey) {
-  <section class="app-popup">
-    <div class="app-popup-backdrop" (click)="close()"></div>
-    <div class="app-popup-panel popup-panel-admin popup-panel-notifications" (click)="$event.stopPropagation()">
+  <app-popup [model]="notificationsPopupModel()">
       <ng-template #intervalText let-rule>
         <span>{{ jobI18n.interval.every | i18n }} </span>
         @for (part of intervalParts(rule); track $index; let last = $last) {
@@ -11,29 +9,8 @@
           }
         }
       </ng-template>
-      <div class="popup-header">
-        <div class="popup-title">
-          <h2>{{ 'jobs' | i18n }}</h2>
-          <p class="popup-subtitle">
-            {{ processRules().length }} {{ 'admin.jobs.background.processes' | i18n }}
-          </p>
-        </div>
-        <div class="notification-header-actions">
-          @if (!loading() && !detailOpen()) {
-            <app-menu
-              class="process-filter-wrap"
-              kind="inline"
-              [model]="processFilterMenuModel()"
-              (itemSelect)="onProcessFilterMenuSelect($event)"
-            ></app-menu>
-          }
-          <button type="button" class="popup-close" (click)="close()" [attr.aria-label]="'close' | i18n">
-            <mat-icon>close</mat-icon>
-          </button>
-        </div>
-      </div>
 
-      <div class="popup-body notifications-body">
+      <div class="notifications-body">
         @if (loading()) {
           <div class="notifications-state notifications-loading-state" aria-busy="true">
             <app-indicator
@@ -134,40 +111,8 @@
           </section>
 
           @if (detailOpen() && selectedRule(); as rule) {
-              <div class="process-detail-backdrop" (click)="closeDetail()"></div>
-              <section class="process-console process-detail-popup" [ngClass]="statusClass(rule)">
-                <div class="process-detail-header">
-                  <div class="popup-title">
-                    <h2>{{ processTitle(rule) | i18n }}</h2>
-                    <p class="popup-subtitle">
-                      {{ 'admin.jobs.scheduled.process' | i18n }} ·
-                      {{ processStatusLabelKeys[statusKind(rule)] | i18n }} ·
-                      {{ 'admin.jobs.last.changed' | i18n }} {{ shortDate(rule.updatedDate || '') | i18n }}
-                    </p>
-                  </div>
-                  <div class="notification-header-actions">
-                    <span class="notification-action-ring-shell notification-circle-ring-shell" [class.is-loading]="saving()">
-                      @if (saving()) {
-                        <app-indicator kind="action-ring" shape="circle" state="loading"></app-indicator>
-                      }
-	                      <button
-	                        type="button"
-	                        class="notification-icon-btn notification-confirm-btn"
-	                        [class.has-unsaved-changes]="isTimingDirty(rule) || isParameterDirty(rule)"
-	                        [disabled]="loading() || saving() || !state() || !canManageProcess(rule)"
-	                        (click)="saveAndCloseDetail()"
-                        [attr.aria-label]="'admin.jobs.save.process' | i18n"
-                        [title]="'save' | i18n"
-                      >
-                        <mat-icon>check</mat-icon>
-                      </button>
-                    </span>
-                    <button type="button" class="popup-close" (click)="closeDetail()" [attr.aria-label]="'admin.jobs.close.detail' | i18n">
-                      <mat-icon>close</mat-icon>
-                    </button>
-                  </div>
-                </div>
-                <div class="process-detail-scroll">
+              <app-popup [model]="processDetailPopupModel(rule)" [zIndex]="2400">
+                <div class="process-detail-scroll process-console" [ngClass]="statusClass(rule)">
                   <div class="process-hero">
                     <div class="process-hero-main">
                       <span class="notification-detail-kicker">
@@ -283,39 +228,13 @@
                   </div>
                   </section>
                 </div>
-              </section>
+              </app-popup>
           }
         }
       </div>
 
       @if (scheduleEditorOpen() && selectedRule(); as scheduleRule) {
-        <div class="run-window-backdrop" (click)="closeScheduleEditor()"></div>
-        <section class="run-window-popup" (click)="$event.stopPropagation()">
-          <div class="run-window-popup-head">
-            <div>
-              <h3>{{ 'admin.jobs.timing' | i18n }}</h3>
-              <p>{{ 'admin.jobs.timing.description' | i18n }}</p>
-            </div>
-            <div class="notification-header-actions">
-              <span class="notification-action-ring-shell notification-circle-ring-shell" [class.is-loading]="saving()">
-                @if (saving()) {
-                  <app-indicator kind="action-ring" shape="circle" state="loading"></app-indicator>
-                }
-                <button
-                  type="button"
-                  class="notification-icon-btn notification-confirm-btn"
-                  [disabled]="saving()"
-                  (click)="saveScheduleEditor()"
-                  [attr.aria-label]="'done' | i18n"
-                >
-                  <mat-icon>check</mat-icon>
-                </button>
-              </span>
-              <button type="button" class="run-window-close" [disabled]="saving()" (click)="closeScheduleEditor()" [attr.aria-label]="'admin.jobs.close.run.window.editor' | i18n">
-                <mat-icon>close</mat-icon>
-              </button>
-            </div>
-          </div>
+        <app-popup [model]="scheduleEditorPopupModel(scheduleRule)" [zIndex]="2500">
           <div class="run-window-list">
             <article class="run-window-row">
               <div class="run-window-row-head">
@@ -347,37 +266,11 @@
               </p>
             </article>
           </div>
-        </section>
+        </app-popup>
       }
 
       @if (parameterDraft(); as draft) {
-        <div class="run-window-backdrop" (click)="closeParameterEditor()"></div>
-        <section class="run-window-popup job-parameters-popup" (click)="$event.stopPropagation()">
-          <div class="run-window-popup-head">
-            <div>
-              <h3>{{ 'admin.jobs.parameters' | i18n }}</h3>
-              <p>{{ 'admin.jobs.parameters.description' | i18n }}</p>
-            </div>
-            <div class="notification-header-actions">
-              <span class="notification-action-ring-shell notification-circle-ring-shell" [class.is-loading]="saving()">
-                @if (saving()) {
-                  <app-indicator kind="action-ring" shape="circle" state="loading"></app-indicator>
-                }
-                <button
-                  type="button"
-                  class="notification-icon-btn notification-confirm-btn"
-                  [disabled]="saving()"
-                  (click)="saveParameterEditor()"
-                  [attr.aria-label]="'done' | i18n"
-                >
-                  <mat-icon>check</mat-icon>
-                </button>
-              </span>
-              <button type="button" class="run-window-close" [disabled]="saving()" (click)="closeParameterEditor()" [attr.aria-label]="'cancel' | i18n">
-                <mat-icon>close</mat-icon>
-              </button>
-            </div>
-          </div>
+        <app-popup [model]="parameterEditorPopupModel()" [zIndex]="2500">
           <div class="run-window-list">
             @for (group of parameterFieldsByGroup(draft.fields); track group.group) {
               <article class="run-window-row job-parameters-group">
@@ -407,9 +300,8 @@
               </article>
             }
           </div>
-        </section>
+        </app-popup>
       }
 
-    </div>
-  </section>
+  </app-popup>
 }

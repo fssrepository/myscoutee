@@ -28,6 +28,8 @@ export class PricingBuilder {
       currency: 'USD',
       taxMode: 'excluded',
       chargeType: context === 'asset' ? 'per_booking' : 'per_attendee',
+      quantityRulesEnabled: false,
+      quantityRules: [],
       minPrice: null,
       maxPrice: null,
       rounding: 'none',
@@ -58,6 +60,10 @@ export class PricingBuilder {
     const normalized = pricing ?? this.createDefaultPricingConfig();
     return {
       ...normalized,
+      quantityRules: (normalized.quantityRules ?? []).map(rule => ({
+        ...rule,
+        action: { ...rule.action }
+      })),
       demandRules: (normalized.demandRules ?? []).map(rule => ({
         ...rule,
         action: { ...rule.action },
@@ -116,6 +122,11 @@ export class PricingBuilder {
       currency: this.normalizeCurrency(source['currency']) || fallback.currency,
       taxMode: this.normalizeTaxMode(source['taxMode']) ?? fallback.taxMode,
       chargeType: this.normalizeChargeType(source['chargeType']) ?? fallback.chargeType,
+      quantityRulesEnabled: this.normalizeBoolean(
+        source['quantityRulesEnabled'],
+        Array.isArray(source['quantityRules']) && source['quantityRules'].length > 0
+      ),
+      quantityRules: this.normalizeQuantityRules(source['quantityRules']),
       minPrice: this.normalizeMoney(source['minPrice']),
       maxPrice: this.normalizeMoney(source['maxPrice']),
       rounding: this.normalizeRounding(source['rounding']) ?? fallback.rounding,
@@ -323,6 +334,12 @@ export class PricingBuilder {
     if (action.kind === 'set_exact_price') {
       return Math.max(0, value);
     }
+    if (action.kind === 'increase_amount') {
+      return Math.max(0, currentPrice + value);
+    }
+    if (action.kind === 'decrease_amount') {
+      return Math.max(0, currentPrice - value);
+    }
     const percent = value / 100;
     if (action.kind === 'decrease_percent') {
       return Math.max(0, currentPrice * (1 - percent));
@@ -387,6 +404,7 @@ export class PricingBuilder {
     context: 'event' | 'asset' | 'subevent'
   ): boolean {
     const basePrice = this.normalizeMoney(source['basePrice'] ?? source['amount']) ?? (context === 'asset' ? 10 : 0);
+    const quantityRules = Array.isArray(source['quantityRules']) ? source['quantityRules'].length : 0;
     const demandRules = Array.isArray(source['demandRules']) ? source['demandRules'].length : 0;
     const timeRules = Array.isArray(source['timeRules']) ? source['timeRules'].length : 0;
     const slotOverrides = Array.isArray(source['slotOverrides']) ? source['slotOverrides'].length : 0;
@@ -404,6 +422,7 @@ export class PricingBuilder {
 
     return basePrice > 0
       || demandRules > 0
+      || quantityRules > 0
       || timeRules > 0
       || cancellationRules > 0
       || slotOverrides > 0
@@ -508,6 +527,20 @@ export class PricingBuilder {
         action: this.normalizeAction(source['action'], source['actionKind'], source['value']),
         appliesTo: this.normalizeRuleScope(source['appliesTo']) ?? 'all_slots',
         slotIds: this.normalizeStringArray(source['slotIds'])
+      };
+    });
+  }
+
+  private static normalizeQuantityRules(value: unknown): ContractTypes.PricingQuantityRule[] {
+    if (!Array.isArray(value)) {
+      return [];
+    }
+    return value.map((entry, index) => {
+      const source = (typeof entry === 'object' && entry !== null) ? entry as Record<string, unknown> : {};
+      return {
+        id: this.normalizeText(source['id']) || `quantity-rule-${index + 1}`,
+        minQuantity: this.normalizePositiveInteger(source['minQuantity'] ?? source['quantity']) ?? 2,
+        action: this.normalizeAction(source['action'], source['actionKind'], source['value'])
       };
     });
   }
@@ -658,6 +691,14 @@ export class PricingBuilder {
     return Math.max(0, Math.min(100, parsed));
   }
 
+  private static normalizePositiveInteger(value: unknown): number | null {
+    const parsed = this.normalizeMoney(value);
+    if (parsed === null) {
+      return null;
+    }
+    return Math.max(1, Math.trunc(parsed));
+  }
+
   private static normalizeOffset(value: unknown): number | null {
     const parsed = this.normalizeMoney(value);
     if (parsed === null) {
@@ -786,6 +827,12 @@ export class PricingBuilder {
     }
     if (normalized === 'decrease_percent' || normalized === 'discount') {
       return 'decrease_percent';
+    }
+    if (normalized === 'decrease_amount' || normalized === 'discount_amount' || normalized === 'fixed_discount') {
+      return 'decrease_amount';
+    }
+    if (normalized === 'increase_amount' || normalized === 'surcharge_amount' || normalized === 'fixed_increase') {
+      return 'increase_amount';
     }
     if (normalized === 'increase_percent' || normalized === 'increase') {
       return 'increase_percent';

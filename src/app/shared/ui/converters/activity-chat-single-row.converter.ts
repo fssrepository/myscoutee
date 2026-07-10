@@ -98,7 +98,7 @@ export class ActivityChatSingleRowConverter {
   }
 
   private static supportStatus(status: string | null | undefined): SupportCaseStatus | null {
-    if (status === 'pending' || status === 'picked' || status === 'solved' || status === 'blocked') {
+    if (status === 'pending' || status === 'warned' || status === 'picked' || status === 'solved' || status === 'blocked') {
       return status;
     }
     return null;
@@ -107,6 +107,9 @@ export class ActivityChatSingleRowConverter {
   private static supportCaseLabelKey(status: string | null | undefined): string {
     if (status === 'picked') {
       return 'activities.support.case.status.picked';
+    }
+    if (status === 'warned') {
+      return 'activities.support.case.status.warned';
     }
     if (status === 'solved') {
       return 'activities.support.case.status.solved';
@@ -132,6 +135,8 @@ export class ActivityChatSingleRowConverter {
 
   private static supportCaseBadgeTone(status: SupportCaseStatus | null): NonNullable<SingleRowData['surfaceTone']> {
     switch (status) {
+      case 'warned':
+        return 'warning';
       case 'picked':
         return 'info';
       case 'solved':
@@ -151,7 +156,7 @@ export class ActivityChatSingleRowConverter {
     if (status === 'solved' || status === 'blocked') {
       return ['supportReopen'];
     }
-    if (status === 'picked') {
+    if (status === 'picked' || status === 'warned') {
       return ['supportUnpick', 'supportSolve', 'supportBlock'];
     }
     return ['supportPick', 'supportSolve', 'supportBlock'];

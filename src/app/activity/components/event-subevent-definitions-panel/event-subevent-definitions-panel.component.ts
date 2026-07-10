@@ -10,9 +10,12 @@ import { ActivityEventDetailDTO, type SubEventDefinitionDTO } from '../../../sha
 import type { DateRangeDto } from '../../../shared/core/contracts/date.interface';
 import type * as EventContracts from '../../../shared/core/contracts/event.interface';
 import {
+  CARD_MENU_ACTIONS,
   InfoCardComponent,
   AppMenuComponent,
+  TextCardComponent,
   type AppMenuItem,
+  type AppMenuPalette,
   SmartListComponent,
   type AppMenuItemSelectEvent,
   type AppMenuTrigger,
@@ -21,13 +24,18 @@ import {
   type ListQuery,
   type PageResult,
   type SmartListConfig,
-  type SmartListLoadPage
+  type SmartListLoadPage,
+  type TextCardBadgeTone,
+  type TextCardStatusTone,
+  type TextCardTone
 } from '../../../shared/ui';
 import { DialogStore } from '../../../shared/ui/context/stores/dialog.store';
 import {
   EventSubeventStageFormPopupComponent,
   type EventSubeventStageFormModel,
   type EventSubeventStageFormPopupView,
+  type EventSubeventStageFormSubmit,
+  type EventSubeventStageInsertOption,
   type EventSubeventStageInsertPlacement,
   type EventSubeventTournamentLeaderboardType
 } from '../event-subevent-stage-form-popup/event-subevent-stage-form-popup.component';
@@ -35,6 +43,13 @@ import {
 interface SubEventDefinitionsPanelFilters {
   revision: number;
 }
+
+interface SubEventDefinitionPalette {
+  accentHue: number;
+  menuPalette: AppMenuPalette;
+}
+
+type SubEventDefinitionSmartListView = 'timeline' | 'list';
 
 interface SubEventDefinitionFormState {
   index: number | null;
@@ -55,6 +70,7 @@ interface SubEventDefinitionFormState {
     AppMenuComponent,
     SmartListComponent,
     InfoCardComponent,
+    TextCardComponent,
     EventSubeventStageFormPopupComponent
   ],
   providers: [
@@ -76,6 +92,18 @@ export class EventSubeventDefinitionsPanelComponent implements ControlValueAcces
   private revision = 0;
   private boundsValue: DateRangeDto | null = null;
   private readonly tournamentLeaderboardTypeOptions: readonly EventSubeventTournamentLeaderboardType[] = ['Score', 'Fifa'];
+  private readonly definitionTimelineStepMinutes = 60;
+  private readonly definitionTimelineVisibleStepCount = 5;
+  private readonly casualDefinitionPalettes: readonly SubEventDefinitionPalette[] = [
+    { accentHue: 210, menuPalette: 'blue' },
+    { accentHue: 175, menuPalette: 'teal' },
+    { accentHue: 275, menuPalette: 'violet' },
+    { accentHue: 28, menuPalette: 'orange' },
+    { accentHue: 138, menuPalette: 'green' },
+    { accentHue: 330, menuPalette: 'pink' },
+    { accentHue: 195, menuPalette: 'cyan' },
+    { accentHue: 48, menuPalette: 'gold' }
+  ];
 
   @Input() mode: EventContracts.EventMode = 'Casual';
   @Input() enabled = false;
@@ -95,17 +123,38 @@ export class EventSubeventDefinitionsPanelComponent implements ControlValueAcces
   protected definitionForm: SubEventDefinitionFormState | null = null;
   protected definitionFormModelValue: EventSubeventStageFormModel = this.createDefinitionFormModel(null, 1);
   protected definitionFormView: EventSubeventStageFormPopupView = this.createDefinitionFormPopupView(null, this.definitionFormModelValue);
+  protected definitionView: SubEventDefinitionSmartListView = 'timeline';
   protected smartListQuery: Partial<ListQuery<SubEventDefinitionsPanelFilters>> = {
+    view: 'timeline',
     filters: { revision: 0 }
   };
 
   protected readonly smartListConfig: SmartListConfig<SubEventDefinitionDTO, SubEventDefinitionsPanelFilters> = {
     pageSize: 20,
-    defaultView: 'list',
+    defaultView: 'timeline',
+    views: [
+      { key: 'timeline', label: 'Timeline', mode: 'timeline', pageSize: 20 },
+      { key: 'list', label: 'Cards', mode: 'list', pageSize: 20 }
+    ],
     showStickyHeader: false,
     showGroupMarker: () => false,
     emptyLabel: 'No sub event definitions yet',
     emptyDescription: '',
+    timeline: {
+      stepMinutes: this.definitionTimelineStepMinutes,
+      visibleDurationMinutes: () => this.definitionTimelineVisibleDurationMinutes(),
+      pageStepMinutes: () => this.definitionTimelineVisibleDurationMinutes(),
+      anchorRadius: 0,
+      rowCount: 1,
+      rowHeightPx: 92,
+      minimumLaneDurationMinutes: this.definitionTimelineStepMinutes,
+      useItemTemplate: true,
+      resolveRange: item => this.definitionTimelineRange(item),
+      badgeLabel: item => item.name,
+      badgeMeta: item => `Duration ${this.durationLabel(item.durationMinutes)}`,
+      badgeToneClass: item => `calendar-badge-tone-${((this.definitions.indexOf(item) + 6) % 6) + 1}`,
+      offsetLabel: offset => this.minutesLabel(offset)
+    },
     listLayout: 'card-grid',
     orientation: 'horizontal',
     desktopColumns: 3,
@@ -143,6 +192,10 @@ export class EventSubeventDefinitionsPanelComponent implements ControlValueAcces
 
   protected canEdit(): boolean {
     return !this.readOnly && !this.disabled;
+  }
+
+  protected shouldShowPanel(): boolean {
+    return this.canEdit() || this.enabled;
   }
 
   protected canConfigureDefinitions(): boolean {
@@ -221,6 +274,47 @@ export class EventSubeventDefinitionsPanelComponent implements ControlValueAcces
     this.modeChange.emit(this.mode);
   }
 
+  protected viewMenuTrigger(): AppMenuTrigger {
+    const timeline = this.definitionView === 'timeline';
+    return {
+      label: timeline ? 'Timeline' : 'Cards',
+      icon: timeline ? 'timeline' : 'view_carousel',
+      palette: timeline ? 'teal' : 'violet',
+      layout: 'pill',
+      disabled: !this.enabled
+    };
+  }
+
+  protected viewMenuItems(): readonly AppMenuItem<SubEventDefinitionSmartListView, unknown>[] {
+    return [
+      {
+        id: 'timeline',
+        label: 'Timeline',
+        icon: 'timeline',
+        kind: 'radio',
+        palette: 'teal',
+        surface: 'tinted',
+        active: this.definitionView === 'timeline',
+        checked: this.definitionView === 'timeline'
+      },
+      {
+        id: 'list',
+        label: 'Cards',
+        icon: 'view_carousel',
+        kind: 'radio',
+        palette: 'violet',
+        surface: 'tinted',
+        active: this.definitionView === 'list',
+        checked: this.definitionView === 'list'
+      }
+    ];
+  }
+
+  protected onViewMenuSelect(event: AppMenuItemSelectEvent<SubEventDefinitionSmartListView, unknown>): void {
+    this.definitionView = event.id === 'list' ? 'list' : 'timeline';
+    this.bumpList();
+  }
+
   protected addMenuItems(): readonly AppMenuItem<string, unknown>[] {
     if (!this.canConfigureDefinitions()) {
       return [];
@@ -247,8 +341,7 @@ export class EventSubeventDefinitionsPanelComponent implements ControlValueAcces
   protected definitionCard(item: SubEventDefinitionDTO, index: number): InfoCardData {
     const isTournament = this.mode === 'Tournament';
     const stageNumber = index + 1;
-    const totalStages = Math.max(this.definitions.length, 1);
-    const accentHue = isTournament ? this.stageAccentHue(stageNumber, totalStages) : null;
+    const palette = this.definitionPalette(item, index);
     const sequenceLabel = isTournament ? `Stage ${stageNumber}` : `Sub Event ${stageNumber}`;
     const status = this.definitionStatus(item);
     const capacityMetaRow = this.definitionCapacityMetaRow(item, isTournament);
@@ -261,15 +354,13 @@ export class EventSubeventDefinitionsPanelComponent implements ControlValueAcces
       mediaSubtitle: this.mode,
       mediaIcon: item.icon || (isTournament ? 'emoji_events' : 'inventory_2'),
       metaRows: [
-        index > 0
-          ? this.definitionTimingLabel(item, index)
-          : `Duration ${this.durationLabel(item.durationMinutes)}`,
+        this.definitionStartLabel(item, index),
         ...(capacityMetaRow ? [capacityMetaRow] : [])
       ],
       description: item.description || 'No description',
       descriptionLines: 2,
-      surfaceTone: isTournament ? 'stage' : 'draft',
-      accentHue,
+      surfaceTone: isTournament ? 'stage' : (item.optional ? 'subevent-light' : 'subevent-strong'),
+      accentHue: palette.accentHue,
       leadingIcon: {
         icon: isTournament ? 'emoji_events' : status.icon,
         tone: isTournament ? 'stage' : status.leadingTone
@@ -291,6 +382,14 @@ export class EventSubeventDefinitionsPanelComponent implements ControlValueAcces
           icon: status.icon,
           tone: status.accessoryTone
         }
+      },
+      mediaBottomEnd: {
+        variant: 'badge',
+        tone: 'stage-review',
+        icon: 'schedule',
+        label: this.durationMinutesBadgeLabel(item.durationMinutes),
+        ariaLabel: `Duration ${this.durationLabel(item.durationMinutes)}`,
+        interactive: false
       },
       menuActions: this.canConfigureDefinitions() ? ['edit', 'delete'] : []
     };
@@ -328,7 +427,7 @@ export class EventSubeventDefinitionsPanelComponent implements ControlValueAcces
     }
     return {
       label: 'Mandatory',
-      icon: 'block',
+        icon: 'lock',
       overlayTone: 'blocked',
       leadingTone: 'invitation',
       accessoryTone: 'negative'
@@ -343,8 +442,115 @@ export class EventSubeventDefinitionsPanelComponent implements ControlValueAcces
     return Math.round(210 - (210 * ratio));
   }
 
+  private definitionPalette(_item: SubEventDefinitionDTO, index: number): SubEventDefinitionPalette {
+    const safeIndex = Math.max(0, index);
+    if (this.mode !== 'Tournament') {
+      return this.casualDefinitionPalettes[safeIndex % this.casualDefinitionPalettes.length];
+    }
+    const accentHue = this.stageAccentHue(safeIndex + 1, Math.max(this.definitions.length, 1));
+    return {
+      accentHue,
+      menuPalette: this.menuPaletteForAccentHue(accentHue)
+    };
+  }
+
+  private menuPaletteForAccentHue(accentHue: number): AppMenuPalette {
+    if (accentHue >= 198) {
+      return 'blue';
+    }
+    if (accentHue >= 168) {
+      return 'teal';
+    }
+    if (accentHue >= 112) {
+      return 'green';
+    }
+    if (accentHue >= 58) {
+      return 'gold';
+    }
+    if (accentHue >= 36) {
+      return 'amber';
+    }
+    if (accentHue >= 14) {
+      return 'orange';
+    }
+    return 'red';
+  }
+
   protected definitionMenuContext(item: SubEventDefinitionDTO): Record<string, unknown> {
     return { definitionId: item.id };
+  }
+
+  protected definitionTimelineMenuItems(item: SubEventDefinitionDTO): readonly AppMenuItem<string, unknown>[] {
+    if (!this.canConfigureDefinitions()) {
+      return [];
+    }
+    const editConfig = CARD_MENU_ACTIONS['edit'];
+    const deleteConfig = CARD_MENU_ACTIONS['delete'];
+    return [
+      {
+        id: 'edit',
+        label: editConfig.label,
+        icon: editConfig.icon,
+        palette: 'brown',
+        surface: 'tinted',
+        context: this.definitionMenuContext(item)
+      },
+      {
+        id: 'delete',
+        label: deleteConfig.label,
+        icon: deleteConfig.icon,
+        palette: 'danger',
+        surface: 'tinted',
+        context: this.definitionMenuContext(item)
+      }
+    ];
+  }
+
+  protected definitionTimelineIcon(item: SubEventDefinitionDTO): string {
+    return item.icon || (this.mode === 'Tournament' ? 'emoji_events' : 'inventory_2');
+  }
+
+  protected definitionTimelineDetail(item: SubEventDefinitionDTO): string {
+    return item.description || '';
+  }
+
+  protected definitionTimelineTone(item: SubEventDefinitionDTO): TextCardTone {
+    return this.mode === 'Tournament'
+      ? 'stage'
+      : (item.optional ? 'subevent-light' : 'subevent-strong');
+  }
+
+  protected definitionTimelineAccentHue(item: SubEventDefinitionDTO): number | null {
+    return this.definitionPalette(item, this.definitionIndex(item)).accentHue;
+  }
+
+  protected definitionTimelineBadgeTone(_item: SubEventDefinitionDTO): TextCardBadgeTone {
+    return 'warning';
+  }
+
+  protected definitionTimelineStatusLabel(item: SubEventDefinitionDTO): string {
+    const index = this.definitionIndex(item);
+    if (this.mode === 'Tournament') {
+      return `Stage ${index + 1}`;
+    }
+    return this.definitionStatus(item).label;
+  }
+
+  protected definitionTimelineStatusIcon(item: SubEventDefinitionDTO): string {
+    return this.mode === 'Tournament' ? 'emoji_events' : this.definitionStatus(item).icon;
+  }
+
+  protected definitionTimelineStatusTone(item: SubEventDefinitionDTO): TextCardStatusTone {
+    if (this.mode === 'Tournament') {
+      return 'stage';
+    }
+    return item.optional ? 'public' : 'blocked';
+  }
+
+  protected definitionTimelineStatusAriaLabel(item: SubEventDefinitionDTO): string {
+    return this.mode === 'Tournament'
+      ? `${this.definitionTimelineStatusLabel(item)} definition`
+      : `${this.definitionTimelineStatusLabel(item)} sub event definition`;
   }
 
   protected onDefinitionMenuSelect(event: AppMenuItemSelectEvent<string, unknown>): void {
@@ -429,7 +635,7 @@ export class EventSubeventDefinitionsPanelComponent implements ControlValueAcces
       invalidDescription: !this.hasText(model.description),
       showOptionalToggle: !isTournament,
       modeClass: isOptional ? 'subevent-mode-optional' : 'subevent-mode-mandatory',
-      modeIcon: isOptional ? 'toggle_on' : 'block',
+      modeIcon: isOptional ? 'toggle_on' : 'lock',
       slotBoundTiming: Boolean(timingBounds),
       timingSummaryTitle: timingBounds ? 'Main event range' : 'Definition',
       timingSummaryText: '',
@@ -437,7 +643,6 @@ export class EventSubeventDefinitionsPanelComponent implements ControlValueAcces
       timingInputMode: 'duration',
       showInsertControls: state?.index === null && insertOptions.length > 0,
       showDuringInsertPlacement: !isTournament,
-      insertFieldLabel: isTournament ? 'Insert Stage' : 'Insert Sub Event',
       insertPlacement: isTournament && insertPlacement === 'during' ? 'after' : insertPlacement,
       insertTargetId: state?.insertTargetId ?? insertOptions[insertOptions.length - 1]?.id ?? null,
       insertOptions,
@@ -450,19 +655,25 @@ export class EventSubeventDefinitionsPanelComponent implements ControlValueAcces
     };
   }
 
-  protected saveDefinitionForm(event?: Event): void {
-    event?.stopPropagation();
+  protected saveDefinitionForm(submit?: EventSubeventStageFormSubmit): void {
+    submit?.sourceEvent.stopPropagation();
     const state = this.definitionForm;
-    if (!state || !this.canConfigureDefinitions() || !this.canSaveDefinitionForm(state.model)) {
+    if (!state || !submit || !this.canConfigureDefinitions() || !this.canSaveDefinitionForm(submit.model)) {
       return;
     }
 
-    const definition = this.definitionFromFormState(state);
+    const submittedState: SubEventDefinitionFormState = {
+      ...state,
+      model: submit.model,
+      insertPlacement: submit.insertPlacement,
+      insertTargetId: submit.insertTargetId
+    };
+    const definition = this.definitionFromFormState(submittedState);
     const next = [...this.definitions];
-    if (state.index === null) {
-      next.splice(this.definitionInsertIndex(state), 0, definition);
+    if (submittedState.index === null) {
+      next.splice(this.definitionInsertIndex(submittedState), 0, definition);
     } else {
-      next[state.index] = definition;
+      next[submittedState.index] = definition;
     }
     this.setDefinitionForm(null);
     this.commit(next);
@@ -473,61 +684,6 @@ export class EventSubeventDefinitionsPanelComponent implements ControlValueAcces
     this.setDefinitionForm(null);
     this.onTouched();
     this.cdr.markForCheck();
-  }
-
-  protected selectDefinitionOptional(optional: boolean): void {
-    this.patchDefinitionFormModel({ optional });
-  }
-
-  protected selectDefinitionInsertPlacement(placement: EventSubeventStageInsertPlacement): void {
-    if (!this.definitionForm) {
-      return;
-    }
-    if (this.mode === 'Tournament' && placement === 'during') {
-      return;
-    }
-    this.setDefinitionForm({
-      ...this.definitionForm,
-      insertPlacement: placement
-    });
-    this.onTouched();
-    this.cdr.markForCheck();
-  }
-
-  protected onDefinitionInsertTargetChange(targetId: string | null): void {
-    if (!this.definitionForm) {
-      return;
-    }
-    this.setDefinitionForm({
-      ...this.definitionForm,
-      insertTargetId: targetId
-    });
-    this.onTouched();
-    this.cdr.markForCheck();
-  }
-
-  protected onDefinitionCapacityMinChange(value: number | string): void {
-    this.patchDefinitionFormModel({ capacityMin: this.toNonNegativeInteger(value) });
-  }
-
-  protected onDefinitionCapacityMaxChange(value: number | string): void {
-    this.patchDefinitionFormModel({ capacityMax: this.toNonNegativeInteger(value) });
-  }
-
-  protected onDefinitionTournamentGroupCapacityMinChange(value: number | string): void {
-    this.patchDefinitionFormModel({ tournamentGroupCapacityMin: this.toNonNegativeInteger(value) });
-  }
-
-  protected onDefinitionTournamentGroupCapacityMaxChange(value: number | string): void {
-    this.patchDefinitionFormModel({ tournamentGroupCapacityMax: this.toNonNegativeInteger(value) });
-  }
-
-  protected onDefinitionTournamentLeaderboardTypeChange(value: EventSubeventTournamentLeaderboardType | string | null | undefined): void {
-    this.patchDefinitionFormModel({ tournamentLeaderboardType: this.normalizedTournamentLeaderboardType(value) });
-  }
-
-  protected onDefinitionTournamentAdvancePerGroupChange(value: number | string): void {
-    this.patchDefinitionFormModel({ tournamentAdvancePerGroup: this.toNonNegativeInteger(value) });
   }
 
   private openEditDefinitionForm(index: number): void {
@@ -617,21 +773,6 @@ export class EventSubeventDefinitionsPanelComponent implements ControlValueAcces
     }])[0];
   }
 
-  private patchDefinitionFormModel(update: Partial<EventSubeventStageFormModel>): void {
-    if (!this.definitionForm) {
-      return;
-    }
-    this.setDefinitionForm({
-      ...this.definitionForm,
-      model: {
-        ...this.definitionForm.model,
-        ...update
-      }
-    });
-    this.onTouched();
-    this.cdr.markForCheck();
-  }
-
   private setDefinitionForm(state: SubEventDefinitionFormState | null): void {
     this.definitionForm = state;
     this.definitionFormModelValue = state?.model ?? this.createDefinitionFormModel(null, this.definitions.length + 1);
@@ -671,11 +812,20 @@ export class EventSubeventDefinitionsPanelComponent implements ControlValueAcces
     return 'after';
   }
 
-  private definitionInsertOptions(): ReadonlyArray<{ id: string; label: string }> {
-    return this.definitions.map((item, index) => ({
-      id: item.id,
-      label: this.definitionInsertOptionLabel(item, index)
-    }));
+  private definitionInsertOptions(): ReadonlyArray<EventSubeventStageInsertOption> {
+    return this.definitions.map((item, index) => {
+      const palette = this.definitionPalette(item, index);
+      const status = this.definitionStatus(item);
+      return {
+        id: item.id,
+        label: this.definitionInsertOptionLabel(item, index),
+        description: this.mode === 'Tournament'
+          ? this.definitionSequenceLabel(index)
+          : `${status.label} sub event`,
+        icon: this.mode === 'Tournament' ? 'emoji_events' : status.icon,
+        palette: palette.menuPalette
+      };
+    });
   }
 
   private definitionInsertOptionLabel(item: SubEventDefinitionDTO, index: number): string {
@@ -762,6 +912,7 @@ export class EventSubeventDefinitionsPanelComponent implements ControlValueAcces
   private bumpList(): void {
     this.revision += 1;
     this.smartListQuery = {
+      view: this.definitionView,
       filters: { revision: this.revision }
     };
   }
@@ -776,9 +927,13 @@ export class EventSubeventDefinitionsPanelComponent implements ControlValueAcces
     return Number.isFinite(parsed) ? Math.max(1, parsed) : 60;
   }
 
-  private durationLabel(totalMinutes: number): string {
+  protected durationLabel(totalMinutes: number): string {
     const safeMinutes = this.toPositiveInteger(totalMinutes);
     return this.minutesLabel(safeMinutes);
+  }
+
+  protected durationMinutesBadgeLabel(totalMinutes: number): string {
+    return `${this.toPositiveInteger(totalMinutes)}m`;
   }
 
   private offsetLabel(totalMinutes: number): string {
@@ -786,21 +941,29 @@ export class EventSubeventDefinitionsPanelComponent implements ControlValueAcces
     return this.minutesLabel(safeMinutes);
   }
 
-  private definitionTimingLabel(item: SubEventDefinitionDTO, index: number): string {
+  private definitionIndex(item: SubEventDefinitionDTO): number {
+    return Math.max(0, this.definitions.findIndex(candidate => candidate.id === item.id));
+  }
+
+  private definitionStartLabel(item: SubEventDefinitionDTO, index: number): string {
     const offsetMinutes = this.toNonNegativeInteger(item.offsetMinutes);
     const offsetLabel = this.offsetLabel(offsetMinutes);
-    const durationLabel = this.durationLabel(item.durationMinutes);
     if (index <= 0) {
       return offsetMinutes > 0
-        ? `Starts ${offsetLabel} after slot start for ${durationLabel}`
-        : `Starts at slot start for ${durationLabel}`;
+        ? `Starts ${offsetLabel} after event start`
+        : 'Starts at event start';
     }
 
     const previousLabel = this.definitionSequenceLabel(index - 1);
-    const anchor = item.timing === 'During' ? 'start' : 'end';
+    if (item.timing === 'During') {
+      return offsetMinutes > 0
+        ? `Starts ${offsetLabel} after ${previousLabel} starts`
+        : `Starts with ${previousLabel}`;
+    }
+
     return offsetMinutes > 0
-      ? `Starts ${offsetLabel} after ${previousLabel} ${anchor} for ${durationLabel}`
-      : `Starts at ${previousLabel} ${anchor} for ${durationLabel}`;
+      ? `Starts ${offsetLabel} after ${previousLabel}`
+      : `Starts after ${previousLabel}`;
   }
 
   private minutesLabel(totalMinutes: number): string {
@@ -813,5 +976,44 @@ export class EventSubeventDefinitionsPanelComponent implements ControlValueAcces
       return `${hours}h`;
     }
     return `${hours}h ${minutes}m`;
+  }
+
+  private definitionTimelineRange(item: SubEventDefinitionDTO): { startOffsetMinutes: number; endOffsetMinutes: number } | null {
+    const entry = this.definitionTimelineEntries().find(candidate => candidate.item === item);
+    if (!entry) {
+      return null;
+    }
+    return {
+      startOffsetMinutes: entry.startOffsetMinutes,
+      endOffsetMinutes: entry.startOffsetMinutes + entry.durationMinutes
+    };
+  }
+
+  private definitionTimelineVisibleDurationMinutes(): number {
+    const minimumDuration = this.definitionTimelineStepMinutes * this.definitionTimelineVisibleStepCount;
+    const furthestEndOffset = this.definitionTimelineEntries().reduce(
+      (furthest, entry) => Math.max(furthest, entry.startOffsetMinutes + entry.durationMinutes),
+      0
+    );
+    const renderedDuration = Math.ceil(furthestEndOffset / this.definitionTimelineStepMinutes)
+      * this.definitionTimelineStepMinutes;
+    return Math.max(minimumDuration, renderedDuration);
+  }
+
+  private definitionTimelineEntries(): Array<{ item: SubEventDefinitionDTO; startOffsetMinutes: number; durationMinutes: number }> {
+    let previousStartOffsetMinutes = 0;
+    let previousEndOffsetMinutes = 0;
+    return this.definitions.map((item, index) => {
+      const durationMinutes = this.toPositiveInteger(item.durationMinutes);
+      const offsetMinutes = this.toNonNegativeInteger(item.offsetMinutes);
+      const startOffsetMinutes = index <= 0
+        ? offsetMinutes
+        : item.timing === 'During'
+          ? previousStartOffsetMinutes + offsetMinutes
+          : previousEndOffsetMinutes + offsetMinutes;
+      previousStartOffsetMinutes = startOffsetMinutes;
+      previousEndOffsetMinutes = startOffsetMinutes + durationMinutes;
+      return { item, startOffsetMinutes, durationMinutes };
+    });
   }
 }

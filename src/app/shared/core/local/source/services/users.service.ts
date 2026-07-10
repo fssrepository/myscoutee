@@ -44,6 +44,7 @@ import {
 } from '../mappers';
 import { LocalActivityMembersService } from './activity-members.service';
 import { LocalCountryPartitionsRepository } from '../repositories/country-partitions.repository';
+import { LocalEventsRepository } from '../repositories/events.repository';
 import { APP_STORAGE_KEYS } from '../../../common/storage-scope';
 
 @Injectable({
@@ -63,6 +64,7 @@ export class LocalUsersService extends LocalRouteDelayService implements UserSer
   private static readonly DELETED_ACCOUNT_PURGE_WINDOW_MS = 30 * 24 * 60 * 60 * 1000;
   private readonly activityMembersService = inject(LocalActivityMembersService);
   private readonly countryPartitionsRepository = inject(LocalCountryPartitionsRepository);
+  private readonly eventsRepository = inject(LocalEventsRepository);
   private readonly usersRepository = inject(LocalUsersRepository);
   private readonly profileExperiencesRepository = inject(LocalProfileExperiencesRepository);
   private readonly realtimeCursorByUserId: Record<string, number> = {};
@@ -418,7 +420,7 @@ export class LocalUsersService extends LocalRouteDelayService implements UserSer
     ) {
       return {
         submitted: false,
-        message: 'Reports can only be submitted for members you shared an event with.'
+        message: 'Reports can only be submitted for an event organizer or a member you shared an event with.'
       };
     }
     const members = this.activityMembersService.peekMembersByOwner({
@@ -427,15 +429,19 @@ export class LocalUsersService extends LocalRouteDelayService implements UserSer
     });
     const activeMember = members.find(member => member.userId === normalizedActiveUserId && member.status === 'accepted');
     const targetMember = members.find(member => member.userId === normalizedTargetUserId && member.status === 'accepted');
+    const eventRecord = this.eventsRepository.queryEventRecordById(normalizedActiveUserId, normalizedEventId);
+    const targetIsEventOrganizer = eventRecord?.status === 'A' && (
+      eventRecord.creatorUserId === normalizedTargetUserId
+      || (eventRecord.adminIds ?? []).includes(normalizedTargetUserId)
+    );
     const normalizedMemberEntryId = `${request.memberEntryId ?? ''}`.trim();
     if (
-      !activeMember
-      || !targetMember
-      || (normalizedMemberEntryId && normalizedMemberEntryId !== targetMember.id)
+      (!targetIsEventOrganizer && (!activeMember || !targetMember))
+      || (normalizedMemberEntryId && normalizedMemberEntryId !== targetMember?.id)
     ) {
       return {
         submitted: false,
-        message: 'Reports can only be submitted for members you shared an event with.'
+        message: 'Reports can only be submitted for an event organizer or a member you shared an event with.'
       };
     }
     const normalizedTarget = request.handle.trim();

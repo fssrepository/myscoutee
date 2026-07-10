@@ -1,4 +1,6 @@
 import type {
+  AppMenuCounter,
+  AppMenuCounterValue,
   AppMenuItem,
   AppMenuItemSelectEvent,
   AppMenuGroup,
@@ -14,11 +16,15 @@ import type {
   DateInputValue
 } from '../form/inputs/date-input/date-input.component';
 
-export type PopupSize = 'default' | 'wide';
+export type PopupSize = 'small' | 'default' | 'wide' | 'fullscreen';
 export type PopupHeight = 'auto' | 'full';
 export type PopupHeaderTone = 'default' | 'accent';
-export type PopupBodyLayout = 'default' | 'fill';
+export type PopupHeaderLayout = 'default' | 'article' | 'document';
+export type PopupHeaderPalette = 'default' | 'amber' | 'blue' | 'green' | 'rose' | 'violet' | 'slate' | 'teal';
+export type PopupHeaderTitleTone = 'palette' | 'neutral';
+export type PopupBodyLayout = 'default' | 'fill' | 'flush' | 'overflow';
 export type PopupControlAlign = 'start' | 'end';
+export type PopupToolbarMobileAlign = 'start' | 'center' | 'end';
 export type PopupBackdropTone = 'default' | 'dim';
 
 export interface PopupControlBase {
@@ -31,6 +37,7 @@ export interface PopupAction extends PopupControlBase {
   label?: string | null;
   ariaLabel?: string | null;
   palette?: AppMenuPalette;
+  counter?: AppMenuCounter | AppMenuCounterValue | null;
   active?: boolean;
   disabled?: boolean;
   compactOnMobile?: boolean;
@@ -63,20 +70,32 @@ export type PopupControl<TContext = unknown> =
   | PopupDateInputControl<TContext>;
 
 export interface PopupModel<TContext = unknown> {
+  headerLabel?: string | null;
+  headerLabelIcon?: string | null;
+  headerBadge?: string | null;
   title?: string | null;
   subtitle?: string | null;
   secondarySubtitle?: string | null;
   ariaLabel?: string | null;
   closeAriaLabel?: string | null;
+  translateHeaderLabel?: boolean;
+  translateHeaderBadge?: boolean;
+  translateTitle?: boolean;
+  translateSubtitle?: boolean;
+  translateSecondarySubtitle?: boolean;
   closeOnBackdrop?: boolean;
   showHeader?: boolean;
   showClose?: boolean;
   size?: PopupSize;
   height?: PopupHeight;
+  headerLayout?: PopupHeaderLayout;
   headerTone?: PopupHeaderTone;
+  headerPalette?: PopupHeaderPalette;
+  headerTitleTone?: PopupHeaderTitleTone;
   bodyLayout?: PopupBodyLayout;
   backdropTone?: PopupBackdropTone;
   showToolbar?: boolean;
+  toolbarMobileAlign?: PopupToolbarMobileAlign;
   headerControls?: readonly PopupControl<TContext>[];
   toolbarControls?: readonly PopupControl<TContext>[];
   headerActions?: readonly PopupAction[];

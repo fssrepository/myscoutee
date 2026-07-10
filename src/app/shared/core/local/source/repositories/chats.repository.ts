@@ -517,7 +517,7 @@ export class LocalChatsRepository {
 
   private activitiesSupportCaseFilter(query: ListQuery<ActivitiesFeedFilters>): ContractTypes.SupportCaseFilter {
     const value = query.filters?.supportCaseFilter;
-    return value === 'pending' || value === 'picked' || value === 'solved' || value === 'blocked' ? value : 'all';
+    return value === 'pending' || value === 'warned' || value === 'picked' || value === 'solved' || value === 'blocked' ? value : 'all';
   }
 
   private matchesSupportCaseFilter(record: ChatRecord, filter: ContractTypes.SupportCaseFilter | undefined): boolean {
@@ -779,7 +779,7 @@ export class LocalChatsRepository {
   }
 
   private normalizeSupportCaseFilter(filter: ContractTypes.SupportCaseFilter): ContractTypes.SupportCaseFilter {
-    return filter === 'pending' || filter === 'picked' || filter === 'solved' || filter === 'blocked'
+    return filter === 'pending' || filter === 'warned' || filter === 'picked' || filter === 'solved' || filter === 'blocked'
       ? filter
       : 'all';
   }

@@ -28,14 +28,17 @@ import * as AppConstants from '../../../shared/core/common/constants';
 import type { AssetType, SubEventResourceFilter } from '../../../shared/core/common/constants';
 import {
   AccordionComponent,
-  AppMenuComponent,
   FormFlowComponent,
   IndicatorComponent,
+  PopupComponent,
   type AppMenuItem,
   type AppMenuItemSelectEvent,
   type AppMenuModel,
   type AppMenuPalette,
   type AppMenuTrigger,
+  type PopupControl,
+  type PopupMenuSelectEvent,
+  type PopupModel,
   type FormFlowControlModel,
   type FormFlowModel,
   type UiAccordionActionMenuSelectEvent,
@@ -142,10 +145,10 @@ interface FifaRow {
     CommonModule,
     FormsModule,
     MatIconModule,
-    AppMenuComponent,
     AccordionComponent,
     FormFlowComponent,
     IndicatorComponent,
+    PopupComponent,
     EventSubeventGroupFormPopupComponent
   ],
   templateUrl: './event-tournament-groups-popup.component.html',
@@ -279,6 +282,58 @@ export class EventTournamentGroupsPopupComponent {
       selectedStageId: this.selectedStageId,
       openGroupIds: this.openGroupIds
     });
+  }
+
+  protected tournamentGroupsPopupModel(vm: EventTournamentGroupsPopupModel): PopupModel<unknown> {
+    const toolbarControls = this.tournamentGroupsToolbarControls();
+    return {
+      title: vm.title,
+      subtitle: vm.subtitle,
+      ariaLabel: vm.title,
+      closeAriaLabel: 'Close tournament groups',
+      closeOnBackdrop: true,
+      size: 'wide',
+      height: 'full',
+      headerTone: 'accent',
+      bodyLayout: 'fill',
+      backdropTone: 'dim',
+      headerControls: [{
+        kind: 'menu',
+        id: 'tournament-stage',
+        menuKind: 'select',
+        trigger: vm.stageTrigger,
+        items: vm.stageItems,
+        panelAlign: 'end'
+      }],
+      toolbarControls,
+      onClose: () => this.close(),
+      onMenuSelect: event => this.onTournamentGroupsPopupMenuSelect(event)
+    };
+  }
+
+  private tournamentGroupsToolbarControls(): readonly PopupControl<unknown>[] {
+    const items = this.headerActionItems();
+    if (items.length === 0) {
+      return [];
+    }
+    return [{
+      kind: 'menu',
+      id: 'tournament-actions',
+      align: 'end',
+      menuKind: 'inline',
+      items,
+      closeOnSelect: false
+    }];
+  }
+
+  private onTournamentGroupsPopupMenuSelect(event: PopupMenuSelectEvent<unknown>): void {
+    if (event.control.id === 'tournament-stage') {
+      this.onStageSelect(event.itemSelect as AppMenuItemSelectEvent<string, EventTournamentGroupsStageMenuContext>);
+      return;
+    }
+    if (event.control.id === 'tournament-actions') {
+      this.onHeaderActionSelect(event.itemSelect as AppMenuItemSelectEvent<string, TournamentGroupsHeaderActionContext>);
+    }
   }
 
   protected accordionModel(
@@ -745,6 +800,31 @@ export class EventTournamentGroupsPopupComponent {
     return this.selectedStageMode() === 'Fifa' ? 'Match result' : 'Score update';
   }
 
+  protected tournamentEntryPopupModel(): PopupModel<unknown> {
+    const title = this.entryGroupLabel();
+    return {
+      title,
+      subtitle: this.entryFormSubtitle(),
+      ariaLabel: title,
+      closeAriaLabel: 'Close leaderboard editor',
+      closeOnBackdrop: true,
+      size: 'default',
+      height: 'auto',
+      headerTone: 'accent',
+      bodyLayout: 'overflow',
+      backdropTone: 'dim',
+      headerControls: [{
+        kind: 'menu',
+        id: 'tournament-entry-save',
+        menuKind: 'inline',
+        items: this.entrySaveMenuItems(),
+        closeOnSelect: false
+      }],
+      onClose: event => this.closeEntryForm(event),
+      onMenuSelect: event => this.onTournamentEntryPopupMenuSelect(event)
+    };
+  }
+
   protected entryMemberTrigger(menu: 'score' | 'home' | 'away'): AppMenuTrigger {
     return {
       label: this.memberNameForEntry(menu),
@@ -820,7 +900,7 @@ export class EventTournamentGroupsPopupComponent {
     return [{
       id: 'save-entry',
       icon: 'done',
-      layout: 'action',
+      kind: 'action',
       palette: this.isMutating || this.canSubmitEntry() ? 'success' : 'danger',
       disabled: !this.canSubmitEntry(),
       ariaLabel: 'Save leaderboard entry',
@@ -833,8 +913,10 @@ export class EventTournamentGroupsPopupComponent {
     }];
   }
 
-  protected onEntrySaveMenuSelect(event: AppMenuItemSelectEvent<'save-entry'>): void {
-    void this.saveEntryForm(event.sourceEvent);
+  private onTournamentEntryPopupMenuSelect(event: PopupMenuSelectEvent<unknown>): void {
+    if (event.itemSelect.id === 'save-entry') {
+      void this.saveEntryForm(event.itemSelect.sourceEvent);
+    }
   }
 
   protected onEntryFormFlowChange(value: unknown): void {

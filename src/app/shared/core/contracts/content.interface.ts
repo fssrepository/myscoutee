@@ -22,6 +22,30 @@ export interface IdeaPostDto {
   updatedByUserId: string;
 }
 
+export type IdeaPostAdminFilter = 'all' | 'featured' | 'published' | 'drafts' | 'trashed';
+
+export interface IdeaPostAdminCountsDto {
+  all: number;
+  featured: number;
+  published: number;
+  drafts: number;
+  trashed: number;
+}
+
+export interface IdeaPostAdminPageQueryDto {
+  status?: IdeaPostAdminFilter | string | null;
+  page?: number | null;
+  pageSize?: number | null;
+  cursor?: string | null;
+}
+
+export interface IdeaPostAdminPageResultDto {
+  records: IdeaPostDto[];
+  total: number;
+  nextCursor: string | null;
+  counts: IdeaPostAdminCountsDto;
+}
+
 export interface IdeaPostSaveRequestDto {
   actorUserId: string;
   id?: string | null;

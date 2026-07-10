@@ -1,87 +1,31 @@
 <div class="support-popup">
   @if (!reportUserSubmitted) {
-    <article class="editor-list-card support-card">
-      <h4>Report User</h4>
-      <p>Share what happened. Reports are reviewed by moderation, and we use them to improve trust and safety.</p>
-      @if (!isContextualReport()) {
-        <div class="support-submit-error" role="alert">
-          Reports can only be started from a member card of an event you both attended.
-        </div>
-      }
-      <form class="support-form" (ngSubmit)="submitReportUser()">
-        @if (submitErrorMessage(); as errorMessage) {
-          <div class="support-submit-error" role="alert">{{ errorMessage }}</div>
-        }
-        <label>
-          <span>User</span>
-          <input
-            type="text"
-            name="reportHandle"
-            [(ngModel)]="reportUserForm.handle"
-            placeholder="Selected member"
-            [class.support-form-field-invalid]="!reportUserHandleValid"
-            [disabled]="isSubmitBusy()"
-            [readOnly]="isContextualReport()"
-            (ngModelChange)="clearSubmitStatus()"
-            required
-            />
-          <small class="support-form-help-text" [class.support-form-help-text-error]="!reportUserHandleValid">
-            Required. Minimum {{ reportUserHandleMinLength }} characters ({{ reportUserHandleLength }}/{{ reportUserHandleMinLength }}).
-          </small>
-        </label>
-        @if (isContextualReport()) {
-          <label>
-            <span>Event context</span>
-            <textarea
-              rows="3"
-              name="reportContext"
-              [ngModel]="reportContextSummary()"
-              readonly
-            ></textarea>
-          </label>
-        }
-        <label>
-          <span>Reason</span>
-          <select
-            name="reportReason"
-            [(ngModel)]="reportUserForm.reason"
-            [disabled]="isSubmitBusy()"
-            (ngModelChange)="clearSubmitStatus()"
-            >
-            @for (item of reportUserReasons; track item) {
-              <option [value]="item">{{ item }}</option>
-            }
-          </select>
-        </label>
-        <label>
-          <span>Details</span>
-          <textarea
-            rows="4"
-            name="reportDetails"
-            [(ngModel)]="reportUserForm.details"
-            placeholder="Add short details about what happened and why you are reporting this member."
-            [class.support-form-field-invalid]="!reportUserDetailsValid"
-            [disabled]="isSubmitBusy()"
-            (ngModelChange)="clearSubmitStatus()"
-            required
-          ></textarea>
-          <small class="support-form-help-text" [class.support-form-help-text-error]="!reportUserDetailsValid">
-            Required. Minimum {{ reportUserDetailsMinLength }} characters ({{ reportUserDetailsLength }}/{{ reportUserDetailsMinLength }}).
-          </small>
-        </label>
-        <div class="support-actions">
-          <button type="button" class="link-btn neutral-btn" (click)="closePopup()">Cancel</button>
-          <app-menu
-            class="support-submit-menu"
-            kind="inline"
-            [items]="reportUserSubmitMenuItems()"
-            (itemSelect)="onReportUserSubmitMenuSelect($event)"
-          ></app-menu>
-        </div>
-      </form>
-    </article>
+    @if (!isContextualReport()) {
+      <div class="support-submit-error" role="alert">
+        {{ 'Reports can only be started from an event organizer or a member card tied to an event.' | i18n }}
+      </div>
+    }
+    @if (submitErrorMessage(); as errorMessage) {
+      <div class="support-submit-error" role="alert">{{ errorMessage | i18n }}</div>
+    }
+    <app-form-flow
+      class="support-form-flow"
+      [model]="reportUserFlowModel()"
+      [ngModel]="reportUserForm"
+      [saving]="isSubmitting()"
+      [disabled]="isSubmitBusy()"
+      (ngModelChange)="onReportUserFlowValueChange($event)"
+    ></app-form-flow>
+    <div class="support-actions">
+      <app-menu
+        class="support-action-menu"
+        kind="inline"
+        [items]="reportUserActionMenuItems()"
+        (itemSelect)="onReportUserActionMenuSelect($event)"
+      ></app-menu>
+    </div>
   } @else {
-    <article class="editor-list-card support-card">
+    <article class="support-success-card">
       <div class="support-submit-success">{{ reportUserSubmitMessage }}</div>
     </article>
   }

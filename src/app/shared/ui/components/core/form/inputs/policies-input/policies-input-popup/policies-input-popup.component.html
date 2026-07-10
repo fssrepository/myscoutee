@@ -1,0 +1,10 @@
+@if (popup; as editor) {
+  <app-popup [model]="popupModel(editor)" [zIndex]="editor.zIndex">
+    <app-form-flow
+      [model]="flowModel(editor)"
+      [ngModel]="draftValue"
+      (ngModelChange)="updateDraft($event)"
+      [disabled]="editor.readOnly"
+    ></app-form-flow>
+  </app-popup>
+}

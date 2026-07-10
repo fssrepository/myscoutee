@@ -43,24 +43,24 @@ export class AdminAffinityGraphService extends BaseRouteModeService {
   private readonly httpService = inject(HttpAdminAffinityGraphService);
   private readonly i18n = inject(I18nService);
 
-  async loadInitialGraph(adminUserId?: string | null): Promise<AdminAffinityGraphDto> {
+  async loadInitialGraph(adminUserId?: string | null, signal?: AbortSignal): Promise<AdminAffinityGraphDto> {
     if (this.isLocalAffinityGraph()) {
-      return this.normalizeSnapshot(await this.readLocalGraphSnapshot(true), 'demo');
+      return this.normalizeSnapshot(await this.readLocalGraphSnapshot(true, signal), 'demo');
     }
-    return this.normalizeSnapshot(await this.loadHttpInitialGraph(adminUserId), 'http');
+    return this.normalizeSnapshot(await this.loadHttpInitialGraph(adminUserId, signal), 'http');
   }
 
-  async loadMeta(adminUserId?: string | null, range?: AdminAffinityGraphRangeParams): Promise<AdminAffinityGraphMetaDto> {
+  async loadMeta(adminUserId?: string | null, range?: AdminAffinityGraphRangeParams, signal?: AbortSignal): Promise<AdminAffinityGraphMetaDto> {
     return this.isLocalAffinityGraph()
-      ? this.metaFromSnapshot(await this.demoSnapshot(range))
-      : await this.httpService.loadMeta(adminUserId, range);
+      ? this.metaFromSnapshot(await this.demoSnapshot(range, false, signal))
+      : await this.httpService.loadMeta(adminUserId, range, signal);
   }
 
-  async loadForests(adminUserId?: string | null, range?: AdminAffinityGraphRangeParams): Promise<AdminAffinityGraphForestsDto> {
+  async loadForests(adminUserId?: string | null, range?: AdminAffinityGraphRangeParams, signal?: AbortSignal): Promise<AdminAffinityGraphForestsDto> {
     if (!this.isLocalAffinityGraph()) {
-      return await this.httpService.loadForests(adminUserId, range);
+      return await this.httpService.loadForests(adminUserId, range, signal);
     }
-    const snapshot = await this.demoSnapshot(range, true);
+    const snapshot = await this.demoSnapshot(range, true, signal);
     const components = this.components(snapshot.nodes, snapshot.edges);
     const forests = components.map((component, index) => this.forestFromComponent(component, index));
     const page = this.forestPage(forests, range);
@@ -77,11 +77,11 @@ export class AdminAffinityGraphService extends BaseRouteModeService {
     };
   }
 
-  async loadTile(adminUserId?: string | null, tile?: AdminAffinityGraphTileParams): Promise<AdminAffinityGraphTileDto> {
+  async loadTile(adminUserId?: string | null, tile?: AdminAffinityGraphTileParams, signal?: AbortSignal): Promise<AdminAffinityGraphTileDto> {
     if (!this.isLocalAffinityGraph()) {
-      return await this.httpService.loadTile(adminUserId, tile);
+      return await this.httpService.loadTile(adminUserId, tile, signal);
     }
-    const snapshot = await this.demoSnapshot(tile, true);
+    const snapshot = await this.demoSnapshot(tile, true, signal);
     return {
       generatedAtIso: snapshot.generatedAtIso,
       source: snapshot.source,
@@ -101,12 +101,13 @@ export class AdminAffinityGraphService extends BaseRouteModeService {
     userId: string,
     depth?: number | null,
     adminUserId?: string | null,
-    range?: AdminAffinityGraphRangeParams
+    range?: AdminAffinityGraphRangeParams,
+    signal?: AbortSignal
   ): Promise<AdminAffinityGraphNeighborhoodDto> {
     if (!this.isLocalAffinityGraph()) {
-      return await this.httpService.loadNeighborhood(userId, depth, adminUserId, range);
+      return await this.httpService.loadNeighborhood(userId, depth, adminUserId, range, signal);
     }
-    const snapshot = await this.demoSnapshot(range, true);
+    const snapshot = await this.demoSnapshot(range, true, signal);
     const normalizedUserId = `${userId ?? ''}`.trim();
     const selectedIds = this.neighborhoodIds(snapshot.edges, normalizedUserId, Math.max(1, Math.min(3, Math.trunc(Number(depth ?? 1)))));
     if (snapshot.nodes.some(node => node.id === normalizedUserId)) {
@@ -123,21 +124,21 @@ export class AdminAffinityGraphService extends BaseRouteModeService {
     };
   }
 
-  async rebuildLayout(adminUserId?: string | null): Promise<AdminAffinityGraphMetaDto> {
+  async rebuildLayout(adminUserId?: string | null, signal?: AbortSignal): Promise<AdminAffinityGraphMetaDto> {
     return this.isLocalAffinityGraph()
-      ? this.metaFromSnapshot(await this.demoSnapshot())
-      : await this.httpService.rebuildLayout(adminUserId);
+      ? this.metaFromSnapshot(await this.demoSnapshot(undefined, false, signal))
+      : await this.httpService.rebuildLayout(adminUserId, signal);
   }
 
   private isLocalAffinityGraph(): boolean {
     return this.isLocalRouteEnabled(ADMIN_AFFINITY_GRAPH_ROUTE);
   }
 
-  private async loadHttpInitialGraph(adminUserId?: string | null): Promise<AdminAffinityGraphDto> {
+  private async loadHttpInitialGraph(adminUserId?: string | null, signal?: AbortSignal): Promise<AdminAffinityGraphDto> {
     const [meta, forests, firstTile] = await Promise.all([
-      this.httpService.loadMeta(adminUserId),
-      this.httpService.loadForests(adminUserId, { forestLevel: 0, limit: AFFINITY_GRAPH_FOREST_BASE_BUDGET + 4, offset: 0 }),
-      this.httpService.loadTile(adminUserId, { z: 0, x: 0, y: 0, minWeight: 0, maxWeight: 1 })
+      this.httpService.loadMeta(adminUserId, undefined, signal),
+      this.httpService.loadForests(adminUserId, { forestLevel: 0, limit: AFFINITY_GRAPH_FOREST_BASE_BUDGET + 4, offset: 0 }, signal),
+      this.httpService.loadTile(adminUserId, { z: 0, x: 0, y: 0, minWeight: 0, maxWeight: 1 }, signal)
     ]);
     const nodesById = new Map<string, AdminAffinityGraphNodeDto>();
     for (const node of firstTile.nodes ?? []) {
@@ -162,21 +163,32 @@ export class AdminAffinityGraphService extends BaseRouteModeService {
 
   private async demoSnapshot(
     range?: AdminAffinityGraphRangeParams | null,
-    waitForRouteDelay = false
+    waitForRouteDelay = false,
+    signal?: AbortSignal
   ): Promise<AdminAffinityGraphDto> {
-    const snapshot = await this.readLocalGraphSnapshot(waitForRouteDelay);
+    const snapshot = await this.readLocalGraphSnapshot(waitForRouteDelay, signal);
+    this.throwIfAborted(signal);
     return {
       ...snapshot,
       edges: this.filterEdges(snapshot.edges, range)
     };
   }
 
-  private async readLocalGraphSnapshot(waitForRouteDelay = false): Promise<AdminAffinityGraphDto> {
-    const snapshot = await this.localService.readGraphSnapshot({ waitForRouteDelay });
+  private async readLocalGraphSnapshot(waitForRouteDelay = false, signal?: AbortSignal): Promise<AdminAffinityGraphDto> {
+    const snapshot = await this.localService.readGraphSnapshot({ waitForRouteDelay, signal });
+    this.throwIfAborted(signal);
     if (!snapshot) {
       throw new Error('Demo affinity graph snapshot is not bootstrapped.');
     }
     return this.normalizeSnapshot(snapshot, 'demo');
+  }
+
+  private throwIfAborted(signal?: AbortSignal): void {
+    if (signal?.aborted) {
+      const error = new Error('Request aborted.');
+      error.name = 'AbortError';
+      throw error;
+    }
   }
 
   private metaFromSnapshot(snapshot: AdminAffinityGraphDto): AdminAffinityGraphMetaDto {
