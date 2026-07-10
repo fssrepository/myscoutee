@@ -402,13 +402,28 @@ export class LocalEventsService extends LocalRouteDelayService implements IEvent
       return null;
     }
     await this.waitForRouteDelay(LocalEventsService.EVENTS_CHECKOUT_ROUTE);
+    if (request.checkoutRequest) {
+      await this.saveCheckoutBasketRecord({
+        ...request.checkoutRequest,
+        userId: normalizedUserId,
+        sourceId: normalizedSourceId,
+        slotSourceId: request.checkoutRequest.slotSourceId ?? request.slotSourceId ?? null,
+        checkoutState: 'confirmed',
+        pendingReason: null
+      });
+    }
     const basket = await this.eventCheckoutBasketsRepository.loadBasketByEvent(normalizedUserId, normalizedSourceId);
     if (!basket) {
       return null;
     }
     const slotSourceId = basket.slotSourceId ?? request.slotSourceId ?? null;
     const checkoutSessionId = `checkout-${Date.now()}`;
-    const record = this.eventsRepository.requestJoin(
+    const acceptedMembership = this.existingAcceptedCheckoutMembershipRecord(
+      normalizedUserId,
+      normalizedSourceId,
+      slotSourceId
+    );
+    const record = acceptedMembership ?? this.eventsRepository.requestJoin(
       normalizedUserId,
       normalizedSourceId,
       slotSourceId,
@@ -901,6 +916,21 @@ export class LocalEventsService extends LocalRouteDelayService implements IEvent
       ? this.eventsRepository.queryEventRecordById(normalizedUserId, slotSourceId.trim())
       : null;
     return [slotRecord, sourceRecord].find(record => this.hasExistingCheckoutMembership(record, normalizedUserId)) ?? null;
+  }
+
+  private existingAcceptedCheckoutMembershipRecord(
+    userId: string,
+    sourceId: string,
+    slotSourceId: string | null
+  ): ActivityEventRecord | null {
+    const normalizedUserId = userId.trim();
+    const sourceRecord = this.eventsRepository.queryEventRecordById(normalizedUserId, sourceId.trim());
+    const slotRecord = slotSourceId?.trim()
+      ? this.eventsRepository.queryEventRecordById(normalizedUserId, slotSourceId.trim())
+      : null;
+    return [slotRecord, sourceRecord].find(record =>
+      (record?.acceptedMemberUserIds ?? []).some(item => item.trim() === normalizedUserId)
+    ) ?? null;
   }
 
   private hasExistingCheckoutMembership(record: ActivityEventRecord | null, userId: string): boolean {

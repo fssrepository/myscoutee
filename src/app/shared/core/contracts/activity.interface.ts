@@ -1473,6 +1473,7 @@ export interface EventCheckoutStateChangeRequest {
   pendingReason?: AppConstants.ActivityPendingReason;
   checkoutSessionId?: string | null;
   counterDelta?: UserContracts.UserMenuCounterDeltasDto | null;
+  checkoutRequest?: EventCheckoutRequest | null;
 }
 
 export interface EventCheckoutSession {

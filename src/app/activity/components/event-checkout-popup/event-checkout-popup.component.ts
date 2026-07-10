@@ -192,7 +192,6 @@ export class EventCheckoutPopupComponent {
       onBasketAdd: event => this.addCheckoutBasketSlot(event),
       onBasketItemMenuSelect: (item, event) => this.onCheckoutBasketItemMenuSelect(item, event),
       footerItems: this.isReadOnlyCheckoutSummary() ? [] : this.checkoutFooterMenuItems(),
-      footerMessage: this.errorMessage,
       onFooterItemSelect: event => this.onCheckoutActionMenuSelect(event),
       onClose: () => this.onCheckoutReviewEditorClose()
     });
@@ -2697,7 +2696,13 @@ export class EventCheckoutPopupComponent {
       resultState,
       pendingReason,
       checkoutSessionId,
-      counterDelta
+      counterDelta,
+      checkoutRequest: checkoutState === 'pay'
+        ? this.buildCheckoutRequest({
+            checkoutState: 'confirmed',
+            pendingReason: null
+          })
+        : null
     };
   }
 
