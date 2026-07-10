@@ -317,6 +317,7 @@
   display: inline-flex;
   align-items: center;
   gap: 0.18rem;
+  box-sizing: border-box;
 }
 
 .ui-text-card--status-success .ui-text-card__status-badge {
@@ -326,6 +327,8 @@
 }
 
 .ui-text-card--status-stage .ui-text-card__status-badge {
+  height: 25px;
+  min-height: 25px;
   border-color: rgba(255, 255, 255, 0.9);
   background: linear-gradient(
     180deg,
@@ -358,6 +361,7 @@
 }
 
 .ui-text-card--status-public .ui-text-card__status-badge {
+  height: 28px;
   min-height: 28px;
   padding: 0 0.58rem;
   border-width: 2px;
@@ -379,6 +383,7 @@
 }
 
 .ui-text-card--status-blocked .ui-text-card__status-badge {
+  height: 28px;
   min-height: 28px;
   padding: 0 0.58rem;
   border-width: 2px;

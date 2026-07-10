@@ -275,6 +275,8 @@
 }
 
 :host ::ng-deep .subevent-definition-panel__timeline-card .ui-text-card--badge-warning .ui-text-card__badge {
+  height: 26px;
+  min-height: 26px;
   border: 1px solid rgba(192, 125, 28, 0.34);
   background: rgba(255, 247, 226, 0.94);
   color: #8a5a12;
