@@ -262,7 +262,7 @@
 
 :host ::ng-deep .subevent-definition-panel__timeline-card .ui-text-card__status-badge {
   right: 0.32rem;
-  max-width: 5.2rem;
+  max-width: calc(100% - 4rem);
 }
 
 :host ::ng-deep .subevent-definition-panel__timeline-card .ui-text-card--with-badge .ui-text-card__actions {
