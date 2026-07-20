@@ -1,10 +1,12 @@
 const CACHE_PREFIX = 'myscoutee-runtime';
-const CACHE_VERSION = "build-56146e972ce0-20260714232018";
-const BUILD_ID = "56146e972ce0-20260714232018";
+const CACHE_VERSION = "build-658032d63612-20260720173245";
+const BUILD_ID = "658032d63612-20260720173245";
 const APP_CACHE = `${CACHE_PREFIX}-app-${CACHE_VERSION}`;
 const API_CACHE = `${CACHE_PREFIX}-api-${CACHE_VERSION}`;
 const MEDIA_CACHE = `${CACHE_PREFIX}-media-${CACHE_VERSION}`;
 const ACTIVE_CACHES = [APP_CACHE, API_CACHE, MEDIA_CACHE];
+const APP_CACHE_PREFIX = `${CACHE_PREFIX}-app-`;
+const PREVIOUS_APP_CACHE_LIMIT = 1;
 const PRECACHE_CORE_URLS = [
   './',
   './index.html',
@@ -21,99 +23,101 @@ const PRECACHE_CORE_URLS = [
   './assets/i18n/hu.json'
 ];
 const PRECACHE_BUILD_URLS = [
-  "./chunk-2HBN2EPJ.js",
-  "./chunk-2J4OIWNI.js",
-  "./chunk-377LA6MF.js",
-  "./chunk-3NOLHUWO.js",
-  "./chunk-3SA4CG52.js",
-  "./chunk-3X4DXUQI.js",
-  "./chunk-4ILIBNF7.js",
-  "./chunk-4LRRPK73.js",
-  "./chunk-4NGSSONQ.js",
-  "./chunk-5KQ457SG.js",
-  "./chunk-5PQ6VHW3.js",
-  "./chunk-5WCV2IPV.js",
-  "./chunk-6RT4KQDN.js",
-  "./chunk-77LWJO7R.js",
-  "./chunk-ACRRTT43.js",
-  "./chunk-AIEUB22R.js",
-  "./chunk-AJB3QQZY.js",
-  "./chunk-B74GZWQF.js",
-  "./chunk-BMSUJCEJ.js",
-  "./chunk-BPURDIQO.js",
-  "./chunk-C3OOD4RV.js",
-  "./chunk-CKMVTWWF.js",
-  "./chunk-CNWGLSFP.js",
-  "./chunk-DO5JMSIE.js",
-  "./chunk-ES74VDSH.js",
-  "./chunk-EUFSSHKW.js",
-  "./chunk-FDRIHC2W.js",
-  "./chunk-GJI5KOJV.js",
-  "./chunk-GUY56TJT.js",
-  "./chunk-GWCLUY5P.js",
-  "./chunk-GXYELVHC.js",
-  "./chunk-HFY43NLR.js",
+  "./chunk-25LKOYJL.js",
+  "./chunk-2ACUEZ5K.js",
+  "./chunk-2JEAKDXC.js",
+  "./chunk-2TUOBOSL.js",
+  "./chunk-2YOUCLKX.js",
+  "./chunk-3EVFRDRA.js",
+  "./chunk-43W3C5Z3.js",
+  "./chunk-44PHJCXY.js",
+  "./chunk-4HEJ6YUZ.js",
+  "./chunk-4RGALFWT.js",
+  "./chunk-4SB422PQ.js",
+  "./chunk-4VRKVOCO.js",
+  "./chunk-4YDT3QDY.js",
+  "./chunk-5JSRMFXY.js",
+  "./chunk-5YUX4AHF.js",
+  "./chunk-6DS2XYCE.js",
+  "./chunk-6RAJDDRM.js",
+  "./chunk-6UQKYREE.js",
+  "./chunk-7Y4LXJRJ.js",
+  "./chunk-7Z27IS6M.js",
+  "./chunk-ABK2R5HL.js",
+  "./chunk-AJKD4DW7.js",
+  "./chunk-AMGTLFFY.js",
+  "./chunk-B3FVG4VP.js",
+  "./chunk-BBXF7HLC.js",
+  "./chunk-BJCREJRY.js",
+  "./chunk-BUTC63GB.js",
+  "./chunk-C2BGMLYI.js",
+  "./chunk-CELMJXTY.js",
+  "./chunk-CGGZ4P6J.js",
+  "./chunk-CQ33LUXR.js",
+  "./chunk-CTBHZU3Z.js",
+  "./chunk-CTIMIU5E.js",
+  "./chunk-D2NDPJTS.js",
+  "./chunk-E237O5GN.js",
+  "./chunk-EPCTRI7K.js",
+  "./chunk-FOJC6OCJ.js",
+  "./chunk-FSZLPNXL.js",
+  "./chunk-GCAYKUZU.js",
+  "./chunk-GDJ2OYAL.js",
+  "./chunk-GRGQA5TZ.js",
   "./chunk-HHVDRYUD.js",
-  "./chunk-HS4GY2W2.js",
-  "./chunk-HT62GCX7.js",
-  "./chunk-HUPF2Y7U.js",
-  "./chunk-I5535FKI.js",
-  "./chunk-IKAXR2SH.js",
-  "./chunk-IWH74XBF.js",
-  "./chunk-IXVSCR5P.js",
-  "./chunk-JIJYVHZJ.js",
-  "./chunk-JV3T2WAA.js",
+  "./chunk-HRR67MM2.js",
+  "./chunk-HXUALIUW.js",
+  "./chunk-HXUH6SRX.js",
+  "./chunk-I6JTFYI2.js",
+  "./chunk-J7TVGZ6Z.js",
+  "./chunk-JR6MIKI2.js",
+  "./chunk-K32YCZZF.js",
   "./chunk-K4FOD347.js",
-  "./chunk-KBZMFGZG.js",
-  "./chunk-KIUI4NRJ.js",
-  "./chunk-KUCWKMSB.js",
-  "./chunk-LB4I2LNO.js",
-  "./chunk-LSPZS4XD.js",
-  "./chunk-MDI7K6D2.js",
-  "./chunk-MIVG2GGG.js",
-  "./chunk-MQLWAALW.js",
-  "./chunk-MT6UTHUJ.js",
-  "./chunk-N223BZ65.js",
-  "./chunk-NCKRNGKS.js",
-  "./chunk-NDQ7Z5AN.js",
-  "./chunk-NJ625SA4.js",
-  "./chunk-NJ6YBUPD.js",
-  "./chunk-NSTENFGD.js",
-  "./chunk-NXD4ILKA.js",
-  "./chunk-OSUFDYA3.js",
-  "./chunk-P7FNQSPB.js",
+  "./chunk-K7LGZTQG.js",
+  "./chunk-KJKJC3GW.js",
+  "./chunk-LL7OECG6.js",
+  "./chunk-MAO2MJ2S.js",
+  "./chunk-MJOMKCOF.js",
+  "./chunk-MKEJ4OPW.js",
+  "./chunk-N2255NAC.js",
+  "./chunk-NEE6NIPP.js",
+  "./chunk-NFAHBQCR.js",
+  "./chunk-NTVRQDZZ.js",
+  "./chunk-NUSIDTTG.js",
+  "./chunk-OZ7LYPOK.js",
   "./chunk-PBNQXQP6.js",
-  "./chunk-Q3PBLYFC.js",
-  "./chunk-QHCFFCBY.js",
-  "./chunk-QSX4VXF5.js",
-  "./chunk-RGZRPGL3.js",
+  "./chunk-PDRJKOXZ.js",
+  "./chunk-PE4E3A53.js",
+  "./chunk-PYUC22WB.js",
+  "./chunk-Q42GMIVT.js",
+  "./chunk-QI5ZMPG2.js",
+  "./chunk-R2A6KDC6.js",
+  "./chunk-R7PXVOKP.js",
   "./chunk-RRV2HBPB.js",
   "./chunk-RXJZSKLJ.js",
   "./chunk-S24YZLS5.js",
-  "./chunk-SX5VYKQ3.js",
+  "./chunk-S6FJEYFT.js",
+  "./chunk-SI2DID5L.js",
+  "./chunk-SNHMU6BV.js",
+  "./chunk-SR3L5RRE.js",
   "./chunk-SXIV5TSE.js",
-  "./chunk-SXMKESGT.js",
-  "./chunk-T7FO2YEV.js",
-  "./chunk-TBZFZHDJ.js",
-  "./chunk-TSD7LTJ7.js",
-  "./chunk-U7LKYOXF.js",
-  "./chunk-UJ537TNM.js",
-  "./chunk-VJD5LZSM.js",
-  "./chunk-VKJEJQXA.js",
-  "./chunk-VNH7BL34.js",
-  "./chunk-VOU6ZJ2S.js",
-  "./chunk-VTE4LWML.js",
-  "./chunk-VXEBPJ7C.js",
+  "./chunk-TPFGBTBU.js",
+  "./chunk-ULPUC2ZL.js",
+  "./chunk-UWHP6D6A.js",
+  "./chunk-V7P3HNLE.js",
+  "./chunk-VTRHRJKZ.js",
+  "./chunk-W3OLDPQB.js",
+  "./chunk-WBKPEZYZ.js",
+  "./chunk-WPQLGT5S.js",
   "./chunk-WTKPS7P4.js",
-  "./chunk-XC4WBHWY.js",
-  "./chunk-YLLECKYV.js",
-  "./chunk-YTLDDWTN.js",
-  "./chunk-Z2WI77XW.js",
-  "./chunk-Z5UZKDSR.js",
-  "./chunk-ZA4RO6GF.js",
-  "./chunk-ZA755NWH.js",
-  "./chunk-ZTXYI5RW.js",
-  "./main-KKWUKJXK.js",
+  "./chunk-WV47LMVY.js",
+  "./chunk-WWP3EM6J.js",
+  "./chunk-XMYCUOCN.js",
+  "./chunk-XTYZHRLD.js",
+  "./chunk-YBJTKFVE.js",
+  "./chunk-YHXRBFYJ.js",
+  "./chunk-ZINXXE6S.js",
+  "./main-CHCMIP6Y.js",
   "./media/material-icons-JLIDJUWE.woff",
   "./media/material-icons-LEZCGFVT.woff2",
   "./media/material-icons-outlined-7BWLPMFK.woff2",
@@ -183,21 +187,28 @@ const PRECACHE_BUILD_URLS = [
 const PRECACHE_URLS = [...PRECACHE_CORE_URLS, ...PRECACHE_BUILD_URLS];
 
 self.addEventListener('install', event => {
-  self.skipWaiting();
   event.waitUntil(
     caches.open(APP_CACHE)
-      .then(cache => Promise.allSettled(
-        PRECACHE_URLS.map(url => cache.add(new Request(url, { cache: 'reload' })))
+      .then(cache => cache.addAll(
+        PRECACHE_URLS.map(url => new Request(url, { cache: 'reload' }))
       ))
+      .catch(async error => {
+        await caches.delete(APP_CACHE);
+        throw error;
+      })
   );
 });
 
 self.addEventListener('activate', event => {
   event.waitUntil((async () => {
     const cacheNames = await caches.keys();
+    const previousAppCaches = cacheNames
+      .filter(name => name.startsWith(APP_CACHE_PREFIX) && name !== APP_CACHE)
+      .slice(-PREVIOUS_APP_CACHE_LIMIT);
+    const cachesToKeep = new Set([...ACTIVE_CACHES, ...previousAppCaches]);
     await Promise.all(
       cacheNames
-        .filter(name => name.startsWith(CACHE_PREFIX) && !ACTIVE_CACHES.includes(name))
+        .filter(name => name.startsWith(CACHE_PREFIX) && !cachesToKeep.has(name))
         .map(name => caches.delete(name))
     );
     await self.clients.claim();
@@ -219,7 +230,7 @@ self.addEventListener('fetch', event => {
   const url = new URL(request.url);
 
   if (request.mode === 'navigate') {
-    event.respondWith(networkFirst(request, APP_CACHE));
+    event.respondWith(serveAppShell(request));
     return;
   }
 
@@ -241,7 +252,7 @@ self.addEventListener('fetch', event => {
       return;
     }
     if (isStaticAsset(url, request)) {
-      event.respondWith(networkFirst(request, APP_CACHE));
+      event.respondWith(networkFirstStaticAsset(request));
       return;
     }
   }
@@ -327,6 +338,48 @@ async function networkFirst(request, cacheName) {
     }
     return unavailableResponse(request);
   }
+}
+
+async function serveAppShell(request) {
+  const cache = await caches.open(APP_CACHE);
+  const cachedIndex = await cache.match('./index.html') || await cache.match('./');
+  if (cachedIndex) {
+    return cachedIndex;
+  }
+  return networkFirst(request, APP_CACHE);
+}
+
+async function networkFirstStaticAsset(request) {
+  const cache = await caches.open(APP_CACHE);
+  try {
+    const response = await fetch(request, { cache: 'no-store' });
+    if (response && (response.ok || response.type === 'opaque')) {
+      cache.put(request, response.clone());
+      return response;
+    }
+    return await matchAppBundleCache(request) || response;
+  } catch {
+    return await matchAppBundleCache(request) || unavailableResponse(request);
+  }
+}
+
+async function matchAppBundleCache(request) {
+  const currentResponse = await caches.match(request, { cacheName: APP_CACHE });
+  if (currentResponse) {
+    return currentResponse;
+  }
+
+  const cacheNames = await caches.keys();
+  const previousAppCaches = cacheNames
+    .filter(name => name.startsWith(APP_CACHE_PREFIX) && name !== APP_CACHE)
+    .reverse();
+  for (const cacheName of previousAppCaches) {
+    const response = await caches.match(request, { cacheName });
+    if (response) {
+      return response;
+    }
+  }
+  return null;
 }
 
 async function staleWhileRevalidate(request, cacheName, fallbackMatcher, event) {

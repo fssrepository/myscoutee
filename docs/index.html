@@ -19,7 +19,7 @@
   <base href="/myscoutee/">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <meta name="theme-color" content="#2d5f94">
-  <meta name="myscoutee-build-id" content="56146e972ce0-20260714232018">
+  <meta name="myscoutee-build-id" content="658032d63612-20260720173245">
   <meta name="mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-status-bar-style" content="default">
   <link rel="icon" type="image/x-icon" href="assets/icon/favicon.ico">
@@ -195,8 +195,12 @@
       var BOOTSTRAPPED_CLASS = 'app-bootstrapped';
       var OFFLINE_CLASS = 'app-warmup-offline';
       var FALLBACK_TIMEOUT_MS = 9000;
+      var WORKER_INSTALL_TIMEOUT_MS = 10000;
+      var WORKER_ACTIVATION_TIMEOUT_MS = 4000;
+      var DEPLOYMENT_RECOVERY_KEY = 'myscoutee.deployment-recovery.v1';
       var DEFAULT_TITLE = 'No network';
       var DEFAULT_MESSAGE = 'The app cannot finish loading because the server is not reachable.';
+      var deploymentRecoveryPromise = null;
 
       function isBootstrapped() {
         return document.documentElement.classList.contains(BOOTSTRAPPED_CLASS);
@@ -234,11 +238,131 @@
         return tagName === 'script' || tagName === 'link';
       }
 
+      function currentBuildId() {
+        var meta = document.querySelector('meta[name="myscoutee-build-id"]');
+        return meta && typeof meta.content === 'string' ? meta.content.trim() : '';
+      }
+
+      function recoveryWasAttempted(buildId) {
+        try {
+          return sessionStorage.getItem(DEPLOYMENT_RECOVERY_KEY) === buildId;
+        } catch (error) {
+          return false;
+        }
+      }
+
+      function markRecoveryAttempted(buildId) {
+        try {
+          sessionStorage.setItem(DEPLOYMENT_RECOVERY_KEY, buildId);
+        } catch (error) {
+          // A blocked sessionStorage should not prevent startup recovery.
+        }
+      }
+
+      function waitForWaitingWorker(registration) {
+        if (registration.waiting) {
+          return Promise.resolve(registration.waiting);
+        }
+        var installingWorker = registration.installing;
+        if (!installingWorker) {
+          return Promise.resolve(null);
+        }
+        return new Promise(function(resolve) {
+          var settled = false;
+          var timeoutId;
+          function finish(worker) {
+            if (settled) {
+              return;
+            }
+            settled = true;
+            window.clearTimeout(timeoutId);
+            installingWorker.removeEventListener('statechange', onStateChange);
+            resolve(worker);
+          }
+          function onStateChange() {
+            if (registration.waiting) {
+              finish(registration.waiting);
+              return;
+            }
+            if (installingWorker.state === 'redundant' || installingWorker.state === 'activated') {
+              finish(null);
+            }
+          }
+          timeoutId = window.setTimeout(function() {
+            finish(registration.waiting);
+          }, WORKER_INSTALL_TIMEOUT_MS);
+          installingWorker.addEventListener('statechange', onStateChange);
+          onStateChange();
+        });
+      }
+
+      function activateWaitingWorker(worker) {
+        return new Promise(function(resolve) {
+          var settled = false;
+          var timeoutId;
+          function finish() {
+            if (settled) {
+              return;
+            }
+            settled = true;
+            window.clearTimeout(timeoutId);
+            navigator.serviceWorker.removeEventListener('controllerchange', finish);
+            resolve();
+          }
+          timeoutId = window.setTimeout(finish, WORKER_ACTIVATION_TIMEOUT_MS);
+          navigator.serviceWorker.addEventListener('controllerchange', finish);
+          worker.postMessage({ type: 'SKIP_WAITING' });
+        });
+      }
+
+      function recoverDeployment(force) {
+        if (deploymentRecoveryPromise) {
+          return deploymentRecoveryPromise;
+        }
+        if (isBootstrapped() || navigator.onLine === false || !('serviceWorker' in navigator)) {
+          window.location.reload();
+          return Promise.resolve();
+        }
+        var buildId = currentBuildId() || window.location.pathname;
+        if (!force && recoveryWasAttempted(buildId)) {
+          return Promise.resolve();
+        }
+        markRecoveryAttempted(buildId);
+        showWarmupFailure(
+          'Updating MyScoutee',
+          'A new app version is being prepared. This page will retry automatically.'
+        );
+        deploymentRecoveryPromise = navigator.serviceWorker.getRegistration(document.baseURI)
+          .then(function(registration) {
+            if (!registration) {
+              return null;
+            }
+            return registration.update()
+              .catch(function() { return registration; })
+              .then(function() { return waitForWaitingWorker(registration); });
+          })
+          .then(function(waitingWorker) {
+            return waitingWorker ? activateWaitingWorker(waitingWorker) : undefined;
+          })
+          .then(function() {
+            window.location.reload();
+          })
+          .catch(function() {
+            deploymentRecoveryPromise = null;
+            showWarmupFailure(
+              'Unable to update',
+              'The new app version is not ready yet. Please wait a moment and retry.'
+            );
+          });
+        return deploymentRecoveryPromise;
+      }
+
       function bindWarmupFallback() {
         var retry = document.querySelector('[data-warmup-retry]');
         if (retry) {
           retry.addEventListener('click', function() {
-            window.location.reload();
+            deploymentRecoveryPromise = null;
+            recoverDeployment(true);
           });
         }
         if (navigator.onLine === false) {
@@ -258,7 +382,7 @@
       });
       window.addEventListener('error', function(event) {
         if (isBootResource(event.target)) {
-          showWarmupFailure(DEFAULT_TITLE, DEFAULT_MESSAGE);
+          recoverDeployment(false);
         }
       }, true);
       window.addEventListener('unhandledrejection', function() {
@@ -290,5 +414,5 @@
       <button class="app-warmup-fallback-retry" type="button" data-warmup-retry hidden>Retry</button>
     </section>
   </app-root>
-<link rel="modulepreload" href="chunk-VTE4LWML.js"><link rel="modulepreload" href="chunk-WTKPS7P4.js"><link rel="modulepreload" href="chunk-VOU6ZJ2S.js"><link rel="modulepreload" href="chunk-HT62GCX7.js"><link rel="modulepreload" href="chunk-VKJEJQXA.js"><link rel="modulepreload" href="chunk-FDRIHC2W.js"><link rel="modulepreload" href="chunk-5PQ6VHW3.js"><link rel="modulepreload" href="chunk-RXJZSKLJ.js"><link rel="modulepreload" href="chunk-VXEBPJ7C.js"><link rel="modulepreload" href="chunk-TSD7LTJ7.js"><script src="main-KKWUKJXK.js" type="module"></script></body>
+<link rel="modulepreload" href="chunk-BBXF7HLC.js"><link rel="modulepreload" href="chunk-WTKPS7P4.js"><link rel="modulepreload" href="chunk-5JSRMFXY.js"><link rel="modulepreload" href="chunk-CTBHZU3Z.js"><link rel="modulepreload" href="chunk-4YDT3QDY.js"><link rel="modulepreload" href="chunk-HRR67MM2.js"><link rel="modulepreload" href="chunk-BUTC63GB.js"><link rel="modulepreload" href="chunk-RXJZSKLJ.js"><link rel="modulepreload" href="chunk-2YOUCLKX.js"><link rel="modulepreload" href="chunk-3EVFRDRA.js"><script src="main-CHCMIP6Y.js" type="module"></script></body>
 </html>
