@@ -148,7 +148,7 @@ export class EventSubeventDefinitionsPanelComponent implements ControlValueAcces
       pageStepMinutes: () => this.definitionTimelineVisibleDurationMinutes(),
       anchorRadius: 0,
       rowCount: 1,
-      rowHeightPx: 92,
+      rowHeightPx: 104,
       minimumLaneDurationMinutes: this.definitionTimelineStepMinutes,
       useItemTemplate: true,
       resolveRange: item => this.definitionTimelineRange(item),
