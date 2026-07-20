@@ -55,8 +55,7 @@ import {
   ActivityMembersService,
   EventsService,
   ExplanationGuideService,
-  RouteDelayService,
-  RouteIntervalSchedulerService
+  RouteDelayService
 } from '../../../shared/core';
 import {
   ActivityEventDetailDTO
@@ -161,7 +160,6 @@ export class EventEditorPopupComponent implements OnInit, OnDestroy {
   private readonly memberMenuStore = inject(MemberMenuStore);
   private readonly explanationGuide = inject(ExplanationGuideService);
   private readonly routeDelay = inject(RouteDelayService);
-  private readonly routeIntervalScheduler = inject(RouteIntervalSchedulerService);
   protected readonly interestOptionGroups = APP_STATIC_DATA.interestOptionGroups;
 
   private openSubscription?: Subscription;
@@ -177,9 +175,6 @@ export class EventEditorPopupComponent implements OnInit, OnDestroy {
   private pricingSlotCatalogCache: ContractTypes.PricingSlotReference[] = [];
   private checkoutReviewFooterSourceItems: readonly AppMenuItem<string>[] | null = null;
   private checkoutReviewFooterMappedItems: readonly AppMenuItem<string, EventEditorMenuContext>[] = [];
-  private stopDraftAutosave: (() => void) | null = null;
-  private lastDraftAutosaveSignature = '';
-  private isDraftAutosavePending = false;
   private eventEditorExplanationContextKey: string | null = null;
   private unregisterEventEditorExplanationContext: (() => void) | null = null;
   private eventDetailLoadSequence = 0;
@@ -210,7 +205,6 @@ export class EventEditorPopupComponent implements OnInit, OnDestroy {
 
       if (!isOpen) {
         this.slotOverrideEditor = null;
-        this.resetDraftAutosaveTracking();
         return;
       }
 
@@ -268,16 +262,12 @@ export class EventEditorPopupComponent implements OnInit, OnDestroy {
       this.eventDetailLoadSequence += 1;
       this.isLoadingEventData.set(false);
       this.resetEditorContext();
-      this.resetDraftAutosaveTracking();
     });
-
-    this.startDraftAutosaveLoop();
   }
 
   ngOnDestroy(): void {
     this.openSubscription?.unsubscribe();
     this.closeSubscription?.unsubscribe();
-    this.stopDraftAutosaveLoop();
     this.clearEventEditorExplanationContext();
   }
 
@@ -1844,7 +1834,7 @@ export class EventEditorPopupComponent implements OnInit, OnDestroy {
     this.eventEditorStore.openEdit(eventDetailDTO);
   }
 
-  private async persistEventDetailDTO(options: { allowIncomplete?: boolean } = {}): Promise<boolean> {
+  private async persistEventDetailDTO(): Promise<boolean> {
     if (this.eventEditorStore.readOnly()) {
       return false;
     }
@@ -1853,7 +1843,7 @@ export class EventEditorPopupComponent implements OnInit, OnDestroy {
     this.normalizeEventSlotTemplates();
     this.syncFirstSubEventLocationFromMainEvent();
     const normalizedCapacity = this.eventDetailDTO.normalizeCapacityRange();
-    if (!options.allowIncomplete && !this.canSaveEventDetailDTO()) {
+    if (!this.canSaveEventDetailDTO()) {
       return false;
     }
 
@@ -1899,86 +1889,11 @@ export class EventEditorPopupComponent implements OnInit, OnDestroy {
         this.isSavePending = false;
         return;
       }
-      this.lastDraftAutosaveSignature = this.buildDraftAutosaveSignature();
       this.isSavePending = false;
       this.eventEditorStore.close();
     } catch {
       this.isSavePending = false;
     }
-  }
-
-  private startDraftAutosaveLoop(): void {
-    this.stopDraftAutosaveLoop();
-    this.stopDraftAutosave = this.routeIntervalScheduler.startInterval('/activities/events/draft-autosave', () => {
-      void this.runDraftAutosaveIfNeeded();
-    });
-  }
-
-  private stopDraftAutosaveLoop(): void {
-    if (!this.stopDraftAutosave) {
-      return;
-    }
-    this.stopDraftAutosave();
-    this.stopDraftAutosave = null;
-  }
-
-  private resetDraftAutosaveTracking(): void {
-    this.lastDraftAutosaveSignature = '';
-    this.isDraftAutosavePending = false;
-  }
-
-  private seedDraftAutosaveSignature(): void {
-    this.lastDraftAutosaveSignature = this.buildDraftAutosaveSignature();
-  }
-
-  private shouldAutosaveDraft(): boolean {
-    if (!this.eventEditorStore.isOpen() || this.eventEditorStore.readOnly() || this.isSavePending || this.isDraftAutosavePending) {
-      return false;
-    }
-    if (this.eventEditorStore.mode() === 'create') {
-      return true;
-    }
-    return this.editorTarget === 'hosting' && this.eventDetailDTO.status === 'DR';
-  }
-
-  private async runDraftAutosaveIfNeeded(): Promise<void> {
-    if (!this.shouldAutosaveDraft()) {
-      return;
-    }
-    const nextSignature = this.buildDraftAutosaveSignature();
-    if (!nextSignature || nextSignature === this.lastDraftAutosaveSignature) {
-      return;
-    }
-    this.isDraftAutosavePending = true;
-    try {
-      const saved = await this.persistEventDetailDTO({ allowIncomplete: true });
-      if (saved) {
-        this.lastDraftAutosaveSignature = this.buildDraftAutosaveSignature();
-      }
-    } finally {
-      this.isDraftAutosavePending = false;
-    }
-  }
-
-  private buildDraftAutosaveSignature(): string {
-    return JSON.stringify({
-      target: this.editorTarget,
-      editorMode: this.eventEditorStore.mode(),
-      readOnly: this.eventEditorStore.readOnly(),
-      editingEventId: this.editingEventId,
-      draftEventId: this.draftEventId,
-      mode: this.eventDetailDTO.mode,
-      form: {
-        ...this.eventDetailDTO,
-        topics: [...this.eventDetailDTO.topics],
-        pricing: PricingBuilder.clonePricingConfig(this.eventDetailDTO.pricing),
-        policiesEnabled: this.eventDetailDTO.policiesEnabled,
-        policies: ActivityEventDetailDTO.normalizePolicies(this.eventDetailDTO.policies),
-        slotTemplates: ActivityEventDetailDTO.normalizeSlotTemplates(this.eventDetailDTO.slotTemplates),
-        subEventDefinitions: ActivityEventDetailDTO.normalizeSubEventDefinitions(this.eventDetailDTO.subEventDefinitions),
-        subEvents: ActivityEventDetailDTO.normalizeSubEvents(this.eventDetailDTO.subEvents)
-      }
-    });
   }
 
   private resetEditorContext(): void {
@@ -2083,7 +1998,6 @@ export class EventEditorPopupComponent implements OnInit, OnDestroy {
     this.eventDetailDTO.mode = dto.mode ?? 'Casual';
     this.normalizeEventDateRange('start');
     this.eventVisibilityReady.set(true);
-    this.seedDraftAutosaveSignature();
   }
 
   private isActivityEventDetailDTO(sourceEvent: ActivityEventDetailDTO | Record<string, unknown>): sourceEvent is ActivityEventDetailDTO {
@@ -2120,7 +2034,6 @@ export class EventEditorPopupComponent implements OnInit, OnDestroy {
 
     this.eventDetailDTO.mode = 'Casual';
     this.eventVisibilityReady.set(true);
-    this.seedDraftAutosaveSignature();
   }
 
   private normalizeEventDateRange(anchor: 'start' | 'end' = 'start'): void {

@@ -233,10 +233,6 @@ export const ROUTE_CONFIG: RouteConfig = {
       demoDelayMs: 1500
     },
     {
-      routePrefix: '/activities/events/draft-autosave',
-      intervalMs: 15000
-    },
-    {
       routePrefix: '/activities/events/explore',
       demoDelayMs: 1500
     },
