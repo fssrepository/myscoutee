@@ -36,6 +36,8 @@ export interface ActivityEventInfoCardMenuConverterOptions {
   hiddenActions?: readonly string[];
 }
 
+export type ActivityEventEditorAction = 'edit' | 'manage' | 'view';
+
 export class ActivityEventInfoCardMenuConverter {
   private static readonly availableActions: readonly string[] = [
     'restore',
@@ -76,12 +78,23 @@ export class ActivityEventInfoCardMenuConverter {
     subject: ActivityEventInfoCardMenuSubject | null | undefined,
     options: Pick<ActivityEventInfoCardMenuConverterOptions, 'activeUserId'> = {}
   ): boolean {
+    return this.eventEditorAction(subject, options) !== 'view';
+  }
+
+  static eventEditorAction(
+    subject: ActivityEventInfoCardMenuSubject | null | undefined,
+    options: Pick<ActivityEventInfoCardMenuConverterOptions, 'activeUserId'> = {}
+  ): ActivityEventEditorAction {
     if (!subject) {
-      return false;
+      return 'view';
     }
     const activeUserId = options.activeUserId ?? '';
-    return this.isActionVisible(subject, 'editEvent', activeUserId)
-      || this.isActionVisible(subject, 'manageEvent', activeUserId);
+    if (this.isActionVisible(subject, 'editEvent', activeUserId)) {
+      return 'edit';
+    }
+    return this.isActionVisible(subject, 'manageEvent', activeUserId)
+      ? 'manage'
+      : 'view';
   }
 
   private static menuItem(

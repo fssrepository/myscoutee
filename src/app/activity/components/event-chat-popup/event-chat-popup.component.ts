@@ -102,6 +102,7 @@ import {
   ActivityChatSingleRowConverter,
   ChatPopupHeaderContextConverter,
   ActivityEventInfoCardMenuConverter,
+  type ActivityEventEditorAction,
   type ActivityEventInfoCardMenuSubject
 } from '../../../shared/ui/converters';
 interface ChatThreadFilters {
@@ -1214,7 +1215,7 @@ export class EventChatPopupComponent implements OnDestroy {
       startAtIso: record?.startAtIso ?? null,
       endAtIso: record?.endAtIso ?? null,
       mode: record?.mode ?? null,
-      canEdit: this.canEditSelectedChatEvent(record, state)
+      editorAction: this.selectedChatEventEditorAction(record, state)
     });
   }
 
@@ -4648,8 +4649,15 @@ export class EventChatPopupComponent implements OnDestroy {
     record: ActivityEventRecord | null,
     state: SelectedChatNavigationState | null
   ): boolean {
+    return this.selectedChatEventEditorAction(record, state) !== 'view';
+  }
+
+  private selectedChatEventEditorAction(
+    record: ActivityEventRecord | null,
+    state: SelectedChatNavigationState | null
+  ): ActivityEventEditorAction {
     const subject = this.selectedChatEventMenuSubject(record, state);
-    return ActivityEventInfoCardMenuConverter.canEditEvent(subject, {
+    return ActivityEventInfoCardMenuConverter.eventEditorAction(subject, {
       activeUserId: this.activeUserId()
     });
   }

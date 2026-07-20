@@ -58,7 +58,8 @@ export {
   activityEventInfoCardMenuConverter,
   type ActivityEventInfoCardMenuContext,
   type ActivityEventInfoCardMenuConverterOptions,
-  type ActivityEventInfoCardMenuSubject
+  type ActivityEventInfoCardMenuSubject,
+  type ActivityEventEditorAction
 } from './activity-event-info-card-menu.converter';
 export {
   ActivitySubEventResourceInfoCardConverter,

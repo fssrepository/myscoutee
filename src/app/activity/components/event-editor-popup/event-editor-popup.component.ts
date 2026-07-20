@@ -41,6 +41,9 @@ import {
   type EventCheckoutDraft
 } from '../../../shared/ui/context/stores/event-checkout-draft.store';
 import {
+  DialogStore
+} from '../../../shared/ui/context/stores/dialog.store';
+import {
   APP_STATIC_DATA
 } from '../../../shared/app-static-data';
 import { environment } from '../../../../environments/environment';
@@ -83,6 +86,7 @@ import {
   IndicatorComponent,
   I18nPipe,
   PopupComponent,
+  type PopupActionEvent,
   type PopupControl,
   type PopupMenuSelectEvent,
   type PopupModel
@@ -101,10 +105,14 @@ import {
   EventSubeventDefinitionsPanelComponent
 } from '../event-subevent-definitions-panel';
 import type * as ActivityContracts from '../../../shared/core/contracts/activity.interface';
+import type { UserMenuCounterDeltasDto } from '../../../shared/core/contracts/user.interface';
 
 import type * as AppConstants from '../../../shared/core/common/constants';
 import { UserProfileStore } from '../../../shared/ui/context/stores/user-profile.store';
-import { ActivityStore } from '../../../shared/ui/context/stores/activity.store';
+import {
+  ActivityStore,
+  type ActivityCounters
+} from '../../../shared/ui/context/stores/activity.store';
 import { MemberMenuStore } from '../../../shared/ui/context/stores/member-menu.store';
 type EventEditorMenuContext =
   | { menu: 'visibility'; visibility: AppConstants.EventVisibility }
@@ -160,6 +168,7 @@ export class EventEditorPopupComponent implements OnInit, OnDestroy {
   private readonly userProfileStore = inject(UserProfileStore);
   private readonly activityStore = inject(ActivityStore);
   private readonly memberMenuStore = inject(MemberMenuStore);
+  private readonly dialogStore = inject(DialogStore);
   private readonly explanationGuide = inject(ExplanationGuideService);
   private readonly routeDelay = inject(RouteDelayService);
   protected readonly interestOptionGroups = APP_STATIC_DATA.interestOptionGroups;
@@ -184,6 +193,7 @@ export class EventEditorPopupComponent implements OnInit, OnDestroy {
   private eventImageUrlsCache: string[] = [];
   protected readonly isLoadingEventData = signal(false);
   protected readonly eventVisibilityReady = signal(false);
+  protected readonly eventPublicationReady = signal(false);
 
   constructor() {
     effect(() => {
@@ -346,11 +356,8 @@ export class EventEditorPopupComponent implements OnInit, OnDestroy {
     if (mode === 'create') {
       return 'event.editor.create';
     }
-    if (readOnly) {
+    if (readOnly || this.isPublishedManageMode()) {
       return 'view.event';
-    }
-    if (this.isPublishedManageMode()) {
-      return 'manage.event';
     }
     return 'edit.event';
   }
@@ -367,7 +374,10 @@ export class EventEditorPopupComponent implements OnInit, OnDestroy {
       headerTone: 'accent',
       bodyLayout: 'fill',
       headerControls: this.eventEditorPopupHeaderControls(),
+      toolbarMobileAlign: 'end',
+      toolbarControls: this.eventEditorPopupToolbarControls(),
       onClose: () => this.close(),
+      onAction: event => this.onEventEditorPopupAction(event),
       onMenuSelect: event => this.onEventEditorMenuSelect(event.itemSelect)
     };
   }
@@ -381,7 +391,7 @@ export class EventEditorPopupComponent implements OnInit, OnDestroy {
     if (presentationSubtitle) {
       return presentationSubtitle;
     }
-    return this.eventEditorStore.readOnly() && this.eventDetailDTO.title
+    return this.eventStructureReadOnly() && this.eventDetailDTO.title
       ? this.eventDetailDTO.title
       : null;
   }
@@ -420,6 +430,32 @@ export class EventEditorPopupComponent implements OnInit, OnDestroy {
       });
     }
     return controls;
+  }
+
+  private eventEditorPopupToolbarControls(): readonly PopupControl<EventEditorMenuContext>[] {
+    if (!this.showEventPublicationAction()) {
+      return [];
+    }
+    return [{
+      id: 'event-editor-publication',
+      align: 'end',
+      label: this.currentSourcePublished ? 'unpublish' : 'publish',
+      icon: this.currentSourcePublished ? 'visibility_off' : 'campaign',
+      ariaLabel: this.currentSourcePublished ? 'unpublish' : 'publish',
+      palette: this.currentSourcePublished ? 'amber' : 'green',
+      disabled: this.eventEditorBodyLoading()
+        || (!this.currentSourcePublished && (!this.canSaveEventDetailDTO() || this.isSavePending))
+    }];
+  }
+
+  private onEventEditorPopupAction(event: PopupActionEvent): void {
+    if (event.action.id !== 'event-editor-publication') {
+      return;
+    }
+    this.requestEventPublicationChange(
+      this.currentSourcePublished ? 'unpublish' : 'publish',
+      event.sourceEvent
+    );
   }
 
   protected isPublishedManageMode(): boolean {
@@ -642,6 +678,14 @@ export class EventEditorPopupComponent implements OnInit, OnDestroy {
 
   protected showEventEditorSaveAction(): boolean {
     return !this.isLoadingEventData() && !this.eventStructureReadOnly();
+  }
+
+  protected showEventPublicationAction(): boolean {
+    return this.eventEditorStore.mode() === 'edit'
+      && !this.eventEditorStore.readOnly()
+      && this.eventPublicationReady()
+      && !this.isGeneratedSlotInstance()
+      && Boolean(this.currentEventIdentity());
   }
 
   protected eventCapacityMaxMinimum(): number {
@@ -1108,6 +1152,154 @@ export class EventEditorPopupComponent implements OnInit, OnDestroy {
     if (event.context.menu === 'topics') {
       this.toggleEventTopic(event.context.topic, event.action);
     }
+  }
+
+  private requestEventPublicationChange(
+    action: 'publish' | 'unpublish',
+    event?: Event
+  ): void {
+    event?.preventDefault();
+    event?.stopPropagation();
+    const publishing = action === 'publish';
+    if (!this.showEventPublicationAction()
+      || publishing === this.currentSourcePublished
+      || (publishing && !this.canSaveEventDetailDTO())) {
+      return;
+    }
+    this.dialogStore.open({
+      title: publishing
+        ? 'event.editor.publish.question'
+        : 'event.editor.unpublish.question',
+      message: this.eventDetailDTO.title,
+      warningMessage: publishing
+        ? 'event.editor.publish.warning'
+        : 'event.editor.unpublish.warning',
+      cancelLabel: 'cancel',
+      confirmLabel: publishing ? 'publish' : 'unpublish',
+      busyConfirmLabel: publishing ? 'publishing' : 'unpublishing',
+      confirmTone: publishing ? 'accent' : 'warning',
+      confirmPalette: publishing ? 'green' : 'orange',
+      failureMessage: publishing
+        ? 'event.editor.publish.failure'
+        : 'event.editor.unpublish.failure',
+      onConfirm: () => this.confirmEventPublicationChange(publishing)
+    });
+  }
+
+  private async confirmEventPublicationChange(publishing: boolean): Promise<void> {
+    const activeUserId = this.activeUserId();
+    const eventId = this.currentEventIdentity();
+    if (!activeUserId || !eventId) {
+      this.showEventPublicationFailure(publishing);
+      return;
+    }
+
+    const counterDelta: UserMenuCounterDeltasDto = {
+      event: { drafts: publishing ? -1 : 1 }
+    };
+    const counterBase = this.eventPublicationCounterBase();
+    if (publishing) {
+      await this.eventsService.publishItem(activeUserId, eventId, { counterDelta });
+    } else {
+      await this.eventsService.unpublishItem(activeUserId, eventId, { counterDelta });
+    }
+
+    const status: ActivityContracts.ActivityEventStatus = publishing ? 'A' : 'DR';
+    this.currentSourcePublished = publishing;
+    this.publishedCapacityMaxFloor = publishing
+      ? Math.max(0, Number(this.eventDetailDTO.capacityMax ?? 0) || 0)
+      : 0;
+    this.eventDetailDTO.status = status;
+    this.activitiesStore.emitActivityEventSaveResult(this.eventPublicationSync(status));
+    this.activityStore.patchUserCounterDeltas(
+      activeUserId,
+      counterDelta,
+      counterBase
+    );
+    this.dialogStore.close();
+    await this.reloadEventEditorAfterPublication(eventId, status);
+  }
+
+  private showEventPublicationFailure(publishing: boolean): void {
+    const failureMessage = publishing
+      ? 'event.editor.publish.failure'
+      : 'event.editor.unpublish.failure';
+    this.dialogStore.openInfo(failureMessage, {
+      title: 'error',
+      confirmLabel: 'OK',
+      confirmTone: 'danger',
+      confirmPalette: 'danger'
+    });
+  }
+
+  private async reloadEventEditorAfterPublication(
+    eventId: string,
+    status: ActivityContracts.ActivityEventStatus
+  ): Promise<void> {
+    const activeUserId = this.activeUserId();
+    if (!activeUserId || !eventId || !this.eventEditorStore.isOpen()) {
+      return;
+    }
+    const loadSequence = ++this.eventDetailLoadSequence;
+    this.isLoadingEventData.set(true);
+    this.eventVisibilityReady.set(false);
+    try {
+      const eventDetailDTO = await this.routeDelay.withRequestTimeout(
+        EventEditorPopupComponent.EVENTS_ROUTE,
+        this.eventsService.loadEventDetailById(activeUserId, eventId),
+        'Event editor reload timed out.'
+      );
+      if (!this.isCurrentEventDetailLoad(loadSequence, eventId)) {
+        return;
+      }
+      if (!eventDetailDTO) {
+        this.isLoadingEventData.set(false);
+        this.eventVisibilityReady.set(true);
+        return;
+      }
+      eventDetailDTO.status = status;
+      this.editorTarget = this.eventDetailDTOBelongsToActiveAdmin(eventDetailDTO)
+        ? 'hosting'
+        : this.editorTarget;
+      this.editingEventId = eventDetailDTO.id;
+      this.openEventDetailDTO(eventDetailDTO, false, this.editorTarget);
+      this.isLoadingEventData.set(false);
+    } catch {
+      if (this.isCurrentEventDetailLoad(loadSequence, eventId)) {
+        this.isLoadingEventData.set(false);
+        this.eventVisibilityReady.set(true);
+      }
+    }
+  }
+
+  private eventPublicationCounterBase(): Partial<ActivityCounters> {
+    const counters = this.userProfileStore.activeUserProfile()?.activities?.event;
+    return {
+      event: {
+        all: Math.max(0, Math.trunc(Number(counters?.all) || 0)),
+        active: Math.max(0, Math.trunc(Number(counters?.active) || 0)),
+        pending: Math.max(0, Math.trunc(Number(counters?.pending) || 0)),
+        invitations: Math.max(0, Math.trunc(Number(counters?.invitations) || 0)),
+        hosting: Math.max(0, Math.trunc(Number(counters?.hosting) || 0)),
+        drafts: Math.max(0, Math.trunc(Number(counters?.drafts) || 0)),
+        trash: Math.max(0, Math.trunc(Number(counters?.trash) || 0))
+      }
+    };
+  }
+
+  private eventPublicationSync(status: ActivityContracts.ActivityEventStatus): ActivityContracts.ActivityEventDTO {
+    const dto = this.eventDetailDTO;
+    return {
+      ...dto,
+      id: this.currentEventIdentity(),
+      status,
+      adminIds: [...dto.adminIds],
+      acceptedMemberUserIds: [...dto.acceptedMemberUserIds],
+      pendingMemberUserIds: [...dto.pendingMemberUserIds],
+      invitedMemberUserIds: [...dto.invitedMemberUserIds],
+      pendingRequestMemberUserIds: [...dto.pendingRequestMemberUserIds],
+      subEventDefinitions: ActivityEventDetailDTO.normalizeSubEventDefinitions(dto.subEventDefinitions)
+    };
   }
 
   private toggleEventTopic(topic: string, action: AppMenuItemSelectEvent<string, EventEditorMenuContext>['action']): void {
@@ -1836,9 +2028,9 @@ export class EventEditorPopupComponent implements OnInit, OnDestroy {
     this.eventEditorStore.openEdit(eventDetailDTO);
   }
 
-  private async persistEventDetailDTO(): Promise<boolean> {
+  private async persistEventDetailDTO(): Promise<ActivityContracts.ActivityEventDTO | null> {
     if (this.eventEditorStore.readOnly()) {
-      return false;
+      return null;
     }
 
     this.normalizeEventDateRange('start');
@@ -1846,7 +2038,7 @@ export class EventEditorPopupComponent implements OnInit, OnDestroy {
     this.syncFirstSubEventLocationFromMainEvent();
     const normalizedCapacity = this.eventDetailDTO.normalizeCapacityRange();
     if (!this.canSaveEventDetailDTO()) {
-      return false;
+      return null;
     }
 
     const eventId = this.eventDetailDTO.id.trim()
@@ -1876,7 +2068,7 @@ export class EventEditorPopupComponent implements OnInit, OnDestroy {
       }
     }
     this.activitiesStore.emitActivityEventSaveResult(displaySync);
-    return true;
+    return displaySync;
   }
 
   private buildCreatedEventEditorId(target: ContractTypes.EventEditorTarget, timestampMs = Date.now()): string {
@@ -1907,6 +2099,7 @@ export class EventEditorPopupComponent implements OnInit, OnDestroy {
     this.currentMemberSummary = null;
     this.lastHandledActivityMembersSyncMs = 0;
     this.eventVisibilityReady.set(false);
+    this.eventPublicationReady.set(false);
   }
 
   private setEventEditorExplanationContext(contextKey: string | null): void {
@@ -2000,6 +2193,7 @@ export class EventEditorPopupComponent implements OnInit, OnDestroy {
     this.eventDetailDTO.mode = dto.mode ?? 'Casual';
     this.normalizeEventDateRange('start');
     this.eventVisibilityReady.set(true);
+    this.eventPublicationReady.set(true);
   }
 
   private isActivityEventDetailDTO(sourceEvent: ActivityEventDetailDTO | Record<string, unknown>): sourceEvent is ActivityEventDetailDTO {

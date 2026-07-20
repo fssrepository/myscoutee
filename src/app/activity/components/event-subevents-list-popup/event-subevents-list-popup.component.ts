@@ -70,7 +70,7 @@ import {
 
 type EventSubeventsListView = 'day' | 'week' | 'month';
 type EventSubeventsListOrder = 'upcoming' | 'past';
-type EventSubeventsListContextAction = 'participantFilter' | 'edit' | 'view' | 'members';
+type EventSubeventsListContextAction = 'participantFilter' | 'edit' | 'manage' | 'view' | 'members';
 type EventSubeventsListPopupMenuContext =
   | { menu: 'order'; order: EventSubeventsListOrder }
   | { menu: 'view'; view: EventSubeventsListView }
@@ -327,6 +327,13 @@ export class EventSubeventsListPopupComponent {
       if (!savedEventId || savedEventId !== openEventId) {
         return;
       }
+      if (request.canEdit) {
+        if (sync.status === 'DR') {
+          this.eventSubeventsStore.updateEventSubeventsEditorAction(openEventId, 'edit');
+        } else if (sync.status === 'A') {
+          this.eventSubeventsStore.updateEventSubeventsEditorAction(openEventId, 'manage');
+        }
+      }
       this.invalidateLoadedRuntime();
     });
   }
@@ -531,7 +538,8 @@ export class EventSubeventsListPopupComponent {
   }
 
   protected contextMenuItems(): readonly AppMenuItem<string, EventSubeventsListPopupMenuContext>[] {
-    const canEdit = this.eventSubeventsStore.eventSubeventsListPopup()?.canEdit === true;
+    const editorAction = this.eventSubeventsStore.eventSubeventsListPopup()?.editorAction ?? 'view';
+    const canEditStructure = editorAction === 'edit';
     const memberCount = this.eventMembersCount();
     return [
       {
@@ -547,13 +555,13 @@ export class EventSubeventsListPopupComponent {
         context: { menu: 'context', action: 'participantFilter' }
       },
       {
-        id: canEdit ? 'edit' : 'view',
-        label: canEdit ? 'edit' : 'view',
-        icon: canEdit ? 'edit' : 'visibility',
-        palette: canEdit ? 'amber' : 'teal',
+        id: editorAction,
+        label: canEditStructure ? 'edit' : 'view',
+        icon: canEditStructure ? 'edit' : 'visibility',
+        palette: canEditStructure ? 'amber' : 'teal',
         surface: 'tinted',
         layout: 'action',
-        context: { menu: 'context', action: canEdit ? 'edit' : 'view' }
+        context: { menu: 'context', action: editorAction }
       },
       {
         id: 'members',
@@ -591,12 +599,11 @@ export class EventSubeventsListPopupComponent {
     if (!request) {
       return;
     }
-    const canEdit = request.canEdit === true;
     this.memberMenuStore.requestActivitiesNavigation({
       type: 'eventEditor',
       eventId: request.eventId,
       target: request.target ?? 'events',
-      readOnly: !canEdit
+      readOnly: request.editorAction === 'view'
     });
   }
 

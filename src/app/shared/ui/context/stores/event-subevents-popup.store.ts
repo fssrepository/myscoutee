@@ -2,6 +2,8 @@ import { Injectable, Type, signal } from '@angular/core';
 
 import type { EventEditorTarget, EventMode, EventTournamentStageDTO } from '../../../core/contracts/event.interface';
 
+export type EventSubeventsEditorAction = 'edit' | 'manage' | 'view';
+
 export interface EventSubeventsListPopupRequest {
   updatedMs: number;
   host: 'activities' | 'chat' | 'eventExplore';
@@ -12,6 +14,7 @@ export interface EventSubeventsListPopupRequest {
   startAtIso: string | null;
   endAtIso: string | null;
   mode: EventMode | null;
+  editorAction: EventSubeventsEditorAction;
   canEdit: boolean;
 }
 
@@ -49,12 +52,20 @@ export class EventSubeventsPopupStore {
     startAtIso?: string | null;
     endAtIso?: string | null;
     mode?: EventMode | null;
+    editorAction?: EventSubeventsEditorAction;
     canEdit?: boolean;
   }): void {
     const eventId = `${payload.eventId ?? ''}`.trim();
     if (!eventId) {
       return;
     }
+    const editorAction = payload.editorAction === 'manage'
+      || payload.editorAction === 'edit'
+      || payload.editorAction === 'view'
+      ? payload.editorAction
+      : payload.canEdit === true
+        ? 'edit'
+        : 'view';
     this.eventSubeventsListPopupRef.set({
       updatedMs: Date.now(),
       host: payload.host ?? 'activities',
@@ -69,12 +80,28 @@ export class EventSubeventsPopupStore {
         : payload.mode === 'Casual'
           ? 'Casual'
           : null,
-      canEdit: payload.canEdit === true
+      editorAction,
+      canEdit: editorAction !== 'view'
     });
   }
 
   closeEventSubeventsListPopup(): void {
     this.eventSubeventsListPopupRef.set(null);
+  }
+
+  updateEventSubeventsEditorAction(eventId: string, editorAction: EventSubeventsEditorAction): void {
+    const normalizedEventId = eventId.trim();
+    this.eventSubeventsListPopupRef.update(request => {
+      if (!request || request.eventId !== normalizedEventId || request.editorAction === editorAction) {
+        return request;
+      }
+      return {
+        ...request,
+        updatedMs: Date.now(),
+        editorAction,
+        canEdit: editorAction !== 'view'
+      };
+    });
   }
 
   openEventTournamentGroupsPopup(payload: {

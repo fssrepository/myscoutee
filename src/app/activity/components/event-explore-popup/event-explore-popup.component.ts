@@ -792,7 +792,7 @@ export class EventExplorePopupComponent {
       startAtIso: record.startAtIso,
       endAtIso: record.endAtIso,
       mode: record.mode ?? null,
-      canEdit: false
+      editorAction: 'view'
     });
     this.cdr.markForCheck();
   }

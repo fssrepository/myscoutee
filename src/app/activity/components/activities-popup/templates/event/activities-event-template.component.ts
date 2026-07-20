@@ -34,6 +34,7 @@ import {
 } from '../../../../../shared/ui';
 import {
   ActivityEventInfoCardMenuConverter,
+  type ActivityEventEditorAction,
   type ActivityEventInfoCardMenuSubject
 } from '../../../../../shared/ui/converters';
 
@@ -464,12 +465,12 @@ export class ActivitiesEventsController {
       startAtIso: this.activityRowStartAt(row),
       endAtIso: this.activityRowEndAt(row),
       mode: dto?.mode ?? null,
-      canEdit: this.isActivityInvitationRow(row) ? false : this.canEditActivityEvent(row)
+      editorAction: this.isActivityInvitationRow(row) ? 'view' : this.activityEventEditorAction(row)
     });
   }
 
-  private canEditActivityEvent(row: InfoCardData): boolean {
-    return ActivityEventInfoCardMenuConverter.canEditEvent(this.activityEventMenuSubjectFromRow(row), {
+  private activityEventEditorAction(row: InfoCardData): ActivityEventEditorAction {
+    return ActivityEventInfoCardMenuConverter.eventEditorAction(this.activityEventMenuSubjectFromRow(row), {
       activeUserId: this.activeUser.id
     });
   }

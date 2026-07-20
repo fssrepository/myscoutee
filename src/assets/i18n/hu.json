@@ -1,6 +1,6 @@
 {
   "lang": "hu",
-  "version": "2026.07.20.hu.3",
+  "version": "2026.07.20.hu.4",
   "messages": {
     "about": "Rólam",
     "accommodation": "Szállás",
@@ -1940,6 +1940,12 @@
     "event.checkout.can.continue": "Folytatható",
     "event.editor.create": "Esemény létrehozása",
     "event.editor.save.aria": "Esemény mentése",
+    "event.editor.publish.question": "Közzéteszed az eseményt?",
+    "event.editor.publish.warning": "A legutóbb mentett piszkozat lesz közzétéve, és az esemény adatai zárolva maradnak a közzététel visszavonásáig.",
+    "event.editor.publish.failure": "Nem sikerült közzétenni az eseményt.",
+    "event.editor.unpublish.question": "Visszavonod az esemény közzétételét?",
+    "event.editor.unpublish.warning": "A közzététel visszavonása elrejti az eseményt, és feloldja az adatait szerkesztésre.",
+    "event.editor.unpublish.failure": "Nem sikerült visszavonni az esemény közzétételét.",
     "event.editor.image.aria": "Esemény képe",
     "event.editor.visibility.open.aria": "Láthatóság választó megnyitása",
     "event.editor.topics.open.aria": "Témák megnyitása",
