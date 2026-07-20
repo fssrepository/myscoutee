@@ -10,6 +10,7 @@ import { MatTimepicker, MatTimepickerModule } from '@angular/material/timepicker
 
 import { AppUtils } from '../../../../../../app-utils';
 import type { DateRangeDto } from '../../../../../../core/contracts/date.interface';
+import { I18nPipe } from '../../../../../pipes';
 
 export type DateInputMode = 'single' | 'range' | 'time';
 export type DateInputPrecision = 'date' | 'minute';
@@ -109,7 +110,8 @@ export interface DateInputModel {
     MatIconModule,
     MatInputModule,
     MatNativeDateModule,
-    MatTimepickerModule
+    MatTimepickerModule,
+    I18nPipe
   ],
   templateUrl: './date-input.component.html',
   styleUrl: './date-input.component.scss',
@@ -131,18 +133,18 @@ export class DateInputComponent implements ControlValueAccessor {
   }
 
   private static readonly horoscopeMetaBySign: Record<string, DateInputMetaValue> = {
-    Aries: { label: 'Kos', icon: '♈', palette: 'aries' },
-    Taurus: { label: 'Bika', icon: '♉', palette: 'taurus' },
-    Gemini: { label: 'Ikrek', icon: '♊', palette: 'gemini' },
-    Cancer: { label: 'Rák', icon: '♋', palette: 'cancer' },
-    Leo: { label: 'Oroszlán', icon: '♌', palette: 'leo' },
-    Virgo: { label: 'Szűz', icon: '♍', palette: 'virgo' },
-    Libra: { label: 'Mérleg', icon: '♎', palette: 'libra' },
-    Scorpio: { label: 'Skorpió', icon: '♏', palette: 'scorpio' },
-    Sagittarius: { label: 'Nyilas', icon: '♐', palette: 'sagittarius' },
-    Capricorn: { label: 'Bak', icon: '♑', palette: 'capricorn' },
-    Aquarius: { label: 'Vízöntő', icon: '♒', palette: 'aquarius' },
-    Pisces: { label: 'Halak', icon: '♓', palette: 'pisces' }
+    Aries: { label: 'aries', icon: '♈', palette: 'aries' },
+    Taurus: { label: 'taurus', icon: '♉', palette: 'taurus' },
+    Gemini: { label: 'gemini', icon: '♊', palette: 'gemini' },
+    Cancer: { label: 'cancer', icon: '♋', palette: 'cancer' },
+    Leo: { label: 'leo', icon: '♌', palette: 'leo' },
+    Virgo: { label: 'virgo', icon: '♍', palette: 'virgo' },
+    Libra: { label: 'libra', icon: '♎', palette: 'libra' },
+    Scorpio: { label: 'scorpio', icon: '♏', palette: 'scorpio' },
+    Sagittarius: { label: 'sagittarius', icon: '♐', palette: 'sagittarius' },
+    Capricorn: { label: 'capricorn', icon: '♑', palette: 'capricorn' },
+    Aquarius: { label: 'aquarius', icon: '♒', palette: 'aquarius' },
+    Pisces: { label: 'pisces', icon: '♓', palette: 'pisces' }
   };
 
   protected singleDateValue: Date | null = null;

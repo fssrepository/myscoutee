@@ -283,7 +283,7 @@ export class EventCheckoutPopupComponent {
       return this.totalAmount() > 0 ? 'Accept Invitation & Pay' : 'Accept Invitation';
     }
     if (dialog.readOnlySummary) {
-      return 'Fizetési összegzés';
+      return 'event.checkout.payment.summary';
     }
     if (this.isWaitingListSelection()) {
       return 'Join Waiting List';
@@ -1111,7 +1111,7 @@ export class EventCheckoutPopupComponent {
     if (status === 'pay') {
       return 'Cancel payment';
     }
-    return 'Eltávolítás';
+    return 'remove';
   }
 
   private checkoutRemoveItemPalette(status: string | null | undefined): AppMenuPalette {
@@ -1438,17 +1438,17 @@ export class EventCheckoutPopupComponent {
       return 'Update';
     }
     if (this.paymentStep) {
-      return 'Fizetés';
+      return 'payment';
     }
     if (this.checkoutPaymentReviewStarted()) {
-      return this.hasCheckoutSelectionChanges() ? 'Frissítés' : 'Tovább';
+      return this.hasCheckoutSelectionChanges() ? 'update' : 'continue';
     }
     const pendingReason = this.checkoutActionPendingReason();
     if (pendingReason) {
       if (this.hasCheckoutSelectionChanges()) {
         return 'Update';
       }
-      return pendingReason === 'waitlist' ? 'Várólistán' : 'Jóváhagyásra vár';
+      return pendingReason === 'waitlist' ? 'waiting.list' : 'event.editor.checkout.waiting.approval';
     }
     return 'Join';
   }
@@ -1462,10 +1462,10 @@ export class EventCheckoutPopupComponent {
       return 'Updating...';
     }
     if (this.paymentStep) {
-      return 'Fizetés...';
+      return 'event.checkout.paying';
     }
     if (this.checkoutPaymentReviewStarted()) {
-      return this.hasCheckoutSelectionChanges() ? 'Frissítés...' : 'Tovább...';
+      return this.hasCheckoutSelectionChanges() ? 'updating' : 'continuing';
     }
     const pendingReason = this.checkoutActionPendingReason();
     if (pendingReason) {
@@ -1580,16 +1580,16 @@ export class EventCheckoutPopupComponent {
       return 'Update';
     }
     if (this.paymentStep) {
-      return 'Fizetés';
+      return 'payment';
     }
     if (state.paymentReviewStarted) {
-      return state.selectionChanged ? 'Frissítés' : 'Tovább';
+      return state.selectionChanged ? 'update' : 'continue';
     }
     if (state.pendingReason) {
       if (state.selectionChanged) {
         return 'Update';
       }
-      return state.pendingReason === 'waitlist' ? 'Várólistán' : 'Jóváhagyásra vár';
+      return state.pendingReason === 'waitlist' ? 'waiting.list' : 'event.editor.checkout.waiting.approval';
     }
     return 'Join';
   }
@@ -1602,10 +1602,10 @@ export class EventCheckoutPopupComponent {
       return 'Updating...';
     }
     if (this.paymentStep) {
-      return 'Fizetés...';
+      return 'event.checkout.paying';
     }
     if (state.paymentReviewStarted) {
-      return state.selectionChanged ? 'Frissítés...' : 'Tovább...';
+      return state.selectionChanged ? 'updating' : 'continuing';
     }
     if (state.pendingReason) {
       return state.selectionChanged ? 'Updating...' : 'Continuing...';

@@ -454,13 +454,13 @@ export class EventTournamentGroupsPopupComponent {
       actionItems.push(
         {
           id: 'edit-group',
-          label: 'Szerkesztés',
+          label: 'edit',
           icon: 'edit',
           context: { ...contextBase, action: 'edit-group' }
         },
         {
           id: 'delete-group',
-          label: 'Törlés',
+          label: 'delete',
           icon: 'delete',
           palette: 'danger',
           context: { ...contextBase, action: 'delete-group' }

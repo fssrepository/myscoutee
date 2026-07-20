@@ -81,6 +81,7 @@ import {
   type PricingEditorConfig,
   type PricingEditorRuntimePreview,
   IndicatorComponent,
+  I18nPipe,
   PopupComponent,
   type PopupControl,
   type PopupMenuSelectEvent,
@@ -143,6 +144,7 @@ interface SlotOverrideEditorState {
     EventSubeventDefinitionsPanelComponent,
     PricingEditorInputComponent,
     IndicatorComponent,
+    I18nPipe,
     PopupComponent
   ],
   templateUrl: './event-editor-popup.component.html',
@@ -304,8 +306,8 @@ export class EventEditorPopupComponent implements OnInit, OnDestroy {
       mode: 'range',
       precision: 'minute',
       range: {
-        start: { label: 'Start' },
-        end: { label: 'End' },
+        start: { label: 'start' },
+        end: { label: 'end' },
         allowEndBeforeStart: true
       },
       readOnly: this.eventStructureReadOnly()
@@ -313,11 +315,11 @@ export class EventEditorPopupComponent implements OnInit, OnDestroy {
   }
 
   protected readonly eventLocationInputConfig: LocationInputConfig = {
-    label: 'Location',
-    placeholder: 'Event route location',
+    label: 'location',
+    placeholder: 'event.editor.location.placeholder',
     routeStops: () => this.eventLocationRouteStops(),
     mapMode: 'auto',
-    mapAriaLabel: 'Open event route on map'
+    mapAriaLabel: 'event.editor.location.map.aria'
   };
 
   close(): void {
@@ -342,15 +344,15 @@ export class EventEditorPopupComponent implements OnInit, OnDestroy {
     const readOnly = this.eventEditorStore.readOnly();
 
     if (mode === 'create') {
-      return 'Create Event';
+      return 'event.editor.create';
     }
     if (readOnly) {
-      return 'View Event';
+      return 'view.event';
     }
     if (this.isPublishedManageMode()) {
-      return 'Manage Event';
+      return 'manage.event';
     }
-    return 'Edit Event';
+    return 'edit.event';
   }
 
   protected eventEditorPopupModel(): PopupModel<EventEditorMenuContext> {
@@ -359,7 +361,7 @@ export class EventEditorPopupComponent implements OnInit, OnDestroy {
       title,
       subtitle: this.eventEditorPopupSubtitle(),
       ariaLabel: title,
-      closeAriaLabel: 'Close',
+      closeAriaLabel: 'close',
       size: 'wide',
       height: 'full',
       headerTone: 'accent',
@@ -575,7 +577,7 @@ export class EventEditorPopupComponent implements OnInit, OnDestroy {
       rows: this.checkoutBasketPricingSummaryRows(),
       totalAmount: items.length > 0 ? this.checkoutBasketTotalAmount() : 0,
       currency: this.checkoutBasketCurrency(),
-      emptyLabel: items.length === 0 ? 'No selected checkout items yet.' : null
+      emptyLabel: items.length === 0 ? 'event.editor.basket.no.selected.items' : null
     };
   }
 
@@ -811,7 +813,7 @@ export class EventEditorPopupComponent implements OnInit, OnDestroy {
       kind: 'action',
       palette: canSave || this.isSavePending ? 'success' : 'danger',
       disabled: !canSave || this.isSavePending,
-      ariaLabel: 'Save event',
+      ariaLabel: 'event.editor.save.aria',
       progress: this.isSavePending
         ? {
             state: 'loading',
@@ -834,7 +836,7 @@ export class EventEditorPopupComponent implements OnInit, OnDestroy {
     return {
       label: this.eventDetailDTO.visibility,
       icon: this.getVisibilityIcon(this.eventDetailDTO.visibility),
-      ariaLabel: 'Open visibility selector',
+      ariaLabel: 'event.editor.visibility.open.aria',
       palette: this.eventVisibilityPalette(this.eventDetailDTO.visibility),
       disabled: this.eventStructureReadOnly(),
       layout: 'pill'
@@ -873,7 +875,7 @@ export class EventEditorPopupComponent implements OnInit, OnDestroy {
       },
       {
         id: 'event-topics',
-        label: 'Topics',
+        label: 'topics',
         icon: 'sell',
         kind: 'select-trigger',
         layout: 'big',
@@ -883,7 +885,7 @@ export class EventEditorPopupComponent implements OnInit, OnDestroy {
         disabled: this.eventStructureReadOnly(),
         closeOnSelect: false,
         filterable: true,
-        ariaLabel: 'Open topics',
+        ariaLabel: 'event.editor.topics.open.aria',
         model: this.eventTopicsMenuModel()
       },
       {
@@ -942,7 +944,7 @@ export class EventEditorPopupComponent implements OnInit, OnDestroy {
       itemLabel: topic => this.eventTopicLabel(topic),
       removeAriaLabel: topic => `Remove ${this.eventTopicLabel(topic)}`,
       summary: {
-        emptyLabel: 'Select topics',
+        emptyLabel: 'event.editor.topics.select',
         maxLabels: 2,
         counter: 'overflow'
       }
@@ -988,8 +990,8 @@ export class EventEditorPopupComponent implements OnInit, OnDestroy {
 
   eventBlindModeDescription(mode: string): string {
     return ActivityEventDetailDTO.normalizeBlindMode(mode) === 'Blind Event'
-      ? 'Attendees won\'t see each other before the event.'
-      : 'Attendees can preview each other before the event.';
+      ? 'event.editor.blind.enabled.description'
+      : 'event.editor.blind.disabled.description';
   }
 
   eventAutoInviterIcon(enabled: boolean): string {
@@ -997,13 +999,13 @@ export class EventEditorPopupComponent implements OnInit, OnDestroy {
   }
 
   eventAutoInviterLabel(enabled: boolean): string {
-    return enabled ? 'Auto Inviter On' : 'Auto Inviter Off';
+    return enabled ? 'event.editor.auto.inviter.on' : 'event.editor.auto.inviter.off';
   }
 
   eventAutoInviterDescription(enabled: boolean): string {
     return enabled
-      ? 'Invites people by matching mutual preferences.'
-      : 'Manual invites only.';
+      ? 'event.editor.auto.inviter.enabled.description'
+      : 'event.editor.auto.inviter.disabled.description';
   }
 
   eventTicketingIcon(enabled: boolean): string {
@@ -1011,13 +1013,13 @@ export class EventEditorPopupComponent implements OnInit, OnDestroy {
   }
 
   eventTicketingLabel(enabled: boolean): string {
-    return enabled ? 'Ticketing On' : 'Ticketing Off';
+    return enabled ? 'event.editor.ticketing.on' : 'event.editor.ticketing.off';
   }
 
   eventTicketingDescription(enabled: boolean): string {
     return enabled
-      ? 'QR attendee check-in is enabled.'
-      : 'No QR check-in scanning.';
+      ? 'event.editor.ticketing.enabled.description'
+      : 'event.editor.ticketing.disabled.description';
   }
 
   eventApprovalRequiredIcon(enabled: boolean): string {
@@ -1025,13 +1027,13 @@ export class EventEditorPopupComponent implements OnInit, OnDestroy {
   }
 
   eventApprovalRequiredLabel(enabled: boolean): string {
-    return enabled ? 'Auto approve Off' : 'Auto approve On';
+    return enabled ? 'event.editor.auto.approve.off' : 'event.editor.auto.approve.on';
   }
 
   eventApprovalRequiredDescription(enabled: boolean): string {
     return enabled
-      ? 'Join requests wait for event admin approval.'
-      : 'Confirmed bookings can continue without admin approval.';
+      ? 'event.editor.approval.required.description'
+      : 'event.editor.approval.automatic.description';
   }
 
   protected eventEditorCheckoutDraft(): EventCheckoutDraft | null {
@@ -1149,11 +1151,11 @@ export class EventEditorPopupComponent implements OnInit, OnDestroy {
 
   private eventEditorCheckoutStatusLabel(draft: EventCheckoutDraft): string {
     if (this.eventEditorCanContinueCheckoutDraft(draft)) {
-      return 'Folytatás';
+      return 'continue';
     }
     return draft.pendingReason === 'waitlist'
-      ? 'Helyre vár'
-      : 'Jóváhagyásra vár';
+      ? 'event.editor.checkout.waiting.place'
+      : 'event.editor.checkout.waiting.approval';
   }
 
   private eventEditorCheckoutStatusIcon(draft: EventCheckoutDraft): string {
@@ -1258,7 +1260,7 @@ export class EventEditorPopupComponent implements OnInit, OnDestroy {
       title,
       subtitle: this.slotOverridePopupSubtitle(),
       ariaLabel: title,
-      closeAriaLabel: 'Close override editor',
+      closeAriaLabel: 'event.editor.slot.override.close.aria',
       closeOnBackdrop: true,
       size: 'wide',
       height: 'full',
@@ -1314,7 +1316,7 @@ export class EventEditorPopupComponent implements OnInit, OnDestroy {
 
   protected slotOverridePopupTitle(): string {
     const editor = this.slotOverrideEditor;
-    return editor ? `Override ${this.slotOverrideSlotLabel(editor)}` : 'Override Slot';
+    return editor ? `Override ${this.slotOverrideSlotLabel(editor)}` : 'event.editor.slot.override.title';
   }
 
   protected slotOverridePopupSubtitle(): string {
@@ -1348,7 +1350,7 @@ export class EventEditorPopupComponent implements OnInit, OnDestroy {
   protected slotOverrideOccurrenceMenuTrigger(): AppMenuTrigger {
     const editor = this.slotOverrideEditor;
     return {
-      label: editor ? this.slotOverrideSummaryLabel(editor.selectedStartAt) : 'Select slot date',
+      label: editor ? this.slotOverrideSummaryLabel(editor.selectedStartAt) : 'event.editor.slot.select.date',
       icon: 'event_available',
       palette: 'violet',
       layout: 'field',
@@ -1381,7 +1383,7 @@ export class EventEditorPopupComponent implements OnInit, OnDestroy {
       {
         id: 'prev',
         icon: 'chevron_left',
-        ariaLabel: 'Previous slot dates',
+        ariaLabel: 'event.editor.slot.previous.dates.aria',
         palette: 'blue',
         disabled: editor.page <= 0
       }
@@ -1398,7 +1400,7 @@ export class EventEditorPopupComponent implements OnInit, OnDestroy {
       {
         id: 'next',
         icon: 'chevron_right',
-        ariaLabel: 'Next slot dates',
+        ariaLabel: 'event.editor.slot.next.dates.aria',
         palette: 'blue',
         disabled: editor.page >= pageCount - 1
       }
@@ -1458,7 +1460,7 @@ export class EventEditorPopupComponent implements OnInit, OnDestroy {
   private slotOverrideSummaryLabel(startAtIso: string): string {
     const startAt = this.parseEventEditorDateValue(startAtIso);
     if (!startAt) {
-      return 'Slot date pending';
+      return 'event.editor.slot.date.pending';
     }
     return startAt.toLocaleString('en-US', {
       month: 'short',
@@ -1472,7 +1474,7 @@ export class EventEditorPopupComponent implements OnInit, OnDestroy {
   private slotOverrideRuleBadgeLabel(editor: SlotOverrideEditorState): string {
     const startAt = this.parseEventEditorDateValue(editor.slot.startAt);
     if (!startAt) {
-      return 'Slot rule pending';
+      return 'event.editor.slot.rule.pending';
     }
     const time = startAt.toLocaleTimeString('en-US', {
       hour: 'numeric',

@@ -16,7 +16,7 @@
     <div class="event-slots-panel-actions">
       <button type="button" class="event-slots-enable-btn" [class.event-slots-enable-btn-on]="slotsEnabled()"
         [class.event-slots-enable-btn-off]="!slotsEnabled()" [disabled]="!canUpdateSlotsConfig()"
-        (click)="toggleSlotsEnabled($event)" aria-label="Toggle slots">
+        (click)="toggleSlotsEnabled($event)" [attr.aria-label]="'event.editor.slots.toggle.aria' | i18n">
         <mat-icon>{{ slotsEnabled() ? 'toggle_on' : 'toggle_off' }}</mat-icon>
         <span>{{ slotsEnabled() ? 'On' : 'Off' }}</span>
       </button>
@@ -54,7 +54,7 @@
           }
         </div>
         } @else {
-        <div class="event-slots-summary-empty">No slots yet. Use + to create the first one.</div>
+        <div class="event-slots-summary-empty">{{ 'event.editor.slots.empty' | i18n }}</div>
         }
     </div>
   </div>

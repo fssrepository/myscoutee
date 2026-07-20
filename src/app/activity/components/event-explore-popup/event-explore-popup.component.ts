@@ -1017,7 +1017,7 @@ export class EventExplorePopupComponent {
   private checkoutDraftMenuVisual(entry: CheckoutDraftEntry): CheckoutDraftMenuVisual {
     if (this.isCheckoutDraftClearing(entry.draft.sourceId)) {
       return {
-        label: 'Felszabadítás...',
+        label: 'event.checkout.releasing',
         icon: 'hourglass_empty',
         palette: 'warning'
       };
@@ -1042,7 +1042,7 @@ export class EventExplorePopupComponent {
 
     if (entry.draft.checkoutState === 'rejected') {
       return {
-        label: 'Elutasítva',
+        label: 'rejected',
         icon: 'block',
         palette: 'danger'
       };
@@ -1050,7 +1050,7 @@ export class EventExplorePopupComponent {
 
     if (entry.draft.basketChanged === true) {
       return {
-        label: 'Frissítés szükséges',
+        label: 'event.checkout.update.required',
         icon: 'edit_note',
         palette: 'orange'
       };
@@ -1058,7 +1058,7 @@ export class EventExplorePopupComponent {
 
     if (entry.draft.pendingReason === 'waitlist' || entry.draft.checkoutState === 'waiting') {
       return {
-        label: 'Várólistán',
+        label: 'waiting.list',
         icon: 'hourglass_empty',
         palette: 'amber'
       };
@@ -1066,7 +1066,7 @@ export class EventExplorePopupComponent {
 
     if (entry.draft.pendingReason === 'approval' || entry.draft.checkoutState === 'approval-pending') {
       return {
-        label: 'Jóváhagyásra vár',
+        label: 'event.editor.checkout.waiting.approval',
         icon: 'pending_actions',
         palette: 'orange'
       };
@@ -1075,12 +1075,12 @@ export class EventExplorePopupComponent {
     if (entry.draft.checkoutState === 'confirmed') {
       return Math.max(0, Number(entry.draft.totalAmount) || 0) > 0
         ? {
-            label: 'Fizetésre kész',
+            label: 'event.checkout.ready.for.payment',
             icon: 'payments',
             palette: 'green'
           }
         : {
-            label: 'Megerősítve',
+            label: 'confirmed',
             icon: 'event_available',
             palette: 'green'
           };
@@ -1089,12 +1089,12 @@ export class EventExplorePopupComponent {
     if (entry.draft.checkoutState === 'approved') {
       return Math.max(0, Number(entry.draft.totalAmount) || 0) > 0
         ? {
-            label: 'Fizetésre kész',
+            label: 'event.checkout.ready.for.payment',
             icon: 'payments',
             palette: 'green'
           }
         : {
-            label: 'Jóváhagyva',
+            label: 'approved',
             icon: 'verified',
             palette: 'success'
           };
@@ -1102,7 +1102,7 @@ export class EventExplorePopupComponent {
 
     if (entry.draft.checkoutState === 'pay') {
       return {
-        label: 'Fizetés alatt',
+        label: 'event.checkout.payment.in.progress',
         icon: 'payments',
         palette: 'green'
       };
@@ -1110,7 +1110,7 @@ export class EventExplorePopupComponent {
 
     if (this.canContinueCheckoutDraft(entry)) {
       return {
-        label: 'Folytatható',
+        label: 'event.checkout.can.continue',
         icon: 'event_available',
         palette: 'teal'
       };
@@ -1353,18 +1353,18 @@ export class EventExplorePopupComponent {
       return;
     }
     const visual = this.checkoutDraftMenuVisual({ draft, record: null });
-    const title = visual.label === 'Várólistán'
+    const title = visual.label === 'waiting.list'
       ? 'Leave waitlist?'
-      : visual.label === 'Jóváhagyásra vár'
+      : visual.label === 'event.editor.checkout.waiting.approval'
         ? 'Cancel request?'
-        : visual.label === 'Fizetésre kész' || visual.label === 'Fizetés alatt'
+        : visual.label === 'event.checkout.ready.for.payment' || visual.label === 'event.checkout.payment.in.progress'
           ? 'Cancel payment?'
           : 'Clear basket?';
-    const confirmLabel = visual.label === 'Várólistán'
+    const confirmLabel = visual.label === 'waiting.list'
       ? 'Leave waitlist'
-      : visual.label === 'Jóváhagyásra vár'
+      : visual.label === 'event.editor.checkout.waiting.approval'
         ? 'Cancel request'
-        : visual.label === 'Fizetésre kész' || visual.label === 'Fizetés alatt'
+        : visual.label === 'event.checkout.ready.for.payment' || visual.label === 'event.checkout.payment.in.progress'
           ? 'Cancel payment'
           : 'Clear basket';
     this.dialogStore.open({

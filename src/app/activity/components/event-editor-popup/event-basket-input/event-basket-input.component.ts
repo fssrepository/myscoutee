@@ -5,6 +5,7 @@ import { MatIconModule } from '@angular/material/icon';
 import { AppMenuComponent, type AppMenuItem, type AppMenuItemSelectEvent, type AppMenuPalette } from '../../../../shared/ui/components/core/menu';
 import { TextCardComponent, type TextCardTone } from '../../../../shared/ui/components/core/smart-list/card';
 import type { EventEditorCheckoutSurfaceTone } from '../../../../shared/ui/context/stores/event-editor-popup.store';
+import { I18nPipe } from '../../../../shared/ui/pipes';
 
 export interface EventBasketInputPricingSummaryRow {
   key: string;
@@ -39,15 +40,16 @@ export interface EventBasketInputItemMenuEvent {
     CommonModule,
     MatIconModule,
     AppMenuComponent,
-    TextCardComponent
+    TextCardComponent,
+    I18nPipe
   ],
   templateUrl: './event-basket-input.component.html',
   styleUrl: './event-basket-input.component.scss',
   changeDetection: ChangeDetectionStrategy.OnPush
 })
 export class EventBasketInputComponent {
-  @Input() title = 'Basket';
-  @Input() subtitle = 'Selected checkout items';
+  @Input() title = 'event.editor.basket.title';
+  @Input() subtitle = 'event.editor.basket.selected.items.subtitle';
   @Input() contextTitle = '';
   @Input() contextMeta = '';
   @Input() contextDetail = '';
@@ -62,8 +64,8 @@ export class EventBasketInputComponent {
   @Input() showItemMenu = true;
   @Input() showPricingSummary = false;
   @Input() addIcon = 'edit';
-  @Input() addAriaLabel = 'Edit checkout items';
-  @Input() emptyLabel = 'No basket items yet. Use the edit button to add a slot.';
+  @Input() addAriaLabel = 'event.editor.basket.edit.aria';
+  @Input() emptyLabel = 'event.editor.basket.empty';
   @Input() tone: EventEditorCheckoutSurfaceTone = 'neutral';
 
   @Output() readonly addSelect = new EventEmitter<Event>();
@@ -121,14 +123,14 @@ export class EventBasketInputComponent {
     return [
       {
         id: 'view',
-        label: 'Megtekintés',
+        label: 'view',
         icon: 'visibility',
         palette: 'teal',
         surface: 'tinted'
       },
       {
         id: 'remove',
-        label: 'Eltávolítás',
+        label: 'remove',
         icon: 'delete',
         palette: 'danger',
         surface: 'tinted'
@@ -146,11 +148,11 @@ export class EventBasketInputComponent {
   protected itemSubtitle(item: EventBasketInputItem): string {
     const quantity = this.itemQuantity(item);
     const status = item.status === 'pay'
-      ? 'Paid'
+      ? 'paid'
       : item.status === 'waiting'
-        ? 'Várólistán'
+        ? 'waiting.list'
       : item.status === 'confirmed'
-        ? 'Confirmed'
+        ? 'confirmed'
         : '';
     if (!status) {
       return quantity > 1 ? `${quantity} items` : '';
@@ -179,7 +181,7 @@ export class EventBasketInputComponent {
   protected itemAmountLabel(item: EventBasketInputItem): string {
     const quantity = this.itemQuantity(item);
     const amount = (Number(item.amount) || 0) * quantity;
-    return amount > 0 ? this.formatMoney(amount, item.currency || this.currency) : 'Included';
+    return amount > 0 ? this.formatMoney(amount, item.currency || this.currency) : 'included';
   }
 
   protected visiblePricingSummaryRows(): EventBasketInputPricingSummaryRow[] {

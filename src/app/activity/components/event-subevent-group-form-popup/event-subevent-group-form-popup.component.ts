@@ -105,7 +105,7 @@ export class EventSubeventGroupFormPopupComponent {
               bind: 'name',
               kind: 'text',
               layout: 'wide',
-              label: 'Név',
+              label: 'name',
               placeholder: 'Group name',
               required: true
             },
@@ -114,7 +114,7 @@ export class EventSubeventGroupFormPopupComponent {
               bind: 'capacityMin',
               kind: 'number',
               layout: 'half',
-              label: 'Minimum létszám',
+              label: 'event.subevents.group.capacity.min',
               min: 0,
               step: 1,
               required: true
@@ -124,7 +124,7 @@ export class EventSubeventGroupFormPopupComponent {
               bind: 'capacityMax',
               kind: 'number',
               layout: 'half',
-              label: 'Maximum létszám',
+              label: 'event.subevents.group.capacity.max',
               min: Math.max(0, Math.trunc(Number(this.model.capacityMin) || 0)),
               step: 1,
               required: true

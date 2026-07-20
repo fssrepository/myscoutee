@@ -410,7 +410,7 @@
                             <dt>
                               <span>{{ summaryLabel(control) }}</span>
                               @if (control.required) {
-                                <small>kötelező</small>
+                                <small>{{ 'required' | i18n }}</small>
                               }
                             </dt>
                             <dd>{{ summaryValue(control) }}</dd>

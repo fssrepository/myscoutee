@@ -13,8 +13,8 @@
       <section class="editor-list-card editor-list-card--payment">
         <div class="event-checkout-payment-stack">
           <app-event-basket-input
-            title="Basket"
-            subtitle="Fizetés tárgya"
+            title="event.editor.basket.title"
+            subtitle="event.editor.basket.payment.subtitle"
             [contextTitle]="eventDetailDTO.title"
             [contextMeta]="eventDetailDTO.location"
             [contextDetail]="checkoutPaymentEventTimeframe()"
@@ -49,7 +49,7 @@
                 [slotCount]="1"
                 [compact]="true"
                 [autoSize]="true"
-                ariaLabel="Event image"
+                [ariaLabel]="'event.editor.image.aria' | i18n"
                 [disabled]="eventStructureReadOnly()"
                 [uploadOwnerId]="eventImageUploadOwnerId()"
                 [uploadEntityId]="eventImageUploadEntityId()"
@@ -58,21 +58,21 @@
               ></app-image-carousel>
             </div>
             <label class="experience-title-field">
-              <span>Name <span class="required-star">*</span></span>
+              <span>{{ 'name' | i18n }} <span class="required-star">*</span></span>
               <input type="text" [(ngModel)]="eventDetailDTO.title" [readonly]="eventStructureReadOnly()"
                 [class.field-required-invalid]="eventEditorFieldInvalid('title')" />
             </label>
             <label class="event-capacity-range-field">
-              <span>Capacity <span class="required-star">*</span></span>
+              <span>{{ 'capacity' | i18n }} <span class="required-star">*</span></span>
               <div class="subevent-capacity-range">
                 <input type="number" min="0" step="1" required [ngModel]="eventDetailDTO.capacityMin"
                   (ngModelChange)="onEventCapacityMinChange($event)" [disabled]="eventCapacityMinReadOnly()"
-                  [class.field-required-invalid]="eventEditorFieldInvalid('capacityMin')" placeholder="Min" />
+                  [class.field-required-invalid]="eventEditorFieldInvalid('capacityMin')" [placeholder]="'min' | i18n" />
                 <span class="subevent-capacity-separator">-</span>
                 <input type="number" [min]="eventCapacityMaxMinimum()" step="1" required [ngModel]="eventDetailDTO.capacityMax"
                   (ngModelChange)="onEventCapacityMaxChange($event)" (blur)="onEventCapacityMaxBlur()"
                   [disabled]="eventCapacityMaxReadOnly()"
-                  [class.field-required-invalid]="eventEditorFieldInvalid('capacityMax')" placeholder="Max" />
+                  [class.field-required-invalid]="eventEditorFieldInvalid('capacityMax')" [placeholder]="'max' | i18n" />
               </div>
             </label>
             <app-location-input
@@ -91,7 +91,7 @@
               ></app-menu>
             </div>
             <label class="experience-description-field">
-              <span>Description <span class="required-star">*</span></span>
+              <span>{{ 'description' | i18n }} <span class="required-star">*</span></span>
               <textarea rows="4" [(ngModel)]="eventDetailDTO.subtitle" [readonly]="eventStructureReadOnly()"
                 [class.field-required-invalid]="eventEditorFieldInvalid('subtitle')"></textarea>
             </label>
@@ -113,7 +113,7 @@
                 <div class="event-schedule-panel-head">
                   <span class="event-schedule-panel-title">
                     <mat-icon>calendar_month</mat-icon>
-                    <span>Date</span>
+                    <span>{{ 'date' | i18n }}</span>
                   </span>
                 </div>
                 <app-date-input
@@ -135,8 +135,8 @@
             @if (showCheckoutBasketInput()) {
               <app-event-basket-input
                 class="experience-description-field"
-                title="Basket"
-                subtitle="Selected slot checkout items"
+                title="event.editor.basket.title"
+                subtitle="event.editor.basket.selected.slot.subtitle"
                 [items]="checkoutBasketInputItems()"
                 [pricingSummaryRows]="checkoutBasketPricingSummaryRows()"
                 [totalAmount]="checkoutBasketTotalAmount()"
@@ -163,7 +163,7 @@
       @let checkoutFooterItems = checkoutReviewFooterMenuItems();
       @if (checkoutFooterItems.length > 0) {
       <div class="event-editor-checkout-footer">
-        <p class="event-editor-checkout-footer__message">{{ checkoutReviewFooterMessage() }}</p>
+        <p class="event-editor-checkout-footer__message">{{ checkoutReviewFooterMessage() | i18n }}</p>
         <app-menu
           class="event-editor-checkout-footer__actions"
           kind="inline"

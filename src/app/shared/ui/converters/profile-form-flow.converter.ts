@@ -352,17 +352,17 @@ export class ProfileFormFlowConverter {
       header: options.showHeader === false ? false : true,
       loadingLabel: 'Loading profile setup',
       save: options.showSave === false ? null : {
-        label: 'Profil mentése',
-        ariaLabel: 'Profil mentése',
+        label: 'save.profile',
+        ariaLabel: 'save.profile',
         icon: 'done',
         disabled: options.saveDisabled === true
       },
       summary: {
         enabled: true,
-        title: 'Áttekintés',
-        subtitle: 'Ellenőrizd a profilt mentés előtt.',
+        title: 'review',
+        subtitle: 'profile.review.before.save',
         icon: 'fact_check',
-        emptyLabel: 'Nincs beállítva',
+        emptyLabel: 'not.set',
         includeEmpty: true
       },
       completion: {
@@ -376,25 +376,25 @@ export class ProfileFormFlowConverter {
   private static photosStep(options: ProfileFormFlowConverterOptions): FormFlowStepModel {
     return {
       id: 'photos',
-      title: 'Fotók',
-      subtitle: 'Adj hozzá legalább 3 fotót.',
+      title: 'photos',
+      subtitle: 'profile.photos.minimum.three',
       icon: 'photo_library',
       controls: [{
         id: 'images',
         kind: 'image-carousel',
-        label: 'Profilfotók',
+        label: 'profile.images',
         bind: 'profile.images',
         required: true,
         min: 3,
         config: {
           slotCount: 8,
           previewMode: true,
-          ariaLabel: 'Profilfotók',
+          ariaLabel: 'profile.images',
           uploadOwnerId: options.userId?.trim() || '',
           uploadEntityId: options.userId?.trim() || 'profile-onboarding'
         },
         summary: {
-          value: (value: unknown) => `${this.imageCount(value)}/8 (kötelező: 3)`
+          value: (value: unknown) => `${this.imageCount(value)} / 8`
         }
       }]
     };
@@ -406,28 +406,28 @@ export class ProfileFormFlowConverter {
   ): FormFlowStepModel {
     return {
       id: 'lifestyle',
-      title: 'Életmód',
-      subtitle: 'Opcionális részletek.',
+      title: 'lifestyle',
+      subtitle: 'profile.optional.details',
       icon: 'interests',
       controls: [
-        this.detailMenuControl(profile, 'drinking', 'Alkohol', 'profile.details.drinking', 'groups', 'blue', options.privacy),
-        this.detailMenuControl(profile, 'smoking', 'Dohányzás', 'profile.details.smoking', 'smoking_rooms', 'violet', options.privacy),
-        this.detailMenuControl(profile, 'workout', 'Edzés', 'profile.details.workout', 'fitness_center', 'green', options.privacy),
-        this.detailMenuControl(profile, 'pets', 'Háziállatok', 'profile.details.pets', 'pets', 'green', options.privacy),
-        this.detailMenuControl(profile, 'familyPlans', 'Családtervek', 'profile.details.familyPlans', 'family_restroom', 'blue', options.privacy),
-        this.detailMenuControl(profile, 'children', 'Gyerekek', 'profile.details.children', 'child_care', 'orange', options.privacy),
-        this.detailMenuControl(profile, 'loveStyle', 'Kapcsolati stílus', 'profile.details.loveStyle', 'explore', 'violet', options.privacy),
-        this.detailMenuControl(profile, 'communicationStyle', 'Kommunikációs stílus', 'profile.details.communicationStyle', 'forum', 'orange', options.privacy),
-        this.detailMenuControl(profile, 'sexualOrientation', 'Szexuális orientáció', 'profile.details.sexualOrientation', 'all_inclusive', 'teal', options.privacy),
-        this.detailMenuControl(profile, 'religion', 'Vallás', 'profile.details.religion', 'self_improvement', 'orange', options.privacy),
+        this.detailMenuControl(profile, 'drinking', 'profile.details.drinking', 'profile.details.drinking', 'groups', 'blue', options.privacy),
+        this.detailMenuControl(profile, 'smoking', 'profile.details.smoking', 'profile.details.smoking', 'smoking_rooms', 'violet', options.privacy),
+        this.detailMenuControl(profile, 'workout', 'profile.details.workout', 'profile.details.workout', 'fitness_center', 'green', options.privacy),
+        this.detailMenuControl(profile, 'pets', 'profile.details.pets', 'profile.details.pets', 'pets', 'green', options.privacy),
+        this.detailMenuControl(profile, 'familyPlans', 'profile.details.familyPlans', 'profile.details.familyPlans', 'family_restroom', 'blue', options.privacy),
+        this.detailMenuControl(profile, 'children', 'profile.details.children', 'profile.details.children', 'child_care', 'orange', options.privacy),
+        this.detailMenuControl(profile, 'loveStyle', 'profile.details.loveStyle', 'profile.details.loveStyle', 'explore', 'violet', options.privacy),
+        this.detailMenuControl(profile, 'communicationStyle', 'profile.details.communicationStyle', 'profile.details.communicationStyle', 'forum', 'orange', options.privacy),
+        this.detailMenuControl(profile, 'sexualOrientation', 'profile.details.sexualOrientation', 'profile.details.sexualOrientation', 'all_inclusive', 'teal', options.privacy),
+        this.detailMenuControl(profile, 'religion', 'profile.details.religion', 'profile.details.religion', 'self_improvement', 'orange', options.privacy),
         {
           id: 'values',
           kind: 'menu',
-          label: 'Értékek',
+          label: 'values',
           bind: this.detailValueBind(profile, 'profile.details.values'),
           valueFormat: 'csv',
           config: this.groupedCheckboxMenuConfig(
-            'Értékek',
+            'values',
             APP_STATIC_DATA.beliefsValuesOptionGroups,
             'auto_awesome',
             'purple',
@@ -439,11 +439,11 @@ export class ProfileFormFlowConverter {
         {
           id: 'interests',
           kind: 'menu',
-          label: 'Érdeklődés',
+          label: 'interests',
           bind: this.detailValueBind(profile, 'profile.details.interest'),
           valueFormat: 'csv',
           config: this.groupedCheckboxMenuConfig(
-            'Érdeklődés',
+            'interests',
             APP_STATIC_DATA.interestOptionGroups,
             'sell',
             'teal',
@@ -466,7 +466,7 @@ export class ProfileFormFlowConverter {
       {
         id: 'about',
         kind: 'textarea',
-        label: 'Rólam',
+        label: 'about',
         bind: 'profile.about',
         rows: 3,
         maxLength: 160
@@ -474,10 +474,10 @@ export class ProfileFormFlowConverter {
       {
         id: 'full-name',
         kind: 'text',
-        label: 'Név',
+        label: 'name',
         bind: 'profile.name',
         required: true,
-        placeholder: 'Név'
+        placeholder: 'name'
       }
     ];
     if (profileSize === 'small') {
@@ -498,30 +498,30 @@ export class ProfileFormFlowConverter {
         id: 'birthday',
         kind: 'date',
         layout: 'half',
-        label: 'Születésnap',
+        label: 'birthday',
         bind: 'profile.birthday',
         required: true,
         placeholder: 'dd/mm/yyyy',
         config: {
           meta: {
             kind: 'horoscope',
-            label: 'Horoszkóp',
-            emptyLabel: 'Nincs beállítva'
+            label: 'profile.horoscope',
+            emptyLabel: 'not.set'
           }
         }
       },
       {
         id: 'city',
         kind: 'text',
-        label: 'Város',
+        label: 'city',
         bind: 'profile.city',
         required: true,
-        placeholder: 'Város'
+        placeholder: 'city'
       },
       {
         id: 'height',
         kind: 'number',
-        label: 'Magasság (cm)',
+        label: 'height.cm',
         bind: 'profile.height',
         required: true,
         min: 1,
@@ -531,7 +531,7 @@ export class ProfileFormFlowConverter {
       {
         id: 'physique',
         kind: 'menu',
-        label: 'Testalkat',
+        label: 'profile.physique',
         bind: 'profile.physique',
         required: true,
         config: this.physiqueMenuConfig()
@@ -539,24 +539,24 @@ export class ProfileFormFlowConverter {
       {
         id: 'gender',
         kind: 'menu',
-        label: 'Nem',
+        label: 'profile.gender',
         bind: this.detailValueBind(profile, 'profile.gender'),
         required: true,
-        config: this.detailSelectMenuConfig('Nem', 'profile.gender', 'person', 'violet'),
+        config: this.detailSelectMenuConfig('profile.gender', 'profile.gender', 'person', 'violet'),
         accessory: this.privacyAccessory('profile.gender', options.privacy)
       },
       {
         id: 'languages',
         kind: 'menu',
-        label: 'Nyelvek',
+        label: 'profile.languages',
         bind: 'profile.languages',
         required: true,
         config: this.checkboxMenuConfig(
-          'Nyelvek',
+          'profile.languages',
           this.languageOptions(profile?.languages ?? []),
           'language',
           'blue',
-          'Nyelvek választása',
+          'select.languages',
           2
         )
       },
@@ -564,7 +564,7 @@ export class ProfileFormFlowConverter {
         id: 'workspace',
         kind: 'menu',
         layout: 'half',
-        label: 'Munkahely',
+        label: 'profile.experience.workplace',
         bind: 'experienceEntries',
         config: this.experienceSelectorMenuConfig('Workspace', experienceEntries),
         accessory: this.experiencePrivacyAccessory('workspace', options.privacy),
@@ -576,7 +576,7 @@ export class ProfileFormFlowConverter {
         id: 'school',
         kind: 'menu',
         layout: 'half',
-        label: 'Iskola',
+        label: 'profile.experience.school',
         bind: 'experienceEntries',
         config: this.experienceSelectorMenuConfig('School', experienceEntries),
         accessory: this.experiencePrivacyAccessory('school', options.privacy),
@@ -666,7 +666,7 @@ export class ProfileFormFlowConverter {
         kind: 'select',
         layout: 'list',
         panelMode: 'anchored',
-        title: 'Láthatóság',
+        title: 'visibility',
         closeOnSelect: true,
         trigger: {
           icon: this.privacyIcon(current),
@@ -674,7 +674,7 @@ export class ProfileFormFlowConverter {
           hideLabel: true,
           layout: 'icon',
           palette: this.privacyPalette(current),
-          ariaLabel: 'Láthatóság módosítása'
+          ariaLabel: 'profile.visibility.change.aria'
         },
         items: APP_STATIC_DATA.detailPrivacyOptions.map(option => ({
           id: `${this.idToken(key)}-privacy-${this.idToken(option)}`,
@@ -703,7 +703,7 @@ export class ProfileFormFlowConverter {
         kind: 'select',
         layout: 'list',
         panelMode: 'anchored',
-        title: 'Láthatóság',
+        title: 'visibility',
         closeOnSelect: true,
         trigger: {
           icon: this.privacyIcon(current),
@@ -711,7 +711,7 @@ export class ProfileFormFlowConverter {
           hideLabel: true,
           layout: 'icon',
           palette: this.privacyPalette(current),
-          ariaLabel: 'Láthatóság módosítása'
+          ariaLabel: 'profile.visibility.change.aria'
         },
         items: APP_STATIC_DATA.detailPrivacyOptions.map(option => ({
           id: `experience-${type}-privacy-${this.idToken(option)}`,
@@ -777,19 +777,19 @@ export class ProfileFormFlowConverter {
       fallbackPalette,
       option => this.detailOptionIcon(key, option),
       option => this.paletteFromTone(this.detailToneFromOptions(option, options)),
-      `${title} kiválasztása`
+      'select'
     );
   }
 
   private static physiqueMenuConfig(): FormFlowMenuControlConfig {
     return this.selectMenuConfig(
-      'Testalkat',
+      'profile.physique',
       APP_STATIC_DATA.physiqueOptions,
       'fitness_center',
       'green',
       option => this.physiqueIcon(option),
       option => this.paletteFromTone(this.physiqueToneClass(option)),
-      'Testalkat kiválasztása'
+      'profile.physique.select'
     );
   }
 
@@ -800,7 +800,7 @@ export class ProfileFormFlowConverter {
     palette: AppMenuPalette,
     iconForOption: (option: string) => string = () => icon,
     paletteForOption: (option: string) => AppMenuPalette = () => palette,
-    emptyLabel = `${title} kiválasztása`
+    emptyLabel = 'select'
   ): FormFlowMenuControlConfig {
     return {
       kind: 'select',
@@ -879,8 +879,8 @@ export class ProfileFormFlowConverter {
     const filteredEntries = this.experienceEntriesByType(entries, type);
     const palette = type === 'Workspace' ? 'pink' : 'blue';
     const icon = type === 'Workspace' ? 'apartment' : 'school';
-    const title = type === 'Workspace' ? 'Munkahely' : 'Iskola';
-    const emptyLabel = type === 'Workspace' ? 'Munkahely választása' : 'Iskola választása';
+    const title = type === 'Workspace' ? 'profile.experience.workplace' : 'profile.experience.school';
+    const emptyLabel = type === 'Workspace' ? 'profile.experience.selectWorkplace' : 'profile.experience.selectSchool';
     return {
       kind: 'select',
       layout: 'tabs',
@@ -935,7 +935,7 @@ export class ProfileFormFlowConverter {
       icon,
       palette,
       layout: 'field',
-      ariaLabel: `${title} kiválasztása`
+      ariaLabel: 'select'
     };
   }
 

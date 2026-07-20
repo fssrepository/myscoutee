@@ -442,7 +442,7 @@ export class EventMembersPopupComponent {
     if (this.canShowMemberInvolvement(entry)) {
       items.push({
         id: `member-action-involvement-${entry.id}`,
-        label: 'Részvétel',
+        label: 'event.participation',
         icon: 'assignment_ind',
         palette: 'teal',
         context: { menu: 'member-action', member: entry, action: 'involvement' }
@@ -643,7 +643,7 @@ export class EventMembersPopupComponent {
 
   protected memberInvolvementPopupModel(state: MemberInvolvementPopupState): PopupModel {
     return {
-      title: 'Részvétel',
+      title: 'event.participation',
       subtitle: state.memberName,
       size: 'small',
       closeOnBackdrop: true,

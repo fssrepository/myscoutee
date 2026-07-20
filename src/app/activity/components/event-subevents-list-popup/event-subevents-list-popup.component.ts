@@ -536,7 +536,7 @@ export class EventSubeventsListPopupComponent {
     return [
       {
         id: 'participant-filter',
-        label: 'Részvételem',
+        label: 'event.subevents.my.participation',
         icon: this.participantOnly ? 'person_pin_circle' : 'person_pin',
         kind: 'toggle',
         palette: this.participantOnly ? 'green' : 'slate',
@@ -548,7 +548,7 @@ export class EventSubeventsListPopupComponent {
       },
       {
         id: canEdit ? 'edit' : 'view',
-        label: canEdit ? 'Szerkesztés' : 'Megtekintés',
+        label: canEdit ? 'edit' : 'view',
         icon: canEdit ? 'edit' : 'visibility',
         palette: canEdit ? 'amber' : 'teal',
         surface: 'tinted',
@@ -557,7 +557,7 @@ export class EventSubeventsListPopupComponent {
       },
       {
         id: 'members',
-        label: 'Tagok',
+        label: 'members',
         icon: 'groups',
         palette: 'violet',
         surface: 'tinted',

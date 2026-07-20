@@ -62,6 +62,7 @@ import {
   formFlowMissingRequiredControls
 } from './form-flow.utils';
 import { FormFlowPopupStore } from './form-flow-popup.store';
+import { I18nPipe } from '../../../../pipes';
 
 interface FormFlowSelectedMenuItem {
   item: AppMenuItem<string, unknown>;
@@ -85,7 +86,8 @@ interface FormFlowSelectedMenuItem {
     ImageCarouselComponent,
     IndicatorComponent,
     ImageCardComponent,
-    InfoCardComponent
+    InfoCardComponent,
+    I18nPipe
   ],
   templateUrl: './form-flow.component.html',
   styleUrl: './form-flow.component.scss',

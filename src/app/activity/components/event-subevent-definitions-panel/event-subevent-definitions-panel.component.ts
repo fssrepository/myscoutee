@@ -14,6 +14,7 @@ import {
   InfoCardComponent,
   AppMenuComponent,
   TextCardComponent,
+  I18nPipe,
   type AppMenuItem,
   type AppMenuPalette,
   SmartListComponent,
@@ -71,6 +72,7 @@ interface SubEventDefinitionFormState {
     SmartListComponent,
     InfoCardComponent,
     TextCardComponent,
+    I18nPipe,
     EventSubeventStageFormPopupComponent
   ],
   providers: [
@@ -133,12 +135,12 @@ export class EventSubeventDefinitionsPanelComponent implements ControlValueAcces
     pageSize: 20,
     defaultView: 'timeline',
     views: [
-      { key: 'timeline', label: 'Timeline', mode: 'timeline', pageSize: 20 },
-      { key: 'list', label: 'Cards', mode: 'list', pageSize: 20 }
+      { key: 'timeline', label: 'timeline', mode: 'timeline', pageSize: 20 },
+      { key: 'list', label: 'cards', mode: 'list', pageSize: 20 }
     ],
     showStickyHeader: false,
     showGroupMarker: () => false,
-    emptyLabel: 'No sub event definitions yet',
+    emptyLabel: 'event.editor.subevents.definitions.empty',
     emptyDescription: '',
     timeline: {
       stepMinutes: this.definitionTimelineStepMinutes,
@@ -205,7 +207,7 @@ export class EventSubeventDefinitionsPanelComponent implements ControlValueAcces
   protected panelSubtitle(): string {
     return this.enabled
       ? this.countLabel()
-      : 'Use the main event without sub events.';
+      : 'event.editor.subevents.disabled.description';
   }
 
   protected toggleSubEventsEnabled(event?: Event): void {
@@ -277,7 +279,7 @@ export class EventSubeventDefinitionsPanelComponent implements ControlValueAcces
   protected viewMenuTrigger(): AppMenuTrigger {
     const timeline = this.definitionView === 'timeline';
     return {
-      label: timeline ? 'Timeline' : 'Cards',
+      label: timeline ? 'timeline' : 'cards',
       icon: timeline ? 'timeline' : 'view_carousel',
       palette: timeline ? 'teal' : 'violet',
       layout: 'pill',
@@ -289,7 +291,7 @@ export class EventSubeventDefinitionsPanelComponent implements ControlValueAcces
     return [
       {
         id: 'timeline',
-        label: 'Timeline',
+        label: 'timeline',
         icon: 'timeline',
         kind: 'radio',
         palette: 'teal',
@@ -299,7 +301,7 @@ export class EventSubeventDefinitionsPanelComponent implements ControlValueAcces
       },
       {
         id: 'list',
-        label: 'Cards',
+        label: 'cards',
         icon: 'view_carousel',
         kind: 'radio',
         palette: 'violet',
@@ -322,7 +324,7 @@ export class EventSubeventDefinitionsPanelComponent implements ControlValueAcces
     return [{
       id: 'add',
       icon: 'add',
-      ariaLabel: 'Add sub event definition',
+      ariaLabel: 'event.editor.subevents.definition.add.aria',
       palette: 'amber'
     }];
   }
@@ -357,7 +359,7 @@ export class EventSubeventDefinitionsPanelComponent implements ControlValueAcces
         this.definitionStartLabel(item, index),
         ...(capacityMetaRow ? [capacityMetaRow] : [])
       ],
-      description: item.description || 'No description',
+      description: item.description || 'no.description',
       descriptionLines: 2,
       surfaceTone: isTournament ? 'stage' : (item.optional ? 'subevent-light' : 'subevent-strong'),
       accentHue: palette.accentHue,
@@ -418,7 +420,7 @@ export class EventSubeventDefinitionsPanelComponent implements ControlValueAcces
   } {
     if (item.optional) {
       return {
-        label: 'Optional',
+        label: 'optional',
         icon: 'toggle_on',
         overlayTone: 'public',
         leadingTone: 'public',
@@ -426,7 +428,7 @@ export class EventSubeventDefinitionsPanelComponent implements ControlValueAcces
       };
     }
     return {
-      label: 'Mandatory',
+      label: 'mandatory',
         icon: 'lock',
       overlayTone: 'blocked',
       leadingTone: 'invitation',
@@ -622,12 +624,12 @@ export class EventSubeventDefinitionsPanelComponent implements ControlValueAcces
     const timingBounds = this.definitionTimingBounds();
     const timingSummaryMeta = timingBounds
       ? `Main event range ${AppUtils.dateTimeRangeLabel(timingBounds.startAt, timingBounds.endAt, 'Date unavailable')}`
-      : (isTournament ? 'Tournament definition' : 'Casual definition');
+      : (isTournament ? 'event.editor.subevents.tournament.definition' : 'event.editor.subevents.casual.definition');
 
     const insertPlacement = state?.insertPlacement ?? 'after';
     return {
       open: Boolean(state),
-      parentTitle: 'Sub Events',
+      parentTitle: 'event.editor.subevents.title',
       title: this.definitionFormTitle(state),
       readOnly: !this.canConfigureDefinitions(),
       canSave: this.canSaveDefinitionForm(model),
@@ -637,7 +639,7 @@ export class EventSubeventDefinitionsPanelComponent implements ControlValueAcces
       modeClass: isOptional ? 'subevent-mode-optional' : 'subevent-mode-mandatory',
       modeIcon: isOptional ? 'toggle_on' : 'lock',
       slotBoundTiming: Boolean(timingBounds),
-      timingSummaryTitle: timingBounds ? 'Main event range' : 'Definition',
+      timingSummaryTitle: timingBounds ? 'event.editor.subevents.main.event.range' : 'event.editor.subevents.definition',
       timingSummaryText: '',
       timingSummaryMeta,
       timingInputMode: 'duration',
@@ -710,13 +712,13 @@ export class EventSubeventDefinitionsPanelComponent implements ControlValueAcces
     }
     const label = this.definitionSequenceLabel(index);
     this.dialogStore.open({
-      title: this.mode === 'Tournament' ? 'Delete Stage Definition' : 'Delete Sub Event Definition',
+      title: this.mode === 'Tournament' ? 'event.editor.subevents.stage.delete.title' : 'event.editor.subevents.definition.delete.title',
       message: `Delete ${label} - ${item.name}?`,
       cancelLabel: 'Cancel',
       confirmLabel: 'Delete',
       busyConfirmLabel: 'Deleting...',
       confirmTone: 'danger',
-      failureMessage: 'Unable to delete sub event definition.',
+      failureMessage: 'event.editor.subevents.definition.delete.failure',
       onConfirm: () => {
         if (this.definitionForm?.index === index) {
           this.setDefinitionForm(null);

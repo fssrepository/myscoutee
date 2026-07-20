@@ -38,8 +38,8 @@ export class PricingSlotPanelComponent implements OnChanges {
   @Input() slotCatalog: readonly ContractTypes.PricingSlotReference[] = [];
   @Input() currency = 'USD';
   @Input() readOnly = false;
-  @Input() title = 'Customize pricing per slot';
-  @Input() description = 'Override global rules with slot-specific pricing.';
+  @Input() title = 'pricing.slot.customize.title';
+  @Input() description = 'pricing.slot.customize.subtitle';
 
   protected workingOverrides: ContractTypes.PricingSlotOverride[] = [];
   
@@ -117,7 +117,7 @@ export class PricingSlotPanelComponent implements OnChanges {
   protected slotMenuTrigger(override: ContractTypes.PricingSlotOverride): AppMenuTrigger {
     return {
       id: this.slotMenuId(override),
-      label: override.label || 'Select slot',
+      label: override.label || 'pricing.slot.select',
       icon: 'calendar_month',
       trailingIcon: 'expand_more',
       openTrailingIcon: 'expand_less',
@@ -184,7 +184,7 @@ export class PricingSlotPanelComponent implements OnChanges {
     const start = this.formatDateTime(override.startAt);
     const end = this.formatDateTime(override.endAt);
     if (!start && !end) {
-      return 'Time window will follow the selected slot.';
+      return 'pricing.slot.time.window.follows';
     }
     if (!start) {
       return `Ends ${end}`;
@@ -199,7 +199,7 @@ export class PricingSlotPanelComponent implements OnChanges {
     const start = this.formatDateTime(slot.startAt);
     const end = this.formatDateTime(slot.endAt);
     if (!start && !end) {
-      return 'Time follows this slot.';
+      return 'pricing.slot.time.follows';
     }
     if (!start) {
       return `Ends ${end}`;

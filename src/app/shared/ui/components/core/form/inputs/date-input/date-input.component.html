@@ -24,7 +24,7 @@
             [disabled]="inputDisabled()"
             (mousedown)="$event.preventDefault()"
             (click)="toggleTimePicker(timeOnlyPicker, 'time', $event)"
-            aria-label="Toggle time picker"
+            [attr.aria-label]="'date.input.toggle.time.aria' | i18n"
           >
             <mat-icon>{{ pickerIcon('time', 'schedule') }}</mat-icon>
           </button>
@@ -75,7 +75,7 @@
             [disabled]="inputDisabled()"
             (mousedown)="$event.preventDefault()"
             (click)="toggleDateRangePicker(rangePicker, 'range-date', $event)"
-            aria-label="Toggle date range picker"
+            [attr.aria-label]="'date.input.toggle.range.aria' | i18n"
           >
             <mat-icon>{{ pickerIcon('range-date', 'calendar_month') }}</mat-icon>
           </button>
@@ -114,7 +114,7 @@
             [disabled]="inputDisabled()"
             (mousedown)="$event.preventDefault()"
             (click)="toggleDatePicker(startPicker, 'start-date', $event)"
-            aria-label="Toggle start date picker"
+            [attr.aria-label]="'date.input.toggle.start.date.aria' | i18n"
           >
             <mat-icon>{{ pickerIcon('start-date', 'calendar_month') }}</mat-icon>
           </button>
@@ -144,7 +144,7 @@
               [disabled]="inputDisabled()"
               (mousedown)="$event.preventDefault()"
               (click)="toggleTimePicker(startTimePicker, 'start-time', $event)"
-              aria-label="Toggle start time picker"
+              [attr.aria-label]="'date.input.toggle.start.time.aria' | i18n"
             >
               <mat-icon>{{ pickerIcon('start-time', 'schedule') }}</mat-icon>
             </button>
@@ -182,7 +182,7 @@
             [disabled]="inputDisabled()"
             (mousedown)="$event.preventDefault()"
             (click)="toggleDatePicker(endPicker, 'end-date', $event)"
-            aria-label="Toggle end date picker"
+            [attr.aria-label]="'date.input.toggle.end.date.aria' | i18n"
           >
             <mat-icon>{{ pickerIcon('end-date', 'calendar_month') }}</mat-icon>
           </button>
@@ -212,7 +212,7 @@
               [disabled]="inputDisabled()"
               (mousedown)="$event.preventDefault()"
               (click)="toggleTimePicker(endTimePicker, 'end-time', $event)"
-              aria-label="Toggle end time picker"
+              [attr.aria-label]="'date.input.toggle.end.time.aria' | i18n"
             >
               <mat-icon>{{ pickerIcon('end-time', 'schedule') }}</mat-icon>
             </button>
@@ -254,7 +254,7 @@
             [disabled]="inputDisabled()"
             (mousedown)="$event.preventDefault()"
             (click)="toggleDatePicker(singlePicker, 'single-date', $event)"
-            aria-label="Toggle date picker"
+            [attr.aria-label]="'date.input.toggle.date.aria' | i18n"
           >
             <mat-icon>{{ pickerIcon('single-date', 'calendar_month') }}</mat-icon>
           </button>
@@ -284,7 +284,7 @@
               [disabled]="inputDisabled()"
               (mousedown)="$event.preventDefault()"
               (click)="toggleTimePicker(singleTimePicker, 'single-time', $event)"
-              aria-label="Toggle time picker"
+              [attr.aria-label]="'date.input.toggle.time.aria' | i18n"
             >
               <mat-icon>{{ pickerIcon('single-time', 'schedule') }}</mat-icon>
             </button>

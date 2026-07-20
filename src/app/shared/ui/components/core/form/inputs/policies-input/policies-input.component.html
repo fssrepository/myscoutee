@@ -34,7 +34,7 @@
     }
     <div class="event-slots-summary">
       <section class="event-slots-summary-block">
-        <span class="event-slots-summary-label">Summary</span>
+        <span class="event-slots-summary-label">{{ 'summary' | i18n }}</span>
         @if (policies.length > 0) {
         <div class="event-slots-summary-list">
           @for (policy of policies; track trackPolicy($index, policy)) {
@@ -82,7 +82,7 @@
       }
       @if (workingPolicies.length === 0) {
       <div class="event-slot-empty-state event-policy-empty-state">
-        <span>No policies yet.</span>
+        <span>{{ 'event.editor.policies.empty.short' | i18n }}</span>
       </div>
       }
     </div>
