@@ -1303,7 +1303,7 @@ export class SmartListComponent<T, TFilters extends SmartListFilters = SmartList
 
   private hostedFullscreenResolvedCursor(): SmartListCursorState<T> {
     const cursor = this.finiteStepper.state();
-    if (cursor.item !== null || this.items.length === 0) {
+    if (cursor.item !== null || this.items.length === 0 || cursor.index >= cursor.total) {
       return cursor;
     }
     const fallbackIndex = Math.max(0, Math.min(cursor.index, this.items.length - 1));

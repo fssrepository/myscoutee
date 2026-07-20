@@ -430,7 +430,7 @@ export class ActivitiesPopupComponent implements OnDestroy {
         }
         return 'scroll';
       },
-      ratingBarConfig: () => this.activitiesRates.ratingBarConfig(),
+      ratingBarConfig: row => row ? this.activitiesRates.ratingBarConfig() : null,
       ratingBarValue: () => this.activitiesRates.ratingBarValue(),
       onRatingSelect: (_item, score) => this.activitiesRates.setSelectedOwnRating(score)
     },
