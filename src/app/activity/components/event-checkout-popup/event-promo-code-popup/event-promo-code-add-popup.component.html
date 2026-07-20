@@ -1,0 +1,17 @@
+@if (popup; as editor) {
+  <app-popup [model]="popupModel(editor)" [zIndex]="editor.zIndex">
+    <div class="event-promo-code-add-body">
+      <app-form-flow
+        [model]="flowModel(editor)"
+        [ngModel]="draftValue"
+        (ngModelChange)="updateDraft($event)"
+        [disabled]="editor.busy"
+      ></app-form-flow>
+      @if (errorMessageKey || errorMessage) {
+        <p class="event-promo-code-add-error" role="alert">
+          {{ (errorMessageKey || errorMessage) | i18n: errorMessage }}
+        </p>
+      }
+    </div>
+  </app-popup>
+}

@@ -47,7 +47,10 @@ export interface EventEditorPresentationOptions {
   basketTotalAmount?: EventEditorPresentationValue<number | null | undefined> | null;
   basketCurrency?: EventEditorPresentationValue<string | null | undefined> | null;
   basketAddDisabled?: EventEditorPresentationValue<boolean | null | undefined> | null;
+  showPromoCodeAction?: EventEditorPresentationValue<boolean | null | undefined> | null;
+  appliedPromoCodeCount?: EventEditorPresentationValue<number | null | undefined> | null;
   onBasketAdd?: (event?: Event) => void | Promise<void>;
+  onPromoCodeAction?: (event?: Event) => void | Promise<void>;
   onBasketItemMenuSelect?: (
     item: EventEditorBasketPresentationItem,
     event: AppMenuItemSelectEvent<string>
@@ -224,7 +227,10 @@ export class EventEditorPopupStore {
       basketTotalAmount: presentation?.basketTotalAmount ?? null,
       basketCurrency: presentation?.basketCurrency ?? null,
       basketAddDisabled: presentation?.basketAddDisabled ?? null,
+      showPromoCodeAction: presentation?.showPromoCodeAction ?? null,
+      appliedPromoCodeCount: presentation?.appliedPromoCodeCount ?? null,
       onBasketAdd: presentation?.onBasketAdd,
+      onPromoCodeAction: presentation?.onPromoCodeAction,
       onBasketItemMenuSelect: presentation?.onBasketItemMenuSelect,
       footerItems: [...(presentation?.footerItems ?? [])],
       footerMessage: presentation?.footerMessage ?? null,

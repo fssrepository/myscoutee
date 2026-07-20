@@ -1171,6 +1171,7 @@ export class EventResourceAssetExploreComponent implements DoCheck {
             }
           ],
           acceptedPolicyIds: [...dialog.acceptedPolicyIds],
+          appliedPromoCodes: [],
           lineItems,
           totalAmount: pricing.amount,
           currency: pricing.currency

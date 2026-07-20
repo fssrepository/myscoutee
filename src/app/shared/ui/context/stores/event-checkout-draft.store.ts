@@ -19,6 +19,7 @@ export interface EventCheckoutDraft {
   selectedDateKey: string | null;
   optionalSubEventIds: string[];
   acceptedPolicyIds: string[];
+  appliedPromoCodes: string[];
   basketItems: EventCheckoutBasketItem[];
   pricingSummaryRows: EventCheckoutPricingSummaryRow[];
   checkoutState: EventCheckoutState;
@@ -100,6 +101,9 @@ export class EventCheckoutDraftStore {
       selectedDateKey: draft?.selectedDateKey?.trim() || null,
       optionalSubEventIds: [...new Set(draft?.optionalSubEventIds ?? [])].map(item => item.trim()).filter(Boolean),
       acceptedPolicyIds: [...new Set(draft?.acceptedPolicyIds ?? [])].map(item => item.trim()).filter(Boolean),
+      appliedPromoCodes: [...new Set((draft?.appliedPromoCodes ?? [])
+        .map(item => item.trim().toUpperCase())
+        .filter(Boolean))],
       basketItems: (draft?.basketItems ?? []).map(item => this.normalizeBasketItem(item)).filter(Boolean) as EventCheckoutBasketItem[],
       pricingSummaryRows: this.normalizePricingSummaryRows(
         (draft?.pricingSummaryRows ?? []).length > 0

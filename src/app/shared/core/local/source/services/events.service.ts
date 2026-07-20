@@ -19,6 +19,8 @@ import type {
   EventCheckoutLineItem,
   EventCheckoutOptionalSubEvent,
   EventCheckoutPricingSummaryRow,
+  EventCheckoutPromoCodeValidationRequest,
+  EventCheckoutPromoCodeValidationResult,
   EventCheckoutRequest,
   EventCheckoutResultState,
   EventCheckoutState,
@@ -40,7 +42,12 @@ import type {
 import type { ActivitiesFeedFilters, ListQuery } from '../../../contracts';
 import type { UserMenuCounterDeltasDto } from '../../../contracts/user.interface';
 import { PricingBuilder } from '../../../base/builders';
-import { ActivityEventDetailDTO, EventFeedbackDetailDto, EventFeedbackPageResultDto } from '../../../contracts/activity.interface';
+import {
+  ActivityEventDetailDTO,
+  EVENT_CHECKOUT_PROMO_CODE_INVALID_MESSAGE_KEY,
+  EventFeedbackDetailDto,
+  EventFeedbackPageResultDto
+} from '../../../contracts/activity.interface';
 import { LocalRouteDelayService } from './route-delay.service';
 import { LocalEventFeedbackRepository } from '../repositories/event-feedback.repository';
 import { LocalEventsRepository } from '../repositories/events.repository';
@@ -84,6 +91,7 @@ export class LocalEventsService extends LocalRouteDelayService implements IEvent
   private static readonly EVENTS_ROUTE = '/activities/events';
   private static readonly EVENTS_EXPLORE_ROUTE = '/activities/events/explore';
   private static readonly EVENTS_CHECKOUT_ROUTE = '/activities/events/checkout';
+  private static readonly PROMO_CODE_VALIDATION_ROUTE = '/activities/events/checkout/promo-code/validate';
   private readonly eventsRepository = inject(LocalEventsRepository);
   private readonly activityResourcesRepository = inject(LocalActivityResourcesRepository);
   private readonly activitySubEventStageRuntimeRepository = inject(LocalActivitySubEventStageRuntimeRepository);
@@ -343,6 +351,49 @@ export class LocalEventsService extends LocalRouteDelayService implements IEvent
     return LocalEventCheckoutBasketsMapper.toDto(
       await this.eventCheckoutBasketsRepository.loadBasketByEvent(normalizedUserId, normalizedSourceId)
     );
+  }
+
+  async validateCheckoutPromoCode(
+    request: EventCheckoutPromoCodeValidationRequest
+  ): Promise<EventCheckoutPromoCodeValidationResult | null> {
+    const sourceId = request.sourceId?.trim();
+    const code = `${request.code ?? ''}`.trim().toUpperCase();
+    if (!sourceId) {
+      return null;
+    }
+    await this.waitForRouteDelay(LocalEventsService.PROMO_CODE_VALIDATION_ROUTE);
+
+    const selectedRecord = this.eventsRepository.queryEventRecordById('', sourceId);
+    const parentEventId = selectedRecord?.parentEventId?.trim();
+    const record = parentEventId
+      ? this.eventsRepository.queryEventRecordById('', parentEventId) ?? selectedRecord
+      : selectedRecord;
+    const pricing = record?.pricing;
+    const promoCodesEnabled = pricing != null
+      && pricing.enabled !== false
+      && pricing.audience?.enabled === true;
+    const promoCode = promoCodesEnabled
+      ? (pricing.audience.promoCodes ?? []).find(item => `${item?.code ?? ''}`.trim().toUpperCase() === code) ?? null
+      : null;
+    if (!code || !promoCode) {
+      return this.invalidPromoCodeValidationResult(code);
+    }
+    const canonicalPromoCode = {
+      id: `${promoCode.id ?? ''}`.trim(),
+      code,
+      action: {
+        kind: promoCode.action.kind,
+        value: Number(promoCode.action.value) || 0
+      }
+    };
+    return {
+      valid: true,
+      code,
+      promoCode: canonicalPromoCode,
+      effect: this.describePricingAction(canonicalPromoCode.action),
+      messageKey: null,
+      message: null
+    };
   }
 
   async saveCheckoutBasket(request: EventCheckoutRequest): Promise<EventCheckoutBasket | null> {
@@ -805,6 +856,7 @@ export class LocalEventsService extends LocalRouteDelayService implements IEvent
       optionalSubEventIds?: string[];
       assetSelections?: EventCheckoutAssetSelection[];
       acceptedPolicyIds?: string[];
+      appliedPromoCodes?: string[];
       paymentSessionId?: string | null;
       bookingConfirmed?: boolean;
       pendingReason?: ActivityPendingReason;
@@ -833,6 +885,7 @@ export class LocalEventsService extends LocalRouteDelayService implements IEvent
           optionalSubEventIds: options.optionalSubEventIds ?? [],
           assetSelections: options.assetSelections ?? [],
           acceptedPolicyIds: options.acceptedPolicyIds ?? [],
+          appliedPromoCodes: options.appliedPromoCodes ?? [],
           basketItems: options.basketItems,
           pricingSummaryRows: options.pricingSummaryRows ?? [],
           checkoutState: options.checkoutState,
@@ -1356,6 +1409,17 @@ export class LocalEventsService extends LocalRouteDelayService implements IEvent
       return `-${value}%`;
     }
     return `+${value}%`;
+  }
+
+  private invalidPromoCodeValidationResult(code: string): EventCheckoutPromoCodeValidationResult {
+    return {
+      valid: false,
+      code,
+      promoCode: null,
+      effect: null,
+      messageKey: EVENT_CHECKOUT_PROMO_CODE_INVALID_MESSAGE_KEY,
+      message: null
+    };
   }
 
   private checkoutSlotMatchesOrder(slot: EventSlotOccurrenceDTO, query: EventCheckoutSlotsQuery): boolean {

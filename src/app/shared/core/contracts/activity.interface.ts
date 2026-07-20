@@ -94,6 +94,9 @@ export interface IEventsService {
   ): Promise<ActivityEventSubEventsResultDTO | null>;
   loadCheckoutSlots(query: EventCheckoutSlotsQuery): Promise<EventCheckoutSlotsResult | null>;
   loadCheckoutBasketByEvent(userId: string, sourceId: string): Promise<EventCheckoutBasket | null>;
+  validateCheckoutPromoCode(
+    request: EventCheckoutPromoCodeValidationRequest
+  ): Promise<EventCheckoutPromoCodeValidationResult | null>;
   saveCheckoutBasket(request: EventCheckoutRequest): Promise<EventCheckoutBasket | null>;
   updateCheckoutBasketState(request: EventCheckoutStateChangeRequest): Promise<EventCheckoutBasket | null>;
   payEventCheckout(request: EventCheckoutStateChangeRequest): Promise<EventParticipationActionResultDTO | null>;
@@ -127,6 +130,7 @@ export interface IEventsService {
       optionalSubEventIds?: string[];
       assetSelections?: EventCheckoutAssetSelection[];
       acceptedPolicyIds?: string[];
+      appliedPromoCodes?: string[];
       paymentSessionId?: string | null;
       bookingConfirmed?: boolean;
       pendingReason?: AppConstants.ActivityPendingReason;
@@ -663,6 +667,7 @@ export class ActivityEventDetailDTO {
       selectedDateKey: value.selectedDateKey?.trim() || null,
       checkoutSessionId: value.checkoutSessionId?.trim() || null,
       expiresAtIso: value.expiresAtIso?.trim() || null,
+      appliedPromoCodes: ActivityEventDetailDTO.normalizeAppliedPromoCodes(value.appliedPromoCodes),
       items: (value.items ?? []).map(item => ActivityEventDetailDTO.cloneCheckoutBasketItem(item)).filter(Boolean) as EventCheckoutBasketItem[],
       pricingSummaryRows: ActivityEventDetailDTO.cloneCheckoutPricingSummaryRows(
         (value.pricingSummaryRows ?? []).length > 0
@@ -735,6 +740,12 @@ export class ActivityEventDetailDTO {
       currency: row.currency?.trim() || currency,
       multiplier: Number.isFinite(row.multiplier) ? Math.max(1, Math.trunc(Number(row.multiplier))) : null
     })).filter(row => row.label);
+  }
+
+  private static normalizeAppliedPromoCodes(value: readonly string[] | null | undefined): string[] {
+    return [...new Set((value ?? [])
+      .map(code => `${code ?? ''}`.trim().toUpperCase())
+      .filter(Boolean))];
   }
 
   static normalizeCheckoutState(value: unknown): EventCheckoutState {
@@ -1429,6 +1440,23 @@ export interface EventCheckoutBasket {
   selectedDateKey?: string | null;
   checkoutSessionId?: string | null;
   expiresAtIso?: string | null;
+  appliedPromoCodes: string[];
+}
+
+export interface EventCheckoutPromoCodeValidationRequest {
+  sourceId: string;
+  code: string;
+}
+
+export const EVENT_CHECKOUT_PROMO_CODE_INVALID_MESSAGE_KEY = 'event.checkout.promo.invalid';
+
+export interface EventCheckoutPromoCodeValidationResult {
+  valid: boolean;
+  code: string;
+  promoCode: PricingContracts.PricingPromoCode | null;
+  effect: string | null;
+  messageKey?: string | null;
+  message: string | null;
 }
 
 export interface EventCheckoutSelection {
@@ -1437,6 +1465,7 @@ export interface EventCheckoutSelection {
   optionalSubEventIds: string[];
   assetSelections: EventCheckoutAssetSelection[];
   acceptedPolicyIds: string[];
+  appliedPromoCodes: string[];
   basketItems?: EventCheckoutBasketItem[];
   pricingSummaryRows?: EventCheckoutPricingSummaryRow[];
   checkoutState?: EventCheckoutState;
@@ -1455,6 +1484,7 @@ export interface EventCheckoutRequest {
   optionalSubEventIds: string[];
   assetSelections: EventCheckoutAssetSelection[];
   acceptedPolicyIds: string[];
+  appliedPromoCodes: string[];
   basketItems?: EventCheckoutBasketItem[];
   pricingSummaryRows?: EventCheckoutPricingSummaryRow[];
   checkoutState?: EventCheckoutState;

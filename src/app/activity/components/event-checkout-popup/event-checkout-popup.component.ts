@@ -33,6 +33,7 @@ import {
   type AppMenuItemSelectEvent,
   type AppMenuPalette
 } from '../../../shared/ui/components/core/menu';
+import { EventPromoCodePopupComponent } from './event-promo-code-popup';
 
 import type * as AppConstants from '../../../shared/core/common/constants';
 type PricingSnapshot = {
@@ -68,7 +69,8 @@ type CheckoutFooterDecisionState = {
     MatFormFieldModule,
     MatIconModule,
     MatInputModule,
-    MatNativeDateModule
+    MatNativeDateModule,
+    EventPromoCodePopupComponent
   ],
   templateUrl: './event-checkout-popup.component.html',
   styleUrl: './event-checkout-popup.component.scss'
@@ -91,9 +93,12 @@ export class EventCheckoutPopupComponent {
   protected slotPageIndex = 0;
   protected selectedOptionalSubEventIds = new Set<string>();
   protected acceptedPolicyIds = new Set<string>();
+  protected appliedPromoCodes: string[] = [];
   protected paymentStep = false;
   protected busy = false;
   protected errorMessage = '';
+  private readonly promoCodePopupOpen = signal(false);
+  private readonly validatedPromoCodeDefinitions = new Map<string, ContractTypes.PricingPromoCode>();
 
   private renderedDialogId = 0;
   private renderedDialogLoading = false;
@@ -122,6 +127,9 @@ export class EventCheckoutPopupComponent {
       const loadingResolved = !dialogChanged && this.renderedDialogLoading && !dialog.loading;
       if (!dialogChanged && !loadingResolved) {
         return;
+      }
+      if (dialogChanged) {
+        this.validatedPromoCodeDefinitions.clear();
       }
       this.renderedDialogId = dialog.id;
       this.renderedDialogLoading = dialog.loading;
@@ -199,6 +207,9 @@ export class EventCheckoutPopupComponent {
       basketTotalAmount: this.totalAmount(),
       basketCurrency: this.currency(),
       basketAddDisabled: this.checkoutBasketAddDisabled(),
+      showPromoCodeAction: this.checkoutPromoCodeEntryEnabled(),
+      appliedPromoCodeCount: this.appliedPromoCodes.length,
+      onPromoCodeAction: () => this.openPromoCodePopup(),
       onBasketAdd: event => this.addCheckoutBasketSlot(event),
       onBasketItemMenuSelect: (item, event) => this.onCheckoutBasketItemMenuSelect(item, event),
       footerItems: this.isReadOnlyCheckoutSummary() || checkoutLoading ? [] : this.checkoutFooterMenuItems(),
@@ -477,6 +488,181 @@ export class EventCheckoutPopupComponent {
     }
   }
 
+  protected showPromoCodePopup(): boolean {
+    return this.promoCodePopupOpen();
+  }
+
+  protected availableCheckoutPromoCodes(): ContractTypes.PricingPromoCode[] {
+    const dialog = this.dialog();
+    if (!dialog) {
+      return [];
+    }
+    const pricing = PricingBuilder.compactPricingConfig(dialog.record.pricing, {
+      context: 'event',
+      slotCatalog: PricingBuilder.slotCatalogFromEventSlotTemplates(dialog.record.slotTemplates ?? []),
+      allowSlotFeatures: (dialog.record.slotTemplates?.length ?? 0) > 0
+    });
+    if (!pricing.enabled || !pricing.audience.enabled) {
+      return [];
+    }
+    const definitions = new Map<string, ContractTypes.PricingPromoCode>();
+    for (const item of pricing.audience.promoCodes ?? []) {
+      const definition = {
+        ...item,
+        code: this.normalizePromoCode(item.code),
+        action: { ...item.action }
+      };
+      if (definition.code) {
+        definitions.set(definition.code, definition);
+      }
+    }
+    for (const [code, definition] of this.validatedPromoCodeDefinitions) {
+      definitions.set(code, {
+        ...definition,
+        code,
+        action: { ...definition.action }
+      });
+    }
+    return [...definitions.values()];
+  }
+
+  protected appliedCheckoutPromoCodes(): string[] {
+    return [...this.appliedPromoCodes];
+  }
+
+  protected closePromoCodePopup(): void {
+    this.promoCodePopupOpen.set(false);
+  }
+
+  protected readonly validateCheckoutPromoCode = async (
+    code: string
+  ): Promise<ContractTypes.EventCheckoutPromoCodeValidationResult | null> => {
+    const dialog = this.dialog();
+    const normalized = this.normalizePromoCode(code);
+    if (!dialog || !normalized) {
+      return null;
+    }
+    return this.eventsService.validateCheckoutPromoCode({
+      sourceId: dialog.record.id,
+      code: normalized
+    });
+  };
+
+  protected addPromoCode(result: ContractTypes.EventCheckoutPromoCodeValidationResult): void {
+    const normalized = this.normalizePromoCode(result?.code);
+    if (!result?.valid || !normalized || this.appliedPromoCodes.includes(normalized)) {
+      return;
+    }
+    const definition = result.promoCode;
+    if (definition?.action) {
+      this.validatedPromoCodeDefinitions.set(normalized, {
+        ...definition,
+        code: normalized,
+        action: { ...definition.action }
+      });
+    }
+    this.updateAppliedPromoCodes([...this.appliedPromoCodes, normalized]);
+  }
+
+  protected removePromoCode(code: string): void {
+    const normalized = this.normalizePromoCode(code);
+    if (!normalized || !this.appliedPromoCodes.includes(normalized)) {
+      return;
+    }
+    this.updateAppliedPromoCodes(this.appliedPromoCodes.filter(item => item !== normalized));
+  }
+
+  private openPromoCodePopup(): void {
+    if (!this.checkoutPromoCodeEntryEnabled() || this.busy) {
+      return;
+    }
+    this.promoCodePopupOpen.set(true);
+  }
+
+  private checkoutPromoCodeEntryEnabled(): boolean {
+    return !this.isReadOnlyCheckoutSummary()
+      && this.availableCheckoutPromoCodes().length > 0;
+  }
+
+  private updateAppliedPromoCodes(codes: readonly string[]): void {
+    const nextCodes = this.validAppliedPromoCodes(codes);
+    if (nextCodes.join('|') === this.appliedPromoCodes.join('|')) {
+      return;
+    }
+    const dialog = this.dialog();
+    if (!dialog) {
+      return;
+    }
+
+    this.errorMessage = '';
+    const currentItems = this.activeCheckoutBasketItems();
+    this.resetCheckoutSubmissionForEdit();
+    this.appliedPromoCodes = nextCodes;
+    this.checkoutBasket = currentItems.length > 0
+      ? this.repriceCheckoutBasketItems(currentItems)
+      : null;
+    this.openCheckoutReviewEditorShell(dialog);
+  }
+
+  private repriceCheckoutBasketItems(
+    items: readonly ActivityContracts.EventCheckoutBasketItem[]
+  ): ActivityContracts.EventCheckoutBasket | null {
+    const dialog = this.dialog();
+    if (!dialog) {
+      return null;
+    }
+    const optionalSubEventsById = new Map(this.optionalSubEvents().map(item => [item.id, item] as const));
+    const nowIso = new Date().toISOString();
+    const repricedItems = items.map(item => {
+      const slot = (item.slotSourceId
+        ? this.availableSlots().find(candidate => candidate.id === item.slotSourceId)
+        : null) ?? null;
+      const slotTemplateId = item.slotTemplateId ?? slot?.slotTemplateId ?? null;
+      const pricing = item.kind === 'event'
+        ? this.resolvePricing(
+            dialog.record.pricing,
+            dialog.record,
+            slotTemplateId,
+            slot,
+            this.appliedPromoCodes
+          )
+        : item.kind === 'sub_event'
+          ? this.resolvePricing(
+              optionalSubEventsById.get(item.subEventId ?? '')?.pricing,
+              dialog.record,
+              null,
+              slot
+            )
+          : null;
+      if (!pricing) {
+        return { ...item, updatedAtIso: nowIso };
+      }
+      return {
+        ...item,
+        amount: pricing.amount,
+        currency: pricing.currency,
+        pricingSummaryRows: pricing.rows,
+        updatedAtIso: nowIso
+      };
+    });
+    return this.buildRuntimeBasketFromItems(repricedItems);
+  }
+
+  private validAppliedPromoCodes(codes: readonly string[]): string[] {
+    const available = new Set(this.availableCheckoutPromoCodes().map(item => item.code));
+    return this.normalizeAppliedPromoCodes(codes).filter(code => available.has(code));
+  }
+
+  private normalizeAppliedPromoCodes(codes: readonly string[] | null | undefined): string[] {
+    return [...new Set((codes ?? [])
+      .map(code => this.normalizePromoCode(code))
+      .filter(Boolean))];
+  }
+
+  private normalizePromoCode(code: string | null | undefined): string {
+    return `${code ?? ''}`.trim().toUpperCase();
+  }
+
   protected lineItems(): ActivityContracts.EventCheckoutLineItem[] {
     const basket = this.checkoutBasketSnapshot();
     if (basket) {
@@ -491,7 +677,13 @@ export class EventCheckoutPopupComponent {
     }
     const slot = this.selectedSlot();
     const slotId = slot?.slotTemplateId ?? null;
-    const eventPricing = this.resolvePricing(dialog.record.pricing, dialog.record, slotId, slot);
+    const eventPricing = this.resolvePricing(
+      dialog.record.pricing,
+      dialog.record,
+      slotId,
+      slot,
+      this.appliedPromoCodes
+    );
     const items: ActivityContracts.EventCheckoutLineItem[] = [
       {
         id: `event:${dialog.record.id}`,
@@ -589,6 +781,7 @@ export class EventCheckoutPopupComponent {
       selectedDateKey: this.selectedSlotDateValue ? this.slotDateKeyFromDate(this.selectedSlotDateValue) : null,
       optionalIds,
       policyIds,
+      promoCodes: [...this.appliedPromoCodes],
       itemParts,
       totalAmount: Math.round(totalAmount * 100) / 100,
       currency
@@ -633,7 +826,13 @@ export class EventCheckoutPopupComponent {
     const selectedDateKey = slot?.startAtIso ? this.slotDateKeyFromIso(slot.startAtIso) : this.selectedSlotDateKey() || null;
     const nowIso = new Date().toISOString();
     const expiresAtIso = new Date(Date.now() + EventCheckoutPopupComponent.CHECKOUT_BASKET_TTL_MS).toISOString();
-    const eventPricing = this.resolvePricing(dialog.record.pricing, dialog.record, slotId, slot);
+    const eventPricing = this.resolvePricing(
+      dialog.record.pricing,
+      dialog.record,
+      slotId,
+      slot,
+      this.appliedPromoCodes
+    );
     const selectedOptionalSubEvents = this.optionalSubEvents()
       .filter(subEvent => this.selectedOptionalSubEventIds.has(subEvent.id))
       .map(subEvent => ({
@@ -994,6 +1193,9 @@ export class EventCheckoutPopupComponent {
     this.paymentStep = false;
     this.checkoutSessionId = null;
     this.checkoutBasket = basket ?? this.buildRuntimeBasketFromItems(items);
+    this.appliedPromoCodes = this.validAppliedPromoCodes(
+      this.checkoutBasket?.appliedPromoCodes ?? this.appliedPromoCodes
+    );
     const activeItems = this.activeCheckoutBasketItems();
     this.selectedSlotSourceId = this.checkoutBasket?.slotSourceId
       ?? activeItems.find(item => item.slotSourceId?.trim())?.slotSourceId?.trim()
@@ -1010,6 +1212,7 @@ export class EventCheckoutPopupComponent {
         .map(item => item.subEventId?.trim() ?? '')
         .filter(id => Boolean(id) && validOptionalIds.has(id))
     );
+    this.checkoutBasket = this.repriceCheckoutBasketItems(activeItems) ?? this.checkoutBasket;
     if (basketChangeContext) {
       this.markCheckoutDraftBasketChanged(basketChangeContext.checkoutState, basketChangeContext.pendingReason);
     }
@@ -1017,6 +1220,9 @@ export class EventCheckoutPopupComponent {
     const dialog = this.dialog();
     if (dialog) {
       this.openCheckoutReviewEditorShell(dialog);
+      void this.persistCheckoutDraft(true, null, 'draft').catch(error => {
+        this.setCheckoutErrorMessage(dialog, error, 'Unable to update checkout pricing.');
+      });
     }
   }
 
@@ -1182,6 +1388,7 @@ export class EventCheckoutPopupComponent {
       selectedDateKey,
       optionalSubEventIds: [],
       acceptedPolicyIds: [...this.acceptedPolicyIds],
+      appliedPromoCodes: [],
       basketItems: [],
       pricingSummaryRows: [],
       checkoutState: 'draft',
@@ -1220,7 +1427,8 @@ export class EventCheckoutPopupComponent {
       slotSourceId: items[0]?.slotSourceId ?? null,
       selectedDateKey: items[0]?.selectedDateKey ?? null,
       checkoutSessionId: this.checkoutSessionId,
-      expiresAtIso: items.find(item => item.expiresAtIso)?.expiresAtIso ?? null
+      expiresAtIso: items.find(item => item.expiresAtIso)?.expiresAtIso ?? null,
+      appliedPromoCodes: [...this.appliedPromoCodes]
     };
   }
 
@@ -1247,7 +1455,8 @@ export class EventCheckoutPopupComponent {
       slotSourceId: items[0]?.slotSourceId ?? null,
       selectedDateKey: items[0]?.selectedDateKey ?? null,
       checkoutSessionId: this.checkoutSessionId,
-      expiresAtIso: items.find(item => item.expiresAtIso)?.expiresAtIso ?? null
+      expiresAtIso: items.find(item => item.expiresAtIso)?.expiresAtIso ?? null,
+      appliedPromoCodes: [...this.appliedPromoCodes]
     };
   }
 
@@ -2556,6 +2765,7 @@ export class EventCheckoutPopupComponent {
     this.slotPageIndex = 0;
     this.selectedOptionalSubEventIds = new Set((draft?.optionalSubEventIds ?? []).filter(item => validOptionalIds.has(item)));
     this.acceptedPolicyIds = new Set((draft?.acceptedPolicyIds ?? []).filter(item => validPolicyIds.has(item)));
+    this.appliedPromoCodes = this.validAppliedPromoCodes(draft?.appliedPromoCodes ?? []);
     const draftHasVisibleItems = this.hasVisibleCheckoutItems(draft?.basketItems);
     this.paymentStep = draftHasVisibleItems ? this.shouldOpenPaymentStepFromDraft(draft) : false;
     this.checkoutSessionId = draftHasVisibleItems ? draft?.checkoutSessionId ?? null : null;
@@ -2572,11 +2782,13 @@ export class EventCheckoutPopupComponent {
         slotSourceId: draft.slotSourceId,
         selectedDateKey: draft.selectedDateKey,
         checkoutSessionId: draft.checkoutSessionId,
-        expiresAtIso: draft.expiresAtIso
+        expiresAtIso: draft.expiresAtIso,
+        appliedPromoCodes: [...this.appliedPromoCodes]
       }
       : null;
     if (dialog.hasPreloadedCheckoutBasket && this.hasVisibleCheckoutItems(dialog.preloadedCheckoutBasket?.items)) {
       this.checkoutBasket = ActivityEventDetailDTO.cloneCheckoutBasket(dialog.preloadedCheckoutBasket);
+      this.appliedPromoCodes = this.validAppliedPromoCodes(this.checkoutBasket?.appliedPromoCodes ?? []);
     }
     this.refreshCheckoutBaseline();
     this.busy = false;
@@ -2607,6 +2819,7 @@ export class EventCheckoutPopupComponent {
       this.refreshCheckoutBaseline();
       return;
     }
+    this.appliedPromoCodes = this.validAppliedPromoCodes(basket.appliedPromoCodes ?? this.appliedPromoCodes);
     const firstSlotSourceId = basket.items.find(item => item.slotSourceId?.trim())?.slotSourceId?.trim() ?? null;
     const validSlotIds = new Set(this.availableSlots().map(item => item.id));
     this.selectedSlotSourceId = firstSlotSourceId && validSlotIds.has(firstSlotSourceId)
@@ -2717,6 +2930,9 @@ export class EventCheckoutPopupComponent {
     this.slotPageIndex = 0;
     this.selectedOptionalSubEventIds = new Set<string>();
     this.acceptedPolicyIds = new Set<string>();
+    this.appliedPromoCodes = [];
+    this.validatedPromoCodeDefinitions.clear();
+    this.promoCodePopupOpen.set(false);
     this.paymentStep = false;
     this.checkoutSessionId = null;
     this.checkoutBasket = null;
@@ -2753,6 +2969,7 @@ export class EventCheckoutPopupComponent {
       optionalSubEventIds: [...this.selectedOptionalSubEventIds],
       assetSelections: [],
       acceptedPolicyIds: [...this.acceptedPolicyIds],
+      appliedPromoCodes: [...this.appliedPromoCodes],
       ...(includeBasketPayload ? {
         basketItems: this.checkoutBasketItems(checkoutState, options.resultState),
         pricingSummaryRows: this.checkoutBasketPricingSummaryRows()
@@ -2788,6 +3005,7 @@ export class EventCheckoutPopupComponent {
       optionalSubEventIds: [...this.selectedOptionalSubEventIds],
       assetSelections: [],
       acceptedPolicyIds: [...this.acceptedPolicyIds],
+      appliedPromoCodes: [...this.appliedPromoCodes],
       basketItems: this.checkoutBasketItems(checkoutState, options.resultState),
       pricingSummaryRows: this.checkoutBasketPricingSummaryRows(),
       checkoutState,
@@ -2831,7 +3049,8 @@ export class EventCheckoutPopupComponent {
     pricing: ContractTypes.PricingConfig | null | undefined,
     record: ActivityEventRecord,
     slotId: string | null,
-    slot: ContractTypes.EventSlotOccurrenceDTO | null
+    slot: ContractTypes.EventSlotOccurrenceDTO | null,
+    appliedPromoCodes: readonly string[] = []
   ): PricingSnapshot {
     const slotCatalog = PricingBuilder.slotCatalogFromEventSlotTemplates(record.slotTemplates ?? []);
     const normalized = PricingBuilder.compactPricingConfig(pricing, {
@@ -2922,6 +3141,33 @@ export class EventCheckoutPopupComponent {
           key: 'max-price',
           label: 'Maximum price',
           detail: null,
+          amount: Math.round((nextPrice - previousPrice) * 100) / 100,
+          currency,
+          multiplier: 1
+        });
+      }
+    }
+
+    if (normalized.audience.enabled && appliedPromoCodes.length > 0) {
+      const configuredPromoCodes = new Map(
+        (normalized.audience.promoCodes ?? [])
+          .map(item => [this.normalizePromoCode(item.code), item] as const)
+          .filter(([code]) => Boolean(code))
+      );
+      for (const [code, definition] of this.validatedPromoCodeDefinitions) {
+        configuredPromoCodes.set(code, definition);
+      }
+      for (const code of this.normalizeAppliedPromoCodes(appliedPromoCodes)) {
+        const promo = configuredPromoCodes.get(code);
+        if (!promo) {
+          continue;
+        }
+        const previousPrice = nextPrice;
+        nextPrice = this.applyPricingAction(nextPrice, promo.action);
+        rows.push({
+          key: `promo:${promo.id || code}`,
+          label: `Promo code ${code}`,
+          detail: this.describePricingAction(promo.action),
           amount: Math.round((nextPrice - previousPrice) * 100) / 100,
           currency,
           multiplier: 1
@@ -3212,6 +3458,7 @@ export class EventCheckoutPopupComponent {
       selectedDateKey: this.selectedSlotDateValue ? this.slotDateKeyFromDate(this.selectedSlotDateValue) : null,
       optionalSubEventIds: [...this.selectedOptionalSubEventIds],
       acceptedPolicyIds: [...this.acceptedPolicyIds],
+      appliedPromoCodes: [...this.appliedPromoCodes],
       basketItems,
       pricingSummaryRows: this.checkoutBasketPricingSummaryRows(),
       checkoutState,

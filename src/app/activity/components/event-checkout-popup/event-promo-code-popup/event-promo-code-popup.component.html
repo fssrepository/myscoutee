@@ -1,0 +1,37 @@
+@if (open) {
+  <app-popup [model]="popupModel()" [zIndex]="popupZIndex()">
+    <div class="event-promo-code-popup-body">
+      @let rows = promoCodeRows();
+      <section class="event-promo-code-list-section">
+        @if (rows.length > 0) {
+          <div class="event-promo-code-list">
+            @for (row of rows; track trackPromoCode($index, row)) {
+              <single-row
+                [row]="row"
+                (menuAction)="onPromoCodeMenuAction($event)"
+              ></single-row>
+            }
+          </div>
+        } @else {
+          <div class="event-promo-code-empty">
+            <mat-icon>local_offer</mat-icon>
+            <span>{{ 'event.checkout.promo.empty' | i18n }}</span>
+          </div>
+        }
+      </section>
+    </div>
+  </app-popup>
+}
+
+@if (addPopupLoading()) {
+  <app-popup [model]="addPopupLoadingModel()" [zIndex]="addPopupZIndex()">
+    <div class="event-promo-code-add-loading" aria-busy="true">
+      <app-indicator kind="load-ring" state="loading"></app-indicator>
+      <span>{{ 'event.checkout.promo.add.loading' | i18n }}</span>
+    </div>
+  </app-popup>
+}
+
+@if (addPopupComponent(); as popupComponent) {
+  <ng-container *ngComponentOutlet="popupComponent; inputs: addPopupOutletInputs()"></ng-container>
+}

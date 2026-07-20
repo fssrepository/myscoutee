@@ -27,8 +27,21 @@
             [showAdd]="false"
             [showItemMenu]="false"
           ></app-event-basket-input>
-          <app-pricing-editor-input class="event-pricing-field" [(ngModel)]="eventDetailDTO.pricing"
-            [config]="eventPricingEditorConfig" [readOnly]="true" [disabled]="true"></app-pricing-editor-input>
+          <div
+            class="event-pricing-field-shell"
+            [class.event-pricing-field-shell--promo]="showCheckoutPromoCodeAction()"
+          >
+            <app-pricing-editor-input class="event-pricing-field" [(ngModel)]="eventDetailDTO.pricing"
+              [config]="eventPricingEditorConfig" [readOnly]="true" [disabled]="true"></app-pricing-editor-input>
+            @if (showCheckoutPromoCodeAction()) {
+              <app-menu
+                class="event-pricing-promo-action"
+                kind="inline"
+                [items]="checkoutPromoCodeMenuItems()"
+                (itemSelect)="onCheckoutPromoCodeMenuSelect($event)"
+              ></app-menu>
+            }
+          </div>
           @if (showCheckoutPaymentPanel()) {
             <app-event-payment-input
               [totalAmount]="checkoutBasketTotalAmount()"
@@ -147,8 +160,21 @@
                 (itemMenuSelect)="onCheckoutBasketItemMenuSelect($event)"
               ></app-event-basket-input>
             }
-            <app-pricing-editor-input class="experience-description-field event-pricing-field" [(ngModel)]="eventDetailDTO.pricing"
-              [config]="eventPricingEditorConfig" [readOnly]="eventStructureReadOnly()" [disabled]="eventStructureReadOnly()"></app-pricing-editor-input>
+            <div
+              class="experience-description-field event-pricing-field-shell"
+              [class.event-pricing-field-shell--promo]="showCheckoutPromoCodeAction()"
+            >
+              <app-pricing-editor-input class="event-pricing-field" [(ngModel)]="eventDetailDTO.pricing"
+                [config]="eventPricingEditorConfig" [readOnly]="eventStructureReadOnly()" [disabled]="eventStructureReadOnly()"></app-pricing-editor-input>
+              @if (showCheckoutPromoCodeAction()) {
+                <app-menu
+                  class="event-pricing-promo-action"
+                  kind="inline"
+                  [items]="checkoutPromoCodeMenuItems()"
+                  (itemSelect)="onCheckoutPromoCodeMenuSelect($event)"
+                ></app-menu>
+              }
+            </div>
             <app-policies-input [(ngModel)]="eventDetailDTO.policies"
               [(enabled)]="eventDetailDTO.policiesEnabled"
               [readOnly]="eventPoliciesReadOnly()"

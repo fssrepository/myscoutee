@@ -621,6 +621,47 @@ export class EventEditorPopupComponent implements OnInit, OnDestroy {
     return this.resolvePresentationValue(this.eventEditorStore.presentation().basketAddDisabled, false) === true;
   }
 
+  protected showCheckoutPromoCodeAction(): boolean {
+    if (!this.checkoutReviewMode()) {
+      return false;
+    }
+    return this.resolvePresentationValue(
+      this.eventEditorStore.presentation().showPromoCodeAction,
+      false
+    ) === true;
+  }
+
+  protected checkoutPromoCodeMenuItems(): readonly AppMenuItem<string>[] {
+    const count = Math.max(0, Math.trunc(Number(this.resolvePresentationValue(
+      this.eventEditorStore.presentation().appliedPromoCodeCount,
+      0
+    )) || 0));
+    return [{
+      id: 'checkout-promo-codes',
+      icon: 'redeem',
+      kind: 'action',
+      layout: 'action',
+      palette: 'amber',
+      counter: count > 0
+        ? {
+            value: count,
+            max: 99,
+            ariaLabel: 'event.checkout.promo.action.counter.aria'
+          }
+        : null,
+      ariaLabel: 'event.checkout.promo.action.aria'
+    }];
+  }
+
+  protected onCheckoutPromoCodeMenuSelect(event: AppMenuItemSelectEvent<string>): void {
+    event.sourceEvent.preventDefault();
+    event.sourceEvent.stopPropagation();
+    if (event.id !== 'checkout-promo-codes') {
+      return;
+    }
+    void this.eventEditorStore.presentation().onPromoCodeAction?.(event.sourceEvent);
+  }
+
   protected onCheckoutBasketAdd(event?: Event): void {
     event?.preventDefault();
     event?.stopPropagation();

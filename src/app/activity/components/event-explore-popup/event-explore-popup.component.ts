@@ -2007,6 +2007,7 @@ export class EventExplorePopupComponent {
         optionalSubEventIds: selection?.optionalSubEventIds ?? [],
         assetSelections: selection?.assetSelections ?? [],
         acceptedPolicyIds: selection?.acceptedPolicyIds ?? [],
+        appliedPromoCodes: selection?.appliedPromoCodes ?? [],
         paymentSessionId: selection?.paymentSessionId ?? null,
         bookingConfirmed: isAcceptedBooking,
         pendingReason,

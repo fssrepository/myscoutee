@@ -72,6 +72,45 @@ function buildCheckoutDemoPricing(
   return pricing;
 }
 
+export const URBAN_PHOTO_SPRINT_PROMO_CODES = [
+  'VIPPHOTO20',
+  'VIPSPRINT5',
+  'LUCAGUEST10'
+] as const;
+
+function buildUrbanPhotoSprintPricing(): ContractTypes.PricingConfig {
+  const pricing = buildCheckoutDemoPricing(25);
+  pricing.audience.enabled = true;
+  pricing.audience.vipPrice = 18;
+  pricing.audience.promoCodes = [
+    {
+      id: 'urban-photo-vip-percent',
+      code: URBAN_PHOTO_SPRINT_PROMO_CODES[0],
+      action: {
+        kind: 'decrease_percent',
+        value: 20
+      }
+    },
+    {
+      id: 'urban-photo-vip-fixed',
+      code: URBAN_PHOTO_SPRINT_PROMO_CODES[1],
+      action: {
+        kind: 'decrease_amount',
+        value: 5
+      }
+    },
+    {
+      id: 'urban-photo-guest-percent',
+      code: URBAN_PHOTO_SPRINT_PROMO_CODES[2],
+      action: {
+        kind: 'decrease_percent',
+        value: 10
+      }
+    }
+  ];
+  return pricing;
+}
+
 function buildCheckoutDemoSubEventPricing(
   basePrice: number,
   enabled: boolean,
@@ -333,7 +372,8 @@ const SEED_INVITATIONS_BY_USER: Record<string, ActivityInvitationSeedItem[]> = {
     pendingMemberUserIds: ['u3', 'u31'],
     capacityTotal: 6,
     startAt: '2026-03-14T18:00:00',
-    endAt: '2026-03-14T20:00:00'
+    endAt: '2026-03-14T20:00:00',
+    pricing: buildUrbanPhotoSprintPricing()
   }]
 };
 
@@ -929,6 +969,7 @@ export class SeedEventsBuilder {
     return Object.fromEntries(
       Object.entries(SEED_INVITATIONS_BY_USER).map(([userId, items]) => [userId, items.map(item => ({
         ...item,
+        pricing: item.pricing ? SeedPricingBuilder.clonePricingConfig(item.pricing) : item.pricing,
         acceptedMemberUserIds: item.acceptedMemberUserIds ? [...item.acceptedMemberUserIds] : item.acceptedMemberUserIds,
         pendingMemberUserIds: item.pendingMemberUserIds ? [...item.pendingMemberUserIds] : item.pendingMemberUserIds,
         policiesEnabled: item.policiesEnabled === true,

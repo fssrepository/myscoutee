@@ -44,6 +44,7 @@ export interface ActivityInvitationSeedItem {
   locationCoordinates?: LocationCoordinates;
   policies?: EventPolicyDTO[];
   policiesEnabled?: boolean;
+  pricing?: PricingConfig | null;
 }
 
 export interface ActivityEventSeedItem {
