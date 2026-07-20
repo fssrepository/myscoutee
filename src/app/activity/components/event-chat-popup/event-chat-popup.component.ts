@@ -188,6 +188,7 @@ type ChatThreadPageContext = {
 type EmojiPickerMenuItemId = `emoji:${string}`;
 
 interface EmojiPickerMenuContext {
+  menu: 'emoji-reaction';
   emoji: string;
 }
 
@@ -1121,6 +1122,16 @@ export class EventChatPopupComponent implements OnDestroy {
   }
 
   protected onDispatchedChatMenuSelect(event: AppMenuItemSelectEvent<string, unknown>): void {
+    const emojiContext = event.context as EmojiPickerMenuContext | undefined;
+    if (emojiContext?.menu === 'emoji-reaction') {
+      const message = this.messages.find(item => item.id === this.quickReactionMessageId);
+      if (message) {
+        this.toggleReaction(message, emojiContext.emoji, event.sourceEvent);
+      } else {
+        this.closeTransientMessageUi();
+      }
+      return;
+    }
     const context = event.context as ChatMenuContext | undefined;
     if (context?.menu !== 'message-action') {
       return;
@@ -2129,6 +2140,7 @@ export class EventChatPopupComponent implements OnDestroy {
           value: emoji,
           closeOnSelect: true,
           context: {
+            menu: 'emoji-reaction',
             emoji
           }
         }))
