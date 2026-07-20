@@ -2288,8 +2288,6 @@ export class EventExplorePopupComponent {
 
   private resolveUser(userId: string, record: ActivityEventRecord): UserDto {
     return this.userByIdMap.get(userId)
-      ?? this.userByIdMap.get(record.creatorUserId)
-      ?? this.users[0]
       ?? {
         id: userId,
         name: record.creatorName,

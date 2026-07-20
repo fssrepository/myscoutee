@@ -194,6 +194,7 @@
                 @for (control of step.controls; track control.id) {
                   <div
                     class="form-flow__control"
+                    [attr.data-control-id]="control.id"
                     [class.form-flow__control--wide]="control.layout === 'wide' || (control.layout !== 'half' && (control.kind === 'textarea' || control.kind === 'image-carousel' || control.kind === 'review' || control.kind === 'section'))"
                     [class.form-flow__control--half]="control.layout === 'half'"
                     [class.form-flow__control--with-accessory]="accessoryMenuConfig(control)"

@@ -84,8 +84,8 @@ describe('Demo bootstrap seeding', () => {
     expect(flushedTables).toContain(EVENTS_TABLE_NAME);
     expect(flushedTables).toContain(ACTIVITY_RESOURCES_TABLE_NAME);
     expect(flushedTables).toContain(ASSETS_TABLE_NAME);
-    expect(flushedTables.filter(tableName => tableName === EVENTS_TABLE_NAME).length).toBe(1);
-    expect(flushedTables.indexOf(EVENTS_TABLE_NAME)).toBeGreaterThan(flushedTables.indexOf(ACTIVITY_MEMBERS_TABLE_NAME));
+    expect(flushedTables.filter(tableName => tableName === EVENTS_TABLE_NAME).length).toBe(2);
+    expect(flushedTables.lastIndexOf(EVENTS_TABLE_NAME)).toBeGreaterThan(flushedTables.indexOf(ACTIVITY_MEMBERS_TABLE_NAME));
     expect(flushedTables.filter(tableName => tableName === ASSETS_TABLE_NAME).length).toBe(1);
     expect(flushedTables.indexOf(ASSETS_TABLE_NAME)).toBeGreaterThan(flushedTables.indexOf(ACTIVITY_RESOURCES_TABLE_NAME));
   });
