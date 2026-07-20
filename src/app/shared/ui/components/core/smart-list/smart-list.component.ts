@@ -311,6 +311,7 @@ export class SmartListComponent<T, TFilters extends SmartListFilters = SmartList
   private awaitScrollResetBaselineTop: number | null = null;
   private awaitScrollResetBaselineReverseDistance: number | null = null;
   private stepperInitialAnchorKey = '';
+  private listPageLoadAbortController: AbortController | null = null;
   private stepperPageLoadAbortController: AbortController | null = null;
   private stepperPreloadAbortController: AbortController | null = null;
   private activePageAdapter: AnySmartListPageAdapter<T, TFilters> | null = null;
@@ -535,6 +536,8 @@ export class SmartListComponent<T, TFilters extends SmartListFilters = SmartList
 
   ngOnDestroy(): void {
     this.loadSequence += 1;
+    this.listPageLoadAbortController?.abort();
+    this.listPageLoadAbortController = null;
     this.pollScheduler.destroy();
     this.stepper.reset();
     this.clearListSnapSettleTimers();
@@ -1468,6 +1471,8 @@ export class SmartListComponent<T, TFilters extends SmartListFilters = SmartList
   };
 
   private resetAndReload(): void {
+    this.listPageLoadAbortController?.abort();
+    this.listPageLoadAbortController = null;
     this.resetHostedFullscreenTransition();
     this.clearHorizontalCursorScrollLock();
     this.clearLoadingAnimation();
@@ -1579,6 +1584,9 @@ export class SmartListComponent<T, TFilters extends SmartListFilters = SmartList
     }
 
     const query = this.loadQuery(this.pageIndex, isInitial);
+    this.listPageLoadAbortController?.abort();
+    const abortController = typeof AbortController === 'undefined' ? null : new AbortController();
+    this.listPageLoadAbortController = abortController;
     const sequence = ++this.loadSequence;
     const shouldSuppressVisibleLoadingProgress = !isInitial
       && this.currentViewMode === 'list'
@@ -1613,8 +1621,8 @@ export class SmartListComponent<T, TFilters extends SmartListFilters = SmartList
 
     try {
       const [result] = await Promise.all([
-        firstValueFrom(loader(query)),
-        this.wait(this.resolvedLoadingDelayMs())
+        firstValueFrom(loader(query, { signal: abortController?.signal })),
+        this.wait(this.resolvedLoadingDelayMs(), abortController?.signal)
       ]);
 
       if (sequence !== this.loadSequence) {
@@ -1640,6 +1648,9 @@ export class SmartListComponent<T, TFilters extends SmartListFilters = SmartList
       this.initialLoading = false;
       this.hasMore = false;
     } finally {
+      if (this.listPageLoadAbortController === abortController) {
+        this.listPageLoadAbortController = null;
+      }
       if (sequence !== this.loadSequence) {
         return;
       }

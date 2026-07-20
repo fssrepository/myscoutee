@@ -1,5 +1,6 @@
 import { HttpClient } from '@angular/common/http';
 import { Injectable, inject } from '@angular/core';
+import type { Observable } from 'rxjs';
 
 import { environment } from '../../../../../environments/environment';
 import type {
@@ -7,6 +8,8 @@ import type {
   IdeaPostAdminPageQueryDto,
   IdeaPostAdminPageResultDto,
   IdeaPostDto,
+  IdeaPostPublicPageQueryDto,
+  IdeaPostPublicPageResultDto,
   IdeaPostSaveRequestDto
 } from '../../contracts/content.interface';
 
@@ -25,6 +28,32 @@ export class HttpIdeaPostsService {
       })
       .toPromise();
     return this.normalizePosts(response?.ideas);
+  }
+
+  async loadPublishedPostsPage(
+    lang: string | null | undefined,
+    query: IdeaPostPublicPageQueryDto = {},
+    signal?: AbortSignal
+  ): Promise<IdeaPostPublicPageResultDto> {
+    const pageSize = Math.max(1, Math.min(50, Math.trunc(Number(query.pageSize) || 10)));
+    const page = Math.max(0, Math.trunc(Number(query.page) || 0));
+    const params: Record<string, string> = {
+      lang: this.requestLang(lang),
+      page: String(page),
+      pageSize: String(pageSize)
+    };
+    const cursor = `${query.cursor ?? ''}`.trim();
+    if (cursor) {
+      params['cursor'] = cursor;
+    }
+    const response = await this.requestWithAbort(
+      this.http.get<Array<Partial<IdeaPostDto>> | Partial<IdeaPostPublicPageResultDto> | null>(
+        `${this.apiBaseUrl}/landing/articles`,
+        { params }
+      ),
+      signal
+    );
+    return this.normalizePublicPage(response);
   }
 
   async loadAdminPosts(adminUserId: string, lang = 'en'): Promise<IdeaPostDto[]> {
@@ -147,6 +176,28 @@ export class HttpIdeaPostsService {
       createdByUserId: `${value?.createdByUserId ?? ''}`.trim(),
       updatedAtIso: `${value?.updatedAtIso ?? value?.createdAtIso ?? ''}`.trim(),
       updatedByUserId: `${value?.updatedByUserId ?? value?.createdByUserId ?? ''}`.trim()
+    };
+  }
+
+  private normalizePublicPage(
+    value: Array<Partial<IdeaPostDto>> | Partial<IdeaPostPublicPageResultDto> | null | undefined
+  ): IdeaPostPublicPageResultDto {
+    if (Array.isArray(value)) {
+      const records = this.normalizePosts(value);
+      return {
+        records,
+        total: records.length,
+        nextCursor: null
+      };
+    }
+    const records = this.normalizePosts(Array.isArray(value?.records) ? value.records : []);
+    const explicitTotal = Math.trunc(Number(value?.total));
+    return {
+      records,
+      total: Number.isFinite(explicitTotal) && explicitTotal >= 0 ? explicitTotal : records.length,
+      nextCursor: typeof value?.nextCursor === 'string' && value.nextCursor.trim().length > 0
+        ? value.nextCursor.trim()
+        : null
     };
   }
 
@@ -295,5 +346,52 @@ export class HttpIdeaPostsService {
   private sortValue(post: Pick<IdeaPostDto, 'submittedAtIso' | 'updatedAtIso' | 'createdAtIso'>): number {
     const parsed = Date.parse(post.submittedAtIso || post.updatedAtIso || post.createdAtIso || '');
     return Number.isFinite(parsed) ? parsed : 0;
+  }
+
+  private requestWithAbort<T>(request$: Observable<T>, signal?: AbortSignal): Promise<T> {
+    return new Promise<T>((resolve, reject) => {
+      if (signal?.aborted) {
+        reject(this.createAbortError());
+        return;
+      }
+      let settled = false;
+      let subscription: { unsubscribe: () => void } | null = null;
+      const cleanup = () => signal?.removeEventListener('abort', onAbort);
+      const onAbort = () => {
+        if (settled) {
+          return;
+        }
+        settled = true;
+        subscription?.unsubscribe();
+        cleanup();
+        reject(this.createAbortError());
+      };
+      signal?.addEventListener('abort', onAbort, { once: true });
+      subscription = request$.subscribe({
+        next: value => {
+          if (settled) {
+            return;
+          }
+          settled = true;
+          cleanup();
+          resolve(value);
+        },
+        error: error => {
+          if (settled) {
+            return;
+          }
+          settled = true;
+          cleanup();
+          reject(error);
+        },
+        complete: () => cleanup()
+      });
+    });
+  }
+
+  private createAbortError(): Error {
+    const error = new Error('Request aborted.');
+    error.name = 'AbortError';
+    return error;
   }
 }

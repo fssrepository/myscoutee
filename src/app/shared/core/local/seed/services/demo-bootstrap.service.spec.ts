@@ -203,8 +203,13 @@ describe('Demo bootstrap seeding', () => {
 
     expect(memoryDb.read()[USERS_TABLE_NAME].ids).toEqual(['stale-user']);
     expect(table.ids).toContain('stale');
-    expect(content.ideas.some(post => post.id === 'stale')).toBe(true);
-    expect(content.ideas.length).toBeGreaterThan(0);
+    expect(content.ideas.some(post => post.id === 'stale')).toBe(false);
+    expect(content.ideas.every(post => post.featured === true)).toBe(true);
+    expect(content.ideas.length).toBeLessThanOrEqual(8);
+    expect(content.ideasTotal).toBe(table.ids
+      .map(id => table.byId[id])
+      .filter(post => post?.published === true && post.trashed !== true && post.lang === 'en')
+      .length);
     expect(content.privacy.activeRevision?.documentKind).toBe('privacy');
     expect(content.terms.activeRevision?.documentKind).toBe('terms');
   });

@@ -98,29 +98,31 @@
       </div>
     </section>
 
-    @if (articlesLoading || featuredIdeaCards().length > 0) {
+    @if (articlesLoading || publishedIdeaCount() > 0) {
       <section class="entry-ideas" id="articles" aria-label="MyScoutee articles">
-        <div
-          role="region"
-          aria-label="Featured article posts"
-          aria-roledescription="carousel"
-          >
-          <app-smart-list
-            class="entry-ideas-carousel-smart-list"
-            [config]="entryFeaturedIdeaSmartListConfig"
-            [filters]="featuredIdeaSmartListFilters"
-            [loadPage]="entryFeaturedIdeaSmartListLoadPage"
-            [itemTemplate]="entryFeaturedIdeaCardTemplate"
-          ></app-smart-list>
+        @if (articlesLoading || featuredIdeaCards().length > 0) {
+          <div
+            role="region"
+            aria-label="Featured article posts"
+            aria-roledescription="carousel"
+            >
+            <app-smart-list
+              class="entry-ideas-carousel-smart-list"
+              [config]="entryFeaturedIdeaSmartListConfig"
+              [filters]="featuredIdeaSmartListFilters"
+              [loadPage]="entryFeaturedIdeaSmartListLoadPage"
+              [itemTemplate]="entryFeaturedIdeaCardTemplate"
+            ></app-smart-list>
 
-          <ng-template #entryFeaturedIdeaCardTemplate let-card>
-            <app-info-card
-              class="entry-idea-info-card"
-              [card]="entryFeaturedIdeaInfoCard(card)"
-              (menuAction)="onFeaturedIdeaCardAction(card, $event.actionId)"
-            ></app-info-card>
-          </ng-template>
-        </div>
+            <ng-template #entryFeaturedIdeaCardTemplate let-card>
+              <app-info-card
+                class="entry-idea-info-card"
+                [card]="entryFeaturedIdeaInfoCard(card)"
+                (menuAction)="onFeaturedIdeaCardAction(card, $event.actionId)"
+              ></app-info-card>
+            </ng-template>
+          </div>
+        }
         <div class="entry-ideas-more-row">
           <button type="button" class="entry-ideas-more-btn" (click)="openIdeasPopup(undefined, $event)">
             <mat-icon>auto_stories</mat-icon>

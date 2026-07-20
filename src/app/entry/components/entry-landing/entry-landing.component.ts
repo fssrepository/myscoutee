@@ -2,11 +2,12 @@ import { DOCUMENT } from '@angular/common';
 import { ChangeDetectorRef, Component, EventEmitter, HostListener, Input, OnChanges, OnDestroy, OnInit, Output, SimpleChanges, inject } from '@angular/core';
 import { MatRippleModule } from '@angular/material/core';
 import { MatIconModule } from '@angular/material/icon';
-import { BehaviorSubject, Observable, filter, map, of, take } from 'rxjs';
+import { BehaviorSubject, Observable, filter, from, map, of, take } from 'rxjs';
 
 import type { AuthMode } from '../../../shared/core/common/constants';
 import type { IdeaArticleDetailDto } from '../../../shared/core/contracts/content.interface';
 import type { FirebaseAuthProfileDto } from '../../../shared/core/contracts/user.interface';
+import { IdeaPostsService } from '../../../shared/core/base/services/idea-posts.service';
 import {
   InfoCardComponent, WarpImageCardComponent, type InfoCardData, type WarpImageCardData
 } from '../../../shared/ui/components/core/smart-list/card';
@@ -49,11 +50,13 @@ type HowStepSlide = WarpImageCardData;
 export class EntryLandingComponent implements OnInit, OnChanges, OnDestroy {
   private readonly documentRef = inject(DOCUMENT);
   private readonly cdr = inject(ChangeDetectorRef);
+  private readonly ideaPosts = inject(IdeaPostsService);
 
   @Input({ required: true }) authMode: AuthMode = 'selector';
   @Input() firebaseAuthProfile: FirebaseAuthProfileDto | null = null;
   @Input() articlesLoading = false;
   @Input() ideaCards: InfoCardData[] = [];
+  @Input() ideaCount = 0;
   @Input() authUnavailable = false;
   @Input() authUnavailableLabel = 'Unavailable in your country';
   @Input() authLocationRequired = false;
@@ -161,6 +164,9 @@ export class EntryLandingComponent implements OnInit, OnChanges, OnDestroy {
   protected appVersionLabel = 'v1.0.0';
   protected featuredIdeaSmartListFilters: { signature: string } = { signature: '' };
   private readonly articlesReadySignal = new BehaviorSubject<number>(0);
+  private selectedIdeaDetailRef: IdeaArticleDetailDto | null = null;
+  private ideasPopupArticleCount: number | null = null;
+  private ideasPopupLoadGeneration = 0;
 
   protected readonly entryFeaturedIdeaSmartListConfig: SmartListConfig<IdeaInfoCard> = {
     pageSize: 8,
@@ -230,20 +236,9 @@ export class EntryLandingComponent implements OnInit, OnChanges, OnDestroy {
     }
   };
 
-  protected readonly entryIdeaSmartListLoadPage: SmartListLoadPage<IdeaInfoCard> = (
-    query: ListQuery
-  ): Observable<PageResult<IdeaInfoCard>> => {
-    const cards = this.publishedIdeaCards();
-    const pageSize = Math.max(1, Math.trunc(Number(query.pageSize) || Number(this.entryIdeaSmartListConfig.pageSize) || 10));
-    const page = Math.max(0, Math.trunc(Number(query.page) || 0));
-    const start = page * pageSize;
-    const items = cards.slice(start, start + pageSize);
-    return of({
-      items,
-      total: cards.length,
-      nextCursor: start + items.length < cards.length ? `${start + items.length}` : null
-    });
-  };
+  protected readonly entryIdeaSmartListLoadPage: SmartListLoadPage<IdeaInfoCard> = (query, context) => from(
+    this.loadIdeaCardsPage(query, context?.signal)
+  );
 
   private landingPopupScrollLocked = false;
   private previousBodyOverflow = '';
@@ -334,7 +329,7 @@ export class EntryLandingComponent implements OnInit, OnChanges, OnDestroy {
   }
 
   protected showHowItWorksCta(): boolean {
-    return !this.networkUnavailable && (this.articlesLoading || this.featuredIdeaCards().length > 0);
+    return !this.networkUnavailable && (this.articlesLoading || this.publishedIdeaCount() > 0);
   }
 
   private async loadAppVersionLabel(): Promise<void> {
@@ -429,9 +424,9 @@ export class EntryLandingComponent implements OnInit, OnChanges, OnDestroy {
   }
 
   protected featuredIdeaCards(): IdeaInfoCard[] {
-    const published = this.publishedIdeaCards();
-    const featured = published.filter(card => this.ideaCardDetail(card)?.featured === true);
-    return (featured.length > 0 ? featured : published).slice(0, 8);
+    return this.publishedIdeaCards()
+      .filter(card => this.ideaCardDetail(card)?.featured === true)
+      .slice(0, 8);
   }
 
   protected publishedIdeaCards(): IdeaInfoCard[] {
@@ -444,7 +439,15 @@ export class EntryLandingComponent implements OnInit, OnChanges, OnDestroy {
       .sort((left, right) => this.ideaSortValue(this.ideaCardDetail(right)) - this.ideaSortValue(this.ideaCardDetail(left)));
   }
 
+  protected publishedIdeaCount(): number {
+    const explicitCount = Math.max(0, Math.trunc(Number(this.ideaCount) || 0));
+    return Math.max(explicitCount, this.publishedIdeaCards().length);
+  }
+
   protected selectedIdeaDetail(): IdeaArticleDetailDto | null {
+    if (this.selectedIdeaDetailRef?.id === this.selectedIdeaId) {
+      return this.selectedIdeaDetailRef;
+    }
     const published = this.publishedIdeaCards()
       .map(card => this.ideaCardDetail(card))
       .filter((detail): detail is IdeaArticleDetailDto => Boolean(detail));
@@ -462,7 +465,7 @@ export class EntryLandingComponent implements OnInit, OnChanges, OnDestroy {
     event?.preventDefault();
     event?.stopPropagation();
     const published = this.publishedIdeaCards();
-    if (published.length === 0) {
+    if (this.publishedIdeaCount() === 0) {
       return;
     }
     if (card) {
@@ -470,6 +473,9 @@ export class EntryLandingComponent implements OnInit, OnChanges, OnDestroy {
       return;
     }
     this.selectedIdeaId = this.ideaCardDetail(published[0])?.id ?? '';
+    this.selectedIdeaDetailRef = null;
+    this.ideasPopupArticleCount = null;
+    this.ideasPopupLoadGeneration += 1;
     this.ideasPopupOpen = true;
     this.syncLandingPopupScrollLock();
   }
@@ -482,12 +488,19 @@ export class EntryLandingComponent implements OnInit, OnChanges, OnDestroy {
       return;
     }
     this.selectedIdeaId = detail.id;
+    this.selectedIdeaDetailRef = detail;
     this.ideaArticlePopupOpen = true;
     this.syncLandingPopupScrollLock();
   }
 
   protected closeIdeasPopup(): void {
     this.ideasPopupOpen = false;
+    this.ideasPopupArticleCount = null;
+    this.ideasPopupLoadGeneration += 1;
+    if (!this.ideaArticlePopupOpen) {
+      this.selectedIdeaId = '';
+      this.selectedIdeaDetailRef = null;
+    }
     this.syncLandingPopupScrollLock();
   }
 
@@ -495,6 +508,7 @@ export class EntryLandingComponent implements OnInit, OnChanges, OnDestroy {
     this.ideaArticlePopupOpen = false;
     if (!this.ideasPopupOpen) {
       this.selectedIdeaId = '';
+      this.selectedIdeaDetailRef = null;
     }
     this.syncLandingPopupScrollLock();
   }
@@ -555,7 +569,7 @@ export class EntryLandingComponent implements OnInit, OnChanges, OnDestroy {
   }
 
   protected ideasPopupModel(): PopupModel {
-    const articleCount = this.publishedIdeaCards().length;
+    const articleCount = this.ideasPopupArticleCount ?? this.publishedIdeaCount();
     return {
       title: 'MyScoutee articles',
       subtitle: `${articleCount} ${articleCount === 1 ? 'article' : 'articles'}`,
@@ -598,6 +612,27 @@ export class EntryLandingComponent implements OnInit, OnChanges, OnDestroy {
       total: cards.length,
       nextCursor: start + items.length < cards.length ? `${start + items.length}` : null
     };
+  }
+
+  private async loadIdeaCardsPage(
+    query: ListQuery,
+    signal?: AbortSignal
+  ): Promise<PageResult<IdeaInfoCard>> {
+    const loadGeneration = this.ideasPopupLoadGeneration;
+    const pageSize = Math.max(
+      1,
+      Math.trunc(Number(query.pageSize) || Number(this.entryIdeaSmartListConfig.pageSize) || 10)
+    );
+    const result = await this.ideaPosts.loadPublishedIdeaCardsPage({
+      page: Math.max(0, Math.trunc(Number(query.page) || 0)),
+      pageSize,
+      cursor: query.cursor ?? null
+    }, { signal });
+    if (this.ideasPopupOpen && loadGeneration === this.ideasPopupLoadGeneration) {
+      this.ideasPopupArticleCount = result.total;
+      this.cdr.markForCheck();
+    }
+    return result;
   }
 
   private asIdeaInfoCard(card: InfoCardData): IdeaInfoCard {
