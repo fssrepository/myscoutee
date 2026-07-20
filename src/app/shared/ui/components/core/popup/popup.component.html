@@ -118,7 +118,7 @@
             </button>
           }
           @if (showClose) {
-            <button type="button" class="ui-popup__close" (click)="emitClose($event)" [attr.aria-label]="closeAriaLabel">
+            <button type="button" class="ui-popup__close" (click)="emitClose($event)" [attr.aria-label]="closeAriaLabel | i18n">
               <mat-icon>close</mat-icon>
             </button>
           }
@@ -127,7 +127,7 @@
     }
 
     @if (!hasHeader && showClose) {
-      <button type="button" class="ui-popup__close ui-popup__close--floating" (click)="emitClose($event)" [attr.aria-label]="closeAriaLabel">
+      <button type="button" class="ui-popup__close ui-popup__close--floating" (click)="emitClose($event)" [attr.aria-label]="closeAriaLabel | i18n">
         <mat-icon>close</mat-icon>
       </button>
     }
