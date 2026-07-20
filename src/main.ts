@@ -15,6 +15,7 @@ declare global {
 
 const BOOTSTRAPPED_CLASS = 'app-bootstrapped';
 const BOOTSTRAP_RESUME_RELOAD_KEY = 'myscoutee.bootstrap.resume-reload.v1';
+const DEPLOYMENT_RECOVERY_KEY = 'myscoutee.deployment-recovery.v1';
 const BOOTSTRAP_RESUME_GRACE_MS = 12_000;
 
 const bootstrapStartedAt = Date.now();
@@ -63,6 +64,7 @@ function recoverBootstrapOnResume(): void {
 function clearBootstrapResumeReloadGuard(): void {
   try {
     sessionStorage.removeItem(BOOTSTRAP_RESUME_RELOAD_KEY);
+    sessionStorage.removeItem(DEPLOYMENT_RECOVERY_KEY);
   } catch {
     // A blocked sessionStorage should not keep a healthy bootstrap marked stale.
   }

@@ -4,6 +4,8 @@ const APP_CACHE = `${CACHE_PREFIX}-app-${CACHE_VERSION}`;
 const API_CACHE = `${CACHE_PREFIX}-api-${CACHE_VERSION}`;
 const MEDIA_CACHE = `${CACHE_PREFIX}-media-${CACHE_VERSION}`;
 const ACTIVE_CACHES = [APP_CACHE, API_CACHE, MEDIA_CACHE];
+const APP_CACHE_PREFIX = `${CACHE_PREFIX}-app-`;
+const PREVIOUS_APP_CACHE_LIMIT = 1;
 const PRECACHE_CORE_URLS = [
   './',
   './index.html',
@@ -23,21 +25,28 @@ const PRECACHE_BUILD_URLS = [];
 const PRECACHE_URLS = [...PRECACHE_CORE_URLS, ...PRECACHE_BUILD_URLS];
 
 self.addEventListener('install', event => {
-  self.skipWaiting();
   event.waitUntil(
     caches.open(APP_CACHE)
-      .then(cache => Promise.allSettled(
-        PRECACHE_URLS.map(url => cache.add(new Request(url, { cache: 'reload' })))
+      .then(cache => cache.addAll(
+        PRECACHE_URLS.map(url => new Request(url, { cache: 'reload' }))
       ))
+      .catch(async error => {
+        await caches.delete(APP_CACHE);
+        throw error;
+      })
   );
 });
 
 self.addEventListener('activate', event => {
   event.waitUntil((async () => {
     const cacheNames = await caches.keys();
+    const previousAppCaches = cacheNames
+      .filter(name => name.startsWith(APP_CACHE_PREFIX) && name !== APP_CACHE)
+      .slice(-PREVIOUS_APP_CACHE_LIMIT);
+    const cachesToKeep = new Set([...ACTIVE_CACHES, ...previousAppCaches]);
     await Promise.all(
       cacheNames
-        .filter(name => name.startsWith(CACHE_PREFIX) && !ACTIVE_CACHES.includes(name))
+        .filter(name => name.startsWith(CACHE_PREFIX) && !cachesToKeep.has(name))
         .map(name => caches.delete(name))
     );
     await self.clients.claim();
@@ -59,7 +68,7 @@ self.addEventListener('fetch', event => {
   const url = new URL(request.url);
 
   if (request.mode === 'navigate') {
-    event.respondWith(networkFirst(request, APP_CACHE));
+    event.respondWith(serveAppShell(request));
     return;
   }
 
@@ -81,7 +90,7 @@ self.addEventListener('fetch', event => {
       return;
     }
     if (isStaticAsset(url, request)) {
-      event.respondWith(networkFirst(request, APP_CACHE));
+      event.respondWith(networkFirstStaticAsset(request));
       return;
     }
   }
@@ -167,6 +176,48 @@ async function networkFirst(request, cacheName) {
     }
     return unavailableResponse(request);
   }
+}
+
+async function serveAppShell(request) {
+  const cache = await caches.open(APP_CACHE);
+  const cachedIndex = await cache.match('./index.html') || await cache.match('./');
+  if (cachedIndex) {
+    return cachedIndex;
+  }
+  return networkFirst(request, APP_CACHE);
+}
+
+async function networkFirstStaticAsset(request) {
+  const cache = await caches.open(APP_CACHE);
+  try {
+    const response = await fetch(request, { cache: 'no-store' });
+    if (response && (response.ok || response.type === 'opaque')) {
+      cache.put(request, response.clone());
+      return response;
+    }
+    return await matchAppBundleCache(request) || response;
+  } catch {
+    return await matchAppBundleCache(request) || unavailableResponse(request);
+  }
+}
+
+async function matchAppBundleCache(request) {
+  const currentResponse = await caches.match(request, { cacheName: APP_CACHE });
+  if (currentResponse) {
+    return currentResponse;
+  }
+
+  const cacheNames = await caches.keys();
+  const previousAppCaches = cacheNames
+    .filter(name => name.startsWith(APP_CACHE_PREFIX) && name !== APP_CACHE)
+    .reverse();
+  for (const cacheName of previousAppCaches) {
+    const response = await caches.match(request, { cacheName });
+    if (response) {
+      return response;
+    }
+  }
+  return null;
 }
 
 async function staleWhileRevalidate(request, cacheName, fallbackMatcher, event) {
