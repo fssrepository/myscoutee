@@ -547,11 +547,11 @@ export class EventSubeventsListPopupComponent {
         label: 'event.subevents.my.participation',
         icon: this.participantOnly ? 'person_pin_circle' : 'person_pin',
         kind: 'toggle',
-        palette: this.participantOnly ? 'green' : 'slate',
-        surface: 'tinted',
-        layout: 'action',
-        checked: this.participantOnly,
+        layout: 'pill',
         active: this.participantOnly,
+        checked: this.participantOnly,
+        closeOnSelect: false,
+        palette: 'green',
         context: { menu: 'context', action: 'participantFilter' }
       },
       {
