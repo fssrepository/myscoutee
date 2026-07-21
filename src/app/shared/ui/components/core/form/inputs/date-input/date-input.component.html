@@ -42,7 +42,11 @@
     <label class="date-input__field">
       <div class="date-input__row">
         <mat-form-field appearance="outline" class="date-input__material date-input__material--range" subscriptSizing="dynamic">
-          <mat-date-range-input [rangePicker]="rangePicker">
+          <mat-date-range-input
+            [rangePicker]="rangePicker"
+            [min]="resolvedStartMin()"
+            [max]="resolvedEndMax()"
+          >
             <input
               matStartDate
               [ngModel]="startDateValue"
