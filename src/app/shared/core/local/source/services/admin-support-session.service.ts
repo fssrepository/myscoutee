@@ -30,12 +30,12 @@ export class LocalAdminSupportSessionService {
     return saved;
   }
 
-  findChatsByUser(userId: string): ChatThreadRecord[] {
-    return this.chatsRepository.queryChatItemsByUser(userId);
+  findChatById(userId: string, chatId: string): ChatThreadRecord | null {
+    return this.chatsRepository.queryChatItemById(userId, chatId);
   }
 
-  readChatMessages(chat: ChatRecord): ChatMessageDto[] {
-    return this.chatsRepository.queryChatMessages(chat);
+  readChatMessagesPage(chat: ChatRecord): ChatMessageDto[] {
+    return this.chatsRepository.queryChatMessagesPage(chat, { page: 0, pageSize: 50 }).items;
   }
 
   async appendChatMessage(chat: ChatRecord, message: ChatMessageDto): Promise<ChatMessageDto | null> {
@@ -87,7 +87,6 @@ export class LocalAdminSupportSessionService {
     if (!normalizedUserId || !normalizedAdminId) {
       return null;
     }
-    return this.chatsRepository.queryChatItemsByUser(normalizedAdminId)
-      .find(item => item.id === `c-support-admin-${normalizedUserId}`) ?? null;
+    return this.chatsRepository.queryChatItemById(normalizedAdminId, `c-support-admin-${normalizedUserId}`);
   }
 }

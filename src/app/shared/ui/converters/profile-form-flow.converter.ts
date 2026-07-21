@@ -130,7 +130,7 @@ export class ProfileFormFlowDataConverter {
       profileDetails: this.normalizeProfileDetails(user),
       activities: {
         game: user.activities?.game ?? 0,
-        chat: user.activities?.chat ?? 0,
+        chats: user.activities?.chats ?? 0,
         invitations: user.activities?.invitations ?? 0,
         events: user.activities?.events ?? 0,
         hosting: user.activities?.hosting ?? 0,

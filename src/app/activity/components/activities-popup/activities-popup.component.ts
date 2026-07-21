@@ -287,7 +287,7 @@ export class ActivitiesPopupComponent implements OnDestroy {
       ?? this.createFallbackActiveUser();
   }
 
-  protected get chatBadge(): number { return this.activityCounterValue('chat'); }
+  protected get chatBadge(): number { return this.activityCounterValue('chats'); }
   protected get eventsBadge(): number { return this.activityCounterValue('events'); }
   protected get allEventsScopeBadge(): number { return this.eventCounterValue('all'); }
   protected get pendingBadge(): number { return this.eventCounterValue('pending'); }
@@ -322,10 +322,6 @@ export class ActivitiesPopupComponent implements OnDestroy {
   private lastAppliedActivityChatMetricBucketPatchUpdatedMs = 0;
   private unregisterActivitiesExplanationContext: (() => void) | null = null;
   private activitiesExplanationContextKey: string | null = null;
-  private chatContextUnreadCountsUserId = '';
-  private chatContextUnreadCounts: ActivitiesChatContextUnreadCounts | null = null;
-  private activitiesChatListStateKey = '';
-
   protected get assetCards(): AppDTOs.AssetDTO[] {
     return this.assetStore.assetCards();
   }
@@ -526,10 +522,6 @@ export class ActivitiesPopupComponent implements OnDestroy {
 
   protected chatChannelType(item: ChatDTO): ContractTypes.ChatChannelType {
     return this.activitiesChats.chatChannelType(item);
-  }
-
-  protected chatItemsForActivities(): ChatDTO[] {
-    return this.activitiesChats.chatItemsForActivities();
   }
 
   protected activityChatContextFilterKey(item: ChatDTO): ContractTypes.ActivitiesChatContextFilter | null {
@@ -851,7 +843,6 @@ export class ActivitiesPopupComponent implements OnDestroy {
       }
       untracked(() => {
         this.applyEventChatRowPatch(patch);
-        this.patchChatContextUnreadCountsFromRowPatch(patch);
         this.refreshSectionBadges();
         this.cdr.markForCheck();
       });
@@ -950,7 +941,6 @@ export class ActivitiesPopupComponent implements OnDestroy {
   /** Called once each time the service opens the popup. */
   private onActivitiesOpened(): void {
     this.resetActivitiesStateForOpen();
-    this.invalidateChatContextUnreadCounts();
     this.activitiesRates.clearEditorState();
     this.resetActivitiesScroll();
   }
@@ -1011,7 +1001,7 @@ export class ActivitiesPopupComponent implements OnDestroy {
       about: '',
       images: [],
       profileStatus: 'public',
-      activities: { game: 0, chat: 0, invitations: 0, events: 0, hosting: 0 }
+      activities: { game: 0, chats: 0, invitations: 0, events: 0, hosting: 0 }
     };
   }
 
@@ -1965,49 +1955,20 @@ export class ActivitiesPopupComponent implements OnDestroy {
       return this.emptyChatContextUnreadCounts();
     }
     const activeUserId = `${this.activeUser.id ?? ''}`.trim();
-    if (this.chatContextUnreadCounts && this.chatContextUnreadCountsUserId === activeUserId) {
-      return this.chatContextUnreadCounts;
+    const activeUser = this.userProfileStore.activeUserProfile();
+    if (!activeUserId || !activeUser) {
+      return this.emptyChatContextUnreadCounts();
     }
-    const counts = this.emptyChatContextUnreadCounts();
-    for (const item of this.chatItemsForActivities()) {
-      const unread = this.normalizeBadgeCounter(item.unread);
-      if (unread <= 0) {
-        continue;
-      }
-      counts.all = this.normalizeBadgeCounter((counts.all ?? 0) + unread);
-      const context = this.activityChatContextFilterKey(item);
-      if (context && context !== 'all') {
-        counts[context] = this.normalizeBadgeCounter((counts[context] ?? 0) + unread);
-      }
-    }
-    this.chatContextUnreadCountsUserId = activeUserId;
-    this.chatContextUnreadCounts = counts;
-    return counts;
-  }
-
-  private patchChatContextUnreadCountsFromRowPatch(patch: EventChatRowPatch): void {
-    if (patch.unreadDelta === undefined || patch.unreadDelta === null || !this.chatContextUnreadCounts) {
-      return;
-    }
-    if (this.chatContextUnreadCountsUserId !== `${this.activeUser.id ?? ''}`.trim()) {
-      this.invalidateChatContextUnreadCounts();
-      return;
-    }
-    const unreadDelta = Number(patch.unreadDelta);
-    if (!Number.isFinite(unreadDelta) || unreadDelta === 0) {
-      return;
-    }
-    const next = { ...this.chatContextUnreadCounts };
-    next.all = this.normalizeBadgeCounter((next.all ?? 0) + unreadDelta);
-    const context = this.activitiesChats.activityChatContextFilterKeyFromChannelType(patch.channelType);
-    if (context && context !== 'all') {
-      next[context] = this.normalizeBadgeCounter((next[context] ?? 0) + unreadDelta);
-    }
-    this.chatContextUnreadCounts = next;
-  }
-
-  private invalidateChatContextUnreadCounts(): void {
-    this.chatContextUnreadCounts = null;
+    const overrides = this.activityStore.getUserCounterOverrides(activeUserId);
+    const profile = overrides.chat ?? activeUser.activities?.chat;
+    return {
+      all: this.normalizeBadgeCounter(profile?.all),
+      event: this.normalizeBadgeCounter(profile?.event),
+      subEvent: this.normalizeBadgeCounter(profile?.subEvent),
+      group: this.normalizeBadgeCounter(profile?.group),
+      service: this.normalizeBadgeCounter(profile?.service),
+      appSupport: this.normalizeBadgeCounter(profile?.appSupport)
+    };
   }
 
   private emptyChatContextUnreadCounts(): ActivitiesChatContextUnreadCounts {
@@ -2023,7 +1984,10 @@ export class ActivitiesPopupComponent implements OnDestroy {
 
   private supportCaseFilterCount(filter: ContractTypes.SupportCaseFilter): number {
     const normalized = this.normalizeSupportCaseFilter(filter);
-    const supportCases = this.chatsService.peekChatItemsByUser(this.activeUser.id).filter(chat => Boolean(chat.supportCase));
+    const smartList = this.activitiesSmartList;
+    const supportCases = (smartList?.itemsSnapshot() ?? [])
+      .map(row => this.chatRecordFromSourceItem(smartList?.sourceItemSnapshot(this.activityRowIdentity(row))))
+      .filter((chat): chat is ChatDTO => Boolean(chat?.supportCase));
     if (normalized === 'all') {
       return supportCases.length;
     }
@@ -3583,7 +3547,6 @@ export class ActivitiesPopupComponent implements OnDestroy {
 
   protected onActivitiesSmartListStateChange(change: SmartListStateChange<ActivityListItem, ActivitiesSmartListFilters>): void {
     let shouldMarkForCheck = false;
-    this.syncChatContextUnreadCountsWithListState(change);
 
     if (this.activitiesInitialLoadPending !== change.initialLoading) {
       this.activitiesInitialLoadPending = change.initialLoading;
@@ -3607,30 +3570,6 @@ export class ActivitiesPopupComponent implements OnDestroy {
     if (shouldMarkForCheck) {
       this.cdr.markForCheck();
     }
-  }
-
-  private syncChatContextUnreadCountsWithListState(
-    change: SmartListStateChange<ActivityListItem, ActivitiesSmartListFilters>
-  ): void {
-    if (this.activitiesPrimaryFilter !== 'chats') {
-      this.activitiesChatListStateKey = '';
-      return;
-    }
-    const nextKey = [
-      change.total,
-      change.items.length,
-      ...change.items.map(item => [
-        item.smartListKey ?? item.id ?? '',
-        (item as ActivityChatListItem).ownerId ?? '',
-        (item as { status?: unknown }).status ?? '',
-        (item as ActivityChatListItem).unread ?? 0
-      ].join(':'))
-    ].join('|');
-    if (nextKey === this.activitiesChatListStateKey) {
-      return;
-    }
-    this.activitiesChatListStateKey = nextKey;
-    this.invalidateChatContextUnreadCounts();
   }
 
   protected activityRowIdentity(row: ActivityListItem): string {
@@ -3677,10 +3616,7 @@ export class ActivitiesPopupComponent implements OnDestroy {
         nextCursor: page.nextCursor ?? null
       };
     }
-    const page = await this.activitiesService.loadActivityChats(query, {
-      chatItems: this.chatsService.peekChatItemsByUser(this.activeUser.id),
-      signal: context?.signal
-    });
+    const page = await this.activitiesService.loadActivityChats(query, { signal: context?.signal });
     return {
       items: this.activitiesSmartList?.convertItems(page.items) ?? [],
       total: page.total,

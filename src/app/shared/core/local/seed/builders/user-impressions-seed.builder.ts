@@ -33,7 +33,7 @@ export class SeedUserImpressionsBuilder {
   private static hasImpressionActivity(user: UserDto): boolean {
     const activities = user.activities ?? {};
     return [
-      activities.chat,
+      activities.chats,
       activities.invitations,
       activities.events,
       activities.hosting,
@@ -116,7 +116,7 @@ export class SeedUserImpressionsBuilder {
         ]
       },
       member: {
-        unreadCount: Math.max(0, Math.trunc((user.activities.game + user.activities.chat + user.activities.invitations) / 3)),
+        unreadCount: Math.max(0, Math.trunc((user.activities.game + user.activities.chats + user.activities.invitations) / 3)),
         peopleMet: memberPeopleMet,
         totalEvents: memberTotalEvents,
         repeatCount: memberRepeatCount,

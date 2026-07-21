@@ -50,11 +50,9 @@ export class ActivitiesService extends BaseRouteModeService {
 
   async loadActivityChats(
     query: ListQuery<ActivitiesFeedFilters>,
-    options: { chatItems?: readonly ChatDTO[]; signal?: AbortSignal } = {}
+    _options: { signal?: AbortSignal } = {}
   ): Promise<PageResult<ChatDTO>> {
-    return this.chatsService.queryActivitiesChatPage(this.resolveActiveUserId(), query, {
-      chatItems: options.chatItems
-    });
+    return this.chatsService.queryActivitiesChatPage(this.resolveActiveUserId(), query);
   }
 
   async loadActivityRates(

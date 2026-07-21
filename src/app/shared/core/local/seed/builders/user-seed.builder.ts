@@ -48,7 +48,7 @@ const BASE_DEMO_USERS: UserRecord[] = [
     about: 'I host events where social energy stays high, but logistics stay clean and predictable.',
     images: buildDemoPortraitStack('woman', 74),
     profileStatus: 'public',
-    activities: { game: 9, chat: 8, invitations: 4, events: 6, hosting: 3 }
+    activities: { game: 9, chats: 8, invitations: 4, events: 6, hosting: 3 }
   },
   {
     id: 'u2',
@@ -70,7 +70,7 @@ const BASE_DEMO_USERS: UserRecord[] = [
     about: 'I like compact events with clear timelines and simple role assignment.',
     images: buildDemoPortraitStack('man', 75),
     profileStatus: 'public',
-    activities: { game: 4, chat: 3, invitations: 1, events: 2, hosting: 1 }
+    activities: { game: 4, chats: 3, invitations: 1, events: 2, hosting: 1 }
   },
   {
     id: 'u3',
@@ -92,7 +92,7 @@ const BASE_DEMO_USERS: UserRecord[] = [
     about: 'I enjoy cultural events and activity-heavy weekends with small groups.',
     images: buildDemoPortraitStack('woman', 76),
     profileStatus: 'public',
-    activities: { game: 6, chat: 7, invitations: 3, events: 4, hosting: 2 }
+    activities: { game: 6, chats: 7, invitations: 3, events: 4, hosting: 2 }
   },
   {
     id: 'u4',
@@ -114,7 +114,7 @@ const BASE_DEMO_USERS: UserRecord[] = [
     about: 'I host social-first events where people who do not know each other can connect fast.',
     images: buildDemoPortraitStack('woman', 77),
     profileStatus: 'public',
-    activities: { game: 7, chat: 5, invitations: 3, events: 5, hosting: 2 }
+    activities: { game: 7, chats: 5, invitations: 3, events: 5, hosting: 2 }
   },
   {
     id: 'u5',
@@ -136,7 +136,7 @@ const BASE_DEMO_USERS: UserRecord[] = [
     about: 'I prefer meaningful conversations and smaller events with quality curation.',
     images: buildDemoPortraitStack('woman', 78),
     profileStatus: 'host only',
-    activities: { game: 5, chat: 6, invitations: 4, events: 4, hosting: 1 }
+    activities: { game: 5, chats: 6, invitations: 4, events: 4, hosting: 1 }
   },
   {
     id: 'u6',
@@ -158,7 +158,7 @@ const BASE_DEMO_USERS: UserRecord[] = [
     about: 'I organize active and travel-style events with flexible participant roles.',
     images: buildDemoPortraitStack('woman', 79),
     profileStatus: 'public',
-    activities: { game: 3, chat: 4, invitations: 2, events: 3, hosting: 1 }
+    activities: { game: 3, chats: 4, invitations: 2, events: 3, hosting: 1 }
   },
   {
     id: 'u7',
@@ -180,7 +180,7 @@ const BASE_DEMO_USERS: UserRecord[] = [
     about: 'I host sports and game-heavy events with structured follow-ups.',
     images: buildDemoPortraitStack('man', 80),
     profileStatus: 'public',
-    activities: { game: 8, chat: 9, invitations: 3, events: 5, hosting: 2 }
+    activities: { game: 8, chats: 9, invitations: 3, events: 5, hosting: 2 }
   },
   {
     id: 'u8',
@@ -202,7 +202,7 @@ const BASE_DEMO_USERS: UserRecord[] = [
     about: 'I optimize event outcomes and participant quality through filtered invites.',
     images: buildDemoPortraitStack('man', 81),
     profileStatus: 'public',
-    activities: { game: 4, chat: 4, invitations: 2, events: 3, hosting: 2 }
+    activities: { game: 4, chats: 4, invitations: 2, events: 3, hosting: 2 }
   },
   {
     id: 'u9',
@@ -224,7 +224,7 @@ const BASE_DEMO_USERS: UserRecord[] = [
     about: 'I design event atmospheres first and build flow around people and space.',
     images: buildDemoPortraitStack('man', 82),
     profileStatus: 'host only',
-    activities: { game: 2, chat: 5, invitations: 2, events: 2, hosting: 1 }
+    activities: { game: 2, chats: 5, invitations: 2, events: 2, hosting: 1 }
   },
   {
     id: 'u10',
@@ -246,7 +246,7 @@ const BASE_DEMO_USERS: UserRecord[] = [
     about: 'I keep the calendar strict and communication transparent for all members.',
     images: buildDemoPortraitStack('man', 10),
     profileStatus: 'public',
-    activities: { game: 6, chat: 4, invitations: 2, events: 6, hosting: 3 }
+    activities: { game: 6, chats: 4, invitations: 2, events: 6, hosting: 3 }
   },
   {
     id: 'u11',
@@ -268,7 +268,7 @@ const BASE_DEMO_USERS: UserRecord[] = [
     about: 'I run long-format events with multiple sub-events and role-based access.',
     images: buildDemoPortraitStack('man', 11),
     profileStatus: 'friends only',
-    activities: { game: 5, chat: 3, invitations: 2, events: 4, hosting: 2 }
+    activities: { game: 5, chats: 3, invitations: 2, events: 4, hosting: 2 }
   },
   {
     id: 'u12',
@@ -290,7 +290,7 @@ const BASE_DEMO_USERS: UserRecord[] = [
     about: 'I host quality-first social events with strong moderation and feedback loops.',
     images: buildDemoPortraitStack('man', 12),
     profileStatus: 'public',
-    activities: { game: 4, chat: 5, invitations: 3, events: 3, hosting: 1 }
+    activities: { game: 4, chats: 5, invitations: 3, events: 3, hosting: 1 }
   }
 ];
 
@@ -309,7 +309,7 @@ export class SeedUserBuilder {
   };
 
   static buildExpandedDemoUsers(totalCount: number, baseUsers: readonly UserRecord[] = BASE_DEMO_USERS): UserRecord[] {
-    const normalizedBaseUsers = baseUsers.map(user => this.withResolvedLocationCoordinates(user));
+    const normalizedBaseUsers = baseUsers.map(user => this.withStoredChatCounters(this.withResolvedLocationCoordinates(user)));
     if (baseUsers.length >= totalCount) {
       return normalizedBaseUsers.slice(0, totalCount);
     }
@@ -339,7 +339,7 @@ export class SeedUserBuilder {
       const age = 24 + (index % 12);
       const birthday = new Date(1990 + (index % 11), index % 12, 1 + (index % 27));
       const images = this.buildUniquePrimaryPortraitStack(gender, (index * 7) % 100, usedPrimaryPortraitUrls);
-      expanded.push(this.withResolvedLocationCoordinates({
+      expanded.push(this.withStoredChatCounters(this.withResolvedLocationCoordinates({
         ...template,
         id,
         name,
@@ -350,7 +350,7 @@ export class SeedUserBuilder {
         gender,
         images,
         ...this.demoLifecycleStatusForIndex(index, totalCount)
-      }));
+      })));
     }
     return expanded;
   }
@@ -381,7 +381,7 @@ export class SeedUserBuilder {
       return {
         profileStatus: 'blocked',
         statusText: 'Blocked',
-        activities: { game: 0, chat: 1, invitations: 0, events: 0, hosting: 0 }
+        activities: { game: 0, chats: 1, invitations: 0, events: 0, hosting: 0 }
       };
     }
     if (index === totalCount - 1) {
@@ -389,7 +389,7 @@ export class SeedUserBuilder {
         profileStatus: 'deleted',
         deletedAtIso: AppUtils.anchorDate(environment.bootstrapOffsetInDays).toISOString(),
         statusText: 'Deleted',
-        activities: { game: 0, chat: 0, invitations: 0, events: 0, hosting: 0 }
+        activities: { game: 0, chats: 0, invitations: 0, events: 0, hosting: 0 }
       };
     }
     return {};
@@ -455,6 +455,29 @@ export class SeedUserBuilder {
       affinity: Number.isFinite(nextUser.affinity)
         ? Number(nextUser.affinity)
         : this.resolveUserAffinity(nextUser)
+    };
+  }
+
+  private static withStoredChatCounters(user: UserRecord): UserRecord {
+    const normalize = (value: unknown): number => {
+      const parsed = Number(value);
+      return Number.isFinite(parsed) ? Math.max(0, Math.trunc(parsed)) : 0;
+    };
+    const chats = normalize(user.activities?.chats);
+    return {
+      ...user,
+      activities: {
+        ...user.activities,
+        chats,
+        chat: {
+          all: normalize(user.activities?.chat?.all ?? chats),
+          event: normalize(user.activities?.chat?.event),
+          subEvent: normalize(user.activities?.chat?.subEvent),
+          group: normalize(user.activities?.chat?.group),
+          service: normalize(user.activities?.chat?.service),
+          appSupport: normalize(user.activities?.chat?.appSupport)
+        }
+      }
     };
   }
 

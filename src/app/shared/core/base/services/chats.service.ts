@@ -30,18 +30,6 @@ export class ChatsService extends BaseRouteModeService implements IChatsService 
     return this.resolveRouteService(ChatsService.CHAT_ROUTE, this.localChatsService, this.httpChatsService);
   }
 
-  async queryChatItemsByUser(userId: string): Promise<ChatDTO[]> {
-    return this.chatsService.queryChatItemsByUser(userId);
-  }
-
-  peekChatItemsByUser(userId: string): ChatDTO[] {
-    return this.chatsService.peekChatItemsByUser(userId);
-  }
-
-  async loadChatMessages(chat: ChatDTO): Promise<ContractTypes.ChatMessageDto[]> {
-    return this.chatsService.loadChatMessages(chat);
-  }
-
   async loadChatMessagesResult(
     chat: ChatDTO,
     query: ListQuery = { page: 0, pageSize: Number.MAX_SAFE_INTEGER }
@@ -144,14 +132,11 @@ export class ChatsService extends BaseRouteModeService implements IChatsService 
       return null;
     }
 
-    const existingChat = this.resolveExistingEventServiceChat(
-      await this.queryChatItemsByUser(activeUserId),
-      {
-        activeUserId,
-        eventId,
-        notification: input.notification
-      }
-    );
+    const existingChat = await this.resolveExistingEventServiceChat({
+      activeUserId,
+      eventId,
+      notification: input.notification
+    });
     if (existingChat) {
       return existingChat;
     }
@@ -173,29 +158,41 @@ export class ChatsService extends BaseRouteModeService implements IChatsService 
     });
   }
 
-  private resolveExistingEventServiceChat(
-    chats: readonly ChatDTO[],
+  private async resolveExistingEventServiceChat(
     input: {
       activeUserId: string;
       eventId: string;
       notification: boolean;
     }
-  ): ChatDTO | null {
+  ): Promise<ChatDTO | null> {
     const expectedId = `c-service-event-${input.eventId}-${input.activeUserId}`;
     const expectedServiceContext = input.notification ? 'notification' : 'event';
-    const match = chats.find(chat => chat.id === expectedId)
-      ?? chats.find(chat =>
-        chat.channelType === 'serviceEvent'
-        && chat.serviceContext === expectedServiceContext
-        && chat.ownerId === input.eventId
-      );
-    return match
-      ? {
+    let cursor: string | null = null;
+    do {
+      const page = await this.queryActivitiesChatPage(input.activeUserId, {
+        page: 0,
+        pageSize: 25,
+        cursor,
+        sort: 'date',
+        direction: 'desc',
+        filters: { primaryFilter: 'chats', chatContextFilter: 'service' }
+      });
+      const match = page.items.find(chat => chat.id === expectedId)
+        ?? page.items.find(chat =>
+          chat.channelType === 'serviceEvent'
+          && chat.serviceContext === expectedServiceContext
+          && chat.ownerId === input.eventId
+        );
+      if (match) {
+        return {
           ...match,
           memberIds: [...(match.memberIds ?? [])],
           members: (match.members ?? []).map(member => ({ ...member }))
-        }
-      : null;
+        };
+      }
+      cursor = page.nextCursor ?? null;
+    } while (cursor);
+    return null;
   }
 
   buildActivityServiceChat(input: {
@@ -247,12 +244,9 @@ export class ChatsService extends BaseRouteModeService implements IChatsService 
 
   async queryActivitiesChatPage(
     userId: string,
-    query: ListQuery<ActivitiesFeedFilters>,
-    options: {
-      chatItems?: readonly ChatDTO[];
-    } = {}
+    query: ListQuery<ActivitiesFeedFilters>
   ): Promise<PageResult<ChatDTO>> {
-    const page = await this.chatsService.queryActivitiesChatPage(userId, query, options);
+    const page = await this.chatsService.queryActivitiesChatPage(userId, query);
     return {
       items: page.items,
       total: page.total,

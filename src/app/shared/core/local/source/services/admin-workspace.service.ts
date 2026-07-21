@@ -261,12 +261,11 @@ export class LocalAdminWorkspaceService extends LocalRouteDelayService {
   }
 
   private demoChatMessages(ownerUserId: string, chatId: string): AdminChatMessageDto[] {
-    const chat = this.supportSession.findChatsByUser(ownerUserId)
-      .find(item => item.id === chatId);
+    const chat = this.supportSession.findChatById(ownerUserId, chatId);
     if (!chat) {
       return [];
     }
-    return this.supportSession.readChatMessages(chat).map(message => ({
+    return this.supportSession.readChatMessagesPage(chat).map(message => ({
       id: message.id,
       sender: message.sender,
       senderUserId: message.senderAvatar.id,
@@ -284,8 +283,7 @@ export class LocalAdminWorkspaceService extends LocalRouteDelayService {
     if (!normalizedUserId || !normalizedAdminId) {
       return false;
     }
-    return this.supportSession.findChatsByUser(normalizedAdminId)
-      .some(chat => chat.id === `c-support-admin-${normalizedUserId}`);
+    return Boolean(this.supportSession.findChatById(normalizedAdminId, `c-support-admin-${normalizedUserId}`));
   }
 
   private demoSupportChatUnread(adminId: string, userId: string): number {
@@ -294,8 +292,7 @@ export class LocalAdminWorkspaceService extends LocalRouteDelayService {
     if (!normalizedUserId || !normalizedAdminId) {
       return 0;
     }
-    const chat = this.supportSession.findChatsByUser(normalizedAdminId)
-      .find(item => item.id === `c-support-admin-${normalizedUserId}`);
+    const chat = this.supportSession.findChatById(normalizedAdminId, `c-support-admin-${normalizedUserId}`);
     return Math.max(0, Math.trunc(Number(chat?.unread) || 0));
   }
 

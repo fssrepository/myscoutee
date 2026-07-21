@@ -23,8 +23,15 @@ export class LocalChatsRepository {
     await this.memoryDb.flushToIndexedDb();
   }
 
-  queryChatItemsByUser(userId: string): ChatThreadRecord[] {
-    return this.withLatestMessageSummaries(this.queryUserRecords(userId));
+  queryChatItemById(userId: string, chatId: string): ChatThreadRecord | null {
+    const normalizedUserId = `${userId ?? ''}`.trim();
+    const normalizedChatId = `${chatId ?? ''}`.trim();
+    if (!normalizedUserId || !normalizedChatId) {
+      return null;
+    }
+    const table = this.memoryDb.read()[CHATS_TABLE_NAME];
+    const record = table.byId[LocalChatThreadMapper.buildRecordKey(normalizedUserId, normalizedChatId)];
+    return record ? LocalChatThreadMapper.cloneRecord(record) : null;
   }
 
   queryActivitiesChatPage(
@@ -50,7 +57,7 @@ export class LocalChatsRepository {
       };
     }
 
-    const source = this.withLatestMessageSummaries(query.filters?.adminServiceOnly === true && this.activitiesChatContextFilter(query) === 'service'
+    const source = (query.filters?.adminServiceOnly === true && this.activitiesChatContextFilter(query) === 'service'
       ? this.querySupportCaseRecordsForAdmin(normalizedUserId, this.activitiesSupportCaseFilter(query))
       : this.queryUserRecordsForPage(normalizedUserId, query))
       .filter(record => this.matchesDateRange(record, rangeStartMs, rangeEndMs));
@@ -86,12 +93,6 @@ export class LocalChatsRepository {
     return userIds.map((userId, index) => this.toChatMemberEntry(normalizedChatId, userId, index));
   }
 
-  querySupportCaseItemsForAdmin(userId: string, filter: ContractTypes.SupportCaseFilter = 'all'): ChatThreadRecord[] {
-    const normalizedUserId = userId.trim();
-    return this.withLatestMessageSummaries(this.querySupportCaseRecordsForAdmin(normalizedUserId, filter))
-      .map(record => LocalChatThreadMapper.cloneRecord(record));
-  }
-
   private querySupportCaseRecordsForAdmin(
     normalizedUserId: string,
     filter: ContractTypes.SupportCaseFilter = 'all'
@@ -125,26 +126,34 @@ export class LocalChatsRepository {
       }));
   }
 
-  queryChatMessages(chat: ChatRecord): ContractTypes.ChatMessageDto[] {
-    const record = this.resolveChatRecord(chat, { createServiceChat: false });
-    return record ? LocalChatMessageMapper.toDtoList(this.queryChatMessageRecords(record)).map(message => ({
-      ...message,
-      readBy: message.readBy.filter(reader => `${reader.id ?? ''}`.trim() !== `${message.senderAvatar.id ?? ''}`.trim())
-    })) : [];
-  }
-
   queryChatMessagesPage(
     chat: ChatRecord,
     query: ListQuery
   ): { items: ContractTypes.ChatMessageDto[]; total: number; nextCursor: string | null } {
-    const messages = this.sortChatMessagesForThread(this.queryChatMessages(chat));
+    const record = this.resolveChatRecord(chat, { createServiceChat: false });
+    if (!record) {
+      return { items: [], total: 0, nextCursor: null };
+    }
+    const snapshot = this.memoryDb.read()[CHAT_MESSAGES_TABLE_NAME];
+    const chatKey = LocalChatMessageMapper.chatKey(record.ownerUserId, record.id);
+    const orderedIds = snapshot.idsByChatKey[chatKey] ?? [];
     const pageSize = Math.max(1, Math.trunc(Number(query.pageSize) || 10));
     const startIndex = this.resolveMessagePageStartIndex(query, pageSize);
-    const endIndex = Math.min(messages.length, startIndex + pageSize);
+    const endIndex = Math.min(orderedIds.length, startIndex + pageSize);
+    const pageRecords = orderedIds
+      .slice()
+      .reverse()
+      .slice(startIndex, endIndex)
+      .map(id => snapshot.byId[id])
+      .filter((message): message is ChatMessageRecord => Boolean(message));
+    const messages = LocalChatMessageMapper.toDtoList(pageRecords).map(message => ({
+      ...message,
+      readBy: message.readBy.filter(reader => `${reader.id ?? ''}`.trim() !== `${message.senderAvatar.id ?? ''}`.trim())
+    }));
     return {
-      items: messages.slice(startIndex, endIndex),
-      total: messages.length,
-      nextCursor: endIndex < messages.length ? String(endIndex) : null
+      items: messages,
+      total: orderedIds.length,
+      nextCursor: endIndex < orderedIds.length ? String(endIndex) : null
     };
   }
 
@@ -203,6 +212,33 @@ export class LocalChatsRepository {
         ...chat,
         unread: unreadForOwner ? Math.max(1, (existing?.unread ?? 0) + 1) : 0
       };
+      const unreadDelta = this.normalizeCounter(nextRecord.unread) - this.normalizeCounter(existing?.unread);
+      const currentUsersTable = currentState[USERS_TABLE_NAME];
+      const currentUser = currentUsersTable.byId[ownerUserId] ?? null;
+      const currentChatCounters = currentUser?.activities?.chat ?? {};
+      const nextUsersTable = currentUser && unreadDelta !== 0
+        ? {
+            ...currentUsersTable,
+            byId: {
+              ...currentUsersTable.byId,
+              [ownerUserId]: {
+                ...currentUser,
+                activities: {
+                  ...currentUser.activities,
+                  chats: this.normalizeCounter((currentUser.activities?.chats ?? 0) + unreadDelta),
+                  chat: {
+                    all: this.normalizeCounter((currentChatCounters.all ?? currentUser.activities?.chats ?? 0) + unreadDelta),
+                    event: this.normalizeCounter(currentChatCounters.event),
+                    subEvent: this.normalizeCounter(currentChatCounters.subEvent),
+                    group: this.normalizeCounter(currentChatCounters.group),
+                    service: this.normalizeCounter(currentChatCounters.service),
+                    appSupport: this.normalizeCounter((currentChatCounters.appSupport ?? 0) + unreadDelta)
+                  }
+                }
+              }
+            }
+          }
+        : currentUsersTable;
       return {
         ...currentState,
         [CHATS_TABLE_NAME]: {
@@ -214,7 +250,8 @@ export class LocalChatsRepository {
             ? [...currentTable.ids]
             : [...currentTable.ids, recordKey]
         },
-        [CHAT_MESSAGES_TABLE_NAME]: this.upsertMessageRecord(currentMessagesTable, messageRecord)
+        [CHAT_MESSAGES_TABLE_NAME]: this.upsertMessageRecord(currentMessagesTable, messageRecord),
+        [USERS_TABLE_NAME]: nextUsersTable
       };
     });
   }
@@ -257,7 +294,8 @@ export class LocalChatsRepository {
       updatedMessage = nextMessage;
       const nextMessageRecord = LocalChatMessageMapper.toRecord(existingRecord.ownerUserId, existingRecord.id, nextMessage);
       const nextMessagesTable = this.upsertMessageRecord(currentMessagesTable, nextMessageRecord);
-      const latest = this.latestMessage(LocalChatMessageMapper.toDtoList(this.selectChatMessageRecordsFromSnapshot(nextMessagesTable, existingRecord)));
+      const latestRecord = this.latestChatMessageRecord(nextMessagesTable, existingRecord);
+      const latest = latestRecord ? LocalChatMessageMapper.toDto(latestRecord) : null;
       return {
         ...currentState,
         [CHATS_TABLE_NAME]: {
@@ -318,11 +356,10 @@ export class LocalChatsRepository {
         return currentState;
       }
       let nextMessagesTable = currentMessagesTable;
-      const targetIdSet = new Set(targetIds);
-      const messageRecords = this.selectChatMessageRecordsFromSnapshot(currentMessagesTable, existingRecord);
-      for (const messageRecord of messageRecords) {
+      for (const messageId of targetIds) {
+        const messageRecord = this.findMessageRecord(currentMessagesTable, existingRecord, messageId);
         if (
-          !targetIdSet.has(messageRecord.messageId)
+          !messageRecord
           || messageRecord.mine
           || (messageRecord.readBy ?? []).some(existingReader => existingReader.userId === normalizedOwnerUserId)
         ) {
@@ -350,6 +387,16 @@ export class LocalChatsRepository {
       const unreadDelta = unread - previousUnread;
       const currentUsersTable = currentState[USERS_TABLE_NAME];
       const currentUser = currentUsersTable.byId[normalizedOwnerUserId] ?? null;
+      const chatCounterKey = this.chatCounterKey(existingRecord.channelType);
+      const currentChatCounters = currentUser?.activities?.chat ?? {};
+      const nextChatCounters = {
+        all: this.normalizeCounter((currentChatCounters.all ?? currentUser?.activities?.chats ?? 0) + unreadDelta),
+        event: this.normalizeCounter((currentChatCounters.event ?? 0) + (chatCounterKey === 'event' ? unreadDelta : 0)),
+        subEvent: this.normalizeCounter((currentChatCounters.subEvent ?? 0) + (chatCounterKey === 'subEvent' ? unreadDelta : 0)),
+        group: this.normalizeCounter((currentChatCounters.group ?? 0) + (chatCounterKey === 'group' ? unreadDelta : 0)),
+        service: this.normalizeCounter((currentChatCounters.service ?? 0) + (chatCounterKey === 'service' ? unreadDelta : 0)),
+        appSupport: this.normalizeCounter((currentChatCounters.appSupport ?? 0) + (chatCounterKey === 'appSupport' ? unreadDelta : 0))
+      };
       const nextUsersTable = currentUser && unreadDelta !== 0
         ? {
             ...currentUsersTable,
@@ -359,7 +406,8 @@ export class LocalChatsRepository {
                 ...currentUser,
                 activities: {
                   ...currentUser.activities,
-                  chat: this.normalizeCounter((currentUser.activities?.chat ?? 0) + unreadDelta)
+                  chats: this.normalizeCounter((currentUser.activities?.chats ?? 0) + unreadDelta),
+                  chat: nextChatCounters
                 }
               }
             }
@@ -559,43 +607,12 @@ export class LocalChatsRepository {
     return Number.isFinite(count) ? Math.max(0, Math.trunc(count)) : 0;
   }
 
-  private withLatestMessageSummaries(records: readonly ChatThreadRecord[]): ChatThreadRecord[] {
-    if (records.length === 0) {
-      return [];
-    }
-    const messagesSnapshot = this.memoryDb.read()[CHAT_MESSAGES_TABLE_NAME];
-    return records.map(record => this.withLatestMessageSummary(record, messagesSnapshot));
-  }
-
-  private withLatestMessageSummary(
-    record: ChatThreadRecord,
-    messagesSnapshot: AppMemorySchema[typeof CHAT_MESSAGES_TABLE_NAME]
-  ): ChatThreadRecord {
-    const latest = this.latestMessage(
-      LocalChatMessageMapper.toDtoList(this.selectChatMessageRecordsFromSnapshot(messagesSnapshot, record))
-    );
-    if (!latest) {
-      return LocalChatThreadMapper.cloneRecord(record);
-    }
-    return {
-      ...LocalChatThreadMapper.cloneRecord(record),
-      lastMessage: this.chatMessageSummary(latest) || record.lastMessage,
-      lastSenderId: `${latest.senderAvatar?.id ?? ''}`.trim() || record.lastSenderId,
-      dateIso: `${latest.sentAtIso ?? ''}`.trim() || record.dateIso
-    };
-  }
-
-  private chatMessageSummary(message: ContractTypes.ChatMessageDto): string {
-    return message.text || this.chatAttachmentSummary(message) || this.deletedMessageSummary(message);
-  }
-
   private withAppendTimeline(
     message: ContractTypes.ChatMessageDto,
     chat: ChatThreadRecord,
     messagesTable: AppMemorySchema[typeof CHAT_MESSAGES_TABLE_NAME]
   ): ContractTypes.ChatMessageDto {
-    const records = this.selectChatMessageRecordsFromSnapshot(messagesTable, chat);
-    const latestRecord = records[records.length - 1] ?? null;
+    const latestRecord = this.latestChatMessageRecord(messagesTable, chat);
     const latestMs = latestRecord ? AppUtils.toSortableDate(latestRecord.sentAtIso) : Number.NaN;
     const messageMs = AppUtils.toSortableDate(message.sentAtIso ?? '');
     if (!Number.isFinite(latestMs) || (Number.isFinite(messageMs) && messageMs > latestMs)) {
@@ -669,33 +686,23 @@ export class LocalChatsRepository {
     return Math.max(0, Math.trunc(Number(query.page) || 0)) * pageSize;
   }
 
-  private queryChatMessageRecords(chat: ChatThreadRecord): ChatMessageRecord[] {
-    return this.selectChatMessageRecordsFromSnapshot(this.memoryDb.read()[CHAT_MESSAGES_TABLE_NAME], chat);
-  }
-
-  private selectChatMessageRecordsFromSnapshot(
-    snapshot: AppMemorySchema[typeof CHAT_MESSAGES_TABLE_NAME],
-    chat: ChatThreadRecord
-  ): ChatMessageRecord[] {
-    const chatKey = LocalChatMessageMapper.chatKey(chat.ownerUserId, chat.id);
-    const ids = snapshot.idsByChatKey[chatKey] ?? snapshot.ids.filter(id => {
-      const record = snapshot.byId[id];
-      return record?.ownerUserId === chat.ownerUserId && record?.chatId === chat.id;
-    });
-    return ids
-      .map(id => snapshot.byId[id])
-      .filter((record): record is ChatMessageRecord => Boolean(record))
-      .sort((left, right) => this.compareMessageRecordsAsc(left, right));
-  }
-
   private findMessageRecord(
     table: AppMemorySchema[typeof CHAT_MESSAGES_TABLE_NAME],
     chat: ChatThreadRecord,
     messageId: string
   ): ChatMessageRecord | null {
     const recordId = LocalChatMessageMapper.recordKey(chat.ownerUserId, chat.id, messageId);
-    return table.byId[recordId] ?? this.selectChatMessageRecordsFromSnapshot(table, chat)
-      .find(record => record.messageId === messageId) ?? null;
+    return table.byId[recordId] ?? null;
+  }
+
+  private latestChatMessageRecord(
+    table: AppMemorySchema[typeof CHAT_MESSAGES_TABLE_NAME],
+    chat: ChatThreadRecord
+  ): ChatMessageRecord | null {
+    const chatKey = LocalChatMessageMapper.chatKey(chat.ownerUserId, chat.id);
+    const ids = table.idsByChatKey[chatKey] ?? [];
+    const latestId = ids[ids.length - 1] ?? '';
+    return latestId ? table.byId[latestId] ?? null : null;
   }
 
   private upsertMessageRecord(
@@ -734,15 +741,6 @@ export class LocalChatsRepository {
   private compareMessageRecordsAsc(left: ChatMessageRecord, right: ChatMessageRecord): number {
     return AppUtils.toSortableDate(left.sentAtIso) - AppUtils.toSortableDate(right.sentAtIso)
       || `${left.messageId ?? ''}`.localeCompare(`${right.messageId ?? ''}`);
-  }
-
-  private sortChatMessagesForThread(
-    messages: readonly ContractTypes.ChatMessageDto[]
-  ): ContractTypes.ChatMessageDto[] {
-    return [...messages].sort((left, right) =>
-      AppUtils.toSortableDate(right.sentAtIso) - AppUtils.toSortableDate(left.sentAtIso)
-      || `${right.id ?? ''}`.localeCompare(`${left.id ?? ''}`)
-    );
   }
 
   private matchesDateRange(record: ChatRecord, rangeStartMs: number, rangeEndMs: number): boolean {
@@ -1048,11 +1046,21 @@ export class LocalChatsRepository {
     return message;
   }
 
-  private latestMessage(messages: readonly ContractTypes.ChatMessageDto[]): ContractTypes.ChatMessageDto | null {
-    return [...messages].sort((first, second) => AppUtils.toSortableDate(second.sentAtIso) - AppUtils.toSortableDate(first.sentAtIso))[0] ?? null;
-  }
-
   private deletedMessageSummary(message: ContractTypes.ChatMessageDto): string {
     return message.deletedAtIso ? `${message.deletedByName || message.sender} deleted a message` : '';
+  }
+
+  private chatCounterKey(
+    channelType: ContractTypes.ChatChannelType | null | undefined
+  ): 'event' | 'subEvent' | 'group' | 'service' | 'appSupport' | null {
+    switch (channelType) {
+      case 'mainEvent': return 'event';
+      case 'optionalSubEvent': return 'subEvent';
+      case 'groupSubEvent': return 'group';
+      case 'serviceEvent': return 'service';
+      case 'appSupport':
+      case 'supportCase': return 'appSupport';
+      default: return null;
+    }
   }
 }

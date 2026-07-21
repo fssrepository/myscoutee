@@ -2715,7 +2715,7 @@ export class EventResourceAssetExploreComponent implements DoCheck {
       profileStatus: 'public',
       activities: {
         game: 0,
-        chat: 0,
+        chats: 0,
         invitations: 0,
         events: 0,
         hosting: 0,

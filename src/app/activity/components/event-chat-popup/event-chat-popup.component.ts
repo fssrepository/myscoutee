@@ -3724,14 +3724,17 @@ export class EventChatPopupComponent implements OnDestroy {
     const shouldStickToEnd = this.isChatThreadNearEnd();
 
     try {
-      const snapshot = await this.chatsService.loadChatMessages(chat);
+      const snapshot = await this.chatsService.loadChatMessagesResult(chat, {
+        page: 0,
+        pageSize: this.chatInitialLoadMessageCount
+      });
       if (this.loadedSessionKey !== sessionKey) {
         return;
       }
       
       // FIX: Instead of replacing everything, we merge and sort
       // This preserves the "history" the user has already loaded in the UI
-      const mergedMessages = this.mergeServerSnapshotWithPendingMessages(snapshot);
+      const mergedMessages = this.mergeServerSnapshotWithPendingMessages(snapshot.items);
     
       this.messages = mergedMessages
         .sort((first, second) => AppUtils.toSortableDate(second.sentAtIso) - AppUtils.toSortableDate(first.sentAtIso));

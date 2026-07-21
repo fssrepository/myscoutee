@@ -308,13 +308,20 @@ export class AdminWorkspaceStore {
   private activateAdminProfile(dashboard: AdminDashboardDto): void {
     const admin = dashboard.activeAdmin;
     const user = this.buildAdminProfile(admin, dashboard);
-    const chatUnread = this.adminChatUnreadCount(dashboard);
     this.userProfileStore.setProfileExt(this.buildAdminProfileExt(user));
     this.userProfileStore.setActiveUserId(user.id);
     this.runtimeStore.setStatus(USER_BY_ID_LOAD_CONTEXT_KEY, 'success');
     this.activityStore.patchUserCounterOverrides(user.id, {
       game: dashboard.reportedUsers.reduce((total, item) => total + item.reportCount, 0),
-      chat: chatUnread,
+      chats: user.activities.chats,
+      chat: {
+        all: this.nonNegativeInteger(user.activities.chat?.all ?? user.activities.chats),
+        event: this.nonNegativeInteger(user.activities.chat?.event),
+        subEvent: this.nonNegativeInteger(user.activities.chat?.subEvent),
+        group: this.nonNegativeInteger(user.activities.chat?.group),
+        service: this.nonNegativeInteger(user.activities.chat?.service),
+        appSupport: this.nonNegativeInteger(user.activities.chat?.appSupport)
+      },
       events: dashboard.reportedUsers.length,
       hosting: 0,
       invitations: 0,
@@ -323,19 +330,6 @@ export class AdminWorkspaceStore {
       adminJobs: user.activities.adminJobs ?? 0,
       adminMetrics: user.activities.adminMetrics ?? 0
     });
-  }
-
-  private adminChatUnreadCount(dashboard: AdminDashboardDto): number {
-    const unreadByUserId = new Map<string, number>();
-    for (const user of [...(dashboard.reportedUsers ?? []), ...(dashboard.blockedUsers ?? [])]) {
-      const userId = `${user.userId ?? ''}`.trim();
-      if (!userId) {
-        continue;
-      }
-      const unread = Math.max(0, Math.trunc(Number(user.supportChatUnread) || 0));
-      unreadByUserId.set(userId, Math.max(unreadByUserId.get(userId) ?? 0, unread));
-    }
-    return [...unreadByUserId.values()].reduce((total, unread) => total + unread, 0);
   }
 
   private buildAdminProfile(admin: AdminUserDto, dashboard: AdminDashboardDto): UserDto {
@@ -370,7 +364,17 @@ export class AdminWorkspaceStore {
       admin: true,
       activities: {
         game: dashboard.reportedUsers.reduce((total, item) => total + item.reportCount, 0),
-        chat: this.adminChatUnreadCount(dashboard),
+        chats: Math.max(0, Math.trunc(Number(existingAdminProfile?.activities?.chats) || 0)),
+        chat: existingAdminProfile?.activities?.chat
+          ? { ...existingAdminProfile.activities.chat }
+          : {
+              all: 0,
+              event: 0,
+              subEvent: 0,
+              group: 0,
+              service: 0,
+              appSupport: 0
+            },
         invitations: 0,
         events: dashboard.reportedUsers.length,
         hosting: 0,

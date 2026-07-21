@@ -860,7 +860,7 @@ export class EntryPageComponent implements OnInit, OnDestroy {
   private emptyActivities(): UserDto['activities'] {
     return {
       game: 0,
-      chat: 0,
+      chats: 0,
       invitations: 0,
       events: 0,
       hosting: 0,

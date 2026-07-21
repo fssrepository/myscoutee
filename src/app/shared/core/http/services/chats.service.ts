@@ -213,8 +213,6 @@ export class HttpChatsService implements IChatsService {
   private readonly userProfileStore = inject(UserProfileStore);
   private readonly sessionService = inject(SessionService);
   private readonly apiBaseUrl = environment.apiBaseUrl ?? '/api';
-  private readonly chatItemsByUserId = new Map<string, ChatDTO[]>();
-  private readonly chatMessagesByOwnerChatKey = new Map<string, ContractTypes.ChatMessageDto[]>();
   private socket: WebSocket | null = null;
   private socketChatId: string | null = null;
   private socketPromise: Promise<WebSocket | null> | null = null;
@@ -250,33 +248,9 @@ export class HttpChatsService implements IChatsService {
   private shouldEmitReconnectEvent = false;
   private socketMessageSequence = 0;
 
-  async queryChatItemsByUser(userId: string): Promise<ChatDTO[]> {
-    const normalizedUserId = userId.trim();
-    if (!normalizedUserId) {
-      return [];
-    }
-    try {
-      const response = await this.http
-        .get<HttpChatDto[] | null>(`${this.apiBaseUrl}/activities/chats`, {
-          params: this.withUserId(new HttpParams(), normalizedUserId)
-        })
-        .toPromise();
-      const items = this.deduplicateChatDTOs(
-        Array.isArray(response)
-          ? response.map(item => this.mapChatDTO(item, normalizedUserId))
-          : []
-      );
-      this.chatItemsByUserId.set(normalizedUserId, items.map(item => this.cloneChatDTO(item)));
-      return items.map(item => this.cloneChatDTO(item));
-    } catch {
-      return this.peekChatItemsByUser(normalizedUserId);
-    }
-  }
-
   async queryActivitiesChatPage(
     userId: string,
-    query: ListQuery<ActivitiesFeedFilters>,
-    options: { chatItems?: readonly ChatDTO[] } = {}
+    query: ListQuery<ActivitiesFeedFilters>
   ): Promise<ActivitiesChatPageResultDTO> {
     const normalizedUserId = userId.trim();
     if (!normalizedUserId) {
@@ -337,62 +311,9 @@ export class HttpChatsService implements IChatsService {
           ? response.nextCursor.trim()
           : null
       };
-      const resultPage = this.shouldUseCachedActivitiesChatPage(page, normalizedUserId, options.chatItems ?? [])
-        ? this.buildCachedActivitiesChatPage(normalizedUserId, query, options.chatItems ?? [])
-        : page;
-      return this.toActivitiesChatPageDTO(resultPage);
+      return this.toActivitiesChatPageDTO(page);
     } catch {
-      return this.toActivitiesChatPageDTO(
-        this.buildCachedActivitiesChatPage(normalizedUserId, query, options.chatItems ?? [])
-      );
-    }
-  }
-
-  peekChatItemsByUser(userId: string): ChatDTO[] {
-    const normalizedUserId = userId.trim();
-    const items = this.chatItemsByUserId.get(normalizedUserId) ?? [];
-    return items.map(item => this.cloneChatDTO(item));
-  }
-
-  async loadChatMessages(chat: ChatDTO): Promise<ContractTypes.ChatMessageDto[]> {
-    try {
-      const messages: ContractTypes.ChatMessageDto[] = [];
-      let cursor: string | null = null;
-      let pageIndex = 0;
-      do {
-        let params = this.activeUserParams().set('limit', '100');
-        if (cursor) {
-          params = params.set('cursor', cursor);
-        }
-        const response = await this.http
-          .get<HttpChatMessagesPageResponseDto | HttpChatMessageDto[] | null>(
-            `${this.apiBaseUrl}/activities/chats/${encodeURIComponent(chat.id)}/messages`,
-            { params }
-          )
-          .toPromise();
-        if (Array.isArray(response)) {
-          messages.push(...response.map((message, index) => this.mapChatMessage(message, chat.id, messages.length + index)));
-          cursor = null;
-        } else {
-          const pageMessages = Array.isArray(response?.items)
-            ? response.items.map((message, index) => this.mapChatMessage(message, chat.id, messages.length + index))
-            : [];
-          messages.push(...pageMessages);
-          cursor = typeof response?.nextCursor === 'string' && response.nextCursor.trim().length > 0
-            ? response.nextCursor.trim()
-            : null;
-        }
-        pageIndex += 1;
-      } while (cursor && pageIndex < 100);
-
-      const cachedMessages = this.resolveCachedChatMessages(chat);
-      const mergedMessages = this.mergeCachedChatMessages(messages, cachedMessages)
-        .sort((first, second) => AppUtils.toSortableDate(first.sentAtIso) - AppUtils.toSortableDate(second.sentAtIso));
-      this.cacheChatMessages(chat, mergedMessages);
-
-      return mergedMessages;
-    } catch {
-      return this.resolveCachedChatMessages(chat);
+      return { items: [], total: 0, nextCursor: null };
     }
   }
 
@@ -417,7 +338,6 @@ export class HttpChatsService implements IChatsService {
 
       if (Array.isArray(response)) {
         const messages = response.map((message, index) => this.mapChatMessage(message, chat.id, index));
-        this.cacheChatMessages(chat, messages);
         return this.buildChatMessagesPage(
           messages,
           query
@@ -428,10 +348,6 @@ export class HttpChatsService implements IChatsService {
         ? response.items.map((message, index) => this.mapChatMessage(message, chat.id, index))
         : [];
       const readReceipt = this.mapChatReadReceipt(response?.read ?? null);
-      if (readReceipt) {
-        this.updateCachedChatUnread(chat.id, readReceipt);
-      }
-      this.cacheChatMessages(chat, messages);
       return {
         items: this.sortChatMessagesForThread(messages),
         total: Number.isFinite(response?.total)
@@ -443,7 +359,7 @@ export class HttpChatsService implements IChatsService {
         readReceipt
       };
     } catch {
-      return this.buildChatMessagesPage(this.resolveCachedChatMessages(chat), query);
+      return { items: [], total: 0, nextCursor: null, readReceipt: null };
     }
   }
 
@@ -611,9 +527,6 @@ export class HttpChatsService implements IChatsService {
       const pendingUpdate = this.waitForSocketMessageUpdate(normalizedMessageId);
       socket.send(JSON.stringify(payload));
       const updatedMessage = await pendingUpdate;
-      if (updatedMessage) {
-        this.updateCachedChatSummaryAfterMessage(chat, updatedMessage);
-      }
       return updatedMessage;
     } catch {
       this.resolvePendingSocketUpdate(normalizedMessageId, null);
@@ -769,68 +682,6 @@ export class HttpChatsService implements IChatsService {
     );
   }
 
-  private shouldUseCachedActivitiesChatPage(
-    page: { items: readonly ChatDTO[]; total: number; nextCursor?: string | null },
-    userId: string,
-    cachedChatItems: readonly ChatDTO[]
-  ): boolean {
-    return page.items.length === 0
-      && page.total === 0
-      && this.resolveCachedActivitiesChatItems(userId, cachedChatItems).length > 0;
-  }
-
-  private buildCachedActivitiesChatPage(
-    userId: string,
-    query: ListQuery<ActivitiesFeedFilters>,
-    cachedChatItems: readonly ChatDTO[]
-  ): { items: ChatDTO[]; total: number; nextCursor: null } {
-    const pageSize = Math.max(1, Math.trunc(Number(query.pageSize) || 10));
-    const pageIndex = Math.max(0, Math.trunc(Number(query.page) || 0));
-    const filtered = this.resolveCachedActivitiesChatItems(userId, cachedChatItems).filter(item =>
-      this.matchesActivitiesChatContextFilter(item, this.activitiesChatContextFilter(query))
-      && this.matchesSupportCaseFilter(item, this.activitiesSupportCaseFilter(query))
-    );
-    const sorted = this.sortActivitiesChatPageDTOs(filtered, query);
-    const startIndex = pageIndex * pageSize;
-    return {
-      items: sorted.slice(startIndex, startIndex + pageSize).map(item => this.cloneChatDTO(item)),
-      total: sorted.length,
-      nextCursor: null
-    };
-  }
-
-  private resolveCachedActivitiesChatItems(
-    userId: string,
-    cachedChatItems: readonly ChatDTO[]
-  ): ChatDTO[] {
-    const source = cachedChatItems.length > 0
-      ? cachedChatItems
-      : this.peekChatItemsByUser(userId);
-    return this.deduplicateChatDTOs(source.map(item => this.toCachedDemoChatDTO(item, userId)));
-  }
-
-  private toCachedDemoChatDTO(item: ChatDTO, ownerUserId: string): ChatDTO {
-    return {
-      id: `${item.id ?? ''}`.trim(),
-      avatar: `${item.avatar ?? ''}`.trim(),
-      title: `${item.title ?? ''}`.trim(),
-      lastMessage: `${item.lastMessage ?? ''}`.trim(),
-      lastSenderId: `${item.lastSenderId ?? ''}`.trim(),
-      memberIds: [...(item.memberIds ?? [])],
-      members: this.cloneChatMembers(item.members),
-      unread: Math.max(0, Math.trunc(Number(item.unread) || 0)),
-      dateIso: item.dateIso,
-      distanceKm: item.distanceKm,
-      distanceMetersExact: item.distanceMetersExact,
-      channelType: item.channelType,
-      serviceContext: item.serviceContext,
-      ownerId: item.ownerId,
-      supportCase: this.cloneSupportCase(item.supportCase),
-      ownerUserId,
-      metrics: this.cloneMetrics(item.metrics)
-    };
-  }
-
   private toActivitiesChatPageDTO(page: {
     items: readonly ChatDTO[];
     total: number;
@@ -891,42 +742,6 @@ export class HttpChatsService implements IChatsService {
     }));
   }
 
-  private matchesActivitiesChatContextFilter(
-    item: ChatDTO,
-    filter: ContractTypes.ActivitiesChatContextFilter
-  ): boolean {
-    const normalizedFilter = filter === 'event' || filter === 'subEvent' || filter === 'group' || filter === 'service' || filter === 'appSupport'
-      ? filter
-      : 'all';
-    return normalizedFilter === 'all' || this.activityChatContextFilterKey(item) === normalizedFilter;
-  }
-
-  private activityChatContextFilterKey(
-    item: Pick<ContractTypes.ChatDTO, 'channelType' | 'serviceContext'>
-  ): ContractTypes.ActivitiesChatContextFilter {
-    if (item.channelType === 'appSupport' || item.channelType === 'supportCase') {
-      return 'appSupport';
-    }
-    if (item.channelType === 'serviceEvent' || item.serviceContext) {
-      return 'service';
-    }
-    if (item.channelType === 'groupSubEvent') {
-      return 'group';
-    }
-    if (item.channelType === 'optionalSubEvent') {
-      return 'subEvent';
-    }
-    if (item.channelType === 'mainEvent') {
-      return 'event';
-    }
-    return 'all';
-  }
-
-  private activitiesSecondaryFilter(query: ListQuery<ActivitiesFeedFilters>): ContractTypes.ActivitiesSecondaryFilter {
-    const value = query.filters?.secondaryFilter;
-    return value === 'relevant' || value === 'past' ? value : 'recent';
-  }
-
   private activitiesChatContextFilter(query: ListQuery<ActivitiesFeedFilters>): ContractTypes.ActivitiesChatContextFilter {
     const value = query.filters?.chatContextFilter;
     return value === 'event' || value === 'subEvent' || value === 'group' || value === 'service' || value === 'appSupport'
@@ -934,47 +749,14 @@ export class HttpChatsService implements IChatsService {
       : 'all';
   }
 
+  private activitiesSecondaryFilter(query: ListQuery<ActivitiesFeedFilters>): ContractTypes.ActivitiesSecondaryFilter {
+    const value = query.filters?.secondaryFilter;
+    return value === 'relevant' || value === 'past' ? value : 'recent';
+  }
+
   private activitiesSupportCaseFilter(query: ListQuery<ActivitiesFeedFilters>): ContractTypes.SupportCaseFilter {
     const value = query.filters?.supportCaseFilter;
     return value === 'pending' || value === 'warned' || value === 'picked' || value === 'solved' || value === 'blocked' ? value : 'all';
-  }
-
-  private matchesSupportCaseFilter(
-    item: Pick<ChatDTO, 'supportCase'>,
-    filter?: ContractTypes.SupportCaseFilter
-  ): boolean {
-    const normalizedFilter = filter === 'pending' || filter === 'warned' || filter === 'picked' || filter === 'solved' || filter === 'blocked'
-      ? filter
-      : 'all';
-    return normalizedFilter === 'all' || item.supportCase?.status === normalizedFilter;
-  }
-
-  private sortActivitiesChatPageDTOs(
-    items: readonly ChatDTO[],
-    query: ListQuery<ActivitiesFeedFilters>
-  ): ChatDTO[] {
-    const sorted = items.map(item => this.cloneChatDTO(item));
-    if (this.activitiesSecondaryFilter(query) === 'relevant') {
-      return sorted.sort((left, right) =>
-        this.chatMetricScore(right) - this.chatMetricScore(left)
-        || AppUtils.toSortableDate(right.dateIso ?? '') - AppUtils.toSortableDate(left.dateIso ?? '')
-        || left.id.localeCompare(right.id)
-      );
-    }
-    return sorted.sort((left, right) =>
-      AppUtils.toSortableDate(right.dateIso ?? '') - AppUtils.toSortableDate(left.dateIso ?? '')
-      || left.id.localeCompare(right.id)
-    );
-  }
-
-  private chatMetricScore(item: Pick<ChatDTO, 'unread' | 'memberIds'>): number {
-    const unread = Math.max(0, Math.trunc(Number(item.unread) || 0));
-    const memberCount = new Set(
-      (item.memberIds ?? [])
-        .map(memberId => `${memberId ?? ''}`.trim())
-        .filter(Boolean)
-    ).size;
-    return unread * 10 + memberCount;
   }
 
   private mapChatMessage(
@@ -1253,176 +1035,6 @@ export class HttpChatsService implements IChatsService {
     return null;
   }
 
-  private updateCachedChatSummaryAfterMessage(
-    chat: ChatDTO,
-    message: ContractTypes.ChatMessageDto
-  ): void {
-    const ownerUserId = this.activeUserId();
-    if (!ownerUserId) {
-      return;
-    }
-    const normalizedChatId = `${chat.id ?? ''}`.trim();
-    if (!normalizedChatId) {
-      return;
-    }
-    this.cacheChatMessagesFor(ownerUserId, normalizedChatId, [message]);
-    const currentItems = (this.chatItemsByUserId.get(ownerUserId) ?? []).map(item => this.cloneChatDTO(item));
-    const existingIndex = currentItems.findIndex(item => item.id === normalizedChatId);
-    const existingItem = existingIndex >= 0 ? currentItems[existingIndex] : null;
-    const nextItem = this.buildCachedChatDTOFromMessage(chat, ownerUserId, message, existingItem);
-    if (existingIndex >= 0) {
-      currentItems[existingIndex] = nextItem;
-    } else {
-      currentItems.push(nextItem);
-    }
-    this.chatItemsByUserId.set(ownerUserId, this.sortCachedChatDTOs(currentItems));
-  }
-
-  private buildCachedChatDTOFromMessage(
-    chat: ChatDTO,
-    ownerUserId: string,
-    message: ContractTypes.ChatMessageDto,
-    existingItem: ChatDTO | null
-  ): ChatDTO {
-    const sanitizedDistanceKm = Number.isFinite(Number(chat.distanceKm))
-      ? Math.max(0, Number(chat.distanceKm))
-      : existingItem?.distanceKm;
-    const sanitizedDistanceMetersExact = Number.isFinite(Number(chat.distanceMetersExact))
-      ? Math.max(0, Math.trunc(Number(chat.distanceMetersExact)))
-      : existingItem?.distanceMetersExact;
-    return {
-      id: `${chat.id ?? existingItem?.id ?? ''}`.trim(),
-      avatar: `${chat.avatar ?? existingItem?.avatar ?? ''}`.trim(),
-      title: `${chat.title ?? existingItem?.title ?? ''}`.trim(),
-      lastMessage: `${message.text ?? ''}`.trim() || this.chatAttachmentSummary(message) || `${existingItem?.lastMessage ?? ''}`.trim(),
-      lastSenderId: `${message.senderAvatar?.id ?? existingItem?.lastSenderId ?? ''}`.trim(),
-      memberIds: [...((chat.memberIds?.length ? chat.memberIds : existingItem?.memberIds) ?? [])],
-      members: this.cloneChatMembers(chat.members?.length ? chat.members : existingItem?.members),
-      unread: message.mine ? 0 : Math.max(0, Math.trunc(Number(existingItem?.unread) || 0)),
-      dateIso: `${message.sentAtIso ?? existingItem?.dateIso ?? ''}`.trim() || undefined,
-      channelType: chat.channelType ?? existingItem?.channelType,
-      serviceContext: chat.serviceContext ?? existingItem?.serviceContext,
-      ownerId: chat.ownerId ?? existingItem?.ownerId,
-      supportCase: this.cloneSupportCase(chat.supportCase ?? existingItem?.supportCase),
-      distanceKm: sanitizedDistanceKm,
-      distanceMetersExact: sanitizedDistanceMetersExact,
-      ownerUserId,
-      metrics: this.cloneMetrics(chat.metrics ?? existingItem?.metrics)
-    } satisfies ChatDTO;
-  }
-
-  private resolveCachedChatMessages(chat: ChatDTO): ContractTypes.ChatMessageDto[] {
-    const ownerUserId = this.activeUserId();
-    const normalizedChatId = `${chat.id ?? ''}`.trim();
-    if (!ownerUserId || !normalizedChatId) {
-      return [];
-    }
-    const key = this.chatMessageCacheKey(ownerUserId, normalizedChatId);
-    return (this.chatMessagesByOwnerChatKey.get(key) ?? []).map(message => ({
-      ...message,
-      readBy: [...(message.readBy ?? [])],
-      replyTo: message.replyTo ? { ...message.replyTo } : message.replyTo,
-      reactions: message.reactions?.map(reaction => ({ ...reaction })),
-      attachments: message.attachments?.map(attachment => ({ ...attachment }))
-    }));
-  }
-
-  private cacheChatMessages(chat: ChatDTO, messages: readonly ContractTypes.ChatMessageDto[]): void {
-    const ownerUserId = this.activeUserId();
-    const normalizedChatId = `${chat.id ?? ''}`.trim();
-    if (!ownerUserId || !normalizedChatId || messages.length === 0) {
-      return;
-    }
-    this.cacheChatMessagesFor(ownerUserId, normalizedChatId, messages);
-  }
-
-  private cacheChatMessagesFor(
-    ownerUserId: string,
-    chatId: string,
-    messages: readonly ContractTypes.ChatMessageDto[]
-  ): void {
-    const key = this.chatMessageCacheKey(ownerUserId, chatId);
-    if (!key || messages.length === 0) {
-      return;
-    }
-    const existingMessages = this.chatMessagesByOwnerChatKey.get(key) ?? [];
-    this.chatMessagesByOwnerChatKey.set(
-      key,
-      this.mergeCachedChatMessages(existingMessages, messages)
-    );
-  }
-
-  private chatMessageCacheKey(ownerUserId: string, chatId: string): string {
-    const normalizedOwnerUserId = `${ownerUserId ?? ''}`.trim();
-    const normalizedChatId = `${chatId ?? ''}`.trim();
-    return normalizedOwnerUserId && normalizedChatId ? `${normalizedOwnerUserId}:${normalizedChatId}` : '';
-  }
-
-  private mergeCachedChatMessages(
-    baseMessages: readonly ContractTypes.ChatMessageDto[],
-    extraMessages: readonly ContractTypes.ChatMessageDto[]
-  ): ContractTypes.ChatMessageDto[] {
-    const mergedById = new Map<string, ContractTypes.ChatMessageDto>();
-    for (const message of [...baseMessages, ...extraMessages]) {
-      const identity = this.chatMessageIdentity(message);
-      if (!identity) {
-        continue;
-      }
-      mergedById.set(identity, {
-        ...message,
-        readBy: [...(message.readBy ?? [])],
-        replyTo: message.replyTo ? { ...message.replyTo } : message.replyTo,
-        reactions: message.reactions?.map(reaction => ({ ...reaction })),
-        attachments: message.attachments?.map(attachment => ({ ...attachment }))
-      });
-    }
-    return [...mergedById.values()];
-  }
-
-  private chatMessageIdentity(message: ContractTypes.ChatMessageDto | null | undefined): string {
-    const normalizedId = `${message?.id ?? ''}`.trim();
-    if (normalizedId) {
-      return normalizedId;
-    }
-    const normalizedClientId = `${message?.clientId ?? ''}`.trim();
-    if (normalizedClientId) {
-      return `client:${normalizedClientId}`;
-    }
-    const senderId = `${message?.senderAvatar?.id ?? ''}`.trim();
-    const sentAtIso = `${message?.sentAtIso ?? ''}`.trim();
-    const text = `${message?.text ?? ''}`.trim();
-    if (!sentAtIso && !text) {
-      return '';
-    }
-    return `fallback:${senderId}:${sentAtIso}:${text}`;
-  }
-
-  private chatAttachmentSummary(message: ContractTypes.ChatMessageDto): string {
-    const firstAttachment = message.attachments?.[0];
-    if (!firstAttachment) {
-      return '';
-    }
-    if (firstAttachment.type === 'image') {
-      return 'Sent an image';
-    }
-    if (firstAttachment.type === 'event') {
-      return 'Shared an event';
-    }
-    if (firstAttachment.type === 'asset') {
-      return 'Shared an asset';
-    }
-    return firstAttachment.title || 'Shared an attachment';
-  }
-
-  private sortCachedChatDTOs(items: readonly ChatDTO[]): ChatDTO[] {
-    return this.deduplicateChatDTOs(items)
-      .map(item => this.cloneChatDTO(item))
-      .sort((left, right) =>
-        AppUtils.toSortableDate(right.dateIso ?? '') - AppUtils.toSortableDate(left.dateIso ?? '')
-        || left.id.localeCompare(right.id)
-      );
-  }
-
   private mapSocketEvent(
     payload: HttpChatMessageDto | HttpChatSocketEventDto,
     fallbackChatId: string
@@ -1659,7 +1271,6 @@ export class HttpChatsService implements IChatsService {
       this.clearPendingSocketMessage(normalizedClientId);
       this.resolvePendingSocketAck(normalizedClientId, event.message);
       this.resolvePendingSocketUpdate(normalizedMessageId, event.message);
-      this.updateCachedChatSummaryFromSocketEvent(event.chatId, event.message);
     }
     if (event.type === 'ack') {
       const normalizedClientId = `${event.clientId ?? event.message?.clientId ?? ''}`.trim();
@@ -1667,12 +1278,8 @@ export class HttpChatsService implements IChatsService {
       this.clearPendingSocketMessage(normalizedClientId);
       this.resolvePendingSocketAck(normalizedClientId, event.message ?? null);
       this.resolvePendingSocketUpdate(normalizedMessageId, event.message ?? null);
-      if (event.message) {
-        this.updateCachedChatSummaryFromSocketEvent(event.chatId, event.message);
-      }
     }
     if (event.type === 'read') {
-      this.updateCachedChatUnread(event.chatId, event.read);
       this.resolvePendingSocketReads(event.chatId, event.read);
     }
     if (event.type === 'error') {
@@ -1686,49 +1293,6 @@ export class HttpChatsService implements IChatsService {
       listener(event);
     }
     this.closeSocketIfIdle();
-  }
-
-  private updateCachedChatSummaryFromSocketEvent(
-    chatId: string,
-    message: ContractTypes.ChatMessageDto
-  ): void {
-    const ownerUserId = this.activeUserId();
-    if (!ownerUserId) {
-      return;
-    }
-    const currentItems = this.chatItemsByUserId.get(ownerUserId) ?? [];
-    const existingItem = currentItems.find(item => item.id === chatId) ?? null;
-    if (!existingItem) {
-      return;
-    }
-    this.updateCachedChatSummaryAfterMessage(existingItem, message);
-  }
-
-  private updateCachedChatUnread(
-    chatId: string,
-    read: ContractTypes.ChatReadReceipt
-  ): void {
-    const ownerUserId = this.activeUserId();
-    const normalizedChatId = `${chatId ?? ''}`.trim();
-    if (!ownerUserId || !normalizedChatId || read.userId !== ownerUserId || read.unread === undefined || read.unread === null) {
-      return;
-    }
-    const unread = Math.max(0, Math.trunc(Number(read.unread) || 0));
-    const currentItems = this.chatItemsByUserId.get(ownerUserId) ?? [];
-    let changed = false;
-    const nextItems = currentItems.map(item => {
-      if (`${item.id ?? ''}`.trim() !== normalizedChatId || Math.max(0, Math.trunc(Number(item.unread) || 0)) === unread) {
-        return item;
-      }
-      changed = true;
-      return {
-        ...item,
-        unread
-      };
-    });
-    if (changed) {
-      this.chatItemsByUserId.set(ownerUserId, nextItems);
-    }
   }
 
   private handleUnexpectedSocketDisconnect(chatId: string): void {

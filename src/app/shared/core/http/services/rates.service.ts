@@ -346,7 +346,7 @@ export class HttpRatesService implements IRatesService {
       images: [...(user.images ?? [])],
       activities: {
         game: user.activities?.game ?? 0,
-        chat: user.activities?.chat ?? 0,
+        chats: user.activities?.chats ?? 0,
         invitations: user.activities?.invitations ?? 0,
         events: user.activities?.events ?? 0,
         hosting: user.activities?.hosting ?? 0,

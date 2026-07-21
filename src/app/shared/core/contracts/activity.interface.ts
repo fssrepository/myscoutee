@@ -161,10 +161,8 @@ export interface IEventsService {
 export interface IChatsService {
   queryActivitiesChatPage(
     userId: string,
-    query: ListQuery<ActivitiesFeedFilters>,
-    options?: { chatItems?: readonly ChatContracts.ChatDTO[] }
+    query: ListQuery<ActivitiesFeedFilters>
   ): Promise<ChatContracts.ActivitiesChatPageResultDTO>;
-  loadChatMessages(chat: ChatContracts.ChatDTO): Promise<ChatContracts.ChatMessageDto[]>;
   queryChatMessagesPage(
     chat: ChatContracts.ChatDTO,
     query: ListQuery

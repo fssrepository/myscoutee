@@ -47,25 +47,9 @@ export class LocalChatsService extends LocalRouteDelayService implements IChatsS
   private readonly activityResourcesRepository = inject(LocalActivityResourcesRepository);
   private readonly activitySubEventStageRuntimeRepository = inject(LocalActivitySubEventStageRuntimeRepository);
 
-  async queryChatItemsByUser(userId: string): Promise<ChatDTO[]> {
-    await this.waitForRouteDelay(LocalChatsService.CHAT_ROUTE);
-    const records = this.chatsRepository.queryChatItemsByUser(userId);
-    return this.chatDtosWithMetrics(records);
-  }
-
-  async querySupportCaseItemsForAdmin(
-    userId: string,
-    filter: ContractTypes.SupportCaseFilter = 'all'
-  ): Promise<ChatDTO[]> {
-    await this.waitForRouteDelay(LocalChatsService.CHAT_ROUTE);
-    const records = this.chatsRepository.querySupportCaseItemsForAdmin(userId, filter);
-    return this.chatDtosWithMetrics(records);
-  }
-
   async queryActivitiesChatPage(
     userId: string,
-    query: ListQuery<ActivitiesFeedFilters>,
-    _options: { chatItems?: readonly ChatDTO[] } = {}
+    query: ListQuery<ActivitiesFeedFilters>
   ): Promise<ActivitiesChatPageResultDTO> {
     await this.waitForRouteDelay(LocalChatsService.CHAT_ROUTE);
     const page = this.chatsRepository.queryActivitiesChatPage(this.resolveDemoActivityUserId(userId), query);
@@ -73,16 +57,6 @@ export class LocalChatsService extends LocalRouteDelayService implements IChatsS
       ...LocalChatThreadMapper.toDtoPage(page),
       items: this.chatDtosWithMetrics(page.items)
     };
-  }
-
-  peekChatItemsByUser(userId: string): ChatDTO[] {
-    const records = this.chatsRepository.queryChatItemsByUser(userId);
-    return this.chatDtosWithMetrics(records);
-  }
-
-  async loadChatMessages(chat: ChatDTO): Promise<ContractTypes.ChatMessageDto[]> {
-    await this.waitForRouteDelay(LocalChatsService.CHAT_ROUTE);
-    return this.chatsRepository.queryChatMessages(chat);
   }
 
   async queryChatMessagesPage(
