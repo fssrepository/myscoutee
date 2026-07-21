@@ -141,6 +141,19 @@ export function cloneImpressions(impressions: UserImpressionsDto): UserImpressio
   };
 }
 
+export function cloneChatCounters(
+  counters: UserDto['activities']['chat'] | null | undefined
+): { all: number; event: number; subEvent: number; group: number; service: number; appSupport: number } {
+  return {
+    all: normalizeCounterValue(counters?.all),
+    event: normalizeCounterValue(counters?.event),
+    subEvent: normalizeCounterValue(counters?.subEvent),
+    group: normalizeCounterValue(counters?.group),
+    service: normalizeCounterValue(counters?.service),
+    appSupport: normalizeCounterValue(counters?.appSupport)
+  };
+}
+
 export function cloneProfileExt(profileExt: ProfileExtDto): ProfileExtDto {
   return {
     profile: cloneUserProfile(profileExt.profile),
@@ -156,7 +169,7 @@ export function cloneUserProfile(user: UserDto): UserDto {
     profileDetails: cloneProfileDetails(user.profileDetails),
     activities: {
       game: user.activities?.game ?? 0,
-      chat: user.activities?.chat ?? 0,
+      chats: user.activities?.chats ?? 0,
       invitations: user.activities?.invitations ?? 0,
       events: user.activities?.events ?? 0,
       hosting: user.activities?.hosting ?? 0,
@@ -166,6 +179,7 @@ export function cloneUserProfile(user: UserDto): UserDto {
       tickets: user.activities?.tickets ?? 0,
       contacts: user.activities?.contacts ?? 0,
       feedback: user.activities?.feedback ?? 0,
+      chat: cloneChatCounters(user.activities?.chat),
       event: cloneEventCounters(user.activities?.event),
       asset: cloneAssetCounters(user.activities?.asset),
       eventFeedback: cloneEventFeedbackCounters(user.activities?.eventFeedback),

@@ -9,41 +9,41 @@
     <div class="event-payment-panel-title">
       <mat-icon>payments</mat-icon>
       <div>
-        <h3>{{ title }}</h3>
-        <p>{{ subtitle }}</p>
+        <h3>{{ title | i18n }}</h3>
+        <p>{{ subtitle | i18n }}</p>
       </div>
     </div>
-    <span>{{ paymentProviderLabel() }}</span>
+    <span>{{ paymentProviderLabel() | i18n }}</span>
   </div>
 
   <div class="event-payment-status-grid">
     <article>
-      <span>Összeg</span>
+      <span>{{ 'event.editor.payment.amount' | i18n }}</span>
       <strong>{{ formatMoney(totalAmount, currency) }}</strong>
     </article>
     <article>
-      <span>Állapot</span>
-      <strong>{{ paymentStatusLabel() }}</strong>
+      <span>{{ 'event.editor.payment.status' | i18n }}</span>
+      <strong>{{ paymentStatusLabel() | i18n }}</strong>
     </article>
   </div>
 
-  <p class="event-payment-note">{{ paymentNote() }}</p>
+  <p class="event-payment-note">{{ paymentNote() | i18n }}</p>
 
   <div class="event-payment-field-grid">
     <label>
-      <span>Kártyaszám</span>
+      <span>{{ 'event.editor.payment.card.number' | i18n }}</span>
       <input type="text" value="4242 4242 4242 4242" disabled />
     </label>
     <label>
-      <span>Név a kártyán</span>
+      <span>{{ 'event.editor.payment.card.name' | i18n }}</span>
       <input type="text" value="Demo User" disabled />
     </label>
     <label>
-      <span>Lejárat</span>
+      <span>{{ 'event.editor.payment.card.expiry' | i18n }}</span>
       <input type="text" value="12 / 30" disabled />
     </label>
     <label>
-      <span>CVC</span>
+      <span>{{ 'event.editor.payment.card.cvc' | i18n }}</span>
       <input type="text" value="123" disabled />
     </label>
   </div>

@@ -1,4 +1,3 @@
-import { CHATS_TABLE_NAME } from '../../source/entity/chat.entity';
 import { EVENT_FEEDBACK_TABLE_NAME, EVENTS_TABLE_NAME } from '../../source/entity/event.entity';
 import { USER_FILTER_PREFERENCES_TABLE_NAME, USER_RATES_OUTBOX_TABLE_NAME, USER_RATES_TABLE_NAME } from '../../source/entity/rate.entity';
 import { USERS_TABLE_NAME } from '../../source/entity/user.entity';
@@ -20,7 +19,6 @@ import { LocalUserFilterPreferencesMapper } from '../../source/mappers';
 import { SeedUserBuilder, SeedUserImpressionsBuilder } from '../builders';
 
 interface SeededActivityCountSources {
-  chatItems?: ReadonlyArray<{ unread: number }>;
   invitationItems?: ReadonlyArray<{ unread: number }>;
   eventsCount?: number;
   hostingItems?: ReadonlyArray<{ activity: number; status: ActivityEventRecord['status'] }>;
@@ -286,7 +284,7 @@ export class SeedUsersRepository {
         ...user,
         activities: {
           game: 0,
-          chat: 0,
+          chats: 0,
           invitations: 0,
           events: 0,
           hosting: 0,
@@ -296,6 +294,14 @@ export class SeedUsersRepository {
           tickets: 0,
           contacts: 0,
           feedback: 0,
+          chat: {
+            all: 0,
+            event: 0,
+            subEvent: 0,
+            group: 0,
+            service: 0,
+            appSupport: 0,
+          },
           event: {
             all: 0,
             active: 0,
@@ -323,7 +329,6 @@ export class SeedUsersRepository {
       };
     }
     return this.applyDerivedActivityCounts(user, {
-      chatItems: this.queryChatItemsByUser(user.id),
       invitationItems: this.queryInvitationItemsByUser(user.id),
       eventsCount: this.countUpcomingActiveEventItemsByUser(user.id),
       hostingItems: this.queryHostingItemsByUser(user.id),
@@ -348,9 +353,15 @@ export class SeedUsersRepository {
     };
 
     const activities = user.activities;
-    const chat = sources.chatItems
-      ? this.sumUnreadItems(sources.chatItems)
-      : activities.chat;
+    const chats = normalizeCounter(activities.chats);
+    const chat = {
+      all: normalizeCounter(activities.chat?.all ?? chats),
+      event: normalizeCounter(activities.chat?.event),
+      subEvent: normalizeCounter(activities.chat?.subEvent),
+      group: normalizeCounter(activities.chat?.group),
+      service: normalizeCounter(activities.chat?.service),
+      appSupport: normalizeCounter(activities.chat?.appSupport)
+    };
     const invitations = sources.invitationItems ? sources.invitationItems.length : activities.invitations;
     const events = Number.isFinite(sources.eventsCount)
       ? normalizeCounter(sources.eventsCount)
@@ -394,6 +405,7 @@ export class SeedUsersRepository {
       ...user,
       activities: {
         ...activities,
+        chats,
         chat,
         invitations,
         events,
@@ -428,18 +440,6 @@ export class SeedUsersRepository {
         }
       }
     };
-  }
-
-  private sumUnreadItems(items: ReadonlyArray<{ unread: number }>): number {
-    return items.reduce((sum, item) => sum + Math.max(0, Math.trunc(Number(item.unread) || 0)), 0);
-  }
-
-  private queryChatItemsByUser(userId: string): ReadonlyArray<{ unread: number }> {
-    const table = this.memoryDb.read()[CHATS_TABLE_NAME];
-    return table.ids
-      .map(id => table.byId[id])
-      .filter(record => record?.ownerUserId === userId)
-      .map(record => ({ unread: Math.max(0, Math.trunc(Number(record.unread) || 0)) }));
   }
 
   private queryInvitationItemsByUser(userId: string): ReadonlyArray<{ unread: number }> {
@@ -711,13 +711,15 @@ export class SeedUsersRepository {
     };
     const leftEvent = left.activities.event;
     const rightEvent = right.activities.event;
+    const leftChat = left.activities.chat;
+    const rightChat = right.activities.chat;
     const leftAsset = left.activities.asset;
     const rightAsset = right.activities.asset;
     const leftEventFeedback = left.activities.eventFeedback;
     const rightEventFeedback = right.activities.eventFeedback;
 
     return left.activities.game === right.activities.game
-      && left.activities.chat === right.activities.chat
+      && left.activities.chats === right.activities.chats
       && left.activities.invitations === right.activities.invitations
       && left.activities.events === right.activities.events
       && left.activities.hosting === right.activities.hosting
@@ -727,6 +729,13 @@ export class SeedUsersRepository {
       && (left.activities.tickets ?? 0) === (right.activities.tickets ?? 0)
       && (left.activities.contacts ?? 0) === (right.activities.contacts ?? 0)
       && (left.activities.feedback ?? 0) === (right.activities.feedback ?? 0)
+      && Boolean(left.activities.chat) === Boolean(right.activities.chat)
+      && normalizeCounter(leftChat?.all) === normalizeCounter(rightChat?.all)
+      && normalizeCounter(leftChat?.event) === normalizeCounter(rightChat?.event)
+      && normalizeCounter(leftChat?.subEvent) === normalizeCounter(rightChat?.subEvent)
+      && normalizeCounter(leftChat?.group) === normalizeCounter(rightChat?.group)
+      && normalizeCounter(leftChat?.service) === normalizeCounter(rightChat?.service)
+      && normalizeCounter(leftChat?.appSupport) === normalizeCounter(rightChat?.appSupport)
       && Boolean(left.activities.event) === Boolean(right.activities.event)
       && normalizeCounter(leftEvent?.all) === normalizeCounter(rightEvent?.all)
       && normalizeCounter(leftEvent?.active) === normalizeCounter(rightEvent?.active)

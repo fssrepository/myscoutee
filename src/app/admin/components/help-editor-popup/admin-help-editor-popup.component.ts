@@ -1045,9 +1045,7 @@ export class AdminHelpEditorPopupComponent {
       return;
     }
     if (this.documentKind === 'explanation' && !this.draft.contextKey) {
-      this.error = this.selectedContentLanguageIsHungarian()
-        ? 'Válassz képernyőt mentés előtt.'
-        : 'Choose a canonical screen before saving.';
+      this.error = this.uiText('admin.help.select.screen.before.saving');
       return;
     }
     const request = {
@@ -1212,7 +1210,7 @@ export class AdminHelpEditorPopupComponent {
   }
 
   protected editorTitle(): string {
-    return this.uiText('Tartalomszerkesztő');
+    return this.uiText('content.editor');
   }
 
   protected activeRevisionSubtitle(): string {

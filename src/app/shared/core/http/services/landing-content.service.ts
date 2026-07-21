@@ -21,6 +21,7 @@ export class HttpLandingContentService {
       privacy?: Partial<HelpCenterStateDto> | null;
       terms?: Partial<HelpCenterStateDto> | null;
       ideas?: unknown;
+      ideasTotal?: unknown;
       loginAvailability?: Partial<UserLocationEligibilityResponseDto> | null;
     };
     const lang = this.browserLanguage();
@@ -29,12 +30,21 @@ export class HttpLandingContentService {
         params: { lang }
       })
       .toPromise();
+    const ideas = this.ideaPosts.normalizePosts(Array.isArray(response?.ideas) ? response.ideas : []);
     return {
       privacy: this.helpCenter.normalizeExternalState(response?.privacy, 'privacy'),
       terms: this.helpCenter.normalizeExternalState(response?.terms, 'terms'),
-      ideas: this.ideaPosts.normalizePosts(Array.isArray(response?.ideas) ? response?.ideas : []),
+      ideas,
+      ideasTotal: this.normalizeIdeasTotal(response?.ideasTotal, ideas.length),
       loginAvailability: this.normalizeLoginAvailability(response?.loginAvailability)
     };
+  }
+
+  private normalizeIdeasTotal(value: unknown, previewCount: number): number {
+    const explicitTotal = Math.trunc(Number(value));
+    return Number.isFinite(explicitTotal) && explicitTotal >= 0
+      ? Math.max(explicitTotal, previewCount)
+      : previewCount;
   }
 
   private normalizeLoginAvailability(

@@ -76,20 +76,8 @@ type ActivitiesChatsHost = any;
 export class ActivitiesChatsController {
   constructor(private readonly host: ActivitiesChatsHost) {}
 
-  private cachedActiveUserRef: UserDto | null = null;
-  private cachedChatItemsRef: readonly ChatDTO[] | null = null;
-  private readonly chatItemByIdCache = new Map<string, ChatDTO>();
-  private readonly chatMembersByIdCache = new Map<string, UserDto[]>();
-  private readonly chatLastSenderByIdCache = new Map<string, UserDto>();
-
   private get activeUser() { return this.host.activeUser as UserDto; }
   private get activitiesStore() { return this.host.activitiesStore; }
-  private get chatItems() {
-    const activeUserId = `${this.activeUser?.id ?? ''}`.trim();
-    return activeUserId
-      ? this.host.chatsService.peekChatItemsByUser(activeUserId) as ChatDTO[]
-      : [];
-  }
 
   public chatChannelType(item: ChatDTO): ContractTypes.ChatChannelType {
     if (
@@ -105,54 +93,12 @@ export class ActivitiesChatsController {
     return 'general';
   }
 
-  public chatItemsForActivities(): ChatDTO[] {
-    return this.chatItems.map(item => ({
-      ...item,
-      memberIds: [...(item.memberIds ?? [])],
-      channelType: this.chatChannelType(item),
-      unread: Math.max(0, Math.trunc(Number(item.unread) || 0))
-    }));
-  }
-
-  private syncChatLookupCache(): void {
-    const activeUser = this.activeUser;
-    const chatItems = this.chatItems;
-    if (
-      this.cachedActiveUserRef === activeUser
-      && this.cachedChatItemsRef === chatItems
-    ) {
-      return;
-    }
-
-    this.cachedActiveUserRef = activeUser;
-    this.cachedChatItemsRef = chatItems;
-    this.chatItemByIdCache.clear();
-    this.chatMembersByIdCache.clear();
-    this.chatLastSenderByIdCache.clear();
-
-    for (const item of chatItems) {
-      this.chatItemByIdCache.set(item.id, item);
-    }
-  }
-
-  private getChatItemById(chatId: string): ChatDTO | undefined {
-    this.syncChatLookupCache();
-    return this.chatItemByIdCache.get(chatId);
-  }
-
-  private getChatMembersById(chatId: string): UserDto[] {
-    this.syncChatLookupCache();
-    const cachedMembers = this.chatMembersByIdCache.get(chatId);
-    if (cachedMembers) {
-      return cachedMembers;
-    }
-
-    const chatItem = this.getChatItemById(chatId);
-    const explicitMembers = (chatItem?.memberIds ?? [])
+  private getChatMembers(item: ChatDTO): UserDto[] {
+    const explicitMembers = (item.memberIds ?? [])
       .map(memberId => this.resolveUserById(memberId))
       .filter((user): user is UserDto => Boolean(user));
-    const lastSender = chatItem?.lastSenderId
-      ? this.resolveUserById(chatItem.lastSenderId)
+    const lastSender = item.lastSenderId
+      ? this.resolveUserById(item.lastSenderId)
       : null;
 
     const orderedMembers: UserDto[] = [];
@@ -168,13 +114,9 @@ export class ActivitiesChatsController {
       orderedMembers.push(this.activeUser);
     }
     if (orderedMembers.length > 0) {
-      this.chatMembersByIdCache.set(chatId, orderedMembers);
       return orderedMembers;
     }
-
-    const fallbackMembers = [this.activeUser];
-    this.chatMembersByIdCache.set(chatId, fallbackMembers);
-    return fallbackMembers;
+    return [this.activeUser];
   }
 
   private explicitChatMemberCount(item: ChatDTO | null | undefined): number {
@@ -187,14 +129,7 @@ export class ActivitiesChatsController {
   }
 
   public getChatLastSender(item: ChatDTO): UserDto {
-    this.syncChatLookupCache();
-    const cachedLastSender = this.chatLastSenderByIdCache.get(item.id);
-    if (cachedLastSender) {
-      return cachedLastSender;
-    }
-    const nextLastSender = this.resolveUserById(item.lastSenderId) ?? this.getChatMembersById(item.id)[0] ?? this.activeUser;
-    this.chatLastSenderByIdCache.set(item.id, nextLastSender);
-    return nextLastSender;
+    return this.resolveUserById(item.lastSenderId) ?? this.getChatMembers(item)[0] ?? this.activeUser;
   }
 
   private resolveUserById(userId: string | null | undefined): UserDto | null {
@@ -213,7 +148,7 @@ export class ActivitiesChatsController {
     if (explicitCount > 0) {
       return explicitCount;
     }
-    return this.getChatMembersById(item.id).length;
+    return this.getChatMembers(item).length;
   }
 
   public openActivityChat(chat: ChatDTO): void {

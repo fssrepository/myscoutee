@@ -5,6 +5,7 @@ import type { ChatMetricBucketDTO } from '../../../core/contracts/chat.interface
 import type { UserMenuCounterDeltasDto } from '../../../core/contracts/user.interface';
 import {
   cloneAssetCounters,
+  cloneChatCounters,
   cloneEventCounters,
   cloneEventFeedbackCounters,
   normalizeCounterValue
@@ -12,7 +13,7 @@ import {
 
 export type ActivityCounterKey =
   | 'game'
-  | 'chat'
+  | 'chats'
   | 'invitations'
   | 'events'
   | 'hosting'
@@ -27,7 +28,7 @@ export type ActivityCounterKey =
 
 export interface ActivityCounters {
   game: number;
-  chat: number;
+  chats: number;
   invitations: number;
   events: number;
   hosting: number;
@@ -37,11 +38,21 @@ export interface ActivityCounters {
   tickets: number;
   contacts: number;
   feedback: number;
+  chat?: ActivityChatCounters;
   event?: ActivityEventCounters;
   asset?: ActivityAssetCounters;
   eventFeedback?: ActivityEventFeedbackCounters;
   adminJobs: number;
   adminMetrics: number;
+}
+
+export interface ActivityChatCounters {
+  all: number;
+  event: number;
+  subEvent: number;
+  group: number;
+  service: number;
+  appSupport: number;
 }
 
 export interface ActivityEventCounters {
@@ -104,7 +115,7 @@ export interface ActivityEventFeedbackSubmitSyncState {
 
 export const ACTIVITY_COUNTER_KEYS: ActivityCounterKey[] = [
   'game',
-  'chat',
+  'chats',
   'invitations',
   'events',
   'hosting',
@@ -191,6 +202,9 @@ export class ActivityStore {
     }
     if (patch.event) {
       normalizedPatch.event = cloneEventCounters(patch.event);
+    }
+    if (patch.chat) {
+      normalizedPatch.chat = cloneChatCounters(patch.chat);
     }
     if (patch.asset) {
       normalizedPatch.asset = cloneAssetCounters(patch.asset);

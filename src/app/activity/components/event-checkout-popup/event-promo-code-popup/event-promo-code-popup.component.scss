@@ -1,0 +1,76 @@
+:host {
+  display: contents;
+}
+
+.event-promo-code-popup-body {
+  position: relative;
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow: auto;
+  padding: 0.12rem 0.12rem 0.72rem 0.04rem;
+  box-sizing: border-box;
+}
+
+.event-promo-code-list-section {
+  display: grid;
+  align-content: start;
+  min-width: 0;
+  padding: 0.82rem;
+  border: 1px solid rgba(103, 139, 181, 0.22);
+  border-radius: 16px;
+  background:
+    linear-gradient(180deg, rgba(255, 255, 255, 0.96) 0%, rgba(244, 249, 255, 0.94) 100%),
+    radial-gradient(circle at top right, rgba(107, 187, 165, 0.12), transparent 40%);
+  box-sizing: border-box;
+}
+
+.event-promo-code-list {
+  display: grid;
+  align-content: start;
+  gap: 0.52rem;
+  min-width: 0;
+}
+
+.event-promo-code-empty {
+  min-height: 130px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+  padding: 0.86rem;
+  border: 1px dashed rgba(128, 149, 176, 0.38);
+  border-radius: 14px;
+  background: rgba(255, 255, 255, 0.58);
+  color: rgba(35, 65, 99, 0.72);
+  font-size: 0.84rem;
+  font-weight: 800;
+  text-align: center;
+  box-sizing: border-box;
+}
+
+.event-promo-code-empty .mat-icon {
+  width: 20px;
+  height: 20px;
+  font-size: 20px;
+  line-height: 20px;
+}
+
+.event-promo-code-add-loading {
+  min-height: 170px;
+  display: grid;
+  place-content: center;
+  justify-items: center;
+  gap: 0.62rem;
+  padding: 1.2rem;
+  color: #365c82;
+  font-size: 0.82rem;
+  font-weight: 850;
+  text-align: center;
+  box-sizing: border-box;
+}
+
+@media (max-width: 640px) {
+  .event-promo-code-list-section {
+    padding: 0.68rem;
+  }
+}

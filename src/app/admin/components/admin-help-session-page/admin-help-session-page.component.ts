@@ -102,8 +102,8 @@ export class AdminHelpSessionPageComponent implements OnInit {
   private openSharedUserSelector(userId: string, targetUrl: string): void {
     this.demoBootstrapSelectorStore.openDemoBootstrapSelector({
       mode: 'member',
-      title: 'Demo felhasználó választása',
-      subtitle: 'Bejelentkezés nélküli mód. Válassz demo felhasználót a nézőpont szerinti adatok megnyitásához.',
+      title: 'select.demo.user',
+      subtitle: 'demo.user.selector.perspective.subtitle',
       autoSelectUserId: userId,
       onSelect: selectedUserId => this.openSelectedSharedUser(selectedUserId, targetUrl),
       onClose: () => {

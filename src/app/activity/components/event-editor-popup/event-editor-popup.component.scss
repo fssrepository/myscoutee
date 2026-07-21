@@ -133,6 +133,27 @@
   min-width: 0;
 }
 
+.event-pricing-field-shell {
+  position: relative;
+  min-width: 0;
+}
+
+.event-pricing-field {
+  display: block;
+  min-width: 0;
+}
+
+.event-pricing-field-shell--promo .event-pricing-field {
+  --pricing-summary-preview-offset: 1rem;
+}
+
+.event-pricing-promo-action {
+  position: absolute;
+  z-index: 4;
+  top: 0.62rem;
+  right: 0.72rem;
+}
+
 .card-badge {
   min-width: 22px;
   height: 22px;

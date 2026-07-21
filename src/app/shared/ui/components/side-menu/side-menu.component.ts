@@ -98,6 +98,7 @@ import { MemberMenuStore } from '../../context/stores/member-menu.store';
 import { ActivityInvitePopupStore } from '../../context/stores/activity-invite-popup.store';
 import { AdminMenuStore } from '../../context/stores/admin-menu.store';
 import { AdminWorkspaceStore } from '../../context/stores/admin-workspace.store';
+import { installSessionActiveUserSync } from './session-active-user-sync';
 
 interface NavigatorAvatarState {
   badgeCount: number;
@@ -359,7 +360,7 @@ export class SideMenuComponent implements OnDestroy {
     const activityOverrides = this.activityStore.getUserCounterOverrides(activeUser.id);
     const mergedActivities: ActivityCounters = {
       game: activityOverrides.game ?? activeUser.activities?.game ?? 0,
-      chat: activityOverrides.chat ?? activeUser.activities?.chat ?? 0,
+      chats: activityOverrides.chats ?? activeUser.activities?.chats ?? 0,
       invitations: activityOverrides.invitations ?? activeUser.activities?.invitations ?? 0,
       events: activityOverrides.events ?? activeUser.activities?.events ?? 0,
       hosting: activityOverrides.hosting ?? activeUser.activities?.hosting ?? 0,
@@ -378,7 +379,7 @@ export class SideMenuComponent implements OnDestroy {
       ? (
         mergedActivities.game +
         mergedActivities.feedback +
-        mergedActivities.chat +
+        mergedActivities.chats +
         mergedActivities.adminJobs +
         mergedActivities.adminMetrics
       )
@@ -386,7 +387,7 @@ export class SideMenuComponent implements OnDestroy {
         (impressionChangeFlags.host ? 1 : 0) +
         (impressionChangeFlags.member ? 1 : 0) +
         mergedActivities.game +
-        mergedActivities.chat +
+        mergedActivities.chats +
         mergedActivities.invitations +
         mergedActivities.events +
         mergedActivities.hosting +
@@ -513,7 +514,7 @@ export class SideMenuComponent implements OnDestroy {
       impressions: this.impressionShortcutBadgeCount(user),
       feedback: user.activities.feedback,
       rates: user.activities.game,
-      chat: user.activities.chat,
+      chat: user.activities.chats,
       invitations: user.activities.invitations,
       events: user.activities.events,
       hosting: user.activities.hosting,
@@ -532,7 +533,7 @@ export class SideMenuComponent implements OnDestroy {
     return {
       adminReports: user.activities.game,
       adminFeedback: user.activities.feedback,
-      adminChat: user.activities.chat,
+      adminChat: user.activities.chats,
       adminJobs: user.activities.adminJobs,
       adminMetrics: user.activities.adminMetrics
     };
@@ -805,16 +806,11 @@ export class SideMenuComponent implements OnDestroy {
       }
     });
 
-    effect(() => {
-      const session = this.sessionService.session();
-      const sessionUserId = session?.kind === 'firebase'
-        ? session.profile.id.trim()
-        : session?.userId.trim() ?? '';
-      if (this.userProfileStore.activeUserId().trim() === sessionUserId) {
-        return;
-      }
-      this.userProfileStore.setActiveUserId(sessionUserId);
-    });
+    installSessionActiveUserSync(
+      this.sessionService.session,
+      this.userProfileStore.activeUserId,
+      userId => this.userProfileStore.setActiveUserId(userId)
+    );
 
     effect(() => {
       const session = this.sessionService.session();
@@ -1832,7 +1828,7 @@ export class SideMenuComponent implements OnDestroy {
     if (this.userProfileStore.isAdminUserProfile(user)) {
       return (
         this.resolveActivityBadge(user, 'game') +
-        this.resolveActivityBadge(user, 'chat') +
+        this.resolveActivityBadge(user, 'chats') +
         this.resolveActivityBadge(user, 'feedback') +
         this.resolveActivityBadge(user, 'adminJobs') +
         this.resolveActivityBadge(user, 'adminMetrics')
@@ -1843,7 +1839,7 @@ export class SideMenuComponent implements OnDestroy {
       (impressionFlags.host ? 1 : 0) +
       (impressionFlags.member ? 1 : 0) +
       this.resolveActivityBadge(user, 'game') +
-      this.resolveActivityBadge(user, 'chat') +
+      this.resolveActivityBadge(user, 'chats') +
       this.resolveActivityBadge(user, 'invitations') +
       this.resolveActivityBadge(user, 'events') +
       this.resolveActivityBadge(user, 'hosting') +

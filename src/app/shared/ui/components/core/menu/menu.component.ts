@@ -1227,7 +1227,7 @@ export class AppMenuComponent<TId extends string = string, TContext = unknown>
 
   protected itemAriaLabel(item: AppMenuItem<TId, TContext>): string | null {
     const ariaLabel = `${this.resolveLiveValue(item.ariaLabel) ?? ''}`.trim();
-    return ariaLabel || null;
+    return ariaLabel ? this.translatedFilterText(ariaLabel) : null;
   }
 
   protected isItemActive(item: AppMenuItem<TId, TContext>): boolean {

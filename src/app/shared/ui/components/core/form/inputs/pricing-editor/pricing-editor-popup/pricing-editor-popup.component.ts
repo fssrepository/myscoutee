@@ -94,8 +94,8 @@ export class PricingEditorPopupComponent extends PricingEditorInputComponent imp
     return {
       title: popup.title,
       subtitle: popup.subtitle,
-      ariaLabel: 'Pricing setup wizard',
-      closeAriaLabel: 'Close pricing setup',
+      ariaLabel: 'pricing.setup.wizard.aria',
+      closeAriaLabel: 'pricing.setup.close.aria',
       size: 'wide',
       height: 'full',
       headerTone: 'accent',
@@ -130,7 +130,7 @@ export class PricingEditorPopupComponent extends PricingEditorInputComponent imp
     const actions: PopupAction[] = [{
       id: 'pricing-info-toggle',
       icon: 'query_stats',
-      ariaLabel: this.showPricingInfoPanel ? 'Hide pricing summary' : 'Show pricing summary',
+      ariaLabel: this.showPricingInfoPanel ? 'pricing.summary.hide.aria' : 'pricing.summary.show.aria',
       palette: 'blue',
       active: this.showPricingInfoPanel,
       compactOnMobile: true
@@ -142,7 +142,7 @@ export class PricingEditorPopupComponent extends PricingEditorInputComponent imp
     actions.push({
       id: 'pricing-save',
       icon: 'done',
-      ariaLabel: 'Apply pricing draft',
+      ariaLabel: 'pricing.draft.apply.aria',
       palette: canSave ? 'success' : 'danger',
       disabled: !canSave
     });

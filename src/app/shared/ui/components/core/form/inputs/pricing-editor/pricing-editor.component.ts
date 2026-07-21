@@ -25,6 +25,7 @@ import { MatInputModule } from '@angular/material/input';
 import { MatSelectModule } from '@angular/material/select';
 
 import { PricingBuilder } from '../../../../../../core/base/builders';
+import { I18nPipe } from '../../../../../pipes';
 import type * as ContractTypes from '../../../../../../core/contracts';
 import { PricingSlotPanelComponent } from './pricing-slot-panel';
 import {
@@ -138,7 +139,8 @@ interface ResolvedPricingEditorConfig {
     MatSelectModule,
     AppMenuOutletComponent,
     AppMenuTriggerComponent,
-    PricingSlotPanelComponent
+    PricingSlotPanelComponent,
+    I18nPipe
   ],
   templateUrl: './pricing-editor.component.html',
   styleUrl: './pricing-editor.component.scss',
@@ -265,46 +267,46 @@ export class PricingEditorInputComponent implements OnChanges, DoCheck, OnDestro
   protected actionLabel(action: AppConstants.PricingRuleActionKind): string {
     switch (action) {
       case 'decrease_percent':
-        return 'Decrease by %';
+        return 'pricing.action.decrease.percent';
       case 'increase_amount':
-        return 'Increase by amount';
+        return 'pricing.action.increase.amount';
       case 'decrease_amount':
-        return 'Decrease by amount';
+        return 'pricing.action.decrease.amount';
       case 'set_exact_price':
-        return 'Set exact price';
+        return 'pricing.action.set.exact';
       default:
-        return 'Increase by %';
+        return 'pricing.action.increase.percent';
     }
   }
 
   protected chargeTypeLabel(chargeType: AppConstants.PricingChargeType): string {
     switch (chargeType) {
       case 'per_booking':
-        return 'Per booking';
+        return 'pricing.charge.per.booking';
       case 'per_slot':
-        return 'Per slot';
+        return 'pricing.charge.per.slot';
       default:
-        return 'Per attendee';
+        return 'pricing.charge.per.attendee';
     }
   }
 
   protected chargeTypeFieldLabel(): string {
-    return this.resolvedConfig.context === 'asset' ? 'Charge Basis' : 'Charge Type';
+    return this.resolvedConfig.context === 'asset' ? 'pricing.charge.basis' : 'pricing.charge.type';
   }
 
   protected roundingLabel(rounding: AppConstants.PricingRoundingMode): string {
     switch (rounding) {
       case 'whole':
-        return 'Whole number';
+        return 'pricing.rounding.whole';
       case 'half':
         return '0.50 steps';
       default:
-        return 'No rounding';
+        return 'pricing.rounding.none';
     }
   }
 
   protected taxModeLabel(mode: AppConstants.PricingTaxMode): string {
-    return mode === 'included' ? 'Included' : 'Excluded';
+    return mode === 'included' ? 'included' : 'pricing.tax.excluded';
   }
 
   protected operatorLabel(operator: AppConstants.PricingDemandOperator): string {
@@ -312,17 +314,17 @@ export class PricingEditorInputComponent implements OnChanges, DoCheck, OnDestro
   }
 
   protected ruleScopeLabel(scope: AppConstants.PricingRuleScope): string {
-    return scope === 'selected_slots' ? 'Selected slots' : 'All slots';
+    return scope === 'selected_slots' ? 'pricing.slots.selected' : 'pricing.slots.all';
   }
 
   protected timeTriggerLabel(trigger: AppConstants.PricingTimeRuleTrigger): string {
     switch (trigger) {
       case 'hours_before_start':
-        return 'Before event start by hours';
+        return 'pricing.time.before.start.hours';
       case 'specific_date':
-        return 'During date range';
+        return 'pricing.time.during.range';
       default:
-        return 'Before event start by days';
+        return 'pricing.time.before.start.days';
     }
   }
 
@@ -448,16 +450,16 @@ export class PricingEditorInputComponent implements OnChanges, DoCheck, OnDestro
   private pricingWizardTitle(): string {
     switch (this.resolvedConfig.context) {
       case 'asset':
-        return 'Asset Pricing Setup';
+        return 'pricing.asset.setup.title';
       case 'subevent':
-        return 'Optional Pricing Setup';
+        return 'pricing.optional.setup.title';
       default:
-        return 'Pricing Setup';
+        return 'pricing.setup.title';
     }
   }
 
   private pricingWizardSubtitle(): string {
-    return 'Adjust the full pricing configuration here while the summary stays compact on the form.';
+    return 'pricing.setup.subtitle';
   }
 
   private buildPricingEditorPopupState(): FormFlowPricingEditorPopupState {
@@ -812,26 +814,26 @@ export class PricingEditorInputComponent implements OnChanges, DoCheck, OnDestro
   protected cancellationUnitLabel(unit: AppConstants.PricingCancellationUnit): string {
     switch (unit) {
       case 'hours':
-        return 'Hours before start';
+        return 'pricing.hours.before.start';
       case 'weeks':
-        return 'Weeks before start';
+        return 'pricing.weeks.before.start';
       case 'months':
-        return 'Months before start';
+        return 'pricing.months.before.start';
       default:
-        return 'Days before start';
+        return 'pricing.days.before.start';
     }
   }
 
   protected cancellationRefundKindLabel(kind: AppConstants.PricingCancellationRefundKind): string {
     switch (kind) {
       case 'fixed_amount':
-        return 'Fixed refund';
+        return 'pricing.refund.fixed';
       case 'full':
-        return 'Full refund';
+        return 'full.refund';
       case 'none':
-        return 'No refund';
+        return 'no.refund';
       default:
-        return 'Refund %';
+        return 'pricing.refund.percent';
     }
   }
 
@@ -910,7 +912,7 @@ export class PricingEditorInputComponent implements OnChanges, DoCheck, OnDestro
   }
 
   protected ruleScopeMenuTitle(kind: 'demand' | 'time'): string {
-    return kind === 'time' ? 'Time Rule Slots' : 'Demand Rule Slots';
+    return kind === 'time' ? 'pricing.time.rule.slots' : 'pricing.demand.rule.slots';
   }
 
   protected ruleScopeMenuId(kind: 'demand' | 'time', rule: PricingScopedRule): string {
@@ -919,13 +921,13 @@ export class PricingEditorInputComponent implements OnChanges, DoCheck, OnDestro
 
   protected ruleScopeButtonLabel(rule: PricingScopedRule): string {
     if (rule.appliesTo !== 'selected_slots') {
-      return 'All slots';
+      return 'pricing.slots.all';
     }
     if ((rule.slotIds?.length ?? 0) === 0) {
-      return 'Specific slots';
+      return 'pricing.slots.specific';
     }
     if (rule.slotIds.length === 1) {
-      return this.slotLabelById(rule.slotIds[0]) || 'Specific slots';
+      return this.slotLabelById(rule.slotIds[0]) || 'pricing.slots.specific';
     }
     return `${rule.slotIds.length} slots selected`;
   }
@@ -964,7 +966,7 @@ export class PricingEditorInputComponent implements OnChanges, DoCheck, OnDestro
     const items: AppMenuItem<string, RuleScopeMenuContext>[] = [
       {
         id: `${kind}-${rule.id}-all-slots`,
-        label: 'All slots',
+        label: 'pricing.slots.all',
         icon: 'view_week',
         kind: 'radio',
         palette: 'mint',
@@ -979,7 +981,7 @@ export class PricingEditorInputComponent implements OnChanges, DoCheck, OnDestro
       },
       {
         id: `${kind}-${rule.id}-specific-slots`,
-        label: 'Specific slots',
+        label: 'pricing.slots.specific',
         icon: 'view_list',
         kind: 'radio',
         palette: 'teal',
@@ -997,7 +999,7 @@ export class PricingEditorInputComponent implements OnChanges, DoCheck, OnDestro
     if (state?.appliesTo === 'selected_slots') {
       items.push({
         id: `${kind}-${rule.id}-slot-section`,
-        label: 'Slots',
+        label: 'event.editor.slots.title',
         kind: 'section'
       });
       items.push(...this.resolvedConfig.slotCatalog.map(slot => ({
@@ -1024,7 +1026,7 @@ export class PricingEditorInputComponent implements OnChanges, DoCheck, OnDestro
       },
       {
         id: `${kind}-${rule.id}-apply`,
-        label: 'Apply',
+        label: 'apply',
         icon: 'done',
         kind: 'action',
         layout: 'action',
@@ -1350,7 +1352,7 @@ export class PricingEditorInputComponent implements OnChanges, DoCheck, OnDestro
     const pricing = this.normalizePricingWithCapabilities(this.workingPricing);
     const items: PricingSummaryItem[] = [{
       id: 'charge',
-      label: 'Charge',
+      label: 'pricing.charge',
       value: this.chargeTypeLabel(pricing.chargeType),
       detail: this.priceBasisDetail(pricing)
     }];
@@ -1358,7 +1360,7 @@ export class PricingEditorInputComponent implements OnChanges, DoCheck, OnDestro
     if (this.showQuantitySection() && pricing.quantityRulesEnabled && pricing.quantityRules.length > 0) {
       items.push({
         id: 'quantity',
-        label: 'Quantity',
+        label: 'quantity',
         value: this.countLabel(pricing.quantityRules.length, 'rule'),
         detail: pricing.quantityRules.map(rule => this.quantityRuleSummary(rule)).join('; ')
       });
@@ -1374,7 +1376,7 @@ export class PricingEditorInputComponent implements OnChanges, DoCheck, OnDestro
     if (dynamicParts.length > 0) {
       items.push({
         id: 'dynamic',
-        label: 'Dynamic rules',
+        label: 'pricing.dynamic.rules',
         value: `${pricing.demandRules.length + pricing.timeRules.length}`,
         detail: dynamicParts.join(' · ')
       });
@@ -1385,7 +1387,7 @@ export class PricingEditorInputComponent implements OnChanges, DoCheck, OnDestro
       if (pricedOverrides.length > 0) {
         items.push({
           id: 'slots',
-          label: 'Slots',
+          label: 'event.editor.slots.title',
           value: this.countLabel(pricedOverrides.length, 'override'),
           detail: pricedOverrides.slice(0, 2).map(item => `${item.label}: ${this.formatMoney(item.price)}`).join('; ')
         });
@@ -1396,19 +1398,19 @@ export class PricingEditorInputComponent implements OnChanges, DoCheck, OnDestro
       const policy = pricing.cancellationPolicy;
       items.push({
         id: 'cancellation',
-        label: 'Cancellation',
-        value: policy.enabled && policy.rules.length > 0 ? this.countLabel(policy.rules.length, 'rule') : 'Off',
+        label: 'pricing.cancellation',
+        value: policy.enabled && policy.rules.length > 0 ? this.countLabel(policy.rules.length, 'rule') : 'off',
         detail: policy.enabled && policy.rules.length > 0
           ? policy.rules.slice(0, 2).map(rule => this.cancellationRuleSummary(rule)).join('; ')
-          : 'No reimbursement schedule'
+          : 'pricing.no.reimbursement.schedule'
       });
     }
 
     if (this.resolvedConfig.showAudienceSection && pricing.audience.enabled) {
       items.push({
         id: 'audience',
-        label: 'Audience',
-        value: 'Active',
+        label: 'pricing.audience',
+        value: 'active',
         detail: this.audienceSummary(pricing.audience)
       });
     }

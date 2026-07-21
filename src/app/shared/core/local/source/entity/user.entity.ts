@@ -61,6 +61,15 @@ export interface UserEventCountersRecord {
   trash?: number;
 }
 
+export interface UserChatCountersRecord {
+  all?: number;
+  event?: number;
+  subEvent?: number;
+  group?: number;
+  service?: number;
+  appSupport?: number;
+}
+
 export interface UserAssetCountersRecord {
   cars?: number;
   accommodation?: number;
@@ -106,7 +115,7 @@ export interface UserRecord {
   admin?: boolean;
   activities: {
     game: number;
-    chat: number;
+    chats: number;
     invitations: number;
     events: number;
     hosting: number;
@@ -116,6 +125,7 @@ export interface UserRecord {
     tickets?: number;
     contacts?: number;
     feedback?: number;
+    chat?: UserChatCountersRecord;
     event?: UserEventCountersRecord;
     asset?: UserAssetCountersRecord;
     eventFeedback?: UserEventFeedbackCountersRecord;

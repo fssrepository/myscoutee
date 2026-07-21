@@ -34,6 +34,7 @@ import {
 } from '../../../../../shared/ui';
 import {
   ActivityEventInfoCardMenuConverter,
+  type ActivityEventEditorAction,
   type ActivityEventInfoCardMenuSubject
 } from '../../../../../shared/ui/converters';
 
@@ -464,12 +465,12 @@ export class ActivitiesEventsController {
       startAtIso: this.activityRowStartAt(row),
       endAtIso: this.activityRowEndAt(row),
       mode: dto?.mode ?? null,
-      canEdit: this.isActivityInvitationRow(row) ? false : this.canEditActivityEvent(row)
+      editorAction: this.isActivityInvitationRow(row) ? 'view' : this.activityEventEditorAction(row)
     });
   }
 
-  private canEditActivityEvent(row: InfoCardData): boolean {
-    return ActivityEventInfoCardMenuConverter.canEditEvent(this.activityEventMenuSubjectFromRow(row), {
+  private activityEventEditorAction(row: InfoCardData): ActivityEventEditorAction {
+    return ActivityEventInfoCardMenuConverter.eventEditorAction(this.activityEventMenuSubjectFromRow(row), {
       activeUserId: this.activeUser.id
     });
   }
@@ -492,7 +493,7 @@ export class ActivitiesEventsController {
       record: this.buildActivityCheckoutLoadingRecord(row, activeUserId, relatedSource),
       loading: true,
       readOnlySummary,
-      title: readOnlySummary ? 'Fizetési összegzés' : 'Foglalás folytatása',
+      title: readOnlySummary ? 'event.checkout.payment.summary' : 'event.checkout.continue.booking',
       confirmLabel: 'Join',
       busyConfirmLabel: 'Joining...',
       failureMessage: readOnlySummary ? 'Unable to open payment summary.' : 'Unable to continue booking.',
@@ -526,7 +527,7 @@ export class ActivitiesEventsController {
       requiresApprovalBeforePayment: this.activityCheckoutRequiresApprovalBeforePayment(record, currentDraft),
       approvalGranted,
       pendingReason,
-      title: readOnlySummary ? 'Fizetési összegzés' : 'Foglalás folytatása',
+      title: readOnlySummary ? 'event.checkout.payment.summary' : 'event.checkout.continue.booking',
       subtitle: record.timeframe,
       confirmLabel: 'Join',
       busyConfirmLabel: 'Joining...',
@@ -617,6 +618,7 @@ export class ActivitiesEventsController {
       optionalSubEventIds: selection?.optionalSubEventIds ?? [],
       assetSelections: selection?.assetSelections ?? [],
       acceptedPolicyIds: selection?.acceptedPolicyIds ?? [],
+      appliedPromoCodes: selection?.appliedPromoCodes ?? [],
       paymentSessionId: selection?.paymentSessionId ?? null,
       bookingConfirmed: selection?.bookingConfirmed !== false,
       pendingReason: selection?.pendingReason ?? null,
@@ -1493,6 +1495,7 @@ export class ActivitiesEventsController {
       optionalSubEventIds: selection?.optionalSubEventIds ?? [],
       assetSelections: selection?.assetSelections ?? [],
       acceptedPolicyIds: selection?.acceptedPolicyIds ?? [],
+      appliedPromoCodes: selection?.appliedPromoCodes ?? [],
       paymentSessionId: selection?.paymentSessionId ?? null,
       bookingConfirmed: pendingReason == null && selection?.bookingConfirmed !== false,
       pendingReason,

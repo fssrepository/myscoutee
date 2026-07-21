@@ -130,7 +130,7 @@ export class ActivityMemberImageCardConverter {
     }
     if (this.isJoinRequest(dto)) {
       if (dto.requestKind === 'waitlist') {
-        return 'Várólistán';
+        return 'waiting.list';
       }
       return dto.pendingSource === 'admin'
         ? 'Waiting For Admin Approval'

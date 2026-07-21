@@ -496,10 +496,35 @@ export class ActivitiesPopupStore {
       return;
     }
     const overrides = this.activityStore.getUserCounterOverrides(activeUserId);
-    const currentChatCounter = this.normalizeEventChatCounter(overrides.chat ?? activeUser?.activities?.chat);
+    const currentChatCounter = this.normalizeEventChatCounter(overrides.chats ?? activeUser?.activities?.chats);
     const nextChatCounter = this.normalizeEventChatCounter(currentChatCounter + unreadDelta);
-    this.activityStore.patchUserCounterOverrides(activeUserId, { chat: nextChatCounter });
-    this.userProfileStore.patchUserActivityCounters(activeUserId, { chat: nextChatCounter });
+    const currentContexts = overrides.chat ?? activeUser?.activities?.chat ?? {};
+    const contextKey = this.chatContextCounterKey(patch.channelType);
+    const nextContexts = {
+      all: this.normalizeEventChatCounter((currentContexts.all ?? currentChatCounter) + unreadDelta),
+      event: this.normalizeEventChatCounter((currentContexts.event ?? 0) + (contextKey === 'event' ? unreadDelta : 0)),
+      subEvent: this.normalizeEventChatCounter((currentContexts.subEvent ?? 0) + (contextKey === 'subEvent' ? unreadDelta : 0)),
+      group: this.normalizeEventChatCounter((currentContexts.group ?? 0) + (contextKey === 'group' ? unreadDelta : 0)),
+      service: this.normalizeEventChatCounter((currentContexts.service ?? 0) + (contextKey === 'service' ? unreadDelta : 0)),
+      appSupport: this.normalizeEventChatCounter((currentContexts.appSupport ?? 0) + (contextKey === 'appSupport' ? unreadDelta : 0))
+    };
+    const counterPatch = { chats: nextChatCounter, chat: nextContexts };
+    this.activityStore.patchUserCounterOverrides(activeUserId, counterPatch);
+    this.userProfileStore.patchUserActivityCounters(activeUserId, counterPatch);
+  }
+
+  private chatContextCounterKey(
+    channelType: EventChatRowPatch['channelType']
+  ): 'event' | 'subEvent' | 'group' | 'service' | 'appSupport' | null {
+    switch (channelType) {
+      case 'mainEvent': return 'event';
+      case 'optionalSubEvent': return 'subEvent';
+      case 'groupSubEvent': return 'group';
+      case 'serviceEvent': return 'service';
+      case 'appSupport':
+      case 'supportCase': return 'appSupport';
+      default: return null;
+    }
   }
 
   private normalizeEventChatCounter(value: unknown): number {

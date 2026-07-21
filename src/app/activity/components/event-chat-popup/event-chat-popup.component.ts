@@ -102,6 +102,7 @@ import {
   ActivityChatSingleRowConverter,
   ChatPopupHeaderContextConverter,
   ActivityEventInfoCardMenuConverter,
+  type ActivityEventEditorAction,
   type ActivityEventInfoCardMenuSubject
 } from '../../../shared/ui/converters';
 interface ChatThreadFilters {
@@ -188,6 +189,7 @@ type ChatThreadPageContext = {
 type EmojiPickerMenuItemId = `emoji:${string}`;
 
 interface EmojiPickerMenuContext {
+  menu: 'emoji-reaction';
   emoji: string;
 }
 
@@ -1121,6 +1123,16 @@ export class EventChatPopupComponent implements OnDestroy {
   }
 
   protected onDispatchedChatMenuSelect(event: AppMenuItemSelectEvent<string, unknown>): void {
+    const emojiContext = event.context as EmojiPickerMenuContext | undefined;
+    if (emojiContext?.menu === 'emoji-reaction') {
+      const message = this.messages.find(item => item.id === this.quickReactionMessageId);
+      if (message) {
+        this.toggleReaction(message, emojiContext.emoji, event.sourceEvent);
+      } else {
+        this.closeTransientMessageUi();
+      }
+      return;
+    }
     const context = event.context as ChatMenuContext | undefined;
     if (context?.menu !== 'message-action') {
       return;
@@ -1203,7 +1215,7 @@ export class EventChatPopupComponent implements OnDestroy {
       startAtIso: record?.startAtIso ?? null,
       endAtIso: record?.endAtIso ?? null,
       mode: record?.mode ?? null,
-      canEdit: this.canEditSelectedChatEvent(record, state)
+      editorAction: this.selectedChatEventEditorAction(record, state)
     });
   }
 
@@ -2129,6 +2141,7 @@ export class EventChatPopupComponent implements OnDestroy {
           value: emoji,
           closeOnSelect: true,
           context: {
+            menu: 'emoji-reaction',
             emoji
           }
         }))
@@ -3711,14 +3724,17 @@ export class EventChatPopupComponent implements OnDestroy {
     const shouldStickToEnd = this.isChatThreadNearEnd();
 
     try {
-      const snapshot = await this.chatsService.loadChatMessages(chat);
+      const snapshot = await this.chatsService.loadChatMessagesResult(chat, {
+        page: 0,
+        pageSize: this.chatInitialLoadMessageCount
+      });
       if (this.loadedSessionKey !== sessionKey) {
         return;
       }
       
       // FIX: Instead of replacing everything, we merge and sort
       // This preserves the "history" the user has already loaded in the UI
-      const mergedMessages = this.mergeServerSnapshotWithPendingMessages(snapshot);
+      const mergedMessages = this.mergeServerSnapshotWithPendingMessages(snapshot.items);
     
       this.messages = mergedMessages
         .sort((first, second) => AppUtils.toSortableDate(second.sentAtIso) - AppUtils.toSortableDate(first.sentAtIso));
@@ -4636,8 +4652,15 @@ export class EventChatPopupComponent implements OnDestroy {
     record: ActivityEventRecord | null,
     state: SelectedChatNavigationState | null
   ): boolean {
+    return this.selectedChatEventEditorAction(record, state) !== 'view';
+  }
+
+  private selectedChatEventEditorAction(
+    record: ActivityEventRecord | null,
+    state: SelectedChatNavigationState | null
+  ): ActivityEventEditorAction {
     const subject = this.selectedChatEventMenuSubject(record, state);
-    return ActivityEventInfoCardMenuConverter.canEditEvent(subject, {
+    return ActivityEventInfoCardMenuConverter.eventEditorAction(subject, {
       activeUserId: this.activeUserId()
     });
   }

@@ -4,6 +4,7 @@ import { Observable } from 'rxjs';
 
 import { environment } from '../../../../../environments/environment';
 import { PricingBuilder } from '../../../core/base/builders';
+import { RouteDelayService } from '../../base/services/route-delay.service';
 import type { ActivityPendingReason } from '../../common/constants';
 import type {
   EventTournamentGroupDeleteRequestDTO,
@@ -18,6 +19,7 @@ import type {
 } from '../../contracts/event.interface';
 import {
   ActivityEventDetailDTO,
+  EVENT_CHECKOUT_PROMO_CODE_INVALID_MESSAGE_KEY,
   EventFeedbackDetailDto,
   EventFeedbackPageResultDto,
   type ActivityEventDTO
@@ -30,6 +32,8 @@ import type {
   EventCheckoutLineItem,
   EventCheckoutOptionalSubEvent,
   EventCheckoutPricingSummaryRow,
+  EventCheckoutPromoCodeValidationRequest,
+  EventCheckoutPromoCodeValidationResult,
   EventCheckoutRequest,
   EventCheckoutResultState,
   EventCheckoutState,
@@ -92,7 +96,9 @@ type HttpActivityEventPageResponse = ActivityEventDTO[] | {
   providedIn: 'root'
 })
 export class HttpEventsService implements IEventsService {
+  private static readonly PROMO_CODE_VALIDATION_ROUTE = '/activities/events/checkout/promo-code/validate';
   private readonly http = inject(HttpClient);
+  private readonly routeDelay = inject(RouteDelayService);
   private readonly apiBaseUrl = environment.apiBaseUrl ?? '/api';
 
   async queryItemsByUser(userId: string): Promise<ActivityEventRecord[]> {
@@ -443,6 +449,31 @@ export class HttpEventsService implements IEventsService {
     }
   }
 
+  async validateCheckoutPromoCode(
+    request: EventCheckoutPromoCodeValidationRequest
+  ): Promise<EventCheckoutPromoCodeValidationResult | null> {
+    const sourceId = request.sourceId?.trim();
+    const code = `${request.code ?? ''}`.trim().toUpperCase();
+    if (!sourceId) {
+      return null;
+    }
+    try {
+      const response = await this.routeDelay.withRequestTimeout(
+        HttpEventsService.PROMO_CODE_VALIDATION_ROUTE,
+        this.http
+          .post<EventCheckoutPromoCodeValidationResult | null>(
+            `${this.apiBaseUrl}${HttpEventsService.PROMO_CODE_VALIDATION_ROUTE}`,
+            { sourceId, code }
+          )
+          .toPromise(),
+        'Promo code validation timed out.'
+      );
+      return this.normalizePromoCodeValidationResult(response, code);
+    } catch {
+      return null;
+    }
+  }
+
   async saveCheckoutBasket(request: EventCheckoutRequest): Promise<EventCheckoutBasket | null> {
     const normalizedUserId = request.userId?.trim();
     const normalizedSourceId = request.sourceId?.trim();
@@ -737,6 +768,7 @@ export class HttpEventsService implements IEventsService {
       optionalSubEventIds?: string[];
       assetSelections?: EventCheckoutAssetSelection[];
       acceptedPolicyIds?: string[];
+      appliedPromoCodes?: string[];
       paymentSessionId?: string | null;
       bookingConfirmed?: boolean;
       pendingReason?: ActivityPendingReason;
@@ -764,6 +796,7 @@ export class HttpEventsService implements IEventsService {
         optionalSubEventIds: [...(options.optionalSubEventIds ?? [])],
         assetSelections: [...(options.assetSelections ?? [])],
         acceptedPolicyIds: [...(options.acceptedPolicyIds ?? [])],
+        appliedPromoCodes: [...(options.appliedPromoCodes ?? [])],
         paymentSessionId: options.paymentSessionId?.trim() || null,
         bookingConfirmed: options.bookingConfirmed === true,
         pendingReason: options.pendingReason === 'waitlist'
@@ -1257,6 +1290,51 @@ export class HttpEventsService implements IEventsService {
       optionalSubEvents: (value.optionalSubEvents ?? []).map(item => this.cloneCheckoutOptionalSubEvent(item)),
       checkoutBasket: ActivityEventDetailDTO.cloneCheckoutBasket(value.checkoutBasket)
     };
+  }
+
+  private normalizePromoCodeValidationResult(
+    value: EventCheckoutPromoCodeValidationResult | null | undefined,
+    fallbackCode: string
+  ): EventCheckoutPromoCodeValidationResult | null {
+    if (!value) {
+      return null;
+    }
+    const code = `${value.code ?? fallbackCode}`.trim().toUpperCase();
+    const promoCode = value.promoCode
+      ? {
+          id: `${value.promoCode.id ?? ''}`.trim(),
+          code: `${value.promoCode.code ?? code}`.trim().toUpperCase(),
+          action: {
+            kind: value.promoCode.action.kind,
+            value: Number(value.promoCode.action.value) || 0
+          }
+        }
+      : null;
+    const valid = value.valid === true && promoCode !== null;
+    const message = `${value.message ?? ''}`.trim() || null;
+    return {
+      valid,
+      code,
+      promoCode,
+      effect: `${value.effect ?? ''}`.trim() || null,
+      messageKey: this.normalizePromoCodeValidationMessageKey(value.messageKey, message, valid),
+      message
+    };
+  }
+
+  private normalizePromoCodeValidationMessageKey(
+    value: string | null | undefined,
+    message: string | null,
+    valid: boolean
+  ): string | null {
+    const messageKey = `${value ?? ''}`.trim();
+    if (messageKey) {
+      return messageKey;
+    }
+    if (!valid && (!message || message === 'A promo code is invalid or no longer active.')) {
+      return EVENT_CHECKOUT_PROMO_CODE_INVALID_MESSAGE_KEY;
+    }
+    return null;
   }
 
   private cloneCheckoutOptionalSubEvent(value: EventCheckoutOptionalSubEvent): EventCheckoutOptionalSubEvent {

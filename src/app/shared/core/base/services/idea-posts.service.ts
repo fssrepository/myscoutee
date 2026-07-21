@@ -7,8 +7,11 @@ import type {
   IdeaPostAdminPageQueryDto,
   IdeaPostAdminPageResultDto,
   IdeaPostDto,
+  IdeaPostPublicPageQueryDto,
+  IdeaPostPublicPageResultDto,
   IdeaPostSaveRequestDto
 } from '../../contracts/content.interface';
+import type { PageResult } from '../../contracts/list.interface';
 import type { InfoCardData, CardMenuActionId } from '../../../ui';
 import { BaseRouteModeService } from './base-route-mode.service';
 
@@ -17,6 +20,7 @@ import { BaseRouteModeService } from './base-route-mode.service';
 })
 export class IdeaPostsService extends BaseRouteModeService {
   private static readonly ARTICLE_FALLBACK_IMAGE_URL = 'assets/idea/article-fallback.svg';
+  private static readonly PUBLIC_IDEAS_ROUTE = '/landing/articles';
 
   private readonly localIdeaPostsService = inject(LocalIdeaPostsService);
   private readonly httpIdeaPostsService = inject(HttpIdeaPostsService);
@@ -37,6 +41,31 @@ export class IdeaPostsService extends BaseRouteModeService {
     const posts = await this.ideaService().loadPublishedPosts(lang);
     this.applyPublishedPosts(posts);
     return this.clonePosts(this.postsRef());
+  }
+
+  async loadPublishedPostsPage(
+    lang: string | null | undefined,
+    query: IdeaPostPublicPageQueryDto = {},
+    signal?: AbortSignal
+  ): Promise<IdeaPostPublicPageResultDto> {
+    const result = await this.publicIdeaService().loadPublishedPostsPage(lang, query, signal);
+    return {
+      records: this.clonePosts(result.records),
+      total: Math.max(0, Math.trunc(Number(result.total) || 0)),
+      nextCursor: `${result.nextCursor ?? ''}`.trim() || null
+    };
+  }
+
+  async loadPublishedIdeaCardsPage(
+    query: IdeaPostPublicPageQueryDto = {},
+    options: { lang?: string | null; signal?: AbortSignal } = {}
+  ): Promise<PageResult<InfoCardData<IdeaArticleDetailDto>>> {
+    const result = await this.loadPublishedPostsPage(options.lang, query, options.signal);
+    return {
+      items: this.publishedIdeaInfoCards(result.records),
+      total: result.total,
+      nextCursor: result.nextCursor
+    };
   }
 
   async loadAdminPosts(adminUserId: string, lang = 'en'): Promise<IdeaPostDto[]> {
@@ -100,8 +129,10 @@ export class IdeaPostsService extends BaseRouteModeService {
     return { ...post, imageUrls: [...post.imageUrls] };
   }
 
-  publishedIdeaInfoCards(): InfoCardData<IdeaArticleDetailDto>[] {
-    return this.postsRef().map(post => this.entryIdeaInfoCard(post));
+  publishedIdeaInfoCards(
+    posts: readonly IdeaPostDto[] = this.postsRef()
+  ): InfoCardData<IdeaArticleDetailDto>[] {
+    return posts.map(post => this.entryIdeaInfoCard(post));
   }
 
   adminIdeaInfoCards(): InfoCardData<IdeaArticleDetailDto>[] {
@@ -233,6 +264,14 @@ export class IdeaPostsService extends BaseRouteModeService {
 
   private ideaService(): LocalIdeaPostsService | HttpIdeaPostsService {
     return this.resolveRouteService('/ideas', this.localIdeaPostsService, this.httpIdeaPostsService);
+  }
+
+  private publicIdeaService(): LocalIdeaPostsService | HttpIdeaPostsService {
+    return this.resolveRouteService(
+      IdeaPostsService.PUBLIC_IDEAS_ROUTE,
+      this.localIdeaPostsService,
+      this.httpIdeaPostsService
+    );
   }
 
   private clonePosts(posts: readonly IdeaPostDto[]): IdeaPostDto[] {

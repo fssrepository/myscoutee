@@ -63,7 +63,9 @@ export class HttpAssetsService {
     }
     try {
       const response = await this.http
-        .get<AppDTOs.AssetDetailDTO | null>(`${this.apiBaseUrl}/assets/${encodeURIComponent(normalizedAssetId)}`)
+        .get<AppDTOs.AssetDetailDTO | null>(`${this.apiBaseUrl}/assets/${encodeURIComponent(normalizedAssetId)}`, {
+          params: new HttpParams().set('userId', normalizedUserId)
+        })
         .toPromise();
       const detail = this.normalizeDetail(response);
       if (detail) {
@@ -398,7 +400,9 @@ export class HttpAssetsService {
 
   private async fetchOwnedAssetsByUser(userId: string): Promise<AppDTOs.AssetDTO[]> {
     const response = await this.http
-      .get<AppDTOs.AssetDTO[] | null>(`${this.apiBaseUrl}/assets`)
+      .get<AppDTOs.AssetDTO[] | null>(`${this.apiBaseUrl}/assets`, {
+        params: new HttpParams().set('userId', userId)
+      })
       .toPromise();
     const cards = this.normalizeCards(Array.isArray(response) ? response : []);
     this.cachedAssetsByUserId[userId] = this.cloneCards(cards);

@@ -28,6 +28,8 @@ export class PwaService {
   private static readonly BUILD_ID_META_NAME = 'myscoutee-build-id';
   private static readonly APP_VERSION_URL = 'app-version.json';
   private static readonly CACHE_PREFIX = APP_CACHE_KEYS.runtimePrefix;
+  private static readonly WORKER_INSTALL_TIMEOUT_MS = 10_000;
+  private static readonly WORKER_ACTIVATION_TIMEOUT_MS = 4_000;
 
   private readonly injector = inject(Injector);
   private readonly installPromptRef = signal<BeforeInstallPromptEvent | null>(null);
@@ -188,10 +190,75 @@ export class PwaService {
       return;
     }
 
-    this.markReloadAttempted(attemptKey);
     await registration.update().catch(() => undefined);
-    registration.waiting?.postMessage({ type: 'SKIP_WAITING' });
+    const waitingWorker = await this.waitForWaitingWorker(registration);
+    if (!waitingWorker) {
+      return;
+    }
+
+    this.markReloadAttempted(attemptKey);
+    await this.activateWaitingWorker(waitingWorker);
     window.location.reload();
+  }
+
+  private async waitForWaitingWorker(
+    registration: ServiceWorkerRegistration
+  ): Promise<ServiceWorker | null> {
+    if (registration.waiting) {
+      return registration.waiting;
+    }
+    const installingWorker = registration.installing;
+    if (!installingWorker) {
+      return null;
+    }
+
+    return await new Promise<ServiceWorker | null>(resolve => {
+      let settled = false;
+      const finish = (worker: ServiceWorker | null) => {
+        if (settled) {
+          return;
+        }
+        settled = true;
+        clearTimeout(timeoutId);
+        installingWorker.removeEventListener('statechange', onStateChange);
+        resolve(worker);
+      };
+      const onStateChange = () => {
+        if (registration.waiting) {
+          finish(registration.waiting);
+          return;
+        }
+        if (installingWorker.state === 'redundant' || installingWorker.state === 'activated') {
+          finish(null);
+        }
+      };
+      const timeoutId = window.setTimeout(
+        () => finish(registration.waiting),
+        PwaService.WORKER_INSTALL_TIMEOUT_MS
+      );
+      installingWorker.addEventListener('statechange', onStateChange);
+      onStateChange();
+    });
+  }
+
+  private async activateWaitingWorker(worker: ServiceWorker): Promise<void> {
+    const controllerChanged = new Promise<void>(resolve => {
+      let settled = false;
+      const finish = () => {
+        if (settled) {
+          return;
+        }
+        settled = true;
+        clearTimeout(timeoutId);
+        navigator.serviceWorker.removeEventListener('controllerchange', finish);
+        resolve();
+      };
+      const timeoutId = window.setTimeout(finish, PwaService.WORKER_ACTIVATION_TIMEOUT_MS);
+      navigator.serviceWorker.addEventListener('controllerchange', finish);
+    });
+
+    worker.postMessage({ type: 'SKIP_WAITING' });
+    await controllerChanged;
   }
 
   private readDocumentBuildId(): string {

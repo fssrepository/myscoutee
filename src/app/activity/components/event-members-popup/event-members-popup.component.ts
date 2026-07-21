@@ -442,7 +442,7 @@ export class EventMembersPopupComponent {
     if (this.canShowMemberInvolvement(entry)) {
       items.push({
         id: `member-action-involvement-${entry.id}`,
-        label: 'Részvétel',
+        label: 'event.participation',
         icon: 'assignment_ind',
         palette: 'teal',
         context: { menu: 'member-action', member: entry, action: 'involvement' }
@@ -643,7 +643,7 @@ export class EventMembersPopupComponent {
 
   protected memberInvolvementPopupModel(state: MemberInvolvementPopupState): PopupModel {
     return {
-      title: 'Részvétel',
+      title: 'event.participation',
       subtitle: state.memberName,
       size: 'small',
       closeOnBackdrop: true,
@@ -1048,6 +1048,10 @@ export class EventMembersPopupComponent {
       };
     }
 
+    if (this.lookupRef?.type === 'chat' && this.lookupRef.id === ownerId) {
+      return this.chatsService.queryChatMemberEntriesPage(ownerId, query);
+    }
+
     const cacheKey = this.membersCacheKey(ownerId, pendingOnly);
     let members = this.membersCacheByOwnerId.get(cacheKey);
     if (!pendingOnly && members && this.pendingInitialMembersDelayOwnerIds.delete(ownerId)) {
@@ -1064,9 +1068,7 @@ export class EventMembersPopupComponent {
       const owner = this.ownerRef && this.ownerRef.ownerId === ownerId
         ? this.ownerRef
         : null;
-      const loadedMembers = this.lookupRef?.type === 'chat' && this.lookupRef.id === ownerId
-        ? await this.chatsService.queryChatMemberEntries(ownerId)
-        : owner
+      const loadedMembers = owner
         ? await this.activityMembersService.queryMembersByOwner(owner, { pendingOnly })
         : await this.activityMembersService.queryMembersByOwnerId(ownerId, { pendingOnly });
       members = this.sortMembersByActionTimeDesc(loadedMembers);

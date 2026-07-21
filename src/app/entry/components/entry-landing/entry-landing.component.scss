@@ -597,11 +597,13 @@
 }
 
 .entry-ideas-smart-list {
-  display: block;
+  display: flex;
+  flex-direction: column;
   flex: 1 1 auto;
   width: 100%;
   min-width: 0;
   min-height: 0;
+  overflow: hidden;
 }
 
 .entry-idea-article-popup-panel {
