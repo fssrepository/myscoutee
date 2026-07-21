@@ -341,7 +341,10 @@ canvas.addEventListener('pointerdown', event => {
     lastX: event.clientX,
     lastY: event.clientY,
     pointerId: event.pointerId,
-    dragged: false
+    dragged: false,
+    // Camera and layout animations can move a badge before this press is released.
+    nodeId: pickNode(event)?.id ?? null,
+    componentId: pickForest(event)?.id ?? null
   };
   if (event.pointerType !== 'touch') {
     canvas.setPointerCapture?.(event.pointerId);
@@ -403,6 +406,8 @@ canvas.addEventListener('pointerup', event => {
   }
   const moved = Math.hypot(event.clientX - pointerDown.x, event.clientY - pointerDown.y);
   const dragged = pointerDown.dragged;
+  const pressedNodeId = pointerDown.nodeId;
+  const pressedComponentId = pointerDown.componentId;
   canvas.releasePointerCapture?.(pointerDown.pointerId);
   pointerDown = null;
   if (dragged || moved > 6) {
@@ -410,13 +415,13 @@ canvas.addEventListener('pointerup', event => {
     publishPreviewState();
     return;
   }
-  const node = pickNode(event);
+  const node = visibleNodeForId(pressedNodeId) ?? pickNode(event);
   if (node) {
     selectNode(node.id, { focus: false });
     return;
   }
 
-  const forest = pickForest(event);
+  const forest = visibleForestForId(pressedComponentId) ?? pickForest(event);
   if (forest) {
     selectForest(forest.id);
   } else if (selectedNode) {
@@ -2114,6 +2119,14 @@ function pickNode(event) {
   return closestNode;
 }
 
+function visibleNodeForId(nodeId) {
+  if (nodeId === null || nodeId === undefined) {
+    return null;
+  }
+  const node = nodeById.get(nodeId) ?? null;
+  return node?.badge?.visible && visibleNodeIds.has(node.id) ? node : null;
+}
+
 function pickForest(event) {
   if (!isForestOverview()) {
     return null;
@@ -2147,6 +2160,14 @@ function pickForest(event) {
   }
 
   return closestComponent;
+}
+
+function visibleForestForId(componentId) {
+  if (componentId === null || componentId === undefined || !isForestOverview()) {
+    return null;
+  }
+  const component = componentForId(componentId);
+  return component?.forestBadge?.visible ? component : null;
 }
 
 function projectedSpriteRadius(sprite, position, rect, minimum = 12) {
@@ -3197,10 +3218,11 @@ function mergeGraphNode(node) {
     setNodeComponent(existing, nextComponentId, previousComponentId);
     if (hasServerPosition(node)) {
       existing.homePosition = serverPositionForNode(node);
+      // The active layout owns targets for visible nodes; keep the new home for a later restore.
       if (!visibleNodeIds.has(existing.id)) {
         existing.position.copy(existing.homePosition);
+        existing.targetPosition.copy(existing.homePosition);
       }
-      existing.targetPosition.copy(existing.homePosition);
     }
     if (nodeVisualSignature(existing) !== beforeVisual) {
       refreshNodeBadge(existing);

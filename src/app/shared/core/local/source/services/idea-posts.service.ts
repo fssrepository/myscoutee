@@ -7,17 +7,22 @@ import type {
   IdeaPostAdminPageQueryDto,
   IdeaPostAdminPageResultDto,
   IdeaPostDto,
+  IdeaPostPublicPageQueryDto,
+  IdeaPostPublicPageResultDto,
   IdeaPostSaveRequestDto
 } from '../../../contracts/content.interface';
 
 import { LocalIdeaPostsRepository } from '../repositories/idea-posts.repository';
 import { RouteDelayService } from '../../../base/services/route-delay.service';
+import { LocalIdeaPostsMapper } from '../mappers';
 
 @Injectable({
   providedIn: 'root'
 })
 export class LocalIdeaPostsService {
   private static readonly ADMIN_IDEAS_ROUTE = '/admin/ideas';
+  private static readonly PUBLIC_IDEAS_ROUTE = '/landing/articles';
+  private static readonly LANDING_FEATURED_PREVIEW_LIMIT = 8;
   private static readonly MAX_IMAGE_URLS = 24;
   private readonly ideaPostsRepository = inject(LocalIdeaPostsRepository);
   private readonly routeDelay = inject(RouteDelayService);
@@ -27,6 +32,45 @@ export class LocalIdeaPostsService {
     const language = this.requestContentLang(lang);
     const posts = this.sortedPosts(this.table()).filter(post => post.published && !post.trashed && post.lang === language);
     return posts.length > 0 ? posts : this.sortedPosts(this.table()).filter(post => post.published && !post.trashed && post.lang === 'en');
+  }
+
+  async loadPublishedPostsPage(
+    lang: string | null | undefined,
+    query: IdeaPostPublicPageQueryDto = {},
+    signal?: AbortSignal
+  ): Promise<IdeaPostPublicPageResultDto> {
+    await this.ideaPostsRepository.whenReady();
+    await this.routeDelay.waitForRouteDelay(LocalIdeaPostsService.PUBLIC_IDEAS_ROUTE, signal);
+    const language = this.requestContentLang(lang);
+    let page = this.ideaPostsRepository.queryPublishedPostPage(language, query);
+    if (page.total === 0 && language !== 'en') {
+      page = this.ideaPostsRepository.queryPublishedPostPage('en', query);
+    }
+    return LocalIdeaPostsMapper.toDtoPage({
+      ...page,
+      records: page.records.map(post => this.normalizePost(post))
+    });
+  }
+
+  async loadPublishedFeaturedPostPreview(
+    lang?: string | null
+  ): Promise<IdeaPostPublicPageResultDto> {
+    await this.ideaPostsRepository.whenReady();
+    const language = this.requestContentLang(lang);
+    let preview = this.ideaPostsRepository.queryPublishedFeaturedPostPreview(
+      language,
+      LocalIdeaPostsService.LANDING_FEATURED_PREVIEW_LIMIT
+    );
+    if (preview.total === 0 && language !== 'en') {
+      preview = this.ideaPostsRepository.queryPublishedFeaturedPostPreview(
+        'en',
+        LocalIdeaPostsService.LANDING_FEATURED_PREVIEW_LIMIT
+      );
+    }
+    return LocalIdeaPostsMapper.toDtoPage({
+      ...preview,
+      records: preview.records.map(post => this.normalizePost(post))
+    });
   }
 
   async loadAdminPosts(_adminUserId = '', lang = 'en'): Promise<IdeaPostDto[]> {

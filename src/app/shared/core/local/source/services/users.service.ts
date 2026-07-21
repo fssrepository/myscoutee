@@ -15,6 +15,8 @@ import type {
   UserLogoutRequestDto,
   UserAssetCountersDto,
   UserAssetCounterDeltasDto,
+  UserChatCountersDto,
+  UserChatCounterDeltasDto,
   UserEventCountersDto,
   UserEventCounterDeltasDto,
   UserEventFeedbackCountersDto,
@@ -502,7 +504,7 @@ export class LocalUsersService extends LocalRouteDelayService implements UserSer
     const next = { ...current } as UserDto['activities'] & Record<string, unknown>;
     const scalarKeys = [
       'game',
-      'chat',
+      'chats',
       'invitations',
       'events',
       'hosting',
@@ -521,6 +523,9 @@ export class LocalUsersService extends LocalRouteDelayService implements UserSer
         continue;
       }
       next[key] = this.normalizeUserCounter(scalarPatch[key]);
+    }
+    if (patch.chat) {
+      next.chat = this.applyUserChatCounterPatch(current.chat, patch.chat);
     }
     if (patch.event) {
       next.event = this.applyUserEventCounterPatch(current.event, patch.event);
@@ -541,7 +546,7 @@ export class LocalUsersService extends LocalRouteDelayService implements UserSer
     const next = { ...current } as UserDto['activities'] & Record<string, unknown>;
     const scalarKeys = [
       'game',
-      'chat',
+      'chats',
       'invitations',
       'events',
       'hosting',
@@ -561,6 +566,9 @@ export class LocalUsersService extends LocalRouteDelayService implements UserSer
       }
       next[key] = this.normalizeUserCounter(this.normalizeUserCounter(next[key]) + Number(deltaRecord[key]));
     }
+    if (deltas.chat) {
+      next.chat = this.applyUserChatCounterDeltas(current.chat, deltas.chat);
+    }
     if (deltas.event) {
       next.event = this.applyUserEventCounterDeltas(current.event, deltas.event);
     }
@@ -571,6 +579,28 @@ export class LocalUsersService extends LocalRouteDelayService implements UserSer
       next.eventFeedback = this.applyUserEventFeedbackCounterDeltas(current.eventFeedback, deltas.eventFeedback);
     }
     return next;
+  }
+
+  private applyUserChatCounterPatch(
+    current: UserDto['activities']['chat'],
+    patch: UserChatCountersDto
+  ): UserChatCountersDto {
+    return this.applyNestedCounterPatch(
+      current,
+      patch,
+      ['all', 'event', 'subEvent', 'group', 'service', 'appSupport']
+    );
+  }
+
+  private applyUserChatCounterDeltas(
+    current: UserDto['activities']['chat'],
+    deltas: UserChatCounterDeltasDto
+  ): UserChatCountersDto {
+    return this.applyNestedCounterDeltas(
+      current,
+      deltas,
+      ['all', 'event', 'subEvent', 'group', 'service', 'appSupport']
+    );
   }
 
   private applyUserEventCounterPatch(
@@ -692,13 +722,14 @@ export class LocalUsersService extends LocalRouteDelayService implements UserSer
     const accommodation = normalizeCounter(activities?.accommodation);
     const supplies = normalizeCounter(activities?.supplies);
     const tickets = normalizeCounter(activities?.tickets);
+    const chat = activities?.chat;
     const event = activities?.event;
     const asset = activities?.asset;
     const eventFeedback = activities?.eventFeedback;
 
     return {
       game: normalizeCounter(activities?.game),
-      chat: normalizeCounter(activities?.chat),
+      chats: normalizeCounter(activities?.chats),
       invitations,
       events,
       hosting,
@@ -708,6 +739,14 @@ export class LocalUsersService extends LocalRouteDelayService implements UserSer
       tickets,
       contacts: normalizeCounter(activities?.contacts),
       feedback,
+      chat: {
+        all: normalizeCounter(chat?.all ?? activities?.chats),
+        event: normalizeCounter(chat?.event),
+        subEvent: normalizeCounter(chat?.subEvent),
+        group: normalizeCounter(chat?.group),
+        service: normalizeCounter(chat?.service),
+        appSupport: normalizeCounter(chat?.appSupport)
+      },
       event: {
         all: normalizeCounter(event?.all ?? events + invitations + hosting),
         active: normalizeCounter(event?.active ?? events),
@@ -746,7 +785,7 @@ export class LocalUsersService extends LocalRouteDelayService implements UserSer
       activities: {
         ...user.activities,
         game: counters.game ?? user.activities.game,
-        chat: counters.chat ?? user.activities.chat,
+        chats: counters.chats ?? user.activities.chats,
         invitations: counters.invitations ?? user.activities.invitations,
         events: counters.events ?? user.activities.events,
         hosting: counters.hosting ?? user.activities.hosting,
@@ -756,6 +795,7 @@ export class LocalUsersService extends LocalRouteDelayService implements UserSer
         tickets: counters.tickets ?? user.activities.tickets,
         contacts: counters.contacts ?? user.activities.contacts,
         feedback: counters.feedback ?? user.activities.feedback,
+        chat: counters.chat ?? user.activities.chat,
         event: counters.event ?? user.activities.event,
         asset: counters.asset ?? user.activities.asset,
         eventFeedback: counters.eventFeedback ?? user.activities.eventFeedback,

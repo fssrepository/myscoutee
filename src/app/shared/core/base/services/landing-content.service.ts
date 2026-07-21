@@ -121,6 +121,10 @@ export class LandingContentService extends BaseRouteModeService {
         availableLanguages: state.terms.availableLanguages.map(language => ({ ...language }))
       },
       ideas: state.ideas.map(post => ({ ...post, imageUrls: [...post.imageUrls] })),
+      ideasTotal: Math.max(
+        state.ideas.length,
+        Math.max(0, Math.trunc(Number(state.ideasTotal) || 0))
+      ),
       loginAvailability: state.loginAvailability
         ? {
             eligible: state.loginAvailability.eligible !== false,

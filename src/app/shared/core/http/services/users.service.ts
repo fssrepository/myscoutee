@@ -530,7 +530,7 @@ export class HttpUsersService implements UserService {
       profileStatus: 'onboarding',
       activities: {
         game: 0,
-        chat: 0,
+        chats: 0,
         invitations: 0,
         events: 0,
         hosting: 0,
@@ -540,6 +540,14 @@ export class HttpUsersService implements UserService {
         tickets: 0,
         contacts: 0,
         feedback: 0,
+        chat: {
+          all: 0,
+          event: 0,
+          subEvent: 0,
+          group: 0,
+          service: 0,
+          appSupport: 0
+        },
         event: {
           all: 0,
           active: 0,
@@ -573,7 +581,7 @@ export class HttpUsersService implements UserService {
   ): UserMenuCountersDto {
     return {
       game: this.normalizeInitialCounterValue(overrides?.game, user.activities?.game),
-      chat: this.normalizeInitialCounterValue(overrides?.chat, user.activities?.chat),
+      chats: this.normalizeInitialCounterValue(overrides?.chats, user.activities?.chats),
       invitations: this.normalizeInitialCounterValue(overrides?.invitations, user.activities?.invitations),
       events: this.normalizeInitialCounterValue(overrides?.events, user.activities?.events),
       hosting: this.normalizeInitialCounterValue(overrides?.hosting, user.activities?.hosting),
@@ -583,6 +591,14 @@ export class HttpUsersService implements UserService {
       tickets: this.normalizeInitialCounterValue(overrides?.tickets, user.activities?.tickets),
       contacts: this.normalizeInitialCounterValue(overrides?.contacts, user.activities?.contacts),
       feedback: this.normalizeInitialCounterValue(overrides?.feedback, user.activities?.feedback),
+      chat: {
+        all: this.normalizeInitialCounterValue(overrides?.chat?.all, user.activities?.chat?.all),
+        event: this.normalizeInitialCounterValue(overrides?.chat?.event, user.activities?.chat?.event),
+        subEvent: this.normalizeInitialCounterValue(overrides?.chat?.subEvent, user.activities?.chat?.subEvent),
+        group: this.normalizeInitialCounterValue(overrides?.chat?.group, user.activities?.chat?.group),
+        service: this.normalizeInitialCounterValue(overrides?.chat?.service, user.activities?.chat?.service),
+        appSupport: this.normalizeInitialCounterValue(overrides?.chat?.appSupport, user.activities?.chat?.appSupport)
+      },
       event: {
         all: this.normalizeInitialCounterValue(overrides?.event?.all, user.activities?.event?.all),
         active: this.normalizeInitialCounterValue(overrides?.event?.active, user.activities?.event?.active),

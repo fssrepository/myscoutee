@@ -1,5 +1,6 @@
 import { CHAT_MESSAGES_TABLE_NAME, CHATS_TABLE_NAME } from '../../source/entity/chat.entity';
 import type { ChatMessageRecord, ChatRecord, ChatThreadRecord } from '../../source/entity/chat.entity';
+import { USERS_TABLE_NAME, type UserChatCountersRecord } from '../../source/entity/user.entity';
 import { Injectable, inject } from '@angular/core';
 
 import { AppUtils } from '../../../../app-utils';
@@ -49,7 +50,8 @@ export class SeedChatsRepository {
     this.memoryDb.write(currentState => ({
       ...currentState,
       [CHATS_TABLE_NAME]: this.mergeChatTable(currentState[CHATS_TABLE_NAME], seeded.chats),
-      [CHAT_MESSAGES_TABLE_NAME]: this.mergeChatMessagesTable(currentState[CHAT_MESSAGES_TABLE_NAME], seeded.chatMessages)
+      [CHAT_MESSAGES_TABLE_NAME]: this.mergeChatMessagesTable(currentState[CHAT_MESSAGES_TABLE_NAME], seeded.chatMessages),
+      [USERS_TABLE_NAME]: this.applyStoredChatCounterChanges(currentState, normalizedUserId, seeded.chats)
     }));
     return true;
   }
@@ -171,23 +173,17 @@ export class SeedChatsRepository {
     ).length;
   }
 
-  queryChatItemsByUser(userId: string): ChatThreadRecord[] {
+  queryChatItemById(userId: string, chatId: string): ChatThreadRecord | null {
     const normalizedUserId = `${userId ?? ''}`.trim();
-    if (!normalizedUserId) {
-      return [];
+    const normalizedChatId = `${chatId ?? ''}`.trim();
+    if (!normalizedUserId || !normalizedChatId) {
+      return null;
     }
-    const table = this.seedRecords?.chats;
-    if (!table) {
-      return [];
-    }
-    return table.ids
-      .map(id => table.byId[id])
-      .filter((record): record is ChatThreadRecord => Boolean(record))
-      .filter(record => record.ownerUserId === normalizedUserId)
-      .map(record => LocalChatThreadMapper.cloneRecord(record));
+    const record = this.seedRecords?.chats.byId[LocalChatThreadMapper.buildRecordKey(normalizedUserId, normalizedChatId)];
+    return record ? LocalChatThreadMapper.cloneRecord(record) : null;
   }
 
-  queryChatMessages(chat: ChatRecord): ChatMessageDto[] {
+  queryChatMessagesPage(chat: ChatRecord, page: number, pageSize: number): ChatMessageDto[] {
     const ownerUserId = typeof (chat as { ownerUserId?: unknown }).ownerUserId === 'string'
       ? `${(chat as { ownerUserId?: string }).ownerUserId ?? ''}`.trim()
       : '';
@@ -196,23 +192,22 @@ export class SeedChatsRepository {
       return [];
     }
     const record = this.seedRecords.chats.byId[LocalChatThreadMapper.buildRecordKey(ownerUserId, sourceId)];
-    return record ? LocalChatMessageMapper.toDtoList(this.selectChatMessageRecordsFromSnapshot(this.seedRecords.chatMessages, record)) : [];
-  }
-
-  private selectChatMessageRecordsFromSnapshot(
-    snapshot: AppMemorySchema[typeof CHAT_MESSAGES_TABLE_NAME],
-    chat: ChatThreadRecord
-  ): ChatMessageRecord[] {
-    const chatKey = LocalChatMessageMapper.chatKey(chat.ownerUserId, chat.id);
-    const ids = snapshot.idsByChatKey[chatKey] ?? snapshot.ids.filter(id => {
-      const record = snapshot.byId[id];
-      return record?.ownerUserId === chat.ownerUserId && record?.chatId === chat.id;
-    });
-    return ids
+    if (!record) {
+      return [];
+    }
+    const normalizedPage = Math.max(0, Math.trunc(Number(page) || 0));
+    const normalizedPageSize = Math.max(1, Math.trunc(Number(pageSize) || 20));
+    const start = normalizedPage * normalizedPageSize;
+    const chatKey = LocalChatMessageMapper.chatKey(ownerUserId, sourceId);
+    const snapshot = this.seedRecords.chatMessages;
+    const orderedIds = snapshot.idsByChatKey[chatKey] ?? [];
+    const pageRecords = orderedIds
+      .slice()
+      .reverse()
+      .slice(start, start + normalizedPageSize)
       .map(id => snapshot.byId[id])
-      .filter((record): record is ChatMessageRecord => Boolean(record))
-      .sort((left, right) => AppUtils.toSortableDate(left.sentAtIso) - AppUtils.toSortableDate(right.sentAtIso)
-        || `${left.messageId ?? ''}`.localeCompare(`${right.messageId ?? ''}`));
+      .filter((message): message is ChatMessageRecord => Boolean(message));
+    return LocalChatMessageMapper.toDtoList(pageRecords);
   }
 
   private upsertMessageRecord(
@@ -296,6 +291,77 @@ export class SeedChatsRepository {
       }
     }
     return { byId, ids };
+  }
+
+  private applyStoredChatCounterChanges(
+    state: AppMemorySchema,
+    userId: string,
+    incoming: AppMemorySchema[typeof CHATS_TABLE_NAME]
+  ): AppMemorySchema[typeof USERS_TABLE_NAME] {
+    const users = state[USERS_TABLE_NAME];
+    const user = users.byId[userId];
+    if (!user) {
+      return users;
+    }
+    const normalize = (value: unknown): number => {
+      const parsed = Number(value);
+      return Number.isFinite(parsed) ? Math.max(0, Math.trunc(parsed)) : 0;
+    };
+    const counters: Required<UserChatCountersRecord> = {
+      all: normalize(user.activities.chat?.all ?? user.activities.chats),
+      event: normalize(user.activities.chat?.event),
+      subEvent: normalize(user.activities.chat?.subEvent),
+      group: normalize(user.activities.chat?.group),
+      service: normalize(user.activities.chat?.service),
+      appSupport: normalize(user.activities.chat?.appSupport)
+    };
+    for (const id of incoming.ids) {
+      const previous = state[CHATS_TABLE_NAME].byId[id];
+      const next = incoming.byId[id];
+      if (previous) {
+        this.addChatUnread(counters, previous, -1);
+      }
+      if (next) {
+        this.addChatUnread(counters, next, 1);
+      }
+    }
+    const nextUser = {
+      ...user,
+      activities: {
+        ...user.activities,
+        chats: counters.all,
+        chat: counters
+      }
+    };
+    return {
+      byId: { ...users.byId, [userId]: nextUser },
+      ids: [...users.ids]
+    };
+  }
+
+  private addChatUnread(
+    counters: Required<UserChatCountersRecord>,
+    chat: ChatThreadRecord,
+    direction: -1 | 1
+  ): void {
+    const delta = direction * Math.max(0, Math.trunc(Number(chat.unread) || 0));
+    counters.all = Math.max(0, counters.all + delta);
+    const key = this.chatCounterKey(chat.channelType);
+    if (key) {
+      counters[key] = Math.max(0, counters[key] + delta);
+    }
+  }
+
+  private chatCounterKey(channelType: ChatThreadRecord['channelType']): Exclude<keyof UserChatCountersRecord, 'all'> | null {
+    switch (channelType) {
+      case 'mainEvent': return 'event';
+      case 'optionalSubEvent': return 'subEvent';
+      case 'groupSubEvent': return 'group';
+      case 'serviceEvent': return 'service';
+      case 'appSupport':
+      case 'supportCase': return 'appSupport';
+      default: return null;
+    }
   }
 
   private mergeChatMessagesTable(

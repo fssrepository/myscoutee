@@ -23,6 +23,10 @@ export {
 export { LocalEventFeedbackMapper } from './event-feedback.mapper';
 export { LocalEventParticipationActionMapper } from './event-participation-action.mapper';
 export { LocalHelpCenterMapper } from './help-center.mapper';
+export {
+  LocalIdeaPostsMapper,
+  type LocalIdeaPostRecordPage
+} from './idea-post.mapper';
 export { LocalProfileExperiencesMapper } from './profile-experiences.mapper';
 export { LocalAssetsMapper, LocalAssetTicketsMapper } from './asset.mapper';
 export { LocalChatMessageMapper } from './chat-message.mapper';

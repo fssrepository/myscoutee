@@ -22,6 +22,7 @@ import {
   type PopupMenuSelectEvent,
   type PopupModel,
   PricingEditorInputComponent,
+  I18nPipe,
   type PricingEditorConfig
 } from '../../../shared/ui';
 
@@ -112,7 +113,8 @@ export interface EventSubeventStageFormSubmit {
     PopupComponent,
     DateInputComponent,
     LocationInputComponent,
-    PricingEditorInputComponent
+    PricingEditorInputComponent,
+    I18nPipe
   ],
   templateUrl: './event-subevent-stage-form-popup.component.html',
   styleUrls: ['./event-subevent-stage-form-popup.component.scss']
@@ -151,10 +153,10 @@ export class EventSubeventStageFormPopupComponent implements OnChanges {
     showAudienceSection: false
   };
   protected readonly subeventLocationInputConfig: LocationInputConfig = {
-    label: 'Location',
-    placeholder: 'Sub event location',
+    label: 'location',
+    placeholder: 'event.editor.subevents.location.placeholder',
     mapMode: 'search',
-    mapAriaLabel: 'Open sub event location on map'
+    mapAriaLabel: 'event.editor.subevents.location.map.aria'
   };
   ngOnChanges(): void {
     this.syncDraftFromInputs();
@@ -170,7 +172,7 @@ export class EventSubeventStageFormPopupComponent implements OnChanges {
       title: this.view.title,
       subtitle: this.view.parentTitle || null,
       ariaLabel: this.view.title,
-      closeAriaLabel: 'Close sub event form',
+      closeAriaLabel: 'event.editor.subevents.form.close.aria',
       closeOnBackdrop: true,
       size: 'wide',
       height: 'full',
@@ -209,10 +211,10 @@ export class EventSubeventStageFormPopupComponent implements OnChanges {
       return this.optionalMenuTrigger();
     }
     return {
-      label: 'Mandatory',
+      label: 'mandatory',
       icon: 'lock',
       palette: 'red',
-      ariaLabel: 'Mandatory sub event',
+      ariaLabel: 'event.editor.subevents.mandatory.aria',
       layout: 'pill',
       trailingIcon: '',
       disabled: true
@@ -227,7 +229,7 @@ export class EventSubeventStageFormPopupComponent implements OnChanges {
       kind: 'action',
       palette: canSave ? 'green' : 'danger',
       disabled: false,
-      ariaLabel: 'Save sub event',
+      ariaLabel: 'event.editor.subevents.save.aria',
       context: { menu: 'save' }
     }];
   }
@@ -268,10 +270,10 @@ export class EventSubeventStageFormPopupComponent implements OnChanges {
 
   protected optionalMenuTrigger(): AppMenuTrigger {
     return {
-      label: this.draftModel.optional ? 'Optional' : 'Mandatory',
+      label: this.draftModel.optional ? 'optional' : 'mandatory',
       icon: this.draftModeIcon(),
       palette: this.draftModel.optional ? 'blue' : 'red',
-      ariaLabel: 'Sub event optional mode',
+      ariaLabel: 'event.editor.subevents.optional.mode.aria',
       layout: 'pill'
     };
   }
@@ -280,7 +282,7 @@ export class EventSubeventStageFormPopupComponent implements OnChanges {
     return [
       {
         id: 'subevent-optional-mandatory',
-        label: 'Mandatory',
+        label: 'mandatory',
         icon: 'lock',
         kind: 'radio',
         palette: 'red',
@@ -290,7 +292,7 @@ export class EventSubeventStageFormPopupComponent implements OnChanges {
       },
       {
         id: 'subevent-optional-optional',
-        label: 'Optional',
+        label: 'optional',
         icon: 'toggle_on',
         kind: 'radio',
         palette: 'blue',
@@ -307,7 +309,7 @@ export class EventSubeventStageFormPopupComponent implements OnChanges {
       label: this.insertPlacementLabel(placement),
       icon: this.insertPlacementIcon(placement),
       palette: this.insertPlacementPalette(placement),
-      ariaLabel: 'Position',
+      ariaLabel: 'position',
       layout: 'field'
     };
   }
@@ -331,7 +333,7 @@ export class EventSubeventStageFormPopupComponent implements OnChanges {
       label: this.insertTargetLabel(),
       icon: selected?.icon ?? 'route',
       palette: selected?.palette ?? 'blue',
-      ariaLabel: 'Event Anchor',
+      ariaLabel: 'event.anchor',
       layout: 'field'
     };
   }
@@ -356,7 +358,7 @@ export class EventSubeventStageFormPopupComponent implements OnChanges {
       label: value,
       icon: this.tournamentLeaderboardIcon(value),
       palette: this.tournamentLeaderboardPalette(value),
-      ariaLabel: 'Leaderboard type',
+      ariaLabel: 'event.editor.subevents.leaderboard.type',
       layout: 'field'
     };
   }
@@ -407,12 +409,12 @@ export class EventSubeventStageFormPopupComponent implements OnChanges {
 
   private insertPlacementLabel(placement: EventSubeventStageInsertPlacement): string {
     if (placement === 'before') {
-      return 'Before';
+      return 'before';
     }
     if (placement === 'during') {
-      return 'During';
+      return 'during';
     }
-    return 'After';
+    return 'after';
   }
 
   private insertPlacementIcon(placement: EventSubeventStageInsertPlacement): string {
@@ -437,7 +439,7 @@ export class EventSubeventStageFormPopupComponent implements OnChanges {
 
   private insertTargetLabel(): string {
     const selected = this.insertTargetOption();
-    return selected?.label ?? this.view.insertOptions[0]?.label ?? 'Select stage';
+    return selected?.label ?? this.view.insertOptions[0]?.label ?? 'event.editor.subevents.stage.select';
   }
 
   private insertTargetOption(): EventSubeventStageInsertOption | null {
@@ -609,7 +611,7 @@ export class EventSubeventStageFormPopupComponent implements OnChanges {
     return {
       open: false,
       parentTitle: '',
-      title: 'Create Stage Event',
+      title: 'event.editor.subevents.stage.create',
       readOnly: false,
       canSave: false,
       invalidName: false,
@@ -626,8 +628,8 @@ export class EventSubeventStageFormPopupComponent implements OnChanges {
         mode: 'range',
         precision: 'minute',
         range: {
-          start: { label: 'Start' },
-          end: { label: 'End' },
+          start: { label: 'start' },
+          end: { label: 'end' },
           bounds: null
         }
       },

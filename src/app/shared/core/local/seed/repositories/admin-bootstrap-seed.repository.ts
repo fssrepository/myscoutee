@@ -107,8 +107,9 @@ export class SeedAdminBootstrapRepository {
         continue;
       }
       const nextActivities = {
+        ...user.activities,
         game: Math.max(0, Math.trunc(Number(user.activities?.game) || 0)),
-        chat: Math.max(0, Math.trunc(Number(user.activities?.chat) || 0)),
+        chats: Math.max(0, Math.trunc(Number(user.activities?.chats) || 0)),
         invitations: Math.max(0, Math.trunc(Number(user.activities?.invitations) || 0)),
         events: Math.max(0, Math.trunc(Number(user.activities?.events) || 0)),
         hosting: Math.max(0, Math.trunc(Number(user.activities?.hosting) || 0)),
@@ -219,12 +220,11 @@ export class SeedAdminBootstrapRepository {
   }
 
   private demoChatMessages(ownerUserId: string, chatId: string): AdminChatMessageDto[] {
-    const chat = this.findChatsByUser(ownerUserId)
-      .find(item => item.id === chatId);
+    const chat = this.findChatById(ownerUserId, chatId);
     if (!chat) {
       return [];
     }
-    return this.readChatMessages(chat).map(message => ({
+    return this.readChatMessagesPage(chat).map(message => ({
       id: message.id,
       sender: message.sender,
       senderUserId: message.senderAvatar.id,
@@ -244,12 +244,12 @@ export class SeedAdminBootstrapRepository {
     return this.usersSeed.upsertUser(user);
   }
 
-  private findChatsByUser(userId: string): ChatThreadRecord[] {
-    return this.chatsSeed.queryChatItemsByUser(userId);
+  private findChatById(userId: string, chatId: string): ChatThreadRecord | null {
+    return this.chatsSeed.queryChatItemById(userId, chatId);
   }
 
-  private readChatMessages(chat: ChatRecord): ChatMessageDto[] {
-    return this.chatsSeed.queryChatMessages(chat);
+  private readChatMessagesPage(chat: ChatRecord): ChatMessageDto[] {
+    return this.chatsSeed.queryChatMessagesPage(chat, 0, 50);
   }
 
   private seedChatMessages(chat: ChatRecord & { ownerUserId?: string }, messages: readonly ChatMessageDto[]): void {

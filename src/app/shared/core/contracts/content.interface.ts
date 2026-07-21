@@ -22,6 +22,18 @@ export interface IdeaPostDto {
   updatedByUserId: string;
 }
 
+export interface IdeaPostPublicPageQueryDto {
+  page?: number | null;
+  pageSize?: number | null;
+  cursor?: string | null;
+}
+
+export interface IdeaPostPublicPageResultDto {
+  records: IdeaPostDto[];
+  total: number;
+  nextCursor: string | null;
+}
+
 export type IdeaPostAdminFilter = 'all' | 'featured' | 'published' | 'drafts' | 'trashed';
 
 export interface IdeaPostAdminCountsDto {
@@ -182,5 +194,6 @@ export interface LandingContentStateDto {
   privacy: HelpCenterStateDto;
   terms: HelpCenterStateDto;
   ideas: IdeaPostDto[];
+  ideasTotal: number;
   loginAvailability: UserContracts.UserLocationEligibilityResponseDto | null;
 }

@@ -736,6 +736,7 @@
 
 .pricing-editor__preview--summary {
   grid-template-columns: minmax(0, 1fr);
+  margin-block-start: var(--pricing-summary-preview-offset, 0);
 }
 
 .pricing-editor__preview-card {

@@ -8,7 +8,7 @@ import type {
 
 type LocalRealtimeCounterKey =
   | 'game'
-  | 'chat'
+  | 'chats'
   | 'invitations'
   | 'events'
   | 'hosting'
@@ -21,7 +21,7 @@ type LocalRealtimeCounterKey =
 
 const LOCAL_REALTIME_COUNTER_KEYS: readonly LocalRealtimeCounterKey[] = [
   'game',
-  'chat',
+  'chats',
   'invitations',
   'events',
   'hosting',
@@ -93,7 +93,7 @@ export class LocalUserRealtimeSnapshotBuilder {
       userId: user.id,
       counters: {
         game: activities.game,
-        chat: activities.chat,
+        chats: activities.chats,
         invitations: activities.invitations,
         events: activities.events,
         hosting: activities.hosting,
@@ -103,6 +103,7 @@ export class LocalUserRealtimeSnapshotBuilder {
         tickets: activities.tickets,
         contacts: activities.contacts,
         feedback: activities.feedback,
+        chat: activities.chat ? { ...activities.chat } : undefined,
         event: activities.event ? { ...activities.event } : undefined,
         asset: activities.asset ? { ...activities.asset } : undefined,
         eventFeedback: activities.eventFeedback ? { ...activities.eventFeedback } : undefined,
@@ -128,20 +129,21 @@ export class LocalUserRealtimeSnapshotBuilder {
     const events = phase === 1 ? 1 : 0;
     const hosting = phase === 2 ? 1 : 0;
     const game = phase === 3 ? 1 : 0;
-    const chat = phase === 4 ? 1 : 0;
+    const chats = phase === 4 ? 1 : 0;
     const invitations = phase === 5 ? 1 : 0;
     const feedback = phase === 0 ? 1 : 0;
 
     return {
       game,
-      chat,
+      chats,
+      chat: chats > 0 ? { all: chats } : undefined,
       invitations,
       events,
       hosting,
       tickets: events + hosting > 0 ? 1 : 0,
       feedback,
       impressionsHostChanged: events + hosting > 0,
-      impressionsMemberChanged: game + chat + invitations > 0
+      impressionsMemberChanged: game + chats + invitations > 0
     };
   }
 
@@ -153,6 +155,14 @@ export class LocalUserRealtimeSnapshotBuilder {
     for (const key of LOCAL_REALTIME_COUNTER_KEYS) {
       next[key] = this.count(current[key]) + this.count(increments[key]);
     }
+    next.chat = {
+      all: this.count(current.chat?.all) + this.count(increments.chat?.all),
+      event: this.count(current.chat?.event) + this.count(increments.chat?.event),
+      subEvent: this.count(current.chat?.subEvent) + this.count(increments.chat?.subEvent),
+      group: this.count(current.chat?.group) + this.count(increments.chat?.group),
+      service: this.count(current.chat?.service) + this.count(increments.chat?.service),
+      appSupport: this.count(current.chat?.appSupport) + this.count(increments.chat?.appSupport)
+    };
     next.event = {
       all: this.count(current.event?.all) + this.count(increments.events) + this.count(increments.invitations) + this.count(increments.hosting),
       active: this.count(current.event?.active) + this.count(increments.events),
@@ -195,7 +205,7 @@ export class LocalUserRealtimeSnapshotBuilder {
         repeatCount: increments.hosting
       }),
       member: this.increaseImpressionSection(impressions.member, {
-        unreadCount: this.count(increments.game) + this.count(increments.chat) + this.count(increments.invitations),
+        unreadCount: this.count(increments.game) + this.count(increments.chats) + this.count(increments.invitations),
         peopleMet: increments.invitations,
         totalEvents: increments.game
       })

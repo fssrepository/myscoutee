@@ -55,6 +55,7 @@ import {
   type FormFlowModel
 } from '../../../shared/ui/components/core/form/flow';
 import {
+  ProfileFormFlowDataConverter,
   ProfileFormFlowConverter,
   ProfileHeaderCardConverter,
   type ProfileFormFlowMenuContext
@@ -425,7 +426,9 @@ export class ProfileEditorComponent {
       return;
     }
     this.profileCompletionPercent = Math.max(0, Math.min(100, Math.trunc(Number(activeProfileExt.profile.completion) || 0)));
-    this.profileEditorData = activeProfileExt;
+    this.profileEditorData = ProfileFormFlowDataConverter.convert(
+      this.profileEditorDraft(activeProfileExt)
+    ).data;
     this.refreshProfileEditorFlowModel();
     this.panel = 'profile';
   }

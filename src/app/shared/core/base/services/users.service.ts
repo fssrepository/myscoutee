@@ -575,7 +575,7 @@ export class UsersService extends BaseRouteModeService {
 
     const patch: Partial<ActivityCounters> = {};
     const game = normalizeWithFallback(counterOverrides.game, fallbackActivities.game);
-    const chat = normalizeWithFallback(counterOverrides.chat, fallbackActivities.chat);
+    const chats = normalizeWithFallback(counterOverrides.chats, fallbackActivities.chats);
     const invitations = normalizeWithFallback(counterOverrides.invitations, fallbackActivities.invitations);
     const events = normalizeWithFallback(counterOverrides.events, fallbackActivities.events);
     const hosting = normalizeWithFallback(counterOverrides.hosting, fallbackActivities.hosting);
@@ -589,7 +589,7 @@ export class UsersService extends BaseRouteModeService {
     const adminMetrics = normalizeWithFallback(counterOverrides.adminMetrics, fallbackActivities.adminMetrics);
 
     if (game !== undefined) patch.game = game;
-    if (chat !== undefined) patch.chat = chat;
+    if (chats !== undefined) patch.chats = chats;
     if (invitations !== undefined) patch.invitations = invitations;
     if (events !== undefined) patch.events = events;
     if (hosting !== undefined) patch.hosting = hosting;
@@ -599,6 +599,25 @@ export class UsersService extends BaseRouteModeService {
     if (tickets !== undefined) patch.tickets = tickets;
     if (contacts !== undefined) patch.contacts = contacts;
     if (feedback !== undefined) patch.feedback = feedback;
+
+    const chatAll = normalizeWithFallback(counterOverrides.chat?.all, fallbackActivities.chat?.all);
+    const chatEvent = normalizeWithFallback(counterOverrides.chat?.event, fallbackActivities.chat?.event);
+    const chatSubEvent = normalizeWithFallback(counterOverrides.chat?.subEvent, fallbackActivities.chat?.subEvent);
+    const chatGroup = normalizeWithFallback(counterOverrides.chat?.group, fallbackActivities.chat?.group);
+    const chatService = normalizeWithFallback(counterOverrides.chat?.service, fallbackActivities.chat?.service);
+    const chatAppSupport = normalizeWithFallback(counterOverrides.chat?.appSupport, fallbackActivities.chat?.appSupport);
+    if (chatAll !== undefined || chatEvent !== undefined || chatSubEvent !== undefined
+      || chatGroup !== undefined || chatService !== undefined || chatAppSupport !== undefined
+    ) {
+      patch.chat = {
+        all: chatAll ?? 0,
+        event: chatEvent ?? 0,
+        subEvent: chatSubEvent ?? 0,
+        group: chatGroup ?? 0,
+        service: chatService ?? 0,
+        appSupport: chatAppSupport ?? 0
+      };
+    }
 
     const eventAll = normalizeWithFallback(counterOverrides.event?.all, fallbackActivities.event?.all);
     const eventActive = normalizeWithFallback(counterOverrides.event?.active, fallbackActivities.event?.active);
@@ -668,7 +687,7 @@ export class UsersService extends BaseRouteModeService {
       profileDetails: this.cloneProfileDetails(user.profileDetails),
       activities: {
         game: Math.max(0, Math.trunc(Number(user.activities?.game) || 0)),
-        chat: Math.max(0, Math.trunc(Number(user.activities?.chat) || 0)),
+        chats: Math.max(0, Math.trunc(Number(user.activities?.chats) || 0)),
         invitations: Math.max(0, Math.trunc(Number(user.activities?.invitations) || 0)),
         events: Math.max(0, Math.trunc(Number(user.activities?.events) || 0)),
         hosting: Math.max(0, Math.trunc(Number(user.activities?.hosting) || 0)),
@@ -678,6 +697,14 @@ export class UsersService extends BaseRouteModeService {
         tickets: Math.max(0, Math.trunc(Number(user.activities?.tickets) || 0)),
         contacts: Math.max(0, Math.trunc(Number(user.activities?.contacts) || 0)),
         feedback: Math.max(0, Math.trunc(Number(user.activities?.feedback) || 0)),
+        chat: {
+          all: Math.max(0, Math.trunc(Number(user.activities?.chat?.all) || 0)),
+          event: Math.max(0, Math.trunc(Number(user.activities?.chat?.event) || 0)),
+          subEvent: Math.max(0, Math.trunc(Number(user.activities?.chat?.subEvent) || 0)),
+          group: Math.max(0, Math.trunc(Number(user.activities?.chat?.group) || 0)),
+          service: Math.max(0, Math.trunc(Number(user.activities?.chat?.service) || 0)),
+          appSupport: Math.max(0, Math.trunc(Number(user.activities?.chat?.appSupport) || 0))
+        },
         event: {
           all: Math.max(0, Math.trunc(Number(user.activities?.event?.all) || 0)),
           active: Math.max(0, Math.trunc(Number(user.activities?.event?.active) || 0)),

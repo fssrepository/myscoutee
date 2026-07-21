@@ -743,7 +743,7 @@ export class SeedActivityMembersRepository {
         headline: '',
         about: '',
         profileStatus: 'public',
-        activities: { game: 0, chat: 0, invitations: 0, events: 0, hosting: 0 }
+        activities: { game: 0, chats: 0, invitations: 0, events: 0, hosting: 0 }
       }),
       id: normalizedUserId || template?.id || 'unknown-user',
       name: fallbackName || template?.name || 'Unknown User',

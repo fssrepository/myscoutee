@@ -51,7 +51,7 @@ export class PoliciesInputPopupComponent implements OnChanges {
       title: popup.title,
       subtitle: popup.subtitle,
       ariaLabel: popup.title,
-      closeAriaLabel: 'Close policy form',
+      closeAriaLabel: 'event.editor.policy.form.close.aria',
       size: 'default',
       height: 'auto',
       headerTone: 'accent',
@@ -81,8 +81,8 @@ export class PoliciesInputPopupComponent implements OnChanges {
             bind: 'title',
             kind: 'text',
             layout: 'wide',
-            label: 'Title',
-            placeholder: 'Policy title',
+            label: 'title',
+            placeholder: 'event.editor.policy.title.placeholder',
             required: true
           },
           {
@@ -90,8 +90,8 @@ export class PoliciesInputPopupComponent implements OnChanges {
             bind: 'description',
             kind: 'textarea',
             layout: 'wide',
-            label: 'Description',
-            placeholder: 'Explain the policy clearly.',
+            label: 'description',
+            placeholder: 'event.editor.policy.description.placeholder',
             rows: 6,
             required: true
           },
@@ -127,7 +127,7 @@ export class PoliciesInputPopupComponent implements OnChanges {
         palette: 'green',
         disabled: !this.canSave(),
         closeOnSelect: false,
-        ariaLabel: 'Save policy'
+        ariaLabel: 'event.editor.policy.save.aria'
       }]
     }];
   }

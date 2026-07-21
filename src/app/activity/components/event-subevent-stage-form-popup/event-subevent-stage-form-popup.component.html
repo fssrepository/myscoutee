@@ -3,7 +3,7 @@
       <section class="experience-form-panel subevent-form-panel" [ngClass]="draftModeClass()">
         <div class="experience-form-grid subevent-form-grid" [class.subevent-form-grid-with-insert]="view.showInsertControls">
           <label class="experience-title-field subevent-name-field">
-            <span>Name <span class="required-star">*</span></span>
+            <span>{{ 'name' | i18n }} <span class="required-star">*</span></span>
             <input
               #nameInput
               type="text"
@@ -11,20 +11,20 @@
               (input)="syncDraftTextInput('name', $event)"
               (blur)="syncDraftTextInput('name', $event)"
               [class.field-required-invalid]="fieldInvalid('name')"
-              placeholder="Name"
+              [placeholder]="'name' | i18n"
               required
             />
           </label>
           @if (draftModel.optional) {
             <label class="subevent-capacity-range-field">
-              <span>Capacity</span>
+              <span>{{ 'capacity' | i18n }}</span>
               <div class="subevent-capacity-range">
                 <input
                   type="number"
                   min="0"
                   step="1"
                   [(ngModel)]="draftModel.capacityMin"
-                  placeholder="Min"
+                  [placeholder]="'min' | i18n"
                   />
                 <span class="subevent-capacity-separator">-</span>
                 <input
@@ -32,7 +32,7 @@
                   min="0"
                   step="1"
                   [(ngModel)]="draftModel.capacityMax"
-                  placeholder="Max"
+                  [placeholder]="'max' | i18n"
                   />
               </div>
             </label>
@@ -43,12 +43,12 @@
                 <div class="subevent-position-panel__head">
                   <div class="subevent-position-panel__title">
                     <mat-icon>low_priority</mat-icon>
-                    <span>Position</span>
+                    <span>{{ 'position' | i18n }}</span>
                   </div>
                 </div>
                 <div class="subevent-position-panel__grid">
                   <label class="subevent-position-field subevent-position-field--placement">
-                    <span>Placement</span>
+                    <span>{{ 'placement' | i18n }}</span>
                     <app-menu
                       class="subevent-stage-insert-placement-menu"
                       kind="select"
@@ -59,7 +59,7 @@
                     ></app-menu>
                   </label>
                   <label class="subevent-position-field subevent-position-field--anchor">
-                    <span>Event Anchor</span>
+                    <span>{{ 'event.anchor' | i18n }}</span>
                     <app-menu
                       class="subevent-stage-insert-target-menu"
                       kind="select"
@@ -70,7 +70,7 @@
                     ></app-menu>
                   </label>
                   <label class="subevent-position-field subevent-position-field--offset">
-                    <span>Offset</span>
+                    <span>{{ 'offset' | i18n }}</span>
                     <div class="subevent-stage-insert-offset">
                       <input
                         type="number"
@@ -78,9 +78,9 @@
                         step="5"
                         [(ngModel)]="draftModel.offsetMinutes"
                         placeholder="0"
-                        aria-label="Offset minutes"
+                        [attr.aria-label]="'offset.minutes' | i18n"
                         />
-                      <span>min</span>
+                      <span>{{ 'minutes.short' | i18n }}</span>
                     </div>
                   </label>
                 </div>
@@ -88,7 +88,7 @@
             </div>
           }
           <label class="experience-description-field">
-            <span>Description <span class="required-star">*</span></span>
+            <span>{{ 'description' | i18n }} <span class="required-star">*</span></span>
             <textarea
               #descriptionInput
               rows="3"
@@ -96,14 +96,14 @@
               (input)="syncDraftTextInput('description', $event)"
               (blur)="syncDraftTextInput('description', $event)"
               [class.field-required-invalid]="fieldInvalid('description')"
-              placeholder="Describe this stage"
+              [placeholder]="'event.editor.subevents.stage.description.placeholder' | i18n"
               required
             ></textarea>
           </label>
           @if (usesDurationInput()) {
             <div class="subevent-duration-row">
               <label class="subevent-duration-field">
-                <span>Duration <span class="required-star">*</span></span>
+                <span>{{ 'duration' | i18n }} <span class="required-star">*</span></span>
                 <div class="subevent-duration-control">
                   <input
                     type="number"
@@ -112,12 +112,12 @@
                     [(ngModel)]="draftModel.durationMinutes"
                     placeholder="60"
                     />
-                  <span>minutes</span>
+                  <span>{{ 'minutes' | i18n }}</span>
                 </div>
               </label>
               @if (!view.showInsertControls) {
                 <label class="subevent-duration-field subevent-offset-field">
-                  <span>Offset</span>
+                  <span>{{ 'offset' | i18n }}</span>
                   <div class="subevent-duration-control">
                     <input
                       type="number"
@@ -126,7 +126,7 @@
                       [(ngModel)]="draftModel.offsetMinutes"
                       placeholder="0"
                       />
-                    <span>minutes</span>
+                    <span>{{ 'minutes' | i18n }}</span>
                   </div>
                 </label>
               }
@@ -154,42 +154,42 @@
           } @else {
             <div class="experience-description-field subevent-pricing-note">
               <mat-icon>info</mat-icon>
-              <span>Mandatory sub events are included in the main event price.</span>
+              <span>{{ 'event.editor.subevents.mandatory.price.note' | i18n }}</span>
             </div>
           }
           @if (view.showTournamentFields) {
             <fieldset class="subevent-tournament-fieldset">
-              <legend>Stage Rule</legend>
+              <legend>{{ 'event.editor.subevents.stage.rule' | i18n }}</legend>
               <p class="subevent-tournament-hint subevent-tournament-hint-warning">
-                Manual groups add extra capacity on top of auto groups.<br />Customization only!
+                {{ 'event.editor.subevents.manual.groups.warning' | i18n }}
               </p>
               <div class="subevent-tournament-grid">
                 <div class="subevent-tournament-range-row">
                   <label class="subevent-tournament-field subevent-tournament-range-field">
-                    <span>Min Per Group</span>
+                    <span>{{ 'event.editor.subevents.group.minimum' | i18n }}</span>
                     <input
                       type="number"
                       min="0"
                       step="1"
                       [(ngModel)]="draftModel.tournamentGroupCapacityMin"
-                      placeholder="Min"
+                      [placeholder]="'min' | i18n"
                       />
                   </label>
                   <span class="subevent-capacity-separator">-</span>
                   <label class="subevent-tournament-field subevent-tournament-range-field">
-                    <span>Max Per Group</span>
+                    <span>{{ 'event.editor.subevents.group.maximum' | i18n }}</span>
                     <input
                       type="number"
                       min="0"
                       step="1"
                       [(ngModel)]="draftModel.tournamentGroupCapacityMax"
-                      placeholder="Max"
+                      [placeholder]="'max' | i18n"
                       />
                   </label>
                 </div>
                 <div class="subevent-tournament-rule-row">
                   <label class="subevent-tournament-field">
-                    <span>Leaderboard Type</span>
+                    <span>{{ 'event.editor.subevents.leaderboard.type' | i18n }}</span>
                     <app-menu
                       class="subevent-tournament-type-menu"
                       kind="select"
@@ -200,7 +200,7 @@
                     ></app-menu>
                   </label>
                   <label class="subevent-tournament-field">
-                    <span>Advance Per Group</span>
+                    <span>{{ 'event.editor.subevents.advance.per.group' | i18n }}</span>
                     <input
                       type="number"
                       min="0"
@@ -211,7 +211,7 @@
                   </label>
                 </div>
                 <label class="subevent-tournament-field subevent-tournament-field-readonly">
-                  <span>Estimated Group Count</span>
+                  <span>{{ 'event.editor.subevents.estimated.group.count' | i18n }}</span>
                   <input type="text" [value]="draftTournamentEstimatedGroupCountLabel()" readonly />
                 </label>
               </div>

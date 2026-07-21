@@ -2775,7 +2775,7 @@ export class HomeComponent implements OnDestroy {
       images: [...(user.images ?? [])],
       activities: {
         game: user.activities?.game ?? 0,
-        chat: user.activities?.chat ?? 0,
+        chats: user.activities?.chats ?? 0,
         invitations: user.activities?.invitations ?? 0,
         events: user.activities?.events ?? 0,
         hosting: user.activities?.hosting ?? 0,
@@ -2817,7 +2817,7 @@ export class HomeComponent implements OnDestroy {
       profileStatus: 'public',
       activities: {
         game: 0,
-        chat: 0,
+        chats: 0,
         invitations: 0,
         events: 0,
         hosting: 0,
@@ -2856,7 +2856,7 @@ export class HomeComponent implements OnDestroy {
       profileStatus: contextUser.profileStatus,
       activities: {
         game: contextUser.activities?.game ?? localUser.activities.game,
-        chat: contextUser.activities?.chat ?? localUser.activities.chat,
+        chats: contextUser.activities?.chats ?? localUser.activities.chats,
         invitations: contextUser.activities?.invitations ?? localUser.activities.invitations,
         events: contextUser.activities?.events ?? localUser.activities.events,
         hosting: contextUser.activities?.hosting ?? localUser.activities.hosting,

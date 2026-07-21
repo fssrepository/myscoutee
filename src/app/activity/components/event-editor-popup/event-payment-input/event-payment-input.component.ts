@@ -2,6 +2,7 @@ import { CommonModule } from '@angular/common';
 import { ChangeDetectionStrategy, Component, Input } from '@angular/core';
 import { MatIconModule } from '@angular/material/icon';
 import type { EventEditorCheckoutSurfaceTone } from '../../../../shared/ui/context/stores/event-editor-popup.store';
+import { I18nPipe } from '../../../../shared/ui/pipes';
 
 export interface EventPaymentInputPricingSummaryRow {
   key: string;
@@ -27,15 +28,16 @@ export interface EventPaymentInputItem {
   standalone: true,
   imports: [
     CommonModule,
-    MatIconModule
+    MatIconModule,
+    I18nPipe
   ],
   templateUrl: './event-payment-input.component.html',
   styleUrl: './event-payment-input.component.scss',
   changeDetection: ChangeDetectionStrategy.OnPush
 })
 export class EventPaymentInputComponent {
-  @Input() title = 'Fizetés';
-  @Input() subtitle = 'Ellenőrizd az összeget, majd indítsd a fizetést.';
+  @Input() title = 'event.editor.payment.title';
+  @Input() subtitle = 'event.editor.payment.subtitle';
   @Input() eventTitle = '';
   @Input() eventLocation = '';
   @Input() eventTimeframe = '';
@@ -82,33 +84,33 @@ export class EventPaymentInputComponent {
   protected itemAmountLabel(item: EventPaymentInputItem): string {
     const quantity = Math.max(1, Math.trunc(Number(item.quantity) || 1));
     const amount = (Number(item.amount) || 0) * quantity;
-    return amount > 0 ? this.formatMoney(amount, item.currency || this.currency) : 'Included';
+    return amount > 0 ? this.formatMoney(amount, item.currency || this.currency) : 'included';
   }
 
   protected resolvedEventTitle(): string {
-    return `${this.eventTitle ?? ''}`.trim() || 'Event';
+    return `${this.eventTitle ?? ''}`.trim() || 'event';
   }
 
   protected resolvedEventLocation(): string {
-    return `${this.eventLocation ?? ''}`.trim() || 'Location not set';
+    return `${this.eventLocation ?? ''}`.trim() || 'event.editor.location.not.set';
   }
 
   protected resolvedEventTimeframe(): string {
-    return `${this.eventTimeframe ?? ''}`.trim() || 'Date not set';
+    return `${this.eventTimeframe ?? ''}`.trim() || 'event.editor.date.not.set';
   }
 
   protected paymentProviderLabel(): string {
-    return this.paymentIntegrationEnabled ? 'Gateway' : 'Demo payment';
+    return this.paymentIntegrationEnabled ? 'event.editor.payment.gateway' : 'event.editor.payment.demo';
   }
 
   protected paymentStatusLabel(): string {
-    return this.paymentIntegrationEnabled ? 'Ready to redirect' : 'Review before confirm';
+    return this.paymentIntegrationEnabled ? 'event.editor.payment.ready.redirect' : 'event.editor.payment.review.before.confirm';
   }
 
   protected paymentNote(): string {
     return this.paymentIntegrationEnabled
-      ? 'A fizetés a beállított fizetési szolgáltatón keresztül folytatódik a megerősítés után.'
-      : 'Demo fizetési felület. A mezők zároltak, de a fizetési lépés ugyanúgy végigvihető.';
+      ? 'event.editor.payment.gateway.note'
+      : 'event.editor.payment.demo.note';
   }
 
   private currencySymbol(currency: string): string {

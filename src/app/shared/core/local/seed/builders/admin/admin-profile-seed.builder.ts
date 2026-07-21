@@ -26,7 +26,7 @@ export class AdminProfileSeedBuilder {
       admin: true,
       activities: {
         game: 0,
-        chat: 0,
+        chats: 1,
         invitations: 0,
         events: 0,
         hosting: 0,
@@ -36,6 +36,14 @@ export class AdminProfileSeedBuilder {
         tickets: 0,
         contacts: 0,
         feedback: 0,
+        chat: {
+          all: 1,
+          event: 0,
+          subEvent: 0,
+          group: 0,
+          service: 0,
+          appSupport: 1
+        },
         adminJobs: 0,
         adminMetrics: 0
       }

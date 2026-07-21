@@ -94,7 +94,8 @@ export class LocalEventCheckoutBasketsRepository {
       slotSourceId: record.slotSourceId ?? activeItems.find(item => item.slotSourceId?.trim())?.slotSourceId ?? null,
       selectedDateKey: activeItems.find(item => item.selectedDateKey?.trim())?.selectedDateKey ?? null,
       checkoutSessionId: activeItems.find(item => item.checkoutSessionId?.trim())?.checkoutSessionId ?? null,
-      expiresAtIso: activeItems.find(item => item.expiresAtIso?.trim())?.expiresAtIso ?? null
+      expiresAtIso: activeItems.find(item => item.expiresAtIso?.trim())?.expiresAtIso ?? null,
+      appliedPromoCodes: [...(record.appliedPromoCodes ?? [])]
     });
     if (!basket) {
       return null;

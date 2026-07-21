@@ -23,6 +23,10 @@ interface I18nRemoteBundleResponse {
 })
 export class I18nService {
   private static readonly DEFAULT_LANGUAGE = 'en';
+  private static readonly REVALIDATE_HEADERS = new HttpHeaders({
+    'Cache-Control': 'no-cache',
+    'Pragma': 'no-cache'
+  });
   private static readonly LOCAL_SEED_ASSETS: Record<string, string> = {
     en: 'assets/i18n/en.json',
     hu: 'assets/i18n/hu.json'
@@ -171,7 +175,7 @@ export class I18nService {
       const response = await firstValueFrom(this.http.get<I18nRemoteBundleResponse>(
         `${environment.apiBaseUrl ?? '/api'}/i18n/bundle`,
         {
-          headers: new HttpHeaders({ 'Accept-Language': this.acceptLanguageHeader() }),
+          headers: I18nService.REVALIDATE_HEADERS.set('Accept-Language', this.acceptLanguageHeader()),
           params
         }
       ));
@@ -216,7 +220,9 @@ export class I18nService {
       if (!seed || seed.lang !== lang || Object.keys(seed.data).length === 0) {
         continue;
       }
-      if (storedLang === seed.lang && storedVersion === seed.version) {
+      if (storedLang === seed.lang
+        && storedVersion
+        && this.compareVersions(seed.version, storedVersion) <= 0) {
         return null;
       }
       return seed;
@@ -232,7 +238,9 @@ export class I18nService {
       return null;
     }
     try {
-      const response = await firstValueFrom(this.http.get<I18nAssetBundle>(assetUrl));
+      const response = await firstValueFrom(this.http.get<I18nAssetBundle>(assetUrl, {
+        headers: I18nService.REVALIDATE_HEADERS
+      }));
       const lang = this.normalizeLanguage(response?.lang ?? '');
       const data = this.normalizeMessages(response?.messages ?? null);
       const version = `${response?.version ?? ''}`.trim();

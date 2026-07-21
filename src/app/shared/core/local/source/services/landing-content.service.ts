@@ -24,13 +24,19 @@ export class LocalLandingContentService {
   private readonly routeDelay = inject(RouteDelayService);
 
   async loadContent(): Promise<LandingContentStateDto> {
-    const [privacy, terms, ideas] = await Promise.all([
+    const [privacy, terms, ideaPreview] = await Promise.all([
       this.helpCenter.loadState('privacy'),
       this.helpCenter.loadState('terms'),
-      this.ideaPosts.loadPublishedPosts(),
+      this.ideaPosts.loadPublishedFeaturedPostPreview(),
       this.routeDelay.waitForRouteDelay(LocalLandingContentService.LANDING_CONTENT_ROUTE)
     ]);
-    return { privacy, terms, ideas, loginAvailability: LocalLandingContentService.DEMO_LOGIN_AVAILABILITY };
+    return {
+      privacy,
+      terms,
+      ideas: ideaPreview.records,
+      ideasTotal: ideaPreview.total,
+      loginAvailability: LocalLandingContentService.DEMO_LOGIN_AVAILABILITY
+    };
   }
 
 }

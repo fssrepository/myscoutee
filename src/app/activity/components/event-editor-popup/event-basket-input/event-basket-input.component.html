@@ -11,11 +11,11 @@
       <span class="event-basket-panel-title">
         <span class="event-basket-panel-title-line">
           <mat-icon>shopping_basket</mat-icon>
-          <span>{{ title }}</span>
+          <span>{{ title | i18n }}</span>
         </span>
       </span>
       @if (subtitle) {
-        <p class="event-basket-panel-subtitle">{{ subtitle }}</p>
+        <p class="event-basket-panel-subtitle">{{ subtitle | i18n }}</p>
       }
     </div>
     @if (showAdd && !readOnly) {
@@ -53,8 +53,8 @@
     @if (items.length > 0) {
       @if (readOnly) {
         <div class="event-basket-section-head">
-          <span>Kiválasztott elemek</span>
-          <strong>{{ items.length }} item</strong>
+          <span>{{ 'event.editor.basket.selected.items' | i18n }}</span>
+          <strong>{{ items.length }} {{ (items.length === 1 ? 'item' : 'items') | i18n }}</strong>
         </div>
       }
       <div class="event-basket-list">
@@ -88,13 +88,13 @@
         }
       </div>
     } @else {
-      <div class="event-basket-empty">{{ emptyLabel }}</div>
+      <div class="event-basket-empty">{{ emptyLabel | i18n }}</div>
     }
 
     @if (hasPricingSummary()) {
-      <section class="event-basket-pricing-summary" aria-label="Current price review">
+      <section class="event-basket-pricing-summary" [attr.aria-label]="'event.editor.pricing.current.review' | i18n">
         <div class="event-basket-pricing-summary-head">
-          <span>Current Price Review</span>
+          <span>{{ 'event.editor.pricing.current.review' | i18n }}</span>
           <mat-icon>price_check</mat-icon>
         </div>
         @for (row of visiblePricingSummaryRows(); track row.key || row.label) {
@@ -109,10 +109,10 @@
           </div>
         }
         @if (visiblePricingSummaryRows().length === 0) {
-          <p class="event-basket-pricing-empty">No selected checkout items yet.</p>
+          <p class="event-basket-pricing-empty">{{ 'event.editor.basket.no.selected.items' | i18n }}</p>
         }
         <div class="event-basket-pricing-total">
-          <span>Final price</span>
+          <span>{{ 'event.editor.pricing.final.price' | i18n }}</span>
           <strong>{{ pricingSummaryTotalLabel() }}</strong>
         </div>
       </section>

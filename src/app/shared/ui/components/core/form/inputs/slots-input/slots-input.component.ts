@@ -10,6 +10,7 @@ import { TextCardComponent, type TextCardTone } from '../../../smart-list/card';
 import { FormFlowComponent, type FormFlowControlModel, type FormFlowModel } from '../../flow';
 import { PopupComponent, type PopupModel } from '../../../popup';
 import type * as ContractTypes from '../../../../../../core/contracts';
+import { I18nPipe } from '../../../../../pipes';
 
 export type SlotsInputConfigValue<TValue> = TValue | (() => TValue);
 export type SlotsInputEditorMode = 'base' | 'date';
@@ -62,7 +63,8 @@ interface EventSlotScheduleFormValue {
     AppMenuComponent,
     PopupComponent,
     TextCardComponent,
-    FormFlowComponent
+    FormFlowComponent,
+    I18nPipe
   ],
   templateUrl: './slots-input.component.html',
   styleUrl: './slots-input.component.scss',
@@ -153,7 +155,7 @@ export class SlotsInputComponent implements OnChanges, DoCheck, ControlValueAcce
   protected slotsPanelSubtitle(): string {
     return this.slotsEnabled()
       ? this.resolvedConfig.subtitle
-      : 'Use the main event date range without slot schedules.';
+      : 'event.editor.slots.disabled.description';
   }
 
   protected toggleSlotsEnabled(event?: Event): void {
@@ -172,7 +174,7 @@ export class SlotsInputComponent implements OnChanges, DoCheck, ControlValueAcce
   protected slotSummaryWindowLabel(slot: ContractTypes.EventSlotTemplateDTO): string {
     const start = this.parseDateValue(slot.startAt);
     if (!start) {
-      return 'Time pending';
+      return 'event.editor.slots.time.pending';
     }
     const overrideCount = this.slotOverrideCount(slot);
     const overrideSuffix = overrideCount > 0
@@ -228,7 +230,7 @@ export class SlotsInputComponent implements OnChanges, DoCheck, ControlValueAcce
     return [{
       id: 'add',
       icon: 'add',
-      ariaLabel: 'Add base slot',
+      ariaLabel: 'event.editor.slots.add.base.aria',
       palette: 'amber'
     }];
   }
@@ -248,14 +250,14 @@ export class SlotsInputComponent implements OnChanges, DoCheck, ControlValueAcce
     return [
       {
         id: 'edit',
-        label: 'Edit',
+        label: 'edit',
         icon: 'edit',
         palette: 'blue',
         surface: 'tinted'
       },
       {
         id: 'override',
-        label: 'Override',
+        label: 'override',
         icon: 'published_with_changes',
         palette: 'violet',
         surface: 'tinted',
@@ -263,7 +265,7 @@ export class SlotsInputComponent implements OnChanges, DoCheck, ControlValueAcce
       },
       {
         id: 'delete',
-        label: 'Delete',
+        label: 'delete',
         icon: 'delete',
         palette: 'danger',
         surface: 'tinted'
@@ -322,13 +324,13 @@ export class SlotsInputComponent implements OnChanges, DoCheck, ControlValueAcce
   }
 
   protected schedulePopupTitle(): string {
-    return this.schedulePopupMode === 'edit' ? 'Edit Schedule' : 'Add Schedule';
+    return this.schedulePopupMode === 'edit' ? 'event.editor.schedule.edit' : 'event.editor.schedule.add';
   }
 
   protected schedulePopupSubtitle(): string {
     return this.schedulePopupMode === 'edit'
-      ? 'Update the selected base slot start rule.'
-      : 'Create a base slot start rule.';
+      ? 'event.editor.schedule.edit.description'
+      : 'event.editor.schedule.add.description';
   }
 
   protected schedulePopupModel(): PopupModel<unknown> {
@@ -336,7 +338,7 @@ export class SlotsInputComponent implements OnChanges, DoCheck, ControlValueAcce
       title: this.schedulePopupTitle(),
       subtitle: this.schedulePopupSubtitle(),
       ariaLabel: this.schedulePopupTitle(),
-      closeAriaLabel: 'Close schedule setup',
+      closeAriaLabel: 'event.editor.schedule.close.aria',
       closeOnBackdrop: true,
       size: 'default',
       height: 'auto',
@@ -347,7 +349,7 @@ export class SlotsInputComponent implements OnChanges, DoCheck, ControlValueAcce
         {
           id: this.schedulePopupMode === 'edit' ? 'save-schedule' : 'add-schedule',
           icon: 'check',
-          ariaLabel: this.schedulePopupMode === 'edit' ? 'Save schedule' : 'Add schedule',
+          ariaLabel: this.schedulePopupMode === 'edit' ? 'event.editor.schedule.save.aria' : 'event.editor.schedule.add.aria',
           palette: 'green',
           disabled: !this.canConfigureSlotsSeries()
         }
@@ -374,7 +376,7 @@ export class SlotsInputComponent implements OnChanges, DoCheck, ControlValueAcce
       return this.scheduleFlowModelCache.model;
     }
     const model: FormFlowModel = {
-      title: 'Add Schedule',
+      title: 'event.editor.schedule.add',
       header: false,
       layout: 'grouped',
       allowMenuOverflow: true,
@@ -391,7 +393,7 @@ export class SlotsInputComponent implements OnChanges, DoCheck, ControlValueAcce
               bind: 'frequency',
               kind: 'menu',
               layout: 'wide',
-              label: 'Gyakoriság',
+              label: 'frequency',
               disabled: this.scheduleFrequencyLocked(),
               config: {
                 kind: 'select',
@@ -574,8 +576,8 @@ export class SlotsInputComponent implements OnChanges, DoCheck, ControlValueAcce
       frequencyOptions,
       enabled: configuredEnabled === null || configuredEnabled === undefined ? frequency !== 'One-time' : configuredEnabled === true,
       generated: this.resolveConfigValue(this.config.generated, false) === true,
-      title: this.resolveConfigValue(this.config.title, 'Slots'),
-      subtitle: this.resolveConfigValue(this.config.subtitle, 'Base schedule and date-specific overrides.')
+      title: this.resolveConfigValue(this.config.title, 'event.editor.slots.title'),
+      subtitle: this.resolveConfigValue(this.config.subtitle, 'event.editor.slots.subtitle')
     };
   }
 
@@ -682,7 +684,7 @@ export class SlotsInputComponent implements OnChanges, DoCheck, ControlValueAcce
   private scheduleFrequencyMenuTrigger(): AppMenuTrigger {
     return {
       id: 'schedule-frequency',
-      label: 'Gyakoriság',
+      label: 'frequency',
       icon: 'event',
       trailingIcon: 'expand_more',
       layout: 'field',
@@ -698,7 +700,7 @@ export class SlotsInputComponent implements OnChanges, DoCheck, ControlValueAcce
           bind: 'startAt',
           kind: 'date',
           layout: 'wide',
-          label: 'Start',
+          label: 'start',
           required: true,
           config: {
             model: {
@@ -706,7 +708,7 @@ export class SlotsInputComponent implements OnChanges, DoCheck, ControlValueAcce
               precision: 'minute',
               valueFormat: 'iso-date-time',
               field: {
-                label: 'Start',
+                label: 'start',
                 required: true,
                 min: this.resolvedConfig.startAtIso || null,
                 max: this.resolvedConfig.endAtIso || null
@@ -715,26 +717,26 @@ export class SlotsInputComponent implements OnChanges, DoCheck, ControlValueAcce
           }
         }];
       case 'Daily':
-        return [this.scheduleTimeControl('time', 'Start time', 'wide')];
+        return [this.scheduleTimeControl('time', 'event.editor.schedule.start.time', 'wide')];
       case 'Weekly':
       case 'Bi-weekly':
         return [
           this.scheduleWeekdayControl(),
-          this.scheduleTimeControl('time', 'Start time')
+          this.scheduleTimeControl('time', 'event.editor.schedule.start.time')
         ];
       case 'Monthly':
         return [
           this.scheduleDayControl(),
-          this.scheduleTimeControl('time', 'Start time')
+          this.scheduleTimeControl('time', 'event.editor.schedule.start.time')
         ];
       case 'Yearly':
         return [
           this.scheduleMonthControl(),
           this.scheduleDayControl(),
-          this.scheduleTimeControl('time', 'Start time', 'wide')
+          this.scheduleTimeControl('time', 'event.editor.schedule.start.time', 'wide')
         ];
       default:
-        return [this.scheduleTimeControl('time', 'Start time', 'wide')];
+        return [this.scheduleTimeControl('time', 'event.editor.schedule.start.time', 'wide')];
     }
   }
 
@@ -765,7 +767,7 @@ export class SlotsInputComponent implements OnChanges, DoCheck, ControlValueAcce
       bind: 'weekday',
       kind: 'menu',
       layout: 'half',
-      label: 'Day',
+      label: 'day',
       required: true,
       config: {
         kind: 'select',
@@ -774,7 +776,7 @@ export class SlotsInputComponent implements OnChanges, DoCheck, ControlValueAcce
         closeOnSelect: true,
         trigger: {
           id: 'schedule-weekday',
-          label: 'Day',
+          label: 'day',
           icon: 'calendar_view_week',
           trailingIcon: 'expand_more',
           layout: 'field'
@@ -790,7 +792,7 @@ export class SlotsInputComponent implements OnChanges, DoCheck, ControlValueAcce
       bind: 'day',
       kind: 'number',
       layout: 'half',
-      label: 'Day',
+      label: 'day',
       required: true,
       min: 1,
       max: this.scheduleDayMax(),
@@ -804,7 +806,7 @@ export class SlotsInputComponent implements OnChanges, DoCheck, ControlValueAcce
       bind: 'month',
       kind: 'menu',
       layout: 'half',
-      label: 'Month',
+      label: 'month',
       required: true,
       config: {
         kind: 'select',
@@ -813,7 +815,7 @@ export class SlotsInputComponent implements OnChanges, DoCheck, ControlValueAcce
         closeOnSelect: true,
         trigger: {
           id: 'schedule-month',
-          label: 'Month',
+          label: 'month',
           icon: 'calendar_month',
           trailingIcon: 'expand_more',
           layout: 'field'
@@ -962,19 +964,19 @@ export class SlotsInputComponent implements OnChanges, DoCheck, ControlValueAcce
   private scheduleFrequencyLabel(frequency: string): string {
     switch (ActivityEventDetailDTO.normalizeFrequency(frequency)) {
       case 'Custom':
-        return 'Custom';
+        return 'schedule.frequency.custom';
       case 'Daily':
-        return 'Naponta';
+        return 'schedule.frequency.daily';
       case 'Weekly':
-        return 'Hetente';
+        return 'schedule.frequency.weekly';
       case 'Bi-weekly':
-        return 'Kéthetente';
+        return 'schedule.frequency.bi.weekly';
       case 'Monthly':
-        return 'Havonta';
+        return 'schedule.frequency.monthly';
       case 'Yearly':
-        return 'Évente';
+        return 'schedule.frequency.yearly';
       default:
-        return 'Custom';
+        return 'schedule.frequency.custom';
     }
   }
 

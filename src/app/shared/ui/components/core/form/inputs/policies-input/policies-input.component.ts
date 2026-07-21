@@ -17,6 +17,7 @@ import {
 } from '@angular/core';
 import { ControlValueAccessor, NG_VALUE_ACCESSOR } from '@angular/forms';
 import { MatIconModule } from '@angular/material/icon';
+import { I18nPipe } from '../../../../../pipes';
 
 import type * as EventContracts from '../../../../../../core/contracts/event.interface';
 import {
@@ -70,7 +71,8 @@ export interface PoliciesInputConfig {
     CommonModule,
     MatIconModule,
     PopupComponent,
-    SingleRowComponent
+    SingleRowComponent,
+    I18nPipe
   ],
   templateUrl: './policies-input.component.html',
   styleUrl: './policies-input.component.scss',
@@ -182,7 +184,7 @@ export class PoliciesInputComponent implements ControlValueAccessor, OnDestroy {
   }
 
   protected panelTitle(): string {
-    return this.resolveConfigValue(this.config.title, 'Event Policies');
+    return this.resolveConfigValue(this.config.title, 'event.editor.policies.title');
   }
 
   protected panelSubtitle(): string {
@@ -190,8 +192,8 @@ export class PoliciesInputComponent implements ControlValueAccessor, OnDestroy {
     return this.resolveConfigValue(
       this.config.subtitle,
       enabled
-        ? 'Add the rules attendees need to read and approve before joining.'
-        : 'Attendees can join without approving event policies.'
+        ? 'event.editor.policies.enabled.description'
+        : 'event.editor.policies.disabled.description'
     );
   }
 
@@ -301,15 +303,15 @@ export class PoliciesInputComponent implements ControlValueAccessor, OnDestroy {
   }
 
   protected policyPopupTitle(): string {
-    return this.editingPolicyDraftIndex === null ? 'Create Policy' : 'Edit Policy';
+    return this.editingPolicyDraftIndex === null ? 'event.editor.policy.create' : 'event.editor.policy.edit';
   }
 
   protected policySetupPopupModel(): PopupModel<PolicyPopupMenuContext> {
     return {
-      title: 'Policy Setup',
+      title: 'event.editor.policies.setup.title',
       subtitle: this.popupSubtitle(),
-      ariaLabel: 'Policy setup',
-      closeAriaLabel: 'Close policy setup',
+      ariaLabel: 'event.editor.policies.setup.aria',
+      closeAriaLabel: 'event.editor.policies.setup.close.aria',
       size: 'wide',
       height: 'full',
       headerTone: 'accent',
@@ -355,10 +357,10 @@ export class PoliciesInputComponent implements ControlValueAccessor, OnDestroy {
     return EventPolicySingleRowConverter.convert(policy, {
       index,
       locked: this.locked(),
-      requiredApprovalLabel: this.resolveConfigValue(this.config.requiredApprovalLabel, 'Required approval'),
-      optionalPolicyLabel: this.resolveConfigValue(this.config.optionalPolicyLabel, 'Optional policy'),
-      requiredPreview: this.resolveConfigValue(this.config.requiredPreview, 'Attendees must approve this policy before joining.'),
-      optionalPreview: this.resolveConfigValue(this.config.optionalPreview, 'Optional policy shown during join or checkout.')
+      requiredApprovalLabel: this.resolveConfigValue(this.config.requiredApprovalLabel, 'event.editor.policy.required'),
+      optionalPolicyLabel: this.resolveConfigValue(this.config.optionalPolicyLabel, 'event.editor.policy.optional'),
+      requiredPreview: this.resolveConfigValue(this.config.requiredPreview, 'event.editor.policy.required.description'),
+      optionalPreview: this.resolveConfigValue(this.config.optionalPreview, 'event.editor.policy.optional.description')
     });
   }
 
@@ -375,7 +377,7 @@ export class PoliciesInputComponent implements ControlValueAccessor, OnDestroy {
         icon: 'add',
         kind: 'action',
         palette: 'blue',
-        ariaLabel: 'Add policy',
+        ariaLabel: 'event.editor.policy.add.aria',
         context: {
           menu: 'policy-setup',
           action: 'add'
@@ -406,35 +408,35 @@ export class PoliciesInputComponent implements ControlValueAccessor, OnDestroy {
 
   protected openPoliciesLabel(): string {
     return this.locked()
-      ? this.resolveConfigValue(this.config.viewLabel, 'View Policies')
-      : this.resolveConfigValue(this.config.openLabel, 'Open Policy Setup');
+      ? this.resolveConfigValue(this.config.viewLabel, 'event.editor.policies.view')
+      : this.resolveConfigValue(this.config.openLabel, 'event.editor.policies.setup.open');
   }
 
   protected emptyPoliciesLabel(): string {
     return this.locked()
-      ? this.resolveConfigValue(this.config.readOnlyEmptyLabel, 'No policies are configured for this event.')
+      ? this.resolveConfigValue(this.config.readOnlyEmptyLabel, 'event.editor.policies.empty.readonly')
       : this.resolveConfigValue(
           this.config.emptyLabel,
-          'No policies yet. Add policies if attendees must review terms before joining or booking.'
+          'event.editor.policies.empty.description'
         );
   }
 
   protected popupSubtitle(): string {
     return this.resolveConfigValue(
       this.config.popupSubtitle,
-      'Open a policy to edit its details.'
+      'event.editor.policies.popup.subtitle'
     );
   }
 
   protected editorSubtitle(): string {
     return this.resolveConfigValue(
       this.config.editorSubtitle,
-      'Write the policy clearly and choose whether attendees must approve it before joining.'
+      'event.editor.policy.editor.subtitle'
     );
   }
 
   protected requiredCheckboxLabel(): string {
-    return this.resolveConfigValue(this.config.requiredCheckboxLabel, 'Attendees must approve this policy');
+    return this.resolveConfigValue(this.config.requiredCheckboxLabel, 'event.editor.policy.required.checkbox');
   }
 
   protected canSavePolicyDraft(): boolean {
@@ -457,8 +459,8 @@ export class PoliciesInputComponent implements ControlValueAccessor, OnDestroy {
 
   protected policyRequirementLabel(policy: PolicyInputModel): string {
     return this.policyRequired(policy)
-      ? this.resolveConfigValue(this.config.requiredApprovalLabel, 'Required approval')
-      : this.resolveConfigValue(this.config.optionalPolicyLabel, 'Optional policy');
+      ? this.resolveConfigValue(this.config.requiredApprovalLabel, 'event.editor.policy.required')
+      : this.resolveConfigValue(this.config.optionalPolicyLabel, 'event.editor.policy.optional');
   }
 
   protected policySummaryDescription(policy: PolicyInputModel): string {
@@ -467,8 +469,8 @@ export class PoliciesInputComponent implements ControlValueAccessor, OnDestroy {
       return description;
     }
     return policy.required !== false
-      ? this.resolveConfigValue(this.config.requiredPreview, 'Attendees must approve this policy before joining.')
-      : this.resolveConfigValue(this.config.optionalPreview, 'Optional policy shown during join or checkout.');
+      ? this.resolveConfigValue(this.config.requiredPreview, 'event.editor.policy.required.description')
+      : this.resolveConfigValue(this.config.optionalPreview, 'event.editor.policy.optional.description');
   }
 
   protected policyRequired(policy: PolicyInputModel): boolean {

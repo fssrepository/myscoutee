@@ -25,6 +25,8 @@ import type {
   EventCheckoutBasketItem,
   EventCheckoutLineItem,
   EventCheckoutPricingSummaryRow,
+  EventCheckoutPromoCodeValidationRequest,
+  EventCheckoutPromoCodeValidationResult,
   EventCheckoutRequest,
   EventCheckoutResultState,
   EventCheckoutState,
@@ -266,6 +268,19 @@ export class EventsService extends BaseRouteModeService implements IEventsServic
     return this.eventsService.loadCheckoutBasketByEvent(normalizedUserId, normalizedSourceId);
   }
 
+  async validateCheckoutPromoCode(
+    request: EventCheckoutPromoCodeValidationRequest
+  ): Promise<EventCheckoutPromoCodeValidationResult | null> {
+    const normalizedSourceId = request.sourceId?.trim();
+    if (!normalizedSourceId) {
+      return null;
+    }
+    return this.eventsService.validateCheckoutPromoCode({
+      sourceId: normalizedSourceId,
+      code: `${request.code ?? ''}`.trim().toUpperCase()
+    });
+  }
+
   async saveCheckoutBasket(request: EventCheckoutRequest): Promise<EventCheckoutBasket | null> {
     const normalizedUserId = request.userId?.trim();
     const normalizedSourceId = request.sourceId?.trim();
@@ -381,6 +396,7 @@ export class EventsService extends BaseRouteModeService implements IEventsServic
       optionalSubEventIds?: string[];
       assetSelections?: EventCheckoutAssetSelection[];
       acceptedPolicyIds?: string[];
+      appliedPromoCodes?: string[];
       paymentSessionId?: string | null;
       bookingConfirmed?: boolean;
       pendingReason?: ActivityPendingReason;

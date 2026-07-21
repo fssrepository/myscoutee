@@ -142,7 +142,7 @@ export class ActivityEventInfoCardConverter {
       return [];
     }
     if (dto.pendingReason === 'waitlist') {
-      return [{ label: 'Várólistán' }];
+      return [{ label: 'waiting.list' }];
     }
     return [{ label: 'waiting.for.approval' }];
   }

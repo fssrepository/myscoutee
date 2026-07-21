@@ -67,6 +67,7 @@ export interface LocalEventCheckoutBasketRecord {
   selectedDateKey?: string | null;
   checkoutSessionId?: string | null;
   expiresAtIso?: string | null;
+  appliedPromoCodes: string[];
 }
 
 export interface LocalEventCheckoutBasketStatePatchRecord {
@@ -107,7 +108,8 @@ export class LocalEventCheckoutBasketsMapper {
         || null,
       selectedDateKey: items.find(item => item.selectedDateKey?.trim())?.selectedDateKey ?? null,
       checkoutSessionId: items.find(item => item.checkoutSessionId?.trim())?.checkoutSessionId ?? null,
-      expiresAtIso: items.find(item => item.expiresAtIso?.trim())?.expiresAtIso ?? null
+      expiresAtIso: items.find(item => item.expiresAtIso?.trim())?.expiresAtIso ?? null,
+      appliedPromoCodes: this.normalizeAppliedPromoCodes(request.appliedPromoCodes)
     });
   }
 
@@ -156,7 +158,8 @@ export class LocalEventCheckoutBasketsMapper {
       slotSourceId: dto.slotSourceId?.trim() || null,
       selectedDateKey: dto.selectedDateKey?.trim() || null,
       checkoutSessionId: dto.checkoutSessionId?.trim() || null,
-      expiresAtIso: dto.expiresAtIso?.trim() || null
+      expiresAtIso: dto.expiresAtIso?.trim() || null,
+      appliedPromoCodes: this.normalizeAppliedPromoCodes(dto.appliedPromoCodes)
     });
   }
 
@@ -184,7 +187,8 @@ export class LocalEventCheckoutBasketsMapper {
       slotSourceId: cloned.slotSourceId ?? null,
       selectedDateKey: cloned.selectedDateKey ?? null,
       checkoutSessionId: cloned.checkoutSessionId ?? null,
-      expiresAtIso: cloned.expiresAtIso ?? null
+      expiresAtIso: cloned.expiresAtIso ?? null,
+      appliedPromoCodes: [...cloned.appliedPromoCodes]
     };
   }
 
@@ -245,7 +249,8 @@ export class LocalEventCheckoutBasketsMapper {
       slotSourceId: record?.slotSourceId?.trim() || null,
       selectedDateKey: record?.selectedDateKey?.trim() || null,
       checkoutSessionId: record?.checkoutSessionId?.trim() || null,
-      expiresAtIso: record?.expiresAtIso?.trim() || null
+      expiresAtIso: record?.expiresAtIso?.trim() || null,
+      appliedPromoCodes: this.normalizeAppliedPromoCodes(record?.appliedPromoCodes)
     };
   }
 
@@ -406,6 +411,12 @@ export class LocalEventCheckoutBasketsMapper {
 
   private static normalizeKind(value: unknown): 'event' | 'sub_event' | 'resource' {
     return value === 'sub_event' || value === 'resource' ? value : 'event';
+  }
+
+  private static normalizeAppliedPromoCodes(value: readonly string[] | null | undefined): string[] {
+    return [...new Set((value ?? [])
+      .map(code => `${code ?? ''}`.trim().toUpperCase())
+      .filter(Boolean))];
   }
 
   private static roundMoney(value: unknown): number {

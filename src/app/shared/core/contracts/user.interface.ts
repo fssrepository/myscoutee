@@ -67,7 +67,7 @@ export interface UserImpressionsDto {
 
 export interface UserMenuCountersDto {
   game?: number;
-  chat?: number;
+  chats?: number;
   invitations?: number;
   events?: number;
   hosting?: number;
@@ -77,6 +77,7 @@ export interface UserMenuCountersDto {
   tickets?: number;
   contacts?: number;
   feedback?: number;
+  chat?: UserChatCountersDto;
   event?: UserEventCountersDto;
   asset?: UserAssetCountersDto;
   eventFeedback?: UserEventFeedbackCountersDto;
@@ -86,7 +87,7 @@ export interface UserMenuCountersDto {
 
 export interface UserMenuCounterDeltasDto {
   game?: number;
-  chat?: number;
+  chats?: number;
   invitations?: number;
   events?: number;
   hosting?: number;
@@ -96,11 +97,30 @@ export interface UserMenuCounterDeltasDto {
   tickets?: number;
   contacts?: number;
   feedback?: number;
+  chat?: UserChatCounterDeltasDto;
   event?: UserEventCounterDeltasDto;
   asset?: UserAssetCounterDeltasDto;
   eventFeedback?: UserEventFeedbackCounterDeltasDto;
   adminJobs?: number;
   adminMetrics?: number;
+}
+
+export interface UserChatCountersDto {
+  all?: number;
+  event?: number;
+  subEvent?: number;
+  group?: number;
+  service?: number;
+  appSupport?: number;
+}
+
+export interface UserChatCounterDeltasDto {
+  all?: number;
+  event?: number;
+  subEvent?: number;
+  group?: number;
+  service?: number;
+  appSupport?: number;
 }
 
 export interface UserEventCountersDto {
@@ -218,7 +238,7 @@ export class UserDto {
   admin?: boolean;
   activities: {
     game: number;
-    chat: number;
+    chats: number;
     invitations: number;
     events: number;
     hosting: number;
@@ -228,6 +248,7 @@ export class UserDto {
     tickets?: number;
     contacts?: number;
     feedback?: number;
+    chat?: UserChatCountersDto;
     event?: UserEventCountersDto;
     asset?: UserAssetCountersDto;
     eventFeedback?: UserEventFeedbackCountersDto;
@@ -235,7 +256,7 @@ export class UserDto {
     adminMetrics?: number;
   } = {
     game: 0,
-    chat: 0,
+    chats: 0,
     invitations: 0,
     events: 0,
     hosting: 0

@@ -409,17 +409,31 @@
           @for (emoji of quickReactionEmojis; track emoji) {
             <button type="button" (click)="toggleReaction(message, emoji, $event)">{{ emoji }}</button>
           }
-          <app-menu
-            class="chat-emoji-menu"
-            kind="select"
-            title="Search emoji"
-            [trigger]="emojiPickerMenuTrigger()"
-            [model]="emojiPickerMenuModel()"
-            [filterable]="true"
-            panelAlign="auto"
-            [closeOnSelect]="true"
-            (itemSelect)="onEmojiPickerMenuSelect(message, $event)"
-          ></app-menu>
+          @if (isMobileView()) {
+            <app-menu-trigger
+              class="chat-emoji-menu"
+              menuId="chat-mobile-emoji-picker"
+              kind="select"
+              title="Search emoji"
+              [trigger]="emojiPickerMenuTrigger()"
+              [model]="emojiPickerMenuModel()"
+              [filterable]="true"
+              panelMode="sheet"
+              [closeOnSelect]="true"
+            ></app-menu-trigger>
+          } @else {
+            <app-menu
+              class="chat-emoji-menu"
+              kind="select"
+              title="Search emoji"
+              [trigger]="emojiPickerMenuTrigger()"
+              [model]="emojiPickerMenuModel()"
+              [filterable]="true"
+              panelAlign="auto"
+              [closeOnSelect]="true"
+              (itemSelect)="onEmojiPickerMenuSelect(message, $event)"
+            ></app-menu>
+          }
         </div>
       }
       @if (message.id && !message.deletedAtIso && visibleReadReceiptsByMessageId[message.id]; as visibleReaders) {

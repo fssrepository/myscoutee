@@ -159,6 +159,7 @@ export class EntryPageComponent implements OnInit, OnDestroy {
   protected entryPrivacySaveError = '';
   protected landingArticlesLoading = true;
   protected landingIdeaCards: InfoCardData[] = [];
+  protected landingIdeaCount = 0;
   protected entryAuthUnavailable = false;
   protected entryAuthUnavailableLabel = 'Unavailable in your country';
   protected entryAuthLocationRequired = false;
@@ -859,7 +860,7 @@ export class EntryPageComponent implements OnInit, OnDestroy {
   private emptyActivities(): UserDto['activities'] {
     return {
       game: 0,
-      chat: 0,
+      chats: 0,
       invitations: 0,
       events: 0,
       hosting: 0,
@@ -1098,6 +1099,7 @@ export class EntryPageComponent implements OnInit, OnDestroy {
           }
           this.entryNetworkUnavailable = false;
           this.landingIdeaCards = displayState.ideaCards;
+          this.landingIdeaCount = displayState.state.ideasTotal;
           if (!this.locationEligibilityResolvedFromCoordinates
             && (displayState.state.loginAvailability || this.landingLoginAvailability === null)) {
             this.syncLandingLoginAvailability(displayState.state.loginAvailability, 'bundle');
@@ -1111,6 +1113,7 @@ export class EntryPageComponent implements OnInit, OnDestroy {
             return;
           }
           this.landingIdeaCards = [];
+          this.landingIdeaCount = 0;
           this.markEntryNetworkUnavailable();
           this.finishEntryPrivacyLoad(requestToken);
         });
