@@ -1998,7 +1998,17 @@ export class ActivitiesPopupComponent implements OnDestroy {
     if (!this.isAdminServiceChatMode()) {
       return;
     }
-    this.activitiesStore.setActivitiesSupportCaseFilter(filter);
+    const normalizedFilter = this.normalizeSupportCaseFilter(filter);
+    const currentFilter = this.normalizeSupportCaseFilter(this.activitiesStore.activitiesSupportCaseFilter());
+    if (currentFilter === normalizedFilter) {
+      this.showActivitiesPrimaryPicker = false;
+      this.showActivitiesEventScopePicker = false;
+      this.showActivitiesChatContextPicker = false;
+      this.showActivitiesRatePicker = false;
+      this.showActivitiesQuickActionsMenu = false;
+      return;
+    }
+    this.activitiesStore.setActivitiesSupportCaseFilter(normalizedFilter);
     this.showActivitiesPrimaryPicker = false;
     this.showActivitiesEventScopePicker = false;
     this.showActivitiesChatContextPicker = false;
@@ -2715,6 +2725,15 @@ export class ActivitiesPopupComponent implements OnDestroy {
   }
 
   selectActivitiesPrimaryFilter(filter: ContractTypes.ActivitiesPrimaryFilter): void {
+    const currentFilter = this.activitiesStore.activitiesPrimaryFilter() as ContractTypes.ActivitiesPrimaryFilter;
+    if (currentFilter === filter) {
+      this.showActivitiesPrimaryPicker = false;
+      this.showActivitiesEventScopePicker = false;
+      this.showActivitiesChatContextPicker = false;
+      this.showActivitiesRatePicker = false;
+      this.showActivitiesQuickActionsMenu = false;
+      return;
+    }
     if (filter !== 'rates') {
       this.activitiesRates.disableFullscreenMode();
     }
@@ -2767,6 +2786,15 @@ export class ActivitiesPopupComponent implements OnDestroy {
     if (this.activitiesPrimaryFilter !== 'chats') {
       return;
     }
+    const currentFilter = this.activitiesStore.activitiesChatContextFilter() as ContractTypes.ActivitiesChatContextFilter;
+    if (currentFilter === filter) {
+      this.showActivitiesChatContextPicker = false;
+      this.showActivitiesPrimaryPicker = false;
+      this.showActivitiesEventScopePicker = false;
+      this.showActivitiesRatePicker = false;
+      this.showActivitiesQuickActionsMenu = false;
+      return;
+    }
     this.activitiesStore.setActivitiesChatContextFilter(filter);
     this.showActivitiesChatContextPicker = false;
     this.showActivitiesPrimaryPicker = false;
@@ -2790,6 +2818,15 @@ export class ActivitiesPopupComponent implements OnDestroy {
     const normalizedFilter = this.isEventActivitiesPrimaryFilter() && filter === 'relevant'
       ? 'recent'
       : filter;
+    const currentFilter = this.activitiesStore.activitiesSecondaryFilter() as ContractTypes.ActivitiesSecondaryFilter;
+    if (currentFilter === normalizedFilter) {
+      this.showActivitiesPrimaryPicker = false;
+      this.showActivitiesEventScopePicker = false;
+      this.showActivitiesChatContextPicker = false;
+      this.showActivitiesRatePicker = false;
+      this.showActivitiesQuickActionsMenu = false;
+      return;
+    }
     this.activitiesStore.setActivitiesSecondaryFilter(normalizedFilter);
     this.lastRateIndicatorPulseRowId = null;
     this.showActivitiesPrimaryPicker = false;
@@ -2854,6 +2891,17 @@ export class ActivitiesPopupComponent implements OnDestroy {
 
   setActivitiesView(view: ContractTypes.ActivitiesView, event?: Event): void {
     event?.stopPropagation();
+    const currentView = this.activitiesStore.activitiesView() as ContractTypes.ActivitiesView;
+    if (currentView === view) {
+      this.showActivitiesViewPicker = false;
+      this.showActivitiesSecondaryPicker = false;
+      this.showActivitiesPrimaryPicker = false;
+      this.showActivitiesEventScopePicker = false;
+      this.showActivitiesChatContextPicker = false;
+      this.showActivitiesRatePicker = false;
+      this.showActivitiesQuickActionsMenu = false;
+      return;
+    }
     if (view !== 'distance') {
       this.activitiesRates.disableFullscreenMode();
     }
