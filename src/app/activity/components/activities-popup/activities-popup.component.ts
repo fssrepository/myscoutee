@@ -54,6 +54,7 @@ import {
 } from '../../../shared/ui/context/stores/asset.store';
 import type { ActivitiesFeedFilters } from '../../../shared/core/contracts';
 import type * as ContractTypes from '../../../shared/core/contracts';
+import { resolveActivityRateOrder } from '../../../shared/core/base/activity-rate-order';
 import {
   AppMenuDispatcher,
   type AppMenuGroup,
@@ -2193,7 +2194,8 @@ export class ActivitiesPopupComponent implements OnDestroy {
     const eventScope = query.filters?.eventScopeFilter ?? this.activitiesEventScope;
     if (primaryFilter === 'rates') {
       return ActivityRateImageCardConverter.convert(source as ActivityRateDTO, {
-        ratedUsers: (query as ActivitiesSmartListConverterQuery).context?.rateUsers ?? []
+        ratedUsers: (query as ActivitiesSmartListConverterQuery).context?.rateUsers ?? [],
+        order: resolveActivityRateOrder(query)
       });
     }
     if (primaryFilter === 'events' || primaryFilter === 'hosting' || primaryFilter === 'invitations') {
@@ -2217,7 +2219,8 @@ export class ActivitiesPopupComponent implements OnDestroy {
     const eventScope = query.filters?.eventScopeFilter ?? this.activitiesEventScope;
     if (primaryFilter === 'rates') {
       return ActivityRateImageCardConverter.convertList(sources as readonly ActivityRateDTO[], {
-        ratedUsers: (query as ActivitiesSmartListConverterQuery).context?.rateUsers ?? []
+        ratedUsers: (query as ActivitiesSmartListConverterQuery).context?.rateUsers ?? [],
+        order: resolveActivityRateOrder(query)
       });
     }
     if (primaryFilter === 'events' || primaryFilter === 'hosting' || primaryFilter === 'invitations') {

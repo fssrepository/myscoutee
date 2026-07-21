@@ -15,6 +15,7 @@ import type {
 import type { UserRatesSyncResult } from '../../contracts/activity.interface';
 import type { IRatesService } from '../../contracts/activity.interface';
 import type { UserDto } from '../../contracts/user.interface';
+import { compareActivityRateItems, resolveActivityRateOrder } from '../../base/activity-rate-order';
 import { BaseUserRatesMapper } from '../../base/mappers';
 import { RateOutboxRepository } from '../../base/repositories/rate-outbox.repository';
 
@@ -106,14 +107,15 @@ export class HttpRatesService implements IRatesService {
     await this.queryRateItemsByUser(userId);
     this.throwIfAborted(signal);
     const [mode, direction] = this.activitiesRateFilter(query).split('-') as ['individual' | 'pair', ActivityRateDTO['direction']];
+    const order = resolveActivityRateOrder(query);
     let params = new HttpParams()
       .set('userId', userId)
       .set('mode', mode === 'pair' ? 'pair' : 'single')
       .set('direction', direction)
-      .set('sort', query.sort ?? 'happenedAt')
+      .set('sort', order.sort)
       .set('socialBadgeEnabled', query.filters?.rateSocialBadgeEnabled === true ? 'true' : 'false')
       .set('limit', String(Math.max(1, Math.trunc(query.pageSize || 10))));
-    const secondaryFilter = this.activitiesSecondaryFilter(query);
+    const secondaryFilter = order.secondaryFilter;
     if (secondaryFilter === 'recent' || secondaryFilter === 'past' || secondaryFilter === 'relevant') {
       params = params.set('secondaryFilter', secondaryFilter);
     }
@@ -256,11 +258,6 @@ export class HttpRatesService implements IRatesService {
       : 'individual-given';
   }
 
-  private activitiesSecondaryFilter(query: ListQuery<ActivitiesFeedFilters>): NonNullable<ActivitiesFeedFilters['secondaryFilter']> {
-    const value = query.filters?.secondaryFilter;
-    return value === 'relevant' || value === 'past' ? value : 'recent';
-  }
-
   private buildCachedActivitiesRatePage(userId: string, query: ListQuery<ActivitiesFeedFilters>): ActivityRatePageResultDTO {
     const [mode, direction] = this.activitiesRateFilter(query).split('-') as ['individual' | 'pair', ActivityRateDTO['direction']];
     const pageSize = Math.max(1, Math.trunc(Number(query.pageSize) || 10));
@@ -314,54 +311,7 @@ export class HttpRatesService implements IRatesService {
   }
 
   private compareRateItems(left: ActivityRateDTO, right: ActivityRateDTO, query: ListQuery<ActivitiesFeedFilters>): number {
-    if (query.sort === 'distance') {
-      const distanceDelta = this.rateDistanceValue(left) - this.rateDistanceValue(right);
-      if (distanceDelta !== 0) {
-        return distanceDelta;
-      }
-      return left.id.localeCompare(right.id);
-    }
-
-    if (query.sort === 'relevance') {
-      const relevanceDelta = this.rateRelevanceScore(right) - this.rateRelevanceScore(left);
-      if (relevanceDelta !== 0) {
-        return relevanceDelta;
-      }
-      return right.id.localeCompare(left.id);
-    }
-
-    const sortDirection = query.direction === 'asc' || query.direction === 'desc'
-      ? query.direction
-      : 'desc';
-    const happenedAtDelta = sortDirection === 'asc'
-      ? AppUtils.toSortableDate(left.happenedAt ?? '') - AppUtils.toSortableDate(right.happenedAt ?? '')
-      : AppUtils.toSortableDate(right.happenedAt ?? '') - AppUtils.toSortableDate(left.happenedAt ?? '');
-    if (happenedAtDelta !== 0) {
-      return happenedAtDelta;
-    }
-    return sortDirection === 'asc'
-      ? left.id.localeCompare(right.id)
-      : right.id.localeCompare(left.id);
-  }
-
-  private rateDistanceValue(item: ActivityRateDTO): number {
-    if (Number.isFinite(item.distanceMetersExact)) {
-      return Math.max(0, Math.trunc(Number(item.distanceMetersExact)));
-    }
-    return 0;
-  }
-
-  private rateRelevanceScore(item: ActivityRateDTO): number {
-    const scoreGiven = Number.isFinite(item.scoreGiven)
-      ? Math.max(0, Math.round(Number(item.scoreGiven)))
-      : 0;
-    const scoreReceived = Number.isFinite(item.scoreReceived)
-      ? Math.max(0, Math.round(Number(item.scoreReceived)))
-      : 0;
-    if (item.direction === 'mutual') {
-      return scoreGiven + scoreReceived;
-    }
-    return scoreGiven > 0 ? scoreGiven : 5;
+    return compareActivityRateItems(left, right, resolveActivityRateOrder(query));
   }
 
   private resolveRateCursorId(cursor: string | null | undefined): string | null {

@@ -3,6 +3,7 @@ import { Injectable, inject } from '@angular/core';
 import type { ActivitiesFeedFilters, ListQuery } from '../../../contracts';
 import type { ActivityRateDTO, ActivityRatePageResultDTO } from '../../../contracts/activity.interface';
 import type { IRatesService } from '../../../contracts/activity.interface';
+import { resolveActivityRateOrder } from '../../../base/activity-rate-order';
 import type { ActivityRateRecordQuery } from '../entity/rate.entity';
 import { LocalRouteDelayService } from './route-delay.service';
 import { LocalUsersRepository } from '../repositories/users.repository';
@@ -70,9 +71,8 @@ export class LocalRatesService extends LocalRouteDelayService implements IRatesS
       'individual' | 'pair',
       'given' | 'received' | 'mutual' | 'met'
     ];
-    const normalizedSort = query.sort === 'distance' || query.sort === 'relevance'
-      ? query.sort
-      : 'happenedAt';
+    const order = resolveActivityRateOrder(query);
+    const normalizedSort = order.sort;
     const sortDirection = query.direction === 'asc' || query.direction === 'desc'
       ? query.direction
       : (normalizedSort === 'distance' ? 'asc' : 'desc');
@@ -84,6 +84,7 @@ export class LocalRatesService extends LocalRouteDelayService implements IRatesS
       socialBadgeEnabled: query.filters?.rateSocialBadgeEnabled === true,
       sort: normalizedSort,
       sortDirection,
+      secondaryFilter: order.secondaryFilter,
       cursor: query.cursor,
       limit: Math.max(1, Math.trunc(query.pageSize)),
       rangeStartIso: query.rangeStart,

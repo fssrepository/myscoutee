@@ -1,6 +1,10 @@
 import { AppUtils } from '../../app-utils';
 import type { ActivityRateDTO } from '../../core/contracts/activity.interface';
 import type { UserDto } from '../../core/contracts/user.interface';
+import {
+  activityRateSortKey,
+  type ActivityRateOrder
+} from '../../core/base/activity-rate-order';
 import type {
   CardContextBadgeConfig,
   ImageCardData,
@@ -11,6 +15,7 @@ import type { UiListConverter } from './converter.types';
 
 export interface ActivityRateImageCardConverterOptions {
   ratedUsers?: readonly UserDto[];
+  order?: ActivityRateOrder;
 }
 
 export class ActivityRateImageCardConverter {
@@ -31,6 +36,10 @@ export class ActivityRateImageCardConverter {
       dateIso: dto.happenedAt ?? '',
       distanceMetersExact,
       sortScore,
+      localSortKey: activityRateSortKey(dto, options.order ?? {
+        sort: 'happenedAt',
+        secondaryFilter: 'recent'
+      }),
       title: primaryUser?.name ?? dto.userId,
       subtitle: '',
       detail: '',

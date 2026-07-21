@@ -14,6 +14,7 @@ import type { UserDto } from '../../../contracts/user.interface';
 import type { UserGameMode, UserRatesSyncResult } from '../../../contracts/activity.interface';
 import { LocalMemoryDb } from '../../../common/app.db';
 import { RateOutboxRepository } from '../../../base/repositories/rate-outbox.repository';
+import { compareActivityRateItems } from '../../../base/activity-rate-order';
 import { ACTIVITY_MEMBERS_TABLE_NAME } from '../entity/activity.entity';
 import { LocalUserRatesMapper } from '../mappers';
 
@@ -588,34 +589,14 @@ export class LocalRatesRepository {
   }
 
   private compareDynamicRateItems(left: ActivityRateDTO, right: ActivityRateDTO, query: ActivityRateRecordQuery): number {
-    if (query.sort === 'distance') {
-      const distanceDelta = this.dynamicDistanceValue(left) - this.dynamicDistanceValue(right);
-      if (distanceDelta !== 0) {
-        return distanceDelta;
-      }
-      return left.id.localeCompare(right.id);
-    }
-
-    if (query.sort === 'relevance') {
-      const relevanceDelta = this.dynamicRelevanceScore(right) - this.dynamicRelevanceScore(left);
-      if (relevanceDelta !== 0) {
-        return relevanceDelta;
-      }
-      return right.id.localeCompare(left.id);
-    }
-
-    const sortDirection = query.sortDirection === 'asc' || query.sortDirection === 'desc'
-      ? query.sortDirection
-      : 'desc';
-    const happenedAtDelta = sortDirection === 'asc'
-      ? AppUtils.toSortableDate(left.happenedAt ?? '') - AppUtils.toSortableDate(right.happenedAt ?? '')
-      : AppUtils.toSortableDate(right.happenedAt ?? '') - AppUtils.toSortableDate(left.happenedAt ?? '');
-    if (happenedAtDelta !== 0) {
-      return happenedAtDelta;
-    }
-    return sortDirection === 'asc'
-      ? left.id.localeCompare(right.id)
-      : right.id.localeCompare(left.id);
+    return compareActivityRateItems(left, right, {
+      sort: query.sort,
+      secondaryFilter: query.sort === 'relevance'
+        ? 'relevant'
+        : query.secondaryFilter === 'past' || query.secondaryFilter === 'relevant'
+          ? query.secondaryFilter
+          : 'recent'
+    });
   }
 
   private dynamicDistanceMetersExact(record: UserRateRecord): number {
@@ -623,26 +604,6 @@ export class LocalRatesRepository {
       return Math.max(0, Math.trunc(Number(record.distanceMetersExact)));
     }
     return 0;
-  }
-
-  private dynamicDistanceValue(item: ActivityRateDTO): number {
-    if (Number.isFinite(item.distanceMetersExact)) {
-      return Math.max(0, Math.trunc(Number(item.distanceMetersExact)));
-    }
-    return 0;
-  }
-
-  private dynamicRelevanceScore(item: ActivityRateDTO): number {
-    const scoreGiven = Number.isFinite(item.scoreGiven)
-      ? Math.max(0, Math.round(Number(item.scoreGiven)))
-      : 0;
-    const scoreReceived = Number.isFinite(item.scoreReceived)
-      ? Math.max(0, Math.round(Number(item.scoreReceived)))
-      : 0;
-    if (item.direction === 'mutual') {
-      return scoreGiven + scoreReceived;
-    }
-    return scoreGiven > 0 ? scoreGiven : 5;
   }
 
   private dynamicScoreGiven(record: UserRateRecord): number {

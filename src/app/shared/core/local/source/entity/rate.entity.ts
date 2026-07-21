@@ -35,6 +35,7 @@ export interface ActivityRateRecordQuery {
   socialBadgeEnabled?: boolean;
   sort: ActivityRateRecordSort;
   sortDirection?: 'asc' | 'desc';
+  secondaryFilter?: 'recent' | 'past' | 'relevant';
   cursor?: string | null;
   offset?: number;
   limit?: number;
