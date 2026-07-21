@@ -25,6 +25,7 @@ import { MatInputModule } from '@angular/material/input';
 import { MatSelectModule } from '@angular/material/select';
 
 import { PricingBuilder } from '../../../../../../core/base/builders';
+import { I18nService } from '../../../../../../core';
 import { I18nPipe } from '../../../../../pipes';
 import type * as ContractTypes from '../../../../../../core/contracts';
 import { PricingSlotPanelComponent } from './pricing-slot-panel';
@@ -182,6 +183,7 @@ export class PricingEditorInputComponent implements OnChanges, DoCheck, OnDestro
   protected resolvedConfig: ResolvedPricingEditorConfig = this.resolveConfig();
   protected wizardOpen = false;
   private readonly formFlowPopupStore = inject(FormFlowPopupStore);
+  private readonly i18n = inject(I18nService);
   private readonly ownerId = this.nextOwnerId();
   protected readonly pricingEditorPopupOutletInputs = computed(() => {
     const popup = this.formFlowPopupStore.pricingEditorPopupRef();
@@ -299,7 +301,7 @@ export class PricingEditorInputComponent implements OnChanges, DoCheck, OnDestro
       case 'whole':
         return 'pricing.rounding.whole';
       case 'half':
-        return '0.50 steps';
+        return 'pricing.rounding.half';
       default:
         return 'pricing.rounding.none';
     }
@@ -1904,8 +1906,12 @@ export class PricingEditorInputComponent implements OnChanges, DoCheck, OnDestro
 
   private priceBasisDetail(pricing: ContractTypes.PricingConfig): string {
     const parts = [
-      `${this.taxModeLabel(pricing.taxMode)} tax`,
-      this.roundingLabel(pricing.rounding)
+      this.i18n.translate(
+        pricing.taxMode === 'included'
+          ? 'pricing.tax.included.summary'
+          : 'pricing.tax.excluded.summary'
+      ),
+      this.i18n.translate(this.roundingLabel(pricing.rounding))
     ];
     if (pricing.minPrice !== null || pricing.maxPrice !== null) {
       parts.push([

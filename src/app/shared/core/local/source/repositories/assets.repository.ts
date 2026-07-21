@@ -1000,6 +1000,7 @@ export class LocalAssetsRepository {
       nextById[projectionId] = {
         ...cloned,
         id: projectionId,
+        requestId,
         assetId: asset.id,
         ownerUserId: asset.ownerUserId,
         ownerKey,

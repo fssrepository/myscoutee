@@ -55,6 +55,7 @@ import {
   type AssetAvailabilityHeaderState,
   type AssetAvailabilityPopupRequest
 } from '../../../shared/ui/context/stores/asset-availability-popup.store';
+import { DialogStore } from '../../../shared/ui/context/stores/dialog.store';
 import {
   AssetStore
 } from '../../../shared/ui/context/stores/asset.store';
@@ -103,6 +104,7 @@ export class AssetAvailabilityPopupComponent {
   private readonly assetsService = inject(AssetsService);
   private readonly i18n = inject(I18nService);
   private readonly assetStore = inject(AssetStore);
+  private readonly dialogStore = inject(DialogStore);
   protected readonly resourcePopupStore = inject(SubEventResourcePopupStore);
   protected readonly availabilityPopupStore = inject(AssetAvailabilityPopupStore);
   private readonly cdr = inject(ChangeDetectorRef);
@@ -530,6 +532,51 @@ export class AssetAvailabilityPopupComponent {
       this.openAvailabilityResourceManager(row);
       return;
     }
+    if (action === 'accept' || action === 'remove') {
+      this.openAssetRequestActionConfirmation(row, action);
+      return;
+    }
+    await this.executeRowAction(row, action);
+  }
+
+  private openAssetRequestActionConfirmation(
+    row: AppDTOs.AssetOccupancyRowDTO,
+    action: Extract<AppConstants.AssetRequestAction, 'accept' | 'remove'>
+  ): void {
+    const accepting = action === 'accept';
+    const requester = `${row.title ?? ''}`.trim() || this.i18n.translate('member', 'Member');
+    const asset = this.availabilityHeader()?.title
+      || this.dayListHeader()?.title
+      || this.i18n.translate('asset', 'Asset');
+    this.dialogStore.open({
+      title: this.i18n.translate(
+        accepting ? 'asset.requests.confirm.accept.title' : 'asset.requests.confirm.reject.title'
+      ),
+      message: this.i18n.translateParams(
+        accepting ? 'asset.requests.confirm.accept.message' : 'asset.requests.confirm.reject.message',
+        { requester, asset }
+      ),
+      cancelLabel: this.i18n.translate('cancel', 'Cancel'),
+      confirmLabel: this.i18n.translate(accepting ? 'accept' : 'reject'),
+      busyConfirmLabel: this.i18n.translate(
+        accepting ? 'accepting' : 'asset.requests.rejecting'
+      ),
+      confirmTone: accepting ? 'accent' : 'danger',
+      failureMessage: this.i18n.translate('asset.requests.confirm.failure'),
+      onConfirm: async () => {
+        try {
+          await this.executeRowAction(row, action);
+        } catch {
+          throw new Error(this.i18n.translate('asset.requests.confirm.failure'));
+        }
+      }
+    });
+  }
+
+  private async executeRowAction(
+    row: AppDTOs.AssetOccupancyRowDTO,
+    action: Extract<AppConstants.AssetRequestAction, 'accept' | 'remove' | 'makeManager'>
+  ): Promise<void> {
     const busyKey = `${row.assetId}:${row.id}:${action}`;
     this.rowBusyKey = busyKey;
     this.cdr.markForCheck();
@@ -1065,16 +1112,25 @@ export class AssetAvailabilityPopupComponent {
   ): Promise<void> {
     const assetDetail = await this.assetsService.loadOwnedAssetDetailById(row.ownerUserId, row.assetId);
     if (!assetDetail) {
-      return;
+      throw new Error('The asset could not be loaded.');
     }
     let nextQuantity = AssetCardBuilder.storedQuantityValue(assetDetail);
+    let targetFound = false;
     const nextRequests = assetDetail.requests
       .map(request => AssetCardBuilder.cloneRequest(request))
       .filter(request => {
         if (request.id !== row.id) {
           return true;
         }
+        targetFound = true;
         if (action === 'remove') {
+          if (request.requestKind !== 'manual' && request.booking?.inventoryApplied === true) {
+            const capacityTotal = Math.max(0, Math.trunc(Number(assetDetail.capacityTotal) || 0));
+            const restoredQuantity = nextQuantity + this.assetRequestQuantity(request);
+            nextQuantity = capacityTotal > 0
+              ? Math.min(capacityTotal, restoredQuantity)
+              : restoredQuantity;
+          }
           return false;
         }
         request.status = 'accepted';
@@ -1092,11 +1148,19 @@ export class AssetAvailabilityPopupComponent {
         }
         return true;
       });
+    if (!targetFound) {
+      throw new Error('The asset request could not be found.');
+    }
     const savedCard = await this.assetsService.saveOwnedAsset(row.ownerUserId, {
       ...assetDetail,
       quantity: nextQuantity,
       requests: nextRequests
     });
+    const savedRequest = savedCard.requests.find(request => request.id === row.id) ?? null;
+    if ((action === 'accept' && savedRequest?.status !== 'accepted')
+      || (action === 'remove' && savedRequest !== null)) {
+      throw new Error('The asset request update was not persisted.');
+    }
     this.replaceAssetCardIfVisible(savedCard, row.ownerUserId);
   }
 
