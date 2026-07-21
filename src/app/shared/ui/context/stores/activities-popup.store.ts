@@ -23,8 +23,12 @@ export interface EventChatHeaderState extends EventChatPopupRequest {
   lastMessage?: string | null;
   lastSenderId?: string | null;
   ownerUserId?: string | null;
+  eventId?: string | null;
+  subEventId?: string | null;
+  groupId?: string | null;
   supportCase?: ContractTypes.ChatSupportCase | null;
   metrics?: ContractTypes.ChatMetricsDTO | null;
+  navigationContext?: ContractTypes.ChatNavigationContextDTO | null;
 }
 
 export interface EventChatSession {
@@ -52,6 +56,9 @@ export function eventChatHeaderStateFromChat(chat: ChatDTO): EventChatHeaderStat
     lastMessage: chat.lastMessage,
     lastSenderId: chat.lastSenderId,
     ownerUserId: chat.ownerUserId ?? null,
+    eventId: chat.eventId ?? null,
+    subEventId: chat.subEventId ?? null,
+    groupId: chat.groupId ?? null,
     supportCase: chat.supportCase
       ? {
           ...chat.supportCase,
@@ -67,7 +74,14 @@ export function eventChatHeaderStateFromChat(chat: ChatDTO): EventChatHeaderStat
           groupsCount: chat.metrics.groupsCount ?? null,
           pendingTotal: Math.max(0, Math.trunc(Number(chat.metrics.pendingTotal) || 0))
         }
-      : chat.metrics
+      : chat.metrics,
+    navigationContext: chat.navigationContext
+      ? {
+          ...chat.navigationContext,
+          subEvent: { ...chat.navigationContext.subEvent },
+          group: chat.navigationContext.group ? { ...chat.navigationContext.group } : chat.navigationContext.group
+        }
+      : chat.navigationContext
   };
 }
 
@@ -651,7 +665,16 @@ export class ActivitiesPopupStore {
             groupsCount: header.metrics.groupsCount ?? null,
             pendingTotal: Math.max(0, Math.trunc(Number(header.metrics.pendingTotal) || 0))
           }
-        : header.metrics
+        : header.metrics,
+      navigationContext: header.navigationContext
+        ? {
+            ...header.navigationContext,
+            subEvent: { ...header.navigationContext.subEvent },
+            group: header.navigationContext.group
+              ? { ...header.navigationContext.group }
+              : header.navigationContext.group
+          }
+        : header.navigationContext
     };
   }
 }

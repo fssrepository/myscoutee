@@ -63,6 +63,8 @@ export type ActivitiesNavigationRequest =
       type: 'members';
       ownerId: string;
       ownerType?: ActivityMemberOwnerType;
+      eventId?: string;
+      subEventId?: string;
       subtitle?: string;
       canManage?: boolean;
       viewOnly?: boolean;

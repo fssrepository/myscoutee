@@ -1232,6 +1232,8 @@ export class EventResourcePopupComponent {
       type: 'members',
       ownerId: sourceCard.id,
       ownerType: 'asset',
+      eventId: context.ownerId,
+      subEventId: context.subEvent.id,
       subtitle,
       canManage: this.isAssetOwnedByActiveUser(sourceCard),
       acceptedMembers,

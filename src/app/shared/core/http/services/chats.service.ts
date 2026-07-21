@@ -45,9 +45,13 @@ interface HttpChatDto {
   channelType?: ContractTypes.ChatChannelType;
   serviceContext?: 'event' | 'asset' | 'notification';
   ownerId?: string;
+  eventId?: string;
+  subEventId?: string;
+  groupId?: string;
   distanceKm?: number;
   distanceMetersExact?: number;
   metrics?: ChatMetricsDTO | null;
+  navigationContext?: ContractTypes.ChatNavigationContextDTO | null;
   supportCase?: {
     status?: ContractTypes.SupportCaseStatus | string | null;
     assignee?: {
@@ -634,11 +638,15 @@ export class HttpChatsService implements IChatsService {
       channelType: item.channelType,
       serviceContext: item.serviceContext,
       ownerId: this.normalizeHttpText(item.ownerId) || undefined,
+      eventId: this.normalizeHttpText(item.eventId) || undefined,
+      subEventId: this.normalizeHttpText(item.subEventId) || undefined,
+      groupId: this.normalizeHttpText(item.groupId) || undefined,
       distanceKm,
       distanceMetersExact,
       supportCase: this.mapSupportCase(item.supportCase),
       ownerUserId,
-      metrics: this.cloneMetrics(item.metrics)
+      metrics: this.cloneMetrics(item.metrics),
+      navigationContext: this.cloneNavigationContext(item.navigationContext)
     };
   }
 
@@ -648,7 +656,21 @@ export class HttpChatsService implements IChatsService {
       memberIds: [...(item.memberIds ?? [])],
       members: this.cloneChatMembers(item.members),
       supportCase: this.cloneSupportCase(item.supportCase),
-      metrics: this.cloneMetrics(item.metrics)
+      metrics: this.cloneMetrics(item.metrics),
+      navigationContext: this.cloneNavigationContext(item.navigationContext)
+    };
+  }
+
+  private cloneNavigationContext(
+    context: ContractTypes.ChatNavigationContextDTO | null | undefined
+  ): ContractTypes.ChatNavigationContextDTO | null | undefined {
+    if (!context) {
+      return context;
+    }
+    return {
+      ...context,
+      subEvent: { ...context.subEvent },
+      group: context.group ? { ...context.group } : context.group
     };
   }
 

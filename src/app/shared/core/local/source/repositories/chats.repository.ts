@@ -379,7 +379,8 @@ export class LocalChatsRepository {
   markChatRead(
     chat: ChatRecord,
     ownerUserId: string,
-    messageIds: readonly string[]
+    messageIds: readonly string[],
+    wholeChannel = false
   ): { messageIds: string[]; unread: number; reader: ContractTypes.ChatReadAvatar; readAtIso: string } | null {
     const normalizedOwnerUserId = `${ownerUserId ?? ''}`.trim();
     const targetIds = [...new Set(
@@ -390,7 +391,7 @@ export class LocalChatsRepository {
     const sourceId = `${chat.id ?? ''}`.trim();
     const channelOwnerId = `${chat.ownerId ?? ''}`.trim();
     const channelType = `${chat.channelType ?? ''}`.trim();
-    if (!normalizedOwnerUserId || (!sourceId && !channelOwnerId) || targetIds.length === 0) {
+    if (!normalizedOwnerUserId || (!sourceId && !channelOwnerId)) {
       return null;
     }
     const recordsTable = this.memoryDb.read()[CHATS_TABLE_NAME];
@@ -400,6 +401,21 @@ export class LocalChatsRepository {
     }
     const record = recordsTable.byId[recordKey] ?? null;
     if (!record) {
+      return null;
+    }
+
+    if (wholeChannel) {
+      const messagesTable = this.memoryDb.read()[CHAT_MESSAGES_TABLE_NAME];
+      const chatKey = LocalChatMessageMapper.chatKey(record.ownerUserId, record.id);
+      targetIds.splice(
+        0,
+        targetIds.length,
+        ...(messagesTable.idsByChatKey[chatKey] ?? [])
+          .map(recordId => messagesTable.byId[recordId]?.messageId ?? '')
+          .filter(Boolean)
+      );
+    }
+    if (targetIds.length === 0) {
       return null;
     }
 

@@ -143,6 +143,8 @@ export class EventMembersPopupComponent {
 
   private ownerRecord: ActivityEventRecord | null = null;
   private ownerRef: ActivityMemberOwnerRef | null = null;
+  private memberEventId = '';
+  private memberSubEventId = '';
   private canManageMembers = false;
   private selectedMembersVisible: ReadonlyArray<ActivityContracts.ActivityMemberDTO> = [];
   private membersListReady = false;
@@ -212,6 +214,8 @@ export class EventMembersPopupComponent {
       if (request.type === 'members') {
         this.openMembersPopup(request.ownerId, {
           ownerType: request.ownerType ?? 'event',
+          eventId: request.eventId,
+          subEventId: request.subEventId,
           subtitle: request.subtitle,
           canManage: request.canManage,
           viewOnly: request.viewOnly,
@@ -340,7 +344,6 @@ export class EventMembersPopupComponent {
       return;
     }
     this.pendingOnly = !this.pendingOnly;
-    this.invalidateMembersCacheForOwner(this.ownerId);
     this.membersSmartList?.closeMenu();
     this.syncMembersSmartListQuery();
     this.cdr.markForCheck();
@@ -358,6 +361,8 @@ export class EventMembersPopupComponent {
     this.isOpen = false;
     this.ownerId = '';
     this.ownerRef = null;
+    this.memberEventId = '';
+    this.memberSubEventId = '';
     this.lookupRef = null;
     this.ownerRecord = null;
     this.membersSmartList?.closeMenu();
@@ -887,6 +892,8 @@ export class EventMembersPopupComponent {
       canManage?: boolean;
       viewOnly?: boolean;
       ownerType?: ActivityMemberOwnerType;
+      eventId?: string;
+      subEventId?: string;
       lookup?: AppUiTypes.PopupHeaderLookup;
       acceptedMembers?: number;
       pendingMembers?: number;
@@ -902,8 +909,11 @@ export class EventMembersPopupComponent {
     }
     const ownerType = options?.ownerType ?? 'event';
     const lookup = options?.lookup ?? null;
-    const initialMembers = ownerType !== 'event' && Array.isArray(options?.initialMembers)
+    const providedInitialMembers = ownerType !== 'event' && Array.isArray(options?.initialMembers)
       ? this.sortMembersByActionTimeDesc(options.initialMembers)
+      : null;
+    const initialMembers = this.activityMembersService.usesLocalDataSource()
+      ? providedInitialMembers
       : null;
     this.isOpen = true;
     this.ownerId = normalizedOwnerId;
@@ -916,6 +926,8 @@ export class EventMembersPopupComponent {
           ownerType,
           ownerId: normalizedOwnerId
         };
+    this.memberEventId = `${options?.eventId ?? ''}`.trim();
+    this.memberSubEventId = `${options?.subEventId ?? ''}`.trim();
     this.ownerRecord = null;
     this.title = 'Members';
     this.subtitle = options?.subtitle?.trim() || 'Event';
@@ -931,6 +943,10 @@ export class EventMembersPopupComponent {
     this.isLocalMembersSource = initialMembers !== null;
     if (initialMembers) {
       this.membersCacheByOwnerId.set(this.membersCacheKey(normalizedOwnerId), initialMembers);
+      this.membersCacheByOwnerId.set(
+        this.membersCacheKey(normalizedOwnerId, true),
+        initialMembers.filter(member => member.status === 'pending')
+      );
       this.pendingInitialMembersDelayOwnerIds.add(normalizedOwnerId);
       void this.usersService.warmCachedUsers(
         initialMembers
@@ -943,8 +959,8 @@ export class EventMembersPopupComponent {
     }
     this.membersChangeHandler = options?.onMembersChanged ?? null;
     this.membersSmartListQuery = {};
-    if (initialMembers && !Number.isFinite(Number(options?.acceptedMembers)) && !Number.isFinite(Number(options?.pendingMembers)) && !Number.isFinite(Number(options?.capacityTotal))) {
-      this.applySummaryFromMembers(initialMembers);
+    if (providedInitialMembers && !Number.isFinite(Number(options?.acceptedMembers)) && !Number.isFinite(Number(options?.pendingMembers)) && !Number.isFinite(Number(options?.capacityTotal))) {
+      this.applySummaryFromMembers(providedInitialMembers);
     }
     const hasProvidedSummary =
       Number.isFinite(Number(options?.acceptedMembers))
@@ -1069,13 +1085,22 @@ export class EventMembersPopupComponent {
         ? this.ownerRef
         : null;
       const loadedMembers = owner
-        ? await this.activityMembersService.queryMembersByOwner(owner, { pendingOnly })
-        : await this.activityMembersService.queryMembersByOwnerId(ownerId, { pendingOnly });
+        ? await this.activityMembersService.queryMembersByOwner(owner, {
+            pendingOnly,
+            eventId: this.memberEventId,
+            subEventId: this.memberSubEventId
+          })
+        : await this.activityMembersService.queryMembersByOwnerId(ownerId, {
+            pendingOnly,
+            eventId: this.memberEventId,
+            subEventId: this.memberSubEventId
+          });
       members = this.sortMembersByActionTimeDesc(loadedMembers);
       void this.usersService.warmCachedUsers(members.map(member => member.userId));
       this.membersCacheByOwnerId.set(cacheKey, members);
       if (!pendingOnly && this.isOpen && this.ownerId === ownerId) {
         this.syncCanManageMembers(members);
+        this.applySummaryFromMembers(members);
       }
     }
 

@@ -1174,6 +1174,8 @@ export interface ActivityMemberOwnerRef {
 
 export interface ActivityMembersQueryOptions {
   pendingOnly?: boolean;
+  eventId?: string;
+  subEventId?: string;
 }
 
 export interface ActivityMembersPageResultDTO {

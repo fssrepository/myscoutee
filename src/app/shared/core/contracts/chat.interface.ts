@@ -1,4 +1,5 @@
 import type * as AppConstants from '../common/constants';
+import type { SubEventDTO } from './event.interface';
 
 export type ChatUserGender = 'woman' | 'man' | 'deleted';
 
@@ -140,6 +141,25 @@ export interface ChatMetricsDTO {
   pendingTotal: number;
 }
 
+export interface ChatGroupContextDTO {
+  id: string;
+  name: string;
+  source?: string | null;
+  accepted: number;
+  pending: number;
+  capacityMin: number;
+  capacityMax: number;
+}
+
+export interface ChatNavigationContextDTO {
+  eventId: string;
+  eventTitle: string;
+  eventTarget: 'events' | 'hosting';
+  eventPendingMembers: number;
+  subEvent: SubEventDTO;
+  group?: ChatGroupContextDTO | null;
+}
+
 export interface ChatDTO {
   id: string;
   avatar: string;
@@ -155,9 +175,13 @@ export interface ChatDTO {
   channelType?: ChatChannelType;
   serviceContext?: 'event' | 'asset' | 'notification';
   ownerId?: string;
+  eventId?: string;
+  subEventId?: string;
+  groupId?: string;
   supportCase?: ChatSupportCase | null;
   ownerUserId?: string | null;
   metrics?: ChatMetricsDTO | null;
+  navigationContext?: ChatNavigationContextDTO | null;
 }
 
 export interface ActivitiesChatPageResultDTO {

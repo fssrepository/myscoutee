@@ -34,6 +34,10 @@ export class ActivityMembersService extends BaseRouteModeService {
     return this.resolveRouteService(ActivityMembersService.MEMBERS_ROUTE, this.localActivityMembersService, this.httpActivityMembersService);
   }
 
+  usesLocalDataSource(): boolean {
+    return this.isLocalRouteEnabled(ActivityMembersService.MEMBERS_ROUTE);
+  }
+
   async waitForMembersRouteDelay(): Promise<void> {
     if (!this.isLocalRouteEnabled(ActivityMembersService.MEMBERS_ROUTE)) {
       return;

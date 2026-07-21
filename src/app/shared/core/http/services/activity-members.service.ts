@@ -35,9 +35,17 @@ export class HttpActivityMembersService {
       return [];
     }
     const pendingOnly = options?.pendingOnly === true;
-    const params = new HttpParams()
+    let params = new HttpParams()
       .set('ownerType', normalizedOwner.ownerType)
       .set('ownerId', normalizedOwner.ownerId);
+    const eventId = `${options?.eventId ?? ''}`.trim();
+    const subEventId = `${options?.subEventId ?? ''}`.trim();
+    if (eventId) {
+      params = params.set('eventId', eventId);
+    }
+    if (subEventId) {
+      params = params.set('subEventId', subEventId);
+    }
     try {
       const response = await this.http
         .get<ActivityContracts.ActivityMemberDTO[] | null>(`${this.apiBaseUrl}/activities/events/members`, {

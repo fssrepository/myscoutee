@@ -1,4 +1,5 @@
 import { EVENTS_TABLE_NAME } from '../../source/entity/event.entity';
+import { CHATS_TABLE_NAME, type ChatThreadRecordCollection } from '../../source/entity/chat.entity';
 import type { ActivityEventRecordCollection } from '../../source/entity/event.entity';
 import { USERS_TABLE_NAME } from '../../source/entity/user.entity';
 import { Injectable, inject } from '@angular/core';
@@ -37,7 +38,7 @@ interface ExplicitSeedMemberUserIds {
   providedIn: 'root'
 })
 export class SeedActivityMembersRepository {
-  private static readonly MAX_BOOTSTRAP_RECORDS = 1000;
+  private static readonly MAX_BOOTSTRAP_RECORDS = 5000;
   private static readonly MAX_SEEDED_ASSETS_PER_USER = 2;
   private static readonly MAX_SEEDED_ASSET_REQUESTS_PER_OWNER = 1;
   private static readonly MEMBER_MET_PLACES = [
@@ -93,6 +94,10 @@ export class SeedActivityMembersRepository {
       );
     }
     this.setDesiredOwner(desiredOwners, this.buildSeededHomeSocialBridgeRecords(usersById));
+    this.setDesiredOwner(
+      desiredOwners,
+      this.buildSeededGroupChatMemberRecords(state[CHATS_TABLE_NAME], usersById)
+    );
     for (const userId of normalizedOwnerUserIds) {
       this.setDesiredOwner(desiredOwners, this.buildSeededAssetOwnerRecordsForUser(
         userId,
@@ -170,8 +175,8 @@ export class SeedActivityMembersRepository {
     let changed = false;
 
     for (const [ownerKey, records] of desiredOwners.entries()) {
-      const shouldReplace = ownerKey.startsWith('event:')
-        ? this.eventOwnerNeedsRefresh(currentTable, ownerKey, records)
+      const shouldReplace = ownerKey.startsWith('event:') || ownerKey.startsWith('group:')
+        ? this.ownerNeedsRefresh(currentTable, ownerKey, records)
         : !existingOwnerKeys.has(ownerKey);
       if (!shouldReplace) {
         continue;
@@ -213,7 +218,7 @@ export class SeedActivityMembersRepository {
     };
   }
 
-  private eventOwnerNeedsRefresh(
+  private ownerNeedsRefresh(
     currentTable: ActivityMembersRecordCollection,
     ownerKey: string,
     desiredRecords: readonly ActivityMemberRecord[]
@@ -229,6 +234,10 @@ export class SeedActivityMembersRepository {
         !== desiredRecords.filter(record => record.status === 'accepted').length
       || currentRecords.filter(record => record.status === 'pending').length
         !== desiredRecords.filter(record => record.status === 'pending').length
+      || !this.sameUserIds(
+        currentRecords.map(record => record.userId),
+        desiredRecords.map(record => record.userId)
+      )
     );
   }
 
@@ -450,6 +459,55 @@ export class SeedActivityMembersRepository {
           actionAtIso: metAtIso,
           metWhere: group.metWhere,
           avatarUrl: user.images?.[0] ?? '',
+          profile: user
+        }));
+      }
+    }
+    return records;
+  }
+
+  private buildSeededGroupChatMemberRecords(
+    chats: ChatThreadRecordCollection,
+    usersById: ReadonlyMap<string, UserDto>
+  ): ActivityMemberRecord[] {
+    const records: ActivityMemberRecord[] = [];
+    const seen = new Set<string>();
+    for (const id of chats.ids ?? []) {
+      const chat = chats.byId[id];
+      const ownerId = `${chat?.ownerId ?? ''}`.trim();
+      if (!chat || chat.channelType !== 'groupSubEvent' || !ownerId) {
+        continue;
+      }
+      for (const userId of chat.memberIds ?? []) {
+        const normalizedUserId = `${userId ?? ''}`.trim();
+        const key = `${ownerId}:${normalizedUserId}`;
+        if (!normalizedUserId || seen.has(key)) {
+          continue;
+        }
+        const user = usersById.get(normalizedUserId);
+        if (!user) {
+          continue;
+        }
+        seen.add(key);
+        const actionAtIso = chat.dateIso || '2026-02-23T00:00:00.000Z';
+        records.push(this.toRecord({ ownerType: 'group', ownerId }, {
+          id: `group-chat-member:${ownerId}:${normalizedUserId}`,
+          userId: normalizedUserId,
+          name: user.name,
+          initials: user.initials,
+          gender: user.gender,
+          city: user.city,
+          statusText: user.statusText,
+          role: 'Member',
+          status: 'accepted',
+          pendingSource: null,
+          requestKind: null,
+          invitedByActiveUser: false,
+          invitedByUserId: null,
+          metAtIso: actionAtIso,
+          actionAtIso,
+          metWhere: `${chat.title ?? 'Group channel'}`.split(' · ')[0],
+          avatarUrl: AppUtils.firstImageUrl(user.images),
           profile: user
         }));
       }

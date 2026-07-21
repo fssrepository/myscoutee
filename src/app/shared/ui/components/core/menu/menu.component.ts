@@ -588,6 +588,9 @@ export class AppMenuComponent<TId extends string = string, TContext = unknown>
     if (this.trigger?.hideLabel === true) {
       return '';
     }
+    if (this.isCustomTriggerAction) {
+      return '';
+    }
     if (this.isSelectKind && this.triggerLayout() !== 'icon') {
       return 'expand_more';
     }
