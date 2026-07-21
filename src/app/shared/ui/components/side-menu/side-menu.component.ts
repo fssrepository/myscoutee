@@ -98,6 +98,7 @@ import { MemberMenuStore } from '../../context/stores/member-menu.store';
 import { ActivityInvitePopupStore } from '../../context/stores/activity-invite-popup.store';
 import { AdminMenuStore } from '../../context/stores/admin-menu.store';
 import { AdminWorkspaceStore } from '../../context/stores/admin-workspace.store';
+import { installSessionActiveUserSync } from './session-active-user-sync';
 
 interface NavigatorAvatarState {
   badgeCount: number;
@@ -805,16 +806,11 @@ export class SideMenuComponent implements OnDestroy {
       }
     });
 
-    effect(() => {
-      const session = this.sessionService.session();
-      const sessionUserId = session?.kind === 'firebase'
-        ? session.profile.id.trim()
-        : session?.userId.trim() ?? '';
-      if (this.userProfileStore.activeUserId().trim() === sessionUserId) {
-        return;
-      }
-      this.userProfileStore.setActiveUserId(sessionUserId);
-    });
+    installSessionActiveUserSync(
+      this.sessionService.session,
+      this.userProfileStore.activeUserId,
+      userId => this.userProfileStore.setActiveUserId(userId)
+    );
 
     effect(() => {
       const session = this.sessionService.session();
