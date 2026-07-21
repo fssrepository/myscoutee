@@ -275,29 +275,23 @@ export class HttpAssetsService {
     const normalizedDetail = this.normalizeDetail(asset);
     const normalizedAsset = normalizedDetail ? this.normalizeCard(normalizedDetail) : null;
     if (!normalizedUserId || !normalizedDetail || !normalizedAsset) {
-      return this.normalizeCard(asset) ?? new AssetDto(asset);
+      throw new Error('A valid asset and owner are required.');
+    }
+    const response = await this.http
+      .post<AppDTOs.AssetDTO | null>(`${this.apiBaseUrl}/assets/upsert`, {
+        userId: normalizedUserId,
+        asset: normalizedDetail
+      })
+      .toPromise();
+    const savedAsset = this.normalizeCard(response);
+    if (!savedAsset) {
+      throw new Error('The asset request was not accepted by the server.');
     }
     this.cachedAssetsByUserId[normalizedUserId] = this.upsertCard(
       this.peekOwnedAssetsByUser(normalizedUserId),
-      normalizedAsset
+      savedAsset
     );
-    try {
-      const response = await this.http
-        .post<AppDTOs.AssetDTO | null>(`${this.apiBaseUrl}/assets/upsert`, {
-          userId: normalizedUserId,
-          asset: normalizedDetail
-        })
-        .toPromise();
-      const savedAsset = this.normalizeCard(response) ?? normalizedAsset;
-      this.cachedAssetsByUserId[normalizedUserId] = this.upsertCard(
-        this.peekOwnedAssetsByUser(normalizedUserId),
-        savedAsset
-      );
-      return this.cloneCards([savedAsset])[0] ?? savedAsset;
-    } catch {
-      // Keep optimistic cache while concrete endpoint wiring lands.
-    }
-    return this.cloneCards([normalizedAsset])[0] ?? normalizedAsset;
+    return this.cloneCards([savedAsset])[0] ?? savedAsset;
   }
 
   async replaceOwnedAssets(userId: string, assets: readonly AppDTOs.AssetDTO[]): Promise<AppDTOs.AssetDTO[]> {

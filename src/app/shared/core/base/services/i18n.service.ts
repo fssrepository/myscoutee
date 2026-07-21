@@ -106,6 +106,18 @@ export class I18nService {
     return translated;
   }
 
+  translateParams(
+    value: string | null | undefined,
+    values: Record<string, string | number>,
+    fallback?: string | null
+  ): string {
+    const translated = this.translate(value, fallback);
+    return this.interpolate(
+      translated,
+      Object.fromEntries(Object.entries(values).map(([key, item]) => [key, `${item ?? ''}`]))
+    );
+  }
+
   private async loadPreferredLanguage(): Promise<void> {
     await this.loadDefaultSourceBundle();
 

@@ -89,25 +89,20 @@ export class HttpActivityResourcesService {
     if (!normalizedState) {
       return null;
     }
-    this.cachedStateByRecordId[ActivityResourceBuilder.recordId(normalizedState)] = normalizedState;
-    try {
-      const response = await this.requestWithAbort(
-        this.http
-          .post<AppDTOs.ActivitySubEventResourceStateDTO | null>(
-            `${this.apiBaseUrl}/activities/events/subevent-resources/replace`,
-            normalizedState
-          ),
-        signal
-      );
-      const savedState = ActivityResourceBuilder.normalizeState(response, normalizedState) ?? normalizedState;
-      this.cachedStateByRecordId[ActivityResourceBuilder.recordId(savedState)] = savedState;
-      return ActivityResourceBuilder.cloneState(savedState);
-    } catch {
-      if (signal?.aborted) {
-        throw this.createAbortError();
-      }
-      return ActivityResourceBuilder.cloneState(normalizedState);
+    const response = await this.requestWithAbort(
+      this.http
+        .post<AppDTOs.ActivitySubEventResourceStateDTO | null>(
+          `${this.apiBaseUrl}/activities/events/subevent-resources/replace`,
+          normalizedState
+        ),
+      signal
+    );
+    const savedState = ActivityResourceBuilder.normalizeState(response, null);
+    if (!savedState) {
+      throw new Error('Activity resource assignment was not persisted.');
     }
+    this.cachedStateByRecordId[ActivityResourceBuilder.recordId(savedState)] = savedState;
+    return ActivityResourceBuilder.cloneState(savedState);
   }
 
   private createAbortError(): Error {

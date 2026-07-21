@@ -10,6 +10,7 @@ import { LocalUsersRepository } from './users.repository';
 import {
   ASSET_REQUESTS_TABLE_NAME,
   ASSETS_TABLE_NAME,
+  type AssetMemberRequestRecord,
   type AssetRequestRecord,
   type AssetRequestsRecordCollection,
   type AssetRecord,
@@ -209,16 +210,31 @@ export class LocalAssetsRepository {
 
     this.memoryDb.write(state => {
       const table = this.normalizeCollection(state[ASSETS_TABLE_NAME]);
+      const requestTable = this.normalizeAssetRequestsCollection(state[ASSET_REQUESTS_TABLE_NAME]);
       const existing = table.byId[incomingRecord.id];
       const nextRecord = this.withResolvedAssetRelevance(this.mergeAssetRecord(existing, incomingRecord, nowMs, 'detail'));
       saved = nextRecord;
       return {
         ...state,
-        [ASSETS_TABLE_NAME]: this.upsertRecordCollection(table, nextRecord)
+        [ASSETS_TABLE_NAME]: this.upsertRecordCollection(table, nextRecord),
+        [ASSET_REQUESTS_TABLE_NAME]: this.synchronizeAssetRequestCollection(
+          requestTable,
+          nextRecord,
+          existing?.requests ?? []
+        )
       };
     });
 
-    return saved ? this.toAssetDto(saved, normalizedUserId) : LocalAssetsMapper.normalizeCard(normalizedDetail)!;
+    const savedRecord = this.normalizeCollection(this.memoryDb.read()[ASSETS_TABLE_NAME]).byId[incomingRecord.id] ?? saved;
+    if (!savedRecord) {
+      return LocalAssetsMapper.normalizeCard(normalizedDetail)!;
+    }
+    const requestTable = this.normalizeAssetRequestsCollection(this.memoryDb.read()[ASSET_REQUESTS_TABLE_NAME]);
+    return this.toAssetDto(
+      savedRecord,
+      normalizedUserId,
+      this.assetRequestMetricsByAssetId(requestTable, [savedRecord]).get(savedRecord.id)
+    );
   }
 
   async replaceOwnedAssets(
@@ -250,18 +266,23 @@ export class LocalAssetsRepository {
 
     this.memoryDb.write(state => {
       let nextTable = this.normalizeCollection(state[ASSETS_TABLE_NAME]);
+      let nextRequestTable = this.normalizeAssetRequestsCollection(state[ASSET_REQUESTS_TABLE_NAME]);
       for (const assetId of ownerIds) {
         if (seenIds.has(assetId)) {
           continue;
         }
         nextTable = this.deleteRecordCollection(nextTable, assetId);
+        nextRequestTable = this.deleteAssetRequestCollection(nextRequestTable, assetId);
       }
       for (const record of nextRecords) {
+        const previousRequests = nextTable.byId[record.id]?.requests ?? [];
         nextTable = this.upsertRecordCollection(nextTable, record);
+        nextRequestTable = this.synchronizeAssetRequestCollection(nextRequestTable, record, previousRequests);
       }
       return {
         ...state,
-        [ASSETS_TABLE_NAME]: nextTable
+        [ASSETS_TABLE_NAME]: nextTable,
+        [ASSET_REQUESTS_TABLE_NAME]: nextRequestTable
       };
     });
 
@@ -276,13 +297,15 @@ export class LocalAssetsRepository {
     }
     this.memoryDb.write(state => {
       const table = this.normalizeCollection(state[ASSETS_TABLE_NAME]);
+      const requestTable = this.normalizeAssetRequestsCollection(state[ASSET_REQUESTS_TABLE_NAME]);
       const current = table.byId[normalizedAssetId];
       if (!current || current.ownerUserId !== normalizedUserId) {
         return state;
       }
       return {
         ...state,
-        [ASSETS_TABLE_NAME]: this.deleteRecordCollection(table, normalizedAssetId)
+        [ASSETS_TABLE_NAME]: this.deleteRecordCollection(table, normalizedAssetId),
+        [ASSET_REQUESTS_TABLE_NAME]: this.deleteAssetRequestCollection(requestTable, normalizedAssetId)
       };
     });
   }
@@ -939,6 +962,101 @@ export class LocalAssetsRepository {
 
   private assetRequestOwnerKey(assetId: string): string {
     return `asset:${assetId.trim()}`;
+  }
+
+  private assetRequestProjectionId(assetId: string, requestId: string): string {
+    return `${assetId.trim()}:request:${requestId.trim()}`;
+  }
+
+  private synchronizeAssetRequestCollection(
+    table: AssetRequestsRecordCollection,
+    asset: AssetRecord,
+    previousRequests: readonly AssetMemberRequestRecord[] = []
+  ): AssetRequestsRecordCollection {
+    const ownerKey = this.assetRequestOwnerKey(asset.id);
+    const existingIds = table.idsByOwnerKey[ownerKey] ?? [];
+    const nextById = { ...table.byId };
+    const retainedIds = new Set<string>();
+
+    for (const request of asset.requests) {
+      const requestId = `${request.id ?? ''}`.trim();
+      if (!requestId) {
+        continue;
+      }
+      const projectionId = this.assetRequestProjectionId(asset.id, requestId);
+      retainedIds.add(projectionId);
+      const existing = nextById[projectionId];
+      const requestedAtIso = `${request.requestedAtIso ?? ''}`.trim();
+      const requestedAtMs = requestedAtIso ? Date.parse(requestedAtIso) : Number.NaN;
+      const createdMs = Number.isFinite(Number(existing?.createdMs))
+        ? Number(existing?.createdMs)
+        : Number.isFinite(requestedAtMs)
+          ? requestedAtMs
+          : asset.createdMs;
+      const createdAtIso = `${existing?.createdAtIso ?? ''}`.trim()
+        || requestedAtIso
+        || asset.createdAtIso;
+      const cloned = LocalAssetsMapper.cloneRequest(request);
+      nextById[projectionId] = {
+        ...cloned,
+        id: projectionId,
+        assetId: asset.id,
+        ownerUserId: asset.ownerUserId,
+        ownerKey,
+        assetCapacity: Math.max(0, Math.trunc(Number(asset.capacityTotal) || 0)),
+        createdMs,
+        updatedMs: asset.updatedMs,
+        createdAtIso,
+        updatedAtIso: asset.updatedAtIso
+      };
+    }
+
+    const removedIds = new Set(
+      previousRequests
+        .map(request => `${request.id ?? ''}`.trim())
+        .filter(Boolean)
+        .map(requestId => this.assetRequestProjectionId(asset.id, requestId))
+        .filter(projectionId => !retainedIds.has(projectionId))
+    );
+    for (const removedId of removedIds) {
+      delete nextById[removedId];
+    }
+    const nextIds = table.ids.filter(id => !removedIds.has(id));
+    for (const projectionId of retainedIds) {
+      if (!nextIds.includes(projectionId)) {
+        nextIds.unshift(projectionId);
+      }
+    }
+    const nextIdsByOwnerKey = this.cloneAssetRequestOwnerKeyIndex(table.idsByOwnerKey);
+    nextIdsByOwnerKey[ownerKey] = [
+      ...existingIds.filter(id => !removedIds.has(id)),
+      ...[...retainedIds].filter(id => !existingIds.includes(id))
+    ];
+    return {
+      byId: nextById,
+      ids: nextIds,
+      idsByOwnerKey: nextIdsByOwnerKey
+    };
+  }
+
+  private deleteAssetRequestCollection(
+    table: AssetRequestsRecordCollection,
+    assetId: string
+  ): AssetRequestsRecordCollection {
+    const ownerKey = this.assetRequestOwnerKey(assetId);
+    const deletedIds = new Set(table.idsByOwnerKey[ownerKey] ?? []);
+    if (deletedIds.size === 0) {
+      return table;
+    }
+    const nextById = { ...table.byId };
+    deletedIds.forEach(id => delete nextById[id]);
+    const nextIdsByOwnerKey = this.cloneAssetRequestOwnerKeyIndex(table.idsByOwnerKey);
+    delete nextIdsByOwnerKey[ownerKey];
+    return {
+      byId: nextById,
+      ids: table.ids.filter(id => !deletedIds.has(id)),
+      idsByOwnerKey: nextIdsByOwnerKey
+    };
   }
 
   private normalizeCollection(value: unknown): AssetsRecordCollection {
