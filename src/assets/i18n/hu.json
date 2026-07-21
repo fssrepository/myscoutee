@@ -1,6 +1,6 @@
 {
   "lang": "hu",
-  "version": "2026.07.20.hu.6",
+  "version": "2026.07.21.hu.1",
   "messages": {
     "about": "Rólam",
     "accommodation": "Szállás",
@@ -2197,6 +2197,10 @@
     "pricing.slot.time.window.follows": "Az időablak a kiválasztott idősávot követi.",
     "pricing.slot.time.follows": "Az időzítés ezt az idősávot követi.",
     "minutes": "perc",
+    "event.explore": "Események felfedezése",
+    "friends.going": "Barátok mennek",
+    "open.spots": "Szabad helyek",
+    "topic": "Téma",
     "event.editor.subevents.stage.description.placeholder": "Írd le ezt a szakaszt",
     "event.editor.subevents.mandatory.price.note": "A kötelező aleseményeket a főesemény ára tartalmazza.",
     "event.editor.subevents.stage.rule": "Szakaszszabály",

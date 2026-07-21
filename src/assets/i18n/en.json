@@ -1,6 +1,6 @@
 {
   "lang": "en",
-  "version": "2026.07.20.en.5",
+  "version": "2026.07.21.en.1",
   "messages": {
     "about": "About",
     "accommodation": "Accommodation",
@@ -2197,6 +2197,10 @@
     "pricing.slot.time.window.follows": "Time window will follow the selected slot.",
     "pricing.slot.time.follows": "Time follows this slot.",
     "minutes": "minutes",
+    "event.explore": "Event Explore",
+    "friends.going": "Friends going",
+    "open.spots": "Open spots",
+    "topic": "Topic",
     "event.editor.subevents.stage.description.placeholder": "Describe this stage",
     "event.editor.subevents.mandatory.price.note": "Mandatory sub events are included in the main event price.",
     "event.editor.subevents.stage.rule": "Stage Rule",
