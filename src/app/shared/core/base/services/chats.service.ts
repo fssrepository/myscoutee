@@ -64,6 +64,17 @@ export class ChatsService extends BaseRouteModeService implements IChatsService 
     return this.chatsService.queryChatMembers(normalizedChatId);
   }
 
+  async queryChatMemberEntriesPage(
+    chatId: string,
+    query: ListQuery
+  ): Promise<ActivityContracts.ActivityMembersPageResultDTO> {
+    const normalizedChatId = `${chatId ?? ''}`.trim();
+    if (!normalizedChatId) {
+      return { items: [], total: 0, nextCursor: null };
+    }
+    return this.chatsService.queryChatMembersPage(normalizedChatId, query);
+  }
+
   async sendChatMessage(chat: ChatDTO, text: string, clientId?: string): Promise<ContractTypes.ChatMessageDto | null> {
     return this.chatsService.sendChatMessage(chat, text, clientId);
   }

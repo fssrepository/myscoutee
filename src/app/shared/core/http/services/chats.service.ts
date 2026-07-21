@@ -190,6 +190,12 @@ interface HttpChatMemberDto {
   profile?: ActivityContracts.ActivityMemberDTO['profile'];
 }
 
+interface HttpChatMembersPageResponseDto {
+  items?: HttpChatMemberDto[] | null;
+  total?: number | null;
+  nextCursor?: string | null;
+}
+
 interface HttpChatSocketEventDto {
   type: 'message' | 'ack' | 'typing' | 'read' | 'error';
   chatId: string;
@@ -380,6 +386,44 @@ export class HttpChatsService implements IChatsService {
         : [];
     } catch {
       return [];
+    }
+  }
+
+  async queryChatMembersPage(
+    chatId: string,
+    query: ListQuery
+  ): Promise<ActivityContracts.ActivityMembersPageResultDTO> {
+    const normalizedChatId = `${chatId ?? ''}`.trim();
+    if (!normalizedChatId) {
+      return { items: [], total: 0, nextCursor: null };
+    }
+    let params = this.activeUserParams().set('limit', `${Math.max(1, Math.trunc(Number(query.pageSize) || 16))}`);
+    const cursor = `${query.cursor ?? ''}`.trim();
+    if (cursor) {
+      params = params.set('cursor', cursor);
+    }
+    if ((query.filters as { pendingOnly?: boolean } | undefined)?.pendingOnly === true) {
+      params = params.set('pendingOnly', 'true');
+    }
+    try {
+      const response = await this.http
+        .get<HttpChatMembersPageResponseDto | null>(
+          `${this.apiBaseUrl}/activities/chats/${encodeURIComponent(normalizedChatId)}/members/page`,
+          { params }
+        )
+        .toPromise();
+      const items = Array.isArray(response?.items)
+        ? response.items.map((member, index) => this.mapChatMember(member, normalizedChatId, index))
+        : [];
+      return {
+        items,
+        total: Number.isFinite(response?.total) ? Math.max(0, Math.trunc(Number(response?.total))) : items.length,
+        nextCursor: typeof response?.nextCursor === 'string' && response.nextCursor.trim()
+          ? response.nextCursor.trim()
+          : null
+      };
+    } catch {
+      return { items: [], total: 0, nextCursor: null };
     }
   }
 

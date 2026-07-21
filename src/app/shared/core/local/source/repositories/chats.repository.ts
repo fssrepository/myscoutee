@@ -1,4 +1,5 @@
 import { CHAT_MESSAGES_TABLE_NAME, CHATS_TABLE_NAME } from '../entity/chat.entity';
+import { ACTIVITY_MEMBERS_TABLE_NAME } from '../entity/activity.entity';
 import type { ChatMessageRecord } from '../entity/chat.entity';
 import type { ChatRecord, ChatThreadRecord } from '../entity/chat.entity';
 import { USERS_TABLE_NAME } from '../entity/user.entity';
@@ -76,21 +77,80 @@ export class LocalChatsRepository {
 
   queryChatMembers(chatId: string): ActivityContracts.ActivityMemberDTO[] {
     const normalizedChatId = `${chatId ?? ''}`.trim();
-    if (!normalizedChatId) {
+    const userIds = this.chatMemberUserIds(normalizedChatId);
+    return userIds.map((userId, index) => this.toChatMemberEntry(normalizedChatId, userId, index));
+  }
+
+  queryChatMembersPage(
+    chatId: string,
+    query: ListQuery
+  ): ActivityContracts.ActivityMembersPageResultDTO {
+    const normalizedChatId = `${chatId ?? ''}`.trim();
+    let userIds = this.chatMemberUserIds(normalizedChatId)
+      .sort((left, right) => left.localeCompare(right));
+    const pendingOnly = (query.filters as { pendingOnly?: boolean } | undefined)?.pendingOnly === true;
+    if (pendingOnly) {
+      userIds = this.pendingChatMemberUserIds(normalizedChatId, userIds);
+    }
+    const pageSize = Math.max(1, Math.trunc(Number(query.pageSize) || 16));
+    const cursorOffset = Number.parseInt(`${query.cursor ?? ''}`, 10);
+    const startIndex = Number.isFinite(cursorOffset)
+      ? Math.max(0, cursorOffset)
+      : Math.max(0, Math.trunc(Number(query.page) || 0)) * pageSize;
+    const endIndex = Math.min(userIds.length, startIndex + pageSize);
+    return {
+      items: userIds
+        .slice(startIndex, endIndex)
+        .map((userId, index) => this.toChatMemberEntry(
+          normalizedChatId,
+          userId,
+          startIndex + index,
+          pendingOnly ? 'pending' : 'accepted'
+        )),
+      total: userIds.length,
+      nextCursor: endIndex < userIds.length ? `${endIndex}` : null
+    };
+  }
+
+  private chatMemberUserIds(chatId: string): string[] {
+    if (!chatId) {
       return [];
     }
     const table = this.memoryDb.read()[CHATS_TABLE_NAME];
-    const recordId = table.ids.find(id => table.byId[id]?.id === normalizedChatId) ?? '';
+    const recordId = table.ids.find(id => table.byId[id]?.id === chatId) ?? '';
     const record = recordId ? table.byId[recordId] : null;
-    if (!record) {
-      return [];
-    }
-    const userIds = [...new Set(
-      (record.memberIds ?? [])
+    return [...new Set(
+      (record?.memberIds ?? [])
         .map(userId => `${userId ?? ''}`.trim())
         .filter(userId => userId.length > 0)
     )];
-    return userIds.map((userId, index) => this.toChatMemberEntry(normalizedChatId, userId, index));
+  }
+
+  private pendingChatMemberUserIds(chatId: string, memberIds: readonly string[]): string[] {
+    if (!chatId || memberIds.length === 0) {
+      return [];
+    }
+    const chats = this.memoryDb.read()[CHATS_TABLE_NAME];
+    const chatRecordId = chats.ids.find(id => chats.byId[id]?.id === chatId) ?? '';
+    const chat = chatRecordId ? chats.byId[chatRecordId] : null;
+    const ownerType = chat?.channelType === 'mainEvent'
+      ? 'event'
+      : chat?.channelType === 'optionalSubEvent'
+        ? 'subEvent'
+        : chat?.channelType === 'groupSubEvent'
+          ? 'group'
+          : '';
+    const ownerId = `${chat?.ownerId ?? ''}`.trim();
+    if (!ownerType || !ownerId) {
+      return [];
+    }
+    const members = this.memoryDb.read()[ACTIVITY_MEMBERS_TABLE_NAME];
+    const memberIdSet = new Set(memberIds);
+    return (members.idsByOwnerKey[`${ownerType}:${ownerId}`] ?? [])
+      .map(id => members.byId[id])
+      .filter(record => record?.status === 'pending' && memberIdSet.has(record.userId))
+      .map(record => record.userId)
+      .sort((left, right) => left.localeCompare(right));
   }
 
   private querySupportCaseRecordsForAdmin(
@@ -838,7 +898,12 @@ export class LocalChatsRepository {
     return user ? UserProfileState.isEmptyOnboardingProfile(user) : false;
   }
 
-  private toChatMemberEntry(chatId: string, userId: string, index: number): ActivityContracts.ActivityMemberDTO {
+  private toChatMemberEntry(
+    chatId: string,
+    userId: string,
+    index: number,
+    status: 'accepted' | 'pending' = 'accepted'
+  ): ActivityContracts.ActivityMemberDTO {
     const user = this.memoryDb.read()[USERS_TABLE_NAME].byId[userId] ?? null;
     const label = user?.name?.trim() || userId;
     const when = AppUtils.addDays(new Date(), -Math.max(0, index));
@@ -851,7 +916,7 @@ export class LocalChatsRepository {
       city: user?.city ?? '',
       statusText: user?.statusText?.trim() || 'Chat member',
       role: 'Member',
-      status: 'accepted',
+      status,
       pendingSource: null,
       requestKind: null,
       invitedByActiveUser: false,

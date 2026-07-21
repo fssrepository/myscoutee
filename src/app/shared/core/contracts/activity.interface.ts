@@ -1176,6 +1176,12 @@ export interface ActivityMembersQueryOptions {
   pendingOnly?: boolean;
 }
 
+export interface ActivityMembersPageResultDTO {
+  items: ActivityMemberDTO[];
+  total: number;
+  nextCursor?: string | null;
+}
+
 export interface ActivityMembersSummaryDto {
   ownerType: AppConstants.ActivityMemberOwnerType;
   ownerId: string;
