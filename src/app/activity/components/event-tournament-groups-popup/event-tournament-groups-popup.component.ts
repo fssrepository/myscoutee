@@ -844,6 +844,7 @@ export class EventTournamentGroupsPopupComponent {
       subtitle: this.entryFormSubtitle(),
       layout: 'grouped',
       header: false,
+      allowMenuOverflow: true,
       summary: { enabled: false },
       completion: { controls: 'required' },
       save: null,
