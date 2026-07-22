@@ -1082,6 +1082,12 @@
   box-shadow: 0 5px 14px rgba(12, 24, 40, 0.16);
 }
 
+.app-menu__button-row-item--action.app-menu__button-row-item--labelled.app-menu__button-row-item--active {
+  border-color: rgba(31, 63, 105, 0.18);
+  background: var(--app-menu-bg-strong);
+  color: #fff;
+}
+
 .app-menu__button-row-item--labelled.app-menu__button-row-item--open {
   border-color: var(--app-menu-border);
   background: var(--app-menu-bg-hover);
