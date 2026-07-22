@@ -542,8 +542,10 @@ export class EventChatPopupComponent implements OnDestroy {
 
   protected chatPopupModel(chatSession: EventChatViewSession): PopupModel<ChatMenuContext> {
     const title = this.chatHeaderTitle(chatSession);
+    const subtitle = this.selectedChatParentDisplayLabel(chatSession.item, this.selectedChatNavigationState);
     return {
       title,
+      subtitle: subtitle || undefined,
       ariaLabel: title,
       closeAriaLabel: 'Close chat popup',
       size: 'wide',
@@ -4414,6 +4416,9 @@ export class EventChatPopupComponent implements OnDestroy {
     }
     return {
       ...baseContext,
+      title: state?.channelType === 'groupSubEvent'
+        ? this.selectedChatGroupDisplayLabel(chat, state)
+        : baseContext.title,
       controls
     };
   }
@@ -4862,6 +4867,24 @@ export class EventChatPopupComponent implements OnDestroy {
       return titleLabel;
     }
     return this.generatedGroupLabelFromId(groupId) || configured || 'Group';
+  }
+
+  private selectedChatParentDisplayLabel(
+    chat: ChatDTO,
+    state: SelectedChatNavigationState | null
+  ): string {
+    if (state?.channelType !== 'groupSubEvent') {
+      return '';
+    }
+    const navigation = chat.navigationContext ?? null;
+    const eventTitle = `${state.eventTitle ?? navigation?.eventTitle ?? ''}`.trim();
+    const subEvent = state.subEvent ?? navigation?.subEvent ?? null;
+    const subEventName = `${subEvent?.name ?? ''}`.trim();
+    const timeframe = AppUtils.dateTimeRangeLabel(subEvent?.startAt, subEvent?.endAt, '');
+    const parts = [eventTitle, subEventName, timeframe].filter(Boolean);
+    return parts.filter((part, index) => (
+      parts.findIndex(candidate => candidate.toLocaleLowerCase('en-US') === part.toLocaleLowerCase('en-US')) === index
+    )).join(' · ');
   }
 
   private groupLabelFromChatTitle(

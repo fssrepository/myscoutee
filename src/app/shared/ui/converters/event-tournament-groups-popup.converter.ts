@@ -12,6 +12,7 @@ export interface EventTournamentGroupsPopupConverterInput {
   state: EventTournamentGroupsStateDTO | null;
   selectedStageId: string | null;
   openGroupIds: readonly string[];
+  pendingTotalsByGroupId?: Readonly<Record<string, number>>;
 }
 
 export interface EventTournamentGroupsStageMenuContext {
@@ -51,7 +52,13 @@ export class EventTournamentGroupsPopupConverter
       stageItems: stages.map(stage => this.stageItem(stage, selectedStage?.subEventId ?? null)),
       accordion: {
         items: selectedStage
-          ? selectedStage.groups.map((group, index) => this.groupAccordionItem(selectedStage, group, index, openIds))
+          ? selectedStage.groups.map((group, index) => this.groupAccordionItem(
+              selectedStage,
+              group,
+              index,
+              openIds,
+              input.pendingTotalsByGroupId?.[group.id] ?? group.membersPending
+            ))
           : [],
         multi: false,
         emptyTitle: selectedStage ? 'No groups yet' : 'No tournament stage',
@@ -122,21 +129,39 @@ export class EventTournamentGroupsPopupConverter
     stage: EventTournamentStageDTO,
     group: EventTournamentGroupDTO,
     index: number,
-    openIds: ReadonlySet<string>
+    openIds: ReadonlySet<string>,
+    pendingTotalValue: number
   ): UiAccordionItem<string, EventTournamentGroupsAccordionContext> {
     const capacity = this.groupCapacityLabel(group);
+    const accepted = Math.max(0, Math.trunc(Number(group.membersAccepted) || 0));
+    const pendingTotal = Math.max(0, Math.trunc(Number(pendingTotalValue) || 0));
+    const memberLabel = accepted === 1 ? '1 member' : `${accepted} members`;
+    const pendingLabel = pendingTotal === 1 ? '1 pending' : `${pendingTotal} pending`;
     return {
       id: group.id,
       title: group.name || `Group ${String.fromCharCode(65 + (index % 26))}`,
-      subtitle: group.source === 'manual' ? `Manual · ${capacity}` : capacity,
+      subtitle: [
+        group.source === 'manual' ? 'Manual' : '',
+        memberLabel,
+        pendingTotal > 0 ? pendingLabel : ''
+      ].filter(Boolean).join(' · '),
       icon: 'groups',
       badges: [
         {
           id: 'members-capacity',
-          label: `${group.membersAccepted} / ${group.capacityMin} - ${group.capacityMax}`,
+          label: `${accepted} / ${group.capacityMin} - ${group.capacityMax}`,
           palette: this.groupPalette(index),
-          ariaLabel: `Members ${group.membersAccepted} of ${group.capacityMin} to ${group.capacityMax}`
-        }
+          ariaLabel: `Members ${accepted} of ${group.capacityMin} to ${group.capacityMax}`,
+          title: capacity
+        },
+        ...(pendingTotal > 0 ? [{
+          id: 'pending-total',
+          label: pendingTotal,
+          icon: 'pending_actions',
+          palette: 'danger' as AppMenuPalette,
+          ariaLabel: pendingLabel,
+          title: pendingLabel
+        }] : [])
       ],
       palette: this.groupPalette(index),
       open: openIds.has(group.id),

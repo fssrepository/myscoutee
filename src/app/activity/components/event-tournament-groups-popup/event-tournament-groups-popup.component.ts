@@ -290,7 +290,8 @@ export class EventTournamentGroupsPopupComponent {
     return EventTournamentGroupsPopupConverter.convert({
       state: this.state,
       selectedStageId: this.selectedStageId,
-      openGroupIds: this.openGroupIds
+      openGroupIds: this.openGroupIds,
+      pendingTotalsByGroupId: this.groupPendingTotals()
     });
   }
 
@@ -366,7 +367,7 @@ export class EventTournamentGroupsPopupComponent {
           ...accordionItem,
           actionMenu: {
             kind: 'select',
-            trigger: this.groupActionTrigger(group),
+            trigger: this.groupActionTrigger(vm.selectedStage, group),
             model: this.groupActionModelFor(vm.selectedStage, group),
             panelAlign: 'auto',
             mobileBreakpointPx: 900
@@ -435,12 +436,19 @@ export class EventTournamentGroupsPopupComponent {
     this.onGroupActionSelect(event.itemSelect);
   }
 
-  protected groupActionTrigger(group: ContractTypes.EventTournamentGroupDTO): AppMenuTrigger {
+  protected groupActionTrigger(
+    stage: ContractTypes.EventTournamentStageDTO,
+    group: ContractTypes.EventTournamentGroupDTO
+  ): AppMenuTrigger {
+    const pendingTotal = this.groupPendingTotal(stage, group);
     return {
       icon: 'more_vert',
       closeIcon: 'close',
       hideLabel: true,
       layout: 'icon',
+      counter: pendingTotal > 0
+        ? { value: pendingTotal, max: 99, ariaLabel: `${pendingTotal} pending` }
+        : null,
       ariaLabel: `Open actions for ${group.name}`
     };
   }
@@ -489,7 +497,8 @@ export class EventTournamentGroupsPopupComponent {
               this.canInviteGroupMembers(group) ? 'group_add' : 'groups',
               'blue',
               contextBase,
-              `${group.membersAccepted} / ${group.capacityMin} - ${group.capacityMax}`
+              `${group.membersAccepted} / ${group.capacityMin} - ${group.capacityMax}`,
+              group.membersPending
             )
           ]
         },
@@ -497,9 +506,9 @@ export class EventTournamentGroupsPopupComponent {
           id: 'assets',
           label: 'Assets',
           items: [
-            this.resourceMenuItem('transport', AssetDefaultsBuilder.assetTypeLabel(AppConstants.ASSET_TYPE_TRANSPORT), 'directions_car', 'sky', contextBase, this.resourceMetricLabel(stage.subEventId, AppConstants.ASSET_TYPE_TRANSPORT)),
-            this.resourceMenuItem('accommodation', AssetDefaultsBuilder.assetTypeLabel(AppConstants.ASSET_TYPE_ACCOMMODATION), 'apartment', 'green', contextBase, this.resourceMetricLabel(stage.subEventId, AppConstants.ASSET_TYPE_ACCOMMODATION)),
-            this.resourceMenuItem('supplies', AssetDefaultsBuilder.assetTypeLabel(AppConstants.ASSET_TYPE_SUPPLIES), 'inventory_2', 'brown', contextBase, this.resourceMetricLabel(stage.subEventId, AppConstants.ASSET_TYPE_SUPPLIES))
+            this.resourceMenuItem('transport', AssetDefaultsBuilder.assetTypeLabel(AppConstants.ASSET_TYPE_TRANSPORT), 'directions_car', 'sky', contextBase, this.resourceMetricLabel(stage.subEventId, AppConstants.ASSET_TYPE_TRANSPORT), this.resourceMetricPending(stage.subEventId, AppConstants.ASSET_TYPE_TRANSPORT)),
+            this.resourceMenuItem('accommodation', AssetDefaultsBuilder.assetTypeLabel(AppConstants.ASSET_TYPE_ACCOMMODATION), 'apartment', 'green', contextBase, this.resourceMetricLabel(stage.subEventId, AppConstants.ASSET_TYPE_ACCOMMODATION), this.resourceMetricPending(stage.subEventId, AppConstants.ASSET_TYPE_ACCOMMODATION)),
+            this.resourceMenuItem('supplies', AssetDefaultsBuilder.assetTypeLabel(AppConstants.ASSET_TYPE_SUPPLIES), 'inventory_2', 'brown', contextBase, this.resourceMetricLabel(stage.subEventId, AppConstants.ASSET_TYPE_SUPPLIES), this.resourceMetricPending(stage.subEventId, AppConstants.ASSET_TYPE_SUPPLIES))
           ]
         }
       ]
@@ -1373,6 +1382,33 @@ export class EventTournamentGroupsPopupComponent {
     return `${metrics.joined} / ${metrics.capacityMin} - ${metrics.capacityMax}`;
   }
 
+  private resourceMetricPending(stageId: string, type: AssetType): number {
+    return Math.max(0, Math.trunc(Number(this.resourceMetricsByStageId[stageId]?.[type]?.pending) || 0));
+  }
+
+  private groupPendingTotals(): Readonly<Record<string, number>> {
+    const stage = this.stageById(this.selectedStageId) ?? this.viewModelStageFallback();
+    if (!stage) {
+      return {};
+    }
+    return Object.fromEntries(stage.groups.map(group => [group.id, this.groupPendingTotal(stage, group)]));
+  }
+
+  private viewModelStageFallback(): ContractTypes.EventTournamentStageDTO | null {
+    return this.state?.stages[0] ?? null;
+  }
+
+  private groupPendingTotal(
+    stage: ContractTypes.EventTournamentStageDTO,
+    group: ContractTypes.EventTournamentGroupDTO
+  ): number {
+    const resourcePending = TOURNAMENT_RESOURCE_TYPES.reduce(
+      (total, type) => total + this.resourceMetricPending(stage.subEventId, type),
+      0
+    );
+    return Math.max(0, Math.trunc(Number(group.membersPending) || 0)) + resourcePending;
+  }
+
   protected canManageGroups(): boolean {
     return this.viewModel().canManage === true;
   }
@@ -1689,22 +1725,35 @@ export class EventTournamentGroupsPopupComponent {
   }
 
   private syncGroupMemberSummaryFromSignal(
-    groupId: string,
+    memberOwnerId: string,
     accepted: number,
     pending: number
   ): void {
-    const stageId = this.state?.stages.find(stage => stage.groups.some(group => group.id === groupId))?.subEventId ?? '';
-    if (!stageId) {
+    const match = this.state?.stages.flatMap(stage => stage.groups.map(group => ({ stage, group })))
+      .find(({ stage, group }) => (
+        group.id === memberOwnerId
+        || this.groupMemberOwnerId(stage.subEventId, group.id) === memberOwnerId
+      )) ?? null;
+    if (!match) {
       return;
     }
     this.state = this.updateGroupCounts(
       this.state,
-      stageId,
-      groupId,
+      match.stage.subEventId,
+      match.group.id,
       Math.max(0, Math.trunc(Number(accepted) || 0)),
       Math.max(0, Math.trunc(Number(pending) || 0))
     );
     this.cdr.markForCheck();
+  }
+
+  private groupMemberOwnerId(stageId: string, groupId: string): string {
+    const ownerId = this.eventId();
+    const normalizedStageId = this.normalizeId(stageId);
+    const normalizedGroupId = this.normalizeId(groupId);
+    return ownerId && normalizedStageId && normalizedGroupId
+      ? `${ownerId}:${normalizedStageId}:${normalizedGroupId}`
+      : normalizedGroupId;
   }
 
   private updateGroupCounts(
@@ -1882,8 +1931,10 @@ export class EventTournamentGroupsPopupComponent {
     icon: string,
     palette: AppMenuPalette,
     base: { stageId: string; groupId: string },
-    description = '0 / 0 - 0'
+    description = '0 / 0 - 0',
+    pending = 0
   ): AppMenuItem<string, TournamentGroupsActionContext> {
+    const pendingCount = Math.max(0, Math.trunc(Number(pending) || 0));
     return {
       id,
       label,
@@ -1892,6 +1943,9 @@ export class EventTournamentGroupsPopupComponent {
       palette,
       surface: 'tinted',
       layout: 'pill',
+      counter: pendingCount > 0
+        ? { value: pendingCount, max: 99, ariaLabel: `${pendingCount} pending` }
+        : null,
       context: {
         ...base,
         action: id

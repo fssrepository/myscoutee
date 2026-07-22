@@ -1,5 +1,6 @@
 import type { ChatChannelType, ChatDTO, SupportCaseStatus } from '../../core/contracts/chat.interface';
 import type { UserDto } from '../../core/contracts/user.interface';
+import { AppUtils } from '../../app-utils';
 import type { SingleRowData } from '../components/core/smart-list/card';
 import type { UiListConverter } from './converter.types';
 
@@ -46,6 +47,9 @@ export class ActivityChatSingleRowConverter {
     const avatar = `${dto.avatar ?? ''}`.trim();
     const channelType = supportStatus ? 'supportCase' : this.normalizeChannelType(dto);
     const ownerId = `${dto.ownerId ?? ''}`.trim();
+    const groupChannelLabel = channelType === 'groupSubEvent' ? this.groupChannelLabel(dto) : '';
+    const groupParentLabel = channelType === 'groupSubEvent' ? this.groupParentLabel(dto) : '';
+    const lastMessage = dto.lastMessage?.trim() || '';
 
     return {
       id: dto.id,
@@ -57,8 +61,9 @@ export class ActivityChatSingleRowConverter {
       badgeCount: showSupportControls ? 0 : unread,
       sortScore: unread * 10 + memberCount,
       title: lastSender?.name ?? dto.title,
-      subtitle: dto.title,
-      detail: dto.lastMessage?.trim() || '',
+      subtitle: groupChannelLabel || dto.title,
+      detail: groupParentLabel || lastMessage,
+      metaRows: groupParentLabel && lastMessage ? [lastMessage] : [],
       unread: showSupportControls ? 0 : unread,
       avatarInitials: avatar ? avatar.slice(0, 2).toUpperCase() : options.activeUser.initials,
       avatarToneClass: lastSender ? `user-color-${lastSender.gender}` : null,
@@ -95,6 +100,37 @@ export class ActivityChatSingleRowConverter {
       ? `${normalizedChannelType}:${normalizedOwnerId}`
       : normalizedFallbackId;
     return `chats:${rowIdentity || normalizedFallbackId}`;
+  }
+
+  private static groupChannelLabel(dto: ChatDTO): string {
+    const configured = `${dto.navigationContext?.group?.name ?? ''}`.trim();
+    if (configured) {
+      return configured;
+    }
+    const title = `${dto.title ?? ''}`.trim();
+    return title
+      .replace(/\s*[·-]\s*group channel\s*$/i, '')
+      .trim() || 'Group';
+  }
+
+  private static groupParentLabel(dto: ChatDTO): string {
+    const navigation = dto.navigationContext;
+    if (!navigation) {
+      return '';
+    }
+    const timeframe = AppUtils.dateTimeRangeLabel(
+      navigation.subEvent?.startAt,
+      navigation.subEvent?.endAt,
+      ''
+    );
+    const parts = [
+      `${navigation.eventTitle ?? ''}`.trim(),
+      `${navigation.subEvent?.name ?? ''}`.trim(),
+      timeframe
+    ].filter(Boolean);
+    return parts.filter((part, index) => (
+      parts.findIndex(candidate => candidate.toLocaleLowerCase('en-US') === part.toLocaleLowerCase('en-US')) === index
+    )).join(' · ');
   }
 
   private static supportStatus(status: string | null | undefined): SupportCaseStatus | null {
