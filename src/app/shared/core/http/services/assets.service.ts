@@ -392,6 +392,17 @@ export class HttpAssetsService {
     }
   }
 
+  async revokeAssetManager(userId: string, assetId: string, targetUserId: string): Promise<AppDTOs.AssetDTO | null> {
+    try {
+      const response = await this.http.post<AppDTOs.AssetDTO | null>(`${this.apiBaseUrl}/assets/revoke-manager`, {
+        userId: userId.trim(), assetId: assetId.trim(), targetUserId: targetUserId.trim()
+      }).toPromise();
+      return this.normalizeCard(response);
+    } catch {
+      return null;
+    }
+  }
+
   private async fetchOwnedAssetsByUser(userId: string): Promise<AppDTOs.AssetDTO[]> {
     const response = await this.http
       .get<AppDTOs.AssetDTO[] | null>(`${this.apiBaseUrl}/assets`, {
@@ -723,6 +734,8 @@ export class HttpAssetsService {
       id,
       assetId,
       ownerUserId: `${row?.ownerUserId ?? ''}`.trim(),
+      userId: `${row?.userId ?? ''}`.trim(),
+      isManager: row?.isManager === true || (row?.menuActions ?? []).includes('revokeManager'),
       dateIso: `${row?.dateIso ?? ''}`.trim(),
       startAtIso: `${row?.startAtIso ?? ''}`.trim() || undefined,
       endAtIso: `${row?.endAtIso ?? ''}`.trim() || undefined,

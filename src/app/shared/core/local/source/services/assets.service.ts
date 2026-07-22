@@ -109,4 +109,9 @@ export class LocalAssetsService extends LocalRouteDelayService {
     return this.assetsRepository.makeAssetManager(userId, assetId, targetUserId);
   }
 
+  async revokeAssetManager(userId: string, assetId: string, targetUserId: string): Promise<AppDTOs.AssetDTO | null> {
+    await this.waitForRouteDelay(LocalAssetsService.ASSETS_ROUTE);
+    return this.assetsRepository.revokeAssetManager(userId, assetId, targetUserId);
+  }
+
 }

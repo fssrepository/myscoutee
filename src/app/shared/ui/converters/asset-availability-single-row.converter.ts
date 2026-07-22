@@ -34,7 +34,7 @@ export class AssetAvailabilitySingleRowConverter {
       avatarInitials: row.avatarInitials ?? null,
       avatarUrl: row.avatarUrl ?? null,
       avatarToneClass: `user-color-${row.gender}`,
-      surfaceTone: this.surfaceTone(row),
+      surfaceTone: row.isManager ? 'accent' : this.surfaceTone(row),
       badges,
       metaRows: schedule && row.detail ? [schedule] : [],
       menuActions: row.menuActions ?? [],

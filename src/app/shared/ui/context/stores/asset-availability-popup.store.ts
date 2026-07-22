@@ -94,6 +94,21 @@ export class AssetAvailabilityPopupStore {
     this.dayListHeaderRef.set(null);
   }
 
+  patchRequestMetrics(delta: Partial<Record<keyof AssetRequestMetricsDTO, number>>): void {
+    const patchHeader = (header: AssetAvailabilityHeaderState | null): AssetAvailabilityHeaderState | null => {
+      if (!header?.metrics) {
+        return header;
+      }
+      const metrics = { ...header.metrics };
+      for (const [key, value] of Object.entries(delta) as Array<[keyof AssetRequestMetricsDTO, number]>) {
+        metrics[key] = this.normalizeCount(metrics[key] + (Number(value) || 0));
+      }
+      return { ...header, metrics };
+    };
+    this.availabilityHeaderRef.update(patchHeader);
+    this.dayListHeaderRef.update(patchHeader);
+  }
+
   updateDayListRange(
     rangeStart: string | null,
     rangeEnd: string | null,

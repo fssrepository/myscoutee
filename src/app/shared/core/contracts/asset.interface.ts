@@ -433,6 +433,8 @@ export interface AssetOccupancyRowDTO {
   id: string;
   assetId: string;
   ownerUserId: string;
+  userId?: string;
+  isManager?: boolean;
   dateIso: string;
   startAtIso?: string;
   endAtIso?: string;

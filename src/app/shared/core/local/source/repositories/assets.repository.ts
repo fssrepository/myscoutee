@@ -380,6 +380,19 @@ export class LocalAssetsRepository {
     return saved ? this.toAssetDto(saved, normalizedUserId) : null;
   }
 
+  async revokeAssetManager(userId: string, assetId: string, targetUserId: string): Promise<AppDTOs.AssetDTO | null> {
+    const current = this.peekOwnedAssetsByUser(userId).find(asset => asset.id === assetId) ?? null;
+    if (!current || !targetUserId.trim()) {
+      return null;
+    }
+    return {
+      ...current,
+      requests: current.requests.map(request => request.userId === targetUserId
+        ? { ...request, note: 'Borrow request approved by the owner.', menuActions: ['makeManager'] }
+        : request)
+    };
+  }
+
   private queryUsers(): UserDto[] {
     return this.usersRepository.queryGameStackUsers() as UserDto[];
   }

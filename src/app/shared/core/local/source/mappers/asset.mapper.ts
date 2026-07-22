@@ -335,6 +335,8 @@ export class LocalAssetsMapper {
       id: this.sourceAssetRequestId(request),
       assetId: request.assetId,
       ownerUserId: request.ownerUserId,
+      userId: request.userId,
+      isManager: (request.menuActions ?? []).includes('revokeManager'),
       dateIso: requestRange ? AppUtils.dateKey(requestRange.start) : '',
       startAtIso: request.booking?.startAtIso,
       endAtIso: request.booking?.endAtIso,

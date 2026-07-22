@@ -158,4 +158,8 @@ export class AssetsService extends BaseRouteModeService {
     return this.assetsService.makeAssetManager(userId, assetId, targetUserId);
   }
 
+  async revokeAssetManager(userId: string, assetId: string, targetUserId: string): Promise<AppDTOs.AssetDTO | null> {
+    return this.assetsService.revokeAssetManager(userId, assetId, targetUserId);
+  }
+
 }

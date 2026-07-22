@@ -223,6 +223,7 @@ export const CARD_MENU_ACTIONS: Readonly<Record<CardMenuActionId, CardMenuAction
   leaveEvent: { label: 'leave.event', icon: 'exit_to_app', tone: 'warning' },
   leaveResource: { label: 'leave.resource', icon: 'logout' },
   makeManager: { label: 'asset.requests.promote.to.manager', icon: 'manage_accounts', tone: 'accent' },
+  revokeManager: { label: 'Visszavonás', icon: 'person_remove', tone: 'warning' },
   manage: { label: 'manage', icon: 'settings', tone: 'accent' },
   manageEvent: { label: 'manage.event', icon: 'settings' },
   markSolved: { label: 'admin.review.action.mark.solved', icon: 'check_circle', tone: 'accent' },
