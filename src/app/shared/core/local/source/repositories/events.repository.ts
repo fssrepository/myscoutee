@@ -35,7 +35,7 @@ import type * as ContractTypes from '../../../contracts';
 import type { LocationCoordinates } from '../../../contracts/user.interface';
 import type * as ActivityContracts from '../../../contracts/activity.interface';
 
-import type * as AppConstants from '../../../common/constants';
+import * as AppConstants from '../../../common/constants';
 
 interface SubEventParticipantSlotCandidate {
   slot: ActivityContracts.SubEventsSlotDTO;
@@ -1330,8 +1330,9 @@ export class LocalEventsRepository {
       return [];
     }
     const stages = this.runtimeSubEvents(record);
+    const stageRuntime = this.stageRuntimeRecord(ownerSourceId, normalizedStageId);
     return this.stageGroupsForDisplay(ownerSourceId, stage, stages, record)
-      .map((group, groupIndex) => this.tournamentGroupDto(stage, group, groupIndex));
+      .map((group, groupIndex) => this.tournamentGroupDto(stage, group, groupIndex, stageRuntime));
   }
 
   saveTournamentGroup(request: ContractTypes.EventTournamentGroupUpsertRequestDTO): ContractTypes.EventTournamentGroupsStateDTO | null {
@@ -2958,6 +2959,7 @@ export class LocalEventsRepository {
     eventRecord: ActivityEventRecord | null
   ): ContractTypes.EventTournamentStageDTO {
     const subEventId = `${stage.id ?? `subevent-${index + 1}`}`.trim() || `subevent-${index + 1}`;
+    const stageRuntime = this.stageRuntimeRecord(ownerSourceId, subEventId);
     return {
       subEventId,
       title: `${stage.name ?? `Stage ${index + 1}`}`.trim() || `Stage ${index + 1}`,
@@ -2970,14 +2972,15 @@ export class LocalEventsRepository {
       leaderboardType: stage.tournamentLeaderboardType === 'Fifa' ? 'Fifa' : 'Score',
       advancePerGroup: Math.max(0, Math.trunc(Number(stage.tournamentAdvancePerGroup) || 0)),
       groups: this.stageGroupsForDisplay(ownerSourceId, stage, stages, eventRecord)
-        .map((group, groupIndex) => this.tournamentGroupDto(stage, group, groupIndex))
+        .map((group, groupIndex) => this.tournamentGroupDto(stage, group, groupIndex, stageRuntime))
     };
   }
 
   private tournamentGroupDto(
     stage: ContractTypes.SubEventDTO,
     group: ContractTypes.SubEventGroupDTO,
-    groupIndex: number
+    groupIndex: number,
+    stageRuntime: ActivitySubEventStageRuntimeRecord | null
   ): ContractTypes.EventTournamentGroupDTO {
     const capacityMin = Math.max(0, Math.trunc(Number(group.capacityMin) || 0));
     const capacityMax = Math.max(capacityMin, Math.trunc(Number(group.capacityMax) || capacityMin));
@@ -2989,8 +2992,53 @@ export class LocalEventsRepository {
       capacityMin,
       capacityMax,
       membersAccepted: accepted,
-      membersPending: Math.max(0, capacityMax - accepted)
+      membersPending: Math.max(0, capacityMax - accepted),
+      resourceMetricsByType: this.groupResourceMetrics(stageRuntime, `${group.id ?? ''}`.trim())
     };
+  }
+
+  private stageRuntimeRecord(ownerId: string, subEventId: string): ActivitySubEventStageRuntimeRecord | null {
+    const normalizedOwnerId = ownerId.trim();
+    const normalizedSubEventId = subEventId.trim();
+    if (!normalizedOwnerId || !normalizedSubEventId) {
+      return null;
+    }
+    const table = this.normalizeStageRuntimeCollection(
+      this.memoryDb.read()[ACTIVITY_SUB_EVENT_STAGE_RUNTIME_TABLE_NAME]
+    );
+    const record = table.byId[`${normalizedOwnerId}:${normalizedSubEventId}`] ?? null;
+    return record && `${record.status ?? 'A'}`.trim() !== 'D' ? record : null;
+  }
+
+  private groupResourceMetrics(
+    runtime: ActivitySubEventStageRuntimeRecord | null,
+    groupId: string
+  ): Partial<Record<AppConstants.AssetType, ContractTypes.EventTournamentResourceMetricDTO>> {
+    const byAssetOwner = runtime?.groupResourceMetricsByAssetOwnerId?.[groupId] ?? {};
+    const result: Partial<Record<AppConstants.AssetType, ContractTypes.EventTournamentResourceMetricDTO>> = {};
+    for (const type of AppConstants.ASSET_TYPES) {
+      let accepted = 0;
+      let pending = 0;
+      let capacityMin = 0;
+      let capacityMax = 0;
+      for (const metricsByType of Object.values(byAssetOwner)) {
+        const metric = metricsByType?.[type];
+        if (!metric) {
+          continue;
+        }
+        accepted += Math.max(0, Math.trunc(Number(metric.accepted) || 0));
+        pending += Math.max(0, Math.trunc(Number(metric.pending) || 0));
+        capacityMin += Math.max(0, Math.trunc(Number(metric.capacityMin) || 0));
+        capacityMax += Math.max(0, Math.trunc(Number(metric.capacityMax) || 0));
+      }
+      result[type] = {
+        accepted,
+        pending,
+        capacityMin,
+        capacityMax: Math.max(capacityMin, capacityMax)
+      };
+    }
+    return result;
   }
 
   private stageGroupsForMutation(
@@ -3190,6 +3238,9 @@ export class LocalEventsRepository {
       stageFinalizedAt: existing?.stageFinalizedAt ?? null,
       stageFinalizedByUserId: existing?.stageFinalizedByUserId ?? null,
       groupsCount: Math.max(0, groupsCount),
+      groupResourceMetricsByAssetOwnerId: LocalActivitySubEventStageRuntimeMapper.cloneGroupResourceMetrics(
+        existing?.groupResourceMetricsByAssetOwnerId
+      ),
       ownerKey: ownerSourceId.trim(),
       createdMs: existing?.createdMs ?? nowMs,
       updatedMs: nowMs,

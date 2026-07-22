@@ -153,15 +153,7 @@ export class EventTournamentGroupsPopupConverter
           palette: this.groupPalette(index),
           ariaLabel: `Members ${accepted} of ${group.capacityMin} to ${group.capacityMax}`,
           title: capacity
-        },
-        ...(pendingTotal > 0 ? [{
-          id: 'pending-total',
-          label: pendingTotal,
-          icon: 'pending_actions',
-          palette: 'danger' as AppMenuPalette,
-          ariaLabel: pendingLabel,
-          title: pendingLabel
-        }] : [])
+        }
       ],
       palette: this.groupPalette(index),
       open: openIds.has(group.id),

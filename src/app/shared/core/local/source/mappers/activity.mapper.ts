@@ -385,6 +385,7 @@ export class LocalActivityResourcesMapper {
         state.supplyContributionEntriesByAssetId
       ),
       fallbackAssetCardsByType: ActivityResourceBuilder.cloneFallbackAssetCardsByType(state.fallbackAssetCardsByType),
+      resourceMetricsByType: ActivityResourceBuilder.cloneResourceMetricsByType(state.resourceMetricsByType),
       createdMs: existing?.createdMs ?? nowMs,
       updatedMs: nowMs,
       createdAtIso: existing?.createdAtIso ?? nowIso,
@@ -407,7 +408,8 @@ export class LocalActivityResourcesMapper {
       supplyContributionEntriesByAssetId: ActivityResourceBuilder.cloneSupplyContributionEntriesByAssetId(
         record.supplyContributionEntriesByAssetId
       ),
-      fallbackAssetCardsByType: ActivityResourceBuilder.cloneFallbackAssetCardsByType(record.fallbackAssetCardsByType)
+      fallbackAssetCardsByType: ActivityResourceBuilder.cloneFallbackAssetCardsByType(record.fallbackAssetCardsByType),
+      resourceMetricsByType: ActivityResourceBuilder.cloneResourceMetricsByType(record.resourceMetricsByType)
     }, record);
     return normalizedState ? ActivityResourceBuilder.cloneState(normalizedState) : null;
   }
@@ -498,6 +500,9 @@ export class LocalActivitySubEventStageRuntimeMapper {
       stageFinalizedAt: `${normalized.stageFinalizedAt ?? ''}`.trim() || null,
       stageFinalizedByUserId: `${normalized.stageFinalizedByUserId ?? ''}`.trim() || null,
       groupsCount: normalized.groupsCount ?? existing?.groupsCount ?? null,
+      groupResourceMetricsByAssetOwnerId: this.cloneGroupResourceMetrics(
+        existing?.groupResourceMetricsByAssetOwnerId
+      ),
       createdMs: existing?.createdMs ?? nowMs,
       updatedMs: nowMs,
       createdAtIso: existing?.createdAtIso ?? nowIso,
@@ -526,8 +531,23 @@ export class LocalActivitySubEventStageRuntimeMapper {
 
   static cloneRecord(record: ActivitySubEventStageRuntimeRecord): ActivitySubEventStageRuntimeRecord {
     return {
-      ...record
+      ...record,
+      groupResourceMetricsByAssetOwnerId: this.cloneGroupResourceMetrics(
+        record.groupResourceMetricsByAssetOwnerId
+      )
     };
+  }
+
+  static cloneGroupResourceMetrics(
+    source: ActivitySubEventStageRuntimeRecord['groupResourceMetricsByAssetOwnerId'] | null | undefined
+  ): ActivitySubEventStageRuntimeRecord['groupResourceMetricsByAssetOwnerId'] {
+    return Object.fromEntries(Object.entries(source ?? {}).map(([groupId, byAssetOwner]) => [
+      groupId,
+      Object.fromEntries(Object.entries(byAssetOwner ?? {}).map(([assetOwnerUserId, metricsByType]) => [
+        assetOwnerUserId,
+        ActivityResourceBuilder.cloneResourceMetricsByType(metricsByType)
+      ]))
+    ]));
   }
 
   static isDeleted(record: ActivitySubEventStageRuntimeRecord | null | undefined): boolean {

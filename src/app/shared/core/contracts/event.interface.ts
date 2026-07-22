@@ -168,6 +168,14 @@ export interface EventTournamentGroupDTO {
   capacityMax: number;
   membersAccepted: number;
   membersPending: number;
+  resourceMetricsByType: Partial<Record<string, EventTournamentResourceMetricDTO>>;
+}
+
+export interface EventTournamentResourceMetricDTO {
+  accepted: number;
+  pending: number;
+  capacityMin: number;
+  capacityMax: number;
 }
 
 export interface EventTournamentStageDTO {

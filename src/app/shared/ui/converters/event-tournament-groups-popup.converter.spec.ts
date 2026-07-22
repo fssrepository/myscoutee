@@ -4,7 +4,7 @@ import type { EventTournamentGroupsStateDTO } from '../../core/contracts/event.i
 import { EventTournamentGroupsPopupConverter } from './event-tournament-groups-popup.converter';
 
 describe('EventTournamentGroupsPopupConverter metrics', () => {
-  it('shows accepted members and the group-channel pending total independently', () => {
+  it('shows pending totals in the subtitle without a redundant accordion badge', () => {
     const model = EventTournamentGroupsPopupConverter.convert({
       state: tournamentState(),
       selectedStageId: 'stage-1',
@@ -14,7 +14,7 @@ describe('EventTournamentGroupsPopupConverter metrics', () => {
     const group = model.accordion.items[0];
 
     expect(group?.subtitle).toBe('2 members · 3 pending');
-    expect(group?.badges?.map(badge => badge.label)).toEqual(['2 / 0 - 5', 3]);
+    expect(group?.badges?.map(badge => badge.label)).toEqual(['2 / 0 - 5']);
   });
 });
 
@@ -42,7 +42,8 @@ function tournamentState(): EventTournamentGroupsStateDTO {
         capacityMin: 0,
         capacityMax: 5,
         membersAccepted: 2,
-        membersPending: 1
+        membersPending: 1,
+        resourceMetricsByType: {}
       }]
     }]
   };

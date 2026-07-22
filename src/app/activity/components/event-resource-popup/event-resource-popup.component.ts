@@ -313,7 +313,9 @@ export class EventResourcePopupComponent {
     }
     const groupId = `${groupIdValue ?? ''}`.trim();
     const channelType: ContractTypes.ChatChannelType = groupId ? 'groupSubEvent' : 'optionalSubEvent';
-    const chatOwnerId = groupId ? `${ownerId}:${subEventId}:${groupId}` : `${ownerId}:${subEventId}`;
+    const chatOwnerId = groupId
+      ? this.scopedGroupOwnerId(ownerId, subEventId, groupId)
+      : `${ownerId}:${subEventId}`;
     return ActivityChatSingleRowConverter.smartListKeyForIdentity(channelType, chatOwnerId, chatOwnerId);
   }
 
@@ -326,12 +328,17 @@ export class EventResourcePopupComponent {
     const subEventId = `${subEventIdValue ?? ''}`.trim();
     const groupId = `${groupIdValue ?? ''}`.trim();
     if (ownerId && subEventId && groupId) {
-      return `${ownerId}:${subEventId}:${groupId}`;
+      return this.scopedGroupOwnerId(ownerId, subEventId, groupId);
     }
     if (ownerId && subEventId) {
       return `${ownerId}:${subEventId}`;
     }
     return groupId || subEventId || ownerId;
+  }
+
+  private scopedGroupOwnerId(ownerId: string, subEventId: string, groupId: string): string {
+    const suffix = `:${subEventId}:${groupId}`;
+    return ownerId.endsWith(suffix) ? ownerId : `${ownerId}${suffix}`;
   }
 
   private resourceInfoCardConverterOptions(): ActivitySubEventResourceInfoCardConverterOptions {

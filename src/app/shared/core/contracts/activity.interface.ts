@@ -391,6 +391,13 @@ export interface ActivitySubEventResourceStateRefDTO {
   assetOwnerUserId: string;
 }
 
+export interface SubEventResourceMetricDTO {
+  accepted: number;
+  pending: number;
+  capacityMin: number;
+  capacityMax: number;
+}
+
 export interface ActivitySubEventResourceStateDTO {
   ownerId: string;
   subEventId: string;
@@ -399,6 +406,7 @@ export interface ActivitySubEventResourceStateDTO {
   assetSettingsByType: ActivitySubEventAssetSettingsByTypeDTO;
   supplyContributionEntriesByAssetId: ActivitySubEventSupplyContributionsByAssetIdDTO;
   fallbackAssetCardsByType?: Partial<Record<AppConstants.AssetType, AssetContracts.AssetDetailDTO[]>>;
+  resourceMetricsByType?: Partial<Record<AppConstants.AssetType, SubEventResourceMetricDTO>>;
 }
 
 export interface ActivitySubEventStageRuntimeStateRefDTO {

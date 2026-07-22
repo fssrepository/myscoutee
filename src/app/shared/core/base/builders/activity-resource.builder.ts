@@ -26,7 +26,8 @@ export class ActivityResourceBuilder {
       assetAssignmentIds: {},
       assetSettingsByType: {},
       supplyContributionEntriesByAssetId: {},
-      fallbackAssetCardsByType: {}
+      fallbackAssetCardsByType: {},
+      resourceMetricsByType: {}
     };
   }
 
@@ -45,7 +46,8 @@ export class ActivityResourceBuilder {
       supplyContributionEntriesByAssetId: this.cloneSupplyContributionEntriesByAssetId(
         state.supplyContributionEntriesByAssetId
       ),
-      fallbackAssetCardsByType: this.cloneFallbackAssetCardsByType(state.fallbackAssetCardsByType)
+      fallbackAssetCardsByType: this.cloneFallbackAssetCardsByType(state.fallbackAssetCardsByType),
+      resourceMetricsByType: this.cloneResourceMetricsByType(state.resourceMetricsByType)
     };
   }
 
@@ -73,6 +75,26 @@ export class ActivityResourceBuilder {
       next.supplyContributionEntriesByAssetId
     );
     next.fallbackAssetCardsByType = this.cloneFallbackAssetCardsByType(next.fallbackAssetCardsByType);
+    next.resourceMetricsByType = this.cloneResourceMetricsByType(next.resourceMetricsByType);
+    return next;
+  }
+
+  static cloneResourceMetricsByType(
+    source: Partial<Record<AppConstants.AssetType, AppDTOs.SubEventResourceMetricDTO>> | null | undefined
+  ): Partial<Record<AppConstants.AssetType, AppDTOs.SubEventResourceMetricDTO>> {
+    const next: Partial<Record<AppConstants.AssetType, AppDTOs.SubEventResourceMetricDTO>> = {};
+    for (const type of AppConstants.ASSET_TYPES) {
+      const metric = source?.[type];
+      if (!metric) {
+        continue;
+      }
+      next[type] = {
+        accepted: Math.max(0, Math.trunc(Number(metric.accepted) || 0)),
+        pending: Math.max(0, Math.trunc(Number(metric.pending) || 0)),
+        capacityMin: Math.max(0, Math.trunc(Number(metric.capacityMin) || 0)),
+        capacityMax: Math.max(0, Math.trunc(Number(metric.capacityMax) || 0))
+      };
+    }
     return next;
   }
 
@@ -214,7 +236,7 @@ export class ActivityResourceBuilder {
         ), 0);
       }
       return assignedCards.reduce((sum, card) => (
-        sum + this.subEventOccupancyRequestCount(card, subEvent.id, 'accepted')
+        sum + this.subEventOccupancyRequestCount(card, subEvent.id, 'accepted', state?.ownerId)
       ), 0);
     }
     if (state) {
@@ -241,7 +263,7 @@ export class ActivityResourceBuilder {
         return 0;
       }
       return assignedCards.reduce((sum, card) => (
-        sum + this.subEventOccupancyRequestCount(card, subEvent.id, 'pending')
+        sum + this.subEventOccupancyRequestCount(card, subEvent.id, 'pending', state?.ownerId)
       ), 0);
     }
     if (state) {
@@ -294,6 +316,41 @@ export class ActivityResourceBuilder {
     return { capacityMin: min, capacityMax: max };
   }
 
+  static buildPersistedResourceMetrics(
+    state: AppDTOs.ActivitySubEventResourceStateDTO,
+    assets: readonly ActivityResourceAssetDTO[]
+  ): Partial<Record<AppConstants.AssetType, AppDTOs.SubEventResourceMetricDTO>> {
+    return Object.fromEntries(AppConstants.ASSET_TYPES.map(type => {
+      const assignedCards = this.resolveAssignedCards(type, state, assets);
+      const settings = this.resolveAssignedAssetSettings(state, type);
+      const accepted = type === AppConstants.ASSET_TYPE_SUPPLIES
+        ? assignedCards.reduce((sum, card) => (
+            sum + this.resolveSupplyContributionEntries(state, card.id)
+              .reduce((entrySum, entry) => entrySum + Math.max(0, Math.trunc(Number(entry.quantity) || 0)), 0)
+          ), 0)
+        : assignedCards.reduce((sum, card) => (
+            sum + this.subEventOccupancyRequestCount(card, state.subEventId, 'accepted', state.ownerId)
+          ), 0);
+      const pending = type === AppConstants.ASSET_TYPE_SUPPLIES
+        ? 0
+        : assignedCards.reduce((sum, card) => (
+            sum + this.subEventOccupancyRequestCount(card, state.subEventId, 'pending', state.ownerId)
+          ), 0);
+      const capacityMin = assignedCards.reduce((sum, card) => (
+        sum + Math.max(0, Math.trunc(Number(settings[card.id]?.capacityMin) || 0))
+      ), 0);
+      const capacityMax = assignedCards.reduce((sum, card) => (
+        sum + Math.max(0, Math.trunc(Number(settings[card.id]?.capacityMax ?? card.capacityTotal) || 0))
+      ), 0);
+      return [type, {
+        accepted,
+        pending,
+        capacityMin,
+        capacityMax: Math.max(capacityMin, capacityMax)
+      }];
+    })) as Partial<Record<AppConstants.AssetType, AppDTOs.SubEventResourceMetricDTO>>;
+  }
+
   private static resolveAssignedCards(
     type: AppConstants.AssetType,
     state: AppDTOs.ActivitySubEventResourceStateDTO | null | undefined,
@@ -336,8 +393,17 @@ export class ActivityResourceBuilder {
     );
   }
 
-  static isSubEventScopedAssetRequest(request: AppDTOs.AssetMemberRequestDTO, subEventId: string): boolean {
+  static isSubEventScopedAssetRequest(
+    request: AppDTOs.AssetMemberRequestDTO,
+    subEventId: string,
+    ownerId?: string | null
+  ): boolean {
     const normalizedSubEventId = subEventId.trim();
+    const normalizedOwnerId = `${ownerId ?? ''}`.trim();
+    const bookingOwnerId = `${request.booking?.eventId ?? ''}`.trim();
+    if (normalizedOwnerId && bookingOwnerId !== normalizedOwnerId) {
+      return false;
+    }
     return this.isSubEventManualAssignmentRequest(request, normalizedSubEventId)
       || `${request.booking?.subEventId ?? ''}`.trim() === normalizedSubEventId;
   }
@@ -349,7 +415,8 @@ export class ActivityResourceBuilder {
   static subEventOccupancyRequestCount(
     card: ActivityResourceAssetDTO,
     subEventId: string,
-    status: AppConstants.AssetRequestStatus
+    status: AppConstants.AssetRequestStatus,
+    ownerId?: string | null
   ): number {
     const normalizedSubEventId = subEventId.trim();
     if (!normalizedSubEventId) {
@@ -358,7 +425,7 @@ export class ActivityResourceBuilder {
     return card.requests
       .filter(request =>
         request.status === status
-        && this.isSubEventScopedAssetRequest(request, normalizedSubEventId)
+        && this.isSubEventScopedAssetRequest(request, normalizedSubEventId, ownerId)
         && !this.isSubEventManualAssignmentRequest(request, normalizedSubEventId)
       )
       .reduce((sum, request) => sum + this.assetRequestQuantity(request), 0);

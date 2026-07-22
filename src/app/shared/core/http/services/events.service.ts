@@ -1264,7 +1264,15 @@ export class HttpEventsService implements IEventsService {
       capacityMin,
       capacityMax,
       membersAccepted: Math.max(0, Math.trunc(Number(group?.membersAccepted) || 0)),
-      membersPending: Math.max(0, Math.trunc(Number(group?.membersPending) || 0))
+      membersPending: Math.max(0, Math.trunc(Number(group?.membersPending) || 0)),
+      resourceMetricsByType: Object.fromEntries(Object.entries(group?.resourceMetricsByType ?? {}).map(
+        ([type, metric]) => [type, {
+          accepted: Math.max(0, Math.trunc(Number(metric?.accepted) || 0)),
+          pending: Math.max(0, Math.trunc(Number(metric?.pending) || 0)),
+          capacityMin: Math.max(0, Math.trunc(Number(metric?.capacityMin) || 0)),
+          capacityMax: Math.max(0, Math.trunc(Number(metric?.capacityMax) || 0))
+        }]
+      ))
     };
   }
 
