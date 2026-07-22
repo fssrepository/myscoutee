@@ -1222,12 +1222,23 @@ export interface ActivityInviteOwnerContext {
 export interface ActivityInviteCandidatesQuery {
   activeUserId: string;
   owner: ActivityInviteOwnerContext;
+  parentOwner: ActivityMemberOwnerRef | null;
   existingMemberUserIds: readonly string[];
+  pendingInviteUserIds: readonly string[];
   sort: AppConstants.ActivityInviteSort;
+  page: number;
+  pageSize: number;
+}
+
+export interface ActivityInviteCandidatesPage {
+  items: ActivityMemberDTO[];
+  total: number;
+  page: number;
+  pageSize: number;
 }
 
 export interface IActivityInviteCandidatesService {
-  queryCandidates(query: ActivityInviteCandidatesQuery): Promise<ActivityMemberDTO[]>;
+  queryCandidates(query: ActivityInviteCandidatesQuery): Promise<ActivityInviteCandidatesPage>;
 }
 
 export interface UserGameCardsStackSnapshot {

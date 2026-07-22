@@ -189,6 +189,7 @@ export class EventTournamentGroupsPopupComponent {
   private handledRequestMs = 0;
   private handledMembersSyncMs = 0;
   private handledResourceSyncMs = 0;
+  private handledResourceMetricsRevision = 0;
   private loadSequence = 0;
   private leaderboardSequence = 0;
 
@@ -241,6 +242,47 @@ export class EventTournamentGroupsPopupComponent {
       if (match) {
         this.syncResourceCountersFromCache(match.stage.subEventId, match.group.id, sync.assetOwnerUserId);
       }
+    });
+
+    effect(() => {
+      const update = this.resourcePopupStore.subEventResourceMetricsUpdate();
+      if (!update || update.revision === this.handledResourceMetricsRevision) {
+        return;
+      }
+      this.handledResourceMetricsRevision = update.revision;
+      if (!this.isOpen()) {
+        return;
+      }
+      const match = this.groupResourceScope(update.ownerId, update.subEventId);
+      if (!match) {
+        return;
+      }
+      this.state = this.updateGroupResourceMetrics(
+        this.state,
+        match.stage.subEventId,
+        match.group.id,
+        {
+          [AppConstants.ASSET_TYPE_TRANSPORT]: {
+            accepted: Number(update.subEvent.carsAccepted) || 0,
+            pending: Number(update.subEvent.carsPending) || 0,
+            capacityMin: Number(update.subEvent.carsCapacityMin) || 0,
+            capacityMax: Number(update.subEvent.carsCapacityMax) || 0
+          },
+          [AppConstants.ASSET_TYPE_ACCOMMODATION]: {
+            accepted: Number(update.subEvent.accommodationAccepted) || 0,
+            pending: Number(update.subEvent.accommodationPending) || 0,
+            capacityMin: Number(update.subEvent.accommodationCapacityMin) || 0,
+            capacityMax: Number(update.subEvent.accommodationCapacityMax) || 0
+          },
+          [AppConstants.ASSET_TYPE_SUPPLIES]: {
+            accepted: Number(update.subEvent.suppliesAccepted) || 0,
+            pending: Number(update.subEvent.suppliesPending) || 0,
+            capacityMin: Number(update.subEvent.suppliesCapacityMin) || 0,
+            capacityMax: Number(update.subEvent.suppliesCapacityMax) || 0
+          }
+        }
+      );
+      this.cdr.markForCheck();
     });
 
   }
@@ -420,18 +462,15 @@ export class EventTournamentGroupsPopupComponent {
   }
 
   protected groupActionTrigger(
-    stage: ContractTypes.EventTournamentStageDTO,
+    _stage: ContractTypes.EventTournamentStageDTO,
     group: ContractTypes.EventTournamentGroupDTO
   ): AppMenuTrigger {
-    const pendingTotal = this.groupPendingTotal(stage, group);
     return {
       icon: 'more_vert',
       closeIcon: 'close',
       hideLabel: true,
       layout: 'icon',
-      counter: pendingTotal > 0
-        ? { value: pendingTotal, max: 99, ariaLabel: `${pendingTotal} pending` }
-        : null,
+      counter: null,
       ariaLabel: `Open actions for ${group.name}`
     };
   }
@@ -567,6 +606,10 @@ export class EventTournamentGroupsPopupComponent {
     const leaderboardGroup = this.leaderboardGroup(group.id);
     if (leaderboardGroup?.scoreRows?.length) {
       return leaderboardGroup.scoreRows.map(row => ({ ...row })).sort((left, right) => {
+        const memberOrder = this.realMembersFirst(left.memberName, right.memberName);
+        if (memberOrder !== 0) {
+          return memberOrder;
+        }
         if (left.total !== right.total) {
           return right.total - left.total;
         }
@@ -588,6 +631,10 @@ export class EventTournamentGroupsPopupComponent {
       row.updates += 1;
     }
     return rows.sort((left, right) => {
+      const memberOrder = this.realMembersFirst(left.memberName, right.memberName);
+      if (memberOrder !== 0) {
+        return memberOrder;
+      }
       if (left.total !== right.total) {
         return right.total - left.total;
       }
@@ -599,6 +646,10 @@ export class EventTournamentGroupsPopupComponent {
     const leaderboardGroup = this.leaderboardGroup(group.id);
     if (leaderboardGroup?.fifaRows?.length) {
       return leaderboardGroup.fifaRows.map(row => ({ ...row })).sort((left, right) => {
+        const memberOrder = this.realMembersFirst(left.memberName, right.memberName);
+        if (memberOrder !== 0) {
+          return memberOrder;
+        }
         if (left.points !== right.points) {
           return right.points - left.points;
         }
@@ -651,6 +702,10 @@ export class EventTournamentGroupsPopupComponent {
       row.goalDiff = row.goalsFor - row.goalsAgainst;
     }
     return rows.sort((left, right) => {
+      const memberOrder = this.realMembersFirst(left.memberName, right.memberName);
+      if (memberOrder !== 0) {
+        return memberOrder;
+      }
       if (left.points !== right.points) {
         return right.points - left.points;
       }
@@ -1296,7 +1351,8 @@ export class EventTournamentGroupsPopupComponent {
   }
 
   private canInviteGroupMembers(group: ContractTypes.EventTournamentGroupDTO): boolean {
-    return this.canManageGroups() && `${group.source ?? ''}`.toLowerCase() === 'manual';
+    void group;
+    return this.canManageGroups();
   }
 
   private canAddScoreToStage(stage: ContractTypes.EventTournamentStageDTO | null | undefined): boolean {
@@ -1546,6 +1602,8 @@ export class EventTournamentGroupsPopupComponent {
         type: 'members',
         ownerId: memberOwnerId,
         ownerType: 'group',
+        parentOwnerId: this.eventId(),
+        parentOwnerType: 'event',
         eventId: this.eventId(),
         subEventId: stage.subEventId,
         subtitle: groupLabel || stageTitle || parentTitle || 'Members',
@@ -1781,6 +1839,10 @@ export class EventTournamentGroupsPopupComponent {
       row.updates += 1;
     }
     return [...rows.values()].sort((left, right) => {
+      const memberOrder = this.realMembersFirst(left.memberName, right.memberName);
+      if (memberOrder !== 0) {
+        return memberOrder;
+      }
       if (left.total !== right.total) {
         return right.total - left.total;
       }
@@ -1837,6 +1899,10 @@ export class EventTournamentGroupsPopupComponent {
       away.goalDiff = away.goalsFor - away.goalsAgainst;
     }
     return [...rows.values()].sort((left, right) => {
+      const memberOrder = this.realMembersFirst(left.memberName, right.memberName);
+      if (memberOrder !== 0) {
+        return memberOrder;
+      }
       if (left.points !== right.points) {
         return right.points - left.points;
       }
@@ -1845,6 +1911,12 @@ export class EventTournamentGroupsPopupComponent {
       }
       return left.memberName.localeCompare(right.memberName);
     });
+  }
+
+  private realMembersFirst(leftName: string, rightName: string): number {
+    const leftPlaceholder = leftName.trim() === '-----';
+    const rightPlaceholder = rightName.trim() === '-----';
+    return leftPlaceholder === rightPlaceholder ? 0 : leftPlaceholder ? 1 : -1;
   }
 
   private openEntryForm(

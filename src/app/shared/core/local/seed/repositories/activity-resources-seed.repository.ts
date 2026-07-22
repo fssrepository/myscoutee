@@ -1,10 +1,16 @@
-import { EVENTS_TABLE_NAME } from '../../source/entity/event.entity';
+import {
+  EVENTS_TABLE_NAME,
+  type ActivityEventRecordCollection
+} from '../../source/entity/event.entity';
 import { Injectable, inject } from '@angular/core';
 import { environment } from '../../../../../../environments/environment';
 
 import { AppUtils } from '../../../../app-utils';
 import { LocalMemoryDb } from '../../../common/app.db';
-import { ACTIVITY_MEMBERS_TABLE_NAME } from '../../source/entity/activity.entity';
+import {
+  ACTIVITY_MEMBERS_TABLE_NAME,
+  type ActivityMembersRecordCollection
+} from '../../source/entity/activity.entity';
 import {
   ACTIVITY_RESOURCES_TABLE_NAME,
   type ActivityResourcesRecordCollection,
@@ -56,6 +62,7 @@ export class SeedActivityResourcesRepository {
 
     const state = this.memoryDb.read();
     const eventsTable = state[EVENTS_TABLE_NAME];
+    const activityMembersTable = state[ACTIVITY_MEMBERS_TABLE_NAME];
     const currentTable = this.normalizeCollection(state[ACTIVITY_RESOURCES_TABLE_NAME]);
     const currentAssetRequestsTable = this.normalizeAssetRequestsCollection(state[ASSET_REQUESTS_TABLE_NAME]);
     const seedToken = [
@@ -69,19 +76,24 @@ export class SeedActivityResourcesRepository {
       return;
     }
 
-    const ownedAssetsByUserId = assetsByUserId ?? this.readOwnedAssetsByUsers(normalizedUserIds);
+    const ownedAssetsByUserId = assetsByUserId ?? this.readOwnedAssetsByUsers(
+      normalizedUserIds,
+      this.normalizeAssetsCollection(state[ASSETS_TABLE_NAME])
+    );
     const sourceRecords = this.mergeSourceRecordsByUserId(
       normalizedUserIds,
       sourceRecordsByUserId,
-      this.collectSourceRecordsByUserId(normalizedUserIds)
+      this.collectSourceRecordsByUserId(normalizedUserIds, eventsTable)
     );
+    const acceptedMemberUserIdsByEventId = this.acceptedMemberUserIdsByEventId(activityMembersTable);
     const contributorUserIdsByEventId = new Map<string, string[]>();
     const generatedEventResourceRecords = normalizedUserIds.flatMap(userId =>
       this.buildSeededRecordsForUser(
         userId,
         sourceRecords.get(userId),
         ownedAssetsByUserId.get(userId),
-        contributorUserIdsByEventId
+        contributorUserIdsByEventId,
+        acceptedMemberUserIdsByEventId
       )
     );
     const manualAssignmentResourceRecords = this.buildAssetRequestResourceRecords(
@@ -155,7 +167,8 @@ export class SeedActivityResourcesRepository {
     userId: string,
     seedSourceRecords?: readonly ActivityEventRecord[],
     _seedAssets?: readonly AssetRecord[],
-    contributorUserIdsByEventId?: Map<string, string[]>
+    contributorUserIdsByEventId?: Map<string, string[]>,
+    acceptedMemberUserIdsByEventId?: ReadonlyMap<string, readonly string[]>
   ): ActivitySubEventResourceRecord[] {
     const normalizedUserId = userId.trim();
     if (!normalizedUserId) {
@@ -167,7 +180,12 @@ export class SeedActivityResourcesRepository {
     let createdMs = AppUtils.anchorDate(environment.bootstrapOffsetInDays).getTime();
 
     for (const record of sourceRecords) {
-      if (!this.shouldSeedResourcesForParticipant(record, normalizedUserId, contributorUserIdsByEventId)) {
+      if (!this.shouldSeedResourcesForParticipant(
+        record,
+        normalizedUserId,
+        contributorUserIdsByEventId,
+        acceptedMemberUserIdsByEventId
+      )) {
         continue;
       }
       const subEventIds = this.resourceSeedSubEventIds(record);
@@ -273,7 +291,8 @@ export class SeedActivityResourcesRepository {
   private shouldSeedResourcesForParticipant(
     record: ActivityEventRecord,
     userId: string,
-    contributorUserIdsByEventId?: Map<string, string[]>
+    contributorUserIdsByEventId?: Map<string, string[]>,
+    acceptedMemberUserIdsByEventId?: ReadonlyMap<string, readonly string[]>
   ): boolean {
     const normalizedUserId = userId.trim();
     if (!normalizedUserId) {
@@ -281,20 +300,20 @@ export class SeedActivityResourcesRepository {
     }
     let contributorUserIds = contributorUserIdsByEventId?.get(record.id);
     if (!contributorUserIds) {
-      contributorUserIds = this.resolveSeededResourceContributorUserIds(record);
+      contributorUserIds = this.resolveSeededResourceContributorUserIds(
+        record,
+        acceptedMemberUserIdsByEventId?.get(record.id) ?? []
+      );
       contributorUserIdsByEventId?.set(record.id, contributorUserIds);
     }
     return contributorUserIds.includes(normalizedUserId);
   }
 
-  private resolveSeededResourceContributorUserIds(record: ActivityEventRecord): string[] {
+  private resolveSeededResourceContributorUserIds(
+    record: ActivityEventRecord,
+    acceptedMemberUserIds: readonly string[]
+  ): string[] {
     const creatorUserId = `${record.creatorUserId ?? ''}`.trim();
-    const membersTable = this.memoryDb.read()[ACTIVITY_MEMBERS_TABLE_NAME];
-    const acceptedMemberUserIds = (membersTable.idsByOwnerKey[`event:${record.id}`] ?? [])
-      .map(id => membersTable.byId[id])
-      .filter(member => member?.status === 'accepted')
-      .map(member => `${member?.userId ?? ''}`.trim())
-      .filter(userId => userId.length > 0);
     const candidateUserIds = Array.from(new Set([
       creatorUserId,
       ...acceptedMemberUserIds
@@ -338,8 +357,10 @@ export class SeedActivityResourcesRepository {
     return Math.max(1, Math.min(maxCount, target));
   }
 
-  private collectSourceRecordsByUserId(userIds: readonly string[]): Map<string, ActivityEventRecord[]> {
-    const eventsTable = this.memoryDb.read()[EVENTS_TABLE_NAME];
+  private collectSourceRecordsByUserId(
+    userIds: readonly string[],
+    eventsTable: ActivityEventRecordCollection
+  ): Map<string, ActivityEventRecord[]> {
     const recordsByUserId = new Map<string, ActivityEventRecord[]>();
     for (const userId of userIds) {
       const sourceRecordsByEventId = new Map<string, ActivityEventRecord>();
@@ -423,8 +444,10 @@ export class SeedActivityResourcesRepository {
     return `${status ?? 'A'}`.trim() === 'A';
   }
 
-  private readOwnedAssetsByUsers(userIds: readonly string[]): Map<string, AssetRecord[]> {
-    const table = this.normalizeAssetsCollection(this.memoryDb.read()[ASSETS_TABLE_NAME]);
+  private readOwnedAssetsByUsers(
+    userIds: readonly string[],
+    table: AssetsRecordCollection
+  ): Map<string, AssetRecord[]> {
     const assetsByUserId = new Map<string, AssetRecord[]>();
     for (const userId of userIds) {
       assetsByUserId.set(
@@ -435,6 +458,27 @@ export class SeedActivityResourcesRepository {
       );
     }
     return assetsByUserId;
+  }
+
+  private acceptedMemberUserIdsByEventId(
+    table: ActivityMembersRecordCollection
+  ): Map<string, string[]> {
+    const result = new Map<string, string[]>();
+    for (const [ownerKey, memberIds] of Object.entries(table.idsByOwnerKey)) {
+      if (!ownerKey.startsWith('event:')) {
+        continue;
+      }
+      const eventId = ownerKey.slice('event:'.length).trim();
+      if (!eventId) {
+        continue;
+      }
+      result.set(eventId, Array.from(new Set(memberIds
+        .map(memberId => table.byId[memberId])
+        .filter(member => member?.status === 'accepted')
+        .map(member => `${member?.userId ?? ''}`.trim())
+        .filter(Boolean))));
+    }
+    return result;
   }
 
   private buildAssetRequestResourceRecords(

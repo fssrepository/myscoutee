@@ -1351,10 +1351,16 @@ export class EventChatPopupComponent implements OnDestroy {
       state
     );
     const summary = this.selectedChatMembersSummary(state);
+    const ownerType = this.selectedChatMembersOwnerType(state);
+    const parentOwnerId = ownerType === 'event' ? '' : `${state.eventId ?? ''}`.trim();
     this.memberMenuStore.requestActivitiesNavigation({
       type: 'members',
       ownerId,
-      ownerType: this.selectedChatMembersOwnerType(state),
+      ownerType,
+      parentOwnerId: parentOwnerId || undefined,
+      parentOwnerType: parentOwnerId ? 'event' : undefined,
+      eventId: parentOwnerId || undefined,
+      subEventId: `${state.subEvent?.id ?? ''}`.trim() || undefined,
       subtitle: this.selectedChatMembersSubtitle(session, state),
       canManage,
       viewOnly: state.channelType === 'groupSubEvent' ? !canManage : undefined,

@@ -109,14 +109,16 @@ export class ActivityMembersService extends BaseRouteModeService {
   async replaceMembersByOwner(
     owner: ActivityMemberOwnerRef,
     members: readonly ActivityContracts.ActivityMemberDTO[],
-    capacityTotal?: number | null
+    capacityTotal?: number | null,
+    options?: ActivityMembersQueryOptions
   ): Promise<void> {
     const actorUserId = this.userProfileStore.activeUserId().trim() || this.userProfileStore.getActiveUserId().trim();
     await this.activityMembersService.replaceMembersByOwner(
       owner,
       this.prepareMembersForPersistence(members),
       capacityTotal,
-      actorUserId
+      actorUserId,
+      options
     );
     this.emitActivityMembersSyncForOwner(owner);
   }
@@ -124,14 +126,15 @@ export class ActivityMembersService extends BaseRouteModeService {
   async replaceMembersByOwnerId(
     ownerId: string,
     members: readonly ActivityContracts.ActivityMemberDTO[],
-    capacityTotal?: number | null
+    capacityTotal?: number | null,
+    options?: ActivityMembersQueryOptions
   ): Promise<void> {
     const normalizedOwnerId = ownerId.trim();
     if (!normalizedOwnerId) {
       return;
     }
     const owner = this.peekOwnerRefById(normalizedOwnerId) ?? this.ownerRef('event', normalizedOwnerId);
-    await this.replaceMembersByOwner(owner, members, capacityTotal);
+    await this.replaceMembersByOwner(owner, members, capacityTotal, options);
   }
 
   async applyMemberAction(

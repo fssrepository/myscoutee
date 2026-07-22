@@ -1,7 +1,9 @@
 import { EVENTS_TABLE_NAME } from '../../source/entity/event.entity';
-import { CHATS_TABLE_NAME, type ChatThreadRecordCollection } from '../../source/entity/chat.entity';
 import type { ActivityEventRecordCollection } from '../../source/entity/event.entity';
-import { USERS_TABLE_NAME } from '../../source/entity/user.entity';
+import {
+  USERS_TABLE_NAME,
+  type UsersRecordCollection
+} from '../../source/entity/user.entity';
 import { Injectable, inject } from '@angular/core';
 import { environment } from '../../../../../../environments/environment';
 
@@ -10,7 +12,12 @@ import { LocalMemoryDb } from '../../../common/app.db';
 import type { UserDto } from '../../../contracts/user.interface';
 import type { UserRecord } from '../../source/entity/user.entity';
 import { ACTIVITY_MEMBERS_TABLE_NAME, type ActivityMemberRecord, type ActivityMembersRecordCollection } from '../../source/entity/activity.entity';
-import { ASSETS_TABLE_NAME, type AssetMemberRequestRecord, type AssetRecord } from '../../source/entity/asset.entity';
+import {
+  ASSETS_TABLE_NAME,
+  type AssetMemberRequestRecord,
+  type AssetRecord,
+  type AssetsRecordCollection
+} from '../../source/entity/asset.entity';
 import type { ActivityEventRecord } from '../../../contracts/activity.interface';
 import { UserProfileState } from '../../../common/user-profile-state';
 
@@ -58,7 +65,7 @@ export class SeedActivityMembersRepository {
     seedUsers: readonly UserRecord[] = []
   ): void {
     const state = this.memoryDb.read();
-    const users = this.resolveSeedUsers(seedUsers);
+    const users = this.resolveSeedUsers(seedUsers, state[USERS_TABLE_NAME]);
     const normalizedOwnerUserIds = Array.from(new Set(
       (ownerUserIds ?? users.map(user => user.id))
         .map(userId => `${userId ?? ''}`.trim())
@@ -96,12 +103,12 @@ export class SeedActivityMembersRepository {
     this.setDesiredOwner(desiredOwners, this.buildSeededHomeSocialBridgeRecords(usersById));
     this.setDesiredOwner(
       desiredOwners,
-      this.buildSeededGroupChatMemberRecords(state[CHATS_TABLE_NAME], usersById)
+      this.buildSeededTournamentGroupMemberRecords(preferredEvents, desiredOwners)
     );
     for (const userId of normalizedOwnerUserIds) {
       this.setDesiredOwner(desiredOwners, this.buildSeededAssetOwnerRecordsForUser(
         userId,
-        assetsByUserId?.get(userId) ?? this.readOwnedAssetsByUser(userId),
+        assetsByUserId?.get(userId) ?? this.readOwnedAssetsByUser(userId, state[ASSETS_TABLE_NAME]),
         users,
         usersById
       ));
@@ -130,7 +137,7 @@ export class SeedActivityMembersRepository {
       }
     }
 
-    const finalTable = this.normalizeCollection(this.memoryDb.read()[ACTIVITY_MEMBERS_TABLE_NAME]);
+    const finalTable = merge.changed ? merge.table : currentTable;
     this.lastSeedToken = [
       eventsTable.ids.length,
       finalTable.ids.length,
@@ -139,11 +146,14 @@ export class SeedActivityMembersRepository {
     ].join(':');
   }
 
-  private resolveSeedUsers(seedUsers: readonly UserRecord[]): UserDto[] {
+  private resolveSeedUsers(
+    seedUsers: readonly UserRecord[],
+    usersTable: UsersRecordCollection
+  ): UserDto[] {
     const source = seedUsers.length > 0
       ? seedUsers
-      : this.memoryDb.read()[USERS_TABLE_NAME].ids
-        .map(id => this.memoryDb.read()[USERS_TABLE_NAME].byId[id])
+      : usersTable.ids
+        .map(id => usersTable.byId[id])
         .filter((user): user is UserDto => Boolean(user));
     return source
       .map(user => ({ ...user, images: [...(user.images ?? [])] }));
@@ -466,50 +476,42 @@ export class SeedActivityMembersRepository {
     return records;
   }
 
-  private buildSeededGroupChatMemberRecords(
-    chats: ChatThreadRecordCollection,
-    usersById: ReadonlyMap<string, UserDto>
+  private buildSeededTournamentGroupMemberRecords(
+    events: readonly ActivityEventRecord[],
+    desiredOwners: ReadonlyMap<string, readonly ActivityMemberRecord[]>
   ): ActivityMemberRecord[] {
     const records: ActivityMemberRecord[] = [];
-    const seen = new Set<string>();
-    for (const id of chats.ids ?? []) {
-      const chat = chats.byId[id];
-      const ownerId = `${chat?.ownerId ?? ''}`.trim();
-      if (!chat || chat.channelType !== 'groupSubEvent' || !ownerId) {
+    for (const event of events) {
+      const acceptedParentMembers = (desiredOwners.get(`event:${event.id}`) ?? [])
+        .filter(member => member.status === 'accepted');
+      if (acceptedParentMembers.length === 0) {
         continue;
       }
-      for (const userId of chat.memberIds ?? []) {
-        const normalizedUserId = `${userId ?? ''}`.trim();
-        const key = `${ownerId}:${normalizedUserId}`;
-        if (!normalizedUserId || seen.has(key)) {
+      for (const subEvent of event.subEvents ?? []) {
+        if (subEvent.optional === true) {
           continue;
         }
-        const user = usersById.get(normalizedUserId);
-        if (!user) {
+        const subEventId = `${subEvent.id ?? ''}`.trim();
+        const groupsCount = Math.max(0, Math.trunc(Number(subEvent.groupsCount) || 0));
+        const groupIds = Array.from(
+          { length: groupsCount },
+          (_, index) => `${subEventId}-group-${index + 1}`
+        );
+        if (!subEventId || groupIds.length === 0) {
           continue;
         }
-        seen.add(key);
-        const actionAtIso = chat.dateIso || '2026-02-23T00:00:00.000Z';
-        records.push(this.toRecord({ ownerType: 'group', ownerId }, {
-          id: `group-chat-member:${ownerId}:${normalizedUserId}`,
-          userId: normalizedUserId,
-          name: user.name,
-          initials: user.initials,
-          gender: user.gender,
-          city: user.city,
-          statusText: user.statusText,
-          role: 'Member',
-          status: 'accepted',
-          pendingSource: null,
-          requestKind: null,
-          invitedByActiveUser: false,
-          invitedByUserId: null,
-          metAtIso: actionAtIso,
-          actionAtIso,
-          metWhere: `${chat.title ?? 'Group channel'}`.split(' · ')[0],
-          avatarUrl: AppUtils.firstImageUrl(user.images),
-          profile: user
-        }));
+        acceptedParentMembers.forEach((parentMember, memberIndex) => {
+          const groupId = groupIds[memberIndex % groupIds.length];
+          const ownerId = `${event.id}:${subEventId}:${groupId}`;
+          records.push({
+            ...this.cloneRecord(parentMember),
+            id: `seed-tournament-group-member:${ownerId}:${parentMember.userId}`,
+            ownerType: 'group',
+            ownerId,
+            ownerKey: `group:${ownerId}`,
+            metWhere: `${event.title} · ${subEvent.name ?? 'Tournament group'}`
+          });
+        });
       }
     }
     return records;
@@ -811,8 +813,10 @@ export class SeedActivityMembersRepository {
     };
   }
 
-  private readOwnedAssetsByUser(ownerUserId: string): AssetRecord[] {
-    const table = this.memoryDb.read()[ASSETS_TABLE_NAME];
+  private readOwnedAssetsByUser(
+    ownerUserId: string,
+    table: AssetsRecordCollection
+  ): AssetRecord[] {
     return (table.idsByOwnerUserId[ownerUserId] ?? [])
       .map(id => table.byId[id])
       .filter((record): record is AssetRecord => Boolean(record))

@@ -297,10 +297,7 @@ export class SeedChatsBuilder {
             items.push(optionalChat);
           }
         }
-        const groupChat = this.buildGroupContextChat(normalizedOwnerUserId, record, subEvent, stageLabel);
-        if (groupChat) {
-          items.push(groupChat);
-        }
+        items.push(...this.buildGroupContextChats(normalizedOwnerUserId, record, subEvent, stageLabel));
       }
     }
     return items;
@@ -417,15 +414,11 @@ export class SeedChatsBuilder {
       return null;
     }
     const eventTitle = record.title.trim() || 'Event';
-    const memberIds = this.uniqueUserIds([
-      ownerUserId,
-      ...SeedEventBuilder.seededEventMemberIds(
-        `chat-optional:${record.id}:${subEvent.id}`,
-        Math.max(acceptedTarget, 4),
-        [...this.USERS_BY_ID.values()],
-        ownerUserId
-      )
-    ]).slice(0, Math.max(1, acceptedTarget));
+    const memberIds = this.acceptedParentMemberIdsForOwner(ownerUserId, record)
+      .slice(0, Math.max(1, acceptedTarget));
+    if (memberIds.length === 0) {
+      return null;
+    }
     return this.createContextChatItem({
       id: `c-context-optional-${record.id}-${subEvent.id}`,
       title: `${subEvent.name || 'Optional Sub Event'} · Optional`,
@@ -438,42 +431,50 @@ export class SeedChatsBuilder {
     }, ownerUserId);
   }
 
-  private static buildGroupContextChat(
+  private static buildGroupContextChats(
     ownerUserId: string,
     record: ActivityEventRecord,
     subEvent: ChatSeedSubEvent,
     stageLabel: string
-  ): ChatRecord | null {
+  ): ChatRecord[] {
     if (!this.hasTournamentGroupContext(subEvent)) {
-      return null;
+      return [];
     }
     const eventTitle = record.title.trim() || 'Event';
-    const groupId = `${subEvent.id}-group-1`;
+    const groupsCount = Math.max(1, this.countValue(subEvent.groupsCount));
     const groupCapacity = Math.max(
       this.countValue(subEvent.tournamentGroupCapacityMax),
       this.countValue(subEvent.tournamentGroupCapacityMin),
       4
     );
-    const acceptedTarget = Math.max(1, Math.min(this.contextChatMemberTarget(record, subEvent), groupCapacity));
-    const memberIds = this.uniqueUserIds([
-      ownerUserId,
-      ...SeedEventBuilder.seededEventMemberIds(
-        `chat-group:${record.id}:${subEvent.id}:${groupId}`,
-        Math.max(acceptedTarget, 4),
-        [...this.USERS_BY_ID.values()],
-        ownerUserId
-      )
-    ]).slice(0, Math.max(1, acceptedTarget));
-    return this.createContextChatItem({
-      id: `c-context-group-${record.id}-${subEvent.id}-${groupId}`,
-      title: `Group A · ${subEvent.name || stageLabel}`,
-      lastMessage: `${stageLabel} group channel in ${eventTitle}.`,
-      ownerId: this.groupOwnerId(record.id, subEvent.id, groupId),
-      channelType: 'groupSubEvent',
-      memberIds,
-      dateIso: subEvent.startAt || record.startAtIso,
-      unread: this.sumSubEventPending(subEvent, true)
-    }, ownerUserId);
+    const acceptedTarget = Math.max(1, this.contextChatMemberTarget(record, subEvent));
+    const parentMemberIds = this.uniqueUserIds([
+      ...(record.acceptedMemberUserIds ?? []),
+      ...(record.adminIds ?? [])
+    ]).slice(0, acceptedTarget);
+    if (!parentMemberIds.includes(ownerUserId)) {
+      return [];
+    }
+    return Array.from({ length: groupsCount }, (_, groupIndex) => {
+      const memberIds = parentMemberIds
+        .filter((_, memberIndex) => memberIndex % groupsCount === groupIndex)
+        .slice(0, groupCapacity);
+      if (!memberIds.includes(ownerUserId)) {
+        return null;
+      }
+      const groupId = `${subEvent.id}-group-${groupIndex + 1}`;
+      const groupName = `Group ${String.fromCharCode(65 + (groupIndex % 26))}`;
+      return this.createContextChatItem({
+        id: `c-context-group-${record.id}-${subEvent.id}-${groupId}`,
+        title: `${groupName} · ${subEvent.name || stageLabel}`,
+        lastMessage: `${stageLabel} group channel in ${eventTitle}.`,
+        ownerId: this.groupOwnerId(record.id, subEvent.id, groupId),
+        channelType: 'groupSubEvent',
+        memberIds,
+        dateIso: subEvent.startAt || record.startAtIso,
+        unread: this.sumSubEventPending(subEvent, true)
+      }, ownerUserId);
+    }).filter((item): item is ChatRecord => item !== null);
   }
 
   private static createContextChatItem(input: {
@@ -504,7 +505,10 @@ export class SeedChatsBuilder {
   }
 
   private static seedEventMemberIds(ownerUserId: string, record: ActivityEventRecord, targetCount: number): string[] {
-    const explicit = this.uniqueUserIds([ownerUserId]);
+    const explicit = this.uniqueUserIds([
+      ownerUserId,
+      ...(record.acceptedMemberUserIds ?? [])
+    ]);
     if (explicit.length >= Math.max(1, targetCount)) {
       return explicit.slice(0, Math.max(1, targetCount));
     }
@@ -517,6 +521,24 @@ export class SeedChatsBuilder {
         ownerUserId
       )
     ]);
+  }
+
+  private static acceptedParentMemberIdsForOwner(
+    ownerUserId: string,
+    record: ActivityEventRecord
+  ): string[] {
+    const normalizedOwnerUserId = ownerUserId.trim();
+    const acceptedParentMemberIds = this.uniqueUserIds([
+      ...(record.acceptedMemberUserIds ?? []),
+      ...(record.adminIds ?? [])
+    ]);
+    if (!normalizedOwnerUserId || !acceptedParentMemberIds.includes(normalizedOwnerUserId)) {
+      return [];
+    }
+    return [
+      normalizedOwnerUserId,
+      ...acceptedParentMemberIds.filter(userId => userId !== normalizedOwnerUserId)
+    ];
   }
 
   private static sumSubEventPending(

@@ -56,7 +56,8 @@ export class LocalActivityMembersService extends LocalRouteDelayService {
     owner: ActivityMemberOwnerRef,
     members: readonly ActivityMemberDTO[],
     capacityTotal?: number | null,
-    actorUserId = ''
+    actorUserId = '',
+    options?: ActivityMembersQueryOptions
   ): Promise<void> {
     const normalizedOwner = this.activityMembersRepository.normalizeOwnerRef(owner);
     if (!normalizedOwner) {
@@ -64,6 +65,7 @@ export class LocalActivityMembersService extends LocalRouteDelayService {
     }
     await this.waitForRouteDelay(LocalActivityMembersService.MEMBERS_ROUTE);
     void actorUserId;
+    void options;
     const existingRecordsById = this.existingRecordsById(normalizedOwner);
     const records = members.map(member => LocalActivityMembersBuilder.toRecord(
       normalizedOwner,

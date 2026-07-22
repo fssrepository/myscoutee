@@ -101,7 +101,8 @@ export class HttpActivityMembersService {
     owner: ActivityMemberOwnerRef,
     members: readonly ActivityContracts.ActivityMemberDTO[],
     capacityTotal?: number | null,
-    actorUserId = ''
+    actorUserId = '',
+    options?: ActivityMembersQueryOptions
   ): Promise<void> {
     const normalizedOwner = this.normalizeOwnerRef(owner);
     if (!normalizedOwner) {
@@ -112,7 +113,9 @@ export class HttpActivityMembersService {
       owner: normalizedOwner,
       members: this.cloneEntries(members),
       capacityTotal: this.normalizeCount(capacityTotal),
-      actorUserId: actorUserId.trim()
+      actorUserId: actorUserId.trim(),
+      eventId: `${options?.eventId ?? ''}`.trim() || null,
+      subEventId: `${options?.subEventId ?? ''}`.trim() || null
     });
   }
 

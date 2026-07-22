@@ -143,6 +143,7 @@ export class EventMembersPopupComponent {
 
   private ownerRecord: ActivityEventRecord | null = null;
   private ownerRef: ActivityMemberOwnerRef | null = null;
+  private parentOwnerRef: ActivityMemberOwnerRef | null = null;
   private memberEventId = '';
   private memberSubEventId = '';
   private canManageMembers = false;
@@ -214,6 +215,8 @@ export class EventMembersPopupComponent {
       if (request.type === 'members') {
         this.openMembersPopup(request.ownerId, {
           ownerType: request.ownerType ?? 'event',
+          parentOwnerId: request.parentOwnerId,
+          parentOwnerType: request.parentOwnerType,
           eventId: request.eventId,
           subEventId: request.subEventId,
           subtitle: request.subtitle,
@@ -361,6 +364,7 @@ export class EventMembersPopupComponent {
     this.isOpen = false;
     this.ownerId = '';
     this.ownerRef = null;
+    this.parentOwnerRef = null;
     this.memberEventId = '';
     this.memberSubEventId = '';
     this.lookupRef = null;
@@ -390,6 +394,7 @@ export class EventMembersPopupComponent {
     this.activityInviteStore.openActivityInvitePopup({
       ownerId: this.ownerId,
       ownerType: this.ownerRef?.ownerType ?? 'event',
+      parentOwner: this.parentOwnerRef,
       title: this.subtitle,
       onApply: selectedCandidates => this.applyInvites(selectedCandidates),
       closeOwnerPopupOnClose: false
@@ -892,6 +897,8 @@ export class EventMembersPopupComponent {
       canManage?: boolean;
       viewOnly?: boolean;
       ownerType?: ActivityMemberOwnerType;
+      parentOwnerId?: string;
+      parentOwnerType?: ActivityMemberOwnerType;
       eventId?: string;
       subEventId?: string;
       lookup?: AppUiTypes.PopupHeaderLookup;
@@ -928,6 +935,15 @@ export class EventMembersPopupComponent {
         };
     this.memberEventId = `${options?.eventId ?? ''}`.trim();
     this.memberSubEventId = `${options?.subEventId ?? ''}`.trim();
+    const explicitParentOwnerId = `${options?.parentOwnerId ?? ''}`.trim();
+    const fallbackParentOwnerId = ownerType === 'event' ? '' : this.memberEventId;
+    const parentOwnerId = explicitParentOwnerId || fallbackParentOwnerId;
+    this.parentOwnerRef = parentOwnerId
+      ? {
+          ownerId: parentOwnerId,
+          ownerType: options?.parentOwnerType ?? 'event'
+        }
+      : null;
     this.ownerRecord = null;
     this.title = 'Members';
     this.subtitle = options?.subtitle?.trim() || 'Event';
@@ -1132,7 +1148,10 @@ export class EventMembersPopupComponent {
       this.suppressedOwnerSyncId = this.ownerId;
       if (owner) {
         try {
-          await this.activityMembersService.replaceMembersByOwner(owner, normalizedMembers, capacityTotal);
+          await this.activityMembersService.replaceMembersByOwner(owner, normalizedMembers, capacityTotal, {
+            eventId: this.memberEventId,
+            subEventId: this.memberSubEventId
+          });
         } catch (error) {
           if (this.suppressedOwnerSyncId === this.ownerId) {
             this.suppressedOwnerSyncId = null;
@@ -1141,7 +1160,10 @@ export class EventMembersPopupComponent {
         }
       } else {
         try {
-          await this.activityMembersService.replaceMembersByOwnerId(this.ownerId, normalizedMembers, capacityTotal);
+          await this.activityMembersService.replaceMembersByOwnerId(this.ownerId, normalizedMembers, capacityTotal, {
+            eventId: this.memberEventId,
+            subEventId: this.memberSubEventId
+          });
         } catch (error) {
           if (this.suppressedOwnerSyncId === this.ownerId) {
             this.suppressedOwnerSyncId = null;
