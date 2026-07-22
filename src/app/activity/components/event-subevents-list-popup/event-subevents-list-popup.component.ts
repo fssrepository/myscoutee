@@ -275,7 +275,7 @@ export class EventSubeventsListPopupComponent {
       this.loadedQueryKey = '';
       this.loadingQueryKey = '';
       this.loadingPromise = null;
-      this.event = null;
+      this.event = this.parentContextFromRequest(request.eventId);
       this.items = [];
       this.slotSections = [];
       this.participantOnly = false;
@@ -1361,9 +1361,19 @@ export class EventSubeventsListPopupComponent {
     if (!event) {
       return null;
     }
-    return this.order === 'past'
-      ? (event.endAtIso || event.startAtIso || null)
-      : (event.startAtIso || event.endAtIso || null);
+    const today = AppUtils.dateOnly(new Date());
+    const start = AppUtils.parseDate(event.startAtIso);
+    const end = AppUtils.parseDate(event.endAtIso);
+    if (this.order === 'past') {
+      if (end && end.getTime() < today.getTime()) {
+        return end;
+      }
+      return start && start.getTime() > today.getTime() ? start : today;
+    }
+    if (start && start.getTime() > today.getTime()) {
+      return start;
+    }
+    return end && end.getTime() < today.getTime() ? end : today;
   }
 
   private subEventsLoadQueryKey(eventId: string, query: ListQuery<EventSubeventsListFilters>): string {
