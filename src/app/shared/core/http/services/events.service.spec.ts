@@ -3,19 +3,22 @@ import { TestBed } from '@angular/core/testing';
 import { of } from 'rxjs';
 
 import { RouteDelayService } from '../../base/services/route-delay.service';
+import { ActivityEventDetailDTO } from '../../contracts/activity.interface';
 import { HttpEventsService } from './events.service';
 
-describe('HttpEventsService promo-code validation', () => {
+describe('HttpEventsService', () => {
   const post = vi.fn();
+  const get = vi.fn();
   const withRequestTimeout = vi.fn();
 
   beforeEach(() => {
     post.mockReset();
+    get.mockReset();
     withRequestTimeout.mockReset().mockImplementation((_route: string, task: Promise<unknown>) => task);
     TestBed.configureTestingModule({
       providers: [
         HttpEventsService,
-        { provide: HttpClient, useValue: { post } },
+        { provide: HttpClient, useValue: { post, get } },
         { provide: RouteDelayService, useValue: { withRequestTimeout } }
       ]
     });
@@ -104,5 +107,63 @@ describe('HttpEventsService promo-code validation', () => {
     });
 
     expect(result?.messageKey).toBe('event.checkout.promo.invalid');
+  });
+
+  it('reloads full event details after saving instead of returning the sparse list response', async () => {
+    post.mockReturnValue(of({
+      id: 'event-1',
+      userId: 'host-1',
+      title: 'Saved event',
+      subtitle: 'List response',
+      subEventDefinitions: undefined
+    }));
+    get.mockReturnValue(of({
+      id: 'event-1',
+      userId: 'host-1',
+      creatorUserId: 'host-1',
+      title: 'Saved event',
+      subtitle: 'Full response',
+      subEventDefinitions: [{
+        id: 'stage-1',
+        name: 'Opening round',
+        description: 'The saved definition',
+        timing: 'After previous',
+        offsetMinutes: 0,
+        durationMinutes: 30,
+        optional: false,
+        capacityMin: 2,
+        capacityMax: 8
+      }],
+      pricing: { enabled: true, basePrice: 20, currency: 'EUR' },
+      policiesEnabled: true,
+      policies: [{ id: 'policy-1', title: 'Rules', description: 'Play fair', required: true }],
+      slotsEnabled: true,
+      slotTemplates: [{ id: 'slot-1', startAt: '2026-08-01T10:00:00Z' }],
+      sourceLink: 'https://example.test/event',
+      blindMode: 'Open Event',
+      autoInviter: true
+    }));
+    const payload = new ActivityEventDetailDTO().apply({
+      id: 'event-1',
+      userId: 'host-1',
+      creatorUserId: 'host-1',
+      title: 'Saved event',
+      subtitle: 'Editor payload'
+    });
+
+    const result = await TestBed.inject(HttpEventsService).saveActivityEvent(payload);
+
+    expect(get).toHaveBeenCalledWith(
+      expect.stringMatching(/\/activities\/events\/detail$/),
+      expect.objectContaining({ params: expect.anything() })
+    );
+    expect(result).toMatchObject({
+      subtitle: 'Full response',
+      sourceLink: 'https://example.test/event',
+      policiesEnabled: true,
+      slotsEnabled: true,
+      autoInviter: true,
+      subEventDefinitions: [{ id: 'stage-1', name: 'Opening round' }]
+    });
   });
 });

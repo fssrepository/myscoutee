@@ -1061,7 +1061,10 @@ export class HttpEventsService implements IEventsService {
       const response = await this.http
         .post<ActivityEventRecord | null>(`${this.apiBaseUrl}/activities/events/sync`, payload)
         .toPromise();
-      return this.cloneRecords(response ? [response] : [])[0] ?? null;
+      const detail = await this.loadSavedEventDetail(payload, response);
+      return detail
+        ? this.cloneRecords([detail as ActivityEventRecord])[0] ?? null
+        : this.cloneRecords(response ? [response] : [])[0] ?? null;
     } catch {
       return null;
     }
@@ -1072,10 +1075,26 @@ export class HttpEventsService implements IEventsService {
       const response = await this.http
         .post<ActivityEventDTO | null>(`${this.apiBaseUrl}/activities/events/sync`, payload)
         .toPromise();
-      return this.cloneDTOs(response ? [response] : [])[0] ?? null;
+      return await this.loadSavedEventDetail(payload, response)
+        ?? this.cloneDTOs(response ? [response] : [])[0]
+        ?? null;
     } catch {
       return null;
     }
+  }
+
+  /**
+   * The sync endpoint currently responds with the compact event-list DTO. Reload
+   * the detail before updating frontend state so editor-only fields are not
+   * replaced by missing values after an HTTP save.
+   */
+  private async loadSavedEventDetail(
+    payload: ActivityEventDetailDTO,
+    response: Pick<ActivityEventDTO, 'id'> | null | undefined
+  ): Promise<ActivityEventDetailDTO | null> {
+    const userId = payload.userId?.trim() || payload.creatorUserId?.trim();
+    const eventId = response?.id?.trim() || payload.id?.trim();
+    return userId && eventId ? this.loadEventDetailById(userId, eventId) : null;
   }
 
   private async getRecords(route: string, userId: string): Promise<ActivityEventRecord[]> {
