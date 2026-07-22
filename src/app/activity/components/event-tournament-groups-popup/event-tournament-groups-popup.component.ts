@@ -81,6 +81,16 @@ type TournamentLeaderboardMode = 'Score' | 'Fifa';
 type TournamentResourceMetricsByType = Partial<Record<AssetType, TournamentResourceMetrics>>;
 
 const TOURNAMENT_RESOURCE_TYPES: readonly AssetType[] = AppConstants.ASSET_TYPES;
+const TOURNAMENT_MEMBER_PALETTES: readonly AppMenuPalette[] = [
+  'blue',
+  'green',
+  'amber',
+  'violet',
+  'cyan',
+  'orange',
+  'pink',
+  'teal'
+];
 
 interface TournamentGroupsActionContext {
   action: TournamentGroupsAction;
@@ -831,10 +841,17 @@ export class EventTournamentGroupsPopupComponent {
     return {
       label: this.memberNameForEntry(menu),
       icon: 'person',
-      palette: 'blue',
+      palette: this.entryMemberPalette(menu),
       layout: 'field',
       ariaLabel: 'Select member'
     };
+  }
+
+  protected leaderboardMemberPalette(
+    group: ContractTypes.EventTournamentGroupDTO,
+    memberId: string
+  ): AppMenuPalette {
+    return this.memberPalette(memberId, this.membersForGroup(group));
   }
 
   protected entryFormFlowModel(): FormFlowModel {
@@ -977,11 +994,14 @@ export class EventTournamentGroupsPopupComponent {
 
   private entryMemberFlowItems(menu: 'score' | 'home' | 'away'): readonly AppMenuItem<string, { menu: 'score' | 'home' | 'away'; memberId: string }>[] {
     const selectedId = this.entrySelectedMemberId(menu);
-    return this.entryMembers().map(member => ({
+    const members = this.entryMembers();
+    return members.map(member => ({
       id: member.id,
       label: member.name,
       icon: 'person',
       kind: 'radio',
+      palette: this.memberPalette(member.id, members),
+      surface: 'tinted',
       active: member.id === selectedId,
       context: { menu, memberId: member.id }
     }));
@@ -1440,6 +1460,26 @@ export class EventTournamentGroupsPopupComponent {
       default:
         return this.entryForm.memberId;
     }
+  }
+
+  private entryMemberPalette(menu: 'score' | 'home' | 'away'): AppMenuPalette {
+    const members = this.entryMembers();
+    return this.memberPalette(this.entrySelectedMemberId(menu), members);
+  }
+
+  private memberPalette(
+    memberId: string,
+    members: readonly ContractTypes.SubEventLeaderboardMember[]
+  ): AppMenuPalette {
+    const memberIndex = members.findIndex(member => member.id === memberId);
+    if (memberIndex >= 0) {
+      return TOURNAMENT_MEMBER_PALETTES[memberIndex % TOURNAMENT_MEMBER_PALETTES.length] ?? 'blue';
+    }
+    const stableIndex = Array.from(`${memberId ?? ''}`).reduce(
+      (total, character) => ((total * 31) + (character.codePointAt(0) ?? 0)) >>> 0,
+      0
+    ) % TOURNAMENT_MEMBER_PALETTES.length;
+    return TOURNAMENT_MEMBER_PALETTES[stableIndex] ?? 'blue';
   }
 
   private memberNameForEntry(menu: 'score' | 'home' | 'away'): string {
