@@ -156,7 +156,7 @@
               (click)="toggleQuantityRulesEnabled()"
               >
               <mat-icon>{{ workingPricing.quantityRulesEnabled ? 'toggle_on' : 'toggle_off' }}</mat-icon>
-              <span>{{ workingPricing.quantityRulesEnabled ? 'On' : 'Off' }}</span>
+              <span>{{ (workingPricing.quantityRulesEnabled ? 'on' : 'off') | i18n }}</span>
             </button>
             }
           </div>
@@ -246,7 +246,7 @@
               (click)="toggleDemandRulesEnabled()"
               >
               <mat-icon>{{ workingPricing.demandRulesEnabled ? 'toggle_on' : 'toggle_off' }}</mat-icon>
-              <span>{{ workingPricing.demandRulesEnabled ? 'On' : 'Off' }}</span>
+              <span>{{ (workingPricing.demandRulesEnabled ? 'on' : 'off') | i18n }}</span>
             </button>
             }
           </div>
@@ -364,7 +364,7 @@
               (click)="toggleTimeRulesEnabled()"
               >
               <mat-icon>{{ workingPricing.timeRulesEnabled ? 'toggle_on' : 'toggle_off' }}</mat-icon>
-              <span>{{ workingPricing.timeRulesEnabled ? 'On' : 'Off' }}</span>
+              <span>{{ (workingPricing.timeRulesEnabled ? 'on' : 'off') | i18n }}</span>
             </button>
             }
           </div>
@@ -508,7 +508,7 @@
               (click)="toggleCancellationPolicyEnabled()"
               >
               <mat-icon>{{ workingPricing.cancellationPolicy.enabled ? 'toggle_on' : 'toggle_off' }}</mat-icon>
-              <span>{{ workingPricing.cancellationPolicy.enabled ? 'On' : 'Off' }}</span>
+              <span>{{ (workingPricing.cancellationPolicy.enabled ? 'on' : 'off') | i18n }}</span>
             </button>
             }
           </div>
@@ -629,7 +629,7 @@
               (click)="toggleAudienceEnabled()"
               >
               <mat-icon>{{ workingPricing.audience.enabled ? 'toggle_on' : 'toggle_off' }}</mat-icon>
-              <span>{{ workingPricing.audience.enabled ? 'On' : 'Off' }}</span>
+              <span>{{ (workingPricing.audience.enabled ? 'on' : 'off') | i18n }}</span>
             </button>
             }
           </div>

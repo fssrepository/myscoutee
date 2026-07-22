@@ -5,6 +5,7 @@ import { MatIconModule } from '@angular/material/icon';
 
 import { PricingBuilder } from '../../../../../../../core/base/builders';
 import type * as ContractTypes from '../../../../../../../core/contracts';
+import { I18nPipe } from '../../../../../../pipes';
 import {
   AppMenuTriggerComponent,
   type AppMenuItem,
@@ -23,6 +24,7 @@ interface PricingSlotMenuContext {
     FormsModule,
     AppMenuTriggerComponent,
     MatIconModule,
+    I18nPipe,
   ],
   templateUrl: './pricing-slot-panel.component.html',
   styleUrl: './pricing-slot-panel.component.scss',

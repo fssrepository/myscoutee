@@ -14,7 +14,7 @@
       (click)="toggleEnabled()"
       >
       <mat-icon>{{ enabled ? 'toggle_on' : 'toggle_off' }}</mat-icon>
-      <span>{{ enabled ? 'On' : 'Off' }}</span>
+      <span>{{ (enabled ? 'on' : 'off') | i18n }}</span>
     </button>
     }
   </div>

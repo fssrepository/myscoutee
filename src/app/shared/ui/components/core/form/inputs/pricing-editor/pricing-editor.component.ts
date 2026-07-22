@@ -1370,10 +1370,14 @@ export class PricingEditorInputComponent implements OnChanges, DoCheck, OnDestro
 
     const dynamicParts: string[] = [];
     if (this.showDemandSection() && pricing.demandRulesEnabled && pricing.demandRules.length > 0) {
-      dynamicParts.push(`Demand ${this.countLabel(pricing.demandRules.length, 'rule')}`);
+      dynamicParts.push(this.i18n.translateParams('pricing.summary.demand.rules', {
+        count: pricing.demandRules.length
+      }));
     }
     if (this.showTimeSection() && pricing.timeRulesEnabled && pricing.timeRules.length > 0) {
-      dynamicParts.push(`Time ${this.countLabel(pricing.timeRules.length, 'rule')}`);
+      dynamicParts.push(this.i18n.translateParams('pricing.summary.time.rules', {
+        count: pricing.timeRules.length
+      }));
     }
     if (dynamicParts.length > 0) {
       items.push({
@@ -1974,9 +1978,15 @@ export class PricingEditorInputComponent implements OnChanges, DoCheck, OnDestro
 
   private audienceSummary(audience: ContractTypes.PricingAudienceSettings): string {
     const parts = [
-      audience.memberPrice !== null ? `member ${this.formatMoney(audience.memberPrice)}` : '',
-      audience.vipPrice !== null ? `VIP ${this.formatMoney(audience.vipPrice)}` : '',
-      audience.inviteOnlyDiscountPercent !== null ? `invite -${audience.inviteOnlyDiscountPercent}%` : '',
+      audience.memberPrice !== null
+        ? this.i18n.translateParams('pricing.audience.member.summary', { price: this.formatMoney(audience.memberPrice) })
+        : '',
+      audience.vipPrice !== null
+        ? this.i18n.translateParams('pricing.audience.vip.summary', { price: this.formatMoney(audience.vipPrice) })
+        : '',
+      audience.inviteOnlyDiscountPercent !== null
+        ? this.i18n.translateParams('pricing.audience.invite.summary', { percent: audience.inviteOnlyDiscountPercent })
+        : '',
       audience.promoCodes.length > 0 ? this.countLabel(audience.promoCodes.length, 'promo') : ''
     ].filter(Boolean);
     return parts.length > 0 ? parts.join(' · ') : audience.soldOutLabel;
@@ -1984,7 +1994,10 @@ export class PricingEditorInputComponent implements OnChanges, DoCheck, OnDestro
 
   private countLabel(count: number, singular: string): string {
     const normalized = Math.max(0, Math.trunc(Number(count) || 0));
-    return `${normalized} ${singular}${normalized === 1 ? '' : 's'}`;
+    return this.i18n.translateParams(
+      `pricing.summary.${singular}.${normalized === 1 ? 'one' : 'many'}`,
+      { count: normalized }
+    );
   }
 
   private isoDateToDate(value: string | null | undefined): Date | null {
