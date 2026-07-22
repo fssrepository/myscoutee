@@ -28,6 +28,7 @@ import {
   ActivityMembersService,
   ChatsService,
   EventsService,
+  I18nService,
   UsersService
 } from '../../../shared/core';
 import type { ActivityEventRecord } from '../../../shared/core/contracts/activity.interface';
@@ -111,6 +112,7 @@ export class EventMembersPopupComponent {
   private static readonly DEFAULT_POPUP_Z_INDEX = 3800;
 
   private readonly cdr = inject(ChangeDetectorRef);
+  private readonly i18n = inject(I18nService);
   private readonly dialogStore = inject(DialogStore);
   private readonly activityMembersService = inject(ActivityMembersService);
   private readonly chatsService = inject(ChatsService);
@@ -268,7 +270,7 @@ export class EventMembersPopupComponent {
       height: 'full',
       headerTone: 'accent',
       bodyLayout: 'fill',
-      headerBadge: this.isSummaryVisible ? this.summaryLabel : null,
+      headerBadge: this.isSummaryVisible ? this.localizedSummaryLabel() : null,
       translateHeaderBadge: false,
       toolbarControls: [
         ...(this.canShowInviteButton ? [{
@@ -1462,6 +1464,16 @@ export class EventMembersPopupComponent {
       : `${this.acceptedCount} members`;
     this.isSummaryVisible = true;
     this.emitMemberMetricBucketPatch();
+  }
+
+  private localizedSummaryLabel(): string {
+    this.i18n.revision();
+    const members = this.i18n.translateParams('members.count', { count: this.acceptedCount });
+    if (this.pendingCount <= 0) {
+      return members;
+    }
+    const pending = this.i18n.translateParams('pending.count', { count: this.pendingCount });
+    return `${members} · ${pending}`;
   }
 
   private emitMemberMetricBucketPatch(): void {

@@ -15,7 +15,7 @@ export class ActivityMemberImageCardConverter {
     options: ActivityMemberImageCardConverterOptions = {}
   ): ImageCardData {
     const age = Math.max(0, Math.trunc(Number(dto.profile?.age) || 0));
-    const statusLabel = this.statusLabel(dto, options);
+    const statusLabel = this.statusLabel(dto);
     const pendingDetail = dto.status === 'pending' || dto.status === 'disqualified'
       ? statusLabel
       : null;
@@ -115,10 +115,7 @@ export class ActivityMemberImageCardConverter {
     return 'outgoing_mail';
   }
 
-  private static statusLabel(
-    dto: ActivityMemberDTO,
-    options: Pick<ActivityMemberImageCardConverterOptions, 'ownerType'> = {}
-  ): string {
+  private static statusLabel(dto: ActivityMemberDTO): string {
     if (dto.status === 'disqualified') {
       return 'Disqualified';
     }
@@ -137,7 +134,7 @@ export class ActivityMemberImageCardConverter {
         : 'Waiting For Join Approval';
     }
     if (dto.pendingSource === 'admin') {
-      return options.ownerType === 'asset' ? 'Waiting For Admin Approval' : 'Invitation Pending';
+      return 'Invitation Pending';
     }
     return 'Waiting For Admin Approval';
   }
