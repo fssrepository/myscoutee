@@ -759,9 +759,12 @@ export class SeedActivityResourcesRepository {
     eventsById: ReadonlyMap<string, ActivityEventRecord | undefined>
   ): AssetsRecordCollection {
     const nextById = { ...table.byId };
+    const events = Array.from(eventsById.values())
+      .filter((event): event is ActivityEventRecord => Boolean(event?.id));
     let changed = false;
     for (const record of resourceRecords) {
-      const event = eventsById.get(record.ownerId);
+      const event = eventsById.get(record.ownerId)
+        ?? events.find(candidate => record.ownerId.startsWith(`${candidate.id}:`));
       const subEventId = this.resourceSeedSubEventIds(event).find(item => item === record.subEventId) ?? '';
       if (!event || !subEventId) {
         continue;
@@ -773,9 +776,11 @@ export class SeedActivityResourcesRepository {
           if (!card) {
             continue;
           }
-          const existingRequestIndex = card.requests.findIndex(request =>
-            this.isSubEventManualAssignmentRequest(request, subEventId)
-          );
+          const existingRequestIndex = card.requests.findIndex(request => (
+            request.requestKind === 'manual'
+            && `${request.booking?.eventId ?? ''}`.trim() === record.ownerId
+            && `${request.booking?.subEventId ?? ''}`.trim() === subEventId
+          ));
           const existingRequest = existingRequestIndex >= 0 ? card.requests[existingRequestIndex] : null;
           const settings = record.assetSettingsByType[type]?.[assetId] ?? null;
           const quantity = type === AppConstants.ASSET_TYPE_SUPPLIES
@@ -798,7 +803,7 @@ export class SeedActivityResourcesRepository {
             continue;
           }
           const desiredRequest: AssetMemberRequestRecord = {
-            id: existingRequest?.id ?? `manual:${subEventId}:${card.id}`,
+            id: existingRequest?.id ?? `manual:${record.ownerId}:${subEventId}:${card.id}`,
             userId: record.assetOwnerUserId,
             name: 'Demo User',
             initials: 'DU',
@@ -808,7 +813,7 @@ export class SeedActivityResourcesRepository {
             requestKind: 'manual',
             requestedAtIso: existingRequest?.requestedAtIso ?? record.createdAtIso,
             booking: {
-              eventId: event.id,
+              eventId: record.ownerId,
               subEventId,
               startAtIso: event.startAtIso,
               endAtIso: event.endAtIso,

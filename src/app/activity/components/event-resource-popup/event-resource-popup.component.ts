@@ -2467,7 +2467,6 @@ export class EventResourcePopupComponent {
       ? asset.requests
         .filter(request =>
           !this.isSubEventScopedAssetRequest(request, context.subEvent.id, context.ownerId)
-          || request.requestKind === 'manual'
         )
         .map(request => ({
           ...request,
