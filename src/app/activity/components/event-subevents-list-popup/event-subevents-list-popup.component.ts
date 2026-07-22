@@ -6,6 +6,9 @@ import {
   ChangeDetectorRef,
   Component,
   HostListener,
+  QueryList,
+  ViewChild,
+  ViewChildren,
   effect,
   inject
 } from '@angular/core';
@@ -113,6 +116,12 @@ interface EventSubeventsParentContext {
   changeDetection: ChangeDetectionStrategy.OnPush
 })
 export class EventSubeventsListPopupComponent {
+  @ViewChild('subeventsSmartList')
+  private subeventsSmartList?: SmartListComponent<EventSubeventsSlotModel, EventSubeventsListFilters>;
+
+  @ViewChildren('slotSectionSmartList')
+  private slotSectionSmartLists?: QueryList<SmartListComponent<SubEventDTO, EventSubeventsListFilters>>;
+
   private readonly eventsService = inject(EventsService);
   private readonly dialogStore = inject(DialogStore);
   private readonly userProfileStore = inject(UserProfileStore);
@@ -146,6 +155,7 @@ export class EventSubeventsListPopupComponent {
   private loadedQueryKey = '';
   private loadingQueryKey = '';
   private loadingPromise: Promise<void> | null = null;
+  private handledGroupsUpdateMs = 0;
   private readonly compactToolbarMenuModel: AppMenuModel<string, EventSubeventsListPopupMenuContext> = {
     density: 'compact'
   };
@@ -197,6 +207,9 @@ export class EventSubeventsListPopupComponent {
     desktopColumns: 3,
     snapMode: 'mandatory',
     mobileStepper: true,
+    cacheable: {
+      identity: (item, index) => this.subEventItemKey(item, index)
+    },
     stickyHeaderClass: 'smart-list__sticky--slot-section',
     pagination: {
       mode: 'arrows',
@@ -220,6 +233,9 @@ export class EventSubeventsListPopupComponent {
     listLayout: 'card-grid',
     desktopColumns: 3,
     snapMode: 'proximity',
+    cacheable: {
+      identity: (item, index) => this.subEventItemKey(item, index)
+    },
     menuItems: context => context.item
       ? this.subEventMenuItems(context.item) as readonly AppMenuItem<string, unknown>[]
       : [],
@@ -275,6 +291,15 @@ export class EventSubeventsListPopupComponent {
         return;
       }
       void this.eventSubeventsStore.ensureEventTournamentGroupsPopupLoaded();
+    });
+
+    effect(() => {
+      const update = this.eventSubeventsStore.eventTournamentGroupsUpdate();
+      if (!update || update.updatedMs === this.handledGroupsUpdateMs) {
+        return;
+      }
+      this.handledGroupsUpdateMs = update.updatedMs;
+      this.applyTournamentGroupsUpdate(update);
     });
 
     effect(() => {
@@ -951,6 +976,67 @@ export class EventSubeventsListPopupComponent {
     return section
       ? EventSubeventsSlotConverter.slotOwnerId(section)
       : `${this.event?.id ?? ''}`.trim();
+  }
+
+  private applyTournamentGroupsUpdate(update: {
+    eventId: string;
+    slotId: string | null;
+    stageId: string;
+    groupsCount: number;
+  }): void {
+    const openEventId = `${this.eventSubeventsStore.eventSubeventsListPopup()?.eventId ?? ''}`.trim();
+    const eventId = `${update.eventId ?? ''}`.trim();
+    const ownerId = `${update.slotId ?? eventId}`.trim();
+    const stageId = `${update.stageId ?? ''}`.trim();
+    if (!eventId || eventId !== openEventId || !ownerId || !stageId) {
+      return;
+    }
+    let changed = false;
+    const patchItem = (item: SubEventDTO): SubEventDTO => {
+      if (this.subEventOwnerId(item) !== ownerId || `${item.id ?? ''}`.trim() !== stageId) {
+        return item;
+      }
+      changed = true;
+      return {
+        ...item,
+        groupsCount: Math.max(0, Math.trunc(Number(update.groupsCount) || 0))
+      };
+    };
+    const nextSections = this.slotSections.map(section => {
+      const nextItems = section.items.map(patchItem);
+      return {
+        ...section,
+        items: nextItems,
+        slot: {
+          ...section.slot,
+          subEventItems: nextItems
+        }
+      };
+    });
+    const nextItems = this.items.map(patchItem);
+    if (!changed) {
+      return;
+    }
+    this.slotSections = nextSections;
+    this.items = nextSections.length > 0 ? nextSections.flatMap(section => section.items) : nextItems;
+    this.syncTournamentGroupSmartListCaches(nextSections);
+    this.cdr.markForCheck();
+  }
+
+  private syncTournamentGroupSmartListCaches(sections: readonly EventSubeventsSlotModel[]): void {
+    this.subeventsSmartList?.syncVisibleItems(sections, {
+      total: sections.length,
+      trackBy: (_index, section) => section.id,
+      equals: (current, next) => current === next
+    });
+    const sectionLists = this.slotSectionSmartLists?.toArray() ?? [];
+    sections.forEach((section, index) => {
+      sectionLists[index]?.syncVisibleItems(section.items, {
+        total: section.items.length,
+        trackBy: (itemIndex, item) => this.subEventItemKey(item, itemIndex),
+        equals: (current, next) => current === next
+      });
+    });
   }
 
   private applySubEventResourceMetricsUpdate(update: SubEventResourceMetricsUpdate): void {

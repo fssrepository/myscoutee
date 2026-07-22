@@ -773,6 +773,8 @@ export class EventTournamentGroupsPopupComponent {
         }
         this.leaderboardState = null;
         reloadLeaderboardStageId = stageId;
+        await this.loadGroupsForStage(stageId);
+        this.emitGroupsUpdate(stageId);
       }
       this.closeGroupForm();
     } finally {
@@ -1542,6 +1544,8 @@ export class EventTournamentGroupsPopupComponent {
             this.openGroupIds = nextGroup ? [nextGroup.id] : [];
             this.leaderboardState = null;
             reloadLeaderboardStageId = nextGroup ? stage.subEventId : null;
+            await this.loadGroupsForStage(stage.subEventId);
+            this.emitGroupsUpdate(stage.subEventId);
           }
         } finally {
           this.isMutating = false;
@@ -1551,6 +1555,17 @@ export class EventTournamentGroupsPopupComponent {
           void this.loadLeaderboardForStage(reloadLeaderboardStageId);
         }
       }
+    });
+  }
+
+  private emitGroupsUpdate(stageId: string): void {
+    const groupsCount = this.state?.stages
+      .find(stage => stage.subEventId === stageId)?.groups.length ?? 0;
+    this.eventSubeventsStore.emitEventTournamentGroupsUpdate({
+      eventId: this.requestEventId(),
+      slotId: this.requestSlotId(),
+      stageId,
+      groupsCount
     });
   }
 

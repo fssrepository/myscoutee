@@ -29,17 +29,27 @@ export interface EventTournamentGroupsPopupRequest {
   selectedGroupId?: string | null;
 }
 
+export interface EventTournamentGroupsUpdate {
+  updatedMs: number;
+  eventId: string;
+  slotId: string | null;
+  stageId: string;
+  groupsCount: number;
+}
+
 @Injectable({
   providedIn: 'root'
 })
 export class EventSubeventsPopupStore {
   private readonly eventSubeventsListPopupRef = signal<EventSubeventsListPopupRequest | null>(null);
   private readonly eventTournamentGroupsPopupRef = signal<EventTournamentGroupsPopupRequest | null>(null);
+  private readonly eventTournamentGroupsUpdateRef = signal<EventTournamentGroupsUpdate | null>(null);
   private readonly eventSubeventsListPopupComponentRef = signal<Type<unknown> | null>(null);
   private readonly eventTournamentGroupsPopupComponentRef = signal<Type<unknown> | null>(null);
 
   readonly eventSubeventsListPopup = this.eventSubeventsListPopupRef.asReadonly();
   readonly eventTournamentGroupsPopup = this.eventTournamentGroupsPopupRef.asReadonly();
+  readonly eventTournamentGroupsUpdate = this.eventTournamentGroupsUpdateRef.asReadonly();
   readonly eventSubeventsListPopupComponent = this.eventSubeventsListPopupComponentRef.asReadonly();
   readonly eventTournamentGroupsPopupComponent = this.eventTournamentGroupsPopupComponentRef.asReadonly();
 
@@ -134,6 +144,26 @@ export class EventSubeventsPopupStore {
 
   closeEventTournamentGroupsPopup(): void {
     this.eventTournamentGroupsPopupRef.set(null);
+  }
+
+  emitEventTournamentGroupsUpdate(payload: {
+    eventId: string;
+    slotId?: string | null;
+    stageId: string;
+    groupsCount: number;
+  }): void {
+    const eventId = `${payload.eventId ?? ''}`.trim();
+    const stageId = `${payload.stageId ?? ''}`.trim();
+    if (!eventId || !stageId) {
+      return;
+    }
+    this.eventTournamentGroupsUpdateRef.set({
+      updatedMs: Date.now(),
+      eventId,
+      slotId: `${payload.slotId ?? ''}`.trim() || null,
+      stageId,
+      groupsCount: Math.max(0, Math.trunc(Number(payload.groupsCount) || 0))
+    });
   }
 
   async ensureEventSubeventsListPopupLoaded(): Promise<void> {
