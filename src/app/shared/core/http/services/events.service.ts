@@ -303,7 +303,12 @@ export class HttpEventsService implements IEventsService {
     }
     try {
       const response = await this.http
-        .post<{ mode?: string | null; slots?: SubEventsSlotDTO[] | null } | null>(
+        .post<{
+          mode?: string | null;
+          slots?: SubEventsSlotDTO[] | null;
+          total?: number | null;
+          nextCursor?: string | null;
+        } | null>(
           `${this.apiBaseUrl}/activities/events/sub-events`,
           {
             ...(query ?? {}),
@@ -318,7 +323,9 @@ export class HttpEventsService implements IEventsService {
       }
       return {
         mode,
-        slots: response?.slots ?? []
+        slots: response?.slots ?? [],
+        total: Number.isFinite(response?.total) ? Math.max(0, Math.trunc(Number(response?.total))) : null,
+        nextCursor: typeof response?.nextCursor === 'string' ? response.nextCursor : null
       };
     } catch {
       return null;

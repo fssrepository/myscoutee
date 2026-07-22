@@ -109,6 +109,42 @@ describe('HttpEventsService', () => {
     expect(result?.messageKey).toBe('event.checkout.promo.invalid');
   });
 
+  it('sends only the sub-event page query and returns only the backend page', async () => {
+    post.mockReturnValue(of({
+      mode: 'Casual',
+      slots: [{ id: 'slot-13', parentEventId: 'event-1', subEventItems: [] }],
+      total: 100,
+      nextCursor: '24'
+    }));
+
+    const result = await TestBed.inject(HttpEventsService).loadSubEventsById(' user-1 ', ' event-1 ', {
+      userId: 'user-1',
+      eventId: 'event-1',
+      order: 'upcoming',
+      page: 1,
+      pageSize: 12,
+      cursor: '12'
+    });
+
+    expect(post).toHaveBeenCalledWith(
+      expect.stringMatching(/\/activities\/events\/sub-events$/),
+      {
+        userId: 'user-1',
+        eventId: 'event-1',
+        order: 'upcoming',
+        page: 1,
+        pageSize: 12,
+        cursor: '12'
+      }
+    );
+    expect(result).toEqual({
+      mode: 'Casual',
+      slots: [{ id: 'slot-13', parentEventId: 'event-1', subEventItems: [] }],
+      total: 100,
+      nextCursor: '24'
+    });
+  });
+
   it('reloads full event details after saving instead of returning the sparse list response', async () => {
     post.mockReturnValue(of({
       id: 'event-1',

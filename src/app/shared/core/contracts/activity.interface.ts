@@ -469,6 +469,9 @@ export interface ActivityEventSubEventsQueryDTO {
   rangeStart?: string | null;
   rangeEnd?: string | null;
   participantOnly?: boolean | null;
+  page?: number | null;
+  pageSize?: number | null;
+  cursor?: string | null;
 }
 
 export interface SubEventsSlotDTO {
@@ -486,6 +489,8 @@ export interface SubEventsSlotDTO {
 export interface ActivityEventSubEventsResultDTO {
   mode: EventContracts.EventMode;
   slots: SubEventsSlotDTO[];
+  total?: number | null;
+  nextCursor?: string | null;
 }
 
 export type SubEventDefinitionTiming = 'Before' | 'During' | 'After';

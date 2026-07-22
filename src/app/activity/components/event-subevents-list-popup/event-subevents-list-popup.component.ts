@@ -155,6 +155,8 @@ export class EventSubeventsListPopupComponent {
   private loadedQueryKey = '';
   private loadingQueryKey = '';
   private loadingPromise: Promise<void> | null = null;
+  private loadedPageTotal: number | null = null;
+  private loadedPageNextCursor: string | null = null;
   private handledGroupsUpdateMs = 0;
   private readonly compactToolbarMenuModel: AppMenuModel<string, EventSubeventsListPopupMenuContext> = {
     density: 'compact'
@@ -257,6 +259,8 @@ export class EventSubeventsListPopupComponent {
         this.loadedQueryKey = '';
         this.loadingQueryKey = '';
         this.loadingPromise = null;
+        this.loadedPageTotal = null;
+        this.loadedPageNextCursor = null;
         this.event = null;
         this.items = [];
         this.slotSections = [];
@@ -275,6 +279,8 @@ export class EventSubeventsListPopupComponent {
       this.loadedQueryKey = '';
       this.loadingQueryKey = '';
       this.loadingPromise = null;
+      this.loadedPageTotal = null;
+      this.loadedPageNextCursor = null;
       this.event = this.parentContextFromRequest(request.eventId);
       this.items = [];
       this.slotSections = [];
@@ -1160,6 +1166,13 @@ export class EventSubeventsListPopupComponent {
       return { items: [], total: 0, nextCursor: null };
     }
     await this.ensureSubEventsLoaded(eventId, query);
+    if (this.loadedPageTotal !== null) {
+      return {
+        items: this.slotSections,
+        total: this.loadedPageTotal,
+        nextCursor: this.loadedPageNextCursor
+      };
+    }
     const sorted = this.slotSections;
     const page = Math.max(0, Math.trunc(Number(query.page) || 0));
     const pageSize = Math.max(1, Math.trunc(Number(query.pageSize) || 12));
@@ -1188,6 +1201,8 @@ export class EventSubeventsListPopupComponent {
       this.items = [];
       this.slotSections = [];
       this.slotSectionHeaderLabels.clear();
+      this.loadedPageTotal = null;
+      this.loadedPageNextCursor = null;
       this.loadedEventId = eventId;
       this.loadedQueryKey = queryKey;
       return;
@@ -1232,6 +1247,12 @@ export class EventSubeventsListPopupComponent {
     });
     this.syncSlotSectionHeaderLabels(this.slotSections);
     this.items = this.slotSections.flatMap(section => section.items);
+    this.loadedPageTotal = Number.isFinite(result?.total)
+      ? Math.max(0, Math.trunc(Number(result?.total)))
+      : null;
+    this.loadedPageNextCursor = typeof result?.nextCursor === 'string' && result.nextCursor.trim().length > 0
+      ? result.nextCursor
+      : null;
     this.loadedEventId = eventId;
     this.loadedQueryKey = this.subEventsLoadQueryKey(eventId, query);
     this.cdr.markForCheck();
@@ -1385,7 +1406,10 @@ export class EventSubeventsListPopupComponent {
       loadQuery.anchorDate ?? '',
       loadQuery.rangeStart ?? '',
       loadQuery.rangeEnd ?? '',
-      loadQuery.participantOnly === true ? 'participantOnly' : 'allParts'
+      loadQuery.participantOnly === true ? 'participantOnly' : 'allParts',
+      loadQuery.page ?? 0,
+      loadQuery.pageSize ?? 12,
+      loadQuery.cursor ?? ''
     ].join('|');
   }
 
@@ -1401,7 +1425,10 @@ export class EventSubeventsListPopupComponent {
       anchorDate: query.anchorDate ?? null,
       rangeStart: query.rangeStart ?? null,
       rangeEnd: query.rangeEnd ?? null,
-      participantOnly: this.participantOnly
+      participantOnly: this.participantOnly,
+      page: query.page,
+      pageSize: query.pageSize,
+      cursor: query.cursor ?? null
     };
   }
 
@@ -1411,6 +1438,8 @@ export class EventSubeventsListPopupComponent {
     this.loadingEventId = '';
     this.loadingQueryKey = '';
     this.loadingPromise = null;
+    this.loadedPageTotal = null;
+    this.loadedPageNextCursor = null;
     this.bumpQuery();
     this.cdr.markForCheck();
   }
