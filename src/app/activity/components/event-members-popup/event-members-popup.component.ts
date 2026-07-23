@@ -75,7 +75,23 @@ interface MembersSmartListFilters {
   pendingOnly?: boolean;
 }
 
-type MemberMenuAction = 'approve' | 'remove' | 'disqualify' | 'reinstate' | 'report' | 'involvement';
+type MemberMenuAction =
+  | 'approve'
+  | 'remove'
+  | 'disqualify'
+  | 'reinstate'
+  | 'promoteAdmin'
+  | 'stepDownAdmin'
+  | 'report'
+  | 'involvement';
+
+type PersistedMemberAction =
+  | 'accept'
+  | 'remove'
+  | 'disqualify'
+  | 'reinstate'
+  | 'promote-admin'
+  | 'step-down-admin';
 
 type MemberMenuContext = {
   menu: 'member-action';
@@ -414,6 +430,8 @@ export class EventMembersPopupComponent {
       || this.canDeleteMember(entry)
       || this.canDisqualifyMember(entry)
       || this.canReinstateMember(entry)
+      || this.canPromoteAdmin(entry)
+      || this.canStepDownAdmin(entry)
       || this.canReportMember(entry);
   }
 
@@ -458,6 +476,24 @@ export class EventMembersPopupComponent {
         icon: 'assignment_ind',
         palette: 'teal',
         context: { menu: 'member-action', member: entry, action: 'involvement' }
+      });
+    }
+    if (this.canPromoteAdmin(entry)) {
+      items.push({
+        id: `member-action-promote-admin-${entry.id}`,
+        label: 'Promote to admin',
+        icon: 'admin_panel_settings',
+        palette: 'blue',
+        context: { menu: 'member-action', member: entry, action: 'promoteAdmin' }
+      });
+    }
+    if (this.canStepDownAdmin(entry)) {
+      items.push({
+        id: `member-action-step-down-admin-${entry.id}`,
+        label: 'Step down as admin',
+        icon: 'person',
+        palette: 'warning',
+        context: { menu: 'member-action', member: entry, action: 'stepDownAdmin' }
       });
     }
     if (this.canApproveMember(entry)) {
@@ -528,6 +564,12 @@ export class EventMembersPopupComponent {
         break;
       case 'reinstate':
         this.requestReinstateMember(context.member, event.sourceEvent);
+        break;
+      case 'promoteAdmin':
+        this.requestPromoteAdmin(context.member, event.sourceEvent);
+        break;
+      case 'stepDownAdmin':
+        this.requestStepDownAdmin(context.member, event.sourceEvent);
         break;
       case 'report':
         this.reportMember(context.member, event.sourceEvent);
@@ -608,6 +650,42 @@ export class EventMembersPopupComponent {
       confirmTone: 'accent',
       failureMessage: 'Unable to reinstate member.',
       onConfirm: () => this.confirmMemberAction(entry, 'reinstate')
+    });
+  }
+
+  protected requestPromoteAdmin(entry: ActivityContracts.ActivityMemberDTO, event: Event): void {
+    event.stopPropagation();
+    if (!this.canPromoteAdmin(entry)) {
+      return;
+    }
+    this.membersSmartList?.closeMenu();
+    this.dialogStore.open({
+      title: 'Promote member to admin?',
+      message: `${entry.name} will be able to manage this event and invite or approve members.`,
+      cancelLabel: 'Cancel',
+      confirmLabel: 'Promote',
+      busyConfirmLabel: 'Promoting...',
+      confirmTone: 'accent',
+      failureMessage: 'Unable to promote member.',
+      onConfirm: () => this.confirmMemberAction(entry, 'promote-admin')
+    });
+  }
+
+  protected requestStepDownAdmin(entry: ActivityContracts.ActivityMemberDTO, event: Event): void {
+    event.stopPropagation();
+    if (!this.canStepDownAdmin(entry)) {
+      return;
+    }
+    this.membersSmartList?.closeMenu();
+    this.dialogStore.open({
+      title: 'Step down as admin?',
+      message: 'You will remain a member, but will no longer be able to manage this event.',
+      cancelLabel: 'Cancel',
+      confirmLabel: 'Step down',
+      busyConfirmLabel: 'Stepping down...',
+      confirmTone: 'warning',
+      failureMessage: 'Unable to step down as admin.',
+      onConfirm: () => this.confirmMemberAction(entry, 'step-down-admin')
     });
   }
 
@@ -756,31 +834,37 @@ export class EventMembersPopupComponent {
 
   private async confirmApproveMember(entry: ActivityContracts.ActivityMemberDTO): Promise<void> {
     const previousMembers = this.currentOwnerMembers();
-    const nextMembers = previousMembers.map(member =>
-      member.id === entry.id
-        ? {
-            ...member,
-            status: 'accepted' as const,
-            pendingSource: null,
-            requestKind: null,
-            actionAtIso: AppUtils.toIsoDateTime(new Date())
-          }
-        : member
-    );
-    const approvePromise = this.runMemberUpdateAfterUiYield(nextMembers, previousMembers);
-    await approvePromise;
+    const owner = this.ownerRef && this.ownerRef.ownerId === this.ownerId ? this.ownerRef : null;
+    if (owner?.ownerType === 'event') {
+      await this.runMemberActionAfterUiYield(owner, entry.userId, 'accept', previousMembers);
+      return;
+    }
+    const nextMembers = previousMembers.map(member => member.id === entry.id
+      ? {
+          ...member,
+          status: 'accepted' as const,
+          pendingSource: null,
+          requestKind: null,
+          actionAtIso: AppUtils.toIsoDateTime(new Date())
+        }
+      : member);
+    await this.runMemberUpdateAfterUiYield(nextMembers, previousMembers);
   }
 
   private async confirmRemoveMember(entry: ActivityContracts.ActivityMemberDTO): Promise<void> {
     const previousMembers = this.currentOwnerMembers();
+    const owner = this.ownerRef && this.ownerRef.ownerId === this.ownerId ? this.ownerRef : null;
+    if (owner?.ownerType === 'event') {
+      await this.runMemberActionAfterUiYield(owner, entry.userId, 'remove', previousMembers);
+      return;
+    }
     const nextMembers = previousMembers.filter(member => member.id !== entry.id);
-    const deletePromise = this.runMemberUpdateAfterUiYield(nextMembers, previousMembers);
-    await deletePromise;
+    await this.runMemberUpdateAfterUiYield(nextMembers, previousMembers);
   }
 
   private async confirmMemberAction(
     entry: ActivityContracts.ActivityMemberDTO,
-    action: 'disqualify' | 'reinstate'
+    action: PersistedMemberAction
   ): Promise<void> {
     const owner = this.ownerRef && this.ownerRef.ownerId === this.ownerId ? this.ownerRef : null;
     if (!owner) {
@@ -792,8 +876,11 @@ export class EventMembersPopupComponent {
   }
 
   private memberRemovalTitle(entry: ActivityContracts.ActivityMemberDTO): string {
-    if (entry.requestKind === 'join') {
+    if (this.isJoinRequest(entry)) {
       return 'Reject request?';
+    }
+    if (entry.status === 'accepted' && entry.role === 'Admin') {
+      return 'Remove admin?';
     }
     if (entry.status === 'accepted') {
       return 'Remove member?';
@@ -802,8 +889,11 @@ export class EventMembersPopupComponent {
   }
 
   private memberRemovalMessage(entry: ActivityContracts.ActivityMemberDTO): string {
-    if (entry.requestKind === 'join') {
+    if (this.isJoinRequest(entry)) {
       return `Reject ${entry.name}'s request to join this ${this.ownerScopeLabel()}?`;
+    }
+    if (entry.status === 'accepted' && entry.role === 'Admin') {
+      return `Remove ${entry.name} as an admin and from this ${this.ownerScopeLabel()}?`;
     }
     if (entry.status === 'accepted') {
       return `Remove ${entry.name} from this ${this.ownerScopeLabel()}?`;
@@ -812,22 +902,31 @@ export class EventMembersPopupComponent {
   }
 
   private memberRemovalConfirmLabel(entry: ActivityContracts.ActivityMemberDTO): string {
-    if (entry.requestKind === 'join') {
+    if (this.isJoinRequest(entry)) {
       return 'Reject';
+    }
+    if (entry.status === 'accepted' && entry.role === 'Admin') {
+      return 'Remove admin';
     }
     return entry.status === 'accepted' ? 'Remove' : 'Delete';
   }
 
   private memberRemovalBusyLabel(entry: ActivityContracts.ActivityMemberDTO): string {
-    if (entry.requestKind === 'join') {
+    if (this.isJoinRequest(entry)) {
       return 'Rejecting...';
+    }
+    if (entry.status === 'accepted' && entry.role === 'Admin') {
+      return 'Removing admin...';
     }
     return entry.status === 'accepted' ? 'Removing...' : 'Deleting...';
   }
 
   private memberRemovalFailureMessage(entry: ActivityContracts.ActivityMemberDTO): string {
-    if (entry.requestKind === 'join') {
+    if (this.isJoinRequest(entry)) {
       return 'Unable to reject request.';
+    }
+    if (entry.status === 'accepted' && entry.role === 'Admin') {
+      return 'Unable to remove admin.';
     }
     if (entry.status === 'accepted') {
       return 'Unable to remove member.';
@@ -836,10 +935,13 @@ export class EventMembersPopupComponent {
   }
 
   protected deleteLabel(entry: ActivityContracts.ActivityMemberDTO): string {
+    if (entry.status === 'accepted' && entry.role === 'Admin') {
+      return 'Remove admin';
+    }
     if (entry.status === 'accepted') {
       return 'Remove member';
     }
-    if (entry.requestKind === 'join') {
+    if (this.isJoinRequest(entry)) {
       return 'Reject request';
     }
     return 'Delete invitation';
@@ -1235,6 +1337,12 @@ export class EventMembersPopupComponent {
     if (entry.status === 'disqualified') {
       return false;
     }
+    if (this.ownerRef?.ownerType === 'event' && entry.userId === this.eventOwnerUserId()) {
+      return false;
+    }
+    if (this.ownerRef?.ownerType === 'event' && entry.status === 'accepted' && entry.role === 'Admin') {
+      return this.isActiveUserEventOwner() && !this.isCurrentUser(entry);
+    }
     if (this.canManageMembers) {
       return true;
     }
@@ -1257,6 +1365,24 @@ export class EventMembersPopupComponent {
       return false;
     }
     return entry.status === 'disqualified';
+  }
+
+  protected canPromoteAdmin(entry: ActivityContracts.ActivityMemberDTO): boolean {
+    return !this.viewOnlyMode
+      && this.ownerRef?.ownerType === 'event'
+      && this.isActiveUserEventAdmin()
+      && entry.status === 'accepted'
+      && entry.role !== 'Admin'
+      && !this.isCurrentUser(entry);
+  }
+
+  protected canStepDownAdmin(entry: ActivityContracts.ActivityMemberDTO): boolean {
+    return !this.viewOnlyMode
+      && this.ownerRef?.ownerType === 'event'
+      && entry.status === 'accepted'
+      && entry.role === 'Admin'
+      && this.isCurrentUser(entry)
+      && entry.userId !== this.eventOwnerUserId();
   }
 
   protected canReportMember(entry: ActivityContracts.ActivityMemberDTO): boolean {
@@ -1365,6 +1491,7 @@ export class EventMembersPopupComponent {
 
   private isJoinRequest(entry: ActivityContracts.ActivityMemberDTO): boolean {
     return entry.requestKind === 'join'
+      || entry.requestKind === 'approval'
       || (entry.requestKind == null && entry.pendingSource === 'member');
   }
 
@@ -1391,7 +1518,7 @@ export class EventMembersPopupComponent {
   private async runMemberActionAfterUiYield(
     owner: ActivityMemberOwnerRef,
     targetUserId: string,
-    action: 'disqualify' | 'reinstate',
+    action: PersistedMemberAction,
     previousMembers: readonly ActivityContracts.ActivityMemberDTO[]
   ): Promise<void> {
     await this.waitForMemberActionRender();
@@ -1422,6 +1549,30 @@ export class EventMembersPopupComponent {
 
   private isCurrentUser(entry: ActivityContracts.ActivityMemberDTO): boolean {
     return entry.userId === this.activeUserId();
+  }
+
+  private eventOwnerUserId(): string {
+    return `${this.ownerRecord?.creatorUserId ?? ''}`.trim();
+  }
+
+  private isActiveUserEventOwner(): boolean {
+    const activeUserId = this.activeUserId();
+    return Boolean(activeUserId) && activeUserId === this.eventOwnerUserId();
+  }
+
+  private isActiveUserEventAdmin(): boolean {
+    const activeUserId = this.activeUserId();
+    if (!activeUserId) {
+      return false;
+    }
+    if (this.isActiveUserEventOwner() || (this.ownerRecord?.adminIds ?? []).includes(activeUserId)) {
+      return true;
+    }
+    return this.currentOwnerMembers().some(member =>
+      member.userId === activeUserId
+      && member.status === 'accepted'
+      && member.role === 'Admin'
+    );
   }
 
   private isProtectedManagerMember(entry: ActivityContracts.ActivityMemberDTO): boolean {

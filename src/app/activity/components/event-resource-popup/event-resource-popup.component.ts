@@ -1199,6 +1199,14 @@ export class EventResourcePopupComponent {
     const startAtIso = `${request.booking?.startAtIso ?? defaultRange.startAtIso}`.trim() || defaultRange.startAtIso;
     const endAtIso = `${request.booking?.endAtIso ?? defaultRange.endAtIso}`.trim() || defaultRange.endAtIso;
     const quantity = Math.max(1, Math.trunc(Number(request.booking?.quantity) || 1));
+    const paymentSessionId = `${request.booking?.paymentSessionId ?? ''}`.trim();
+    const paymentAudit = paymentSessionId
+      ? await this.eventsService.loadCheckoutPaymentAudit(
+          this.activeUser().id,
+          sourceCard.id,
+          paymentSessionId
+        )
+      : null;
     const calculatedPricing = PricingBuilder.resolveAssetBorrowPricing({
       pricing: sourceCard.pricing,
       totalQuantity: this.assignedBorrowTotalQuantity(sourceCard, request),
@@ -1207,13 +1215,29 @@ export class EventResourcePopupComponent {
       endAtIso,
       requests: sourceCard.requests
     });
-    const amount = Number.isFinite(request.booking?.totalAmount)
+    const amount = paymentAudit
+      ? Math.max(0, Number(paymentAudit.amount) || 0)
+      : Number.isFinite(request.booking?.totalAmount)
       ? Math.max(0, Number(request.booking?.totalAmount))
       : calculatedPricing.amount;
-    const currency = `${request.booking?.currency ?? calculatedPricing.currency ?? 'USD'}`.trim() || 'USD';
+    const currency = `${paymentAudit?.currency ?? request.booking?.currency ?? calculatedPricing.currency ?? 'USD'}`.trim() || 'USD';
     const timeframe = ActivityResourceBuilder.assetRequestTimeframeLabel(startAtIso, endAtIso);
-    const useCalculatedRows = !Number.isFinite(request.booking?.totalAmount)
-      || amount === calculatedPricing.amount;
+    const auditRows = paymentAudit
+      ? (paymentAudit.pricingSummaryRows.length > 0
+          ? paymentAudit.pricingSummaryRows.map(row => ({ ...row }))
+          : paymentAudit.lineItems.map((lineItem, index) => ({
+              key: `base-payment-audit-${lineItem.id || index}`,
+              label: lineItem.label,
+              detail: lineItem.detail || timeframe,
+              amount: Math.max(0, Number(lineItem.amount) || 0),
+              currency: lineItem.currency?.trim() || currency,
+              multiplier: null
+            })))
+      : [];
+    const useCalculatedRows = !paymentAudit && (
+      !Number.isFinite(request.booking?.totalAmount)
+      || amount === calculatedPricing.amount
+    );
     const checkout: AssetEditorCheckoutState = {
       sourceId: sourceCard.id,
       mode: 'payment-summary',
@@ -1236,9 +1260,19 @@ export class EventResourcePopupComponent {
       },
       availableQuantity: quantity,
       pricingPreview: {
-        rows: useCalculatedRows
-          ? calculatedPricing.rows.map(row => ({ ...row }))
-          : [{
+        rows: paymentAudit
+          ? (auditRows.length > 0
+              ? auditRows
+              : [{
+                  key: 'base-payment-audit',
+                  label: sourceCard.title,
+                  detail: timeframe,
+                  amount,
+                  currency
+                }])
+          : useCalculatedRows
+            ? calculatedPricing.rows.map(row => ({ ...row }))
+            : [{
               key: 'base-borrow',
               label: 'pricing.base',
               detail: timeframe,
@@ -1251,7 +1285,20 @@ export class EventResourcePopupComponent {
       acceptedPolicyIds: [...(request.booking?.acceptedPolicyIds ?? [])],
       footerItems: [],
       busy: false,
-      error: null
+      error: null,
+      paymentProviderLabel: paymentAudit ? 'event.editor.payment.recorded' : null,
+      paymentStatusLabel: paymentAudit
+        ? (paymentAudit.auditKind === 'booking_price_revision'
+            ? 'event.editor.payment.recorded.revised'
+            : paymentAudit.status === 'approved' || paymentAudit.bookingStatus === 'joined'
+            ? 'event.editor.payment.recorded.approved'
+            : paymentAudit.status)
+        : null,
+      paymentNote: paymentAudit
+        ? (paymentAudit.auditKind === 'booking_price_revision'
+            ? 'event.editor.payment.recorded.revision.note'
+            : 'event.editor.payment.recorded.note')
+        : null
     };
     const ownerUserId = `${sourceCard.ownerUserId ?? ''}`.trim();
     const generation = this.assetStore.openAssetEditorEdit({
@@ -1348,11 +1395,21 @@ export class EventResourcePopupComponent {
       quantity,
       quantityMax: bounds.quantityMax,
       quantityLabel: this.i18n.translate('asset.assignment.quantity'),
-      quantityDescription: this.assignedRuntimeQuantityDescription(bounds.quantityMax, quantity),
+      quantityDescription: this.assignedRuntimeQuantityDescription(
+        bounds.quantityMax,
+        quantity,
+        sourceCard,
+        bounds.reservation
+      ),
       editable: this.canEditAssignedAssetRuntimeAssignment(subEventId, sourceCard, assetId),
       onChange: nextQuantity => {
         this.assetStore.setAssetEditorRuntimeAssignmentState({
-          quantityDescription: this.assignedRuntimeQuantityDescription(bounds.quantityMax, nextQuantity)
+          quantityDescription: this.assignedRuntimeQuantityDescription(
+            bounds.quantityMax,
+            nextQuantity,
+            sourceCard,
+            bounds.reservation
+          )
         });
       },
       onSave: state => this.saveAssignedAssetRuntimeAssignment(subEventId, type, assetId, state)
@@ -2094,10 +2151,74 @@ export class EventResourcePopupComponent {
       ?? null;
   }
 
-  private assignedRuntimeQuantityDescription(quantityMax: number, quantity: number): string {
-    return this.i18n.translateParams('asset.assignment.available', {
+  private assignedRuntimeQuantityDescription(
+    quantityMax: number,
+    quantity: number,
+    card?: ResourceAssetDTO | null,
+    reservation?: AppDTOs.AssetMemberRequestDTO | null
+  ): string {
+    const availableLabel = this.i18n.translateParams('asset.assignment.available', {
       count: Math.max(0, Math.trunc(quantityMax) - Math.max(1, Math.trunc(quantity)))
     });
+    const priceDelta = this.assignedRuntimeQuantityPriceDelta(card, reservation, quantity);
+    if (!priceDelta || Math.abs(priceDelta.amount) < 0.005) {
+      return availableLabel;
+    }
+    return this.i18n.translateParams('asset.assignment.available.price', {
+      available: availableLabel,
+      price: this.signedCurrencyAmount(priceDelta.amount, priceDelta.currency)
+    });
+  }
+
+  private assignedRuntimeQuantityPriceDelta(
+    card: ResourceAssetDTO | null | undefined,
+    reservation: AppDTOs.AssetMemberRequestDTO | null | undefined,
+    nextQuantity: number
+  ): { amount: number; currency: string } | null {
+    if (!card || !reservation?.booking?.paymentSessionId) {
+      return null;
+    }
+    const currentQuantity = this.assignedRuntimeQuantityValue(reservation.booking.quantity);
+    const normalizedNextQuantity = this.assignedRuntimeQuantityValue(nextQuantity);
+    if (currentQuantity === normalizedNextQuantity) {
+      return null;
+    }
+    const startAtIso = `${reservation.booking.startAtIso ?? ''}`.trim();
+    const endAtIso = `${reservation.booking.endAtIso ?? ''}`.trim();
+    const pricingOptions = {
+      pricing: card.pricing,
+      totalQuantity: this.assignedBorrowTotalQuantity(card, reservation),
+      startAtIso,
+      endAtIso,
+      requests: card.requests
+    };
+    const currentPricing = PricingBuilder.resolveAssetBorrowPricing({
+      ...pricingOptions,
+      requestedQuantity: currentQuantity
+    });
+    const nextPricing = PricingBuilder.resolveAssetBorrowPricing({
+      ...pricingOptions,
+      requestedQuantity: normalizedNextQuantity
+    });
+    return {
+      amount: Math.round((nextPricing.amount - currentPricing.amount) * 100) / 100,
+      currency: nextPricing.currency || currentPricing.currency || 'USD'
+    };
+  }
+
+  private signedCurrencyAmount(amount: number, currency: string): string {
+    const sign = amount > 0 ? '+' : amount < 0 ? '-' : '';
+    const absoluteAmount = Math.abs(Number(amount) || 0);
+    try {
+      return `${sign}${new Intl.NumberFormat('en-US', {
+        style: 'currency',
+        currency: `${currency ?? 'USD'}`.trim() || 'USD',
+        minimumFractionDigits: 2,
+        maximumFractionDigits: 2
+      }).format(absoluteAmount)}`;
+    } catch {
+      return `${sign}${`${currency ?? 'USD'}`.trim() || 'USD'} ${absoluteAmount.toFixed(2)}`;
+    }
   }
 
   private assignedRuntimeQuantityValue(value: unknown, fallback = 1): number {
@@ -2284,6 +2405,12 @@ export class EventResourcePopupComponent {
       quantity: nextRemainingQuantity,
       requests: nextRequests
     };
+    await this.persistLocalAssignedBorrowPriceRevision(
+      card,
+      reservation,
+      quantity,
+      pricing
+    );
     const ownerUserId = `${card.ownerUserId ?? ''}`.trim();
     if (!ownerUserId) {
       return nextCard;
@@ -2312,6 +2439,62 @@ export class EventResourcePopupComponent {
       this.assetStore.replaceAssetCard(persistedCard, { mutation: true, reloadList: false });
     }
     return persistedCard;
+  }
+
+  private async persistLocalAssignedBorrowPriceRevision(
+    card: ResourceAssetDTO,
+    reservation: AppDTOs.AssetMemberRequestDTO,
+    quantity: number,
+    pricing: ReturnType<typeof PricingBuilder.resolveAssetBorrowPricing>
+  ): Promise<void> {
+    const booking = reservation.booking;
+    const userId = AppUtils.resolveAssetRequestUserId(reservation, this.users)
+      || `${reservation.userId ?? ''}`.trim();
+    const paymentSessionId = `${booking?.paymentSessionId ?? ''}`.trim();
+    if (!this.eventsService.localModeEnabled || !booking || !userId || !paymentSessionId) {
+      return;
+    }
+    const timeframe = ActivityResourceBuilder.assetRequestTimeframeLabel(
+      `${booking.startAtIso ?? ''}`.trim(),
+      `${booking.endAtIso ?? ''}`.trim()
+    );
+    await this.eventsService.saveCheckoutBasket({
+      userId,
+      sourceId: card.id,
+      slotSourceId: null,
+      optionalSubEventIds: [],
+      assetSelections: booking.subEventId
+        ? [{ subEventId: booking.subEventId, resourceType: card.type }]
+        : [],
+      acceptedPolicyIds: [...(booking.acceptedPolicyIds ?? [])],
+      appliedPromoCodes: [],
+      basketItems: [],
+      pricingSummaryRows: pricing.rows.map(row => ({ ...row })),
+      checkoutState: 'pay',
+      lineItems: [{
+        id: `resource:${card.id}`,
+        kind: 'resource',
+        label: card.title,
+        detail: quantity > 1
+          ? this.i18n.translateParams('asset.borrow.quantity.detail', {
+              timeframe,
+              quantity
+            })
+          : timeframe,
+        amount: pricing.amount,
+        currency: pricing.currency
+      }],
+      totalAmount: pricing.amount,
+      currency: pricing.currency
+    });
+    await this.eventsService.updateCheckoutBasketState({
+      userId,
+      sourceId: card.id,
+      slotSourceId: null,
+      checkoutState: 'pay',
+      resultState: 'succeeded',
+      checkoutSessionId: paymentSessionId
+    });
   }
 
   private assignedBorrowTotalQuantity(

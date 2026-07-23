@@ -17,6 +17,7 @@ import type {
   EventCheckoutBasket,
   EventCheckoutBasketItem,
   EventCheckoutLineItem,
+  EventCheckoutPaymentAudit,
   EventCheckoutOptionalSubEvent,
   EventCheckoutPricingSummaryRow,
   EventCheckoutPromoCodeValidationRequest,
@@ -353,6 +354,44 @@ export class LocalEventsService extends LocalRouteDelayService implements IEvent
     );
   }
 
+  async loadCheckoutPaymentAudit(
+    userId: string,
+    sourceId: string,
+    paymentSessionId: string
+  ): Promise<EventCheckoutPaymentAudit | null> {
+    const normalizedUserId = userId.trim();
+    const normalizedSourceId = sourceId.trim();
+    const normalizedPaymentSessionId = paymentSessionId.trim();
+    if (!normalizedUserId || !normalizedSourceId || !normalizedPaymentSessionId) {
+      return null;
+    }
+    const basket = await this.loadCheckoutBasketByEvent(normalizedUserId, normalizedSourceId);
+    if (!basket || basket.checkoutSessionId?.trim() !== normalizedPaymentSessionId) {
+      return null;
+    }
+    return {
+      id: normalizedPaymentSessionId,
+      userId: normalizedUserId,
+      sourceId: normalizedSourceId,
+      checkoutSessionId: normalizedPaymentSessionId,
+      provider: 'dummy',
+      status: 'approved',
+      bookingStatus: basket.status === 'cancelled' ? 'cancelled' : 'joined',
+      auditKind: basket.status === 'pay' ? 'booking_price_revision' : 'payment',
+      revisionNumber: basket.status === 'pay' ? 1 : 0,
+      adjustmentAmount: null,
+      bookingQuantity: basket.items.find(item => item.sourceId === normalizedSourceId)?.quantity ?? null,
+      supersedesPaymentId: null,
+      amount: Math.max(0, Number(basket.totalAmount) || 0),
+      currency: basket.currency?.trim() || 'USD',
+      basketItems: basket.items.map(item => ({ ...item })),
+      pricingSummaryRows: basket.pricingSummaryRows.map(row => ({ ...row })),
+      lineItems: basket.lineItems.map(item => ({ ...item })),
+      joinedAtIso: null,
+      createdAtIso: null
+    };
+  }
+
   async validateCheckoutPromoCode(
     request: EventCheckoutPromoCodeValidationRequest
   ): Promise<EventCheckoutPromoCodeValidationResult | null> {
@@ -616,7 +655,7 @@ export class LocalEventsService extends LocalRouteDelayService implements IEvent
     if (!activeUser) {
       return new EventFeedbackDetailDto({ eventId: normalizedEventId });
     }
-    return LocalEventFeedbackMapper.toDetail({
+    const detail = LocalEventFeedbackMapper.toDetail({
       query: {
         userId: normalizedUserId,
         eventId: normalizedEventId
@@ -625,12 +664,25 @@ export class LocalEventsService extends LocalRouteDelayService implements IEvent
       users,
       activeUser
     });
+    const state = this.eventFeedbackRepository
+      .queryEventFeedbackStates(normalizedUserId)
+      .find(item => item.eventId === normalizedEventId);
+    return detail.withPersistedState(state);
   }
 
-  async submitEventFeedback(userId: string, request: EventFeedbackDetailDto): Promise<void> {
+  async submitEventFeedback(userId: string, request: EventFeedbackDetailDto): Promise<EventFeedbackDetailDto> {
     await this.waitForRouteDelay(LocalEventsService.EVENTS_ROUTE);
     this.eventFeedbackRepository.submitEventFeedback(userId, request);
     await this.eventFeedbackRepository.flushToIndexedDb();
+    const normalizedUserId = userId.trim();
+    const persistedState = this.eventFeedbackRepository
+      .queryEventFeedbackStates(normalizedUserId)
+      .find(item => item.eventId === request.eventId.trim());
+    const persisted = new EventFeedbackDetailDto(request).withPersistedState(persistedState);
+    if (!persisted.submittedAtIso) {
+      throw new Error('Local event feedback persistence was not confirmed.');
+    }
+    return persisted;
   }
 
   async saveEventFeedbackNote(request: EventFeedbackNoteRequestDto): Promise<void> {

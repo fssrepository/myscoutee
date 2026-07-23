@@ -75,6 +75,9 @@ export interface AssetEditorCheckoutState {
   footerItems: readonly AppMenuItem<string>[];
   busy: boolean;
   error: string | null;
+  paymentProviderLabel?: string | null;
+  paymentStatusLabel?: string | null;
+  paymentNote?: string | null;
   onDateRangeChange?: (value: DateInputRangeValue) => void;
   onPolicyToggle?: (policyId: string) => void;
   onFooterItemSelect?: (itemId: string, event: Event) => void;

@@ -2004,8 +2004,35 @@ export class EventResourceAssetExploreComponent implements DoCheck {
     endAtIso: string,
     quantity: number,
     storedAmount?: number | null,
-    storedCurrency?: string | null
+    storedCurrency?: string | null,
+    paymentAudit?: ActivityContracts.EventCheckoutPaymentAudit | null
   ): AssetEditorCheckoutState['pricingPreview'] {
+    if (paymentAudit) {
+      const currency = `${paymentAudit.currency ?? 'USD'}`.trim() || 'USD';
+      const auditRows = paymentAudit.pricingSummaryRows.length > 0
+        ? paymentAudit.pricingSummaryRows.map(row => ({ ...row }))
+        : paymentAudit.lineItems.map((lineItem, index) => ({
+            key: `base-payment-audit-${lineItem.id || index}`,
+            label: lineItem.label,
+            detail: lineItem.detail || this.timeframeLabel(startAtIso, endAtIso),
+            amount: Math.max(0, Number(lineItem.amount) || 0),
+            currency: lineItem.currency?.trim() || currency,
+            multiplier: null
+          }));
+      return {
+        rows: auditRows.length > 0
+          ? auditRows
+          : [{
+              key: 'base-payment-audit',
+              label: card.title,
+              detail: this.timeframeLabel(startAtIso, endAtIso),
+              amount: Math.max(0, Number(paymentAudit.amount) || 0),
+              currency
+            }],
+        totalAmount: Math.max(0, Number(paymentAudit.amount) || 0),
+        currency
+      };
+    }
     const calculated = this.resolveBorrowPricing(card, startAtIso, endAtIso, quantity);
     const amount = Number.isFinite(storedAmount) ? Math.max(0, Number(storedAmount)) : calculated.amount;
     const currency = `${storedCurrency ?? calculated.currency ?? 'USD'}`.trim() || 'USD';
@@ -2040,6 +2067,14 @@ export class EventResourceAssetExploreComponent implements DoCheck {
     const startAtIso = `${request.booking?.startAtIso ?? range.startAtIso}`.trim() || range.startAtIso;
     const endAtIso = `${request.booking?.endAtIso ?? range.endAtIso}`.trim() || range.endAtIso;
     const quantity = Math.max(1, Math.trunc(Number(request.booking?.quantity) || 1));
+    const paymentSessionId = `${request.booking?.paymentSessionId ?? ''}`.trim();
+    const paymentAudit = paymentSessionId
+      ? await this.eventsService.loadCheckoutPaymentAudit(
+          this.activeUser().id,
+          card.id,
+          paymentSessionId
+        )
+      : null;
     const ownerUserId = `${card.ownerUserId ?? ''}`.trim();
     const generation = this.assetStore.openAssetEditorEdit({
       cardId: card.id,
@@ -2074,12 +2109,26 @@ export class EventResourceAssetExploreComponent implements DoCheck {
           endAtIso,
           quantity,
           request.booking?.totalAmount,
-          request.booking?.currency
+          request.booking?.currency,
+          paymentAudit
         ),
         acceptedPolicyIds: [...(request.booking?.acceptedPolicyIds ?? [])],
         footerItems: [],
         busy: false,
-        error: null
+        error: null,
+        paymentProviderLabel: paymentAudit ? 'event.editor.payment.recorded' : null,
+        paymentStatusLabel: paymentAudit
+          ? (paymentAudit.auditKind === 'booking_price_revision'
+              ? 'event.editor.payment.recorded.revised'
+              : paymentAudit.status === 'approved' || paymentAudit.bookingStatus === 'joined'
+              ? 'event.editor.payment.recorded.approved'
+              : paymentAudit.status)
+          : null,
+        paymentNote: paymentAudit
+          ? (paymentAudit.auditKind === 'booking_price_revision'
+              ? 'event.editor.payment.recorded.revision.note'
+              : 'event.editor.payment.recorded.note')
+          : null
       }
     });
     void this.assetPopupStore.ensureAssetPopupLoaded();

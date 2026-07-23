@@ -65,6 +65,7 @@ import { UserProfileStore } from '../../../shared/ui/context/stores/user-profile
 import { AppRuntimeStore } from '../../../shared/ui/context/stores/app-runtime.store';
 import { ActivityStore } from '../../../shared/ui/context/stores/activity.store';
 import { MemberMenuStore } from '../../../shared/ui/context/stores/member-menu.store';
+import { ActivitiesPopupStore } from '../../../shared/ui/context/stores/activities-popup.store';
 
 type EventFeedbackStackedPopupMode = 'eventFeedback' | 'eventFeedbackNote' | 'organizerEventFeedback' | null;
 
@@ -104,6 +105,7 @@ export class EventFeedbackPopupComponent {
   private readonly runtimeStore = inject(AppRuntimeStore);
   private readonly activityStore = inject(ActivityStore);
   private readonly memberMenuStore = inject(MemberMenuStore);
+  private readonly activitiesPopupStore = inject(ActivitiesPopupStore);
   private readonly eventsService = inject(EventsService);
   private readonly dialogStore = inject(DialogStore);
   private lastHandledNavigatorEventFeedbackRequestMs = 0;
@@ -538,7 +540,23 @@ export class EventFeedbackPopupComponent {
       this.openRestoreEventFeedbackDialog(item);
       return;
     }
+    if (event.actionId === 'viewSubmittedFeedback') {
+      void this.openSubmittedEventFeedback(item);
+      return;
+    }
     this.openEventFeedbackNotePopup(item);
+  }
+
+  private async openSubmittedEventFeedback(item: ActivityContracts.EventFeedbackDto): Promise<void> {
+    if (!item.isFeedbacked) {
+      return;
+    }
+    await this.activitiesPopupStore.ensureEventFeedbackRatedDetailPopupLoaded();
+    this.activitiesPopupStore.openEventFeedbackRatedDetail({
+      userId: this.activeUserId(),
+      eventId: item.eventId,
+      eventTitle: item.title
+    });
   }
 
   private openRemoveEventFeedbackDialog(item: ActivityContracts.EventFeedbackDto): void {
@@ -697,11 +715,13 @@ export class EventFeedbackPopupComponent {
     this.eventFeedbackDetailValue.set(feedback);
     this.eventFeedbackSubmitting.set(true);
     try {
-      await this.eventsService.submitEventFeedback(this.activeUserId(), feedback);
-      this.activityStore.emitActivityEventFeedbackSubmit(feedback);
+      const persisted = await this.eventsService.submitEventFeedback(this.activeUserId(), feedback);
+      this.activityStore.emitActivityEventFeedbackSubmit(persisted);
       this.eventFeedbackSubmitted.set(true);
       this.eventFeedbackSubmitMessage.set(`Feedback submitted successfully for ${this.eventFeedbackCurrentEventTitle()}.`);
-      this.clearLoadedEventFeedbackDetail(feedback.eventId);
+      this.clearLoadedEventFeedbackDetail(persisted.eventId);
+    } catch {
+      this.eventFeedbackSubmitMessage.set('Feedback could not be saved. Please try again.');
     } finally {
       this.eventFeedbackSubmitting.set(false);
     }

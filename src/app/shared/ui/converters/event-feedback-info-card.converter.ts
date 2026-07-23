@@ -169,6 +169,9 @@ export class EventFeedbackInfoCardConverter {
     if (item.isRemoved) {
       actions.push('restoreFeedback');
     }
+    if (item.isFeedbacked) {
+      actions.push('viewSubmittedFeedback');
+    }
     actions.push(hasOrganizerNote ? 'editOrganizerNote' : 'addOrganizerNote');
     return actions;
   }

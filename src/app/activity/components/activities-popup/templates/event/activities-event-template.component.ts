@@ -1735,7 +1735,7 @@ export class ActivitiesEventsController {
       member.userId === inviterUserId
       && member.status === 'accepted'
     );
-    return inviterEntry?.role !== 'Admin' && inviterEntry?.role !== 'Manager';
+    return inviterEntry?.role !== 'Admin';
   }
 
   private buildAcceptedInvitationMembers(

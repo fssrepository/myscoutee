@@ -24,6 +24,7 @@ import type {
   EventCheckoutBasket,
   EventCheckoutBasketItem,
   EventCheckoutLineItem,
+  EventCheckoutPaymentAudit,
   EventCheckoutPricingSummaryRow,
   EventCheckoutPromoCodeValidationRequest,
   EventCheckoutPromoCodeValidationResult,
@@ -268,6 +269,24 @@ export class EventsService extends BaseRouteModeService implements IEventsServic
     return this.eventsService.loadCheckoutBasketByEvent(normalizedUserId, normalizedSourceId);
   }
 
+  async loadCheckoutPaymentAudit(
+    userId: string,
+    sourceId: string,
+    paymentSessionId: string
+  ): Promise<EventCheckoutPaymentAudit | null> {
+    const normalizedUserId = userId.trim();
+    const normalizedSourceId = sourceId.trim();
+    const normalizedPaymentSessionId = paymentSessionId.trim();
+    if (!normalizedUserId || !normalizedSourceId || !normalizedPaymentSessionId) {
+      return null;
+    }
+    return this.eventsService.loadCheckoutPaymentAudit(
+      normalizedUserId,
+      normalizedSourceId,
+      normalizedPaymentSessionId
+    );
+  }
+
   async validateCheckoutPromoCode(
     request: EventCheckoutPromoCodeValidationRequest
   ): Promise<EventCheckoutPromoCodeValidationResult | null> {
@@ -456,7 +475,7 @@ export class EventsService extends BaseRouteModeService implements IEventsServic
     return this.eventsService.loadEventFeedback(query);
   }
 
-  submitEventFeedback(userId: string, request: EventFeedbackDetailDto): Promise<void> {
+  submitEventFeedback(userId: string, request: EventFeedbackDetailDto): Promise<EventFeedbackDetailDto> {
     return this.eventsService.submitEventFeedback(userId, request);
   }
 

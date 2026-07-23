@@ -47,6 +47,9 @@ export class EventPaymentInputComponent {
   @Input() currency = 'USD';
   @Input() paymentIntegrationEnabled = false;
   @Input() tone: EventEditorCheckoutSurfaceTone = 'payment';
+  @Input() providerLabel = '';
+  @Input() statusLabel = '';
+  @Input() note = '';
 
   protected itemTrackId(_index: number, item: EventPaymentInputItem): string {
     return item.id;
@@ -100,17 +103,20 @@ export class EventPaymentInputComponent {
   }
 
   protected paymentProviderLabel(): string {
-    return this.paymentIntegrationEnabled ? 'event.editor.payment.gateway' : 'event.editor.payment.demo';
+    return this.providerLabel.trim()
+      || (this.paymentIntegrationEnabled ? 'event.editor.payment.gateway' : 'event.editor.payment.demo');
   }
 
   protected paymentStatusLabel(): string {
-    return this.paymentIntegrationEnabled ? 'event.editor.payment.ready.redirect' : 'event.editor.payment.review.before.confirm';
+    return this.statusLabel.trim()
+      || (this.paymentIntegrationEnabled ? 'event.editor.payment.ready.redirect' : 'event.editor.payment.review.before.confirm');
   }
 
   protected paymentNote(): string {
-    return this.paymentIntegrationEnabled
-      ? 'event.editor.payment.gateway.note'
-      : 'event.editor.payment.demo.note';
+    return this.note.trim()
+      || (this.paymentIntegrationEnabled
+        ? 'event.editor.payment.gateway.note'
+        : 'event.editor.payment.demo.note');
   }
 
   private currencySymbol(currency: string): string {

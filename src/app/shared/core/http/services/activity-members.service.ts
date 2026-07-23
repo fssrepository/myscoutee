@@ -108,22 +108,24 @@ export class HttpActivityMembersService {
     if (!normalizedOwner) {
       return;
     }
+    await this.http
+      .post<void>(`${this.apiBaseUrl}/activities/events/members/replace`, {
+        owner: normalizedOwner,
+        members: this.cloneEntries(members),
+        capacityTotal: this.normalizeCount(capacityTotal),
+        actorUserId: actorUserId.trim(),
+        eventId: `${options?.eventId ?? ''}`.trim() || null,
+        subEventId: `${options?.subEventId ?? ''}`.trim() || null
+      })
+      .toPromise();
     this.cacheMembers(normalizedOwner, members, capacityTotal);
-    await this.postVoid('/activities/events/members/replace', {
-      owner: normalizedOwner,
-      members: this.cloneEntries(members),
-      capacityTotal: this.normalizeCount(capacityTotal),
-      actorUserId: actorUserId.trim(),
-      eventId: `${options?.eventId ?? ''}`.trim() || null,
-      subEventId: `${options?.subEventId ?? ''}`.trim() || null
-    });
   }
 
   async applyMemberAction(
     owner: ActivityMemberOwnerRef,
     actorUserId: string,
     targetUserId: string,
-    action: 'disqualify' | 'reinstate',
+    action: 'accept' | 'remove' | 'disqualify' | 'reinstate' | 'promote-admin' | 'step-down-admin',
     reason?: string | null
   ): Promise<ActivityContracts.ActivityMemberDTO[]> {
     const normalizedOwner = this.normalizeOwnerRef(owner);
@@ -297,11 +299,4 @@ export class HttpActivityMembersService {
     return Math.max(0, Math.trunc(Number(value)));
   }
 
-  private async postVoid(route: string, payload: unknown): Promise<void> {
-    try {
-      await this.http.post<void>(`${this.apiBaseUrl}${route}`, payload).toPromise();
-    } catch {
-      // Keep optimistic UI state until concrete backend endpoints land.
-    }
-  }
 }

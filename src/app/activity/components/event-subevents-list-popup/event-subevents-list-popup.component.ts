@@ -62,7 +62,10 @@ import {
   DialogStore
 } from '../../../shared/ui/context/stores/dialog.store';
 import { UserProfileStore } from '../../../shared/ui/context/stores/user-profile.store';
-import { ActivityStore } from '../../../shared/ui/context/stores/activity.store';
+import {
+  ActivityStore,
+  type ActivityMembersSyncState
+} from '../../../shared/ui/context/stores/activity.store';
 import { ActivitiesPopupStore } from '../../../shared/ui/context/stores/activities-popup.store';
 import { MemberMenuStore } from '../../../shared/ui/context/stores/member-menu.store';
 import { EventSubeventsPopupStore } from '../../../shared/ui/context/stores/event-subevents-popup.store';
@@ -158,6 +161,7 @@ export class EventSubeventsListPopupComponent {
   private loadedPageTotal: number | null = null;
   private loadedPageNextCursor: string | null = null;
   private handledGroupsUpdateMs = 0;
+  private handledMembersSyncMs = 0;
   private readonly compactToolbarMenuModel: AppMenuModel<string, EventSubeventsListPopupMenuContext> = {
     density: 'compact'
   };
@@ -345,6 +349,15 @@ export class EventSubeventsListPopupComponent {
         return;
       }
       this.applySubEventResourceMetricsUpdate(update);
+    });
+
+    effect(() => {
+      const sync = this.activityStore.activityMembersSync();
+      if (!sync || !this.isOpen() || sync.updatedMs === this.handledMembersSyncMs) {
+        return;
+      }
+      this.handledMembersSyncMs = sync.updatedMs;
+      this.applySubEventMembersSync(sync);
     });
 
     effect(() => {
@@ -1097,6 +1110,52 @@ export class EventSubeventsListPopupComponent {
     }
     this.slotSections = nextSlotSections;
     this.items = nextSlotSections.flatMap(section => section.items);
+    this.bumpQuery();
+    this.cdr.markForCheck();
+  }
+
+  private applySubEventMembersSync(sync: ActivityMembersSyncState): void {
+    const memberOwnerId = `${sync.id ?? ''}`.trim();
+    if (!memberOwnerId) {
+      return;
+    }
+
+    let changed = false;
+    const patchItem = (item: SubEventDTO): SubEventDTO => {
+      const itemMemberOwnerId = this.memberOwnerIdFromParts(
+        this.subEventOwnerId(item),
+        `${item.id ?? ''}`.trim()
+      );
+      if (itemMemberOwnerId !== memberOwnerId) {
+        return item;
+      }
+      changed = true;
+      return {
+        ...item,
+        membersAccepted: Math.max(0, Math.trunc(Number(sync.acceptedMembers) || 0)),
+        membersPending: Math.max(0, Math.trunc(Number(sync.pendingMembers) || 0))
+      };
+    };
+
+    const nextSlotSections = this.slotSections.map(section => {
+      const nextItems = section.items.map(patchItem);
+      return {
+        ...section,
+        items: nextItems,
+        slot: {
+          ...section.slot,
+          subEventItems: nextItems
+        }
+      };
+    });
+    const nextItems = this.items.map(patchItem);
+    if (!changed) {
+      return;
+    }
+    this.slotSections = nextSlotSections;
+    this.items = nextSlotSections.length > 0
+      ? nextSlotSections.flatMap(section => section.items)
+      : nextItems;
     this.bumpQuery();
     this.cdr.markForCheck();
   }

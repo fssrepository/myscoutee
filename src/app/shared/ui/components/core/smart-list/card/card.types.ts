@@ -257,7 +257,8 @@ export const CARD_MENU_ACTIONS: Readonly<Record<CardMenuActionId, CardMenuAction
   view: { label: 'view.event', icon: 'visibility' },
   viewArticle: { label: 'Read more', icon: 'auto_stories', tone: 'accent' },
   viewAsset: { label: 'view.asset', icon: 'edit_square' },
-  viewInvitation: { label: 'view.invitation', icon: 'visibility' }
+  viewInvitation: { label: 'view.invitation', icon: 'visibility' },
+  viewSubmittedFeedback: { label: 'View my feedback', icon: 'rate_review', tone: 'accent' }
 };
 
 export interface InfoCardFooterChip {

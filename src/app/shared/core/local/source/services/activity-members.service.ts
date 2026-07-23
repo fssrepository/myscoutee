@@ -91,7 +91,7 @@ export class LocalActivityMembersService extends LocalRouteDelayService {
     owner: ActivityMemberOwnerRef,
     actorUserId: string,
     targetUserId: string,
-    action: 'disqualify' | 'reinstate',
+    action: 'accept' | 'remove' | 'disqualify' | 'reinstate' | 'promote-admin' | 'step-down-admin',
     reason?: string | null
   ): Promise<ActivityMemberDTO[]> {
     await this.waitForRouteDelay(LocalActivityMembersService.MEMBERS_ROUTE);
@@ -109,6 +109,21 @@ export class LocalActivityMembersService extends LocalRouteDelayService {
     const nextMembers = previousMembers.map(member => {
       if (member.userId !== normalizedTargetUserId) {
         return member;
+      }
+      if (action === 'accept' && member.status === 'pending'
+          && (member.requestKind === 'join' || member.requestKind === 'approval')) {
+        return {
+          ...member,
+          status: 'accepted' as const,
+          pendingSource: null,
+          requestKind: null,
+          invitedByUserId: null,
+          invitedByActiveUser: false,
+          actionAtIso: nowIso
+        };
+      }
+      if (action === 'remove') {
+        return null;
       }
       if (action === 'disqualify' && member.status === 'accepted') {
         return {
@@ -132,9 +147,26 @@ export class LocalActivityMembersService extends LocalRouteDelayService {
           actionAtIso: nowIso
         };
       }
+      if (action === 'promote-admin' && member.status === 'accepted' && member.role !== 'Admin') {
+        return {
+          ...member,
+          role: 'Admin' as const,
+          actionAtIso: nowIso
+        };
+      }
+      if (action === 'step-down-admin' && member.status === 'accepted' && member.role === 'Admin') {
+        return {
+          ...member,
+          role: 'Member' as const,
+          actionAtIso: nowIso
+        };
+      }
       return member;
-    });
-    const changed = nextMembers.some((member, index) => member.status !== previousMembers[index]?.status);
+    }).filter((member): member is ActivityMemberDTO => member !== null);
+    const changed = nextMembers.length !== previousMembers.length
+      || nextMembers.some((member, index) =>
+        member.status !== previousMembers[index]?.status
+        || member.role !== previousMembers[index]?.role);
     if (!changed) {
       return previousMembers;
     }

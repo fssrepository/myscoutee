@@ -30,6 +30,7 @@ import type {
   EventCheckoutBasket,
   EventCheckoutBasketItem,
   EventCheckoutLineItem,
+  EventCheckoutPaymentAudit,
   EventCheckoutOptionalSubEvent,
   EventCheckoutPricingSummaryRow,
   EventCheckoutPromoCodeValidationRequest,
@@ -451,6 +452,35 @@ export class HttpEventsService implements IEventsService {
         )
         .toPromise();
       return ActivityEventDetailDTO.cloneCheckoutBasket(response);
+    } catch {
+      return null;
+    }
+  }
+
+  async loadCheckoutPaymentAudit(
+    userId: string,
+    sourceId: string,
+    paymentSessionId: string
+  ): Promise<EventCheckoutPaymentAudit | null> {
+    const normalizedUserId = userId.trim();
+    const normalizedSourceId = sourceId.trim();
+    const normalizedPaymentSessionId = paymentSessionId.trim();
+    if (!normalizedUserId || !normalizedSourceId || !normalizedPaymentSessionId) {
+      return null;
+    }
+    try {
+      const response = await this.http
+        .get<EventCheckoutPaymentAudit | null>(
+          `${this.apiBaseUrl}/activities/events/checkout/payment-audit`,
+          {
+            params: new HttpParams()
+              .set('userId', normalizedUserId)
+              .set('sourceId', normalizedSourceId)
+              .set('paymentSessionId', normalizedPaymentSessionId)
+          }
+        )
+        .toPromise();
+      return this.normalizeCheckoutPaymentAudit(response);
     } catch {
       return null;
     }
@@ -1008,8 +1038,23 @@ export class HttpEventsService implements IEventsService {
     }
   }
 
-  async submitEventFeedback(_userId: string, request: EventFeedbackDetailDto): Promise<void> {
-    await this.postVoid('/activities/events/feedback/submit', request);
+  async submitEventFeedback(userId: string, request: EventFeedbackDetailDto): Promise<EventFeedbackDetailDto> {
+    const normalizedUserId = userId.trim();
+    const feedback = new EventFeedbackDetailDto(request);
+    if (!normalizedUserId || !feedback.eventId || feedback.cards.length === 0) {
+      throw new Error('A feedback user, event, and at least one answer are required.');
+    }
+    const response = await this.http
+      .post<EventFeedbackDetailDto | null>(`${this.apiBaseUrl}/activities/events/feedback/submit`, {
+        userId: normalizedUserId,
+        feedback
+      })
+      .toPromise();
+    const persisted = new EventFeedbackDetailDto(response);
+    if (persisted.eventId !== feedback.eventId || !persisted.submittedAtIso || persisted.cards.length === 0) {
+      throw new Error('The server did not confirm persisted event feedback.');
+    }
+    return persisted;
   }
 
   async saveEventFeedbackNote(request: EventFeedbackNoteRequestDto): Promise<void> {
@@ -1416,6 +1461,58 @@ export class HttpEventsService implements IEventsService {
       amount: Math.max(0, Number(value.amount) || 0),
       currency: `${value.currency ?? 'USD'}`.trim() || 'USD',
       pricingSummaryRows: (value.pricingSummaryRows ?? []).map(row => ({ ...row }))
+    };
+  }
+
+  private normalizeCheckoutPaymentAudit(
+    value: EventCheckoutPaymentAudit | null | undefined
+  ): EventCheckoutPaymentAudit | null {
+    if (!value) {
+      return null;
+    }
+    const currency = `${value.currency ?? 'USD'}`.trim() || 'USD';
+    return {
+      id: `${value.id ?? ''}`.trim(),
+      userId: `${value.userId ?? ''}`.trim(),
+      sourceId: `${value.sourceId ?? ''}`.trim(),
+      checkoutSessionId: `${value.checkoutSessionId ?? ''}`.trim(),
+      provider: `${value.provider ?? ''}`.trim(),
+      status: `${value.status ?? ''}`.trim(),
+      bookingStatus: `${value.bookingStatus ?? ''}`.trim(),
+      auditKind: `${value.auditKind ?? 'payment'}`.trim() || 'payment',
+      revisionNumber: Math.max(0, Math.trunc(Number(value.revisionNumber) || 0)),
+      adjustmentAmount: Number.isFinite(value.adjustmentAmount)
+        ? Number(value.adjustmentAmount)
+        : null,
+      bookingQuantity: Number.isFinite(value.bookingQuantity)
+        ? Math.max(1, Math.trunc(Number(value.bookingQuantity)))
+        : null,
+      supersedesPaymentId: `${value.supersedesPaymentId ?? ''}`.trim() || null,
+      amount: Math.max(0, Number(value.amount) || 0),
+      currency,
+      basketItems: (value.basketItems ?? [])
+        .map(item => ActivityEventDetailDTO.cloneCheckoutBasketItem(item))
+        .filter((item): item is EventCheckoutBasketItem => Boolean(item)),
+      pricingSummaryRows: (value.pricingSummaryRows ?? []).map(row => ({
+        key: `${row.key ?? row.label ?? ''}`.trim() || 'pricing',
+        label: `${row.label ?? ''}`.trim() || 'Pricing',
+        detail: `${row.detail ?? ''}`.trim() || null,
+        amount: Number.isFinite(row.amount) ? Number(row.amount) : null,
+        currency: `${row.currency ?? currency}`.trim() || currency,
+        multiplier: Number.isFinite(row.multiplier)
+          ? Math.max(1, Math.trunc(Number(row.multiplier)))
+          : null
+      })),
+      lineItems: (value.lineItems ?? []).map(item => ({
+        id: `${item.id ?? ''}`.trim(),
+        kind: item.kind,
+        label: `${item.label ?? ''}`.trim(),
+        detail: `${item.detail ?? ''}`.trim(),
+        amount: Math.max(0, Number(item.amount) || 0),
+        currency: `${item.currency ?? currency}`.trim() || currency
+      })).filter(item => item.id && item.label),
+      joinedAtIso: `${value.joinedAtIso ?? ''}`.trim() || null,
+      createdAtIso: `${value.createdAtIso ?? ''}`.trim() || null
     };
   }
 

@@ -36,6 +36,16 @@ export interface EventChatSession {
   openedAtIso: string;
 }
 
+export interface EventFeedbackRatedDetailPopupRequest {
+  userId: string;
+  eventId: string;
+  eventTitle: string;
+}
+
+export interface EventFeedbackRatedDetailPopupSession extends EventFeedbackRatedDetailPopupRequest {
+  openedAtIso: string;
+}
+
 export function eventChatPopupRequestFromChat(chat: Pick<ChatDTO, 'id' | 'ownerId' | 'channelType'>): EventChatPopupRequest {
   return {
     chatId: chat.id,
@@ -154,11 +164,13 @@ export class ActivitiesPopupStore {
   private readonly _stackedEventChatSession = signal<EventChatSession | null>(null);
   private readonly _stackedEventChatHeader = signal<EventChatHeaderState | null>(null);
   private readonly _eventChatRowPatch = signal<EventChatRowPatch | null>(null);
+  private readonly _eventFeedbackRatedDetailSession = signal<EventFeedbackRatedDetailPopupSession | null>(null);
   private readonly activitiesPopupComponentRef = signal<Type<unknown> | null>(null);
   private readonly eventChatPopupComponentRef = signal<Type<unknown> | null>(null);
   private readonly eventExplorePopupComponentRef = signal<Type<unknown> | null>(null);
   private readonly eventMembersPopupComponentRef = signal<Type<unknown> | null>(null);
   private readonly eventFeedbackPopupComponentRef = signal<Type<unknown> | null>(null);
+  private readonly eventFeedbackRatedDetailPopupComponentRef = signal<Type<unknown> | null>(null);
 
   readonly activitiesUiState = this._uiState.asReadonly();
   readonly activitiesOpen = computed(() => this._uiState().open);
@@ -187,11 +199,13 @@ export class ActivitiesPopupStore {
   readonly stackedEventChatSession = this._stackedEventChatSession.asReadonly();
   readonly stackedEventChatHeader = this._stackedEventChatHeader.asReadonly();
   readonly eventChatRowPatch = this._eventChatRowPatch.asReadonly();
+  readonly eventFeedbackRatedDetailSession = this._eventFeedbackRatedDetailSession.asReadonly();
   readonly activitiesPopupComponent = this.activitiesPopupComponentRef.asReadonly();
   readonly eventChatPopupComponent = this.eventChatPopupComponentRef.asReadonly();
   readonly eventExplorePopupComponent = this.eventExplorePopupComponentRef.asReadonly();
   readonly eventMembersPopupComponent = this.eventMembersPopupComponentRef.asReadonly();
   readonly eventFeedbackPopupComponent = this.eventFeedbackPopupComponentRef.asReadonly();
+  readonly eventFeedbackRatedDetailPopupComponent = this.eventFeedbackRatedDetailPopupComponentRef.asReadonly();
 
   readonly activitiesOpenBoolean = computed(() => this._uiState().open);
   readonly eventChatOpen = computed(() => this._eventChatSession() !== null);
@@ -471,6 +485,24 @@ export class ActivitiesPopupStore {
     this._stackedEventChatHeader.set(null);
   }
 
+  openEventFeedbackRatedDetail(request: EventFeedbackRatedDetailPopupRequest): void {
+    const userId = request.userId.trim();
+    const eventId = request.eventId.trim();
+    if (!userId || !eventId) {
+      return;
+    }
+    this._eventFeedbackRatedDetailSession.set({
+      userId,
+      eventId,
+      eventTitle: request.eventTitle.trim() || 'Event',
+      openedAtIso: new Date().toISOString()
+    });
+  }
+
+  closeEventFeedbackRatedDetail(): void {
+    this._eventFeedbackRatedDetailSession.set(null);
+  }
+
   patchStackedEventChatHeader(headerUpdater: (header: EventChatHeaderState) => EventChatHeaderState): void {
     const header = this._stackedEventChatHeader();
     if (!header) {
@@ -584,6 +616,16 @@ export class ActivitiesPopupStore {
     }
     const module = await import('../../../../activity/components/event-feedback-popup/event-feedback-popup.component');
     this.eventFeedbackPopupComponentRef.set(module.EventFeedbackPopupComponent);
+  }
+
+  async ensureEventFeedbackRatedDetailPopupLoaded(): Promise<void> {
+    if (this.eventFeedbackRatedDetailPopupComponentRef()) {
+      return;
+    }
+    const module = await import(
+      '../../../../activity/components/event-feedback-rated-detail-popup/event-feedback-rated-detail-popup.component'
+    );
+    this.eventFeedbackRatedDetailPopupComponentRef.set(module.EventFeedbackRatedDetailPopupComponent);
   }
 
   private patchUiState(patch: Partial<ActivitiesUiState>): void {

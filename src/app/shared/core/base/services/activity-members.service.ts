@@ -140,7 +140,7 @@ export class ActivityMembersService extends BaseRouteModeService {
   async applyMemberAction(
     owner: ActivityMemberOwnerRef,
     targetUserId: string,
-    action: 'disqualify' | 'reinstate',
+    action: 'accept' | 'remove' | 'disqualify' | 'reinstate' | 'promote-admin' | 'step-down-admin',
     reason?: string | null
   ): Promise<ActivityContracts.ActivityMemberDTO[]> {
     const normalizedOwner = this.ownerRef(owner.ownerType, owner.ownerId.trim());
