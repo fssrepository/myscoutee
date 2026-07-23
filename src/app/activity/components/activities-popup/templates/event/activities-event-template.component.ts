@@ -1404,9 +1404,8 @@ export class ActivitiesEventsController {
     }
     const activeUserId = this.activeUserId();
     const counterDelta = this.trashedEventCounterDelta(row, isRejectInvitation ? 'invitations' : null);
-    const persistence = this.persistActivityRowTrash(row, counterDelta);
-    await persistence;
-    this.activitiesSmartList?.removeVisibleItemByIdentity(this.activityRowIdentity(row));
+    await this.persistActivityRowTrash(row, counterDelta);
+    this.activitiesStore.emitActivityEventRemoval(row.id);
     this.signalActivityCounterDelta(activeUserId, counterDelta);
     this.cdr.markForCheck();
   }
@@ -1426,18 +1425,16 @@ export class ActivitiesEventsController {
     if (!leaveResult || leaveResult.membershipStatus === 'unchanged') {
       throw new Error('Unable to leave event.');
     }
+    this.activitiesStore.emitActivityEventRemoval(row.id);
+    this.signalActivityCounterDelta(activeUserId, counterDelta);
 
     if (this.selectedActivityMembersRowId === this.activityRowIdentity(row)) {
-      this.selectedActivityMembers = ActivityMembersBuilder.sortActivityMembersByActionTimeAsc(
-        this.selectedActivityMembers.filter(member => member.userId !== activeUserId)
-      );
+      this.selectedActivityMembers = this.selectedActivityMembers
+        .filter(member => member.userId !== activeUserId);
       this.activityMembersByRowId[this.selectedActivityMembersRowId] = [...this.selectedActivityMembers];
     }
 
-    this.activitiesSmartList?.removeVisibleItemByIdentity(this.activityRowIdentity(row));
-    this.signalActivityCounterDelta(activeUserId, counterDelta);
     this.emitActivityLeaveMembersSync(row, leaveResult);
-    this.activitiesStore.clearActivityEventSave();
     this.eventCheckoutDraftStore.clear(activeUserId, row.id);
     this.cdr.markForCheck();
   }
@@ -1774,7 +1771,7 @@ export class ActivitiesEventsController {
       };
     });
     return didUpdate
-      ? ActivityMembersBuilder.sortActivityMembersByActionTimeDesc(nextMembers)
+      ? nextMembers
       : null;
   }
 
@@ -1794,15 +1791,6 @@ export class ActivitiesEventsController {
     return this.isActivityIdentityTrashed(this.activityEventListTypeForRow(row), row.id);
   }
 
-  public trashedActivityCount(): number {
-    return Object.keys(this.trashedActivityRowsByKey).length;
-  }
-
-  private unmarkActivityRowTrashed(row: InfoCardData): void {
-    delete this.trashedActivityRowsByKey[this.activityRowIdentity(row)];
-    this.refreshSectionBadges();
-  }
-
   private async persistActivityRowTrash(row: InfoCardData, counterDelta: UserMenuCounterDeltasDto | null): Promise<void> {
     await this.eventsService.trashItem(this.activeUser.id, row.id, {
       counterDelta
@@ -1812,12 +1800,10 @@ export class ActivitiesEventsController {
   private async restoreActivityRow(row: InfoCardData): Promise<void> {
     const activeUserId = this.activeUserId();
     const counterDelta = this.restoredEventCounterDelta(row);
-    const persistence = this.eventsService.restoreItem(this.activeUser.id, row.id, {
+    await this.eventsService.restoreItem(this.activeUser.id, row.id, {
       counterDelta
     });
-    await persistence;
-    this.unmarkActivityRowTrashed(row);
-    this.activitiesSmartList?.removeVisibleItemByIdentity(this.activityRowIdentity(row));
+    this.activitiesStore.emitActivityEventRemoval(row.id);
     this.signalActivityCounterDelta(activeUserId, counterDelta);
     this.cdr.markForCheck();
   }
@@ -1882,7 +1868,7 @@ export class ActivitiesEventsController {
       return;
     }
     const nowIso = AppUtils.toIsoDateTime(new Date());
-    this.selectedActivityMembers = ActivityMembersBuilder.sortActivityMembersByActionTimeAsc(this.selectedActivityMembers.map(item =>
+    this.selectedActivityMembers = this.selectedActivityMembers.map(item =>
       item.id === entry.id
         ? {
             ...item,
@@ -1892,7 +1878,7 @@ export class ActivitiesEventsController {
             actionAtIso: nowIso
           }
         : item
-    ));
+    );
     this.activityMembersByRowId[this.selectedActivityMembersRowId] = [...this.selectedActivityMembers];
     this.persistSelectedActivityMembers();
   }

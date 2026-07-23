@@ -286,9 +286,31 @@ export class LocalActivityMembersBuilder {
     }).format(new Date(dateMs));
   }
 
-  static sortEntriesByActionTime(entries: readonly ActivityMemberDTO[]): ActivityMemberDTO[] {
-    return [...entries]
-      .sort((left, right) => AppUtils.toSortableDate(left.actionAtIso) - AppUtils.toSortableDate(right.actionAtIso));
+  static sortEntriesForManagement(entries: readonly ActivityMemberDTO[]): ActivityMemberDTO[] {
+    return [...entries].sort((left, right) => {
+      const priorityComparison = this.managementPriority(left) - this.managementPriority(right);
+      if (priorityComparison !== 0) {
+        return priorityComparison;
+      }
+      const actionComparison = AppUtils.toSortableDate(right.actionAtIso)
+        - AppUtils.toSortableDate(left.actionAtIso);
+      return actionComparison !== 0
+        ? actionComparison
+        : left.userId.localeCompare(right.userId);
+    });
+  }
+
+  private static managementPriority(entry: ActivityMemberDTO): number {
+    if (entry.status === 'pending') {
+      return 0;
+    }
+    if (entry.status === 'accepted' && (entry.role === 'Admin' || entry.role === 'Manager')) {
+      return 1;
+    }
+    if (entry.status === 'accepted') {
+      return 2;
+    }
+    return entry.status === 'disqualified' ? 3 : 4;
   }
 
   private static normalizeOwner(owner: ActivityMemberOwnerRef): ActivityMemberOwnerRef {

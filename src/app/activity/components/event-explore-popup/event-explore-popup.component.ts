@@ -2512,9 +2512,7 @@ export class EventExplorePopupComponent {
   }
 
   private sortMembersByActionTimeDesc(entries: readonly ActivityContracts.ActivityMemberDTO[]): ActivityContracts.ActivityMemberDTO[] {
-    return [...entries].sort((left, right) =>
-      AppUtils.toSortableDate(right.actionAtIso) - AppUtils.toSortableDate(left.actionAtIso)
-    );
+    return ActivityMembersBuilder.sortActivityMembersForManagement(entries);
   }
 
   private stopDomEvent(event?: { stopPropagation?: () => void; preventDefault?: () => void } | null): void {

@@ -107,6 +107,16 @@ export interface EventChatRowPatch {
   revision: number;
 }
 
+export type ActivityEventSyncMessage =
+  | {
+      kind: 'upsert';
+      event: ActivityEventDTO;
+    }
+  | {
+      kind: 'remove';
+      sourceId: string;
+    };
+
 export interface ActivitiesUiState {
   open: boolean;
   openRevision: number;
@@ -158,7 +168,7 @@ export class ActivitiesPopupStore {
   private readonly activityStore = inject(ActivityStore);
   private readonly userProfileStore = inject(UserProfileStore);
   private readonly _uiState = signal<ActivitiesUiState>(DEFAULT_ACTIVITIES_UI_STATE);
-  private readonly _activityEventSync = signal<ActivityEventDTO | null>(null);
+  private readonly _activityEventSync = signal<ActivityEventSyncMessage | null>(null);
   private readonly _eventChatSession = signal<EventChatSession | null>(null);
   private readonly _eventChatHeader = signal<EventChatHeaderState | null>(null);
   private readonly _stackedEventChatSession = signal<EventChatSession | null>(null);
@@ -193,7 +203,10 @@ export class ActivitiesPopupStore {
   readonly activitiesSelectedRateId = computed(() => this._uiState().selectedRateId);
   readonly activitiesAdminServiceOnly = computed(() => this._uiState().adminServiceOnly);
   readonly activityEventSync = this._activityEventSync.asReadonly();
-  readonly activityEventSave = this.activityEventSync;
+  readonly activityEventSave = computed(() => {
+    const message = this._activityEventSync();
+    return message?.kind === 'upsert' ? message.event : null;
+  });
   readonly eventChatSession = this._eventChatSession.asReadonly();
   readonly eventChatHeader = this._eventChatHeader.asReadonly();
   readonly stackedEventChatSession = this._stackedEventChatSession.asReadonly();
@@ -418,7 +431,21 @@ export class ActivitiesPopupStore {
   }
 
   emitActivityEventSync(sync: ActivityEventDTO): void {
-    this._activityEventSync.set(sync);
+    this._activityEventSync.set({
+      kind: 'upsert',
+      event: sync
+    });
+  }
+
+  emitActivityEventRemoval(sourceId: string): void {
+    const normalizedSourceId = sourceId.trim();
+    if (!normalizedSourceId) {
+      return;
+    }
+    this._activityEventSync.set({
+      kind: 'remove',
+      sourceId: normalizedSourceId
+    });
   }
 
   emitActivityEventSaveResult(sync: ActivityEventDTO): void {

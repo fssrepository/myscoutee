@@ -44,6 +44,7 @@ import {
 } from '../../../shared/ui';
 import {
   ActivitiesPopupStore,
+  type ActivityEventSyncMessage,
   type EventChatRowPatch
 } from '../../../shared/ui/context/stores/activities-popup.store';
 import {
@@ -869,11 +870,11 @@ export class ActivitiesPopupComponent implements OnDestroy {
     });
 
     effect(() => {
-      const sync = this.activitiesStore.activityEventSync();
-      if (!sync) {
+      const message = this.activitiesStore.activityEventSync();
+      if (!message) {
         return;
       }
-      this.applyActivityEventSync(sync);
+      this.applyActivityEventSyncMessage(message);
       this.cdr.markForCheck();
     });
 
@@ -3264,6 +3265,13 @@ export class ActivitiesPopupComponent implements OnDestroy {
     if (!this.activitiesSmartList || !this.shouldRemoveVisibleActivityMembershipRow()) {
       return false;
     }
+    return this.removeVisibleActivityEventRow(sourceId);
+  }
+
+  private removeVisibleActivityEventRow(sourceId: string): boolean {
+    if (!this.activitiesSmartList) {
+      return false;
+    }
     const normalizedSourceId = sourceId.trim();
     const matchingIdentities = new Set([
       normalizedSourceId,
@@ -3463,6 +3471,17 @@ export class ActivitiesPopupComponent implements OnDestroy {
     this.bumpActivitiesEventCardRevision(`hosting:${dto.id}`);
     this.bumpActivitiesEventCardRevision(`invitations:${dto.id}`);
     this.refreshSectionBadges();
+  }
+
+  private applyActivityEventSyncMessage(message: ActivityEventSyncMessage): void {
+    if (message.kind === 'remove') {
+      this.removeVisibleActivityEventRow(message.sourceId);
+      this.bumpActivitiesEventCardRevision(`events:${message.sourceId}`);
+      this.bumpActivitiesEventCardRevision(`hosting:${message.sourceId}`);
+      this.bumpActivitiesEventCardRevision(`invitations:${message.sourceId}`);
+      return;
+    }
+    this.applyActivityEventSync(message.event);
   }
 
   protected activitiesEventCardRevisionForRow(row: ActivityListItem): number {

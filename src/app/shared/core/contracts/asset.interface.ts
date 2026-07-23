@@ -20,6 +20,7 @@ export interface AssetHireRequestBookingDTO {
   endAtIso?: string;
   quantity?: number | null;
   totalAmount?: number | null;
+  previousTotalAmount?: number | null;
   currency?: string | null;
   acceptedPolicyIds?: string[];
   paymentSessionId?: string | null;

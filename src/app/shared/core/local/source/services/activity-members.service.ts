@@ -43,7 +43,7 @@ export class LocalActivityMembersService extends LocalRouteDelayService {
   ): Promise<ActivityMemberDTO[]> {
     const scopedAssetMembers = this.scopedAssetMembers(owner, options);
     if (scopedAssetMembers) {
-      return LocalActivityMembersBuilder.sortEntriesByActionTime(scopedAssetMembers);
+      return LocalActivityMembersBuilder.sortEntriesForManagement(scopedAssetMembers);
     }
     return this.entriesFromRecords(await this.activityMembersRepository.queryRecordsByOwner(owner, options), owner);
   }
@@ -194,7 +194,7 @@ export class LocalActivityMembersService extends LocalRouteDelayService {
     const involvementRecordsByUserId = owner
       ? this.activityMembersRepository.queryInvolvementRecordsByOwnerAndUsers(owner, userIds)
       : new Map<string, ActivityMemberRecord[]>();
-    return LocalActivityMembersBuilder.sortEntriesByActionTime(
+    return LocalActivityMembersBuilder.sortEntriesForManagement(
       records.map(record => LocalActivityMembersBuilder.toEntry(
         record,
         (userId, fallback) => this.resolveDemoUser(userId, fallback),

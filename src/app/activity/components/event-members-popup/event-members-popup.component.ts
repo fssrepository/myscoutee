@@ -25,6 +25,7 @@ import {
 } from '../../../shared/app-utils';
 import type { ActivityMembersSyncState } from '../../../shared/ui';
 import {
+  ActivityMembersBuilder,
   ActivityMembersService,
   ChatsService,
   EventsService,
@@ -64,9 +65,14 @@ import {
 import type { ActivityMemberOwnerType } from '../../../shared/core/common/constants';
 import type { ActivityMemberOwnerRef } from '../../../shared/core/contracts/activity.interface';
 import type * as ActivityContracts from '../../../shared/core/contracts/activity.interface';
+import type { UserMenuCounterDeltasDto } from '../../../shared/core/contracts/user.interface';
 import { UserProfileStore } from '../../../shared/ui/context/stores/user-profile.store';
 import { AppRuntimeStore } from '../../../shared/ui/context/stores/app-runtime.store';
-import { ActivityStore } from '../../../shared/ui/context/stores/activity.store';
+import {
+  ActivityStore,
+  type ActivityCounters
+} from '../../../shared/ui/context/stores/activity.store';
+import { ActivitiesPopupStore } from '../../../shared/ui/context/stores/activities-popup.store';
 import { MemberMenuStore } from '../../../shared/ui/context/stores/member-menu.store';
 import { ActivityInvitePopupStore } from '../../../shared/ui/context/stores/activity-invite-popup.store';
 
@@ -78,6 +84,7 @@ interface MembersSmartListFilters {
 type MemberMenuAction =
   | 'approve'
   | 'remove'
+  | 'leave'
   | 'disqualify'
   | 'reinstate'
   | 'promoteAdmin'
@@ -136,6 +143,7 @@ export class EventMembersPopupComponent {
   private readonly userProfileStore = inject(UserProfileStore);
   private readonly runtimeStore = inject(AppRuntimeStore);
   private readonly activityStore = inject(ActivityStore);
+  private readonly activitiesPopupStore = inject(ActivitiesPopupStore);
   private readonly memberMenuStore = inject(MemberMenuStore);
   private readonly activityInviteStore = inject(ActivityInvitePopupStore);
   private readonly usersService = inject(UsersService);
@@ -428,6 +436,7 @@ export class EventMembersPopupComponent {
     return this.canShowMemberInvolvement(entry)
       || this.canApproveMember(entry)
       || this.canDeleteMember(entry)
+      || this.canLeaveEvent(entry)
       || this.canDisqualifyMember(entry)
       || this.canReinstateMember(entry)
       || this.canPromoteAdmin(entry)
@@ -496,6 +505,15 @@ export class EventMembersPopupComponent {
         context: { menu: 'member-action', member: entry, action: 'stepDownAdmin' }
       });
     }
+    if (this.canLeaveEvent(entry)) {
+      items.push({
+        id: `member-action-leave-${entry.id}`,
+        label: 'Leave event',
+        icon: 'logout',
+        palette: 'danger',
+        context: { menu: 'member-action', member: entry, action: 'leave' }
+      });
+    }
     if (this.canApproveMember(entry)) {
       items.push({
         id: `member-action-approve-${entry.id}`,
@@ -559,6 +577,9 @@ export class EventMembersPopupComponent {
       case 'remove':
         this.requestRemoveMember(context.member, event.sourceEvent);
         break;
+      case 'leave':
+        this.requestLeaveEvent(context.member, event.sourceEvent);
+        break;
       case 'disqualify':
         this.requestDisqualifyMember(context.member, event.sourceEvent);
         break;
@@ -612,6 +633,29 @@ export class EventMembersPopupComponent {
       confirmTone: 'danger',
       failureMessage: this.memberRemovalFailureMessage(entry),
       onConfirm: () => this.confirmRemoveMember(entry)
+    });
+  }
+
+  protected requestLeaveEvent(entry: ActivityContracts.ActivityMemberDTO, event: Event): void {
+    event.stopPropagation();
+    if (!this.canLeaveEvent(entry)) {
+      return;
+    }
+    const successor = this.successorAdminFor(entry);
+    const ownershipTransferMessage = entry.userId === this.eventOwnerUserId() && successor
+      ? ` Ownership will be transferred to ${successor.name}.`
+      : '';
+    this.membersSmartList?.closeMenu();
+    this.cdr.markForCheck();
+    this.dialogStore.open({
+      title: 'Leave event?',
+      message: `You will leave this event and lose access to its admin tools.${ownershipTransferMessage}`,
+      cancelLabel: 'Cancel',
+      confirmLabel: 'Leave event',
+      busyConfirmLabel: 'Leaving...',
+      confirmTone: 'danger',
+      failureMessage: 'Unable to leave event. Another accepted admin must remain.',
+      onConfirm: () => this.confirmLeaveEvent(entry, successor)
     });
   }
 
@@ -860,6 +904,58 @@ export class EventMembersPopupComponent {
     }
     const nextMembers = previousMembers.filter(member => member.id !== entry.id);
     await this.runMemberUpdateAfterUiYield(nextMembers, previousMembers);
+  }
+
+  private async confirmLeaveEvent(
+    entry: ActivityContracts.ActivityMemberDTO,
+    successor: ActivityContracts.ActivityMemberDTO | null
+  ): Promise<void> {
+    const previousOwnerUserId = this.eventOwnerUserId();
+    const sourceRecord = this.ownerRecord
+      ?? this.eventsService.peekKnownRecordById(this.activeUserId(), this.ownerId);
+    const counterDelta = this.eventAdminLeaveCounterDelta(sourceRecord);
+    await this.confirmRemoveMember(entry);
+    this.activitiesPopupStore.emitActivityEventRemoval(this.ownerId);
+    this.patchEventLeaveCounterDelta(counterDelta);
+    if (this.ownerRecord && entry.userId === previousOwnerUserId && successor) {
+      this.ownerRecord = {
+        ...this.ownerRecord,
+        creatorUserId: successor.userId,
+        creatorName: successor.name,
+        creatorInitials: successor.initials,
+        creatorCity: successor.city,
+        adminIds: this.currentOwnerMembers()
+          .filter(member => member.status === 'accepted' && member.role === 'Admin')
+          .map(member => member.userId)
+      };
+    }
+  }
+
+  private eventAdminLeaveCounterDelta(
+    record: ActivityEventRecord | null
+  ): UserMenuCounterDeltasDto {
+    return {
+      hosting: -1,
+      event: {
+        all: -1,
+        hosting: -1,
+        ...(record?.status === 'DR' ? { drafts: -1 } : {}),
+        trash: 1
+      }
+    };
+  }
+
+  private patchEventLeaveCounterDelta(delta: UserMenuCounterDeltasDto): void {
+    const activeUserId = this.activeUserId();
+    if (!activeUserId) {
+      return;
+    }
+    this.activityStore.patchUserCounterDeltas(
+      activeUserId,
+      delta,
+      (this.userProfileStore.activeUserProfile()?.activities ?? null) as Partial<ActivityCounters> | null
+    );
+    void this.usersService.patchLocalUserActivityCounterDeltas(activeUserId, delta);
   }
 
   private async confirmMemberAction(
@@ -1385,6 +1481,15 @@ export class EventMembersPopupComponent {
       && entry.userId !== this.eventOwnerUserId();
   }
 
+  protected canLeaveEvent(entry: ActivityContracts.ActivityMemberDTO): boolean {
+    return !this.viewOnlyMode
+      && this.ownerRef?.ownerType === 'event'
+      && entry.status === 'accepted'
+      && entry.role === 'Admin'
+      && this.isCurrentUser(entry)
+      && this.successorAdminFor(entry) !== null;
+  }
+
   protected canReportMember(entry: ActivityContracts.ActivityMemberDTO): boolean {
     if (this.lookupRef?.type === 'chat') {
       return false;
@@ -1413,7 +1518,8 @@ export class EventMembersPopupComponent {
       || (this.ownerRecord.adminIds ?? []).includes(activeUserId)
     );
     this.canManageMembers = this.requestedCanManageMembers || ownerRecordCanManage || activeMemberCanManage;
-    this.canShowInviteButton = this.canManageMembers || !!activeMember;
+    this.canShowInviteButton = this.canManageMembers
+      || (this.ownerRef?.ownerType !== 'asset' && !!activeMember);
   }
 
   private applySummaryFromMembers(members: readonly ActivityContracts.ActivityMemberDTO[]): void {
@@ -1502,9 +1608,7 @@ export class EventMembersPopupComponent {
   private sortMembersByActionTimeDesc(
     entries: readonly ActivityContracts.ActivityMemberDTO[]
   ): ActivityContracts.ActivityMemberDTO[] {
-    return [...entries].sort((left, right) =>
-      AppUtils.toSortableDate(right.actionAtIso) - AppUtils.toSortableDate(left.actionAtIso)
-    );
+    return ActivityMembersBuilder.sortActivityMembersForManagement(entries);
   }
 
   private async runMemberUpdateAfterUiYield(
@@ -1549,6 +1653,18 @@ export class EventMembersPopupComponent {
 
   private isCurrentUser(entry: ActivityContracts.ActivityMemberDTO): boolean {
     return entry.userId === this.activeUserId();
+  }
+
+  private successorAdminFor(
+    entry: ActivityContracts.ActivityMemberDTO
+  ): ActivityContracts.ActivityMemberDTO | null {
+    return this.currentOwnerMembers()
+      .filter(member => member.userId !== entry.userId)
+      .filter(member => member.status === 'accepted' && member.role === 'Admin')
+      .sort((left, right) =>
+        AppUtils.toSortableDate(left.actionAtIso)
+        - AppUtils.toSortableDate(right.actionAtIso)
+      )[0] ?? null;
   }
 
   private eventOwnerUserId(): string {

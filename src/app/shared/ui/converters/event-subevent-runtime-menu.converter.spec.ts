@@ -14,6 +14,23 @@ describe('EventSubeventRuntimeMenuConverter casual members', () => {
     expect(EventSubeventRuntimeMenuConverter.convert(mandatory).map(item => item.id)).not.toContain('members');
     expect(EventSubeventRuntimeMenuConverter.pendingBadgeCount(mandatory)).toBe(3);
   });
+
+  it('shows the persisted transport range and its pending red counter before opening resources', () => {
+    const optional = subEvent({
+      carsAccepted: 2,
+      carsPending: 2,
+      carsCapacityMin: 0,
+      carsCapacityMax: 24,
+      accommodationPending: 0,
+      suppliesPending: 0
+    });
+
+    const transport = EventSubeventRuntimeMenuConverter.convert(optional)
+      .find(item => item.id === 'transport');
+
+    expect(transport?.description).toBe('2 / 0 - 24');
+    expect(transport?.counter).toEqual({ value: 2, max: 99 });
+  });
 });
 
 function subEvent(overrides: Partial<SubEventDTO>): SubEventDTO {

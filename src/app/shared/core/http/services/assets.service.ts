@@ -579,6 +579,10 @@ export class HttpAssetsService {
                 totalAmount: Number.isFinite(Number(request.booking.totalAmount))
                   ? Math.max(0, Number(request.booking.totalAmount))
                   : null,
+                previousTotalAmount: request.booking.previousTotalAmount != null
+                  && Number.isFinite(Number(request.booking.previousTotalAmount))
+                  ? Math.max(0, Number(request.booking.previousTotalAmount))
+                  : null,
                 currency: `${request.booking.currency ?? ''}`.trim() || undefined,
                 paymentSessionId: `${request.booking.paymentSessionId ?? ''}`.trim() || null,
                 inventoryApplied: request.booking.inventoryApplied === true ? true : null,

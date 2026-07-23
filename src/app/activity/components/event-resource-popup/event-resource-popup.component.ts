@@ -17,6 +17,9 @@ import {
   ActivityResourceBuilder
 } from '../../../shared/core/base/builders/activity-resource.builder';
 import {
+  ActivityMembersBuilder
+} from '../../../shared/core/base/builders/activity-members.builder';
+import {
   AssetCardBuilder
 } from '../../../shared/core/base/builders/asset-card.builder';
 import {
@@ -1482,7 +1485,7 @@ export class EventResourcePopupComponent {
       eventId: context.ownerId,
       subEventId: context.subEvent.id,
       subtitle,
-      canManage: this.isAssetOwnedByActiveUser(sourceCard),
+      canManage: this.canManageAssignedAssetMembers(sourceCard, context.subEvent.id),
       acceptedMembers,
       pendingMembers,
       capacityTotal,
@@ -1603,6 +1606,20 @@ export class EventResourcePopupComponent {
     return ownerUserId.length > 0
       ? ownerUserId === activeUserId
       : this.ownedAssetCards().some(item => item.id === card.id && item.type === card.type);
+  }
+
+  private canManageAssignedAssetMembers(
+    card: ResourceAssetDTO,
+    subEventId: string,
+    activeUserId = this.activeUser().id.trim()
+  ): boolean {
+    if (!activeUserId) {
+      return false;
+    }
+    if (this.isAssetOwnedByActiveUser(card, activeUserId)) {
+      return true;
+    }
+    return this.findBorrowedAssetRequest(card, subEventId, activeUserId)?.status === 'accepted';
   }
 
   private isSubEventScopedAssetRequest(
@@ -2376,6 +2393,14 @@ export class EventResourcePopupComponent {
       endAtIso,
       requests: card.requests
     });
+    const previousPricing = PricingBuilder.resolveAssetBorrowPricing({
+      pricing: card.pricing,
+      totalQuantity: this.assignedBorrowTotalQuantity(card, reservation),
+      requestedQuantity: previousQuantity,
+      startAtIso,
+      endAtIso,
+      requests: card.requests
+    });
     const nextRequests = card.requests.map(request => (
       request.id === reservation.id
         ? {
@@ -2385,6 +2410,7 @@ export class EventResourcePopupComponent {
                   ...request.booking,
                   quantity,
                   totalAmount: pricing.amount,
+                  previousTotalAmount: previousPricing.amount,
                   currency: pricing.currency,
                   acceptedPolicyIds: [...(request.booking.acceptedPolicyIds ?? [])]
                 }
@@ -3215,8 +3241,7 @@ export class EventResourcePopupComponent {
     void this.usersService.warmCachedUsers(requests
       .map(request => AppUtils.resolveAssetRequestUserId(request, this.users))
       .filter(userId => `${userId}`.trim().length > 0));
-    return requests
-      .map(request => {
+    const entries = requests.map(request => {
         const requestUserId = AppUtils.resolveAssetRequestUserId(request, this.users);
         const matchedUser =
           this.users.find(user => user.id === requestUserId)
@@ -3255,8 +3280,8 @@ export class EventResourcePopupComponent {
           avatarUrl: AppUtils.firstImageUrl(matchedUser?.images),
           profile: matchedUser ?? null
         };
-      })
-      .sort((left, right) => AppUtils.toSortableDate(right.actionAtIso) - AppUtils.toSortableDate(left.actionAtIso));
+      });
+    return ActivityMembersBuilder.sortActivityMembersForManagement(entries);
   }
 
   private createFallbackUser(userId: string): UserDto {
