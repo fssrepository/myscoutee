@@ -25,9 +25,7 @@ describe('EventFeedbackInfoCardConverter submitted feedback', () => {
 
     const card = EventFeedbackInfoCardConverter.convert(item);
 
-    expect(card.menuActions).toContain('viewSubmittedFeedback');
-    expect(card.menuActions).not.toContain('startFeedback');
-    expect(card.menuActions).not.toContain('removeFeedback');
+    expect(card.menuActions).toEqual(['viewSubmittedFeedback']);
   });
 
   it('hydrates the read-only detail from the persisted state answers', () => {

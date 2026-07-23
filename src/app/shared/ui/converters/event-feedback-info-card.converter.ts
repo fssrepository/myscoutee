@@ -159,6 +159,9 @@ export class EventFeedbackInfoCardConverter {
     if (item.isOwnEvent) {
       return [];
     }
+    if (item.isFeedbacked) {
+      return ['viewSubmittedFeedback'];
+    }
     const actions: CardMenuActionId[] = [];
     if (this.isEventFeedbackStartAvailable(item)) {
       actions.push('startFeedback');
@@ -168,9 +171,6 @@ export class EventFeedbackInfoCardConverter {
     }
     if (item.isRemoved) {
       actions.push('restoreFeedback');
-    }
-    if (item.isFeedbacked) {
-      actions.push('viewSubmittedFeedback');
     }
     actions.push(hasOrganizerNote ? 'editOrganizerNote' : 'addOrganizerNote');
     return actions;
