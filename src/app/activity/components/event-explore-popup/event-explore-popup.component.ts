@@ -768,9 +768,9 @@ export class EventExplorePopupComponent {
 
   protected get activityMembersOrdered(): ActivityContracts.ActivityMemberDTO[] {
     if (!this.selectedMembersPendingOnly) {
-      return this.sortMembersByActionTimeDesc(this.selectedMembers);
+      return [...this.selectedMembers];
     }
-    return this.sortMembersByActionTimeDesc(this.selectedMembers)
+    return this.selectedMembers
       .filter(member => member.status === 'pending');
   }
 
@@ -1977,7 +1977,7 @@ export class EventExplorePopupComponent {
     );
     if (existingEntry && existingEntry.status !== 'deleted' && !checkoutUpdateRequested) {
       if (this.selectedMembersRecord?.id === record.id) {
-        this.selectedMembers = this.sortMembersByActionTimeDesc(existingMembers);
+        this.selectedMembers = [...existingMembers];
       }
       this.cdr.markForCheck();
       return;
@@ -1991,7 +1991,7 @@ export class EventExplorePopupComponent {
       ? existingMembers.filter(member => !(member.userId === activeUserId && member.status === 'deleted'))
       : existingMembers;
     const joinRequestEntry = this.buildJoinRequestEntry(record, isAcceptedBooking, pendingReason);
-    const nextMembers = this.sortMembersByActionTimeDesc(updatesExistingMember
+    const nextMembers = updatesExistingMember
       ? [
           ...optimisticExistingMembers.filter(member => member.userId !== activeUserId),
           joinRequestEntry
@@ -1999,7 +1999,7 @@ export class EventExplorePopupComponent {
       : [
           ...optimisticExistingMembers,
           joinRequestEntry
-        ]);
+        ];
 
     try {
       const joinResult = await this.eventsService.requestJoin(activeUserId, record.id, {
@@ -2023,7 +2023,7 @@ export class EventExplorePopupComponent {
         throw new Error(this.eventExploreJoinFailureMessage(record));
       }
       const persistedMembers = this.activityMembersService.peekMembersByOwner(owner);
-      const displayMembers = this.sortMembersByActionTimeDesc(persistedMembers.length > 0 ? persistedMembers : nextMembers);
+      const displayMembers = [...(persistedMembers.length > 0 ? persistedMembers : nextMembers)];
       const nextRecord = this.withEventExploreMemberDelta(record, {
         acceptedMemberDelta: updatesExistingMember ? 0 : (isAcceptedBooking ? 1 : 0),
         pendingMemberDelta: updatesExistingMember ? 0 : (isAcceptedBooking ? 0 : 1)
@@ -2509,10 +2509,6 @@ export class EventExplorePopupComponent {
       .filter(member => member.requestKind !== 'invite' && member.requestKind !== 'waitlist-invite')
       .map(member => member.userId.trim())
       .filter(userId => userId.length > 0)));
-  }
-
-  private sortMembersByActionTimeDesc(entries: readonly ActivityContracts.ActivityMemberDTO[]): ActivityContracts.ActivityMemberDTO[] {
-    return ActivityMembersBuilder.sortActivityMembersForManagement(entries);
   }
 
   private stopDomEvent(event?: { stopPropagation?: () => void; preventDefault?: () => void } | null): void {

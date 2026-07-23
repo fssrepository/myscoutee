@@ -17,9 +17,6 @@ import {
   ActivityResourceBuilder
 } from '../../../shared/core/base/builders/activity-resource.builder';
 import {
-  ActivityMembersBuilder
-} from '../../../shared/core/base/builders/activity-members.builder';
-import {
   AssetCardBuilder
 } from '../../../shared/core/base/builders/asset-card.builder';
 import {
@@ -3281,7 +3278,7 @@ export class EventResourcePopupComponent {
           profile: matchedUser ?? null
         };
       });
-    return ActivityMembersBuilder.sortActivityMembersForManagement(entries);
+    return entries;
   }
 
   private createFallbackUser(userId: string): UserDto {

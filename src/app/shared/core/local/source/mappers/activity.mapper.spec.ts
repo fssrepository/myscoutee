@@ -1,10 +1,10 @@
 import { describe, expect, it } from 'vitest';
 
-import type { ActivityMemberDTO } from '../../contracts/activity.interface';
-import { ActivityMembersBuilder } from './activity-members.builder';
+import type { ActivityMemberDTO } from '../../../contracts/activity.interface';
+import { LocalActivityMembersBuilder } from './activity.mapper';
 
-describe('ActivityMembersBuilder', () => {
-  it('orders entries by action time descending', () => {
+describe('LocalActivityMembersBuilder', () => {
+  it('orders management queries by status group and newest action time', () => {
     const entries = [
       member('member-new', 'Member', 'accepted', '2026-07-23T11:00:00Z'),
       member('pending-old', 'Member', 'pending', '2026-07-23T08:00:00Z'),
@@ -14,13 +14,13 @@ describe('ActivityMembersBuilder', () => {
       member('member-old', 'Member', 'accepted', '2026-07-23T06:00:00Z')
     ];
 
-    expect(ActivityMembersBuilder.sortActivityMembersByActionTimeDesc(entries).map(entry => entry.userId))
+    expect(LocalActivityMembersBuilder.sortEntriesForManagement(entries).map(entry => entry.userId))
       .toEqual([
-        'member-new',
-        'manager',
         'pending-new',
         'pending-old',
+        'manager',
         'admin',
+        'member-new',
         'member-old'
       ]);
   });

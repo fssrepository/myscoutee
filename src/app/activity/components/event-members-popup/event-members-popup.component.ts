@@ -25,7 +25,6 @@ import {
 } from '../../../shared/app-utils';
 import type { ActivityMembersSyncState } from '../../../shared/ui';
 import {
-  ActivityMembersBuilder,
   ActivityMembersService,
   ChatsService,
   EventsService,
@@ -1117,7 +1116,7 @@ export class EventMembersPopupComponent {
     const ownerType = options?.ownerType ?? 'event';
     const lookup = options?.lookup ?? null;
     const providedInitialMembers = ownerType !== 'event' && Array.isArray(options?.initialMembers)
-      ? this.sortMembersByActionTimeDesc(options.initialMembers)
+      ? [...options.initialMembers]
       : null;
     const isScopedAssetOwner = ownerType === 'asset'
       && `${options?.eventId ?? ''}`.trim().length > 0
@@ -1314,7 +1313,7 @@ export class EventMembersPopupComponent {
             eventId: this.memberEventId,
             subEventId: this.memberSubEventId
           });
-      members = this.sortMembersByActionTimeDesc(loadedMembers);
+      members = [...loadedMembers];
       void this.usersService.warmCachedUsers(members.map(member => member.userId));
       this.membersCacheByOwnerId.set(cacheKey, members);
       if (!pendingOnly && this.isOpen && this.ownerId === ownerId) {
@@ -1341,7 +1340,7 @@ export class EventMembersPopupComponent {
     if (this.lookupRef?.type === 'chat') {
       return;
     }
-    const normalizedMembers = this.sortMembersByActionTimeDesc(members);
+    const normalizedMembers = [...members];
     const owner = this.ownerRef && this.ownerRef.ownerId === this.ownerId ? this.ownerRef : null;
     const capacityTotal = Math.max(
       normalizedMembers.filter(member => member.status === 'accepted').length,
@@ -1578,7 +1577,7 @@ export class EventMembersPopupComponent {
         if (!this.isOpen || this.ownerId !== sync.id || !this.ownerRef || this.ownerRef.ownerId !== sync.id) {
           return;
         }
-        const normalizedMembers = this.sortMembersByActionTimeDesc(members);
+        const normalizedMembers = [...members];
         this.membersCacheByOwnerId.set(this.membersCacheKey(sync.id), normalizedMembers);
         this.membersCacheByOwnerId.delete(this.membersCacheKey(sync.id, true));
         this.syncCanManageMembers(normalizedMembers);
@@ -1605,12 +1604,6 @@ export class EventMembersPopupComponent {
     return entry.requestKind === 'waitlist' || entry.requestKind === 'waitlist-invite';
   }
 
-  private sortMembersByActionTimeDesc(
-    entries: readonly ActivityContracts.ActivityMemberDTO[]
-  ): ActivityContracts.ActivityMemberDTO[] {
-    return ActivityMembersBuilder.sortActivityMembersForManagement(entries);
-  }
-
   private async runMemberUpdateAfterUiYield(
     nextMembers: readonly ActivityContracts.ActivityMemberDTO[],
     previousMembers: readonly ActivityContracts.ActivityMemberDTO[]
@@ -1632,7 +1625,7 @@ export class EventMembersPopupComponent {
     this.suppressedOwnerSyncId = this.ownerId;
     let normalizedMembers: ActivityContracts.ActivityMemberDTO[];
     try {
-      normalizedMembers = this.sortMembersByActionTimeDesc(await this.activityMembersService.applyMemberAction(owner, targetUserId, action));
+      normalizedMembers = [...await this.activityMembersService.applyMemberAction(owner, targetUserId, action)];
     } catch (error) {
       if (this.suppressedOwnerSyncId === this.ownerId) {
         this.suppressedOwnerSyncId = null;

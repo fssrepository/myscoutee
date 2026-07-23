@@ -20,9 +20,6 @@ import {
 import type * as ContractTypes from '../../../../../shared/core/contracts';
 import type { UserMenuCounterDeltasDto } from '../../../../../shared/core/contracts/user.interface';
 import {
-  ActivityMembersBuilder
-} from '../../../../../shared/core';
-import {
   type ActivityCounterKey,
   type ActivityCounters,
   InfoCardComponent,
