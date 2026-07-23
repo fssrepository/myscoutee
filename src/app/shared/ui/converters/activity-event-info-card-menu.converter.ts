@@ -300,6 +300,8 @@ export class ActivityEventInfoCardMenuConverter {
       return 'teal';
     }
     switch (tone) {
+      case 'positive':
+        return 'teal';
       case 'accent':
         return 'brown';
       case 'warning':

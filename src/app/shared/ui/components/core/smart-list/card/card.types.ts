@@ -72,7 +72,7 @@ export type InfoCardOverlayAccessoryTone =
   | 'tone-6'
   | 'tone-7'
   | 'tone-8';
-export type CardMenuActionTone = 'default' | 'accent' | 'warning' | 'destructive' | 'review';
+export type CardMenuActionTone = 'default' | 'accent' | 'positive' | 'warning' | 'destructive' | 'review';
 export type InfoCardDetailStyle = 'default' | 'mono';
 export type InfoCardMediaMode = 'image' | 'title';
 export type InfoCardMediaTone = 'default' | 'neutral';
@@ -229,7 +229,7 @@ export const CARD_MENU_ACTIONS: Readonly<Record<CardMenuActionId, CardMenuAction
   markSolved: { label: 'admin.review.action.mark.solved', icon: 'check_circle', tone: 'accent' },
   markUnresolved: { label: 'admin.review.action.mark.unresolved', icon: 'restart_alt', tone: 'warning' },
   notifyParticipants: { label: 'notify.participants', icon: 'support_agent' },
-  paymentSummary: { label: 'event.checkout.payment.summary', icon: 'receipt_long' },
+  paymentSummary: { label: 'event.checkout.payment.summary', icon: 'receipt_long', tone: 'positive' },
   publish: { label: 'publish', icon: 'campaign', tone: 'accent' },
   rejectInvitation: { label: 'reject.invitation', icon: 'block', tone: 'destructive' },
   remove: { label: 'reject', icon: 'delete', tone: 'destructive' },

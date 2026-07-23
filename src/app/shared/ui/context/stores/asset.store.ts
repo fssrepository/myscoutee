@@ -4,6 +4,14 @@ import { AssetDto } from '../../../core/contracts';
 import { PricingBuilder } from '../../../core/base/builders';
 import * as AppConstants from '../../../core/common/constants';
 import type * as AppDTOs from '../../../core/contracts';
+import type { AppMenuItem } from '../../components/core/menu';
+import type {
+  DateInputModel,
+  DateInputRangeValue
+} from '../../components/core/form/inputs/date-input';
+import type {
+  PricingEditorRuntimePreview
+} from '../../components/core/form/inputs/pricing-editor';
 
 export interface AssetVisibleListState {
   items: readonly AppDTOs.AssetDTO[];
@@ -43,10 +51,34 @@ export interface AssetEditorRuntimeAssignmentState {
   quantityLabel?: string;
   quantityDescription?: string;
   editable: boolean;
+  onChange?: (quantity: number) => void;
   onSave?: (state: { quantity: number; routeEnabled: boolean; routes: readonly string[] }) =>
     void
     | { quantity: number; routeEnabled: boolean; routes: readonly string[] }
     | Promise<void | { quantity: number; routeEnabled: boolean; routes: readonly string[] }>;
+}
+
+export type AssetEditorCheckoutMode = 'borrow' | 'payment-summary';
+export type AssetEditorCheckoutPhase = 'review' | 'payment' | 'summary';
+
+export interface AssetEditorCheckoutState {
+  sourceId: string;
+  mode: AssetEditorCheckoutMode;
+  phase: AssetEditorCheckoutPhase;
+  title: string;
+  subtitle?: string | null;
+  dateRange: DateInputRangeValue;
+  dateRangeModel: DateInputModel;
+  availableQuantity: number;
+  pricingPreview: PricingEditorRuntimePreview;
+  acceptedPolicyIds: string[];
+  footerItems: readonly AppMenuItem<string>[];
+  busy: boolean;
+  error: string | null;
+  onDateRangeChange?: (value: DateInputRangeValue) => void;
+  onPolicyToggle?: (policyId: string) => void;
+  onFooterItemSelect?: (itemId: string, event: Event) => void;
+  onClose?: () => void;
 }
 
 @Injectable({
@@ -72,6 +104,7 @@ export class AssetStore {
   readonly assetFormSavedRuntimeRouteRef = signal<AssetEditorRuntimeRouteState | null>(null);
   readonly assetFormRuntimeAssignmentRef = signal<AssetEditorRuntimeAssignmentState | null>(null);
   readonly assetFormSavedRuntimeAssignmentRef = signal<AssetEditorRuntimeAssignmentState | null>(null);
+  readonly assetFormCheckoutRef = signal<AssetEditorCheckoutState | null>(null);
   readonly assetFormLoadingRef = signal(false);
   readonly assetFormSavePendingRef = signal(false);
   readonly pendingAssetDeleteCardIdRef = signal<string | null>(null);
@@ -112,6 +145,7 @@ export class AssetStore {
   readonly assetFormSavedRuntimeRoute = this.assetFormSavedRuntimeRouteRef.asReadonly();
   readonly assetFormRuntimeAssignment = this.assetFormRuntimeAssignmentRef.asReadonly();
   readonly assetFormSavedRuntimeAssignment = this.assetFormSavedRuntimeAssignmentRef.asReadonly();
+  readonly assetFormCheckout = this.assetFormCheckoutRef.asReadonly();
   readonly assetFormLoading = this.assetFormLoadingRef.asReadonly();
   readonly assetFormSavePending = this.assetFormSavePendingRef.asReadonly();
   readonly pendingAssetDeleteCardId = this.pendingAssetDeleteCardIdRef.asReadonly();
@@ -300,6 +334,7 @@ export class AssetStore {
     this.assetFormSavedRuntimeRouteRef.set(null);
     this.assetFormRuntimeAssignmentRef.set(null);
     this.assetFormSavedRuntimeAssignmentRef.set(null);
+    this.assetFormCheckoutRef.set(null);
     this.editingAssetIdRef.set(null);
     this.assetFormDraftIdRef.set(draftId.trim() || `asset-${Date.now()}`);
     this.assetFormVisibilityRef.set('Public');
@@ -317,6 +352,7 @@ export class AssetStore {
     parentZIndex?: number | null;
     runtimeRoute?: AssetEditorRuntimeRouteState | null;
     runtimeAssignment?: AssetEditorRuntimeAssignmentState | null;
+    checkout?: AssetEditorCheckoutState | null;
   }): number {
     const generation = this.bumpAssetEditorGeneration();
     this.showAssetFormRef.set(true);
@@ -330,6 +366,7 @@ export class AssetStore {
     this.assetFormSavedRuntimeRouteRef.set(this.cloneRuntimeRoute(runtimeRoute));
     this.assetFormRuntimeAssignmentRef.set(runtimeAssignment);
     this.assetFormSavedRuntimeAssignmentRef.set(this.cloneRuntimeAssignment(runtimeAssignment));
+    this.assetFormCheckoutRef.set(this.cloneCheckout(options.checkout));
     this.assetFormDraftIdRef.set('');
     this.editingAssetIdRef.set(options.cardId);
     this.assetFormVisibilityRef.set(options.visibility);
@@ -370,6 +407,7 @@ export class AssetStore {
     this.assetFormSavedRuntimeRouteRef.set(null);
     this.assetFormRuntimeAssignmentRef.set(null);
     this.assetFormSavedRuntimeAssignmentRef.set(null);
+    this.assetFormCheckoutRef.set(null);
     this.assetFormLoadingRef.set(false);
     this.assetFormSavePendingRef.set(false);
     this.assetFormDraftIdRef.set('');
@@ -417,22 +455,42 @@ export class AssetStore {
 
   setAssetEditorRuntimeAssignmentState(state: {
     quantity?: number | null;
+    quantityMax?: number | null;
+    quantityLabel?: string | null;
+    quantityDescription?: string | null;
+    editable?: boolean | null;
   }): void {
     const current = this.assetFormRuntimeAssignmentRef();
     if (!current) {
       return;
     }
+    const quantityMax = state.quantityMax === undefined
+      ? current.quantityMax
+      : this.normalizeRuntimeQuantityMax(state.quantityMax);
     const quantity = state.quantity === undefined
-      ? current.quantity
-      : this.normalizeRuntimeQuantity(state.quantity, current.quantityMax, current.quantity);
+      ? this.normalizeRuntimeQuantity(current.quantity, quantityMax, current.quantity)
+      : this.normalizeRuntimeQuantity(state.quantity, quantityMax, current.quantity);
     this.assetFormRuntimeAssignmentRef.set({
       ...current,
-      quantity
+      quantity,
+      quantityMax,
+      quantityLabel: state.quantityLabel === undefined
+        ? current.quantityLabel
+        : `${state.quantityLabel ?? ''}`.trim() || undefined,
+      quantityDescription: state.quantityDescription === undefined
+        ? current.quantityDescription
+        : `${state.quantityDescription ?? ''}`.trim() || undefined,
+      editable: typeof state.editable === 'boolean' ? state.editable : current.editable
     });
     this.assetFormRef.set({
       ...this.assetFormRef(),
       quantity
     });
+    this.touchUiState();
+  }
+
+  setAssetEditorCheckoutState(state: AssetEditorCheckoutState | null): void {
+    this.assetFormCheckoutRef.set(this.cloneCheckout(state));
     this.touchUiState();
   }
 
@@ -544,6 +602,51 @@ export class AssetStore {
       quantityMax,
       quantity: this.normalizeRuntimeQuantity(state.quantity, quantityMax),
       editable: state.editable === true
+    };
+  }
+
+  private cloneCheckout(
+    state: AssetEditorCheckoutState | null | undefined
+  ): AssetEditorCheckoutState | null {
+    if (!state) {
+      return null;
+    }
+    return {
+      ...state,
+      sourceId: state.sourceId.trim(),
+      title: state.title.trim(),
+      subtitle: `${state.subtitle ?? ''}`.trim() || null,
+      dateRange: { ...state.dateRange },
+      dateRangeModel: {
+        ...state.dateRangeModel,
+        field: state.dateRangeModel.field ? { ...state.dateRangeModel.field } : undefined,
+        range: state.dateRangeModel.range
+          ? {
+              ...state.dateRangeModel.range,
+              bounds: state.dateRangeModel.range.bounds
+                ? { ...state.dateRangeModel.range.bounds }
+                : state.dateRangeModel.range.bounds,
+              start: state.dateRangeModel.range.start
+                ? { ...state.dateRangeModel.range.start }
+                : state.dateRangeModel.range.start,
+              end: state.dateRangeModel.range.end
+                ? { ...state.dateRangeModel.range.end }
+                : state.dateRangeModel.range.end
+            }
+          : undefined,
+        meta: state.dateRangeModel.meta ? { ...state.dateRangeModel.meta } : state.dateRangeModel.meta
+      },
+      availableQuantity: Math.max(0, Math.trunc(Number(state.availableQuantity) || 0)),
+      pricingPreview: {
+        ...state.pricingPreview,
+        rows: (state.pricingPreview.rows ?? []).map(row => ({ ...row }))
+      },
+      acceptedPolicyIds: [...new Set(state.acceptedPolicyIds)]
+        .map(policyId => policyId.trim())
+        .filter(Boolean),
+      footerItems: (state.footerItems ?? []).map(item => ({ ...item })),
+      busy: state.busy === true,
+      error: `${state.error ?? ''}`.trim() || null
     };
   }
 

@@ -874,7 +874,13 @@ export class I18nService {
   }
 
   private interpolate(template: string, values: Record<string, string>): string {
-    return template.replace(/\{([a-zA-Z0-9_.-]+)\}/g, (match, key: string) => values[key] ?? match);
+    return template.replace(
+      /\{\{([a-zA-Z0-9_.-]+)\}\}|\{([a-zA-Z0-9_.-]+)\}/g,
+      (match, doubleBraceKey: string | undefined, singleBraceKey: string | undefined) => {
+        const key = doubleBraceKey ?? singleBraceKey ?? '';
+        return values[key] ?? match;
+      }
+    );
   }
 
   private normalizeSourceKey(value: string): string {

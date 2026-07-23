@@ -1,10 +1,12 @@
 import { Injectable, inject } from '@angular/core';
 
 import { AppUtils } from '../../../../app-utils';
+import { ActivityResourceBuilder } from '../../../base/builders';
 import type { UserDto } from '../../../contracts/user.interface';
 import type { ActivityMemberRecord } from '../entity/activity.entity';
 import { LocalRouteDelayService } from './route-delay.service';
 import { LocalActivityMembersRepository } from '../repositories/activity-members.repository';
+import { LocalAssetsRepository } from '../repositories/assets.repository';
 import { LocalUsersRepository } from '../repositories/users.repository';
 import { LocalActivityMembersBuilder, type ActivityMemberProfileFallback, type LocalActivityMembersOwnerSnapshot } from '../mappers';
 import type {
@@ -20,6 +22,7 @@ import type {
 export class LocalActivityMembersService extends LocalRouteDelayService {
   private static readonly MEMBERS_ROUTE = '/activities/events/members';
   private readonly activityMembersRepository = inject(LocalActivityMembersRepository);
+  private readonly assetsRepository = inject(LocalAssetsRepository);
   private readonly localUsersRepository = inject(LocalUsersRepository);
 
   peekMembersByOwner(owner: ActivityMemberOwnerRef): ActivityMemberDTO[] {
@@ -38,6 +41,10 @@ export class LocalActivityMembersService extends LocalRouteDelayService {
     owner: ActivityMemberOwnerRef,
     options?: ActivityMembersQueryOptions
   ): Promise<ActivityMemberDTO[]> {
+    const scopedAssetMembers = this.scopedAssetMembers(owner, options);
+    if (scopedAssetMembers) {
+      return LocalActivityMembersBuilder.sortEntriesByActionTime(scopedAssetMembers);
+    }
     return this.entriesFromRecords(await this.activityMembersRepository.queryRecordsByOwner(owner, options), owner);
   }
 
@@ -190,6 +197,100 @@ export class LocalActivityMembersService extends LocalRouteDelayService {
 
   private existingRecordsById(owner: ActivityMemberOwnerRef): ReadonlyMap<string, ActivityMemberRecord> {
     return new Map(this.activityMembersRepository.peekRecordsByOwner(owner).map(record => [record.id, record] as const));
+  }
+
+  private scopedAssetMembers(
+    owner: ActivityMemberOwnerRef,
+    options?: ActivityMembersQueryOptions
+  ): ActivityMemberDTO[] | null {
+    const eventId = `${options?.eventId ?? ''}`.trim();
+    const subEventId = `${options?.subEventId ?? ''}`.trim();
+    if (owner.ownerType !== 'asset' || !eventId || !subEventId) {
+      return null;
+    }
+    const asset = this.assetsRepository.peekAssetById(owner.ownerId);
+    if (!asset) {
+      return [];
+    }
+    const nowIso = AppUtils.toIsoDateTime(new Date());
+    const users = this.localActivityMemberUsers;
+    const ownerUserId = `${asset.ownerUserId ?? ''}`.trim();
+    const members: ActivityMemberDTO[] = [];
+    if (options?.pendingOnly !== true && ownerUserId) {
+      const profile = this.resolveDemoUser(ownerUserId, {
+        name: asset.ownerName,
+        city: asset.city
+      });
+      members.push({
+        id: `${asset.id}:owner`,
+        userId: profile.id,
+        name: profile.name,
+        initials: profile.initials,
+        gender: profile.gender,
+        city: profile.city || asset.city,
+        statusText: 'Responsible manager for this asset.',
+        role: 'Manager',
+        status: 'accepted',
+        pendingSource: null,
+        requestKind: null,
+        invitedByActiveUser: false,
+        invitedByUserId: null,
+        metAtIso: nowIso,
+        actionAtIso: nowIso,
+        metWhere: asset.title,
+        avatarUrl: AppUtils.firstImageUrl(profile.images),
+        profile
+      });
+    }
+
+    const authorizationEventId = ActivityResourceBuilder.authorizationEventId(eventId, subEventId);
+    const acceptedEventIds = new Set([eventId, authorizationEventId].filter(Boolean));
+    for (const request of asset.requests ?? []) {
+      const bookingEventId = `${request.booking?.eventId ?? ''}`.trim();
+      const bookingSubEventId = `${request.booking?.subEventId ?? ''}`.trim();
+      if (!acceptedEventIds.has(bookingEventId) || bookingSubEventId !== subEventId) {
+        continue;
+      }
+      if (options?.pendingOnly === true && request.status !== 'pending') {
+        continue;
+      }
+      const userId = AppUtils.resolveAssetRequestUserId(request, users);
+      if (!userId || userId === ownerUserId) {
+        continue;
+      }
+      const profile = this.resolveDemoUser(userId, {
+        name: request.name,
+        initials: request.initials,
+        city: asset.city,
+        gender: request.gender
+      });
+      const requestedAtIso = `${request.requestedAtIso ?? ''}`.trim() || nowIso;
+      const pending = request.status === 'pending';
+      const borrowerInitiated = request.requestKind !== 'manual';
+      members.push({
+        id: request.id?.trim() || `${asset.id}:request:${userId}`,
+        userId: profile.id,
+        name: profile.name,
+        initials: profile.initials,
+        gender: profile.gender,
+        city: profile.city || asset.city,
+        statusText: pending
+          ? (borrowerInitiated ? 'Waiting for admin approval.' : 'Invitation pending.')
+          : 'Borrowing this asset.',
+        role: 'Member',
+        status: request.status,
+        pendingSource: pending ? (borrowerInitiated ? 'member' : 'admin') : null,
+        requestKind: pending ? (borrowerInitiated ? 'join' : 'invite') : null,
+        invitedByActiveUser: false,
+        invitedByUserId: null,
+        metAtIso: requestedAtIso,
+        actionAtIso: requestedAtIso,
+        metWhere: asset.title,
+        avatarUrl: AppUtils.firstImageUrl(profile.images),
+        profile
+      });
+    }
+    return members;
   }
 
   private resolveDemoUser(userId: string, fallback: ActivityMemberProfileFallback): UserDto {

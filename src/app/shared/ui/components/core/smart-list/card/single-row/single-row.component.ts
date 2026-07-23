@@ -274,6 +274,8 @@ export class SingleRowComponent {
 
   private sharedMenuActionPalette(tone: CardMenuAction['tone']): AppMenuPalette {
     switch (tone) {
+      case 'positive':
+        return 'teal';
       case 'accent':
         return 'brown';
       case 'warning':

@@ -921,7 +921,10 @@ export class EventMembersPopupComponent {
     const providedInitialMembers = ownerType !== 'event' && Array.isArray(options?.initialMembers)
       ? this.sortMembersByActionTimeDesc(options.initialMembers)
       : null;
-    const initialMembers = this.activityMembersService.usesLocalDataSource()
+    const isScopedAssetOwner = ownerType === 'asset'
+      && `${options?.eventId ?? ''}`.trim().length > 0
+      && `${options?.subEventId ?? ''}`.trim().length > 0;
+    const initialMembers = this.activityMembersService.usesLocalDataSource() && !isScopedAssetOwner
       ? providedInitialMembers
       : null;
     this.isOpen = true;
@@ -1335,7 +1338,10 @@ export class EventMembersPopupComponent {
       return;
     }
     const previousMembers = this.currentOwnerMembers();
-    void this.activityMembersService.queryMembersByOwner(owner)
+    void this.activityMembersService.queryMembersByOwner(owner, {
+      eventId: this.memberEventId,
+      subEventId: this.memberSubEventId
+    })
       .then(members => {
         if (!this.isOpen || this.ownerId !== sync.id || !this.ownerRef || this.ownerRef.ownerId !== sync.id) {
           return;

@@ -105,6 +105,9 @@ export class ActivitySubEventResourceInfoCardConverter {
     } else if (this.canLeave(card, options)) {
       actions.push('leaveResource');
     }
+    if (this.hasActiveUserBorrowRequest(card, options)) {
+      actions.push('paymentSummary');
+    }
     actions.push('askOrganizer');
     actions.push('shareAsset');
     if (this.canReportResourceManager(card, options)) {
@@ -185,6 +188,24 @@ export class ActivitySubEventResourceInfoCardConverter {
     const users = options.users ?? [];
     return (sourceAsset.requests ?? []).some(request =>
       request.requestKind !== 'manual'
+      && ActivityResourceBuilder.isSubEventScopedAssetRequest(request, subEventId)
+      && AppUtils.resolveAssetRequestUserId(request, users) === activeUserId
+    );
+  }
+
+  private static hasActiveUserBorrowRequest(
+    card: AppDTOs.SubEventResourceCardDTO,
+    options: ActivitySubEventResourceInfoCardConverterOptions
+  ): boolean {
+    const sourceAsset = this.sourceAsset(card, options);
+    const subEventId = this.contextSubEventId(options);
+    const activeUserId = this.normalizeId(options.activeUserId);
+    if (!sourceAsset || !subEventId || !activeUserId) {
+      return false;
+    }
+    const users = options.users ?? [];
+    return (sourceAsset.requests ?? []).some(request =>
+      request.requestKind === 'borrow'
       && ActivityResourceBuilder.isSubEventScopedAssetRequest(request, subEventId)
       && AppUtils.resolveAssetRequestUserId(request, users) === activeUserId
     );

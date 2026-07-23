@@ -1,6 +1,9 @@
 import { Injectable, Type, computed, signal } from '@angular/core';
 
 import * as AppConstants from '../../../core/common/constants';
+import type {
+  AssetBorrowPricingPreview
+} from '../../../core/base/builders/pricing.builder';
 import type * as AppDTOs from '../../../core/contracts';
 import type * as ContractTypes from '../../../core/contracts';
 import type { ActivityMemberDTO } from '../../../core/contracts/activity.interface';
@@ -175,10 +178,7 @@ export interface AssetExploreBorrowDraftState {
   updatedAtMs: number;
 }
 
-export interface AssetExploreBorrowPricingPreview {
-  amount: number;
-  currency: string;
-}
+export type AssetExploreBorrowPricingPreview = AssetBorrowPricingPreview;
 
 export interface SupplyBringDialogState {
   subEventId: string;

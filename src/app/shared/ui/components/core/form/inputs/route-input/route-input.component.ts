@@ -15,6 +15,7 @@ import {
 import { ControlValueAccessor, NG_VALUE_ACCESSOR } from '@angular/forms';
 import { MatIconModule } from '@angular/material/icon';
 
+import { I18nService } from '../../../../../../core/base/services/i18n.service';
 import {
   FormFlowPopupStore,
   type FormFlowRouteInputEditorActionRequest,
@@ -67,6 +68,7 @@ export class RouteInputComponent implements ControlValueAccessor, OnDestroy {
   protected error = '';
 
   private readonly cdr = inject(ChangeDetectorRef);
+  private readonly i18n = inject(I18nService);
   private readonly formFlowPopupStore = inject(FormFlowPopupStore);
   private readonly ownerId = this.nextOwnerId();
 
@@ -138,26 +140,45 @@ export class RouteInputComponent implements ControlValueAccessor, OnDestroy {
   }
 
   protected panelTitle(): string {
-    return this.resolveConfigValue(this.config.title, 'Route');
+    return this.i18n.translate(this.resolveConfigValue(this.config.title, 'route'));
   }
 
   protected panelSubtitle(): string {
-    return this.resolveConfigValue(this.config.subtitle, 'Runtime route for this event asset.');
+    return this.i18n.translate(this.resolveConfigValue(this.config.subtitle, 'asset.assignment.route.subtitle'));
   }
 
   protected openRouteLabel(): string {
-    return this.resolveConfigValue(this.config.openLabel, 'Open Route Setup');
+    return this.i18n.translate(this.resolveConfigValue(this.config.openLabel, 'asset.assignment.route.open'));
   }
 
   protected emptyRouteLabel(): string {
-    return this.locked()
-      ? this.resolveConfigValue(this.config.readOnlyEmptyLabel, 'No route is set for this event asset.')
-      : this.resolveConfigValue(this.config.emptyLabel, 'No route is set for this event asset.');
+    return this.i18n.translate(this.locked()
+      ? this.resolveConfigValue(this.config.readOnlyEmptyLabel, 'asset.assignment.route.empty')
+      : this.resolveConfigValue(this.config.emptyLabel, 'asset.assignment.route.empty'));
   }
 
   protected routeCountLabel(): string {
     const count = this.visibleRoutes().length;
-    return count === 1 ? '1 stop' : `${count} stops`;
+    return this.i18n.translateParams(
+      count === 1 ? 'asset.assignment.route.stop.one' : 'asset.assignment.route.stop.many',
+      { count }
+    );
+  }
+
+  protected toggleLabel(): string {
+    return this.i18n.translate(this.routeEnabled() ? 'on' : 'off');
+  }
+
+  protected summaryLabel(): string {
+    return this.i18n.translate('summary');
+  }
+
+  protected mapLabel(): string {
+    return this.i18n.translate('map');
+  }
+
+  protected mapAriaLabel(): string {
+    return this.i18n.translate('asset.assignment.route.map.aria');
   }
 
   protected visibleRoutes(): string[] {

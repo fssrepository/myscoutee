@@ -18,15 +18,18 @@ import {
   PricingBuilder
 } from '../../../shared/core/base/builders';
 import {
-  AssetsService
+  AssetsService,
+  I18nService
 } from '../../../shared/core';
 import {
   AssetStore,
+  type AssetEditorCheckoutState,
   type AssetEditorRuntimeAssignmentState,
   type AssetEditorRuntimeRouteState,
   type AssetFormState
 } from '../../../shared/ui/context/stores/asset.store';
 import {
+  AppMenuComponent,
   type LocationInputConfig,
   IndicatorComponent,
   type AppMenuItem,
@@ -38,11 +41,26 @@ import {
   type FormFlowTone,
   type PoliciesInputConfig,
   type PricingEditorConfig,
+  type PricingEditorRuntimePreview,
   PopupComponent,
   type PopupControl,
   type PopupModel,
   type RouteInputConfig
 } from '../../../shared/ui';
+import type {
+  DateInputRangeValue
+} from '../../../shared/ui/components/core/form/inputs/date-input';
+import {
+  EventBasketInputComponent,
+  type EventBasketInputItem,
+  type EventBasketInputPricingSummaryRow
+} from '../../../activity/components/event-editor-popup/event-basket-input';
+import {
+  EventPaymentInputComponent
+} from '../../../activity/components/event-editor-popup/event-payment-input';
+import {
+  AppUtils
+} from '../../../shared/app-utils';
 
 import * as AppConstants from '../../../shared/core/common/constants';
 import type * as AppDTOs from '../../../shared/core/contracts';
@@ -56,6 +74,7 @@ type AssetEditorFlowValue = AssetFormState & {
   imageUrls: string[];
   routeLocation: string;
   runtimeRoutes: string[];
+  checkoutDateRange?: DateInputRangeValue | null;
 };
 
 @Component({
@@ -64,6 +83,9 @@ type AssetEditorFlowValue = AssetFormState & {
   imports: [
     CommonModule,
     FormsModule,
+    AppMenuComponent,
+    EventBasketInputComponent,
+    EventPaymentInputComponent,
     IndicatorComponent,
     FormFlowComponent,
     PopupComponent
@@ -76,6 +98,7 @@ export class AssetEditorPopupComponent {
 
   private readonly userProfileStore = inject(UserProfileStore);
   private readonly assetsService = inject(AssetsService);
+  private readonly i18n = inject(I18nService);
   protected readonly assetStore = inject(AssetStore);
   protected readonly assetVisibilityOptions = APP_STATIC_DATA.eventVisibilityOptions;
   private assetImageUrlsCacheKey = '';
@@ -88,7 +111,8 @@ export class AssetEditorPopupComponent {
     context: 'asset',
     presentation: 'popup-summary',
     allowSlotFeatures: false,
-    showAudienceSection: false
+    showAudienceSection: false,
+    runtimePreview: () => this.assetCheckoutPricingPreview()
   };
   protected readonly assetLocationInputConfig: LocationInputConfig = {
     label: 'Location',
@@ -108,11 +132,17 @@ export class AssetEditorPopupComponent {
     readOnlyEmptyLabel: 'No lending policies are configured for this asset.',
     popupSubtitle: 'Open a policy to edit its details.',
     editorSubtitle: 'Describe the policy and choose if approval is required.',
-    requiredApprovalLabel: 'Required approval',
-    optionalPolicyLabel: 'Optional policy',
-    requiredPreview: 'Borrowers must approve this lending policy before sending the request.',
+    requiredApprovalLabel: 'required',
+    optionalPolicyLabel: 'optional',
+    requiredPreview: 'This lending policy always applies to the borrow.',
     optionalPreview: 'Optional lending policy shown during the request flow.',
-    requiredCheckboxLabel: 'Borrowers must approve this policy'
+    requiredCheckboxLabel: 'Borrowers must approve this policy',
+    approval: {
+      enabled: () => this.assetCheckout()?.phase === 'review',
+      acceptedPolicyIds: () => this.assetCheckout()?.acceptedPolicyIds ?? [],
+      disabled: () => this.assetCheckout()?.busy === true,
+      onToggle: policyId => this.toggleCheckoutPolicy(policyId)
+    }
   };
 
   protected get assetForm(): AssetFormState {
@@ -120,19 +150,27 @@ export class AssetEditorPopupComponent {
   }
 
   protected get title(): string {
+    const checkoutTitle = this.assetCheckout()?.title.trim();
+    if (checkoutTitle) {
+      return checkoutTitle;
+    }
     const mode = this.assetEditorReadOnly()
       ? 'View'
       : this.assetStore.editingAssetId()
         ? 'Edit'
         : 'Add';
-    return `${mode} ${AssetDefaultsBuilder.assetTypeLabel(this.assetForm.type)}`;
+    const assetType = AssetDefaultsBuilder.assetTypeLabel(this.assetForm.type);
+    return `${this.i18n.translate(mode.toLowerCase())} ${this.i18n.translate(assetType.toLowerCase(), assetType)}`;
   }
 
   protected assetEditorPopupModel(): PopupModel<AssetEditorMenuContext> {
     return {
       title: this.title,
+      subtitle: this.assetCheckout()?.subtitle ?? null,
       ariaLabel: this.title,
-      closeAriaLabel: 'Close asset editor',
+      closeAriaLabel: this.assetCheckout()
+        ? this.i18n.translate('asset.borrow.close.aria')
+        : 'Close asset editor',
       size: 'wide',
       height: 'full',
       headerTone: 'accent',
@@ -149,9 +187,11 @@ export class AssetEditorPopupComponent {
   }
 
   protected assetEditorFlowModel(): FormFlowModel {
+    this.i18n.revision();
     const disabled = this.assetEditorReadOnly() || this.isLoading;
     const runtimeRoute = this.assetStore.assetFormRuntimeRoute();
     const runtimeAssignment = this.assetStore.assetFormRuntimeAssignment();
+    const checkout = this.assetCheckout();
     const assetDefinitionDisabled = disabled || runtimeRoute !== null || runtimeAssignment !== null;
     const cacheKey = [
       this.title,
@@ -164,8 +204,25 @@ export class AssetEditorPopupComponent {
         ? `${runtimeRoute.editable}:${runtimeRoute.routeEnabled}:${runtimeRoute.routes.join('>')}`
         : 'no-runtime-route',
       runtimeAssignment
-        ? `${runtimeAssignment.editable}:${runtimeAssignment.quantity}:${runtimeAssignment.quantityMax}:${runtimeAssignment.quantityLabel ?? ''}`
+        ? [
+            runtimeAssignment.editable,
+            runtimeAssignment.quantity,
+            runtimeAssignment.quantityMax,
+            runtimeAssignment.quantityLabel ?? '',
+            runtimeAssignment.quantityDescription ?? ''
+          ].join(':')
         : 'no-runtime-assignment',
+      checkout
+        ? [
+            checkout.mode,
+            checkout.phase,
+            checkout.dateRange.startAt,
+            checkout.dateRange.endAt,
+            checkout.availableQuantity,
+            checkout.busy,
+            checkout.error ?? ''
+          ].join(':')
+        : 'no-checkout',
       assetDefinitionDisabled ? 'definition-disabled' : 'definition-enabled',
       disabled ? 'disabled' : 'enabled'
     ].join('|');
@@ -173,6 +230,7 @@ export class AssetEditorPopupComponent {
       return this.assetEditorFlowModelCache;
     }
     const steps: FormFlowModel['steps'] = [
+      ...this.assetCheckoutFlowSteps(checkout),
       {
         id: 'basics',
         title: 'Basics',
@@ -348,6 +406,32 @@ export class AssetEditorPopupComponent {
     }];
   }
 
+  private assetCheckoutFlowSteps(
+    checkout: AssetEditorCheckoutState | null
+  ): FormFlowModel['steps'] {
+    if (!checkout) {
+      return [];
+    }
+    return [{
+      id: 'checkout-window',
+      title: this.i18n.translate('date'),
+      icon: 'date_range',
+      controls: [
+        {
+          id: 'checkoutDateRange',
+          bind: 'checkoutDateRange',
+          kind: 'date',
+          layout: 'wide',
+          required: true,
+          disabled: checkout.phase !== 'review' || checkout.busy,
+          config: {
+            model: checkout.dateRangeModel
+          }
+        }
+      ]
+    }];
+  }
+
   private assetRuntimeRouteFlowSteps(): FormFlowModel['steps'] {
     const runtimeRoute = this.assetStore.assetFormRuntimeRoute();
     if (!runtimeRoute || this.assetForm.type !== AppConstants.ASSET_TYPE_TRANSPORT) {
@@ -408,7 +492,10 @@ export class AssetEditorPopupComponent {
       ...this.cloneAssetFormForFlow(this.assetForm),
       imageUrls: this.assetImageUrls(),
       routeLocation: this.assetFormRouteStops()[0] ?? '',
-      runtimeRoutes: [...(this.assetStore.assetFormRuntimeRoute()?.routes ?? [])]
+      runtimeRoutes: [...(this.assetStore.assetFormRuntimeRoute()?.routes ?? [])],
+      checkoutDateRange: this.assetCheckout()?.dateRange
+        ? { ...this.assetCheckout()!.dateRange }
+        : null
     };
     this.assetEditorFlowValueCacheKey = cacheKey;
     this.assetEditorFlowValueCache = value;
@@ -421,6 +508,7 @@ export class AssetEditorPopupComponent {
     }
     this.applyRuntimeRouteValueFromFlow(value);
     this.applyRuntimeAssignmentValueFromFlow(value);
+    this.applyCheckoutValueFromFlow(value);
     if (this.assetEditorReadOnly()) {
       return;
     }
@@ -437,6 +525,9 @@ export class AssetEditorPopupComponent {
   }
 
   private assetEditorPopupHeaderControls(): readonly PopupControl<AssetEditorMenuContext>[] {
+    if (this.assetCheckout()) {
+      return [];
+    }
     if (this.assetEditorReadOnly()) {
       return this.runtimeRouteHeaderControls();
     }
@@ -491,6 +582,11 @@ export class AssetEditorPopupComponent {
 
   protected requestClose(): void {
     if (this.isSavePending) {
+      return;
+    }
+    const checkoutClose = this.assetCheckout()?.onClose;
+    if (checkoutClose) {
+      checkoutClose();
       return;
     }
     this.assetStore.closeAssetEditor();
@@ -882,6 +978,79 @@ export class AssetEditorPopupComponent {
     return this.assetStore.assetFormReadOnly();
   }
 
+  protected assetCheckout(): AssetEditorCheckoutState | null {
+    return this.assetStore.assetFormCheckout();
+  }
+
+  protected toggleCheckoutPolicy(policyId: string): void {
+    const checkout = this.assetCheckout();
+    if (!checkout || checkout.busy || checkout.phase !== 'review') {
+      return;
+    }
+    checkout.onPolicyToggle?.(policyId);
+  }
+
+  protected checkoutFooterItems(): readonly AppMenuItem<string>[] {
+    return this.assetCheckout()?.footerItems ?? [];
+  }
+
+  protected onCheckoutFooterItemSelect(event: AppMenuItemSelectEvent<string>): void {
+    const checkout = this.assetCheckout();
+    if (!checkout || checkout.busy) {
+      return;
+    }
+    checkout.onFooterItemSelect?.(event.id, event.sourceEvent);
+  }
+
+  protected checkoutPaymentBasketItems(): readonly EventBasketInputItem[] {
+    const checkout = this.assetCheckout();
+    if (!checkout) {
+      return [];
+    }
+    const quantity = Math.max(
+      1,
+      Math.trunc(Number(this.assetStore.assetFormRuntimeAssignment()?.quantity) || 1)
+    );
+    return [{
+      id: checkout.sourceId,
+      title: `${this.assetForm.title ?? ''}`.trim() || this.i18n.translate('asset'),
+      meta: this.checkoutPaymentTimeframe(),
+      detail: `${this.i18n.translate('quantity')}: ${quantity}`,
+      amount: Math.max(0, Number(checkout.pricingPreview.totalAmount) || 0),
+      currency: this.checkoutPaymentCurrency(),
+      quantity: 1,
+      status: 'pay',
+      pricingSummaryRows: this.checkoutPaymentPricingRows()
+    }];
+  }
+
+  protected checkoutPaymentPricingRows(): readonly EventBasketInputPricingSummaryRow[] {
+    return (this.assetCheckout()?.pricingPreview.rows ?? []).map(row => ({ ...row }));
+  }
+
+  protected checkoutPaymentTotal(): number {
+    return Math.max(0, Number(this.assetCheckout()?.pricingPreview.totalAmount) || 0);
+  }
+
+  protected checkoutPaymentCurrency(): string {
+    return `${this.assetCheckout()?.pricingPreview.currency ?? 'USD'}`.trim() || 'USD';
+  }
+
+  protected checkoutPaymentContextTitle(): string {
+    return `${this.assetCheckout()?.subtitle ?? ''}`.trim();
+  }
+
+  protected checkoutPaymentContextMeta(): string {
+    return `${this.assetForm.city ?? ''}`.trim();
+  }
+
+  protected checkoutPaymentTimeframe(): string {
+    const dateRange = this.assetCheckout()?.dateRange;
+    return dateRange
+      ? AppUtils.dateTimeRangeLabel(dateRange.startAt, dateRange.endAt, '')
+      : '';
+  }
+
   private applyRuntimeRouteValueFromFlow(value: unknown): void {
     const runtimeRoute = this.assetStore.assetFormRuntimeRoute();
     if (!runtimeRoute || !this.isRecord(value)) {
@@ -916,6 +1085,44 @@ export class AssetEditorPopupComponent {
     this.assetStore.setAssetEditorRuntimeAssignmentState({ quantity: nextQuantity });
     this.assetEditorFlowValueCacheKey = '';
     this.assetEditorFlowModelCacheKey = '';
+    this.assetStore.assetFormRuntimeAssignment()?.onChange?.(nextQuantity);
+  }
+
+  private applyCheckoutValueFromFlow(value: unknown): void {
+    const checkout = this.assetCheckout();
+    if (!checkout || checkout.busy || checkout.phase !== 'review' || !this.isRecord(value)) {
+      return;
+    }
+    const dateRange = (value as Partial<AssetEditorFlowValue>).checkoutDateRange;
+    if (!this.isDateInputRangeValue(dateRange) || this.dateRangesEqual(dateRange, checkout.dateRange)) {
+      return;
+    }
+    checkout.onDateRangeChange?.({ ...dateRange });
+    this.assetEditorFlowValueCacheKey = '';
+    this.assetEditorFlowModelCacheKey = '';
+  }
+
+  private assetCheckoutPricingPreview(): PricingEditorRuntimePreview | null {
+    const checkout = this.assetCheckout();
+    return checkout
+      ? {
+          ...checkout.pricingPreview,
+          rows: checkout.pricingPreview.rows.map(row => ({ ...row }))
+        }
+      : null;
+  }
+
+  private isDateInputRangeValue(value: unknown): value is DateInputRangeValue {
+    return !!value
+      && typeof value === 'object'
+      && 'startAt' in value
+      && 'endAt' in value;
+  }
+
+  private dateRangesEqual(left: DateInputRangeValue, right: DateInputRangeValue): boolean {
+    return left.startAt === right.startAt
+      && left.endAt === right.endAt
+      && left.precision === right.precision;
   }
 
   private normalizeRuntimeQuantity(value: unknown, max: unknown, fallback = 1): number {

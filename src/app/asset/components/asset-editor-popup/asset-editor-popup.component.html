@@ -8,14 +8,60 @@
         ></app-indicator>
       </div>
     } @else {
-      <app-form-flow
-        class="asset-editor-flow"
-        [class.is-saving]="isSavePending"
-        [model]="assetEditorFlowModel()"
-        [(ngModel)]="assetEditorFlowBinding"
-        [disabled]="isLoading || isSavePending"
-        [saving]="isSavePending"
-      ></app-form-flow>
+      <div class="asset-editor-popup-body" [class.asset-editor-popup-body--checkout]="assetCheckout()">
+        @if (assetCheckout()?.phase === 'payment') {
+          <div class="asset-editor-checkout-payment-stack">
+            <app-event-basket-input
+              title="event.editor.basket.title"
+              subtitle="event.editor.basket.payment.subtitle"
+              [contextTitle]="checkoutPaymentContextTitle()"
+              [contextMeta]="checkoutPaymentContextMeta()"
+              [contextDetail]="checkoutPaymentTimeframe()"
+              [items]="checkoutPaymentBasketItems()"
+              [pricingSummaryRows]="checkoutPaymentPricingRows()"
+              [totalAmount]="checkoutPaymentTotal()"
+              [currency]="checkoutPaymentCurrency()"
+              tone="payment"
+              [readOnly]="true"
+              [showAdd]="false"
+              [showItemMenu]="false"
+              [showPricingSummary]="true"
+            ></app-event-basket-input>
+            <app-event-payment-input
+              title="event.editor.payment.title"
+              subtitle="asset.borrow.payment.subtitle"
+              [totalAmount]="checkoutPaymentTotal()"
+              [currency]="checkoutPaymentCurrency()"
+              tone="payment"
+              [paymentIntegrationEnabled]="false"
+            ></app-event-payment-input>
+          </div>
+        } @else {
+          <app-form-flow
+            class="asset-editor-flow"
+            [class.is-saving]="isSavePending"
+            [model]="assetEditorFlowModel()"
+            [(ngModel)]="assetEditorFlowBinding"
+            [disabled]="isLoading || isSavePending"
+            [saving]="isSavePending"
+          ></app-form-flow>
+        }
+
+        @if (assetCheckout()?.error; as checkoutError) {
+          <p class="asset-editor-checkout-error">{{ checkoutError }}</p>
+        }
+      </div>
+
+      @if (checkoutFooterItems().length > 0) {
+        <div class="asset-editor-checkout-footer">
+          <app-menu
+            kind="inline"
+            layout="row"
+            [items]="checkoutFooterItems()"
+            (itemSelect)="onCheckoutFooterItemSelect($event)"
+          ></app-menu>
+        </div>
+      }
     }
   </app-popup>
 }

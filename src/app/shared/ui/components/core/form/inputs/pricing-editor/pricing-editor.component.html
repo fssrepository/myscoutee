@@ -98,7 +98,7 @@
   <section class="pricing-editor__surface">
     <div class="pricing-editor__grid">
       <label class="pricing-editor__field pricing-editor__field--money">
-        <span>{{ 'pricing.base.price' | i18n }}</span>
+        <span>{{ basePriceFieldLabel() | i18n }}</span>
         <div class="pricing-editor__money-field">
           <span class="pricing-editor__money-prefix">{{ currencySymbol(workingPricing.currency) }}</span>
           <input
@@ -143,14 +143,14 @@
             panelClass="selector-options-panel profile-bottom-sheet-panel"
             >
             @for (option of taxModeOptions; track option) {
-              <mat-option [value]="option">{{ taxModeLabel(option) }}</mat-option>
+              <mat-option [value]="option">{{ taxModeLabel(option) | i18n }}</mat-option>
             }
           </mat-select>
         </div>
       </label>
 
       <label class="pricing-editor__field">
-        <span>{{ chargeTypeFieldLabel() }}</span>
+        <span>{{ chargeTypeFieldLabel() | i18n }}</span>
         <div class="pricing-editor__select-shell">
           <mat-select
             [(ngModel)]="workingPricing.chargeType"
@@ -161,14 +161,14 @@
             panelClass="selector-options-panel profile-bottom-sheet-panel"
             >
             @for (option of resolvedConfig.chargeTypeOptions; track option) {
-              <mat-option [value]="option">{{ chargeTypeLabel(option) }}</mat-option>
+              <mat-option [value]="option">{{ chargeTypeLabel(option) | i18n }}</mat-option>
             }
           </mat-select>
         </div>
       </label>
 
       <label class="pricing-editor__field pricing-editor__field--money">
-        <span>{{ 'pricing.minimum' | i18n }}</span>
+        <span>{{ minimumPriceFieldLabel() | i18n }}</span>
         <div class="pricing-editor__money-field">
           <span class="pricing-editor__money-prefix">{{ currencySymbol(workingPricing.currency) }}</span>
           <input
@@ -185,7 +185,7 @@
       </label>
 
       <label class="pricing-editor__field pricing-editor__field--money">
-        <span>{{ 'pricing.maximum' | i18n }}</span>
+        <span>{{ maximumPriceFieldLabel() | i18n }}</span>
         <div class="pricing-editor__money-field">
           <span class="pricing-editor__money-prefix">{{ currencySymbol(workingPricing.currency) }}</span>
           <input
@@ -213,7 +213,7 @@
             panelClass="selector-options-panel profile-bottom-sheet-panel"
             >
             @for (option of roundingOptions; track option) {
-              <mat-option [value]="option">{{ roundingLabel(option) }}</mat-option>
+              <mat-option [value]="option">{{ roundingLabel(option) | i18n }}</mat-option>
             }
           </mat-select>
         </div>
@@ -246,7 +246,7 @@
                 <label class="pricing-editor__field">
                   <span>{{ 'if' | i18n }}</span>
                   <div class="pricing-editor__select-shell pricing-editor__select-shell--static">
-                    <span>{{ 'pricing.event.quantity.minimum' | i18n }}</span>
+                    <span>{{ quantityThresholdLabel() | i18n }}</span>
                   </div>
                 </label>
                 <label class="pricing-editor__field">
@@ -272,7 +272,7 @@
                       panelClass="selector-options-panel profile-bottom-sheet-panel"
                       >
                       @for (option of actionKindOptions; track option) {
-                        <mat-option [value]="option">{{ actionLabel(option) }}</mat-option>
+                        <mat-option [value]="option">{{ actionLabel(option) | i18n }}</mat-option>
                       }
                     </mat-select>
                   </div>
@@ -306,7 +306,7 @@
           <span>{{ 'pricing.quantity.rule.add' | i18n }}</span>
         </button>
       } @else {
-        <p class="pricing-editor__hint">{{ 'pricing.quantity.disabled.hint' | i18n }}</p>
+        <p class="pricing-editor__hint">{{ quantityDisabledHint() | i18n }}</p>
       }
     </section>
   }
@@ -348,7 +348,7 @@
                       panelClass="selector-options-panel profile-bottom-sheet-panel"
                       >
                       @for (option of demandOperatorOptions; track option) {
-                        <mat-option [value]="option">Capacity filled {{ operatorLabel(option) }}</mat-option>
+                        <mat-option [value]="option">{{ 'pricing.capacity.filled' | i18n }} {{ operatorLabel(option) }}</mat-option>
                       }
                     </mat-select>
                   </div>
@@ -377,7 +377,7 @@
                       panelClass="selector-options-panel profile-bottom-sheet-panel"
                       >
                       @for (option of actionKindOptions; track option) {
-                        <mat-option [value]="option">{{ actionLabel(option) }}</mat-option>
+                        <mat-option [value]="option">{{ actionLabel(option) | i18n }}</mat-option>
                       }
                     </mat-select>
                   </div>
@@ -452,10 +452,11 @@
             <article class="pricing-editor__rule-card">
               <div
                 class="pricing-editor__rule-grid"
+                [class.pricing-editor__rule-grid--time]="rule.trigger !== 'specific_date'"
                 [class.pricing-editor__rule-grid--slots]="resolvedConfig.allowSlotFeatures"
                 [class.pricing-editor__rule-grid--time-date-desktop]="rule.trigger === 'specific_date'"
               >
-                <label class="pricing-editor__field">
+                <label class="pricing-editor__field pricing-editor__field--time-trigger">
                   <span>{{ 'if' | i18n }}</span>
                   <div class="pricing-editor__select-shell">
                     <mat-select
@@ -467,7 +468,7 @@
                       panelClass="selector-options-panel profile-bottom-sheet-panel"
                       >
                       @for (option of timeTriggerOptions; track option) {
-                        <mat-option [value]="option">{{ timeTriggerLabel(option) }}</mat-option>
+                        <mat-option [value]="option">{{ timeTriggerLabel(option) | i18n }}</mat-option>
                       }
                     </mat-select>
                   </div>
@@ -497,7 +498,7 @@
                     </mat-form-field>
                   </label>
                 } @else {
-                  <label class="pricing-editor__field">
+                  <label class="pricing-editor__field pricing-editor__field--time-offset">
                     <span>{{ 'offset' | i18n }}</span>
                     <input
                       type="number"
@@ -509,7 +510,7 @@
                       />
                   </label>
                 }
-                <label class="pricing-editor__field">
+                <label class="pricing-editor__field pricing-editor__field--time-action">
                   <span>{{ 'then' | i18n }}</span>
                   <div class="pricing-editor__select-shell">
                     <mat-select
@@ -521,12 +522,12 @@
                       panelClass="selector-options-panel profile-bottom-sheet-panel"
                       >
                       @for (option of actionKindOptions; track option) {
-                        <mat-option [value]="option">{{ actionLabel(option) }}</mat-option>
+                        <mat-option [value]="option">{{ actionLabel(option) | i18n }}</mat-option>
                       }
                     </mat-select>
                   </div>
                 </label>
-                <label class="pricing-editor__field">
+                <label class="pricing-editor__field pricing-editor__field--time-value">
                   <span>{{ 'value' | i18n }}</span>
                   <input
                     type="number"
@@ -607,7 +608,7 @@
                       panelClass="selector-options-panel profile-bottom-sheet-panel"
                       >
                       @for (option of cancellationUnitOptions; track option) {
-                        <mat-option [value]="option">{{ cancellationUnitLabel(option) }}</mat-option>
+                        <mat-option [value]="option">{{ cancellationUnitLabel(option) | i18n }}</mat-option>
                       }
                     </mat-select>
                   </div>
@@ -635,7 +636,7 @@
                       panelClass="selector-options-panel profile-bottom-sheet-panel"
                       >
                       @for (option of cancellationRefundKindOptions; track option) {
-                        <mat-option [value]="option">{{ cancellationRefundKindLabel(option) }}</mat-option>
+                        <mat-option [value]="option">{{ cancellationRefundKindLabel(option) | i18n }}</mat-option>
                       }
                     </mat-select>
                   </div>
@@ -654,7 +655,7 @@
                   } @else {
                     <input
                       type="text"
-                      [value]="cancellationRuleValueSuffix(rule)"
+                      [value]="cancellationRuleValueSuffix(rule) | i18n"
                       disabled
                       />
                   }
@@ -802,7 +803,7 @@
                     panelClass="selector-options-panel profile-bottom-sheet-panel"
                     >
                     @for (option of actionKindOptions; track option) {
-                      <mat-option [value]="option">{{ actionLabel(option) }}</mat-option>
+                      <mat-option [value]="option">{{ actionLabel(option) | i18n }}</mat-option>
                     }
                   </mat-select>
                 </div>
@@ -854,7 +855,7 @@
     </div>
     @if (runtimePreviewState(); as runtimePreview) {
       <div class="pricing-editor__preview-line">
-        <span>{{ 'pricing.base' | i18n }}</span>
+        <span>{{ runtimeBaseLabel(runtimePreview) }}</span>
         <strong>{{ runtimeMoneyLabel(runtimeBaseAmount(runtimePreview), runtimePreviewCurrency(runtimePreview)) }}</strong>
       </div>
       @for (row of runtimeAdjustmentRows(runtimePreview); track runtimeRowTrackId($index, row)) {
@@ -870,13 +871,18 @@
       @if (runtimePreview.rows.length === 0 && runtimePreview.emptyLabel) {
         <p class="pricing-editor__preview-note">{{ runtimePreview.emptyLabel }}</p>
       }
+      @if (runtimeAssetBillingExplanation(runtimePreview); as billingExplanation) {
+        <p class="pricing-editor__preview-note pricing-editor__preview-note--billing">
+          {{ billingExplanation }}
+        </p>
+      }
       <div class="pricing-editor__preview-total">
         <span>{{ 'event.editor.pricing.final.price' | i18n }}</span>
         <strong>{{ runtimeTotalLabel(runtimePreview) }}</strong>
       </div>
     } @else {
       <div class="pricing-editor__preview-line">
-        <span>{{ 'pricing.base' | i18n }}</span>
+        <span>{{ pricingBaseSummaryLabel() | i18n }}</span>
         <strong>{{ currencySymbol(workingPricing.currency) }}{{ currentPreview.basePrice | number:'1.0-2' }}</strong>
       </div>
       @if (currentPreview.quantityDelta !== 0) {

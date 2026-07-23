@@ -20,7 +20,7 @@
       <section class="pricing-editor__surface">
         <div class="pricing-editor__grid">
           <label class="pricing-editor__field pricing-editor__field--money">
-            <span>Base Price</span>
+            <span>{{ basePriceFieldLabel() | i18n }}</span>
             <div class="pricing-editor__money-field">
               <span class="pricing-editor__money-prefix">{{ currencySymbol(workingPricing.currency) }}</span>
               <input
@@ -36,7 +36,7 @@
           </label>
     
           <label class="pricing-editor__field">
-            <span>Currency</span>
+            <span>{{ 'currency' | i18n }}</span>
             <div class="pricing-editor__select-shell">
               <mat-select
                 [(ngModel)]="workingPricing.currency"
@@ -54,7 +54,7 @@
           </label>
     
           <label class="pricing-editor__field">
-            <span>Tax</span>
+            <span>{{ 'tax' | i18n }}</span>
             <div class="pricing-editor__select-shell">
               <mat-select
                 [(ngModel)]="workingPricing.taxMode"
@@ -65,14 +65,14 @@
                 panelClass="selector-options-panel profile-bottom-sheet-panel"
                 >
                 @for (option of taxModeOptions; track option) {
-                  <mat-option [value]="option">{{ taxModeLabel(option) }}</mat-option>
+                  <mat-option [value]="option">{{ taxModeLabel(option) | i18n }}</mat-option>
                 }
               </mat-select>
             </div>
           </label>
     
           <label class="pricing-editor__field">
-            <span>{{ chargeTypeFieldLabel() }}</span>
+            <span>{{ chargeTypeFieldLabel() | i18n }}</span>
             <div class="pricing-editor__select-shell">
               <mat-select
                 [(ngModel)]="workingPricing.chargeType"
@@ -83,14 +83,14 @@
                 panelClass="selector-options-panel profile-bottom-sheet-panel"
                 >
                 @for (option of resolvedConfig.chargeTypeOptions; track option) {
-                  <mat-option [value]="option">{{ chargeTypeLabel(option) }}</mat-option>
+                  <mat-option [value]="option">{{ chargeTypeLabel(option) | i18n }}</mat-option>
                 }
               </mat-select>
             </div>
           </label>
 
           <label class="pricing-editor__field pricing-editor__field--money">
-            <span>Min Price</span>
+            <span>{{ minimumPriceFieldLabel() | i18n }}</span>
             <div class="pricing-editor__money-field">
               <span class="pricing-editor__money-prefix">{{ currencySymbol(workingPricing.currency) }}</span>
               <input
@@ -100,14 +100,14 @@
                 [ngModel]="workingPricing.minPrice ?? ''"
                 (ngModelChange)="onNullableMoneyFieldChange('minPrice', $event)"
                 [disabled]="readOnly"
-                placeholder="No minimum"
+                [placeholder]="'pricing.no.minimum' | i18n"
                 />
               <span class="pricing-editor__money-code">{{ workingPricing.currency }}</span>
             </div>
           </label>
     
           <label class="pricing-editor__field pricing-editor__field--money">
-            <span>Max Price</span>
+            <span>{{ maximumPriceFieldLabel() | i18n }}</span>
             <div class="pricing-editor__money-field">
               <span class="pricing-editor__money-prefix">{{ currencySymbol(workingPricing.currency) }}</span>
               <input
@@ -117,14 +117,14 @@
                 [ngModel]="workingPricing.maxPrice ?? ''"
                 (ngModelChange)="onNullableMoneyFieldChange('maxPrice', $event)"
                 [disabled]="readOnly"
-                placeholder="No maximum"
+                [placeholder]="'pricing.no.maximum' | i18n"
                 />
               <span class="pricing-editor__money-code">{{ workingPricing.currency }}</span>
             </div>
           </label>
     
           <label class="pricing-editor__field">
-            <span>Rounding</span>
+            <span>{{ 'pricing.rounding' | i18n }}</span>
             <div class="pricing-editor__select-shell">
               <mat-select
                 [(ngModel)]="workingPricing.rounding"
@@ -135,7 +135,7 @@
                 panelClass="selector-options-panel profile-bottom-sheet-panel"
                 >
                 @for (option of roundingOptions; track option) {
-                  <mat-option [value]="option">{{ roundingLabel(option) }}</mat-option>
+                  <mat-option [value]="option">{{ roundingLabel(option) | i18n }}</mat-option>
                 }
               </mat-select>
             </div>
@@ -146,7 +146,7 @@
       @if (showQuantitySection()) {
         <section class="pricing-editor__surface">
           <div class="pricing-editor__section-head">
-            <span>Quantity Rules</span>
+            <span>{{ 'pricing.quantity.rules' | i18n }}</span>
             @if (showToggleControl()) {
             <button
               type="button"
@@ -166,13 +166,13 @@
                 <article class="pricing-editor__rule-card">
                   <div class="pricing-editor__rule-grid">
                     <label class="pricing-editor__field">
-                      <span>If</span>
+                      <span>{{ 'if' | i18n }}</span>
                       <div class="pricing-editor__select-shell pricing-editor__select-shell--static">
-                        <span>Event quantity &gt;=</span>
+                        <span>{{ quantityThresholdLabel() | i18n }}</span>
                       </div>
                     </label>
                     <label class="pricing-editor__field">
-                      <span>Quantity</span>
+                      <span>{{ 'quantity' | i18n }}</span>
                       <input
                         type="number"
                         min="1"
@@ -183,7 +183,7 @@
                         />
                     </label>
                     <label class="pricing-editor__field">
-                      <span>Then</span>
+                      <span>{{ 'then' | i18n }}</span>
                       <div class="pricing-editor__select-shell">
                         <mat-select
                           [(ngModel)]="rule.action.kind"
@@ -194,13 +194,13 @@
                           panelClass="selector-options-panel profile-bottom-sheet-panel"
                           >
                           @for (option of actionKindOptions; track option) {
-                            <mat-option [value]="option">{{ actionLabel(option) }}</mat-option>
+                            <mat-option [value]="option">{{ actionLabel(option) | i18n }}</mat-option>
                           }
                         </mat-select>
                       </div>
                     </label>
                     <label class="pricing-editor__field">
-                      <span>Value</span>
+                      <span>{{ 'value' | i18n }}</span>
                       <input
                         type="number"
                         min="0"
@@ -216,7 +216,7 @@
                     class="pricing-editor__rule-remove"
                     [disabled]="readOnly"
                     (click)="removeQuantityRule($index)"
-                    aria-label="Remove quantity rule"
+                    [attr.aria-label]="'pricing.quantity.rule.remove.aria' | i18n"
                     >
                     <mat-icon>delete</mat-icon>
                   </button>
@@ -225,10 +225,10 @@
             </div>
             <button type="button" class="pricing-editor__add-btn" [disabled]="readOnly" (click)="addQuantityRule()">
               <mat-icon>add</mat-icon>
-              <span>Add Quantity Rule</span>
+              <span>{{ 'pricing.quantity.rule.add' | i18n }}</span>
             </button>
           } @else {
-            <p class="pricing-editor__hint">Quantity pricing is currently off. Turn it on when a multi-event slot should reduce the total from the one-event base price.</p>
+            <p class="pricing-editor__hint">{{ quantityDisabledHint() | i18n }}</p>
           }
         </section>
       }
@@ -236,7 +236,7 @@
       @if (showDemandSection()) {
         <section class="pricing-editor__surface">
           <div class="pricing-editor__section-head">
-            <span>Demand Rules</span>
+            <span>{{ 'pricing.demand.rules' | i18n }}</span>
             @if (showToggleControl()) {
             <button
               type="button"
@@ -259,7 +259,7 @@
                     [class.pricing-editor__rule-grid--slots]="resolvedConfig.allowSlotFeatures"
                   >
                     <label class="pricing-editor__field">
-                      <span>If</span>
+                      <span>{{ 'if' | i18n }}</span>
                       <div class="pricing-editor__select-shell">
                         <mat-select
                           [(ngModel)]="rule.operator"
@@ -270,13 +270,13 @@
                           panelClass="selector-options-panel profile-bottom-sheet-panel"
                           >
                           @for (option of demandOperatorOptions; track option) {
-                            <mat-option [value]="option">Capacity filled {{ operatorLabel(option) }}</mat-option>
+                            <mat-option [value]="option">{{ 'pricing.capacity.filled' | i18n }} {{ operatorLabel(option) }}</mat-option>
                           }
                         </mat-select>
                       </div>
                     </label>
                     <label class="pricing-editor__field">
-                      <span>Capacity %</span>
+                      <span>{{ 'pricing.capacity.percent' | i18n }}</span>
                       <input
                         type="number"
                         min="0"
@@ -288,7 +288,7 @@
                         />
                     </label>
                     <label class="pricing-editor__field">
-                      <span>Then</span>
+                      <span>{{ 'then' | i18n }}</span>
                       <div class="pricing-editor__select-shell">
                         <mat-select
                           [(ngModel)]="rule.action.kind"
@@ -299,13 +299,13 @@
                           panelClass="selector-options-panel profile-bottom-sheet-panel"
                           >
                           @for (option of actionKindOptions; track option) {
-                            <mat-option [value]="option">{{ actionLabel(option) }}</mat-option>
+                            <mat-option [value]="option">{{ actionLabel(option) | i18n }}</mat-option>
                           }
                         </mat-select>
                       </div>
                     </label>
                     <label class="pricing-editor__field">
-                      <span>Value</span>
+                      <span>{{ 'value' | i18n }}</span>
                       <input
                         type="number"
                         min="0"
@@ -317,7 +317,7 @@
                     </label>
                     @if (resolvedConfig.allowSlotFeatures) {
                       <label class="pricing-editor__field">
-                        <span>Applies To</span>
+                        <span>{{ 'pricing.applies.to' | i18n }}</span>
                         <app-menu-trigger
                           [menuId]="ruleScopeMenuId('demand', rule)"
                           kind="select"
@@ -334,7 +334,7 @@
                     class="pricing-editor__rule-remove"
                     [disabled]="readOnly"
                     (click)="removeDemandRule($index)"
-                    aria-label="Remove demand rule"
+                    [attr.aria-label]="'pricing.demand.rule.remove.aria' | i18n"
                     >
                     <mat-icon>delete</mat-icon>
                   </button>
@@ -343,10 +343,10 @@
             </div>
             <button type="button" class="pricing-editor__add-btn" [disabled]="readOnly" (click)="addDemandRule()">
               <mat-icon>add</mat-icon>
-              <span>Add Demand Rule</span>
+              <span>{{ 'pricing.demand.rule.add' | i18n }}</span>
             </button>
           } @else {
-            <p class="pricing-editor__hint">Demand pricing is currently off. Turn it on when you want capacity-based price changes.</p>
+            <p class="pricing-editor__hint">{{ 'pricing.demand.disabled.hint' | i18n }}</p>
           }
         </section>
       }
@@ -354,7 +354,7 @@
       @if (showTimeSection()) {
         <section class="pricing-editor__surface">
           <div class="pricing-editor__section-head">
-            <span>Time Rules</span>
+            <span>{{ 'pricing.time.rules' | i18n }}</span>
             @if (showToggleControl()) {
             <button
               type="button"
@@ -374,11 +374,12 @@
                 <article class="pricing-editor__rule-card">
                   <div
                     class="pricing-editor__rule-grid"
+                    [class.pricing-editor__rule-grid--time]="rule.trigger !== 'specific_date'"
                     [class.pricing-editor__rule-grid--slots]="resolvedConfig.allowSlotFeatures"
                     [class.pricing-editor__rule-grid--time-date-desktop]="rule.trigger === 'specific_date'"
                   >
-                    <label class="pricing-editor__field">
-                      <span>If</span>
+                    <label class="pricing-editor__field pricing-editor__field--time-trigger">
+                      <span>{{ 'if' | i18n }}</span>
                       <div class="pricing-editor__select-shell">
                         <mat-select
                           [(ngModel)]="rule.trigger"
@@ -389,14 +390,14 @@
                           panelClass="selector-options-panel profile-bottom-sheet-panel"
                           >
                           @for (option of timeTriggerOptions; track option) {
-                            <mat-option [value]="option">{{ timeTriggerLabel(option) }}</mat-option>
+                            <mat-option [value]="option">{{ timeTriggerLabel(option) | i18n }}</mat-option>
                           }
                         </mat-select>
                       </div>
                     </label>
                     @if (rule.trigger === 'specific_date') {
                       <label class="pricing-editor__field pricing-editor__field--span-full">
-                        <span>Date range</span>
+                        <span>{{ 'date.range' | i18n }}</span>
                         <mat-form-field appearance="outline" class="pricing-editor__date-range-field" subscriptSizing="dynamic">
                           <mat-date-range-input [rangePicker]="timeRuleRangePicker">
                             <input
@@ -404,14 +405,14 @@
                               [value]="timeRuleRangeStartDate(rule)"
                               (dateChange)="onTimeRuleRangeStartChange(rule, $event.value)"
                               [disabled]="readOnly"
-                              placeholder="Start date"
+                              [placeholder]="'start.date' | i18n"
                               />
                             <input
                               matEndDate
                               [value]="timeRuleRangeEndDate(rule)"
                               (dateChange)="onTimeRuleRangeEndChange(rule, $event.value)"
                               [disabled]="readOnly"
-                              placeholder="End date"
+                              [placeholder]="'end.date' | i18n"
                               />
                           </mat-date-range-input>
                           <mat-datepicker-toggle matSuffix [for]="timeRuleRangePicker"></mat-datepicker-toggle>
@@ -419,8 +420,8 @@
                         </mat-form-field>
                       </label>
                     } @else {
-                      <label class="pricing-editor__field">
-                        <span>Offset</span>
+                      <label class="pricing-editor__field pricing-editor__field--time-offset">
+                        <span>{{ 'offset' | i18n }}</span>
                         <input
                           type="number"
                           min="0"
@@ -431,8 +432,8 @@
                           />
                       </label>
                     }
-                    <label class="pricing-editor__field">
-                      <span>Then</span>
+                    <label class="pricing-editor__field pricing-editor__field--time-action">
+                      <span>{{ 'then' | i18n }}</span>
                       <div class="pricing-editor__select-shell">
                         <mat-select
                           [(ngModel)]="rule.action.kind"
@@ -443,13 +444,13 @@
                           panelClass="selector-options-panel profile-bottom-sheet-panel"
                           >
                           @for (option of actionKindOptions; track option) {
-                            <mat-option [value]="option">{{ actionLabel(option) }}</mat-option>
+                            <mat-option [value]="option">{{ actionLabel(option) | i18n }}</mat-option>
                           }
                         </mat-select>
                       </div>
                     </label>
-                    <label class="pricing-editor__field">
-                      <span>Value</span>
+                    <label class="pricing-editor__field pricing-editor__field--time-value">
+                      <span>{{ 'value' | i18n }}</span>
                       <input
                         type="number"
                         min="0"
@@ -461,7 +462,7 @@
                     </label>
                       @if (resolvedConfig.allowSlotFeatures) {
                       <label class="pricing-editor__field">
-                        <span>Applies To</span>
+                        <span>{{ 'pricing.applies.to' | i18n }}</span>
                         <app-menu-trigger
                           [menuId]="ruleScopeMenuId('time', rule)"
                           kind="select"
@@ -478,7 +479,7 @@
                     class="pricing-editor__rule-remove"
                     [disabled]="readOnly"
                     (click)="removeTimeRule($index)"
-                    aria-label="Remove time rule"
+                    [attr.aria-label]="'pricing.time.rule.remove.aria' | i18n"
                     >
                     <mat-icon>delete</mat-icon>
                   </button>
@@ -487,10 +488,10 @@
             </div>
             <button type="button" class="pricing-editor__add-btn" [disabled]="readOnly" (click)="addTimeRule()">
               <mat-icon>add</mat-icon>
-              <span>Add Time Rule</span>
+              <span>{{ 'pricing.time.rule.add' | i18n }}</span>
             </button>
           } @else {
-            <p class="pricing-editor__hint">Time pricing is currently off. Turn it on for early-bird or last-minute adjustments.</p>
+            <p class="pricing-editor__hint">{{ 'pricing.time.disabled.hint' | i18n }}</p>
           }
         </section>
       }
@@ -498,7 +499,7 @@
       @if (showCancellationSection()) {
         <section class="pricing-editor__surface">
           <div class="pricing-editor__section-head">
-            <span>Cancellation & Reimbursement</span>
+            <span>{{ 'pricing.cancellation.title' | i18n }}</span>
             @if (showToggleControl()) {
             <button
               type="button"
@@ -518,7 +519,7 @@
                 <article class="pricing-editor__rule-card">
                   <div class="pricing-editor__grid pricing-editor__grid--compact">
                     <label class="pricing-editor__field">
-                      <span>Notice Window</span>
+                      <span>{{ 'pricing.notice.window' | i18n }}</span>
                       <div class="pricing-editor__select-shell">
                         <mat-select
                           [(ngModel)]="rule.offsetUnit"
@@ -529,13 +530,13 @@
                           panelClass="selector-options-panel profile-bottom-sheet-panel"
                           >
                           @for (option of cancellationUnitOptions; track option) {
-                            <mat-option [value]="option">{{ cancellationUnitLabel(option) }}</mat-option>
+                            <mat-option [value]="option">{{ cancellationUnitLabel(option) | i18n }}</mat-option>
                           }
                         </mat-select>
                       </div>
                     </label>
                     <label class="pricing-editor__field">
-                      <span>Value</span>
+                      <span>{{ 'value' | i18n }}</span>
                       <input
                         type="number"
                         min="0"
@@ -546,7 +547,7 @@
                         />
                     </label>
                     <label class="pricing-editor__field">
-                      <span>Refund</span>
+                      <span>{{ 'refund' | i18n }}</span>
                       <div class="pricing-editor__select-shell">
                         <mat-select
                           [ngModel]="rule.refundKind"
@@ -557,13 +558,13 @@
                           panelClass="selector-options-panel profile-bottom-sheet-panel"
                           >
                           @for (option of cancellationRefundKindOptions; track option) {
-                            <mat-option [value]="option">{{ cancellationRefundKindLabel(option) }}</mat-option>
+                            <mat-option [value]="option">{{ cancellationRefundKindLabel(option) | i18n }}</mat-option>
                           }
                         </mat-select>
                       </div>
                     </label>
                     <label class="pricing-editor__field">
-                      <span>Refund Value</span>
+                      <span>{{ 'pricing.refund.value' | i18n }}</span>
                       @if (cancellationRuleNeedsValue(rule)) {
                         <input
                           type="number"
@@ -576,7 +577,7 @@
                       } @else {
                         <input
                           type="text"
-                          [value]="cancellationRuleValueSuffix(rule)"
+                          [value]="cancellationRuleValueSuffix(rule) | i18n"
                           disabled
                           />
                       }
@@ -587,7 +588,7 @@
                     class="pricing-editor__rule-remove"
                     [disabled]="readOnly"
                     (click)="removeCancellationRule($index)"
-                    aria-label="Remove cancellation rule"
+                    [attr.aria-label]="'pricing.cancellation.rule.remove.aria' | i18n"
                     >
                     <mat-icon>delete</mat-icon>
                   </button>
@@ -596,10 +597,10 @@
             </div>
             <button type="button" class="pricing-editor__add-btn" [disabled]="readOnly" (click)="addCancellationRule()">
               <mat-icon>add</mat-icon>
-              <span>Add Cancellation Rule</span>
+              <span>{{ 'pricing.cancellation.rule.add' | i18n }}</span>
             </button>
           } @else {
-            <p class="pricing-editor__hint">Cancellation reimbursement is off. Turn it on to define how much of a paid booking can be refunded before the booking starts.</p>
+            <p class="pricing-editor__hint">{{ 'pricing.cancellation.disabled.hint' | i18n }}</p>
           }
         </section>
       }
@@ -619,7 +620,7 @@
       @if (showAudienceSection()) {
         <section class="pricing-editor__surface">
           <div class="pricing-editor__section-head">
-            <span>Advanced Audience Pricing</span>
+            <span>{{ 'pricing.audience.title' | i18n }}</span>
             @if (showToggleControl()) {
             <button
               type="button"
@@ -636,7 +637,7 @@
           @if (workingPricing.audience.enabled) {
             <div class="pricing-editor__grid pricing-editor__grid--compact">
               <label class="pricing-editor__field pricing-editor__field--money">
-                <span>Member Price</span>
+                <span>{{ 'pricing.member.price' | i18n }}</span>
                 <div class="pricing-editor__money-field">
                   <span class="pricing-editor__money-prefix">{{ currencySymbol(workingPricing.currency) }}</span>
                   <input
@@ -652,7 +653,7 @@
               </label>
     
               <label class="pricing-editor__field pricing-editor__field--money">
-                <span>VIP Price</span>
+                <span>{{ 'pricing.vip.price' | i18n }}</span>
                 <div class="pricing-editor__money-field">
                   <span class="pricing-editor__money-prefix">{{ currencySymbol(workingPricing.currency) }}</span>
                   <input
@@ -668,7 +669,7 @@
               </label>
     
               <label class="pricing-editor__field">
-                <span>Invite-only Discount %</span>
+                <span>{{ 'pricing.invite.discount.percent' | i18n }}</span>
                 <input
                   type="number"
                   min="0"
@@ -681,7 +682,7 @@
               </label>
     
               <label class="pricing-editor__field">
-                <span>Sold Out Label</span>
+                <span>{{ 'pricing.sold.out.label' | i18n }}</span>
                 <div class="pricing-editor__select-shell">
                   <mat-select
                     [(ngModel)]="workingPricing.audience.soldOutLabel"
@@ -703,7 +704,7 @@
               @for (promo of workingPricing.audience.promoCodes; track trackByRule($index, promo)) {
                 <article class="pricing-editor__promo-card">
                   <label class="pricing-editor__field">
-                    <span>Promo Code</span>
+                    <span>{{ 'pricing.promo.code' | i18n }}</span>
                     <input
                       type="text"
                       [ngModel]="promo.code"
@@ -713,7 +714,7 @@
                       />
                   </label>
                   <label class="pricing-editor__field">
-                    <span>Effect</span>
+                    <span>{{ 'pricing.effect' | i18n }}</span>
                     <div class="pricing-editor__select-shell">
                       <mat-select
                         [(ngModel)]="promo.action.kind"
@@ -724,13 +725,13 @@
                         panelClass="selector-options-panel profile-bottom-sheet-panel"
                         >
                         @for (option of actionKindOptions; track option) {
-                          <mat-option [value]="option">{{ actionLabel(option) }}</mat-option>
+                          <mat-option [value]="option">{{ actionLabel(option) | i18n }}</mat-option>
                         }
                       </mat-select>
                     </div>
                   </label>
                   <label class="pricing-editor__field">
-                    <span>Value</span>
+                    <span>{{ 'value' | i18n }}</span>
                     <input
                       type="number"
                       min="0"
@@ -745,7 +746,7 @@
                     class="pricing-editor__rule-remove"
                     [disabled]="readOnly"
                     (click)="removePromoCode($index)"
-                    aria-label="Remove promo code"
+                    [attr.aria-label]="'pricing.promo.remove.aria' | i18n"
                     >
                     <mat-icon>delete</mat-icon>
                   </button>
@@ -754,10 +755,10 @@
             </div>
             <button type="button" class="pricing-editor__add-btn" [disabled]="readOnly" (click)="addPromoCode()">
               <mat-icon>add</mat-icon>
-              <span>Add Promo Code</span>
+              <span>{{ 'pricing.promo.add' | i18n }}</span>
             </button>
           } @else {
-            <p class="pricing-editor__hint">Audience pricing is off, so every attendee will see the same public price until you turn on member, VIP, or promo-code pricing.</p>
+            <p class="pricing-editor__hint">{{ 'pricing.audience.disabled.hint' | i18n }}</p>
           }
         </section>
       }
@@ -766,11 +767,11 @@
     <ng-template #pricingWizardPreviewCard>
       <div class="pricing-editor__preview-card">
         <div class="pricing-editor__preview-head">
-          <span>Current Price Review</span>
+          <span>{{ 'event.editor.pricing.current.review' | i18n }}</span>
           <mat-icon>query_stats</mat-icon>
         </div>
         <div class="pricing-editor__preview-line">
-          <span>Base</span>
+          <span>{{ 'pricing.base' | i18n }}</span>
           <strong>{{ currencySymbol(workingPricing.currency) }}{{ currentPreview.basePrice | number:'1.0-2' }}</strong>
         </div>
         @if (currentPreview.quantityDelta !== 0) {
@@ -783,7 +784,7 @@
         }
         @if (currentPreview.demandDelta !== 0) {
           <div class="pricing-editor__preview-line">
-            <span>Demand adjustment</span>
+            <span>{{ 'pricing.demand.adjustment' | i18n }}</span>
             <strong [class.positive]="currentPreview.demandDelta > 0" [class.negative]="currentPreview.demandDelta < 0">
               {{ currentPreview.demandDelta > 0 ? '+' : '' }}{{ currencySymbol(workingPricing.currency) }}{{ currentPreview.demandDelta | number:'1.0-2' }}
             </strong>
@@ -791,7 +792,7 @@
         }
         @if (currentPreview.timeDelta !== 0) {
           <div class="pricing-editor__preview-line">
-            <span>Time adjustment</span>
+            <span>{{ 'pricing.time.adjustment' | i18n }}</span>
             <strong [class.positive]="currentPreview.timeDelta > 0" [class.negative]="currentPreview.timeDelta < 0">
               {{ currentPreview.timeDelta > 0 ? '+' : '' }}{{ currencySymbol(workingPricing.currency) }}{{ currentPreview.timeDelta | number:'1.0-2' }}
             </strong>
@@ -801,17 +802,17 @@
           @for (item of pricingSummaryItems(); track item.id) {
             <article class="pricing-editor__preview-detail">
               <span>
-                <strong>{{ item.label }}</strong>
+                <strong>{{ item.label | i18n }}</strong>
                 @if (item.detail) {
-                  <em>{{ item.detail }}</em>
+                  <em>{{ item.detail | i18n }}</em>
                 }
               </span>
-              <strong>{{ item.value }}</strong>
+              <strong>{{ item.value | i18n }}</strong>
             </article>
           }
         </div>
         <div class="pricing-editor__preview-total">
-          <span>Final price</span>
+          <span>{{ 'event.editor.pricing.final.price' | i18n }}</span>
           <strong>{{ currencySymbol(workingPricing.currency) }}{{ currentPreview.finalPrice | number:'1.0-2' }}</strong>
         </div>
       </div>
@@ -820,11 +821,11 @@
     <ng-template #pricingPreviewCards>
       <div class="pricing-editor__preview-card">
         <div class="pricing-editor__preview-head">
-          <span>Current Price Review</span>
+          <span>{{ 'event.editor.pricing.current.review' | i18n }}</span>
           <mat-icon>query_stats</mat-icon>
         </div>
         <div class="pricing-editor__preview-line">
-          <span>Base</span>
+          <span>{{ 'pricing.base' | i18n }}</span>
           <strong>{{ currencySymbol(workingPricing.currency) }}{{ currentPreview.basePrice | number:'1.0-2' }}</strong>
         </div>
         @if (currentPreview.quantityDelta !== 0) {
@@ -837,7 +838,7 @@
         }
         @if (currentPreview.demandDelta !== 0) {
           <div class="pricing-editor__preview-line">
-            <span>Demand adjustment</span>
+            <span>{{ 'pricing.demand.adjustment' | i18n }}</span>
             <strong [class.positive]="currentPreview.demandDelta > 0" [class.negative]="currentPreview.demandDelta < 0">
               {{ currentPreview.demandDelta > 0 ? '+' : '' }}{{ currencySymbol(workingPricing.currency) }}{{ currentPreview.demandDelta | number:'1.0-2' }}
             </strong>
@@ -845,7 +846,7 @@
         }
         @if (currentPreview.timeDelta !== 0) {
           <div class="pricing-editor__preview-line">
-            <span>Time adjustment</span>
+            <span>{{ 'pricing.time.adjustment' | i18n }}</span>
             <strong [class.positive]="currentPreview.timeDelta > 0" [class.negative]="currentPreview.timeDelta < 0">
               {{ currentPreview.timeDelta > 0 ? '+' : '' }}{{ currencySymbol(workingPricing.currency) }}{{ currentPreview.timeDelta | number:'1.0-2' }}
             </strong>
@@ -855,17 +856,17 @@
           @for (item of pricingSummaryItems(); track item.id) {
             <article class="pricing-editor__preview-detail">
               <span>
-                <strong>{{ item.label }}</strong>
+                <strong>{{ item.label | i18n }}</strong>
                 @if (item.detail) {
-                  <em>{{ item.detail }}</em>
+                  <em>{{ item.detail | i18n }}</em>
                 }
               </span>
-              <strong>{{ item.value }}</strong>
+              <strong>{{ item.value | i18n }}</strong>
             </article>
           }
         </div>
         <div class="pricing-editor__preview-total">
-          <span>Final price</span>
+          <span>{{ 'event.editor.pricing.final.price' | i18n }}</span>
           <strong>{{ currencySymbol(workingPricing.currency) }}{{ currentPreview.finalPrice | number:'1.0-2' }}</strong>
         </div>
       </div>

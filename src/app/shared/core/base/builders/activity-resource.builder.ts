@@ -8,6 +8,23 @@ import * as AppConstants from '../../common/constants';
 type ActivityResourceAssetDTO = AppDTOs.AssetDTO | AppDTOs.AssetDetailDTO;
 
 export class ActivityResourceBuilder {
+  static authorizationEventId(ownerIdValue: string, subEventIdValue = ''): string {
+    const ownerId = `${ownerIdValue ?? ''}`.trim();
+    const subEventId = `${subEventIdValue ?? ''}`.trim();
+    if (!ownerId) {
+      return '';
+    }
+    let runtimeOwnerId = ownerId;
+    if (subEventId) {
+      const groupOwnerMarker = ownerId.indexOf(`:${subEventId}:`);
+      if (groupOwnerMarker > 0) {
+        runtimeOwnerId = ownerId.slice(0, groupOwnerMarker);
+      }
+    }
+    const slotMarker = runtimeOwnerId.indexOf(':slot:');
+    return slotMarker > 0 ? runtimeOwnerId.slice(0, slotMarker) : runtimeOwnerId;
+  }
+
   static ownerKey(ref: AppDTOs.ActivitySubEventResourceStateRefDTO): string {
     return `${ref.assetOwnerUserId}:${ref.ownerId}`;
   }
@@ -401,7 +418,18 @@ export class ActivityResourceBuilder {
     const normalizedSubEventId = subEventId.trim();
     const normalizedOwnerId = `${ownerId ?? ''}`.trim();
     const bookingOwnerId = `${request.booking?.eventId ?? ''}`.trim();
-    if (normalizedOwnerId && bookingOwnerId !== normalizedOwnerId) {
+    const ownerIdsMatchExactly = bookingOwnerId === normalizedOwnerId;
+    const groupOwnerMarker = normalizedSubEventId ? `:${normalizedSubEventId}:` : '';
+    const ownerIsUngroupedSlotRuntime = normalizedOwnerId.includes(':slot:')
+      && (!groupOwnerMarker || !normalizedOwnerId.includes(groupOwnerMarker));
+    const bookingIsUngroupedSlotRuntime = bookingOwnerId.includes(':slot:')
+      && (!groupOwnerMarker || !bookingOwnerId.includes(groupOwnerMarker));
+    const ownerIdsMatchSlotAuthorizationScope = (
+      ownerIsUngroupedSlotRuntime
+      || bookingIsUngroupedSlotRuntime
+    ) && this.authorizationEventId(normalizedOwnerId, normalizedSubEventId)
+      === this.authorizationEventId(bookingOwnerId, normalizedSubEventId);
+    if (normalizedOwnerId && !ownerIdsMatchExactly && !ownerIdsMatchSlotAuthorizationScope) {
       return false;
     }
     return this.isSubEventManualAssignmentRequest(request, normalizedSubEventId)

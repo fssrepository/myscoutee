@@ -44,6 +44,9 @@ import {
   UsersService
 } from '../../../shared/core/base/services/users.service';
 import {
+  I18nService
+} from '../../../shared/core/base/services/i18n.service';
+import {
   AssetDto
 } from '../../../shared/core/contracts';
 import type * as ContractTypes from '../../../shared/core/contracts';
@@ -70,6 +73,7 @@ import {
 } from '../../../shared/ui/context/stores/member-menu.store';
 import {
   AssetStore,
+  type AssetEditorCheckoutState,
   type AssetEditorRuntimeAssignmentState,
   type AssetEditorRuntimeRouteState
 } from '../../../shared/ui/context/stores/asset.store';
@@ -148,6 +152,7 @@ export class EventResourcePopupComponent {
   private readonly shareTokensService = inject(ShareTokensService);
   private readonly activityResourcesService = inject(ActivityResourcesService);
   private readonly activityMembersService = inject(ActivityMembersService);
+  private readonly i18n = inject(I18nService);
 
   @Input() parentZIndex = 2500;
 
@@ -422,6 +427,10 @@ export class EventResourcePopupComponent {
     }
     if (event.actionId === 'shareAsset') {
       this.openResourceShareDialog(card);
+      return;
+    }
+    if (event.actionId === 'paymentSummary') {
+      void this.openBorrowedAssetPaymentSummary(card, new Event('click'));
       return;
     }
     if (event.actionId === 'reportManager' || event.actionId === 'reportOrganizer') {
@@ -1169,6 +1178,123 @@ export class EventResourcePopupComponent {
     }
   }
 
+  private async openBorrowedAssetPaymentSummary(
+    card: AppDTOs.SubEventResourceCardDTO,
+    event?: Event
+  ): Promise<void> {
+    event?.stopPropagation();
+    const context = this.resourcePopupStore.popupContextRef();
+    const assetId = `${card.sourceAssetId ?? ''}`.trim();
+    if (!context || !assetId || !this.isAssignableAssetType(card.type)) {
+      return;
+    }
+    const sourceCard = this.resolveSubEventAssignedAssetCard(context.subEvent.id, card.type, assetId);
+    const request = sourceCard
+      ? this.findBorrowedAssetRequest(sourceCard, context.subEvent.id)
+      : null;
+    if (!sourceCard || !request) {
+      return;
+    }
+    const defaultRange = ActivityResourceBuilder.defaultAssetExploreRange(context.subEvent);
+    const startAtIso = `${request.booking?.startAtIso ?? defaultRange.startAtIso}`.trim() || defaultRange.startAtIso;
+    const endAtIso = `${request.booking?.endAtIso ?? defaultRange.endAtIso}`.trim() || defaultRange.endAtIso;
+    const quantity = Math.max(1, Math.trunc(Number(request.booking?.quantity) || 1));
+    const calculatedPricing = PricingBuilder.resolveAssetBorrowPricing({
+      pricing: sourceCard.pricing,
+      totalQuantity: this.assignedBorrowTotalQuantity(sourceCard, request),
+      requestedQuantity: quantity,
+      startAtIso,
+      endAtIso,
+      requests: sourceCard.requests
+    });
+    const amount = Number.isFinite(request.booking?.totalAmount)
+      ? Math.max(0, Number(request.booking?.totalAmount))
+      : calculatedPricing.amount;
+    const currency = `${request.booking?.currency ?? calculatedPricing.currency ?? 'USD'}`.trim() || 'USD';
+    const timeframe = ActivityResourceBuilder.assetRequestTimeframeLabel(startAtIso, endAtIso);
+    const useCalculatedRows = !Number.isFinite(request.booking?.totalAmount)
+      || amount === calculatedPricing.amount;
+    const checkout: AssetEditorCheckoutState = {
+      sourceId: sourceCard.id,
+      mode: 'payment-summary',
+      phase: 'payment',
+      title: this.i18n.translate('event.checkout.payment.summary'),
+      subtitle: sourceCard.title,
+      dateRange: {
+        startAt: startAtIso,
+        endAt: endAtIso,
+        precision: 'minute'
+      },
+      dateRangeModel: {
+        mode: 'range',
+        precision: 'minute',
+        valueFormat: 'iso-date-time',
+        range: {
+          start: { label: this.i18n.translate('asset.borrow.start') },
+          end: { label: this.i18n.translate('asset.borrow.end') }
+        }
+      },
+      availableQuantity: quantity,
+      pricingPreview: {
+        rows: useCalculatedRows
+          ? calculatedPricing.rows.map(row => ({ ...row }))
+          : [{
+              key: 'base-borrow',
+              label: 'pricing.base',
+              detail: timeframe,
+              amount,
+              currency
+            }],
+        totalAmount: amount,
+        currency
+      },
+      acceptedPolicyIds: [...(request.booking?.acceptedPolicyIds ?? [])],
+      footerItems: [],
+      busy: false,
+      error: null
+    };
+    const ownerUserId = `${sourceCard.ownerUserId ?? ''}`.trim();
+    const generation = this.assetStore.openAssetEditorEdit({
+      cardId: sourceCard.id,
+      form: AssetCardBuilder.buildAssetFormFromCard(sourceCard),
+      visibility: AssetCardBuilder.visibilityFromCard(sourceCard),
+      loading: Boolean(ownerUserId),
+      readOnly: true,
+      parentZIndex: this.resourcePopupZIndex(),
+      runtimeAssignment: {
+        quantity,
+        quantityMax: quantity,
+        quantityLabel: this.i18n.translate('quantity'),
+        quantityDescription: timeframe,
+        editable: false
+      },
+      checkout
+    });
+    void this.assetPopupStore.ensureAssetPopupLoaded();
+    if (!ownerUserId) {
+      this.assetStore.setAssetEditorLoading(false);
+      return;
+    }
+    try {
+      const loadedCard = await this.assetsService.loadOwnedAssetDetailById(ownerUserId, sourceCard.id);
+      if (!this.assetStore.isCurrentAssetEditorLoad(generation, sourceCard.id)) {
+        return;
+      }
+      if (loadedCard) {
+        this.assetStore.applyAssetEditorForm(
+          loadedCard.id,
+          AssetCardBuilder.visibilityFromCard(loadedCard),
+          AssetCardBuilder.buildAssetFormFromCard(loadedCard)
+        );
+      }
+      this.assetStore.setAssetEditorLoading(false);
+    } catch {
+      if (this.assetStore.isCurrentAssetEditorLoad(generation, sourceCard.id)) {
+        this.assetStore.setAssetEditorLoading(false);
+      }
+    }
+  }
+
   private assignedAssetRuntimeRouteState(
     subEventId: string,
     card: AppDTOs.SubEventResourceCardDTO,
@@ -1189,13 +1315,13 @@ export class EventResourcePopupComponent {
       routeEnabled: routeSettings?.routeEnabled ?? routes.length > 0,
       routes,
       editable: this.canEditAssignedAssetRuntimeRoute(subEventId, sourceCard, assetId),
-      title: 'Route',
-      subtitle: 'Runtime route for this event asset.',
-      openLabel: 'Open Route Setup',
-      emptyLabel: 'No route is set for this event asset.',
-      readOnlyEmptyLabel: 'No route is set for this event asset.',
-      popupTitle: `Route Setup - ${card.title}`,
-      popupSubtitle: 'Set the route used by this transport for the selected event assignment.',
+      title: this.i18n.translate('route'),
+      subtitle: this.i18n.translate('asset.assignment.route.subtitle'),
+      openLabel: this.i18n.translate('asset.assignment.route.open'),
+      emptyLabel: this.i18n.translate('asset.assignment.route.empty'),
+      readOnlyEmptyLabel: this.i18n.translate('asset.assignment.route.empty'),
+      popupTitle: this.i18n.translateParams('asset.assignment.route.popup.title', { asset: card.title }),
+      popupSubtitle: this.i18n.translate('asset.assignment.route.popup.subtitle'),
       parentZIndex: this.resourcePopupZIndex()
     };
   }
@@ -1211,14 +1337,24 @@ export class EventResourcePopupComponent {
     }
     const type = card.type;
     const settings = this.getSubEventAssignedAssetSettings(subEventId, type);
-    const quantityMax = this.assignedRuntimeQuantityMax(sourceCard);
-    const quantity = this.normalizeAssignedRuntimeQuantity(settings[assetId]?.quantity, quantityMax);
+    const assignment = settings[assetId];
+    const bounds = this.assignedRuntimeQuantityBounds(sourceCard, subEventId, assignment);
+    const quantity = this.normalizeAssignedRuntimeQuantity(
+      assignment?.quantity,
+      bounds.quantityMax,
+      bounds.reservedQuantity
+    );
     return {
       quantity,
-      quantityMax,
-      quantityLabel: 'Assigned quantity',
-      quantityDescription: `Available: ${quantityMax}`,
+      quantityMax: bounds.quantityMax,
+      quantityLabel: this.i18n.translate('asset.assignment.quantity'),
+      quantityDescription: this.assignedRuntimeQuantityDescription(bounds.quantityMax, quantity),
       editable: this.canEditAssignedAssetRuntimeAssignment(subEventId, sourceCard, assetId),
+      onChange: nextQuantity => {
+        this.assetStore.setAssetEditorRuntimeAssignmentState({
+          quantityDescription: this.assignedRuntimeQuantityDescription(bounds.quantityMax, nextQuantity)
+        });
+      },
       onSave: state => this.saveAssignedAssetRuntimeAssignment(subEventId, type, assetId, state)
     };
   }
@@ -1417,11 +1553,7 @@ export class EventResourcePopupComponent {
     subEventId: string,
     eventId = `${this.resourcePopupStore.popupContextRef()?.ownerId ?? ''}`.trim()
   ): boolean {
-    if (!ActivityResourceBuilder.isSubEventScopedAssetRequest(request, subEventId)) {
-      return false;
-    }
-    const normalizedEventId = eventId.trim();
-    return !normalizedEventId || `${request.booking?.eventId ?? ''}`.trim() === normalizedEventId;
+    return ActivityResourceBuilder.isSubEventScopedAssetRequest(request, subEventId, eventId);
   }
 
   private subEventScopedAssetRequests(
@@ -1450,6 +1582,18 @@ export class EventResourcePopupComponent {
     return this.subEventScopedAssetRequests(card, subEventId)
       .find(request =>
         request.requestKind !== 'manual'
+        && AppUtils.resolveAssetRequestUserId(request, this.users) === activeUserId
+      ) ?? null;
+  }
+
+  private findBorrowedAssetRequest(
+    card: ResourceAssetDTO,
+    subEventId: string,
+    activeUserId = this.activeUser().id
+  ): AppDTOs.AssetMemberRequestDTO | null {
+    return this.subEventScopedAssetRequests(card, subEventId)
+      .find(request =>
+        request.requestKind === 'borrow'
         && AppUtils.resolveAssetRequestUserId(request, this.users) === activeUserId
       ) ?? null;
   }
@@ -1907,6 +2051,55 @@ export class EventResourcePopupComponent {
     return Math.max(1, AssetCardBuilder.storedQuantityValue(card));
   }
 
+  private assignedRuntimeQuantityBounds(
+    card: ResourceAssetDTO,
+    subEventId: string,
+    settings: AppDTOs.SubEventAssignedAssetSettingsDTO | null | undefined
+  ): {
+    quantityMax: number;
+    reservedQuantity: number;
+    reservation: AppDTOs.AssetMemberRequestDTO | null;
+  } {
+    const remainingQuantity = Math.max(0, AssetCardBuilder.storedQuantityValue(card));
+    const reservation = this.assignedAssetReservationRequest(card, subEventId, settings?.addedByUserId);
+    const reservedQuantity = reservation
+      ? this.assignedRuntimeQuantityValue(reservation.booking?.quantity, settings?.quantity)
+      : 0;
+    const reservedInventoryQuantity = reservation?.booking?.inventoryApplied === true
+      ? reservedQuantity
+      : 0;
+    return {
+      quantityMax: Math.max(1, remainingQuantity + reservedInventoryQuantity),
+      reservedQuantity,
+      reservation
+    };
+  }
+
+  private assignedAssetReservationRequest(
+    card: ResourceAssetDTO,
+    subEventId: string,
+    assignedByUserId?: string | null
+  ): AppDTOs.AssetMemberRequestDTO | null {
+    const scopedRequests = this.subEventScopedAssetRequests(card, subEventId);
+    const normalizedAssignedByUserId = `${assignedByUserId ?? ''}`.trim();
+    const assignedByRequest = normalizedAssignedByUserId
+      ? scopedRequests.find(request =>
+          (request.requestKind === 'borrow' || request.requestKind === 'manual')
+          && AppUtils.resolveAssetRequestUserId(request, this.users) === normalizedAssignedByUserId
+        ) ?? null
+      : null;
+    return assignedByRequest
+      ?? scopedRequests.find(request => request.requestKind === 'borrow' && request.booking?.inventoryApplied === true)
+      ?? scopedRequests.find(request => request.requestKind === 'manual')
+      ?? null;
+  }
+
+  private assignedRuntimeQuantityDescription(quantityMax: number, quantity: number): string {
+    return this.i18n.translateParams('asset.assignment.available', {
+      count: Math.max(0, Math.trunc(quantityMax) - Math.max(1, Math.trunc(quantity)))
+    });
+  }
+
   private assignedRuntimeQuantityValue(value: unknown, fallback = 1): number {
     const parsed = Math.trunc(Number(value));
     if (Number.isFinite(parsed) && parsed > 0) {
@@ -1959,8 +2152,24 @@ export class EventResourcePopupComponent {
     const source = this.resolveSubEventAssignedAssetCard(normalizedSubEventId, type, normalizedAssetId)
       ?? this.ownedAssetCards().find(item => item.id === normalizedAssetId && item.type === type)
       ?? null;
-    const quantityMax = source ? this.assignedRuntimeQuantityMax(source) : 1;
-    const quantity = this.normalizeAssignedRuntimeQuantity(state.quantity, quantityMax);
+    const currentSettings = nextSettings[normalizedAssetId];
+    const quantityBounds = source
+      ? this.assignedRuntimeQuantityBounds(source, normalizedSubEventId, currentSettings)
+      : { quantityMax: 1, reservedQuantity: 0, reservation: null };
+    const quantityMax = quantityBounds.quantityMax;
+    const quantity = this.normalizeAssignedRuntimeQuantity(
+      state.quantity,
+      quantityMax,
+      quantityBounds.reservedQuantity
+    );
+    const persistedSource = source
+      ? await this.persistAssignedBorrowQuantity(
+          source,
+          normalizedSubEventId,
+          quantityBounds.reservation,
+          quantity
+        )
+      : null;
     const current = nextSettings[normalizedAssetId] ?? {
       capacityMin: 0,
       capacityMax: Math.max(0, source?.capacityTotal ?? 0),
@@ -1979,6 +2188,19 @@ export class EventResourcePopupComponent {
       ...nextState.assetSettingsByType,
       [type]: nextSettings
     };
+    if (
+      persistedSource
+      && !this.ownedAssetCards().some(item => item.id === normalizedAssetId && item.type === type)
+    ) {
+      nextState.fallbackAssetCardsByType = {
+        ...(nextState.fallbackAssetCardsByType ?? {}),
+        [type]: [
+          ...(nextState.fallbackAssetCardsByType?.[type] ?? [])
+            .filter(item => item.id !== normalizedAssetId),
+          this.toAssetDetailDto(this.assignedFallbackAssetSnapshot(normalizedSubEventId, persistedSource))
+        ]
+      };
+    }
 
     const savedState = await this.activityResourcesService.replaceSubEventResourceState(nextState, signal);
     const resolvedState = ActivityResourceBuilder.normalizeState(savedState, nextState) ?? nextState;
@@ -2000,6 +2222,107 @@ export class EventResourcePopupComponent {
         ? ActivityResourceBuilder.normalizeAssetRoutes(type, savedSettings?.routes ?? normalizedRoutes)
         : []
     };
+  }
+
+  private async persistAssignedBorrowQuantity(
+    card: ResourceAssetDTO,
+    subEventId: string,
+    reservation: AppDTOs.AssetMemberRequestDTO | null,
+    quantity: number
+  ): Promise<ResourceAssetDTO> {
+    if (!reservation || reservation.requestKind !== 'borrow' || !reservation.booking) {
+      return card;
+    }
+    const previousQuantity = this.assignedRuntimeQuantityValue(reservation.booking.quantity);
+    if (quantity === previousQuantity) {
+      return card;
+    }
+    const quantityDelta = quantity - previousQuantity;
+    const remainingQuantity = Math.max(0, AssetCardBuilder.storedQuantityValue(card));
+    if (reservation.booking.inventoryApplied === true && quantityDelta > remainingQuantity) {
+      throw new Error('The requested quantity is no longer available.');
+    }
+    const nextRemainingQuantity = reservation.booking.inventoryApplied === true
+      ? Math.max(0, remainingQuantity - quantityDelta)
+      : remainingQuantity;
+    const startAtIso = `${reservation.booking.startAtIso ?? ''}`.trim();
+    const endAtIso = `${reservation.booking.endAtIso ?? ''}`.trim();
+    const pricing = PricingBuilder.resolveAssetBorrowPricing({
+      pricing: card.pricing,
+      totalQuantity: this.assignedBorrowTotalQuantity(card, reservation),
+      requestedQuantity: quantity,
+      startAtIso,
+      endAtIso,
+      requests: card.requests
+    });
+    const nextRequests = card.requests.map(request => (
+      request.id === reservation.id
+        ? {
+            ...request,
+            booking: request.booking
+              ? {
+                  ...request.booking,
+                  quantity,
+                  totalAmount: pricing.amount,
+                  currency: pricing.currency,
+                  acceptedPolicyIds: [...(request.booking.acceptedPolicyIds ?? [])]
+                }
+              : null
+          }
+        : {
+            ...request,
+            booking: request.booking
+              ? {
+                  ...request.booking,
+                  acceptedPolicyIds: [...(request.booking.acceptedPolicyIds ?? [])]
+                }
+              : null
+          }
+    ));
+    const nextCard: ResourceAssetDTO = {
+      ...card,
+      quantity: nextRemainingQuantity,
+      requests: nextRequests
+    };
+    const ownerUserId = `${card.ownerUserId ?? ''}`.trim();
+    if (!ownerUserId) {
+      return nextCard;
+    }
+    const savedCard = await this.assetsService.saveOwnedAsset(ownerUserId, this.toAssetDetailDto(nextCard));
+    const persistedCard: ResourceAssetDTO = {
+      ...nextCard,
+      ...savedCard,
+      sourceLink: nextCard.sourceLink,
+      routes: [...(nextCard.routes ?? [])],
+      topics: [...(nextCard.topics ?? [])],
+      policiesEnabled: nextCard.policiesEnabled,
+      policies: (nextCard.policies ?? []).map(policy => ({ ...policy })),
+      pricing: nextCard.pricing ? PricingBuilder.clonePricingConfig(nextCard.pricing) : nextCard.pricing,
+      requests: savedCard.requests.map(request => ({
+        ...request,
+        booking: request.booking
+          ? {
+              ...request.booking,
+              acceptedPolicyIds: [...(request.booking.acceptedPolicyIds ?? [])]
+            }
+          : null
+      }))
+    };
+    if (this.ownedAssetCards().some(item => item.id === card.id && item.type === card.type)) {
+      this.assetStore.replaceAssetCard(persistedCard, { mutation: true, reloadList: false });
+    }
+    return persistedCard;
+  }
+
+  private assignedBorrowTotalQuantity(
+    card: ResourceAssetDTO,
+    reservation: AppDTOs.AssetMemberRequestDTO
+  ): number {
+    const remainingQuantity = Math.max(0, AssetCardBuilder.storedQuantityValue(card));
+    const reservedQuantity = reservation.booking?.inventoryApplied === true
+      ? this.assignedRuntimeQuantityValue(reservation.booking.quantity)
+      : 0;
+    return Math.max(1, remainingQuantity + reservedQuantity);
   }
 
   private abortPendingAssignSaveRequest(): void {
