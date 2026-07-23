@@ -942,6 +942,9 @@ export class AssetPopupComponent {
   }
 
   protected assetFilterCount(type: AppConstants.AssetFilterType): number {
+    if (type === AppConstants.ASSET_FILTER_TICKET && this.assetStore.ticketPopup()) {
+      return this.assetPopupStore.ticketTotalCountRef();
+    }
     const ownerUserId = this.userProfileStore.activeUserProfile()?.id?.trim()
       || this.userProfileStore.activeUserId().trim();
     const source = this.userProfileStore.getUserProfile(ownerUserId);
