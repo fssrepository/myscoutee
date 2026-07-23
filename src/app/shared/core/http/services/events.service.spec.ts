@@ -151,6 +151,7 @@ describe('HttpEventsService', () => {
       userId: 'host-1',
       title: 'Saved event',
       subtitle: 'List response',
+      imageUrl: 'https://example.test/stale-event-image.jpg',
       subEventDefinitions: undefined
     }));
     get.mockReturnValue(of({
@@ -159,6 +160,7 @@ describe('HttpEventsService', () => {
       creatorUserId: 'host-1',
       title: 'Saved event',
       subtitle: 'Full response',
+      imageUrl: '',
       subEventDefinitions: [{
         id: 'stage-1',
         name: 'Opening round',
@@ -195,6 +197,7 @@ describe('HttpEventsService', () => {
     );
     expect(result).toMatchObject({
       subtitle: 'Full response',
+      imageUrl: '',
       sourceLink: 'https://example.test/event',
       policiesEnabled: true,
       slotsEnabled: true,

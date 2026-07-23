@@ -1625,7 +1625,7 @@ export class EventExplorePopupComponent {
           endAtIso: nextEndIso,
           distanceKm: dto.distanceKm,
           visibility: dto.visibility ?? existing.visibility,
-          imageUrl: dto.imageUrl.trim() || existing.imageUrl,
+          imageUrl: dto.imageUrl.trim(),
           location: dto.location?.trim() || existing.location,
           acceptedMembers,
           pendingMembers: Number.isFinite(Number(dto.pendingMembers))
