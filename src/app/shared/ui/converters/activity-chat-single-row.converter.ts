@@ -96,9 +96,13 @@ export class ActivityChatSingleRowConverter {
     const normalizedOwnerId = `${ownerId ?? ''}`.trim();
     const normalizedFallbackId = `${fallbackId ?? ''}`.trim();
     const normalizedChannelType = this.normalizeSmartListChannelType(channelType);
-    const rowIdentity = normalizedOwnerId
-      ? `${normalizedChannelType}:${normalizedOwnerId}`
-      : normalizedFallbackId;
+    const usesOwnerIdentity = normalizedChannelType === 'mainEvent'
+      || normalizedChannelType === 'optionalSubEvent'
+      || normalizedChannelType === 'groupSubEvent';
+    const identity = usesOwnerIdentity
+      ? normalizedOwnerId || normalizedFallbackId
+      : normalizedFallbackId || normalizedOwnerId;
+    const rowIdentity = identity ? `${normalizedChannelType}:${identity}` : '';
     return `chats:${rowIdentity || normalizedFallbackId}`;
   }
 

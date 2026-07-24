@@ -23,6 +23,44 @@ describe('ActivityChatSingleRowConverter group context', () => {
   });
 });
 
+describe('ActivityChatSingleRowConverter identity', () => {
+  it('keeps service chats distinct when they belong to the same event', () => {
+    const ownerId = 'event-1';
+    const assetChatKey = ActivityChatSingleRowConverter.smartListKeyForIdentity(
+      'serviceEvent',
+      ownerId,
+      'c-service-asset-car-1-stage-1-viewer'
+    );
+    const eventChatKey = ActivityChatSingleRowConverter.smartListKeyForIdentity(
+      'serviceEvent',
+      ownerId,
+      'c-service-event-event-1-viewer'
+    );
+
+    expect(assetChatKey).toBe('chats:serviceEvent:c-service-asset-car-1-stage-1-viewer');
+    expect(eventChatKey).toBe('chats:serviceEvent:c-service-event-event-1-viewer');
+    expect(assetChatKey).not.toBe(eventChatKey);
+  });
+
+  it('retains owner-scoped identities for event, sub-event, and group channels', () => {
+    expect(ActivityChatSingleRowConverter.smartListKeyForIdentity(
+      'mainEvent',
+      'event-1',
+      'viewer-specific-chat-id'
+    )).toBe('chats:mainEvent:event-1');
+    expect(ActivityChatSingleRowConverter.smartListKeyForIdentity(
+      'optionalSubEvent',
+      'event-1:stage-1',
+      'viewer-specific-chat-id'
+    )).toBe('chats:optionalSubEvent:event-1:stage-1');
+    expect(ActivityChatSingleRowConverter.smartListKeyForIdentity(
+      'groupSubEvent',
+      'event-1:stage-1:group:2',
+      'viewer-specific-chat-id'
+    )).toBe('chats:groupSubEvent:event-1:stage-1:group:2');
+  });
+});
+
 function groupChat(): ChatDTO {
   return {
     id: 'chat-group-b',
