@@ -1474,7 +1474,8 @@ export class EventMembersPopupComponent {
     }
     if (entry.status === 'pending' && this.isInvitation(entry)) {
       return entry.invitedByActiveUser === true
-        || (this.ownerRef?.ownerType !== 'event' && this.isCurrentUser(entry));
+        || (this.ownerRef?.ownerType !== 'event'
+          && (this.isCurrentUser(entry) || this.canManageMembers));
     }
     if (entry.status === 'pending' && this.isJoinRequest(entry)) {
       return this.canManageMembers;
@@ -1643,15 +1644,20 @@ export class EventMembersPopupComponent {
   }
 
   private isJoinRequest(entry: ActivityContracts.ActivityMemberDTO): boolean {
+    if (this.isInvitation(entry)) {
+      return false;
+    }
     return entry.requestKind === 'join'
       || entry.requestKind === 'approval'
       || (entry.requestKind == null && entry.pendingSource === 'member');
   }
 
   private isInvitation(entry: ActivityContracts.ActivityMemberDTO): boolean {
-    return entry.requestKind === 'invite'
+    return entry.status === 'pending'
+      && (entry.requestKind === 'invite'
       || entry.requestKind === 'waitlist-invite'
-      || (entry.requestKind == null && entry.pendingSource === 'admin');
+      || entry.pendingSource === 'admin'
+      || entry.statusText.toLowerCase().includes('admin approval'));
   }
 
   private isWaitlistMember(entry: ActivityContracts.ActivityMemberDTO): boolean {

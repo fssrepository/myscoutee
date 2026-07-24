@@ -166,6 +166,15 @@ export class ActivityMemberImageCardConverter {
   }
 
   private static isJoinRequest(dto: ActivityMemberDTO): boolean {
+    if (dto.status === 'pending'
+        && (
+          dto.requestKind === 'invite'
+          || dto.requestKind === 'waitlist-invite'
+          || dto.pendingSource === 'admin'
+          || dto.statusText.toLowerCase().includes('admin approval')
+        )) {
+      return false;
+    }
     return dto.requestKind === 'join'
       || dto.requestKind === 'approval'
       || dto.requestKind === 'waitlist'

@@ -3304,7 +3304,9 @@ export class EventResourcePopupComponent {
           status: request.status,
           pendingSource,
           requestKind,
-          invitedByActiveUser: userId === this.activeUser().id,
+          invitedByUserId: pendingRequiresAdminApproval ? ownerUserId : null,
+          invitedByActiveUser: pendingRequiresAdminApproval
+            && ownerUserId === this.activeUser().id,
           metAtIso: actionAtIso,
           actionAtIso,
           metWhere: card.title,
