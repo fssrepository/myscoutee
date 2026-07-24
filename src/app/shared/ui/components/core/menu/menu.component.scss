@@ -671,7 +671,7 @@
 }
 
 .app-menu__trigger--layout-icon.app-menu__trigger--open > .mat-icon:not(.app-menu__trigger-caret) {
-  transform: none;
+  transform: rotate(90deg);
 }
 
 .app-menu__trigger--layout-icon .mat-icon {

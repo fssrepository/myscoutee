@@ -1140,6 +1140,7 @@ button.ui-info-card__overlay-action {
   height: 15px;
   font-size: 15px;
   line-height: 15px;
+  transform-origin: center;
   transition: transform 0.16s ease, opacity 0.16s ease;
 }
 
@@ -1150,7 +1151,7 @@ button.ui-info-card__overlay-action {
 }
 
 .ui-info-card__menu-trigger.is-open .mat-icon {
-  transform: none;
+  transform: rotate(90deg);
 }
 
 .ui-info-card__menu-trigger:hover {
