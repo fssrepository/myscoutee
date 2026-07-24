@@ -2,6 +2,10 @@ import { describe, expect, it, vi } from 'vitest';
 
 import { ActivityStore } from './activity.store';
 import { EventSubeventsPopupStore } from './event-subevents-popup.store';
+import {
+  SubEventResourcePopupStore,
+  type ResourcePopupContext
+} from './sub-event-resource-popup.store';
 
 describe('activity runtime counter signals', () => {
   it('emits signed parent activity deltas with a monotonic revision', () => {
@@ -106,6 +110,81 @@ describe('activity runtime counter signals', () => {
         previousStatus: 'pending',
         status: 'deleted',
         pendingMemberDelta: -1
+      }
+    });
+  });
+
+  it('caches resource member transitions without broadcasting a member-popup sync', () => {
+    const store = new ActivityStore();
+    const pendingLeave = {
+      assetId: 'asset-1',
+      eventId: 'event-1',
+      subEventId: 'subevent-1',
+      userId: 'viewer',
+      previousStatus: 'pending' as const,
+      status: 'deleted' as const,
+      acceptedMemberDelta: 0,
+      pendingMemberDelta: -1
+    };
+
+    const first = store.cacheActivityMemberStatusChange(pendingLeave, {
+      acceptedMembers: 1,
+      pendingMembers: 1,
+      capacityTotal: 4
+    });
+    const duplicate = store.cacheActivityMemberStatusChange(pendingLeave, {
+      acceptedMembers: 1,
+      pendingMembers: 1,
+      capacityTotal: 4
+    });
+    store.cacheActivityMemberStatusChange({
+      ...pendingLeave,
+      previousStatus: null,
+      status: 'pending',
+      pendingMemberDelta: 1
+    }, {
+      acceptedMembers: 1,
+      pendingMembers: 1,
+      capacityTotal: 4
+    });
+
+    expect(store.activityMembersSync()).toBeNull();
+    expect(first).not.toBeNull();
+    expect(duplicate).toBeNull();
+    expect(store.activityMembersSyncByOwnerId()['asset-1']).toMatchObject({
+      acceptedMembers: 1,
+      pendingMembers: 1,
+      memberStatusChange: {
+        previousStatus: null,
+        status: 'pending',
+        pendingMemberDelta: 1
+      }
+    });
+  });
+
+  it('publishes an explicit signed resource activity delta separately from absolute metrics', () => {
+    const store = new SubEventResourcePopupStore();
+    const context = {
+      ownerId: 'event-1',
+      subEvent: {
+        id: 'subevent-1',
+        carsAccepted: 2,
+        carsPending: 3,
+        carsCapacityMin: 0,
+        carsCapacityMax: 8
+      }
+    } as ResourcePopupContext;
+
+    store.publishSubEventResourceMetrics(context, { activityDelta: 1 });
+
+    expect(store.subEventResourceMetricsUpdate()).toMatchObject({
+      ownerId: 'event-1',
+      subEventId: 'subevent-1',
+      activityDelta: 1,
+      subEvent: {
+        carsAccepted: 2,
+        carsPending: 3,
+        carsCapacityMax: 8
       }
     });
   });

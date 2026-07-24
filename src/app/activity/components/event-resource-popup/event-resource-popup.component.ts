@@ -2933,18 +2933,27 @@ export class EventResourcePopupComponent {
   ): { joined: number; capacityMin: number; capacityMax: number; pending: number } {
     const cards = this.subEventAssignedAssetCards(subEvent.id, type, options);
     const settings = this.getSubEventAssignedAssetSettings(subEvent.id, type, options);
+    const memberCount = (
+      card: ResourceAssetDTO,
+      status: 'accepted' | 'pending'
+    ): number => {
+      const memberSync = this.activityStore.activityMembersSyncByOwnerId()[card.id];
+      const statusChange = this.assignedAssetMemberStatusChange(card.id);
+      if (memberSync && statusChange?.subEventId === subEvent.id) {
+        return status === 'accepted'
+          ? memberSync.acceptedMembers
+          : memberSync.pendingMembers;
+      }
+      const managerUserId = `${settings[card.id]?.addedByUserId ?? ''}`.trim() || null;
+      return status === 'accepted'
+        ? this.assetAcceptedCount(card, subEvent.id, managerUserId)
+        : this.assetPendingCount(card, subEvent.id, managerUserId);
+    };
     const capacityMax = cards.reduce((sum, card) => sum + (settings[card.id]?.capacityMax ?? Math.max(0, card.capacityTotal)), 0);
     const capacityMin = cards.reduce((sum, card) => sum + (settings[card.id]?.capacityMin ?? 0), 0);
     const pending = type === AppConstants.ASSET_TYPE_SUPPLIES
       ? 0
-      : cards.reduce((sum, card) => (
-        sum + ActivityResourceBuilder.subEventOccupancyRequestCount(
-          card,
-          subEvent.id,
-          'pending',
-          this.resourcePopupStore.popupContextRef()?.ownerId
-        )
-      ), 0);
+      : cards.reduce((sum, card) => sum + memberCount(card, 'pending'), 0);
     if (type === AppConstants.ASSET_TYPE_SUPPLIES) {
       return {
         joined: cards.reduce((sum, card) => sum + this.subEventSupplyProvidedCount(card.id, subEvent.id), 0),
@@ -2954,14 +2963,7 @@ export class EventResourcePopupComponent {
       };
     }
     return {
-      joined: cards.reduce((sum, card) => (
-        sum + ActivityResourceBuilder.subEventOccupancyRequestCount(
-          card,
-          subEvent.id,
-          'accepted',
-          this.resourcePopupStore.popupContextRef()?.ownerId
-        )
-      ), 0),
+      joined: cards.reduce((sum, card) => sum + memberCount(card, 'accepted'), 0),
       capacityMin,
       capacityMax,
       pending
@@ -2973,6 +2975,7 @@ export class EventResourcePopupComponent {
       persistResourceState?: boolean;
       persistAssetRequests?: boolean;
       syncManualAssetRequests?: boolean;
+      activityDelta?: number;
       assignmentQuantityUpdates?: readonly SubEventResourceAssignmentQuantityUpdate[];
     } = false
   ): void {
@@ -2983,6 +2986,9 @@ export class EventResourcePopupComponent {
     const persistResourceState = typeof options === 'boolean' ? options : options.persistResourceState === true;
     const persistAssetRequests = typeof options === 'boolean' ? options : options.persistAssetRequests === true;
     const syncManualAssetRequests = typeof options === 'boolean' || options.syncManualAssetRequests !== false;
+    const activityDelta = typeof options === 'boolean' || options.activityDelta === undefined
+      ? undefined
+      : Math.trunc(Number(options.activityDelta) || 0);
     const assignmentQuantityUpdates = typeof options === 'boolean' ? [] : [...(options.assignmentQuantityUpdates ?? [])];
     const nextSubEvent = this.cloneSubEvent(context.subEvent);
     const cars = this.subEventAssetCapacityMetrics(nextSubEvent, AppConstants.ASSET_TYPE_TRANSPORT, { normalizeStore: false });
@@ -3021,8 +3027,11 @@ export class EventResourcePopupComponent {
     if (metricsChanged) {
       this.resourcePopupStore.popupContextRef.set(nextContext);
     }
-    if (metricsChanged || assignmentQuantityUpdates.length > 0) {
-      this.resourcePopupStore.publishSubEventResourceMetrics(nextContext, { assignmentQuantityUpdates });
+    if (metricsChanged || assignmentQuantityUpdates.length > 0 || activityDelta !== undefined) {
+      this.resourcePopupStore.publishSubEventResourceMetrics(nextContext, {
+        activityDelta,
+        assignmentQuantityUpdates
+      });
     }
     if (syncManualAssetRequests) {
       this.syncSubEventManualAssetRequests(nextContext.subEvent, persistAssetRequests);
@@ -3045,52 +3054,28 @@ export class EventResourcePopupComponent {
     ) {
       return;
     }
-    const card = this.resourceCards().find(item => item.sourceAssetId === change.assetId) ?? null;
+    const card = this.resourceCards().find(item => (
+      item.sourceAssetId === change.assetId && item.type === assetType
+    )) ?? null;
     if (!card) {
       return;
     }
-    const previousSync = this.activityStore.activityMembersSyncByOwnerId()[change.assetId];
-    const previousChange = this.assignedAssetMemberStatusChange(change.assetId, context);
-    const acceptedMembers = Math.max(
-      0,
-      (previousChange ? previousSync?.acceptedMembers ?? card.accepted : card.accepted)
-        + change.acceptedMemberDelta
-    );
-    const pendingMembers = Math.max(
-      0,
-      (previousChange ? previousSync?.pendingMembers ?? card.pending : card.pending)
-        + change.pendingMemberDelta
-    );
-    this.activityStore.emitActivityMembersSync({
-      id: change.assetId,
-      acceptedMembers,
-      pendingMembers,
-      capacityTotal: previousChange ? previousSync?.capacityTotal ?? card.capacityTotal : card.capacityTotal,
-      acceptedMemberDelta: change.acceptedMemberDelta,
-      pendingMemberDelta: change.pendingMemberDelta,
-      memberStatusChange: change
+    const memberSync = this.activityStore.cacheActivityMemberStatusChange(change, {
+      acceptedMembers: card.accepted,
+      pendingMembers: card.pending,
+      capacityTotal: card.capacityTotal
     });
+    if (!memberSync) {
+      return;
+    }
 
     if (change.acceptedMemberDelta === 0 && change.pendingMemberDelta === 0) {
       return;
     }
-    const nextSubEvent = this.cloneSubEvent(context.subEvent);
-    if (assetType === AppConstants.ASSET_TYPE_TRANSPORT) {
-      nextSubEvent.carsAccepted = Math.max(0, (Number(nextSubEvent.carsAccepted) || 0) + change.acceptedMemberDelta);
-      nextSubEvent.carsPending = Math.max(0, (Number(nextSubEvent.carsPending) || 0) + change.pendingMemberDelta);
-    } else if (assetType === AppConstants.ASSET_TYPE_ACCOMMODATION) {
-      nextSubEvent.accommodationAccepted = Math.max(0, (Number(nextSubEvent.accommodationAccepted) || 0) + change.acceptedMemberDelta);
-      nextSubEvent.accommodationPending = Math.max(0, (Number(nextSubEvent.accommodationPending) || 0) + change.pendingMemberDelta);
-    } else {
-      nextSubEvent.suppliesAccepted = Math.max(0, (Number(nextSubEvent.suppliesAccepted) || 0) + change.acceptedMemberDelta);
-      nextSubEvent.suppliesPending = Math.max(0, (Number(nextSubEvent.suppliesPending) || 0) + change.pendingMemberDelta);
-    }
-    const nextContext = {
-      ...context,
-      subEvent: nextSubEvent
-    };
-    this.resourcePopupStore.popupContextRef.set(nextContext);
-    this.resourcePopupStore.publishSubEventResourceMetrics(nextContext);
+    this.syncPopupSubEventMetrics({
+      syncManualAssetRequests: false,
+      activityDelta: change.pendingMemberDelta
+    });
   }
 
   private assignedAssetMemberStatusChange(

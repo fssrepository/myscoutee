@@ -1,4 +1,4 @@
-import { Injectable, signal } from '@angular/core';
+import { Injectable, signal, untracked } from '@angular/core';
 
 import { EventFeedbackDetailDto, type EventCheckoutResultState } from '../../../core/contracts/activity.interface';
 import type * as AppDTOs from '../../../core/contracts';
@@ -421,6 +421,79 @@ export class ActivityStore {
     }));
   }
 
+  cacheActivityMemberStatusChange(
+    change: AppDTOs.AssetMemberStatusChangeDTO,
+    fallback: Pick<ActivityMembersSyncState, 'acceptedMembers' | 'pendingMembers' | 'capacityTotal'>
+  ): ActivityMembersSyncState | null {
+    const assetId = change.assetId.trim();
+    const eventId = change.eventId.trim();
+    const subEventId = change.subEventId.trim();
+    const userId = change.userId.trim();
+    if (!assetId || !eventId || !subEventId || !userId) {
+      return null;
+    }
+
+    const previous = this._activityMembersSyncByOwnerId()[assetId];
+    const previousChange = previous?.memberStatusChange;
+    const sameScope = previousChange?.assetId === assetId
+      && previousChange.eventId === eventId
+      && previousChange.subEventId === subEventId
+      && previousChange.userId === userId;
+    const acceptedMemberDelta = Math.trunc(Number(change.acceptedMemberDelta) || 0);
+    const pendingMemberDelta = Math.trunc(Number(change.pendingMemberDelta) || 0);
+    const duplicateTransition = sameScope
+      && previousChange.previousStatus === change.previousStatus
+      && previousChange.status === change.status
+      && previousChange.acceptedMemberDelta === acceptedMemberDelta
+      && previousChange.pendingMemberDelta === pendingMemberDelta;
+    if (duplicateTransition) {
+      return null;
+    }
+
+    const acceptedMembers = Math.max(
+      0,
+      (sameScope
+        ? previous?.acceptedMembers ?? normalizeCounterValue(fallback.acceptedMembers)
+        : normalizeCounterValue(fallback.acceptedMembers))
+        + acceptedMemberDelta
+    );
+    const pendingMembers = Math.max(
+      0,
+      (sameScope
+        ? previous?.pendingMembers ?? normalizeCounterValue(fallback.pendingMembers)
+        : normalizeCounterValue(fallback.pendingMembers))
+        + pendingMemberDelta
+    );
+    const sync: ActivityMembersSyncState = {
+      updatedMs: Math.max(Date.now(), (previous?.updatedMs ?? 0) + 1),
+      id: assetId,
+      acceptedMembers,
+      pendingMembers,
+      capacityTotal: Math.max(
+        acceptedMembers,
+        sameScope
+          ? previous?.capacityTotal ?? normalizeCounterValue(fallback.capacityTotal)
+          : normalizeCounterValue(fallback.capacityTotal)
+      ),
+      acceptedMemberDelta,
+      pendingMemberDelta,
+      memberStatusChange: {
+        ...change,
+        assetId,
+        eventId,
+        subEventId,
+        userId,
+        acceptedMemberDelta,
+        pendingMemberDelta
+      }
+    };
+    this._activityMembersSyncByOwnerId.update(current => ({
+      ...current,
+      [assetId]: sync
+    }));
+    return sync;
+  }
+
   emitActivityResourceSync(payload: Omit<ActivityResourceSyncState, 'updatedMs'>): void {
     const ownerId = payload.ownerId.trim();
     const subEventId = payload.subEventId.trim();
@@ -448,7 +521,7 @@ export class ActivityStore {
     }
     const updatedMs = Math.max(
       Date.now(),
-      (this._activityEventRuntimeSync()?.updatedMs ?? 0) + 1
+      (untracked(() => this._activityEventRuntimeSync())?.updatedMs ?? 0) + 1
     );
     this._activityEventRuntimeSync.set({
       updatedMs,

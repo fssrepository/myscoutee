@@ -110,6 +110,7 @@ export interface SubEventResourceMetricsUpdate {
   ownerId: string;
   subEventId: string;
   subEvent: ContractTypes.SubEventDTO;
+  activityDelta?: number;
   assignmentQuantityUpdates?: readonly SubEventResourceAssignmentQuantityUpdate[];
 }
 
@@ -300,6 +301,7 @@ export class SubEventResourcePopupStore {
   publishSubEventResourceMetrics(
     context: ResourcePopupContext,
     options: {
+      activityDelta?: number;
       assignmentQuantityUpdates?: readonly SubEventResourceAssignmentQuantityUpdate[];
     } = {}
   ): void {
@@ -310,6 +312,9 @@ export class SubEventResourcePopupStore {
       ownerId: context.ownerId,
       subEventId: context.subEvent.id,
       subEvent: { ...context.subEvent },
+      ...(options.activityDelta === undefined
+        ? {}
+        : { activityDelta: Math.trunc(Number(options.activityDelta) || 0) }),
       assignmentQuantityUpdates: [...(options.assignmentQuantityUpdates ?? [])]
     });
   }

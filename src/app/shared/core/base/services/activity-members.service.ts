@@ -137,6 +137,25 @@ export class ActivityMembersService extends BaseRouteModeService {
     await this.replaceMembersByOwner(owner, members, capacityTotal, options);
   }
 
+  async inviteEventMembers(
+    owner: ActivityMemberOwnerRef,
+    userIds: readonly string[]
+  ): Promise<ActivityContracts.ActivityMemberDTO[]> {
+    const normalizedOwner = this.ownerRef(owner.ownerType, owner.ownerId.trim());
+    if (normalizedOwner.ownerType !== 'event' || !normalizedOwner.ownerId) {
+      return [];
+    }
+    const actorUserId = this.userProfileStore.activeUserId().trim()
+      || this.userProfileStore.getActiveUserId().trim();
+    const members = this.presentMembers(await this.httpActivityMembersService.inviteEventMembers(
+      normalizedOwner,
+      actorUserId,
+      userIds
+    ));
+    this.emitActivityMembersSyncForOwner(normalizedOwner);
+    return members;
+  }
+
   async applyMemberAction(
     owner: ActivityMemberOwnerRef,
     targetUserId: string,

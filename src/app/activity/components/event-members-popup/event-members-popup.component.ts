@@ -642,6 +642,8 @@ export class EventMembersPopupComponent {
       return;
     }
     const successor = this.successorAdminFor(entry);
+    const leavingAsAdmin = entry.role === 'Admin'
+      || entry.userId === this.eventOwnerUserId();
     const ownershipTransferMessage = entry.userId === this.eventOwnerUserId() && successor
       ? ` Ownership will be transferred to ${successor.name}.`
       : '';
@@ -649,12 +651,16 @@ export class EventMembersPopupComponent {
     this.cdr.markForCheck();
     this.dialogStore.open({
       title: 'Leave event?',
-      message: `You will leave this event and lose access to its admin tools.${ownershipTransferMessage}`,
+      message: leavingAsAdmin
+        ? `You will leave this event and lose access to its admin tools.${ownershipTransferMessage}`
+        : 'You will leave this event.',
       cancelLabel: 'Cancel',
       confirmLabel: 'Leave event',
       busyConfirmLabel: 'Leaving...',
       confirmTone: 'danger',
-      failureMessage: 'Unable to leave event. Another accepted admin must remain.',
+      failureMessage: leavingAsAdmin
+        ? 'Unable to leave event. Another accepted admin must remain.'
+        : 'Unable to leave event.',
       onConfirm: () => this.confirmLeaveEvent(entry, successor)
     });
   }
@@ -913,12 +919,17 @@ export class EventMembersPopupComponent {
     successor: ActivityContracts.ActivityMemberDTO | null
   ): Promise<void> {
     const previousOwnerUserId = this.eventOwnerUserId();
+    const leavingAsAdmin = this.isActiveUserEventAdmin();
     const sourceRecord = this.ownerRecord
       ?? this.eventsService.peekKnownRecordById(this.activeUserId(), this.ownerId);
-    const counterDelta = this.eventAdminLeaveCounterDelta(sourceRecord);
+    const counterDelta = leavingAsAdmin
+      ? this.eventAdminLeaveCounterDelta(sourceRecord)
+      : null;
     await this.confirmRemoveMember(entry);
     this.activitiesPopupStore.emitActivityEventRemoval(this.ownerId);
-    this.patchEventLeaveCounterDelta(counterDelta);
+    if (counterDelta) {
+      this.patchEventLeaveCounterDelta(counterDelta);
+    }
     if (this.ownerRecord && entry.userId === previousOwnerUserId && successor) {
       this.ownerRecord = {
         ...this.ownerRecord,
@@ -1101,6 +1112,24 @@ export class EventMembersPopupComponent {
         statusText: candidate.statusText?.trim() || 'Waiting for admin approval.',
         actionAtIso: nowIso
       }));
+    const owner = this.ownerRef && this.ownerRef.ownerId === this.ownerId ? this.ownerRef : null;
+    if (owner?.ownerType === 'event' && !this.activityMembersService.usesLocalDataSource()) {
+      this.suppressedOwnerSyncId = this.ownerId;
+      let normalizedMembers: ActivityContracts.ActivityMemberDTO[];
+      try {
+        normalizedMembers = await this.activityMembersService.inviteEventMembers(
+          owner,
+          additions.map(candidate => candidate.userId)
+        );
+      } catch (error) {
+        if (this.suppressedOwnerSyncId === this.ownerId) {
+          this.suppressedOwnerSyncId = null;
+        }
+        throw error;
+      }
+      this.applyCommittedMembers(normalizedMembers, previousMembers);
+      return;
+    }
     await this.commitMembers([...previousMembers, ...nextPendingInvites], previousMembers);
   }
 
@@ -1389,14 +1418,25 @@ export class EventMembersPopupComponent {
         }
       }
     }
-    this.membersCacheByOwnerId.set(this.membersCacheKey(this.ownerId), normalizedMembers);
+    this.applyCommittedMembers(normalizedMembers, previousMembers);
+  }
+
+  private applyCommittedMembers(
+    normalizedMembers: readonly ActivityContracts.ActivityMemberDTO[],
+    previousMembers: readonly ActivityContracts.ActivityMemberDTO[]
+  ): void {
+    if (!this.ownerId) {
+      return;
+    }
+    const nextMembers = [...normalizedMembers];
+    this.membersCacheByOwnerId.set(this.membersCacheKey(this.ownerId), nextMembers);
     this.membersCacheByOwnerId.delete(this.membersCacheKey(this.ownerId, true));
-    this.syncCanManageMembers(normalizedMembers);
-    this.applySummaryFromMembers(normalizedMembers);
+    this.syncCanManageMembers(nextMembers);
+    this.applySummaryFromMembers(nextMembers);
     this.membersSmartList?.closeMenu();
-    this.syncVisibleMembers(previousMembers, normalizedMembers);
+    this.syncVisibleMembers(previousMembers, nextMembers);
     if (this.membersChangeHandler) {
-      this.membersChangeHandler(normalizedMembers);
+      this.membersChangeHandler(nextMembers);
     }
     this.cdr.markForCheck();
   }
@@ -1532,12 +1572,16 @@ export class EventMembersPopupComponent {
   }
 
   protected canLeaveEvent(entry: ActivityContracts.ActivityMemberDTO): boolean {
-    return !this.viewOnlyMode
-      && this.ownerRef?.ownerType === 'event'
-      && entry.status === 'accepted'
-      && entry.role === 'Admin'
-      && this.isCurrentUser(entry)
-      && this.successorAdminFor(entry) !== null;
+    if (this.viewOnlyMode
+      || this.ownerRef?.ownerType !== 'event'
+      || entry.status !== 'accepted'
+      || !this.isCurrentUser(entry)) {
+      return false;
+    }
+    const leavingAsAdmin = entry.role === 'Admin'
+      || entry.userId === this.eventOwnerUserId();
+    return !leavingAsAdmin
+      || this.successorAdminFor(entry) !== null;
   }
 
   protected canReportMember(entry: ActivityContracts.ActivityMemberDTO): boolean {
@@ -1562,12 +1606,16 @@ export class EventMembersPopupComponent {
     }
     const activeUserId = this.activeUserId();
     const activeMember = members.find(member => member.userId === activeUserId && member.status === 'accepted');
-    const activeMemberCanManage = activeMember?.role === 'Admin' || activeMember?.role === 'Manager';
+    const activeMemberCanManage = this.ownerRef?.ownerType === 'event'
+      ? activeMember?.role === 'Admin'
+      : activeMember?.role === 'Admin' || activeMember?.role === 'Manager';
     const ownerRecordCanManage = !!this.ownerRecord && (
       this.ownerRecord.creatorUserId === activeUserId
       || (this.ownerRecord.adminIds ?? []).includes(activeUserId)
     );
-    this.canManageMembers = this.requestedCanManageMembers || ownerRecordCanManage || activeMemberCanManage;
+    this.canManageMembers = this.ownerRef?.ownerType === 'event'
+      ? ownerRecordCanManage || activeMemberCanManage
+      : this.requestedCanManageMembers || ownerRecordCanManage || activeMemberCanManage;
     this.canShowInviteButton = this.canManageMembers
       || (this.ownerRef?.ownerType !== 'asset' && !!activeMember);
   }
@@ -1777,7 +1825,8 @@ export class EventMembersPopupComponent {
   }
 
   private isProtectedManagerMember(entry: ActivityContracts.ActivityMemberDTO): boolean {
-    return entry.role === 'Admin' || entry.role === 'Manager';
+    return entry.role === 'Admin'
+      || (this.ownerRef?.ownerType !== 'event' && entry.role === 'Manager');
   }
 
   private managerRoleLabel(entry: ActivityContracts.ActivityMemberDTO): 'admin' | 'manager' {

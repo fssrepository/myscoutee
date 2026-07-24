@@ -306,8 +306,6 @@ export class ActivitiesEventsController {
       && (
         `${dto?.creatorUserId ?? ''}`.trim() === activeUserId
         || (dto?.adminIds ?? []).includes(activeUserId)
-        || `${row.ownerUserId ?? row.ownerId ?? ''}`.trim() === activeUserId
-        || this.activityEventListTypeForRow(row) === 'hosting'
       );
   }
 

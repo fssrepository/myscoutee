@@ -10,7 +10,8 @@ import {
   ViewChild,
   ViewChildren,
   effect,
-  inject
+  inject,
+  untracked
 } from '@angular/core';
 import {
   from,
@@ -163,6 +164,7 @@ export class EventSubeventsListPopupComponent {
   private loadedPageNextCursor: string | null = null;
   private handledGroupsUpdateMs = 0;
   private handledMembersSyncMs = 0;
+  private handledResourceMetricsRevision = 0;
   private readonly compactToolbarMenuModel: AppMenuModel<string, EventSubeventsListPopupMenuContext> = {
     density: 'compact'
   };
@@ -346,10 +348,15 @@ export class EventSubeventsListPopupComponent {
 
     effect(() => {
       const update = this.resourcePopupStore.subEventResourceMetricsUpdate();
-      if (!update || !this.isOpen()) {
+      if (
+        !update
+        || !this.isOpen()
+        || update.revision <= this.handledResourceMetricsRevision
+      ) {
         return;
       }
-      this.applySubEventResourceMetricsUpdate(update);
+      this.handledResourceMetricsRevision = update.revision;
+      untracked(() => this.applySubEventResourceMetricsUpdate(update));
     });
 
     effect(() => {
@@ -1041,11 +1048,26 @@ export class EventSubeventsListPopupComponent {
     }
 
     let changed = false;
-    let activityDelta = 0;
+    let inferredActivityDelta = 0;
     const patchItem = (item: SubEventDTO): SubEventDTO => {
       const itemOwnerId = this.subEventOwnerId(item);
       const itemId = `${item.id ?? ''}`.trim();
       if (itemOwnerId !== ownerId || itemId !== subEventId) {
+        return item;
+      }
+      const metricsUnchanged = item.carsAccepted === update.subEvent.carsAccepted
+        && item.carsPending === update.subEvent.carsPending
+        && item.carsCapacityMin === update.subEvent.carsCapacityMin
+        && item.carsCapacityMax === update.subEvent.carsCapacityMax
+        && item.accommodationAccepted === update.subEvent.accommodationAccepted
+        && item.accommodationPending === update.subEvent.accommodationPending
+        && item.accommodationCapacityMin === update.subEvent.accommodationCapacityMin
+        && item.accommodationCapacityMax === update.subEvent.accommodationCapacityMax
+        && item.suppliesAccepted === update.subEvent.suppliesAccepted
+        && item.suppliesPending === update.subEvent.suppliesPending
+        && item.suppliesCapacityMin === update.subEvent.suppliesCapacityMin
+        && item.suppliesCapacityMax === update.subEvent.suppliesCapacityMax;
+      if (metricsUnchanged) {
         return item;
       }
       const nextItem = {
@@ -1064,7 +1086,7 @@ export class EventSubeventsListPopupComponent {
         suppliesCapacityMax: update.subEvent.suppliesCapacityMax
       };
       changed = true;
-      activityDelta += this.runtimeBadgeCount(nextItem) - this.runtimeBadgeCount(item);
+      inferredActivityDelta += this.runtimeBadgeCount(nextItem) - this.runtimeBadgeCount(item);
       return nextItem;
     };
 
@@ -1082,19 +1104,28 @@ export class EventSubeventsListPopupComponent {
     const nextItems = nextSlotSections.length > 0
       ? nextSlotSections.flatMap(section => section.items)
       : this.items.map(patchItem);
-    if (!changed) {
+    const activityDelta = update.activityDelta === undefined
+      ? inferredActivityDelta
+      : Math.trunc(Number(update.activityDelta) || 0);
+    if (!changed && activityDelta === 0) {
       return;
     }
-    this.slotSections = nextSlotSections;
-    this.items = nextItems;
-    this.syncSubEventSmartListCaches(nextSlotSections);
-    this.activityStore.emitActivityEventRuntimeSync({
-      eventId: `${this.event?.id ?? ''}`.trim(),
-      subEventId,
-      activityDelta,
-      source: 'resources'
-    });
-    this.cdr.markForCheck();
+    if (changed) {
+      this.slotSections = nextSlotSections;
+      this.items = nextItems;
+      this.syncSubEventSmartListCaches(nextSlotSections);
+    }
+    if (activityDelta !== 0) {
+      this.activityStore.emitActivityEventRuntimeSync({
+        eventId: `${this.event?.id ?? ''}`.trim(),
+        subEventId,
+        activityDelta,
+        source: 'resources'
+      });
+    }
+    if (changed) {
+      this.cdr.markForCheck();
+    }
   }
 
   private applySubEventMembersSync(sync: ActivityMembersSyncState): void {
