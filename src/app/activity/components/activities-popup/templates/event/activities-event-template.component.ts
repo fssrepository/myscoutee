@@ -30,6 +30,7 @@ import {
   type CardMenuRequestEvent
 } from '../../../../../shared/ui';
 import {
+  ActivityEventInfoCardConverter,
   ActivityEventInfoCardMenuConverter,
   type ActivityEventEditorAction,
   type ActivityEventInfoCardMenuSubject
@@ -453,6 +454,7 @@ export class ActivitiesEventsController {
   public runActivityItemViewAction(row: InfoCardData, event?: Event): void {
     event?.stopPropagation();
     const dto = this.activityEventDTOForRow(row);
+    const memberSummary = ActivityEventInfoCardConverter.toActivityMembersSummary(row);
     this.eventSubeventsStore.openEventSubeventsListPopup({
       eventId: row.id,
       host: 'activities',
@@ -462,6 +464,9 @@ export class ActivitiesEventsController {
       startAtIso: this.activityRowStartAt(row),
       endAtIso: this.activityRowEndAt(row),
       mode: dto?.mode ?? null,
+      acceptedMembers: memberSummary?.acceptedMembers,
+      pendingMembers: memberSummary?.pendingMembers,
+      capacityTotal: memberSummary?.capacityTotal,
       editorAction: this.isActivityInvitationRow(row) ? 'view' : this.activityEventEditorAction(row)
     });
   }

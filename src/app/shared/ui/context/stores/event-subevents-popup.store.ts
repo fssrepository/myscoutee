@@ -14,6 +14,9 @@ export interface EventSubeventsListPopupRequest {
   startAtIso: string | null;
   endAtIso: string | null;
   mode: EventMode | null;
+  acceptedMembers: number;
+  pendingMembers: number;
+  capacityTotal: number;
   editorAction: EventSubeventsEditorAction;
   canEdit: boolean;
 }
@@ -64,6 +67,9 @@ export class EventSubeventsPopupStore {
     startAtIso?: string | null;
     endAtIso?: string | null;
     mode?: EventMode | null;
+    acceptedMembers?: number | null;
+    pendingMembers?: number | null;
+    capacityTotal?: number | null;
     editorAction?: EventSubeventsEditorAction;
     canEdit?: boolean;
   }): void {
@@ -92,6 +98,9 @@ export class EventSubeventsPopupStore {
         : payload.mode === 'Casual'
           ? 'Casual'
           : null,
+      acceptedMembers: this.nonNegativeInteger(payload.acceptedMembers),
+      pendingMembers: this.nonNegativeInteger(payload.pendingMembers),
+      capacityTotal: this.nonNegativeInteger(payload.capacityTotal),
       editorAction,
       canEdit: editorAction !== 'view'
     });
@@ -176,6 +185,11 @@ export class EventSubeventsPopupStore {
         ? Math.trunc(Number(payload.groupsPendingDelta))
         : 0
     });
+  }
+
+  private nonNegativeInteger(value: unknown): number {
+    const count = Number(value);
+    return Number.isFinite(count) ? Math.max(0, Math.trunc(count)) : 0;
   }
 
   async ensureEventSubeventsListPopupLoaded(): Promise<void> {

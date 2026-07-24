@@ -815,6 +815,9 @@ export class EventExplorePopupComponent {
       startAtIso: record.startAtIso,
       endAtIso: record.endAtIso,
       mode: record.mode ?? null,
+      acceptedMembers: record.acceptedMembers,
+      pendingMembers: record.pendingMembers,
+      capacityTotal: record.capacityTotal,
       editorAction: 'view'
     });
     this.cdr.markForCheck();

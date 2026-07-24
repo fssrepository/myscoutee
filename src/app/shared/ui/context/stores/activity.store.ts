@@ -143,6 +143,7 @@ export const ACTIVITY_COUNTER_KEYS: ActivityCounterKey[] = [
 export class ActivityStore {
   private readonly _counterOverridesByUserId = signal<Record<string, Partial<ActivityCounters>>>({});
   private readonly _activityMembersSync = signal<ActivityMembersSyncState | null>(null);
+  private readonly _activityMembersSyncByOwnerId = signal<Readonly<Record<string, ActivityMembersSyncState>>>({});
   private readonly _activityResourceSync = signal<ActivityResourceSyncState | null>(null);
   private readonly _activityEventRuntimeSync = signal<ActivityEventRuntimeSyncState | null>(null);
   private readonly _activityChatMetricBucketPatch = signal<ActivityChatMetricBucketPatch | null>(null);
@@ -150,6 +151,7 @@ export class ActivityStore {
 
   readonly counterOverridesByUserId = this._counterOverridesByUserId.asReadonly();
   readonly activityMembersSync = this._activityMembersSync.asReadonly();
+  readonly activityMembersSyncByOwnerId = this._activityMembersSyncByOwnerId.asReadonly();
   readonly activityResourceSync = this._activityResourceSync.asReadonly();
   readonly activityEventRuntimeSync = this._activityEventRuntimeSync.asReadonly();
   readonly activityChatMetricBucketPatch = this._activityChatMetricBucketPatch.asReadonly();
@@ -386,7 +388,7 @@ export class ActivityStore {
     const pendingMemberDelta = Number.isFinite(Number(payload.pendingMemberDelta))
       ? Math.trunc(Number(payload.pendingMemberDelta))
       : null;
-    this._activityMembersSync.set({
+    const sync: ActivityMembersSyncState = {
       updatedMs,
       id: normalizedId,
       acceptedMembers: normalizeCounterValue(payload.acceptedMembers),
@@ -400,7 +402,12 @@ export class ActivityStore {
       ...(payload.full === true ? { full: true } : {}),
       ...(payload.checkoutResultState ? { checkoutResultState: payload.checkoutResultState } : {}),
       ...(payload.viewerMembershipRemoved === true ? { viewerMembershipRemoved: true } : {})
-    });
+    };
+    this._activityMembersSync.set(sync);
+    this._activityMembersSyncByOwnerId.update(current => ({
+      ...current,
+      [normalizedId]: sync
+    }));
   }
 
   emitActivityResourceSync(payload: Omit<ActivityResourceSyncState, 'updatedMs'>): void {

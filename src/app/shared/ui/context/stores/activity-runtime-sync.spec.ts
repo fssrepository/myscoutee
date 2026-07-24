@@ -52,7 +52,7 @@ describe('activity runtime counter signals', () => {
     });
     const firstMembersRevision = store.activityMembersSync()?.updatedMs ?? 0;
     store.emitActivityMembersSync({
-      id: 'event-1:stage-1:group-1',
+      id: 'event-1',
       acceptedMembers: 2,
       pendingMembers: 3,
       capacityTotal: 5
@@ -71,6 +71,8 @@ describe('activity runtime counter signals', () => {
     });
 
     expect(store.activityMembersSync()?.updatedMs).toBeGreaterThan(firstMembersRevision);
+    expect(store.activityMembersSyncByOwnerId()['event-1:stage-1:group-1']?.pendingMembers).toBe(1);
+    expect(store.activityMembersSyncByOwnerId()['event-1']?.pendingMembers).toBe(3);
     expect(store.activityResourceSync()?.updatedMs).toBeGreaterThan(firstResourceRevision);
     vi.restoreAllMocks();
   });
@@ -95,5 +97,23 @@ describe('activity runtime counter signals', () => {
       groupsPendingDelta: 1
     });
     vi.restoreAllMocks();
+  });
+
+  it('preserves event member counters for the sub-event header converter', () => {
+    const store = new EventSubeventsPopupStore();
+
+    store.openEventSubeventsListPopup({
+      eventId: 'event-1',
+      acceptedMembers: 7,
+      pendingMembers: 2,
+      capacityTotal: 20
+    });
+
+    expect(store.eventSubeventsListPopup()).toMatchObject({
+      eventId: 'event-1',
+      acceptedMembers: 7,
+      pendingMembers: 2,
+      capacityTotal: 20
+    });
   });
 });

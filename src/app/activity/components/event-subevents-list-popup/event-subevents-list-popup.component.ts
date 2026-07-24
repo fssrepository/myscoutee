@@ -627,15 +627,16 @@ export class EventSubeventsListPopupComponent {
     if (!event || this.membersDisabled()) {
       return;
     }
+    const sync = this.activityStore.activityMembersSyncByOwnerId()[event.id] ?? null;
     this.memberMenuStore.requestActivitiesNavigation({
       type: 'members',
       ownerId: event.id,
       ownerType: 'event',
       subtitle: event.title ?? '',
       canManage: this.eventSubeventsStore.eventSubeventsListPopup()?.canEdit === true,
-      acceptedMembers: Math.max(0, Math.trunc(Number(event.acceptedMembers) || 0)),
-      pendingMembers: Math.max(0, Math.trunc(Number(event.pendingMembers) || 0)),
-      capacityTotal: Math.max(0, Math.trunc(Number(event.capacityTotal) || 0))
+      acceptedMembers: Math.max(0, Math.trunc(Number(sync?.acceptedMembers ?? event.acceptedMembers) || 0)),
+      pendingMembers: Math.max(0, Math.trunc(Number(sync?.pendingMembers ?? event.pendingMembers) || 0)),
+      capacityTotal: Math.max(0, Math.trunc(Number(sync?.capacityTotal ?? event.capacityTotal) || 0))
     });
   }
 
@@ -649,8 +650,8 @@ export class EventSubeventsListPopupComponent {
       return 0;
     }
     const eventId = `${event.id ?? ''}`.trim();
-    const sync = this.activityStore.activityMembersSync();
-    const pendingRaw = sync && eventId && sync.id === eventId
+    const sync = this.activityStore.activityMembersSyncByOwnerId()[eventId] ?? null;
+    const pendingRaw = sync
       ? sync.pendingMembers
       : (event as any).pendingMembersCount
         ?? (event as any).pendingCount
@@ -1327,7 +1328,10 @@ export class EventSubeventsListPopupComponent {
       timeframe: request?.timeframe ?? null,
       startAtIso: request?.startAtIso ?? null,
       endAtIso: request?.endAtIso ?? null,
-      mode: request?.mode ?? null
+      mode: request?.mode ?? null,
+      acceptedMembers: request?.acceptedMembers ?? 0,
+      pendingMembers: request?.pendingMembers ?? 0,
+      capacityTotal: request?.capacityTotal ?? 0
     };
   }
 
