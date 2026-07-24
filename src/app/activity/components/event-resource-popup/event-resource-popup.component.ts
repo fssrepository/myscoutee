@@ -29,9 +29,6 @@ import {
   ActivityResourcesService
 } from '../../../shared/core/base/services/activity-resources.service';
 import {
-  ActivityMembersService
-} from '../../../shared/core/base/services/activity-members.service';
-import {
   ChatsService
 } from '../../../shared/core/base/services/chats.service';
 import {
@@ -152,7 +149,6 @@ export class EventResourcePopupComponent {
   private readonly dialogStore = inject(DialogStore);
   private readonly shareTokensService = inject(ShareTokensService);
   private readonly activityResourcesService = inject(ActivityResourcesService);
-  private readonly activityMembersService = inject(ActivityMembersService);
   private readonly chatsService = inject(ChatsService);
   private readonly activityStore = inject(ActivityStore);
   private readonly i18n = inject(I18nService);
@@ -283,18 +279,22 @@ export class EventResourcePopupComponent {
 
   protected resourceListModel(): EventResourceListModel {
     const cards = this.resourceCards();
-    const converterOptions = this.resourceInfoCardConverterOptions();
     const context = this.resourcePopupStore.popupContextRef();
     const memberSyncByOwnerId = this.activityStore.activityMembersSyncByOwnerId();
+    const converterOptions = this.resourceInfoCardConverterOptions(memberSyncByOwnerId);
     return {
       filter: this.resourcePopupStore.resourceFilterRef(),
       metricIdentity: context ? this.chatMetricIdentity(context) : '',
       filterCounts: this.resourceFilterCounts(),
       canAssign: context?.viewOnly !== true,
       items: cards.map(card => {
-        const memberSync = card.sourceAssetId
+        const candidateMemberSync = card.sourceAssetId
           ? memberSyncByOwnerId[card.sourceAssetId]
           : null;
+        const memberSync = candidateMemberSync?.memberStatusChange
+          && !this.assignedAssetMemberStatusChange(card.sourceAssetId ?? '', context)
+          ? null
+          : candidateMemberSync;
         const displayCard = memberSync
           ? {
               ...card,
@@ -386,7 +386,9 @@ export class EventResourcePopupComponent {
     };
   }
 
-  private resourceInfoCardConverterOptions(): ActivitySubEventResourceInfoCardConverterOptions {
+  private resourceInfoCardConverterOptions(
+    memberSyncByOwnerId = this.activityStore.activityMembersSyncByOwnerId()
+  ): ActivitySubEventResourceInfoCardConverterOptions {
     const context = this.resourcePopupStore.popupContextRef();
     const activeUserId = this.activeUser().id.trim();
     const eventRecord = context
@@ -398,7 +400,8 @@ export class EventResourcePopupComponent {
       activeUserAssets: this.ownedAssetCards(),
       assetSettingsByKey: this.resourcePopupStore.assignedAssetSettingsByKey,
       users: this.users,
-      eventCreatorUserId: eventRecord?.creatorUserId ?? context?.assetOwnerUserId ?? null
+      eventCreatorUserId: eventRecord?.creatorUserId ?? context?.assetOwnerUserId ?? null,
+      memberSyncByOwnerId
     };
   }
 
@@ -2032,10 +2035,11 @@ export class EventResourcePopupComponent {
       return;
     }
     const currentRequest = this.findAssignedAssetJoinRequest(sourceCard, context.subEvent.id, this.activeUser().id);
-    if (!currentRequest) {
+    const syncedStatus = this.assignedAssetMemberStatusChange(sourceCard.id, context)?.status ?? null;
+    if (!currentRequest && syncedStatus !== 'accepted' && syncedStatus !== 'pending') {
       return;
     }
-    const isPending = currentRequest.status === 'pending';
+    const isPending = syncedStatus === 'pending' || (!syncedStatus && currentRequest?.status === 'pending');
     this.dialogStore.open({
       title: `Leave ${sourceCard.title}?`,
       message: isPending
@@ -2065,27 +2069,17 @@ export class EventResourcePopupComponent {
     if (!activeUserId) {
       throw new Error('Unable to resolve the active member.');
     }
-    const members = await this.activityMembersService.applyMemberAction(
-      {
-        ownerId: assetId,
-        ownerType: 'asset'
-      },
-      activeUserId,
-      'remove',
-      null,
-      {
-        eventId,
-        subEventId
-      }
-    );
-    const activeMembershipStillExists = members.some(member =>
-      member.userId === activeUserId
-      && (member.status === 'accepted' || member.status === 'pending')
-    );
-    if (activeMembershipStillExists) {
+    const change = await this.assetsService.applyMemberStatusChange({
+      assetId,
+      eventId,
+      subEventId,
+      actorUserId: activeUserId,
+      action: 'leave'
+    });
+    if (!change || change.status !== 'deleted') {
       throw new Error('The asset membership was not removed.');
     }
-    this.syncAssetRequestsFromMembers(assetId, assetType, members, false);
+    this.applyAssignedAssetMemberStatusChange(assetType, change);
     if (this.resourcePopupStore.assignedAssetJoinDialogRef()?.sourceAssetId === assetId) {
       this.closeAssignedAssetJoinDialog();
     }
@@ -2195,23 +2189,6 @@ export class EventResourcePopupComponent {
         }
       )
     };
-    const nextRequests: AppDTOs.AssetMemberRequestDTO[] = [
-      nextRequest,
-      ...sourceCard.requests
-        .filter(request =>
-          request.id !== nextRequest.id
-          && AppUtils.resolveAssetRequestUserId(request, this.users) !== activeUser.id
-        )
-        .map(request => ({
-          ...request,
-          booking: request.booking
-            ? {
-                ...request.booking,
-                acceptedPolicyIds: [...(request.booking.acceptedPolicyIds ?? [])]
-              }
-            : null
-        }))
-    ];
     const busyDialog: AssignedAssetJoinDialogState = {
       ...dialog,
       acceptedPolicyIds,
@@ -2230,67 +2207,20 @@ export class EventResourcePopupComponent {
       });
       return;
     }
-    const ownerUserId = `${sourceCard.ownerUserId ?? ''}`.trim();
-    if (!ownerUserId) {
-      this.restoreAssignedAssetJoinAfterFailure({
-        ...dialog,
-        acceptedPolicyIds,
-        busy: false,
-        error: 'Unable to save the join request.'
-      });
-      return;
-    }
-    const nextFallbackCards = this.cloneFallbackCards(activeContext.fallbackCardsByType);
-    const existingCards = nextFallbackCards[sourceCard.type] ?? [];
-    const nextAsset: ResourceAssetDTO = {
-      ...sourceCard,
-      requests: nextRequests
-    };
     try {
-      const savedCard = await this.assetsService.saveOwnedAsset(
-        ownerUserId,
-        this.toAssetDetailDto(nextAsset)
-      );
-      const persistedAsset: ResourceAssetDTO = {
-        ...nextAsset,
-        ...savedCard,
-        sourceLink: nextAsset.sourceLink,
-        routes: [...(nextAsset.routes ?? [])],
-        topics: [...(nextAsset.topics ?? [])],
-        policiesEnabled: nextAsset.policiesEnabled,
-        policies: (nextAsset.policies ?? []).map(policy => ({ ...policy })),
-        pricing: nextAsset.pricing
-          ? PricingBuilder.clonePricingConfig(nextAsset.pricing)
-          : nextAsset.pricing,
-        requests: savedCard.requests.map(request => ({
-          ...request,
-          booking: request.booking
-            ? {
-                ...request.booking,
-                acceptedPolicyIds: [...(request.booking.acceptedPolicyIds ?? [])]
-              }
-            : null
-        }))
-      };
-      if (this.ownedAssetCards().some(card => card.id === sourceCard.id && card.type === sourceCard.type)) {
-        this.assetStore.replaceAssetCard(persistedAsset, { mutation: true, reloadList: false });
+      const change = await this.assetsService.applyMemberStatusChange({
+        assetId: sourceCard.id,
+        eventId: context.ownerId,
+        subEventId: context.subEvent.id,
+        actorUserId: activeUser.id,
+        action: 'join',
+        request: nextRequest
+      });
+      if (!change || (change.status !== 'pending' && change.status !== 'accepted')) {
+        throw new Error('The asset join request was not saved.');
       }
-      const nextFallbackAsset = this.assignedFallbackAssetSnapshot(context.subEvent.id, persistedAsset);
-      nextFallbackCards[sourceCard.type] = existingCards.some(card => card.id === sourceCard.id)
-        ? existingCards.map(card => card.id === sourceCard.id ? nextFallbackAsset : card)
-        : [...existingCards, nextFallbackAsset];
-      const nextContext = {
-        ...activeContext,
-        fallbackCardsByType: nextFallbackCards
-      };
-      this.resourcePopupStore.popupContextRef.set(nextContext);
-      this.emitAssignedAssetMembersSync(
-        persistedAsset,
-        context.subEvent.id,
-        context.ownerId
-      );
+      this.applyAssignedAssetMemberStatusChange(sourceCard.type, change);
       this.closeAssignedAssetJoinDialog();
-      this.syncPopupSubEventMetrics({ syncManualAssetRequests: false });
     } catch {
       const nextDialog: AssignedAssetJoinDialogState = {
         ...dialog,
@@ -3102,159 +3032,83 @@ export class EventResourcePopupComponent {
     }
   }
 
-  private emitAssignedAssetMembersSync(
-    card: ResourceAssetDTO,
-    subEventId: string,
-    eventId: string
-  ): void {
-    const managerUserId = this.assignedAssetManagerUserId(subEventId, card.type, card.id);
-    const requests = this.assetRequestsForView(card, subEventId, managerUserId, eventId);
-    this.activityStore.emitActivityMembersSync({
-      id: card.id,
-      acceptedMembers: requests.filter(request => request.status === 'accepted').length,
-      pendingMembers: requests.filter(request => request.status === 'pending').length,
-      capacityTotal: this.assignedAssetOccupancyCapacityTotal(
-        card,
-        this.getSubEventAssignedAssetSettings(subEventId, card.type)[card.id]
-      ),
-      full: true
-    });
-  }
-
-  private syncAssetRequestsFromMembers(
-    assetId: string,
+  private applyAssignedAssetMemberStatusChange(
     assetType: AppConstants.AssetType,
-    members: readonly ActivityContracts.ActivityMemberDTO[],
-    persist = true
+    change: AppDTOs.AssetMemberStatusChangeDTO
   ): void {
     const context = this.resourcePopupStore.popupContextRef();
-    const asset = this.ownedAssetCards().find(card => card.id === assetId && card.type === assetType)
-      ?? (context ? this.subEventFallbackAssetCards(context.subEvent.id, assetType).find(card => card.id === assetId) ?? null : null);
-    if (!asset) {
+    if (
+      !context
+      || change.eventId !== context.ownerId
+      || change.subEventId !== context.subEvent.id
+      || change.userId !== this.activeUser().id.trim()
+    ) {
       return;
     }
-    const isOwnedAsset = this.ownedAssetCards().some(card => card.id === asset.id && card.type === assetType);
-    const scopedRequests = context
-      ? this.subEventScopedAssetRequests(asset, context.subEvent.id, context.ownerId)
-      : [];
-    const existingById = new Map(scopedRequests.map(request => [request.id, request] as const));
-    const existingByUserId = new Map(
-      scopedRequests.map(request => [AppUtils.resolveAssetRequestUserId(request, this.users), request] as const)
+    const card = this.resourceCards().find(item => item.sourceAssetId === change.assetId) ?? null;
+    if (!card) {
+      return;
+    }
+    const previousSync = this.activityStore.activityMembersSyncByOwnerId()[change.assetId];
+    const previousChange = this.assignedAssetMemberStatusChange(change.assetId, context);
+    const acceptedMembers = Math.max(
+      0,
+      (previousChange ? previousSync?.acceptedMembers ?? card.accepted : card.accepted)
+        + change.acceptedMemberDelta
     );
-    const existingByName = new Map(scopedRequests.map(request => [request.name.toLowerCase(), request] as const));
-    const now = Date.now();
-    const booking = this.currentAssetRequestBooking(1);
-    const syncableMembers = members.filter(entry => entry.status === 'accepted' || entry.status === 'pending');
-    const memberRequests: AppDTOs.AssetMemberRequestDTO[] = syncableMembers.map((entry, index) => {
-      const existing =
-        existingById.get(entry.id)
-        ?? existingByUserId.get(entry.userId)
-        ?? existingByName.get(entry.name.toLowerCase())
-        ?? null;
-      const requestId = existing?.id ?? (entry.id.trim() || `asset-member-${now}-${index}`);
-      const note = entry.status !== 'pending'
-        ? (existing?.note ?? 'Accepted for this asset.')
-        : (entry.pendingSource === 'admin'
-          ? 'Waiting for event admin approval.'
-          : 'Waiting for owner approval.');
-      const requestStatus: AppConstants.AssetRequestStatus = entry.status === 'pending' ? 'pending' : 'accepted';
-      return {
-        id: requestId,
-        userId: entry.userId,
-        name: entry.name,
-        initials: entry.initials,
-        gender: entry.gender,
-        status: requestStatus,
-        note,
-        requestKind: existing?.requestKind ?? (isOwnedAsset ? 'borrow' : 'manual'),
-        requestedAtIso: existing?.requestedAtIso ?? new Date().toISOString(),
-        booking: existing?.booking
-          ? {
-              ...existing.booking,
-              acceptedPolicyIds: [...(existing.booking.acceptedPolicyIds ?? [])]
-            }
-          : booking
-      };
+    const pendingMembers = Math.max(
+      0,
+      (previousChange ? previousSync?.pendingMembers ?? card.pending : card.pending)
+        + change.pendingMemberDelta
+    );
+    this.activityStore.emitActivityMembersSync({
+      id: change.assetId,
+      acceptedMembers,
+      pendingMembers,
+      capacityTotal: previousChange ? previousSync?.capacityTotal ?? card.capacityTotal : card.capacityTotal,
+      acceptedMemberDelta: change.acceptedMemberDelta,
+      pendingMemberDelta: change.pendingMemberDelta,
+      memberStatusChange: change
     });
-    const preservedRequests = context
-      ? asset.requests
-        .filter(request =>
-          !this.isSubEventScopedAssetRequest(request, context.subEvent.id, context.ownerId)
-        )
-        .map(request => ({
-          ...request,
-          booking: request.booking
-            ? {
-                ...request.booking,
-                acceptedPolicyIds: [...(request.booking.acceptedPolicyIds ?? [])]
-              }
-            : null
-        }))
-      : [];
-    const nextRequests: AppDTOs.AssetMemberRequestDTO[] = [...preservedRequests, ...memberRequests];
-    const currentSignature = JSON.stringify(asset.requests.map(request => ActivityResourceBuilder.assetRequestSyncSignature(request)));
-    const nextSignature = JSON.stringify(nextRequests.map(request => ActivityResourceBuilder.assetRequestSyncSignature(request)));
-    if (currentSignature === nextSignature) {
+
+    if (change.acceptedMemberDelta === 0 && change.pendingMemberDelta === 0) {
       return;
     }
-    if (!isOwnedAsset) {
-      if (!context) {
-        return;
-      }
-      const activeContext = this.resourcePopupStore.popupContextRef();
-      if (!activeContext || activeContext.subEvent.id !== context.subEvent.id) {
-        return;
-      }
-      const nextFallbackCards = this.cloneFallbackCards(activeContext.fallbackCardsByType);
-      const nextCards = nextFallbackCards[assetType] ?? [];
-      const nextAsset = this.assignedFallbackAssetSnapshot(context.subEvent.id, {
-        ...asset,
-        requests: nextRequests
-      });
-      nextFallbackCards[assetType] = nextCards.some(card => card.id === assetId)
-        ? nextCards.map(card => card.id === assetId ? nextAsset : card)
-        : [...nextCards, nextAsset];
-      const nextContext = {
-        ...activeContext,
-        fallbackCardsByType: nextFallbackCards
-      };
-      this.resourcePopupStore.popupContextRef.set(nextContext);
-      this.syncPopupSubEventMetrics(false);
-      if (persist) {
-        this.persistPopupResourceState(nextContext);
-      }
-      return;
+    const nextSubEvent = this.cloneSubEvent(context.subEvent);
+    if (assetType === AppConstants.ASSET_TYPE_TRANSPORT) {
+      nextSubEvent.carsAccepted = Math.max(0, (Number(nextSubEvent.carsAccepted) || 0) + change.acceptedMemberDelta);
+      nextSubEvent.carsPending = Math.max(0, (Number(nextSubEvent.carsPending) || 0) + change.pendingMemberDelta);
+    } else if (assetType === AppConstants.ASSET_TYPE_ACCOMMODATION) {
+      nextSubEvent.accommodationAccepted = Math.max(0, (Number(nextSubEvent.accommodationAccepted) || 0) + change.acceptedMemberDelta);
+      nextSubEvent.accommodationPending = Math.max(0, (Number(nextSubEvent.accommodationPending) || 0) + change.pendingMemberDelta);
+    } else {
+      nextSubEvent.suppliesAccepted = Math.max(0, (Number(nextSubEvent.suppliesAccepted) || 0) + change.acceptedMemberDelta);
+      nextSubEvent.suppliesPending = Math.max(0, (Number(nextSubEvent.suppliesPending) || 0) + change.pendingMemberDelta);
     }
-    const nextCards = this.ownedAssetCards().map(card =>
-      card.id === asset.id && card.type === asset.type
-        ? { ...card, requests: nextRequests }
-        : card
-    );
-    if (this.assetStore.applyAssetCards(nextCards, { mutation: true, reloadList: false }) && persist) {
-      const ownerUserId = this.assetStore.activeOwnerUserIdRef().trim()
-        || this.userProfileStore.getActiveUserId().trim();
-      if (ownerUserId) {
-        void this.assetsService.replaceOwnedAssets(ownerUserId, this.assetStore.assetCards());
-      }
-    }
-    this.syncPopupSubEventMetrics();
+    const nextContext = {
+      ...context,
+      subEvent: nextSubEvent
+    };
+    this.resourcePopupStore.popupContextRef.set(nextContext);
+    this.resourcePopupStore.publishSubEventResourceMetrics(nextContext);
   }
 
-  private currentAssetRequestBooking(quantity: number): AppDTOs.AssetHireRequestBookingDTO | null {
-    const context = this.resourcePopupStore.popupContextRef();
-    if (!context) {
+  private assignedAssetMemberStatusChange(
+    assetId: string,
+    context = this.resourcePopupStore.popupContextRef()
+  ): AppDTOs.AssetMemberStatusChangeDTO | null {
+    const change = this.activityStore.activityMembersSyncByOwnerId()[assetId]?.memberStatusChange ?? null;
+    if (
+      !context
+      || !change
+      || change.assetId !== assetId
+      || change.eventId !== context.ownerId
+      || change.subEventId !== context.subEvent.id
+      || change.userId !== this.activeUser().id.trim()
+    ) {
       return null;
     }
-    const startAtIso = `${context.subEvent.startAt ?? ''}`.trim();
-    const endAtIso = `${context.subEvent.endAt ?? ''}`.trim();
-    return this.assetRequestBookingForRange(
-      context.subEvent,
-      context.ownerId,
-      context.parentTitle,
-      startAtIso,
-      endAtIso,
-      quantity
-    );
+    return change;
   }
 
   private assetRequestBookingForSubEvent(

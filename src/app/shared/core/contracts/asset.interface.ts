@@ -41,6 +41,26 @@ export interface AssetMemberRequestDTO {
   menuActions?: string[];
 }
 
+export interface AssetMemberStatusChangeRequestDTO {
+  assetId: string;
+  eventId: string;
+  subEventId: string;
+  actorUserId: string;
+  action: 'join' | 'leave';
+  request?: AssetMemberRequestDTO | null;
+}
+
+export interface AssetMemberStatusChangeDTO {
+  assetId: string;
+  eventId: string;
+  subEventId: string;
+  userId: string;
+  previousStatus: AppConstants.ActivityMemberStatus | null;
+  status: AppConstants.ActivityMemberStatus;
+  acceptedMemberDelta: number;
+  pendingMemberDelta: number;
+}
+
 export interface AssetRequestMetricsDTO {
   allItems: number;
   activeItems: number;

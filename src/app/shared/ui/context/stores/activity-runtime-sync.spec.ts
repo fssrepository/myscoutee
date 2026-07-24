@@ -77,6 +77,39 @@ describe('activity runtime counter signals', () => {
     vi.restoreAllMocks();
   });
 
+  it('carries a lean member status transition with its signed counter deltas', () => {
+    const store = new ActivityStore();
+
+    store.emitActivityMembersSync({
+      id: 'asset-1',
+      acceptedMembers: 1,
+      pendingMembers: 0,
+      capacityTotal: 4,
+      acceptedMemberDelta: 0,
+      pendingMemberDelta: -1,
+      memberStatusChange: {
+        assetId: 'asset-1',
+        eventId: 'event-1',
+        subEventId: 'subevent-1',
+        userId: 'viewer',
+        previousStatus: 'pending',
+        status: 'deleted',
+        acceptedMemberDelta: 0,
+        pendingMemberDelta: -1
+      }
+    });
+
+    expect(store.activityMembersSyncByOwnerId()['asset-1']).toMatchObject({
+      pendingMembers: 0,
+      pendingMemberDelta: -1,
+      memberStatusChange: {
+        previousStatus: 'pending',
+        status: 'deleted',
+        pendingMemberDelta: -1
+      }
+    });
+  });
+
   it('propagates the stage pending delta separately from its current value', () => {
     vi.spyOn(Date, 'now').mockReturnValue(200);
     const store = new EventSubeventsPopupStore();

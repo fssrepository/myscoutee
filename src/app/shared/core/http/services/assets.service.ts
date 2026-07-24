@@ -294,6 +294,46 @@ export class HttpAssetsService {
     return this.cloneCards([savedAsset])[0] ?? savedAsset;
   }
 
+  async applyMemberStatusChange(
+    request: AppDTOs.AssetMemberStatusChangeRequestDTO
+  ): Promise<AppDTOs.AssetMemberStatusChangeDTO | null> {
+    const assetId = request.assetId.trim();
+    const eventId = request.eventId.trim();
+    const subEventId = request.subEventId.trim();
+    const actorUserId = request.actorUserId.trim();
+    if (!assetId || !eventId || !subEventId || !actorUserId) {
+      return null;
+    }
+    const response = await this.http
+      .post<AppDTOs.AssetMemberStatusChangeDTO | null>(`${this.apiBaseUrl}/assets/members/action`, {
+        ...request,
+        assetId,
+        eventId,
+        subEventId,
+        actorUserId
+      })
+      .toPromise();
+    if (
+      !response
+      || response.assetId?.trim() !== assetId
+      || response.eventId?.trim() !== eventId
+      || response.subEventId?.trim() !== subEventId
+      || response.userId?.trim() !== actorUserId
+      || !AppConstants.ACTIVITY_MEMBER_STATUSES.includes(response.status)
+    ) {
+      return null;
+    }
+    return {
+      ...response,
+      previousStatus: response.previousStatus
+        && AppConstants.ACTIVITY_MEMBER_STATUSES.includes(response.previousStatus)
+        ? response.previousStatus
+        : null,
+      acceptedMemberDelta: Math.trunc(Number(response.acceptedMemberDelta) || 0),
+      pendingMemberDelta: Math.trunc(Number(response.pendingMemberDelta) || 0)
+    };
+  }
+
   async replaceOwnedAssets(userId: string, assets: readonly AppDTOs.AssetDTO[]): Promise<AppDTOs.AssetDTO[]> {
     const normalizedUserId = userId.trim();
     if (!normalizedUserId) {

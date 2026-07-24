@@ -1,6 +1,7 @@
 import { Injectable, signal } from '@angular/core';
 
 import { EventFeedbackDetailDto, type EventCheckoutResultState } from '../../../core/contracts/activity.interface';
+import type * as AppDTOs from '../../../core/contracts';
 import type { ChatMetricBucketDTO } from '../../../core/contracts/chat.interface';
 import type { UserMenuCounterDeltasDto } from '../../../core/contracts/user.interface';
 import {
@@ -90,6 +91,7 @@ export interface ActivityMembersSyncState {
   acceptedMemberDelta?: number;
   pendingMemberDelta?: number;
   viewerMembershipRemoved?: boolean;
+  memberStatusChange?: AppDTOs.AssetMemberStatusChangeDTO | null;
 }
 
 export interface ActivityResourceSyncState {
@@ -401,7 +403,16 @@ export class ActivityStore {
       ...(pendingMemberDelta !== null ? { pendingMemberDelta } : {}),
       ...(payload.full === true ? { full: true } : {}),
       ...(payload.checkoutResultState ? { checkoutResultState: payload.checkoutResultState } : {}),
-      ...(payload.viewerMembershipRemoved === true ? { viewerMembershipRemoved: true } : {})
+      ...(payload.viewerMembershipRemoved === true ? { viewerMembershipRemoved: true } : {}),
+      ...(payload.memberStatusChange
+        ? {
+            memberStatusChange: {
+              ...payload.memberStatusChange,
+              acceptedMemberDelta: Math.trunc(Number(payload.memberStatusChange.acceptedMemberDelta) || 0),
+              pendingMemberDelta: Math.trunc(Number(payload.memberStatusChange.pendingMemberDelta) || 0)
+            }
+          }
+        : {})
     };
     this._activityMembersSync.set(sync);
     this._activityMembersSyncByOwnerId.update(current => ({

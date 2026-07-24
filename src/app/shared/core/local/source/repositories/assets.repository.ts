@@ -255,6 +255,106 @@ export class LocalAssetsRepository {
     );
   }
 
+  async applyMemberStatusChange(
+    request: AppDTOs.AssetMemberStatusChangeRequestDTO
+  ): Promise<AppDTOs.AssetMemberStatusChangeDTO | null> {
+    const assetId = request.assetId.trim();
+    const eventId = request.eventId.trim();
+    const subEventId = request.subEventId.trim();
+    const actorUserId = request.actorUserId.trim();
+    if (!assetId || !eventId || !subEventId || !actorUserId) {
+      return null;
+    }
+    const record = this.normalizeCollection(this.memoryDb.read()[ASSETS_TABLE_NAME]).byId[assetId];
+    if (!record || this.isSuppressedAssetStatus(record.status)) {
+      return null;
+    }
+    const inScope = (entry: AppDTOs.AssetMemberRequestDTO): boolean =>
+      entry.requestKind !== 'manual'
+      && `${entry.userId ?? ''}`.trim() === actorUserId
+      && `${entry.booking?.eventId ?? ''}`.trim() === eventId
+      && `${entry.booking?.subEventId ?? ''}`.trim() === subEventId;
+    const previous = record.requests.find(inScope) ?? null;
+    const previousStatus = previous?.status ?? null;
+    if (request.action === 'leave' && !previous) {
+      return null;
+    }
+    if (request.action === 'join' && previous) {
+      return {
+        assetId,
+        eventId,
+        subEventId,
+        userId: actorUserId,
+        previousStatus,
+        status: previous.status,
+        acceptedMemberDelta: 0,
+        pendingMemberDelta: 0
+      };
+    }
+    const joinedRequest = request.action === 'join' ? request.request : null;
+    if (
+      request.action === 'join'
+      && (
+        !joinedRequest
+        || `${joinedRequest.userId ?? ''}`.trim() !== actorUserId
+        || joinedRequest.requestKind !== 'borrow'
+        || joinedRequest.status !== 'pending'
+        || `${joinedRequest.booking?.eventId ?? ''}`.trim() !== eventId
+        || `${joinedRequest.booking?.subEventId ?? ''}`.trim() !== subEventId
+      )
+    ) {
+      return null;
+    }
+    const nextRequests: AppDTOs.AssetMemberRequestDTO[] = [
+      ...(joinedRequest
+        ? [{
+            ...joinedRequest,
+            booking: joinedRequest.booking
+              ? {
+                  ...joinedRequest.booking,
+                  acceptedPolicyIds: [...(joinedRequest.booking.acceptedPolicyIds ?? [])]
+                }
+              : null
+          }]
+        : []),
+      ...record.requests
+        .filter(entry => entry !== previous)
+        .map(entry => ({
+          ...entry,
+          booking: entry.booking
+            ? {
+                ...entry.booking,
+                acceptedPolicyIds: [...(entry.booking.acceptedPolicyIds ?? [])]
+              }
+            : null
+        }))
+    ];
+    const detail = this.toAssetDetailDto(record, actorUserId);
+    await this.saveOwnedAsset(record.ownerUserId, {
+      ...detail,
+      requests: nextRequests
+    });
+    const status: AppConstants.ActivityMemberStatus = request.action === 'join' ? 'pending' : 'deleted';
+    return {
+      assetId,
+      eventId,
+      subEventId,
+      userId: actorUserId,
+      previousStatus,
+      status,
+      acceptedMemberDelta: this.memberStatusDelta(previousStatus, status, 'accepted'),
+      pendingMemberDelta: this.memberStatusDelta(previousStatus, status, 'pending')
+    };
+  }
+
+  private memberStatusDelta(
+    previousStatus: AppConstants.ActivityMemberStatus | null,
+    status: AppConstants.ActivityMemberStatus,
+    countedStatus: AppConstants.ActivityMemberStatus
+  ): number {
+    return (status === countedStatus ? 1 : 0) - (previousStatus === countedStatus ? 1 : 0);
+  }
+
   async replaceOwnedAssets(
     userId: string,
     assets: readonly AppDTOs.AssetDTO[]
