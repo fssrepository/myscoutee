@@ -376,6 +376,10 @@ export class ActivityStore {
     if (!normalizedId) {
       return;
     }
+    const updatedMs = Math.max(
+      Date.now(),
+      (this._activityMembersSync()?.updatedMs ?? 0) + 1
+    );
     const acceptedMemberDelta = Number.isFinite(Number(payload.acceptedMemberDelta))
       ? Math.trunc(Number(payload.acceptedMemberDelta))
       : null;
@@ -383,7 +387,7 @@ export class ActivityStore {
       ? Math.trunc(Number(payload.pendingMemberDelta))
       : null;
     this._activityMembersSync.set({
-      updatedMs: Date.now(),
+      updatedMs,
       id: normalizedId,
       acceptedMembers: normalizeCounterValue(payload.acceptedMembers),
       pendingMembers: normalizeCounterValue(payload.pendingMembers),
@@ -406,8 +410,12 @@ export class ActivityStore {
     if (!ownerId || !subEventId || !assetOwnerUserId) {
       return;
     }
+    const updatedMs = Math.max(
+      Date.now(),
+      (this._activityResourceSync()?.updatedMs ?? 0) + 1
+    );
     this._activityResourceSync.set({
-      updatedMs: Date.now(),
+      updatedMs,
       ownerId,
       subEventId,
       assetOwnerUserId

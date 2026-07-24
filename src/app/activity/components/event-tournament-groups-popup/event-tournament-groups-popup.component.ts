@@ -268,6 +268,7 @@ export class EventTournamentGroupsPopupComponent {
           }
         }
       );
+      this.emitGroupsUpdate(match.stage.subEventId);
       this.cdr.markForCheck();
     });
 
