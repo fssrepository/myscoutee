@@ -99,6 +99,7 @@ import {
   type SubEventResourceAssignmentQuantityUpdate
 } from '../../../shared/ui/context/stores/sub-event-resource-popup.store';
 import type {
+  AssignedAssetJoinDialogState,
   AssignedAssetJoinPricingPreview,
   EventResourcePopupOutletActionRequest,
   ResourceAssetDTO,
@@ -108,9 +109,6 @@ import type {
   SubEventResourcePopupRequest
 } from '../../../shared/ui/context/stores/sub-event-resource-popup.store';
 import type { ChatDTO } from '../../../shared/core/contracts/chat.interface';
-import type {
-  AssignedAssetJoinDialogViewState
-} from './assigned-asset-join-dialog/event-resource-assigned-asset-join-dialog.component';
 import {
   EventResourceListComponent,
   type EventResourceListModel
@@ -182,10 +180,6 @@ export class EventResourcePopupComponent {
     view: this.resourceAssetView(),
     parentZIndex: this.resourcePopupZIndex()
   }));
-  protected readonly assignedAssetJoinDialogOutletInputs = computed(() => ({
-    dialog: this.assignedAssetJoinDialogViewState(),
-    parentZIndex: this.resourcePopupZIndex()
-  }));
   protected readonly membersPopupOutletInputs = computed(() => ({
     parentZIndex: this.resourcePopupZIndex()
   }));
@@ -236,12 +230,6 @@ export class EventResourcePopupComponent {
     effect(() => {
       if (this.resourceAssetView()) {
         void this.resourcePopupStore.ensureEventResourceAssetViewLoaded();
-      }
-    });
-
-    effect(() => {
-      if (this.assignedAssetJoinDialogViewState()) {
-        void this.resourcePopupStore.ensureEventResourceAssignedAssetJoinDialogLoaded();
       }
     });
 
@@ -466,7 +454,7 @@ export class EventResourcePopupComponent {
     if (keyboardEvent.defaultPrevented) {
       return;
     }
-    if (this.assignedAssetJoinDialogViewState()) {
+    if (this.resourcePopupStore.assignedAssetJoinDialogRef()) {
       keyboardEvent.preventDefault();
       keyboardEvent.stopPropagation();
       this.closeAssignedAssetJoinDialog();
@@ -901,7 +889,7 @@ export class EventResourcePopupComponent {
     }
     const type = this.resourcePopupStore.resourceFilterRef();
     const { startAtIso, endAtIso } = ActivityResourceBuilder.defaultAssetExploreRange(context.subEvent);
-    this.resourcePopupStore.assignedAssetJoinDialogRef.set(null);
+    this.closeAssignedAssetJoinDialog();
     this.resourcePopupStore.assetExploreBorrowDialogRef.set(null);
     this.resourcePopupStore.assetExplorePopupRef.set({
       subEventId: context.subEvent.id,
@@ -1551,7 +1539,7 @@ export class EventResourcePopupComponent {
     this.resourcePopupStore.resourceFilterRef.set(filter);
     this.resourcePopupStore.resourceAssetViewIdRef.set(null);
     this.resourcePopupStore.resourceAssetViewModeRef.set('view');
-    this.resourcePopupStore.assignedAssetJoinDialogRef.set(null);
+    this.closeAssignedAssetJoinDialog();
     this.resourcePopupStore.assetExploreBorrowDialogRef.set(null);
     this.resourcePopupStore.assetExplorePopupRef.set(null);
   }
@@ -1855,7 +1843,7 @@ export class EventResourcePopupComponent {
     const existingRequest = this.findAssignedAssetJoinRequest(sourceCard, context.subEvent.id, this.activeUser().id);
     const activePolicies = AssetCardBuilder.assetPoliciesEnabled(sourceCard) ? sourceCard.policies ?? [] : [];
     const validPolicyIds = new Set(activePolicies.map(policy => policy.id));
-    this.resourcePopupStore.assignedAssetJoinDialogRef.set({
+    const dialog: AssignedAssetJoinDialogState = {
       cardId: card.id,
       type,
       sourceAssetId: sourceCard.id,
@@ -1864,7 +1852,174 @@ export class EventResourcePopupComponent {
         .filter(item => item.length > 0 && validPolicyIds.has(item)),
       busy: false,
       error: null
+    };
+    this.resourcePopupStore.assignedAssetJoinDialogRef.set(dialog);
+    void this.openAssignedAssetJoinCheckoutEditor(card, sourceCard, dialog);
+  }
+
+  private async openAssignedAssetJoinCheckoutEditor(
+    resourceCard: AppDTOs.SubEventResourceCardDTO,
+    sourceCard: ResourceAssetDTO,
+    dialog: AssignedAssetJoinDialogState
+  ): Promise<void> {
+    const context = this.resourcePopupStore.popupContextRef();
+    if (
+      !context
+      || this.resourcePopupStore.assignedAssetJoinDialogRef()?.sourceAssetId !== sourceCard.id
+    ) {
+      return;
+    }
+    const runtimeRoute = this.assignedAssetRuntimeRouteState(
+      context.subEvent.id,
+      resourceCard,
+      sourceCard
+    );
+    const ownerUserId = `${sourceCard.ownerUserId ?? ''}`.trim();
+    const generation = this.assetStore.openAssetEditorEdit({
+      cardId: sourceCard.id,
+      form: AssetCardBuilder.buildAssetFormFromCard(sourceCard),
+      visibility: AssetCardBuilder.visibilityFromCard(sourceCard),
+      loading: Boolean(ownerUserId),
+      readOnly: true,
+      parentZIndex: this.resourcePopupZIndex(),
+      runtimeRoute: runtimeRoute ? { ...runtimeRoute, editable: false } : null,
+      checkout: this.assignedAssetJoinCheckoutState(sourceCard, dialog, context)
     });
+    void this.assetPopupStore.ensureAssetPopupLoaded();
+    if (!ownerUserId) {
+      this.assetStore.setAssetEditorLoading(false);
+      return;
+    }
+    try {
+      const loadedCard = await this.assetsService.loadOwnedAssetDetailById(ownerUserId, sourceCard.id);
+      if (!this.assetStore.isCurrentAssetEditorLoad(generation, sourceCard.id)) {
+        return;
+      }
+      if (loadedCard) {
+        this.assetStore.applyAssetEditorForm(
+          loadedCard.id,
+          AssetCardBuilder.visibilityFromCard(loadedCard),
+          AssetCardBuilder.buildAssetFormFromCard(loadedCard)
+        );
+      }
+      this.assetStore.setAssetEditorLoading(false);
+    } catch {
+      if (this.assetStore.isCurrentAssetEditorLoad(generation, sourceCard.id)) {
+        this.assetStore.setAssetEditorLoading(false);
+      }
+    }
+  }
+
+  private assignedAssetJoinCheckoutState(
+    sourceCard: ResourceAssetDTO,
+    dialog: AssignedAssetJoinDialogState,
+    context: ResourcePopupContext
+  ): AssetEditorCheckoutState {
+    const startAtIso = `${context.subEvent.startAt ?? ''}`.trim();
+    const endAtIso = `${context.subEvent.endAt ?? ''}`.trim();
+    const timeframe = ActivityResourceBuilder.assetRequestTimeframeLabel(startAtIso, endAtIso);
+    const managerUserId = this.assignedAssetManagerUserId(
+      context.subEvent.id,
+      dialog.type,
+      dialog.sourceAssetId
+    );
+    const pricing = this.resolveAssignedAssetJoinPricing(
+      sourceCard,
+      context.subEvent,
+      this.activeUser().id,
+      managerUserId
+    );
+    const hasError = !dialog.busy && Boolean(dialog.error);
+    return {
+      sourceId: sourceCard.id,
+      mode: 'join',
+      phase: 'review',
+      title: `Join ${sourceCard.title}`,
+      subtitle: this.popupSubtitle(),
+      dateRange: {
+        startAt: startAtIso,
+        endAt: endAtIso,
+        precision: 'minute'
+      },
+      dateRangeModel: {
+        mode: 'range',
+        precision: 'minute',
+        valueFormat: 'iso-date-time',
+        range: {
+          start: { label: this.i18n.translate('asset.borrow.start') },
+          end: { label: this.i18n.translate('asset.borrow.end') }
+        }
+      },
+      availableQuantity: 1,
+      pricingPreview: {
+        rows: [{
+          key: `assigned-asset-join:${sourceCard.id}`,
+          label: pricing.chargeType === 'per_attendee' ? 'Per-member price' : 'Your share',
+          detail: timeframe,
+          amount: pricing.shareAmount,
+          currency: pricing.currency
+        }],
+        totalAmount: pricing.shareAmount,
+        currency: pricing.currency
+      },
+      acceptedPolicyIds: [...dialog.acceptedPolicyIds],
+      footerItems: [
+        {
+          id: 'join-cancel',
+          label: this.i18n.translate('cancel'),
+          layout: 'action',
+          palette: 'neutral',
+          disabled: dialog.busy
+        },
+        {
+          id: 'join-confirm',
+          label: dialog.busy ? 'Sending request...' : 'Send join request',
+          layout: 'action',
+          palette: hasError ? 'danger' : 'blue',
+          disabled: !this.canSubmitAssignedAssetJoin(),
+          progress: dialog.busy || hasError
+            ? {
+                state: dialog.busy ? 'loading' : 'error',
+                shape: 'button'
+              }
+            : null
+        }
+      ],
+      busy: dialog.busy,
+      error: dialog.error,
+      onPolicyToggle: policyId => this.toggleAssignedAssetJoinPolicy(policyId),
+      onFooterItemSelect: (itemId, sourceEvent) => {
+        if (itemId === 'join-cancel') {
+          this.closeAssignedAssetJoinDialog(sourceEvent);
+          return;
+        }
+        void this.confirmAssignedAssetJoin(sourceEvent);
+      },
+      onClose: () => this.closeAssignedAssetJoinDialog()
+    };
+  }
+
+  private syncAssignedAssetJoinCheckoutEditor(dialog: AssignedAssetJoinDialogState): void {
+    const checkout = this.assetStore.assetFormCheckout();
+    const context = this.resourcePopupStore.popupContextRef();
+    if (
+      checkout?.mode !== 'join'
+      || checkout.sourceId !== dialog.sourceAssetId
+      || !context
+    ) {
+      return;
+    }
+    const sourceCard = this.resolveSubEventAssignedAssetCard(
+      context.subEvent.id,
+      dialog.type,
+      dialog.sourceAssetId
+    );
+    if (!sourceCard) {
+      return;
+    }
+    this.assetStore.setAssetEditorCheckoutState(
+      this.assignedAssetJoinCheckoutState(sourceCard, dialog, context)
+    );
   }
 
   leave(card: AppDTOs.SubEventResourceCardDTO, event: Event): void {
@@ -1897,7 +2052,7 @@ export class EventResourcePopupComponent {
           : null
       }));
     if (this.resourcePopupStore.assignedAssetJoinDialogRef()?.sourceAssetId === sourceCard.id) {
-      this.resourcePopupStore.assignedAssetJoinDialogRef.set(null);
+      this.closeAssignedAssetJoinDialog();
     }
     if (this.isAssetOwnedByActiveUser(sourceCard)) {
       const nextCards = this.ownedAssetCards().map(asset => (
@@ -1942,7 +2097,12 @@ export class EventResourcePopupComponent {
 
   closeAssignedAssetJoinDialog(event?: Event): void {
     event?.stopPropagation();
+    const dialog = this.resourcePopupStore.assignedAssetJoinDialogRef();
     this.resourcePopupStore.assignedAssetJoinDialogRef.set(null);
+    const checkout = this.assetStore.assetFormCheckout();
+    if (checkout?.mode === 'join' && (!dialog || checkout.sourceId === dialog.sourceAssetId)) {
+      this.assetStore.closeAssetEditor();
+    }
   }
 
   toggleAssignedAssetJoinPolicy(policyId: string): void {
@@ -1960,11 +2120,13 @@ export class EventResourcePopupComponent {
     } else {
       nextAccepted.add(normalizedPolicyId);
     }
-    this.resourcePopupStore.assignedAssetJoinDialogRef.set({
+    const nextDialog: AssignedAssetJoinDialogState = {
       ...dialog,
       acceptedPolicyIds: [...nextAccepted],
       error: null
-    });
+    };
+    this.resourcePopupStore.assignedAssetJoinDialogRef.set(nextDialog);
+    this.syncAssignedAssetJoinCheckoutEditor(nextDialog);
   }
 
   canSubmitAssignedAssetJoin(): boolean {
@@ -1991,11 +2153,13 @@ export class EventResourcePopupComponent {
     }
     const sourceCard = this.resolveSubEventAssignedAssetCard(context.subEvent.id, dialog.type, dialog.sourceAssetId);
     if (!sourceCard) {
-      this.resourcePopupStore.assignedAssetJoinDialogRef.set({
+      const nextDialog: AssignedAssetJoinDialogState = {
         ...dialog,
         busy: false,
         error: 'This asset is no longer available in the resource popup.'
-      });
+      };
+      this.resourcePopupStore.assignedAssetJoinDialogRef.set(nextDialog);
+      this.syncAssignedAssetJoinCheckoutEditor(nextDialog);
       return;
     }
     if (!this.canSubmitAssignedAssetJoin()) {
@@ -2051,12 +2215,14 @@ export class EventResourcePopupComponent {
             : null
         }))
     ];
-    this.resourcePopupStore.assignedAssetJoinDialogRef.set({
+    const busyDialog: AssignedAssetJoinDialogState = {
       ...dialog,
       acceptedPolicyIds,
       busy: true,
       error: null
-    });
+    };
+    this.resourcePopupStore.assignedAssetJoinDialogRef.set(busyDialog);
+    this.syncAssignedAssetJoinCheckoutEditor(busyDialog);
     if (this.isAssetOwnedByActiveUser(sourceCard)) {
       const nextCards = this.ownedAssetCards().map(asset => (
         asset.id === sourceCard.id && asset.type === sourceCard.type
@@ -2069,12 +2235,14 @@ export class EventResourcePopupComponent {
       const ownerUserId = this.assetStore.activeOwnerUserIdRef().trim()
         || this.userProfileStore.getActiveUserId().trim();
       if (!ownerUserId) {
-        this.resourcePopupStore.assignedAssetJoinDialogRef.set({
+        const nextDialog: AssignedAssetJoinDialogState = {
           ...dialog,
           acceptedPolicyIds,
           busy: false,
           error: 'Unable to save the join request.'
-        });
+        };
+        this.resourcePopupStore.assignedAssetJoinDialogRef.set(nextDialog);
+        this.syncAssignedAssetJoinCheckoutEditor(nextDialog);
         return;
       }
       try {
@@ -2083,15 +2251,17 @@ export class EventResourcePopupComponent {
           nextCards.map(card => new AssetDto(card))
         );
         this.assetStore.applyAssetCards(savedCards, { mutation: true, reloadList: false });
-        this.resourcePopupStore.assignedAssetJoinDialogRef.set(null);
+        this.closeAssignedAssetJoinDialog();
         this.syncPopupSubEventMetrics();
       } catch {
-        this.resourcePopupStore.assignedAssetJoinDialogRef.set({
+        const nextDialog: AssignedAssetJoinDialogState = {
           ...dialog,
           acceptedPolicyIds,
           busy: false,
           error: 'Unable to save the join request.'
-        });
+        };
+        this.resourcePopupStore.assignedAssetJoinDialogRef.set(nextDialog);
+        this.syncAssignedAssetJoinCheckoutEditor(nextDialog);
       }
       return;
     }
@@ -2115,12 +2285,14 @@ export class EventResourcePopupComponent {
     };
     const nextState = this.buildPopupResourceState(nextContext);
     if (!nextState) {
-      this.resourcePopupStore.assignedAssetJoinDialogRef.set({
+      const nextDialog: AssignedAssetJoinDialogState = {
         ...dialog,
         acceptedPolicyIds,
         busy: false,
         error: 'Unable to save the join request.'
-      });
+      };
+      this.resourcePopupStore.assignedAssetJoinDialogRef.set(nextDialog);
+      this.syncAssignedAssetJoinCheckoutEditor(nextDialog);
       return;
     }
     try {
@@ -2131,14 +2303,16 @@ export class EventResourcePopupComponent {
       this.resourcePopupStore.popupContextRef.set(nextContext);
       this.applyPersistedPopupState(savedState);
       this.syncPopupSubEventMetrics(false);
-      this.resourcePopupStore.assignedAssetJoinDialogRef.set(null);
+      this.closeAssignedAssetJoinDialog();
     } catch {
-      this.resourcePopupStore.assignedAssetJoinDialogRef.set({
+      const nextDialog: AssignedAssetJoinDialogState = {
         ...dialog,
         acceptedPolicyIds,
         busy: false,
         error: 'Unable to save the join request.'
-      });
+      };
+      this.resourcePopupStore.assignedAssetJoinDialogRef.set(nextDialog);
+      this.syncAssignedAssetJoinCheckoutEditor(nextDialog);
     }
   }
 
@@ -2665,7 +2839,7 @@ export class EventResourcePopupComponent {
     }
     const type = this.resourcePopupStore.resourceFilterRef();
     const { startAtIso, endAtIso } = ActivityResourceBuilder.defaultAssetExploreRange(context.subEvent);
-    this.resourcePopupStore.assignedAssetJoinDialogRef.set(null);
+    this.closeAssignedAssetJoinDialog();
     this.resourcePopupStore.assetExploreBorrowDialogRef.set(null);
     this.resourcePopupStore.assetExplorePopupRef.set({
       subEventId: context.subEvent.id,
@@ -2678,65 +2852,6 @@ export class EventResourcePopupComponent {
       cards: []
     });
   }
-
-  readonly assignedAssetJoinDialogViewState = computed<AssignedAssetJoinDialogViewState | null>(() => {
-    const dialog = this.resourcePopupStore.assignedAssetJoinDialogRef();
-    const context = this.resourcePopupStore.popupContextRef();
-    if (!dialog || !context) {
-      return null;
-    }
-    const sourceCard = this.resolveSubEventAssignedAssetCard(context.subEvent.id, dialog.type, dialog.sourceAssetId);
-    if (!sourceCard) {
-      return null;
-    }
-    const timeframe = ActivityResourceBuilder.assetRequestTimeframeLabel(
-      `${context.subEvent.startAt ?? ''}`.trim(),
-      `${context.subEvent.endAt ?? ''}`.trim()
-    );
-    const isOwnedAsset = this.isAssetOwnedByActiveUser(sourceCard);
-    const managerUserId = this.assignedAssetManagerUserId(context.subEvent.id, dialog.type, dialog.sourceAssetId);
-    const pricing = this.resolveAssignedAssetJoinPricing(sourceCard, context.subEvent, this.activeUser().id, managerUserId);
-    const memberCounts = this.assignedAssetJoinMemberCounts(sourceCard, context.subEvent.id, this.activeUser().id, managerUserId);
-    const shareLabel = pricing.chargeType === 'per_attendee'
-      ? 'Per-member price'
-      : (pricing.shareMemberCount === 1 ? 'Current share' : `Estimated share for ${pricing.shareMemberCount} members`);
-    const shareHint = pricing.totalAmount > 0
-      ? (pricing.chargeType === 'per_attendee'
-          ? 'This asset charges per member, so your join keeps the same price even as the member list changes.'
-          : 'This asset is priced as a shared booking, so the preview is split across the current member count for this subevent.')
-      : 'No asset pricing is configured for this join request.';
-    return {
-      title: `Join ${sourceCard.title}`,
-      subtitle: this.popupSubtitle(),
-      timeframe: timeframe || 'Sub-event timeframe',
-      pathLabel: isOwnedAsset ? 'Assigned own asset' : 'Borrowed item',
-      memberSummary: memberCounts.pending > 0
-        ? `${memberCounts.accepted} accepted · ${memberCounts.pending} pending`
-        : `${memberCounts.accepted} accepted`,
-      lineItems: [
-        {
-          id: `resource:${sourceCard.id}`,
-          kind: 'resource',
-          label: sourceCard.title,
-          detail: isOwnedAsset ? 'Assigned asset join' : 'Borrowed item join',
-          amount: pricing.shareAmount,
-          currency: pricing.currency
-        }
-      ],
-      totalAmount: pricing.totalAmount,
-      shareAmount: pricing.shareAmount,
-      shareMemberCount: pricing.shareMemberCount,
-      currency: pricing.currency,
-      shareLabel,
-      shareHint,
-      policies: (AssetCardBuilder.assetPoliciesEnabled(sourceCard) ? sourceCard.policies ?? [] : []).map(item => ({ ...item })),
-      acceptedPolicyIds: [...dialog.acceptedPolicyIds],
-      submitLabel: 'Send join request',
-      busyLabel: 'Sending request...',
-      busy: dialog.busy,
-      error: dialog.error
-    };
-  });
 
   private resourceFilterCounts(): Record<AppConstants.AssetType, number> {
     const context = this.resourcePopupStore.popupContextRef();

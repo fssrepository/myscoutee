@@ -423,7 +423,7 @@ export class AssetEditorPopupComponent {
           kind: 'date',
           layout: 'wide',
           required: true,
-          disabled: checkout.phase !== 'review' || checkout.busy,
+          disabled: checkout.phase !== 'review' || checkout.busy || !checkout.onDateRangeChange,
           config: {
             model: checkout.dateRangeModel
           }
