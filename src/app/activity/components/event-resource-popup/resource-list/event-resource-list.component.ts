@@ -14,15 +14,9 @@ import { from } from 'rxjs';
 import { APP_STATIC_DATA } from '../../../../shared/app-static-data';
 import { AssetDefaultsBuilder } from '../../../../shared/core/base/builders/asset-defaults.builder';
 import * as AppConstants from '../../../../shared/core/common/constants';
-import type * as ContractTypes from '../../../../shared/core/contracts';
 import type * as AppDTOs from '../../../../shared/core/contracts/activity.interface';
 import { ActivityResourcesService } from '../../../../shared/core/base/services/activity-resources.service';
 import type { ListQuery, PageResult } from '../../../../shared/core/contracts/list.interface';
-import {
-  ActivityStore,
-  type ActivityChatMetricBucketType
-} from '../../../../shared/ui/context/stores/activity.store';
-import { SubEventResourcePopupStore } from '../../../../shared/ui/context/stores/sub-event-resource-popup.store';
 import { AppMenuComponent } from '../../../../shared/ui/components/core/menu/menu.component';
 import { AppMenuDispatcher } from '../../../../shared/ui/components/core/menu/menu-dispatcher.service';
 import { AppMenuOutletComponent } from '../../../../shared/ui/components/core/menu/outlet/menu-outlet.component';
@@ -44,7 +38,6 @@ import { SmartListComponent } from '../../../../shared/ui/components/core/smart-
 import type {
   SmartListConfig,
   SmartListLoadPage,
-  SmartListRefreshEvent,
   SmartListStateChange
 } from '../../../../shared/ui/components/core/smart-list/smart-list.types';
 
@@ -119,8 +112,6 @@ export class EventResourceListComponent implements DoCheck {
   @Output() badgeDetailsRequested = new EventEmitter<AppDTOs.SubEventResourceCardDTO>();
   @Output() cardActionRequested = new EventEmitter<EventResourceCardActionRequest>();
   private readonly appMenuDispatcher = inject(AppMenuDispatcher);
-  private readonly activityStore = inject(ActivityStore);
-  private readonly resourcePopupStore = inject(SubEventResourcePopupStore);
   private readonly activityResourcesService = inject(ActivityResourcesService);
 
   private lastItemsSignature = '';
@@ -346,129 +337,6 @@ export class EventResourceListComponent implements DoCheck {
     });
   }
 
-  protected onResourceSmartListRefresh(event: SmartListRefreshEvent<EventResourceListItem, ResourceSmartListFilters>): void {
-    const model = this.currentModel();
-    const refreshedItems = this.resourceListItemsFromRefresh(event);
-    const metricItems = refreshedItems.length >= model.items.length ? refreshedItems : model.items;
-    this.publishSubEventResourceMetricsFromRefresh(model.filter, metricItems);
-    const identity = `${model.metricIdentity ?? ''}`.trim();
-    const bucketType = this.chatMetricBucketType(model.filter);
-    if (!identity || !bucketType) {
-      return;
-    }
-    this.activityStore.emitActivityChatMetricBucketPatch({
-      identity,
-      bucketType,
-      bucket: {
-        accepted: refreshedItems.reduce((sum, item) => sum + this.nonNegativeCount(item.card.accepted), 0),
-        pending: refreshedItems.reduce((sum, item) => sum + this.nonNegativeCount(item.card.pending), 0),
-        capacityMin: 0,
-        capacityMax: refreshedItems.reduce((sum, item) => sum + this.nonNegativeCount(item.card.capacityTotal), 0)
-      }
-    });
-  }
-
-  private publishSubEventResourceMetricsFromRefresh(
-    filter: AppConstants.AssetType,
-    items: readonly EventResourceListItem[]
-  ): void {
-    const context = this.resourcePopupStore.popupContextRef();
-    if (!context) {
-      return;
-    }
-    const metrics = {
-      accepted: items.reduce((sum, item) => sum + this.nonNegativeCount(item.card.accepted), 0),
-      pending: items.reduce((sum, item) => sum + this.nonNegativeCount(item.card.pending), 0),
-      capacityMin: this.resourceCapacityMin(context.subEvent.id, filter, items),
-      capacityMax: items.reduce((sum, item) => sum + this.nonNegativeCount(item.card.capacityTotal), 0)
-    };
-    const assignmentQuantityUpdates = this.assignmentQuantityUpdates(context.subEvent.id, filter, items);
-    const nextSubEvent = { ...context.subEvent };
-    if (filter === AppConstants.ASSET_TYPE_TRANSPORT) {
-      nextSubEvent.carsAccepted = metrics.accepted;
-      nextSubEvent.carsPending = metrics.pending;
-      nextSubEvent.carsCapacityMin = metrics.capacityMin;
-      nextSubEvent.carsCapacityMax = metrics.capacityMax;
-    } else if (filter === AppConstants.ASSET_TYPE_ACCOMMODATION) {
-      nextSubEvent.accommodationAccepted = metrics.accepted;
-      nextSubEvent.accommodationPending = metrics.pending;
-      nextSubEvent.accommodationCapacityMin = metrics.capacityMin;
-      nextSubEvent.accommodationCapacityMax = metrics.capacityMax;
-    } else {
-      nextSubEvent.suppliesAccepted = metrics.accepted;
-      nextSubEvent.suppliesPending = metrics.pending;
-      nextSubEvent.suppliesCapacityMin = metrics.capacityMin;
-      nextSubEvent.suppliesCapacityMax = metrics.capacityMax;
-    }
-    const metricsChanged = this.subEventResourceMetricsChanged(context.subEvent, nextSubEvent);
-    if (!metricsChanged && assignmentQuantityUpdates.length === 0) {
-      return;
-    }
-    const nextContext = metricsChanged
-      ? {
-          ...context,
-          subEvent: nextSubEvent
-        }
-      : context;
-    if (metricsChanged) {
-      this.resourcePopupStore.popupContextRef.set(nextContext);
-    }
-    this.resourcePopupStore.publishSubEventResourceMetrics(nextContext, { assignmentQuantityUpdates });
-  }
-
-  private assignmentQuantityUpdates(
-    subEventId: string,
-    filter: AppConstants.AssetType,
-    items: readonly EventResourceListItem[]
-  ): { assetId: string; type: AppConstants.AssetType; subEventId: string; quantity: number }[] {
-    const settings = this.resourcePopupStore.assignedAssetSettingsByKey[
-      this.resourcePopupStore.assetAssignmentKey(subEventId, filter)
-    ] ?? {};
-    return items
-      .map(item => {
-        const assetId = `${item.card.sourceAssetId ?? ''}`.trim();
-        const quantity = Math.trunc(Number(assetId ? settings[assetId]?.quantity : 0));
-        return assetId && Number.isFinite(quantity) && quantity > 0
-          ? {
-              assetId,
-              type: filter,
-              subEventId,
-              quantity
-            }
-          : null;
-      })
-      .filter((item): item is { assetId: string; type: AppConstants.AssetType; subEventId: string; quantity: number } => item !== null);
-  }
-
-  private resourceCapacityMin(
-    subEventId: string,
-    filter: AppConstants.AssetType,
-    items: readonly EventResourceListItem[]
-  ): number {
-    const settings = this.resourcePopupStore.assignedAssetSettingsByKey[
-      this.resourcePopupStore.assetAssignmentKey(subEventId, filter)
-    ] ?? {};
-    return items.reduce((sum, item) => {
-      const assetId = `${item.card.sourceAssetId ?? ''}`.trim();
-      return sum + this.nonNegativeCount(assetId ? settings[assetId]?.capacityMin : 0);
-    }, 0);
-  }
-
-  private subEventResourceMetricsChanged(current: ContractTypes.SubEventDTO, next: ContractTypes.SubEventDTO): boolean {
-    return current.carsAccepted !== next.carsAccepted
-      || current.carsPending !== next.carsPending
-      || current.carsCapacityMin !== next.carsCapacityMin
-      || current.carsCapacityMax !== next.carsCapacityMax
-      || current.accommodationAccepted !== next.accommodationAccepted
-      || current.accommodationPending !== next.accommodationPending
-      || current.accommodationCapacityMin !== next.accommodationCapacityMin
-      || current.accommodationCapacityMax !== next.accommodationCapacityMax
-      || current.suppliesAccepted !== next.suppliesAccepted
-      || current.suppliesPending !== next.suppliesPending
-      || current.suppliesCapacityMin !== next.suppliesCapacityMin
-      || current.suppliesCapacityMax !== next.suppliesCapacityMax;
-  }
-
   private async loadResourceSmartListPage(
     query: ListQuery<ResourceSmartListFilters>
   ): Promise<PageResult<EventResourceListItem>> {
@@ -519,43 +387,6 @@ export class EventResourceListComponent implements DoCheck {
       ...(item.infoCard.detailRows ?? []),
       ...(item.infoCard.menuActions ?? [])
     ].join(':');
-  }
-
-  private resourceListItemsFromRefresh(
-    event: SmartListRefreshEvent<EventResourceListItem, ResourceSmartListFilters>
-  ): EventResourceListItem[] {
-    const sourceItems = event.sourceItems
-      .map(item => this.eventResourceListItem(item))
-      .filter((item): item is EventResourceListItem => item !== null);
-    if (sourceItems.length > 0 || event.items.length === 0) {
-      return sourceItems;
-    }
-    return event.items.map(item => this.eventResourceListItem(item)).filter((item): item is EventResourceListItem => item !== null);
-  }
-
-  private eventResourceListItem(value: unknown): EventResourceListItem | null {
-    if (!value || typeof value !== 'object') {
-      return null;
-    }
-    const item = value as Partial<EventResourceListItem>;
-    return item.card && typeof item.card.id === 'string' ? item as EventResourceListItem : null;
-  }
-
-  private chatMetricBucketType(type: AppConstants.SubEventResourceFilter): ActivityChatMetricBucketType | null {
-    if (type === AppConstants.ASSET_TYPE_TRANSPORT) {
-      return 'transport';
-    }
-    if (type === AppConstants.ASSET_TYPE_ACCOMMODATION) {
-      return 'accommodation';
-    }
-    if (type === AppConstants.ASSET_TYPE_SUPPLIES) {
-      return 'supplies';
-    }
-    return null;
-  }
-
-  private nonNegativeCount(value: unknown): number {
-    return Math.max(0, Math.trunc(Number(value) || 0));
   }
 
   private infoCardMenuTitle(card: InfoCardData): string | null {
