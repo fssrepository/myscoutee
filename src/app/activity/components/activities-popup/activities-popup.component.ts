@@ -1056,11 +1056,14 @@ export class ActivitiesPopupComponent implements OnDestroy {
     ownerId: string,
     channelType: string
   ): boolean {
+    if (chatId) {
+      return `${row.id ?? ''}`.trim() === chatId;
+    }
     if (ownerId) {
       return `${row.ownerId ?? ''}`.trim() === ownerId
         && this.matchesEventChatRowChannelType(row, channelType);
     }
-    return `${row.id ?? ''}`.trim() === chatId;
+    return false;
   }
 
   private matchesEventChatRowChannelType(row: ActivityChatListItem, channelType: string): boolean {
