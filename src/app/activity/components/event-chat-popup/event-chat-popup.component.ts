@@ -1241,6 +1241,7 @@ export class EventChatPopupComponent implements OnDestroy {
       acceptedMembers: record?.acceptedMembers,
       pendingMembers: record?.pendingMembers,
       capacityTotal: record?.capacityTotal,
+      resourceOwnerUserId: record?.creatorUserId ?? null,
       editorAction: this.selectedChatEventEditorAction(record, state)
     });
   }

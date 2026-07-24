@@ -81,6 +81,7 @@ import {
   type LocationInputConfig,
   PricingEditorInputComponent,
   PoliciesInputComponent,
+  type PoliciesInputConfig,
   type PricingEditorConfig,
   type PricingEditorRuntimePreview,
   IndicatorComponent,
@@ -298,6 +299,25 @@ export class EventEditorPopupComponent implements OnInit, OnDestroy {
     slotCatalog: () => this.pricingSlotCatalog(),
     visible: () => this.checkoutPricingPanelVisibility(),
     runtimePreview: () => this.checkoutPricingRuntimePreview()
+  };
+
+  protected readonly eventPoliciesInputConfig: PoliciesInputConfig = {
+    approval: {
+      enabled: () => this.checkoutReviewMode()
+        && !this.checkoutPaymentPhase()
+        && typeof this.eventEditorStore.presentation().onPolicyToggle === 'function',
+      acceptedPolicyIds: () => this.resolvePresentationValue<readonly string[]>(
+        this.eventEditorStore.presentation().acceptedPolicyIds,
+        [] as readonly string[]
+      ),
+      disabled: () => this.resolvePresentationValue(
+        this.eventEditorStore.presentation().policyApprovalDisabled,
+        false
+      ) === true,
+      onToggle: policyId => {
+        void this.eventEditorStore.presentation().onPolicyToggle?.(policyId);
+      }
+    }
   };
 
   protected readonly slotsInputConfig: SlotsInputConfig = {
@@ -696,11 +716,11 @@ export class EventEditorPopupComponent implements OnInit, OnDestroy {
   }
 
   private resolvePresentationValue<TValue>(
-    value: TValue | (() => TValue) | null | undefined,
+    value: TValue | (() => TValue | null | undefined) | null | undefined,
     fallback: TValue
   ): TValue {
     if (typeof value === 'function') {
-      return (value as () => TValue)();
+      return (value as () => TValue | null | undefined)() ?? fallback;
     }
     return value ?? fallback;
   }

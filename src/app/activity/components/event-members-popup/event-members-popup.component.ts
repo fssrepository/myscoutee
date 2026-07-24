@@ -900,7 +900,7 @@ export class EventMembersPopupComponent {
   private async confirmRemoveMember(entry: ActivityContracts.ActivityMemberDTO): Promise<void> {
     const previousMembers = this.currentOwnerMembers();
     const owner = this.ownerRef && this.ownerRef.ownerId === this.ownerId ? this.ownerRef : null;
-    if (owner?.ownerType === 'event') {
+    if (owner) {
       await this.runMemberActionAfterUiYield(owner, entry.userId, 'remove', previousMembers);
       return;
     }
@@ -977,6 +977,9 @@ export class EventMembersPopupComponent {
     if (this.isSelfManagedLeave(entry)) {
       return `Leave ${this.ownerScopeLabel()}?`;
     }
+    if (this.isInvitation(entry) && this.isCurrentUser(entry)) {
+      return 'Reject invitation?';
+    }
     if (this.isJoinRequest(entry)) {
       return 'Reject request?';
     }
@@ -992,6 +995,9 @@ export class EventMembersPopupComponent {
   private memberRemovalMessage(entry: ActivityContracts.ActivityMemberDTO): string {
     if (this.isSelfManagedLeave(entry)) {
       return `You will leave this ${this.ownerScopeLabel()}.`;
+    }
+    if (this.isInvitation(entry) && this.isCurrentUser(entry)) {
+      return `Reject your invitation to this ${this.ownerScopeLabel()}?`;
     }
     if (this.isJoinRequest(entry)) {
       return `Reject ${entry.name}'s request to join this ${this.ownerScopeLabel()}?`;
@@ -1009,6 +1015,9 @@ export class EventMembersPopupComponent {
     if (this.isSelfManagedLeave(entry)) {
       return 'Leave';
     }
+    if (this.isInvitation(entry) && this.isCurrentUser(entry)) {
+      return 'Reject';
+    }
     if (this.isJoinRequest(entry)) {
       return 'Reject';
     }
@@ -1022,6 +1031,9 @@ export class EventMembersPopupComponent {
     if (this.isSelfManagedLeave(entry)) {
       return 'Leaving...';
     }
+    if (this.isInvitation(entry) && this.isCurrentUser(entry)) {
+      return 'Rejecting...';
+    }
     if (this.isJoinRequest(entry)) {
       return 'Rejecting...';
     }
@@ -1034,6 +1046,9 @@ export class EventMembersPopupComponent {
   private memberRemovalFailureMessage(entry: ActivityContracts.ActivityMemberDTO): string {
     if (this.isSelfManagedLeave(entry)) {
       return `Unable to leave this ${this.ownerScopeLabel()}.`;
+    }
+    if (this.isInvitation(entry) && this.isCurrentUser(entry)) {
+      return 'Unable to reject invitation.';
     }
     if (this.isJoinRequest(entry)) {
       return 'Unable to reject request.';
@@ -1057,6 +1072,9 @@ export class EventMembersPopupComponent {
     if (entry.status === 'accepted') {
       return 'Remove member';
     }
+    if (this.isInvitation(entry) && this.isCurrentUser(entry)) {
+      return 'Reject invitation';
+    }
     if (this.isJoinRequest(entry)) {
       return 'Reject request';
     }
@@ -1066,37 +1084,14 @@ export class EventMembersPopupComponent {
 
   private async applyInvites(selectedCandidates: readonly ActivityContracts.ActivityMemberDTO[]): Promise<void> {
     const previousMembers = this.currentOwnerMembers();
-    const existingPendingInvites = previousMembers.filter(member =>
-      member.status === 'pending' && member.requestKind === 'invite'
-    );
-    const preservedMembers = previousMembers.filter(member =>
-      !(member.status === 'pending' && member.requestKind === 'invite')
-    );
-    const existingPendingInviteByUserId = new Map(existingPendingInvites.map(member => [member.userId, member]));
-    const selectedUserIds = selectedCandidates.map(candidate => candidate.userId);
-    const selectionChanged = selectedUserIds.length !== existingPendingInvites.length
-      || selectedUserIds.some(userId => !existingPendingInviteByUserId.has(userId));
-    if (!selectionChanged) {
+    const existingUserIds = new Set(previousMembers.map(member => member.userId));
+    const additions = selectedCandidates.filter(candidate => !existingUserIds.has(candidate.userId));
+    if (additions.length === 0) {
       return;
     }
     const activeUserId = this.activeUserId();
     const nowIso = AppUtils.toIsoDateTime(new Date());
-    const nextPendingInvites = selectedCandidates.map(candidate => {
-      const existing = existingPendingInviteByUserId.get(candidate.userId);
-      if (existing) {
-        return {
-          ...existing,
-          ...candidate,
-          id: existing.id,
-          status: 'pending' as const,
-          pendingSource: 'admin' as const,
-          requestKind: 'invite' as const,
-          invitedByActiveUser: true,
-          invitedByUserId: activeUserId,
-          actionAtIso: existing.actionAtIso || nowIso
-        };
-      }
-      return {
+    const nextPendingInvites = additions.map(candidate => ({
         ...candidate,
         status: 'pending' as const,
         pendingSource: 'admin' as const,
@@ -1105,9 +1100,8 @@ export class EventMembersPopupComponent {
         invitedByUserId: activeUserId,
         statusText: candidate.statusText?.trim() || 'Waiting for admin approval.',
         actionAtIso: nowIso
-      };
-    });
-    await this.commitMembers([...preservedMembers, ...nextPendingInvites], previousMembers);
+      }));
+    await this.commitMembers([...previousMembers, ...nextPendingInvites], previousMembers);
   }
 
   private openMembersPopup(
@@ -1478,12 +1472,17 @@ export class EventMembersPopupComponent {
     if (this.ownerRef?.ownerType === 'event' && entry.status === 'accepted' && entry.role === 'Admin') {
       return this.isActiveUserEventOwner() && !this.isCurrentUser(entry);
     }
+    if (entry.status === 'pending' && this.isInvitation(entry)) {
+      return entry.invitedByActiveUser === true
+        || (this.ownerRef?.ownerType !== 'event' && this.isCurrentUser(entry));
+    }
+    if (entry.status === 'pending' && this.isJoinRequest(entry)) {
+      return this.canManageMembers;
+    }
     if (this.canManageMembers) {
       return true;
     }
-    return entry.status === 'pending'
-      && entry.requestKind === 'invite'
-      && entry.invitedByActiveUser === true;
+    return false;
   }
 
   protected canDisqualifyMember(entry: ActivityContracts.ActivityMemberDTO): boolean {

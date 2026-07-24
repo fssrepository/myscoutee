@@ -467,6 +467,7 @@ export class ActivitiesEventsController {
       acceptedMembers: memberSummary?.acceptedMembers,
       pendingMembers: memberSummary?.pendingMembers,
       capacityTotal: memberSummary?.capacityTotal,
+      resourceOwnerUserId: dto?.creatorUserId ?? row.ownerUserId ?? null,
       editorAction: this.isActivityInvitationRow(row) ? 'view' : this.activityEventEditorAction(row)
     });
   }

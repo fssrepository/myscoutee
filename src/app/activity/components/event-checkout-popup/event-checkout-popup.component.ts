@@ -209,7 +209,10 @@ export class EventCheckoutPopupComponent {
       basketAddDisabled: this.checkoutBasketAddDisabled(),
       showPromoCodeAction: this.checkoutPromoCodeEntryEnabled(),
       appliedPromoCodeCount: this.appliedPromoCodes.length,
+      acceptedPolicyIds: () => [...this.acceptedPolicyIds],
+      policyApprovalDisabled: () => this.checkoutPolicyApprovalDisabled(),
       onPromoCodeAction: () => this.openPromoCodePopup(),
+      onPolicyToggle: policyId => this.togglePolicy(policyId),
       onBasketAdd: event => this.addCheckoutBasketSlot(event),
       onBasketItemMenuSelect: (item, event) => this.onCheckoutBasketItemMenuSelect(item, event),
       footerItems: this.isReadOnlyCheckoutSummary() || checkoutLoading ? [] : this.checkoutFooterMenuItems(),
@@ -468,24 +471,25 @@ export class EventCheckoutPopupComponent {
   }
 
   protected togglePolicy(id: string): void {
-    if (this.acceptedPolicyIds.has(id)) {
-      this.acceptedPolicyIds.delete(id);
+    const normalizedPolicyId = id.trim();
+    const policy = this.policies().find(item => item.id.trim() === normalizedPolicyId);
+    if (!policy || policy.required !== false || this.checkoutPolicyApprovalDisabled()) {
+      return;
+    }
+    if (this.acceptedPolicyIds.has(normalizedPolicyId)) {
+      this.acceptedPolicyIds.delete(normalizedPolicyId);
     } else {
-      this.acceptedPolicyIds.add(id);
+      this.acceptedPolicyIds.add(normalizedPolicyId);
     }
-    if (this.checkoutSessionId) {
-      this.busy = true;
-      this.checkoutBusyActionId = null;
-      void this.persistCheckoutDraft()
-        .catch(error => {
-          const dialog = this.dialog();
-          this.setCheckoutErrorMessage(dialog, error, dialog?.failureMessage ?? 'Unable to update checkout.');
-        })
-        .finally(() => {
-          this.busy = false;
-          this.checkoutBusyActionId = null;
-        });
-    }
+    this.switchCheckoutReviewPhase();
+  }
+
+  private checkoutPolicyApprovalDisabled(): boolean {
+    return this.isReadOnlyCheckoutSummary()
+      || this.paymentStep
+      || this.busy
+      || this.dialog()?.loading === true
+      || this.checkoutReviewBodyLoading();
   }
 
   protected showPromoCodePopup(): boolean {

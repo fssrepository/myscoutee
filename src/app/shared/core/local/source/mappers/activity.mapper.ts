@@ -126,7 +126,11 @@ export class LocalActivityMembersBuilder {
     const nowIso = new Date(nowMs).toISOString();
     const { involvements: _involvements, ...persistedMember } = member;
     const invitedByUserId = member.status === 'pending'
-      && (member.requestKind === 'invite' || member.requestKind === 'waitlist-invite')
+      && (
+        member.requestKind === 'invite'
+        || member.requestKind === 'waitlist-invite'
+        || member.requestKind === 'approval'
+      )
         ? member.invitedByUserId?.trim() || null
         : null;
     return {

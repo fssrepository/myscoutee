@@ -49,8 +49,11 @@ export interface EventEditorPresentationOptions {
   basketAddDisabled?: EventEditorPresentationValue<boolean | null | undefined> | null;
   showPromoCodeAction?: EventEditorPresentationValue<boolean | null | undefined> | null;
   appliedPromoCodeCount?: EventEditorPresentationValue<number | null | undefined> | null;
+  acceptedPolicyIds?: EventEditorPresentationValue<readonly string[] | null | undefined> | null;
+  policyApprovalDisabled?: EventEditorPresentationValue<boolean | null | undefined> | null;
   onBasketAdd?: (event?: Event) => void | Promise<void>;
   onPromoCodeAction?: (event?: Event) => void | Promise<void>;
+  onPolicyToggle?: (policyId: string) => void | Promise<void>;
   onBasketItemMenuSelect?: (
     item: EventEditorBasketPresentationItem,
     event: AppMenuItemSelectEvent<string>
@@ -229,8 +232,13 @@ export class EventEditorPopupStore {
       basketAddDisabled: presentation?.basketAddDisabled ?? null,
       showPromoCodeAction: presentation?.showPromoCodeAction ?? null,
       appliedPromoCodeCount: presentation?.appliedPromoCodeCount ?? null,
+      acceptedPolicyIds: typeof presentation?.acceptedPolicyIds === 'function'
+        ? presentation.acceptedPolicyIds
+        : [...(presentation?.acceptedPolicyIds ?? [])],
+      policyApprovalDisabled: presentation?.policyApprovalDisabled ?? null,
       onBasketAdd: presentation?.onBasketAdd,
       onPromoCodeAction: presentation?.onPromoCodeAction,
+      onPolicyToggle: presentation?.onPolicyToggle,
       onBasketItemMenuSelect: presentation?.onBasketItemMenuSelect,
       footerItems: [...(presentation?.footerItems ?? [])],
       footerMessage: presentation?.footerMessage ?? null,

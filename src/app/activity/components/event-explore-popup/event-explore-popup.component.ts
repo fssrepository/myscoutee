@@ -818,6 +818,7 @@ export class EventExplorePopupComponent {
       acceptedMembers: record.acceptedMembers,
       pendingMembers: record.pendingMembers,
       capacityTotal: record.capacityTotal,
+      resourceOwnerUserId: record.creatorUserId,
       editorAction: 'view'
     });
     this.cdr.markForCheck();

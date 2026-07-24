@@ -224,9 +224,13 @@ export class ActivityMembersService extends BaseRouteModeService {
     const activeUserId = this.userProfileStore.activeUserId().trim();
     return entries.map(entry => {
       const { involvements: _involvements, ...persistedEntry } = entry;
-      const isPendingInvite = entry.status === 'pending'
-        && (entry.requestKind === 'invite' || entry.requestKind === 'waitlist-invite');
-      const invitedByUserId = isPendingInvite
+      const retainsInviter = entry.status === 'pending'
+        && (
+          entry.requestKind === 'invite'
+          || entry.requestKind === 'waitlist-invite'
+          || entry.requestKind === 'approval'
+        );
+      const invitedByUserId = retainsInviter
         ? (`${entry.invitedByUserId ?? ''}`.trim() || (entry.invitedByActiveUser && activeUserId ? activeUserId : null))
         : null;
       return {

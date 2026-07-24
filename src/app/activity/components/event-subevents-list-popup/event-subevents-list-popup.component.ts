@@ -817,6 +817,8 @@ export class EventSubeventsListPopupComponent {
     this.resourcePopupStore.requestSubEventResourcePopup({
       type: context.resourceType,
       ownerId,
+      assetOwnerUserId: this.event?.creatorUserId ?? null,
+      viewOnly: this.eventSubeventsStore.eventSubeventsListPopup()?.editorAction === 'view',
       parentTitle: this.popupSubtitle(),
       subEventId: `${item.id ?? ''}`.trim(),
       subEventIndex: context.subEventIndex,
@@ -1331,7 +1333,8 @@ export class EventSubeventsListPopupComponent {
       mode: request?.mode ?? null,
       acceptedMembers: request?.acceptedMembers ?? 0,
       pendingMembers: request?.pendingMembers ?? 0,
-      capacityTotal: request?.capacityTotal ?? 0
+      capacityTotal: request?.capacityTotal ?? 0,
+      creatorUserId: request?.resourceOwnerUserId ?? null
     };
   }
 

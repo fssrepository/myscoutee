@@ -55,6 +55,8 @@ export type EventResourceAssetExploreOutletActionRequest =
 export interface ResourcePopupContext {
   origin: 'chat' | 'subEventResource';
   ownerId: string;
+  assetOwnerUserId?: string;
+  viewOnly?: boolean;
   parentTitle: string;
   popupHeader?: SubEventResourcePopupPresentationHeader | null;
   subEvent: ContractTypes.SubEventDTO;
@@ -82,6 +84,8 @@ export interface SubEventResourcePopupHeader {
 export interface SubEventResourcePopupRequest {
   type: SubEventResourcePopupType;
   ownerId: string;
+  assetOwnerUserId?: string | null;
+  viewOnly?: boolean;
   subEventId?: string | null;
   subEventIndex?: number | null;
   subEventHeader?: SubEventResourcePopupHeader | null;

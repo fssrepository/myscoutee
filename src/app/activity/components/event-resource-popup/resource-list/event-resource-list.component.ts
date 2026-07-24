@@ -58,6 +58,7 @@ export interface EventResourceListModel {
   metricIdentity: string;
   filterCounts: Record<AppConstants.AssetType, number>;
   items: readonly EventResourceListItem[];
+  canAssign?: boolean;
 }
 
 export interface EventResourceCardActionRequest {
@@ -151,7 +152,9 @@ export class EventResourceListComponent implements DoCheck {
       enabled: true
     },
     emptyLabel: 'No assigned resources yet.',
-    emptyDescription: 'Assign current-user assets to see them here.',
+    emptyDescription: () => this.currentModel().canAssign === false
+      ? 'The organizer has not published resources for this category.'
+      : 'Assign current-user assets to see them here.',
     showStickyHeader: false,
     showGroupMarker: () => false,
     listLayout: 'card-grid',
@@ -248,24 +251,26 @@ export class EventResourceListComponent implements DoCheck {
   }
 
   protected quickActionsMenuItems(): readonly AppMenuItem<string, EventResourceListMenuContext>[] {
-    return [
-      {
+    const actions: AppMenuItem<string, EventResourceListMenuContext>[] = [];
+    if (this.currentModel().canAssign !== false) {
+      actions.push({
         id: 'quick-assign',
         label: 'Assign',
         icon: 'assignment_ind',
         palette: 'blue',
         surface: 'tinted',
         context: { menu: 'quick-action', action: 'assign' }
-      },
-      {
-        id: 'quick-explore',
-        label: 'Explore',
-        icon: 'explore',
-        palette: 'green',
-        surface: 'tinted',
-        context: { menu: 'quick-action', action: 'explore' }
-      }
-    ];
+      });
+    }
+    actions.push({
+      id: 'quick-explore',
+      label: 'Explore',
+      icon: 'explore',
+      palette: 'green',
+      surface: 'tinted',
+      context: { menu: 'quick-action', action: 'explore' }
+    });
+    return actions;
   }
 
   protected onEventResourceMenuSelect(event: AppMenuItemSelectEvent<string, unknown>): void {

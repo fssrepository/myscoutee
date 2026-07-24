@@ -17,6 +17,7 @@ export interface EventSubeventsListPopupRequest {
   acceptedMembers: number;
   pendingMembers: number;
   capacityTotal: number;
+  resourceOwnerUserId: string | null;
   editorAction: EventSubeventsEditorAction;
   canEdit: boolean;
 }
@@ -70,6 +71,7 @@ export class EventSubeventsPopupStore {
     acceptedMembers?: number | null;
     pendingMembers?: number | null;
     capacityTotal?: number | null;
+    resourceOwnerUserId?: string | null;
     editorAction?: EventSubeventsEditorAction;
     canEdit?: boolean;
   }): void {
@@ -101,6 +103,7 @@ export class EventSubeventsPopupStore {
       acceptedMembers: this.nonNegativeInteger(payload.acceptedMembers),
       pendingMembers: this.nonNegativeInteger(payload.pendingMembers),
       capacityTotal: this.nonNegativeInteger(payload.capacityTotal),
+      resourceOwnerUserId: `${payload.resourceOwnerUserId ?? ''}`.trim() || null,
       editorAction,
       canEdit: editorAction !== 'view'
     });

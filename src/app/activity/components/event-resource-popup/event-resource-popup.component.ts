@@ -296,6 +296,7 @@ export class EventResourcePopupComponent {
       filter: this.resourcePopupStore.resourceFilterRef(),
       metricIdentity: context ? this.chatMetricIdentity(context) : '',
       filterCounts: this.resourceFilterCounts(),
+      canAssign: context?.viewOnly !== true,
       items: cards.map(card => ({
         card,
         infoCard: ActivitySubEventResourceInfoCardConverter.convert(
@@ -391,7 +392,7 @@ export class EventResourcePopupComponent {
       activeUserAssets: this.ownedAssetCards(),
       assetSettingsByKey: this.resourcePopupStore.assignedAssetSettingsByKey,
       users: this.users,
-      eventCreatorUserId: eventRecord?.creatorUserId ?? null
+      eventCreatorUserId: eventRecord?.creatorUserId ?? context?.assetOwnerUserId ?? null
     };
   }
 
@@ -778,7 +779,9 @@ export class EventResourcePopupComponent {
       subEvent,
       request.group ?? null,
       undefined,
-      request.popupHeader ?? null
+      request.popupHeader ?? null,
+      request.assetOwnerUserId,
+      request.viewOnly
     );
     this.openPopupContext(context, request.type);
   }
@@ -826,7 +829,9 @@ export class EventResourcePopupComponent {
     rawSubEvent: ContractTypes.SubEventDTO,
     group: SubEventResourcePopupRequest['group'],
     fallbackCardsByType?: Partial<Record<AppConstants.AssetType, ResourceAssetDTO[]>>,
-    popupHeader?: SubEventResourcePopupPresentationHeader | null
+    popupHeader?: SubEventResourcePopupPresentationHeader | null,
+    assetOwnerUserId?: string | null,
+    viewOnly = false
   ): ResourcePopupContext {
     const subEvent = this.cloneSubEvent(rawSubEvent);
     const scopedSubEvent = group?.id
@@ -836,6 +841,8 @@ export class EventResourcePopupComponent {
     return {
       origin,
       ownerId: ownerId.trim(),
+      assetOwnerUserId: `${assetOwnerUserId ?? ''}`.trim() || undefined,
+      viewOnly,
       parentTitle: parentTitle.trim() || 'Event',
       popupHeader: this.normalizePopupHeader(popupHeader, parentTitle),
       subEvent: scopedSubEvent,
@@ -894,13 +901,21 @@ export class EventResourcePopupComponent {
   private hydratePopupResourceState(context: ResourcePopupContext): void {
     const ownerId = context.ownerId.trim();
     const subEventId = context.subEvent.id.trim();
-    const assetOwnerUserId = this.activeUser().id;
+    const assetOwnerUserId = `${context.assetOwnerUserId ?? this.activeUser().id}`.trim();
     if (!ownerId || !subEventId || !assetOwnerUserId) {
       return;
     }
     const applyState = (state: AppDTOs.ActivitySubEventResourceStateDTO | null): void => {
       const activeContext = this.resourcePopupStore.popupContextRef();
-      if (!state || !activeContext || activeContext.ownerId !== ownerId || activeContext.subEvent.id !== subEventId) {
+      const activeAssetOwnerUserId = `${activeContext?.assetOwnerUserId ?? this.activeUser().id}`.trim();
+      if (
+        !state
+        || !activeContext
+        || activeContext.ownerId !== ownerId
+        || activeContext.subEvent.id !== subEventId
+        || activeAssetOwnerUserId !== assetOwnerUserId
+        || state.assetOwnerUserId !== assetOwnerUserId
+      ) {
         return;
       }
       this.applyPersistedPopupState(state);
@@ -968,20 +983,20 @@ export class EventResourcePopupComponent {
       return;
     }
     const activeContext = this.resourcePopupStore.popupContextRef();
-    if (
+    const nextContext = (
       activeContext
       && activeContext.ownerId === normalizedState.ownerId
       && activeContext.subEvent.id === normalizedState.subEventId
-    ) {
-      this.resourcePopupStore.popupContextRef.set({
+    )
+      ? {
         ...activeContext,
         fallbackCardsByType: this.mergePersistedFallbackCards(
           activeContext.fallbackCardsByType,
           normalizedState.fallbackAssetCardsByType,
           normalizedState.subEventId
         )
-      });
-    }
+      }
+      : null;
     for (const type of AppConstants.ASSET_TYPES) {
       this.resourcePopupStore.assignedAssetIdsByKey[ActivityResourceBuilder.subEventAssetAssignmentKey(normalizedState.subEventId, type)] = [
         ...(normalizedState.assetAssignmentIds[type] ?? [])
@@ -999,9 +1014,17 @@ export class EventResourcePopupComponent {
       this.resourcePopupStore.supplyContributionEntriesByAssignmentKey[ActivityResourceBuilder.subEventSupplyAssignmentKey(normalizedState.subEventId, assetId)] = entries
         .map(entry => ({ ...entry }));
     }
+    if (nextContext) {
+      // Publish the reactive context only after the assignment maps are complete so
+      // the resulting render observes the fetched IDs and fallback cards together.
+      this.resourcePopupStore.popupContextRef.set(nextContext);
+    }
   }
 
   private persistPopupResourceState(context: ResourcePopupContext | null = this.resourcePopupStore.popupContextRef()): void {
+    if (context?.viewOnly) {
+      return;
+    }
     const nextState = this.buildPopupResourceState(context);
     if (!nextState) {
       return;
@@ -1017,7 +1040,7 @@ export class EventResourcePopupComponent {
     }
     const ownerId = context.ownerId.trim();
     const subEventId = context.subEvent.id.trim();
-    const assetOwnerUserId = this.activeUser().id;
+    const assetOwnerUserId = `${context.assetOwnerUserId ?? this.activeUser().id}`.trim();
     if (!ownerId || !subEventId || !assetOwnerUserId) {
       return null;
     }
@@ -2609,7 +2632,7 @@ export class EventResourcePopupComponent {
   openAssignPopup(event?: Event): void {
     event?.stopPropagation();
     const context = this.resourcePopupStore.popupContextRef();
-    if (!context) {
+    if (!context || context.viewOnly) {
       return;
     }
     this.abortPendingAssignSaveRequest();
