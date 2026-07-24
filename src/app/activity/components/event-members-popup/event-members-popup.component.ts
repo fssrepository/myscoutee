@@ -881,7 +881,7 @@ export class EventMembersPopupComponent {
   private async confirmApproveMember(entry: ActivityContracts.ActivityMemberDTO): Promise<void> {
     const previousMembers = this.currentOwnerMembers();
     const owner = this.ownerRef && this.ownerRef.ownerId === this.ownerId ? this.ownerRef : null;
-    if (owner && owner.ownerType !== 'asset') {
+    if (owner) {
       await this.runMemberActionAfterUiYield(owner, entry.userId, 'accept', previousMembers);
       return;
     }
@@ -900,7 +900,7 @@ export class EventMembersPopupComponent {
   private async confirmRemoveMember(entry: ActivityContracts.ActivityMemberDTO): Promise<void> {
     const previousMembers = this.currentOwnerMembers();
     const owner = this.ownerRef && this.ownerRef.ownerId === this.ownerId ? this.ownerRef : null;
-    if (owner && owner.ownerType !== 'asset') {
+    if (owner) {
       await this.runMemberActionAfterUiYield(owner, entry.userId, 'remove', previousMembers);
       return;
     }
@@ -1438,13 +1438,12 @@ export class EventMembersPopupComponent {
     if (entry.status !== 'pending') {
       return false;
     }
-    if (this.canManageMembers && this.isJoinRequest(entry)) {
-      return true;
+    if (this.isCurrentUser(entry)) {
+      return this.ownerRef != null
+        && this.ownerRef.ownerType !== 'event'
+        && this.isInvitation(entry);
     }
-    return this.ownerRef != null
-      && this.ownerRef.ownerType !== 'event'
-      && this.isCurrentUser(entry)
-      && this.isInvitation(entry);
+    return this.canManageMembers && this.isJoinRequest(entry);
   }
 
   protected canDeleteMember(entry: ActivityContracts.ActivityMemberDTO): boolean {
@@ -1660,8 +1659,9 @@ export class EventMembersPopupComponent {
       && entry.requestKind !== 'approval'
       && (entry.requestKind === 'invite'
       || entry.requestKind === 'waitlist-invite'
-      || entry.pendingSource === 'admin'
-      || entry.statusText.toLowerCase().includes('admin approval'));
+      || (entry.requestKind == null
+        && (entry.pendingSource === 'admin'
+          || entry.statusText.toLowerCase().includes('admin approval'))));
   }
 
   private isWaitlistMember(entry: ActivityContracts.ActivityMemberDTO): boolean {

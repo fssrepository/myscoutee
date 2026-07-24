@@ -572,6 +572,10 @@ export class AssetEditorPopupComponent {
     return this.assetStore.assetFormSavePending();
   }
 
+  protected get isCheckoutPending(): boolean {
+    return this.assetStore.assetFormCheckoutPending();
+  }
+
   protected get assetFormVisibility(): AppConstants.EventVisibility {
     return this.assetStore.assetFormVisibility();
   }
@@ -984,19 +988,39 @@ export class AssetEditorPopupComponent {
 
   protected toggleCheckoutPolicy(policyId: string): void {
     const checkout = this.assetCheckout();
-    if (!checkout || checkout.busy || checkout.phase !== 'review') {
+    if (!checkout || checkout.busy || this.isCheckoutPending || checkout.phase !== 'review') {
       return;
     }
     checkout.onPolicyToggle?.(policyId);
   }
 
   protected checkoutFooterItems(): readonly AppMenuItem<string>[] {
-    return this.assetCheckout()?.footerItems ?? [];
+    const checkout = this.assetCheckout();
+    if (!checkout) {
+      return [];
+    }
+    if (!this.isCheckoutPending) {
+      return checkout.footerItems;
+    }
+    const pendingItemId = `${checkout.pendingFooterItemId ?? ''}`.trim();
+    return checkout.footerItems.map(item => ({
+      ...item,
+      disabled: true,
+      ...(item.id === pendingItemId
+        ? {
+            label: checkout.pendingFooterLabel || item.label,
+            progress: {
+              state: 'loading' as const,
+              shape: 'button' as const
+            }
+          }
+        : {})
+    }));
   }
 
   protected onCheckoutFooterItemSelect(event: AppMenuItemSelectEvent<string>): void {
     const checkout = this.assetCheckout();
-    if (!checkout || checkout.busy) {
+    if (!checkout || checkout.busy || this.isCheckoutPending) {
       return;
     }
     checkout.onFooterItemSelect?.(event.id, event.sourceEvent);

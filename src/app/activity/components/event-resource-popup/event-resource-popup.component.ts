@@ -1972,6 +1972,8 @@ export class EventResourcePopupComponent {
             : null
         }
       ],
+      pendingFooterItemId: 'join-confirm',
+      pendingFooterLabel: 'Sending request...',
       busy: dialog.busy,
       error: dialog.error,
       onPolicyToggle: policyId => this.toggleAssignedAssetJoinPolicy(policyId),
@@ -2010,6 +2012,7 @@ export class EventResourcePopupComponent {
   }
 
   private restoreAssignedAssetJoinAfterFailure(dialog: AssignedAssetJoinDialogState): void {
+    this.assetStore.setAssetEditorCheckoutPending(false);
     this.resourcePopupStore.assignedAssetJoinDialogRef.set(dialog);
     this.syncAssignedAssetJoinCheckoutEditor(dialog);
   }
@@ -2032,65 +2035,67 @@ export class EventResourcePopupComponent {
     if (!currentRequest) {
       return;
     }
-    const nextRequests = sourceCard.requests
-      .filter(request => request.id !== currentRequest.id)
-      .map(request => ({
-        ...request,
-        booking: request.booking
-          ? {
-              ...request.booking,
-              acceptedPolicyIds: [...(request.booking.acceptedPolicyIds ?? [])]
-            }
-          : null
-      }));
-    if (this.resourcePopupStore.assignedAssetJoinDialogRef()?.sourceAssetId === sourceCard.id) {
+    const isPending = currentRequest.status === 'pending';
+    this.dialogStore.open({
+      title: `Leave ${sourceCard.title}?`,
+      message: isPending
+        ? 'You will leave this asset and withdraw your pending request.'
+        : 'You will leave this asset.',
+      cancelLabel: 'Cancel',
+      confirmLabel: 'Leave',
+      busyConfirmLabel: 'Leaving...',
+      confirmTone: 'danger',
+      failureMessage: 'Unable to leave this asset.',
+      onConfirm: () => this.confirmAssignedAssetLeave(
+        sourceCard.id,
+        sourceCard.type,
+        context.ownerId,
+        context.subEvent.id
+      )
+    });
+  }
+
+  private async confirmAssignedAssetLeave(
+    assetId: string,
+    assetType: AppConstants.AssetType,
+    eventId: string,
+    subEventId: string
+  ): Promise<void> {
+    const activeUserId = this.activeUser().id.trim();
+    if (!activeUserId) {
+      throw new Error('Unable to resolve the active member.');
+    }
+    const members = await this.activityMembersService.applyMemberAction(
+      {
+        ownerId: assetId,
+        ownerType: 'asset'
+      },
+      activeUserId,
+      'remove',
+      null,
+      {
+        eventId,
+        subEventId
+      }
+    );
+    const activeMembershipStillExists = members.some(member =>
+      member.userId === activeUserId
+      && (member.status === 'accepted' || member.status === 'pending')
+    );
+    if (activeMembershipStillExists) {
+      throw new Error('The asset membership was not removed.');
+    }
+    this.syncAssetRequestsFromMembers(assetId, assetType, members, false);
+    if (this.resourcePopupStore.assignedAssetJoinDialogRef()?.sourceAssetId === assetId) {
       this.closeAssignedAssetJoinDialog();
     }
-    if (this.isAssetOwnedByActiveUser(sourceCard)) {
-      const nextCards = this.ownedAssetCards().map(asset => (
-        asset.id === sourceCard.id && asset.type === sourceCard.type
-          ? {
-              ...asset,
-              requests: nextRequests
-            }
-          : asset
-      ));
-      if (this.assetStore.applyAssetCards(nextCards, { mutation: true, reloadList: false })) {
-        const ownerUserId = this.assetStore.activeOwnerUserIdRef().trim()
-          || this.userProfileStore.getActiveUserId().trim();
-        if (ownerUserId) {
-          void this.assetsService.replaceOwnedAssets(ownerUserId, this.assetStore.assetCards());
-        }
-      }
-      this.syncPopupSubEventMetrics();
-      return;
-    }
-    const activeContext = this.resourcePopupStore.popupContextRef();
-    if (!activeContext || activeContext.subEvent.id !== context.subEvent.id) {
-      return;
-    }
-    const nextFallbackCards = this.cloneFallbackCards(activeContext.fallbackCardsByType);
-    const existingCards = nextFallbackCards[sourceCard.type] ?? [];
-    const nextFallbackAsset = this.assignedFallbackAssetSnapshot(context.subEvent.id, {
-      ...sourceCard,
-      requests: nextRequests
-    });
-    nextFallbackCards[sourceCard.type] = existingCards.some(item => item.id === sourceCard.id)
-      ? existingCards.map(item => item.id === sourceCard.id ? nextFallbackAsset : item)
-      : [...existingCards, nextFallbackAsset];
-    const nextContext = {
-      ...activeContext,
-      fallbackCardsByType: nextFallbackCards
-    };
-    this.resourcePopupStore.popupContextRef.set(nextContext);
-    this.syncPopupSubEventMetrics(false);
-    this.persistPopupResourceState(nextContext);
   }
 
   closeAssignedAssetJoinDialog(event?: Event): void {
     event?.stopPropagation();
     const dialog = this.resourcePopupStore.assignedAssetJoinDialogRef();
     this.resourcePopupStore.assignedAssetJoinDialogRef.set(null);
+    this.assetStore.setAssetEditorCheckoutPending(false);
     const checkout = this.assetStore.assetFormCheckout();
     if (checkout?.mode === 'join' && (!dialog || checkout.sourceId === dialog.sourceAssetId)) {
       this.assetStore.closeAssetEditor();
@@ -2214,6 +2219,7 @@ export class EventResourcePopupComponent {
       error: null
     };
     this.resourcePopupStore.assignedAssetJoinDialogRef.set(busyDialog);
+    this.assetStore.setAssetEditorCheckoutPending(true);
     const activeContext = this.resourcePopupStore.popupContextRef();
     if (!activeContext || activeContext.subEvent.id !== context.subEvent.id) {
       this.restoreAssignedAssetJoinAfterFailure({
@@ -2278,8 +2284,13 @@ export class EventResourcePopupComponent {
         fallbackCardsByType: nextFallbackCards
       };
       this.resourcePopupStore.popupContextRef.set(nextContext);
-      this.syncPopupSubEventMetrics(false);
+      this.emitAssignedAssetMembersSync(
+        persistedAsset,
+        context.subEvent.id,
+        context.ownerId
+      );
       this.closeAssignedAssetJoinDialog();
+      this.syncPopupSubEventMetrics({ syncManualAssetRequests: false });
     } catch {
       const nextDialog: AssignedAssetJoinDialogState = {
         ...dialog,
@@ -3031,6 +3042,7 @@ export class EventResourcePopupComponent {
     options: boolean | {
       persistResourceState?: boolean;
       persistAssetRequests?: boolean;
+      syncManualAssetRequests?: boolean;
       assignmentQuantityUpdates?: readonly SubEventResourceAssignmentQuantityUpdate[];
     } = false
   ): void {
@@ -3040,6 +3052,7 @@ export class EventResourcePopupComponent {
     }
     const persistResourceState = typeof options === 'boolean' ? options : options.persistResourceState === true;
     const persistAssetRequests = typeof options === 'boolean' ? options : options.persistAssetRequests === true;
+    const syncManualAssetRequests = typeof options === 'boolean' || options.syncManualAssetRequests !== false;
     const assignmentQuantityUpdates = typeof options === 'boolean' ? [] : [...(options.assignmentQuantityUpdates ?? [])];
     const nextSubEvent = this.cloneSubEvent(context.subEvent);
     const cars = this.subEventAssetCapacityMetrics(nextSubEvent, AppConstants.ASSET_TYPE_TRANSPORT, { normalizeStore: false });
@@ -3081,10 +3094,31 @@ export class EventResourcePopupComponent {
     if (metricsChanged || assignmentQuantityUpdates.length > 0) {
       this.resourcePopupStore.publishSubEventResourceMetrics(nextContext, { assignmentQuantityUpdates });
     }
-    this.syncSubEventManualAssetRequests(nextContext.subEvent, persistAssetRequests);
+    if (syncManualAssetRequests) {
+      this.syncSubEventManualAssetRequests(nextContext.subEvent, persistAssetRequests);
+    }
     if (persistResourceState) {
       this.persistPopupResourceState(nextContext);
     }
+  }
+
+  private emitAssignedAssetMembersSync(
+    card: ResourceAssetDTO,
+    subEventId: string,
+    eventId: string
+  ): void {
+    const managerUserId = this.assignedAssetManagerUserId(subEventId, card.type, card.id);
+    const requests = this.assetRequestsForView(card, subEventId, managerUserId, eventId);
+    this.activityStore.emitActivityMembersSync({
+      id: card.id,
+      acceptedMembers: requests.filter(request => request.status === 'accepted').length,
+      pendingMembers: requests.filter(request => request.status === 'pending').length,
+      capacityTotal: this.assignedAssetOccupancyCapacityTotal(
+        card,
+        this.getSubEventAssignedAssetSettings(subEventId, card.type)[card.id]
+      ),
+      full: true
+    });
   }
 
   private syncAssetRequestsFromMembers(

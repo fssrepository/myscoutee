@@ -73,6 +73,8 @@ export interface AssetEditorCheckoutState {
   pricingPreview: PricingEditorRuntimePreview;
   acceptedPolicyIds: string[];
   footerItems: readonly AppMenuItem<string>[];
+  pendingFooterItemId?: string | null;
+  pendingFooterLabel?: string | null;
   busy: boolean;
   error: string | null;
   paymentProviderLabel?: string | null;
@@ -108,6 +110,7 @@ export class AssetStore {
   readonly assetFormRuntimeAssignmentRef = signal<AssetEditorRuntimeAssignmentState | null>(null);
   readonly assetFormSavedRuntimeAssignmentRef = signal<AssetEditorRuntimeAssignmentState | null>(null);
   readonly assetFormCheckoutRef = signal<AssetEditorCheckoutState | null>(null);
+  readonly assetFormCheckoutPendingRef = signal(false);
   readonly assetFormLoadingRef = signal(false);
   readonly assetFormSavePendingRef = signal(false);
   readonly pendingAssetDeleteCardIdRef = signal<string | null>(null);
@@ -149,6 +152,7 @@ export class AssetStore {
   readonly assetFormRuntimeAssignment = this.assetFormRuntimeAssignmentRef.asReadonly();
   readonly assetFormSavedRuntimeAssignment = this.assetFormSavedRuntimeAssignmentRef.asReadonly();
   readonly assetFormCheckout = this.assetFormCheckoutRef.asReadonly();
+  readonly assetFormCheckoutPending = this.assetFormCheckoutPendingRef.asReadonly();
   readonly assetFormLoading = this.assetFormLoadingRef.asReadonly();
   readonly assetFormSavePending = this.assetFormSavePendingRef.asReadonly();
   readonly pendingAssetDeleteCardId = this.pendingAssetDeleteCardIdRef.asReadonly();
@@ -338,6 +342,7 @@ export class AssetStore {
     this.assetFormRuntimeAssignmentRef.set(null);
     this.assetFormSavedRuntimeAssignmentRef.set(null);
     this.assetFormCheckoutRef.set(null);
+    this.assetFormCheckoutPendingRef.set(false);
     this.editingAssetIdRef.set(null);
     this.assetFormDraftIdRef.set(draftId.trim() || `asset-${Date.now()}`);
     this.assetFormVisibilityRef.set('Public');
@@ -370,6 +375,7 @@ export class AssetStore {
     this.assetFormRuntimeAssignmentRef.set(runtimeAssignment);
     this.assetFormSavedRuntimeAssignmentRef.set(this.cloneRuntimeAssignment(runtimeAssignment));
     this.assetFormCheckoutRef.set(this.cloneCheckout(options.checkout));
+    this.assetFormCheckoutPendingRef.set(false);
     this.assetFormDraftIdRef.set('');
     this.editingAssetIdRef.set(options.cardId);
     this.assetFormVisibilityRef.set(options.visibility);
@@ -411,6 +417,7 @@ export class AssetStore {
     this.assetFormRuntimeAssignmentRef.set(null);
     this.assetFormSavedRuntimeAssignmentRef.set(null);
     this.assetFormCheckoutRef.set(null);
+    this.assetFormCheckoutPendingRef.set(false);
     this.assetFormLoadingRef.set(false);
     this.assetFormSavePendingRef.set(false);
     this.assetFormDraftIdRef.set('');
@@ -495,6 +502,10 @@ export class AssetStore {
   setAssetEditorCheckoutState(state: AssetEditorCheckoutState | null): void {
     this.assetFormCheckoutRef.set(this.cloneCheckout(state));
     this.touchUiState();
+  }
+
+  setAssetEditorCheckoutPending(pending: boolean): void {
+    this.assetFormCheckoutPendingRef.set(pending);
   }
 
   setAssetEditorImageUrl(imageUrl: string): void {
@@ -648,6 +659,8 @@ export class AssetStore {
         .map(policyId => policyId.trim())
         .filter(Boolean),
       footerItems: (state.footerItems ?? []).map(item => ({ ...item })),
+      pendingFooterItemId: `${state.pendingFooterItemId ?? ''}`.trim() || null,
+      pendingFooterLabel: `${state.pendingFooterLabel ?? ''}`.trim() || null,
       busy: state.busy === true,
       error: `${state.error ?? ''}`.trim() || null
     };
