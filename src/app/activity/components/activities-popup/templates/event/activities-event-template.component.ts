@@ -702,6 +702,7 @@ export class ActivitiesEventsController {
       pendingMemberUserIds: [...(dto?.pendingMemberUserIds ?? [])],
       invitedMemberUserIds: [...(dto?.invitedMemberUserIds ?? [])],
       pendingRequestMemberUserIds: [...(dto?.pendingRequestMemberUserIds ?? [])],
+      activity: dto?.activity ?? row.menuBadgeCount ?? 0,
       eventScope: this.activitiesEventScope,
       checkoutState: draft?.checkoutState ?? null
     };

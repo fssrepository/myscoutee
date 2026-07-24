@@ -28,7 +28,7 @@ import type {
   AppMenuTriggerLayout,
   AppMenuValueMap
 } from '../menu.types';
-import { appMenuModelSummary } from '../menu-summary';
+import { appMenuAlertCounter, appMenuModelSummary } from '../menu-summary';
 
 @Component({
   selector: 'app-menu-trigger',
@@ -334,7 +334,8 @@ export class AppMenuTriggerComponent<TId extends string = string, TContext = unk
     if (configuredCounter !== null && configuredCounter !== undefined) {
       return configuredCounter;
     }
-    return appMenuModelSummary(this.model, this.groups).counter;
+    const summaryCounter = appMenuModelSummary(this.model, this.groups).counter;
+    return summaryCounter ?? appMenuAlertCounter(this.items, this.model, this.groups);
   }
 
   protected onTriggerPointerDown(event: Event): void {

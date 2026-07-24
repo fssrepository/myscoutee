@@ -95,7 +95,6 @@ export class LocalActivityMembersService extends LocalRouteDelayService {
     reason?: string | null
   ): Promise<ActivityMemberDTO[]> {
     await this.waitForRouteDelay(LocalActivityMembersService.MEMBERS_ROUTE);
-    void actorUserId;
     void reason;
     const normalizedOwner = this.activityMembersRepository.normalizeOwnerRef(owner);
     const normalizedTargetUserId = targetUserId.trim();
@@ -110,8 +109,20 @@ export class LocalActivityMembersService extends LocalRouteDelayService {
       if (member.userId !== normalizedTargetUserId) {
         return member;
       }
+      const acceptingOwnManagedInvitation = action === 'accept'
+        && normalizedOwner.ownerType !== 'event'
+        && actorUserId.trim() === normalizedTargetUserId
+        && (
+          member.requestKind === 'invite'
+          || member.requestKind === 'waitlist-invite'
+          || (member.requestKind == null && member.pendingSource === 'admin')
+        );
       if (action === 'accept' && member.status === 'pending'
-          && (member.requestKind === 'join' || member.requestKind === 'approval')) {
+          && (
+            member.requestKind === 'join'
+            || member.requestKind === 'approval'
+            || acceptingOwnManagedInvitation
+          )) {
         return {
           ...member,
           status: 'accepted' as const,
@@ -154,7 +165,9 @@ export class LocalActivityMembersService extends LocalRouteDelayService {
           actionAtIso: nowIso
         };
       }
-      if (action === 'step-down-admin' && member.status === 'accepted' && member.role === 'Admin') {
+      if (action === 'step-down-admin'
+          && member.status === 'accepted'
+          && (member.role === 'Admin' || member.role === 'Manager')) {
         return {
           ...member,
           role: 'Member' as const,

@@ -19,6 +19,7 @@ export type ActivityEventInfoCardMenuSubject = Record<string, unknown> & {
   pendingMemberUserIds?: readonly string[];
   invitedMemberUserIds?: readonly string[];
   pendingRequestMemberUserIds?: readonly string[];
+  activity?: number | null;
   eventScope?: string | null;
   checkoutMenuAction?: 'continueBooking' | 'paymentSummary' | null;
   checkoutState?: EventCheckoutState | null;
@@ -119,6 +120,10 @@ export class ActivityEventInfoCardMenuConverter {
       icon: config.icon,
       palette: this.actionPalette(actionId, config.tone),
       surface: 'tinted',
+      counter: actionId === 'view' && this.pendingActivityCount(subject) > 0
+        ? { value: this.pendingActivityCount(subject), max: 99 }
+        : null,
+      counterTone: actionId === 'view' ? 'alert' : 'default',
       context: {
         menu: 'activity-event-card',
         subject,
@@ -249,6 +254,15 @@ export class ActivityEventInfoCardMenuConverter {
 
   private static isAcceptedMember(subject: ActivityEventInfoCardMenuSubject, activeUserId: string): boolean {
     return this.includesUserId(subject.acceptedMemberUserIds, activeUserId);
+  }
+
+  private static pendingActivityCount(subject: ActivityEventInfoCardMenuSubject): number {
+    return this.nonNegativeInteger(subject.activity);
+  }
+
+  private static nonNegativeInteger(value: unknown): number {
+    const count = Number(value);
+    return Number.isFinite(count) ? Math.max(0, Math.trunc(count)) : 0;
   }
 
   private static checkoutJoinStarted(subject: ActivityEventInfoCardMenuSubject): boolean {

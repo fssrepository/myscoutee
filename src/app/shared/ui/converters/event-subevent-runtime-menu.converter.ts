@@ -82,13 +82,13 @@ export class EventSubeventRuntimeMenuConverter {
       : this.casualItems(item, options);
   }
 
-  static pendingBadgeCount(
+  static runtimeBadgeCount(
     item: SubEventDTO,
     options: EventSubeventRuntimeMenuConverterOptions = {}
   ): number {
     const mode = this.resolveMode(item, options);
     if (mode === 'Tournament') {
-      return Math.max(0, this.toInteger(item.membersPending));
+      return this.groupCount(item);
     }
     return [
       item.optional === true ? item.membersPending : 0,
@@ -139,6 +139,7 @@ export class EventSubeventRuntimeMenuConverter {
       surface: 'tinted',
       layout: 'pill',
       counter: this.groupCount(item) > 0 ? { value: this.groupCount(item), max: 99 } : null,
+      counterTone: 'alert',
       context: {
         scope: 'stage-dashboard',
         action: 'groups',
@@ -409,6 +410,7 @@ export class EventSubeventRuntimeMenuConverter {
       surface: 'tinted',
       layout: 'pill',
       counter: pending > 0 ? { value: pending, max: 99 } : null,
+      counterTone: 'alert',
       context: {
         scope: 'resource',
         resourceType,

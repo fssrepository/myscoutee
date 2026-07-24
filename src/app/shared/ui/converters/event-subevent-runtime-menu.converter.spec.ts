@@ -9,10 +9,10 @@ describe('EventSubeventRuntimeMenuConverter casual members', () => {
     const mandatory = subEvent({ optional: false, membersPending: 2 });
 
     expect(EventSubeventRuntimeMenuConverter.convert(optional).map(item => item.id)).toContain('members');
-    expect(EventSubeventRuntimeMenuConverter.pendingBadgeCount(optional)).toBe(5);
+    expect(EventSubeventRuntimeMenuConverter.runtimeBadgeCount(optional)).toBe(5);
 
     expect(EventSubeventRuntimeMenuConverter.convert(mandatory).map(item => item.id)).not.toContain('members');
-    expect(EventSubeventRuntimeMenuConverter.pendingBadgeCount(mandatory)).toBe(3);
+    expect(EventSubeventRuntimeMenuConverter.runtimeBadgeCount(mandatory)).toBe(3);
   });
 
   it('shows the persisted transport range and its pending red counter before opening resources', () => {
@@ -30,6 +30,18 @@ describe('EventSubeventRuntimeMenuConverter casual members', () => {
 
     expect(transport?.description).toBe('2 / 0 - 24');
     expect(transport?.counter).toEqual({ value: 2, max: 99 });
+  });
+
+  it('bubbles the tournament groups counter to the card menu badge', () => {
+    const stage = subEvent({
+      optional: false,
+      groupsCount: 3,
+      membersPending: 45
+    });
+
+    expect(EventSubeventRuntimeMenuConverter.runtimeBadgeCount(stage, {
+      mode: 'Tournament'
+    })).toBe(3);
   });
 });
 

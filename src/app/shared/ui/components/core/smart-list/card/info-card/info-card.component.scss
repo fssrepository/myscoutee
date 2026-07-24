@@ -1108,6 +1108,8 @@ button.ui-info-card__overlay-action {
 .ui-info-card__menu-trigger {
   position: relative;
   z-index: 31;
+  display: inline-grid;
+  place-items: center;
   width: 28px;
   min-width: 28px;
   max-width: 28px;
@@ -1121,11 +1123,8 @@ button.ui-info-card__overlay-action {
   border-radius: 50%;
   background: rgba(255, 255, 255, 0.88);
   color: #2d5ea8;
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
   cursor: pointer;
-  overflow: hidden;
+  overflow: visible;
   transition:
     transform 0.16s ease,
     background-color 0.16s ease,
@@ -1134,6 +1133,9 @@ button.ui-info-card__overlay-action {
 }
 
 .ui-info-card__menu-trigger .mat-icon {
+  grid-area: 1 / 1;
+  justify-self: center;
+  margin: 0;
   width: 15px;
   height: 15px;
   font-size: 15px;
@@ -1148,7 +1150,18 @@ button.ui-info-card__overlay-action {
 }
 
 .ui-info-card__menu-trigger.is-open .mat-icon {
-  transform: rotate(90deg);
+  transform: none;
+}
+
+.ui-info-card__menu-trigger:hover {
+  transform: none;
+}
+
+.ui-info-card__menu-counter {
+  top: -7px;
+  right: -7px;
+  z-index: 40;
+  pointer-events: none;
 }
 
 .ui-info-card__menu-backdrop {

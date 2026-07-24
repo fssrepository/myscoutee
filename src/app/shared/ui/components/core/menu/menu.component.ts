@@ -54,6 +54,7 @@ import type {
   AppMenuValueMap
 } from './menu.types';
 import {
+  appMenuAlertCounter,
   appMenuModelGroups,
   appMenuModelSummary,
   type AppMenuModelSummaryResult,
@@ -672,7 +673,8 @@ export class AppMenuComponent<TId extends string = string, TContext = unknown>
     if (configuredCounter !== null && configuredCounter !== undefined) {
       return configuredCounter;
     }
-    return this.modelSummary().counter;
+    return this.modelSummary().counter
+      ?? appMenuAlertCounter(this.items, this.model, this.groups);
   }
 
   protected toggleMenu(event: Event): void {

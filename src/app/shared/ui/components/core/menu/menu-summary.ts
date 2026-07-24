@@ -63,6 +63,64 @@ export function appMenuResolveLiveValue<T>(value: AppMenuLiveValue<T> | null | u
   return value;
 }
 
+export function appMenuAlertCounter<TId extends string = string, TContext = unknown>(
+  items: readonly AppMenuItem<TId, TContext>[] = [],
+  model: AppMenuModel<TId, TContext> | null | undefined = null,
+  fallbackGroups: readonly AppMenuGroup<TId, TContext>[] = []
+): AppMenuCounter | AppMenuCounterValue | null {
+  const visited = new Set<AppMenuItem<TId, TContext>>();
+  let numericTotal = 0;
+  let fallbackLabel = '';
+
+  const collect = (item: AppMenuItem<TId, TContext>): void => {
+    if (visited.has(item)) {
+      return;
+    }
+    visited.add(item);
+    if (item.counterTone === 'alert') {
+      const value = appMenuCounterValue(item.counter);
+      if (typeof value === 'number' && Number.isFinite(value) && value > 0) {
+        numericTotal += Math.trunc(value);
+      } else if (!fallbackLabel) {
+        fallbackLabel = `${value ?? ''}`.trim();
+      }
+    }
+    for (const child of item.items ?? []) {
+      collect(child);
+    }
+    for (const group of appMenuModelGroups(item.model, item.groups ?? [])) {
+      for (const child of group.items ?? []) {
+        collect(child);
+      }
+    }
+  };
+
+  for (const item of items) {
+    collect(item);
+  }
+  for (const group of appMenuModelGroups(model, fallbackGroups)) {
+    for (const item of group.items ?? []) {
+      collect(item);
+    }
+  }
+  if (numericTotal > 0) {
+    return { value: numericTotal, max: 99 };
+  }
+  return fallbackLabel || null;
+}
+
+function appMenuCounterValue(
+  counter: AppMenuCounter | AppMenuCounterValue | null | undefined
+): number | string | null | undefined {
+  if (counter === null || counter === undefined) {
+    return null;
+  }
+  if (typeof counter === 'object' && 'value' in counter) {
+    return appMenuResolveLiveValue(counter.value);
+  }
+  return appMenuResolveLiveValue(counter);
+}
+
 function appMenuSelectedLabels<TId extends string, TContext>(
   groups: readonly AppMenuGroup<TId, TContext>[],
   selection: AppMenuModelSummarySelection | null

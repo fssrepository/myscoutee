@@ -60,7 +60,7 @@ export class LocalActivityEventsMapper {
       subtitle: record.subtitle,
       timeframe: record.timeframe,
       inviter: record.inviter ?? null,
-      activity: record.activity,
+      activity: this.aggregateRuntimeActivity(record),
       creatorUserId: record.creatorUserId,
       creatorName: record.creatorName,
       creatorInitials: record.creatorInitials,
@@ -854,6 +854,24 @@ export class LocalActivityEventsMapper {
     return record?.generated === true || record?.eventType === 'slot' || Boolean(record?.parentEventId);
   }
 
+  private static aggregateRuntimeActivity(record: ActivityEventRecord): number {
+    const mode = ActivityEventDetailDTO.normalizeMode(record.mode);
+    const subEventPending = (record.subEvents ?? []).reduce((total, item) => {
+      if (mode === 'Tournament') {
+        return total + this.nonNegativeInteger(item.groupsCount);
+      }
+      return total
+        + (item.optional === true ? this.nonNegativeInteger(item.membersPending) : 0)
+        + this.nonNegativeInteger(item.carsPending)
+        + this.nonNegativeInteger(item.accommodationPending)
+        + this.nonNegativeInteger(item.suppliesPending);
+    }, 0);
+    return Math.max(
+      this.nonNegativeInteger(record.activity),
+      subEventPending
+    );
+  }
+
   private static nonNegativeInteger(value: unknown): number {
     const parsed = Number(value);
     if (!Number.isFinite(parsed)) {
@@ -1007,7 +1025,7 @@ export class LocalActivityEventDetailsMapper {
       timeframe: record.timeframe,
       inviter: record.inviter ?? null,
       unread: record.unread,
-      activity: record.activity,
+      activity: this.aggregateRuntimeActivity(record),
       trashedAtIso: 'trashedAtIso' in record ? record.trashedAtIso ?? null : undefined,
       creatorUserId: record.creatorUserId,
       creatorName: record.creatorName,
@@ -1337,6 +1355,24 @@ export class LocalActivityEventDetailsMapper {
 
   private static nonNegativeInteger(value: unknown): number {
     return this.normalizeCount(value) ?? 0;
+  }
+
+  private static aggregateRuntimeActivity(record: ActivityEventRecord): number {
+    const mode = ActivityEventDetailDTO.normalizeMode(record.mode);
+    const subEventPending = (record.subEvents ?? []).reduce((total, item) => {
+      if (mode === 'Tournament') {
+        return total + this.nonNegativeInteger(item.groupsCount);
+      }
+      return total
+        + (item.optional === true ? this.nonNegativeInteger(item.membersPending) : 0)
+        + this.nonNegativeInteger(item.carsPending)
+        + this.nonNegativeInteger(item.accommodationPending)
+        + this.nonNegativeInteger(item.suppliesPending);
+    }, 0);
+    return Math.max(
+      this.nonNegativeInteger(record.activity),
+      subEventPending
+    );
   }
 
   private static uniqueUserIds(userIds: readonly string[]): string[] {

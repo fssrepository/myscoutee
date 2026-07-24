@@ -13,4 +13,16 @@ describe('ActivityEventInfoCardConverter activity badge', () => {
 
     expect(card.menuBadgeCount).toBe(3);
   });
+
+  it('keeps pending members on the dedicated media badge instead of the menu badge', () => {
+    const card = ActivityEventInfoCardConverter.convert({
+      id: 'event-1',
+      title: 'Seattle Wildflower Meetup',
+      activity: 0,
+      pendingMembers: 2
+    } as ActivityEventDTO);
+
+    expect(card.menuBadgeCount).toBe(0);
+    expect(card.mediaEnd?.pendingCount).toBe(2);
+  });
 });

@@ -4719,6 +4719,7 @@ export class EventChatPopupComponent implements OnDestroy {
       pendingMemberUserIds: [...(record?.pendingMemberUserIds ?? [])],
       invitedMemberUserIds: [...(record?.invitedMemberUserIds ?? [])],
       pendingRequestMemberUserIds: [...(record?.pendingRequestMemberUserIds ?? [])],
+      activity: record?.activity ?? 0,
       eventScope: record?.type ?? null
     };
   }

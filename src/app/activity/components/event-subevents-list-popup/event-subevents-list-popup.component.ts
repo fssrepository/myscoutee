@@ -50,7 +50,9 @@ import {
   ActivityChatSingleRowConverter,
   EventSubeventRuntimeInfoCardConverter,
   EventSubeventRuntimeMenuConverter,
+  EventSubeventsListContextMenuConverter,
   EventSubeventsSlotConverter,
+  type EventSubeventsListContextAction,
   type EventSubeventsSlotModel,
   type EventSubeventRuntimeMenuContext,
   type EventSubeventRuntimeMenuItemId
@@ -76,7 +78,6 @@ import {
 
 type EventSubeventsListView = 'day' | 'week' | 'month';
 type EventSubeventsListOrder = 'upcoming' | 'past';
-type EventSubeventsListContextAction = 'participantFilter' | 'edit' | 'manage' | 'view' | 'members';
 type EventSubeventsListPopupMenuContext =
   | { menu: 'order'; order: EventSubeventsListOrder }
   | { menu: 'view'; view: EventSubeventsListView }
@@ -583,42 +584,12 @@ export class EventSubeventsListPopupComponent {
 
   protected contextMenuItems(): readonly AppMenuItem<string, EventSubeventsListPopupMenuContext>[] {
     const editorAction = this.eventSubeventsStore.eventSubeventsListPopup()?.editorAction ?? 'view';
-    const canEditStructure = editorAction === 'edit';
-    const memberCount = this.eventMembersCount();
-    return [
-      {
-        id: 'participant-filter',
-        label: 'event.subevents.my.participation',
-        icon: this.participantOnly ? 'person_pin_circle' : 'person_pin',
-        kind: 'toggle',
-        layout: 'pill',
-        active: this.participantOnly,
-        checked: this.participantOnly,
-        closeOnSelect: false,
-        palette: 'green',
-        context: { menu: 'context', action: 'participantFilter' }
-      },
-      {
-        id: editorAction,
-        label: canEditStructure ? 'edit' : 'view',
-        icon: canEditStructure ? 'edit' : 'visibility',
-        palette: canEditStructure ? 'amber' : 'teal',
-        surface: 'tinted',
-        layout: 'action',
-        context: { menu: 'context', action: editorAction }
-      },
-      {
-        id: 'members',
-        label: 'members',
-        icon: 'groups',
-        palette: 'violet',
-        surface: 'tinted',
-        layout: 'action',
-        disabled: this.membersDisabled(),
-        counter: memberCount > 0 ? memberCount : null,
-        context: { menu: 'context', action: 'members' }
-      }
-    ];
+    return EventSubeventsListContextMenuConverter.convert({
+      participantOnly: this.participantOnly,
+      editorAction,
+      pendingMembers: this.eventPendingMembersCount(),
+      membersDisabled: this.membersDisabled()
+    });
   }
 
   private selectContextAction(action: EventSubeventsListContextAction): void {
@@ -694,16 +665,6 @@ export class EventSubeventsListPopupComponent {
     return Math.floor(pendingCount);
   }
 
-  protected eventMembersCount(): number {
-    const event = this.event;
-    if (!event) {
-      return 0;
-    }
-    const pending = this.eventPendingMembersCount();
-    const accepted = Math.max(0, Number(event.acceptedMembers) || 0);
-    return accepted + pending;
-  }
-
   protected cardFor(item: SubEventDTO, groupLabel: string | null): InfoCardData {
     const section = this.slotSectionForItem(item);
     const sequence = this.subEventSequence(item);
@@ -716,11 +677,7 @@ export class EventSubeventsListPopupComponent {
       sequenceNumber: sequence.number,
       sequenceTotal: sequence.total,
       hasMenuOptions: true,
-      menuTitle: item.name,
-      menuBadgeCount: EventSubeventRuntimeMenuConverter.pendingBadgeCount(item, {
-        event: this.event,
-        mode: this.event?.mode
-      })
+      menuTitle: item.name
     });
   }
 

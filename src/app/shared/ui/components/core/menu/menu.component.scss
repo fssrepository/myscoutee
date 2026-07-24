@@ -517,6 +517,7 @@
   cursor: pointer;
   box-shadow: 0 8px 18px var(--app-menu-shadow);
   overflow: visible;
+  isolation: isolate;
   transition:
     transform 0.14s ease,
     box-shadow 0.14s ease,
@@ -584,6 +585,8 @@
 }
 
 .app-menu__trigger--layout-icon {
+  display: inline-grid;
+  place-items: center;
   width: 34px;
   height: 34px;
   min-width: 34px;
@@ -600,7 +603,7 @@
   box-shadow: 0 2px 8px rgba(26, 43, 69, 0.15);
   color: var(--app-menu-icon);
   filter: none;
-  transform: translateY(-1px);
+  transform: none;
 }
 
 .app-menu__trigger--layout-icon:active {
@@ -655,6 +658,11 @@
 }
 
 .app-menu__trigger--layout-icon > .mat-icon:not(.app-menu__trigger-caret) {
+  grid-area: 1 / 1;
+  justify-self: center;
+  margin: 0;
+  position: relative;
+  z-index: 1;
   transform-origin: center;
   transition:
     transform 0.18s cubic-bezier(0.22, 0.61, 0.36, 1),
@@ -663,7 +671,7 @@
 }
 
 .app-menu__trigger--layout-icon.app-menu__trigger--open > .mat-icon:not(.app-menu__trigger-caret) {
-  transform: rotate(90deg);
+  transform: none;
 }
 
 .app-menu__trigger--layout-icon .mat-icon {
@@ -2713,6 +2721,10 @@ a.app-menu__item {
   right: -0.28rem;
 }
 
+.app-menu__trigger > .app-menu__counter--trigger {
+  z-index: 10;
+}
+
 .app-menu__counter--tile {
   top: -6px;
   right: -6px;
@@ -2737,6 +2749,17 @@ a.app-menu__item {
   font-size: 0.68rem;
   font-weight: 900;
   box-shadow: none;
+}
+
+.app-menu__panel--dropdown-list .app-menu__counter--alert {
+  min-width: 20px;
+  width: auto;
+  height: 20px;
+  padding: 0 5px;
+  border: 1px solid #fff;
+  background: linear-gradient(180deg, #e24955 0%, #c93240 100%);
+  color: #fff;
+  box-shadow: 0 4px 9px rgba(163, 36, 48, 0.22);
 }
 
 .app-menu__panel--dropdown-list .app-menu__item-header > .app-menu__counter {
