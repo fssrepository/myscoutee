@@ -92,6 +92,9 @@ import {
   eventChatPopupRequestFromChat
 } from '../../../shared/ui/context/stores/activities-popup.store';
 import {
+  ActivityStore
+} from '../../../shared/ui/context/stores/activity.store';
+import {
   SubEventResourcePopupStore,
   type SubEventResourceAssignmentQuantityUpdate
 } from '../../../shared/ui/context/stores/sub-event-resource-popup.store';
@@ -152,6 +155,7 @@ export class EventResourcePopupComponent {
   private readonly shareTokensService = inject(ShareTokensService);
   private readonly activityResourcesService = inject(ActivityResourcesService);
   private readonly activityMembersService = inject(ActivityMembersService);
+  private readonly activityStore = inject(ActivityStore);
   private readonly i18n = inject(I18nService);
 
   @Input() parentZIndex = 2500;
@@ -292,18 +296,31 @@ export class EventResourcePopupComponent {
     const cards = this.resourceCards();
     const converterOptions = this.resourceInfoCardConverterOptions();
     const context = this.resourcePopupStore.popupContextRef();
+    const memberSyncByOwnerId = this.activityStore.activityMembersSyncByOwnerId();
     return {
       filter: this.resourcePopupStore.resourceFilterRef(),
       metricIdentity: context ? this.chatMetricIdentity(context) : '',
       filterCounts: this.resourceFilterCounts(),
       canAssign: context?.viewOnly !== true,
-      items: cards.map(card => ({
-        card,
-        infoCard: ActivitySubEventResourceInfoCardConverter.convert(
-          card,
-          converterOptions
-        )
-      }))
+      items: cards.map(card => {
+        const memberSync = card.sourceAssetId
+          ? memberSyncByOwnerId[card.sourceAssetId]
+          : null;
+        const displayCard = memberSync
+          ? {
+              ...card,
+              accepted: memberSync.acceptedMembers,
+              pending: memberSync.pendingMembers
+            }
+          : card;
+        return {
+          card: displayCard,
+          infoCard: ActivitySubEventResourceInfoCardConverter.convert(
+            displayCard,
+            converterOptions
+          )
+        };
+      })
     };
   }
 
@@ -1509,13 +1526,7 @@ export class EventResourcePopupComponent {
       acceptedMembers,
       pendingMembers,
       capacityTotal,
-      members: fallbackMembers,
-      onMembersChanged: nextMembers => this.syncAssetRequestsFromMembers(
-        sourceCard.id,
-        assetType,
-        nextMembers,
-        this.activityMembersService.usesLocalDataSource()
-      )
+      members: fallbackMembers
     });
   }
 

@@ -881,7 +881,7 @@ export class EventMembersPopupComponent {
   private async confirmApproveMember(entry: ActivityContracts.ActivityMemberDTO): Promise<void> {
     const previousMembers = this.currentOwnerMembers();
     const owner = this.ownerRef && this.ownerRef.ownerId === this.ownerId ? this.ownerRef : null;
-    if (owner) {
+    if (owner?.ownerType === 'event') {
       await this.runMemberActionAfterUiYield(owner, entry.userId, 'accept', previousMembers);
       return;
     }
@@ -900,7 +900,7 @@ export class EventMembersPopupComponent {
   private async confirmRemoveMember(entry: ActivityContracts.ActivityMemberDTO): Promise<void> {
     const previousMembers = this.currentOwnerMembers();
     const owner = this.ownerRef && this.ownerRef.ownerId === this.ownerId ? this.ownerRef : null;
-    if (owner) {
+    if (owner?.ownerType === 'event') {
       await this.runMemberActionAfterUiYield(owner, entry.userId, 'remove', previousMembers);
       return;
     }
