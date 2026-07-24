@@ -963,6 +963,8 @@ export class EventSubeventsListPopupComponent {
     slotId: string | null;
     stageId: string;
     groupsCount: number;
+    groupsPending: number;
+    groupsPendingDelta: number;
   }): void {
     const openEventId = `${this.eventSubeventsStore.eventSubeventsListPopup()?.eventId ?? ''}`.trim();
     const eventId = `${update.eventId ?? ''}`.trim();
@@ -979,7 +981,8 @@ export class EventSubeventsListPopupComponent {
       changed = true;
       return {
         ...item,
-        groupsCount: Math.max(0, Math.trunc(Number(update.groupsCount) || 0))
+        groupsCount: Math.max(0, Math.trunc(Number(update.groupsCount) || 0)),
+        groupsPending: Math.max(0, Math.trunc(Number(update.groupsPending) || 0))
       };
     };
     const nextSections = this.slotSections.map(section => {
@@ -993,17 +996,25 @@ export class EventSubeventsListPopupComponent {
         }
       };
     });
-    const nextItems = this.items.map(patchItem);
+    const nextItems = nextSections.length > 0
+      ? nextSections.flatMap(section => section.items)
+      : this.items.map(patchItem);
     if (!changed) {
       return;
     }
     this.slotSections = nextSections;
-    this.items = nextSections.length > 0 ? nextSections.flatMap(section => section.items) : nextItems;
-    this.syncTournamentGroupSmartListCaches(nextSections);
+    this.items = nextItems;
+    this.syncSubEventSmartListCaches(nextSections);
+    this.activityStore.emitActivityEventRuntimeSync({
+      eventId,
+      subEventId: stageId,
+      activityDelta: update.groupsPendingDelta,
+      source: 'groups'
+    });
     this.cdr.markForCheck();
   }
 
-  private syncTournamentGroupSmartListCaches(sections: readonly EventSubeventsSlotModel[]): void {
+  private syncSubEventSmartListCaches(sections: readonly EventSubeventsSlotModel[]): void {
     this.subeventsSmartList?.syncVisibleItems(sections, {
       total: sections.length,
       trackBy: (_index, section) => section.id,
@@ -1027,14 +1038,14 @@ export class EventSubeventsListPopupComponent {
     }
 
     let changed = false;
+    let activityDelta = 0;
     const patchItem = (item: SubEventDTO): SubEventDTO => {
       const itemOwnerId = this.subEventOwnerId(item);
       const itemId = `${item.id ?? ''}`.trim();
       if (itemOwnerId !== ownerId || itemId !== subEventId) {
         return item;
       }
-      changed = true;
-      return {
+      const nextItem = {
         ...item,
         carsAccepted: update.subEvent.carsAccepted,
         carsPending: update.subEvent.carsPending,
@@ -1049,6 +1060,9 @@ export class EventSubeventsListPopupComponent {
         suppliesCapacityMin: update.subEvent.suppliesCapacityMin,
         suppliesCapacityMax: update.subEvent.suppliesCapacityMax
       };
+      changed = true;
+      activityDelta += this.runtimeBadgeCount(nextItem) - this.runtimeBadgeCount(item);
+      return nextItem;
     };
 
     const nextSlotSections = this.slotSections.map(section => {
@@ -1062,12 +1076,21 @@ export class EventSubeventsListPopupComponent {
         }
       };
     });
+    const nextItems = nextSlotSections.length > 0
+      ? nextSlotSections.flatMap(section => section.items)
+      : this.items.map(patchItem);
     if (!changed) {
       return;
     }
     this.slotSections = nextSlotSections;
-    this.items = nextSlotSections.flatMap(section => section.items);
-    this.bumpQuery();
+    this.items = nextItems;
+    this.syncSubEventSmartListCaches(nextSlotSections);
+    this.activityStore.emitActivityEventRuntimeSync({
+      eventId: `${this.event?.id ?? ''}`.trim(),
+      subEventId,
+      activityDelta,
+      source: 'resources'
+    });
     this.cdr.markForCheck();
   }
 
@@ -1078,6 +1101,8 @@ export class EventSubeventsListPopupComponent {
     }
 
     let changed = false;
+    let activityDelta = 0;
+    let changedSubEventId = '';
     const patchItem = (item: SubEventDTO): SubEventDTO => {
       const itemMemberOwnerId = this.memberOwnerIdFromParts(
         this.subEventOwnerId(item),
@@ -1086,12 +1111,15 @@ export class EventSubeventsListPopupComponent {
       if (itemMemberOwnerId !== memberOwnerId) {
         return item;
       }
-      changed = true;
-      return {
+      const nextItem = {
         ...item,
         membersAccepted: Math.max(0, Math.trunc(Number(sync.acceptedMembers) || 0)),
         membersPending: Math.max(0, Math.trunc(Number(sync.pendingMembers) || 0))
       };
+      changed = true;
+      changedSubEventId = `${item.id ?? ''}`.trim();
+      activityDelta += this.runtimeBadgeCount(nextItem) - this.runtimeBadgeCount(item);
+      return nextItem;
     };
 
     const nextSlotSections = this.slotSections.map(section => {
@@ -1105,16 +1133,29 @@ export class EventSubeventsListPopupComponent {
         }
       };
     });
-    const nextItems = this.items.map(patchItem);
+    const nextItems = nextSlotSections.length > 0
+      ? nextSlotSections.flatMap(section => section.items)
+      : this.items.map(patchItem);
     if (!changed) {
       return;
     }
     this.slotSections = nextSlotSections;
-    this.items = nextSlotSections.length > 0
-      ? nextSlotSections.flatMap(section => section.items)
-      : nextItems;
-    this.bumpQuery();
+    this.items = nextItems;
+    this.syncSubEventSmartListCaches(nextSlotSections);
+    this.activityStore.emitActivityEventRuntimeSync({
+      eventId: `${this.event?.id ?? ''}`.trim(),
+      subEventId: changedSubEventId,
+      activityDelta,
+      source: 'members'
+    });
     this.cdr.markForCheck();
+  }
+
+  private runtimeBadgeCount(item: SubEventDTO): number {
+    return EventSubeventRuntimeMenuConverter.runtimeBadgeCount(item, {
+      event: this.event,
+      mode: this.event?.mode
+    });
   }
 
   private subEventIndex(item: SubEventDTO): number {

@@ -256,7 +256,8 @@ export class LocalEventsService extends LocalRouteDelayService implements IEvent
       ])
     );
     const stageRuntimeStates = this.activitySubEventStageRuntimeRepository.queryRecordsByRefs(stageRuntimeLookups)
-      .map(record => LocalActivitySubEventStageRuntimeMapper.toState(record))
+      .map((record): ActivitySubEventStageRuntimeStateDTO | null =>
+        LocalActivitySubEventStageRuntimeMapper.toState(record))
       .filter((state): state is ActivitySubEventStageRuntimeStateDTO => Boolean(state));
     const stageRuntimeByKey = new Map(
       stageRuntimeStates.map(state => [

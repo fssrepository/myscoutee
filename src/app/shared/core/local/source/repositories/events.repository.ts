@@ -1361,6 +1361,96 @@ export class LocalEventsRepository {
       ));
   }
 
+  queryTournamentStagePending(ownerSourceId: string, stageId: string): number {
+    return this.queryTournamentStageGroups({
+      eventId: `${ownerSourceId ?? ''}`.trim(),
+      stageId: `${stageId ?? ''}`.trim()
+    }).reduce((stageTotal, group) => {
+      const memberPending = Math.max(0, Math.trunc(Number(group.membersPending) || 0));
+      const resourcePending = AppConstants.ASSET_TYPES.reduce(
+        (groupTotal, type) => groupTotal
+          + Math.max(0, Math.trunc(Number(group.resourceMetricsByType?.[type]?.pending) || 0)),
+        0
+      );
+      return stageTotal + memberPending + resourcePending;
+    }, 0);
+  }
+
+  syncTournamentStagePending(ownerSourceId: string, stageId: string): void {
+    const normalizedOwnerSourceId = `${ownerSourceId ?? ''}`.trim();
+    const normalizedStageId = `${stageId ?? ''}`.trim();
+    if (!normalizedOwnerSourceId || !normalizedStageId) {
+      return;
+    }
+    const slotMarker = normalizedOwnerSourceId.indexOf(':slot:');
+    const parentSourceId = slotMarker > 0
+      ? normalizedOwnerSourceId.slice(0, slotMarker)
+      : normalizedOwnerSourceId;
+    const runtimeTable = this.normalizeStageRuntimeCollection(
+      this.memoryDb.read()[ACTIVITY_SUB_EVENT_STAGE_RUNTIME_TABLE_NAME]
+    );
+    const runtimeOwnerIds = new Set<string>([parentSourceId, normalizedOwnerSourceId]);
+    for (const runtimeId of runtimeTable.ids) {
+      const runtime = runtimeTable.byId[runtimeId];
+      if (
+        !runtime
+        || `${runtime.status ?? 'A'}`.trim() === 'D'
+        || `${runtime.subEventId ?? ''}`.trim() !== normalizedStageId
+      ) {
+        continue;
+      }
+      const runtimeOwnerId = `${runtime.ownerId ?? ''}`.trim();
+      if (runtimeOwnerId === parentSourceId || runtimeOwnerId.startsWith(`${parentSourceId}:slot:`)) {
+        runtimeOwnerIds.add(runtimeOwnerId);
+      }
+    }
+    const groupsPending = [...runtimeOwnerIds].reduce(
+      (total, runtimeOwnerId) => total + this.queryTournamentStagePending(runtimeOwnerId, normalizedStageId),
+      0
+    );
+    this.memoryDb.write(state => {
+      const table = state[EVENTS_TABLE_NAME] as ActivityEventRecordCollection;
+      let changed = false;
+      const byId = { ...table.byId };
+      for (const id of table.ids) {
+        const record = table.byId[id];
+        const sourceId = `${(record as { sourceId?: string } | null)?.sourceId ?? ''}`.trim();
+        if (!record || (record.id !== parentSourceId && sourceId !== parentSourceId)) {
+          continue;
+        }
+        let stageFound = false;
+        const subEvents = (record.subEvents ?? []).map(item => {
+          if (`${item.id ?? ''}`.trim() !== normalizedStageId) {
+            return item;
+          }
+          stageFound = true;
+          return { ...item, groupsPending };
+        });
+        if (!stageFound) {
+          continue;
+        }
+        byId[id] = {
+          ...record,
+          subEvents,
+          activity: subEvents.reduce(
+            (total, item) => total + Math.max(0, Math.trunc(Number(item.groupsPending) || 0)),
+            0
+          )
+        };
+        changed = true;
+      }
+      return changed
+        ? {
+            ...state,
+            [EVENTS_TABLE_NAME]: {
+              ...table,
+              byId
+            }
+          }
+        : state;
+    });
+  }
+
   saveTournamentGroup(request: ContractTypes.EventTournamentGroupUpsertRequestDTO): ContractTypes.EventTournamentGroupsStateDTO | null {
     const actorUserId = `${request.actorUserId ?? ''}`.trim();
     const eventId = `${request.eventId ?? ''}`.trim();

@@ -18,7 +18,6 @@ import {
 
 import {
   ActivityResourceBuilder,
-  AssetDefaultsBuilder,
   ActivityResourcesService,
   EventsService
 } from '../../../shared/core';
@@ -33,7 +32,6 @@ import {
   PopupComponent,
   type AppMenuItem,
   type AppMenuItemSelectEvent,
-  type AppMenuModel,
   type AppMenuPalette,
   type AppMenuTrigger,
   type PopupControl,
@@ -50,6 +48,7 @@ import type { EventTournamentGroupsPopupRequest } from '../../../shared/ui/conte
 import {
   EventTournamentGroupsPopupConverter,
   ActivityChatSingleRowConverter,
+  type EventTournamentGroupsActionContext,
   type EventTournamentGroupsAccordionContext,
   type EventTournamentGroupsPopupModel,
   type EventTournamentGroupsStageMenuContext
@@ -67,14 +66,6 @@ import { SubEventResourcePopupStore } from '../../../shared/ui/context/stores/su
 import { ActivitiesPopupStore } from '../../../shared/ui/context/stores/activities-popup.store';
 import { MemberMenuStore } from '../../../shared/ui/context/stores/member-menu.store';
 
-type TournamentGroupsAction =
-  | 'add-entry'
-  | 'edit-group'
-  | 'delete-group'
-  | 'members'
-  | 'transport'
-  | 'accommodation'
-  | 'supplies';
 type TournamentGroupsHeaderAction = 'add-group';
 type TournamentGroupsTab = 'standings' | 'history';
 type TournamentLeaderboardMode = 'Score' | 'Fifa';
@@ -89,12 +80,6 @@ const TOURNAMENT_MEMBER_PALETTES: readonly AppMenuPalette[] = [
   'pink',
   'teal'
 ];
-
-interface TournamentGroupsActionContext {
-  action: TournamentGroupsAction;
-  stageId: string;
-  groupId: string;
-}
 
 interface TournamentGroupsHeaderActionContext {
   action: TournamentGroupsHeaderAction;
@@ -190,6 +175,7 @@ export class EventTournamentGroupsPopupComponent {
   private handledMembersSyncMs = 0;
   private handledResourceSyncMs = 0;
   private handledResourceMetricsRevision = 0;
+  private readonly emittedStagePendingByKey = new Map<string, number>();
   private loadSequence = 0;
   private leaderboardSequence = 0;
 
@@ -315,8 +301,7 @@ export class EventTournamentGroupsPopupComponent {
     return EventTournamentGroupsPopupConverter.convert({
       state: this.state,
       selectedStageId: this.selectedStageId,
-      openGroupIds: this.openGroupIds,
-      pendingTotalsByGroupId: this.groupPendingTotals()
+      openGroupIds: this.openGroupIds
     });
   }
 
@@ -374,32 +359,8 @@ export class EventTournamentGroupsPopupComponent {
 
   protected accordionModel(
     vm: EventTournamentGroupsPopupModel
-  ): UiAccordionModel<string, EventTournamentGroupsAccordionContext, TournamentGroupsActionContext> {
-    return {
-      ...vm.accordion,
-      items: vm.accordion.items.map(item => {
-        const accordionItem = item as UiAccordionItem<
-          string,
-          EventTournamentGroupsAccordionContext,
-          TournamentGroupsActionContext
-        >;
-        const groupId = item.context?.groupId ?? item.id;
-        const group = this.groupById(vm.selectedStage, groupId);
-        if (!vm.selectedStage || !group) {
-          return accordionItem;
-        }
-        return {
-          ...accordionItem,
-          actionMenu: {
-            kind: 'select',
-            trigger: this.groupActionTrigger(vm.selectedStage, group),
-            model: this.groupActionModelFor(vm.selectedStage, group),
-            panelAlign: 'auto',
-            mobileBreakpointPx: 900
-          }
-        };
-      })
-    };
+  ): UiAccordionModel<string, EventTournamentGroupsAccordionContext, EventTournamentGroupsActionContext> {
+    return vm.accordion;
   }
 
   protected headerActionItems(): readonly AppMenuItem<string, TournamentGroupsHeaderActionContext>[] {
@@ -456,88 +417,16 @@ export class EventTournamentGroupsPopupComponent {
   }
 
   protected onAccordionActionSelect(
-    event: UiAccordionActionMenuSelectEvent<string, EventTournamentGroupsAccordionContext, TournamentGroupsActionContext>
+    event: UiAccordionActionMenuSelectEvent<
+      string,
+      EventTournamentGroupsAccordionContext,
+      EventTournamentGroupsActionContext
+    >
   ): void {
     this.onGroupActionSelect(event.itemSelect);
   }
 
-  protected groupActionTrigger(
-    _stage: ContractTypes.EventTournamentStageDTO,
-    group: ContractTypes.EventTournamentGroupDTO
-  ): AppMenuTrigger {
-    return {
-      icon: 'more_vert',
-      closeIcon: 'close',
-      hideLabel: true,
-      layout: 'icon',
-      counter: null,
-      ariaLabel: `Open actions for ${group.name}`
-    };
-  }
-
-  private groupActionModelFor(
-    stage: ContractTypes.EventTournamentStageDTO,
-    group: ContractTypes.EventTournamentGroupDTO
-  ): AppMenuModel<string, TournamentGroupsActionContext> {
-    const contextBase = { stageId: stage.subEventId, groupId: group.id };
-    const actionItems: AppMenuItem<string, TournamentGroupsActionContext>[] = [];
-    if (this.canManageGroups()) {
-      if (this.canAddScoreToStage(stage)) {
-        actionItems.push({
-          id: 'add-entry',
-          label: this.entryActionLabel(stage),
-          icon: this.entryActionIcon(stage),
-          palette: 'blue',
-          context: { ...contextBase, action: 'add-entry' }
-        });
-      }
-      actionItems.push(
-        {
-          id: 'edit-group',
-          label: 'edit',
-          icon: 'edit',
-          context: { ...contextBase, action: 'edit-group' }
-        },
-        {
-          id: 'delete-group',
-          label: 'delete',
-          icon: 'delete',
-          palette: 'danger',
-          context: { ...contextBase, action: 'delete-group' }
-        }
-      );
-    }
-    return {
-      nodes: [
-        ...(actionItems.length > 0 ? [{ id: 'actions', items: actionItems }] : []),
-        {
-          id: 'members',
-          items: [
-            this.resourceMenuItem(
-              'members',
-              'Tagok',
-              this.canInviteGroupMembers(group) ? 'group_add' : 'groups',
-              'blue',
-              contextBase,
-              `${group.membersAccepted} / ${group.capacityMin} - ${group.capacityMax}`,
-              group.membersPending
-            )
-          ]
-        },
-        {
-          id: 'assets',
-          label: 'Assets',
-          items: [
-            this.resourceMenuItem('transport', AssetDefaultsBuilder.assetTypeLabel(AppConstants.ASSET_TYPE_TRANSPORT), 'directions_car', 'sky', contextBase, this.resourceMetricLabel(stage.subEventId, group.id, AppConstants.ASSET_TYPE_TRANSPORT), this.resourceMetricPending(stage.subEventId, group.id, AppConstants.ASSET_TYPE_TRANSPORT)),
-            this.resourceMenuItem('accommodation', AssetDefaultsBuilder.assetTypeLabel(AppConstants.ASSET_TYPE_ACCOMMODATION), 'apartment', 'green', contextBase, this.resourceMetricLabel(stage.subEventId, group.id, AppConstants.ASSET_TYPE_ACCOMMODATION), this.resourceMetricPending(stage.subEventId, group.id, AppConstants.ASSET_TYPE_ACCOMMODATION)),
-            this.resourceMenuItem('supplies', AssetDefaultsBuilder.assetTypeLabel(AppConstants.ASSET_TYPE_SUPPLIES), 'inventory_2', 'brown', contextBase, this.resourceMetricLabel(stage.subEventId, group.id, AppConstants.ASSET_TYPE_SUPPLIES), this.resourceMetricPending(stage.subEventId, group.id, AppConstants.ASSET_TYPE_SUPPLIES))
-          ]
-        }
-      ]
-    };
-  }
-
-  protected onGroupActionSelect(event: AppMenuItemSelectEvent<string, TournamentGroupsActionContext>): void {
+  protected onGroupActionSelect(event: AppMenuItemSelectEvent<string, EventTournamentGroupsActionContext>): void {
     const context = event.context;
     if (!context) {
       return;
@@ -1226,6 +1115,7 @@ export class EventTournamentGroupsPopupComponent {
       }
       this.state = this.stateWithStageGroups(this.state, normalizedStageId, groups);
       this.selectedStageId = normalizedStageId;
+      this.emitGroupsUpdate(normalizedStageId);
       const selectedStage = this.stageById(normalizedStageId);
       if (this.selectedGroupId && selectedStage?.groups.some(group => group.id === this.selectedGroupId)) {
         this.openGroupIds = [this.selectedGroupId];
@@ -1307,43 +1197,8 @@ export class EventTournamentGroupsPopupComponent {
       groupId,
       state.resourceMetricsByType
     );
+    this.emitGroupsUpdate(stageId);
     this.cdr.markForCheck();
-  }
-
-  private resourceMetricLabel(stageId: string, groupId: string, type: AssetType): string {
-    const metrics = this.groupById(this.stageById(stageId), groupId)?.resourceMetricsByType?.[type] ?? null;
-    if (!metrics) {
-      return '0 / 0 - 0';
-    }
-    return `${metrics.accepted} / ${metrics.capacityMin} - ${metrics.capacityMax}`;
-  }
-
-  private resourceMetricPending(stageId: string, groupId: string, type: AssetType): number {
-    const metrics = this.groupById(this.stageById(stageId), groupId)?.resourceMetricsByType?.[type] ?? null;
-    return Math.max(0, Math.trunc(Number(metrics?.pending) || 0));
-  }
-
-  private groupPendingTotals(): Readonly<Record<string, number>> {
-    const stage = this.stageById(this.selectedStageId) ?? this.viewModelStageFallback();
-    if (!stage) {
-      return {};
-    }
-    return Object.fromEntries(stage.groups.map(group => [group.id, this.groupPendingTotal(stage, group)]));
-  }
-
-  private viewModelStageFallback(): ContractTypes.EventTournamentStageDTO | null {
-    return this.state?.stages[0] ?? null;
-  }
-
-  private groupPendingTotal(
-    stage: ContractTypes.EventTournamentStageDTO,
-    group: ContractTypes.EventTournamentGroupDTO
-  ): number {
-    const resourcePending = TOURNAMENT_RESOURCE_TYPES.reduce(
-      (total, type) => total + this.resourceMetricPending(stage.subEventId, group.id, type),
-      0
-    );
-    return Math.max(0, Math.trunc(Number(group.membersPending) || 0)) + resourcePending;
   }
 
   protected canManageGroups(): boolean {
@@ -1574,13 +1429,25 @@ export class EventTournamentGroupsPopupComponent {
   }
 
   private emitGroupsUpdate(stageId: string): void {
-    const groupsCount = this.state?.stages
-      .find(stage => stage.subEventId === stageId)?.groups.length ?? 0;
+    const stage = this.state?.stages.find(item => item.subEventId === stageId) ?? null;
+    const groupsCount = stage?.groups.length ?? 0;
+    const groupsPending = EventTournamentGroupsPopupConverter.stagePendingTotal(stage);
+    const stagePendingKey = [
+      this.requestEventId(),
+      this.requestSlotId() ?? '',
+      stageId
+    ].join(':');
+    const previousGroupsPending = this.emittedStagePendingByKey.get(stagePendingKey);
+    this.emittedStagePendingByKey.set(stagePendingKey, groupsPending);
     this.eventSubeventsStore.emitEventTournamentGroupsUpdate({
       eventId: this.requestEventId(),
       slotId: this.requestSlotId(),
       stageId,
-      groupsCount
+      groupsCount,
+      groupsPending,
+      groupsPendingDelta: previousGroupsPending == null
+        ? 0
+        : groupsPending - previousGroupsPending
     });
   }
 
@@ -1681,6 +1548,7 @@ export class EventTournamentGroupsPopupComponent {
     const acceptedMembers = members.filter(member => member.status === 'accepted');
     const pendingMembers = members.filter(member => member.status === 'pending');
     this.state = this.updateGroupCounts(this.state, stageId, groupId, acceptedMembers.length, pendingMembers.length);
+    this.emitGroupsUpdate(stageId);
     this.syncLeaderboardMembers(groupId, acceptedMembers);
     this.cdr.markForCheck();
   }
@@ -1705,6 +1573,7 @@ export class EventTournamentGroupsPopupComponent {
       Math.max(0, Math.trunc(Number(accepted) || 0)),
       Math.max(0, Math.trunc(Number(pending) || 0))
     );
+    this.emitGroupsUpdate(match.stage.subEventId);
     this.cdr.markForCheck();
   }
 
@@ -1945,42 +1814,6 @@ export class EventTournamentGroupsPopupComponent {
     this.showEntryForm = true;
   }
 
-  private resourceMenuItem(
-    id: TournamentGroupsAction,
-    label: string,
-    icon: string,
-    palette: AppMenuPalette,
-    base: { stageId: string; groupId: string },
-    description = '0 / 0 - 0',
-    pending = 0
-  ): AppMenuItem<string, TournamentGroupsActionContext> {
-    const pendingCount = Math.max(0, Math.trunc(Number(pending) || 0));
-    return {
-      id,
-      label,
-      description,
-      icon,
-      palette,
-      surface: 'tinted',
-      layout: 'pill',
-      counter: pendingCount > 0
-        ? { value: pendingCount, max: 99, ariaLabel: `${pendingCount} pending` }
-        : null,
-      context: {
-        ...base,
-        action: id
-      }
-    };
-  }
-
-  private entryActionLabel(stage: ContractTypes.EventTournamentStageDTO): string {
-    return stage.leaderboardType === 'Fifa' ? 'Add Match' : 'Add Score';
-  }
-
-  private entryActionIcon(stage: ContractTypes.EventTournamentStageDTO): string {
-    return stage.leaderboardType === 'Fifa' ? 'add_circle' : 'add';
-  }
-
   private nextGroupName(stage: ContractTypes.EventTournamentStageDTO): string {
     const index = stage.groups.length;
     return `Group ${String.fromCharCode(65 + (index % 26))}`;
@@ -2021,6 +1854,7 @@ export class EventTournamentGroupsPopupComponent {
     this.leaderboardLoading = false;
     this.groupTabs = {};
     this.detailMemberByGroupId = {};
+    this.emittedStagePendingByKey.clear();
     this.showGroupForm = false;
     this.showEntryForm = false;
   }

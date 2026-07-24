@@ -126,7 +126,8 @@ export class HttpActivityMembersService {
     actorUserId: string,
     targetUserId: string,
     action: 'accept' | 'remove' | 'disqualify' | 'reinstate' | 'promote-admin' | 'step-down-admin',
-    reason?: string | null
+    reason?: string | null,
+    options?: ActivityMembersQueryOptions
   ): Promise<ActivityContracts.ActivityMemberDTO[]> {
     const normalizedOwner = this.normalizeOwnerRef(owner);
     const normalizedTargetUserId = targetUserId.trim();
@@ -140,7 +141,9 @@ export class HttpActivityMembersService {
           actorUserId: actorUserId.trim(),
           targetUserId: normalizedTargetUserId,
           action,
-          reason: reason?.trim() || null
+          reason: reason?.trim() || null,
+          eventId: `${options?.eventId ?? ''}`.trim() || null,
+          subEventId: `${options?.subEventId ?? ''}`.trim() || null
         })
         .toPromise();
       const members = this.cloneEntries(Array.isArray(response) ? response : []);

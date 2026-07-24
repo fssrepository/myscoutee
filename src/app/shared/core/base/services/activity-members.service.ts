@@ -141,7 +141,8 @@ export class ActivityMembersService extends BaseRouteModeService {
     owner: ActivityMemberOwnerRef,
     targetUserId: string,
     action: 'accept' | 'remove' | 'disqualify' | 'reinstate' | 'promote-admin' | 'step-down-admin',
-    reason?: string | null
+    reason?: string | null,
+    options?: ActivityMembersQueryOptions
   ): Promise<ActivityContracts.ActivityMemberDTO[]> {
     const normalizedOwner = this.ownerRef(owner.ownerType, owner.ownerId.trim());
     if (!normalizedOwner.ownerId.trim()) {
@@ -152,7 +153,8 @@ export class ActivityMembersService extends BaseRouteModeService {
       this.userProfileStore.activeUserId().trim(),
       targetUserId,
       action,
-      reason
+      reason,
+      options
     ));
     this.emitActivityMembersSyncForOwner(normalizedOwner);
     return members;

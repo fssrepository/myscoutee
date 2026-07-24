@@ -7,6 +7,7 @@ import { LocalActivityResourcesRepository } from '../repositories/activity-resou
 import { LocalActivitySubEventStageRuntimeMapper } from '../mappers/activity.mapper';
 import { LocalActivitySubEventStageRuntimeRepository } from '../repositories/activity-sub-event-stage-runtime.repository';
 import { LocalAssetsRepository } from '../repositories/assets.repository';
+import { LocalEventsRepository } from '../repositories/events.repository';
 import { ActivityResourceBuilder } from '../../../base/builders/activity-resource.builder';
 import * as AppConstants from '../../../common/constants';
 
@@ -19,6 +20,7 @@ export class LocalActivityResourcesService extends LocalRouteDelayService {
   private readonly repository = inject(LocalActivityResourcesRepository);
   private readonly stageRuntimeRepository = inject(LocalActivitySubEventStageRuntimeRepository);
   private readonly assetsRepository = inject(LocalAssetsRepository);
+  private readonly eventsRepository = inject(LocalEventsRepository);
 
   peekSubEventResourceState(
     ref: AppDTOs.ActivitySubEventResourceStateRefDTO
@@ -104,6 +106,7 @@ export class LocalActivityResourcesService extends LocalRouteDelayService {
     byGroup[scope.groupId] = byAssetOwner;
     runtime.groupResourceMetricsByAssetOwnerId = byGroup;
     this.stageRuntimeRepository.replaceRecord(runtime);
+    this.eventsRepository.syncTournamentStagePending(scope.runtimeOwnerId, scope.subEventId);
     return this.aggregateGroupRuntimeMetrics(byAssetOwner);
   }
 

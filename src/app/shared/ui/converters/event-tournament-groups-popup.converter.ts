@@ -1,18 +1,25 @@
 import { AppUtils } from '../../app-utils';
+import { AssetDefaultsBuilder } from '../../core/base/builders/asset-defaults.builder';
+import * as AppConstants from '../../core/common/constants';
+import type { AssetType } from '../../core/common/constants';
 import type {
   EventTournamentGroupDTO,
   EventTournamentGroupsStateDTO,
   EventTournamentStageDTO
 } from '../../core/contracts/event.interface';
 import type { UiAccordionItem, UiAccordionModel } from '../components/core/accordion';
-import type { AppMenuItem, AppMenuPalette, AppMenuTrigger } from '../components/core/menu';
+import type {
+  AppMenuItem,
+  AppMenuModel,
+  AppMenuPalette,
+  AppMenuTrigger
+} from '../components/core/menu';
 import type { UiConverter } from './converter.types';
 
 export interface EventTournamentGroupsPopupConverterInput {
   state: EventTournamentGroupsStateDTO | null;
   selectedStageId: string | null;
   openGroupIds: readonly string[];
-  pendingTotalsByGroupId?: Readonly<Record<string, number>>;
 }
 
 export interface EventTournamentGroupsStageMenuContext {
@@ -24,6 +31,21 @@ export interface EventTournamentGroupsAccordionContext {
   stageId: string;
 }
 
+export type EventTournamentGroupsAction =
+  | 'add-entry'
+  | 'edit-group'
+  | 'delete-group'
+  | 'members'
+  | 'transport'
+  | 'accommodation'
+  | 'supplies';
+
+export interface EventTournamentGroupsActionContext {
+  action: EventTournamentGroupsAction;
+  stageId: string;
+  groupId: string;
+}
+
 export interface EventTournamentGroupsPopupModel {
   title: string;
   subtitle: string;
@@ -31,7 +53,11 @@ export interface EventTournamentGroupsPopupModel {
   canManage: boolean;
   stageTrigger: AppMenuTrigger;
   stageItems: readonly AppMenuItem<string, EventTournamentGroupsStageMenuContext>[];
-  accordion: UiAccordionModel<string, EventTournamentGroupsAccordionContext>;
+  accordion: UiAccordionModel<
+    string,
+    EventTournamentGroupsAccordionContext,
+    EventTournamentGroupsActionContext
+  >;
 }
 
 export class EventTournamentGroupsPopupConverter
@@ -57,7 +83,7 @@ export class EventTournamentGroupsPopupConverter
               group,
               index,
               openIds,
-              input.pendingTotalsByGroupId?.[group.id] ?? group.membersPending
+              state?.canManage === true
             ))
           : [],
         multi: false,
@@ -98,11 +124,15 @@ export class EventTournamentGroupsPopupConverter
   }
 
   private static stageTrigger(stage: EventTournamentStageDTO | null): AppMenuTrigger {
+    const pending = this.stagePendingTotal(stage);
     return {
       label: stage?.title ?? 'Stage',
       icon: 'emoji_events',
       palette: stage ? this.stagePalette(stage.stageNumber) : 'blue',
       layout: 'pill',
+      counter: pending > 0
+        ? { value: pending, max: 99, ariaLabel: `${pending} pending changes` }
+        : null,
       ariaLabel: 'Select stage'
     };
   }
@@ -111,6 +141,7 @@ export class EventTournamentGroupsPopupConverter
     stage: EventTournamentStageDTO,
     selectedStageId: string | null
   ): AppMenuItem<string, EventTournamentGroupsStageMenuContext> {
+    const pending = this.stagePendingTotal(stage);
     return {
       id: stage.subEventId,
       label: stage.title,
@@ -120,7 +151,10 @@ export class EventTournamentGroupsPopupConverter
       surface: 'tinted',
       kind: 'radio',
       active: stage.subEventId === selectedStageId,
-      counter: stage.groups.length > 0 ? { value: stage.groups.length, max: 99 } : null,
+      counter: pending > 0
+        ? { value: pending, max: 99, ariaLabel: `${pending} pending changes` }
+        : null,
+      counterTone: 'alert',
       context: { stageId: stage.subEventId }
     };
   }
@@ -130,11 +164,15 @@ export class EventTournamentGroupsPopupConverter
     group: EventTournamentGroupDTO,
     index: number,
     openIds: ReadonlySet<string>,
-    pendingTotalValue: number
-  ): UiAccordionItem<string, EventTournamentGroupsAccordionContext> {
+    canManage: boolean
+  ): UiAccordionItem<
+    string,
+    EventTournamentGroupsAccordionContext,
+    EventTournamentGroupsActionContext
+  > {
     const capacity = this.groupCapacityLabel(group);
     const accepted = Math.max(0, Math.trunc(Number(group.membersAccepted) || 0));
-    const pendingTotal = Math.max(0, Math.trunc(Number(pendingTotalValue) || 0));
+    const pendingTotal = this.groupPendingTotal(group);
     const memberLabel = accepted === 1 ? '1 member' : `${accepted} members`;
     const pendingLabel = pendingTotal === 1 ? '1 pending' : `${pendingTotal} pending`;
     return {
@@ -157,11 +195,170 @@ export class EventTournamentGroupsPopupConverter
       ],
       palette: this.groupPalette(index),
       open: openIds.has(group.id),
+      actionMenu: this.groupActionMenu(stage, group, canManage, pendingTotal),
       context: {
         groupId: group.id,
         stageId: stage.subEventId
       }
     };
+  }
+
+  private static groupActionMenu(
+    stage: EventTournamentStageDTO,
+    group: EventTournamentGroupDTO,
+    canManage: boolean,
+    pendingTotal: number
+  ): {
+    kind: 'select';
+    trigger: AppMenuTrigger;
+    model: AppMenuModel<string, EventTournamentGroupsActionContext>;
+    panelAlign: 'auto';
+    mobileBreakpointPx: number;
+  } {
+    const contextBase = { stageId: stage.subEventId, groupId: group.id };
+    const actions: AppMenuItem<string, EventTournamentGroupsActionContext>[] = [];
+    if (canManage) {
+      if (`${stage.stageStatus ?? ''}`.trim().toUpperCase() === 'SR') {
+        actions.push({
+          id: 'add-entry',
+          label: stage.leaderboardType === 'Fifa' ? 'Add Match' : 'Add Score',
+          icon: stage.leaderboardType === 'Fifa' ? 'add_circle' : 'add',
+          palette: 'blue',
+          context: { ...contextBase, action: 'add-entry' }
+        });
+      }
+      actions.push(
+        {
+          id: 'edit-group',
+          label: 'edit',
+          icon: 'edit',
+          context: { ...contextBase, action: 'edit-group' }
+        },
+        {
+          id: 'delete-group',
+          label: 'delete',
+          icon: 'delete',
+          palette: 'danger',
+          context: { ...contextBase, action: 'delete-group' }
+        }
+      );
+    }
+    return {
+      kind: 'select',
+      trigger: {
+        icon: 'more_vert',
+        closeIcon: 'close',
+        hideLabel: true,
+        layout: 'icon',
+        counter: pendingTotal > 0
+          ? { value: pendingTotal, max: 99, ariaLabel: `${pendingTotal} pending changes` }
+          : null,
+        ariaLabel: `Open actions for ${group.name}`
+      },
+      model: {
+        nodes: [
+          ...(actions.length > 0 ? [{ id: 'actions', items: actions }] : []),
+          {
+            id: 'members',
+            items: [
+              this.pendingMenuItem(
+                'members',
+                'Tagok',
+                canManage ? 'group_add' : 'groups',
+                'blue',
+                contextBase,
+                `${group.membersAccepted} / ${group.capacityMin} - ${group.capacityMax}`,
+                group.membersPending
+              )
+            ]
+          },
+          {
+            id: 'assets',
+            label: 'Assets',
+            items: AppConstants.ASSET_TYPES.map(type => this.resourceMenuItem(type, group, contextBase))
+          }
+        ]
+      },
+      panelAlign: 'auto',
+      mobileBreakpointPx: 900
+    };
+  }
+
+  private static resourceMenuItem(
+    type: AssetType,
+    group: EventTournamentGroupDTO,
+    contextBase: { stageId: string; groupId: string }
+  ): AppMenuItem<string, EventTournamentGroupsActionContext> {
+    const action = type === AppConstants.ASSET_TYPE_TRANSPORT
+      ? 'transport'
+      : type === AppConstants.ASSET_TYPE_ACCOMMODATION
+        ? 'accommodation'
+        : 'supplies';
+    const palette: AppMenuPalette = type === AppConstants.ASSET_TYPE_TRANSPORT
+      ? 'sky'
+      : type === AppConstants.ASSET_TYPE_ACCOMMODATION
+        ? 'green'
+        : 'brown';
+    const metric = group.resourceMetricsByType?.[type];
+    const accepted = this.count(metric?.accepted);
+    const capacityMin = this.count(metric?.capacityMin);
+    const capacityMax = Math.max(capacityMin, this.count(metric?.capacityMax));
+    return this.pendingMenuItem(
+      action,
+      AssetDefaultsBuilder.assetTypeLabel(type),
+      AssetDefaultsBuilder.assetTypeIcon(type),
+      palette,
+      contextBase,
+      `${accepted} / ${capacityMin} - ${capacityMax}`,
+      metric?.pending
+    );
+  }
+
+  private static pendingMenuItem(
+    id: EventTournamentGroupsAction,
+    label: string,
+    icon: string,
+    palette: AppMenuPalette,
+    contextBase: { stageId: string; groupId: string },
+    description: string,
+    pendingValue: number | null | undefined
+  ): AppMenuItem<string, EventTournamentGroupsActionContext> {
+    const pending = this.count(pendingValue);
+    return {
+      id,
+      label,
+      description,
+      icon,
+      palette,
+      surface: 'tinted',
+      layout: 'pill',
+      counter: pending > 0
+        ? { value: pending, max: 99, ariaLabel: `${pending} pending` }
+        : null,
+      counterTone: 'alert',
+      context: {
+        ...contextBase,
+        action: id
+      }
+    };
+  }
+
+  static groupPendingTotal(group: EventTournamentGroupDTO | null | undefined): number {
+    if (!group) {
+      return 0;
+    }
+    const resourcePending = AppConstants.ASSET_TYPES.reduce(
+      (total, type) => total + this.count(group.resourceMetricsByType?.[type]?.pending),
+      0
+    );
+    return this.count(group.membersPending) + resourcePending;
+  }
+
+  static stagePendingTotal(stage: EventTournamentStageDTO | null | undefined): number {
+    return (stage?.groups ?? []).reduce(
+      (total, group) => total + this.groupPendingTotal(group),
+      0
+    );
   }
 
   private static stageSubtitle(stage: EventTournamentStageDTO): string {
@@ -174,6 +371,11 @@ export class EventTournamentGroupsPopupConverter
     const min = Math.max(0, Math.trunc(Number(group.capacityMin) || 0));
     const max = Math.max(min, Math.trunc(Number(group.capacityMax) || min));
     return `Capacity ${min} - ${max}`;
+  }
+
+  private static count(value: unknown): number {
+    const parsed = Math.trunc(Number(value));
+    return Number.isFinite(parsed) ? Math.max(0, parsed) : 0;
   }
 }
 

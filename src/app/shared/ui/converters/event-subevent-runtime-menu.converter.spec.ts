@@ -32,16 +32,21 @@ describe('EventSubeventRuntimeMenuConverter casual members', () => {
     expect(transport?.counter).toEqual({ value: 2, max: 99 });
   });
 
-  it('bubbles the tournament groups counter to the card menu badge', () => {
+  it('bubbles pending changes inside tournament groups instead of the group count', () => {
     const stage = subEvent({
       optional: false,
-      groupsCount: 3,
+      groupsCount: 4,
+      groupsPending: 3,
       membersPending: 45
     });
 
     expect(EventSubeventRuntimeMenuConverter.runtimeBadgeCount(stage, {
       mode: 'Tournament'
     })).toBe(3);
+
+    expect(EventSubeventRuntimeMenuConverter.convert(stage, {
+      mode: 'Tournament'
+    }).find(item => item.id === 'groups')?.counter).toEqual({ value: 3, max: 99 });
   });
 });
 

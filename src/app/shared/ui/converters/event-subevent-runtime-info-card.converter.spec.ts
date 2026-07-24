@@ -27,14 +27,15 @@ describe('EventSubeventRuntimeInfoCardConverter pending activity', () => {
     expect(card.menuBadgeCount).toBe(3);
   });
 
-  it('maps the tournament groups counter onto the three-dot badge', () => {
+  it('maps pending changes inside tournament groups onto the three-dot badge', () => {
     const card = EventSubeventRuntimeInfoCardConverter.convert({
       id: 'stage-1',
       name: 'Qualifiers',
       description: '',
       startAt: '2027-03-05T12:00:00Z',
       endAt: '2027-03-05T13:20:00Z',
-      groupsCount: 3,
+      groupsCount: 4,
+      groupsPending: 3,
       membersPending: 45
     } as SubEventDTO, {
       mode: 'Tournament',

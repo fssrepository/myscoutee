@@ -35,6 +35,8 @@ export interface EventTournamentGroupsUpdate {
   slotId: string | null;
   stageId: string;
   groupsCount: number;
+  groupsPending: number;
+  groupsPendingDelta: number;
 }
 
 @Injectable({
@@ -151,18 +153,28 @@ export class EventSubeventsPopupStore {
     slotId?: string | null;
     stageId: string;
     groupsCount: number;
+    groupsPending: number;
+    groupsPendingDelta?: number;
   }): void {
     const eventId = `${payload.eventId ?? ''}`.trim();
     const stageId = `${payload.stageId ?? ''}`.trim();
     if (!eventId || !stageId) {
       return;
     }
+    const updatedMs = Math.max(
+      Date.now(),
+      (this.eventTournamentGroupsUpdateRef()?.updatedMs ?? 0) + 1
+    );
     this.eventTournamentGroupsUpdateRef.set({
-      updatedMs: Date.now(),
+      updatedMs,
       eventId,
       slotId: `${payload.slotId ?? ''}`.trim() || null,
       stageId,
-      groupsCount: Math.max(0, Math.trunc(Number(payload.groupsCount) || 0))
+      groupsCount: Math.max(0, Math.trunc(Number(payload.groupsCount) || 0)),
+      groupsPending: Math.max(0, Math.trunc(Number(payload.groupsPending) || 0)),
+      groupsPendingDelta: Number.isFinite(Number(payload.groupsPendingDelta))
+        ? Math.trunc(Number(payload.groupsPendingDelta))
+        : 0
     });
   }
 

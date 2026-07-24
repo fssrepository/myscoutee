@@ -1455,6 +1455,7 @@ export class SeedEventsBuilder {
           groupsCount: hasTournamentGroups && tournamentGroupCapacityMax
             ? Math.max(1, Math.ceil(Math.max(1, record.capacityMax ?? capacityMax) / tournamentGroupCapacityMax))
             : undefined,
+          groupsPending: hasTournamentGroups ? 0 : undefined,
           optional: item.optional === true,
           pricing: item.pricing ? SeedPricingBuilder.clonePricingConfig(item.pricing) : item.pricing,
           capacityMin,

@@ -99,6 +99,14 @@ export interface ActivityResourceSyncState {
   assetOwnerUserId: string;
 }
 
+export interface ActivityEventRuntimeSyncState {
+  updatedMs: number;
+  eventId: string;
+  subEventId: string;
+  activityDelta: number;
+  source: 'members' | 'resources' | 'groups';
+}
+
 export type ActivityChatMetricBucketType = 'members' | 'transport' | 'accommodation' | 'supplies';
 
 export interface ActivityChatMetricBucketPatch {
@@ -136,12 +144,14 @@ export class ActivityStore {
   private readonly _counterOverridesByUserId = signal<Record<string, Partial<ActivityCounters>>>({});
   private readonly _activityMembersSync = signal<ActivityMembersSyncState | null>(null);
   private readonly _activityResourceSync = signal<ActivityResourceSyncState | null>(null);
+  private readonly _activityEventRuntimeSync = signal<ActivityEventRuntimeSyncState | null>(null);
   private readonly _activityChatMetricBucketPatch = signal<ActivityChatMetricBucketPatch | null>(null);
   private readonly _activityEventFeedbackSubmitSync = signal<ActivityEventFeedbackSubmitSyncState | null>(null);
 
   readonly counterOverridesByUserId = this._counterOverridesByUserId.asReadonly();
   readonly activityMembersSync = this._activityMembersSync.asReadonly();
   readonly activityResourceSync = this._activityResourceSync.asReadonly();
+  readonly activityEventRuntimeSync = this._activityEventRuntimeSync.asReadonly();
   readonly activityChatMetricBucketPatch = this._activityChatMetricBucketPatch.asReadonly();
   readonly activityEventFeedbackSubmitSync = this._activityEventFeedbackSubmitSync.asReadonly();
 
@@ -401,6 +411,27 @@ export class ActivityStore {
       ownerId,
       subEventId,
       assetOwnerUserId
+    });
+  }
+
+  emitActivityEventRuntimeSync(payload: Omit<ActivityEventRuntimeSyncState, 'updatedMs'>): void {
+    const eventId = payload.eventId.trim();
+    const subEventId = payload.subEventId.trim();
+    if (!eventId || !subEventId) {
+      return;
+    }
+    const updatedMs = Math.max(
+      Date.now(),
+      (this._activityEventRuntimeSync()?.updatedMs ?? 0) + 1
+    );
+    this._activityEventRuntimeSync.set({
+      updatedMs,
+      eventId,
+      subEventId,
+      activityDelta: Number.isFinite(Number(payload.activityDelta))
+        ? Math.trunc(Number(payload.activityDelta))
+        : 0,
+      source: payload.source
     });
   }
 

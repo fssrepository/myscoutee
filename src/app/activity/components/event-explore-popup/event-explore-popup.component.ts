@@ -194,6 +194,7 @@ export class EventExplorePopupComponent {
   private readonly leavingEventExploreRecordIds = new Set<string>();
   private readonly eventExploreExitAnimationMs = 180;
   private lastAppliedActivityMembersUpdatedMs = 0;
+  private lastAppliedActivityRuntimeUpdatedMs = 0;
   private lastPendingCheckoutDraftSourceIds = new Set<string>();
   private readonly locallyTrackedMembershipSourceIds = new Set<string>();
   private readonly checkoutDraftClearSaveSourceIds = new Set<string>();
@@ -234,6 +235,7 @@ export class EventExplorePopupComponent {
     desktopColumns: 3,
     snapMode: 'mandatory',
     scrollPaddingTop: '2.6rem',
+    cacheable: true,
     containerClass: {
       'experience-card-list': true,
       'assets-card-list': true
@@ -289,6 +291,27 @@ export class EventExplorePopupComponent {
       }
       this.lastAppliedActivityMembersUpdatedMs = sync.updatedMs;
       this.applyActivityMembersSyncState(sync);
+    });
+
+    effect(() => {
+      const sync = this.activityStore.activityEventRuntimeSync();
+      if (!sync || sync.updatedMs <= this.lastAppliedActivityRuntimeUpdatedMs) {
+        return;
+      }
+      this.lastAppliedActivityRuntimeUpdatedMs = sync.updatedMs;
+      if (this.isOpen) {
+        this.eventExploreSmartList?.patchVisibleItem(
+          record => record.id === sync.eventId,
+          record => ({
+            ...record,
+            activity: Math.max(
+              0,
+              Math.trunc(Number(record.activity) || 0) + Math.trunc(Number(sync.activityDelta) || 0)
+            )
+          })
+        );
+        this.cdr.markForCheck();
+      }
     });
 
     effect(() => {

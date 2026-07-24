@@ -88,7 +88,7 @@ export class EventSubeventRuntimeMenuConverter {
   ): number {
     const mode = this.resolveMode(item, options);
     if (mode === 'Tournament') {
-      return this.groupCount(item);
+      return this.groupPending(item);
     }
     return [
       item.optional === true ? item.membersPending : 0,
@@ -138,7 +138,7 @@ export class EventSubeventRuntimeMenuConverter {
       palette: 'green',
       surface: 'tinted',
       layout: 'pill',
-      counter: this.groupCount(item) > 0 ? { value: this.groupCount(item), max: 99 } : null,
+      counter: this.groupPending(item) > 0 ? { value: this.groupPending(item), max: 99 } : null,
       counterTone: 'alert',
       context: {
         scope: 'stage-dashboard',
@@ -451,8 +451,8 @@ export class EventSubeventRuntimeMenuConverter {
     return 'RS';
   }
 
-  private static groupCount(item: SubEventDTO): number {
-    return Math.max(0, this.toInteger(item.groupsCount));
+  private static groupPending(item: SubEventDTO): number {
+    return Math.max(0, this.toInteger(item.groupsPending));
   }
 
   private static membersLabel(item: SubEventDTO): string {

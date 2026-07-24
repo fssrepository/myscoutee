@@ -320,6 +320,7 @@ export class ActivitiesPopupComponent implements OnDestroy {
   protected readonly leavingActivityRowIds = new Set<string>();
   protected readonly activityRowExitAnimationMs = 180;
   private lastAppliedActivityMembersUpdatedMs = 0;
+  private lastAppliedActivityRuntimeUpdatedMs = 0;
   private lastAppliedActivityChatMetricBucketPatchUpdatedMs = 0;
   private unregisterActivitiesExplanationContext: (() => void) | null = null;
   private activitiesExplanationContextKey: string | null = null;
@@ -896,6 +897,19 @@ export class ActivitiesPopupComponent implements OnDestroy {
       }
       this.lastAppliedActivityMembersUpdatedMs = sync.updatedMs;
       this.applyActivityMembersSyncState(sync);
+      this.cdr.markForCheck();
+    });
+
+    effect(() => {
+      const sync = this.activityStore.activityEventRuntimeSync();
+      if (!sync || sync.updatedMs <= this.lastAppliedActivityRuntimeUpdatedMs) {
+        return;
+      }
+      this.lastAppliedActivityRuntimeUpdatedMs = sync.updatedMs;
+      if (!this.activitiesStore.activitiesOpen() || !this.isEventActivitiesPrimaryFilter()) {
+        return;
+      }
+      this.applyActivityEventRuntimeSync(sync);
       this.cdr.markForCheck();
     });
 
@@ -2149,6 +2163,36 @@ export class ActivitiesPopupComponent implements OnDestroy {
     } else {
       smartList.removeVisibleItemByIdentity(patch.identity);
     }
+    this.refreshSectionBadges();
+  }
+
+  private applyActivityEventRuntimeSync(sync: {
+    eventId: string;
+    activityDelta: number;
+  }): void {
+    const smartList = this.activitiesSmartList;
+    const eventId = `${sync.eventId ?? ''}`.trim();
+    if (!smartList || !eventId) {
+      return;
+    }
+    const source = smartList.sourceItemsSnapshot()
+      .find((item): item is ActivityEventDTO =>
+        Boolean(item)
+        && typeof item === 'object'
+        && `${(item as ActivityEventDTO).id ?? ''}`.trim() === eventId
+      ) ?? null;
+    if (!source) {
+      return;
+    }
+    smartList.patchConvertedVisibleItem({
+      ...source,
+      activity: Math.max(
+        0,
+        Math.trunc(Number(source.activity) || 0) + Math.trunc(Number(sync.activityDelta) || 0)
+      )
+    }, {
+      predicate: row => this.isEventStyleActivity(row) && row.id === eventId
+    });
     this.refreshSectionBadges();
   }
 

@@ -8,6 +8,7 @@ import { LocalRouteDelayService } from './route-delay.service';
 import { LocalActivityMembersRepository } from '../repositories/activity-members.repository';
 import { LocalAssetsRepository } from '../repositories/assets.repository';
 import { LocalUsersRepository } from '../repositories/users.repository';
+import { LocalEventsRepository } from '../repositories/events.repository';
 import { LocalActivityMembersBuilder, type ActivityMemberProfileFallback, type LocalActivityMembersOwnerSnapshot } from '../mappers';
 import type {
   ActivityMemberDTO,
@@ -24,6 +25,7 @@ export class LocalActivityMembersService extends LocalRouteDelayService {
   private readonly activityMembersRepository = inject(LocalActivityMembersRepository);
   private readonly assetsRepository = inject(LocalAssetsRepository);
   private readonly localUsersRepository = inject(LocalUsersRepository);
+  private readonly eventsRepository = inject(LocalEventsRepository);
 
   peekMembersByOwner(owner: ActivityMemberOwnerRef): ActivityMemberDTO[] {
     return this.entriesFromRecords(this.activityMembersRepository.peekRecordsByOwner(owner), owner);
@@ -72,7 +74,6 @@ export class LocalActivityMembersService extends LocalRouteDelayService {
     }
     await this.waitForRouteDelay(LocalActivityMembersService.MEMBERS_ROUTE);
     void actorUserId;
-    void options;
     const existingRecordsById = this.existingRecordsById(normalizedOwner);
     const records = members.map(member => LocalActivityMembersBuilder.toRecord(
       normalizedOwner,
@@ -85,6 +86,12 @@ export class LocalActivityMembersService extends LocalRouteDelayService {
       records,
       capacityTotal ?? ownerSnapshot?.capacityTotal ?? null
     );
+    if (normalizedOwner.ownerType === 'group') {
+      this.eventsRepository.syncTournamentStagePending(
+        `${options?.eventId ?? ''}`.trim(),
+        `${options?.subEventId ?? ''}`.trim()
+      );
+    }
   }
 
   async applyMemberAction(
@@ -92,7 +99,8 @@ export class LocalActivityMembersService extends LocalRouteDelayService {
     actorUserId: string,
     targetUserId: string,
     action: 'accept' | 'remove' | 'disqualify' | 'reinstate' | 'promote-admin' | 'step-down-admin',
-    reason?: string | null
+    reason?: string | null,
+    options?: ActivityMembersQueryOptions
   ): Promise<ActivityMemberDTO[]> {
     await this.waitForRouteDelay(LocalActivityMembersService.MEMBERS_ROUTE);
     void reason;
@@ -196,6 +204,12 @@ export class LocalActivityMembersService extends LocalRouteDelayService {
       nextRecords,
       ownerSnapshot?.capacityTotal ?? null
     );
+    if (normalizedOwner.ownerType === 'group') {
+      this.eventsRepository.syncTournamentStagePending(
+        `${options?.eventId ?? ''}`.trim(),
+        `${options?.subEventId ?? ''}`.trim()
+      );
+    }
     return this.entriesFromRecords(nextRecords, normalizedOwner);
   }
 

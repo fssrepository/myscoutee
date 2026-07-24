@@ -140,6 +140,8 @@ export {
 export {
   EventTournamentGroupsPopupConverter,
   eventTournamentGroupsPopupConverter,
+  type EventTournamentGroupsAction,
+  type EventTournamentGroupsActionContext,
   type EventTournamentGroupsAccordionContext,
   type EventTournamentGroupsPopupConverterInput,
   type EventTournamentGroupsPopupModel,

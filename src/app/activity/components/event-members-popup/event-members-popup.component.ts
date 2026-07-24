@@ -1680,7 +1680,10 @@ export class EventMembersPopupComponent {
     this.suppressedOwnerSyncId = this.ownerId;
     let normalizedMembers: ActivityContracts.ActivityMemberDTO[];
     try {
-      normalizedMembers = [...await this.activityMembersService.applyMemberAction(owner, targetUserId, action)];
+      normalizedMembers = [...await this.activityMembersService.applyMemberAction(owner, targetUserId, action, null, {
+        eventId: this.memberEventId,
+        subEventId: this.memberSubEventId
+      })];
     } catch (error) {
       if (this.suppressedOwnerSyncId === this.ownerId) {
         this.suppressedOwnerSyncId = null;
