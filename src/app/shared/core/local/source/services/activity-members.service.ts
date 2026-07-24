@@ -133,6 +133,9 @@ export class LocalActivityMembersService extends LocalRouteDelayService {
       && normalizedActorUserId === normalizedTargetUserId
       && targetMember.role !== 'Admin'
       && targetMember.role !== 'Manager';
+    const withdrawingOwnApprovalRequest = action === 'remove'
+      && targetIsApprovalRequest
+      && normalizedActorUserId === normalizedTargetUserId;
     const actionAllowed = action === 'accept'
       ? (
         (actorIsInvitee && targetIsInvitation)
@@ -144,6 +147,7 @@ export class LocalActivityMembersService extends LocalRouteDelayService {
           || actorOwnsInvitation
           || (actorCanManage && !targetIsInvitation)
           || removingOwnAcceptedMembership
+          || withdrawingOwnApprovalRequest
         )
         : actorCanManage;
     if (!targetMember || !actionAllowed) {

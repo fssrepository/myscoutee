@@ -167,6 +167,7 @@ export class ActivityMemberImageCardConverter {
 
   private static isJoinRequest(dto: ActivityMemberDTO): boolean {
     if (dto.status === 'pending'
+        && dto.requestKind !== 'approval'
         && (
           dto.requestKind === 'invite'
           || dto.requestKind === 'waitlist-invite'

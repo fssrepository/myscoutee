@@ -881,7 +881,7 @@ export class EventMembersPopupComponent {
   private async confirmApproveMember(entry: ActivityContracts.ActivityMemberDTO): Promise<void> {
     const previousMembers = this.currentOwnerMembers();
     const owner = this.ownerRef && this.ownerRef.ownerId === this.ownerId ? this.ownerRef : null;
-    if (owner?.ownerType === 'event') {
+    if (owner && owner.ownerType !== 'asset') {
       await this.runMemberActionAfterUiYield(owner, entry.userId, 'accept', previousMembers);
       return;
     }
@@ -900,7 +900,7 @@ export class EventMembersPopupComponent {
   private async confirmRemoveMember(entry: ActivityContracts.ActivityMemberDTO): Promise<void> {
     const previousMembers = this.currentOwnerMembers();
     const owner = this.ownerRef && this.ownerRef.ownerId === this.ownerId ? this.ownerRef : null;
-    if (owner?.ownerType === 'event') {
+    if (owner && owner.ownerType !== 'asset') {
       await this.runMemberActionAfterUiYield(owner, entry.userId, 'remove', previousMembers);
       return;
     }
@@ -1454,6 +1454,9 @@ export class EventMembersPopupComponent {
     if (entry.status === 'disqualified') {
       return false;
     }
+    if (this.isSelfManagedLeave(entry)) {
+      return true;
+    }
     if (this.ownerRef != null
         && this.ownerRef.ownerType !== 'event'
         && entry.status === 'accepted'
@@ -1654,6 +1657,7 @@ export class EventMembersPopupComponent {
 
   private isInvitation(entry: ActivityContracts.ActivityMemberDTO): boolean {
     return entry.status === 'pending'
+      && entry.requestKind !== 'approval'
       && (entry.requestKind === 'invite'
       || entry.requestKind === 'waitlist-invite'
       || entry.pendingSource === 'admin'
@@ -1712,10 +1716,13 @@ export class EventMembersPopupComponent {
   }
 
   private isSelfManagedLeave(entry: ActivityContracts.ActivityMemberDTO): boolean {
-    return entry.status === 'accepted'
-      && this.ownerRef != null
+    return this.ownerRef != null
       && this.ownerRef.ownerType !== 'event'
-      && this.isCurrentUser(entry);
+      && this.isCurrentUser(entry)
+      && (
+        entry.status === 'accepted'
+        || (entry.status === 'pending' && this.isJoinRequest(entry))
+      );
   }
 
   private successorAdminFor(
