@@ -113,7 +113,9 @@ export class ActivitySubEventResourceInfoCardConverter {
     if (this.canReportResourceManager(card, options)) {
       actions.push(card.sourceAssetId ? 'reportManager' : 'reportOrganizer');
     }
-    actions.push('removeAssignment');
+    if (this.isSourceAssetManagedByActiveUser(card, options)) {
+      actions.push('removeAssignment');
+    }
     return actions;
   }
 
@@ -171,7 +173,8 @@ export class ActivitySubEventResourceInfoCardConverter {
     options: ActivitySubEventResourceInfoCardConverterOptions
   ): boolean {
     const activeUserId = this.normalizeId(options.activeUserId);
-    const managerUserId = this.normalizeId(this.assetManagerUserId(card, options));
+    const managerUserId = this.normalizeId(this.sourceAsset(card, options)?.ownerUserId)
+      || this.normalizeId(this.assetManagerUserId(card, options));
     return activeUserId.length > 0 && managerUserId === activeUserId;
   }
 

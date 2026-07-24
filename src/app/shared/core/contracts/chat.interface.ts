@@ -184,6 +184,17 @@ export interface ChatDTO {
   navigationContext?: ChatNavigationContextDTO | null;
 }
 
+export interface ChatServiceEnsureInput {
+  serviceContext: 'event' | 'asset';
+  eventId: string;
+  subEventId?: string | null;
+  assetId?: string | null;
+  targetUserId: string;
+  title: string;
+  lastMessage: string;
+  avatarSource?: string | null;
+}
+
 export interface ActivitiesChatPageResultDTO {
   items: ChatDTO[];
   total: number;

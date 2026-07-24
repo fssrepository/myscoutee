@@ -35,6 +35,11 @@ export class LocalChatsRepository {
     return record ? LocalChatThreadMapper.cloneRecord(record) : null;
   }
 
+  ensureServiceChat(chat: ChatRecord & { ownerUserId?: string | null }): ChatThreadRecord | null {
+    const record = this.resolveChatRecord(chat);
+    return record ? LocalChatThreadMapper.cloneRecord(record) : null;
+  }
+
   queryActivitiesChatPage(
     userId: string,
     query: ListQuery<ActivitiesFeedFilters>

@@ -129,9 +129,7 @@ export class ActivityMemberImageCardConverter {
       if (dto.requestKind === 'waitlist') {
         return 'waiting.list';
       }
-      return dto.pendingSource === 'admin'
-        ? 'Waiting For Admin Approval'
-        : 'Waiting For Join Approval';
+      return 'Waiting For Admin Approval';
     }
     if (dto.pendingSource === 'admin') {
       return 'Invitation Pending';

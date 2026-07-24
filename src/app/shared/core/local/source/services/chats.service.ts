@@ -11,7 +11,8 @@ import type {
   ChatMemberSummaryDto,
   ChatMetricBucketDTO,
   ChatMetricsDTO,
-  ChatMessagesPageResultDTO
+  ChatMessagesPageResultDTO,
+  ChatServiceEnsureInput
 } from '../../../contracts/chat.interface';
 import type { IChatsService } from '../../../contracts/activity.interface';
 import { ActivityResourceBuilder } from '../../../base/builders';
@@ -70,6 +71,49 @@ export class LocalChatsService extends LocalRouteDelayService implements IChatsS
       ...page,
       readReceipt
     };
+  }
+
+  async ensureServiceChat(input: ChatServiceEnsureInput): Promise<ChatDTO | null> {
+    await this.waitForRouteDelay(LocalChatsService.CHAT_ROUTE);
+    const activeUserId = this.resolveDemoActivityUserId(this.userProfileStore.activeUserId().trim());
+    const targetUserId = `${input.targetUserId ?? ''}`.trim();
+    const eventId = `${input.eventId ?? ''}`.trim();
+    const subEventId = `${input.subEventId ?? ''}`.trim();
+    const assetId = `${input.assetId ?? ''}`.trim();
+    if (!activeUserId || !targetUserId || targetUserId === activeUserId || !eventId) {
+      return null;
+    }
+    const chatId = input.serviceContext === 'asset'
+      ? `c-service-asset-${assetId}-${subEventId}-${activeUserId}`
+      : `c-service-event-${eventId}-${activeUserId}`;
+    if (
+      !chatId
+      || (input.serviceContext === 'asset' && (!assetId || !subEventId))
+    ) {
+      return null;
+    }
+    const chat: ChatDTO = {
+      id: chatId,
+      avatar: AppUtils.initialsFromText(`${input.avatarSource ?? ''}`.trim() || input.title),
+      title: `${input.title ?? ''}`.trim(),
+      lastMessage: `${input.lastMessage ?? ''}`.trim(),
+      lastSenderId: targetUserId,
+      memberIds: [activeUserId, targetUserId],
+      unread: 0,
+      dateIso: new Date().toISOString(),
+      channelType: 'serviceEvent',
+      serviceContext: input.serviceContext,
+      ownerId: eventId,
+      eventId,
+      subEventId: subEventId || undefined,
+      ownerUserId: activeUserId
+    };
+    const record = this.chatsRepository.ensureServiceChat(chat);
+    if (!record) {
+      return null;
+    }
+    await this.chatsRepository.flushToIndexedDb();
+    return LocalChatThreadMapper.toDto(record);
   }
 
   async queryChatMembers(chatId: string): Promise<ActivityContracts.ActivityMemberDTO[]> {

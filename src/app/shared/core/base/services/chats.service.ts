@@ -3,7 +3,7 @@ import { Injectable, inject } from '@angular/core';
 import type * as ContractTypes from '../../contracts';
 import { AppUtils } from '../../../app-utils';
 import type { ActivitiesFeedFilters, ListQuery, PageResult } from '../../contracts';
-import type { ChatDTO } from '../../contracts/chat.interface';
+import type { ChatDTO, ChatServiceEnsureInput } from '../../contracts/chat.interface';
 import type { IChatsService } from '../../contracts/activity.interface';
 
 import { LocalChatsService } from '../../local';
@@ -123,6 +123,10 @@ export class ChatsService extends BaseRouteModeService implements IChatsService 
     return this.chatsService.updateSupportCase(chat, action);
   }
 
+  async ensureServiceChat(input: ChatServiceEnsureInput): Promise<ChatDTO | null> {
+    return this.chatsService.ensureServiceChat(input);
+  }
+
   async resolveEventServiceChat(input: {
     activeUserId: string;
     eventId: string;
@@ -155,7 +159,7 @@ export class ChatsService extends BaseRouteModeService implements IChatsService 
     const memberSummary = input.notification
       ? await this.activityMembersService.querySummaryByOwnerId(eventId)
       : null;
-    return this.buildActivityServiceChat({
+    const serviceChat = this.buildActivityServiceChat({
       activeUserId,
       eventId,
       ownerId,
@@ -166,6 +170,17 @@ export class ChatsService extends BaseRouteModeService implements IChatsService 
       notification: input.notification,
       acceptedMemberUserIds: input.acceptedMemberUserIds ?? memberSummary?.acceptedMemberUserIds ?? [],
       pendingMemberUserIds: input.pendingMemberUserIds ?? memberSummary?.pendingMemberUserIds ?? []
+    });
+    if (input.notification) {
+      return serviceChat;
+    }
+    return this.ensureServiceChat({
+      serviceContext: 'event',
+      eventId,
+      targetUserId: ownerId,
+      title: serviceChat.title,
+      lastMessage: serviceChat.lastMessage,
+      avatarSource: input.creatorName ?? title
     });
   }
 

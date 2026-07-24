@@ -32,6 +32,9 @@ import {
   ActivityMembersService
 } from '../../../shared/core/base/services/activity-members.service';
 import {
+  ChatsService
+} from '../../../shared/core/base/services/chats.service';
+import {
   AssetsService as SharedAssetsService
 } from '../../../shared/core/base/services/assets.service';
 import {
@@ -46,9 +49,6 @@ import {
 import {
   I18nService
 } from '../../../shared/core/base/services/i18n.service';
-import {
-  AssetDto
-} from '../../../shared/core/contracts';
 import type * as ContractTypes from '../../../shared/core/contracts';
 import type * as ActivityContracts from '../../../shared/core/contracts/activity.interface';
 import type { UserDto } from '../../../shared/core/contracts/user.interface';
@@ -153,6 +153,7 @@ export class EventResourcePopupComponent {
   private readonly shareTokensService = inject(ShareTokensService);
   private readonly activityResourcesService = inject(ActivityResourcesService);
   private readonly activityMembersService = inject(ActivityMembersService);
+  private readonly chatsService = inject(ChatsService);
   private readonly activityStore = inject(ActivityStore);
   private readonly i18n = inject(I18nService);
 
@@ -428,7 +429,7 @@ export class EventResourcePopupComponent {
       return;
     }
     if (event.actionId === 'askOrganizer') {
-      this.openResourceServiceChat(card, new Event('click'));
+      void this.openResourceServiceChat(card, new Event('click'));
       return;
     }
     if (event.actionId === 'shareAsset') {
@@ -498,7 +499,7 @@ export class EventResourcePopupComponent {
     });
   }
 
-  private openResourceServiceChat(card: AppDTOs.SubEventResourceCardDTO, event: Event): void {
+  private async openResourceServiceChat(card: AppDTOs.SubEventResourceCardDTO, event: Event): Promise<void> {
     event.stopPropagation();
     const context = this.resourcePopupStore.popupContextRef();
     const activeUserId = this.activeUser().id.trim();
@@ -513,25 +514,36 @@ export class EventResourcePopupComponent {
         ? this.assignedAssetManagerUserId(context.subEvent.id, card.type, card.sourceAssetId || '')
         : null
     );
+    const target = this.resolveResourceReportTarget(card);
+    const targetUserId = target?.userId.trim() || managerUserId || '';
+    if (!targetUserId || targetUserId === activeUserId) {
+      return;
+    }
     const titlePrefix = sourceCard ? 'Asset Service' : 'Event Service';
-    const chat = this.buildServiceChatItem({
-      id: sourceCard
-        ? `c-service-asset-${sourceCard.id}-${context.subEvent.id}-${activeUserId}`
-        : `c-service-event-resource-${context.ownerId}-${context.subEvent.id}-${card.id}-${activeUserId}`,
+    const chat = await this.chatsService.ensureServiceChat({
+      serviceContext: sourceCard ? 'asset' : 'event',
+      eventId: context.ownerId,
+      subEventId: context.subEvent.id,
+      assetId: sourceCard?.id ?? null,
+      targetUserId,
       title: `${titlePrefix} · ${card.title}`,
       lastMessage: sourceCard
         ? `Service chat with the ${card.type.toLowerCase()} manager for ${card.title}.`
         : `Service chat with the organizer for ${context.parentTitle}.`,
-      eventId: context.ownerId,
-      subEventId: context.subEvent.id,
-      memberIds: [activeUserId, managerUserId].filter((id): id is string => `${id ?? ''}`.trim().length > 0),
-      lastSenderId: managerUserId || activeUserId,
-      avatarSource: sourceCard?.ownerName || sourceCard?.title || card.title
+      avatarSource: sourceCard?.ownerName || target?.name || sourceCard?.title || card.title
     });
-    void this.openStackedResourceServiceChat(chat);
+    if (!chat) {
+      this.dialogStore.open({
+        title: 'Unable to open chat',
+        message: 'The service chat could not be created. Please try again.',
+        confirmLabel: 'OK'
+      });
+      return;
+    }
+    await this.openStackedResourceServiceChat(chat);
   }
 
-  private async openStackedResourceServiceChat(chat: ChatDTO & { ownerUserId?: string }): Promise<void> {
+  private async openStackedResourceServiceChat(chat: ChatDTO): Promise<void> {
     await this.activitiesStore.ensureEventChatPopupLoaded();
     this.activitiesStore.openStackedEventChat(
       {
@@ -610,33 +622,6 @@ export class EventResourcePopupComponent {
       return `${start} - ${end}`;
     }
     return start || end || '';
-  }
-
-  private buildServiceChatItem(input: {
-    id: string;
-    title: string;
-    lastMessage: string;
-    eventId: string;
-    subEventId?: string;
-    memberIds: string[];
-    lastSenderId: string;
-    avatarSource: string;
-  }): ChatDTO & { ownerUserId?: string } {
-    const activeUserId = this.activeUser().id.trim();
-    return {
-      id: input.id,
-      avatar: AppUtils.initialsFromText(input.avatarSource || input.title),
-      title: input.title,
-      lastMessage: input.lastMessage,
-      lastSenderId: input.lastSenderId || activeUserId,
-      memberIds: [...new Set(input.memberIds.map(id => `${id ?? ''}`.trim()).filter(Boolean))],
-      unread: 0,
-      dateIso: new Date().toISOString(),
-      channelType: 'serviceEvent',
-      serviceContext: input.title.startsWith('Asset Service') ? 'asset' : 'event',
-      ownerId: input.eventId,
-      ownerUserId: activeUserId
-    };
   }
 
   private activeUser(): UserDto {
@@ -1860,7 +1845,8 @@ export class EventResourcePopupComponent {
   private async openAssignedAssetJoinCheckoutEditor(
     resourceCard: AppDTOs.SubEventResourceCardDTO,
     sourceCard: ResourceAssetDTO,
-    dialog: AssignedAssetJoinDialogState
+    dialog: AssignedAssetJoinDialogState,
+    options: { loadDetail?: boolean } = {}
   ): Promise<void> {
     const context = this.resourcePopupStore.popupContextRef();
     if (
@@ -1875,18 +1861,19 @@ export class EventResourcePopupComponent {
       sourceCard
     );
     const ownerUserId = `${sourceCard.ownerUserId ?? ''}`.trim();
+    const loadDetail = ownerUserId.length > 0 && options.loadDetail !== false;
     const generation = this.assetStore.openAssetEditorEdit({
       cardId: sourceCard.id,
       form: AssetCardBuilder.buildAssetFormFromCard(sourceCard),
       visibility: AssetCardBuilder.visibilityFromCard(sourceCard),
-      loading: Boolean(ownerUserId),
+      loading: loadDetail,
       readOnly: true,
       parentZIndex: this.resourcePopupZIndex(),
       runtimeRoute: runtimeRoute ? { ...runtimeRoute, editable: false } : null,
       checkout: this.assignedAssetJoinCheckoutState(sourceCard, dialog, context)
     });
     void this.assetPopupStore.ensureAssetPopupLoaded();
-    if (!ownerUserId) {
+    if (!loadDetail) {
       this.assetStore.setAssetEditorLoading(false);
       return;
     }
@@ -2020,6 +2007,11 @@ export class EventResourcePopupComponent {
     this.assetStore.setAssetEditorCheckoutState(
       this.assignedAssetJoinCheckoutState(sourceCard, dialog, context)
     );
+  }
+
+  private restoreAssignedAssetJoinAfterFailure(dialog: AssignedAssetJoinDialogState): void {
+    this.resourcePopupStore.assignedAssetJoinDialogRef.set(dialog);
+    this.syncAssignedAssetJoinCheckoutEditor(dialog);
   }
 
   leave(card: AppDTOs.SubEventResourceCardDTO, event: Event): void {
@@ -2222,86 +2214,70 @@ export class EventResourcePopupComponent {
       error: null
     };
     this.resourcePopupStore.assignedAssetJoinDialogRef.set(busyDialog);
-    this.syncAssignedAssetJoinCheckoutEditor(busyDialog);
-    if (this.isAssetOwnedByActiveUser(sourceCard)) {
-      const nextCards = this.ownedAssetCards().map(asset => (
-        asset.id === sourceCard.id && asset.type === sourceCard.type
-          ? {
-              ...asset,
-              requests: nextRequests
-            }
-          : asset
-      ));
-      const ownerUserId = this.assetStore.activeOwnerUserIdRef().trim()
-        || this.userProfileStore.getActiveUserId().trim();
-      if (!ownerUserId) {
-        const nextDialog: AssignedAssetJoinDialogState = {
-          ...dialog,
-          acceptedPolicyIds,
-          busy: false,
-          error: 'Unable to save the join request.'
-        };
-        this.resourcePopupStore.assignedAssetJoinDialogRef.set(nextDialog);
-        this.syncAssignedAssetJoinCheckoutEditor(nextDialog);
-        return;
-      }
-      try {
-        const savedCards = await this.assetsService.replaceOwnedAssets(
-          ownerUserId,
-          nextCards.map(card => new AssetDto(card))
-        );
-        this.assetStore.applyAssetCards(savedCards, { mutation: true, reloadList: false });
-        this.closeAssignedAssetJoinDialog();
-        this.syncPopupSubEventMetrics();
-      } catch {
-        const nextDialog: AssignedAssetJoinDialogState = {
-          ...dialog,
-          acceptedPolicyIds,
-          busy: false,
-          error: 'Unable to save the join request.'
-        };
-        this.resourcePopupStore.assignedAssetJoinDialogRef.set(nextDialog);
-        this.syncAssignedAssetJoinCheckoutEditor(nextDialog);
-      }
-      return;
-    }
-
     const activeContext = this.resourcePopupStore.popupContextRef();
     if (!activeContext || activeContext.subEvent.id !== context.subEvent.id) {
-      return;
-    }
-    const nextFallbackCards = this.cloneFallbackCards(activeContext.fallbackCardsByType);
-    const existingCards = nextFallbackCards[sourceCard.type] ?? [];
-    const nextFallbackAsset = this.assignedFallbackAssetSnapshot(context.subEvent.id, {
-      ...sourceCard,
-      requests: nextRequests
-    });
-    nextFallbackCards[sourceCard.type] = existingCards.some(card => card.id === sourceCard.id)
-      ? existingCards.map(card => card.id === sourceCard.id ? nextFallbackAsset : card)
-      : [...existingCards, nextFallbackAsset];
-    const nextContext = {
-      ...activeContext,
-      fallbackCardsByType: nextFallbackCards
-    };
-    const nextState = this.buildPopupResourceState(nextContext);
-    if (!nextState) {
-      const nextDialog: AssignedAssetJoinDialogState = {
+      this.restoreAssignedAssetJoinAfterFailure({
         ...dialog,
         acceptedPolicyIds,
         busy: false,
         error: 'Unable to save the join request.'
-      };
-      this.resourcePopupStore.assignedAssetJoinDialogRef.set(nextDialog);
-      this.syncAssignedAssetJoinCheckoutEditor(nextDialog);
+      });
       return;
     }
+    const ownerUserId = `${sourceCard.ownerUserId ?? ''}`.trim();
+    if (!ownerUserId) {
+      this.restoreAssignedAssetJoinAfterFailure({
+        ...dialog,
+        acceptedPolicyIds,
+        busy: false,
+        error: 'Unable to save the join request.'
+      });
+      return;
+    }
+    const nextFallbackCards = this.cloneFallbackCards(activeContext.fallbackCardsByType);
+    const existingCards = nextFallbackCards[sourceCard.type] ?? [];
+    const nextAsset: ResourceAssetDTO = {
+      ...sourceCard,
+      requests: nextRequests
+    };
     try {
-      const savedState = await this.activityResourcesService.replaceSubEventResourceState(nextState);
-      if (!savedState) {
-        throw new Error('Join request was not saved.');
+      const savedCard = await this.assetsService.saveOwnedAsset(
+        ownerUserId,
+        this.toAssetDetailDto(nextAsset)
+      );
+      const persistedAsset: ResourceAssetDTO = {
+        ...nextAsset,
+        ...savedCard,
+        sourceLink: nextAsset.sourceLink,
+        routes: [...(nextAsset.routes ?? [])],
+        topics: [...(nextAsset.topics ?? [])],
+        policiesEnabled: nextAsset.policiesEnabled,
+        policies: (nextAsset.policies ?? []).map(policy => ({ ...policy })),
+        pricing: nextAsset.pricing
+          ? PricingBuilder.clonePricingConfig(nextAsset.pricing)
+          : nextAsset.pricing,
+        requests: savedCard.requests.map(request => ({
+          ...request,
+          booking: request.booking
+            ? {
+                ...request.booking,
+                acceptedPolicyIds: [...(request.booking.acceptedPolicyIds ?? [])]
+              }
+            : null
+        }))
+      };
+      if (this.ownedAssetCards().some(card => card.id === sourceCard.id && card.type === sourceCard.type)) {
+        this.assetStore.replaceAssetCard(persistedAsset, { mutation: true, reloadList: false });
       }
+      const nextFallbackAsset = this.assignedFallbackAssetSnapshot(context.subEvent.id, persistedAsset);
+      nextFallbackCards[sourceCard.type] = existingCards.some(card => card.id === sourceCard.id)
+        ? existingCards.map(card => card.id === sourceCard.id ? nextFallbackAsset : card)
+        : [...existingCards, nextFallbackAsset];
+      const nextContext = {
+        ...activeContext,
+        fallbackCardsByType: nextFallbackCards
+      };
       this.resourcePopupStore.popupContextRef.set(nextContext);
-      this.applyPersistedPopupState(savedState);
       this.syncPopupSubEventMetrics(false);
       this.closeAssignedAssetJoinDialog();
     } catch {
@@ -2311,8 +2287,7 @@ export class EventResourcePopupComponent {
         busy: false,
         error: 'Unable to save the join request.'
       };
-      this.resourcePopupStore.assignedAssetJoinDialogRef.set(nextDialog);
-      this.syncAssignedAssetJoinCheckoutEditor(nextDialog);
+      this.restoreAssignedAssetJoinAfterFailure(nextDialog);
     }
   }
 
@@ -2748,7 +2723,20 @@ export class EventResourcePopupComponent {
 
   requestDeleteResourceCard(card: AppDTOs.SubEventResourceCardDTO, event: Event): void {
     event.stopPropagation();
-    if (!card.sourceAssetId || !this.isAssignableAssetType(card.type)) {
+    const context = this.resourcePopupStore.popupContextRef();
+    if (
+      !context
+      || !card.sourceAssetId
+      || !this.isAssignableAssetType(card.type)
+    ) {
+      return;
+    }
+    const sourceCard = this.resolveSubEventAssignedAssetCard(
+      context.subEvent.id,
+      card.type,
+      card.sourceAssetId
+    );
+    if (!sourceCard || !this.canRemoveAssignedAsset(context.subEvent.id, sourceCard, card.sourceAssetId)) {
       return;
     }
     const pending: ResourceAssignmentRemovalRequest = {
@@ -2766,6 +2754,19 @@ export class EventResourcePopupComponent {
       failureMessage: 'Unable to remove assignment.',
       onConfirm: () => this.removeResourceAssignment(pending)
     });
+  }
+
+  private canRemoveAssignedAsset(
+    subEventId: string,
+    sourceCard: ResourceAssetDTO,
+    assetId: string
+  ): boolean {
+    const activeUserId = this.activeUser().id.trim();
+    return activeUserId.length > 0
+      && (
+        this.isAssetOwnedByActiveUser(sourceCard, activeUserId)
+        || this.assignedAssetManagerUserId(subEventId, sourceCard.type, assetId) === activeUserId
+      );
   }
 
   private async removeResourceAssignment(pending: ResourceAssignmentRemovalRequest): Promise<void> {

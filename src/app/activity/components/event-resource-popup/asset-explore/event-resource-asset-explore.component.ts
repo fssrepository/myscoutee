@@ -89,6 +89,9 @@ import {
   ActivityResourcesService
 } from '../../../../shared/core/base/services/activity-resources.service';
 import {
+  ChatsService
+} from '../../../../shared/core/base/services/chats.service';
+import {
   AssetsService as SharedAssetsService
 } from '../../../../shared/core/base/services/assets.service';
 import {
@@ -228,6 +231,7 @@ export class EventResourceAssetExploreComponent implements DoCheck {
   private readonly userProfileStore = inject(UserProfileStore);
   private readonly activitiesStore = inject(ActivitiesPopupStore);
   private readonly activityResourcesService = inject(ActivityResourcesService);
+  private readonly chatsService = inject(ChatsService);
   private readonly assetsService = inject(SharedAssetsService);
   private readonly eventsService = inject(EventsService);
   private readonly usersService = inject(UsersService);
@@ -788,7 +792,7 @@ export class EventResourceAssetExploreComponent implements DoCheck {
       return;
     }
     if (event.actionId === 'contactOwner') {
-      this.openServiceChat(card, new Event('click'));
+      void this.openServiceChat(card, new Event('click'));
       return;
     }
     if (event.actionId === 'shareAsset') {
@@ -1700,28 +1704,34 @@ export class EventResourceAssetExploreComponent implements DoCheck {
     return `${subEventId}:${assetId}`;
   }
 
-  private openServiceChat(card: ResourceAssetDTO, event?: Event): void {
+  private async openServiceChat(card: ResourceAssetDTO, event?: Event): Promise<void> {
     event?.stopPropagation();
     const context = this.resourcePopupStore.popupContextRef();
     const activeUserId = this.activeUser().id.trim();
     const ownerUserId = `${card.ownerUserId ?? ''}`.trim();
-    if (!context || !activeUserId) {
+    if (!context || !activeUserId || !ownerUserId || ownerUserId === activeUserId) {
       return;
     }
-    const chat = this.buildServiceChatItem({
-      id: `c-service-asset-${card.id}-${context.subEvent.id}-${activeUserId}`,
-      title: `Asset Service · ${card.title}`,
-      lastMessage: `Service chat with the ${card.type.toLowerCase()} manager for ${card.title}.`,
+    const chat = await this.chatsService.ensureServiceChat({
+      serviceContext: 'asset',
       eventId: context.ownerId,
       subEventId: context.subEvent.id,
-      memberIds: [activeUserId, ownerUserId].filter(Boolean),
-      lastSenderId: ownerUserId || activeUserId,
+      assetId: card.id,
+      targetUserId: ownerUserId,
+      title: `Asset Service · ${card.title}`,
+      lastMessage: `Service chat with the ${card.type.toLowerCase()} manager for ${card.title}.`,
       avatarSource: card.ownerName || card.title
     });
-    void this.openStackedServiceChat(chat);
+    if (!chat) {
+      this.dialogStore.openInfo('The service chat could not be created. Please try again.', {
+        title: 'Unable to open chat'
+      });
+      return;
+    }
+    await this.openStackedServiceChat(chat);
   }
 
-  private async openStackedServiceChat(chat: ChatDTO & { ownerUserId?: string }): Promise<void> {
+  private async openStackedServiceChat(chat: ChatDTO): Promise<void> {
     await this.activitiesStore.ensureEventChatPopupLoaded();
     this.activitiesStore.openStackedEventChat(
       {
@@ -2970,33 +2980,6 @@ export class EventResourceAssetExploreComponent implements DoCheck {
     return sameDay
       ? `${startDate} · ${startTime} - ${endTime}`
       : `${startDate} ${startTime} - ${endDate} ${endTime}`;
-  }
-
-  private buildServiceChatItem(input: {
-    id: string;
-    title: string;
-    lastMessage: string;
-    eventId: string;
-    subEventId?: string;
-    memberIds: string[];
-    lastSenderId: string;
-    avatarSource: string;
-  }): ChatDTO & { ownerUserId?: string } {
-    const activeUserId = this.activeUser().id.trim();
-    return {
-      id: input.id,
-      avatar: AppUtils.initialsFromText(input.avatarSource || input.title),
-      title: input.title,
-      lastMessage: input.lastMessage,
-      lastSenderId: input.lastSenderId || activeUserId,
-      memberIds: [...new Set(input.memberIds.map(id => `${id ?? ''}`.trim()).filter(Boolean))],
-      unread: 0,
-      dateIso: new Date().toISOString(),
-      channelType: 'serviceEvent',
-      serviceContext: input.title.startsWith('Asset Service') ? 'asset' : 'event',
-      ownerId: input.eventId,
-      ownerUserId: activeUserId
-    };
   }
 
   private openShareDialog(card: ResourceAssetDTO): void {
