@@ -132,6 +132,48 @@
   transform: none;
 }
 
+.event-tournament-table tr[data-member-palette='blue'] {
+  --event-tournament-member-rgb: 63, 123, 200;
+}
+
+.event-tournament-table tr[data-member-palette='green'] {
+  --event-tournament-member-rgb: 47, 143, 102;
+}
+
+.event-tournament-table tr[data-member-palette='amber'] {
+  --event-tournament-member-rgb: 202, 132, 31;
+}
+
+.event-tournament-table tr[data-member-palette='violet'] {
+  --event-tournament-member-rgb: 122, 76, 196;
+}
+
+.event-tournament-table tr[data-member-palette='cyan'] {
+  --event-tournament-member-rgb: 45, 142, 154;
+}
+
+.event-tournament-table tr[data-member-palette='orange'] {
+  --event-tournament-member-rgb: 205, 105, 35;
+}
+
+.event-tournament-table tr[data-member-palette='pink'] {
+  --event-tournament-member-rgb: 190, 75, 137;
+}
+
+.event-tournament-table tr[data-member-palette='teal'] {
+  --event-tournament-member-rgb: 45, 120, 130;
+}
+
+.event-tournament-table tbody tr[data-member-palette] td {
+  background: rgba(var(--event-tournament-member-rgb), 0.075);
+}
+
+.event-tournament-table tbody tr[data-member-palette] td:first-child {
+  box-shadow: inset 3px 0 0 rgba(var(--event-tournament-member-rgb), 0.68);
+  color: rgb(var(--event-tournament-member-rgb));
+  font-weight: 900;
+}
+
 .event-tournament-table tr.is-advance td {
   background: rgba(61, 173, 99, 0.12);
   font-weight: 800;
@@ -145,6 +187,10 @@
 @media (hover: hover) and (pointer: fine) {
   .event-tournament-table tbody tr:hover td {
     background: rgba(235, 244, 255, 0.88);
+  }
+
+  .event-tournament-table tbody tr[data-member-palette]:hover td {
+    background: rgba(var(--event-tournament-member-rgb), 0.18);
   }
 }
 

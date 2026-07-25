@@ -51,7 +51,10 @@ import {
   compareSmartListLocalSortKeys,
   smartListLocalSortKeyFromItem
 } from './smart-list-local-sort';
-import { smartListItemKeyFromItem } from './smart-list-item-key';
+import {
+  smartListItemByIdentity,
+  smartListItemKeyFromItem
+} from './smart-list-item-key';
 import {
   InfiniteStepper as Stepper,
   type InfiniteStepperLoadOptions as StepperLoadOptions,
@@ -205,11 +208,18 @@ export class SmartListComponent<T, TFilters extends SmartListFilters = SmartList
       return null;
     }
     const itemMenu = this.itemMenuContext(menu.context);
+    const currentItem = itemMenu
+      ? smartListItemByIdentity(
+          this.items,
+          itemMenu.itemId,
+          (item, index) => this.cacheTrackKey(item, index)
+        ) ?? itemMenu.item
+      : null;
     return this.config.menuItems?.({
       menu,
       query: this.currentQuery(),
       items: this.items,
-      item: itemMenu?.item ?? null,
+      item: currentItem,
       itemId: itemMenu?.itemId ?? null,
       request: itemMenu?.request ?? null
     }) ?? menu.items;
@@ -829,6 +839,7 @@ export class SmartListComponent<T, TFilters extends SmartListFilters = SmartList
     this.initialLoading = false;
     this.clearAwaitScrollReset();
     this.items = this.orderSortableItems(items);
+    this.cacheDirectSourceItems();
     this.total = Number.isFinite(options.total)
       ? Math.max(this.items.length, Math.trunc(Number(options.total)))
       : this.items.length;
@@ -894,6 +905,7 @@ export class SmartListComponent<T, TFilters extends SmartListFilters = SmartList
       return false;
     }
     this.items = patchedItems;
+    this.cacheDirectSourceItems();
     this.syncGroups();
     this.finiteStepper.syncBounds();
     this.emitState();
@@ -1347,6 +1359,13 @@ export class SmartListComponent<T, TFilters extends SmartListFilters = SmartList
       }
       this.sourceItemByIdentity.set(identity, sources[index]);
     }
+  }
+
+  private cacheDirectSourceItems(): void {
+    if (this.resolvedConverter(this.currentQuery())) {
+      return;
+    }
+    this.cacheSourceItems(this.items, this.items);
   }
 
   private sourceItemForItem(item: T, index: number): unknown {
@@ -4252,6 +4271,7 @@ private updateListSnapNearEndSuppression(scrollElement?: HTMLDivElement | null):
     const nextItems = [...this.items];
     nextItems[index] = nextItem;
     this.items = this.orderSortableItems(nextItems);
+    this.cacheDirectSourceItems();
     this.syncGroups();
     this.finiteStepper.syncBounds();
     this.emitState();

@@ -33,6 +33,7 @@ export interface ProfileFormFlowConverterOptions {
   profileSize?: 'small' | 'big';
   imageEditor?: 'flow' | 'external';
   privacy?: ProfileFormFlowPrivacyOptions | null;
+  allowMenuOverflow?: boolean;
   showHeader?: boolean;
   showSave?: boolean;
   saveDisabled?: boolean;
@@ -350,6 +351,7 @@ export class ProfileFormFlowConverter {
       subtitle: options.subtitle?.trim() || '',
       layout: options.layout ?? 'carousel',
       header: options.showHeader === false ? false : true,
+      allowMenuOverflow: options.allowMenuOverflow === true,
       loadingLabel: 'Loading profile setup',
       save: options.showSave === false ? null : {
         label: 'save.profile',

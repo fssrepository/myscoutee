@@ -21,6 +21,7 @@ import {
 } from '../../../shared/core';
 import type {
   AdminNotificationCenterState,
+  AdminNotificationProcessFilter,
   AdminNotificationRule,
   AdminNotificationRuleLiveEvent,
   AdminNotificationRuleParameter,
@@ -33,9 +34,14 @@ import {
   I18nPipe
 } from '../../../shared/ui';
 import {
+  type AppMenuItem,
   type AppMenuItemSelectEvent,
   type AppMenuModel
 } from '../../../shared/ui/components/core/menu';
+import {
+  FormFlowComponent,
+  type FormFlowModel
+} from '../../../shared/ui/components/core/form';
 import {
   PopupComponent,
   type PopupActionEvent,
@@ -45,6 +51,9 @@ import {
 import {
   IndicatorComponent
 } from '../../../shared/ui/components/core/indicator';
+import {
+  UiTaskScheduler
+} from '../../../shared/ui/scheduler';
 import {
   AdminMenuStore
 } from '../../../shared/ui/context/stores/admin-menu.store';
@@ -57,7 +66,7 @@ const PROCESS_LIST_FILTER = {
   running: 'running',
   failed: 'failed'
 } as const;
-type ProcessListFilter = typeof PROCESS_LIST_FILTER[keyof typeof PROCESS_LIST_FILTER];
+type ProcessListFilter = AdminNotificationProcessFilter;
 type ProcessFilterMenuItemId = 'process-filter-menu' | `process-filter:${ProcessListFilter}`;
 
 interface ProcessFilterMenuContext {
@@ -134,6 +143,12 @@ const INTERVAL_UNIT = {
 } as const;
 type IntervalUnit = AdminNotificationIntervalUnit;
 
+interface ScheduleEditorFormValue {
+  startTime: string;
+  intervalAmount: number;
+  intervalUnit: IntervalUnit;
+}
+
 const INTERVAL_UNIT_SECONDS: Record<IntervalUnit, number> = {
   [INTERVAL_UNIT.seconds]: 1,
   [INTERVAL_UNIT.minutes]: 60,
@@ -153,6 +168,96 @@ const INTERVAL_UNIT_OPTIONS: Array<{ value: IntervalUnit; labelKey: string }> = 
   { value: INTERVAL_UNIT.months, labelKey: 'admin.jobs.interval.months' },
   { value: INTERVAL_UNIT.years, labelKey: 'admin.jobs.interval.years' }
 ];
+
+const SCHEDULE_INTERVAL_UNIT_ITEMS: readonly AppMenuItem<string, unknown>[] = INTERVAL_UNIT_OPTIONS.map(option => {
+  const presentationByUnit: Record<IntervalUnit, Pick<AppMenuItem<string, unknown>, 'icon' | 'palette'>> = {
+    [INTERVAL_UNIT.seconds]: { icon: 'timer', palette: 'orange' },
+    [INTERVAL_UNIT.minutes]: { icon: 'schedule', palette: 'blue' },
+    [INTERVAL_UNIT.hours]: { icon: 'access_time', palette: 'teal' },
+    [INTERVAL_UNIT.days]: { icon: 'today', palette: 'green' },
+    [INTERVAL_UNIT.weeks]: { icon: 'calendar_view_week', palette: 'cyan' },
+    [INTERVAL_UNIT.months]: { icon: 'calendar_month', palette: 'amber' },
+    [INTERVAL_UNIT.years]: { icon: 'event_available', palette: 'gold' }
+  };
+  return {
+    id: `schedule-interval-unit:${option.value}`,
+    value: option.value,
+    kind: 'radio',
+    label: option.labelKey,
+    ...presentationByUnit[option.value],
+    surface: 'tinted'
+  };
+});
+
+const SCHEDULE_EDITOR_FLOW_MODEL: FormFlowModel = {
+  title: 'admin.jobs.timing',
+  layout: 'grouped',
+  tone: 'blue',
+  header: false,
+  allowMenuOverflow: true,
+  summary: { enabled: false },
+  completion: { controls: 'none' },
+  steps: [{
+    id: 'job-timing',
+    title: 'admin.jobs.timing.rule',
+    chrome: 'none',
+    controls: [
+      {
+        id: 'start-time',
+        bind: 'startTime',
+        kind: 'date',
+        layout: 'wide',
+        label: 'admin.jobs.start.at',
+        required: true,
+        config: {
+          model: {
+            mode: 'time',
+            time: {
+              enabled: true,
+              openOnClick: true
+            },
+            field: {
+              label: 'admin.jobs.start.at',
+              required: true
+            }
+          }
+        }
+      },
+      {
+        id: 'interval-amount',
+        bind: 'intervalAmount',
+        kind: 'number',
+        layout: 'half',
+        label: 'admin.jobs.interval.every',
+        required: true,
+        min: 1,
+        step: 1
+      },
+      {
+        id: 'interval-unit',
+        bind: 'intervalUnit',
+        kind: 'menu',
+        layout: 'half',
+        label: 'admin.jobs.interval.unit',
+        required: true,
+        config: {
+          kind: 'select',
+          layout: 'row',
+          panelMode: 'auto',
+          closeOnSelect: true,
+          trigger: {
+            id: 'schedule-interval-unit',
+            label: 'admin.jobs.interval.unit',
+            icon: 'event_repeat',
+            trailingIcon: 'expand_more',
+            layout: 'field'
+          },
+          items: SCHEDULE_INTERVAL_UNIT_ITEMS
+        }
+      }
+    ]
+  }]
+};
 
 const JOB_I18N = {
   filter: {
@@ -275,18 +380,11 @@ const PROCESS_RULE_ICONS: Record<string, string> = {
   'account-purge': 'delete_sweep'
 };
 
-const PROCESS_FILTER_STATUSES: Record<ProcessListFilter, ReadonlySet<ProcessStatusKind>> = {
-  [PROCESS_LIST_FILTER.all]: new Set(),
-  [PROCESS_LIST_FILTER.active]: new Set([PROCESS_STATUS_KIND.failed, PROCESS_STATUS_KIND.missed]),
-  [PROCESS_LIST_FILTER.suspended]: new Set([PROCESS_STATUS_KIND.suspended]),
-  [PROCESS_LIST_FILTER.running]: new Set([PROCESS_STATUS_KIND.running]),
-  [PROCESS_LIST_FILTER.failed]: new Set([PROCESS_STATUS_KIND.failed, PROCESS_STATUS_KIND.missed])
-};
-
 const PROCESS_NEXT_RUN_SORT_FILTERS = new Set<ProcessListFilter>([
   PROCESS_LIST_FILTER.active,
   PROCESS_LIST_FILTER.running
 ]);
+const PROCESS_RUNTIME_POLL_INTERVAL_MS = 1000;
 const PROCESS_FAILED_SORT_FILTERS = new Set<ProcessListFilter>([
   PROCESS_LIST_FILTER.failed
 ]);
@@ -330,7 +428,15 @@ const STATUS_CLASS_PREFIX = 'is-';
 @Component({
   selector: 'app-admin-notifications-popup',
   standalone: true,
-  imports: [CommonModule, FormsModule, MatIconModule, IndicatorComponent, I18nPipe, PopupComponent],
+  imports: [
+    CommonModule,
+    FormsModule,
+    MatIconModule,
+    IndicatorComponent,
+    I18nPipe,
+    FormFlowComponent,
+    PopupComponent
+  ],
   templateUrl: './admin-notifications-popup.component.html',
   styleUrl: './admin-notifications-popup.component.scss'
 })
@@ -342,7 +448,6 @@ export class AdminNotificationsPopupComponent implements OnDestroy {
   protected readonly popupKey = ADMIN_POPUP_KEY;
   protected readonly jobI18n = JOB_I18N;
   protected readonly processRowAction = PROCESS_ROW_ACTION;
-  protected readonly intervalUnitOptions = INTERVAL_UNIT_OPTIONS;
   protected readonly defaultRunWindow = DEFAULT_RUN_WINDOW;
 
   protected readonly loading = signal(false);
@@ -354,6 +459,7 @@ export class AdminNotificationsPopupComponent implements OnDestroy {
   protected readonly selectedRuleKey = signal('');
   protected readonly detailOpen = signal(false);
   protected readonly scheduleEditorOpen = signal(false);
+  protected readonly scheduleEditorDraft = signal<ScheduleEditorFormValue | null>(null);
   protected readonly parameterDraft = signal<{ ruleKey: string; fields: AdminNotificationRuleParameter[] } | null>(null);
   protected readonly timingDirtyKeys = signal<ReadonlySet<string>>(new Set());
   protected readonly parameterDirtyKeys = signal<ReadonlySet<string>>(new Set());
@@ -362,9 +468,15 @@ export class AdminNotificationsPopupComponent implements OnDestroy {
   private unsubscribeRuntimeUpdates: (() => void) | null = null;
   private readonly timingBaselineSignatures = new Map<string, string>();
   private readonly parameterBaselineSignatures = new Map<string, string>();
+  private readonly runtimePollScheduler = new UiTaskScheduler<string[]>({
+    intervalMs: () => this.runningProcessRuleKeys().length > 0 ? PROCESS_RUNTIME_POLL_INTERVAL_MS : 0,
+    state: () => this.runningProcessRuleKeys(),
+    task: ({ state, signal }) => this.pollRunningProcessRules(state, signal)
+  });
 
   protected readonly processFilterOptions = PROCESS_FILTER_OPTIONS;
   protected readonly processStatusLabelKeys = PROCESS_STATUS_LABEL_KEYS;
+  protected readonly scheduleEditorFlowModel = SCHEDULE_EDITOR_FLOW_MODEL;
 
   constructor() {
     effect(() => {
@@ -373,9 +485,11 @@ export class AdminNotificationsPopupComponent implements OnDestroy {
         this.error.set('');
         this.detailOpen.set(false);
         this.scheduleEditorOpen.set(false);
+        this.scheduleEditorDraft.set(null);
         this.timingDirtyKeys.set(new Set());
         this.parameterDirtyKeys.set(new Set());
         this.stopRuntimeUpdates();
+        this.runtimePollScheduler.stop({ abort: true });
         return;
       }
       if (!this.loadedForOpen) {
@@ -388,6 +502,7 @@ export class AdminNotificationsPopupComponent implements OnDestroy {
 
   ngOnDestroy(): void {
     this.stopRuntimeUpdates();
+    this.runtimePollScheduler.destroy();
   }
 
   protected async load(silent = false): Promise<void> {
@@ -402,7 +517,10 @@ export class AdminNotificationsPopupComponent implements OnDestroy {
     }
     this.error.set('');
     try {
-      const state = await this.notificationsService.loadNotificationCenter(this.activeAdminId(), { skipDemoDelay: silent });
+      const state = await this.notificationsService.loadNotificationCenter(this.activeAdminId(), {
+        skipDemoDelay: silent,
+        filter: this.processFilter()
+      });
       if (silent) {
         this.mergeRuntimeState(state);
       } else {
@@ -416,6 +534,7 @@ export class AdminNotificationsPopupComponent implements OnDestroy {
       if (!this.processRules().some(rule => rule.ruleKey === this.selectedRuleKey())) {
         this.selectedRuleKey.set(this.processRules()[0]?.ruleKey ?? '');
       }
+      this.runtimePollScheduler.restart();
     } catch {
       if (!silent) {
         this.error.set(JOB_I18N.error.load);
@@ -435,7 +554,9 @@ export class AdminNotificationsPopupComponent implements OnDestroy {
     this.saving.set(true);
     this.error.set('');
     try {
-      const savedState = await this.notificationsService.saveNotificationCenter(rulesToSave, this.activeAdminId());
+      const savedState = await this.notificationsService.saveNotificationCenter(rulesToSave, this.activeAdminId(), {
+        filter: this.processFilter()
+      });
       const normalizedState = this.ensureProcessRules(savedState);
       this.state.set(normalizedState);
       this.captureTimingBaselines(normalizedState.rules);
@@ -524,6 +645,7 @@ export class AdminNotificationsPopupComponent implements OnDestroy {
         durationMillis: 0
       }
     }));
+    this.runtimePollScheduler.restart();
     try {
       const result = await this.notificationsService.runNotificationRule(rule.ruleKey, this.activeAdminId());
       const finishedAtIso = result.ranAtIso || new Date().toISOString();
@@ -651,6 +773,7 @@ export class AdminNotificationsPopupComponent implements OnDestroy {
       size: 'default',
       height: 'auto',
       headerTone: 'accent',
+      bodyLayout: 'overflow',
       backdropTone: 'dim',
       showClose: false,
       headerActions: [
@@ -714,12 +837,14 @@ export class AdminNotificationsPopupComponent implements OnDestroy {
   protected closeDetail(): void {
     this.detailOpen.set(false);
     this.scheduleEditorOpen.set(false);
+    this.scheduleEditorDraft.set(null);
     this.parameterDraft.set(null);
   }
 
   protected selectRule(ruleKey: string): void {
     this.selectedRuleKey.set(ruleKey);
     this.scheduleEditorOpen.set(false);
+    this.scheduleEditorDraft.set(null);
     this.parameterDraft.set(null);
   }
 
@@ -736,10 +861,7 @@ export class AdminNotificationsPopupComponent implements OnDestroy {
 
   protected filteredProcessRules(): AdminNotificationRule[] {
     const filter = this.processFilter();
-    return this.sortFilteredProcessRules(
-      this.processRules().filter(rule => this.matchesProcessFilter(rule, filter)),
-      filter
-    );
+    return this.sortFilteredProcessRules([...this.processRules()], filter);
   }
 
   protected processFilterLabel(filter: ProcessListFilter = this.processFilter()): string {
@@ -751,7 +873,13 @@ export class AdminNotificationsPopupComponent implements OnDestroy {
   }
 
   protected processFilterCount(filter: ProcessListFilter = this.processFilter()): number {
-    return this.processRules().filter(rule => this.matchesProcessFilter(rule, filter)).length;
+    const count = Number(this.state()?.filterCounts?.[filter]);
+    if (Number.isFinite(count)) {
+      return Math.max(0, Math.trunc(count));
+    }
+    return filter === this.processFilter() || filter === PROCESS_LIST_FILTER.all
+      ? this.processRules().length
+      : 0;
   }
 
   protected processFilterMenuModel(): AppMenuModel<ProcessFilterMenuItemId, ProcessFilterMenuContext> {
@@ -844,19 +972,11 @@ export class AdminNotificationsPopupComponent implements OnDestroy {
   protected selectProcessFilter(filter: ProcessListFilter, event?: Event): void {
     event?.preventDefault();
     event?.stopPropagation();
+    if (filter === this.processFilter()) {
+      return;
+    }
     this.processFilter.set(filter);
-  }
-
-  private matchesProcessFilter(rule: AdminNotificationRule, filter: ProcessListFilter): boolean {
-    const status = this.statusKind(rule);
-    if (filter === PROCESS_LIST_FILTER.all) {
-      return true;
-    }
-    const statuses = PROCESS_FILTER_STATUSES[filter];
-    if (filter === PROCESS_LIST_FILTER.active) {
-      return rule.enabled && !statuses.has(status);
-    }
-    return statuses.has(status);
+    void this.load();
   }
 
   protected processIcon(rule: AdminNotificationRule): string {
@@ -1119,11 +1239,17 @@ export class AdminNotificationsPopupComponent implements OnDestroy {
       return;
     }
     this.parameterDraft.set(null);
+    this.scheduleEditorDraft.set({
+      startTime: this.startTime(rule),
+      intervalAmount: this.intervalAmount(rule),
+      intervalUnit: this.intervalUnit(rule)
+    });
     this.scheduleEditorOpen.set(true);
   }
 
   protected closeScheduleEditor(): void {
     this.scheduleEditorOpen.set(false);
+    this.scheduleEditorDraft.set(null);
   }
 
   protected openParameterEditor(rule: AdminNotificationRule): void {
@@ -1132,6 +1258,7 @@ export class AdminNotificationsPopupComponent implements OnDestroy {
     }
     this.selectedRuleKey.set(rule.ruleKey);
     this.scheduleEditorOpen.set(false);
+    this.scheduleEditorDraft.set(null);
     this.parameterDraft.set({
       ruleKey: rule.ruleKey,
       fields: (rule.parameters ?? []).map(field => ({ ...field, options: [...(field.options ?? [])] }))
@@ -1162,7 +1289,10 @@ export class AdminNotificationsPopupComponent implements OnDestroy {
       }));
     }
     this.refreshParameterDirty(draft.ruleKey, nextSignature);
-    this.parameterDraft.set(null);
+    const saved = await this.save();
+    if (saved) {
+      this.parameterDraft.set(null);
+    }
   }
 
   protected async saveScheduleEditor(): Promise<void> {
@@ -1172,23 +1302,26 @@ export class AdminNotificationsPopupComponent implements OnDestroy {
     }
     this.syncPrimaryTiming(rule);
     this.refreshTimingDirty(rule);
-    this.closeScheduleEditor();
+    const saved = await this.save();
+    if (saved) {
+      this.closeScheduleEditor();
+    }
   }
 
-  protected updateStartTime(rule: AdminNotificationRule, value: string): void {
-    rule.timing.time = this.normalizeTime(value);
-    this.syncPrimaryTiming(rule);
-    this.refreshTimingDirty(rule);
-  }
-
-  protected updateIntervalAmount(rule: AdminNotificationRule, value: string | number): void {
-    const amount = Math.max(1, Math.trunc(Number(value) || 1));
-    this.updateIntervalRule(rule, amount, this.intervalUnit(rule));
-  }
-
-  protected updateIntervalUnit(rule: AdminNotificationRule, value: IntervalUnit): void {
-    const unit = this.isIntervalUnit(value) ? value : INTERVAL_UNIT.minutes;
-    this.updateIntervalRule(rule, this.intervalAmount(rule), unit);
+  protected updateScheduleEditorDraft(rule: AdminNotificationRule, value: unknown): void {
+    const input = value && typeof value === 'object'
+      ? value as Partial<ScheduleEditorFormValue>
+      : {};
+    const next: ScheduleEditorFormValue = {
+      startTime: this.normalizeTime(`${input.startTime ?? this.startTime(rule)}`),
+      intervalAmount: Math.max(1, Math.trunc(Number(input.intervalAmount) || 1)),
+      intervalUnit: this.isIntervalUnit(input.intervalUnit)
+        ? input.intervalUnit
+        : this.intervalUnit(rule)
+    };
+    this.scheduleEditorDraft.set(next);
+    rule.timing.time = next.startTime;
+    this.updateIntervalRule(rule, next.intervalAmount, next.intervalUnit);
   }
 
   private updateIntervalRule(rule: AdminNotificationRule, amount: number, unit: IntervalUnit): void {
@@ -1338,6 +1471,7 @@ export class AdminNotificationsPopupComponent implements OnDestroy {
       this.activeAdminId(),
       event => this.applyRuntimeEvent(event)
     );
+    this.runtimePollScheduler.restart();
   }
 
   private stopRuntimeUpdates(): void {
@@ -1353,13 +1487,18 @@ export class AdminNotificationsPopupComponent implements OnDestroy {
     if (!ruleKey) {
       return;
     }
-    this.patchRule(ruleKey, current => ({
-      ...current,
-      runState: event.runState,
-      runHistory: event.runHistory ?? [],
-      updatedDate: event.updatedDate || current.updatedDate,
-      updatedUser: event.updatedUser || current.updatedUser
-    }));
+    this.patchRule(ruleKey, current => this.shouldApplyRuntimeState(current, event.runState)
+      ? {
+          ...current,
+          runState: event.runState,
+          runHistory: event.runHistory ?? [],
+          updatedDate: event.updatedDate || current.updatedDate,
+          updatedUser: event.updatedUser || current.updatedUser
+        }
+      : current);
+    if (this.isRuntimeStatus(event.runState.currentStatus, PROCESS_RUNTIME_STATUS.running)) {
+      this.runtimePollScheduler.restart();
+    }
   }
 
   private ensureProcessRules(state: AdminNotificationCenterState): AdminNotificationCenterState {
@@ -1554,8 +1693,61 @@ export class AdminNotificationsPopupComponent implements OnDestroy {
           updatedUser: incoming.updatedUser || rule.updatedUser
         };
       }),
+      filterCounts: incomingState.filterCounts ?? currentState.filterCounts,
       updatedDate: incomingState.updatedDate || currentState.updatedDate
     });
+  }
+
+  private runningProcessRuleKeys(): string[] {
+    return this.processRules()
+      .filter(rule => this.isRuntimeStatus(rule.runState.currentStatus, PROCESS_RUNTIME_STATUS.running))
+      .filter(rule => !this.hasFinishedCurrentRun(rule))
+      .map(rule => rule.ruleKey);
+  }
+
+  private async pollRunningProcessRules(ruleKeys: readonly string[], signal?: AbortSignal): Promise<void> {
+    await Promise.all(ruleKeys.map(async ruleKey => {
+      if (signal?.aborted) {
+        return;
+      }
+      const incoming = await this.notificationsService.loadNotificationRuleRuntime(ruleKey, this.activeAdminId());
+      if (!incoming || signal?.aborted) {
+        return;
+      }
+      this.patchRule(ruleKey, current => this.shouldApplyRuntimeState(current, incoming.runState)
+        ? {
+            ...current,
+            runState: incoming.runState,
+            runHistory: incoming.runHistory ?? [],
+            updatedDate: incoming.updatedDate || current.updatedDate,
+            updatedUser: incoming.updatedUser || current.updatedUser
+          }
+        : current);
+    }));
+  }
+
+  private shouldApplyRuntimeState(
+    current: AdminNotificationRule,
+    incoming: AdminNotificationRule['runState']
+  ): boolean {
+    const currentStartedAt = this.parseDateSortValue(current.runState.startedAtIso);
+    const incomingStartedAt = this.parseDateSortValue(incoming.startedAtIso);
+    if (currentStartedAt > 0 && incomingStartedAt > 0 && incomingStartedAt < currentStartedAt) {
+      return false;
+    }
+    if (
+      this.isRuntimeStatus(incoming.currentStatus, PROCESS_RUNTIME_STATUS.running)
+      && this.hasNewerFinishedRun(current, incoming.startedAtIso)
+    ) {
+      return false;
+    }
+    const currentFinishedAt = this.parseDateSortValue(
+      current.runState.finishedAtIso || current.runState.lastRunAtIso
+    );
+    const incomingFinishedAt = this.parseDateSortValue(
+      incoming.finishedAtIso || incoming.lastRunAtIso
+    );
+    return incomingFinishedAt <= 0 || currentFinishedAt <= incomingFinishedAt;
   }
 
   private patchRule(ruleKey: string, update: (rule: AdminNotificationRule) => AdminNotificationRule): void {

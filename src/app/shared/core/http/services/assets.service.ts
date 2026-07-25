@@ -275,29 +275,63 @@ export class HttpAssetsService {
     const normalizedDetail = this.normalizeDetail(asset);
     const normalizedAsset = normalizedDetail ? this.normalizeCard(normalizedDetail) : null;
     if (!normalizedUserId || !normalizedDetail || !normalizedAsset) {
-      return this.normalizeCard(asset) ?? new AssetDto(asset);
+      throw new Error('A valid asset and owner are required.');
+    }
+    const response = await this.http
+      .post<AppDTOs.AssetDTO | null>(`${this.apiBaseUrl}/assets/upsert`, {
+        userId: normalizedUserId,
+        asset: normalizedDetail
+      })
+      .toPromise();
+    const savedAsset = this.normalizeCard(response);
+    if (!savedAsset) {
+      throw new Error('The asset request was not accepted by the server.');
     }
     this.cachedAssetsByUserId[normalizedUserId] = this.upsertCard(
       this.peekOwnedAssetsByUser(normalizedUserId),
-      normalizedAsset
+      savedAsset
     );
-    try {
-      const response = await this.http
-        .post<AppDTOs.AssetDTO | null>(`${this.apiBaseUrl}/assets/upsert`, {
-          userId: normalizedUserId,
-          asset: normalizedDetail
-        })
-        .toPromise();
-      const savedAsset = this.normalizeCard(response) ?? normalizedAsset;
-      this.cachedAssetsByUserId[normalizedUserId] = this.upsertCard(
-        this.peekOwnedAssetsByUser(normalizedUserId),
-        savedAsset
-      );
-      return this.cloneCards([savedAsset])[0] ?? savedAsset;
-    } catch {
-      // Keep optimistic cache while concrete endpoint wiring lands.
+    return this.cloneCards([savedAsset])[0] ?? savedAsset;
+  }
+
+  async applyMemberStatusChange(
+    request: AppDTOs.AssetMemberStatusChangeRequestDTO
+  ): Promise<AppDTOs.AssetMemberStatusChangeDTO | null> {
+    const assetId = request.assetId.trim();
+    const eventId = request.eventId.trim();
+    const subEventId = request.subEventId.trim();
+    const actorUserId = request.actorUserId.trim();
+    if (!assetId || !eventId || !subEventId || !actorUserId) {
+      return null;
     }
-    return this.cloneCards([normalizedAsset])[0] ?? normalizedAsset;
+    const response = await this.http
+      .post<AppDTOs.AssetMemberStatusChangeDTO | null>(`${this.apiBaseUrl}/assets/members/action`, {
+        ...request,
+        assetId,
+        eventId,
+        subEventId,
+        actorUserId
+      })
+      .toPromise();
+    if (
+      !response
+      || response.assetId?.trim() !== assetId
+      || response.eventId?.trim() !== eventId
+      || response.subEventId?.trim() !== subEventId
+      || response.userId?.trim() !== actorUserId
+      || !AppConstants.ACTIVITY_MEMBER_STATUSES.includes(response.status)
+    ) {
+      return null;
+    }
+    return {
+      ...response,
+      previousStatus: response.previousStatus
+        && AppConstants.ACTIVITY_MEMBER_STATUSES.includes(response.previousStatus)
+        ? response.previousStatus
+        : null,
+      acceptedMemberDelta: Math.trunc(Number(response.acceptedMemberDelta) || 0),
+      pendingMemberDelta: Math.trunc(Number(response.pendingMemberDelta) || 0)
+    };
   }
 
   async replaceOwnedAssets(userId: string, assets: readonly AppDTOs.AssetDTO[]): Promise<AppDTOs.AssetDTO[]> {
@@ -393,6 +427,17 @@ export class HttpAssetsService {
       }
       this.cachedAssetsByUserId[normalizedUserId] = this.upsertCard(this.peekOwnedAssetsByUser(normalizedUserId), normalized);
       return this.cloneCards([normalized])[0] ?? null;
+    } catch {
+      return null;
+    }
+  }
+
+  async revokeAssetManager(userId: string, assetId: string, targetUserId: string): Promise<AppDTOs.AssetDTO | null> {
+    try {
+      const response = await this.http.post<AppDTOs.AssetDTO | null>(`${this.apiBaseUrl}/assets/revoke-manager`, {
+        userId: userId.trim(), assetId: assetId.trim(), targetUserId: targetUserId.trim()
+      }).toPromise();
+      return this.normalizeCard(response);
     } catch {
       return null;
     }
@@ -574,6 +619,10 @@ export class HttpAssetsService {
                 totalAmount: Number.isFinite(Number(request.booking.totalAmount))
                   ? Math.max(0, Number(request.booking.totalAmount))
                   : null,
+                previousTotalAmount: request.booking.previousTotalAmount != null
+                  && Number.isFinite(Number(request.booking.previousTotalAmount))
+                  ? Math.max(0, Number(request.booking.previousTotalAmount))
+                  : null,
                 currency: `${request.booking.currency ?? ''}`.trim() || undefined,
                 paymentSessionId: `${request.booking.paymentSessionId ?? ''}`.trim() || null,
                 inventoryApplied: request.booking.inventoryApplied === true ? true : null,
@@ -729,6 +778,8 @@ export class HttpAssetsService {
       id,
       assetId,
       ownerUserId: `${row?.ownerUserId ?? ''}`.trim(),
+      userId: `${row?.userId ?? ''}`.trim(),
+      isManager: row?.isManager === true || (row?.menuActions ?? []).includes('revokeManager'),
       dateIso: `${row?.dateIso ?? ''}`.trim(),
       startAtIso: `${row?.startAtIso ?? ''}`.trim() || undefined,
       endAtIso: `${row?.endAtIso ?? ''}`.trim() || undefined,

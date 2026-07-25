@@ -132,6 +132,9 @@
 @if (activitiesStore.eventFeedbackPopupComponent(); as feedbackComponent) {
   <ng-container *ngComponentOutlet="feedbackComponent"></ng-container>
 }
+@if (activitiesStore.eventFeedbackRatedDetailPopupComponent(); as ratedFeedbackComponent) {
+  <ng-container *ngComponentOutlet="ratedFeedbackComponent"></ng-container>
+}
 
 @if (assetPopupStore.assetPopupComponent(); as assetComponent) {
   <ng-container *ngComponentOutlet="assetComponent"></ng-container>

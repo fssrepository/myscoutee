@@ -617,20 +617,6 @@
   overflow: hidden;
 }
 
-.entry-ideas-article-image {
-  width: 100%;
-  max-width: 100%;
-  aspect-ratio: 16 / 7;
-  min-height: 220px;
-  border-radius: 12px;
-  margin: 1rem 0;
-  background-color: #edf3fb;
-  background-position: center;
-  background-repeat: no-repeat;
-  background-size: cover;
-  box-sizing: border-box;
-}
-
 .entry-ideas-article-body {
   flex: 1 1 auto;
   min-height: 0;
@@ -650,38 +636,38 @@
   overflow-wrap: anywhere;
 }
 
-.entry-ideas-article-html :is(p, ul, ol, figure) {
+:host ::ng-deep .entry-ideas-article-html :is(p, ul, ol, figure) {
   margin: 0.72rem 0 0;
 }
 
-.entry-ideas-article-html :is(p, ul, ol, figure):first-child {
+:host ::ng-deep .entry-ideas-article-html :is(p, ul, ol, figure):first-child {
   margin-top: 0;
 }
 
-.entry-ideas-article-html :is(h2, h3, h4) {
+:host ::ng-deep .entry-ideas-article-html :is(h2, h3, h4) {
   margin: 1rem 0 0;
   color: #173456;
 }
 
-.entry-ideas-article-html ul,
-.entry-ideas-article-html ol {
+:host ::ng-deep .entry-ideas-article-html ul,
+:host ::ng-deep .entry-ideas-article-html ol {
   padding-left: 1.2rem;
 }
 
-.entry-ideas-article-html img {
+:host ::ng-deep .entry-ideas-article-html img {
   display: block;
-  width: 100%;
+  width: auto;
   max-width: 100%;
-  max-height: 460px;
-  object-fit: cover;
-  border-radius: 12px;
+  height: auto;
+  margin: 0.72rem auto 0;
+  border-radius: 0;
 }
 
-.entry-ideas-article-html :is(video, iframe, table) {
+:host ::ng-deep .entry-ideas-article-html :is(video, iframe, table) {
   max-width: 100%;
 }
 
-.entry-ideas-article-html figcaption {
+:host ::ng-deep .entry-ideas-article-html figcaption {
   margin-top: 0.36rem;
   color: rgba(31, 54, 88, 0.58);
   font-size: 0.8rem;
@@ -1095,11 +1081,6 @@
 
   .entry-ideas-article-body {
     padding: 0 0.78rem 0.78rem;
-  }
-
-  .entry-ideas-article-image {
-    min-height: 178px;
-    aspect-ratio: 4 / 3;
   }
 
   .entry-hero-cta {

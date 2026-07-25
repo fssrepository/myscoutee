@@ -6,8 +6,12 @@ import {
   ChangeDetectorRef,
   Component,
   HostListener,
+  QueryList,
+  ViewChild,
+  ViewChildren,
   effect,
-  inject
+  inject,
+  untracked
 } from '@angular/core';
 import {
   from,
@@ -47,7 +51,9 @@ import {
   ActivityChatSingleRowConverter,
   EventSubeventRuntimeInfoCardConverter,
   EventSubeventRuntimeMenuConverter,
+  EventSubeventsListContextMenuConverter,
   EventSubeventsSlotConverter,
+  type EventSubeventsListContextAction,
   type EventSubeventsSlotModel,
   type EventSubeventRuntimeMenuContext,
   type EventSubeventRuntimeMenuItemId
@@ -59,7 +65,10 @@ import {
   DialogStore
 } from '../../../shared/ui/context/stores/dialog.store';
 import { UserProfileStore } from '../../../shared/ui/context/stores/user-profile.store';
-import { ActivityStore } from '../../../shared/ui/context/stores/activity.store';
+import {
+  ActivityStore,
+  type ActivityMembersSyncState
+} from '../../../shared/ui/context/stores/activity.store';
 import { ActivitiesPopupStore } from '../../../shared/ui/context/stores/activities-popup.store';
 import { MemberMenuStore } from '../../../shared/ui/context/stores/member-menu.store';
 import { EventSubeventsPopupStore } from '../../../shared/ui/context/stores/event-subevents-popup.store';
@@ -70,7 +79,6 @@ import {
 
 type EventSubeventsListView = 'day' | 'week' | 'month';
 type EventSubeventsListOrder = 'upcoming' | 'past';
-type EventSubeventsListContextAction = 'participantFilter' | 'edit' | 'manage' | 'view' | 'members';
 type EventSubeventsListPopupMenuContext =
   | { menu: 'order'; order: EventSubeventsListOrder }
   | { menu: 'view'; view: EventSubeventsListView }
@@ -113,6 +121,12 @@ interface EventSubeventsParentContext {
   changeDetection: ChangeDetectionStrategy.OnPush
 })
 export class EventSubeventsListPopupComponent {
+  @ViewChild('subeventsSmartList')
+  private subeventsSmartList?: SmartListComponent<EventSubeventsSlotModel, EventSubeventsListFilters>;
+
+  @ViewChildren('slotSectionSmartList')
+  private slotSectionSmartLists?: QueryList<SmartListComponent<SubEventDTO, EventSubeventsListFilters>>;
+
   private readonly eventsService = inject(EventsService);
   private readonly dialogStore = inject(DialogStore);
   private readonly userProfileStore = inject(UserProfileStore);
@@ -146,6 +160,11 @@ export class EventSubeventsListPopupComponent {
   private loadedQueryKey = '';
   private loadingQueryKey = '';
   private loadingPromise: Promise<void> | null = null;
+  private loadedPageTotal: number | null = null;
+  private loadedPageNextCursor: string | null = null;
+  private handledGroupsUpdateMs = 0;
+  private handledMembersSyncMs = 0;
+  private handledResourceMetricsRevision = 0;
   private readonly compactToolbarMenuModel: AppMenuModel<string, EventSubeventsListPopupMenuContext> = {
     density: 'compact'
   };
@@ -197,6 +216,9 @@ export class EventSubeventsListPopupComponent {
     desktopColumns: 3,
     snapMode: 'mandatory',
     mobileStepper: true,
+    cacheable: {
+      identity: (item, index) => this.subEventItemKey(item, index)
+    },
     stickyHeaderClass: 'smart-list__sticky--slot-section',
     pagination: {
       mode: 'arrows',
@@ -220,6 +242,9 @@ export class EventSubeventsListPopupComponent {
     listLayout: 'card-grid',
     desktopColumns: 3,
     snapMode: 'proximity',
+    cacheable: {
+      identity: (item, index) => this.subEventItemKey(item, index)
+    },
     menuItems: context => context.item
       ? this.subEventMenuItems(context.item) as readonly AppMenuItem<string, unknown>[]
       : [],
@@ -241,6 +266,8 @@ export class EventSubeventsListPopupComponent {
         this.loadedQueryKey = '';
         this.loadingQueryKey = '';
         this.loadingPromise = null;
+        this.loadedPageTotal = null;
+        this.loadedPageNextCursor = null;
         this.event = null;
         this.items = [];
         this.slotSections = [];
@@ -259,7 +286,9 @@ export class EventSubeventsListPopupComponent {
       this.loadedQueryKey = '';
       this.loadingQueryKey = '';
       this.loadingPromise = null;
-      this.event = null;
+      this.loadedPageTotal = null;
+      this.loadedPageNextCursor = null;
+      this.event = this.parentContextFromRequest(request.eventId);
       this.items = [];
       this.slotSections = [];
       this.participantOnly = false;
@@ -275,6 +304,15 @@ export class EventSubeventsListPopupComponent {
         return;
       }
       void this.eventSubeventsStore.ensureEventTournamentGroupsPopupLoaded();
+    });
+
+    effect(() => {
+      const update = this.eventSubeventsStore.eventTournamentGroupsUpdate();
+      if (!update || update.updatedMs === this.handledGroupsUpdateMs) {
+        return;
+      }
+      this.handledGroupsUpdateMs = update.updatedMs;
+      this.applyTournamentGroupsUpdate(update);
     });
 
     effect(() => {
@@ -310,10 +348,24 @@ export class EventSubeventsListPopupComponent {
 
     effect(() => {
       const update = this.resourcePopupStore.subEventResourceMetricsUpdate();
-      if (!update || !this.isOpen()) {
+      if (
+        !update
+        || !this.isOpen()
+        || update.revision <= this.handledResourceMetricsRevision
+      ) {
         return;
       }
-      this.applySubEventResourceMetricsUpdate(update);
+      this.handledResourceMetricsRevision = update.revision;
+      untracked(() => this.applySubEventResourceMetricsUpdate(update));
+    });
+
+    effect(() => {
+      const sync = this.activityStore.activityMembersSync();
+      if (!sync || !this.isOpen() || sync.updatedMs === this.handledMembersSyncMs) {
+        return;
+      }
+      this.handledMembersSyncMs = sync.updatedMs;
+      this.applySubEventMembersSync(sync);
     });
 
     effect(() => {
@@ -539,42 +591,12 @@ export class EventSubeventsListPopupComponent {
 
   protected contextMenuItems(): readonly AppMenuItem<string, EventSubeventsListPopupMenuContext>[] {
     const editorAction = this.eventSubeventsStore.eventSubeventsListPopup()?.editorAction ?? 'view';
-    const canEditStructure = editorAction === 'edit';
-    const memberCount = this.eventMembersCount();
-    return [
-      {
-        id: 'participant-filter',
-        label: 'event.subevents.my.participation',
-        icon: this.participantOnly ? 'person_pin_circle' : 'person_pin',
-        kind: 'toggle',
-        layout: 'pill',
-        active: this.participantOnly,
-        checked: this.participantOnly,
-        closeOnSelect: false,
-        palette: 'green',
-        context: { menu: 'context', action: 'participantFilter' }
-      },
-      {
-        id: editorAction,
-        label: canEditStructure ? 'edit' : 'view',
-        icon: canEditStructure ? 'edit' : 'visibility',
-        palette: canEditStructure ? 'amber' : 'teal',
-        surface: 'tinted',
-        layout: 'action',
-        context: { menu: 'context', action: editorAction }
-      },
-      {
-        id: 'members',
-        label: 'members',
-        icon: 'groups',
-        palette: 'violet',
-        surface: 'tinted',
-        layout: 'action',
-        disabled: this.membersDisabled(),
-        counter: memberCount > 0 ? memberCount : null,
-        context: { menu: 'context', action: 'members' }
-      }
-    ];
+    return EventSubeventsListContextMenuConverter.convert({
+      participantOnly: this.participantOnly,
+      editorAction,
+      pendingMembers: this.eventPendingMembersCount(),
+      membersDisabled: this.membersDisabled()
+    });
   }
 
   private selectContextAction(action: EventSubeventsListContextAction): void {
@@ -612,15 +634,16 @@ export class EventSubeventsListPopupComponent {
     if (!event || this.membersDisabled()) {
       return;
     }
+    const sync = this.activityStore.activityMembersSyncByOwnerId()[event.id] ?? null;
     this.memberMenuStore.requestActivitiesNavigation({
       type: 'members',
       ownerId: event.id,
       ownerType: 'event',
       subtitle: event.title ?? '',
       canManage: this.eventSubeventsStore.eventSubeventsListPopup()?.canEdit === true,
-      acceptedMembers: Math.max(0, Math.trunc(Number(event.acceptedMembers) || 0)),
-      pendingMembers: Math.max(0, Math.trunc(Number(event.pendingMembers) || 0)),
-      capacityTotal: Math.max(0, Math.trunc(Number(event.capacityTotal) || 0))
+      acceptedMembers: Math.max(0, Math.trunc(Number(sync?.acceptedMembers ?? event.acceptedMembers) || 0)),
+      pendingMembers: Math.max(0, Math.trunc(Number(sync?.pendingMembers ?? event.pendingMembers) || 0)),
+      capacityTotal: Math.max(0, Math.trunc(Number(sync?.capacityTotal ?? event.capacityTotal) || 0))
     });
   }
 
@@ -634,8 +657,8 @@ export class EventSubeventsListPopupComponent {
       return 0;
     }
     const eventId = `${event.id ?? ''}`.trim();
-    const sync = this.activityStore.activityMembersSync();
-    const pendingRaw = sync && eventId && sync.id === eventId
+    const sync = this.activityStore.activityMembersSyncByOwnerId()[eventId] ?? null;
+    const pendingRaw = sync
       ? sync.pendingMembers
       : (event as any).pendingMembersCount
         ?? (event as any).pendingCount
@@ -650,16 +673,6 @@ export class EventSubeventsListPopupComponent {
     return Math.floor(pendingCount);
   }
 
-  protected eventMembersCount(): number {
-    const event = this.event;
-    if (!event) {
-      return 0;
-    }
-    const pending = this.eventPendingMembersCount();
-    const accepted = Math.max(0, Number(event.acceptedMembers) || 0);
-    return accepted + pending;
-  }
-
   protected cardFor(item: SubEventDTO, groupLabel: string | null): InfoCardData {
     const section = this.slotSectionForItem(item);
     const sequence = this.subEventSequence(item);
@@ -672,11 +685,7 @@ export class EventSubeventsListPopupComponent {
       sequenceNumber: sequence.number,
       sequenceTotal: sequence.total,
       hasMenuOptions: true,
-      menuTitle: item.name,
-      menuBadgeCount: EventSubeventRuntimeMenuConverter.pendingBadgeCount(item, {
-        event: this.event,
-        mode: this.event?.mode
-      })
+      menuTitle: item.name
     });
   }
 
@@ -815,6 +824,8 @@ export class EventSubeventsListPopupComponent {
     this.resourcePopupStore.requestSubEventResourcePopup({
       type: context.resourceType,
       ownerId,
+      assetOwnerUserId: this.event?.creatorUserId ?? null,
+      viewOnly: this.eventSubeventsStore.eventSubeventsListPopup()?.editorAction === 'view',
       parentTitle: this.popupSubtitle(),
       subEventId: `${item.id ?? ''}`.trim(),
       subEventIndex: context.subEventIndex,
@@ -854,6 +865,10 @@ export class EventSubeventsListPopupComponent {
       type: 'members',
       ownerId: memberOwnerId,
       ownerType: 'subEvent',
+      parentOwnerId: ownerId,
+      parentOwnerType: 'event',
+      eventId: ownerId,
+      subEventId,
       subtitle: `${item.name ?? ''}`.trim() || this.popupSubtitle(),
       canManage: this.eventSubeventsStore.eventSubeventsListPopup()?.canEdit === true,
       acceptedMembers,
@@ -953,6 +968,78 @@ export class EventSubeventsListPopupComponent {
       : `${this.event?.id ?? ''}`.trim();
   }
 
+  private applyTournamentGroupsUpdate(update: {
+    eventId: string;
+    slotId: string | null;
+    stageId: string;
+    groupsCount: number;
+    groupsPending: number;
+    groupsPendingDelta: number;
+  }): void {
+    const openEventId = `${this.eventSubeventsStore.eventSubeventsListPopup()?.eventId ?? ''}`.trim();
+    const eventId = `${update.eventId ?? ''}`.trim();
+    const ownerId = `${update.slotId ?? eventId}`.trim();
+    const stageId = `${update.stageId ?? ''}`.trim();
+    if (!eventId || eventId !== openEventId || !ownerId || !stageId) {
+      return;
+    }
+    let changed = false;
+    const patchItem = (item: SubEventDTO): SubEventDTO => {
+      if (this.subEventOwnerId(item) !== ownerId || `${item.id ?? ''}`.trim() !== stageId) {
+        return item;
+      }
+      changed = true;
+      return {
+        ...item,
+        groupsCount: Math.max(0, Math.trunc(Number(update.groupsCount) || 0)),
+        groupsPending: Math.max(0, Math.trunc(Number(update.groupsPending) || 0))
+      };
+    };
+    const nextSections = this.slotSections.map(section => {
+      const nextItems = section.items.map(patchItem);
+      return {
+        ...section,
+        items: nextItems,
+        slot: {
+          ...section.slot,
+          subEventItems: nextItems
+        }
+      };
+    });
+    const nextItems = nextSections.length > 0
+      ? nextSections.flatMap(section => section.items)
+      : this.items.map(patchItem);
+    if (!changed) {
+      return;
+    }
+    this.slotSections = nextSections;
+    this.items = nextItems;
+    this.syncSubEventSmartListCaches(nextSections);
+    this.activityStore.emitActivityEventRuntimeSync({
+      eventId,
+      subEventId: stageId,
+      activityDelta: update.groupsPendingDelta,
+      source: 'groups'
+    });
+    this.cdr.markForCheck();
+  }
+
+  private syncSubEventSmartListCaches(sections: readonly EventSubeventsSlotModel[]): void {
+    this.subeventsSmartList?.syncVisibleItems(sections, {
+      total: sections.length,
+      trackBy: (_index, section) => section.id,
+      equals: (current, next) => current === next
+    });
+    const sectionLists = this.slotSectionSmartLists?.toArray() ?? [];
+    sections.forEach((section, index) => {
+      sectionLists[index]?.syncVisibleItems(section.items, {
+        total: section.items.length,
+        trackBy: (itemIndex, item) => this.subEventItemKey(item, itemIndex),
+        equals: (current, next) => current === next
+      });
+    });
+  }
+
   private applySubEventResourceMetricsUpdate(update: SubEventResourceMetricsUpdate): void {
     const ownerId = `${update.ownerId ?? ''}`.trim();
     const subEventId = `${update.subEventId ?? ''}`.trim();
@@ -961,14 +1048,29 @@ export class EventSubeventsListPopupComponent {
     }
 
     let changed = false;
+    let inferredActivityDelta = 0;
     const patchItem = (item: SubEventDTO): SubEventDTO => {
       const itemOwnerId = this.subEventOwnerId(item);
       const itemId = `${item.id ?? ''}`.trim();
       if (itemOwnerId !== ownerId || itemId !== subEventId) {
         return item;
       }
-      changed = true;
-      return {
+      const metricsUnchanged = item.carsAccepted === update.subEvent.carsAccepted
+        && item.carsPending === update.subEvent.carsPending
+        && item.carsCapacityMin === update.subEvent.carsCapacityMin
+        && item.carsCapacityMax === update.subEvent.carsCapacityMax
+        && item.accommodationAccepted === update.subEvent.accommodationAccepted
+        && item.accommodationPending === update.subEvent.accommodationPending
+        && item.accommodationCapacityMin === update.subEvent.accommodationCapacityMin
+        && item.accommodationCapacityMax === update.subEvent.accommodationCapacityMax
+        && item.suppliesAccepted === update.subEvent.suppliesAccepted
+        && item.suppliesPending === update.subEvent.suppliesPending
+        && item.suppliesCapacityMin === update.subEvent.suppliesCapacityMin
+        && item.suppliesCapacityMax === update.subEvent.suppliesCapacityMax;
+      if (metricsUnchanged) {
+        return item;
+      }
+      const nextItem = {
         ...item,
         carsAccepted: update.subEvent.carsAccepted,
         carsPending: update.subEvent.carsPending,
@@ -983,6 +1085,9 @@ export class EventSubeventsListPopupComponent {
         suppliesCapacityMin: update.subEvent.suppliesCapacityMin,
         suppliesCapacityMax: update.subEvent.suppliesCapacityMax
       };
+      changed = true;
+      inferredActivityDelta += this.runtimeBadgeCount(nextItem) - this.runtimeBadgeCount(item);
+      return nextItem;
     };
 
     const nextSlotSections = this.slotSections.map(section => {
@@ -996,13 +1101,95 @@ export class EventSubeventsListPopupComponent {
         }
       };
     });
+    const nextItems = nextSlotSections.length > 0
+      ? nextSlotSections.flatMap(section => section.items)
+      : this.items.map(patchItem);
+    const activityDelta = update.activityDelta === undefined
+      ? inferredActivityDelta
+      : Math.trunc(Number(update.activityDelta) || 0);
+    if (!changed && activityDelta === 0) {
+      return;
+    }
+    if (changed) {
+      this.slotSections = nextSlotSections;
+      this.items = nextItems;
+      this.syncSubEventSmartListCaches(nextSlotSections);
+    }
+    if (activityDelta !== 0) {
+      this.activityStore.emitActivityEventRuntimeSync({
+        eventId: `${this.event?.id ?? ''}`.trim(),
+        subEventId,
+        activityDelta,
+        source: 'resources'
+      });
+    }
+    if (changed) {
+      this.cdr.markForCheck();
+    }
+  }
+
+  private applySubEventMembersSync(sync: ActivityMembersSyncState): void {
+    const memberOwnerId = `${sync.id ?? ''}`.trim();
+    if (!memberOwnerId) {
+      return;
+    }
+
+    let changed = false;
+    let activityDelta = 0;
+    let changedSubEventId = '';
+    const patchItem = (item: SubEventDTO): SubEventDTO => {
+      const itemMemberOwnerId = this.memberOwnerIdFromParts(
+        this.subEventOwnerId(item),
+        `${item.id ?? ''}`.trim()
+      );
+      if (itemMemberOwnerId !== memberOwnerId) {
+        return item;
+      }
+      const nextItem = {
+        ...item,
+        membersAccepted: Math.max(0, Math.trunc(Number(sync.acceptedMembers) || 0)),
+        membersPending: Math.max(0, Math.trunc(Number(sync.pendingMembers) || 0))
+      };
+      changed = true;
+      changedSubEventId = `${item.id ?? ''}`.trim();
+      activityDelta += this.runtimeBadgeCount(nextItem) - this.runtimeBadgeCount(item);
+      return nextItem;
+    };
+
+    const nextSlotSections = this.slotSections.map(section => {
+      const nextItems = section.items.map(patchItem);
+      return {
+        ...section,
+        items: nextItems,
+        slot: {
+          ...section.slot,
+          subEventItems: nextItems
+        }
+      };
+    });
+    const nextItems = nextSlotSections.length > 0
+      ? nextSlotSections.flatMap(section => section.items)
+      : this.items.map(patchItem);
     if (!changed) {
       return;
     }
     this.slotSections = nextSlotSections;
-    this.items = nextSlotSections.flatMap(section => section.items);
-    this.bumpQuery();
+    this.items = nextItems;
+    this.syncSubEventSmartListCaches(nextSlotSections);
+    this.activityStore.emitActivityEventRuntimeSync({
+      eventId: `${this.event?.id ?? ''}`.trim(),
+      subEventId: changedSubEventId,
+      activityDelta,
+      source: 'members'
+    });
     this.cdr.markForCheck();
+  }
+
+  private runtimeBadgeCount(item: SubEventDTO): number {
+    return EventSubeventRuntimeMenuConverter.runtimeBadgeCount(item, {
+      event: this.event,
+      mode: this.event?.mode
+    });
   }
 
   private subEventIndex(item: SubEventDTO): number {
@@ -1074,6 +1261,13 @@ export class EventSubeventsListPopupComponent {
       return { items: [], total: 0, nextCursor: null };
     }
     await this.ensureSubEventsLoaded(eventId, query);
+    if (this.loadedPageTotal !== null) {
+      return {
+        items: this.slotSections,
+        total: this.loadedPageTotal,
+        nextCursor: this.loadedPageNextCursor
+      };
+    }
     const sorted = this.slotSections;
     const page = Math.max(0, Math.trunc(Number(query.page) || 0));
     const pageSize = Math.max(1, Math.trunc(Number(query.pageSize) || 12));
@@ -1102,6 +1296,8 @@ export class EventSubeventsListPopupComponent {
       this.items = [];
       this.slotSections = [];
       this.slotSectionHeaderLabels.clear();
+      this.loadedPageTotal = null;
+      this.loadedPageNextCursor = null;
       this.loadedEventId = eventId;
       this.loadedQueryKey = queryKey;
       return;
@@ -1146,6 +1342,12 @@ export class EventSubeventsListPopupComponent {
     });
     this.syncSlotSectionHeaderLabels(this.slotSections);
     this.items = this.slotSections.flatMap(section => section.items);
+    this.loadedPageTotal = Number.isFinite(result?.total)
+      ? Math.max(0, Math.trunc(Number(result?.total)))
+      : null;
+    this.loadedPageNextCursor = typeof result?.nextCursor === 'string' && result.nextCursor.trim().length > 0
+      ? result.nextCursor
+      : null;
     this.loadedEventId = eventId;
     this.loadedQueryKey = this.subEventsLoadQueryKey(eventId, query);
     this.cdr.markForCheck();
@@ -1159,7 +1361,11 @@ export class EventSubeventsListPopupComponent {
       timeframe: request?.timeframe ?? null,
       startAtIso: request?.startAtIso ?? null,
       endAtIso: request?.endAtIso ?? null,
-      mode: request?.mode ?? null
+      mode: request?.mode ?? null,
+      acceptedMembers: request?.acceptedMembers ?? 0,
+      pendingMembers: request?.pendingMembers ?? 0,
+      capacityTotal: request?.capacityTotal ?? 0,
+      creatorUserId: request?.resourceOwnerUserId ?? null
     };
   }
 
@@ -1275,9 +1481,19 @@ export class EventSubeventsListPopupComponent {
     if (!event) {
       return null;
     }
-    return this.order === 'past'
-      ? (event.endAtIso || event.startAtIso || null)
-      : (event.startAtIso || event.endAtIso || null);
+    const today = AppUtils.dateOnly(new Date());
+    const start = AppUtils.parseDate(event.startAtIso);
+    const end = AppUtils.parseDate(event.endAtIso);
+    if (this.order === 'past') {
+      if (end && end.getTime() < today.getTime()) {
+        return end;
+      }
+      return start && start.getTime() > today.getTime() ? start : today;
+    }
+    if (start && start.getTime() > today.getTime()) {
+      return start;
+    }
+    return end && end.getTime() < today.getTime() ? end : today;
   }
 
   private subEventsLoadQueryKey(eventId: string, query: ListQuery<EventSubeventsListFilters>): string {
@@ -1289,7 +1505,10 @@ export class EventSubeventsListPopupComponent {
       loadQuery.anchorDate ?? '',
       loadQuery.rangeStart ?? '',
       loadQuery.rangeEnd ?? '',
-      loadQuery.participantOnly === true ? 'participantOnly' : 'allParts'
+      loadQuery.participantOnly === true ? 'participantOnly' : 'allParts',
+      loadQuery.page ?? 0,
+      loadQuery.pageSize ?? 12,
+      loadQuery.cursor ?? ''
     ].join('|');
   }
 
@@ -1305,7 +1524,10 @@ export class EventSubeventsListPopupComponent {
       anchorDate: query.anchorDate ?? null,
       rangeStart: query.rangeStart ?? null,
       rangeEnd: query.rangeEnd ?? null,
-      participantOnly: this.participantOnly
+      participantOnly: this.participantOnly,
+      page: query.page,
+      pageSize: query.pageSize,
+      cursor: query.cursor ?? null
     };
   }
 
@@ -1315,6 +1537,8 @@ export class EventSubeventsListPopupComponent {
     this.loadingEventId = '';
     this.loadingQueryKey = '';
     this.loadingPromise = null;
+    this.loadedPageTotal = null;
+    this.loadedPageNextCursor = null;
     this.bumpQuery();
     this.cdr.markForCheck();
   }

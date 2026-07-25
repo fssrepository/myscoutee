@@ -54,6 +54,7 @@ import type {
   AppMenuValueMap
 } from './menu.types';
 import {
+  appMenuAlertCounter,
   appMenuModelGroups,
   appMenuModelSummary,
   type AppMenuModelSummaryResult,
@@ -271,6 +272,32 @@ export class AppMenuComponent<TId extends string = string, TContext = unknown>
       return null;
     }
     return `${Math.max(0, Number(this.panelGapPx) || 0)}px`;
+  }
+
+  @HostBinding('style.--app-menu-panel-available-height')
+  protected get hostPanelAvailableHeightStyle(): string | null {
+    if (
+      this.resolvedLayout === 'mobile'
+      || !this.panelVisible
+      || this.usesInlinePanel
+      || this.panelDockToHost
+    ) {
+      return null;
+    }
+    const rect = this.hostRect();
+    if (!rect) {
+      return null;
+    }
+    const bounds = this.layoutBounds();
+    const availableHeight = this.resolvedOpenUp
+      ? rect.top - bounds.top
+      : bounds.bottom - rect.bottom;
+    const configuredGap = Number(this.panelGapPx);
+    const boundaryInset = Math.max(
+      AppMenuComponent.DESKTOP_MARGIN_PX,
+      Number.isFinite(configuredGap) ? Math.max(0, configuredGap) : 0
+    );
+    return `${Math.max(0, Math.floor(availableHeight - boundaryInset))}px`;
   }
 
   @HostBinding('class.app-menu-host--trigger-field')
@@ -588,6 +615,9 @@ export class AppMenuComponent<TId extends string = string, TContext = unknown>
     if (this.trigger?.hideLabel === true) {
       return '';
     }
+    if (this.isCustomTriggerAction) {
+      return '';
+    }
     if (this.isSelectKind && this.triggerLayout() !== 'icon') {
       return 'expand_more';
     }
@@ -669,7 +699,8 @@ export class AppMenuComponent<TId extends string = string, TContext = unknown>
     if (configuredCounter !== null && configuredCounter !== undefined) {
       return configuredCounter;
     }
-    return this.modelSummary().counter;
+    return this.modelSummary().counter
+      ?? appMenuAlertCounter(this.items, this.model, this.groups);
   }
 
   protected toggleMenu(event: Event): void {

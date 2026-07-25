@@ -22,6 +22,7 @@ import * as AppConstants from '../../../shared/core/common/constants';
 import type * as AppDTOs from '../../../shared/core/contracts';
 import {
   PopupComponent,
+  DialogComponent,
   SingleRowComponent,
   SmartListComponent,
   type AppMenuItem,
@@ -55,9 +56,11 @@ import {
   type AssetAvailabilityHeaderState,
   type AssetAvailabilityPopupRequest
 } from '../../../shared/ui/context/stores/asset-availability-popup.store';
+import { DialogStore } from '../../../shared/ui/context/stores/dialog.store';
 import {
   AssetStore
 } from '../../../shared/ui/context/stores/asset.store';
+import { UserProfileStore } from '../../../shared/ui/context/stores/user-profile.store';
 import {
   SubEventResourcePopupStore,
   type SubEventResourceMetricsUpdate
@@ -90,6 +93,7 @@ interface AssetAvailabilityScopedOverride<T> {
   imports: [
     CommonModule,
     PopupComponent,
+    DialogComponent,
     SmartListComponent,
     SingleRowComponent
   ],
@@ -103,6 +107,8 @@ export class AssetAvailabilityPopupComponent {
   private readonly assetsService = inject(AssetsService);
   private readonly i18n = inject(I18nService);
   private readonly assetStore = inject(AssetStore);
+  private readonly userProfileStore = inject(UserProfileStore);
+  private readonly dialogStore = inject(DialogStore);
   protected readonly resourcePopupStore = inject(SubEventResourcePopupStore);
   protected readonly availabilityPopupStore = inject(AssetAvailabilityPopupStore);
   private readonly cdr = inject(ChangeDetectorRef);
@@ -523,23 +529,81 @@ export class AssetAvailabilityPopupComponent {
   ): Promise<void> {
     const row = this.rowDetail(event.card.eagerDetail);
     const action = event.actionId as AppConstants.AssetRequestAction;
-    if (!row || (action !== 'accept' && action !== 'remove' && action !== 'makeManager' && action !== 'manage')) {
+    if (!row || (action !== 'accept' && action !== 'remove' && action !== 'makeManager' && action !== 'revokeManager' && action !== 'manage')) {
       return;
     }
     if (action === 'manage') {
       this.openAvailabilityResourceManager(row);
       return;
     }
+    if (action === 'accept' || action === 'remove') {
+      this.openAssetRequestActionConfirmation(row, action);
+      return;
+    }
+    this.openAssetRequestActionConfirmation(row, action);
+  }
+
+  private openAssetRequestActionConfirmation(
+    row: AppDTOs.AssetOccupancyRowDTO,
+    action: Extract<AppConstants.AssetRequestAction, 'accept' | 'remove' | 'makeManager' | 'revokeManager'>
+  ): void {
+    const accepting = action === 'accept';
+    const promoting = action === 'makeManager';
+    const revoking = action === 'revokeManager';
+    const requester = `${row.title ?? ''}`.trim() || this.i18n.translate('member', 'Member');
+    const asset = this.availabilityHeader()?.title
+      || this.dayListHeader()?.title
+      || this.i18n.translate('asset', 'Asset');
+    this.dialogStore.open({
+      title: this.i18n.translate(
+        accepting
+          ? 'asset.requests.confirm.accept.title'
+          : promoting ? 'asset.requests.promote.to.manager' : revoking ? 'Visszavonás' : 'asset.requests.confirm.reject.title'
+      ),
+      message: promoting || revoking
+        ? `${this.i18n.translate(promoting ? 'asset.requests.promote.to.manager' : 'Visszavonás')} — ${requester} · ${asset}`
+        : this.i18n.translateParams(
+            accepting ? 'asset.requests.confirm.accept.message' : 'asset.requests.confirm.reject.message',
+            { requester, asset }
+          ),
+      cancelLabel: this.i18n.translate('cancel', 'Cancel'),
+      confirmLabel: this.i18n.translate(promoting ? 'asset.requests.promote.to.manager' : revoking ? 'Visszavonás' : accepting ? 'accept' : 'reject'),
+      busyConfirmLabel: this.i18n.translate(
+        promoting ? 'asset.requests.promoting' : revoking ? 'Visszavonás...' : accepting ? 'accepting' : 'asset.requests.rejecting'
+      ),
+      confirmTone: accepting || promoting ? 'accent' : revoking ? 'warning' : 'danger',
+      failureMessage: this.i18n.translate('asset.requests.confirm.failure'),
+      onConfirm: async () => {
+        try {
+          await this.executeRowAction(row, action);
+        } catch {
+          throw new Error(this.i18n.translate('asset.requests.confirm.failure'));
+        }
+      }
+    });
+  }
+
+  private async executeRowAction(
+    row: AppDTOs.AssetOccupancyRowDTO,
+    action: Extract<AppConstants.AssetRequestAction, 'accept' | 'remove' | 'makeManager' | 'revokeManager'>
+  ): Promise<void> {
     const busyKey = `${row.assetId}:${row.id}:${action}`;
     this.rowBusyKey = busyKey;
     this.cdr.markForCheck();
     try {
       if (action === 'makeManager') {
         await this.promoteAssetRequestToManager(row);
+      } else if (action === 'revokeManager') {
+        await this.revokeAssetRequestManager(row);
       } else {
         await this.applyAssetRequestAction(row, action);
       }
-      this.reloadLists();
+      this.patchRequestCounterDelta(row, action);
+      if (action === 'makeManager' || action === 'revokeManager') {
+        this.patchVisibleManagerState(row, action === 'makeManager');
+      } else {
+        this.reloadLists();
+      }
     } finally {
       if (this.rowBusyKey === busyKey) {
         this.rowBusyKey = '';
@@ -1065,16 +1129,25 @@ export class AssetAvailabilityPopupComponent {
   ): Promise<void> {
     const assetDetail = await this.assetsService.loadOwnedAssetDetailById(row.ownerUserId, row.assetId);
     if (!assetDetail) {
-      return;
+      throw new Error('The asset could not be loaded.');
     }
     let nextQuantity = AssetCardBuilder.storedQuantityValue(assetDetail);
+    let targetFound = false;
     const nextRequests = assetDetail.requests
       .map(request => AssetCardBuilder.cloneRequest(request))
       .filter(request => {
         if (request.id !== row.id) {
           return true;
         }
+        targetFound = true;
         if (action === 'remove') {
+          if (request.requestKind !== 'manual' && request.booking?.inventoryApplied === true) {
+            const capacityTotal = Math.max(0, Math.trunc(Number(assetDetail.capacityTotal) || 0));
+            const restoredQuantity = nextQuantity + this.assetRequestQuantity(request);
+            nextQuantity = capacityTotal > 0
+              ? Math.min(capacityTotal, restoredQuantity)
+              : restoredQuantity;
+          }
           return false;
         }
         request.status = 'accepted';
@@ -1092,26 +1165,91 @@ export class AssetAvailabilityPopupComponent {
         }
         return true;
       });
+    if (!targetFound) {
+      throw new Error('The asset request could not be found.');
+    }
     const savedCard = await this.assetsService.saveOwnedAsset(row.ownerUserId, {
       ...assetDetail,
       quantity: nextQuantity,
       requests: nextRequests
     });
+    const savedRequest = savedCard.requests.find(request => request.id === row.id) ?? null;
+    if ((action === 'accept' && savedRequest?.status !== 'accepted')
+      || (action === 'remove' && savedRequest !== null)) {
+      throw new Error('The asset request update was not persisted.');
+    }
     this.replaceAssetCardIfVisible(savedCard, row.ownerUserId);
   }
 
   private async promoteAssetRequestToManager(row: AppDTOs.AssetOccupancyRowDTO): Promise<void> {
     const assetDetail = await this.assetsService.loadOwnedAssetDetailById(row.ownerUserId, row.assetId);
-    const targetUserId = `${this.assetRequestById(row)?.userId
-      ?? assetDetail?.requests.find(request => request.id === row.id)?.userId
-      ?? ''}`.trim();
+    const targetUserId = `${row.userId
+      || this.assetRequestById(row)?.userId
+      || assetDetail?.requests.find(request => request.id === row.id)?.userId
+      || ''}`.trim();
     if (!targetUserId || !assetDetail) {
+      throw new Error('The asset request could not be found.');
+    }
+    const actorUserId = this.userProfileStore.getActiveUserId().trim();
+    if (!actorUserId) {
+      throw new Error('The active user could not be resolved.');
+    }
+    const savedCard = await this.assetsService.makeAssetManager(actorUserId, row.assetId, targetUserId);
+    if (!savedCard) {
+      throw new Error('Unable to promote this person to asset manager.');
+    }
+    this.replaceAssetCardIfVisible(savedCard, row.ownerUserId);
+  }
+
+  private async revokeAssetRequestManager(row: AppDTOs.AssetOccupancyRowDTO): Promise<void> {
+    const actorUserId = this.userProfileStore.getActiveUserId().trim();
+    const targetUserId = `${row.userId ?? ''}`.trim();
+    const savedCard = await this.assetsService.revokeAssetManager(actorUserId, row.assetId, targetUserId);
+    if (!savedCard) {
+      throw new Error('Unable to revoke this asset manager.');
+    }
+    this.replaceAssetCardIfVisible(savedCard, row.ownerUserId);
+  }
+
+  private patchVisibleManagerState(row: AppDTOs.AssetOccupancyRowDTO, isManager: boolean): void {
+    const patch = (item: AppDTOs.AssetOccupancyRowDTO): AppDTOs.AssetOccupancyRowDTO => ({
+      ...item,
+      isManager,
+      menuActions: (item.menuActions ?? []).map(action =>
+        action === 'makeManager' || action === 'revokeManager'
+          ? (isManager ? 'revokeManager' : 'makeManager')
+          : action)
+    });
+    this.availabilitySmartList?.patchVisibleItem(
+      item => this.isAvailabilityRow(item) && item.id === row.id && item.assetId === row.assetId,
+      item => this.isAvailabilityRow(item) ? patch(item) : item
+    );
+    this.dayListSmartList?.patchVisibleItem(
+      item => item.id === row.id && item.assetId === row.assetId,
+      patch
+    );
+    this.cdr.markForCheck();
+  }
+
+  private patchRequestCounterDelta(
+    row: AppDTOs.AssetOccupancyRowDTO,
+    action: Extract<AppConstants.AssetRequestAction, 'accept' | 'remove' | 'makeManager' | 'revokeManager'>
+  ): void {
+    if (action === 'revokeManager') {
       return;
     }
-    const savedCard = await this.assetsService.makeAssetManager(row.ownerUserId, row.assetId, targetUserId);
-    if (savedCard) {
-      this.replaceAssetCardIfVisible(savedCard, row.ownerUserId);
+    if (row.status !== 'pending' || row.requestKind === 'manual') {
+      return;
     }
+    if (action === 'remove') {
+      this.availabilityPopupStore.patchRequestMetrics({ allItems: -1, pendingItems: -1 });
+      return;
+    }
+    this.availabilityPopupStore.patchRequestMetrics({
+      activeItems: 1,
+      borrowedItems: 1,
+      pendingItems: -1
+    });
   }
 
   private assetRequestById(row: AppDTOs.AssetOccupancyRowDTO): AppDTOs.AssetMemberRequestDTO | null {

@@ -332,9 +332,11 @@ export class LocalAssetsMapper {
         return this.assetRequestsOverlap(request, other);
       });
     return {
-      id: request.id,
+      id: this.sourceAssetRequestId(request),
       assetId: request.assetId,
       ownerUserId: request.ownerUserId,
+      userId: request.userId,
+      isManager: (request.menuActions ?? []).includes('revokeManager'),
       dateIso: requestRange ? AppUtils.dateKey(requestRange.start) : '',
       startAtIso: request.booking?.startAtIso,
       endAtIso: request.booking?.endAtIso,
@@ -363,6 +365,18 @@ export class LocalAssetsMapper {
       subEventEndAtIso: `${request.booking?.endAtIso ?? ''}`.trim() || undefined,
       menuActions: this.assetRequestMenuActions(request)
     };
+  }
+
+  private static sourceAssetRequestId(request: AssetRequestRecord): string {
+    const requestId = `${request.requestId ?? ''}`.trim();
+    if (requestId) {
+      return requestId;
+    }
+    const projectionId = `${request.id ?? ''}`.trim();
+    const prefix = `${request.assetId ?? ''}`.trim() + ':request:';
+    return projectionId.startsWith(prefix)
+      ? projectionId.slice(prefix.length).trim()
+      : projectionId;
   }
 
   private static assetRequestsOverlap(left: AssetRequestRecord, right: AssetRequestRecord): boolean {

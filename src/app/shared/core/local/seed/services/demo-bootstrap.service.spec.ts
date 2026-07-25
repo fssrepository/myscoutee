@@ -247,6 +247,41 @@ describe('Demo bootstrap seeding', () => {
     expect(members.filter(member => member.status === 'pending').length).toBe(brunchRotation!.pendingMembers);
   });
 
+  it('distributes accepted parent members across seeded tournament groups', async () => {
+    const bootstrap = TestBed.inject(SeedDemoBootstrapService);
+
+    await bootstrap.ensureDemoSelectorReady('member');
+
+    const state = memoryDb.read();
+    const tournamentEvent = Object.values(state[EVENTS_TABLE_NAME].byId)
+      .find(record => record?.subEvents?.some(subEvent =>
+        subEvent.optional !== true && Math.trunc(Number(subEvent.groupsCount) || 0) > 1
+      ));
+    const tournamentStage = tournamentEvent?.subEvents?.find(subEvent =>
+      subEvent.optional !== true && Math.trunc(Number(subEvent.groupsCount) || 0) > 1
+    );
+    expect(tournamentEvent).toBeTruthy();
+    expect(tournamentStage).toBeTruthy();
+
+    const parentOwnerKey = `event:${tournamentEvent!.id}`;
+    const acceptedParentUserIds = (state[ACTIVITY_MEMBERS_TABLE_NAME].idsByOwnerKey[parentOwnerKey] ?? [])
+      .map(id => state[ACTIVITY_MEMBERS_TABLE_NAME].byId[id])
+      .filter(member => member?.status === 'accepted')
+      .map(member => member!.userId);
+    const groupsCount = Math.trunc(Number(tournamentStage!.groupsCount) || 0);
+    const groupUserIds = Array.from({ length: groupsCount }, (_, groupIndex) => {
+      const groupId = `${tournamentStage!.id}-group-${groupIndex + 1}`;
+      const ownerKey = `group:${tournamentEvent!.id}:${tournamentStage!.id}:${groupId}`;
+      return (state[ACTIVITY_MEMBERS_TABLE_NAME].idsByOwnerKey[ownerKey] ?? [])
+        .map(id => state[ACTIVITY_MEMBERS_TABLE_NAME].byId[id])
+        .filter(member => member?.status === 'accepted')
+        .map(member => member!.userId);
+    });
+
+    expect(groupUserIds.some(userIds => userIds.length > 0)).toBe(true);
+    expect(groupUserIds.flat().sort()).toEqual([...acceptedParentUserIds].sort());
+  });
+
   it('resets demo bootstrap tables without touching http-scoped storage', async () => {
     localStorage.setItem(appMemoryDbStorageKey('demo'), 'stale-demo-memory');
     localStorage.setItem(scopedSessionStorageKey('http'), 'keep-http-session');

@@ -51,7 +51,7 @@ export class ActivityInviteCandidatesService extends BaseRouteModeService implem
 
   async queryCandidates(
     query: ActivityContracts.ActivityInviteCandidatesQuery
-  ): Promise<ActivityContracts.ActivityMemberDTO[]> {
+  ): Promise<ActivityContracts.ActivityInviteCandidatesPage> {
     return this.inviteCandidatesService.queryCandidates(query);
   }
 
@@ -60,12 +60,16 @@ export class ActivityInviteCandidatesService extends BaseRouteModeService implem
     sort: AppConstants.ActivityInviteSort,
     fallbackTitle = 'Event',
     ownerType: AppConstants.ActivityMemberOwnerType = 'event',
-    existingMemberUserIds: readonly string[] = []
-  ): Promise<ActivityContracts.ActivityMemberDTO[]> {
+    existingMemberUserIds: readonly string[] = [],
+    pendingInviteUserIds: readonly string[] = [],
+    parentOwner: ActivityContracts.ActivityMemberOwnerRef | null = null,
+    page = 0,
+    pageSize = 16
+  ): Promise<ActivityContracts.ActivityInviteCandidatesPage> {
     const activeUserId = this.activeUserId();
     const normalizedOwnerId = ownerId.trim();
     if (!activeUserId || !normalizedOwnerId) {
-      return [];
+      return { items: [], total: 0, page: 0, pageSize: Math.max(1, pageSize) };
     }
     const ownerRef: ActivityContracts.ActivityMemberOwnerRef = {
       ownerType,
@@ -78,8 +82,12 @@ export class ActivityInviteCandidatesService extends BaseRouteModeService implem
     return this.inviteCandidatesService.queryCandidates({
       activeUserId,
       owner,
+      parentOwner,
       existingMemberUserIds: resolvedExistingMemberUserIds,
-      sort
+      pendingInviteUserIds: [...new Set(pendingInviteUserIds.map(userId => userId.trim()).filter(Boolean))],
+      sort,
+      page,
+      pageSize
     });
   }
 

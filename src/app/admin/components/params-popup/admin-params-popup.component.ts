@@ -40,6 +40,7 @@ import {
 import {
   PopupComponent,
   type PopupActionEvent,
+  type PopupMenuSelectEvent,
   type PopupModel
 } from '../../../shared/ui/components/core/popup';
 import {
@@ -53,6 +54,10 @@ type AdminParamSelectMenuItemId = `param-option:${string}:${string}`;
 interface AdminParamSelectMenuContext {
   field: AdminParamFieldDto;
   option: AdminParamOption;
+}
+
+interface AdminParamsSaveMenuContext {
+  action: 'save';
 }
 
 @Component({
@@ -129,7 +134,9 @@ export class AdminParamsPopupComponent implements OnDestroy {
     };
   }
 
-  protected editPopupModel(draft: { section: AdminParamsSectionDto; fields: AdminParamFieldDto[] }): PopupModel {
+  protected editPopupModel(
+    draft: { section: AdminParamsSectionDto; fields: AdminParamFieldDto[] }
+  ): PopupModel<AdminParamsSaveMenuContext> {
     return {
       title: draft.section.labelKey || draft.section.label,
       subtitle: `v${draft.section.version}`,
@@ -141,15 +148,16 @@ export class AdminParamsPopupComponent implements OnDestroy {
       bodyLayout: 'fill',
       backdropTone: 'dim',
       showClose: false,
-      headerActions: [
+      headerControls: [
         {
+          kind: 'menu',
           id: 'save-edit',
-          icon: 'check',
-          ariaLabel: 'save',
-          palette: 'success',
-          disabled: this.saving(),
-          compactOnMobile: true
-        },
+          menuKind: 'inline',
+          items: this.editSaveMenuItems(),
+          closeOnSelect: false
+        }
+      ],
+      headerActions: [
         {
           id: 'cancel-edit',
           icon: 'close',
@@ -160,7 +168,8 @@ export class AdminParamsPopupComponent implements OnDestroy {
         }
       ],
       onClose: () => this.cancelEdit(),
-      onAction: event => this.onEditPopupAction(event)
+      onAction: event => this.onEditPopupAction(event),
+      onMenuSelect: event => this.onEditPopupMenuSelect(event)
     };
   }
 
@@ -192,13 +201,33 @@ export class AdminParamsPopupComponent implements OnDestroy {
   }
 
   private onEditPopupAction(event: PopupActionEvent): void {
-    if (event.action.id === 'save-edit') {
-      void this.saveEdit();
-      return;
-    }
     if (event.action.id === 'cancel-edit') {
       this.cancelEdit();
     }
+  }
+
+  private onEditPopupMenuSelect(event: PopupMenuSelectEvent<AdminParamsSaveMenuContext>): void {
+    if (event.itemSelect.item.context?.action === 'save') {
+      void this.saveEdit();
+    }
+  }
+
+  private editSaveMenuItems(): readonly AppMenuItem<string, AdminParamsSaveMenuContext>[] {
+    return [{
+      id: 'save-edit',
+      icon: 'check',
+      kind: 'action',
+      palette: 'success',
+      disabled: this.saving(),
+      ariaLabel: 'save',
+      progress: this.saving()
+        ? {
+            state: 'loading',
+            shape: 'circle'
+          }
+        : null,
+      context: { action: 'save' }
+    }];
   }
 
   private onHistoryPopupAction(event: PopupActionEvent): void {

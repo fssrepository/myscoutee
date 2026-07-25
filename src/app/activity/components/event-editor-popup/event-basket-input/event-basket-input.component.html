@@ -100,9 +100,9 @@
         @for (row of visiblePricingSummaryRows(); track row.key || row.label) {
           <div class="event-basket-pricing-row">
             <span class="event-basket-pricing-label">
-              <span>{{ row.label }}</span>
+              <span>{{ row.label | i18n }}</span>
               @if (row.detail) {
-                <small>{{ row.detail }}</small>
+                <small>{{ row.detail | i18n }}</small>
               }
             </span>
             <strong>{{ pricingSummaryAmountLabel(row) }}</strong>

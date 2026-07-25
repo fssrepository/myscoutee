@@ -59,6 +59,7 @@
                         @for (row of scoreRows(group); track trackByMemberId($index, row); let rowIndex = $index) {
                           <tr
                             [class.is-advance]="isAdvanceRow(group, rowIndex)"
+                            [attr.data-member-palette]="leaderboardMemberPalette(group, row.memberId)"
                             data-motion="none"
                             tabindex="0"
                             role="button"
@@ -94,6 +95,7 @@
                         @for (row of fifaRows(group); track trackByMemberId($index, row); let rowIndex = $index) {
                           <tr
                             [class.is-advance]="isAdvanceRow(group, rowIndex)"
+                            [attr.data-member-palette]="leaderboardMemberPalette(group, row.memberId)"
                             data-motion="none"
                             tabindex="0"
                             role="button"

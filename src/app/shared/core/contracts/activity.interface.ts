@@ -94,6 +94,11 @@ export interface IEventsService {
   ): Promise<ActivityEventSubEventsResultDTO | null>;
   loadCheckoutSlots(query: EventCheckoutSlotsQuery): Promise<EventCheckoutSlotsResult | null>;
   loadCheckoutBasketByEvent(userId: string, sourceId: string): Promise<EventCheckoutBasket | null>;
+  loadCheckoutPaymentAudit(
+    userId: string,
+    sourceId: string,
+    paymentSessionId: string
+  ): Promise<EventCheckoutPaymentAudit | null>;
   validateCheckoutPromoCode(
     request: EventCheckoutPromoCodeValidationRequest
   ): Promise<EventCheckoutPromoCodeValidationResult | null>;
@@ -109,7 +114,7 @@ export interface IEventsService {
   loadEventFeedback(
     query: EventFeedbackQueryDto
   ): Promise<EventFeedbackDetailDto>;
-  submitEventFeedback(userId: string, request: EventFeedbackDetailDto): Promise<void>;
+  submitEventFeedback(userId: string, request: EventFeedbackDetailDto): Promise<EventFeedbackDetailDto>;
   saveEventFeedbackNote(request: EventFeedbackNoteRequestDto): Promise<void>;
   removeEventFeedbackEvent(userId: string, eventId: string): Promise<void>;
   restoreEventFeedbackEvent(userId: string, eventId: string): Promise<void>;
@@ -318,6 +323,8 @@ export interface EventParticipationActionResultDTO {
   capacityTotal: number;
   full: boolean;
   paymentSessionId?: string | null;
+  changed?: boolean;
+  reason?: string | null;
 }
 
 export interface SubEventResourceCardDTO {
@@ -391,6 +398,13 @@ export interface ActivitySubEventResourceStateRefDTO {
   assetOwnerUserId: string;
 }
 
+export interface SubEventResourceMetricDTO {
+  accepted: number;
+  pending: number;
+  capacityMin: number;
+  capacityMax: number;
+}
+
 export interface ActivitySubEventResourceStateDTO {
   ownerId: string;
   subEventId: string;
@@ -399,6 +413,7 @@ export interface ActivitySubEventResourceStateDTO {
   assetSettingsByType: ActivitySubEventAssetSettingsByTypeDTO;
   supplyContributionEntriesByAssetId: ActivitySubEventSupplyContributionsByAssetIdDTO;
   fallbackAssetCardsByType?: Partial<Record<AppConstants.AssetType, AssetContracts.AssetDetailDTO[]>>;
+  resourceMetricsByType?: Partial<Record<AppConstants.AssetType, SubEventResourceMetricDTO>>;
 }
 
 export interface ActivitySubEventStageRuntimeStateRefDTO {
@@ -469,6 +484,9 @@ export interface ActivityEventSubEventsQueryDTO {
   rangeStart?: string | null;
   rangeEnd?: string | null;
   participantOnly?: boolean | null;
+  page?: number | null;
+  pageSize?: number | null;
+  cursor?: string | null;
 }
 
 export interface SubEventsSlotDTO {
@@ -486,6 +504,8 @@ export interface SubEventsSlotDTO {
 export interface ActivityEventSubEventsResultDTO {
   mode: EventContracts.EventMode;
   slots: SubEventsSlotDTO[];
+  total?: number | null;
+  nextCursor?: string | null;
 }
 
 export type SubEventDefinitionTiming = 'Before' | 'During' | 'After';
@@ -1174,6 +1194,8 @@ export interface ActivityMemberOwnerRef {
 
 export interface ActivityMembersQueryOptions {
   pendingOnly?: boolean;
+  eventId?: string;
+  subEventId?: string;
 }
 
 export interface ActivityMembersPageResultDTO {
@@ -1207,12 +1229,23 @@ export interface ActivityInviteOwnerContext {
 export interface ActivityInviteCandidatesQuery {
   activeUserId: string;
   owner: ActivityInviteOwnerContext;
+  parentOwner: ActivityMemberOwnerRef | null;
   existingMemberUserIds: readonly string[];
+  pendingInviteUserIds: readonly string[];
   sort: AppConstants.ActivityInviteSort;
+  page: number;
+  pageSize: number;
+}
+
+export interface ActivityInviteCandidatesPage {
+  items: ActivityMemberDTO[];
+  total: number;
+  page: number;
+  pageSize: number;
 }
 
 export interface IActivityInviteCandidatesService {
-  queryCandidates(query: ActivityInviteCandidatesQuery): Promise<ActivityMemberDTO[]>;
+  queryCandidates(query: ActivityInviteCandidatesQuery): Promise<ActivityInviteCandidatesPage>;
 }
 
 export interface UserGameCardsStackSnapshot {
@@ -1445,6 +1478,28 @@ export interface EventCheckoutBasket {
   checkoutSessionId?: string | null;
   expiresAtIso?: string | null;
   appliedPromoCodes: string[];
+}
+
+export interface EventCheckoutPaymentAudit {
+  id: string;
+  userId: string;
+  sourceId: string;
+  checkoutSessionId: string;
+  provider: string;
+  status: string;
+  bookingStatus: string;
+  auditKind: string;
+  revisionNumber: number;
+  adjustmentAmount?: number | null;
+  bookingQuantity?: number | null;
+  supersedesPaymentId?: string | null;
+  amount: number;
+  currency: string;
+  basketItems: EventCheckoutBasketItem[];
+  pricingSummaryRows: EventCheckoutPricingSummaryRow[];
+  lineItems: EventCheckoutLineItem[];
+  joinedAtIso?: string | null;
+  createdAtIso?: string | null;
 }
 
 export interface EventCheckoutPromoCodeValidationRequest {
@@ -2027,6 +2082,33 @@ export class EventFeedbackDetailDto {
     return new EventFeedbackDetailDto({
       ...this,
       submittedAtIso: options.submittedAtIso
+    });
+  }
+
+  withPersistedState(state: EventFeedbackStateDto | null | undefined): EventFeedbackDetailDto {
+    const answersByCardId = state?.answersByCardId ?? {};
+    const answers = Object.values(answersByCardId);
+    return new EventFeedbackDetailDto({
+      ...this,
+      submittedAtIso: state?.submittedAtIso?.trim() || this.submittedAtIso,
+      cards: this.cards.map(card => {
+        const answer = answersByCardId[card.id]
+          ?? answers.find(item =>
+            item.kind === card.kind
+            && (card.kind === 'event' || item.targetUserId === (card.targetUserId ?? null))
+          );
+        if (!answer) {
+          return card;
+        }
+        return {
+          ...card,
+          answerPrimary: answer.primaryValue?.trim() ?? '',
+          answerSecondary: answer.secondaryValue?.trim() ?? '',
+          selectedTraitIds: [...(answer.personalityTraitIds ?? [])]
+            .map(traitId => traitId.trim())
+            .filter(Boolean)
+        };
+      })
     });
   }
 

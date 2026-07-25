@@ -159,6 +159,9 @@ export class EventFeedbackInfoCardConverter {
     if (item.isOwnEvent) {
       return [];
     }
+    if (item.isFeedbacked) {
+      return ['viewSubmittedFeedback'];
+    }
     const actions: CardMenuActionId[] = [];
     if (this.isEventFeedbackStartAvailable(item)) {
       actions.push('startFeedback');

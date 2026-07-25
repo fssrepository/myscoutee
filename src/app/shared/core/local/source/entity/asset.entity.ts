@@ -55,6 +55,7 @@ export interface AssetMemberRequestRecord {
 }
 
 export interface AssetRequestRecord extends AssetMemberRequestRecord {
+  requestId?: string;
   assetId: string;
   ownerUserId: string;
   ownerKey: string;

@@ -1,11 +1,14 @@
 import { Injectable, inject } from '@angular/core';
 
 import { AppUtils } from '../../../../app-utils';
+import { ActivityResourceBuilder } from '../../../base/builders';
 import type { UserDto } from '../../../contracts/user.interface';
 import type { ActivityMemberRecord } from '../entity/activity.entity';
 import { LocalRouteDelayService } from './route-delay.service';
 import { LocalActivityMembersRepository } from '../repositories/activity-members.repository';
+import { LocalAssetsRepository } from '../repositories/assets.repository';
 import { LocalUsersRepository } from '../repositories/users.repository';
+import { LocalEventsRepository } from '../repositories/events.repository';
 import { LocalActivityMembersBuilder, type ActivityMemberProfileFallback, type LocalActivityMembersOwnerSnapshot } from '../mappers';
 import type {
   ActivityMemberDTO,
@@ -20,7 +23,9 @@ import type {
 export class LocalActivityMembersService extends LocalRouteDelayService {
   private static readonly MEMBERS_ROUTE = '/activities/events/members';
   private readonly activityMembersRepository = inject(LocalActivityMembersRepository);
+  private readonly assetsRepository = inject(LocalAssetsRepository);
   private readonly localUsersRepository = inject(LocalUsersRepository);
+  private readonly eventsRepository = inject(LocalEventsRepository);
 
   peekMembersByOwner(owner: ActivityMemberOwnerRef): ActivityMemberDTO[] {
     return this.entriesFromRecords(this.activityMembersRepository.peekRecordsByOwner(owner), owner);
@@ -38,6 +43,10 @@ export class LocalActivityMembersService extends LocalRouteDelayService {
     owner: ActivityMemberOwnerRef,
     options?: ActivityMembersQueryOptions
   ): Promise<ActivityMemberDTO[]> {
+    const scopedAssetMembers = this.scopedAssetMembers(owner, options);
+    if (scopedAssetMembers) {
+      return LocalActivityMembersBuilder.sortEntriesForManagement(scopedAssetMembers);
+    }
     return this.entriesFromRecords(await this.activityMembersRepository.queryRecordsByOwner(owner, options), owner);
   }
 
@@ -56,7 +65,8 @@ export class LocalActivityMembersService extends LocalRouteDelayService {
     owner: ActivityMemberOwnerRef,
     members: readonly ActivityMemberDTO[],
     capacityTotal?: number | null,
-    actorUserId = ''
+    actorUserId = '',
+    options?: ActivityMembersQueryOptions
   ): Promise<void> {
     const normalizedOwner = this.activityMembersRepository.normalizeOwnerRef(owner);
     if (!normalizedOwner) {
@@ -76,17 +86,23 @@ export class LocalActivityMembersService extends LocalRouteDelayService {
       records,
       capacityTotal ?? ownerSnapshot?.capacityTotal ?? null
     );
+    if (normalizedOwner.ownerType === 'group') {
+      this.eventsRepository.syncTournamentStagePending(
+        `${options?.eventId ?? ''}`.trim(),
+        `${options?.subEventId ?? ''}`.trim()
+      );
+    }
   }
 
   async applyMemberAction(
     owner: ActivityMemberOwnerRef,
     actorUserId: string,
     targetUserId: string,
-    action: 'disqualify' | 'reinstate',
-    reason?: string | null
+    action: 'accept' | 'remove' | 'disqualify' | 'reinstate' | 'promote-admin' | 'step-down-admin',
+    reason?: string | null,
+    options?: ActivityMembersQueryOptions
   ): Promise<ActivityMemberDTO[]> {
     await this.waitForRouteDelay(LocalActivityMembersService.MEMBERS_ROUTE);
-    void actorUserId;
     void reason;
     const normalizedOwner = this.activityMembersRepository.normalizeOwnerRef(owner);
     const normalizedTargetUserId = targetUserId.trim();
@@ -96,10 +112,91 @@ export class LocalActivityMembersService extends LocalRouteDelayService {
 
     const previousRecords = this.activityMembersRepository.peekRecordsByOwner(normalizedOwner);
     const previousMembers = this.entriesFromRecords(previousRecords, normalizedOwner);
+    const normalizedActorUserId = actorUserId.trim();
+    const targetMember = previousMembers.find(member => member.userId === normalizedTargetUserId) ?? null;
+    const actorCanManage = this.canManageOwnerMembers(
+      normalizedOwner,
+      previousMembers,
+      normalizedActorUserId,
+      options
+    );
+    const targetIsInvitation = targetMember?.status === 'pending'
+      && this.isInvitation(targetMember);
+    const actorOwnsInvitation = targetIsInvitation
+      && targetMember?.invitedByUserId?.trim() === normalizedActorUserId;
+    const actorIsInvitee = targetIsInvitation
+      && normalizedActorUserId === normalizedTargetUserId;
+    const targetIsApprovalRequest = targetMember?.status === 'pending'
+      && !targetIsInvitation;
+    const removingOwnAcceptedMembership = action === 'remove'
+      && targetMember?.status === 'accepted'
+      && normalizedActorUserId === normalizedTargetUserId
+      && targetMember.role !== 'Admin'
+      && targetMember.role !== 'Manager';
+    const withdrawingOwnApprovalRequest = action === 'remove'
+      && targetIsApprovalRequest
+      && normalizedActorUserId === normalizedTargetUserId;
+    const actionAllowed = action === 'accept'
+      ? (
+        (actorIsInvitee && targetIsInvitation)
+        || (actorCanManage && targetIsApprovalRequest)
+      )
+      : action === 'remove'
+        ? (
+          actorIsInvitee
+          || actorOwnsInvitation
+          || (actorCanManage && !targetIsInvitation)
+          || removingOwnAcceptedMembership
+          || withdrawingOwnApprovalRequest
+        )
+        : actorCanManage;
+    if (!targetMember || !actionAllowed) {
+      return previousMembers;
+    }
+
     const nowIso = AppUtils.toIsoDateTime(new Date());
     const nextMembers = previousMembers.map(member => {
       if (member.userId !== normalizedTargetUserId) {
         return member;
+      }
+      const acceptingOwnManagedInvitation = action === 'accept'
+        && normalizedOwner.ownerType !== 'event'
+        && normalizedActorUserId === normalizedTargetUserId
+        && this.isInvitation(member);
+      if (acceptingOwnManagedInvitation
+          && !this.canManageOwnerMembers(
+            normalizedOwner,
+            previousMembers,
+            member.invitedByUserId?.trim() ?? '',
+            options
+          )) {
+        return {
+          ...member,
+          status: 'pending' as const,
+          pendingSource: 'member' as const,
+          requestKind: 'approval' as const,
+          invitedByActiveUser: false,
+          actionAtIso: nowIso
+        };
+      }
+      if (action === 'accept' && member.status === 'pending'
+          && (
+            member.requestKind === 'join'
+            || member.requestKind === 'approval'
+            || acceptingOwnManagedInvitation
+          )) {
+        return {
+          ...member,
+          status: 'accepted' as const,
+          pendingSource: null,
+          requestKind: null,
+          invitedByUserId: null,
+          invitedByActiveUser: false,
+          actionAtIso: nowIso
+        };
+      }
+      if (action === 'remove') {
+        return null;
       }
       if (action === 'disqualify' && member.status === 'accepted') {
         return {
@@ -123,9 +220,31 @@ export class LocalActivityMembersService extends LocalRouteDelayService {
           actionAtIso: nowIso
         };
       }
+      if (action === 'promote-admin' && member.status === 'accepted' && member.role !== 'Admin') {
+        return {
+          ...member,
+          role: 'Admin' as const,
+          actionAtIso: nowIso
+        };
+      }
+      if (action === 'step-down-admin'
+          && member.status === 'accepted'
+          && (member.role === 'Admin' || member.role === 'Manager')) {
+        return {
+          ...member,
+          role: 'Member' as const,
+          actionAtIso: nowIso
+        };
+      }
       return member;
-    });
-    const changed = nextMembers.some((member, index) => member.status !== previousMembers[index]?.status);
+    }).filter((member): member is ActivityMemberDTO => member !== null);
+    const changed = nextMembers.length !== previousMembers.length
+      || nextMembers.some((member, index) =>
+        member.status !== previousMembers[index]?.status
+        || member.role !== previousMembers[index]?.role
+        || member.pendingSource !== previousMembers[index]?.pendingSource
+        || member.requestKind !== previousMembers[index]?.requestKind
+        || member.invitedByUserId !== previousMembers[index]?.invitedByUserId);
     if (!changed) {
       return previousMembers;
     }
@@ -142,7 +261,53 @@ export class LocalActivityMembersService extends LocalRouteDelayService {
       nextRecords,
       ownerSnapshot?.capacityTotal ?? null
     );
+    if (normalizedOwner.ownerType === 'group') {
+      this.eventsRepository.syncTournamentStagePending(
+        `${options?.eventId ?? ''}`.trim(),
+        `${options?.subEventId ?? ''}`.trim()
+      );
+    }
     return this.entriesFromRecords(nextRecords, normalizedOwner);
+  }
+
+  private canManageMembers(
+    members: readonly ActivityMemberDTO[],
+    userId: string
+  ): boolean {
+    const normalizedUserId = userId.trim();
+    return normalizedUserId.length > 0 && members.some(member =>
+      member.userId === normalizedUserId
+      && member.status === 'accepted'
+      && (member.role === 'Admin' || member.role === 'Manager')
+    );
+  }
+
+  private canManageOwnerMembers(
+    owner: ActivityMemberOwnerRef,
+    members: readonly ActivityMemberDTO[],
+    userId: string,
+    options?: ActivityMembersQueryOptions
+  ): boolean {
+    const normalizedUserId = userId.trim();
+    if (!normalizedUserId) {
+      return false;
+    }
+    if (this.canManageMembers(members, normalizedUserId)) {
+      return true;
+    }
+    const eventId = `${options?.eventId ?? ''}`.trim().split(':slot:')[0];
+    if (owner.ownerType === 'event' || !eventId) {
+      return false;
+    }
+    const event = this.eventsRepository.peekKnownItemById(normalizedUserId, eventId);
+    return event?.creatorUserId === normalizedUserId
+      || (event?.adminIds ?? []).includes(normalizedUserId);
+  }
+
+  private isInvitation(member: ActivityMemberDTO): boolean {
+    return member.requestKind === 'invite'
+      || member.requestKind === 'waitlist-invite'
+      || (member.requestKind == null && member.pendingSource === 'admin');
   }
 
   private entriesFromRecords(
@@ -153,7 +318,7 @@ export class LocalActivityMembersService extends LocalRouteDelayService {
     const involvementRecordsByUserId = owner
       ? this.activityMembersRepository.queryInvolvementRecordsByOwnerAndUsers(owner, userIds)
       : new Map<string, ActivityMemberRecord[]>();
-    return LocalActivityMembersBuilder.sortEntriesByActionTime(
+    return LocalActivityMembersBuilder.sortEntriesForManagement(
       records.map(record => LocalActivityMembersBuilder.toEntry(
         record,
         (userId, fallback) => this.resolveDemoUser(userId, fallback),
@@ -188,6 +353,100 @@ export class LocalActivityMembersService extends LocalRouteDelayService {
 
   private existingRecordsById(owner: ActivityMemberOwnerRef): ReadonlyMap<string, ActivityMemberRecord> {
     return new Map(this.activityMembersRepository.peekRecordsByOwner(owner).map(record => [record.id, record] as const));
+  }
+
+  private scopedAssetMembers(
+    owner: ActivityMemberOwnerRef,
+    options?: ActivityMembersQueryOptions
+  ): ActivityMemberDTO[] | null {
+    const eventId = `${options?.eventId ?? ''}`.trim();
+    const subEventId = `${options?.subEventId ?? ''}`.trim();
+    if (owner.ownerType !== 'asset' || !eventId || !subEventId) {
+      return null;
+    }
+    const asset = this.assetsRepository.peekAssetById(owner.ownerId);
+    if (!asset) {
+      return [];
+    }
+    const nowIso = AppUtils.toIsoDateTime(new Date());
+    const users = this.localActivityMemberUsers;
+    const ownerUserId = `${asset.ownerUserId ?? ''}`.trim();
+    const members: ActivityMemberDTO[] = [];
+    if (options?.pendingOnly !== true && ownerUserId) {
+      const profile = this.resolveDemoUser(ownerUserId, {
+        name: asset.ownerName,
+        city: asset.city
+      });
+      members.push({
+        id: `${asset.id}:owner`,
+        userId: profile.id,
+        name: profile.name,
+        initials: profile.initials,
+        gender: profile.gender,
+        city: profile.city || asset.city,
+        statusText: 'Responsible manager for this asset.',
+        role: 'Manager',
+        status: 'accepted',
+        pendingSource: null,
+        requestKind: null,
+        invitedByActiveUser: false,
+        invitedByUserId: null,
+        metAtIso: nowIso,
+        actionAtIso: nowIso,
+        metWhere: asset.title,
+        avatarUrl: AppUtils.firstImageUrl(profile.images),
+        profile
+      });
+    }
+
+    const authorizationEventId = ActivityResourceBuilder.authorizationEventId(eventId, subEventId);
+    const acceptedEventIds = new Set([eventId, authorizationEventId].filter(Boolean));
+    for (const request of asset.requests ?? []) {
+      const bookingEventId = `${request.booking?.eventId ?? ''}`.trim();
+      const bookingSubEventId = `${request.booking?.subEventId ?? ''}`.trim();
+      if (!acceptedEventIds.has(bookingEventId) || bookingSubEventId !== subEventId) {
+        continue;
+      }
+      if (options?.pendingOnly === true && request.status !== 'pending') {
+        continue;
+      }
+      const userId = AppUtils.resolveAssetRequestUserId(request, users);
+      if (!userId || userId === ownerUserId) {
+        continue;
+      }
+      const profile = this.resolveDemoUser(userId, {
+        name: request.name,
+        initials: request.initials,
+        city: asset.city,
+        gender: request.gender
+      });
+      const requestedAtIso = `${request.requestedAtIso ?? ''}`.trim() || nowIso;
+      const pending = request.status === 'pending';
+      const borrowerInitiated = request.requestKind !== 'manual';
+      members.push({
+        id: request.id?.trim() || `${asset.id}:request:${userId}`,
+        userId: profile.id,
+        name: profile.name,
+        initials: profile.initials,
+        gender: profile.gender,
+        city: profile.city || asset.city,
+        statusText: pending
+          ? (borrowerInitiated ? 'Waiting for admin approval.' : 'Invitation pending.')
+          : 'Borrowing this asset.',
+        role: 'Member',
+        status: request.status,
+        pendingSource: pending ? (borrowerInitiated ? 'member' : 'admin') : null,
+        requestKind: pending ? (borrowerInitiated ? 'join' : 'invite') : null,
+        invitedByActiveUser: false,
+        invitedByUserId: null,
+        metAtIso: requestedAtIso,
+        actionAtIso: requestedAtIso,
+        metWhere: asset.title,
+        avatarUrl: AppUtils.firstImageUrl(profile.images),
+        profile
+      });
+    }
+    return members;
   }
 
   private resolveDemoUser(userId: string, fallback: ActivityMemberProfileFallback): UserDto {

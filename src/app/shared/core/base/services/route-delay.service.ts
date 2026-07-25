@@ -20,12 +20,12 @@ export class RouteDelayService {
 
   resolveDelayMs(route: string, fallbackDelayMs = 0): number {
     const routeConfig = resolveRouteConfig(route);
-    if (routeConfig.http) {
+    if (routeConfig.http || environment.activitiesDataSource === 'http') {
       return 0;
     }
     if (
       this.sessionService.currentSession()?.kind === 'demo'
-      || (environment.activitiesDataSource !== 'http' && !environment.firebaseLoginEnabled)
+      || !environment.firebaseLoginEnabled
     ) {
       return routeConfig.demoDelayMs > 0
         ? routeConfig.demoDelayMs

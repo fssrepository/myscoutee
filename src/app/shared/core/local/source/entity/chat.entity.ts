@@ -27,6 +27,8 @@ export interface ChatRecord {
   channelType?: ChatChannelType;
   serviceContext?: 'event' | 'asset' | 'notification';
   ownerId?: string;
+  eventId?: string;
+  subEventId?: string;
   supportCase?: ChatSupportCase | null;
 }
 

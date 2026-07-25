@@ -14,6 +14,10 @@ export interface EventSubeventsListPopupRequest {
   startAtIso: string | null;
   endAtIso: string | null;
   mode: EventMode | null;
+  acceptedMembers: number;
+  pendingMembers: number;
+  capacityTotal: number;
+  resourceOwnerUserId: string | null;
   editorAction: EventSubeventsEditorAction;
   canEdit: boolean;
 }
@@ -29,17 +33,29 @@ export interface EventTournamentGroupsPopupRequest {
   selectedGroupId?: string | null;
 }
 
+export interface EventTournamentGroupsUpdate {
+  updatedMs: number;
+  eventId: string;
+  slotId: string | null;
+  stageId: string;
+  groupsCount: number;
+  groupsPending: number;
+  groupsPendingDelta: number;
+}
+
 @Injectable({
   providedIn: 'root'
 })
 export class EventSubeventsPopupStore {
   private readonly eventSubeventsListPopupRef = signal<EventSubeventsListPopupRequest | null>(null);
   private readonly eventTournamentGroupsPopupRef = signal<EventTournamentGroupsPopupRequest | null>(null);
+  private readonly eventTournamentGroupsUpdateRef = signal<EventTournamentGroupsUpdate | null>(null);
   private readonly eventSubeventsListPopupComponentRef = signal<Type<unknown> | null>(null);
   private readonly eventTournamentGroupsPopupComponentRef = signal<Type<unknown> | null>(null);
 
   readonly eventSubeventsListPopup = this.eventSubeventsListPopupRef.asReadonly();
   readonly eventTournamentGroupsPopup = this.eventTournamentGroupsPopupRef.asReadonly();
+  readonly eventTournamentGroupsUpdate = this.eventTournamentGroupsUpdateRef.asReadonly();
   readonly eventSubeventsListPopupComponent = this.eventSubeventsListPopupComponentRef.asReadonly();
   readonly eventTournamentGroupsPopupComponent = this.eventTournamentGroupsPopupComponentRef.asReadonly();
 
@@ -52,6 +68,10 @@ export class EventSubeventsPopupStore {
     startAtIso?: string | null;
     endAtIso?: string | null;
     mode?: EventMode | null;
+    acceptedMembers?: number | null;
+    pendingMembers?: number | null;
+    capacityTotal?: number | null;
+    resourceOwnerUserId?: string | null;
     editorAction?: EventSubeventsEditorAction;
     canEdit?: boolean;
   }): void {
@@ -80,6 +100,10 @@ export class EventSubeventsPopupStore {
         : payload.mode === 'Casual'
           ? 'Casual'
           : null,
+      acceptedMembers: this.nonNegativeInteger(payload.acceptedMembers),
+      pendingMembers: this.nonNegativeInteger(payload.pendingMembers),
+      capacityTotal: this.nonNegativeInteger(payload.capacityTotal),
+      resourceOwnerUserId: `${payload.resourceOwnerUserId ?? ''}`.trim() || null,
       editorAction,
       canEdit: editorAction !== 'view'
     });
@@ -134,6 +158,41 @@ export class EventSubeventsPopupStore {
 
   closeEventTournamentGroupsPopup(): void {
     this.eventTournamentGroupsPopupRef.set(null);
+  }
+
+  emitEventTournamentGroupsUpdate(payload: {
+    eventId: string;
+    slotId?: string | null;
+    stageId: string;
+    groupsCount: number;
+    groupsPending: number;
+    groupsPendingDelta?: number;
+  }): void {
+    const eventId = `${payload.eventId ?? ''}`.trim();
+    const stageId = `${payload.stageId ?? ''}`.trim();
+    if (!eventId || !stageId) {
+      return;
+    }
+    const updatedMs = Math.max(
+      Date.now(),
+      (this.eventTournamentGroupsUpdateRef()?.updatedMs ?? 0) + 1
+    );
+    this.eventTournamentGroupsUpdateRef.set({
+      updatedMs,
+      eventId,
+      slotId: `${payload.slotId ?? ''}`.trim() || null,
+      stageId,
+      groupsCount: Math.max(0, Math.trunc(Number(payload.groupsCount) || 0)),
+      groupsPending: Math.max(0, Math.trunc(Number(payload.groupsPending) || 0)),
+      groupsPendingDelta: Number.isFinite(Number(payload.groupsPendingDelta))
+        ? Math.trunc(Number(payload.groupsPendingDelta))
+        : 0
+    });
+  }
+
+  private nonNegativeInteger(value: unknown): number {
+    const count = Number(value);
+    return Number.isFinite(count) ? Math.max(0, Math.trunc(count)) : 0;
   }
 
   async ensureEventSubeventsListPopupLoaded(): Promise<void> {

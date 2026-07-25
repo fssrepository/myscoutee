@@ -82,6 +82,27 @@ describe('EntryLandingComponent article lists', () => {
     expect(view(component).ideasPopupOpen).toBe(true);
     expect(view(component).ideasPopupModel().subtitle).toBe('4 articles');
   });
+
+  it('renders article body images without repeating the card cover', () => {
+    const fixture = TestBed.createComponent(EntryLandingComponent);
+    const component = fixture.componentInstance;
+    const article = card('article-with-image', true);
+    article.eagerDetail = {
+      ...article.eagerDetail!,
+      imageUrl: '/cover.webp',
+      contentHtml: '<p>Article body</p><img src="/cover.webp" alt="Body image">'
+    };
+    component.ideaCards = [article];
+
+    view(component).onFeaturedIdeaCardAction(article, 'viewArticle');
+    fixture.detectChanges();
+
+    expect(fixture.nativeElement.querySelector('.entry-ideas-article-image')).toBeNull();
+    const bodyImages = fixture.nativeElement.querySelectorAll('.entry-ideas-article-html img');
+    expect(bodyImages).toHaveLength(1);
+    expect(getComputedStyle(bodyImages[0]).marginLeft).toBe('auto');
+    expect(getComputedStyle(bodyImages[0]).marginRight).toBe('auto');
+  });
 });
 
 interface EntryLandingTestView {

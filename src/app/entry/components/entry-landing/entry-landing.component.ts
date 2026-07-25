@@ -18,7 +18,6 @@ import {
   PopupComponent,
   type PopupModel
 } from '../../../shared/ui/components/core/popup';
-import { LazyBgImageDirective } from '../../../shared/ui/directives';
 import { I18nPipe } from '../../../shared/ui';
 
 type IdeaInfoCard = InfoCardData<IdeaArticleDetailDto>;
@@ -39,7 +38,6 @@ type HowStepSlide = WarpImageCardData;
     WarpImageCardComponent,
     SmartListComponent,
     PopupComponent,
-    LazyBgImageDirective,
     MatRippleModule,
     MatIconModule,
     I18nPipe
@@ -539,10 +537,6 @@ export class EntryLandingComponent implements OnInit, OnChanges, OnDestroy {
       state: options.renderState === 'active' ? 'active' : options.renderState === 'leaving' ? 'leaving' : card.state ?? 'default',
       clickable: false
     };
-  }
-
-  protected ideaImageUrl(detail: IdeaArticleDetailDto | null): string {
-    return `${detail?.imageUrl ?? ''}`.trim();
   }
 
   protected ideaDateLabel(detail: IdeaArticleDetailDto | null): string {

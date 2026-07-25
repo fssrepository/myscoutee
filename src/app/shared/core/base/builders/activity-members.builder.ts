@@ -81,4 +81,5 @@ export class ActivityMembersBuilder {
   static sortActivityMembersByActionTimeAsc(entries: readonly ActivityMemberDTO[]): ActivityMemberDTO[] {
     return [...entries].sort((a, b) => AppUtils.toSortableDate(a.actionAtIso) - AppUtils.toSortableDate(b.actionAtIso));
   }
+
 }

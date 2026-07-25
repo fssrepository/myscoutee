@@ -19,7 +19,8 @@ import type {
   ChatDTO,
   ChatMemberSummaryDto,
   ChatMetricsDTO,
-  ChatMessagesPageResultDTO
+  ChatMessagesPageResultDTO,
+  ChatServiceEnsureInput
 } from '../../contracts/chat.interface';
 import type { IChatsService } from '../../contracts/activity.interface';
 import type { ActivitiesFeedFilters, ListQuery } from '../../contracts';
@@ -45,9 +46,13 @@ interface HttpChatDto {
   channelType?: ContractTypes.ChatChannelType;
   serviceContext?: 'event' | 'asset' | 'notification';
   ownerId?: string;
+  eventId?: string;
+  subEventId?: string;
+  groupId?: string;
   distanceKm?: number;
   distanceMetersExact?: number;
   metrics?: ChatMetricsDTO | null;
+  navigationContext?: ContractTypes.ChatNavigationContextDTO | null;
   supportCase?: {
     status?: ContractTypes.SupportCaseStatus | string | null;
     assignee?: {
@@ -528,6 +533,41 @@ export class HttpChatsService implements IChatsService {
     }
   }
 
+  async ensureServiceChat(input: ChatServiceEnsureInput): Promise<ChatDTO | null> {
+    const userId = this.activeUserId();
+    const eventId = `${input.eventId ?? ''}`.trim();
+    const targetUserId = `${input.targetUserId ?? ''}`.trim();
+    if (!userId || !eventId || !targetUserId || targetUserId === userId) {
+      return null;
+    }
+    try {
+      const response = await this.http
+        .post<HttpChatDto | null>(
+          `${this.apiBaseUrl}/activities/chats/service`,
+          {
+            serviceContext: input.serviceContext,
+            eventId,
+            subEventId: `${input.subEventId ?? ''}`.trim() || null,
+            assetId: `${input.assetId ?? ''}`.trim() || null,
+            targetUserId,
+            title: `${input.title ?? ''}`.trim(),
+            lastMessage: `${input.lastMessage ?? ''}`.trim()
+          },
+          { params: this.withUserId(new HttpParams(), userId) }
+        )
+        .toPromise();
+      if (!response) {
+        return null;
+      }
+      return this.cloneChatDTO({
+        ...this.mapChatDTO(response, userId),
+        serviceContext: input.serviceContext
+      });
+    } catch {
+      return null;
+    }
+  }
+
   async updateChatMessage(
     chat: ChatDTO,
     messageId: string,
@@ -634,11 +674,15 @@ export class HttpChatsService implements IChatsService {
       channelType: item.channelType,
       serviceContext: item.serviceContext,
       ownerId: this.normalizeHttpText(item.ownerId) || undefined,
+      eventId: this.normalizeHttpText(item.eventId) || undefined,
+      subEventId: this.normalizeHttpText(item.subEventId) || undefined,
+      groupId: this.normalizeHttpText(item.groupId) || undefined,
       distanceKm,
       distanceMetersExact,
       supportCase: this.mapSupportCase(item.supportCase),
       ownerUserId,
-      metrics: this.cloneMetrics(item.metrics)
+      metrics: this.cloneMetrics(item.metrics),
+      navigationContext: this.cloneNavigationContext(item.navigationContext)
     };
   }
 
@@ -648,7 +692,21 @@ export class HttpChatsService implements IChatsService {
       memberIds: [...(item.memberIds ?? [])],
       members: this.cloneChatMembers(item.members),
       supportCase: this.cloneSupportCase(item.supportCase),
-      metrics: this.cloneMetrics(item.metrics)
+      metrics: this.cloneMetrics(item.metrics),
+      navigationContext: this.cloneNavigationContext(item.navigationContext)
+    };
+  }
+
+  private cloneNavigationContext(
+    context: ContractTypes.ChatNavigationContextDTO | null | undefined
+  ): ContractTypes.ChatNavigationContextDTO | null | undefined {
+    if (!context) {
+      return context;
+    }
+    return {
+      ...context,
+      subEvent: { ...context.subEvent },
+      group: context.group ? { ...context.group } : context.group
     };
   }
 
@@ -1240,15 +1298,36 @@ export class HttpChatsService implements IChatsService {
         this.handleUnexpectedSocketDisconnect(chatId);
         finalize(null);
       };
-      socket.onclose = () => {
+      socket.onclose = event => {
         if (this.intentionalSocketClosures.delete(socket)) {
           finalize(null);
           return;
         }
-        this.handleUnexpectedSocketDisconnect(chatId);
+        if (this.isNonRetryableSocketClose(event.code)) {
+          this.handleRejectedSocketDisconnect(chatId);
+        } else {
+          this.handleUnexpectedSocketDisconnect(chatId);
+        }
         finalize(null);
       };
     });
+  }
+
+  private isNonRetryableSocketClose(code: number): boolean {
+    return code === 1003 || code === 1008;
+  }
+
+  private handleRejectedSocketDisconnect(chatId: string): void {
+    if (this.socketChatId && this.socketChatId !== chatId) {
+      return;
+    }
+    this.clearSocketReconnectTimer();
+    this.clearPendingSocketMessages();
+    this.socket = null;
+    this.socketPromise = null;
+    this.socketChatId = null;
+    this.socketReconnectAttempt = 0;
+    this.shouldEmitReconnectEvent = false;
   }
 
   private async buildSocketUrl(chatId: string): Promise<string | null> {

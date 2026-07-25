@@ -88,10 +88,16 @@ export interface DateInputMetaValue {
   palette?: DateInputMetaPalette;
 }
 
+export interface DateInputTimeModel {
+  enabled?: boolean;
+  openOnClick?: boolean;
+}
+
 export interface DateInputModel {
   mode?: DateInputMode;
   precision?: DateInputPrecision;
   valueFormat?: DateInputValueFormat;
+  time?: boolean | DateInputTimeModel | null;
   field?: DateInputFieldModel;
   range?: DateInputRangeModel;
   meta?: DateInputMetaModel | null;
@@ -194,7 +200,19 @@ export class DateInputComponent implements ControlValueAccessor {
   }
 
   protected hasTime(): boolean {
+    const option = this.model?.time;
+    if (typeof option === 'boolean') {
+      return option;
+    }
+    if (option) {
+      return option.enabled !== false;
+    }
     return this.precision === 'minute';
+  }
+
+  protected timeOpenOnClick(): boolean {
+    const option = this.model?.time;
+    return typeof option !== 'object' || option === null || option.openOnClick !== false;
   }
 
   protected inputDisabled(): boolean {
@@ -243,6 +261,12 @@ export class DateInputComponent implements ControlValueAccessor {
 
   private get precision(): DateInputPrecision {
     return this.model?.precision ?? 'date';
+  }
+
+  private get valuePrecision(): DateInputPrecision {
+    return this.model?.time === undefined || this.model?.time === null
+      ? this.precision
+      : this.hasTime() ? 'minute' : 'date';
   }
 
   private get valueFormat(): DateInputValueFormat {
@@ -461,7 +485,7 @@ export class DateInputComponent implements ControlValueAccessor {
     const value = {
       startAt: this.datePartsToValue(this.startDateValue, this.startTimeValue),
       endAt: this.datePartsToValue(this.endDateValue, this.endTimeValue),
-      precision: this.precision
+      precision: this.valuePrecision
     };
     const normalized = this.normalizedRange(value);
     this.currentValue = normalized;
@@ -479,7 +503,9 @@ export class DateInputComponent implements ControlValueAccessor {
     }
 
     if (this.mode === 'range') {
-      const range = this.isRangeValue(this.currentValue) ? this.currentValue : { startAt: '', endAt: '', precision: this.precision };
+      const range = this.isRangeValue(this.currentValue)
+        ? this.currentValue
+        : { startAt: '', endAt: '', precision: this.valuePrecision };
       const start = this.toDate(range.startAt);
       const end = this.toDate(range.endAt);
       this.startDateValue = start;
@@ -525,7 +551,7 @@ export class DateInputComponent implements ControlValueAccessor {
       return '';
     }
     const next = new Date(dateValue);
-    if (this.precision === 'minute') {
+    if (this.valuePrecision === 'minute') {
       const time = timeValue ?? dateValue;
       next.setHours(time.getHours(), time.getMinutes(), 0, 0);
       return AppUtils.toIsoDateTimeLocal(next);
@@ -568,7 +594,7 @@ export class DateInputComponent implements ControlValueAccessor {
       return {
         startAt: '',
         endAt: '',
-        precision: this.precision
+        precision: this.valuePrecision
       };
     }
 
@@ -599,12 +625,12 @@ export class DateInputComponent implements ControlValueAccessor {
     return {
       startAt: this.dateToValue(safeStart),
       endAt: this.dateToValue(end),
-      precision: this.precision
+      precision: this.valuePrecision
     };
   }
 
   private dateToValue(value: Date): string {
-    if (this.precision === 'minute') {
+    if (this.valuePrecision === 'minute') {
       return AppUtils.toIsoDateTimeLocal(value);
     }
     const date = new Date(value);

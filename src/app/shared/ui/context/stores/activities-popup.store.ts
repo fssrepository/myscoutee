@@ -23,12 +23,26 @@ export interface EventChatHeaderState extends EventChatPopupRequest {
   lastMessage?: string | null;
   lastSenderId?: string | null;
   ownerUserId?: string | null;
+  eventId?: string | null;
+  subEventId?: string | null;
+  groupId?: string | null;
   supportCase?: ContractTypes.ChatSupportCase | null;
   metrics?: ContractTypes.ChatMetricsDTO | null;
+  navigationContext?: ContractTypes.ChatNavigationContextDTO | null;
 }
 
 export interface EventChatSession {
   request: EventChatPopupRequest;
+  openedAtIso: string;
+}
+
+export interface EventFeedbackRatedDetailPopupRequest {
+  userId: string;
+  eventId: string;
+  eventTitle: string;
+}
+
+export interface EventFeedbackRatedDetailPopupSession extends EventFeedbackRatedDetailPopupRequest {
   openedAtIso: string;
 }
 
@@ -52,6 +66,9 @@ export function eventChatHeaderStateFromChat(chat: ChatDTO): EventChatHeaderStat
     lastMessage: chat.lastMessage,
     lastSenderId: chat.lastSenderId,
     ownerUserId: chat.ownerUserId ?? null,
+    eventId: chat.eventId ?? null,
+    subEventId: chat.subEventId ?? null,
+    groupId: chat.groupId ?? null,
     supportCase: chat.supportCase
       ? {
           ...chat.supportCase,
@@ -67,7 +84,14 @@ export function eventChatHeaderStateFromChat(chat: ChatDTO): EventChatHeaderStat
           groupsCount: chat.metrics.groupsCount ?? null,
           pendingTotal: Math.max(0, Math.trunc(Number(chat.metrics.pendingTotal) || 0))
         }
-      : chat.metrics
+      : chat.metrics,
+    navigationContext: chat.navigationContext
+      ? {
+          ...chat.navigationContext,
+          subEvent: { ...chat.navigationContext.subEvent },
+          group: chat.navigationContext.group ? { ...chat.navigationContext.group } : chat.navigationContext.group
+        }
+      : chat.navigationContext
   };
 }
 
@@ -82,6 +106,16 @@ export interface EventChatRowPatch {
   dateIso?: string | null;
   revision: number;
 }
+
+export type ActivityEventSyncMessage =
+  | {
+      kind: 'upsert';
+      event: ActivityEventDTO;
+    }
+  | {
+      kind: 'remove';
+      sourceId: string;
+    };
 
 export interface ActivitiesUiState {
   open: boolean;
@@ -134,17 +168,19 @@ export class ActivitiesPopupStore {
   private readonly activityStore = inject(ActivityStore);
   private readonly userProfileStore = inject(UserProfileStore);
   private readonly _uiState = signal<ActivitiesUiState>(DEFAULT_ACTIVITIES_UI_STATE);
-  private readonly _activityEventSync = signal<ActivityEventDTO | null>(null);
+  private readonly _activityEventSync = signal<ActivityEventSyncMessage | null>(null);
   private readonly _eventChatSession = signal<EventChatSession | null>(null);
   private readonly _eventChatHeader = signal<EventChatHeaderState | null>(null);
   private readonly _stackedEventChatSession = signal<EventChatSession | null>(null);
   private readonly _stackedEventChatHeader = signal<EventChatHeaderState | null>(null);
   private readonly _eventChatRowPatch = signal<EventChatRowPatch | null>(null);
+  private readonly _eventFeedbackRatedDetailSession = signal<EventFeedbackRatedDetailPopupSession | null>(null);
   private readonly activitiesPopupComponentRef = signal<Type<unknown> | null>(null);
   private readonly eventChatPopupComponentRef = signal<Type<unknown> | null>(null);
   private readonly eventExplorePopupComponentRef = signal<Type<unknown> | null>(null);
   private readonly eventMembersPopupComponentRef = signal<Type<unknown> | null>(null);
   private readonly eventFeedbackPopupComponentRef = signal<Type<unknown> | null>(null);
+  private readonly eventFeedbackRatedDetailPopupComponentRef = signal<Type<unknown> | null>(null);
 
   readonly activitiesUiState = this._uiState.asReadonly();
   readonly activitiesOpen = computed(() => this._uiState().open);
@@ -167,17 +203,22 @@ export class ActivitiesPopupStore {
   readonly activitiesSelectedRateId = computed(() => this._uiState().selectedRateId);
   readonly activitiesAdminServiceOnly = computed(() => this._uiState().adminServiceOnly);
   readonly activityEventSync = this._activityEventSync.asReadonly();
-  readonly activityEventSave = this.activityEventSync;
+  readonly activityEventSave = computed(() => {
+    const message = this._activityEventSync();
+    return message?.kind === 'upsert' ? message.event : null;
+  });
   readonly eventChatSession = this._eventChatSession.asReadonly();
   readonly eventChatHeader = this._eventChatHeader.asReadonly();
   readonly stackedEventChatSession = this._stackedEventChatSession.asReadonly();
   readonly stackedEventChatHeader = this._stackedEventChatHeader.asReadonly();
   readonly eventChatRowPatch = this._eventChatRowPatch.asReadonly();
+  readonly eventFeedbackRatedDetailSession = this._eventFeedbackRatedDetailSession.asReadonly();
   readonly activitiesPopupComponent = this.activitiesPopupComponentRef.asReadonly();
   readonly eventChatPopupComponent = this.eventChatPopupComponentRef.asReadonly();
   readonly eventExplorePopupComponent = this.eventExplorePopupComponentRef.asReadonly();
   readonly eventMembersPopupComponent = this.eventMembersPopupComponentRef.asReadonly();
   readonly eventFeedbackPopupComponent = this.eventFeedbackPopupComponentRef.asReadonly();
+  readonly eventFeedbackRatedDetailPopupComponent = this.eventFeedbackRatedDetailPopupComponentRef.asReadonly();
 
   readonly activitiesOpenBoolean = computed(() => this._uiState().open);
   readonly eventChatOpen = computed(() => this._eventChatSession() !== null);
@@ -390,7 +431,21 @@ export class ActivitiesPopupStore {
   }
 
   emitActivityEventSync(sync: ActivityEventDTO): void {
-    this._activityEventSync.set(sync);
+    this._activityEventSync.set({
+      kind: 'upsert',
+      event: sync
+    });
+  }
+
+  emitActivityEventRemoval(sourceId: string): void {
+    const normalizedSourceId = sourceId.trim();
+    if (!normalizedSourceId) {
+      return;
+    }
+    this._activityEventSync.set({
+      kind: 'remove',
+      sourceId: normalizedSourceId
+    });
   }
 
   emitActivityEventSaveResult(sync: ActivityEventDTO): void {
@@ -455,6 +510,24 @@ export class ActivitiesPopupStore {
   closeStackedEventChat(): void {
     this._stackedEventChatSession.set(null);
     this._stackedEventChatHeader.set(null);
+  }
+
+  openEventFeedbackRatedDetail(request: EventFeedbackRatedDetailPopupRequest): void {
+    const userId = request.userId.trim();
+    const eventId = request.eventId.trim();
+    if (!userId || !eventId) {
+      return;
+    }
+    this._eventFeedbackRatedDetailSession.set({
+      userId,
+      eventId,
+      eventTitle: request.eventTitle.trim() || 'Event',
+      openedAtIso: new Date().toISOString()
+    });
+  }
+
+  closeEventFeedbackRatedDetail(): void {
+    this._eventFeedbackRatedDetailSession.set(null);
   }
 
   patchStackedEventChatHeader(headerUpdater: (header: EventChatHeaderState) => EventChatHeaderState): void {
@@ -572,6 +645,16 @@ export class ActivitiesPopupStore {
     this.eventFeedbackPopupComponentRef.set(module.EventFeedbackPopupComponent);
   }
 
+  async ensureEventFeedbackRatedDetailPopupLoaded(): Promise<void> {
+    if (this.eventFeedbackRatedDetailPopupComponentRef()) {
+      return;
+    }
+    const module = await import(
+      '../../../../activity/components/event-feedback-rated-detail-popup/event-feedback-rated-detail-popup.component'
+    );
+    this.eventFeedbackRatedDetailPopupComponentRef.set(module.EventFeedbackRatedDetailPopupComponent);
+  }
+
   private patchUiState(patch: Partial<ActivitiesUiState>): void {
     this._uiState.update(state => ({
       ...state,
@@ -651,7 +734,16 @@ export class ActivitiesPopupStore {
             groupsCount: header.metrics.groupsCount ?? null,
             pendingTotal: Math.max(0, Math.trunc(Number(header.metrics.pendingTotal) || 0))
           }
-        : header.metrics
+        : header.metrics,
+      navigationContext: header.navigationContext
+        ? {
+            ...header.navigationContext,
+            subEvent: { ...header.navigationContext.subEvent },
+            group: header.navigationContext.group
+              ? { ...header.navigationContext.group }
+              : header.navigationContext.group
+          }
+        : header.navigationContext
     };
   }
 }

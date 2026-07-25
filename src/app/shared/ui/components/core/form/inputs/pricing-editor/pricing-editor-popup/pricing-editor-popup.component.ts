@@ -10,6 +10,7 @@ import { MatSelectModule } from '@angular/material/select';
 
 import { PricingBuilder } from '../../../../../../../core/base/builders';
 import type * as ContractTypes from '../../../../../../../core/contracts';
+import { I18nPipe } from '../../../../../../pipes';
 import { PricingSlotPanelComponent } from '../pricing-slot-panel';
 import {
   FormFlowPopupStore,
@@ -46,7 +47,8 @@ import {
     AppMenuOutletComponent,
     AppMenuTriggerComponent,
     PopupComponent,
-    PricingSlotPanelComponent
+    PricingSlotPanelComponent,
+    I18nPipe
   ],
   templateUrl: './pricing-editor-popup.component.html',
   styleUrls: [

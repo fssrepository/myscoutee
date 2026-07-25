@@ -72,7 +72,7 @@ export type InfoCardOverlayAccessoryTone =
   | 'tone-6'
   | 'tone-7'
   | 'tone-8';
-export type CardMenuActionTone = 'default' | 'accent' | 'warning' | 'destructive' | 'review';
+export type CardMenuActionTone = 'default' | 'accent' | 'positive' | 'warning' | 'destructive' | 'review';
 export type InfoCardDetailStyle = 'default' | 'mono';
 export type InfoCardMediaMode = 'image' | 'title';
 export type InfoCardMediaTone = 'default' | 'neutral';
@@ -223,12 +223,13 @@ export const CARD_MENU_ACTIONS: Readonly<Record<CardMenuActionId, CardMenuAction
   leaveEvent: { label: 'leave.event', icon: 'exit_to_app', tone: 'warning' },
   leaveResource: { label: 'leave.resource', icon: 'logout' },
   makeManager: { label: 'asset.requests.promote.to.manager', icon: 'manage_accounts', tone: 'accent' },
+  revokeManager: { label: 'Visszavonás', icon: 'person_remove', tone: 'warning' },
   manage: { label: 'manage', icon: 'settings', tone: 'accent' },
   manageEvent: { label: 'manage.event', icon: 'settings' },
   markSolved: { label: 'admin.review.action.mark.solved', icon: 'check_circle', tone: 'accent' },
   markUnresolved: { label: 'admin.review.action.mark.unresolved', icon: 'restart_alt', tone: 'warning' },
   notifyParticipants: { label: 'notify.participants', icon: 'support_agent' },
-  paymentSummary: { label: 'event.checkout.payment.summary', icon: 'receipt_long' },
+  paymentSummary: { label: 'event.checkout.payment.summary', icon: 'receipt_long', tone: 'positive' },
   publish: { label: 'publish', icon: 'campaign', tone: 'accent' },
   rejectInvitation: { label: 'reject.invitation', icon: 'block', tone: 'destructive' },
   remove: { label: 'reject', icon: 'delete', tone: 'destructive' },
@@ -256,7 +257,8 @@ export const CARD_MENU_ACTIONS: Readonly<Record<CardMenuActionId, CardMenuAction
   view: { label: 'view.event', icon: 'visibility' },
   viewArticle: { label: 'Read more', icon: 'auto_stories', tone: 'accent' },
   viewAsset: { label: 'view.asset', icon: 'edit_square' },
-  viewInvitation: { label: 'view.invitation', icon: 'visibility' }
+  viewInvitation: { label: 'view.invitation', icon: 'visibility' },
+  viewSubmittedFeedback: { label: 'View my feedback', icon: 'rate_review', tone: 'accent' }
 };
 
 export interface InfoCardFooterChip {

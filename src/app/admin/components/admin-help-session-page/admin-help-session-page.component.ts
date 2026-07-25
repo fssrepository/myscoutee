@@ -96,7 +96,7 @@ export class AdminHelpSessionPageComponent implements OnInit {
   }
 
   private async resolveAdminHelpToken(token: string): Promise<ShareTokenResolvedItem | null> {
-    return await this.workspaceData.resolveAdminHelpToken(token, value => this.resolveDemoAdminHelpToken(value));
+    return await this.workspaceData.resolveAdminHelpToken(token);
   }
 
   private openSharedUserSelector(userId: string, targetUrl: string): void {
@@ -144,94 +144,6 @@ export class AdminHelpSessionPageComponent implements OnInit {
       }
       setTimeout(resolve, 0);
     });
-  }
-
-  private resolveDemoAdminHelpToken(token: string): ShareTokenResolvedItem | null {
-    const reportToken = this.resolveDemoAdminReportToken(token);
-    if (reportToken) {
-      return reportToken;
-    }
-    const prefix = 'myscoutee:token:admin-help-';
-    if (!token.startsWith(prefix)) {
-      return null;
-    }
-    const payload = token.slice(prefix.length);
-    const parsed = this.parseDemoAdminHelpPayload(payload);
-    if (!parsed) {
-      return null;
-    }
-    const targetUrl = this.demoHelpTargetUrl(parsed.targetKey);
-    return {
-      kind: 'adminHelp',
-      entityId: targetUrl,
-      ownerUserId: parsed.ownerUserId,
-      title: 'Shared help view',
-      subtitle: 'MyScoutee support session',
-      description: 'The user allowed MyScoutee admin to open their current app view.',
-      imageUrl: null,
-      url: targetUrl
-    };
-  }
-
-  private resolveDemoAdminReportToken(token: string): ShareTokenResolvedItem | null {
-    const prefix = 'myscoutee:token:admin-report:';
-    if (!token.startsWith(prefix)) {
-      return null;
-    }
-    const payload = token.slice(prefix.length);
-    const [ownerUserId, encodedTarget] = payload.split(':');
-    const targetUrl = this.decodeDemoTokenPayload(encodedTarget);
-    if (!ownerUserId?.trim() || !targetUrl) {
-      return null;
-    }
-    return {
-      kind: 'adminHelp',
-      entityId: targetUrl,
-      ownerUserId: ownerUserId.trim(),
-      title: 'Shared report context',
-      subtitle: 'MyScoutee support session',
-      description: 'MyScoutee admin opened a report context as the reporting user sees it.',
-      imageUrl: null,
-      url: targetUrl
-    };
-  }
-
-  private decodeDemoTokenPayload(value: string | undefined): string {
-    const normalized = `${value ?? ''}`.trim();
-    if (!normalized) {
-      return '';
-    }
-    try {
-      const padded = normalized.replace(/-/g, '+').replace(/_/g, '/').padEnd(Math.ceil(normalized.length / 4) * 4, '=');
-      const binary = atob(padded);
-      const bytes = Uint8Array.from(binary, char => char.charCodeAt(0));
-      return new TextDecoder().decode(bytes);
-    } catch {
-      return '';
-    }
-  }
-
-  private parseDemoAdminHelpPayload(payload: string): { ownerUserId: string; targetKey: string } | null {
-    const targetKeys = ['service-chat', 'events', 'asset-supplies', 'asset-transport'];
-    const targetKey = targetKeys.find(key => payload.endsWith(`-${key}`)) ?? 'current';
-    const userPayload = targetKey === 'current' ? payload : payload.slice(0, -(targetKey.length + 1));
-    const ownerUserId = userPayload.split('-').pop()?.trim() ?? '';
-    return ownerUserId ? { ownerUserId, targetKey } : null;
-  }
-
-  private demoHelpTargetUrl(targetKey: string): string {
-    switch (targetKey) {
-      case 'service-chat':
-        return '/game?supportTarget=service-chat';
-      case 'events':
-        return '/game?supportTarget=event&eventId=e1';
-      case 'asset-supplies':
-        return '/game?supportTarget=asset&assetFilter=Supplies&assetId=asset-sup-2&assetTitle=Game%20Night%20Box&assetSubtitle=Board%20games%20%2B%20cards%20%2B%20speakers&assetCity=Austin&assetDetails=Board%20games%2C%20cards%2C%20and%20speakers%20ready%20for%20the%20venue.&assetPreview=https%3A%2F%2Fpicsum.photos%2Fseed%2Fsupplies-gear-asset-sup-2%2F1200%2F700';
-      case 'asset-transport':
-        return '/game?supportTarget=asset&assetFilter=Transport';
-      default:
-        return '/game';
-    }
   }
 
   private async queueSharedSupportTarget(userId: string, targetUrl: string): Promise<string> {

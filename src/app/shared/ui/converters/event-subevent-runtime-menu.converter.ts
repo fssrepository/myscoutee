@@ -82,16 +82,16 @@ export class EventSubeventRuntimeMenuConverter {
       : this.casualItems(item, options);
   }
 
-  static pendingBadgeCount(
+  static runtimeBadgeCount(
     item: SubEventDTO,
     options: EventSubeventRuntimeMenuConverterOptions = {}
   ): number {
     const mode = this.resolveMode(item, options);
     if (mode === 'Tournament') {
-      return Math.max(0, this.toInteger(item.membersPending));
+      return this.groupPending(item);
     }
     return [
-      item.membersPending,
+      item.optional === true ? item.membersPending : 0,
       item.carsPending,
       item.accommodationPending,
       item.suppliesPending
@@ -138,7 +138,8 @@ export class EventSubeventRuntimeMenuConverter {
       palette: 'green',
       surface: 'tinted',
       layout: 'pill',
-      counter: this.groupCount(item) > 0 ? { value: this.groupCount(item), max: 99 } : null,
+      counter: this.groupPending(item) > 0 ? { value: this.groupPending(item), max: 99 } : null,
+      counterTone: 'alert',
       context: {
         scope: 'stage-dashboard',
         action: 'groups',
@@ -318,7 +319,9 @@ export class EventSubeventRuntimeMenuConverter {
     const items: AppMenuItem<EventSubeventRuntimeMenuItemId, EventSubeventRuntimeMenuContext>[] = [];
     const sourceId = `${options.sourceId ?? options.event?.id ?? ''}`.trim();
     const subEventIndex = Math.max(0, this.toInteger(options.subEventIndex));
-    items.push(this.resourceItem('members', 'Members', 'Members', item, this.membersLabel(item), item.membersPending, sourceId, subEventIndex));
+    if (item.optional === true) {
+      items.push(this.resourceItem('members', 'Members', 'Members', item, this.membersLabel(item), item.membersPending, sourceId, subEventIndex));
+    }
     if (items.length > 0) {
       items.push({
         id: 'runtime-divider',
@@ -407,6 +410,7 @@ export class EventSubeventRuntimeMenuConverter {
       surface: 'tinted',
       layout: 'pill',
       counter: pending > 0 ? { value: pending, max: 99 } : null,
+      counterTone: 'alert',
       context: {
         scope: 'resource',
         resourceType,
@@ -447,8 +451,8 @@ export class EventSubeventRuntimeMenuConverter {
     return 'RS';
   }
 
-  private static groupCount(item: SubEventDTO): number {
-    return Math.max(0, this.toInteger(item.groupsCount));
+  private static groupPending(item: SubEventDTO): number {
+    return Math.max(0, this.toInteger(item.groupsPending));
   }
 
   private static membersLabel(item: SubEventDTO): string {

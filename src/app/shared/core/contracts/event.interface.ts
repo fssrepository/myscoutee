@@ -50,6 +50,7 @@ export interface SubEventDTO {
   tournamentLeaderboardType?: TournamentLeaderboardType;
   tournamentAdvancePerGroup?: number;
   groupsCount?: number;
+  groupsPending?: number;
   optional: boolean;
   capacityMin: number;
   capacityMax: number;
@@ -168,6 +169,14 @@ export interface EventTournamentGroupDTO {
   capacityMax: number;
   membersAccepted: number;
   membersPending: number;
+  resourceMetricsByType: Partial<Record<string, EventTournamentResourceMetricDTO>>;
+}
+
+export interface EventTournamentResourceMetricDTO {
+  accepted: number;
+  pending: number;
+  capacityMin: number;
+  capacityMax: number;
 }
 
 export interface EventTournamentStageDTO {

@@ -75,6 +75,7 @@ export class ActivityEventInfoCardConverter {
         pendingCount: statusBadgeLabelKey ? 0 : this.pendingMemberCount(dto)
       },
       hasMenuOptions: this.hasMenuOptions(dto),
+      menuBadgeCount: Math.max(0, Math.trunc(Number(dto.activity) || 0)),
       clickable: false,
       state: options.state ?? 'default'
     };

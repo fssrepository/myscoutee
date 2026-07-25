@@ -6,6 +6,16 @@ import { AppUtils } from '../../../app-utils';
 export interface AssetBorrowPricingPreview {
   amount: number;
   currency: string;
+  rows: readonly AssetBorrowPricingSummaryRow[];
+}
+
+export interface AssetBorrowPricingSummaryRow {
+  key: string;
+  label: string;
+  detail?: string | null;
+  amount: number;
+  currency: string;
+  multiplier?: number | null;
 }
 
 export interface AssetBorrowPricingOptions {
@@ -22,12 +32,12 @@ export class PricingBuilder {
     context: 'event' | 'asset' | 'subevent' = 'event'
   ): ContractTypes.PricingConfig {
     return {
-      enabled: context === 'asset',
+      enabled: false,
       mode: 'fixed',
-      basePrice: context === 'asset' ? 10 : 0,
+      basePrice: 0,
       currency: 'USD',
       taxMode: 'excluded',
-      chargeType: context === 'asset' ? 'per_booking' : 'per_attendee',
+      chargeType: 'per_attendee',
       quantityRulesEnabled: false,
       quantityRules: [],
       minPrice: null,
@@ -115,7 +125,7 @@ export class PricingBuilder {
     const normalized: ContractTypes.PricingConfig = {
       enabled: this.normalizeBoolean(
         source['enabled'],
-        this.hasMeaningfulPricingContent(source, context)
+        this.hasMeaningfulPricingContent(source)
       ),
       mode: this.normalizeMode(source['mode']),
       basePrice: this.normalizeMoney(source['basePrice'] ?? source['amount']) ?? fallback.basePrice,
@@ -249,7 +259,8 @@ export class PricingBuilder {
     if (!normalized.enabled) {
       return {
         amount: 0,
-        currency
+        currency,
+        rows: []
       };
     }
 
@@ -264,37 +275,135 @@ export class PricingBuilder {
       (Math.min(totalQuantity, overlappingCommitted + requestedQuantity) / totalQuantity) * 100
     );
     const hoursUntilStart = this.resolveHoursUntilStart(options.startAtIso);
+    const billableDays = this.resolveAssetBorrowBillableDays(options.startAtIso, options.endAtIso);
+    const rows: AssetBorrowPricingSummaryRow[] = [{
+      key: 'base',
+      label: 'pricing.asset.daily.rate',
+      detail: null,
+      amount: normalized.basePrice,
+      currency,
+      multiplier: 1
+    }];
 
     let nextPrice = normalized.basePrice;
+    if (normalized.quantityRulesEnabled) {
+      for (const rule of normalized.quantityRules) {
+        if (requestedQuantity < rule.minQuantity) {
+          continue;
+        }
+        const previousPrice = nextPrice;
+        nextPrice = this.applyPricingAction(nextPrice, rule.action);
+        rows.push({
+          key: `quantity-rule:${rule.id}`,
+          label: 'pricing.quantity.adjustment',
+          detail: `${rule.minQuantity}+ · ${this.describePricingAction(rule.action)}`,
+          amount: this.roundMoney(nextPrice - previousPrice),
+          currency,
+          multiplier: 1
+        });
+      }
+    }
     if ((normalized.mode === 'demand-based' || normalized.mode === 'hybrid') && normalized.demandRulesEnabled) {
       for (const rule of normalized.demandRules) {
         if (this.matchesPricingDemandRule(rule, capacityFilledPercent)) {
+          const previousPrice = nextPrice;
           nextPrice = this.applyPricingAction(nextPrice, rule.action);
+          rows.push({
+            key: `demand:${rule.id}`,
+            label: 'pricing.demand.adjustment',
+            detail: `${capacityFilledPercent}% · ${this.describePricingAction(rule.action)}`,
+            amount: this.roundMoney(nextPrice - previousPrice),
+            currency,
+            multiplier: 1
+          });
         }
       }
     }
     if ((normalized.mode === 'time-based' || normalized.mode === 'hybrid') && normalized.timeRulesEnabled) {
       for (const rule of normalized.timeRules) {
         if (this.matchesPricingTimeRule(rule, hoursUntilStart, options.startAtIso)) {
+          const previousPrice = nextPrice;
           nextPrice = this.applyPricingAction(nextPrice, rule.action);
+          rows.push({
+            key: `time:${rule.id}`,
+            label: 'pricing.time.adjustment',
+            detail: `${this.describePricingTimeCondition(rule)} · ${this.describePricingAction(rule.action)}`,
+            amount: this.roundMoney(nextPrice - previousPrice),
+            currency,
+            multiplier: 1
+          });
         }
       }
     }
 
     if (normalized.minPrice !== null) {
+      const previousPrice = nextPrice;
       nextPrice = Math.max(normalized.minPrice, nextPrice);
+      if (nextPrice !== previousPrice) {
+        rows.push({
+          key: 'min-price',
+          label: 'pricing.minimum',
+          detail: null,
+          amount: this.roundMoney(nextPrice - previousPrice),
+          currency,
+          multiplier: 1
+        });
+      }
     }
     if (normalized.maxPrice !== null) {
+      const previousPrice = nextPrice;
       nextPrice = Math.min(normalized.maxPrice, nextPrice);
+      if (nextPrice !== previousPrice) {
+        rows.push({
+          key: 'max-price',
+          label: 'pricing.maximum',
+          detail: null,
+          amount: this.roundMoney(nextPrice - previousPrice),
+          currency,
+          multiplier: 1
+        });
+      }
     }
 
     const roundedUnitPrice = this.applyPricingRounding(nextPrice, normalized.rounding);
-    const multiplier = normalized.chargeType === 'per_attendee'
+    if (roundedUnitPrice !== nextPrice) {
+      rows.push({
+        key: 'rounding',
+        label: 'pricing.rounding',
+        detail: null,
+        amount: this.roundMoney(roundedUnitPrice - nextPrice),
+        currency,
+        multiplier: 1
+      });
+    }
+    const durationPrice = this.roundMoney(roundedUnitPrice * billableDays);
+    if (billableDays > 1) {
+      rows.push({
+        key: 'duration',
+        label: 'pricing.asset.billed.duration',
+        detail: null,
+        amount: this.roundMoney(roundedUnitPrice * (billableDays - 1)),
+        currency,
+        multiplier: billableDays
+      });
+    }
+    const quantityMultiplier = normalized.chargeType === 'per_attendee'
       ? requestedQuantity
       : 1;
+    if (quantityMultiplier > 1) {
+      rows.push({
+        key: 'quantity',
+        label: 'pricing.asset.items',
+        detail: null,
+        amount: this.roundMoney(durationPrice * (quantityMultiplier - 1)),
+        currency,
+        multiplier: quantityMultiplier
+      });
+    }
     return {
-      amount: Math.round(roundedUnitPrice * multiplier * 100) / 100,
-      currency
+      amount: this.roundMoney(durationPrice * quantityMultiplier),
+      currency,
+      rows
     };
   }
 
@@ -347,6 +456,34 @@ export class PricingBuilder {
     return Math.max(0, currentPrice * (1 + percent));
   }
 
+  private static describePricingAction(action: ContractTypes.PricingAction): string {
+    const value = Math.max(0, Number(action.value) || 0);
+    switch (action.kind) {
+      case 'set_exact_price':
+        return `= ${value}`;
+      case 'increase_amount':
+        return `+${value}`;
+      case 'decrease_amount':
+        return `-${value}`;
+      case 'decrease_percent':
+        return `-${value}%`;
+      default:
+        return `+${value}%`;
+    }
+  }
+
+  private static describePricingTimeCondition(rule: ContractTypes.PricingTimeRule): string {
+    if (rule.trigger === 'specific_date') {
+      return `${rule.specificDateStart ?? ''} – ${rule.specificDateEnd ?? ''}`.trim();
+    }
+    const value = Math.max(0, Number(rule.offsetValue) || 0);
+    return rule.trigger === 'hours_before_start' ? `≤ ${value}h` : `≤ ${value}d`;
+  }
+
+  private static roundMoney(value: number): number {
+    return Math.round(value * 100) / 100;
+  }
+
   private static applyPricingRounding(price: number, rounding: AppConstants.PricingRoundingMode): number {
     if (rounding === 'whole') {
       return Math.round(price);
@@ -363,6 +500,18 @@ export class PricingBuilder {
       return 0;
     }
     return Math.max(0, Math.round((start.getTime() - Date.now()) / (60 * 60 * 1000)));
+  }
+
+  private static resolveAssetBorrowBillableDays(startAtIso: string, endAtIso: string): number {
+    const start = AppUtils.isoLocalDateTimeToDate(startAtIso);
+    const end = AppUtils.isoLocalDateTimeToDate(endAtIso);
+    if (!start || !end || end.getTime() <= start.getTime()) {
+      return 1;
+    }
+    return Math.max(
+      1,
+      Math.ceil((end.getTime() - start.getTime()) / (24 * 60 * 60 * 1000))
+    );
   }
 
   private static assetRequestQuantity(request: ContractTypes.AssetMemberRequestDTO): number {
@@ -400,10 +549,9 @@ export class PricingBuilder {
   }
 
   private static hasMeaningfulPricingContent(
-    source: Readonly<Record<string, unknown>>,
-    context: 'event' | 'asset' | 'subevent'
+    source: Readonly<Record<string, unknown>>
   ): boolean {
-    const basePrice = this.normalizeMoney(source['basePrice'] ?? source['amount']) ?? (context === 'asset' ? 10 : 0);
+    const basePrice = this.normalizeMoney(source['basePrice'] ?? source['amount']) ?? 0;
     const quantityRules = Array.isArray(source['quantityRules']) ? source['quantityRules'].length : 0;
     const demandRules = Array.isArray(source['demandRules']) ? source['demandRules'].length : 0;
     const timeRules = Array.isArray(source['timeRules']) ? source['timeRules'].length : 0;

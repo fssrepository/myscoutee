@@ -3,6 +3,7 @@ import { Injectable, inject } from '@angular/core';
 import type {
   AdminNotificationCenterState,
   AdminNotificationIntervalUnit,
+  AdminNotificationProcessFilter,
   AdminNotificationRule,
   AdminNotificationRuleLiveEvent,
   AdminNotificationRuleParameter,
@@ -44,6 +45,7 @@ const ADMIN_NOTIFICATION_INTERVAL_SECONDS: Record<AdminNotificationIntervalUnit,
 
 export interface AdminNotificationDelayOptions {
   skipDemoDelay?: boolean;
+  filter?: AdminNotificationProcessFilter | null;
 }
 
 @Injectable({
@@ -68,7 +70,7 @@ export class AdminNotificationsService extends BaseRouteModeService {
   ): Promise<AdminNotificationCenterState> {
     const state = this.notificationService instanceof LocalAdminNotificationsService
       ? await this.notificationService.loadNotificationCenter(options)
-      : await this.notificationService.loadNotificationCenter(adminUserId);
+      : await this.notificationService.loadNotificationCenter(adminUserId, options?.filter);
     return this.normalizeNotificationCenter(state);
   }
 
@@ -80,7 +82,7 @@ export class AdminNotificationsService extends BaseRouteModeService {
     const normalizedRules = rules.map(rule => this.normalizeNotificationRule(rule));
     const state = this.notificationService instanceof LocalAdminNotificationsService
       ? await this.notificationService.saveNotificationCenter(normalizedRules, adminUserId, options as LocalAdminNotificationDelayOptions)
-      : await this.notificationService.saveNotificationCenter(normalizedRules, adminUserId);
+      : await this.notificationService.saveNotificationCenter(normalizedRules, adminUserId, options?.filter);
     return this.normalizeNotificationCenter(state);
   }
 
@@ -136,8 +138,27 @@ export class AdminNotificationsService extends BaseRouteModeService {
         category: `${template.category ?? ''}`.trim(),
         description: `${template.description ?? ''}`.trim()
       })).filter(template => template.templateKey.length > 0),
+      filterCounts: this.normalizeProcessFilterCounts(state.filterCounts, state.rules ?? []),
       updatedDate: `${state.updatedDate ?? ''}`.trim() || new Date().toISOString()
     };
+  }
+
+  private normalizeProcessFilterCounts(
+    counts: Record<string, number> | null | undefined,
+    rules: readonly AdminNotificationRule[]
+  ): Record<string, number> {
+    const fallback: Record<string, number> = {
+      all: rules.filter(rule => rule.triggerKind === 'scheduled_process').length
+    };
+    const normalized: Record<string, number> = {};
+    for (const [key, value] of Object.entries(counts ?? fallback)) {
+      const normalizedKey = `${key ?? ''}`.trim();
+      const parsed = Math.trunc(Number(value));
+      if (normalizedKey && Number.isFinite(parsed)) {
+        normalized[normalizedKey] = Math.max(0, parsed);
+      }
+    }
+    return Object.keys(normalized).length ? normalized : fallback;
   }
 
   private normalizeNotificationRule(rule: AdminNotificationRule): AdminNotificationRule {

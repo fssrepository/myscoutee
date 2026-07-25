@@ -1,0 +1,65 @@
+@if (session(); as activeSession) {
+  <app-popup [model]="popupModel(activeSession)" [zIndex]="popupZIndex()">
+    <section class="rated-feedback-popup">
+      @if (loading()) {
+        <div class="rated-feedback-state">
+          <app-indicator kind="load-ring" state="loading"></app-indicator>
+          <span>Loading your saved feedback</span>
+        </div>
+      } @else if (loadError()) {
+        <div class="rated-feedback-state rated-feedback-state--error">
+          <mat-icon>error_outline</mat-icon>
+          <span>{{ loadError() }}</span>
+        </div>
+      } @else {
+        @if (submittedAtLabel()) {
+          <div class="rated-feedback-submitted">
+            <mat-icon>verified</mat-icon>
+            <span>Submitted {{ submittedAtLabel() }}</span>
+          </div>
+        }
+
+        <div class="rated-feedback-card-list">
+          @for (card of cards(); track card.id) {
+            <article class="rated-feedback-card" [ngClass]="card.toneClass">
+              <header class="rated-feedback-card__header">
+                <div class="rated-feedback-card__icon">
+                  <mat-icon>{{ card.icon }}</mat-icon>
+                </div>
+                <div>
+                  <h3>{{ card.heading }}</h3>
+                  <p>{{ card.subheading }}</p>
+                </div>
+              </header>
+
+              <div class="rated-feedback-answer-grid">
+                <div class="rated-feedback-answer">
+                  <span>{{ card.questionPrimary }}</span>
+                  <strong>{{ primaryAnswerLabel(card) }}</strong>
+                </div>
+                <div class="rated-feedback-answer">
+                  <span>{{ card.questionSecondary }}</span>
+                  <strong>{{ secondaryAnswerLabel(card) }}</strong>
+                </div>
+              </div>
+
+              <div class="rated-feedback-traits">
+                <span>{{ card.traitQuestion }}</span>
+                <div class="rated-feedback-trait-list">
+                  @for (trait of traitLabels(card); track trait) {
+                    <span class="rated-feedback-trait">
+                      <mat-icon>psychology</mat-icon>
+                      {{ trait }}
+                    </span>
+                  } @empty {
+                    <span class="rated-feedback-trait rated-feedback-trait--empty">No traits selected</span>
+                  }
+                </div>
+              </div>
+            </article>
+          }
+        </div>
+      }
+    </section>
+  </app-popup>
+}

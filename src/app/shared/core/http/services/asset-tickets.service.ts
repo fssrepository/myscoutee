@@ -32,6 +32,7 @@ export class HttpAssetTicketsService {
       const response = await this.http
         .get<AssetContracts.AssetTicketPageResultDTO | null>(`${this.apiBaseUrl}/assets/tickets`, {
           params: new HttpParams()
+            .set('userId', normalizedUserId)
             .set('page', String(Math.max(0, Math.trunc(Number(query.page) || 0))))
             .set('pageSize', String(Math.max(1, Math.trunc(Number(query.pageSize) || 1))))
             .set('order', query.order)
