@@ -323,6 +323,8 @@ export interface EventParticipationActionResultDTO {
   capacityTotal: number;
   full: boolean;
   paymentSessionId?: string | null;
+  changed?: boolean;
+  reason?: string | null;
 }
 
 export interface SubEventResourceCardDTO {

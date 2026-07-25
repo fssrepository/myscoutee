@@ -26,4 +26,34 @@ describe('ActivityEventInfoCardMenuConverter pending activity', () => {
     expect(viewItem?.counter).toEqual({ value: 3, max: 99 });
     expect(viewItem?.counterTone).toBe('alert');
   });
+
+  it('offers restore for a trashed participant event', () => {
+    const subject: ActivityEventInfoCardMenuSubject = {
+      menu: 'activity-event-card',
+      id: 'event-1',
+      status: 'T',
+      ownerUserId: 'organizer'
+    };
+
+    const actionIds = ActivityEventInfoCardMenuConverter.convert(subject, {
+      activeUserId: 'viewer'
+    }).map(item => item.id);
+
+    expect(actionIds).toContain('restore');
+  });
+
+  it('offers restore for a trashed hosted event', () => {
+    const subject: ActivityEventInfoCardMenuSubject = {
+      menu: 'activity-event-card',
+      id: 'event-1',
+      status: 'T',
+      ownerUserId: 'organizer'
+    };
+
+    const actionIds = ActivityEventInfoCardMenuConverter.convert(subject, {
+      activeUserId: 'organizer'
+    }).map(item => item.id);
+
+    expect(actionIds).toContain('restore');
+  });
 });

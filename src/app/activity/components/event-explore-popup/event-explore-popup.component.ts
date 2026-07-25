@@ -1299,7 +1299,14 @@ export class EventExplorePopupComponent {
         checkoutSessionId: draft.checkoutSessionId ?? null,
         counterDelta
       });
-      this.signalEventExploreCounterDelta(activeUserId, counterDelta);
+      if (!leaveResult
+          || (leaveResult.changed === false && leaveResult.reason !== 'already-applied')
+          || leaveResult.membershipStatus === 'unchanged') {
+        throw new Error('Unable to leave event.');
+      }
+      if (leaveResult.changed !== false) {
+        this.signalEventExploreCounterDelta(activeUserId, counterDelta);
+      }
       const memberDelta = this.checkoutDraftCancelMemberDelta(draft);
       this.emitCheckoutDraftMembersSync(sourceId, leaveResult, memberDelta, true);
       this.activitiesStore.clearActivityEventSave();

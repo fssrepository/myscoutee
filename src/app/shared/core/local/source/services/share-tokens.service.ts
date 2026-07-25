@@ -9,8 +9,12 @@ import { LocalShareTokensRepository } from '../repositories/share-tokens.reposit
 export class LocalShareTokensService {
   private readonly repository = inject(LocalShareTokensRepository);
 
-  createToken(request: ShareTokenCreateRequest): Promise<string> {
-    return Promise.resolve(this.repository.createToken(request));
+  async createToken(request: ShareTokenCreateRequest): Promise<string> {
+    const token = this.repository.createToken(request);
+    if (token) {
+      await this.repository.flushToIndexedDb();
+    }
+    return token;
   }
 
   resolveToken(token: string, userId: string): Promise<ShareTokenResolvedItem | null> {

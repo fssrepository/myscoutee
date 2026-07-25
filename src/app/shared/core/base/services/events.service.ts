@@ -367,7 +367,7 @@ export class EventsService extends BaseRouteModeService implements IEventsServic
     userId: string,
     sourceId: string,
     options: { counterDelta?: UserMenuCounterDeltasDto | null } = {}
-  ): Promise<void> {
+  ): Promise<EventParticipationActionResultDTO | null> {
     return this.eventsService.restoreItem(userId, sourceId, options);
   }
 

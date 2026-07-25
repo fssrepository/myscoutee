@@ -55,7 +55,8 @@
               <div
                 class="admin-report-context-card admin-report-member-card"
                 [class.has-member-image]="memberImageUrl(item.user)"
-                (click)="openSharedUrl(reportMemberUrl(item), $event)"
+                [attr.aria-disabled]="!reportMemberShareUrl"
+                (click)="openSharedUrl(reportMemberShareUrl, $event)"
                 >
                 <app-image-card
                   [card]="reportedUserImageCard(item.user, {
@@ -72,7 +73,8 @@
               <button
                 type="button"
                 class="admin-report-context-card"
-                (click)="openSharedUrl(reportSourceUrl(item.report), $event)"
+                [disabled]="!reportSourceShareUrl"
+                (click)="openSharedUrl(reportSourceShareUrl, $event)"
                 >
                 <span class="admin-report-context-head">
                   <span class="admin-report-context-avatar admin-report-context-source-avatar">

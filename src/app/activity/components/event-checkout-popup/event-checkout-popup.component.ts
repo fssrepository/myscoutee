@@ -1965,7 +1965,14 @@ export class EventCheckoutPopupComponent {
       checkoutSessionId: this.checkoutSessionId,
       counterDelta
     });
-    this.signalCheckoutCounterDelta(counterDelta);
+    if (!leaveResult
+        || (leaveResult.changed === false && leaveResult.reason !== 'already-applied')
+        || leaveResult.membershipStatus === 'unchanged') {
+      throw new Error('Unable to leave event.');
+    }
+    if (leaveResult.changed !== false) {
+      this.signalCheckoutCounterDelta(counterDelta);
+    }
     this.emitCheckoutMembershipSync(dialog.record.id, leaveResult, memberDelta, true);
     this.emitCheckoutMembershipSync(this.selectedSlotSourceId, leaveResult, memberDelta, true);
     this.activitiesStore.clearActivityEventSave();

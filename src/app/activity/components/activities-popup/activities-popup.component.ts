@@ -877,6 +877,7 @@ export class ActivitiesPopupComponent implements OnDestroy {
         return;
       }
       this.applyActivityEventSyncMessage(message);
+      this.activitiesStore.clearActivityEventSync();
       this.cdr.markForCheck();
     });
 
@@ -3341,7 +3342,9 @@ export class ActivitiesPopupComponent implements OnDestroy {
     return this.activitiesEventScope === 'all'
       || this.activitiesEventScope === 'active-events'
       || this.activitiesEventScope === 'pending'
-      || this.activitiesEventScope === 'invitations';
+      || this.activitiesEventScope === 'invitations'
+      || this.activitiesEventScope === 'my-events'
+      || this.activitiesEventScope === 'drafts';
   }
 
   private applyActivityMembersSummaryToRow(row: ActivityEventListItem, summary: ActivityMembersSummaryDto): void {

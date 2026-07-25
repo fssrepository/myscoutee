@@ -1356,6 +1356,29 @@ export class ActivitiesEventsController {
     return this.activityCounterDeltaFromDeltas(primaryDelta, eventDelta);
   }
 
+  private restoredEventCounterDeltaFromResult(
+    row: InfoCardData,
+    result: ActivityContracts.EventParticipationActionResultDTO
+  ): UserMenuCounterDeltasDto | null {
+    const type = this.activityEventListTypeForRow(row);
+    if (type === 'hosting' || type === 'invitations') {
+      return this.restoredEventCounterDelta(row);
+    }
+    if (result.membershipStatus === 'pending') {
+      return this.activityCounterDeltaFromDeltas(
+        {},
+        { all: 1, pending: 1, trash: -1 }
+      );
+    }
+    if (result.membershipStatus === 'accepted') {
+      return this.activityCounterDeltaFromDeltas(
+        { events: 1 },
+        { all: 1, active: 1, trash: -1 }
+      );
+    }
+    return this.restoredEventCounterDelta(row);
+  }
+
   private publishedEventCounterDelta(row: InfoCardData): UserMenuCounterDeltasDto | null {
     if (!this.isActivityDraftRow(row)) {
       return null;
@@ -1424,11 +1447,14 @@ export class ActivitiesEventsController {
       checkoutResultState: 'deleted',
       counterDelta
     });
-    if (!leaveResult || leaveResult.membershipStatus === 'unchanged') {
+    if (!leaveResult
+        || (leaveResult.changed === false && leaveResult.reason !== 'already-applied')
+        || leaveResult.membershipStatus === 'unchanged') {
       throw new Error('Unable to leave event.');
     }
-    this.activitiesStore.emitActivityEventRemoval(row.id);
-    this.signalActivityCounterDelta(activeUserId, counterDelta);
+    if (leaveResult.changed !== false) {
+      this.signalActivityCounterDelta(activeUserId, counterDelta);
+    }
 
     if (this.selectedActivityMembersRowId === this.activityRowIdentity(row)) {
       this.selectedActivityMembers = this.selectedActivityMembers
@@ -1801,10 +1827,15 @@ export class ActivitiesEventsController {
 
   private async restoreActivityRow(row: InfoCardData): Promise<void> {
     const activeUserId = this.activeUserId();
-    const counterDelta = this.restoredEventCounterDelta(row);
-    await this.eventsService.restoreItem(this.activeUser.id, row.id, {
-      counterDelta
+    const restoreResult = await this.eventsService.restoreItem(this.activeUser.id, row.id, {
+      counterDelta: this.restoredEventCounterDelta(row)
     });
+    if (!restoreResult || restoreResult.changed === false || restoreResult.membershipStatus === 'unchanged') {
+      throw new Error(restoreResult?.reason === 'forbidden'
+        ? 'You are not allowed to restore this event.'
+        : 'Unable to restore event participation.');
+    }
+    const counterDelta = this.restoredEventCounterDeltaFromResult(row, restoreResult);
     this.activitiesStore.emitActivityEventRemoval(row.id);
     this.signalActivityCounterDelta(activeUserId, counterDelta);
     this.cdr.markForCheck();

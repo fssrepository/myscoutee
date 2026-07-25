@@ -49,13 +49,7 @@ export class AdminWorkspaceDataService extends BaseRouteModeService {
     }
   }
 
-  async resolveAdminHelpToken(
-    token: string,
-    localResolver: (token: string) => ShareTokenResolvedItem | null
-  ): Promise<ShareTokenResolvedItem | null> {
-    if (!this.isFirebaseAdminMode) {
-      return localResolver(token);
-    }
+  async resolveAdminHelpToken(token: string): Promise<ShareTokenResolvedItem | null> {
     try {
       return await this.shareTokens.resolveToken(token, '');
     } catch {

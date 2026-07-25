@@ -828,11 +828,45 @@ export class LocalEventsService extends LocalRouteDelayService implements IEvent
     userId: string,
     sourceId: string,
     options: { counterDelta?: UserMenuCounterDeltasDto | null } = {}
-  ): Promise<void> {
+  ): Promise<EventParticipationActionResultDTO | null> {
     this.eventsRepository.restoreItem(userId, sourceId);
     await this.patchLocalUserActivityCounterDeltas(userId, options.counterDelta ?? null);
     await this.eventsRepository.flushToIndexedDb();
     await this.waitForRouteDelay(LocalEventsService.EVENTS_ROUTE);
+    const restored = this.eventsRepository.peekKnownItemById(userId, sourceId);
+    if (!restored) {
+      return {
+        sourceId,
+        slotSourceId: null,
+        action: 'restore',
+        membershipStatus: 'unchanged',
+        pendingReason: null,
+        acceptedMembers: 0,
+        pendingMembers: 0,
+        capacityTotal: 0,
+        full: false,
+        paymentSessionId: null,
+        changed: false,
+        reason: 'restore-unavailable'
+      };
+    }
+    const acceptedMembers = Math.max(0, Math.trunc(Number(restored.acceptedMembers) || 0));
+    const pendingMembers = Math.max(0, Math.trunc(Number(restored.pendingMembers) || 0));
+    const capacityTotal = Math.max(acceptedMembers, Math.trunc(Number(restored.capacityTotal) || 0));
+    return {
+      sourceId,
+      slotSourceId: null,
+      action: 'restore',
+      membershipStatus: 'restored',
+      pendingReason: null,
+      acceptedMembers,
+      pendingMembers,
+      capacityTotal,
+      full: capacityTotal > 0 && acceptedMembers >= capacityTotal,
+      paymentSessionId: null,
+      changed: true,
+      reason: null
+    };
   }
 
   async takeOverItem(userId: string, sourceId: string): Promise<void> {

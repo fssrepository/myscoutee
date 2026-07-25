@@ -71,7 +71,6 @@ import {
   ActivityStore,
   type ActivityCounters
 } from '../../../shared/ui/context/stores/activity.store';
-import { ActivitiesPopupStore } from '../../../shared/ui/context/stores/activities-popup.store';
 import { MemberMenuStore } from '../../../shared/ui/context/stores/member-menu.store';
 import { ActivityInvitePopupStore } from '../../../shared/ui/context/stores/activity-invite-popup.store';
 
@@ -142,7 +141,6 @@ export class EventMembersPopupComponent {
   private readonly userProfileStore = inject(UserProfileStore);
   private readonly runtimeStore = inject(AppRuntimeStore);
   private readonly activityStore = inject(ActivityStore);
-  private readonly activitiesPopupStore = inject(ActivitiesPopupStore);
   private readonly memberMenuStore = inject(MemberMenuStore);
   private readonly activityInviteStore = inject(ActivityInvitePopupStore);
   private readonly usersService = inject(UsersService);
@@ -918,18 +916,33 @@ export class EventMembersPopupComponent {
     entry: ActivityContracts.ActivityMemberDTO,
     successor: ActivityContracts.ActivityMemberDTO | null
   ): Promise<void> {
+    const activeUserId = this.activeUserId();
+    if (!activeUserId) {
+      return;
+    }
+    const previousMembers = this.currentOwnerMembers();
     const previousOwnerUserId = this.eventOwnerUserId();
     const leavingAsAdmin = this.isActiveUserEventAdmin();
     const sourceRecord = this.ownerRecord
-      ?? this.eventsService.peekKnownRecordById(this.activeUserId(), this.ownerId);
+      ?? this.eventsService.peekKnownRecordById(activeUserId, this.ownerId);
     const counterDelta = leavingAsAdmin
       ? this.eventAdminLeaveCounterDelta(sourceRecord)
-      : null;
-    await this.confirmRemoveMember(entry);
-    this.activitiesPopupStore.emitActivityEventRemoval(this.ownerId);
-    if (counterDelta) {
-      this.patchEventLeaveCounterDelta(counterDelta);
+      : this.eventParticipantLeaveCounterDelta(entry);
+
+    await this.waitForMemberActionRender();
+    const leaveResult = await this.eventsService.leaveEvent(activeUserId, this.ownerId, {
+      removeMembershipOnly: true,
+      checkoutState: 'cancelled',
+      checkoutResultState: 'deleted',
+      counterDelta
+    });
+    if (!leaveResult
+        || (leaveResult.changed === false && leaveResult.reason !== 'already-applied')
+        || leaveResult.membershipStatus === 'unchanged') {
+      throw new Error('Unable to leave event.');
     }
+
+    const nextMembers = previousMembers.filter(member => member.userId !== entry.userId);
     if (this.ownerRecord && entry.userId === previousOwnerUserId && successor) {
       this.ownerRecord = {
         ...this.ownerRecord,
@@ -937,10 +950,15 @@ export class EventMembersPopupComponent {
         creatorName: successor.name,
         creatorInitials: successor.initials,
         creatorCity: successor.city,
-        adminIds: this.currentOwnerMembers()
+        adminIds: nextMembers
           .filter(member => member.status === 'accepted' && member.role === 'Admin')
           .map(member => member.userId)
       };
+    }
+    this.applyCommittedMembers(nextMembers, previousMembers);
+    this.emitEventLeaveMembersSync(leaveResult);
+    if (leaveResult.changed !== false) {
+      this.patchEventLeaveCounterDelta(counterDelta);
     }
   }
 
@@ -958,6 +976,47 @@ export class EventMembersPopupComponent {
     };
   }
 
+  private eventParticipantLeaveCounterDelta(
+    entry: ActivityContracts.ActivityMemberDTO
+  ): UserMenuCounterDeltasDto {
+    if (entry.status === 'pending') {
+      return {
+        event: {
+          all: -1,
+          pending: -1,
+          trash: 1
+        }
+      };
+    }
+    return {
+      events: -1,
+      event: {
+        all: -1,
+        active: -1,
+        trash: 1
+      }
+    };
+  }
+
+  private emitEventLeaveMembersSync(
+    result: ActivityContracts.EventParticipationActionResultDTO
+  ): void {
+    const sourceId = `${result.sourceId ?? this.ownerId}`.trim();
+    if (!sourceId) {
+      return;
+    }
+    const acceptedMembers = Math.max(0, Math.trunc(Number(result.acceptedMembers) || 0));
+    const pendingMembers = Math.max(0, Math.trunc(Number(result.pendingMembers) || 0));
+    this.suppressedOwnerSyncId = sourceId;
+    this.activityStore.emitActivityMembersSync({
+      id: sourceId,
+      acceptedMembers,
+      pendingMembers,
+      capacityTotal: Math.max(acceptedMembers, Math.trunc(Number(result.capacityTotal) || 0)),
+      viewerMembershipRemoved: true
+    });
+  }
+
   private patchEventLeaveCounterDelta(delta: UserMenuCounterDeltasDto): void {
     const activeUserId = this.activeUserId();
     if (!activeUserId) {
@@ -968,7 +1027,6 @@ export class EventMembersPopupComponent {
       delta,
       (this.userProfileStore.activeUserProfile()?.activities ?? null) as Partial<ActivityCounters> | null
     );
-    void this.usersService.patchLocalUserActivityCounterDeltas(activeUserId, delta);
   }
 
   private async confirmMemberAction(

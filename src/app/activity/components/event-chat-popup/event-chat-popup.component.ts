@@ -637,7 +637,9 @@ export class EventChatPopupComponent implements OnDestroy {
   }
 
   private chatPopupHeaderControls(): readonly PopupControl<ChatMenuContext>[] {
-    if (this.isServiceChat() || this.isBlockedSupportChat()) {
+    if ((this.isAppSupportChat() && !this.canShareWorkspaceWithSupport())
+      || this.isServiceChat()
+      || this.isBlockedSupportChat()) {
       return [];
     }
     if (this.selectedChatHasSubEventMenu()) {
@@ -905,6 +907,9 @@ export class EventChatPopupComponent implements OnDestroy {
 
   protected isServiceChat(): boolean {
     const chat = this.session()?.item;
+    if (chat?.channelType === 'appSupport') {
+      return false;
+    }
     return chat?.channelType === 'serviceEvent'
       || chat?.channelType === 'supportCase'
       || Boolean(chat?.supportCase);
@@ -912,6 +917,10 @@ export class EventChatPopupComponent implements OnDestroy {
 
   protected isAppSupportChat(): boolean {
     return this.session()?.item.channelType === 'appSupport';
+  }
+
+  private canShareWorkspaceWithSupport(): boolean {
+    return this.isAppSupportChat() && !this.userProfileStore.activeUserIsAdmin();
   }
 
   protected shouldHostChatResourcePopup(): boolean {
@@ -1974,7 +1983,7 @@ export class EventChatPopupComponent implements OnDestroy {
   private async shareCurrentWorkspaceWithSupport(): Promise<void> {
     const session = this.session();
     const activeUserId = this.activeUserId();
-    if (!session || session.item.channelType !== 'appSupport' || !activeUserId) {
+    if (!session || !this.canShareWorkspaceWithSupport() || !activeUserId) {
       return;
     }
     const targetUrl = this.location.path(true) || '/';
@@ -4420,7 +4429,9 @@ export class EventChatPopupComponent implements OnDestroy {
       : ChatPopupHeaderContextConverter.convert(chat, { includeThumbs: true });
     const controls = [...(baseContext.controls ?? []).map(control => ({ ...control }))];
     if (chat.channelType === 'appSupport') {
-      controls.push(this.buildAppSupportChatContextControl());
+      if (this.canShareWorkspaceWithSupport()) {
+        controls.push(this.buildAppSupportChatContextControl());
+      }
     } else if (!this.isServiceChat() && !this.isBlockedSupportChat()) {
       controls.push(this.buildSelectedChatContextControl(chat, state));
     }

@@ -139,9 +139,13 @@ export class ActivityEventInfoCardMenuConverter {
   ): boolean {
     if (this.isTrashed(subject)) {
       if (this.isAdmin(subject, activeUserId)) {
-        return actionId === 'view' || actionId === 'notifyParticipants';
+        return actionId === 'restore'
+          || actionId === 'view'
+          || actionId === 'notifyParticipants';
       }
-      return actionId === 'view' || actionId === 'askOrganizer';
+      return actionId === 'restore'
+        || actionId === 'view'
+        || actionId === 'askOrganizer';
     }
     switch (actionId) {
       case 'restore':

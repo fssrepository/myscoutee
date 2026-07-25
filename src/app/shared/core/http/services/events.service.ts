@@ -654,8 +654,14 @@ export class HttpEventsService implements IEventsService {
     userId: string,
     sourceId: string,
     _options: { counterDelta?: UserMenuCounterDeltasDto | null } = {}
-  ): Promise<void> {
-    await this.postVoid('/activities/events/restore', { userId: userId.trim(), sourceId: sourceId.trim() });
+  ): Promise<EventParticipationActionResultDTO | null> {
+    const response = await this.http
+      .post<EventParticipationActionResultDTO | null>(
+        `${this.apiBaseUrl}/activities/events/restore`,
+        { userId: userId.trim(), sourceId: sourceId.trim() }
+      )
+      .toPromise();
+    return this.normalizeParticipationActionResult(response);
   }
 
   async takeOverItem(userId: string, sourceId: string): Promise<void> {
@@ -1350,7 +1356,9 @@ export class HttpEventsService implements IEventsService {
       pendingMembers,
       capacityTotal,
       full: result.full === true || (capacityTotal > 0 && acceptedMembers >= capacityTotal),
-      paymentSessionId: `${result.paymentSessionId ?? ''}`.trim() || null
+      paymentSessionId: `${result.paymentSessionId ?? ''}`.trim() || null,
+      changed: result.changed !== false && membershipStatus !== 'unchanged',
+      reason: `${result.reason ?? ''}`.trim() || null
     };
   }
 
