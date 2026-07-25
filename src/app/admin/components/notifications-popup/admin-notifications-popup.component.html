@@ -236,7 +236,7 @@
       @if (scheduleEditorOpen() && selectedRule(); as scheduleRule) {
         <app-popup [model]="scheduleEditorPopupModel(scheduleRule)" [zIndex]="2500">
           @if (scheduleEditorDraft(); as timingDraft) {
-            <div class="run-window-list">
+            <div class="job-timing-editor">
               <article class="run-window-row">
                 <div class="run-window-row-head">
                   <strong>{{ 'admin.jobs.timing.rule' | i18n }}</strong>

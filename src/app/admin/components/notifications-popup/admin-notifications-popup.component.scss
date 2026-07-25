@@ -888,6 +888,12 @@
   --form-flow-input-height: 38px;
 }
 
+.job-timing-editor {
+  min-width: 0;
+  display: grid;
+  overflow: visible;
+}
+
 :host ::ng-deep .job-timing-form-flow .form-flow--grouped .form-flow__body {
   padding: 0;
 }
