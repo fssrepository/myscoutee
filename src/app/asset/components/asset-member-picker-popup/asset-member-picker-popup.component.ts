@@ -92,6 +92,7 @@ export class AssetMemberPickerPopupComponent {
   protected title = 'Invite members';
   protected ownerId = '';
   protected ownerType: AppConstants.ActivityMemberOwnerType = 'event';
+  private parentOwner: ActivityContracts.ActivityMemberOwnerRef | null = null;
   protected inviteSort: AppConstants.ActivityInviteSort = 'recent';
   protected selectedUserIds: string[] = [];
   protected inviteSmartListQuery: Partial<ListQuery<ActivityInviteFilters>> = {};
@@ -102,6 +103,9 @@ export class AssetMemberPickerPopupComponent {
   private persistedSelectedUserIds = new Set<string>();
   private readonly candidatesByUserId = new Map<string, ActivityContracts.ActivityMemberDTO>();
   private candidateQueryKey = '';
+  private existingInviteMemberUserIds: string[] = [];
+  private pendingInviteUserIds: string[] = [];
+  private readonly candidatePagesByKey = new Map<string, ActivityContracts.ActivityInviteCandidatesPage>();
   private localCandidates: ActivityContracts.ActivityMemberDTO[] = [];
   private isLocalCandidateSource = false;
   private inviteSelectionHydrated = false;
@@ -197,6 +201,12 @@ export class AssetMemberPickerPopupComponent {
       this.isOpen = true;
       this.ownerId = context.ownerId.trim();
       this.ownerType = context.ownerType ?? 'event';
+      this.parentOwner = context.parentOwner?.ownerId?.trim()
+        ? {
+            ownerId: context.parentOwner.ownerId.trim(),
+            ownerType: context.parentOwner.ownerType
+          }
+        : null;
       this.title = context.title?.trim() || 'Invite members';
       this.inviteSort = 'recent';
       this.selectedUserIds = [];
@@ -206,6 +216,9 @@ export class AssetMemberPickerPopupComponent {
       this.currentCandidates = [];
       this.candidatesByUserId.clear();
       this.candidateQueryKey = '';
+      this.existingInviteMemberUserIds = [];
+      this.pendingInviteUserIds = [];
+      this.candidatePagesByKey.clear();
       this.localCandidates = Array.isArray(context.initialCandidates)
         ? context.initialCandidates.map(candidate => ({ ...candidate }))
         : [];
@@ -370,6 +383,7 @@ export class AssetMemberPickerPopupComponent {
     this.currentCandidates = [];
     this.candidatesByUserId.clear();
     this.candidateQueryKey = '';
+    this.candidatePagesByKey.clear();
     this.syncInviteSmartListQuery();
     this.inviteSmartList?.reload();
     this.cdr.markForCheck();
@@ -515,6 +529,7 @@ export class AssetMemberPickerPopupComponent {
     this.title = 'Invite members';
     this.ownerId = '';
     this.ownerType = 'event';
+    this.parentOwner = null;
     this.inviteSort = 'recent';
     this.selectedUserIds = [];
     this.inviteSmartListQuery = {};
@@ -524,6 +539,9 @@ export class AssetMemberPickerPopupComponent {
     this.persistedSelectedUserIds = new Set<string>();
     this.candidatesByUserId.clear();
     this.candidateQueryKey = '';
+    this.existingInviteMemberUserIds = [];
+    this.pendingInviteUserIds = [];
+    this.candidatePagesByKey.clear();
     this.localCandidates = [];
     this.isLocalCandidateSource = false;
     this.inviteSelectionHydrated = false;
@@ -565,6 +583,9 @@ export class AssetMemberPickerPopupComponent {
     const inviteSort = query.filters?.sort === 'relevant' ? 'relevant' : 'recent';
     const queryKey = `${ownerId}:${this.ownerType}:${inviteSort}:${query.filters?.fallbackTitle ?? ''}:${this.isLocalCandidateSource ? 'local' : 'shared'}`;
     if (queryKey !== this.candidateQueryKey) {
+      this.currentCandidates = [];
+      this.candidatesByUserId.clear();
+      this.candidatePagesByKey.clear();
       const activeUserId = this.userProfileStore.activeUserId().trim();
       if (this.isLocalCandidateSource) {
         this.persistedSelectedUserIds = new Set<string>();
@@ -580,79 +601,69 @@ export class AssetMemberPickerPopupComponent {
           ? cachedMembers
           : await this.activityMembersService.queryMembersByOwner(ownerRef);
 
-        const existingUserIds = [
-          ...new Set([
-            ...currentMembers.map(member => member.userId),
-            ...this.persistedSelectedUserIds
-          ])
-        ];
-        const candidates = await this.activityInviteCandidatesService.queryCandidatesByOwner(
-          ownerId,
-          inviteSort,
-          query.filters?.fallbackTitle,
-          this.ownerType,
-          existingUserIds
-        );
         const persistedMembers = currentMembers.filter(member =>
           member.userId !== activeUserId
           && member.status === 'pending'
           && member.requestKind === 'invite'
         );
         this.persistedSelectedUserIds = new Set(persistedMembers.map(member => member.userId));
+        this.pendingInviteUserIds = [...this.persistedSelectedUserIds];
+        this.existingInviteMemberUserIds = [
+          ...new Set([
+            ...currentMembers.map(member => member.userId),
+            ...this.persistedSelectedUserIds
+          ])
+        ];
         if (!this.inviteSelectionHydrated) {
           this.selectedUserIds = [...this.persistedSelectedUserIds];
           this.inviteSelectionHydrated = true;
         } else {
           this.selectedUserIds = this.selectedUserIds.filter(userId => this.persistedSelectedUserIds.has(userId) || userId.length > 0);
         }
-        this.currentCandidates = this.mergeInviteCandidates(persistedMembers, candidates, inviteSort);
+        for (const member of persistedMembers) {
+          this.candidatesByUserId.set(member.userId, { ...member });
+        }
       }
       this.candidateQueryKey = queryKey;
-      this.candidatesByUserId.clear();
-      for (const entry of this.currentCandidates) {
-        this.candidatesByUserId.set(entry.userId, { ...entry });
-      }
       this.cdr.markForCheck();
     }
 
     const pageSize = Math.max(1, Number(query.pageSize) || 16);
-    const startIndex = Math.max(0, Number(query.page) || 0) * pageSize;
-    return {
-      items: this.currentCandidates.slice(startIndex, startIndex + pageSize),
-      total: this.currentCandidates.length
-    };
-  }
+    const page = Math.max(0, Number(query.page) || 0);
+    if (this.isLocalCandidateSource) {
+      const startIndex = page * pageSize;
+      return {
+        items: this.currentCandidates.slice(startIndex, startIndex + pageSize),
+        total: this.currentCandidates.length
+      };
+    }
 
-  private mergeInviteCandidates(
-    persistedMembers: readonly ActivityContracts.ActivityMemberDTO[],
-    candidates: readonly ActivityContracts.ActivityMemberDTO[],
-    sort: AppConstants.ActivityInviteSort
-  ): ActivityContracts.ActivityMemberDTO[] {
-    const mergedByUserId = new Map<string, ActivityContracts.ActivityMemberDTO>();
-    if (this.ownerType !== 'asset') {
-      for (const member of persistedMembers) {
-        mergedByUserId.set(member.userId, { ...member });
-      }
+    const pageKey = `${queryKey}:${page}:${pageSize}`;
+    let candidatePage = this.candidatePagesByKey.get(pageKey);
+    if (!candidatePage) {
+      candidatePage = await this.activityInviteCandidatesService.queryCandidatesByOwner(
+        ownerId,
+        inviteSort,
+        query.filters?.fallbackTitle,
+        this.ownerType,
+        this.existingInviteMemberUserIds,
+        this.pendingInviteUserIds,
+        this.parentOwner,
+        page,
+        pageSize
+      );
+      this.candidatePagesByKey.set(pageKey, candidatePage);
     }
-    for (const candidate of candidates) {
-      const current = mergedByUserId.get(candidate.userId);
-      mergedByUserId.set(candidate.userId, current ? { ...current, ...candidate, userId: candidate.userId } : { ...candidate });
+    const knownCandidatesByUserId = new Map(this.currentCandidates.map(candidate => [candidate.userId, candidate]));
+    for (const candidate of candidatePage.items) {
+      knownCandidatesByUserId.set(candidate.userId, { ...candidate });
+      this.candidatesByUserId.set(candidate.userId, { ...candidate });
     }
-    const relevantOrderByUserId = new Map(candidates.map((candidate, index) => [candidate.userId, index]));
-    return [...mergedByUserId.values()].sort((left, right) => {
-      const selectedDelta = Number(this.selectedUserIds.includes(right.userId)) - Number(this.selectedUserIds.includes(left.userId));
-      if (selectedDelta !== 0) {
-        return selectedDelta;
-      }
-      if (sort === 'relevant') {
-        const leftOrder = relevantOrderByUserId.get(left.userId) ?? Number.MAX_SAFE_INTEGER;
-        const rightOrder = relevantOrderByUserId.get(right.userId) ?? Number.MAX_SAFE_INTEGER;
-        if (leftOrder !== rightOrder) {
-          return leftOrder - rightOrder;
-        }
-      }
-      return AppUtils.toSortableDate(right.actionAtIso) - AppUtils.toSortableDate(left.actionAtIso);
-    });
+    this.currentCandidates = [...knownCandidatesByUserId.values()];
+    return {
+      items: candidatePage.items.map(candidate => ({ ...candidate })),
+      total: candidatePage.total
+    };
   }
 
   private hasSelectionChanges(): boolean {

@@ -11,7 +11,8 @@ import type {
   ChatMemberSummaryDto,
   ChatMetricBucketDTO,
   ChatMetricsDTO,
-  ChatMessagesPageResultDTO
+  ChatMessagesPageResultDTO,
+  ChatServiceEnsureInput
 } from '../../../contracts/chat.interface';
 import type { IChatsService } from '../../../contracts/activity.interface';
 import { ActivityResourceBuilder } from '../../../base/builders';
@@ -65,16 +66,63 @@ export class LocalChatsService extends LocalRouteDelayService implements IChatsS
   ): Promise<ChatMessagesPageResultDTO> {
     await this.waitForRouteDelay(LocalChatsService.CHAT_ROUTE);
     const page = this.chatsRepository.queryChatMessagesPage(chat, query);
-    const readReceipt = await this.markLoadedChatMessagesRead(chat, page.items);
+    const readReceipt = await this.markLoadedChatMessagesRead(chat, page.items, !query.cursor && query.page === 0);
     return {
       ...page,
       readReceipt
     };
   }
 
+  async ensureServiceChat(input: ChatServiceEnsureInput): Promise<ChatDTO | null> {
+    await this.waitForRouteDelay(LocalChatsService.CHAT_ROUTE);
+    const activeUserId = this.resolveDemoActivityUserId(this.userProfileStore.activeUserId().trim());
+    const targetUserId = `${input.targetUserId ?? ''}`.trim();
+    const eventId = `${input.eventId ?? ''}`.trim();
+    const subEventId = `${input.subEventId ?? ''}`.trim();
+    const assetId = `${input.assetId ?? ''}`.trim();
+    if (!activeUserId || !targetUserId || targetUserId === activeUserId || !eventId) {
+      return null;
+    }
+    const chatId = input.serviceContext === 'asset'
+      ? `c-service-asset-${assetId}-${subEventId}-${activeUserId}`
+      : `c-service-event-${eventId}-${activeUserId}`;
+    if (
+      !chatId
+      || (input.serviceContext === 'asset' && (!assetId || !subEventId))
+    ) {
+      return null;
+    }
+    const chat: ChatDTO = {
+      id: chatId,
+      avatar: AppUtils.initialsFromText(`${input.avatarSource ?? ''}`.trim() || input.title),
+      title: `${input.title ?? ''}`.trim(),
+      lastMessage: `${input.lastMessage ?? ''}`.trim(),
+      lastSenderId: targetUserId,
+      memberIds: [activeUserId, targetUserId],
+      unread: 0,
+      dateIso: new Date().toISOString(),
+      channelType: 'serviceEvent',
+      serviceContext: input.serviceContext,
+      ownerId: eventId,
+      eventId,
+      subEventId: subEventId || undefined,
+      ownerUserId: activeUserId
+    };
+    const record = this.chatsRepository.ensureServiceChat(chat);
+    if (!record) {
+      return null;
+    }
+    await this.chatsRepository.flushToIndexedDb();
+    return LocalChatThreadMapper.toDto(record);
+  }
+
   async queryChatMembers(chatId: string): Promise<ActivityContracts.ActivityMemberDTO[]> {
     await this.waitForRouteDelay(LocalChatsService.CHAT_ROUTE);
-    return this.chatsRepository.queryChatMembers(chatId);
+    const chat = this.localChatForActiveUser(chatId);
+    const owner = chat ? this.chatMemberOwner(chat) : null;
+    return owner
+      ? this.activityMembersRepository.peekRecordsByOwner(owner).map(record => ({ ...record }))
+      : this.chatsRepository.queryChatMembers(chatId);
   }
 
   async queryChatMembersPage(
@@ -82,7 +130,26 @@ export class LocalChatsService extends LocalRouteDelayService implements IChatsS
     query: ListQuery
   ): Promise<ActivityContracts.ActivityMembersPageResultDTO> {
     await this.waitForRouteDelay(LocalChatsService.CHAT_ROUTE);
-    return this.chatsRepository.queryChatMembersPage(chatId, query);
+    const chat = this.localChatForActiveUser(chatId);
+    const owner = chat ? this.chatMemberOwner(chat) : null;
+    if (!owner) {
+      return this.chatsRepository.queryChatMembersPage(chatId, query);
+    }
+    const pendingOnly = (query.filters as { pendingOnly?: boolean } | undefined)?.pendingOnly === true;
+    const records = this.activityMembersRepository.peekRecordsByOwner(owner)
+      .filter(record => pendingOnly ? record.status === 'pending' : record.status !== 'deleted')
+      .sort((left, right) => left.userId.localeCompare(right.userId));
+    const pageSize = Math.max(1, Math.trunc(Number(query.pageSize) || 16));
+    const cursorOffset = Number.parseInt(`${query.cursor ?? ''}`, 10);
+    const startIndex = Number.isFinite(cursorOffset)
+      ? Math.max(0, cursorOffset)
+      : Math.max(0, Math.trunc(Number(query.page) || 0)) * pageSize;
+    const endIndex = Math.min(records.length, startIndex + pageSize);
+    return {
+      items: records.slice(startIndex, endIndex).map(record => ({ ...record })),
+      total: records.length,
+      nextCursor: endIndex < records.length ? `${endIndex}` : null
+    };
   }
 
   async sendChatMessage(chat: ChatDTO, text: string, clientId?: string): Promise<ContractTypes.ChatMessageDto | null> {
@@ -161,7 +228,8 @@ export class LocalChatsService extends LocalRouteDelayService implements IChatsS
 
   private async markLoadedChatMessagesRead(
     chat: ChatDTO,
-    messages: readonly ContractTypes.ChatMessageDto[]
+    messages: readonly ContractTypes.ChatMessageDto[],
+    wholeChannel: boolean
   ): Promise<ContractTypes.ChatReadReceipt | null> {
     const activeUserId = this.resolveDemoActivityUserId(this.userProfileStore.activeUserId().trim());
     const messageIds = messages
@@ -171,12 +239,13 @@ export class LocalChatsService extends LocalRouteDelayService implements IChatsS
         && !(message.readBy ?? []).some(reader => `${reader.id ?? ''}`.trim() === activeUserId)
       )
       .map(message => `${message.id ?? ''}`.trim());
-    return this.markChatReadInRepository(chat, messageIds);
+    return this.markChatReadInRepository(chat, messageIds, wholeChannel);
   }
 
   private async markChatReadInRepository(
     chat: ChatDTO,
-    messageIds: readonly string[]
+    messageIds: readonly string[],
+    wholeChannel = false
   ): Promise<ContractTypes.ChatReadReceipt | null> {
     const ownerUserId = `${chat.ownerUserId ?? ''}`.trim()
       || this.resolveDemoActivityUserId(this.userProfileStore.activeUserId().trim());
@@ -185,7 +254,7 @@ export class LocalChatsService extends LocalRouteDelayService implements IChatsS
     if (!ownerUserId || (!chatId && !ownerId)) {
       return null;
     }
-    const update = this.chatsRepository.markChatRead(chat, ownerUserId, messageIds);
+    const update = this.chatsRepository.markChatRead(chat, ownerUserId, messageIds, wholeChannel);
     if (!update || update.messageIds.length === 0) {
       return null;
     }
@@ -254,6 +323,7 @@ export class LocalChatsService extends LocalRouteDelayService implements IChatsS
     const lookupByOwnerId = new Map<string, {
       channelType: ContractTypes.ChatChannelType;
       ownerId: string;
+      viewerUserId: string;
       parts: { eventId: string; subEventId: string; groupId: string };
     }>();
     const memberOwnersByKey = new Map<string, ActivityContracts.ActivityMemberOwnerRef>();
@@ -266,7 +336,12 @@ export class LocalChatsService extends LocalRouteDelayService implements IChatsS
         continue;
       }
       const parts = this.chatOwnerParts(record);
-      lookupByOwnerId.set(ownerId, { channelType, ownerId, parts });
+      lookupByOwnerId.set(ownerId, {
+        channelType,
+        ownerId,
+        viewerUserId: `${record.ownerUserId ?? ''}`.trim(),
+        parts
+      });
       const memberOwnerType = this.memberOwnerType(channelType);
       if (memberOwnerType) {
         memberOwnersByKey.set(`${memberOwnerType}:${ownerId}`, { ownerType: memberOwnerType, ownerId });
@@ -291,7 +366,7 @@ export class LocalChatsService extends LocalRouteDelayService implements IChatsS
     );
 
     for (const [ownerIdKey, lookup] of lookupByOwnerId.entries()) {
-      const { channelType, ownerId, parts } = lookup;
+      const { channelType, ownerId, viewerUserId, parts } = lookup;
       const memberOwnerType = this.memberOwnerType(channelType);
       const members = memberOwnerType
         ? this.memberBucket(membersByOwnerKey.get(`${memberOwnerType}:${ownerId}`) ?? [])
@@ -301,7 +376,13 @@ export class LocalChatsService extends LocalRouteDelayService implements IChatsS
         pendingTotal: members?.pending ?? 0
       };
       if ((channelType === 'optionalSubEvent' || channelType === 'groupSubEvent') && parts.subEventId) {
-        const resourceRecords = this.metricResourceRecords(resourcesByMetricKey, parts.eventId, ownerId, parts.subEventId);
+        const resourceRecords = this.metricResourceRecords(
+          resourcesByMetricKey,
+          viewerUserId,
+          parts.eventId,
+          ownerId,
+          parts.subEventId
+        );
         metrics.transport = this.assetBucket(resourceRecords, AppConstants.ASSET_TYPE_TRANSPORT);
         metrics.accommodation = this.assetBucket(resourceRecords, AppConstants.ASSET_TYPE_ACCOMMODATION);
         metrics.supplies = this.assetBucket(resourceRecords, AppConstants.ASSET_TYPE_SUPPLIES);
@@ -316,7 +397,24 @@ export class LocalChatsService extends LocalRouteDelayService implements IChatsS
       }
       const dto = dtoByOwnerId.get(ownerIdKey);
       if (dto) {
-        dtoByOwnerId.set(ownerIdKey, LocalChatThreadMapper.withMetrics(dto, metrics));
+        const activityMembers = memberOwnerType
+          ? membersByOwnerKey.get(`${memberOwnerType}:${ownerId}`) ?? []
+          : [];
+        const acceptedMembers = activityMembers.filter(record => record.status === 'accepted');
+        const withMembers = memberOwnerType
+          ? {
+              ...dto,
+              memberIds: acceptedMembers.map(record => record.userId),
+              members: acceptedMembers.map(record => ({
+                id: record.userId,
+                name: record.name,
+                initials: record.initials,
+                gender: record.gender,
+                imageUrl: record.avatarUrl
+              }))
+            }
+          : dto;
+        dtoByOwnerId.set(ownerIdKey, LocalChatThreadMapper.withMetrics(withMembers, metrics));
       }
     }
   }
@@ -329,7 +427,7 @@ export class LocalChatsService extends LocalRouteDelayService implements IChatsS
   private resourceRecordsByMetricKey(records: readonly ActivitySubEventResourceRecord[]): Map<string, ActivitySubEventResourceRecord[]> {
     const result = new Map<string, ActivitySubEventResourceRecord[]>();
     for (const record of records) {
-      const key = `${record.ownerId}:${record.subEventId}`;
+      const key = `${record.assetOwnerUserId}:${record.ownerId}:${record.subEventId}`;
       const bucket = result.get(key) ?? [];
       bucket.push(record);
       result.set(key, bucket);
@@ -339,14 +437,15 @@ export class LocalChatsService extends LocalRouteDelayService implements IChatsS
 
   private metricResourceRecords(
     recordsByKey: ReadonlyMap<string, ActivitySubEventResourceRecord[]>,
+    viewerUserId: string,
     eventId: string,
     ownerId: string,
     subEventId: string
   ): ActivitySubEventResourceRecord[] {
     const byId = new Map<string, ActivitySubEventResourceRecord>();
     const keys = [
-      eventId ? `${eventId}:${subEventId}` : '',
-      ownerId ? `${ownerId}:${subEventId}` : ''
+      eventId ? `${viewerUserId}:${eventId}:${subEventId}` : '',
+      ownerId ? `${viewerUserId}:${ownerId}:${subEventId}` : ''
     ].filter(Boolean);
     for (const key of keys) {
       for (const record of recordsByKey.get(key) ?? []) {
@@ -429,6 +528,17 @@ export class LocalChatsService extends LocalRouteDelayService implements IChatsS
       return 'group';
     }
     return null;
+  }
+
+  private localChatForActiveUser(chatId: string): ChatThreadRecord | null {
+    const activeUserId = this.resolveDemoActivityUserId(this.userProfileStore.activeUserId().trim());
+    return this.chatsRepository.queryChatItemById(activeUserId, `${chatId ?? ''}`.trim());
+  }
+
+  private chatMemberOwner(chat: ChatThreadRecord): ActivityContracts.ActivityMemberOwnerRef | null {
+    const ownerType = this.memberOwnerType(this.chatChannelType(chat));
+    const ownerId = `${chat.ownerId ?? ''}`.trim();
+    return ownerType && ownerId ? { ownerType, ownerId } : null;
   }
 
   private supportsChatMetrics(channelType: ContractTypes.ChatChannelType): boolean {

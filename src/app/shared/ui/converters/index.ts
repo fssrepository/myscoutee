@@ -131,8 +131,17 @@ export {
   type EventSubeventRuntimeStageAction
 } from './event-subevent-runtime-menu.converter';
 export {
+  EventSubeventsListContextMenuConverter,
+  eventSubeventsListContextMenuConverter,
+  type EventSubeventsListContextAction,
+  type EventSubeventsListContextMenuContext,
+  type EventSubeventsListContextMenuConverterInput
+} from './event-subevents-list-context-menu.converter';
+export {
   EventTournamentGroupsPopupConverter,
   eventTournamentGroupsPopupConverter,
+  type EventTournamentGroupsAction,
+  type EventTournamentGroupsActionContext,
   type EventTournamentGroupsAccordionContext,
   type EventTournamentGroupsPopupConverterInput,
   type EventTournamentGroupsPopupModel,

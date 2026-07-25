@@ -18,3 +18,17 @@ export function smartListItemKeyFromItem(item: unknown): SmartListItemKey | null
   }
   return typeof key === 'number' ? key : normalized;
 }
+
+export function smartListItemByIdentity<T>(
+  items: readonly T[],
+  identity: string,
+  identityForItem: (item: T, index: number) => SmartListItemKey
+): T | null {
+  const normalizedIdentity = identity.trim();
+  if (!normalizedIdentity) {
+    return null;
+  }
+  return items.find((item, index) => (
+    `${identityForItem(item, index)}`.trim() === normalizedIdentity
+  )) ?? null;
+}

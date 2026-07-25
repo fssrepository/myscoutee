@@ -23,6 +23,11 @@
   min-height: 0;
 }
 
+:host ::ng-deep .profile-onboarding-flow .form-flow__slide-nav {
+  left: 2px;
+  right: 2px;
+}
+
 .profile-onboarding-error {
   min-height: 34px;
   display: inline-flex;

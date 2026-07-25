@@ -84,11 +84,19 @@ export interface ActivitySubEventResourceRecord {
   assetSettingsByType: ActivitySubEventAssetSettingsByTypeRecord;
   supplyContributionEntriesByAssetId: ActivitySubEventSupplyContributionsByAssetIdRecord;
   fallbackAssetCardsByType?: Partial<Record<AssetType, AssetSnapshotRecord[]>>;
+  resourceMetricsByType?: Partial<Record<AssetType, ActivitySubEventResourceMetricRecord>>;
   ownerKey: string;
   createdMs: number;
   updatedMs: number;
   createdAtIso: string;
   updatedAtIso: string;
+}
+
+export interface ActivitySubEventResourceMetricRecord {
+  accepted: number;
+  pending: number;
+  capacityMin: number;
+  capacityMax: number;
 }
 
 export interface ActivityResourcesRecordCollection {
@@ -136,6 +144,10 @@ export interface ActivitySubEventStageRuntimeRecord {
   stageFinalizedAt: string | null;
   stageFinalizedByUserId: string | null;
   groupsCount: number | null;
+  groupResourceMetricsByAssetOwnerId: Record<
+    string,
+    Record<string, Partial<Record<AssetType, ActivitySubEventResourceMetricRecord>>>
+  >;
   ownerKey: string;
   createdMs: number;
   updatedMs: number;

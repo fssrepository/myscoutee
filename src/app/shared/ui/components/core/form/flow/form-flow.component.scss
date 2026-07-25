@@ -1072,8 +1072,21 @@
   overflow-x: hidden;
   overflow-y: auto;
   scrollbar-width: thin;
+  scrollbar-color: #8aa0b8 #eaf1fa;
+  scrollbar-gutter: stable;
   -webkit-overflow-scrolling: touch;
   overscroll-behavior-y: contain;
+}
+
+.form-flow--carousel.form-flow--menu-overflow .form-flow__controls:has(.app-menu-host--open) {
+  position: relative;
+  z-index: 10;
+}
+
+.form-flow--carousel.form-flow--menu-overflow .form-flow__slide:has(.app-menu-host--open) {
+  position: relative;
+  z-index: 9;
+  contain: none;
 }
 
 .form-flow__stage--compact-head .form-flow__controls {
@@ -1143,6 +1156,8 @@
   min-height: 100%;
   transform: none !important;
   transition: none;
+  will-change: auto;
+  backface-visibility: visible;
 }
 
 .form-flow__body--mobile .form-flow__slide {

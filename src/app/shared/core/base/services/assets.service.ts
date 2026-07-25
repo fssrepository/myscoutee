@@ -142,6 +142,12 @@ export class AssetsService extends BaseRouteModeService {
     return this.assetsService.saveOwnedAsset(userId, asset);
   }
 
+  async applyMemberStatusChange(
+    request: AppDTOs.AssetMemberStatusChangeRequestDTO
+  ): Promise<AppDTOs.AssetMemberStatusChangeDTO | null> {
+    return this.assetsService.applyMemberStatusChange(request);
+  }
+
   async replaceOwnedAssets(userId: string, assets: readonly AppDTOs.AssetDTO[]): Promise<AppDTOs.AssetDTO[]> {
     return this.assetsService.replaceOwnedAssets(userId, assets);
   }
@@ -156,6 +162,10 @@ export class AssetsService extends BaseRouteModeService {
 
   async makeAssetManager(userId: string, assetId: string, targetUserId: string): Promise<AppDTOs.AssetDTO | null> {
     return this.assetsService.makeAssetManager(userId, assetId, targetUserId);
+  }
+
+  async revokeAssetManager(userId: string, assetId: string, targetUserId: string): Promise<AppDTOs.AssetDTO | null> {
+    return this.assetsService.revokeAssetManager(userId, assetId, targetUserId);
   }
 
 }

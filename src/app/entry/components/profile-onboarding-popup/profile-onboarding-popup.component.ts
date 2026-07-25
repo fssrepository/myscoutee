@@ -245,6 +245,7 @@ export class ProfileOnboardingPopupComponent implements OnChanges, OnDestroy {
           title: this.title,
           subtitle: this.message,
           showHeader: false,
+          allowMenuOverflow: true,
           userId: this.user?.id ?? ''
         })
       : null;

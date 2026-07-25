@@ -194,6 +194,7 @@ export class EventExplorePopupComponent {
   private readonly leavingEventExploreRecordIds = new Set<string>();
   private readonly eventExploreExitAnimationMs = 180;
   private lastAppliedActivityMembersUpdatedMs = 0;
+  private lastAppliedActivityRuntimeUpdatedMs = 0;
   private lastPendingCheckoutDraftSourceIds = new Set<string>();
   private readonly locallyTrackedMembershipSourceIds = new Set<string>();
   private readonly checkoutDraftClearSaveSourceIds = new Set<string>();
@@ -234,6 +235,7 @@ export class EventExplorePopupComponent {
     desktopColumns: 3,
     snapMode: 'mandatory',
     scrollPaddingTop: '2.6rem',
+    cacheable: true,
     containerClass: {
       'experience-card-list': true,
       'assets-card-list': true
@@ -289,6 +291,27 @@ export class EventExplorePopupComponent {
       }
       this.lastAppliedActivityMembersUpdatedMs = sync.updatedMs;
       this.applyActivityMembersSyncState(sync);
+    });
+
+    effect(() => {
+      const sync = this.activityStore.activityEventRuntimeSync();
+      if (!sync || sync.updatedMs <= this.lastAppliedActivityRuntimeUpdatedMs) {
+        return;
+      }
+      this.lastAppliedActivityRuntimeUpdatedMs = sync.updatedMs;
+      if (this.isOpen) {
+        this.eventExploreSmartList?.patchVisibleItem(
+          record => record.id === sync.eventId,
+          record => ({
+            ...record,
+            activity: Math.max(
+              0,
+              Math.trunc(Number(record.activity) || 0) + Math.trunc(Number(sync.activityDelta) || 0)
+            )
+          })
+        );
+        this.cdr.markForCheck();
+      }
     });
 
     effect(() => {
@@ -768,9 +791,9 @@ export class EventExplorePopupComponent {
 
   protected get activityMembersOrdered(): ActivityContracts.ActivityMemberDTO[] {
     if (!this.selectedMembersPendingOnly) {
-      return this.sortMembersByActionTimeDesc(this.selectedMembers);
+      return [...this.selectedMembers];
     }
-    return this.sortMembersByActionTimeDesc(this.selectedMembers)
+    return this.selectedMembers
       .filter(member => member.status === 'pending');
   }
 
@@ -792,6 +815,10 @@ export class EventExplorePopupComponent {
       startAtIso: record.startAtIso,
       endAtIso: record.endAtIso,
       mode: record.mode ?? null,
+      acceptedMembers: record.acceptedMembers,
+      pendingMembers: record.pendingMembers,
+      capacityTotal: record.capacityTotal,
+      resourceOwnerUserId: record.creatorUserId,
       editorAction: 'view'
     });
     this.cdr.markForCheck();
@@ -1272,7 +1299,14 @@ export class EventExplorePopupComponent {
         checkoutSessionId: draft.checkoutSessionId ?? null,
         counterDelta
       });
-      this.signalEventExploreCounterDelta(activeUserId, counterDelta);
+      if (!leaveResult
+          || (leaveResult.changed === false && leaveResult.reason !== 'already-applied')
+          || leaveResult.membershipStatus === 'unchanged') {
+        throw new Error('Unable to leave event.');
+      }
+      if (leaveResult.changed !== false) {
+        this.signalEventExploreCounterDelta(activeUserId, counterDelta);
+      }
       const memberDelta = this.checkoutDraftCancelMemberDelta(draft);
       this.emitCheckoutDraftMembersSync(sourceId, leaveResult, memberDelta, true);
       this.activitiesStore.clearActivityEventSave();
@@ -1625,7 +1659,7 @@ export class EventExplorePopupComponent {
           endAtIso: nextEndIso,
           distanceKm: dto.distanceKm,
           visibility: dto.visibility ?? existing.visibility,
-          imageUrl: dto.imageUrl.trim() || existing.imageUrl,
+          imageUrl: dto.imageUrl.trim(),
           location: dto.location?.trim() || existing.location,
           acceptedMembers,
           pendingMembers: Number.isFinite(Number(dto.pendingMembers))
@@ -1977,7 +2011,7 @@ export class EventExplorePopupComponent {
     );
     if (existingEntry && existingEntry.status !== 'deleted' && !checkoutUpdateRequested) {
       if (this.selectedMembersRecord?.id === record.id) {
-        this.selectedMembers = this.sortMembersByActionTimeDesc(existingMembers);
+        this.selectedMembers = [...existingMembers];
       }
       this.cdr.markForCheck();
       return;
@@ -1991,7 +2025,7 @@ export class EventExplorePopupComponent {
       ? existingMembers.filter(member => !(member.userId === activeUserId && member.status === 'deleted'))
       : existingMembers;
     const joinRequestEntry = this.buildJoinRequestEntry(record, isAcceptedBooking, pendingReason);
-    const nextMembers = this.sortMembersByActionTimeDesc(updatesExistingMember
+    const nextMembers = updatesExistingMember
       ? [
           ...optimisticExistingMembers.filter(member => member.userId !== activeUserId),
           joinRequestEntry
@@ -1999,7 +2033,7 @@ export class EventExplorePopupComponent {
       : [
           ...optimisticExistingMembers,
           joinRequestEntry
-        ]);
+        ];
 
     try {
       const joinResult = await this.eventsService.requestJoin(activeUserId, record.id, {
@@ -2023,7 +2057,7 @@ export class EventExplorePopupComponent {
         throw new Error(this.eventExploreJoinFailureMessage(record));
       }
       const persistedMembers = this.activityMembersService.peekMembersByOwner(owner);
-      const displayMembers = this.sortMembersByActionTimeDesc(persistedMembers.length > 0 ? persistedMembers : nextMembers);
+      const displayMembers = [...(persistedMembers.length > 0 ? persistedMembers : nextMembers)];
       const nextRecord = this.withEventExploreMemberDelta(record, {
         acceptedMemberDelta: updatesExistingMember ? 0 : (isAcceptedBooking ? 1 : 0),
         pendingMemberDelta: updatesExistingMember ? 0 : (isAcceptedBooking ? 0 : 1)
@@ -2509,12 +2543,6 @@ export class EventExplorePopupComponent {
       .filter(member => member.requestKind !== 'invite' && member.requestKind !== 'waitlist-invite')
       .map(member => member.userId.trim())
       .filter(userId => userId.length > 0)));
-  }
-
-  private sortMembersByActionTimeDesc(entries: readonly ActivityContracts.ActivityMemberDTO[]): ActivityContracts.ActivityMemberDTO[] {
-    return [...entries].sort((left, right) =>
-      AppUtils.toSortableDate(right.actionAtIso) - AppUtils.toSortableDate(left.actionAtIso)
-    );
   }
 
   private stopDomEvent(event?: { stopPropagation?: () => void; preventDefault?: () => void } | null): void {

@@ -25,6 +25,7 @@ import { MatInputModule } from '@angular/material/input';
 import { MatSelectModule } from '@angular/material/select';
 
 import { PricingBuilder } from '../../../../../../core/base/builders';
+import { I18nService } from '../../../../../../core';
 import { I18nPipe } from '../../../../../pipes';
 import type * as ContractTypes from '../../../../../../core/contracts';
 import { PricingSlotPanelComponent } from './pricing-slot-panel';
@@ -182,6 +183,7 @@ export class PricingEditorInputComponent implements OnChanges, DoCheck, OnDestro
   protected resolvedConfig: ResolvedPricingEditorConfig = this.resolveConfig();
   protected wizardOpen = false;
   private readonly formFlowPopupStore = inject(FormFlowPopupStore);
+  private readonly i18n = inject(I18nService);
   private readonly ownerId = this.nextOwnerId();
   protected readonly pricingEditorPopupOutletInputs = computed(() => {
     const popup = this.formFlowPopupStore.pricingEditorPopupRef();
@@ -282,16 +284,56 @@ export class PricingEditorInputComponent implements OnChanges, DoCheck, OnDestro
   protected chargeTypeLabel(chargeType: AppConstants.PricingChargeType): string {
     switch (chargeType) {
       case 'per_booking':
-        return 'pricing.charge.per.booking';
+        return this.resolvedConfig.context === 'asset'
+          ? 'pricing.charge.per.booking.day'
+          : 'pricing.charge.per.booking';
       case 'per_slot':
         return 'pricing.charge.per.slot';
       default:
-        return 'pricing.charge.per.attendee';
+        return this.resolvedConfig.context === 'asset'
+          ? 'pricing.charge.per.item.day'
+          : 'pricing.charge.per.attendee';
     }
+  }
+
+  protected basePriceFieldLabel(): string {
+    return this.resolvedConfig.context === 'asset'
+      ? 'pricing.asset.base.daily.rate'
+      : 'pricing.base.price';
+  }
+
+  protected minimumPriceFieldLabel(): string {
+    return this.resolvedConfig.context === 'asset'
+      ? 'pricing.asset.minimum.daily.rate'
+      : 'pricing.minimum';
+  }
+
+  protected maximumPriceFieldLabel(): string {
+    return this.resolvedConfig.context === 'asset'
+      ? 'pricing.asset.maximum.daily.rate'
+      : 'pricing.maximum';
+  }
+
+  protected pricingBaseSummaryLabel(): string {
+    return this.resolvedConfig.context === 'asset'
+      ? 'pricing.asset.daily.rate'
+      : 'pricing.base';
   }
 
   protected chargeTypeFieldLabel(): string {
     return this.resolvedConfig.context === 'asset' ? 'pricing.charge.basis' : 'pricing.charge.type';
+  }
+
+  protected quantityThresholdLabel(): string {
+    return this.resolvedConfig.context === 'asset'
+      ? 'pricing.asset.quantity.minimum'
+      : 'pricing.event.quantity.minimum';
+  }
+
+  protected quantityDisabledHint(): string {
+    return this.resolvedConfig.context === 'asset'
+      ? 'pricing.asset.quantity.disabled.hint'
+      : 'pricing.quantity.disabled.hint';
   }
 
   protected roundingLabel(rounding: AppConstants.PricingRoundingMode): string {
@@ -299,7 +341,7 @@ export class PricingEditorInputComponent implements OnChanges, DoCheck, OnDestro
       case 'whole':
         return 'pricing.rounding.whole';
       case 'half':
-        return '0.50 steps';
+        return 'pricing.rounding.half';
       default:
         return 'pricing.rounding.none';
     }
@@ -355,7 +397,7 @@ export class PricingEditorInputComponent implements OnChanges, DoCheck, OnDestro
   }
 
   protected showQuantitySection(): boolean {
-    return this.resolvedConfig.context === 'event'
+    return (this.resolvedConfig.context === 'event' || this.resolvedConfig.context === 'asset')
       && this.showToggleableSection(this.workingPricing.quantityRulesEnabled);
   }
 
@@ -1258,6 +1300,12 @@ export class PricingEditorInputComponent implements OnChanges, DoCheck, OnDestro
     return Math.max(0, Number(this.runtimeBaseRow(preview)?.amount) || 0);
   }
 
+  protected runtimeBaseLabel(preview: PricingEditorRuntimePreview): string {
+    return this.i18n.translate(
+      this.runtimeBaseRow(preview)?.label || this.pricingBaseSummaryLabel()
+    );
+  }
+
   protected runtimeAdjustmentRows(preview: PricingEditorRuntimePreview): readonly PricingEditorRuntimePreviewRow[] {
     const baseKey = this.runtimeBaseRow(preview)?.key ?? null;
     return preview.rows.filter(row => row.key !== baseKey);
@@ -1273,7 +1321,11 @@ export class PricingEditorInputComponent implements OnChanges, DoCheck, OnDestro
 
   protected runtimeRowLabel(row: PricingEditorRuntimePreviewRow): string {
     const multiplier = Math.max(1, Math.trunc(Number(row.multiplier) || 1));
-    return multiplier > 1 ? `${row.label} * ${multiplier}` : row.label;
+    const translatedLabel = this.i18n.translate(row.label);
+    const label = row.detail
+      ? `${translatedLabel} · ${row.detail}`
+      : translatedLabel;
+    return multiplier > 1 ? `${label} × ${multiplier}` : label;
   }
 
   protected runtimeRowAmount(row: PricingEditorRuntimePreviewRow, fallbackCurrency: string): string {
@@ -1290,6 +1342,22 @@ export class PricingEditorInputComponent implements OnChanges, DoCheck, OnDestro
 
   protected runtimeMoneyLabel(amount: number, currency: string): string {
     return this.formatMoneyForCurrency(amount, currency);
+  }
+
+  protected runtimeAssetBillingExplanation(preview: PricingEditorRuntimePreview): string {
+    if (this.resolvedConfig.context !== 'asset' || preview.rows.length === 0) {
+      return '';
+    }
+    const durationMultiplier = preview.rows.find(row => row.key === 'duration')?.multiplier ?? 1;
+    const quantityMultiplier = preview.rows.find(row => row.key === 'quantity')?.multiplier ?? 1;
+    const dailyRate = preview.rows
+      .filter(row => row.key !== 'duration' && row.key !== 'quantity')
+      .reduce((sum, row) => sum + (Number(row.amount) || 0), 0);
+    return this.i18n.translateParams('pricing.asset.billing.explanation', {
+      rate: this.formatMoneyForCurrency(dailyRate, this.runtimePreviewCurrency(preview)),
+      days: Math.max(1, durationMultiplier),
+      quantity: Math.max(1, quantityMultiplier)
+    });
   }
 
   protected previewExplanationLines(): string[] {
@@ -1366,19 +1434,24 @@ export class PricingEditorInputComponent implements OnChanges, DoCheck, OnDestro
       });
     }
 
-    const dynamicParts: string[] = [];
     if (this.showDemandSection() && pricing.demandRulesEnabled && pricing.demandRules.length > 0) {
-      dynamicParts.push(`Demand ${this.countLabel(pricing.demandRules.length, 'rule')}`);
+      pricing.demandRules.forEach((rule, index) => {
+        items.push({
+          id: `demand-${index}`,
+          label: 'pricing.demand.rules',
+          value: this.compactActionLabel(rule.action),
+          detail: this.demandRuleSummary(rule)
+        });
+      });
     }
     if (this.showTimeSection() && pricing.timeRulesEnabled && pricing.timeRules.length > 0) {
-      dynamicParts.push(`Time ${this.countLabel(pricing.timeRules.length, 'rule')}`);
-    }
-    if (dynamicParts.length > 0) {
-      items.push({
-        id: 'dynamic',
-        label: 'pricing.dynamic.rules',
-        value: `${pricing.demandRules.length + pricing.timeRules.length}`,
-        detail: dynamicParts.join(' · ')
+      pricing.timeRules.forEach((rule, index) => {
+        items.push({
+          id: `time-${index}`,
+          label: 'pricing.time.rules',
+          value: this.compactActionLabel(rule.action),
+          detail: this.timeRuleSummary(rule)
+        });
       });
     }
 
@@ -1396,14 +1469,23 @@ export class PricingEditorInputComponent implements OnChanges, DoCheck, OnDestro
 
     if (this.showCancellationSection()) {
       const policy = pricing.cancellationPolicy;
-      items.push({
-        id: 'cancellation',
-        label: 'pricing.cancellation',
-        value: policy.enabled && policy.rules.length > 0 ? this.countLabel(policy.rules.length, 'rule') : 'off',
-        detail: policy.enabled && policy.rules.length > 0
-          ? policy.rules.slice(0, 2).map(rule => this.cancellationRuleSummary(rule)).join('; ')
-          : 'pricing.no.reimbursement.schedule'
-      });
+      if (policy.enabled && policy.rules.length > 0) {
+        policy.rules.forEach((rule, index) => {
+          items.push({
+            id: `cancellation-${index}`,
+            label: 'pricing.cancellation',
+            value: this.cancellationRefundLabel(rule),
+            detail: this.cancellationWindowLabel(rule)
+          });
+        });
+      } else {
+        items.push({
+          id: 'cancellation',
+          label: 'pricing.cancellation',
+          value: 'off',
+          detail: 'pricing.no.reimbursement.schedule'
+        });
+      }
     }
 
     if (this.resolvedConfig.showAudienceSection && pricing.audience.enabled) {
@@ -1904,8 +1986,12 @@ export class PricingEditorInputComponent implements OnChanges, DoCheck, OnDestro
 
   private priceBasisDetail(pricing: ContractTypes.PricingConfig): string {
     const parts = [
-      `${this.taxModeLabel(pricing.taxMode)} tax`,
-      this.roundingLabel(pricing.rounding)
+      this.i18n.translate(
+        pricing.taxMode === 'included'
+          ? 'pricing.tax.included.summary'
+          : 'pricing.tax.excluded.summary'
+      ),
+      this.i18n.translate(this.roundingLabel(pricing.rounding))
     ];
     if (pricing.minPrice !== null || pricing.maxPrice !== null) {
       parts.push([
@@ -1919,6 +2005,29 @@ export class PricingEditorInputComponent implements OnChanges, DoCheck, OnDestro
   private quantityRuleSummary(rule: ContractTypes.PricingQuantityRule): string {
     const quantity = Math.max(1, Math.trunc(Number(rule.minQuantity) || 1));
     return `${quantity}+ items: ${this.compactActionLabel(rule.action)} each`;
+  }
+
+  private demandRuleSummary(rule: ContractTypes.PricingDemandRule): string {
+    return this.i18n.translateParams('pricing.summary.demand.rule', {
+      operator: this.operatorLabel(rule.operator),
+      value: Math.max(0, Number(rule.capacityFilledPercent) || 0)
+    });
+  }
+
+  private timeRuleSummary(rule: ContractTypes.PricingTimeRule): string {
+    if (rule.trigger === 'specific_date') {
+      return this.i18n.translateParams('pricing.summary.time.date.rule', {
+        start: rule.specificDateStart || '—',
+        end: rule.specificDateEnd || '—'
+      });
+    }
+    const value = Math.max(0, Math.trunc(Number(rule.offsetValue) || 0));
+    return this.i18n.translateParams(
+      rule.trigger === 'hours_before_start'
+        ? 'pricing.summary.time.hours.rule'
+        : 'pricing.summary.time.days.rule',
+      { value }
+    );
   }
 
   private compactActionLabel(action: ContractTypes.PricingAction): string {
@@ -1937,40 +2046,49 @@ export class PricingEditorInputComponent implements OnChanges, DoCheck, OnDestro
     }
   }
 
-  private cancellationRuleSummary(rule: ContractTypes.PricingCancellationRule): string {
-    return `${this.cancellationWindowLabel(rule)}: ${this.cancellationRefundLabel(rule)}`;
-  }
-
   private cancellationWindowLabel(rule: ContractTypes.PricingCancellationRule): string {
     const value = Math.max(0, Math.trunc(Number(rule.offsetValue) || 0));
-    const unit = rule.offsetUnit === 'hours'
-      ? (value === 1 ? 'hour' : 'hours')
+    const unitKey = rule.offsetUnit === 'hours'
+      ? (value === 1 ? 'asset.borrow.unit.hour' : 'asset.borrow.unit.hours')
       : rule.offsetUnit === 'weeks'
-        ? (value === 1 ? 'week' : 'weeks')
+        ? (value === 1 ? 'asset.borrow.unit.week' : 'asset.borrow.unit.weeks')
         : rule.offsetUnit === 'months'
-          ? (value === 1 ? 'month' : 'months')
-          : (value === 1 ? 'day' : 'days');
-    return `${value} ${unit}`;
+          ? (value === 1 ? 'asset.borrow.unit.month' : 'asset.borrow.unit.months')
+          : (value === 1 ? 'asset.borrow.unit.day' : 'asset.borrow.unit.days');
+    return this.i18n.translateParams('asset.borrow.cancellation.window', {
+      value,
+      unit: this.i18n.translate(unitKey)
+    });
   }
 
   private cancellationRefundLabel(rule: ContractTypes.PricingCancellationRule): string {
     if (rule.refundKind === 'full') {
-      return 'full refund';
+      return this.i18n.translate('full.refund');
     }
     if (rule.refundKind === 'none') {
-      return 'no refund';
+      return this.i18n.translate('no.refund');
     }
     if (rule.refundKind === 'fixed_amount') {
-      return `${this.formatMoney(rule.refundValue)} refund`;
+      return this.i18n.translateParams('pricing.summary.refund.fixed', {
+        amount: this.formatMoney(rule.refundValue)
+      });
     }
-    return `${Math.max(0, Number(rule.refundValue) || 0)}% refund`;
+    return this.i18n.translateParams('asset.borrow.refund.percent', {
+      percent: Math.max(0, Number(rule.refundValue) || 0)
+    });
   }
 
   private audienceSummary(audience: ContractTypes.PricingAudienceSettings): string {
     const parts = [
-      audience.memberPrice !== null ? `member ${this.formatMoney(audience.memberPrice)}` : '',
-      audience.vipPrice !== null ? `VIP ${this.formatMoney(audience.vipPrice)}` : '',
-      audience.inviteOnlyDiscountPercent !== null ? `invite -${audience.inviteOnlyDiscountPercent}%` : '',
+      audience.memberPrice !== null
+        ? this.i18n.translateParams('pricing.audience.member.summary', { price: this.formatMoney(audience.memberPrice) })
+        : '',
+      audience.vipPrice !== null
+        ? this.i18n.translateParams('pricing.audience.vip.summary', { price: this.formatMoney(audience.vipPrice) })
+        : '',
+      audience.inviteOnlyDiscountPercent !== null
+        ? this.i18n.translateParams('pricing.audience.invite.summary', { percent: audience.inviteOnlyDiscountPercent })
+        : '',
       audience.promoCodes.length > 0 ? this.countLabel(audience.promoCodes.length, 'promo') : ''
     ].filter(Boolean);
     return parts.length > 0 ? parts.join(' · ') : audience.soldOutLabel;
@@ -1978,7 +2096,10 @@ export class PricingEditorInputComponent implements OnChanges, DoCheck, OnDestro
 
   private countLabel(count: number, singular: string): string {
     const normalized = Math.max(0, Math.trunc(Number(count) || 0));
-    return `${normalized} ${singular}${normalized === 1 ? '' : 's'}`;
+    return this.i18n.translateParams(
+      `pricing.summary.${singular}.${normalized === 1 ? 'one' : 'many'}`,
+      { count: normalized }
+    );
   }
 
   private isoDateToDate(value: string | null | undefined): Date | null {

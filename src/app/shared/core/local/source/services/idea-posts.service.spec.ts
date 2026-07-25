@@ -8,6 +8,9 @@ import { LocalIdeaPostsService } from './idea-posts.service';
 describe('LocalIdeaPostsService public pages', () => {
   const whenReady = vi.fn();
   const queryPublishedPostPage = vi.fn();
+  const createPostId = vi.fn();
+  const savePostSnapshot = vi.fn();
+  const flushToIndexedDb = vi.fn();
   const waitForRouteDelay = vi.fn();
 
   beforeEach(() => {
@@ -17,13 +20,22 @@ describe('LocalIdeaPostsService public pages', () => {
       total: 12,
       nextCursor: '10'
     });
+    createPostId.mockReset().mockReturnValue('idea-created');
+    savePostSnapshot.mockReset().mockImplementation((record: IdeaPostDto) => record);
+    flushToIndexedDb.mockReset().mockResolvedValue(undefined);
     waitForRouteDelay.mockReset().mockResolvedValue(undefined);
     TestBed.configureTestingModule({
       providers: [
         LocalIdeaPostsService,
         {
           provide: LocalIdeaPostsRepository,
-          useValue: { whenReady, queryPublishedPostPage }
+          useValue: {
+            whenReady,
+            queryPublishedPostPage,
+            createPostId,
+            savePostSnapshot,
+            flushToIndexedDb
+          }
         },
         {
           provide: RouteDelayService,
@@ -60,6 +72,40 @@ describe('LocalIdeaPostsService public pages', () => {
       total: 12,
       nextCursor: '10',
       records: [{ id: 'published' }]
+    });
+  });
+
+  it('waits for the configured admin route before mapping and saving a repository snapshot', async () => {
+    const service = TestBed.inject(LocalIdeaPostsService);
+
+    const result = await service.savePost({
+      id: null,
+      contentKey: '',
+      lang: 'en',
+      title: 'Saved article',
+      excerpt: '',
+      contentHtml: '<p>Saved body</p>',
+      imageUrl: '',
+      imageUrls: [],
+      featured: false,
+      published: false,
+      submittedAtIso: '',
+      actorUserId: 'admin'
+    });
+
+    expect(waitForRouteDelay).toHaveBeenCalledWith('/admin/ideas');
+    expect(waitForRouteDelay.mock.invocationCallOrder[0])
+      .toBeLessThan(savePostSnapshot.mock.invocationCallOrder[0]);
+    expect(savePostSnapshot).toHaveBeenCalledWith(expect.objectContaining({
+      id: 'idea-created',
+      title: 'Saved article',
+      published: false
+    }));
+    expect(flushToIndexedDb).toHaveBeenCalledOnce();
+    expect(result).toMatchObject({
+      id: 'idea-created',
+      title: 'Saved article',
+      published: false
     });
   });
 });

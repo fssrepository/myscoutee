@@ -9,7 +9,7 @@
           <input
             matInput
             [matTimepicker]="timeOnlyPicker"
-            [matTimepickerOpenOnClick]="true"
+            [matTimepickerOpenOnClick]="timeOpenOnClick()"
             [ngModel]="singleTimeValue"
             (ngModelChange)="onTimeOnlyChange($event)"
             (blur)="markTouched()"
@@ -42,7 +42,11 @@
     <label class="date-input__field">
       <div class="date-input__row">
         <mat-form-field appearance="outline" class="date-input__material date-input__material--range" subscriptSizing="dynamic">
-          <mat-date-range-input [rangePicker]="rangePicker">
+          <mat-date-range-input
+            [rangePicker]="rangePicker"
+            [min]="resolvedStartMin()"
+            [max]="resolvedEndMax()"
+          >
             <input
               matStartDate
               [ngModel]="startDateValue"
@@ -129,7 +133,7 @@
             <input
               matInput
               [matTimepicker]="startTimePicker"
-              [matTimepickerOpenOnClick]="true"
+              [matTimepickerOpenOnClick]="timeOpenOnClick()"
               [ngModel]="startTimeValue"
               (ngModelChange)="onStartTimeChange($event)"
               (blur)="markTouched()"
@@ -197,7 +201,7 @@
             <input
               matInput
               [matTimepicker]="endTimePicker"
-              [matTimepickerOpenOnClick]="true"
+              [matTimepickerOpenOnClick]="timeOpenOnClick()"
               [ngModel]="endTimeValue"
               (ngModelChange)="onEndTimeChange($event)"
               (blur)="markTouched()"
@@ -269,7 +273,7 @@
             <input
               matInput
               [matTimepicker]="singleTimePicker"
-              [matTimepickerOpenOnClick]="true"
+              [matTimepickerOpenOnClick]="timeOpenOnClick()"
               [ngModel]="singleTimeValue"
               (ngModelChange)="onSingleTimeChange($event)"
               (blur)="markTouched()"

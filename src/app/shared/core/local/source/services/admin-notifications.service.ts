@@ -2,6 +2,7 @@ import { Injectable, inject } from '@angular/core';
 
 import type {
   AdminNotificationCenterState,
+  AdminNotificationProcessFilter,
   AdminNotificationRule,
   AdminNotificationRuleLiveEvent,
   AdminNotificationRunResult
@@ -12,9 +13,16 @@ import { LocalRouteDelayService } from './route-delay.service';
 const ADMIN_NOTIFICATION_LOAD_ROUTE = '/admin/notifications';
 const ADMIN_NOTIFICATION_SAVE_ROUTE = '/admin/notifications/save';
 const ADMIN_NOTIFICATION_RUN_ROUTE = '/admin/notifications/run';
+const PROCESS_FILTER_ALL = 'all';
+const PROCESS_FILTER_ACTIVE = 'active';
+const PROCESS_FILTER_SUSPENDED = 'suspended';
+const PROCESS_FILTER_RUNNING = 'running';
+const PROCESS_FILTER_FAILED = 'failed';
+const PROCESS_PROBLEM_STATUSES = new Set(['failed', 'error', 'missed', 'skipped']);
 
 export interface LocalAdminNotificationDelayOptions {
   skipDemoDelay?: boolean;
+  filter?: AdminNotificationProcessFilter | null;
 }
 
 @Injectable({
@@ -24,11 +32,12 @@ export class LocalAdminNotificationsService extends LocalRouteDelayService {
   private readonly repository = inject(LocalAdminNotificationsRepository);
 
   async loadNotificationCenter(options?: LocalAdminNotificationDelayOptions): Promise<AdminNotificationCenterState> {
-    return await this.withAdminNotificationDelay(
+    const state = await this.withAdminNotificationDelay(
       this.readNotificationCenter(),
       ADMIN_NOTIFICATION_LOAD_ROUTE,
       options
     );
+    return this.applyProcessFilter(state, options?.filter);
   }
 
   async saveNotificationCenter(
@@ -37,14 +46,26 @@ export class LocalAdminNotificationsService extends LocalRouteDelayService {
     options?: LocalAdminNotificationDelayOptions
   ): Promise<AdminNotificationCenterState> {
     const existing = await this.readNotificationCenter();
+    const incomingByKey = new Map(rules.map(rule => [rule.ruleKey, rule]));
+    const existingKeys = new Set(existing.rules.map(rule => rule.ruleKey));
+    const mergedRules = existing.rules.map(rule => {
+      const incoming = incomingByKey.get(rule.ruleKey);
+      return incoming ? { ...incoming } : rule;
+    });
+    for (const rule of rules) {
+      if (!existingKeys.has(rule.ruleKey)) {
+        mergedRules.push({ ...rule });
+      }
+    }
     const next: AdminNotificationCenterState = {
-      rules: rules.map(rule => ({ ...rule })),
+      rules: mergedRules,
       emailTemplates: existing.emailTemplates,
+      filterCounts: this.processFilterCounts(mergedRules),
       updatedDate: new Date().toISOString()
     };
     await this.repository.writeStore(next);
     await this.waitForAdminNotificationDelay(ADMIN_NOTIFICATION_SAVE_ROUTE, options);
-    return next;
+    return this.applyProcessFilter(next, options?.filter);
   }
 
   async runNotificationRule(
@@ -108,8 +129,13 @@ export class LocalAdminNotificationsService extends LocalRouteDelayService {
     };
   }
 
-  async loadNotificationRuleRuntime(): Promise<AdminNotificationRule | null> {
-    return null;
+  async loadNotificationRuleRuntime(ruleKey: string): Promise<AdminNotificationRule | null> {
+    const normalizedRuleKey = `${ruleKey ?? ''}`.trim();
+    if (!normalizedRuleKey) {
+      return null;
+    }
+    const state = await this.readNotificationCenter();
+    return state.rules.find(rule => rule.ruleKey === normalizedRuleKey) ?? null;
   }
 
   subscribeNotificationRuleUpdates(
@@ -126,6 +152,88 @@ export class LocalAdminNotificationsService extends LocalRouteDelayService {
       throw new Error('Demo notification center is not bootstrapped.');
     }
     return existing;
+  }
+
+  private applyProcessFilter(
+    state: AdminNotificationCenterState,
+    filter: AdminNotificationProcessFilter | null | undefined
+  ): AdminNotificationCenterState {
+    const rules = state.rules ?? [];
+    const normalizedFilter = this.normalizeProcessFilter(filter);
+    return {
+      ...state,
+      filterCounts: this.processFilterCounts(rules),
+      rules: normalizedFilter === PROCESS_FILTER_ALL
+        ? rules
+        : rules.filter(rule => this.matchesProcessFilter(rule, normalizedFilter))
+    };
+  }
+
+  private processFilterCounts(rules: readonly AdminNotificationRule[]): Record<string, number> {
+    const processRules = rules.filter(rule => rule.triggerKind === 'scheduled_process');
+    return {
+      [PROCESS_FILTER_ALL]: processRules.length,
+      [PROCESS_FILTER_ACTIVE]: processRules.filter(rule =>
+        rule.enabled && this.processStatusKind(rule) !== PROCESS_FILTER_FAILED
+      ).length,
+      [PROCESS_FILTER_SUSPENDED]: processRules.filter(rule =>
+        this.processStatusKind(rule) === PROCESS_FILTER_SUSPENDED
+      ).length,
+      [PROCESS_FILTER_RUNNING]: processRules.filter(rule =>
+        this.processStatusKind(rule) === PROCESS_FILTER_RUNNING
+      ).length,
+      [PROCESS_FILTER_FAILED]: processRules.filter(rule =>
+        this.processStatusKind(rule) === PROCESS_FILTER_FAILED
+      ).length
+    };
+  }
+
+  private matchesProcessFilter(rule: AdminNotificationRule, filter: AdminNotificationProcessFilter): boolean {
+    if (rule.triggerKind !== 'scheduled_process') {
+      return false;
+    }
+    const status = this.processStatusKind(rule);
+    if (filter === PROCESS_FILTER_ACTIVE) {
+      return rule.enabled && status !== PROCESS_FILTER_FAILED;
+    }
+    if (filter === PROCESS_FILTER_SUSPENDED) {
+      return status === PROCESS_FILTER_SUSPENDED;
+    }
+    if (filter === PROCESS_FILTER_RUNNING) {
+      return status === PROCESS_FILTER_RUNNING;
+    }
+    if (filter === PROCESS_FILTER_FAILED) {
+      return status === PROCESS_FILTER_FAILED;
+    }
+    return true;
+  }
+
+  private processStatusKind(rule: AdminNotificationRule): AdminNotificationProcessFilter | 'ready' {
+    const currentStatus = `${rule.runState?.currentStatus ?? ''}`.trim().toLowerCase();
+    if (currentStatus === PROCESS_FILTER_RUNNING) {
+      return PROCESS_FILTER_RUNNING;
+    }
+    const lastStatus = `${rule.runState?.lastRunStatus || currentStatus}`.trim().toLowerCase();
+    if (PROCESS_PROBLEM_STATUSES.has(lastStatus)) {
+      return PROCESS_FILTER_FAILED;
+    }
+    if (!rule.enabled || currentStatus === PROCESS_FILTER_SUSPENDED) {
+      return PROCESS_FILTER_SUSPENDED;
+    }
+    return 'ready';
+  }
+
+  private normalizeProcessFilter(
+    filter: AdminNotificationProcessFilter | null | undefined
+  ): AdminNotificationProcessFilter {
+    return [
+      PROCESS_FILTER_ACTIVE,
+      PROCESS_FILTER_SUSPENDED,
+      PROCESS_FILTER_RUNNING,
+      PROCESS_FILTER_FAILED
+    ].includes(filter as AdminNotificationProcessFilter)
+      ? filter as AdminNotificationProcessFilter
+      : PROCESS_FILTER_ALL;
   }
 
   private async withAdminNotificationDelay<T>(

@@ -1,6 +1,7 @@
-import { Injectable, signal } from '@angular/core';
+import { Injectable, signal, untracked } from '@angular/core';
 
 import { EventFeedbackDetailDto, type EventCheckoutResultState } from '../../../core/contracts/activity.interface';
+import type * as AppDTOs from '../../../core/contracts';
 import type { ChatMetricBucketDTO } from '../../../core/contracts/chat.interface';
 import type { UserMenuCounterDeltasDto } from '../../../core/contracts/user.interface';
 import {
@@ -90,6 +91,7 @@ export interface ActivityMembersSyncState {
   acceptedMemberDelta?: number;
   pendingMemberDelta?: number;
   viewerMembershipRemoved?: boolean;
+  memberStatusChange?: AppDTOs.AssetMemberStatusChangeDTO | null;
 }
 
 export interface ActivityResourceSyncState {
@@ -97,6 +99,14 @@ export interface ActivityResourceSyncState {
   ownerId: string;
   subEventId: string;
   assetOwnerUserId: string;
+}
+
+export interface ActivityEventRuntimeSyncState {
+  updatedMs: number;
+  eventId: string;
+  subEventId: string;
+  activityDelta: number;
+  source: 'members' | 'resources' | 'groups';
 }
 
 export type ActivityChatMetricBucketType = 'members' | 'transport' | 'accommodation' | 'supplies';
@@ -135,13 +145,17 @@ export const ACTIVITY_COUNTER_KEYS: ActivityCounterKey[] = [
 export class ActivityStore {
   private readonly _counterOverridesByUserId = signal<Record<string, Partial<ActivityCounters>>>({});
   private readonly _activityMembersSync = signal<ActivityMembersSyncState | null>(null);
+  private readonly _activityMembersSyncByOwnerId = signal<Readonly<Record<string, ActivityMembersSyncState>>>({});
   private readonly _activityResourceSync = signal<ActivityResourceSyncState | null>(null);
+  private readonly _activityEventRuntimeSync = signal<ActivityEventRuntimeSyncState | null>(null);
   private readonly _activityChatMetricBucketPatch = signal<ActivityChatMetricBucketPatch | null>(null);
   private readonly _activityEventFeedbackSubmitSync = signal<ActivityEventFeedbackSubmitSyncState | null>(null);
 
   readonly counterOverridesByUserId = this._counterOverridesByUserId.asReadonly();
   readonly activityMembersSync = this._activityMembersSync.asReadonly();
+  readonly activityMembersSyncByOwnerId = this._activityMembersSyncByOwnerId.asReadonly();
   readonly activityResourceSync = this._activityResourceSync.asReadonly();
+  readonly activityEventRuntimeSync = this._activityEventRuntimeSync.asReadonly();
   readonly activityChatMetricBucketPatch = this._activityChatMetricBucketPatch.asReadonly();
   readonly activityEventFeedbackSubmitSync = this._activityEventFeedbackSubmitSync.asReadonly();
 
@@ -366,14 +380,18 @@ export class ActivityStore {
     if (!normalizedId) {
       return;
     }
+    const updatedMs = Math.max(
+      Date.now(),
+      (this._activityMembersSync()?.updatedMs ?? 0) + 1
+    );
     const acceptedMemberDelta = Number.isFinite(Number(payload.acceptedMemberDelta))
       ? Math.trunc(Number(payload.acceptedMemberDelta))
       : null;
     const pendingMemberDelta = Number.isFinite(Number(payload.pendingMemberDelta))
       ? Math.trunc(Number(payload.pendingMemberDelta))
       : null;
-    this._activityMembersSync.set({
-      updatedMs: Date.now(),
+    const sync: ActivityMembersSyncState = {
+      updatedMs,
       id: normalizedId,
       acceptedMembers: normalizeCounterValue(payload.acceptedMembers),
       pendingMembers: normalizeCounterValue(payload.pendingMembers),
@@ -385,8 +403,95 @@ export class ActivityStore {
       ...(pendingMemberDelta !== null ? { pendingMemberDelta } : {}),
       ...(payload.full === true ? { full: true } : {}),
       ...(payload.checkoutResultState ? { checkoutResultState: payload.checkoutResultState } : {}),
-      ...(payload.viewerMembershipRemoved === true ? { viewerMembershipRemoved: true } : {})
-    });
+      ...(payload.viewerMembershipRemoved === true ? { viewerMembershipRemoved: true } : {}),
+      ...(payload.memberStatusChange
+        ? {
+            memberStatusChange: {
+              ...payload.memberStatusChange,
+              acceptedMemberDelta: Math.trunc(Number(payload.memberStatusChange.acceptedMemberDelta) || 0),
+              pendingMemberDelta: Math.trunc(Number(payload.memberStatusChange.pendingMemberDelta) || 0)
+            }
+          }
+        : {})
+    };
+    this._activityMembersSync.set(sync);
+    this._activityMembersSyncByOwnerId.update(current => ({
+      ...current,
+      [normalizedId]: sync
+    }));
+  }
+
+  cacheActivityMemberStatusChange(
+    change: AppDTOs.AssetMemberStatusChangeDTO,
+    fallback: Pick<ActivityMembersSyncState, 'acceptedMembers' | 'pendingMembers' | 'capacityTotal'>
+  ): ActivityMembersSyncState | null {
+    const assetId = change.assetId.trim();
+    const eventId = change.eventId.trim();
+    const subEventId = change.subEventId.trim();
+    const userId = change.userId.trim();
+    if (!assetId || !eventId || !subEventId || !userId) {
+      return null;
+    }
+
+    const previous = this._activityMembersSyncByOwnerId()[assetId];
+    const previousChange = previous?.memberStatusChange;
+    const sameScope = previousChange?.assetId === assetId
+      && previousChange.eventId === eventId
+      && previousChange.subEventId === subEventId
+      && previousChange.userId === userId;
+    const acceptedMemberDelta = Math.trunc(Number(change.acceptedMemberDelta) || 0);
+    const pendingMemberDelta = Math.trunc(Number(change.pendingMemberDelta) || 0);
+    const duplicateTransition = sameScope
+      && previousChange.previousStatus === change.previousStatus
+      && previousChange.status === change.status
+      && previousChange.acceptedMemberDelta === acceptedMemberDelta
+      && previousChange.pendingMemberDelta === pendingMemberDelta;
+    if (duplicateTransition) {
+      return null;
+    }
+
+    const acceptedMembers = Math.max(
+      0,
+      (sameScope
+        ? previous?.acceptedMembers ?? normalizeCounterValue(fallback.acceptedMembers)
+        : normalizeCounterValue(fallback.acceptedMembers))
+        + acceptedMemberDelta
+    );
+    const pendingMembers = Math.max(
+      0,
+      (sameScope
+        ? previous?.pendingMembers ?? normalizeCounterValue(fallback.pendingMembers)
+        : normalizeCounterValue(fallback.pendingMembers))
+        + pendingMemberDelta
+    );
+    const sync: ActivityMembersSyncState = {
+      updatedMs: Math.max(Date.now(), (previous?.updatedMs ?? 0) + 1),
+      id: assetId,
+      acceptedMembers,
+      pendingMembers,
+      capacityTotal: Math.max(
+        acceptedMembers,
+        sameScope
+          ? previous?.capacityTotal ?? normalizeCounterValue(fallback.capacityTotal)
+          : normalizeCounterValue(fallback.capacityTotal)
+      ),
+      acceptedMemberDelta,
+      pendingMemberDelta,
+      memberStatusChange: {
+        ...change,
+        assetId,
+        eventId,
+        subEventId,
+        userId,
+        acceptedMemberDelta,
+        pendingMemberDelta
+      }
+    };
+    this._activityMembersSyncByOwnerId.update(current => ({
+      ...current,
+      [assetId]: sync
+    }));
+    return sync;
   }
 
   emitActivityResourceSync(payload: Omit<ActivityResourceSyncState, 'updatedMs'>): void {
@@ -396,11 +501,36 @@ export class ActivityStore {
     if (!ownerId || !subEventId || !assetOwnerUserId) {
       return;
     }
+    const updatedMs = Math.max(
+      Date.now(),
+      (this._activityResourceSync()?.updatedMs ?? 0) + 1
+    );
     this._activityResourceSync.set({
-      updatedMs: Date.now(),
+      updatedMs,
       ownerId,
       subEventId,
       assetOwnerUserId
+    });
+  }
+
+  emitActivityEventRuntimeSync(payload: Omit<ActivityEventRuntimeSyncState, 'updatedMs'>): void {
+    const eventId = payload.eventId.trim();
+    const subEventId = payload.subEventId.trim();
+    if (!eventId || !subEventId) {
+      return;
+    }
+    const updatedMs = Math.max(
+      Date.now(),
+      (untracked(() => this._activityEventRuntimeSync())?.updatedMs ?? 0) + 1
+    );
+    this._activityEventRuntimeSync.set({
+      updatedMs,
+      eventId,
+      subEventId,
+      activityDelta: Number.isFinite(Number(payload.activityDelta))
+        ? Math.trunc(Number(payload.activityDelta))
+        : 0,
+      source: payload.source
     });
   }
 

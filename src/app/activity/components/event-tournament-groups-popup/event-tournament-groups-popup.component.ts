@@ -18,7 +18,6 @@ import {
 
 import {
   ActivityResourceBuilder,
-  AssetDefaultsBuilder,
   ActivityResourcesService,
   EventsService
 } from '../../../shared/core';
@@ -33,7 +32,6 @@ import {
   PopupComponent,
   type AppMenuItem,
   type AppMenuItemSelectEvent,
-  type AppMenuModel,
   type AppMenuPalette,
   type AppMenuTrigger,
   type PopupControl,
@@ -49,6 +47,8 @@ import {
 import type { EventTournamentGroupsPopupRequest } from '../../../shared/ui/context/stores/event-subevents-popup.store';
 import {
   EventTournamentGroupsPopupConverter,
+  ActivityChatSingleRowConverter,
+  type EventTournamentGroupsActionContext,
   type EventTournamentGroupsAccordionContext,
   type EventTournamentGroupsPopupModel,
   type EventTournamentGroupsStageMenuContext
@@ -57,46 +57,32 @@ import {
   DialogStore
 } from '../../../shared/ui/context/stores/dialog.store';
 import {
-  AssetStore
-} from '../../../shared/ui/context/stores/asset.store';
-import {
   EventSubeventGroupFormPopupComponent
 } from '../event-subevent-group-form-popup/event-subevent-group-form-popup.component';
 import { UserProfileStore } from '../../../shared/ui/context/stores/user-profile.store';
 import { ActivityStore } from '../../../shared/ui/context/stores/activity.store';
 import { EventSubeventsPopupStore } from '../../../shared/ui/context/stores/event-subevents-popup.store';
 import { SubEventResourcePopupStore } from '../../../shared/ui/context/stores/sub-event-resource-popup.store';
+import { ActivitiesPopupStore } from '../../../shared/ui/context/stores/activities-popup.store';
+import { MemberMenuStore } from '../../../shared/ui/context/stores/member-menu.store';
 
-type TournamentGroupsAction =
-  | 'add-entry'
-  | 'edit-group'
-  | 'delete-group'
-  | 'members'
-  | 'transport'
-  | 'accommodation'
-  | 'supplies';
 type TournamentGroupsHeaderAction = 'add-group';
 type TournamentGroupsTab = 'standings' | 'history';
 type TournamentLeaderboardMode = 'Score' | 'Fifa';
-type TournamentResourceMetricsByType = Partial<Record<AssetType, TournamentResourceMetrics>>;
-
 const TOURNAMENT_RESOURCE_TYPES: readonly AssetType[] = AppConstants.ASSET_TYPES;
-
-interface TournamentGroupsActionContext {
-  action: TournamentGroupsAction;
-  stageId: string;
-  groupId: string;
-}
+const TOURNAMENT_MEMBER_PALETTES: readonly AppMenuPalette[] = [
+  'blue',
+  'green',
+  'amber',
+  'violet',
+  'cyan',
+  'orange',
+  'pink',
+  'teal'
+];
 
 interface TournamentGroupsHeaderActionContext {
   action: TournamentGroupsHeaderAction;
-}
-
-interface TournamentResourceMetrics {
-  joined: number;
-  pending: number;
-  capacityMin: number;
-  capacityMax: number;
 }
 
 interface TournamentGroupFormModel {
@@ -161,8 +147,9 @@ export class EventTournamentGroupsPopupComponent {
   private readonly activityStore = inject(ActivityStore);
   private readonly eventsService = inject(EventsService);
   private readonly activityResourcesService = inject(ActivityResourcesService);
-  private readonly assetStore = inject(AssetStore);
   private readonly resourcePopupStore = inject(SubEventResourcePopupStore);
+  private readonly activitiesStore = inject(ActivitiesPopupStore);
+  private readonly memberMenuStore = inject(MemberMenuStore);
   private readonly dialogStore = inject(DialogStore);
   private readonly cdr = inject(ChangeDetectorRef);
 
@@ -187,10 +174,10 @@ export class EventTournamentGroupsPopupComponent {
   private handledRequestMs = 0;
   private handledMembersSyncMs = 0;
   private handledResourceSyncMs = 0;
+  private handledResourceMetricsRevision = 0;
+  private readonly emittedStagePendingByKey = new Map<string, number>();
   private loadSequence = 0;
   private leaderboardSequence = 0;
-  private resourceCounterSequence = 0;
-  private resourceMetricsByStageId: Record<string, TournamentResourceMetricsByType> = {};
 
   constructor() {
     effect(() => {
@@ -209,7 +196,6 @@ export class EventTournamentGroupsPopupComponent {
       this.state = this.contextState(request);
       this.selectedStageId = this.resolveSelectedStageId(this.selectedStageId);
       this.leaderboardState = null;
-      this.resourceMetricsByStageId = {};
       void this.loadGroupsForSelectedStage();
     });
 
@@ -235,21 +221,57 @@ export class EventTournamentGroupsPopupComponent {
         return;
       }
       this.handledResourceSyncMs = sync.updatedMs;
-      if (!this.isOpen() || sync.ownerId !== this.eventId()) {
-        return;
-      }
-      this.syncResourceCountersFromCache(sync.subEventId, sync.assetOwnerUserId);
-    });
-
-    effect(() => {
-      this.assetStore.assetListRevision();
       if (!this.isOpen()) {
         return;
       }
-      for (const stage of this.state?.stages ?? []) {
-        this.syncResourceCountersFromCache(stage.subEventId);
+      const match = this.groupResourceScope(sync.ownerId, sync.subEventId);
+      if (match) {
+        this.syncResourceCountersFromCache(match.stage.subEventId, match.group.id, sync.assetOwnerUserId);
       }
     });
+
+    effect(() => {
+      const update = this.resourcePopupStore.subEventResourceMetricsUpdate();
+      if (!update || update.revision === this.handledResourceMetricsRevision) {
+        return;
+      }
+      this.handledResourceMetricsRevision = update.revision;
+      if (!this.isOpen()) {
+        return;
+      }
+      const match = this.groupResourceScope(update.ownerId, update.subEventId);
+      if (!match) {
+        return;
+      }
+      this.state = this.updateGroupResourceMetrics(
+        this.state,
+        match.stage.subEventId,
+        match.group.id,
+        {
+          [AppConstants.ASSET_TYPE_TRANSPORT]: {
+            accepted: Number(update.subEvent.carsAccepted) || 0,
+            pending: Number(update.subEvent.carsPending) || 0,
+            capacityMin: Number(update.subEvent.carsCapacityMin) || 0,
+            capacityMax: Number(update.subEvent.carsCapacityMax) || 0
+          },
+          [AppConstants.ASSET_TYPE_ACCOMMODATION]: {
+            accepted: Number(update.subEvent.accommodationAccepted) || 0,
+            pending: Number(update.subEvent.accommodationPending) || 0,
+            capacityMin: Number(update.subEvent.accommodationCapacityMin) || 0,
+            capacityMax: Number(update.subEvent.accommodationCapacityMax) || 0
+          },
+          [AppConstants.ASSET_TYPE_SUPPLIES]: {
+            accepted: Number(update.subEvent.suppliesAccepted) || 0,
+            pending: Number(update.subEvent.suppliesPending) || 0,
+            capacityMin: Number(update.subEvent.suppliesCapacityMin) || 0,
+            capacityMax: Number(update.subEvent.suppliesCapacityMax) || 0
+          }
+        }
+      );
+      this.emitGroupsUpdate(match.stage.subEventId);
+      this.cdr.markForCheck();
+    });
+
   }
 
   @HostListener('window:keydown.escape', ['$event'])
@@ -338,32 +360,8 @@ export class EventTournamentGroupsPopupComponent {
 
   protected accordionModel(
     vm: EventTournamentGroupsPopupModel
-  ): UiAccordionModel<string, EventTournamentGroupsAccordionContext, TournamentGroupsActionContext> {
-    return {
-      ...vm.accordion,
-      items: vm.accordion.items.map(item => {
-        const accordionItem = item as UiAccordionItem<
-          string,
-          EventTournamentGroupsAccordionContext,
-          TournamentGroupsActionContext
-        >;
-        const groupId = item.context?.groupId ?? item.id;
-        const group = this.groupById(vm.selectedStage, groupId);
-        if (!vm.selectedStage || !group) {
-          return accordionItem;
-        }
-        return {
-          ...accordionItem,
-          actionMenu: {
-            kind: 'select',
-            trigger: this.groupActionTrigger(group),
-            model: this.groupActionModelFor(vm.selectedStage, group),
-            panelAlign: 'auto',
-            mobileBreakpointPx: 900
-          }
-        };
-      })
-    };
+  ): UiAccordionModel<string, EventTournamentGroupsAccordionContext, EventTournamentGroupsActionContext> {
+    return vm.accordion;
   }
 
   protected headerActionItems(): readonly AppMenuItem<string, TournamentGroupsHeaderActionContext>[] {
@@ -420,83 +418,16 @@ export class EventTournamentGroupsPopupComponent {
   }
 
   protected onAccordionActionSelect(
-    event: UiAccordionActionMenuSelectEvent<string, EventTournamentGroupsAccordionContext, TournamentGroupsActionContext>
+    event: UiAccordionActionMenuSelectEvent<
+      string,
+      EventTournamentGroupsAccordionContext,
+      EventTournamentGroupsActionContext
+    >
   ): void {
     this.onGroupActionSelect(event.itemSelect);
   }
 
-  protected groupActionTrigger(group: ContractTypes.EventTournamentGroupDTO): AppMenuTrigger {
-    return {
-      icon: 'more_vert',
-      closeIcon: 'close',
-      hideLabel: true,
-      layout: 'icon',
-      ariaLabel: `Open actions for ${group.name}`
-    };
-  }
-
-  private groupActionModelFor(
-    stage: ContractTypes.EventTournamentStageDTO,
-    group: ContractTypes.EventTournamentGroupDTO
-  ): AppMenuModel<string, TournamentGroupsActionContext> {
-    const contextBase = { stageId: stage.subEventId, groupId: group.id };
-    const actionItems: AppMenuItem<string, TournamentGroupsActionContext>[] = [];
-    if (this.canManageGroups()) {
-      if (this.canAddScoreToStage(stage)) {
-        actionItems.push({
-          id: 'add-entry',
-          label: this.entryActionLabel(stage),
-          icon: this.entryActionIcon(stage),
-          palette: 'blue',
-          context: { ...contextBase, action: 'add-entry' }
-        });
-      }
-      actionItems.push(
-        {
-          id: 'edit-group',
-          label: 'edit',
-          icon: 'edit',
-          context: { ...contextBase, action: 'edit-group' }
-        },
-        {
-          id: 'delete-group',
-          label: 'delete',
-          icon: 'delete',
-          palette: 'danger',
-          context: { ...contextBase, action: 'delete-group' }
-        }
-      );
-    }
-    return {
-      nodes: [
-        ...(actionItems.length > 0 ? [{ id: 'actions', items: actionItems }] : []),
-        {
-          id: 'members',
-          items: [
-            this.resourceMenuItem(
-              'members',
-              'Tagok',
-              this.canInviteGroupMembers(group) ? 'group_add' : 'groups',
-              'blue',
-              contextBase,
-              `${group.membersAccepted} / ${group.capacityMin} - ${group.capacityMax}`
-            )
-          ]
-        },
-        {
-          id: 'assets',
-          label: 'Assets',
-          items: [
-            this.resourceMenuItem('transport', AssetDefaultsBuilder.assetTypeLabel(AppConstants.ASSET_TYPE_TRANSPORT), 'directions_car', 'sky', contextBase, this.resourceMetricLabel(stage.subEventId, AppConstants.ASSET_TYPE_TRANSPORT)),
-            this.resourceMenuItem('accommodation', AssetDefaultsBuilder.assetTypeLabel(AppConstants.ASSET_TYPE_ACCOMMODATION), 'apartment', 'green', contextBase, this.resourceMetricLabel(stage.subEventId, AppConstants.ASSET_TYPE_ACCOMMODATION)),
-            this.resourceMenuItem('supplies', AssetDefaultsBuilder.assetTypeLabel(AppConstants.ASSET_TYPE_SUPPLIES), 'inventory_2', 'brown', contextBase, this.resourceMetricLabel(stage.subEventId, AppConstants.ASSET_TYPE_SUPPLIES))
-          ]
-        }
-      ]
-    };
-  }
-
-  protected onGroupActionSelect(event: AppMenuItemSelectEvent<string, TournamentGroupsActionContext>): void {
+  protected onGroupActionSelect(event: AppMenuItemSelectEvent<string, EventTournamentGroupsActionContext>): void {
     const context = event.context;
     if (!context) {
       return;
@@ -565,6 +496,10 @@ export class EventTournamentGroupsPopupComponent {
     const leaderboardGroup = this.leaderboardGroup(group.id);
     if (leaderboardGroup?.scoreRows?.length) {
       return leaderboardGroup.scoreRows.map(row => ({ ...row })).sort((left, right) => {
+        const memberOrder = this.realMembersFirst(left.memberName, right.memberName);
+        if (memberOrder !== 0) {
+          return memberOrder;
+        }
         if (left.total !== right.total) {
           return right.total - left.total;
         }
@@ -586,6 +521,10 @@ export class EventTournamentGroupsPopupComponent {
       row.updates += 1;
     }
     return rows.sort((left, right) => {
+      const memberOrder = this.realMembersFirst(left.memberName, right.memberName);
+      if (memberOrder !== 0) {
+        return memberOrder;
+      }
       if (left.total !== right.total) {
         return right.total - left.total;
       }
@@ -597,6 +536,10 @@ export class EventTournamentGroupsPopupComponent {
     const leaderboardGroup = this.leaderboardGroup(group.id);
     if (leaderboardGroup?.fifaRows?.length) {
       return leaderboardGroup.fifaRows.map(row => ({ ...row })).sort((left, right) => {
+        const memberOrder = this.realMembersFirst(left.memberName, right.memberName);
+        if (memberOrder !== 0) {
+          return memberOrder;
+        }
         if (left.points !== right.points) {
           return right.points - left.points;
         }
@@ -649,6 +592,10 @@ export class EventTournamentGroupsPopupComponent {
       row.goalDiff = row.goalsFor - row.goalsAgainst;
     }
     return rows.sort((left, right) => {
+      const memberOrder = this.realMembersFirst(left.memberName, right.memberName);
+      if (memberOrder !== 0) {
+        return memberOrder;
+      }
       if (left.points !== right.points) {
         return right.points - left.points;
       }
@@ -773,6 +720,8 @@ export class EventTournamentGroupsPopupComponent {
         }
         this.leaderboardState = null;
         reloadLeaderboardStageId = stageId;
+        await this.loadGroupsForStage(stageId);
+        this.emitGroupsUpdate(stageId);
       }
       this.closeGroupForm();
     } finally {
@@ -829,10 +778,17 @@ export class EventTournamentGroupsPopupComponent {
     return {
       label: this.memberNameForEntry(menu),
       icon: 'person',
-      palette: 'blue',
+      palette: this.entryMemberPalette(menu),
       layout: 'field',
       ariaLabel: 'Select member'
     };
+  }
+
+  protected leaderboardMemberPalette(
+    group: ContractTypes.EventTournamentGroupDTO,
+    memberId: string
+  ): AppMenuPalette {
+    return this.memberPalette(memberId, this.membersForGroup(group));
   }
 
   protected entryFormFlowModel(): FormFlowModel {
@@ -842,6 +798,7 @@ export class EventTournamentGroupsPopupComponent {
       subtitle: this.entryFormSubtitle(),
       layout: 'grouped',
       header: false,
+      allowMenuOverflow: true,
       summary: { enabled: false },
       completion: { controls: 'required' },
       save: null,
@@ -974,11 +931,14 @@ export class EventTournamentGroupsPopupComponent {
 
   private entryMemberFlowItems(menu: 'score' | 'home' | 'away'): readonly AppMenuItem<string, { menu: 'score' | 'home' | 'away'; memberId: string }>[] {
     const selectedId = this.entrySelectedMemberId(menu);
-    return this.entryMembers().map(member => ({
+    const members = this.entryMembers();
+    return members.map(member => ({
       id: member.id,
       label: member.name,
       icon: 'person',
       kind: 'radio',
+      palette: this.memberPalette(member.id, members),
+      surface: 'tinted',
       active: member.id === selectedId,
       context: { menu, memberId: member.id }
     }));
@@ -1156,6 +1116,7 @@ export class EventTournamentGroupsPopupComponent {
       }
       this.state = this.stateWithStageGroups(this.state, normalizedStageId, groups);
       this.selectedStageId = normalizedStageId;
+      this.emitGroupsUpdate(normalizedStageId);
       const selectedStage = this.stageById(normalizedStageId);
       if (this.selectedGroupId && selectedStage?.groups.some(group => group.id === this.selectedGroupId)) {
         this.openGroupIds = [this.selectedGroupId];
@@ -1163,7 +1124,6 @@ export class EventTournamentGroupsPopupComponent {
         this.selectedGroupId = null;
         this.openGroupIds = [];
       }
-      void this.loadResourceCountersForStage(normalizedStageId);
     } catch {
       this.loadError = 'Groups are not available right now.';
     } finally {
@@ -1196,48 +1156,23 @@ export class EventTournamentGroupsPopupComponent {
     }
   }
 
-  private async loadResourceCountersForStage(stageId: string): Promise<void> {
-    const ownerId = this.eventId();
+  private syncResourceCountersFromCache(
+    stageId: string | null | undefined,
+    groupId: string | null | undefined,
+    assetOwnerUserId?: string | null
+  ): void {
     const normalizedStageId = this.normalizeId(stageId);
-    const assetOwnerUserId = this.activityResourcesService.activeAssetOwnerUserId();
-    if (!ownerId || !normalizedStageId || !assetOwnerUserId) {
-      return;
-    }
-    const sequence = ++this.resourceCounterSequence;
-    this.applyResourceCounters(
-      ownerId,
-      normalizedStageId,
-      assetOwnerUserId,
-      this.activityResourcesService.peekSubEventResourceState(ownerId, normalizedStageId, assetOwnerUserId)
-    );
-    try {
-      const state = await this.activityResourcesService.querySubEventResourceState(
-        ownerId,
-        normalizedStageId,
-        assetOwnerUserId
-      );
-      if (sequence !== this.resourceCounterSequence) {
-        return;
-      }
-      this.applyResourceCounters(ownerId, normalizedStageId, assetOwnerUserId, state);
-    } catch {
-      if (sequence === this.resourceCounterSequence) {
-        this.applyResourceCounters(ownerId, normalizedStageId, assetOwnerUserId, null);
-      }
-    }
-  }
-
-  private syncResourceCountersFromCache(stageId: string | null | undefined, assetOwnerUserId?: string | null): void {
-    const ownerId = this.eventId();
-    const normalizedStageId = this.normalizeId(stageId);
+    const normalizedGroupId = this.normalizeId(groupId);
     const normalizedAssetOwnerUserId = this.normalizeId(assetOwnerUserId)
       || this.activityResourcesService.activeAssetOwnerUserId();
-    if (!ownerId || !normalizedStageId || !normalizedAssetOwnerUserId) {
+    if (!normalizedStageId || !normalizedGroupId || !normalizedAssetOwnerUserId) {
       return;
     }
+    const ownerId = this.groupMemberOwnerId(normalizedStageId, normalizedGroupId);
     this.applyResourceCounters(
       ownerId,
       normalizedStageId,
+      normalizedGroupId,
       normalizedAssetOwnerUserId,
       this.activityResourcesService.peekSubEventResourceState(ownerId, normalizedStageId, normalizedAssetOwnerUserId)
     );
@@ -1246,108 +1181,25 @@ export class EventTournamentGroupsPopupComponent {
   private applyResourceCounters(
     ownerId: string,
     stageId: string,
+    groupId: string,
     assetOwnerUserId: string,
     state: AppDTOs.ActivitySubEventResourceStateDTO | null
   ): void {
-    if (ownerId !== this.eventId() || assetOwnerUserId !== this.activityResourcesService.activeAssetOwnerUserId()) {
+    if (ownerId !== this.groupMemberOwnerId(stageId, groupId)
+      || assetOwnerUserId !== this.activityResourcesService.activeAssetOwnerUserId()) {
       return;
     }
-    const stage = this.stageById(stageId);
-    if (!stage) {
+    if (!state?.resourceMetricsByType) {
       return;
     }
-    this.resourceMetricsByStageId = {
-      ...this.resourceMetricsByStageId,
-      [stageId]: this.resourceMetricsForStage(stage, state)
-    };
+    this.state = this.updateGroupResourceMetrics(
+      this.state,
+      stageId,
+      groupId,
+      state.resourceMetricsByType
+    );
+    this.emitGroupsUpdate(stageId);
     this.cdr.markForCheck();
-  }
-
-  private resourceMetricsForStage(
-    stage: ContractTypes.EventTournamentStageDTO,
-    state: AppDTOs.ActivitySubEventResourceStateDTO | null
-  ): TournamentResourceMetricsByType {
-    const subEvent = this.resourceSubEventForStage(stage);
-    const assets = this.assetStore.assetCards();
-    return Object.fromEntries(TOURNAMENT_RESOURCE_TYPES.map(type => {
-      const joined = ActivityResourceBuilder.resourceAcceptedCount(subEvent, type, state, assets);
-      const pending = ActivityResourceBuilder.resourcePendingCount(subEvent, type, state, assets);
-      const bounds = this.resourceCapacityBounds(subEvent, type, state, assets, joined, pending);
-      return [
-        type,
-        {
-          joined,
-          pending,
-          capacityMin: bounds.capacityMin,
-          capacityMax: bounds.capacityMax
-        }
-      ];
-    })) as TournamentResourceMetricsByType;
-  }
-
-  private resourceSubEventForStage(stage: ContractTypes.EventTournamentStageDTO): ContractTypes.SubEventDTO {
-    const capacityMin = stage.groups.reduce((sum, group) => sum + Math.max(0, Math.trunc(Number(group.capacityMin) || 0)), 0);
-    const capacityMax = stage.groups.reduce((sum, group) => sum + Math.max(0, Math.trunc(Number(group.capacityMax) || 0)), 0);
-    return {
-      id: stage.subEventId,
-      name: stage.title,
-      description: stage.description,
-      location: stage.location,
-      startAt: stage.startAt,
-      endAt: stage.endAt,
-      optional: false,
-      capacityMin,
-      capacityMax,
-      membersAccepted: stage.groups.reduce((sum, group) => sum + Math.max(0, Math.trunc(Number(group.membersAccepted) || 0)), 0),
-      membersPending: stage.groups.reduce((sum, group) => sum + Math.max(0, Math.trunc(Number(group.membersPending) || 0)), 0),
-      carsAccepted: 0,
-      accommodationAccepted: 0,
-      suppliesAccepted: 0,
-      carsPending: 0,
-      accommodationPending: 0,
-      suppliesPending: 0,
-      carsCapacityMin: 0,
-      carsCapacityMax: 0,
-      accommodationCapacityMin: 0,
-      accommodationCapacityMax: 0,
-      suppliesCapacityMin: 0,
-      suppliesCapacityMax: 0,
-      tournamentGroupCapacityMin: capacityMin,
-      tournamentGroupCapacityMax: capacityMax,
-      tournamentLeaderboardType: stage.leaderboardType === 'Fifa' ? 'Fifa' : 'Score',
-      tournamentAdvancePerGroup: Math.max(0, Math.trunc(Number(stage.advancePerGroup) || 0)),
-      stageStatus: stage.stageStatus
-    };
-  }
-
-  private resourceCapacityBounds(
-    subEvent: ContractTypes.SubEventDTO,
-    type: AssetType,
-    state: AppDTOs.ActivitySubEventResourceStateDTO | null,
-    assets: readonly AppDTOs.AssetDTO[],
-    joined: number,
-    pending: number
-  ): { capacityMin: number; capacityMax: number } {
-    const bounds = ActivityResourceBuilder.resourceCapacityBounds(subEvent, type, state, assets, joined, pending);
-    const assignedIds = ActivityResourceBuilder.resolveAssignedAssetIds(state, type, assets);
-    if (assignedIds.length === 0) {
-      return bounds;
-    }
-    const settings = ActivityResourceBuilder.resolveAssignedAssetSettings(state, type);
-    return {
-      capacityMin: assignedIds.reduce((sum, assetId) => (
-        sum + Math.max(0, Math.trunc(Number(settings[assetId]?.capacityMin) || 0))
-      ), 0),
-      capacityMax: bounds.capacityMax
-    };
-  }
-
-  private resourceMetricLabel(stageId: string, type: AssetType): string {
-    const metrics = this.resourceMetricsByStageId[stageId]?.[type] ?? null;
-    if (!metrics) {
-      return '0 / 0 - 0';
-    }
-    return `${metrics.joined} / ${metrics.capacityMin} - ${metrics.capacityMax}`;
   }
 
   protected canManageGroups(): boolean {
@@ -1355,7 +1207,8 @@ export class EventTournamentGroupsPopupComponent {
   }
 
   private canInviteGroupMembers(group: ContractTypes.EventTournamentGroupDTO): boolean {
-    return this.canManageGroups() && `${group.source ?? ''}`.toLowerCase() === 'manual';
+    void group;
+    return this.canManageGroups();
   }
 
   private canAddScoreToStage(stage: ContractTypes.EventTournamentStageDTO | null | undefined): boolean {
@@ -1437,6 +1290,26 @@ export class EventTournamentGroupsPopupComponent {
       default:
         return this.entryForm.memberId;
     }
+  }
+
+  private entryMemberPalette(menu: 'score' | 'home' | 'away'): AppMenuPalette {
+    const members = this.entryMembers();
+    return this.memberPalette(this.entrySelectedMemberId(menu), members);
+  }
+
+  private memberPalette(
+    memberId: string,
+    members: readonly ContractTypes.SubEventLeaderboardMember[]
+  ): AppMenuPalette {
+    const memberIndex = members.findIndex(member => member.id === memberId);
+    if (memberIndex >= 0) {
+      return TOURNAMENT_MEMBER_PALETTES[memberIndex % TOURNAMENT_MEMBER_PALETTES.length] ?? 'blue';
+    }
+    const stableIndex = Array.from(`${memberId ?? ''}`).reduce(
+      (total, character) => ((total * 31) + (character.codePointAt(0) ?? 0)) >>> 0,
+      0
+    ) % TOURNAMENT_MEMBER_PALETTES.length;
+    return TOURNAMENT_MEMBER_PALETTES[stableIndex] ?? 'blue';
   }
 
   private memberNameForEntry(menu: 'score' | 'home' | 'away'): string {
@@ -1542,6 +1415,8 @@ export class EventTournamentGroupsPopupComponent {
             this.openGroupIds = nextGroup ? [nextGroup.id] : [];
             this.leaderboardState = null;
             reloadLeaderboardStageId = nextGroup ? stage.subEventId : null;
+            await this.loadGroupsForStage(stage.subEventId);
+            this.emitGroupsUpdate(stage.subEventId);
           }
         } finally {
           this.isMutating = false;
@@ -1551,6 +1426,29 @@ export class EventTournamentGroupsPopupComponent {
           void this.loadLeaderboardForStage(reloadLeaderboardStageId);
         }
       }
+    });
+  }
+
+  private emitGroupsUpdate(stageId: string): void {
+    const stage = this.state?.stages.find(item => item.subEventId === stageId) ?? null;
+    const groupsCount = stage?.groups.length ?? 0;
+    const groupsPending = EventTournamentGroupsPopupConverter.stagePendingTotal(stage);
+    const stagePendingKey = [
+      this.requestEventId(),
+      this.requestSlotId() ?? '',
+      stageId
+    ].join(':');
+    const previousGroupsPending = this.emittedStagePendingByKey.get(stagePendingKey);
+    this.emittedStagePendingByKey.set(stagePendingKey, groupsPending);
+    this.eventSubeventsStore.emitEventTournamentGroupsUpdate({
+      eventId: this.requestEventId(),
+      slotId: this.requestSlotId(),
+      stageId,
+      groupsCount,
+      groupsPending,
+      groupsPendingDelta: previousGroupsPending == null
+        ? 0
+        : groupsPending - previousGroupsPending
     });
   }
 
@@ -1565,9 +1463,35 @@ export class EventTournamentGroupsPopupComponent {
     const parentTitle = `${this.state?.title ?? ''}`.trim();
     const stageTitle = `${stage.title ?? ''}`.trim();
     const groupLabel = `${group.name ?? ''}`.trim();
+    if (isMembersPopup) {
+      const memberOwnerId = this.groupMemberOwnerId(stage.subEventId, group.id);
+      void this.activitiesStore.ensureEventMembersPopupLoaded();
+      this.memberMenuStore.requestActivitiesNavigation({
+        type: 'members',
+        ownerId: memberOwnerId,
+        ownerType: 'group',
+        parentOwnerId: this.eventId(),
+        parentOwnerType: 'event',
+        eventId: this.eventId(),
+        subEventId: stage.subEventId,
+        subtitle: groupLabel || stageTitle || parentTitle || 'Members',
+        canManage: this.canInviteGroupMembers(group),
+        viewOnly: !this.canInviteGroupMembers(group),
+        acceptedMembers: group.membersAccepted,
+        pendingMembers: group.membersPending,
+        capacityTotal: group.capacityMax,
+        metricIdentity: ActivityChatSingleRowConverter.smartListKeyForIdentity(
+          'groupSubEvent',
+          memberOwnerId,
+          memberOwnerId
+        ),
+        onMembersChanged: members => this.syncGroupMembersFromPopup(stage.subEventId, group.id, members)
+      });
+      return;
+    }
     this.resourcePopupStore.requestSubEventResourcePopup({
       type,
-      ownerId: this.eventId(),
+      ownerId: this.groupMemberOwnerId(stage.subEventId, group.id),
       parentTitle: this.state?.title ?? '',
       subEventId: stage.subEventId,
       popupHeader: {
@@ -1597,10 +1521,7 @@ export class EventTournamentGroupsPopupComponent {
         pending: group.membersPending,
         capacityMin: group.capacityMin,
         capacityMax: group.capacityMax,
-        canManage: isMembersPopup && this.canInviteGroupMembers(group),
-        onMembersChanged: isMembersPopup
-          ? members => this.syncGroupMembersFromPopup(stage.subEventId, group.id, members)
-          : undefined
+        canManage: false
       }
     });
   }
@@ -1628,27 +1549,56 @@ export class EventTournamentGroupsPopupComponent {
     const acceptedMembers = members.filter(member => member.status === 'accepted');
     const pendingMembers = members.filter(member => member.status === 'pending');
     this.state = this.updateGroupCounts(this.state, stageId, groupId, acceptedMembers.length, pendingMembers.length);
+    this.emitGroupsUpdate(stageId);
     this.syncLeaderboardMembers(groupId, acceptedMembers);
     this.cdr.markForCheck();
   }
 
   private syncGroupMemberSummaryFromSignal(
-    groupId: string,
+    memberOwnerId: string,
     accepted: number,
     pending: number
   ): void {
-    const stageId = this.state?.stages.find(stage => stage.groups.some(group => group.id === groupId))?.subEventId ?? '';
-    if (!stageId) {
+    const match = this.state?.stages.flatMap(stage => stage.groups.map(group => ({ stage, group })))
+      .find(({ stage, group }) => (
+        group.id === memberOwnerId
+        || this.groupMemberOwnerId(stage.subEventId, group.id) === memberOwnerId
+      )) ?? null;
+    if (!match) {
       return;
     }
     this.state = this.updateGroupCounts(
       this.state,
-      stageId,
-      groupId,
+      match.stage.subEventId,
+      match.group.id,
       Math.max(0, Math.trunc(Number(accepted) || 0)),
       Math.max(0, Math.trunc(Number(pending) || 0))
     );
+    this.emitGroupsUpdate(match.stage.subEventId);
     this.cdr.markForCheck();
+  }
+
+  private groupMemberOwnerId(stageId: string, groupId: string): string {
+    const ownerId = this.eventId();
+    const normalizedStageId = this.normalizeId(stageId);
+    const normalizedGroupId = this.normalizeId(groupId);
+    return ownerId && normalizedStageId && normalizedGroupId
+      ? `${ownerId}:${normalizedStageId}:${normalizedGroupId}`
+      : normalizedGroupId;
+  }
+
+  private groupResourceScope(
+    ownerId: string | null | undefined,
+    stageId: string | null | undefined
+  ): { stage: ContractTypes.EventTournamentStageDTO; group: ContractTypes.EventTournamentGroupDTO } | null {
+    const normalizedOwnerId = this.normalizeId(ownerId);
+    const normalizedStageId = this.normalizeId(stageId);
+    if (!normalizedOwnerId || !normalizedStageId) {
+      return null;
+    }
+    const stage = this.stageById(normalizedStageId);
+    const group = stage?.groups.find(item => this.groupMemberOwnerId(normalizedStageId, item.id) === normalizedOwnerId) ?? null;
+    return stage && group ? { stage, group } : null;
   }
 
   private updateGroupCounts(
@@ -1672,6 +1622,37 @@ export class EventTournamentGroupsPopupComponent {
                   membersAccepted: Math.max(0, accepted),
                   membersPending: Math.max(0, pending)
                 }
+              : group)
+          }
+        : stage)
+    };
+  }
+
+  private updateGroupResourceMetrics(
+    state: ContractTypes.EventTournamentGroupsStateDTO | null,
+    stageId: string,
+    groupId: string,
+    metricsByType: Partial<Record<AssetType, AppDTOs.SubEventResourceMetricDTO>>
+  ): ContractTypes.EventTournamentGroupsStateDTO | null {
+    if (!state) {
+      return null;
+    }
+    const resourceMetricsByType = Object.fromEntries(TOURNAMENT_RESOURCE_TYPES.map(type => {
+      const metric = metricsByType[type];
+      return [type, {
+        accepted: Math.max(0, Math.trunc(Number(metric?.accepted) || 0)),
+        pending: Math.max(0, Math.trunc(Number(metric?.pending) || 0)),
+        capacityMin: Math.max(0, Math.trunc(Number(metric?.capacityMin) || 0)),
+        capacityMax: Math.max(0, Math.trunc(Number(metric?.capacityMax) || 0))
+      }];
+    }));
+    return {
+      ...state,
+      stages: state.stages.map(stage => stage.subEventId === stageId
+        ? {
+            ...stage,
+            groups: stage.groups.map(group => group.id === groupId
+              ? { ...group, resourceMetricsByType }
               : group)
           }
         : stage)
@@ -1728,6 +1709,10 @@ export class EventTournamentGroupsPopupComponent {
       row.updates += 1;
     }
     return [...rows.values()].sort((left, right) => {
+      const memberOrder = this.realMembersFirst(left.memberName, right.memberName);
+      if (memberOrder !== 0) {
+        return memberOrder;
+      }
       if (left.total !== right.total) {
         return right.total - left.total;
       }
@@ -1784,6 +1769,10 @@ export class EventTournamentGroupsPopupComponent {
       away.goalDiff = away.goalsFor - away.goalsAgainst;
     }
     return [...rows.values()].sort((left, right) => {
+      const memberOrder = this.realMembersFirst(left.memberName, right.memberName);
+      if (memberOrder !== 0) {
+        return memberOrder;
+      }
       if (left.points !== right.points) {
         return right.points - left.points;
       }
@@ -1792,6 +1781,12 @@ export class EventTournamentGroupsPopupComponent {
       }
       return left.memberName.localeCompare(right.memberName);
     });
+  }
+
+  private realMembersFirst(leftName: string, rightName: string): number {
+    const leftPlaceholder = leftName.trim() === '-----';
+    const rightPlaceholder = rightName.trim() === '-----';
+    return leftPlaceholder === rightPlaceholder ? 0 : leftPlaceholder ? 1 : -1;
   }
 
   private openEntryForm(
@@ -1818,37 +1813,6 @@ export class EventTournamentGroupsPopupComponent {
     this.selectedGroupId = group.id;
     this.openGroupIds = [group.id];
     this.showEntryForm = true;
-  }
-
-  private resourceMenuItem(
-    id: TournamentGroupsAction,
-    label: string,
-    icon: string,
-    palette: AppMenuPalette,
-    base: { stageId: string; groupId: string },
-    description = '0 / 0 - 0'
-  ): AppMenuItem<string, TournamentGroupsActionContext> {
-    return {
-      id,
-      label,
-      description,
-      icon,
-      palette,
-      surface: 'tinted',
-      layout: 'pill',
-      context: {
-        ...base,
-        action: id
-      }
-    };
-  }
-
-  private entryActionLabel(stage: ContractTypes.EventTournamentStageDTO): string {
-    return stage.leaderboardType === 'Fifa' ? 'Add Match' : 'Add Score';
-  }
-
-  private entryActionIcon(stage: ContractTypes.EventTournamentStageDTO): string {
-    return stage.leaderboardType === 'Fifa' ? 'add_circle' : 'add';
   }
 
   private nextGroupName(stage: ContractTypes.EventTournamentStageDTO): string {
@@ -1880,7 +1844,6 @@ export class EventTournamentGroupsPopupComponent {
   private resetState(): void {
     this.loadSequence += 1;
     this.leaderboardSequence += 1;
-    this.resourceCounterSequence += 1;
     this.state = null;
     this.selectedStageId = null;
     this.selectedGroupId = null;
@@ -1892,7 +1855,7 @@ export class EventTournamentGroupsPopupComponent {
     this.leaderboardLoading = false;
     this.groupTabs = {};
     this.detailMemberByGroupId = {};
-    this.resourceMetricsByStageId = {};
+    this.emittedStagePendingByKey.clear();
     this.showGroupForm = false;
     this.showEntryForm = false;
   }

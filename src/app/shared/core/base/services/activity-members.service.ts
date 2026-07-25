@@ -34,6 +34,10 @@ export class ActivityMembersService extends BaseRouteModeService {
     return this.resolveRouteService(ActivityMembersService.MEMBERS_ROUTE, this.localActivityMembersService, this.httpActivityMembersService);
   }
 
+  usesLocalDataSource(): boolean {
+    return this.isLocalRouteEnabled(ActivityMembersService.MEMBERS_ROUTE);
+  }
+
   async waitForMembersRouteDelay(): Promise<void> {
     if (!this.isLocalRouteEnabled(ActivityMembersService.MEMBERS_ROUTE)) {
       return;
@@ -105,14 +109,16 @@ export class ActivityMembersService extends BaseRouteModeService {
   async replaceMembersByOwner(
     owner: ActivityMemberOwnerRef,
     members: readonly ActivityContracts.ActivityMemberDTO[],
-    capacityTotal?: number | null
+    capacityTotal?: number | null,
+    options?: ActivityMembersQueryOptions
   ): Promise<void> {
     const actorUserId = this.userProfileStore.activeUserId().trim() || this.userProfileStore.getActiveUserId().trim();
     await this.activityMembersService.replaceMembersByOwner(
       owner,
       this.prepareMembersForPersistence(members),
       capacityTotal,
-      actorUserId
+      actorUserId,
+      options
     );
     this.emitActivityMembersSyncForOwner(owner);
   }
@@ -120,21 +126,42 @@ export class ActivityMembersService extends BaseRouteModeService {
   async replaceMembersByOwnerId(
     ownerId: string,
     members: readonly ActivityContracts.ActivityMemberDTO[],
-    capacityTotal?: number | null
+    capacityTotal?: number | null,
+    options?: ActivityMembersQueryOptions
   ): Promise<void> {
     const normalizedOwnerId = ownerId.trim();
     if (!normalizedOwnerId) {
       return;
     }
     const owner = this.peekOwnerRefById(normalizedOwnerId) ?? this.ownerRef('event', normalizedOwnerId);
-    await this.replaceMembersByOwner(owner, members, capacityTotal);
+    await this.replaceMembersByOwner(owner, members, capacityTotal, options);
+  }
+
+  async inviteEventMembers(
+    owner: ActivityMemberOwnerRef,
+    userIds: readonly string[]
+  ): Promise<ActivityContracts.ActivityMemberDTO[]> {
+    const normalizedOwner = this.ownerRef(owner.ownerType, owner.ownerId.trim());
+    if (normalizedOwner.ownerType !== 'event' || !normalizedOwner.ownerId) {
+      return [];
+    }
+    const actorUserId = this.userProfileStore.activeUserId().trim()
+      || this.userProfileStore.getActiveUserId().trim();
+    const members = this.presentMembers(await this.httpActivityMembersService.inviteEventMembers(
+      normalizedOwner,
+      actorUserId,
+      userIds
+    ));
+    this.emitActivityMembersSyncForOwner(normalizedOwner);
+    return members;
   }
 
   async applyMemberAction(
     owner: ActivityMemberOwnerRef,
     targetUserId: string,
-    action: 'disqualify' | 'reinstate',
-    reason?: string | null
+    action: 'accept' | 'remove' | 'disqualify' | 'reinstate' | 'promote-admin' | 'step-down-admin',
+    reason?: string | null,
+    options?: ActivityMembersQueryOptions
   ): Promise<ActivityContracts.ActivityMemberDTO[]> {
     const normalizedOwner = this.ownerRef(owner.ownerType, owner.ownerId.trim());
     if (!normalizedOwner.ownerId.trim()) {
@@ -145,7 +172,8 @@ export class ActivityMembersService extends BaseRouteModeService {
       this.userProfileStore.activeUserId().trim(),
       targetUserId,
       action,
-      reason
+      reason,
+      options
     ));
     this.emitActivityMembersSyncForOwner(normalizedOwner);
     return members;
@@ -215,9 +243,13 @@ export class ActivityMembersService extends BaseRouteModeService {
     const activeUserId = this.userProfileStore.activeUserId().trim();
     return entries.map(entry => {
       const { involvements: _involvements, ...persistedEntry } = entry;
-      const isPendingInvite = entry.status === 'pending'
-        && (entry.requestKind === 'invite' || entry.requestKind === 'waitlist-invite');
-      const invitedByUserId = isPendingInvite
+      const retainsInviter = entry.status === 'pending'
+        && (
+          entry.requestKind === 'invite'
+          || entry.requestKind === 'waitlist-invite'
+          || entry.requestKind === 'approval'
+        );
+      const invitedByUserId = retainsInviter
         ? (`${entry.invitedByUserId ?? ''}`.trim() || (entry.invitedByActiveUser && activeUserId ? activeUserId : null))
         : null;
       return {

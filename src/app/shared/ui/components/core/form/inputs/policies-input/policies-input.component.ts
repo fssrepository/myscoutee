@@ -47,6 +47,13 @@ type PolicyPopupMenuContext = {
 };
 export type PoliciesInputConfigValue<TValue> = TValue | (() => TValue);
 
+export interface PoliciesInputApprovalConfig {
+  enabled?: PoliciesInputConfigValue<boolean>;
+  acceptedPolicyIds?: PoliciesInputConfigValue<readonly string[]>;
+  disabled?: PoliciesInputConfigValue<boolean>;
+  onToggle?: (policyId: string) => void;
+}
+
 export interface PoliciesInputConfig {
   title?: PoliciesInputConfigValue<string>;
   subtitle?: PoliciesInputConfigValue<string>;
@@ -62,6 +69,7 @@ export interface PoliciesInputConfig {
   requiredPreview?: PoliciesInputConfigValue<string>;
   optionalPreview?: PoliciesInputConfigValue<string>;
   requiredCheckboxLabel?: PoliciesInputConfigValue<string>;
+  approval?: PoliciesInputApprovalConfig | null;
 }
 
 @Component({
@@ -475,6 +483,36 @@ export class PoliciesInputComponent implements ControlValueAccessor, OnDestroy {
 
   protected policyRequired(policy: PolicyInputModel): boolean {
     return policy.required !== false;
+  }
+
+  protected policyApprovalEnabled(): boolean {
+    return this.resolveConfigValue(this.config.approval?.enabled, false);
+  }
+
+  protected policyApprovalDisabled(): boolean {
+    return this.disabled || this.resolveConfigValue(this.config.approval?.disabled, false);
+  }
+
+  protected policyApprovalAccepted(policy: PolicyInputModel): boolean {
+    const policyId = `${policy.id ?? ''}`.trim();
+    return policyId.length > 0
+      && this.resolveConfigValue(
+        this.config.approval?.acceptedPolicyIds,
+        [] as readonly string[]
+      ).includes(policyId);
+  }
+
+  protected togglePolicyApproval(policy: PolicyInputModel, event: Event): void {
+    event.stopPropagation();
+    if (this.policyApprovalDisabled()) {
+      return;
+    }
+    const policyId = `${policy.id ?? ''}`.trim();
+    if (!policyId) {
+      return;
+    }
+    this.config.approval?.onToggle?.(policyId);
+    this.cdr.markForCheck();
   }
 
   private syncPoliciesFromWorkingPolicies(): void {

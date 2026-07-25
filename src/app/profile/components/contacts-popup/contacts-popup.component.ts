@@ -355,6 +355,7 @@ export class ContactsPopupComponent implements OnDestroy {
       ariaLabel: 'Edit Contact',
       closeAriaLabel: 'Close contact form',
       headerTone: 'accent',
+      bodyLayout: 'overflow',
       backdropTone: 'dim',
       headerActions: [{
         id: 'save-contact',

@@ -44,6 +44,7 @@ import {
 } from '../../../shared/ui';
 import {
   ActivitiesPopupStore,
+  type ActivityEventSyncMessage,
   type EventChatRowPatch
 } from '../../../shared/ui/context/stores/activities-popup.store';
 import {
@@ -319,6 +320,7 @@ export class ActivitiesPopupComponent implements OnDestroy {
   protected readonly leavingActivityRowIds = new Set<string>();
   protected readonly activityRowExitAnimationMs = 180;
   private lastAppliedActivityMembersUpdatedMs = 0;
+  private lastAppliedActivityRuntimeUpdatedMs = 0;
   private lastAppliedActivityChatMetricBucketPatchUpdatedMs = 0;
   private unregisterActivitiesExplanationContext: (() => void) | null = null;
   private activitiesExplanationContextKey: string | null = null;
@@ -641,6 +643,7 @@ export class ActivitiesPopupComponent implements OnDestroy {
       pendingMemberUserIds: [...(dto?.pendingMemberUserIds ?? [])],
       invitedMemberUserIds: [...(dto?.invitedMemberUserIds ?? [])],
       pendingRequestMemberUserIds: [...(dto?.pendingRequestMemberUserIds ?? [])],
+      activity: dto?.activity ?? row.menuBadgeCount ?? 0,
       eventScope: this.activitiesEventScope,
       checkoutState: draft?.checkoutState ?? record?.checkoutBasket?.status ?? null,
       checkoutMenuAction: this.activityCheckoutMenuAction(
@@ -869,11 +872,12 @@ export class ActivitiesPopupComponent implements OnDestroy {
     });
 
     effect(() => {
-      const sync = this.activitiesStore.activityEventSync();
-      if (!sync) {
+      const message = this.activitiesStore.activityEventSync();
+      if (!message) {
         return;
       }
-      this.applyActivityEventSync(sync);
+      this.applyActivityEventSyncMessage(message);
+      this.activitiesStore.clearActivityEventSync();
       this.cdr.markForCheck();
     });
 
@@ -894,6 +898,19 @@ export class ActivitiesPopupComponent implements OnDestroy {
       }
       this.lastAppliedActivityMembersUpdatedMs = sync.updatedMs;
       this.applyActivityMembersSyncState(sync);
+      this.cdr.markForCheck();
+    });
+
+    effect(() => {
+      const sync = this.activityStore.activityEventRuntimeSync();
+      if (!sync || sync.updatedMs <= this.lastAppliedActivityRuntimeUpdatedMs) {
+        return;
+      }
+      this.lastAppliedActivityRuntimeUpdatedMs = sync.updatedMs;
+      if (!this.activitiesStore.activitiesOpen() || !this.isEventActivitiesPrimaryFilter()) {
+        return;
+      }
+      this.applyActivityEventRuntimeSync(sync);
       this.cdr.markForCheck();
     });
 
@@ -1040,11 +1057,14 @@ export class ActivitiesPopupComponent implements OnDestroy {
     ownerId: string,
     channelType: string
   ): boolean {
+    if (chatId) {
+      return `${row.id ?? ''}`.trim() === chatId;
+    }
     if (ownerId) {
       return `${row.ownerId ?? ''}`.trim() === ownerId
         && this.matchesEventChatRowChannelType(row, channelType);
     }
-    return `${row.id ?? ''}`.trim() === chatId;
+    return false;
   }
 
   private matchesEventChatRowChannelType(row: ActivityChatListItem, channelType: string): boolean {
@@ -2147,6 +2167,36 @@ export class ActivitiesPopupComponent implements OnDestroy {
     } else {
       smartList.removeVisibleItemByIdentity(patch.identity);
     }
+    this.refreshSectionBadges();
+  }
+
+  private applyActivityEventRuntimeSync(sync: {
+    eventId: string;
+    activityDelta: number;
+  }): void {
+    const smartList = this.activitiesSmartList;
+    const eventId = `${sync.eventId ?? ''}`.trim();
+    if (!smartList || !eventId) {
+      return;
+    }
+    const source = smartList.sourceItemsSnapshot()
+      .find((item): item is ActivityEventDTO =>
+        Boolean(item)
+        && typeof item === 'object'
+        && `${(item as ActivityEventDTO).id ?? ''}`.trim() === eventId
+      ) ?? null;
+    if (!source) {
+      return;
+    }
+    smartList.patchConvertedVisibleItem({
+      ...source,
+      activity: Math.max(
+        0,
+        Math.trunc(Number(source.activity) || 0) + Math.trunc(Number(sync.activityDelta) || 0)
+      )
+    }, {
+      predicate: row => this.isEventStyleActivity(row) && row.id === eventId
+    });
     this.refreshSectionBadges();
   }
 
@@ -3264,6 +3314,13 @@ export class ActivitiesPopupComponent implements OnDestroy {
     if (!this.activitiesSmartList || !this.shouldRemoveVisibleActivityMembershipRow()) {
       return false;
     }
+    return this.removeVisibleActivityEventRow(sourceId);
+  }
+
+  private removeVisibleActivityEventRow(sourceId: string): boolean {
+    if (!this.activitiesSmartList) {
+      return false;
+    }
     const normalizedSourceId = sourceId.trim();
     const matchingIdentities = new Set([
       normalizedSourceId,
@@ -3285,7 +3342,9 @@ export class ActivitiesPopupComponent implements OnDestroy {
     return this.activitiesEventScope === 'all'
       || this.activitiesEventScope === 'active-events'
       || this.activitiesEventScope === 'pending'
-      || this.activitiesEventScope === 'invitations';
+      || this.activitiesEventScope === 'invitations'
+      || this.activitiesEventScope === 'my-events'
+      || this.activitiesEventScope === 'drafts';
   }
 
   private applyActivityMembersSummaryToRow(row: ActivityEventListItem, summary: ActivityMembersSummaryDto): void {
@@ -3463,6 +3522,17 @@ export class ActivitiesPopupComponent implements OnDestroy {
     this.bumpActivitiesEventCardRevision(`hosting:${dto.id}`);
     this.bumpActivitiesEventCardRevision(`invitations:${dto.id}`);
     this.refreshSectionBadges();
+  }
+
+  private applyActivityEventSyncMessage(message: ActivityEventSyncMessage): void {
+    if (message.kind === 'remove') {
+      this.removeVisibleActivityEventRow(message.sourceId);
+      this.bumpActivitiesEventCardRevision(`events:${message.sourceId}`);
+      this.bumpActivitiesEventCardRevision(`hosting:${message.sourceId}`);
+      this.bumpActivitiesEventCardRevision(`invitations:${message.sourceId}`);
+      return;
+    }
+    this.applyActivityEventSync(message.event);
   }
 
   protected activitiesEventCardRevisionForRow(row: ActivityListItem): number {

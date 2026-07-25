@@ -28,6 +28,7 @@ import {
   ActivityMembersService,
   ChatsService,
   EventsService,
+  I18nService,
   UsersService
 } from '../../../shared/core';
 import type { ActivityEventRecord } from '../../../shared/core/contracts/activity.interface';
@@ -63,9 +64,13 @@ import {
 import type { ActivityMemberOwnerType } from '../../../shared/core/common/constants';
 import type { ActivityMemberOwnerRef } from '../../../shared/core/contracts/activity.interface';
 import type * as ActivityContracts from '../../../shared/core/contracts/activity.interface';
+import type { UserMenuCounterDeltasDto } from '../../../shared/core/contracts/user.interface';
 import { UserProfileStore } from '../../../shared/ui/context/stores/user-profile.store';
 import { AppRuntimeStore } from '../../../shared/ui/context/stores/app-runtime.store';
-import { ActivityStore } from '../../../shared/ui/context/stores/activity.store';
+import {
+  ActivityStore,
+  type ActivityCounters
+} from '../../../shared/ui/context/stores/activity.store';
 import { MemberMenuStore } from '../../../shared/ui/context/stores/member-menu.store';
 import { ActivityInvitePopupStore } from '../../../shared/ui/context/stores/activity-invite-popup.store';
 
@@ -74,7 +79,24 @@ interface MembersSmartListFilters {
   pendingOnly?: boolean;
 }
 
-type MemberMenuAction = 'approve' | 'remove' | 'disqualify' | 'reinstate' | 'report' | 'involvement';
+type MemberMenuAction =
+  | 'approve'
+  | 'remove'
+  | 'leave'
+  | 'disqualify'
+  | 'reinstate'
+  | 'promoteAdmin'
+  | 'stepDownAdmin'
+  | 'report'
+  | 'involvement';
+
+type PersistedMemberAction =
+  | 'accept'
+  | 'remove'
+  | 'disqualify'
+  | 'reinstate'
+  | 'promote-admin'
+  | 'step-down-admin';
 
 type MemberMenuContext = {
   menu: 'member-action';
@@ -111,6 +133,7 @@ export class EventMembersPopupComponent {
   private static readonly DEFAULT_POPUP_Z_INDEX = 3800;
 
   private readonly cdr = inject(ChangeDetectorRef);
+  private readonly i18n = inject(I18nService);
   private readonly dialogStore = inject(DialogStore);
   private readonly activityMembersService = inject(ActivityMembersService);
   private readonly chatsService = inject(ChatsService);
@@ -143,6 +166,9 @@ export class EventMembersPopupComponent {
 
   private ownerRecord: ActivityEventRecord | null = null;
   private ownerRef: ActivityMemberOwnerRef | null = null;
+  private parentOwnerRef: ActivityMemberOwnerRef | null = null;
+  private memberEventId = '';
+  private memberSubEventId = '';
   private canManageMembers = false;
   private selectedMembersVisible: ReadonlyArray<ActivityContracts.ActivityMemberDTO> = [];
   private membersListReady = false;
@@ -212,6 +238,10 @@ export class EventMembersPopupComponent {
       if (request.type === 'members') {
         this.openMembersPopup(request.ownerId, {
           ownerType: request.ownerType ?? 'event',
+          parentOwnerId: request.parentOwnerId,
+          parentOwnerType: request.parentOwnerType,
+          eventId: request.eventId,
+          subEventId: request.subEventId,
           subtitle: request.subtitle,
           canManage: request.canManage,
           viewOnly: request.viewOnly,
@@ -261,7 +291,7 @@ export class EventMembersPopupComponent {
       height: 'full',
       headerTone: 'accent',
       bodyLayout: 'fill',
-      headerBadge: this.isSummaryVisible ? this.summaryLabel : null,
+      headerBadge: this.isSummaryVisible ? this.localizedSummaryLabel() : null,
       translateHeaderBadge: false,
       toolbarControls: [
         ...(this.canShowInviteButton ? [{
@@ -340,7 +370,6 @@ export class EventMembersPopupComponent {
       return;
     }
     this.pendingOnly = !this.pendingOnly;
-    this.invalidateMembersCacheForOwner(this.ownerId);
     this.membersSmartList?.closeMenu();
     this.syncMembersSmartListQuery();
     this.cdr.markForCheck();
@@ -358,6 +387,9 @@ export class EventMembersPopupComponent {
     this.isOpen = false;
     this.ownerId = '';
     this.ownerRef = null;
+    this.parentOwnerRef = null;
+    this.memberEventId = '';
+    this.memberSubEventId = '';
     this.lookupRef = null;
     this.ownerRecord = null;
     this.membersSmartList?.closeMenu();
@@ -385,6 +417,7 @@ export class EventMembersPopupComponent {
     this.activityInviteStore.openActivityInvitePopup({
       ownerId: this.ownerId,
       ownerType: this.ownerRef?.ownerType ?? 'event',
+      parentOwner: this.parentOwnerRef,
       title: this.subtitle,
       onApply: selectedCandidates => this.applyInvites(selectedCandidates),
       closeOwnerPopupOnClose: false
@@ -400,8 +433,11 @@ export class EventMembersPopupComponent {
     return this.canShowMemberInvolvement(entry)
       || this.canApproveMember(entry)
       || this.canDeleteMember(entry)
+      || this.canLeaveEvent(entry)
       || this.canDisqualifyMember(entry)
       || this.canReinstateMember(entry)
+      || this.canPromoteAdmin(entry)
+      || this.canStepDownAdmin(entry)
       || this.canReportMember(entry);
   }
 
@@ -446,6 +482,34 @@ export class EventMembersPopupComponent {
         icon: 'assignment_ind',
         palette: 'teal',
         context: { menu: 'member-action', member: entry, action: 'involvement' }
+      });
+    }
+    if (this.canPromoteAdmin(entry)) {
+      items.push({
+        id: `member-action-promote-admin-${entry.id}`,
+        label: 'Promote to admin',
+        icon: 'admin_panel_settings',
+        palette: 'blue',
+        context: { menu: 'member-action', member: entry, action: 'promoteAdmin' }
+      });
+    }
+    if (this.canStepDownAdmin(entry)) {
+      const managerRole = this.managerRoleLabel(entry);
+      items.push({
+        id: `member-action-step-down-admin-${entry.id}`,
+        label: `Step down as ${managerRole}`,
+        icon: 'person',
+        palette: 'warning',
+        context: { menu: 'member-action', member: entry, action: 'stepDownAdmin' }
+      });
+    }
+    if (this.canLeaveEvent(entry)) {
+      items.push({
+        id: `member-action-leave-${entry.id}`,
+        label: 'Leave event',
+        icon: 'logout',
+        palette: 'danger',
+        context: { menu: 'member-action', member: entry, action: 'leave' }
       });
     }
     if (this.canApproveMember(entry)) {
@@ -511,11 +575,20 @@ export class EventMembersPopupComponent {
       case 'remove':
         this.requestRemoveMember(context.member, event.sourceEvent);
         break;
+      case 'leave':
+        this.requestLeaveEvent(context.member, event.sourceEvent);
+        break;
       case 'disqualify':
         this.requestDisqualifyMember(context.member, event.sourceEvent);
         break;
       case 'reinstate':
         this.requestReinstateMember(context.member, event.sourceEvent);
+        break;
+      case 'promoteAdmin':
+        this.requestPromoteAdmin(context.member, event.sourceEvent);
+        break;
+      case 'stepDownAdmin':
+        this.requestStepDownAdmin(context.member, event.sourceEvent);
         break;
       case 'report':
         this.reportMember(context.member, event.sourceEvent);
@@ -561,6 +634,35 @@ export class EventMembersPopupComponent {
     });
   }
 
+  protected requestLeaveEvent(entry: ActivityContracts.ActivityMemberDTO, event: Event): void {
+    event.stopPropagation();
+    if (!this.canLeaveEvent(entry)) {
+      return;
+    }
+    const successor = this.successorAdminFor(entry);
+    const leavingAsAdmin = entry.role === 'Admin'
+      || entry.userId === this.eventOwnerUserId();
+    const ownershipTransferMessage = entry.userId === this.eventOwnerUserId() && successor
+      ? ` Ownership will be transferred to ${successor.name}.`
+      : '';
+    this.membersSmartList?.closeMenu();
+    this.cdr.markForCheck();
+    this.dialogStore.open({
+      title: 'Leave event?',
+      message: leavingAsAdmin
+        ? `You will leave this event and lose access to its admin tools.${ownershipTransferMessage}`
+        : 'You will leave this event.',
+      cancelLabel: 'Cancel',
+      confirmLabel: 'Leave event',
+      busyConfirmLabel: 'Leaving...',
+      confirmTone: 'danger',
+      failureMessage: leavingAsAdmin
+        ? 'Unable to leave event. Another accepted admin must remain.'
+        : 'Unable to leave event.',
+      onConfirm: () => this.confirmLeaveEvent(entry, successor)
+    });
+  }
+
   protected requestDisqualifyMember(entry: ActivityContracts.ActivityMemberDTO, event: Event): void {
     event.stopPropagation();
     if (!this.canDisqualifyMember(entry)) {
@@ -596,6 +698,44 @@ export class EventMembersPopupComponent {
       confirmTone: 'accent',
       failureMessage: 'Unable to reinstate member.',
       onConfirm: () => this.confirmMemberAction(entry, 'reinstate')
+    });
+  }
+
+  protected requestPromoteAdmin(entry: ActivityContracts.ActivityMemberDTO, event: Event): void {
+    event.stopPropagation();
+    if (!this.canPromoteAdmin(entry)) {
+      return;
+    }
+    this.membersSmartList?.closeMenu();
+    this.dialogStore.open({
+      title: 'Promote member to admin?',
+      message: `${entry.name} will be able to manage this event and invite or approve members.`,
+      cancelLabel: 'Cancel',
+      confirmLabel: 'Promote',
+      busyConfirmLabel: 'Promoting...',
+      confirmTone: 'accent',
+      failureMessage: 'Unable to promote member.',
+      onConfirm: () => this.confirmMemberAction(entry, 'promote-admin')
+    });
+  }
+
+  protected requestStepDownAdmin(entry: ActivityContracts.ActivityMemberDTO, event: Event): void {
+    event.stopPropagation();
+    if (!this.canStepDownAdmin(entry)) {
+      return;
+    }
+    this.membersSmartList?.closeMenu();
+    const scope = this.ownerScopeLabel();
+    const managerRole = this.managerRoleLabel(entry);
+    this.dialogStore.open({
+      title: `Step down as ${managerRole}?`,
+      message: `You will remain a member, but will no longer be able to manage this ${scope}.`,
+      cancelLabel: 'Cancel',
+      confirmLabel: 'Step down',
+      busyConfirmLabel: 'Stepping down...',
+      confirmTone: 'warning',
+      failureMessage: `Unable to step down as ${managerRole}.`,
+      onConfirm: () => this.confirmMemberAction(entry, 'step-down-admin')
     });
   }
 
@@ -744,31 +884,154 @@ export class EventMembersPopupComponent {
 
   private async confirmApproveMember(entry: ActivityContracts.ActivityMemberDTO): Promise<void> {
     const previousMembers = this.currentOwnerMembers();
-    const nextMembers = previousMembers.map(member =>
-      member.id === entry.id
-        ? {
-            ...member,
-            status: 'accepted' as const,
-            pendingSource: null,
-            requestKind: null,
-            actionAtIso: AppUtils.toIsoDateTime(new Date())
-          }
-        : member
-    );
-    const approvePromise = this.runMemberUpdateAfterUiYield(nextMembers, previousMembers);
-    await approvePromise;
+    const owner = this.ownerRef && this.ownerRef.ownerId === this.ownerId ? this.ownerRef : null;
+    if (owner) {
+      await this.runMemberActionAfterUiYield(owner, entry.userId, 'accept', previousMembers);
+      return;
+    }
+    const nextMembers = previousMembers.map(member => member.id === entry.id
+      ? {
+          ...member,
+          status: 'accepted' as const,
+          pendingSource: null,
+          requestKind: null,
+          actionAtIso: AppUtils.toIsoDateTime(new Date())
+        }
+      : member);
+    await this.runMemberUpdateAfterUiYield(nextMembers, previousMembers);
   }
 
   private async confirmRemoveMember(entry: ActivityContracts.ActivityMemberDTO): Promise<void> {
     const previousMembers = this.currentOwnerMembers();
+    const owner = this.ownerRef && this.ownerRef.ownerId === this.ownerId ? this.ownerRef : null;
+    if (owner) {
+      await this.runMemberActionAfterUiYield(owner, entry.userId, 'remove', previousMembers);
+      return;
+    }
     const nextMembers = previousMembers.filter(member => member.id !== entry.id);
-    const deletePromise = this.runMemberUpdateAfterUiYield(nextMembers, previousMembers);
-    await deletePromise;
+    await this.runMemberUpdateAfterUiYield(nextMembers, previousMembers);
+  }
+
+  private async confirmLeaveEvent(
+    entry: ActivityContracts.ActivityMemberDTO,
+    successor: ActivityContracts.ActivityMemberDTO | null
+  ): Promise<void> {
+    const activeUserId = this.activeUserId();
+    if (!activeUserId) {
+      return;
+    }
+    const previousMembers = this.currentOwnerMembers();
+    const previousOwnerUserId = this.eventOwnerUserId();
+    const leavingAsAdmin = this.isActiveUserEventAdmin();
+    const sourceRecord = this.ownerRecord
+      ?? this.eventsService.peekKnownRecordById(activeUserId, this.ownerId);
+    const counterDelta = leavingAsAdmin
+      ? this.eventAdminLeaveCounterDelta(sourceRecord)
+      : this.eventParticipantLeaveCounterDelta(entry);
+
+    await this.waitForMemberActionRender();
+    const leaveResult = await this.eventsService.leaveEvent(activeUserId, this.ownerId, {
+      removeMembershipOnly: true,
+      checkoutState: 'cancelled',
+      checkoutResultState: 'deleted',
+      counterDelta
+    });
+    if (!leaveResult
+        || (leaveResult.changed === false && leaveResult.reason !== 'already-applied')
+        || leaveResult.membershipStatus === 'unchanged') {
+      throw new Error('Unable to leave event.');
+    }
+
+    const nextMembers = previousMembers.filter(member => member.userId !== entry.userId);
+    if (this.ownerRecord && entry.userId === previousOwnerUserId && successor) {
+      this.ownerRecord = {
+        ...this.ownerRecord,
+        creatorUserId: successor.userId,
+        creatorName: successor.name,
+        creatorInitials: successor.initials,
+        creatorCity: successor.city,
+        adminIds: nextMembers
+          .filter(member => member.status === 'accepted' && member.role === 'Admin')
+          .map(member => member.userId)
+      };
+    }
+    this.applyCommittedMembers(nextMembers, previousMembers);
+    this.emitEventLeaveMembersSync(leaveResult);
+    if (leaveResult.changed !== false) {
+      this.patchEventLeaveCounterDelta(counterDelta);
+    }
+  }
+
+  private eventAdminLeaveCounterDelta(
+    record: ActivityEventRecord | null
+  ): UserMenuCounterDeltasDto {
+    return {
+      hosting: -1,
+      event: {
+        all: -1,
+        hosting: -1,
+        ...(record?.status === 'DR' ? { drafts: -1 } : {}),
+        trash: 1
+      }
+    };
+  }
+
+  private eventParticipantLeaveCounterDelta(
+    entry: ActivityContracts.ActivityMemberDTO
+  ): UserMenuCounterDeltasDto {
+    if (entry.status === 'pending') {
+      return {
+        event: {
+          all: -1,
+          pending: -1,
+          trash: 1
+        }
+      };
+    }
+    return {
+      events: -1,
+      event: {
+        all: -1,
+        active: -1,
+        trash: 1
+      }
+    };
+  }
+
+  private emitEventLeaveMembersSync(
+    result: ActivityContracts.EventParticipationActionResultDTO
+  ): void {
+    const sourceId = `${result.sourceId ?? this.ownerId}`.trim();
+    if (!sourceId) {
+      return;
+    }
+    const acceptedMembers = Math.max(0, Math.trunc(Number(result.acceptedMembers) || 0));
+    const pendingMembers = Math.max(0, Math.trunc(Number(result.pendingMembers) || 0));
+    this.suppressedOwnerSyncId = sourceId;
+    this.activityStore.emitActivityMembersSync({
+      id: sourceId,
+      acceptedMembers,
+      pendingMembers,
+      capacityTotal: Math.max(acceptedMembers, Math.trunc(Number(result.capacityTotal) || 0)),
+      viewerMembershipRemoved: true
+    });
+  }
+
+  private patchEventLeaveCounterDelta(delta: UserMenuCounterDeltasDto): void {
+    const activeUserId = this.activeUserId();
+    if (!activeUserId) {
+      return;
+    }
+    this.activityStore.patchUserCounterDeltas(
+      activeUserId,
+      delta,
+      (this.userProfileStore.activeUserProfile()?.activities ?? null) as Partial<ActivityCounters> | null
+    );
   }
 
   private async confirmMemberAction(
     entry: ActivityContracts.ActivityMemberDTO,
-    action: 'disqualify' | 'reinstate'
+    action: PersistedMemberAction
   ): Promise<void> {
     const owner = this.ownerRef && this.ownerRef.ownerId === this.ownerId ? this.ownerRef : null;
     if (!owner) {
@@ -780,8 +1043,17 @@ export class EventMembersPopupComponent {
   }
 
   private memberRemovalTitle(entry: ActivityContracts.ActivityMemberDTO): string {
-    if (entry.requestKind === 'join') {
+    if (this.isSelfManagedLeave(entry)) {
+      return `Leave ${this.ownerScopeLabel()}?`;
+    }
+    if (this.isInvitation(entry) && this.isCurrentUser(entry)) {
+      return 'Reject invitation?';
+    }
+    if (this.isJoinRequest(entry)) {
       return 'Reject request?';
+    }
+    if (entry.status === 'accepted' && entry.role === 'Admin') {
+      return 'Remove admin?';
     }
     if (entry.status === 'accepted') {
       return 'Remove member?';
@@ -790,8 +1062,17 @@ export class EventMembersPopupComponent {
   }
 
   private memberRemovalMessage(entry: ActivityContracts.ActivityMemberDTO): string {
-    if (entry.requestKind === 'join') {
+    if (this.isSelfManagedLeave(entry)) {
+      return `You will leave this ${this.ownerScopeLabel()}.`;
+    }
+    if (this.isInvitation(entry) && this.isCurrentUser(entry)) {
+      return `Reject your invitation to this ${this.ownerScopeLabel()}?`;
+    }
+    if (this.isJoinRequest(entry)) {
       return `Reject ${entry.name}'s request to join this ${this.ownerScopeLabel()}?`;
+    }
+    if (entry.status === 'accepted' && entry.role === 'Admin') {
+      return `Remove ${entry.name} as an admin and from this ${this.ownerScopeLabel()}?`;
     }
     if (entry.status === 'accepted') {
       return `Remove ${entry.name} from this ${this.ownerScopeLabel()}?`;
@@ -800,22 +1081,49 @@ export class EventMembersPopupComponent {
   }
 
   private memberRemovalConfirmLabel(entry: ActivityContracts.ActivityMemberDTO): string {
-    if (entry.requestKind === 'join') {
+    if (this.isSelfManagedLeave(entry)) {
+      return 'Leave';
+    }
+    if (this.isInvitation(entry) && this.isCurrentUser(entry)) {
       return 'Reject';
+    }
+    if (this.isJoinRequest(entry)) {
+      return 'Reject';
+    }
+    if (entry.status === 'accepted' && entry.role === 'Admin') {
+      return 'Remove admin';
     }
     return entry.status === 'accepted' ? 'Remove' : 'Delete';
   }
 
   private memberRemovalBusyLabel(entry: ActivityContracts.ActivityMemberDTO): string {
-    if (entry.requestKind === 'join') {
+    if (this.isSelfManagedLeave(entry)) {
+      return 'Leaving...';
+    }
+    if (this.isInvitation(entry) && this.isCurrentUser(entry)) {
       return 'Rejecting...';
+    }
+    if (this.isJoinRequest(entry)) {
+      return 'Rejecting...';
+    }
+    if (entry.status === 'accepted' && entry.role === 'Admin') {
+      return 'Removing admin...';
     }
     return entry.status === 'accepted' ? 'Removing...' : 'Deleting...';
   }
 
   private memberRemovalFailureMessage(entry: ActivityContracts.ActivityMemberDTO): string {
-    if (entry.requestKind === 'join') {
+    if (this.isSelfManagedLeave(entry)) {
+      return `Unable to leave this ${this.ownerScopeLabel()}.`;
+    }
+    if (this.isInvitation(entry) && this.isCurrentUser(entry)) {
+      return 'Unable to reject invitation.';
+    }
+    if (this.isJoinRequest(entry)) {
       return 'Unable to reject request.';
+    }
+    if (entry.status === 'accepted' && entry.role === 'Admin') {
+      return 'Unable to remove admin.';
     }
     if (entry.status === 'accepted') {
       return 'Unable to remove member.';
@@ -824,10 +1132,19 @@ export class EventMembersPopupComponent {
   }
 
   protected deleteLabel(entry: ActivityContracts.ActivityMemberDTO): string {
+    if (this.isSelfManagedLeave(entry)) {
+      return `Leave ${this.ownerScopeLabel()}`;
+    }
+    if (entry.status === 'accepted' && entry.role === 'Admin') {
+      return 'Remove admin';
+    }
     if (entry.status === 'accepted') {
       return 'Remove member';
     }
-    if (entry.requestKind === 'join') {
+    if (this.isInvitation(entry) && this.isCurrentUser(entry)) {
+      return 'Reject invitation';
+    }
+    if (this.isJoinRequest(entry)) {
       return 'Reject request';
     }
     return 'Delete invitation';
@@ -836,37 +1153,14 @@ export class EventMembersPopupComponent {
 
   private async applyInvites(selectedCandidates: readonly ActivityContracts.ActivityMemberDTO[]): Promise<void> {
     const previousMembers = this.currentOwnerMembers();
-    const existingPendingInvites = previousMembers.filter(member =>
-      member.status === 'pending' && member.requestKind === 'invite'
-    );
-    const preservedMembers = previousMembers.filter(member =>
-      !(member.status === 'pending' && member.requestKind === 'invite')
-    );
-    const existingPendingInviteByUserId = new Map(existingPendingInvites.map(member => [member.userId, member]));
-    const selectedUserIds = selectedCandidates.map(candidate => candidate.userId);
-    const selectionChanged = selectedUserIds.length !== existingPendingInvites.length
-      || selectedUserIds.some(userId => !existingPendingInviteByUserId.has(userId));
-    if (!selectionChanged) {
+    const existingUserIds = new Set(previousMembers.map(member => member.userId));
+    const additions = selectedCandidates.filter(candidate => !existingUserIds.has(candidate.userId));
+    if (additions.length === 0) {
       return;
     }
     const activeUserId = this.activeUserId();
     const nowIso = AppUtils.toIsoDateTime(new Date());
-    const nextPendingInvites = selectedCandidates.map(candidate => {
-      const existing = existingPendingInviteByUserId.get(candidate.userId);
-      if (existing) {
-        return {
-          ...existing,
-          ...candidate,
-          id: existing.id,
-          status: 'pending' as const,
-          pendingSource: 'admin' as const,
-          requestKind: 'invite' as const,
-          invitedByActiveUser: true,
-          invitedByUserId: activeUserId,
-          actionAtIso: existing.actionAtIso || nowIso
-        };
-      }
-      return {
+    const nextPendingInvites = additions.map(candidate => ({
         ...candidate,
         status: 'pending' as const,
         pendingSource: 'admin' as const,
@@ -875,9 +1169,26 @@ export class EventMembersPopupComponent {
         invitedByUserId: activeUserId,
         statusText: candidate.statusText?.trim() || 'Waiting for admin approval.',
         actionAtIso: nowIso
-      };
-    });
-    await this.commitMembers([...preservedMembers, ...nextPendingInvites], previousMembers);
+      }));
+    const owner = this.ownerRef && this.ownerRef.ownerId === this.ownerId ? this.ownerRef : null;
+    if (owner?.ownerType === 'event' && !this.activityMembersService.usesLocalDataSource()) {
+      this.suppressedOwnerSyncId = this.ownerId;
+      let normalizedMembers: ActivityContracts.ActivityMemberDTO[];
+      try {
+        normalizedMembers = await this.activityMembersService.inviteEventMembers(
+          owner,
+          additions.map(candidate => candidate.userId)
+        );
+      } catch (error) {
+        if (this.suppressedOwnerSyncId === this.ownerId) {
+          this.suppressedOwnerSyncId = null;
+        }
+        throw error;
+      }
+      this.applyCommittedMembers(normalizedMembers, previousMembers);
+      return;
+    }
+    await this.commitMembers([...previousMembers, ...nextPendingInvites], previousMembers);
   }
 
   private openMembersPopup(
@@ -887,6 +1198,10 @@ export class EventMembersPopupComponent {
       canManage?: boolean;
       viewOnly?: boolean;
       ownerType?: ActivityMemberOwnerType;
+      parentOwnerId?: string;
+      parentOwnerType?: ActivityMemberOwnerType;
+      eventId?: string;
+      subEventId?: string;
       lookup?: AppUiTypes.PopupHeaderLookup;
       acceptedMembers?: number;
       pendingMembers?: number;
@@ -902,8 +1217,14 @@ export class EventMembersPopupComponent {
     }
     const ownerType = options?.ownerType ?? 'event';
     const lookup = options?.lookup ?? null;
-    const initialMembers = ownerType !== 'event' && Array.isArray(options?.initialMembers)
-      ? this.sortMembersByActionTimeDesc(options.initialMembers)
+    const providedInitialMembers = ownerType !== 'event' && Array.isArray(options?.initialMembers)
+      ? [...options.initialMembers]
+      : null;
+    const isScopedAssetOwner = ownerType === 'asset'
+      && `${options?.eventId ?? ''}`.trim().length > 0
+      && `${options?.subEventId ?? ''}`.trim().length > 0;
+    const initialMembers = this.activityMembersService.usesLocalDataSource() && !isScopedAssetOwner
+      ? providedInitialMembers
       : null;
     this.isOpen = true;
     this.ownerId = normalizedOwnerId;
@@ -916,6 +1237,17 @@ export class EventMembersPopupComponent {
           ownerType,
           ownerId: normalizedOwnerId
         };
+    this.memberEventId = `${options?.eventId ?? ''}`.trim();
+    this.memberSubEventId = `${options?.subEventId ?? ''}`.trim();
+    const explicitParentOwnerId = `${options?.parentOwnerId ?? ''}`.trim();
+    const fallbackParentOwnerId = ownerType === 'event' ? '' : this.memberEventId;
+    const parentOwnerId = explicitParentOwnerId || fallbackParentOwnerId;
+    this.parentOwnerRef = parentOwnerId
+      ? {
+          ownerId: parentOwnerId,
+          ownerType: options?.parentOwnerType ?? 'event'
+        }
+      : null;
     this.ownerRecord = null;
     this.title = 'Members';
     this.subtitle = options?.subtitle?.trim() || 'Event';
@@ -931,6 +1263,10 @@ export class EventMembersPopupComponent {
     this.isLocalMembersSource = initialMembers !== null;
     if (initialMembers) {
       this.membersCacheByOwnerId.set(this.membersCacheKey(normalizedOwnerId), initialMembers);
+      this.membersCacheByOwnerId.set(
+        this.membersCacheKey(normalizedOwnerId, true),
+        initialMembers.filter(member => member.status === 'pending')
+      );
       this.pendingInitialMembersDelayOwnerIds.add(normalizedOwnerId);
       void this.usersService.warmCachedUsers(
         initialMembers
@@ -943,8 +1279,8 @@ export class EventMembersPopupComponent {
     }
     this.membersChangeHandler = options?.onMembersChanged ?? null;
     this.membersSmartListQuery = {};
-    if (initialMembers && !Number.isFinite(Number(options?.acceptedMembers)) && !Number.isFinite(Number(options?.pendingMembers)) && !Number.isFinite(Number(options?.capacityTotal))) {
-      this.applySummaryFromMembers(initialMembers);
+    if (providedInitialMembers && !Number.isFinite(Number(options?.acceptedMembers)) && !Number.isFinite(Number(options?.pendingMembers)) && !Number.isFinite(Number(options?.capacityTotal))) {
+      this.applySummaryFromMembers(providedInitialMembers);
     }
     const hasProvidedSummary =
       Number.isFinite(Number(options?.acceptedMembers))
@@ -1069,13 +1405,22 @@ export class EventMembersPopupComponent {
         ? this.ownerRef
         : null;
       const loadedMembers = owner
-        ? await this.activityMembersService.queryMembersByOwner(owner, { pendingOnly })
-        : await this.activityMembersService.queryMembersByOwnerId(ownerId, { pendingOnly });
-      members = this.sortMembersByActionTimeDesc(loadedMembers);
+        ? await this.activityMembersService.queryMembersByOwner(owner, {
+            pendingOnly,
+            eventId: this.memberEventId,
+            subEventId: this.memberSubEventId
+          })
+        : await this.activityMembersService.queryMembersByOwnerId(ownerId, {
+            pendingOnly,
+            eventId: this.memberEventId,
+            subEventId: this.memberSubEventId
+          });
+      members = [...loadedMembers];
       void this.usersService.warmCachedUsers(members.map(member => member.userId));
       this.membersCacheByOwnerId.set(cacheKey, members);
       if (!pendingOnly && this.isOpen && this.ownerId === ownerId) {
         this.syncCanManageMembers(members);
+        this.applySummaryFromMembers(members);
       }
     }
 
@@ -1097,7 +1442,7 @@ export class EventMembersPopupComponent {
     if (this.lookupRef?.type === 'chat') {
       return;
     }
-    const normalizedMembers = this.sortMembersByActionTimeDesc(members);
+    const normalizedMembers = [...members];
     const owner = this.ownerRef && this.ownerRef.ownerId === this.ownerId ? this.ownerRef : null;
     const capacityTotal = Math.max(
       normalizedMembers.filter(member => member.status === 'accepted').length,
@@ -1107,7 +1452,10 @@ export class EventMembersPopupComponent {
       this.suppressedOwnerSyncId = this.ownerId;
       if (owner) {
         try {
-          await this.activityMembersService.replaceMembersByOwner(owner, normalizedMembers, capacityTotal);
+          await this.activityMembersService.replaceMembersByOwner(owner, normalizedMembers, capacityTotal, {
+            eventId: this.memberEventId,
+            subEventId: this.memberSubEventId
+          });
         } catch (error) {
           if (this.suppressedOwnerSyncId === this.ownerId) {
             this.suppressedOwnerSyncId = null;
@@ -1116,7 +1464,10 @@ export class EventMembersPopupComponent {
         }
       } else {
         try {
-          await this.activityMembersService.replaceMembersByOwnerId(this.ownerId, normalizedMembers, capacityTotal);
+          await this.activityMembersService.replaceMembersByOwnerId(this.ownerId, normalizedMembers, capacityTotal, {
+            eventId: this.memberEventId,
+            subEventId: this.memberSubEventId
+          });
         } catch (error) {
           if (this.suppressedOwnerSyncId === this.ownerId) {
             this.suppressedOwnerSyncId = null;
@@ -1125,14 +1476,25 @@ export class EventMembersPopupComponent {
         }
       }
     }
-    this.membersCacheByOwnerId.set(this.membersCacheKey(this.ownerId), normalizedMembers);
+    this.applyCommittedMembers(normalizedMembers, previousMembers);
+  }
+
+  private applyCommittedMembers(
+    normalizedMembers: readonly ActivityContracts.ActivityMemberDTO[],
+    previousMembers: readonly ActivityContracts.ActivityMemberDTO[]
+  ): void {
+    if (!this.ownerId) {
+      return;
+    }
+    const nextMembers = [...normalizedMembers];
+    this.membersCacheByOwnerId.set(this.membersCacheKey(this.ownerId), nextMembers);
     this.membersCacheByOwnerId.delete(this.membersCacheKey(this.ownerId, true));
-    this.syncCanManageMembers(normalizedMembers);
-    this.applySummaryFromMembers(normalizedMembers);
+    this.syncCanManageMembers(nextMembers);
+    this.applySummaryFromMembers(nextMembers);
     this.membersSmartList?.closeMenu();
-    this.syncVisibleMembers(previousMembers, normalizedMembers);
+    this.syncVisibleMembers(previousMembers, nextMembers);
     if (this.membersChangeHandler) {
-      this.membersChangeHandler(normalizedMembers);
+      this.membersChangeHandler(nextMembers);
     }
     this.cdr.markForCheck();
   }
@@ -1171,9 +1533,15 @@ export class EventMembersPopupComponent {
     if (this.viewOnlyMode) {
       return false;
     }
-    return this.canManageMembers
-      && entry.status === 'pending'
-      && this.isJoinRequest(entry);
+    if (entry.status !== 'pending') {
+      return false;
+    }
+    if (this.isCurrentUser(entry)) {
+      return this.ownerRef != null
+        && this.ownerRef.ownerType !== 'event'
+        && this.isInvitation(entry);
+    }
+    return this.canManageMembers && this.isJoinRequest(entry);
   }
 
   protected canDeleteMember(entry: ActivityContracts.ActivityMemberDTO): boolean {
@@ -1183,12 +1551,39 @@ export class EventMembersPopupComponent {
     if (entry.status === 'disqualified') {
       return false;
     }
+    if (this.isSelfManagedLeave(entry)) {
+      return true;
+    }
+    if (this.ownerRef != null
+        && this.ownerRef.ownerType !== 'event'
+        && entry.status === 'accepted'
+        && this.isProtectedManagerMember(entry)) {
+      return false;
+    }
+    if (this.ownerRef != null
+        && this.ownerRef.ownerType !== 'event'
+        && entry.status === 'accepted'
+        && this.isCurrentUser(entry)) {
+      return true;
+    }
+    if (this.ownerRef?.ownerType === 'event' && entry.userId === this.eventOwnerUserId()) {
+      return false;
+    }
+    if (this.ownerRef?.ownerType === 'event' && entry.status === 'accepted' && entry.role === 'Admin') {
+      return this.isActiveUserEventOwner() && !this.isCurrentUser(entry);
+    }
+    if (entry.status === 'pending' && this.isInvitation(entry)) {
+      return entry.invitedByActiveUser === true
+        || (this.ownerRef?.ownerType !== 'event'
+          && (this.isCurrentUser(entry) || this.canManageMembers));
+    }
+    if (entry.status === 'pending' && this.isJoinRequest(entry)) {
+      return this.canManageMembers;
+    }
     if (this.canManageMembers) {
       return true;
     }
-    return entry.status === 'pending'
-      && entry.requestKind === 'invite'
-      && entry.invitedByActiveUser === true;
+    return false;
   }
 
   protected canDisqualifyMember(entry: ActivityContracts.ActivityMemberDTO): boolean {
@@ -1205,6 +1600,46 @@ export class EventMembersPopupComponent {
       return false;
     }
     return entry.status === 'disqualified';
+  }
+
+  protected canPromoteAdmin(entry: ActivityContracts.ActivityMemberDTO): boolean {
+    if (this.viewOnlyMode
+        || !this.ownerRef
+        || entry.status !== 'accepted'
+        || entry.role === 'Admin'
+        || this.isCurrentUser(entry)) {
+      return false;
+    }
+    return this.ownerRef.ownerType === 'event'
+      ? this.isActiveUserEventAdmin()
+      : this.canManageMembers;
+  }
+
+  protected canStepDownAdmin(entry: ActivityContracts.ActivityMemberDTO): boolean {
+    if (this.viewOnlyMode
+        || !this.ownerRef
+        || entry.status !== 'accepted'
+        || !this.isCurrentUser(entry)) {
+      return false;
+    }
+    if (this.ownerRef.ownerType === 'event') {
+      return entry.role === 'Admin' && entry.userId !== this.eventOwnerUserId();
+    }
+    return this.isProtectedManagerMember(entry)
+      && this.successorManagerFor(entry) !== null;
+  }
+
+  protected canLeaveEvent(entry: ActivityContracts.ActivityMemberDTO): boolean {
+    if (this.viewOnlyMode
+      || this.ownerRef?.ownerType !== 'event'
+      || entry.status !== 'accepted'
+      || !this.isCurrentUser(entry)) {
+      return false;
+    }
+    const leavingAsAdmin = entry.role === 'Admin'
+      || entry.userId === this.eventOwnerUserId();
+    return !leavingAsAdmin
+      || this.successorAdminFor(entry) !== null;
   }
 
   protected canReportMember(entry: ActivityContracts.ActivityMemberDTO): boolean {
@@ -1229,13 +1664,18 @@ export class EventMembersPopupComponent {
     }
     const activeUserId = this.activeUserId();
     const activeMember = members.find(member => member.userId === activeUserId && member.status === 'accepted');
-    const activeMemberCanManage = activeMember?.role === 'Admin' || activeMember?.role === 'Manager';
+    const activeMemberCanManage = this.ownerRef?.ownerType === 'event'
+      ? activeMember?.role === 'Admin'
+      : activeMember?.role === 'Admin' || activeMember?.role === 'Manager';
     const ownerRecordCanManage = !!this.ownerRecord && (
       this.ownerRecord.creatorUserId === activeUserId
       || (this.ownerRecord.adminIds ?? []).includes(activeUserId)
     );
-    this.canManageMembers = this.requestedCanManageMembers || ownerRecordCanManage || activeMemberCanManage;
-    this.canShowInviteButton = this.canManageMembers || !!activeMember;
+    this.canManageMembers = this.ownerRef?.ownerType === 'event'
+      ? ownerRecordCanManage || activeMemberCanManage
+      : this.requestedCanManageMembers || ownerRecordCanManage || activeMemberCanManage;
+    this.canShowInviteButton = this.canManageMembers
+      || (this.ownerRef?.ownerType !== 'asset' && !!activeMember);
   }
 
   private applySummaryFromMembers(members: readonly ActivityContracts.ActivityMemberDTO[]): void {
@@ -1286,12 +1726,15 @@ export class EventMembersPopupComponent {
       return;
     }
     const previousMembers = this.currentOwnerMembers();
-    void this.activityMembersService.queryMembersByOwner(owner)
+    void this.activityMembersService.queryMembersByOwner(owner, {
+      eventId: this.memberEventId,
+      subEventId: this.memberSubEventId
+    })
       .then(members => {
         if (!this.isOpen || this.ownerId !== sync.id || !this.ownerRef || this.ownerRef.ownerId !== sync.id) {
           return;
         }
-        const normalizedMembers = this.sortMembersByActionTimeDesc(members);
+        const normalizedMembers = [...members];
         this.membersCacheByOwnerId.set(this.membersCacheKey(sync.id), normalizedMembers);
         this.membersCacheByOwnerId.delete(this.membersCacheKey(sync.id, true));
         this.syncCanManageMembers(normalizedMembers);
@@ -1309,20 +1752,26 @@ export class EventMembersPopupComponent {
   }
 
   private isJoinRequest(entry: ActivityContracts.ActivityMemberDTO): boolean {
+    if (this.isInvitation(entry)) {
+      return false;
+    }
     return entry.requestKind === 'join'
+      || entry.requestKind === 'approval'
       || (entry.requestKind == null && entry.pendingSource === 'member');
+  }
+
+  private isInvitation(entry: ActivityContracts.ActivityMemberDTO): boolean {
+    return entry.status === 'pending'
+      && entry.requestKind !== 'approval'
+      && (entry.requestKind === 'invite'
+      || entry.requestKind === 'waitlist-invite'
+      || (entry.requestKind == null
+        && (entry.pendingSource === 'admin'
+          || entry.statusText.toLowerCase().includes('admin approval'))));
   }
 
   private isWaitlistMember(entry: ActivityContracts.ActivityMemberDTO): boolean {
     return entry.requestKind === 'waitlist' || entry.requestKind === 'waitlist-invite';
-  }
-
-  private sortMembersByActionTimeDesc(
-    entries: readonly ActivityContracts.ActivityMemberDTO[]
-  ): ActivityContracts.ActivityMemberDTO[] {
-    return [...entries].sort((left, right) =>
-      AppUtils.toSortableDate(right.actionAtIso) - AppUtils.toSortableDate(left.actionAtIso)
-    );
   }
 
   private async runMemberUpdateAfterUiYield(
@@ -1336,7 +1785,7 @@ export class EventMembersPopupComponent {
   private async runMemberActionAfterUiYield(
     owner: ActivityMemberOwnerRef,
     targetUserId: string,
-    action: 'disqualify' | 'reinstate',
+    action: PersistedMemberAction,
     previousMembers: readonly ActivityContracts.ActivityMemberDTO[]
   ): Promise<void> {
     await this.waitForMemberActionRender();
@@ -1346,7 +1795,10 @@ export class EventMembersPopupComponent {
     this.suppressedOwnerSyncId = this.ownerId;
     let normalizedMembers: ActivityContracts.ActivityMemberDTO[];
     try {
-      normalizedMembers = this.sortMembersByActionTimeDesc(await this.activityMembersService.applyMemberAction(owner, targetUserId, action));
+      normalizedMembers = [...await this.activityMembersService.applyMemberAction(owner, targetUserId, action, null, {
+        eventId: this.memberEventId,
+        subEventId: this.memberSubEventId
+      })];
     } catch (error) {
       if (this.suppressedOwnerSyncId === this.ownerId) {
         this.suppressedOwnerSyncId = null;
@@ -1369,8 +1821,74 @@ export class EventMembersPopupComponent {
     return entry.userId === this.activeUserId();
   }
 
+  private isSelfManagedLeave(entry: ActivityContracts.ActivityMemberDTO): boolean {
+    return this.ownerRef != null
+      && this.ownerRef.ownerType !== 'event'
+      && this.isCurrentUser(entry)
+      && (
+        entry.status === 'accepted'
+        || (entry.status === 'pending' && this.isJoinRequest(entry))
+      );
+  }
+
+  private successorAdminFor(
+    entry: ActivityContracts.ActivityMemberDTO
+  ): ActivityContracts.ActivityMemberDTO | null {
+    return this.currentOwnerMembers()
+      .filter(member => member.userId !== entry.userId)
+      .filter(member => member.status === 'accepted' && member.role === 'Admin')
+      .sort((left, right) =>
+        AppUtils.toSortableDate(left.actionAtIso)
+        - AppUtils.toSortableDate(right.actionAtIso)
+      )[0] ?? null;
+  }
+
+  private successorManagerFor(
+    entry: ActivityContracts.ActivityMemberDTO
+  ): ActivityContracts.ActivityMemberDTO | null {
+    return this.currentOwnerMembers()
+      .filter(member => member.userId !== entry.userId)
+      .filter(member =>
+        member.status === 'accepted'
+        && (member.role === 'Admin' || member.role === 'Manager')
+      )
+      .sort((left, right) =>
+        AppUtils.toSortableDate(left.actionAtIso)
+        - AppUtils.toSortableDate(right.actionAtIso)
+      )[0] ?? null;
+  }
+
+  private eventOwnerUserId(): string {
+    return `${this.ownerRecord?.creatorUserId ?? ''}`.trim();
+  }
+
+  private isActiveUserEventOwner(): boolean {
+    const activeUserId = this.activeUserId();
+    return Boolean(activeUserId) && activeUserId === this.eventOwnerUserId();
+  }
+
+  private isActiveUserEventAdmin(): boolean {
+    const activeUserId = this.activeUserId();
+    if (!activeUserId) {
+      return false;
+    }
+    if (this.isActiveUserEventOwner() || (this.ownerRecord?.adminIds ?? []).includes(activeUserId)) {
+      return true;
+    }
+    return this.currentOwnerMembers().some(member =>
+      member.userId === activeUserId
+      && member.status === 'accepted'
+      && member.role === 'Admin'
+    );
+  }
+
   private isProtectedManagerMember(entry: ActivityContracts.ActivityMemberDTO): boolean {
-    return entry.role === 'Admin' || entry.role === 'Manager';
+    return entry.role === 'Admin'
+      || (this.ownerRef?.ownerType !== 'event' && entry.role === 'Manager');
+  }
+
+  private managerRoleLabel(entry: ActivityContracts.ActivityMemberDTO): 'admin' | 'manager' {
+    return entry.role === 'Manager' ? 'manager' : 'admin';
   }
 
   private async waitForMemberActionRender(): Promise<void> {
@@ -1415,6 +1933,16 @@ export class EventMembersPopupComponent {
       : `${this.acceptedCount} members`;
     this.isSummaryVisible = true;
     this.emitMemberMetricBucketPatch();
+  }
+
+  private localizedSummaryLabel(): string {
+    this.i18n.revision();
+    const members = this.i18n.translateParams('members.count', { count: this.acceptedCount });
+    if (this.pendingCount <= 0) {
+      return members;
+    }
+    const pending = this.i18n.translateParams('pending.count', { count: this.pendingCount });
+    return `${members} · ${pending}`;
   }
 
   private emitMemberMetricBucketPatch(): void {

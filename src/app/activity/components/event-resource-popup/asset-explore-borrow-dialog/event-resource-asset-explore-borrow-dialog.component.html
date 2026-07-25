@@ -11,7 +11,7 @@
               (ngModelChange)="changeDateInputRange($event)"
             ></app-date-input>
             <label class="asset-explore-borrow-quantity-field">
-              <span>Quantity</span>
+              <span>{{ 'quantity' | i18n }}</span>
               <input
                 type="number"
                 min="1"
@@ -26,17 +26,17 @@
 
           @if (!dialog.paymentStep) {
             <p class="asset-explore-borrow-availability">
-              Available for this time: {{ dialog.availableQuantity }} {{ dialog.availableQuantity === 1 ? 'item' : 'items' }}
+              {{ availabilityLabel(dialog.availableQuantity) }}
             </p>
           }
 
           <section class="asset-explore-borrow-review-card">
             <div class="asset-explore-borrow-review-card__head">
               <div>
-                <h4>Borrow Summary</h4>
+                <h4>{{ 'asset.borrow.summary' | i18n }}</h4>
                 <span>{{ dialog.timeframe }}</span>
               </div>
-              <strong>{{ dialog.totalAmount > 0 ? formatMoney(dialog.totalAmount, dialog.currency) : 'Included' }}</strong>
+              <strong>{{ dialog.totalAmount > 0 ? formatMoney(dialog.totalAmount, dialog.currency) : ('included' | i18n) }}</strong>
             </div>
             <div class="asset-explore-borrow-review-card__list">
               @for (item of dialog.lineItems; track item.id) {
@@ -45,7 +45,7 @@
                     <strong>{{ item.label }}</strong>
                     <span>{{ item.detail }}</span>
                   </div>
-                  <strong>{{ item.amount > 0 ? formatMoney(item.amount, item.currency) : 'Included' }}</strong>
+                  <strong>{{ item.amount > 0 ? formatMoney(item.amount, item.currency) : ('included' | i18n) }}</strong>
                 </article>
               }
             </div>
@@ -55,15 +55,15 @@
             <section class="asset-explore-borrow-review-card">
               <div class="asset-explore-borrow-review-card__head">
                 <div>
-                  <h4>Cancellation & Reimbursement</h4>
-                  <span>What this borrow can reimburse if you cancel before it starts</span>
+                  <h4>{{ 'asset.borrow.cancellation.title' | i18n }}</h4>
+                  <span>{{ 'asset.borrow.cancellation.subtitle' | i18n }}</span>
                 </div>
               </div>
               @if (cancellationPreview(dialog); as preview) {
                 <div class="asset-explore-borrow-review-card__list">
                   <article class="asset-explore-borrow-review-card__item">
                     <div>
-                      <strong>Current reimbursement</strong>
+                      <strong>{{ 'asset.borrow.current.reimbursement' | i18n }}</strong>
                       <span>{{ preview.note }}</span>
                     </div>
                     <strong>{{ preview.refundLabel }}</strong>
@@ -86,8 +86,8 @@
             <section class="asset-explore-borrow-review-card">
               <div class="asset-explore-borrow-review-card__head">
                 <div>
-                  <h4>Policies</h4>
-                  <span>Review and approve before continuing</span>
+                  <h4>{{ 'asset.borrow.policies' | i18n }}</h4>
+                  <span>{{ 'asset.borrow.policies.review' | i18n }}</span>
                 </div>
               </div>
               <div class="asset-explore-borrow-policy-list">
@@ -105,7 +105,7 @@
                       }
                     </div>
                     @if (policy.required !== false) {
-                      <em>Required</em>
+                      <em>{{ 'required' | i18n }}</em>
                     }
                   </label>
                 }
@@ -117,23 +117,23 @@
             <section class="asset-explore-borrow-review-card asset-explore-borrow-review-card--payment">
               <div class="asset-explore-borrow-review-card__head">
                 <div>
-                  <h4>Borrow Request</h4>
-                  <span>Confirm the borrow window first. Payment can be completed after the request is held.</span>
+                  <h4>{{ 'asset.borrow.request.title' | i18n }}</h4>
+                  <span>{{ 'asset.borrow.request.payment.after.hold' | i18n }}</span>
                 </div>
                 <strong>{{ formatMoney(dialog.totalAmount, dialog.currency) }}</strong>
               </div>
               <div class="asset-explore-borrow-payment-summary">
                 <article>
-                  <span>Amount due</span>
+                  <span>{{ 'asset.borrow.amount.due' | i18n }}</span>
                   <strong>{{ formatMoney(dialog.totalAmount, dialog.currency) }}</strong>
                 </article>
                 <article>
-                  <span>Next step</span>
-                  <strong>Payment</strong>
+                  <span>{{ 'asset.borrow.next.step' | i18n }}</span>
+                  <strong>{{ 'payment' | i18n }}</strong>
                 </article>
               </div>
               <p class="asset-explore-borrow-payment-note">
-                The borrow request is confirmed before payment, so the payment step can remain available from the basket.
+                {{ 'asset.borrow.request.payment.note' | i18n }}
               </p>
             </section>
           }
@@ -142,39 +142,39 @@
             <section class="asset-explore-borrow-review-card asset-explore-borrow-review-card--payment">
               <div class="asset-explore-borrow-review-card__head">
                 <div>
-                  <h4>Payment</h4>
-                  <span>Pay for the confirmed borrow window.</span>
+                  <h4>{{ 'payment' | i18n }}</h4>
+                  <span>{{ 'asset.borrow.payment.subtitle' | i18n }}</span>
                 </div>
-                <strong>Dummy pay</strong>
+                <strong>{{ 'asset.borrow.payment.demo' | i18n }}</strong>
               </div>
               <div class="asset-explore-borrow-payment-summary">
                 <article>
-                  <span>Amount due</span>
+                  <span>{{ 'asset.borrow.amount.due' | i18n }}</span>
                   <strong>{{ formatMoney(dialog.totalAmount, dialog.currency) }}</strong>
                 </article>
                 <article>
-                  <span>Status</span>
-                  <strong>Ready to pay</strong>
+                  <span>{{ 'event.editor.payment.status' | i18n }}</span>
+                  <strong>{{ 'asset.borrow.payment.ready' | i18n }}</strong>
                 </article>
               </div>
               <p class="asset-explore-borrow-payment-note">
-                The fields stay locked here, but the amount, timeframe, and policy approval have already been reviewed.
+                {{ 'asset.borrow.payment.locked.note' | i18n }}
               </p>
               <div class="asset-explore-borrow-payment-grid">
                 <label>
-                  <span>Card number</span>
+                  <span>{{ 'event.editor.payment.card.number' | i18n }}</span>
                   <input type="text" value="4242 4242 4242 4242" disabled />
                 </label>
                 <label>
-                  <span>Name on card</span>
+                  <span>{{ 'event.editor.payment.card.name' | i18n }}</span>
                   <input type="text" value="Demo User" disabled />
                 </label>
                 <label>
-                  <span>Expiry</span>
+                  <span>{{ 'event.editor.payment.card.expiry' | i18n }}</span>
                   <input type="text" value="12 / 30" disabled />
                 </label>
                 <label>
-                  <span>CVC</span>
+                  <span>{{ 'event.editor.payment.card.cvc' | i18n }}</span>
                   <input type="text" value="123" disabled />
                 </label>
               </div>

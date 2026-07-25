@@ -9,6 +9,8 @@ import {
   type DateInputValue
 } from '../../../../shared/ui/components/core/form/inputs/date-input/date-input.component';
 import { AppUtils } from '../../../../shared/app-utils';
+import { I18nService } from '../../../../shared/core/base/services/i18n.service';
+import { I18nPipe } from '../../../../shared/ui/pipes/i18n.pipe';
 import type * as ActivityContracts from '../../../../shared/core/contracts/activity.interface';
 import type * as ContractTypes from '../../../../shared/core/contracts';
 import { SubEventResourcePopupStore } from '../../../../shared/ui/context/stores/sub-event-resource-popup.store';
@@ -54,7 +56,8 @@ export interface AssetExploreBorrowDialogViewState {
     FormsModule,
     DateInputComponent,
     PopupComponent,
-    AppMenuComponent
+    AppMenuComponent,
+    I18nPipe
   ],
   templateUrl: './event-resource-asset-explore-borrow-dialog.component.html',
   styleUrl: './event-resource-asset-explore-borrow-dialog.component.scss',
@@ -67,22 +70,26 @@ export class EventResourceAssetExploreBorrowDialogComponent {
   @Input() parentZIndex = 2600;
 
   private readonly resourcePopupStore = inject(SubEventResourcePopupStore);
+  private readonly i18n = inject(I18nService);
 
-  protected readonly borrowDateRangeInputModel: DateInputModel = {
-    mode: 'range',
-    precision: 'minute',
-    range: {
-      start: { label: 'Start' },
-      end: { label: 'End' }
-    }
-  };
+  protected get borrowDateRangeInputModel(): DateInputModel {
+    this.i18n.revision();
+    return {
+      mode: 'range',
+      precision: 'minute',
+      range: {
+        start: { label: this.i18n.translate('asset.borrow.start') },
+        end: { label: this.i18n.translate('asset.borrow.end') }
+      }
+    };
+  }
 
   protected borrowPopupModel(dialog: AssetExploreBorrowDialogViewState): PopupModel {
     return {
       title: dialog.title,
       subtitle: dialog.subtitle,
       ariaLabel: dialog.title,
-      closeAriaLabel: 'Close borrow request',
+      closeAriaLabel: this.i18n.translate('asset.borrow.close.aria'),
       closeOnBackdrop: true,
       size: 'wide',
       height: 'full',
@@ -105,11 +112,11 @@ export class EventResourceAssetExploreBorrowDialogComponent {
     return [
       {
         id: dialog.paymentStep ? 'borrow-back' : 'borrow-cancel',
-        label: dialog.paymentStep ? 'Back' : 'Cancel',
+        label: dialog.paymentStep ? this.i18n.translate('back') : this.i18n.translate('cancel'),
         layout: 'action',
         palette: 'neutral',
         disabled: dialog.busy,
-        ariaLabel: dialog.paymentStep ? 'Back' : 'Cancel'
+        ariaLabel: dialog.paymentStep ? this.i18n.translate('back') : this.i18n.translate('cancel')
       },
       {
         id: 'borrow-confirm',
@@ -151,6 +158,14 @@ export class EventResourceAssetExploreBorrowDialogComponent {
     }
   }
 
+  protected availabilityLabel(availableQuantity: number): string {
+    const count = Math.max(0, Math.trunc(Number(availableQuantity) || 0));
+    return this.i18n.translateParams(
+      count === 1 ? 'asset.borrow.available.one' : 'asset.borrow.available.many',
+      { count }
+    );
+  }
+
   protected showCancellationPolicyCard(dialog: AssetExploreBorrowDialogViewState): boolean {
     return dialog.totalAmount > 0
       && dialog.cancellationPolicy?.enabled === true
@@ -164,15 +179,17 @@ export class EventResourceAssetExploreBorrowDialogComponent {
     const applicableRule = this.applicableCancellationRule(dialog);
     if (!applicableRule) {
       return {
-        refundLabel: 'No reimbursement',
-        note: 'The configured cancellation windows have already passed.'
+        refundLabel: this.i18n.translate('asset.borrow.no.reimbursement'),
+        note: this.i18n.translate('asset.borrow.cancellation.windows.passed')
       };
     }
     const refundAmount = this.cancellationRefundAmount(applicableRule, dialog.totalAmount);
     return {
       refundLabel: refundAmount > 0
-        ? `${this.formatMoney(refundAmount, dialog.currency)} refundable right now`
-        : 'No reimbursement',
+        ? this.i18n.translateParams('asset.borrow.refundable.now', {
+            amount: this.formatMoney(refundAmount, dialog.currency)
+          })
+        : this.i18n.translate('asset.borrow.no.reimbursement'),
       note: this.describeCancellationRule(applicableRule, dialog.currency)
     };
   }
@@ -183,14 +200,17 @@ export class EventResourceAssetExploreBorrowDialogComponent {
 
   protected cancellationRuleWindowLabel(rule: ContractTypes.PricingCancellationRule): string {
     const value = Math.max(0, Number(rule.offsetValue) || 0);
-    const unit = rule.offsetUnit === 'hours'
-      ? (value === 1 ? 'hour' : 'hours')
+    const unitKey = rule.offsetUnit === 'hours'
+      ? (value === 1 ? 'asset.borrow.unit.hour' : 'asset.borrow.unit.hours')
       : rule.offsetUnit === 'weeks'
-        ? (value === 1 ? 'week' : 'weeks')
+        ? (value === 1 ? 'asset.borrow.unit.week' : 'asset.borrow.unit.weeks')
         : rule.offsetUnit === 'months'
-          ? (value === 1 ? 'month' : 'months')
-          : (value === 1 ? 'day' : 'days');
-    return `${value} ${unit} before start`;
+          ? (value === 1 ? 'asset.borrow.unit.month' : 'asset.borrow.unit.months')
+          : (value === 1 ? 'asset.borrow.unit.day' : 'asset.borrow.unit.days');
+    return this.i18n.translateParams('asset.borrow.cancellation.window', {
+      value,
+      unit: this.i18n.translate(unitKey)
+    });
   }
 
   protected cancellationRuleRefundLabel(
@@ -198,15 +218,17 @@ export class EventResourceAssetExploreBorrowDialogComponent {
     currency: string
   ): string {
     if (rule.refundKind === 'full') {
-      return 'Full refund';
+      return this.i18n.translate('full.refund');
     }
     if (rule.refundKind === 'none') {
-      return 'No refund';
+      return this.i18n.translate('no.refund');
     }
     if (rule.refundKind === 'fixed_amount') {
       return this.formatMoney(Number(rule.refundValue) || 0, currency);
     }
-    return `${Math.max(0, Number(rule.refundValue) || 0)}% refund`;
+    return this.i18n.translateParams('asset.borrow.refund.percent', {
+      percent: Math.max(0, Number(rule.refundValue) || 0)
+    });
   }
 
   private applicableCancellationRule(
@@ -271,7 +293,10 @@ export class EventResourceAssetExploreBorrowDialogComponent {
   }
 
   private describeCancellationRule(rule: ContractTypes.PricingCancellationRule, currency: string): string {
-    return `${this.cancellationRuleRefundLabel(rule, currency)} when cancelled at least ${this.cancellationRuleWindowLabel(rule)}.`;
+    return this.i18n.translateParams('asset.borrow.cancellation.rule.description', {
+      refund: this.cancellationRuleRefundLabel(rule, currency),
+      window: this.cancellationRuleWindowLabel(rule)
+    });
   }
 
   protected close(event?: Event): void {

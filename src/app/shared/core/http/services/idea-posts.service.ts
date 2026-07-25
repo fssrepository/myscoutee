@@ -12,12 +12,16 @@ import type {
   IdeaPostPublicPageResultDto,
   IdeaPostSaveRequestDto
 } from '../../contracts/content.interface';
+import { RouteDelayService } from '../../base/services/route-delay.service';
+
+const ADMIN_IDEAS_ROUTE = '/admin/ideas';
 
 @Injectable({
   providedIn: 'root'
 })
 export class HttpIdeaPostsService {
   private readonly http = inject(HttpClient);
+  private readonly routeDelay = inject(RouteDelayService);
   private readonly apiBaseUrl = environment.apiBaseUrl ?? '/api';
 
   async loadPublishedPosts(lang?: string | null): Promise<IdeaPostDto[]> {
@@ -61,11 +65,11 @@ export class HttpIdeaPostsService {
     if (adminUserId.trim()) {
       params['adminUserId'] = adminUserId.trim();
     }
-    const response = await this.http
+    const response = await this.routeDelay.withRequestTimeout(ADMIN_IDEAS_ROUTE, this.http
       .get<Array<Partial<IdeaPostDto>> | null>(`${this.apiBaseUrl}/admin/ideas`, {
         params
       })
-      .toPromise();
+      .toPromise(), 'Article request timed out.');
     return this.normalizePosts(response);
   }
 
@@ -75,11 +79,9 @@ export class HttpIdeaPostsService {
     query: IdeaPostAdminPageQueryDto = {}
   ): Promise<IdeaPostAdminPageResultDto> {
     const pageSize = Math.max(1, Math.trunc(Number(query.pageSize) || 10));
-    const page = Math.max(0, Math.trunc(Number(query.page) || 0));
     const params: Record<string, string> = {
       lang: this.normalizeLang(lang),
       status: this.normalizeAdminStatus(query.status),
-      page: String(page),
       pageSize: String(pageSize)
     };
     if (adminUserId.trim()) {
@@ -89,18 +91,18 @@ export class HttpIdeaPostsService {
     if (cursor) {
       params['cursor'] = cursor;
     }
-    const response = await this.http
+    const response = await this.routeDelay.withRequestTimeout(ADMIN_IDEAS_ROUTE, this.http
       .get<Array<Partial<IdeaPostDto>> | Partial<IdeaPostAdminPageResultDto> | null>(`${this.apiBaseUrl}/admin/ideas`, {
         params
       })
-      .toPromise();
+      .toPromise(), 'Article request timed out.');
     return this.normalizeAdminPage(response);
   }
 
   async savePost(request: IdeaPostSaveRequestDto): Promise<IdeaPostDto> {
-    const response = await this.http
+    const response = await this.routeDelay.withRequestTimeout(ADMIN_IDEAS_ROUTE, this.http
       .post<Partial<IdeaPostDto> | null>(`${this.apiBaseUrl}/admin/ideas`, request)
-      .toPromise();
+      .toPromise(), 'Article save timed out.');
     const post = this.normalizePost(response);
     if (!post) {
       throw new Error('Idea post could not be saved.');
@@ -108,24 +110,28 @@ export class HttpIdeaPostsService {
     return post;
   }
 
-  async deletePost(postId: string, actorUserId: string): Promise<IdeaPostDto[]> {
-    const response = await this.http
-      .request<Array<Partial<IdeaPostDto>> | null>(
+  async deletePost(postId: string, actorUserId: string): Promise<IdeaPostDto> {
+    const response = await this.routeDelay.withRequestTimeout(ADMIN_IDEAS_ROUTE, this.http
+      .request<Partial<IdeaPostDto> | null>(
         'delete',
         `${this.apiBaseUrl}/admin/ideas/${encodeURIComponent(postId)}`,
         { body: { actorUserId } }
       )
-      .toPromise();
-    return this.normalizePosts(response);
+      .toPromise(), 'Article delete timed out.');
+    const post = this.normalizePost(response);
+    if (!post) {
+      throw new Error('Idea post could not be moved to trash.');
+    }
+    return post;
   }
 
   async restorePost(postId: string, actorUserId: string): Promise<IdeaPostDto> {
-    const response = await this.http
+    const response = await this.routeDelay.withRequestTimeout(ADMIN_IDEAS_ROUTE, this.http
       .post<Partial<IdeaPostDto> | null>(
         `${this.apiBaseUrl}/admin/ideas/${encodeURIComponent(postId)}/restore`,
         { actorUserId }
       )
-      .toPromise();
+      .toPromise(), 'Article restore timed out.');
     const post = this.normalizePost(response);
     if (!post) {
       throw new Error('Idea post could not be restored.');

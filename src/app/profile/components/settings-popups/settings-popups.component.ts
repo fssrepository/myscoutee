@@ -1,4 +1,5 @@
 import {
+  ChangeDetectorRef,
   Component,
   HostListener,
   effect,
@@ -59,6 +60,7 @@ export class ProfileSettingsPopupsComponent {
   private readonly helpCenter = inject(HelpCenterService);
   private readonly privacyPolicy = inject(PrivacyPolicyService);
   private readonly userProfileStore = inject(UserProfileStore);
+  private readonly changeDetectorRef = inject(ChangeDetectorRef);
   protected readonly activePopup = this.profileStore.settingsPopup;
   protected readonly activeUserId = this.userProfileStore.activeUserId;
   protected readonly privacyConsentRequired = this.profileStore.privacyConsentRequired;
@@ -289,6 +291,7 @@ export class ProfileSettingsPopupsComponent {
       this.settingsPrivacySaveError = 'Privacy choices could not be saved.';
     } finally {
       this.settingsPrivacySaving = false;
+      this.changeDetectorRef.markForCheck();
     }
   }
 
@@ -322,6 +325,7 @@ export class ProfileSettingsPopupsComponent {
         this.settingsApprovedPrivacySectionIds = new Set(
           (consent?.approvedOptionalSectionIds ?? []).filter(sectionId => optionalSectionIds.has(sectionId))
         );
+        this.changeDetectorRef.markForCheck();
       })
       .catch(() => {
         if (loadToken !== this.settingsPrivacyConsentLoadToken || this.settingsPrivacyConsentLoadedForKey !== revisionKey) {
@@ -331,6 +335,7 @@ export class ProfileSettingsPopupsComponent {
         this.settingsPrivacyActiveRevisionConsentSaved = false;
         this.settingsApprovedPrivacySectionIds = new Set();
         this.settingsPrivacySaveError = 'Privacy choices could not be loaded.';
+        this.changeDetectorRef.markForCheck();
       });
   }
 

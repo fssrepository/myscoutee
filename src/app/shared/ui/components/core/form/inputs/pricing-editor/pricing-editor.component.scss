@@ -378,6 +378,33 @@
   grid-template-columns: repeat(auto-fit, minmax(min(100%, 190px), 1fr));
 }
 
+.pricing-editor__rule-grid--time:not(.pricing-editor__rule-grid--slots) {
+  grid-template-columns:
+    minmax(260px, 1.55fr)
+    minmax(82px, 0.48fr)
+    minmax(210px, 1.2fr)
+    minmax(92px, 0.52fr);
+}
+
+.pricing-editor__rule-grid--time.pricing-editor__rule-grid--slots {
+  grid-template-columns:
+    minmax(230px, 1.5fr)
+    minmax(78px, 0.46fr)
+    minmax(195px, 1.18fr)
+    minmax(88px, 0.5fr)
+    minmax(150px, 0.9fr);
+}
+
+.pricing-editor__rule-grid--time .pricing-editor__field--time-trigger,
+.pricing-editor__rule-grid--time .pricing-editor__field--time-action {
+  min-width: 0;
+}
+
+.pricing-editor__rule-grid--time .pricing-editor__field--time-offset,
+.pricing-editor__rule-grid--time .pricing-editor__field--time-value {
+  min-width: 0;
+}
+
 .pricing-editor__promo-card {
   grid-template-columns: repeat(auto-fit, minmax(min(100%, 200px), 1fr));
 }
@@ -726,6 +753,16 @@
   line-height: 1.55;
 }
 
+.pricing-editor__preview-note--billing {
+  margin: 0;
+  padding: 0.62rem 0.72rem;
+  border-radius: 10px;
+  background: rgba(30, 132, 111, 0.08);
+  color: rgba(33, 92, 80, 0.92);
+  font-size: 0.8rem;
+  line-height: 1.45;
+}
+
 .pricing-editor__preview {
   display: grid;
   gap: 0.82rem;
@@ -905,6 +942,8 @@
   .pricing-editor__grid,
   .pricing-editor__grid--compact,
   .pricing-editor__rule-grid,
+  .pricing-editor__rule-grid--time,
+  .pricing-editor__rule-grid--time.pricing-editor__rule-grid--slots,
   .pricing-editor__promo-card,
   .pricing-editor__preview {
     grid-template-columns: 1fr;

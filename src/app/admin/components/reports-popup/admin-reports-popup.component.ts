@@ -32,6 +32,7 @@ import { I18nService } from '../../../shared/core/base/services/i18n.service';
 import {
   AdminModerationService,
   AdminWorkspaceDataService,
+  ShareTokensService,
   type AdminDashboardDto,
   type AdminModerationActionResult,
   type AdminReportedUserDto,
@@ -157,6 +158,7 @@ export class AdminReportsPopupComponent {
   private readonly runtimeStore = inject(AppRuntimeStore);
   private readonly workspace = inject(AdminWorkspaceStore);
   private readonly workspaceData = inject(AdminWorkspaceDataService);
+  private readonly shareTokensService = inject(ShareTokensService);
   private readonly moderationData = inject(AdminModerationService);
   private readonly activitiesStore = inject(ActivitiesPopupStore);
   private readonly dialogStore = inject(DialogStore);
@@ -172,6 +174,9 @@ export class AdminReportsPopupComponent {
     unresolved: 0,
     resolved: 0
   };
+  protected reportMemberShareUrl = '';
+  protected reportSourceShareUrl = '';
+  private reportShareLinksVersion = 0;
 
   protected reportItemTemplateRef?: TemplateRef<
     SmartListItemTemplateContext<AdminReportListItem, AdminReportListFilters>
@@ -418,6 +423,7 @@ export class AdminReportsPopupComponent {
   protected openReportDetails(item: AdminReportListItem): void {
     this.reportDetail = item;
     this.admin.openReportDetail(item.user, item.report);
+    void this.prepareReportShareLinks(item);
   }
 
   protected reportSingleRow(item: AdminReportListItem, groupLabel: string | null): SingleRowData {
@@ -468,6 +474,9 @@ export class AdminReportsPopupComponent {
 
   protected closeReportDetails(): void {
     this.reportDetail = null;
+    this.reportShareLinksVersion += 1;
+    this.reportMemberShareUrl = '';
+    this.reportSourceShareUrl = '';
   }
 
   protected openBlockedUsers(event?: Event): void {
@@ -968,7 +977,7 @@ export class AdminReportsPopupComponent {
     return [this.sourceTypeLabel(report), this.eventContextLabel(report)].filter(Boolean).join(' · ');
   }
 
-  protected reportMemberUrl(item: AdminReportListItem): string {
+  private reportMemberTargetUrl(item: AdminReportListItem): string {
     const params = new URLSearchParams();
     params.set('supportTarget', 'member');
     params.set('memberUserId', item.user.userId);
@@ -976,11 +985,7 @@ export class AdminReportsPopupComponent {
       params.set('ownerId', item.report.eventId);
       params.set('ownerType', 'event');
     }
-    return this.adminHelpUrl(item.report.reporterUserId, `/game?${params.toString()}`);
-  }
-
-  protected reportSourceUrl(report: AdminReportDto): string {
-    return this.adminHelpUrl(report.reporterUserId, this.reportSourceTargetUrl(report));
+    return `/game?${params.toString()}`;
   }
 
   protected openSharedUrl(url: string, event?: Event): void {
@@ -1330,15 +1335,38 @@ export class AdminReportsPopupComponent {
     return `https://picsum.photos/seed/${seed}/1200/700`;
   }
 
-  private adminHelpUrl(ownerUserId: string, targetUrl: string): string {
-    const safeOwner = this.tokenSegment(ownerUserId || 'user');
-    const encodedTarget = this.encodeTokenPayload(targetUrl || '/game');
-    const token = `myscoutee:token:admin-report:${safeOwner}:${encodedTarget}`;
-    return this.location.prepareExternalUrl(`/admin/help/${encodeURIComponent(token)}`);
+  private async prepareReportShareLinks(item: AdminReportListItem): Promise<void> {
+    const version = ++this.reportShareLinksVersion;
+    this.reportMemberShareUrl = '';
+    this.reportSourceShareUrl = '';
+    const ownerUserId = `${item.report.reporterUserId ?? ''}`.trim();
+    if (!ownerUserId) {
+      return;
+    }
+    const [memberUrl, sourceUrl] = await Promise.all([
+      this.createAdminHelpUrl(ownerUserId, this.reportMemberTargetUrl(item)),
+      this.createAdminHelpUrl(ownerUserId, this.reportSourceTargetUrl(item.report))
+    ]);
+    if (version !== this.reportShareLinksVersion || this.reportDetail?.id !== item.id) {
+      return;
+    }
+    this.reportMemberShareUrl = memberUrl;
+    this.reportSourceShareUrl = sourceUrl;
   }
 
-  private tokenSegment(value: string): string {
-    return `${value ?? ''}`.trim().replace(/[^A-Za-z0-9-]/g, '-') || 'user';
+  private async createAdminHelpUrl(ownerUserId: string, targetUrl: string): Promise<string> {
+    try {
+      const token = await this.shareTokensService.createToken({
+        kind: 'adminHelp',
+        entityId: targetUrl || '/game',
+        ownerUserId
+      });
+      return token
+        ? this.location.prepareExternalUrl(`/admin/help/${encodeURIComponent(token)}`)
+        : '';
+    } catch {
+      return '';
+    }
   }
 
   private assetCityFromEventTitle(value: string | null | undefined): string {
@@ -1348,19 +1376,6 @@ export class AdminReportsPopupComponent {
     }
     const parts = title.split(/[-·]/).map(part => part.trim()).filter(Boolean);
     return parts.length > 1 ? parts[parts.length - 1] : '';
-  }
-
-  private encodeTokenPayload(value: string): string {
-    try {
-      const bytes = new TextEncoder().encode(value);
-      let binary = '';
-      bytes.forEach(byte => {
-        binary += String.fromCharCode(byte);
-      });
-      return btoa(binary).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/g, '');
-    } catch {
-      return '';
-    }
   }
 
   private chatUser(

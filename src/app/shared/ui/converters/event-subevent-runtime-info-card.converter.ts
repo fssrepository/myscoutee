@@ -2,6 +2,7 @@ import { AppUtils } from '../../app-utils';
 import type { EventMode, SubEventDTO, TournamentStageStatus } from '../../core/contracts/event.interface';
 import type { InfoCardData, InfoCardOverlayAction, InfoCardOverlayTone } from '../components/core/smart-list/card';
 import type { UiListConverter } from './converter.types';
+import { EventSubeventRuntimeMenuConverter } from './event-subevent-runtime-menu.converter';
 
 export interface EventSubeventRuntimeInfoCardConverterOptions {
   event?: { location?: string | null; mode?: EventMode | null } | null;
@@ -37,7 +38,12 @@ export class EventSubeventRuntimeInfoCardConverter
       ? this.stageStatusBadge(item, nowMs)
       : null;
     const runtimeIcon = isTournament ? 'emoji_events' : 'inventory_2';
-    const menuBadgeCount = Math.max(0, Math.trunc(Number(options.menuBadgeCount) || 0));
+    const menuBadgeCount = options.menuBadgeCount == null
+      ? EventSubeventRuntimeMenuConverter.runtimeBadgeCount(item, {
+          event: options.event,
+          mode
+        })
+      : Math.max(0, Math.trunc(Number(options.menuBadgeCount) || 0));
     const capacityDetailRow = this.capacityDetailRow(item, mode);
 
     return {

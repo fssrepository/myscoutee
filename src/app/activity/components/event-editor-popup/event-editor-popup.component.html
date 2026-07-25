@@ -177,8 +177,8 @@
             </div>
             <app-policies-input [(ngModel)]="eventDetailDTO.policies"
               [(enabled)]="eventDetailDTO.policiesEnabled"
-              [readOnly]="eventPoliciesReadOnly()"
-              [disabled]="eventPoliciesReadOnly()"></app-policies-input>
+              [config]="eventPoliciesInputConfig"
+              [readOnly]="eventPoliciesReadOnly()"></app-policies-input>
           </div>
         </div>
       </section>

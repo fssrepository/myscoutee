@@ -20,6 +20,7 @@ export interface AssetHireRequestBookingDTO {
   endAtIso?: string;
   quantity?: number | null;
   totalAmount?: number | null;
+  previousTotalAmount?: number | null;
   currency?: string | null;
   acceptedPolicyIds?: string[];
   paymentSessionId?: string | null;
@@ -38,6 +39,26 @@ export interface AssetMemberRequestDTO {
   requestedAtIso?: string;
   booking?: AssetHireRequestBookingDTO | null;
   menuActions?: string[];
+}
+
+export interface AssetMemberStatusChangeRequestDTO {
+  assetId: string;
+  eventId: string;
+  subEventId: string;
+  actorUserId: string;
+  action: 'join' | 'leave';
+  request?: AssetMemberRequestDTO | null;
+}
+
+export interface AssetMemberStatusChangeDTO {
+  assetId: string;
+  eventId: string;
+  subEventId: string;
+  userId: string;
+  previousStatus: AppConstants.ActivityMemberStatus | null;
+  status: AppConstants.ActivityMemberStatus;
+  acceptedMemberDelta: number;
+  pendingMemberDelta: number;
 }
 
 export interface AssetRequestMetricsDTO {
@@ -433,6 +454,8 @@ export interface AssetOccupancyRowDTO {
   id: string;
   assetId: string;
   ownerUserId: string;
+  userId?: string;
+  isManager?: boolean;
   dateIso: string;
   startAtIso?: string;
   endAtIso?: string;

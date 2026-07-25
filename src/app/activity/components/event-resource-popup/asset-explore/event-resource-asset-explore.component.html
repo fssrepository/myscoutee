@@ -62,11 +62,6 @@
         }
       }
 
-      @if (borrowDialogViewState()) {
-        @if (resourcePopupStore.eventResourceAssetExploreBorrowDialogComponent(); as borrowDialogComponent) {
-          <ng-container *ngComponentOutlet="borrowDialogComponent; inputs: borrowDialogOutletInputs()"></ng-container>
-        }
-      }
     </div>
 
     <app-menu-outlet (itemSelect)="onMenuSelect($event)"></app-menu-outlet>

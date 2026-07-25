@@ -89,6 +89,13 @@ export class LocalAssetsService extends LocalRouteDelayService {
     return this.assetsRepository.saveOwnedAsset(userId, asset);
   }
 
+  async applyMemberStatusChange(
+    request: AppDTOs.AssetMemberStatusChangeRequestDTO
+  ): Promise<AppDTOs.AssetMemberStatusChangeDTO | null> {
+    await this.waitForRouteDelay(LocalAssetsService.ASSETS_ROUTE);
+    return this.assetsRepository.applyMemberStatusChange(request);
+  }
+
   async replaceOwnedAssets(userId: string, assets: readonly AppDTOs.AssetDTO[]): Promise<AppDTOs.AssetDTO[]> {
     await this.waitForRouteDelay(LocalAssetsService.ASSETS_ROUTE);
     return this.assetsRepository.replaceOwnedAssets(userId, assets);
@@ -107,6 +114,11 @@ export class LocalAssetsService extends LocalRouteDelayService {
   async makeAssetManager(userId: string, assetId: string, targetUserId: string): Promise<AppDTOs.AssetDTO | null> {
     await this.waitForRouteDelay(LocalAssetsService.ASSETS_ROUTE);
     return this.assetsRepository.makeAssetManager(userId, assetId, targetUserId);
+  }
+
+  async revokeAssetManager(userId: string, assetId: string, targetUserId: string): Promise<AppDTOs.AssetDTO | null> {
+    await this.waitForRouteDelay(LocalAssetsService.ASSETS_ROUTE);
+    return this.assetsRepository.revokeAssetManager(userId, assetId, targetUserId);
   }
 
 }

@@ -11,6 +11,7 @@ export interface ActivityInvitePopupState {
   updatedMs: number;
   ownerId: string;
   ownerType?: ActivityMemberOwnerType;
+  parentOwner?: { ownerId: string; ownerType: ActivityMemberOwnerType } | null;
   title?: string;
   initialCandidates?: readonly ActivityMemberDTO[];
   initialSelection?: readonly ActivityMemberDTO[];
@@ -31,6 +32,7 @@ export class ActivityInvitePopupStore {
   openActivityInvitePopup(payload: {
     ownerId: string;
     ownerType?: ActivityMemberOwnerType;
+    parentOwner?: { ownerId: string; ownerType: ActivityMemberOwnerType } | null;
     title?: string;
     initialCandidates?: readonly ActivityMemberDTO[];
     initialSelection?: readonly ActivityMemberDTO[];
@@ -47,6 +49,12 @@ export class ActivityInvitePopupStore {
       ownerType: payload.ownerType === 'asset' || payload.ownerType === 'group' || payload.ownerType === 'subEvent'
         ? payload.ownerType
         : 'event',
+      parentOwner: payload.parentOwner?.ownerId?.trim()
+        ? {
+            ownerId: payload.parentOwner.ownerId.trim(),
+            ownerType: payload.parentOwner.ownerType
+          }
+        : null,
       title: payload.title?.trim() || undefined,
       initialCandidates: Array.isArray(payload.initialCandidates)
         ? payload.initialCandidates.map(candidate => ({ ...candidate }))

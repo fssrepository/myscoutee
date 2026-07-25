@@ -22,8 +22,13 @@ export interface ActivitySubEventResourceInfoCardSourceAsset extends ActivitySub
 }
 
 export interface ActivitySubEventResourceInfoCardContext {
+  ownerId?: string | null;
   subEvent?: AppDTOs.SubEventDTO | null;
   fallbackCardsByType?: Partial<Record<AppConstants.AssetType, readonly ActivitySubEventResourceInfoCardSourceAsset[]>>;
+}
+
+export interface ActivitySubEventResourceMemberSync {
+  memberStatusChange?: AppDTOs.AssetMemberStatusChangeDTO | null;
 }
 
 export interface ActivitySubEventResourceInfoCardConverterOptions {
@@ -34,6 +39,7 @@ export interface ActivitySubEventResourceInfoCardConverterOptions {
   assetSettingsByKey?: Record<string, Record<string, AppDTOs.SubEventAssignedAssetSettingsDTO>>;
   users?: UserDto[];
   eventCreatorUserId?: string | null;
+  memberSyncByOwnerId?: Readonly<Record<string, ActivitySubEventResourceMemberSync>>;
 }
 
 export class ActivitySubEventResourceInfoCardConverter {
@@ -105,12 +111,17 @@ export class ActivitySubEventResourceInfoCardConverter {
     } else if (this.canLeave(card, options)) {
       actions.push('leaveResource');
     }
+    if (this.hasActiveUserBorrowRequest(card, options)) {
+      actions.push('paymentSummary');
+    }
     actions.push('askOrganizer');
     actions.push('shareAsset');
     if (this.canReportResourceManager(card, options)) {
       actions.push(card.sourceAssetId ? 'reportManager' : 'reportOrganizer');
     }
-    actions.push('removeAssignment');
+    if (this.isSourceAssetManagedByActiveUser(card, options)) {
+      actions.push('removeAssignment');
+    }
     return actions;
   }
 
@@ -168,7 +179,8 @@ export class ActivitySubEventResourceInfoCardConverter {
     options: ActivitySubEventResourceInfoCardConverterOptions
   ): boolean {
     const activeUserId = this.normalizeId(options.activeUserId);
-    const managerUserId = this.normalizeId(this.assetManagerUserId(card, options));
+    const managerUserId = this.normalizeId(this.sourceAsset(card, options)?.ownerUserId)
+      || this.normalizeId(this.assetManagerUserId(card, options));
     return activeUserId.length > 0 && managerUserId === activeUserId;
   }
 
@@ -182,9 +194,35 @@ export class ActivitySubEventResourceInfoCardConverter {
     if (!sourceAsset || !subEventId || !activeUserId) {
       return false;
     }
+    const syncedStatus = this.activeUserStatusChange(card, options);
+    if (syncedStatus) {
+      return syncedStatus === 'accepted' || syncedStatus === 'pending';
+    }
     const users = options.users ?? [];
     return (sourceAsset.requests ?? []).some(request =>
       request.requestKind !== 'manual'
+      && ActivityResourceBuilder.isSubEventScopedAssetRequest(request, subEventId)
+      && AppUtils.resolveAssetRequestUserId(request, users) === activeUserId
+    );
+  }
+
+  private static hasActiveUserBorrowRequest(
+    card: AppDTOs.SubEventResourceCardDTO,
+    options: ActivitySubEventResourceInfoCardConverterOptions
+  ): boolean {
+    const sourceAsset = this.sourceAsset(card, options);
+    const subEventId = this.contextSubEventId(options);
+    const activeUserId = this.normalizeId(options.activeUserId);
+    if (!sourceAsset || !subEventId || !activeUserId) {
+      return false;
+    }
+    const syncedStatus = this.activeUserStatusChange(card, options);
+    if (syncedStatus) {
+      return syncedStatus === 'accepted' || syncedStatus === 'pending';
+    }
+    const users = options.users ?? [];
+    return (sourceAsset.requests ?? []).some(request =>
+      request.requestKind === 'borrow'
       && ActivityResourceBuilder.isSubEventScopedAssetRequest(request, subEventId)
       && AppUtils.resolveAssetRequestUserId(request, users) === activeUserId
     );
@@ -260,6 +298,28 @@ export class ActivitySubEventResourceInfoCardConverter {
 
   private static contextSubEventId(options: ActivitySubEventResourceInfoCardConverterOptions): string {
     return this.normalizeId(options.context?.subEvent?.id);
+  }
+
+  private static activeUserStatusChange(
+    card: AppDTOs.SubEventResourceCardDTO,
+    options: ActivitySubEventResourceInfoCardConverterOptions
+  ): AppConstants.ActivityMemberStatus | null {
+    const assetId = this.normalizeId(card.sourceAssetId);
+    const change = assetId
+      ? options.memberSyncByOwnerId?.[assetId]?.memberStatusChange
+      : null;
+    if (
+      !change
+      || this.normalizeId(change.userId) !== this.normalizeId(options.activeUserId)
+      || this.normalizeId(change.subEventId) !== this.contextSubEventId(options)
+    ) {
+      return null;
+    }
+    const contextEventId = this.normalizeId(options.context?.ownerId);
+    if (contextEventId && this.normalizeId(change.eventId) !== contextEventId) {
+      return null;
+    }
+    return change.status;
   }
 
   private static normalizeId(value: string | null | undefined): string {

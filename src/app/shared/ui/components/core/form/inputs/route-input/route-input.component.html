@@ -18,7 +18,7 @@
       (click)="toggleRouteEnabled($event)"
     >
       <mat-icon>{{ routeEnabled() ? 'toggle_on' : 'toggle_off' }}</mat-icon>
-      <span>{{ routeEnabled() ? 'On' : 'Off' }}</span>
+      <span>{{ toggleLabel() }}</span>
     </button>
   </header>
 
@@ -35,11 +35,16 @@
     <div class="route-input__summary">
       <section class="route-input__summary-block">
         <div class="route-input__summary-head">
-          <span class="route-input__summary-label">Summary</span>
+          <span class="route-input__summary-label">{{ summaryLabel() }}</span>
           @if (routeEnabled() && hasRoute()) {
-            <button type="button" class="route-input__map-btn" (click)="openRouteMap($event)" aria-label="Open route on map">
+            <button
+              type="button"
+              class="route-input__map-btn"
+              (click)="openRouteMap($event)"
+              [attr.aria-label]="mapAriaLabel()"
+            >
               <mat-icon>map</mat-icon>
-              <span>Map</span>
+              <span>{{ mapLabel() }}</span>
             </button>
           }
         </div>

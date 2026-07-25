@@ -35,9 +35,17 @@ export class HttpActivityMembersService {
       return [];
     }
     const pendingOnly = options?.pendingOnly === true;
-    const params = new HttpParams()
+    let params = new HttpParams()
       .set('ownerType', normalizedOwner.ownerType)
       .set('ownerId', normalizedOwner.ownerId);
+    const eventId = `${options?.eventId ?? ''}`.trim();
+    const subEventId = `${options?.subEventId ?? ''}`.trim();
+    if (eventId) {
+      params = params.set('eventId', eventId);
+    }
+    if (subEventId) {
+      params = params.set('subEventId', subEventId);
+    }
     try {
       const response = await this.http
         .get<ActivityContracts.ActivityMemberDTO[] | null>(`${this.apiBaseUrl}/activities/events/members`, {
@@ -93,49 +101,82 @@ export class HttpActivityMembersService {
     owner: ActivityMemberOwnerRef,
     members: readonly ActivityContracts.ActivityMemberDTO[],
     capacityTotal?: number | null,
-    actorUserId = ''
+    actorUserId = '',
+    options?: ActivityMembersQueryOptions
   ): Promise<void> {
     const normalizedOwner = this.normalizeOwnerRef(owner);
     if (!normalizedOwner) {
       return;
     }
+    await this.http
+      .post<void>(`${this.apiBaseUrl}/activities/events/members/replace`, {
+        owner: normalizedOwner,
+        members: this.cloneEntries(members),
+        capacityTotal: this.normalizeCount(capacityTotal),
+        actorUserId: actorUserId.trim(),
+        eventId: `${options?.eventId ?? ''}`.trim() || null,
+        subEventId: `${options?.subEventId ?? ''}`.trim() || null
+      })
+      .toPromise();
     this.cacheMembers(normalizedOwner, members, capacityTotal);
-    await this.postVoid('/activities/events/members/replace', {
-      owner: normalizedOwner,
-      members: this.cloneEntries(members),
-      capacityTotal: this.normalizeCount(capacityTotal),
-      actorUserId: actorUserId.trim()
-    });
+  }
+
+  async inviteEventMembers(
+    owner: ActivityMemberOwnerRef,
+    actorUserId: string,
+    userIds: readonly string[]
+  ): Promise<ActivityContracts.ActivityMemberDTO[]> {
+    const normalizedOwner = this.normalizeOwnerRef(owner);
+    const normalizedUserIds = [...new Set(userIds.map(userId => userId.trim()).filter(Boolean))];
+    if (!normalizedOwner || normalizedOwner.ownerType !== 'event' || normalizedUserIds.length === 0) {
+      return normalizedOwner ? this.peekMembersByOwner(normalizedOwner) : [];
+    }
+    const response = await this.http
+      .post<ActivityContracts.ActivityMemberDTO[] | null>(
+        `${this.apiBaseUrl}/activities/events/members/invite`,
+        {
+          owner: normalizedOwner,
+          actorUserId: actorUserId.trim(),
+          userIds: normalizedUserIds
+        }
+      )
+      .toPromise();
+    const members = this.cloneEntries(Array.isArray(response) ? response : []);
+    this.cacheMembers(
+      normalizedOwner,
+      members,
+      this.cachedSummariesByOwnerKey[this.ownerKey(normalizedOwner)]?.capacityTotal ?? null
+    );
+    return this.cloneEntries(members);
   }
 
   async applyMemberAction(
     owner: ActivityMemberOwnerRef,
     actorUserId: string,
     targetUserId: string,
-    action: 'disqualify' | 'reinstate',
-    reason?: string | null
+    action: 'accept' | 'remove' | 'disqualify' | 'reinstate' | 'promote-admin' | 'step-down-admin',
+    reason?: string | null,
+    options?: ActivityMembersQueryOptions
   ): Promise<ActivityContracts.ActivityMemberDTO[]> {
     const normalizedOwner = this.normalizeOwnerRef(owner);
     const normalizedTargetUserId = targetUserId.trim();
     if (!normalizedOwner || !normalizedTargetUserId) {
       return normalizedOwner ? this.peekMembersByOwner(normalizedOwner) : [];
     }
-    try {
-      const response = await this.http
-        .post<ActivityContracts.ActivityMemberDTO[] | null>(`${this.apiBaseUrl}/activities/events/members/action`, {
-          owner: normalizedOwner,
-          actorUserId: actorUserId.trim(),
-          targetUserId: normalizedTargetUserId,
-          action,
-          reason: reason?.trim() || null
-        })
-        .toPromise();
-      const members = this.cloneEntries(Array.isArray(response) ? response : []);
-      this.cacheMembers(normalizedOwner, members, this.cachedSummariesByOwnerKey[this.ownerKey(normalizedOwner)]?.capacityTotal ?? null);
-      return this.cloneEntries(members);
-    } catch {
-      return this.peekMembersByOwner(normalizedOwner);
-    }
+    const response = await this.http
+      .post<ActivityContracts.ActivityMemberDTO[] | null>(`${this.apiBaseUrl}/activities/events/members/action`, {
+        owner: normalizedOwner,
+        actorUserId: actorUserId.trim(),
+        targetUserId: normalizedTargetUserId,
+        action,
+        reason: reason?.trim() || null,
+        eventId: `${options?.eventId ?? ''}`.trim() || null,
+        subEventId: `${options?.subEventId ?? ''}`.trim() || null
+      })
+      .toPromise();
+    const members = this.cloneEntries(Array.isArray(response) ? response : []);
+    this.cacheMembers(normalizedOwner, members, this.cachedSummariesByOwnerKey[this.ownerKey(normalizedOwner)]?.capacityTotal ?? null);
+    return this.cloneEntries(members);
   }
 
   private ownerKey(owner: ActivityMemberOwnerRef): string {
@@ -286,11 +327,4 @@ export class HttpActivityMembersService {
     return Math.max(0, Math.trunc(Number(value)));
   }
 
-  private async postVoid(route: string, payload: unknown): Promise<void> {
-    try {
-      await this.http.post<void>(`${this.apiBaseUrl}${route}`, payload).toPromise();
-    } catch {
-      // Keep optimistic UI state until concrete backend endpoints land.
-    }
-  }
 }

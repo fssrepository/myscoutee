@@ -1,6 +1,9 @@
 import { Injectable, Type, computed, signal } from '@angular/core';
 
 import * as AppConstants from '../../../core/common/constants';
+import type {
+  AssetBorrowPricingPreview
+} from '../../../core/base/builders/pricing.builder';
 import type * as AppDTOs from '../../../core/contracts';
 import type * as ContractTypes from '../../../core/contracts';
 import type { ActivityMemberDTO } from '../../../core/contracts/activity.interface';
@@ -52,6 +55,8 @@ export type EventResourceAssetExploreOutletActionRequest =
 export interface ResourcePopupContext {
   origin: 'chat' | 'subEventResource';
   ownerId: string;
+  assetOwnerUserId?: string;
+  viewOnly?: boolean;
   parentTitle: string;
   popupHeader?: SubEventResourcePopupPresentationHeader | null;
   subEvent: ContractTypes.SubEventDTO;
@@ -79,6 +84,8 @@ export interface SubEventResourcePopupHeader {
 export interface SubEventResourcePopupRequest {
   type: SubEventResourcePopupType;
   ownerId: string;
+  assetOwnerUserId?: string | null;
+  viewOnly?: boolean;
   subEventId?: string | null;
   subEventIndex?: number | null;
   subEventHeader?: SubEventResourcePopupHeader | null;
@@ -103,6 +110,7 @@ export interface SubEventResourceMetricsUpdate {
   ownerId: string;
   subEventId: string;
   subEvent: ContractTypes.SubEventDTO;
+  activityDelta?: number;
   assignmentQuantityUpdates?: readonly SubEventResourceAssignmentQuantityUpdate[];
 }
 
@@ -175,10 +183,7 @@ export interface AssetExploreBorrowDraftState {
   updatedAtMs: number;
 }
 
-export interface AssetExploreBorrowPricingPreview {
-  amount: number;
-  currency: string;
-}
+export type AssetExploreBorrowPricingPreview = AssetBorrowPricingPreview;
 
 export interface SupplyBringDialogState {
   subEventId: string;
@@ -296,6 +301,7 @@ export class SubEventResourcePopupStore {
   publishSubEventResourceMetrics(
     context: ResourcePopupContext,
     options: {
+      activityDelta?: number;
       assignmentQuantityUpdates?: readonly SubEventResourceAssignmentQuantityUpdate[];
     } = {}
   ): void {
@@ -306,6 +312,9 @@ export class SubEventResourcePopupStore {
       ownerId: context.ownerId,
       subEventId: context.subEvent.id,
       subEvent: { ...context.subEvent },
+      ...(options.activityDelta === undefined
+        ? {}
+        : { activityDelta: Math.trunc(Number(options.activityDelta) || 0) }),
       assignmentQuantityUpdates: [...(options.assignmentQuantityUpdates ?? [])]
     });
   }

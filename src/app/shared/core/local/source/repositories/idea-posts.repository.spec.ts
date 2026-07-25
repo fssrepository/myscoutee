@@ -91,6 +91,40 @@ describe('LocalIdeaPostsRepository public pages', () => {
     expect(preview.nextCursor).toBeNull();
   });
 
+  it('upserts a saved post snapshot without reloading the table', () => {
+    seedPosts([post('existing', '2026-07-20T10:00:00.000Z')]);
+    const saved = post('new-article', '2026-07-20T12:00:00.000Z', { published: false });
+
+    expect(repository.savePostSnapshot(saved)).toEqual(saved);
+    expect(memoryDb.read()[IDEA_POSTS_TABLE_NAME].byId[saved.id]).toEqual(saved);
+  });
+
+  it('continues admin pages from the last sort key when newer records are inserted', () => {
+    const initialPosts = [
+      post('article-d', '2026-07-20T12:00:00.000Z'),
+      post('article-c', '2026-07-20T11:00:00.000Z'),
+      post('article-b', '2026-07-20T10:00:00.000Z'),
+      post('article-a', '2026-07-20T09:00:00.000Z')
+    ];
+    seedPosts(initialPosts);
+
+    const first = repository.queryAdminPostPage('en', { status: 'all', pageSize: 2 });
+    seedPosts([
+      post('article-new', '2026-07-20T13:00:00.000Z'),
+      ...initialPosts
+    ]);
+    const second = repository.queryAdminPostPage('en', {
+      status: 'all',
+      pageSize: 2,
+      cursor: first.nextCursor
+    });
+
+    expect(first.records.map(item => item.id)).toEqual(['article-d', 'article-c']);
+    expect(first.nextCursor).not.toBeNull();
+    expect(second.records.map(item => item.id)).toEqual(['article-b', 'article-a']);
+    expect(second.nextCursor).toBeNull();
+  });
+
   it('does not substitute English featured cards when the requested language has regular articles', async () => {
     seedPosts([
       post('hungarian-regular', '2026-07-20T12:00:00.000Z', { lang: 'hu' }),

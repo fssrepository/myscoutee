@@ -20,9 +20,6 @@ import {
 import type * as ContractTypes from '../../../../../shared/core/contracts';
 import type { UserMenuCounterDeltasDto } from '../../../../../shared/core/contracts/user.interface';
 import {
-  ActivityMembersBuilder
-} from '../../../../../shared/core';
-import {
   type ActivityCounterKey,
   type ActivityCounters,
   InfoCardComponent,
@@ -33,6 +30,7 @@ import {
   type CardMenuRequestEvent
 } from '../../../../../shared/ui';
 import {
+  ActivityEventInfoCardConverter,
   ActivityEventInfoCardMenuConverter,
   type ActivityEventEditorAction,
   type ActivityEventInfoCardMenuSubject
@@ -308,8 +306,6 @@ export class ActivitiesEventsController {
       && (
         `${dto?.creatorUserId ?? ''}`.trim() === activeUserId
         || (dto?.adminIds ?? []).includes(activeUserId)
-        || `${row.ownerUserId ?? row.ownerId ?? ''}`.trim() === activeUserId
-        || this.activityEventListTypeForRow(row) === 'hosting'
       );
   }
 
@@ -456,6 +452,7 @@ export class ActivitiesEventsController {
   public runActivityItemViewAction(row: InfoCardData, event?: Event): void {
     event?.stopPropagation();
     const dto = this.activityEventDTOForRow(row);
+    const memberSummary = ActivityEventInfoCardConverter.toActivityMembersSummary(row);
     this.eventSubeventsStore.openEventSubeventsListPopup({
       eventId: row.id,
       host: 'activities',
@@ -465,6 +462,10 @@ export class ActivitiesEventsController {
       startAtIso: this.activityRowStartAt(row),
       endAtIso: this.activityRowEndAt(row),
       mode: dto?.mode ?? null,
+      acceptedMembers: memberSummary?.acceptedMembers,
+      pendingMembers: memberSummary?.pendingMembers,
+      capacityTotal: memberSummary?.capacityTotal,
+      resourceOwnerUserId: dto?.creatorUserId ?? row.ownerUserId ?? null,
       editorAction: this.isActivityInvitationRow(row) ? 'view' : this.activityEventEditorAction(row)
     });
   }
@@ -705,6 +706,7 @@ export class ActivitiesEventsController {
       pendingMemberUserIds: [...(dto?.pendingMemberUserIds ?? [])],
       invitedMemberUserIds: [...(dto?.invitedMemberUserIds ?? [])],
       pendingRequestMemberUserIds: [...(dto?.pendingRequestMemberUserIds ?? [])],
+      activity: dto?.activity ?? row.menuBadgeCount ?? 0,
       eventScope: this.activitiesEventScope,
       checkoutState: draft?.checkoutState ?? null
     };
@@ -1354,6 +1356,29 @@ export class ActivitiesEventsController {
     return this.activityCounterDeltaFromDeltas(primaryDelta, eventDelta);
   }
 
+  private restoredEventCounterDeltaFromResult(
+    row: InfoCardData,
+    result: ActivityContracts.EventParticipationActionResultDTO
+  ): UserMenuCounterDeltasDto | null {
+    const type = this.activityEventListTypeForRow(row);
+    if (type === 'hosting' || type === 'invitations') {
+      return this.restoredEventCounterDelta(row);
+    }
+    if (result.membershipStatus === 'pending') {
+      return this.activityCounterDeltaFromDeltas(
+        {},
+        { all: 1, pending: 1, trash: -1 }
+      );
+    }
+    if (result.membershipStatus === 'accepted') {
+      return this.activityCounterDeltaFromDeltas(
+        { events: 1 },
+        { all: 1, active: 1, trash: -1 }
+      );
+    }
+    return this.restoredEventCounterDelta(row);
+  }
+
   private publishedEventCounterDelta(row: InfoCardData): UserMenuCounterDeltasDto | null {
     if (!this.isActivityDraftRow(row)) {
       return null;
@@ -1404,9 +1429,8 @@ export class ActivitiesEventsController {
     }
     const activeUserId = this.activeUserId();
     const counterDelta = this.trashedEventCounterDelta(row, isRejectInvitation ? 'invitations' : null);
-    const persistence = this.persistActivityRowTrash(row, counterDelta);
-    await persistence;
-    this.activitiesSmartList?.removeVisibleItemByIdentity(this.activityRowIdentity(row));
+    await this.persistActivityRowTrash(row, counterDelta);
+    this.activitiesStore.emitActivityEventRemoval(row.id);
     this.signalActivityCounterDelta(activeUserId, counterDelta);
     this.cdr.markForCheck();
   }
@@ -1423,21 +1447,22 @@ export class ActivitiesEventsController {
       checkoutResultState: 'deleted',
       counterDelta
     });
-    if (!leaveResult || leaveResult.membershipStatus === 'unchanged') {
+    if (!leaveResult
+        || (leaveResult.changed === false && leaveResult.reason !== 'already-applied')
+        || leaveResult.membershipStatus === 'unchanged') {
       throw new Error('Unable to leave event.');
+    }
+    if (leaveResult.changed !== false) {
+      this.signalActivityCounterDelta(activeUserId, counterDelta);
     }
 
     if (this.selectedActivityMembersRowId === this.activityRowIdentity(row)) {
-      this.selectedActivityMembers = ActivityMembersBuilder.sortActivityMembersByActionTimeAsc(
-        this.selectedActivityMembers.filter(member => member.userId !== activeUserId)
-      );
+      this.selectedActivityMembers = this.selectedActivityMembers
+        .filter(member => member.userId !== activeUserId);
       this.activityMembersByRowId[this.selectedActivityMembersRowId] = [...this.selectedActivityMembers];
     }
 
-    this.activitiesSmartList?.removeVisibleItemByIdentity(this.activityRowIdentity(row));
-    this.signalActivityCounterDelta(activeUserId, counterDelta);
     this.emitActivityLeaveMembersSync(row, leaveResult);
-    this.activitiesStore.clearActivityEventSave();
     this.eventCheckoutDraftStore.clear(activeUserId, row.id);
     this.cdr.markForCheck();
   }
@@ -1735,7 +1760,7 @@ export class ActivitiesEventsController {
       member.userId === inviterUserId
       && member.status === 'accepted'
     );
-    return inviterEntry?.role !== 'Admin' && inviterEntry?.role !== 'Manager';
+    return inviterEntry?.role !== 'Admin';
   }
 
   private buildAcceptedInvitationMembers(
@@ -1774,7 +1799,7 @@ export class ActivitiesEventsController {
       };
     });
     return didUpdate
-      ? ActivityMembersBuilder.sortActivityMembersByActionTimeDesc(nextMembers)
+      ? nextMembers
       : null;
   }
 
@@ -1794,15 +1819,6 @@ export class ActivitiesEventsController {
     return this.isActivityIdentityTrashed(this.activityEventListTypeForRow(row), row.id);
   }
 
-  public trashedActivityCount(): number {
-    return Object.keys(this.trashedActivityRowsByKey).length;
-  }
-
-  private unmarkActivityRowTrashed(row: InfoCardData): void {
-    delete this.trashedActivityRowsByKey[this.activityRowIdentity(row)];
-    this.refreshSectionBadges();
-  }
-
   private async persistActivityRowTrash(row: InfoCardData, counterDelta: UserMenuCounterDeltasDto | null): Promise<void> {
     await this.eventsService.trashItem(this.activeUser.id, row.id, {
       counterDelta
@@ -1811,13 +1827,16 @@ export class ActivitiesEventsController {
 
   private async restoreActivityRow(row: InfoCardData): Promise<void> {
     const activeUserId = this.activeUserId();
-    const counterDelta = this.restoredEventCounterDelta(row);
-    const persistence = this.eventsService.restoreItem(this.activeUser.id, row.id, {
-      counterDelta
+    const restoreResult = await this.eventsService.restoreItem(this.activeUser.id, row.id, {
+      counterDelta: this.restoredEventCounterDelta(row)
     });
-    await persistence;
-    this.unmarkActivityRowTrashed(row);
-    this.activitiesSmartList?.removeVisibleItemByIdentity(this.activityRowIdentity(row));
+    if (!restoreResult || restoreResult.changed === false || restoreResult.membershipStatus === 'unchanged') {
+      throw new Error(restoreResult?.reason === 'forbidden'
+        ? 'You are not allowed to restore this event.'
+        : 'Unable to restore event participation.');
+    }
+    const counterDelta = this.restoredEventCounterDeltaFromResult(row, restoreResult);
+    this.activitiesStore.emitActivityEventRemoval(row.id);
     this.signalActivityCounterDelta(activeUserId, counterDelta);
     this.cdr.markForCheck();
   }
@@ -1882,7 +1901,7 @@ export class ActivitiesEventsController {
       return;
     }
     const nowIso = AppUtils.toIsoDateTime(new Date());
-    this.selectedActivityMembers = ActivityMembersBuilder.sortActivityMembersByActionTimeAsc(this.selectedActivityMembers.map(item =>
+    this.selectedActivityMembers = this.selectedActivityMembers.map(item =>
       item.id === entry.id
         ? {
             ...item,
@@ -1892,7 +1911,7 @@ export class ActivitiesEventsController {
             actionAtIso: nowIso
           }
         : item
-    ));
+    );
     this.activityMembersByRowId[this.selectedActivityMembersRowId] = [...this.selectedActivityMembers];
     this.persistSelectedActivityMembers();
   }

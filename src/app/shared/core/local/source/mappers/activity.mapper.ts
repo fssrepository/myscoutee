@@ -126,7 +126,11 @@ export class LocalActivityMembersBuilder {
     const nowIso = new Date(nowMs).toISOString();
     const { involvements: _involvements, ...persistedMember } = member;
     const invitedByUserId = member.status === 'pending'
-      && (member.requestKind === 'invite' || member.requestKind === 'waitlist-invite')
+      && (
+        member.requestKind === 'invite'
+        || member.requestKind === 'waitlist-invite'
+        || member.requestKind === 'approval'
+      )
         ? member.invitedByUserId?.trim() || null
         : null;
     return {
@@ -286,9 +290,31 @@ export class LocalActivityMembersBuilder {
     }).format(new Date(dateMs));
   }
 
-  static sortEntriesByActionTime(entries: readonly ActivityMemberDTO[]): ActivityMemberDTO[] {
-    return [...entries]
-      .sort((left, right) => AppUtils.toSortableDate(left.actionAtIso) - AppUtils.toSortableDate(right.actionAtIso));
+  static sortEntriesForManagement(entries: readonly ActivityMemberDTO[]): ActivityMemberDTO[] {
+    return [...entries].sort((left, right) => {
+      const priorityComparison = this.managementPriority(left) - this.managementPriority(right);
+      if (priorityComparison !== 0) {
+        return priorityComparison;
+      }
+      const actionComparison = AppUtils.toSortableDate(right.actionAtIso)
+        - AppUtils.toSortableDate(left.actionAtIso);
+      return actionComparison !== 0
+        ? actionComparison
+        : left.userId.localeCompare(right.userId);
+    });
+  }
+
+  private static managementPriority(entry: ActivityMemberDTO): number {
+    if (entry.status === 'pending') {
+      return 0;
+    }
+    if (entry.status === 'accepted' && (entry.role === 'Admin' || entry.role === 'Manager')) {
+      return 1;
+    }
+    if (entry.status === 'accepted') {
+      return 2;
+    }
+    return entry.status === 'disqualified' ? 3 : 4;
   }
 
   private static normalizeOwner(owner: ActivityMemberOwnerRef): ActivityMemberOwnerRef {
@@ -385,6 +411,7 @@ export class LocalActivityResourcesMapper {
         state.supplyContributionEntriesByAssetId
       ),
       fallbackAssetCardsByType: ActivityResourceBuilder.cloneFallbackAssetCardsByType(state.fallbackAssetCardsByType),
+      resourceMetricsByType: ActivityResourceBuilder.cloneResourceMetricsByType(state.resourceMetricsByType),
       createdMs: existing?.createdMs ?? nowMs,
       updatedMs: nowMs,
       createdAtIso: existing?.createdAtIso ?? nowIso,
@@ -407,7 +434,8 @@ export class LocalActivityResourcesMapper {
       supplyContributionEntriesByAssetId: ActivityResourceBuilder.cloneSupplyContributionEntriesByAssetId(
         record.supplyContributionEntriesByAssetId
       ),
-      fallbackAssetCardsByType: ActivityResourceBuilder.cloneFallbackAssetCardsByType(record.fallbackAssetCardsByType)
+      fallbackAssetCardsByType: ActivityResourceBuilder.cloneFallbackAssetCardsByType(record.fallbackAssetCardsByType),
+      resourceMetricsByType: ActivityResourceBuilder.cloneResourceMetricsByType(record.resourceMetricsByType)
     }, record);
     return normalizedState ? ActivityResourceBuilder.cloneState(normalizedState) : null;
   }
@@ -498,6 +526,9 @@ export class LocalActivitySubEventStageRuntimeMapper {
       stageFinalizedAt: `${normalized.stageFinalizedAt ?? ''}`.trim() || null,
       stageFinalizedByUserId: `${normalized.stageFinalizedByUserId ?? ''}`.trim() || null,
       groupsCount: normalized.groupsCount ?? existing?.groupsCount ?? null,
+      groupResourceMetricsByAssetOwnerId: this.cloneGroupResourceMetrics(
+        existing?.groupResourceMetricsByAssetOwnerId
+      ),
       createdMs: existing?.createdMs ?? nowMs,
       updatedMs: nowMs,
       createdAtIso: existing?.createdAtIso ?? nowIso,
@@ -526,8 +557,23 @@ export class LocalActivitySubEventStageRuntimeMapper {
 
   static cloneRecord(record: ActivitySubEventStageRuntimeRecord): ActivitySubEventStageRuntimeRecord {
     return {
-      ...record
+      ...record,
+      groupResourceMetricsByAssetOwnerId: this.cloneGroupResourceMetrics(
+        record.groupResourceMetricsByAssetOwnerId
+      )
     };
+  }
+
+  static cloneGroupResourceMetrics(
+    source: ActivitySubEventStageRuntimeRecord['groupResourceMetricsByAssetOwnerId'] | null | undefined
+  ): ActivitySubEventStageRuntimeRecord['groupResourceMetricsByAssetOwnerId'] {
+    return Object.fromEntries(Object.entries(source ?? {}).map(([groupId, byAssetOwner]) => [
+      groupId,
+      Object.fromEntries(Object.entries(byAssetOwner ?? {}).map(([assetOwnerUserId, metricsByType]) => [
+        assetOwnerUserId,
+        ActivityResourceBuilder.cloneResourceMetricsByType(metricsByType)
+      ]))
+    ]));
   }
 
   static isDeleted(record: ActivitySubEventStageRuntimeRecord | null | undefined): boolean {
