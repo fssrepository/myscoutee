@@ -292,7 +292,12 @@ export class AppMenuComponent<TId extends string = string, TContext = unknown>
     const availableHeight = this.resolvedOpenUp
       ? rect.top - bounds.top
       : bounds.bottom - rect.bottom;
-    return `${Math.max(0, Math.floor(availableHeight - AppMenuComponent.DESKTOP_MARGIN_PX))}px`;
+    const configuredGap = Number(this.panelGapPx);
+    const boundaryInset = Math.max(
+      AppMenuComponent.DESKTOP_MARGIN_PX,
+      Number.isFinite(configuredGap) ? Math.max(0, configuredGap) : 0
+    );
+    return `${Math.max(0, Math.floor(availableHeight - boundaryInset))}px`;
   }
 
   @HostBinding('class.app-menu-host--trigger-field')
