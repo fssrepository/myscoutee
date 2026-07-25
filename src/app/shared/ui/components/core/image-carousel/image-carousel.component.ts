@@ -232,6 +232,7 @@ export class ImageCarouselComponent implements ControlValueAccessor, OnChanges {
       const slots = this.imageSlots();
       slots[normalizedSlotIndex] = result.imageUrl;
       this.updateUrls(slots);
+      this.focusImageUrl(result.imageUrl, normalizedSlotIndex);
     } finally {
       this.uploadingSlotIndex = null;
       if (input) {
@@ -274,6 +275,16 @@ export class ImageCarouselComponent implements ControlValueAccessor, OnChanges {
     this.localImageUrls = this.urlsFromSlots(slots);
     this.onValueChange([...this.localImageUrls]);
     this.refreshView();
+  }
+
+  private focusImageUrl(imageUrl: string, fallbackSlotIndex: number): void {
+    const storedSlotIndex = this.localImageUrls.indexOf(imageUrl);
+    const targetSlotIndex = storedSlotIndex >= 0
+      ? storedSlotIndex
+      : this.clampSlotIndex(fallbackSlotIndex);
+    this.internalSelectedSlotIndex = targetSlotIndex;
+    this.carouselIndex = this.pageForSlot(targetSlotIndex);
+    this.scheduleViewportSync('auto');
   }
 
   private urlsFromSlots(slots: readonly (string | null)[]): string[] {

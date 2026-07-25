@@ -1076,6 +1076,22 @@
   overscroll-behavior-y: contain;
 }
 
+.form-flow--carousel.form-flow--menu-overflow .form-flow__controls:has(.app-menu-host--open) {
+  overflow: visible;
+}
+
+.form-flow--carousel.form-flow--menu-overflow .form-flow__body:has(.app-menu-host--open),
+.form-flow--carousel.form-flow--menu-overflow .form-flow__slide:has(.app-menu-host--open),
+.form-flow--carousel.form-flow--menu-overflow .form-flow__slide-inner:has(.app-menu-host--open) {
+  overflow: visible;
+}
+
+.form-flow--carousel.form-flow--menu-overflow .form-flow__slide:has(.app-menu-host--open) {
+  position: relative;
+  z-index: 9;
+  contain: none;
+}
+
 .form-flow__stage--compact-head .form-flow__controls {
   margin-top: 60px;
 }
