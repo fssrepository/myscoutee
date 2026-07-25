@@ -278,7 +278,8 @@ export class ImageCarouselComponent implements ControlValueAccessor, OnChanges {
   }
 
   private focusImageUrl(imageUrl: string, fallbackSlotIndex: number): void {
-    const storedSlotIndex = this.localImageUrls.indexOf(imageUrl);
+    const normalizedImageUrl = imageUrl.trim();
+    const storedSlotIndex = this.localImageUrls.indexOf(normalizedImageUrl);
     const targetSlotIndex = storedSlotIndex >= 0
       ? storedSlotIndex
       : this.clampSlotIndex(fallbackSlotIndex);
