@@ -274,6 +274,27 @@ export class AppMenuComponent<TId extends string = string, TContext = unknown>
     return `${Math.max(0, Number(this.panelGapPx) || 0)}px`;
   }
 
+  @HostBinding('style.--app-menu-panel-available-height')
+  protected get hostPanelAvailableHeightStyle(): string | null {
+    if (
+      this.resolvedLayout === 'mobile'
+      || !this.panelVisible
+      || this.usesInlinePanel
+      || this.panelDockToHost
+    ) {
+      return null;
+    }
+    const rect = this.hostRect();
+    if (!rect) {
+      return null;
+    }
+    const bounds = this.layoutBounds();
+    const availableHeight = this.resolvedOpenUp
+      ? rect.top - bounds.top
+      : bounds.bottom - rect.bottom;
+    return `${Math.max(0, Math.floor(availableHeight - AppMenuComponent.DESKTOP_MARGIN_PX))}px`;
+  }
+
   @HostBinding('class.app-menu-host--trigger-field')
   protected get hostTriggerFieldClass(): boolean {
     return this.triggerLayout() === 'field';

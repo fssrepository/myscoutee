@@ -1079,13 +1079,6 @@
 .form-flow--carousel.form-flow--menu-overflow .form-flow__controls:has(.app-menu-host--open) {
   position: relative;
   z-index: 10;
-  overflow: visible;
-}
-
-.form-flow--carousel.form-flow--menu-overflow .form-flow__body:not(.form-flow__body--mobile):has(.app-menu-host--open),
-.form-flow--carousel.form-flow--menu-overflow .form-flow__slide:has(.app-menu-host--open),
-.form-flow--carousel.form-flow--menu-overflow .form-flow__slide-inner:has(.app-menu-host--open) {
-  overflow: visible;
 }
 
 .form-flow--carousel.form-flow--menu-overflow .form-flow__slide:has(.app-menu-host--open) {

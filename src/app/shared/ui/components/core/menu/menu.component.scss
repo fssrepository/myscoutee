@@ -1350,7 +1350,11 @@
   width: max-content;
   min-width: 13rem;
   max-width: min(21rem, calc(100vw - 1.2rem));
-  max-height: min(28rem, calc(100vh - 5.5rem));
+  max-height: min(
+    28rem,
+    calc(100vh - 5.5rem),
+    var(--app-menu-panel-available-height, 28rem)
+  );
   overflow-x: hidden;
   overflow-y: auto;
   overscroll-behavior: contain;
@@ -1379,8 +1383,13 @@
   width: max-content;
   min-width: 100%;
   max-width: min(28rem, calc(100vw - 1.2rem));
-  max-height: none;
-  overflow: visible;
+  max-height: min(
+    28rem,
+    calc(100vh - 5.5rem),
+    var(--app-menu-panel-available-height, 28rem)
+  );
+  overflow-x: hidden;
+  overflow-y: auto;
   border-radius: 14px;
   padding: 0.35rem;
   background: linear-gradient(180deg, rgba(255, 255, 255, 0.99) 0%, rgba(244, 249, 255, 0.99) 100%);
@@ -1423,7 +1432,11 @@
   width: min(30rem, calc(100vw - 1.2rem));
   min-width: min(18rem, calc(100vw - 1.2rem));
   max-width: min(30rem, calc(100vw - 1.2rem));
-  max-height: min(34rem, calc(100vh - 5.5rem));
+  max-height: min(
+    34rem,
+    calc(100vh - 5.5rem),
+    var(--app-menu-panel-available-height, 34rem)
+  );
   gap: 0.48rem;
   border-radius: 14px;
   padding: 0.48rem;
