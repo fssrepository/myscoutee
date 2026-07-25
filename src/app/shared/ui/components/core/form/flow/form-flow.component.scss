@@ -1082,7 +1082,7 @@
   overflow: visible;
 }
 
-.form-flow--carousel.form-flow--menu-overflow .form-flow__body:has(.app-menu-host--open),
+.form-flow--carousel.form-flow--menu-overflow .form-flow__body:not(.form-flow__body--mobile):has(.app-menu-host--open),
 .form-flow--carousel.form-flow--menu-overflow .form-flow__slide:has(.app-menu-host--open),
 .form-flow--carousel.form-flow--menu-overflow .form-flow__slide-inner:has(.app-menu-host--open) {
   overflow: visible;
@@ -1161,6 +1161,8 @@
   min-height: 100%;
   transform: none !important;
   transition: none;
+  will-change: auto;
+  backface-visibility: visible;
 }
 
 .form-flow__body--mobile .form-flow__slide {
