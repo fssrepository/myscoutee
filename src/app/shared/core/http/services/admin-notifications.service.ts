@@ -4,6 +4,7 @@ import { Injectable, inject } from '@angular/core';
 import { environment } from '../../../../../environments/environment';
 import type {
   AdminNotificationCenterState,
+  AdminNotificationProcessFilter,
   AdminNotificationRule,
   AdminNotificationRuleLiveEvent,
   AdminNotificationRunResult
@@ -24,10 +25,16 @@ export class HttpAdminNotificationsService {
   private readonly sessionService = inject(SessionService);
   private readonly apiBaseUrl = environment.apiBaseUrl ?? '/api';
 
-  async loadNotificationCenter(adminUserId?: string | null): Promise<AdminNotificationCenterState> {
+  async loadNotificationCenter(
+    adminUserId?: string | null,
+    filter?: AdminNotificationProcessFilter | null
+  ): Promise<AdminNotificationCenterState> {
     const state = await this.routeDelay.withRequestTimeout(ADMIN_NOTIFICATION_LOAD_ROUTE, this.http
       .get<AdminNotificationCenterState>(`${this.apiBaseUrl}/admin/notifications`, {
-        params: { adminUserId: `${adminUserId ?? ''}`.trim() }
+        params: {
+          adminUserId: `${adminUserId ?? ''}`.trim(),
+          filter: `${filter ?? ''}`.trim()
+        }
       })
       .toPromise(), 'Notification rules request timed out.');
     if (!state) {
@@ -38,12 +45,15 @@ export class HttpAdminNotificationsService {
 
   async saveNotificationCenter(
     rules: readonly AdminNotificationRule[],
-    adminUserId?: string | null
+    adminUserId?: string | null,
+    filter?: AdminNotificationProcessFilter | null
   ): Promise<AdminNotificationCenterState> {
     const state = await this.routeDelay.withRequestTimeout(ADMIN_NOTIFICATION_SAVE_ROUTE, this.http
       .post<AdminNotificationCenterState>(`${this.apiBaseUrl}/admin/notifications`, {
         adminUserId: `${adminUserId ?? ''}`.trim(),
         rules
+      }, {
+        params: { filter: `${filter ?? ''}`.trim() }
       })
       .toPromise(), 'Notification rules request timed out.');
     if (!state) {

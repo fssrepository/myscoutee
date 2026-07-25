@@ -235,37 +235,29 @@
 
       @if (scheduleEditorOpen() && selectedRule(); as scheduleRule) {
         <app-popup [model]="scheduleEditorPopupModel(scheduleRule)" [zIndex]="2500">
-          <div class="run-window-list">
-            <article class="run-window-row">
-              <div class="run-window-row-head">
-                <strong>{{ 'admin.jobs.timing.rule' | i18n }}</strong>
-                <div class="run-window-row-tools">
-                  <code>{{ intervalCron(scheduleRule) }}</code>
-                </div>
-              </div>
-              <div class="run-window-grid run-window-grid-timing">
-                <label>
-                  <span>{{ 'admin.jobs.start.at' | i18n }}</span>
-                  <input type="time" [ngModel]="startTime(scheduleRule)" (ngModelChange)="updateStartTime(scheduleRule, $event)" />
-                </label>
-                <label>
-                  <span>{{ jobI18n.interval.every | i18n }}</span>
-                  <div class="run-window-interval-input">
-                    <input type="number" min="1" step="1" [ngModel]="intervalAmount(scheduleRule)" (ngModelChange)="updateIntervalAmount(scheduleRule, $event)" />
-                    <select [ngModel]="intervalUnit(scheduleRule)" (ngModelChange)="updateIntervalUnit(scheduleRule, $event)">
-                      @for (option of intervalUnitOptions; track option.value) {
-                        <option [value]="option.value">{{ option.labelKey | i18n }}</option>
-                      }
-                    </select>
+          @if (scheduleEditorDraft(); as timingDraft) {
+            <div class="run-window-list">
+              <article class="run-window-row">
+                <div class="run-window-row-head">
+                  <strong>{{ 'admin.jobs.timing.rule' | i18n }}</strong>
+                  <div class="run-window-row-tools">
+                    <code>{{ intervalCron(scheduleRule) }}</code>
                   </div>
-                </label>
-              </div>
-              <p class="run-window-readable">
-                {{ 'admin.jobs.start.at' | i18n }} {{ startTime(scheduleRule) }} ·
-                <ng-container [ngTemplateOutlet]="intervalText" [ngTemplateOutletContext]="{ $implicit: scheduleRule }"></ng-container>
-              </p>
-            </article>
-          </div>
+                </div>
+                <app-form-flow
+                  class="job-timing-form-flow"
+                  [model]="scheduleEditorFlowModel"
+                  [disabled]="saving()"
+                  [ngModel]="timingDraft"
+                  (ngModelChange)="updateScheduleEditorDraft(scheduleRule, $event)"
+                ></app-form-flow>
+                <p class="run-window-readable">
+                  {{ 'admin.jobs.start.at' | i18n }} {{ startTime(scheduleRule) }} ·
+                  <ng-container [ngTemplateOutlet]="intervalText" [ngTemplateOutletContext]="{ $implicit: scheduleRule }"></ng-container>
+                </p>
+              </article>
+            </div>
+          }
         </app-popup>
       }
 

@@ -531,6 +531,11 @@ export class I18nService {
     messages: Record<string, string>,
     sourceKeyByText: Record<string, string>
   ): string | null {
+    const adminJobDetailTranslation = this.translateAdminJobDetailSource(normalizedSource, messages);
+    if (adminJobDetailTranslation) {
+      return adminJobDetailTranslation;
+    }
+
     const helpEditorTranslation = this.translateHelpEditorSource(normalizedSource, messages);
     if (helpEditorTranslation) {
       return helpEditorTranslation;
@@ -658,6 +663,171 @@ export class I18nService {
       const label = percentLabelMatch[1] ?? '';
       const translatedLabel = this.resolveCoreTranslation(label, messages, sourceKeyByText);
       return translatedLabel ? `${translatedLabel} ${percentLabelMatch[2] ?? '0'}%` : null;
+    }
+
+    return null;
+  }
+
+  private translateAdminJobDetailSource(
+    normalizedSource: string,
+    messages: Record<string, string>
+  ): string | null {
+    const translate = (key: string, values: Record<string, string> = {}): string | null => {
+      const template = messages[key];
+      return template ? this.interpolate(template, values) : null;
+    };
+    const exactKeys: Record<string, string> = {
+      'Rule was not found.': 'admin.jobs.run.detail.rule.not.found',
+      'Manual start requested.': 'admin.jobs.run.detail.manual.requested',
+      'Manual matched room assignment started.': 'admin.jobs.run.detail.matched.started',
+      'This rule is action driven and has no manual worker.': 'admin.jobs.run.detail.action.no.manual.worker',
+      'Loading published events for matched rooms.': 'admin.jobs.run.detail.loading.published',
+      'Scheduled process is running.': 'admin.jobs.run.detail.scheduled.running',
+      'Starting scheduled process.': 'admin.jobs.run.detail.scheduled.starting',
+      'Scheduled random grouping started.': 'admin.jobs.run.detail.scheduled.random.started',
+      'Loaded eligible random events.': 'admin.jobs.run.detail.loaded.eligible',
+      'Generated random event group plans.': 'admin.jobs.run.detail.generated.scheduled',
+      'Scanning expired event counters.': 'admin.jobs.run.detail.counter.scanning',
+      'No expired event counters or ticket records were due.': 'admin.jobs.run.detail.counter.none.due',
+      'Scanning expired checkout basket drafts.': 'admin.jobs.run.detail.checkout.scanning',
+      'No expired checkout basket items were due.': 'admin.jobs.run.detail.checkout.none.due'
+    };
+    const exactKey = exactKeys[normalizedSource];
+    if (exactKey) {
+      return translate(exactKey);
+    }
+
+    const runningForMatch = normalizedSource.match(/^(.+)\s+Running for\s+(\d+)s\.$/i);
+    if (runningForMatch) {
+      const detail = runningForMatch[1] ?? '';
+      return translate('admin.jobs.run.detail.running.for', {
+        detail: this.translateAdminJobDetailSource(detail, messages) ?? detail,
+        seconds: runningForMatch[2] ?? '0'
+      });
+    }
+
+    const loadedRecordsMatch = normalizedSource.match(/^Loaded\s+(\d+)\s+event record\(s\)\.$/i);
+    if (loadedRecordsMatch) {
+      return translate('admin.jobs.run.detail.loaded.records', { events: loadedRecordsMatch[1] ?? '0' });
+    }
+
+    const queriedEmptyMatch = normalizedSource.match(
+      /^Queried\s+(\d+)\s+backend lookup\(s\); event has no eligible accepted members\.$/i
+    );
+    if (queriedEmptyMatch) {
+      return translate('admin.jobs.run.detail.queried.no.eligible', { queries: queriedEmptyMatch[1] ?? '0' });
+    }
+
+    const queriedCandidatesMatch = normalizedSource.match(
+      /^Queried\s+(\d+)\s+backend lookup\(s\); found\s+(\d+)\s+candidate user\(s\)\.$/i
+    );
+    if (queriedCandidatesMatch) {
+      return translate('admin.jobs.run.detail.queried.candidates', {
+        queries: queriedCandidatesMatch[1] ?? '0',
+        users: queriedCandidatesMatch[2] ?? '0'
+      });
+    }
+
+    const noGraphMatch = normalizedSource.match(
+      /^No candidate user graph was available after\s+(\d+)\s+backend lookup\(s\)\.$/i
+    );
+    if (noGraphMatch) {
+      return translate('admin.jobs.run.detail.no.candidate.graph', { queries: noGraphMatch[1] ?? '0' });
+    }
+
+    const builtGraphMatch = normalizedSource.match(
+      /^Built candidate user graph after\s+(\d+)\s+backend lookup\(s\)\.$/i
+    );
+    if (builtGraphMatch) {
+      return translate('admin.jobs.run.detail.built.candidate.graph', { queries: builtGraphMatch[1] ?? '0' });
+    }
+
+    const startingAssignmentMatch = normalizedSource.match(
+      /^Starting random assignment for\s+(\d+)\s+sub-event\(s\)\.$/i
+    );
+    if (startingAssignmentMatch) {
+      return translate('admin.jobs.run.detail.starting.assignment', {
+        subEvents: startingAssignmentMatch[1] ?? '0'
+      });
+    }
+
+    const processingSubEventMatch = normalizedSource.match(/^Processing sub-event\s+(\d+)\/(\d+)\.$/i);
+    if (processingSubEventMatch) {
+      return translate('admin.jobs.run.detail.processing.sub.event', {
+        current: processingSubEventMatch[1] ?? '0',
+        total: processingSubEventMatch[2] ?? '0'
+      });
+    }
+
+    const skippedSubEventMatch = normalizedSource.match(
+      /^Skipped sub-event\s+(\d+)\/(\d+); no target groups\.$/i
+    );
+    if (skippedSubEventMatch) {
+      return translate('admin.jobs.run.detail.skipped.sub.event', {
+        current: skippedSubEventMatch[1] ?? '0',
+        total: skippedSubEventMatch[2] ?? '0'
+      });
+    }
+
+    const processedSubEventMatch = normalizedSource.match(
+      /^Processed sub-event\s+(\d+)\/(\d+),\s+(\d+)\s+candidate user\(s\),\s+(\d+)\s+backend lookup\(s\)\.$/i
+    );
+    if (processedSubEventMatch) {
+      return translate('admin.jobs.run.detail.processed.sub.event', {
+        current: processedSubEventMatch[1] ?? '0',
+        total: processedSubEventMatch[2] ?? '0',
+        users: processedSubEventMatch[3] ?? '0',
+        queries: processedSubEventMatch[4] ?? '0'
+      });
+    }
+
+    const processedEventsMatch = normalizedSource.match(
+      /^Processed\s+(\d+)\/(\d+)\s+random event\(s\),\s+(\d+)\s+candidate user\(s\),\s+(\d+)\s+backend lookup\(s\)\.$/i
+    );
+    if (processedEventsMatch) {
+      return translate('admin.jobs.run.detail.processed.events', {
+        current: processedEventsMatch[1] ?? '0',
+        total: processedEventsMatch[2] ?? '0',
+        users: processedEventsMatch[3] ?? '0',
+        queries: processedEventsMatch[4] ?? '0'
+      });
+    }
+
+    const finalizingMatch = normalizedSource.match(
+      /^Finalizing random event groups after\s+(\d+)\s+backend lookup\(s\)\.$/i
+    );
+    if (finalizingMatch) {
+      return translate('admin.jobs.run.detail.finalizing', { queries: finalizingMatch[1] ?? '0' });
+    }
+
+    const generatedMatch = normalizedSource.match(
+      /^Generated\s+(\d+)\s+random group plan\(s\) for\s+(\d+)\s+user\(s\)\.$/i
+    );
+    if (generatedMatch) {
+      return translate('admin.jobs.run.detail.generated', {
+        plans: generatedMatch[1] ?? '0',
+        users: generatedMatch[2] ?? '0'
+      });
+    }
+
+    const expiredCountersMatch = normalizedSource.match(
+      /^Expired\s+(\d+)\s+event source\(s\), refreshed\s+(\d+)\/(\d+)\s+affected user counter document\(s\), marked\s+(\d+)\s+event record\(s\), and marked\s+(\d+)\s+ticket record\(s\)\.$/i
+    );
+    if (expiredCountersMatch) {
+      return translate('admin.jobs.run.detail.counter.expired', {
+        sources: expiredCountersMatch[1] ?? '0',
+        updatedUsers: expiredCountersMatch[2] ?? '0',
+        affectedUsers: expiredCountersMatch[3] ?? '0',
+        eventRecords: expiredCountersMatch[4] ?? '0',
+        ticketRecords: expiredCountersMatch[5] ?? '0'
+      });
+    }
+
+    const checkoutMarkedMatch = normalizedSource.match(
+      /^Marked\s+(\d+)\s+expired checkout basket item\(s\) as deleted\.$/i
+    );
+    if (checkoutMarkedMatch) {
+      return translate('admin.jobs.run.detail.checkout.marked', { count: checkoutMarkedMatch[1] ?? '0' });
     }
 
     return null;

@@ -9,7 +9,7 @@
           <input
             matInput
             [matTimepicker]="timeOnlyPicker"
-            [matTimepickerOpenOnClick]="true"
+            [matTimepickerOpenOnClick]="timeOpenOnClick()"
             [ngModel]="singleTimeValue"
             (ngModelChange)="onTimeOnlyChange($event)"
             (blur)="markTouched()"
@@ -133,7 +133,7 @@
             <input
               matInput
               [matTimepicker]="startTimePicker"
-              [matTimepickerOpenOnClick]="true"
+              [matTimepickerOpenOnClick]="timeOpenOnClick()"
               [ngModel]="startTimeValue"
               (ngModelChange)="onStartTimeChange($event)"
               (blur)="markTouched()"
@@ -201,7 +201,7 @@
             <input
               matInput
               [matTimepicker]="endTimePicker"
-              [matTimepickerOpenOnClick]="true"
+              [matTimepickerOpenOnClick]="timeOpenOnClick()"
               [ngModel]="endTimeValue"
               (ngModelChange)="onEndTimeChange($event)"
               (blur)="markTouched()"
@@ -273,7 +273,7 @@
             <input
               matInput
               [matTimepicker]="singleTimePicker"
-              [matTimepickerOpenOnClick]="true"
+              [matTimepickerOpenOnClick]="timeOpenOnClick()"
               [ngModel]="singleTimeValue"
               (ngModelChange)="onSingleTimeChange($event)"
               (blur)="markTouched()"

@@ -369,6 +369,7 @@ export type AdminBootstrapProcessState = AdminBootstrapProcessStateDto;
 
 export type AdminNotificationTriggerKind = 'action' | 'timed' | 'scheduled_process';
 export type AdminNotificationTimingMode = 'immediate' | 'delay' | 'interval' | 'yearly' | 'manual';
+export type AdminNotificationProcessFilter = 'all' | 'active' | 'suspended' | 'running' | 'failed';
 
 export interface AdminNotificationChannelsDto {
   pushEnabled: boolean;
@@ -519,6 +520,7 @@ export type AdminNotificationTemplateOption = AdminNotificationTemplateOptionDto
 export interface AdminNotificationCenterStateDto {
   rules: AdminNotificationRuleDto[];
   emailTemplates: AdminNotificationTemplateOptionDto[];
+  filterCounts?: Record<string, number>;
   updatedDate: string;
 }
 

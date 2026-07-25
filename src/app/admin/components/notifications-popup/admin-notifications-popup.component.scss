@@ -882,6 +882,20 @@
   font-weight: 900;
 }
 
+.job-timing-form-flow {
+  display: block;
+  min-width: 0;
+  --form-flow-input-height: 38px;
+}
+
+:host ::ng-deep .job-timing-form-flow .form-flow--grouped .form-flow__body {
+  padding: 0;
+}
+
+:host ::ng-deep .job-timing-form-flow .form-flow__control {
+  min-width: 0;
+}
+
 .run-window-row-tools {
   min-width: 0;
   display: inline-flex;
