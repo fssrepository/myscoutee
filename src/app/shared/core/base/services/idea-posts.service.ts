@@ -4,6 +4,7 @@ import { LocalIdeaPostsService } from '../../local/source/services/idea-posts.se
 import { HttpIdeaPostsService } from '../../http/services/idea-posts.service';
 import type {
   IdeaArticleDetailDto,
+  IdeaPostAdminFilter,
   IdeaPostAdminPageQueryDto,
   IdeaPostAdminPageResultDto,
   IdeaPostDto,
@@ -26,10 +27,12 @@ export class IdeaPostsService extends BaseRouteModeService {
   private readonly httpIdeaPostsService = inject(HttpIdeaPostsService);
   private readonly postsRef = signal<IdeaPostDto[]>([]);
   private readonly adminPostsRef = signal<IdeaPostDto[]>([]);
+  private readonly adminPostSyncRef = signal<IdeaPostDto | null>(null);
   private adminPostsLang = 'en';
 
   readonly posts = this.postsRef.asReadonly();
   readonly adminPosts = this.adminPostsRef.asReadonly();
+  readonly adminPostSync = this.adminPostSyncRef.asReadonly();
 
   applyPublishedPosts(posts: readonly IdeaPostDto[]): void {
     this.postsRef.set(this.clonePosts(posts)
@@ -70,7 +73,7 @@ export class IdeaPostsService extends BaseRouteModeService {
 
   async loadAdminPosts(adminUserId: string, lang = 'en'): Promise<IdeaPostDto[]> {
     const posts = await this.ideaService().loadAdminPosts(adminUserId, lang);
-    const cloned = this.clonePosts(posts).sort((left, right) => this.sortValue(right) - this.sortValue(left));
+    const cloned = this.clonePosts(posts).sort((left, right) => this.compareAdminPosts(left, right));
     this.adminPostsLang = this.normalizeLang(lang);
     this.adminPostsRef.set(cloned);
     this.applyPublishedPosts(cloned.filter(post => post.published));
@@ -79,7 +82,7 @@ export class IdeaPostsService extends BaseRouteModeService {
 
   async loadAdminPostsSnapshot(adminUserId: string, lang = 'en'): Promise<IdeaPostDto[]> {
     const posts = await this.ideaService().loadAdminPosts(adminUserId, lang);
-    return this.clonePosts(posts).sort((left, right) => this.sortValue(right) - this.sortValue(left));
+    return this.clonePosts(posts).sort((left, right) => this.compareAdminPosts(left, right));
   }
 
   async loadAdminPostsPage(
@@ -88,7 +91,7 @@ export class IdeaPostsService extends BaseRouteModeService {
     query: IdeaPostAdminPageQueryDto = {}
   ): Promise<IdeaPostAdminPageResultDto> {
     const page = await this.ideaService().loadAdminPostsPage(adminUserId, lang, query);
-    const records = this.clonePosts(page.records).sort((left, right) => this.sortValue(right) - this.sortValue(left));
+    const records = this.clonePosts(page.records).sort((left, right) => this.compareAdminPosts(left, right));
     this.adminPostsLang = this.normalizeLang(lang);
     this.adminPostsRef.set(this.shouldResetAdminPage(query)
       ? records
@@ -110,23 +113,29 @@ export class IdeaPostsService extends BaseRouteModeService {
   async savePost(request: IdeaPostSaveRequestDto): Promise<IdeaPostDto> {
     const post = await this.ideaService().savePost(request);
     this.mergeAdminPost(post);
-    return { ...post, imageUrls: [...post.imageUrls] };
+    const sync = { ...post, imageUrls: [...post.imageUrls] };
+    this.adminPostSyncRef.set(sync);
+    return sync;
   }
 
-  async deletePost(postId: string, actorUserId: string): Promise<IdeaPostDto[]> {
-    const posts = await this.ideaService().deletePost(postId, actorUserId);
-    const cloned = this.clonePosts(posts)
-      .filter(post => this.normalizeLang(post.lang) === this.adminPostsLang)
-      .sort((left, right) => this.sortValue(right) - this.sortValue(left));
-    this.adminPostsRef.set(cloned);
-    this.applyPublishedPosts(cloned.filter(post => post.published));
-    return this.clonePosts(cloned);
+  async deletePost(postId: string, actorUserId: string): Promise<IdeaPostDto> {
+    const post = await this.ideaService().deletePost(postId, actorUserId);
+    this.mergeAdminPost(post);
+    const sync = { ...post, imageUrls: [...post.imageUrls] };
+    this.adminPostSyncRef.set(sync);
+    return sync;
   }
 
   async restorePost(postId: string, actorUserId: string): Promise<IdeaPostDto> {
     const post = await this.ideaService().restorePost(postId, actorUserId);
     this.mergeAdminPost(post);
-    return { ...post, imageUrls: [...post.imageUrls] };
+    const sync = { ...post, imageUrls: [...post.imageUrls] };
+    this.adminPostSyncRef.set(sync);
+    return sync;
+  }
+
+  clearAdminPostSync(): void {
+    this.adminPostSyncRef.set(null);
   }
 
   publishedIdeaInfoCards(
@@ -135,8 +144,10 @@ export class IdeaPostsService extends BaseRouteModeService {
     return posts.map(post => this.entryIdeaInfoCard(post));
   }
 
-  adminIdeaInfoCards(): InfoCardData<IdeaArticleDetailDto>[] {
-    return this.adminPostsRef().map(post => this.adminIdeaInfoCard(post));
+  adminIdeaInfoCards(
+    posts: readonly IdeaPostDto[] = this.adminPostsRef()
+  ): InfoCardData<IdeaArticleDetailDto>[] {
+    return posts.map(post => this.adminIdeaInfoCard(post));
   }
 
   private entryIdeaInfoCard(post: IdeaPostDto): InfoCardData<IdeaArticleDetailDto> {
@@ -177,7 +188,7 @@ export class IdeaPostsService extends BaseRouteModeService {
     };
   }
 
-  private adminIdeaInfoCard(post: IdeaPostDto): InfoCardData<IdeaArticleDetailDto> {
+  adminIdeaInfoCard(post: IdeaPostDto): InfoCardData<IdeaArticleDetailDto> {
     const statusLabel = this.adminPostStatusLabel(post);
     const publicationAction: CardMenuActionId = post.published ? 'unpublish' : 'publish';
     const featuredAction: CardMenuActionId = post.featured ? 'unfeature' : 'feature';
@@ -192,6 +203,7 @@ export class IdeaPostsService extends BaseRouteModeService {
         ];
     return {
       id: `idea:${post.id}`,
+      localSortKey: [-this.sortValue(post), `idea:${post.id}`],
       status: post.trashed ? 'trashed' : post.published ? 'published' : 'draft',
       dateIso: post.submittedAtIso,
       title: post.title,
@@ -240,14 +252,32 @@ export class IdeaPostsService extends BaseRouteModeService {
     const merged = this.clonePosts([
       ...this.adminPostsRef().filter(current => current.id !== post.id),
       post
-    ]).sort((left, right) => this.sortValue(right) - this.sortValue(left));
+    ]).sort((left, right) => this.compareAdminPosts(left, right));
     this.adminPostsRef.set(merged);
     this.applyPublishedPosts(merged.filter(current => current.published));
   }
 
+  adminPostMatchesFilter(post: IdeaPostDto, filter: IdeaPostAdminFilter): boolean {
+    if (filter === 'trashed') {
+      return post.trashed;
+    }
+    if (post.trashed) {
+      return false;
+    }
+    if (filter === 'featured') {
+      return post.featured;
+    }
+    if (filter === 'published') {
+      return post.published;
+    }
+    if (filter === 'drafts') {
+      return !post.published;
+    }
+    return true;
+  }
+
   private shouldResetAdminPage(query: IdeaPostAdminPageQueryDto): boolean {
-    return Math.max(0, Math.trunc(Number(query.page) || 0)) === 0
-      && !`${query.cursor ?? ''}`.trim();
+    return !`${query.cursor ?? ''}`.trim();
   }
 
   private mergePostLists(existing: readonly IdeaPostDto[], incoming: readonly IdeaPostDto[]): IdeaPostDto[] {
@@ -259,7 +289,12 @@ export class IdeaPostsService extends BaseRouteModeService {
       byId.set(post.id, post);
     }
     return this.clonePosts(Array.from(byId.values()))
-      .sort((left, right) => this.sortValue(right) - this.sortValue(left));
+      .sort((left, right) => this.compareAdminPosts(left, right));
+  }
+
+  private compareAdminPosts(left: IdeaPostDto, right: IdeaPostDto): number {
+    return this.sortValue(right) - this.sortValue(left)
+      || right.id.localeCompare(left.id);
   }
 
   private ideaService(): LocalIdeaPostsService | HttpIdeaPostsService {

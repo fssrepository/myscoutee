@@ -4,10 +4,20 @@ import { Injectable, inject } from '@angular/core';
 
 import { LocalMemoryDb } from '../../../common/app.db';
 import type {
+  IdeaPostAdminCountsDto,
+  IdeaPostAdminPageQueryDto,
   IdeaPostDto,
   IdeaPostPublicPageQueryDto
 } from '../../../contracts/content.interface';
-import type { LocalIdeaPostRecordPage } from '../mappers';
+import type {
+  LocalIdeaPostAdminRecordPage,
+  LocalIdeaPostRecordPage
+} from '../mappers';
+
+interface IdeaPostAdminCursor {
+  id: string;
+  submittedAtMs: number;
+}
 
 
 @Injectable({
@@ -22,6 +32,42 @@ export class LocalIdeaPostsRepository {
 
   readTable(): IdeaPostsTable {
     return this.memoryDb.read()[IDEA_POSTS_TABLE_NAME];
+  }
+
+  createPostId(): string {
+    return `idea-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 8)}`;
+  }
+
+  savePostSnapshot(record: IdeaPostDto): IdeaPostDto {
+    let saved = record;
+    this.updateTable(table => {
+      const existing = table.byId[record.id];
+      saved = existing
+        ? {
+            ...record,
+            submittedAtIso: record.submittedAtIso || existing.submittedAtIso || record.updatedAtIso,
+            createdAtIso: existing.createdAtIso || record.createdAtIso,
+            createdByUserId: existing.createdByUserId || record.createdByUserId
+          }
+        : {
+            ...record,
+            submittedAtIso: record.submittedAtIso || record.updatedAtIso
+          };
+      return {
+        ...table,
+        seeded: true,
+        byId: {
+          ...table.byId,
+          [saved.id]: saved
+        },
+        ids: [...new Set([...table.ids.filter(id => id !== saved.id), saved.id])]
+      };
+    });
+    return saved;
+  }
+
+  async flushToIndexedDb(): Promise<void> {
+    await this.persist();
   }
 
   queryPublishedPostPage(
@@ -40,6 +86,31 @@ export class LocalIdeaPostsRepository {
       records: records.slice(startIndex, endIndex),
       total: records.length,
       nextCursor: endIndex < records.length ? `${effectiveLang}:${endIndex}` : null
+    };
+  }
+
+  queryAdminPostPage(
+    lang: string,
+    query: IdeaPostAdminPageQueryDto = {}
+  ): LocalIdeaPostAdminRecordPage {
+    const normalizedLang = this.normalizeLang(lang);
+    const status = this.normalizeAdminStatus(query.status);
+    const allPosts = this.posts(normalizedLang);
+    const filtered = allPosts.filter(post => this.matchesAdminStatus(post, status));
+    const cursor = this.parseAdminCursor(query.cursor);
+    const remaining = cursor
+      ? filtered.filter(post => this.compareAdminPostToCursor(post, cursor) > 0)
+      : filtered;
+    const limit = Math.max(1, Math.trunc(Number(query.pageSize) || 10));
+    const records = remaining.slice(0, limit);
+    const nextCursor = remaining.length > limit && records.length > 0
+      ? this.serializeAdminCursor(this.buildAdminCursor(records[records.length - 1]))
+      : null;
+    return {
+      records,
+      total: filtered.length,
+      nextCursor,
+      counts: this.countAdminPosts(allPosts)
     };
   }
 
@@ -75,19 +146,120 @@ export class LocalIdeaPostsRepository {
   }
 
   private publishedPosts(lang: string): IdeaPostDto[] {
+    return this.posts(lang)
+      .filter(post => post.published === true && post.trashed !== true)
+      .sort((left, right) => this.compareAdminPosts(left, right));
+  }
+
+  private posts(lang: string): IdeaPostDto[] {
     const normalizedLang = this.normalizeLang(lang);
     const table = this.readTable();
     return table.ids
       .map(id => table.byId[id])
       .filter((post): post is IdeaPostDto => Boolean(post))
-      .filter(post => post.published === true && post.trashed !== true)
       .filter(post => `${post.lang ?? ''}`.trim().toLowerCase().split('-')[0] === normalizedLang)
-      .sort((left, right) => this.comparePublishedPosts(left, right));
+      .sort((left, right) => this.compareAdminPosts(left, right));
   }
 
-  private comparePublishedPosts(left: IdeaPostDto, right: IdeaPostDto): number {
+  private compareAdminPosts(left: IdeaPostDto, right: IdeaPostDto): number {
     const dateOrder = this.sortValue(right) - this.sortValue(left);
     return dateOrder || right.id.localeCompare(left.id);
+  }
+
+  private compareAdminPostToCursor(post: IdeaPostDto, cursor: IdeaPostAdminCursor): number {
+    const dateOrder = cursor.submittedAtMs - this.sortValue(post);
+    return dateOrder || cursor.id.localeCompare(post.id);
+  }
+
+  private buildAdminCursor(post: IdeaPostDto): IdeaPostAdminCursor {
+    return {
+      id: post.id,
+      submittedAtMs: this.sortValue(post)
+    };
+  }
+
+  private serializeAdminCursor(cursor: IdeaPostAdminCursor): string {
+    return JSON.stringify(cursor);
+  }
+
+  private parseAdminCursor(value: string | null | undefined): IdeaPostAdminCursor | null {
+    const normalized = value?.trim() ?? '';
+    if (!normalized) {
+      return null;
+    }
+    try {
+      const parsed = JSON.parse(normalized) as Partial<IdeaPostAdminCursor>;
+      if (typeof parsed.id !== 'string' || !parsed.id.trim() || !Number.isFinite(parsed.submittedAtMs)) {
+        return null;
+      }
+      return {
+        id: parsed.id.trim(),
+        submittedAtMs: Math.trunc(Number(parsed.submittedAtMs))
+      };
+    } catch {
+      return null;
+    }
+  }
+
+  private matchesAdminStatus(post: IdeaPostDto, status: string): boolean {
+    if (status === 'trashed') {
+      return post.trashed === true;
+    }
+    if (post.trashed) {
+      return false;
+    }
+    if (status === 'featured') {
+      return post.featured === true;
+    }
+    if (status === 'published') {
+      return post.published === true;
+    }
+    if (status === 'drafts') {
+      return post.published === false;
+    }
+    return true;
+  }
+
+  private countAdminPosts(posts: readonly IdeaPostDto[]): IdeaPostAdminCountsDto {
+    return posts.reduce<IdeaPostAdminCountsDto>((counts, post) => {
+      if (post.trashed) {
+        counts.trashed += 1;
+        return counts;
+      }
+      counts.all += 1;
+      if (post.featured) {
+        counts.featured += 1;
+      }
+      if (post.published) {
+        counts.published += 1;
+      } else {
+        counts.drafts += 1;
+      }
+      return counts;
+    }, {
+      all: 0,
+      featured: 0,
+      published: 0,
+      drafts: 0,
+      trashed: 0
+    });
+  }
+
+  private normalizeAdminStatus(value: string | null | undefined): string {
+    const normalized = `${value ?? ''}`.trim().toLowerCase();
+    switch (normalized) {
+      case 'featured':
+      case 'published':
+      case 'drafts':
+      case 'trashed':
+        return normalized;
+      case 'draft':
+        return 'drafts';
+      case 'trash':
+        return 'trashed';
+      default:
+        return 'all';
+    }
   }
 
   private sortValue(post: Pick<IdeaPostDto, 'submittedAtIso' | 'updatedAtIso' | 'createdAtIso'>): number {

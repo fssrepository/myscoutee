@@ -25,6 +25,7 @@ export { LocalEventParticipationActionMapper } from './event-participation-actio
 export { LocalHelpCenterMapper } from './help-center.mapper';
 export {
   LocalIdeaPostsMapper,
+  type LocalIdeaPostAdminRecordPage,
   type LocalIdeaPostRecordPage
 } from './idea-post.mapper';
 export { LocalProfileExperiencesMapper } from './profile-experiences.mapper';
