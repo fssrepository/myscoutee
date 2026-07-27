@@ -276,8 +276,8 @@
 .entry-hero-cta {
   margin-top: 1rem;
   display: flex;
-  flex-wrap: wrap;
-  gap: 0.54rem;
+  flex-wrap: nowrap;
+  gap: 0.46rem;
 }
 
 .entry-cta {
@@ -294,8 +294,9 @@
   align-items: center;
   justify-content: center;
   gap: 0.4rem;
-  padding: 0.2rem 1rem;
+  padding: 0.2rem 0.85rem;
   text-decoration: none;
+  white-space: nowrap;
 }
 
 .entry-cta .mat-icon,
