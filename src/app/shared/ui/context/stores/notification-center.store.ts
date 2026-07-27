@@ -79,6 +79,7 @@ export class NotificationCenterStore {
     this.activeUserIdRef.set(normalizedUserId);
     this.syncUnreadCount(initialUnreadCount);
     this.syncMuted(initialMuted);
+    this.requestAttention();
   }
 
   reset(): void {

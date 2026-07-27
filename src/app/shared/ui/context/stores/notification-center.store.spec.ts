@@ -85,4 +85,26 @@ describe('NotificationCenterStore realtime unread synchronization', () => {
     expect(store.unreadCount()).toBe(5);
     expect(store.attentionVisible()).toBe(true);
   });
+
+  it('shows initial unread attention once without undoing a dismissal on same-user sync', () => {
+    const store = TestBed.inject(NotificationCenterStore);
+
+    store.initialize('user-1', 4);
+    expect(store.attentionVisible()).toBe(true);
+
+    store.dismissAttention();
+    store.initialize('user-1', 4);
+    expect(store.attentionVisible()).toBe(false);
+
+    store.syncUnreadCount(5, { announce: true });
+    expect(store.attentionVisible()).toBe(true);
+  });
+
+  it('keeps initial unread attention hidden when alerts are muted', () => {
+    const store = TestBed.inject(NotificationCenterStore);
+
+    store.initialize('user-1', 4, true);
+
+    expect(store.attentionVisible()).toBe(false);
+  });
 });
