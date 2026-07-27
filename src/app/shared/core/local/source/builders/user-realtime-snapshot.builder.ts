@@ -89,6 +89,30 @@ export class LocalUserRealtimeSnapshotBuilder {
     };
   }
 
+  static withNotificationCount(
+    state: LocalUserRealtimeSnapshotState,
+    count: number
+  ): LocalUserRealtimeSnapshotState {
+    const notifications = this.count(count);
+    return {
+      ...state,
+      sourceUser: {
+        ...state.sourceUser,
+        activities: {
+          ...state.sourceUser.activities,
+          notifications
+        }
+      },
+      snapshot: {
+        ...state.snapshot,
+        counters: {
+          ...state.snapshot.counters,
+          notifications
+        }
+      }
+    };
+  }
+
   private static buildInitialSnapshot(user: UserDto): UserRealtimeLongPollResponseDto {
     const activities = user.activities ?? {};
     return {

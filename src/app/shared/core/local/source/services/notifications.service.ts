@@ -12,6 +12,7 @@ import type { ListQuery } from '../../../contracts/list.interface';
 import { LocalRouteDelayService } from './route-delay.service';
 import { LocalNotificationMapper } from '../mappers/notification.mapper';
 import { LocalNotificationsRepository } from '../repositories/notifications.repository';
+import { LocalUsersService } from './users.service';
 
 @Injectable({
   providedIn: 'root'
@@ -20,6 +21,7 @@ export class LocalNotificationsService extends LocalRouteDelayService implements
   private static readonly ROUTE = '/notifications';
 
   private readonly repository = inject(LocalNotificationsRepository);
+  private readonly usersService = inject(LocalUsersService);
 
   async queryPage(
     userId: string,
@@ -67,10 +69,12 @@ export class LocalNotificationsService extends LocalRouteDelayService implements
     if (!notification) {
       throw new Error('Notification was not found.');
     }
+    const unreadCount = this.repository.unreadCount(normalizedUserId);
+    this.usersService.syncRealtimeNotificationCount(normalizedUserId, unreadCount);
     await this.repository.flushToIndexedDb();
     return {
       notification: LocalNotificationMapper.toDto(notification),
-      unreadCount: this.repository.unreadCount(normalizedUserId)
+      unreadCount
     };
   }
 

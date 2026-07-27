@@ -1,8 +1,19 @@
 import { CommonModule } from '@angular/common';
-import { ChangeDetectionStrategy, Component, EventEmitter, Input, Output, ViewEncapsulation } from '@angular/core';
+import {
+  ChangeDetectionStrategy,
+  Component,
+  EventEmitter,
+  Input,
+  OnDestroy,
+  OnInit,
+  Output,
+  ViewEncapsulation,
+  inject
+} from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { MatIconModule } from '@angular/material/icon';
 import { I18nPipe } from '../../../pipes';
+import { PopupPresenceStore } from '../../../context/stores/popup-presence.store';
 import { DateInputComponent, type DateInputValue } from '../form/inputs/date-input/date-input.component';
 import { AppMenuComponent, type AppMenuItemSelectEvent } from '../menu';
 import type {
@@ -25,7 +36,10 @@ import type {
   encapsulation: ViewEncapsulation.None,
   changeDetection: ChangeDetectionStrategy.OnPush
 })
-export class PopupComponent<TContext = unknown> {
+export class PopupComponent<TContext = unknown> implements OnInit, OnDestroy {
+  private readonly popupPresenceStore = inject(PopupPresenceStore);
+  private presenceToken: symbol | null = null;
+
   @Input() model: PopupModel<TContext> | null = null;
   @Input() zIndex: number | null = null;
 
@@ -33,6 +47,17 @@ export class PopupComponent<TContext = unknown> {
   @Output() readonly menuSelect = new EventEmitter<PopupMenuSelectEvent<TContext>>();
   @Output() readonly action = new EventEmitter<PopupActionEvent>();
   @Output() readonly dateInputChange = new EventEmitter<PopupDateInputChangeEvent<TContext>>();
+
+  ngOnInit(): void {
+    this.presenceToken = this.popupPresenceStore.register();
+  }
+
+  ngOnDestroy(): void {
+    if (this.presenceToken) {
+      this.popupPresenceStore.unregister(this.presenceToken);
+      this.presenceToken = null;
+    }
+  }
 
   protected get popupModel(): PopupModel<TContext> {
     return this.model ?? {};

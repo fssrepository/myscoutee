@@ -91,8 +91,10 @@ export {
 } from './member-menu.store';
 export {
   NotificationCenterStore,
-  type NotificationUnreadSyncOptions
+  type NotificationUnreadSyncOptions,
+  type NotificationUnreadSyncToken
 } from './notification-center.store';
+export { PopupPresenceStore } from './popup-presence.store';
 export {
   SubEventResourcePopupStore,
   type AssetExploreBorrowDialogState,

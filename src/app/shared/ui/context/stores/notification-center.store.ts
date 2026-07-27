@@ -16,6 +16,12 @@ export interface NotificationUnreadSyncOptions {
   announce?: boolean;
 }
 
+export interface NotificationUnreadSyncToken {
+  userId: string;
+  revision: number;
+  unreadCount: number;
+}
+
 @Injectable({
   providedIn: 'root'
 })
@@ -106,6 +112,16 @@ export class NotificationCenterStore {
     this.attentionRequestedRef.set(false);
   }
 
+  requestAttention(): void {
+    if (
+      this.unreadCountRef() > 0
+      && !this.mutedRef()
+      && !this.openRef()
+    ) {
+      this.attentionRequestedRef.set(true);
+    }
+  }
+
   setDragPosition(position: AppMenuDragPosition): void {
     this.dragPositionRef.set({
       x: this.finiteCoordinate(position?.x),
@@ -143,6 +159,32 @@ export class NotificationCenterStore {
     ) {
       this.attentionRequestedRef.set(true);
     }
+  }
+
+  captureUnreadSyncToken(): NotificationUnreadSyncToken {
+    return {
+      userId: this.activeUserIdRef(),
+      revision: this.pageContextRevision,
+      unreadCount: this.unreadCountRef()
+    };
+  }
+
+  applyRealtimeUnreadCount(
+    token: NotificationUnreadSyncToken,
+    count: number
+  ): boolean {
+    const nextCount = this.nonNegativeInteger(count);
+    if (
+      !token.userId
+      || token.userId !== this.activeUserIdRef()
+      || token.revision !== this.pageContextRevision
+    ) {
+      return false;
+    }
+    this.syncUnreadCount(nextCount, {
+      announce: nextCount > token.unreadCount
+    });
+    return true;
   }
 
   async ensurePopupLoaded(): Promise<void> {

@@ -37,6 +37,7 @@ import {
 import { UserProfileStore } from '../../../ui/context/stores/user-profile.store';
 import { AppRuntimeStore } from '../../../ui/context/stores/app-runtime.store';
 import { ActivityStore } from '../../../ui/context/stores/activity.store';
+import { RouteDelayService } from './route-delay.service';
 
 export { USER_GAME_CARDS_LOAD_CONTEXT_KEY } from './game.service';
 
@@ -56,6 +57,7 @@ export class UsersService extends BaseRouteModeService {
   private readonly userProfileStore = inject(UserProfileStore);
   private readonly runtimeStore = inject(AppRuntimeStore);
   private readonly activityStore = inject(ActivityStore);
+  private readonly routeDelay = inject(RouteDelayService);
   get localModeEnabled(): boolean {
     return this.isLocalRouteEnabled('/auth/me');
   }
@@ -445,6 +447,10 @@ export class UsersService extends BaseRouteModeService {
     } catch {
       return null;
     }
+  }
+
+  realtimePollIntervalMs(): number {
+    return this.routeDelay.resolveIntervalMs('/auth/me/realtime/long-poll', 30_000);
   }
 
   private setLoadStatus(contextKey: string, status: LoadStatus, message?: string): void {

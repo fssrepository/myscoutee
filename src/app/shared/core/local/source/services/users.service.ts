@@ -265,6 +265,16 @@ export class LocalUsersService extends LocalRouteDelayService implements UserSer
     return this.realtimeStateByUserId[userId] ?? null;
   }
 
+  syncRealtimeNotificationCount(userId: string, count: number): void {
+    const normalizedUserId = userId.trim();
+    const state = this.realtimeStateByUserId[normalizedUserId];
+    if (!normalizedUserId || !state) {
+      return;
+    }
+    this.realtimeStateByUserId[normalizedUserId] =
+      LocalUserRealtimeSnapshotBuilder.withNotificationCount(state, count);
+  }
+
   private resetLocalRealtimeCursor(userId: string): void {
     const state = this.realtimeStateByUserId[userId];
     if (state) {

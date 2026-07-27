@@ -101,6 +101,7 @@ import { ActivityInvitePopupStore } from '../../context/stores/activity-invite-p
 import { AdminMenuStore } from '../../context/stores/admin-menu.store';
 import { AdminWorkspaceStore } from '../../context/stores/admin-workspace.store';
 import { NotificationCenterStore } from '../../context/stores/notification-center.store';
+import { PopupPresenceStore } from '../../context/stores/popup-presence.store';
 import { installSessionActiveUserSync } from './session-active-user-sync';
 
 interface NavigatorAvatarState {
@@ -180,8 +181,6 @@ type NavigatorHeaderActionMenuItemId =
   styleUrl: './side-menu.component.scss'
 })
 export class SideMenuComponent implements OnDestroy {
-  private static readonly USER_REALTIME_POLL_INTERVAL_MS = 30000;
-
   private static readonly ACCOUNT_REACTIVATION_WINDOW_MS = 30 * 24 * 60 * 60 * 1000;
   private static readonly ADMIN_SESSION_STORAGE_KEY = APP_STORAGE_KEYS.adminSession;
   private static readonly USER_MENU_LOAD_DURATION_MS = 3000;
@@ -202,6 +201,7 @@ export class SideMenuComponent implements OnDestroy {
   private readonly sessionService = inject(SessionService);
   private readonly dialogStore = inject(DialogStore);
   protected readonly notificationCenterStore = inject(NotificationCenterStore);
+  private readonly popupPresenceStore = inject(PopupPresenceStore);
   protected readonly profileStore = inject(ProfileStore);
   protected readonly activitiesStore = inject(ActivitiesPopupStore);
   protected readonly assetPopupStore = inject(AssetPopupStore);
@@ -912,6 +912,15 @@ export class SideMenuComponent implements OnDestroy {
         Math.max(0, Math.trunc(Number(user.activities?.notifications) || 0)),
         user.notificationPreferences?.muted === true
       );
+    });
+
+    effect(() => {
+      if (
+        this.popupPresenceStore.visible()
+        && !this.notificationCenterStore.isOpen()
+      ) {
+        this.notificationCenterStore.requestAttention();
+      }
     });
 
     effect(() => {
@@ -1841,7 +1850,7 @@ export class SideMenuComponent implements OnDestroy {
 
   private userRealtimePollIntervalMs(): number {
     return this.sessionService.session() && this.userProfileStore.activeUserId().trim()
-      ? SideMenuComponent.USER_REALTIME_POLL_INTERVAL_MS
+      ? this.usersService.realtimePollIntervalMs()
       : 0;
   }
 
@@ -1862,6 +1871,7 @@ export class SideMenuComponent implements OnDestroy {
     if (!userId) {
       return;
     }
+    const notificationSyncToken = this.notificationCenterStore.captureUnreadSyncToken();
     this.userProfileStore.setUserRealtimePollInFlight(true);
     try {
       const cursor = this.userProfileStore.getUserRealtimeCursor(userId);
@@ -1869,14 +1879,20 @@ export class SideMenuComponent implements OnDestroy {
       if (!snapshot || this.userProfileStore.activeUserId().trim() !== userId) {
         return;
       }
-      const previousNotificationCount = this.notificationCenterStore.unreadCount();
-      this.userProfileStore.applyUserRealtimeSnapshot(userId, snapshot);
       const nextNotificationCount = Number(snapshot.counters?.notifications);
+      const {
+        notifications: _notificationCount,
+        ...nonNotificationCounters
+      } = snapshot.counters;
+      this.userProfileStore.applyUserRealtimeSnapshot(userId, {
+        ...snapshot,
+        counters: nonNotificationCounters
+      });
       if (Number.isFinite(nextNotificationCount)) {
-        const normalizedNotificationCount = Math.max(0, Math.trunc(nextNotificationCount));
-        this.notificationCenterStore.syncUnreadCount(normalizedNotificationCount, {
-          announce: normalizedNotificationCount > previousNotificationCount
-        });
+        this.notificationCenterStore.applyRealtimeUnreadCount(
+          notificationSyncToken,
+          nextNotificationCount
+        );
       }
     } finally {
       this.userProfileStore.setUserRealtimePollInFlight(false);

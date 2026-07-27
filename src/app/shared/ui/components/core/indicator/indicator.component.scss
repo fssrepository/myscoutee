@@ -319,6 +319,13 @@
   animation: app-indicator-action-progress var(--app-indicator-duration) linear forwards;
 }
 
+:host(.app-indicator-host--shape-surface) .app-indicator__action-ring-progress.is-loading {
+  stroke-dasharray: 0 100;
+  stroke-dashoffset: 0;
+  stroke-linecap: butt;
+  animation-name: app-indicator-surface-action-progress;
+}
+
 @keyframes app-indicator-action-progress {
   from {
     stroke-dashoffset: 100;
@@ -326,6 +333,16 @@
 
   to {
     stroke-dashoffset: 0;
+  }
+}
+
+@keyframes app-indicator-surface-action-progress {
+  from {
+    stroke-dasharray: 0 100;
+  }
+
+  to {
+    stroke-dasharray: 100 100;
   }
 }
 
