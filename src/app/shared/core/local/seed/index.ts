@@ -18,6 +18,7 @@ export { SeedEventFeedbackRepository } from './repositories/event-feedback-seed.
 export { SeedEventsRepository } from './repositories/events-seed.repository';
 export { SeedHelpCenterRepository } from './repositories/help-center-seed.repository';
 export { SeedIdeaPostsRepository } from './repositories/idea-posts-seed.repository';
+export { SeedNotificationsRepository } from './repositories/notifications-seed.repository';
 export { SeedProfileExperiencesRepository } from './repositories/profile-experiences-seed.repository';
 export { SeedShareTokensRepository } from './repositories/share-tokens-seed.repository';
 export { SeedUsersRatingsRepository } from './repositories/users-ratings-seed.repository';

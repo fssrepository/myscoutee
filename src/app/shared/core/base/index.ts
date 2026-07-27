@@ -17,6 +17,7 @@ export { TermsPolicyService, type TermsPolicyOpenOptions } from './services/term
 export { IdeaPostsService } from './services/idea-posts.service';
 export { LandingContentService } from './services/landing-content.service';
 export { MediaService } from './services/media.service';
+export { NotificationsService } from './services/notifications.service';
 export { AdminWorkspaceDataService } from './services/admin-workspace-data.service';
 export {
   AdminParamsService,

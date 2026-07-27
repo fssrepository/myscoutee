@@ -3,8 +3,16 @@
     class="navigator-trigger-rail"
     [class.is-open]="isMenuOpen()"
     [class.is-covered]="isCoveredByAssetPopup()"
+    [class.is-notification-open]="notificationCenterStore.isOpen()"
   >
     <div class="navigator-trigger-rail-inner">
+      <app-menu
+        class="notification-selector-menu"
+        kind="inline"
+        layout="row"
+        [items]="notificationLauncherMenuItems()"
+        (itemSelect)="onNotificationLauncherSelect($event)"
+      ></app-menu>
       <app-menu
         class="user-selector-menu"
         kind="inline"
@@ -13,6 +21,30 @@
         (itemSelect)="onAvatarMenuSelect($event)"
       ></app-menu>
     </div>
+  </div>
+}
+
+@if (avatarVisible() && notificationCenterStore.attentionVisible()) {
+  <div class="notification-attention-launcher">
+    <app-menu
+      class="notification-attention-menu"
+      kind="fab"
+      [draggable]="true"
+      [dragPosition]="notificationCenterStore.dragPosition()"
+      [trigger]="notificationAttentionTrigger()"
+      (dragPositionChange)="onNotificationDragPositionChange($event)"
+      (itemSelect)="onNotificationAttentionSelect($event)"
+    >
+      <button
+        appMenuOverlay
+        type="button"
+        class="notification-attention-dismiss"
+        aria-label="Dismiss notification alert"
+        (click)="onNotificationAttentionDismiss($event)"
+      >
+        <mat-icon>close</mat-icon>
+      </button>
+    </app-menu>
   </div>
 }
 
@@ -84,6 +116,10 @@
 }
 
 <app-dialog></app-dialog>
+
+@if (notificationCenterStore.popupComponent(); as notificationCenterComponent) {
+  <ng-container *ngComponentOutlet="notificationCenterComponent"></ng-container>
+}
 
 @if (!subEventResourceStore.popupContextRef() && activitiesStore.eventMembersPopupComponent(); as membersComponent) {
   <ng-container *ngComponentOutlet="membersComponent"></ng-container>

@@ -261,6 +261,12 @@ export const ROUTE_CONFIG: RouteConfig = {
       demoDelayMs: 1500
     },
     {
+      routePrefix: '/notifications',
+      demoDelayMs: 1500,
+      intervalMs: 30000,
+      demoIntervalMs: 10000
+    },
+    {
       routePrefix: '/assets',
       demoDelayMs: 1500
     },

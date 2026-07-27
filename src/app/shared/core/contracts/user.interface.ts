@@ -77,6 +77,7 @@ export interface UserMenuCountersDto {
   tickets?: number;
   contacts?: number;
   feedback?: number;
+  notifications?: number;
   chat?: UserChatCountersDto;
   event?: UserEventCountersDto;
   asset?: UserAssetCountersDto;
@@ -97,6 +98,7 @@ export interface UserMenuCounterDeltasDto {
   tickets?: number;
   contacts?: number;
   feedback?: number;
+  notifications?: number;
   chat?: UserChatCounterDeltasDto;
   event?: UserEventCounterDeltasDto;
   asset?: UserAssetCounterDeltasDto;
@@ -248,6 +250,7 @@ export class UserDto {
     tickets?: number;
     contacts?: number;
     feedback?: number;
+    notifications?: number;
     chat?: UserChatCountersDto;
     event?: UserEventCountersDto;
     asset?: UserAssetCountersDto;

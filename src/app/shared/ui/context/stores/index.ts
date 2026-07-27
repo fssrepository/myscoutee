@@ -90,6 +90,10 @@ export {
   type NavigatorEventFeedbackRequest
 } from './member-menu.store';
 export {
+  NotificationCenterStore,
+  type NotificationUnreadSyncOptions
+} from './notification-center.store';
+export {
   SubEventResourcePopupStore,
   type AssetExploreBorrowDialogState,
   type AssetExploreBorrowDraftState,

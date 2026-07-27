@@ -1,5 +1,10 @@
 export { CHATS_TABLE_NAME } from './source/entity/chat.entity';
 export type { ChatThreadRecord, ChatsMemorySchema } from './source/entity/chat.entity';
+export {
+  NOTIFICATIONS_TABLE_NAME,
+  type NotificationRecord,
+  type NotificationsMemorySchema
+} from './source/entity/notification.entity';
 export { EVENTS_TABLE_NAME } from './source/entity/event.entity';
 export type { ActivityEventsMemorySchema } from './source/entity/event.entity';
 export type { HelpCenterMemorySchema, IdeaPostsMemorySchema } from './source/entity/content.entity';
@@ -41,6 +46,7 @@ export { LocalEventFeedbackRepository } from './source/repositories/event-feedba
 export { LocalHelpCenterRepository } from './source/repositories/help-center.repository';
 export { LocalIdeaPostsRepository } from './source/repositories/idea-posts.repository';
 export { LocalMediaRepository } from './source/repositories/media.repository';
+export { LocalNotificationsRepository } from './source/repositories/notifications.repository';
 export { LocalContactsRepository } from './source/repositories/contacts.repository';
 export { LocalShareTokensRepository } from './source/repositories/share-tokens.repository';
 export { LocalProfileExperiencesRepository } from './source/repositories/profile-experiences.repository';
@@ -64,6 +70,7 @@ export { LocalHelpCenterService } from './source/services/help-center.service';
 export { LocalIdeaPostsService } from './source/services/idea-posts.service';
 export { LocalLandingContentService } from './source/services/landing-content.service';
 export { LocalMediaService } from './source/services/media.service';
+export { LocalNotificationsService } from './source/services/notifications.service';
 export { LocalContactsService } from './source/services/contacts.service';
 export { LocalUserExperiencesService } from './source/services/user-experiences.service';
 export { LocalRatesService } from './source/services/rates.service';

@@ -164,6 +164,11 @@ export {
   type UserRealtimeUiPatchInput
 } from './user-realtime-ui.converter';
 export {
+  NotificationSingleRowConverter,
+  notificationSingleRowConverter,
+  type NotificationSingleRowConverterOptions
+} from './notification-single-row.converter';
+export {
   CalendarCardConverter,
   calendarCardConverter,
   type CalendarCardConverterInput

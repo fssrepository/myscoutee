@@ -1,0 +1,39 @@
+:host {
+  display: contents;
+}
+
+.notification-center-popup__body {
+  display: flex;
+  min-height: 0;
+  height: 100%;
+  flex-direction: column;
+  background:
+    linear-gradient(180deg, rgba(237, 233, 254, 0.56), rgba(248, 250, 252, 0) 7rem),
+    #f8fafc;
+}
+
+.notification-center-popup__buckets {
+  flex: 0 0 auto;
+  padding: 0.7rem 0.9rem 0.55rem;
+  border-bottom: 1px solid rgba(100, 116, 139, 0.16);
+  background: rgba(255, 255, 255, 0.9);
+  backdrop-filter: blur(10px);
+}
+
+.notification-center-popup__bucket-menu {
+  display: block;
+  max-width: 24rem;
+  margin-inline: auto;
+}
+
+.notification-center-popup__list {
+  display: block;
+  min-height: 0;
+  flex: 1 1 auto;
+}
+
+@media (max-width: 760px) {
+  .notification-center-popup__buckets {
+    padding-inline: 0.55rem;
+  }
+}

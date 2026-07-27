@@ -4,6 +4,7 @@ import { CONTACTS_TABLE_NAME, PROFILE_EXPERIENCES_TABLE_NAME } from '../../sourc
 import { HELP_CENTER_TABLE_NAME, IDEA_POSTS_TABLE_NAME } from '../../source/entity/content.entity';
 import { SHARE_TOKENS_TABLE_NAME } from '../../source/entity/sharing.entity';
 import { USER_RATES_TABLE_NAME } from '../../source/entity/rate.entity';
+import { NOTIFICATIONS_TABLE_NAME } from '../../source/entity/notification.entity';
 import { USERS_TABLE_NAME } from '../../source/entity/user.entity';
 import { TestBed } from '@angular/core/testing';
 import { vi } from 'vitest';
@@ -105,9 +106,12 @@ describe('Demo bootstrap seeding', () => {
     const state = memoryDb.read();
     const flushedTables = tableWriteSpy.mock.calls.map(([tableName]: [string, unknown]) => tableName);
     expect(flushedTables).toContain(EVENT_FEEDBACK_TABLE_NAME);
+    expect(flushedTables).toContain(NOTIFICATIONS_TABLE_NAME);
     expect(flushedTables).toContain(USERS_TABLE_NAME);
     expect(flushedTables).not.toContain(EVENTS_TABLE_NAME);
     expect(state[EVENT_FEEDBACK_TABLE_NAME].ids.length).toBeGreaterThan(0);
+    expect(state[NOTIFICATIONS_TABLE_NAME].idsByRecipientUserId['u3']?.length).toBe(32);
+    expect(state[USERS_TABLE_NAME].byId['u3']?.activities.notifications).toBe(24);
     expect(state[EVENTS_TABLE_NAME].ids).toEqual(eventIdsBefore);
     expect(JSON.stringify(state[EVENTS_TABLE_NAME].byId)).toBe(eventRecordsBefore);
   });

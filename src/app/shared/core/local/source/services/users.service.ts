@@ -514,6 +514,7 @@ export class LocalUsersService extends LocalRouteDelayService implements UserSer
       'tickets',
       'contacts',
       'feedback',
+      'notifications',
       'adminJobs',
       'adminMetrics'
     ];
@@ -556,6 +557,7 @@ export class LocalUsersService extends LocalRouteDelayService implements UserSer
       'tickets',
       'contacts',
       'feedback',
+      'notifications',
       'adminJobs',
       'adminMetrics'
     ];
@@ -739,6 +741,7 @@ export class LocalUsersService extends LocalRouteDelayService implements UserSer
       tickets,
       contacts: normalizeCounter(activities?.contacts),
       feedback,
+      notifications: normalizeCounter(activities?.notifications),
       chat: {
         all: normalizeCounter(chat?.all ?? activities?.chats),
         event: normalizeCounter(chat?.event),
@@ -795,6 +798,7 @@ export class LocalUsersService extends LocalRouteDelayService implements UserSer
         tickets: counters.tickets ?? user.activities.tickets,
         contacts: counters.contacts ?? user.activities.contacts,
         feedback: counters.feedback ?? user.activities.feedback,
+        notifications: counters.notifications ?? user.activities.notifications,
         chat: counters.chat ?? user.activities.chat,
         event: counters.event ?? user.activities.event,
         asset: counters.asset ?? user.activities.asset,

@@ -585,6 +585,7 @@ export class UsersService extends BaseRouteModeService {
     const tickets = normalizeWithFallback(counterOverrides.tickets, fallbackActivities.tickets);
     const contacts = normalizeWithFallback(counterOverrides.contacts, fallbackActivities.contacts);
     const feedback = normalizeWithFallback(counterOverrides.feedback, fallbackActivities.feedback);
+    const notifications = normalizeWithFallback(counterOverrides.notifications, fallbackActivities.notifications);
     const adminJobs = normalizeWithFallback(counterOverrides.adminJobs, fallbackActivities.adminJobs);
     const adminMetrics = normalizeWithFallback(counterOverrides.adminMetrics, fallbackActivities.adminMetrics);
 
@@ -599,6 +600,7 @@ export class UsersService extends BaseRouteModeService {
     if (tickets !== undefined) patch.tickets = tickets;
     if (contacts !== undefined) patch.contacts = contacts;
     if (feedback !== undefined) patch.feedback = feedback;
+    if (notifications !== undefined) patch.notifications = notifications;
 
     const chatAll = normalizeWithFallback(counterOverrides.chat?.all, fallbackActivities.chat?.all);
     const chatEvent = normalizeWithFallback(counterOverrides.chat?.event, fallbackActivities.chat?.event);
@@ -697,6 +699,7 @@ export class UsersService extends BaseRouteModeService {
         tickets: Math.max(0, Math.trunc(Number(user.activities?.tickets) || 0)),
         contacts: Math.max(0, Math.trunc(Number(user.activities?.contacts) || 0)),
         feedback: Math.max(0, Math.trunc(Number(user.activities?.feedback) || 0)),
+        notifications: Math.max(0, Math.trunc(Number(user.activities?.notifications) || 0)),
         chat: {
           all: Math.max(0, Math.trunc(Number(user.activities?.chat?.all) || 0)),
           event: Math.max(0, Math.trunc(Number(user.activities?.chat?.event) || 0)),

@@ -22,9 +22,11 @@ import {
   type ActivityCounters,
   AppMenuComponent,
   type ActivityCounterKey,
+  type AppMenuDragPosition,
   type AppMenuItem,
   type AppMenuItemSelectEvent,
   type AppMenuModel,
+  type AppMenuTrigger,
   type AppMenuValueMap,
   HeaderCardComponent,
   type HeaderCardModel,
@@ -98,6 +100,7 @@ import { MemberMenuStore } from '../../context/stores/member-menu.store';
 import { ActivityInvitePopupStore } from '../../context/stores/activity-invite-popup.store';
 import { AdminMenuStore } from '../../context/stores/admin-menu.store';
 import { AdminWorkspaceStore } from '../../context/stores/admin-workspace.store';
+import { NotificationCenterStore } from '../../context/stores/notification-center.store';
 import { installSessionActiveUserSync } from './session-active-user-sync';
 
 interface NavigatorAvatarState {
@@ -111,6 +114,8 @@ interface SideMenuUiState {
 
 type NavigatorAvatarMenuItemId = 'navigator-avatar';
 type NavigatorAvatarMenuContext = { kind: 'toggle-menu' };
+type NotificationLauncherMenuItemId = 'notifications';
+type NotificationAttentionMenuItemId = 'notification-attention';
 
 interface NavigatorMenuUser extends UserDto {
   activities: ActivityCounters;
@@ -155,6 +160,7 @@ type NavigatorSettingsMenuItemId =
   | 'logout';
 
 type NavigatorHeaderActionMenuItemId =
+  | 'notifications'
   | 'explanations'
   | 'share'
   | 'settings'
@@ -196,6 +202,7 @@ export class SideMenuComponent implements OnDestroy {
   private readonly usersService = inject(UsersService);
   private readonly sessionService = inject(SessionService);
   private readonly dialogStore = inject(DialogStore);
+  protected readonly notificationCenterStore = inject(NotificationCenterStore);
   protected readonly profileStore = inject(ProfileStore);
   protected readonly activitiesStore = inject(ActivitiesPopupStore);
   protected readonly assetPopupStore = inject(AssetPopupStore);
@@ -352,6 +359,40 @@ export class SideMenuComponent implements OnDestroy {
       context: { kind: 'toggle-menu' }
     }];
   });
+  protected readonly notificationLauncherMenuItems = computed<readonly AppMenuItem<NotificationLauncherMenuItemId>[]>(() => {
+    const unreadCount = this.notificationCenterStore.unreadCount();
+    const opening = this.notificationCenterStore.opening();
+    const muted = this.notificationCenterStore.muted();
+    return [{
+      id: 'notifications',
+      kind: 'action',
+      icon: muted ? 'notifications_off' : 'notifications',
+      palette: unreadCount > 0 ? 'violet' : 'neutral',
+      ariaLabel: this.notificationLauncherAriaLabel(unreadCount, muted),
+      disabled: !this.canToggleAvatarMenu(),
+      counter: unreadCount > 0 ? { value: unreadCount, max: 99 } : null,
+      counterTone: 'alert',
+      progress: opening
+        ? {
+            state: 'loading',
+            shape: 'circle',
+            durationMs: SideMenuComponent.USER_MENU_LOAD_DURATION_MS
+          }
+        : null
+    }];
+  });
+  protected readonly notificationAttentionTrigger = computed<AppMenuTrigger>(() => {
+    const unreadCount = this.notificationCenterStore.unreadCount();
+    return {
+      id: 'notification-attention',
+      icon: 'notifications_active',
+      palette: 'violet',
+      action: 'custom',
+      hideLabel: true,
+      counter: unreadCount > 0 ? { value: unreadCount, max: 99 } : null,
+      ariaLabel: this.notificationLauncherAriaLabel(unreadCount, false)
+    };
+  });
   protected readonly menuUser = computed<NavigatorMenuUser | null>(() => {
     const activeUser = this.userProfileStore.activeUserProfile();
     if (!activeUser) {
@@ -370,6 +411,7 @@ export class SideMenuComponent implements OnDestroy {
       tickets: activityOverrides.tickets ?? activeUser.activities?.tickets ?? 0,
       contacts: activityOverrides.contacts ?? activeUser.activities?.contacts ?? 0,
       feedback: activityOverrides.feedback ?? activeUser.activities?.feedback ?? 0,
+      notifications: activityOverrides.notifications ?? activeUser.activities?.notifications ?? 0,
       adminJobs: activityOverrides.adminJobs ?? activeUser.activities?.adminJobs ?? 0,
       adminMetrics: activityOverrides.adminMetrics ?? activeUser.activities?.adminMetrics ?? 0
     };
@@ -470,7 +512,28 @@ export class SideMenuComponent implements OnDestroy {
     return items;
   });
   protected readonly navigatorHeaderActionMenuModel = computed<AppMenuModel<NavigatorHeaderActionMenuItemId>>(() => {
-    const items: AppMenuItem<NavigatorHeaderActionMenuItemId>[] = [];
+    const notificationCount = this.notificationCenterStore.unreadCount();
+    const items: AppMenuItem<NavigatorHeaderActionMenuItemId>[] = [
+      {
+        id: 'notifications',
+        label: 'Notifications',
+        icon: this.notificationCenterStore.muted() ? 'notifications_off' : 'notifications',
+        palette: notificationCount > 0 ? 'violet' : 'neutral',
+        counter: notificationCount > 0 ? { value: notificationCount, max: 99 } : null,
+        counterTone: 'alert',
+        ariaLabel: this.notificationLauncherAriaLabel(
+          notificationCount,
+          this.notificationCenterStore.muted()
+        ),
+        progress: this.notificationCenterStore.opening()
+          ? {
+              state: 'loading',
+              shape: 'circle',
+              durationMs: SideMenuComponent.USER_MENU_LOAD_DURATION_MS
+            }
+          : null
+      }
+    ];
     if (!this.isAdminMode()) {
       items.push(
         {
@@ -860,6 +923,20 @@ export class SideMenuComponent implements OnDestroy {
 
     effect(() => {
       const session = this.sessionService.session();
+      const user = this.userProfileStore.activeUserProfile();
+      const activeUserId = this.userProfileStore.activeUserId().trim();
+      if (!session || !user || !activeUserId || user.id.trim() !== activeUserId) {
+        this.notificationCenterStore.reset();
+        return;
+      }
+      void this.notificationCenterStore.initialize(
+        activeUserId,
+        Math.max(0, Math.trunc(Number(user.activities?.notifications) || 0))
+      );
+    });
+
+    effect(() => {
+      const session = this.sessionService.session();
       const activeUserId = this.userProfileStore.activeUserId().trim();
       const revision = this.privacyPolicy.activeRevision();
       const shouldCheckPrivacyConsent = Boolean(activeUserId)
@@ -1091,12 +1168,43 @@ export class SideMenuComponent implements OnDestroy {
     this.menuOpenRef.update(open => !open);
   }
 
+  protected onNotificationLauncherSelect(
+    event: AppMenuItemSelectEvent<NotificationLauncherMenuItemId>
+  ): void {
+    if (event.id !== 'notifications') {
+      return;
+    }
+    this.openNotificationCenter(event.sourceEvent);
+  }
+
+  protected onNotificationAttentionSelect(
+    event: AppMenuItemSelectEvent<string>
+  ): void {
+    if (event.id !== 'notification-attention') {
+      return;
+    }
+    this.openNotificationCenter(event.sourceEvent);
+  }
+
+  protected onNotificationAttentionDismiss(event: Event): void {
+    event.preventDefault();
+    event.stopPropagation();
+    this.notificationCenterStore.dismissAttention();
+  }
+
+  protected onNotificationDragPositionChange(position: AppMenuDragPosition): void {
+    this.notificationCenterStore.setDragPosition(position);
+  }
+
   protected onCloseMenu(): void {
     this.closeSideMenu();
   }
 
   protected onNavigatorHeaderActionMenuSelect(event: AppMenuItemSelectEvent<NavigatorHeaderActionMenuItemId>): void {
     switch (event.id) {
+      case 'notifications':
+        this.openNotificationCenter(event.sourceEvent);
+        return;
       case 'explanations':
         this.onToggleExplanationGuide(event.sourceEvent);
         return;
@@ -1791,7 +1899,15 @@ export class SideMenuComponent implements OnDestroy {
       if (!snapshot || this.userProfileStore.activeUserId().trim() !== userId) {
         return;
       }
+      const previousNotificationCount = this.notificationCenterStore.unreadCount();
       this.userProfileStore.applyUserRealtimeSnapshot(userId, snapshot);
+      const nextNotificationCount = Number(snapshot.counters?.notifications);
+      if (Number.isFinite(nextNotificationCount)) {
+        const normalizedNotificationCount = Math.max(0, Math.trunc(nextNotificationCount));
+        this.notificationCenterStore.syncUnreadCount(normalizedNotificationCount, {
+          announce: normalizedNotificationCount > previousNotificationCount
+        });
+      }
     } finally {
       this.userProfileStore.setUserRealtimePollInFlight(false);
     }
@@ -1850,6 +1966,24 @@ export class SideMenuComponent implements OnDestroy {
       this.resolveActivityBadge(user, 'contacts') +
       this.resolveActivityBadge(user, 'feedback')
     );
+  }
+
+  private notificationLauncherAriaLabel(unreadCount: number, muted: boolean): string {
+    const normalizedCount = Math.max(0, Math.trunc(Number(unreadCount) || 0));
+    if (normalizedCount > 0) {
+      return `Open notifications, ${normalizedCount} new${muted ? ', alerts muted' : ''}`;
+    }
+    return muted ? 'Open notifications, alerts muted' : 'Open notifications';
+  }
+
+  private openNotificationCenter(event?: Event): void {
+    event?.preventDefault();
+    event?.stopPropagation();
+    if (!this.canToggleAvatarMenu()) {
+      return;
+    }
+    this.closeSideMenu();
+    void this.notificationCenterStore.open();
   }
 
   private resolveActivityBadge(user: UserDto, key: ActivityCounterKey): number {

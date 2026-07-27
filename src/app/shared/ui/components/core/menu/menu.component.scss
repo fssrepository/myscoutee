@@ -628,6 +628,24 @@
   box-shadow: 0 8px 18px var(--app-menu-shadow);
 }
 
+:host(.app-menu-host--draggable) {
+  will-change: transform;
+}
+
+:host(.app-menu-host--draggable) .app-menu__trigger--layout-icon {
+  cursor: grab;
+  touch-action: none;
+  user-select: none;
+}
+
+:host(.app-menu-host--dragging) .app-menu__trigger--layout-icon {
+  cursor: grabbing;
+}
+
+:host(.app-menu-host--dragging) .app-menu__trigger--layout-icon:active {
+  transform: none;
+}
+
 :host(.app-menu-host--kind-fab) .app-menu__trigger--layout-icon:hover {
   box-shadow: 0 10px 22px var(--app-menu-shadow);
 }
@@ -2730,8 +2748,8 @@ a.app-menu__item {
 .app-menu__counter--trigger,
 .app-menu__counter--tile {
   position: absolute;
-  top: -0.34rem;
-  right: -0.28rem;
+  top: var(--app-menu-trigger-counter-top, -0.34rem);
+  right: var(--app-menu-trigger-counter-right, -0.28rem);
 }
 
 .app-menu__trigger > .app-menu__counter--trigger {

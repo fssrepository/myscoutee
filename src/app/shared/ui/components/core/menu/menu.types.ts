@@ -73,6 +73,11 @@ export type AppMenuRatePresentation = 'list' | 'fullscreen';
 export type AppMenuRateAnimation = 'default' | 'blink' | 'none';
 export type AppMenuRateDockState = 'hidden' | 'open' | 'closing' | 'permanent';
 
+export interface AppMenuDragPosition {
+  x: number;
+  y: number;
+}
+
 export interface AppMenuRateDockConfig {
   enabled?: boolean;
   state?: AppMenuRateDockState;

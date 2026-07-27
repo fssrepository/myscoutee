@@ -125,6 +125,7 @@ export interface UserRecord {
     tickets?: number;
     contacts?: number;
     feedback?: number;
+    notifications?: number;
     chat?: UserChatCountersRecord;
     event?: UserEventCountersRecord;
     asset?: UserAssetCountersRecord;

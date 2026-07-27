@@ -15,6 +15,7 @@
       [attr.aria-expanded]="open"
       [attr.aria-haspopup]="triggerAriaHasPopup()"
       [attr.aria-label]="triggerAriaLabel()"
+      (pointerdown)="startTriggerDrag($event)"
       (click)="toggleMenu($event)"
       >
       @if (triggerIcon()) {
@@ -40,6 +41,7 @@
         </span>
       }
     </button>
+    <ng-content select="[appMenuOverlay]"></ng-content>
   }
 
   @if (isInlineRowLayout) {

@@ -13,6 +13,7 @@ export { ExplanationGuideService } from './base/services/explanation-guide.servi
 export { IdeaPostsService } from './base/services/idea-posts.service';
 export { LandingContentService } from './base/services/landing-content.service';
 export { MediaService } from './base/services/media.service';
+export { NotificationsService } from './base/services/notifications.service';
 export { AdminWorkspaceDataService } from './base/services/admin-workspace-data.service';
 export {
   AdminParamsService,

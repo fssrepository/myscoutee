@@ -4,6 +4,7 @@ import { EVENT_FEEDBACK_TABLE_NAME, EVENTS_TABLE_NAME } from '../../source/entit
 import { HELP_CENTER_TABLE_NAME, IDEA_POSTS_TABLE_NAME } from '../../source/entity/content.entity';
 import { SHARE_TOKENS_TABLE_NAME } from '../../source/entity/sharing.entity';
 import { USER_FILTER_PREFERENCES_TABLE_NAME, USER_RATES_TABLE_NAME } from '../../source/entity/rate.entity';
+import { NOTIFICATIONS_TABLE_NAME } from '../../source/entity/notification.entity';
 import { USERS_TABLE_NAME } from '../../source/entity/user.entity';
 import type { UserRecord } from '../../source/entity/user.entity';
 import { Injectable, inject } from '@angular/core';
@@ -29,6 +30,7 @@ import { SeedAdminBootstrapRepository } from '../repositories/admin-bootstrap-se
 import { SeedContactsRepository } from '../repositories/contacts-seed.repository';
 import { SeedEventFeedbackRepository } from '../repositories/event-feedback-seed.repository';
 import { SeedEventsRepository } from '../repositories/events-seed.repository';
+import { SeedNotificationsRepository } from '../repositories/notifications-seed.repository';
 import { SeedProfileExperiencesRepository } from '../repositories/profile-experiences-seed.repository';
 import { SeedUsersRatingsRepository } from '../repositories/users-ratings-seed.repository';
 import { SeedUsersRepository } from '../repositories/users-seed.repository';
@@ -50,6 +52,7 @@ export class SeedDemoBootstrapService {
   private readonly eventFeedbackSeed = inject(SeedEventFeedbackRepository);
   private readonly usersRatingsSeed = inject(SeedUsersRatingsRepository);
   private readonly usersSeed = inject(SeedUsersRepository);
+  private readonly notificationsSeed = inject(SeedNotificationsRepository);
   private readonly activityMembersSeed = inject(SeedActivityMembersRepository);
   private readonly activityResourcesSeed = inject(SeedActivityResourcesRepository);
   private readonly profileExperiencesSeed = inject(SeedProfileExperiencesRepository);
@@ -144,6 +147,7 @@ export class SeedDemoBootstrapService {
       return;
     }
     const filterPreferencesChanged = this.usersSeed.seedDefaultUserFilterPreferencesForUser(normalizedUserId);
+    const notificationsChanged = this.notificationsSeed.seedForUser(normalizedUserId);
     const alreadyReady = this.readyUserIds.has(normalizedUserId);
     let contextualChatsChanged = false;
     let eventFeedbackChanged = false;
@@ -168,6 +172,7 @@ export class SeedDemoBootstrapService {
     const impressionsChanged = this.usersSeed.stampSeededImpressionsForUser(normalizedUserId);
     await this.flushSessionTablesIfChanged(onProgress, {
       filterPreferencesChanged,
+      notificationsChanged,
       activityCountersChanged,
       impressionsChanged,
       contextualChatsChanged,
@@ -458,6 +463,7 @@ export class SeedDemoBootstrapService {
     onProgress: BootstrapProcessListener | undefined,
     options: {
       filterPreferencesChanged: boolean;
+      notificationsChanged: boolean;
       activityCountersChanged: boolean;
       impressionsChanged: boolean;
       contextualChatsChanged: boolean;
@@ -485,6 +491,7 @@ export class SeedDemoBootstrapService {
 
   private sessionFlushTables(options: {
     filterPreferencesChanged: boolean;
+    notificationsChanged: boolean;
     activityCountersChanged: boolean;
     impressionsChanged: boolean;
     contextualChatsChanged: boolean;
@@ -494,7 +501,10 @@ export class SeedDemoBootstrapService {
     if (options.filterPreferencesChanged) {
       tableNames.push(USER_FILTER_PREFERENCES_TABLE_NAME);
     }
-    if (options.activityCountersChanged || options.impressionsChanged) {
+    if (options.notificationsChanged) {
+      tableNames.push(NOTIFICATIONS_TABLE_NAME);
+    }
+    if (options.notificationsChanged || options.activityCountersChanged || options.impressionsChanged) {
       tableNames.push(USERS_TABLE_NAME);
     }
     if (options.contextualChatsChanged) {

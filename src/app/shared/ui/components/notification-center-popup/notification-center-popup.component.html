@@ -1,0 +1,40 @@
+@if (store.isOpen()) {
+  <app-popup [model]="popupModel()" [zIndex]="2400">
+    <section class="notification-center-popup__body">
+      <div class="notification-center-popup__buckets" aria-label="Notification buckets">
+        <app-menu
+          class="notification-center-popup__bucket-menu"
+          kind="inline"
+          layout="row"
+          [items]="bucketMenuItems()"
+          (itemSelect)="onBucketSelect($event)"
+        ></app-menu>
+      </div>
+
+      <app-smart-list
+        #notificationsSmartList
+        class="notification-center-popup__list"
+        [config]="smartListConfig"
+        [loadPage]="loadPage"
+        [query]="query()"
+        [itemTemplate]="notificationRowTemplate"
+        (menuItemSelect)="onRowMenuSelect($event)"
+      ></app-smart-list>
+
+      <ng-template
+        #notificationRowTemplate
+        let-notification
+        let-openMenu="openMenu"
+      >
+        <single-row
+          [row]="notificationRow(notification)"
+          [clickable]="!!notification.actionPath"
+          [useSharedMenu]="true"
+          [sharedMenuContext]="rowMenuContext(notification)"
+          (rowClick)="openNotification(notification, $event)"
+          (menuRequest)="openMenu($event)"
+        ></single-row>
+      </ng-template>
+    </section>
+  </app-popup>
+}
