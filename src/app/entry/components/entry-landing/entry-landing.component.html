@@ -1,4 +1,8 @@
-<section class="entry-shell">
+<section
+  class="entry-shell"
+  [attr.inert]="partnersPopupOpen ? '' : null"
+  [attr.aria-hidden]="partnersPopupOpen ? 'true' : null"
+>
   <div class="entry-shell-panel">
     <header class="entry-shell-header">
       <div class="entry-brand" [attr.aria-label]="'landing.top' | i18n: 'MyScoutee landing top'">
@@ -73,6 +77,19 @@
               <mat-icon>bug_report</mat-icon>
               <span>{{ 'bug.report' | i18n: 'Bug report' }}</span>
             </button>
+            <button
+              type="button"
+              class="entry-cta entry-cta-partners"
+              matRipple
+              [matRippleColor]="'rgba(255, 255, 255, 0.16)'"
+              aria-haspopup="dialog"
+              [attr.aria-expanded]="partnersPopupOpen"
+              [attr.aria-label]="'landing.partners.open.aria' | i18n: 'Open partner overview'"
+              (click)="openPartnersPopup($event)"
+              >
+              <mat-icon>handshake</mat-icon>
+              <span>{{ 'landing.partners.title' | i18n: 'For Partners' }}</span>
+            </button>
           </div>
         </div>
 
@@ -95,6 +112,7 @@
             </ng-template>
           </div>
         </aside>
+
       </div>
     </section>
 
@@ -208,6 +226,104 @@
         </svg>
         <span>{{ 'landing.preview.guide.report.button' | i18n: 'Report Bugs' }}</span>
       </a>
+    </div>
+  </app-popup>
+}
+
+@if (partnersPopupOpen) {
+  <app-popup [model]="partnersPopupModel()" [zIndex]="2430">
+    <div class="entry-partners-popup-body">
+      <section
+        class="entry-partner-role-grid"
+        [attr.aria-label]="'landing.partners.roles.aria' | i18n: 'Partner roles'"
+      >
+        @for (role of partnerRoles; track role.id) {
+          <article class="entry-partner-role" [attr.data-tone]="role.tone">
+            <div class="entry-partner-role-heading">
+              <span class="entry-partner-role-icon" aria-hidden="true">
+                <mat-icon>{{ role.icon }}</mat-icon>
+              </span>
+              <span class="entry-partner-role-label">{{ role.labelKey | i18n: role.label }}</span>
+            </div>
+            <h3>{{ role.titleKey | i18n: role.title }}</h3>
+            <p>{{ role.descriptionKey | i18n: role.description }}</p>
+          </article>
+        }
+      </section>
+
+      <section class="entry-partners-network" aria-labelledby="entry-partners-network-title">
+        <div class="entry-partners-section-heading">
+          <span class="entry-partners-section-icon" aria-hidden="true">
+            <mat-icon>hub</mat-icon>
+          </span>
+          <div>
+            <h3 id="entry-partners-network-title">
+              {{ 'landing.partners.network.title' | i18n: 'Optional network claim · planned' }}
+            </h3>
+            <p>
+              {{ 'landing.partners.network.description' | i18n: 'Aggregate telemetry is sent either way, creating verifiable network weight. A deployment may stay unnamed and independent.' }}
+            </p>
+          </div>
+        </div>
+        <div class="entry-partner-status-grid">
+          <article class="entry-partner-status entry-partner-status-claimed">
+            <strong>{{ 'landing.partners.network.claimed.label' | i18n: 'Claimed' }}</strong>
+            <p>
+              {{ 'landing.partners.network.claimed.description' | i18n: 'The deployment code connects verified history to a named operator, making its weight eligible for a proposed exit allocation.' }}
+            </p>
+          </article>
+          <article class="entry-partner-status entry-partner-status-unclaimed">
+            <strong>{{ 'landing.partners.network.unclaimed.label' | i18n: 'Unclaimed' }}</strong>
+            <p>
+              {{ 'landing.partners.network.unclaimed.description' | i18n: 'The deployment still operates and earns locally, but its weight receives no exit allocation.' }}
+            </p>
+          </article>
+        </div>
+      </section>
+
+      <section class="entry-partner-exit" aria-labelledby="entry-partner-exit-title">
+        <h3 id="entry-partner-exit-title">
+          {{ 'landing.partners.exit.title' | i18n: 'Proposed exit allocation' }}
+        </h3>
+        <div class="entry-partner-exit-row entry-partner-exit-row-definition">
+          <mat-icon aria-hidden="true">calculate</mat-icon>
+          <p>
+            {{ 'landing.partners.exit.dedicated.definition' | i18n: 'The founder-dedicated 100,000 monthly active users (MAU) are an allocation weight used only for exit math—not users owned by or transferred to the founder.' }}
+          </p>
+        </div>
+        <div class="entry-partner-exit-row">
+          <strong>&lt; 1M MAU</strong>
+          <p>
+            {{ 'landing.partners.exit.before.cap' | i18n: 'Founder percentage = 100,000 ÷ total verified MAU. Example: an exit at 500,000 MAU means 20% for the founder and 80% for eligible operators.' }}
+          </p>
+        </div>
+        <div class="entry-partner-exit-row">
+          <strong>≥ 1M MAU</strong>
+          <p>
+            {{ 'landing.partners.exit.at.cap' | i18n: 'Founder share is capped at 10%; the remaining 90% is distributed among eligible claimed operators by verified network weight.' }}
+          </p>
+        </div>
+      </section>
+
+      <section class="entry-partner-economics" aria-labelledby="entry-partner-economics-title">
+        <h3 id="entry-partner-economics-title">
+          {{ 'landing.partners.economics.title' | i18n: 'Economics stay separate' }}
+        </h3>
+        <div class="entry-partner-economy entry-partner-economy-local">
+          <mat-icon aria-hidden="true">storefront</mat-icon>
+          <p>
+            <strong>{{ 'landing.partners.economics.local.label' | i18n: 'Local commerce:' }}</strong>
+            {{ 'landing.partners.economics.local.description' | i18n: 'Partner booking commission is paid to the operator&apos;s own account.' }}
+          </p>
+        </div>
+        <div class="entry-partner-economy entry-partner-economy-network">
+          <mat-icon aria-hidden="true">account_balance</mat-icon>
+          <p>
+            <strong>{{ 'landing.partners.economics.no.exit.label' | i18n: 'Proposed no-exit fallback:' }}</strong>
+            {{ 'landing.partners.economics.no.exit.description' | i18n: 'At 10 million verified monthly active users (MAU), if no exit is defined, the founder seeks 5% of contract-defined member contributions—never operator commissions.' }}
+          </p>
+        </div>
+      </section>
     </div>
   </app-popup>
 }

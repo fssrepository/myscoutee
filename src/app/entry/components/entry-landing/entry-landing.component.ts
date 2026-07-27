@@ -30,6 +30,20 @@ interface AppVersionPayload {
 
 type HowStepSlide = WarpImageCardData;
 
+type PartnerRoleTone = 'blue' | 'violet' | 'orange' | 'green';
+
+interface PartnerRoleOverview {
+  readonly id: string;
+  readonly icon: string;
+  readonly labelKey: string;
+  readonly label: string;
+  readonly titleKey: string;
+  readonly title: string;
+  readonly descriptionKey: string;
+  readonly description: string;
+  readonly tone: PartnerRoleTone;
+}
+
 @Component({
   selector: 'app-entry-landing',
   standalone: true,
@@ -114,6 +128,53 @@ export class EntryLandingComponent implements OnInit, OnChanges, OnDestroy {
     }
   ];
 
+  protected readonly partnerRoles: readonly PartnerRoleOverview[] = [
+    {
+      id: 'operator',
+      icon: 'dns',
+      labelKey: 'landing.partners.role.operator.label',
+      label: 'Run it',
+      titleKey: 'landing.partners.role.operator.title',
+      title: 'Independent operator',
+      descriptionKey: 'landing.partners.role.operator.description',
+      description: 'In the planned model, run a branded deployment on a virtual private server (VPS). You own the community, partners and payment account; the software routes local funds directly to you.',
+      tone: 'violet'
+    },
+    {
+      id: 'commercial-partner',
+      icon: 'storefront',
+      labelKey: 'landing.partners.role.commercial.label',
+      label: 'Supply experiences',
+      titleKey: 'landing.partners.role.commercial.title',
+      title: 'Venue or experience partner',
+      descriptionKey: 'landing.partners.role.commercial.description',
+      description: 'Offer venues, festivals, activities, travel or experiences through a local operator. Booking commission belongs to that operator—not the network owner.',
+      tone: 'orange'
+    },
+    {
+      id: 'community-partner',
+      icon: 'groups',
+      labelKey: 'landing.partners.role.community.label',
+      label: 'Bring a community',
+      titleKey: 'landing.partners.role.community.title',
+      title: 'Community partner',
+      descriptionKey: 'landing.partners.role.community.description',
+      description: 'Bring an active local community and help turn mutual interest into group chats, events, attendance and feedback.',
+      tone: 'blue'
+    },
+    {
+      id: 'strategic-collaborator',
+      icon: 'handshake',
+      labelKey: 'landing.partners.role.strategic.label',
+      label: 'Build with us',
+      titleKey: 'landing.partners.role.strategic.title',
+      title: 'Strategic collaborator',
+      descriptionKey: 'landing.partners.role.strategic.description',
+      description: 'Contribute safety, privacy or graph expertise, product hardening, distribution or strategic funding.',
+      tone: 'green'
+    }
+  ];
+
   protected readonly entryHowSmartListConfig: SmartListConfig<HowStepSlide> = {
     pageSize: 4,
     initialPageSize: 4,
@@ -156,6 +217,7 @@ export class EntryLandingComponent implements OnInit, OnChanges, OnDestroy {
   };
 
   protected previewGuideOpen = false;
+  protected partnersPopupOpen = false;
   protected ideasPopupOpen = false;
   protected ideaArticlePopupOpen = false;
   protected selectedIdeaId = '';
@@ -240,6 +302,8 @@ export class EntryLandingComponent implements OnInit, OnChanges, OnDestroy {
 
   private landingPopupScrollLocked = false;
   private previousBodyOverflow = '';
+  private partnersPopupTrigger: HTMLElement | null = null;
+  private partnersPopupFocusTimer: ReturnType<typeof setTimeout> | null = null;
 
   ngOnInit(): void {
     this.updateFeaturedIdeaSmartListFilters();
@@ -254,12 +318,20 @@ export class EntryLandingComponent implements OnInit, OnChanges, OnDestroy {
   }
 
   ngOnDestroy(): void {
+    this.clearPartnersPopupFocusTimer();
     this.restoreLandingPopupScrollLock();
+  }
+
+  @HostListener('window:keydown', ['$event'])
+  protected onWindowKeydown(event: KeyboardEvent): void {
+    if (event.key === 'Tab' && this.partnersPopupOpen) {
+      this.trapPartnersPopupFocus(event);
+    }
   }
 
   @HostListener('window:keydown.escape', ['$event'])
   protected onEscape(event: Event): void {
-    if (!this.previewGuideOpen && !this.ideasPopupOpen && !this.ideaArticlePopupOpen) {
+    if (!this.previewGuideOpen && !this.partnersPopupOpen && !this.ideasPopupOpen && !this.ideaArticlePopupOpen) {
       return;
     }
     event.preventDefault();
@@ -269,6 +341,10 @@ export class EntryLandingComponent implements OnInit, OnChanges, OnDestroy {
     }
     if (this.previewGuideOpen) {
       this.closePreviewGuide();
+      return;
+    }
+    if (this.partnersPopupOpen) {
+      this.closePartnersPopup();
       return;
     }
     this.closeIdeasPopup();
@@ -418,6 +494,51 @@ export class EntryLandingComponent implements OnInit, OnChanges, OnDestroy {
       headerTone: 'accent',
       headerPalette: 'amber',
       onClose: () => this.closePreviewGuide()
+    };
+  }
+
+  protected openPartnersPopup(event?: Event): void {
+    event?.preventDefault();
+    event?.stopPropagation();
+    const trigger = event?.currentTarget as HTMLElement | null | undefined;
+    this.partnersPopupTrigger = typeof trigger?.focus === 'function' ? trigger : null;
+    this.partnersPopupOpen = true;
+    this.syncLandingPopupScrollLock();
+    this.schedulePartnersPopupFocus();
+  }
+
+  protected closePartnersPopup(): void {
+    const trigger = this.partnersPopupTrigger;
+    this.partnersPopupTrigger = null;
+    this.partnersPopupOpen = false;
+    this.syncLandingPopupScrollLock();
+    this.clearPartnersPopupFocusTimer();
+    if (trigger) {
+      this.partnersPopupFocusTimer = setTimeout(() => {
+        this.partnersPopupFocusTimer = null;
+        if (trigger.isConnected) {
+          trigger.focus();
+        }
+      });
+    }
+  }
+
+  protected partnersPopupModel(): PopupModel {
+    return {
+      headerLabel: 'landing.partners.header.label',
+      headerLabelIcon: 'hub',
+      headerBadge: 'landing.partners.header.badge',
+      title: 'landing.partners.title',
+      subtitle: 'landing.partners.subtitle',
+      ariaLabel: 'landing.partners.aria',
+      closeAriaLabel: 'landing.partners.close.aria',
+      size: 'default',
+      height: 'auto',
+      headerLayout: 'document',
+      headerTone: 'accent',
+      headerPalette: 'slate',
+      backdropTone: 'dim',
+      onClose: () => this.closePartnersPopup()
     };
   }
 
@@ -660,7 +781,10 @@ export class EntryLandingComponent implements OnInit, OnChanges, OnDestroy {
   }
 
   private syncLandingPopupScrollLock(): void {
-    const shouldLock = this.previewGuideOpen || this.ideasPopupOpen || this.ideaArticlePopupOpen;
+    const shouldLock = this.previewGuideOpen
+      || this.partnersPopupOpen
+      || this.ideasPopupOpen
+      || this.ideaArticlePopupOpen;
     if (shouldLock && !this.landingPopupScrollLocked) {
       this.previousBodyOverflow = this.documentRef.body.style.overflow;
       this.documentRef.body.style.overflow = 'hidden';
@@ -679,5 +803,67 @@ export class EntryLandingComponent implements OnInit, OnChanges, OnDestroy {
     this.documentRef.body.style.overflow = this.previousBodyOverflow;
     this.previousBodyOverflow = '';
     this.landingPopupScrollLocked = false;
+  }
+
+  private schedulePartnersPopupFocus(): void {
+    this.clearPartnersPopupFocusTimer();
+    this.partnersPopupFocusTimer = setTimeout(() => {
+      this.partnersPopupFocusTimer = null;
+      if (!this.partnersPopupOpen) {
+        return;
+      }
+      const focusable = this.partnersPopupFocusableElements();
+      (focusable[0] ?? this.partnersPopupPanel())?.focus();
+    });
+  }
+
+  private trapPartnersPopupFocus(event: KeyboardEvent): void {
+    const panel = this.partnersPopupPanel();
+    if (!panel) {
+      return;
+    }
+    const focusable = this.partnersPopupFocusableElements();
+    if (focusable.length === 0) {
+      event.preventDefault();
+      panel.focus();
+      return;
+    }
+    const first = focusable[0];
+    const last = focusable[focusable.length - 1];
+    const active = this.documentRef.activeElement;
+    if (!panel.contains(active)) {
+      event.preventDefault();
+      (event.shiftKey ? last : first).focus();
+      return;
+    }
+    if ((event.shiftKey && active === first) || (!event.shiftKey && active === last)) {
+      event.preventDefault();
+      (event.shiftKey ? last : first).focus();
+    }
+  }
+
+  private partnersPopupPanel(): HTMLElement | null {
+    return this.documentRef
+      .querySelector<HTMLElement>('.entry-partners-popup-body')
+      ?.closest<HTMLElement>('.ui-popup__panel')
+      ?? null;
+  }
+
+  private partnersPopupFocusableElements(): HTMLElement[] {
+    const panel = this.partnersPopupPanel();
+    if (!panel) {
+      return [];
+    }
+    return Array.from(panel.querySelectorAll<HTMLElement>(
+      'button:not([disabled]), a[href], input:not([disabled]), select:not([disabled]), textarea:not([disabled]), [tabindex]:not([tabindex="-1"])'
+    ));
+  }
+
+  private clearPartnersPopupFocusTimer(): void {
+    if (this.partnersPopupFocusTimer === null) {
+      return;
+    }
+    clearTimeout(this.partnersPopupFocusTimer);
+    this.partnersPopupFocusTimer = null;
   }
 }
