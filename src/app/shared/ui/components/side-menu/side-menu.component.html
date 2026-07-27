@@ -108,7 +108,7 @@
   <ng-container *ngComponentOutlet="profileViewComponent"></ng-container>
 }
 
-<app-dialog></app-dialog>
+<app-dialog [zIndex]="notificationCenterStore.isOpen() ? 24000 : null"></app-dialog>
 
 @if (notificationCenterStore.popupComponent(); as notificationCenterComponent) {
   <ng-container *ngComponentOutlet="notificationCenterComponent"></ng-container>

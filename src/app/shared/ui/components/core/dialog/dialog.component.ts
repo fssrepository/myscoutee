@@ -55,6 +55,7 @@ type RenderedDialogState = {
 export class DialogComponent {
   @Input() useStore = true;
   @Input() dialog: DialogLocalConfig | null = null;
+  @Input() zIndex: number | null = null;
 
   protected readonly dialogStore = inject(DialogStore);
 
