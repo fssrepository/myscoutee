@@ -490,17 +490,18 @@ export class SideMenuComponent implements OnDestroy {
   });
   protected readonly navigatorHeaderActionMenuModel = computed<AppMenuModel<NavigatorHeaderActionMenuItemId>>(() => {
     const notificationCount = this.notificationCenterStore.unreadCount();
+    const notificationsMuted = this.notificationCenterStore.muted();
     const items: AppMenuItem<NavigatorHeaderActionMenuItemId>[] = [
       {
         id: 'notifications',
         label: 'Notifications',
-        icon: this.notificationCenterStore.muted() ? 'notifications_off' : 'notifications',
-        palette: notificationCount > 0 ? 'violet' : 'neutral',
+        icon: notificationsMuted ? 'notifications_off' : 'notifications',
+        palette: notificationsMuted ? 'slate' : notificationCount > 0 ? 'violet' : 'neutral',
         counter: notificationCount > 0 ? { value: notificationCount, max: 99 } : null,
         counterTone: 'alert',
         ariaLabel: this.notificationLauncherAriaLabel(
           notificationCount,
-          this.notificationCenterStore.muted()
+          notificationsMuted
         ),
         progress: this.notificationCenterStore.opening()
           ? {

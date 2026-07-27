@@ -184,7 +184,9 @@ export class NotificationCenterPopupComponent {
   }
 
   protected notificationRow(notification: NotificationDto): SingleRowData<NotificationDto> {
-    return this.converter.convert(notification);
+    return this.converter.convert(notification, {
+      progressRing: this.store.isMarkReadPending(notification.id)
+    });
   }
 
   protected rowMenuContext(notification: NotificationDto): NotificationRowMenuContext {
@@ -195,7 +197,12 @@ export class NotificationCenterPopupComponent {
     const context = event.context as NotificationRowMenuContext | undefined;
     const notification = context?.notification;
     const actionId = `${context?.action?.id ?? event.id ?? ''}`.trim();
-    if (!notification || actionId !== 'markNotificationRead' || notification.readAtIso) {
+    if (
+      !notification
+      || actionId !== 'markNotificationRead'
+      || notification.readAtIso
+      || this.store.isMarkReadPending(notification.id)
+    ) {
       return;
     }
     event.sourceEvent.preventDefault();

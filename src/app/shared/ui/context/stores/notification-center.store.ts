@@ -29,6 +29,7 @@ export class NotificationCenterStore {
   private readonly openingRef = signal(false);
   private readonly unreadCountRef = signal(0);
   private readonly mutedRef = signal(false);
+  private readonly markReadPendingIdsRef = signal<ReadonlySet<string>>(new Set());
   private readonly attentionRequestedRef = signal(false);
   private readonly dragPositionRef = signal<AppMenuDragPosition>({ x: 0, y: 0 });
   private readonly popupComponentRef = signal<Type<unknown> | null>(null);
@@ -116,6 +117,12 @@ export class NotificationCenterStore {
     this.bucketRef.set(bucket === 'new' ? 'new' : 'all');
   }
 
+  isMarkReadPending(notificationId: string): boolean {
+    const normalizedNotificationId = notificationId.trim();
+    return Boolean(normalizedNotificationId)
+      && this.markReadPendingIdsRef().has(normalizedNotificationId);
+  }
+
   syncUnreadCount(count: number, options: NotificationUnreadSyncOptions = {}): void {
     const nextCount = this.nonNegativeInteger(count);
     const previousCount = this.unreadCountRef();
@@ -188,17 +195,25 @@ export class NotificationCenterStore {
     if (!userId || !normalizedNotificationId) {
       throw new Error('Notification could not be marked as read.');
     }
-    this.pageContextRevision += 1;
-    const generation = this.generation;
-    const result = await this.notificationsService.markRead(
-      userId,
-      normalizedNotificationId,
-      signal
-    );
-    if (generation === this.generation && userId === this.activeUserIdRef()) {
-      this.syncUnreadCount(result.unreadCount);
+    if (this.isMarkReadPending(normalizedNotificationId)) {
+      throw new Error('Notification is already being marked as read.');
     }
-    return result.notification;
+    this.setMarkReadPending(normalizedNotificationId, true);
+    try {
+      this.pageContextRevision += 1;
+      const generation = this.generation;
+      const result = await this.notificationsService.markRead(
+        userId,
+        normalizedNotificationId,
+        signal
+      );
+      if (generation === this.generation && userId === this.activeUserIdRef()) {
+        this.syncUnreadCount(result.unreadCount);
+      }
+      return result.notification;
+    } finally {
+      this.setMarkReadPending(normalizedNotificationId, false);
+    }
   }
 
   async setMuted(muted: boolean, signal?: AbortSignal): Promise<boolean> {
@@ -249,6 +264,20 @@ export class NotificationCenterStore {
     this.userProfileStore.patchUserActivityCounters(userId, { notifications: count });
   }
 
+  private setMarkReadPending(notificationId: string, pending: boolean): void {
+    const current = this.markReadPendingIdsRef();
+    if (current.has(notificationId) === pending) {
+      return;
+    }
+    const next = new Set(current);
+    if (pending) {
+      next.add(notificationId);
+    } else {
+      next.delete(notificationId);
+    }
+    this.markReadPendingIdsRef.set(next);
+  }
+
   private resetState(): void {
     this.generation += 1;
     this.pageContextRevision = 0;
@@ -258,6 +287,7 @@ export class NotificationCenterStore {
     this.openingRef.set(false);
     this.unreadCountRef.set(0);
     this.mutedRef.set(false);
+    this.markReadPendingIdsRef.set(new Set());
     this.attentionRequestedRef.set(false);
     this.dragPositionRef.set({ x: 0, y: 0 });
     this.bucketRef.set('new');

@@ -283,7 +283,8 @@
   filter: drop-shadow(0 4px 12px rgba(22, 94, 51, 0.12));
 }
 
-:host(.app-indicator-host--shape-button) .app-indicator__action-ring-svg {
+:host(.app-indicator-host--shape-button) .app-indicator__action-ring-svg,
+:host(.app-indicator-host--shape-surface) .app-indicator__action-ring-svg {
   filter: drop-shadow(0 8px 20px rgba(68, 18, 18, 0.16));
 }
 
@@ -294,7 +295,9 @@
 }
 
 :host(.app-indicator-host--shape-button) .app-indicator__action-ring-track,
-:host(.app-indicator-host--shape-button) .app-indicator__action-ring-progress {
+:host(.app-indicator-host--shape-button) .app-indicator__action-ring-progress,
+:host(.app-indicator-host--shape-surface) .app-indicator__action-ring-track,
+:host(.app-indicator-host--shape-surface) .app-indicator__action-ring-progress {
   stroke-width: 4;
 }
 

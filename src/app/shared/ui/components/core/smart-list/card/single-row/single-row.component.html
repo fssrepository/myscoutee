@@ -4,11 +4,21 @@
   [attr.role]="isClickable() ? 'button' : null"
   [attr.tabindex]="isClickable() ? 0 : null"
   [attr.aria-label]="ariaLabel"
+  [attr.aria-busy]="row?.progressRing === true ? 'true' : null"
   [attr.data-group-label]="row?.groupLabel"
   [attr.data-single-row-id]="row?.id"
   (click)="onRowClick($event)"
   (keydown)="onRowKeydown($event)"
   >
+  @if (row?.progressRing === true) {
+    <app-indicator
+      class="ui-single-row__progress-ring"
+      kind="action-ring"
+      shape="surface"
+      state="loading"
+    ></app-indicator>
+  }
+
   @if (hasTopRightContent()) {
     <span class="ui-single-row__top-right">
       @for (badge of topRightBadges(); track trackByBadge($index, badge)) {
@@ -100,6 +110,7 @@
             type="button"
             class="ui-single-row__menu-trigger"
             [class.is-open]="menuOpen"
+            [disabled]="row?.progressRing === true"
             [attr.aria-label]="menuOpen ? 'Close menu' : 'Open menu'"
             (pointerdown)="onSharedMenuTriggerPointerDown($event)"
             (click)="onSharedMenuTriggerClick($event)"

@@ -436,6 +436,7 @@ export interface SingleRowData<TEagerDetail = unknown> extends DisplayData<TEage
   metaRows?: readonly string[];
   badges?: readonly SingleRowBadge[];
   clickable?: boolean;
+  progressRing?: boolean;
   unread?: number | null;
   memberCount?: number | null;
 }

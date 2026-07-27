@@ -2,7 +2,7 @@ import { AfterViewInit, ChangeDetectionStrategy, Component, ElementRef, HostBind
 
 export type IndicatorKind = 'bar' | 'pill-bar' | 'load-ring' | 'action-ring' | 'spinner-ring';
 export type IndicatorPlacement = 'edge' | 'inline';
-export type IndicatorShape = 'circle' | 'button';
+export type IndicatorShape = 'circle' | 'button' | 'surface';
 export type IndicatorSize = 'sm' | 'md';
 export type IndicatorState = 'idle' | 'scrolling' | 'loading' | 'loading-overdue' | 'error' | 'success' | 'inactive';
 export type IndicatorTone = 'default' | 'chat' | 'accent' | 'danger' | 'success';
@@ -37,6 +37,7 @@ export class IndicatorComponent implements AfterViewInit, OnChanges, OnDestroy {
   @Input() perimeter = 100;
   @Input() durationMs = 3000;
   @Input() autoProgress = true;
+  @Input() surfaceRadiusPx = 8;
 
   protected readonly actionGradientId = `app-indicator-action-gradient-${++indicatorId}`;
   protected readonly actionErrorGradientId = `app-indicator-action-error-gradient-${indicatorId}`;
@@ -96,6 +97,11 @@ export class IndicatorComponent implements AfterViewInit, OnChanges, OnDestroy {
   @HostBinding('class.app-indicator-host--shape-circle')
   protected get hostCircleShapeClass(): boolean {
     return this.shape === 'circle';
+  }
+
+  @HostBinding('class.app-indicator-host--shape-surface')
+  protected get hostSurfaceShapeClass(): boolean {
+    return this.shape === 'surface';
   }
 
   @HostBinding('class.app-indicator-host--size-sm')
@@ -160,6 +166,14 @@ export class IndicatorComponent implements AfterViewInit, OnChanges, OnDestroy {
 
   protected get isActionButtonShape(): boolean {
     return this.shape === 'button';
+  }
+
+  protected get isActionSurfaceShape(): boolean {
+    return this.shape === 'surface';
+  }
+
+  protected get isActionPathShape(): boolean {
+    return this.isActionButtonShape || this.isActionSurfaceShape;
   }
 
   protected get isLoadingState(): boolean {
@@ -248,7 +262,12 @@ export class IndicatorComponent implements AfterViewInit, OnChanges, OnDestroy {
     const top = inset;
     const bottom = Math.max(top + 1, height - inset);
     const centerY = height / 2;
-    const radius = Math.max(0, (bottom - top) / 2);
+    const radius = this.isActionSurfaceShape
+      ? Math.min(
+          Math.max(0, Number(this.surfaceRadiusPx) || 0),
+          Math.max(0, (bottom - top) / 2)
+        )
+      : Math.max(0, (bottom - top) / 2);
     const startX = width / 2;
     const rightArcX = Math.max(left, right - radius);
     const leftArcX = Math.min(right, left + radius);
@@ -315,7 +334,7 @@ export class IndicatorComponent implements AfterViewInit, OnChanges, OnDestroy {
   }
 
   private syncActionButtonSizeObserver(): void {
-    if (!this.isActionRingKind || !this.isActionButtonShape) {
+    if (!this.isActionRingKind || !this.isActionPathShape) {
       this.clearActionButtonSizeObserver();
       return;
     }

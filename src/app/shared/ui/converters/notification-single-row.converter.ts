@@ -13,6 +13,7 @@ import type {
 
 export interface NotificationSingleRowConverterOptions {
   locale?: string | null;
+  progressRing?: boolean;
 }
 
 export class NotificationSingleRowConverter implements UiConverter<
@@ -58,6 +59,7 @@ export class NotificationSingleRowConverter implements UiConverter<
         }
       ],
       menuActions: read ? [] : ['markNotificationRead'],
+      progressRing: options.progressRing === true,
       eagerDetail: {
         ...notification,
         payload: notification.payload ? { ...notification.payload } : null
