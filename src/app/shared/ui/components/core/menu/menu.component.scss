@@ -527,6 +527,22 @@
     filter 0.14s ease;
 }
 
+.app-menu__trigger-wave-surface {
+  position: absolute;
+  inset: 0;
+  z-index: 0;
+  overflow: hidden;
+  border-radius: inherit;
+  pointer-events: none;
+}
+
+.app-menu__trigger > .mat-icon,
+.app-menu__trigger > .app-menu__trigger-label,
+.app-menu__trigger > .app-menu__trigger-caret {
+  position: relative;
+  z-index: 1;
+}
+
 :host(.app-menu-host--compact) .app-menu__trigger {
   gap: var(--app-menu-compact-trigger-gap);
   min-width: 0;
@@ -633,7 +649,7 @@
 }
 
 :host(.app-menu-host--draggable) .app-menu__trigger--layout-icon {
-  cursor: grab;
+  cursor: var(--app-menu-draggable-cursor, grab);
   touch-action: none;
   user-select: none;
 }

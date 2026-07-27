@@ -27,7 +27,7 @@ import { AppLocationService } from './shared/core/base/services/app-location.ser
 export class App implements OnDestroy {
   private static readonly ROUTE_WARMUP_MAX_VISIBLE_MS = 6000;
   private static readonly MOBILE_RESUME_RECOVERY_DELAY_MS = 280;
-  private static readonly CLOSE_RIPPLE_TARGET_SELECTOR = [
+  private static readonly ACTION_WAVE_TARGET_SELECTOR = [
     'button[class*="close" i]',
     'button[class*="back" i]',
     'button[aria-label*="close" i]',
@@ -39,9 +39,10 @@ export class App implements OnDestroy {
     'button[aria-label*="mégsem" i]',
     'button[title*="close" i]',
     'button[title*="cancel" i]',
-    'button[data-close-action="true"]'
+    'button[data-close-action="true"]',
+    'button[data-action-wave="true"]'
   ].join(',');
-  private static readonly CLOSE_RIPPLE_DURATION_MS = 520;
+  private static readonly ACTION_WAVE_DURATION_MS = 520;
   private readonly router = inject(Router);
   private readonly changeDetectorRef = inject(ChangeDetectorRef);
   private readonly pwaService = inject(PwaService);
@@ -143,7 +144,7 @@ export class App implements OnDestroy {
 
   @HostListener('document:pointerdown', ['$event'])
   protected onDocumentPointerDown(event: PointerEvent): void {
-    this.showCloseActionRipple(event);
+    this.showActionWave(event);
   }
 
   private syncSideMenuVisibility(url: string): void {
@@ -170,28 +171,30 @@ export class App implements OnDestroy {
     return this.sideMenuComponentLoadPromise;
   }
 
-  private showCloseActionRipple(event: PointerEvent): void {
+  private showActionWave(event: PointerEvent): void {
     const target = event.target instanceof Element ? event.target : null;
-    const button = target?.closest<HTMLButtonElement>(App.CLOSE_RIPPLE_TARGET_SELECTOR);
+    const button = target?.closest<HTMLButtonElement>(App.ACTION_WAVE_TARGET_SELECTOR);
     if (!button || button.disabled || button.getAttribute('aria-disabled') === 'true') {
       return;
     }
     if (button.querySelector('.navigator-action-ripple, .mat-ripple, .mat-mdc-button-persistent-ripple')) {
       return;
     }
-    const rect = button.getBoundingClientRect();
+    const surface = button.querySelector<HTMLElement>('[data-action-wave-surface="true"]')
+      ?? button;
+    const rect = surface.getBoundingClientRect();
     if (rect.width <= 0 || rect.height <= 0) {
       return;
     }
     const size = Math.max(rect.width, rect.height) * 2.4;
     const ripple = document.createElement('span');
-    ripple.className = 'app-global-close-ripple';
+    ripple.className = 'app-global-action-wave';
     ripple.style.width = `${size}px`;
     ripple.style.height = `${size}px`;
     ripple.style.left = `${event.clientX - rect.left - size / 2}px`;
     ripple.style.top = `${event.clientY - rect.top - size / 2}px`;
-    button.appendChild(ripple);
-    setTimeout(() => ripple.remove(), App.CLOSE_RIPPLE_DURATION_MS);
+    surface.appendChild(ripple);
+    setTimeout(() => ripple.remove(), App.ACTION_WAVE_DURATION_MS);
   }
 
   private shouldShowSideMenu(url: string): boolean {

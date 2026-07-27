@@ -15,9 +15,17 @@
       [attr.aria-expanded]="open"
       [attr.aria-haspopup]="triggerAriaHasPopup()"
       [attr.aria-label]="triggerAriaLabel()"
+      [attr.data-action-wave]="isFabKind ? 'true' : null"
       (pointerdown)="startTriggerDrag($event)"
       (click)="toggleMenu($event)"
       >
+      @if (isFabKind) {
+        <span
+          class="app-menu__trigger-wave-surface"
+          data-action-wave-surface="true"
+          aria-hidden="true"
+        ></span>
+      }
       @if (triggerIcon()) {
         <mat-icon [class.app-menu__trigger-icon--symbol]="isSymbolIcon(triggerIcon())">{{ triggerIcon() }}</mat-icon>
       }
