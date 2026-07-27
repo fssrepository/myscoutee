@@ -27,7 +27,6 @@ export class NotificationCenterStore {
   private readonly activeUserIdRef = signal('');
   private readonly openRef = signal(false);
   private readonly openingRef = signal(false);
-  private readonly loadingRef = signal(false);
   private readonly unreadCountRef = signal(0);
   private readonly mutedRef = signal(false);
   private readonly attentionRequestedRef = signal(false);
@@ -39,7 +38,6 @@ export class NotificationCenterStore {
   readonly isOpen = this.openRef.asReadonly();
   readonly visible = this.isOpen;
   readonly opening = this.openingRef.asReadonly();
-  readonly loading = this.loadingRef.asReadonly();
   readonly unreadCount = this.unreadCountRef.asReadonly();
   readonly muted = this.mutedRef.asReadonly();
   readonly dragPosition = this.dragPositionRef.asReadonly();
@@ -53,12 +51,11 @@ export class NotificationCenterStore {
   );
 
   private popupLoadPromise: Promise<void> | null = null;
-  private pendingLoadingCount = 0;
   private generation = 0;
   private pageContextRevision = 0;
   private pageContextRequestSequence = 0;
 
-  async initialize(userId: string, initialUnreadCount = 0): Promise<void> {
+  initialize(userId: string, initialUnreadCount = 0, initialMuted = false): void {
     const normalizedUserId = userId.trim();
     if (!normalizedUserId) {
       this.reset();
@@ -66,13 +63,14 @@ export class NotificationCenterStore {
     }
     if (this.activeUserIdRef() === normalizedUserId) {
       this.syncUnreadCount(initialUnreadCount);
+      this.syncMuted(initialMuted);
       return;
     }
 
     this.resetState();
     this.activeUserIdRef.set(normalizedUserId);
     this.syncUnreadCount(initialUnreadCount);
-    await this.refreshSummary();
+    this.syncMuted(initialMuted);
   }
 
   reset(): void {
@@ -172,9 +170,7 @@ export class NotificationCenterStore {
     const generation = this.generation;
     const contextRevision = this.pageContextRevision;
     const contextRequestSequence = ++this.pageContextRequestSequence;
-    const page = await this.runLoading(() =>
-      this.notificationsService.queryPage(userId, query, signal)
-    );
+    const page = await this.notificationsService.queryPage(userId, query, signal);
     if (
       generation === this.generation
       && userId === this.activeUserIdRef()
@@ -194,8 +190,10 @@ export class NotificationCenterStore {
     }
     this.pageContextRevision += 1;
     const generation = this.generation;
-    const result = await this.runLoading(() =>
-      this.notificationsService.markRead(userId, normalizedNotificationId, signal)
+    const result = await this.notificationsService.markRead(
+      userId,
+      normalizedNotificationId,
+      signal
     );
     if (generation === this.generation && userId === this.activeUserIdRef()) {
       this.syncUnreadCount(result.unreadCount);
@@ -210,15 +208,9 @@ export class NotificationCenterStore {
     }
     this.pageContextRevision += 1;
     const generation = this.generation;
-    const result = await this.runLoading(() =>
-      this.notificationsService.setMuted(userId, muted === true, signal)
-    );
+    const result = await this.notificationsService.setMuted(userId, muted === true, signal);
     if (generation === this.generation && userId === this.activeUserIdRef()) {
-      const nextMuted = result.muted === true;
-      if (nextMuted !== this.mutedRef()) {
-        this.pageContextRevision += 1;
-        this.mutedRef.set(nextMuted);
-      }
+      this.syncMuted(result.muted === true);
       this.attentionRequestedRef.set(false);
     }
     return result.muted === true;
@@ -228,59 +220,23 @@ export class NotificationCenterStore {
     return this.notificationsService.pollIntervalMs();
   }
 
-  private async refreshSummary(): Promise<void> {
-    const userId = this.activeUserIdRef();
-    if (!userId) {
-      return;
-    }
-    const generation = this.generation;
-    const contextRevision = this.pageContextRevision;
-    const contextRequestSequence = ++this.pageContextRequestSequence;
-    try {
-      const page = await this.runLoading(() => this.notificationsService.queryPage(userId, {
-        page: 0,
-        pageSize: 1,
-        cursor: null,
-        sort: 'createdAt',
-        direction: 'desc',
-        filters: { bucket: 'new' }
-      }));
-      if (
-        generation === this.generation
-        && userId === this.activeUserIdRef()
-        && contextRevision === this.pageContextRevision
-        && contextRequestSequence === this.pageContextRequestSequence
-      ) {
-        this.applyPageContext(page);
-      }
-    } catch {
-      // Keep the realtime/user-model count when the optional summary refresh is unavailable.
-    }
-  }
-
   private applyPageContext(page: NotificationPageResultDto): void {
     this.syncUnreadCount(page.context?.unreadCount ?? this.unreadCountRef());
-    const nextMuted = page.context?.muted === true;
+    this.syncMuted(page.context?.muted === true);
+  }
+
+  private syncMuted(muted: boolean): void {
+    const nextMuted = muted === true;
     if (nextMuted !== this.mutedRef()) {
       this.pageContextRevision += 1;
       this.mutedRef.set(nextMuted);
-    }
-    if (this.mutedRef()) {
-      this.attentionRequestedRef.set(false);
-    }
-  }
-
-  private async runLoading<T>(task: () => Promise<T>): Promise<T> {
-    const generation = this.generation;
-    this.pendingLoadingCount += 1;
-    this.loadingRef.set(true);
-    try {
-      return await task();
-    } finally {
-      if (generation === this.generation) {
-        this.pendingLoadingCount = Math.max(0, this.pendingLoadingCount - 1);
-        this.loadingRef.set(this.pendingLoadingCount > 0);
+      const userId = this.activeUserIdRef();
+      if (userId) {
+        this.userProfileStore.patchUserNotificationPreferences(userId, nextMuted);
       }
+    }
+    if (nextMuted) {
+      this.attentionRequestedRef.set(false);
     }
   }
 
@@ -300,8 +256,6 @@ export class NotificationCenterStore {
     this.activeUserIdRef.set('');
     this.openRef.set(false);
     this.openingRef.set(false);
-    this.pendingLoadingCount = 0;
-    this.loadingRef.set(false);
     this.unreadCountRef.set(0);
     this.mutedRef.set(false);
     this.attentionRequestedRef.set(false);

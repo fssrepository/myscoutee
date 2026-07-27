@@ -167,6 +167,11 @@ export function cloneUserProfile(user: UserDto): UserDto {
     languages: [...(user.languages ?? [])],
     images: [...(user.images ?? [])],
     profileDetails: cloneProfileDetails(user.profileDetails),
+    notificationPreferences: user.notificationPreferences
+      ? {
+        muted: user.notificationPreferences.muted === true
+      }
+      : undefined,
     activities: {
       game: user.activities?.game ?? 0,
       chats: user.activities?.chats ?? 0,

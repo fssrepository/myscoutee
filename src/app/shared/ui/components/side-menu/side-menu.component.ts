@@ -114,7 +114,6 @@ interface SideMenuUiState {
 
 type NavigatorAvatarMenuItemId = 'navigator-avatar';
 type NavigatorAvatarMenuContext = { kind: 'toggle-menu' };
-type NotificationLauncherMenuItemId = 'notifications';
 type NotificationAttentionMenuItemId = 'notification-attention';
 
 interface NavigatorMenuUser extends UserDto {
@@ -357,28 +356,6 @@ export class SideMenuComponent implements OnDestroy {
           }
         : null,
       context: { kind: 'toggle-menu' }
-    }];
-  });
-  protected readonly notificationLauncherMenuItems = computed<readonly AppMenuItem<NotificationLauncherMenuItemId>[]>(() => {
-    const unreadCount = this.notificationCenterStore.unreadCount();
-    const opening = this.notificationCenterStore.opening();
-    const muted = this.notificationCenterStore.muted();
-    return [{
-      id: 'notifications',
-      kind: 'action',
-      icon: muted ? 'notifications_off' : 'notifications',
-      palette: unreadCount > 0 ? 'violet' : 'neutral',
-      ariaLabel: this.notificationLauncherAriaLabel(unreadCount, muted),
-      disabled: !this.canToggleAvatarMenu(),
-      counter: unreadCount > 0 ? { value: unreadCount, max: 99 } : null,
-      counterTone: 'alert',
-      progress: opening
-        ? {
-            state: 'loading',
-            shape: 'circle',
-            durationMs: SideMenuComponent.USER_MENU_LOAD_DURATION_MS
-          }
-        : null
     }];
   });
   protected readonly notificationAttentionTrigger = computed<AppMenuTrigger>(() => {
@@ -931,7 +908,8 @@ export class SideMenuComponent implements OnDestroy {
       }
       void this.notificationCenterStore.initialize(
         activeUserId,
-        Math.max(0, Math.trunc(Number(user.activities?.notifications) || 0))
+        Math.max(0, Math.trunc(Number(user.activities?.notifications) || 0)),
+        user.notificationPreferences?.muted === true
       );
     });
 
@@ -1166,15 +1144,6 @@ export class SideMenuComponent implements OnDestroy {
       return;
     }
     this.menuOpenRef.update(open => !open);
-  }
-
-  protected onNotificationLauncherSelect(
-    event: AppMenuItemSelectEvent<NotificationLauncherMenuItemId>
-  ): void {
-    if (event.id !== 'notifications') {
-      return;
-    }
-    this.openNotificationCenter(event.sourceEvent);
   }
 
   protected onNotificationAttentionSelect(

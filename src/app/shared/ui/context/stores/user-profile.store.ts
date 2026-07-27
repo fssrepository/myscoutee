@@ -274,6 +274,42 @@ export class UserProfileStore {
     return cloneUserProfile(nextUser);
   }
 
+  patchUserNotificationPreferences(userId: string, muted: boolean): UserDto | null {
+    const normalizedUserId = userId.trim();
+    if (!normalizedUserId) {
+      return null;
+    }
+    const currentUser = this._userProfilesByUserId()[normalizedUserId] ?? null;
+    if (!currentUser) {
+      return null;
+    }
+    const nextUser = cloneUserProfile({
+      ...currentUser,
+      notificationPreferences: {
+        ...currentUser.notificationPreferences,
+        muted: muted === true
+      }
+    });
+    this._userProfilesByUserId.update(state => ({
+      ...state,
+      [normalizedUserId]: nextUser
+    }));
+    this._profileExtByUserId.update(state => {
+      const currentExt = state[normalizedUserId];
+      if (!currentExt) {
+        return state;
+      }
+      return {
+        ...state,
+        [normalizedUserId]: {
+          ...currentExt,
+          profile: nextUser
+        }
+      };
+    });
+    return cloneUserProfile(nextUser);
+  }
+
   getActiveAdminUser(): UserProfileAdminUserDto | null {
     return this.activeAdminUser();
   }

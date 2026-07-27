@@ -1,4 +1,3 @@
-import { CommonModule } from '@angular/common';
 import {
   ChangeDetectionStrategy,
   Component,
@@ -21,9 +20,9 @@ import {
 import { DialogStore } from '../../context/stores/dialog.store';
 import { NotificationCenterStore } from '../../context/stores/notification-center.store';
 import {
-  AppMenuComponent,
   type AppMenuItem,
-  type AppMenuItemSelectEvent
+  type AppMenuItemSelectEvent,
+  type AppMenuTrigger
 } from '../core/menu';
 import {
   PopupComponent,
@@ -42,22 +41,19 @@ import type {
   SingleRowData
 } from '../core/smart-list/card/card.types';
 
-type NotificationBucketMenuItemId = `notification-bucket:${NotificationBucket}`;
 interface NotificationRowMenuContext extends Record<string, unknown> {
   notification: NotificationDto;
   action?: { id?: string };
 }
 
-interface NotificationHeaderMenuContext {
-  action: 'toggle-muted';
-}
+type NotificationHeaderMenuContext =
+  | { action: 'set-bucket'; bucket: NotificationBucket }
+  | { action: 'toggle-muted' };
 
 @Component({
   selector: 'app-notification-center-popup',
   standalone: true,
   imports: [
-    CommonModule,
-    AppMenuComponent,
     PopupComponent,
     SmartListComponent,
     SingleRowComponent
@@ -77,41 +73,33 @@ export class NotificationCenterPopupComponent {
 
   protected readonly query = computed<Partial<ListQuery<NotificationListFilters>>>(() => ({
     page: 0,
-    pageSize: 16,
+    pageSize: 20,
     sort: 'createdAt',
     direction: 'desc',
     filters: { bucket: this.store.bucket() }
   }));
 
-  protected readonly bucketMenuItems = computed<
-    readonly AppMenuItem<NotificationBucketMenuItemId>[]
+  private readonly bucketMenuItems = computed<
+    readonly AppMenuItem<string, NotificationHeaderMenuContext>[]
   >(() => {
     const bucket = this.store.bucket();
-    const loading = this.store.loading();
     const unreadCount = this.store.unreadCount();
     return (['new', 'all'] as const).map(value => ({
-      id: `notification-bucket:${value}` as NotificationBucketMenuItemId,
-      kind: 'toggle',
+      id: `notification-bucket:${value}`,
+      kind: 'radio',
       label: value === 'new' ? 'New' : 'All',
       icon: value === 'new' ? 'fiber_new' : 'notifications',
-      layout: 'pill',
       palette: value === 'new' ? 'rose' : 'violet',
+      surface: 'tinted',
       active: bucket === value,
       counter: value === 'new' && unreadCount > 0
         ? { value: unreadCount, max: 99 }
         : null,
       counterTone: value === 'new' ? 'alert' : 'default',
-      closeOnSelect: false,
-      progress: loading && bucket === value
-        ? {
-            state: 'loading',
-            shape: 'button',
-            durationMs: 1500
-          }
-        : null,
       ariaLabel: value === 'new'
         ? `${unreadCount} new notifications`
-        : 'All notifications'
+        : 'All notifications',
+      context: { action: 'set-bucket', bucket: value }
     }));
   });
 
@@ -119,17 +107,14 @@ export class NotificationCenterPopupComponent {
     NotificationDto,
     NotificationListFilters
   > = {
-    pageSize: 16,
-    initialPageSize: 20,
+    pageSize: 20,
     defaultView: 'list',
     defaultSort: 'createdAt',
     defaultDirection: 'desc',
     defaultFilters: { bucket: 'new' },
     emptyLabel: 'No notifications',
     emptyDescription: 'New messages and updates will appear here.',
-    showStickyHeader: true,
-    showFirstGroupMarker: false,
-    showGroupMarker: () => false,
+    showStickyHeader: false,
     listLayout: 'stack',
     snapMode: 'none',
     scrollPaddingTop: '0.5rem',
@@ -170,6 +155,13 @@ export class NotificationCenterPopupComponent {
       headerControls: [
         {
           kind: 'menu',
+          id: 'notification-bucket',
+          trigger: this.bucketMenuTrigger(),
+          items: this.bucketMenuItems(),
+          panelAlign: 'end'
+        },
+        {
+          kind: 'menu',
           id: 'notification-attention-preference',
           menuKind: 'inline',
           closeOnSelect: false,
@@ -184,13 +176,6 @@ export class NotificationCenterPopupComponent {
               checked: muted,
               closeOnSelect: false,
               ariaLabel: muted ? 'Unmute notification alerts' : 'Mute notification alerts',
-              progress: this.store.loading()
-                ? {
-                    state: 'loading',
-                    shape: 'circle',
-                    durationMs: 1500
-                  }
-                : null,
               context: { action: 'toggle-muted' }
             }
           ]
@@ -207,15 +192,6 @@ export class NotificationCenterPopupComponent {
 
   protected rowMenuContext(notification: NotificationDto): NotificationRowMenuContext {
     return { notification };
-  }
-
-  protected onBucketSelect(event: AppMenuItemSelectEvent<NotificationBucketMenuItemId>): void {
-    event.sourceEvent.preventDefault();
-    event.sourceEvent.stopPropagation();
-    const bucket = event.id === 'notification-bucket:new' ? 'new' : 'all';
-    if (bucket !== this.store.bucket()) {
-      this.store.setBucket(bucket);
-    }
   }
 
   protected onRowMenuSelect(event: AppMenuItemSelectEvent<string, unknown>): void {
@@ -243,6 +219,13 @@ export class NotificationCenterPopupComponent {
   private onHeaderMenuSelect(
     event: PopupMenuSelectEvent<NotificationHeaderMenuContext>
   ): void {
+    if (event.itemSelect.context?.action === 'set-bucket') {
+      const bucket = event.itemSelect.context.bucket;
+      if (bucket !== this.store.bucket()) {
+        this.store.setBucket(bucket);
+      }
+      return;
+    }
     if (
       event.itemSelect.id !== 'notification-attention-toggle'
       || event.itemSelect.context?.action !== 'toggle-muted'
@@ -252,6 +235,23 @@ export class NotificationCenterPopupComponent {
     event.itemSelect.sourceEvent.preventDefault();
     event.itemSelect.sourceEvent.stopPropagation();
     this.confirmMutedChange(!this.store.muted());
+  }
+
+  private bucketMenuTrigger(): AppMenuTrigger {
+    const bucket = this.store.bucket();
+    const unreadCount = this.store.unreadCount();
+    return {
+      label: bucket === 'new' ? 'New' : 'All',
+      icon: bucket === 'new' ? 'fiber_new' : 'notifications',
+      palette: bucket === 'new' ? 'rose' : 'violet',
+      layout: 'pill',
+      counter: bucket === 'new' && unreadCount > 0
+        ? { value: unreadCount, max: 99 }
+        : null,
+      ariaLabel: bucket === 'new'
+        ? `${unreadCount} new notifications`
+        : 'All notifications'
+    };
   }
 
   private confirmMutedChange(muted: boolean): void {

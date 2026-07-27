@@ -12,7 +12,7 @@ import { SeedNotificationsBuilder } from '../builders';
   providedIn: 'root'
 })
 export class SeedNotificationsRepository {
-  private static readonly SEED_VERSION = 'notification-center-v2';
+  private static readonly SEED_VERSION = 'notification-center-v3';
 
   private readonly memoryDb = inject(LocalMemoryDb);
 
@@ -78,6 +78,10 @@ export class SeedNotificationsRepository {
             ...state[USERS_TABLE_NAME].byId,
             [normalizedUserId]: {
               ...user,
+              notificationPreferences: {
+                ...user.notificationPreferences,
+                muted: table.mutedByUserId[normalizedUserId] === true
+              },
               activities: {
                 ...user.activities,
                 notifications: unreadCount

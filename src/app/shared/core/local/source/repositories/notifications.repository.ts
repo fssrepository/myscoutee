@@ -126,7 +126,12 @@ export class LocalNotificationsRepository {
             ...table.mutedByUserId,
             [normalizedUserId]: muted === true
           }
-        }
+        },
+        [USERS_TABLE_NAME]: this.withUserNotificationMuted(
+          state[USERS_TABLE_NAME],
+          normalizedUserId,
+          muted === true
+        )
       };
     });
     return muted === true;
@@ -171,6 +176,30 @@ export class LocalNotificationsRepository {
           activities: {
             ...user.activities,
             notifications: Math.max(0, Math.trunc(Number(unreadCount) || 0))
+          }
+        }
+      }
+    };
+  }
+
+  private withUserNotificationMuted(
+    users: ReturnType<LocalMemoryDb['read']>[typeof USERS_TABLE_NAME],
+    userId: string,
+    muted: boolean
+  ): ReturnType<LocalMemoryDb['read']>[typeof USERS_TABLE_NAME] {
+    const user = users.byId[userId];
+    if (!user) {
+      return users;
+    }
+    return {
+      ...users,
+      byId: {
+        ...users.byId,
+        [userId]: {
+          ...user,
+          notificationPreferences: {
+            ...user.notificationPreferences,
+            muted
           }
         }
       }

@@ -113,6 +113,9 @@ export interface UserRecord {
   previousProfileStatus?: ProfileStatus | null;
   deletedAtIso?: string | null;
   admin?: boolean;
+  notificationPreferences?: {
+    muted?: boolean;
+  };
   activities: {
     game: number;
     chats: number;

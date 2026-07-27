@@ -65,6 +65,10 @@ export interface UserImpressionsDto {
   member?: UserImpressionsSectionDto;
 }
 
+export interface UserNotificationPreferencesDto {
+  muted?: boolean;
+}
+
 export interface UserMenuCountersDto {
   game?: number;
   chats?: number;
@@ -238,6 +242,7 @@ export class UserDto {
   previousProfileStatus?: AppConstants.ProfileStatus | null;
   deletedAtIso?: string | null;
   admin?: boolean;
+  notificationPreferences?: UserNotificationPreferencesDto;
   activities: {
     game: number;
     chats: number;

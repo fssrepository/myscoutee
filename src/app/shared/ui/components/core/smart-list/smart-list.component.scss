@@ -675,6 +675,28 @@
   touch-action: pan-y;
 }
 
+.smart-list--list.notification-center-smart-list {
+  padding-right: 0.18rem;
+  scrollbar-gutter: stable;
+  scrollbar-width: thin;
+  scrollbar-color: rgba(96, 74, 154, 0.58) rgba(226, 232, 240, 0.88);
+}
+
+.smart-list--list.notification-center-smart-list::-webkit-scrollbar {
+  width: 10px;
+}
+
+.smart-list--list.notification-center-smart-list::-webkit-scrollbar-track {
+  border-radius: 999px;
+  background: rgba(226, 232, 240, 0.88);
+}
+
+.smart-list--list.notification-center-smart-list::-webkit-scrollbar-thumb {
+  border: 2px solid rgba(226, 232, 240, 0.88);
+  border-radius: 999px;
+  background: rgba(96, 74, 154, 0.58);
+}
+
 .smart-list {
   display: flex;
   flex: 1;
