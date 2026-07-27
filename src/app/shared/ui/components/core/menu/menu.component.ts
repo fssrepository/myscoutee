@@ -32,6 +32,8 @@ import {
 import type {
   AppMenuCounter,
   AppMenuCounterValue,
+  AppMenuDragEvent,
+  AppMenuDragPhase,
   AppMenuDragPosition,
   AppMenuGroup,
   AppMenuIconKind,
@@ -88,6 +90,7 @@ export class AppMenuComponent<TId extends string = string, TContext = unknown>
   private static readonly COUNTER_PULSE_DURATION_MS = 1600;
   private static readonly DESKTOP_MARGIN_PX = 8;
   private static readonly DESKTOP_MIN_PANEL_WIDTH_PX = 196;
+  private static readonly DRAG_ACTIVATION_MOVE_TOLERANCE_PX = 6;
 
   private readonly hostRef = inject(ElementRef<HTMLElement>);
   private readonly changeDetectorRef = inject(ChangeDetectorRef);
@@ -110,10 +113,12 @@ export class AppMenuComponent<TId extends string = string, TContext = unknown>
   @Input() mobileBreakpointPx = 760;
   @Input() closeOnSelect = true;
   @Input() draggable = false;
+  @Input() dragActivationDelayMs = 0;
 
   @Output() readonly openChange = new EventEmitter<boolean>();
   @Output() readonly itemSelect = new EventEmitter<AppMenuItemSelectEvent<TId, TContext>>();
   @Output() readonly dragPositionChange = new EventEmitter<AppMenuDragPosition>();
+  @Output() readonly dragStateChange = new EventEmitter<AppMenuDragEvent>();
 
   private internalOpen = false;
   private activeBranchPath: AppMenuItem<TId, TContext>[] = [];
@@ -131,12 +136,19 @@ export class AppMenuComponent<TId extends string = string, TContext = unknown>
   private internalDragPosition: AppMenuDragPosition = { x: 0, y: 0 };
   private activeDrag: {
     pointerId: number;
+    pointerType: string;
     startClientX: number;
     startClientY: number;
+    lastClientX: number;
+    lastClientY: number;
     startPosition: AppMenuDragPosition;
     baseRect: DOMRect;
+    activated: boolean;
+    activationCancelled: boolean;
     moved: boolean;
+    sourceEvent: PointerEvent;
   } | null = null;
+  private dragActivationTimer: ReturnType<typeof setTimeout> | null = null;
   private suppressNextTriggerClick = false;
   private suppressClickTimer: ReturnType<typeof setTimeout> | null = null;
 
@@ -184,6 +196,7 @@ export class AppMenuComponent<TId extends string = string, TContext = unknown>
       clearTimeout(this.suppressClickTimer);
       this.suppressClickTimer = null;
     }
+    this.clearDragActivationTimer();
   }
 
   writeValue(value: unknown): void {
@@ -255,7 +268,7 @@ export class AppMenuComponent<TId extends string = string, TContext = unknown>
 
   @HostBinding('class.app-menu-host--dragging')
   protected get hostDraggingClass(): boolean {
-    return this.activeDrag !== null;
+    return this.activeDrag?.activated === true;
   }
 
   @HostBinding('style.transform')
@@ -374,6 +387,18 @@ export class AppMenuComponent<TId extends string = string, TContext = unknown>
     }
     const deltaX = event.clientX - drag.startClientX;
     const deltaY = event.clientY - drag.startClientY;
+    drag.lastClientX = event.clientX;
+    drag.lastClientY = event.clientY;
+    if (!drag.moved && Math.hypot(deltaX, deltaY) >= AppMenuComponent.DRAG_ACTIVATION_MOVE_TOLERANCE_PX) {
+      drag.moved = true;
+    }
+    if (!drag.activated) {
+      if (drag.moved) {
+        drag.activationCancelled = true;
+        this.clearDragActivationTimer();
+      }
+      return;
+    }
     const nextPosition = this.clampDragPosition(
       {
         x: drag.startPosition.x + deltaX,
@@ -381,18 +406,15 @@ export class AppMenuComponent<TId extends string = string, TContext = unknown>
       },
       drag.baseRect
     );
-    if (!drag.moved && Math.hypot(deltaX, deltaY) >= 4) {
-      drag.moved = true;
-    }
-    if (
-      nextPosition.x === this.internalDragPosition.x
-      && nextPosition.y === this.internalDragPosition.y
-    ) {
-      return;
-    }
     event.preventDefault();
-    this.internalDragPosition = nextPosition;
-    this.dragPositionChange.emit(nextPosition);
+    if (
+      nextPosition.x !== this.internalDragPosition.x
+      || nextPosition.y !== this.internalDragPosition.y
+    ) {
+      this.internalDragPosition = nextPosition;
+      this.dragPositionChange.emit(nextPosition);
+    }
+    this.emitDragState('move', event, drag, nextPosition);
     this.changeDetectorRef.markForCheck();
   }
 
@@ -403,16 +425,18 @@ export class AppMenuComponent<TId extends string = string, TContext = unknown>
     if (!drag || event.pointerId !== drag.pointerId) {
       return;
     }
+    this.clearDragActivationTimer();
     this.activeDrag = null;
-    if (drag.moved) {
-      this.suppressNextTriggerClick = true;
-      if (this.suppressClickTimer) {
-        clearTimeout(this.suppressClickTimer);
-      }
-      this.suppressClickTimer = setTimeout(() => {
-        this.suppressNextTriggerClick = false;
-        this.suppressClickTimer = null;
-      });
+    if (drag.activated || drag.activationCancelled) {
+      this.suppressNextTriggerAction();
+    }
+    if (drag.activated) {
+      this.emitDragState(
+        event.type === 'pointercancel' ? 'cancel' : 'end',
+        event,
+        drag,
+        this.internalDragPosition
+      );
     }
     this.changeDetectorRef.markForCheck();
   }
@@ -840,12 +864,16 @@ export class AppMenuComponent<TId extends string = string, TContext = unknown>
     if (!this.canDrag || !event.isPrimary || (event.pointerType === 'mouse' && event.button !== 0)) {
       return;
     }
+    this.clearDragActivationTimer();
     const currentPosition = this.internalDragPosition;
     const rect = this.hostRef.nativeElement.getBoundingClientRect();
-    this.activeDrag = {
+    const drag = {
       pointerId: event.pointerId,
+      pointerType: event.pointerType,
       startClientX: event.clientX,
       startClientY: event.clientY,
+      lastClientX: event.clientX,
+      lastClientY: event.clientY,
       startPosition: currentPosition,
       baseRect: new DOMRect(
         rect.left - currentPosition.x,
@@ -853,10 +881,76 @@ export class AppMenuComponent<TId extends string = string, TContext = unknown>
         rect.width,
         rect.height
       ),
-      moved: false
+      activated: false,
+      activationCancelled: false,
+      moved: false,
+      sourceEvent: event
     };
+    this.activeDrag = drag;
+    const activationDelayMs = this.normalizedDragActivationDelayMs();
+    if (activationDelayMs === 0) {
+      this.activateDrag(drag);
+    } else {
+      this.dragActivationTimer = setTimeout(() => {
+        this.dragActivationTimer = null;
+        this.activateDrag(drag);
+      }, activationDelayMs);
+    }
     event.preventDefault();
     this.changeDetectorRef.markForCheck();
+  }
+
+  private activateDrag(drag: NonNullable<AppMenuComponent<TId, TContext>['activeDrag']>): void {
+    if (this.activeDrag !== drag || drag.activationCancelled || drag.activated) {
+      return;
+    }
+    drag.activated = true;
+    this.emitDragState('start', drag.sourceEvent, drag, this.internalDragPosition);
+    this.changeDetectorRef.markForCheck();
+  }
+
+  private emitDragState(
+    phase: AppMenuDragPhase,
+    event: PointerEvent,
+    drag: NonNullable<AppMenuComponent<TId, TContext>['activeDrag']>,
+    position: AppMenuDragPosition
+  ): void {
+    this.dragStateChange.emit({
+      phase,
+      position,
+      clientX: event.clientX,
+      clientY: event.clientY,
+      centerX: drag.baseRect.left + position.x + (drag.baseRect.width / 2),
+      centerY: drag.baseRect.top + position.y + (drag.baseRect.height / 2),
+      pointerId: drag.pointerId,
+      pointerType: drag.pointerType,
+      moved: drag.moved,
+      sourceEvent: event
+    });
+  }
+
+  private normalizedDragActivationDelayMs(): number {
+    const delayMs = Math.trunc(Number(this.dragActivationDelayMs));
+    return Number.isFinite(delayMs) ? Math.max(0, delayMs) : 0;
+  }
+
+  private clearDragActivationTimer(): void {
+    if (!this.dragActivationTimer) {
+      return;
+    }
+    clearTimeout(this.dragActivationTimer);
+    this.dragActivationTimer = null;
+  }
+
+  private suppressNextTriggerAction(): void {
+    this.suppressNextTriggerClick = true;
+    if (this.suppressClickTimer) {
+      clearTimeout(this.suppressClickTimer);
+    }
+    this.suppressClickTimer = setTimeout(() => {
+      this.suppressNextTriggerClick = false;
+      this.suppressClickTimer = null;
+    });
   }
 
   private clampDragPositionToViewport(): void {

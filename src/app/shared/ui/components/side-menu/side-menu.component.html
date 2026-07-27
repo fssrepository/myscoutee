@@ -23,23 +23,24 @@
       class="notification-attention-menu"
       kind="fab"
       [draggable]="true"
+      [dragActivationDelayMs]="notificationDragActivationDelayMs"
       [dragPosition]="notificationCenterStore.dragPosition()"
       [trigger]="notificationAttentionTrigger()"
       (dragPositionChange)="onNotificationDragPositionChange($event)"
+      (dragStateChange)="onNotificationDragStateChange($event)"
       (itemSelect)="onNotificationAttentionSelect($event)"
-    >
-      <button
-        appMenuOverlay
-        type="button"
-        class="notification-attention-dismiss"
-        aria-label="Hide notification alert"
-        data-action-wave="true"
-        (click)="onNotificationAttentionDismiss($event)"
-      >
-        <mat-icon>close</mat-icon>
-      </button>
-    </app-menu>
+    ></app-menu>
   </div>
+  @if (notificationDismissDragging()) {
+    <div
+      #notificationDismissTarget
+      class="notification-attention-dismiss-target"
+      [class.is-over]="notificationDismissTargeted()"
+      aria-hidden="true"
+    >
+      <mat-icon>close</mat-icon>
+    </div>
+  }
 }
 
 @if (menuUser(); as user) {

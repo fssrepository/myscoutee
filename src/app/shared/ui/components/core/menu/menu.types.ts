@@ -78,6 +78,21 @@ export interface AppMenuDragPosition {
   y: number;
 }
 
+export type AppMenuDragPhase = 'start' | 'move' | 'end' | 'cancel';
+
+export interface AppMenuDragEvent {
+  phase: AppMenuDragPhase;
+  position: AppMenuDragPosition;
+  clientX: number;
+  clientY: number;
+  centerX: number;
+  centerY: number;
+  pointerId: number;
+  pointerType: string;
+  moved: boolean;
+  sourceEvent: PointerEvent;
+}
+
 export interface AppMenuRateDockConfig {
   enabled?: boolean;
   state?: AppMenuRateDockState;

@@ -3,8 +3,10 @@ import {
 } from '@angular/common';
 import {
   Component,
+  ElementRef,
   HostListener,
   OnDestroy,
+  ViewChild,
   computed,
   effect,
   inject,
@@ -22,6 +24,7 @@ import {
   type ActivityCounters,
   AppMenuComponent,
   type ActivityCounterKey,
+  type AppMenuDragEvent,
   type AppMenuDragPosition,
   type AppMenuItem,
   type AppMenuItemSelectEvent,
@@ -184,6 +187,11 @@ export class SideMenuComponent implements OnDestroy {
   private static readonly ACCOUNT_REACTIVATION_WINDOW_MS = 30 * 24 * 60 * 60 * 1000;
   private static readonly ADMIN_SESSION_STORAGE_KEY = APP_STORAGE_KEYS.adminSession;
   private static readonly USER_MENU_LOAD_DURATION_MS = 3000;
+  private static readonly NOTIFICATION_DRAG_ACTIVATION_DELAY_MS = 350;
+  private static readonly NOTIFICATION_DISMISS_TARGET_PADDING_PX = 10;
+
+  @ViewChild('notificationDismissTarget')
+  private notificationDismissTargetRef?: ElementRef<HTMLElement>;
 
   private readonly router = inject(Router);
   private readonly userProfileStore = inject(UserProfileStore);
@@ -215,6 +223,8 @@ export class SideMenuComponent implements OnDestroy {
   }));
   private readonly currentRoutePathRef = signal(AppUtils.normalizeRoutePath(this.router.url));
   private readonly menuOpenRef = signal(false);
+  private readonly notificationDismissDraggingRef = signal(false);
+  private readonly notificationDismissTargetedRef = signal(false);
   private readonly userMenuLoadOverdueRef = signal(false);
   private readonly activeUserLoadState = this.runtimeStore.selectLoadingState(USER_BY_ID_LOAD_CONTEXT_KEY);
   private readonly profileSaveLoadState = this.runtimeStore.selectLoadingState(USER_PROFILE_SAVE_CONTEXT_KEY);
@@ -245,6 +255,10 @@ export class SideMenuComponent implements OnDestroy {
   protected readonly menuUiState = computed<SideMenuUiState>(() => ({
     open: this.menuOpenRef()
   }));
+  protected readonly notificationDismissDragging = this.notificationDismissDraggingRef.asReadonly();
+  protected readonly notificationDismissTargeted = this.notificationDismissTargetedRef.asReadonly();
+  protected readonly notificationDragActivationDelayMs =
+    SideMenuComponent.NOTIFICATION_DRAG_ACTIVATION_DELAY_MS;
   protected readonly isCoveredByAssetPopup = computed(() =>
     this.assetPopupStore.visible()
     || this.activityInviteStore.activityInvitePopup() !== null
@@ -1165,14 +1179,53 @@ export class SideMenuComponent implements OnDestroy {
     this.openNotificationCenter(event.sourceEvent);
   }
 
-  protected onNotificationAttentionDismiss(event: Event): void {
-    event.preventDefault();
-    event.stopPropagation();
-    this.notificationCenterStore.dismissAttention();
-  }
-
   protected onNotificationDragPositionChange(position: AppMenuDragPosition): void {
     this.notificationCenterStore.setDragPosition(position);
+  }
+
+  protected onNotificationDragStateChange(event: AppMenuDragEvent): void {
+    switch (event.phase) {
+      case 'start':
+        this.notificationDismissDraggingRef.set(true);
+        this.notificationDismissTargetedRef.set(false);
+        return;
+      case 'move':
+        this.notificationDismissTargetedRef.set(this.isNotificationDismissTargetHit(event));
+        return;
+      case 'cancel':
+        this.clearNotificationDismissDragState();
+        return;
+      case 'end': {
+        const shouldDismiss = this.isNotificationDismissTargetHit(event);
+        this.clearNotificationDismissDragState();
+        if (!shouldDismiss) {
+          return;
+        }
+        this.notificationCenterStore.setDragPosition({ x: 0, y: 0 });
+        this.notificationCenterStore.dismissAttention();
+      }
+    }
+  }
+
+  private isNotificationDismissTargetHit(event: AppMenuDragEvent): boolean {
+    const target = this.notificationDismissTargetRef?.nativeElement;
+    if (!target) {
+      return false;
+    }
+    const rect = target.getBoundingClientRect();
+    const targetCenterX = rect.left + (rect.width / 2);
+    const targetCenterY = rect.top + (rect.height / 2);
+    const hitRadius = (Math.max(rect.width, rect.height) / 2)
+      + SideMenuComponent.NOTIFICATION_DISMISS_TARGET_PADDING_PX;
+    return Math.hypot(
+      event.centerX - targetCenterX,
+      event.centerY - targetCenterY
+    ) <= hitRadius;
+  }
+
+  private clearNotificationDismissDragState(): void {
+    this.notificationDismissDraggingRef.set(false);
+    this.notificationDismissTargetedRef.set(false);
   }
 
   protected onCloseMenu(): void {

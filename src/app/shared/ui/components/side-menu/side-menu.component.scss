@@ -67,46 +67,66 @@
   --app-menu-trigger-counter-right: -0.48rem;
 }
 
-.notification-attention-dismiss {
-  position: absolute;
-  top: -0.42rem;
-  left: -0.42rem;
-  z-index: 12;
-  width: var(--notification-attention-corner-size, 1.22rem);
-  height: var(--notification-attention-corner-size, 1.22rem);
-  min-width: var(--notification-attention-corner-size, 1.22rem);
-  min-height: var(--notification-attention-corner-size, 1.22rem);
-  max-width: var(--notification-attention-corner-size, 1.22rem);
-  max-height: var(--notification-attention-corner-size, 1.22rem);
+.notification-attention-dismiss-target {
+  position: fixed;
+  left: 50%;
+  bottom: calc(1rem + env(safe-area-inset-bottom, 0px));
+  z-index: 22990;
+  width: 4rem;
+  height: 4rem;
   box-sizing: border-box;
-  appearance: none;
-  -webkit-appearance: none;
-  border: 0;
+  border: 2px solid rgba(255, 255, 255, 0.92);
   border-radius: 50%;
-  padding: 0;
-  display: inline-grid;
+  display: grid;
   place-items: center;
-  overflow: hidden;
-  background-color: #405c82;
-  background-image: linear-gradient(180deg, #627b9d 0%, #354e70 100%);
+  transform: translateX(-50%);
+  background: linear-gradient(180deg, rgba(96, 115, 143, 0.97), rgba(53, 73, 103, 0.98));
   color: #fff;
-  line-height: 0;
-  isolation: isolate;
-  --app-action-wave-color: rgba(255, 255, 255, 0.38);
   box-shadow:
-    0 0 0 2px rgba(255, 255, 255, 0.96),
-    0 4px 10px rgba(15, 30, 51, 0.34);
-  cursor: pointer;
+    0 0 0 7px rgba(77, 96, 126, 0.12),
+    0 10px 28px rgba(15, 30, 51, 0.34);
+  pointer-events: none;
+  animation: notification-dismiss-target-in 0.18s ease-out both;
+  transition:
+    transform 0.14s ease,
+    border-color 0.14s ease,
+    background 0.14s ease,
+    box-shadow 0.14s ease;
 }
 
-.notification-attention-dismiss .mat-icon {
-  position: relative;
-  z-index: 1;
+.notification-attention-dismiss-target.is-over {
+  transform: translateX(-50%) scale(1.14);
+  border-color: rgba(255, 255, 255, 1);
+  background: linear-gradient(180deg, #ef6472, #c72e48);
+  box-shadow:
+    0 0 0 10px rgba(218, 57, 81, 0.18),
+    0 12px 32px rgba(112, 20, 38, 0.42);
+}
+
+.notification-attention-dismiss-target .mat-icon {
   display: block;
-  width: 0.72rem;
-  height: 0.72rem;
-  font-size: 0.72rem;
-  line-height: 0.72rem;
+  width: 1.55rem;
+  height: 1.55rem;
+  font-size: 1.55rem;
+  line-height: 1.55rem;
+}
+
+@keyframes notification-dismiss-target-in {
+  from {
+    opacity: 0;
+    transform: translateX(-50%) translateY(0.8rem) scale(0.82);
+  }
+  to {
+    opacity: 1;
+    transform: translateX(-50%);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .notification-attention-dismiss-target {
+    animation: none;
+    transition: none;
+  }
 }
 
 .user-menu-backdrop {
