@@ -58,7 +58,6 @@ export class NotificationSingleRowConverter implements UiConverter<
         }
       ],
       menuActions: read ? [] : ['markNotificationRead'],
-      clickable: Boolean(`${notification.actionPath ?? ''}`.trim()),
       eagerDetail: {
         ...notification,
         payload: notification.payload ? { ...notification.payload } : null

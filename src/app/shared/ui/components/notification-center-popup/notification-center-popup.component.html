@@ -18,10 +18,8 @@
       >
         <single-row
           [row]="notificationRow(notification)"
-          [clickable]="!!notification.actionPath"
           [useSharedMenu]="true"
           [sharedMenuContext]="rowMenuContext(notification)"
-          (rowClick)="openNotification(notification, $event)"
           (menuRequest)="openMenu($event)"
         ></single-row>
       </ng-template>

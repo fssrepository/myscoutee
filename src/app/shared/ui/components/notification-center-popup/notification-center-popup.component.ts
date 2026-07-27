@@ -5,7 +5,6 @@ import {
   computed,
   inject
 } from '@angular/core';
-import { Router } from '@angular/router';
 import { from } from 'rxjs';
 
 import type {
@@ -68,7 +67,6 @@ export class NotificationCenterPopupComponent {
 
   protected readonly store = inject(NotificationCenterStore);
   private readonly dialogStore = inject(DialogStore);
-  private readonly router = inject(Router);
   private readonly converter = new NotificationSingleRowConverter();
 
   protected readonly query = computed<Partial<ListQuery<NotificationListFilters>>>(() => ({
@@ -119,7 +117,6 @@ export class NotificationCenterPopupComponent {
     snapMode: 'none',
     scrollPaddingTop: '0.5rem',
     pollIntervalMs: () => this.store.pollIntervalMs(),
-    loadingWindowMs: 1500,
     headerProgress: {
       enabled: true,
       placement: 'inline',
@@ -204,16 +201,6 @@ export class NotificationCenterPopupComponent {
     event.sourceEvent.preventDefault();
     event.sourceEvent.stopPropagation();
     void this.markRead(notification);
-  }
-
-  protected openNotification(notification: NotificationDto, event?: Event): void {
-    event?.stopPropagation();
-    const actionPath = `${notification.actionPath ?? ''}`.trim();
-    if (!actionPath.startsWith('/')) {
-      return;
-    }
-    this.store.close();
-    void this.router.navigateByUrl(actionPath);
   }
 
   private onHeaderMenuSelect(
