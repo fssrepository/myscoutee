@@ -261,7 +261,6 @@ export class IndicatorComponent implements AfterViewInit, OnChanges, OnDestroy {
     const right = Math.max(left + 1, width - inset);
     const top = inset;
     const bottom = Math.max(top + 1, height - inset);
-    const centerY = height / 2;
     const radius = this.isActionSurfaceShape
       ? Math.min(
           Math.max(0, Number(this.surfaceRadiusPx) || 0),
@@ -271,14 +270,18 @@ export class IndicatorComponent implements AfterViewInit, OnChanges, OnDestroy {
     const startX = width / 2;
     const rightArcX = Math.max(left, right - radius);
     const leftArcX = Math.min(right, left + radius);
+    const topArcY = Math.min(bottom, top + radius);
+    const bottomArcY = Math.max(top, bottom - radius);
 
     return [
       `M${startX} ${top}`,
       `H${rightArcX}`,
-      `A${radius} ${radius} 0 0 1 ${right} ${centerY}`,
+      `A${radius} ${radius} 0 0 1 ${right} ${topArcY}`,
+      `V${bottomArcY}`,
       `A${radius} ${radius} 0 0 1 ${rightArcX} ${bottom}`,
       `H${leftArcX}`,
-      `A${radius} ${radius} 0 0 1 ${left} ${centerY}`,
+      `A${radius} ${radius} 0 0 1 ${left} ${bottomArcY}`,
+      `V${topArcY}`,
       `A${radius} ${radius} 0 0 1 ${leftArcX} ${top}`,
       `H${startX}`
     ].join(' ');

@@ -18,6 +18,7 @@ export interface NotificationUnreadSyncOptions {
 
 export interface NotificationUnreadSyncToken {
   userId: string;
+  generation: number;
   revision: number;
   unreadCount: number;
 }
@@ -164,6 +165,7 @@ export class NotificationCenterStore {
   captureUnreadSyncToken(): NotificationUnreadSyncToken {
     return {
       userId: this.activeUserIdRef(),
+      generation: this.generation,
       revision: this.pageContextRevision,
       unreadCount: this.unreadCountRef()
     };
@@ -177,6 +179,7 @@ export class NotificationCenterStore {
     if (
       !token.userId
       || token.userId !== this.activeUserIdRef()
+      || token.generation !== this.generation
       || token.revision !== this.pageContextRevision
     ) {
       return false;
