@@ -139,8 +139,6 @@ export class AppMenuComponent<TId extends string = string, TContext = unknown>
     pointerType: string;
     startClientX: number;
     startClientY: number;
-    lastClientX: number;
-    lastClientY: number;
     startPosition: AppMenuDragPosition;
     baseRect: DOMRect;
     activated: boolean;
@@ -387,8 +385,6 @@ export class AppMenuComponent<TId extends string = string, TContext = unknown>
     }
     const deltaX = event.clientX - drag.startClientX;
     const deltaY = event.clientY - drag.startClientY;
-    drag.lastClientX = event.clientX;
-    drag.lastClientY = event.clientY;
     if (!drag.moved && Math.hypot(deltaX, deltaY) >= AppMenuComponent.DRAG_ACTIVATION_MOVE_TOLERANCE_PX) {
       drag.moved = true;
     }
@@ -872,8 +868,6 @@ export class AppMenuComponent<TId extends string = string, TContext = unknown>
       pointerType: event.pointerType,
       startClientX: event.clientX,
       startClientY: event.clientY,
-      lastClientX: event.clientX,
-      lastClientY: event.clientY,
       startPosition: currentPosition,
       baseRect: new DOMRect(
         rect.left - currentPosition.x,
@@ -898,6 +892,14 @@ export class AppMenuComponent<TId extends string = string, TContext = unknown>
     }
     event.preventDefault();
     this.changeDetectorRef.markForCheck();
+  }
+
+  protected preventTriggerContextMenu(event: Event): void {
+    if (!this.canDrag) {
+      return;
+    }
+    event.preventDefault();
+    event.stopPropagation();
   }
 
   private activateDrag(drag: NonNullable<AppMenuComponent<TId, TContext>['activeDrag']>): void {

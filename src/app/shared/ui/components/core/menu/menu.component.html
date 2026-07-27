@@ -17,6 +17,7 @@
       [attr.aria-label]="triggerAriaLabel()"
       [attr.data-action-wave]="isFabKind ? 'true' : null"
       (pointerdown)="startTriggerDrag($event)"
+      (contextmenu)="preventTriggerContextMenu($event)"
       (click)="toggleMenu($event)"
       >
       @if (isFabKind) {

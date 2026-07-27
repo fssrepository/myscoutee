@@ -651,6 +651,7 @@
 :host(.app-menu-host--draggable) .app-menu__trigger--layout-icon {
   cursor: var(--app-menu-draggable-cursor, grab);
   touch-action: none;
+  -webkit-touch-callout: none;
   user-select: none;
 }
 
