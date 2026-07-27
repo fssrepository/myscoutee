@@ -525,8 +525,6 @@ export class EntryLandingComponent implements OnInit, OnChanges, OnDestroy {
 
   protected partnersPopupModel(): PopupModel {
     return {
-      headerLabel: 'landing.partners.header.label',
-      headerLabelIcon: 'hub',
       headerBadge: 'landing.partners.header.badge',
       title: 'landing.partners.title',
       subtitle: 'landing.partners.subtitle',
