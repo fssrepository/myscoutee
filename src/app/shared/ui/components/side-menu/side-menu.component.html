@@ -3,8 +3,18 @@
     class="navigator-trigger-rail"
     [class.is-open]="isMenuOpen()"
     [class.is-covered]="isCoveredByAssetPopup()"
+    [class.is-notification-open]="notificationCenterStore.isOpen()"
   >
     <div class="navigator-trigger-rail-inner">
+      @if (isOperatorMode()) {
+        <app-menu
+          class="operator-community-menu"
+          kind="inline"
+          layout="grid"
+          [model]="operatorCommunityMenuModel()"
+          (itemSelect)="onOperatorCommunityMenuSelect($event)"
+        ></app-menu>
+      }
       <app-menu
         class="user-selector-menu"
         kind="inline"
@@ -14,6 +24,32 @@
       ></app-menu>
     </div>
   </div>
+}
+
+@if (avatarVisible() && !isOperatorMode() && notificationCenterStore.attentionVisible()) {
+  <div class="notification-attention-launcher">
+    <app-menu
+      class="notification-attention-menu"
+      kind="fab"
+      [draggable]="true"
+      [dragActivationDelayMs]="notificationDragActivationDelayMs"
+      [dragPosition]="notificationCenterStore.dragPosition()"
+      [trigger]="notificationAttentionTrigger()"
+      (dragPositionChange)="onNotificationDragPositionChange($event)"
+      (dragStateChange)="onNotificationDragStateChange($event)"
+      (itemSelect)="onNotificationAttentionSelect($event)"
+    ></app-menu>
+  </div>
+  @if (notificationDismissDragging()) {
+    <div
+      #notificationDismissTarget
+      class="notification-attention-dismiss-target"
+      [class.is-over]="notificationDismissTargeted()"
+      aria-hidden="true"
+    >
+      <mat-icon>close</mat-icon>
+    </div>
+  }
 }
 
 @if (menuUser(); as user) {
@@ -59,7 +95,7 @@
             [value]="adminNavigatorMenuValues()"
             (itemSelect)="onAdminNavigatorMenuSelect($event)"
           ></app-menu>
-        } @else {
+        } @else if (!isOperatorMode()) {
           <app-menu
             kind="inline"
             layout="grid"
@@ -83,7 +119,11 @@
   <ng-container *ngComponentOutlet="profileViewComponent"></ng-container>
 }
 
-<app-dialog></app-dialog>
+<app-dialog [zIndex]="notificationCenterStore.isOpen() ? 24000 : null"></app-dialog>
+
+@if (notificationCenterStore.popupComponent(); as notificationCenterComponent) {
+  <ng-container *ngComponentOutlet="notificationCenterComponent"></ng-container>
+}
 
 @if (!subEventResourceStore.popupContextRef() && activitiesStore.eventMembersPopupComponent(); as membersComponent) {
   <ng-container *ngComponentOutlet="membersComponent"></ng-container>

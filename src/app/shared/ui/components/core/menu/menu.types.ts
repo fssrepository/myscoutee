@@ -73,6 +73,26 @@ export type AppMenuRatePresentation = 'list' | 'fullscreen';
 export type AppMenuRateAnimation = 'default' | 'blink' | 'none';
 export type AppMenuRateDockState = 'hidden' | 'open' | 'closing' | 'permanent';
 
+export interface AppMenuDragPosition {
+  x: number;
+  y: number;
+}
+
+export type AppMenuDragPhase = 'start' | 'move' | 'end' | 'cancel';
+
+export interface AppMenuDragEvent {
+  phase: AppMenuDragPhase;
+  position: AppMenuDragPosition;
+  clientX: number;
+  clientY: number;
+  centerX: number;
+  centerY: number;
+  pointerId: number;
+  pointerType: string;
+  moved: boolean;
+  sourceEvent: PointerEvent;
+}
+
 export interface AppMenuRateDockConfig {
   enabled?: boolean;
   state?: AppMenuRateDockState;
@@ -105,6 +125,9 @@ export interface AppMenuTrigger {
   id?: string;
   label?: AppMenuLiveValue<string | null | undefined>;
   icon?: AppMenuLiveValue<string | null | undefined>;
+  imageUrl?: AppMenuLiveValue<string | null | undefined>;
+  imageAlt?: AppMenuLiveValue<string | null | undefined>;
+  imageFallback?: AppMenuLiveValue<string | null | undefined>;
   openIcon?: AppMenuLiveValue<string | null | undefined>;
   closeIcon?: AppMenuLiveValue<string | null | undefined>;
   trailingIcon?: AppMenuLiveValue<string | null | undefined>;

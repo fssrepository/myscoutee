@@ -3,8 +3,10 @@ import {
 } from '@angular/common';
 import {
   Component,
+  ElementRef,
   HostListener,
   OnDestroy,
+  ViewChild,
   computed,
   effect,
   inject,
@@ -22,9 +24,12 @@ import {
   type ActivityCounters,
   AppMenuComponent,
   type ActivityCounterKey,
+  type AppMenuDragEvent,
+  type AppMenuDragPosition,
   type AppMenuItem,
   type AppMenuItemSelectEvent,
   type AppMenuModel,
+  type AppMenuTrigger,
   type AppMenuValueMap,
   HeaderCardComponent,
   type HeaderCardModel,
@@ -56,7 +61,9 @@ import {
 } from '../../context/stores/sub-event-resource-popup.store';
 import {
   ExplanationGuideService,
+  DeploymentConfigurationService,
   HelpCenterService,
+  I18nService,
   PrivacyPolicyService,
   SessionService,
   TermsPolicyService,
@@ -98,6 +105,12 @@ import { MemberMenuStore } from '../../context/stores/member-menu.store';
 import { ActivityInvitePopupStore } from '../../context/stores/activity-invite-popup.store';
 import { AdminMenuStore } from '../../context/stores/admin-menu.store';
 import { AdminWorkspaceStore } from '../../context/stores/admin-workspace.store';
+import {
+  OperatorMenuStore
+} from '../../context/stores/operator-menu.store';
+import { isNavigatorHydrationRoute } from './navigator-hydration-route';
+import { NotificationCenterStore } from '../../context/stores/notification-center.store';
+import { PopupPresenceStore } from '../../context/stores/popup-presence.store';
 import { installSessionActiveUserSync } from './session-active-user-sync';
 
 interface NavigatorAvatarState {
@@ -111,6 +124,8 @@ interface SideMenuUiState {
 
 type NavigatorAvatarMenuItemId = 'navigator-avatar';
 type NavigatorAvatarMenuContext = { kind: 'toggle-menu' };
+type NavigatorOperatorCommunityMenuItemId = 'operator-community';
+type NotificationAttentionMenuItemId = 'notification-attention';
 
 interface NavigatorMenuUser extends UserDto {
   activities: ActivityCounters;
@@ -155,6 +170,7 @@ type NavigatorSettingsMenuItemId =
   | 'logout';
 
 type NavigatorHeaderActionMenuItemId =
+  | 'notifications'
   | 'explanations'
   | 'share'
   | 'settings'
@@ -175,11 +191,14 @@ type NavigatorHeaderActionMenuItemId =
   styleUrl: './side-menu.component.scss'
 })
 export class SideMenuComponent implements OnDestroy {
-  private static readonly USER_REALTIME_POLL_INTERVAL_MS = 30000;
-
   private static readonly ACCOUNT_REACTIVATION_WINDOW_MS = 30 * 24 * 60 * 60 * 1000;
   private static readonly ADMIN_SESSION_STORAGE_KEY = APP_STORAGE_KEYS.adminSession;
   private static readonly USER_MENU_LOAD_DURATION_MS = 3000;
+  private static readonly NOTIFICATION_DRAG_ACTIVATION_DELAY_MS = 350;
+  private static readonly NOTIFICATION_DISMISS_TARGET_PADDING_PX = 10;
+
+  @ViewChild('notificationDismissTarget')
+  private notificationDismissTargetRef?: ElementRef<HTMLElement>;
 
   private readonly router = inject(Router);
   private readonly userProfileStore = inject(UserProfileStore);
@@ -189,13 +208,19 @@ export class SideMenuComponent implements OnDestroy {
   protected readonly activityInviteStore = inject(ActivityInvitePopupStore);
   private readonly adminMenuStore = inject(AdminMenuStore);
   private readonly adminWorkspaceStore = inject(AdminWorkspaceStore);
+  private readonly operatorMenuStore = inject(OperatorMenuStore);
+  private readonly deploymentConfiguration = inject(DeploymentConfigurationService);
+  protected readonly deploymentBranding = this.deploymentConfiguration.branding;
   private readonly explanationGuide = inject(ExplanationGuideService);
   private readonly helpCenterService = inject(HelpCenterService);
   private readonly privacyPolicy = inject(PrivacyPolicyService);
   private readonly termsPolicy = inject(TermsPolicyService);
+  private readonly i18n = inject(I18nService);
   private readonly usersService = inject(UsersService);
   private readonly sessionService = inject(SessionService);
   private readonly dialogStore = inject(DialogStore);
+  protected readonly notificationCenterStore = inject(NotificationCenterStore);
+  private readonly popupPresenceStore = inject(PopupPresenceStore);
   protected readonly profileStore = inject(ProfileStore);
   protected readonly activitiesStore = inject(ActivitiesPopupStore);
   protected readonly assetPopupStore = inject(AssetPopupStore);
@@ -209,6 +234,8 @@ export class SideMenuComponent implements OnDestroy {
   }));
   private readonly currentRoutePathRef = signal(AppUtils.normalizeRoutePath(this.router.url));
   private readonly menuOpenRef = signal(false);
+  private readonly notificationDismissDraggingRef = signal(false);
+  private readonly notificationDismissTargetedRef = signal(false);
   private readonly userMenuLoadOverdueRef = signal(false);
   private readonly activeUserLoadState = this.runtimeStore.selectLoadingState(USER_BY_ID_LOAD_CONTEXT_KEY);
   private readonly profileSaveLoadState = this.runtimeStore.selectLoadingState(USER_PROFILE_SAVE_CONTEXT_KEY);
@@ -239,6 +266,10 @@ export class SideMenuComponent implements OnDestroy {
   protected readonly menuUiState = computed<SideMenuUiState>(() => ({
     open: this.menuOpenRef()
   }));
+  protected readonly notificationDismissDragging = this.notificationDismissDraggingRef.asReadonly();
+  protected readonly notificationDismissTargeted = this.notificationDismissTargetedRef.asReadonly();
+  protected readonly notificationDragActivationDelayMs =
+    SideMenuComponent.NOTIFICATION_DRAG_ACTIVATION_DELAY_MS;
   protected readonly isCoveredByAssetPopup = computed(() =>
     this.assetPopupStore.visible()
     || this.activityInviteStore.activityInvitePopup() !== null
@@ -352,6 +383,36 @@ export class SideMenuComponent implements OnDestroy {
       context: { kind: 'toggle-menu' }
     }];
   });
+  protected readonly operatorCommunityMenuModel = computed<
+    AppMenuModel<NavigatorOperatorCommunityMenuItemId>
+  >(() => ({
+    layout: 'grid',
+    density: 'compact',
+    groups: [{
+      id: 'operator-community-launcher',
+      items: [{
+        id: 'operator-community',
+        label: 'operator.community',
+        icon: 'forum',
+        palette: 'purple',
+        active: this.operatorMenuStore.activePopup() === 'community',
+        disabled: !this.canToggleAvatarMenu(),
+        ariaLabel: 'operator.community.open'
+      }]
+    }]
+  }));
+  protected readonly notificationAttentionTrigger = computed<AppMenuTrigger>(() => {
+    const unreadCount = this.notificationCenterStore.unreadCount();
+    return {
+      id: 'notification-attention',
+      icon: 'notifications_active',
+      palette: 'violet',
+      action: 'custom',
+      hideLabel: true,
+      counter: unreadCount > 0 ? { value: unreadCount, max: 99 } : null,
+      ariaLabel: this.notificationLauncherAriaLabel(unreadCount, false)
+    };
+  });
   protected readonly menuUser = computed<NavigatorMenuUser | null>(() => {
     const activeUser = this.userProfileStore.activeUserProfile();
     if (!activeUser) {
@@ -370,6 +431,7 @@ export class SideMenuComponent implements OnDestroy {
       tickets: activityOverrides.tickets ?? activeUser.activities?.tickets ?? 0,
       contacts: activityOverrides.contacts ?? activeUser.activities?.contacts ?? 0,
       feedback: activityOverrides.feedback ?? activeUser.activities?.feedback ?? 0,
+      notifications: activityOverrides.notifications ?? activeUser.activities?.notifications ?? 0,
       adminJobs: activityOverrides.adminJobs ?? activeUser.activities?.adminJobs ?? 0,
       adminMetrics: activityOverrides.adminMetrics ?? activeUser.activities?.adminMetrics ?? 0
     };
@@ -409,17 +471,16 @@ export class SideMenuComponent implements OnDestroy {
     };
   });
   protected readonly settingsMenuItems = computed<readonly AppMenuItem<NavigatorHeaderActionMenuItemId>[]>(() => {
-    const items: AppMenuItem<NavigatorHeaderActionMenuItemId>[] = [
-      {
+    const items: AppMenuItem<NavigatorHeaderActionMenuItemId>[] = [];
+    items.push({
         id: 'help',
         label: 'Help',
         icon: 'help_outline',
         counter: this.helpCenterService.activeVersionLabel(),
         disabled: !this.helpCenterService.hasActiveRevision(),
         ariaLabel: 'Open help'
-      }
-    ];
-    if (!this.isAdminMode()) {
+      });
+    if (!this.isPrivilegedWorkspaceMode()) {
       items.push({
         id: 'feedback',
         label: 'Send Feedback',
@@ -452,7 +513,7 @@ export class SideMenuComponent implements OnDestroy {
         ariaLabel: 'Open terms'
       }
     );
-    if (!this.isAdminMode()) {
+    if (!this.isPrivilegedWorkspaceMode()) {
       items.push({
         id: 'delete-account',
         label: 'Delete account',
@@ -470,8 +531,31 @@ export class SideMenuComponent implements OnDestroy {
     return items;
   });
   protected readonly navigatorHeaderActionMenuModel = computed<AppMenuModel<NavigatorHeaderActionMenuItemId>>(() => {
+    const notificationCount = this.notificationCenterStore.unreadCount();
+    const notificationsMuted = this.notificationCenterStore.muted();
     const items: AppMenuItem<NavigatorHeaderActionMenuItemId>[] = [];
-    if (!this.isAdminMode()) {
+    if (!this.isOperatorMode()) {
+      items.push({
+        id: 'notifications',
+        label: 'Notifications',
+        icon: notificationsMuted ? 'notifications_off' : 'notifications',
+        palette: notificationsMuted ? 'slate' : notificationCount > 0 ? 'violet' : 'neutral',
+        counter: notificationCount > 0 ? { value: notificationCount, max: 99 } : null,
+        counterTone: 'alert',
+        ariaLabel: this.notificationLauncherAriaLabel(
+          notificationCount,
+          notificationsMuted
+        ),
+        progress: this.notificationCenterStore.opening()
+          ? {
+              state: 'loading',
+              shape: 'circle',
+              durationMs: SideMenuComponent.USER_MENU_LOAD_DURATION_MS
+            }
+          : null
+      });
+    }
+    if (!this.isPrivilegedWorkspaceMode()) {
       items.push(
         {
           id: 'explanations',
@@ -483,9 +567,9 @@ export class SideMenuComponent implements OnDestroy {
         },
         {
           id: 'share',
-          label: 'Share MyScoutee',
+          label: `Share ${this.deploymentBranding().productName}`,
           icon: 'share',
-          ariaLabel: 'Share MyScoutee'
+          ariaLabel: `Share ${this.deploymentBranding().productName}`
         }
       );
     }
@@ -493,7 +577,11 @@ export class SideMenuComponent implements OnDestroy {
       id: 'settings',
       label: 'Settings',
       icon: 'settings',
-      ariaLabel: this.isAdminMode() ? 'Open admin settings menu' : 'Open settings menu',
+      ariaLabel: this.isOperatorMode()
+        ? 'Open operator settings menu'
+        : this.isAdminMode()
+          ? 'Open admin settings menu'
+          : 'Open settings menu',
       items: this.settingsMenuItems()
     });
     return {
@@ -796,7 +884,6 @@ export class SideMenuComponent implements OnDestroy {
       ]
     };
   });
-
   constructor() {
     this.profileStore.registerBindings(this.profileBindings);
 
@@ -848,6 +935,12 @@ export class SideMenuComponent implements OnDestroy {
         this.profileStore.closeContactsPopup();
         return;
       }
+      if (this.isOperatorMode()) {
+        this.stopUserRealtimeLongPoll();
+        this.profileStore.closeImpressionsPopup();
+        this.profileStore.closeContactsPopup();
+        return;
+      }
       if (this.isAdminWorkspaceRoute() || this.userProfileStore.activeUserIsAdmin()) {
         this.profileStore.closeImpressionsPopup();
         this.profileStore.closeContactsPopup();
@@ -856,6 +949,36 @@ export class SideMenuComponent implements OnDestroy {
       }
 
       this.activateUserRealtimeLongPoll(activeUserId);
+    });
+
+    effect(() => {
+      const session = this.sessionService.session();
+      const user = this.userProfileStore.activeUserProfile();
+      const activeUserId = this.userProfileStore.activeUserId().trim();
+      if (
+        this.isOperatorMode()
+        || !session
+        || !user
+        || !activeUserId
+        || user.id.trim() !== activeUserId
+      ) {
+        this.notificationCenterStore.reset();
+        return;
+      }
+      void this.notificationCenterStore.initialize(
+        activeUserId,
+        Math.max(0, Math.trunc(Number(user.activities?.notifications) || 0)),
+        user.notificationPreferences?.muted === true
+      );
+    });
+
+    effect(() => {
+      if (
+        this.popupPresenceStore.visible()
+        && !this.notificationCenterStore.isOpen()
+      ) {
+        this.notificationCenterStore.requestAttention();
+      }
     });
 
     effect(() => {
@@ -1091,12 +1214,83 @@ export class SideMenuComponent implements OnDestroy {
     this.menuOpenRef.update(open => !open);
   }
 
+  protected onOperatorCommunityMenuSelect(
+    event: AppMenuItemSelectEvent<NavigatorOperatorCommunityMenuItemId>
+  ): void {
+    if (event.id !== 'operator-community' || !this.canToggleAvatarMenu()) {
+      return;
+    }
+    event.sourceEvent.stopPropagation();
+    this.operatorMenuStore.open('community');
+  }
+
+  protected onNotificationAttentionSelect(
+    event: AppMenuItemSelectEvent<string>
+  ): void {
+    if (event.id !== 'notification-attention') {
+      return;
+    }
+    this.openNotificationCenter(event.sourceEvent);
+  }
+
+  protected onNotificationDragPositionChange(position: AppMenuDragPosition): void {
+    this.notificationCenterStore.setDragPosition(position);
+  }
+
+  protected onNotificationDragStateChange(event: AppMenuDragEvent): void {
+    switch (event.phase) {
+      case 'start':
+        this.notificationDismissDraggingRef.set(true);
+        this.notificationDismissTargetedRef.set(false);
+        return;
+      case 'move':
+        this.notificationDismissTargetedRef.set(this.isNotificationDismissTargetHit(event));
+        return;
+      case 'cancel':
+        this.clearNotificationDismissDragState();
+        return;
+      case 'end': {
+        const shouldDismiss = this.isNotificationDismissTargetHit(event);
+        this.clearNotificationDismissDragState();
+        if (!shouldDismiss) {
+          return;
+        }
+        this.notificationCenterStore.setDragPosition({ x: 0, y: 0 });
+        this.notificationCenterStore.dismissAttention();
+      }
+    }
+  }
+
+  private isNotificationDismissTargetHit(event: AppMenuDragEvent): boolean {
+    const target = this.notificationDismissTargetRef?.nativeElement;
+    if (!target) {
+      return false;
+    }
+    const rect = target.getBoundingClientRect();
+    const targetCenterX = rect.left + (rect.width / 2);
+    const targetCenterY = rect.top + (rect.height / 2);
+    const hitRadius = (Math.max(rect.width, rect.height) / 2)
+      + SideMenuComponent.NOTIFICATION_DISMISS_TARGET_PADDING_PX;
+    return Math.hypot(
+      event.centerX - targetCenterX,
+      event.centerY - targetCenterY
+    ) <= hitRadius;
+  }
+
+  private clearNotificationDismissDragState(): void {
+    this.notificationDismissDraggingRef.set(false);
+    this.notificationDismissTargetedRef.set(false);
+  }
+
   protected onCloseMenu(): void {
     this.closeSideMenu();
   }
 
   protected onNavigatorHeaderActionMenuSelect(event: AppMenuItemSelectEvent<NavigatorHeaderActionMenuItemId>): void {
     switch (event.id) {
+      case 'notifications':
+        this.openNotificationCenter(event.sourceEvent);
+        return;
       case 'explanations':
         this.onToggleExplanationGuide(event.sourceEvent);
         return;
@@ -1202,7 +1396,7 @@ export class SideMenuComponent implements OnDestroy {
     event.stopPropagation();
     const baseHref = document.querySelector('base')?.getAttribute('href') ?? '/';
     const url = new URL(baseHref, window.location.origin).toString();
-    const title = 'MyScoutee';
+    const title = this.deploymentBranding().productName;
     const text = 'Connect with people through shared activities and experiences.';
 
     if (navigator.share) {
@@ -1220,6 +1414,20 @@ export class SideMenuComponent implements OnDestroy {
 
   protected navigatorHeaderCardModel(user: NavigatorMenuUser): HeaderCardModel {
     const admin = this.isAdminMode();
+    if (this.isOperatorMode()) {
+      return {
+        ...ProfileHeaderCardConverter.convert(user, {
+          admin: true,
+          headline: this.i18n.translate('operator.workspace.title'),
+          showEdit: true,
+          editDisabled: !this.runtimeStore.isOnline(),
+          editAriaLabel: this.i18n.translate('operator.profile.open')
+        }),
+        badgeLabel: this.i18n.translate('operator'),
+        meta: this.i18n.translate('operator.workspace.title'),
+        metaIcon: 'settings_input_component'
+      };
+    }
     return ProfileHeaderCardConverter.convert(user, {
       admin,
       showEdit: true,
@@ -1232,6 +1440,16 @@ export class SideMenuComponent implements OnDestroy {
   }
 
   protected openNavigatorHeaderProfile(event: Event): void {
+    if (this.isOperatorMode()) {
+      event.stopPropagation();
+      if (!this.runtimeStore.isOnline()) {
+        return;
+      }
+      this.operatorMenuStore.closePopup();
+      this.closeSideMenu();
+      this.profileStore.openProfileEditor();
+      return;
+    }
     if (this.isAdminMode()) {
       this.openAdminProfileShortcut(event);
       return;
@@ -1240,9 +1458,13 @@ export class SideMenuComponent implements OnDestroy {
   }
 
   protected navigatorOfflineNote(): string {
-    return this.isAdminMode()
-      ? 'Offline mode is active. Admin actions wait for the connection to return.'
-      : 'Offline mode is active. Tickets stay available, while the other menu actions wait for the connection to return.';
+    if (this.isOperatorMode()) {
+      return this.i18n.translate('operator.workspace.offline');
+    }
+    if (this.isAdminMode()) {
+      return 'Offline mode is active. Admin actions wait for the connection to return.';
+    }
+    return 'Offline mode is active. Tickets stay available, while the other menu actions wait for the connection to return.';
   }
 
   protected isBlockedUser(user: NavigatorMenuUser | UserDto | null = this.menuUser()): boolean {
@@ -1352,6 +1574,14 @@ export class SideMenuComponent implements OnDestroy {
 
   protected isAdminMode(): boolean {
     return this.currentRoutePathRef().startsWith('/admin');
+  }
+
+  protected isOperatorMode(): boolean {
+    return this.currentRoutePathRef().startsWith('/operator');
+  }
+
+  private isPrivilegedWorkspaceMode(): boolean {
+    return this.isAdminMode() || this.isOperatorMode();
   }
 
   protected openAdminReportsShortcut(event?: Event): void {
@@ -1763,7 +1993,7 @@ export class SideMenuComponent implements OnDestroy {
 
   private userRealtimePollIntervalMs(): number {
     return this.sessionService.session() && this.userProfileStore.activeUserId().trim()
-      ? SideMenuComponent.USER_REALTIME_POLL_INTERVAL_MS
+      ? this.usersService.realtimePollIntervalMs()
       : 0;
   }
 
@@ -1776,14 +2006,14 @@ export class SideMenuComponent implements OnDestroy {
   }
 
   private isNavigatorHydrationRoute(routeUrl = this.currentRoutePathRef()): boolean {
-    const path = AppUtils.normalizeRoutePath(routeUrl);
-    return path !== '/' && !path.startsWith('/entry') && !path.startsWith('/admin');
+    return isNavigatorHydrationRoute(routeUrl);
   }
 
   private async runUserRealtimeLongPollTick(userId: string): Promise<void> {
     if (!userId) {
       return;
     }
+    const notificationSyncToken = this.notificationCenterStore.captureUnreadSyncToken();
     this.userProfileStore.setUserRealtimePollInFlight(true);
     try {
       const cursor = this.userProfileStore.getUserRealtimeCursor(userId);
@@ -1791,7 +2021,21 @@ export class SideMenuComponent implements OnDestroy {
       if (!snapshot || this.userProfileStore.activeUserId().trim() !== userId) {
         return;
       }
-      this.userProfileStore.applyUserRealtimeSnapshot(userId, snapshot);
+      const nextNotificationCount = Number(snapshot.counters?.notifications);
+      const {
+        notifications: _notificationCount,
+        ...nonNotificationCounters
+      } = snapshot.counters;
+      this.userProfileStore.applyUserRealtimeSnapshot(userId, {
+        ...snapshot,
+        counters: nonNotificationCounters
+      });
+      if (Number.isFinite(nextNotificationCount)) {
+        this.notificationCenterStore.applyRealtimeUnreadCount(
+          notificationSyncToken,
+          nextNotificationCount
+        );
+      }
     } finally {
       this.userProfileStore.setUserRealtimePollInFlight(false);
     }
@@ -1850,6 +2094,24 @@ export class SideMenuComponent implements OnDestroy {
       this.resolveActivityBadge(user, 'contacts') +
       this.resolveActivityBadge(user, 'feedback')
     );
+  }
+
+  private notificationLauncherAriaLabel(unreadCount: number, muted: boolean): string {
+    const normalizedCount = Math.max(0, Math.trunc(Number(unreadCount) || 0));
+    if (normalizedCount > 0) {
+      return `Open notifications, ${normalizedCount} new${muted ? ', alerts muted' : ''}`;
+    }
+    return muted ? 'Open notifications, alerts muted' : 'Open notifications';
+  }
+
+  private openNotificationCenter(event?: Event): void {
+    event?.preventDefault();
+    event?.stopPropagation();
+    if (!this.canToggleAvatarMenu()) {
+      return;
+    }
+    this.closeSideMenu();
+    void this.notificationCenterStore.open();
   }
 
   private resolveActivityBadge(user: UserDto, key: ActivityCounterKey): number {

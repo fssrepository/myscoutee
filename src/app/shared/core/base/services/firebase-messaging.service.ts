@@ -26,6 +26,7 @@ import {
   FirebaseAppService
 } from './firebase-app.service';
 import { UserProfileStore } from '../../../ui/context/stores/user-profile.store';
+import { DeploymentConfigurationService } from './deployment-configuration.service';
 
 @Injectable({
   providedIn: 'root'
@@ -39,6 +40,7 @@ export class FirebaseMessagingService {
   private readonly injector = inject(Injector);
   private readonly userProfileStore = inject(UserProfileStore);
   private readonly firebaseAppService = inject(FirebaseAppService);
+  private readonly deploymentConfiguration = inject(DeploymentConfigurationService);
   private readonly apiBaseUrl = environment.apiBaseUrl ?? '/api';
   private initialized = false;
   private foregroundListenerBound = false;
@@ -151,9 +153,12 @@ export class FirebaseMessagingService {
       if (!document.hidden) {
         return;
       }
-      const title = payload.notification?.title?.trim() || payload.data?.['title'] || 'MyScoutee';
+      const branding = this.deploymentConfiguration.branding();
+      const title = payload.notification?.title?.trim()
+        || payload.data?.['title']
+        || branding.productName;
       const body = payload.notification?.body?.trim() || payload.data?.['body'] || '';
-      const icon = payload.notification?.icon?.trim() || 'assets/logo/heart.png';
+      const icon = payload.notification?.icon?.trim() || branding.logoUrl;
       void this.waitForServiceWorkerReady().then(registration => {
         if (!registration) {
           return;

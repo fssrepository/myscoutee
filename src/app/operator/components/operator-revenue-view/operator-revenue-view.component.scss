@@ -1,0 +1,433 @@
+:host {
+  min-width: 0;
+  display: block;
+  color: #243853;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+.operator-revenue {
+  min-width: 0;
+  display: grid;
+  gap: 0.72rem;
+}
+
+.operator-revenue__toolbar {
+  min-width: 0;
+  padding: 0.62rem 0.68rem;
+  border: 1px solid rgba(31, 126, 91, 0.14);
+  border-radius: 12px;
+  background: #f0f9f5;
+  display: flex;
+  align-items: center;
+  gap: 0.7rem;
+}
+
+.operator-revenue__toolbar > span,
+.operator-revenue__currency {
+  min-width: 0;
+  display: grid;
+  gap: 0.08rem;
+}
+
+.operator-revenue__toolbar small,
+.operator-revenue__currency > span {
+  color: rgba(36, 56, 83, 0.58);
+  font-size: 0.72rem;
+  font-weight: 850;
+}
+
+.operator-revenue__toolbar strong {
+  color: #176b51;
+  font-size: 0.82rem;
+  overflow-wrap: anywhere;
+}
+
+.operator-revenue__commission {
+  margin-right: auto;
+}
+
+.operator-revenue__currency {
+  width: min(220px, 42%);
+}
+
+.operator-revenue__currency app-menu {
+  width: 100%;
+}
+
+.operator-revenue__currency-code {
+  min-width: 58px !important;
+  min-height: 34px;
+  padding: 0 0.65rem;
+  border-radius: 999px;
+  background: #daf1e7;
+  color: #176b51;
+  display: grid !important;
+  place-items: center;
+  font-size: 0.74rem;
+  font-weight: 950;
+  letter-spacing: 0.06em;
+}
+
+.operator-revenue__metric-grid {
+  min-width: 0;
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 0.5rem;
+}
+
+.operator-revenue__metric {
+  --revenue-tone: #64748b;
+  --revenue-tone-soft: #edf1f5;
+  min-width: 0;
+  min-height: 82px;
+  padding: 0.58rem;
+  border: 1px solid color-mix(in srgb, var(--revenue-tone) 16%, transparent);
+  border-radius: 12px;
+  background: color-mix(in srgb, var(--revenue-tone-soft) 74%, white);
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  grid-template-rows: auto auto auto;
+  align-items: center;
+  gap: 0.12rem 0.42rem;
+}
+
+.operator-revenue__metric-icon {
+  grid-row: 1 / span 2;
+  width: 28px;
+  height: 28px;
+  border-radius: 9px;
+  background: var(--revenue-tone-soft);
+  color: var(--revenue-tone);
+  display: grid;
+  place-items: center;
+}
+
+.operator-revenue__metric-icon .mat-icon {
+  width: 17px;
+  height: 17px;
+  font-size: 17px;
+}
+
+.operator-revenue__metric small {
+  min-width: 0;
+  color: rgba(36, 56, 83, 0.62);
+  font-size: 0.72rem;
+  font-weight: 850;
+  line-height: 1.25;
+  overflow-wrap: anywhere;
+}
+
+.operator-revenue__metric strong {
+  min-width: 0;
+  color: var(--revenue-tone);
+  font-size: 0.84rem;
+  line-height: 1.2;
+  overflow-wrap: anywhere;
+}
+
+.operator-revenue__metric-bar,
+.operator-revenue__breakdown-bar {
+  grid-column: 1 / -1;
+  height: 4px;
+  overflow: hidden;
+  border-radius: 999px;
+  background: rgba(39, 62, 94, 0.09);
+}
+
+.operator-revenue__metric-bar > span,
+.operator-revenue__breakdown-bar > span {
+  height: 100%;
+  border-radius: inherit;
+  background: var(--revenue-tone);
+  display: block;
+}
+
+.operator-revenue__layout {
+  min-width: 0;
+  display: grid;
+  grid-template-columns: minmax(0, 1.65fr) minmax(230px, 0.85fr);
+  gap: 0.6rem;
+}
+
+.operator-revenue__timeline,
+.operator-revenue__assets {
+  min-width: 0;
+  padding: 0.68rem;
+  border: 1px solid rgba(45, 66, 98, 0.11);
+  border-radius: 13px;
+  background: #fbfcfe;
+  display: grid;
+  gap: 0.55rem;
+}
+
+.operator-revenue__timeline > header,
+.operator-revenue__assets > header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.5rem;
+}
+
+.operator-revenue__timeline > header > span,
+.operator-revenue__assets > header > span {
+  display: grid;
+  gap: 0.04rem;
+}
+
+.operator-revenue__timeline header small,
+.operator-revenue__assets header small {
+  color: rgba(36, 56, 83, 0.54);
+  font-size: 0.72rem;
+  font-weight: 850;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+
+.operator-revenue__timeline header strong,
+.operator-revenue__assets header strong {
+  color: #263d59;
+  font-size: 0.82rem;
+}
+
+.operator-revenue__timeline header em {
+  padding: 0.22rem 0.48rem;
+  border-radius: 999px;
+  background: #e8f5ef;
+  color: #187258;
+  font-size: 0.72rem;
+  font-style: normal;
+  font-weight: 900;
+}
+
+.operator-revenue__assets header .mat-icon {
+  color: #6650c9;
+}
+
+.operator-revenue__timeline-readout {
+  min-width: 0;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.28rem 0.58rem;
+}
+
+.operator-revenue__timeline-readout strong {
+  margin-right: auto;
+  color: #273e5a;
+  font-size: 0.78rem;
+}
+
+.operator-revenue__timeline-readout span {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.2rem;
+  color: rgba(36, 56, 83, 0.7);
+  font-size: 0.72rem;
+  font-weight: 800;
+  line-height: 1.3;
+}
+
+.operator-revenue__timeline-readout i,
+.operator-revenue__breakdown-row i {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: var(--revenue-tone);
+}
+
+.operator-revenue__chart {
+  min-width: 0;
+  min-height: 126px;
+  padding: 0.2rem;
+  border-radius: 10px;
+  background: linear-gradient(180deg, #f7fafc, #fff);
+}
+
+.operator-revenue__chart svg {
+  width: 100%;
+  min-height: 126px;
+  display: block;
+  touch-action: none;
+}
+
+.operator-revenue__axis,
+.operator-revenue__gridline {
+  stroke: rgba(63, 83, 112, 0.18);
+  stroke-width: 1;
+}
+
+.operator-revenue__gridline {
+  stroke-dasharray: 3 4;
+}
+
+.operator-revenue__line {
+  fill: none;
+  stroke: var(--revenue-tone);
+  stroke-linecap: round;
+  stroke-linejoin: round;
+  stroke-width: 2.25;
+}
+
+.operator-revenue__hit {
+  fill: transparent;
+  cursor: pointer;
+}
+
+.operator-revenue__scrub-guide {
+  stroke: rgba(52, 70, 99, 0.36);
+  stroke-dasharray: 3 3;
+}
+
+.operator-revenue__scrub-halo {
+  fill: rgba(255, 255, 255, 0.88);
+  stroke: rgba(39, 57, 85, 0.18);
+}
+
+.operator-revenue__scrub-knob {
+  fill: #d09b25;
+}
+
+.operator-revenue__donut {
+  min-width: 0;
+  height: 12px;
+  overflow: hidden;
+  border-radius: 999px;
+  background: #edf1f5;
+  display: flex;
+}
+
+.operator-revenue__donut span {
+  min-width: 2px;
+  background: var(--revenue-tone);
+}
+
+.operator-revenue__breakdown {
+  min-width: 0;
+  display: grid;
+  gap: 0.44rem;
+}
+
+.operator-revenue__breakdown-row {
+  --revenue-tone: #64748b;
+  min-width: 0;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 0.18rem 0.45rem;
+}
+
+.operator-revenue__breakdown-row > span:first-child {
+  min-width: 0;
+  display: flex;
+  align-items: center;
+  gap: 0.25rem;
+  color: #334b67;
+  font-size: 0.74rem;
+  font-weight: 850;
+  line-height: 1.25;
+}
+
+.operator-revenue__breakdown-row > span:first-child .mat-icon {
+  width: 15px;
+  height: 15px;
+  color: var(--revenue-tone);
+  font-size: 15px;
+}
+
+.operator-revenue__breakdown-row small {
+  grid-column: 1;
+  color: rgba(36, 56, 83, 0.56);
+  font-size: 0.72rem;
+  font-weight: 750;
+  line-height: 1.25;
+}
+
+.operator-revenue__breakdown-row strong {
+  grid-column: 2;
+  grid-row: 1 / span 2;
+  color: var(--revenue-tone);
+  font-size: 0.8rem;
+  overflow-wrap: anywhere;
+}
+
+.operator-revenue__breakdown-bar {
+  grid-column: 1 / -1;
+  height: 3px;
+}
+
+.operator-revenue__empty {
+  margin: 0;
+  padding: 1rem;
+  border-radius: 12px;
+  background: #f3f5f8;
+  color: rgba(36, 56, 83, 0.66);
+  font-size: 0.74rem;
+  font-weight: 800;
+  text-align: center;
+}
+
+.is-green {
+  --revenue-tone: #23875e;
+  --revenue-tone-soft: #def3e9;
+}
+
+.is-blue {
+  --revenue-tone: #3474bd;
+  --revenue-tone-soft: #e4eefb;
+}
+
+.is-gold {
+  --revenue-tone: #b67b16;
+  --revenue-tone-soft: #fff0cd;
+}
+
+.is-red {
+  --revenue-tone: #bd4a60;
+  --revenue-tone-soft: #ffe7ec;
+}
+
+.is-purple {
+  --revenue-tone: #6d55be;
+  --revenue-tone-soft: #ece7fb;
+}
+
+.is-slate {
+  --revenue-tone: #617186;
+  --revenue-tone-soft: #e9edf2;
+}
+
+@media (max-width: 820px) {
+  .operator-revenue__metric-grid {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+
+  .operator-revenue__layout {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
+
+@media (max-width: 560px) {
+  .operator-revenue__toolbar {
+    align-items: stretch;
+    flex-wrap: wrap;
+  }
+
+  .operator-revenue__commission {
+    margin-right: 0;
+  }
+
+  .operator-revenue__currency {
+    width: 100%;
+  }
+
+  .operator-revenue__currency-code {
+    margin-left: auto;
+  }
+
+  .operator-revenue__metric-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}

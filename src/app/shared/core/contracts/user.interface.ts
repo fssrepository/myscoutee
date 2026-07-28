@@ -65,6 +65,10 @@ export interface UserImpressionsDto {
   member?: UserImpressionsSectionDto;
 }
 
+export interface UserNotificationPreferencesDto {
+  muted?: boolean;
+}
+
 export interface UserMenuCountersDto {
   game?: number;
   chats?: number;
@@ -77,6 +81,7 @@ export interface UserMenuCountersDto {
   tickets?: number;
   contacts?: number;
   feedback?: number;
+  notifications?: number;
   chat?: UserChatCountersDto;
   event?: UserEventCountersDto;
   asset?: UserAssetCountersDto;
@@ -97,6 +102,7 @@ export interface UserMenuCounterDeltasDto {
   tickets?: number;
   contacts?: number;
   feedback?: number;
+  notifications?: number;
   chat?: UserChatCounterDeltasDto;
   event?: UserEventCounterDeltasDto;
   asset?: UserAssetCounterDeltasDto;
@@ -205,7 +211,7 @@ export interface UserSelectorListItemDto {
   deletedAtIso?: string | null;
 }
 
-export type UserSelectorRole = 'member' | 'admin';
+export type UserSelectorRole = 'member' | 'operator' | 'admin';
 
 export class UserDto {
   id = '';
@@ -236,6 +242,8 @@ export class UserDto {
   previousProfileStatus?: AppConstants.ProfileStatus | null;
   deletedAtIso?: string | null;
   admin?: boolean;
+  operator?: boolean;
+  notificationPreferences?: UserNotificationPreferencesDto;
   activities: {
     game: number;
     chats: number;
@@ -248,6 +256,7 @@ export class UserDto {
     tickets?: number;
     contacts?: number;
     feedback?: number;
+    notifications?: number;
     chat?: UserChatCountersDto;
     event?: UserEventCountersDto;
     asset?: UserAssetCountersDto;

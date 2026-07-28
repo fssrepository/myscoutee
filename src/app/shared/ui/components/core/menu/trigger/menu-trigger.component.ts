@@ -54,7 +54,22 @@ import { appMenuAlertCounter, appMenuModelSummary } from '../menu-summary';
         (pointerdown)="onTriggerPointerDown($event)"
         (click)="toggleMenu($event)"
         >
-        @if (triggerIcon()) {
+        @if (triggerImageUrl() || triggerImageFallback()) {
+          <span class="app-menu__trigger-image">
+            @if (triggerImageUrl(); as imageUrl) {
+              <img
+                [src]="imageUrl"
+                [alt]="triggerImageAlt()"
+                (error)="revealImageFallback($event)"
+              />
+              @if (triggerImageFallback(); as imageFallback) {
+                <span data-app-menu-image-fallback hidden>{{ imageFallback }}</span>
+              }
+            } @else {
+              <span>{{ triggerImageFallback() }}</span>
+            }
+          </span>
+        } @else if (triggerIcon()) {
           <mat-icon>{{ triggerIcon() }}</mat-icon>
         }
         @if (!trigger?.hideLabel && triggerLabel()) {
@@ -229,6 +244,36 @@ export class AppMenuTriggerComponent<TId extends string = string, TContext = unk
       return '';
     }
     return `${configuredIcon ?? 'more_vert'}`.trim();
+  }
+
+  protected triggerImageUrl(): string {
+    return `${this.resolveLiveValue(this.trigger?.imageUrl) ?? ''}`.trim();
+  }
+
+  protected triggerImageAlt(): string {
+    return `${this.resolveLiveValue(this.trigger?.imageAlt) ?? this.triggerLabel()}`.trim();
+  }
+
+  protected triggerImageFallback(): string {
+    const configured = `${this.resolveLiveValue(this.trigger?.imageFallback) ?? ''}`.trim();
+    return configured || (this.triggerImageUrl()
+      ? this.imageLabelFallback(this.triggerLabel())
+      : '');
+  }
+
+  protected revealImageFallback(event: Event): void {
+    const image = event.currentTarget;
+    if (!(image instanceof HTMLImageElement)) {
+      return;
+    }
+    image.hidden = true;
+    image.parentElement
+      ?.querySelector<HTMLElement>('[data-app-menu-image-fallback]')
+      ?.removeAttribute('hidden');
+  }
+
+  private imageLabelFallback(label: string): string {
+    return Array.from(label.trim())[0]?.toLocaleUpperCase() ?? '';
   }
 
   private shouldResolveTriggerIconToClose(icon: string): boolean {

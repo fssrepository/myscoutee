@@ -113,6 +113,10 @@ export class ProfileEditorComponent {
 
   protected readonly isOpen = this.profileStore.profileEditorOpen;
   protected readonly activeUserIsAdmin = this.userProfileStore.activeUserIsAdmin;
+  protected readonly activeUserIsOperator = this.userProfileStore.activeUserIsOperator;
+  protected readonly activeUserUsesCompactProfile = computed(() =>
+    this.activeUserIsAdmin() || this.activeUserIsOperator()
+  );
   protected readonly isProfileSaving = computed(() => this.profileSaveLoadState().status === 'loading');
   protected readonly hasProfileSaveError = computed(() => {
     const status = this.profileSaveLoadState().status;
@@ -201,6 +205,9 @@ export class ProfileEditorComponent {
     if (this.activeUserIsAdmin()) {
       return 'Admin profile';
     }
+    if (this.activeUserIsOperator()) {
+      return 'Operator profile';
+    }
     switch (this.panel) {
       case 'experience':
         return 'Experience';
@@ -229,7 +236,7 @@ export class ProfileEditorComponent {
       return [];
     }
     const controls: PopupControl<ProfileEditorMenuContext>[] = [];
-    if (!this.activeUserIsAdmin()) {
+    if (!this.activeUserUsesCompactProfile()) {
       controls.push({
         id: 'profile-status',
         kind: 'menu',
@@ -406,14 +413,23 @@ export class ProfileEditorComponent {
 
   protected profileHeaderCardModel(): HeaderCardModel {
     const admin = this.activeUserIsAdmin();
+    const operator = this.activeUserIsOperator();
     const profile = this.profileEditorData.profile;
-    return ProfileHeaderCardConverter.convert(profile, {
-      admin,
+    const model = ProfileHeaderCardConverter.convert(profile, {
+      admin: admin || operator,
       age: this.profileEditorAge,
       completionPercent: this.profileCompletionPercent,
       showEdit: true,
       editAriaLabel: 'Open image editor'
     });
+    return operator
+      ? {
+          ...model,
+          badgeLabel: 'OPERATOR',
+          meta: profile.headline.trim() || 'Operator workspace',
+          metaIcon: 'settings_input_component'
+        }
+      : model;
   }
 
   private loadProfileEditorState(userId: string, activeProfileExt: ProfileExtDto | null): void {
@@ -463,7 +479,7 @@ export class ProfileEditorComponent {
         subtitle: '',
         userId: this.profileEditorData.profile.id,
         layout: 'grouped',
-        profileSize: this.activeUserIsAdmin() ? 'small' : 'big',
+        profileSize: this.activeUserUsesCompactProfile() ? 'small' : 'big',
         imageEditor: 'external',
         privacy: {
           values: this.profileEditorPrivacyValues()

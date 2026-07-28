@@ -8,7 +8,10 @@
         [class.profile-editor-popup-content--experience]="panel === 'experience'"
       >
           @if (panel === 'profile') {
-            <div class="profile-editor-wrap" [class.profile-editor-wrap-admin]="activeUserIsAdmin()">
+            <div
+              class="profile-editor-wrap"
+              [class.profile-editor-wrap-admin]="activeUserUsesCompactProfile()"
+            >
               <app-header-card
                 [model]="profileHeaderCardModel()"
                 (edit)="openImageEditor()"

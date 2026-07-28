@@ -829,7 +829,10 @@ export class SmartListComponent<T, TFilters extends SmartListFilters = SmartList
     this.cdr.markForCheck();
   }
 
-  public replaceVisibleItems(items: readonly T[], options: { total?: number; hasMore?: boolean } = {}): void {
+  public replaceVisibleItems(
+    items: readonly T[],
+    options: { total?: number; hasMore?: boolean; nextCursor?: string | null } = {}
+  ): void {
     if (this.currentViewMode !== 'list') {
       return;
     }
@@ -847,6 +850,11 @@ export class SmartListComponent<T, TFilters extends SmartListFilters = SmartList
     this.hasMore = typeof options.hasMore === 'boolean'
       ? options.hasMore && computedHasMore
       : computedHasMore;
+    if (Object.prototype.hasOwnProperty.call(options, 'nextCursor')) {
+      this.nextPageCursor = typeof options.nextCursor === 'string' && options.nextCursor.trim()
+        ? options.nextCursor.trim()
+        : null;
+    }
     this.syncGroups();
     this.finiteStepper.syncBounds();
     this.emitState();
@@ -859,6 +867,7 @@ export class SmartListComponent<T, TFilters extends SmartListFilters = SmartList
     options: {
       total?: number;
       hasMore?: boolean;
+      nextCursor?: string | null;
       equals?: (current: T, next: T, index: number) => boolean;
       trackBy?: (index: number, item: T) => unknown;
     } = {}
@@ -883,7 +892,13 @@ export class SmartListComponent<T, TFilters extends SmartListFilters = SmartList
       );
 
     if (!sameShape) {
-      this.replaceVisibleItems(nextItems, { total: nextTotal, hasMore: nextHasMore });
+      this.replaceVisibleItems(nextItems, {
+        total: nextTotal,
+        hasMore: nextHasMore,
+        ...(Object.prototype.hasOwnProperty.call(options, 'nextCursor')
+          ? { nextCursor: options.nextCursor ?? null }
+          : {})
+      });
       this.emitRefresh();
       return true;
     }
@@ -893,6 +908,15 @@ export class SmartListComponent<T, TFilters extends SmartListFilters = SmartList
     const equals = options.equals ?? ((current: T, next: T, index: number) =>
       adapterEquals ? adapterEquals(current, next, index, query) : current === next);
     let changed = false;
+    if (Object.prototype.hasOwnProperty.call(options, 'nextCursor')) {
+      const nextCursor = typeof options.nextCursor === 'string' && options.nextCursor.trim()
+        ? options.nextCursor.trim()
+        : null;
+      if (this.nextPageCursor !== nextCursor) {
+        this.nextPageCursor = nextCursor;
+        changed = true;
+      }
+    }
     const patchedItems = this.items.map((item, index) => {
       const nextItem = nextItems[index];
       if (nextItem === undefined || equals(item, nextItem, index)) {
@@ -1571,7 +1595,17 @@ export class SmartListComponent<T, TFilters extends SmartListFilters = SmartList
     const hasMore = hasExplicitNextCursor
       ? (typeof result?.nextCursor === 'string' && result.nextCursor.trim().length > 0)
       : (items.length > 0 && items.length < (total ?? items.length) && !loadedShortPage);
-    this.syncVisibleItems(items, { total, hasMore });
+    this.syncVisibleItems(items, {
+      total,
+      hasMore,
+      ...(hasExplicitNextCursor
+        ? {
+            nextCursor: typeof result?.nextCursor === 'string' && result.nextCursor.trim()
+              ? result.nextCursor.trim()
+              : null
+          }
+        : {})
+    });
   }
 
   private async loadInitialListPages(): Promise<void> {

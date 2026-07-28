@@ -193,7 +193,9 @@
   position: absolute;
   top: 0.68rem;
   left: 0.62rem;
-  z-index: 90;
+  // Keep the avatar above the card controls, but below the smart-list menu
+  // outlet (z-index 35) so avatars on following cards cannot cover an open menu.
+  z-index: 30;
   width: 2.08rem;
   height: 2.08rem;
   display: inline-grid;

@@ -15,9 +15,34 @@
       [attr.aria-expanded]="open"
       [attr.aria-haspopup]="triggerAriaHasPopup()"
       [attr.aria-label]="triggerAriaLabel()"
+      [attr.data-action-wave]="isFabKind ? 'true' : null"
+      (pointerdown)="startTriggerDrag($event)"
+      (contextmenu)="preventTriggerContextMenu($event)"
       (click)="toggleMenu($event)"
       >
-      @if (triggerIcon()) {
+      @if (isFabKind) {
+        <span
+          class="app-menu__trigger-wave-surface"
+          data-action-wave-surface="true"
+          aria-hidden="true"
+        ></span>
+      }
+      @if (triggerImageUrl() || triggerImageFallback()) {
+        <span class="app-menu__trigger-image">
+          @if (triggerImageUrl(); as imageUrl) {
+            <img
+              [src]="imageUrl"
+              [alt]="triggerImageAlt()"
+              (error)="revealImageFallback($event)"
+            />
+            @if (triggerImageFallback(); as imageFallback) {
+              <span data-app-menu-image-fallback hidden>{{ imageFallback }}</span>
+            }
+          } @else {
+            <span>{{ triggerImageFallback() }}</span>
+          }
+        </span>
+      } @else if (triggerIcon()) {
         <mat-icon [class.app-menu__trigger-icon--symbol]="isSymbolIcon(triggerIcon())">{{ triggerIcon() }}</mat-icon>
       }
       @if (!trigger?.hideLabel && triggerLabel()) {
@@ -40,6 +65,7 @@
         </span>
       }
     </button>
+    <ng-content select="[appMenuOverlay]"></ng-content>
   }
 
   @if (isInlineRowLayout) {
@@ -97,7 +123,14 @@
             } @else if (isImageLayoutItem(item)) {
               <span class="app-menu__button-row-image">
                 @if (actionRowItemImageUrl(item); as imageUrl) {
-                  <img [src]="imageUrl" [alt]="actionRowItemImageAlt(item)" />
+                  <img
+                    [src]="imageUrl"
+                    [alt]="actionRowItemImageAlt(item)"
+                    (error)="revealImageFallback($event)"
+                  />
+                  @if (actionRowItemImageFallback(item); as imageFallback) {
+                    <span data-app-menu-image-fallback hidden>{{ imageFallback }}</span>
+                  }
                 } @else if (actionRowItemImageFallback(item)) {
                   <span>{{ actionRowItemImageFallback(item) }}</span>
                 } @else if (actionRowItemIcon(item)) {
@@ -522,7 +555,22 @@
                 [attr.aria-label]="itemAriaLabel(item)"
                 (click)="selectLinkItem(item, $event)"
                 >
-                @if (itemIcon(item)) {
+                @if (itemImageUrl(item) || itemImageFallback(item)) {
+                  <span class="app-menu__item-image">
+                    @if (itemImageUrl(item); as imageUrl) {
+                      <img
+                        [src]="imageUrl"
+                        [alt]="itemImageAlt(item)"
+                        (error)="revealImageFallback($event)"
+                      />
+                      @if (itemImageFallback(item); as imageFallback) {
+                        <span data-app-menu-image-fallback hidden>{{ imageFallback }}</span>
+                      }
+                    } @else {
+                      <span>{{ itemImageFallback(item) }}</span>
+                    }
+                  </span>
+                } @else if (itemIcon(item)) {
                   <mat-icon class="app-menu__item-icon" [class.app-menu__item-icon--symbol]="isSymbolIcon(itemIcon(item))">{{ itemIcon(item) }}</mat-icon>
                 }
                 <span class="app-menu__item-main" [class.app-menu__item-main--with-body]="hasItemBody(item)">
@@ -588,7 +636,22 @@
                     [attr.aria-label]="itemAriaLabel(item)"
                     (click)="selectItem(item, $event)"
                     >
-                    @if (itemIcon(item)) {
+                    @if (itemImageUrl(item) || itemImageFallback(item)) {
+                      <span class="app-menu__item-image">
+                        @if (itemImageUrl(item); as imageUrl) {
+                          <img
+                            [src]="imageUrl"
+                            [alt]="itemImageAlt(item)"
+                            (error)="revealImageFallback($event)"
+                          />
+                          @if (itemImageFallback(item); as imageFallback) {
+                            <span data-app-menu-image-fallback hidden>{{ imageFallback }}</span>
+                          }
+                        } @else {
+                          <span>{{ itemImageFallback(item) }}</span>
+                        }
+                      </span>
+                    } @else if (itemIcon(item)) {
                       <mat-icon class="app-menu__item-icon" [class.app-menu__item-icon--symbol]="isSymbolIcon(itemIcon(item))">{{ itemIcon(item) }}</mat-icon>
                     }
                     <span class="app-menu__item-main" [class.app-menu__item-main--with-body]="hasItemBody(item)">
@@ -659,7 +722,22 @@
                   [attr.aria-label]="itemAriaLabel(item)"
                   (click)="selectItem(item, $event)"
                 >
-                  @if (itemIcon(item)) {
+                  @if (itemImageUrl(item) || itemImageFallback(item)) {
+                    <span class="app-menu__item-image">
+                      @if (itemImageUrl(item); as imageUrl) {
+                        <img
+                          [src]="imageUrl"
+                          [alt]="itemImageAlt(item)"
+                          (error)="revealImageFallback($event)"
+                        />
+                        @if (itemImageFallback(item); as imageFallback) {
+                          <span data-app-menu-image-fallback hidden>{{ imageFallback }}</span>
+                        }
+                      } @else {
+                        <span>{{ itemImageFallback(item) }}</span>
+                      }
+                    </span>
+                  } @else if (itemIcon(item)) {
                     <mat-icon class="app-menu__item-icon" [class.app-menu__item-icon--symbol]="isSymbolIcon(itemIcon(item))">{{ itemIcon(item) }}</mat-icon>
                   }
                   <span class="app-menu__item-main" [class.app-menu__item-main--with-body]="hasItemBody(item)">

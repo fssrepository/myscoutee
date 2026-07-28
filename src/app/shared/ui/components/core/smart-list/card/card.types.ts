@@ -228,6 +228,7 @@ export const CARD_MENU_ACTIONS: Readonly<Record<CardMenuActionId, CardMenuAction
   manageEvent: { label: 'manage.event', icon: 'settings' },
   markSolved: { label: 'admin.review.action.mark.solved', icon: 'check_circle', tone: 'accent' },
   markUnresolved: { label: 'admin.review.action.mark.unresolved', icon: 'restart_alt', tone: 'warning' },
+  markNotificationRead: { label: 'Mark as read', icon: 'done_all', tone: 'accent' },
   notifyParticipants: { label: 'notify.participants', icon: 'support_agent' },
   paymentSummary: { label: 'event.checkout.payment.summary', icon: 'receipt_long', tone: 'positive' },
   publish: { label: 'publish', icon: 'campaign', tone: 'accent' },
@@ -435,6 +436,7 @@ export interface SingleRowData<TEagerDetail = unknown> extends DisplayData<TEage
   metaRows?: readonly string[];
   badges?: readonly SingleRowBadge[];
   clickable?: boolean;
+  progressRing?: boolean;
   unread?: number | null;
   memberCount?: number | null;
 }

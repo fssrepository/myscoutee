@@ -1,0 +1,64 @@
+@if (operatorMenu.activePopup() === 'registration') {
+  <app-popup [model]="popupModel()">
+    <section class="operator-registration" [attr.aria-busy]="busy()">
+      @if (loading()) {
+        <div class="operator-registration__loading" role="status">
+          <app-indicator kind="load-ring" state="loading"></app-indicator>
+          <span>{{ 'operator.registration.loading' | i18n }}</span>
+        </div>
+      } @else if (status(); as registryStatus) {
+        <div class="operator-registration__status">
+          <span class="operator-registration__status-icon">
+            <mat-icon>{{ registered() ? 'verified' : 'dns' }}</mat-icon>
+          </span>
+          <span>
+            <small>{{ 'operator.registration.current.status' | i18n }}</small>
+            <strong>{{ lifecycleLabel() | i18n }}</strong>
+            @if (currentRegistryUrl()) {
+              <code>{{ currentRegistryUrl() }}</code>
+            }
+          </span>
+        </div>
+
+        <app-link-input
+          name="registryBaseUrl"
+          [config]="registryUrlConfig()"
+          [ngModel]="registryBaseUrl()"
+          (ngModelChange)="updateRegistryBaseUrl($event)"
+          [disabled]="busy()"
+          [textReadOnly]="true"
+        ></app-link-input>
+
+        @if (errorMessage()) {
+          <p class="operator-registration__message is-error" role="alert">
+            <mat-icon>error_outline</mat-icon>
+            <span>{{ errorMessage() | i18n }}</span>
+          </p>
+        }
+        @if (noticeMessage()) {
+          <p class="operator-registration__message is-success" role="status">
+            <mat-icon>check_circle</mat-icon>
+            <span>{{ noticeMessage() | i18n }}</span>
+          </p>
+        }
+
+        <app-menu
+          class="operator-registration__actions"
+          kind="inline"
+          layout="row"
+          [items]="registryActionItems()"
+          (itemSelect)="onRegistryActionSelect($event)"
+        ></app-menu>
+
+      } @else {
+        <div class="operator-registration__loading is-error" role="alert">
+          <mat-icon>cloud_off</mat-icon>
+          <span>{{ (errorMessage() || 'operator.registration.unavailable') | i18n }}</span>
+          <button type="button" (click)="registry.loadStatus()">
+            {{ 'try.again' | i18n }}
+          </button>
+        </div>
+      }
+    </section>
+  </app-popup>
+}

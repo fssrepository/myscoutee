@@ -8,6 +8,7 @@ import type { UserSelectorRole, UserDto } from '../../../contracts/user.interfac
 
 import { LocalMemoryDb } from '../../../common/app.db';
 import { UserProfileState } from '../../../common/user-profile-state';
+import { hasOperatorRole } from '../../../common/user-role';
 
 
 import { LocalUsersMapper } from '../mappers/user.mapper';
@@ -41,7 +42,14 @@ export class LocalUsersRepository {
     const adminUser = user.admin === true
       || `${user.id ?? ''}`.trim().startsWith('admin-demo-')
       || `${user.hostTier ?? ''}`.trim().toLowerCase() === 'admin';
-    return selectorRole === 'admin' ? adminUser : !adminUser;
+    const operatorUser = hasOperatorRole(user);
+    if (selectorRole === 'admin') {
+      return adminUser;
+    }
+    if (selectorRole === 'operator') {
+      return operatorUser;
+    }
+    return !adminUser && !operatorUser;
   }
 
   private compareSelectableDemoUsers(left: UserRecord, right: UserRecord): number {

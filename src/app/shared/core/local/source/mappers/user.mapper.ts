@@ -90,6 +90,11 @@ export class LocalUsersMapper {
             : undefined
         }
         : undefined,
+      notificationPreferences: user.notificationPreferences
+        ? {
+          muted: user.notificationPreferences.muted === true
+        }
+        : undefined,
       activities: {
         ...user.activities
       }

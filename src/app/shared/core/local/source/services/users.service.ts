@@ -265,6 +265,16 @@ export class LocalUsersService extends LocalRouteDelayService implements UserSer
     return this.realtimeStateByUserId[userId] ?? null;
   }
 
+  syncRealtimeNotificationCount(userId: string, count: number): void {
+    const normalizedUserId = userId.trim();
+    const state = this.realtimeStateByUserId[normalizedUserId];
+    if (!normalizedUserId || !state) {
+      return;
+    }
+    this.realtimeStateByUserId[normalizedUserId] =
+      LocalUserRealtimeSnapshotBuilder.withNotificationCount(state, count);
+  }
+
   private resetLocalRealtimeCursor(userId: string): void {
     const state = this.realtimeStateByUserId[userId];
     if (state) {
@@ -514,6 +524,7 @@ export class LocalUsersService extends LocalRouteDelayService implements UserSer
       'tickets',
       'contacts',
       'feedback',
+      'notifications',
       'adminJobs',
       'adminMetrics'
     ];
@@ -556,6 +567,7 @@ export class LocalUsersService extends LocalRouteDelayService implements UserSer
       'tickets',
       'contacts',
       'feedback',
+      'notifications',
       'adminJobs',
       'adminMetrics'
     ];
@@ -739,6 +751,7 @@ export class LocalUsersService extends LocalRouteDelayService implements UserSer
       tickets,
       contacts: normalizeCounter(activities?.contacts),
       feedback,
+      notifications: normalizeCounter(activities?.notifications),
       chat: {
         all: normalizeCounter(chat?.all ?? activities?.chats),
         event: normalizeCounter(chat?.event),
@@ -795,6 +808,7 @@ export class LocalUsersService extends LocalRouteDelayService implements UserSer
         tickets: counters.tickets ?? user.activities.tickets,
         contacts: counters.contacts ?? user.activities.contacts,
         feedback: counters.feedback ?? user.activities.feedback,
+        notifications: counters.notifications ?? user.activities.notifications,
         chat: counters.chat ?? user.activities.chat,
         event: counters.event ?? user.activities.event,
         asset: counters.asset ?? user.activities.asset,

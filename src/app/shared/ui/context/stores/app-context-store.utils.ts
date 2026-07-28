@@ -167,6 +167,11 @@ export function cloneUserProfile(user: UserDto): UserDto {
     languages: [...(user.languages ?? [])],
     images: [...(user.images ?? [])],
     profileDetails: cloneProfileDetails(user.profileDetails),
+    notificationPreferences: user.notificationPreferences
+      ? {
+        muted: user.notificationPreferences.muted === true
+      }
+      : undefined,
     activities: {
       game: user.activities?.game ?? 0,
       chats: user.activities?.chats ?? 0,
@@ -179,6 +184,7 @@ export function cloneUserProfile(user: UserDto): UserDto {
       tickets: user.activities?.tickets ?? 0,
       contacts: user.activities?.contacts ?? 0,
       feedback: user.activities?.feedback ?? 0,
+      notifications: user.activities?.notifications ?? 0,
       chat: cloneChatCounters(user.activities?.chat),
       event: cloneEventCounters(user.activities?.event),
       asset: cloneAssetCounters(user.activities?.asset),

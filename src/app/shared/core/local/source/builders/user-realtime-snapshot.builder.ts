@@ -17,7 +17,8 @@ type LocalRealtimeCounterKey =
   | 'supplies'
   | 'tickets'
   | 'contacts'
-  | 'feedback';
+  | 'feedback'
+  | 'notifications';
 
 const LOCAL_REALTIME_COUNTER_KEYS: readonly LocalRealtimeCounterKey[] = [
   'game',
@@ -30,7 +31,8 @@ const LOCAL_REALTIME_COUNTER_KEYS: readonly LocalRealtimeCounterKey[] = [
   'supplies',
   'tickets',
   'contacts',
-  'feedback'
+  'feedback',
+  'notifications'
 ];
 
 export interface LocalUserRealtimeSnapshotState {
@@ -87,6 +89,30 @@ export class LocalUserRealtimeSnapshotBuilder {
     };
   }
 
+  static withNotificationCount(
+    state: LocalUserRealtimeSnapshotState,
+    count: number
+  ): LocalUserRealtimeSnapshotState {
+    const notifications = this.count(count);
+    return {
+      ...state,
+      sourceUser: {
+        ...state.sourceUser,
+        activities: {
+          ...state.sourceUser.activities,
+          notifications
+        }
+      },
+      snapshot: {
+        ...state.snapshot,
+        counters: {
+          ...state.snapshot.counters,
+          notifications
+        }
+      }
+    };
+  }
+
   private static buildInitialSnapshot(user: UserDto): UserRealtimeLongPollResponseDto {
     const activities = user.activities ?? {};
     return {
@@ -103,6 +129,7 @@ export class LocalUserRealtimeSnapshotBuilder {
         tickets: activities.tickets,
         contacts: activities.contacts,
         feedback: activities.feedback,
+        notifications: activities.notifications,
         chat: activities.chat ? { ...activities.chat } : undefined,
         event: activities.event ? { ...activities.event } : undefined,
         asset: activities.asset ? { ...activities.asset } : undefined,

@@ -36,6 +36,24 @@ describe('LocalUsersRepository demo selector', () => {
       .toEqual(['admin-demo-ava', 'admin-demo-zoe']);
   });
 
+  it('requires the explicit operator flag for the operator selector', () => {
+    seedUsers([
+      user('operator-explicit', 'Explicit Operator', {
+        operator: true,
+        hostTier: ''
+      }),
+      user('operator-presentation-only', 'Presentation Only', {
+        hostTier: 'Operator'
+      }),
+      user('regular-member', 'Regular Member')
+    ]);
+
+    expect(repository.queryAvailableDemoUsers('operator').map(item => item.id))
+      .toEqual(['operator-explicit']);
+    expect(repository.queryAvailableDemoUsers('member').map(item => item.id))
+      .toEqual(['operator-presentation-only', 'regular-member']);
+  });
+
   function seedUsers(users: UserDto[]): void {
     memoryDb.write(state => ({
       ...state,

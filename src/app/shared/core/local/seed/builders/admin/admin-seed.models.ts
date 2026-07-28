@@ -197,23 +197,6 @@ export interface AdminSeedStatsGraphDto {
   timeline: AdminSeedStatsGraphTimelinePointDto[];
 }
 
-export interface AdminSeedStatsRevenueTimelinePointDto {
-  dateKey: string;
-  label: string;
-  payableEvents: number;
-  payableAssets: number;
-  projectedEventCents: number;
-  projectedAssetCents: number;
-  actualPaymentCents: number;
-  payingUsers: number;
-}
-
-export interface AdminSeedStatsRevenueDto {
-  metrics: AdminSeedStatsMetricDto[];
-  assetCategories: AdminSeedStatsBreakdownItemDto[];
-  timeline: AdminSeedStatsRevenueTimelinePointDto[];
-}
-
 export interface AdminSeedStatsDashboardDto {
   generatedAtIso: string;
   source: 'demo' | 'http';
@@ -229,5 +212,4 @@ export interface AdminSeedStatsDashboardDto {
   eventTypes: AdminSeedStatsBreakdownItemDto[];
   activityMix: AdminSeedStatsBreakdownItemDto[];
   graph: AdminSeedStatsGraphDto;
-  revenue: AdminSeedStatsRevenueDto;
 }

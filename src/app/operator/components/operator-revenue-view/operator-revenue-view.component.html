@@ -1,0 +1,183 @@
+@if (revenueModel(); as revenue) {
+  @if (selectedCurrency(); as currency) {
+    <section class="operator-revenue" [attr.aria-label]="'operator.action.revenue' | i18n">
+      <header class="operator-revenue__toolbar">
+        <span class="operator-revenue__rules">
+          <small>{{ 'operator.revenue.ruleset' | i18n }}</small>
+          <strong>{{ revenue.rulesetVersion }}</strong>
+        </span>
+        <span class="operator-revenue__commission">
+          <small>{{ 'operator.revenue.commission.rate' | i18n }}</small>
+          <strong>{{ commissionRateLabel(revenue.commissionRateBasisPoints) }}</strong>
+        </span>
+        @if (revenue.currencies.length > 1) {
+          <div class="operator-revenue__currency">
+            <span>{{ 'operator.revenue.currency' | i18n }}</span>
+            <app-menu
+              kind="select"
+              [trigger]="currencyTrigger()"
+              [items]="currencyItems()"
+              (itemSelect)="onCurrencySelect($event)"
+            ></app-menu>
+          </div>
+        } @else {
+          <span class="operator-revenue__currency-code">{{ currency.currencyCode }}</span>
+        }
+      </header>
+
+      <div class="operator-revenue__metric-grid">
+        @for (metric of metrics(currency); track metric.key) {
+          <article class="operator-revenue__metric" [ngClass]="toneClass(metric)">
+            <span class="operator-revenue__metric-icon">
+              <mat-icon>{{ metric.icon }}</mat-icon>
+            </span>
+            <small>{{ metric.labelKey | i18n }}</small>
+            <strong>{{ metric.valueLabel }}</strong>
+            <span class="operator-revenue__metric-bar">
+              <span [style.width.%]="metric.percent"></span>
+            </span>
+          </article>
+        }
+      </div>
+
+      <div class="operator-revenue__layout">
+        <article class="operator-revenue__timeline">
+          <header>
+            <span>
+              <small>{{ 'operator.revenue.timeline.eyebrow' | i18n }}</small>
+              <strong>{{ 'operator.revenue.timeline.title' | i18n }}</strong>
+            </span>
+            <em>{{ 'operator.revenue.window' | i18n }}</em>
+          </header>
+
+          @if (selectedTimelinePoint(currency); as point) {
+            <div class="operator-revenue__timeline-readout">
+              <strong>{{ point.label }}</strong>
+              <span>
+                <i class="is-green"></i>
+                {{ 'operator.revenue.timeline.projected.events' | i18n }}
+                {{ formatMinor(point.projectedEventMinor, currency) }}
+              </span>
+              <span>
+                <i class="is-blue"></i>
+                {{ 'operator.revenue.timeline.projected.assets' | i18n }}
+                {{ formatMinor(point.projectedAssetMinor, currency) }}
+              </span>
+              <span>
+                <i class="is-gold"></i>
+                {{ 'operator.revenue.timeline.net.payments' | i18n }}
+                {{ formatMinor(point.netPaymentMinor, currency) }}
+              </span>
+              <span>
+                <i class="is-purple"></i>
+                {{ 'operator.revenue.timeline.estimated.commission' | i18n }}
+                {{ formatMinor(point.estimatedCommissionMinor, currency) }}
+              </span>
+            </div>
+          }
+
+          <div class="operator-revenue__chart">
+            <svg
+              viewBox="0 0 300 108"
+              role="img"
+              tabindex="0"
+              [attr.aria-label]="'operator.revenue.timeline.title' | i18n"
+              [class.is-dragging]="timelineDragging()"
+              (pointerdown)="startTimelineDrag($event, currency.timeline)"
+              (pointermove)="moveTimelineDrag($event, currency.timeline)"
+              (pointerup)="endTimelineDrag($event)"
+              (pointercancel)="endTimelineDrag($event)"
+              (lostpointercapture)="endTimelineDrag()"
+            >
+              <line x1="12" y1="94" x2="288" y2="94" class="operator-revenue__axis"></line>
+              <line x1="12" y1="58" x2="288" y2="58" class="operator-revenue__gridline"></line>
+              <line x1="12" y1="22" x2="288" y2="22" class="operator-revenue__gridline"></line>
+              @for (metric of timelineMetrics; track metric.key) {
+                <polyline
+                  class="operator-revenue__line"
+                  [ngClass]="'is-' + metric.tone"
+                  [attr.points]="timelineChartPoints(currency.timeline, metric.key)"
+                ></polyline>
+              }
+              @if (selectedTimelinePoint(currency)) {
+                <line
+                  class="operator-revenue__scrub-guide"
+                  [attr.x1]="selectedTimelineX(currency)"
+                  y1="14"
+                  [attr.x2]="selectedTimelineX(currency)"
+                  y2="96"
+                ></line>
+                <circle
+                  class="operator-revenue__scrub-halo"
+                  [attr.cx]="selectedTimelineX(currency)"
+                  [attr.cy]="selectedTimelineY(currency)"
+                  r="6"
+                ></circle>
+                <circle
+                  class="operator-revenue__scrub-knob"
+                  [attr.cx]="selectedTimelineX(currency)"
+                  [attr.cy]="selectedTimelineY(currency)"
+                  r="3"
+                ></circle>
+              }
+              @for (point of currency.timeline; track point.dateKey; let index = $index) {
+                <circle
+                  class="operator-revenue__hit"
+                  [attr.cx]="12 + (index * 276) / (currency.timeline.length > 1 ? currency.timeline.length - 1 : 1)"
+                  cy="58"
+                  r="8"
+                  tabindex="0"
+                  (mouseenter)="selectTimelinePoint(point)"
+                  (focus)="selectTimelinePoint(point)"
+                ></circle>
+              }
+            </svg>
+          </div>
+        </article>
+
+        <article class="operator-revenue__assets">
+          <header>
+            <span>
+              <small>{{ 'operator.revenue.assets.eyebrow' | i18n }}</small>
+              <strong>{{ 'operator.revenue.asset.categories' | i18n }}</strong>
+            </span>
+            <mat-icon>donut_large</mat-icon>
+          </header>
+          <div class="operator-revenue__donut" aria-hidden="true">
+            @for (category of currency.assetCategories; track category.key) {
+              <span
+                [ngClass]="toneClass(category)"
+                [style.flex-grow]="category.projectedMinor"
+              ></span>
+            }
+          </div>
+          <div class="operator-revenue__breakdown">
+            @for (category of currency.assetCategories; track category.key) {
+              <div class="operator-revenue__breakdown-row" [ngClass]="toneClass(category)">
+                <span>
+                  <i></i>
+                  <mat-icon>{{ category.icon || 'category' }}</mat-icon>
+                  {{ itemLabel(category) | i18n }}
+                </span>
+                <small>
+                  {{ category.payableAssets }}
+                  {{ 'operator.revenue.asset.items' | i18n }}
+                </small>
+                <strong>{{ formatMinor(category.projectedMinor, currency) }}</strong>
+                <span class="operator-revenue__breakdown-bar">
+                  <span [style.width.%]="categoryPercent(category, currency)"></span>
+                </span>
+              </div>
+            } @empty {
+              <p class="operator-revenue__empty">
+                {{ 'operator.revenue.assets.empty' | i18n }}
+              </p>
+            }
+          </div>
+        </article>
+      </div>
+    </section>
+  } @else {
+    <p class="operator-revenue__empty">{{ 'operator.revenue.empty' | i18n }}</p>
+  }
+}

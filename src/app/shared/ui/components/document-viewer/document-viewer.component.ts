@@ -6,6 +6,7 @@ import { ActivatedRoute } from '@angular/router';
 import { AppUtils } from '../../../app-utils';
 import { APP_STATIC_DATA } from '../../../app-static-data';
 import { HelpCenterService, I18nService } from '../../../core';
+import { DeploymentConfigurationService } from '../../../core/base/services/deployment-configuration.service';
 import type { HelpCenterDocumentKind, HelpCenterRevisionDto } from '../../../core/contracts';
 import { LazyBgImageDirective } from '../../directives';
 import {
@@ -45,6 +46,8 @@ import type {
   styleUrl: './document-viewer.component.scss'
 })
 export class DocumentViewerComponent implements OnChanges, OnInit {
+  protected readonly deploymentBranding =
+    inject(DeploymentConfigurationService).branding;
   private readonly i18n = inject(I18nService);
   private readonly route = inject(ActivatedRoute);
   private readonly helpCenter = inject(HelpCenterService);

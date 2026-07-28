@@ -17,16 +17,25 @@ export class UserProfileState {
     return (seed % 100) < 32;
   }
 
-  static isPublicGameProfile(user: Pick<UserDto, 'profileStatus'> | null | undefined): boolean {
-    return user?.profileStatus === 'public';
+  static isPublicGameProfile(
+    user: Pick<UserDto, 'profileStatus' | 'operator'> | null | undefined
+  ): boolean {
+    return user?.operator !== true && user?.profileStatus === 'public';
   }
 
-  static isInsideNetworkGameProfile(user: Pick<UserDto, 'profileStatus'> | null | undefined): boolean {
-    return this.INSIDE_NETWORK_GAME_PROFILE_STATUSES.has(user?.profileStatus ?? '');
+  static isInsideNetworkGameProfile(
+    user: Pick<UserDto, 'profileStatus' | 'operator'> | null | undefined
+  ): boolean {
+    return user?.operator !== true
+      && this.INSIDE_NETWORK_GAME_PROFILE_STATUSES.has(user?.profileStatus ?? '');
   }
 
-  static isActivityRateVisibleProfile(user: Pick<UserDto, 'profileStatus'> | null | undefined): boolean {
-    return Boolean(user) && !this.HARD_HIDDEN_PROFILE_STATUSES.has(user?.profileStatus ?? '');
+  static isActivityRateVisibleProfile(
+    user: Pick<UserDto, 'profileStatus' | 'operator'> | null | undefined
+  ): boolean {
+    return Boolean(user)
+      && user?.operator !== true
+      && !this.HARD_HIDDEN_PROFILE_STATUSES.has(user?.profileStatus ?? '');
   }
 
   static isEmptyOnboardingProfile(
