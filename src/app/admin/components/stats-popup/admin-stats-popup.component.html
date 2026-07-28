@@ -221,6 +221,7 @@
                   }
                   <div class="stats-timeline-chart stats-graph-timeline-chart">
                     <svg
+                      class="motion-static"
                       viewBox="0 0 300 108"
                       role="img"
                       [class.is-dragging]="graphTimelineDragging()"
@@ -229,7 +230,7 @@
                       (pointermove)="moveGraphTimelineDrag($event, socialGraph.timeline)"
                       (pointerup)="endGraphTimelineDrag($event)"
                       (pointercancel)="endGraphTimelineDrag($event)"
-                      (pointerleave)="endGraphTimelineDrag($event)">
+                      (lostpointercapture)="endGraphTimelineDrag()">
                       <line x1="12" y1="94" x2="288" y2="94" class="stats-timeline-axis"></line>
                       <line x1="12" y1="58" x2="288" y2="58" class="stats-timeline-gridline"></line>
                       <line x1="12" y1="22" x2="288" y2="22" class="stats-timeline-gridline"></line>
@@ -263,13 +264,12 @@
                       }
                       @for (point of socialGraph.timeline; track point.dateKey; let index = $index) {
                         <rect
-                          class="stats-timeline-hit"
+                          class="stats-timeline-hit motion-static"
                           [attr.x]="timelineX(index, socialGraph.timeline.length) - 8"
                           y="8"
                           width="16"
                           height="92"
                           tabindex="0"
-                          (pointerenter)="selectGraphTimelinePoint(point)"
                           (focus)="selectGraphTimelinePoint(point)">
                         </rect>
                       }
@@ -299,6 +299,7 @@
               }
               <div class="stats-timeline-chart">
                 <svg
+                  class="motion-static"
                   viewBox="0 0 300 108"
                   role="img"
                   [class.is-dragging]="timelineDragging()"
@@ -307,7 +308,7 @@
                   (pointermove)="moveTimelineDrag($event, dashboard.timeline)"
                   (pointerup)="endTimelineDrag($event)"
                   (pointercancel)="endTimelineDrag($event)"
-                  (pointerleave)="endTimelineDrag($event)">
+                  (lostpointercapture)="endTimelineDrag()">
                   <line x1="12" y1="94" x2="288" y2="94" class="stats-timeline-axis"></line>
                   <line x1="12" y1="58" x2="288" y2="58" class="stats-timeline-gridline"></line>
                   <line x1="12" y1="22" x2="288" y2="22" class="stats-timeline-gridline"></line>
@@ -341,13 +342,12 @@
                   }
                   @for (point of dashboard.timeline; track point.dateKey; let index = $index) {
                     <rect
-                      class="stats-timeline-hit"
+                      class="stats-timeline-hit motion-static"
                       [attr.x]="timelineX(index, dashboard.timeline.length) - 8"
                       y="8"
                       width="16"
                       height="92"
                       tabindex="0"
-                      (pointerenter)="selectTimelinePoint(point)"
                       (focus)="selectTimelinePoint(point)">
                     </rect>
                   }
