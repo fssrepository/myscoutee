@@ -1,6 +1,14 @@
-import { Injectable, inject, signal } from '@angular/core';
+import { Injectable, computed, effect, inject, signal } from '@angular/core';
 
-import { OperatorRegistryService } from '../../../core/base/services/operator-registry.service';
+import { environment } from '../../../../../environments/environment';
+import {
+  OperatorRegistryService,
+  type OperatorRegistryDataSource
+} from '../../../core/base/services/operator-registry.service';
+import {
+  SessionService,
+  type AppSession
+} from '../../../core/base/services/session.service';
 import type {
   OperatorRegistryInspectRequestDto,
   OperatorRegistryInspectionDto,
@@ -20,33 +28,58 @@ export type OperatorRegistryBusyAction =
 })
 export class OperatorRegistryStore {
   private readonly service = inject(OperatorRegistryService);
+  private readonly sessionService = inject(SessionService);
   private readonly statusRef = signal<OperatorRegistryStatusDto | null>(null);
   private readonly inspectionRef = signal<OperatorRegistryInspectionDto | null>(null);
   private readonly busyActionRef = signal<OperatorRegistryBusyAction>(null);
   private readonly errorRef = signal('');
   private readonly noticeRef = signal('');
+  private readonly registryBaseUrlRef = signal('');
+  private readonly expectedRegistryScopeRef = signal('');
+  private candidateInitialized = false;
   private requestGeneration = 0;
+  private boundContextKey = this.currentContextKey();
 
   readonly status = this.statusRef.asReadonly();
   readonly inspection = this.inspectionRef.asReadonly();
   readonly busyAction = this.busyActionRef.asReadonly();
   readonly error = this.errorRef.asReadonly();
   readonly notice = this.noticeRef.asReadonly();
+  readonly registryBaseUrl = this.registryBaseUrlRef.asReadonly();
+  readonly expectedRegistryScope = this.expectedRegistryScopeRef.asReadonly();
+  readonly canInspect = computed(() => {
+    const status = this.statusRef();
+    return this.busyActionRef() === null
+      && Boolean(this.registryBaseUrlRef().trim())
+      && !(status?.enabled && status.lifecycle === 'REGISTERED');
+  });
+
+  constructor() {
+    effect(() => {
+      this.bindContext(this.sessionService.session());
+    });
+  }
 
   async loadStatus(): Promise<OperatorRegistryStatusDto | null> {
+    this.ensureContextBound();
     return await this.run('load', () => this.service.loadStatus());
   }
 
   async inspect(request: OperatorRegistryInspectRequestDto): Promise<OperatorRegistryInspectionDto | null> {
+    this.ensureContextBound();
     this.inspectionRef.set(null);
     const inspection = await this.run('inspect', () => this.service.inspect(request));
     if (inspection) {
       this.inspectionRef.set(inspection);
+      this.registryBaseUrlRef.set(inspection.baseUrl);
+      this.expectedRegistryScopeRef.set(inspection.registryIdentity.registryScope);
+      this.candidateInitialized = true;
     }
     return inspection;
   }
 
   async confirm(): Promise<OperatorRegistryStatusDto | null> {
+    this.ensureContextBound();
     const inspectionToken = this.inspectionRef()?.inspectionToken.trim() ?? '';
     if (!inspectionToken) {
       this.errorRef.set('Inspect the registry identity again before confirming.');
@@ -60,10 +93,12 @@ export class OperatorRegistryStore {
   }
 
   async retry(): Promise<OperatorRegistryStatusDto | null> {
+    this.ensureContextBound();
     return await this.run('retry', () => this.service.retry());
   }
 
   async disconnect(): Promise<OperatorRegistryStatusDto | null> {
+    this.ensureContextBound();
     const status = await this.run('disconnect', () => this.service.disconnect());
     if (status) {
       this.inspectionRef.set(null);
@@ -88,11 +123,24 @@ export class OperatorRegistryStore {
     this.noticeRef.set('');
   }
 
+  setRegistryBaseUrl(value: string): void {
+    this.registryBaseUrlRef.set(`${value ?? ''}`);
+    this.candidateInitialized = true;
+  }
+
+  setExpectedRegistryScope(value: string): void {
+    this.expectedRegistryScopeRef.set(`${value ?? ''}`);
+    this.candidateInitialized = true;
+  }
+
   reset(): void {
     this.requestGeneration += 1;
     this.statusRef.set(null);
     this.inspectionRef.set(null);
     this.busyActionRef.set(null);
+    this.registryBaseUrlRef.set('');
+    this.expectedRegistryScopeRef.set('');
+    this.candidateInitialized = false;
     this.clearFeedback();
   }
 
@@ -110,6 +158,7 @@ export class OperatorRegistryStore {
       }
       if (isStatus(result)) {
         this.statusRef.set(result);
+        this.initializeCandidate(result);
       }
       return result;
     } catch (error) {
@@ -123,6 +172,50 @@ export class OperatorRegistryStore {
       }
     }
   }
+
+  private initializeCandidate(status: OperatorRegistryStatusDto): void {
+    if (this.candidateInitialized) {
+      return;
+    }
+    this.registryBaseUrlRef.set(status.candidateDefaults.baseUrl);
+    this.expectedRegistryScopeRef.set(status.candidateDefaults.registryScope);
+    this.candidateInitialized = true;
+  }
+
+  private ensureContextBound(): void {
+    this.bindContext(this.sessionService.currentSession());
+  }
+
+  private bindContext(session: AppSession | null): void {
+    const nextContextKey = operatorRegistryStoreContextKey(
+      environment.operatorRegistryDataSource,
+      session
+    );
+    if (nextContextKey === this.boundContextKey) {
+      return;
+    }
+    this.boundContextKey = nextContextKey;
+    this.reset();
+  }
+
+  private currentContextKey(): string {
+    return operatorRegistryStoreContextKey(
+      environment.operatorRegistryDataSource,
+      this.sessionService.currentSession()
+    );
+  }
+}
+
+export function operatorRegistryStoreContextKey(
+  dataSource: OperatorRegistryDataSource,
+  session: AppSession | null
+): string {
+  const sessionIdentity = session?.kind === 'demo'
+    ? `demo:${session.userId.trim()}`
+    : session?.kind === 'firebase'
+      ? `firebase:${session.profile.id.trim()}`
+      : 'none';
+  return `${dataSource}:${sessionIdentity}`;
 }
 
 function isStatus(
@@ -170,4 +263,3 @@ function messageFromError(error: unknown, fallback: string): string {
   }
   return fallback;
 }
-

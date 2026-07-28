@@ -30,7 +30,7 @@ describe('RouteDelayService', () => {
     TestBed.resetTestingModule();
   });
 
-  it('keeps artificial delay on an explicitly local Explore route in an HTTP build', () => {
+  it('keeps the original HTTP-build rule even for a demo session', () => {
     environment.activitiesDataSource = 'http';
     environment.firebaseLoginEnabled = true;
     currentSession = { kind: 'demo', userId: 'operator-demo-dev' };
@@ -38,6 +38,14 @@ describe('RouteDelayService', () => {
     const service = TestBed.inject(RouteDelayService);
 
     expect(service.resolveDelayMs('/operator/registry/inspect')).toBe(0);
-    expect(service.resolveDelayMs('/operator/registry/inspect', 0, true)).toBe(650);
+  });
+
+  it('uses configured demo delay in an existing local route mode', () => {
+    environment.activitiesDataSource = 'local';
+    environment.firebaseLoginEnabled = false;
+
+    const service = TestBed.inject(RouteDelayService);
+
+    expect(service.resolveDelayMs('/operator/registry/inspect')).toBe(650);
   });
 });

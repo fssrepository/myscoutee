@@ -28,6 +28,7 @@ import {
   SeedAdminBootstrapRepository,
   SeedDemoBootstrapService,
   SeedEventsRepository,
+  SeedOperatorRegistryRepository,
   SeedStaticContentService,
   SeedUsersRatingsRepository,
   SeedUsersRepository
@@ -151,6 +152,7 @@ describe('Demo bootstrap seeding', () => {
 
   it('hydrates the operator seed once and flushes each changed step sequentially', async () => {
     const bootstrap = TestBed.inject(SeedDemoBootstrapService);
+    const operatorSeed = TestBed.inject(SeedOperatorRegistryRepository);
     const runtimeRepository = TestBed.inject(LocalOperatorRegistryRepository);
     const adminSeed = TestBed.inject(SeedAdminBootstrapRepository);
     const usersSeed = TestBed.inject(SeedUsersRepository);
@@ -167,6 +169,9 @@ describe('Demo bootstrap seeding', () => {
     const runtimeRepositoryReadSpy = vi.spyOn(LocalOperatorRegistryRepository.prototype, 'read');
     const runtimeRepositoryWriteSpy = vi.spyOn(LocalOperatorRegistryRepository.prototype, 'write');
     const runtimeServiceLoadSpy = vi.spyOn(LocalOperatorRegistryService.prototype, 'loadStatus');
+    const prepareOperatorSeedSpy = vi.spyOn(operatorSeed, 'prepareBootstrap');
+    const seedOperatorUsersSpy = vi.spyOn(operatorSeed, 'seedUsers');
+    const seedOperatorRegistrySpy = vi.spyOn(operatorSeed, 'seedRegistry');
 
     await bootstrap.ensureDemoSelectorReady('operator');
     await bootstrap.ensureDemoSelectorReady('operator');
@@ -194,11 +199,23 @@ describe('Demo bootstrap seeding', () => {
     expect(memoryWriteSpy).toHaveBeenCalledTimes(1);
     expect(registryReadSpy).toHaveBeenCalledTimes(1);
     expect(registryReadSpy).toHaveBeenCalledWith(APP_INDEXED_DB_KEYS.operatorRegistry);
+    expect(registryReadSpy.mock.invocationCallOrder[0]!).toBeLessThan(
+      tableWriteSpy.mock.invocationCallOrder[0]!
+    );
     expect(registryWrites).toHaveLength(1);
     expect(userWrites).toHaveLength(1);
     expect(broadFlushSpy).not.toHaveBeenCalled();
 
     expect(bootstrapBuilderSpy).toHaveBeenCalledTimes(1);
+    expect(prepareOperatorSeedSpy).toHaveBeenCalledTimes(1);
+    expect(seedOperatorUsersSpy).toHaveBeenCalledTimes(1);
+    expect(seedOperatorRegistrySpy).toHaveBeenCalledTimes(1);
+    expect(seedOperatorUsersSpy.mock.calls[0]?.[0]).toBe(
+      seedOperatorRegistrySpy.mock.calls[0]?.[0]
+    );
+    expect(seedOperatorUsersSpy.mock.invocationCallOrder[0]!).toBeLessThan(
+      seedOperatorRegistrySpy.mock.invocationCallOrder[0]!
+    );
     expect(seedMapperSpy).toHaveBeenCalledTimes(1);
     expect(seedMapperSpy.mock.calls[0]?.[0]).toBe(bootstrapBuilderSpy.mock.calls[0]?.[0]);
     expect(bootstrapBuilderSpy.mock.invocationCallOrder[0]!).toBeLessThan(
@@ -235,11 +252,20 @@ describe('Demo bootstrap seeding', () => {
 
   it('includes the operator user and registry sample in the union selector bootstrap', async () => {
     const bootstrap = TestBed.inject(SeedDemoBootstrapService);
+    const registryReadSpy = vi.spyOn(memoryDb, 'readIndexedDbTableEntry');
     const tableWriteSpy = vi.spyOn(memoryDb, 'writeIndexedDbTableEntry');
 
     await bootstrap.ensureDemoSelectorReady('union');
+    await bootstrap.ensureDemoSelectorReady('union');
 
     const state = memoryDb.read();
+    const registryWriteIndex = tableWriteSpy.mock.calls.findIndex(
+      ([key]: [string, unknown]) => key === APP_INDEXED_DB_KEYS.operatorRegistry
+    );
+    const lastUsersWriteIndex = tableWriteSpy.mock.calls.reduce(
+      (result, [key], index) => key === USERS_TABLE_NAME ? index : result,
+      -1
+    );
     expect(state[USERS_TABLE_NAME].ids).toContain('u1');
     expect(state[USERS_TABLE_NAME].ids).toContain('admin-demo-ava');
     expect(state[USERS_TABLE_NAME].ids).toContain('operator-demo-dev');
@@ -247,6 +273,12 @@ describe('Demo bootstrap seeding', () => {
     expect(tableWriteSpy.mock.calls.filter(
       ([key]: [string, unknown]) => key === APP_INDEXED_DB_KEYS.operatorRegistry
     )).toHaveLength(1);
+    expect(registryReadSpy).toHaveBeenCalledTimes(1);
+    expect(registryReadSpy.mock.invocationCallOrder[0]!).toBeLessThan(
+      tableWriteSpy.mock.invocationCallOrder[0]!
+    );
+    expect(lastUsersWriteIndex).toBeGreaterThanOrEqual(0);
+    expect(registryWriteIndex).toBeGreaterThan(lastUsersWriteIndex);
   });
 
   it('adds admin selector users after member common collections without reseeding common tables', async () => {

@@ -12,7 +12,6 @@ import { Injectable, inject } from '@angular/core';
 import { LocalMemoryDb } from '../../../common/app.db';
 import { ACTIVITY_MEMBERS_TABLE_NAME, ACTIVITY_RESOURCES_TABLE_NAME } from '../../source/entity/activity.entity';
 import { ASSETS_TABLE_NAME, type AssetRecord } from '../../source/entity/asset.entity';
-import { LocalOperatorRegistryRepository } from '../../source/repositories/operator-registry.repository';
 
 
 
@@ -35,10 +34,7 @@ import { SeedNotificationsRepository } from '../repositories/notifications-seed.
 import { SeedProfileExperiencesRepository } from '../repositories/profile-experiences-seed.repository';
 import { SeedUsersRatingsRepository } from '../repositories/users-ratings-seed.repository';
 import { SeedUsersRepository } from '../repositories/users-seed.repository';
-import {
-  SeedOperatorRegistryBuilder,
-  type OperatorBootstrapSeedMemory
-} from '../builders/operator-registry-seed.builder';
+import { SeedOperatorRegistryRepository } from '../repositories/operator-registry-seed.repository';
 import { SeedBootstrapRegistryService } from './bootstrap-registry.service';
 
 export type SeedDemoBootstrapMode = 'member' | 'operator' | 'admin' | 'union';
@@ -62,7 +58,7 @@ export class SeedDemoBootstrapService {
   private readonly activityResourcesSeed = inject(SeedActivityResourcesRepository);
   private readonly profileExperiencesSeed = inject(SeedProfileExperiencesRepository);
   private readonly contactsSeed = inject(SeedContactsRepository);
-  private readonly operatorRegistryRepository = inject(LocalOperatorRegistryRepository);
+  private readonly operatorSeed = inject(SeedOperatorRegistryRepository);
 
   private selectorPromise: Promise<void> | null = null;
   private selectorReady = false;
@@ -302,6 +298,7 @@ export class SeedDemoBootstrapService {
       return;
     }
 
+    await this.operatorSeed.whenReady();
     await this.runBootstrapStep('selector');
     await this.ensureDemoOperatorSeedReady();
 
@@ -343,7 +340,10 @@ export class SeedDemoBootstrapService {
       return;
     }
 
-    await this.usersSeed.whenReady();
+    await Promise.all([
+      this.usersSeed.whenReady(),
+      this.operatorSeed.whenReady()
+    ]);
 
     await this.runBootstrapStep('selector');
     await this.ensureCommonDemoCollectionsReady();
@@ -433,27 +433,9 @@ export class SeedDemoBootstrapService {
   }
 
   private async seedDemoOperatorTransaction(): Promise<void> {
-    await this.operatorRegistryRepository.whenReady();
-    const memory: OperatorBootstrapSeedMemory = {
-      appState: this.memoryDb.read(),
-      registryRecord: await this.operatorRegistryRepository.read()
-    };
-    const seeded = SeedOperatorRegistryBuilder.buildBootstrapMemory(memory);
-
-    await this.runBootstrapStep('users', async () => {
-      if (seeded.usersChanged) {
-        this.memoryDb.write(() => seeded.appState);
-        await this.memoryDb.writeIndexedDbTableEntry(
-          USERS_TABLE_NAME,
-          seeded.appState[USERS_TABLE_NAME]
-        );
-      }
-    });
-    await this.runBootstrapStep('indexedDb', async () => {
-      if (seeded.registryChanged) {
-        await this.operatorRegistryRepository.write(seeded.registryRecord);
-      }
-    });
+    const context = await this.operatorSeed.prepareBootstrap();
+    await this.runBootstrapStep('users', () => this.operatorSeed.seedUsers(context));
+    await this.runBootstrapStep('indexedDb', () => this.operatorSeed.seedRegistry(context));
   }
 
   private async ensureCommonDemoCollectionsReady(): Promise<void> {

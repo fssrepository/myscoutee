@@ -262,7 +262,7 @@
                   autocomplete="url"
                   placeholder="https://registry.example.com"
                   [ngModel]="registryBaseUrl()"
-                  (ngModelChange)="registryBaseUrl.set($event)"
+                  (ngModelChange)="registry.setRegistryBaseUrl($event)"
                   [disabled]="busy() || (registryStatus.enabled && registryStatus.lifecycle === 'REGISTERED')"
                   required
                 />
@@ -276,7 +276,7 @@
                   autocomplete="off"
                   placeholder="program:region-a"
                   [ngModel]="expectedRegistryScope()"
-                  (ngModelChange)="expectedRegistryScope.set($event)"
+                  (ngModelChange)="registry.setExpectedRegistryScope($event)"
                   [disabled]="busy() || (registryStatus.enabled && registryStatus.lifecycle === 'REGISTERED')"
                 />
                 <small>When set, inspection fails if the signed scope differs.</small>

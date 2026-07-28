@@ -132,7 +132,6 @@ export class OperatorRegistryPageComponent implements OnDestroy {
   private readonly route = inject(ActivatedRoute);
   private readonly router = inject(Router);
   private readonly routeSubscription: Subscription;
-  private formInitialized = false;
   private readonly plannedPopupComponentRef = signal<Type<unknown> | null>(null);
 
   protected readonly panels = OPERATOR_PANELS;
@@ -146,19 +145,14 @@ export class OperatorRegistryPageComponent implements OnDestroy {
   protected readonly disconnectConfirmationVisible = signal(false);
   protected readonly copiedValue = signal('');
   protected readonly plannedPopupComponent = this.plannedPopupComponentRef.asReadonly();
-  protected readonly registryBaseUrl = signal('');
-  protected readonly expectedRegistryScope = signal('');
+  protected readonly registryBaseUrl = this.registry.registryBaseUrl;
+  protected readonly expectedRegistryScope = this.registry.expectedRegistryScope;
 
   protected readonly activePanel = computed(() =>
     this.panels.find(panel => panel.id === this.activePanelId()) ?? this.panels[0]!
   );
   protected readonly busy = computed(() => this.busyAction() !== null);
-  protected readonly canInspect = computed(() => {
-    const status = this.status();
-    return !this.busy()
-      && Boolean(this.registryBaseUrl().trim())
-      && !(status?.enabled && status.lifecycle === 'REGISTERED');
-  });
+  protected readonly canInspect = this.registry.canInspect;
   protected readonly canConfirm = computed(() =>
     !this.busy()
     && Boolean(this.inspection()?.inspectionToken.trim())
@@ -208,10 +202,7 @@ export class OperatorRegistryPageComponent implements OnDestroy {
   }
 
   protected async loadStatus(): Promise<void> {
-    const status = await this.registry.loadStatus();
-    if (status) {
-      this.applyStatus(status);
-    }
+    await this.registry.loadStatus();
   }
 
   protected async inspectRegistry(): Promise<void> {
@@ -233,8 +224,6 @@ export class OperatorRegistryPageComponent implements OnDestroy {
         : {})
     });
     if (inspection) {
-      this.registryBaseUrl.set(inspection.baseUrl);
-      this.expectedRegistryScope.set(inspection.registryIdentity.registryScope);
       this.registry.setNotice(
         inspection.simulation
           ? 'Sample identity prepared locally. No registry was contacted.'
@@ -256,7 +245,6 @@ export class OperatorRegistryPageComponent implements OnDestroy {
     );
     const status = await this.registry.confirm();
     if (status) {
-      this.applyStatus(status);
       this.confirmationAccepted.set(false);
       this.registry.setNotice(
         status.simulation
@@ -273,7 +261,6 @@ export class OperatorRegistryPageComponent implements OnDestroy {
     this.registry.setNotice('Retrying with the preserved node identity and idempotency state…');
     const status = await this.registry.retry();
     if (status) {
-      this.applyStatus(status);
       this.registry.setNotice(
         status.lifecycle === 'REGISTERED'
           ? 'Registry synchronization completed.'
@@ -298,7 +285,6 @@ export class OperatorRegistryPageComponent implements OnDestroy {
     this.registry.clearFeedback();
     const status = await this.registry.disconnect();
     if (status) {
-      this.applyStatus(status);
       this.confirmationAccepted.set(false);
       this.registry.setNotice(
         'Outbound registry synchronization is disabled. The node identity, deployment code and signed receipts remain preserved.'
@@ -356,14 +342,6 @@ export class OperatorRegistryPageComponent implements OnDestroy {
       dateStyle: 'medium',
       timeStyle: 'short'
     }).format(new Date(timestamp));
-  }
-
-  private applyStatus(status: OperatorRegistryStatusDto): void {
-    if (!this.formInitialized) {
-      this.registryBaseUrl.set(status.candidateDefaults.baseUrl);
-      this.expectedRegistryScope.set(status.candidateDefaults.registryScope);
-      this.formInitialized = true;
-    }
   }
 
   private validateRegistryCandidate(): string {

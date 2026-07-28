@@ -16,7 +16,7 @@ describe('LocalOperatorRegistryService', () => {
     await memoryDb.resetStorage();
     vi.spyOn(
       TestBed.inject(RouteDelayService),
-      'waitForRouteDelay'
+      'waitForDelay'
     ).mockResolvedValue();
   });
 
@@ -58,5 +58,11 @@ describe('LocalOperatorRegistryService', () => {
     expect(diskWriteSpy.mock.calls.every(
       ([key]: [string, unknown]) => key === APP_INDEXED_DB_KEYS.operatorRegistry
     )).toBe(true);
+    expect(TestBed.inject(RouteDelayService).waitForDelay).toHaveBeenCalledTimes(3);
+    expect(TestBed.inject(RouteDelayService).waitForDelay).toHaveBeenCalledWith(
+      650,
+      undefined,
+      'Operator registry request aborted.'
+    );
   });
 });

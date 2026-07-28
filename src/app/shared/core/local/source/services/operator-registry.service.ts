@@ -14,6 +14,7 @@ import {
   normalizeOperatorRegistryBaseUrl,
   validateOperatorRegistryScope
 } from '../../../base/operator-registry-candidate';
+import { resolveRouteConfig } from '../../../base/config';
 
 const OPERATOR_REGISTRY_ROUTE = '/operator/registry';
 const OPERATOR_REGISTRY_INSPECT_ROUTE = '/operator/registry/inspect';
@@ -29,12 +30,12 @@ export class LocalOperatorRegistryService extends LocalRouteDelayService impleme
   private readonly repository = inject(LocalOperatorRegistryRepository);
 
   async loadStatus(): Promise<OperatorRegistryStatusDto> {
-    await this.waitForArtificialLocalRouteDelay(OPERATOR_REGISTRY_ROUTE);
+    await this.waitForOperatorRouteDelay(OPERATOR_REGISTRY_ROUTE);
     return LocalOperatorRegistryMapper.toStatusDto(await this.readOrCreate());
   }
 
   async inspect(request: OperatorRegistryInspectRequestDto): Promise<OperatorRegistryInspectionDto> {
-    await this.waitForArtificialLocalRouteDelay(OPERATOR_REGISTRY_INSPECT_ROUTE);
+    await this.waitForOperatorRouteDelay(OPERATOR_REGISTRY_INSPECT_ROUTE);
     const current = await this.readOrCreate();
     const baseUrl = this.requireBaseUrl(request.baseUrl);
     const requestedScope = request.expectedScope?.trim() ?? '';
@@ -71,7 +72,7 @@ export class LocalOperatorRegistryService extends LocalRouteDelayService impleme
   }
 
   async confirm(inspectionToken: string): Promise<OperatorRegistryStatusDto> {
-    await this.waitForArtificialLocalRouteDelay(OPERATOR_REGISTRY_CONFIRM_ROUTE);
+    await this.waitForOperatorRouteDelay(OPERATOR_REGISTRY_CONFIRM_ROUTE);
     const current = await this.readOrCreate();
     const draft = current.status.draftInspection;
     if (!draft || !current.inspectionToken || current.inspectionToken !== inspectionToken.trim()) {
@@ -124,7 +125,7 @@ export class LocalOperatorRegistryService extends LocalRouteDelayService impleme
   }
 
   async retry(): Promise<OperatorRegistryStatusDto> {
-    await this.waitForArtificialLocalRouteDelay(OPERATOR_REGISTRY_RETRY_ROUTE);
+    await this.waitForOperatorRouteDelay(OPERATOR_REGISTRY_RETRY_ROUTE);
     const current = await this.readOrCreate();
     const now = new Date();
     const next = LocalOperatorRegistryMapper.toRecord({
@@ -143,7 +144,7 @@ export class LocalOperatorRegistryService extends LocalRouteDelayService impleme
   }
 
   async disconnect(): Promise<OperatorRegistryStatusDto> {
-    await this.waitForArtificialLocalRouteDelay(OPERATOR_REGISTRY_DISCONNECT_ROUTE);
+    await this.waitForOperatorRouteDelay(OPERATOR_REGISTRY_DISCONNECT_ROUTE);
     const current = await this.readOrCreate();
     const now = new Date();
     const next = LocalOperatorRegistryMapper.toRecord({
@@ -174,6 +175,17 @@ export class LocalOperatorRegistryService extends LocalRouteDelayService impleme
 
   private requireBaseUrl(value: string): string {
     return normalizeOperatorRegistryBaseUrl(value, false);
+  }
+
+  private async waitForOperatorRouteDelay(
+    route: string,
+    signal?: AbortSignal
+  ): Promise<void> {
+    await this.waitForDelay(
+      resolveRouteConfig(route).demoDelayMs,
+      signal,
+      'Operator registry request aborted.'
+    );
   }
 
   private updatedAudit(status: OperatorRegistryStatusDto, now: Date): OperatorRegistryStatusDto['audit'] {

@@ -107,6 +107,7 @@ import {
   OperatorMenuStore,
   type OperatorMenuKind
 } from '../../context/stores/operator-menu.store';
+import { isNavigatorHydrationRoute } from './navigator-hydration-route';
 import { NotificationCenterStore } from '../../context/stores/notification-center.store';
 import { PopupPresenceStore } from '../../context/stores/popup-presence.store';
 import { installSessionActiveUserSync } from './session-active-user-sync';
@@ -2094,8 +2095,7 @@ export class SideMenuComponent implements OnDestroy {
   }
 
   private isNavigatorHydrationRoute(routeUrl = this.currentRoutePathRef()): boolean {
-    const path = AppUtils.normalizeRoutePath(routeUrl);
-    return path !== '/' && !path.startsWith('/entry') && !path.startsWith('/admin');
+    return isNavigatorHydrationRoute(routeUrl);
   }
 
   private operatorPopupKind(id: NavigatorOperatorMenuShortcutId): OperatorMenuKind | null {
