@@ -1,6 +1,6 @@
 {
   "lang": "en",
-  "version": "2026.07.29.en.31",
+  "version": "2026.07.29.en.32",
   "messages": {
     "about": "About",
     "accommodation": "Accommodation",
@@ -2436,6 +2436,7 @@
     "operator.revenue.metric.projected.events": "Projected event value",
     "operator.revenue.metric.refunded.payments": "Refunded payments",
     "operator.revenue.ruleset": "Revenue ruleset",
+    "operator.revenue.ruleset.net-captured-revenue-v1": "Net captured revenue (v1)",
     "operator.revenue.subtitle": "Currency-specific verified net revenue and an estimated network-pool contribution",
     "operator.revenue.timeline.estimated.commission": "Pool estimate",
     "operator.revenue.timeline.eyebrow": "History",

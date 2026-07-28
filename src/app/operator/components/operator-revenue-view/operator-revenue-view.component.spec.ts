@@ -5,6 +5,10 @@ import type { OperatorRevenueDto } from '../../../shared/core/contracts/operator
 import { OperatorRevenueViewComponent } from './operator-revenue-view.component';
 
 describe('OperatorRevenueViewComponent', () => {
+  const translations: Readonly<Record<string, string>> = {
+    'operator.revenue.ruleset.net-captured-revenue-v1': 'Net captured revenue (v1)'
+  };
+
   beforeEach(() => {
     TestBed.configureTestingModule({
       imports: [OperatorRevenueViewComponent],
@@ -14,7 +18,10 @@ describe('OperatorRevenueViewComponent', () => {
           useValue: {
             revision: () => 0,
             currentLanguage: () => 'en-US',
-            translate: (value: string | null | undefined) => value ?? ''
+            translate: (
+              value: string | null | undefined,
+              fallback?: string | null
+            ) => translations[value ?? ''] ?? fallback ?? value ?? ''
           }
         }
       ]
@@ -36,7 +43,28 @@ describe('OperatorRevenueViewComponent', () => {
     expect(host.textContent).not.toContain('€20.00');
   });
 
-  it('keeps every timeline line fixed while the selected guide moves', () => {
+  it('translates a known revenue ruleset and keeps unknown identifiers auditable', () => {
+    const fixture = TestBed.createComponent(OperatorRevenueViewComponent);
+    fixture.componentRef.setInput('revenue', revenueFixture());
+    fixture.detectChanges();
+
+    const ruleset = () => fixture.nativeElement.querySelector(
+      '.operator-revenue__rules strong'
+    ) as HTMLElement | null;
+    expect(ruleset()?.textContent?.trim()).toBe('Net captured revenue (v1)');
+    expect(ruleset()?.getAttribute('title')).toBe('net-captured-revenue-v1');
+
+    fixture.componentRef.setInput('revenue', {
+      ...revenueFixture(),
+      rulesetVersion: 'future-revenue-v2'
+    });
+    fixture.detectChanges();
+
+    expect(ruleset()?.textContent?.trim()).toBe('future-revenue-v2');
+    expect(ruleset()?.getAttribute('title')).toBe('future-revenue-v2');
+  });
+
+  it('keeps every timeline line fixed while only the selected data dot moves', () => {
     const fixture = TestBed.createComponent(OperatorRevenueViewComponent);
     fixture.componentRef.setInput('revenue', revenueFixture());
     fixture.detectChanges();
@@ -46,24 +74,21 @@ describe('OperatorRevenueViewComponent', () => {
       '.operator-revenue__line'
     )].map(line => line.getAttribute('points'));
     const before = linePoints();
-    const guideBefore = host.querySelector<SVGLineElement>(
-      '.operator-revenue__scrub-guide'
-    )?.getAttribute('x1');
+    const dot = host.querySelector<SVGCircleElement>(
+      '.operator-revenue__scrub-knob'
+    );
+    const dotXBefore = dot?.getAttribute('cx');
 
     expect(before[2]).toBe('12,88 288,70');
+    expect(host.querySelector('.operator-revenue__scrub-guide')).toBeNull();
+    expect(host.querySelector('.operator-revenue__scrub-halo')).toBeNull();
     const firstHit = host.querySelector<SVGCircleElement>('.operator-revenue__hit');
     firstHit?.dispatchEvent(new Event('mouseenter'));
     fixture.detectChanges();
 
     expect(linePoints()).toEqual(before);
-    expect(
-      host.querySelector<SVGLineElement>('.operator-revenue__scrub-guide')
-        ?.getAttribute('x1')
-    ).not.toBe(guideBefore);
-    expect(
-      host.querySelector<SVGCircleElement>('.operator-revenue__scrub-knob')
-        ?.getAttribute('cy')
-    ).toBe('88');
+    expect(dot?.getAttribute('cx')).not.toBe(dotXBefore);
+    expect(dot?.getAttribute('cy')).toBe('88');
   });
 });
 

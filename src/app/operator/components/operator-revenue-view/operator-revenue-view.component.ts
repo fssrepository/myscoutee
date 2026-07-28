@@ -114,6 +114,13 @@ export class OperatorRevenueViewComponent {
     ) ?? currencies[0] ?? null;
   }
 
+  protected rulesetLabelKey(value: string | null | undefined): string {
+    const rulesetVersion = `${value ?? ''}`.trim();
+    return rulesetVersion
+      ? `operator.revenue.ruleset.${rulesetVersion}`
+      : '';
+  }
+
   protected currencyTrigger(): AppMenuTrigger {
     const currency = this.selectedCurrency();
     return {

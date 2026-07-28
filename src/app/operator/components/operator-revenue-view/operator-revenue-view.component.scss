@@ -284,8 +284,6 @@
 .operator-revenue__axis,
 .operator-revenue__gridline,
 .operator-revenue__line,
-.operator-revenue__scrub-guide,
-.operator-revenue__scrub-halo,
 .operator-revenue__scrub-knob {
   pointer-events: none;
   transform: none;
@@ -327,18 +325,10 @@
   transform: none;
 }
 
-.operator-revenue__scrub-guide {
-  stroke: rgba(52, 70, 99, 0.36);
-  stroke-dasharray: 3 3;
-}
-
-.operator-revenue__scrub-halo {
-  fill: rgba(255, 255, 255, 0.88);
-  stroke: rgba(39, 57, 85, 0.18);
-}
-
 .operator-revenue__scrub-knob {
   fill: #d09b25;
+  stroke: rgba(255, 255, 255, 0.94);
+  stroke-width: 1.5;
 }
 
 .operator-revenue__donut {

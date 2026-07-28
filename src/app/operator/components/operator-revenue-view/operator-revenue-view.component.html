@@ -4,7 +4,12 @@
       <header class="operator-revenue__toolbar">
         <span class="operator-revenue__rules">
           <small>{{ 'operator.revenue.ruleset' | i18n }}</small>
-          <strong>{{ revenue.rulesetVersion }}</strong>
+          <strong [attr.title]="revenue.rulesetVersion">
+            {{
+              rulesetLabelKey(revenue.rulesetVersion)
+                | i18n: revenue.rulesetVersion
+            }}
+          </strong>
         </span>
         <span class="operator-revenue__commission">
           <small>{{ 'operator.revenue.commission.rate' | i18n }}</small>
@@ -108,24 +113,11 @@
                 ></polyline>
               }
               @if (selectedTimelinePoint(currency)) {
-                <line
-                  class="operator-revenue__scrub-guide"
-                  [attr.x1]="selectedTimelineX(currency)"
-                  y1="14"
-                  [attr.x2]="selectedTimelineX(currency)"
-                  y2="96"
-                ></line>
-                <circle
-                  class="operator-revenue__scrub-halo"
-                  [attr.cx]="selectedTimelineX(currency)"
-                  [attr.cy]="selectedTimelineY(currency)"
-                  r="6"
-                ></circle>
                 <circle
                   class="operator-revenue__scrub-knob"
                   [attr.cx]="selectedTimelineX(currency)"
                   [attr.cy]="selectedTimelineY(currency)"
-                  r="3"
+                  r="4"
                 ></circle>
               }
               @for (point of currency.timeline; track point.dateKey; let index = $index) {

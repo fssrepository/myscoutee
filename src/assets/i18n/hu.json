@@ -1,6 +1,6 @@
 {
   "lang": "hu",
-  "version": "2026.07.29.hu.31",
+  "version": "2026.07.29.hu.32",
   "messages": {
     "about": "Rólam",
     "accommodation": "Szállás",
@@ -2436,6 +2436,7 @@
     "operator.revenue.metric.projected.events": "Tervezett eseményérték",
     "operator.revenue.metric.refunded.payments": "Visszatérített fizetések",
     "operator.revenue.ruleset": "Bevételi szabályrendszer",
+    "operator.revenue.ruleset.net-captured-revenue-v1": "Rögzített nettó bevétel (v1)",
     "operator.revenue.subtitle": "Pénznemenkénti ellenőrzött nettó bevétel és becsült hálózati alap-hozzájárulás",
     "operator.revenue.timeline.estimated.commission": "Alapbecslés",
     "operator.revenue.timeline.eyebrow": "Előzmények",
