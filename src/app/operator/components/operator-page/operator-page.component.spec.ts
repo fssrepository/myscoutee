@@ -130,6 +130,9 @@ describe('OperatorPageComponent', () => {
     workspaceBusyAction.set('claim-share');
     expect(componentView.actionItems().find(item => item.id === 'claim')?.progress)
       .toBeUndefined();
+    registryBusyAction.set('register');
+    expect(componentView.actionItems().find(item => item.id === 'registration')?.progress)
+      .toBeUndefined();
 
     fixture.destroy();
   });

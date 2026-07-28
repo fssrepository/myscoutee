@@ -101,7 +101,7 @@ export class OperatorActionPopupComponent {
       case 'updates':
         return this.busyAction() === 'load-update' && !this.workspace.deploymentUpdate();
       case 'claim':
-        return this.busyAction() === 'load-claim' && !this.workspace.claimStatus();
+        return this.busyAction() === 'load-claim';
       case 'configuration':
         return this.busyAction() === 'load-configuration';
       case 'revenue':

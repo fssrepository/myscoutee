@@ -10,6 +10,11 @@
   color: #243853;
 }
 
+.operator-action-popup--loading {
+  min-height: 100%;
+  flex: 1 1 auto;
+}
+
 .operator-action-popup__loading {
   min-height: 180px;
   display: grid;
@@ -20,6 +25,10 @@
   font-size: 0.78rem;
   font-weight: 900;
   text-align: center;
+}
+
+.operator-action-popup--loading .operator-action-popup__loading {
+  min-height: 100%;
 }
 
 .operator-action-popup__summary {

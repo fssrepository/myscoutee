@@ -129,10 +129,7 @@ export class OperatorPageComponent implements OnInit {
       icon: 'app_registration',
       palette: 'violet',
       kind: 'action',
-      layout: 'big',
-      progress: this.busyAction() === 'register'
-        ? { state: 'loading', durationMs: 3000 }
-        : null
+      layout: 'big'
     },
     {
       id: 'claim',

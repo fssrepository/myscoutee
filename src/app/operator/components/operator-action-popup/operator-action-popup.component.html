@@ -1,7 +1,11 @@
 @if (kind(); as activeKind) {
   @if (activeKind !== 'registration') {
     <app-popup [model]="popupModel()">
-      <section class="operator-action-popup" [attr.aria-busy]="busy()">
+      <section
+        class="operator-action-popup"
+        [class.operator-action-popup--loading]="loading()"
+        [attr.aria-busy]="busy()"
+      >
         @if (loading()) {
           <div class="operator-action-popup__loading" role="status">
             <app-indicator kind="load-ring" state="loading"></app-indicator>
