@@ -90,6 +90,21 @@ export {
   type NavigatorEventFeedbackRequest
 } from './member-menu.store';
 export {
+  NotificationCenterStore,
+  type NotificationUnreadSyncOptions,
+  type NotificationUnreadSyncToken
+} from './notification-center.store';
+export { PopupPresenceStore } from './popup-presence.store';
+export {
+  OperatorRegistryStore,
+  type OperatorRegistryBusyAction
+} from './operator-registry.store';
+export {
+  OperatorMenuStore,
+  type OperatorMenuKind
+} from './operator-menu.store';
+
+export {
   SubEventResourcePopupStore,
   type AssetExploreBorrowDialogState,
   type AssetExploreBorrowDraftState,

@@ -20,8 +20,6 @@ import {
   type AdminStatsGraphDto,
   type AdminStatsGraphTimelinePointDto,
   type AdminStatsMetricDto,
-  type AdminStatsRevenueDto,
-  type AdminStatsRevenueTimelinePointDto,
   type AdminStatsSegmentDto,
   type AdminStatsTimelinePointDto
 } from '../../../shared/core';
@@ -43,7 +41,6 @@ import { UserProfileStore } from '../../../shared/ui/context/stores/user-profile
 
 type AdminStatsTimelineMetric = 'activeUsers' | 'registrations' | 'ratings' | 'activity' | 'messages' | 'moderation';
 type AdminStatsGraphTimelineMetric = 'activeEdges' | 'newEdges' | 'recurringEdges' | 'weakTies' | 'networkQuality' | 'clusterQuality';
-type AdminStatsRevenueTimelineMetric = 'projectedEventCents' | 'projectedAssetCents' | 'actualPaymentCents' | 'payingUsers';
 type AdminStatsGraphFocus = { label?: string; labelKey?: string; value: string };
 type AdminStatsGraphAction = { key: string; labelKey: string; icon: string; tone: string };
 
@@ -64,16 +61,13 @@ export class AdminStatsPopupComponent {
   protected readonly stats = signal<AdminStatsDashboardDto | null>(null);
   protected readonly selectedTimeline = signal<AdminStatsTimelinePointDto | null>(null);
   protected readonly selectedGraphTimeline = signal<AdminStatsGraphTimelinePointDto | null>(null);
-  protected readonly selectedRevenueTimeline = signal<AdminStatsRevenueTimelinePointDto | null>(null);
   protected readonly selectedGraphFocus = signal<AdminStatsGraphFocus | null>(null);
   protected readonly graphHelpOpen = signal(false);
   protected readonly timelineDragging = signal(false);
   protected readonly graphTimelineDragging = signal(false);
-  protected readonly revenueTimelineDragging = signal(false);
   protected readonly topSegments = computed(() => this.stats()?.segments ?? []);
   protected readonly primaryKpis = computed(() => this.stats()?.kpis ?? []);
   protected readonly graph = computed(() => this.stats()?.graph ?? null);
-  protected readonly revenue = computed(() => this.stats()?.revenue ?? null);
   protected readonly graphBridgeUsers = computed(() => this.graph()?.bridgeUsers.slice(0, 5) ?? []);
   protected readonly graphCommunities = computed(() => this.graph()?.communities.slice(0, 5) ?? []);
   private loadGeneration = 0;
@@ -93,12 +87,6 @@ export class AdminStatsPopupComponent {
     { key: 'weakTies', labelKey: 'stats.graph.timeline.weak.ties', tone: 'purple' },
     { key: 'networkQuality', labelKey: 'stats.graph.timeline.network.quality', tone: 'slate' },
     { key: 'clusterQuality', labelKey: 'stats.graph.timeline.cluster.quality', tone: 'red' }
-  ];
-  protected readonly revenueTimelineMetrics: { key: AdminStatsRevenueTimelineMetric; labelKey: string; tone: string }[] = [
-    { key: 'projectedEventCents', labelKey: 'stats.revenue.timeline.projected.events', tone: 'green' },
-    { key: 'projectedAssetCents', labelKey: 'stats.revenue.timeline.projected.assets', tone: 'blue' },
-    { key: 'actualPaymentCents', labelKey: 'stats.revenue.timeline.actual.paid', tone: 'gold' },
-    { key: 'payingUsers', labelKey: 'stats.revenue.timeline.paying.users', tone: 'purple' }
   ];
   constructor() {
     effect(() => {
@@ -271,40 +259,6 @@ export class AdminStatsPopupComponent {
     }
   }
 
-  protected selectRevenueTimelinePoint(point: AdminStatsRevenueTimelinePointDto): void {
-    this.selectedRevenueTimeline.set(point);
-  }
-
-  protected startRevenueTimelineDrag(event: PointerEvent, points: AdminStatsRevenueTimelinePointDto[]): void {
-    if (!points.length) {
-      return;
-    }
-    this.revenueTimelineDragging.set(true);
-    this.updateRevenueTimelineFromPointer(event, points);
-    const target = event.currentTarget as SVGSVGElement | null;
-    target?.setPointerCapture?.(event.pointerId);
-    event.preventDefault();
-  }
-
-  protected moveRevenueTimelineDrag(event: PointerEvent, points: AdminStatsRevenueTimelinePointDto[]): void {
-    if (!this.revenueTimelineDragging()) {
-      return;
-    }
-    this.updateRevenueTimelineFromPointer(event, points);
-    event.preventDefault();
-  }
-
-  protected endRevenueTimelineDrag(event?: PointerEvent): void {
-    if (!this.revenueTimelineDragging()) {
-      return;
-    }
-    this.revenueTimelineDragging.set(false);
-    const target = event?.currentTarget as SVGSVGElement | null;
-    if (event && target?.hasPointerCapture?.(event.pointerId)) {
-      target.releasePointerCapture(event.pointerId);
-    }
-  }
-
   protected selectGraphFocus(label: string | null | undefined, value: string | number, labelKey = ''): void {
     this.selectedGraphFocus.set({
       label: `${label ?? ''}`.trim(),
@@ -371,35 +325,6 @@ export class AdminStatsPopupComponent {
     return this.timelineY(point.activeEdges, this.graphTimelineMetricMax(graph.timeline, 'activeEdges'));
   }
 
-  protected selectedRevenueTimelinePoint(revenue: AdminStatsRevenueDto): AdminStatsRevenueTimelinePointDto | null {
-    const selected = this.selectedRevenueTimeline();
-    if (selected && revenue.timeline.some(point => point.dateKey === selected.dateKey)) {
-      return selected;
-    }
-    return revenue.timeline.at(-1) ?? null;
-  }
-
-  protected selectedRevenueTimelineIndex(revenue: AdminStatsRevenueDto): number {
-    const point = this.selectedRevenueTimelinePoint(revenue);
-    if (!point) {
-      return -1;
-    }
-    return revenue.timeline.findIndex(item => item.dateKey === point.dateKey);
-  }
-
-  protected selectedRevenueTimelineX(revenue: AdminStatsRevenueDto): number {
-    const index = this.selectedRevenueTimelineIndex(revenue);
-    return index < 0 ? this.timelineX(Math.max(0, revenue.timeline.length - 1), revenue.timeline.length) : this.timelineX(index, revenue.timeline.length);
-  }
-
-  protected selectedRevenueTimelineY(revenue: AdminStatsRevenueDto): number {
-    const point = this.selectedRevenueTimelinePoint(revenue);
-    if (!point) {
-      return this.timelineY(0, 1);
-    }
-    return this.timelineY(point.projectedEventCents, this.revenueTimelineMetricMax(revenue.timeline, 'projectedEventCents'));
-  }
-
   protected timelineChartPoints(
     points: AdminStatsTimelinePointDto[],
     metric: AdminStatsTimelineMetric
@@ -423,19 +348,6 @@ export class AdminStatsPopupComponent {
     const max = this.graphTimelineMetricMax(points, metric);
     return points
       .map((point, index) => `${this.timelineX(index, points.length)},${this.timelineY(this.graphTimelineMetricValue(point, metric), max)}`)
-      .join(' ');
-  }
-
-  protected revenueTimelineChartPoints(
-    points: AdminStatsRevenueTimelinePointDto[],
-    metric: AdminStatsRevenueTimelineMetric
-  ): string {
-    if (!points.length) {
-      return '';
-    }
-    const max = this.revenueTimelineMetricMax(points, metric);
-    return points
-      .map((point, index) => `${this.timelineX(index, points.length)},${this.timelineY(this.revenueTimelineMetricValue(point, metric), max)}`)
       .join(' ');
   }
 
@@ -485,21 +397,6 @@ export class AdminStatsPopupComponent {
     }
   }
 
-  protected revenueTimelineMetricValue(point: AdminStatsRevenueTimelinePointDto, metric: AdminStatsRevenueTimelineMetric): number {
-    switch (metric) {
-      case 'projectedEventCents':
-        return Math.max(0, Number(point.projectedEventCents) || 0);
-      case 'projectedAssetCents':
-        return Math.max(0, Number(point.projectedAssetCents) || 0);
-      case 'actualPaymentCents':
-        return Math.max(0, Number(point.actualPaymentCents) || 0);
-      case 'payingUsers':
-        return Math.max(0, Number(point.payingUsers) || 0);
-      default:
-        return 0;
-    }
-  }
-
   protected timelineMetricMax(
     points: AdminStatsTimelinePointDto[],
     metric: AdminStatsTimelineMetric
@@ -512,13 +409,6 @@ export class AdminStatsPopupComponent {
     metric: AdminStatsGraphTimelineMetric
   ): number {
     return Math.max(1, ...points.map(point => this.graphTimelineMetricValue(point, metric)));
-  }
-
-  protected revenueTimelineMetricMax(
-    points: AdminStatsRevenueTimelinePointDto[],
-    metric: AdminStatsRevenueTimelineMetric
-  ): number {
-    return Math.max(1, ...points.map(point => this.revenueTimelineMetricValue(point, metric)));
   }
 
   protected graphNodeX(index: number, total: number, radius = 34): number {
@@ -667,11 +557,6 @@ export class AdminStatsPopupComponent {
     return `${item.label ?? ''}`.trim() || `${item.key ?? ''}`.trim();
   }
 
-  protected moneyFromCents(value: number | null | undefined): string {
-    const cents = Math.max(0, Math.trunc(Number(value) || 0));
-    return `$${Math.trunc(cents / 100).toLocaleString()}.${`${cents % 100}`.padStart(2, '0')}`;
-  }
-
   protected formatDate(value: string | null | undefined): string {
     const date = new Date(`${value ?? ''}`);
     if (Number.isNaN(date.getTime())) {
@@ -697,7 +582,6 @@ export class AdminStatsPopupComponent {
       this.stats.set(dashboard);
       this.selectedTimeline.set(dashboard.timeline.at(-1) ?? null);
       this.selectedGraphTimeline.set(dashboard.graph.timeline.at(-1) ?? null);
-      this.selectedRevenueTimeline.set(dashboard.revenue.timeline.at(-1) ?? null);
       this.selectedGraphFocus.set({
         labelKey: 'stats.graph.metric.health',
         value: `${dashboard.graph.healthScore}`
@@ -719,12 +603,10 @@ export class AdminStatsPopupComponent {
     this.stats.set(null);
     this.selectedTimeline.set(null);
     this.selectedGraphTimeline.set(null);
-    this.selectedRevenueTimeline.set(null);
     this.selectedGraphFocus.set(null);
     this.graphHelpOpen.set(false);
     this.timelineDragging.set(false);
     this.graphTimelineDragging.set(false);
-    this.revenueTimelineDragging.set(false);
     this.loading.set(true);
   }
 
@@ -734,7 +616,6 @@ export class AdminStatsPopupComponent {
     this.graphHelpOpen.set(false);
     this.timelineDragging.set(false);
     this.graphTimelineDragging.set(false);
-    this.revenueTimelineDragging.set(false);
   }
 
   private updateTimelineFromPointer(event: PointerEvent, points: AdminStatsTimelinePointDto[]): void {
@@ -761,19 +642,6 @@ export class AdminStatsPopupComponent {
     const ratio = this.clamp((viewBoxX - 12) / 276, 0, 1);
     const index = Math.round(ratio * Math.max(0, points.length - 1));
     this.selectedGraphTimeline.set(points[this.clamp(index, 0, points.length - 1)] ?? points.at(-1) ?? null);
-  }
-
-  private updateRevenueTimelineFromPointer(event: PointerEvent, points: AdminStatsRevenueTimelinePointDto[]): void {
-    const target = event.currentTarget as SVGSVGElement | null;
-    if (!target || !points.length) {
-      return;
-    }
-    const bounds = target.getBoundingClientRect();
-    const width = Math.max(1, bounds.width);
-    const viewBoxX = ((event.clientX - bounds.left) / width) * 300;
-    const ratio = this.clamp((viewBoxX - 12) / 276, 0, 1);
-    const index = Math.round(ratio * Math.max(0, points.length - 1));
-    this.selectedRevenueTimeline.set(points[this.clamp(index, 0, points.length - 1)] ?? points.at(-1) ?? null);
   }
 
   private graphNodeAngle(index: number, total: number): number {

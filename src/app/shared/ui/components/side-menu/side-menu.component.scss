@@ -17,6 +17,12 @@
   pointer-events: none;
 }
 
+.navigator-trigger-rail.is-notification-open {
+  opacity: 0;
+  transform: scale(0.88);
+  pointer-events: none;
+}
+
 .navigator-trigger-rail.is-covered {
   visibility: hidden;
   pointer-events: none;
@@ -27,7 +33,9 @@
   margin: 0;
   padding: 0;
   display: flex;
+  align-items: center;
   justify-content: flex-end;
+  gap: 0.52rem;
 }
 
 .user-selector-menu {
@@ -38,6 +46,95 @@
   --app-menu-image-counter-top: -4px;
   --app-menu-image-counter-right: -2px;
   --app-menu-image-counter-font-size: 11px;
+}
+
+.operator-community-menu {
+  width: 66px;
+  pointer-events: auto;
+  --app-menu-grid-columns: 1;
+  --app-menu-grid-gap: 0;
+  --app-menu-tile-height: 48px;
+}
+
+.notification-attention-launcher {
+  position: fixed;
+  right: 1.4rem;
+  bottom: 1.4rem;
+  z-index: 23000;
+  pointer-events: none;
+}
+
+.notification-attention-menu {
+  pointer-events: auto;
+  --notification-attention-corner-size: 1.22rem;
+  --app-menu-counter-min-width: var(--notification-attention-corner-size);
+  --app-menu-counter-height: var(--notification-attention-corner-size);
+  --app-menu-counter-padding: 0;
+  --app-menu-draggable-cursor: pointer;
+  --app-menu-trigger-counter-top: -0.58rem;
+  --app-menu-trigger-counter-right: -0.48rem;
+}
+
+.notification-attention-dismiss-target {
+  position: fixed;
+  left: 50%;
+  bottom: calc(1rem + env(safe-area-inset-bottom, 0px));
+  z-index: 22990;
+  width: 4rem;
+  height: 4rem;
+  box-sizing: border-box;
+  border: 2px solid rgba(255, 255, 255, 0.92);
+  border-radius: 50%;
+  display: grid;
+  place-items: center;
+  transform: translateX(-50%);
+  background: linear-gradient(180deg, rgba(96, 115, 143, 0.97), rgba(53, 73, 103, 0.98));
+  color: #fff;
+  box-shadow:
+    0 0 0 7px rgba(77, 96, 126, 0.12),
+    0 10px 28px rgba(15, 30, 51, 0.34);
+  pointer-events: none;
+  animation: notification-dismiss-target-in 0.18s ease-out both;
+  transition:
+    transform 0.14s ease,
+    border-color 0.14s ease,
+    background 0.14s ease,
+    box-shadow 0.14s ease;
+}
+
+.notification-attention-dismiss-target.is-over {
+  transform: translateX(-50%) scale(1.14);
+  border-color: rgba(255, 255, 255, 1);
+  background: linear-gradient(180deg, #ef6472, #c72e48);
+  box-shadow:
+    0 0 0 10px rgba(218, 57, 81, 0.18),
+    0 12px 32px rgba(112, 20, 38, 0.42);
+}
+
+.notification-attention-dismiss-target .mat-icon {
+  display: block;
+  width: 1.55rem;
+  height: 1.55rem;
+  font-size: 1.55rem;
+  line-height: 1.55rem;
+}
+
+@keyframes notification-dismiss-target-in {
+  from {
+    opacity: 0;
+    transform: translateX(-50%) translateY(0.8rem) scale(0.82);
+  }
+  to {
+    opacity: 1;
+    transform: translateX(-50%);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .notification-attention-dismiss-target {
+    animation: none;
+    transition: none;
+  }
 }
 
 .user-menu-backdrop {
@@ -190,6 +287,11 @@ app-event-supply-contributions-popup {
   .navigator-trigger-rail {
     top: 0.7rem;
     right: 0.7rem;
+  }
+
+  .notification-attention-launcher {
+    right: 1rem;
+    bottom: 1rem;
   }
 
   .user-menu-panel {

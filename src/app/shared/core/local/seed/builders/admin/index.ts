@@ -21,8 +21,6 @@ export type {
   AdminSeedStatsGraphDto,
   AdminSeedStatsGraphTimelinePointDto,
   AdminSeedStatsMetricDto,
-  AdminSeedStatsRevenueDto,
-  AdminSeedStatsRevenueTimelinePointDto,
   AdminSeedStatsSegmentDto,
   AdminSeedStatsTimelinePointDto,
   AdminSeedUserDto

@@ -1,0 +1,19 @@
+:host {
+  display: contents;
+}
+
+.notification-center-popup__body {
+  display: flex;
+  min-height: 0;
+  height: 100%;
+  flex-direction: column;
+  background:
+    linear-gradient(180deg, rgba(237, 233, 254, 0.56), rgba(248, 250, 252, 0) 7rem),
+    #f8fafc;
+}
+
+.notification-center-popup__list {
+  display: flex;
+  min-height: 0;
+  flex: 1 1 auto;
+}

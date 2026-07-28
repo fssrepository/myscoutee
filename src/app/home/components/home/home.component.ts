@@ -77,6 +77,7 @@ import {
 import { UserProfileStore } from '../../../shared/ui/context/stores/user-profile.store';
 import { AppRuntimeStore } from '../../../shared/ui/context/stores/app-runtime.store';
 import { ActivityStore } from '../../../shared/ui/context/stores/activity.store';
+import { DeploymentConfigurationService } from '../../../shared/core/base/services/deployment-configuration.service';
 
 type LocalPopup = 'filter' | null;
 
@@ -176,6 +177,8 @@ const PUBLIC_PROFILE_DETAIL_KEYS = new Set(
   styleUrls: ['./home.component.scss']
 })
 export class HomeComponent implements OnDestroy {
+  protected readonly deploymentBranding =
+    inject(DeploymentConfigurationService).branding;
   private readonly userProfileStore = inject(UserProfileStore);
   private readonly runtimeStore = inject(AppRuntimeStore);
   private readonly activityStore = inject(ActivityStore);

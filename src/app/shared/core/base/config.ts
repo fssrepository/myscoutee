@@ -221,6 +221,16 @@ export const ROUTE_CONFIG: RouteConfig = {
       demoDelayMs: 1500
     },
     {
+      routePrefix: '/operator/registry',
+      demoDelayMs: 1500,
+      requestTimeoutMs: 30000
+    },
+    {
+      routePrefix: '/operator',
+      demoDelayMs: 1500,
+      requestTimeoutMs: 30000
+    },
+    {
       routePrefix: '/game-cards/query',
       demoDelayMs: 1500
     },
@@ -259,6 +269,12 @@ export const ROUTE_CONFIG: RouteConfig = {
     {
       routePrefix: '/activities/rates',
       demoDelayMs: 1500
+    },
+    {
+      routePrefix: '/notifications',
+      demoDelayMs: 1500,
+      intervalMs: 30000,
+      demoIntervalMs: 10000
     },
     {
       routePrefix: '/assets',

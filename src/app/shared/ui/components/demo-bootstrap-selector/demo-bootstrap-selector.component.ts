@@ -483,7 +483,7 @@ export class DemoBootstrapSelectorComponent {
     if (!this.contextRequest) {
       return;
     }
-    const normalizedMode = mode === 'admin' ? 'admin' : 'member';
+    const normalizedMode = mode === 'admin' || mode === 'operator' ? mode : 'member';
     if (normalizedMode === this.selectedMode || this.submitting) {
       return;
     }
@@ -633,15 +633,19 @@ export class DemoBootstrapSelectorComponent {
   }
 
   private selectorRoleLabel(mode: DemoBootstrapSelectorMode): string {
-    return mode === 'admin' ? 'Admin' : 'Member';
+    return mode === 'admin' ? 'Admin' : mode === 'operator' ? 'Operator' : 'Member';
   }
 
   private selectorRoleIcon(mode: DemoBootstrapSelectorMode): string {
-    return mode === 'admin' ? 'admin_panel_settings' : 'person';
+    return mode === 'admin'
+      ? 'admin_panel_settings'
+      : mode === 'operator'
+        ? 'dns'
+        : 'person';
   }
 
-  private selectorRolePalette(mode: DemoBootstrapSelectorMode): 'blue' | 'green' {
-    return mode === 'admin' ? 'blue' : 'green';
+  private selectorRolePalette(mode: DemoBootstrapSelectorMode): 'blue' | 'green' | 'violet' {
+    return mode === 'admin' ? 'blue' : mode === 'operator' ? 'violet' : 'green';
   }
 
   private resetContextSelectionFailure(message: string): void {

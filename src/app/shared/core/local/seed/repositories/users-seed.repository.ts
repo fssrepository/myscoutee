@@ -294,6 +294,7 @@ export class SeedUsersRepository {
           tickets: 0,
           contacts: 0,
           feedback: 0,
+          notifications: user.activities?.notifications ?? 0,
           chat: {
             all: 0,
             event: 0,
@@ -729,6 +730,7 @@ export class SeedUsersRepository {
       && (left.activities.tickets ?? 0) === (right.activities.tickets ?? 0)
       && (left.activities.contacts ?? 0) === (right.activities.contacts ?? 0)
       && (left.activities.feedback ?? 0) === (right.activities.feedback ?? 0)
+      && (left.activities.notifications ?? 0) === (right.activities.notifications ?? 0)
       && Boolean(left.activities.chat) === Boolean(right.activities.chat)
       && normalizeCounter(leftChat?.all) === normalizeCounter(rightChat?.all)
       && normalizeCounter(leftChat?.event) === normalizeCounter(rightChat?.event)

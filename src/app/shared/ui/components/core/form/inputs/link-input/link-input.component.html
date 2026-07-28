@@ -1,4 +1,8 @@
-<label class="link-input" [class.link-input--disabled]="inputDisabled()">
+<label
+  class="link-input"
+  [class.link-input--readonly]="inputReadOnly()"
+  [class.link-input--disabled]="inputDisabled()"
+>
   <span class="link-input__label">
     <span>{{ label() }}</span>
     @if (required()) {
@@ -12,12 +16,17 @@
       [readonly]="inputReadOnly()"
       [disabled]="inputDisabled()"
       [placeholder]="placeholder()"
+      [required]="required()"
+      inputmode="url"
+      spellcheck="false"
+      (ngModelChange)="onInput($event)"
       (paste)="onPaste($event)"
       (blur)="onBlur()"
       />
     <app-menu
       class="link-input__actions"
       kind="inline"
+      [panelMode]="config.panelMode ?? 'auto'"
       [items]="actionItems()"
       (itemSelect)="onAction($event)"
     ></app-menu>

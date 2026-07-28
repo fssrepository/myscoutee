@@ -4,6 +4,7 @@ import { EVENT_FEEDBACK_TABLE_NAME, EVENTS_TABLE_NAME } from '../../source/entit
 import { HELP_CENTER_TABLE_NAME, IDEA_POSTS_TABLE_NAME } from '../../source/entity/content.entity';
 import { SHARE_TOKENS_TABLE_NAME } from '../../source/entity/sharing.entity';
 import { USER_FILTER_PREFERENCES_TABLE_NAME, USER_RATES_TABLE_NAME } from '../../source/entity/rate.entity';
+import { NOTIFICATIONS_TABLE_NAME } from '../../source/entity/notification.entity';
 import { USERS_TABLE_NAME } from '../../source/entity/user.entity';
 import type { UserRecord } from '../../source/entity/user.entity';
 import { Injectable, inject } from '@angular/core';
@@ -29,12 +30,14 @@ import { SeedAdminBootstrapRepository } from '../repositories/admin-bootstrap-se
 import { SeedContactsRepository } from '../repositories/contacts-seed.repository';
 import { SeedEventFeedbackRepository } from '../repositories/event-feedback-seed.repository';
 import { SeedEventsRepository } from '../repositories/events-seed.repository';
+import { SeedNotificationsRepository } from '../repositories/notifications-seed.repository';
 import { SeedProfileExperiencesRepository } from '../repositories/profile-experiences-seed.repository';
 import { SeedUsersRatingsRepository } from '../repositories/users-ratings-seed.repository';
 import { SeedUsersRepository } from '../repositories/users-seed.repository';
+import { SeedOperatorRegistryRepository } from '../repositories/operator-registry-seed.repository';
 import { SeedBootstrapRegistryService } from './bootstrap-registry.service';
 
-export type SeedDemoBootstrapMode = 'member' | 'admin' | 'union';
+export type SeedDemoBootstrapMode = 'member' | 'operator' | 'admin' | 'union';
 
 @Injectable({
   providedIn: 'root'
@@ -50,15 +53,20 @@ export class SeedDemoBootstrapService {
   private readonly eventFeedbackSeed = inject(SeedEventFeedbackRepository);
   private readonly usersRatingsSeed = inject(SeedUsersRatingsRepository);
   private readonly usersSeed = inject(SeedUsersRepository);
+  private readonly notificationsSeed = inject(SeedNotificationsRepository);
   private readonly activityMembersSeed = inject(SeedActivityMembersRepository);
   private readonly activityResourcesSeed = inject(SeedActivityResourcesRepository);
   private readonly profileExperiencesSeed = inject(SeedProfileExperiencesRepository);
   private readonly contactsSeed = inject(SeedContactsRepository);
+  private readonly operatorSeed = inject(SeedOperatorRegistryRepository);
 
   private selectorPromise: Promise<void> | null = null;
   private selectorReady = false;
   private adminSelectorPromise: Promise<void> | null = null;
   private adminSelectorReady = false;
+  private operatorSelectorPromise: Promise<void> | null = null;
+  private operatorSelectorReady = false;
+  private operatorSeedPromise: Promise<void> | null = null;
   private unionSelectorPromise: Promise<void> | null = null;
   private unionSelectorReady = false;
   private adminWorkspacePromise: Promise<void> | null = null;
@@ -83,6 +91,10 @@ export class SeedDemoBootstrapService {
     }
     if (mode === 'admin') {
       await this.ensureAdminSelectorReady(onProgress);
+      return;
+    }
+    if (mode === 'operator') {
+      await this.ensureOperatorSelectorReady(onProgress);
       return;
     }
 
@@ -129,6 +141,11 @@ export class SeedDemoBootstrapService {
       await this.ensureAdminWorkspaceReady(normalizedUserId, onProgress);
       return;
     }
+    if (mode === 'operator') {
+      await this.ensureOperatorSelectorReady(onProgress);
+      this.emitSessionReady(onProgress, normalizedUserId);
+      return;
+    }
 
     await this.ensureDemoSelectorReady(mode, onProgress);
     await this.ensureUserSessionReady(normalizedUserId, onProgress);
@@ -144,6 +161,7 @@ export class SeedDemoBootstrapService {
       return;
     }
     const filterPreferencesChanged = this.usersSeed.seedDefaultUserFilterPreferencesForUser(normalizedUserId);
+    const notificationsChanged = this.notificationsSeed.seedForUser(normalizedUserId);
     const alreadyReady = this.readyUserIds.has(normalizedUserId);
     let contextualChatsChanged = false;
     let eventFeedbackChanged = false;
@@ -168,6 +186,7 @@ export class SeedDemoBootstrapService {
     const impressionsChanged = this.usersSeed.stampSeededImpressionsForUser(normalizedUserId);
     await this.flushSessionTablesIfChanged(onProgress, {
       filterPreferencesChanged,
+      notificationsChanged,
       activityCountersChanged,
       impressionsChanged,
       contextualChatsChanged,
@@ -190,7 +209,7 @@ export class SeedDemoBootstrapService {
     await this.runBootstrapStep('indexedDb');
 
     this.selectorReady = true;
-    if (this.adminSelectorReady) {
+    if (this.adminSelectorReady && this.operatorSelectorReady) {
       this.unionSelectorReady = true;
     }
     this.emitProgress(bootstrapProcessStep('ready'));
@@ -240,7 +259,49 @@ export class SeedDemoBootstrapService {
 
     this.selectorReady = true;
     this.adminSelectorReady = true;
-    this.unionSelectorReady = true;
+    this.unionSelectorReady = this.operatorSelectorReady;
+    this.emitProgress(bootstrapProcessStep('ready'));
+  }
+
+  private async ensureOperatorSelectorReady(onProgress?: BootstrapProcessListener): Promise<void> {
+    if (onProgress) {
+      this.listeners.add(onProgress);
+      onProgress(this.lastProcessState);
+    }
+
+    if (this.operatorSelectorReady) {
+      this.emitProgress(bootstrapProcessStep('ready'));
+      if (onProgress) {
+        this.listeners.delete(onProgress);
+      }
+      return;
+    }
+
+    if (!this.operatorSelectorPromise) {
+      this.operatorSelectorPromise = this.runOperatorSelectorBootstrap().finally(() => {
+        this.operatorSelectorPromise = null;
+      });
+    }
+
+    try {
+      await this.operatorSelectorPromise;
+    } finally {
+      if (onProgress) {
+        this.listeners.delete(onProgress);
+      }
+    }
+  }
+
+  private async runOperatorSelectorBootstrap(): Promise<void> {
+    if (this.operatorSelectorReady) {
+      this.emitProgress(bootstrapProcessStep('ready'));
+      return;
+    }
+
+    await this.operatorSeed.whenReady();
+    await this.runBootstrapStep('selector');
+    await this.ensureDemoOperatorSeedReady();
+
     this.emitProgress(bootstrapProcessStep('ready'));
   }
 
@@ -279,15 +340,19 @@ export class SeedDemoBootstrapService {
       return;
     }
 
-    await this.usersSeed.whenReady();
+    await Promise.all([
+      this.usersSeed.whenReady(),
+      this.operatorSeed.whenReady()
+    ]);
 
     await this.runBootstrapStep('selector');
     await this.ensureCommonDemoCollectionsReady();
     await this.seedDemoAdminUsers();
-    await this.runBootstrapStep('indexedDb');
+    await this.ensureDemoOperatorSeedReady();
 
     this.selectorReady = true;
     this.adminSelectorReady = true;
+    this.operatorSelectorReady = true;
     this.unionSelectorReady = true;
     this.emitProgress(bootstrapProcessStep('ready'));
   }
@@ -346,6 +411,31 @@ export class SeedDemoBootstrapService {
       await this.adminSeed.seedDemoAdminUsers();
       await this.flushBootstrapTables([USERS_TABLE_NAME]);
     });
+  }
+
+  private async ensureDemoOperatorSeedReady(): Promise<void> {
+    if (this.operatorSelectorReady) {
+      return;
+    }
+    if (!this.operatorSeedPromise) {
+      this.operatorSeedPromise = this.seedDemoOperatorTransaction()
+        .then(() => {
+          this.operatorSelectorReady = true;
+          if (this.selectorReady && this.adminSelectorReady) {
+            this.unionSelectorReady = true;
+          }
+        })
+        .finally(() => {
+          this.operatorSeedPromise = null;
+        });
+    }
+    await this.operatorSeedPromise;
+  }
+
+  private async seedDemoOperatorTransaction(): Promise<void> {
+    const context = await this.operatorSeed.prepareBootstrap();
+    await this.runBootstrapStep('users', () => this.operatorSeed.seedUsers(context));
+    await this.runBootstrapStep('indexedDb', () => this.operatorSeed.seedRegistry(context));
   }
 
   private async ensureCommonDemoCollectionsReady(): Promise<void> {
@@ -458,6 +548,7 @@ export class SeedDemoBootstrapService {
     onProgress: BootstrapProcessListener | undefined,
     options: {
       filterPreferencesChanged: boolean;
+      notificationsChanged: boolean;
       activityCountersChanged: boolean;
       impressionsChanged: boolean;
       contextualChatsChanged: boolean;
@@ -485,6 +576,7 @@ export class SeedDemoBootstrapService {
 
   private sessionFlushTables(options: {
     filterPreferencesChanged: boolean;
+    notificationsChanged: boolean;
     activityCountersChanged: boolean;
     impressionsChanged: boolean;
     contextualChatsChanged: boolean;
@@ -494,7 +586,10 @@ export class SeedDemoBootstrapService {
     if (options.filterPreferencesChanged) {
       tableNames.push(USER_FILTER_PREFERENCES_TABLE_NAME);
     }
-    if (options.activityCountersChanged || options.impressionsChanged) {
+    if (options.notificationsChanged) {
+      tableNames.push(NOTIFICATIONS_TABLE_NAME);
+    }
+    if (options.notificationsChanged || options.activityCountersChanged || options.impressionsChanged) {
       tableNames.push(USERS_TABLE_NAME);
     }
     if (options.contextualChatsChanged) {

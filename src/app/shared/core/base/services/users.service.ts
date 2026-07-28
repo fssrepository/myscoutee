@@ -37,6 +37,7 @@ import {
 import { UserProfileStore } from '../../../ui/context/stores/user-profile.store';
 import { AppRuntimeStore } from '../../../ui/context/stores/app-runtime.store';
 import { ActivityStore } from '../../../ui/context/stores/activity.store';
+import { RouteDelayService } from './route-delay.service';
 
 export { USER_GAME_CARDS_LOAD_CONTEXT_KEY } from './game.service';
 
@@ -56,6 +57,7 @@ export class UsersService extends BaseRouteModeService {
   private readonly userProfileStore = inject(UserProfileStore);
   private readonly runtimeStore = inject(AppRuntimeStore);
   private readonly activityStore = inject(ActivityStore);
+  private readonly routeDelay = inject(RouteDelayService);
   get localModeEnabled(): boolean {
     return this.isLocalRouteEnabled('/auth/me');
   }
@@ -447,6 +449,10 @@ export class UsersService extends BaseRouteModeService {
     }
   }
 
+  realtimePollIntervalMs(): number {
+    return this.routeDelay.resolveIntervalMs('/auth/me/realtime/long-poll', 30_000);
+  }
+
   private setLoadStatus(contextKey: string, status: LoadStatus, message?: string): void {
     this.runtimeStore.setStatus(contextKey, status, message);
   }
@@ -585,6 +591,7 @@ export class UsersService extends BaseRouteModeService {
     const tickets = normalizeWithFallback(counterOverrides.tickets, fallbackActivities.tickets);
     const contacts = normalizeWithFallback(counterOverrides.contacts, fallbackActivities.contacts);
     const feedback = normalizeWithFallback(counterOverrides.feedback, fallbackActivities.feedback);
+    const notifications = normalizeWithFallback(counterOverrides.notifications, fallbackActivities.notifications);
     const adminJobs = normalizeWithFallback(counterOverrides.adminJobs, fallbackActivities.adminJobs);
     const adminMetrics = normalizeWithFallback(counterOverrides.adminMetrics, fallbackActivities.adminMetrics);
 
@@ -599,6 +606,7 @@ export class UsersService extends BaseRouteModeService {
     if (tickets !== undefined) patch.tickets = tickets;
     if (contacts !== undefined) patch.contacts = contacts;
     if (feedback !== undefined) patch.feedback = feedback;
+    if (notifications !== undefined) patch.notifications = notifications;
 
     const chatAll = normalizeWithFallback(counterOverrides.chat?.all, fallbackActivities.chat?.all);
     const chatEvent = normalizeWithFallback(counterOverrides.chat?.event, fallbackActivities.chat?.event);
@@ -697,6 +705,7 @@ export class UsersService extends BaseRouteModeService {
         tickets: Math.max(0, Math.trunc(Number(user.activities?.tickets) || 0)),
         contacts: Math.max(0, Math.trunc(Number(user.activities?.contacts) || 0)),
         feedback: Math.max(0, Math.trunc(Number(user.activities?.feedback) || 0)),
+        notifications: Math.max(0, Math.trunc(Number(user.activities?.notifications) || 0)),
         chat: {
           all: Math.max(0, Math.trunc(Number(user.activities?.chat?.all) || 0)),
           event: Math.max(0, Math.trunc(Number(user.activities?.chat?.event) || 0)),

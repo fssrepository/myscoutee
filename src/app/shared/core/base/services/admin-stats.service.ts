@@ -6,8 +6,6 @@ import type {
   AdminStatsGraphDto,
   AdminStatsGraphTimelinePointDto,
   AdminStatsMetricDto,
-  AdminStatsRevenueDto,
-  AdminStatsRevenueTimelinePointDto,
   AdminStatsSegmentDto,
   AdminStatsTimelinePointDto
 } from '../../contracts/admin.interface';
@@ -55,8 +53,7 @@ export class AdminStatsService extends BaseRouteModeService {
       timeline: (dashboard.timeline ?? []).map(point => this.normalizeStatsTimelinePoint(point)),
       eventTypes: (dashboard.eventTypes ?? []).map(item => this.normalizeStatsBreakdownItem(item)),
       activityMix: (dashboard.activityMix ?? []).map(item => this.normalizeStatsBreakdownItem(item)),
-      graph: this.normalizeStatsGraph(dashboard.graph),
-      revenue: this.normalizeStatsRevenue(dashboard.revenue)
+      graph: this.normalizeStatsGraph(dashboard.graph)
     };
   }
 
@@ -139,27 +136,6 @@ export class AdminStatsService extends BaseRouteModeService {
       communities: Math.max(0, Math.trunc(Number(point.communities) || 0)),
       networkQuality: Math.max(0, Math.trunc(Number(point.networkQuality) || 0)),
       clusterQuality: Math.max(0, Math.trunc(Number(point.clusterQuality) || 0))
-    };
-  }
-
-  private normalizeStatsRevenue(revenue: AdminStatsRevenueDto | null | undefined): AdminStatsRevenueDto {
-    return {
-      metrics: (revenue?.metrics ?? []).map(metric => this.normalizeStatsMetric(metric)),
-      assetCategories: (revenue?.assetCategories ?? []).map(item => this.normalizeStatsBreakdownItem(item)),
-      timeline: (revenue?.timeline ?? []).map(point => this.normalizeStatsRevenueTimelinePoint(point))
-    };
-  }
-
-  private normalizeStatsRevenueTimelinePoint(point: AdminStatsRevenueTimelinePointDto): AdminStatsRevenueTimelinePointDto {
-    return {
-      dateKey: `${point.dateKey ?? ''}`.trim(),
-      label: `${point.label ?? ''}`.trim(),
-      payableEvents: Math.max(0, Math.trunc(Number(point.payableEvents) || 0)),
-      payableAssets: Math.max(0, Math.trunc(Number(point.payableAssets) || 0)),
-      projectedEventCents: Math.max(0, Math.trunc(Number(point.projectedEventCents) || 0)),
-      projectedAssetCents: Math.max(0, Math.trunc(Number(point.projectedAssetCents) || 0)),
-      actualPaymentCents: Math.max(0, Math.trunc(Number(point.actualPaymentCents) || 0)),
-      payingUsers: Math.max(0, Math.trunc(Number(point.payingUsers) || 0))
     };
   }
 

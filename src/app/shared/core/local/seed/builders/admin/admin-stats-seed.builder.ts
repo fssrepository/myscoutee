@@ -2,7 +2,6 @@ import type {
   AdminSeedStatsBreakdownItemDto,
   AdminSeedStatsDashboardDto,
   AdminSeedStatsMetricDto,
-  AdminSeedStatsRevenueTimelinePointDto,
   AdminSeedStatsSegmentDto,
   AdminSeedStatsTimelinePointDto
 } from './admin-seed.models';
@@ -69,32 +68,6 @@ export class AdminStatsSeedBuilder {
       messages: Number(messages),
       moderation: Number(moderation)
     }));
-    const revenueTimeline: AdminSeedStatsRevenueTimelinePointDto[] = [
-      ['2026-04-28', 'Apr 28', 1, 1, 18000, 12000, 0, 0],
-      ['2026-04-29', 'Apr 29', 1, 2, 12500, 22000, 4200, 2],
-      ['2026-04-30', 'Apr 30', 0, 1, 0, 9500, 3800, 1],
-      ['2026-05-01', 'May 1', 2, 1, 26000, 18000, 6200, 3],
-      ['2026-05-02', 'May 2', 1, 2, 14500, 24000, 5300, 2],
-      ['2026-05-03', 'May 3', 0, 1, 0, 8500, 0, 0],
-      ['2026-05-04', 'May 4', 2, 1, 31000, 13000, 7800, 4],
-      ['2026-05-05', 'May 5', 1, 1, 16500, 16000, 2900, 1],
-      ['2026-05-06', 'May 6', 0, 2, 0, 28000, 6100, 3],
-      ['2026-05-07', 'May 7', 2, 1, 27500, 14000, 4500, 2],
-      ['2026-05-08', 'May 8', 1, 0, 15500, 0, 0, 0],
-      ['2026-05-09', 'May 9', 1, 2, 21000, 34000, 8200, 3],
-      ['2026-05-10', 'May 10', 0, 1, 0, 15000, 3200, 1],
-      ['2026-05-11', 'May 11', 0, 0, 0, 0, 0, 0]
-    ].map(([dateKey, label, payableEvents, payableAssets, projectedEventCents, projectedAssetCents, actualPaymentCents, payingUsers]) => ({
-      dateKey: `${dateKey}`,
-      label: `${label}`,
-      payableEvents: Number(payableEvents),
-      payableAssets: Number(payableAssets),
-      projectedEventCents: Number(projectedEventCents),
-      projectedAssetCents: Number(projectedAssetCents),
-      actualPaymentCents: Number(actualPaymentCents),
-      payingUsers: Number(payingUsers)
-    }));
-
     return {
       generatedAtIso: nowIso,
       source: 'demo',
@@ -242,27 +215,6 @@ export class AdminStatsSeedBuilder {
           networkQuality: Number(networkQuality),
           clusterQuality: Number(clusterQuality)
         }))
-      },
-      revenue: {
-        metrics: [
-          metric('payable-events', 'stats.revenue.metric.payable.events', 12, '12', 'confirmation_number', 'green', 30),
-          metric('projected-event-revenue', 'stats.revenue.metric.projected.events', 202500, '$2,025.00', 'event_available', 'green', 48),
-          metric('avg-event-ticket', 'stats.revenue.metric.avg.event.ticket', 1688, '$16.88', 'sell', 'gold', 17),
-          metric('payable-assets', 'stats.revenue.metric.payable.assets', 16, '16', 'inventory_2', 'purple', 40),
-          metric('projected-asset-revenue', 'stats.revenue.metric.projected.assets', 213000, '$2,130.00', 'category', 'blue', 52),
-          metric('avg-asset-price', 'stats.revenue.metric.avg.asset.price', 13313, '$133.13', 'payments', 'slate', 100),
-          metric('actual-paid', 'stats.revenue.metric.actual.paid', 52200, '$522.00', 'paid', 'blue', 13),
-          metric('paying-users', 'stats.revenue.metric.paying.users', 22, '22', 'group', 'red', 88),
-          metric('event-buyers', 'stats.revenue.metric.event.buyers', 14, '14', 'local_activity', 'green', 64),
-          metric('asset-borrowers', 'stats.revenue.metric.asset.borrowers', 18, '18', 'assignment_returned', 'gold', 67),
-          metric('avg-payment', 'stats.revenue.metric.avg.payment', 2373, '$23.73', 'receipt_long', 'purple', 24)
-        ],
-        assetCategories: [
-          { key: 'accommodation', labelKey: 'accommodation', label: '', value: 84000, total: 213000, icon: 'hotel', tone: 'gold' },
-          { key: 'transport', labelKey: 'transport', label: '', value: 77000, total: 213000, icon: 'directions_car', tone: 'blue' },
-          { key: 'supplies', labelKey: 'supplies', label: '', value: 52000, total: 213000, icon: 'category', tone: 'green' }
-        ],
-        timeline: revenueTimeline
       }
     };
   }

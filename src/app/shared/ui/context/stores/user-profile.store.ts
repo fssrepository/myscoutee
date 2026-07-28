@@ -15,6 +15,7 @@ import type {
 import {
   UserRealtimeUiConverter
 } from '../../converters/user-realtime-ui.converter';
+import { hasOperatorRole } from '../../../core/common/user-role';
 import {
   ACTIVITY_COUNTER_KEYS,
   type ActivityCounters
@@ -112,6 +113,9 @@ export class UserProfileStore {
   });
   readonly activeUserIsAdmin = computed(() =>
     this.isAdminUserProfile(this.activeUserProfile(), this._activeUserId())
+  );
+  readonly activeUserIsOperator = computed(() =>
+    hasOperatorRole(this.activeUserProfile())
   );
   readonly activeAdminUser = computed(() =>
     this.activeUserIsAdmin() ? adminUserFromProfile(this.activeUserProfile()) : null
@@ -253,6 +257,42 @@ export class UserProfileStore {
     const nextUser = cloneUserProfile({
       ...currentUser,
       activities: this.applyActivityCounterPatch(currentUser.activities, patch)
+    });
+    this._userProfilesByUserId.update(state => ({
+      ...state,
+      [normalizedUserId]: nextUser
+    }));
+    this._profileExtByUserId.update(state => {
+      const currentExt = state[normalizedUserId];
+      if (!currentExt) {
+        return state;
+      }
+      return {
+        ...state,
+        [normalizedUserId]: {
+          ...currentExt,
+          profile: nextUser
+        }
+      };
+    });
+    return cloneUserProfile(nextUser);
+  }
+
+  patchUserNotificationPreferences(userId: string, muted: boolean): UserDto | null {
+    const normalizedUserId = userId.trim();
+    if (!normalizedUserId) {
+      return null;
+    }
+    const currentUser = this._userProfilesByUserId()[normalizedUserId] ?? null;
+    if (!currentUser) {
+      return null;
+    }
+    const nextUser = cloneUserProfile({
+      ...currentUser,
+      notificationPreferences: {
+        ...currentUser.notificationPreferences,
+        muted: muted === true
+      }
     });
     this._userProfilesByUserId.update(state => ({
       ...state,

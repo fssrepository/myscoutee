@@ -43,6 +43,15 @@
   box-shadow: 0 10px 22px rgba(30, 52, 84, 0.12);
 }
 
+.ui-single-row__progress-ring {
+  inset: -2px;
+  z-index: 4;
+}
+
+.ui-single-row--progress-ring > :not(.ui-single-row__progress-ring) {
+  opacity: 0.9;
+}
+
 .ui-single-row--tone-neutral,
 .ui-single-row--tone-muted {
   border-color: rgba(74, 88, 108, 0.18);
@@ -323,6 +332,11 @@
 
 .ui-single-row__menu-trigger:hover {
   transform: translateY(-1px);
+}
+
+.ui-single-row__menu-trigger:disabled {
+  cursor: wait;
+  transform: none;
 }
 
 .ui-single-row__menu-badge {

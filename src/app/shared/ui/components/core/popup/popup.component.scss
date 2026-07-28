@@ -629,6 +629,23 @@ app-popup {
     box-shadow: none;
   }
 
+  .ui-popup.ui-popup--mobile-compact {
+    padding: 0.6rem;
+    align-items: center;
+  }
+
+  .ui-popup--mobile-compact .ui-popup__panel {
+    width: min(380px, calc(100vw - 1.2rem)) !important;
+    max-width: min(380px, calc(100vw - 1.2rem)) !important;
+    height: auto !important;
+    max-height: calc(100vh - 1.2rem) !important;
+    max-height: calc(100dvh - 1.2rem) !important;
+    min-height: 0;
+    margin: 0 !important;
+    border-radius: 14px;
+    box-shadow: 0 18px 42px rgba(0, 0, 0, 0.26);
+  }
+
   .ui-popup__body--overflow {
     overflow-y: auto;
     overflow-x: hidden;

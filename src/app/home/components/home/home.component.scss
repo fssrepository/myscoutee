@@ -13,8 +13,8 @@
   padding: 0.9rem;
   box-sizing: border-box;
   background:
-    radial-gradient(circle at 20% -10%, rgba(133, 76, 255, 0.16), transparent 36%),
-    radial-gradient(circle at 95% 0%, rgba(240, 78, 171, 0.14), transparent 34%),
+    radial-gradient(circle at 20% -10%, var(--deployment-brand-shadow), transparent 36%),
+    radial-gradient(circle at 95% 0%, color-mix(in srgb, var(--deployment-brand-secondary) 14%, transparent), transparent 34%),
     #f8faff;
 }
 
@@ -58,13 +58,13 @@
   align-items: flex-end;
   text-decoration: none;
   font-weight: 700;
-  color: #1f2d3d;
+  color: var(--deployment-brand-text);
 
   background-image: linear-gradient(
     90deg,
-    #4f7cff,
-    #7b5cff,
-    #ff4d8d
+    var(--deployment-brand-primary),
+    var(--deployment-brand-secondary),
+    var(--deployment-brand-accent)
   );
 
   background-repeat: no-repeat;
@@ -79,7 +79,7 @@
 }
 
 .game-brand-text {
-  color: #1f2d44;
+  color: var(--deployment-brand-text);
   font-size: 1.32rem;
   font-weight: 800;
   letter-spacing: -0.01em;

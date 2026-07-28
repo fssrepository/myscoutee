@@ -19,11 +19,16 @@
 ></app-prompt>
 
 @if (routeWarmupVisible) {
-  <section class="app-route-warmup" role="status" aria-live="polite" aria-label="Loading MyScoutee">
+  <section
+    class="app-route-warmup"
+    role="status"
+    aria-live="polite"
+    [attr.aria-label]="'Loading ' + deploymentBranding().productName"
+  >
     <span class="app-route-warmup__mark">
       <span class="app-route-warmup__ring" aria-hidden="true"></span>
-      <img src="assets/logo/heart.webp" alt="" />
+      <img [src]="deploymentBranding().logoUrl" alt="" />
     </span>
-    <span class="app-route-warmup__label">MyScoutee</span>
+    <span class="app-route-warmup__label">{{ deploymentBranding().productName }}</span>
   </section>
 }

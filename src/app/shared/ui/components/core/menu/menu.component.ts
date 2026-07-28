@@ -32,6 +32,9 @@ import {
 import type {
   AppMenuCounter,
   AppMenuCounterValue,
+  AppMenuDragEvent,
+  AppMenuDragPhase,
+  AppMenuDragPosition,
   AppMenuGroup,
   AppMenuIconKind,
   AppMenuImageStackItem,
@@ -87,6 +90,7 @@ export class AppMenuComponent<TId extends string = string, TContext = unknown>
   private static readonly COUNTER_PULSE_DURATION_MS = 1600;
   private static readonly DESKTOP_MARGIN_PX = 8;
   private static readonly DESKTOP_MIN_PANEL_WIDTH_PX = 196;
+  private static readonly DRAG_ACTIVATION_MOVE_TOLERANCE_PX = 6;
 
   private readonly hostRef = inject(ElementRef<HTMLElement>);
   private readonly changeDetectorRef = inject(ChangeDetectorRef);
@@ -108,9 +112,13 @@ export class AppMenuComponent<TId extends string = string, TContext = unknown>
   @Input() panelDockToHost = false;
   @Input() mobileBreakpointPx = 760;
   @Input() closeOnSelect = true;
+  @Input() draggable = false;
+  @Input() dragActivationDelayMs = 0;
 
   @Output() readonly openChange = new EventEmitter<boolean>();
   @Output() readonly itemSelect = new EventEmitter<AppMenuItemSelectEvent<TId, TContext>>();
+  @Output() readonly dragPositionChange = new EventEmitter<AppMenuDragPosition>();
+  @Output() readonly dragStateChange = new EventEmitter<AppMenuDragEvent>();
 
   private internalOpen = false;
   private activeBranchPath: AppMenuItem<TId, TContext>[] = [];
@@ -125,6 +133,22 @@ export class AppMenuComponent<TId extends string = string, TContext = unknown>
   private onControlChange: (value: unknown) => void = () => undefined;
   private onControlTouched: () => void = () => undefined;
   protected isMobileViewport = false;
+  private internalDragPosition: AppMenuDragPosition = { x: 0, y: 0 };
+  private activeDrag: {
+    pointerId: number;
+    pointerType: string;
+    startClientX: number;
+    startClientY: number;
+    startPosition: AppMenuDragPosition;
+    baseRect: DOMRect;
+    activated: boolean;
+    activationCancelled: boolean;
+    moved: boolean;
+    sourceEvent: PointerEvent;
+  } | null = null;
+  private dragActivationTimer: ReturnType<typeof setTimeout> | null = null;
+  private suppressNextTriggerClick = false;
+  private suppressClickTimer: ReturnType<typeof setTimeout> | null = null;
 
   @Input()
   get open(): boolean {
@@ -143,6 +167,15 @@ export class AppMenuComponent<TId extends string = string, TContext = unknown>
     }
   }
 
+  @Input()
+  get dragPosition(): AppMenuDragPosition {
+    return this.internalDragPosition;
+  }
+
+  set dragPosition(value: AppMenuDragPosition | null | undefined) {
+    this.internalDragPosition = this.normalizedDragPosition(value);
+  }
+
   constructor() {
     this.syncMobileViewport();
   }
@@ -157,6 +190,11 @@ export class AppMenuComponent<TId extends string = string, TContext = unknown>
       clearTimeout(timerId);
     }
     this.counterPulseTimerByKey.clear();
+    if (this.suppressClickTimer) {
+      clearTimeout(this.suppressClickTimer);
+      this.suppressClickTimer = null;
+    }
+    this.clearDragActivationTimer();
   }
 
   writeValue(value: unknown): void {
@@ -219,6 +257,24 @@ export class AppMenuComponent<TId extends string = string, TContext = unknown>
   @HostBinding('class.app-menu-host--kind-fab')
   protected get hostFabKindClass(): boolean {
     return this.isFabKind;
+  }
+
+  @HostBinding('class.app-menu-host--draggable')
+  protected get hostDraggableClass(): boolean {
+    return this.canDrag;
+  }
+
+  @HostBinding('class.app-menu-host--dragging')
+  protected get hostDraggingClass(): boolean {
+    return this.activeDrag?.activated === true;
+  }
+
+  @HostBinding('style.transform')
+  protected get hostDragTransform(): string | null {
+    if (!this.canDrag) {
+      return null;
+    }
+    return `translate3d(${this.internalDragPosition.x}px, ${this.internalDragPosition.y}px, 0)`;
   }
 
   @HostBinding('class.app-menu-host--kind-select')
@@ -318,6 +374,67 @@ export class AppMenuComponent<TId extends string = string, TContext = unknown>
   @HostListener('window:resize')
   protected onViewportResize(): void {
     this.syncMobileViewport();
+    this.clampDragPositionToViewport();
+  }
+
+  @HostListener('window:pointermove', ['$event'])
+  protected onWindowPointerMove(event: PointerEvent): void {
+    const drag = this.activeDrag;
+    if (!drag || event.pointerId !== drag.pointerId) {
+      return;
+    }
+    const deltaX = event.clientX - drag.startClientX;
+    const deltaY = event.clientY - drag.startClientY;
+    if (!drag.moved && Math.hypot(deltaX, deltaY) >= AppMenuComponent.DRAG_ACTIVATION_MOVE_TOLERANCE_PX) {
+      drag.moved = true;
+    }
+    if (!drag.activated) {
+      if (drag.moved) {
+        drag.activationCancelled = true;
+        this.clearDragActivationTimer();
+      }
+      return;
+    }
+    const nextPosition = this.clampDragPosition(
+      {
+        x: drag.startPosition.x + deltaX,
+        y: drag.startPosition.y + deltaY
+      },
+      drag.baseRect
+    );
+    event.preventDefault();
+    if (
+      nextPosition.x !== this.internalDragPosition.x
+      || nextPosition.y !== this.internalDragPosition.y
+    ) {
+      this.internalDragPosition = nextPosition;
+      this.dragPositionChange.emit(nextPosition);
+    }
+    this.emitDragState('move', event, drag, nextPosition);
+    this.changeDetectorRef.markForCheck();
+  }
+
+  @HostListener('window:pointerup', ['$event'])
+  @HostListener('window:pointercancel', ['$event'])
+  protected onWindowPointerEnd(event: PointerEvent): void {
+    const drag = this.activeDrag;
+    if (!drag || event.pointerId !== drag.pointerId) {
+      return;
+    }
+    this.clearDragActivationTimer();
+    this.activeDrag = null;
+    if (drag.activated || drag.activationCancelled) {
+      this.suppressNextTriggerAction();
+    }
+    if (drag.activated) {
+      this.emitDragState(
+        event.type === 'pointercancel' ? 'cancel' : 'end',
+        event,
+        drag,
+        this.internalDragPosition
+      );
+    }
+    this.changeDetectorRef.markForCheck();
   }
 
   @HostListener('window:keydown.escape', ['$event'])
@@ -382,6 +499,10 @@ export class AppMenuComponent<TId extends string = string, TContext = unknown>
 
   protected get isFabKind(): boolean {
     return this.kind === 'fab';
+  }
+
+  private get canDrag(): boolean {
+    return this.draggable && this.isFabKind && !this.triggerDisabled();
   }
 
   protected get isSelectKind(): boolean {
@@ -585,6 +706,21 @@ export class AppMenuComponent<TId extends string = string, TContext = unknown>
     return `${configuredIcon ?? 'more_vert'}`.trim();
   }
 
+  protected triggerImageUrl(): string {
+    return `${this.resolveLiveValue(this.trigger?.imageUrl) ?? ''}`.trim();
+  }
+
+  protected triggerImageAlt(): string {
+    return `${this.resolveLiveValue(this.trigger?.imageAlt) ?? this.triggerLabel()}`.trim();
+  }
+
+  protected triggerImageFallback(): string {
+    const configured = `${this.resolveLiveValue(this.trigger?.imageFallback) ?? ''}`.trim();
+    return configured || (this.triggerImageUrl()
+      ? this.imageLabelFallback(this.triggerLabel())
+      : '');
+  }
+
   protected isSymbolIcon(icon: string | null | undefined): boolean {
     return `${icon ?? ''}`.trim().length === 1;
   }
@@ -706,6 +842,10 @@ export class AppMenuComponent<TId extends string = string, TContext = unknown>
   protected toggleMenu(event: Event): void {
     event.preventDefault();
     event.stopPropagation();
+    if (this.suppressNextTriggerClick) {
+      this.suppressNextTriggerClick = false;
+      return;
+    }
     if (this.triggerDisabled()) {
       return;
     }
@@ -729,6 +869,157 @@ export class AppMenuComponent<TId extends string = string, TContext = unknown>
       return;
     }
     this.setOpen(!this.open);
+  }
+
+  protected startTriggerDrag(event: PointerEvent): void {
+    if (!this.canDrag || !event.isPrimary || (event.pointerType === 'mouse' && event.button !== 0)) {
+      return;
+    }
+    this.clearDragActivationTimer();
+    const currentPosition = this.internalDragPosition;
+    const rect = this.hostRef.nativeElement.getBoundingClientRect();
+    const drag = {
+      pointerId: event.pointerId,
+      pointerType: event.pointerType,
+      startClientX: event.clientX,
+      startClientY: event.clientY,
+      startPosition: currentPosition,
+      baseRect: new DOMRect(
+        rect.left - currentPosition.x,
+        rect.top - currentPosition.y,
+        rect.width,
+        rect.height
+      ),
+      activated: false,
+      activationCancelled: false,
+      moved: false,
+      sourceEvent: event
+    };
+    this.activeDrag = drag;
+    const activationDelayMs = this.normalizedDragActivationDelayMs();
+    if (activationDelayMs === 0) {
+      this.activateDrag(drag);
+    } else {
+      this.dragActivationTimer = setTimeout(() => {
+        this.dragActivationTimer = null;
+        this.activateDrag(drag);
+      }, activationDelayMs);
+    }
+    event.preventDefault();
+    this.changeDetectorRef.markForCheck();
+  }
+
+  protected preventTriggerContextMenu(event: Event): void {
+    if (!this.canDrag) {
+      return;
+    }
+    event.preventDefault();
+    event.stopPropagation();
+  }
+
+  private activateDrag(drag: NonNullable<AppMenuComponent<TId, TContext>['activeDrag']>): void {
+    if (this.activeDrag !== drag || drag.activationCancelled || drag.activated) {
+      return;
+    }
+    drag.activated = true;
+    this.emitDragState('start', drag.sourceEvent, drag, this.internalDragPosition);
+    this.changeDetectorRef.markForCheck();
+  }
+
+  private emitDragState(
+    phase: AppMenuDragPhase,
+    event: PointerEvent,
+    drag: NonNullable<AppMenuComponent<TId, TContext>['activeDrag']>,
+    position: AppMenuDragPosition
+  ): void {
+    this.dragStateChange.emit({
+      phase,
+      position,
+      clientX: event.clientX,
+      clientY: event.clientY,
+      centerX: drag.baseRect.left + position.x + (drag.baseRect.width / 2),
+      centerY: drag.baseRect.top + position.y + (drag.baseRect.height / 2),
+      pointerId: drag.pointerId,
+      pointerType: drag.pointerType,
+      moved: drag.moved,
+      sourceEvent: event
+    });
+  }
+
+  private normalizedDragActivationDelayMs(): number {
+    const delayMs = Math.trunc(Number(this.dragActivationDelayMs));
+    return Number.isFinite(delayMs) ? Math.max(0, delayMs) : 0;
+  }
+
+  private clearDragActivationTimer(): void {
+    if (!this.dragActivationTimer) {
+      return;
+    }
+    clearTimeout(this.dragActivationTimer);
+    this.dragActivationTimer = null;
+  }
+
+  private suppressNextTriggerAction(): void {
+    this.suppressNextTriggerClick = true;
+    if (this.suppressClickTimer) {
+      clearTimeout(this.suppressClickTimer);
+    }
+    this.suppressClickTimer = setTimeout(() => {
+      this.suppressNextTriggerClick = false;
+      this.suppressClickTimer = null;
+    });
+  }
+
+  private clampDragPositionToViewport(): void {
+    if (!this.canDrag || typeof window === 'undefined') {
+      return;
+    }
+    const currentPosition = this.internalDragPosition;
+    const rect = this.hostRef.nativeElement.getBoundingClientRect();
+    const baseRect = new DOMRect(
+      rect.left - currentPosition.x,
+      rect.top - currentPosition.y,
+      rect.width,
+      rect.height
+    );
+    const nextPosition = this.clampDragPosition(currentPosition, baseRect);
+    if (nextPosition.x === currentPosition.x && nextPosition.y === currentPosition.y) {
+      return;
+    }
+    this.internalDragPosition = nextPosition;
+    this.dragPositionChange.emit(nextPosition);
+    this.changeDetectorRef.markForCheck();
+  }
+
+  private clampDragPosition(
+    position: AppMenuDragPosition,
+    baseRect: DOMRect
+  ): AppMenuDragPosition {
+    if (typeof window === 'undefined') {
+      return position;
+    }
+    const margin = AppMenuComponent.DESKTOP_MARGIN_PX;
+    return {
+      x: Math.round(Math.min(
+        window.innerWidth - margin - baseRect.right,
+        Math.max(margin - baseRect.left, position.x)
+      )),
+      y: Math.round(Math.min(
+        window.innerHeight - margin - baseRect.bottom,
+        Math.max(margin - baseRect.top, position.y)
+      ))
+    };
+  }
+
+  private normalizedDragPosition(
+    value: AppMenuDragPosition | null | undefined
+  ): AppMenuDragPosition {
+    const x = Number(value?.x);
+    const y = Number(value?.y);
+    return {
+      x: Number.isFinite(x) ? Math.round(x) : 0,
+      y: Number.isFinite(y) ? Math.round(y) : 0
+    };
   }
 
   protected closeFromBackdrop(event: Event): void {
@@ -973,15 +1264,15 @@ export class AppMenuComponent<TId extends string = string, TContext = unknown>
   }
 
   protected actionRowItemImageUrl(item: AppMenuItem<TId, TContext>): string {
-    return `${this.resolveLiveValue(item.imageUrl) ?? ''}`.trim();
+    return this.itemImageUrl(item);
   }
 
   protected actionRowItemImageAlt(item: AppMenuItem<TId, TContext>): string {
-    return `${this.resolveLiveValue(item.imageAlt) ?? this.actionRowItemAriaLabel(item) ?? ''}`.trim();
+    return this.itemImageAlt(item);
   }
 
   protected actionRowItemImageFallback(item: AppMenuItem<TId, TContext>): string {
-    return `${this.resolveLiveValue(item.imageFallback) ?? ''}`.trim();
+    return this.itemImageFallback(item);
   }
 
   protected actionRowItemImageStack(item: AppMenuItem<TId, TContext>): readonly AppMenuImageStackItem[] {
@@ -1245,6 +1536,36 @@ export class AppMenuComponent<TId extends string = string, TContext = unknown>
 
   protected itemIcon(item: AppMenuItem<TId, TContext>): string {
     return `${this.resolveLiveValue(item.icon) ?? ''}`.trim();
+  }
+
+  protected itemImageUrl(item: AppMenuItem<TId, TContext>): string {
+    return `${this.resolveLiveValue(item.imageUrl) ?? ''}`.trim();
+  }
+
+  protected itemImageAlt(item: AppMenuItem<TId, TContext>): string {
+    return `${this.resolveLiveValue(item.imageAlt) ?? this.itemLabel(item)}`.trim();
+  }
+
+  protected itemImageFallback(item: AppMenuItem<TId, TContext>): string {
+    const configured = `${this.resolveLiveValue(item.imageFallback) ?? ''}`.trim();
+    return configured || (this.itemImageUrl(item)
+      ? this.imageLabelFallback(this.itemLabel(item))
+      : '');
+  }
+
+  protected revealImageFallback(event: Event): void {
+    const image = event.currentTarget;
+    if (!(image instanceof HTMLImageElement)) {
+      return;
+    }
+    image.hidden = true;
+    image.parentElement
+      ?.querySelector<HTMLElement>('[data-app-menu-image-fallback]')
+      ?.removeAttribute('hidden');
+  }
+
+  private imageLabelFallback(label: string): string {
+    return Array.from(label.trim())[0]?.toLocaleUpperCase() ?? '';
   }
 
   protected itemIconKind(item: AppMenuItem<TId, TContext>): AppMenuIconKind {
@@ -1653,6 +1974,12 @@ export class AppMenuComponent<TId extends string = string, TContext = unknown>
     const overflow = `${style.overflow} ${style.overflowX} ${style.overflowY}`;
     if (/(auto|scroll)/.test(overflow)) {
       return true;
+    }
+    if (
+      element.classList.contains('ui-popup__panel--overflow-visible')
+      || element.classList.contains('ui-popup__body--overflow')
+    ) {
+      return false;
     }
     const className = element.className.toString();
     if (/(ui-popup__panel|ui-popup__body|popup-body|scroll-area|popup-panel|app-popup-panel)/.test(className)) {

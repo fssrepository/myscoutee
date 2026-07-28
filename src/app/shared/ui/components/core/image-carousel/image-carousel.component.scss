@@ -559,6 +559,26 @@
   }
 }
 
+:host(.image-carousel-host--media-fit-cover) .image-carousel__preview,
+:host(.image-carousel-host--media-fit-cover) .image-carousel__slot.is-filled {
+  background-size: cover;
+}
+
+:host(.image-carousel-host--media-fit-contain) .image-carousel__preview,
+:host(.image-carousel-host--media-fit-contain) .image-carousel__slot.is-filled {
+  background-size: contain;
+}
+
+:host(.image-carousel-host--image-position-center-top) .image-carousel__preview,
+:host(.image-carousel-host--image-position-center-top) .image-carousel__slot.is-filled {
+  background-position: center top;
+}
+
+:host(.image-carousel-host--image-position-center) .image-carousel__preview,
+:host(.image-carousel-host--image-position-center) .image-carousel__slot.is-filled {
+  background-position: center;
+}
+
 :host(.image-carousel-host--compact.image-carousel-host--single-slot) {
   --image-single-slot-width: 280px;
   --image-single-slot-height: 160px;

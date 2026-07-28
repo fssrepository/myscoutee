@@ -1,6 +1,7 @@
 import { CHAT_MESSAGES_TABLE_NAME, CHATS_TABLE_NAME } from '../local/source/entity/chat.entity';
 import { EVENT_FEEDBACK_TABLE_NAME, EVENTS_TABLE_NAME } from '../local/source/entity/event.entity';
 import { HELP_CENTER_TABLE_NAME, IDEA_POSTS_TABLE_NAME } from '../local/source/entity/content.entity';
+import { NOTIFICATIONS_TABLE_NAME } from '../local/source/entity/notification.entity';
 import { CONTACTS_TABLE_NAME, PROFILE_EXPERIENCES_TABLE_NAME } from '../local/source/entity/profile.entity';
 import { SHARE_TOKENS_TABLE_NAME } from '../local/source/entity/sharing.entity';
 import {
@@ -65,6 +66,7 @@ export class AppMemoryDb {
     EVENT_FEEDBACK_TABLE_NAME,
     HELP_CENTER_TABLE_NAME,
     IDEA_POSTS_TABLE_NAME,
+    NOTIFICATIONS_TABLE_NAME,
     CONTACTS_TABLE_NAME,
     PROFILE_EXPERIENCES_TABLE_NAME,
     SHARE_TOKENS_TABLE_NAME,
@@ -338,6 +340,13 @@ export class AppMemoryDb {
         seeded: false,
         byId: {},
         ids: []
+      },
+      [NOTIFICATIONS_TABLE_NAME]: {
+        byId: {},
+        ids: [],
+        idsByRecipientUserId: {},
+        mutedByUserId: {},
+        seededUserIds: []
       },
       [CONTACTS_TABLE_NAME]: {
         byOwnerUserId: {},
@@ -822,6 +831,7 @@ export class AppMemoryDb {
     const eventFeedbackSource = source[EVENT_FEEDBACK_TABLE_NAME] as Partial<AppMemorySchema[typeof EVENT_FEEDBACK_TABLE_NAME]> | undefined;
     const helpCenterSource = source[HELP_CENTER_TABLE_NAME] as Partial<AppMemorySchema[typeof HELP_CENTER_TABLE_NAME]> | undefined;
     const ideaPostsSource = source[IDEA_POSTS_TABLE_NAME] as Partial<AppMemorySchema[typeof IDEA_POSTS_TABLE_NAME]> | undefined;
+    const notificationsSource = source[NOTIFICATIONS_TABLE_NAME] as Partial<AppMemorySchema[typeof NOTIFICATIONS_TABLE_NAME]> | undefined;
     const contactsSource = source[CONTACTS_TABLE_NAME] as Partial<AppMemorySchema[typeof CONTACTS_TABLE_NAME]> | undefined;
     const profileExperiencesSource = source[PROFILE_EXPERIENCES_TABLE_NAME] as Partial<AppMemorySchema[typeof PROFILE_EXPERIENCES_TABLE_NAME]> | undefined;
     const shareTokensSource = source[SHARE_TOKENS_TABLE_NAME] as Partial<AppMemorySchema[typeof SHARE_TOKENS_TABLE_NAME]> | undefined;
@@ -979,6 +989,32 @@ export class AppMemoryDb {
         ids: Array.isArray(ideaPostsSource?.ids)
           ? ideaPostsSource.ids.map(id => String(id))
           : [...fallback[IDEA_POSTS_TABLE_NAME].ids]
+      },
+      [NOTIFICATIONS_TABLE_NAME]: {
+        byId: notificationsSource?.byId && typeof notificationsSource.byId === 'object'
+          ? { ...notificationsSource.byId }
+          : { ...fallback[NOTIFICATIONS_TABLE_NAME].byId },
+        ids: Array.isArray(notificationsSource?.ids)
+          ? notificationsSource.ids.map(id => String(id))
+          : [...fallback[NOTIFICATIONS_TABLE_NAME].ids],
+        idsByRecipientUserId: notificationsSource?.idsByRecipientUserId
+          && typeof notificationsSource.idsByRecipientUserId === 'object'
+          ? Object.fromEntries(
+              Object.entries(notificationsSource.idsByRecipientUserId)
+                .filter((entry): entry is [string, string[]] => Array.isArray(entry[1]))
+                .map(([userId, ids]) => [userId, ids.map(id => String(id))])
+            )
+          : { ...fallback[NOTIFICATIONS_TABLE_NAME].idsByRecipientUserId },
+        mutedByUserId: notificationsSource?.mutedByUserId
+          && typeof notificationsSource.mutedByUserId === 'object'
+          ? Object.fromEntries(
+              Object.entries(notificationsSource.mutedByUserId)
+                .map(([userId, muted]) => [userId, muted === true])
+            )
+          : { ...fallback[NOTIFICATIONS_TABLE_NAME].mutedByUserId },
+        seededUserIds: Array.isArray(notificationsSource?.seededUserIds)
+          ? notificationsSource.seededUserIds.map(userId => String(userId))
+          : [...fallback[NOTIFICATIONS_TABLE_NAME].seededUserIds]
       },
       [CONTACTS_TABLE_NAME]: {
         byOwnerUserId: contactsByOwnerUserId,

@@ -4,6 +4,7 @@ import { MatIconModule } from '@angular/material/icon';
 
 import { AppUtils } from '../../../../../../app-utils';
 import { CounterBadgePipe } from '../../../../../pipes/counter-badge.pipe';
+import { IndicatorComponent } from '../../../indicator';
 import {
   AppMenuComponent,
   type AppMenuKind,
@@ -36,7 +37,13 @@ type SingleRowMenuRequestEvent = CardMenuRequestEvent<SingleRowData> & {
 @Component({
   selector: 'single-row',
   standalone: true,
-  imports: [CommonModule, MatIconModule, CounterBadgePipe, AppMenuComponent],
+  imports: [
+    CommonModule,
+    MatIconModule,
+    CounterBadgePipe,
+    AppMenuComponent,
+    IndicatorComponent
+  ],
   templateUrl: './single-row.component.html',
   styleUrl: './single-row.component.scss',
   changeDetection: ChangeDetectionStrategy.OnPush
@@ -72,6 +79,9 @@ export class SingleRowComponent {
     }
     if (this.isClickable()) {
       classes.push('ui-single-row--clickable');
+    }
+    if (this.row?.progressRing === true) {
+      classes.push('ui-single-row--progress-ring');
     }
     if (!this.hasLeadingVisual()) {
       classes.push('ui-single-row--no-leading');
@@ -235,7 +245,7 @@ export class SingleRowComponent {
     event.preventDefault();
     event.stopPropagation();
     const row = this.row;
-    if (!row || !this.hasMenuActions()) {
+    if (!row || row.progressRing === true || !this.hasMenuActions()) {
       return;
     }
     const trigger = event.currentTarget as HTMLElement | null;
