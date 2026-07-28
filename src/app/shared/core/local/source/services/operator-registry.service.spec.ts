@@ -143,7 +143,7 @@ describe('LocalOperatorRegistryService', () => {
     );
   });
 
-  it('submits an unclaimed registered client-code claim without grouping the leaderboard', async () => {
+  it('submits an unclaimed client-code claim with provisional leaderboard grouping', async () => {
     const seedRepository = TestBed.inject(SeedOperatorRegistryRepository);
     const seedContext = await seedRepository.prepareBootstrap();
     await seedRepository.seedUsers(seedContext);
@@ -175,17 +175,105 @@ describe('LocalOperatorRegistryService', () => {
     expect(claim).toEqual(expect.objectContaining({
       claimed: true,
       operatorGroupId: 'operator-group-campus',
-      sharePercent: 0,
       verificationStatus: 'PENDING_REVIEW'
     }));
     expect(claim.claimedAt).toBe(claim.verificationSubmittedAt);
-    expect(after?.ledger).toEqual(before?.ledger);
-    expect(after?.groupLinks).toEqual(before?.groupLinks);
-    expect(after?.leaderboard).toEqual(before?.leaderboard);
+    expect(claim.sharePercent).toBeGreaterThan(0);
+    expect(after?.ledger.find(item => item.nodeId === 'node-operator-demo'))
+      .toEqual(expect.objectContaining({
+        claimed: true,
+        claimantUserId: 'operator-campus'
+      }));
+    expect(after?.groupLinks).toEqual(expect.arrayContaining([
+      expect.objectContaining({
+        nodeId: 'node-operator-demo',
+        operatorGroupId: 'operator-group-campus'
+      })
+    ]));
+    const claimedGroup = after?.leaderboard.find(
+      item => item.group === 'CLAIMED'
+        && item.operatorGroupId === 'operator-group-campus'
+    );
+    expect(claimedGroup).toEqual(expect.objectContaining({
+      deploymentCount: 3,
+      sharePercent: claim.sharePercent
+    }));
+    expect(after?.leaderboard).not.toEqual(before?.leaderboard);
     expect(after?.groupingTokens[0]?.redeemedAt).not.toBeNull();
     expect(after?.auditHistory.at(-1)).toEqual(expect.objectContaining({
       kind: 'CLAIM',
       detail: 'Client code claim submitted for registry review.'
+    }));
+  });
+
+  it('regroups an already claimed deployment without replacing its verification', async () => {
+    const seedRepository = TestBed.inject(SeedOperatorRegistryRepository);
+    const seedContext = await seedRepository.prepareBootstrap();
+    await seedRepository.seedUsers(seedContext);
+    await seedRepository.seedRegistry(seedContext);
+
+    const repository = TestBed.inject(LocalOperatorRegistryRepository);
+    const service = TestBed.inject(LocalOperatorRegistryService);
+    await service.register({
+      registryBaseUrl: 'https://registry.myscoutee.invalid',
+      expectedRegistryScope: 'demo:primary'
+    });
+    await service.claimShare({
+      legalName: 'Verified Demo Operator',
+      registrationNumber: '51 234 567',
+      jurisdiction: 'Slovakia',
+      registeredAddress: 'Main Street 1, Bratislava',
+      website: 'https://operator.example.test',
+      verificationContactName: 'Demo Operator',
+      verificationContactRole: 'Managing director',
+      verificationContactEmail: 'operator@example.test',
+      authorityAttested: true
+    });
+    const claimed = await repository.read();
+    expect(claimed).not.toBeNull();
+    await repository.write({
+      ...claimed!,
+      claimStatus: {
+        ...claimed!.claimStatus,
+        verificationStatus: 'APPROVED'
+      },
+      groupingTokens: [{
+        token: 'approved-client-code',
+        expiresAt: new Date(Date.now() + 60_000).toISOString(),
+        redeemedAt: null,
+        operatorGroupId: 'operator-group-campus'
+      }]
+    });
+    const beforeRegroup = await repository.read();
+
+    const regrouped = await service.linkOperatorGroup({
+      clientToken: 'approved-client-code'
+    });
+    const afterRegroup = await repository.read();
+
+    expect(regrouped).toEqual(expect.objectContaining({
+      claimed: true,
+      claimantName: 'Verified Demo Operator',
+      operatorGroupId: 'operator-group-campus',
+      verificationStatus: 'APPROVED'
+    }));
+    expect(afterRegroup?.ledger).toEqual(beforeRegroup?.ledger);
+    expect(afterRegroup?.groupLinks).toEqual(expect.arrayContaining([
+      expect.objectContaining({
+        nodeId: 'node-operator-demo',
+        operatorGroupId: 'operator-group-campus'
+      })
+    ]));
+    expect(afterRegroup?.leaderboard.find(
+      item => item.group === 'CLAIMED'
+        && item.operatorGroupId === 'operator-group-campus'
+    )).toEqual(expect.objectContaining({
+      deploymentCount: 3,
+      sharePercent: regrouped.sharePercent
+    }));
+    expect(afterRegroup?.auditHistory.at(-1)).toEqual(expect.objectContaining({
+      kind: 'GROUP_LINK',
+      detail: 'Claimed deployment linked to an operator group.'
     }));
   });
 

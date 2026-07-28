@@ -573,7 +573,8 @@ export class FormFlowComponent implements ControlValueAccessor, OnChanges, OnDes
       ...model,
       label: model.label ?? control.label ?? null,
       placeholder: model.placeholder ?? control.placeholder ?? null,
-      required: model.required ?? control.required === true
+      required: model.required ?? control.required === true,
+      maxLength: model.maxLength ?? control.maxLength ?? null
     };
   }
 

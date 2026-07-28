@@ -31,6 +31,7 @@ describe('OperatorPageComponent', () => {
     const registryBusyAction = signal<string | null>(null);
     const activePopup = signal<OperatorMenuKind | null>('registration');
     const leaderboardRevision = signal(0);
+    const workspaceBusyAction = signal<string | null>(null);
     const invalidateLeaderboard = vi.fn();
 
     TestBed.configureTestingModule({
@@ -69,7 +70,7 @@ describe('OperatorPageComponent', () => {
         {
           provide: OperatorWorkspaceStore,
           useValue: {
-            busyAction: signal(null).asReadonly(),
+            busyAction: workspaceBusyAction.asReadonly(),
             deploymentUpdate: signal(null).asReadonly(),
             claimStatus: signal(null).asReadonly(),
             loadDeploymentUpdate: vi.fn()
@@ -126,6 +127,9 @@ describe('OperatorPageComponent', () => {
       palette: 'green',
       layout: 'big'
     }));
+    workspaceBusyAction.set('claim-share');
+    expect(componentView.actionItems().find(item => item.id === 'claim')?.progress)
+      .toBeUndefined();
 
     fixture.destroy();
   });

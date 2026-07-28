@@ -172,7 +172,7 @@ export class OperatorActionPopupComponent {
               layout: 'half',
               label: translate('operator.claim.verification.legal.name'),
               required: true,
-              maxLength: 180
+              maxLength: 160
             },
             {
               id: 'operator-claim-registration-number',
@@ -181,7 +181,7 @@ export class OperatorActionPopupComponent {
               layout: 'half',
               label: translate('operator.claim.verification.registration.number'),
               required: true,
-              maxLength: 120
+              maxLength: 80
             },
             {
               id: 'operator-claim-jurisdiction',
@@ -190,7 +190,7 @@ export class OperatorActionPopupComponent {
               layout: 'half',
               label: translate('operator.claim.verification.jurisdiction'),
               required: true,
-              maxLength: 120
+              maxLength: 80
             },
             {
               id: 'operator-claim-website',
@@ -200,12 +200,13 @@ export class OperatorActionPopupComponent {
               label: translate('operator.claim.verification.website'),
               placeholder: 'https://',
               required: true,
-              maxLength: 500,
+              maxLength: 2048,
               config: {
                 model: {
                   label: translate('operator.claim.verification.website'),
                   placeholder: 'https://',
-                  required: true
+                  required: true,
+                  maxLength: 2048
                 }
               }
             },
@@ -234,7 +235,7 @@ export class OperatorActionPopupComponent {
               layout: 'half',
               label: translate('operator.claim.verification.contact.name'),
               required: true,
-              maxLength: 180
+              maxLength: 120
             },
             {
               id: 'operator-claim-contact-role',
@@ -243,7 +244,7 @@ export class OperatorActionPopupComponent {
               layout: 'half',
               label: translate('operator.claim.verification.contact.role'),
               required: true,
-              maxLength: 180
+              maxLength: 120
             },
             {
               id: 'operator-claim-contact-email',
@@ -863,10 +864,13 @@ export class OperatorActionPopupComponent {
       }
       case 'claim': {
         const claim = this.workspace.claimStatus();
-        if (!claim || claim.claimed) {
+        if (!claim) {
           return [];
         }
         if (this.claimPath() === 'company') {
+          if (claim.claimed) {
+            return [];
+          }
           return [{
             id: 'operator-claim-share',
             label: 'operator.claim.apply',
@@ -884,9 +888,9 @@ export class OperatorActionPopupComponent {
         }
         return [{
           id: 'operator-redeem-token',
-          label: 'operator.claim.client.code.redeem',
-          icon: 'redeem',
-          palette: 'teal',
+          label: 'operator.claim.apply',
+          icon: 'verified',
+          palette: 'purple',
           layout: 'action',
           disabled: this.busy()
             || !this.registeredForClaim()

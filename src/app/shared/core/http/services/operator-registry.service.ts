@@ -953,12 +953,19 @@ export class HttpOperatorRegistryService implements OperatorRegistryServiceContr
     };
     if (
       !payload.legalName
+      || payload.legalName.length > 160
       || !payload.registrationNumber
+      || payload.registrationNumber.length > 80
       || !payload.jurisdiction
+      || payload.jurisdiction.length > 80
       || !payload.registeredAddress
+      || payload.registeredAddress.length > 500
       || !payload.website
       || !payload.verificationContactName
+      || payload.verificationContactName.length > 120
       || !payload.verificationContactRole
+      || payload.verificationContactRole.length > 120
+      || payload.verificationContactEmail.length > 254
       || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(payload.verificationContactEmail)
       || !payload.authorityAttested
     ) {
@@ -969,7 +976,7 @@ export class HttpOperatorRegistryService implements OperatorRegistryServiceContr
 
   private publicWebsite(value: string | null | undefined): string {
     const source = `${value ?? ''}`.trim();
-    if (!source) {
+    if (!source || source.length > 2048) {
       throw new Error('operator.claim.verification.error.website');
     }
     try {

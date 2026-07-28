@@ -66,6 +66,13 @@
             }
             @case ('claim') {
               @if (workspace.claimStatus(); as claim) {
+                <app-menu
+                  class="operator-action-popup__claim-paths"
+                  kind="inline"
+                  layout="tabs"
+                  [items]="claimPathItems()"
+                  (itemSelect)="onAction($event)"
+                ></app-menu>
                 @if (claim.verificationCapability !== 'AVAILABLE') {
                   <p class="operator-action-popup__result is-error" role="alert">
                     <mat-icon>cloud_off</mat-icon>
@@ -75,7 +82,13 @@
                     </span>
                   </p>
                 }
-                @if (claim.claimed) {
+                @if (!registeredForClaim()) {
+                  <p class="operator-action-popup__result is-error" role="alert">
+                    <mat-icon>app_registration</mat-icon>
+                    <span>{{ 'operator.claim.error.registration.required' | i18n }}</span>
+                  </p>
+                }
+                @if (claimPath() === 'company' && claim.claimed) {
                   <div class="operator-action-popup__claimed">
                     <mat-icon>verified</mat-icon>
                     <strong>{{ 'operator.claim.claimed' | i18n }}</strong>
@@ -101,43 +114,28 @@
                       <span>{{ 'operator.claim.verification.approved' | i18n }}</span>
                     </p>
                   }
+                } @else if (claimPath() === 'company') {
+                  <p class="operator-action-popup__hint">
+                    {{ 'operator.claim.verification.instructions' | i18n }}
+                  </p>
+                  <app-form-flow
+                    [model]="claimCompanyFormModel()"
+                    [ngModel]="workspace.claimDraft()"
+                    (ngModelChange)="onClaimDraftChange($event)"
+                    [disabled]="busy()
+                      || !registeredForClaim()
+                      || claim.verificationCapability !== 'AVAILABLE'"
+                  ></app-form-flow>
                 } @else {
-                  <app-menu
-                    class="operator-action-popup__claim-paths"
-                    kind="inline"
-                    layout="tabs"
-                    [items]="claimPathItems()"
-                    (itemSelect)="onAction($event)"
-                  ></app-menu>
-                  @if (!registeredForClaim()) {
-                    <p class="operator-action-popup__result is-error" role="alert">
-                      <mat-icon>app_registration</mat-icon>
-                      <span>{{ 'operator.claim.error.registration.required' | i18n }}</span>
-                    </p>
-                  }
-                  @if (claimPath() === 'company') {
-                    <p class="operator-action-popup__hint">
-                      {{ 'operator.claim.verification.instructions' | i18n }}
-                    </p>
-                    <app-form-flow
-                      [model]="claimCompanyFormModel()"
-                      [ngModel]="workspace.claimDraft()"
-                      (ngModelChange)="onClaimDraftChange($event)"
-                      [disabled]="busy()
-                        || !registeredForClaim()
-                        || claim.verificationCapability !== 'AVAILABLE'"
-                    ></app-form-flow>
-                  } @else {
-                    <p class="operator-action-popup__hint">
-                      {{ 'operator.claim.client.code.instructions' | i18n }}
-                    </p>
-                    <app-form-flow
-                      [model]="claimClientCodeFormModel()"
-                      [ngModel]="claimClientCodeValue()"
-                      (ngModelChange)="onClaimClientCodeChange($event)"
-                      [disabled]="busy() || !registeredForClaim()"
-                    ></app-form-flow>
-                  }
+                  <p class="operator-action-popup__hint">
+                    {{ 'operator.claim.client.code.instructions' | i18n }}
+                  </p>
+                  <app-form-flow
+                    [model]="claimClientCodeFormModel()"
+                    [ngModel]="claimClientCodeValue()"
+                    (ngModelChange)="onClaimClientCodeChange($event)"
+                    [disabled]="busy() || !registeredForClaim()"
+                  ></app-form-flow>
                 }
               }
             }

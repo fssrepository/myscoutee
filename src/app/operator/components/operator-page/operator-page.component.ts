@@ -143,13 +143,7 @@ export class OperatorPageComponent implements OnInit {
       icon: 'redeem',
       palette: 'amber',
       kind: 'action',
-      layout: 'big',
-      progress: this.workspace.busyAction() === 'load-claim'
-        || this.workspace.busyAction() === 'claim-share'
-        || this.workspace.busyAction() === 'issue-grouping-token'
-        || this.workspace.busyAction() === 'link-operator-group'
-        ? { state: 'loading', durationMs: 3000 }
-        : null
+      layout: 'big'
     },
     {
       id: 'configuration',

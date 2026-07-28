@@ -227,6 +227,7 @@ export class OperatorWorkspaceStore {
       this.errorRef.set('operator.claim.client.code.required');
       return null;
     }
+    const previous = this.claimStatusRef();
     const result = await this.run(
       'link-operator-group',
       () => this.service.linkOperatorGroup(clientToken)
@@ -235,10 +236,18 @@ export class OperatorWorkspaceStore {
       this.claimStatusRef.set(result);
       this.groupTokenInputRef.set('');
       this.noticeRef.set('operator.claim.client.code.submitted');
-      if (
-        result.verificationStatus === 'APPROVED'
-        || result.verificationStatus === 'VERIFIED'
-      ) {
+      const groupChanged = Boolean(
+        result.operatorGroupId
+        && result.operatorGroupId !== previous?.operatorGroupId
+      );
+      const provisionalClaim = !previous?.claimed
+        && result.verificationStatus === 'PENDING_REVIEW';
+      const approvedRegroup = previous?.claimed === true
+        && (
+          result.verificationStatus === 'APPROVED'
+          || result.verificationStatus === 'VERIFIED'
+        );
+      if (groupChanged && (provisionalClaim || approvedRegroup)) {
         this.leaderboard.invalidate();
       }
     }
