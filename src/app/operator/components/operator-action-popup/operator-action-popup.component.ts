@@ -203,6 +203,12 @@ export class OperatorActionPopupComponent {
               placeholder: 'https://',
               required: true,
               maxLength: 2048,
+              validationError: value => {
+                const website = `${value ?? ''}`.trim();
+                return website && !this.validClaimWebsite(website)
+                  ? translate('operator.claim.verification.error.website')
+                  : null;
+              },
               config: {
                 model: {
                   label: translate('operator.claim.verification.website'),
@@ -255,7 +261,13 @@ export class OperatorActionPopupComponent {
               layout: 'wide',
               label: translate('operator.claim.verification.contact.email'),
               required: true,
-              maxLength: 254
+              maxLength: 254,
+              validationError: value => {
+                const contactEmail = `${value ?? ''}`.trim();
+                return contactEmail && !this.validClaimEmail(contactEmail)
+                  ? translate('operator.claim.verification.error.email')
+                  : null;
+              }
             },
             {
               id: 'operator-claim-attestation',
@@ -733,6 +745,23 @@ export class OperatorActionPopupComponent {
     }
   }
 
+  private validClaimEmail(value: string): boolean {
+    return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value.trim());
+  }
+
+  private validClaimWebsite(value: string): boolean {
+    try {
+      const url = new URL(value.trim());
+      return (
+        (url.protocol === 'https:' || url.protocol === 'http:')
+        && !url.username
+        && !url.password
+      );
+    } catch {
+      return false;
+    }
+  }
+
   protected busyLabel(): string {
     switch (this.busyAction()) {
       case 'issue-grouping-token':
@@ -870,6 +899,17 @@ export class OperatorActionPopupComponent {
           return [];
         }
         if (this.claimPath() === 'company') {
+          if (claim.verificationStatus === 'PENDING_REVIEW') {
+            return [{
+              id: 'operator-claim-pending-review',
+              label: 'operator.claim.verification.pending.action',
+              icon: 'pending_actions',
+              palette: 'orange',
+              layout: 'action',
+              disabled: true,
+              context: { action: 'claim-share' }
+            }];
+          }
           if (claim.claimed) {
             return [];
           }

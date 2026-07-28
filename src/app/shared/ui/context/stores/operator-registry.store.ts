@@ -140,7 +140,7 @@ export class OperatorRegistryStore {
         ?? this.expectedRegistryScopeRef()
       );
       this.candidateInitialized = true;
-      this.leaderboard.applyRegistryMutation(result);
+      this.leaderboard.applyMutation(result);
       return status;
     }
     return null;
@@ -156,7 +156,7 @@ export class OperatorRegistryStore {
     const result = await this.run('disconnect', () => this.service.disconnect());
     if (result) {
       this.inspectionRef.set(null);
-      this.leaderboard.applyRegistryMutation(result);
+      this.leaderboard.applyMutation(result);
       return result.status;
     }
     return null;

@@ -5,6 +5,8 @@ import { environment } from '../../../../../environments/environment';
 import type {
   OperatorGroupLinkRequestDto,
   OperatorGroupingTokenDto,
+  OperatorClaimMutationResultDto,
+  OperatorClaimOverviewDto,
   OperatorClaimRequestDto,
   OperatorClaimStatusDto,
   OperatorCommunityAnnouncementDto,
@@ -72,6 +74,11 @@ interface RemoteOperatorActionResult {
 
 type RemoteOperatorClaimStatus = Partial<OperatorClaimStatusDto>;
 
+interface RemoteOperatorClaimOverview {
+  status: RemoteOperatorClaimStatus;
+  submission: OperatorClaimRequestDto | null;
+}
+
 interface RemoteOperatorLeaderboardSnapshot {
   throughPeriod: string;
   founderUnitsNumerator: string;
@@ -110,6 +117,13 @@ interface RemoteOperatorRegistryMutationResult {
   leaderboardEntry: RemoteOperatorLeaderboardRow | null;
   removedLeaderboardEntryIds: string[];
   created: boolean;
+}
+
+interface RemoteOperatorClaimMutationResult {
+  status: RemoteOperatorClaimStatus;
+  submission: OperatorClaimRequestDto | null;
+  leaderboardEntry: RemoteOperatorLeaderboardRow | null;
+  removedLeaderboardEntryIds: string[];
 }
 
 interface OperatorLeaderboardCursorState {
@@ -384,21 +398,26 @@ export class HttpOperatorRegistryService implements OperatorRegistryServiceContr
     };
   }
 
-  async loadClaimStatus(): Promise<OperatorClaimStatusDto> {
+  async loadClaimStatus(): Promise<OperatorClaimOverviewDto> {
     const remote = await this.requireResponse(
       `${OPERATOR_NETWORK_ROUTE}/claim`,
-      this.http.get<RemoteOperatorClaimStatus>(
+      this.http.get<RemoteOperatorClaimOverview>(
         `${this.operatorEndpoint}/claim`,
         this.requestOptions()
       ).toPromise()
     );
-    const status = this.toClaimStatus(remote);
+    const status = this.toClaimStatus(remote.status);
     this.claimVerificationAvailable =
       status.verificationCapability === 'AVAILABLE';
-    return status;
+    return {
+      status,
+      submission: this.toClaimSubmission(remote.submission)
+    };
   }
 
-  async claimShare(request: OperatorClaimRequestDto): Promise<OperatorClaimStatusDto> {
+  async claimShare(
+    request: OperatorClaimRequestDto
+  ): Promise<OperatorClaimMutationResultDto> {
     if (this.claimVerificationAvailable === null) {
       await this.loadClaimStatus();
     }
@@ -408,16 +427,25 @@ export class HttpOperatorRegistryService implements OperatorRegistryServiceContr
     const payload = this.requireClaimVerificationRequest(request);
     const remote = await this.requireResponse(
       `${OPERATOR_NETWORK_ROUTE}/claim`,
-      this.http.post<RemoteOperatorClaimStatus>(
+      this.http.post<RemoteOperatorClaimMutationResult>(
         `${this.operatorEndpoint}/claim`,
         payload,
         this.requestOptions()
       ).toPromise()
     );
-    const status = this.toClaimStatus(remote);
+    const status = this.toClaimStatus(remote.status);
     this.claimVerificationAvailable =
       status.verificationCapability === 'AVAILABLE';
-    return status;
+    return {
+      status,
+      submission: this.toClaimSubmission(remote.submission),
+      leaderboardEntry: remote.leaderboardEntry
+        ? this.toLeaderboardEntry(remote.leaderboardEntry)
+        : null,
+      removedLeaderboardEntryIds: this.normalizedEntryIds(
+        remote.removedLeaderboardEntryIds
+      )
+    };
   }
 
   async issueGroupingToken(): Promise<OperatorGroupingTokenDto> {
@@ -453,7 +481,7 @@ export class HttpOperatorRegistryService implements OperatorRegistryServiceContr
         this.requestOptions()
       ).toPromise()
     );
-    return this.loadClaimStatus();
+    return (await this.loadClaimStatus()).status;
   }
 
   async loadDeploymentUpdate(): Promise<OperatorDeploymentUpdateDto> {
@@ -948,6 +976,25 @@ export class HttpOperatorRegistryService implements OperatorRegistryServiceContr
     };
   }
 
+  private toClaimSubmission(
+    remote: OperatorClaimRequestDto | null | undefined
+  ): OperatorClaimRequestDto | null {
+    if (!remote) {
+      return null;
+    }
+    return {
+      legalName: `${remote.legalName ?? ''}`,
+      registrationNumber: `${remote.registrationNumber ?? ''}`,
+      jurisdiction: `${remote.jurisdiction ?? ''}`,
+      registeredAddress: `${remote.registeredAddress ?? ''}`,
+      website: `${remote.website ?? ''}`,
+      verificationContactName: `${remote.verificationContactName ?? ''}`,
+      verificationContactRole: `${remote.verificationContactRole ?? ''}`,
+      verificationContactEmail: `${remote.verificationContactEmail ?? ''}`,
+      authorityAttested: remote.authorityAttested === true
+    };
+  }
+
   private requireClaimVerificationRequest(
     request: OperatorClaimRequestDto
   ): OperatorClaimRequestDto {
@@ -1073,13 +1120,21 @@ export class HttpOperatorRegistryService implements OperatorRegistryServiceContr
       leaderboardEntry: result.leaderboardEntry
         ? this.toLeaderboardEntry(result.leaderboardEntry)
         : null,
-      removedLeaderboardEntryIds: [...new Set(
-        (result.removedLeaderboardEntryIds ?? [])
-          .map(id => `${id ?? ''}`.trim())
-          .filter(Boolean)
-      )],
+      removedLeaderboardEntryIds: this.normalizedEntryIds(
+        result.removedLeaderboardEntryIds
+      ),
       created: result.created === true
     };
+  }
+
+  private normalizedEntryIds(
+    source: readonly string[] | null | undefined
+  ): string[] {
+    return [...new Set(
+      (source ?? [])
+        .map(id => `${id ?? ''}`.trim())
+        .filter(Boolean)
+    )];
   }
 
   private toLeaderboardSummaries(

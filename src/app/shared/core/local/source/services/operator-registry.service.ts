@@ -8,6 +8,8 @@ import type { ListQuery } from '../../../contracts/list.interface';
 import type {
   OperatorGroupLinkRequestDto,
   OperatorGroupingTokenDto,
+  OperatorClaimMutationResultDto,
+  OperatorClaimOverviewDto,
   OperatorClaimRequestDto,
   OperatorClaimStatusDto,
   OperatorCommunityAvailability,
@@ -345,19 +347,25 @@ export class LocalOperatorRegistryService extends LocalRouteDelayService impleme
     return LocalOperatorRegistryMapper.toLeaderboardPage(await this.readStored(), query);
   }
 
-  async loadClaimStatus(): Promise<OperatorClaimStatusDto> {
+  async loadClaimStatus(): Promise<OperatorClaimOverviewDto> {
     await this.waitForOperatorRouteDelay(OPERATOR_CLAIM_ROUTE);
-    return structuredClone((await this.readStored()).claimStatus);
+    const record = await this.readStored();
+    return structuredClone({
+      status: record.claimStatus,
+      submission: record.claimVerificationRequest
+    });
   }
 
-  async claimShare(request: OperatorClaimRequestDto): Promise<OperatorClaimStatusDto> {
+  async claimShare(
+    request: OperatorClaimRequestDto
+  ): Promise<OperatorClaimMutationResultDto> {
     await this.waitForOperatorRouteDelay(OPERATOR_CLAIM_APPLY_ROUTE);
     const current = await this.readStored();
     if (current.claimStatus.claimed) {
-      return structuredClone(current.claimStatus);
+      return this.claimMutation(current, current.claimStatus);
     }
     if (current.claimStatus.verificationStatus === 'PENDING_REVIEW') {
-      return structuredClone(current.claimStatus);
+      return this.claimMutation(current, current.claimStatus);
     }
     if (!current.status.enabled || current.status.lifecycle !== 'REGISTERED') {
       throw new Error('operator.claim.error.registration.required');
@@ -408,15 +416,16 @@ export class LocalOperatorRegistryService extends LocalRouteDelayService impleme
       verificationSubmittedAt: submittedAt,
       legalName: verificationRequest.legalName
     };
-    await this.repository.write(this.appendAudit({
+    const next = this.appendAudit({
       ...structuredClone(current),
       ledger,
       groupLinks,
       leaderboard,
       claimStatus,
       claimVerificationRequest: verificationRequest
-    }, 'CLAIM', 'Company verification submitted for review.', current.claimIdentity.nodeId));
-    return structuredClone(claimStatus);
+    }, 'CLAIM', 'Company verification submitted for review.', current.claimIdentity.nodeId);
+    await this.repository.write(next);
+    return this.claimMutation(next, claimStatus);
   }
 
   async issueGroupingToken(): Promise<OperatorGroupingTokenDto> {
@@ -816,6 +825,26 @@ export class LocalOperatorRegistryService extends LocalRouteDelayService impleme
 
   private requireBaseUrl(value: string): string {
     return normalizeOperatorRegistryBaseUrl(value, false);
+  }
+
+  private claimMutation(
+    record: OperatorRegistryStateRecord,
+    status: OperatorClaimStatusDto
+  ): OperatorClaimMutationResultDto {
+    const operatorGroupId = status.operatorGroupId?.trim() ?? '';
+    const leaderboardEntry = operatorGroupId
+      ? record.leaderboard.find(item =>
+          item.group === 'CLAIMED'
+          && item.operatorGroupId === operatorGroupId
+        ) ?? null
+      : null;
+    const deploymentId = record.claimIdentity.nodeId.trim();
+    return structuredClone({
+      status,
+      submission: record.claimVerificationRequest,
+      leaderboardEntry,
+      removedLeaderboardEntryIds: deploymentId ? [deploymentId] : []
+    });
   }
 
   private deploymentThemePreset(

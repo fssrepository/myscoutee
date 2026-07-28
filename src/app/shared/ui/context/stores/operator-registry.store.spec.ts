@@ -74,7 +74,7 @@ describe('OperatorRegistryStore registration', () => {
       inspect: vi.fn(),
       confirm: vi.fn()
     };
-    const applyRegistryMutation = vi.fn();
+    const applyMutation = vi.fn();
     const invalidateLeaderboard = vi.fn();
     TestBed.configureTestingModule({
       providers: [
@@ -82,7 +82,7 @@ describe('OperatorRegistryStore registration', () => {
         {
           provide: OperatorLeaderboardStore,
           useValue: {
-            applyRegistryMutation,
+            applyMutation,
             invalidate: invalidateLeaderboard
           }
         },
@@ -108,7 +108,7 @@ describe('OperatorRegistryStore registration', () => {
     expect(service.inspect).not.toHaveBeenCalled();
     expect(service.confirm).not.toHaveBeenCalled();
     expect(store.canRegister()).toBe(false);
-    expect(applyRegistryMutation).toHaveBeenCalledWith(mutationResult);
+    expect(applyMutation).toHaveBeenCalledWith(mutationResult);
     expect(invalidateLeaderboard).not.toHaveBeenCalled();
   });
 
@@ -130,13 +130,13 @@ describe('OperatorRegistryStore registration', () => {
     const service = {
       disconnect: vi.fn().mockResolvedValue(mutationResult)
     };
-    const applyRegistryMutation = vi.fn();
+    const applyMutation = vi.fn();
     TestBed.configureTestingModule({
       providers: [
         { provide: OperatorRegistryService, useValue: service },
         {
           provide: OperatorLeaderboardStore,
-          useValue: { applyRegistryMutation }
+          useValue: { applyMutation }
         },
         {
           provide: SessionService,
@@ -151,7 +151,7 @@ describe('OperatorRegistryStore registration', () => {
 
     await store.disconnect();
 
-    expect(applyRegistryMutation).toHaveBeenCalledWith(mutationResult);
+    expect(applyMutation).toHaveBeenCalledWith(mutationResult);
   });
 
   it('clears cached state when the operator session identity changes', async () => {

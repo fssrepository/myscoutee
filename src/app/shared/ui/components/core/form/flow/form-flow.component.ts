@@ -380,6 +380,14 @@ export class FormFlowComponent implements ControlValueAccessor, OnChanges, OnDes
     return this.controlValue(control) === true;
   }
 
+  protected controlValidationError(control: FormFlowControlModel): string {
+    const validationError = control.validationError;
+    const resolved = typeof validationError === 'function'
+      ? validationError(this.controlValue(control), this.formValue)
+      : validationError;
+    return `${resolved ?? ''}`.trim();
+  }
+
   protected controlStringArrayValue(control: FormFlowControlModel): readonly string[] {
     const value = this.controlValue(control);
     if (!Array.isArray(value)) {

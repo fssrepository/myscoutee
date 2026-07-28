@@ -135,11 +135,24 @@ export interface OperatorLeaderboardEntryDto {
   deploymentCount?: number;
 }
 
-export interface OperatorRegistryMutationResultDto {
-  status: OperatorRegistryStatusDto;
+export interface OperatorLeaderboardMutationDto {
   leaderboardEntry: OperatorLeaderboardEntryDto | null;
   removedLeaderboardEntryIds: readonly string[];
+}
+
+export interface OperatorRegistryMutationResultDto
+  extends OperatorLeaderboardMutationDto {
+  status: OperatorRegistryStatusDto;
   created: boolean;
+}
+
+export interface OperatorClaimMutationResultDto
+  extends OperatorLeaderboardMutationDto, OperatorClaimOverviewDto {
+}
+
+export interface OperatorClaimOverviewDto {
+  status: OperatorClaimStatusDto;
+  submission: OperatorClaimRequestDto | null;
 }
 
 export interface OperatorLeaderboardGroupSummaryDto {
@@ -470,8 +483,10 @@ export interface OperatorRegistryServiceContract {
     query: ListQuery,
     signal?: AbortSignal
   ): Promise<OperatorLeaderboardPageDto>;
-  loadClaimStatus(): Promise<OperatorClaimStatusDto>;
-  claimShare(request: OperatorClaimRequestDto): Promise<OperatorClaimStatusDto>;
+  loadClaimStatus(): Promise<OperatorClaimOverviewDto>;
+  claimShare(
+    request: OperatorClaimRequestDto
+  ): Promise<OperatorClaimMutationResultDto>;
   issueGroupingToken(): Promise<OperatorGroupingTokenDto>;
   linkOperatorGroup(request: OperatorGroupLinkRequestDto): Promise<OperatorClaimStatusDto>;
   loadDeploymentUpdate(): Promise<OperatorDeploymentUpdateDto>;

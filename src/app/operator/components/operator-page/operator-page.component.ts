@@ -115,8 +115,10 @@ export class OperatorPageComponent implements OnInit {
     return status?.lastError?.message?.trim()
       || (status?.lifecycle === 'ERROR' ? 'operator.registration.status.error' : '');
   });
-  protected readonly actionItems = computed<readonly AppMenuItem<OperatorActionId>[]>(() => [
-    {
+  protected readonly actionItems = computed<readonly AppMenuItem<OperatorActionId>[]>(() => {
+    const claim = this.workspace.claimStatus();
+    const claimPendingReview = claim?.verificationStatus === 'PENDING_REVIEW';
+    return [{
       id: 'updates',
       label: 'operator.action.updates',
       detail: this.workspace.deploymentUpdate()?.updateAvailable
@@ -146,12 +148,16 @@ export class OperatorPageComponent implements OnInit {
     },
     {
       id: 'claim',
-      label: 'operator.action.claim.share',
-      detail: this.workspace.claimStatus()?.claimed
-        ? 'operator.action.claim.share.claimed'
-        : 'operator.action.claim.share.detail',
-      icon: 'redeem',
-      palette: 'amber',
+      label: claimPendingReview
+        ? 'operator.action.claim.share.pending'
+        : 'operator.action.claim.share',
+      detail: claimPendingReview
+        ? 'operator.action.claim.share.pending.detail'
+        : claim?.claimed
+          ? 'operator.action.claim.share.claimed'
+          : 'operator.action.claim.share.detail',
+      icon: claimPendingReview ? 'pending_actions' : 'redeem',
+      palette: claimPendingReview ? 'orange' : 'amber',
       kind: 'action',
       layout: 'big'
     },
@@ -183,8 +189,8 @@ export class OperatorPageComponent implements OnInit {
       progress: this.workspace.busyAction() === 'load-revenue'
         ? { state: 'loading', durationMs: 3000 }
         : null
-    }
-  ]);
+    }];
+  });
   protected readonly leaderboardQuery = computed<
     Partial<ListQuery<OperatorLeaderboardFilters>>
   >(() => ({

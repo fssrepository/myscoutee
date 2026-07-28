@@ -4,6 +4,8 @@ import { environment } from '../../../../../environments/environment';
 
 import type {
   OperatorGroupingTokenDto,
+  OperatorClaimMutationResultDto,
+  OperatorClaimOverviewDto,
   OperatorClaimRequestDto,
   OperatorClaimStatusDto,
   OperatorCommunityAvailability,
@@ -72,11 +74,13 @@ export class OperatorRegistryService extends BaseRouteModeService {
     return this.registryService.leaderboardPage(query, signal);
   }
 
-  loadClaimStatus(): Promise<OperatorClaimStatusDto> {
+  loadClaimStatus(): Promise<OperatorClaimOverviewDto> {
     return this.registryService.loadClaimStatus();
   }
 
-  claimShare(request: OperatorClaimRequestDto): Promise<OperatorClaimStatusDto> {
+  claimShare(
+    request: OperatorClaimRequestDto
+  ): Promise<OperatorClaimMutationResultDto> {
     return this.registryService.claimShare(request);
   }
 

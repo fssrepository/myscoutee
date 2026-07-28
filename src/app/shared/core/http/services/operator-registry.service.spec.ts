@@ -177,9 +177,40 @@ describe('HttpOperatorRegistryService', () => {
       verificationSubmittedAt: '2026-07-28T18:00:00.000Z',
       legalName: 'Demo Operator s.r.o.'
     };
-    get.mockReturnValue(of(claimStatus));
+    const claimMutation = {
+      status: claimStatus,
+      submission: {
+        legalName: 'Demo Operator s.r.o.',
+        registrationNumber: '51 234 567',
+        jurisdiction: 'Slovakia',
+        registeredAddress: 'Main Street 1, Bratislava',
+        website: 'https://operator.example.test/',
+        verificationContactName: 'Demo Operator',
+        verificationContactRole: 'Managing director',
+        verificationContactEmail: 'operator@example.test',
+        authorityAttested: true
+      },
+      leaderboardEntry: {
+        rowId: 'opg_demo',
+        view: 'claimed',
+        groupId: 'opg_demo',
+        label: 'Demo Operator s.r.o.',
+        avatarUrl: null,
+        claimState: 'pending-review',
+        deploymentCount: 1,
+        weightNumerator: '17',
+        weightDenominator: '1',
+        shareNumerator: '17',
+        shareDenominator: '400'
+      },
+      removedLeaderboardEntryIds: ['dep_demo']
+    };
+    get.mockReturnValue(of({
+      status: claimStatus,
+      submission: claimMutation.submission
+    }));
     post.mockImplementation((url: string) => url.endsWith('/claim')
-      ? of(claimStatus)
+      ? of(claimMutation)
       : of({
           clientToken: url.endsWith('/client-token') ? 'client_token_1' : null,
           receipt: {
@@ -210,8 +241,21 @@ describe('HttpOperatorRegistryService', () => {
       clientToken: ' token_from_other_claimed_deployment '
     });
 
-    expect(loaded).toEqual(claimStatus);
-    expect(claimed).toEqual(claimStatus);
+    expect(loaded).toEqual({
+      status: claimStatus,
+      submission: claimMutation.submission
+    });
+    expect(claimed).toEqual({
+      status: claimStatus,
+      submission: claimMutation.submission,
+      leaderboardEntry: expect.objectContaining({
+        id: 'opg_demo',
+        group: 'CLAIMED',
+        operatorGroupId: 'opg_demo',
+        claimed: true
+      }),
+      removedLeaderboardEntryIds: ['dep_demo']
+    });
     expect(grouped).toEqual(claimStatus);
     expect(token).toEqual({
       clientToken: 'client_token_1',
@@ -241,19 +285,22 @@ describe('HttpOperatorRegistryService', () => {
 
   it('does not post structured verification to a legacy claim endpoint', async () => {
     get.mockReturnValue(of({
-      claimed: false,
-      claimedAt: null,
-      claimantUserId: null,
-      claimantName: null,
-      claimantAvatarUrl: null,
-      operatorGroupId: null,
-      sharePercent: 0
+      status: {
+        claimed: false,
+        claimedAt: null,
+        claimantUserId: null,
+        claimantName: null,
+        claimantAvatarUrl: null,
+        operatorGroupId: null,
+        sharePercent: 0
+      },
+      submission: null
     }));
     const service = TestBed.inject(HttpOperatorRegistryService);
 
     const status = await service.loadClaimStatus();
 
-    expect(status.verificationCapability).toBe('BACKEND_UNAVAILABLE');
+    expect(status.status.verificationCapability).toBe('BACKEND_UNAVAILABLE');
     await expect(service.claimShare({
       legalName: 'Example Operator s.r.o.',
       registrationNumber: '51 234 567',

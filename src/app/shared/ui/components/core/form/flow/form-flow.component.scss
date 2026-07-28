@@ -590,7 +590,20 @@
   line-height: 1.35;
 }
 
+.form-flow__control-error {
+  display: block;
+  margin-top: 0.28rem;
+  color: #9b3447;
+  font-size: 0.76rem;
+  font-weight: 800;
+  line-height: 1.35;
+}
+
 .form-flow__control--with-accessory > .form-flow__control-description {
+  grid-column: 1 / -1;
+}
+
+.form-flow__control--with-accessory > .form-flow__control-error {
   grid-column: 1 / -1;
 }
 
@@ -716,7 +729,8 @@
   }
 }
 
-.form-flow__control.is-required-missing {
+.form-flow__control.is-required-missing,
+.form-flow__control.is-invalid {
   input,
   textarea {
     border-color: #ef9a9a;

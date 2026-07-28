@@ -5,6 +5,7 @@ import { OperatorRegistryService } from '../../../core/base/services/operator-re
 import { DeploymentConfigurationService } from '../../../core/base/services/deployment-configuration.service';
 import { SessionService } from '../../../core/base/services/session.service';
 import type {
+  OperatorClaimRequestDto,
   OperatorClaimStatusDto,
   OperatorDeploymentUpdateDto,
   OperatorRevenueDto
@@ -19,7 +20,7 @@ describe('OperatorWorkspaceStore', () => {
   const loadDeploymentUpdate = vi.fn();
   const loadRevenue = vi.fn();
   const testConfiguration = vi.fn();
-  const invalidate = vi.fn();
+  const applyMutation = vi.fn();
   const session = signal({
     kind: 'firebase' as const,
     profile: {
@@ -47,7 +48,7 @@ describe('OperatorWorkspaceStore', () => {
     loadDeploymentUpdate.mockReset();
     loadRevenue.mockReset();
     testConfiguration.mockReset();
-    invalidate.mockReset();
+    applyMutation.mockReset();
     activeUserProfile.set({
       id: 'operator-real',
       name: '  Verified Operator  ',
@@ -85,7 +86,7 @@ describe('OperatorWorkspaceStore', () => {
         },
         {
           provide: OperatorLeaderboardStore,
-          useValue: { invalidate }
+          useValue: { applyMutation, invalidate: vi.fn() }
         },
         {
           provide: UserProfileStore,
@@ -101,9 +102,19 @@ describe('OperatorWorkspaceStore', () => {
   });
 
   it('submits the explicit structured company verification claim', async () => {
-    loadClaimStatus.mockResolvedValue(unclaimedStatus());
+    loadClaimStatus.mockResolvedValue({
+      status: unclaimedStatus(),
+      submission: null
+    });
     const claimed = claimStatus();
-    claimShare.mockResolvedValue(claimed);
+    const acceptedSubmission = claimSubmission();
+    const mutation = {
+      status: claimed,
+      submission: acceptedSubmission,
+      leaderboardEntry: null,
+      removedLeaderboardEntryIds: ['dep_operator_real']
+    };
+    claimShare.mockResolvedValue(mutation);
     const store = TestBed.inject(OperatorWorkspaceStore);
     await store.loadClaimStatus();
     store.setClaimDraft({
@@ -133,12 +144,34 @@ describe('OperatorWorkspaceStore', () => {
       authorityAttested: true
     });
     expect(store.claimStatus()).toEqual(claimed);
+    expect(store.claimDraft()).toEqual(acceptedSubmission);
     expect(store.notice()).toBe('operator.claim.verification.submitted');
-    expect(invalidate).toHaveBeenCalledTimes(1);
+    expect(applyMutation).toHaveBeenCalledWith(mutation);
+  });
+
+  it('hydrates the exact submitted company data when reopening a pending claim', async () => {
+    const submission: OperatorClaimRequestDto = {
+      ...claimSubmission(),
+      legalName: 'Exact Accepted Operator s.r.o.',
+      registrationNumber: 'SK-51 234 567'
+    };
+    loadClaimStatus.mockResolvedValue({
+      status: claimStatus(),
+      submission
+    });
+    const store = TestBed.inject(OperatorWorkspaceStore);
+
+    await store.loadClaimStatus();
+
+    expect(store.claimDraft()).toEqual(submission);
+    expect(store.claimStatus()?.verificationStatus).toBe('PENDING_REVIEW');
   });
 
   it('does not submit an incomplete company verification claim', async () => {
-    loadClaimStatus.mockResolvedValue(unclaimedStatus());
+    loadClaimStatus.mockResolvedValue({
+      status: unclaimedStatus(),
+      submission: null
+    });
     const store = TestBed.inject(OperatorWorkspaceStore);
     await store.loadClaimStatus();
     store.setClaimDraft({
@@ -222,6 +255,20 @@ function claimStatus(): OperatorClaimStatusDto {
     verificationStatus: 'PENDING_REVIEW',
     verificationSubmittedAt: '2026-07-28T18:00:00.000Z',
     legalName: 'Example Operator s.r.o.'
+  };
+}
+
+function claimSubmission(): OperatorClaimRequestDto {
+  return {
+    legalName: 'Example Operator s.r.o.',
+    registrationNumber: '51 234 567',
+    jurisdiction: 'Slovakia',
+    registeredAddress: 'Main Street 1, Bratislava',
+    website: 'https://operator.example.test/',
+    verificationContactName: 'Authorized Contact',
+    verificationContactRole: 'Managing director',
+    verificationContactEmail: 'contact@example.test',
+    authorityAttested: true
   };
 }
 

@@ -9,8 +9,8 @@ import type { ListQuery } from '../../../core/contracts/list.interface';
 import type {
   OperatorLeaderboardEntryDto,
   OperatorLeaderboardGroupSummaryDto,
-  OperatorLeaderboardPageDto,
-  OperatorRegistryMutationResultDto
+  OperatorLeaderboardMutationDto,
+  OperatorLeaderboardPageDto
 } from '../../../core/contracts/operator.interface';
 
 export interface OperatorLeaderboardFilters {
@@ -69,8 +69,8 @@ export class OperatorLeaderboardStore {
     return this.applyCacheOverlay(page, !query.cursor);
   }
 
-  applyRegistryMutation(
-    result: OperatorRegistryMutationResultDto
+  applyMutation(
+    result: OperatorLeaderboardMutationDto
   ): OperatorLeaderboardCacheMutation | null {
     const removedEntryIds = [...new Set(
       result.removedLeaderboardEntryIds

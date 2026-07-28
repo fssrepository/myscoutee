@@ -92,14 +92,8 @@
                     <span>{{ 'operator.claim.error.registration.required' | i18n }}</span>
                   </p>
                 }
-                @if (claimPath() === 'company' && claim.claimed) {
-                  <div class="operator-action-popup__claimed">
-                    <mat-icon>verified</mat-icon>
-                    <strong>{{ 'operator.claim.claimed' | i18n }}</strong>
-                    <span>{{ claim.claimantName }}</span>
-                    <b>{{ formatShare(claim.sharePercent) }}%</b>
-                  </div>
-                  @if (claim.verificationStatus === 'PENDING_REVIEW') {
+                @if (claim.verificationStatus === 'PENDING_REVIEW') {
+                  <div class="operator-action-popup__claim-review">
                     <p class="operator-action-popup__result is-pending" role="status">
                       <mat-icon>pending_actions</mat-icon>
                       <span class="operator-action-popup__result-copy">
@@ -109,26 +103,38 @@
                         </small>
                       </span>
                     </p>
-                  } @else if (
-                    claim.verificationStatus === 'APPROVED'
-                    || claim.verificationStatus === 'VERIFIED'
-                  ) {
-                    <p class="operator-action-popup__result is-success" role="status">
-                      <mat-icon>verified_user</mat-icon>
-                      <span>{{ 'operator.claim.verification.approved' | i18n }}</span>
+                    <span
+                      class="operator-action-popup__claim-share"
+                      [attr.title]="'operator.leaderboard.share' | i18n"
+                    >
+                      <mat-icon>pie_chart</mat-icon>
+                      {{ formatShare(claim.sharePercent) }}%
+                    </span>
+                  </div>
+                } @else if (
+                  claim.verificationStatus === 'APPROVED'
+                  || claim.verificationStatus === 'VERIFIED'
+                ) {
+                  <p class="operator-action-popup__result is-success" role="status">
+                    <mat-icon>verified_user</mat-icon>
+                    <span>{{ 'operator.claim.verification.approved' | i18n }}</span>
+                  </p>
+                }
+                @if (claimPath() === 'company') {
+                  @if (!claim.claimed) {
+                    <p class="operator-action-popup__hint">
+                      {{ 'operator.claim.verification.instructions' | i18n }}
                     </p>
                   }
-                } @else if (claimPath() === 'company') {
-                  <p class="operator-action-popup__hint">
-                    {{ 'operator.claim.verification.instructions' | i18n }}
-                  </p>
                   <app-form-flow
                     [model]="claimCompanyFormModel()"
                     [ngModel]="workspace.claimDraft()"
                     (ngModelChange)="onClaimDraftChange($event)"
                     [disabled]="busy()
                       || !registeredForClaim()
-                      || claim.verificationCapability !== 'AVAILABLE'"
+                      || claim.verificationCapability !== 'AVAILABLE'
+                      || claim.claimed
+                      || claim.verificationStatus === 'PENDING_REVIEW'"
                   ></app-form-flow>
                 } @else {
                   <p class="operator-action-popup__hint">
@@ -611,7 +617,13 @@
                 <span>{{ workspace.error() | i18n }}</span>
               </p>
             }
-            @if (workspace.notice()) {
+            @if (
+              workspace.notice()
+              && !(
+                activeKind === 'claim'
+                && workspace.claimStatus()?.verificationStatus === 'PENDING_REVIEW'
+              )
+            ) {
               <p class="operator-action-popup__result is-success" role="status">
                 <mat-icon>check_circle</mat-icon>
                 <span>{{ workspace.notice() | i18n }}</span>

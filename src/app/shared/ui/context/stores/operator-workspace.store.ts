@@ -180,12 +180,16 @@ export class OperatorWorkspaceStore {
   }
 
   async loadClaimStatus(): Promise<OperatorClaimStatusDto | null> {
-    const result = await this.run('load-claim', () => this.service.loadClaimStatus());
-    if (result) {
-      this.claimStatusRef.set(result);
-      this.seedClaimContact();
+    const overview = await this.run('load-claim', () => this.service.loadClaimStatus());
+    if (overview) {
+      this.claimStatusRef.set(overview.status);
+      if (overview.submission) {
+        this.claimDraftRef.set(structuredClone(overview.submission));
+      } else {
+        this.seedClaimContact();
+      }
     }
-    return result;
+    return overview?.status ?? null;
   }
 
   async issueGroupingToken(): Promise<OperatorGroupingTokenDto | null> {
@@ -207,22 +211,25 @@ export class OperatorWorkspaceStore {
       return null;
     }
     const draft = structuredClone(this.claimDraftRef());
-    const result = await this.run(
+    const mutation = await this.run(
       'claim-share',
       () => this.service.claimShare(draft)
     );
-    if (result) {
+    if (mutation) {
+      const result = mutation.status;
       this.claimStatusRef.set(result);
+      if (mutation.submission) {
+        this.claimDraftRef.set(structuredClone(mutation.submission));
+      }
       this.noticeRef.set(
         result.verificationStatus === 'PENDING_REVIEW'
           ? 'operator.claim.verification.submitted'
           : 'operator.claim.completed'
       );
-      if (result.claimed) {
-        this.leaderboard.invalidate();
-      }
+      this.leaderboard.applyMutation(mutation);
+      return result;
     }
-    return result;
+    return null;
   }
 
   async linkOperatorGroup(): Promise<OperatorClaimStatusDto | null> {

@@ -69,10 +69,28 @@ describe('LocalOperatorRegistryService', () => {
     expect(initial.registryOptions).toHaveLength(3);
     expect(registered.status.lifecycle).toBe('REGISTERED');
     expect(registered.leaderboardEntry?.id).toBe(deploymentCode);
-    expect(explicitClaim.claimed).toBe(true);
-    expect(explicitClaim.verificationStatus).toBe('PENDING_REVIEW');
-    expect(explicitClaim.claimedAt).toBe(explicitClaim.verificationSubmittedAt);
-    expect(explicitClaim.claimantName).toBe('Demo Operator s.r.o.');
+    expect(explicitClaim.status.claimed).toBe(true);
+    expect(explicitClaim.status.verificationStatus).toBe('PENDING_REVIEW');
+    expect(explicitClaim.status.claimedAt).toBe(
+      explicitClaim.status.verificationSubmittedAt
+    );
+    expect(explicitClaim.status.claimantName).toBe('Demo Operator s.r.o.');
+    expect(explicitClaim.submission).toEqual({
+      legalName: 'Demo Operator s.r.o.',
+      registrationNumber: '51 234 567',
+      jurisdiction: 'Slovakia',
+      registeredAddress: 'Main Street 1, Bratislava',
+      website: 'https://operator.example.test/',
+      verificationContactName: 'Demo Operator',
+      verificationContactRole: 'Managing director',
+      verificationContactEmail: 'operator@example.test',
+      authorityAttested: true
+    });
+    expect(explicitClaim.leaderboardEntry).toEqual(expect.objectContaining({
+      group: 'CLAIMED',
+      claimantName: 'Demo Operator s.r.o.'
+    }));
+    expect(explicitClaim.removedLeaderboardEntryIds).toEqual([deploymentCode]);
     expect(cached?.ledger).toEqual(ledgerBeforeGrouping);
     expect(cached?.ledger.find(item => item.id === deploymentCode)).toEqual(
       expect.objectContaining({
