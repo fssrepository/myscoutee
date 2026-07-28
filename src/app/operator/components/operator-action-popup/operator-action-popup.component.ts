@@ -125,7 +125,7 @@ export class OperatorActionPopupComponent {
       icon: 'business',
       kind: 'radio',
       layout: 'pill',
-      palette: 'purple',
+      palette: 'blue',
       active: this.claimPath() === 'company',
       checked: this.claimPath() === 'company',
       disabled: this.busy(),
