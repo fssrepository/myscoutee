@@ -1,14 +1,12 @@
 import { computed, signal, type Signal } from '@angular/core';
 import { TestBed } from '@angular/core/testing';
-import { ActivatedRoute, Router, convertToParamMap } from '@angular/router';
-import { of } from 'rxjs';
 
 import type { OperatorRegistryStatusDto } from '../../../shared/core/contracts/operator.interface';
 import { OperatorMenuStore } from '../../../shared/ui/context/stores/operator-menu.store';
 import { OperatorRegistryStore } from '../../../shared/ui/context/stores/operator-registry.store';
-import { OperatorRegistryPageComponent } from './operator-registry-page.component';
+import { OperatorRegistryPopupComponent } from './operator-registry-popup.component';
 
-describe('OperatorRegistryPageComponent', () => {
+describe('OperatorRegistryPopupComponent', () => {
   it('reactively enables inspection when the operator types a registry URL', async () => {
     const status = unconfiguredStatus();
     const statusSignal = signal<OperatorRegistryStatusDto | null>(status);
@@ -38,33 +36,21 @@ describe('OperatorRegistryPageComponent', () => {
     };
 
     TestBed.configureTestingModule({
-      imports: [OperatorRegistryPageComponent],
+      imports: [OperatorRegistryPopupComponent],
       providers: [
         { provide: OperatorRegistryStore, useValue: registryStore },
         {
           provide: OperatorMenuStore,
           useValue: {
-            activePopup: signal(null).asReadonly(),
+            activePopup: signal<'registry' | null>('registry').asReadonly(),
             open: vi.fn(),
             closePopup: vi.fn()
-          }
-        },
-        {
-          provide: ActivatedRoute,
-          useValue: {
-            queryParamMap: of(convertToParamMap({}))
-          }
-        },
-        {
-          provide: Router,
-          useValue: {
-            navigate: vi.fn().mockResolvedValue(true)
           }
         }
       ]
     });
 
-    const fixture = TestBed.createComponent(OperatorRegistryPageComponent);
+    const fixture = TestBed.createComponent(OperatorRegistryPopupComponent);
     await fixture.whenStable();
     const component = fixture.componentInstance;
     const componentView = component as unknown as {

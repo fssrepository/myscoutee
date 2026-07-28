@@ -891,7 +891,6 @@ export class SideMenuComponent implements OnDestroy {
             {
               id: 'operatorRegistry',
               label: 'Registry',
-              description: 'Available now',
               icon: 'verified_user',
               palette: 'violet',
               ariaLabel: 'Open registry and node settings'
@@ -899,26 +898,26 @@ export class SideMenuComponent implements OnDestroy {
             {
               id: 'operatorBranding',
               label: 'Branding',
-              description: 'Planned',
               icon: 'palette',
               palette: 'pink',
-              ariaLabel: 'Open planned branding workspace'
+              ariaLabel: 'Open branding workspace',
+              disabled: true
             },
             {
               id: 'operatorPayments',
               label: 'Payments',
-              description: 'Planned',
               icon: 'payments',
               palette: 'green',
-              ariaLabel: 'Open planned payments workspace'
+              ariaLabel: 'Open payments workspace',
+              disabled: true
             },
             {
               id: 'operatorFirebase',
               label: 'Firebase',
-              description: 'Planned',
               icon: 'notifications_active',
               palette: 'orange',
-              ariaLabel: 'Open planned Firebase workspace'
+              ariaLabel: 'Open Firebase workspace',
+              disabled: true
             }
           ]
         },
@@ -931,34 +930,34 @@ export class SideMenuComponent implements OnDestroy {
             {
               id: 'operatorLeaderboard',
               label: 'Leaderboard',
-              description: 'Planned',
               icon: 'leaderboard',
               palette: 'gold',
-              ariaLabel: 'Open planned leaderboard workspace'
+              ariaLabel: 'Open leaderboard workspace',
+              disabled: true
             },
             {
               id: 'operatorConnections',
               label: 'Connections',
-              description: 'Planned',
               icon: 'hub',
               palette: 'cyan',
-              ariaLabel: 'Open planned deployment connections workspace'
+              ariaLabel: 'Open deployment connections workspace',
+              disabled: true
             },
             {
               id: 'operatorUpdates',
               label: 'Updates',
-              description: 'Planned',
               icon: 'system_update_alt',
               palette: 'teal',
-              ariaLabel: 'Open planned updates workspace'
+              ariaLabel: 'Open updates workspace',
+              disabled: true
             },
             {
               id: 'operatorCommunity',
               label: 'Community',
-              description: 'Planned',
               icon: 'forum',
               palette: 'purple',
-              ariaLabel: 'Open planned community workspace'
+              ariaLabel: 'Open community workspace',
+              disabled: true
             }
           ]
         }
@@ -1474,16 +1473,7 @@ export class SideMenuComponent implements OnDestroy {
   ): void {
     event.sourceEvent.stopPropagation();
     this.closeSideMenu();
-    if (event.id === 'operatorRegistry') {
-      this.operatorMenuStore.closePopup();
-      void this.router.navigate(['/operator']);
-      return;
-    }
-    const popupKind = this.operatorPopupKind(event.id);
-    if (popupKind) {
-      this.operatorMenuStore.open(popupKind);
-    }
-    void this.router.navigate(['/operator']);
+    void this.openOperatorPopupAfterNavigation(this.operatorPopupKind(event.id));
   }
 
   protected onShareProfile(event: Event): void {
@@ -2098,8 +2088,10 @@ export class SideMenuComponent implements OnDestroy {
     return isNavigatorHydrationRoute(routeUrl);
   }
 
-  private operatorPopupKind(id: NavigatorOperatorMenuShortcutId): OperatorMenuKind | null {
+  private operatorPopupKind(id: NavigatorOperatorMenuShortcutId): OperatorMenuKind {
     switch (id) {
+      case 'operatorRegistry':
+        return 'registry';
       case 'operatorBranding':
         return 'branding';
       case 'operatorPayments':
@@ -2114,9 +2106,17 @@ export class SideMenuComponent implements OnDestroy {
         return 'updates';
       case 'operatorCommunity':
         return 'community';
-      case 'operatorRegistry':
-        return null;
     }
+  }
+
+  private async openOperatorPopupAfterNavigation(kind: OperatorMenuKind): Promise<void> {
+    const navigated = await this.router.navigate(['/operator']);
+    const path = AppUtils.normalizeRoutePath(this.router.url);
+    if (!navigated || (path !== '/operator' && path !== '/operator/')) {
+      this.operatorMenuStore.closePopup();
+      return;
+    }
+    this.operatorMenuStore.open(kind);
   }
 
   private async runUserRealtimeLongPollTick(userId: string): Promise<void> {

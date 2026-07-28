@@ -1,79 +1,12 @@
-<main class="operator-workspace">
-  <header class="operator-header">
-    <a class="operator-brand" aria-label="MyScoutee operator">
-      <img src="assets/logo/heart.webp" alt="" />
-      <span>yScoutee</span>
-    </a>
-    @if (status(); as registryStatus) {
-      <div class="operator-mode-badges">
-        <span class="operator-badge" [class.is-real]="registryStatus.mode === 'REAL'">
-          <mat-icon>{{ registryStatus.mode === 'REAL' ? 'verified' : 'science' }}</mat-icon>
-          {{ registryStatus.mode === 'REAL' ? 'Real operator' : 'Explore demo' }}
-        </span>
-        @if (registryStatus.simulation) {
-          <span class="operator-badge is-sample">
-            <mat-icon>data_object</mat-icon>
-            Sample
-          </span>
-        } @else if (registryStatus.mode === 'DEMO') {
-          <span class="operator-badge is-isolated">
-            <mat-icon>lan</mat-icon>
-            Isolated registry
-          </span>
-        }
-      </div>
-    }
-  </header>
-
-  <section class="operator-shell">
-    <nav class="operator-workspace-menu" aria-label="Operator workspace">
-      <div class="operator-workspace-menu-heading">
-        <span>Operator</span>
-        <small>Deployment settings</small>
-      </div>
-      <div class="operator-workspace-menu-items">
-        @for (panel of panels; track panel.id) {
-          <button
-            type="button"
-            matRipple
-            [class.is-active]="activePanelId() === panel.id"
-            [attr.aria-current]="activePanelId() === panel.id ? 'page' : null"
-            (click)="selectPanel(panel)"
-          >
-            <mat-icon>{{ panel.icon }}</mat-icon>
-            <span>
-              <strong>{{ panel.label }}</strong>
-              <small>{{ panel.available ? 'Available now' : 'Planned workspace' }}</small>
-            </span>
-          </button>
-        }
-      </div>
-    </nav>
-
-    <section class="operator-content">
-      @if (activePanelId() === 'registry') {
-        <header class="operator-content-heading">
-          <div>
-            <p>Deployment control plane</p>
-            <h1>Registry & node</h1>
-            <span>
-              Inspect a registry’s signed identity, explicitly approve it, then let the Java server
-              create and protect this deployment’s signing key.
-            </span>
-          </div>
-          <button
-            type="button"
-            class="operator-icon-button"
-            [disabled]="busy()"
-            aria-label="Refresh registry status"
-            matRipple
-            (click)="loadStatus()"
-          >
-            <mat-icon [class.is-spinning]="busyAction() === 'load'">refresh</mat-icon>
-          </button>
-        </header>
-
-        @if (status(); as registryStatus) {
+@if (operatorMenu.activePopup() === 'registry') {
+  <app-popup [model]="popupModel()">
+    <div class="operator-registry-popup-body">
+      <div
+        class="operator-registry-popup-scroll"
+        [attr.aria-hidden]="busyAction() && status() ? 'true' : null"
+        [attr.inert]="busyAction() && status() ? '' : null"
+      >
+      @if (status(); as registryStatus) {
           @if (registryStatus.simulation) {
             <aside class="operator-notice is-sample" role="note">
               <mat-icon>info</mat-icon>
@@ -108,76 +41,6 @@
               </div>
             </aside>
           }
-
-          <section class="operator-status-summary">
-            <article>
-              <span class="operator-status-icon" [attr.data-state]="registryStatus.lifecycle">
-                <mat-icon>{{ registryStatus.lifecycle === 'REGISTERED' ? 'check_circle' : 'dns' }}</mat-icon>
-              </span>
-              <div>
-                <small>Connection</small>
-                <strong>{{ lifecycleLabel(registryStatus.lifecycle) }}</strong>
-              </div>
-            </article>
-            <article>
-              <span class="operator-status-icon" [attr.data-state]="registryStatus.nodeIdentity.state">
-                <mat-icon>key</mat-icon>
-              </span>
-              <div>
-                <small>Node identity</small>
-                <strong>{{ registryStatus.nodeIdentity.state }}</strong>
-              </div>
-            </article>
-            <article>
-              <span class="operator-status-icon" [attr.data-state]="registryStatus.enrollment ? 'REGISTERED' : 'MISSING'">
-                <mat-icon>badge</mat-icon>
-              </span>
-              <div>
-                <small>Deployment</small>
-                <strong>{{ registryStatus.enrollment ? 'Code issued' : 'Not registered' }}</strong>
-              </div>
-            </article>
-            <article>
-              <span class="operator-status-icon" [attr.data-state]="registryStatus.enrollment?.installationTestBatchId ? 'REGISTERED' : 'MISSING'">
-                <mat-icon>receipt_long</mat-icon>
-              </span>
-              <div>
-                <small>Installation test</small>
-                <strong>{{ registryStatus.enrollment?.installationTestBatchId ? 'Receipt stored' : 'Waiting' }}</strong>
-              </div>
-            </article>
-          </section>
-
-          <section class="operator-progress-card" aria-label="Registration progress">
-            <div class="operator-section-heading">
-              <div>
-                <p>Signed workflow</p>
-                <h2>Registration progress</h2>
-              </div>
-              @if (busyAction(); as action) {
-                <span class="operator-working-pill">
-                  <mat-icon class="is-spinning">progress_activity</mat-icon>
-                  {{ action === 'inspect' ? 'Inspecting' : action === 'confirm' ? 'Registering' : action === 'retry' ? 'Retrying' : action === 'disconnect' ? 'Disabling' : 'Loading' }}
-                </span>
-              }
-            </div>
-            <ol class="operator-progress-list">
-              @for (step of progressSteps(); track step.id; let last = $last) {
-                <li [attr.data-state]="step.state">
-                  <span class="operator-step-marker">
-                    <mat-icon>{{ step.state === 'done' ? 'check' : step.state === 'error' ? 'priority_high' : step.icon }}</mat-icon>
-                  </span>
-                  <span class="operator-step-copy">
-                    <strong>{{ step.label }}</strong>
-                    <small>{{ step.detail }}</small>
-                  </span>
-                  @if (!last) {
-                    <span class="operator-step-line" aria-hidden="true"></span>
-                  }
-                </li>
-              }
-            </ol>
-          </section>
 
           @if (registryStatus.enrollment; as enrollment) {
             <section class="operator-detail-grid">
@@ -494,8 +357,8 @@
           }
         } @else if (busyAction() === 'load') {
           <section class="operator-loading-state" aria-busy="true">
-            <mat-icon class="is-spinning">progress_activity</mat-icon>
-            <strong>Loading operator registry state…</strong>
+            <app-indicator kind="load-ring" state="loading"></app-indicator>
+            <strong>{{ busyLabel() }}</strong>
           </section>
         } @else {
           <section class="operator-loading-state is-error">
@@ -504,32 +367,17 @@
             <button type="button" class="operator-secondary-button" (click)="loadStatus()">Try again</button>
           </section>
         }
-      } @else {
-        <header class="operator-content-heading">
-          <div>
-            <p>Operator workspace roadmap</p>
-            <h1>{{ activePanel().label }}</h1>
-            <span>{{ activePanel().description }}</span>
-          </div>
-          <span class="operator-planned-pill">Planned</span>
-        </header>
-        <section class="operator-future-panel">
-          <span><mat-icon>{{ activePanel().icon }}</mat-icon></span>
-          <h2>{{ activePanel().label }} is intentionally not active yet</h2>
-          <p>
-            This menu position is reserved so the Operator workspace grows without changing its
-            navigation model. The current milestone implements only the signed Registry & node flow.
-          </p>
-          <button type="button" class="operator-primary-button" matRipple (click)="selectPanel(panels[0]!)">
-            <mat-icon>dns</mat-icon>
-            Open Registry & node
-          </button>
-        </section>
-      }
-    </section>
-  </section>
-</main>
+      </div>
 
-@if (plannedPopupComponent(); as popupComponent) {
-  <ng-container *ngComponentOutlet="popupComponent"></ng-container>
+      @if (busyAction() && status()) {
+        <div class="operator-registry-loading-overlay" aria-busy="true" aria-live="polite">
+          <div class="operator-registry-loading-scrim"></div>
+          <div class="operator-registry-loading-card">
+            <app-indicator kind="load-ring" state="loading"></app-indicator>
+            <span>{{ busyLabel() }}</span>
+          </div>
+        </div>
+      }
+    </div>
+  </app-popup>
 }

@@ -1,0 +1,69 @@
+<div class="operator-page-scroll">
+  <main class="operator-home" [attr.aria-busy]="loading() || busyAction() === 'load'">
+    <header class="operator-home-header">
+      <a class="operator-brand" aria-label="MyScoutee operator">
+        <img class="operator-brand-mark" src="assets/logo/heart.webp" alt="MyScoutee logo" />
+        <span class="operator-brand-text">yScoutee</span>
+      </a>
+      <div class="operator-home-heading">
+        <span>Operator</span>
+        <small>Deployment overview</small>
+      </div>
+    </header>
+
+    @if (loading()) {
+      <section class="operator-home-loading" aria-busy="true" aria-live="polite">
+        <app-indicator kind="load-ring" state="loading"></app-indicator>
+        <span>Loading deployment state…</span>
+      </section>
+    } @else {
+      @if (errorMessage()) {
+        <p class="operator-state-message operator-state-message--error" role="alert">
+          <mat-icon>error_outline</mat-icon>
+          <span>{{ errorMessage() }}</span>
+        </p>
+      }
+
+      <section class="operator-status-grid" aria-label="Deployment status">
+        @for (card of statusCards(); track card.id) {
+          <article class="operator-status-card" [attr.data-tone]="card.tone">
+            <span class="operator-status-icon" aria-hidden="true">
+              <mat-icon>{{ card.icon }}</mat-icon>
+            </span>
+            <span class="operator-status-copy">
+              <small>{{ card.label }}</small>
+              <strong>{{ card.value }}</strong>
+              <span>{{ card.detail }}</span>
+            </span>
+          </article>
+        }
+      </section>
+
+      <section class="operator-progress-panel" aria-labelledby="operator-progress-title">
+        <header class="operator-progress-header">
+          <p>Signed workflow</p>
+          <h1 id="operator-progress-title">Registration progress</h1>
+        </header>
+        <ol class="operator-progress-list">
+          @for (step of progressSteps(); track step.id) {
+            <li class="operator-progress-step" [attr.data-state]="step.state">
+              <span class="operator-progress-icon" aria-hidden="true">
+                <mat-icon>{{ step.icon }}</mat-icon>
+              </span>
+              <span class="operator-progress-copy">
+                <strong>{{ step.label }}</strong>
+                <small>{{ step.detail }}</small>
+              </span>
+            </li>
+          }
+        </ol>
+      </section>
+    }
+  </main>
+</div>
+
+@if (registryPopupOpen()) {
+  @if (registryPopupComponent(); as component) {
+    <ng-container *ngComponentOutlet="component"></ng-container>
+  }
+}

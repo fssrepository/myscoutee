@@ -1,6 +1,7 @@
 import { Injectable, signal } from '@angular/core';
 
 export type OperatorMenuKind =
+  | 'registry'
   | 'branding'
   | 'payments'
   | 'firebase'
@@ -25,4 +26,3 @@ export class OperatorMenuStore {
     this.activePopupRef.set(null);
   }
 }
-

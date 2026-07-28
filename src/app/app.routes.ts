@@ -158,8 +158,8 @@ export const routes: Routes = [
   {
     path: 'operator',
     canActivate: [operatorAreaGuard],
-    loadComponent: () => import('./operator/components/operator-registry-page/operator-registry-page.component')
-      .then(m => m.OperatorRegistryPageComponent)
+    loadComponent: () => import('./operator/components/operator-page/operator-page.component')
+      .then(m => m.OperatorPageComponent)
   },
   {
     path: '',
