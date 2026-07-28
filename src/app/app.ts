@@ -13,6 +13,7 @@ import { PromptComponent, type PromptModel } from './shared/ui/components/core/p
 import { PwaService } from './shared/core/base/services/pwa.service';
 import { I18nService } from './shared/core/base/services/i18n.service';
 import { AppLocationService } from './shared/core/base/services/app-location.service';
+import { DeploymentConfigurationService } from './shared/core/base/services/deployment-configuration.service';
 
 @Component({
   selector: 'app-root',
@@ -48,6 +49,7 @@ export class App implements OnDestroy {
   private readonly pwaService = inject(PwaService);
   private readonly i18nService = inject(I18nService);
   private readonly appLocationService = inject(AppLocationService);
+  private readonly deploymentConfiguration = inject(DeploymentConfigurationService);
   private readonly routerEventsSubscription: Subscription;
   private readonly sideMenuComponentRef = signal<Type<unknown> | null>(null);
   private sideMenuComponentLoadPromise: Promise<void> | null = null;
@@ -59,6 +61,7 @@ export class App implements OnDestroy {
   protected readonly sideMenuComponent = this.sideMenuComponentRef.asReadonly();
   protected routeWarmupVisible = false;
   protected readonly installPromptVisible = this.pwaService.installPromptVisible;
+  protected readonly deploymentBranding = this.deploymentConfiguration.branding;
   protected readonly installPromptBusy = this.pwaService.installBusy;
   protected readonly installPromptModel = computed<PromptModel>(() => {
     const visible = this.installPromptVisible();
@@ -90,6 +93,7 @@ export class App implements OnDestroy {
     const initialRouteUrl = this.resolveInitialRouteUrl();
     this.i18nService.initialize();
     this.appLocationService.initialize();
+    void this.deploymentConfiguration.initialize();
     void this.pwaService.initialize();
     this.syncSideMenuVisibility(initialRouteUrl);
     this.initialLandingWarmupPending = this.shouldShowLandingWarmup(initialRouteUrl);

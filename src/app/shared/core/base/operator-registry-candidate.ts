@@ -19,28 +19,28 @@ export function validateOperatorRegistryBaseUrl(
 ): string {
   const candidate = `${value ?? ''}`.trim();
   if (!candidate) {
-    return 'Enter the registry server URL.';
+    return 'operator.registration.error.url.required';
   }
   if (/[\r\n\t]/.test(candidate) || !REGISTRY_ORIGIN_PATTERN.test(candidate)) {
-    return 'Enter an origin-only registry URL without a path, query, or fragment.';
+    return 'operator.registration.error.url.origin';
   }
 
   try {
     const parsed = new URL(candidate);
     if (parsed.protocol !== 'https:' && parsed.protocol !== 'http:') {
-      return 'The registry URL must use HTTP or HTTPS.';
+      return 'operator.registration.error.url.protocol';
     }
     if (!parsed.hostname || parsed.username || parsed.password) {
-      return 'The registry URL must not contain credentials.';
+      return 'operator.registration.error.url.credentials';
     }
     if (parsed.pathname !== '/' || parsed.search || parsed.hash) {
-      return 'Enter an origin-only registry URL without a path, query, or fragment.';
+      return 'operator.registration.error.url.origin';
     }
     if (requireHttps && parsed.protocol !== 'https:') {
-      return 'Real operator registry connections require HTTPS.';
+      return 'operator.registration.error.url.https.required';
     }
   } catch {
-    return 'Enter a valid absolute registry URL.';
+    return 'operator.registration.error.url.invalid';
   }
   return '';
 }
@@ -51,7 +51,7 @@ export function validateOperatorRegistryScope(value: string): string {
     return '';
   }
   if (!REGISTRY_SCOPE_PATTERN.test(scope)) {
-    return 'The registry scope must be 3–128 lowercase ASCII letters, digits, dots, colons, underscores, or hyphens, and begin with a letter or digit.';
+    return 'operator.registration.error.scope.invalid';
   }
   return '';
 }

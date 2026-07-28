@@ -4,33 +4,39 @@ import { TestBed } from '@angular/core/testing';
 import type { OperatorRegistryStatusDto } from '../../../shared/core/contracts/operator.interface';
 import { OperatorMenuStore } from '../../../shared/ui/context/stores/operator-menu.store';
 import { OperatorRegistryStore } from '../../../shared/ui/context/stores/operator-registry.store';
+import type { LinkInputConfig } from '../../../shared/ui/components/core/form/inputs/link-input';
+import type { PopupModel } from '../../../shared/ui/components/core/popup';
 import { OperatorRegistryPopupComponent } from './operator-registry-popup.component';
 
 describe('OperatorRegistryPopupComponent', () => {
-  it('reactively enables inspection when the operator types a registry URL', async () => {
-    const status = unconfiguredStatus();
+  afterEach(() => {
+    TestBed.resetTestingModule();
+  });
+
+  it('uses a compact popup and disables only the current registry selector option', async () => {
+    const status = registeredStatus();
     const statusSignal = signal<OperatorRegistryStatusDto | null>(status);
-    const registryBaseUrl = signal('');
-    const expectedRegistryScope = signal('');
+    const registryBaseUrl = signal(status.selection?.baseUrl ?? '');
+    const expectedRegistryScope = signal(status.selection?.registryScope ?? '');
     const busyAction = signal(null);
     const registryStore = {
       status: statusSignal.asReadonly(),
-      inspection: signal(null).asReadonly(),
       busyAction: busyAction.asReadonly(),
       error: signal('').asReadonly(),
       notice: signal('').asReadonly(),
       registryBaseUrl: registryBaseUrl.asReadonly(),
       expectedRegistryScope: expectedRegistryScope.asReadonly(),
-      canInspect: computed(() =>
+      registryOptions: computed(() => statusSignal()?.registryOptions ?? []),
+      canRegister: computed(() =>
         busyAction() === null
-        && Boolean(registryBaseUrl().trim())
-        && !(statusSignal()?.enabled && statusSignal()?.lifecycle === 'REGISTERED')
+        && registryBaseUrl() !== statusSignal()?.selection?.baseUrl
       ),
       setRegistryBaseUrl: (value: string) => registryBaseUrl.set(value),
       setExpectedRegistryScope: (value: string) => expectedRegistryScope.set(value),
       loadStatus: vi.fn().mockResolvedValue(status),
+      register: vi.fn(),
+      disconnect: vi.fn(),
       clearFeedback: vi.fn(),
-      clearInspection: vi.fn(),
       setError: vi.fn(),
       setNotice: vi.fn()
     };
@@ -42,8 +48,7 @@ describe('OperatorRegistryPopupComponent', () => {
         {
           provide: OperatorMenuStore,
           useValue: {
-            activePopup: signal<'registry' | null>('registry').asReadonly(),
-            open: vi.fn(),
+            activePopup: signal<'registration' | null>('registration').asReadonly(),
             closePopup: vi.fn()
           }
         }
@@ -52,39 +57,72 @@ describe('OperatorRegistryPopupComponent', () => {
 
     const fixture = TestBed.createComponent(OperatorRegistryPopupComponent);
     await fixture.whenStable();
-    const component = fixture.componentInstance;
-    const componentView = component as unknown as {
-      canInspect: Signal<boolean>;
+    fixture.detectChanges();
+    const componentView = fixture.componentInstance as unknown as {
+      popupModel: () => PopupModel;
+      registryUrlConfig: Signal<LinkInputConfig>;
     };
 
-    expect(componentView.canInspect()).toBe(false);
-
-    registryStore.setRegistryBaseUrl('https://registry.example.com');
-    expect(componentView.canInspect()).toBe(true);
-
-    registryStore.setRegistryBaseUrl('');
-    expect(componentView.canInspect()).toBe(false);
+    expect(componentView.popupModel().size).toBe('small');
+    expect(componentView.popupModel().height).toBe('auto');
+    expect(componentView.registryUrlConfig().availableUrls).toEqual([
+      expect.objectContaining({
+        url: 'https://registry.example.com',
+        disabled: true
+      }),
+      expect.objectContaining({
+        url: 'https://registry-two.example.com',
+        disabled: false
+      })
+    ]);
+    expect(fixture.nativeElement.textContent).not.toContain('Sample data');
+    expect(fixture.nativeElement.textContent).not.toContain('fingerprint');
   });
 });
 
-function unconfiguredStatus(): OperatorRegistryStatusDto {
+function registeredStatus(): OperatorRegistryStatusDto {
   return {
     mode: 'DEMO',
-    lifecycle: 'UNCONFIGURED',
-    enabled: false,
+    lifecycle: 'REGISTERED',
+    enabled: true,
     simulation: true,
     candidateDefaults: {
-      baseUrl: '',
-      registryScope: ''
+      baseUrl: 'https://registry.example.com',
+      registryScope: 'demo:registry'
     },
+    registryOptions: [
+      {
+        id: 'registry-primary',
+        label: 'Primary registry',
+        baseUrl: 'https://registry.example.com',
+        registryScope: 'demo:registry',
+        selected: true
+      },
+      {
+        id: 'registry-secondary',
+        label: 'Secondary registry',
+        baseUrl: 'https://registry-two.example.com',
+        registryScope: 'demo:secondary',
+        selected: false
+      }
+    ],
     draftInspection: null,
-    selection: null,
-    nodeIdentity: {
-      state: 'MISSING',
-      publicKeyFingerprint: null,
-      initializedAt: null
+    selection: {
+      baseUrl: 'https://registry.example.com',
+      registryScope: 'demo:registry',
+      confirmedAt: '2026-07-28T10:00:00.000Z'
     },
-    enrollment: null,
+    nodeIdentity: {
+      state: 'SIMULATED',
+      initializedAt: '2026-07-28T10:00:00.000Z'
+    },
+    enrollment: {
+      deploymentCode: 'dep_demo',
+      installationTestBatchId: 'batch_demo',
+      installationTestAcceptedAt: '2026-07-28T10:00:00.000Z',
+      installationTestLedgerIndex: 1,
+      completedAt: '2026-07-28T10:00:00.000Z'
+    },
     audit: {
       createdAt: null,
       updatedAt: null,

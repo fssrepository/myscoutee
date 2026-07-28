@@ -8,6 +8,7 @@ import type { AuthMode } from '../../../shared/core/common/constants';
 import type { IdeaArticleDetailDto } from '../../../shared/core/contracts/content.interface';
 import type { FirebaseAuthProfileDto } from '../../../shared/core/contracts/user.interface';
 import { IdeaPostsService } from '../../../shared/core/base/services/idea-posts.service';
+import { DeploymentConfigurationService } from '../../../shared/core/base/services/deployment-configuration.service';
 import {
   InfoCardComponent, WarpImageCardComponent, type InfoCardData, type WarpImageCardData
 } from '../../../shared/ui/components/core/smart-list/card';
@@ -63,6 +64,8 @@ export class EntryLandingComponent implements OnInit, OnChanges, OnDestroy {
   private readonly documentRef = inject(DOCUMENT);
   private readonly cdr = inject(ChangeDetectorRef);
   private readonly ideaPosts = inject(IdeaPostsService);
+  private readonly deploymentConfiguration = inject(DeploymentConfigurationService);
+  protected readonly deploymentBranding = this.deploymentConfiguration.branding;
 
   @Input({ required: true }) authMode: AuthMode = 'selector';
   @Input() firebaseAuthProfile: FirebaseAuthProfileDto | null = null;

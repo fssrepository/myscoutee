@@ -62,6 +62,7 @@ import {
 import {
   ExplanationGuideService,
   HelpCenterService,
+  I18nService,
   PrivacyPolicyService,
   SessionService,
   TermsPolicyService,
@@ -104,8 +105,7 @@ import { ActivityInvitePopupStore } from '../../context/stores/activity-invite-p
 import { AdminMenuStore } from '../../context/stores/admin-menu.store';
 import { AdminWorkspaceStore } from '../../context/stores/admin-workspace.store';
 import {
-  OperatorMenuStore,
-  type OperatorMenuKind
+  OperatorMenuStore
 } from '../../context/stores/operator-menu.store';
 import { isNavigatorHydrationRoute } from './navigator-hydration-route';
 import { NotificationCenterStore } from '../../context/stores/notification-center.store';
@@ -123,6 +123,7 @@ interface SideMenuUiState {
 
 type NavigatorAvatarMenuItemId = 'navigator-avatar';
 type NavigatorAvatarMenuContext = { kind: 'toggle-menu' };
+type NavigatorOperatorCommunityMenuItemId = 'operator-community';
 type NotificationAttentionMenuItemId = 'notification-attention';
 
 interface NavigatorMenuUser extends UserDto {
@@ -158,17 +159,7 @@ type NavigatorAdminMenuShortcutId =
   | 'adminMetrics'
   | 'adminGraph';
 
-type NavigatorOperatorMenuShortcutId =
-  | 'operatorBranding'
-  | 'operatorPayments'
-  | 'operatorFirebase'
-  | 'operatorLeaderboard'
-  | 'operatorConnections'
-  | 'operatorUpdates'
-  | 'operatorCommunity';
-
 type NavigatorSettingsMenuItemId =
-  | 'operator-workspace'
   | 'help'
   | 'feedback'
   | 'report-bugs'
@@ -221,6 +212,7 @@ export class SideMenuComponent implements OnDestroy {
   private readonly helpCenterService = inject(HelpCenterService);
   private readonly privacyPolicy = inject(PrivacyPolicyService);
   private readonly termsPolicy = inject(TermsPolicyService);
+  private readonly i18n = inject(I18nService);
   private readonly usersService = inject(UsersService);
   private readonly sessionService = inject(SessionService);
   private readonly dialogStore = inject(DialogStore);
@@ -388,6 +380,16 @@ export class SideMenuComponent implements OnDestroy {
       context: { kind: 'toggle-menu' }
     }];
   });
+  protected readonly operatorCommunityMenuItems = computed<readonly AppMenuItem<NavigatorOperatorCommunityMenuItemId>[]>(() => [{
+    id: 'operator-community',
+    label: 'operator.community',
+    icon: 'forum',
+    palette: 'purple',
+    layout: 'pill',
+    active: this.operatorMenuStore.activePopup() === 'community',
+    disabled: !this.canToggleAvatarMenu(),
+    ariaLabel: 'operator.community.open'
+  }]);
   protected readonly notificationAttentionTrigger = computed<AppMenuTrigger>(() => {
     const unreadCount = this.notificationCenterStore.unreadCount();
     return {
@@ -459,14 +461,6 @@ export class SideMenuComponent implements OnDestroy {
   });
   protected readonly settingsMenuItems = computed<readonly AppMenuItem<NavigatorHeaderActionMenuItemId>[]>(() => {
     const items: AppMenuItem<NavigatorHeaderActionMenuItemId>[] = [];
-    if (this.isOperatorMode()) {
-      items.push({
-        id: 'operator-workspace',
-        label: 'Operator settings',
-        icon: 'settings_input_component',
-        ariaLabel: 'Open operator deployment settings'
-      });
-    }
     items.push({
         id: 'help',
         label: 'Help',
@@ -528,8 +522,9 @@ export class SideMenuComponent implements OnDestroy {
   protected readonly navigatorHeaderActionMenuModel = computed<AppMenuModel<NavigatorHeaderActionMenuItemId>>(() => {
     const notificationCount = this.notificationCenterStore.unreadCount();
     const notificationsMuted = this.notificationCenterStore.muted();
-    const items: AppMenuItem<NavigatorHeaderActionMenuItemId>[] = [
-      {
+    const items: AppMenuItem<NavigatorHeaderActionMenuItemId>[] = [];
+    if (!this.isOperatorMode()) {
+      items.push({
         id: 'notifications',
         label: 'Notifications',
         icon: notificationsMuted ? 'notifications_off' : 'notifications',
@@ -547,8 +542,8 @@ export class SideMenuComponent implements OnDestroy {
               durationMs: SideMenuComponent.USER_MENU_LOAD_DURATION_MS
             }
           : null
-      }
-    ];
+      });
+    }
     if (!this.isPrivilegedWorkspaceMode()) {
       items.push(
         {
@@ -878,85 +873,6 @@ export class SideMenuComponent implements OnDestroy {
       ]
     };
   });
-  protected readonly operatorNavigatorMenuModel = computed<AppMenuModel<NavigatorOperatorMenuShortcutId>>(() => {
-    return {
-      nodes: [
-        {
-          id: 'operator-deployment',
-          label: 'Deployment',
-          icon: 'dns',
-          palette: 'violet',
-          items: [
-            {
-              id: 'operatorBranding',
-              label: 'Branding',
-              icon: 'palette',
-              palette: 'pink',
-              ariaLabel: 'Open branding workspace',
-              disabled: true
-            },
-            {
-              id: 'operatorPayments',
-              label: 'Payments',
-              icon: 'payments',
-              palette: 'green',
-              ariaLabel: 'Open payments workspace',
-              disabled: true
-            },
-            {
-              id: 'operatorFirebase',
-              label: 'Firebase',
-              icon: 'notifications_active',
-              palette: 'orange',
-              ariaLabel: 'Open Firebase workspace',
-              disabled: true
-            }
-          ]
-        },
-        {
-          id: 'operator-network',
-          label: 'Network & ownership',
-          icon: 'hub',
-          palette: 'blue',
-          items: [
-            {
-              id: 'operatorLeaderboard',
-              label: 'Leaderboard',
-              icon: 'leaderboard',
-              palette: 'gold',
-              ariaLabel: 'Open leaderboard workspace',
-              disabled: true
-            },
-            {
-              id: 'operatorConnections',
-              label: 'Connections',
-              icon: 'hub',
-              palette: 'cyan',
-              ariaLabel: 'Open deployment connections workspace',
-              disabled: true
-            },
-            {
-              id: 'operatorUpdates',
-              label: 'Updates',
-              icon: 'system_update_alt',
-              palette: 'teal',
-              ariaLabel: 'Open updates workspace',
-              disabled: true
-            },
-            {
-              id: 'operatorCommunity',
-              label: 'Community',
-              icon: 'forum',
-              palette: 'purple',
-              ariaLabel: 'Open community workspace',
-              disabled: true
-            }
-          ]
-        }
-      ]
-    };
-  });
-
   constructor() {
     this.profileStore.registerBindings(this.profileBindings);
 
@@ -1287,6 +1203,16 @@ export class SideMenuComponent implements OnDestroy {
     this.menuOpenRef.update(open => !open);
   }
 
+  protected onOperatorCommunityMenuSelect(
+    event: AppMenuItemSelectEvent<NavigatorOperatorCommunityMenuItemId>
+  ): void {
+    if (event.id !== 'operator-community' || !this.canToggleAvatarMenu()) {
+      return;
+    }
+    event.sourceEvent.stopPropagation();
+    this.operatorMenuStore.open('community');
+  }
+
   protected onNotificationAttentionSelect(
     event: AppMenuItemSelectEvent<string>
   ): void {
@@ -1361,11 +1287,6 @@ export class SideMenuComponent implements OnDestroy {
         this.onShareProfile(event.sourceEvent);
         return;
       case 'settings':
-        return;
-      case 'operator-workspace':
-        this.operatorMenuStore.closePopup();
-        this.closeSideMenu();
-        void this.router.navigate(['/operator']);
         return;
       case 'help':
       case 'feedback':
@@ -1460,14 +1381,6 @@ export class SideMenuComponent implements OnDestroy {
     }
   }
 
-  protected onOperatorNavigatorMenuSelect(
-    event: AppMenuItemSelectEvent<NavigatorOperatorMenuShortcutId>
-  ): void {
-    event.sourceEvent.stopPropagation();
-    this.closeSideMenu();
-    void this.openOperatorPopupAfterNavigation(this.operatorPopupKind(event.id));
-  }
-
   protected onShareProfile(event: Event): void {
     event.stopPropagation();
     const baseHref = document.querySelector('base')?.getAttribute('href') ?? '/';
@@ -1494,13 +1407,13 @@ export class SideMenuComponent implements OnDestroy {
       return {
         ...ProfileHeaderCardConverter.convert(user, {
           admin: true,
-          headline: 'Operator workspace',
+          headline: this.i18n.translate('operator.workspace.title'),
           showEdit: true,
           editDisabled: !this.runtimeStore.isOnline(),
-          editAriaLabel: 'Open operator profile'
+          editAriaLabel: this.i18n.translate('operator.profile.open')
         }),
-        badgeLabel: 'OPERATOR',
-        meta: 'Operator workspace',
+        badgeLabel: this.i18n.translate('operator'),
+        meta: this.i18n.translate('operator.workspace.title'),
         metaIcon: 'settings_input_component'
       };
     }
@@ -1535,7 +1448,7 @@ export class SideMenuComponent implements OnDestroy {
 
   protected navigatorOfflineNote(): string {
     if (this.isOperatorMode()) {
-      return 'Offline mode is active. Registry operations wait for the connection to return.';
+      return this.i18n.translate('operator.workspace.offline');
     }
     if (this.isAdminMode()) {
       return 'Offline mode is active. Admin actions wait for the connection to return.';
@@ -2085,35 +1998,6 @@ export class SideMenuComponent implements OnDestroy {
     return isNavigatorHydrationRoute(routeUrl);
   }
 
-  private operatorPopupKind(id: NavigatorOperatorMenuShortcutId): OperatorMenuKind {
-    switch (id) {
-      case 'operatorBranding':
-        return 'branding';
-      case 'operatorPayments':
-        return 'payments';
-      case 'operatorFirebase':
-        return 'firebase';
-      case 'operatorLeaderboard':
-        return 'leaderboard';
-      case 'operatorConnections':
-        return 'connections';
-      case 'operatorUpdates':
-        return 'updates';
-      case 'operatorCommunity':
-        return 'community';
-    }
-  }
-
-  private async openOperatorPopupAfterNavigation(kind: OperatorMenuKind): Promise<void> {
-    const navigated = await this.router.navigate(['/operator']);
-    const path = AppUtils.normalizeRoutePath(this.router.url);
-    if (!navigated || (path !== '/operator' && path !== '/operator/')) {
-      this.operatorMenuStore.closePopup();
-      return;
-    }
-    this.operatorMenuStore.open(kind);
-  }
-
   private async runUserRealtimeLongPollTick(userId: string): Promise<void> {
     if (!userId) {
       return;
@@ -2228,9 +2112,6 @@ export class SideMenuComponent implements OnDestroy {
   }
 
   private openSettingsPopup(popup: NavigatorSettingsMenuItemId): void {
-    if (popup === 'operator-workspace') {
-      return;
-    }
     if (popup === 'help' && !this.helpCenterService.hasActiveRevision()) {
       return;
     }

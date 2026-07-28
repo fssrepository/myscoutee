@@ -70,6 +70,7 @@ export { LocalGameService } from './source/services/game.service';
 export { LocalHelpCenterService } from './source/services/help-center.service';
 export { LocalIdeaPostsService } from './source/services/idea-posts.service';
 export { LocalLandingContentService } from './source/services/landing-content.service';
+export { LocalDeploymentConfigurationService } from './source/services/deployment-configuration.service';
 export { LocalMediaService } from './source/services/media.service';
 export { LocalNotificationsService } from './source/services/notifications.service';
 export { LocalOperatorRegistryService } from './source/services/operator-registry.service';

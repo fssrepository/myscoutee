@@ -1,63 +1,81 @@
 <div class="operator-page-scroll">
-  <main class="operator-home" [attr.aria-busy]="loading() || busyAction() === 'load'">
+  <main class="operator-home" [attr.aria-busy]="loading()">
     <header class="operator-home-header">
-      <a class="operator-brand" aria-label="MyScoutee operator">
-        <img class="operator-brand-mark" src="assets/logo/heart.webp" alt="MyScoutee logo" />
+      <a class="operator-brand" [attr.aria-label]="'operator.brand.aria' | i18n">
+        <img
+          class="operator-brand-mark"
+          src="assets/logo/heart.webp"
+          [alt]="'operator.brand.logo.alt' | i18n"
+        />
         <span class="operator-brand-text">yScoutee</span>
       </a>
-      <div class="operator-home-heading">
-        <span>Operator</span>
-        <small>Deployment overview</small>
-      </div>
+      <div class="operator-home-heading">{{ 'operator' | i18n }}</div>
     </header>
 
     @if (loading()) {
       <section class="operator-home-loading" aria-busy="true" aria-live="polite">
         <app-indicator kind="load-ring" state="loading"></app-indicator>
-        <span>Loading operator profile and deployment state…</span>
+        <span>{{ 'operator.workspace.loading' | i18n }}</span>
       </section>
     } @else {
       @if (errorMessage()) {
         <p class="operator-state-message operator-state-message--error" role="alert">
           <mat-icon>error_outline</mat-icon>
-          <span>{{ errorMessage() }}</span>
+          <span>{{ errorMessage() | i18n }}</span>
         </p>
       }
 
-      <section aria-label="Deployment status">
+      <section class="operator-actions" [attr.aria-label]="'operator.actions' | i18n">
         <app-menu
           kind="inline"
           layout="row"
-          [items]="statusMenuItems()"
-          (itemSelect)="openStatus($event)"
+          [items]="actionItems()"
+          (itemSelect)="openAction($event)"
         ></app-menu>
       </section>
 
-      <section class="operator-progress-panel" aria-labelledby="operator-progress-title">
-        <header class="operator-progress-header">
-          <p>Signed workflow</p>
-          <h1 id="operator-progress-title">Registration progress</h1>
+      <section class="operator-leaderboard" aria-labelledby="operator-leaderboard-title">
+        <header class="operator-leaderboard__header">
+          <span>
+            <small>{{ 'operator.leaderboard.network' | i18n }}</small>
+            <h1 id="operator-leaderboard-title">{{ 'operator.leaderboard' | i18n }}</h1>
+          </span>
+          <mat-icon>leaderboard</mat-icon>
         </header>
-        <ol class="operator-progress-list">
-          @for (step of progressSteps(); track step.id) {
-            <li class="operator-progress-step" [attr.data-state]="step.state">
-              <span class="operator-progress-icon" aria-hidden="true">
-                <mat-icon>{{ step.icon }}</mat-icon>
-              </span>
-              <span class="operator-progress-copy">
-                <strong>{{ step.label }}</strong>
-                <small>{{ step.detail }}</small>
-              </span>
-            </li>
-          }
-        </ol>
+
+        @if (leaderboard.summaries().length > 0) {
+          <div
+            class="operator-leaderboard__summaries"
+            [attr.aria-label]="'operator.leaderboard.network' | i18n"
+          >
+            @for (summary of leaderboard.summaries(); track summary.group) {
+              <span>{{ leaderboardGroupSummary(summary.group) }}</span>
+            }
+          </div>
+        }
+
+        <app-smart-list
+          class="operator-leaderboard__list"
+          [config]="leaderboardConfig"
+          [loadPage]="loadLeaderboardPage"
+          [query]="leaderboardQuery()"
+          [itemTemplate]="leaderboardRowTemplate"
+        ></app-smart-list>
+
+        <ng-template #leaderboardRowTemplate let-entry>
+          <single-row [row]="leaderboardRow(entry)"></single-row>
+        </ng-template>
       </section>
     }
   </main>
 </div>
 
-@if (registryPopupOpen()) {
-  @if (registryPopupComponent(); as component) {
+@if (activePopup() === 'registration') {
+  @if (registrationPopupComponent(); as component) {
+    <ng-container *ngComponentOutlet="component"></ng-container>
+  }
+} @else if (activePopup()) {
+  @if (actionPopupComponent(); as component) {
     <ng-container *ngComponentOutlet="component"></ng-container>
   }
 }

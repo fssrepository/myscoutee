@@ -1,0 +1,524 @@
+@if (kind(); as activeKind) {
+  @if (activeKind !== 'registration') {
+    <app-popup [model]="popupModel()">
+      <section class="operator-action-popup" [attr.aria-busy]="busy()">
+        @if (loading()) {
+          <div class="operator-action-popup__loading" role="status">
+            <app-indicator kind="load-ring" state="loading"></app-indicator>
+            <span>{{ 'operator.loading' | i18n }}</span>
+          </div>
+        } @else {
+          @switch (activeKind) {
+            @case ('updates') {
+              @if (workspace.deploymentUpdate(); as update) {
+                <div class="operator-action-popup__summary">
+                  <mat-icon>deployed_code</mat-icon>
+                  <span>
+                    <small>{{ 'operator.update.current.version' | i18n }}</small>
+                    <strong>{{ update.currentVersion }}</strong>
+                  </span>
+                  <span>
+                    <small>{{ 'operator.update.available.version' | i18n }}</small>
+                    <strong>{{ update.availableVersion }}</strong>
+                  </span>
+                </div>
+                @if (update.lastUpdatedAt) {
+                  <p class="operator-action-popup__hint">
+                    {{ 'operator.update.last.updated' | i18n }}:
+                    {{ formatDate(update.lastUpdatedAt) }}
+                  </p>
+                }
+                @if (update.progress.phase !== 'IDLE') {
+                  <div
+                    class="operator-action-popup__update-progress"
+                    [attr.data-phase]="update.progress.phase"
+                    role="status"
+                  >
+                    <span class="operator-action-popup__update-progress-header">
+                      <mat-icon>
+                        {{ update.progress.phase === 'FAILED'
+                          ? 'error_outline'
+                          : update.progress.phase === 'COMPLETED'
+                            ? 'check_circle'
+                            : 'sync' }}
+                      </mat-icon>
+                      <strong>{{ updatePhaseLabel(update.progress.phase) | i18n }}</strong>
+                      <b>{{ update.progress.percent }}%</b>
+                    </span>
+                    <progress
+                      max="100"
+                      [value]="update.progress.percent"
+                      [attr.aria-label]="updatePhaseLabel(update.progress.phase) | i18n"
+                    ></progress>
+                    @if (update.progress.bytesTotal > 0) {
+                      <small>
+                        {{ formatBytes(update.progress.bytesDownloaded) }}
+                        /
+                        {{ formatBytes(update.progress.bytesTotal) }}
+                      </small>
+                    }
+                    @if (update.progress.message) {
+                      <span>{{ update.progress.message | i18n }}</span>
+                    }
+                  </div>
+                }
+              }
+            }
+            @case ('claim') {
+              @if (workspace.claimStatus(); as claim) {
+                @if (claim.claimed) {
+                  <div class="operator-action-popup__claimed">
+                    <mat-icon>verified</mat-icon>
+                    <strong>{{ 'operator.claim.claimed' | i18n }}</strong>
+                    <span>{{ claim.claimantName }}</span>
+                    <b>{{ formatShare(claim.sharePercent) }}%</b>
+                  </div>
+                  <p class="operator-action-popup__hint">
+                    {{ 'operator.group.instructions' | i18n }}
+                  </p>
+                  @if (workspace.groupingToken(); as token) {
+                    <div class="operator-action-popup__token">
+                      <small>{{ 'operator.group.temporary.token' | i18n }}</small>
+                      <code>{{ token.clientToken }}</code>
+                      <span>
+                        {{ 'operator.group.expires' | i18n }} {{ formatDate(token.expiresAt) }}
+                      </span>
+                    </div>
+                  }
+                  <label class="operator-action-popup__token-input">
+                    <span>{{ 'operator.group.token.from.another.deployment' | i18n }}</span>
+                    <input
+                      type="text"
+                      autocomplete="off"
+                      [ngModel]="workspace.groupTokenInput()"
+                      (ngModelChange)="workspace.setGroupTokenInput($event)"
+                      [disabled]="busy()"
+                    />
+                  </label>
+                } @else {
+                  <p class="operator-action-popup__hint">
+                    {{ 'operator.claim.instructions' | i18n }}
+                  </p>
+                }
+              }
+            }
+            @case ('configuration') {
+              @if (workspace.configuration(); as configuration) {
+                @if (workspace.configurationDraft(); as draft) {
+                  @if (configuration.capability !== 'AVAILABLE') {
+                    <p class="operator-action-popup__result is-error" role="alert">
+                      <mat-icon>cloud_off</mat-icon>
+                      <span>
+                        {{ (configuration.unavailableReason
+                          || 'operator.configuration.backend.unavailable') | i18n }}
+                      </span>
+                    </p>
+                  }
+
+                  <section
+                    class="operator-action-popup__configuration-group"
+                    [attr.data-deployment-theme]="draft.branding.themePreset.toLowerCase()"
+                  >
+                    <header>
+                      <span>
+                        <small>{{ 'operator.configuration.branding.eyebrow' | i18n }}</small>
+                        <strong>{{ 'operator.configuration.branding' | i18n }}</strong>
+                      </span>
+                      <mat-icon>palette</mat-icon>
+                    </header>
+
+                    <div class="operator-action-popup__brand-preview">
+                      <img
+                        [src]="draft.branding.logoUrl || 'assets/logo/heart.webp'"
+                        [alt]="draft.branding.productName"
+                      />
+                      <span>
+                        <strong>{{ draft.branding.productName }}</strong>
+                        <small>{{ draft.branding.homeLabel }}</small>
+                      </span>
+                    </div>
+
+                    <label class="operator-action-popup__field">
+                      <span>{{ 'operator.configuration.branding.product.name' | i18n }}</span>
+                      <input
+                        type="text"
+                        maxlength="80"
+                        autocomplete="organization"
+                        [ngModel]="draft.branding.productName"
+                        (ngModelChange)="workspace.setConfigurationBranding({ productName: $event })"
+                        [disabled]="configurationDisabled()"
+                      />
+                    </label>
+
+                    <label class="operator-action-popup__field">
+                      <span>{{ 'operator.configuration.branding.home.label' | i18n }}</span>
+                      <input
+                        type="text"
+                        maxlength="120"
+                        autocomplete="off"
+                        [ngModel]="draft.branding.homeLabel"
+                        (ngModelChange)="workspace.setConfigurationBranding({ homeLabel: $event })"
+                        [disabled]="configurationDisabled()"
+                      />
+                    </label>
+
+                    <div class="operator-action-popup__select-field">
+                      <span>{{ 'operator.configuration.branding.theme' | i18n }}</span>
+                      <app-menu
+                        kind="select"
+                        [trigger]="configurationThemeTrigger()"
+                        [items]="configurationThemeItems()"
+                        (itemSelect)="onAction($event)"
+                      ></app-menu>
+                    </div>
+
+                    <div class="operator-action-popup__logo-field">
+                      <span>{{ 'operator.configuration.branding.logo' | i18n }}</span>
+                      <app-image-carousel
+                        [slotCount]="1"
+                        [compact]="true"
+                        [autoSize]="true"
+                        [ngModel]="draft.branding.logoUrl ? [draft.branding.logoUrl] : []"
+                        (ngModelChange)="onBrandingLogoChange($event)"
+                        [disabled]="configurationDisabled()"
+                        [uploadOwnerId]="workspace.configurationUploadOwnerId()"
+                        uploadEntityId="deployment-branding-logo"
+                        [ariaLabel]="'operator.configuration.branding.logo' | i18n"
+                      ></app-image-carousel>
+                    </div>
+
+                    <app-menu
+                      class="operator-action-popup__section-actions"
+                      kind="inline"
+                      layout="row"
+                      [items]="configurationBrandingActionItems()"
+                      (itemSelect)="onAction($event)"
+                    ></app-menu>
+                  </section>
+
+                  <section class="operator-action-popup__configuration-group">
+                    <header>
+                      <span>
+                        <small>{{ 'operator.configuration.payment.eyebrow' | i18n }}</small>
+                        <strong>{{ 'operator.configuration.payment' | i18n }}</strong>
+                      </span>
+                      <mat-icon>payments</mat-icon>
+                    </header>
+
+                    <div class="operator-action-popup__select-field">
+                      <span>{{ 'operator.configuration.payment.provider' | i18n }}</span>
+                      <app-menu
+                        kind="select"
+                        [trigger]="configurationPaymentProviderTrigger()"
+                        [items]="configurationPaymentProviderItems()"
+                        (itemSelect)="onAction($event)"
+                      ></app-menu>
+                    </div>
+
+                    <label class="operator-action-popup__field">
+                      <span>{{ 'operator.configuration.payment.credential' | i18n }}</span>
+                      <input
+                        type="password"
+                        autocomplete="new-password"
+                        [placeholder]="configuration.payment.credentialMask
+                          || ('operator.configuration.credential.placeholder' | i18n)"
+                        [ngModel]="draft.payment.credential"
+                        (ngModelChange)="workspace.setConfigurationPayment({ credential: $event })"
+                        [disabled]="configurationDisabled() || !draft.payment.providerId"
+                      />
+                    </label>
+
+                    <app-menu
+                      class="operator-action-popup__section-actions"
+                      kind="inline"
+                      layout="row"
+                      [items]="configurationPaymentActionItems()"
+                      (itemSelect)="onAction($event)"
+                    ></app-menu>
+                  </section>
+
+                  <section class="operator-action-popup__configuration-group">
+                    <header>
+                      <span>
+                        <small>{{ 'operator.configuration.firebase.eyebrow' | i18n }}</small>
+                        <strong>Firebase</strong>
+                      </span>
+                      <mat-icon>cloud</mat-icon>
+                    </header>
+
+                    <label class="operator-action-popup__field">
+                      <span>{{ 'operator.configuration.firebase.project.id' | i18n }}</span>
+                      <input
+                        type="text"
+                        maxlength="160"
+                        autocomplete="off"
+                        [ngModel]="draft.firebase.projectId"
+                        (ngModelChange)="workspace.setConfigurationFirebase({ projectId: $event })"
+                        [disabled]="configurationDisabled()"
+                      />
+                    </label>
+
+                    <label class="operator-action-popup__field">
+                      <span>{{ 'operator.configuration.firebase.authentication.credential' | i18n }}</span>
+                      <input
+                        type="password"
+                        autocomplete="new-password"
+                        [placeholder]="configuration.firebase.authenticationCredentialConfigured
+                          ? ('operator.configuration.credential.registered' | i18n)
+                          : ('operator.configuration.credential.placeholder' | i18n)"
+                        [ngModel]="draft.firebase.authenticationCredential"
+                        (ngModelChange)="workspace.setConfigurationFirebase({ authenticationCredential: $event })"
+                        [disabled]="configurationDisabled()"
+                      />
+                    </label>
+
+                    <label class="operator-action-popup__field">
+                      <span>{{ 'operator.configuration.firebase.messaging.credential' | i18n }}</span>
+                      <input
+                        type="password"
+                        autocomplete="new-password"
+                        [placeholder]="configuration.firebase.messagingCredentialConfigured
+                          ? ('operator.configuration.credential.registered' | i18n)
+                          : ('operator.configuration.credential.placeholder' | i18n)"
+                        [ngModel]="draft.firebase.messagingCredential"
+                        (ngModelChange)="workspace.setConfigurationFirebase({ messagingCredential: $event })"
+                        [disabled]="configurationDisabled()"
+                      />
+                    </label>
+
+                    <app-menu
+                      class="operator-action-popup__section-actions"
+                      kind="inline"
+                      layout="row"
+                      [items]="configurationFirebaseActionItems()"
+                      (itemSelect)="onAction($event)"
+                    ></app-menu>
+                  </section>
+
+                  @if (workspace.configurationTest(); as result) {
+                    <p
+                      class="operator-action-popup__result"
+                      [class.is-success]="result.success"
+                      [class.is-error]="!result.success"
+                    >
+                      <mat-icon>{{ result.success ? 'check_circle' : 'error_outline' }}</mat-icon>
+                      <span>{{ result.message | i18n }}</span>
+                    </p>
+                  }
+                }
+              }
+            }
+            @case ('community') {
+              @if (workspace.community(); as community) {
+                <div class="operator-action-popup__community">
+                  <span class="operator-action-popup__presence" [attr.data-state]="community.availability"></span>
+                  <span>
+                    <small>{{ 'operator.community.current' | i18n }}</small>
+                    <strong>
+                      {{ ('operator.community.' + community.availability.toLowerCase()) | i18n }}
+                    </strong>
+                  </span>
+                </div>
+                @if (community.providers.length > 0) {
+                  <div class="operator-action-popup__providers">
+                    @for (provider of community.providers; track provider.id) {
+                      <article class="operator-action-popup__provider">
+                        <span class="operator-action-popup__provider-icon">
+                          <mat-icon>forum</mat-icon>
+                        </span>
+                        <span class="operator-action-popup__provider-copy">
+                          <strong>{{ provider.name }}</strong>
+                          <small>{{ provider.purpose | i18n }}</small>
+                        </span>
+                        @if (provider.available && safeExternalUrl(provider.url); as providerUrl) {
+                          <a
+                            class="operator-action-popup__provider-link"
+                            [href]="providerUrl"
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            [attr.aria-label]="('operator.community.provider.open' | i18n) + ' ' + provider.name"
+                          >
+                            <span>{{ 'operator.community.provider.join' | i18n }}</span>
+                            <mat-icon>open_in_new</mat-icon>
+                          </a>
+                        }
+                      </article>
+                    }
+                  </div>
+                } @else {
+                  <p class="operator-action-popup__hint">
+                    {{ 'operator.community.providers.empty' | i18n }}
+                  </p>
+                }
+                @if (community.announcements.length > 0) {
+                  <section class="operator-action-popup__announcements">
+                    <h3>{{ 'operator.community.announcements' | i18n }}</h3>
+                    @for (announcement of community.announcements; track announcement.id) {
+                      <article
+                        class="operator-action-popup__announcement"
+                        [attr.data-severity]="announcement.severity"
+                      >
+                        <header>
+                          <span>
+                            <small>
+                              {{ ('operator.community.announcement.kind.'
+                                + announcement.kind.toLowerCase()) | i18n }}
+                            </small>
+                            <strong>{{ announcement.title | i18n }}</strong>
+                          </span>
+                          <span class="operator-action-popup__announcement-badges">
+                            @if (announcement.unread) {
+                              <i
+                                [attr.aria-label]="'operator.community.announcement.unread' | i18n"
+                                [attr.title]="'operator.community.announcement.unread' | i18n"
+                              ></i>
+                            }
+                            <em [attr.data-severity]="announcement.severity">
+                              {{ ('operator.community.announcement.severity.'
+                                + announcement.severity.toLowerCase()) | i18n }}
+                            </em>
+                            <b [attr.data-status]="announcement.status">
+                              {{ ('operator.community.announcement.status.'
+                                + announcement.status.toLowerCase()) | i18n }}
+                            </b>
+                          </span>
+                        </header>
+                        <p>{{ announcement.body | i18n }}</p>
+                        <small class="operator-action-popup__announcement-date">
+                          {{ 'operator.community.announcement.published' | i18n }}
+                          {{ formatDate(announcement.publishedAt) }}
+                          @if (announcement.expiresAt) {
+                            ·
+                            {{ 'operator.community.announcement.expires' | i18n }}
+                            {{ formatDate(announcement.expiresAt) }}
+                          }
+                        </small>
+                        @if (announcement.links.length > 0 || announcement.update) {
+                          <details class="operator-action-popup__announcement-details">
+                            <summary>
+                              <mat-icon>expand_more</mat-icon>
+                              <span>{{ 'operator.community.announcement.details' | i18n }}</span>
+                            </summary>
+                            <div class="operator-action-popup__announcement-detail-body">
+                        @if (announcement.links.length > 0) {
+                              <nav class="operator-action-popup__announcement-links">
+                            @for (link of announcement.links; track link.id) {
+                              @if (safeExternalUrl(link.url); as linkUrl) {
+                                <a
+                                  [href]="linkUrl"
+                                  target="_blank"
+                                  rel="noopener noreferrer"
+                                >
+                                  @if (link.verified) {
+                                    <mat-icon>verified</mat-icon>
+                                  }
+                                  <span>{{ link.label | i18n }}</span>
+                                  <mat-icon>open_in_new</mat-icon>
+                                </a>
+                              }
+                            }
+                              </nav>
+                        }
+                        @if (announcement.update; as release) {
+                          <section class="operator-action-popup__release">
+                            <header>
+                              <span>
+                                <small>{{ 'operator.community.announcement.version' | i18n }}</small>
+                                <strong>v{{ release.version }}</strong>
+                              </span>
+                            </header>
+                            <p>{{ release.purpose | i18n }}</p>
+                            <ul>
+                              @for (note of release.releaseNotes; track note) {
+                                <li>{{ note | i18n }}</li>
+                              }
+                            </ul>
+                            <dl>
+                              <div>
+                                <dt>{{ 'operator.community.announcement.artifact.size' | i18n }}</dt>
+                                <dd>{{ formatBytes(release.artifact.sizeBytes) }}</dd>
+                              </div>
+                              <div>
+                                <dt>{{ 'operator.community.announcement.artifact.compatibility' | i18n }}</dt>
+                                <dd>{{ release.artifact.compatibility | i18n }}</dd>
+                              </div>
+                              <div>
+                                <dt>SHA-256</dt>
+                                <dd><code>{{ release.artifact.sha256Digest }}</code></dd>
+                              </div>
+                              <div>
+                                <dt>{{ 'operator.community.announcement.artifact.signature' | i18n }}</dt>
+                                <dd><code>{{ release.artifact.signature }}</code></dd>
+                              </div>
+                            </dl>
+                            <div class="operator-action-popup__download">
+                              <span>
+                                <small>{{ 'operator.community.announcement.download' | i18n }}</small>
+                                <code>{{ release.artifact.downloadUrl }}</code>
+                              </span>
+                              @if (safeExternalUrl(release.artifact.downloadUrl); as downloadUrl) {
+                                @if (release.artifact.downloadUrlVerified) {
+                                  <a
+                                    [href]="downloadUrl"
+                                    target="_blank"
+                                    rel="noopener noreferrer"
+                                    [attr.aria-label]="'operator.community.announcement.download.open' | i18n"
+                                  >
+                                    <mat-icon>verified</mat-icon>
+                                    <span>{{ 'operator.community.announcement.download.verified' | i18n }}</span>
+                                    <mat-icon>open_in_new</mat-icon>
+                                  </a>
+                                } @else {
+                                  <span class="operator-action-popup__download-unverified">
+                                    <mat-icon>gpp_maybe</mat-icon>
+                                    {{ 'operator.community.announcement.download.unverified' | i18n }}
+                                  </span>
+                                }
+                              } @else {
+                                <span class="operator-action-popup__download-unverified">
+                                  <mat-icon>gpp_maybe</mat-icon>
+                                  {{ 'operator.community.announcement.download.unverified' | i18n }}
+                                </span>
+                              }
+                            </div>
+                          </section>
+                        }
+                            </div>
+                          </details>
+                        }
+                      </article>
+                    }
+                  </section>
+                }
+              }
+            }
+          }
+
+          @if (workspace.error()) {
+            <p class="operator-action-popup__result is-error" role="alert">
+              <mat-icon>error_outline</mat-icon>
+              <span>{{ workspace.error() | i18n }}</span>
+            </p>
+          }
+          @if (workspace.notice()) {
+            <p class="operator-action-popup__result is-success" role="status">
+              <mat-icon>check_circle</mat-icon>
+              <span>{{ workspace.notice() | i18n }}</span>
+            </p>
+          }
+
+          @if (actionItems().length > 0) {
+            <app-menu
+              class="operator-action-popup__actions"
+              kind="inline"
+              layout="row"
+              [items]="actionItems()"
+              (itemSelect)="onAction($event)"
+            ></app-menu>
+          }
+
+        }
+      </section>
+    </app-popup>
+  }
+}

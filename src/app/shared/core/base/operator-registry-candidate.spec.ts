@@ -16,25 +16,30 @@ describe('operator registry candidate validation', () => {
 
   it('rejects URL shapes the Java operator endpoint rejects', () => {
     expect(validateOperatorRegistryBaseUrl('https://registry.example.com/v1', true))
-      .toContain('origin-only');
+      .toBe('operator.registration.error.url.origin');
     expect(validateOperatorRegistryBaseUrl('https://registry.example.com//', true))
-      .toContain('origin-only');
+      .toBe('operator.registration.error.url.origin');
     expect(validateOperatorRegistryBaseUrl('https://registry.example.com?scope=demo', true))
-      .toContain('origin-only');
+      .toBe('operator.registration.error.url.origin');
     expect(validateOperatorRegistryBaseUrl('https://user:secret@registry.example.com', true))
-      .toContain('credentials');
+      .toBe('operator.registration.error.url.credentials');
     expect(validateOperatorRegistryBaseUrl('http://registry.example.com', true))
-      .toContain('require HTTPS');
+      .toBe('operator.registration.error.url.https.required');
   });
 
   it('uses the same portable registry-scope syntax as Java and Go', () => {
     expect(validateOperatorRegistryScope('demo:local-registry')).toBe('');
     expect(validateOperatorRegistryScope('region.eu_west-1')).toBe('');
     expect(validateOperatorRegistryScope('')).toBe('');
-    expect(validateOperatorRegistryScope('EU:central')).toContain('3–128');
-    expect(validateOperatorRegistryScope('-demo')).toContain('3–128');
-    expect(validateOperatorRegistryScope('ab')).toContain('3–128');
-    expect(validateOperatorRegistryScope('demo/scope')).toContain('3–128');
-    expect(validateOperatorRegistryScope(`a${'b'.repeat(128)}`)).toContain('3–128');
+    expect(validateOperatorRegistryScope('EU:central'))
+      .toBe('operator.registration.error.scope.invalid');
+    expect(validateOperatorRegistryScope('-demo'))
+      .toBe('operator.registration.error.scope.invalid');
+    expect(validateOperatorRegistryScope('ab'))
+      .toBe('operator.registration.error.scope.invalid');
+    expect(validateOperatorRegistryScope('demo/scope'))
+      .toBe('operator.registration.error.scope.invalid');
+    expect(validateOperatorRegistryScope(`a${'b'.repeat(128)}`))
+      .toBe('operator.registration.error.scope.invalid');
   });
 });

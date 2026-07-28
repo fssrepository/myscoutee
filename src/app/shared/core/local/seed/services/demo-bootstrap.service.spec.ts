@@ -245,12 +245,91 @@ describe('Demo bootstrap seeding', () => {
 
     const registryRecord = registryWrites[0]?.[1] as {
       status?: { lifecycle?: string; simulation?: boolean };
+      ledger?: Array<{ id: string; claimed: boolean; verifiedWeight: number }>;
+      leaderboard?: Array<{
+        id: string;
+        claimed: boolean;
+        verifiedWeight: number;
+        group: string;
+        operatorGroupId?: string | null;
+        deploymentCount?: number;
+      }>;
+      auditHistory?: Array<{ kind: string }>;
+      community?: {
+        providers?: Array<{
+          id: string;
+          purpose: string;
+          configured: boolean;
+          available: boolean;
+        }>;
+        announcements?: Array<{
+          kind: string;
+          status: string;
+          update?: {
+            version?: string;
+            artifact?: {
+              downloadUrl?: string;
+              downloadUrlVerified?: boolean;
+            };
+          } | null;
+        }>;
+      };
     };
     expect(registryRecord.status?.lifecycle).toBe('UNCONFIGURED');
     expect(registryRecord.status?.simulation).toBe(true);
+    expect(registryRecord.auditHistory?.some(item => item.kind === 'SEED')).toBe(true);
+    expect(registryRecord.leaderboard).toHaveLength(7);
+    for (const ledgerEntry of (registryRecord.ledger ?? []).filter(
+      item => item.id === 'founder' || !item.claimed
+    )) {
+      expect(registryRecord.leaderboard?.find(item => item.id === ledgerEntry.id)).toEqual(
+        expect.objectContaining({
+          claimed: ledgerEntry.claimed,
+          verifiedWeight: ledgerEntry.verifiedWeight
+        })
+      );
+    }
+    expect(registryRecord.leaderboard?.find(
+      item => item.operatorGroupId === 'operator-group-campus'
+    )).toEqual(expect.objectContaining({
+      claimed: true,
+      verifiedWeight: 65_000,
+      deploymentCount: 2
+    }));
+    expect(registryRecord.community?.providers).toEqual([
+      expect.objectContaining({
+        id: 'discord',
+        purpose: 'operator.community.provider.discord.purpose',
+        configured: false,
+        available: true
+      }),
+      expect.objectContaining({
+        id: 'discourse',
+        purpose: 'operator.community.provider.discourse.purpose',
+        configured: false,
+        available: true
+      })
+    ]);
+    expect(registryRecord.community?.announcements).toEqual(expect.arrayContaining([
+      expect.objectContaining({
+        kind: 'UPDATE',
+        status: 'PUBLISHED',
+        update: expect.objectContaining({
+          version: '1.1.0',
+          artifact: expect.objectContaining({
+            downloadUrl: 'https://github.com/fssrepository/myscoutee/releases/download/v1.1.0/myscoutee_1.1.0_amd64.deb',
+            downloadUrlVerified: true
+          })
+        })
+      }),
+      expect.objectContaining({
+        kind: 'MAINTENANCE',
+        status: 'PUBLISHED'
+      })
+    ]));
   });
 
-  it('includes the operator user and registry sample in the union selector bootstrap', async () => {
+  it('includes the operator user and registry state in the union selector bootstrap', async () => {
     const bootstrap = TestBed.inject(SeedDemoBootstrapService);
     const registryReadSpy = vi.spyOn(memoryDb, 'readIndexedDbTableEntry');
     const tableWriteSpy = vi.spyOn(memoryDb, 'writeIndexedDbTableEntry');

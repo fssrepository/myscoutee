@@ -6,15 +6,18 @@ import {
   SessionService,
   type AppSession
 } from '../../../core/base/services/session.service';
-import type { OperatorRegistryInspectionDto } from '../../../core/contracts/operator.interface';
 import type { OperatorRegistryStatusDto } from '../../../core/contracts/operator.interface';
 import {
   OperatorRegistryStore,
   operatorRegistryStoreContextKey
 } from './operator-registry.store';
 
-describe('OperatorRegistryStore candidate form', () => {
-  it('reactively enables inspection when the operator types a registry URL', async () => {
+describe('OperatorRegistryStore registration', () => {
+  afterEach(() => {
+    TestBed.resetTestingModule();
+  });
+
+  it('loads seeded registry options and enables explicit registration for a new URL', async () => {
     const session = signal<AppSession | null>({
       kind: 'demo',
       userId: 'operator-demo-dev'
@@ -37,24 +40,23 @@ describe('OperatorRegistryStore candidate form', () => {
     const store = TestBed.inject(OperatorRegistryStore);
 
     await store.loadStatus();
-    expect(store.canInspect()).toBe(false);
 
-    store.setRegistryBaseUrl('https://registry.example.com');
+    expect(store.registryOptions()).toHaveLength(2);
     expect(store.registryBaseUrl()).toBe('https://registry.example.com');
-    expect(store.canInspect()).toBe(true);
-
-    store.setRegistryBaseUrl('');
-    expect(store.canInspect()).toBe(false);
+    expect(store.canRegister()).toBe(true);
   });
 
-  it('clears status and inspection when the operator session identity changes', async () => {
+  it('uses the one-button register endpoint without hidden inspect or confirm phases', async () => {
     const session = signal<AppSession | null>({
       kind: 'demo',
       userId: 'operator-demo-dev'
     });
+    const registered = registeredStatus();
     const service = {
       loadStatus: vi.fn().mockResolvedValue(unconfiguredStatus()),
-      inspect: vi.fn().mockResolvedValue(inspection())
+      register: vi.fn().mockResolvedValue(registered),
+      inspect: vi.fn(),
+      confirm: vi.fn()
     };
     TestBed.configureTestingModule({
       providers: [
@@ -70,13 +72,41 @@ describe('OperatorRegistryStore candidate form', () => {
     });
     const store = TestBed.inject(OperatorRegistryStore);
     await store.loadStatus();
-    await store.inspect({
-      baseUrl: 'https://registry.example.com',
-      expectedScope: 'demo:sample'
-    });
 
-    expect(store.status()).not.toBeNull();
-    expect(store.inspection()?.inspectionToken).toBe('inspection_demo');
+    const result = await store.register();
+
+    expect(result?.lifecycle).toBe('REGISTERED');
+    expect(service.register).toHaveBeenCalledWith({
+      registryBaseUrl: 'https://registry.example.com',
+      expectedRegistryScope: 'demo:registry'
+    });
+    expect(service.inspect).not.toHaveBeenCalled();
+    expect(service.confirm).not.toHaveBeenCalled();
+    expect(store.canRegister()).toBe(false);
+  });
+
+  it('clears cached state when the operator session identity changes', async () => {
+    const session = signal<AppSession | null>({
+      kind: 'demo',
+      userId: 'operator-demo-dev'
+    });
+    TestBed.configureTestingModule({
+      providers: [
+        {
+          provide: OperatorRegistryService,
+          useValue: { loadStatus: vi.fn().mockResolvedValue(unconfiguredStatus()) }
+        },
+        {
+          provide: SessionService,
+          useValue: {
+            session: session.asReadonly(),
+            currentSession: () => session()
+          }
+        }
+      ]
+    });
+    const store = TestBed.inject(OperatorRegistryStore);
+    await store.loadStatus();
 
     session.set({
       kind: 'firebase',
@@ -90,49 +120,8 @@ describe('OperatorRegistryStore candidate form', () => {
     TestBed.tick();
 
     expect(store.status()).toBeNull();
-    expect(store.inspection()).toBeNull();
     expect(store.registryBaseUrl()).toBe('');
     expect(store.expectedRegistryScope()).toBe('');
-  });
-
-  it('invalidates an inspected identity when its URL or expected scope changes', async () => {
-    const session = signal<AppSession | null>({
-      kind: 'demo',
-      userId: 'operator-demo-dev'
-    });
-    const service = {
-      loadStatus: vi.fn().mockResolvedValue(unconfiguredStatus()),
-      inspect: vi.fn().mockResolvedValue(inspection())
-    };
-    TestBed.configureTestingModule({
-      providers: [
-        { provide: OperatorRegistryService, useValue: service },
-        {
-          provide: SessionService,
-          useValue: {
-            session: session.asReadonly(),
-            currentSession: () => session()
-          }
-        }
-      ]
-    });
-    const store = TestBed.inject(OperatorRegistryStore);
-    await store.loadStatus();
-    await store.inspect({
-      baseUrl: 'https://registry.example.com',
-      expectedScope: 'demo:sample'
-    });
-
-    expect(store.inspection()?.inspectionToken).toBe('inspection_demo');
-    store.setRegistryBaseUrl('https://registry.partner.example');
-    expect(store.inspection()).toBeNull();
-
-    await store.inspect({
-      baseUrl: 'https://registry.example.com',
-      expectedScope: 'demo:sample'
-    });
-    store.setExpectedRegistryScope('partner:sample');
-    expect(store.inspection()).toBeNull();
   });
 
   it('binds cached state to both data source and session identity', () => {
@@ -158,14 +147,29 @@ function unconfiguredStatus(): OperatorRegistryStatusDto {
     enabled: false,
     simulation: true,
     candidateDefaults: {
-      baseUrl: '',
-      registryScope: ''
+      baseUrl: 'https://registry.example.com',
+      registryScope: 'demo:registry'
     },
+    registryOptions: [
+      {
+        id: 'registry-primary',
+        label: 'Primary registry',
+        baseUrl: 'https://registry.example.com',
+        registryScope: 'demo:registry',
+        selected: false
+      },
+      {
+        id: 'registry-secondary',
+        label: 'Secondary registry',
+        baseUrl: 'https://registry-two.example.com',
+        registryScope: 'demo:secondary',
+        selected: false
+      }
+    ],
     draftInspection: null,
     selection: null,
     nodeIdentity: {
       state: 'MISSING',
-      publicKeyFingerprint: null,
       initializedAt: null
     },
     enrollment: null,
@@ -181,18 +185,31 @@ function unconfiguredStatus(): OperatorRegistryStatusDto {
   };
 }
 
-function inspection(): OperatorRegistryInspectionDto {
+function registeredStatus(): OperatorRegistryStatusDto {
+  const status = unconfiguredStatus();
   return {
-    inspectionToken: 'inspection_demo',
-    expiresAt: '2026-07-28T06:00:00.000Z',
-    baseUrl: 'https://registry.example.com',
-    simulation: true,
-    registryIdentity: {
-      identityEndpoint: 'https://registry.example.com/v1/registry/identity',
-      protocolVersion: '1',
-      registryScope: 'demo:sample',
-      registryKeyId: 'registry_demo',
-      registryPublicKeyFingerprint: 'fingerprint'
+    ...status,
+    lifecycle: 'REGISTERED',
+    enabled: true,
+    registryOptions: status.registryOptions?.map(option => ({
+      ...option,
+      selected: option.id === 'registry-primary'
+    })),
+    selection: {
+      baseUrl: 'https://registry.example.com',
+      registryScope: 'demo:registry',
+      confirmedAt: '2026-07-28T10:00:00.000Z'
+    },
+    nodeIdentity: {
+      state: 'SIMULATED',
+      initializedAt: '2026-07-28T10:00:00.000Z'
+    },
+    enrollment: {
+      deploymentCode: 'dep_demo',
+      installationTestBatchId: 'batch_demo',
+      installationTestAcceptedAt: '2026-07-28T10:00:00.000Z',
+      installationTestLedgerIndex: 1,
+      completedAt: '2026-07-28T10:00:00.000Z'
     }
   };
 }

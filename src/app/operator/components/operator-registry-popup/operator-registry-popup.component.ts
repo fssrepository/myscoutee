@@ -1,16 +1,5 @@
-import { CommonModule } from '@angular/common';
-import {
-  ChangeDetectionStrategy,
-  Component,
-  DestroyRef,
-  ElementRef,
-  computed,
-  effect,
-  inject,
-  signal
-} from '@angular/core';
+import { ChangeDetectionStrategy, Component, OnInit, computed, inject } from '@angular/core';
 import { FormsModule } from '@angular/forms';
-import { MatRippleModule } from '@angular/material/core';
 import { MatIconModule } from '@angular/material/icon';
 
 import {
@@ -18,171 +7,97 @@ import {
   validateOperatorRegistryBaseUrl,
   validateOperatorRegistryScope
 } from '../../../shared/core/base/operator-registry-candidate';
-import type {
-  OperatorRegistryStatusDto
-} from '../../../shared/core/contracts/operator.interface';
+import { I18nService } from '../../../shared/core/base/services/i18n.service';
 import {
   LinkInputComponent,
   type LinkInputConfig
 } from '../../../shared/ui/components/core/form/inputs/link-input';
-import {
-  IndicatorComponent
-} from '../../../shared/ui/components/core/indicator';
+import { IndicatorComponent } from '../../../shared/ui/components/core/indicator';
 import {
   PopupComponent,
   type PopupActionEvent,
   type PopupModel
 } from '../../../shared/ui/components/core/popup';
+import { OperatorMenuStore } from '../../../shared/ui/context/stores/operator-menu.store';
 import { OperatorRegistryStore } from '../../../shared/ui/context/stores/operator-registry.store';
-import {
-  OperatorMenuStore,
-  type OperatorRegistrySection
-} from '../../../shared/ui/context/stores/operator-menu.store';
+import { I18nPipe } from '../../../shared/ui/pipes';
 
 @Component({
   selector: 'app-operator-registry-popup',
   standalone: true,
   changeDetection: ChangeDetectionStrategy.OnPush,
   imports: [
-    CommonModule,
     FormsModule,
     IndicatorComponent,
+    I18nPipe,
     LinkInputComponent,
     MatIconModule,
-    MatRippleModule,
     PopupComponent
   ],
   templateUrl: './operator-registry-popup.component.html',
   styleUrl: './operator-registry-popup.component.scss'
 })
-export class OperatorRegistryPopupComponent {
+export class OperatorRegistryPopupComponent implements OnInit {
   protected readonly registry = inject(OperatorRegistryStore);
   protected readonly operatorMenu = inject(OperatorMenuStore);
-  private readonly destroyRef = inject(DestroyRef);
-  private readonly elementRef = inject<ElementRef<HTMLElement>>(ElementRef);
-  private copyResetTimer: ReturnType<typeof setTimeout> | null = null;
-  private sectionRequestVersion = 0;
-  private destroyed = false;
+  private readonly i18n = inject(I18nService);
   protected readonly status = this.registry.status;
-  protected readonly inspection = this.registry.inspection;
   protected readonly busyAction = this.registry.busyAction;
   protected readonly errorMessage = this.registry.error;
   protected readonly noticeMessage = this.registry.notice;
-  protected readonly confirmationAccepted = signal(false);
-  protected readonly disconnectConfirmationVisible = signal(false);
-  protected readonly copiedValue = signal('');
   protected readonly registryBaseUrl = this.registry.registryBaseUrl;
   protected readonly expectedRegistryScope = this.registry.expectedRegistryScope;
+  protected readonly busy = computed(() => this.busyAction() !== null);
+  protected readonly loading = computed(() => this.busyAction() === 'load');
+  protected readonly canRegister = this.registry.canRegister;
+  protected readonly currentRegistryUrl = computed(
+    () => this.status()?.selection?.baseUrl?.trim() ?? ''
+  );
+  protected readonly registered = computed(() =>
+    this.status()?.enabled === true && this.status()?.lifecycle === 'REGISTERED'
+  );
   protected readonly registryUrlConfig = computed<LinkInputConfig>(() => {
-    const status = this.status();
-    const candidate = status?.candidateDefaults;
-    const candidateUrl = candidate?.baseUrl.trim() ?? '';
+    const currentUrl = this.currentRegistryUrl();
     return {
-      label: 'Registry server URL',
+      label: this.i18n.translate('operator.registration.registry.url'),
       placeholder: 'https://registry.example.com',
       required: true,
-      availableUrls: candidateUrl
-        ? [{
-            url: candidateUrl,
-            label: status?.mode === 'DEMO'
-              ? status.simulation
-                ? 'Explore demo registry'
-                : 'Development demo registry'
-              : 'Configured registry',
-            description: candidate?.registryScope.trim() || candidateUrl
-          }]
-        : [],
-      availableUrlsAriaLabel: 'Select an available registry URL'
+      availableUrls: this.registry.registryOptions().map(option => ({
+        url: option.baseUrl,
+        label: this.i18n.translate(option.label),
+        description: option.description
+          ? this.i18n.translate(option.description)
+          : option.registryScope || option.baseUrl,
+        disabled: option.selected === true || this.sameUrl(option.baseUrl, currentUrl)
+      })),
+      availableUrlsAriaLabel: this.i18n.translate('operator.registration.registry.options'),
+      pasteAriaLabel: this.i18n.translate('operator.registration.url.paste'),
+      openAriaLabel: this.i18n.translate('operator.registration.url.open'),
+      deleteAriaLabel: this.i18n.translate('operator.registration.url.clear')
     };
   });
 
-  protected readonly busy = computed(() => this.busyAction() !== null);
-  protected readonly canInspect = this.registry.canInspect;
-  protected readonly canConfirm = computed(() =>
-    !this.busy()
-    && Boolean(this.inspection()?.inspectionToken.trim())
-    && this.confirmationAccepted()
-  );
-  protected readonly canRetry = computed(() => {
-    const status = this.status();
-    return !this.busy()
-      && Boolean(status?.selection)
-      && (
-        status?.lifecycle === 'PENDING'
-        || status?.lifecycle === 'ERROR'
-      );
-  });
-  protected readonly busyLabel = computed(() => {
-    switch (this.busyAction()) {
-      case 'inspect':
-        return 'Inspecting signed registry identity…';
-      case 'confirm':
-        return 'Initializing node identity and registering…';
-      case 'retry':
-        return 'Retrying registry synchronization…';
-      case 'disconnect':
-        return 'Disabling outbound registry connection…';
-      case 'load':
-      case null:
-        return 'Loading registry state…';
-    }
-  });
-
-  constructor() {
-    effect(() => {
-      const open = this.operatorMenu.activePopup() === 'registry';
-      const section = this.operatorMenu.registrySection();
-      const status = this.status();
-      if (!open || !status) {
-        return;
-      }
-      this.revealRegistrySection(section);
-    });
-
-    this.destroyRef.onDestroy(() => {
-      this.destroyed = true;
-      this.sectionRequestVersion += 1;
-      if (this.copyResetTimer) {
-        clearTimeout(this.copyResetTimer);
-        this.copyResetTimer = null;
-      }
-    });
-  }
-
-  protected async loadStatus(): Promise<void> {
-    await this.registry.loadStatus();
-  }
-
-  protected updateRegistryBaseUrl(value: string): void {
-    const previousCandidate = this.registryCandidateFor(this.registryBaseUrl());
-    const scopeWasCandidateDerived = Boolean(previousCandidate)
-      && this.expectedRegistryScope().trim() === previousCandidate?.registryScope.trim();
-    this.registry.setRegistryBaseUrl(value);
-    const nextCandidate = this.registryCandidateFor(value);
-    if (nextCandidate) {
-      this.registry.setExpectedRegistryScope(nextCandidate.registryScope);
-    } else if (scopeWasCandidateDerived) {
-      this.registry.setExpectedRegistryScope('');
-    }
+  ngOnInit(): void {
+    void this.registry.loadStatus();
   }
 
   protected popupModel(): PopupModel {
     return {
-      title: 'Registry & node',
-      subtitle: 'Signed deployment registration and installation receipt',
-      ariaLabel: 'Registry and node settings',
-      closeAriaLabel: 'Close registry settings',
-      translateTitle: false,
-      translateSubtitle: false,
-      size: 'wide',
-      height: 'full',
+      title: 'operator.action.node.registration',
+      subtitle: 'operator.registration.subtitle',
+      ariaLabel: 'operator.action.node.registration',
+      closeAriaLabel: 'operator.popup.close',
+      size: 'small',
+      height: 'auto',
+      mobilePresentation: 'compact',
       headerTone: 'accent',
-      bodyLayout: 'fill',
+      headerPalette: 'violet',
+      bodyLayout: 'default',
       headerActions: [
         {
           id: 'refresh',
           icon: 'refresh',
-          ariaLabel: 'Refresh registry status',
+          ariaLabel: 'operator.registration.refresh',
           palette: 'violet',
           disabled: this.busy()
         }
@@ -192,210 +107,96 @@ export class OperatorRegistryPopupComponent {
     };
   }
 
-  protected close(): void {
-    this.disconnectConfirmationVisible.set(false);
-    this.confirmationAccepted.set(false);
-    this.operatorMenu.closePopup();
-  }
-
-  protected async inspectRegistry(): Promise<void> {
-    const validationError = this.validateRegistryCandidate();
-    if (validationError) {
-      this.registry.setError(validationError);
-      return;
-    }
-    this.registry.clearFeedback();
-    this.registry.clearInspection();
-    this.confirmationAccepted.set(false);
-    const inspection = await this.registry.inspect({
-      baseUrl: normalizeOperatorRegistryBaseUrl(
-        this.registryBaseUrl(),
-        this.status()?.mode === 'REAL'
-      ),
-      ...(this.expectedRegistryScope().trim()
-        ? { expectedScope: this.expectedRegistryScope().trim() }
-        : {})
-    });
-    if (inspection) {
-      this.registry.setNotice(
-        inspection.simulation
-          ? 'Sample identity prepared locally. No registry was contacted.'
-          : 'Signed registry identity verified. Review its scope and key fingerprint before confirming.'
-      );
+  protected updateRegistryBaseUrl(value: string): void {
+    this.registry.setRegistryBaseUrl(value);
+    const selectedOption = this.registry.registryOptions()
+      .find(option => this.sameUrl(option.baseUrl, value));
+    if (selectedOption?.registryScope) {
+      this.registry.setExpectedRegistryScope(selectedOption.registryScope);
     }
   }
 
-  protected async confirmRegistry(): Promise<void> {
-    const inspection = this.inspection();
-    if (!inspection || !this.confirmationAccepted()) {
-      return;
-    }
-    this.registry.clearFeedback();
-    this.registry.setNotice(
-      inspection.simulation
-        ? 'Applying the isolated sample workflow…'
-        : 'Initializing the node identity and registering the deployment…'
+  protected async registerNode(): Promise<void> {
+    const requireHttps = this.status()?.mode === 'REAL';
+    const baseUrlError = validateOperatorRegistryBaseUrl(
+      this.registryBaseUrl(),
+      requireHttps
     );
-    const status = await this.registry.confirm();
-    if (status) {
-      this.confirmationAccepted.set(false);
-      this.registry.setNotice(
-        status.simulation
-          ? 'Sample workflow completed. This is not a production registration or claim.'
-          : status.lifecycle === 'REGISTERED'
-            ? 'Deployment registration and installation-test receipt are complete.'
-            : 'Registration is pending. Retry is safe and keeps the same node identity.'
-      );
-    }
-  }
-
-  protected async retryRegistration(): Promise<void> {
-    this.registry.clearFeedback();
-    this.registry.setNotice('Retrying with the preserved node identity and idempotency state…');
-    const status = await this.registry.retry();
-    if (status) {
-      this.registry.setNotice(
-        status.lifecycle === 'REGISTERED'
-          ? 'Registry synchronization completed.'
-          : 'The retry was accepted. The deployment remains safe to retry.'
-      );
-    }
-  }
-
-  protected requestDisconnect(): void {
-    if (this.busy()) {
+    const scopeError = validateOperatorRegistryScope(this.expectedRegistryScope());
+    if (baseUrlError || scopeError) {
+      this.registry.setError(baseUrlError || scopeError);
       return;
     }
-    this.disconnectConfirmationVisible.set(true);
+    this.registry.setRegistryBaseUrl(normalizeOperatorRegistryBaseUrl(
+      this.registryBaseUrl(),
+      requireHttps
+    ));
+    this.registry.clearFeedback();
+    const status = await this.registry.register();
+    if (status) {
+      this.registry.setNotice('operator.registration.completed');
+    }
   }
 
-  protected cancelDisconnect(): void {
-    this.disconnectConfirmationVisible.set(false);
-  }
-
-  protected async disconnectRegistry(): Promise<void> {
-    this.disconnectConfirmationVisible.set(false);
+  protected async disconnect(): Promise<void> {
     this.registry.clearFeedback();
     const status = await this.registry.disconnect();
     if (status) {
-      this.confirmationAccepted.set(false);
-      this.registry.setNotice(
-        'Outbound registry synchronization is disabled. The node identity, deployment code and signed receipts remain preserved.'
-      );
+      this.registry.setNotice('operator.registration.disabled');
     }
   }
 
-  protected toggleConfirmation(checked: boolean): void {
-    this.confirmationAccepted.set(checked);
+  protected close(): void {
+    this.registry.clearFeedback();
+    this.operatorMenu.closePopup();
   }
 
-  protected async copyValue(value: string, label: string): Promise<void> {
-    const normalizedValue = value.trim();
-    if (!normalizedValue || typeof navigator === 'undefined' || !navigator.clipboard) {
-      this.registry.setNotice(`${label} could not be copied. Select the value manually.`);
-      return;
-    }
-    try {
-      await navigator.clipboard.writeText(normalizedValue);
-      if (this.destroyed) {
-        return;
-      }
-      this.copiedValue.set(normalizedValue);
-      this.registry.setNotice(`${label} copied.`);
-      if (this.copyResetTimer) {
-        clearTimeout(this.copyResetTimer);
-      }
-      this.copyResetTimer = setTimeout(() => {
-        this.copyResetTimer = null;
-        if (this.destroyed) {
-          return;
-        }
-        if (this.copiedValue() === normalizedValue) {
-          this.copiedValue.set('');
-        }
-      }, 1800);
-    } catch {
-      if (this.destroyed) {
-        return;
-      }
-      this.registry.setNotice(`${label} could not be copied. Select the value manually.`);
+  protected lifecycleLabel(): string {
+    switch (this.status()?.lifecycle) {
+      case 'REGISTERED':
+        return 'operator.registration.status.registered';
+      case 'REGISTERING':
+      case 'PENDING':
+        return 'operator.registration.status.registering';
+      case 'CONFIGURED':
+      case 'INSPECTED':
+        return 'operator.registration.status.configured';
+      case 'ERROR':
+        return 'operator.registration.status.error';
+      case 'DISABLED':
+        return 'operator.registration.status.disabled';
+      case 'UNCONFIGURED':
+      default:
+        return 'operator.registration.status.not.registered';
     }
   }
 
-  protected formatDate(value: string | null | undefined): string {
-    const timestamp = Date.parse(`${value ?? ''}`);
-    if (!Number.isFinite(timestamp)) {
-      return '—';
+  protected busyLabel(): string {
+    switch (this.busyAction()) {
+      case 'register':
+        return 'operator.registration.registering';
+      case 'disconnect':
+        return 'operator.registration.disabling';
+      default:
+        return 'operator.registration.loading';
     }
-    return new Intl.DateTimeFormat(undefined, {
-      dateStyle: 'medium',
-      timeStyle: 'short'
-    }).format(new Date(timestamp));
-  }
-
-  private validateRegistryCandidate(): string {
-    return validateOperatorRegistryBaseUrl(
-      this.registryBaseUrl(),
-      this.status()?.mode === 'REAL'
-    ) || validateOperatorRegistryScope(this.expectedRegistryScope());
-  }
-
-  private registryCandidateFor(
-    value: string
-  ): OperatorRegistryStatusDto['candidateDefaults'] | null {
-    const candidate = this.status()?.candidateDefaults;
-    const candidateUrl = candidate?.baseUrl.trim() ?? '';
-    const valueUrl = `${value ?? ''}`.trim();
-    if (
-      !candidate
-      || !candidateUrl
-      || !valueUrl
-      || validateOperatorRegistryBaseUrl(candidateUrl, false)
-      || validateOperatorRegistryBaseUrl(valueUrl, false)
-    ) {
-      return null;
-    }
-    return normalizeOperatorRegistryBaseUrl(candidateUrl, false)
-      === normalizeOperatorRegistryBaseUrl(valueUrl, false)
-      ? candidate
-      : null;
-  }
-
-  private revealRegistrySection(section: OperatorRegistrySection): void {
-    const requestVersion = ++this.sectionRequestVersion;
-    const reveal = (): void => {
-      if (this.destroyed || requestVersion !== this.sectionRequestVersion) {
-        return;
-      }
-      const target = this.registrySectionElement(section)
-        ?? this.registrySectionElement('configuration');
-      if (!target) {
-        return;
-      }
-      target.scrollIntoView({
-        behavior: 'smooth',
-        block: 'start',
-        inline: 'nearest'
-      });
-      target.focus({ preventScroll: true });
-    };
-    if (typeof globalThis.requestAnimationFrame === 'function') {
-      globalThis.requestAnimationFrame(() => globalThis.requestAnimationFrame(reveal));
-      return;
-    }
-    queueMicrotask(reveal);
-  }
-
-  private registrySectionElement(section: OperatorRegistrySection): HTMLElement | null {
-    return this.elementRef.nativeElement.querySelector<HTMLElement>(
-      `[data-registry-section="${section}"]`
-    );
   }
 
   private onPopupAction(event: PopupActionEvent): void {
     if (event.action.id === 'refresh') {
-      void this.loadStatus();
+      void this.registry.loadStatus();
     }
   }
 
+  private sameUrl(left: string, right: string): boolean {
+    if (!left.trim() || !right.trim()) {
+      return false;
+    }
+    try {
+      return normalizeOperatorRegistryBaseUrl(left, false)
+        === normalizeOperatorRegistryBaseUrl(right, false);
+    } catch {
+      return left.trim().replace(/\/+$/, '') === right.trim().replace(/\/+$/, '');
+    }
+  }
 }

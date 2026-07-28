@@ -10,51 +10,43 @@ import {
   signal
 } from '@angular/core';
 import { MatIconModule } from '@angular/material/icon';
+import { from } from 'rxjs';
 
-import type {
-  OperatorRegistryLifecycle,
-  OperatorRegistryStatusDto
-} from '../../../shared/core/contracts/operator.interface';
 import { USER_BY_ID_LOAD_CONTEXT_KEY } from '../../../shared/core';
+import { I18nService } from '../../../shared/core/base/services/i18n.service';
+import type { ListQuery } from '../../../shared/core/contracts/list.interface';
+import type {
+  OperatorLeaderboardEntryDto,
+  OperatorLeaderboardGroup
+} from '../../../shared/core/contracts/operator.interface';
 import { IndicatorComponent } from '../../../shared/ui/components/core/indicator';
 import {
   AppMenuComponent,
   type AppMenuItem,
-  type AppMenuItemSelectEvent,
-  type AppMenuPalette
+  type AppMenuItemSelectEvent
 } from '../../../shared/ui/components/core/menu';
 import {
-  AppRuntimeStore
-} from '../../../shared/ui/context/stores/app-runtime.store';
+  SingleRowComponent,
+  SmartListComponent,
+  type SingleRowData,
+  type SmartListConfig,
+  type SmartListLoadPage
+} from '../../../shared/ui/components/core/smart-list';
+import { AppRuntimeStore } from '../../../shared/ui/context/stores/app-runtime.store';
+import {
+  OperatorLeaderboardStore,
+  type OperatorLeaderboardFilters
+} from '../../../shared/ui/context/stores/operator-leaderboard.store';
 import {
   OperatorMenuStore,
-  type OperatorRegistrySection
+  type OperatorMenuKind
 } from '../../../shared/ui/context/stores/operator-menu.store';
 import { OperatorRegistryStore } from '../../../shared/ui/context/stores/operator-registry.store';
+import { OperatorWorkspaceStore } from '../../../shared/ui/context/stores/operator-workspace.store';
+import { OperatorLeaderboardSingleRowConverter } from '../../../shared/ui/converters/operator-leaderboard-single-row.converter';
+import { I18nPipe } from '../../../shared/ui/pipes';
 
-type OperatorSummaryTone = 'muted' | 'active' | 'success' | 'warning' | 'danger';
-type OperatorProgressState = 'waiting' | 'active' | 'done' | 'error';
-
-interface OperatorStatusCard {
-  id: 'connection' | 'identity' | 'deployment' | 'receipt';
-  icon: string;
-  label: string;
-  value: string;
-  detail: string;
-  tone: OperatorSummaryTone;
-}
-
-interface OperatorProgressStep {
-  id: 'inspect' | 'identity' | 'register' | 'receipt';
-  icon: string;
-  label: string;
-  detail: string;
-  state: OperatorProgressState;
-}
-
-interface OperatorStatusMenuContext {
-  section: OperatorRegistrySection;
-}
+type OperatorActionId = Exclude<OperatorMenuKind, 'community'>;
 
 @Component({
   selector: 'app-operator-page',
@@ -63,27 +55,34 @@ interface OperatorStatusMenuContext {
   imports: [
     AppMenuComponent,
     IndicatorComponent,
+    I18nPipe,
     MatIconModule,
-    NgComponentOutlet
+    NgComponentOutlet,
+    SingleRowComponent,
+    SmartListComponent
   ],
   templateUrl: './operator-page.component.html',
   styleUrl: './operator-page.component.scss'
 })
 export class OperatorPageComponent implements OnInit {
   protected readonly registry = inject(OperatorRegistryStore);
-  private readonly operatorMenu = inject(OperatorMenuStore);
+  protected readonly operatorMenu = inject(OperatorMenuStore);
+  protected readonly workspace = inject(OperatorWorkspaceStore);
+  protected readonly leaderboard = inject(OperatorLeaderboardStore);
   private readonly runtimeStore = inject(AppRuntimeStore);
-  private readonly registryPopupComponentRef = signal<Type<unknown> | null>(null);
+  private readonly i18n = inject(I18nService);
   private readonly profileLoadState = this.runtimeStore.selectLoadingState(
     USER_BY_ID_LOAD_CONTEXT_KEY
   );
+  private readonly registrationPopupComponentRef = signal<Type<unknown> | null>(null);
+  private readonly actionPopupComponentRef = signal<Type<unknown> | null>(null);
+  private readonly rowConverter = new OperatorLeaderboardSingleRowConverter();
 
   protected readonly status = this.registry.status;
   protected readonly busyAction = this.registry.busyAction;
-  protected readonly registryPopupComponent = this.registryPopupComponentRef.asReadonly();
-  protected readonly registryPopupOpen = computed(
-    () => `${this.operatorMenu.activePopup() ?? ''}` === 'registry'
-  );
+  protected readonly registrationPopupComponent = this.registrationPopupComponentRef.asReadonly();
+  protected readonly actionPopupComponent = this.actionPopupComponentRef.asReadonly();
+  protected readonly activePopup = this.operatorMenu.activePopup;
   protected readonly loading = computed(
     () => this.busyAction() === 'load'
       || this.profileLoadState().status === 'idle'
@@ -96,298 +95,197 @@ export class OperatorPageComponent implements OnInit {
       return storeError;
     }
     const status = this.status();
-    if (status?.lastError?.message.trim()) {
-      return status.lastError.message.trim();
-    }
-    return status?.lifecycle === 'ERROR'
-      ? 'The registry state needs operator attention.'
-      : '';
+    return status?.lastError?.message?.trim()
+      || (status?.lifecycle === 'ERROR' ? 'operator.registration.status.error' : '');
   });
-  protected readonly statusCards = computed<readonly OperatorStatusCard[]>(
-    () => this.buildStatusCards(this.status())
-  );
-  protected readonly statusMenuItems = computed<
-    readonly AppMenuItem<OperatorStatusCard['id'], OperatorStatusMenuContext>[]
-  >(() => this.statusCards().map(card => ({
-    id: card.id,
-    label: card.label,
-    detail: `${card.value} · ${card.detail}`,
-    icon: card.icon,
-    kind: 'action',
-    layout: 'big',
-    palette: this.statusPalette(card.id, card.tone),
-    ariaLabel: `Open ${card.label}: ${card.value}. ${card.detail}`,
-    context: {
-      section: this.registrySection(card.id)
+  protected readonly actionItems = computed<readonly AppMenuItem<OperatorActionId>[]>(() => [
+    {
+      id: 'updates',
+      label: 'operator.action.updates',
+      detail: this.workspace.deploymentUpdate()?.updateAvailable
+        ? 'operator.action.updates.available'
+        : 'operator.action.updates.detail',
+      icon: 'system_update_alt',
+      palette: 'teal',
+      kind: 'action',
+      layout: 'big',
+      counter: this.workspace.deploymentUpdate()?.updateAvailable ? 1 : null,
+      counterTone: 'alert',
+      progress: this.workspace.busyAction() === 'load-update'
+        || this.workspace.busyAction() === 'apply-update'
+        ? { state: 'loading', durationMs: 3000 }
+        : null
+    },
+    {
+      id: 'registration',
+      label: 'operator.action.node.registration',
+      detail: this.status()?.enabled && this.status()?.lifecycle === 'REGISTERED'
+        ? 'operator.action.node.registration.registered'
+        : 'operator.action.node.registration.detail',
+      icon: 'app_registration',
+      palette: 'violet',
+      kind: 'action',
+      layout: 'big',
+      progress: this.busyAction() === 'register'
+        ? { state: 'loading', durationMs: 3000 }
+        : null
+    },
+    {
+      id: 'claim',
+      label: 'operator.action.claim.share',
+      detail: this.workspace.claimStatus()?.claimed
+        ? 'operator.action.claim.share.claimed'
+        : 'operator.action.claim.share.detail',
+      icon: 'redeem',
+      palette: 'purple',
+      kind: 'action',
+      layout: 'big',
+      progress: this.workspace.busyAction() === 'load-claim'
+        || this.workspace.busyAction() === 'claim-share'
+        || this.workspace.busyAction() === 'issue-grouping-token'
+        || this.workspace.busyAction() === 'link-operator-group'
+        ? { state: 'loading', durationMs: 3000 }
+        : null
+    },
+    {
+      id: 'configuration',
+      label: 'operator.action.configuration',
+      detail: 'operator.action.configuration.detail',
+      icon: 'tune',
+      palette: 'blue',
+      kind: 'action',
+      layout: 'big',
+      progress: this.workspace.busyAction() === 'load-configuration'
+        || this.workspace.busyAction() === 'save-branding'
+        || this.workspace.busyAction() === 'register-payment'
+        || this.workspace.busyAction() === 'register-firebase'
+        || this.workspace.busyAction() === 'test-authentication'
+        || this.workspace.busyAction() === 'test-messaging'
+        ? { state: 'loading', durationMs: 3000 }
+        : null
     }
-  })));
-  protected readonly progressSteps = computed<readonly OperatorProgressStep[]>(
-    () => this.buildProgressSteps(this.status())
-  );
+  ]);
+  protected readonly leaderboardQuery = computed<
+    Partial<ListQuery<OperatorLeaderboardFilters>>
+  >(() => ({
+    page: 0,
+    pageSize: 8,
+    sort: 'share',
+    direction: 'desc',
+    filters: { revision: this.leaderboard.revision() }
+  }));
+  protected readonly leaderboardConfig: SmartListConfig<
+    OperatorLeaderboardEntryDto,
+    OperatorLeaderboardFilters
+  > = {
+    pageSize: 8,
+    defaultView: 'list',
+    defaultSort: 'share',
+    defaultDirection: 'desc',
+    defaultFilters: { revision: 0 },
+    emptyLabel: 'operator.leaderboard.empty',
+    emptyDescription: 'operator.leaderboard.empty.description',
+    showStickyHeader: false,
+    showFirstGroupMarker: true,
+    listLayout: 'stack',
+    snapMode: 'none',
+    preloadOffsetPx: 180,
+    headerProgress: {
+      enabled: true,
+      placement: 'inline',
+      tone: 'accent'
+    },
+    cacheable: {
+      identity: item => item.id
+    },
+    groupBy: item => this.leaderboardGroupTitle(item.group),
+    containerClass: {
+      'operator-leaderboard-smart-list': true
+    },
+    trackBy: (_index, item) => item.id
+  };
+  protected readonly loadLeaderboardPage: SmartListLoadPage<
+    OperatorLeaderboardEntryDto,
+    OperatorLeaderboardFilters
+  > = (query, context) => from(this.leaderboard.queryPage(query, context?.signal));
 
   constructor() {
     effect(() => {
-      if (this.registryPopupOpen()) {
-        void this.ensureRegistryPopupLoaded();
+      const popup = this.activePopup();
+      if (popup === 'registration') {
+        void this.ensureRegistrationPopupLoaded();
+      } else if (popup) {
+        void this.ensureActionPopupLoaded();
       }
     });
   }
 
   ngOnInit(): void {
-    void this.registry.loadStatus();
+    void Promise.all([
+      this.registry.loadStatus(),
+      this.workspace.loadDeploymentUpdate()
+    ]);
   }
 
-  protected openStatus(
-    event: AppMenuItemSelectEvent<OperatorStatusCard['id'], OperatorStatusMenuContext>
-  ): void {
-    this.operatorMenu.openRegistry(event.context?.section ?? this.registrySection(event.id));
+  protected openAction(event: AppMenuItemSelectEvent<OperatorActionId>): void {
+    this.operatorMenu.open(event.id);
   }
 
-  private async ensureRegistryPopupLoaded(): Promise<void> {
-    if (this.registryPopupComponentRef()) {
+  protected leaderboardRow(
+    entry: OperatorLeaderboardEntryDto
+  ): SingleRowData<OperatorLeaderboardEntryDto> {
+    return this.rowConverter.convert({
+      ...entry,
+      label: this.i18n.translate(entry.label)
+    }, {
+      locale: this.i18n.currentLanguage(),
+      shareLabel: this.i18n.translate('operator.leaderboard.share'),
+      unitsLabel: this.i18n.translate('operator.leaderboard.contribution.units'),
+      deploymentLabel: this.i18n.translate('operator.leaderboard.deployment'),
+      deploymentsLabel: this.i18n.translate('operator.leaderboard.deployments'),
+      claimedNodeLabel: this.i18n.translate('operator.leaderboard.claimed.node'),
+      unclaimedNodeLabel: this.i18n.translate('operator.leaderboard.unclaimed.node')
+    });
+  }
+
+  protected leaderboardGroupSummary(group: OperatorLeaderboardGroup): string {
+    const summary = this.leaderboard.summaries().find(item => item.group === group);
+    const label = this.leaderboardGroupTitle(group);
+    if (!summary) {
+      return label;
+    }
+    const weight = new Intl.NumberFormat(this.i18n.currentLanguage(), {
+      maximumFractionDigits: 0
+    }).format(summary.verifiedWeight);
+    const share = new Intl.NumberFormat(this.i18n.currentLanguage(), {
+      minimumFractionDigits: summary.sharePercent > 0 && summary.sharePercent < 1 ? 2 : 1,
+      maximumFractionDigits: 2
+    }).format(summary.sharePercent);
+    return `${label} · ${weight} ${this.i18n.translate('operator.leaderboard.contribution.units')} · ${share}%`;
+  }
+
+  private leaderboardGroupTitle(group: OperatorLeaderboardGroup): string {
+    const labelKey = group === 'FOUNDER'
+      ? 'operator.leaderboard.group.founder'
+      : group === 'CLAIMED'
+        ? 'operator.leaderboard.group.claimed.nodes'
+        : 'operator.leaderboard.group.unclaimed.nodes';
+    return this.i18n.translate(labelKey);
+  }
+
+  private async ensureRegistrationPopupLoaded(): Promise<void> {
+    if (this.registrationPopupComponentRef()) {
       return;
     }
     const module = await import('../operator-registry-popup/operator-registry-popup.component');
-    this.registryPopupComponentRef.set(module.OperatorRegistryPopupComponent);
+    this.registrationPopupComponentRef.set(module.OperatorRegistryPopupComponent);
   }
 
-  private buildStatusCards(status: OperatorRegistryStatusDto | null): readonly OperatorStatusCard[] {
-    if (!status) {
-      return [
-        this.loadingCard('connection', 'dns', 'Connection'),
-        this.loadingCard('identity', 'key', 'Node identity'),
-        this.loadingCard('deployment', 'badge', 'Deployment'),
-        this.loadingCard('receipt', 'receipt_long', 'Installation test')
-      ];
+  private async ensureActionPopupLoaded(): Promise<void> {
+    if (this.actionPopupComponentRef()) {
+      return;
     }
-
-    const hasDeploymentCode = Boolean(status.enrollment?.deploymentCode.trim());
-    const hasReceipt = Boolean(status.enrollment?.installationTestBatchId.trim());
-
-    return [
-      {
-        id: 'connection',
-        icon: 'dns',
-        label: 'Connection',
-        value: this.connectionLabel(status),
-        detail: status.selection?.baseUrl
-          ?? (status.enabled ? 'Registry selected' : 'No registry selected'),
-        tone: this.lifecycleTone(status.lifecycle)
-      },
-      {
-        id: 'identity',
-        icon: 'key',
-        label: 'Node identity',
-        value: this.identityLabel(status),
-        detail: status.nodeIdentity.publicKeyFingerprint
-          ? 'Signing key fingerprint available'
-          : 'No signing key initialized',
-        tone: status.nodeIdentity.state === 'READY' || status.nodeIdentity.state === 'SIMULATED'
-          ? 'success'
-          : status.nodeIdentity.state === 'INCOMPLETE'
-            ? 'danger'
-            : 'muted'
-      },
-      {
-        id: 'deployment',
-        icon: 'badge',
-        label: 'Deployment',
-        value: hasDeploymentCode
-          ? 'Registered'
-          : status.lifecycle === 'PENDING'
-            ? 'Registration pending'
-            : status.lifecycle === 'ERROR'
-              ? 'Action required'
-              : 'Not registered',
-        detail: hasDeploymentCode
-          ? 'Deployment code issued'
-          : 'No deployment code',
-        tone: hasDeploymentCode
-          ? 'success'
-          : status.lifecycle === 'PENDING'
-            ? 'active'
-            : status.lifecycle === 'ERROR'
-              ? 'danger'
-              : 'muted'
-      },
-      {
-        id: 'receipt',
-        icon: 'receipt_long',
-        label: 'Installation test',
-        value: hasReceipt
-          ? 'Accepted'
-          : status.lifecycle === 'ERROR'
-            ? 'Action required'
-            : 'Waiting',
-        detail: hasReceipt
-          ? 'Signed receipt stored'
-          : 'No receipt yet',
-        tone: hasReceipt
-          ? 'success'
-          : status.lifecycle === 'ERROR'
-            ? 'danger'
-            : status.lifecycle === 'PENDING'
-              ? 'active'
-              : 'muted'
-      }
-    ];
-  }
-
-  private loadingCard(
-    id: OperatorStatusCard['id'],
-    icon: string,
-    label: string
-  ): OperatorStatusCard {
-    return {
-      id,
-      icon,
-      label,
-      value: this.errorMessage() ? 'Unavailable' : 'Loading',
-      detail: this.errorMessage() ? 'State could not be loaded' : 'Reading deployment state',
-      tone: this.errorMessage() ? 'danger' : 'muted'
-    };
-  }
-
-  private connectionLabel(status: OperatorRegistryStatusDto): string {
-    if (status.lifecycle === 'DISABLED' || !status.enabled) {
-      return status.selection ? 'Disabled' : 'Not configured';
-    }
-    switch (status.lifecycle) {
-      case 'REGISTERED':
-        return 'Connected';
-      case 'INSPECTED':
-        return 'Identity inspected';
-      case 'PENDING':
-        return 'Connecting';
-      case 'ERROR':
-        return 'Action required';
-      case 'UNCONFIGURED':
-        return 'Not configured';
-    }
-  }
-
-  private identityLabel(status: OperatorRegistryStatusDto): string {
-    switch (status.nodeIdentity.state) {
-      case 'READY':
-        return 'Ready';
-      case 'SIMULATED':
-        return 'Sample ready';
-      case 'INCOMPLETE':
-        return 'Incomplete';
-      case 'MISSING':
-        return 'Missing';
-    }
-  }
-
-  private lifecycleTone(lifecycle: OperatorRegistryLifecycle): OperatorSummaryTone {
-    switch (lifecycle) {
-      case 'REGISTERED':
-        return 'success';
-      case 'INSPECTED':
-      case 'PENDING':
-        return 'active';
-      case 'ERROR':
-        return 'danger';
-      case 'DISABLED':
-        return 'warning';
-      case 'UNCONFIGURED':
-        return 'muted';
-    }
-  }
-
-  private statusPalette(
-    id: OperatorStatusCard['id'],
-    tone: OperatorSummaryTone
-  ): AppMenuPalette {
-    if (tone === 'danger') {
-      return 'red';
-    }
-    if (tone === 'warning') {
-      return 'amber';
-    }
-    switch (id) {
-      case 'connection':
-        return 'violet';
-      case 'identity':
-        return 'blue';
-      case 'deployment':
-        return 'green';
-      case 'receipt':
-        return 'teal';
-    }
-  }
-
-  private registrySection(id: OperatorStatusCard['id']): OperatorRegistrySection {
-    switch (id) {
-      case 'connection':
-        return 'configuration';
-      case 'identity':
-      case 'deployment':
-      case 'receipt':
-        return id;
-    }
-  }
-
-  private buildProgressSteps(status: OperatorRegistryStatusDto | null): readonly OperatorProgressStep[] {
-    const lifecycle = status?.lifecycle ?? 'UNCONFIGURED';
-    const hasInspection = Boolean(status?.draftInspection || status?.selection);
-    const hasIdentity = status?.nodeIdentity.state === 'READY'
-      || status?.nodeIdentity.state === 'SIMULATED';
-    const hasEnrollment = Boolean(status?.enrollment?.deploymentCode.trim());
-    const hasReceipt = Boolean(status?.enrollment?.installationTestBatchId.trim());
-    const hasError = lifecycle === 'ERROR';
-
-    return [
-      {
-        id: 'inspect',
-        icon: 'verified_user',
-        label: 'Inspect registry identity',
-        detail: hasInspection ? 'Registry identity selected' : 'No registry selected',
-        state: hasInspection ? 'done' : hasError ? 'error' : 'active'
-      },
-      {
-        id: 'identity',
-        icon: 'key',
-        label: 'Initialize node identity',
-        detail: hasIdentity
-          ? status?.nodeIdentity.state === 'SIMULATED'
-            ? 'Sample identity'
-            : 'Signing identity ready'
-          : 'Not initialized',
-        state: hasIdentity
-          ? 'done'
-          : lifecycle === 'PENDING'
-            ? 'active'
-            : hasError
-              ? 'error'
-              : 'waiting'
-      },
-      {
-        id: 'register',
-        icon: 'app_registration',
-        label: 'Register deployment',
-        detail: hasEnrollment ? 'Deployment code issued' : 'Awaiting confirmation',
-        state: hasEnrollment
-          ? 'done'
-          : lifecycle === 'PENDING'
-            ? 'active'
-            : hasError
-              ? 'error'
-              : 'waiting'
-      },
-      {
-        id: 'receipt',
-        icon: 'receipt_long',
-        label: 'Store installation receipt',
-        detail: hasReceipt ? 'Installation test accepted' : 'No receipt yet',
-        state: hasReceipt
-          ? 'done'
-          : lifecycle === 'PENDING'
-            ? 'active'
-            : hasError
-              ? 'error'
-              : 'waiting'
-      }
-    ];
+    const module = await import('../operator-action-popup/operator-action-popup.component');
+    this.actionPopupComponentRef.set(module.OperatorActionPopupComponent);
   }
 }

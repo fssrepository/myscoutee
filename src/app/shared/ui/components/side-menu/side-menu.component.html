@@ -6,6 +6,15 @@
     [class.is-notification-open]="notificationCenterStore.isOpen()"
   >
     <div class="navigator-trigger-rail-inner">
+      @if (isOperatorMode()) {
+        <app-menu
+          class="operator-community-menu"
+          kind="inline"
+          layout="row"
+          [items]="operatorCommunityMenuItems()"
+          (itemSelect)="onOperatorCommunityMenuSelect($event)"
+        ></app-menu>
+      }
       <app-menu
         class="user-selector-menu"
         kind="inline"
@@ -17,7 +26,7 @@
   </div>
 }
 
-@if (avatarVisible() && notificationCenterStore.attentionVisible()) {
+@if (avatarVisible() && !isOperatorMode() && notificationCenterStore.attentionVisible()) {
   <div class="notification-attention-launcher">
     <app-menu
       class="notification-attention-menu"
@@ -78,14 +87,7 @@
             {{ navigatorOfflineNote() }}
           </div>
         }
-        @if (isOperatorMode()) {
-          <app-menu
-            kind="inline"
-            layout="grid"
-            [model]="operatorNavigatorMenuModel()"
-            (itemSelect)="onOperatorNavigatorMenuSelect($event)"
-          ></app-menu>
-        } @else if (isAdminMode()) {
+        @if (isAdminMode()) {
           <app-menu
             kind="inline"
             layout="grid"
@@ -93,7 +95,7 @@
             [value]="adminNavigatorMenuValues()"
             (itemSelect)="onAdminNavigatorMenuSelect($event)"
           ></app-menu>
-        } @else {
+        } @else if (!isOperatorMode()) {
           <app-menu
             kind="inline"
             layout="grid"

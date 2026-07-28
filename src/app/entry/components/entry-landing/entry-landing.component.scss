@@ -92,7 +92,12 @@
   text-decoration: none;
   color: #1f2d3d;
   font-weight: 700;
-  background-image: linear-gradient(90deg, #4f7cff, #7b5cff, #ff4d8d);
+  background-image: linear-gradient(
+    90deg,
+    var(--deployment-brand-primary),
+    var(--deployment-brand-secondary),
+    var(--deployment-brand-accent)
+  );
   background-repeat: no-repeat;
   background-size: 100% 3px;
   background-position: 0 100%;
@@ -116,7 +121,7 @@
   font-weight: 900;
   line-height: 0.8;
   letter-spacing: -0.02em;
-  color: #1f3a63;
+  color: var(--deployment-brand-text);
 }
 
 .entry-auth-btn {
@@ -128,8 +133,13 @@
   gap: 0.34rem;
   border-radius: 999px;
   border: 1px solid rgba(255, 255, 255, 0.18);
-  background: linear-gradient(135deg, #7b49f4 0%, #ff4e98 55%, #ff7b2d 100%);
-  box-shadow: 0 8px 20px rgba(119, 65, 227, 0.32);
+  background: linear-gradient(
+    135deg,
+    var(--deployment-brand-primary) 0%,
+    var(--deployment-brand-secondary) 55%,
+    var(--deployment-brand-accent) 100%
+  );
+  box-shadow: 0 8px 20px var(--deployment-brand-shadow);
   color: #fff;
   font: inherit;
   font-size: 0.84rem;
@@ -216,12 +226,17 @@
   border-radius: 14px;
   background:
     radial-gradient(circle, rgba(255, 255, 255, 0.2) 1px, transparent 1px),
-    linear-gradient(125deg, #7446f2 0%, #d93f93 52%, #ff7b2d 100%);
+    linear-gradient(
+      125deg,
+      var(--deployment-brand-primary) 0%,
+      var(--deployment-brand-secondary) 52%,
+      var(--deployment-brand-accent) 100%
+    );
   background-size: 18px 18px, auto;
   color: #fff;
   padding: 1.5rem;
   margin-bottom: 0.9rem;
-  box-shadow: 0 20px 40px rgba(123, 73, 244, 0.25);
+  box-shadow: 0 20px 40px var(--deployment-brand-shadow);
 }
 
 .entry-hero-main {
@@ -239,7 +254,7 @@
 
 .entry-eyebrow {
   margin: 0 0 0.6rem;
-  color: #fff3b8;
+  color: var(--deployment-brand-soft);
   font-size: 0.82rem;
   font-weight: 800;
   text-transform: uppercase;

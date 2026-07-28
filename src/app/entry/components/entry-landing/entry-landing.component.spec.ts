@@ -1,7 +1,10 @@
+import { signal } from '@angular/core';
 import { TestBed } from '@angular/core/testing';
 import { firstValueFrom } from 'rxjs';
 
 import { IdeaPostsService } from '../../../shared/core/base/services/idea-posts.service';
+import { DeploymentConfigurationService } from '../../../shared/core/base/services/deployment-configuration.service';
+import { DEFAULT_DEPLOYMENT_BRANDING } from '../../../shared/core/contracts';
 import type { IdeaArticleDetailDto } from '../../../shared/core/contracts/content.interface';
 import type { PageResult, SmartListConfig, SmartListLoadPage } from '../../../shared/ui/components/core/smart-list';
 import type { InfoCardData } from '../../../shared/ui/components/core/smart-list/card';
@@ -18,6 +21,12 @@ describe('EntryLandingComponent article lists', () => {
         {
           provide: IdeaPostsService,
           useValue: { loadPublishedIdeaCardsPage }
+        },
+        {
+          provide: DeploymentConfigurationService,
+          useValue: {
+            branding: signal(DEFAULT_DEPLOYMENT_BRANDING)
+          }
         }
       ]
     });

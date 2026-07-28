@@ -20,6 +20,7 @@ export { HttpGameService } from './services/game.service';
 export { HttpHelpCenterService } from './services/help-center.service';
 export { HttpIdeaPostsService } from './services/idea-posts.service';
 export { HttpLandingContentService } from './services/landing-content.service';
+export { HttpDeploymentConfigurationService } from './services/deployment-configuration.service';
 export { HttpMediaService } from './services/media.service';
 export { HttpNotificationsService } from './services/notifications.service';
 export { HttpOperatorRegistryService } from './services/operator-registry.service';

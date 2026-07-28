@@ -24,6 +24,7 @@ export interface LinkInputAvailableUrl {
   url: string;
   label?: string | null;
   description?: string | null;
+  disabled?: boolean | null;
 }
 
 type LinkInputAction = 'select' | 'paste' | 'open' | 'delete';
@@ -240,6 +241,7 @@ export class LinkInputComponent implements ControlValueAccessor {
         surface: 'tinted',
         active: currentUrl === option.normalizedUrl,
         checked: currentUrl === option.normalizedUrl,
+        disabled: option.disabled === true,
         context: {
           action: 'select',
           url: option.normalizedUrl

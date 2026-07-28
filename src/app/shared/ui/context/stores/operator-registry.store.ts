@@ -12,13 +12,16 @@ import {
 import type {
   OperatorRegistryInspectRequestDto,
   OperatorRegistryInspectionDto,
+  OperatorRegistryOptionDto,
   OperatorRegistryStatusDto
 } from '../../../core/contracts/operator.interface';
+import { normalizeOperatorRegistryBaseUrl } from '../../../core/base/operator-registry-candidate';
 
 export type OperatorRegistryBusyAction =
   | 'load'
   | 'inspect'
   | 'confirm'
+  | 'register'
   | 'retry'
   | 'disconnect'
   | null;
@@ -47,11 +50,28 @@ export class OperatorRegistryStore {
   readonly notice = this.noticeRef.asReadonly();
   readonly registryBaseUrl = this.registryBaseUrlRef.asReadonly();
   readonly expectedRegistryScope = this.expectedRegistryScopeRef.asReadonly();
+  readonly registryOptions = computed<readonly OperatorRegistryOptionDto[]>(
+    () => this.statusRef()?.registryOptions ?? []
+  );
   readonly canInspect = computed(() => {
     const status = this.statusRef();
     return this.busyActionRef() === null
       && Boolean(this.registryBaseUrlRef().trim())
       && !(status?.enabled && status.lifecycle === 'REGISTERED');
+  });
+  readonly canRegister = computed(() => {
+    const baseUrl = this.registryBaseUrlRef().trim();
+    if (this.busyActionRef() !== null || !baseUrl) {
+      return false;
+    }
+    const status = this.statusRef();
+    const currentUrl = status?.selection?.baseUrl?.trim() ?? '';
+    return !(
+      status?.enabled
+      && status.lifecycle === 'REGISTERED'
+      && currentUrl
+      && sameRegistryUrl(currentUrl, baseUrl)
+    );
   });
 
   constructor() {
@@ -82,12 +102,40 @@ export class OperatorRegistryStore {
     this.ensureContextBound();
     const inspectionToken = this.inspectionRef()?.inspectionToken.trim() ?? '';
     if (!inspectionToken) {
-      this.errorRef.set('Inspect the registry identity again before confirming.');
+      this.errorRef.set('operator.registration.error.inspection.required');
       return null;
     }
     const status = await this.run('confirm', () => this.service.confirm(inspectionToken));
     if (status) {
       this.inspectionRef.set(null);
+    }
+    return status;
+  }
+
+  async register(): Promise<OperatorRegistryStatusDto | null> {
+    this.ensureContextBound();
+    const registryBaseUrl = this.registryBaseUrlRef().trim();
+    if (!registryBaseUrl) {
+      this.errorRef.set('operator.registration.error.registry.required');
+      return null;
+    }
+    const expectedRegistryScope = this.expectedRegistryScopeRef().trim();
+    const status = await this.run(
+      'register',
+      () => this.service.register({
+        registryBaseUrl,
+        ...(expectedRegistryScope ? { expectedRegistryScope } : {})
+      })
+    );
+    if (status) {
+      this.inspectionRef.set(null);
+      this.registryBaseUrlRef.set(status.selection?.baseUrl ?? registryBaseUrl);
+      this.expectedRegistryScopeRef.set(
+        status.selection?.registryScope
+        ?? status.selection?.registryIdentity?.registryScope
+        ?? this.expectedRegistryScopeRef()
+      );
+      this.candidateInitialized = true;
     }
     return status;
   }
@@ -173,7 +221,7 @@ export class OperatorRegistryStore {
       return result;
     } catch (error) {
       if (requestGeneration === this.requestGeneration) {
-        this.errorRef.set(messageFromError(error, fallbackForAction(action)));
+        this.errorRef.set(messageFromError(error, defaultMessageForAction(action)));
       }
       return null;
     } finally {
@@ -187,8 +235,18 @@ export class OperatorRegistryStore {
     if (this.candidateInitialized) {
       return;
     }
-    this.registryBaseUrlRef.set(status.candidateDefaults.baseUrl);
-    this.expectedRegistryScopeRef.set(status.candidateDefaults.registryScope);
+    this.registryBaseUrlRef.set(
+      status.selection?.baseUrl
+      ?? status.candidateDefaults?.baseUrl
+      ?? status.registryOptions?.[0]?.baseUrl
+      ?? ''
+    );
+    this.expectedRegistryScopeRef.set(
+      status.selection?.registryScope
+      ?? status.selection?.registryIdentity?.registryScope
+      ?? status.candidateDefaults?.registryScope
+      ?? ''
+    );
     this.candidateInitialized = true;
   }
 
@@ -234,18 +292,29 @@ function isStatus(
   return 'lifecycle' in value;
 }
 
-function fallbackForAction(action: Exclude<OperatorRegistryBusyAction, null>): string {
+function defaultMessageForAction(action: Exclude<OperatorRegistryBusyAction, null>): string {
   switch (action) {
     case 'load':
-      return 'Unable to load the operator registry state.';
+      return 'operator.registration.error.load';
     case 'inspect':
-      return 'Registry inspection failed.';
+      return 'operator.registration.error.inspect';
     case 'confirm':
-      return 'Deployment registration failed.';
+      return 'operator.registration.error.confirm';
+    case 'register':
+      return 'operator.registration.error.register';
     case 'retry':
-      return 'Registry retry failed.';
+      return 'operator.registration.error.retry';
     case 'disconnect':
-      return 'Unable to disable the registry connection.';
+      return 'operator.registration.error.disconnect';
+  }
+}
+
+function sameRegistryUrl(left: string, right: string): boolean {
+  try {
+    return normalizeOperatorRegistryBaseUrl(left, false)
+      === normalizeOperatorRegistryBaseUrl(right, false);
+  } catch {
+    return left.trim().replace(/\/+$/, '') === right.trim().replace(/\/+$/, '');
   }
 }
 
@@ -265,7 +334,7 @@ function messageFromError(error: unknown, fallback: string): string {
       return serverMessage;
     }
     if (source.name === 'TimeoutError') {
-      return 'The registry operation timed out. No browser secret was created; retry is safe.';
+      return 'operator.registration.error.timeout';
     }
     if (typeof source.message === 'string' && source.message.trim()) {
       return source.message.trim();

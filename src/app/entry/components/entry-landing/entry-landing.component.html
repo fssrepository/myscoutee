@@ -1,14 +1,19 @@
 <section
   class="entry-shell"
+  [attr.data-deployment-theme]="deploymentBranding().themePreset.toLowerCase()"
   [attr.inert]="partnersPopupOpen ? '' : null"
   [attr.aria-hidden]="partnersPopupOpen ? 'true' : null"
 >
   <div class="entry-shell-panel">
     <header class="entry-shell-header">
-      <div class="entry-brand" [attr.aria-label]="'landing.top' | i18n: 'MyScoutee landing top'">
-        <img class="entry-brand-mark" src="assets/logo/heart.webp" alt="MyScoutee logo" />
+      <div class="entry-brand" [attr.aria-label]="deploymentBranding().productName">
+        <img
+          class="entry-brand-mark"
+          [src]="deploymentBranding().logoUrl"
+          [alt]="deploymentBranding().productName"
+        />
         <span class="entry-brand-copy">
-          <span class="entry-brand-text">yScoutee</span>
+          <span class="entry-brand-text">{{ deploymentBranding().productName }}</span>
           <span class="entry-preview-badge">
             <span>{{ 'landing.preview.badge' | i18n: 'Preview' }}</span>
           </span>
@@ -40,12 +45,12 @@
     <section class="entry-hero" id="top">
       <div class="entry-hero-main">
         <div class="entry-hero-content">
-          <p class="entry-eyebrow">Your preferences come first</p>
+          <p class="entry-eyebrow">{{ deploymentBranding().homeLabel }}</p>
           <h1>Stop Swiping.</h1>
           <h1>Start Connecting.</h1>
           <div class="entry-hero-lead">
             <p class="hero-line-even">Dating became swiping in the 2010s.</p>
-            <p class="hero-line-even">MyScoutee makes meeting people social again.</p>
+            <p class="hero-line-even">{{ deploymentBranding().productName }} makes meeting people social again.</p>
           </div>
           <div class="entry-hero-cta">
             <button
@@ -117,7 +122,11 @@
     </section>
 
     @if (articlesLoading || publishedIdeaCount() > 0) {
-      <section class="entry-ideas" id="articles" aria-label="MyScoutee articles">
+      <section
+        class="entry-ideas"
+        id="articles"
+        [attr.aria-label]="deploymentBranding().productName + ' articles'"
+      >
         @if (articlesLoading || featuredIdeaCards().length > 0) {
           <div
             role="region"
@@ -155,8 +164,12 @@
       <div class="entry-footer-grid">
         <section class="entry-footer-brand">
           <div class="entry-footer-title">
-            <img class="entry-footer-mark" src="assets/logo/heart.png" alt="MyScoutee logo" />
-            <span>yScoutee</span>
+            <img
+              class="entry-footer-mark"
+              [src]="deploymentBranding().logoUrl"
+              [alt]="deploymentBranding().productName"
+            />
+            <span>{{ deploymentBranding().productName }}</span>
           </div>
           <p>Where fast matches turn into real connections.</p>
         </section>
@@ -199,7 +212,7 @@
         </section>
       </div>
       <div class="entry-footer-bottom">
-        <span>© 2026 MyScoutee</span>
+        <span>© 2026 {{ deploymentBranding().productName }}</span>
       </div>
     </footer>
   </div>

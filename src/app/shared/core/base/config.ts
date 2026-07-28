@@ -222,7 +222,12 @@ export const ROUTE_CONFIG: RouteConfig = {
     },
     {
       routePrefix: '/operator/registry',
-      demoDelayMs: 650,
+      demoDelayMs: 1500,
+      requestTimeoutMs: 30000
+    },
+    {
+      routePrefix: '/operator',
+      demoDelayMs: 1500,
       requestTimeoutMs: 30000
     },
     {

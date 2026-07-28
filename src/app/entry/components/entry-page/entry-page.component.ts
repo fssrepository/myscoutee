@@ -514,7 +514,7 @@ export class EntryPageComponent implements OnInit, OnDestroy {
   private openDemoUserSelectorPopup(): void {
     this.demoBootstrapSelectorStore.openDemoBootstrapSelector({
       mode: 'member',
-      selectableModes: ['member', 'operator', 'admin'],
+      selectableModes: ['member', 'admin', 'operator'],
       onSelect: (userId, mode) => new Promise<boolean>(resolve => {
         this.ngZone.run(() => {
           void this.onDemoUserSelected({

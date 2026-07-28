@@ -3,10 +3,24 @@ import { Injectable, inject } from '@angular/core';
 import { environment } from '../../../../../environments/environment';
 
 import type {
+  OperatorGroupingTokenDto,
+  OperatorClaimRequestDto,
+  OperatorClaimStatusDto,
+  OperatorCommunityAvailability,
+  OperatorCommunityStatusDto,
+  OperatorConfigurationDto,
+  OperatorConfigurationSaveRequestDto,
+  OperatorConfigurationTestRequestDto,
+  OperatorConfigurationTestResultDto,
+  OperatorDeploymentUpdateDto,
+  OperatorDeploymentUpdateProgressHandler,
+  OperatorLeaderboardPageDto,
+  OperatorRegistryRegisterRequestDto,
   OperatorRegistryInspectRequestDto,
   OperatorRegistryInspectionDto,
   OperatorRegistryStatusDto
 } from '../../contracts/operator.interface';
+import type { ListQuery } from '../../contracts/list.interface';
 import { HttpOperatorRegistryService } from '../../http/services/operator-registry.service';
 import { LocalOperatorRegistryService } from '../../local/source/services/operator-registry.service';
 import { BaseRouteModeService } from './base-route-mode.service';
@@ -38,12 +52,72 @@ export class OperatorRegistryService extends BaseRouteModeService {
     return this.registryService.confirm(inspectionToken);
   }
 
+  register(request: OperatorRegistryRegisterRequestDto): Promise<OperatorRegistryStatusDto> {
+    return this.registryService.register(request);
+  }
+
   retry(): Promise<OperatorRegistryStatusDto> {
     return this.registryService.retry();
   }
 
   disconnect(): Promise<OperatorRegistryStatusDto> {
     return this.registryService.disconnect();
+  }
+
+  leaderboardPage(query: ListQuery, signal?: AbortSignal): Promise<OperatorLeaderboardPageDto> {
+    return this.registryService.leaderboardPage(query, signal);
+  }
+
+  loadClaimStatus(): Promise<OperatorClaimStatusDto> {
+    return this.registryService.loadClaimStatus();
+  }
+
+  claimShare(request: OperatorClaimRequestDto): Promise<OperatorClaimStatusDto> {
+    return this.registryService.claimShare(request);
+  }
+
+  issueGroupingToken(): Promise<OperatorGroupingTokenDto> {
+    return this.registryService.issueGroupingToken();
+  }
+
+  linkOperatorGroup(clientToken: string): Promise<OperatorClaimStatusDto> {
+    return this.registryService.linkOperatorGroup({ clientToken });
+  }
+
+  loadDeploymentUpdate(): Promise<OperatorDeploymentUpdateDto> {
+    return this.registryService.loadDeploymentUpdate();
+  }
+
+  applyDeploymentUpdate(
+    onProgress?: OperatorDeploymentUpdateProgressHandler
+  ): Promise<OperatorDeploymentUpdateDto> {
+    return this.registryService.applyDeploymentUpdate(onProgress);
+  }
+
+  loadConfiguration(): Promise<OperatorConfigurationDto> {
+    return this.registryService.loadConfiguration();
+  }
+
+  saveConfiguration(
+    request: OperatorConfigurationSaveRequestDto
+  ): Promise<OperatorConfigurationDto> {
+    return this.registryService.saveConfiguration(request);
+  }
+
+  testConfiguration(
+    request: OperatorConfigurationTestRequestDto
+  ): Promise<OperatorConfigurationTestResultDto> {
+    return this.registryService.testConfiguration(request);
+  }
+
+  loadCommunityStatus(): Promise<OperatorCommunityStatusDto> {
+    return this.registryService.loadCommunityStatus();
+  }
+
+  setCommunityAvailability(
+    availability: OperatorCommunityAvailability
+  ): Promise<OperatorCommunityStatusDto> {
+    return this.registryService.setCommunityAvailability(availability);
   }
 
   private get registryService(): LocalOperatorRegistryService | HttpOperatorRegistryService {

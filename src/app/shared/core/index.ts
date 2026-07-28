@@ -12,6 +12,7 @@ export { TermsPolicyService, type TermsPolicyOpenOptions } from './base/services
 export { ExplanationGuideService } from './base/services/explanation-guide.service';
 export { IdeaPostsService } from './base/services/idea-posts.service';
 export { LandingContentService } from './base/services/landing-content.service';
+export { DeploymentConfigurationService } from './base/services/deployment-configuration.service';
 export { MediaService } from './base/services/media.service';
 export { NotificationsService } from './base/services/notifications.service';
 export { OperatorRegistryService } from './base/services/operator-registry.service';
