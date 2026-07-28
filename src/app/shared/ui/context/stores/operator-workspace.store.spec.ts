@@ -16,6 +16,7 @@ describe('OperatorWorkspaceStore', () => {
   const claimShare = vi.fn();
   const loadClaimStatus = vi.fn();
   const loadDeploymentUpdate = vi.fn();
+  const testConfiguration = vi.fn();
   const invalidate = vi.fn();
   const session = signal({
     kind: 'firebase' as const,
@@ -42,6 +43,7 @@ describe('OperatorWorkspaceStore', () => {
     claimShare.mockReset();
     loadClaimStatus.mockReset();
     loadDeploymentUpdate.mockReset();
+    testConfiguration.mockReset();
     invalidate.mockReset();
     activeUserProfile.set({
       id: 'operator-real',
@@ -62,7 +64,8 @@ describe('OperatorWorkspaceStore', () => {
           useValue: {
             claimShare,
             loadClaimStatus,
-            loadDeploymentUpdate
+            loadDeploymentUpdate,
+            testConfiguration
           }
         },
         {
@@ -89,6 +92,7 @@ describe('OperatorWorkspaceStore', () => {
   });
 
   afterEach(() => {
+    vi.useRealTimers();
     TestBed.resetTestingModule();
   });
 
@@ -160,6 +164,27 @@ describe('OperatorWorkspaceStore', () => {
     expect(await store.refreshDeploymentUpdate()).toEqual(refreshed);
     expect(store.deploymentUpdate()).toEqual(refreshed);
     expect(loadDeploymentUpdate).toHaveBeenCalledTimes(2);
+  });
+
+  it('briefly exposes independent shared action feedback for Firebase tests', async () => {
+    vi.useFakeTimers();
+    testConfiguration.mockResolvedValue({
+      kind: 'FIREBASE_AUTHENTICATION',
+      success: true,
+      message: 'operator.configuration.test.success',
+      testedAt: '2026-07-28T18:00:00.000Z'
+    });
+    const store = TestBed.inject(OperatorWorkspaceStore);
+
+    await store.testConfiguration('FIREBASE_AUTHENTICATION');
+
+    expect(store.configurationAuthenticationFeedback()).toBe('success');
+    expect(store.configurationMessagingFeedback()).toBeNull();
+    expect(store.configurationAuthenticationTest()?.success).toBe(true);
+
+    await vi.advanceTimersByTimeAsync(1000);
+
+    expect(store.configurationAuthenticationFeedback()).toBeNull();
   });
 });
 

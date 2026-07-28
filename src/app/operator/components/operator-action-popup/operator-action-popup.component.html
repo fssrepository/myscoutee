@@ -248,7 +248,10 @@
                     </p>
                   }
 
-                  <section class="operator-action-popup__configuration-group">
+                  <section
+                    class="operator-action-popup__configuration-group"
+                    data-palette="violet"
+                  >
                     <header>
                       <span>
                         <small>{{ 'operator.configuration.branding.eyebrow' | i18n }}</small>
@@ -257,8 +260,28 @@
                       <mat-icon>palette</mat-icon>
                     </header>
 
-                    <div class="operator-action-popup__branding-fields">
-                      <label class="operator-action-popup__field">
+                    <div class="operator-action-popup__branding-editor">
+                      <div class="operator-action-popup__logo-field">
+                        <span>{{ 'operator.configuration.branding.logo' | i18n }}</span>
+                        <app-image-carousel
+                          [slotCount]="1"
+                          [compact]="true"
+                          [autoSize]="true"
+                          mediaFit="contain"
+                          imagePosition="center"
+                          [ngModel]="draft.branding.logoUrl ? [draft.branding.logoUrl] : []"
+                          (ngModelChange)="onBrandingLogoChange($event)"
+                          [disabled]="configurationDisabled()"
+                          [uploadOwnerId]="workspace.configurationUploadOwnerId()"
+                          uploadEntityId="deployment-branding-logo"
+                          [ariaLabel]="'operator.configuration.branding.logo' | i18n"
+                        ></app-image-carousel>
+                        <small class="operator-action-popup__media-guidance">
+                          {{ 'operator.configuration.branding.logo.guidance' | i18n }}
+                        </small>
+                      </div>
+
+                      <label class="operator-action-popup__field operator-action-popup__branding-name">
                         <span>{{ 'operator.configuration.branding.product.name' | i18n }}</span>
                         <input
                           type="text"
@@ -270,7 +293,7 @@
                         />
                       </label>
 
-                      <div class="operator-action-popup__select-field">
+                      <div class="operator-action-popup__select-field operator-action-popup__branding-theme">
                         <span>{{ 'operator.configuration.branding.theme' | i18n }}</span>
                         <app-menu
                           kind="select"
@@ -279,29 +302,15 @@
                           (itemSelect)="onAction($event)"
                         ></app-menu>
                       </div>
-                    </div>
 
-                    <div class="operator-action-popup__logo-field">
-                      <span>{{ 'operator.configuration.branding.logo' | i18n }}</span>
-                        <app-image-carousel
-                          [slotCount]="1"
-                          [compact]="true"
-                          [ngModel]="draft.branding.logoUrl ? [draft.branding.logoUrl] : []"
-                        (ngModelChange)="onBrandingLogoChange($event)"
-                        [disabled]="configurationDisabled()"
-                        [uploadOwnerId]="workspace.configurationUploadOwnerId()"
-                        uploadEntityId="deployment-branding-logo"
-                        [ariaLabel]="'operator.configuration.branding.logo' | i18n"
-                      ></app-image-carousel>
+                      <app-menu
+                        class="operator-action-popup__section-actions operator-action-popup__branding-actions"
+                        kind="inline"
+                        layout="row"
+                        [items]="configurationBrandingActionItems()"
+                        (itemSelect)="onAction($event)"
+                      ></app-menu>
                     </div>
-
-                    <app-menu
-                      class="operator-action-popup__section-actions"
-                      kind="inline"
-                      layout="row"
-                      [items]="configurationBrandingActionItems()"
-                      (itemSelect)="onAction($event)"
-                    ></app-menu>
                     @if (workspace.feedbackAction() === 'save-branding') {
                       @if (workspace.error()) {
                         <p class="operator-action-popup__result is-error" role="alert">
@@ -317,7 +326,10 @@
                     }
                   </section>
 
-                  <section class="operator-action-popup__configuration-group">
+                  <section
+                    class="operator-action-popup__configuration-group"
+                    data-palette="teal"
+                  >
                     <header>
                       <span>
                         <small>{{ 'operator.configuration.payment.eyebrow' | i18n }}</small>
@@ -371,7 +383,10 @@
                     }
                   </section>
 
-                  <section class="operator-action-popup__configuration-group">
+                  <section
+                    class="operator-action-popup__configuration-group"
+                    data-palette="blue"
+                  >
                     <header>
                       <span>
                         <small>{{ 'operator.configuration.firebase.eyebrow' | i18n }}</small>

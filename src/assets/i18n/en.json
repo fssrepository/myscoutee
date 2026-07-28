@@ -1,6 +1,6 @@
 {
   "lang": "en",
-  "version": "2026.07.28.en.27",
+  "version": "2026.07.28.en.28",
   "messages": {
     "about": "About",
     "accommodation": "Accommodation",
@@ -2527,7 +2527,7 @@
     "operator.claim.verification.approved": "Company verification approved",
     "operator.claim.verification.backend.unavailable": "This server does not expose the structured company-verification claim contract yet.",
     "operator.claim.verification.error.required": "Complete every required company and contact field, enter a valid email and website, and confirm the attestation.",
-    "operator.claim.verification.error.website": "Enter a valid public website URL beginning with http:// or https://.",
+    "operator.claim.verification.error.website": "Enter a valid public website URL beginning with https://.",
     "operator.group.instructions": "Issue a temporary token for another already claimed deployment, or paste a token from one to join its virtual group. Grouping does not change claim ownership or measured activity.",
     "operator.group.temporary.token": "Temporary grouping token",
     "operator.group.expires": "Expires",
@@ -2556,6 +2556,7 @@
     "operator.configuration.branding.home.label": "Landing label",
     "operator.configuration.branding.theme": "Landing theme",
     "operator.configuration.branding.logo": "Logo",
+    "operator.configuration.branding.logo.guidance": "Recommended 512 × 512 px (1:1). JPEG, PNG, WebP or GIF; PNG/WebP preferred for transparency. Max 10 MB.",
     "operator.configuration.branding.logo.heart.webp": "MyScoutee heart (WebP)",
     "operator.configuration.branding.logo.heart.png": "MyScoutee heart (PNG)",
     "operator.configuration.branding.save": "Save branding",

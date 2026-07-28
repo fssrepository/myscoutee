@@ -4,8 +4,7 @@ import { MatIconModule } from '@angular/material/icon';
 
 import {
   normalizeOperatorRegistryBaseUrl,
-  validateOperatorRegistryBaseUrl,
-  validateOperatorRegistryScope
+  validateOperatorRegistryBaseUrl
 } from '../../../shared/core/base/operator-registry-candidate';
 import { I18nService } from '../../../shared/core/base/services/i18n.service';
 import {
@@ -13,6 +12,11 @@ import {
   type LinkInputConfig
 } from '../../../shared/ui/components/core/form/inputs/link-input';
 import { IndicatorComponent } from '../../../shared/ui/components/core/indicator';
+import {
+  AppMenuComponent,
+  type AppMenuItem,
+  type AppMenuItemSelectEvent
+} from '../../../shared/ui/components/core/menu';
 import {
   PopupComponent,
   type PopupActionEvent,
@@ -28,6 +32,7 @@ import { I18nPipe } from '../../../shared/ui/pipes';
   changeDetection: ChangeDetectionStrategy.OnPush,
   imports: [
     FormsModule,
+    AppMenuComponent,
     IndicatorComponent,
     I18nPipe,
     LinkInputComponent,
@@ -46,7 +51,6 @@ export class OperatorRegistryPopupComponent implements OnInit {
   protected readonly errorMessage = this.registry.error;
   protected readonly noticeMessage = this.registry.notice;
   protected readonly registryBaseUrl = this.registry.registryBaseUrl;
-  protected readonly expectedRegistryScope = this.registry.expectedRegistryScope;
   protected readonly busy = computed(() => this.busyAction() !== null);
   protected readonly loading = computed(() => this.busyAction() === 'load');
   protected readonly canRegister = this.registry.canRegister;
@@ -62,6 +66,7 @@ export class OperatorRegistryPopupComponent implements OnInit {
       label: this.i18n.translate('operator.registration.registry.url'),
       placeholder: 'https://registry.example.com',
       required: true,
+      panelMode: 'auto',
       availableUrls: this.registry.registryOptions().map(option => ({
         url: option.baseUrl,
         label: this.i18n.translate(option.label),
@@ -76,6 +81,30 @@ export class OperatorRegistryPopupComponent implements OnInit {
       deleteAriaLabel: this.i18n.translate('operator.registration.url.clear')
     };
   });
+  protected readonly registryActionItems = computed<readonly AppMenuItem<string>[]>(() => [
+    {
+      id: 'disconnect',
+      label: 'operator.registration.disable',
+      icon: 'link_off',
+      layout: 'action',
+      palette: 'slate',
+      disabled: this.busy() || !this.registered(),
+      progress: this.busyAction() === 'disconnect'
+        ? { state: 'loading', shape: 'button', durationMs: 3000 }
+        : null
+    },
+    {
+      id: 'register',
+      label: 'operator.registration.register',
+      icon: 'app_registration',
+      layout: 'action',
+      palette: 'violet',
+      disabled: !this.canRegister(),
+      progress: this.busyAction() === 'register'
+        ? { state: 'loading', shape: 'button', durationMs: 3000 }
+        : null
+    }
+  ]);
 
   ngOnInit(): void {
     void this.registry.loadStatus();
@@ -92,7 +121,7 @@ export class OperatorRegistryPopupComponent implements OnInit {
       mobilePresentation: 'compact',
       headerTone: 'accent',
       headerPalette: 'violet',
-      bodyLayout: 'default',
+      bodyLayout: 'overflow',
       headerActions: [
         {
           id: 'refresh',
@@ -111,9 +140,7 @@ export class OperatorRegistryPopupComponent implements OnInit {
     this.registry.setRegistryBaseUrl(value);
     const selectedOption = this.registry.registryOptions()
       .find(option => this.sameUrl(option.baseUrl, value));
-    if (selectedOption?.registryScope) {
-      this.registry.setExpectedRegistryScope(selectedOption.registryScope);
-    }
+    this.registry.setExpectedRegistryScope(selectedOption?.registryScope?.trim() ?? '');
   }
 
   protected async registerNode(): Promise<void> {
@@ -122,9 +149,8 @@ export class OperatorRegistryPopupComponent implements OnInit {
       this.registryBaseUrl(),
       requireHttps
     );
-    const scopeError = validateOperatorRegistryScope(this.expectedRegistryScope());
-    if (baseUrlError || scopeError) {
-      this.registry.setError(baseUrlError || scopeError);
+    if (baseUrlError) {
+      this.registry.setError(baseUrlError);
       return;
     }
     this.registry.setRegistryBaseUrl(normalizeOperatorRegistryBaseUrl(
@@ -171,14 +197,11 @@ export class OperatorRegistryPopupComponent implements OnInit {
     }
   }
 
-  protected busyLabel(): string {
-    switch (this.busyAction()) {
-      case 'register':
-        return 'operator.registration.registering';
-      case 'disconnect':
-        return 'operator.registration.disabling';
-      default:
-        return 'operator.registration.loading';
+  protected onRegistryActionSelect(event: AppMenuItemSelectEvent<string>): void {
+    if (event.id === 'disconnect') {
+      void this.disconnect();
+    } else if (event.id === 'register') {
+      void this.registerNode();
     }
   }
 

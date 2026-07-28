@@ -580,7 +580,7 @@ export class OperatorWorkspaceStore {
     try {
       const url = new URL(source);
       return (
-        (url.protocol === 'https:' || url.protocol === 'http:')
+        url.protocol === 'https:'
         && !url.username
         && !url.password
       );

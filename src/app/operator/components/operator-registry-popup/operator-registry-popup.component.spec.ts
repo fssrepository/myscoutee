@@ -5,6 +5,7 @@ import type { OperatorRegistryStatusDto } from '../../../shared/core/contracts/o
 import { OperatorMenuStore } from '../../../shared/ui/context/stores/operator-menu.store';
 import { OperatorRegistryStore } from '../../../shared/ui/context/stores/operator-registry.store';
 import type { LinkInputConfig } from '../../../shared/ui/components/core/form/inputs/link-input';
+import type { AppMenuItem } from '../../../shared/ui/components/core/menu';
 import type { PopupModel } from '../../../shared/ui/components/core/popup';
 import { OperatorRegistryPopupComponent } from './operator-registry-popup.component';
 
@@ -18,7 +19,7 @@ describe('OperatorRegistryPopupComponent', () => {
     const statusSignal = signal<OperatorRegistryStatusDto | null>(status);
     const registryBaseUrl = signal(status.selection?.baseUrl ?? '');
     const expectedRegistryScope = signal(status.selection?.registryScope ?? '');
-    const busyAction = signal(null);
+    const busyAction = signal<string | null>(null);
     const registryStore = {
       status: statusSignal.asReadonly(),
       busyAction: busyAction.asReadonly(),
@@ -61,10 +62,13 @@ describe('OperatorRegistryPopupComponent', () => {
     const componentView = fixture.componentInstance as unknown as {
       popupModel: () => PopupModel;
       registryUrlConfig: Signal<LinkInputConfig>;
+      registryActionItems: Signal<readonly AppMenuItem<string>[]>;
     };
 
     expect(componentView.popupModel().size).toBe('small');
     expect(componentView.popupModel().height).toBe('auto');
+    expect(componentView.popupModel().bodyLayout).toBe('overflow');
+    expect(componentView.registryUrlConfig().panelMode).toBe('auto');
     expect(componentView.registryUrlConfig().availableUrls).toEqual([
       expect.objectContaining({
         url: 'https://registry.example.com',
@@ -77,6 +81,30 @@ describe('OperatorRegistryPopupComponent', () => {
     ]);
     expect(fixture.nativeElement.textContent).not.toContain('Sample data');
     expect(fixture.nativeElement.textContent).not.toContain('fingerprint');
+    expect(fixture.nativeElement.querySelector('[name="expectedRegistryScope"]')).toBeNull();
+    expect(
+      (fixture.nativeElement as HTMLElement)
+        .querySelector<HTMLInputElement>('input[type="url"]')
+        ?.readOnly
+    ).toBe(true);
+    expect(
+      fixture.nativeElement.querySelectorAll('.link-input__actions .app-menu__button-row-item')
+    ).toHaveLength(4);
+    expect(componentView.registryActionItems().map(item => item.id)).toEqual([
+      'disconnect',
+      'register'
+    ]);
+    expect(componentView.registryActionItems()[0]).toMatchObject({
+      palette: 'slate',
+      disabled: false,
+      progress: null
+    });
+
+    busyAction.set('disconnect');
+    expect(componentView.registryActionItems()[0]?.progress).toMatchObject({
+      state: 'loading',
+      shape: 'button'
+    });
   });
 });
 

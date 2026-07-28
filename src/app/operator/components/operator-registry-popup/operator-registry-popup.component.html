@@ -26,20 +26,8 @@
           [ngModel]="registryBaseUrl()"
           (ngModelChange)="updateRegistryBaseUrl($event)"
           [disabled]="busy()"
+          [textReadOnly]="true"
         ></app-link-input>
-
-        <label class="operator-registration__scope">
-          <span>{{ 'operator.registration.registry.scope' | i18n }}</span>
-          <input
-            type="text"
-            autocomplete="off"
-            name="expectedRegistryScope"
-            [ngModel]="expectedRegistryScope()"
-            (ngModelChange)="registry.setExpectedRegistryScope($event)"
-            [disabled]="busy()"
-            placeholder="program:region"
-          />
-        </label>
 
         @if (errorMessage()) {
           <p class="operator-registration__message is-error" role="alert">
@@ -54,48 +42,13 @@
           </p>
         }
 
-        <div class="operator-registration__actions">
-          @if (registered()) {
-            <button
-              type="button"
-              class="operator-registration__secondary"
-              [disabled]="busy()"
-              (click)="disconnect()"
-            >
-              @if (busyAction() === 'disconnect') {
-                <span class="operator-registration__action-ring" aria-hidden="true">
-                  <app-indicator
-                    kind="action-ring"
-                    shape="button"
-                    state="loading"
-                    [durationMs]="3000"
-                  ></app-indicator>
-                </span>
-              }
-              <mat-icon>link_off</mat-icon>
-              <span>{{ 'operator.registration.disable' | i18n }}</span>
-            </button>
-          }
-          <button
-            type="button"
-            class="operator-registration__primary"
-            [disabled]="!canRegister()"
-            (click)="registerNode()"
-          >
-            @if (busyAction() === 'register') {
-              <span class="operator-registration__action-ring" aria-hidden="true">
-                <app-indicator
-                  kind="action-ring"
-                  shape="button"
-                  state="loading"
-                  [durationMs]="3000"
-                ></app-indicator>
-              </span>
-            }
-            <mat-icon>app_registration</mat-icon>
-            <span>{{ 'operator.registration.register' | i18n }}</span>
-          </button>
-        </div>
+        <app-menu
+          class="operator-registration__actions"
+          kind="inline"
+          layout="row"
+          [items]="registryActionItems()"
+          (itemSelect)="onRegistryActionSelect($event)"
+        ></app-menu>
 
       } @else {
         <div class="operator-registration__loading is-error" role="alert">

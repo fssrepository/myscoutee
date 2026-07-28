@@ -1930,6 +1930,12 @@ export class AppMenuComponent<TId extends string = string, TContext = unknown>
     if (/(auto|scroll)/.test(overflow)) {
       return true;
     }
+    if (
+      element.classList.contains('ui-popup__panel--overflow-visible')
+      || element.classList.contains('ui-popup__body--overflow')
+    ) {
+      return false;
+    }
     const className = element.className.toString();
     if (/(ui-popup__panel|ui-popup__body|popup-body|scroll-area|popup-panel|app-popup-panel)/.test(className)) {
       return true;

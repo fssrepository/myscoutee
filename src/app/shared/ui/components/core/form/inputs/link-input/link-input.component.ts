@@ -6,13 +6,15 @@ import { AppUtils } from '../../../../../../app-utils';
 import {
   AppMenuComponent,
   type AppMenuItem,
-  type AppMenuItemSelectEvent
+  type AppMenuItemSelectEvent,
+  type AppMenuPanelMode
 } from '../../../menu';
 
 export interface LinkInputConfig {
   label?: string | null;
   placeholder?: string | null;
   required?: boolean | null;
+  panelMode?: AppMenuPanelMode | null;
   availableUrls?: readonly (string | LinkInputAvailableUrl)[] | null;
   availableUrlsAriaLabel?: string | null;
   pasteAriaLabel?: string | null;
@@ -52,6 +54,7 @@ interface LinkInputActionContext {
 export class LinkInputComponent implements ControlValueAccessor {
   @Input() config: LinkInputConfig = {};
   @Input() readOnly = false;
+  @Input() textReadOnly = false;
   @Input() disabled = false;
 
   protected value = '';
@@ -93,7 +96,7 @@ export class LinkInputComponent implements ControlValueAccessor {
   }
 
   protected inputReadOnly(): boolean {
-    return this.readOnly;
+    return this.readOnly || this.textReadOnly;
   }
 
   protected normalizedUrl(): string {
@@ -153,14 +156,14 @@ export class LinkInputComponent implements ControlValueAccessor {
   }
 
   protected onInput(value: unknown): void {
-    if (this.inputDisabled() || this.readOnly) {
+    if (this.inputDisabled() || this.inputReadOnly()) {
       return;
     }
     this.setValue(this.toText(value), false);
   }
 
   protected onPaste(event: ClipboardEvent): void {
-    if (this.inputDisabled() || this.readOnly) {
+    if (this.inputDisabled() || this.inputReadOnly()) {
       return;
     }
     const text = event.clipboardData?.getData('text') ?? '';
@@ -172,7 +175,7 @@ export class LinkInputComponent implements ControlValueAccessor {
   }
 
   protected onBlur(): void {
-    if (!this.inputDisabled() && !this.readOnly) {
+    if (!this.inputDisabled() && !this.inputReadOnly()) {
       const trimmed = this.value.trim();
       const normalized = AppUtils.normalizeHttpUrl(trimmed);
       this.setValue(normalized || trimmed, false);

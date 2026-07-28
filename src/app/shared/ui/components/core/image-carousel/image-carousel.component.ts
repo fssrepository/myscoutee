@@ -19,6 +19,9 @@ import { MediaService } from '../../../../core';
 import { LazyBgImageDirective } from '../../../directives';
 import { IndicatorComponent } from '../indicator';
 
+export type ImageCarouselMediaFit = 'default' | 'cover' | 'contain';
+export type ImageCarouselImagePosition = 'default' | 'center-top' | 'center';
+
 @Component({
   selector: 'app-image-carousel',
   standalone: true,
@@ -45,6 +48,8 @@ export class ImageCarouselComponent implements ControlValueAccessor, OnChanges {
   @Input() compact = false;
   @Input() autoSize = false;
   @Input() previewMode = false;
+  @Input() mediaFit: ImageCarouselMediaFit = 'default';
+  @Input() imagePosition: ImageCarouselImagePosition = 'default';
   @Input() ariaLabel = 'Image slots';
   @Input() uploadOwnerId = '';
   @Input() uploadEntityId = 'image';
@@ -80,6 +85,26 @@ export class ImageCarouselComponent implements ControlValueAccessor, OnChanges {
   @HostBinding('class.image-carousel-host--single-slot')
   protected get singleSlotClass(): boolean {
     return this.normalizedSlotCount() === 1;
+  }
+
+  @HostBinding('class.image-carousel-host--media-fit-cover')
+  protected get mediaFitCoverClass(): boolean {
+    return this.mediaFit === 'cover';
+  }
+
+  @HostBinding('class.image-carousel-host--media-fit-contain')
+  protected get mediaFitContainClass(): boolean {
+    return this.mediaFit === 'contain';
+  }
+
+  @HostBinding('class.image-carousel-host--image-position-center-top')
+  protected get imagePositionCenterTopClass(): boolean {
+    return this.imagePosition === 'center-top';
+  }
+
+  @HostBinding('class.image-carousel-host--image-position-center')
+  protected get imagePositionCenterClass(): boolean {
+    return this.imagePosition === 'center';
   }
 
   ngOnChanges(changes: SimpleChanges): void {

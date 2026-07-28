@@ -124,6 +124,32 @@ describe('AppMenuComponent delayed drag', () => {
 
     expect(staticContextMenu.defaultPrevented).toBe(false);
   });
+
+  it('does not trap an overflow-enabled popup menu inside the popup boundary', () => {
+    const fixture = TestBed.createComponent(AppMenuComponent);
+    const componentView = fixture.componentInstance as unknown as {
+      isMenuLayoutBoundary: (element: HTMLElement, style: CSSStyleDeclaration) => boolean;
+    };
+    const panel = document.createElement('section');
+    panel.className = 'ui-popup__panel ui-popup__panel--overflow-visible';
+    const body = document.createElement('div');
+    body.className = 'ui-popup__body ui-popup__body--overflow';
+    const visibleStyle = {
+      overflow: 'visible',
+      overflowX: 'visible',
+      overflowY: 'visible'
+    } as CSSStyleDeclaration;
+
+    expect(componentView.isMenuLayoutBoundary(panel, visibleStyle)).toBe(false);
+    expect(componentView.isMenuLayoutBoundary(body, visibleStyle)).toBe(false);
+
+    const scrollingStyle = {
+      overflow: 'auto',
+      overflowX: 'hidden',
+      overflowY: 'auto'
+    } as CSSStyleDeclaration;
+    expect(componentView.isMenuLayoutBoundary(body, scrollingStyle)).toBe(true);
+  });
 });
 
 function createMenu(): {

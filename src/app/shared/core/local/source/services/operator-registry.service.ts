@@ -682,7 +682,7 @@ export class LocalOperatorRegistryService extends LocalRouteDelayService impleme
     try {
       const url = new URL(source);
       if (
-        (url.protocol === 'https:' || url.protocol === 'http:')
+        url.protocol === 'https:'
         && !url.username
         && !url.password
       ) {

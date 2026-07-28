@@ -160,7 +160,8 @@ export type OperatorClaimVerificationStatus =
   | 'PENDING_REVIEW'
   | 'APPROVED'
   | 'VERIFIED'
-  | 'REJECTED';
+  | 'REJECTED'
+  | 'WITHDRAWN';
 
 export interface OperatorClaimStatusDto {
   claimed: boolean;

@@ -1,6 +1,6 @@
 {
   "lang": "hu",
-  "version": "2026.07.28.hu.27",
+  "version": "2026.07.28.hu.28",
   "messages": {
     "about": "Rólam",
     "accommodation": "Szállás",
@@ -2527,7 +2527,7 @@
     "operator.claim.verification.approved": "A cégellenőrzés jóváhagyva",
     "operator.claim.verification.backend.unavailable": "Ez a szerver még nem biztosítja a strukturált cégellenőrzési igénylés szerződését.",
     "operator.claim.verification.error.required": "Tölts ki minden kötelező cég- és kapcsolattartói mezőt, adj meg érvényes e-mail-címet és webhelyet, majd erősítsd meg a nyilatkozatot.",
-    "operator.claim.verification.error.website": "Adj meg érvényes, http:// vagy https:// kezdetű nyilvános webhelycímet.",
+    "operator.claim.verification.error.website": "Adj meg érvényes, https:// kezdetű nyilvános webhelycímet.",
     "operator.group.instructions": "Ideiglenes tokent adhatsz ki egy másik, már igényelt telepítés számára, vagy egy másik telepítés tokenjét beillesztve csatlakozhatsz annak virtuális csoportjához. A csoportosítás nem változtatja meg az igénylés tulajdonosát vagy a mért aktivitást.",
     "operator.group.temporary.token": "Ideiglenes csoportosító token",
     "operator.group.expires": "Lejárat",
@@ -2556,6 +2556,7 @@
     "operator.configuration.branding.home.label": "Nyitóoldali felirat",
     "operator.configuration.branding.theme": "Nyitóoldali téma",
     "operator.configuration.branding.logo": "Logó",
+    "operator.configuration.branding.logo.guidance": "Javasolt méret: 512 × 512 px (1:1). JPEG, PNG, WebP vagy GIF; átlátszó háttérhez PNG/WebP ajánlott. Legfeljebb 10 MB.",
     "operator.configuration.branding.logo.heart.webp": "MyScoutee szív (WebP)",
     "operator.configuration.branding.logo.heart.png": "MyScoutee szív (PNG)",
     "operator.configuration.branding.save": "Arculat mentése",

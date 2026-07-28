@@ -83,27 +83,6 @@
   white-space: nowrap;
 }
 
-.operator-registration__scope {
-  display: grid;
-  gap: 0.32rem;
-}
-
-.operator-registration__scope span {
-  font-size: 0.72rem;
-  font-weight: 900;
-}
-
-.operator-registration__scope input {
-  width: 100%;
-  min-height: 42px;
-  padding: 0 0.75rem;
-  border: 1px solid rgba(62, 83, 119, 0.2);
-  border-radius: 11px;
-  background: #fff;
-  color: #243853;
-  font: inherit;
-}
-
 .operator-registration__message {
   margin: 0;
   padding: 0.58rem 0.68rem;
@@ -132,55 +111,13 @@
 }
 
 .operator-registration__actions {
-  display: flex;
-  justify-content: flex-end;
-  gap: 0.55rem;
-}
-
-.operator-registration__actions button {
-  position: relative;
-  min-height: 42px;
-  padding: 0 0.9rem;
-  border: 0;
-  border-radius: 12px;
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  gap: 0.4rem;
-  font: inherit;
-  font-size: 0.78rem;
-  font-weight: 900;
-  cursor: pointer;
-}
-
-.operator-registration__action-ring {
-  position: absolute;
-  inset: -1px;
-  border-radius: inherit;
-  pointer-events: none;
-}
-
-.operator-registration__actions button:disabled {
-  cursor: default;
-  opacity: 0.48;
-}
-
-.operator-registration__primary {
-  background: #7058df;
-  color: #fff;
-}
-
-.operator-registration__secondary {
-  background: #edf0f6;
-  color: #415875;
+  min-width: 0;
+  justify-self: end;
 }
 
 @media (max-width: 560px) {
   .operator-registration__actions {
-    flex-direction: column-reverse;
-  }
-
-  .operator-registration__actions button {
+    justify-self: stretch;
     width: 100%;
   }
 }

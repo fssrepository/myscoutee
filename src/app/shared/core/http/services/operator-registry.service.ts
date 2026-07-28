@@ -895,6 +895,7 @@ export class HttpOperatorRegistryService implements OperatorRegistryServiceContr
       || remote.verificationStatus === 'APPROVED'
       || remote.verificationStatus === 'VERIFIED'
       || remote.verificationStatus === 'REJECTED'
+      || remote.verificationStatus === 'WITHDRAWN'
       || remote.verificationStatus === 'NOT_SUBMITTED'
       ? remote.verificationStatus
       : claimed
@@ -961,7 +962,7 @@ export class HttpOperatorRegistryService implements OperatorRegistryServiceContr
     try {
       const url = new URL(source);
       if (
-        (url.protocol === 'https:' || url.protocol === 'http:')
+        url.protocol === 'https:'
         && !url.username
         && !url.password
       ) {

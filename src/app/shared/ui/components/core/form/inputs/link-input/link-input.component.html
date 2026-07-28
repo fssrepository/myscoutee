@@ -1,6 +1,6 @@
 <label
   class="link-input"
-  [class.link-input--readonly]="readOnly"
+  [class.link-input--readonly]="inputReadOnly()"
   [class.link-input--disabled]="inputDisabled()"
 >
   <span class="link-input__label">
@@ -26,6 +26,7 @@
     <app-menu
       class="link-input__actions"
       kind="inline"
+      [panelMode]="config.panelMode ?? 'auto'"
       [items]="actionItems()"
       (itemSelect)="onAction($event)"
     ></app-menu>
