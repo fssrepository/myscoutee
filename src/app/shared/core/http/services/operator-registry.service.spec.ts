@@ -102,16 +102,48 @@ describe('HttpOperatorRegistryService', () => {
 
   it('uses the exact explicit register contract and null-body retry/disconnect payloads', async () => {
     const status = registryStatus();
-    post.mockReturnValue(of(status));
+    post.mockImplementation((url: string) =>
+      url.endsWith('/register') || url.endsWith('/disconnect')
+        ? of({
+            status,
+            leaderboardEntry: url.endsWith('/register')
+              ? {
+                  rowId: 'dep_demo',
+                  view: 'unclaimed',
+                  groupId: '',
+                  label: 'dep_demo',
+                  avatarUrl: '',
+                  claimState: 'unclaimed',
+                  deploymentCount: 1,
+                  weightNumerator: '0',
+                  weightDenominator: '1',
+                  shareNumerator: '0',
+                  shareDenominator: '1'
+                }
+              : null,
+            removedLeaderboardEntryIds: url.endsWith('/disconnect')
+              ? ['dep_demo']
+              : [],
+            created: url.endsWith('/register')
+          })
+        : of(status)
+    );
     const service = TestBed.inject(HttpOperatorRegistryService);
 
     await service.confirm(' inspection_1 ');
-    await service.register({
+    const registered = await service.register({
       registryBaseUrl: ' https://registry.example.com ',
       expectedRegistryScope: ' partner:europe '
     });
     await service.retry();
-    await service.disconnect();
+    const disconnected = await service.disconnect();
+
+    expect(registered.leaderboardEntry).toEqual(expect.objectContaining({
+      id: 'dep_demo',
+      nodeId: 'dep_demo',
+      group: 'UNCLAIMED'
+    }));
+    expect(disconnected.removedLeaderboardEntryIds).toEqual(['dep_demo']);
 
     expect(post.mock.calls.map((call: unknown[]) => [call[0], call[1]])).toEqual([
       ['/api/operator/registry/confirm', { inspectionToken: 'inspection_1' }],

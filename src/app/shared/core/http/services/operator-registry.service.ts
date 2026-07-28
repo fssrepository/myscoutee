@@ -993,6 +993,9 @@ export class HttpOperatorRegistryService implements OperatorRegistryServiceContr
     }
     try {
       const url = new URL(source);
+      if (url.protocol === 'http:') {
+        url.protocol = 'https:';
+      }
       if (
         url.protocol === 'https:'
         && !url.username

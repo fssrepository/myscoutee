@@ -881,7 +881,7 @@ export class OperatorActionPopupComponent {
             layout: 'action',
             disabled: this.busy()
               || !this.registeredForClaim()
-              || !this.workspace.claimVerificationReady(),
+              || !this.workspace.claimCompanyReady(),
             progress: this.busyAction() === 'claim-share'
               ? { state: 'loading', durationMs: 3000 }
               : null,
@@ -896,7 +896,7 @@ export class OperatorActionPopupComponent {
           layout: 'action',
           disabled: this.busy()
             || !this.registeredForClaim()
-            || !this.workspace.groupTokenInput().trim(),
+            || !this.workspace.claimClientCodeReady(),
           progress: this.busyAction() === 'link-operator-group'
             ? { state: 'loading', durationMs: 3000 }
             : null,

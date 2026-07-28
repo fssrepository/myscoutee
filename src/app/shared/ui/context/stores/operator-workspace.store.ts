@@ -104,7 +104,7 @@ export class OperatorWorkspaceStore {
   readonly error = this.errorRef.asReadonly();
   readonly notice = this.noticeRef.asReadonly();
   readonly feedbackAction = this.feedbackActionRef.asReadonly();
-  readonly claimVerificationReady = computed(() => {
+  readonly claimCompanyReady = computed(() => {
     const status = this.claimStatusRef();
     const draft = this.claimDraftRef();
     return (
@@ -124,6 +124,10 @@ export class OperatorWorkspaceStore {
       && draft.authorityAttested
     );
   });
+  readonly claimClientCodeReady = computed(
+    () => Boolean(this.groupTokenInputRef().trim())
+  );
+  readonly claimVerificationReady = computed(() => this.claimCompanyReady());
   readonly configurationUploadOwnerId = computed(() => {
     const session = this.sessionService.currentSession();
     return this.userProfileStore.activeUserProfile()?.id?.trim()
@@ -197,7 +201,7 @@ export class OperatorWorkspaceStore {
   }
 
   async claimShare(): Promise<OperatorClaimStatusDto | null> {
-    if (!this.claimVerificationReady()) {
+    if (!this.claimCompanyReady()) {
       this.feedbackActionRef.set('claim-share');
       this.errorRef.set('operator.claim.verification.error.required');
       return null;
@@ -223,7 +227,7 @@ export class OperatorWorkspaceStore {
 
   async linkOperatorGroup(): Promise<OperatorClaimStatusDto | null> {
     const clientToken = this.groupTokenInputRef().trim();
-    if (!clientToken) {
+    if (!this.claimClientCodeReady()) {
       this.errorRef.set('operator.claim.client.code.required');
       return null;
     }
@@ -630,7 +634,7 @@ export class OperatorWorkspaceStore {
     try {
       const url = new URL(source);
       return (
-        url.protocol === 'https:'
+        (url.protocol === 'https:' || url.protocol === 'http:')
         && !url.username
         && !url.password
       );

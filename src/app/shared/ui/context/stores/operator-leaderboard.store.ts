@@ -148,10 +148,7 @@ export class OperatorLeaderboardStore {
     return {
       ...page,
       items,
-      total: Math.max(
-        items.length,
-        Math.max(0, page.total - this.cacheTombstones.size)
-      )
+      total: Math.max(items.length, page.total)
     };
   }
 

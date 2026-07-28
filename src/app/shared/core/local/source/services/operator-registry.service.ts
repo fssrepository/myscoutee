@@ -866,6 +866,9 @@ export class LocalOperatorRegistryService extends LocalRouteDelayService impleme
     }
     try {
       const url = new URL(source);
+      if (url.protocol === 'http:') {
+        url.protocol = 'https:';
+      }
       if (
         url.protocol === 'https:'
         && !url.username
