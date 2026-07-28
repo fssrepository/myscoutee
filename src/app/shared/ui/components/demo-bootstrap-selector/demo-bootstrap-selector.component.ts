@@ -644,8 +644,8 @@ export class DemoBootstrapSelectorComponent {
         : 'person';
   }
 
-  private selectorRolePalette(mode: DemoBootstrapSelectorMode): 'blue' | 'green' {
-    return mode === 'admin' ? 'blue' : 'green';
+  private selectorRolePalette(mode: DemoBootstrapSelectorMode): 'blue' | 'green' | 'violet' {
+    return mode === 'admin' ? 'blue' : mode === 'operator' ? 'violet' : 'green';
   }
 
   private resetContextSelectionFailure(message: string): void {
