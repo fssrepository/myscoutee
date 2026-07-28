@@ -81,8 +81,14 @@ export class SeedOperatorRegistryBuilder {
           claimantName: null,
           claimantAvatarUrl: null,
           operatorGroupId: null,
-          sharePercent: 0
+          sharePercent: 0,
+          verificationCapability: 'AVAILABLE',
+          verificationUnavailableReason: null,
+          verificationStatus: 'NOT_SUBMITTED',
+          verificationSubmittedAt: null,
+          legalName: null
         },
+        claimVerificationRequest: null,
         deploymentUpdate: {
           currentVersion: '1.0.0',
           availableVersion: '1.1.0',

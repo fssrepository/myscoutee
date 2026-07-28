@@ -66,6 +66,15 @@
             }
             @case ('claim') {
               @if (workspace.claimStatus(); as claim) {
+                @if (claim.verificationCapability !== 'AVAILABLE') {
+                  <p class="operator-action-popup__result is-error" role="alert">
+                    <mat-icon>cloud_off</mat-icon>
+                    <span>
+                      {{ (claim.verificationUnavailableReason
+                        || 'operator.claim.verification.backend.unavailable') | i18n }}
+                    </span>
+                  </p>
+                }
                 @if (claim.claimed) {
                   <div class="operator-action-popup__claimed">
                     <mat-icon>verified</mat-icon>
@@ -73,6 +82,25 @@
                     <span>{{ claim.claimantName }}</span>
                     <b>{{ formatShare(claim.sharePercent) }}%</b>
                   </div>
+                  @if (claim.verificationStatus === 'PENDING_REVIEW') {
+                    <p class="operator-action-popup__result is-pending" role="status">
+                      <mat-icon>pending_actions</mat-icon>
+                      <span class="operator-action-popup__result-copy">
+                        <strong>{{ 'operator.claim.verification.pending' | i18n }}</strong>
+                        <small>
+                          {{ 'operator.claim.verification.pending.instructions' | i18n }}
+                        </small>
+                      </span>
+                    </p>
+                  } @else if (
+                    claim.verificationStatus === 'APPROVED'
+                    || claim.verificationStatus === 'VERIFIED'
+                  ) {
+                    <p class="operator-action-popup__result is-success" role="status">
+                      <mat-icon>verified_user</mat-icon>
+                      <span>{{ 'operator.claim.verification.approved' | i18n }}</span>
+                    </p>
+                  }
                   <p class="operator-action-popup__hint">
                     {{ 'operator.group.instructions' | i18n }}
                   </p>
@@ -97,8 +125,113 @@
                   </label>
                 } @else {
                   <p class="operator-action-popup__hint">
-                    {{ 'operator.claim.instructions' | i18n }}
+                    {{ 'operator.claim.verification.instructions' | i18n }}
                   </p>
+                  @if (workspace.claimDraft(); as claimDraft) {
+                    <div class="operator-action-popup__claim-form">
+                      <label class="operator-action-popup__field">
+                        <span>{{ 'operator.claim.verification.legal.name' | i18n }}</span>
+                        <input
+                          type="text"
+                          maxlength="180"
+                          autocomplete="organization"
+                          [ngModel]="claimDraft.legalName"
+                          (ngModelChange)="workspace.setClaimDraft({ legalName: $event })"
+                          [disabled]="busy()"
+                        />
+                      </label>
+                      <label class="operator-action-popup__field">
+                        <span>{{ 'operator.claim.verification.registration.number' | i18n }}</span>
+                        <input
+                          type="text"
+                          maxlength="120"
+                          autocomplete="off"
+                          [ngModel]="claimDraft.registrationNumber"
+                          (ngModelChange)="workspace.setClaimDraft({ registrationNumber: $event })"
+                          [disabled]="busy()"
+                        />
+                      </label>
+                      <label class="operator-action-popup__field">
+                        <span>{{ 'operator.claim.verification.jurisdiction' | i18n }}</span>
+                        <input
+                          type="text"
+                          maxlength="120"
+                          autocomplete="country-name"
+                          [ngModel]="claimDraft.jurisdiction"
+                          (ngModelChange)="workspace.setClaimDraft({ jurisdiction: $event })"
+                          [disabled]="busy()"
+                        />
+                      </label>
+                      <label class="operator-action-popup__field is-wide">
+                        <span>{{ 'operator.claim.verification.registered.address' | i18n }}</span>
+                        <textarea
+                          rows="3"
+                          maxlength="500"
+                          autocomplete="street-address"
+                          [ngModel]="claimDraft.registeredAddress"
+                          (ngModelChange)="workspace.setClaimDraft({ registeredAddress: $event })"
+                          [disabled]="busy()"
+                        ></textarea>
+                      </label>
+                      <label class="operator-action-popup__field is-wide">
+                        <span>
+                          {{ 'operator.claim.verification.website' | i18n }}
+                          <small>{{ 'optional' | i18n }}</small>
+                        </span>
+                        <input
+                          type="url"
+                          maxlength="500"
+                          autocomplete="url"
+                          placeholder="https://"
+                          [ngModel]="claimDraft.website"
+                          (ngModelChange)="workspace.setClaimDraft({ website: $event })"
+                          [disabled]="busy()"
+                        />
+                      </label>
+                      <label class="operator-action-popup__field">
+                        <span>{{ 'operator.claim.verification.contact.name' | i18n }}</span>
+                        <input
+                          type="text"
+                          maxlength="180"
+                          autocomplete="name"
+                          [ngModel]="claimDraft.verificationContactName"
+                          (ngModelChange)="workspace.setClaimDraft({ verificationContactName: $event })"
+                          [disabled]="busy()"
+                        />
+                      </label>
+                      <label class="operator-action-popup__field">
+                        <span>{{ 'operator.claim.verification.contact.role' | i18n }}</span>
+                        <input
+                          type="text"
+                          maxlength="180"
+                          autocomplete="organization-title"
+                          [ngModel]="claimDraft.verificationContactRole"
+                          (ngModelChange)="workspace.setClaimDraft({ verificationContactRole: $event })"
+                          [disabled]="busy()"
+                        />
+                      </label>
+                      <label class="operator-action-popup__field is-wide">
+                        <span>{{ 'operator.claim.verification.contact.email' | i18n }}</span>
+                        <input
+                          type="email"
+                          maxlength="254"
+                          autocomplete="email"
+                          [ngModel]="claimDraft.verificationContactEmail"
+                          (ngModelChange)="workspace.setClaimDraft({ verificationContactEmail: $event })"
+                          [disabled]="busy()"
+                        />
+                      </label>
+                      <label class="operator-action-popup__attestation is-wide">
+                        <input
+                          type="checkbox"
+                          [ngModel]="claimDraft.authorityAttested"
+                          (ngModelChange)="workspace.setClaimDraft({ authorityAttested: $event })"
+                          [disabled]="busy()"
+                        />
+                        <span>{{ 'operator.claim.verification.attestation' | i18n }}</span>
+                      </label>
+                    </div>
+                  }
                 }
               }
             }
@@ -115,10 +248,7 @@
                     </p>
                   }
 
-                  <section
-                    class="operator-action-popup__configuration-group"
-                    [attr.data-deployment-theme]="draft.branding.themePreset.toLowerCase()"
-                  >
+                  <section class="operator-action-popup__configuration-group">
                     <header>
                       <span>
                         <small>{{ 'operator.configuration.branding.eyebrow' | i18n }}</small>
@@ -127,58 +257,36 @@
                       <mat-icon>palette</mat-icon>
                     </header>
 
-                    <div class="operator-action-popup__brand-preview">
-                      <img
-                        [src]="draft.branding.logoUrl || 'assets/logo/heart.webp'"
-                        [alt]="draft.branding.productName"
-                      />
-                      <span>
-                        <strong>{{ draft.branding.productName }}</strong>
-                        <small>{{ draft.branding.homeLabel }}</small>
-                      </span>
-                    </div>
+                    <div class="operator-action-popup__branding-fields">
+                      <label class="operator-action-popup__field">
+                        <span>{{ 'operator.configuration.branding.product.name' | i18n }}</span>
+                        <input
+                          type="text"
+                          maxlength="80"
+                          autocomplete="organization"
+                          [ngModel]="draft.branding.productName"
+                          (ngModelChange)="workspace.setConfigurationBranding({ productName: $event })"
+                          [disabled]="configurationDisabled()"
+                        />
+                      </label>
 
-                    <label class="operator-action-popup__field">
-                      <span>{{ 'operator.configuration.branding.product.name' | i18n }}</span>
-                      <input
-                        type="text"
-                        maxlength="80"
-                        autocomplete="organization"
-                        [ngModel]="draft.branding.productName"
-                        (ngModelChange)="workspace.setConfigurationBranding({ productName: $event })"
-                        [disabled]="configurationDisabled()"
-                      />
-                    </label>
-
-                    <label class="operator-action-popup__field">
-                      <span>{{ 'operator.configuration.branding.home.label' | i18n }}</span>
-                      <input
-                        type="text"
-                        maxlength="120"
-                        autocomplete="off"
-                        [ngModel]="draft.branding.homeLabel"
-                        (ngModelChange)="workspace.setConfigurationBranding({ homeLabel: $event })"
-                        [disabled]="configurationDisabled()"
-                      />
-                    </label>
-
-                    <div class="operator-action-popup__select-field">
-                      <span>{{ 'operator.configuration.branding.theme' | i18n }}</span>
-                      <app-menu
-                        kind="select"
-                        [trigger]="configurationThemeTrigger()"
-                        [items]="configurationThemeItems()"
-                        (itemSelect)="onAction($event)"
-                      ></app-menu>
+                      <div class="operator-action-popup__select-field">
+                        <span>{{ 'operator.configuration.branding.theme' | i18n }}</span>
+                        <app-menu
+                          kind="select"
+                          [trigger]="configurationThemeTrigger()"
+                          [items]="configurationThemeItems()"
+                          (itemSelect)="onAction($event)"
+                        ></app-menu>
+                      </div>
                     </div>
 
                     <div class="operator-action-popup__logo-field">
                       <span>{{ 'operator.configuration.branding.logo' | i18n }}</span>
-                      <app-image-carousel
-                        [slotCount]="1"
-                        [compact]="true"
-                        [autoSize]="true"
-                        [ngModel]="draft.branding.logoUrl ? [draft.branding.logoUrl] : []"
+                        <app-image-carousel
+                          [slotCount]="1"
+                          [compact]="true"
+                          [ngModel]="draft.branding.logoUrl ? [draft.branding.logoUrl] : []"
                         (ngModelChange)="onBrandingLogoChange($event)"
                         [disabled]="configurationDisabled()"
                         [uploadOwnerId]="workspace.configurationUploadOwnerId()"
@@ -194,6 +302,19 @@
                       [items]="configurationBrandingActionItems()"
                       (itemSelect)="onAction($event)"
                     ></app-menu>
+                    @if (workspace.feedbackAction() === 'save-branding') {
+                      @if (workspace.error()) {
+                        <p class="operator-action-popup__result is-error" role="alert">
+                          <mat-icon>error_outline</mat-icon>
+                          <span>{{ workspace.error() | i18n }}</span>
+                        </p>
+                      } @else if (workspace.notice()) {
+                        <p class="operator-action-popup__result is-success" role="status">
+                          <mat-icon>check_circle</mat-icon>
+                          <span>{{ workspace.notice() | i18n }}</span>
+                        </p>
+                      }
+                    }
                   </section>
 
                   <section class="operator-action-popup__configuration-group">
@@ -235,16 +356,57 @@
                       [items]="configurationPaymentActionItems()"
                       (itemSelect)="onAction($event)"
                     ></app-menu>
+                    @if (workspace.feedbackAction() === 'register-payment') {
+                      @if (workspace.error()) {
+                        <p class="operator-action-popup__result is-error" role="alert">
+                          <mat-icon>error_outline</mat-icon>
+                          <span>{{ workspace.error() | i18n }}</span>
+                        </p>
+                      } @else if (workspace.notice()) {
+                        <p class="operator-action-popup__result is-success" role="status">
+                          <mat-icon>check_circle</mat-icon>
+                          <span>{{ workspace.notice() | i18n }}</span>
+                        </p>
+                      }
+                    }
                   </section>
 
                   <section class="operator-action-popup__configuration-group">
                     <header>
                       <span>
                         <small>{{ 'operator.configuration.firebase.eyebrow' | i18n }}</small>
-                        <strong>Firebase</strong>
-                      </span>
+                          <strong>Firebase</strong>
+                        </span>
+                        <app-menu
+                          class="operator-action-popup__header-actions"
+                          kind="inline"
+                          layout="row"
+                          [items]="configurationFirebaseTestActionItems()"
+                          (itemSelect)="onAction($event)"
+                        ></app-menu>
                       <mat-icon>cloud</mat-icon>
                     </header>
+
+                    @if (workspace.configurationAuthenticationTest(); as result) {
+                      <span
+                        class="operator-action-popup__sr-only"
+                        role="status"
+                        aria-live="polite"
+                      >
+                        {{ 'operator.configuration.test.authentication' | i18n }}:
+                        {{ result.message | i18n }}
+                      </span>
+                    }
+                    @if (workspace.configurationMessagingTest(); as result) {
+                      <span
+                        class="operator-action-popup__sr-only"
+                        role="status"
+                        aria-live="polite"
+                      >
+                        {{ 'operator.configuration.test.messaging' | i18n }}:
+                        {{ result.message | i18n }}
+                      </span>
+                    }
 
                     <label class="operator-action-popup__field">
                       <span>{{ 'operator.configuration.firebase.project.id' | i18n }}</span>
@@ -260,8 +422,8 @@
 
                     <label class="operator-action-popup__field">
                       <span>{{ 'operator.configuration.firebase.authentication.credential' | i18n }}</span>
-                      <input
-                        type="password"
+                      <textarea
+                        rows="3"
                         autocomplete="new-password"
                         [placeholder]="configuration.firebase.authenticationCredentialConfigured
                           ? ('operator.configuration.credential.registered' | i18n)
@@ -269,13 +431,13 @@
                         [ngModel]="draft.firebase.authenticationCredential"
                         (ngModelChange)="workspace.setConfigurationFirebase({ authenticationCredential: $event })"
                         [disabled]="configurationDisabled()"
-                      />
+                      ></textarea>
                     </label>
 
                     <label class="operator-action-popup__field">
                       <span>{{ 'operator.configuration.firebase.messaging.credential' | i18n }}</span>
-                      <input
-                        type="password"
+                      <textarea
+                        rows="3"
                         autocomplete="new-password"
                         [placeholder]="configuration.firebase.messagingCredentialConfigured
                           ? ('operator.configuration.credential.registered' | i18n)
@@ -283,28 +445,30 @@
                         [ngModel]="draft.firebase.messagingCredential"
                         (ngModelChange)="workspace.setConfigurationFirebase({ messagingCredential: $event })"
                         [disabled]="configurationDisabled()"
-                      />
+                      ></textarea>
                     </label>
 
                     <app-menu
                       class="operator-action-popup__section-actions"
                       kind="inline"
                       layout="row"
-                      [items]="configurationFirebaseActionItems()"
+                      [items]="configurationFirebaseSaveActionItems()"
                       (itemSelect)="onAction($event)"
                     ></app-menu>
+                    @if (workspace.feedbackAction() === 'register-firebase') {
+                      @if (workspace.error()) {
+                        <p class="operator-action-popup__result is-error" role="alert">
+                          <mat-icon>error_outline</mat-icon>
+                          <span>{{ workspace.error() | i18n }}</span>
+                        </p>
+                      } @else if (workspace.notice()) {
+                        <p class="operator-action-popup__result is-success" role="status">
+                          <mat-icon>check_circle</mat-icon>
+                          <span>{{ workspace.notice() | i18n }}</span>
+                        </p>
+                      }
+                    }
                   </section>
-
-                  @if (workspace.configurationTest(); as result) {
-                    <p
-                      class="operator-action-popup__result"
-                      [class.is-success]="result.success"
-                      [class.is-error]="!result.success"
-                    >
-                      <mat-icon>{{ result.success ? 'check_circle' : 'error_outline' }}</mat-icon>
-                      <span>{{ result.message | i18n }}</span>
-                    </p>
-                  }
                 }
               }
             }
@@ -494,17 +658,19 @@
             }
           }
 
-          @if (workspace.error()) {
-            <p class="operator-action-popup__result is-error" role="alert">
-              <mat-icon>error_outline</mat-icon>
-              <span>{{ workspace.error() | i18n }}</span>
-            </p>
-          }
-          @if (workspace.notice()) {
-            <p class="operator-action-popup__result is-success" role="status">
-              <mat-icon>check_circle</mat-icon>
-              <span>{{ workspace.notice() | i18n }}</span>
-            </p>
+          @if (activeKind !== 'configuration') {
+            @if (workspace.error()) {
+              <p class="operator-action-popup__result is-error" role="alert">
+                <mat-icon>error_outline</mat-icon>
+                <span>{{ workspace.error() | i18n }}</span>
+              </p>
+            }
+            @if (workspace.notice()) {
+              <p class="operator-action-popup__result is-success" role="status">
+                <mat-icon>check_circle</mat-icon>
+                <span>{{ workspace.notice() | i18n }}</span>
+              </p>
+            }
           }
 
           @if (actionItems().length > 0) {

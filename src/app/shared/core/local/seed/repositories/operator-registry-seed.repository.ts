@@ -38,21 +38,17 @@ export class SeedOperatorRegistryRepository {
   }
 
   async seedUsers(context: OperatorBootstrapSeedContext): Promise<void> {
-    if (!context.result.usersChanged) {
-      return;
-    }
     const usersTable = context.result.appState[USERS_TABLE_NAME];
-    this.memoryDb.write(current => ({
-      ...current,
-      [USERS_TABLE_NAME]: usersTable
-    }));
+    if (context.result.usersChanged) {
+      this.memoryDb.write(current => ({
+        ...current,
+        [USERS_TABLE_NAME]: usersTable
+      }));
+    }
     await this.memoryDb.writeIndexedDbTableEntry(USERS_TABLE_NAME, usersTable);
   }
 
   async seedRegistry(context: OperatorBootstrapSeedContext): Promise<void> {
-    if (!context.result.registryChanged) {
-      return;
-    }
     await this.registryRepository.write(context.result.registryRecord);
   }
 }

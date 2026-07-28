@@ -14,6 +14,7 @@ import { from } from 'rxjs';
 
 import { USER_BY_ID_LOAD_CONTEXT_KEY } from '../../../shared/core';
 import { I18nService } from '../../../shared/core/base/services/i18n.service';
+import { DeploymentConfigurationService } from '../../../shared/core/base/services/deployment-configuration.service';
 import type { ListQuery } from '../../../shared/core/contracts/list.interface';
 import type {
   OperatorLeaderboardEntryDto,
@@ -65,6 +66,8 @@ type OperatorActionId = Exclude<OperatorMenuKind, 'community'>;
   styleUrl: './operator-page.component.scss'
 })
 export class OperatorPageComponent implements OnInit {
+  protected readonly deploymentBranding =
+    inject(DeploymentConfigurationService).branding;
   protected readonly registry = inject(OperatorRegistryStore);
   protected readonly operatorMenu = inject(OperatorMenuStore);
   protected readonly workspace = inject(OperatorWorkspaceStore);
@@ -137,7 +140,7 @@ export class OperatorPageComponent implements OnInit {
         ? 'operator.action.claim.share.claimed'
         : 'operator.action.claim.share.detail',
       icon: 'redeem',
-      palette: 'purple',
+      palette: 'amber',
       kind: 'action',
       layout: 'big',
       progress: this.workspace.busyAction() === 'load-claim'
@@ -246,22 +249,6 @@ export class OperatorPageComponent implements OnInit {
       claimedNodeLabel: this.i18n.translate('operator.leaderboard.claimed.node'),
       unclaimedNodeLabel: this.i18n.translate('operator.leaderboard.unclaimed.node')
     });
-  }
-
-  protected leaderboardGroupSummary(group: OperatorLeaderboardGroup): string {
-    const summary = this.leaderboard.summaries().find(item => item.group === group);
-    const label = this.leaderboardGroupTitle(group);
-    if (!summary) {
-      return label;
-    }
-    const weight = new Intl.NumberFormat(this.i18n.currentLanguage(), {
-      maximumFractionDigits: 0
-    }).format(summary.verifiedWeight);
-    const share = new Intl.NumberFormat(this.i18n.currentLanguage(), {
-      minimumFractionDigits: summary.sharePercent > 0 && summary.sharePercent < 1 ? 2 : 1,
-      maximumFractionDigits: 2
-    }).format(summary.sharePercent);
-    return `${label} · ${weight} ${this.i18n.translate('operator.leaderboard.contribution.units')} · ${share}%`;
   }
 
   private leaderboardGroupTitle(group: OperatorLeaderboardGroup): string {

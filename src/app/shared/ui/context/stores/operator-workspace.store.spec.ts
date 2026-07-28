@@ -4,13 +4,18 @@ import { TestBed } from '@angular/core/testing';
 import { OperatorRegistryService } from '../../../core/base/services/operator-registry.service';
 import { DeploymentConfigurationService } from '../../../core/base/services/deployment-configuration.service';
 import { SessionService } from '../../../core/base/services/session.service';
-import type { OperatorClaimStatusDto } from '../../../core/contracts/operator.interface';
+import type {
+  OperatorClaimStatusDto,
+  OperatorDeploymentUpdateDto
+} from '../../../core/contracts/operator.interface';
 import { OperatorLeaderboardStore } from './operator-leaderboard.store';
 import { OperatorWorkspaceStore } from './operator-workspace.store';
 import { UserProfileStore } from './user-profile.store';
 
 describe('OperatorWorkspaceStore', () => {
   const claimShare = vi.fn();
+  const loadClaimStatus = vi.fn();
+  const loadDeploymentUpdate = vi.fn();
   const invalidate = vi.fn();
   const session = signal({
     kind: 'firebase' as const,
@@ -35,6 +40,8 @@ describe('OperatorWorkspaceStore', () => {
 
   beforeEach(() => {
     claimShare.mockReset();
+    loadClaimStatus.mockReset();
+    loadDeploymentUpdate.mockReset();
     invalidate.mockReset();
     activeUserProfile.set({
       id: 'operator-real',
@@ -52,7 +59,11 @@ describe('OperatorWorkspaceStore', () => {
         OperatorWorkspaceStore,
         {
           provide: OperatorRegistryService,
-          useValue: { claimShare }
+          useValue: {
+            claimShare,
+            loadClaimStatus,
+            loadDeploymentUpdate
+          }
         },
         {
           provide: DeploymentConfigurationService,
@@ -81,36 +92,74 @@ describe('OperatorWorkspaceStore', () => {
     TestBed.resetTestingModule();
   });
 
-  it('claims with the active profile name and first safe HTTPS avatar', async () => {
+  it('submits the explicit structured company verification claim', async () => {
+    loadClaimStatus.mockResolvedValue(unclaimedStatus());
     const claimed = claimStatus();
     claimShare.mockResolvedValue(claimed);
     const store = TestBed.inject(OperatorWorkspaceStore);
+    await store.loadClaimStatus();
+    store.setClaimDraft({
+      legalName: ' Example Operator s.r.o. ',
+      registrationNumber: ' 51 234 567 ',
+      jurisdiction: ' Slovakia ',
+      registeredAddress: ' Main Street 1, Bratislava ',
+      website: ' https://operator.example.test ',
+      verificationContactName: ' Authorized Contact ',
+      verificationContactRole: ' Managing director ',
+      verificationContactEmail: ' CONTACT@EXAMPLE.TEST ',
+      authorityAttested: true
+    });
 
     const result = await store.claimShare();
 
     expect(result).toEqual(claimed);
     expect(claimShare).toHaveBeenCalledWith({
-      operatorName: 'Verified Operator',
-      operatorAvatarUrl: 'https://cdn.example.test/operator.webp'
+      legalName: ' Example Operator s.r.o. ',
+      registrationNumber: ' 51 234 567 ',
+      jurisdiction: ' Slovakia ',
+      registeredAddress: ' Main Street 1, Bratislava ',
+      website: ' https://operator.example.test ',
+      verificationContactName: ' Authorized Contact ',
+      verificationContactRole: ' Managing director ',
+      verificationContactEmail: ' CONTACT@EXAMPLE.TEST ',
+      authorityAttested: true
     });
     expect(store.claimStatus()).toEqual(claimed);
-    expect(store.notice()).toBe('operator.claim.completed');
+    expect(store.notice()).toBe('operator.claim.verification.submitted');
     expect(invalidate).toHaveBeenCalledTimes(1);
   });
 
-  it('does not call Java when the active profile has no claimant name', async () => {
-    activeUserProfile.set({
-      id: 'operator-real',
-      name: ' ',
-      images: []
-    });
+  it('does not submit an incomplete company verification claim', async () => {
+    loadClaimStatus.mockResolvedValue(unclaimedStatus());
     const store = TestBed.inject(OperatorWorkspaceStore);
+    await store.loadClaimStatus();
+    store.setClaimDraft({
+      legalName: 'Example Operator s.r.o.',
+      authorityAttested: true
+    });
 
     const result = await store.claimShare();
 
     expect(result).toBeNull();
     expect(claimShare).not.toHaveBeenCalled();
-    expect(store.error()).toBe('operator.claim.error.profile.required');
+    expect(store.error()).toBe('operator.claim.verification.error.required');
+  });
+
+  it('uses the workspace update snapshot until an explicit refresh', async () => {
+    const initial = deploymentUpdate('1.1.0');
+    const refreshed = deploymentUpdate('1.2.0');
+    loadDeploymentUpdate
+      .mockResolvedValueOnce(initial)
+      .mockResolvedValueOnce(refreshed);
+    const store = TestBed.inject(OperatorWorkspaceStore);
+
+    expect(await store.loadDeploymentUpdate()).toEqual(initial);
+    expect(await store.loadDeploymentUpdate()).toEqual(initial);
+    expect(loadDeploymentUpdate).toHaveBeenCalledTimes(1);
+
+    expect(await store.refreshDeploymentUpdate()).toEqual(refreshed);
+    expect(store.deploymentUpdate()).toEqual(refreshed);
+    expect(loadDeploymentUpdate).toHaveBeenCalledTimes(2);
   });
 });
 
@@ -125,6 +174,49 @@ function claimStatus(): OperatorClaimStatusDto {
     activeLinkId: null,
     sharePercent: 4.25,
     shareNumerator: '17',
-    shareDenominator: '400'
+    shareDenominator: '400',
+    verificationCapability: 'AVAILABLE',
+    verificationUnavailableReason: null,
+    verificationStatus: 'PENDING_REVIEW',
+    verificationSubmittedAt: '2026-07-28T18:00:00.000Z',
+    legalName: 'Example Operator s.r.o.'
+  };
+}
+
+function unclaimedStatus(): OperatorClaimStatusDto {
+  return {
+    claimed: false,
+    claimedAt: null,
+    claimantUserId: null,
+    claimantName: null,
+    claimantAvatarUrl: null,
+    operatorGroupId: null,
+    activeLinkId: null,
+    sharePercent: 0,
+    shareNumerator: null,
+    shareDenominator: null,
+    verificationCapability: 'AVAILABLE',
+    verificationUnavailableReason: null,
+    verificationStatus: 'NOT_SUBMITTED',
+    verificationSubmittedAt: null,
+    legalName: null
+  };
+}
+
+function deploymentUpdate(availableVersion: string): OperatorDeploymentUpdateDto {
+  return {
+    currentVersion: '1.0.0',
+    availableVersion,
+    updateAvailable: true,
+    lastCheckedAt: '2026-07-28T18:00:00.000Z',
+    lastUpdatedAt: null,
+    progress: {
+      phase: 'IDLE',
+      bytesDownloaded: 0,
+      bytesTotal: 1024,
+      percent: 0,
+      message: null,
+      updatedAt: '2026-07-28T18:00:00.000Z'
+    }
   };
 }

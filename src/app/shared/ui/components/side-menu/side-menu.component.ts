@@ -61,6 +61,7 @@ import {
 } from '../../context/stores/sub-event-resource-popup.store';
 import {
   ExplanationGuideService,
+  DeploymentConfigurationService,
   HelpCenterService,
   I18nService,
   PrivacyPolicyService,
@@ -208,6 +209,8 @@ export class SideMenuComponent implements OnDestroy {
   private readonly adminMenuStore = inject(AdminMenuStore);
   private readonly adminWorkspaceStore = inject(AdminWorkspaceStore);
   private readonly operatorMenuStore = inject(OperatorMenuStore);
+  private readonly deploymentConfiguration = inject(DeploymentConfigurationService);
+  protected readonly deploymentBranding = this.deploymentConfiguration.branding;
   private readonly explanationGuide = inject(ExplanationGuideService);
   private readonly helpCenterService = inject(HelpCenterService);
   private readonly privacyPolicy = inject(PrivacyPolicyService);
@@ -380,16 +383,24 @@ export class SideMenuComponent implements OnDestroy {
       context: { kind: 'toggle-menu' }
     }];
   });
-  protected readonly operatorCommunityMenuItems = computed<readonly AppMenuItem<NavigatorOperatorCommunityMenuItemId>[]>(() => [{
-    id: 'operator-community',
-    label: 'operator.community',
-    icon: 'forum',
-    palette: 'purple',
-    layout: 'pill',
-    active: this.operatorMenuStore.activePopup() === 'community',
-    disabled: !this.canToggleAvatarMenu(),
-    ariaLabel: 'operator.community.open'
-  }]);
+  protected readonly operatorCommunityMenuModel = computed<
+    AppMenuModel<NavigatorOperatorCommunityMenuItemId>
+  >(() => ({
+    layout: 'grid',
+    density: 'compact',
+    groups: [{
+      id: 'operator-community-launcher',
+      items: [{
+        id: 'operator-community',
+        label: 'operator.community',
+        icon: 'forum',
+        palette: 'purple',
+        active: this.operatorMenuStore.activePopup() === 'community',
+        disabled: !this.canToggleAvatarMenu(),
+        ariaLabel: 'operator.community.open'
+      }]
+    }]
+  }));
   protected readonly notificationAttentionTrigger = computed<AppMenuTrigger>(() => {
     const unreadCount = this.notificationCenterStore.unreadCount();
     return {
@@ -556,9 +567,9 @@ export class SideMenuComponent implements OnDestroy {
         },
         {
           id: 'share',
-          label: 'Share MyScoutee',
+          label: `Share ${this.deploymentBranding().productName}`,
           icon: 'share',
-          ariaLabel: 'Share MyScoutee'
+          ariaLabel: `Share ${this.deploymentBranding().productName}`
         }
       );
     }
@@ -1385,7 +1396,7 @@ export class SideMenuComponent implements OnDestroy {
     event.stopPropagation();
     const baseHref = document.querySelector('base')?.getAttribute('href') ?? '/';
     const url = new URL(baseHref, window.location.origin).toString();
-    const title = 'MyScoutee';
+    const title = this.deploymentBranding().productName;
     const text = 'Connect with people through shared activities and experiences.';
 
     if (navigator.share) {

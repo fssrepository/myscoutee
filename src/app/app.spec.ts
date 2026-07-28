@@ -37,6 +37,7 @@ describe('App', () => {
     await fixture.whenStable();
     const compiled = fixture.nativeElement as HTMLElement;
     expect(compiled.querySelector('app-entry-page')).not.toBeNull();
-    expect(compiled.querySelector('.entry-brand-text')?.textContent).toContain('yScoutee');
+    expect(compiled.querySelector('.entry-brand-text')?.textContent)
+      .toContain(DEFAULT_DEPLOYMENT_BRANDING.productName);
   });
 });

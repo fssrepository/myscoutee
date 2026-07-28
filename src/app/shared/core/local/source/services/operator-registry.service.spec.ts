@@ -43,8 +43,15 @@ describe('LocalOperatorRegistryService', () => {
       expectedRegistryScope: 'demo:primary'
     });
     const explicitClaim = await service.claimShare({
-      operatorName: 'Demo Operator',
-      operatorAvatarUrl: null
+      legalName: 'Demo Operator s.r.o.',
+      registrationNumber: '51 234 567',
+      jurisdiction: 'Slovakia',
+      registeredAddress: 'Main Street 1, Bratislava',
+      website: 'https://operator.example.test',
+      verificationContactName: 'Demo Operator',
+      verificationContactRole: 'Managing director',
+      verificationContactEmail: 'operator@example.test',
+      authorityAttested: true
     });
     const ledgerBeforeGrouping = (await repository.read())?.ledger;
     const token = await service.issueGroupingToken();
@@ -77,6 +84,9 @@ describe('LocalOperatorRegistryService', () => {
     expect(initial.registryOptions).toHaveLength(3);
     expect(registered.lifecycle).toBe('REGISTERED');
     expect(explicitClaim.claimed).toBe(true);
+    expect(explicitClaim.verificationStatus).toBe('PENDING_REVIEW');
+    expect(explicitClaim.claimedAt).toBe(explicitClaim.verificationSubmittedAt);
+    expect(explicitClaim.claimantName).toBe('Demo Operator s.r.o.');
     expect(groupedClaim.claimed).toBe(true);
     expect(groupedClaim.claimedAt).toBe(explicitClaim.claimedAt);
     expect(groupedClaim.claimantUserId).toBe(explicitClaim.claimantUserId);
@@ -85,9 +95,21 @@ describe('LocalOperatorRegistryService', () => {
     expect(cached?.ledger.find(item => item.id === 'node-operator-demo')).toEqual(
       expect.objectContaining({
         claimed: true,
-        claimantUserId: 'operator-demo-dev'
+        claimantUserId: 'operator-demo-dev',
+        claimantName: 'Demo Operator s.r.o.'
       })
     );
+    expect(cached?.claimVerificationRequest).toEqual({
+      legalName: 'Demo Operator s.r.o.',
+      registrationNumber: '51 234 567',
+      jurisdiction: 'Slovakia',
+      registeredAddress: 'Main Street 1, Bratislava',
+      website: 'https://operator.example.test/',
+      verificationContactName: 'Demo Operator',
+      verificationContactRole: 'Managing director',
+      verificationContactEmail: 'operator@example.test',
+      authorityAttested: true
+    });
     expect(cached?.leaderboard.find(
       item => item.operatorGroupId === explicitClaim.operatorGroupId
     )).toEqual(

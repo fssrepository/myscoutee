@@ -138,26 +138,40 @@ describe('HttpOperatorRegistryService', () => {
       activeLinkId: null,
       sharePercent: 4.25,
       shareNumerator: '17',
-      shareDenominator: '400'
+      shareDenominator: '400',
+      verificationCapability: 'AVAILABLE',
+      verificationUnavailableReason: null,
+      verificationStatus: 'PENDING_REVIEW',
+      verificationSubmittedAt: '2026-07-28T18:00:00.000Z',
+      legalName: 'Demo Operator s.r.o.'
     };
     get.mockReturnValue(of(claimStatus));
-    post.mockImplementation((url: string) => of({
-      clientToken: url.endsWith('/client-token') ? 'client_token_1' : null,
-      receipt: {
-        acceptedAt: '2026-07-28T18:00:00.000Z',
-        claimState: 'claimed',
-        groupId: 'opg_demo',
-        tokenExpiresAt: url.endsWith('/client-token')
-          ? '2026-07-28T18:05:00.000Z'
-          : null
-      }
-    }));
+    post.mockImplementation((url: string) => url.endsWith('/claim')
+      ? of(claimStatus)
+      : of({
+          clientToken: url.endsWith('/client-token') ? 'client_token_1' : null,
+          receipt: {
+            acceptedAt: '2026-07-28T18:00:00.000Z',
+            claimState: 'claimed',
+            groupId: 'opg_demo',
+            tokenExpiresAt: url.endsWith('/client-token')
+              ? '2026-07-28T18:05:00.000Z'
+              : null
+          }
+        }));
     const service = TestBed.inject(HttpOperatorRegistryService);
 
     const loaded = await service.loadClaimStatus();
     const claimed = await service.claimShare({
-      operatorName: ' Demo Operator ',
-      operatorAvatarUrl: 'https://cdn.example.test/operator.webp'
+      legalName: ' Demo Operator s.r.o. ',
+      registrationNumber: ' 51 234 567 ',
+      jurisdiction: ' Slovakia ',
+      registeredAddress: ' Main Street 1, Bratislava ',
+      website: ' https://operator.example.test ',
+      verificationContactName: ' Demo Operator ',
+      verificationContactRole: ' Managing director ',
+      verificationContactEmail: ' OPERATOR@EXAMPLE.TEST ',
+      authorityAttested: true
     });
     const token = await service.issueGroupingToken();
     const grouped = await service.linkOperatorGroup({
@@ -173,8 +187,15 @@ describe('HttpOperatorRegistryService', () => {
     });
     expect(post.mock.calls.map((call: unknown[]) => [call[0], call[1]])).toEqual([
       ['/api/operator/claim', {
-        operatorName: 'Demo Operator',
-        operatorAvatarUrl: 'https://cdn.example.test/operator.webp'
+        legalName: 'Demo Operator s.r.o.',
+        registrationNumber: '51 234 567',
+        jurisdiction: 'Slovakia',
+        registeredAddress: 'Main Street 1, Bratislava',
+        website: 'https://operator.example.test/',
+        verificationContactName: 'Demo Operator',
+        verificationContactRole: 'Managing director',
+        verificationContactEmail: 'operator@example.test',
+        authorityAttested: true
       }],
       ['/api/operator/claim/client-token', null],
       ['/api/operator/claim/redeem', {
@@ -183,7 +204,36 @@ describe('HttpOperatorRegistryService', () => {
     ]);
     expect(get.mock.calls.filter(
       (call: unknown[]) => call[0] === '/api/operator/claim'
-    )).toHaveLength(3);
+    )).toHaveLength(2);
+  });
+
+  it('does not post structured verification to a legacy claim endpoint', async () => {
+    get.mockReturnValue(of({
+      claimed: false,
+      claimedAt: null,
+      claimantUserId: null,
+      claimantName: null,
+      claimantAvatarUrl: null,
+      operatorGroupId: null,
+      sharePercent: 0
+    }));
+    const service = TestBed.inject(HttpOperatorRegistryService);
+
+    const status = await service.loadClaimStatus();
+
+    expect(status.verificationCapability).toBe('BACKEND_UNAVAILABLE');
+    await expect(service.claimShare({
+      legalName: 'Example Operator s.r.o.',
+      registrationNumber: '51 234 567',
+      jurisdiction: 'Slovakia',
+      registeredAddress: 'Main Street 1, Bratislava',
+      website: null,
+      verificationContactName: 'Authorized Contact',
+      verificationContactRole: 'Managing director',
+      verificationContactEmail: 'operator@example.test',
+      authorityAttested: true
+    })).rejects.toThrow('operator.claim.verification.backend.unavailable');
+    expect(post).not.toHaveBeenCalled();
   });
 
   it('maps the three Java leaderboard views into one grouped cursor stream', async () => {

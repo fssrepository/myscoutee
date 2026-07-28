@@ -84,6 +84,10 @@
   gap: 0.04rem;
 }
 
+.operator-action-popup__configuration-group > header > span:first-child {
+  margin-right: auto;
+}
+
 .operator-action-popup__configuration-group > header small,
 .operator-action-popup__field > span,
 .operator-action-popup__select-field > span,
@@ -104,45 +108,12 @@
   font-size: 19px;
 }
 
-.operator-action-popup__brand-preview {
-  min-width: 0;
-  padding: 0.58rem;
-  border-radius: 11px;
-  background: linear-gradient(
-    125deg,
-    var(--deployment-brand-primary),
-    var(--deployment-brand-secondary)
-  );
-  color: #fff;
-  display: flex;
-  align-items: center;
-  gap: 0.55rem;
-}
-
-.operator-action-popup__brand-preview img {
-  width: 36px;
-  height: 36px;
-  border-radius: 9px;
-  object-fit: contain;
-  background: rgba(255, 255, 255, 0.9);
-}
-
-.operator-action-popup__brand-preview span {
+.operator-action-popup__branding-fields,
+.operator-action-popup__claim-form {
   min-width: 0;
   display: grid;
-}
-
-.operator-action-popup__brand-preview strong,
-.operator-action-popup__brand-preview small {
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-
-.operator-action-popup__brand-preview small {
-  color: rgba(255, 255, 255, 0.82);
-  font-size: 0.62rem;
-  font-weight: 750;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 0.58rem;
 }
 
 .operator-action-popup__field,
@@ -153,22 +124,58 @@
   gap: 0.28rem;
 }
 
-.operator-action-popup__field input {
+.operator-action-popup__field input,
+.operator-action-popup__field textarea {
   box-sizing: border-box;
   width: 100%;
   min-height: 38px;
   border: 1px solid rgba(62, 83, 119, 0.22);
   border-radius: 9px;
-  padding: 0 0.58rem;
+  padding: 0.55rem 0.58rem;
   background: #fff;
   color: #243853;
   font: inherit;
   font-size: 0.72rem;
+  line-height: 1.4;
+  resize: vertical;
 }
 
-.operator-action-popup__field input:disabled {
+.operator-action-popup__field input:disabled,
+.operator-action-popup__field textarea:disabled {
   background: #f0f3f7;
   color: rgba(36, 56, 83, 0.58);
+}
+
+.operator-action-popup__field > span {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 0.4rem;
+}
+
+.operator-action-popup__field > span small {
+  font-size: 0.58rem;
+  font-weight: 750;
+}
+
+.operator-action-popup__field.is-wide,
+.operator-action-popup__attestation.is-wide {
+  grid-column: 1 / -1;
+}
+
+.operator-action-popup__attestation {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.5rem;
+  color: rgba(36, 56, 83, 0.78);
+  font-size: 0.7rem;
+  font-weight: 750;
+  line-height: 1.4;
+}
+
+.operator-action-popup__attestation input {
+  margin: 0.12rem 0 0;
+  accent-color: #6650c9;
 }
 
 .operator-action-popup__select-field app-menu {
@@ -178,11 +185,32 @@
 
 .operator-action-popup__section-actions {
   min-width: 0;
+  width: min(100%, 190px);
   margin-top: 0.08rem;
 }
 
 .operator-action-popup__logo-field app-image-carousel {
-  max-width: 116px;
+  width: min(100%, 320px);
+  max-width: 320px;
+}
+
+.operator-action-popup__header-actions {
+  min-width: 0;
+  width: min(100%, 280px);
+}
+
+.operator-action-popup__firebase-test-results {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 0.45rem;
+}
+
+.operator-action-popup__firebase-test-results:empty {
+  display: none;
+}
+
+.operator-action-popup__firebase-test-results > .is-wide {
+  grid-column: 1 / -1;
 }
 
 .operator-action-popup__update-progress {
@@ -692,6 +720,17 @@
   font-size: 18px;
 }
 
+.operator-action-popup__result-copy {
+  display: grid;
+  gap: 0.08rem;
+}
+
+.operator-action-popup__result-copy small {
+  font-size: 0.65rem;
+  font-weight: 700;
+  line-height: 1.35;
+}
+
 .operator-action-popup__result.is-success {
   background: #eaf8f2;
   color: #146b54;
@@ -702,6 +741,11 @@
   color: #9b3447;
 }
 
+.operator-action-popup__result.is-pending {
+  background: #fff7e7;
+  color: #946114;
+}
+
 .operator-action-popup__actions {
   min-width: 0;
 }
@@ -709,5 +753,20 @@
 @media (max-width: 560px) {
   .operator-action-popup__summary {
     grid-template-columns: auto 1fr;
+  }
+
+  .operator-action-popup__branding-fields,
+  .operator-action-popup__claim-form,
+  .operator-action-popup__firebase-test-results {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .operator-action-popup__configuration-group > header {
+    flex-wrap: wrap;
+  }
+
+  .operator-action-popup__header-actions {
+    order: 3;
+    width: 100%;
   }
 }

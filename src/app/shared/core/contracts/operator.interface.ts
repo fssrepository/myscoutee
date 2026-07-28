@@ -151,6 +151,17 @@ export type OperatorLeaderboardPageDto = PageResult<
   OperatorLeaderboardPageContextDto
 >;
 
+export type OperatorClaimVerificationCapability =
+  | 'AVAILABLE'
+  | 'BACKEND_UNAVAILABLE';
+
+export type OperatorClaimVerificationStatus =
+  | 'NOT_SUBMITTED'
+  | 'PENDING_REVIEW'
+  | 'APPROVED'
+  | 'VERIFIED'
+  | 'REJECTED';
+
 export interface OperatorClaimStatusDto {
   claimed: boolean;
   claimedAt: string | null;
@@ -162,6 +173,11 @@ export interface OperatorClaimStatusDto {
   sharePercent: number;
   shareNumerator?: string | null;
   shareDenominator?: string | null;
+  verificationCapability: OperatorClaimVerificationCapability;
+  verificationUnavailableReason: string | null;
+  verificationStatus: OperatorClaimVerificationStatus;
+  verificationSubmittedAt: string | null;
+  legalName: string | null;
 }
 
 export interface OperatorGroupingTokenDto {
@@ -170,8 +186,15 @@ export interface OperatorGroupingTokenDto {
 }
 
 export interface OperatorClaimRequestDto {
-  operatorName: string;
-  operatorAvatarUrl?: string | null;
+  legalName: string;
+  registrationNumber: string;
+  jurisdiction: string;
+  registeredAddress: string;
+  website?: string | null;
+  verificationContactName: string;
+  verificationContactRole: string;
+  verificationContactEmail: string;
+  authorityAttested: boolean;
 }
 
 export interface OperatorGroupLinkRequestDto {

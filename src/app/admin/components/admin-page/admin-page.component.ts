@@ -31,6 +31,9 @@ import {
 import {
   SessionService
 } from '../../../shared/core/base/services/session.service';
+import {
+  DeploymentConfigurationService
+} from '../../../shared/core/base/services/deployment-configuration.service';
 import type { AdminBootstrapProcessState, AdminDashboardDto } from '../../../shared/core/contracts/admin.interface';
 import {
   DialogComponent
@@ -58,6 +61,8 @@ import {
   styleUrl: './admin-page.component.scss'
 })
 export class AdminPageComponent implements OnInit, OnDestroy {
+  protected readonly deploymentBranding =
+    inject(DeploymentConfigurationService).branding;
   protected readonly workspace = inject(AdminWorkspaceStore);
   protected readonly adminMenu = inject(AdminMenuStore);
   protected readonly sessionService = inject(SessionService);

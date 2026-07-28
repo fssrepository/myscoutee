@@ -1,13 +1,13 @@
 <div class="operator-page-scroll">
   <main class="operator-home" [attr.aria-busy]="loading()">
     <header class="operator-home-header">
-      <a class="operator-brand" [attr.aria-label]="'operator.brand.aria' | i18n">
+      <a class="operator-brand" [attr.aria-label]="deploymentBranding().productName">
         <img
           class="operator-brand-mark"
-          src="assets/logo/heart.webp"
-          [alt]="'operator.brand.logo.alt' | i18n"
+          [src]="deploymentBranding().logoUrl"
+          [alt]="deploymentBranding().productName"
         />
-        <span class="operator-brand-text">yScoutee</span>
+        <span class="operator-brand-text">{{ deploymentBranding().productName }}</span>
       </a>
       <div class="operator-home-heading">{{ 'operator' | i18n }}</div>
     </header>
@@ -42,17 +42,6 @@
           </span>
           <mat-icon>leaderboard</mat-icon>
         </header>
-
-        @if (leaderboard.summaries().length > 0) {
-          <div
-            class="operator-leaderboard__summaries"
-            [attr.aria-label]="'operator.leaderboard.network' | i18n"
-          >
-            @for (summary of leaderboard.summaries(); track summary.group) {
-              <span>{{ leaderboardGroupSummary(summary.group) }}</span>
-            }
-          </div>
-        }
 
         <app-smart-list
           class="operator-leaderboard__list"

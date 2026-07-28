@@ -1,4 +1,5 @@
 import type {
+  OperatorClaimRequestDto,
   OperatorClaimStatusDto,
   OperatorCommunityStatusDto,
   OperatorConfigurationDto,
@@ -71,6 +72,7 @@ export interface OperatorRegistryStateRecord {
   auditHistory: OperatorRegistryAuditEventRecord[];
   leaderboard: OperatorLeaderboardEntryDto[];
   claimStatus: OperatorClaimStatusDto;
+  claimVerificationRequest: OperatorClaimRequestDto | null;
   groupingTokens: OperatorGroupingTokenRecord[];
   deploymentUpdate: OperatorDeploymentUpdateDto;
   configuration: OperatorConfigurationDto;

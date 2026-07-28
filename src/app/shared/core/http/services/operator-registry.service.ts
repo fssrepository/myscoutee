@@ -67,6 +67,8 @@ interface RemoteOperatorActionResult {
   receipt: RemoteOperatorActionReceipt;
 }
 
+type RemoteOperatorClaimStatus = Partial<OperatorClaimStatusDto>;
+
 interface RemoteOperatorLeaderboardSnapshot {
   throughPeriod: string;
   founderUnitsNumerator: string;
@@ -216,6 +218,7 @@ export class HttpOperatorRegistryService implements OperatorRegistryServiceContr
   private latestAnnouncementsCheckedAt: string | null = null;
   private activeUpdateJob: RemoteOperatorUpdateJob | null = null;
   private currentDeploymentVersion = '—';
+  private claimVerificationAvailable: boolean | null = null;
 
   async loadStatus(): Promise<OperatorRegistryStatusDto> {
     return await this.requireResponse(
@@ -368,32 +371,39 @@ export class HttpOperatorRegistryService implements OperatorRegistryServiceContr
   }
 
   async loadClaimStatus(): Promise<OperatorClaimStatusDto> {
-    return await this.requireResponse(
+    const remote = await this.requireResponse(
       `${OPERATOR_NETWORK_ROUTE}/claim`,
-      this.http.get<OperatorClaimStatusDto>(
+      this.http.get<RemoteOperatorClaimStatus>(
         `${this.operatorEndpoint}/claim`,
         this.requestOptions()
       ).toPromise()
     );
+    const status = this.toClaimStatus(remote);
+    this.claimVerificationAvailable =
+      status.verificationCapability === 'AVAILABLE';
+    return status;
   }
 
   async claimShare(request: OperatorClaimRequestDto): Promise<OperatorClaimStatusDto> {
-    const operatorName = request.operatorName?.trim();
-    if (!operatorName) {
-      throw new Error('operator.claim.error.profile.required');
+    if (this.claimVerificationAvailable === null) {
+      await this.loadClaimStatus();
     }
-    await this.requireResponse(
+    if (!this.claimVerificationAvailable) {
+      throw new Error('operator.claim.verification.backend.unavailable');
+    }
+    const payload = this.requireClaimVerificationRequest(request);
+    const remote = await this.requireResponse(
       `${OPERATOR_NETWORK_ROUTE}/claim`,
-      this.http.post<RemoteOperatorActionResult>(
+      this.http.post<RemoteOperatorClaimStatus>(
         `${this.operatorEndpoint}/claim`,
-        {
-          operatorName,
-          operatorAvatarUrl: this.safeHttpsUrl(request.operatorAvatarUrl)
-        },
+        payload,
         this.requestOptions()
       ).toPromise()
     );
-    return this.loadClaimStatus();
+    const status = this.toClaimStatus(remote);
+    this.claimVerificationAvailable =
+      status.verificationCapability === 'AVAILABLE';
+    return status;
   }
 
   async issueGroupingToken(): Promise<OperatorGroupingTokenDto> {
@@ -874,6 +884,93 @@ export class HttpOperatorRegistryService implements OperatorRegistryServiceContr
     } catch {
       return null;
     }
+  }
+
+  private toClaimStatus(remote: RemoteOperatorClaimStatus): OperatorClaimStatusDto {
+    const claimed = remote.claimed === true;
+    const hasVerificationCapability =
+      remote.verificationCapability === 'AVAILABLE'
+      || remote.verificationCapability === 'BACKEND_UNAVAILABLE';
+    const verificationStatus = remote.verificationStatus === 'PENDING_REVIEW'
+      || remote.verificationStatus === 'APPROVED'
+      || remote.verificationStatus === 'VERIFIED'
+      || remote.verificationStatus === 'REJECTED'
+      || remote.verificationStatus === 'NOT_SUBMITTED'
+      ? remote.verificationStatus
+      : claimed
+        ? 'VERIFIED'
+        : 'NOT_SUBMITTED';
+    return {
+      claimed,
+      claimedAt: remote.claimedAt?.trim() || null,
+      claimantUserId: remote.claimantUserId?.trim() || null,
+      claimantName: remote.claimantName?.trim() || null,
+      claimantAvatarUrl: this.safeHttpsUrl(remote.claimantAvatarUrl),
+      operatorGroupId: remote.operatorGroupId?.trim() || null,
+      activeLinkId: remote.activeLinkId?.trim() || null,
+      sharePercent: Math.max(0, Number(remote.sharePercent) || 0),
+      shareNumerator: remote.shareNumerator?.trim() || null,
+      shareDenominator: remote.shareDenominator?.trim() || null,
+      verificationCapability: hasVerificationCapability
+        ? remote.verificationCapability!
+        : 'BACKEND_UNAVAILABLE',
+      verificationUnavailableReason: hasVerificationCapability
+        ? remote.verificationUnavailableReason?.trim() || null
+        : 'operator.claim.verification.backend.unavailable',
+      verificationStatus,
+      verificationSubmittedAt: remote.verificationSubmittedAt?.trim() || null,
+      legalName: remote.legalName?.trim() || remote.claimantName?.trim() || null
+    };
+  }
+
+  private requireClaimVerificationRequest(
+    request: OperatorClaimRequestDto
+  ): OperatorClaimRequestDto {
+    const payload: OperatorClaimRequestDto = {
+      legalName: `${request.legalName ?? ''}`.trim(),
+      registrationNumber: `${request.registrationNumber ?? ''}`.trim(),
+      jurisdiction: `${request.jurisdiction ?? ''}`.trim(),
+      registeredAddress: `${request.registeredAddress ?? ''}`.trim(),
+      website: this.publicWebsite(request.website),
+      verificationContactName: `${request.verificationContactName ?? ''}`.trim(),
+      verificationContactRole: `${request.verificationContactRole ?? ''}`.trim(),
+      verificationContactEmail:
+        `${request.verificationContactEmail ?? ''}`.trim().toLowerCase(),
+      authorityAttested: request.authorityAttested === true
+    };
+    if (
+      !payload.legalName
+      || !payload.registrationNumber
+      || !payload.jurisdiction
+      || !payload.registeredAddress
+      || !payload.verificationContactName
+      || !payload.verificationContactRole
+      || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(payload.verificationContactEmail)
+      || !payload.authorityAttested
+    ) {
+      throw new Error('operator.claim.verification.error.required');
+    }
+    return payload;
+  }
+
+  private publicWebsite(value: string | null | undefined): string | null {
+    const source = `${value ?? ''}`.trim();
+    if (!source) {
+      return null;
+    }
+    try {
+      const url = new URL(source);
+      if (
+        (url.protocol === 'https:' || url.protocol === 'http:')
+        && !url.username
+        && !url.password
+      ) {
+        return url.toString();
+      }
+    } catch {
+      // Fall through to the validation error.
+    }
+    throw new Error('operator.claim.verification.error.website');
   }
 
   private requestOptions(params?: HttpParams): { headers?: HttpHeaders; params?: HttpParams } {

@@ -8,6 +8,7 @@ import {
 } from '../../../core/base/services/session.service';
 import type {
   OperatorGroupingTokenDto,
+  OperatorClaimRequestDto,
   OperatorClaimStatusDto,
   OperatorCommunityAvailability,
   OperatorCommunityStatusDto,
@@ -37,6 +38,8 @@ export type OperatorWorkspaceBusyAction =
   | 'set-community'
   | null;
 
+export type OperatorConfigurationTestFeedback = 'success' | 'error' | null;
+
 @Injectable({
   providedIn: 'root'
 })
@@ -47,31 +50,76 @@ export class OperatorWorkspaceStore {
   private readonly userProfileStore = inject(UserProfileStore);
   private readonly deploymentConfiguration = inject(DeploymentConfigurationService);
   private readonly claimStatusRef = signal<OperatorClaimStatusDto | null>(null);
+  private readonly claimDraftRef = signal<OperatorClaimRequestDto>(
+    this.emptyClaimDraft()
+  );
   private readonly groupingTokenRef = signal<OperatorGroupingTokenDto | null>(null);
   private readonly groupTokenInputRef = signal('');
   private readonly deploymentUpdateRef = signal<OperatorDeploymentUpdateDto | null>(null);
   private readonly configurationRef = signal<OperatorConfigurationDto | null>(null);
   private readonly configurationDraftRef =
     signal<OperatorConfigurationSaveRequestDto | null>(null);
-  private readonly configurationTestRef = signal<OperatorConfigurationTestResultDto | null>(null);
+  private readonly configurationAuthenticationTestRef =
+    signal<OperatorConfigurationTestResultDto | null>(null);
+  private readonly configurationMessagingTestRef =
+    signal<OperatorConfigurationTestResultDto | null>(null);
+  private readonly configurationAuthenticationFeedbackRef =
+    signal<OperatorConfigurationTestFeedback>(null);
+  private readonly configurationMessagingFeedbackRef =
+    signal<OperatorConfigurationTestFeedback>(null);
   private readonly communityRef = signal<OperatorCommunityStatusDto | null>(null);
   private readonly busyActionRef = signal<OperatorWorkspaceBusyAction>(null);
   private readonly errorRef = signal('');
   private readonly noticeRef = signal('');
+  private readonly feedbackActionRef =
+    signal<Exclude<OperatorWorkspaceBusyAction, null> | null>(null);
   private requestGeneration = 0;
+  private configurationAuthenticationFeedbackTimer:
+    ReturnType<typeof setTimeout> | null = null;
+  private configurationMessagingFeedbackTimer:
+    ReturnType<typeof setTimeout> | null = null;
   private contextKey = this.sessionKey(this.sessionService.currentSession());
 
   readonly claimStatus = this.claimStatusRef.asReadonly();
+  readonly claimDraft = this.claimDraftRef.asReadonly();
   readonly groupingToken = this.groupingTokenRef.asReadonly();
   readonly groupTokenInput = this.groupTokenInputRef.asReadonly();
   readonly deploymentUpdate = this.deploymentUpdateRef.asReadonly();
   readonly configuration = this.configurationRef.asReadonly();
   readonly configurationDraft = this.configurationDraftRef.asReadonly();
-  readonly configurationTest = this.configurationTestRef.asReadonly();
+  readonly configurationAuthenticationTest =
+    this.configurationAuthenticationTestRef.asReadonly();
+  readonly configurationMessagingTest =
+    this.configurationMessagingTestRef.asReadonly();
+  readonly configurationAuthenticationFeedback =
+    this.configurationAuthenticationFeedbackRef.asReadonly();
+  readonly configurationMessagingFeedback =
+    this.configurationMessagingFeedbackRef.asReadonly();
   readonly community = this.communityRef.asReadonly();
   readonly busyAction = this.busyActionRef.asReadonly();
   readonly error = this.errorRef.asReadonly();
   readonly notice = this.noticeRef.asReadonly();
+  readonly feedbackAction = this.feedbackActionRef.asReadonly();
+  readonly claimVerificationReady = computed(() => {
+    const status = this.claimStatusRef();
+    const draft = this.claimDraftRef();
+    return (
+      status?.verificationCapability === 'AVAILABLE'
+      && status.verificationStatus !== 'PENDING_REVIEW'
+      && !status.claimed
+      && Boolean(draft.legalName.trim())
+      && Boolean(draft.registrationNumber.trim())
+      && Boolean(draft.jurisdiction.trim())
+      && Boolean(draft.registeredAddress.trim())
+      && Boolean(draft.verificationContactName.trim())
+      && Boolean(draft.verificationContactRole.trim())
+      && /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(
+        draft.verificationContactEmail.trim()
+      )
+      && this.validPublicWebsite(draft.website)
+      && draft.authorityAttested
+    );
+  });
   readonly configurationUploadOwnerId = computed(() => {
     const session = this.sessionService.currentSession();
     return this.userProfileStore.activeUserProfile()?.id?.trim()
@@ -112,6 +160,7 @@ export class OperatorWorkspaceStore {
     const result = await this.run('load-claim', () => this.service.loadClaimStatus());
     if (result) {
       this.claimStatusRef.set(result);
+      this.seedClaimContact();
     }
     return result;
   }
@@ -129,23 +178,26 @@ export class OperatorWorkspaceStore {
   }
 
   async claimShare(): Promise<OperatorClaimStatusDto | null> {
-    const profile = this.userProfileStore.activeUserProfile();
-    const operatorName = profile?.name?.trim() ?? '';
-    if (!operatorName) {
-      this.errorRef.set('operator.claim.error.profile.required');
+    if (!this.claimVerificationReady()) {
+      this.feedbackActionRef.set('claim-share');
+      this.errorRef.set('operator.claim.verification.error.required');
       return null;
     }
+    const draft = structuredClone(this.claimDraftRef());
     const result = await this.run(
       'claim-share',
-      () => this.service.claimShare({
-        operatorName,
-        operatorAvatarUrl: this.firstSafeHttpsUrl(profile?.images)
-      })
+      () => this.service.claimShare(draft)
     );
     if (result) {
       this.claimStatusRef.set(result);
-      this.noticeRef.set('operator.claim.completed');
-      this.leaderboard.invalidate();
+      this.noticeRef.set(
+        result.verificationStatus === 'PENDING_REVIEW'
+          ? 'operator.claim.verification.submitted'
+          : 'operator.claim.completed'
+      );
+      if (result.claimed) {
+        this.leaderboard.invalidate();
+      }
     }
     return result;
   }
@@ -169,7 +221,13 @@ export class OperatorWorkspaceStore {
     return result;
   }
 
-  async loadDeploymentUpdate(): Promise<OperatorDeploymentUpdateDto | null> {
+  async loadDeploymentUpdate(
+    force = false
+  ): Promise<OperatorDeploymentUpdateDto | null> {
+    const cached = this.deploymentUpdateRef();
+    if (cached && !force) {
+      return cached;
+    }
     const result = await this.run(
       'load-update',
       () => this.service.loadDeploymentUpdate()
@@ -178,6 +236,10 @@ export class OperatorWorkspaceStore {
       this.deploymentUpdateRef.set(result);
     }
     return result;
+  }
+
+  async refreshDeploymentUpdate(): Promise<OperatorDeploymentUpdateDto | null> {
+    return this.loadDeploymentUpdate(true);
   }
 
   async applyDeploymentUpdate(): Promise<OperatorDeploymentUpdateDto | null> {
@@ -242,7 +304,9 @@ export class OperatorWorkspaceStore {
     if (result) {
       this.configurationRef.set(result);
       this.configurationDraftRef.set(this.configurationDraftFrom(result));
-      this.configurationTestRef.set(null);
+      this.configurationAuthenticationTestRef.set(null);
+      this.configurationMessagingTestRef.set(null);
+      this.clearConfigurationTestFeedback();
       this.deploymentConfiguration.applyBranding(result.branding);
       this.noticeRef.set(noticeKey);
     }
@@ -252,15 +316,39 @@ export class OperatorWorkspaceStore {
   async testConfiguration(
     kind: OperatorConfigurationTestKind
   ): Promise<OperatorConfigurationTestResultDto | null> {
+    this.clearConfigurationTestFeedback(kind);
+    if (kind === 'FIREBASE_AUTHENTICATION') {
+      this.configurationAuthenticationTestRef.set(null);
+    } else {
+      this.configurationMessagingTestRef.set(null);
+    }
     const result = await this.run(
       kind === 'FIREBASE_AUTHENTICATION' ? 'test-authentication' : 'test-messaging',
       () => this.service.testConfiguration({ kind })
     );
     if (result) {
-      this.configurationTestRef.set(result);
-      this.noticeRef.set(result.success
-        ? 'operator.configuration.test.success'
-        : 'operator.configuration.test.failed');
+      if (kind === 'FIREBASE_AUTHENTICATION') {
+        this.configurationAuthenticationTestRef.set(result);
+      } else {
+        this.configurationMessagingTestRef.set(result);
+      }
+      this.showConfigurationTestFeedback(
+        kind,
+        result.success ? 'success' : 'error'
+      );
+    } else if (this.errorRef()) {
+      const failure: OperatorConfigurationTestResultDto = {
+        kind,
+        success: false,
+        message: this.errorRef(),
+        testedAt: new Date().toISOString()
+      };
+      if (kind === 'FIREBASE_AUTHENTICATION') {
+        this.configurationAuthenticationTestRef.set(failure);
+      } else {
+        this.configurationMessagingTestRef.set(failure);
+      }
+      this.showConfigurationTestFeedback(kind, 'error');
     }
     return result;
   }
@@ -293,11 +381,21 @@ export class OperatorWorkspaceStore {
   clearFeedback(): void {
     this.errorRef.set('');
     this.noticeRef.set('');
-    this.configurationTestRef.set(null);
+    this.feedbackActionRef.set(null);
+    this.configurationAuthenticationTestRef.set(null);
+    this.configurationMessagingTestRef.set(null);
+    this.clearConfigurationTestFeedback();
   }
 
   setGroupTokenInput(value: string): void {
     this.groupTokenInputRef.set(`${value ?? ''}`);
+  }
+
+  setClaimDraft(patch: Partial<OperatorClaimRequestDto>): void {
+    this.claimDraftRef.update(current => ({
+      ...current,
+      ...patch
+    }));
   }
 
   setConfigurationBranding(
@@ -351,6 +449,7 @@ export class OperatorWorkspaceStore {
   ): Promise<T | null> {
     const generation = ++this.requestGeneration;
     this.busyActionRef.set(action);
+    this.feedbackActionRef.set(action);
     this.errorRef.set('');
     this.noticeRef.set('');
     try {
@@ -371,12 +470,14 @@ export class OperatorWorkspaceStore {
   private reset(): void {
     this.requestGeneration += 1;
     this.claimStatusRef.set(null);
+    this.claimDraftRef.set(this.emptyClaimDraft());
     this.groupingTokenRef.set(null);
     this.groupTokenInputRef.set('');
     this.deploymentUpdateRef.set(null);
     this.configurationRef.set(null);
     this.configurationDraftRef.set(null);
-    this.configurationTestRef.set(null);
+    this.configurationAuthenticationTestRef.set(null);
+    this.configurationMessagingTestRef.set(null);
     this.communityRef.set(null);
     this.busyActionRef.set(null);
     this.clearFeedback();
@@ -439,17 +540,94 @@ export class OperatorWorkspaceStore {
     return 'operator.request.failed';
   }
 
-  private firstSafeHttpsUrl(values: readonly string[] | null | undefined): string | null {
-    for (const value of values ?? []) {
-      try {
-        const url = new URL(`${value ?? ''}`.trim());
-        if (url.protocol === 'https:' && !url.username && !url.password) {
-          return url.toString();
-        }
-      } catch {
-        // Continue to the next profile image.
-      }
+  private emptyClaimDraft(): OperatorClaimRequestDto {
+    return {
+      legalName: '',
+      registrationNumber: '',
+      jurisdiction: '',
+      registeredAddress: '',
+      website: null,
+      verificationContactName: '',
+      verificationContactRole: '',
+      verificationContactEmail: '',
+      authorityAttested: false
+    };
+  }
+
+  private seedClaimContact(): void {
+    const profile = this.userProfileStore.activeUserProfile();
+    const session = this.sessionService.currentSession();
+    if (!profile && session?.kind !== 'firebase') {
+      return;
     }
-    return null;
+    this.claimDraftRef.update(current => ({
+      ...current,
+      verificationContactName:
+        current.verificationContactName
+        || profile?.name?.trim()
+        || (session?.kind === 'firebase' ? session.profile.name.trim() : ''),
+      verificationContactEmail:
+        current.verificationContactEmail
+        || (session?.kind === 'firebase' ? session.profile.email.trim() : '')
+    }));
+  }
+
+  private validPublicWebsite(value: string | null | undefined): boolean {
+    const source = `${value ?? ''}`.trim();
+    if (!source) {
+      return true;
+    }
+    try {
+      const url = new URL(source);
+      return (
+        (url.protocol === 'https:' || url.protocol === 'http:')
+        && !url.username
+        && !url.password
+      );
+    } catch {
+      return false;
+    }
+  }
+
+  private showConfigurationTestFeedback(
+    kind: OperatorConfigurationTestKind,
+    state: Exclude<OperatorConfigurationTestFeedback, null>
+  ): void {
+    const feedbackRef = kind === 'FIREBASE_AUTHENTICATION'
+      ? this.configurationAuthenticationFeedbackRef
+      : this.configurationMessagingFeedbackRef;
+    feedbackRef.set(state);
+    const timer = setTimeout(() => {
+      feedbackRef.set(null);
+      if (kind === 'FIREBASE_AUTHENTICATION') {
+        this.configurationAuthenticationFeedbackTimer = null;
+      } else {
+        this.configurationMessagingFeedbackTimer = null;
+      }
+    }, 1000);
+    if (kind === 'FIREBASE_AUTHENTICATION') {
+      this.configurationAuthenticationFeedbackTimer = timer;
+    } else {
+      this.configurationMessagingFeedbackTimer = timer;
+    }
+  }
+
+  private clearConfigurationTestFeedback(
+    kind?: OperatorConfigurationTestKind
+  ): void {
+    if (!kind || kind === 'FIREBASE_AUTHENTICATION') {
+      if (this.configurationAuthenticationFeedbackTimer) {
+        clearTimeout(this.configurationAuthenticationFeedbackTimer);
+        this.configurationAuthenticationFeedbackTimer = null;
+      }
+      this.configurationAuthenticationFeedbackRef.set(null);
+    }
+    if (!kind || kind === 'FIREBASE_MESSAGING') {
+      if (this.configurationMessagingFeedbackTimer) {
+        clearTimeout(this.configurationMessagingFeedbackTimer);
+        this.configurationMessagingFeedbackTimer = null;
+      }
+      this.configurationMessagingFeedbackRef.set(null);
+    }
   }
 }

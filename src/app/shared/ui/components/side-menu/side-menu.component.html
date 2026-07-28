@@ -10,8 +10,8 @@
         <app-menu
           class="operator-community-menu"
           kind="inline"
-          layout="row"
-          [items]="operatorCommunityMenuItems()"
+          layout="grid"
+          [model]="operatorCommunityMenuModel()"
           (itemSelect)="onOperatorCommunityMenuSelect($event)"
         ></app-menu>
       }

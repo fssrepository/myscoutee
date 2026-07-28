@@ -150,7 +150,7 @@ describe('Demo bootstrap seeding', () => {
     expect(state[IDEA_POSTS_TABLE_NAME].ids.length).toBe(0);
   });
 
-  it('hydrates the operator seed once and flushes each changed step sequentially', async () => {
+  it('hydrates the operator seed once and flushes both steps sequentially', async () => {
     const bootstrap = TestBed.inject(SeedDemoBootstrapService);
     const operatorSeed = TestBed.inject(SeedOperatorRegistryRepository);
     const runtimeRepository = TestBed.inject(LocalOperatorRegistryRepository);
@@ -327,6 +327,44 @@ describe('Demo bootstrap seeding', () => {
         status: 'PUBLISHED'
       })
     ]));
+  });
+
+  it('flushes unchanged operator seed steps without reading persisted state again', async () => {
+    const operatorSeed = TestBed.inject(SeedOperatorRegistryRepository);
+    const runtimeRepository = TestBed.inject(LocalOperatorRegistryRepository);
+    const registryReadSpy = vi.spyOn(memoryDb, 'readIndexedDbTableEntry');
+    const memoryReadSpy = vi.spyOn(memoryDb, 'read');
+    const runtimeRepositoryReadSpy = vi.spyOn(runtimeRepository, 'read');
+    const tableWriteSpy = vi.spyOn(memoryDb, 'writeIndexedDbTableEntry');
+    const broadFlushSpy = vi.spyOn(memoryDb, 'flushToIndexedDb');
+
+    const initialContext = await operatorSeed.prepareBootstrap();
+    await operatorSeed.seedUsers(initialContext);
+    await operatorSeed.seedRegistry(initialContext);
+
+    const unchangedContext = await operatorSeed.prepareBootstrap();
+    expect(unchangedContext.result.usersChanged).toBe(false);
+    expect(unchangedContext.result.registryChanged).toBe(false);
+
+    const persistedReadCount = registryReadSpy.mock.calls.length;
+    const memoryReadCount = memoryReadSpy.mock.calls.length;
+    const repositoryReadCount = runtimeRepositoryReadSpy.mock.calls.length;
+    tableWriteSpy.mockClear();
+
+    await operatorSeed.seedUsers(unchangedContext);
+    await operatorSeed.seedRegistry(unchangedContext);
+
+    const flushedTableNames = tableWriteSpy.mock.calls.map(
+      ([tableName]: [string, unknown]) => tableName
+    );
+    expect(flushedTableNames).toEqual([
+      USERS_TABLE_NAME,
+      APP_INDEXED_DB_KEYS.operatorRegistry
+    ]);
+    expect(registryReadSpy).toHaveBeenCalledTimes(persistedReadCount);
+    expect(memoryReadSpy).toHaveBeenCalledTimes(memoryReadCount);
+    expect(runtimeRepositoryReadSpy).toHaveBeenCalledTimes(repositoryReadCount);
+    expect(broadFlushSpy).not.toHaveBeenCalled();
   });
 
   it('includes the operator user and registry state in the union selector bootstrap', async () => {

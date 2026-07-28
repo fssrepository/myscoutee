@@ -2,14 +2,14 @@
   <section class="admin-workspace admin-workspace-restoring" aria-busy="true">
     <div class="admin-home-panel">
       <header class="admin-home-header">
-        <a class="admin-brand" aria-label="MyScoutee admin">
-          <img class="admin-brand-mark" src="assets/logo/heart.webp" alt="MyScoutee logo" />
-          <span class="admin-brand-text">yScoutee</span>
+        <a class="admin-brand" [attr.aria-label]="deploymentBranding().productName + ' admin'">
+          <img class="admin-brand-mark" [src]="deploymentBranding().logoUrl" [alt]="deploymentBranding().productName" />
+          <span class="admin-brand-text">{{ deploymentBranding().productName }}</span>
         </a>
       </header>
 
       <section class="admin-entry-hero admin-home-hero">
-        <p class="admin-eyebrow">MyScoutee admin</p>
+        <p class="admin-eyebrow">{{ deploymentBranding().productName }} admin</p>
         <h1>Moderation workspace</h1>
         <p class="admin-entry-lead">Review reported users, support chats, and application feedback with the same app tools.</p>
       </section>
@@ -19,14 +19,14 @@
   <section class="admin-workspace">
     <div class="admin-home-panel">
       <header class="admin-home-header">
-        <a class="admin-brand" aria-label="MyScoutee admin">
-          <img class="admin-brand-mark" src="assets/logo/heart.webp" alt="MyScoutee logo" />
-          <span class="admin-brand-text">yScoutee</span>
+        <a class="admin-brand" [attr.aria-label]="deploymentBranding().productName + ' admin'">
+          <img class="admin-brand-mark" [src]="deploymentBranding().logoUrl" [alt]="deploymentBranding().productName" />
+          <span class="admin-brand-text">{{ deploymentBranding().productName }}</span>
         </a>
       </header>
 
       <section class="admin-entry-hero admin-home-hero">
-        <p class="admin-eyebrow">MyScoutee admin</p>
+        <p class="admin-eyebrow">{{ deploymentBranding().productName }} admin</p>
         <h1>Moderation workspace</h1>
         <p class="admin-entry-lead">Review reported users, support chats, and application feedback with the same app tools.</p>
       </section>
@@ -65,9 +65,9 @@
   <section class="admin-entry-shell">
     <div class="admin-entry-panel">
       <header class="admin-entry-header">
-        <a class="admin-brand" aria-label="MyScoutee admin landing">
-          <img class="admin-brand-mark" src="assets/logo/heart.webp" alt="MyScoutee logo" />
-          <span class="admin-brand-text">yScoutee</span>
+        <a class="admin-brand" [attr.aria-label]="deploymentBranding().productName + ' admin landing'">
+          <img class="admin-brand-mark" [src]="deploymentBranding().logoUrl" [alt]="deploymentBranding().productName" />
+          <span class="admin-brand-text">{{ deploymentBranding().productName }}</span>
         </a>
         <button
           type="button"
@@ -81,7 +81,7 @@
         </button>
       </header>
       <section class="admin-entry-hero">
-        <p class="admin-eyebrow">MyScoutee admin</p>
+        <p class="admin-eyebrow">{{ deploymentBranding().productName }} admin</p>
         <h1>Moderation workspace</h1>
         <p class="admin-entry-lead">Review reported users, support chats, and application feedback with the same app tools.</p>
         @if (workspace.error()) {

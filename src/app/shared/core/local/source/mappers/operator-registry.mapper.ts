@@ -1,5 +1,6 @@
 import type { ListQuery } from '../../../contracts/list.interface';
 import type {
+  OperatorClaimRequestDto,
   OperatorClaimStatusDto,
   OperatorCommunityStatusDto,
   OperatorConfigurationDto,
@@ -26,6 +27,7 @@ export interface OperatorRegistryRecordExtras {
   claimIdentity: OperatorClaimIdentityRecord;
   auditHistory: readonly OperatorRegistryAuditEventRecord[];
   claimStatus: OperatorClaimStatusDto;
+  claimVerificationRequest?: OperatorClaimRequestDto | null;
   groupingTokens?: readonly OperatorGroupingTokenRecord[];
   deploymentUpdate: OperatorDeploymentUpdateDto;
   configuration: OperatorConfigurationDto;
@@ -57,6 +59,9 @@ export class LocalOperatorRegistryMapper {
       auditHistory: [...structuredClone(extras.auditHistory)],
       leaderboard: this.deriveLeaderboard(extras.ledger, extras.groupLinks),
       claimStatus: structuredClone(extras.claimStatus),
+      claimVerificationRequest: structuredClone(
+        extras.claimVerificationRequest ?? null
+      ),
       groupingTokens: [...structuredClone(extras.groupingTokens ?? [])],
       deploymentUpdate: structuredClone(extras.deploymentUpdate),
       configuration: structuredClone(extras.configuration),
@@ -112,7 +117,13 @@ export class LocalOperatorRegistryMapper {
           : initialRecord.auditHistory
       ),
       leaderboard: this.deriveLeaderboard(ledger, groupLinks),
-      claimStatus: structuredClone(existing.claimStatus ?? initialRecord.claimStatus),
+      claimStatus: this.normalizeClaimStatus(
+        existing.claimStatus,
+        initialRecord.claimStatus
+      ),
+      claimVerificationRequest: structuredClone(
+        existing.claimVerificationRequest ?? initialRecord.claimVerificationRequest
+      ),
       groupingTokens: structuredClone(existing.groupingTokens ?? []),
       deploymentUpdate: structuredClone(
         existing.deploymentUpdate
@@ -226,6 +237,27 @@ export class LocalOperatorRegistryMapper {
           ?? initial.firebase.messagingCredentialConfigured
       },
       updatedAt: legacy.updatedAt ?? initial.updatedAt
+    };
+  }
+
+  private static normalizeClaimStatus(
+    existing: OperatorClaimStatusDto | null | undefined,
+    initial: OperatorClaimStatusDto
+  ): OperatorClaimStatusDto {
+    if (!existing) {
+      return structuredClone(initial);
+    }
+    return {
+      ...structuredClone(initial),
+      ...structuredClone(existing),
+      verificationCapability: existing.verificationCapability ?? 'AVAILABLE',
+      verificationUnavailableReason: existing.verificationUnavailableReason ?? null,
+      verificationStatus: existing.verificationStatus
+        ?? (existing.claimed ? 'VERIFIED' : 'NOT_SUBMITTED'),
+      verificationSubmittedAt: existing.verificationSubmittedAt
+        ?? existing.claimedAt
+        ?? null,
+      legalName: existing.legalName ?? existing.claimantName ?? null
     };
   }
 

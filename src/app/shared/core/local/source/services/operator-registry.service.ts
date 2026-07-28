@@ -247,16 +247,20 @@ export class LocalOperatorRegistryService extends LocalRouteDelayService impleme
     return structuredClone((await this.readStored()).claimStatus);
   }
 
-  async claimShare(_request: OperatorClaimRequestDto): Promise<OperatorClaimStatusDto> {
+  async claimShare(request: OperatorClaimRequestDto): Promise<OperatorClaimStatusDto> {
     await this.waitForOperatorRouteDelay(OPERATOR_CLAIM_APPLY_ROUTE);
     const current = await this.readStored();
     if (current.claimStatus.claimed) {
       return structuredClone(current.claimStatus);
     }
+    if (current.claimStatus.verificationStatus === 'PENDING_REVIEW') {
+      return structuredClone(current.claimStatus);
+    }
     if (!current.status.enabled || current.status.lifecycle !== 'REGISTERED') {
       throw new Error('operator.claim.error.registration.required');
     }
-    const claimedAt = new Date().toISOString();
+    const verificationRequest = this.requireClaimVerificationRequest(request);
+    const submittedAt = new Date().toISOString();
     const claimIdentity = current.claimIdentity;
     const operatorGroupId = claimIdentity.operatorGroupId;
     const ledger = current.ledger.map(item =>
@@ -265,9 +269,9 @@ export class LocalOperatorRegistryService extends LocalRouteDelayService impleme
             ...item,
             claimed: true,
             claimantUserId: claimIdentity.claimantUserId,
-            claimantName: claimIdentity.claimantName,
+            claimantName: verificationRequest.legalName,
             claimantAvatarUrl: claimIdentity.claimantAvatarUrl,
-            claimedAt
+            claimedAt: submittedAt
           }
         : item
     );
@@ -276,29 +280,39 @@ export class LocalOperatorRegistryService extends LocalRouteDelayService impleme
       {
         nodeId: claimIdentity.nodeId,
         operatorGroupId,
-        linkedAt: claimedAt
+        linkedAt: submittedAt
       }
     ];
-    const leaderboard = LocalOperatorRegistryMapper.deriveLeaderboard(ledger, groupLinks);
+    const leaderboard = LocalOperatorRegistryMapper.deriveLeaderboard(
+      ledger,
+      groupLinks
+    );
     const claimedGroup = leaderboard.find(
       item => item.group === 'CLAIMED' && item.operatorGroupId === operatorGroupId
     );
     const claimStatus: OperatorClaimStatusDto = {
+      ...current.claimStatus,
       claimed: true,
-      claimedAt,
+      claimedAt: submittedAt,
       claimantUserId: claimIdentity.claimantUserId,
-      claimantName: claimIdentity.claimantName,
+      claimantName: verificationRequest.legalName,
       claimantAvatarUrl: claimIdentity.claimantAvatarUrl,
       operatorGroupId,
-      sharePercent: claimedGroup?.sharePercent ?? 0
+      sharePercent: claimedGroup?.sharePercent ?? 0,
+      verificationCapability: 'AVAILABLE',
+      verificationUnavailableReason: null,
+      verificationStatus: 'PENDING_REVIEW',
+      verificationSubmittedAt: submittedAt,
+      legalName: verificationRequest.legalName
     };
     await this.repository.write(this.appendAudit({
       ...structuredClone(current),
       ledger,
       groupLinks,
       leaderboard,
-      claimStatus
-    }, 'CLAIM', 'This deployment share was claimed.', claimIdentity.nodeId));
+      claimStatus,
+      claimVerificationRequest: verificationRequest
+    }, 'CLAIM', 'Company verification submitted for review.', current.claimIdentity.nodeId));
     return structuredClone(claimStatus);
   }
 
@@ -626,6 +640,58 @@ export class LocalOperatorRegistryService extends LocalRouteDelayService impleme
     return DEPLOYMENT_THEME_PRESETS.includes(value)
       ? value
       : 'AURORA';
+  }
+
+  private requireClaimVerificationRequest(
+    request: OperatorClaimRequestDto
+  ): OperatorClaimRequestDto {
+    const normalized: OperatorClaimRequestDto = {
+      legalName: `${request.legalName ?? ''}`.trim().slice(0, 180),
+      registrationNumber: `${request.registrationNumber ?? ''}`.trim().slice(0, 120),
+      jurisdiction: `${request.jurisdiction ?? ''}`.trim().slice(0, 120),
+      registeredAddress: `${request.registeredAddress ?? ''}`.trim().slice(0, 500),
+      website: this.normalizedPublicWebsite(request.website),
+      verificationContactName:
+        `${request.verificationContactName ?? ''}`.trim().slice(0, 180),
+      verificationContactRole:
+        `${request.verificationContactRole ?? ''}`.trim().slice(0, 180),
+      verificationContactEmail:
+        `${request.verificationContactEmail ?? ''}`.trim().toLowerCase().slice(0, 254),
+      authorityAttested: request.authorityAttested === true
+    };
+    if (
+      !normalized.legalName
+      || !normalized.registrationNumber
+      || !normalized.jurisdiction
+      || !normalized.registeredAddress
+      || !normalized.verificationContactName
+      || !normalized.verificationContactRole
+      || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(normalized.verificationContactEmail)
+      || !normalized.authorityAttested
+    ) {
+      throw new Error('operator.claim.verification.error.required');
+    }
+    return normalized;
+  }
+
+  private normalizedPublicWebsite(value: string | null | undefined): string | null {
+    const source = `${value ?? ''}`.trim();
+    if (!source) {
+      return null;
+    }
+    try {
+      const url = new URL(source);
+      if (
+        (url.protocol === 'https:' || url.protocol === 'http:')
+        && !url.username
+        && !url.password
+      ) {
+        return url.toString();
+      }
+    } catch {
+      // Fall through to the public website validation error.
+    }
+    throw new Error('operator.claim.verification.error.website');
   }
 
   private operatorPaymentProvider(

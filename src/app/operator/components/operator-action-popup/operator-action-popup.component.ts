@@ -36,6 +36,7 @@ import { OperatorWorkspaceStore } from '../../../shared/ui/context/stores/operat
 import { I18nPipe } from '../../../shared/ui/pipes';
 
 type OperatorPopupAction =
+  | 'refresh-update'
   | 'apply-update'
   | 'claim-share'
   | 'issue-token'
@@ -191,55 +192,78 @@ export class OperatorActionPopupComponent {
       context: { action: 'register-payment' }
     }];
   });
-  protected readonly configurationFirebaseActionItems = computed<
+  protected readonly configurationFirebaseSaveActionItems = computed<
+    readonly AppMenuItem<string, OperatorPopupActionContext>[]
+  >(() => {
+    const draft = this.workspace.configurationDraft();
+    return [{
+      id: 'operator-save-firebase',
+      label: 'operator.configuration.firebase.save',
+      icon: 'save',
+      palette: 'orange',
+      layout: 'action',
+      disabled: this.configurationDisabled()
+        || !draft?.firebase.projectId.trim(),
+      progress: this.busyAction() === 'register-firebase'
+        ? { state: 'loading', durationMs: 3000 }
+        : null,
+      context: { action: 'register-firebase' }
+    }];
+  });
+  protected readonly configurationFirebaseTestActionItems = computed<
     readonly AppMenuItem<string, OperatorPopupActionContext>[]
   >(() => {
     const configuration = this.workspace.configuration();
-    const draft = this.workspace.configurationDraft();
+    const authenticationFeedback =
+      this.workspace.configurationAuthenticationFeedback();
+    const messagingFeedback = this.workspace.configurationMessagingFeedback();
     return [
       {
-        id: 'operator-save-firebase',
-        label: 'operator.configuration.firebase.save',
-        icon: 'cloud_done',
-        palette: 'orange',
+        id: 'operator-test-authentication',
+        label: 'operator.configuration.test.authentication.short',
+        icon: authenticationFeedback === 'success'
+          ? 'check_circle'
+          : authenticationFeedback === 'error'
+            ? 'error_outline'
+            : 'verified_user',
+        palette: authenticationFeedback === 'success'
+          ? 'green'
+          : authenticationFeedback === 'error'
+            ? 'red'
+            : 'blue',
         layout: 'action',
         disabled: this.configurationDisabled()
-          || !draft?.firebase.projectId.trim(),
-        progress: this.busyAction() === 'register-firebase'
-          ? { state: 'loading', durationMs: 3000 }
-          : null,
-        context: { action: 'register-firebase' }
-      },
-      {
-        id: 'operator-test-authentication',
-        label: 'operator.configuration.test.authentication',
-        detail: configuration?.firebase.authenticationCredentialConfigured
-          ? 'operator.configuration.configured'
-          : 'operator.configuration.not.configured',
-        icon: 'verified_user',
-        palette: 'blue',
-        layout: 'big',
-        disabled: this.configurationDisabled()
-          || !configuration?.firebase.authenticationCredentialConfigured,
+          || !configuration?.firebase.authenticationCredentialConfigured
+          || authenticationFeedback !== null,
         progress: this.busyAction() === 'test-authentication'
           ? { state: 'loading', durationMs: 3000 }
-          : null,
+          : authenticationFeedback
+            ? { state: authenticationFeedback, durationMs: 1000 }
+            : null,
         context: { action: 'test-authentication' }
       },
       {
         id: 'operator-test-messaging',
-        label: 'operator.configuration.test.messaging',
-        detail: configuration?.firebase.messagingCredentialConfigured
-          ? 'operator.configuration.configured'
-          : 'operator.configuration.not.configured',
-        icon: 'notifications_active',
-        palette: 'orange',
-        layout: 'big',
+        label: 'operator.configuration.test.messaging.short',
+        icon: messagingFeedback === 'success'
+          ? 'check_circle'
+          : messagingFeedback === 'error'
+            ? 'error_outline'
+            : 'notifications_active',
+        palette: messagingFeedback === 'success'
+          ? 'green'
+          : messagingFeedback === 'error'
+            ? 'red'
+            : 'orange',
+        layout: 'action',
         disabled: this.configurationDisabled()
-          || !configuration?.firebase.messagingCredentialConfigured,
+          || !configuration?.firebase.messagingCredentialConfigured
+          || messagingFeedback !== null,
         progress: this.busyAction() === 'test-messaging'
           ? { state: 'loading', durationMs: 3000 }
-          : null,
+          : messagingFeedback
+            ? { state: messagingFeedback, durationMs: 1000 }
+            : null,
         context: { action: 'test-messaging' }
       }
     ];
@@ -271,8 +295,8 @@ export class OperatorActionPopupComponent {
       ariaLabel: this.titleKey(kind),
       closeAriaLabel: 'operator.popup.close',
       size: wide ? 'wide' : 'small',
-      height: 'auto',
-      ...(wide ? {} : { mobilePresentation: 'compact' as const }),
+      height: wide ? 'full' : 'auto',
+      mobilePresentation: wide ? 'fullscreen' : 'compact',
       headerTone: 'accent',
       headerPalette: this.headerPalette(kind),
       bodyLayout: 'default',
@@ -285,6 +309,9 @@ export class OperatorActionPopupComponent {
   ): Promise<void> {
     const context = event.context;
     switch (context?.action) {
+      case 'refresh-update':
+        await this.workspace.refreshDeploymentUpdate();
+        return;
       case 'apply-update':
         await this.workspace.applyDeploymentUpdate();
         return;
@@ -460,7 +487,8 @@ export class OperatorActionPopupComponent {
   private async load(kind: Exclude<OperatorMenuKind, 'registration'>): Promise<void> {
     switch (kind) {
       case 'updates':
-        await this.workspace.loadDeploymentUpdate();
+        // The operator page loads this once with the workspace. Opening the
+        // popup must only reveal the cached snapshot.
         return;
       case 'claim':
         await this.workspace.loadClaimStatus();
@@ -480,20 +508,34 @@ export class OperatorActionPopupComponent {
     switch (kind) {
       case 'updates': {
         const update = this.workspace.deploymentUpdate();
-        return [{
-          id: 'operator-apply-update',
-          label: update?.updateAvailable
-            ? 'operator.update.apply'
-            : 'operator.update.current',
-          icon: update?.updateAvailable ? 'system_update_alt' : 'check_circle',
-          palette: 'teal',
-          layout: 'action',
-          disabled: this.busy() || !update?.updateAvailable,
-          progress: this.busyAction() === 'apply-update'
-            ? { state: 'loading', durationMs: 3000 }
-            : null,
-          context: { action: 'apply-update' }
-        }];
+        return [
+          {
+            id: 'operator-refresh-update',
+            label: 'operator.update.refresh',
+            icon: 'refresh',
+            palette: 'blue',
+            layout: 'action',
+            disabled: this.busy(),
+            progress: this.busyAction() === 'load-update'
+              ? { state: 'loading', durationMs: 3000 }
+              : null,
+            context: { action: 'refresh-update' }
+          },
+          {
+            id: 'operator-apply-update',
+            label: update?.updateAvailable
+              ? 'operator.update.apply'
+              : 'operator.update.current',
+            icon: update?.updateAvailable ? 'system_update_alt' : 'check_circle',
+            palette: 'teal',
+            layout: 'action',
+            disabled: this.busy() || !update?.updateAvailable,
+            progress: this.busyAction() === 'apply-update'
+              ? { state: 'loading', durationMs: 3000 }
+              : null,
+            context: { action: 'apply-update' }
+          }
+        ];
       }
       case 'claim': {
         if (!this.workspace.claimStatus()?.claimed) {
@@ -503,7 +545,7 @@ export class OperatorActionPopupComponent {
             icon: 'verified',
             palette: 'purple',
             layout: 'action',
-            disabled: this.busy(),
+            disabled: this.busy() || !this.workspace.claimVerificationReady(),
             progress: this.busyAction() === 'claim-share'
               ? { state: 'loading', durationMs: 3000 }
               : null,
