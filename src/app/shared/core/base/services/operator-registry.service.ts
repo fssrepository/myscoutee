@@ -15,6 +15,7 @@ import type {
   OperatorDeploymentUpdateDto,
   OperatorDeploymentUpdateProgressHandler,
   OperatorLeaderboardPageDto,
+  OperatorRevenueDto,
   OperatorRegistryRegisterRequestDto,
   OperatorRegistryInspectRequestDto,
   OperatorRegistryInspectionDto,
@@ -108,6 +109,10 @@ export class OperatorRegistryService extends BaseRouteModeService {
     request: OperatorConfigurationTestRequestDto
   ): Promise<OperatorConfigurationTestResultDto> {
     return this.registryService.testConfiguration(request);
+  }
+
+  loadRevenue(): Promise<OperatorRevenueDto> {
+    return this.registryService.loadRevenue();
   }
 
   loadCommunityStatus(): Promise<OperatorCommunityStatusDto> {

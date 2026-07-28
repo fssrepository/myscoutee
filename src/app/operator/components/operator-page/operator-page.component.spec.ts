@@ -17,6 +17,7 @@ import {
 import { OperatorRegistryStore } from '../../../shared/ui/context/stores/operator-registry.store';
 import { OperatorWorkspaceStore } from '../../../shared/ui/context/stores/operator-workspace.store';
 import { OperatorPageComponent } from './operator-page.component';
+import type { AppMenuItem } from '../../../shared/ui/components/core/menu';
 
 describe('OperatorPageComponent', () => {
   afterEach(() => {
@@ -101,6 +102,7 @@ describe('OperatorPageComponent', () => {
     const componentView = fixture.componentInstance as unknown as {
       loading: Signal<boolean>;
       leaderboardQuery: Signal<Partial<ListQuery<OperatorLeaderboardFilters>>>;
+      actionItems: Signal<readonly AppMenuItem<string>[]>;
     };
     const initialQuery = componentView.leaderboardQuery();
 
@@ -111,6 +113,15 @@ describe('OperatorPageComponent', () => {
     expect(componentView.loading()).toBe(false);
     expect(componentView.leaderboardQuery()).toBe(initialQuery);
     expect(invalidateLeaderboard).not.toHaveBeenCalled();
+    expect(componentView.actionItems().slice(-2).map(item => item.id)).toEqual([
+      'configuration',
+      'revenue'
+    ]);
+    expect(componentView.actionItems().at(-1)).toEqual(expect.objectContaining({
+      label: 'operator.action.revenue',
+      palette: 'green',
+      layout: 'big'
+    }));
 
     fixture.destroy();
   });

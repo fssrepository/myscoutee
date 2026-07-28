@@ -16,7 +16,8 @@ import type {
   OperatorConfigurationSaveRequestDto,
   OperatorConfigurationTestKind,
   OperatorConfigurationTestResultDto,
-  OperatorDeploymentUpdateDto
+  OperatorDeploymentUpdateDto,
+  OperatorRevenueDto
 } from '../../../core/contracts/operator.interface';
 import { OperatorLeaderboardStore } from './operator-leaderboard.store';
 import { UserProfileStore } from './user-profile.store';
@@ -29,6 +30,7 @@ export type OperatorWorkspaceBusyAction =
   | 'load-update'
   | 'apply-update'
   | 'load-configuration'
+  | 'load-revenue'
   | 'save-branding'
   | 'register-payment'
   | 'register-firebase'
@@ -67,6 +69,7 @@ export class OperatorWorkspaceStore {
     signal<OperatorConfigurationTestFeedback>(null);
   private readonly configurationMessagingFeedbackRef =
     signal<OperatorConfigurationTestFeedback>(null);
+  private readonly revenueRef = signal<OperatorRevenueDto | null>(null);
   private readonly communityRef = signal<OperatorCommunityStatusDto | null>(null);
   private readonly busyActionRef = signal<OperatorWorkspaceBusyAction>(null);
   private readonly errorRef = signal('');
@@ -95,6 +98,7 @@ export class OperatorWorkspaceStore {
     this.configurationAuthenticationFeedbackRef.asReadonly();
   readonly configurationMessagingFeedback =
     this.configurationMessagingFeedbackRef.asReadonly();
+  readonly revenue = this.revenueRef.asReadonly();
   readonly community = this.communityRef.asReadonly();
   readonly busyAction = this.busyActionRef.asReadonly();
   readonly error = this.errorRef.asReadonly();
@@ -280,6 +284,21 @@ export class OperatorWorkspaceStore {
     return result;
   }
 
+  async loadRevenue(): Promise<OperatorRevenueDto | null> {
+    const cached = this.revenueRef();
+    if (cached) {
+      return cached;
+    }
+    const result = await this.run(
+      'load-revenue',
+      () => this.service.loadRevenue()
+    );
+    if (result) {
+      this.revenueRef.set(result);
+    }
+    return result;
+  }
+
   async saveConfiguration(
     action: 'save-branding' | 'register-payment' | 'register-firebase',
     noticeKey = 'operator.configuration.saved'
@@ -384,6 +403,7 @@ export class OperatorWorkspaceStore {
     this.feedbackActionRef.set(null);
     this.configurationAuthenticationTestRef.set(null);
     this.configurationMessagingTestRef.set(null);
+    this.revenueRef.set(null);
     this.clearConfigurationTestFeedback();
   }
 

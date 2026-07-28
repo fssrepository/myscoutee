@@ -25,6 +25,7 @@ import type {
   OperatorLeaderboardGroup,
   OperatorLeaderboardGroupSummaryDto,
   OperatorLeaderboardPageDto,
+  OperatorRevenueDto,
   OperatorRegistryRegisterRequestDto,
   OperatorRegistryConfirmRequestDto,
   OperatorRegistryInspectRequestDto,
@@ -42,6 +43,7 @@ const OPERATOR_NETWORK_ROUTE = '/operator';
 const OPERATOR_ANNOUNCEMENTS_ROUTE = '/operator/announcements';
 const OPERATOR_UPDATES_ROUTE = '/operator/updates';
 const OPERATOR_CONFIGURATION_ROUTE = '/operator/configuration';
+const OPERATOR_REVENUE_ROUTE = '/operator/revenue';
 const DEMO_OPERATOR_USER_HEADER = 'X-Demo-User-Id';
 const LEADERBOARD_VIEWS = ['founder', 'claimed', 'unclaimed'] as const;
 const UPDATE_POLL_INTERVAL_MS = 750;
@@ -554,6 +556,16 @@ export class HttpOperatorRegistryService implements OperatorRegistryServiceContr
       this.http.post<OperatorConfigurationTestResultDto>(
         `${this.apiBaseUrl}${OPERATOR_CONFIGURATION_ROUTE}/tests`,
         request,
+        this.requestOptions()
+      ).toPromise()
+    );
+  }
+
+  async loadRevenue(): Promise<OperatorRevenueDto> {
+    return await this.requireResponse(
+      OPERATOR_REVENUE_ROUTE,
+      this.http.get<OperatorRevenueDto>(
+        `${this.apiBaseUrl}${OPERATOR_REVENUE_ROUTE}`,
         this.requestOptions()
       ).toPromise()
     );

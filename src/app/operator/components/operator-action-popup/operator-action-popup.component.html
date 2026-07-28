@@ -487,6 +487,11 @@
                 }
               }
             }
+            @case ('revenue') {
+              @if (workspace.revenue(); as revenue) {
+                <app-operator-revenue-view [revenue]="revenue"></app-operator-revenue-view>
+              }
+            }
             @case ('community') {
               @if (workspace.community(); as community) {
                 <div class="operator-action-popup__community">

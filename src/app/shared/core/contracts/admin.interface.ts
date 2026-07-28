@@ -240,23 +240,6 @@ export interface AdminStatsGraphDto {
   timeline: AdminStatsGraphTimelinePointDto[];
 }
 
-export interface AdminStatsRevenueTimelinePointDto {
-  dateKey: string;
-  label: string;
-  payableEvents: number;
-  payableAssets: number;
-  projectedEventCents: number;
-  projectedAssetCents: number;
-  actualPaymentCents: number;
-  payingUsers: number;
-}
-
-export interface AdminStatsRevenueDto {
-  metrics: AdminStatsMetricDto[];
-  assetCategories: AdminStatsBreakdownItemDto[];
-  timeline: AdminStatsRevenueTimelinePointDto[];
-}
-
 export interface AdminStatsDashboardDto {
   generatedAtIso: string;
   source: 'demo' | 'http';
@@ -272,7 +255,6 @@ export interface AdminStatsDashboardDto {
   eventTypes: AdminStatsBreakdownItemDto[];
   activityMix: AdminStatsBreakdownItemDto[];
   graph: AdminStatsGraphDto;
-  revenue: AdminStatsRevenueDto;
 }
 
 export type AdminParamValueType = 'number' | 'text';

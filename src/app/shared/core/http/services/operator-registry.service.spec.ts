@@ -423,6 +423,49 @@ describe('HttpOperatorRegistryService', () => {
     );
   });
 
+  it('loads currency-separated deployment revenue through the operator route', async () => {
+    const revenue = {
+      generatedAtIso: '2026-07-28T18:30:00.000Z',
+      rulesetVersion: 'net-captured-revenue-v1',
+      commissionRateBasisPoints: 500,
+      currencies: [
+        {
+          currencyCode: 'EUR',
+          fractionDigits: 2,
+          payableEvents: 1,
+          payableAssets: 2,
+          projectedEventMinor: 1_000,
+          projectedAssetMinor: 2_000,
+          capturedPaymentMinor: 900,
+          refundedPaymentMinor: 100,
+          netPaymentMinor: 800,
+          commissionBasisMinor: 800,
+          estimatedCommissionMinor: 40,
+          paymentCount: 2,
+          payingUsers: 2,
+          eventBuyers: 1,
+          assetBorrowers: 1,
+          assetCategories: [],
+          timeline: []
+        }
+      ]
+    };
+    get.mockReturnValue(of(revenue));
+
+    const result = await TestBed.inject(HttpOperatorRegistryService).loadRevenue();
+
+    expect(result).toEqual(revenue);
+    expect(get).toHaveBeenCalledWith(
+      '/api/operator/revenue',
+      expect.objectContaining({ headers: expect.any(HttpHeaders) })
+    );
+    expect(withRequestTimeout).toHaveBeenCalledWith(
+      '/operator/revenue',
+      expect.any(Promise),
+      'operator.request.timeout'
+    );
+  });
+
   it('loads, saves, and tests the persisted operator configuration through Java', async () => {
     const configuration = operatorConfiguration();
     get.mockReturnValue(of(configuration));

@@ -165,6 +165,18 @@ export class OperatorPageComponent implements OnInit {
         || this.workspace.busyAction() === 'test-messaging'
         ? { state: 'loading', durationMs: 3000 }
         : null
+    },
+    {
+      id: 'revenue',
+      label: 'operator.action.revenue',
+      detail: 'operator.action.revenue.detail',
+      icon: 'payments',
+      palette: 'green',
+      kind: 'action',
+      layout: 'big',
+      progress: this.workspace.busyAction() === 'load-revenue'
+        ? { state: 'loading', durationMs: 3000 }
+        : null
     }
   ]);
   protected readonly leaderboardQuery = computed<

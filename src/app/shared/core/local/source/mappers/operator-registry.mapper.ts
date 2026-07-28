@@ -8,6 +8,7 @@ import type {
   OperatorLeaderboardEntryDto,
   OperatorLeaderboardGroup,
   OperatorLeaderboardPageDto,
+  OperatorRevenueDto,
   OperatorRegistryInspectionDto,
   OperatorRegistryStatusDto
 } from '../../../contracts/operator.interface';
@@ -22,6 +23,7 @@ import type {
 } from '../entity/operator.entity';
 
 export interface OperatorRegistryRecordExtras {
+  seedVersion: string;
   ledger: readonly OperatorLedgerNodeRecord[];
   groupLinks: readonly OperatorNodeGroupLinkRecord[];
   claimIdentity: OperatorClaimIdentityRecord;
@@ -31,6 +33,7 @@ export interface OperatorRegistryRecordExtras {
   groupingTokens?: readonly OperatorGroupingTokenRecord[];
   deploymentUpdate: OperatorDeploymentUpdateDto;
   configuration: OperatorConfigurationDto;
+  revenue: OperatorRevenueDto;
   community: OperatorCommunityStatusDto;
 }
 
@@ -51,6 +54,7 @@ export class LocalOperatorRegistryMapper {
     inspectionToken: string | null = null
   ): OperatorRegistryStateRecord {
     return {
+      seedVersion: extras.seedVersion.trim(),
       status: structuredClone(status),
       inspectionToken: inspectionToken?.trim() || null,
       ledger: [...structuredClone(extras.ledger)],
@@ -65,6 +69,7 @@ export class LocalOperatorRegistryMapper {
       groupingTokens: [...structuredClone(extras.groupingTokens ?? [])],
       deploymentUpdate: structuredClone(extras.deploymentUpdate),
       configuration: structuredClone(extras.configuration),
+      revenue: structuredClone(extras.revenue),
       community: structuredClone(extras.community)
     };
   }
@@ -97,7 +102,10 @@ export class LocalOperatorRegistryMapper {
     const groupLinks = existing.groupLinks?.length
       ? structuredClone(existing.groupLinks)
       : structuredClone(initialRecord.groupLinks);
+    const refreshSeedOwnedData =
+      `${existing.seedVersion ?? ''}`.trim() !== initialRecord.seedVersion;
     return {
+      seedVersion: initialRecord.seedVersion,
       status: {
         ...structuredClone(initialRecord.status),
         ...structuredClone(existing.status),
@@ -139,7 +147,13 @@ export class LocalOperatorRegistryMapper {
       ),
       configuration: this.normalizeConfiguration(
         existing.configuration,
-        initialRecord.configuration
+        initialRecord.configuration,
+        refreshSeedOwnedData
+      ),
+      revenue: structuredClone(
+        !refreshSeedOwnedData && existing.revenue
+          ? existing.revenue
+          : initialRecord.revenue
       ),
       community: existing.community
         ? {
@@ -166,7 +180,8 @@ export class LocalOperatorRegistryMapper {
 
   private static normalizeConfiguration(
     existing: OperatorConfigurationDto | null | undefined,
-    initial: OperatorConfigurationDto
+    initial: OperatorConfigurationDto,
+    refreshSeedOwnedData: boolean
   ): OperatorConfigurationDto {
     if (!existing) {
       return structuredClone(initial);
@@ -193,6 +208,21 @@ export class LocalOperatorRegistryMapper {
       Partial<OperatorConfigurationDto['payment']> & {
         provider?: string;
       };
+    const availableProviders = structuredClone(
+      refreshSeedOwnedData
+        ? initial.payment.availableProviders
+        : payment.availableProviders ?? initial.payment.availableProviders
+    );
+    const requestedProviderId = `${
+      payment.providerId
+      ?? (payment.provider && payment.provider !== 'NONE'
+        ? payment.provider
+        : initial.payment.providerId)
+      ?? ''
+    }`.trim().toLowerCase();
+    const providerId = availableProviders.find(
+      provider => provider.id.trim().toLowerCase() === requestedProviderId
+    )?.id ?? null;
     return {
       capability: legacy.capability ?? initial.capability,
       unavailableReason: legacy.unavailableReason ?? initial.unavailableReason,
@@ -212,17 +242,14 @@ export class LocalOperatorRegistryMapper {
         revision: branding.revision ?? initial.branding.revision
       },
       payment: {
-        availableProviders: structuredClone(
-          payment.availableProviders ?? initial.payment.availableProviders
-        ),
-        providerId:
-          payment.providerId
-          ?? (payment.provider && payment.provider !== 'NONE'
-            ? payment.provider.toLowerCase()
-            : initial.payment.providerId),
-        credentialConfigured:
-          payment.credentialConfigured ?? initial.payment.credentialConfigured,
-        credentialMask: payment.credentialMask ?? initial.payment.credentialMask
+        availableProviders,
+        providerId,
+        credentialConfigured: providerId
+          ? payment.credentialConfigured ?? initial.payment.credentialConfigured
+          : false,
+        credentialMask: providerId
+          ? payment.credentialMask ?? initial.payment.credentialMask
+          : null
       },
       firebase: {
         ...structuredClone(initial.firebase),

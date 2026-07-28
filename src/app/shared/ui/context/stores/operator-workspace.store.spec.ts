@@ -6,7 +6,8 @@ import { DeploymentConfigurationService } from '../../../core/base/services/depl
 import { SessionService } from '../../../core/base/services/session.service';
 import type {
   OperatorClaimStatusDto,
-  OperatorDeploymentUpdateDto
+  OperatorDeploymentUpdateDto,
+  OperatorRevenueDto
 } from '../../../core/contracts/operator.interface';
 import { OperatorLeaderboardStore } from './operator-leaderboard.store';
 import { OperatorWorkspaceStore } from './operator-workspace.store';
@@ -16,6 +17,7 @@ describe('OperatorWorkspaceStore', () => {
   const claimShare = vi.fn();
   const loadClaimStatus = vi.fn();
   const loadDeploymentUpdate = vi.fn();
+  const loadRevenue = vi.fn();
   const testConfiguration = vi.fn();
   const invalidate = vi.fn();
   const session = signal({
@@ -43,6 +45,7 @@ describe('OperatorWorkspaceStore', () => {
     claimShare.mockReset();
     loadClaimStatus.mockReset();
     loadDeploymentUpdate.mockReset();
+    loadRevenue.mockReset();
     testConfiguration.mockReset();
     invalidate.mockReset();
     activeUserProfile.set({
@@ -65,6 +68,7 @@ describe('OperatorWorkspaceStore', () => {
             claimShare,
             loadClaimStatus,
             loadDeploymentUpdate,
+            loadRevenue,
             testConfiguration
           }
         },
@@ -166,6 +170,19 @@ describe('OperatorWorkspaceStore', () => {
     expect(loadDeploymentUpdate).toHaveBeenCalledTimes(2);
   });
 
+  it('loads and caches revenue only when its operator action is opened', async () => {
+    const revenue = operatorRevenue();
+    loadRevenue.mockResolvedValue(revenue);
+    const store = TestBed.inject(OperatorWorkspaceStore);
+
+    expect(store.revenue()).toBeNull();
+    expect(await store.loadRevenue()).toEqual(revenue);
+    expect(await store.loadRevenue()).toEqual(revenue);
+
+    expect(store.revenue()).toEqual(revenue);
+    expect(loadRevenue).toHaveBeenCalledTimes(1);
+  });
+
   it('briefly exposes independent shared action feedback for Firebase tests', async () => {
     vi.useFakeTimers();
     testConfiguration.mockResolvedValue({
@@ -243,5 +260,14 @@ function deploymentUpdate(availableVersion: string): OperatorDeploymentUpdateDto
       message: null,
       updatedAt: '2026-07-28T18:00:00.000Z'
     }
+  };
+}
+
+function operatorRevenue(): OperatorRevenueDto {
+  return {
+    generatedAtIso: '2026-07-28T18:00:00.000Z',
+    rulesetVersion: 'net-captured-revenue-v1',
+    commissionRateBasisPoints: 500,
+    currencies: []
   };
 }

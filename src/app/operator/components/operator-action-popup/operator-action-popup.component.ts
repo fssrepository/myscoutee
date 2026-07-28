@@ -34,6 +34,7 @@ import {
 } from '../../../shared/ui/context/stores/operator-menu.store';
 import { OperatorWorkspaceStore } from '../../../shared/ui/context/stores/operator-workspace.store';
 import { I18nPipe } from '../../../shared/ui/pipes';
+import { OperatorRevenueViewComponent } from '../operator-revenue-view/operator-revenue-view.component';
 
 type OperatorPopupAction =
   | 'refresh-update'
@@ -66,6 +67,7 @@ interface OperatorPopupActionContext {
     IndicatorComponent,
     I18nPipe,
     MatIconModule,
+    OperatorRevenueViewComponent,
     PopupComponent
   ],
   templateUrl: './operator-action-popup.component.html',
@@ -86,6 +88,8 @@ export class OperatorActionPopupComponent {
         return this.busyAction() === 'load-claim' && !this.workspace.claimStatus();
       case 'configuration':
         return this.busyAction() === 'load-configuration';
+      case 'revenue':
+        return this.busyAction() === 'load-revenue' && !this.workspace.revenue();
       case 'community':
         return this.busyAction() === 'load-community' && !this.workspace.community();
       default:
@@ -291,7 +295,10 @@ export class OperatorActionPopupComponent {
 
   protected popupModel(): PopupModel {
     const kind = this.kind();
-    const wide = kind === 'configuration' || kind === 'community';
+    const wide =
+      kind === 'configuration'
+      || kind === 'revenue'
+      || kind === 'community';
     return {
       title: this.titleKey(kind),
       subtitle: this.subtitleKey(kind),
@@ -505,6 +512,9 @@ export class OperatorActionPopupComponent {
       case 'configuration':
         await this.workspace.loadConfiguration();
         return;
+      case 'revenue':
+        await this.workspace.loadRevenue();
+        return;
       case 'community':
         await this.workspace.loadCommunityStatus();
         return;
@@ -592,6 +602,7 @@ export class OperatorActionPopupComponent {
         ];
       }
       case 'configuration':
+      case 'revenue':
       case 'community':
       default:
         return [];
@@ -623,6 +634,8 @@ export class OperatorActionPopupComponent {
         return 'operator.action.claim.share';
       case 'configuration':
         return 'operator.action.configuration';
+      case 'revenue':
+        return 'operator.action.revenue';
       case 'community':
         return 'operator.community';
       default:
@@ -638,6 +651,8 @@ export class OperatorActionPopupComponent {
         return 'operator.claim.subtitle';
       case 'configuration':
         return 'operator.configuration.subtitle';
+      case 'revenue':
+        return 'operator.revenue.subtitle';
       case 'community':
         return 'operator.community.subtitle';
       default:
@@ -647,7 +662,7 @@ export class OperatorActionPopupComponent {
 
   private headerPalette(
     kind: OperatorMenuKind | null
-  ): 'teal' | 'violet' | 'blue' | 'slate' {
+  ): 'teal' | 'violet' | 'blue' | 'green' | 'slate' {
     switch (kind) {
       case 'updates':
         return 'teal';
@@ -655,6 +670,8 @@ export class OperatorActionPopupComponent {
         return 'violet';
       case 'configuration':
         return 'blue';
+      case 'revenue':
+        return 'green';
       case 'community':
       default:
         return 'slate';

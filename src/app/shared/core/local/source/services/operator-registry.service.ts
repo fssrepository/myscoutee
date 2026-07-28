@@ -21,6 +21,7 @@ import type {
   OperatorDeploymentUpdateProgressDto,
   OperatorDeploymentUpdateProgressHandler,
   OperatorLeaderboardPageDto,
+  OperatorRevenueDto,
   OperatorRegistryInspectRequestDto,
   OperatorRegistryInspectionDto,
   OperatorRegistryRegisterRequestDto,
@@ -51,6 +52,7 @@ const OPERATOR_UPDATE_ROUTE = '/operator/update';
 const OPERATOR_UPDATE_APPLY_ROUTE = '/operator/update/apply';
 const OPERATOR_CONFIGURATION_ROUTE = '/operator/configuration';
 const OPERATOR_CONFIGURATION_TEST_ROUTE = '/operator/configuration/test';
+const OPERATOR_REVENUE_ROUTE = '/operator/revenue';
 const OPERATOR_COMMUNITY_ROUTE = '/operator/community';
 
 @Injectable({
@@ -580,6 +582,11 @@ export class LocalOperatorRegistryService extends LocalRouteDelayService impleme
         : 'operator.configuration.credentials.missing',
       testedAt
     };
+  }
+
+  async loadRevenue(): Promise<OperatorRevenueDto> {
+    await this.waitForOperatorRouteDelay(OPERATOR_REVENUE_ROUTE);
+    return structuredClone((await this.readStored()).revenue);
   }
 
   async loadCommunityStatus(): Promise<OperatorCommunityStatusDto> {

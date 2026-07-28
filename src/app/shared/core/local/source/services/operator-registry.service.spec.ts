@@ -72,6 +72,7 @@ describe('LocalOperatorRegistryService', () => {
       clientToken: token.clientToken
     });
     const community = await service.loadCommunityStatus();
+    const revenue = await service.loadRevenue();
     const leaderboard = await service.leaderboardPage({
       page: 0,
       pageSize: 20,
@@ -148,6 +149,18 @@ describe('LocalOperatorRegistryService', () => {
         available: true
       })
     ]);
+    expect(revenue).toEqual(expect.objectContaining({
+      rulesetVersion: 'net-captured-revenue-v1',
+      commissionRateBasisPoints: 500,
+      currencies: [
+        expect.objectContaining({
+          currencyCode: 'USD',
+          fractionDigits: 2,
+          netPaymentMinor: 49_800,
+          estimatedCommissionMinor: 2_490
+        })
+      ]
+    }));
     expect(leaderboard.items[0]).toEqual(expect.objectContaining({
       group: 'FOUNDER',
       verifiedWeight: 100_000
@@ -159,7 +172,7 @@ describe('LocalOperatorRegistryService', () => {
     expect(diskWriteSpy.mock.calls.filter(
       ([key]: [string, unknown]) => key === APP_INDEXED_DB_KEYS.operatorRegistry
     )).toHaveLength(7);
-    expect(waitForDelay).toHaveBeenCalledTimes(7);
+    expect(waitForDelay).toHaveBeenCalledTimes(8);
     expect(waitForDelay).toHaveBeenCalledWith(
       1500,
       undefined,

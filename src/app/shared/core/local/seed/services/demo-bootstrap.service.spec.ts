@@ -367,6 +367,85 @@ describe('Demo bootstrap seeding', () => {
     expect(broadFlushSpy).not.toHaveBeenCalled();
   });
 
+  it('migrates a v2 payment catalog with one prepare read and targeted v3 writes', async () => {
+    const staleRecord = SeedOperatorRegistryBuilder.buildInitialRecord(
+      new Date('2026-07-28T18:00:00.000Z')
+    );
+    staleRecord.seedVersion = 'operator-workspace-v2';
+    staleRecord.configuration = {
+      ...staleRecord.configuration,
+      payment: {
+        availableProviders: [
+          {
+            id: 'paypal',
+            label: 'PayPal',
+            logoUrl: null,
+            logoAlt: null,
+            palette: 'slate'
+          },
+          {
+            id: 'adyen',
+            label: 'Adyen',
+            logoUrl: null,
+            logoAlt: null,
+            palette: 'slate'
+          }
+        ],
+        providerId: 'paypal',
+        credentialConfigured: true,
+        credentialMask: '••••live'
+      }
+    };
+    await memoryDb.writeIndexedDbTableEntry(
+      APP_INDEXED_DB_KEYS.operatorRegistry,
+      staleRecord
+    );
+
+    const registryReadSpy = vi.spyOn(memoryDb, 'readIndexedDbTableEntry');
+    const tableWriteSpy = vi.spyOn(memoryDb, 'writeIndexedDbTableEntry');
+    const broadFlushSpy = vi.spyOn(memoryDb, 'flushToIndexedDb');
+    const operatorSeed = TestBed.inject(SeedOperatorRegistryRepository);
+    const runtimeRepository = TestBed.inject(LocalOperatorRegistryRepository);
+
+    const context = await operatorSeed.prepareBootstrap();
+    await operatorSeed.seedUsers(context);
+    await operatorSeed.seedRegistry(context);
+    const migrated = await runtimeRepository.read();
+    await runtimeRepository.read();
+
+    expect(context.result.registryChanged).toBe(true);
+    expect(migrated?.seedVersion).toBe('operator-workspace-v3');
+    expect(migrated?.configuration.payment).toEqual({
+      availableProviders: [
+        {
+          id: 'stripe',
+          label: 'Stripe',
+          logoUrl: 'assets/payment-providers/stripe.svg',
+          logoAlt: 'Stripe',
+          palette: 'violet'
+        },
+        {
+          id: 'barion',
+          label: 'Barion',
+          logoUrl: 'assets/payment-providers/barion.svg',
+          logoAlt: 'Barion',
+          palette: 'blue'
+        }
+      ],
+      providerId: null,
+      credentialConfigured: false,
+      credentialMask: null
+    });
+    expect(registryReadSpy).toHaveBeenCalledTimes(1);
+    expect(tableWriteSpy.mock.calls.map(
+      ([tableName]: [string, unknown]) => tableName
+    )).toEqual([
+      USERS_TABLE_NAME,
+      APP_INDEXED_DB_KEYS.operatorRegistry
+    ]);
+    expect(broadFlushSpy).not.toHaveBeenCalled();
+  });
+
   it('includes the operator user and registry state in the union selector bootstrap', async () => {
     const bootstrap = TestBed.inject(SeedDemoBootstrapService);
     const registryReadSpy = vi.spyOn(memoryDb, 'readIndexedDbTableEntry');

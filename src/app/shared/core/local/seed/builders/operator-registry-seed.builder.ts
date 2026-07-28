@@ -1,4 +1,7 @@
-import type { OperatorRegistryStatusDto } from '../../../contracts/operator.interface';
+import type {
+  OperatorRegistryStatusDto,
+  OperatorRevenueDto
+} from '../../../contracts/operator.interface';
 import type { AppMemorySchema } from '../../common/memory.schema';
 import { USERS_TABLE_NAME, type UserRecord } from '../../source/entity/user.entity';
 import { LocalOperatorRegistryMapper } from '../../source/mappers/operator-registry.mapper';
@@ -20,6 +23,7 @@ export interface OperatorBootstrapSeedResult {
 }
 
 export class SeedOperatorRegistryBuilder {
+  static readonly SEED_VERSION = 'operator-workspace-v3';
   static readonly PRIMARY_BASE_URL = 'https://registry.myscoutee.invalid';
   static readonly PRIMARY_SCOPE = 'demo:primary';
 
@@ -28,6 +32,7 @@ export class SeedOperatorRegistryBuilder {
     return LocalOperatorRegistryMapper.toRecord(
       this.buildInitialStatus(now),
       {
+        seedVersion: this.SEED_VERSION,
         ledger: this.buildInitialLedger(now),
         groupLinks: [
           {
@@ -142,6 +147,7 @@ export class SeedOperatorRegistryBuilder {
           },
           updatedAt: nowIso
         },
+        revenue: this.buildInitialRevenue(now),
         community: {
           availability: 'AVAILABLE',
           updatedAt: nowIso,
@@ -278,6 +284,109 @@ export class SeedOperatorRegistryBuilder {
         updatedBy: 'operator-demo-dev'
       },
       lastError: null
+    };
+  }
+
+  static buildInitialRevenue(now = new Date()): OperatorRevenueDto {
+    const timelineSource = [
+      ['2026-04-28', 'Apr 28', 1, 1, 18_000, 11_000, 0, 0, 0],
+      ['2026-04-29', 'Apr 29', 1, 2, 12_500, 22_000, 4_200, 0, 2],
+      ['2026-04-30', 'Apr 30', 0, 1, 0, 9_500, 3_800, 0, 1],
+      ['2026-05-01', 'May 1', 2, 1, 26_000, 18_000, 6_200, 0, 3],
+      ['2026-05-02', 'May 2', 1, 2, 14_500, 24_000, 5_300, 500, 2],
+      ['2026-05-03', 'May 3', 0, 1, 0, 8_500, 0, 0, 0],
+      ['2026-05-04', 'May 4', 2, 1, 31_000, 13_000, 7_800, 900, 4],
+      ['2026-05-05', 'May 5', 1, 1, 16_500, 16_000, 2_900, 0, 1],
+      ['2026-05-06', 'May 6', 0, 2, 0, 28_000, 6_100, 0, 3],
+      ['2026-05-07', 'May 7', 2, 1, 27_500, 14_000, 4_500, 0, 2],
+      ['2026-05-08', 'May 8', 1, 0, 15_500, 0, 0, 0, 0],
+      ['2026-05-09', 'May 9', 1, 2, 21_000, 34_000, 8_200, 1_000, 3],
+      ['2026-05-10', 'May 10', 0, 1, 0, 15_000, 3_200, 0, 1],
+      ['2026-05-11', 'May 11', 0, 0, 20_000, 0, 0, 0, 0]
+    ] as const;
+    const commissionRateBasisPoints = 500;
+    const timeline = timelineSource.map(([
+      dateKey,
+      label,
+      payableEvents,
+      payableAssets,
+      projectedEventMinor,
+      projectedAssetMinor,
+      capturedPaymentMinor,
+      refundedPaymentMinor,
+      paymentCount
+    ]) => {
+      const netPaymentMinor = capturedPaymentMinor - refundedPaymentMinor;
+      const estimatedCommissionMinor = Math.floor(
+        netPaymentMinor * commissionRateBasisPoints / 10_000
+      );
+      return {
+        dateKey,
+        label,
+        payableEvents,
+        payableAssets,
+        projectedEventMinor,
+        projectedAssetMinor,
+        capturedPaymentMinor,
+        refundedPaymentMinor,
+        netPaymentMinor,
+        commissionBasisMinor: netPaymentMinor,
+        estimatedCommissionMinor,
+        paymentCount,
+        payingUsers: paymentCount
+      };
+    });
+
+    return {
+      generatedAtIso: now.toISOString(),
+      rulesetVersion: 'net-captured-revenue-v1',
+      commissionRateBasisPoints,
+      currencies: [
+        {
+          currencyCode: 'USD',
+          fractionDigits: 2,
+          payableEvents: 12,
+          payableAssets: 16,
+          projectedEventMinor: 202_500,
+          projectedAssetMinor: 213_000,
+          capturedPaymentMinor: 52_200,
+          refundedPaymentMinor: 2_400,
+          netPaymentMinor: 49_800,
+          commissionBasisMinor: 49_800,
+          estimatedCommissionMinor: 2_490,
+          paymentCount: 22,
+          payingUsers: 22,
+          eventBuyers: 14,
+          assetBorrowers: 18,
+          assetCategories: [
+            {
+              key: 'accommodation',
+              labelKey: 'operator.revenue.category.accommodation',
+              icon: 'hotel',
+              tone: 'gold',
+              payableAssets: 6,
+              projectedMinor: 84_000
+            },
+            {
+              key: 'transport',
+              labelKey: 'operator.revenue.category.transport',
+              icon: 'directions_car',
+              tone: 'blue',
+              payableAssets: 5,
+              projectedMinor: 77_000
+            },
+            {
+              key: 'supplies',
+              labelKey: 'operator.revenue.category.supplies',
+              icon: 'inventory_2',
+              tone: 'green',
+              payableAssets: 5,
+              projectedMinor: 52_000
+            }
+          ],
+          timeline
+        }
+      ]
     };
   }
 

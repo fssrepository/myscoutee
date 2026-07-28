@@ -314,6 +314,67 @@ export interface OperatorConfigurationTestResultDto {
   testedAt: string;
 }
 
+export type OperatorRevenueTone =
+  | 'blue'
+  | 'green'
+  | 'gold'
+  | 'red'
+  | 'purple'
+  | 'slate';
+
+export interface OperatorRevenueAssetCategoryDto {
+  key: string;
+  labelKey: string;
+  label?: string;
+  icon?: string;
+  tone?: OperatorRevenueTone;
+  payableAssets: number;
+  projectedMinor: number;
+}
+
+export interface OperatorRevenueTimelinePointDto {
+  dateKey: string;
+  label: string;
+  payableEvents: number;
+  payableAssets: number;
+  projectedEventMinor: number;
+  projectedAssetMinor: number;
+  capturedPaymentMinor: number;
+  refundedPaymentMinor: number;
+  netPaymentMinor: number;
+  commissionBasisMinor: number;
+  estimatedCommissionMinor: number;
+  paymentCount: number;
+  payingUsers: number;
+}
+
+export interface OperatorRevenueCurrencyDto {
+  currencyCode: string;
+  fractionDigits: number;
+  payableEvents: number;
+  payableAssets: number;
+  projectedEventMinor: number;
+  projectedAssetMinor: number;
+  capturedPaymentMinor: number;
+  refundedPaymentMinor: number;
+  netPaymentMinor: number;
+  commissionBasisMinor: number;
+  estimatedCommissionMinor: number;
+  paymentCount: number;
+  payingUsers: number;
+  eventBuyers: number;
+  assetBorrowers: number;
+  assetCategories: readonly OperatorRevenueAssetCategoryDto[];
+  timeline: readonly OperatorRevenueTimelinePointDto[];
+}
+
+export interface OperatorRevenueDto {
+  generatedAtIso: string;
+  rulesetVersion: string;
+  commissionRateBasisPoints: number;
+  currencies: readonly OperatorRevenueCurrencyDto[];
+}
+
 export type OperatorCommunityAvailability =
   | 'ONLINE'
   | 'AVAILABLE'
@@ -414,6 +475,7 @@ export interface OperatorRegistryServiceContract {
   testConfiguration(
     request: OperatorConfigurationTestRequestDto
   ): Promise<OperatorConfigurationTestResultDto>;
+  loadRevenue(): Promise<OperatorRevenueDto>;
   loadCommunityStatus(): Promise<OperatorCommunityStatusDto>;
   setCommunityAvailability(
     availability: OperatorCommunityAvailability

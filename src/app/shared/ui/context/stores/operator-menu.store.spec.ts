@@ -11,6 +11,7 @@ describe('OperatorMenuStore', () => {
       'registration',
       'claim',
       'configuration',
+      'revenue',
       'community'
     ];
 

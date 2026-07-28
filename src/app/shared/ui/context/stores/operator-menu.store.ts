@@ -5,6 +5,7 @@ export type OperatorMenuKind =
   | 'registration'
   | 'claim'
   | 'configuration'
+  | 'revenue'
   | 'community';
 
 @Injectable({

@@ -5,6 +5,7 @@ import type {
   OperatorConfigurationDto,
   OperatorDeploymentUpdateDto,
   OperatorLeaderboardEntryDto,
+  OperatorRevenueDto,
   OperatorRegistryStatusDto
 } from '../../../contracts/operator.interface';
 
@@ -64,6 +65,7 @@ export interface OperatorRegistryAuditEventRecord {
 }
 
 export interface OperatorRegistryStateRecord {
+  seedVersion: string;
   status: OperatorRegistryStatusDto;
   inspectionToken: string | null;
   ledger: OperatorLedgerNodeRecord[];
@@ -76,6 +78,7 @@ export interface OperatorRegistryStateRecord {
   groupingTokens: OperatorGroupingTokenRecord[];
   deploymentUpdate: OperatorDeploymentUpdateDto;
   configuration: OperatorConfigurationDto;
+  revenue: OperatorRevenueDto;
   community: OperatorCommunityStatusDto;
 }
 
