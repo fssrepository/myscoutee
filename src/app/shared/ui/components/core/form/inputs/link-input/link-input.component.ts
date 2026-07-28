@@ -13,12 +13,25 @@ export interface LinkInputConfig {
   label?: string | null;
   placeholder?: string | null;
   required?: boolean | null;
+  availableUrls?: readonly (string | LinkInputAvailableUrl)[] | null;
+  availableUrlsAriaLabel?: string | null;
   pasteAriaLabel?: string | null;
   openAriaLabel?: string | null;
   deleteAriaLabel?: string | null;
 }
 
-type LinkInputAction = 'paste' | 'open' | 'delete';
+export interface LinkInputAvailableUrl {
+  url: string;
+  label?: string | null;
+  description?: string | null;
+}
+
+type LinkInputAction = 'select' | 'paste' | 'open' | 'delete';
+
+interface LinkInputActionContext {
+  action: LinkInputAction;
+  url?: string;
+}
 
 @Component({
   selector: 'app-link-input',
@@ -79,17 +92,32 @@ export class LinkInputComponent implements ControlValueAccessor {
   }
 
   protected inputReadOnly(): boolean {
-    return true;
+    return this.readOnly;
   }
 
   protected normalizedUrl(): string {
     return AppUtils.normalizeHttpUrl(this.value);
   }
 
-  protected actionItems(): readonly AppMenuItem<string, { action: LinkInputAction }>[] {
+  protected actionItems(): readonly AppMenuItem<string, LinkInputActionContext>[] {
     const disabled = this.inputDisabled();
     const normalizedUrl = this.normalizedUrl();
-    const items: AppMenuItem<string, { action: LinkInputAction }>[] = [
+    const items: AppMenuItem<string, LinkInputActionContext>[] = [];
+    const availableUrlItems = this.availableUrlItems();
+    if (availableUrlItems.length > 0) {
+      items.push({
+        id: 'link-input-select',
+        icon: 'list_alt',
+        openIcon: 'list_alt',
+        layout: 'action',
+        kind: 'branch',
+        palette: 'violet',
+        ariaLabel: this.toText(this.config.availableUrlsAriaLabel).trim() || 'Select an available URL',
+        disabled: disabled || this.readOnly,
+        items: availableUrlItems
+      });
+    }
+    items.push(
       {
         id: 'link-input-paste',
         icon: 'content_paste',
@@ -117,10 +145,17 @@ export class LinkInputComponent implements ControlValueAccessor {
         disabled: disabled || this.readOnly || !this.value.trim(),
         context: { action: 'delete' }
       }
-    ];
+    );
     return this.readOnly
       ? items.filter(item => item.context?.action === 'open')
       : items;
+  }
+
+  protected onInput(value: unknown): void {
+    if (this.inputDisabled() || this.readOnly) {
+      return;
+    }
+    this.setValue(this.toText(value), false);
   }
 
   protected onPaste(event: ClipboardEvent): void {
@@ -132,16 +167,25 @@ export class LinkInputComponent implements ControlValueAccessor {
       return;
     }
     event.preventDefault();
-    this.updateValue(text);
+    this.setValue(text, true);
   }
 
   protected onBlur(): void {
+    if (!this.inputDisabled() && !this.readOnly) {
+      const trimmed = this.value.trim();
+      const normalized = AppUtils.normalizeHttpUrl(trimmed);
+      this.setValue(normalized || trimmed, false);
+    }
     this.onTouched();
   }
 
-  protected onAction(event: AppMenuItemSelectEvent<string, { action: LinkInputAction }>): void {
+  protected onAction(event: AppMenuItemSelectEvent<string, LinkInputActionContext>): void {
     this.onTouched();
     const action = event.context?.action;
+    if (action === 'select') {
+      this.setValue(event.context?.url ?? '', true);
+      return;
+    }
     if (action === 'paste') {
       void this.pasteFromClipboard();
       return;
@@ -151,7 +195,7 @@ export class LinkInputComponent implements ControlValueAccessor {
       return;
     }
     if (action === 'delete') {
-      this.updateValue('');
+      this.setValue('', false);
     }
   }
 
@@ -160,7 +204,7 @@ export class LinkInputComponent implements ControlValueAccessor {
       return;
     }
     try {
-      this.updateValue(await navigator.clipboard.readText());
+      this.setValue(await navigator.clipboard.readText(), true);
     } catch {
       // Clipboard permission can be denied by the browser.
     }
@@ -174,18 +218,54 @@ export class LinkInputComponent implements ControlValueAccessor {
     AppUtils.openExternalUrl(normalizedUrl);
   }
 
-  private updateValue(value: string): void {
+  private availableUrlItems(): readonly AppMenuItem<string, LinkInputActionContext>[] {
+    const currentUrl = this.normalizedUrl();
+    const seen = new Set<string>();
+    return (this.config.availableUrls ?? [])
+      .map(option => this.availableUrl(option))
+      .filter((option): option is LinkInputAvailableUrl & { normalizedUrl: string } => {
+        if (!option.normalizedUrl || seen.has(option.normalizedUrl)) {
+          return false;
+        }
+        seen.add(option.normalizedUrl);
+        return true;
+      })
+      .map((option, index) => ({
+        id: `link-input-url-${index}`,
+        label: this.toText(option.label).trim() || option.normalizedUrl,
+        description: this.toText(option.description).trim() || option.normalizedUrl,
+        icon: 'link',
+        kind: 'radio',
+        palette: 'violet',
+        surface: 'tinted',
+        active: currentUrl === option.normalizedUrl,
+        checked: currentUrl === option.normalizedUrl,
+        context: {
+          action: 'select',
+          url: option.normalizedUrl
+        }
+      }));
+  }
+
+  private availableUrl(
+    option: string | LinkInputAvailableUrl
+  ): LinkInputAvailableUrl & { normalizedUrl: string } {
+    const source = typeof option === 'string' ? { url: option } : option;
+    return {
+      ...source,
+      normalizedUrl: AppUtils.normalizeHttpUrl(source.url)
+    };
+  }
+
+  private setValue(value: string, normalize: boolean): void {
     if (this.inputDisabled() || this.readOnly) {
       return;
     }
-    const normalized = this.normalizeLinkValue(value);
-    this.value = normalized;
-    this.onValueChange(normalized);
-  }
-
-  private normalizeLinkValue(value: string): string {
-    const raw = this.toText(value).trim();
-    return raw ? AppUtils.normalizeHttpUrl(raw) : '';
+    const source = this.toText(value);
+    const raw = normalize ? source.trim() : source;
+    const nextValue = normalize && raw ? AppUtils.normalizeHttpUrl(raw) : raw;
+    this.value = nextValue;
+    this.onValueChange(nextValue);
   }
 
   private toText(value: unknown): string {

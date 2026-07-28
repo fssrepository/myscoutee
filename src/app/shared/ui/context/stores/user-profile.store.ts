@@ -15,6 +15,7 @@ import type {
 import {
   UserRealtimeUiConverter
 } from '../../converters/user-realtime-ui.converter';
+import { hasOperatorRole } from '../../../core/common/user-role';
 import {
   ACTIVITY_COUNTER_KEYS,
   type ActivityCounters
@@ -112,6 +113,9 @@ export class UserProfileStore {
   });
   readonly activeUserIsAdmin = computed(() =>
     this.isAdminUserProfile(this.activeUserProfile(), this._activeUserId())
+  );
+  readonly activeUserIsOperator = computed(() =>
+    hasOperatorRole(this.activeUserProfile())
   );
   readonly activeAdminUser = computed(() =>
     this.activeUserIsAdmin() ? adminUserFromProfile(this.activeUserProfile()) : null

@@ -95,6 +95,46 @@ describe('OperatorRegistryStore candidate form', () => {
     expect(store.expectedRegistryScope()).toBe('');
   });
 
+  it('invalidates an inspected identity when its URL or expected scope changes', async () => {
+    const session = signal<AppSession | null>({
+      kind: 'demo',
+      userId: 'operator-demo-dev'
+    });
+    const service = {
+      loadStatus: vi.fn().mockResolvedValue(unconfiguredStatus()),
+      inspect: vi.fn().mockResolvedValue(inspection())
+    };
+    TestBed.configureTestingModule({
+      providers: [
+        { provide: OperatorRegistryService, useValue: service },
+        {
+          provide: SessionService,
+          useValue: {
+            session: session.asReadonly(),
+            currentSession: () => session()
+          }
+        }
+      ]
+    });
+    const store = TestBed.inject(OperatorRegistryStore);
+    await store.loadStatus();
+    await store.inspect({
+      baseUrl: 'https://registry.example.com',
+      expectedScope: 'demo:sample'
+    });
+
+    expect(store.inspection()?.inspectionToken).toBe('inspection_demo');
+    store.setRegistryBaseUrl('https://registry.partner.example');
+    expect(store.inspection()).toBeNull();
+
+    await store.inspect({
+      baseUrl: 'https://registry.example.com',
+      expectedScope: 'demo:sample'
+    });
+    store.setExpectedRegistryScope('partner:sample');
+    expect(store.inspection()).toBeNull();
+  });
+
   it('binds cached state to both data source and session identity', () => {
     const session: AppSession = {
       kind: 'demo',

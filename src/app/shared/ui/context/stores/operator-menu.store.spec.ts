@@ -1,6 +1,7 @@
 import {
   OperatorMenuStore,
-  type OperatorMenuKind
+  type OperatorMenuKind,
+  type OperatorRegistrySection
 } from './operator-menu.store';
 
 describe('OperatorMenuStore', () => {
@@ -24,5 +25,25 @@ describe('OperatorMenuStore', () => {
 
     store.closePopup();
     expect(store.activePopup()).toBeNull();
+    expect(store.registrySection()).toBe('configuration');
+  });
+
+  it('opens the Registry popup at a requested workflow section', () => {
+    const store = new OperatorMenuStore();
+    const sections: readonly OperatorRegistrySection[] = [
+      'configuration',
+      'identity',
+      'deployment',
+      'receipt'
+    ];
+
+    for (const section of sections) {
+      store.openRegistry(section);
+      expect(store.activePopup()).toBe('registry');
+      expect(store.registrySection()).toBe(section);
+    }
+
+    store.open('registry');
+    expect(store.registrySection()).toBe('configuration');
   });
 });

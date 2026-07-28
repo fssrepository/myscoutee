@@ -44,7 +44,11 @@
 
           @if (registryStatus.enrollment; as enrollment) {
             <section class="operator-detail-grid">
-              <article class="operator-detail-card is-deployment">
+              <article
+                class="operator-detail-card is-deployment"
+                data-registry-section="deployment"
+                tabindex="-1"
+              >
                 <div class="operator-detail-title">
                   <span><mat-icon>badge</mat-icon></span>
                   <div>
@@ -68,7 +72,11 @@
                 </p>
               </article>
 
-              <article class="operator-detail-card is-receipt">
+              <article
+                class="operator-detail-card is-receipt"
+                data-registry-section="receipt"
+                tabindex="-1"
+              >
                 <div class="operator-detail-title">
                   <span><mat-icon>receipt_long</mat-icon></span>
                   <div>
@@ -98,7 +106,11 @@
             </section>
           }
 
-          <section class="operator-config-card">
+          <section
+            class="operator-config-card"
+            data-registry-section="configuration"
+            tabindex="-1"
+          >
             <div class="operator-section-heading">
               <div>
                 <p>Operator-selected endpoint</p>
@@ -117,20 +129,16 @@
             }
 
             <form class="operator-registry-form" (ngSubmit)="inspectRegistry()">
-              <label>
-                <span>Registry server URL</span>
-                <input
-                  type="url"
+              <div class="operator-registry-link-field">
+                <app-link-input
                   name="registryBaseUrl"
-                  autocomplete="url"
-                  placeholder="https://registry.example.com"
+                  [config]="registryUrlConfig()"
                   [ngModel]="registryBaseUrl()"
-                  (ngModelChange)="registry.setRegistryBaseUrl($event)"
+                  (ngModelChange)="updateRegistryBaseUrl($event)"
                   [disabled]="busy() || (registryStatus.enabled && registryStatus.lifecycle === 'REGISTERED')"
-                  required
-                />
+                ></app-link-input>
                 <small>HTTPS is mandatory for real operator connections.</small>
-              </label>
+              </div>
               <label>
                 <span>Expected registry scope <em>optional</em></span>
                 <input
@@ -244,7 +252,11 @@
             }
           </section>
 
-          <section class="operator-node-card">
+          <section
+            class="operator-node-card"
+            data-registry-section="identity"
+            tabindex="-1"
+          >
             <div class="operator-detail-title">
               <span><mat-icon>enhanced_encryption</mat-icon></span>
               <div>

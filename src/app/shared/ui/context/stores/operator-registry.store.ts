@@ -124,12 +124,22 @@ export class OperatorRegistryStore {
   }
 
   setRegistryBaseUrl(value: string): void {
-    this.registryBaseUrlRef.set(`${value ?? ''}`);
+    const nextValue = `${value ?? ''}`;
+    if (this.registryBaseUrlRef() === nextValue) {
+      return;
+    }
+    this.registryBaseUrlRef.set(nextValue);
+    this.inspectionRef.set(null);
     this.candidateInitialized = true;
   }
 
   setExpectedRegistryScope(value: string): void {
-    this.expectedRegistryScopeRef.set(`${value ?? ''}`);
+    const nextValue = `${value ?? ''}`;
+    if (this.expectedRegistryScopeRef() === nextValue) {
+      return;
+    }
+    this.expectedRegistryScopeRef.set(nextValue);
+    this.inspectionRef.set(null);
     this.candidateInitialized = true;
   }
 

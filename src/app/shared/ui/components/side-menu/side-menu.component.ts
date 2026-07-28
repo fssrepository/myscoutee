@@ -159,7 +159,6 @@ type NavigatorAdminMenuShortcutId =
   | 'adminGraph';
 
 type NavigatorOperatorMenuShortcutId =
-  | 'operatorRegistry'
   | 'operatorBranding'
   | 'operatorPayments'
   | 'operatorFirebase'
@@ -889,13 +888,6 @@ export class SideMenuComponent implements OnDestroy {
           palette: 'violet',
           items: [
             {
-              id: 'operatorRegistry',
-              label: 'Registry',
-              icon: 'verified_user',
-              palette: 'violet',
-              ariaLabel: 'Open registry and node settings'
-            },
-            {
               id: 'operatorBranding',
               label: 'Branding',
               icon: 'palette',
@@ -1503,7 +1495,9 @@ export class SideMenuComponent implements OnDestroy {
         ...ProfileHeaderCardConverter.convert(user, {
           admin: true,
           headline: 'Operator workspace',
-          showEdit: false
+          showEdit: true,
+          editDisabled: !this.runtimeStore.isOnline(),
+          editAriaLabel: 'Open operator profile'
         }),
         badgeLabel: 'OPERATOR',
         meta: 'Operator workspace',
@@ -1524,9 +1518,12 @@ export class SideMenuComponent implements OnDestroy {
   protected openNavigatorHeaderProfile(event: Event): void {
     if (this.isOperatorMode()) {
       event.stopPropagation();
+      if (!this.runtimeStore.isOnline()) {
+        return;
+      }
       this.operatorMenuStore.closePopup();
       this.closeSideMenu();
-      void this.router.navigate(['/operator']);
+      this.profileStore.openProfileEditor();
       return;
     }
     if (this.isAdminMode()) {
@@ -2090,8 +2087,6 @@ export class SideMenuComponent implements OnDestroy {
 
   private operatorPopupKind(id: NavigatorOperatorMenuShortcutId): OperatorMenuKind {
     switch (id) {
-      case 'operatorRegistry':
-        return 'registry';
       case 'operatorBranding':
         return 'branding';
       case 'operatorPayments':

@@ -3,7 +3,9 @@ import {
   ChangeDetectionStrategy,
   Component,
   DestroyRef,
+  ElementRef,
   computed,
+  effect,
   inject,
   signal
 } from '@angular/core';
@@ -16,6 +18,13 @@ import {
   validateOperatorRegistryBaseUrl,
   validateOperatorRegistryScope
 } from '../../../shared/core/base/operator-registry-candidate';
+import type {
+  OperatorRegistryStatusDto
+} from '../../../shared/core/contracts/operator.interface';
+import {
+  LinkInputComponent,
+  type LinkInputConfig
+} from '../../../shared/ui/components/core/form/inputs/link-input';
 import {
   IndicatorComponent
 } from '../../../shared/ui/components/core/indicator';
@@ -25,7 +34,10 @@ import {
   type PopupModel
 } from '../../../shared/ui/components/core/popup';
 import { OperatorRegistryStore } from '../../../shared/ui/context/stores/operator-registry.store';
-import { OperatorMenuStore } from '../../../shared/ui/context/stores/operator-menu.store';
+import {
+  OperatorMenuStore,
+  type OperatorRegistrySection
+} from '../../../shared/ui/context/stores/operator-menu.store';
 
 @Component({
   selector: 'app-operator-registry-popup',
@@ -35,6 +47,7 @@ import { OperatorMenuStore } from '../../../shared/ui/context/stores/operator-me
     CommonModule,
     FormsModule,
     IndicatorComponent,
+    LinkInputComponent,
     MatIconModule,
     MatRippleModule,
     PopupComponent
@@ -46,7 +59,9 @@ export class OperatorRegistryPopupComponent {
   protected readonly registry = inject(OperatorRegistryStore);
   protected readonly operatorMenu = inject(OperatorMenuStore);
   private readonly destroyRef = inject(DestroyRef);
+  private readonly elementRef = inject<ElementRef<HTMLElement>>(ElementRef);
   private copyResetTimer: ReturnType<typeof setTimeout> | null = null;
+  private sectionRequestVersion = 0;
   private destroyed = false;
   protected readonly status = this.registry.status;
   protected readonly inspection = this.registry.inspection;
@@ -58,6 +73,28 @@ export class OperatorRegistryPopupComponent {
   protected readonly copiedValue = signal('');
   protected readonly registryBaseUrl = this.registry.registryBaseUrl;
   protected readonly expectedRegistryScope = this.registry.expectedRegistryScope;
+  protected readonly registryUrlConfig = computed<LinkInputConfig>(() => {
+    const status = this.status();
+    const candidate = status?.candidateDefaults;
+    const candidateUrl = candidate?.baseUrl.trim() ?? '';
+    return {
+      label: 'Registry server URL',
+      placeholder: 'https://registry.example.com',
+      required: true,
+      availableUrls: candidateUrl
+        ? [{
+            url: candidateUrl,
+            label: status?.mode === 'DEMO'
+              ? status.simulation
+                ? 'Explore demo registry'
+                : 'Development demo registry'
+              : 'Configured registry',
+            description: candidate?.registryScope.trim() || candidateUrl
+          }]
+        : [],
+      availableUrlsAriaLabel: 'Select an available registry URL'
+    };
+  });
 
   protected readonly busy = computed(() => this.busyAction() !== null);
   protected readonly canInspect = this.registry.canInspect;
@@ -92,8 +129,19 @@ export class OperatorRegistryPopupComponent {
   });
 
   constructor() {
+    effect(() => {
+      const open = this.operatorMenu.activePopup() === 'registry';
+      const section = this.operatorMenu.registrySection();
+      const status = this.status();
+      if (!open || !status) {
+        return;
+      }
+      this.revealRegistrySection(section);
+    });
+
     this.destroyRef.onDestroy(() => {
       this.destroyed = true;
+      this.sectionRequestVersion += 1;
       if (this.copyResetTimer) {
         clearTimeout(this.copyResetTimer);
         this.copyResetTimer = null;
@@ -103,6 +151,19 @@ export class OperatorRegistryPopupComponent {
 
   protected async loadStatus(): Promise<void> {
     await this.registry.loadStatus();
+  }
+
+  protected updateRegistryBaseUrl(value: string): void {
+    const previousCandidate = this.registryCandidateFor(this.registryBaseUrl());
+    const scopeWasCandidateDerived = Boolean(previousCandidate)
+      && this.expectedRegistryScope().trim() === previousCandidate?.registryScope.trim();
+    this.registry.setRegistryBaseUrl(value);
+    const nextCandidate = this.registryCandidateFor(value);
+    if (nextCandidate) {
+      this.registry.setExpectedRegistryScope(nextCandidate.registryScope);
+    } else if (scopeWasCandidateDerived) {
+      this.registry.setExpectedRegistryScope('');
+    }
   }
 
   protected popupModel(): PopupModel {
@@ -277,6 +338,58 @@ export class OperatorRegistryPopupComponent {
       this.registryBaseUrl(),
       this.status()?.mode === 'REAL'
     ) || validateOperatorRegistryScope(this.expectedRegistryScope());
+  }
+
+  private registryCandidateFor(
+    value: string
+  ): OperatorRegistryStatusDto['candidateDefaults'] | null {
+    const candidate = this.status()?.candidateDefaults;
+    const candidateUrl = candidate?.baseUrl.trim() ?? '';
+    const valueUrl = `${value ?? ''}`.trim();
+    if (
+      !candidate
+      || !candidateUrl
+      || !valueUrl
+      || validateOperatorRegistryBaseUrl(candidateUrl, false)
+      || validateOperatorRegistryBaseUrl(valueUrl, false)
+    ) {
+      return null;
+    }
+    return normalizeOperatorRegistryBaseUrl(candidateUrl, false)
+      === normalizeOperatorRegistryBaseUrl(valueUrl, false)
+      ? candidate
+      : null;
+  }
+
+  private revealRegistrySection(section: OperatorRegistrySection): void {
+    const requestVersion = ++this.sectionRequestVersion;
+    const reveal = (): void => {
+      if (this.destroyed || requestVersion !== this.sectionRequestVersion) {
+        return;
+      }
+      const target = this.registrySectionElement(section)
+        ?? this.registrySectionElement('configuration');
+      if (!target) {
+        return;
+      }
+      target.scrollIntoView({
+        behavior: 'smooth',
+        block: 'start',
+        inline: 'nearest'
+      });
+      target.focus({ preventScroll: true });
+    };
+    if (typeof globalThis.requestAnimationFrame === 'function') {
+      globalThis.requestAnimationFrame(() => globalThis.requestAnimationFrame(reveal));
+      return;
+    }
+    queueMicrotask(reveal);
+  }
+
+  private registrySectionElement(section: OperatorRegistrySection): HTMLElement | null {
+    return this.elementRef.nativeElement.querySelector<HTMLElement>(
+      `[data-registry-section="${section}"]`
+    );
   }
 
   private onPopupAction(event: PopupActionEvent): void {

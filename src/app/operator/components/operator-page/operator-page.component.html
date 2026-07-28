@@ -14,7 +14,7 @@
     @if (loading()) {
       <section class="operator-home-loading" aria-busy="true" aria-live="polite">
         <app-indicator kind="load-ring" state="loading"></app-indicator>
-        <span>Loading deployment state…</span>
+        <span>Loading operator profile and deployment state…</span>
       </section>
     } @else {
       @if (errorMessage()) {
@@ -24,19 +24,13 @@
         </p>
       }
 
-      <section class="operator-status-grid" aria-label="Deployment status">
-        @for (card of statusCards(); track card.id) {
-          <article class="operator-status-card" [attr.data-tone]="card.tone">
-            <span class="operator-status-icon" aria-hidden="true">
-              <mat-icon>{{ card.icon }}</mat-icon>
-            </span>
-            <span class="operator-status-copy">
-              <small>{{ card.label }}</small>
-              <strong>{{ card.value }}</strong>
-              <span>{{ card.detail }}</span>
-            </span>
-          </article>
-        }
+      <section aria-label="Deployment status">
+        <app-menu
+          kind="inline"
+          layout="row"
+          [items]="statusMenuItems()"
+          (itemSelect)="openStatus($event)"
+        ></app-menu>
       </section>
 
       <section class="operator-progress-panel" aria-labelledby="operator-progress-title">

@@ -350,6 +350,7 @@ dd code {
   align-items: end;
 }
 
+.operator-registry-link-field,
 .operator-registry-form label {
   min-width: 0;
   display: grid;
@@ -385,6 +386,7 @@ dd code {
   box-shadow: 0 0 0 3px rgba(86, 77, 196, 0.1);
 }
 
+.operator-registry-link-field > small,
 .operator-registry-form label small {
   color: rgba(34, 50, 74, 0.5);
   font-size: 0.64rem;

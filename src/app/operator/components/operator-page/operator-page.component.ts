@@ -15,8 +15,21 @@ import type {
   OperatorRegistryLifecycle,
   OperatorRegistryStatusDto
 } from '../../../shared/core/contracts/operator.interface';
+import { USER_BY_ID_LOAD_CONTEXT_KEY } from '../../../shared/core';
 import { IndicatorComponent } from '../../../shared/ui/components/core/indicator';
-import { OperatorMenuStore } from '../../../shared/ui/context/stores/operator-menu.store';
+import {
+  AppMenuComponent,
+  type AppMenuItem,
+  type AppMenuItemSelectEvent,
+  type AppMenuPalette
+} from '../../../shared/ui/components/core/menu';
+import {
+  AppRuntimeStore
+} from '../../../shared/ui/context/stores/app-runtime.store';
+import {
+  OperatorMenuStore,
+  type OperatorRegistrySection
+} from '../../../shared/ui/context/stores/operator-menu.store';
 import { OperatorRegistryStore } from '../../../shared/ui/context/stores/operator-registry.store';
 
 type OperatorSummaryTone = 'muted' | 'active' | 'success' | 'warning' | 'danger';
@@ -39,11 +52,16 @@ interface OperatorProgressStep {
   state: OperatorProgressState;
 }
 
+interface OperatorStatusMenuContext {
+  section: OperatorRegistrySection;
+}
+
 @Component({
   selector: 'app-operator-page',
   standalone: true,
   changeDetection: ChangeDetectionStrategy.OnPush,
   imports: [
+    AppMenuComponent,
     IndicatorComponent,
     MatIconModule,
     NgComponentOutlet
@@ -54,7 +72,11 @@ interface OperatorProgressStep {
 export class OperatorPageComponent implements OnInit {
   protected readonly registry = inject(OperatorRegistryStore);
   private readonly operatorMenu = inject(OperatorMenuStore);
+  private readonly runtimeStore = inject(AppRuntimeStore);
   private readonly registryPopupComponentRef = signal<Type<unknown> | null>(null);
+  private readonly profileLoadState = this.runtimeStore.selectLoadingState(
+    USER_BY_ID_LOAD_CONTEXT_KEY
+  );
 
   protected readonly status = this.registry.status;
   protected readonly busyAction = this.registry.busyAction;
@@ -64,6 +86,8 @@ export class OperatorPageComponent implements OnInit {
   );
   protected readonly loading = computed(
     () => this.busyAction() === 'load'
+      || this.profileLoadState().status === 'idle'
+      || this.profileLoadState().status === 'loading'
       || (!this.status() && !this.errorMessage())
   );
   protected readonly errorMessage = computed(() => {
@@ -82,6 +106,21 @@ export class OperatorPageComponent implements OnInit {
   protected readonly statusCards = computed<readonly OperatorStatusCard[]>(
     () => this.buildStatusCards(this.status())
   );
+  protected readonly statusMenuItems = computed<
+    readonly AppMenuItem<OperatorStatusCard['id'], OperatorStatusMenuContext>[]
+  >(() => this.statusCards().map(card => ({
+    id: card.id,
+    label: card.label,
+    detail: `${card.value} · ${card.detail}`,
+    icon: card.icon,
+    kind: 'action',
+    layout: 'big',
+    palette: this.statusPalette(card.id, card.tone),
+    ariaLabel: `Open ${card.label}: ${card.value}. ${card.detail}`,
+    context: {
+      section: this.registrySection(card.id)
+    }
+  })));
   protected readonly progressSteps = computed<readonly OperatorProgressStep[]>(
     () => this.buildProgressSteps(this.status())
   );
@@ -96,6 +135,12 @@ export class OperatorPageComponent implements OnInit {
 
   ngOnInit(): void {
     void this.registry.loadStatus();
+  }
+
+  protected openStatus(
+    event: AppMenuItemSelectEvent<OperatorStatusCard['id'], OperatorStatusMenuContext>
+  ): void {
+    this.operatorMenu.openRegistry(event.context?.section ?? this.registrySection(event.id));
   }
 
   private async ensureRegistryPopupLoaded(): Promise<void> {
@@ -247,6 +292,39 @@ export class OperatorPageComponent implements OnInit {
         return 'warning';
       case 'UNCONFIGURED':
         return 'muted';
+    }
+  }
+
+  private statusPalette(
+    id: OperatorStatusCard['id'],
+    tone: OperatorSummaryTone
+  ): AppMenuPalette {
+    if (tone === 'danger') {
+      return 'red';
+    }
+    if (tone === 'warning') {
+      return 'amber';
+    }
+    switch (id) {
+      case 'connection':
+        return 'violet';
+      case 'identity':
+        return 'blue';
+      case 'deployment':
+        return 'green';
+      case 'receipt':
+        return 'teal';
+    }
+  }
+
+  private registrySection(id: OperatorStatusCard['id']): OperatorRegistrySection {
+    switch (id) {
+      case 'connection':
+        return 'configuration';
+      case 'identity':
+      case 'deployment':
+      case 'receipt':
+        return id;
     }
   }
 
