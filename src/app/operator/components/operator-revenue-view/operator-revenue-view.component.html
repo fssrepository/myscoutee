@@ -52,26 +52,34 @@
 
           @if (selectedTimelinePoint(currency); as point) {
             <div class="operator-revenue__timeline-readout">
-              <strong>{{ point.label }}</strong>
-              <span>
+              <strong class="operator-revenue__timeline-date">{{ point.label }}</strong>
+              <span class="operator-revenue__timeline-legend">
                 <i class="is-green"></i>
-                {{ 'operator.revenue.timeline.projected.events' | i18n }}
-                {{ formatMinor(point.projectedEventMinor, currency) }}
+                <span class="operator-revenue__timeline-legend-label">
+                  {{ 'operator.revenue.timeline.projected.events' | i18n }}
+                </span>
+                <b>{{ formatMinor(point.projectedEventMinor, currency) }}</b>
               </span>
-              <span>
+              <span class="operator-revenue__timeline-legend">
                 <i class="is-blue"></i>
-                {{ 'operator.revenue.timeline.projected.assets' | i18n }}
-                {{ formatMinor(point.projectedAssetMinor, currency) }}
+                <span class="operator-revenue__timeline-legend-label">
+                  {{ 'operator.revenue.timeline.projected.assets' | i18n }}
+                </span>
+                <b>{{ formatMinor(point.projectedAssetMinor, currency) }}</b>
               </span>
-              <span>
+              <span class="operator-revenue__timeline-legend">
                 <i class="is-gold"></i>
-                {{ 'operator.revenue.timeline.net.payments' | i18n }}
-                {{ formatMinor(point.netPaymentMinor, currency) }}
+                <span class="operator-revenue__timeline-legend-label">
+                  {{ 'operator.revenue.timeline.net.payments' | i18n }}
+                </span>
+                <b>{{ formatMinor(point.netPaymentMinor, currency) }}</b>
               </span>
-              <span>
+              <span class="operator-revenue__timeline-legend">
                 <i class="is-purple"></i>
-                {{ 'operator.revenue.timeline.estimated.commission' | i18n }}
-                {{ formatMinor(point.estimatedCommissionMinor, currency) }}
+                <span class="operator-revenue__timeline-legend-label">
+                  {{ 'operator.revenue.timeline.estimated.commission' | i18n }}
+                </span>
+                <b>{{ formatMinor(point.estimatedCommissionMinor, currency) }}</b>
               </span>
             </div>
           }

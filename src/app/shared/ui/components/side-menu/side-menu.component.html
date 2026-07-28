@@ -11,6 +11,13 @@
           class="operator-community-menu"
           kind="inline"
           layout="grid"
+          style="
+            --app-menu-grid-columns: 1;
+            --app-menu-grid-gap: 0;
+            --app-menu-tile-height: 48px;
+            --app-menu-tile-label-white-space: nowrap;
+            --app-menu-tile-label-overflow-wrap: normal;
+          "
           [model]="operatorCommunityMenuModel()"
           (itemSelect)="onOperatorCommunityMenuSelect($event)"
         ></app-menu>

@@ -296,7 +296,8 @@ export class OperatorActionPopupComponent {
   protected popupModel(): PopupModel {
     const kind = this.kind();
     const wide =
-      kind === 'configuration'
+      kind === 'claim'
+      || kind === 'configuration'
       || kind === 'revenue'
       || kind === 'community';
     return {

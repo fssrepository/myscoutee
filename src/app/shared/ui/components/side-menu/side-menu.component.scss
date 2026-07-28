@@ -50,10 +50,9 @@
 
 .operator-community-menu {
   width: 66px;
+  min-width: 66px;
+  max-width: 66px;
   pointer-events: auto;
-  --app-menu-grid-columns: 1;
-  --app-menu-grid-gap: 0;
-  --app-menu-tile-height: 48px;
 }
 
 .notification-attention-launcher {

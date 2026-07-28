@@ -208,29 +208,51 @@
 
 .operator-revenue__timeline-readout {
   min-width: 0;
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  gap: 0.28rem 0.58rem;
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  align-items: start;
+  gap: 0.42rem 0.7rem;
 }
 
-.operator-revenue__timeline-readout strong {
-  margin-right: auto;
+.operator-revenue__timeline-date {
+  grid-column: 1 / -1;
   color: #273e5a;
   font-size: 0.78rem;
 }
 
-.operator-revenue__timeline-readout span {
-  display: inline-flex;
-  align-items: center;
-  gap: 0.2rem;
+.operator-revenue__timeline-legend {
+  min-width: 0;
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  grid-template-rows: auto auto;
+  align-items: start;
+  gap: 0.08rem 0.28rem;
   color: rgba(36, 56, 83, 0.7);
   font-size: 0.72rem;
   font-weight: 800;
   line-height: 1.3;
 }
 
-.operator-revenue__timeline-readout i,
+.operator-revenue__timeline-legend > i {
+  grid-row: 1 / span 2;
+  margin-top: 0.22rem;
+}
+
+.operator-revenue__timeline-legend-label {
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+
+.operator-revenue__timeline-legend > b {
+  min-width: 0;
+  color: #273e5a;
+  font-size: 0.74rem;
+  font-variant-numeric: tabular-nums;
+  line-height: 1.2;
+  white-space: nowrap;
+}
+
+.operator-revenue__timeline-legend > i,
 .operator-revenue__breakdown-row i {
   width: 7px;
   height: 7px;
@@ -251,6 +273,24 @@
   min-height: 126px;
   display: block;
   touch-action: none;
+  transform: none;
+}
+
+.operator-revenue__chart svg:focus-visible {
+  outline: 2px solid rgba(35, 135, 94, 0.34);
+  outline-offset: 2px;
+}
+
+.operator-revenue__axis,
+.operator-revenue__gridline,
+.operator-revenue__line,
+.operator-revenue__scrub-guide,
+.operator-revenue__scrub-halo,
+.operator-revenue__scrub-knob {
+  pointer-events: none;
+  transform: none;
+  transition: none;
+  vector-effect: non-scaling-stroke;
 }
 
 .operator-revenue__axis,
@@ -274,6 +314,17 @@
 .operator-revenue__hit {
   fill: transparent;
   cursor: pointer;
+  outline: none;
+  transform: none;
+  transition: none;
+}
+
+.operator-revenue__hit:hover,
+.operator-revenue__hit:focus,
+.operator-revenue__hit:focus-visible {
+  r: 8px;
+  stroke-width: 0;
+  transform: none;
 }
 
 .operator-revenue__scrub-guide {

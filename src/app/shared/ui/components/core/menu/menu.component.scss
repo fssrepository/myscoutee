@@ -8,6 +8,8 @@
   --app-menu-grid-columns: 5;
   --app-menu-grid-gap: 0.46rem;
   --app-menu-tile-height: 60px;
+  --app-menu-tile-label-white-space: normal;
+  --app-menu-tile-label-overflow-wrap: anywhere;
   --app-menu-mobile-big-columns: 1;
   --app-menu-tabs-items-gap: 0.34rem;
   --app-menu-tabs-item-flex-basis: 9.5rem;
@@ -2633,12 +2635,12 @@ a.app-menu__item {
 .app-menu__item-label,
 .app-menu__tile-label {
   min-width: 0;
-  overflow-wrap: anywhere;
   color: inherit;
   font-weight: 850;
 }
 
 .app-menu__item-label {
+  overflow-wrap: anywhere;
   font-size: 0.8rem;
   line-height: 1.2;
 }
@@ -2689,8 +2691,10 @@ a.app-menu__item {
   align-items: center;
   justify-content: center;
   width: 100%;
+  overflow-wrap: var(--app-menu-tile-label-overflow-wrap);
   font-size: 0.68rem;
   line-height: 1.08;
+  white-space: var(--app-menu-tile-label-white-space);
 }
 
 .app-menu__item-description,
