@@ -227,7 +227,7 @@ describe('HttpOperatorRegistryService', () => {
       registrationNumber: '51 234 567',
       jurisdiction: 'Slovakia',
       registeredAddress: 'Main Street 1, Bratislava',
-      website: null,
+      website: '',
       verificationContactName: 'Authorized Contact',
       verificationContactRole: 'Managing director',
       verificationContactEmail: 'operator@example.test',

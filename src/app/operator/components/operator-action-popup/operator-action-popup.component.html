@@ -101,136 +101,42 @@
                       <span>{{ 'operator.claim.verification.approved' | i18n }}</span>
                     </p>
                   }
-                  <p class="operator-action-popup__hint">
-                    {{ 'operator.group.instructions' | i18n }}
-                  </p>
-                  @if (workspace.groupingToken(); as token) {
-                    <div class="operator-action-popup__token">
-                      <small>{{ 'operator.group.temporary.token' | i18n }}</small>
-                      <code>{{ token.clientToken }}</code>
-                      <span>
-                        {{ 'operator.group.expires' | i18n }} {{ formatDate(token.expiresAt) }}
-                      </span>
-                    </div>
-                  }
-                  <label class="operator-action-popup__token-input">
-                    <span>{{ 'operator.group.token.from.another.deployment' | i18n }}</span>
-                    <input
-                      type="text"
-                      autocomplete="off"
-                      [ngModel]="workspace.groupTokenInput()"
-                      (ngModelChange)="workspace.setGroupTokenInput($event)"
-                      [disabled]="busy()"
-                    />
-                  </label>
                 } @else {
-                  <p class="operator-action-popup__hint">
-                    {{ 'operator.claim.verification.instructions' | i18n }}
-                  </p>
-                  @if (workspace.claimDraft(); as claimDraft) {
-                    <div class="operator-action-popup__claim-form">
-                      <label class="operator-action-popup__field">
-                        <span>{{ 'operator.claim.verification.legal.name' | i18n }}</span>
-                        <input
-                          type="text"
-                          maxlength="180"
-                          autocomplete="organization"
-                          [ngModel]="claimDraft.legalName"
-                          (ngModelChange)="workspace.setClaimDraft({ legalName: $event })"
-                          [disabled]="busy()"
-                        />
-                      </label>
-                      <label class="operator-action-popup__field">
-                        <span>{{ 'operator.claim.verification.registration.number' | i18n }}</span>
-                        <input
-                          type="text"
-                          maxlength="120"
-                          autocomplete="off"
-                          [ngModel]="claimDraft.registrationNumber"
-                          (ngModelChange)="workspace.setClaimDraft({ registrationNumber: $event })"
-                          [disabled]="busy()"
-                        />
-                      </label>
-                      <label class="operator-action-popup__field">
-                        <span>{{ 'operator.claim.verification.jurisdiction' | i18n }}</span>
-                        <input
-                          type="text"
-                          maxlength="120"
-                          autocomplete="country-name"
-                          [ngModel]="claimDraft.jurisdiction"
-                          (ngModelChange)="workspace.setClaimDraft({ jurisdiction: $event })"
-                          [disabled]="busy()"
-                        />
-                      </label>
-                      <label class="operator-action-popup__field is-wide">
-                        <span>{{ 'operator.claim.verification.registered.address' | i18n }}</span>
-                        <textarea
-                          rows="3"
-                          maxlength="500"
-                          autocomplete="street-address"
-                          [ngModel]="claimDraft.registeredAddress"
-                          (ngModelChange)="workspace.setClaimDraft({ registeredAddress: $event })"
-                          [disabled]="busy()"
-                        ></textarea>
-                      </label>
-                      <label class="operator-action-popup__field is-wide">
-                        <span>
-                          {{ 'operator.claim.verification.website' | i18n }}
-                          <small>{{ 'optional' | i18n }}</small>
-                        </span>
-                        <input
-                          type="url"
-                          maxlength="500"
-                          autocomplete="url"
-                          placeholder="https://"
-                          [ngModel]="claimDraft.website"
-                          (ngModelChange)="workspace.setClaimDraft({ website: $event })"
-                          [disabled]="busy()"
-                        />
-                      </label>
-                      <label class="operator-action-popup__field">
-                        <span>{{ 'operator.claim.verification.contact.name' | i18n }}</span>
-                        <input
-                          type="text"
-                          maxlength="180"
-                          autocomplete="name"
-                          [ngModel]="claimDraft.verificationContactName"
-                          (ngModelChange)="workspace.setClaimDraft({ verificationContactName: $event })"
-                          [disabled]="busy()"
-                        />
-                      </label>
-                      <label class="operator-action-popup__field">
-                        <span>{{ 'operator.claim.verification.contact.role' | i18n }}</span>
-                        <input
-                          type="text"
-                          maxlength="180"
-                          autocomplete="organization-title"
-                          [ngModel]="claimDraft.verificationContactRole"
-                          (ngModelChange)="workspace.setClaimDraft({ verificationContactRole: $event })"
-                          [disabled]="busy()"
-                        />
-                      </label>
-                      <label class="operator-action-popup__field is-wide">
-                        <span>{{ 'operator.claim.verification.contact.email' | i18n }}</span>
-                        <input
-                          type="email"
-                          maxlength="254"
-                          autocomplete="email"
-                          [ngModel]="claimDraft.verificationContactEmail"
-                          (ngModelChange)="workspace.setClaimDraft({ verificationContactEmail: $event })"
-                          [disabled]="busy()"
-                        />
-                      </label>
-                      <label class="operator-action-popup__attestation is-wide">
-                        <input
-                          type="checkbox"
-                          [ngModel]="claimDraft.authorityAttested"
-                          (ngModelChange)="workspace.setClaimDraft({ authorityAttested: $event })"
-                          [disabled]="busy()"
-                        />
-                        <span>{{ 'operator.claim.verification.attestation' | i18n }}</span>
-                      </label>
-                    </div>
+                  <app-menu
+                    class="operator-action-popup__claim-paths"
+                    kind="inline"
+                    layout="tabs"
+                    [items]="claimPathItems()"
+                    (itemSelect)="onAction($event)"
+                  ></app-menu>
+                  @if (!registeredForClaim()) {
+                    <p class="operator-action-popup__result is-error" role="alert">
+                      <mat-icon>app_registration</mat-icon>
+                      <span>{{ 'operator.claim.error.registration.required' | i18n }}</span>
+                    </p>
+                  }
+                  @if (claimPath() === 'company') {
+                    <p class="operator-action-popup__hint">
+                      {{ 'operator.claim.verification.instructions' | i18n }}
+                    </p>
+                    <app-form-flow
+                      [model]="claimCompanyFormModel()"
+                      [ngModel]="workspace.claimDraft()"
+                      (ngModelChange)="onClaimDraftChange($event)"
+                      [disabled]="busy()
+                        || !registeredForClaim()
+                        || claim.verificationCapability !== 'AVAILABLE'"
+                    ></app-form-flow>
+                  } @else {
+                    <p class="operator-action-popup__hint">
+                      {{ 'operator.claim.client.code.instructions' | i18n }}
+                    </p>
+                    <app-form-flow
+                      [model]="claimClientCodeFormModel()"
+                      [ngModel]="claimClientCodeValue()"
+                      (ngModelChange)="onClaimClientCodeChange($event)"
+                      [disabled]="busy() || !registeredForClaim()"
+                    ></app-form-flow>
                   }
                 }
               }

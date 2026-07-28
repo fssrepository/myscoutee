@@ -54,23 +54,6 @@ describe('LocalOperatorRegistryService', () => {
       authorityAttested: true
     });
     const ledgerBeforeGrouping = (await repository.read())?.ledger;
-    const token = await service.issueGroupingToken();
-    const tokenSource = await repository.read();
-    expect(tokenSource).not.toBeNull();
-    await repository.write({
-      ...tokenSource!,
-      groupingTokens: tokenSource!.groupingTokens.map(item =>
-        item.token === token.clientToken
-          ? {
-              ...item,
-              operatorGroupId: 'operator-group-campus'
-            }
-          : item
-      )
-    });
-    const groupedClaim = await service.linkOperatorGroup({
-      clientToken: token.clientToken
-    });
     const community = await service.loadCommunityStatus();
     const revenue = await service.loadRevenue();
     const leaderboard = await service.leaderboardPage({
@@ -88,10 +71,6 @@ describe('LocalOperatorRegistryService', () => {
     expect(explicitClaim.verificationStatus).toBe('PENDING_REVIEW');
     expect(explicitClaim.claimedAt).toBe(explicitClaim.verificationSubmittedAt);
     expect(explicitClaim.claimantName).toBe('Demo Operator s.r.o.');
-    expect(groupedClaim.claimed).toBe(true);
-    expect(groupedClaim.claimedAt).toBe(explicitClaim.claimedAt);
-    expect(groupedClaim.claimantUserId).toBe(explicitClaim.claimantUserId);
-    expect(groupedClaim.operatorGroupId).toBe('operator-group-campus');
     expect(cached?.ledger).toEqual(ledgerBeforeGrouping);
     expect(cached?.ledger.find(item => item.id === 'node-operator-demo')).toEqual(
       expect.objectContaining({
@@ -116,24 +95,8 @@ describe('LocalOperatorRegistryService', () => {
     )).toEqual(
       undefined
     );
-    expect(cached?.leaderboard.find(
-      item => item.operatorGroupId === groupedClaim.operatorGroupId
-    )).toEqual(
-      expect.objectContaining({
-        group: 'CLAIMED',
-        claimed: true,
-        sharePercent: groupedClaim.sharePercent,
-        verifiedWeight: 77_000,
-        deploymentCount: 3
-      })
-    );
-    expect(cached?.groupLinks.find(
-      item => item.nodeId === 'node-operator-demo'
-    )).toEqual(expect.objectContaining({
-      operatorGroupId: 'operator-group-campus'
-    }));
     expect(cached?.auditHistory.map(item => item.kind)).toEqual(
-      expect.arrayContaining(['SEED', 'REGISTER', 'CLAIM', 'GROUP_TOKEN', 'GROUP_LINK'])
+      expect.arrayContaining(['SEED', 'REGISTER', 'CLAIM'])
     );
     expect(community.providers).toEqual([
       expect.objectContaining({
@@ -171,13 +134,59 @@ describe('LocalOperatorRegistryService', () => {
     )).toHaveLength(1);
     expect(diskWriteSpy.mock.calls.filter(
       ([key]: [string, unknown]) => key === APP_INDEXED_DB_KEYS.operatorRegistry
-    )).toHaveLength(7);
-    expect(waitForDelay).toHaveBeenCalledTimes(8);
+    )).toHaveLength(4);
+    expect(waitForDelay).toHaveBeenCalledTimes(6);
     expect(waitForDelay).toHaveBeenCalledWith(
       1500,
       undefined,
       'operator.request.aborted'
     );
+  });
+
+  it('submits an unclaimed registered client-code claim without grouping the leaderboard', async () => {
+    const seedRepository = TestBed.inject(SeedOperatorRegistryRepository);
+    const seedContext = await seedRepository.prepareBootstrap();
+    await seedRepository.seedUsers(seedContext);
+    await seedRepository.seedRegistry(seedContext);
+
+    const repository = TestBed.inject(LocalOperatorRegistryRepository);
+    const service = TestBed.inject(LocalOperatorRegistryService);
+    await service.register({
+      registryBaseUrl: 'https://registry.myscoutee.invalid',
+      expectedRegistryScope: 'demo:primary'
+    });
+    const before = await repository.read();
+    expect(before).not.toBeNull();
+    await repository.write({
+      ...before!,
+      groupingTokens: [{
+        token: 'temporary-client-code',
+        expiresAt: new Date(Date.now() + 60_000).toISOString(),
+        redeemedAt: null,
+        operatorGroupId: 'operator-group-campus'
+      }]
+    });
+
+    const claim = await service.linkOperatorGroup({
+      clientToken: 'temporary-client-code'
+    });
+    const after = await repository.read();
+
+    expect(claim).toEqual(expect.objectContaining({
+      claimed: true,
+      operatorGroupId: 'operator-group-campus',
+      sharePercent: 0,
+      verificationStatus: 'PENDING_REVIEW'
+    }));
+    expect(claim.claimedAt).toBe(claim.verificationSubmittedAt);
+    expect(after?.ledger).toEqual(before?.ledger);
+    expect(after?.groupLinks).toEqual(before?.groupLinks);
+    expect(after?.leaderboard).toEqual(before?.leaderboard);
+    expect(after?.groupingTokens[0]?.redeemedAt).not.toBeNull();
+    expect(after?.auditHistory.at(-1)).toEqual(expect.objectContaining({
+      kind: 'CLAIM',
+      detail: 'Client code claim submitted for registry review.'
+    }));
   });
 
   it('does not manufacture replacement workspace data when the seed is absent', async () => {

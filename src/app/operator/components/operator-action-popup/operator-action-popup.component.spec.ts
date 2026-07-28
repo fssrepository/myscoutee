@@ -12,6 +12,7 @@ import {
   type AppMenuTrigger
 } from '../../../shared/ui/components/core/menu';
 import { OperatorMenuStore } from '../../../shared/ui/context/stores/operator-menu.store';
+import { OperatorRegistryStore } from '../../../shared/ui/context/stores/operator-registry.store';
 import { OperatorWorkspaceStore } from '../../../shared/ui/context/stores/operator-workspace.store';
 import { OperatorActionPopupComponent } from './operator-action-popup.component';
 
@@ -47,6 +48,15 @@ describe('OperatorActionPopupComponent payment provider menu', () => {
             loadConfiguration: vi.fn().mockResolvedValue(configuration()),
             configurationAuthenticationFeedback: signal(null).asReadonly(),
             configurationMessagingFeedback: signal(null).asReadonly()
+          }
+        },
+        {
+          provide: OperatorRegistryStore,
+          useValue: {
+            status: signal({
+              enabled: true,
+              lifecycle: 'REGISTERED'
+            }).asReadonly()
           }
         },
         {

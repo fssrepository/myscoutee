@@ -956,6 +956,7 @@ export class HttpOperatorRegistryService implements OperatorRegistryServiceContr
       || !payload.registrationNumber
       || !payload.jurisdiction
       || !payload.registeredAddress
+      || !payload.website
       || !payload.verificationContactName
       || !payload.verificationContactRole
       || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(payload.verificationContactEmail)
@@ -966,10 +967,10 @@ export class HttpOperatorRegistryService implements OperatorRegistryServiceContr
     return payload;
   }
 
-  private publicWebsite(value: string | null | undefined): string | null {
+  private publicWebsite(value: string | null | undefined): string {
     const source = `${value ?? ''}`.trim();
     if (!source) {
-      return null;
+      throw new Error('operator.claim.verification.error.website');
     }
     try {
       const url = new URL(source);

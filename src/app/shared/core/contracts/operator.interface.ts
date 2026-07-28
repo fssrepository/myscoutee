@@ -191,7 +191,7 @@ export interface OperatorClaimRequestDto {
   registrationNumber: string;
   jurisdiction: string;
   registeredAddress: string;
-  website?: string | null;
+  website: string;
   verificationContactName: string;
   verificationContactRole: string;
   verificationContactEmail: string;

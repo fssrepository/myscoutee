@@ -209,7 +209,7 @@ export class OperatorWorkspaceStore {
   async linkOperatorGroup(): Promise<OperatorClaimStatusDto | null> {
     const clientToken = this.groupTokenInputRef().trim();
     if (!clientToken) {
-      this.errorRef.set('operator.group.token.required');
+      this.errorRef.set('operator.claim.client.code.required');
       return null;
     }
     const result = await this.run(
@@ -219,8 +219,13 @@ export class OperatorWorkspaceStore {
     if (result) {
       this.claimStatusRef.set(result);
       this.groupTokenInputRef.set('');
-      this.noticeRef.set('operator.group.linked');
-      this.leaderboard.invalidate();
+      this.noticeRef.set('operator.claim.client.code.submitted');
+      if (
+        result.verificationStatus === 'APPROVED'
+        || result.verificationStatus === 'VERIFIED'
+      ) {
+        this.leaderboard.invalidate();
+      }
     }
     return result;
   }
@@ -566,7 +571,7 @@ export class OperatorWorkspaceStore {
       registrationNumber: '',
       jurisdiction: '',
       registeredAddress: '',
-      website: null,
+      website: '',
       verificationContactName: '',
       verificationContactRole: '',
       verificationContactEmail: '',
@@ -595,7 +600,7 @@ export class OperatorWorkspaceStore {
   private validPublicWebsite(value: string | null | undefined): boolean {
     const source = `${value ?? ''}`.trim();
     if (!source) {
-      return true;
+      return false;
     }
     try {
       const url = new URL(source);

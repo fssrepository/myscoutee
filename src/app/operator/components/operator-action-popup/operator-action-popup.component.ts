@@ -3,13 +3,15 @@ import {
   Component,
   computed,
   effect,
-  inject
+  inject,
+  signal
 } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { MatIconModule } from '@angular/material/icon';
 
 import type {
   DeploymentThemePreset,
+  OperatorClaimRequestDto,
   OperatorDeploymentUpdatePhase
 } from '../../../shared/core/contracts';
 import {
@@ -19,6 +21,10 @@ import { I18nService } from '../../../shared/core/base/services/i18n.service';
 import { ImageCarouselComponent } from '../../../shared/ui/components/core/image-carousel';
 import { IndicatorComponent } from '../../../shared/ui/components/core/indicator';
 import {
+  FormFlowComponent,
+  type FormFlowModel
+} from '../../../shared/ui/components/core/form';
+import {
   AppMenuComponent,
   type AppMenuItem,
   type AppMenuItemSelectEvent,
@@ -26,12 +32,15 @@ import {
 } from '../../../shared/ui/components/core/menu';
 import {
   PopupComponent,
+  type PopupActionEvent,
   type PopupModel
 } from '../../../shared/ui/components/core/popup';
+import { DialogStore } from '../../../shared/ui/context/stores/dialog.store';
 import {
   OperatorMenuStore,
   type OperatorMenuKind
 } from '../../../shared/ui/context/stores/operator-menu.store';
+import { OperatorRegistryStore } from '../../../shared/ui/context/stores/operator-registry.store';
 import { OperatorWorkspaceStore } from '../../../shared/ui/context/stores/operator-workspace.store';
 import { I18nPipe } from '../../../shared/ui/pipes';
 import { OperatorRevenueViewComponent } from '../operator-revenue-view/operator-revenue-view.component';
@@ -40,8 +49,8 @@ type OperatorPopupAction =
   | 'refresh-update'
   | 'apply-update'
   | 'claim-share'
-  | 'issue-token'
   | 'redeem-token'
+  | 'set-claim-path'
   | 'save-branding'
   | 'register-payment'
   | 'register-firebase'
@@ -50,8 +59,11 @@ type OperatorPopupAction =
   | 'set-theme'
   | 'set-payment-provider';
 
+type OperatorClaimPath = 'company' | 'client-code';
+
 interface OperatorPopupActionContext {
   action: OperatorPopupAction;
+  claimPath?: OperatorClaimPath;
   themePreset?: DeploymentThemePreset;
   providerId?: string | null;
 }
@@ -62,6 +74,7 @@ interface OperatorPopupActionContext {
   changeDetection: ChangeDetectionStrategy.OnPush,
   imports: [
     AppMenuComponent,
+    FormFlowComponent,
     FormsModule,
     ImageCarouselComponent,
     IndicatorComponent,
@@ -75,8 +88,11 @@ interface OperatorPopupActionContext {
 })
 export class OperatorActionPopupComponent {
   protected readonly menu = inject(OperatorMenuStore);
+  protected readonly registry = inject(OperatorRegistryStore);
   protected readonly workspace = inject(OperatorWorkspaceStore);
+  private readonly dialog = inject(DialogStore);
   private readonly i18n = inject(I18nService);
+  protected readonly claimPath = signal<OperatorClaimPath>('company');
   protected readonly kind = computed(() => this.menu.activePopup());
   protected readonly busyAction = this.workspace.busyAction;
   protected readonly busy = computed(() => this.busyAction() !== null);
@@ -99,6 +115,189 @@ export class OperatorActionPopupComponent {
   protected readonly actionItems = computed<
     readonly AppMenuItem<string, OperatorPopupActionContext>[]
   >(() => this.buildActionItems(this.kind()));
+  protected readonly claimPathItems = computed<
+    readonly AppMenuItem<string, OperatorPopupActionContext>[]
+  >(() => [
+    {
+      id: 'operator-claim-path-company',
+      label: 'operator.claim.path.company',
+      description: 'operator.claim.path.company.description',
+      icon: 'business',
+      kind: 'radio',
+      palette: 'purple',
+      active: this.claimPath() === 'company',
+      checked: this.claimPath() === 'company',
+      disabled: this.busy(),
+      context: {
+        action: 'set-claim-path',
+        claimPath: 'company'
+      }
+    },
+    {
+      id: 'operator-claim-path-client-code',
+      label: 'operator.claim.path.client.code',
+      description: 'operator.claim.path.client.code.description',
+      icon: 'key',
+      kind: 'radio',
+      palette: 'teal',
+      active: this.claimPath() === 'client-code',
+      checked: this.claimPath() === 'client-code',
+      disabled: this.busy() || !this.registeredForClaim(),
+      context: {
+        action: 'set-claim-path',
+        claimPath: 'client-code'
+      }
+    }
+  ]);
+  protected readonly claimCompanyFormModel = computed<FormFlowModel>(() => {
+    this.i18n.revision();
+    const translate = (key: string): string => this.i18n.translate(key);
+    return {
+      title: translate('operator.claim.path.company'),
+      layout: 'grouped',
+      header: false,
+      save: null,
+      completion: { controls: 'required' },
+      steps: [
+        {
+          id: 'operator-claim-company',
+          title: translate('operator.claim.verification.company'),
+          icon: 'business',
+          palette: 'purple',
+          controls: [
+            {
+              id: 'operator-claim-legal-name',
+              bind: 'legalName',
+              kind: 'text',
+              layout: 'half',
+              label: translate('operator.claim.verification.legal.name'),
+              required: true,
+              maxLength: 180
+            },
+            {
+              id: 'operator-claim-registration-number',
+              bind: 'registrationNumber',
+              kind: 'text',
+              layout: 'half',
+              label: translate('operator.claim.verification.registration.number'),
+              required: true,
+              maxLength: 120
+            },
+            {
+              id: 'operator-claim-jurisdiction',
+              bind: 'jurisdiction',
+              kind: 'text',
+              layout: 'half',
+              label: translate('operator.claim.verification.jurisdiction'),
+              required: true,
+              maxLength: 120
+            },
+            {
+              id: 'operator-claim-website',
+              bind: 'website',
+              kind: 'link',
+              layout: 'half',
+              label: translate('operator.claim.verification.website'),
+              placeholder: 'https://',
+              required: true,
+              maxLength: 500,
+              config: {
+                model: {
+                  label: translate('operator.claim.verification.website'),
+                  placeholder: 'https://',
+                  required: true
+                }
+              }
+            },
+            {
+              id: 'operator-claim-registered-address',
+              bind: 'registeredAddress',
+              kind: 'textarea',
+              layout: 'wide',
+              label: translate('operator.claim.verification.registered.address'),
+              required: true,
+              rows: 3,
+              maxLength: 500
+            }
+          ]
+        },
+        {
+          id: 'operator-claim-authority',
+          title: translate('operator.claim.verification.authority'),
+          icon: 'verified_user',
+          palette: 'blue',
+          controls: [
+            {
+              id: 'operator-claim-contact-name',
+              bind: 'verificationContactName',
+              kind: 'text',
+              layout: 'half',
+              label: translate('operator.claim.verification.contact.name'),
+              required: true,
+              maxLength: 180
+            },
+            {
+              id: 'operator-claim-contact-role',
+              bind: 'verificationContactRole',
+              kind: 'text',
+              layout: 'half',
+              label: translate('operator.claim.verification.contact.role'),
+              required: true,
+              maxLength: 180
+            },
+            {
+              id: 'operator-claim-contact-email',
+              bind: 'verificationContactEmail',
+              kind: 'text',
+              layout: 'wide',
+              label: translate('operator.claim.verification.contact.email'),
+              required: true,
+              maxLength: 254
+            },
+            {
+              id: 'operator-claim-attestation',
+              bind: 'authorityAttested',
+              kind: 'checkbox',
+              layout: 'wide',
+              label: translate('operator.claim.verification.attestation'),
+              required: true
+            }
+          ]
+        }
+      ]
+    };
+  });
+  protected readonly claimClientCodeFormModel = computed<FormFlowModel>(() => {
+    this.i18n.revision();
+    const translate = (key: string): string => this.i18n.translate(key);
+    return {
+      title: translate('operator.claim.path.client.code'),
+      layout: 'grouped',
+      header: false,
+      save: null,
+      completion: { controls: 'required' },
+      steps: [{
+        id: 'operator-claim-client-code',
+        title: translate('operator.claim.client.code'),
+        subtitle: translate('operator.claim.client.code.instructions'),
+        icon: 'key',
+        palette: 'teal',
+        controls: [{
+          id: 'operator-claim-client-code-value',
+          bind: 'clientToken',
+          kind: 'text',
+          layout: 'wide',
+          label: translate('operator.claim.client.code'),
+          placeholder: translate('operator.claim.client.code.placeholder'),
+          required: true,
+          maxLength: 500
+        }]
+      }]
+    };
+  });
+  protected readonly claimClientCodeValue = computed(() => ({
+    clientToken: this.workspace.groupTokenInput()
+  }));
   protected readonly configurationThemeItems = computed<
     readonly AppMenuItem<string, OperatorPopupActionContext>[]
   >(() => {
@@ -288,6 +487,9 @@ export class OperatorActionPopupComponent {
         return;
       }
       this.loadedKind = kind;
+      if (kind === 'claim') {
+        this.claimPath.set('company');
+      }
       this.workspace.clearFeedback();
       void this.load(kind);
     });
@@ -311,6 +513,18 @@ export class OperatorActionPopupComponent {
       headerTone: 'accent',
       headerPalette: this.headerPalette(kind),
       bodyLayout: 'default',
+      headerActions: kind === 'claim' && this.canIssueClientCode()
+        ? [{
+            id: 'operator-claim-client-code',
+            icon: 'key',
+            label: 'operator.claim.client.code',
+            palette: 'teal',
+            disabled: this.busy()
+          }]
+        : [],
+      onAction: event => {
+        void this.onPopupHeaderAction(event);
+      },
       onClose: () => this.close()
     };
   }
@@ -326,14 +540,17 @@ export class OperatorActionPopupComponent {
       case 'apply-update':
         await this.workspace.applyDeploymentUpdate();
         return;
-      case 'issue-token':
-        await this.workspace.issueGroupingToken();
-        return;
       case 'claim-share':
         await this.workspace.claimShare();
         return;
       case 'redeem-token':
         await this.workspace.linkOperatorGroup();
+        return;
+      case 'set-claim-path':
+        if (context.claimPath) {
+          this.claimPath.set(context.claimPath);
+          this.workspace.clearFeedback();
+        }
         return;
       case 'save-branding':
         await this.workspace.saveConfiguration(
@@ -466,6 +683,19 @@ export class OperatorActionPopupComponent {
     });
   }
 
+  protected onClaimDraftChange(value: OperatorClaimRequestDto): void {
+    this.workspace.setClaimDraft(value);
+  }
+
+  protected onClaimClientCodeChange(value: unknown): void {
+    if (!value || typeof value !== 'object') {
+      this.workspace.setGroupTokenInput('');
+      return;
+    }
+    const clientToken = (value as { clientToken?: unknown }).clientToken;
+    this.workspace.setGroupTokenInput(`${clientToken ?? ''}`);
+  }
+
   protected safeExternalUrl(value: string): string | null {
     try {
       const url = new URL(value);
@@ -480,11 +710,11 @@ export class OperatorActionPopupComponent {
   protected busyLabel(): string {
     switch (this.busyAction()) {
       case 'issue-grouping-token':
-        return 'operator.group.token.issuing';
+        return 'operator.claim.client.code.issuing';
       case 'claim-share':
         return 'operator.claim.applying';
       case 'link-operator-group':
-        return 'operator.group.linking';
+        return 'operator.claim.client.code.redeeming';
       case 'apply-update':
         return 'operator.update.applying';
       case 'test-authentication':
@@ -499,6 +729,57 @@ export class OperatorActionPopupComponent {
       default:
         return 'operator.loading';
     }
+  }
+
+  protected registeredForClaim(): boolean {
+    const status = this.registry.status();
+    return Boolean(status?.enabled && status.lifecycle === 'REGISTERED');
+  }
+
+  private canIssueClientCode(): boolean {
+    const claim = this.workspace.claimStatus();
+    return this.registeredForClaim()
+      && Boolean(claim?.claimed && claim.operatorGroupId?.trim())
+      && (
+        claim?.verificationStatus === 'APPROVED'
+        || claim?.verificationStatus === 'VERIFIED'
+      );
+  }
+
+  private async onPopupHeaderAction(event: PopupActionEvent): Promise<void> {
+    if (event.action.id !== 'operator-claim-client-code' || !this.canIssueClientCode()) {
+      return;
+    }
+    const token = await this.workspace.issueGroupingToken();
+    if (!token?.clientToken.trim()) {
+      return;
+    }
+    const clientToken = token.clientToken.trim();
+    this.dialog.open({
+      title: this.i18n.translate('operator.claim.client.code.dialog.title'),
+      message: clientToken,
+      warningMessage: [
+        this.i18n.translate('operator.group.expires'),
+        this.formatDate(token.expiresAt)
+      ].join(': '),
+      confirmLabel: this.i18n.translate('operator.claim.client.code.copy'),
+      cancelLabel: this.i18n.translate('close'),
+      busyConfirmLabel: this.i18n.translate('operator.claim.client.code.copying'),
+      confirmTone: 'accent',
+      confirmPalette: 'teal',
+      failureMessage: this.i18n.translate(
+        'operator.claim.client.code.copy.unavailable'
+      ),
+      onConfirm: async () => {
+        const clipboard = globalThis.navigator?.clipboard;
+        if (!clipboard?.writeText) {
+          throw new Error(
+            this.i18n.translate('operator.claim.client.code.copy.unavailable')
+          );
+        }
+        await clipboard.writeText(clientToken);
+      }
+    });
   }
 
   private async load(kind: Exclude<OperatorMenuKind, 'registration'>): Promise<void> {
@@ -558,49 +839,40 @@ export class OperatorActionPopupComponent {
         ];
       }
       case 'claim': {
-        if (!this.workspace.claimStatus()?.claimed) {
+        const claim = this.workspace.claimStatus();
+        if (!claim || claim.claimed) {
+          return [];
+        }
+        if (this.claimPath() === 'company') {
           return [{
             id: 'operator-claim-share',
             label: 'operator.claim.apply',
             icon: 'verified',
             palette: 'purple',
             layout: 'action',
-            disabled: this.busy() || !this.workspace.claimVerificationReady(),
+            disabled: this.busy()
+              || !this.registeredForClaim()
+              || !this.workspace.claimVerificationReady(),
             progress: this.busyAction() === 'claim-share'
               ? { state: 'loading', durationMs: 3000 }
               : null,
             context: { action: 'claim-share' }
           }];
         }
-        const token = this.workspace.groupingToken();
-        return [
-          {
-            id: 'operator-issue-token',
-            label: token ? 'operator.group.token.refresh' : 'operator.group.token.request',
-            icon: 'vpn_key',
-            palette: 'purple',
-            layout: 'action',
-            disabled: this.busy(),
-            progress: this.busyAction() === 'issue-grouping-token'
-              ? { state: 'loading', durationMs: 3000 }
-              : null,
-            context: { action: 'issue-token' }
-          },
-          ...(this.workspace.groupTokenInput().trim()
-            ? [{
-                id: 'operator-redeem-token',
-                label: 'operator.group.redeem',
-                icon: 'redeem',
-                palette: 'green' as const,
-                layout: 'action' as const,
-                disabled: this.busy(),
-                progress: this.busyAction() === 'link-operator-group'
-                  ? { state: 'loading' as const, durationMs: 3000 }
-                  : null,
-                context: { action: 'redeem-token' as const }
-              }]
-            : [])
-        ];
+        return [{
+          id: 'operator-redeem-token',
+          label: 'operator.claim.client.code.redeem',
+          icon: 'redeem',
+          palette: 'teal',
+          layout: 'action',
+          disabled: this.busy()
+            || !this.registeredForClaim()
+            || !this.workspace.groupTokenInput().trim(),
+          progress: this.busyAction() === 'link-operator-group'
+            ? { state: 'loading', durationMs: 3000 }
+            : null,
+          context: { action: 'redeem-token' }
+        }];
       }
       case 'configuration':
       case 'revenue':

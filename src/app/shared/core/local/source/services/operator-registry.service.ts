@@ -322,7 +322,10 @@ export class LocalOperatorRegistryService extends LocalRouteDelayService impleme
     await this.waitForOperatorRouteDelay(OPERATOR_CLAIM_TOKEN_ROUTE);
     const current = await this.readStored();
     const operatorGroupId = current.claimStatus.operatorGroupId?.trim() ?? '';
-    if (!current.claimStatus.claimed || !operatorGroupId) {
+    const verificationApproved =
+      current.claimStatus.verificationStatus === 'APPROVED'
+      || current.claimStatus.verificationStatus === 'VERIFIED';
+    if (!current.claimStatus.claimed || !operatorGroupId || !verificationApproved) {
       throw new Error('operator.group.error.claim.required');
     }
     const now = new Date();
@@ -350,45 +353,51 @@ export class LocalOperatorRegistryService extends LocalRouteDelayService impleme
   ): Promise<OperatorClaimStatusDto> {
     await this.waitForOperatorRouteDelay(OPERATOR_CLAIM_REDEEM_ROUTE);
     const current = await this.readStored();
+    if (!current.status.enabled || current.status.lifecycle !== 'REGISTERED') {
+      throw new Error('operator.claim.error.registration.required');
+    }
+    if (current.claimStatus.claimed) {
+      return structuredClone(current.claimStatus);
+    }
     const token = request.clientToken.trim();
     const tokenRecord = current.groupingTokens.find(item => item.token === token);
     if (!tokenRecord || tokenRecord.redeemedAt || Date.parse(tokenRecord.expiresAt) <= Date.now()) {
       throw new Error('operator.group.error.token.invalid');
     }
-    if (!current.claimStatus.claimed) {
-      throw new Error('operator.group.error.claim.required');
-    }
     const nowIso = new Date().toISOString();
-    const groupLinks = [
-      ...current.groupLinks.filter(link => link.nodeId !== current.claimIdentity.nodeId),
-      {
-        nodeId: current.claimIdentity.nodeId,
-        operatorGroupId: tokenRecord.operatorGroupId,
-        linkedAt: nowIso
-      }
-    ];
-    const recalculated = LocalOperatorRegistryMapper.deriveLeaderboard(
-      current.ledger,
-      groupLinks
+    const groupNodeIds = new Set(
+      current.groupLinks
+        .filter(link => link.operatorGroupId === tokenRecord.operatorGroupId)
+        .map(link => link.nodeId)
     );
-    const claimedGroup = recalculated.find(
-      item => item.group === 'CLAIMED'
-        && item.operatorGroupId === tokenRecord.operatorGroupId
+    const groupClaimant = current.ledger.find(
+      item => item.nodeId && groupNodeIds.has(item.nodeId) && item.claimed
     );
     const claimStatus: OperatorClaimStatusDto = {
       ...current.claimStatus,
+      claimed: true,
+      claimedAt: nowIso,
+      claimantUserId:
+        groupClaimant?.claimantUserId ?? current.claimIdentity.claimantUserId,
+      claimantName:
+        groupClaimant?.claimantName ?? current.claimIdentity.claimantName,
+      claimantAvatarUrl:
+        groupClaimant?.claimantAvatarUrl ?? current.claimIdentity.claimantAvatarUrl,
       operatorGroupId: tokenRecord.operatorGroupId,
-      sharePercent: claimedGroup?.sharePercent ?? current.claimStatus.sharePercent
+      sharePercent: 0,
+      verificationCapability: 'AVAILABLE',
+      verificationUnavailableReason: null,
+      verificationStatus: 'PENDING_REVIEW',
+      verificationSubmittedAt: nowIso,
+      legalName: groupClaimant?.claimantName ?? null
     };
     await this.repository.write(this.appendAudit({
       ...structuredClone(current),
-      groupLinks,
-      leaderboard: recalculated,
       claimStatus,
       groupingTokens: current.groupingTokens.map(item =>
         item.token === token ? { ...item, redeemedAt: nowIso } : item
       )
-    }, 'GROUP_LINK', 'Claimed deployment linked to an operator group.', current.claimIdentity.nodeId));
+    }, 'CLAIM', 'Client code claim submitted for registry review.', current.claimIdentity.nodeId));
     return structuredClone(claimStatus);
   }
 
@@ -671,6 +680,7 @@ export class LocalOperatorRegistryService extends LocalRouteDelayService impleme
       || !normalized.registrationNumber
       || !normalized.jurisdiction
       || !normalized.registeredAddress
+      || !normalized.website
       || !normalized.verificationContactName
       || !normalized.verificationContactRole
       || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(normalized.verificationContactEmail)
@@ -681,10 +691,10 @@ export class LocalOperatorRegistryService extends LocalRouteDelayService impleme
     return normalized;
   }
 
-  private normalizedPublicWebsite(value: string | null | undefined): string | null {
+  private normalizedPublicWebsite(value: string | null | undefined): string {
     const source = `${value ?? ''}`.trim();
     if (!source) {
-      return null;
+      throw new Error('operator.claim.verification.error.website');
     }
     try {
       const url = new URL(source);
