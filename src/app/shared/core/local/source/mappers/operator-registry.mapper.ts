@@ -236,6 +236,9 @@ export class LocalOperatorRegistryMapper {
           ?? (branding.icon === 'HEART_PNG'
             ? 'assets/logo/heart.png'
             : initial.branding.logoUrl),
+        logoCharacterIndex: branding.logoCharacterIndex === undefined
+          ? initial.branding.logoCharacterIndex
+          : branding.logoCharacterIndex,
         themePreset:
           branding.themePreset
           ?? (branding.theme === 'DEFAULT' ? 'AURORA' : initial.branding.themePreset),

@@ -44,6 +44,7 @@ describe('DeploymentConfigurationService', () => {
       productName: 'Community Hub',
       homeLabel: 'Meet locally',
       logoUrl: 'assets/logo/heart.png',
+      logoCharacterIndex: null,
       themePreset: 'OCEAN',
       revision: 4
     });
@@ -55,6 +56,7 @@ describe('DeploymentConfigurationService', () => {
       productName: 'Community Hub',
       homeLabel: 'Meet locally',
       logoUrl: 'assets/logo/heart.png',
+      logoCharacterIndex: null,
       themePreset: 'OCEAN',
       revision: 4
     });

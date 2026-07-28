@@ -44,6 +44,7 @@ describe('OperatorActionPopupComponent payment provider menu', () => {
             busyAction: signal(null).asReadonly(),
             configuration: configuration.asReadonly(),
             configurationDraft: configurationDraft.asReadonly(),
+            configurationBrandingReady: signal(true).asReadonly(),
             clearFeedback: vi.fn(),
             loadConfiguration: vi.fn().mockResolvedValue(configuration()),
             configurationAuthenticationFeedback: signal(null).asReadonly(),
@@ -192,6 +193,7 @@ function operatorConfiguration(): OperatorConfigurationDto {
       productName: 'MyScoutee',
       homeLabel: 'Community',
       logoUrl: 'assets/logo/heart.webp',
+      logoCharacterIndex: null,
       themePreset: 'AURORA',
       revision: 1
     },
@@ -233,6 +235,7 @@ function operatorConfigurationDraft(
       productName: 'MyScoutee',
       homeLabel: 'Community',
       logoUrl: 'assets/logo/heart.webp',
+      logoCharacterIndex: null,
       themePreset: 'AURORA'
     },
     payment: {

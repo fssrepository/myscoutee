@@ -294,6 +294,7 @@ describe('LocalOperatorRegistryService', () => {
         productName: 'Community Hub',
         homeLabel: 'Meet locally',
         logoUrl: 'data:image/png;base64,c2FtcGxl',
+        logoCharacterIndex: null,
         themePreset: 'OCEAN'
       },
       payment: {

@@ -17,6 +17,7 @@ export interface DeploymentBrandingDto {
   productName: string;
   homeLabel: string;
   logoUrl: string;
+  logoCharacterIndex: number | null;
   themePreset: DeploymentThemePreset;
   revision: number;
 }
@@ -25,6 +26,7 @@ export const DEFAULT_DEPLOYMENT_BRANDING: Readonly<DeploymentBrandingDto> = {
   productName: 'MyScoutee',
   homeLabel: 'Your preferences come first',
   logoUrl: 'assets/logo/heart.webp',
+  logoCharacterIndex: null,
   themePreset: 'AURORA',
   revision: 0
 };

@@ -290,6 +290,7 @@ export interface OperatorConfigurationSaveRequestDto {
     productName: string;
     homeLabel: string;
     logoUrl: string;
+    logoCharacterIndex: number | null;
     themePreset: DeploymentThemePreset;
   };
   payment: {

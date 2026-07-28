@@ -187,17 +187,40 @@
                         </small>
                       </div>
 
-                      <label class="operator-action-popup__field operator-action-popup__branding-name">
-                        <span>{{ 'operator.configuration.branding.product.name' | i18n }}</span>
-                        <input
-                          type="text"
-                          maxlength="80"
-                          autocomplete="organization"
-                          [ngModel]="draft.branding.productName"
-                          (ngModelChange)="workspace.setConfigurationBranding({ productName: $event })"
-                          [disabled]="configurationDisabled()"
-                        />
-                      </label>
+                      <div class="operator-action-popup__branding-identity">
+                        <label class="operator-action-popup__field">
+                          <span>{{ 'operator.configuration.branding.product.name' | i18n }}</span>
+                          <input
+                            type="text"
+                            maxlength="80"
+                            autocomplete="organization"
+                            [ngModel]="draft.branding.productName"
+                            (ngModelChange)="workspace.setConfigurationBranding({ productName: $event })"
+                            [disabled]="configurationDisabled()"
+                          />
+                        </label>
+                        <label
+                          class="operator-action-popup__field"
+                          [class.is-invalid]="brandingLogoCharacterIndexInvalid()"
+                        >
+                          <span>
+                            {{ 'operator.configuration.branding.logo.character.index' | i18n }}
+                          </span>
+                          <input
+                            type="number"
+                            min="0"
+                            step="1"
+                            [ngModel]="draft.branding.logoCharacterIndex"
+                            (ngModelChange)="onBrandingLogoCharacterIndexChange($event)"
+                            [disabled]="configurationDisabled()"
+                          />
+                          <small>
+                            {{ (brandingLogoCharacterIndexInvalid()
+                              ? 'operator.configuration.branding.logo.character.index.invalid'
+                              : 'operator.configuration.branding.logo.character.index.hint') | i18n }}
+                          </small>
+                        </label>
+                      </div>
 
                       <div class="operator-action-popup__select-field operator-action-popup__branding-theme">
                         <span>{{ 'operator.configuration.branding.theme' | i18n }}</span>

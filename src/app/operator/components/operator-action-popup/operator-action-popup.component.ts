@@ -364,8 +364,8 @@ export class OperatorActionPopupComponent {
       palette: 'blue',
       layout: 'action',
       disabled: this.configurationDisabled()
-        || !draft?.branding.productName.trim()
-        || !draft?.branding.homeLabel.trim(),
+        || !draft
+        || !this.workspace.configurationBrandingReady(),
       progress: this.busyAction() === 'save-branding'
         ? { state: 'loading', durationMs: 3000 }
         : null,
@@ -681,6 +681,29 @@ export class OperatorActionPopupComponent {
     this.workspace.setConfigurationBranding({
       logoUrl: imageUrls[0] ?? ''
     });
+  }
+
+  protected onBrandingLogoCharacterIndexChange(
+    value: number | string | null
+  ): void {
+    if (value === null || `${value}`.trim() === '') {
+      this.workspace.setConfigurationBranding({ logoCharacterIndex: null });
+      return;
+    }
+    this.workspace.setConfigurationBranding({
+      logoCharacterIndex: Number(value)
+    });
+  }
+
+  protected brandingLogoCharacterIndexInvalid(): boolean {
+    const branding = this.workspace.configurationDraft()?.branding;
+    if (!branding || branding.logoCharacterIndex === null) {
+      return false;
+    }
+    const index = branding.logoCharacterIndex;
+    return !Number.isInteger(index)
+      || index < 0
+      || index >= Array.from(branding.productName.trim()).length;
   }
 
   protected onClaimDraftChange(value: OperatorClaimRequestDto): void {

@@ -76,13 +76,32 @@ export class DeploymentConfigurationService extends BaseRouteModeService {
     const themePreset = DEPLOYMENT_THEME_PRESETS.includes(value?.themePreset)
       ? value.themePreset
       : DEFAULT_DEPLOYMENT_BRANDING.themePreset;
+    const logoCharacterIndex = this.logoCharacterIndex(
+      value?.logoCharacterIndex,
+      productName
+    );
     return {
       productName,
       homeLabel,
       logoUrl: this.safeLogoUrl(value?.logoUrl),
+      logoCharacterIndex,
       themePreset: themePreset as DeploymentThemePreset,
       revision: Math.max(0, Math.trunc(Number(value?.revision) || 0))
     };
+  }
+
+  private logoCharacterIndex(
+    value: number | null | undefined,
+    productName: string
+  ): number | null {
+    if (value === null || value === undefined) {
+      return null;
+    }
+    const characterCount = Array.from(productName).length;
+    if (!Number.isInteger(value) || value < 0 || value >= characterCount) {
+      throw new Error('deployment.configuration.branding.logo.character.index.invalid');
+    }
+    return value;
   }
 
   private safeLogoUrl(value: string | null | undefined): string {

@@ -508,6 +508,17 @@ export class LocalOperatorRegistryService extends LocalRouteDelayService impleme
     if (!productName || !homeLabel) {
       throw new Error('operator.configuration.branding.label.required');
     }
+    const logoCharacterIndex = request.branding.logoCharacterIndex;
+    if (
+      logoCharacterIndex !== null
+      && (
+        !Number.isInteger(logoCharacterIndex)
+        || logoCharacterIndex < 0
+        || logoCharacterIndex >= Array.from(productName).length
+      )
+    ) {
+      throw new Error('operator.configuration.branding.logo.character.index.invalid');
+    }
     const paymentProvider = this.operatorPaymentProvider(
       request.payment.providerId,
       current.configuration.payment.availableProviders
@@ -536,6 +547,7 @@ export class LocalOperatorRegistryService extends LocalRouteDelayService impleme
         productName,
         homeLabel,
         logoUrl,
+        logoCharacterIndex,
         themePreset,
         revision: current.configuration.branding.revision + 1
       },

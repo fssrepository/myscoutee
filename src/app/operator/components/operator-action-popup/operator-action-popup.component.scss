@@ -155,9 +155,13 @@
   align-items: start;
 }
 
-.operator-action-popup__branding-name {
+.operator-action-popup__branding-identity {
   grid-column: 2;
   grid-row: 1;
+  min-width: 0;
+  display: grid;
+  grid-template-columns: minmax(0, 1.65fr) minmax(140px, 0.85fr);
+  gap: 0.58rem;
 }
 
 .operator-action-popup__branding-theme {
@@ -211,6 +215,22 @@
 .operator-action-popup__field > span small {
   font-size: 0.58rem;
   font-weight: 750;
+}
+
+.operator-action-popup__field > small {
+  color: rgba(36, 56, 83, 0.58);
+  font-size: 0.6rem;
+  font-weight: 750;
+  line-height: 1.3;
+}
+
+.operator-action-popup__field.is-invalid input {
+  border-color: rgba(180, 52, 72, 0.56);
+  background: #fff4f5;
+}
+
+.operator-action-popup__field.is-invalid > small {
+  color: #9b3447;
 }
 
 .operator-action-popup__field.is-wide {
@@ -786,11 +806,15 @@
   }
 
   .operator-action-popup__branding-editor .operator-action-popup__logo-field,
-  .operator-action-popup__branding-name,
+  .operator-action-popup__branding-identity,
   .operator-action-popup__branding-theme,
   .operator-action-popup__branding-actions {
     grid-column: 1;
     grid-row: auto;
+  }
+
+  .operator-action-popup__branding-identity {
+    grid-template-columns: minmax(0, 1fr);
   }
 
   .operator-action-popup__configuration-group > header {

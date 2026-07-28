@@ -140,6 +140,8 @@ export class OperatorWorkspaceStore {
       draft.branding.productName.trim() !== configuration.branding.productName
       || draft.branding.homeLabel.trim() !== configuration.branding.homeLabel
       || draft.branding.logoUrl.trim() !== configuration.branding.logoUrl
+      || draft.branding.logoCharacterIndex
+        !== configuration.branding.logoCharacterIndex
       || draft.branding.themePreset !== configuration.branding.themePreset
       || (draft.payment.providerId ?? '') !== (configuration.payment.providerId ?? '')
       || Boolean(draft.payment.credential.trim())
@@ -147,6 +149,19 @@ export class OperatorWorkspaceStore {
       || Boolean(draft.firebase.authenticationCredential.trim())
       || Boolean(draft.firebase.messagingCredential.trim())
     );
+  });
+  readonly configurationBrandingReady = computed(() => {
+    const draft = this.configurationDraftRef();
+    if (!draft?.branding.productName.trim() || !draft.branding.homeLabel.trim()) {
+      return false;
+    }
+    const index = draft.branding.logoCharacterIndex;
+    return index === null
+      || (
+        Number.isInteger(index)
+        && index >= 0
+        && index < Array.from(draft.branding.productName.trim()).length
+      );
   });
 
   constructor() {
@@ -526,6 +541,7 @@ export class OperatorWorkspaceStore {
         productName: configuration.branding.productName,
         homeLabel: configuration.branding.homeLabel,
         logoUrl: configuration.branding.logoUrl,
+        logoCharacterIndex: configuration.branding.logoCharacterIndex,
         themePreset: configuration.branding.themePreset
       },
       payment: {
