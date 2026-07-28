@@ -8,6 +8,7 @@
   --app-menu-grid-columns: 5;
   --app-menu-grid-gap: 0.46rem;
   --app-menu-tile-height: 60px;
+  --app-menu-mobile-big-columns: 1;
   --app-menu-tabs-items-gap: 0.34rem;
   --app-menu-tabs-item-flex-basis: 9.5rem;
   --app-menu-tabs-item-min-width: 9.5rem;
@@ -3112,7 +3113,8 @@ a.app-menu__item {
 }
 
 :host(.app-menu-host--layout-mobile.app-menu-host--inline-row-big) .app-menu__button-row {
-  grid-template-columns: 1fr;
+  grid-template-columns:
+    repeat(var(--app-menu-mobile-big-columns), minmax(0, 1fr));
 }
 
 :host(.app-menu-host--layout-mobile.app-menu-host--inline-row-big) .app-menu__button-row-item--selected-value {

@@ -73,6 +73,7 @@ describe('OperatorActionPopupComponent payment provider menu', () => {
     };
     const trigger = componentView.configurationPaymentProviderTrigger();
     const items = componentView.configurationPaymentProviderItems();
+    actionFixture.destroy();
 
     expect(trigger).toEqual(expect.objectContaining({
       label: 'Stripe',

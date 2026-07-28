@@ -113,7 +113,10 @@ describe('OperatorPageComponent', () => {
     expect(componentView.loading()).toBe(false);
     expect(componentView.leaderboardQuery()).toBe(initialQuery);
     expect(invalidateLeaderboard).not.toHaveBeenCalled();
-    expect(componentView.actionItems().slice(-2).map(item => item.id)).toEqual([
+    expect(componentView.actionItems().map(item => item.id)).toEqual([
+      'updates',
+      'registration',
+      'claim',
       'configuration',
       'revenue'
     ]);

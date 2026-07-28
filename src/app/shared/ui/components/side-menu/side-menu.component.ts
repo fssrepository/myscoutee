@@ -394,7 +394,7 @@ export class SideMenuComponent implements OnDestroy {
         id: 'operator-community',
         label: 'operator.community',
         icon: 'forum',
-        palette: 'purple',
+        palette: 'teal',
         active: this.operatorMenuStore.activePopup() === 'community',
         disabled: !this.canToggleAvatarMenu(),
         ariaLabel: 'operator.community.open'

@@ -289,6 +289,20 @@ app-event-supply-contributions-popup {
     right: 0.7rem;
   }
 
+  .navigator-trigger-rail-inner {
+    flex-wrap: nowrap;
+  }
+
+  .operator-community-menu {
+    flex: 0 0 66px;
+    order: 0;
+  }
+
+  .user-selector-menu {
+    flex: 0 0 48px;
+    order: 1;
+  }
+
   .notification-attention-launcher {
     right: 1rem;
     bottom: 1rem;
