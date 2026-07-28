@@ -66,4 +66,20 @@ describe('DeploymentConfigurationService', () => {
     expect(TestBed.inject(DOCUMENT).title).toBe('Community Hub');
     expect(loadLocalBranding).toHaveBeenCalledTimes(1);
   });
+
+  it('rejects an invalid persisted logo character index instead of repairing it', async () => {
+    loadLocalBranding.mockResolvedValue({
+      productName: 'Hub',
+      homeLabel: 'Meet locally',
+      logoUrl: 'assets/logo/heart.png',
+      logoCharacterIndex: 3,
+      themePreset: 'OCEAN',
+      revision: 4
+    });
+    const service = TestBed.inject(DeploymentConfigurationService);
+
+    await expect(service.initialize()).rejects.toThrow(
+      'deployment.configuration.branding.logo.character.index.invalid'
+    );
+  });
 });

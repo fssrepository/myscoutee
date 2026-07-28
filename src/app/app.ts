@@ -14,11 +14,13 @@ import { PwaService } from './shared/core/base/services/pwa.service';
 import { I18nService } from './shared/core/base/services/i18n.service';
 import { AppLocationService } from './shared/core/base/services/app-location.service';
 import { DeploymentConfigurationService } from './shared/core/base/services/deployment-configuration.service';
+import { DeploymentBrandComponent } from './shared/ui/components/core/deployment-brand';
 
 @Component({
   selector: 'app-root',
   imports: [
     RouterOutlet,
+    DeploymentBrandComponent,
     NgComponentOutlet,
     PromptComponent
   ],

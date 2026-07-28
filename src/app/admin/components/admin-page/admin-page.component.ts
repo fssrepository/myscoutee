@@ -38,6 +38,7 @@ import type { AdminBootstrapProcessState, AdminDashboardDto } from '../../../sha
 import {
   DialogComponent
 } from '../../../shared/ui/components/core/dialog/dialog.component';
+import { DeploymentBrandComponent } from '../../../shared/ui/components/core/deployment-brand';
 import {
   AdminMenuStore
 } from '../../../shared/ui/context/stores/admin-menu.store';
@@ -53,6 +54,7 @@ import {
   standalone: true,
   imports: [
     CommonModule,
+    DeploymentBrandComponent,
     MatIconModule,
     MatRippleModule,
     DialogComponent

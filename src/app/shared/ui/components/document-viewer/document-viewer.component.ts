@@ -18,6 +18,7 @@ import {
 } from '../core/accordion';
 import { AppMenuComponent, type AppMenuItem, type AppMenuItemSelectEvent, type AppMenuPalette } from '../core/menu';
 import { IndicatorComponent } from '../core/indicator';
+import { DeploymentBrandComponent } from '../core/deployment-brand';
 import { PopupComponent, type PopupModel } from '../core/popup';
 import type {
   DocumentViewerAction,
@@ -38,6 +39,7 @@ import type {
     MatIconModule,
     LazyBgImageDirective,
     AccordionComponent,
+    DeploymentBrandComponent,
     IndicatorComponent,
     AppMenuComponent,
     PopupComponent

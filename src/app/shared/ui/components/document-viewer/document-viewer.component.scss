@@ -112,11 +112,13 @@
   color: inherit;
   text-decoration: none;
   font-weight: 800;
+  font-size: 1.2rem;
+  --deployment-brand-logo-size: 40px;
+  --deployment-brand-gap: 10px;
 }
 
-.document-viewer-brand img {
-  border-radius: 12px;
-  box-shadow: 0 8px 22px rgba(71, 68, 158, 0.18);
+.document-viewer-brand app-deployment-brand {
+  filter: drop-shadow(0 8px 11px rgba(71, 68, 158, 0.18));
 }
 
 .document-viewer-head-row {

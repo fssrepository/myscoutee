@@ -78,6 +78,7 @@ import { UserProfileStore } from '../../../shared/ui/context/stores/user-profile
 import { AppRuntimeStore } from '../../../shared/ui/context/stores/app-runtime.store';
 import { ActivityStore } from '../../../shared/ui/context/stores/activity.store';
 import { DeploymentConfigurationService } from '../../../shared/core/base/services/deployment-configuration.service';
+import { DeploymentBrandComponent } from '../../../shared/ui/components/core/deployment-brand';
 
 type LocalPopup = 'filter' | null;
 
@@ -165,6 +166,7 @@ const PUBLIC_PROFILE_DETAIL_KEYS = new Set(
   changeDetection: ChangeDetectionStrategy.OnPush,
   imports: [
     CommonModule,
+    DeploymentBrandComponent,
     MatIconModule,
     AppMenuComponent,
     SmartListComponent,

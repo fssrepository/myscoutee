@@ -21,6 +21,7 @@ import type {
   OperatorLeaderboardGroup
 } from '../../../shared/core/contracts/operator.interface';
 import { IndicatorComponent } from '../../../shared/ui/components/core/indicator';
+import { DeploymentBrandComponent } from '../../../shared/ui/components/core/deployment-brand';
 import {
   AppMenuComponent,
   type AppMenuItem,
@@ -55,6 +56,7 @@ type OperatorActionId = Exclude<OperatorMenuKind, 'community'>;
   changeDetection: ChangeDetectionStrategy.OnPush,
   imports: [
     AppMenuComponent,
+    DeploymentBrandComponent,
     IndicatorComponent,
     I18nPipe,
     MatIconModule,

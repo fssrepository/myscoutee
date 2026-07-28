@@ -7,13 +7,10 @@
   <div class="entry-shell-panel">
     <header class="entry-shell-header">
       <div class="entry-brand" [attr.aria-label]="deploymentBranding().productName">
-        <img
-          class="entry-brand-mark"
-          [src]="deploymentBranding().logoUrl"
-          [alt]="deploymentBranding().productName"
-        />
         <span class="entry-brand-copy">
-          <span class="entry-brand-text">{{ deploymentBranding().productName }}</span>
+          <app-deployment-brand
+            [branding]="deploymentBranding()"
+          ></app-deployment-brand>
           <span class="entry-preview-badge">
             <span>{{ 'landing.preview.badge' | i18n: 'Preview' }}</span>
           </span>
@@ -164,12 +161,9 @@
       <div class="entry-footer-grid">
         <section class="entry-footer-brand">
           <div class="entry-footer-title">
-            <img
-              class="entry-footer-mark"
-              [src]="deploymentBranding().logoUrl"
-              [alt]="deploymentBranding().productName"
-            />
-            <span>{{ deploymentBranding().productName }}</span>
+            <app-deployment-brand
+              [branding]="deploymentBranding()"
+            ></app-deployment-brand>
           </div>
           <p>Where fast matches turn into real connections.</p>
         </section>

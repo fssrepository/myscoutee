@@ -9,6 +9,7 @@ import type { IdeaArticleDetailDto } from '../../../shared/core/contracts/conten
 import type { FirebaseAuthProfileDto } from '../../../shared/core/contracts/user.interface';
 import { IdeaPostsService } from '../../../shared/core/base/services/idea-posts.service';
 import { DeploymentConfigurationService } from '../../../shared/core/base/services/deployment-configuration.service';
+import { DeploymentBrandComponent } from '../../../shared/ui/components/core/deployment-brand';
 import {
   InfoCardComponent, WarpImageCardComponent, type InfoCardData, type WarpImageCardData
 } from '../../../shared/ui/components/core/smart-list/card';
@@ -49,6 +50,7 @@ interface PartnerRoleOverview {
   selector: 'app-entry-landing',
   standalone: true,
   imports: [
+    DeploymentBrandComponent,
     InfoCardComponent,
     WarpImageCardComponent,
     SmartListComponent,

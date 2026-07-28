@@ -1,6 +1,6 @@
 {
   "lang": "hu",
-  "version": "2026.07.29.hu.30",
+  "version": "2026.07.29.hu.31",
   "messages": {
     "about": "Rólam",
     "accommodation": "Szállás",
@@ -2590,6 +2590,8 @@
     "operator.configuration.branding.home.label": "Nyitóoldali felirat",
     "operator.configuration.branding.theme": "Nyitóoldali téma",
     "operator.configuration.branding.logo": "Logó",
+    "operator.configuration.branding.logo.character.index": "A logó karakterpozíciója",
+    "operator.configuration.branding.logo.character.index.invalid": "Adj meg egész számot 0 és az utolsó karakter pozíciója között, vagy hagyd üresen.",
     "operator.configuration.branding.logo.guidance": "Javasolt méret: 512 × 512 px (1:1). JPEG, PNG, WebP vagy GIF; átlátszó háttérhez PNG/WebP ajánlott. Legfeljebb 10 MB.",
     "operator.configuration.branding.logo.heart.webp": "MyScoutee szív (WebP)",
     "operator.configuration.branding.logo.heart.png": "MyScoutee szív (PNG)",

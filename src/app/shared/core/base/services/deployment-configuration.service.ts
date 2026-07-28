@@ -51,8 +51,8 @@ export class DeploymentConfigurationService extends BaseRouteModeService {
       this.loadingRef.set(true);
       this.loadPromise = this.configurationService()
         .loadBranding()
+        .catch(() => structuredClone(DEFAULT_DEPLOYMENT_BRANDING))
         .then(value => this.applyBranding(value))
-        .catch(() => this.applyBranding(DEFAULT_DEPLOYMENT_BRANDING))
         .finally(() => {
           this.loadingRef.set(false);
         });

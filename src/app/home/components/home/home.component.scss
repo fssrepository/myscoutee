@@ -70,16 +70,7 @@
   background-repeat: no-repeat;
   background-size: 100% 3px;   /* thickness */
   background-position: 0 100%; /* bottom */
-}
-
-.game-brand-mark {
-  width: 30px;
-  height: 30px;
-  display: block;
-}
-
-.game-brand-text {
-  color: var(--deployment-brand-text);
+  --deployment-brand-logo-size: 30px;
   font-size: 1.32rem;
   font-weight: 800;
   letter-spacing: -0.01em;

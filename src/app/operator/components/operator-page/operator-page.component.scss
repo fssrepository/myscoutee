@@ -63,17 +63,7 @@
   background-repeat: no-repeat;
   background-position: 0 100%;
   background-size: 100% 3px;
-}
-
-.operator-brand-mark {
-  width: 38px;
-  height: 38px;
-  display: block;
-  object-fit: contain;
-}
-
-.operator-brand-text {
-  color: var(--deployment-brand-text);
+  --deployment-brand-logo-size: 38px;
   font-size: 2rem;
 }
 
