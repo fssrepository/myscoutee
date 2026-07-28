@@ -34,6 +34,7 @@ export interface OperatorLedgerNodeRecord {
   id: string;
   nodeId: string | null;
   label: string;
+  active?: boolean;
   founder: boolean;
   verifiedWeight: number;
   claimed: boolean;

@@ -245,7 +245,12 @@ describe('Demo bootstrap seeding', () => {
 
     const registryRecord = registryWrites[0]?.[1] as {
       status?: { lifecycle?: string; simulation?: boolean };
-      ledger?: Array<{ id: string; claimed: boolean; verifiedWeight: number }>;
+      ledger?: Array<{
+        id: string;
+        active?: boolean;
+        claimed: boolean;
+        verifiedWeight: number;
+      }>;
       leaderboard?: Array<{
         id: string;
         claimed: boolean;
@@ -278,9 +283,9 @@ describe('Demo bootstrap seeding', () => {
     expect(registryRecord.status?.lifecycle).toBe('UNCONFIGURED');
     expect(registryRecord.status?.simulation).toBe(true);
     expect(registryRecord.auditHistory?.some(item => item.kind === 'SEED')).toBe(true);
-    expect(registryRecord.leaderboard).toHaveLength(7);
+    expect(registryRecord.leaderboard).toHaveLength(6);
     for (const ledgerEntry of (registryRecord.ledger ?? []).filter(
-      item => item.id === 'founder' || !item.claimed
+      item => item.active !== false && (item.id === 'founder' || !item.claimed)
     )) {
       expect(registryRecord.leaderboard?.find(item => item.id === ledgerEntry.id)).toEqual(
         expect.objectContaining({

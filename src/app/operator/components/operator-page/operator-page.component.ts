@@ -249,14 +249,27 @@ export class OperatorPageComponent implements OnInit {
     });
     effect(() => {
       const smartList = this.leaderboardSmartListRef();
-      const entry = this.leaderboard.latestCacheUpsert();
-      if (!smartList || !entry) {
+      const mutation = this.leaderboard.latestCacheMutation();
+      if (!smartList || !mutation) {
         return;
       }
-      smartList.reinsertVisibleItem(entry, {
-        totalDelta: 1,
-        loadedRange: 'any'
-      });
+      for (const id of mutation.removedEntryIds) {
+        smartList.removeVisibleItemByIdentity(id, { totalDelta: -1 });
+      }
+      const entry = mutation.entry;
+      if (
+        entry
+        && !smartList.patchVisibleItem(
+          item => item.id === entry.id,
+          () => entry
+        )
+      ) {
+        smartList.reinsertVisibleItem(entry, {
+          totalDelta: 1,
+          loadedRange: 'any'
+        });
+      }
+      this.leaderboard.consumeCacheMutation(mutation.sequence);
     });
   }
 

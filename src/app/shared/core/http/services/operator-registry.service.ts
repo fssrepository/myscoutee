@@ -26,6 +26,7 @@ import type {
   OperatorLeaderboardGroupSummaryDto,
   OperatorLeaderboardPageDto,
   OperatorRevenueDto,
+  OperatorRegistryMutationResultDto,
   OperatorRegistryRegisterRequestDto,
   OperatorRegistryConfirmRequestDto,
   OperatorRegistryInspectRequestDto,
@@ -102,6 +103,13 @@ interface RemoteOperatorLeaderboardPage {
   view: RemoteLeaderboardView;
   items: RemoteOperatorLeaderboardRow[];
   nextCursor: string | null;
+}
+
+interface RemoteOperatorRegistryMutationResult {
+  status: OperatorRegistryStatusDto;
+  leaderboardEntry: RemoteOperatorLeaderboardRow | null;
+  removedLeaderboardEntryIds: string[];
+  created: boolean;
 }
 
 interface OperatorLeaderboardCursorState {
@@ -258,21 +266,24 @@ export class HttpOperatorRegistryService implements OperatorRegistryServiceContr
     );
   }
 
-  async register(request: OperatorRegistryRegisterRequestDto): Promise<OperatorRegistryStatusDto> {
+  async register(
+    request: OperatorRegistryRegisterRequestDto
+  ): Promise<OperatorRegistryMutationResultDto> {
     const payload: OperatorRegistryRegisterRequestDto = {
       registryBaseUrl: request.registryBaseUrl.trim(),
       ...(request.expectedRegistryScope?.trim()
         ? { expectedRegistryScope: request.expectedRegistryScope.trim() }
         : {})
     };
-    return await this.requireResponse(
+    const response = await this.requireResponse(
       `${OPERATOR_REGISTRY_ROUTE}/register`,
-      this.http.post<OperatorRegistryStatusDto>(
+      this.http.post<RemoteOperatorRegistryMutationResult>(
         `${this.endpoint}/register`,
         payload,
         this.requestOptions()
       ).toPromise()
     );
+    return this.toRegistryMutationResult(response);
   }
 
   async retry(): Promise<OperatorRegistryStatusDto> {
@@ -286,15 +297,16 @@ export class HttpOperatorRegistryService implements OperatorRegistryServiceContr
     );
   }
 
-  async disconnect(): Promise<OperatorRegistryStatusDto> {
-    return await this.requireResponse(
+  async disconnect(): Promise<OperatorRegistryMutationResultDto> {
+    const response = await this.requireResponse(
       `${OPERATOR_REGISTRY_ROUTE}/disconnect`,
-      this.http.post<OperatorRegistryStatusDto>(
+      this.http.post<RemoteOperatorRegistryMutationResult>(
         `${this.endpoint}/disconnect`,
         null,
         this.requestOptions()
       ).toPromise()
     );
+    return this.toRegistryMutationResult(response);
   }
 
   async leaderboardPage(
@@ -1047,6 +1059,23 @@ export class HttpOperatorRegistryService implements OperatorRegistryServiceContr
       claimantAvatarUrl: row.avatarUrl?.trim() || null,
       operatorGroupId: row.groupId?.trim() || null,
       deploymentCount: Math.max(0, Math.trunc(Number(row.deploymentCount) || 0))
+    };
+  }
+
+  private toRegistryMutationResult(
+    result: RemoteOperatorRegistryMutationResult
+  ): OperatorRegistryMutationResultDto {
+    return {
+      status: result.status,
+      leaderboardEntry: result.leaderboardEntry
+        ? this.toLeaderboardEntry(result.leaderboardEntry)
+        : null,
+      removedLeaderboardEntryIds: [...new Set(
+        (result.removedLeaderboardEntryIds ?? [])
+          .map(id => `${id ?? ''}`.trim())
+          .filter(Boolean)
+      )],
+      created: result.created === true
     };
   }
 

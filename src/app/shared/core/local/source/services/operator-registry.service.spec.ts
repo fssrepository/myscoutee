@@ -42,6 +42,7 @@ describe('LocalOperatorRegistryService', () => {
       registryBaseUrl: 'https://registry.myscoutee.invalid',
       expectedRegistryScope: 'demo:primary'
     });
+    const deploymentCode = registered.status.enrollment?.deploymentCode ?? '';
     const explicitClaim = await service.claimShare({
       legalName: 'Demo Operator s.r.o.',
       registrationNumber: '51 234 567',
@@ -66,13 +67,14 @@ describe('LocalOperatorRegistryService', () => {
 
     expect(initial.lifecycle).toBe('UNCONFIGURED');
     expect(initial.registryOptions).toHaveLength(3);
-    expect(registered.lifecycle).toBe('REGISTERED');
+    expect(registered.status.lifecycle).toBe('REGISTERED');
+    expect(registered.leaderboardEntry?.id).toBe(deploymentCode);
     expect(explicitClaim.claimed).toBe(true);
     expect(explicitClaim.verificationStatus).toBe('PENDING_REVIEW');
     expect(explicitClaim.claimedAt).toBe(explicitClaim.verificationSubmittedAt);
     expect(explicitClaim.claimantName).toBe('Demo Operator s.r.o.');
     expect(cached?.ledger).toEqual(ledgerBeforeGrouping);
-    expect(cached?.ledger.find(item => item.id === 'node-operator-demo')).toEqual(
+    expect(cached?.ledger.find(item => item.id === deploymentCode)).toEqual(
       expect.objectContaining({
         claimed: true,
         claimantUserId: 'operator-demo-dev',
@@ -151,10 +153,11 @@ describe('LocalOperatorRegistryService', () => {
 
     const repository = TestBed.inject(LocalOperatorRegistryRepository);
     const service = TestBed.inject(LocalOperatorRegistryService);
-    await service.register({
+    const registration = await service.register({
       registryBaseUrl: 'https://registry.myscoutee.invalid',
       expectedRegistryScope: 'demo:primary'
     });
+    const deploymentCode = registration.status.enrollment?.deploymentCode ?? '';
     const before = await repository.read();
     expect(before).not.toBeNull();
     await repository.write({
@@ -179,14 +182,14 @@ describe('LocalOperatorRegistryService', () => {
     }));
     expect(claim.claimedAt).toBe(claim.verificationSubmittedAt);
     expect(claim.sharePercent).toBeGreaterThan(0);
-    expect(after?.ledger.find(item => item.nodeId === 'node-operator-demo'))
+    expect(after?.ledger.find(item => item.nodeId === deploymentCode))
       .toEqual(expect.objectContaining({
         claimed: true,
         claimantUserId: 'operator-campus'
       }));
     expect(after?.groupLinks).toEqual(expect.arrayContaining([
       expect.objectContaining({
-        nodeId: 'node-operator-demo',
+        nodeId: deploymentCode,
         operatorGroupId: 'operator-group-campus'
       })
     ]));
@@ -214,10 +217,11 @@ describe('LocalOperatorRegistryService', () => {
 
     const repository = TestBed.inject(LocalOperatorRegistryRepository);
     const service = TestBed.inject(LocalOperatorRegistryService);
-    await service.register({
+    const registration = await service.register({
       registryBaseUrl: 'https://registry.myscoutee.invalid',
       expectedRegistryScope: 'demo:primary'
     });
+    const deploymentCode = registration.status.enrollment?.deploymentCode ?? '';
     await service.claimShare({
       legalName: 'Verified Demo Operator',
       registrationNumber: '51 234 567',
@@ -260,7 +264,7 @@ describe('LocalOperatorRegistryService', () => {
     expect(afterRegroup?.ledger).toEqual(beforeRegroup?.ledger);
     expect(afterRegroup?.groupLinks).toEqual(expect.arrayContaining([
       expect.objectContaining({
-        nodeId: 'node-operator-demo',
+        nodeId: deploymentCode,
         operatorGroupId: 'operator-group-campus'
       })
     ]));

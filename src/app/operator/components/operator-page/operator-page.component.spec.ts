@@ -11,6 +11,7 @@ import type {
 import { AppRuntimeStore } from '../../../shared/ui/context/stores/app-runtime.store';
 import {
   OperatorLeaderboardStore,
+  type OperatorLeaderboardCacheMutation,
   type OperatorLeaderboardFilters
 } from '../../../shared/ui/context/stores/operator-leaderboard.store';
 import {
@@ -34,9 +35,11 @@ describe('OperatorPageComponent', () => {
     const registryBusyAction = signal<string | null>(null);
     const activePopup = signal<OperatorMenuKind | null>('registration');
     const leaderboardRevision = signal(0);
-    const leaderboardCacheUpsert = signal<OperatorLeaderboardEntryDto | null>(null);
+    const leaderboardCacheMutation =
+      signal<OperatorLeaderboardCacheMutation | null>(null);
     const workspaceBusyAction = signal<string | null>(null);
     const invalidateLeaderboard = vi.fn();
+    const consumeCacheMutation = vi.fn();
 
     TestBed.configureTestingModule({
       imports: [OperatorPageComponent],
@@ -84,7 +87,8 @@ describe('OperatorPageComponent', () => {
           provide: OperatorLeaderboardStore,
           useValue: {
             revision: leaderboardRevision.asReadonly(),
-            latestCacheUpsert: leaderboardCacheUpsert.asReadonly(),
+            latestCacheMutation: leaderboardCacheMutation.asReadonly(),
+            consumeCacheMutation,
             invalidate: invalidateLeaderboard,
             queryPage: vi.fn()
           }
@@ -111,6 +115,14 @@ describe('OperatorPageComponent', () => {
       leaderboardQuery: Signal<Partial<ListQuery<OperatorLeaderboardFilters>>>;
       actionItems: Signal<readonly AppMenuItem<string>[]>;
       leaderboardSmartList: {
+        patchVisibleItem: (
+          predicate: (item: OperatorLeaderboardEntryDto) => boolean,
+          patch: (item: OperatorLeaderboardEntryDto) => OperatorLeaderboardEntryDto
+        ) => boolean;
+        removeVisibleItemByIdentity: (
+          id: string,
+          options: { totalDelta: number }
+        ) => boolean;
         reinsertVisibleItem: (
           item: OperatorLeaderboardEntryDto,
           options: { totalDelta: number; loadedRange: string }
@@ -157,15 +169,31 @@ describe('OperatorPageComponent', () => {
       claimed: false,
       deploymentCount: 1
     };
+    const patchVisibleItem = vi.fn().mockReturnValue(false);
+    const removeVisibleItemByIdentity = vi.fn().mockReturnValue(true);
     const reinsertVisibleItem = vi.fn().mockReturnValue(true);
-    componentView.leaderboardSmartList = { reinsertVisibleItem };
-    leaderboardCacheUpsert.set(registeredDeployment);
+    componentView.leaderboardSmartList = {
+      patchVisibleItem,
+      removeVisibleItemByIdentity,
+      reinsertVisibleItem
+    };
+    leaderboardCacheMutation.set({
+      sequence: 1,
+      entry: registeredDeployment,
+      removedEntryIds: ['node-operator-demo']
+    });
     TestBed.tick();
 
+    expect(removeVisibleItemByIdentity).toHaveBeenCalledWith(
+      'node-operator-demo',
+      { totalDelta: -1 }
+    );
+    expect(patchVisibleItem).toHaveBeenCalledOnce();
     expect(reinsertVisibleItem).toHaveBeenCalledWith(registeredDeployment, {
       totalDelta: 1,
       loadedRange: 'any'
     });
+    expect(consumeCacheMutation).toHaveBeenCalledWith(1);
     expect(componentView.leaderboardQuery()).toBe(initialQuery);
     expect(invalidateLeaderboard).not.toHaveBeenCalled();
 

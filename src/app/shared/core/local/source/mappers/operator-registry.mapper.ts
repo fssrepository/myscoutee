@@ -397,6 +397,9 @@ export class LocalOperatorRegistryMapper {
     const claimedGroups = new Map<string, OperatorLedgerNodeRecord[]>();
 
     for (const entry of ledger) {
+      if (entry.active === false) {
+        continue;
+      }
       if (entry.founder || !entry.claimed || !entry.nodeId) {
         rows.push({
           id: entry.id,
@@ -459,6 +462,7 @@ export class LocalOperatorRegistryMapper {
       id: entry.id,
       nodeId: entry.nodeId,
       label: entry.label,
+      active: true,
       founder: entry.group === 'FOUNDER',
       verifiedWeight: entry.verifiedWeight,
       claimed: entry.claimed,

@@ -53,13 +53,28 @@ describe('OperatorRegistryStore registration', () => {
       userId: 'operator-demo-dev'
     });
     const registered = registeredStatus();
+    const mutationResult = {
+      status: registered,
+      leaderboardEntry: {
+        id: 'dep_demo',
+        nodeId: 'dep_demo',
+        label: 'dep_demo',
+        group: 'UNCLAIMED' as const,
+        verifiedWeight: 0,
+        sharePercent: 0,
+        claimed: false,
+        deploymentCount: 1
+      },
+      removedLeaderboardEntryIds: [],
+      created: true
+    };
     const service = {
       loadStatus: vi.fn().mockResolvedValue(unconfiguredStatus()),
-      register: vi.fn().mockResolvedValue(registered),
+      register: vi.fn().mockResolvedValue(mutationResult),
       inspect: vi.fn(),
       confirm: vi.fn()
     };
-    const upsertRegisteredDeployment = vi.fn();
+    const applyRegistryMutation = vi.fn();
     const invalidateLeaderboard = vi.fn();
     TestBed.configureTestingModule({
       providers: [
@@ -67,7 +82,7 @@ describe('OperatorRegistryStore registration', () => {
         {
           provide: OperatorLeaderboardStore,
           useValue: {
-            upsertRegisteredDeployment,
+            applyRegistryMutation,
             invalidate: invalidateLeaderboard
           }
         },
@@ -93,29 +108,35 @@ describe('OperatorRegistryStore registration', () => {
     expect(service.inspect).not.toHaveBeenCalled();
     expect(service.confirm).not.toHaveBeenCalled();
     expect(store.canRegister()).toBe(false);
-    expect(upsertRegisteredDeployment).toHaveBeenCalledWith(registered);
+    expect(applyRegistryMutation).toHaveBeenCalledWith(mutationResult);
     expect(invalidateLeaderboard).not.toHaveBeenCalled();
   });
 
-  it('invalidates the leaderboard only after a successful disconnect mutation', async () => {
+  it('applies a targeted leaderboard removal after a successful disconnect mutation', async () => {
     const session = signal<AppSession | null>({
       kind: 'demo',
       userId: 'operator-demo-dev'
     });
-    const service = {
-      disconnect: vi.fn().mockResolvedValue({
+    const mutationResult = {
+      status: {
         ...registeredStatus(),
         enabled: false,
         lifecycle: 'DISABLED'
-      })
+      },
+      leaderboardEntry: null,
+      removedLeaderboardEntryIds: ['dep_demo'],
+      created: false
     };
-    const invalidateLeaderboard = vi.fn();
+    const service = {
+      disconnect: vi.fn().mockResolvedValue(mutationResult)
+    };
+    const applyRegistryMutation = vi.fn();
     TestBed.configureTestingModule({
       providers: [
         { provide: OperatorRegistryService, useValue: service },
         {
           provide: OperatorLeaderboardStore,
-          useValue: { invalidate: invalidateLeaderboard }
+          useValue: { applyRegistryMutation }
         },
         {
           provide: SessionService,
@@ -128,11 +149,9 @@ describe('OperatorRegistryStore registration', () => {
     });
     const store = TestBed.inject(OperatorRegistryStore);
 
-    expect(invalidateLeaderboard).not.toHaveBeenCalled();
-
     await store.disconnect();
 
-    expect(invalidateLeaderboard).toHaveBeenCalledOnce();
+    expect(applyRegistryMutation).toHaveBeenCalledWith(mutationResult);
   });
 
   it('clears cached state when the operator session identity changes', async () => {

@@ -12,6 +12,7 @@ import {
 import type {
   OperatorRegistryInspectRequestDto,
   OperatorRegistryInspectionDto,
+  OperatorRegistryMutationResultDto,
   OperatorRegistryOptionDto,
   OperatorRegistryStatusDto
 } from '../../../core/contracts/operator.interface';
@@ -122,14 +123,15 @@ export class OperatorRegistryStore {
       return null;
     }
     const expectedRegistryScope = this.expectedRegistryScopeRef().trim();
-    const status = await this.run(
+    const result = await this.run(
       'register',
       () => this.service.register({
         registryBaseUrl,
         ...(expectedRegistryScope ? { expectedRegistryScope } : {})
       })
     );
-    if (status) {
+    if (result) {
+      const status = result.status;
       this.inspectionRef.set(null);
       this.registryBaseUrlRef.set(status.selection?.baseUrl ?? registryBaseUrl);
       this.expectedRegistryScopeRef.set(
@@ -138,9 +140,10 @@ export class OperatorRegistryStore {
         ?? this.expectedRegistryScopeRef()
       );
       this.candidateInitialized = true;
-      this.leaderboard.upsertRegisteredDeployment(status);
+      this.leaderboard.applyRegistryMutation(result);
+      return status;
     }
-    return status;
+    return null;
   }
 
   async retry(): Promise<OperatorRegistryStatusDto | null> {
@@ -150,12 +153,13 @@ export class OperatorRegistryStore {
 
   async disconnect(): Promise<OperatorRegistryStatusDto | null> {
     this.ensureContextBound();
-    const status = await this.run('disconnect', () => this.service.disconnect());
-    if (status) {
+    const result = await this.run('disconnect', () => this.service.disconnect());
+    if (result) {
       this.inspectionRef.set(null);
-      this.leaderboard.invalidate();
+      this.leaderboard.applyRegistryMutation(result);
+      return result.status;
     }
-    return status;
+    return null;
   }
 
   clearInspection(): void {
@@ -206,7 +210,12 @@ export class OperatorRegistryStore {
     this.clearFeedback();
   }
 
-  private async run<T extends OperatorRegistryStatusDto | OperatorRegistryInspectionDto>(
+  private async run<
+    T extends
+      | OperatorRegistryStatusDto
+      | OperatorRegistryInspectionDto
+      | OperatorRegistryMutationResultDto
+  >(
     action: Exclude<OperatorRegistryBusyAction, null>,
     request: () => Promise<T>
   ): Promise<T | null> {
@@ -218,9 +227,14 @@ export class OperatorRegistryStore {
       if (requestGeneration !== this.requestGeneration) {
         return null;
       }
-      if (isStatus(result)) {
-        this.statusRef.set(result);
-        this.initializeCandidate(result);
+      const status = isMutationResult(result)
+        ? result.status
+        : isStatus(result)
+          ? result
+          : null;
+      if (status) {
+        this.statusRef.set(status);
+        this.initializeCandidate(status);
       }
       return result;
     } catch (error) {
@@ -291,9 +305,21 @@ export function operatorRegistryStoreContextKey(
 }
 
 function isStatus(
-  value: OperatorRegistryStatusDto | OperatorRegistryInspectionDto
+  value:
+    | OperatorRegistryStatusDto
+    | OperatorRegistryInspectionDto
+    | OperatorRegistryMutationResultDto
 ): value is OperatorRegistryStatusDto {
   return 'lifecycle' in value;
+}
+
+function isMutationResult(
+  value:
+    | OperatorRegistryStatusDto
+    | OperatorRegistryInspectionDto
+    | OperatorRegistryMutationResultDto
+): value is OperatorRegistryMutationResultDto {
+  return 'status' in value && 'removedLeaderboardEntryIds' in value;
 }
 
 function defaultMessageForAction(action: Exclude<OperatorRegistryBusyAction, null>): string {

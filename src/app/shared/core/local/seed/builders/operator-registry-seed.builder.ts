@@ -23,7 +23,7 @@ export interface OperatorBootstrapSeedResult {
 }
 
 export class SeedOperatorRegistryBuilder {
-  static readonly SEED_VERSION = 'operator-workspace-v3';
+  static readonly SEED_VERSION = 'operator-workspace-v4';
   static readonly PRIMARY_BASE_URL = 'https://registry.myscoutee.invalid';
   static readonly PRIMARY_SCOPE = 'demo:primary';
 
@@ -417,7 +417,9 @@ export class SeedOperatorRegistryBuilder {
         }
       : memory.appState;
     const registryRecord = LocalOperatorRegistryMapper.toSeedRecord(
-      memory,
+      {
+        registryRecord: this.normalizeSeedDeployment(memory.registryRecord)
+      },
       this.buildInitialRecord(now)
     );
 
@@ -439,6 +441,7 @@ export class SeedOperatorRegistryBuilder {
         id: 'founder',
         nodeId: null,
         label: 'operator.leaderboard.seed.founder',
+        active: true,
         founder: true,
         verifiedWeight: 100_000,
         claimed: true,
@@ -452,6 +455,7 @@ export class SeedOperatorRegistryBuilder {
         id: 'node-campus',
         nodeId: 'node-campus',
         label: 'operator.leaderboard.seed.campus',
+        active: true,
         founder: false,
         verifiedWeight: 50_000,
         claimed: true,
@@ -465,6 +469,7 @@ export class SeedOperatorRegistryBuilder {
         id: 'node-campus-east',
         nodeId: 'node-campus-east',
         label: 'operator.leaderboard.seed.campus.east',
+        active: true,
         founder: false,
         verifiedWeight: 15_000,
         claimed: true,
@@ -478,6 +483,7 @@ export class SeedOperatorRegistryBuilder {
         id: 'node-city',
         nodeId: 'node-city',
         label: 'operator.leaderboard.seed.city',
+        active: true,
         founder: false,
         verifiedWeight: 30_000,
         claimed: true,
@@ -491,6 +497,7 @@ export class SeedOperatorRegistryBuilder {
         id: 'node-club',
         nodeId: 'node-club',
         label: 'operator.leaderboard.seed.club',
+        active: true,
         founder: false,
         verifiedWeight: 20_000,
         claimed: true,
@@ -503,7 +510,8 @@ export class SeedOperatorRegistryBuilder {
       {
         id: 'node-operator-demo',
         nodeId: 'node-operator-demo',
-        label: 'operator.leaderboard.seed.this.deployment',
+        label: 'node-operator-demo',
+        active: false,
         founder: false,
         verifiedWeight: 12_000,
         claimed: false,
@@ -516,7 +524,8 @@ export class SeedOperatorRegistryBuilder {
       {
         id: 'node-north',
         nodeId: 'node-north',
-        label: 'operator.leaderboard.seed.north',
+        label: 'node-north',
+        active: true,
         founder: false,
         verifiedWeight: 9_000,
         claimed: false,
@@ -529,7 +538,8 @@ export class SeedOperatorRegistryBuilder {
       {
         id: 'node-east',
         nodeId: 'node-east',
-        label: 'operator.leaderboard.seed.east',
+        label: 'node-east',
+        active: true,
         founder: false,
         verifiedWeight: 6_000,
         claimed: false,
@@ -540,6 +550,66 @@ export class SeedOperatorRegistryBuilder {
         claimedAt: null
       }
     ];
+  }
+
+  private static normalizeSeedDeployment(
+    record: OperatorRegistryStateRecord | null
+  ): OperatorRegistryStateRecord | null {
+    if (!record) {
+      return null;
+    }
+    const next = structuredClone(record);
+    const previousNodeId = next.claimIdentity.nodeId.trim();
+    const deploymentCode = next.status.enrollment?.deploymentCode?.trim() ?? '';
+    const nodeId = deploymentCode || previousNodeId;
+    const active =
+      next.status.enabled
+      && next.status.lifecycle === 'REGISTERED';
+    const deployment = next.ledger.find(item =>
+      item.nodeId === previousNodeId
+      || item.nodeId === deploymentCode
+    );
+
+    next.ledger = next.ledger
+      .filter(item =>
+        item === deployment
+        || (item.nodeId !== previousNodeId && item.nodeId !== deploymentCode)
+      )
+      .map(item => {
+        if (item === deployment && nodeId) {
+          return {
+            ...item,
+            id: nodeId,
+            nodeId,
+            label: nodeId,
+            active
+          };
+        }
+        if (!item.founder && !item.claimed && item.nodeId) {
+          return {
+            ...item,
+            label: item.nodeId,
+            active: item.active !== false
+          };
+        }
+        return item;
+      });
+    if (nodeId) {
+      next.claimIdentity = {
+        ...next.claimIdentity,
+        nodeId
+      };
+      next.groupLinks = next.groupLinks.map(link =>
+        link.nodeId === previousNodeId
+          ? { ...link, nodeId }
+          : link
+      );
+    }
+    next.leaderboard = LocalOperatorRegistryMapper.deriveLeaderboard(
+      next.ledger,
+      next.groupLinks
+    );
+    return next;
   }
 
   static buildDemoOperatorUser(): UserRecord {

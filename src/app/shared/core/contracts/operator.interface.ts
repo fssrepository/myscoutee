@@ -135,6 +135,13 @@ export interface OperatorLeaderboardEntryDto {
   deploymentCount?: number;
 }
 
+export interface OperatorRegistryMutationResultDto {
+  status: OperatorRegistryStatusDto;
+  leaderboardEntry: OperatorLeaderboardEntryDto | null;
+  removedLeaderboardEntryIds: readonly string[];
+  created: boolean;
+}
+
 export interface OperatorLeaderboardGroupSummaryDto {
   group: OperatorLeaderboardGroup;
   itemCount: number;
@@ -454,9 +461,11 @@ export interface OperatorRegistryServiceContract {
   loadStatus(): Promise<OperatorRegistryStatusDto>;
   inspect(request: OperatorRegistryInspectRequestDto): Promise<OperatorRegistryInspectionDto>;
   confirm(inspectionToken: string): Promise<OperatorRegistryStatusDto>;
-  register(request: OperatorRegistryRegisterRequestDto): Promise<OperatorRegistryStatusDto>;
+  register(
+    request: OperatorRegistryRegisterRequestDto
+  ): Promise<OperatorRegistryMutationResultDto>;
   retry(): Promise<OperatorRegistryStatusDto>;
-  disconnect(): Promise<OperatorRegistryStatusDto>;
+  disconnect(): Promise<OperatorRegistryMutationResultDto>;
   leaderboardPage(
     query: ListQuery,
     signal?: AbortSignal

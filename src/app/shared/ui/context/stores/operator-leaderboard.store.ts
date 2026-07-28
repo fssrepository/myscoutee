@@ -10,11 +10,17 @@ import type {
   OperatorLeaderboardEntryDto,
   OperatorLeaderboardGroupSummaryDto,
   OperatorLeaderboardPageDto,
-  OperatorRegistryStatusDto
+  OperatorRegistryMutationResultDto
 } from '../../../core/contracts/operator.interface';
 
 export interface OperatorLeaderboardFilters {
   revision: number;
+}
+
+export interface OperatorLeaderboardCacheMutation {
+  sequence: number;
+  entry: OperatorLeaderboardEntryDto | null;
+  removedEntryIds: readonly string[];
 }
 
 @Injectable({
@@ -25,13 +31,17 @@ export class OperatorLeaderboardStore {
   private readonly sessionService = inject(SessionService);
   private readonly revisionRef = signal(0);
   private readonly summariesRef = signal<readonly OperatorLeaderboardGroupSummaryDto[]>([]);
-  private readonly latestCacheUpsertRef = signal<OperatorLeaderboardEntryDto | null>(null);
+  private readonly latestCacheMutationRef =
+    signal<OperatorLeaderboardCacheMutation | null>(null);
+  private readonly cacheUpserts = new Map<string, OperatorLeaderboardEntryDto>();
+  private readonly cacheTombstones = new Set<string>();
   private contextKey = this.sessionKey(this.sessionService.currentSession());
   private generation = 0;
+  private mutationSequence = 0;
 
   readonly revision = this.revisionRef.asReadonly();
   readonly summaries = this.summariesRef.asReadonly();
-  readonly latestCacheUpsert = this.latestCacheUpsertRef.asReadonly();
+  readonly latestCacheMutation = this.latestCacheMutationRef.asReadonly();
 
   constructor() {
     effect(() => {
@@ -42,7 +52,7 @@ export class OperatorLeaderboardStore {
       this.contextKey = nextContextKey;
       this.generation += 1;
       this.summariesRef.set([]);
-      this.latestCacheUpsertRef.set(null);
+      this.resetCacheOverlay();
       this.revisionRef.update(value => value + 1);
     });
   }
@@ -56,43 +66,99 @@ export class OperatorLeaderboardStore {
     if (generation === this.generation && !signal?.aborted) {
       this.summariesRef.set(page.context?.groupSummaries ?? []);
     }
-    return page;
+    return this.applyCacheOverlay(page, !query.cursor);
   }
 
-  upsertRegisteredDeployment(
-    status: OperatorRegistryStatusDto
-  ): OperatorLeaderboardEntryDto | null {
-    const deploymentCode = status.enrollment?.deploymentCode?.trim() ?? '';
-    if (
-      !status.enabled
-      || status.lifecycle !== 'REGISTERED'
-      || !deploymentCode
-    ) {
+  applyRegistryMutation(
+    result: OperatorRegistryMutationResultDto
+  ): OperatorLeaderboardCacheMutation | null {
+    const removedEntryIds = [...new Set(
+      result.removedLeaderboardEntryIds
+        .map(id => id.trim())
+        .filter(Boolean)
+    )];
+    for (const id of removedEntryIds) {
+      this.cacheUpserts.delete(id);
+      this.cacheTombstones.add(id);
+    }
+
+    const entry = result.leaderboardEntry
+      ? structuredClone(result.leaderboardEntry)
+      : null;
+    if (entry) {
+      this.cacheTombstones.delete(entry.id);
+      this.cacheUpserts.set(entry.id, entry);
+    }
+    if (!entry && removedEntryIds.length === 0) {
       return null;
     }
-    const entry: OperatorLeaderboardEntryDto = {
-      id: deploymentCode,
-      nodeId: deploymentCode,
-      label: deploymentCode,
-      group: 'UNCLAIMED',
-      verifiedWeight: 0,
-      sharePercent: 0,
-      claimed: false,
-      claimantUserId: null,
-      claimantName: null,
-      claimantAvatarUrl: null,
-      operatorGroupId: null,
-      deploymentCount: 1
+
+    const mutation: OperatorLeaderboardCacheMutation = {
+      sequence: ++this.mutationSequence,
+      entry,
+      removedEntryIds
     };
-    this.latestCacheUpsertRef.set(entry);
-    return entry;
+    this.latestCacheMutationRef.set(mutation);
+    return mutation;
+  }
+
+  consumeCacheMutation(sequence: number): void {
+    if (this.latestCacheMutationRef()?.sequence === sequence) {
+      this.latestCacheMutationRef.set(null);
+    }
   }
 
   invalidate(): void {
     this.generation += 1;
     this.summariesRef.set([]);
-    this.latestCacheUpsertRef.set(null);
+    this.resetCacheOverlay();
     this.revisionRef.update(value => value + 1);
+  }
+
+  private applyCacheOverlay(
+    page: OperatorLeaderboardPageDto,
+    initialPage: boolean
+  ): OperatorLeaderboardPageDto {
+    const items: OperatorLeaderboardEntryDto[] = [];
+    const seen = new Set<string>();
+    for (const sourceEntry of page.items) {
+      const id = sourceEntry.id.trim();
+      if (!id || this.cacheTombstones.has(id) || seen.has(id)) {
+        continue;
+      }
+      const overlay = this.cacheUpserts.get(id);
+      if (overlay) {
+        if (!initialPage) {
+          continue;
+        }
+        items.push(structuredClone(overlay));
+      } else {
+        items.push(sourceEntry);
+      }
+      seen.add(id);
+    }
+    if (initialPage) {
+      for (const [id, entry] of this.cacheUpserts) {
+        if (!seen.has(id) && !this.cacheTombstones.has(id)) {
+          items.push(structuredClone(entry));
+          seen.add(id);
+        }
+      }
+    }
+    return {
+      ...page,
+      items,
+      total: Math.max(
+        items.length,
+        Math.max(0, page.total - this.cacheTombstones.size)
+      )
+    };
+  }
+
+  private resetCacheOverlay(): void {
+    this.cacheUpserts.clear();
+    this.cacheTombstones.clear();
+    this.latestCacheMutationRef.set(null);
   }
 
   private sessionKey(session: AppSession | null): string {

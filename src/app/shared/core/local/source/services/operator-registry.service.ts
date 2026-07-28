@@ -24,6 +24,7 @@ import type {
   OperatorRevenueDto,
   OperatorRegistryInspectRequestDto,
   OperatorRegistryInspectionDto,
+  OperatorRegistryMutationResultDto,
   OperatorRegistryRegisterRequestDto,
   OperatorRegistryServiceContract,
   OperatorRegistryStatusDto
@@ -34,7 +35,10 @@ import {
 } from '../../../base/operator-registry-candidate';
 import { LocalOperatorRegistryMapper } from '../mappers/operator-registry.mapper';
 import { LocalOperatorRegistryRepository } from '../repositories/operator-registry.repository';
-import type { OperatorRegistryStateRecord } from '../entity/operator.entity';
+import type {
+  OperatorLedgerNodeRecord,
+  OperatorRegistryStateRecord
+} from '../entity/operator.entity';
 import { LocalRouteDelayService } from './route-delay.service';
 
 const OPERATOR_REGISTRY_ROUTE = '/operator/registry';
@@ -138,7 +142,9 @@ export class LocalOperatorRegistryService extends LocalRouteDelayService impleme
     return LocalOperatorRegistryMapper.toStatusDto(next);
   }
 
-  async register(request: OperatorRegistryRegisterRequestDto): Promise<OperatorRegistryStatusDto> {
+  async register(
+    request: OperatorRegistryRegisterRequestDto
+  ): Promise<OperatorRegistryMutationResultDto> {
     await this.waitForOperatorRouteDelay(OPERATOR_REGISTRY_REGISTER_ROUTE);
     const current = await this.readStored();
     const baseUrl = this.requireBaseUrl(request.registryBaseUrl);
@@ -158,7 +164,7 @@ export class LocalOperatorRegistryService extends LocalRouteDelayService impleme
       }
     }), 'REGISTER', `Node registration requested: ${baseUrl}`);
     await this.repository.write(registering);
-    const next = LocalOperatorRegistryMapper.withStatus(registering, {
+    const nextStatus = LocalOperatorRegistryMapper.withStatus(registering, {
       ...current.status,
       lifecycle: 'REGISTERED',
       enabled: true,
@@ -194,8 +200,77 @@ export class LocalOperatorRegistryService extends LocalRouteDelayService impleme
       },
       lastError: null
     }, null);
+    const deploymentCode = nextStatus.status.enrollment?.deploymentCode ?? '';
+    const previousNodeId = current.claimIdentity.nodeId.trim();
+    const existingDeployment = current.ledger.find(item =>
+      item.nodeId === deploymentCode
+      || item.nodeId === previousNodeId
+    );
+    const created = !current.ledger.some(item =>
+      item.nodeId === deploymentCode
+    );
+    const deploymentEntry: OperatorLedgerNodeRecord = existingDeployment
+      ? {
+          ...existingDeployment,
+          id: deploymentCode,
+          nodeId: deploymentCode,
+          label: deploymentCode,
+          active: true
+        }
+      : {
+          id: deploymentCode,
+          nodeId: deploymentCode,
+          label: deploymentCode,
+          active: true,
+          founder: false,
+          verifiedWeight: 0,
+          claimed: false,
+          claimantUserId: null,
+          claimantName: null,
+          claimantAvatarUrl: null,
+          measuredAt: now.toISOString(),
+          claimedAt: null
+        };
+    const ledger = [
+      ...current.ledger.filter(item =>
+        item.nodeId !== previousNodeId
+        && item.nodeId !== deploymentCode
+      ),
+      deploymentEntry
+    ];
+    const groupLinks = current.groupLinks.map(link =>
+      link.nodeId === previousNodeId
+        ? { ...link, nodeId: deploymentCode }
+        : link
+    );
+    const next: OperatorRegistryStateRecord = {
+      ...nextStatus,
+      ledger,
+      groupLinks,
+      claimIdentity: {
+        ...current.claimIdentity,
+        nodeId: deploymentCode
+      },
+      leaderboard: LocalOperatorRegistryMapper.deriveLeaderboard(
+        ledger,
+        groupLinks
+      )
+    };
     await this.repository.write(next);
-    return LocalOperatorRegistryMapper.toStatusDto(next);
+    const leaderboardEntry = next.leaderboard.find(item =>
+      item.id === deploymentCode
+      || item.nodeId === deploymentCode
+    ) ?? null;
+    const removedLeaderboardEntryIds = previousNodeId !== deploymentCode
+      && current.leaderboard.some(item => item.id === previousNodeId)
+      ? [previousNodeId]
+      : [];
+    return {
+      status: LocalOperatorRegistryMapper.toStatusDto(next),
+      leaderboardEntry: structuredClone(leaderboardEntry),
+      removedLeaderboardEntryIds,
+      created
+    };
   }
 
   async retry(): Promise<OperatorRegistryStatusDto> {
@@ -217,11 +292,11 @@ export class LocalOperatorRegistryService extends LocalRouteDelayService impleme
     return LocalOperatorRegistryMapper.toStatusDto(next);
   }
 
-  async disconnect(): Promise<OperatorRegistryStatusDto> {
+  async disconnect(): Promise<OperatorRegistryMutationResultDto> {
     await this.waitForOperatorRouteDelay(OPERATOR_REGISTRY_DISCONNECT_ROUTE);
     const current = await this.readStored();
     const now = new Date();
-    const next = this.appendAudit(LocalOperatorRegistryMapper.withStatus(current, {
+    const statusRecord = LocalOperatorRegistryMapper.withStatus(current, {
       ...current.status,
       lifecycle: 'DISABLED',
       enabled: false,
@@ -231,9 +306,35 @@ export class LocalOperatorRegistryService extends LocalRouteDelayService impleme
         disabledAt: now.toISOString()
       },
       lastError: null
-    }, null), 'DISCONNECT', 'Outbound registry synchronization disabled.');
+    }, null);
+    const activeNodeId = current.status.enrollment?.deploymentCode?.trim()
+      || current.claimIdentity.nodeId.trim();
+    const ledger = current.ledger.map(item =>
+      item.nodeId === activeNodeId
+        ? { ...item, active: false }
+        : item
+    );
+    const leaderboard = LocalOperatorRegistryMapper.deriveLeaderboard(
+      ledger,
+      current.groupLinks
+    );
+    const removedLeaderboardEntryIds = current.leaderboard
+      .filter(item =>
+        !leaderboard.some(nextItem => nextItem.id === item.id)
+      )
+      .map(item => item.id);
+    const next = this.appendAudit({
+      ...statusRecord,
+      ledger,
+      leaderboard
+    }, 'DISCONNECT', 'Outbound registry synchronization disabled.');
     await this.repository.write(next);
-    return LocalOperatorRegistryMapper.toStatusDto(next);
+    return {
+      status: LocalOperatorRegistryMapper.toStatusDto(next),
+      leaderboardEntry: null,
+      removedLeaderboardEntryIds,
+      created: false
+    };
   }
 
   async leaderboardPage(

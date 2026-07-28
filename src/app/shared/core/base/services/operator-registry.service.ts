@@ -16,6 +16,7 @@ import type {
   OperatorDeploymentUpdateProgressHandler,
   OperatorLeaderboardPageDto,
   OperatorRevenueDto,
+  OperatorRegistryMutationResultDto,
   OperatorRegistryRegisterRequestDto,
   OperatorRegistryInspectRequestDto,
   OperatorRegistryInspectionDto,
@@ -53,7 +54,9 @@ export class OperatorRegistryService extends BaseRouteModeService {
     return this.registryService.confirm(inspectionToken);
   }
 
-  register(request: OperatorRegistryRegisterRequestDto): Promise<OperatorRegistryStatusDto> {
+  register(
+    request: OperatorRegistryRegisterRequestDto
+  ): Promise<OperatorRegistryMutationResultDto> {
     return this.registryService.register(request);
   }
 
@@ -61,7 +64,7 @@ export class OperatorRegistryService extends BaseRouteModeService {
     return this.registryService.retry();
   }
 
-  disconnect(): Promise<OperatorRegistryStatusDto> {
+  disconnect(): Promise<OperatorRegistryMutationResultDto> {
     return this.registryService.disconnect();
   }
 
