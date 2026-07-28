@@ -14,7 +14,7 @@ describe('OperatorRegistryPopupComponent', () => {
     TestBed.resetTestingModule();
   });
 
-  it('uses a compact popup and disables only the current registry selector option', async () => {
+  it('loads status into a compact popup and disables only the current registry selector option', async () => {
     const status = registeredStatus();
     const statusSignal = signal<OperatorRegistryStatusDto | null>(status);
     const registryBaseUrl = signal(status.selection?.baseUrl ?? '');
@@ -64,6 +64,16 @@ describe('OperatorRegistryPopupComponent', () => {
       registryUrlConfig: Signal<LinkInputConfig>;
       registryActionItems: Signal<readonly AppMenuItem<string>[]>;
     };
+
+    expect(registryStore.loadStatus).toHaveBeenCalledOnce();
+    busyAction.set('load');
+    fixture.detectChanges();
+    expect(
+      (fixture.nativeElement as HTMLElement)
+        .querySelector('.operator-registration__loading app-indicator')
+    ).not.toBeNull();
+    busyAction.set(null);
+    fixture.detectChanges();
 
     expect(componentView.popupModel().size).toBe('small');
     expect(componentView.popupModel().height).toBe('auto');

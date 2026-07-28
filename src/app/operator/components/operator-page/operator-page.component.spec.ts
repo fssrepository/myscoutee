@@ -110,6 +110,8 @@ describe('OperatorPageComponent', () => {
 
     registryBusyAction.set('load');
     expect(componentView.loading()).toBe(false);
+    expect(componentView.actionItems().find(item => item.id === 'registration')?.progress)
+      .toBeUndefined();
 
     activePopup.set(null);
     expect(componentView.loading()).toBe(false);

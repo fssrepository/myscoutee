@@ -84,7 +84,6 @@ export class OperatorPageComponent implements OnInit {
   private readonly rowConverter = new OperatorLeaderboardSingleRowConverter();
 
   protected readonly status = this.registry.status;
-  protected readonly busyAction = this.registry.busyAction;
   protected readonly registrationPopupComponent = this.registrationPopupComponentRef.asReadonly();
   protected readonly actionPopupComponent = this.actionPopupComponentRef.asReadonly();
   protected readonly activePopup = this.operatorMenu.activePopup;
