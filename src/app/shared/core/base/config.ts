@@ -221,6 +221,11 @@ export const ROUTE_CONFIG: RouteConfig = {
       demoDelayMs: 1500
     },
     {
+      routePrefix: '/operator/registry',
+      demoDelayMs: 650,
+      requestTimeoutMs: 30000
+    },
+    {
       routePrefix: '/game-cards/query',
       demoDelayMs: 1500
     },

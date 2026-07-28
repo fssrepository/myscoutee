@@ -7,6 +7,7 @@ export { SeedEventsBuilder } from './events-seed.builder';
 export { SeedHelpCenterContentBuilder } from './help-center-content-seed.builder';
 export { SeedIdeaPostsBuilder } from './idea-posts-seed.builder';
 export { SeedNotificationsBuilder } from './notification-seed.builder';
+export { SeedOperatorRegistryBuilder } from './operator-registry-seed.builder';
 export { SeedPricingBuilder } from './pricing-seed.builder';
 export { SeedProfileExperienceBuilder } from './profile-experience-seed.builder';
 export { SeedUserImpressionsBuilder } from './user-impressions-seed.builder';

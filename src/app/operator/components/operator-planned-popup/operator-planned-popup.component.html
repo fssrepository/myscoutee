@@ -1,0 +1,15 @@
+@if (panel(); as activePanel) {
+  <app-popup [model]="popupModel(activePanel)" [zIndex]="2500">
+    <section class="operator-planned-popup">
+      <span><mat-icon>{{ activePanel.icon }}</mat-icon></span>
+      <p class="operator-planned-kicker">Planned operator workspace</p>
+      <h2>{{ activePanel.title }}</h2>
+      <p>{{ activePanel.description }}</p>
+      <aside>
+        <mat-icon>info</mat-icon>
+        <span>The current milestone exposes only the functional Registry & node flow.</span>
+      </aside>
+    </section>
+  </app-popup>
+}
+

@@ -12,6 +12,7 @@ import { Injectable, inject } from '@angular/core';
 import { LocalMemoryDb } from '../../../common/app.db';
 import { ACTIVITY_MEMBERS_TABLE_NAME, ACTIVITY_RESOURCES_TABLE_NAME } from '../../source/entity/activity.entity';
 import { ASSETS_TABLE_NAME, type AssetRecord } from '../../source/entity/asset.entity';
+import { LocalOperatorRegistryRepository } from '../../source/repositories/operator-registry.repository';
 
 
 
@@ -34,9 +35,13 @@ import { SeedNotificationsRepository } from '../repositories/notifications-seed.
 import { SeedProfileExperiencesRepository } from '../repositories/profile-experiences-seed.repository';
 import { SeedUsersRatingsRepository } from '../repositories/users-ratings-seed.repository';
 import { SeedUsersRepository } from '../repositories/users-seed.repository';
+import {
+  SeedOperatorRegistryBuilder,
+  type OperatorBootstrapSeedMemory
+} from '../builders/operator-registry-seed.builder';
 import { SeedBootstrapRegistryService } from './bootstrap-registry.service';
 
-export type SeedDemoBootstrapMode = 'member' | 'admin' | 'union';
+export type SeedDemoBootstrapMode = 'member' | 'operator' | 'admin' | 'union';
 
 @Injectable({
   providedIn: 'root'
@@ -57,11 +62,15 @@ export class SeedDemoBootstrapService {
   private readonly activityResourcesSeed = inject(SeedActivityResourcesRepository);
   private readonly profileExperiencesSeed = inject(SeedProfileExperiencesRepository);
   private readonly contactsSeed = inject(SeedContactsRepository);
+  private readonly operatorRegistryRepository = inject(LocalOperatorRegistryRepository);
 
   private selectorPromise: Promise<void> | null = null;
   private selectorReady = false;
   private adminSelectorPromise: Promise<void> | null = null;
   private adminSelectorReady = false;
+  private operatorSelectorPromise: Promise<void> | null = null;
+  private operatorSelectorReady = false;
+  private operatorSeedPromise: Promise<void> | null = null;
   private unionSelectorPromise: Promise<void> | null = null;
   private unionSelectorReady = false;
   private adminWorkspacePromise: Promise<void> | null = null;
@@ -86,6 +95,10 @@ export class SeedDemoBootstrapService {
     }
     if (mode === 'admin') {
       await this.ensureAdminSelectorReady(onProgress);
+      return;
+    }
+    if (mode === 'operator') {
+      await this.ensureOperatorSelectorReady(onProgress);
       return;
     }
 
@@ -130,6 +143,11 @@ export class SeedDemoBootstrapService {
 
     if (mode === 'admin') {
       await this.ensureAdminWorkspaceReady(normalizedUserId, onProgress);
+      return;
+    }
+    if (mode === 'operator') {
+      await this.ensureOperatorSelectorReady(onProgress);
+      this.emitSessionReady(onProgress, normalizedUserId);
       return;
     }
 
@@ -195,7 +213,7 @@ export class SeedDemoBootstrapService {
     await this.runBootstrapStep('indexedDb');
 
     this.selectorReady = true;
-    if (this.adminSelectorReady) {
+    if (this.adminSelectorReady && this.operatorSelectorReady) {
       this.unionSelectorReady = true;
     }
     this.emitProgress(bootstrapProcessStep('ready'));
@@ -245,7 +263,48 @@ export class SeedDemoBootstrapService {
 
     this.selectorReady = true;
     this.adminSelectorReady = true;
-    this.unionSelectorReady = true;
+    this.unionSelectorReady = this.operatorSelectorReady;
+    this.emitProgress(bootstrapProcessStep('ready'));
+  }
+
+  private async ensureOperatorSelectorReady(onProgress?: BootstrapProcessListener): Promise<void> {
+    if (onProgress) {
+      this.listeners.add(onProgress);
+      onProgress(this.lastProcessState);
+    }
+
+    if (this.operatorSelectorReady) {
+      this.emitProgress(bootstrapProcessStep('ready'));
+      if (onProgress) {
+        this.listeners.delete(onProgress);
+      }
+      return;
+    }
+
+    if (!this.operatorSelectorPromise) {
+      this.operatorSelectorPromise = this.runOperatorSelectorBootstrap().finally(() => {
+        this.operatorSelectorPromise = null;
+      });
+    }
+
+    try {
+      await this.operatorSelectorPromise;
+    } finally {
+      if (onProgress) {
+        this.listeners.delete(onProgress);
+      }
+    }
+  }
+
+  private async runOperatorSelectorBootstrap(): Promise<void> {
+    if (this.operatorSelectorReady) {
+      this.emitProgress(bootstrapProcessStep('ready'));
+      return;
+    }
+
+    await this.runBootstrapStep('selector');
+    await this.ensureDemoOperatorSeedReady();
+
     this.emitProgress(bootstrapProcessStep('ready'));
   }
 
@@ -289,10 +348,11 @@ export class SeedDemoBootstrapService {
     await this.runBootstrapStep('selector');
     await this.ensureCommonDemoCollectionsReady();
     await this.seedDemoAdminUsers();
-    await this.runBootstrapStep('indexedDb');
+    await this.ensureDemoOperatorSeedReady();
 
     this.selectorReady = true;
     this.adminSelectorReady = true;
+    this.operatorSelectorReady = true;
     this.unionSelectorReady = true;
     this.emitProgress(bootstrapProcessStep('ready'));
   }
@@ -350,6 +410,49 @@ export class SeedDemoBootstrapService {
     await this.runBootstrapStep('adminUsers', async () => {
       await this.adminSeed.seedDemoAdminUsers();
       await this.flushBootstrapTables([USERS_TABLE_NAME]);
+    });
+  }
+
+  private async ensureDemoOperatorSeedReady(): Promise<void> {
+    if (this.operatorSelectorReady) {
+      return;
+    }
+    if (!this.operatorSeedPromise) {
+      this.operatorSeedPromise = this.seedDemoOperatorTransaction()
+        .then(() => {
+          this.operatorSelectorReady = true;
+          if (this.selectorReady && this.adminSelectorReady) {
+            this.unionSelectorReady = true;
+          }
+        })
+        .finally(() => {
+          this.operatorSeedPromise = null;
+        });
+    }
+    await this.operatorSeedPromise;
+  }
+
+  private async seedDemoOperatorTransaction(): Promise<void> {
+    await this.operatorRegistryRepository.whenReady();
+    const memory: OperatorBootstrapSeedMemory = {
+      appState: this.memoryDb.read(),
+      registryRecord: await this.operatorRegistryRepository.read()
+    };
+    const seeded = SeedOperatorRegistryBuilder.buildBootstrapMemory(memory);
+
+    await this.runBootstrapStep('users', async () => {
+      if (seeded.usersChanged) {
+        this.memoryDb.write(() => seeded.appState);
+        await this.memoryDb.writeIndexedDbTableEntry(
+          USERS_TABLE_NAME,
+          seeded.appState[USERS_TABLE_NAME]
+        );
+      }
+    });
+    await this.runBootstrapStep('indexedDb', async () => {
+      if (seeded.registryChanged) {
+        await this.operatorRegistryRepository.write(seeded.registryRecord);
+      }
     });
   }
 

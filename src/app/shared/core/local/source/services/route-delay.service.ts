@@ -13,6 +13,14 @@ export abstract class LocalRouteDelayService {
     await this.routeDelayService.waitForRouteDelay(route, signal, abortMessage);
   }
 
+  protected async waitForArtificialLocalRouteDelay(
+    route: string,
+    signal?: AbortSignal,
+    abortMessage = 'Request aborted.'
+  ): Promise<void> {
+    await this.routeDelayService.waitForRouteDelay(route, signal, abortMessage, 0, true);
+  }
+
   protected waitForDelay(
     delayMs: number,
     signal?: AbortSignal,

@@ -78,7 +78,14 @@
             {{ navigatorOfflineNote() }}
           </div>
         }
-        @if (isAdminMode()) {
+        @if (isOperatorMode()) {
+          <app-menu
+            kind="inline"
+            layout="grid"
+            [model]="operatorNavigatorMenuModel()"
+            (itemSelect)="onOperatorNavigatorMenuSelect($event)"
+          ></app-menu>
+        } @else if (isAdminMode()) {
           <app-menu
             kind="inline"
             layout="grid"

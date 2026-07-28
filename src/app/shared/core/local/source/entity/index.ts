@@ -5,6 +5,7 @@ export * from './content.entity';
 export * from './country-partition.entity';
 export * from './event.entity';
 export * from './notification.entity';
+export * from './operator.entity';
 export * from './profile.entity';
 export * from './rate.entity';
 export * from './sharing.entity';

@@ -10,7 +10,12 @@ import { TestBed } from '@angular/core/testing';
 import { vi } from 'vitest';
 
 import { LocalMemoryDb } from '../../../common/app.db';
-import { appMemoryDbStorageKey, demoActiveUserStorageKey, scopedSessionStorageKey } from '../../../common/storage-scope';
+import {
+  APP_INDEXED_DB_KEYS,
+  appMemoryDbStorageKey,
+  demoActiveUserStorageKey,
+  scopedSessionStorageKey
+} from '../../../common/storage-scope';
 import type { IdeaPostDto } from '../../../contracts/content.interface';
 import type { ActivityEventRecord } from '../../../contracts/activity.interface';
 import { ACTIVITY_MEMBERS_TABLE_NAME, ACTIVITY_RESOURCES_TABLE_NAME } from '../../source/entity/activity.entity';
@@ -18,11 +23,19 @@ import { ASSETS_TABLE_NAME } from '../../source/entity/asset.entity';
 
 
 
-
-
-
-
-import { SeedDemoBootstrapService, SeedAdminAffinityGraphRepository, SeedEventsRepository, SeedStaticContentService, SeedUsersRatingsRepository, SeedUsersRepository } from '..';
+import {
+  SeedAdminAffinityGraphRepository,
+  SeedAdminBootstrapRepository,
+  SeedDemoBootstrapService,
+  SeedEventsRepository,
+  SeedStaticContentService,
+  SeedUsersRatingsRepository,
+  SeedUsersRepository
+} from '..';
+import { SeedOperatorRegistryBuilder } from '../builders/operator-registry-seed.builder';
+import { LocalOperatorRegistryMapper } from '../../source/mappers/operator-registry.mapper';
+import { LocalOperatorRegistryRepository } from '../../source/repositories/operator-registry.repository';
+import { LocalOperatorRegistryService } from '../../source/services/operator-registry.service';
 import { LocalEventsRepository } from '../../source/repositories/events.repository';
 import { LocalLandingContentService } from '../../source/services/landing-content.service';
 
@@ -121,9 +134,10 @@ describe('Demo bootstrap seeding', () => {
 
     await bootstrap.ensureDemoSelectorReady('admin');
 
-    const state = memoryDb.read();
+    const state = memoryDb.tables();
     expect(state[USERS_TABLE_NAME].ids).toContain('u1');
     expect(state[USERS_TABLE_NAME].ids).toContain('admin-demo-ava');
+    expect(state[USERS_TABLE_NAME].ids).not.toContain('operator-demo-dev');
     expect(state[USERS_TABLE_NAME].byId['u1']?.admin).not.toBe(true);
     expect(state[USERS_TABLE_NAME].byId['admin-demo-ava']?.admin).toBe(true);
     expect(state[CHATS_TABLE_NAME].ids).toContain('u1:c1');
@@ -133,6 +147,106 @@ describe('Demo bootstrap seeding', () => {
     expect(state[ACTIVITY_RESOURCES_TABLE_NAME].ids.length).toBeGreaterThan(0);
     expect(state[HELP_CENTER_TABLE_NAME].revisionIds.length).toBe(0);
     expect(state[IDEA_POSTS_TABLE_NAME].ids.length).toBe(0);
+  });
+
+  it('hydrates the operator seed once and flushes each changed step sequentially', async () => {
+    const bootstrap = TestBed.inject(SeedDemoBootstrapService);
+    const runtimeRepository = TestBed.inject(LocalOperatorRegistryRepository);
+    const adminSeed = TestBed.inject(SeedAdminBootstrapRepository);
+    const usersSeed = TestBed.inject(SeedUsersRepository);
+    const whenReadySpy = vi.spyOn(memoryDb, 'whenReady');
+    const memoryReadSpy = vi.spyOn(memoryDb, 'read');
+    const memoryWriteSpy = vi.spyOn(memoryDb, 'write');
+    const registryReadSpy = vi.spyOn(memoryDb, 'readIndexedDbTableEntry');
+    const tableWriteSpy = vi.spyOn(memoryDb, 'writeIndexedDbTableEntry');
+    const broadFlushSpy = vi.spyOn(memoryDb, 'flushToIndexedDb');
+    const bootstrapBuilderSpy = vi.spyOn(SeedOperatorRegistryBuilder, 'buildBootstrapMemory');
+    const seedMapperSpy = vi.spyOn(LocalOperatorRegistryMapper, 'toSeedRecord');
+    const adminSeedSpy = vi.spyOn(adminSeed, 'seedDemoAdminUsers');
+    const memberSeedSpy = vi.spyOn(usersSeed, 'seedDefaults');
+    const runtimeRepositoryReadSpy = vi.spyOn(LocalOperatorRegistryRepository.prototype, 'read');
+    const runtimeRepositoryWriteSpy = vi.spyOn(LocalOperatorRegistryRepository.prototype, 'write');
+    const runtimeServiceLoadSpy = vi.spyOn(LocalOperatorRegistryService.prototype, 'loadStatus');
+
+    await bootstrap.ensureDemoSelectorReady('operator');
+    await bootstrap.ensureDemoSelectorReady('operator');
+    await runtimeRepository.read();
+    await runtimeRepository.read();
+
+    const state = memoryDb.tables();
+    const operator = state[USERS_TABLE_NAME].byId['operator-demo-dev'];
+    const registryWrites = tableWriteSpy.mock.calls.filter(
+      ([key]: [string, unknown]) => key === APP_INDEXED_DB_KEYS.operatorRegistry
+    );
+    const userWrites = tableWriteSpy.mock.calls.filter(
+      ([key]: [string, unknown]) => key === USERS_TABLE_NAME
+    );
+
+    expect(operator?.operator).toBe(true);
+    expect(operator?.admin).not.toBe(true);
+    expect(operator?.hostTier).toBe('Operator');
+    expect(state[USERS_TABLE_NAME].ids).toEqual(['operator-demo-dev']);
+    expect(state[EVENTS_TABLE_NAME].ids).toEqual([]);
+    expect(state[CHATS_TABLE_NAME].ids).toEqual([]);
+
+    expect(whenReadySpy).toHaveBeenCalledTimes(1);
+    expect(memoryReadSpy).toHaveBeenCalledTimes(1);
+    expect(memoryWriteSpy).toHaveBeenCalledTimes(1);
+    expect(registryReadSpy).toHaveBeenCalledTimes(1);
+    expect(registryReadSpy).toHaveBeenCalledWith(APP_INDEXED_DB_KEYS.operatorRegistry);
+    expect(registryWrites).toHaveLength(1);
+    expect(userWrites).toHaveLength(1);
+    expect(broadFlushSpy).not.toHaveBeenCalled();
+
+    expect(bootstrapBuilderSpy).toHaveBeenCalledTimes(1);
+    expect(seedMapperSpy).toHaveBeenCalledTimes(1);
+    expect(seedMapperSpy.mock.calls[0]?.[0]).toBe(bootstrapBuilderSpy.mock.calls[0]?.[0]);
+    expect(bootstrapBuilderSpy.mock.invocationCallOrder[0]!).toBeLessThan(
+      memoryWriteSpy.mock.invocationCallOrder[0]!
+    );
+    expect(bootstrapBuilderSpy.mock.invocationCallOrder[0]!).toBeLessThan(
+      tableWriteSpy.mock.invocationCallOrder[0]!
+    );
+    expect(userWrites[0] && registryWrites[0]).toBeTruthy();
+    expect(
+      tableWriteSpy.mock.invocationCallOrder[
+        tableWriteSpy.mock.calls.findIndex(([key]) => key === USERS_TABLE_NAME)
+      ]!
+    ).toBeLessThan(
+      tableWriteSpy.mock.invocationCallOrder[
+        tableWriteSpy.mock.calls.findIndex(
+          ([key]) => key === APP_INDEXED_DB_KEYS.operatorRegistry
+        )
+      ]!
+    );
+
+    expect(adminSeedSpy).not.toHaveBeenCalled();
+    expect(memberSeedSpy).not.toHaveBeenCalled();
+    expect(runtimeRepositoryReadSpy).toHaveBeenCalledTimes(3);
+    expect(runtimeRepositoryWriteSpy).toHaveBeenCalledTimes(1);
+    expect(runtimeServiceLoadSpy).not.toHaveBeenCalled();
+
+    const registryRecord = registryWrites[0]?.[1] as {
+      status?: { lifecycle?: string; simulation?: boolean };
+    };
+    expect(registryRecord.status?.lifecycle).toBe('UNCONFIGURED');
+    expect(registryRecord.status?.simulation).toBe(true);
+  });
+
+  it('includes the operator user and registry sample in the union selector bootstrap', async () => {
+    const bootstrap = TestBed.inject(SeedDemoBootstrapService);
+    const tableWriteSpy = vi.spyOn(memoryDb, 'writeIndexedDbTableEntry');
+
+    await bootstrap.ensureDemoSelectorReady('union');
+
+    const state = memoryDb.read();
+    expect(state[USERS_TABLE_NAME].ids).toContain('u1');
+    expect(state[USERS_TABLE_NAME].ids).toContain('admin-demo-ava');
+    expect(state[USERS_TABLE_NAME].ids).toContain('operator-demo-dev');
+    expect(state[USERS_TABLE_NAME].byId['operator-demo-dev']?.operator).toBe(true);
+    expect(tableWriteSpy.mock.calls.filter(
+      ([key]: [string, unknown]) => key === APP_INDEXED_DB_KEYS.operatorRegistry
+    )).toHaveLength(1);
   });
 
   it('adds admin selector users after member common collections without reseeding common tables', async () => {

@@ -29,6 +29,9 @@ import {
 import {
   APP_STORAGE_KEYS
 } from '../../../shared/core/common/storage-scope';
+import {
+  hasOperatorRole
+} from '../../../shared/core/common/user-role';
 import type { HelpCenterRevisionDto, HelpCenterSectionDto } from '../../../shared/core/contracts/content.interface';
 import type {
   EntryConsentAuditRecordDto,
@@ -511,7 +514,7 @@ export class EntryPageComponent implements OnInit, OnDestroy {
   private openDemoUserSelectorPopup(): void {
     this.demoBootstrapSelectorStore.openDemoBootstrapSelector({
       mode: 'member',
-      selectableModes: ['member', 'admin'],
+      selectableModes: ['member', 'operator', 'admin'],
       onSelect: (userId, mode) => new Promise<boolean>(resolve => {
         this.ngZone.run(() => {
           void this.onDemoUserSelected({
@@ -541,6 +544,10 @@ export class EntryPageComponent implements OnInit, OnDestroy {
     }
     if (selection.mode === 'admin') {
       await this.onDemoAdminSelected(selection, normalizedUserId);
+      return;
+    }
+    if (selection.mode === 'operator') {
+      await this.onDemoOperatorSelected(selection, normalizedUserId);
       return;
     }
     const selectedUser = this.usersService.peekCachedUserById(normalizedUserId);
@@ -597,6 +604,26 @@ export class EntryPageComponent implements OnInit, OnDestroy {
     }
     try {
       const navigated = await this.router.navigateByUrl('/admin');
+      if (!navigated) {
+        selection.fail();
+        return;
+      }
+      selection.complete();
+    } catch {
+      selection.fail();
+    }
+  }
+
+  private async onDemoOperatorSelected(
+    selection: EntryDemoUserSelectionEvent,
+    operatorUserId: string
+  ): Promise<void> {
+    if (!this.sessionService.startDemoSession(operatorUserId)) {
+      selection.fail();
+      return;
+    }
+    try {
+      const navigated = await this.router.navigateByUrl('/operator');
       if (!navigated) {
         selection.fail();
         return;
@@ -728,6 +755,11 @@ export class EntryPageComponent implements OnInit, OnDestroy {
       await this.router.navigateByUrl('/admin');
       return;
     }
+    if (this.isOperatorUser(user)) {
+      this.closeOnboardingGate();
+      await this.router.navigateByUrl('/operator');
+      return;
+    }
     if (adminShellRedirect) {
       this.closeOnboardingGate();
       await this.router.navigateByUrl('/game');
@@ -751,7 +783,13 @@ export class EntryPageComponent implements OnInit, OnDestroy {
   }
 
   private requiresProfileOnboarding(user: UserDto | null | undefined): boolean {
-    if (!user || this.isAdminUser(user) || user.profileStatus === 'blocked' || user.profileStatus === 'deleted') {
+    if (
+      !user
+      || this.isAdminUser(user)
+      || this.isOperatorUser(user)
+      || user.profileStatus === 'blocked'
+      || user.profileStatus === 'deleted'
+    ) {
       return false;
     }
     return user.profileStatus === 'onboarding'
@@ -760,6 +798,10 @@ export class EntryPageComponent implements OnInit, OnDestroy {
 
   private isAdminUser(user: UserDto | null | undefined): boolean {
     return user?.admin === true || `${user?.hostTier ?? ''}`.trim().toLowerCase() === 'admin';
+  }
+
+  private isOperatorUser(user: UserDto | null | undefined): boolean {
+    return hasOperatorRole(user);
   }
 
   private isAdminShellRedirect(redirectUrl: string): boolean {

@@ -6,7 +6,7 @@ import {
 
 import type { UserSelectorListItemDto } from '../../../core/contracts/user.interface';
 
-export type DemoBootstrapSelectorMode = 'member' | 'admin';
+export type DemoBootstrapSelectorMode = 'member' | 'operator' | 'admin';
 
 export interface DemoBootstrapSelectorState {
   updatedMs: number;
@@ -43,7 +43,7 @@ export class DemoBootstrapSelectorStore {
     onClose?: () => void;
   }): void {
     void this.ensureDemoBootstrapSelectorLoaded();
-    const mode = payload.mode === 'admin' ? 'admin' : 'member';
+    const mode = this.normalizeMode(payload.mode);
     const selectableModes = this.normalizeSelectableModes(payload.selectableModes, mode);
     this.demoBootstrapSelectorRef.set({
       updatedMs: Date.now(),
@@ -88,11 +88,15 @@ export class DemoBootstrapSelectorStore {
     fallbackMode: DemoBootstrapSelectorMode
   ): readonly DemoBootstrapSelectorMode[] {
     const modes = (selectableModes ?? [fallbackMode])
-      .map(mode => mode === 'admin' ? 'admin' : 'member');
+      .map(mode => this.normalizeMode(mode));
     const uniqueModes = [...new Set(modes)];
     return uniqueModes.includes(fallbackMode)
       ? uniqueModes
       : [fallbackMode, ...uniqueModes];
+  }
+
+  private normalizeMode(mode: DemoBootstrapSelectorMode): DemoBootstrapSelectorMode {
+    return mode === 'admin' || mode === 'operator' ? mode : 'member';
   }
 
   async ensureDemoBootstrapSelectorLoaded(): Promise<void> {

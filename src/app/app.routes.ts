@@ -3,6 +3,7 @@ import { CanActivateFn, Router, Routes } from '@angular/router';
 
 import { AppUtils } from './shared/app-utils';
 import { CURRENT_PROFILE_FORM_VERSION } from './shared/core/common/constants';
+import { hasOperatorRole } from './shared/core/common/user-role';
 import { SessionService } from './shared/core/base/services/session.service';
 import type { UserDto } from './shared/core/contracts/user.interface';
 
@@ -17,9 +18,14 @@ const restrictedAreaGuard: CanActivateFn = async (_route, state) => {
     if (session.kind === 'firebase') {
       const { UsersService } = await import('./shared/core/base/services/users.service');
       const usersService = injector.get(UsersService);
-      const user = await usersService.loadUserById(undefined, 8000).catch(() => null);
+      const user = await usersService
+        .loadUserById(undefined, 8000)
+        .catch(() => null);
       if (isAdminUser(user)) {
         return router.createUrlTree(['/admin']);
+      }
+      if (isOperatorUser(user)) {
+        return router.createUrlTree(['/operator']);
       }
       if (requiresProfileOnboarding(user)) {
         return router.createUrlTree(['/entry'], {
@@ -35,6 +41,32 @@ const restrictedAreaGuard: CanActivateFn = async (_route, state) => {
   return router.createUrlTree(['/entry'], {
     queryParams: state.url && state.url !== '/' ? { redirect: state.url } : undefined
   });
+};
+
+const operatorAreaGuard: CanActivateFn = async (_route, state) => {
+  const injector = inject(Injector);
+  const sessionService = inject(SessionService);
+  const router = inject(Router);
+  const session = await sessionService.ensureSession();
+  if (!session) {
+    return entryRedirect(router, state.url);
+  }
+
+  const { UsersService } = await import('./shared/core/base/services/users.service');
+  const usersService = injector.get(UsersService);
+  const user = await usersService
+    .loadUserById(session.kind === 'demo' ? session.userId : undefined)
+    .catch(() => null);
+  if (isOperatorUser(user)) {
+    return true;
+  }
+  if (isAdminUser(user)) {
+    return router.createUrlTree(['/admin']);
+  }
+  if (user) {
+    return router.createUrlTree(['/game']);
+  }
+  return entryRedirect(router, state.url);
 };
 
 const adminAreaGuard: CanActivateFn = async (_route, state) => {
@@ -73,7 +105,13 @@ function entryRedirect(router: Router, redirectUrl: string) {
 }
 
 function requiresProfileOnboarding(user: UserDto | null | undefined): boolean {
-  if (!user || isAdminUser(user) || user.profileStatus === 'blocked' || user.profileStatus === 'deleted') {
+  if (
+    !user
+    || isAdminUser(user)
+    || isOperatorUser(user)
+    || user.profileStatus === 'blocked'
+    || user.profileStatus === 'deleted'
+  ) {
     return false;
   }
   return user.profileStatus === 'onboarding'
@@ -82,6 +120,10 @@ function requiresProfileOnboarding(user: UserDto | null | undefined): boolean {
 
 function isAdminUser(user: UserDto | null | undefined): boolean {
   return user?.admin === true || `${user?.hostTier ?? ''}`.trim().toLowerCase() === 'admin';
+}
+
+function isOperatorUser(user: UserDto | null | undefined): boolean {
+  return hasOperatorRole(user);
 }
 
 export const routes: Routes = [
@@ -112,6 +154,12 @@ export const routes: Routes = [
     path: 'admin',
     canActivate: [adminAreaGuard],
     loadChildren: () => import('./admin/admin.module').then(m => m.AdminModule)
+  },
+  {
+    path: 'operator',
+    canActivate: [operatorAreaGuard],
+    loadComponent: () => import('./operator/components/operator-registry-page/operator-registry-page.component')
+      .then(m => m.OperatorRegistryPageComponent)
   },
   {
     path: '',

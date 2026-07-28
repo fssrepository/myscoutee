@@ -22,6 +22,7 @@ export { HttpIdeaPostsService } from './services/idea-posts.service';
 export { HttpLandingContentService } from './services/landing-content.service';
 export { HttpMediaService } from './services/media.service';
 export { HttpNotificationsService } from './services/notifications.service';
+export { HttpOperatorRegistryService } from './services/operator-registry.service';
 export { HttpContactsService } from './services/contacts.service';
 export { HttpRatesService } from './services/rates.service';
 export { HttpUserExperiencesService } from './services/user-experiences.service';

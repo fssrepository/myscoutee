@@ -211,7 +211,7 @@ export interface UserSelectorListItemDto {
   deletedAtIso?: string | null;
 }
 
-export type UserSelectorRole = 'member' | 'admin';
+export type UserSelectorRole = 'member' | 'operator' | 'admin';
 
 export class UserDto {
   id = '';
@@ -242,6 +242,7 @@ export class UserDto {
   previousProfileStatus?: AppConstants.ProfileStatus | null;
   deletedAtIso?: string | null;
   admin?: boolean;
+  operator?: boolean;
   notificationPreferences?: UserNotificationPreferencesDto;
   activities: {
     game: number;

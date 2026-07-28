@@ -47,6 +47,7 @@ export { LocalHelpCenterRepository } from './source/repositories/help-center.rep
 export { LocalIdeaPostsRepository } from './source/repositories/idea-posts.repository';
 export { LocalMediaRepository } from './source/repositories/media.repository';
 export { LocalNotificationsRepository } from './source/repositories/notifications.repository';
+export { LocalOperatorRegistryRepository } from './source/repositories/operator-registry.repository';
 export { LocalContactsRepository } from './source/repositories/contacts.repository';
 export { LocalShareTokensRepository } from './source/repositories/share-tokens.repository';
 export { LocalProfileExperiencesRepository } from './source/repositories/profile-experiences.repository';
@@ -71,6 +72,7 @@ export { LocalIdeaPostsService } from './source/services/idea-posts.service';
 export { LocalLandingContentService } from './source/services/landing-content.service';
 export { LocalMediaService } from './source/services/media.service';
 export { LocalNotificationsService } from './source/services/notifications.service';
+export { LocalOperatorRegistryService } from './source/services/operator-registry.service';
 export { LocalContactsService } from './source/services/contacts.service';
 export { LocalUserExperiencesService } from './source/services/user-experiences.service';
 export { LocalRatesService } from './source/services/rates.service';

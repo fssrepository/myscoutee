@@ -103,6 +103,10 @@ import { MemberMenuStore } from '../../context/stores/member-menu.store';
 import { ActivityInvitePopupStore } from '../../context/stores/activity-invite-popup.store';
 import { AdminMenuStore } from '../../context/stores/admin-menu.store';
 import { AdminWorkspaceStore } from '../../context/stores/admin-workspace.store';
+import {
+  OperatorMenuStore,
+  type OperatorMenuKind
+} from '../../context/stores/operator-menu.store';
 import { NotificationCenterStore } from '../../context/stores/notification-center.store';
 import { PopupPresenceStore } from '../../context/stores/popup-presence.store';
 import { installSessionActiveUserSync } from './session-active-user-sync';
@@ -153,7 +157,18 @@ type NavigatorAdminMenuShortcutId =
   | 'adminMetrics'
   | 'adminGraph';
 
+type NavigatorOperatorMenuShortcutId =
+  | 'operatorRegistry'
+  | 'operatorBranding'
+  | 'operatorPayments'
+  | 'operatorFirebase'
+  | 'operatorLeaderboard'
+  | 'operatorConnections'
+  | 'operatorUpdates'
+  | 'operatorCommunity';
+
 type NavigatorSettingsMenuItemId =
+  | 'operator-workspace'
   | 'help'
   | 'feedback'
   | 'report-bugs'
@@ -201,6 +216,7 @@ export class SideMenuComponent implements OnDestroy {
   protected readonly activityInviteStore = inject(ActivityInvitePopupStore);
   private readonly adminMenuStore = inject(AdminMenuStore);
   private readonly adminWorkspaceStore = inject(AdminWorkspaceStore);
+  private readonly operatorMenuStore = inject(OperatorMenuStore);
   private readonly explanationGuide = inject(ExplanationGuideService);
   private readonly helpCenterService = inject(HelpCenterService);
   private readonly privacyPolicy = inject(PrivacyPolicyService);
@@ -442,17 +458,24 @@ export class SideMenuComponent implements OnDestroy {
     };
   });
   protected readonly settingsMenuItems = computed<readonly AppMenuItem<NavigatorHeaderActionMenuItemId>[]>(() => {
-    const items: AppMenuItem<NavigatorHeaderActionMenuItemId>[] = [
-      {
+    const items: AppMenuItem<NavigatorHeaderActionMenuItemId>[] = [];
+    if (this.isOperatorMode()) {
+      items.push({
+        id: 'operator-workspace',
+        label: 'Operator settings',
+        icon: 'settings_input_component',
+        ariaLabel: 'Open operator deployment settings'
+      });
+    }
+    items.push({
         id: 'help',
         label: 'Help',
         icon: 'help_outline',
         counter: this.helpCenterService.activeVersionLabel(),
         disabled: !this.helpCenterService.hasActiveRevision(),
         ariaLabel: 'Open help'
-      }
-    ];
-    if (!this.isAdminMode()) {
+      });
+    if (!this.isPrivilegedWorkspaceMode()) {
       items.push({
         id: 'feedback',
         label: 'Send Feedback',
@@ -485,7 +508,7 @@ export class SideMenuComponent implements OnDestroy {
         ariaLabel: 'Open terms'
       }
     );
-    if (!this.isAdminMode()) {
+    if (!this.isPrivilegedWorkspaceMode()) {
       items.push({
         id: 'delete-account',
         label: 'Delete account',
@@ -526,7 +549,7 @@ export class SideMenuComponent implements OnDestroy {
           : null
       }
     ];
-    if (!this.isAdminMode()) {
+    if (!this.isPrivilegedWorkspaceMode()) {
       items.push(
         {
           id: 'explanations',
@@ -548,7 +571,11 @@ export class SideMenuComponent implements OnDestroy {
       id: 'settings',
       label: 'Settings',
       icon: 'settings',
-      ariaLabel: this.isAdminMode() ? 'Open admin settings menu' : 'Open settings menu',
+      ariaLabel: this.isOperatorMode()
+        ? 'Open operator settings menu'
+        : this.isAdminMode()
+          ? 'Open admin settings menu'
+          : 'Open settings menu',
       items: this.settingsMenuItems()
     });
     return {
@@ -851,6 +878,92 @@ export class SideMenuComponent implements OnDestroy {
       ]
     };
   });
+  protected readonly operatorNavigatorMenuModel = computed<AppMenuModel<NavigatorOperatorMenuShortcutId>>(() => {
+    return {
+      nodes: [
+        {
+          id: 'operator-deployment',
+          label: 'Deployment',
+          icon: 'dns',
+          palette: 'violet',
+          items: [
+            {
+              id: 'operatorRegistry',
+              label: 'Registry',
+              description: 'Available now',
+              icon: 'verified_user',
+              palette: 'violet',
+              ariaLabel: 'Open registry and node settings'
+            },
+            {
+              id: 'operatorBranding',
+              label: 'Branding',
+              description: 'Planned',
+              icon: 'palette',
+              palette: 'pink',
+              ariaLabel: 'Open planned branding workspace'
+            },
+            {
+              id: 'operatorPayments',
+              label: 'Payments',
+              description: 'Planned',
+              icon: 'payments',
+              palette: 'green',
+              ariaLabel: 'Open planned payments workspace'
+            },
+            {
+              id: 'operatorFirebase',
+              label: 'Firebase',
+              description: 'Planned',
+              icon: 'notifications_active',
+              palette: 'orange',
+              ariaLabel: 'Open planned Firebase workspace'
+            }
+          ]
+        },
+        {
+          id: 'operator-network',
+          label: 'Network & ownership',
+          icon: 'hub',
+          palette: 'blue',
+          items: [
+            {
+              id: 'operatorLeaderboard',
+              label: 'Leaderboard',
+              description: 'Planned',
+              icon: 'leaderboard',
+              palette: 'gold',
+              ariaLabel: 'Open planned leaderboard workspace'
+            },
+            {
+              id: 'operatorConnections',
+              label: 'Connections',
+              description: 'Planned',
+              icon: 'hub',
+              palette: 'cyan',
+              ariaLabel: 'Open planned deployment connections workspace'
+            },
+            {
+              id: 'operatorUpdates',
+              label: 'Updates',
+              description: 'Planned',
+              icon: 'system_update_alt',
+              palette: 'teal',
+              ariaLabel: 'Open planned updates workspace'
+            },
+            {
+              id: 'operatorCommunity',
+              label: 'Community',
+              description: 'Planned',
+              icon: 'forum',
+              palette: 'purple',
+              ariaLabel: 'Open planned community workspace'
+            }
+          ]
+        }
+      ]
+    };
+  });
 
   constructor() {
     this.profileStore.registerBindings(this.profileBindings);
@@ -903,6 +1016,12 @@ export class SideMenuComponent implements OnDestroy {
         this.profileStore.closeContactsPopup();
         return;
       }
+      if (this.isOperatorMode()) {
+        this.stopUserRealtimeLongPoll();
+        this.profileStore.closeImpressionsPopup();
+        this.profileStore.closeContactsPopup();
+        return;
+      }
       if (this.isAdminWorkspaceRoute() || this.userProfileStore.activeUserIsAdmin()) {
         this.profileStore.closeImpressionsPopup();
         this.profileStore.closeContactsPopup();
@@ -917,7 +1036,13 @@ export class SideMenuComponent implements OnDestroy {
       const session = this.sessionService.session();
       const user = this.userProfileStore.activeUserProfile();
       const activeUserId = this.userProfileStore.activeUserId().trim();
-      if (!session || !user || !activeUserId || user.id.trim() !== activeUserId) {
+      if (
+        this.isOperatorMode()
+        || !session
+        || !user
+        || !activeUserId
+        || user.id.trim() !== activeUserId
+      ) {
         this.notificationCenterStore.reset();
         return;
       }
@@ -1245,6 +1370,11 @@ export class SideMenuComponent implements OnDestroy {
         return;
       case 'settings':
         return;
+      case 'operator-workspace':
+        this.operatorMenuStore.closePopup();
+        this.closeSideMenu();
+        void this.router.navigate(['/operator']);
+        return;
       case 'help':
       case 'feedback':
       case 'privacy':
@@ -1338,6 +1468,23 @@ export class SideMenuComponent implements OnDestroy {
     }
   }
 
+  protected onOperatorNavigatorMenuSelect(
+    event: AppMenuItemSelectEvent<NavigatorOperatorMenuShortcutId>
+  ): void {
+    event.sourceEvent.stopPropagation();
+    this.closeSideMenu();
+    if (event.id === 'operatorRegistry') {
+      this.operatorMenuStore.closePopup();
+      void this.router.navigate(['/operator']);
+      return;
+    }
+    const popupKind = this.operatorPopupKind(event.id);
+    if (popupKind) {
+      this.operatorMenuStore.open(popupKind);
+    }
+    void this.router.navigate(['/operator']);
+  }
+
   protected onShareProfile(event: Event): void {
     event.stopPropagation();
     const baseHref = document.querySelector('base')?.getAttribute('href') ?? '/';
@@ -1360,6 +1507,18 @@ export class SideMenuComponent implements OnDestroy {
 
   protected navigatorHeaderCardModel(user: NavigatorMenuUser): HeaderCardModel {
     const admin = this.isAdminMode();
+    if (this.isOperatorMode()) {
+      return {
+        ...ProfileHeaderCardConverter.convert(user, {
+          admin: true,
+          headline: 'Operator workspace',
+          showEdit: false
+        }),
+        badgeLabel: 'OPERATOR',
+        meta: 'Operator workspace',
+        metaIcon: 'settings_input_component'
+      };
+    }
     return ProfileHeaderCardConverter.convert(user, {
       admin,
       showEdit: true,
@@ -1372,6 +1531,13 @@ export class SideMenuComponent implements OnDestroy {
   }
 
   protected openNavigatorHeaderProfile(event: Event): void {
+    if (this.isOperatorMode()) {
+      event.stopPropagation();
+      this.operatorMenuStore.closePopup();
+      this.closeSideMenu();
+      void this.router.navigate(['/operator']);
+      return;
+    }
     if (this.isAdminMode()) {
       this.openAdminProfileShortcut(event);
       return;
@@ -1380,9 +1546,13 @@ export class SideMenuComponent implements OnDestroy {
   }
 
   protected navigatorOfflineNote(): string {
-    return this.isAdminMode()
-      ? 'Offline mode is active. Admin actions wait for the connection to return.'
-      : 'Offline mode is active. Tickets stay available, while the other menu actions wait for the connection to return.';
+    if (this.isOperatorMode()) {
+      return 'Offline mode is active. Registry operations wait for the connection to return.';
+    }
+    if (this.isAdminMode()) {
+      return 'Offline mode is active. Admin actions wait for the connection to return.';
+    }
+    return 'Offline mode is active. Tickets stay available, while the other menu actions wait for the connection to return.';
   }
 
   protected isBlockedUser(user: NavigatorMenuUser | UserDto | null = this.menuUser()): boolean {
@@ -1492,6 +1662,14 @@ export class SideMenuComponent implements OnDestroy {
 
   protected isAdminMode(): boolean {
     return this.currentRoutePathRef().startsWith('/admin');
+  }
+
+  protected isOperatorMode(): boolean {
+    return this.currentRoutePathRef().startsWith('/operator');
+  }
+
+  private isPrivilegedWorkspaceMode(): boolean {
+    return this.isAdminMode() || this.isOperatorMode();
   }
 
   protected openAdminReportsShortcut(event?: Event): void {
@@ -1920,6 +2098,27 @@ export class SideMenuComponent implements OnDestroy {
     return path !== '/' && !path.startsWith('/entry') && !path.startsWith('/admin');
   }
 
+  private operatorPopupKind(id: NavigatorOperatorMenuShortcutId): OperatorMenuKind | null {
+    switch (id) {
+      case 'operatorBranding':
+        return 'branding';
+      case 'operatorPayments':
+        return 'payments';
+      case 'operatorFirebase':
+        return 'firebase';
+      case 'operatorLeaderboard':
+        return 'leaderboard';
+      case 'operatorConnections':
+        return 'connections';
+      case 'operatorUpdates':
+        return 'updates';
+      case 'operatorCommunity':
+        return 'community';
+      case 'operatorRegistry':
+        return null;
+    }
+  }
+
   private async runUserRealtimeLongPollTick(userId: string): Promise<void> {
     if (!userId) {
       return;
@@ -2034,6 +2233,9 @@ export class SideMenuComponent implements OnDestroy {
   }
 
   private openSettingsPopup(popup: NavigatorSettingsMenuItemId): void {
+    if (popup === 'operator-workspace') {
+      return;
+    }
     if (popup === 'help' && !this.helpCenterService.hasActiveRevision()) {
       return;
     }

@@ -33,5 +33,6 @@ export { LocalAssetsMapper, LocalAssetTicketsMapper } from './asset.mapper';
 export { LocalChatMessageMapper } from './chat-message.mapper';
 export { LocalChatThreadMapper } from './chat-thread.mapper';
 export { LocalNotificationMapper } from './notification.mapper';
+export { LocalOperatorRegistryMapper } from './operator-registry.mapper';
 export { LocalUserFilterPreferencesMapper, LocalUserRatesMapper } from './rate.mapper';
 export { LocalUsersMapper } from './user.mapper';

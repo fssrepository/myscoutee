@@ -1,0 +1,535 @@
+<main class="operator-workspace">
+  <header class="operator-header">
+    <a class="operator-brand" aria-label="MyScoutee operator">
+      <img src="assets/logo/heart.webp" alt="" />
+      <span>yScoutee</span>
+    </a>
+    @if (status(); as registryStatus) {
+      <div class="operator-mode-badges">
+        <span class="operator-badge" [class.is-real]="registryStatus.mode === 'REAL'">
+          <mat-icon>{{ registryStatus.mode === 'REAL' ? 'verified' : 'science' }}</mat-icon>
+          {{ registryStatus.mode === 'REAL' ? 'Real operator' : 'Explore demo' }}
+        </span>
+        @if (registryStatus.simulation) {
+          <span class="operator-badge is-sample">
+            <mat-icon>data_object</mat-icon>
+            Sample
+          </span>
+        } @else if (registryStatus.mode === 'DEMO') {
+          <span class="operator-badge is-isolated">
+            <mat-icon>lan</mat-icon>
+            Isolated registry
+          </span>
+        }
+      </div>
+    }
+  </header>
+
+  <section class="operator-shell">
+    <nav class="operator-workspace-menu" aria-label="Operator workspace">
+      <div class="operator-workspace-menu-heading">
+        <span>Operator</span>
+        <small>Deployment settings</small>
+      </div>
+      <div class="operator-workspace-menu-items">
+        @for (panel of panels; track panel.id) {
+          <button
+            type="button"
+            matRipple
+            [class.is-active]="activePanelId() === panel.id"
+            [attr.aria-current]="activePanelId() === panel.id ? 'page' : null"
+            (click)="selectPanel(panel)"
+          >
+            <mat-icon>{{ panel.icon }}</mat-icon>
+            <span>
+              <strong>{{ panel.label }}</strong>
+              <small>{{ panel.available ? 'Available now' : 'Planned workspace' }}</small>
+            </span>
+          </button>
+        }
+      </div>
+    </nav>
+
+    <section class="operator-content">
+      @if (activePanelId() === 'registry') {
+        <header class="operator-content-heading">
+          <div>
+            <p>Deployment control plane</p>
+            <h1>Registry & node</h1>
+            <span>
+              Inspect a registry’s signed identity, explicitly approve it, then let the Java server
+              create and protect this deployment’s signing key.
+            </span>
+          </div>
+          <button
+            type="button"
+            class="operator-icon-button"
+            [disabled]="busy()"
+            aria-label="Refresh registry status"
+            matRipple
+            (click)="loadStatus()"
+          >
+            <mat-icon [class.is-spinning]="busyAction() === 'load'">refresh</mat-icon>
+          </button>
+        </header>
+
+        @if (status(); as registryStatus) {
+          @if (registryStatus.simulation) {
+            <aside class="operator-notice is-sample" role="note">
+              <mat-icon>info</mat-icon>
+              <div>
+                <strong>Sample data — no registry contacted</strong>
+                <span>
+                  This Explore workspace demonstrates the operator flow only. It does not register,
+                  claim, publish, or add weight to any real deployment.
+                </span>
+              </div>
+            </aside>
+          } @else if (registryStatus.mode === 'DEMO') {
+            <aside class="operator-notice is-demo" role="note">
+              <mat-icon>science</mat-icon>
+              <div>
+                <strong>Live isolated demo registry</strong>
+                <span>
+                  The same signed flow runs against the development registry and its separate demo
+                  state. Nothing here is part of the production registry or leaderboard.
+                </span>
+              </div>
+            </aside>
+          } @else {
+            <aside class="operator-notice is-real" role="note">
+              <mat-icon>lock</mat-icon>
+              <div>
+                <strong>Real operator mode</strong>
+                <span>
+                  The Java backend connects to the selected registry over HTTPS. Review the signed
+                  scope and key fingerprint before approval.
+                </span>
+              </div>
+            </aside>
+          }
+
+          <section class="operator-status-summary">
+            <article>
+              <span class="operator-status-icon" [attr.data-state]="registryStatus.lifecycle">
+                <mat-icon>{{ registryStatus.lifecycle === 'REGISTERED' ? 'check_circle' : 'dns' }}</mat-icon>
+              </span>
+              <div>
+                <small>Connection</small>
+                <strong>{{ lifecycleLabel(registryStatus.lifecycle) }}</strong>
+              </div>
+            </article>
+            <article>
+              <span class="operator-status-icon" [attr.data-state]="registryStatus.nodeIdentity.state">
+                <mat-icon>key</mat-icon>
+              </span>
+              <div>
+                <small>Node identity</small>
+                <strong>{{ registryStatus.nodeIdentity.state }}</strong>
+              </div>
+            </article>
+            <article>
+              <span class="operator-status-icon" [attr.data-state]="registryStatus.enrollment ? 'REGISTERED' : 'MISSING'">
+                <mat-icon>badge</mat-icon>
+              </span>
+              <div>
+                <small>Deployment</small>
+                <strong>{{ registryStatus.enrollment ? 'Code issued' : 'Not registered' }}</strong>
+              </div>
+            </article>
+            <article>
+              <span class="operator-status-icon" [attr.data-state]="registryStatus.enrollment?.installationTestBatchId ? 'REGISTERED' : 'MISSING'">
+                <mat-icon>receipt_long</mat-icon>
+              </span>
+              <div>
+                <small>Installation test</small>
+                <strong>{{ registryStatus.enrollment?.installationTestBatchId ? 'Receipt stored' : 'Waiting' }}</strong>
+              </div>
+            </article>
+          </section>
+
+          <section class="operator-progress-card" aria-label="Registration progress">
+            <div class="operator-section-heading">
+              <div>
+                <p>Signed workflow</p>
+                <h2>Registration progress</h2>
+              </div>
+              @if (busyAction(); as action) {
+                <span class="operator-working-pill">
+                  <mat-icon class="is-spinning">progress_activity</mat-icon>
+                  {{ action === 'inspect' ? 'Inspecting' : action === 'confirm' ? 'Registering' : action === 'retry' ? 'Retrying' : action === 'disconnect' ? 'Disabling' : 'Loading' }}
+                </span>
+              }
+            </div>
+            <ol class="operator-progress-list">
+              @for (step of progressSteps(); track step.id; let last = $last) {
+                <li [attr.data-state]="step.state">
+                  <span class="operator-step-marker">
+                    <mat-icon>{{ step.state === 'done' ? 'check' : step.state === 'error' ? 'priority_high' : step.icon }}</mat-icon>
+                  </span>
+                  <span class="operator-step-copy">
+                    <strong>{{ step.label }}</strong>
+                    <small>{{ step.detail }}</small>
+                  </span>
+                  @if (!last) {
+                    <span class="operator-step-line" aria-hidden="true"></span>
+                  }
+                </li>
+              }
+            </ol>
+          </section>
+
+          @if (registryStatus.enrollment; as enrollment) {
+            <section class="operator-detail-grid">
+              <article class="operator-detail-card is-deployment">
+                <div class="operator-detail-title">
+                  <span><mat-icon>badge</mat-icon></span>
+                  <div>
+                    <small>Deployment code</small>
+                    <h2>Registered node</h2>
+                  </div>
+                </div>
+                <code>{{ enrollment.deploymentCode }}</code>
+                <button
+                  type="button"
+                  class="operator-copy-button"
+                  matRipple
+                  (click)="copyValue(enrollment.deploymentCode, 'Deployment code')"
+                >
+                  <mat-icon>{{ copiedValue() === enrollment.deploymentCode ? 'check' : 'content_copy' }}</mat-icon>
+                  {{ copiedValue() === enrollment.deploymentCode ? 'Copied' : 'Copy code' }}
+                </button>
+                <p>
+                  This identifies only this deployment. Operator connection codes for grouping
+                  deployments are a separate Connections flow.
+                </p>
+              </article>
+
+              <article class="operator-detail-card is-receipt">
+                <div class="operator-detail-title">
+                  <span><mat-icon>receipt_long</mat-icon></span>
+                  <div>
+                    <small>Append-only receipt</small>
+                    <h2>Installation test</h2>
+                  </div>
+                </div>
+                <dl>
+                  <div>
+                    <dt>MAU count</dt>
+                    <dd>0</dd>
+                  </div>
+                  <div>
+                    <dt>Batch ID</dt>
+                    <dd><code>{{ enrollment.installationTestBatchId }}</code></dd>
+                  </div>
+                  <div>
+                    <dt>Ledger index</dt>
+                    <dd>{{ enrollment.installationTestLedgerIndex ?? '—' }}</dd>
+                  </div>
+                  <div>
+                    <dt>Accepted</dt>
+                    <dd>{{ formatDate(enrollment.installationTestAcceptedAt) }}</dd>
+                  </div>
+                </dl>
+              </article>
+            </section>
+          }
+
+          <section class="operator-config-card">
+            <div class="operator-section-heading">
+              <div>
+                <p>Operator-selected endpoint</p>
+                <h2>{{ registryStatus.selection ? 'Registry selection' : 'Choose a registry' }}</h2>
+              </div>
+              @if (registryStatus.selection) {
+                <span class="operator-verified-pill"><mat-icon>verified</mat-icon> Confirmed</span>
+              }
+            </div>
+
+            @if (registryStatus.enabled && registryStatus.lifecycle === 'REGISTERED') {
+              <p class="operator-locked-copy">
+                This selection is active. Disable outbound synchronization before choosing a
+                different registry; the existing identity and receipts remain preserved.
+              </p>
+            }
+
+            <form class="operator-registry-form" (ngSubmit)="inspectRegistry()">
+              <label>
+                <span>Registry server URL</span>
+                <input
+                  type="url"
+                  name="registryBaseUrl"
+                  autocomplete="url"
+                  placeholder="https://registry.example.com"
+                  [ngModel]="registryBaseUrl()"
+                  (ngModelChange)="registryBaseUrl.set($event)"
+                  [disabled]="busy() || (registryStatus.enabled && registryStatus.lifecycle === 'REGISTERED')"
+                  required
+                />
+                <small>HTTPS is mandatory for real operator connections.</small>
+              </label>
+              <label>
+                <span>Expected registry scope <em>optional</em></span>
+                <input
+                  type="text"
+                  name="expectedRegistryScope"
+                  autocomplete="off"
+                  placeholder="program:region-a"
+                  [ngModel]="expectedRegistryScope()"
+                  (ngModelChange)="expectedRegistryScope.set($event)"
+                  [disabled]="busy() || (registryStatus.enabled && registryStatus.lifecycle === 'REGISTERED')"
+                />
+                <small>When set, inspection fails if the signed scope differs.</small>
+              </label>
+              <button
+                type="submit"
+                class="operator-primary-button"
+                matRipple
+                [disabled]="!canInspect()"
+              >
+                <mat-icon>{{ busyAction() === 'inspect' ? 'progress_activity' : 'manage_search' }}</mat-icon>
+                {{ busyAction() === 'inspect' ? 'Inspecting identity…' : 'Inspect signed identity' }}
+              </button>
+            </form>
+
+            @if (inspection(); as inspected) {
+              <article class="operator-inspection-card">
+                <header>
+                  <span><mat-icon>{{ inspected.simulation ? 'data_object' : 'verified_user' }}</mat-icon></span>
+                  <div>
+                    <p>{{ inspected.simulation ? 'Sample identity' : 'Self-signature verified' }}</p>
+                    <h3>Confirm this registry explicitly</h3>
+                  </div>
+                </header>
+                <dl>
+                  <div>
+                    <dt>Endpoint</dt>
+                    <dd>{{ inspected.registryIdentity.identityEndpoint }}</dd>
+                  </div>
+                  <div>
+                    <dt>Protocol</dt>
+                    <dd>{{ inspected.registryIdentity.protocolVersion }}</dd>
+                  </div>
+                  <div>
+                    <dt>Scope</dt>
+                    <dd>{{ inspected.registryIdentity.registryScope }}</dd>
+                  </div>
+                  <div>
+                    <dt>Registry key ID</dt>
+                    <dd><code>{{ inspected.registryIdentity.registryKeyId }}</code></dd>
+                  </div>
+                  <div class="is-wide">
+                    <dt>Registry public-key fingerprint</dt>
+                    <dd><code>{{ inspected.registryIdentity.registryPublicKeyFingerprint }}</code></dd>
+                  </div>
+                  <div>
+                    <dt>Inspection expires</dt>
+                    <dd>{{ formatDate(inspected.expiresAt) }}</dd>
+                  </div>
+                </dl>
+                <label class="operator-confirm-check">
+                  <input
+                    type="checkbox"
+                    [checked]="confirmationAccepted()"
+                    [disabled]="busy()"
+                    (change)="toggleConfirmation($any($event.target).checked)"
+                  />
+                  <span>
+                    <strong>I verified the endpoint, scope and key fingerprint.</strong>
+                    <small>
+                      Confirmation asks the Java server to initialize the node identity and
+                      register. The private key never enters this browser.
+                    </small>
+                  </span>
+                </label>
+                <button
+                  type="button"
+                  class="operator-confirm-button"
+                  matRipple
+                  [disabled]="!canConfirm()"
+                  (click)="confirmRegistry()"
+                >
+                  <mat-icon>{{ busyAction() === 'confirm' ? 'progress_activity' : 'key' }}</mat-icon>
+                  {{ inspected.simulation ? 'Apply sample workflow' : 'Initialize node & register' }}
+                </button>
+              </article>
+            } @else if (registryStatus.selection; as selection) {
+              <article class="operator-selection-card">
+                <dl>
+                  <div>
+                    <dt>Registry endpoint</dt>
+                    <dd>{{ selection.registryIdentity.identityEndpoint }}</dd>
+                  </div>
+                  <div>
+                    <dt>Registry scope</dt>
+                    <dd>{{ selection.registryIdentity.registryScope }}</dd>
+                  </div>
+                  <div>
+                    <dt>Registry key ID</dt>
+                    <dd><code>{{ selection.registryIdentity.registryKeyId }}</code></dd>
+                  </div>
+                  <div class="is-wide">
+                    <dt>Registry public-key fingerprint</dt>
+                    <dd><code>{{ selection.registryIdentity.registryPublicKeyFingerprint }}</code></dd>
+                  </div>
+                  <div>
+                    <dt>Confirmed</dt>
+                    <dd>{{ formatDate(selection.confirmedAt) }}</dd>
+                  </div>
+                </dl>
+              </article>
+            }
+          </section>
+
+          <section class="operator-node-card">
+            <div class="operator-detail-title">
+              <span><mat-icon>enhanced_encryption</mat-icon></span>
+              <div>
+                <small>Local trust anchor</small>
+                <h2>Node identity</h2>
+              </div>
+            </div>
+            @if (registryStatus.nodeIdentity.publicKeyFingerprint; as nodeFingerprint) {
+              <div class="operator-node-fingerprint">
+                <span>Public-key fingerprint</span>
+                <code>{{ nodeFingerprint }}</code>
+                <button
+                  type="button"
+                  aria-label="Copy node fingerprint"
+                  matRipple
+                  (click)="copyValue(nodeFingerprint, 'Node fingerprint')"
+                >
+                  <mat-icon>{{ copiedValue() === nodeFingerprint ? 'check' : 'content_copy' }}</mat-icon>
+                </button>
+              </div>
+            } @else {
+              <p class="operator-empty-copy">
+                No node identity exists yet. It is created only after explicit registry
+                confirmation.
+              </p>
+            }
+            <p class="operator-security-copy">
+              <mat-icon>security</mat-icon>
+              Java generates and stores the Ed25519 private key in protected server storage.
+              Angular receives only the public fingerprint—never a private key, token, or browser secret.
+            </p>
+          </section>
+
+          @if (registryStatus.lastError; as registryError) {
+            <aside class="operator-error-card" role="alert">
+              <mat-icon>error_outline</mat-icon>
+              <div>
+                <strong>{{ registryError.code || 'Registry error' }}</strong>
+                <span>{{ registryError.message }}</span>
+                @if (registryError.at) {
+                  <small>{{ formatDate(registryError.at) }}</small>
+                }
+                @if (!registryError.retryable && registryStatus.selection) {
+                  <small>
+                    Automatic retry is paused. After repairing the server key or state, the
+                    operator can still run the explicit safe retry below.
+                  </small>
+                }
+              </div>
+            </aside>
+          }
+
+          @if (errorMessage()) {
+            <aside class="operator-error-card" role="alert">
+              <mat-icon>error_outline</mat-icon>
+              <div><span>{{ errorMessage() }}</span></div>
+            </aside>
+          }
+          @if (noticeMessage()) {
+            <aside class="operator-action-notice" role="status">
+              <mat-icon>info</mat-icon>
+              <span>{{ noticeMessage() }}</span>
+            </aside>
+          }
+
+          <section class="operator-actions-card">
+            <div>
+              <h2>Connection controls</h2>
+              <p>Retry is idempotent. Disconnect stops outbound synchronization without deleting identity, code, or receipts.</p>
+            </div>
+            <div class="operator-action-buttons">
+              <button
+                type="button"
+                class="operator-secondary-button"
+                matRipple
+                [disabled]="!canRetry()"
+                (click)="retryRegistration()"
+              >
+                <mat-icon>sync</mat-icon>
+                Safe retry
+              </button>
+              <button
+                type="button"
+                class="operator-danger-button"
+                matRipple
+                [disabled]="busy() || registryStatus.lifecycle === 'DISABLED'"
+                (click)="requestDisconnect()"
+              >
+                <mat-icon>link_off</mat-icon>
+                Disable connection
+              </button>
+            </div>
+          </section>
+
+          @if (disconnectConfirmationVisible()) {
+            <section class="operator-disconnect-confirm" role="alertdialog" aria-modal="true" aria-labelledby="disconnect-title">
+              <div>
+                <span class="operator-disconnect-icon"><mat-icon>link_off</mat-icon></span>
+                <h2 id="disconnect-title">Disable outbound registry connection?</h2>
+                <p>
+                  Automatic synchronization stops. The deployment identity, registration code,
+                  append-only receipts, and local audit state are kept.
+                </p>
+                <div>
+                  <button type="button" class="operator-secondary-button" (click)="cancelDisconnect()">Cancel</button>
+                  <button type="button" class="operator-danger-button" (click)="disconnectRegistry()">Disable now</button>
+                </div>
+              </div>
+            </section>
+          }
+        } @else if (busyAction() === 'load') {
+          <section class="operator-loading-state" aria-busy="true">
+            <mat-icon class="is-spinning">progress_activity</mat-icon>
+            <strong>Loading operator registry state…</strong>
+          </section>
+        } @else {
+          <section class="operator-loading-state is-error">
+            <mat-icon>cloud_off</mat-icon>
+            <strong>{{ errorMessage() || 'Operator registry state is unavailable.' }}</strong>
+            <button type="button" class="operator-secondary-button" (click)="loadStatus()">Try again</button>
+          </section>
+        }
+      } @else {
+        <header class="operator-content-heading">
+          <div>
+            <p>Operator workspace roadmap</p>
+            <h1>{{ activePanel().label }}</h1>
+            <span>{{ activePanel().description }}</span>
+          </div>
+          <span class="operator-planned-pill">Planned</span>
+        </header>
+        <section class="operator-future-panel">
+          <span><mat-icon>{{ activePanel().icon }}</mat-icon></span>
+          <h2>{{ activePanel().label }} is intentionally not active yet</h2>
+          <p>
+            This menu position is reserved so the Operator workspace grows without changing its
+            navigation model. The current milestone implements only the signed Registry & node flow.
+          </p>
+          <button type="button" class="operator-primary-button" matRipple (click)="selectPanel(panels[0]!)">
+            <mat-icon>dns</mat-icon>
+            Open Registry & node
+          </button>
+        </section>
+      }
+    </section>
+  </section>
+</main>
+
+@if (plannedPopupComponent(); as popupComponent) {
+  <ng-container *ngComponentOutlet="popupComponent"></ng-container>
+}

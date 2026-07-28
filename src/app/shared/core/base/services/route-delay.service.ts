@@ -18,12 +18,14 @@ function resolveCurrentRouteRequestTimeoutMs(route: string, fallbackTimeoutMs = 
 export class RouteDelayService {
   private readonly sessionService = inject(SessionService);
 
-  resolveDelayMs(route: string, fallbackDelayMs = 0): number {
+  resolveDelayMs(route: string, fallbackDelayMs = 0, forceLocalRoute = false): number {
     const routeConfig = resolveRouteConfig(route);
-    if (routeConfig.http || environment.activitiesDataSource === 'http') {
+    if (routeConfig.http || (!forceLocalRoute && environment.activitiesDataSource === 'http')) {
       return 0;
     }
     if (
+      forceLocalRoute
+      ||
       this.sessionService.currentSession()?.kind === 'demo'
       || !environment.firebaseLoginEnabled
     ) {
@@ -83,9 +85,10 @@ export class RouteDelayService {
     route: string,
     signal?: AbortSignal,
     abortMessage = 'Request aborted.',
-    fallbackDelayMs = 0
+    fallbackDelayMs = 0,
+    forceLocalRoute = false
   ): Promise<void> {
-    const delayMs = this.resolveDelayMs(route, fallbackDelayMs);
+    const delayMs = this.resolveDelayMs(route, fallbackDelayMs, forceLocalRoute);
     if (delayMs <= 0) {
       return;
     }
