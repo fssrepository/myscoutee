@@ -95,7 +95,7 @@ describe('OperatorRegistryPopupComponent', () => {
       'register'
     ]);
     expect(componentView.registryActionItems()[0]).toMatchObject({
-      palette: 'slate',
+      palette: 'danger',
       disabled: false,
       progress: null
     });

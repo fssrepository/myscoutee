@@ -706,6 +706,21 @@ export class AppMenuComponent<TId extends string = string, TContext = unknown>
     return `${configuredIcon ?? 'more_vert'}`.trim();
   }
 
+  protected triggerImageUrl(): string {
+    return `${this.resolveLiveValue(this.trigger?.imageUrl) ?? ''}`.trim();
+  }
+
+  protected triggerImageAlt(): string {
+    return `${this.resolveLiveValue(this.trigger?.imageAlt) ?? this.triggerLabel()}`.trim();
+  }
+
+  protected triggerImageFallback(): string {
+    const configured = `${this.resolveLiveValue(this.trigger?.imageFallback) ?? ''}`.trim();
+    return configured || (this.triggerImageUrl()
+      ? this.imageLabelFallback(this.triggerLabel())
+      : '');
+  }
+
   protected isSymbolIcon(icon: string | null | undefined): boolean {
     return `${icon ?? ''}`.trim().length === 1;
   }
@@ -1249,15 +1264,15 @@ export class AppMenuComponent<TId extends string = string, TContext = unknown>
   }
 
   protected actionRowItemImageUrl(item: AppMenuItem<TId, TContext>): string {
-    return `${this.resolveLiveValue(item.imageUrl) ?? ''}`.trim();
+    return this.itemImageUrl(item);
   }
 
   protected actionRowItemImageAlt(item: AppMenuItem<TId, TContext>): string {
-    return `${this.resolveLiveValue(item.imageAlt) ?? this.actionRowItemAriaLabel(item) ?? ''}`.trim();
+    return this.itemImageAlt(item);
   }
 
   protected actionRowItemImageFallback(item: AppMenuItem<TId, TContext>): string {
-    return `${this.resolveLiveValue(item.imageFallback) ?? ''}`.trim();
+    return this.itemImageFallback(item);
   }
 
   protected actionRowItemImageStack(item: AppMenuItem<TId, TContext>): readonly AppMenuImageStackItem[] {
@@ -1521,6 +1536,36 @@ export class AppMenuComponent<TId extends string = string, TContext = unknown>
 
   protected itemIcon(item: AppMenuItem<TId, TContext>): string {
     return `${this.resolveLiveValue(item.icon) ?? ''}`.trim();
+  }
+
+  protected itemImageUrl(item: AppMenuItem<TId, TContext>): string {
+    return `${this.resolveLiveValue(item.imageUrl) ?? ''}`.trim();
+  }
+
+  protected itemImageAlt(item: AppMenuItem<TId, TContext>): string {
+    return `${this.resolveLiveValue(item.imageAlt) ?? this.itemLabel(item)}`.trim();
+  }
+
+  protected itemImageFallback(item: AppMenuItem<TId, TContext>): string {
+    const configured = `${this.resolveLiveValue(item.imageFallback) ?? ''}`.trim();
+    return configured || (this.itemImageUrl(item)
+      ? this.imageLabelFallback(this.itemLabel(item))
+      : '');
+  }
+
+  protected revealImageFallback(event: Event): void {
+    const image = event.currentTarget;
+    if (!(image instanceof HTMLImageElement)) {
+      return;
+    }
+    image.hidden = true;
+    image.parentElement
+      ?.querySelector<HTMLElement>('[data-app-menu-image-fallback]')
+      ?.removeAttribute('hidden');
+  }
+
+  private imageLabelFallback(label: string): string {
+    return Array.from(label.trim())[0]?.toLocaleUpperCase() ?? '';
   }
 
   protected itemIconKind(item: AppMenuItem<TId, TContext>): AppMenuIconKind {

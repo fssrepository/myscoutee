@@ -467,8 +467,20 @@ describe('HttpOperatorRegistryService', () => {
 
     expect(saved.branding.productName).toBe('Community Hub');
     expect(loaded.payment.availableProviders).toEqual([
-      { id: 'stripe', label: 'Stripe' },
-      { id: 'barion', label: 'Barion' }
+      {
+        id: 'stripe',
+        label: 'Stripe',
+        logoUrl: 'assets/payment-providers/stripe.svg',
+        logoAlt: 'Stripe',
+        palette: 'violet'
+      },
+      {
+        id: 'barion',
+        label: 'Barion',
+        logoUrl: 'assets/payment-providers/barion.svg',
+        logoAlt: 'Barion',
+        palette: 'blue'
+      }
     ]);
     expect(tested.success).toBe(true);
     expect(get).toHaveBeenCalledWith(
@@ -660,8 +672,20 @@ function operatorConfiguration() {
     },
     payment: {
       availableProviders: [
-        { id: 'stripe', label: 'Stripe' },
-        { id: 'barion', label: 'Barion' }
+        {
+          id: 'stripe',
+          label: 'Stripe',
+          logoUrl: 'assets/payment-providers/stripe.svg',
+          logoAlt: 'Stripe',
+          palette: 'violet' as const
+        },
+        {
+          id: 'barion',
+          label: 'Barion',
+          logoUrl: 'assets/payment-providers/barion.svg',
+          logoAlt: 'Barion',
+          palette: 'blue' as const
+        }
       ],
       providerId: null,
       credentialConfigured: false,

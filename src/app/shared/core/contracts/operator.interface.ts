@@ -237,9 +237,30 @@ export type OperatorConfigurationTestKind = 'FIREBASE_AUTHENTICATION' | 'FIREBAS
 
 export type OperatorConfigurationCapability = 'AVAILABLE' | 'BACKEND_UNAVAILABLE';
 
+export type OperatorPaymentProviderPalette =
+  | 'slate'
+  | 'blue'
+  | 'sky'
+  | 'cyan'
+  | 'teal'
+  | 'green'
+  | 'mint'
+  | 'violet'
+  | 'purple'
+  | 'pink'
+  | 'rose'
+  | 'red'
+  | 'orange'
+  | 'amber'
+  | 'gold'
+  | 'brown';
+
 export interface OperatorPaymentProviderDto {
   id: string;
   label: string;
+  logoUrl?: string | null;
+  logoAlt?: string | null;
+  palette?: OperatorPaymentProviderPalette | null;
 }
 
 export interface OperatorPaymentConfigurationDto {

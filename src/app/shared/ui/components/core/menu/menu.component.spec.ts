@@ -150,6 +150,54 @@ describe('AppMenuComponent delayed drag', () => {
     } as CSSStyleDeclaration;
     expect(componentView.isMenuLayoutBoundary(body, scrollingStyle)).toBe(true);
   });
+
+  it('renders generic images in the selected trigger and normal list with a load fallback', () => {
+    const fixture = TestBed.createComponent(AppMenuComponent);
+    const component = fixture.componentInstance;
+    component.kind = 'select';
+    component.trigger = {
+      label: 'Stripe',
+      imageUrl: 'assets/payment-providers/stripe.svg',
+      imageAlt: 'Stripe',
+      layout: 'field'
+    };
+    component.items = [{
+      id: 'barion',
+      label: 'Barion',
+      imageUrl: 'assets/payment-providers/barion.svg',
+      imageAlt: 'Barion',
+      kind: 'radio',
+      palette: 'blue'
+    }];
+    component.open = true;
+
+    fixture.detectChanges();
+
+    const host = fixture.nativeElement as HTMLElement;
+    const triggerImage = host.querySelector<HTMLImageElement>(
+      '.app-menu__trigger-image img'
+    );
+    const itemImage = host.querySelector<HTMLImageElement>(
+      '.app-menu__item-image img'
+    );
+    expect(triggerImage?.getAttribute('src')).toBe(
+      'assets/payment-providers/stripe.svg'
+    );
+    expect(triggerImage?.alt).toBe('Stripe');
+    expect(itemImage?.getAttribute('src')).toBe(
+      'assets/payment-providers/barion.svg'
+    );
+    expect(itemImage?.alt).toBe('Barion');
+
+    itemImage?.dispatchEvent(new Event('error'));
+
+    const fallback = host.querySelector<HTMLElement>(
+      '.app-menu__item-image [data-app-menu-image-fallback]'
+    );
+    expect(itemImage?.hidden).toBe(true);
+    expect(fallback?.hidden).toBe(false);
+    expect(fallback?.textContent?.trim()).toBe('B');
+  });
 });
 
 function createMenu(): {

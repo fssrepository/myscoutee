@@ -87,7 +87,7 @@ export class OperatorRegistryPopupComponent implements OnInit {
       label: 'operator.registration.disable',
       icon: 'link_off',
       layout: 'action',
-      palette: 'slate',
+      palette: 'danger',
       disabled: this.busy() || !this.registered(),
       progress: this.busyAction() === 'disconnect'
         ? { state: 'loading', shape: 'button', durationMs: 3000 }

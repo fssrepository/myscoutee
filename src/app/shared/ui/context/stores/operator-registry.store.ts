@@ -16,6 +16,7 @@ import type {
   OperatorRegistryStatusDto
 } from '../../../core/contracts/operator.interface';
 import { normalizeOperatorRegistryBaseUrl } from '../../../core/base/operator-registry-candidate';
+import { OperatorLeaderboardStore } from './operator-leaderboard.store';
 
 export type OperatorRegistryBusyAction =
   | 'load'
@@ -32,6 +33,7 @@ export type OperatorRegistryBusyAction =
 export class OperatorRegistryStore {
   private readonly service = inject(OperatorRegistryService);
   private readonly sessionService = inject(SessionService);
+  private readonly leaderboard = inject(OperatorLeaderboardStore);
   private readonly statusRef = signal<OperatorRegistryStatusDto | null>(null);
   private readonly inspectionRef = signal<OperatorRegistryInspectionDto | null>(null);
   private readonly busyActionRef = signal<OperatorRegistryBusyAction>(null);
@@ -136,6 +138,7 @@ export class OperatorRegistryStore {
         ?? this.expectedRegistryScopeRef()
       );
       this.candidateInitialized = true;
+      this.leaderboard.invalidate();
     }
     return status;
   }
@@ -150,6 +153,7 @@ export class OperatorRegistryStore {
     const status = await this.run('disconnect', () => this.service.disconnect());
     if (status) {
       this.inspectionRef.set(null);
+      this.leaderboard.invalidate();
     }
     return status;
   }

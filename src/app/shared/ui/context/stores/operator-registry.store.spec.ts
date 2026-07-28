@@ -7,6 +7,7 @@ import {
   type AppSession
 } from '../../../core/base/services/session.service';
 import type { OperatorRegistryStatusDto } from '../../../core/contracts/operator.interface';
+import { OperatorLeaderboardStore } from './operator-leaderboard.store';
 import {
   OperatorRegistryStore,
   operatorRegistryStoreContextKey
@@ -58,9 +59,14 @@ describe('OperatorRegistryStore registration', () => {
       inspect: vi.fn(),
       confirm: vi.fn()
     };
+    const invalidateLeaderboard = vi.fn();
     TestBed.configureTestingModule({
       providers: [
         { provide: OperatorRegistryService, useValue: service },
+        {
+          provide: OperatorLeaderboardStore,
+          useValue: { invalidate: invalidateLeaderboard }
+        },
         {
           provide: SessionService,
           useValue: {
@@ -83,6 +89,45 @@ describe('OperatorRegistryStore registration', () => {
     expect(service.inspect).not.toHaveBeenCalled();
     expect(service.confirm).not.toHaveBeenCalled();
     expect(store.canRegister()).toBe(false);
+    expect(invalidateLeaderboard).toHaveBeenCalledOnce();
+  });
+
+  it('invalidates the leaderboard only after a successful disconnect mutation', async () => {
+    const session = signal<AppSession | null>({
+      kind: 'demo',
+      userId: 'operator-demo-dev'
+    });
+    const service = {
+      disconnect: vi.fn().mockResolvedValue({
+        ...registeredStatus(),
+        enabled: false,
+        lifecycle: 'DISABLED'
+      })
+    };
+    const invalidateLeaderboard = vi.fn();
+    TestBed.configureTestingModule({
+      providers: [
+        { provide: OperatorRegistryService, useValue: service },
+        {
+          provide: OperatorLeaderboardStore,
+          useValue: { invalidate: invalidateLeaderboard }
+        },
+        {
+          provide: SessionService,
+          useValue: {
+            session: session.asReadonly(),
+            currentSession: () => session()
+          }
+        }
+      ]
+    });
+    const store = TestBed.inject(OperatorRegistryStore);
+
+    expect(invalidateLeaderboard).not.toHaveBeenCalled();
+
+    await store.disconnect();
+
+    expect(invalidateLeaderboard).toHaveBeenCalledOnce();
   });
 
   it('clears cached state when the operator session identity changes', async () => {

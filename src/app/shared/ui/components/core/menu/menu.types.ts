@@ -125,6 +125,9 @@ export interface AppMenuTrigger {
   id?: string;
   label?: AppMenuLiveValue<string | null | undefined>;
   icon?: AppMenuLiveValue<string | null | undefined>;
+  imageUrl?: AppMenuLiveValue<string | null | undefined>;
+  imageAlt?: AppMenuLiveValue<string | null | undefined>;
+  imageFallback?: AppMenuLiveValue<string | null | undefined>;
   openIcon?: AppMenuLiveValue<string | null | undefined>;
   closeIcon?: AppMenuLiveValue<string | null | undefined>;
   trailingIcon?: AppMenuLiveValue<string | null | undefined>;

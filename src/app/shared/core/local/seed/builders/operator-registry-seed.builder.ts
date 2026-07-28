@@ -118,11 +118,17 @@ export class SeedOperatorRegistryBuilder {
             availableProviders: [
               {
                 id: 'stripe',
-                label: 'Stripe'
+                label: 'Stripe',
+                logoUrl: 'assets/payment-providers/stripe.svg',
+                logoAlt: 'Stripe',
+                palette: 'violet'
               },
               {
                 id: 'barion',
-                label: 'Barion'
+                label: 'Barion',
+                logoUrl: 'assets/payment-providers/barion.svg',
+                logoAlt: 'Barion',
+                palette: 'blue'
               }
             ],
             providerId: null,

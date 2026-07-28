@@ -252,8 +252,20 @@ describe('LocalOperatorRegistryService', () => {
 
     const initial = await service.loadConfiguration();
     expect(initial.payment.availableProviders).toEqual([
-      { id: 'stripe', label: 'Stripe' },
-      { id: 'barion', label: 'Barion' }
+      {
+        id: 'stripe',
+        label: 'Stripe',
+        logoUrl: 'assets/payment-providers/stripe.svg',
+        logoAlt: 'Stripe',
+        palette: 'violet'
+      },
+      {
+        id: 'barion',
+        label: 'Barion',
+        logoUrl: 'assets/payment-providers/barion.svg',
+        logoAlt: 'Barion',
+        palette: 'blue'
+      }
     ]);
     const saved = await service.saveConfiguration({
       branding: {

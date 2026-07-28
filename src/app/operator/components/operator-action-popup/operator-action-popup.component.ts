@@ -135,9 +135,12 @@ export class OperatorActionPopupComponent {
       ...(configuration?.payment.availableProviders ?? []).map(provider => ({
         id: `operator-payment-provider-${provider.id}`,
         label: provider.label,
-        icon: 'payments',
+        icon: provider.logoUrl ? undefined : 'payments',
+        imageUrl: provider.logoUrl,
+        imageAlt: provider.logoAlt,
         kind: 'radio' as const,
-        palette: 'green' as const,
+        palette: provider.palette ?? undefined,
+        surface: 'tinted' as const,
         active: selected === provider.id,
         checked: selected === provider.id,
         context: {
@@ -430,8 +433,14 @@ export class OperatorActionPopupComponent {
       .find(item => item.id === selected);
     return {
       label: provider?.label ?? 'operator.configuration.payment.provider.none',
-      icon: selected ? 'payments' : 'money_off',
-      palette: selected ? 'green' : 'slate',
+      icon: provider
+        ? provider.logoUrl
+          ? undefined
+          : 'payments'
+        : 'money_off',
+      imageUrl: provider?.logoUrl,
+      imageAlt: provider?.logoAlt,
+      palette: provider?.palette ?? (provider ? undefined : 'slate'),
       layout: 'field',
       disabled: this.configurationDisabled(),
       ariaLabel: 'operator.configuration.payment.provider'

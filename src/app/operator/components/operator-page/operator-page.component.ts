@@ -87,8 +87,7 @@ export class OperatorPageComponent implements OnInit {
   protected readonly actionPopupComponent = this.actionPopupComponentRef.asReadonly();
   protected readonly activePopup = this.operatorMenu.activePopup;
   protected readonly loading = computed(
-    () => this.busyAction() === 'load'
-      || this.profileLoadState().status === 'idle'
+    () => this.profileLoadState().status === 'idle'
       || this.profileLoadState().status === 'loading'
       || (!this.status() && !this.errorMessage())
   );
