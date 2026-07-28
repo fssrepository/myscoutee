@@ -272,6 +272,7 @@
   width: 100%;
   min-height: 126px;
   display: block;
+  cursor: crosshair;
   touch-action: none;
   transform: none;
 }
@@ -311,7 +312,7 @@
 
 .operator-revenue__hit {
   fill: transparent;
-  cursor: pointer;
+  cursor: inherit;
   outline: none;
   transform: none;
   transition: none;

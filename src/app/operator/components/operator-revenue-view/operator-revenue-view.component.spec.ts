@@ -86,8 +86,19 @@ describe('OperatorRevenueViewComponent', () => {
     expect(before[2]).toBe('12,88 288,70');
     expect(host.querySelector('.operator-revenue__scrub-guide')).toBeNull();
     expect(host.querySelector('.operator-revenue__scrub-halo')).toBeNull();
-    const firstHit = host.querySelector<SVGCircleElement>('.operator-revenue__hit');
-    firstHit?.dispatchEvent(new Event('mouseenter'));
+    const chart = host.querySelector<SVGSVGElement>('.operator-revenue__chart svg');
+    vi.spyOn(chart!, 'getBoundingClientRect').mockReturnValue({
+      left: 0,
+      right: 300,
+      top: 0,
+      bottom: 108,
+      width: 300,
+      height: 108,
+      x: 0,
+      y: 0,
+      toJSON: () => ({})
+    });
+    chart?.dispatchEvent(new MouseEvent('pointermove', { clientX: 12 }));
     fixture.detectChanges();
 
     expect(linePoints()).toEqual(before);

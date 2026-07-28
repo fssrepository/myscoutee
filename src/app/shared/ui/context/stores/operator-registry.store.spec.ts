@@ -59,13 +59,17 @@ describe('OperatorRegistryStore registration', () => {
       inspect: vi.fn(),
       confirm: vi.fn()
     };
+    const upsertRegisteredDeployment = vi.fn();
     const invalidateLeaderboard = vi.fn();
     TestBed.configureTestingModule({
       providers: [
         { provide: OperatorRegistryService, useValue: service },
         {
           provide: OperatorLeaderboardStore,
-          useValue: { invalidate: invalidateLeaderboard }
+          useValue: {
+            upsertRegisteredDeployment,
+            invalidate: invalidateLeaderboard
+          }
         },
         {
           provide: SessionService,
@@ -89,7 +93,8 @@ describe('OperatorRegistryStore registration', () => {
     expect(service.inspect).not.toHaveBeenCalled();
     expect(service.confirm).not.toHaveBeenCalled();
     expect(store.canRegister()).toBe(false);
-    expect(invalidateLeaderboard).toHaveBeenCalledOnce();
+    expect(upsertRegisteredDeployment).toHaveBeenCalledWith(registered);
+    expect(invalidateLeaderboard).not.toHaveBeenCalled();
   });
 
   it('invalidates the leaderboard only after a successful disconnect mutation', async () => {

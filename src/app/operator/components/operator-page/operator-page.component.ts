@@ -4,6 +4,7 @@ import {
   Component,
   OnInit,
   Type,
+  ViewChild,
   computed,
   effect,
   inject,
@@ -81,7 +82,20 @@ export class OperatorPageComponent implements OnInit {
   );
   private readonly registrationPopupComponentRef = signal<Type<unknown> | null>(null);
   private readonly actionPopupComponentRef = signal<Type<unknown> | null>(null);
+  private readonly leaderboardSmartListRef = signal<
+    SmartListComponent<OperatorLeaderboardEntryDto, OperatorLeaderboardFilters> | null
+  >(null);
   private readonly rowConverter = new OperatorLeaderboardSingleRowConverter();
+
+  @ViewChild('leaderboardSmartList')
+  protected set leaderboardSmartList(
+    value: SmartListComponent<
+      OperatorLeaderboardEntryDto,
+      OperatorLeaderboardFilters
+    > | undefined
+  ) {
+    this.leaderboardSmartListRef.set(value ?? null);
+  }
 
   protected readonly status = this.registry.status;
   protected readonly registrationPopupComponent = this.registrationPopupComponentRef.asReadonly();
@@ -204,6 +218,15 @@ export class OperatorPageComponent implements OnInit {
     cacheable: {
       identity: item => item.id
     },
+    sortable: {
+      sortKey: item => [
+        item.group === 'FOUNDER' ? 0 : item.group === 'CLAIMED' ? 1 : 2,
+        -Math.max(0, Number(item.sharePercent) || 0),
+        -Math.max(0, Number(item.verifiedWeight) || 0),
+        item.label,
+        item.id
+      ]
+    },
     groupBy: item => this.leaderboardGroupTitle(item.group),
     containerClass: {
       'operator-leaderboard-smart-list': true
@@ -223,6 +246,17 @@ export class OperatorPageComponent implements OnInit {
       } else if (popup) {
         void this.ensureActionPopupLoaded();
       }
+    });
+    effect(() => {
+      const smartList = this.leaderboardSmartListRef();
+      const entry = this.leaderboard.latestCacheUpsert();
+      if (!smartList || !entry) {
+        return;
+      }
+      smartList.reinsertVisibleItem(entry, {
+        totalDelta: 1,
+        loadedRange: 'any'
+      });
     });
   }
 

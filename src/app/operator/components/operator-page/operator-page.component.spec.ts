@@ -4,7 +4,10 @@ import { TestBed } from '@angular/core/testing';
 import { I18nService } from '../../../shared/core/base/services/i18n.service';
 import { DeploymentConfigurationService } from '../../../shared/core/base/services/deployment-configuration.service';
 import type { ListQuery } from '../../../shared/core/contracts/list.interface';
-import type { OperatorRegistryStatusDto } from '../../../shared/core/contracts/operator.interface';
+import type {
+  OperatorLeaderboardEntryDto,
+  OperatorRegistryStatusDto
+} from '../../../shared/core/contracts/operator.interface';
 import { AppRuntimeStore } from '../../../shared/ui/context/stores/app-runtime.store';
 import {
   OperatorLeaderboardStore,
@@ -31,6 +34,7 @@ describe('OperatorPageComponent', () => {
     const registryBusyAction = signal<string | null>(null);
     const activePopup = signal<OperatorMenuKind | null>('registration');
     const leaderboardRevision = signal(0);
+    const leaderboardCacheUpsert = signal<OperatorLeaderboardEntryDto | null>(null);
     const workspaceBusyAction = signal<string | null>(null);
     const invalidateLeaderboard = vi.fn();
 
@@ -80,6 +84,7 @@ describe('OperatorPageComponent', () => {
           provide: OperatorLeaderboardStore,
           useValue: {
             revision: leaderboardRevision.asReadonly(),
+            latestCacheUpsert: leaderboardCacheUpsert.asReadonly(),
             invalidate: invalidateLeaderboard,
             queryPage: vi.fn()
           }
@@ -105,6 +110,12 @@ describe('OperatorPageComponent', () => {
       loading: Signal<boolean>;
       leaderboardQuery: Signal<Partial<ListQuery<OperatorLeaderboardFilters>>>;
       actionItems: Signal<readonly AppMenuItem<string>[]>;
+      leaderboardSmartList: {
+        reinsertVisibleItem: (
+          item: OperatorLeaderboardEntryDto,
+          options: { totalDelta: number; loadedRange: string }
+        ) => boolean;
+      };
     };
     const initialQuery = componentView.leaderboardQuery();
 
@@ -135,6 +146,28 @@ describe('OperatorPageComponent', () => {
     registryBusyAction.set('register');
     expect(componentView.actionItems().find(item => item.id === 'registration')?.progress)
       .toBeUndefined();
+
+    const registeredDeployment: OperatorLeaderboardEntryDto = {
+      id: 'dep_registered',
+      nodeId: 'dep_registered',
+      label: 'dep_registered',
+      group: 'UNCLAIMED',
+      verifiedWeight: 0,
+      sharePercent: 0,
+      claimed: false,
+      deploymentCount: 1
+    };
+    const reinsertVisibleItem = vi.fn().mockReturnValue(true);
+    componentView.leaderboardSmartList = { reinsertVisibleItem };
+    leaderboardCacheUpsert.set(registeredDeployment);
+    TestBed.tick();
+
+    expect(reinsertVisibleItem).toHaveBeenCalledWith(registeredDeployment, {
+      totalDelta: 1,
+      loadedRange: 'any'
+    });
+    expect(componentView.leaderboardQuery()).toBe(initialQuery);
+    expect(invalidateLeaderboard).not.toHaveBeenCalled();
 
     fixture.destroy();
   });

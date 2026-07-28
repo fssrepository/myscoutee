@@ -138,7 +138,7 @@ export class OperatorRegistryStore {
         ?? this.expectedRegistryScopeRef()
       );
       this.candidateInitialized = true;
-      this.leaderboard.invalidate();
+      this.leaderboard.upsertRegisteredDeployment(status);
     }
     return status;
   }

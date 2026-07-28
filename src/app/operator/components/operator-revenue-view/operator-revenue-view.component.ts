@@ -356,15 +356,14 @@ export class OperatorRevenueViewComponent {
     event.preventDefault();
   }
 
-  protected moveTimelineDrag(
+  protected moveTimelinePointer(
     event: PointerEvent,
     points: readonly OperatorRevenueTimelinePointDto[]
   ): void {
-    if (!this.timelineDragging()) {
-      return;
-    }
     this.updateTimelineFromPointer(event, points);
-    event.preventDefault();
+    if (this.timelineDragging()) {
+      event.preventDefault();
+    }
   }
 
   protected endTimelineDrag(event?: PointerEvent): void {

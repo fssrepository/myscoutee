@@ -98,7 +98,7 @@
               [attr.aria-label]="'operator.revenue.timeline.title' | i18n"
               [class.is-dragging]="timelineDragging()"
               (pointerdown)="startTimelineDrag($event, currency.timeline)"
-              (pointermove)="moveTimelineDrag($event, currency.timeline)"
+              (pointermove)="moveTimelinePointer($event, currency.timeline)"
               (pointerup)="endTimelineDrag($event)"
               (pointercancel)="endTimelineDrag($event)"
               (lostpointercapture)="endTimelineDrag()"
@@ -128,7 +128,6 @@
                   cy="58"
                   r="8"
                   tabindex="0"
-                  (mouseenter)="selectTimelinePoint(point)"
                   (focus)="selectTimelinePoint(point)"
                 ></circle>
               }
