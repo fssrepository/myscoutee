@@ -11,6 +11,7 @@ import {
   type AppMenuItem,
   type AppMenuTrigger
 } from '../../../shared/ui/components/core/menu';
+import { OperatorLeaderboardStore } from '../../../shared/ui/context/stores/operator-leaderboard.store';
 import { OperatorMenuStore } from '../../../shared/ui/context/stores/operator-menu.store';
 import { OperatorRegistryStore } from '../../../shared/ui/context/stores/operator-registry.store';
 import { OperatorWorkspaceStore } from '../../../shared/ui/context/stores/operator-workspace.store';
@@ -36,6 +37,12 @@ describe('OperatorActionPopupComponent payment provider menu', () => {
           useValue: {
             activePopup: signal('configuration').asReadonly(),
             closePopup: vi.fn()
+          }
+        },
+        {
+          provide: OperatorLeaderboardStore,
+          useValue: {
+            queryDeploymentPage: vi.fn()
           }
         },
         {
@@ -185,6 +192,112 @@ describe('OperatorActionPopupComponent payment provider menu', () => {
       })
     );
   });
+
+  it('hosts the selected claimed-group deployments in a cursor SmartList', () => {
+    const activePopup = signal('deployments' as const);
+    const selectedLeaderboardEntry = signal({
+      id: 'claimed-group:opg_test',
+      nodeId: null,
+      label: 'Campus Operator',
+      group: 'CLAIMED' as const,
+      verifiedWeight: 65_000,
+      sharePercent: 30,
+      claimed: true,
+      operatorGroupId: 'opg_test',
+      deploymentCount: 2
+    });
+    TestBed.overrideProvider(OperatorMenuStore, {
+      useValue: {
+        activePopup: activePopup.asReadonly(),
+        selectedLeaderboardEntry:
+          selectedLeaderboardEntry.asReadonly(),
+        closePopup: vi.fn()
+      }
+    });
+    const fixture = TestBed.createComponent(OperatorActionPopupComponent);
+    const componentView = fixture.componentInstance as unknown as {
+      leaderboardDeploymentQuery: Signal<{
+        filters?: { groupId?: string };
+      }>;
+      leaderboardDeploymentConfig: {
+        pageSize?: number;
+        cacheable?: {
+          identity: (deployment: { deploymentId: string }) => string;
+        };
+      };
+      leaderboardDeploymentRow: (deployment: {
+        deploymentId: string;
+        groupId: string;
+        claimState: 'pending-review' | 'rejected';
+        membershipState: 'owner';
+        verifiedWeight: number;
+        sharePercent: number;
+      }) => {
+        title: string;
+        subtitle?: string | null;
+        surfaceTone?: string | null;
+        badges?: readonly { label: string }[];
+      };
+      popupModel: () => {
+        title?: string | null;
+        headerLabel?: string | null;
+        subtitle?: string | null;
+        translateTitle?: boolean;
+        bodyLayout?: string;
+        size?: string;
+      };
+    };
+    const deployment = {
+      deploymentId: 'dep_owner',
+      groupId: 'opg_test',
+      claimState: 'pending-review' as const,
+      membershipState: 'owner' as const,
+      verifiedWeight: 42,
+      sharePercent: 0
+    };
+
+    expect(componentView.leaderboardDeploymentQuery().filters?.groupId)
+      .toBe('opg_test');
+    expect(componentView.leaderboardDeploymentConfig.pageSize).toBe(8);
+    expect(
+      componentView.leaderboardDeploymentConfig.cacheable
+        ?.identity(deployment)
+    ).toBe('dep_owner');
+    expect(componentView.leaderboardDeploymentRow(deployment))
+      .toEqual(expect.objectContaining({
+        title: 'dep_owner',
+        subtitle: 'operator.leaderboard.deployments.membership.owner',
+        surfaceTone: 'warning',
+        badges: [
+          expect.objectContaining({
+            label: 'operator.leaderboard.deployments.claim.pending-review'
+          })
+        ]
+      }));
+    expect(componentView.leaderboardDeploymentRow({
+      ...deployment,
+      claimState: 'rejected'
+    })).toEqual(expect.objectContaining({
+      surfaceTone: 'danger',
+      badges: [
+        expect.objectContaining({
+          label: 'operator.leaderboard.deployments.claim.rejected',
+          icon: 'block',
+          tone: 'danger'
+        })
+      ]
+    }));
+    expect(componentView.popupModel()).toEqual(expect.objectContaining({
+      headerLabel: 'operator.leaderboard.deployments.title',
+      title: 'Campus Operator',
+      subtitle: 'operator.leaderboard.deployments.subtitle',
+      translateTitle: false,
+      bodyLayout: 'fill',
+      size: 'wide'
+    }));
+
+    fixture.destroy();
+  });
 });
 
 function operatorConfiguration(): OperatorConfigurationDto {
@@ -225,7 +338,22 @@ function operatorConfiguration(): OperatorConfigurationDto {
     firebase: {
       projectId: 'myscoutee',
       authenticationCredentialConfigured: false,
-      messagingCredentialConfigured: false
+      messagingCredentialConfigured: false,
+      publicConfiguration: {
+        apiKey: '',
+        authDomain: '',
+        projectId: 'myscoutee',
+        storageBucket: '',
+        messagingSenderId: '',
+        appId: '',
+        measurementId: null,
+        vapidKey: null
+      },
+      active: false,
+      readyToActivate: false,
+      authenticationTestedAt: null,
+      messagingTestedAt: null,
+      activatedAt: null
     },
     updatedAt: '2026-07-28T18:00:00.000Z'
   };
@@ -249,6 +377,13 @@ function operatorConfigurationDraft(
     },
     firebase: {
       projectId: 'myscoutee',
+      apiKey: '',
+      authDomain: '',
+      storageBucket: '',
+      messagingSenderId: '',
+      appId: '',
+      measurementId: '',
+      vapidKey: '',
       authenticationCredential: '',
       messagingCredential: ''
     }

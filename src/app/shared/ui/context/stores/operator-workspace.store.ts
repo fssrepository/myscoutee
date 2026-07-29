@@ -45,6 +45,7 @@ export type OperatorWorkspaceBusyAction =
   | 'save-social-links'
   | 'register-payment'
   | 'register-firebase'
+  | 'activate-firebase'
   | 'test-authentication'
   | 'test-messaging'
   | 'load-community'
@@ -153,6 +154,32 @@ export class OperatorWorkspaceStore {
       || (session?.kind === 'demo' ? session.userId.trim() : '')
       || 'operator-branding';
   });
+  readonly configurationFirebaseDirty = computed(() => {
+    const configuration = this.configurationRef();
+    const draft = this.configurationDraftRef();
+    if (!configuration || !draft || configuration.capability !== 'AVAILABLE') {
+      return false;
+    }
+    return (
+      draft.firebase.projectId.trim() !== configuration.firebase.projectId
+      || draft.firebase.apiKey.trim()
+        !== configuration.firebase.publicConfiguration.apiKey
+      || draft.firebase.authDomain.trim()
+        !== configuration.firebase.publicConfiguration.authDomain
+      || draft.firebase.storageBucket.trim()
+        !== configuration.firebase.publicConfiguration.storageBucket
+      || draft.firebase.messagingSenderId.trim()
+        !== configuration.firebase.publicConfiguration.messagingSenderId
+      || draft.firebase.appId.trim()
+        !== configuration.firebase.publicConfiguration.appId
+      || draft.firebase.measurementId.trim()
+        !== (configuration.firebase.publicConfiguration.measurementId ?? '')
+      || draft.firebase.vapidKey.trim()
+        !== (configuration.firebase.publicConfiguration.vapidKey ?? '')
+      || Boolean(draft.firebase.authenticationCredential.trim())
+      || Boolean(draft.firebase.messagingCredential.trim())
+    );
+  });
   readonly configurationDirty = computed(() => {
     const configuration = this.configurationRef();
     const draft = this.configurationDraftRef();
@@ -175,9 +202,7 @@ export class OperatorWorkspaceStore {
       )
       || (draft.payment.providerId ?? '') !== (configuration.payment.providerId ?? '')
       || Boolean(draft.payment.credential.trim())
-      || draft.firebase.projectId.trim() !== configuration.firebase.projectId
-      || Boolean(draft.firebase.authenticationCredential.trim())
-      || Boolean(draft.firebase.messagingCredential.trim())
+      || this.configurationFirebaseDirty()
     );
   });
   readonly configurationBrandingReady = computed(() => {
@@ -578,6 +603,19 @@ export class OperatorWorkspaceStore {
     return result;
   }
 
+  async activateFirebase(): Promise<OperatorConfigurationDto | null> {
+    const result = await this.run(
+      'activate-firebase',
+      () => this.service.activateFirebase()
+    );
+    if (result) {
+      this.configurationRef.set(result);
+      this.configurationDraftRef.set(this.configurationDraftFrom(result));
+      this.noticeRef.set('operator.configuration.firebase.activated');
+    }
+    return result;
+  }
+
   async loadCommunityStatus(
     force = false
   ): Promise<OperatorCommunityStatusDto | null> {
@@ -874,6 +912,16 @@ export class OperatorWorkspaceStore {
       },
       firebase: {
         projectId: configuration.firebase.projectId,
+        apiKey: configuration.firebase.publicConfiguration.apiKey,
+        authDomain: configuration.firebase.publicConfiguration.authDomain,
+        storageBucket:
+          configuration.firebase.publicConfiguration.storageBucket,
+        messagingSenderId:
+          configuration.firebase.publicConfiguration.messagingSenderId,
+        appId: configuration.firebase.publicConfiguration.appId,
+        measurementId:
+          configuration.firebase.publicConfiguration.measurementId ?? '',
+        vapidKey: configuration.firebase.publicConfiguration.vapidKey ?? '',
         authenticationCredential: '',
         messagingCredential: ''
       }

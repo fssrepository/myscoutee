@@ -17,6 +17,7 @@ export interface OperatorLeaderboardSingleRowConverterOptions {
   claimedNodeLabel?: string | null;
   unclaimedNodeLabel?: string | null;
   pendingReviewLabel?: string | null;
+  rejectedReviewLabel?: string | null;
 }
 
 export class OperatorLeaderboardSingleRowConverter implements UiConverter<
@@ -49,23 +50,35 @@ export class OperatorLeaderboardSingleRowConverter implements UiConverter<
     const pendingReview = entry.claimVerificationStatus === 'PENDING_REVIEW';
     const pendingReviewLabel = `${options.pendingReviewLabel ?? ''}`.trim()
       || 'Under review';
-    const badges: SingleRowBadge[] = pendingReview
+    const rejectedReview = entry.claimVerificationStatus === 'REJECTED';
+    const rejectedReviewLabel = `${options.rejectedReviewLabel ?? ''}`.trim()
+      || 'Review rejected';
+    const badges: SingleRowBadge[] = rejectedReview
       ? [{
-          label: pendingReviewLabel,
-          icon: 'pending_actions',
-          ariaLabel: pendingReviewLabel,
-          title: pendingReviewLabel,
-          tone: 'warning',
+          label: rejectedReviewLabel,
+          icon: 'block',
+          ariaLabel: rejectedReviewLabel,
+          title: rejectedReviewLabel,
+          tone: 'danger',
           position: 'top-right'
         }]
-      : [{
-          label: `${share}%`,
-          icon: 'pie_chart',
-          ariaLabel: `${share}% ${shareLabel}`,
-          title: `${share}% ${shareLabel}`,
-          tone: entry.sharePercent > 0 ? 'accent' : 'muted',
-          position: 'top-right'
-        }];
+      : pendingReview
+        ? [{
+            label: pendingReviewLabel,
+            icon: 'pending_actions',
+            ariaLabel: pendingReviewLabel,
+            title: pendingReviewLabel,
+            tone: 'warning',
+            position: 'top-right'
+          }]
+        : [{
+            label: `${share}%`,
+            icon: 'pie_chart',
+            ariaLabel: `${share}% ${shareLabel}`,
+            title: `${share}% ${shareLabel}`,
+            tone: entry.sharePercent > 0 ? 'accent' : 'muted',
+            position: 'top-right'
+          }];
 
     return {
       id: entry.id,
@@ -90,15 +103,18 @@ export class OperatorLeaderboardSingleRowConverter implements UiConverter<
             : 'dns',
       surfaceTone: entry.group === 'FOUNDER'
         ? 'accent'
-        : pendingReview
-          ? 'warning'
-          : entry.claimed
-            ? 'success'
-            : 'muted',
+        : rejectedReview
+          ? 'danger'
+          : pendingReview
+            ? 'warning'
+            : entry.claimed
+              ? 'success'
+              : 'muted',
       toneClass: [
         'operator-leaderboard-row',
         `operator-leaderboard-row--${entry.group.toLowerCase()}`,
-        pendingReview ? 'operator-leaderboard-row--pending-review' : ''
+        pendingReview ? 'operator-leaderboard-row--pending-review' : '',
+        rejectedReview ? 'operator-leaderboard-row--rejected' : ''
       ].filter(Boolean).join(' '),
       badges,
       eagerDetail: structuredClone(entry)

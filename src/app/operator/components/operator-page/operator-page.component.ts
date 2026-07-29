@@ -33,6 +33,7 @@ import {
   SmartListComponent,
   type SingleRowData,
   type SmartListConfig,
+  type SmartListItemSelectEvent,
   type SmartListLoadPage
 } from '../../../shared/ui/components/core/smart-list';
 import { AppRuntimeStore } from '../../../shared/ui/context/stores/app-runtime.store';
@@ -49,7 +50,10 @@ import { OperatorWorkspaceStore } from '../../../shared/ui/context/stores/operat
 import { OperatorLeaderboardSingleRowConverter } from '../../../shared/ui/converters/operator-leaderboard-single-row.converter';
 import { I18nPipe } from '../../../shared/ui/pipes';
 
-type OperatorActionId = Exclude<OperatorMenuKind, 'community'>;
+type OperatorActionId = Exclude<
+  OperatorMenuKind,
+  'community' | 'deployments'
+>;
 
 @Component({
   selector: 'app-operator-page',
@@ -125,6 +129,9 @@ export class OperatorPageComponent implements OnInit {
     const claimPendingReview =
       registryActive
       && claim?.verificationStatus === 'PENDING_REVIEW';
+    const claimRejected =
+      registryActive
+      && claim?.verificationStatus === 'REJECTED';
     return [{
       id: 'updates',
       label: 'operator.action.updates',
@@ -156,13 +163,19 @@ export class OperatorPageComponent implements OnInit {
     {
       id: 'claim',
       label: 'operator.action.claim.share',
-      detail: claimPendingReview
-        ? 'operator.action.claim.share.pending'
-        : registryActive && claim?.claimed
-          ? 'operator.action.claim.share.claimed'
-          : 'operator.action.claim.share.detail',
-      icon: claimPendingReview ? 'pending_actions' : 'redeem',
-      palette: claimPendingReview ? 'orange' : 'amber',
+      detail: claimRejected
+        ? 'operator.action.claim.share.rejected'
+        : claimPendingReview
+          ? 'operator.action.claim.share.pending'
+          : registryActive && claim?.claimed
+            ? 'operator.action.claim.share.claimed'
+            : 'operator.action.claim.share.detail',
+      icon: claimRejected
+        ? 'block'
+        : claimPendingReview
+          ? 'pending_actions'
+          : 'redeem',
+      palette: claimRejected ? 'red' : claimPendingReview ? 'orange' : 'amber',
       kind: 'action',
       layout: 'big'
     },
@@ -284,7 +297,7 @@ export class OperatorPageComponent implements OnInit {
   protected leaderboardRow(
     entry: OperatorLeaderboardEntryDto
   ): SingleRowData<OperatorLeaderboardEntryDto> {
-    return this.rowConverter.convert({
+    const row = this.rowConverter.convert({
       ...entry,
       label: this.i18n.translate(entry.label)
     }, {
@@ -297,8 +310,39 @@ export class OperatorPageComponent implements OnInit {
       unclaimedNodeLabel: this.i18n.translate('operator.leaderboard.unclaimed.node'),
       pendingReviewLabel: this.i18n.translate(
         'operator.claim.verification.pending.action'
+      ),
+      rejectedReviewLabel: this.i18n.translate(
+        'operator.claim.verification.rejected.action'
       )
     });
+    return {
+      ...row,
+      clickable: this.canOpenLeaderboardDeployments(entry)
+    };
+  }
+
+  protected openLeaderboardDeployments(
+    event: SmartListItemSelectEvent<
+      OperatorLeaderboardEntryDto,
+      OperatorLeaderboardFilters
+    >
+  ): void {
+    if (!this.canOpenLeaderboardDeployments(event.item)) {
+      return;
+    }
+    this.operatorMenu.openLeaderboardDeployments(event.item);
+  }
+
+  protected leaderboardRowAriaLabel(
+    entry: OperatorLeaderboardEntryDto
+  ): string | null {
+    if (!this.canOpenLeaderboardDeployments(entry)) {
+      return null;
+    }
+    return [
+      this.i18n.translate('operator.leaderboard.deployments.open'),
+      this.i18n.translate(entry.label)
+    ].join(': ');
   }
 
   private leaderboardGroupTitle(group: OperatorLeaderboardGroup): string {
@@ -308,6 +352,13 @@ export class OperatorPageComponent implements OnInit {
         ? 'operator.leaderboard.group.claimed.nodes'
         : 'operator.leaderboard.group.unclaimed.nodes';
     return this.i18n.translate(labelKey);
+  }
+
+  private canOpenLeaderboardDeployments(
+    entry: OperatorLeaderboardEntryDto
+  ): boolean {
+    return entry.group === 'CLAIMED'
+      && Boolean(entry.operatorGroupId?.trim());
   }
 
   private async ensureRegistrationPopupLoaded(): Promise<void> {

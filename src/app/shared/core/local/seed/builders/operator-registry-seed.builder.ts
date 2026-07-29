@@ -168,7 +168,22 @@ export class SeedOperatorRegistryBuilder {
           firebase: {
             projectId: 'myscoutee-explore',
             authenticationCredentialConfigured: false,
-            messagingCredentialConfigured: false
+            messagingCredentialConfigured: false,
+            publicConfiguration: {
+              apiKey: '',
+              authDomain: '',
+              projectId: 'myscoutee-explore',
+              storageBucket: '',
+              messagingSenderId: '',
+              appId: '',
+              measurementId: null,
+              vapidKey: null
+            },
+            active: false,
+            readyToActivate: false,
+            authenticationTestedAt: null,
+            messagingTestedAt: null,
+            activatedAt: null
           },
           updatedAt: nowIso
         },

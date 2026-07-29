@@ -576,6 +576,104 @@ describe('HttpOperatorRegistryService', () => {
     }).params.get('throughPeriod')).toBe('2026-07');
   });
 
+  it('pages claimed-group deployments without reloading the leaderboard stream', async () => {
+    const groupId = 'opg_0123456789abcdef0123456789abcdef';
+    const snapshot = {
+      throughPeriod: '2026-07',
+      founderUnitsNumerator: '1',
+      founderUnitsDenominator: '1',
+      founderShareNumerator: '1',
+      founderShareDenominator: '10',
+      measuredWeightNumerator: '100',
+      measuredWeightDenominator: '1',
+      claimedWeightNumerator: '100',
+      claimedWeightDenominator: '1'
+    };
+    get.mockImplementation((
+      _url: string,
+      options: { params: { get(name: string): string | null } }
+    ) => options.params.get('cursor')
+      ? of({
+          snapshot,
+          groupId,
+          items: [{
+            deploymentId: 'dep_east',
+            groupId,
+            claimState: 'rejected',
+            membershipState: 'linked',
+            weightNumerator: '125',
+            weightDenominator: '2',
+            shareNumerator: '0',
+            shareDenominator: '1'
+          }],
+          nextCursor: null
+        })
+      : of({
+          snapshot,
+          groupId,
+          items: [{
+            deploymentId: 'dep_owner',
+            groupId,
+            claimState: 'pending-review',
+            membershipState: 'owner',
+            weightNumerator: '75',
+            weightDenominator: '1',
+            shareNumerator: '0',
+            shareDenominator: '1'
+          }],
+          nextCursor: 'registry-cursor-2'
+        })
+    );
+    const service = TestBed.inject(HttpOperatorRegistryService);
+
+    const first = await service.leaderboardDeploymentPage(groupId, {
+      page: 0,
+      pageSize: 1
+    });
+    const second = await service.leaderboardDeploymentPage(groupId, {
+      page: 1,
+      pageSize: 1,
+      cursor: first.nextCursor
+    });
+
+    expect(first).toEqual({
+      items: [{
+        deploymentId: 'dep_owner',
+        groupId,
+        claimState: 'pending-review',
+        membershipState: 'owner',
+        verifiedWeight: 75,
+        sharePercent: 0
+      }],
+      total: 2,
+      nextCursor: 'registry-cursor-2'
+    });
+    expect(second).toEqual({
+      items: [{
+        deploymentId: 'dep_east',
+        groupId,
+        claimState: 'rejected',
+        membershipState: 'linked',
+        verifiedWeight: 62.5,
+        sharePercent: 0
+      }],
+      total: 2,
+      nextCursor: null
+    });
+    expect(get.mock.calls.map((call: unknown[]) => call[0])).toEqual([
+      `/api/operator/leaderboard/groups/${groupId}/deployments`,
+      `/api/operator/leaderboard/groups/${groupId}/deployments`
+    ]);
+    const deploymentCalls = get.mock.calls as Array<[
+      string,
+      { params: { get(name: string): string | null } }
+    ]>;
+    expect(deploymentCalls[0]?.[1].params.get('limit')).toBe('1');
+    expect(deploymentCalls[0]?.[1].params.get('cursor')).toBeNull();
+    expect(deploymentCalls[1]?.[1].params.get('cursor'))
+      .toBe('registry-cursor-2');
+  });
+
   it('combines deployment community providers and signed announcements', async () => {
     get.mockImplementation((url: string) => {
       if (url === '/api/operator/community/providers') {
@@ -848,6 +946,13 @@ describe('HttpOperatorRegistryService', () => {
       },
       firebase: {
         projectId: 'community-hub',
+        apiKey: 'browser-api-key',
+        authDomain: 'community-hub.firebaseapp.com',
+        storageBucket: 'community-hub.firebasestorage.app',
+        messagingSenderId: '123456789',
+        appId: '1:123456789:web:abc',
+        measurementId: '',
+        vapidKey: '',
         authenticationCredential: 'write-only-auth',
         messagingCredential: 'write-only-messaging'
       }
@@ -1115,7 +1220,22 @@ function operatorConfiguration() {
     firebase: {
       projectId: 'myscoutee',
       authenticationCredentialConfigured: false,
-      messagingCredentialConfigured: false
+      messagingCredentialConfigured: false,
+      publicConfiguration: {
+        apiKey: '',
+        authDomain: '',
+        projectId: 'myscoutee',
+        storageBucket: '',
+        messagingSenderId: '',
+        appId: '',
+        measurementId: null,
+        vapidKey: null
+      },
+      active: false,
+      readyToActivate: false,
+      authenticationTestedAt: null,
+      messagingTestedAt: null,
+      activatedAt: null
     },
     updatedAt: '2026-07-28T18:00:00.000Z'
   };

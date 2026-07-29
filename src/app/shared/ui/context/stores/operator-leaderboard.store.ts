@@ -7,6 +7,7 @@ import {
 } from '../../../core/base/services/session.service';
 import type { ListQuery } from '../../../core/contracts/list.interface';
 import type {
+  OperatorLeaderboardDeploymentPageDto,
   OperatorLeaderboardEntryDto,
   OperatorLeaderboardGroupSummaryDto,
   OperatorLeaderboardMutationDto,
@@ -15,6 +16,10 @@ import type {
 
 export interface OperatorLeaderboardFilters {
   revision: number;
+}
+
+export interface OperatorLeaderboardDeploymentFilters {
+  groupId: string;
 }
 
 export interface OperatorLeaderboardCacheMutation {
@@ -68,6 +73,19 @@ export class OperatorLeaderboardStore {
       this.summariesRef.set(page.context?.groupSummaries ?? []);
     }
     return this.applyCacheOverlay(page, !query.cursor);
+  }
+
+  async queryDeploymentPage(
+    query: ListQuery<OperatorLeaderboardDeploymentFilters>,
+    signal?: AbortSignal
+  ): Promise<OperatorLeaderboardDeploymentPageDto> {
+    const groupId = query.filters?.groupId?.trim() ?? '';
+    if (!groupId) {
+      throw new Error(
+        'operator.leaderboard.deployments.error.group.invalid'
+      );
+    }
+    return this.service.leaderboardDeploymentPage(groupId, query, signal);
   }
 
   applyMutation(

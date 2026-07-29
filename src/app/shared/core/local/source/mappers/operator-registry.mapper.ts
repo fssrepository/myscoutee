@@ -6,6 +6,9 @@ import type {
   OperatorCommunityStatusDto,
   OperatorConfigurationDto,
   OperatorDeploymentUpdateDto,
+  OperatorLeaderboardDeploymentClaimState,
+  OperatorLeaderboardDeploymentDto,
+  OperatorLeaderboardDeploymentPageDto,
   OperatorLeaderboardEntryDto,
   OperatorLeaderboardGroup,
   OperatorLeaderboardPageDto,
@@ -264,6 +267,15 @@ export class LocalOperatorRegistryMapper {
       firebase: {
         ...structuredClone(initial.firebase),
         ...structuredClone(legacy.firebase ?? {}),
+        publicConfiguration: {
+          ...structuredClone(initial.firebase.publicConfiguration),
+          ...structuredClone(
+            legacy.firebase?.publicConfiguration ?? {}
+          ),
+          projectId:
+            legacy.firebase?.projectId
+            ?? initial.firebase.projectId
+        },
         authenticationCredentialConfigured:
           legacy.firebase?.authenticationCredentialConfigured
           ?? legacy.firebaseAuthenticationConfigured
@@ -355,6 +367,101 @@ export class LocalOperatorRegistryMapper {
     };
   }
 
+  static toLeaderboardDeploymentPage(
+    record: OperatorRegistryStateRecord,
+    groupId: string,
+    query: ListQuery
+  ): OperatorLeaderboardDeploymentPageDto {
+    const normalizedGroupId = groupId.trim();
+    const pageSize = Math.max(
+      1,
+      Math.min(100, Math.trunc(Number(query.pageSize) || 20))
+    );
+    const groupIdByNodeId = new Map(
+      record.groupLinks.map(link => [link.nodeId, link.operatorGroupId])
+    );
+    const deployments = record.ledger
+      .filter(entry => {
+        const nodeId = entry.nodeId?.trim() ?? '';
+        return entry.active !== false
+          && entry.claimed
+          && !entry.founder
+          && Boolean(nodeId)
+          && (
+            groupIdByNodeId.get(nodeId)
+              ?? `isolated:${nodeId}`
+          ) === normalizedGroupId;
+      })
+      .sort((left, right) =>
+        Math.max(0, Number(right.verifiedWeight) || 0)
+          - Math.max(0, Number(left.verifiedWeight) || 0)
+        || `${left.nodeId ?? left.id}`.localeCompare(
+          `${right.nodeId ?? right.id}`
+        )
+      );
+    const groupEntry = this.recalculateLeaderboard(
+      this.withCurrentClaimVerification(
+        record.leaderboard,
+        record.claimStatus
+      )
+    ).find(entry =>
+      entry.group === 'CLAIMED'
+      && entry.operatorGroupId === normalizedGroupId
+    );
+    const groupWeight = deployments.reduce(
+      (total, entry) =>
+        total + Math.max(0, Number(entry.verifiedWeight) || 0),
+      0
+    );
+    const groupSharePercent = Math.max(
+      0,
+      Number(groupEntry?.sharePercent) || 0
+    );
+    const explicitOwnerNodeId =
+      record.claimIdentity.operatorGroupId === normalizedGroupId
+        ? record.claimIdentity.nodeId.trim()
+        : '';
+    const ownerNodeId = deployments.some(
+      entry => entry.nodeId === explicitOwnerNodeId
+    )
+      ? explicitOwnerNodeId
+      : deployments[0]?.nodeId?.trim() ?? '';
+    const claimState =
+      this.leaderboardDeploymentClaimState(record, normalizedGroupId);
+    const rows: OperatorLeaderboardDeploymentDto[] = deployments.map(entry => {
+      const deploymentId = entry.nodeId?.trim() || entry.id.trim();
+      const verifiedWeight = Math.max(
+        0,
+        Number(entry.verifiedWeight) || 0
+      );
+      return {
+        deploymentId,
+        groupId: normalizedGroupId,
+        claimState,
+        membershipState: deploymentId === ownerNodeId ? 'owner' : 'linked',
+        verifiedWeight,
+        sharePercent: groupWeight > 0
+          ? groupSharePercent * verifiedWeight / groupWeight
+          : 0
+      };
+    });
+    const cursorOffset = this.deploymentCursorOffset(
+      normalizedGroupId,
+      query.cursor
+    );
+    const items = rows.slice(cursorOffset, cursorOffset + pageSize);
+    const nextOffset = cursorOffset + items.length;
+    return {
+      items: structuredClone(items),
+      total: rows.length,
+      nextCursor: nextOffset < rows.length
+        ? `operator-deployments:${
+            encodeURIComponent(normalizedGroupId)
+          }:${nextOffset}`
+        : null
+    };
+  }
+
   static recalculateLeaderboard(
     entries: readonly OperatorLeaderboardEntryDto[]
   ): OperatorLeaderboardEntryDto[] {
@@ -369,6 +476,7 @@ export class LocalOperatorRegistryMapper {
       .filter(item =>
         item.group === 'CLAIMED'
         && item.claimVerificationStatus !== 'PENDING_REVIEW'
+        && item.claimVerificationStatus !== 'REJECTED'
       )
       .reduce((total, item) => total + Math.max(0, Number(item.verifiedWeight) || 0), 0);
     const totalUnits = founderUnits + deploymentWeight;
@@ -381,7 +489,8 @@ export class LocalOperatorRegistryMapper {
       .map(item => {
         const weight = Math.max(0, Number(item.verifiedWeight) || 0);
         const claimedShareEligible = item.group === 'CLAIMED'
-          && item.claimVerificationStatus !== 'PENDING_REVIEW';
+          && item.claimVerificationStatus !== 'PENDING_REVIEW'
+          && item.claimVerificationStatus !== 'REJECTED';
         const sharePercent = item.group === 'FOUNDER'
           ? founderUnits > 0
             ? founderShare * weight / founderUnits
@@ -490,6 +599,43 @@ export class LocalOperatorRegistryMapper {
   private static cursorOffset(cursor: string | null | undefined): number {
     const match = /^operator:(\d+)$/.exec(`${cursor ?? ''}`.trim());
     return match ? Math.max(0, Number(match[1]) || 0) : 0;
+  }
+
+  private static deploymentCursorOffset(
+    groupId: string,
+    cursor: string | null | undefined
+  ): number {
+    const prefix = `operator-deployments:${encodeURIComponent(groupId)}:`;
+    const value = `${cursor ?? ''}`.trim();
+    if (!value.startsWith(prefix)) {
+      return 0;
+    }
+    const offset = value.slice(prefix.length);
+    return /^\d+$/.test(offset)
+      ? Math.max(0, Number(offset) || 0)
+      : 0;
+  }
+
+  private static leaderboardDeploymentClaimState(
+    record: OperatorRegistryStateRecord,
+    groupId: string
+  ): OperatorLeaderboardDeploymentClaimState {
+    if (record.claimStatus.operatorGroupId?.trim() !== groupId) {
+      return 'claimed';
+    }
+    switch (record.claimStatus.verificationStatus) {
+      case 'PENDING_REVIEW':
+        return 'pending-review';
+      case 'APPROVED':
+      case 'VERIFIED':
+        return 'approved';
+      case 'REJECTED':
+        return 'rejected';
+      case 'WITHDRAWN':
+        return 'withdrawn';
+      default:
+        return 'claimed';
+    }
   }
 
   private static legacyLedger(

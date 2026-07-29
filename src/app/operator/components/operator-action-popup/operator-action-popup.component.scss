@@ -15,6 +15,12 @@
   flex: 1 1 auto;
 }
 
+.operator-action-popup--deployments {
+  height: 100%;
+  min-height: 0;
+  grid-template-rows: minmax(0, 1fr);
+}
+
 .operator-action-popup__loading {
   min-height: 180px;
   display: grid;
@@ -726,6 +732,77 @@
 
 .operator-action-popup__revenue-report app-menu {
   width: min(100%, 220px);
+}
+
+.operator-action-popup__deployments {
+  min-width: 0;
+  min-height: 0;
+  display: flex;
+  flex: 1 1 auto;
+  flex-direction: column;
+  gap: 0.58rem;
+}
+
+.operator-action-popup__deployment-summary {
+  min-width: 0;
+  padding: 0.68rem;
+  border: 1px solid rgba(23, 121, 135, 0.18);
+  border-radius: 12px;
+  background: linear-gradient(180deg, #f0fbfb 0%, #e8f6f7 100%);
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 0.58rem;
+  flex: 0 0 auto;
+}
+
+.operator-action-popup__deployment-summary-icon {
+  width: 34px;
+  height: 34px;
+  border-radius: 10px;
+  background: #d8f0f1;
+  color: #176b74;
+  display: grid;
+  place-items: center;
+}
+
+.operator-action-popup__deployment-summary-icon .mat-icon {
+  width: 19px;
+  height: 19px;
+  font-size: 19px;
+}
+
+.operator-action-popup__deployment-summary > span:nth-child(2) {
+  min-width: 0;
+  display: grid;
+  gap: 0.04rem;
+}
+
+.operator-action-popup__deployment-summary small {
+  color: rgba(36, 56, 83, 0.58);
+  font-size: 0.64rem;
+  font-weight: 800;
+}
+
+.operator-action-popup__deployment-summary strong {
+  color: #285b65;
+  font-size: 0.8rem;
+}
+
+.operator-action-popup__deployment-summary b {
+  padding: 0.28rem 0.48rem;
+  border-radius: 999px;
+  background: #d8f0f1;
+  color: #176b74;
+  font-size: 0.7rem;
+  font-variant-numeric: tabular-nums;
+}
+
+.operator-action-popup__deployment-list {
+  min-width: 0;
+  min-height: 0;
+  display: flex;
+  flex: 1 1 auto;
 }
 
 .operator-action-popup__community {

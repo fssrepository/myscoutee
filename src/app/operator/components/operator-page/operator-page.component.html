@@ -47,10 +47,19 @@
           [loadPage]="loadLeaderboardPage"
           [query]="leaderboardQuery()"
           [itemTemplate]="leaderboardRowTemplate"
+          (itemSelect)="openLeaderboardDeployments($event)"
         ></app-smart-list>
 
-        <ng-template #leaderboardRowTemplate let-entry>
-          <single-row [row]="leaderboardRow(entry)"></single-row>
+        <ng-template
+          #leaderboardRowTemplate
+          let-entry
+          let-selectItem="selectItem"
+        >
+          <single-row
+            [row]="leaderboardRow(entry)"
+            [ariaLabel]="leaderboardRowAriaLabel(entry)"
+            (rowClick)="selectItem($event)"
+          ></single-row>
         </ng-template>
       </section>
     }

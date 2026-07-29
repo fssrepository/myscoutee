@@ -23,6 +23,7 @@ import type {
   OperatorDeploymentUpdatePhase,
   OperatorDeploymentUpdateProgressDto,
   OperatorDeploymentUpdateProgressHandler,
+  OperatorLeaderboardDeploymentPageDto,
   OperatorLeaderboardEntryDto,
   OperatorLeaderboardMutationDto,
   OperatorLeaderboardPageDto,
@@ -64,6 +65,8 @@ const OPERATOR_MEASUREMENTS_SYNCHRONIZE_ROUTE =
   '/operator/measurements/synchronize';
 const OPERATOR_MEASUREMENTS_REPORTS_ROUTE = '/operator/measurements/reports';
 const OPERATOR_LEADERBOARD_ROUTE = '/operator/leaderboard';
+const OPERATOR_LEADERBOARD_DEPLOYMENTS_ROUTE =
+  '/operator/leaderboard/groups/deployments';
 const OPERATOR_CLAIM_ROUTE = '/operator/claim';
 const OPERATOR_CLAIM_APPLY_ROUTE = '/operator/claim/apply';
 const OPERATOR_CLAIM_TOKEN_ROUTE = '/operator/claim/client-token';
@@ -435,6 +438,28 @@ export class LocalOperatorRegistryService extends LocalRouteDelayService impleme
   ): Promise<OperatorLeaderboardPageDto> {
     await this.waitForOperatorRouteDelay(OPERATOR_LEADERBOARD_ROUTE, signal);
     return LocalOperatorRegistryMapper.toLeaderboardPage(await this.readStored(), query);
+  }
+
+  async leaderboardDeploymentPage(
+    groupId: string,
+    query: ListQuery,
+    signal?: AbortSignal
+  ): Promise<OperatorLeaderboardDeploymentPageDto> {
+    await this.waitForOperatorRouteDelay(
+      OPERATOR_LEADERBOARD_DEPLOYMENTS_ROUTE,
+      signal
+    );
+    const normalizedGroupId = groupId.trim();
+    if (!normalizedGroupId) {
+      throw new Error(
+        'operator.leaderboard.deployments.error.group.invalid'
+      );
+    }
+    return LocalOperatorRegistryMapper.toLeaderboardDeploymentPage(
+      await this.readStored(),
+      normalizedGroupId,
+      query
+    );
   }
 
   async loadClaimStatus(): Promise<OperatorClaimOverviewDto> {
@@ -842,6 +867,24 @@ export class LocalOperatorRegistryService extends LocalRouteDelayService impleme
     const messagingCredentialConfigured =
       Boolean(`${request.firebase.messagingCredential ?? ''}`.trim())
       || current.configuration.firebase.messagingCredentialConfigured;
+    const publicConfiguration = {
+      apiKey: `${request.firebase.apiKey ?? ''}`.trim().slice(0, 256),
+      authDomain: `${request.firebase.authDomain ?? ''}`.trim().slice(0, 253),
+      projectId,
+      storageBucket: `${request.firebase.storageBucket ?? ''}`.trim().slice(0, 512),
+      messagingSenderId:
+        `${request.firebase.messagingSenderId ?? ''}`.trim().slice(0, 64),
+      appId: `${request.firebase.appId ?? ''}`.trim().slice(0, 256),
+      measurementId:
+        `${request.firebase.measurementId ?? ''}`.trim().slice(0, 64) || null,
+      vapidKey: `${request.firebase.vapidKey ?? ''}`.trim().slice(0, 512) || null
+    };
+    const firebaseChanged =
+      projectId !== current.configuration.firebase.projectId
+      || JSON.stringify(publicConfiguration)
+        !== JSON.stringify(current.configuration.firebase.publicConfiguration)
+      || Boolean(`${request.firebase.authenticationCredential ?? ''}`.trim())
+      || Boolean(`${request.firebase.messagingCredential ?? ''}`.trim());
     const updatedAt = new Date().toISOString();
     const configuration: OperatorConfigurationDto = {
       capability: 'AVAILABLE',
@@ -871,7 +914,23 @@ export class LocalOperatorRegistryService extends LocalRouteDelayService impleme
       firebase: {
         projectId,
         authenticationCredentialConfigured,
-        messagingCredentialConfigured
+        messagingCredentialConfigured,
+        publicConfiguration,
+        active: firebaseChanged
+          ? false
+          : current.configuration.firebase.active,
+        readyToActivate: firebaseChanged
+          ? false
+          : current.configuration.firebase.readyToActivate,
+        authenticationTestedAt: firebaseChanged
+          ? null
+          : current.configuration.firebase.authenticationTestedAt,
+        messagingTestedAt: firebaseChanged
+          ? null
+          : current.configuration.firebase.messagingTestedAt,
+        activatedAt: firebaseChanged
+          ? null
+          : current.configuration.firebase.activatedAt
       },
       updatedAt
     };
@@ -898,8 +957,33 @@ export class LocalOperatorRegistryService extends LocalRouteDelayService impleme
           && request.destinationToken?.trim()
         );
     const testedAt = new Date().toISOString();
+    const firebase = structuredClone(current.configuration.firebase);
+    if (configured && request.kind === 'FIREBASE_AUTHENTICATION') {
+      firebase.authenticationTestedAt = testedAt;
+    }
+    if (configured && request.kind === 'FIREBASE_MESSAGING') {
+      firebase.messagingTestedAt = testedAt;
+    }
+    firebase.readyToActivate = Boolean(
+      firebase.authenticationTestedAt
+      && firebase.messagingTestedAt
+      && firebase.authenticationCredentialConfigured
+      && firebase.messagingCredentialConfigured
+      && firebase.publicConfiguration.apiKey.trim()
+      && firebase.publicConfiguration.authDomain.trim()
+      && firebase.publicConfiguration.projectId.trim()
+      && firebase.publicConfiguration.storageBucket.trim()
+      && firebase.publicConfiguration.messagingSenderId.trim()
+      && firebase.publicConfiguration.appId.trim()
+      && firebase.publicConfiguration.vapidKey?.trim()
+    );
     await this.repository.write(this.appendAudit({
-      ...structuredClone(current)
+      ...structuredClone(current),
+      configuration: {
+        ...structuredClone(current.configuration),
+        firebase,
+        updatedAt: testedAt
+      }
     }, 'CONFIGURATION_TEST', `Configuration test completed: ${request.kind}.`));
     return {
       kind: request.kind,
@@ -912,6 +996,31 @@ export class LocalOperatorRegistryService extends LocalRouteDelayService impleme
           : 'operator.configuration.credentials.missing',
       testedAt
     };
+  }
+
+  async activateFirebase(): Promise<OperatorConfigurationDto> {
+    await this.waitForOperatorRouteDelay(
+      `${OPERATOR_CONFIGURATION_ROUTE}/firebase/activate`
+    );
+    const current = await this.readStored();
+    if (!current.configuration.firebase.readyToActivate) {
+      throw new Error('operator.configuration.firebase.activation.not.ready');
+    }
+    const activatedAt = new Date().toISOString();
+    const configuration: OperatorConfigurationDto = {
+      ...structuredClone(current.configuration),
+      firebase: {
+        ...structuredClone(current.configuration.firebase),
+        active: true,
+        activatedAt
+      },
+      updatedAt: activatedAt
+    };
+    await this.repository.write(this.appendAudit({
+      ...structuredClone(current),
+      configuration
+    }, 'CONFIGURATION_ACTIVATE', 'Firebase configuration activated.'));
+    return structuredClone(configuration);
   }
 
   async loadRevenue(): Promise<OperatorRevenueDto> {

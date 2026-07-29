@@ -5,6 +5,7 @@ import { I18nService } from '../../../shared/core/base/services/i18n.service';
 import { DeploymentConfigurationService } from '../../../shared/core/base/services/deployment-configuration.service';
 import type { ListQuery } from '../../../shared/core/contracts/list.interface';
 import type {
+  OperatorClaimStatusDto,
   OperatorLeaderboardEntryDto,
   OperatorRegistryStatusDto
 } from '../../../shared/core/contracts/operator.interface';
@@ -38,8 +39,10 @@ describe('OperatorPageComponent', () => {
     const leaderboardCacheMutation =
       signal<OperatorLeaderboardCacheMutation | null>(null);
     const workspaceBusyAction = signal<string | null>(null);
+    const claimStatus = signal<OperatorClaimStatusDto | null>(null);
     const invalidateLeaderboard = vi.fn();
     const consumeCacheMutation = vi.fn();
+    const openLeaderboardDeployments = vi.fn();
 
     TestBed.configureTestingModule({
       imports: [OperatorPageComponent],
@@ -71,6 +74,7 @@ describe('OperatorPageComponent', () => {
           useValue: {
             activePopup: activePopup.asReadonly(),
             open: (kind: OperatorMenuKind) => activePopup.set(kind),
+            openLeaderboardDeployments,
             closePopup: () => activePopup.set(null)
           }
         },
@@ -79,7 +83,7 @@ describe('OperatorPageComponent', () => {
           useValue: {
             busyAction: workspaceBusyAction.asReadonly(),
             deploymentUpdate: signal(null).asReadonly(),
-            claimStatus: signal(null).asReadonly(),
+            claimStatus: claimStatus.asReadonly(),
             loadDeploymentUpdate: vi.fn()
           }
         },
@@ -114,6 +118,12 @@ describe('OperatorPageComponent', () => {
       loading: Signal<boolean>;
       leaderboardQuery: Signal<Partial<ListQuery<OperatorLeaderboardFilters>>>;
       actionItems: Signal<readonly AppMenuItem<string>[]>;
+      leaderboardRow: (
+        entry: OperatorLeaderboardEntryDto
+      ) => { clickable?: boolean };
+      openLeaderboardDeployments: (
+        event: { item: OperatorLeaderboardEntryDto }
+      ) => void;
       leaderboardSmartList: {
         patchVisibleItem: (
           predicate: (item: OperatorLeaderboardEntryDto) => boolean,
@@ -153,6 +163,27 @@ describe('OperatorPageComponent', () => {
       palette: 'green',
       layout: 'big'
     }));
+    claimStatus.set({
+      claimed: true,
+      claimedAt: '2026-07-29T12:00:00Z',
+      claimantUserId: 'operator-demo',
+      claimantName: 'Campus Operator',
+      claimantAvatarUrl: null,
+      operatorGroupId: 'opg_campus',
+      sharePercent: 0,
+      verificationCapability: 'AVAILABLE',
+      verificationUnavailableReason: null,
+      verificationStatus: 'REJECTED',
+      verificationSubmittedAt: '2026-07-29T12:00:00Z',
+      legalName: 'Campus Operator Ltd.'
+    });
+    expect(componentView.actionItems().find(item => item.id === 'claim'))
+      .toEqual(expect.objectContaining({
+        label: 'operator.action.claim.share',
+        detail: 'operator.action.claim.share.rejected',
+        icon: 'block',
+        palette: 'red'
+      }));
     workspaceBusyAction.set('claim-share');
     expect(componentView.actionItems().find(item => item.id === 'claim')?.progress)
       .toBeUndefined();
@@ -187,6 +218,13 @@ describe('OperatorPageComponent', () => {
       operatorGroupId: 'campus',
       deploymentCount: 2
     };
+    expect(componentView.leaderboardRow(updatedExistingGroup).clickable).toBe(true);
+    expect(componentView.leaderboardRow(registeredDeployment).clickable).toBe(false);
+    componentView.openLeaderboardDeployments({ item: updatedExistingGroup });
+    expect(openLeaderboardDeployments).toHaveBeenCalledWith(updatedExistingGroup);
+    componentView.openLeaderboardDeployments({ item: registeredDeployment });
+    expect(openLeaderboardDeployments).toHaveBeenCalledOnce();
+
     const patchVisibleItem = vi.fn()
       .mockReturnValueOnce(false)
       .mockReturnValueOnce(true);

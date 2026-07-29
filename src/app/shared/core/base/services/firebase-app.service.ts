@@ -1,5 +1,8 @@
-import { Injectable } from '@angular/core';
+import { Injectable, inject } from '@angular/core';
 import { getApp, getApps, initializeApp, type FirebaseApp, type FirebaseOptions } from 'firebase/app';
+
+import { environment } from '../../../../../environments/environment';
+import { SessionService } from './session.service';
 
 export type FirebaseConfigFile = Pick<
   FirebaseOptions,
@@ -12,8 +15,10 @@ export type FirebaseConfigFile = Pick<
   providedIn: 'root'
 })
 export class FirebaseAppService {
-  private static readonly FIREBASE_CONFIG_PATH = 'keys/firebase.config.json';
+  private static readonly FIREBASE_CONFIG_PATH =
+    '/deployment/configuration/firebase-config';
 
+  private readonly sessionService = inject(SessionService);
   private firebaseAppPromise: Promise<FirebaseApp | null> | null = null;
 
   async ensureFirebaseApp(): Promise<FirebaseApp | null> {
@@ -27,10 +32,17 @@ export class FirebaseAppService {
   }
 
   async loadFirebaseConfig(): Promise<FirebaseConfigFile | null> {
-    if (typeof document === 'undefined') {
+    if (
+      typeof document === 'undefined'
+      || this.sessionService.currentSession()?.kind === 'demo'
+    ) {
       return null;
     }
-    const configUrl = new URL(FirebaseAppService.FIREBASE_CONFIG_PATH, document.baseURI).toString();
+    const apiBaseUrl = (environment.apiBaseUrl ?? '/api').replace(/\/+$/, '');
+    const configUrl = new URL(
+      `${apiBaseUrl}${FirebaseAppService.FIREBASE_CONFIG_PATH}`,
+      document.baseURI
+    ).toString();
     try {
       const response = await fetch(configUrl, { cache: 'no-store' });
       if (!response.ok) {

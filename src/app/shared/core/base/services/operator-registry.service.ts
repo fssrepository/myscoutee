@@ -15,6 +15,7 @@ import type {
   OperatorConfigurationTestResultDto,
   OperatorDeploymentUpdateDto,
   OperatorDeploymentUpdateProgressHandler,
+  OperatorLeaderboardDeploymentPageDto,
   OperatorLeaderboardPageDto,
   OperatorMeasurementReportDto,
   OperatorMeasurementReportFilters,
@@ -130,6 +131,18 @@ export class OperatorRegistryService extends BaseRouteModeService {
     return this.registryService.leaderboardPage(query, signal);
   }
 
+  leaderboardDeploymentPage(
+    groupId: string,
+    query: ListQuery,
+    signal?: AbortSignal
+  ): Promise<OperatorLeaderboardDeploymentPageDto> {
+    return this.registryService.leaderboardDeploymentPage(
+      groupId,
+      query,
+      signal
+    );
+  }
+
   loadClaimStatus(): Promise<OperatorClaimOverviewDto> {
     return this.registryService.loadClaimStatus();
   }
@@ -172,6 +185,10 @@ export class OperatorRegistryService extends BaseRouteModeService {
     request: OperatorConfigurationTestRequestDto
   ): Promise<OperatorConfigurationTestResultDto> {
     return this.registryService.testConfiguration(request);
+  }
+
+  activateFirebase(): Promise<OperatorConfigurationDto> {
+    return this.registryService.activateFirebase();
   }
 
   loadRevenue(): Promise<OperatorRevenueDto> {

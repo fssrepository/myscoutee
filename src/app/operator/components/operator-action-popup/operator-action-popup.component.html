@@ -4,6 +4,7 @@
       <section
         class="operator-action-popup"
         [class.operator-action-popup--loading]="loading()"
+        [class.operator-action-popup--deployments]="activeKind === 'deployments'"
         [attr.aria-busy]="busy()"
       >
         @if (loading()) {
@@ -111,6 +112,25 @@
                       {{ formatShare(claim.sharePercent) }}%
                     </span>
                   </div>
+                } @else if (claim.verificationStatus === 'REJECTED') {
+                  <div class="operator-action-popup__claim-review">
+                    <p class="operator-action-popup__result is-error" role="status">
+                      <mat-icon>block</mat-icon>
+                      <span class="operator-action-popup__result-copy">
+                        <strong>{{ 'operator.claim.verification.rejected' | i18n }}</strong>
+                        <small>
+                          {{ 'operator.claim.verification.rejected.instructions' | i18n }}
+                        </small>
+                      </span>
+                    </p>
+                    <span
+                      class="operator-action-popup__claim-share"
+                      [attr.title]="'operator.leaderboard.share' | i18n"
+                    >
+                      <mat-icon>pie_chart</mat-icon>
+                      {{ formatShare(claim.sharePercent) }}%
+                    </span>
+                  </div>
                 } @else if (
                   claim.verificationStatus === 'APPROVED'
                   || claim.verificationStatus === 'VERIFIED'
@@ -134,7 +154,8 @@
                       || !registeredForClaim()
                       || claim.verificationCapability !== 'AVAILABLE'
                       || claim.claimed
-                      || claim.verificationStatus === 'PENDING_REVIEW'"
+                      || claim.verificationStatus === 'PENDING_REVIEW'
+                      || claim.verificationStatus === 'REJECTED'"
                   ></app-form-flow>
                 } @else {
                   <p class="operator-action-popup__hint">
@@ -549,6 +570,107 @@
                     </label>
 
                     <label class="operator-action-popup__field">
+                      <span>{{ 'operator.configuration.firebase.api.key' | i18n }}</span>
+                      <input
+                        type="text"
+                        maxlength="256"
+                        autocomplete="off"
+                        autocapitalize="off"
+                        spellcheck="false"
+                        [ngModel]="draft.firebase.apiKey"
+                        (ngModelChange)="workspace.setConfigurationFirebase({ apiKey: $event })"
+                        [disabled]="configurationDisabled()"
+                      />
+                    </label>
+
+                    <label class="operator-action-popup__field">
+                      <span>{{ 'operator.configuration.firebase.auth.domain' | i18n }}</span>
+                      <input
+                        type="text"
+                        maxlength="253"
+                        autocomplete="off"
+                        autocapitalize="off"
+                        spellcheck="false"
+                        placeholder="project-id.firebaseapp.com"
+                        [ngModel]="draft.firebase.authDomain"
+                        (ngModelChange)="workspace.setConfigurationFirebase({ authDomain: $event })"
+                        [disabled]="configurationDisabled()"
+                      />
+                    </label>
+
+                    <label class="operator-action-popup__field">
+                      <span>{{ 'operator.configuration.firebase.storage.bucket' | i18n }}</span>
+                      <input
+                        type="text"
+                        maxlength="512"
+                        autocomplete="off"
+                        autocapitalize="off"
+                        spellcheck="false"
+                        [ngModel]="draft.firebase.storageBucket"
+                        (ngModelChange)="workspace.setConfigurationFirebase({ storageBucket: $event })"
+                        [disabled]="configurationDisabled()"
+                      />
+                    </label>
+
+                    <label class="operator-action-popup__field">
+                      <span>{{ 'operator.configuration.firebase.messaging.sender.id' | i18n }}</span>
+                      <input
+                        type="text"
+                        maxlength="64"
+                        autocomplete="off"
+                        inputmode="numeric"
+                        [ngModel]="draft.firebase.messagingSenderId"
+                        (ngModelChange)="workspace.setConfigurationFirebase({ messagingSenderId: $event })"
+                        [disabled]="configurationDisabled()"
+                      />
+                    </label>
+
+                    <label class="operator-action-popup__field">
+                      <span>{{ 'operator.configuration.firebase.app.id' | i18n }}</span>
+                      <input
+                        type="text"
+                        maxlength="256"
+                        autocomplete="off"
+                        autocapitalize="off"
+                        spellcheck="false"
+                        [ngModel]="draft.firebase.appId"
+                        (ngModelChange)="workspace.setConfigurationFirebase({ appId: $event })"
+                        [disabled]="configurationDisabled()"
+                      />
+                    </label>
+
+                    <label class="operator-action-popup__field">
+                      <span>{{ 'operator.configuration.firebase.measurement.id' | i18n }}</span>
+                      <input
+                        type="text"
+                        maxlength="64"
+                        autocomplete="off"
+                        autocapitalize="off"
+                        spellcheck="false"
+                        [ngModel]="draft.firebase.measurementId"
+                        (ngModelChange)="workspace.setConfigurationFirebase({ measurementId: $event })"
+                        [disabled]="configurationDisabled()"
+                      />
+                    </label>
+
+                    <label class="operator-action-popup__field">
+                      <span>{{ 'operator.configuration.firebase.vapid.key' | i18n }}</span>
+                      <textarea
+                        rows="2"
+                        maxlength="512"
+                        autocomplete="off"
+                        autocapitalize="off"
+                        spellcheck="false"
+                        [ngModel]="draft.firebase.vapidKey"
+                        (ngModelChange)="workspace.setConfigurationFirebase({ vapidKey: $event })"
+                        [disabled]="configurationDisabled()"
+                      ></textarea>
+                      <small>
+                        {{ 'operator.configuration.firebase.public.guidance' | i18n }}
+                      </small>
+                    </label>
+
+                    <label class="operator-action-popup__field">
                       <span>{{ 'operator.configuration.firebase.authentication.credential' | i18n }}</span>
                       <textarea
                         rows="3"
@@ -603,7 +725,10 @@
                       [items]="configurationFirebaseSaveActionItems()"
                       (itemSelect)="onAction($event)"
                     ></app-menu>
-                    @if (workspace.feedbackAction() === 'register-firebase') {
+                    @if (
+                      workspace.feedbackAction() === 'register-firebase'
+                      || workspace.feedbackAction() === 'activate-firebase'
+                    ) {
                       @if (workspace.error()) {
                         <p class="operator-action-popup__result is-error" role="alert">
                           <mat-icon>error_outline</mat-icon>
@@ -756,6 +881,53 @@
               }
               @if (workspace.revenue(); as revenue) {
                 <app-operator-revenue-view [revenue]="revenue"></app-operator-revenue-view>
+              }
+            }
+            @case ('deployments') {
+              @if (menu.selectedLeaderboardEntry(); as entry) {
+                <section
+                  class="operator-action-popup__deployments"
+                  [attr.aria-label]="'operator.leaderboard.deployments.title' | i18n"
+                >
+                  <header class="operator-action-popup__deployment-summary">
+                    <span class="operator-action-popup__deployment-summary-icon">
+                      <mat-icon>hub</mat-icon>
+                    </span>
+                    <span>
+                      <small>
+                        {{ 'operator.leaderboard.network' | i18n }}
+                      </small>
+                      <strong>
+                        {{ entry.deploymentCount || 0 }}
+                        {{ ((entry.deploymentCount || 0) === 1
+                          ? 'operator.leaderboard.deployment'
+                          : 'operator.leaderboard.deployments') | i18n }}
+                      </strong>
+                    </span>
+                    <b
+                      [attr.title]="'operator.leaderboard.share' | i18n"
+                    >
+                      {{ formatShare(entry.sharePercent) }}%
+                    </b>
+                  </header>
+
+                  <app-smart-list
+                    class="operator-action-popup__deployment-list"
+                    [config]="leaderboardDeploymentConfig"
+                    [loadPage]="loadLeaderboardDeploymentPage"
+                    [query]="leaderboardDeploymentQuery()"
+                    [itemTemplate]="leaderboardDeploymentTemplate"
+                  ></app-smart-list>
+
+                  <ng-template
+                    #leaderboardDeploymentTemplate
+                    let-deployment
+                  >
+                    <single-row
+                      [row]="leaderboardDeploymentRow(deployment)"
+                    ></single-row>
+                  </ng-template>
+                </section>
               }
             }
             @case ('community') {
@@ -944,7 +1116,10 @@
             }
           }
 
-          @if (activeKind !== 'configuration') {
+          @if (
+            activeKind !== 'configuration'
+            && activeKind !== 'deployments'
+          ) {
             @if (workspace.error()) {
               <p class="operator-action-popup__result is-error" role="alert">
                 <mat-icon>error_outline</mat-icon>
@@ -955,7 +1130,10 @@
               workspace.notice()
               && !(
                 activeKind === 'claim'
-                && workspace.claimStatus()?.verificationStatus === 'PENDING_REVIEW'
+                && (
+                  workspace.claimStatus()?.verificationStatus === 'PENDING_REVIEW'
+                  || workspace.claimStatus()?.verificationStatus === 'REJECTED'
+                )
               )
             ) {
               <p class="operator-action-popup__result is-success" role="status">

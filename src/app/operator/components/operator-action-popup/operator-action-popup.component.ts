@@ -17,6 +17,7 @@ import type {
   ListQuery,
   OperatorClaimRequestDto,
   OperatorDeploymentUpdatePhase,
+  OperatorLeaderboardDeploymentDto,
   OperatorRevenueReportDto,
   OperatorRevenueReportFilters,
   OperatorRevenueSyncState
@@ -47,11 +48,17 @@ import {
   type PopupModel
 } from '../../../shared/ui/components/core/popup';
 import {
+  SingleRowComponent,
   SmartListComponent,
+  type SingleRowData,
   type SmartListConfig,
   type SmartListLoadPage
 } from '../../../shared/ui/components/core/smart-list';
 import { DialogStore } from '../../../shared/ui/context/stores/dialog.store';
+import {
+  OperatorLeaderboardStore,
+  type OperatorLeaderboardDeploymentFilters
+} from '../../../shared/ui/context/stores/operator-leaderboard.store';
 import {
   OperatorMenuStore,
   type OperatorMenuKind
@@ -74,6 +81,7 @@ type OperatorPopupAction =
   | 'save-social-links'
   | 'register-payment'
   | 'register-firebase'
+  | 'activate-firebase'
   | 'test-authentication'
   | 'test-messaging'
   | 'synchronize-revenue'
@@ -107,6 +115,7 @@ interface OperatorPopupActionContext {
     MatIconModule,
     OperatorRevenueViewComponent,
     PopupComponent,
+    SingleRowComponent,
     SmartListComponent
   ],
   templateUrl: './operator-action-popup.component.html',
@@ -116,6 +125,7 @@ export class OperatorActionPopupComponent {
   protected readonly menu = inject(OperatorMenuStore);
   protected readonly registry = inject(OperatorRegistryStore);
   protected readonly workspace = inject(OperatorWorkspaceStore);
+  private readonly leaderboard = inject(OperatorLeaderboardStore);
   private readonly dialog = inject(DialogStore);
   private readonly i18n = inject(I18nService);
   protected readonly claimPath = signal<OperatorClaimPath>('company');
@@ -197,6 +207,50 @@ export class OperatorActionPopupComponent {
     OperatorRevenueReportFilters
   > = (query, context) => from(
     this.workspace.revenueReportPage(query, context?.signal)
+  );
+  protected readonly leaderboardDeploymentQuery = computed<
+    Partial<ListQuery<OperatorLeaderboardDeploymentFilters>>
+  >(() => ({
+    page: 0,
+    pageSize: 8,
+    filters: {
+      groupId:
+        this.menu.selectedLeaderboardEntry()?.operatorGroupId?.trim() ?? ''
+    }
+  }));
+  protected readonly leaderboardDeploymentConfig: SmartListConfig<
+    OperatorLeaderboardDeploymentDto,
+    OperatorLeaderboardDeploymentFilters
+  > = {
+    pageSize: 8,
+    initialPageSize: 8,
+    defaultView: 'list',
+    emptyLabel: 'operator.leaderboard.deployments.empty',
+    emptyDescription:
+      'operator.leaderboard.deployments.empty.description',
+    showStickyHeader: false,
+    showFirstGroupMarker: false,
+    listLayout: 'stack',
+    snapMode: 'none',
+    preloadOffsetPx: 160,
+    headerProgress: {
+      enabled: true,
+      placement: 'inline',
+      tone: 'accent'
+    },
+    cacheable: {
+      identity: deployment => deployment.deploymentId
+    },
+    containerClass: {
+      'operator-leaderboard-deployment-smart-list': true
+    },
+    trackBy: (_index, deployment) => deployment.deploymentId
+  };
+  protected readonly loadLeaderboardDeploymentPage: SmartListLoadPage<
+    OperatorLeaderboardDeploymentDto,
+    OperatorLeaderboardDeploymentFilters
+  > = (query, context) => from(
+    this.leaderboard.queryDeploymentPage(query, context?.signal)
   );
   protected readonly claimPathItems = computed<
     readonly AppMenuItem<string, OperatorPopupActionContext>[]
@@ -571,19 +625,58 @@ export class OperatorActionPopupComponent {
     readonly AppMenuItem<string, OperatorPopupActionContext>[]
   >(() => {
     const draft = this.workspace.configurationDraft();
-    return [{
-      id: 'operator-save-firebase',
-      label: 'operator.configuration.firebase.save',
-      icon: 'save',
-      palette: 'orange',
-      layout: 'action',
-      disabled: this.configurationDisabled()
-        || !draft?.firebase.projectId.trim(),
-      progress: this.busyAction() === 'register-firebase'
-        ? { state: 'loading', durationMs: 3000 }
-        : null,
-      context: { action: 'register-firebase' }
-    }];
+    const configuration = this.workspace.configuration();
+    const locallyTested = Boolean(
+      this.workspace.configurationAuthenticationTest()?.success
+      && this.workspace.configurationMessagingTest()?.success
+    );
+    const publicClientReady = Boolean(
+      draft?.firebase.apiKey.trim()
+      && draft.firebase.authDomain.trim()
+      && draft.firebase.projectId.trim()
+      && draft.firebase.storageBucket.trim()
+      && draft.firebase.messagingSenderId.trim()
+      && draft.firebase.appId.trim()
+      && draft.firebase.vapidKey.trim()
+    );
+    return [
+      {
+        id: 'operator-save-firebase',
+        label: 'operator.configuration.firebase.save',
+        icon: 'save',
+        palette: 'orange',
+        layout: 'action',
+        disabled: this.configurationDisabled()
+          || !draft?.firebase.projectId.trim(),
+        progress: this.busyAction() === 'register-firebase'
+          ? { state: 'loading', durationMs: 3000 }
+          : null,
+        context: { action: 'register-firebase' }
+      },
+      {
+        id: 'operator-activate-firebase',
+        label: configuration?.firebase.active
+          ? 'operator.configuration.firebase.active'
+          : 'operator.configuration.firebase.activate',
+        icon: configuration?.firebase.active
+          ? 'verified'
+          : 'published_with_changes',
+        palette: 'green',
+        layout: 'action',
+        disabled: this.configurationDisabled()
+          || Boolean(configuration?.firebase.active)
+          || this.workspace.configurationFirebaseDirty()
+          || !publicClientReady
+          || !(
+            configuration?.firebase.readyToActivate
+            || locallyTested
+          ),
+        progress: this.busyAction() === 'activate-firebase'
+          ? { state: 'loading', durationMs: 3000 }
+          : null,
+        context: { action: 'activate-firebase' }
+      }
+    ];
   });
   protected readonly configurationFirebaseTestActionItems = computed<
     readonly AppMenuItem<string, OperatorPopupActionContext>[]
@@ -608,6 +701,7 @@ export class OperatorActionPopupComponent {
             : 'blue',
         layout: 'action',
         disabled: this.configurationDisabled()
+          || this.workspace.configurationFirebaseDirty()
           || !configuration?.firebase.authenticationCredentialConfigured
           || authenticationFeedback !== null,
         progress: this.busyAction() === 'test-authentication'
@@ -632,6 +726,7 @@ export class OperatorActionPopupComponent {
             : 'orange',
         layout: 'action',
         disabled: this.configurationDisabled()
+          || this.workspace.configurationFirebaseDirty()
           || !configuration?.firebase.messagingCredentialConfigured
           || !this.workspace.configurationMessagingDestinationToken().trim()
           || messagingFeedback !== null,
@@ -667,22 +762,43 @@ export class OperatorActionPopupComponent {
 
   protected popupModel(): PopupModel {
     const kind = this.kind();
+    const deploymentEntry = kind === 'deployments'
+      ? this.menu.selectedLeaderboardEntry()
+      : null;
+    const deploymentTitle = deploymentEntry
+      ? this.i18n.translate(deploymentEntry.label)
+      : this.i18n.translate('operator.leaderboard.deployments.title');
     const wide =
       kind === 'claim'
       || kind === 'configuration'
       || kind === 'revenue'
-      || kind === 'community';
+      || kind === 'community'
+      || kind === 'deployments';
     return {
-      title: this.titleKey(kind),
+      headerLabel: kind === 'deployments'
+        ? 'operator.leaderboard.deployments.title'
+        : null,
+      headerLabelIcon: kind === 'deployments' ? 'hub' : null,
+      title: kind === 'deployments'
+        ? deploymentTitle
+        : this.titleKey(kind),
       subtitle: this.subtitleKey(kind),
-      ariaLabel: this.titleKey(kind),
+      ariaLabel: kind === 'deployments'
+        ? [
+            this.i18n.translate(
+              'operator.leaderboard.deployments.title'
+            ),
+            deploymentTitle
+          ].join(': ')
+        : this.titleKey(kind),
+      translateTitle: kind !== 'deployments',
       closeAriaLabel: 'operator.popup.close',
       size: wide ? 'wide' : 'small',
       height: wide ? 'full' : 'auto',
       mobilePresentation: wide ? 'fullscreen' : 'compact',
       headerTone: 'accent',
       headerPalette: this.headerPalette(kind),
-      bodyLayout: 'default',
+      bodyLayout: kind === 'deployments' ? 'fill' : 'default',
       headerActions: kind === 'claim' && this.canIssueClientCode()
         ? [{
             id: 'operator-claim-client-code',
@@ -762,6 +878,9 @@ export class OperatorActionPopupComponent {
           'operator.configuration.firebase.saved'
         );
         return;
+      case 'activate-firebase':
+        await this.workspace.activateFirebase();
+        return;
       case 'test-authentication':
         await this.workspace.testConfiguration('FIREBASE_AUTHENTICATION');
         return;
@@ -829,6 +948,93 @@ export class OperatorActionPopupComponent {
       minimumFractionDigits: value > 0 && value < 1 ? 2 : 1,
       maximumFractionDigits: 2
     }).format(Math.max(0, value));
+  }
+
+  protected leaderboardDeploymentRow(
+    deployment: OperatorLeaderboardDeploymentDto
+  ): SingleRowData<OperatorLeaderboardDeploymentDto> {
+    const locale = this.i18n.currentLanguage();
+    const units = new Intl.NumberFormat(locale, {
+      maximumFractionDigits: 0
+    }).format(Math.max(0, deployment.verifiedWeight));
+    const share = this.formatShare(deployment.sharePercent);
+    const membershipLabel = this.i18n.translate(
+      `operator.leaderboard.deployments.membership.${
+        deployment.membershipState
+      }`
+    );
+    const claimLabel = this.i18n.translate(
+      `operator.leaderboard.deployments.claim.${deployment.claimState}`
+    );
+    const pendingReview = deployment.claimState === 'pending-review';
+    const rejectedReview = deployment.claimState === 'rejected';
+    return {
+      id: deployment.deploymentId,
+      title: deployment.deploymentId,
+      subtitle: membershipLabel,
+      detail: [
+        units,
+        this.i18n.translate(
+          'operator.leaderboard.contribution.units'
+        )
+      ].join(' '),
+      metaRows: pendingReview || rejectedReview ? [] : [claimLabel],
+      icon: deployment.membershipState === 'owner'
+        ? 'verified_user'
+        : 'link',
+      surfaceTone: rejectedReview
+        ? 'danger'
+        : pendingReview
+          ? 'warning'
+          : deployment.membershipState === 'owner'
+            ? 'accent'
+            : 'success',
+      toneClass: [
+        'operator-leaderboard-deployment-row',
+        `operator-leaderboard-deployment-row--${
+          deployment.membershipState
+        }`,
+        pendingReview
+          ? 'operator-leaderboard-deployment-row--pending-review'
+          : '',
+        rejectedReview
+          ? 'operator-leaderboard-deployment-row--rejected'
+          : ''
+      ].filter(Boolean).join(' '),
+      badges: rejectedReview
+        ? [{
+            label: claimLabel,
+            icon: 'block',
+            ariaLabel: claimLabel,
+            title: claimLabel,
+            tone: 'danger',
+            position: 'top-right'
+          }]
+        : pendingReview
+          ? [{
+              label: claimLabel,
+              icon: 'pending_actions',
+              ariaLabel: claimLabel,
+              title: claimLabel,
+              tone: 'warning',
+              position: 'top-right'
+            }]
+          : [{
+              label: `${share}%`,
+              icon: 'pie_chart',
+              ariaLabel: [
+                `${share}%`,
+                this.i18n.translate('operator.leaderboard.share')
+              ].join(' '),
+              title: [
+                `${share}%`,
+                this.i18n.translate('operator.leaderboard.share')
+              ].join(' '),
+              tone: deployment.sharePercent > 0 ? 'accent' : 'muted',
+              position: 'top-right'
+            }],
+      eagerDetail: structuredClone(deployment)
+    };
   }
 
   protected formatBytes(value: number): string {
@@ -1108,6 +1314,7 @@ export class OperatorActionPopupComponent {
       case 'save-social-links':
       case 'register-payment':
       case 'register-firebase':
+      case 'activate-firebase':
         return 'operator.configuration.saving';
       case 'set-community':
         return 'operator.community.updating';
@@ -1185,6 +1392,8 @@ export class OperatorActionPopupComponent {
       case 'community':
         await this.workspace.loadCommunityStatus();
         return;
+      case 'deployments':
+        return;
     }
   }
 
@@ -1229,6 +1438,17 @@ export class OperatorActionPopupComponent {
           return [];
         }
         if (this.claimPath() === 'company') {
+          if (claim.verificationStatus === 'REJECTED') {
+            return [{
+              id: 'operator-claim-rejected',
+              label: 'operator.claim.verification.rejected.action',
+              icon: 'block',
+              palette: 'red',
+              layout: 'action',
+              disabled: true,
+              context: { action: 'claim-share' }
+            }];
+          }
           if (claim.verificationStatus === 'PENDING_REVIEW') {
             return [{
               id: 'operator-claim-pending-review',
@@ -1345,6 +1565,8 @@ export class OperatorActionPopupComponent {
         return 'operator.action.revenue';
       case 'community':
         return 'operator.community';
+      case 'deployments':
+        return 'operator.leaderboard.deployments.title';
       default:
         return 'operator';
     }
@@ -1362,6 +1584,8 @@ export class OperatorActionPopupComponent {
         return 'operator.revenue.subtitle';
       case 'community':
         return 'operator.community.subtitle';
+      case 'deployments':
+        return 'operator.leaderboard.deployments.subtitle';
       default:
         return '';
     }
@@ -1379,6 +1603,8 @@ export class OperatorActionPopupComponent {
         return 'blue';
       case 'revenue':
         return 'green';
+      case 'deployments':
+        return 'teal';
       case 'community':
       default:
         return 'slate';

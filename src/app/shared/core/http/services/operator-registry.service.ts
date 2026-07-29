@@ -24,6 +24,10 @@ import type {
   OperatorDeploymentUpdatePhase,
   OperatorDeploymentUpdateProgressDto,
   OperatorDeploymentUpdateProgressHandler,
+  OperatorLeaderboardDeploymentClaimState,
+  OperatorLeaderboardDeploymentDto,
+  OperatorLeaderboardDeploymentMembershipState,
+  OperatorLeaderboardDeploymentPageDto,
   OperatorLeaderboardEntryDto,
   OperatorLeaderboardGroup,
   OperatorLeaderboardGroupSummaryDto,
@@ -121,6 +125,24 @@ interface RemoteOperatorLeaderboardPage {
   snapshot: RemoteOperatorLeaderboardSnapshot;
   view: RemoteLeaderboardView;
   items: RemoteOperatorLeaderboardRow[];
+  nextCursor: string | null;
+}
+
+interface RemoteOperatorLeaderboardDeployment {
+  deploymentId: string;
+  groupId: string;
+  claimState: string;
+  membershipState: string;
+  weightNumerator: string;
+  weightDenominator: string;
+  shareNumerator: string;
+  shareDenominator: string;
+}
+
+interface RemoteOperatorLeaderboardDeploymentPage {
+  snapshot: RemoteOperatorLeaderboardSnapshot;
+  groupId: string;
+  items: RemoteOperatorLeaderboardDeployment[];
   nextCursor: string | null;
 }
 
@@ -506,6 +528,58 @@ export class HttpOperatorRegistryService implements OperatorRegistryServiceContr
     };
   }
 
+  async leaderboardDeploymentPage(
+    groupId: string,
+    query: ListQuery,
+    signal?: AbortSignal
+  ): Promise<OperatorLeaderboardDeploymentPageDto> {
+    this.throwIfAborted(signal);
+    const normalizedGroupId = groupId.trim();
+    if (!normalizedGroupId) {
+      throw new Error(
+        'operator.leaderboard.deployments.error.group.invalid'
+      );
+    }
+    const pageSize = Math.max(
+      1,
+      Math.min(100, Math.trunc(Number(query.pageSize) || 20))
+    );
+    let params = new HttpParams().set('limit', pageSize);
+    const cursor = query.cursor?.trim() ?? '';
+    if (cursor) {
+      params = params.set('cursor', cursor);
+    }
+    const route = `${
+      OPERATOR_NETWORK_ROUTE
+    }/leaderboard/groups/${encodeURIComponent(normalizedGroupId)}/deployments`;
+    const remote = await this.requireResponse(
+      route,
+      this.http.get<RemoteOperatorLeaderboardDeploymentPage>(
+        `${this.apiBaseUrl}${route}`,
+        this.requestOptions(params)
+      ).toPromise()
+    );
+    this.throwIfAborted(signal);
+    if (remote.groupId?.trim() !== normalizedGroupId) {
+      throw new Error(
+        'operator.leaderboard.deployments.error.response'
+      );
+    }
+    const items = (remote.items ?? []).map(item =>
+      this.toLeaderboardDeployment(item, normalizedGroupId)
+    );
+    const nextCursor = remote.nextCursor?.trim() || null;
+    const pageOffset = Math.max(
+      0,
+      Math.trunc(Number(query.page) || 0)
+    ) * pageSize;
+    return {
+      items,
+      total: pageOffset + items.length + (nextCursor ? 1 : 0),
+      nextCursor
+    };
+  }
+
   async loadClaimStatus(): Promise<OperatorClaimOverviewDto> {
     const remote = await this.requireResponse(
       `${OPERATOR_NETWORK_ROUTE}/claim`,
@@ -716,6 +790,17 @@ export class HttpOperatorRegistryService implements OperatorRegistryServiceContr
       this.http.post<OperatorConfigurationTestResultDto>(
         `${this.apiBaseUrl}${OPERATOR_CONFIGURATION_ROUTE}/tests`,
         payload,
+        this.requestOptions()
+      ).toPromise()
+    );
+  }
+
+  async activateFirebase(): Promise<OperatorConfigurationDto> {
+    return await this.requireResponse(
+      `${OPERATOR_CONFIGURATION_ROUTE}/firebase/activate`,
+      this.http.post<OperatorConfigurationDto>(
+        `${this.apiBaseUrl}${OPERATOR_CONFIGURATION_ROUTE}/firebase/activate`,
+        null,
         this.requestOptions()
       ).toPromise()
     );
@@ -1324,10 +1409,60 @@ export class HttpOperatorRegistryService implements OperatorRegistryServiceContr
       deploymentCount: Math.max(0, Math.trunc(Number(row.deploymentCount) || 0)),
       claimVerificationStatus: row.claimState?.trim().toLowerCase() === 'pending-review'
         ? 'PENDING_REVIEW'
-        : group === 'CLAIMED'
-          ? 'APPROVED'
-          : null
+        : row.claimState?.trim().toLowerCase() === 'rejected'
+          ? 'REJECTED'
+          : group === 'CLAIMED'
+            ? 'APPROVED'
+            : null
     };
+  }
+
+  private toLeaderboardDeployment(
+    row: RemoteOperatorLeaderboardDeployment,
+    expectedGroupId: string
+  ): OperatorLeaderboardDeploymentDto {
+    return {
+      deploymentId: row.deploymentId?.trim() || '',
+      groupId: row.groupId?.trim() || expectedGroupId,
+      claimState: this.leaderboardDeploymentClaimState(row.claimState),
+      membershipState: this.leaderboardDeploymentMembershipState(
+        row.membershipState
+      ),
+      verifiedWeight: this.rational(
+        row.weightNumerator,
+        row.weightDenominator
+      ),
+      sharePercent: this.rational(
+        row.shareNumerator,
+        row.shareDenominator
+      ) * 100
+    };
+  }
+
+  private leaderboardDeploymentClaimState(
+    value: string
+  ): OperatorLeaderboardDeploymentClaimState {
+    switch (value?.trim().toLowerCase()) {
+      case 'pending-review':
+        return 'pending-review';
+      case 'approved':
+        return 'approved';
+      case 'rejected':
+        return 'rejected';
+      case 'withdrawn':
+        return 'withdrawn';
+      case 'claimed':
+      default:
+        return 'claimed';
+    }
+  }
+
+  private leaderboardDeploymentMembershipState(
+    value: string
+  ): OperatorLeaderboardDeploymentMembershipState {
+    return value?.trim().toLowerCase() === 'owner'
+      ? 'owner'
+      : 'linked';
   }
 
   private toRegistryMutationResult(

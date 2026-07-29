@@ -7,6 +7,7 @@ import { SessionService } from '../../../core/base/services/session.service';
 import type {
   OperatorClaimRequestDto,
   OperatorClaimStatusDto,
+  OperatorCommunityStatusDto,
   OperatorConfigurationDto,
   OperatorDeploymentUpdateDto,
   OperatorRevenueDto
@@ -22,6 +23,7 @@ describe('OperatorWorkspaceStore', () => {
   const loadDeploymentUpdate = vi.fn();
   const loadRevenue = vi.fn();
   const loadConfiguration = vi.fn();
+  const loadCommunityStatus = vi.fn();
   const saveConfiguration = vi.fn();
   const synchronizeRevenue = vi.fn();
   const revenueReportPage = vi.fn();
@@ -57,6 +59,7 @@ describe('OperatorWorkspaceStore', () => {
     loadDeploymentUpdate.mockReset();
     loadRevenue.mockReset();
     loadConfiguration.mockReset();
+    loadCommunityStatus.mockReset();
     saveConfiguration.mockReset();
     synchronizeRevenue.mockReset();
     revenueReportPage.mockReset();
@@ -86,6 +89,7 @@ describe('OperatorWorkspaceStore', () => {
             loadClaimStatus,
             loadDeploymentUpdate,
             loadConfiguration,
+            loadCommunityStatus,
             saveConfiguration,
             loadRevenue,
             synchronizeRevenue,
@@ -269,6 +273,36 @@ describe('OperatorWorkspaceStore', () => {
     expect(await store.refreshDeploymentUpdate()).toEqual(refreshed);
     expect(store.deploymentUpdate()).toEqual(refreshed);
     expect(loadDeploymentUpdate).toHaveBeenCalledTimes(2);
+  });
+
+  it('hydrates claim, update, and community state together and reuses it', async () => {
+    const update = deploymentUpdate('1.1.0');
+    const community = operatorCommunity();
+    loadClaimStatus.mockResolvedValue({
+      status: claimStatus(),
+      submission: claimSubmission()
+    });
+    loadDeploymentUpdate.mockResolvedValue(update);
+    loadCommunityStatus.mockResolvedValue(community);
+    const store = TestBed.inject(OperatorWorkspaceStore);
+
+    await store.loadInitialWorkspace();
+
+    expect(store.claimStatus()?.verificationStatus).toBe('PENDING_REVIEW');
+    expect(store.claimDraft()).toEqual(claimSubmission());
+    expect(store.deploymentUpdate()).toEqual(update);
+    expect(store.community()).toEqual(community);
+    expect(loadClaimStatus).toHaveBeenCalledTimes(1);
+    expect(loadDeploymentUpdate).toHaveBeenCalledTimes(1);
+    expect(loadCommunityStatus).toHaveBeenCalledTimes(1);
+
+    await store.loadClaimStatus();
+    await store.loadDeploymentUpdate();
+    await store.loadCommunityStatus();
+
+    expect(loadClaimStatus).toHaveBeenCalledTimes(1);
+    expect(loadDeploymentUpdate).toHaveBeenCalledTimes(1);
+    expect(loadCommunityStatus).toHaveBeenCalledTimes(1);
   });
 
   it('loads and caches revenue only when its operator action is opened', async () => {
@@ -528,6 +562,15 @@ function operatorRevenue(): OperatorRevenueDto {
   };
 }
 
+function operatorCommunity(): OperatorCommunityStatusDto {
+  return {
+    availability: 'AVAILABLE',
+    updatedAt: '2026-07-28T18:00:00.000Z',
+    providers: [],
+    announcements: []
+  };
+}
+
 function operatorConfiguration(): OperatorConfigurationDto {
   return {
     capability: 'AVAILABLE',
@@ -551,7 +594,22 @@ function operatorConfiguration(): OperatorConfigurationDto {
     firebase: {
       projectId: '',
       authenticationCredentialConfigured: false,
-      messagingCredentialConfigured: false
+      messagingCredentialConfigured: false,
+      publicConfiguration: {
+        apiKey: '',
+        authDomain: '',
+        projectId: '',
+        storageBucket: '',
+        messagingSenderId: '',
+        appId: '',
+        measurementId: null,
+        vapidKey: null
+      },
+      active: false,
+      readyToActivate: false,
+      authenticationTestedAt: null,
+      messagingTestedAt: null,
+      activatedAt: null
     },
     updatedAt: '2026-07-28T18:00:00.000Z'
   };

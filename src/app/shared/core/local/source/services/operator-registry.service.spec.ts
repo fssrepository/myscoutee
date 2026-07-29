@@ -63,6 +63,24 @@ describe('LocalOperatorRegistryService', () => {
       sort: 'share',
       direction: 'desc'
     });
+    const groupedOperator = leaderboard.items.find(
+      item => item.group === 'CLAIMED' && item.deploymentCount === 2
+    );
+    const firstDeploymentPage = await service.leaderboardDeploymentPage(
+      groupedOperator?.operatorGroupId ?? '',
+      {
+        page: 0,
+        pageSize: 1
+      }
+    );
+    const secondDeploymentPage = await service.leaderboardDeploymentPage(
+      groupedOperator?.operatorGroupId ?? '',
+      {
+        page: 1,
+        pageSize: 1,
+        cursor: firstDeploymentPage.nextCursor
+      }
+    );
     const cached = await repository.read();
 
     expect(initial.lifecycle).toBe('UNCONFIGURED');
@@ -166,6 +184,23 @@ describe('LocalOperatorRegistryService', () => {
       group: 'FOUNDER',
       verifiedWeight: 100_000
     }));
+    expect([
+      ...firstDeploymentPage.items,
+      ...secondDeploymentPage.items
+    ]).toEqual([
+      expect.objectContaining({
+        groupId: groupedOperator?.operatorGroupId,
+        membershipState: 'owner'
+      }),
+      expect.objectContaining({
+        groupId: groupedOperator?.operatorGroupId,
+        membershipState: 'linked'
+      })
+    ]);
+    expect(firstDeploymentPage.nextCursor).toMatch(
+      /^operator-deployments:/
+    );
+    expect(secondDeploymentPage.nextCursor).toBeNull();
 
     expect(diskReadSpy.mock.calls.filter(
       ([key]: [string]) => key === APP_INDEXED_DB_KEYS.operatorRegistry
@@ -173,7 +208,7 @@ describe('LocalOperatorRegistryService', () => {
     expect(diskWriteSpy.mock.calls.filter(
       ([key]: [string, unknown]) => key === APP_INDEXED_DB_KEYS.operatorRegistry
     )).toHaveLength(4);
-    expect(waitForDelay).toHaveBeenCalledTimes(6);
+    expect(waitForDelay).toHaveBeenCalledTimes(8);
     expect(waitForDelay).toHaveBeenCalledWith(
       1500,
       undefined,
@@ -623,6 +658,13 @@ describe('LocalOperatorRegistryService', () => {
       },
       firebase: {
         projectId: 'community-hub-explore',
+        apiKey: 'browser-api-key',
+        authDomain: 'community-hub-explore.firebaseapp.com',
+        storageBucket: 'community-hub-explore.firebasestorage.app',
+        messagingSenderId: '123456789',
+        appId: '1:123456789:web:explore',
+        measurementId: '',
+        vapidKey: '',
         authenticationCredential: 'firebase-auth-secret',
         messagingCredential: 'firebase-messaging-secret'
       }
@@ -631,9 +673,11 @@ describe('LocalOperatorRegistryService', () => {
       kind: 'FIREBASE_AUTHENTICATION'
     });
     const messaging = await service.testConfiguration({
-      kind: 'FIREBASE_MESSAGING'
+      kind: 'FIREBASE_MESSAGING',
+      destinationToken: 'explore-test-device'
     });
     const persisted = await service.loadConfiguration();
+    const activated = await service.activateFirebase();
 
     expect(initial.firebase.authenticationCredentialConfigured).toBe(false);
     expect(saved).toEqual(expect.objectContaining({
@@ -648,15 +692,17 @@ describe('LocalOperatorRegistryService', () => {
         credentialConfigured: true,
         credentialMask: '••••cret'
       }),
-      firebase: {
+      firebase: expect.objectContaining({
         projectId: 'community-hub-explore',
         authenticationCredentialConfigured: true,
         messagingCredentialConfigured: true
-      }
+      })
     }));
     expect(authentication.success).toBe(true);
     expect(messaging.success).toBe(true);
-    expect(persisted).toEqual(saved);
+    expect(persisted.firebase.readyToActivate).toBe(true);
+    expect(persisted.firebase.active).toBe(false);
+    expect(activated.firebase.active).toBe(true);
     expect(JSON.stringify(await TestBed.inject(LocalOperatorRegistryRepository).read()))
       .not.toContain('stripe-explore-secret');
     expect(JSON.stringify(await TestBed.inject(LocalOperatorRegistryRepository).read()))

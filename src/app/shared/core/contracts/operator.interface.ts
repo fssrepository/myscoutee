@@ -227,6 +227,29 @@ export type OperatorLeaderboardPageDto = PageResult<
   OperatorLeaderboardPageContextDto
 >;
 
+export type OperatorLeaderboardDeploymentClaimState =
+  | 'claimed'
+  | 'pending-review'
+  | 'approved'
+  | 'rejected'
+  | 'withdrawn';
+
+export type OperatorLeaderboardDeploymentMembershipState =
+  | 'owner'
+  | 'linked';
+
+export interface OperatorLeaderboardDeploymentDto {
+  deploymentId: string;
+  groupId: string;
+  claimState: OperatorLeaderboardDeploymentClaimState;
+  membershipState: OperatorLeaderboardDeploymentMembershipState;
+  verifiedWeight: number;
+  sharePercent: number;
+}
+
+export type OperatorLeaderboardDeploymentPageDto =
+  PageResult<OperatorLeaderboardDeploymentDto>;
+
 export type OperatorClaimVerificationCapability =
   | 'AVAILABLE'
   | 'BACKEND_UNAVAILABLE';
@@ -350,6 +373,23 @@ export interface OperatorFirebaseConfigurationDto {
   projectId: string;
   authenticationCredentialConfigured: boolean;
   messagingCredentialConfigured: boolean;
+  publicConfiguration: OperatorFirebasePublicConfigurationDto;
+  active: boolean;
+  readyToActivate: boolean;
+  authenticationTestedAt: string | null;
+  messagingTestedAt: string | null;
+  activatedAt: string | null;
+}
+
+export interface OperatorFirebasePublicConfigurationDto {
+  apiKey: string;
+  authDomain: string;
+  projectId: string;
+  storageBucket: string;
+  messagingSenderId: string;
+  appId: string;
+  measurementId: string | null;
+  vapidKey: string | null;
 }
 
 export interface OperatorConfigurationDto {
@@ -378,6 +418,13 @@ export interface OperatorConfigurationSaveRequestDto {
   };
   firebase: {
     projectId: string;
+    apiKey: string;
+    authDomain: string;
+    storageBucket: string;
+    messagingSenderId: string;
+    appId: string;
+    measurementId: string;
+    vapidKey: string;
     authenticationCredential: string;
     messagingCredential: string;
   };
@@ -613,6 +660,11 @@ export interface OperatorRegistryServiceContract {
     query: ListQuery,
     signal?: AbortSignal
   ): Promise<OperatorLeaderboardPageDto>;
+  leaderboardDeploymentPage(
+    groupId: string,
+    query: ListQuery,
+    signal?: AbortSignal
+  ): Promise<OperatorLeaderboardDeploymentPageDto>;
   loadClaimStatus(): Promise<OperatorClaimOverviewDto>;
   claimShare(
     request: OperatorClaimRequestDto
@@ -632,6 +684,7 @@ export interface OperatorRegistryServiceContract {
   testConfiguration(
     request: OperatorConfigurationTestRequestDto
   ): Promise<OperatorConfigurationTestResultDto>;
+  activateFirebase(): Promise<OperatorConfigurationDto>;
   loadRevenue(): Promise<OperatorRevenueDto>;
   synchronizeRevenue(): Promise<OperatorRevenueSyncDto>;
   revenueReportPage(
