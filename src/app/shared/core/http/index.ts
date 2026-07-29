@@ -23,6 +23,7 @@ export { HttpLandingContentService } from './services/landing-content.service';
 export { HttpDeploymentConfigurationService } from './services/deployment-configuration.service';
 export { HttpMediaService } from './services/media.service';
 export { HttpNotificationsService } from './services/notifications.service';
+export { HttpGlobalIdentityService } from './services/global-identity.service';
 export { HttpOperatorBootstrapAuthService } from './services/operator-bootstrap-auth.service';
 export { HttpOperatorRegistryService } from './services/operator-registry.service';
 export { HttpContactsService } from './services/contacts.service';

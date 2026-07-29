@@ -37,6 +37,7 @@ export class FirebaseAppService {
   private static readonly FIREBASE_APP_NAME =
     'myscoutee-deployment-runtime';
   private static readonly FIREBASE_CONFIG_TTL_MS = 30_000;
+  private static readonly FIREBASE_CONFIG_TIMEOUT_MS = 10_000;
 
   private readonly destroyRef = inject(DestroyRef);
   private readonly sessionService = inject(SessionService);
@@ -114,8 +115,16 @@ export class FirebaseAppService {
       `${apiBaseUrl}${FirebaseAppService.FIREBASE_CONFIG_PATH}`,
       document.baseURI
     ).toString();
+    const abortController = new AbortController();
+    const timeout = setTimeout(
+      () => abortController.abort(),
+      FirebaseAppService.FIREBASE_CONFIG_TIMEOUT_MS
+    );
     try {
-      const response = await fetch(configUrl, { cache: 'no-store' });
+      const response = await fetch(configUrl, {
+        cache: 'no-store',
+        signal: abortController.signal
+      });
       if (!response.ok) {
         return null;
       }
@@ -138,6 +147,8 @@ export class FirebaseAppService {
       };
     } catch {
       return null;
+    } finally {
+      clearTimeout(timeout);
     }
   }
 
