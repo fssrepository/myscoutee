@@ -86,6 +86,7 @@ export class OperatorPageComponent implements OnInit {
     SmartListComponent<OperatorLeaderboardEntryDto, OperatorLeaderboardFilters> | null
   >(null);
   private readonly rowConverter = new OperatorLeaderboardSingleRowConverter();
+  private readonly initialWorkspaceLoaded = signal(false);
 
   @ViewChild('leaderboardSmartList')
   protected set leaderboardSmartList(
@@ -104,6 +105,7 @@ export class OperatorPageComponent implements OnInit {
   protected readonly loading = computed(
     () => this.profileLoadState().status === 'idle'
       || this.profileLoadState().status === 'loading'
+      || !this.initialWorkspaceLoaded()
       || (!this.status() && !this.errorMessage())
   );
   protected readonly errorMessage = computed(() => {
@@ -272,10 +274,7 @@ export class OperatorPageComponent implements OnInit {
   }
 
   ngOnInit(): void {
-    void Promise.all([
-      this.registry.loadStatus(),
-      this.workspace.loadDeploymentUpdate()
-    ]);
+    void this.loadInitialWorkspace();
   }
 
   protected openAction(event: AppMenuItemSelectEvent<OperatorActionId>): void {
@@ -325,5 +324,16 @@ export class OperatorPageComponent implements OnInit {
     }
     const module = await import('../operator-action-popup/operator-action-popup.component');
     this.actionPopupComponentRef.set(module.OperatorActionPopupComponent);
+  }
+
+  private async loadInitialWorkspace(): Promise<void> {
+    try {
+      await Promise.all([
+        this.registry.loadStatus(),
+        this.workspace.loadInitialWorkspace()
+      ]);
+    } finally {
+      this.initialWorkspaceLoaded.set(true);
+    }
   }
 }

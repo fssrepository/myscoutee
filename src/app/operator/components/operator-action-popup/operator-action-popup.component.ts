@@ -408,9 +408,6 @@ export class OperatorActionPopupComponent {
             kind: 'textarea',
             layout: 'wide',
             label: translate('operator.configuration.admin.emails'),
-            description: translate(
-              'operator.configuration.admin.emails.description'
-            ),
             placeholder: translate(
               'operator.configuration.admin.emails.placeholder'
             ),

@@ -29,6 +29,7 @@ import { OperatorLeaderboardStore } from './operator-leaderboard.store';
 import { UserProfileStore } from './user-profile.store';
 
 export type OperatorWorkspaceBusyAction =
+  | 'load-workspace'
   | 'load-claim'
   | 'claim-share'
   | 'issue-grouping-token'
@@ -220,15 +221,46 @@ export class OperatorWorkspaceStore {
     });
   }
 
-  async loadClaimStatus(): Promise<OperatorClaimStatusDto | null> {
+  async loadInitialWorkspace(): Promise<void> {
+    const settled = await this.run(
+      'load-workspace',
+      () => Promise.allSettled([
+        this.service.loadClaimStatus(),
+        this.service.loadDeploymentUpdate(),
+        this.service.loadCommunityStatus()
+      ])
+    );
+    if (!settled) {
+      return;
+    }
+    const [claimResult, updateResult, communityResult] = settled;
+    if (claimResult.status === 'fulfilled') {
+      this.applyClaimOverview(claimResult.value);
+    }
+    if (updateResult.status === 'fulfilled') {
+      this.deploymentUpdateRef.set(updateResult.value);
+    }
+    if (communityResult.status === 'fulfilled') {
+      this.communityRef.set(communityResult.value);
+    }
+    const failure = settled.find(
+      (result): result is PromiseRejectedResult => result.status === 'rejected'
+    );
+    if (failure) {
+      this.errorRef.set(this.messageFromError(failure.reason));
+    }
+  }
+
+  async loadClaimStatus(
+    force = false
+  ): Promise<OperatorClaimStatusDto | null> {
+    const cached = this.claimStatusRef();
+    if (cached && !force) {
+      return cached;
+    }
     const overview = await this.run('load-claim', () => this.service.loadClaimStatus());
     if (overview) {
-      this.claimStatusRef.set(overview.status);
-      if (overview.submission) {
-        this.claimDraftRef.set(structuredClone(overview.submission));
-      } else {
-        this.seedClaimContact();
-      }
+      this.applyClaimOverview(overview);
     }
     return overview?.status ?? null;
   }
@@ -546,7 +578,13 @@ export class OperatorWorkspaceStore {
     return result;
   }
 
-  async loadCommunityStatus(): Promise<OperatorCommunityStatusDto | null> {
+  async loadCommunityStatus(
+    force = false
+  ): Promise<OperatorCommunityStatusDto | null> {
+    const cached = this.communityRef();
+    if (cached && !force) {
+      return cached;
+    }
     const result = await this.run(
       'load-community',
       () => this.service.loadCommunityStatus()
@@ -788,6 +826,17 @@ export class OperatorWorkspaceStore {
     this.communityRef.set(null);
     this.busyActionRef.set(null);
     this.clearFeedback();
+  }
+
+  private applyClaimOverview(
+    overview: Awaited<ReturnType<OperatorRegistryService['loadClaimStatus']>>
+  ): void {
+    this.claimStatusRef.set(overview.status);
+    if (overview.submission) {
+      this.claimDraftRef.set(structuredClone(overview.submission));
+    } else {
+      this.seedClaimContact();
+    }
   }
 
   private sessionKey(session: AppSession | null): string {
