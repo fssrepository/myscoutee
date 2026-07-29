@@ -114,6 +114,13 @@ export class OperatorRevenueViewComponent {
     ) ?? currencies[0] ?? null;
   }
 
+  protected rulesetLabelKey(value: string | null | undefined): string {
+    const rulesetVersion = `${value ?? ''}`.trim();
+    return rulesetVersion
+      ? `operator.revenue.ruleset.${rulesetVersion}`
+      : '';
+  }
+
   protected currencyTrigger(): AppMenuTrigger {
     const currency = this.selectedCurrency();
     return {
@@ -327,7 +334,7 @@ export class OperatorRevenueViewComponent {
     const selected = this.selectedTimelinePoint(currency);
     return this.timelineY(
       selected?.netPaymentMinor ?? 0,
-      this.timelineMetricMax(currency.timeline, 'netPaymentMinor')
+      this.timelineDomainMax(currency.timeline)
     );
   }
 
@@ -349,15 +356,14 @@ export class OperatorRevenueViewComponent {
     event.preventDefault();
   }
 
-  protected moveTimelineDrag(
+  protected moveTimelinePointer(
     event: PointerEvent,
     points: readonly OperatorRevenueTimelinePointDto[]
   ): void {
-    if (!this.timelineDragging()) {
-      return;
-    }
     this.updateTimelineFromPointer(event, points);
-    event.preventDefault();
+    if (this.timelineDragging()) {
+      event.preventDefault();
+    }
   }
 
   protected endTimelineDrag(event?: PointerEvent): void {
@@ -378,12 +384,12 @@ export class OperatorRevenueViewComponent {
     if (!points.length) {
       return '';
     }
-    const max = this.timelineMetricMax(points, metric);
+    const domainMax = this.timelineDomainMax(points);
     return points
       .map((point, index) =>
         `${this.timelineX(index, points.length)},${this.timelineY(
           this.timelineMetricValue(point, metric),
-          max
+          domainMax
         )}`
       )
       .join(' ');
@@ -446,11 +452,17 @@ export class OperatorRevenueViewComponent {
     return Math.max(0, Number(point[metric]) || 0);
   }
 
-  private timelineMetricMax(
-    points: readonly OperatorRevenueTimelinePointDto[],
-    metric: OperatorRevenueTimelineMetric
+  private timelineDomainMax(
+    points: readonly OperatorRevenueTimelinePointDto[]
   ): number {
-    return Math.max(1, ...points.map(point => this.timelineMetricValue(point, metric)));
+    return Math.max(
+      1,
+      ...points.flatMap(point =>
+        this.timelineMetrics.map(metric =>
+          this.timelineMetricValue(point, metric.key)
+        )
+      )
+    );
   }
 
   private timelineX(index: number, total: number): number {

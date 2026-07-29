@@ -4,7 +4,7 @@ import { Injectable, inject } from '@angular/core';
 import { environment } from '../../../../../environments/environment';
 import { RouteDelayService } from '../../base/services/route-delay.service';
 import type {
-  DeploymentBrandingDto,
+  DeploymentConfigurationDto,
   DeploymentConfigurationServiceContract
 } from '../../contracts/deployment-configuration.interface';
 
@@ -19,10 +19,10 @@ export class HttpDeploymentConfigurationService
   private readonly routeDelay = inject(RouteDelayService);
   private readonly apiBaseUrl = (environment.apiBaseUrl ?? '/api').replace(/\/+$/, '');
 
-  async loadBranding(): Promise<DeploymentBrandingDto> {
+  async loadBranding(): Promise<DeploymentConfigurationDto> {
     const response = await this.routeDelay.withRequestTimeout(
       DEPLOYMENT_CONFIGURATION_ROUTE,
-      this.http.get<DeploymentBrandingDto>(
+      this.http.get<DeploymentConfigurationDto>(
         `${this.apiBaseUrl}${DEPLOYMENT_CONFIGURATION_ROUTE}`
       ).toPromise(),
       'deployment.configuration.request.timeout'

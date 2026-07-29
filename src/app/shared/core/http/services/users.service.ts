@@ -98,6 +98,9 @@ export class HttpUsersService implements UserService {
   }
 
   peekCachedUserById(userId: string): UserDto | null {
+    if (this.requiresServerProfileAuthority()) {
+      return null;
+    }
     const cached = this.offlineCache.readUser(userId.trim());
     return cached?.user ?? null;
   }
@@ -144,6 +147,9 @@ export class HttpUsersService implements UserService {
         requestTimeoutMs
       );
       if (!me) {
+        if (this.requiresServerProfileAuthority()) {
+          return { user: null };
+        }
         return this.readUserByIdFallback(normalizedUserId) ?? { user: null };
       }
       return this.cacheUserResponse({
@@ -154,6 +160,9 @@ export class HttpUsersService implements UserService {
       });
     } catch (error) {
       if (this.isTimeoutError(error, 'User details request timeout.')) {
+        throw error;
+      }
+      if (this.requiresServerProfileAuthority()) {
         throw error;
       }
       const cached = this.offlineCache.readUser(normalizedUserId);
@@ -176,6 +185,9 @@ export class HttpUsersService implements UserService {
       );
       const profileExt = response?.profileExt ?? null;
       if (!profileExt) {
+        if (this.requiresServerProfileAuthority()) {
+          return { profileExt: null };
+        }
         const cached = this.readProfileExtByIdFallback(normalizedUserId);
         return cached ?? { profileExt: null };
       }
@@ -189,6 +201,9 @@ export class HttpUsersService implements UserService {
       };
     } catch (error) {
       if (this.isTimeoutError(error, 'User profile request timeout.')) {
+        throw error;
+      }
+      if (this.requiresServerProfileAuthority()) {
         throw error;
       }
       return this.readProfileExtByIdFallback(normalizedUserId) ?? { profileExt: null };
@@ -479,6 +494,11 @@ export class HttpUsersService implements UserService {
           counterOverrides: fallback.counterOverrides
         }
       : null;
+  }
+
+  private requiresServerProfileAuthority(): boolean {
+    const kind = this.sessionService.currentSession()?.kind;
+    return kind === 'demo' || kind === 'operator-bootstrap';
   }
 
   private readUserByIdFallback(userId: string): UserByIdQueryResponse | null {

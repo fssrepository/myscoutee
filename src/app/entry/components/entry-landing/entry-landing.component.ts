@@ -9,6 +9,8 @@ import type { IdeaArticleDetailDto } from '../../../shared/core/contracts/conten
 import type { FirebaseAuthProfileDto } from '../../../shared/core/contracts/user.interface';
 import { IdeaPostsService } from '../../../shared/core/base/services/idea-posts.service';
 import { DeploymentConfigurationService } from '../../../shared/core/base/services/deployment-configuration.service';
+import { I18nService } from '../../../shared/core/base/services/i18n.service';
+import { DeploymentBrandComponent } from '../../../shared/ui/components/core/deployment-brand';
 import {
   InfoCardComponent, WarpImageCardComponent, type InfoCardData, type WarpImageCardData
 } from '../../../shared/ui/components/core/smart-list/card';
@@ -49,6 +51,7 @@ interface PartnerRoleOverview {
   selector: 'app-entry-landing',
   standalone: true,
   imports: [
+    DeploymentBrandComponent,
     InfoCardComponent,
     WarpImageCardComponent,
     SmartListComponent,
@@ -64,8 +67,11 @@ export class EntryLandingComponent implements OnInit, OnChanges, OnDestroy {
   private readonly documentRef = inject(DOCUMENT);
   private readonly cdr = inject(ChangeDetectorRef);
   private readonly ideaPosts = inject(IdeaPostsService);
+  private readonly i18n = inject(I18nService);
   private readonly deploymentConfiguration = inject(DeploymentConfigurationService);
   protected readonly deploymentBranding = this.deploymentConfiguration.branding;
+  protected readonly deploymentSocialLinks =
+    this.deploymentConfiguration.socialLinks;
 
   @Input({ required: true }) authMode: AuthMode = 'selector';
   @Input() firebaseAuthProfile: FirebaseAuthProfileDto | null = null;
@@ -81,6 +87,7 @@ export class EntryLandingComponent implements OnInit, OnChanges, OnDestroy {
 
   @Output() readonly demoRequested = new EventEmitter<void>();
   @Output() readonly firebaseAuthRequested = new EventEmitter<void>();
+  @Output() readonly operatorRequested = new EventEmitter<void>();
   @Output() readonly consentRequested = new EventEmitter<void>();
   @Output() readonly termsRequested = new EventEmitter<void>();
 
@@ -236,7 +243,7 @@ export class EntryLandingComponent implements OnInit, OnChanges, OnDestroy {
     initialPageSize: 8,
     initialPageCount: 1,
     emptyLabel: 'No articles yet',
-    emptyDescription: 'Fresh MyScoutee articles will show here.',
+    emptyDescription: 'landing.articles.empty.description',
     showStickyHeader: false,
     showFirstGroupMarker: false,
     showGroupMarker: () => false,
@@ -276,7 +283,7 @@ export class EntryLandingComponent implements OnInit, OnChanges, OnDestroy {
     defaultDirection: 'desc',
     defaultGroupBy: 'submittedDay',
     emptyLabel: 'No articles yet',
-    emptyDescription: 'Fresh MyScoutee articles will show here.',
+    emptyDescription: 'landing.articles.empty.description',
     emptyStickyLabel: 'Articles',
     showStickyHeader: true,
     showFirstGroupMarker: true,
@@ -526,6 +533,21 @@ export class EntryLandingComponent implements OnInit, OnChanges, OnDestroy {
     }
   }
 
+  protected requestOperatorAccess(event?: Event): void {
+    event?.preventDefault();
+    event?.stopPropagation();
+    this.closePartnersPopup();
+    this.operatorRequested.emit();
+  }
+
+  protected socialLinkAriaLabel(
+    link: { label: string; handle: string | null }
+  ): string {
+    return link.handle?.trim()
+      ? `${link.label} · ${link.handle.trim()}`
+      : link.label;
+  }
+
   protected partnersPopupModel(): PopupModel {
     return {
       headerBadge: 'landing.partners.header.badge',
@@ -662,7 +684,8 @@ export class EntryLandingComponent implements OnInit, OnChanges, OnDestroy {
   }
 
   protected ideaDateLabel(detail: IdeaArticleDetailDto | null): string {
-    return detail?.dateLabel?.trim() || 'Fresh article';
+    return detail?.dateLabel?.trim()
+      || this.i18n.translate('fresh.article', 'Fresh article');
   }
 
   protected ideaArticlePopupModel(detail: IdeaArticleDetailDto): PopupModel {
@@ -671,8 +694,11 @@ export class EntryLandingComponent implements OnInit, OnChanges, OnDestroy {
       headerLabelIcon: 'calendar_today',
       title: detail.title,
       subtitle: detail.excerpt,
-      ariaLabel: 'Article',
-      closeAriaLabel: 'Close article',
+      ariaLabel: this.i18n.translate('article', 'Article'),
+      closeAriaLabel: this.i18n.translate(
+        'close.article',
+        'Close article'
+      ),
       translateHeaderLabel: false,
       translateTitle: false,
       translateSubtitle: false,
@@ -686,11 +712,22 @@ export class EntryLandingComponent implements OnInit, OnChanges, OnDestroy {
 
   protected ideasPopupModel(): PopupModel {
     const articleCount = this.ideasPopupArticleCount ?? this.publishedIdeaCount();
+    const title = this.articlesTitle();
+    const countKey = articleCount === 1
+      ? 'landing.articles.count.one'
+      : 'landing.articles.count.many';
     return {
-      title: 'MyScoutee articles',
-      subtitle: `${articleCount} ${articleCount === 1 ? 'article' : 'articles'}`,
-      ariaLabel: 'MyScoutee articles',
-      closeAriaLabel: 'Close articles',
+      title,
+      subtitle: this.i18n.translateParams(
+        countKey,
+        { count: articleCount }
+      ),
+      ariaLabel: title,
+      closeAriaLabel: this.i18n.translate(
+        'close.articles',
+        'Close articles'
+      ),
+      translateTitle: false,
       translateSubtitle: false,
       size: 'wide',
       height: 'full',
@@ -698,6 +735,14 @@ export class EntryLandingComponent implements OnInit, OnChanges, OnDestroy {
       bodyLayout: 'fill',
       onClose: () => this.closeIdeasPopup()
     };
+  }
+
+  protected articlesTitle(): string {
+    this.i18n.revision();
+    return this.i18n.translateParams(
+      'landing.articles.title',
+      { productName: this.deploymentBranding().productName }
+    );
   }
 
   protected scrollEntryTo(sectionId: string, event?: Event): void {

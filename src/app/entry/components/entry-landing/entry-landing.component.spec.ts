@@ -4,6 +4,7 @@ import { firstValueFrom } from 'rxjs';
 
 import { IdeaPostsService } from '../../../shared/core/base/services/idea-posts.service';
 import { DeploymentConfigurationService } from '../../../shared/core/base/services/deployment-configuration.service';
+import { I18nService } from '../../../shared/core/base/services/i18n.service';
 import { DEFAULT_DEPLOYMENT_BRANDING } from '../../../shared/core/contracts';
 import type { IdeaArticleDetailDto } from '../../../shared/core/contracts/content.interface';
 import type { PageResult, SmartListConfig, SmartListLoadPage } from '../../../shared/ui/components/core/smart-list';
@@ -12,9 +13,28 @@ import { EntryLandingComponent } from './entry-landing.component';
 
 describe('EntryLandingComponent article lists', () => {
   const loadPublishedIdeaCardsPage = vi.fn();
+  const branding = signal({ ...DEFAULT_DEPLOYMENT_BRANDING });
+  const i18nRevision = signal(0);
+  const translations: Readonly<Record<string, string>> = {
+    'landing.articles.title': '{productName} articles',
+    'landing.articles.count.one': '{count} article',
+    'landing.articles.count.many': '{count} articles',
+    'close.articles': 'Close articles'
+  };
+  const socialLinks = signal([
+    {
+      provider: 'community',
+      label: 'Community',
+      url: 'https://community.example.test/',
+      icon: null,
+      handle: '@community'
+    }
+  ]);
 
   beforeEach(() => {
     loadPublishedIdeaCardsPage.mockReset();
+    branding.set({ ...DEFAULT_DEPLOYMENT_BRANDING });
+    i18nRevision.set(0);
     TestBed.configureTestingModule({
       imports: [EntryLandingComponent],
       providers: [
@@ -25,7 +45,24 @@ describe('EntryLandingComponent article lists', () => {
         {
           provide: DeploymentConfigurationService,
           useValue: {
-            branding: signal(DEFAULT_DEPLOYMENT_BRANDING)
+            branding,
+            socialLinks
+          }
+        },
+        {
+          provide: I18nService,
+          useValue: {
+            revision: i18nRevision.asReadonly(),
+            translate: (key: string, fallback?: string) =>
+              translations[key] ?? fallback ?? key,
+            translateParams: (
+              key: string,
+              values: Readonly<Record<string, string | number>>,
+              fallback?: string
+            ) => interpolate(
+              translations[key] ?? fallback ?? key,
+              values
+            )
           }
         }
       ]
@@ -92,6 +129,24 @@ describe('EntryLandingComponent article lists', () => {
     expect(view(component).ideasPopupModel().subtitle).toBe('4 articles');
   });
 
+  it('uses deployment branding and singular count in the article popup', () => {
+    branding.set({
+      ...DEFAULT_DEPLOYMENT_BRANDING,
+      productName: 'Community Hub',
+      revision: 7
+    });
+    const component =
+      TestBed.createComponent(EntryLandingComponent).componentInstance;
+    component.ideaCount = 1;
+
+    view(component).openIdeasPopup();
+
+    expect(view(component).ideasPopupModel()).toMatchObject({
+      title: 'Community Hub articles',
+      subtitle: '1 article'
+    });
+  });
+
   it('opens a concise partner role overview and keeps the two economics separate', () => {
     const fixture = TestBed.createComponent(EntryLandingComponent);
     fixture.detectChanges();
@@ -123,8 +178,22 @@ describe('EntryLandingComponent article lists', () => {
     expect(popupText).toContain('100,000 ÷ total verified MAU');
     expect(popupText).toContain('Founder share is capped at 10%');
     expect(popupText).toContain('never operator commissions');
+    const operatorAccess = popupBody?.querySelector(
+      '.entry-partner-operator-access-button'
+    ) as HTMLButtonElement | null;
+    const operatorRequested = vi.fn();
+    fixture.componentInstance.operatorRequested.subscribe(operatorRequested);
+    expect(operatorAccess).not.toBeNull();
+    operatorAccess?.click();
+    fixture.detectChanges();
+    expect(operatorRequested).toHaveBeenCalledOnce();
+    expect(view(fixture.componentInstance).partnersPopupOpen).toBe(false);
 
-    const closeButton = fixture.nativeElement.querySelector('.ui-popup__close') as HTMLButtonElement | null;
+    partnerButton?.click();
+    fixture.detectChanges();
+    const closeButton = fixture.nativeElement.querySelector(
+      '.ui-popup__close'
+    ) as HTMLButtonElement | null;
     expect(closeButton).not.toBeNull();
     closeButton?.click();
     fixture.detectChanges();
@@ -133,6 +202,21 @@ describe('EntryLandingComponent article lists', () => {
     expect(partnerButton?.getAttribute('aria-expanded')).toBe('false');
     expect(fixture.nativeElement.querySelector('.entry-shell')?.hasAttribute('inert')).toBe(false);
     expect(fixture.nativeElement.querySelector('.entry-partners-popup-body')).toBeNull();
+  });
+
+  it('renders deployment-controlled social links with the generic icon fallback', () => {
+    const fixture = TestBed.createComponent(EntryLandingComponent);
+    fixture.detectChanges();
+
+    const link = fixture.nativeElement.querySelector(
+      '.entry-footer-socials a'
+    ) as HTMLAnchorElement | null;
+    expect(link?.href).toBe('https://community.example.test/');
+    expect(link?.getAttribute('aria-label')).toBe('Community · @community');
+    expect(link?.querySelector('.mat-icon')?.textContent?.trim()).toBe('public');
+    expect(fixture.nativeElement.textContent).not.toContain(
+      'github.com/fssrepository/myscoutee/issues'
+    );
   });
 
   it('renders article body images without repeating the card cover', () => {
@@ -167,7 +251,7 @@ interface EntryLandingTestView {
   openIdeasPopup: () => void;
   ideasPopupOpen: boolean;
   partnersPopupOpen: boolean;
-  ideasPopupModel: () => { subtitle?: string };
+  ideasPopupModel: () => { title?: string; subtitle?: string };
 }
 
 function view(component: EntryLandingComponent): EntryLandingTestView {
@@ -189,4 +273,14 @@ function card(id: string, featured: boolean): InfoCardData<IdeaArticleDetailDto>
       featured
     }
   };
+}
+
+function interpolate(
+  value: string,
+  values: Readonly<Record<string, string | number>>
+): string {
+  return Object.entries(values).reduce(
+    (result, [key, item]) => result.replaceAll(`{${key}}`, `${item}`),
+    value
+  );
 }

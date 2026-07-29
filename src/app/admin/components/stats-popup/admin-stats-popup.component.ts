@@ -207,11 +207,10 @@ export class AdminStatsPopupComponent {
   }
 
   protected moveTimelineDrag(event: PointerEvent, points: AdminStatsTimelinePointDto[]): void {
-    if (!this.timelineDragging()) {
-      return;
-    }
     this.updateTimelineFromPointer(event, points);
-    event.preventDefault();
+    if (this.timelineDragging()) {
+      event.preventDefault();
+    }
   }
 
   protected endTimelineDrag(event?: PointerEvent): void {
@@ -241,11 +240,10 @@ export class AdminStatsPopupComponent {
   }
 
   protected moveGraphTimelineDrag(event: PointerEvent, points: AdminStatsGraphTimelinePointDto[]): void {
-    if (!this.graphTimelineDragging()) {
-      return;
-    }
     this.updateGraphTimelineFromPointer(event, points);
-    event.preventDefault();
+    if (this.graphTimelineDragging()) {
+      event.preventDefault();
+    }
   }
 
   protected endGraphTimelineDrag(event?: PointerEvent): void {

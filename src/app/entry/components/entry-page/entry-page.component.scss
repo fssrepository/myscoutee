@@ -1,7 +1,7 @@
 :host {
   display: block;
-  --entry-font-family: 'Nunito Sans', 'Segoe UI', sans-serif;
-  --entry-text-main: #22324a;
-  --entry-text-muted: rgba(34, 50, 74, 0.72);
-  --entry-line: rgba(23, 33, 54, 0.12);
+  --entry-font-family: var(--deployment-font-family);
+  --entry-text-main: var(--deployment-text-main);
+  --entry-text-muted: var(--deployment-text-muted);
+  --entry-line: var(--deployment-line);
 }

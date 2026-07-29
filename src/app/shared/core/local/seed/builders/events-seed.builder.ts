@@ -1430,9 +1430,21 @@ export class SeedEventsBuilder {
             ?? this.normalizeCount(item.tournamentGroupCapacityMax)
             ?? capacityMin
         );
+        const tournamentGroupCapacityMin = this.normalizeCount(item.tournamentGroupCapacityMin);
         const tournamentGroupCapacityMax = this.normalizeCount(item.tournamentGroupCapacityMax);
-        const hasTournamentGroups = (this.normalizeCount(item.tournamentGroupCapacityMin) ?? 0) > 0
+        const normalizedTournamentGroupCapacityMax = Math.max(
+          tournamentGroupCapacityMin ?? 0,
+          tournamentGroupCapacityMax ?? tournamentGroupCapacityMin ?? 0
+        );
+        const hasTournamentGroups = (tournamentGroupCapacityMin ?? 0) > 0
           || (tournamentGroupCapacityMax ?? 0) > 0;
+        const incomingGroupCapacity = Math.max(1, record.capacityMax ?? capacityMax);
+        const groupsNeededForMaximum = normalizedTournamentGroupCapacityMax > 0
+          ? Math.ceil(incomingGroupCapacity / normalizedTournamentGroupCapacityMax)
+          : 0;
+        const groupsAllowedByMinimum = (tournamentGroupCapacityMin ?? 0) > 0
+          ? Math.max(1, Math.floor(incomingGroupCapacity / (tournamentGroupCapacityMin ?? 1)))
+          : groupsNeededForMaximum;
         const acceptedSeed = item.optional
           ? Math.min(Math.max(1, capacityMax || 1), Math.max(1, record.acceptedMembers))
           : Math.min(Math.max(0, capacityMax), Math.max(0, record.acceptedMembers));
@@ -1452,8 +1464,8 @@ export class SeedEventsBuilder {
           tournamentGroupCapacityMax: item.tournamentGroupCapacityMax,
           tournamentLeaderboardType: item.tournamentLeaderboardType,
           tournamentAdvancePerGroup: item.tournamentAdvancePerGroup,
-          groupsCount: hasTournamentGroups && tournamentGroupCapacityMax
-            ? Math.max(1, Math.ceil(Math.max(1, record.capacityMax ?? capacityMax) / tournamentGroupCapacityMax))
+          groupsCount: hasTournamentGroups && normalizedTournamentGroupCapacityMax > 0
+            ? Math.min(groupsNeededForMaximum, groupsAllowedByMinimum)
             : undefined,
           groupsPending: hasTournamentGroups ? 0 : undefined,
           optional: item.optional === true,

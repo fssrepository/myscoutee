@@ -4,6 +4,7 @@ import {
   EventEmitter,
   HostListener,
   Input,
+  Injector,
   NgZone,
   Output,
   effect,
@@ -41,15 +42,13 @@ import {
 } from '../../pipes';
 import {
   UsersService,
+  type BootstrapProcessState,
   type BootstrapProcessStage,
   type UserSelectorListItemDto
 } from '../../../core';
 import {
   UserProfileState
 } from '../../../core/common/user-profile-state';
-import {
-  SeedDemoBootstrapService
-} from '../../../core/local/seed/services/demo-bootstrap.service';
 import { DemoBootstrapSelectorStore } from '../../context/stores/demo-bootstrap-selector.store';
 
 type DemoSelectorHeaderMenuItemId = 'new-profile';
@@ -82,7 +81,7 @@ type DemoSelectorPopupMenuContext = DemoSelectorHeaderMenuContext | DemoSelector
 export class DemoBootstrapSelectorComponent {
   private readonly demoBootstrapSelectorStore = inject(DemoBootstrapSelectorStore);
   private readonly usersService = inject(UsersService);
-  private readonly seedBootstrap = inject(SeedDemoBootstrapService);
+  private readonly injector = inject(Injector);
   private readonly changeDetectorRef = inject(ChangeDetectorRef);
   private readonly ngZone = inject(NgZone);
   private contextRequest: DemoBootstrapSelectorState | null = null;
@@ -362,8 +361,9 @@ export class DemoBootstrapSelectorComponent {
     }
     try {
       if (this.usersService.localModeEnabled && !this.contextSelectorSeedReady) {
+        const seedBootstrap = await this.localSeedBootstrap();
         if (showSelectorProgress) {
-          await this.seedBootstrap.ensureDemoSelectorReady(this.selectorSeedMode(request), state => {
+          await seedBootstrap.ensureDemoSelectorReady(this.selectorSeedMode(request), state => {
             if (!this.isCurrentContextRequest(requestToken)) {
               return;
             }
@@ -381,7 +381,7 @@ export class DemoBootstrapSelectorComponent {
             this.loadingLabel = `Loading ${this.selectorRoleLabel(mode).toLowerCase()} demo users`;
             this.loadingStage = 'users';
           });
-          await this.seedBootstrap.ensureDemoSelectorReady(this.selectorSeedMode(request));
+          await seedBootstrap.ensureDemoSelectorReady(this.selectorSeedMode(request));
         }
         this.contextSelectorSeedReady = true;
         if (showSelectorProgress) {
@@ -545,7 +545,7 @@ export class DemoBootstrapSelectorComponent {
       return;
     }
     try {
-      await this.seedBootstrap.ensureUserReady(userId, mode, state => {
+      const onProgress = (state: BootstrapProcessState) => {
         if (!this.isCurrentContextRequest(requestToken)) {
           return;
         }
@@ -554,7 +554,13 @@ export class DemoBootstrapSelectorComponent {
           this.loadingLabel = state.label;
           this.loadingStage = state.stage;
         });
-      });
+      };
+      if (this.usersService.localModeEnabled) {
+        const seedBootstrap = await this.localSeedBootstrap();
+        await seedBootstrap.ensureUserReady(userId, mode, onProgress);
+      } else {
+        await this.usersService.prepareDemoUserSession(userId, onProgress);
+      }
       if (!this.isCurrentContextRequest(requestToken)) {
         return;
       }
@@ -573,6 +579,13 @@ export class DemoBootstrapSelectorComponent {
         this.resetContextSelectionFailure('Unable to open demo session.');
       }
     }
+  }
+
+  private async localSeedBootstrap() {
+    const { SeedDemoBootstrapService } = await import(
+      '../../../core/local/seed/services/demo-bootstrap.service'
+    );
+    return this.injector.get(SeedDemoBootstrapService);
   }
 
   private async completeContextSelection(

@@ -418,8 +418,7 @@ export class AppLocationService {
     if (routeConfig.http) {
       return false;
     }
-    return environment.activitiesDataSource !== 'http'
-      && (this.sessionService.currentSession()?.kind === 'demo' || !environment.firebaseLoginEnabled);
+    return environment.activitiesDataSource !== 'http';
   }
 
   private async httpUsersService(): Promise<HttpUsersServiceInstance> {

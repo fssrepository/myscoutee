@@ -33,12 +33,7 @@
               "src/404.html",
               "src/robots.txt",
               "src/manifest.webmanifest",
-              "src/app-sw.js",
-              {
-                "glob": "**/*",
-                "input": "keys",
-                "output": "keys"
-              }
+              "src/app-sw.js"
             ],
             "styles": [
               "src/_styles/styles.scss"

@@ -14,7 +14,7 @@
   align-items: baseline;
   gap: 0.18rem;
   color: #223550;
-  font-size: 0.86rem;
+  font-size: var(--link-input-label-font-size, 0.86rem);
   font-weight: 800;
 }
 

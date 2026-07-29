@@ -10,15 +10,12 @@ import { type AppMemoryDb, HttpMemoryDb, LocalMemoryDb } from '../../common/app.
 import { resolveRouteConfig } from '../config';
 import type { UserRatesSyncResult } from '../../contracts/activity.interface';
 
-import { SessionService } from '../services/session.service';
-
 @Injectable({
   providedIn: 'root'
 })
 export class RateOutboxRepository {
   private readonly localMemoryDb = inject(LocalMemoryDb);
   private readonly httpMemoryDb = inject(HttpMemoryDb);
-  private readonly sessionService = inject(SessionService);
 
   protected get memoryDb(): AppMemoryDb {
     return this.isLocalRouteEnabled('/activities/rates')
@@ -28,11 +25,13 @@ export class RateOutboxRepository {
 
   private isLocalRouteEnabled(route: string): boolean {
     const routeConfig = resolveRouteConfig(route);
+    if (routeConfig.mode) {
+      return routeConfig.mode === 'local';
+    }
     if (routeConfig.http) {
       return false;
     }
-    return environment.activitiesDataSource !== 'http'
-      && (this.sessionService.currentSession()?.kind === 'demo' || !environment.firebaseLoginEnabled);
+    return environment.activitiesDataSource !== 'http';
   }
 
   queryPendingUserRatesOutbox(limit = 50): UserRateOutboxRecord[] {

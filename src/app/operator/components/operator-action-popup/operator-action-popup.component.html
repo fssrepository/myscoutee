@@ -1,7 +1,12 @@
 @if (kind(); as activeKind) {
   @if (activeKind !== 'registration') {
     <app-popup [model]="popupModel()">
-      <section class="operator-action-popup" [attr.aria-busy]="busy()">
+      <section
+        class="operator-action-popup"
+        [class.operator-action-popup--loading]="loading()"
+        [class.operator-action-popup--deployments]="activeKind === 'deployments'"
+        [attr.aria-busy]="busy()"
+      >
         @if (loading()) {
           <div class="operator-action-popup__loading" role="status">
             <app-indicator kind="load-ring" state="loading"></app-indicator>
@@ -66,6 +71,13 @@
             }
             @case ('claim') {
               @if (workspace.claimStatus(); as claim) {
+                <app-menu
+                  class="operator-action-popup__claim-paths"
+                  kind="inline"
+                  layout="row"
+                  [items]="claimPathItems()"
+                  (itemSelect)="onAction($event)"
+                ></app-menu>
                 @if (claim.verificationCapability !== 'AVAILABLE') {
                   <p class="operator-action-popup__result is-error" role="alert">
                     <mat-icon>cloud_off</mat-icon>
@@ -75,14 +87,14 @@
                     </span>
                   </p>
                 }
-                @if (claim.claimed) {
-                  <div class="operator-action-popup__claimed">
-                    <mat-icon>verified</mat-icon>
-                    <strong>{{ 'operator.claim.claimed' | i18n }}</strong>
-                    <span>{{ claim.claimantName }}</span>
-                    <b>{{ formatShare(claim.sharePercent) }}%</b>
-                  </div>
-                  @if (claim.verificationStatus === 'PENDING_REVIEW') {
+                @if (!registeredForClaim()) {
+                  <p class="operator-action-popup__result is-error" role="alert">
+                    <mat-icon>app_registration</mat-icon>
+                    <span>{{ 'operator.claim.error.registration.required' | i18n }}</span>
+                  </p>
+                }
+                @if (claim.verificationStatus === 'PENDING_REVIEW') {
+                  <div class="operator-action-popup__claim-review">
                     <p class="operator-action-popup__result is-pending" role="status">
                       <mat-icon>pending_actions</mat-icon>
                       <span class="operator-action-popup__result-copy">
@@ -92,146 +104,90 @@
                         </small>
                       </span>
                     </p>
-                  } @else if (
-                    claim.verificationStatus === 'APPROVED'
-                    || claim.verificationStatus === 'VERIFIED'
-                  ) {
+                    <span
+                      class="operator-action-popup__claim-share"
+                      [attr.title]="'operator.leaderboard.share' | i18n"
+                    >
+                      <mat-icon>pie_chart</mat-icon>
+                      {{ formatShare(claim.sharePercent) }}%
+                    </span>
+                  </div>
+                } @else if (claim.verificationStatus === 'REJECTED') {
+                  <div class="operator-action-popup__claim-review">
+                    <p class="operator-action-popup__result is-error" role="status">
+                      <mat-icon>block</mat-icon>
+                      <span class="operator-action-popup__result-copy">
+                        <strong>{{ 'operator.claim.verification.rejected' | i18n }}</strong>
+                        <small>
+                          {{ 'operator.claim.verification.rejected.instructions' | i18n }}
+                        </small>
+                      </span>
+                    </p>
+                    <span
+                      class="operator-action-popup__claim-share"
+                      [attr.title]="'operator.leaderboard.share' | i18n"
+                    >
+                      <mat-icon>pie_chart</mat-icon>
+                      {{ formatShare(claim.sharePercent) }}%
+                    </span>
+                  </div>
+                } @else if (
+                  claim.verificationStatus === 'APPROVED'
+                  || claim.verificationStatus === 'VERIFIED'
+                ) {
+                  @if (claim.eligibilityStatus === 'ACTIVE') {
                     <p class="operator-action-popup__result is-success" role="status">
                       <mat-icon>verified_user</mat-icon>
                       <span>{{ 'operator.claim.verification.approved' | i18n }}</span>
                     </p>
-                  }
-                  <p class="operator-action-popup__hint">
-                    {{ 'operator.group.instructions' | i18n }}
-                  </p>
-                  @if (workspace.groupingToken(); as token) {
-                    <div class="operator-action-popup__token">
-                      <small>{{ 'operator.group.temporary.token' | i18n }}</small>
-                      <code>{{ token.clientToken }}</code>
-                      <span>
-                        {{ 'operator.group.expires' | i18n }} {{ formatDate(token.expiresAt) }}
+                  } @else if (claim.eligibilityStatus === 'SUSPENDED') {
+                    <p class="operator-action-popup__result is-error" role="status">
+                      <mat-icon>pause_circle</mat-icon>
+                      <span class="operator-action-popup__result-copy">
+                        <strong>
+                          {{ 'operator.claim.eligibility.suspended' | i18n }}
+                        </strong>
+                        <small>
+                          {{ 'operator.claim.eligibility.suspended.instructions' | i18n }}
+                        </small>
                       </span>
-                    </div>
+                    </p>
+                  } @else {
+                    <p class="operator-action-popup__result is-pending" role="status">
+                      <mat-icon>gpp_maybe</mat-icon>
+                      <span>
+                        {{ 'operator.claim.eligibility.inactive' | i18n }}
+                      </span>
+                    </p>
                   }
-                  <label class="operator-action-popup__token-input">
-                    <span>{{ 'operator.group.token.from.another.deployment' | i18n }}</span>
-                    <input
-                      type="text"
-                      autocomplete="off"
-                      [ngModel]="workspace.groupTokenInput()"
-                      (ngModelChange)="workspace.setGroupTokenInput($event)"
-                      [disabled]="busy()"
-                    />
-                  </label>
+                }
+                @if (claimPath() === 'company') {
+                  @if (!claim.claimed) {
+                    <p class="operator-action-popup__hint">
+                      {{ 'operator.claim.verification.instructions' | i18n }}
+                    </p>
+                  }
+                  <app-form-flow
+                    [model]="claimCompanyFormModel()"
+                    [ngModel]="workspace.claimDraft()"
+                    (ngModelChange)="onClaimDraftChange($event)"
+                    [disabled]="busy()
+                      || !registeredForClaim()
+                      || claim.verificationCapability !== 'AVAILABLE'
+                      || claim.claimed
+                      || claim.verificationStatus === 'PENDING_REVIEW'
+                      || claim.verificationStatus === 'REJECTED'"
+                  ></app-form-flow>
                 } @else {
                   <p class="operator-action-popup__hint">
-                    {{ 'operator.claim.verification.instructions' | i18n }}
+                    {{ 'operator.claim.client.code.instructions' | i18n }}
                   </p>
-                  @if (workspace.claimDraft(); as claimDraft) {
-                    <div class="operator-action-popup__claim-form">
-                      <label class="operator-action-popup__field">
-                        <span>{{ 'operator.claim.verification.legal.name' | i18n }}</span>
-                        <input
-                          type="text"
-                          maxlength="180"
-                          autocomplete="organization"
-                          [ngModel]="claimDraft.legalName"
-                          (ngModelChange)="workspace.setClaimDraft({ legalName: $event })"
-                          [disabled]="busy()"
-                        />
-                      </label>
-                      <label class="operator-action-popup__field">
-                        <span>{{ 'operator.claim.verification.registration.number' | i18n }}</span>
-                        <input
-                          type="text"
-                          maxlength="120"
-                          autocomplete="off"
-                          [ngModel]="claimDraft.registrationNumber"
-                          (ngModelChange)="workspace.setClaimDraft({ registrationNumber: $event })"
-                          [disabled]="busy()"
-                        />
-                      </label>
-                      <label class="operator-action-popup__field">
-                        <span>{{ 'operator.claim.verification.jurisdiction' | i18n }}</span>
-                        <input
-                          type="text"
-                          maxlength="120"
-                          autocomplete="country-name"
-                          [ngModel]="claimDraft.jurisdiction"
-                          (ngModelChange)="workspace.setClaimDraft({ jurisdiction: $event })"
-                          [disabled]="busy()"
-                        />
-                      </label>
-                      <label class="operator-action-popup__field is-wide">
-                        <span>{{ 'operator.claim.verification.registered.address' | i18n }}</span>
-                        <textarea
-                          rows="3"
-                          maxlength="500"
-                          autocomplete="street-address"
-                          [ngModel]="claimDraft.registeredAddress"
-                          (ngModelChange)="workspace.setClaimDraft({ registeredAddress: $event })"
-                          [disabled]="busy()"
-                        ></textarea>
-                      </label>
-                      <label class="operator-action-popup__field is-wide">
-                        <span>
-                          {{ 'operator.claim.verification.website' | i18n }}
-                          <small>{{ 'optional' | i18n }}</small>
-                        </span>
-                        <input
-                          type="url"
-                          maxlength="500"
-                          autocomplete="url"
-                          placeholder="https://"
-                          [ngModel]="claimDraft.website"
-                          (ngModelChange)="workspace.setClaimDraft({ website: $event })"
-                          [disabled]="busy()"
-                        />
-                      </label>
-                      <label class="operator-action-popup__field">
-                        <span>{{ 'operator.claim.verification.contact.name' | i18n }}</span>
-                        <input
-                          type="text"
-                          maxlength="180"
-                          autocomplete="name"
-                          [ngModel]="claimDraft.verificationContactName"
-                          (ngModelChange)="workspace.setClaimDraft({ verificationContactName: $event })"
-                          [disabled]="busy()"
-                        />
-                      </label>
-                      <label class="operator-action-popup__field">
-                        <span>{{ 'operator.claim.verification.contact.role' | i18n }}</span>
-                        <input
-                          type="text"
-                          maxlength="180"
-                          autocomplete="organization-title"
-                          [ngModel]="claimDraft.verificationContactRole"
-                          (ngModelChange)="workspace.setClaimDraft({ verificationContactRole: $event })"
-                          [disabled]="busy()"
-                        />
-                      </label>
-                      <label class="operator-action-popup__field is-wide">
-                        <span>{{ 'operator.claim.verification.contact.email' | i18n }}</span>
-                        <input
-                          type="email"
-                          maxlength="254"
-                          autocomplete="email"
-                          [ngModel]="claimDraft.verificationContactEmail"
-                          (ngModelChange)="workspace.setClaimDraft({ verificationContactEmail: $event })"
-                          [disabled]="busy()"
-                        />
-                      </label>
-                      <label class="operator-action-popup__attestation is-wide">
-                        <input
-                          type="checkbox"
-                          [ngModel]="claimDraft.authorityAttested"
-                          (ngModelChange)="workspace.setClaimDraft({ authorityAttested: $event })"
-                          [disabled]="busy()"
-                        />
-                        <span>{{ 'operator.claim.verification.attestation' | i18n }}</span>
-                      </label>
-                    </div>
-                  }
+                  <app-form-flow
+                    [model]="claimClientCodeFormModel()"
+                    [ngModel]="claimClientCodeValue()"
+                    (ngModelChange)="onClaimClientCodeChange($event)"
+                    [disabled]="busy() || !registeredForClaim()"
+                  ></app-form-flow>
                 }
               }
             }
@@ -281,17 +237,35 @@
                         </small>
                       </div>
 
-                      <label class="operator-action-popup__field operator-action-popup__branding-name">
-                        <span>{{ 'operator.configuration.branding.product.name' | i18n }}</span>
-                        <input
-                          type="text"
-                          maxlength="80"
-                          autocomplete="organization"
-                          [ngModel]="draft.branding.productName"
-                          (ngModelChange)="workspace.setConfigurationBranding({ productName: $event })"
-                          [disabled]="configurationDisabled()"
-                        />
-                      </label>
+                      <div class="operator-action-popup__branding-identity">
+                        <label class="operator-action-popup__field">
+                          <span>{{ 'operator.configuration.branding.product.name' | i18n }}</span>
+                          <input
+                            type="text"
+                            maxlength="80"
+                            autocomplete="organization"
+                            [ngModel]="draft.branding.productName"
+                            (ngModelChange)="workspace.setConfigurationBranding({ productName: $event })"
+                            [disabled]="configurationDisabled()"
+                          />
+                        </label>
+                        <label
+                          class="operator-action-popup__field"
+                          [class.is-invalid]="brandingLogoCharacterIndexInvalid()"
+                        >
+                          <span>
+                            {{ 'operator.configuration.branding.logo.character.index' | i18n }}
+                          </span>
+                          <input
+                            type="number"
+                            min="0"
+                            step="1"
+                            [ngModel]="draft.branding.logoCharacterIndex"
+                            (ngModelChange)="onBrandingLogoCharacterIndexChange($event)"
+                            [disabled]="configurationDisabled()"
+                          />
+                        </label>
+                      </div>
 
                       <div class="operator-action-popup__select-field operator-action-popup__branding-theme">
                         <span>{{ 'operator.configuration.branding.theme' | i18n }}</span>
@@ -328,6 +302,236 @@
 
                   <section
                     class="operator-action-popup__configuration-group"
+                    data-palette="blue"
+                  >
+                    <header>
+                      <span>
+                        <small>
+                          {{ 'operator.configuration.privacy.contact.eyebrow' | i18n }}
+                        </small>
+                        <strong>
+                          {{ 'operator.configuration.privacy.contact' | i18n }}
+                        </strong>
+                      </span>
+                      <mat-icon>privacy_tip</mat-icon>
+                    </header>
+
+                    <p class="operator-action-popup__hint">
+                      {{ 'operator.configuration.privacy.contact.guidance' | i18n }}
+                    </p>
+
+                    <app-form-flow
+                      [model]="configurationPrivacyContactFormModel()"
+                      [ngModel]="configurationPrivacyContactFormValue()"
+                      (ngModelChange)="onConfigurationPrivacyContactChange($event)"
+                      [disabled]="configurationDisabled()"
+                    ></app-form-flow>
+
+                    <app-menu
+                      class="operator-action-popup__section-actions"
+                      kind="inline"
+                      layout="row"
+                      [items]="configurationPrivacyContactActionItems()"
+                      (itemSelect)="onAction($event)"
+                    ></app-menu>
+                    @if (workspace.feedbackAction() === 'save-privacy-contact') {
+                      @if (workspace.error()) {
+                        <p class="operator-action-popup__result is-error" role="alert">
+                          <mat-icon>error_outline</mat-icon>
+                          <span>{{ workspace.error() | i18n }}</span>
+                        </p>
+                      } @else if (workspace.notice()) {
+                        <p class="operator-action-popup__result is-success" role="status">
+                          <mat-icon>check_circle</mat-icon>
+                          <span>{{ workspace.notice() | i18n }}</span>
+                        </p>
+                      }
+                    }
+                  </section>
+
+                  <section
+                    class="operator-action-popup__configuration-group"
+                    data-palette="amber"
+                  >
+                    <header>
+                      <span>
+                        <small>{{ 'operator.configuration.admin.eyebrow' | i18n }}</small>
+                        <strong>{{ 'operator.configuration.admin' | i18n }}</strong>
+                      </span>
+                      <mat-icon>admin_panel_settings</mat-icon>
+                    </header>
+
+                    <app-form-flow
+                      [model]="configurationAdminEmailsFormModel()"
+                      [ngModel]="configurationAdminEmailsFormValue()"
+                      (ngModelChange)="onConfigurationAdminEmailsChange($event)"
+                      [disabled]="configurationDisabled()"
+                    ></app-form-flow>
+
+                    <app-menu
+                      class="operator-action-popup__section-actions"
+                      kind="inline"
+                      layout="row"
+                      [items]="configurationAdminEmailActionItems()"
+                      (itemSelect)="onAction($event)"
+                    ></app-menu>
+                    @if (workspace.feedbackAction() === 'save-admin-emails') {
+                      @if (workspace.error()) {
+                        <p class="operator-action-popup__result is-error" role="alert">
+                          <mat-icon>error_outline</mat-icon>
+                          <span>{{ workspace.error() | i18n }}</span>
+                        </p>
+                      } @else if (workspace.notice()) {
+                        <p class="operator-action-popup__result is-success" role="status">
+                          <mat-icon>check_circle</mat-icon>
+                          <span>{{ workspace.notice() | i18n }}</span>
+                        </p>
+                      }
+                    }
+                  </section>
+
+                  <section
+                    class="operator-action-popup__configuration-group"
+                    data-palette="mint"
+                  >
+                    <header>
+                      <span>
+                        <small>{{ 'operator.configuration.social.eyebrow' | i18n }}</small>
+                        <strong>{{ 'operator.configuration.social' | i18n }}</strong>
+                      </span>
+                      <mat-icon>share</mat-icon>
+                    </header>
+
+                    <p class="operator-action-popup__hint">
+                      {{ 'operator.configuration.social.guidance' | i18n }}
+                    </p>
+
+                    <div class="operator-action-popup__social-links">
+                      @for (
+                        link of workspace.configurationDraft()?.socialLinks ?? [];
+                        track $index;
+                        let linkIndex = $index
+                      ) {
+                        <article class="operator-action-popup__social-link">
+                          <div class="operator-action-popup__social-link-fields">
+                            <label class="operator-action-popup__field">
+                              <span>{{ 'operator.configuration.social.provider' | i18n }}</span>
+                              <input
+                                type="text"
+                                maxlength="32"
+                                autocomplete="off"
+                                [ngModel]="link.provider"
+                                (ngModelChange)="setConfigurationSocialLink(
+                                  linkIndex,
+                                  { provider: $event }
+                                )"
+                                [disabled]="configurationDisabled()"
+                              />
+                            </label>
+
+                            <label class="operator-action-popup__field">
+                              <span>{{ 'operator.configuration.social.label' | i18n }}</span>
+                              <input
+                                type="text"
+                                maxlength="80"
+                                autocomplete="off"
+                                [ngModel]="link.label"
+                                (ngModelChange)="setConfigurationSocialLink(
+                                  linkIndex,
+                                  { label: $event }
+                                )"
+                                [disabled]="configurationDisabled()"
+                              />
+                            </label>
+
+                            <label class="operator-action-popup__field">
+                              <span>{{ 'operator.configuration.social.icon' | i18n }}</span>
+                              <input
+                                type="text"
+                                maxlength="64"
+                                autocomplete="off"
+                                [placeholder]="'operator.configuration.social.icon.placeholder' | i18n"
+                                [ngModel]="link.icon ?? ''"
+                                (ngModelChange)="setConfigurationSocialLink(
+                                  linkIndex,
+                                  { icon: $event || null }
+                                )"
+                                [disabled]="configurationDisabled()"
+                              />
+                            </label>
+
+                            <label class="operator-action-popup__field">
+                              <span>{{ 'operator.configuration.social.handle' | i18n }}</span>
+                              <input
+                                type="text"
+                                maxlength="80"
+                                autocomplete="off"
+                                [placeholder]="'operator.configuration.social.handle.placeholder' | i18n"
+                                [ngModel]="link.handle ?? ''"
+                                (ngModelChange)="setConfigurationSocialLink(
+                                  linkIndex,
+                                  { handle: $event || null }
+                                )"
+                                [disabled]="configurationDisabled()"
+                              />
+                            </label>
+                          </div>
+
+                          <app-link-input
+                            [config]="socialLinkUrlConfig()"
+                            [ngModel]="link.url"
+                            (ngModelChange)="setConfigurationSocialLink(
+                              linkIndex,
+                              { url: $event }
+                            )"
+                            [disabled]="configurationDisabled()"
+                          ></app-link-input>
+
+                          <app-menu
+                            kind="inline"
+                            layout="row"
+                            [items]="configurationSocialLinkRemoveItems(linkIndex)"
+                            (itemSelect)="onAction($event)"
+                          ></app-menu>
+                        </article>
+                      } @empty {
+                        <p class="operator-action-popup__empty">
+                          {{ 'operator.configuration.social.empty' | i18n }}
+                        </p>
+                      }
+                    </div>
+
+                    @if (workspace.configurationSocialLinksValidationKey(); as errorKey) {
+                      <p class="operator-action-popup__result is-error" role="alert">
+                        <mat-icon>error_outline</mat-icon>
+                        <span>{{ errorKey | i18n }}</span>
+                      </p>
+                    }
+
+                    <app-menu
+                      class="operator-action-popup__section-actions operator-action-popup__section-actions--social"
+                      kind="inline"
+                      layout="row"
+                      [items]="configurationSocialLinkActionItems()"
+                      (itemSelect)="onAction($event)"
+                    ></app-menu>
+                    @if (workspace.feedbackAction() === 'save-social-links') {
+                      @if (workspace.error()) {
+                        <p class="operator-action-popup__result is-error" role="alert">
+                          <mat-icon>error_outline</mat-icon>
+                          <span>{{ workspace.error() | i18n }}</span>
+                        </p>
+                      } @else if (workspace.notice()) {
+                        <p class="operator-action-popup__result is-success" role="status">
+                          <mat-icon>check_circle</mat-icon>
+                          <span>{{ workspace.notice() | i18n }}</span>
+                        </p>
+                      }
+                    }
+                  </section>
+
+                  <section
+                    class="operator-action-popup__configuration-group"
                     data-palette="teal"
                   >
                     <header>
@@ -347,6 +551,44 @@
                         (itemSelect)="onAction($event)"
                       ></app-menu>
                     </div>
+
+                    @if (draft.payment.providerId) {
+                      <div
+                        class="operator-action-popup__payment-routing"
+                        [class.is-barion]="configurationPaymentIsBarion()"
+                      >
+                        <app-link-input
+                          [config]="configurationPaymentPublicBaseUrlConfig()"
+                          [ngModel]="draft.payment.publicBaseUrl"
+                          (ngModelChange)="workspace.setConfigurationPayment({
+                            publicBaseUrl: $event
+                          })"
+                          [disabled]="configurationDisabled()"
+                        ></app-link-input>
+
+                        @if (configurationPaymentIsBarion()) {
+                          <label class="operator-action-popup__field">
+                            <span>
+                              {{ 'operator.configuration.payment.merchant.account' | i18n }}
+                            </span>
+                            <input
+                              type="email"
+                              maxlength="254"
+                              autocomplete="email"
+                              [placeholder]="
+                                'operator.configuration.payment.merchant.account.placeholder'
+                                  | i18n
+                              "
+                              [ngModel]="draft.payment.merchantAccount"
+                              (ngModelChange)="workspace.setConfigurationPayment({
+                                merchantAccount: $event
+                              })"
+                              [disabled]="configurationDisabled()"
+                            />
+                          </label>
+                        }
+                      </div>
+                    }
 
                     <label class="operator-action-popup__field">
                       <span>{{ 'operator.configuration.payment.credential' | i18n }}</span>
@@ -436,6 +678,107 @@
                     </label>
 
                     <label class="operator-action-popup__field">
+                      <span>{{ 'operator.configuration.firebase.api.key' | i18n }}</span>
+                      <input
+                        type="text"
+                        maxlength="256"
+                        autocomplete="off"
+                        autocapitalize="off"
+                        spellcheck="false"
+                        [ngModel]="draft.firebase.apiKey"
+                        (ngModelChange)="workspace.setConfigurationFirebase({ apiKey: $event })"
+                        [disabled]="configurationDisabled()"
+                      />
+                    </label>
+
+                    <label class="operator-action-popup__field">
+                      <span>{{ 'operator.configuration.firebase.auth.domain' | i18n }}</span>
+                      <input
+                        type="text"
+                        maxlength="253"
+                        autocomplete="off"
+                        autocapitalize="off"
+                        spellcheck="false"
+                        placeholder="project-id.firebaseapp.com"
+                        [ngModel]="draft.firebase.authDomain"
+                        (ngModelChange)="workspace.setConfigurationFirebase({ authDomain: $event })"
+                        [disabled]="configurationDisabled()"
+                      />
+                    </label>
+
+                    <label class="operator-action-popup__field">
+                      <span>{{ 'operator.configuration.firebase.storage.bucket' | i18n }}</span>
+                      <input
+                        type="text"
+                        maxlength="512"
+                        autocomplete="off"
+                        autocapitalize="off"
+                        spellcheck="false"
+                        [ngModel]="draft.firebase.storageBucket"
+                        (ngModelChange)="workspace.setConfigurationFirebase({ storageBucket: $event })"
+                        [disabled]="configurationDisabled()"
+                      />
+                    </label>
+
+                    <label class="operator-action-popup__field">
+                      <span>{{ 'operator.configuration.firebase.messaging.sender.id' | i18n }}</span>
+                      <input
+                        type="text"
+                        maxlength="64"
+                        autocomplete="off"
+                        inputmode="numeric"
+                        [ngModel]="draft.firebase.messagingSenderId"
+                        (ngModelChange)="workspace.setConfigurationFirebase({ messagingSenderId: $event })"
+                        [disabled]="configurationDisabled()"
+                      />
+                    </label>
+
+                    <label class="operator-action-popup__field">
+                      <span>{{ 'operator.configuration.firebase.app.id' | i18n }}</span>
+                      <input
+                        type="text"
+                        maxlength="256"
+                        autocomplete="off"
+                        autocapitalize="off"
+                        spellcheck="false"
+                        [ngModel]="draft.firebase.appId"
+                        (ngModelChange)="workspace.setConfigurationFirebase({ appId: $event })"
+                        [disabled]="configurationDisabled()"
+                      />
+                    </label>
+
+                    <label class="operator-action-popup__field">
+                      <span>{{ 'operator.configuration.firebase.measurement.id' | i18n }}</span>
+                      <input
+                        type="text"
+                        maxlength="64"
+                        autocomplete="off"
+                        autocapitalize="off"
+                        spellcheck="false"
+                        [ngModel]="draft.firebase.measurementId"
+                        (ngModelChange)="workspace.setConfigurationFirebase({ measurementId: $event })"
+                        [disabled]="configurationDisabled()"
+                      />
+                    </label>
+
+                    <label class="operator-action-popup__field">
+                      <span>{{ 'operator.configuration.firebase.vapid.key' | i18n }}</span>
+                      <textarea
+                        rows="2"
+                        maxlength="512"
+                        autocomplete="off"
+                        autocapitalize="off"
+                        spellcheck="false"
+                        [ngModel]="draft.firebase.vapidKey"
+                        (ngModelChange)="workspace.setConfigurationFirebase({ vapidKey: $event })"
+                        [disabled]="configurationDisabled()"
+                      ></textarea>
+                      <small>
+                        {{ 'operator.configuration.firebase.public.guidance' | i18n }}
+                      </small>
+                    </label>
+
+                    <label class="operator-action-popup__field">
                       <span>{{ 'operator.configuration.firebase.authentication.credential' | i18n }}</span>
                       <textarea
                         rows="3"
@@ -463,6 +806,26 @@
                       ></textarea>
                     </label>
 
+                    <label class="operator-action-popup__field">
+                      <span>
+                        {{ 'operator.configuration.test.messaging.destination' | i18n }}
+                      </span>
+                      <textarea
+                        rows="2"
+                        maxlength="4096"
+                        autocomplete="off"
+                        autocapitalize="off"
+                        spellcheck="false"
+                        [placeholder]="'operator.configuration.test.messaging.destination.placeholder' | i18n"
+                        [ngModel]="workspace.configurationMessagingDestinationToken()"
+                        (ngModelChange)="workspace.setConfigurationMessagingDestinationToken($event)"
+                        [disabled]="configurationDisabled()"
+                      ></textarea>
+                      <small>
+                        {{ 'operator.configuration.test.messaging.destination.guidance' | i18n }}
+                      </small>
+                    </label>
+
                     <app-menu
                       class="operator-action-popup__section-actions"
                       kind="inline"
@@ -470,7 +833,10 @@
                       [items]="configurationFirebaseSaveActionItems()"
                       (itemSelect)="onAction($event)"
                     ></app-menu>
-                    @if (workspace.feedbackAction() === 'register-firebase') {
+                    @if (
+                      workspace.feedbackAction() === 'register-firebase'
+                      || workspace.feedbackAction() === 'activate-firebase'
+                    ) {
                       @if (workspace.error()) {
                         <p class="operator-action-popup__result is-error" role="alert">
                           <mat-icon>error_outline</mat-icon>
@@ -488,8 +854,416 @@
               }
             }
             @case ('revenue') {
+              @if (workspace.revenueSync(); as delivery) {
+                <article
+                  class="operator-action-popup__revenue-delivery"
+                  [attr.data-state]="delivery.state"
+                  [attr.role]="delivery.state === 'BLOCKED' || delivery.state === 'ERROR'
+                    ? 'alert'
+                    : 'status'"
+                >
+                  <header>
+                    <mat-icon>{{ revenueSyncStateIcon(delivery.state) }}</mat-icon>
+                    <span>
+                      <small>{{ 'operator.revenue.delivery' | i18n }}</small>
+                      <strong>{{ revenueSyncStateLabel(delivery.state) | i18n }}</strong>
+                    </span>
+                    <time [attr.datetime]="delivery.synchronizedAtIso">
+                      {{ formatDate(delivery.synchronizedAtIso) }}
+                    </time>
+                  </header>
+                  @if (delivery.message) {
+                    <p>
+                      {{ (delivery.code === 'EXPLORE_MODE'
+                        ? 'operator.revenue.delivery.not.sent'
+                        : delivery.message) | i18n }}
+                    </p>
+                  }
+                  <dl>
+                    <div>
+                      <dt>{{ 'operator.revenue.delivery.materialized' | i18n }}</dt>
+                      <dd>{{ delivery.materialized }}</dd>
+                    </div>
+                    <div>
+                      <dt>{{ 'operator.revenue.delivery.submitted' | i18n }}</dt>
+                      <dd>{{ delivery.submitted }}</dd>
+                    </div>
+                    <div>
+                      <dt>{{ 'operator.revenue.delivery.accepted' | i18n }}</dt>
+                      <dd>{{ delivery.accepted }}</dd>
+                    </div>
+                    <div>
+                      <dt>{{ 'operator.revenue.delivery.pending' | i18n }}</dt>
+                      <dd>{{ delivery.pending }}</dd>
+                    </div>
+                    <div>
+                      <dt>{{ 'operator.revenue.delivery.blocked' | i18n }}</dt>
+                      <dd>{{ delivery.blocked }}</dd>
+                    </div>
+                  </dl>
+                </article>
+                @if (delivery.blocked > 0) {
+                  <section
+                    class="operator-action-popup__revenue-reports"
+                    [attr.aria-label]="'operator.revenue.delivery.reports.blocked' | i18n"
+                  >
+                    <header>
+                      <span>
+                        <small>{{ 'operator.revenue.delivery.reports' | i18n }}</small>
+                        <strong>
+                          {{ 'operator.revenue.delivery.reports.blocked' | i18n }}
+                        </strong>
+                      </span>
+                      <b>{{ delivery.blocked }}</b>
+                    </header>
+                    <app-smart-list
+                      #revenueReportsSmartList
+                      [config]="revenueReportConfig"
+                      [loadPage]="loadRevenueReportPage"
+                      [query]="revenueReportQuery()"
+                      [itemTemplate]="revenueReportTemplate"
+                    ></app-smart-list>
+
+                    <ng-template #revenueReportTemplate let-report>
+                      <article class="operator-action-popup__revenue-report">
+                        <header>
+                          <span class="operator-action-popup__revenue-report-icon">
+                            <mat-icon>receipt_long</mat-icon>
+                          </span>
+                          <span>
+                            <small>
+                              {{ 'operator.revenue.delivery.report.period' | i18n }}
+                            </small>
+                            <strong>
+                              {{ formatRevenueReportPeriod(report.period) }}
+                            </strong>
+                          </span>
+                          <em>
+                            {{ 'operator.revenue.delivery.report.revision' | i18n }}
+                            {{ report.revision }}
+                          </em>
+                        </header>
+                        <p>
+                          {{ (report.failureMessage
+                            || 'operator.revenue.delivery.report.failure.unknown') | i18n }}
+                        </p>
+                        @if (report.failureCode) {
+                          <small class="operator-action-popup__revenue-report-code">
+                            {{ report.failureCode }}
+                          </small>
+                        }
+                        <dl>
+                          <div>
+                            <dt>
+                              {{ 'operator.revenue.delivery.report.attempts' | i18n }}
+                            </dt>
+                            <dd>{{ report.attemptCount }}</dd>
+                          </div>
+                          <div>
+                            <dt>
+                              {{ 'operator.revenue.delivery.report.currencies' | i18n }}
+                            </dt>
+                            <dd>{{ revenueReportCurrencies(report) }}</dd>
+                          </div>
+                          <div>
+                            <dt>
+                              {{ 'operator.revenue.delivery.report.failed.at' | i18n }}
+                            </dt>
+                            <dd>{{ formatDate(report.failedAt || report.updatedAt) }}</dd>
+                          </div>
+                        </dl>
+                        <app-menu
+                          kind="inline"
+                          layout="row"
+                          [items]="revenueReportActionItems(report)"
+                          (itemSelect)="onAction($event)"
+                        ></app-menu>
+                      </article>
+                    </ng-template>
+                  </section>
+                }
+              } @else {
+                <p class="operator-action-popup__hint">
+                  {{ 'operator.revenue.delivery.manual.description' | i18n }}
+                </p>
+              }
+              <section
+                class="operator-action-popup__settlements"
+                [attr.aria-label]="'operator.revenue.settlement.title' | i18n"
+              >
+                <header class="operator-action-popup__settlements-header">
+                  <span class="operator-action-popup__settlements-icon">
+                    <mat-icon>account_balance</mat-icon>
+                  </span>
+                  <span>
+                    <small>{{ 'operator.revenue.settlement.eyebrow' | i18n }}</small>
+                    <strong>{{ 'operator.revenue.settlement.title' | i18n }}</strong>
+                    <em>{{ 'operator.revenue.settlement.currency.notice' | i18n }}</em>
+                  </span>
+                  <b>
+                    <mat-icon>info</mat-icon>
+                    {{ 'operator.revenue.settlement.nonbinding' | i18n }}
+                  </b>
+                </header>
+
+                @if (workspace.revenueSettlementAvailable() === false) {
+                  <p class="operator-action-popup__settlements-unavailable" role="status">
+                    <mat-icon>cloud_off</mat-icon>
+                    <span>{{ 'operator.revenue.settlement.unavailable' | i18n }}</span>
+                  </p>
+                } @else if (workspace.revenueSettlementAvailable() === true) {
+                  <app-smart-list
+                    [config]="settlementConfig"
+                    [loadPage]="loadSettlementPage"
+                    [query]="settlementQuery()"
+                    [itemTemplate]="settlementTemplate"
+                  ></app-smart-list>
+
+                  <ng-template #settlementTemplate let-settlement>
+                    <article
+                      class="operator-action-popup__settlement"
+                      [attr.data-trend]="settlementTrend(settlement)"
+                    >
+                      <header>
+                        <span class="operator-action-popup__settlement-period">
+                          <small>
+                            {{ 'operator.revenue.settlement.period' | i18n }}
+                          </small>
+                          <strong>
+                            {{ formatSettlementPeriod(settlement.period) }}
+                          </strong>
+                        </span>
+                        <span class="operator-action-popup__settlement-currency">
+                          {{ settlement.currencyCode }}
+                        </span>
+                        <span class="operator-action-popup__settlement-revision">
+                          {{ 'operator.revenue.settlement.revision' | i18n }}
+                          {{ settlement.revision }}
+                        </span>
+                      </header>
+
+                      <dl class="operator-action-popup__settlement-month">
+                        <div>
+                          <dt>{{ 'operator.revenue.settlement.monthly.pool' | i18n }}</dt>
+                          <dd>
+                            {{ formatSettlementMinor(
+                              settlement.networkPoolMinor,
+                              settlement
+                            ) }}
+                          </dd>
+                        </div>
+                        <div>
+                          <dt>
+                            {{ 'operator.revenue.settlement.monthly.group.allocation' | i18n }}
+                          </dt>
+                          <dd>
+                            {{ formatSettlementMinor(
+                              settlement.networkPoolAllocationMinor,
+                              settlement
+                            ) }}
+                          </dd>
+                        </div>
+                        <div>
+                          <dt>{{ 'operator.revenue.settlement.share' | i18n }}</dt>
+                          <dd>{{ formatSettlementShare(settlement) }}</dd>
+                        </div>
+                      </dl>
+
+                      <dl class="operator-action-popup__settlement-valuation">
+                        <div>
+                          <dt>{{ 'operator.revenue.settlement.ttm.basis' | i18n }}</dt>
+                          <dd>
+                            {{ formatSettlementMinor(
+                              settlement.ttmCommissionBasisMinor,
+                              settlement
+                            ) }}
+                          </dd>
+                        </div>
+                        <div>
+                          <dt>{{ 'operator.revenue.settlement.ttm.pool' | i18n }}</dt>
+                          <dd>
+                            {{ formatSettlementMinor(
+                              settlement.ttmNetworkCommissionPoolMinor,
+                              settlement
+                            ) }}
+                          </dd>
+                        </div>
+                        <div>
+                          <dt>
+                            {{ 'operator.revenue.settlement.indicative.network.value' | i18n }}
+                          </dt>
+                          <dd>
+                            {{ formatSettlementMinor(
+                              settlement.indicativeNetworkValueMinor,
+                              settlement
+                            ) }}
+                          </dd>
+                        </div>
+                        <div>
+                          <dt>
+                            {{ 'operator.revenue.settlement.indicative.group.allocation' | i18n }}
+                          </dt>
+                          <dd>
+                            {{ formatSettlementMinor(
+                              settlement.indicativeValueAllocationMinor,
+                              settlement
+                            ) }}
+                          </dd>
+                        </div>
+                      </dl>
+
+                      <dl class="operator-action-popup__settlement-trend">
+                        <div>
+                          <dt>{{ 'operator.revenue.settlement.average.earlier' | i18n }}</dt>
+                          <dd>
+                            {{ formatSettlementMinor(
+                              settlement.earlierThreeMonthAverageMinor,
+                              settlement
+                            ) }}
+                          </dd>
+                        </div>
+                        <div>
+                          <dt>{{ 'operator.revenue.settlement.average.prior' | i18n }}</dt>
+                          <dd>
+                            {{ formatSettlementMinor(
+                              settlement.priorThreeMonthAverageMinor,
+                              settlement
+                            ) }}
+                          </dd>
+                        </div>
+                        <div>
+                          <dt>{{ 'operator.revenue.settlement.average.recent' | i18n }}</dt>
+                          <dd>
+                            {{ formatSettlementMinor(
+                              settlement.recentThreeMonthAverageMinor,
+                              settlement
+                            ) }}
+                          </dd>
+                        </div>
+                        <div>
+                          <dt>{{ 'operator.revenue.settlement.growth.prior' | i18n }}</dt>
+                          <dd>
+                            {{ formatSettlementBasisPoints(
+                              settlement.priorGrowthBasisPoints,
+                              true
+                            ) }}
+                          </dd>
+                        </div>
+                        <div>
+                          <dt>{{ 'operator.revenue.settlement.growth.recent' | i18n }}</dt>
+                          <dd>
+                            {{ formatSettlementBasisPoints(
+                              settlement.recentGrowthBasisPoints,
+                              true
+                            ) }}
+                          </dd>
+                        </div>
+                        <div>
+                          <dt>{{ 'operator.revenue.settlement.acceleration' | i18n }}</dt>
+                          <dd>
+                            {{ formatSettlementBasisPoints(
+                              settlement.accelerationBasisPoints,
+                              true
+                            ) }}
+                          </dd>
+                        </div>
+                        <div>
+                          <dt>{{ 'operator.revenue.settlement.adjustment' | i18n }}</dt>
+                          <dd>
+                            {{ formatSettlementBasisPoints(
+                              settlement.valuationAdjustmentBasisPoints,
+                              true
+                            ) }}
+                          </dd>
+                        </div>
+                        <div>
+                          <dt>{{ 'operator.revenue.settlement.multiplier' | i18n }}</dt>
+                          <dd>
+                            {{ formatSettlementMultiplier(
+                              settlement.effectiveValuationMultiplierBasisPoints
+                            ) }}
+                          </dd>
+                        </div>
+                      </dl>
+
+                      <footer>
+                        <span>
+                          {{ 'operator.revenue.settlement.ruleset' | i18n }}:
+                          <strong>{{ settlement.valuationRulesetVersion }}</strong>
+                        </span>
+                        <span>
+                          {{ 'operator.revenue.settlement.accepted' | i18n }}:
+                          <strong>{{ formatDate(settlement.acceptedAtIso) }}</strong>
+                        </span>
+                      </footer>
+                    </article>
+                  </ng-template>
+                }
+              </section>
               @if (workspace.revenue(); as revenue) {
                 <app-operator-revenue-view [revenue]="revenue"></app-operator-revenue-view>
+              }
+            }
+            @case ('deployments') {
+              @if (menu.selectedLeaderboardEntry(); as entry) {
+                <section
+                  class="operator-action-popup__deployments"
+                  [attr.aria-label]="'operator.leaderboard.deployments.title' | i18n"
+                >
+                  <header class="operator-action-popup__deployment-summary">
+                    <span class="operator-action-popup__deployment-summary-icon">
+                      <mat-icon>hub</mat-icon>
+                    </span>
+                    <span>
+                      <small>
+                        {{ 'operator.leaderboard.network' | i18n }}
+                      </small>
+                      <strong>
+                        {{ entry.deploymentCount || 0 }}
+                        {{ ((entry.deploymentCount || 0) === 1
+                          ? 'operator.leaderboard.deployment'
+                          : 'operator.leaderboard.deployments') | i18n }}
+                      </strong>
+                    </span>
+                    @if (entry.eligibilityStatus !== 'ACTIVE') {
+                      <span
+                        class="operator-action-popup__deployment-eligibility"
+                        [attr.data-status]="entry.eligibilityStatus"
+                      >
+                        <mat-icon>
+                          {{ entry.eligibilityStatus === 'SUSPENDED'
+                            ? 'pause_circle'
+                            : entry.eligibilityStatus === 'PARTIALLY_SUSPENDED'
+                              ? 'warning'
+                              : 'gpp_maybe' }}
+                        </mat-icon>
+                        {{ claimEligibilityLabel(entry.eligibilityStatus) }}
+                      </span>
+                    }
+                    <b
+                      [attr.title]="'operator.leaderboard.share' | i18n"
+                    >
+                      {{ formatShare(entry.sharePercent) }}%
+                    </b>
+                  </header>
+
+                  <app-smart-list
+                    class="operator-action-popup__deployment-list"
+                    [config]="leaderboardDeploymentConfig"
+                    [loadPage]="loadLeaderboardDeploymentPage"
+                    [query]="leaderboardDeploymentQuery()"
+                    [itemTemplate]="leaderboardDeploymentTemplate"
+                  ></app-smart-list>
+
+                  <ng-template
+                    #leaderboardDeploymentTemplate
+                    let-deployment
+                  >
+                    <single-row
+                      [row]="leaderboardDeploymentRow(deployment)"
+                    ></single-row>
+                  </ng-template>
+                </section>
               }
             }
             @case ('community') {
@@ -678,14 +1452,26 @@
             }
           }
 
-          @if (activeKind !== 'configuration') {
+          @if (
+            activeKind !== 'configuration'
+            && activeKind !== 'deployments'
+          ) {
             @if (workspace.error()) {
               <p class="operator-action-popup__result is-error" role="alert">
                 <mat-icon>error_outline</mat-icon>
                 <span>{{ workspace.error() | i18n }}</span>
               </p>
             }
-            @if (workspace.notice()) {
+            @if (
+              workspace.notice()
+              && !(
+                activeKind === 'claim'
+                && (
+                  workspace.claimStatus()?.verificationStatus === 'PENDING_REVIEW'
+                  || workspace.claimStatus()?.verificationStatus === 'REJECTED'
+                )
+              )
+            ) {
               <p class="operator-action-popup__result is-success" role="status">
                 <mat-icon>check_circle</mat-icon>
                 <span>{{ workspace.notice() | i18n }}</span>

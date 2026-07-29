@@ -162,7 +162,7 @@ function formFlowHasRequiredValue(value: unknown, control?: FormFlowControlModel
     return formFlowNumberInRange(value, control);
   }
   if (typeof value === 'boolean') {
-    return true;
+    return control?.kind === 'checkbox' ? value : true;
   }
   if (Array.isArray(value)) {
     const requiredCount = Math.max(1, Math.trunc(Number(control?.min) || 1));

@@ -741,8 +741,22 @@
   width: 100%;
   height: 100%;
   display: block;
+  cursor: crosshair;
   touch-action: none;
   user-select: none;
+  transform: none;
+}
+
+.stats-timeline-axis,
+.stats-timeline-gridline,
+.stats-timeline-line,
+.stats-timeline-scrub-guide,
+.stats-timeline-scrub-halo,
+.stats-timeline-scrub-knob {
+  pointer-events: none;
+  transform: none;
+  transition: none;
+  vector-effect: non-scaling-stroke;
 }
 
 .stats-timeline-axis,
@@ -761,31 +775,33 @@
   stroke-linecap: round;
   stroke-linejoin: round;
   stroke-width: 2.5;
-  vector-effect: non-scaling-stroke;
 }
 
 .stats-timeline-hit {
   fill: transparent;
-  cursor: grab;
+  cursor: inherit;
+  outline: none;
+  transform: none;
+  transition: none;
 }
 
-.stats-timeline-chart svg.is-dragging .stats-timeline-hit {
-  cursor: grabbing;
+.stats-timeline-hit:hover,
+.stats-timeline-hit:focus,
+.stats-timeline-hit:focus-visible {
+  stroke-width: 0;
+  transform: none;
 }
 
 .stats-timeline-scrub-guide {
   stroke: rgba(23, 60, 104, 0.38);
   stroke-dasharray: 4 4;
   stroke-width: 1.4;
-  vector-effect: non-scaling-stroke;
-  pointer-events: none;
 }
 
 .stats-timeline-scrub-halo {
   fill: rgba(47, 103, 168, 0.14);
   stroke: rgba(47, 103, 168, 0.26);
   stroke-width: 1;
-  pointer-events: none;
 }
 
 .stats-timeline-scrub-knob {
@@ -793,7 +809,6 @@
   stroke: #2f67a8;
   stroke-width: 3;
   filter: drop-shadow(0 4px 8px rgba(28, 56, 90, 0.24));
-  pointer-events: none;
 }
 
 .stats-chart-legend {

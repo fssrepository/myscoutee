@@ -1,5 +1,8 @@
 import type { OperatorLeaderboardEntryDto } from '../../core/contracts/operator.interface';
-import type { SingleRowData } from '../components/core/smart-list/card/card.types';
+import type {
+  SingleRowBadge,
+  SingleRowData
+} from '../components/core/smart-list/card/card.types';
 import type {
   ConverterOptionsArg,
   UiConverter
@@ -13,6 +16,11 @@ export interface OperatorLeaderboardSingleRowConverterOptions {
   deploymentsLabel?: string | null;
   claimedNodeLabel?: string | null;
   unclaimedNodeLabel?: string | null;
+  pendingReviewLabel?: string | null;
+  rejectedReviewLabel?: string | null;
+  suspendedEligibilityLabel?: string | null;
+  partiallySuspendedEligibilityLabel?: string | null;
+  inactiveEligibilityLabel?: string | null;
 }
 
 export class OperatorLeaderboardSingleRowConverter implements UiConverter<
@@ -42,6 +50,81 @@ export class OperatorLeaderboardSingleRowConverter implements UiConverter<
       : `${options.deploymentsLabel ?? ''}`.trim() || 'deployments';
     const claimedNodeLabel = `${options.claimedNodeLabel ?? ''}`.trim();
     const unclaimedNodeLabel = `${options.unclaimedNodeLabel ?? ''}`.trim();
+    const pendingReview = entry.claimVerificationStatus === 'PENDING_REVIEW';
+    const pendingReviewLabel = `${options.pendingReviewLabel ?? ''}`.trim()
+      || 'Under review';
+    const rejectedReview = entry.claimVerificationStatus === 'REJECTED';
+    const rejectedReviewLabel = `${options.rejectedReviewLabel ?? ''}`.trim()
+      || 'Review rejected';
+    const suspended = entry.group === 'CLAIMED'
+      && entry.eligibilityStatus === 'SUSPENDED';
+    const partiallySuspended = entry.group === 'CLAIMED'
+      && entry.eligibilityStatus === 'PARTIALLY_SUSPENDED';
+    const inactive = entry.group === 'CLAIMED'
+      && entry.eligibilityStatus === 'INACTIVE';
+    const suspendedEligibilityLabel = `${
+      options.suspendedEligibilityLabel ?? ''
+    }`.trim() || 'Suspended';
+    const partiallySuspendedEligibilityLabel = `${
+      options.partiallySuspendedEligibilityLabel ?? ''
+    }`.trim() || 'Partially suspended';
+    const inactiveEligibilityLabel = `${
+      options.inactiveEligibilityLabel ?? ''
+    }`.trim() || 'Not eligible';
+    const shareBadge: SingleRowBadge = {
+      label: `${share}%`,
+      icon: 'pie_chart',
+      ariaLabel: `${share}% ${shareLabel}`,
+      title: `${share}% ${shareLabel}`,
+      tone: entry.sharePercent > 0 ? 'accent' : 'muted',
+      position: 'top-right'
+    };
+    const badges: SingleRowBadge[] = rejectedReview
+      ? [{
+          label: rejectedReviewLabel,
+          icon: 'block',
+          ariaLabel: rejectedReviewLabel,
+          title: rejectedReviewLabel,
+          tone: 'danger',
+          position: 'top-right'
+        }]
+      : pendingReview
+        ? [{
+            label: pendingReviewLabel,
+            icon: 'pending_actions',
+            ariaLabel: pendingReviewLabel,
+            title: pendingReviewLabel,
+            tone: 'warning',
+            position: 'top-right'
+          }, shareBadge]
+        : suspended
+          ? [{
+              label: suspendedEligibilityLabel,
+              icon: 'pause_circle',
+              ariaLabel: suspendedEligibilityLabel,
+              title: suspendedEligibilityLabel,
+              tone: 'danger',
+              position: 'top-right'
+            }, shareBadge]
+          : partiallySuspended
+            ? [{
+                label: partiallySuspendedEligibilityLabel,
+                icon: 'warning',
+                ariaLabel: partiallySuspendedEligibilityLabel,
+                title: partiallySuspendedEligibilityLabel,
+                tone: 'warning',
+                position: 'top-right'
+              }, shareBadge]
+            : inactive
+              ? [{
+                  label: inactiveEligibilityLabel,
+                  icon: 'gpp_maybe',
+                  ariaLabel: inactiveEligibilityLabel,
+                  title: inactiveEligibilityLabel,
+                  tone: 'muted',
+                  position: 'top-right'
+                }]
+              : [shareBadge];
 
     return {
       id: entry.id,
@@ -66,20 +149,31 @@ export class OperatorLeaderboardSingleRowConverter implements UiConverter<
             : 'dns',
       surfaceTone: entry.group === 'FOUNDER'
         ? 'accent'
-        : entry.claimed
-          ? 'success'
-          : 'muted',
-      toneClass: `operator-leaderboard-row operator-leaderboard-row--${entry.group.toLowerCase()}`,
-      badges: [
-        {
-          label: `${share}%`,
-          icon: 'pie_chart',
-          ariaLabel: `${share}% ${shareLabel}`,
-          title: `${share}% ${shareLabel}`,
-          tone: entry.sharePercent > 0 ? 'accent' : 'muted',
-          position: 'top-right'
-        }
-      ],
+        : rejectedReview
+          ? 'danger'
+          : pendingReview
+            ? 'warning'
+            : suspended
+              ? 'danger'
+              : partiallySuspended
+                ? 'warning'
+                : inactive
+                  ? 'muted'
+                  : entry.claimed
+                    ? 'success'
+                    : 'muted',
+      toneClass: [
+        'operator-leaderboard-row',
+        `operator-leaderboard-row--${entry.group.toLowerCase()}`,
+        pendingReview ? 'operator-leaderboard-row--pending-review' : '',
+        rejectedReview ? 'operator-leaderboard-row--rejected' : '',
+        suspended ? 'operator-leaderboard-row--suspended' : '',
+        partiallySuspended
+          ? 'operator-leaderboard-row--partially-suspended'
+          : '',
+        inactive ? 'operator-leaderboard-row--inactive' : ''
+      ].filter(Boolean).join(' '),
+      badges,
       eagerDetail: structuredClone(entry)
     };
   }

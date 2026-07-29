@@ -25,6 +25,18 @@ export interface FirebaseAuthRequestDto {
   password?: string;
 }
 
+export interface OperatorBootstrapAuthRequestDto {
+  email: string;
+  password: string;
+}
+
+export interface OperatorBootstrapAuthResponseDto {
+  tokenType: 'OperatorBootstrap';
+  accessToken: string;
+  email: string;
+  expiresAt: string;
+}
+
 export interface EntryConsentStateDto {
   version: string;
   accepted: boolean;

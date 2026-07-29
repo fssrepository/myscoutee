@@ -45,7 +45,9 @@ import {
   ActivityResourcesService,
   ChatsService,
   ChatVoiceClipsService,
+  DeploymentConfigurationService,
   EventsService,
+  I18nService,
   MediaService,
   ShareTokensService
 } from '../../../shared/core';
@@ -231,6 +233,8 @@ export class EventChatPopupComponent implements OnDestroy {
   private readonly mediaService = inject(MediaService);
   private readonly profileStore = inject(ProfileStore);
   private readonly location = inject(Location);
+  private readonly i18n = inject(I18nService);
+  private readonly deploymentConfiguration = inject(DeploymentConfigurationService);
   private readonly hostedSessionRef = signal<EventChatSession | null>(null);
   private readonly hostedHeaderRef = signal<EventChatHeaderState | null>(null);
   private closeHostedChatHandler: (() => void) | null = null;
@@ -1993,8 +1997,10 @@ export class EventChatPopupComponent implements OnDestroy {
       ownerUserId: activeUserId
     });
     if (!token) {
-      this.dialogStore.openInfo('The workspace share token could not be created.', {
-        title: 'App support'
+      this.dialogStore.openInfo(this.i18n.translate(
+        'event.chat.support.token.unavailable'
+      ), {
+        title: this.i18n.translate('app.support')
       });
       return;
     }
@@ -2003,12 +2009,12 @@ export class EventChatPopupComponent implements OnDestroy {
       type: 'link',
       entityId: token,
       ownerUserId: activeUserId,
-      title: 'Shared workspace',
-      subtitle: 'MyScoutee support session',
-      description: 'MyScoutee admin can open the current app view from this token.',
+      title: this.i18n.translate('event.chat.support.shared.workspace'),
+      subtitle: this.i18n.translate('event.chat.support.session.subtitle'),
+      description: this.i18n.translate('event.chat.support.token.description'),
       url: this.location.prepareExternalUrl(`/admin/help/${encodeURIComponent(token)}`),
       previewUrl: null
-    }, 'Shared my current workspace with MyScoutee support.');
+    }, this.i18n.translate('event.chat.support.shared.message'));
   }
 
   protected chatAttachmentIcon(attachment: ContractTypes.ChatMessageAttachment): string {
@@ -2943,10 +2949,16 @@ export class EventChatPopupComponent implements OnDestroy {
 
   private confirmExternalLink(url: string): void {
     this.dialogStore.open({
-      title: 'Open external link?',
-      message: 'This link opens outside MyScoutee. Be vigilant and continue only if you trust it.',
-      confirmLabel: 'Continue',
-      cancelLabel: 'Cancel',
+      title: this.i18n.translate('event.chat.external.link.title'),
+      message: this.i18n.translateParams(
+        'event.chat.external.link.message',
+        {
+          productName:
+            this.deploymentConfiguration.branding().productName
+        }
+      ),
+      confirmLabel: this.i18n.translate('continue'),
+      cancelLabel: this.i18n.translate('cancel'),
       confirmTone: 'accent',
       onConfirm: () => {
         if (typeof window !== 'undefined') {
@@ -4493,17 +4505,21 @@ export class EventChatPopupComponent implements OnDestroy {
   private buildAppSupportChatContextControl(): AppUiTypes.PopupHeaderControl {
     return {
       id: 'chat-context',
-      label: 'App support',
-      summary: 'Share workspace',
+      label: this.i18n.translate('app.support'),
+      summary: this.i18n.translate('event.chat.support.share.workspace'),
       visual: { kind: 'icon', icon: 'admin_panel_settings' },
       menu: {
-        title: 'App support',
+        title: this.i18n.translate('app.support'),
         groups: [{
           id: 'support',
           controls: [{
             id: 'app-support-share-workspace',
-            label: 'Share workspace',
-            summary: 'Send a token so MyScoutee admin can open this view',
+            label: this.i18n.translate(
+              'event.chat.support.share.workspace'
+            ),
+            summary: this.i18n.translate(
+              'event.chat.support.share.workspace.summary'
+            ),
             visual: { kind: 'icon', icon: 'vpn_key' },
             lookup: {
               type: 'adminHelp',

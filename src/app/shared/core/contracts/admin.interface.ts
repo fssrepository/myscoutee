@@ -447,6 +447,9 @@ export interface AdminNotificationRunStateDto {
   lastRunDetail: string;
   lastRunCount: number;
   lastRunUser: string;
+  pendingCount: number;
+  pendingCountUnit: string;
+  pendingCountUpdatedAtIso: string;
 }
 
 export type AdminNotificationRunState = AdminNotificationRunStateDto;

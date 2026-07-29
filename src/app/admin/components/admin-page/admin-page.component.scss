@@ -57,15 +57,7 @@
   background-repeat: no-repeat;
   background-size: 100% 3px;
   background-position: 0 100%;
-}
-
-.admin-brand-mark {
-  width: 38px;
-  height: 38px;
-  object-fit: contain;
-}
-
-.admin-brand-text {
+  --deployment-brand-logo-size: 38px;
   font-size: 2rem;
   line-height: 0.8;
 }

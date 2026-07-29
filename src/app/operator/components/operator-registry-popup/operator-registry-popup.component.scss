@@ -115,9 +115,320 @@
   justify-self: end;
 }
 
+.operator-registration__measurements {
+  min-width: 0;
+  padding: 0.65rem;
+  border: 1px solid rgba(74, 105, 137, 0.14);
+  border-radius: 13px;
+  background: #f8fafc;
+  display: grid;
+  gap: 0.52rem;
+}
+
+.operator-registration__measurements > header {
+  min-width: 0;
+  display: flex;
+  align-items: center;
+  gap: 0.48rem;
+}
+
+.operator-registration__measurement-icon {
+  width: 30px;
+  height: 30px;
+  flex: 0 0 30px;
+  border-radius: 9px;
+  background: #e5f0f7;
+  color: #356986;
+  display: grid;
+  place-items: center;
+}
+
+.operator-registration__measurement-icon .mat-icon {
+  width: 17px;
+  height: 17px;
+  font-size: 17px;
+}
+
+.operator-registration__measurements > header > span:last-child,
+.operator-registration__measurement-reports > header > span {
+  min-width: 0;
+  display: grid;
+  gap: 0.03rem;
+}
+
+.operator-registration__measurements > header small,
+.operator-registration__measurement-reports > header small {
+  color: rgba(36, 56, 83, 0.55);
+  font-size: 0.6rem;
+  font-weight: 800;
+}
+
+.operator-registration__measurements > header strong,
+.operator-registration__measurement-reports > header strong {
+  color: #314762;
+  font-size: 0.78rem;
+}
+
+.operator-registration__measurement-hint {
+  margin: 0;
+  color: rgba(36, 56, 83, 0.7);
+  font-size: 0.68rem;
+  font-weight: 720;
+  line-height: 1.4;
+}
+
+.operator-registration__measurement-delivery {
+  --measurement-accent: #52657b;
+  --measurement-surface: #eef2f6;
+  min-width: 0;
+  padding: 0.52rem;
+  border-radius: 10px;
+  background: var(--measurement-surface);
+  display: grid;
+  gap: 0.38rem;
+}
+
+.operator-registration__measurement-delivery[data-state='READY'] {
+  --measurement-accent: #187258;
+  --measurement-surface: #eaf7f2;
+}
+
+.operator-registration__measurement-delivery[data-state='BUSY'] {
+  --measurement-accent: #946114;
+  --measurement-surface: #fff6df;
+}
+
+.operator-registration__measurement-delivery[data-state='BLOCKED'],
+.operator-registration__measurement-delivery[data-state='ERROR'] {
+  --measurement-accent: #9b3447;
+  --measurement-surface: #fff0f3;
+}
+
+.operator-registration__measurement-delivery > header {
+  min-width: 0;
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 0.36rem;
+  color: var(--measurement-accent);
+}
+
+.operator-registration__measurement-delivery > header .mat-icon {
+  width: 17px;
+  height: 17px;
+  font-size: 17px;
+}
+
+.operator-registration__measurement-delivery > header strong {
+  font-size: 0.72rem;
+}
+
+.operator-registration__measurement-delivery > header time {
+  color: rgba(36, 56, 83, 0.55);
+  font-size: 0.58rem;
+  font-weight: 800;
+  white-space: nowrap;
+}
+
+.operator-registration__measurement-delivery > p {
+  margin: 0;
+  color: rgba(36, 56, 83, 0.72);
+  font-size: 0.64rem;
+  font-weight: 720;
+  line-height: 1.35;
+  overflow-wrap: anywhere;
+}
+
+.operator-registration__measurement-delivery dl {
+  margin: 0;
+  display: grid;
+  grid-template-columns: repeat(5, minmax(0, 1fr));
+  gap: 0.25rem;
+}
+
+.operator-registration__measurement-delivery dl > div {
+  min-width: 0;
+  padding: 0.28rem;
+  border-radius: 7px;
+  background: rgba(255, 255, 255, 0.7);
+  display: grid;
+  gap: 0.02rem;
+}
+
+.operator-registration__measurement-delivery dt,
+.operator-registration__measurement-report dt {
+  color: rgba(36, 56, 83, 0.52);
+  font-size: 0.54rem;
+  font-weight: 800;
+  overflow-wrap: anywhere;
+}
+
+.operator-registration__measurement-delivery dd {
+  margin: 0;
+  color: var(--measurement-accent);
+  font-size: 0.72rem;
+  font-weight: 950;
+  font-variant-numeric: tabular-nums;
+}
+
+.operator-registration__measurement-actions {
+  justify-self: end;
+}
+
+.operator-registration__measurement-reports {
+  min-width: 0;
+  padding-top: 0.48rem;
+  border-top: 1px solid rgba(155, 52, 71, 0.14);
+  display: grid;
+  gap: 0.42rem;
+}
+
+.operator-registration__measurement-reports > header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.4rem;
+}
+
+.operator-registration__measurement-reports > header strong {
+  color: #9b3447;
+}
+
+.operator-registration__measurement-reports > header b {
+  min-width: 24px;
+  height: 24px;
+  padding: 0 0.35rem;
+  border-radius: 999px;
+  background: #ffe2e8;
+  color: #9b3447;
+  display: grid;
+  place-items: center;
+  font-size: 0.65rem;
+  font-variant-numeric: tabular-nums;
+}
+
+.operator-registration__measurement-reports app-smart-list {
+  min-width: 0;
+  width: 100%;
+}
+
+.operator-registration__measurement-report {
+  min-width: 0;
+  padding: 0.5rem;
+  border: 1px solid rgba(155, 52, 71, 0.13);
+  border-radius: 9px;
+  background: #fff;
+  display: grid;
+  gap: 0.3rem;
+}
+
+.operator-registration__measurement-report > header {
+  min-width: 0;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.4rem;
+}
+
+.operator-registration__measurement-report > header > span {
+  min-width: 0;
+  display: grid;
+  gap: 0.02rem;
+}
+
+.operator-registration__measurement-report > header small {
+  color: rgba(36, 56, 83, 0.52);
+  font-size: 0.56rem;
+  font-weight: 800;
+}
+
+.operator-registration__measurement-report > header strong {
+  color: #314762;
+  font-size: 0.72rem;
+}
+
+.operator-registration__measurement-report > header em {
+  padding: 0.18rem 0.38rem;
+  border-radius: 999px;
+  background: #fff0f3;
+  color: #9b3447;
+  font-size: 0.58rem;
+  font-style: normal;
+  font-weight: 900;
+  white-space: nowrap;
+}
+
+.operator-registration__measurement-window {
+  color: rgba(36, 56, 83, 0.56);
+  font-size: 0.57rem;
+  font-weight: 750;
+}
+
+.operator-registration__measurement-report > p {
+  margin: 0;
+  color: rgba(36, 56, 83, 0.72);
+  font-size: 0.63rem;
+  font-weight: 720;
+  line-height: 1.35;
+}
+
+.operator-registration__measurement-report > code {
+  color: #9b3447;
+  font-size: 0.56rem;
+  font-weight: 800;
+  overflow-wrap: anywhere;
+}
+
+.operator-registration__measurement-report dl {
+  margin: 0;
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 0.28rem;
+}
+
+.operator-registration__measurement-report dl > div {
+  min-width: 0;
+  display: grid;
+  gap: 0.02rem;
+}
+
+.operator-registration__measurement-report dd {
+  min-width: 0;
+  margin: 0;
+  color: #314762;
+  font-size: 0.61rem;
+  font-weight: 850;
+  overflow-wrap: anywhere;
+}
+
+.operator-registration__measurement-report app-menu {
+  width: min(100%, 210px);
+}
+
 @media (max-width: 560px) {
   .operator-registration__actions {
     justify-self: stretch;
     width: 100%;
+  }
+
+  .operator-registration__measurement-delivery > header {
+    grid-template-columns: auto minmax(0, 1fr);
+  }
+
+  .operator-registration__measurement-delivery > header time {
+    grid-column: 2;
+  }
+
+  .operator-registration__measurement-delivery dl {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .operator-registration__measurement-actions {
+    justify-self: stretch;
+    width: 100%;
+  }
+
+  .operator-registration__measurement-report dl {
+    grid-template-columns: minmax(0, 1fr);
   }
 }

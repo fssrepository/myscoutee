@@ -721,11 +721,23 @@ export class LocalActivityEventsMapper {
     if (!this.isTournamentStageDefinition(item)) {
       return 0;
     }
-    const groupCapacityMax = this.nonNegativeInteger(item.tournamentGroupCapacityMax);
-    if (groupCapacityMax <= 0) {
+    const groupCapacityMin = this.nonNegativeInteger(item.tournamentGroupCapacityMin);
+    const groupCapacityMax = Math.max(
+      groupCapacityMin,
+      this.nonNegativeInteger(item.tournamentGroupCapacityMax)
+    );
+    if (groupCapacityMin <= 0 && groupCapacityMax <= 0) {
       return 0;
     }
-    return Math.ceil(this.nonNegativeInteger(incomingCapacityMax) / groupCapacityMax);
+    const capacityMax = this.nonNegativeInteger(incomingCapacityMax);
+    const divisor = Math.max(1, groupCapacityMax > 0 ? groupCapacityMax : groupCapacityMin);
+    const groupsNeededForMaximum = capacityMax > 0
+      ? Math.ceil(capacityMax / divisor)
+      : 0;
+    const groupsAllowedByMinimum = groupCapacityMin > 0
+      ? Math.max(1, Math.floor(capacityMax / groupCapacityMin))
+      : groupsNeededForMaximum;
+    return Math.min(groupsNeededForMaximum, groupsAllowedByMinimum);
   }
 
   private static withSubEventResource(

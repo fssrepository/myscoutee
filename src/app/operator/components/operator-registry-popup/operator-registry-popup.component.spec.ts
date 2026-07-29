@@ -1,9 +1,13 @@
 import { computed, signal, type Signal } from '@angular/core';
 import { TestBed } from '@angular/core/testing';
 
-import type { OperatorRegistryStatusDto } from '../../../shared/core/contracts/operator.interface';
+import type {
+  OperatorMeasurementSyncDto,
+  OperatorRegistryStatusDto
+} from '../../../shared/core/contracts/operator.interface';
 import { OperatorMenuStore } from '../../../shared/ui/context/stores/operator-menu.store';
 import { OperatorRegistryStore } from '../../../shared/ui/context/stores/operator-registry.store';
+import { OperatorWorkspaceStore } from '../../../shared/ui/context/stores/operator-workspace.store';
 import type { LinkInputConfig } from '../../../shared/ui/components/core/form/inputs/link-input';
 import type { AppMenuItem } from '../../../shared/ui/components/core/menu';
 import type { PopupModel } from '../../../shared/ui/components/core/popup';
@@ -14,14 +18,17 @@ describe('OperatorRegistryPopupComponent', () => {
     TestBed.resetTestingModule();
   });
 
-  it('uses a compact popup and disables only the current registry selector option', async () => {
+  it('loads status into a compact popup and disables only the current registry selector option', async () => {
     const status = registeredStatus();
     const statusSignal = signal<OperatorRegistryStatusDto | null>(status);
     const registryBaseUrl = signal(status.selection?.baseUrl ?? '');
     const expectedRegistryScope = signal(status.selection?.registryScope ?? '');
     const busyAction = signal<string | null>(null);
+    const measurementSync = signal<OperatorMeasurementSyncDto | null>(null);
+    const applyRegistryDeactivation = vi.fn();
     const registryStore = {
       status: statusSignal.asReadonly(),
+      measurementSync: measurementSync.asReadonly(),
       busyAction: busyAction.asReadonly(),
       error: signal('').asReadonly(),
       notice: signal('').asReadonly(),
@@ -35,6 +42,9 @@ describe('OperatorRegistryPopupComponent', () => {
       setRegistryBaseUrl: (value: string) => registryBaseUrl.set(value),
       setExpectedRegistryScope: (value: string) => expectedRegistryScope.set(value),
       loadStatus: vi.fn().mockResolvedValue(status),
+      synchronizeMeasurements: vi.fn(),
+      measurementReportPage: vi.fn().mockResolvedValue({ items: [], total: 0 }),
+      requeueMeasurementReport: vi.fn(),
       register: vi.fn(),
       disconnect: vi.fn(),
       clearFeedback: vi.fn(),
@@ -46,6 +56,10 @@ describe('OperatorRegistryPopupComponent', () => {
       imports: [OperatorRegistryPopupComponent],
       providers: [
         { provide: OperatorRegistryStore, useValue: registryStore },
+        {
+          provide: OperatorWorkspaceStore,
+          useValue: { applyRegistryDeactivation }
+        },
         {
           provide: OperatorMenuStore,
           useValue: {
@@ -63,7 +77,20 @@ describe('OperatorRegistryPopupComponent', () => {
       popupModel: () => PopupModel;
       registryUrlConfig: Signal<LinkInputConfig>;
       registryActionItems: Signal<readonly AppMenuItem<string>[]>;
+      measurementSyncActionItems: Signal<readonly AppMenuItem<string>[]>;
+      updateRegistryBaseUrl: (value: string) => void;
+      registerNode: () => Promise<void>;
     };
+
+    expect(registryStore.loadStatus).toHaveBeenCalledOnce();
+    busyAction.set('load');
+    fixture.detectChanges();
+    expect(
+      (fixture.nativeElement as HTMLElement)
+        .querySelector('.operator-registration__loading app-indicator')
+    ).not.toBeNull();
+    busyAction.set(null);
+    fixture.detectChanges();
 
     expect(componentView.popupModel().size).toBe('small');
     expect(componentView.popupModel().height).toBe('auto');
@@ -99,12 +126,36 @@ describe('OperatorRegistryPopupComponent', () => {
       disabled: false,
       progress: null
     });
+    expect(componentView.measurementSyncActionItems()[0]).toMatchObject({
+      id: 'synchronize-measurements',
+      disabled: false,
+      progress: null
+    });
 
     busyAction.set('disconnect');
     expect(componentView.registryActionItems()[0]?.progress).toMatchObject({
       state: 'loading',
       shape: 'button'
     });
+
+    busyAction.set(null);
+    const switchedStatus: OperatorRegistryStatusDto = {
+      ...status,
+      selection: {
+        baseUrl: 'https://registry-two.example.com',
+        registryScope: 'demo:secondary',
+        confirmedAt: '2026-07-29T10:00:00.000Z'
+      }
+    };
+    registryStore.register.mockImplementation(async () => {
+      statusSignal.set(switchedStatus);
+      return switchedStatus;
+    });
+    componentView.updateRegistryBaseUrl('https://registry-two.example.com');
+    await componentView.registerNode();
+
+    expect(registryStore.register).toHaveBeenCalledOnce();
+    expect(applyRegistryDeactivation).toHaveBeenCalledOnce();
   });
 });
 

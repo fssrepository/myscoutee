@@ -380,6 +380,14 @@ export class FormFlowComponent implements ControlValueAccessor, OnChanges, OnDes
     return this.controlValue(control) === true;
   }
 
+  protected controlValidationError(control: FormFlowControlModel): string {
+    const validationError = control.validationError;
+    const resolved = typeof validationError === 'function'
+      ? validationError(this.controlValue(control), this.formValue)
+      : validationError;
+    return `${resolved ?? ''}`.trim();
+  }
+
   protected controlStringArrayValue(control: FormFlowControlModel): readonly string[] {
     const value = this.controlValue(control);
     if (!Array.isArray(value)) {
@@ -573,7 +581,8 @@ export class FormFlowComponent implements ControlValueAccessor, OnChanges, OnDes
       ...model,
       label: model.label ?? control.label ?? null,
       placeholder: model.placeholder ?? control.placeholder ?? null,
-      required: model.required ?? control.required === true
+      required: model.required ?? control.required === true,
+      maxLength: model.maxLength ?? control.maxLength ?? null
     };
   }
 

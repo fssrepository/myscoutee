@@ -1,4 +1,5 @@
 export * from './core/image-carousel';
+export * from './core/deployment-brand';
 export * from './core/indicator';
 export * from './core/accordion';
 export * from './document-viewer';

@@ -1,8 +1,3 @@
-export interface GdprContact {
-  label: string;
-  value: string;
-}
-
 export interface GdprListSection {
   title: string;
   items: string[];
@@ -17,7 +12,7 @@ export interface GdprContent {
   title: string;
   subtitle: string;
   updatedAt: string;
-  contacts: GdprContact[];
+  contactDetailsHtml: string;
   legalBases: string[];
   rights: GdprListSection[];
   dataCategories: GdprDataCategory[];
@@ -32,11 +27,7 @@ export const GDPR_CONTENT: GdprContent = {
   title: 'Privacy',
   subtitle: 'How MyScoutee handles personal data for profile, events, and social activity (including GDPR rights).',
   updatedAt: '2026-02-01',
-  contacts: [
-    { label: 'Data Controller', value: 'MyScoutee' },
-    { label: 'Support Email', value: 'myscoutee1@gmail.com' },
-    { label: 'DPO Contact', value: 'myscoutee1@gmail.com' }
-  ],
+  contactDetailsHtml: '{{deployment.privacy.contactDetails}}',
   legalBases: [
     'Contract performance for account and event features.',
     'Legitimate interest for platform safety and abuse prevention.',
@@ -107,8 +98,7 @@ export const GDPR_CONTENT: GdprContent = {
   accountControls: [
     'Delete account is available from the user settings menu. Confirming it schedules the account for deletion and signs the user out.',
     'If the account has been deleted but not yet purged, signing in again can show a reactivation confirmation before the 30-day deletion window ends.',
-    'If deletion is requested from Meta/Facebook account settings after Facebook login, Meta sends the request to the MyScoutee backend callback and matching accounts follow the same deletion schedule.',
-    'Deletion requests can also be sent to myscoutee1@gmail.com from the email address connected to the MyScoutee account.'
+    'If deletion is requested from Meta/Facebook account settings after Facebook login, Meta sends the request to the MyScoutee backend callback and matching accounts follow the same deletion schedule.'
   ],
   sharing: [
     'Service providers for hosting, analytics, and support operations.',

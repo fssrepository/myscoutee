@@ -50,6 +50,153 @@
           (itemSelect)="onRegistryActionSelect($event)"
         ></app-menu>
 
+        @if (registered()) {
+          <section
+            class="operator-registration__measurements"
+            [attr.aria-label]="'operator.measurements.delivery' | i18n"
+          >
+            <header>
+              <span class="operator-registration__measurement-icon">
+                <mat-icon>monitoring</mat-icon>
+              </span>
+              <span>
+                <small>{{ 'operator.measurements.delivery' | i18n }}</small>
+                <strong>{{ 'operator.measurements.delivery.title' | i18n }}</strong>
+              </span>
+            </header>
+
+            @if (registry.measurementSync(); as delivery) {
+              <article
+                class="operator-registration__measurement-delivery"
+                [attr.data-state]="delivery.state"
+                [attr.role]="delivery.state === 'BLOCKED' || delivery.state === 'ERROR'
+                  ? 'alert'
+                  : 'status'"
+              >
+                <header>
+                  <mat-icon>{{ measurementStateIcon(delivery.state) }}</mat-icon>
+                  <strong>{{ measurementStateLabel(delivery.state) | i18n }}</strong>
+                  <time [attr.datetime]="delivery.synchronizedAt">
+                    {{ formatDate(delivery.synchronizedAt) }}
+                  </time>
+                </header>
+                @if (delivery.message) {
+                  <p>
+                    {{ (delivery.code === 'EXPLORE_MODE'
+                      ? 'operator.measurements.delivery.not.sent'
+                      : delivery.message) | i18n }}
+                  </p>
+                }
+                <dl>
+                  <div>
+                    <dt>{{ 'operator.measurements.delivery.materialized' | i18n }}</dt>
+                    <dd>{{ delivery.materialized }}</dd>
+                  </div>
+                  <div>
+                    <dt>{{ 'operator.measurements.delivery.submitted' | i18n }}</dt>
+                    <dd>{{ delivery.submitted }}</dd>
+                  </div>
+                  <div>
+                    <dt>{{ 'operator.measurements.delivery.accepted' | i18n }}</dt>
+                    <dd>{{ delivery.accepted }}</dd>
+                  </div>
+                  <div>
+                    <dt>{{ 'operator.measurements.delivery.pending' | i18n }}</dt>
+                    <dd>{{ delivery.pending }}</dd>
+                  </div>
+                  <div>
+                    <dt>{{ 'operator.measurements.delivery.blocked' | i18n }}</dt>
+                    <dd>{{ delivery.blocked }}</dd>
+                  </div>
+                </dl>
+              </article>
+            } @else {
+              <p class="operator-registration__measurement-hint">
+                {{ 'operator.measurements.delivery.description' | i18n }}
+              </p>
+            }
+
+            <app-menu
+              class="operator-registration__measurement-actions"
+              kind="inline"
+              layout="row"
+              [items]="measurementSyncActionItems()"
+              (itemSelect)="onMeasurementSyncActionSelect($event)"
+            ></app-menu>
+
+            @if (registry.measurementSync(); as delivery) {
+              @if (delivery.blocked > 0) {
+                <div class="operator-registration__measurement-reports">
+                  <header>
+                    <span>
+                      <small>{{ 'operator.measurements.reports' | i18n }}</small>
+                      <strong>{{ 'operator.measurements.reports.blocked' | i18n }}</strong>
+                    </span>
+                  <b>{{ delivery.blocked }}</b>
+                  </header>
+
+                  <app-smart-list
+                    #measurementReportsSmartList
+                    [config]="measurementReportConfig"
+                    [loadPage]="loadMeasurementReportPage"
+                    [query]="measurementReportQuery()"
+                    [itemTemplate]="measurementReportTemplate"
+                  ></app-smart-list>
+
+                  <ng-template #measurementReportTemplate let-report>
+                    <article class="operator-registration__measurement-report">
+                      <header>
+                        <span>
+                          <small>{{ 'operator.measurements.report.period' | i18n }}</small>
+                          <strong>{{ formatMeasurementPeriod(report.period) }}</strong>
+                        </span>
+                        <em>
+                          {{ report.qualifiedMauCount }}
+                          {{ 'operator.measurements.report.qmau.short' | i18n }}
+                        </em>
+                      </header>
+                      <small class="operator-registration__measurement-window">
+                        {{ formatMeasurementPeriod(report.windowStart) }}
+                        –
+                        {{ formatMeasurementPeriod(report.windowEnd) }}
+                        ·
+                        {{ 'operator.measurements.report.revision' | i18n }}
+                        {{ report.revision }}
+                      </small>
+                      <p>
+                        {{ (report.failureMessage
+                          || 'operator.measurements.report.failure.unknown') | i18n }}
+                      </p>
+                      @if (report.failureCode) {
+                        <code>{{ report.failureCode }}</code>
+                      }
+                      <dl>
+                        <div>
+                          <dt>{{ 'operator.measurements.report.actions' | i18n }}</dt>
+                          <dd>{{ report.actionCount }}</dd>
+                        </div>
+                        <div>
+                          <dt>{{ 'operator.measurements.report.attempts' | i18n }}</dt>
+                          <dd>{{ report.attemptCount }}</dd>
+                        </div>
+                        <div>
+                          <dt>{{ 'operator.measurements.report.updated' | i18n }}</dt>
+                          <dd>{{ formatDate(report.updatedAt) }}</dd>
+                        </div>
+                      </dl>
+                      <app-menu
+                        kind="inline"
+                        layout="row"
+                        [items]="measurementReportActionItems(report)"
+                        (itemSelect)="onMeasurementReportActionSelect($event)"
+                      ></app-menu>
+                    </article>
+                  </ng-template>
+                </div>
+              }
+            }
+          </section>
+        }
       } @else {
         <div class="operator-registration__loading is-error" role="alert">
           <mat-icon>cloud_off</mat-icon>

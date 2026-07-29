@@ -15,6 +15,7 @@ import {
   type Auth,
   type User
 } from 'firebase/auth';
+import type { FirebaseApp } from 'firebase/app';
 
 import { environment } from '../../../../../environments/environment';
 import type {
@@ -40,6 +41,7 @@ export class FirebaseAuthService {
 
   private readonly firebaseAppService = inject(FirebaseAppService);
   private firebaseAuthPromise: Promise<Auth | null> | null = null;
+  private firebaseAuthApp: FirebaseApp | null = null;
 
   get enabled(): boolean {
     return environment.firebaseLoginEnabled;
@@ -104,7 +106,13 @@ export class FirebaseAuthService {
     }
     const auth = await this.ensureFirebaseAuth();
     if (!auth) {
-      return this.loadStoredProfile();
+      /*
+       * A profile snapshot is not authentication. If the currently activated
+       * deployment Firebase runtime cannot be resolved, fail closed instead
+       * of reviving a session from another or superseded revision.
+       */
+      this.clearStoredProfile();
+      return null;
     }
     const currentUser = auth.currentUser ?? await this.waitForAuthState(auth);
     if (!currentUser) {
@@ -152,17 +160,29 @@ export class FirebaseAuthService {
     if (!this.enabled || typeof window === 'undefined') {
       return null;
     }
-    if (!this.firebaseAuthPromise) {
-      this.firebaseAuthPromise = this.initializeFirebaseAuth();
-    }
-    return this.firebaseAuthPromise;
-  }
-
-  private async initializeFirebaseAuth(): Promise<Auth | null> {
     const app = await this.firebaseAppService.ensureFirebaseApp();
     if (!app) {
+      this.firebaseAuthApp = null;
+      this.firebaseAuthPromise = null;
       return null;
     }
+    if (!this.firebaseAuthPromise || this.firebaseAuthApp !== app) {
+      this.firebaseAuthApp = app;
+      this.firebaseAuthPromise = this.initializeFirebaseAuth(app);
+    }
+    const initialization = this.firebaseAuthPromise;
+    try {
+      return await initialization;
+    } catch {
+      if (this.firebaseAuthPromise === initialization) {
+        this.firebaseAuthApp = null;
+        this.firebaseAuthPromise = null;
+      }
+      return null;
+    }
+  }
+
+  private async initializeFirebaseAuth(app: FirebaseApp): Promise<Auth> {
     const auth = getAuth(app);
     await setPersistence(auth, browserLocalPersistence);
     return auth;

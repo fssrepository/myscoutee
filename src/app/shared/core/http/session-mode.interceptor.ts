@@ -27,8 +27,30 @@ function isDemoSelectorRequest(url: string): boolean {
   return url.includes('/auth/demo-users');
 }
 
+function isOperatorBootstrapLoginRequest(url: string): boolean {
+  if (!isApiRequest(url)) {
+    return false;
+  }
+  const normalizedApiBase = apiBaseUrl.replace(/\/+$/, '');
+  if (url === `${normalizedApiBase}/auth/operator-bootstrap`) {
+    return true;
+  }
+  if (typeof document === 'undefined') {
+    return false;
+  }
+  const absoluteApiBaseUrl = new URL(
+    normalizedApiBase,
+    document.baseURI
+  ).toString().replace(/\/+$/, '');
+  return url === `${absoluteApiBaseUrl}/auth/operator-bootstrap`;
+}
+
 export const sessionModeInterceptor: HttpInterceptorFn = (req, next) => {
-  if (!isApiRequest(req.url) || req.headers.has(DEMO_SESSION_HEADER)) {
+  if (
+    !isApiRequest(req.url)
+    || req.headers.has(DEMO_SESSION_HEADER)
+    || isOperatorBootstrapLoginRequest(req.url)
+  ) {
     return next(req);
   }
 

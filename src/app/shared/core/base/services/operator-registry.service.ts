@@ -4,8 +4,9 @@ import { environment } from '../../../../../environments/environment';
 
 import type {
   OperatorGroupingTokenDto,
+  OperatorClaimMutationResultDto,
+  OperatorClaimOverviewDto,
   OperatorClaimRequestDto,
-  OperatorClaimStatusDto,
   OperatorCommunityAvailability,
   OperatorCommunityStatusDto,
   OperatorConfigurationDto,
@@ -14,8 +15,20 @@ import type {
   OperatorConfigurationTestResultDto,
   OperatorDeploymentUpdateDto,
   OperatorDeploymentUpdateProgressHandler,
+  OperatorLeaderboardDeploymentPageDto,
   OperatorLeaderboardPageDto,
+  OperatorMeasurementReportDto,
+  OperatorMeasurementReportFilters,
+  OperatorMeasurementReportPageDto,
+  OperatorMeasurementSyncDto,
   OperatorRevenueDto,
+  OperatorRevenueReportDto,
+  OperatorRevenueReportFilters,
+  OperatorRevenueReportPageDto,
+  OperatorRevenueSyncDto,
+  OperatorSettlementFilters,
+  OperatorSettlementPageDto,
+  OperatorRegistryMutationResultDto,
   OperatorRegistryRegisterRequestDto,
   OperatorRegistryInspectRequestDto,
   OperatorRegistryInspectionDto,
@@ -29,10 +42,22 @@ import { BaseRouteModeService } from './base-route-mode.service';
 const OPERATOR_REGISTRY_ROUTE = '/operator/registry';
 export type OperatorRegistryDataSource = 'local' | 'http' | 'session';
 
+export type OperatorRegistryReplacementResult =
+  | {
+      disconnected: OperatorRegistryMutationResultDto;
+      registered: OperatorRegistryMutationResultDto;
+      registrationError: null;
+    }
+  | {
+      disconnected: OperatorRegistryMutationResultDto;
+      registered: null;
+      registrationError: unknown;
+    };
+
 /**
- * Development HTTP builds use Java (and the isolated Go registry when wired).
- * Production Explore/demo and local builds use the browser-local sample
- * repository. Firebase/real sessions always use Java.
+ * Session-backed builds use Java for both Explore/demo and Firebase sessions.
+ * Explore remains isolated by its demo identity and server-side demo database.
+ * Only environments configured explicitly as local use the browser repository.
  */
 @Injectable({
   providedIn: 'root'
@@ -53,27 +78,80 @@ export class OperatorRegistryService extends BaseRouteModeService {
     return this.registryService.confirm(inspectionToken);
   }
 
-  register(request: OperatorRegistryRegisterRequestDto): Promise<OperatorRegistryStatusDto> {
+  register(
+    request: OperatorRegistryRegisterRequestDto
+  ): Promise<OperatorRegistryMutationResultDto> {
     return this.registryService.register(request);
+  }
+
+  async replaceRegistration(
+    request: OperatorRegistryRegisterRequestDto
+  ): Promise<OperatorRegistryReplacementResult> {
+    const service = this.registryService;
+    const disconnected = await service.disconnect();
+    try {
+      return {
+        disconnected,
+        registered: await service.register(request),
+        registrationError: null
+      };
+    } catch (registrationError) {
+      return {
+        disconnected,
+        registered: null,
+        registrationError
+      };
+    }
   }
 
   retry(): Promise<OperatorRegistryStatusDto> {
     return this.registryService.retry();
   }
 
-  disconnect(): Promise<OperatorRegistryStatusDto> {
+  disconnect(): Promise<OperatorRegistryMutationResultDto> {
     return this.registryService.disconnect();
+  }
+
+  synchronizeMeasurements(): Promise<OperatorMeasurementSyncDto> {
+    return this.registryService.synchronizeMeasurements();
+  }
+
+  measurementReportPage(
+    query: ListQuery<OperatorMeasurementReportFilters>,
+    signal?: AbortSignal
+  ): Promise<OperatorMeasurementReportPageDto> {
+    return this.registryService.measurementReportPage(query, signal);
+  }
+
+  requeueMeasurementReport(
+    reportId: string
+  ): Promise<OperatorMeasurementReportDto> {
+    return this.registryService.requeueMeasurementReport(reportId);
   }
 
   leaderboardPage(query: ListQuery, signal?: AbortSignal): Promise<OperatorLeaderboardPageDto> {
     return this.registryService.leaderboardPage(query, signal);
   }
 
-  loadClaimStatus(): Promise<OperatorClaimStatusDto> {
+  leaderboardDeploymentPage(
+    groupId: string,
+    query: ListQuery,
+    signal?: AbortSignal
+  ): Promise<OperatorLeaderboardDeploymentPageDto> {
+    return this.registryService.leaderboardDeploymentPage(
+      groupId,
+      query,
+      signal
+    );
+  }
+
+  loadClaimStatus(): Promise<OperatorClaimOverviewDto> {
     return this.registryService.loadClaimStatus();
   }
 
-  claimShare(request: OperatorClaimRequestDto): Promise<OperatorClaimStatusDto> {
+  claimShare(
+    request: OperatorClaimRequestDto
+  ): Promise<OperatorClaimMutationResultDto> {
     return this.registryService.claimShare(request);
   }
 
@@ -81,7 +159,7 @@ export class OperatorRegistryService extends BaseRouteModeService {
     return this.registryService.issueGroupingToken();
   }
 
-  linkOperatorGroup(clientToken: string): Promise<OperatorClaimStatusDto> {
+  linkOperatorGroup(clientToken: string): Promise<OperatorClaimMutationResultDto> {
     return this.registryService.linkOperatorGroup({ clientToken });
   }
 
@@ -111,8 +189,34 @@ export class OperatorRegistryService extends BaseRouteModeService {
     return this.registryService.testConfiguration(request);
   }
 
+  activateFirebase(): Promise<OperatorConfigurationDto> {
+    return this.registryService.activateFirebase();
+  }
+
   loadRevenue(): Promise<OperatorRevenueDto> {
     return this.registryService.loadRevenue();
+  }
+
+  synchronizeRevenue(): Promise<OperatorRevenueSyncDto> {
+    return this.registryService.synchronizeRevenue();
+  }
+
+  revenueReportPage(
+    query: ListQuery<OperatorRevenueReportFilters>,
+    signal?: AbortSignal
+  ): Promise<OperatorRevenueReportPageDto> {
+    return this.registryService.revenueReportPage(query, signal);
+  }
+
+  requeueRevenueReport(reportId: string): Promise<OperatorRevenueReportDto> {
+    return this.registryService.requeueRevenueReport(reportId);
+  }
+
+  settlementPage(
+    query: ListQuery<OperatorSettlementFilters>,
+    signal?: AbortSignal
+  ): Promise<OperatorSettlementPageDto> {
+    return this.registryService.settlementPage(query, signal);
   }
 
   loadCommunityStatus(): Promise<OperatorCommunityStatusDto> {
@@ -126,10 +230,7 @@ export class OperatorRegistryService extends BaseRouteModeService {
   }
 
   private get registryService(): LocalOperatorRegistryService | HttpOperatorRegistryService {
-    const mode = resolveOperatorRegistryRouteMode(
-      environment.operatorRegistryDataSource,
-      this.sessionService.currentSession()?.kind ?? null
-    );
+    const mode = resolveOperatorRegistryRouteMode(environment.operatorRegistryDataSource);
     if (mode === 'local') {
       return this.resolveRouteService(
         OPERATOR_REGISTRY_ROUTE,
@@ -148,11 +249,10 @@ export class OperatorRegistryService extends BaseRouteModeService {
 }
 
 export function resolveOperatorRegistryRouteMode(
-  dataSource: OperatorRegistryDataSource,
-  sessionKind: 'demo' | 'firebase' | null
+  dataSource: OperatorRegistryDataSource
 ): 'local' | 'http' {
   if (dataSource === 'local' || dataSource === 'http') {
     return dataSource;
   }
-  return sessionKind === 'demo' ? 'local' : 'http';
+  return 'http';
 }

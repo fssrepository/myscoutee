@@ -1,3 +1,49 @@
+@mixin deployment-semantic-theme {
+  --deployment-font-family: 'Roboto', 'Segoe UI', sans-serif;
+  --deployment-page-background: color-mix(in srgb, var(--deployment-brand-primary) 5%, #f7f9fd);
+  --deployment-panel-background: color-mix(in srgb, var(--deployment-brand-soft) 22%, #ffffff);
+  --deployment-panel-border: color-mix(in srgb, var(--deployment-brand-text) 16%, transparent);
+  --deployment-surface-background: color-mix(in srgb, var(--deployment-brand-soft) 14%, #ffffff);
+  --deployment-surface-strong: #ffffff;
+  --deployment-surface-muted: color-mix(in srgb, var(--deployment-brand-soft) 28%, #f4f7fb);
+  --deployment-text-main: var(--deployment-brand-text);
+  --deployment-text-muted: color-mix(in srgb, var(--deployment-brand-text) 72%, transparent);
+  --deployment-line: color-mix(in srgb, var(--deployment-brand-text) 14%, transparent);
+  --deployment-hero-background: linear-gradient(
+    120deg,
+    var(--deployment-brand-primary) 0%,
+    var(--deployment-brand-secondary) 50%,
+    var(--deployment-brand-accent) 100%
+  );
+  --deployment-hero-text: #ffffff;
+  --deployment-hero-text-muted: rgba(255, 255, 255, 0.94);
+  --deployment-hero-panel: color-mix(in srgb, var(--deployment-brand-text) 24%, transparent);
+  --deployment-control-primary-background: #ffffff;
+  --deployment-control-primary-text: var(--deployment-brand-primary);
+  --deployment-control-secondary-background: color-mix(in srgb, var(--deployment-brand-soft) 72%, #ffffff);
+  --deployment-control-secondary-text: var(--deployment-brand-text);
+  --deployment-card-background: linear-gradient(
+    180deg,
+    #ffffff 0%,
+    color-mix(in srgb, var(--deployment-brand-soft) 20%, #f7faff) 100%
+  );
+  --deployment-card-border: color-mix(in srgb, var(--deployment-brand-primary) 24%, transparent);
+  --deployment-card-blue: var(--deployment-brand-primary);
+  --deployment-card-purple: var(--deployment-brand-secondary);
+  --deployment-card-pink: color-mix(in srgb, var(--deployment-brand-secondary) 62%, var(--deployment-brand-accent));
+  --deployment-card-orange: var(--deployment-brand-accent);
+  --deployment-footer-background: color-mix(in srgb, var(--deployment-brand-text) 88%, #07101e);
+  --deployment-footer-text: color-mix(in srgb, var(--deployment-brand-soft) 78%, #ffffff);
+  --deployment-footer-muted: color-mix(in srgb, var(--deployment-brand-soft) 64%, transparent);
+  --deployment-footer-line: color-mix(in srgb, var(--deployment-brand-soft) 18%, transparent);
+  --deployment-footer-accent: linear-gradient(
+    90deg,
+    var(--deployment-brand-primary),
+    var(--deployment-brand-secondary),
+    var(--deployment-brand-accent)
+  );
+}
+
 :root,
 [data-deployment-theme='aurora'] {
   --deployment-brand-primary: #7446f2;
@@ -6,6 +52,7 @@
   --deployment-brand-soft: #fff3b8;
   --deployment-brand-text: #1f3a63;
   --deployment-brand-shadow: rgba(123, 73, 244, 0.25);
+  @include deployment-semantic-theme;
 }
 
 [data-deployment-theme='ocean'] {
@@ -15,6 +62,7 @@
   --deployment-brand-soft: #d8f6ff;
   --deployment-brand-text: #16486c;
   --deployment-brand-shadow: rgba(23, 111, 193, 0.24);
+  @include deployment-semantic-theme;
 }
 
 [data-deployment-theme='forest'] {
@@ -24,6 +72,7 @@
   --deployment-brand-soft: #e6f7cd;
   --deployment-brand-text: #18543e;
   --deployment-brand-shadow: rgba(25, 118, 83, 0.24);
+  @include deployment-semantic-theme;
 }
 
 [data-deployment-theme='sunset'] {
@@ -33,6 +82,7 @@
   --deployment-brand-soft: #fff0c9;
   --deployment-brand-text: #793c27;
   --deployment-brand-shadow: rgba(200, 84, 50, 0.24);
+  @include deployment-semantic-theme;
 }
 
 [data-deployment-theme='violet'] {
@@ -42,6 +92,7 @@
   --deployment-brand-soft: #f2ddff;
   --deployment-brand-text: #4b3286;
   --deployment-brand-shadow: rgba(105, 65, 198, 0.24);
+  @include deployment-semantic-theme;
 }
 
 [data-deployment-theme='rose'] {
@@ -51,6 +102,7 @@
   --deployment-brand-soft: #ffe1e8;
   --deployment-brand-text: #7b294c;
   --deployment-brand-shadow: rgba(184, 50, 103, 0.24);
+  @include deployment-semantic-theme;
 }
 
 [data-deployment-theme='amber'] {
@@ -60,6 +112,7 @@
   --deployment-brand-soft: #fff0bd;
   --deployment-brand-text: #735014;
   --deployment-brand-shadow: rgba(173, 113, 18, 0.24);
+  @include deployment-semantic-theme;
 }
 
 [data-deployment-theme='slate'] {
@@ -69,6 +122,7 @@
   --deployment-brand-soft: #e6edf4;
   --deployment-brand-text: #304157;
   --deployment-brand-shadow: rgba(64, 86, 111, 0.24);
+  @include deployment-semantic-theme;
 }
 
 [data-deployment-theme='aquarius'] {
@@ -78,6 +132,7 @@
   --deployment-brand-soft: #d8f8ee;
   --deployment-brand-text: #17646d;
   --deployment-brand-shadow: rgba(18, 123, 134, 0.24);
+  @include deployment-semantic-theme;
 }
 
 [data-deployment-theme='monochrome'] {
@@ -87,4 +142,5 @@
   --deployment-brand-soft: #eceff2;
   --deployment-brand-text: #22252b;
   --deployment-brand-shadow: rgba(34, 37, 43, 0.24);
+  @include deployment-semantic-theme;
 }

@@ -1,9 +1,16 @@
 import { TestBed } from '@angular/core/testing';
 
 import { environment } from '../../../../../environments/environment';
+import { environment as devEnvironment } from '../../../../../environments/environment.dev';
+import { environment as e2eEnvironment } from '../../../../../environments/environment.e2e';
+import { environment as githubEnvironment } from '../../../../../environments/environment.github';
+import { environment as productionEnvironment } from '../../../../../environments/environment.production';
 import type { AppSession } from './session.service';
 import { SessionService } from './session.service';
-import { BaseRouteModeService } from './base-route-mode.service';
+import {
+  BaseRouteModeService,
+  resolveDataSourceRouteMode
+} from './base-route-mode.service';
 
 class TestRouteModeService extends BaseRouteModeService {
   resolve(route: string): 'local' | 'http' {
@@ -51,14 +58,34 @@ describe('BaseRouteModeService', () => {
     expect(service.resolve('/privacy/consents')).toBe('http');
   });
 
-  it('uses local storage for selector sessions when the app is built for local data', () => {
+  it('uses local storage only when the app is explicitly built for local data', () => {
     environment.activitiesDataSource = 'local';
-    environment.firebaseLoginEnabled = false;
-    currentSession = { kind: 'demo', userId: 'demo-user' };
+    environment.firebaseLoginEnabled = true;
+    currentSession = {
+      kind: 'firebase',
+      profile: {
+        id: 'real-user',
+        name: 'Real User',
+        email: 'real@example.com',
+        initials: 'RU'
+      }
+    };
 
     const service = createService();
 
     expect(service.resolve('/privacy/consents')).toBe('local');
+  });
+
+  it('keeps dev, e2e, and production HTTP while local and GitHub remain explicit offline builds', () => {
+    expect([
+      devEnvironment.activitiesDataSource,
+      e2eEnvironment.activitiesDataSource,
+      productionEnvironment.activitiesDataSource
+    ].map(resolveDataSourceRouteMode)).toEqual(['http', 'http', 'http']);
+    expect([
+      environment.activitiesDataSource,
+      githubEnvironment.activitiesDataSource
+    ].map(resolveDataSourceRouteMode)).toEqual(['local', 'local']);
   });
 
   it('uses requested local or HTTP mode when provided by the caller', () => {

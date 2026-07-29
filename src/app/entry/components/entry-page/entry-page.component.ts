@@ -270,14 +270,29 @@ export class EntryPageComponent implements OnInit, OnDestroy {
   }
 
   protected async openEntryFirebaseAuth(): Promise<void> {
+    await this.openEntryAuthPopup();
+  }
+
+  private async openEntryAuthPopup(
+    options: {
+      forceAuthPopup?: boolean;
+      bypassConsumerEligibility?: boolean;
+    } = {}
+  ): Promise<void> {
     if (this.entryNetworkUnavailable) {
       return;
     }
-    if (this.isLoginBlockedByLandingBundle()) {
+    if (
+      !options.bypassConsumerEligibility
+      && this.isLoginBlockedByLandingBundle()
+    ) {
       this.openBundledLoginUnavailableInfo();
       return;
     }
-    if (this.isLoginLocationRequiredByLandingBundle()) {
+    if (
+      !options.bypassConsumerEligibility
+      && this.isLoginLocationRequiredByLandingBundle()
+    ) {
       const allowed = await this.ensureHttpLoginAccessAllowed();
       if (!allowed) {
         return;
@@ -286,18 +301,35 @@ export class EntryPageComponent implements OnInit, OnDestroy {
     if (!this.ensureEntryConsent()) {
       return;
     }
-    if (this.authMode !== 'firebase') {
+    if (this.authMode !== 'firebase' && !options.forceAuthPopup) {
       this.openDemoUserSelectorPopup();
       return;
     }
-    if (this.loginEligibilityBusy) {
+    if (!options.bypassConsumerEligibility && this.loginEligibilityBusy) {
       return;
     }
-    if (this.firebaseAuthProfile) {
+    if (this.firebaseAuthProfile && !options.forceAuthPopup) {
       void this.onFirebaseSessionContinueRequested();
       return;
     }
     this.showFirebaseAuthPopup = true;
+  }
+
+  protected async openEntryOperator(): Promise<void> {
+    if (this.entryNetworkUnavailable) {
+      return;
+    }
+    if (!this.usersService.localModeEnabled || this.authMode === 'firebase') {
+      await this.openEntryAuthPopup({
+        forceAuthPopup: this.authMode !== 'firebase',
+        bypassConsumerEligibility: true
+      });
+      return;
+    }
+    if (!this.ensureEntryConsent()) {
+      return;
+    }
+    this.openDemoUserSelectorPopup('operator', ['operator']);
   }
 
   protected closeFirebaseAuthPopup(): void {
@@ -511,10 +543,17 @@ export class EntryPageComponent implements OnInit, OnDestroy {
     }
   }
 
-  private openDemoUserSelectorPopup(): void {
+  private openDemoUserSelectorPopup(
+    mode: DemoBootstrapSelectorMode = 'member',
+    selectableModes: readonly DemoBootstrapSelectorMode[] = [
+      'member',
+      'admin',
+      'operator'
+    ]
+  ): void {
     this.demoBootstrapSelectorStore.openDemoBootstrapSelector({
-      mode: 'member',
-      selectableModes: ['member', 'admin', 'operator'],
+      mode,
+      selectableModes,
       onSelect: (userId, mode) => new Promise<boolean>(resolve => {
         this.ngZone.run(() => {
           void this.onDemoUserSelected({
@@ -550,7 +589,9 @@ export class EntryPageComponent implements OnInit, OnDestroy {
       await this.onDemoOperatorSelected(selection, normalizedUserId);
       return;
     }
-    const selectedUser = this.usersService.peekCachedUserById(normalizedUserId);
+    const selectedUser = this.usersService.localModeEnabled
+      ? this.usersService.peekCachedUserById(normalizedUserId)
+      : null;
     if (selectedUser && this.requiresProfileOnboarding(selectedUser)) {
       this.pendingDemoSessionUserId = normalizedUserId;
       this.openOnboardingGate(selectedUser, this.memberRedirectUrl());
@@ -563,6 +604,17 @@ export class EntryPageComponent implements OnInit, OnDestroy {
       return;
     }
     try {
+      if (!this.usersService.localModeEnabled) {
+        const user = await this.usersService.loadUserById(normalizedUserId, 8000);
+        if (!user) {
+          await this.sessionService.logout();
+          selection.fail();
+          return;
+        }
+        await this.runPostSessionGate(session, this.memberRedirectUrl(), user);
+        selection.complete();
+        return;
+      }
       const navigated = await this.router.navigateByUrl(this.memberRedirectUrl());
       if (!navigated) {
         selection.fail();
@@ -635,7 +687,7 @@ export class EntryPageComponent implements OnInit, OnDestroy {
   }
 
   protected async onFirebaseAuthRequested(request: FirebaseAuthRequestDto): Promise<void> {
-    const session = await this.sessionService.startFirebaseSession(request);
+    const session = await this.sessionService.startAuthSession(request);
     if (!session) {
       return;
     }
@@ -722,14 +774,20 @@ export class EntryPageComponent implements OnInit, OnDestroy {
     await this.runPostSessionGate(session, this.redirectUrl());
   }
 
-  private async runPostSessionGate(session: AppSession, redirectUrl: string): Promise<void> {
+  private async runPostSessionGate(
+    session: AppSession,
+    redirectUrl: string,
+    loadedUser?: UserDto
+  ): Promise<void> {
     const gateToken = ++this.postSessionGateToken;
     const adminShellRedirect = this.isAdminShellRedirect(redirectUrl);
-    let user: UserDto | null = null;
-    try {
-      user = await this.usersService.loadUserById(session.kind === 'demo' ? session.userId : undefined, 8000);
-    } catch {
-      user = null;
+    let user: UserDto | null = loadedUser ?? null;
+    if (!loadedUser) {
+      try {
+        user = await this.usersService.loadUserById(session.kind === 'demo' ? session.userId : undefined, 8000);
+      } catch {
+        user = null;
+      }
     }
     if (gateToken !== this.postSessionGateToken) {
       return;
@@ -742,6 +800,13 @@ export class EntryPageComponent implements OnInit, OnDestroy {
           title: 'please.register',
           message: 'profile.setup.registration.message'
         }
+      );
+      return;
+    }
+    if (!user && session.kind === 'operator-bootstrap') {
+      this.closeOnboardingGate();
+      this.sessionService.clearOperatorBootstrapSession(
+        'operator.bootstrap.auth.profile.unavailable'
       );
       return;
     }

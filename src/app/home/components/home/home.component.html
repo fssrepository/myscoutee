@@ -7,12 +7,9 @@
       class="game-brand"
       [attr.aria-label]="deploymentBranding().productName + ' home'"
     >
-      <img
-        class="game-brand-mark"
-        [src]="deploymentBranding().logoUrl"
-        [alt]="deploymentBranding().productName"
-      />
-      <span class="game-brand-text">{{ deploymentBranding().productName }}</span>
+      <app-deployment-brand
+        [branding]="deploymentBranding()"
+      ></app-deployment-brand>
     </a>
     @if (homeHeaderControlsReady) {
     <div class="game-actions">

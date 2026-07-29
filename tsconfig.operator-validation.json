@@ -1,7 +1,0 @@
-{
-  "extends": "./tsconfig.spec.json",
-  "exclude": [
-    "src/app/shared/ui/converters/activity-member-image-card.converter.spec.ts",
-    "src/app/shared/ui/converters/activity-sub-event-resource-info-card.converter.spec.ts"
-  ]
-}
