@@ -664,7 +664,7 @@ describe('LocalOperatorRegistryService', () => {
         messagingSenderId: '123456789',
         appId: '1:123456789:web:explore',
         measurementId: '',
-        vapidKey: '',
+        vapidKey: 'public-vapid-key',
         authenticationCredential: 'firebase-auth-secret',
         messagingCredential: 'firebase-messaging-secret'
       }
@@ -674,7 +674,11 @@ describe('LocalOperatorRegistryService', () => {
     });
     const messaging = await service.testConfiguration({
       kind: 'FIREBASE_MESSAGING',
-      destinationToken: 'explore-test-device'
+      destinationToken: 'explore-test-device',
+      browserReadinessToken: 'browser-generated-token',
+      browserConfigurationRevision:
+        saved.firebase.publicConfiguration.revision,
+      browserAppId: saved.firebase.publicConfiguration.appId
     });
     const persisted = await service.loadConfiguration();
     const activated = await service.activateFirebase();

@@ -999,7 +999,7 @@ describe('HttpOperatorRegistryService', () => {
     );
   });
 
-  it('sends a trimmed write-only destination token for the Firebase messaging test', async () => {
+  it('sends trimmed write-only browser proof for the Firebase messaging test', async () => {
     post.mockReturnValue(of({
       kind: 'FIREBASE_MESSAGING',
       success: true,
@@ -1012,7 +1012,10 @@ describe('HttpOperatorRegistryService', () => {
       HttpOperatorRegistryService
     ).testConfiguration({
       kind: 'FIREBASE_MESSAGING',
-      destinationToken: ' registration-token '
+      destinationToken: ' registration-token ',
+      browserReadinessToken: ' browser-generated-token ',
+      browserConfigurationRevision: 7,
+      browserAppId: ' 1:123456789:web:operator '
     });
 
     expect(result.success).toBe(true);
@@ -1020,7 +1023,10 @@ describe('HttpOperatorRegistryService', () => {
       '/api/operator/configuration/tests',
       {
         kind: 'FIREBASE_MESSAGING',
-        destinationToken: 'registration-token'
+        destinationToken: 'registration-token',
+        browserReadinessToken: 'browser-generated-token',
+        browserConfigurationRevision: 7,
+        browserAppId: '1:123456789:web:operator'
       },
       expect.objectContaining({ headers: expect.any(HttpHeaders) })
     );
