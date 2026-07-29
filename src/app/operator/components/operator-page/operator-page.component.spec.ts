@@ -127,6 +127,7 @@ describe('OperatorPageComponent', () => {
           item: OperatorLeaderboardEntryDto,
           options: { totalDelta: number; loadedRange: string }
         ) => boolean;
+        adjustVisibleTotal: (delta: number) => boolean;
       };
     };
     const initialQuery = componentView.leaderboardQuery();
@@ -155,6 +156,12 @@ describe('OperatorPageComponent', () => {
     workspaceBusyAction.set('claim-share');
     expect(componentView.actionItems().find(item => item.id === 'claim')?.progress)
       .toBeUndefined();
+    workspaceBusyAction.set('load-configuration');
+    expect(componentView.actionItems().find(item => item.id === 'configuration')?.progress)
+      .toBeUndefined();
+    workspaceBusyAction.set('load-revenue');
+    expect(componentView.actionItems().find(item => item.id === 'revenue')?.progress)
+      .toBeUndefined();
     registryBusyAction.set('register');
     expect(componentView.actionItems().find(item => item.id === 'registration')?.progress)
       .toBeUndefined();
@@ -169,30 +176,49 @@ describe('OperatorPageComponent', () => {
       claimed: false,
       deploymentCount: 1
     };
-    const patchVisibleItem = vi.fn().mockReturnValue(false);
-    const removeVisibleItemByIdentity = vi.fn().mockReturnValue(true);
+    const updatedExistingGroup: OperatorLeaderboardEntryDto = {
+      id: 'claimed-group:campus',
+      nodeId: null,
+      label: 'Campus Operator',
+      group: 'CLAIMED',
+      verifiedWeight: 65_000,
+      sharePercent: 30.03,
+      claimed: true,
+      operatorGroupId: 'campus',
+      deploymentCount: 2
+    };
+    const patchVisibleItem = vi.fn()
+      .mockReturnValueOnce(false)
+      .mockReturnValueOnce(true);
+    const removeVisibleItemByIdentity = vi.fn().mockReturnValue(false);
     const reinsertVisibleItem = vi.fn().mockReturnValue(true);
+    const adjustVisibleTotal = vi.fn().mockReturnValue(true);
     componentView.leaderboardSmartList = {
       patchVisibleItem,
       removeVisibleItemByIdentity,
-      reinsertVisibleItem
+      reinsertVisibleItem,
+      adjustVisibleTotal
     };
     leaderboardCacheMutation.set({
       sequence: 1,
-      entry: registeredDeployment,
-      removedEntryIds: ['node-operator-demo']
+      leaderboardUpserts: [registeredDeployment, updatedExistingGroup],
+      removedEntryIds: ['node-operator-demo'],
+      leaderboardTotalDelta: -1
     });
     TestBed.tick();
 
     expect(removeVisibleItemByIdentity).toHaveBeenCalledWith(
       'node-operator-demo',
-      { totalDelta: -1 }
+      { totalDelta: 0 }
     );
-    expect(patchVisibleItem).toHaveBeenCalledOnce();
+    expect(patchVisibleItem).toHaveBeenCalledTimes(2);
+    expect(reinsertVisibleItem).toHaveBeenCalledOnce();
     expect(reinsertVisibleItem).toHaveBeenCalledWith(registeredDeployment, {
-      totalDelta: 1,
+      totalDelta: 0,
       loadedRange: 'any'
     });
+    expect(adjustVisibleTotal).toHaveBeenCalledOnce();
+    expect(adjustVisibleTotal).toHaveBeenCalledWith(-1);
     expect(consumeCacheMutation).toHaveBeenCalledWith(1);
     expect(componentView.leaderboardQuery()).toBe(initialQuery);
     expect(invalidateLeaderboard).not.toHaveBeenCalled();

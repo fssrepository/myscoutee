@@ -233,7 +233,6 @@ function operatorConfigurationDraft(
   return {
     branding: {
       productName: 'MyScoutee',
-      homeLabel: 'Community',
       logoUrl: 'assets/logo/heart.webp',
       logoCharacterIndex: null,
       themePreset: 'AURORA'

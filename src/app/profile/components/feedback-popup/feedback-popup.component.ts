@@ -12,6 +12,7 @@ import {
   APP_STATIC_DATA
 } from '../../../shared/app-static-data';
 import {
+  I18nService,
   USER_FEEDBACK_SUBMIT_CONTEXT_KEY,
   UsersService
 } from '../../../shared/core';
@@ -47,6 +48,7 @@ type FeedbackActionId = 'feedback-cancel' | 'feedback-submit';
 export class ProfileFeedbackPopupComponent implements OnDestroy {
   private readonly profileStore = inject(ProfileStore);
   private readonly usersService = inject(UsersService);
+  private readonly i18n = inject(I18nService);
   private readonly userProfileStore = inject(UserProfileStore);
   private readonly runtimeStore = inject(AppRuntimeStore);
   private readonly submitLoadState = this.runtimeStore.selectLoadingState(USER_FEEDBACK_SUBMIT_CONTEXT_KEY);
@@ -258,9 +260,13 @@ export class ProfileFeedbackPopupComponent implements OnDestroy {
       return;
     }
 
-    this.feedbackSubmitMessage = response.message?.trim()
-      ? response.message
-      : `Feedback sent successfully in "${this.feedbackForm.category}". Thank you for helping improve MyScoutee.`;
+    const responseMessage = response.message?.trim() ?? '';
+    this.feedbackSubmitMessage = responseMessage
+      ? this.i18n.translate(responseMessage)
+      : this.i18n.translateParams(
+        'feedback.submitted.category.success',
+        { category: this.feedbackForm.category }
+      );
     this.feedbackSubmitted = true;
   }
 

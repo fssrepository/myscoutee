@@ -127,6 +127,31 @@ export class DeploymentConfigurationService extends BaseRouteModeService {
     const documentElement = this.documentRef.documentElement;
     documentElement.dataset['deploymentTheme'] = branding.themePreset.toLowerCase();
     this.documentRef.title = branding.productName;
+    this.setMetaContent('meta[name="description"]', branding.homeLabel);
+    this.setMetaContent('meta[property="og:title"]', branding.productName);
+    this.setMetaContent('meta[property="og:site_name"]', branding.productName);
+    this.setMetaContent('meta[property="og:description"]', branding.homeLabel);
+    const canonicalUrl = this.deploymentRootUrl();
+    this.setMetaContent('meta[property="og:url"]', canonicalUrl);
+    this.setLinkHref('link[rel="canonical"]', canonicalUrl);
+    const metadataLogoUrl = this.absoluteLogoUrl(branding.logoUrl);
+    const logoMediaType = this.logoMediaType(branding.logoUrl);
+    this.setMetaContent('meta[property="og:image"]', metadataLogoUrl);
+    this.setMetaContent(
+      'meta[property="og:image:secure_url"]',
+      metadataLogoUrl.startsWith('https://') ? metadataLogoUrl : ''
+    );
+    this.setMetaContent(
+      'meta[property="og:image:type"]',
+      logoMediaType
+    );
+    this.setMetaContent(
+      'meta[property="og:image:alt"]',
+      `${branding.productName} logo`
+    );
+    this.setLinkHref('link[rel~="icon"]', branding.logoUrl);
+    this.setLinkType('link[rel~="icon"]', logoMediaType);
+    this.setLinkHref('link[rel="apple-touch-icon"]', branding.logoUrl);
     const themeColor = this.documentRef.querySelector<HTMLMetaElement>('meta[name="theme-color"]');
     if (themeColor) {
       themeColor.content =
@@ -136,5 +161,75 @@ export class DeploymentConfigurationService extends BaseRouteModeService {
           .trim()
         || '#7446f2';
     }
+  }
+
+  private setMetaContent(selector: string, content: string): void {
+    const meta = this.documentRef.querySelector<HTMLMetaElement>(selector);
+    if (meta) {
+      meta.content = content;
+    }
+  }
+
+  private setLinkHref(selector: string, href: string): void {
+    const link = this.documentRef.querySelector<HTMLLinkElement>(selector);
+    if (link) {
+      link.setAttribute('href', href);
+    }
+  }
+
+  private setLinkType(selector: string, type: string): void {
+    const link = this.documentRef.querySelector<HTMLLinkElement>(selector);
+    if (!link) {
+      return;
+    }
+    if (type) {
+      link.type = type;
+    } else {
+      link.removeAttribute('type');
+    }
+  }
+
+  private absoluteLogoUrl(logoUrl: string): string {
+    if (/^data:image\//i.test(logoUrl)) {
+      return logoUrl;
+    }
+    try {
+      return new URL(logoUrl, this.documentRef.baseURI).toString();
+    } catch {
+      return logoUrl;
+    }
+  }
+
+  private deploymentRootUrl(): string {
+    try {
+      return new URL('/', this.documentRef.baseURI).toString();
+    } catch {
+      return this.documentRef.baseURI;
+    }
+  }
+
+  private logoMediaType(logoUrl: string): string {
+    const dataMediaType =
+      /^data:(image\/(?:png|jpeg|webp|gif));base64,/i.exec(logoUrl)?.[1];
+    if (dataMediaType) {
+      return dataMediaType.toLowerCase();
+    }
+    const path = logoUrl.split(/[?#]/, 1)[0]?.toLowerCase() ?? '';
+    if (path.endsWith('.png')) {
+      return 'image/png';
+    }
+    if (path.endsWith('.jpg') || path.endsWith('.jpeg')) {
+      return 'image/jpeg';
+    }
+    if (path.endsWith('.webp')) {
+      return 'image/webp';
+    }
+    if (path.endsWith('.gif')) {
+      return 'image/gif';
+    }
+    if (path.endsWith('.ico')) {
+      return 'image/x-icon';
+    }
+    return '';
   }
 }

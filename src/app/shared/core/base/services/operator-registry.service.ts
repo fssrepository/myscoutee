@@ -7,7 +7,6 @@ import type {
   OperatorClaimMutationResultDto,
   OperatorClaimOverviewDto,
   OperatorClaimRequestDto,
-  OperatorClaimStatusDto,
   OperatorCommunityAvailability,
   OperatorCommunityStatusDto,
   OperatorConfigurationDto,
@@ -88,7 +87,7 @@ export class OperatorRegistryService extends BaseRouteModeService {
     return this.registryService.issueGroupingToken();
   }
 
-  linkOperatorGroup(clientToken: string): Promise<OperatorClaimStatusDto> {
+  linkOperatorGroup(clientToken: string): Promise<OperatorClaimMutationResultDto> {
     return this.registryService.linkOperatorGroup({ clientToken });
   }
 

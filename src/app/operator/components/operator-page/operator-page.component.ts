@@ -171,15 +171,7 @@ export class OperatorPageComponent implements OnInit {
       icon: 'tune',
       palette: 'blue',
       kind: 'action',
-      layout: 'big',
-      progress: this.workspace.busyAction() === 'load-configuration'
-        || this.workspace.busyAction() === 'save-branding'
-        || this.workspace.busyAction() === 'register-payment'
-        || this.workspace.busyAction() === 'register-firebase'
-        || this.workspace.busyAction() === 'test-authentication'
-        || this.workspace.busyAction() === 'test-messaging'
-        ? { state: 'loading', durationMs: 3000 }
-        : null
+      layout: 'big'
     },
     {
       id: 'revenue',
@@ -188,10 +180,7 @@ export class OperatorPageComponent implements OnInit {
       icon: 'payments',
       palette: 'green',
       kind: 'action',
-      layout: 'big',
-      progress: this.workspace.busyAction() === 'load-revenue'
-        ? { state: 'loading', durationMs: 3000 }
-        : null
+      layout: 'big'
     }];
   });
   protected readonly leaderboardQuery = computed<
@@ -263,21 +252,21 @@ export class OperatorPageComponent implements OnInit {
         return;
       }
       for (const id of mutation.removedEntryIds) {
-        smartList.removeVisibleItemByIdentity(id, { totalDelta: -1 });
+        smartList.removeVisibleItemByIdentity(id, { totalDelta: 0 });
       }
-      const entry = mutation.entry;
-      if (
-        entry
-        && !smartList.patchVisibleItem(
+      for (const entry of mutation.leaderboardUpserts) {
+        if (smartList.patchVisibleItem(
           item => item.id === entry.id,
           () => entry
-        )
-      ) {
+        )) {
+          continue;
+        }
         smartList.reinsertVisibleItem(entry, {
-          totalDelta: 1,
+          totalDelta: 0,
           loadedRange: 'any'
         });
       }
+      smartList.adjustVisibleTotal(mutation.leaderboardTotalDelta);
       this.leaderboard.consumeCacheMutation(mutation.sequence);
     });
   }

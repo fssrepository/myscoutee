@@ -69,6 +69,10 @@ describe('LocalOperatorRegistryService', () => {
     expect(initial.registryOptions).toHaveLength(3);
     expect(registered.status.lifecycle).toBe('REGISTERED');
     expect(registered.leaderboardEntry?.id).toBe(deploymentCode);
+    expect(registered.leaderboardUpserts).toEqual([
+      expect.objectContaining({ id: deploymentCode, group: 'UNCLAIMED' })
+    ]);
+    expect(registered.leaderboardTotalDelta).toBe(0);
     expect(explicitClaim.status.claimed).toBe(true);
     expect(explicitClaim.status.verificationStatus).toBe('PENDING_REVIEW');
     expect(explicitClaim.status.claimedAt).toBe(
@@ -91,7 +95,14 @@ describe('LocalOperatorRegistryService', () => {
       claimantName: 'Demo Operator s.r.o.',
       claimVerificationStatus: 'PENDING_REVIEW'
     }));
+    expect(explicitClaim.leaderboardUpserts).toEqual([
+      expect.objectContaining({
+        group: 'CLAIMED',
+        claimantName: 'Demo Operator s.r.o.'
+      })
+    ]);
     expect(explicitClaim.removedLeaderboardEntryIds).toEqual([deploymentCode]);
+    expect(explicitClaim.leaderboardTotalDelta).toBe(0);
     expect(cached?.ledger).toEqual(ledgerBeforeGrouping);
     expect(cached?.ledger.find(item => item.id === deploymentCode)).toEqual(
       expect.objectContaining({
@@ -205,7 +216,9 @@ describe('LocalOperatorRegistryService', () => {
       enabled: false
     }));
     expect(mutation.leaderboardEntry).toBeNull();
+    expect(mutation.leaderboardUpserts).not.toEqual([]);
     expect(mutation.removedLeaderboardEntryIds).toContain(claimedRowId);
+    expect(mutation.leaderboardTotalDelta).toBe(-1);
     expect(overview).toEqual(expect.objectContaining({
       status: expect.objectContaining({
         claimed: false,
@@ -260,9 +273,10 @@ describe('LocalOperatorRegistryService', () => {
       }]
     });
 
-    const claim = await service.linkOperatorGroup({
+    const claimMutation = await service.linkOperatorGroup({
       clientToken: 'temporary-client-code'
     });
+    const claim = claimMutation.status;
     const after = await repository.read();
 
     expect(claim).toEqual(expect.objectContaining({
@@ -272,6 +286,21 @@ describe('LocalOperatorRegistryService', () => {
     }));
     expect(claim.claimedAt).toBe(claim.verificationSubmittedAt);
     expect(claim.sharePercent).toBe(0);
+    expect(claimMutation.leaderboardEntry).toEqual(expect.objectContaining({
+      group: 'CLAIMED',
+      operatorGroupId: 'operator-group-campus',
+      deploymentCount: 3,
+      claimVerificationStatus: 'PENDING_REVIEW'
+    }));
+    expect(claimMutation.leaderboardUpserts).toEqual(expect.arrayContaining([
+      expect.objectContaining({
+        group: 'CLAIMED',
+        operatorGroupId: 'operator-group-campus',
+        deploymentCount: 3
+      })
+    ]));
+    expect(claimMutation.removedLeaderboardEntryIds).toEqual([deploymentCode]);
+    expect(claimMutation.leaderboardTotalDelta).toBe(-1);
     expect(after?.ledger.find(item => item.nodeId === deploymentCode))
       .toEqual(expect.objectContaining({
         claimed: true,
@@ -341,9 +370,10 @@ describe('LocalOperatorRegistryService', () => {
     });
     const beforeRegroup = await repository.read();
 
-    const regrouped = await service.linkOperatorGroup({
+    const regroupedMutation = await service.linkOperatorGroup({
       clientToken: 'approved-client-code'
     });
+    const regrouped = regroupedMutation.status;
     const afterRegroup = await repository.read();
 
     expect(regrouped).toEqual(expect.objectContaining({
@@ -352,6 +382,22 @@ describe('LocalOperatorRegistryService', () => {
       operatorGroupId: 'operator-group-campus',
       verificationStatus: 'APPROVED'
     }));
+    expect(regroupedMutation.leaderboardEntry).toEqual(expect.objectContaining({
+      group: 'CLAIMED',
+      operatorGroupId: 'operator-group-campus',
+      deploymentCount: 3
+    }));
+    expect(regroupedMutation.leaderboardUpserts).toEqual(expect.arrayContaining([
+      expect.objectContaining({
+        group: 'CLAIMED',
+        operatorGroupId: 'operator-group-campus',
+        deploymentCount: 3
+      })
+    ]));
+    expect(regroupedMutation.removedLeaderboardEntryIds).toEqual([
+      `claimed-group:${beforeRegroup?.claimStatus.operatorGroupId}`
+    ]);
+    expect(regroupedMutation.leaderboardTotalDelta).toBe(-1);
     expect(afterRegroup?.ledger).toEqual(beforeRegroup?.ledger);
     expect(afterRegroup?.groupLinks).toEqual(expect.arrayContaining([
       expect.objectContaining({
@@ -369,6 +415,30 @@ describe('LocalOperatorRegistryService', () => {
     expect(afterRegroup?.auditHistory.at(-1)).toEqual(expect.objectContaining({
       kind: 'GROUP_LINK',
       detail: 'Claimed deployment linked to an operator group.'
+    }));
+
+    await repository.write({
+      ...afterRegroup!,
+      groupingTokens: [{
+        token: 'same-group-client-code',
+        expiresAt: new Date(Date.now() + 60_000).toISOString(),
+        redeemedAt: null,
+        operatorGroupId: 'operator-group-campus'
+      }]
+    });
+
+    const sameGroupMutation = await service.linkOperatorGroup({
+      clientToken: 'same-group-client-code'
+    });
+    const afterSameGroup = await repository.read();
+
+    expect(sameGroupMutation.leaderboardUpserts).toEqual([]);
+    expect(sameGroupMutation.removedLeaderboardEntryIds).toEqual([]);
+    expect(sameGroupMutation.leaderboardTotalDelta).toBe(0);
+    expect(afterSameGroup?.groupingTokens[0]?.redeemedAt).not.toBeNull();
+    expect(afterSameGroup?.auditHistory.at(-1)).toEqual(expect.objectContaining({
+      kind: 'GROUP_LINK',
+      detail: 'Temporary client code redeemed by an already linked deployment.'
     }));
   });
 
@@ -475,7 +545,6 @@ describe('LocalOperatorRegistryService', () => {
     const saved = await service.saveConfiguration({
       branding: {
         productName: 'Community Hub',
-        homeLabel: 'Meet locally',
         logoUrl: 'data:image/png;base64,c2FtcGxl',
         logoCharacterIndex: null,
         themePreset: 'OCEAN'
@@ -502,6 +571,7 @@ describe('LocalOperatorRegistryService', () => {
     expect(saved).toEqual(expect.objectContaining({
       branding: expect.objectContaining({
         productName: 'Community Hub',
+        homeLabel: initial.branding.homeLabel,
         themePreset: 'OCEAN',
         revision: 1
       }),

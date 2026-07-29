@@ -862,6 +862,32 @@ export class SmartListComponent<T, TFilters extends SmartListFilters = SmartList
     this.refreshSurfaceSoon();
   }
 
+  public adjustVisibleTotal(delta: number): boolean {
+    if (this.currentViewMode !== 'list') {
+      return false;
+    }
+    const numericDelta = Number(delta);
+    if (!Number.isFinite(numericDelta)) {
+      return false;
+    }
+    const normalizedDelta = Math.trunc(numericDelta);
+    if (normalizedDelta === 0) {
+      return false;
+    }
+    const nextTotal = Math.max(
+      this.items.length,
+      this.total + normalizedDelta
+    );
+    if (nextTotal === this.total) {
+      return false;
+    }
+    this.replaceVisibleItems(this.items, {
+      total: nextTotal,
+      nextCursor: this.nextPageCursor
+    });
+    return true;
+  }
+
   public syncVisibleItems(
     items: readonly T[],
     options: {

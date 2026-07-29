@@ -138,7 +138,9 @@ export interface OperatorLeaderboardEntryDto {
 
 export interface OperatorLeaderboardMutationDto {
   leaderboardEntry: OperatorLeaderboardEntryDto | null;
+  leaderboardUpserts: readonly OperatorLeaderboardEntryDto[];
   removedLeaderboardEntryIds: readonly string[];
+  leaderboardTotalDelta: number;
 }
 
 export interface OperatorRegistryMutationResultDto
@@ -309,7 +311,6 @@ export interface OperatorConfigurationDto {
 export interface OperatorConfigurationSaveRequestDto {
   branding: {
     productName: string;
-    homeLabel: string;
     logoUrl: string;
     logoCharacterIndex: number | null;
     themePreset: DeploymentThemePreset;
@@ -489,7 +490,9 @@ export interface OperatorRegistryServiceContract {
     request: OperatorClaimRequestDto
   ): Promise<OperatorClaimMutationResultDto>;
   issueGroupingToken(): Promise<OperatorGroupingTokenDto>;
-  linkOperatorGroup(request: OperatorGroupLinkRequestDto): Promise<OperatorClaimStatusDto>;
+  linkOperatorGroup(
+    request: OperatorGroupLinkRequestDto
+  ): Promise<OperatorClaimMutationResultDto>;
   loadDeploymentUpdate(): Promise<OperatorDeploymentUpdateDto>;
   applyDeploymentUpdate(
     onProgress?: OperatorDeploymentUpdateProgressHandler

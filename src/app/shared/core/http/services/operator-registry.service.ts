@@ -14,6 +14,7 @@ import type {
   OperatorCommunityAnnouncementSeverity,
   OperatorCommunityAnnouncementStatus,
   OperatorCommunityAvailability,
+  OperatorCommunityProviderDto,
   OperatorCommunityStatusDto,
   OperatorConfigurationDto,
   OperatorConfigurationSaveRequestDto,
@@ -26,6 +27,7 @@ import type {
   OperatorLeaderboardEntryDto,
   OperatorLeaderboardGroup,
   OperatorLeaderboardGroupSummaryDto,
+  OperatorLeaderboardMutationDto,
   OperatorLeaderboardPageDto,
   OperatorRevenueDto,
   OperatorRegistryMutationResultDto,
@@ -44,6 +46,7 @@ import { RouteDelayService } from '../../base/services/route-delay.service';
 const OPERATOR_REGISTRY_ROUTE = '/operator/registry';
 const OPERATOR_NETWORK_ROUTE = '/operator';
 const OPERATOR_ANNOUNCEMENTS_ROUTE = '/operator/announcements';
+const OPERATOR_COMMUNITY_PROVIDERS_ROUTE = '/operator/community/providers';
 const OPERATOR_UPDATES_ROUTE = '/operator/updates';
 const OPERATOR_CONFIGURATION_ROUTE = '/operator/configuration';
 const OPERATOR_REVENUE_ROUTE = '/operator/revenue';
@@ -115,7 +118,9 @@ interface RemoteOperatorLeaderboardPage {
 interface RemoteOperatorRegistryMutationResult {
   status: OperatorRegistryStatusDto;
   leaderboardEntry: RemoteOperatorLeaderboardRow | null;
+  leaderboardUpserts?: RemoteOperatorLeaderboardRow[] | null;
   removedLeaderboardEntryIds: string[];
+  leaderboardTotalDelta?: number | null;
   created: boolean;
 }
 
@@ -123,7 +128,9 @@ interface RemoteOperatorClaimMutationResult {
   status: RemoteOperatorClaimStatus;
   submission: OperatorClaimRequestDto | null;
   leaderboardEntry: RemoteOperatorLeaderboardRow | null;
+  leaderboardUpserts?: RemoteOperatorLeaderboardRow[] | null;
   removedLeaderboardEntryIds: string[];
+  leaderboardTotalDelta?: number | null;
 }
 
 interface OperatorLeaderboardCursorState {
@@ -192,6 +199,15 @@ interface RemoteOperatorAnnouncementPage {
   };
   items: RemoteOperatorAnnouncement[];
   nextCursor: string | null;
+}
+
+interface RemoteOperatorCommunityProvider {
+  id: string;
+  name: string;
+  purpose: string;
+  url: string;
+  configured: boolean;
+  available: boolean;
 }
 
 interface RemoteOperatorUpdateJob {
@@ -439,12 +455,7 @@ export class HttpOperatorRegistryService implements OperatorRegistryServiceContr
     return {
       status,
       submission: this.toClaimSubmission(remote.submission),
-      leaderboardEntry: remote.leaderboardEntry
-        ? this.toLeaderboardEntry(remote.leaderboardEntry)
-        : null,
-      removedLeaderboardEntryIds: this.normalizedEntryIds(
-        remote.removedLeaderboardEntryIds
-      )
+      ...this.toLeaderboardMutation(remote)
     };
   }
 
@@ -470,10 +481,10 @@ export class HttpOperatorRegistryService implements OperatorRegistryServiceContr
 
   async linkOperatorGroup(
     request: OperatorGroupLinkRequestDto
-  ): Promise<OperatorClaimStatusDto> {
-    await this.requireResponse(
+  ): Promise<OperatorClaimMutationResultDto> {
+    const remote = await this.requireResponse(
       `${OPERATOR_NETWORK_ROUTE}/claim/redeem`,
-      this.http.post<RemoteOperatorActionResult>(
+      this.http.post<RemoteOperatorClaimMutationResult>(
         `${this.operatorEndpoint}/claim/redeem`,
         {
           clientToken: request.clientToken.trim()
@@ -481,7 +492,14 @@ export class HttpOperatorRegistryService implements OperatorRegistryServiceContr
         this.requestOptions()
       ).toPromise()
     );
-    return (await this.loadClaimStatus()).status;
+    const status = this.toClaimStatus(remote.status);
+    this.claimVerificationAvailable =
+      status.verificationCapability === 'AVAILABLE';
+    return {
+      status,
+      submission: this.toClaimSubmission(remote.submission),
+      ...this.toLeaderboardMutation(remote)
+    };
   }
 
   async loadDeploymentUpdate(): Promise<OperatorDeploymentUpdateDto> {
@@ -612,17 +630,20 @@ export class HttpOperatorRegistryService implements OperatorRegistryServiceContr
   }
 
   async loadCommunityStatus(): Promise<OperatorCommunityStatusDto> {
-    const page = await this.loadAnnouncements({
-      includeExpired: false,
-      limit: 100
-    });
+    const [providers, page] = await Promise.all([
+      this.loadCommunityProviders(),
+      this.loadAnnouncements({
+        includeExpired: false,
+        limit: 100
+      })
+    ]);
     return {
       availability: 'INVISIBLE',
       updatedAt:
         page.snapshot.asOf?.trim()
         || page.snapshot.createdAt?.trim()
         || null,
-      providers: [],
+      providers,
       announcements: [...page.items]
         .sort((left, right) => Number(right.sequence) - Number(left.sequence))
         .map(item => this.toCommunityAnnouncement(item))
@@ -633,6 +654,17 @@ export class HttpOperatorRegistryService implements OperatorRegistryServiceContr
     _availability: OperatorCommunityAvailability
   ): Promise<OperatorCommunityStatusDto> {
     return this.unsupported('community availability');
+  }
+
+  private async loadCommunityProviders(): Promise<OperatorCommunityProviderDto[]> {
+    const providers = await this.requireResponse(
+      OPERATOR_COMMUNITY_PROVIDERS_ROUTE,
+      this.http.get<RemoteOperatorCommunityProvider[]>(
+        `${this.apiBaseUrl}${OPERATOR_COMMUNITY_PROVIDERS_ROUTE}`,
+        this.requestOptions()
+      ).toPromise()
+    );
+    return providers.map(provider => this.toCommunityProvider(provider));
   }
 
   private async loadAnnouncements(filters: {
@@ -804,6 +836,20 @@ export class HttpOperatorRegistryService implements OperatorRegistryServiceContr
       && manifest.packageSigningKeyConfigured === true
       && manifest.packageSigningKeyMatches === true
       && manifest.packageSignatureVerified === true;
+  }
+
+  private toCommunityProvider(
+    provider: RemoteOperatorCommunityProvider
+  ): OperatorCommunityProviderDto {
+    const url = this.safeHttpsUrl(provider.url) ?? '';
+    return {
+      id: `${provider.id ?? ''}`.trim(),
+      name: `${provider.name ?? ''}`.trim(),
+      purpose: `${provider.purpose ?? ''}`.trim(),
+      url,
+      configured: provider.configured === true,
+      available: provider.available === true && Boolean(url)
+    };
   }
 
   private toCommunityAnnouncement(
@@ -1122,13 +1168,42 @@ export class HttpOperatorRegistryService implements OperatorRegistryServiceContr
   ): OperatorRegistryMutationResultDto {
     return {
       status: result.status,
-      leaderboardEntry: result.leaderboardEntry
-        ? this.toLeaderboardEntry(result.leaderboardEntry)
-        : null,
+      ...this.toLeaderboardMutation(result),
+      created: result.created === true
+    };
+  }
+
+  private toLeaderboardMutation(
+    result: {
+      leaderboardEntry: RemoteOperatorLeaderboardRow | null;
+      leaderboardUpserts?: RemoteOperatorLeaderboardRow[] | null;
+      removedLeaderboardEntryIds: string[];
+      leaderboardTotalDelta?: number | null;
+    }
+  ): OperatorLeaderboardMutationDto {
+    const leaderboardEntry = result.leaderboardEntry
+      ? this.toLeaderboardEntry(result.leaderboardEntry)
+      : null;
+    const upsertsById = new Map<string, OperatorLeaderboardEntryDto>();
+    for (const row of result.leaderboardUpserts ?? (
+      result.leaderboardEntry ? [result.leaderboardEntry] : []
+    )) {
+      const entry = this.toLeaderboardEntry(row);
+      const id = entry.id.trim();
+      if (id) {
+        upsertsById.set(id, entry);
+      }
+    }
+    const totalDelta = Number(result.leaderboardTotalDelta);
+    return {
+      leaderboardEntry,
+      leaderboardUpserts: [...upsertsById.values()],
       removedLeaderboardEntryIds: this.normalizedEntryIds(
         result.removedLeaderboardEntryIds
       ),
-      created: result.created === true
+      leaderboardTotalDelta: Number.isFinite(totalDelta)
+        ? Math.trunc(totalDelta)
+        : 0
     };
   }
 

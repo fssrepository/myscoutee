@@ -142,7 +142,6 @@ export class OperatorWorkspaceStore {
     }
     return (
       draft.branding.productName.trim() !== configuration.branding.productName
-      || draft.branding.homeLabel.trim() !== configuration.branding.homeLabel
       || draft.branding.logoUrl.trim() !== configuration.branding.logoUrl
       || draft.branding.logoCharacterIndex
         !== configuration.branding.logoCharacterIndex
@@ -156,7 +155,7 @@ export class OperatorWorkspaceStore {
   });
   readonly configurationBrandingReady = computed(() => {
     const draft = this.configurationDraftRef();
-    if (!draft?.branding.productName.trim() || !draft.branding.homeLabel.trim()) {
+    if (!draft?.branding.productName.trim()) {
       return false;
     }
     const index = draft.branding.logoCharacterIndex;
@@ -238,31 +237,22 @@ export class OperatorWorkspaceStore {
       this.errorRef.set('operator.claim.client.code.required');
       return null;
     }
-    const previous = this.claimStatusRef();
-    const result = await this.run(
+    const mutation = await this.run(
       'link-operator-group',
       () => this.service.linkOperatorGroup(clientToken)
     );
-    if (result) {
+    if (mutation) {
+      const result = mutation.status;
       this.claimStatusRef.set(result);
+      if (mutation.submission) {
+        this.claimDraftRef.set(structuredClone(mutation.submission));
+      }
       this.groupTokenInputRef.set('');
       this.noticeRef.set('operator.claim.client.code.submitted');
-      const groupChanged = Boolean(
-        result.operatorGroupId
-        && result.operatorGroupId !== previous?.operatorGroupId
-      );
-      const provisionalClaim = !previous?.claimed
-        && result.verificationStatus === 'PENDING_REVIEW';
-      const approvedRegroup = previous?.claimed === true
-        && (
-          result.verificationStatus === 'APPROVED'
-          || result.verificationStatus === 'VERIFIED'
-        );
-      if (groupChanged && (provisionalClaim || approvedRegroup)) {
-        this.leaderboard.invalidate();
-      }
+      this.leaderboard.applyMutation(mutation);
+      return result;
     }
-    return result;
+    return null;
   }
 
   async loadDeploymentUpdate(
@@ -586,7 +576,6 @@ export class OperatorWorkspaceStore {
     return {
       branding: {
         productName: configuration.branding.productName,
-        homeLabel: configuration.branding.homeLabel,
         logoUrl: configuration.branding.logoUrl,
         logoCharacterIndex: configuration.branding.logoCharacterIndex,
         themePreset: configuration.branding.themePreset

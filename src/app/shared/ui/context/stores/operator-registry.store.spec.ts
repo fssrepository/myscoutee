@@ -53,19 +53,22 @@ describe('OperatorRegistryStore registration', () => {
       userId: 'operator-demo-dev'
     });
     const registered = registeredStatus();
+    const registeredEntry = {
+      id: 'dep_demo',
+      nodeId: 'dep_demo',
+      label: 'dep_demo',
+      group: 'UNCLAIMED' as const,
+      verifiedWeight: 0,
+      sharePercent: 0,
+      claimed: false,
+      deploymentCount: 1
+    };
     const mutationResult = {
       status: registered,
-      leaderboardEntry: {
-        id: 'dep_demo',
-        nodeId: 'dep_demo',
-        label: 'dep_demo',
-        group: 'UNCLAIMED' as const,
-        verifiedWeight: 0,
-        sharePercent: 0,
-        claimed: false,
-        deploymentCount: 1
-      },
+      leaderboardEntry: registeredEntry,
+      leaderboardUpserts: [registeredEntry],
       removedLeaderboardEntryIds: [],
+      leaderboardTotalDelta: 1,
       created: true
     };
     const service = {
@@ -124,7 +127,9 @@ describe('OperatorRegistryStore registration', () => {
         lifecycle: 'DISABLED'
       },
       leaderboardEntry: null,
+      leaderboardUpserts: [],
       removedLeaderboardEntryIds: ['dep_demo'],
+      leaderboardTotalDelta: -1,
       created: false
     };
     const service = {

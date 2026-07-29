@@ -22,6 +22,8 @@ import type {
   OperatorDeploymentUpdatePhase,
   OperatorDeploymentUpdateProgressDto,
   OperatorDeploymentUpdateProgressHandler,
+  OperatorLeaderboardEntryDto,
+  OperatorLeaderboardMutationDto,
   OperatorLeaderboardPageDto,
   OperatorRevenueDto,
   OperatorRegistryInspectRequestDto,
@@ -263,14 +265,13 @@ export class LocalOperatorRegistryService extends LocalRouteDelayService impleme
       item.id === deploymentCode
       || item.nodeId === deploymentCode
     ) ?? null;
-    const removedLeaderboardEntryIds = previousNodeId !== deploymentCode
-      && current.leaderboard.some(item => item.id === previousNodeId)
-      ? [previousNodeId]
-      : [];
     return {
       status: LocalOperatorRegistryMapper.toStatusDto(next),
-      leaderboardEntry: structuredClone(leaderboardEntry),
-      removedLeaderboardEntryIds,
+      ...this.leaderboardMutation(
+        current.leaderboard,
+        next.leaderboard,
+        leaderboardEntry
+      ),
       created
     };
   }
@@ -335,11 +336,6 @@ export class LocalOperatorRegistryService extends LocalRouteDelayService impleme
       ledger,
       groupLinks
     );
-    const removedLeaderboardEntryIds = current.leaderboard
-      .filter(item =>
-        !leaderboard.some(nextItem => nextItem.id === item.id)
-      )
-      .map(item => item.id);
     const leaderboardEntry = previousOperatorGroupId
       ? leaderboard.find(
           item => item.operatorGroupId === previousOperatorGroupId
@@ -370,8 +366,11 @@ export class LocalOperatorRegistryService extends LocalRouteDelayService impleme
     await this.repository.write(next);
     return {
       status: LocalOperatorRegistryMapper.toStatusDto(next),
-      leaderboardEntry: structuredClone(leaderboardEntry),
-      removedLeaderboardEntryIds,
+      ...this.leaderboardMutation(
+        current.leaderboard,
+        next.leaderboard,
+        leaderboardEntry
+      ),
       created: false
     };
   }
@@ -465,7 +464,7 @@ export class LocalOperatorRegistryService extends LocalRouteDelayService impleme
       claimVerificationRequest: verificationRequest
     }, 'CLAIM', 'Company verification submitted for review.', current.claimIdentity.nodeId);
     await this.repository.write(next);
-    return this.claimMutation(next, claimStatus);
+    return this.claimMutation(next, claimStatus, current.leaderboard);
   }
 
   async issueGroupingToken(): Promise<OperatorGroupingTokenDto> {
@@ -500,7 +499,7 @@ export class LocalOperatorRegistryService extends LocalRouteDelayService impleme
 
   async linkOperatorGroup(
     request: OperatorGroupLinkRequestDto
-  ): Promise<OperatorClaimStatusDto> {
+  ): Promise<OperatorClaimMutationResultDto> {
     await this.waitForOperatorRouteDelay(OPERATOR_CLAIM_REDEEM_ROUTE);
     const current = await this.readStored();
     if (!current.status.enabled || current.status.lifecycle !== 'REGISTERED') {
@@ -511,13 +510,26 @@ export class LocalOperatorRegistryService extends LocalRouteDelayService impleme
     if (!tokenRecord || tokenRecord.redeemedAt || Date.parse(tokenRecord.expiresAt) <= Date.now()) {
       throw new Error('operator.group.error.token.invalid');
     }
+    const nowIso = new Date().toISOString();
     if (
       current.claimStatus.claimed
       && current.claimStatus.operatorGroupId === tokenRecord.operatorGroupId
     ) {
-      return structuredClone(current.claimStatus);
+      const updated = this.appendAudit({
+        ...structuredClone(current),
+        groupingTokens: current.groupingTokens.map(item =>
+          item.token === token ? { ...item, redeemedAt: nowIso } : item
+        )
+      }, 'GROUP_LINK',
+      'Temporary client code redeemed by an already linked deployment.',
+      current.claimIdentity.nodeId);
+      await this.repository.write(updated);
+      return this.claimMutation(
+        updated,
+        updated.claimStatus,
+        current.leaderboard
+      );
     }
-    const nowIso = new Date().toISOString();
     const groupNodeIds = new Set(
       current.groupLinks
         .filter(link => link.operatorGroupId === tokenRecord.operatorGroupId)
@@ -600,7 +612,7 @@ export class LocalOperatorRegistryService extends LocalRouteDelayService impleme
       ...provisionalClaimStatus,
       sharePercent: claimedGroup?.sharePercent ?? 0
     };
-    await this.repository.write(this.appendAudit({
+    const updated = this.appendAudit({
       ...structuredClone(current),
       ledger,
       groupLinks,
@@ -614,8 +626,13 @@ export class LocalOperatorRegistryService extends LocalRouteDelayService impleme
     current.claimStatus.claimed
       ? 'Claimed deployment linked to an operator group.'
       : 'Client code claim submitted for registry review.',
-    current.claimIdentity.nodeId));
-    return structuredClone(claimStatus);
+    current.claimIdentity.nodeId);
+    await this.repository.write(updated);
+    return this.claimMutation(
+      updated,
+      claimStatus,
+      current.leaderboard
+    );
   }
 
   async loadDeploymentUpdate(): Promise<OperatorDeploymentUpdateDto> {
@@ -719,10 +736,9 @@ export class LocalOperatorRegistryService extends LocalRouteDelayService impleme
     const previousPaymentProvider = current.configuration.payment.providerId;
     const themePreset = this.deploymentThemePreset(request.branding.themePreset);
     const productName = `${request.branding.productName ?? ''}`.trim().slice(0, 80);
-    const homeLabel = `${request.branding.homeLabel ?? ''}`.trim().slice(0, 120);
     const logoUrl = `${request.branding.logoUrl ?? ''}`.trim()
       || DEFAULT_DEPLOYMENT_BRANDING.logoUrl;
-    if (!productName || !homeLabel) {
+    if (!productName) {
       throw new Error('operator.configuration.branding.label.required');
     }
     const logoCharacterIndex = request.branding.logoCharacterIndex;
@@ -762,7 +778,7 @@ export class LocalOperatorRegistryService extends LocalRouteDelayService impleme
       unavailableReason: null,
       branding: {
         productName,
-        homeLabel,
+        homeLabel: current.configuration.branding.homeLabel,
         logoUrl,
         logoCharacterIndex,
         themePreset,
@@ -881,30 +897,60 @@ export class LocalOperatorRegistryService extends LocalRouteDelayService impleme
 
   private claimMutation(
     record: OperatorRegistryStateRecord,
-    status: OperatorClaimStatusDto
+    status: OperatorClaimStatusDto,
+    previousLeaderboard: readonly OperatorLeaderboardEntryDto[] = record.leaderboard
   ): OperatorClaimMutationResultDto {
+    const currentLeaderboard = LocalOperatorRegistryMapper.recalculateLeaderboard(
+      LocalOperatorRegistryMapper.withCurrentClaimVerification(
+        record.leaderboard,
+        status
+      )
+    );
     const operatorGroupId = status.operatorGroupId?.trim() ?? '';
     const leaderboardEntry = operatorGroupId
-      ? record.leaderboard.find(item =>
+      ? currentLeaderboard.find(item =>
           item.group === 'CLAIMED'
           && item.operatorGroupId === operatorGroupId
         ) ?? null
       : null;
-    const visibleLeaderboardEntry = leaderboardEntry
-      ? LocalOperatorRegistryMapper.recalculateLeaderboard(
-          LocalOperatorRegistryMapper.withCurrentClaimVerification(
-            record.leaderboard,
-            status
-          )
-        ).find(item => item.id === leaderboardEntry.id) ?? null
-      : null;
-    const deploymentId = record.claimIdentity.nodeId.trim();
     return structuredClone({
       status,
       submission: record.claimVerificationRequest,
-      leaderboardEntry: visibleLeaderboardEntry,
-      removedLeaderboardEntryIds: deploymentId ? [deploymentId] : []
+      ...this.leaderboardMutation(
+        previousLeaderboard,
+        currentLeaderboard,
+        leaderboardEntry
+      )
     });
+  }
+
+  private leaderboardMutation(
+    previousLeaderboard: readonly OperatorLeaderboardEntryDto[],
+    currentLeaderboard: readonly OperatorLeaderboardEntryDto[],
+    leaderboardEntry: OperatorLeaderboardEntryDto | null
+  ): OperatorLeaderboardMutationDto {
+    const previousById = new Map(
+      previousLeaderboard.map(entry => [entry.id.trim(), entry])
+    );
+    const currentIds = new Set(
+      currentLeaderboard.map(entry => entry.id.trim()).filter(Boolean)
+    );
+    const leaderboardUpserts = currentLeaderboard.filter(entry => {
+      const previous = previousById.get(entry.id.trim());
+      return !previous || JSON.stringify(previous) !== JSON.stringify(entry);
+    });
+    const removedLeaderboardEntryIds = previousLeaderboard
+      .map(entry => entry.id.trim())
+      .filter(id => id && !currentIds.has(id));
+    return {
+      leaderboardEntry: leaderboardEntry
+        ? structuredClone(leaderboardEntry)
+        : null,
+      leaderboardUpserts: structuredClone(leaderboardUpserts),
+      removedLeaderboardEntryIds,
+      leaderboardTotalDelta:
+        currentLeaderboard.length - previousLeaderboard.length
+    };
   }
 
   private deploymentThemePreset(

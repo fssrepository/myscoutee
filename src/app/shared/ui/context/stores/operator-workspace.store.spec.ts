@@ -16,11 +16,13 @@ import { UserProfileStore } from './user-profile.store';
 
 describe('OperatorWorkspaceStore', () => {
   const claimShare = vi.fn();
+  const linkOperatorGroup = vi.fn();
   const loadClaimStatus = vi.fn();
   const loadDeploymentUpdate = vi.fn();
   const loadRevenue = vi.fn();
   const testConfiguration = vi.fn();
   const applyMutation = vi.fn();
+  const invalidate = vi.fn();
   const session = signal({
     kind: 'firebase' as const,
     profile: {
@@ -44,11 +46,13 @@ describe('OperatorWorkspaceStore', () => {
 
   beforeEach(() => {
     claimShare.mockReset();
+    linkOperatorGroup.mockReset();
     loadClaimStatus.mockReset();
     loadDeploymentUpdate.mockReset();
     loadRevenue.mockReset();
     testConfiguration.mockReset();
     applyMutation.mockReset();
+    invalidate.mockReset();
     activeUserProfile.set({
       id: 'operator-real',
       name: '  Verified Operator  ',
@@ -67,6 +71,7 @@ describe('OperatorWorkspaceStore', () => {
           provide: OperatorRegistryService,
           useValue: {
             claimShare,
+            linkOperatorGroup,
             loadClaimStatus,
             loadDeploymentUpdate,
             loadRevenue,
@@ -86,7 +91,7 @@ describe('OperatorWorkspaceStore', () => {
         },
         {
           provide: OperatorLeaderboardStore,
-          useValue: { applyMutation, invalidate: vi.fn() }
+          useValue: { applyMutation, invalidate }
         },
         {
           provide: UserProfileStore,
@@ -112,7 +117,9 @@ describe('OperatorWorkspaceStore', () => {
       status: claimed,
       submission: acceptedSubmission,
       leaderboardEntry: null,
-      removedLeaderboardEntryIds: ['dep_operator_real']
+      leaderboardUpserts: [],
+      removedLeaderboardEntryIds: ['dep_operator_real'],
+      leaderboardTotalDelta: -1
     };
     claimShare.mockResolvedValue(mutation);
     const store = TestBed.inject(OperatorWorkspaceStore);
@@ -165,6 +172,48 @@ describe('OperatorWorkspaceStore', () => {
 
     expect(store.claimDraft()).toEqual(submission);
     expect(store.claimStatus()?.verificationStatus).toBe('PENDING_REVIEW');
+  });
+
+  it('applies the targeted leaderboard mutation returned by client-code linking', async () => {
+    const linkedStatus: OperatorClaimStatusDto = {
+      ...claimStatus(),
+      operatorGroupId: 'operator-group-linked'
+    };
+    const acceptedSubmission = claimSubmission();
+    const linkedEntry = {
+      id: 'operator-group-linked',
+      nodeId: null,
+      label: 'Linked Operator',
+      group: 'CLAIMED' as const,
+      verifiedWeight: 17,
+      sharePercent: 4.25,
+      claimed: true,
+      operatorGroupId: 'operator-group-linked',
+      deploymentCount: 2,
+      claimVerificationStatus: 'PENDING_REVIEW' as const
+    };
+    const mutation = {
+      status: linkedStatus,
+      submission: acceptedSubmission,
+      leaderboardEntry: linkedEntry,
+      leaderboardUpserts: [linkedEntry],
+      removedLeaderboardEntryIds: ['dep_operator_real'],
+      leaderboardTotalDelta: 0
+    };
+    linkOperatorGroup.mockResolvedValue(mutation);
+    const store = TestBed.inject(OperatorWorkspaceStore);
+    store.setGroupTokenInput(' temporary-client-code ');
+
+    const result = await store.linkOperatorGroup();
+
+    expect(result).toEqual(linkedStatus);
+    expect(linkOperatorGroup).toHaveBeenCalledWith('temporary-client-code');
+    expect(store.claimStatus()).toEqual(linkedStatus);
+    expect(store.claimDraft()).toEqual(acceptedSubmission);
+    expect(store.groupTokenInput()).toBe('');
+    expect(store.notice()).toBe('operator.claim.client.code.submitted');
+    expect(applyMutation).toHaveBeenCalledWith(mutation);
+    expect(invalidate).not.toHaveBeenCalled();
   });
 
   it('does not submit an incomplete company verification claim', async () => {

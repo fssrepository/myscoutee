@@ -1721,7 +1721,10 @@ export class SideMenuComponent implements OnDestroy {
     this.reactivationPromptUserId = userId;
     this.dialogStore.open({
       title: 'Reactivate account?',
-      message: 'This account is scheduled for deletion. You can reactivate it within 30 days and continue using MyScoutee normally.',
+      message: this.i18n.translateParams(
+        'account.reactivation.message',
+        { productName: this.deploymentBranding().productName }
+      ),
       cancelLabel: 'Cancel',
       confirmLabel: 'Reactivate',
       busyConfirmLabel: 'Reactivating...',
@@ -2161,8 +2164,10 @@ export class SideMenuComponent implements OnDestroy {
     const chat: ChatDTO & { ownerUserId?: string } = {
       id: `c-support-blocked-${activeUserId}`,
       avatar: 'MS',
-      title: 'MyScoutee Support',
-      lastMessage: 'Your account is blocked. You can message MyScoutee support here.',
+      title: this.i18n.translate('myscoutee.support'),
+      lastMessage: this.i18n.translate(
+        'myscoutee.support.blocked.chat.message'
+      ),
       lastSenderId: adminUserId,
       memberIds: [activeUserId, adminUserId],
       unread: 1,

@@ -102,28 +102,33 @@ describe('HttpOperatorRegistryService', () => {
 
   it('uses the exact explicit register contract and null-body retry/disconnect payloads', async () => {
     const status = registryStatus();
+    const unclaimedRow = {
+      rowId: 'dep_demo',
+      view: 'unclaimed',
+      groupId: '',
+      label: 'dep_demo',
+      avatarUrl: '',
+      claimState: 'unclaimed',
+      deploymentCount: 1,
+      weightNumerator: '0',
+      weightDenominator: '1',
+      shareNumerator: '0',
+      shareDenominator: '1'
+    };
     post.mockImplementation((url: string) =>
       url.endsWith('/register') || url.endsWith('/disconnect')
         ? of({
             status,
             leaderboardEntry: url.endsWith('/register')
-              ? {
-                  rowId: 'dep_demo',
-                  view: 'unclaimed',
-                  groupId: '',
-                  label: 'dep_demo',
-                  avatarUrl: '',
-                  claimState: 'unclaimed',
-                  deploymentCount: 1,
-                  weightNumerator: '0',
-                  weightDenominator: '1',
-                  shareNumerator: '0',
-                  shareDenominator: '1'
-                }
+              ? unclaimedRow
               : null,
+            leaderboardUpserts: url.endsWith('/register')
+              ? [unclaimedRow]
+              : [],
             removedLeaderboardEntryIds: url.endsWith('/disconnect')
               ? ['dep_demo']
               : [],
+            leaderboardTotalDelta: url.endsWith('/register') ? 1 : -1,
             created: url.endsWith('/register')
           })
         : of(status)
@@ -143,7 +148,13 @@ describe('HttpOperatorRegistryService', () => {
       nodeId: 'dep_demo',
       group: 'UNCLAIMED'
     }));
+    expect(registered.leaderboardUpserts).toEqual([
+      expect.objectContaining({ id: 'dep_demo', group: 'UNCLAIMED' })
+    ]);
+    expect(registered.leaderboardTotalDelta).toBe(1);
     expect(disconnected.removedLeaderboardEntryIds).toEqual(['dep_demo']);
+    expect(disconnected.leaderboardUpserts).toEqual([]);
+    expect(disconnected.leaderboardTotalDelta).toBe(-1);
 
     expect(post.mock.calls.map((call: unknown[]) => [call[0], call[1]])).toEqual([
       ['/api/operator/registry/confirm', { inspectionToken: 'inspection_1' }],
@@ -177,6 +188,19 @@ describe('HttpOperatorRegistryService', () => {
       verificationSubmittedAt: '2026-07-28T18:00:00.000Z',
       legalName: 'Demo Operator s.r.o.'
     };
+    const claimedRow = {
+      rowId: 'opg_demo',
+      view: 'claimed',
+      groupId: 'opg_demo',
+      label: 'Demo Operator s.r.o.',
+      avatarUrl: null,
+      claimState: 'pending-review',
+      deploymentCount: 1,
+      weightNumerator: '17',
+      weightDenominator: '1',
+      shareNumerator: '17',
+      shareDenominator: '400'
+    };
     const claimMutation = {
       status: claimStatus,
       submission: {
@@ -190,28 +214,19 @@ describe('HttpOperatorRegistryService', () => {
         verificationContactEmail: 'operator@example.test',
         authorityAttested: true
       },
-      leaderboardEntry: {
-        rowId: 'opg_demo',
-        view: 'claimed',
-        groupId: 'opg_demo',
-        label: 'Demo Operator s.r.o.',
-        avatarUrl: null,
-        claimState: 'pending-review',
-        deploymentCount: 1,
-        weightNumerator: '17',
-        weightDenominator: '1',
-        shareNumerator: '17',
-        shareDenominator: '400'
-      },
-      removedLeaderboardEntryIds: ['dep_demo']
+      leaderboardEntry: claimedRow,
+      leaderboardUpserts: [claimedRow],
+      removedLeaderboardEntryIds: ['dep_demo'],
+      leaderboardTotalDelta: 0
     };
     get.mockReturnValue(of({
       status: claimStatus,
       submission: claimMutation.submission
     }));
-    post.mockImplementation((url: string) => url.endsWith('/claim')
-      ? of(claimMutation)
-      : of({
+    post.mockImplementation((url: string) =>
+      url.endsWith('/claim') || url.endsWith('/claim/redeem')
+        ? of(claimMutation)
+        : of({
           clientToken: url.endsWith('/client-token') ? 'client_token_1' : null,
           receipt: {
             acceptedAt: '2026-07-28T18:00:00.000Z',
@@ -221,7 +236,8 @@ describe('HttpOperatorRegistryService', () => {
               ? '2026-07-28T18:05:00.000Z'
               : null
           }
-        }));
+        })
+    );
     const service = TestBed.inject(HttpOperatorRegistryService);
 
     const loaded = await service.loadClaimStatus();
@@ -254,9 +270,35 @@ describe('HttpOperatorRegistryService', () => {
         operatorGroupId: 'opg_demo',
         claimed: true
       }),
-      removedLeaderboardEntryIds: ['dep_demo']
+      leaderboardUpserts: [
+        expect.objectContaining({
+          id: 'opg_demo',
+          group: 'CLAIMED',
+          operatorGroupId: 'opg_demo'
+        })
+      ],
+      removedLeaderboardEntryIds: ['dep_demo'],
+      leaderboardTotalDelta: 0
     });
-    expect(grouped).toEqual(claimStatus);
+    expect(grouped).toEqual({
+      status: claimStatus,
+      submission: claimMutation.submission,
+      leaderboardEntry: expect.objectContaining({
+        id: 'opg_demo',
+        group: 'CLAIMED',
+        operatorGroupId: 'opg_demo',
+        claimed: true
+      }),
+      leaderboardUpserts: [
+        expect.objectContaining({
+          id: 'opg_demo',
+          group: 'CLAIMED',
+          operatorGroupId: 'opg_demo'
+        })
+      ],
+      removedLeaderboardEntryIds: ['dep_demo'],
+      leaderboardTotalDelta: 0
+    });
     expect(token).toEqual({
       clientToken: 'client_token_1',
       expiresAt: '2026-07-28T18:05:00.000Z'
@@ -280,7 +322,7 @@ describe('HttpOperatorRegistryService', () => {
     ]);
     expect(get.mock.calls.filter(
       (call: unknown[]) => call[0] === '/api/operator/claim'
-    )).toHaveLength(2);
+    )).toHaveLength(1);
   });
 
   it('does not post structured verification to a legacy claim endpoint', async () => {
@@ -453,8 +495,33 @@ describe('HttpOperatorRegistryService', () => {
     }).params.get('throughPeriod')).toBe('2026-07');
   });
 
-  it('loads signed Java announcements into the common community model', async () => {
-    get.mockReturnValue(of(remoteAnnouncementPage()));
+  it('combines deployment community providers and signed announcements', async () => {
+    get.mockImplementation((url: string) => {
+      if (url === '/api/operator/community/providers') {
+        return of([
+          {
+            id: ' discord ',
+            name: ' Discord ',
+            purpose: ' operator.community.provider.discord.purpose ',
+            url: 'https://discord.com/',
+            configured: false,
+            available: true
+          },
+          {
+            id: 'discourse',
+            name: 'Discourse',
+            purpose: 'operator.community.provider.discourse.purpose',
+            url: 'https://www.discourse.org/',
+            configured: false,
+            available: true
+          }
+        ]);
+      }
+      if (url === '/api/operator/announcements') {
+        return of(remoteAnnouncementPage());
+      }
+      throw new Error(`Unexpected GET ${url}`);
+    });
 
     const community = await TestBed.inject(HttpOperatorRegistryService)
       .loadCommunityStatus();
@@ -462,7 +529,24 @@ describe('HttpOperatorRegistryService', () => {
     expect(community).toEqual(expect.objectContaining({
       availability: 'INVISIBLE',
       updatedAt: '2026-07-28T18:30:00.000Z',
-      providers: []
+      providers: [
+        {
+          id: 'discord',
+          name: 'Discord',
+          purpose: 'operator.community.provider.discord.purpose',
+          url: 'https://discord.com/',
+          configured: false,
+          available: true
+        },
+        {
+          id: 'discourse',
+          name: 'Discourse',
+          purpose: 'operator.community.provider.discourse.purpose',
+          url: 'https://www.discourse.org/',
+          configured: false,
+          available: true
+        }
+      ]
     }));
     expect(community.announcements).toEqual([
       expect.objectContaining({
@@ -488,19 +572,25 @@ describe('HttpOperatorRegistryService', () => {
         })
       })
     ]);
-    expect(get).toHaveBeenCalledTimes(1);
-    const [url, options] = get.mock.calls[0] as [
+    expect(get).toHaveBeenCalledTimes(2);
+    expect(get).toHaveBeenCalledWith(
+      '/api/operator/community/providers',
+      expect.objectContaining({ headers: expect.any(HttpHeaders) })
+    );
+    const announcementCall = get.mock.calls.find(
+      (call: unknown[]) => call[0] === '/api/operator/announcements'
+    ) as [
       string,
       { params: { get(name: string): string | null } }
     ];
+    const [url, options] = announcementCall;
     expect(url).toBe('/api/operator/announcements');
     expect(options.params.get('includeExpired')).toBe('false');
     expect(options.params.get('limit')).toBe('100');
-    expect(withRequestTimeout).toHaveBeenCalledWith(
-      '/operator/announcements',
-      expect.any(Promise),
-      'operator.request.timeout'
-    );
+    expect(withRequestTimeout.mock.calls.map(call => call[0])).toEqual([
+      '/operator/community/providers',
+      '/operator/announcements'
+    ]);
   });
 
   it('loads currency-separated deployment revenue through the operator route', async () => {
@@ -567,7 +657,6 @@ describe('HttpOperatorRegistryService', () => {
     const request = {
       branding: {
         productName: 'Community Hub',
-        homeLabel: 'Meet locally',
         logoUrl: '/api/media/operator/logo.webp',
         logoCharacterIndex: null,
         themePreset: 'OCEAN' as const

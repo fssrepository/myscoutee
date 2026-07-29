@@ -19,8 +19,9 @@ export interface OperatorLeaderboardFilters {
 
 export interface OperatorLeaderboardCacheMutation {
   sequence: number;
-  entry: OperatorLeaderboardEntryDto | null;
+  leaderboardUpserts: readonly OperatorLeaderboardEntryDto[];
   removedEntryIds: readonly string[];
+  leaderboardTotalDelta: number;
 }
 
 @Injectable({
@@ -82,21 +83,38 @@ export class OperatorLeaderboardStore {
       this.cacheTombstones.add(id);
     }
 
-    const entry = result.leaderboardEntry
-      ? structuredClone(result.leaderboardEntry)
-      : null;
-    if (entry) {
-      this.cacheTombstones.delete(entry.id);
-      this.cacheUpserts.set(entry.id, entry);
+    const upsertsById = new Map<string, OperatorLeaderboardEntryDto>();
+    for (const sourceEntry of result.leaderboardUpserts) {
+      const id = sourceEntry.id.trim();
+      if (!id) {
+        continue;
+      }
+      const entry = {
+        ...structuredClone(sourceEntry),
+        id
+      };
+      upsertsById.set(id, entry);
+      this.cacheTombstones.delete(id);
+      this.cacheUpserts.set(id, entry);
     }
-    if (!entry && removedEntryIds.length === 0) {
+    const leaderboardUpserts = [...upsertsById.values()];
+    const totalDeltaValue = Number(result.leaderboardTotalDelta);
+    const leaderboardTotalDelta = Number.isFinite(totalDeltaValue)
+      ? Math.trunc(totalDeltaValue)
+      : 0;
+    if (
+      leaderboardUpserts.length === 0
+      && removedEntryIds.length === 0
+      && leaderboardTotalDelta === 0
+    ) {
       return null;
     }
 
     const mutation: OperatorLeaderboardCacheMutation = {
       sequence: ++this.mutationSequence,
-      entry,
-      removedEntryIds
+      leaderboardUpserts,
+      removedEntryIds,
+      leaderboardTotalDelta
     };
     this.latestCacheMutationRef.set(mutation);
     return mutation;
