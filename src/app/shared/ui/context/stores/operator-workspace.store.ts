@@ -62,6 +62,21 @@ export type OperatorWorkspaceBusyAction =
 
 export type OperatorConfigurationTestFeedback = 'success' | 'error' | null;
 
+const CONFIGURATION_BUSY_ACTIONS = new Set<
+  Exclude<OperatorWorkspaceBusyAction, null>
+>([
+  'load-configuration',
+  'save-branding',
+  'save-admin-emails',
+  'save-privacy-contact',
+  'save-social-links',
+  'register-payment',
+  'register-firebase',
+  'activate-firebase',
+  'test-authentication',
+  'test-messaging'
+]);
+
 @Injectable({
   providedIn: 'root'
 })
@@ -827,6 +842,20 @@ export class OperatorWorkspaceStore {
   }
 
   clearConfigurationCredentialDrafts(): void {
+    const busyAction = this.busyActionRef();
+    if (
+      busyAction
+      && CONFIGURATION_BUSY_ACTIONS.has(busyAction)
+    ) {
+      /*
+       * Closing or replacing the configuration popup invalidates in-flight
+       * responses. The HTTP request may still complete server-side, but stale
+       * test/save state must never be written back into a later popup session.
+       */
+      this.requestGeneration += 1;
+      this.busyActionRef.set(null);
+      this.feedbackActionRef.set(null);
+    }
     this.configurationDraftRef.update(current => current
       ? {
           ...current,
@@ -842,6 +871,10 @@ export class OperatorWorkspaceStore {
         }
       : current
     );
+    this.configurationAuthenticationTestRef.set(null);
+    this.configurationMessagingTestRef.set(null);
+    this.configurationMessagingDestinationTokenRef.set('');
+    this.clearConfigurationTestFeedback();
   }
 
   setGroupTokenInput(value: string): void {

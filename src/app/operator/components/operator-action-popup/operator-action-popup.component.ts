@@ -857,7 +857,6 @@ export class OperatorActionPopupComponent {
             : 'orange',
         layout: 'action',
         disabled: this.configurationDisabled()
-          || Boolean(configuration?.firebase.active)
           || this.workspace.configurationFirebaseDirty()
           || !configuration?.firebase.messagingCredentialConfigured
           || messagingFeedback !== null,

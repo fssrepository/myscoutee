@@ -239,6 +239,38 @@ describe('OperatorActionPopupComponent payment provider menu', () => {
     actionFixture.destroy();
   });
 
+  it('allows the active saved Firebase revision to be tested again', () => {
+    const base = operatorConfiguration();
+    configuration.set({
+      ...base,
+      firebase: {
+        ...base.firebase,
+        active: true,
+        authenticationCredentialConfigured: true,
+        messagingCredentialConfigured: true
+      }
+    });
+    const actionFixture = TestBed.createComponent(
+      OperatorActionPopupComponent
+    );
+    const componentView = actionFixture.componentInstance as unknown as {
+      configurationFirebaseTestActionItems:
+        Signal<readonly AppMenuItem<string>[]>;
+    };
+
+    expect(
+      componentView.configurationFirebaseTestActionItems()
+        .find(item => item.id === 'operator-test-authentication')
+        ?.disabled
+    ).toBe(false);
+    expect(
+      componentView.configurationFirebaseTestActionItems()
+        .find(item => item.id === 'operator-test-messaging')
+        ?.disabled
+    ).toBe(false);
+    actionFixture.destroy();
+  });
+
   it('scrubs write-only Firebase drafts when the configuration popup closes', () => {
     const fixture = TestBed.createComponent(OperatorActionPopupComponent);
     const componentView = fixture.componentInstance as unknown as {

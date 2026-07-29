@@ -11,6 +11,7 @@ import type {
   OperatorClaimStatusDto,
   OperatorCommunityStatusDto,
   OperatorConfigurationDto,
+  OperatorConfigurationTestResultDto,
   OperatorDeploymentUpdateDto,
   OperatorRevenueDto
 } from '../../../core/contracts/operator.interface';
@@ -468,6 +469,37 @@ describe('OperatorWorkspaceStore', () => {
 
     await vi.advanceTimersByTimeAsync(1000);
 
+    expect(store.configurationAuthenticationFeedback()).toBeNull();
+  });
+
+  it('drops an in-flight Firebase result after the configuration popup ends', async () => {
+    let resolveTest!: (
+      value: OperatorConfigurationTestResultDto
+    ) => void;
+    testConfiguration.mockImplementation(() =>
+      new Promise<OperatorConfigurationTestResultDto>(resolve => {
+        resolveTest = resolve;
+      })
+    );
+    const store = TestBed.inject(OperatorWorkspaceStore);
+
+    const pending = store.testConfiguration(
+      'FIREBASE_AUTHENTICATION'
+    );
+    expect(store.busyAction()).toBe('test-authentication');
+
+    store.clearConfigurationCredentialDrafts();
+    resolveTest({
+      kind: 'FIREBASE_AUTHENTICATION',
+      success: true,
+      message: 'operator.configuration.test.success',
+      testedAt: '2026-07-28T18:00:00.000Z',
+      firebase: null
+    });
+
+    await expect(pending).resolves.toBeNull();
+    expect(store.busyAction()).toBeNull();
+    expect(store.configurationAuthenticationTest()).toBeNull();
     expect(store.configurationAuthenticationFeedback()).toBeNull();
   });
 

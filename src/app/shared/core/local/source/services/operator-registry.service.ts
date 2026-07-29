@@ -1034,11 +1034,15 @@ export class LocalOperatorRegistryService extends LocalRouteDelayService impleme
         );
     const testedAt = new Date().toISOString();
     const firebase = structuredClone(current.configuration.firebase);
-    if (configured && request.kind === 'FIREBASE_AUTHENTICATION') {
-      firebase.authenticationTestedAt = testedAt;
+    if (request.kind === 'FIREBASE_AUTHENTICATION') {
+      firebase.authenticationTestedAt = configured ? testedAt : null;
     }
-    if (configured && request.kind === 'FIREBASE_MESSAGING') {
-      firebase.messagingTestedAt = testedAt;
+    if (request.kind === 'FIREBASE_MESSAGING') {
+      firebase.messagingTestedAt = configured ? testedAt : null;
+    }
+    if (!configured) {
+      firebase.active = false;
+      firebase.activatedAt = null;
     }
     firebase.readyToActivate = Boolean(
       firebase.authenticationTestedAt
