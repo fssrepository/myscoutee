@@ -1,10 +1,15 @@
 import { DOCUMENT } from '@angular/common';
 import { HttpClient, HttpHeaders, HttpParams } from '@angular/common/http';
-import { Injectable, NgZone, computed, inject, signal } from '@angular/core';
+import { Injectable, NgZone, computed, effect, inject, signal } from '@angular/core';
 import { firstValueFrom } from 'rxjs';
 
 import { environment } from '../../../../../environments/environment';
-import { I18nBundleRepository, type StoredI18nBundle } from '../repositories/i18n-bundle.repository';
+import {
+  I18nBundleRepository,
+  type I18nBundleScope,
+  type StoredI18nBundle
+} from '../repositories/i18n-bundle.repository';
+import { SessionService } from './session.service';
 
 interface I18nAssetBundle {
   lang?: string;
@@ -68,6 +73,7 @@ export class I18nService {
   private readonly document = inject(DOCUMENT);
   private readonly zone = inject(NgZone);
   private readonly bundleRepository = inject(I18nBundleRepository);
+  private readonly sessionService = inject(SessionService);
   private readonly currentLanguageSignal = signal(I18nService.DEFAULT_LANGUAGE);
   private readonly messagesSignal = signal<Record<string, string>>({});
   private readonly sourceMessagesSignal = signal<Record<string, string>>({});
@@ -77,6 +83,8 @@ export class I18nService {
   private readonly attributeSources = new WeakMap<Element, Map<string, string>>();
   private domObserver: MutationObserver | null = null;
   private initialized = false;
+  private activeBundleScope = this.resolveBundleScope();
+  private bundleLoadGeneration = 0;
   private scanQueued = false;
   private translatingDom = false;
 
@@ -84,13 +92,24 @@ export class I18nService {
   readonly isDefaultLanguage = computed(() => this.currentLanguageSignal() === I18nService.DEFAULT_LANGUAGE);
   readonly revision = this.revisionSignal.asReadonly();
 
+  constructor() {
+    effect(() => {
+      this.sessionService.session();
+      const nextScope = this.resolveBundleScope();
+      if (!this.initialized || nextScope === this.activeBundleScope) {
+        return;
+      }
+      this.startLanguageLoad(nextScope);
+    });
+  }
+
   initialize(): void {
     if (this.initialized) {
       return;
     }
     this.initialized = true;
     this.installDomObserver();
-    void this.loadPreferredLanguage();
+    this.startLanguageLoad(this.resolveBundleScope());
   }
 
   translate(value: string | null | undefined, fallback?: string | null): string {
@@ -118,11 +137,33 @@ export class I18nService {
     );
   }
 
-  private async loadPreferredLanguage(): Promise<void> {
-    await this.loadDefaultSourceBundle();
+  private startLanguageLoad(scope: I18nBundleScope): void {
+    this.activeBundleScope = scope;
+    const generation = ++this.bundleLoadGeneration;
+    this.currentLanguageSignal.set(I18nService.DEFAULT_LANGUAGE);
+    this.messagesSignal.set({});
+    this.sourceMessagesSignal.set({});
+    this.sourceKeyByTextSignal.set({});
+    this.updateDocumentLanguage(I18nService.DEFAULT_LANGUAGE);
+    this.bumpRevision();
+    this.scheduleDomScan();
+    void this.loadPreferredLanguage(scope, generation);
+  }
+
+  private async loadPreferredLanguage(
+    scope: I18nBundleScope,
+    generation: number
+  ): Promise<void> {
+    await this.loadDefaultSourceBundle(scope, generation);
+    if (!this.isCurrentBundleLoad(scope, generation)) {
+      return;
+    }
 
     const candidates = this.localizedBrowserCandidates();
-    const stored = await this.bundleRepository.firstStoredBundle(candidates);
+    const stored = await this.bundleRepository.firstStoredBundle(scope, candidates);
+    if (!this.isCurrentBundleLoad(scope, generation)) {
+      return;
+    }
     if (stored) {
       this.applyBundle(stored.lang, stored.version, stored.data);
     }
@@ -134,51 +175,97 @@ export class I18nService {
         stored?.lang ?? null,
         stored?.version ?? null
       );
+    if (!this.isCurrentBundleLoad(scope, generation)) {
+      return;
+    }
     if (seed) {
       if (!this.usesHttpBundles()) {
-        await this.bundleRepository.writeStoredBundle(seed);
+        await this.bundleRepository.writeStoredBundle(scope, seed);
+        if (!this.isCurrentBundleLoad(scope, generation)) {
+          return;
+        }
       }
       this.applyBundle(seed.lang, seed.version, seed.data);
     }
-    await this.refreshFromServer(candidates);
+    await this.refreshFromServer(scope, generation, candidates);
   }
 
-  private async loadDefaultSourceBundle(): Promise<void> {
+  private async loadDefaultSourceBundle(
+    scope: I18nBundleScope,
+    generation: number
+  ): Promise<void> {
     const lang = I18nService.DEFAULT_LANGUAGE;
-    const stored = this.usesHttpBundles()
-      ? null
-      : await this.bundleRepository.readStoredBundle(lang);
-    if (stored && Object.keys(stored.data).length > 0) {
-      this.applySourceBundle(stored.data);
+    const assetUrl = I18nService.LOCAL_SEED_ASSETS[lang];
+    const seed = assetUrl
+      ? await this.loadLocalSeedBundle(assetUrl, true)
+      : null;
+    if (!this.isCurrentBundleLoad(scope, generation)) {
+      return;
+    }
+    if (seed && seed.lang === lang && Object.keys(seed.data).length > 0) {
+      this.applySourceBundle(seed.data);
     }
 
-    const assetUrl = I18nService.LOCAL_SEED_ASSETS[lang];
-    if (!assetUrl) {
+    const stored = await this.bundleRepository.readStoredBundle(scope, lang);
+    if (!this.isCurrentBundleLoad(scope, generation)) {
       return;
     }
-    const seed = await this.loadLocalSeedBundle(assetUrl, true);
-    if (!seed || seed.lang !== lang || Object.keys(seed.data).length === 0) {
-      return;
-    }
-    if (stored?.version
+    const storedCanOverrideSeed = stored
       && Object.keys(stored.data).length > 0
-      && this.compareVersions(seed.version, stored.version) <= 0) {
+      && (!seed || this.compareVersions(stored.version, seed.version) >= 0);
+    if (storedCanOverrideSeed) {
+      this.applySourceBundle(stored.data, true);
       return;
     }
-    if (!this.usesHttpBundles()) {
-      await this.bundleRepository.writeStoredBundle(seed);
+    if (!this.usesHttpBundles() && seed) {
+      await this.bundleRepository.writeStoredBundle(scope, seed);
     }
-    this.applySourceBundle(seed.data);
   }
 
-  private async refreshFromServer(candidates: readonly string[]): Promise<void> {
-    if (!this.usesHttpBundles() || candidates.length === 0) {
+  private async refreshFromServer(
+    scope: I18nBundleScope,
+    generation: number,
+    candidates: readonly string[]
+  ): Promise<void> {
+    if (!this.usesHttpBundles()) {
       return;
     }
     const activeLang = this.currentLanguageSignal();
-    const explicitLang = activeLang === I18nService.DEFAULT_LANGUAGE ? candidates[0] : activeLang;
-    const stored = await this.bundleRepository.readStoredBundle(explicitLang);
-    let params = new HttpParams().set('lang', explicitLang);
+    const preferredLang = activeLang === I18nService.DEFAULT_LANGUAGE
+      ? candidates[0] ?? null
+      : activeLang;
+    const requests = [
+      this.refreshLanguageFromServer(
+        scope,
+        generation,
+        I18nService.DEFAULT_LANGUAGE,
+        false
+      )
+    ];
+    if (preferredLang && preferredLang !== I18nService.DEFAULT_LANGUAGE) {
+      requests.push(
+        this.refreshLanguageFromServer(
+          scope,
+          generation,
+          preferredLang,
+          true
+        )
+      );
+    }
+    await Promise.all(requests);
+  }
+
+  private async refreshLanguageFromServer(
+    scope: I18nBundleScope,
+    generation: number,
+    requestedLang: string,
+    activateTranslation: boolean
+  ): Promise<void> {
+    const stored = await this.bundleRepository.readStoredBundle(scope, requestedLang);
+    if (!this.isCurrentBundleLoad(scope, generation)) {
+      return;
+    }
+    let params = new HttpParams().set('lang', requestedLang);
     if (stored?.version) {
       params = params.set('version', stored.version);
     }
@@ -187,35 +274,82 @@ export class I18nService {
       const response = await firstValueFrom(this.http.get<I18nRemoteBundleResponse>(
         `${environment.apiBaseUrl ?? '/api'}/i18n/bundle`,
         {
-          headers: I18nService.REVALIDATE_HEADERS.set('Accept-Language', this.acceptLanguageHeader()),
+          headers: I18nService.REVALIDATE_HEADERS.set(
+            'Accept-Language',
+            this.acceptLanguageHeader()
+          ),
           params
         }
       ));
-      const lang = this.normalizeLanguage(response?.lang ?? explicitLang);
-      if (!lang || lang === I18nService.DEFAULT_LANGUAGE) {
+      if (!this.isCurrentBundleLoad(scope, generation)) {
+        return;
+      }
+      const lang = this.normalizeLanguage(response?.lang ?? requestedLang);
+      if (!lang) {
         return;
       }
       const version = `${response?.version ?? stored?.version ?? ''}`.trim();
       const data = this.normalizeMessages(response?.data ?? null);
-      if (stored?.version && version && this.compareVersions(version, stored.version) < 0) {
+      if (stored?.lang === lang
+        && stored.version
+        && version
+        && this.compareVersions(version, stored.version) < 0) {
         return;
       }
       if (data && Object.keys(data).length > 0) {
         const bundle = { lang, version: version || '0', data, storedAt: Date.now() };
-        await this.bundleRepository.writeStoredBundle(bundle);
-        this.applyBundle(bundle.lang, bundle.version, bundle.data);
+        await this.bundleRepository.writeStoredBundle(scope, bundle);
+        if (!this.isCurrentBundleLoad(scope, generation)) {
+          return;
+        }
+        this.applyServerBundle(bundle, activateTranslation);
         return;
       }
       if (stored && stored.lang === lang && version && version === stored.version) {
-        this.applyBundle(stored.lang, stored.version, stored.data);
+        this.applyServerBundle(stored, activateTranslation);
       }
     } catch {
-      // The static English UI and any stored/local seed bundle remain available.
+      // The cached/static language bundles remain available.
+    }
+  }
+
+  private applyServerBundle(
+    bundle: StoredI18nBundle,
+    activateTranslation: boolean
+  ): void {
+    if (bundle.lang === I18nService.DEFAULT_LANGUAGE) {
+      if (activateTranslation) {
+        this.currentLanguageSignal.set(I18nService.DEFAULT_LANGUAGE);
+        this.messagesSignal.set({});
+        this.updateDocumentLanguage(I18nService.DEFAULT_LANGUAGE);
+      }
+      this.applySourceBundle(bundle.data, true);
+      return;
+    }
+    if (activateTranslation) {
+      this.applyBundle(bundle.lang, bundle.version, bundle.data);
     }
   }
 
   private usesHttpBundles(): boolean {
     return environment.activitiesDataSource === 'http';
+  }
+
+  private resolveBundleScope(): I18nBundleScope {
+    if (!this.usesHttpBundles()) {
+      return 'demo';
+    }
+    return this.sessionService.currentSession()?.kind === 'demo'
+      ? 'demo'
+      : 'real';
+  }
+
+  private isCurrentBundleLoad(
+    scope: I18nBundleScope,
+    generation: number
+  ): boolean {
+    return scope === this.activeBundleScope
+      && generation === this.bundleLoadGeneration;
   }
 
   private async firstLocalSeedBundle(
@@ -273,10 +407,14 @@ export class I18nService {
   private applyBundle(lang: string, version: string, data: Record<string, string>): void {
     const normalizedLang = this.normalizeLanguage(lang);
     if (!normalizedLang || normalizedLang === I18nService.DEFAULT_LANGUAGE) {
+      if (normalizedLang === I18nService.DEFAULT_LANGUAGE && Object.keys(data).length > 0) {
+        this.applySourceBundle(data, true);
+      }
       this.currentLanguageSignal.set(I18nService.DEFAULT_LANGUAGE);
       this.messagesSignal.set({});
       this.updateDocumentLanguage(I18nService.DEFAULT_LANGUAGE);
       this.bumpRevision();
+      this.scheduleDomScan();
       return;
     }
     this.currentLanguageSignal.set(normalizedLang);
@@ -287,9 +425,15 @@ export class I18nService {
     void version;
   }
 
-  private applySourceBundle(data: Record<string, string>): void {
+  private applySourceBundle(
+    data: Record<string, string>,
+    preserveTextAliases = false
+  ): void {
     this.sourceMessagesSignal.set(data);
-    this.sourceKeyByTextSignal.set(this.buildSourceKeyIndex(data));
+    const nextIndex = this.buildSourceKeyIndex(data);
+    this.sourceKeyByTextSignal.set(preserveTextAliases
+      ? { ...this.sourceKeyByTextSignal(), ...nextIndex }
+      : nextIndex);
     this.bumpRevision();
     this.scheduleDomScan();
   }

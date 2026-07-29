@@ -1,6 +1,6 @@
 {
   "lang": "en",
-  "version": "2026.07.29.en.45",
+  "version": "2026.07.29.en.46",
   "messages": {
     "about": "About",
     "accommodation": "Accommodation",
@@ -52,7 +52,7 @@
     "activities.support.case.status.picked": "Picked",
     "activities.support.case.status.solved": "Solved",
     "activities.support.case.status.warned": "Warned",
-    "add.myscoutee.to.your.home.screen": "Add MyScoutee to your home screen",
+    "add.myscoutee.to.your.home.screen": "Add {productName} to your home screen",
     "add.help.section": "Add help section",
     "add.explanation.section": "Add explanation section",
     "add.privacy.section": "Add privacy section",
@@ -1242,7 +1242,7 @@
     "close.articles": "Close articles",
     "footer.connect": "Let's connect",
     "footer.tagline": "Where fast matches turn into real connections.",
-    "install.prompt.description": "Install MyScoutee for quick access from your home screen.",
+    "install.prompt.description": "Install {productName} for quick access from your home screen.",
     "keep.tickets.cached.profile.details.and.chat.notifications.available.with.the.installed.app": "Keep tickets, cached profile details, and chat notifications available with the installed app.",
     "later": "Later",
     "loading.stats": "Loading stats",

@@ -1,6 +1,6 @@
 {
   "lang": "hu",
-  "version": "2026.07.29.hu.45",
+  "version": "2026.07.29.hu.46",
   "messages": {
     "about": "Rólam",
     "accommodation": "Szállás",
@@ -52,7 +52,7 @@
     "activities.support.case.status.picked": "Felvett",
     "activities.support.case.status.solved": "Megoldott",
     "activities.support.case.status.warned": "Figyelmeztetett",
-    "add.myscoutee.to.your.home.screen": "Add hozzá a MyScoutee-t a kezdőképernyőhöz",
+    "add.myscoutee.to.your.home.screen": "{productName} hozzáadása a kezdőképernyőhöz",
     "add.help.section": "Súgó szakasz hozzáadása",
     "add.explanation.section": "Magyarázat szakasz hozzáadása",
     "add.privacy.section": "Adatvédelmi szakasz hozzáadása",
@@ -1242,7 +1242,7 @@
     "close.articles": "Cikkek bezárása",
     "footer.connect": "Kapcsolódjunk",
     "footer.tagline": "Ahol a gyors találatok valódi kapcsolódásokká válnak.",
-    "install.prompt.description": "Telepítsd a MyScoutee-t, hogy gyorsan elérd a kezdőképernyőről.",
+    "install.prompt.description": "{productName} telepítésével gyorsan elérheted az alkalmazást a kezdőképernyőről.",
     "keep.tickets.cached.profile.details.and.chat.notifications.available.with.the.installed.app": "A jegyek, gyorsítótárazott profilrészletek és csevegési értesítések maradjanak elérhetők a telepített appban.",
     "later": "Később",
     "loading.stats": "Statisztika betöltése",
