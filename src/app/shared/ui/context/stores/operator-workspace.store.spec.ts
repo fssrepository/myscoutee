@@ -4,6 +4,7 @@ import { TestBed } from '@angular/core/testing';
 import { OperatorRegistryService } from '../../../core/base/services/operator-registry.service';
 import { DeploymentConfigurationService } from '../../../core/base/services/deployment-configuration.service';
 import { FirebaseAppService } from '../../../core/base/services/firebase-app.service';
+import { FirebaseMessagingService } from '../../../core/base/services/firebase-messaging.service';
 import { SessionService } from '../../../core/base/services/session.service';
 import type {
   OperatorClaimRequestDto,
@@ -31,6 +32,8 @@ describe('OperatorWorkspaceStore', () => {
   const requeueRevenueReport = vi.fn();
   const testConfiguration = vi.fn();
   const refreshFirebaseApp = vi.fn();
+  const createBrowserReadinessLease = vi.fn();
+  const releaseBrowserReadinessLease = vi.fn();
   const applyMutation = vi.fn();
   const invalidate = vi.fn();
   const session = signal({
@@ -69,6 +72,9 @@ describe('OperatorWorkspaceStore', () => {
     testConfiguration.mockReset();
     refreshFirebaseApp.mockReset();
     refreshFirebaseApp.mockResolvedValue(null);
+    createBrowserReadinessLease.mockReset();
+    releaseBrowserReadinessLease.mockReset();
+    releaseBrowserReadinessLease.mockResolvedValue(undefined);
     applyMutation.mockReset();
     invalidate.mockReset();
     activeUserProfile.set({
@@ -112,6 +118,10 @@ describe('OperatorWorkspaceStore', () => {
         {
           provide: FirebaseAppService,
           useValue: { refreshFirebaseApp }
+        },
+        {
+          provide: FirebaseMessagingService,
+          useValue: { createBrowserReadinessLease }
         },
         {
           provide: SessionService,
@@ -421,7 +431,33 @@ describe('OperatorWorkspaceStore', () => {
     expect(store.configurationAuthenticationFeedback()).toBeNull();
   });
 
-  it('keeps the messaging destination transient and sends it only with the test', async () => {
+  it('sends current browser readiness proof and releases its isolated token', async () => {
+    const configured = operatorConfiguration();
+    configured.firebase = {
+      ...configured.firebase,
+      projectId: 'community-project',
+      messagingCredentialConfigured: true,
+      publicConfiguration: {
+        revision: 7,
+        apiKey: 'browser-api-key',
+        authDomain: 'community-project.firebaseapp.com',
+        projectId: 'community-project',
+        storageBucket: 'community-project.firebasestorage.app',
+        messagingSenderId: '123456789',
+        appId: '1:123456789:web:operator',
+        measurementId: null,
+        vapidKey: 'public-vapid-key'
+      }
+    };
+    loadConfiguration.mockResolvedValue(configured);
+    createBrowserReadinessLease.mockResolvedValue({
+      proof: {
+        token: 'browser-generated-token',
+        configurationRevision: 7,
+        appId: '1:123456789:web:operator'
+      },
+      release: releaseBrowserReadinessLease
+    });
     testConfiguration.mockResolvedValue({
       kind: 'FIREBASE_MESSAGING',
       success: true,
@@ -430,19 +466,63 @@ describe('OperatorWorkspaceStore', () => {
       firebase: null
     });
     const store = TestBed.inject(OperatorWorkspaceStore);
+    await store.loadConfiguration();
 
     store.setConfigurationMessagingDestinationToken(' registration-token ');
     await store.testConfiguration('FIREBASE_MESSAGING');
 
     expect(testConfiguration).toHaveBeenCalledWith({
       kind: 'FIREBASE_MESSAGING',
-      destinationToken: 'registration-token'
+      destinationToken: 'registration-token',
+      browserReadinessToken: 'browser-generated-token',
+      browserConfigurationRevision: 7,
+      browserAppId: '1:123456789:web:operator'
     });
+    expect(releaseBrowserReadinessLease).toHaveBeenCalledOnce();
     expect(store.configurationMessagingTest()?.success).toBe(true);
 
     store.clearFeedback();
 
     expect(store.configurationMessagingDestinationToken()).toBe('');
+  });
+
+  it('fails closed through the backend when browser readiness cannot be created', async () => {
+    const configured = operatorConfiguration();
+    configured.firebase = {
+      ...configured.firebase,
+      projectId: 'community-project',
+      messagingCredentialConfigured: true,
+      publicConfiguration: {
+        ...configured.firebase.publicConfiguration,
+        revision: 8,
+        projectId: 'community-project',
+        appId: '1:123456789:web:operator',
+        vapidKey: 'public-vapid-key'
+      }
+    };
+    loadConfiguration.mockResolvedValue(configured);
+    createBrowserReadinessLease.mockRejectedValue(
+      new Error('operator.configuration.test.failed')
+    );
+    testConfiguration.mockResolvedValue({
+      kind: 'FIREBASE_MESSAGING',
+      success: false,
+      message: 'operator.configuration.test.failed',
+      testedAt: '2026-07-28T18:05:00.000Z',
+      firebase: {
+        ...configured.firebase,
+        messagingTestedAt: null
+      }
+    });
+    const store = TestBed.inject(OperatorWorkspaceStore);
+    await store.loadConfiguration();
+
+    await store.testConfiguration('FIREBASE_MESSAGING');
+
+    expect(testConfiguration).toHaveBeenCalledWith({
+      kind: 'FIREBASE_MESSAGING'
+    });
+    expect(store.configurationMessagingTest()?.success).toBe(false);
   });
 
   it('applies authoritative Firebase deactivation from a failed backend test', async () => {

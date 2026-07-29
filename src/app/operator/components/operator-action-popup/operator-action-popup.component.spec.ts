@@ -22,16 +22,20 @@ describe('OperatorActionPopupComponent payment provider menu', () => {
   const configurationDraft = signal<OperatorConfigurationSaveRequestDto>(
     operatorConfigurationDraft('stripe')
   );
+  const activePopup =
+    signal<'configuration' | 'community' | null>('configuration');
   const closePopup = vi.fn();
   const clearFeedback = vi.fn();
   const clearConfigurationCredentialDrafts = vi.fn();
 
   beforeEach(() => {
     closePopup.mockReset();
+    closePopup.mockImplementation(() => activePopup.set(null));
     clearFeedback.mockReset();
     clearConfigurationCredentialDrafts.mockReset();
     configuration.set(operatorConfiguration());
     configurationDraft.set(operatorConfigurationDraft('stripe'));
+    activePopup.set('configuration');
     TestBed.configureTestingModule({
       imports: [
         AppMenuComponent,
@@ -41,7 +45,7 @@ describe('OperatorActionPopupComponent payment provider menu', () => {
         {
           provide: OperatorMenuStore,
           useValue: {
-            activePopup: signal('configuration').asReadonly(),
+            activePopup: activePopup.asReadonly(),
             closePopup
           }
         },
@@ -171,11 +175,42 @@ describe('OperatorActionPopupComponent payment provider menu', () => {
     closePopup.mockClear();
 
     componentView.close();
+    TestBed.flushEffects();
 
     expect(clearConfigurationCredentialDrafts).toHaveBeenCalledOnce();
     expect(clearFeedback).toHaveBeenCalledOnce();
     expect(closePopup).toHaveBeenCalledOnce();
     fixture.destroy();
+  });
+
+  it('scrubs write-only Firebase drafts when the popup switches kind', () => {
+    const fixture = TestBed.createComponent(OperatorActionPopupComponent);
+    clearConfigurationCredentialDrafts.mockClear();
+
+    activePopup.set('community');
+    TestBed.flushEffects();
+
+    expect(clearConfigurationCredentialDrafts).toHaveBeenCalledOnce();
+    fixture.destroy();
+  });
+
+  it('scrubs write-only Firebase drafts when the configuration popup is destroyed', () => {
+    const fixture = TestBed.createComponent(OperatorActionPopupComponent);
+    clearConfigurationCredentialDrafts.mockClear();
+
+    fixture.destroy();
+
+    expect(clearConfigurationCredentialDrafts).toHaveBeenCalledOnce();
+  });
+
+  it('does not scrub Firebase drafts when a different popup is destroyed', () => {
+    activePopup.set('community');
+    const fixture = TestBed.createComponent(OperatorActionPopupComponent);
+    clearConfigurationCredentialDrafts.mockClear();
+
+    fixture.destroy();
+
+    expect(clearConfigurationCredentialDrafts).not.toHaveBeenCalled();
   });
 
   it('uses the generic payment icon only when a provider has no logo', () => {

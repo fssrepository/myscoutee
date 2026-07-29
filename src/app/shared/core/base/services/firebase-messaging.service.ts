@@ -168,10 +168,15 @@ export class FirebaseMessagingService {
         : {})
     };
     const sequence = ++FirebaseMessagingService.readinessAppSequence;
-    const app = initializeApp(
-      options,
-      `myscoutee-messaging-readiness-${Date.now()}-${sequence}`
-    );
+    let app: FirebaseApp;
+    try {
+      app = initializeApp(
+        options,
+        `myscoutee-messaging-readiness-${Date.now()}-${sequence}`
+      );
+    } catch {
+      throw this.browserReadinessError();
+    }
     let messaging: Messaging | null = null;
     try {
       messaging = getMessaging(app);
