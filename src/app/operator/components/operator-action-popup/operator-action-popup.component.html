@@ -204,6 +204,163 @@
                     </p>
                   }
 
+                  @if (workspace.tlsConfiguration(); as tlsConfiguration) {
+                    @if (workspace.tlsConfigurationDraft(); as tlsDraft) {
+                      <section
+                        class="operator-action-popup__configuration-group"
+                        data-palette="mint"
+                      >
+                        <header>
+                          <span>
+                            <small>{{ 'operator.configuration.tls.eyebrow' | i18n }}</small>
+                            <strong>{{ 'operator.configuration.tls' | i18n }}</strong>
+                          </span>
+                          <app-menu
+                            class="operator-action-popup__header-toggle"
+                            kind="inline"
+                            layout="row"
+                            [items]="configurationTlsEnabledItems()"
+                            (itemSelect)="onAction($event)"
+                          ></app-menu>
+                        </header>
+
+                        @if (tlsConfiguration.capability !== 'AVAILABLE') {
+                          <p class="operator-action-popup__result is-error" role="alert">
+                            <mat-icon>cloud_off</mat-icon>
+                            <span>
+                              {{ (tlsConfiguration.unavailableReason
+                                || 'operator.configuration.tls.backend.unavailable') | i18n }}
+                            </span>
+                          </p>
+                        }
+
+                        @if (tlsDraft.enabled) {
+                          <p class="operator-action-popup__hint">
+                            {{ 'operator.configuration.tls.guidance' | i18n }}
+                          </p>
+                          <div class="operator-action-popup__tls-grid">
+                            <label class="operator-action-popup__field">
+                              <span>{{ 'operator.configuration.tls.domain' | i18n }}</span>
+                              <input
+                                type="text"
+                                maxlength="253"
+                                autocomplete="url"
+                                autocapitalize="off"
+                                spellcheck="false"
+                                placeholder="app.example.com"
+                                [ngModel]="tlsDraft.domain"
+                                (ngModelChange)="workspace.setTlsConfiguration({ domain: $event })"
+                                [disabled]="configurationTlsDisabled()"
+                              />
+                            </label>
+
+                            <div class="operator-action-popup__select-field">
+                              <span>{{ 'operator.configuration.tls.mode' | i18n }}</span>
+                              <app-menu
+                                kind="select"
+                                [trigger]="configurationTlsModeTrigger()"
+                                [items]="configurationTlsModeItems()"
+                                (itemSelect)="onAction($event)"
+                              ></app-menu>
+                            </div>
+
+                            @if (tlsDraft.mode === 'AUTOMATIC') {
+                              <label class="operator-action-popup__field">
+                                <span>{{ 'operator.configuration.tls.contact.email' | i18n }}</span>
+                                <input
+                                  type="email"
+                                  maxlength="254"
+                                  autocomplete="email"
+                                  [ngModel]="tlsDraft.contactEmail"
+                                  (ngModelChange)="workspace.setTlsConfiguration({ contactEmail: $event })"
+                                  [disabled]="configurationTlsDisabled()"
+                                />
+                              </label>
+                              <app-menu
+                                class="operator-action-popup__tls-renew-toggle"
+                                kind="inline"
+                                layout="row"
+                                [items]="configurationTlsAutoRenewItems()"
+                                (itemSelect)="onAction($event)"
+                              ></app-menu>
+                            } @else {
+                              <label class="operator-action-popup__field is-wide">
+                                <span>{{ 'operator.configuration.tls.certificate' | i18n }}</span>
+                                <textarea
+                                  rows="5"
+                                  maxlength="131072"
+                                  autocomplete="off"
+                                  spellcheck="false"
+                                  [placeholder]="tlsConfiguration.certificateConfigured
+                                    && tlsConfiguration.mode === 'MANUAL'
+                                    && tlsConfiguration.domain === tlsDraft.domain.trim().toLowerCase()
+                                    ? ('operator.configuration.tls.credential.configured' | i18n)
+                                    : ('operator.configuration.tls.certificate.placeholder' | i18n)"
+                                  [ngModel]="tlsDraft.certificate"
+                                  (ngModelChange)="workspace.setTlsConfiguration({ certificate: $event })"
+                                  [disabled]="configurationTlsDisabled()"
+                                ></textarea>
+                              </label>
+                              <label class="operator-action-popup__field is-wide">
+                                <span>{{ 'operator.configuration.tls.private.key' | i18n }}</span>
+                                <textarea
+                                  rows="5"
+                                  maxlength="131072"
+                                  autocomplete="new-password"
+                                  spellcheck="false"
+                                  [placeholder]="tlsConfiguration.certificateConfigured
+                                    && tlsConfiguration.mode === 'MANUAL'
+                                    && tlsConfiguration.domain === tlsDraft.domain.trim().toLowerCase()
+                                    ? ('operator.configuration.tls.credential.configured' | i18n)
+                                    : ('operator.configuration.tls.private.key.placeholder' | i18n)"
+                                  [ngModel]="tlsDraft.privateKey"
+                                  (ngModelChange)="workspace.setTlsConfiguration({ privateKey: $event })"
+                                  [disabled]="configurationTlsDisabled()"
+                                ></textarea>
+                              </label>
+                            }
+                          </div>
+
+                          @if (tlsConfiguration.certificateConfigured) {
+                            <p class="operator-action-popup__hint">
+                              {{ 'operator.configuration.tls.certificate.configured' | i18n }}
+                              @if (tlsConfiguration.certificateExpiresAt) {
+                                · {{ formatDate(tlsConfiguration.certificateExpiresAt) }}
+                              }
+                            </p>
+                          }
+
+                        }
+
+                        <app-menu
+                          class="operator-action-popup__section-actions operator-action-popup__section-actions--tls"
+                          kind="inline"
+                          layout="row"
+                          [items]="configurationTlsActionItems()"
+                          (itemSelect)="onAction($event)"
+                        ></app-menu>
+
+                        @if (
+                          workspace.feedbackAction() === 'save-tls'
+                          || workspace.feedbackAction() === 'test-tls-domain'
+                          || workspace.feedbackAction() === 'test-tls-certificate'
+                        ) {
+                          @if (workspace.error()) {
+                            <p class="operator-action-popup__result is-error" role="alert">
+                              <mat-icon>error_outline</mat-icon>
+                              <span>{{ workspace.error() | i18n }}</span>
+                            </p>
+                          } @else if (workspace.notice()) {
+                            <p class="operator-action-popup__result is-success" role="status">
+                              <mat-icon>check_circle</mat-icon>
+                              <span>{{ workspace.notice() | i18n }}</span>
+                            </p>
+                          }
+                        }
+                      </section>
+                    }
+                  }
+
                   <section
                     class="operator-action-popup__configuration-group"
                     data-palette="violet"

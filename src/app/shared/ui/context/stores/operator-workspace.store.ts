@@ -30,7 +30,11 @@ import type {
   OperatorRevenueReportPageDto,
   OperatorRevenueSyncDto,
   OperatorSettlementFilters,
-  OperatorSettlementPageDto
+  OperatorSettlementPageDto,
+  OperatorTlsConfigurationDto,
+  OperatorTlsConfigurationUpdateDto,
+  OperatorTlsJobDto,
+  OperatorTlsTestKind
 } from '../../../core/contracts/operator.interface';
 import { OperatorLeaderboardStore } from './operator-leaderboard.store';
 import { UserProfileStore } from './user-profile.store';
@@ -56,6 +60,9 @@ export type OperatorWorkspaceBusyAction =
   | 'activate-firebase'
   | 'test-authentication'
   | 'test-messaging'
+  | 'save-tls'
+  | 'test-tls-domain'
+  | 'test-tls-certificate'
   | 'load-community'
   | 'set-community'
   | null;
@@ -74,7 +81,10 @@ const CONFIGURATION_BUSY_ACTIONS = new Set<
   'register-firebase',
   'activate-firebase',
   'test-authentication',
-  'test-messaging'
+  'test-messaging',
+  'save-tls',
+  'test-tls-domain',
+  'test-tls-certificate'
 ]);
 
 @Injectable({
@@ -98,6 +108,11 @@ export class OperatorWorkspaceStore {
   private readonly configurationRef = signal<OperatorConfigurationDto | null>(null);
   private readonly configurationDraftRef =
     signal<OperatorConfigurationSaveRequestDto | null>(null);
+  private readonly tlsConfigurationRef =
+    signal<OperatorTlsConfigurationDto | null>(null);
+  private readonly tlsConfigurationDraftRef =
+    signal<OperatorTlsConfigurationUpdateDto | null>(null);
+  private readonly tlsJobRef = signal<OperatorTlsJobDto | null>(null);
   private readonly configurationAdminEmailsInputRef = signal('');
   private readonly configurationAuthenticationTestRef =
     signal<OperatorConfigurationTestResultDto | null>(null);
@@ -135,6 +150,9 @@ export class OperatorWorkspaceStore {
   readonly deploymentUpdate = this.deploymentUpdateRef.asReadonly();
   readonly configuration = this.configurationRef.asReadonly();
   readonly configurationDraft = this.configurationDraftRef.asReadonly();
+  readonly tlsConfiguration = this.tlsConfigurationRef.asReadonly();
+  readonly tlsConfigurationDraft = this.tlsConfigurationDraftRef.asReadonly();
+  readonly tlsJob = this.tlsJobRef.asReadonly();
   readonly configurationAdminEmailsInput =
     this.configurationAdminEmailsInputRef.asReadonly();
   readonly configurationAuthenticationTest =
@@ -291,6 +309,32 @@ export class OperatorWorkspaceStore {
     this.configurationDraftRef()?.payment.providerId
     && this.configurationPaymentValidationKey() === null
   ));
+  readonly tlsConfigurationReady = computed(() => {
+    const draft = this.tlsConfigurationDraftRef();
+    if (!draft || !draft.enabled) {
+      return Boolean(draft);
+    }
+    if (!/^(?=.{1,253}$)(?![.-])(?:[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?\.)+[a-z](?:[a-z0-9-]{0,61}[a-z0-9])?$/i
+      .test(draft.domain.trim())) {
+      return false;
+    }
+    if (
+      draft.mode === 'AUTOMATIC'
+      && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(draft.contactEmail.trim())
+    ) {
+      return false;
+    }
+    const installed = this.tlsConfigurationRef();
+    const reusableManualCertificate = installed?.certificateConfigured === true
+      && installed.mode === 'MANUAL'
+      && installed.domain.trim().toLowerCase()
+        === draft.domain.trim().toLowerCase();
+    return draft.mode !== 'MANUAL'
+      || Boolean(
+        (draft.certificate.trim() && draft.privateKey.trim())
+        || reusableManualCertificate
+      );
+  });
 
   constructor() {
     effect(() => {
@@ -460,17 +504,108 @@ export class OperatorWorkspaceStore {
   async loadConfiguration(): Promise<OperatorConfigurationDto | null> {
     const result = await this.run(
       'load-configuration',
-      () => this.service.loadConfiguration()
+      async () => {
+        const [configuration, tlsConfiguration] = await Promise.all([
+          this.service.loadConfiguration(),
+          Promise.resolve()
+            .then(() => this.service.loadTlsConfiguration())
+            .catch(() => null)
+        ]);
+        return { configuration, tlsConfiguration };
+      }
     );
     if (result) {
-      this.configurationRef.set(result);
-      this.configurationDraftRef.set(this.configurationDraftFrom(result));
-      this.configurationAdminEmailsInputRef.set(
-        OperatorConfigurationMapper.adminEmailInput(result.adminEmails)
+      this.configurationRef.set(result.configuration);
+      this.configurationDraftRef.set(
+        this.configurationDraftFrom(result.configuration)
       );
-      this.deploymentConfiguration.applyBranding(result.branding);
-      this.deploymentConfiguration.applySocialLinks(result.socialLinks);
-      this.deploymentConfiguration.applyPrivacyContact(result.privacyContact);
+      this.configurationAdminEmailsInputRef.set(
+        OperatorConfigurationMapper.adminEmailInput(
+          result.configuration.adminEmails
+        )
+      );
+      this.deploymentConfiguration.applyBranding(result.configuration.branding);
+      this.deploymentConfiguration.applySocialLinks(
+        result.configuration.socialLinks
+      );
+      this.deploymentConfiguration.applyPrivacyContact(
+        result.configuration.privacyContact
+      );
+      if (result.tlsConfiguration) {
+        this.tlsConfigurationRef.set(result.tlsConfiguration);
+        this.tlsConfigurationDraftRef.set(
+          this.tlsDraftFrom(result.tlsConfiguration)
+        );
+      }
+    }
+    return result?.configuration ?? null;
+  }
+
+  setTlsConfiguration(
+    patch: Partial<OperatorTlsConfigurationUpdateDto>
+  ): void {
+    this.tlsConfigurationDraftRef.update(current => current
+      ? {
+          ...current,
+          ...patch,
+          ...(patch.mode === 'MANUAL' ? { autoRenew: false } : {})
+        }
+      : current
+    );
+  }
+
+  async testTlsConfiguration(
+    kind: OperatorTlsTestKind
+  ): Promise<OperatorTlsJobDto | null> {
+    const draft = this.tlsConfigurationDraftRef();
+    if (!draft || !this.tlsConfigurationReady()) {
+      this.errorRef.set('operator.configuration.tls.validation.invalid');
+      return null;
+    }
+    const action = kind === 'DOMAIN'
+      ? 'test-tls-domain'
+      : 'test-tls-certificate';
+    const result = await this.run(
+      action,
+      () => this.service.testTlsConfiguration({
+        kind,
+        configuration: structuredClone(draft)
+      })
+    );
+    if (result) {
+      this.tlsJobRef.set(result);
+      this.noticeRef.set(result.message);
+    }
+    return result;
+  }
+
+  async saveTlsConfiguration(): Promise<OperatorTlsJobDto | null> {
+    const draft = this.tlsConfigurationDraftRef();
+    if (!draft || !this.tlsConfigurationReady()) {
+      this.errorRef.set('operator.configuration.tls.validation.invalid');
+      return null;
+    }
+    const result = await this.run(
+      'save-tls',
+      () => this.service.saveTlsConfiguration(structuredClone(draft))
+    );
+    if (result) {
+      this.tlsJobRef.set(result);
+      const configuration = result.configuration
+        ?? (result.phase === 'COMPLETED'
+          ? await this.service.loadTlsConfiguration().catch(() => null)
+          : null);
+      if (configuration) {
+        this.tlsConfigurationRef.set(configuration);
+        this.tlsConfigurationDraftRef.set(this.tlsDraftFrom(configuration));
+        this.noticeRef.set('operator.configuration.tls.saved');
+      } else {
+        this.tlsConfigurationDraftRef.update(current => current
+          ? { ...current, certificate: '', privateKey: '' }
+          : current
+        );
+        this.noticeRef.set(result.message);
+      }
     }
     return result;
   }
@@ -913,6 +1048,14 @@ export class OperatorWorkspaceStore {
         }
       : current
     );
+    this.tlsConfigurationDraftRef.update(current => current
+      ? {
+          ...current,
+          certificate: '',
+          privateKey: ''
+        }
+      : current
+    );
     this.configurationAuthenticationTestRef.set(null);
     this.configurationMessagingTestRef.set(null);
     this.configurationMessagingDestinationTokenRef.set('');
@@ -1143,6 +1286,9 @@ export class OperatorWorkspaceStore {
     this.deploymentUpdateRef.set(null);
     this.configurationRef.set(null);
     this.configurationDraftRef.set(null);
+    this.tlsConfigurationRef.set(null);
+    this.tlsConfigurationDraftRef.set(null);
+    this.tlsJobRef.set(null);
     this.configurationAdminEmailsInputRef.set('');
     this.configurationAuthenticationTestRef.set(null);
     this.configurationMessagingTestRef.set(null);
@@ -1220,6 +1366,21 @@ export class OperatorWorkspaceStore {
         authenticationCredential: '',
         messagingCredential: ''
       }
+    };
+  }
+
+  private tlsDraftFrom(
+    configuration: OperatorTlsConfigurationDto
+  ): OperatorTlsConfigurationUpdateDto {
+    return {
+      enabled: configuration.enabled,
+      mode: configuration.mode,
+      domain: configuration.domain,
+      contactEmail: configuration.contactEmail,
+      autoRenew: configuration.mode === 'AUTOMATIC'
+        && configuration.autoRenew,
+      certificate: '',
+      privateKey: ''
     };
   }
 

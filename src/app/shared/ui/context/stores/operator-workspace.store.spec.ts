@@ -26,6 +26,9 @@ describe('OperatorWorkspaceStore', () => {
   const loadDeploymentUpdate = vi.fn();
   const loadRevenue = vi.fn();
   const loadConfiguration = vi.fn();
+  const loadTlsConfiguration = vi.fn();
+  const saveTlsConfiguration = vi.fn();
+  const testTlsConfiguration = vi.fn();
   const loadCommunityStatus = vi.fn();
   const saveConfiguration = vi.fn();
   const synchronizeRevenue = vi.fn();
@@ -67,6 +70,21 @@ describe('OperatorWorkspaceStore', () => {
     loadDeploymentUpdate.mockReset();
     loadRevenue.mockReset();
     loadConfiguration.mockReset();
+    loadTlsConfiguration.mockReset().mockResolvedValue({
+      capability: 'AVAILABLE',
+      unavailableReason: null,
+      enabled: false,
+      mode: 'AUTOMATIC',
+      domain: '',
+      contactEmail: '',
+      autoRenew: true,
+      certificateConfigured: false,
+      certificateIssuer: null,
+      certificateExpiresAt: null,
+      updatedAt: null
+    });
+    saveTlsConfiguration.mockReset();
+    testTlsConfiguration.mockReset();
     loadCommunityStatus.mockReset();
     saveConfiguration.mockReset();
     synchronizeRevenue.mockReset();
@@ -111,6 +129,9 @@ describe('OperatorWorkspaceStore', () => {
             loadClaimStatus,
             loadDeploymentUpdate,
             loadConfiguration,
+            loadTlsConfiguration,
+            saveTlsConfiguration,
+            testTlsConfiguration,
             loadCommunityStatus,
             saveConfiguration,
             loadRevenue,
@@ -154,6 +175,52 @@ describe('OperatorWorkspaceStore', () => {
         }
       ]
     });
+  });
+
+  it('keeps HTTPS toggles in the draft until the TLS block is saved', async () => {
+    const workspace = TestBed.inject(OperatorWorkspaceStore);
+    loadConfiguration.mockResolvedValue(operatorConfiguration());
+    await workspace.loadConfiguration();
+
+    workspace.setTlsConfiguration({
+      enabled: true,
+      domain: 'app.example.test',
+      contactEmail: 'operator@example.test',
+      autoRenew: false
+    });
+
+    expect(saveTlsConfiguration).not.toHaveBeenCalled();
+    saveTlsConfiguration.mockResolvedValue({
+      jobId: 'tls_0123456789abcdef0123456789abcdef',
+      phase: 'COMPLETED',
+      percent: 100,
+      message: 'operator.configuration.tls.saved',
+      updatedAt: '2026-07-29T18:00:00.000Z',
+      configuration: {
+        capability: 'AVAILABLE',
+        unavailableReason: null,
+        enabled: true,
+        mode: 'AUTOMATIC',
+        domain: 'app.example.test',
+        contactEmail: 'operator@example.test',
+        autoRenew: false,
+        certificateConfigured: true,
+        certificateIssuer: 'Let’s Encrypt',
+        certificateExpiresAt: '2026-10-27T18:00:00.000Z',
+        updatedAt: '2026-07-29T18:00:00.000Z'
+      }
+    });
+
+    await workspace.saveTlsConfiguration();
+
+    expect(saveTlsConfiguration).toHaveBeenCalledWith(
+      expect.objectContaining({
+        enabled: true,
+        domain: 'app.example.test',
+        autoRenew: false
+      })
+    );
+    expect(workspace.tlsConfiguration()?.enabled).toBe(true);
   });
 
   afterEach(() => {

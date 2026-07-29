@@ -5,6 +5,8 @@ import { I18nService } from '../../../shared/core/base/services/i18n.service';
 import type {
   OperatorConfigurationDto,
   OperatorConfigurationSaveRequestDto,
+  OperatorTlsConfigurationDto,
+  OperatorTlsConfigurationUpdateDto,
   OperatorSettlementDto
 } from '../../../shared/core/contracts/operator.interface';
 import {
@@ -23,6 +25,29 @@ describe('OperatorActionPopupComponent payment provider menu', () => {
   const configurationDraft = signal<OperatorConfigurationSaveRequestDto>(
     operatorConfigurationDraft('stripe')
   );
+  const tlsConfiguration = signal<OperatorTlsConfigurationDto>({
+    capability: 'AVAILABLE',
+    unavailableReason: null,
+    enabled: false,
+    mode: 'AUTOMATIC',
+    domain: '',
+    contactEmail: '',
+    autoRenew: true,
+    certificateConfigured: false,
+    certificateIssuer: null,
+    certificateExpiresAt: null,
+    updatedAt: null
+  });
+  const tlsConfigurationDraft = signal<OperatorTlsConfigurationUpdateDto>({
+    enabled: false,
+    mode: 'AUTOMATIC',
+    domain: '',
+    contactEmail: '',
+    autoRenew: true,
+    certificate: '',
+    privateKey: ''
+  });
+  const busyAction = signal<string | null>(null);
   const activePopup =
     signal<'configuration' | 'community' | null>('configuration');
   const closePopup = vi.fn();
@@ -37,6 +62,16 @@ describe('OperatorActionPopupComponent payment provider menu', () => {
     configuration.set(operatorConfiguration());
     configurationDraft.set(operatorConfigurationDraft('stripe'));
     activePopup.set('configuration');
+    busyAction.set(null);
+    tlsConfigurationDraft.set({
+      enabled: false,
+      mode: 'AUTOMATIC',
+      domain: '',
+      contactEmail: '',
+      autoRenew: true,
+      certificate: '',
+      privateKey: ''
+    });
     TestBed.configureTestingModule({
       imports: [
         AppMenuComponent,
@@ -59,9 +94,13 @@ describe('OperatorActionPopupComponent payment provider menu', () => {
         {
           provide: OperatorWorkspaceStore,
           useValue: {
-            busyAction: signal(null).asReadonly(),
+            busyAction: busyAction.asReadonly(),
             configuration: configuration.asReadonly(),
             configurationDraft: configurationDraft.asReadonly(),
+            tlsConfiguration: tlsConfiguration.asReadonly(),
+            tlsConfigurationDraft: tlsConfigurationDraft.asReadonly(),
+            tlsConfigurationReady: signal(true).asReadonly(),
+            setTlsConfiguration: vi.fn(),
             configurationBrandingReady: signal(true).asReadonly(),
             configurationPaymentReady: signal(true).asReadonly(),
             configurationFirebaseDirty: signal(false).asReadonly(),
@@ -76,7 +115,11 @@ describe('OperatorActionPopupComponent payment provider menu', () => {
             configurationAuthenticationFeedback: signal(null).asReadonly(),
             configurationMessagingFeedback: signal(null).asReadonly(),
             configurationMessagingDestinationToken: signal('').asReadonly(),
-            setConfigurationMessagingDestinationToken: vi.fn()
+            setConfigurationMessagingDestinationToken: vi.fn(),
+            error: signal('').asReadonly(),
+            notice: signal('').asReadonly(),
+            community: signal(null).asReadonly(),
+            loadCommunityStatus: vi.fn().mockResolvedValue(null)
           }
         },
         {
@@ -171,6 +214,43 @@ describe('OperatorActionPopupComponent payment provider menu', () => {
       rowImages[1]?.closest('.app-menu__item')
         ?.classList.contains('app-menu__palette--blue')
     ).toBe(true);
+  });
+
+  it('keeps TLS toggles as draft state and gives Save the standard delayed ring', () => {
+    tlsConfigurationDraft.update(current => ({
+      ...current,
+      enabled: true,
+      domain: 'app.example.test',
+      contactEmail: 'operator@example.test'
+    }));
+    busyAction.set('save-tls');
+    const actionFixture = TestBed.createComponent(OperatorActionPopupComponent);
+    const componentView = actionFixture.componentInstance as unknown as {
+      configurationTlsEnabledItems:
+        Signal<readonly AppMenuItem<string>[]>;
+      configurationTlsActionItems:
+        Signal<readonly AppMenuItem<string>[]>;
+    };
+
+    expect(componentView.configurationTlsEnabledItems()[0]).toEqual(
+      expect.objectContaining({ checked: true, active: true })
+    );
+    expect(
+      componentView.configurationTlsActionItems()
+        .find(item => item.id === 'operator-save-tls')
+        ?.progress
+    ).toEqual({ state: 'loading', durationMs: 3000 });
+    busyAction.set(null);
+    tlsConfigurationDraft.update(current => ({
+      ...current,
+      enabled: false
+    }));
+    expect(
+      componentView.configurationTlsActionItems()
+        .find(item => item.id === 'operator-save-tls')
+        ?.disabled
+    ).toBe(false);
+    actionFixture.destroy();
   });
 
   it('keeps the privacy contact editor distinct and without an inner title', () => {

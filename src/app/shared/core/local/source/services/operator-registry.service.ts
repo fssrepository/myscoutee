@@ -19,6 +19,10 @@ import type {
   OperatorConfigurationSaveRequestDto,
   OperatorConfigurationTestRequestDto,
   OperatorConfigurationTestResultDto,
+  OperatorTlsConfigurationDto,
+  OperatorTlsConfigurationUpdateDto,
+  OperatorTlsJobDto,
+  OperatorTlsTestRequestDto,
   OperatorDeploymentUpdateDto,
   OperatorDeploymentUpdatePhase,
   OperatorDeploymentUpdateProgressDto,
@@ -51,6 +55,7 @@ import {
   validateOperatorRegistryScope
 } from '../../../base/operator-registry-candidate';
 import { LocalOperatorRegistryMapper } from '../mappers/operator-registry.mapper';
+import { LocalOperatorTlsMapper } from '../mappers/operator-tls.mapper';
 import { LocalOperatorRegistryRepository } from '../repositories/operator-registry.repository';
 import type {
   OperatorLedgerNodeRecord,
@@ -827,6 +832,71 @@ export class LocalOperatorRegistryService extends LocalRouteDelayService impleme
   async loadConfiguration(): Promise<OperatorConfigurationDto> {
     await this.waitForOperatorRouteDelay(OPERATOR_CONFIGURATION_ROUTE);
     return structuredClone((await this.readStored()).configuration);
+  }
+
+  async loadTlsConfiguration(): Promise<OperatorTlsConfigurationDto> {
+    await this.waitForOperatorRouteDelay(OPERATOR_CONFIGURATION_ROUTE);
+    const current = await this.readStored();
+    return LocalOperatorTlsMapper.configuration(current.tlsConfiguration);
+  }
+
+  async saveTlsConfiguration(
+    request: OperatorTlsConfigurationUpdateDto
+  ): Promise<OperatorTlsJobDto> {
+    await this.waitForOperatorRouteDelay(OPERATOR_CONFIGURATION_ROUTE);
+    const updatedAt = new Date().toISOString();
+    const current = await this.readStored();
+    const tlsConfiguration = LocalOperatorTlsMapper.updated(
+      current.tlsConfiguration,
+      request,
+      updatedAt
+    );
+    await this.repository.write({
+      ...structuredClone(current),
+      tlsConfiguration
+    });
+    return {
+      jobId: this.createToken('tls'),
+      phase: 'COMPLETED',
+      percent: 100,
+      message: 'operator.configuration.tls.saved',
+      updatedAt,
+      configuration: structuredClone(tlsConfiguration)
+    };
+  }
+
+  async testTlsConfiguration(
+    request: OperatorTlsTestRequestDto
+  ): Promise<OperatorTlsJobDto> {
+    await this.waitForOperatorRouteDelay(OPERATOR_CONFIGURATION_TEST_ROUTE);
+    const updatedAt = new Date().toISOString();
+    const configured = request.kind === 'DOMAIN'
+      ? Boolean(request.configuration.domain.trim())
+      : request.configuration.mode === 'AUTOMATIC'
+        || Boolean(
+          request.configuration.certificate.trim()
+          && request.configuration.privateKey.trim()
+        )
+        || LocalOperatorTlsMapper.configuration(
+          (await this.readStored()).tlsConfiguration
+        ).certificateConfigured;
+    if (!configured) {
+      throw new Error(
+        request.kind === 'DOMAIN'
+          ? 'operator.configuration.tls.domain.invalid'
+          : 'operator.configuration.tls.certificate.required'
+      );
+    }
+    return {
+      jobId: this.createToken('tls'),
+      phase: 'COMPLETED',
+      percent: 100,
+      message: request.kind === 'DOMAIN'
+        ? 'operator.configuration.tls.test.domain.success'
+        : 'operator.configuration.tls.test.certificate.success',
+      updatedAt,
+      configuration: null
+    };
   }
 
   async saveConfiguration(

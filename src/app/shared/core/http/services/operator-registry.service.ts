@@ -21,6 +21,10 @@ import type {
   OperatorConfigurationSaveRequestDto,
   OperatorConfigurationTestRequestDto,
   OperatorConfigurationTestResultDto,
+  OperatorTlsConfigurationDto,
+  OperatorTlsConfigurationUpdateDto,
+  OperatorTlsJobDto,
+  OperatorTlsTestRequestDto,
   OperatorDeploymentEligibilityStatus,
   OperatorDeploymentUpdateDto,
   OperatorDeploymentUpdatePhase,
@@ -67,6 +71,7 @@ const OPERATOR_ANNOUNCEMENTS_ROUTE = '/operator/announcements';
 const OPERATOR_COMMUNITY_PROVIDERS_ROUTE = '/operator/community/providers';
 const OPERATOR_UPDATES_ROUTE = '/operator/updates';
 const OPERATOR_CONFIGURATION_ROUTE = '/operator/configuration';
+const OPERATOR_TLS_CONFIGURATION_ROUTE = '/operator/configuration/tls';
 const OPERATOR_REVENUE_ROUTE = '/operator/revenue';
 const OPERATOR_MEASUREMENTS_ROUTE = '/operator/measurements';
 const DEMO_OPERATOR_USER_HEADER = 'X-Demo-User-Id';
@@ -893,6 +898,43 @@ export class HttpOperatorRegistryService implements OperatorRegistryServiceContr
     );
   }
 
+  async loadTlsConfiguration(): Promise<OperatorTlsConfigurationDto> {
+    return await this.requireResponse(
+      OPERATOR_TLS_CONFIGURATION_ROUTE,
+      this.http.get<OperatorTlsConfigurationDto>(
+        `${this.apiBaseUrl}${OPERATOR_TLS_CONFIGURATION_ROUTE}`,
+        this.requestOptions()
+      ).toPromise()
+    );
+  }
+
+  async saveTlsConfiguration(
+    request: OperatorTlsConfigurationUpdateDto
+  ): Promise<OperatorTlsJobDto> {
+    return await this.requireResponse(
+      OPERATOR_TLS_CONFIGURATION_ROUTE,
+      this.http.put<OperatorTlsJobDto>(
+        `${this.apiBaseUrl}${OPERATOR_TLS_CONFIGURATION_ROUTE}`,
+        request,
+        this.requestOptions()
+      ).toPromise()
+    );
+  }
+
+  async testTlsConfiguration(
+    request: OperatorTlsTestRequestDto
+  ): Promise<OperatorTlsJobDto> {
+    const job = await this.requireResponse(
+      OPERATOR_TLS_CONFIGURATION_ROUTE,
+      this.http.post<OperatorTlsJobDto>(
+        `${this.apiBaseUrl}${OPERATOR_TLS_CONFIGURATION_ROUTE}/tests`,
+        request,
+        this.requestOptions()
+      ).toPromise()
+    );
+    return await this.waitForTlsJob(job);
+  }
+
   async activateFirebase(): Promise<OperatorConfigurationDto> {
     return await this.requireResponse(
       `${OPERATOR_CONFIGURATION_ROUTE}/firebase/activate`,
@@ -1406,6 +1448,43 @@ export class HttpOperatorRegistryService implements OperatorRegistryServiceContr
 
   private waitForUpdatePoll(): Promise<void> {
     return new Promise(resolve => setTimeout(resolve, UPDATE_POLL_INTERVAL_MS));
+  }
+
+  private async waitForTlsJob(
+    initial: OperatorTlsJobDto
+  ): Promise<OperatorTlsJobDto> {
+    let job = initial;
+    for (let attempt = 0; attempt < 240; attempt += 1) {
+      if (
+        job.phase === 'COMPLETED'
+        || job.phase === 'FAILED'
+        || job.phase === 'REJECTED'
+      ) {
+        if (job.phase !== 'COMPLETED') {
+          throw new Error(job.message || 'operator.configuration.tls.test.failed');
+        }
+        return job;
+      }
+      await this.waitForUpdatePoll();
+      try {
+        job = await this.requireResponse(
+          OPERATOR_TLS_CONFIGURATION_ROUTE,
+          this.http.get<OperatorTlsJobDto>(
+            `${this.apiBaseUrl}${OPERATOR_TLS_CONFIGURATION_ROUTE}/jobs/${
+              encodeURIComponent(job.jobId)
+            }`,
+            this.requestOptions()
+          ).toPromise()
+        );
+      } catch {
+        /*
+         * Applying TLS recreates Nginx, and the worker briefly owns a request
+         * between removing it from the inbox and publishing status. Both are
+         * expected transient polling gaps.
+         */
+      }
+    }
+    throw new Error('operator.request.timeout');
   }
 
   private safeHttpsUrl(value: string | null | undefined): string | null {

@@ -14,6 +14,7 @@ import type {
   OperatorLeaderboardGroup,
   OperatorLeaderboardPageDto,
   OperatorRevenueDto,
+  OperatorTlsConfigurationDto,
   OperatorSettlementDto,
   OperatorRegistryInspectionDto,
   OperatorRegistryStatusDto
@@ -39,6 +40,7 @@ export interface OperatorRegistryRecordExtras {
   groupingTokens?: readonly OperatorGroupingTokenRecord[];
   deploymentUpdate: OperatorDeploymentUpdateDto;
   configuration: OperatorConfigurationDto;
+  tlsConfiguration?: OperatorTlsConfigurationDto;
   revenue: OperatorRevenueDto;
   settlements: readonly OperatorSettlementDto[];
   community: OperatorCommunityStatusDto;
@@ -76,6 +78,9 @@ export class LocalOperatorRegistryMapper {
       groupingTokens: [...structuredClone(extras.groupingTokens ?? [])],
       deploymentUpdate: structuredClone(extras.deploymentUpdate),
       configuration: structuredClone(extras.configuration),
+      tlsConfiguration: structuredClone(
+        extras.tlsConfiguration ?? this.defaultTlsConfiguration()
+      ),
       revenue: structuredClone(extras.revenue),
       settlements: [...structuredClone(extras.settlements)],
       community: structuredClone(extras.community)
@@ -161,6 +166,10 @@ export class LocalOperatorRegistryMapper {
         existing.configuration,
         initialRecord.configuration,
         refreshSeedOwnedData
+      ),
+      tlsConfiguration: this.normalizeTlsConfiguration(
+        existing.tlsConfiguration,
+        initialRecord.tlsConfiguration
       ),
       revenue: structuredClone(
         !refreshSeedOwnedData && existing.revenue
@@ -312,6 +321,46 @@ export class LocalOperatorRegistryMapper {
           ?? initial.firebase.messagingCredentialConfigured
       },
       updatedAt: legacy.updatedAt ?? initial.updatedAt
+    };
+  }
+
+  private static normalizeTlsConfiguration(
+    existing: OperatorTlsConfigurationDto | null | undefined,
+    initial: OperatorTlsConfigurationDto | null | undefined
+  ): OperatorTlsConfigurationDto {
+    const fallback = initial ?? this.defaultTlsConfiguration();
+    if (!existing) {
+      return structuredClone(fallback);
+    }
+    return {
+      capability: 'AVAILABLE',
+      unavailableReason: null,
+      enabled: existing.enabled === true,
+      mode: existing.mode === 'MANUAL' ? 'MANUAL' : 'AUTOMATIC',
+      domain: `${existing.domain ?? ''}`.trim().toLowerCase(),
+      contactEmail: `${existing.contactEmail ?? ''}`.trim().toLowerCase(),
+      autoRenew: existing.mode !== 'MANUAL' && existing.autoRenew !== false,
+      certificateConfigured: existing.certificateConfigured === true,
+      certificateIssuer: `${existing.certificateIssuer ?? ''}`.trim() || null,
+      certificateExpiresAt:
+        `${existing.certificateExpiresAt ?? ''}`.trim() || null,
+      updatedAt: `${existing.updatedAt ?? ''}`.trim() || null
+    };
+  }
+
+  private static defaultTlsConfiguration(): OperatorTlsConfigurationDto {
+    return {
+      capability: 'AVAILABLE',
+      unavailableReason: null,
+      enabled: false,
+      mode: 'AUTOMATIC',
+      domain: '',
+      contactEmail: '',
+      autoRenew: true,
+      certificateConfigured: false,
+      certificateIssuer: null,
+      certificateExpiresAt: null,
+      updatedAt: null
     };
   }
 

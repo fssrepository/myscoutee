@@ -286,6 +286,30 @@
   width: min(100%, 380px);
 }
 
+.operator-action-popup__section-actions--tls {
+  width: min(100%, 620px);
+}
+
+.operator-action-popup__header-toggle,
+.operator-action-popup__tls-renew-toggle {
+  min-width: 0;
+}
+
+.operator-action-popup__tls-grid {
+  min-width: 0;
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  align-items: end;
+  gap: 0.58rem;
+}
+
+.operator-action-popup__tls-renew-toggle {
+  align-self: end;
+  min-height: 38px;
+  display: flex;
+  align-items: center;
+}
+
 .operator-action-popup__social-links {
   min-width: 0;
   display: grid;
@@ -1545,6 +1569,10 @@
   }
 
   .operator-action-popup__social-link-fields {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .operator-action-popup__tls-grid {
     grid-template-columns: minmax(0, 1fr);
   }
 

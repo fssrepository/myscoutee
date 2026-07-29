@@ -489,6 +489,53 @@ export interface OperatorConfigurationTestResultDto {
   firebase: OperatorFirebaseConfigurationDto | null;
 }
 
+export type OperatorTlsCertificateMode = 'AUTOMATIC' | 'MANUAL';
+export type OperatorTlsTestKind = 'DOMAIN' | 'CERTIFICATE';
+export type OperatorTlsJobPhase =
+  | 'QUEUED'
+  | 'RUNNING'
+  | 'COMPLETED'
+  | 'FAILED'
+  | 'REJECTED';
+
+export interface OperatorTlsConfigurationDto {
+  capability: OperatorConfigurationCapability;
+  unavailableReason: string | null;
+  enabled: boolean;
+  mode: OperatorTlsCertificateMode;
+  domain: string;
+  contactEmail: string;
+  autoRenew: boolean;
+  certificateConfigured: boolean;
+  certificateIssuer: string | null;
+  certificateExpiresAt: string | null;
+  updatedAt: string | null;
+}
+
+export interface OperatorTlsConfigurationUpdateDto {
+  enabled: boolean;
+  mode: OperatorTlsCertificateMode;
+  domain: string;
+  contactEmail: string;
+  autoRenew: boolean;
+  certificate: string;
+  privateKey: string;
+}
+
+export interface OperatorTlsTestRequestDto {
+  kind: OperatorTlsTestKind;
+  configuration: OperatorTlsConfigurationUpdateDto;
+}
+
+export interface OperatorTlsJobDto {
+  jobId: string;
+  phase: OperatorTlsJobPhase;
+  percent: number;
+  message: string;
+  updatedAt: string;
+  configuration: OperatorTlsConfigurationDto | null;
+}
+
 export type OperatorRevenueTone =
   | 'blue'
   | 'green'
@@ -785,6 +832,13 @@ export interface OperatorRegistryServiceContract {
     request: OperatorConfigurationTestRequestDto
   ): Promise<OperatorConfigurationTestResultDto>;
   activateFirebase(): Promise<OperatorConfigurationDto>;
+  loadTlsConfiguration(): Promise<OperatorTlsConfigurationDto>;
+  saveTlsConfiguration(
+    request: OperatorTlsConfigurationUpdateDto
+  ): Promise<OperatorTlsJobDto>;
+  testTlsConfiguration(
+    request: OperatorTlsTestRequestDto
+  ): Promise<OperatorTlsJobDto>;
   loadRevenue(): Promise<OperatorRevenueDto>;
   synchronizeRevenue(): Promise<OperatorRevenueSyncDto>;
   revenueReportPage(
