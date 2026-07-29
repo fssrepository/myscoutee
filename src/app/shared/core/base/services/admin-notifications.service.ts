@@ -226,7 +226,10 @@ export class AdminNotificationsService extends BaseRouteModeService {
         lastRunStatus: `${rule.runState?.lastRunStatus ?? ''}`.trim(),
         lastRunDetail: `${rule.runState?.lastRunDetail ?? ''}`.trim(),
         lastRunCount: Math.max(0, Math.trunc(Number(rule.runState?.lastRunCount) || 0)),
-        lastRunUser: `${rule.runState?.lastRunUser ?? ''}`.trim()
+        lastRunUser: `${rule.runState?.lastRunUser ?? ''}`.trim(),
+        pendingCount: Math.max(0, Math.trunc(Number(rule.runState?.pendingCount) || 0)),
+        pendingCountUnit: `${rule.runState?.pendingCountUnit ?? ''}`.trim(),
+        pendingCountUpdatedAtIso: `${rule.runState?.pendingCountUpdatedAtIso ?? ''}`.trim()
       },
       runHistory: (rule.runHistory ?? []).map((entry, index) => ({
         id: `${entry?.id ?? ''}`.trim() || `run-${index}`,
@@ -306,7 +309,10 @@ export class AdminNotificationsService extends BaseRouteModeService {
         lastRunStatus: `${event.runState?.lastRunStatus ?? ''}`.trim(),
         lastRunDetail: `${event.runState?.lastRunDetail ?? ''}`.trim(),
         lastRunCount: Math.max(0, Math.trunc(Number(event.runState?.lastRunCount) || 0)),
-        lastRunUser: `${event.runState?.lastRunUser ?? ''}`.trim()
+        lastRunUser: `${event.runState?.lastRunUser ?? ''}`.trim(),
+        pendingCount: Math.max(0, Math.trunc(Number(event.runState?.pendingCount) || 0)),
+        pendingCountUnit: `${event.runState?.pendingCountUnit ?? ''}`.trim(),
+        pendingCountUpdatedAtIso: `${event.runState?.pendingCountUpdatedAtIso ?? ''}`.trim()
       },
       runHistory: (event.runHistory ?? []).map((entry, index) => ({
         id: `${entry?.id ?? ''}`.trim() || `run-${index}`,

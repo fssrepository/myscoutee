@@ -27,6 +27,37 @@ describe('OperatorConfigurationMapper', () => {
     ).toBe('operator.configuration.admin.email.too.many');
   });
 
+  it('normalizes a configured privacy contact', () => {
+    expect(OperatorConfigurationMapper.privacyContact({
+      configured: true,
+      dataControllerName: '  Example Operator s.r.o.  ',
+      privacyContactEmail: ' Privacy@Example.test '
+    })).toEqual({
+      configured: true,
+      dataControllerName: 'Example Operator s.r.o.',
+      privacyContactEmail: 'privacy@example.test'
+    });
+  });
+
+  it('allows a blank privacy contact and rejects partial or invalid values', () => {
+    expect(OperatorConfigurationMapper.privacyContactValidationKey({
+      dataControllerName: '',
+      privacyContactEmail: ''
+    })).toBeNull();
+    expect(OperatorConfigurationMapper.privacyContactValidationKey({
+      dataControllerName: 'Example Operator s.r.o.',
+      privacyContactEmail: ''
+    })).toBe('operator.configuration.privacy.contact.incomplete');
+    expect(OperatorConfigurationMapper.privacyContactValidationKey({
+      dataControllerName: 'Example Operator s.r.o.',
+      privacyContactEmail: 'not-an-email'
+    })).toBe('operator.configuration.privacy.email.invalid');
+    expect(OperatorConfigurationMapper.privacyContactValidationKey({
+      dataControllerName: 'Example\u0000Operator',
+      privacyContactEmail: 'privacy@example.test'
+    })).toBe('operator.configuration.privacy.controller.invalid');
+  });
+
   it('normalizes valid HTTPS social links and collapses exact duplicates', () => {
     const link = {
       provider: ' Community ',

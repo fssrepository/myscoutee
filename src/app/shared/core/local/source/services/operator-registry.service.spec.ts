@@ -639,6 +639,10 @@ describe('LocalOperatorRegistryService', () => {
     ]);
     const saved = await service.saveConfiguration({
       adminEmails: ['operator@example.test'],
+      privacyContact: {
+        dataControllerName: '  Example Explore Operator  ',
+        privacyContactEmail: ' Privacy@Explore.Example.test '
+      },
       socialLinks: [{
         provider: 'community',
         label: 'Community',
@@ -685,6 +689,11 @@ describe('LocalOperatorRegistryService', () => {
 
     expect(initial.firebase.authenticationCredentialConfigured).toBe(false);
     expect(saved).toEqual(expect.objectContaining({
+      privacyContact: {
+        configured: true,
+        dataControllerName: 'Example Explore Operator',
+        privacyContactEmail: 'privacy@explore.example.test'
+      },
       branding: expect.objectContaining({
         productName: 'Community Hub',
         homeLabel: initial.branding.homeLabel,

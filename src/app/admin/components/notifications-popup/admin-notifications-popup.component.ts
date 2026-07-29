@@ -316,6 +316,10 @@ const JOB_I18N = {
     notRunYet: 'admin.jobs.not.run.yet',
     affected: 'admin.jobs.affected'
   },
+  pending: {
+    title: 'admin.jobs.pending.impact',
+    notCalculated: 'admin.jobs.pending.not.calculated'
+  },
   runWindow: {
     none: 'admin.jobs.run.window.none',
     oneTimeDate: 'admin.jobs.run.window.one.time.date',

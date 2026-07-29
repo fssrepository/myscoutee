@@ -32,6 +32,7 @@ describe('OperatorWorkspaceStore', () => {
   const requeueRevenueReport = vi.fn();
   const testConfiguration = vi.fn();
   const refreshFirebaseApp = vi.fn();
+  const applyPrivacyContact = vi.fn();
   const createBrowserReadinessLease = vi.fn();
   const releaseBrowserReadinessLease = vi.fn();
   const applyMutation = vi.fn();
@@ -72,6 +73,7 @@ describe('OperatorWorkspaceStore', () => {
     testConfiguration.mockReset();
     refreshFirebaseApp.mockReset();
     refreshFirebaseApp.mockResolvedValue(null);
+    applyPrivacyContact.mockReset();
     createBrowserReadinessLease.mockReset();
     releaseBrowserReadinessLease.mockReset();
     releaseBrowserReadinessLease.mockResolvedValue(undefined);
@@ -112,7 +114,8 @@ describe('OperatorWorkspaceStore', () => {
           provide: DeploymentConfigurationService,
           useValue: {
             applyBranding: vi.fn(),
-            applySocialLinks: vi.fn()
+            applySocialLinks: vi.fn(),
+            applyPrivacyContact
           }
         },
         {
@@ -590,6 +593,16 @@ describe('OperatorWorkspaceStore', () => {
     saveConfiguration.mockImplementation(async request => ({
       ...initial,
       adminEmails: request.adminEmails,
+      privacyContact: {
+        configured: Boolean(
+          request.privacyContact.dataControllerName
+          && request.privacyContact.privacyContactEmail
+        ),
+        dataControllerName:
+          request.privacyContact.dataControllerName.trim(),
+        privacyContactEmail:
+          request.privacyContact.privacyContactEmail.trim().toLowerCase()
+      },
       socialLinks: request.socialLinks,
       updatedAt: '2026-07-28T19:00:00.000Z'
     }));
@@ -599,6 +612,10 @@ describe('OperatorWorkspaceStore', () => {
     store.setConfigurationAdminEmailsInput(
       ' Owner@Example.test, owner@example.test\nadmin@example.test '
     );
+    store.setConfigurationPrivacyContact({
+      dataControllerName: '  Example Operator s.r.o.  ',
+      privacyContactEmail: ' Privacy@Example.test '
+    });
     store.addConfigurationSocialLink();
     store.setConfigurationSocialLink(0, {
       provider: 'community',
@@ -613,6 +630,10 @@ describe('OperatorWorkspaceStore', () => {
     expect(saveConfiguration).toHaveBeenCalledWith(
       expect.objectContaining({
         adminEmails: ['owner@example.test', 'admin@example.test'],
+        privacyContact: {
+          dataControllerName: '  Example Operator s.r.o.  ',
+          privacyContactEmail: ' Privacy@Example.test '
+        },
         socialLinks: [{
           provider: 'community',
           label: 'Community',
@@ -626,7 +647,32 @@ describe('OperatorWorkspaceStore', () => {
       'owner@example.test',
       'admin@example.test'
     ]);
+    expect(store.configuration()?.privacyContact).toEqual({
+      configured: true,
+      dataControllerName: 'Example Operator s.r.o.',
+      privacyContactEmail: 'privacy@example.test'
+    });
+    expect(store.configurationPrivacyContactReady()).toBe(true);
+    expect(applyPrivacyContact).toHaveBeenLastCalledWith(
+      store.configuration()?.privacyContact
+    );
     expect(store.configuration()?.socialLinks[0]?.provider).toBe('community');
+  });
+
+  it('rejects a partial privacy contact before saving', async () => {
+    loadConfiguration.mockResolvedValue(operatorConfiguration());
+    const store = TestBed.inject(OperatorWorkspaceStore);
+    await store.loadConfiguration();
+    store.setConfigurationPrivacyContact({
+      dataControllerName: 'Example Operator s.r.o.',
+      privacyContactEmail: ''
+    });
+
+    await store.saveConfiguration('save-privacy-contact');
+
+    expect(store.configurationPrivacyContactValidationKey())
+      .toBe('operator.configuration.privacy.contact.incomplete');
+    expect(saveConfiguration).not.toHaveBeenCalled();
   });
 });
 
@@ -725,6 +771,11 @@ function operatorConfiguration(): OperatorConfigurationDto {
     capability: 'AVAILABLE',
     unavailableReason: null,
     adminEmails: [],
+    privacyContact: {
+      configured: false,
+      dataControllerName: '',
+      privacyContactEmail: ''
+    },
     socialLinks: [],
     branding: {
       productName: 'MyScoutee',

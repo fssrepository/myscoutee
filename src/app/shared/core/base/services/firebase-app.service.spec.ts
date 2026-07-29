@@ -93,6 +93,24 @@ describe('FirebaseAppService reconciliation', () => {
     expect((await service.ensureFirebaseRuntime())?.config.revision).toBe(3);
     expect(fetchMock).toHaveBeenCalledTimes(2);
   });
+
+  it('accepts an empty storage bucket and omits it from Firebase options', async () => {
+    fetchMock.mockResolvedValueOnce(jsonResponse({
+      ...firebaseConfiguration(4),
+      storageBucket: ''
+    }));
+    const service = TestBed.inject(FirebaseAppService);
+
+    const runtime = await service.ensureFirebaseRuntime();
+
+    expect(runtime?.config.storageBucket).toBe('');
+    expect(initializeApp).toHaveBeenCalledWith(
+      expect.not.objectContaining({
+        storageBucket: expect.anything()
+      }),
+      'myscoutee-deployment-runtime'
+    );
+  });
 });
 
 function firebaseConfiguration(revision: number): FirebaseConfigFile {

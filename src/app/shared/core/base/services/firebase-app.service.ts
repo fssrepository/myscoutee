@@ -177,7 +177,9 @@ export class FirebaseAppService {
       apiKey: config.apiKey,
       authDomain: config.authDomain,
       projectId: config.projectId,
-      storageBucket: config.storageBucket,
+      ...(config.storageBucket
+        ? { storageBucket: config.storageBucket }
+        : {}),
       messagingSenderId: config.messagingSenderId,
       appId: config.appId,
       ...(config.measurementId
@@ -259,7 +261,6 @@ export class FirebaseAppService {
       && typeof value.projectId === 'string'
       && value.projectId.trim().length > 0
       && typeof value.storageBucket === 'string'
-      && value.storageBucket.trim().length > 0
       && typeof value.messagingSenderId === 'string'
       && value.messagingSenderId.trim().length > 0
       && typeof value.appId === 'string'

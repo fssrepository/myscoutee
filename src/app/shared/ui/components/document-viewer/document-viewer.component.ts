@@ -6,6 +6,7 @@ import { ActivatedRoute } from '@angular/router';
 import { AppUtils } from '../../../app-utils';
 import { APP_STATIC_DATA } from '../../../app-static-data';
 import { HelpCenterService, I18nService } from '../../../core';
+import { resolveDeploymentPrivacyTokens } from '../../../core/common/deployment-privacy-token.resolver';
 import { DeploymentConfigurationService } from '../../../core/base/services/deployment-configuration.service';
 import type { HelpCenterDocumentKind, HelpCenterRevisionDto } from '../../../core/contracts';
 import { LazyBgImageDirective } from '../../directives';
@@ -48,8 +49,10 @@ import type {
   styleUrl: './document-viewer.component.scss'
 })
 export class DocumentViewerComponent implements OnChanges, OnInit {
+  private readonly deploymentConfiguration =
+    inject(DeploymentConfigurationService);
   protected readonly deploymentBranding =
-    inject(DeploymentConfigurationService).branding;
+    this.deploymentConfiguration.branding;
   private readonly i18n = inject(I18nService);
   private readonly route = inject(ActivatedRoute);
   private readonly helpCenter = inject(HelpCenterService);
@@ -174,7 +177,7 @@ export class DocumentViewerComponent implements OnChanges, OnInit {
   protected documentAccordionModel(): UiAccordionModel<string, DocumentViewerSection> {
     const config = this.activeConfig();
     return {
-      items: (config?.sections ?? []).map(section => ({
+      items: this.resolvedSections().map(section => ({
         id: section.id,
         title: section.title,
         icon: section.icon,
@@ -193,7 +196,9 @@ export class DocumentViewerComponent implements OnChanges, OnInit {
   protected documentSectionFromItem(
     item: UiAccordionItem<string, DocumentViewerSection>
   ): DocumentViewerSection | null {
-    return item.context ?? this.activeConfig()?.sections.find(section => section.id === item.id) ?? null;
+    return item.context
+      ?? this.resolvedSections().find(section => section.id === item.id)
+      ?? null;
   }
 
   protected onDocumentAccordionToggle(event: UiAccordionToggleEvent<string, DocumentViewerSection>): void {
@@ -403,6 +408,36 @@ export class DocumentViewerComponent implements OnChanges, OnInit {
         details: section.details
       }))
     };
+  }
+
+  private resolvedSections(): DocumentViewerSection[] {
+    this.i18n.revision();
+    const privacyContact = this.deploymentConfiguration.privacyContact();
+    const text = {
+      dataControllerLabel: this.i18n.translate(
+        'deployment.privacy.data.controller'
+      ),
+      privacyContactEmailLabel: this.i18n.translate(
+        'deployment.privacy.contact.email'
+      ),
+      contactNotPublished: this.i18n.translate(
+        'deployment.privacy.contact.not.published'
+      ),
+      deletionEmailPrefix: this.i18n.translate(
+        'deployment.privacy.deletion.email.prefix'
+      ),
+      deletionEmailSuffix: this.i18n.translate(
+        'deployment.privacy.deletion.email.suffix'
+      )
+    };
+    return (this.activeConfig()?.sections ?? []).map(section => ({
+      ...section,
+      contentHtml: resolveDeploymentPrivacyTokens(
+        section.contentHtml,
+        privacyContact,
+        text
+      )
+    }));
   }
 
   private activeRevision(kind: HelpCenterDocumentKind): HelpCenterRevisionDto | null {

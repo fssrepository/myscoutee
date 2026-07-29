@@ -160,7 +160,9 @@ export class FirebaseMessagingService {
       apiKey: configuration.apiKey,
       authDomain: configuration.authDomain,
       projectId: configuration.projectId,
-      storageBucket: configuration.storageBucket,
+      ...(configuration.storageBucket
+        ? { storageBucket: configuration.storageBucket }
+        : {}),
       messagingSenderId: configuration.messagingSenderId,
       appId: configuration.appId,
       ...(configuration.measurementId

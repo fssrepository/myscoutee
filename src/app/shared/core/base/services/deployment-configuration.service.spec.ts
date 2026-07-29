@@ -80,6 +80,11 @@ describe('DeploymentConfigurationService', () => {
         icon: null,
         handle: '@community'
       }],
+      privacyContact: {
+        configured: true,
+        dataControllerName: 'Community Cooperative',
+        privacyContactEmail: 'PRIVACY@EXAMPLE.TEST'
+      },
       revision: 4
     });
     const service = TestBed.inject(DeploymentConfigurationService);
@@ -102,6 +107,11 @@ describe('DeploymentConfigurationService', () => {
       icon: null,
       handle: '@community'
     }]);
+    expect(service.privacyContact()).toEqual({
+      configured: true,
+      dataControllerName: 'Community Cooperative',
+      privacyContactEmail: 'privacy@example.test'
+    });
     expect(TestBed.inject(DOCUMENT).documentElement.dataset['deploymentTheme'])
       .toBe('ocean');
     expect(TestBed.inject(DOCUMENT).title).toBe('Community Hub');
@@ -137,6 +147,11 @@ describe('DeploymentConfigurationService', () => {
       logoCharacterIndex: 3,
       themePreset: 'OCEAN',
       socialLinks: [],
+      privacyContact: {
+        configured: false,
+        dataControllerName: '',
+        privacyContactEmail: ''
+      },
       revision: 4
     });
     const service = TestBed.inject(DeploymentConfigurationService);

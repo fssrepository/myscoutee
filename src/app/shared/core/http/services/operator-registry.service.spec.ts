@@ -928,6 +928,10 @@ describe('HttpOperatorRegistryService', () => {
     const service = TestBed.inject(HttpOperatorRegistryService);
     const request = {
       adminEmails: ['operator@example.test'],
+      privacyContact: {
+        dataControllerName: 'Example Operator s.r.o.',
+        privacyContactEmail: 'privacy@example.test'
+      },
       socialLinks: [{
         provider: 'community',
         label: 'Community',
@@ -1196,6 +1200,13 @@ function operatorConfiguration() {
   return {
     capability: 'AVAILABLE' as const,
     unavailableReason: null,
+    adminEmails: [],
+    privacyContact: {
+      configured: false,
+      dataControllerName: '',
+      privacyContactEmail: ''
+    },
+    socialLinks: [],
     branding: {
       productName: 'MyScoutee',
       homeLabel: 'Your preferences come first',

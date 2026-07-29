@@ -62,9 +62,15 @@ describe('OperatorActionPopupComponent payment provider menu', () => {
             configuration: configuration.asReadonly(),
             configurationDraft: configurationDraft.asReadonly(),
             configurationBrandingReady: signal(true).asReadonly(),
+            configurationFirebaseDirty: signal(false).asReadonly(),
+            configurationPrivacyContactReady: signal(true).asReadonly(),
+            configurationPrivacyContactValidationKey: () => null,
             clearFeedback,
             clearConfigurationCredentialDrafts,
             loadConfiguration: vi.fn().mockResolvedValue(configuration()),
+            setConfigurationPrivacyContact: vi.fn(),
+            configurationAuthenticationTest: signal(null).asReadonly(),
+            configurationMessagingTest: signal(null).asReadonly(),
             configurationAuthenticationFeedback: signal(null).asReadonly(),
             configurationMessagingFeedback: signal(null).asReadonly(),
             configurationMessagingDestinationToken: signal('').asReadonly(),
@@ -163,6 +169,72 @@ describe('OperatorActionPopupComponent payment provider menu', () => {
       rowImages[1]?.closest('.app-menu__item')
         ?.classList.contains('app-menu__palette--blue')
     ).toBe(true);
+  });
+
+  it('keeps the privacy contact editor distinct and without an inner title', () => {
+    const actionFixture = TestBed.createComponent(OperatorActionPopupComponent);
+    const componentView = actionFixture.componentInstance as unknown as {
+      configurationPrivacyContactFormModel: Signal<{
+        header: boolean;
+        steps: readonly [{ title: string; chrome: string }];
+      }>;
+      configurationPrivacyContactFormValue: Signal<{
+        dataControllerName: string;
+        privacyContactEmail: string;
+      }>;
+    };
+
+    expect(componentView.configurationPrivacyContactFormModel())
+      .toEqual(expect.objectContaining({
+        header: false,
+        steps: [
+          expect.objectContaining({
+            title: '',
+            chrome: 'none'
+          })
+        ]
+      }));
+    expect(componentView.configurationPrivacyContactFormValue()).toEqual({
+      dataControllerName: 'Example Operator s.r.o.',
+      privacyContactEmail: 'privacy@example.test'
+    });
+    actionFixture.destroy();
+  });
+
+  it('does not gate Firebase activation on an empty storage bucket', () => {
+    const base = operatorConfiguration();
+    configuration.set({
+      ...base,
+      firebase: {
+        ...base.firebase,
+        readyToActivate: true
+      }
+    });
+    configurationDraft.set({
+      ...operatorConfigurationDraft('stripe'),
+      firebase: {
+        ...operatorConfigurationDraft('stripe').firebase,
+        apiKey: 'browser-api-key',
+        authDomain: 'community.firebaseapp.com',
+        projectId: 'community',
+        storageBucket: '',
+        messagingSenderId: '123456789',
+        appId: '1:123456789:web:community',
+        vapidKey: 'public-vapid-key'
+      }
+    });
+    const actionFixture = TestBed.createComponent(OperatorActionPopupComponent);
+    const componentView = actionFixture.componentInstance as unknown as {
+      configurationFirebaseSaveActionItems:
+        Signal<readonly AppMenuItem<string>[]>;
+    };
+
+    expect(
+      componentView.configurationFirebaseSaveActionItems()
+        .find(item => item.id === 'operator-activate-firebase')
+        ?.disabled
+    ).toBe(false);
+    actionFixture.destroy();
   });
 
   it('scrubs write-only Firebase drafts when the configuration popup closes', () => {
@@ -364,6 +436,11 @@ function operatorConfiguration(): OperatorConfigurationDto {
     capability: 'AVAILABLE',
     unavailableReason: null,
     adminEmails: [],
+    privacyContact: {
+      configured: true,
+      dataControllerName: 'Example Operator s.r.o.',
+      privacyContactEmail: 'privacy@example.test'
+    },
     socialLinks: [],
     branding: {
       productName: 'MyScoutee',
@@ -424,6 +501,10 @@ function operatorConfigurationDraft(
 ): OperatorConfigurationSaveRequestDto {
   return {
     adminEmails: [],
+    privacyContact: {
+      dataControllerName: 'Example Operator s.r.o.',
+      privacyContactEmail: 'privacy@example.test'
+    },
     socialLinks: [],
     branding: {
       productName: 'MyScoutee',
