@@ -146,13 +146,13 @@ export interface OperatorRegistryMutationResultDto
   created: boolean;
 }
 
-export interface OperatorClaimMutationResultDto
-  extends OperatorLeaderboardMutationDto, OperatorClaimOverviewDto {
-}
-
 export interface OperatorClaimOverviewDto {
   status: OperatorClaimStatusDto;
   submission: OperatorClaimRequestDto | null;
+}
+
+export interface OperatorClaimMutationResultDto
+  extends OperatorLeaderboardMutationDto, OperatorClaimOverviewDto {
 }
 
 export interface OperatorLeaderboardGroupSummaryDto {

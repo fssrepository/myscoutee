@@ -111,10 +111,11 @@ describe('LocalOperatorRegistryService', () => {
       authorityAttested: true
     });
     expect(cached?.leaderboard.find(
-      item => item.operatorGroupId === explicitClaim.operatorGroupId
-    )).toEqual(
-      undefined
-    );
+      item => item.operatorGroupId === explicitClaim.status.operatorGroupId
+    )).toEqual(expect.objectContaining({
+      group: 'CLAIMED',
+      claimantName: 'Demo Operator s.r.o.'
+    }));
     expect(cached?.auditHistory.map(item => item.kind)).toEqual(
       expect.arrayContaining(['SEED', 'REGISTER', 'CLAIM'])
     );
@@ -161,6 +162,71 @@ describe('LocalOperatorRegistryService', () => {
       undefined,
       'operator.request.aborted'
     );
+  });
+
+  it('withdraws the current claim when the registered deployment is disabled', async () => {
+    const seedRepository = TestBed.inject(SeedOperatorRegistryRepository);
+    const seedContext = await seedRepository.prepareBootstrap();
+    await seedRepository.seedUsers(seedContext);
+    await seedRepository.seedRegistry(seedContext);
+
+    const repository = TestBed.inject(LocalOperatorRegistryRepository);
+    const service = TestBed.inject(LocalOperatorRegistryService);
+    const registration = await service.register({
+      registryBaseUrl: 'https://registry.myscoutee.invalid',
+      expectedRegistryScope: 'demo:primary'
+    });
+    const deploymentCode = registration.status.enrollment?.deploymentCode ?? '';
+    const claim = await service.claimShare({
+      legalName: 'Disabled Demo Operator s.r.o.',
+      registrationNumber: '51 234 567',
+      jurisdiction: 'Slovakia',
+      registeredAddress: 'Main Street 1, Bratislava',
+      website: 'https://operator.example.test',
+      verificationContactName: 'Demo Operator',
+      verificationContactRole: 'Managing director',
+      verificationContactEmail: 'operator@example.test',
+      authorityAttested: true
+    });
+    const claimedRowId = claim.leaderboardEntry?.id ?? '';
+
+    const mutation = await service.disconnect();
+    const overview = await service.loadClaimStatus();
+    const stored = await repository.read();
+
+    expect(mutation.status).toEqual(expect.objectContaining({
+      lifecycle: 'DISABLED',
+      enabled: false
+    }));
+    expect(mutation.leaderboardEntry).toBeNull();
+    expect(mutation.removedLeaderboardEntryIds).toContain(claimedRowId);
+    expect(overview).toEqual(expect.objectContaining({
+      status: expect.objectContaining({
+        claimed: false,
+        operatorGroupId: null,
+        verificationStatus: 'WITHDRAWN'
+      }),
+      submission: null
+    }));
+    expect(stored?.ledger.find(item => item.nodeId === deploymentCode))
+      .toEqual(expect.objectContaining({
+        active: false,
+        claimed: false,
+        claimantUserId: null,
+        claimantName: null,
+        claimedAt: null
+      }));
+    expect(stored?.groupLinks.some(link => link.nodeId === deploymentCode))
+      .toBe(false);
+    expect(stored?.leaderboard.some(item =>
+      item.nodeId === deploymentCode
+      || item.id === claimedRowId
+    )).toBe(false);
+    expect(stored?.claimVerificationRequest).toBeNull();
+    expect(stored?.auditHistory.at(-1)).toEqual(expect.objectContaining({
+      kind: 'DISCONNECT',
+      detail: 'Registry deployment deactivated and claim withdrawn.'
+    }));
   });
 
   it('submits an unclaimed client-code claim with provisional leaderboard grouping', async () => {

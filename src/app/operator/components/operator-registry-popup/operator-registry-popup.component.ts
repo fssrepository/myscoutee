@@ -24,6 +24,7 @@ import {
 } from '../../../shared/ui/components/core/popup';
 import { OperatorMenuStore } from '../../../shared/ui/context/stores/operator-menu.store';
 import { OperatorRegistryStore } from '../../../shared/ui/context/stores/operator-registry.store';
+import { OperatorWorkspaceStore } from '../../../shared/ui/context/stores/operator-workspace.store';
 import { I18nPipe } from '../../../shared/ui/pipes';
 
 @Component({
@@ -45,6 +46,7 @@ import { I18nPipe } from '../../../shared/ui/pipes';
 export class OperatorRegistryPopupComponent implements OnInit {
   protected readonly registry = inject(OperatorRegistryStore);
   protected readonly operatorMenu = inject(OperatorMenuStore);
+  private readonly workspace = inject(OperatorWorkspaceStore);
   private readonly i18n = inject(I18nService);
   protected readonly status = this.registry.status;
   protected readonly busyAction = this.registry.busyAction;
@@ -168,6 +170,7 @@ export class OperatorRegistryPopupComponent implements OnInit {
     this.registry.clearFeedback();
     const status = await this.registry.disconnect();
     if (status) {
+      this.workspace.applyRegistryDeactivation();
       this.registry.setNotice('operator.registration.disabled');
     }
   }

@@ -4,6 +4,7 @@ import { TestBed } from '@angular/core/testing';
 import type { OperatorRegistryStatusDto } from '../../../shared/core/contracts/operator.interface';
 import { OperatorMenuStore } from '../../../shared/ui/context/stores/operator-menu.store';
 import { OperatorRegistryStore } from '../../../shared/ui/context/stores/operator-registry.store';
+import { OperatorWorkspaceStore } from '../../../shared/ui/context/stores/operator-workspace.store';
 import type { LinkInputConfig } from '../../../shared/ui/components/core/form/inputs/link-input';
 import type { AppMenuItem } from '../../../shared/ui/components/core/menu';
 import type { PopupModel } from '../../../shared/ui/components/core/popup';
@@ -46,6 +47,10 @@ describe('OperatorRegistryPopupComponent', () => {
       imports: [OperatorRegistryPopupComponent],
       providers: [
         { provide: OperatorRegistryStore, useValue: registryStore },
+        {
+          provide: OperatorWorkspaceStore,
+          useValue: { applyRegistryDeactivation: vi.fn() }
+        },
         {
           provide: OperatorMenuStore,
           useValue: {

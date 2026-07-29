@@ -311,29 +311,66 @@ export class LocalOperatorRegistryService extends LocalRouteDelayService impleme
     }, null);
     const activeNodeId = current.status.enrollment?.deploymentCode?.trim()
       || current.claimIdentity.nodeId.trim();
+    const hadClaim = current.claimStatus.claimed
+      || current.claimStatus.verificationStatus !== 'NOT_SUBMITTED';
+    const previousOperatorGroupId =
+      current.claimStatus.operatorGroupId?.trim() ?? '';
     const ledger = current.ledger.map(item =>
       item.nodeId === activeNodeId
-        ? { ...item, active: false }
+        ? {
+            ...item,
+            active: false,
+            claimed: false,
+            claimantUserId: null,
+            claimantName: null,
+            claimantAvatarUrl: null,
+            claimedAt: null
+          }
         : item
+    );
+    const groupLinks = current.groupLinks.filter(
+      link => link.nodeId !== activeNodeId
     );
     const leaderboard = LocalOperatorRegistryMapper.deriveLeaderboard(
       ledger,
-      current.groupLinks
+      groupLinks
     );
     const removedLeaderboardEntryIds = current.leaderboard
       .filter(item =>
         !leaderboard.some(nextItem => nextItem.id === item.id)
       )
       .map(item => item.id);
+    const leaderboardEntry = previousOperatorGroupId
+      ? leaderboard.find(
+          item => item.operatorGroupId === previousOperatorGroupId
+        ) ?? null
+      : null;
     const next = this.appendAudit({
       ...statusRecord,
       ledger,
-      leaderboard
-    }, 'DISCONNECT', 'Outbound registry synchronization disabled.');
+      groupLinks,
+      leaderboard,
+      claimStatus: {
+        ...current.claimStatus,
+        claimed: false,
+        claimedAt: null,
+        claimantUserId: null,
+        claimantName: null,
+        claimantAvatarUrl: null,
+        operatorGroupId: null,
+        activeLinkId: null,
+        sharePercent: 0,
+        shareNumerator: '0',
+        shareDenominator: '1',
+        verificationStatus: hadClaim ? 'WITHDRAWN' : 'NOT_SUBMITTED',
+        legalName: null
+      },
+      claimVerificationRequest: null
+    }, 'DISCONNECT', 'Registry deployment deactivated and claim withdrawn.');
     await this.repository.write(next);
     return {
       status: LocalOperatorRegistryMapper.toStatusDto(next),
-      leaderboardEntry: null,
+      leaderboardEntry: structuredClone(leaderboardEntry),
       removedLeaderboardEntryIds,
       created: false
     };

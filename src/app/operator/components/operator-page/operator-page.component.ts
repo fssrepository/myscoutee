@@ -117,7 +117,12 @@ export class OperatorPageComponent implements OnInit {
   });
   protected readonly actionItems = computed<readonly AppMenuItem<OperatorActionId>[]>(() => {
     const claim = this.workspace.claimStatus();
-    const claimPendingReview = claim?.verificationStatus === 'PENDING_REVIEW';
+    const registryActive =
+      this.status()?.enabled === true
+      && this.status()?.lifecycle === 'REGISTERED';
+    const claimPendingReview =
+      registryActive
+      && claim?.verificationStatus === 'PENDING_REVIEW';
     return [{
       id: 'updates',
       label: 'operator.action.updates',
@@ -153,7 +158,7 @@ export class OperatorPageComponent implements OnInit {
         : 'operator.action.claim.share',
       detail: claimPendingReview
         ? 'operator.action.claim.share.pending.detail'
-        : claim?.claimed
+        : registryActive && claim?.claimed
           ? 'operator.action.claim.share.claimed'
           : 'operator.action.claim.share.detail',
       icon: claimPendingReview ? 'pending_actions' : 'redeem',

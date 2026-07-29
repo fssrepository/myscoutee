@@ -458,6 +458,33 @@ export class OperatorWorkspaceStore {
     }));
   }
 
+  applyRegistryDeactivation(): void {
+    this.claimStatusRef.update(current => current
+      ? {
+          ...current,
+          claimed: false,
+          claimedAt: null,
+          claimantUserId: null,
+          claimantName: null,
+          claimantAvatarUrl: null,
+          operatorGroupId: null,
+          activeLinkId: null,
+          sharePercent: 0,
+          shareNumerator: '0',
+          shareDenominator: '1',
+          verificationStatus:
+            current.verificationStatus === 'NOT_SUBMITTED'
+              ? 'NOT_SUBMITTED'
+              : 'WITHDRAWN',
+          legalName: null
+        }
+      : current
+    );
+    this.claimDraftRef.set(this.emptyClaimDraft());
+    this.groupingTokenRef.set(null);
+    this.groupTokenInputRef.set('');
+  }
+
   setConfigurationBranding(
     patch: Partial<OperatorConfigurationSaveRequestDto['branding']>
   ): void {
